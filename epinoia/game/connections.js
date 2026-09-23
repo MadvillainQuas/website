@@ -100,7 +100,7 @@ function cardHTML(c, maxCount) {
         '<span class="cx-arrow">→</span>' + person(c.scorer, c.scorerName, 'cx-scorer') + '</div></div>' +
     '<div class="cx-stats">' +
       '<div class="cx-main"><div class="cx-count">' + c.count + '</div><div class="cx-label">assists</div></div>' +
-      '<div class="cx-details">' +
+      '<div class="cx-details" data-i18n-ctx="col">' +
         '<div class="cx-detail"><span class="cx-value">' + c.points + '</span><span class="cx-dlabel">PTS</span></div>' +
         '<div class="cx-detail"><span class="cx-value">' + ppp(c) + '</span><span class="cx-dlabel">PPP</span></div>' +
         '<div class="cx-detail"><span class="cx-value three">' + c.threes + '</span><span class="cx-dlabel">3PT</span></div>' +
@@ -134,7 +134,7 @@ function render(S) {
       '<p>Assist combinations appear once the play-by-play records an assist.</p>' +
       '</section></div>';
   }
-  const toggle = '<div class="cx-toggle" role="tablist">' +
+  const toggle = '<div class="cx-toggle" role="tablist" data-i18n-ctx="view">' +
     [['cards', 'cards'], ['table', 'table']].map(v =>
       '<button type="button" role="tab" data-cxview="' + v[0] + '"' + (view === v[0] ? ' class="on" aria-selected="true"' : '') + '>' + v[1] + '</button>').join('') +
     '</div>';

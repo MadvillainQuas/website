@@ -105,7 +105,12 @@ const hasPrice = p => p.has_price != null ? !!p.has_price : !!p.stripe_price_id;
    499.00000000000006, and a rounding rule that is right today is one edit away
    from charging a penny too much. Returns null when it is not a price. */
 function toPennies(text) {
-  const v = String(text == null ? '' : text).replace(/[£\s,]/g, '');
+  let v = String(text == null ? '' : text).replace(/[£\s]/g, '');
+  /* a decimal comma (4,99 — how a Spanish admin writes it, and how the Spanish page shows it):
+     a comma with one or two digits after it and nothing more is the decimal point; any other
+     comma, and a dot before three digits (1.000,50), separates thousands */
+  if (/,\d{1,2}$/.test(v)) v = v.replace(/\.(?=\d{3}(\D|$))/g, '').replace(/,(?=\d{1,2}$)/, '.');
+  v = v.replace(/,/g, '');
   const m = /^(\d{1,6})(?:\.(\d{1,2}))?$/.exec(v);
   if (!m) return null;
   return Number(m[1]) * 100 + Number(((m[2] || '') + '00').slice(0, 2));
@@ -293,6 +298,7 @@ const generations = new WeakMap();
 function mount(o) {
   const host = typeof o.host === 'string' ? document.querySelector(o.host) : o.host;
   if (!host) return;
+  host.setAttribute('data-i18n-ctx', 'console');
   /* A remount (the league changed) makes every answer still in flight from the
      previous mount stale; they check this before drawing anything. */
   const gen = (generations.get(host) || 0) + 1;
@@ -418,6 +424,7 @@ function mount(o) {
   function buildAccess() {
     host.appendChild(el('div', 'fmt-h', 'Who can see the league'));
     const choice = el('div', 'ax-choice');
+    choice.dataset.i18nCtx = 'access';
     const nameAttr = 'ax-mode-' + gen + '-' + Math.random().toString(36).slice(2, 7);
     const radio = (value, title, words) => {
       const lab = el('label');
@@ -573,6 +580,7 @@ function mount(o) {
   function buildAnalytics() {
     host.appendChild(el('div', 'fmt-h', 'Analytics in this league'));
     ui.analytics = el('p', 'empty');
+    ui.analytics.dataset.i18nCtx = 'prose';
     ui.analytics.style.paddingTop = '0';
     host.appendChild(ui.analytics);
   }

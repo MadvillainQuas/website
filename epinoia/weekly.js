@@ -390,7 +390,8 @@ function render(rep, opts) {
       '<div class="wk-key">the bar is the percentile against real games in this competition · ' +
       'grey rows are a style, not a score</div>';
   }
-  return '<div class="wk">' + head + '<div class="wk-prose">' + paras + '</div>' + table + '</div>';
+  /* data-i18n-ctx="report": the report pack's templates translate these sentences */
+  return '<div class="wk">' + head + '<div class="wk-prose" data-i18n-ctx="report">' + paras + '</div>' + table + '</div>';
 }
 
 /* ------------------------------------------------------------------ mount --- */
@@ -422,7 +423,7 @@ function mount(o) {
       panel.innerHTML = render(rep, { window: o.window });
     } catch (e) {
       loaded = false;
-      panel.innerHTML = '<div class="wk"><div class="wk-prose"><p>The week could not be read ' +
+      panel.innerHTML = '<div class="wk"><div class="wk-prose" data-i18n-ctx="report"><p>The week could not be read ' +
         'just now. Try again in a moment.</p></div></div>';
       if (typeof console !== 'undefined') console.warn('[weekly]', e);
     }

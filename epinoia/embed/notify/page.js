@@ -239,6 +239,7 @@ function boot() {
         box.checked = follows(st.state, 'team', t.id);
         box.addEventListener('change', () => box.checked ? turnOn({ teams: [t.id] }) : change({}, { teams: [t.id] }, {}));
         const text = doc.createElement('span'); text.textContent = t.name;
+        text.setAttribute('translate', 'no');                  // a club's name
         row.append(text, box);
         $('teams').appendChild(row);
       });

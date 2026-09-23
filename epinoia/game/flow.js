@@ -306,7 +306,7 @@ function segmentedLines(pts, key) {
 }
 
 const legend = (a, b) =>
-  '<div class="gf-legend">' +
+  '<div class="gf-legend" data-i18n-ctx="legend">' +
     '<span class="gf-legend-item"><span class="gf-legend-line home"></span><span class="gf-home">' + a + '</span></span>' +
     '<span class="gf-legend-item"><span class="gf-legend-line away"></span><span class="gf-away">' + b + '</span></span>' +
   '</div>';

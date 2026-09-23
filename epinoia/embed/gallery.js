@@ -45,6 +45,13 @@ function frameUrl(path, params) {
   return u.href;
 }
 
+/* The previews speak the language this page is read in, so the snippet says it too: a widget
+   on another site has no stored choice and is English unless it is told (embed.js, data-lang). */
+const lang = () => {
+  const l = window.EpinoiaI18n && window.EpinoiaI18n.lang;
+  return l && l !== 'en' ? l : '';
+};
+
 function snippet(kind, extra) {
   const bits = [`data-epinoia="${kind}"`];
   if (league()) bits.push(`data-league="${league()}"`);
@@ -52,6 +59,7 @@ function snippet(kind, extra) {
   if (theme()) bits.push(`data-theme="${theme()}"`);
   if (accent()) bits.push(`data-accent="${accent()}"`);
   if (accent2()) bits.push(`data-accent2="${accent2()}"`);
+  if (lang()) bits.push(`data-lang="${lang()}"`);
   return `<script src="${ORIGIN}${BASE}embed.js"\n        ${bits.join(' ')}><\/script>`;
 }
 
@@ -102,7 +110,8 @@ async function paintNotify() {
   const extra = {};
   if (kind === 'team' && $('#nteam').value) extra.team = $('#nteam').value;
   if (theme() === 'light') extra.theme = 'light';
-  const bits = ['data-epinoia="notify"', `data-league="${lg}"`].concat(Object.entries(extra).map(([k, v]) => `data-${k}="${v}"`));
+  if (lang()) extra.lang = lang();
+  const bits =['data-epinoia="notify"', `data-league="${lg}"`].concat(Object.entries(extra).map(([k, v]) => `data-${k}="${v}"`));
   $('#s-notify').textContent = `<script src="${ORIGIN}${BASE}embed.js"\n        ${bits.join(' ')}><\/script>`;
   const host = $('#p-notify');
   host.textContent = '';

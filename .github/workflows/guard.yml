@@ -185,6 +185,13 @@ jobs:
       - name: A hidden nav row must actually be hidden
         run: node supabase/tests/nav-gating.test.mjs
 
+      # Japanese and Spanish (docs/i18n.md): every rail page loads i18n.js early, both
+      # dictionaries carry the same keys, and the words stay the ones the leagues print.
+      - name: Languages
+        run: |
+          TZ=UTC node supabase/tests/i18n.test.mjs
+          node supabase/tests/i18n-tool.test.mjs
+
       # The preview writes prose from season aggregates, so it can be
       # confidently wrong in a way a table cannot. edge() is signed so positive
       # always means the attacking side is ahead, whichever way the factor runs

@@ -413,7 +413,7 @@ function render() {
           'line it up from <b>video sync</b> in the scoring app — it takes one number.</div>') +
 
       /* the tabs, on a game whose clock was read: minutes and fives need the clock's runs */
-      (timed && (clocked || runsHere) ? '<div class="vidtabs" role="tablist">' +
+      (timed && (clocked || runsHere) ? '<div class="vidtabs" role="tablist" data-i18n-ctx="vidtab">' +
         [['events', 'Events']].concat(clocked ? [['minutes', 'Player minutes'], ['lineups', 'Lineups']] : [])
           .concat(runsHere ? [['runs', 'Runs']] : []).map(t =>
         '<button class="vidtab' + (st.tab === t[0] ? ' on' : '') + '" role="tab" data-tab="' + t[0] + '"' +
@@ -491,7 +491,7 @@ function render() {
            the game clock, 69 readings, checked". EpinoiaVideo.coverageNote counts the readings
            that survived the sanity pass and names the periods the list has nothing in. */
         (note
-          ? '<span class="vidacc" title="' + esc(note.title) + '">' + esc(note.text) + '</span>'
+          ? '<span class="vidacc" data-i18n-ctx="vidnote" title="' + esc(note.title) + '">' + esc(note.text) + '</span>'
           : (lined && accuracyMs() != null
           ? '<span class="vidacc" title="a fed game\'s plays are stamped by the ingest worker\'s poll; this is the poll interval">' +
             'plays placed to within ±' + Math.ceil(accuracyMs() / 1000) + ' s</span>' : '')) +
@@ -499,7 +499,7 @@ function render() {
            needs to run later, so + adds to it. Shown to the same people who may
            attach the video, saved as trim_ms, cumulative. */
         (lined && ctx.canEdit && ctx.onTrim
-          ? '<span class="vidnudge">clips land early? ' +
+          ? '<span class="vidnudge" data-i18n-ctx="nudge">clips land early? ' +
             '<button data-n="1000" title="move every clip 1 s later">+1 s</button>' +
             '<button data-n="5000" title="move every clip 5 s later">+5 s</button>' +
             ' · late? <button data-n="-1000" title="move every clip 1 s earlier">−1 s</button>' +

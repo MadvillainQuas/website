@@ -111,6 +111,7 @@ function render() {
                  (t && t.name) || '—');
     holder.appendChild(n);
     box.append(cr, holder);
+    box.setAttribute('translate', 'no');           // a club's name and letters, never words to translate
     return box;
   };
   board.appendChild(side(game.home, hs, as, false));
@@ -157,6 +158,7 @@ function render() {
       });
       if (best && best.pts > 0) {
         const line = el('span');
+        line.setAttribute('translate', 'no');        // a club's letters and a player's name
         line.append(document.createTextNode(abbr(t ? game.away : game.home) + ' '),
                     el('b', null, best.name + ' ' + best.pts));
         lead.appendChild(line);

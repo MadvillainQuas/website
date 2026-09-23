@@ -1346,6 +1346,9 @@ function openSheet(doc, view, name, kind) {
   const el = (t, c, x) => { const n = doc.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
   const before = doc.activeElement;
   const wrap = el('div', 'ep-push');
+  /* the sheet's own words ("Tap", "Open", "Done", iOS's "Share") are translated as the sheet's,
+     apart from the same words elsewhere on the page (i18n/<lang>.js, ctx.push) */
+  wrap.setAttribute('data-i18n-ctx', 'push');
   const scrim = el('div', 'ep-push-scrim');
   const box = el('div', 'ep-push-sheet');
   box.setAttribute('role', 'dialog');

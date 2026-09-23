@@ -161,13 +161,13 @@ function html(o) {
     let rowsTop;
     if (narrow) {
       /* a label never runs off a phone */
-      parts.push('<text class="cmp-label" x="0" y="' + px(y + 13) + '" font-size="' + FONT + '">' +
+      parts.push('<text class="cmp-label" x="0" y="' + px(y + 13) + '" font-size="' + FONT + '" data-i18n-ctx="col">' +
         '<title>' + esc(label) + '</title>' + esc(clip(label, Math.floor(W / CHAR))) + '</text>');
       rowsTop = y + LABEL_LINE;
     } else {
       rowsTop = y;
       const midY = y + (P.length * ROW) / 2 + 4;
-      parts.push('<text class="cmp-label" x="0" y="' + px(midY) + '" font-size="' + FONT + '">' +
+      parts.push('<text class="cmp-label" x="0" y="' + px(midY) + '" font-size="' + FONT + '" data-i18n-ctx="col">' +
         '<title>' + esc(label) + '</title>' + esc(clip(label, Math.floor((LABEL_COL - 8) / CHAR))) + '</text>');
     }
     const rowsH = P.length * ROW;
@@ -230,7 +230,7 @@ function html(o) {
         '" x="' + px(bx) + '" y="' + px(by) + '" width="' + px(bw) + '" height="' + BAR + '" rx="1">' + title + '</rect>');
       const txt = mode === 'pct' ? ord(shown) : fmtValue(stat, shown);
       parts.push('<text class="cmp-val" x="' + px(valX) + '" y="' + px(ty) + '" font-size="' + FONT +
-        '" text-anchor="end">' + esc(txt) + '</text>');
+        '" text-anchor="end" data-i18n-ctx="pctl">' + esc(txt) + '</text>');
     });
 
     parts.push('</g>');
@@ -279,7 +279,7 @@ function groupsHtml(o, st, fold) {
     (fold ? '' : ' id="' + id + '"' + (st.moreOpen ? '' : ' hidden')) + '>' +
     groups.map(g => {
       const picked = g.stats.filter(s => on.has(s.key)).length;
-      return '<select class="cmp-pick" data-cmp-group="' + esc(g.key) + '" aria-label="' + esc(g.label) + ' stats">' +
+      return '<select class="cmp-pick" data-cmp-group="' + esc(g.key) + '" aria-label="' + esc(g.label) + ' stats" data-i18n-ctx="col">' +
         '<option value="">' + esc(g.label) + (picked ? ' · ' + picked : '') + '</option>' +
         g.stats.map(s => '<option value="' + esc(s.key) + '">' + (on.has(s.key) ? '✓ ' : '+ ') +
           esc(s.label || s.key) + '</option>').join('') + '</select>';
@@ -302,7 +302,7 @@ function statsHtml(o, st, fold) {
   const chips = '<div class="cmp-stats" role="group" aria-label="Stats"' + (fold ? ' id="' + id + '"' + (st.statsOpen ? '' : ' hidden') : '') + '>' +
     pool.map(s =>
       '<button type="button" class="cmp-stat' + (on.has(s.key) ? ' on' : '') + '" data-cmp-stat="' + esc(s.key) +
-      '" aria-pressed="' + on.has(s.key) + '">' + esc(s.label || s.key) + '</button>').join('') +
+      '" aria-pressed="' + on.has(s.key) + '" data-i18n-ctx="col">' + esc(s.label || s.key) + '</button>').join('') +
     (fold ? more : '') + '</div>';
   if (!fold) return chips + more;
   return '<div class="cmp-statbox"><button type="button" class="cmp-fold" data-cmp-fold="1" aria-controls="' + id +

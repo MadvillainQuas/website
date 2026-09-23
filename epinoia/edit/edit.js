@@ -11,6 +11,8 @@
    ============================================================================ */
 const CFG = window.EPINOIA_CONFIG;
 const $ = s => document.querySelector(s);
+/* the sentences this page builds are translated as the console's own (i18n/<code>/platform.js) */
+$('.ep-frame').setAttribute('data-i18n-ctx', 'console');
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const qp = new URLSearchParams(location.search);
 let sess = null, job = null, dur = 0;
@@ -78,6 +80,7 @@ function paintTexts() {
   const p = pictureRect();
   edits.texts.forEach((t, i) => {
     const n = el('div', 'tx' + (i === cur ? ' on' : ''), t.text || 'text');
+    n.setAttribute('translate', 'no');
     n.style.left = (p.x + t.x * p.w) + 'px'; n.style.top = (p.y + t.y * p.h) + 'px';
     n.style.fontSize = (t.size * (p.w / 1080)) + 'px';
     n.style.color = t.colour || '#fff';
@@ -104,7 +107,9 @@ function paintList() {
   const host = $('#txList'); host.textContent = '';
   edits.texts.forEach((t, i) => {
     const r = el('div', 'tli' + (i === cur ? ' on' : ''));
-    r.append(el('b', null, t.text || 'text'), el('span', 'ep-micro', (t.from != null ? fmt(t.from) : '0.0s') + ' → ' + (t.to != null ? fmt(t.to) : 'end')));
+    const b = el('b', null, t.text || 'text');
+    b.setAttribute('translate', 'no');
+    r.append(b, el('span', 'ep-micro', (t.from != null ? fmt(t.from) : '0.0s') + ' → ' + (t.to != null ? fmt(t.to) : 'end')));
     r.onclick = () => { cur = i; paintTexts(); paintList(); paintEditor(); };
     host.appendChild(r);
   });

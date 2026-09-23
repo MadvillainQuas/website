@@ -248,11 +248,12 @@ function boot() {
 
   function msg(html) {
     const host = $('#vidHost');
-    if (host) host.innerHTML = '<div class="msg">' + html + '</div>';
+    if (host) host.innerHTML = '<div class="msg" data-i18n-ctx="hub">' + html + '</div>';
   }
   function cover(text, warn) {
     const c = $('#cover');
     if (!c) return;
+    c.setAttribute('data-i18n-ctx', 'hub');
     c.textContent = text || '';
     c.classList.toggle('warn', !!warn);
   }

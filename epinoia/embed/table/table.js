@@ -111,7 +111,17 @@ const nameCell = (label, colour, abbr, logo) => {
     w.appendChild(c);
   }
   w.appendChild(el('b', null, label));
+  w.setAttribute('translate', 'no');               // a name, never a word to translate
   return { node: w };
+};
+/* a club's short letters in a cell of their own, likewise */
+const letters = s => { const n = el('span', null, s); n.setAttribute('translate', 'no'); return { node: n }; };
+/* A standings header: PTS there is league points, not points scored. The page's own tables tell
+   by a PA column, which an embed does not have, so it says so. */
+const standingsTable = (head, body) => {
+  const t = table(head, body);
+  t.querySelectorAll('th').forEach(th => th.setAttribute('data-i18n-ctx', 'standings'));
+  return t;
 };
 
 /* which stats a leaders embed may rank, and what to call them */
@@ -165,14 +175,14 @@ const stat = Object.prototype.hasOwnProperty.call(STATS, qp.get('stat') || '') ?
         g.divisions.forEach(d => {
           if (d.name) $('#host').appendChild(el('div', 'ep-div', d.name));
           $('#host').appendChild(conf
-            ? table(['#', 'TEAM', 'CONF', 'OVR', 'PCT', 'DIFF'],
+            ? standingsTable(['#', 'TEAM', 'CONF', 'OVR', 'PCT', 'DIFF'],
                 d.rows.slice(0, rows).map(r => {
                   const t = r.teams || {};
                   return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
                           ST.record(r.conf_w, r.conf_l), ST.record(r.w, r.l), ST.pct(r.w, r.gp),
                           (r.diff > 0 ? '+' : '') + r.diff];
                 }))
-            : table(['#', 'TEAM', 'GP', 'W', 'L', 'DIFF', 'PTS'],
+            : standingsTable(['#', 'TEAM', 'GP', 'W', 'L', 'DIFF', 'PTS'],
                 d.rows.slice(0, rows).map(r => {
                   const t = r.teams || {};
                   return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
@@ -199,7 +209,7 @@ const stat = Object.prototype.hasOwnProperty.call(STATS, qp.get('stat') || '') ?
       $('#host').appendChild(table(
         ['#', 'PLAYER', 'TEAM', 'GP', label],
         eligible.slice(0, rows).map((p, i) => [
-          i + 1, nameCell(p.name, p.colour, p.teamShort, p.teamLogo), p.teamShort || '', p.gp, get(p)
+          i + 1, nameCell(p.name, p.colour, p.teamShort, p.teamLogo), letters(p.teamShort || ''), p.gp, get(p)
         ])));
     }
     postHeight();

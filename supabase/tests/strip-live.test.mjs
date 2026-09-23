@@ -330,10 +330,14 @@ console.log('\nthe lineups are the team news');
   ok('...and share one spelling of the badge',
      /const PRIMED_BADGE = 'LINEUPS IN';/.test(SRC) &&
      (SRC.match(/PRIMED_BADGE/g) || []).length >= 3);
+  /* compared with the English last written (_said), not the text on screen, which i18n.js may
+     have translated: comparing with that rewrote the badge and restarted its dot every tick */
   ok('paint() can put the badge up on a card already on screen',
-     /if \(!label\.querySelector\('\.dot'\) \|\| label\.textContent !== PRIMED_BADGE\)/.test(SRC));
+     /if \(!label\.querySelector\('\.dot'\) \|\| label\._said !== PRIMED_BADGE\)/.test(SRC));
   ok('...and take it down again, dot and all',
-     /if \(label\.querySelector\('\.dot'\) \|\| label\.textContent !== want\)/.test(SRC));
+     /if \(label\.querySelector\('\.dot'\) \|\| label\._said !== want\)/.test(SRC));
+  ok('a translated card is not rewritten on every tick',
+     !/\.textContent !== (want|PRIMED_BADGE)/.test(SRC) && /vn\._said !== want/.test(SRC) && /go\._said !== want/.test(SRC));
   ok('...and rewrite what the card invites you to press',
      /const go = node\.querySelector\('\.go'\);/.test(SRC) &&
      /primed \? ' \u00b7 lineups \u2197' : ' \u00b7 preview \u2197'/.test(SRC));

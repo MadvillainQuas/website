@@ -1,0 +1,673 @@
+'use strict';
+/* Español: the game page and the video hub (pack "game"). The box score's chrome, the modern box
+   score, the scoring runs and flow charts, the connections, the events tab, the video tab and the
+   attach-video sheet, the preview's and the match report's headings and labels, and the live text
+   the replay writes. Live text as Spanish live text writes it (Triple anotado, Tiro de 2 fallado),
+   periods 1C-4C and PR1, box-score letters as Spanish box scores print them (TC, TL, RO, Pér);
+   names are never translated. */
+(function () {
+  const I = window.EpinoiaI18n;
+  if (!I) return;
+
+  /* "Q1, Q2 and Q3" -> 1C, 2C y 3C */
+  const periods = (s, T) => {
+    const p = s.split(/, | and /).map(x => T(x));
+    return p.length < 2 ? p.join('') : p.slice(0, -1).join(', ') + ' y ' + p[p.length - 1];
+  };
+  /* "the first and second quarters and the first overtime" -> ['1C', '2C', 'PR1'] */
+  const ORD = ['', 'first', 'second', 'third', 'fourth'];
+  const periodWords = s => {
+    const out = [];
+    s.replace(/^the /, '').split(' and the ').forEach(g => {
+      const m = /^(.+) (quarters?|overtimes?)$/.exec(g);
+      if (!m) return;
+      m[1].split(/, | and /).forEach(o => {
+        const n = ORD.indexOf(o);
+        if (n > 0) out.push(/^q/.test(m[2]) ? n + 'C' : 'PR' + n);
+      });
+    });
+    return out;
+  };
+  const listY = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1]);
+  /* a percentile's label: "Rim FG%" is the zone, then the stat, as Spanish tables write it */
+  const statLabel = (s, T) => {
+    const m = /^(.+) (FG%|eFG%)$/.exec(s);
+    return m ? T(m[1]) + ' ' + (m[2] === 'eFG%' ? 'eFG%' : 'TC%') : T(s);
+  };
+  /* "bandeja fallada", "mate fallado" */
+  const missed = w => w + (/^(bandeja|bomba)/i.test(w) ? ' fallada' : ' fallado');
+
+  I.register('es', {
+    /* a turnover type in the live text, as written: one letter, so never a folded phrase */
+    exact: {
+      "24s": "24 segundos"
+    },
+
+    phrases: {
+      "score this game": "Anotar este partido",
+      "continue scoring": "Seguir anotando",
+      "broadcast this game": "Retransmitir este partido",
+      "connecting": "Conectando",
+      "delayed": "Con retraso",
+      "offline": "Sin conexión",
+      "Loading the game": "Cargando el partido",
+      "Fixture": "Partido",
+      "Live on the league channel": "En directo en el canal de la liga",
+      "No game specified.": "No se ha indicado ningún partido.",
+      "This game is not public, or does not exist.": "Este partido no es público o no existe.",
+      "The match report could not be loaded.": "No se pudo cargar la crónica.",
+      "The half-time report could not be loaded.": "No se pudo cargar la crónica del descanso.",
+      "The game flow charts could not be loaded.": "No se pudieron cargar los gráficos de evolución del marcador.",
+      "The connections could not be loaded.": "No se pudieron cargar las conexiones.",
+      "The events could not be loaded.": "No se pudieron cargar las situaciones.",
+      "No video is attached to this game.": "Este partido no tiene vídeo.",
+      "half-time report": "Crónica del descanso",
+      "Close the starting fives": "Cerrar los quintetos iniciales",
+      "Game flow, connections, events and shot clock analysis are for members": "La evolución del marcador, las conexiones, las situaciones y el análisis del reloj de posesión son para socios",
+      "Game flow: every scoring run and momentum swing, the margin minute by minute, both rotations, expected points added and points per possession as the game went.": "Evolución del marcador: cada parcial y cada cambio de inercia, la diferencia minuto a minuto, las dos rotaciones, los puntos esperados añadidos y los puntos por posesión a lo largo del partido.",
+      "Connections: who assisted whom, how often each pair connected and the points and threes every pairing produced.": "Conexiones: quién asistió a quién, cuántas veces conectó cada pareja y los puntos y triples que produjo cada una.",
+      "Events: what second chances, fast breaks, turnovers and timeouts turned into, with the shots, zones and players behind each.": "Situaciones: en qué se tradujeron las segundas oportunidades, los contraataques, las pérdidas y los tiempos muertos, con los tiros, las zonas y los jugadores de cada una.",
+      "Shot clock analysis: the four factors and the shots of the possessions that ended in any stretch of the 24 seconds.": "Análisis del reloj de posesión: los cuatro factores y los tiros de las posesiones que terminaron en cualquier tramo de los 24 segundos.",
+      "Prime for broadcast": "Preparar la retransmisión",
+      "Lay out the graphics before tip — they draw the real teams and crests now, and start moving on the first basket.": "Coloca los gráficos antes del salto inicial: ya muestran los equipos y escudos reales y empiezan a moverse con la primera canasta.",
+      "Lay out the graphics before tip — they draw the real teams and crests now, and start moving on the first basket. Opening the control room arms the live heartbeat for this FIBA LiveStats game.": "Coloca los gráficos antes del salto inicial: ya muestran los equipos y escudos reales y empiezan a moverse con la primera canasta. Abrir la sala de control activa el latido en directo de este partido de FIBA LiveStats.",
+      "Open the graphics layer": "Abrir la capa de gráficos",
+      "The transparent page to add as a browser source in OBS or vMix.": "La página transparente que se añade como fuente de navegador en OBS o vMix.",
+      "Clock cam (phone)": "Cámara del reloj (móvil)",
+      "Point a phone at the hall’s scoreboard and send the real clock to the graphics.": "Apunta un móvil al marcador del pabellón y envía el reloj real a los gráficos.",
+      "How to set up a broadcast": "Cómo preparar una retransmisión",
+      "The full walkthrough: arming the game, the control room, OBS, vMix, the scenes.": "La guía completa: preparar el partido, la sala de control, OBS, vMix, las escenas.",
+      "Open the scoring app": "Abrir la app de anotación",
+      "The statistician’s screen.": "La pantalla del anotador.",
+      "video sync": "Sincronizar vídeo",
+      "AI processing": "Procesando con IA",
+      "The recording of this game": "La grabación de este partido",
+      "Paste the link, then say where the jump ball is on the scrub bar — or let the page find it. The tip-off time comes from the event log, so from that one number every play in the game gets a position in the video — here, and on the profile of every player in it.": "Pega el enlace y di dónde está el salto inicial en la barra de reproducción, o deja que la página lo encuentre. La hora del salto inicial sale del registro de eventos, así que con ese único número cada jugada del partido tiene su posición en el vídeo: aquí y en el perfil de cada jugador que participó.",
+      "tip-off is at": "El salto inicial está en",
+      "AI process game": "Procesar el partido con IA",
+      "the processing machine reads the footage — clock, score, or both — and every play then seeks by its own game clock": "La máquina de procesamiento lee las imágenes (reloj, marcador o ambos) y cada jugada se sitúa por su propio reloj de partido",
+      "save the link first; the reader needs footage to read": "Guarda primero el enlace; el lector necesita imágenes que leer",
+      "from the stream’s start time": "Desde la hora de inicio de la emisión",
+      "YouTube live streams": "Directos de YouTube",
+      "from a local copy of the footage": "Desde una copia local de las imágenes",
+      "read here, never uploaded": "Se lee aquí, nunca se sube",
+      "read the scoreboard in the picture": "Leer el marcador en la imagen",
+      "read the whole game clock": "Leer todo el reloj de partido",
+      "import a clock track (JSON from a vision model)": "Importar una pista de reloj (JSON de un modelo de visión)",
+      "play-by-play for the vision model’s score mode": "Jugadas para el modo marcador del modelo de visión",
+      "sign in first": "Inicia sesión primero",
+      "waiting for the processing machine": "Esperando a la máquina de procesamiento",
+      "no processing machine has reported in yet": "Aún no se ha conectado ninguna máquina de procesamiento",
+      "downloading the footage": "Descargando las imágenes",
+      "reading the clock": "Leyendo el reloj",
+      "reading the score": "Leyendo el marcador",
+      "looking at the picture": "Analizando la imagen",
+      "track saved": "Pista guardada",
+      "learning from the footage": "Aprendiendo de las imágenes",
+      "fetching the play-by-play": "Obteniendo las jugadas",
+      "starting": "Iniciando",
+      "done": "Hecho",
+      "clock and score": "reloj y marcador",
+      "score (no clock on screen)": "marcador (sin reloj en pantalla)",
+      "clock overlay": "rótulo del reloj",
+      "no readable overlay": "ningún rótulo legible",
+      "plays now seek by their own game clock": "Las jugadas se sitúan ahora por su propio reloj de partido",
+      "failed": "Error",
+      "no reason recorded": "Sin motivo registrado",
+      "press AI process game to try again": "Pulsa «Procesar el partido con IA» para reintentarlo",
+      "cancelled": "Cancelado",
+      "stopping": "Deteniendo",
+      "stop": "Detener",
+      "queued": "En cola",
+      "choose the footage file first": "Elige primero el archivo de vídeo",
+      "save the video link first — the readings belong to that footage": "Guarda primero el enlace del vídeo: las lecturas pertenecen a esas imágenes",
+      "save the video link first": "Guarda primero el enlace del vídeo",
+      "this browser cannot decode that file": "Este navegador no puede decodificar ese archivo",
+      "finding the scoreboard": "Buscando el marcador",
+      "no clock overlay found in the picture — a vision model’s track can be imported instead": "No se encontró el rótulo del reloj en la imagen: se puede importar la pista de un modelo de visión",
+      "no readable clock in the footage": "No hay un reloj legible en las imágenes",
+      "no readings in that file (expected samples:[{t, period, clock_ms}])": "No hay lecturas en ese archivo (se esperaba samples:[{t, period, clock_ms}])",
+      "could not save the track (signed in? migration 0099 applied?)": "No se pudo guardar la pista (¿sesión iniciada? ¿migración 0099 aplicada?)",
+      "paste the YouTube link first — only YouTube publishes a stream’s start time": "Pega primero el enlace de YouTube: solo YouTube publica la hora de inicio de una emisión",
+      "needs a YouTube Data API key in epinoia/config.js (youtubeApiKey) — free, read-only": "Necesita una clave de la API YouTube Data en epinoia/config.js (youtubeApiKey): gratuita y de solo lectura",
+      "asking YouTube": "Consultando a YouTube",
+      "this game has no recorded tip-off yet": "Este partido aún no tiene salto inicial registrado",
+      "this game has no recorded tip-off": "Este partido no tiene salto inicial registrado",
+      "no tip-off in the log": "No hay salto inicial en el registro",
+      "refused": "Rechazado",
+      "YouTube has no start time for that video (not a live stream, or the key is wrong)": "YouTube no tiene hora de inicio para ese vídeo (no es un directo o la clave es incorrecta)",
+      "From the stream’s start time on YouTube. Press save, then check a play and nudge the video if it lands a few seconds off.": "Según la hora de inicio de la emisión en YouTube. Pulsa guardar, comprueba una jugada y ajusta el vídeo si cae unos segundos desviado.",
+      "reading the file’s clock": "Leyendo el reloj del archivo",
+      "no recording time in this file (downloads usually strip it) — use the scoreboard below": "Este archivo no tiene hora de grabación (las descargas suelen quitarla): usa el marcador de abajo",
+      "From the file’s own clock. Camera clocks drift by minutes, so press “read the scoreboard in the picture” to confirm it before saving.": "Según el reloj del propio archivo. Los relojes de las cámaras se desvían minutos, así que pulsa «Leer el marcador en la imagen» para confirmarlo antes de guardar.",
+      "could not find the start of the first period": "No se encontró el inicio del primer periodo",
+      "The link first.": "Primero, el enlace.",
+      "That link is not one this recognises — YouTube, Twitch, Vimeo, Facebook or a video file. It would be stored but no play could seek into it.": "No se reconoce ese enlace: YouTube, Twitch, Vimeo, Facebook o un archivo de vídeo. Se guardaría, pero ninguna jugada podría situarse en él.",
+      "loading the reader (about 7 MB, once)": "Cargando el lector (unos 7 MB, solo una vez)",
+      "Signed out — sign in again to revert this game.": "Sesión cerrada: vuelve a iniciar sesión para devolver este partido al calendario.",
+      "positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has twenty season minutes)": "Posiciones según la estimación de temporada de BPM, apoyada en la posición registrada por el club (con los números de este partido hasta que el jugador sume veinte minutos en la temporada)",
+      "tap or hover a player for the full line": "Toca o pasa el cursor sobre un jugador para ver su línea completa",
+      "shooting & usage": "Tiro y uso",
+      "rates": "Porcentajes",
+      "on court": "En pista",
+      "Player Scoring Runs (6+ consecutive pts)": "Rachas anotadoras individuales (6+ puntos seguidos)",
+      "Team Momentum Runs (6+ consecutive pts by lineup)": "Parciales del equipo (6+ puntos seguidos del mismo quinteto)",
+      "No individual player runs (6+ pts) detected": "Ninguna racha individual de 6+ puntos",
+      "No team momentum runs (6+ pts) detected": "Ningún parcial de equipo de 6+ puntos",
+      "Scoring Development (Score Margin)": "Evolución de la diferencia en el marcador",
+      "Each cell is a minute of the game, shaded by how much of it the player was on the floor.": "Cada celda es un minuto del partido, sombreada según cuánto de él estuvo el jugador en pista.",
+      "Expected Points Added (EPA)": "Puntos esperados añadidos (EPA)",
+      "EPA (pts)": "EPA (pts)",
+      "EPA = (TO Margin + OREB Margin) × 1.05 PPP |": "EPA = (dif. de pérdidas + dif. de RO) × 1.05 PPP |",
+      "Scoring Battle (eFG% + FT Rate)": "Duelo anotador (eFG% + tasa de TL)",
+      "SB (pts)": "SB (pts)",
+      "SB = (eFG% Margin × 1.77 + FT Rate Margin × 0.25) × Pace/100 |": "SB = (dif. de eFG% × 1.77 + dif. de tasa de TL × 0.25) × ritmo/100 |",
+      "Points Per Possession Development": "Evolución de los puntos por posesión",
+      "Game flow is not available yet": "La evolución del marcador aún no está disponible",
+      "The charts are drawn from the play-by-play, and this game does not have enough of it yet.": "Los gráficos se dibujan a partir de las jugadas, y este partido aún no tiene suficientes.",
+      "Final Score": "Resultado final",
+      "Lead Changes": "Cambios de líder",
+      "Final EPA": "EPA final",
+      "Top scorer": "Máximo anotador",
+      "▶ Watch video": "▶ Ver vídeo",
+      "Watch video": "Ver vídeo",
+      "No connection data available": "No hay datos de conexiones",
+      "Assist combinations appear once the play-by-play records an assist.": "Las combinaciones de asistencias aparecen en cuanto las jugadas registran una asistencia.",
+      "No assist combinations recorded": "No hay combinaciones de asistencias registradas",
+      "All chances": "Todas las oportunidades",
+      "after an offensive rebound": "Tras rebote ofensivo",
+      "tagged, or within 8 s of a defensive rebound or steal": "Marcada, o a menos de 8 s de un rebote defensivo o una recuperación",
+      "after the other side turned it over": "Tras una pérdida del rival",
+      "the possession after a timeout": "La posesión tras un tiempo muerto",
+      "none of the above": "Ninguna de las anteriores",
+      "every chance": "Todas las oportunidades",
+      "few shots": "pocos tiros",
+      "situation": "Situación",
+      "share of chances": "% de oportunidades",
+      "shot diet": "Selección de tiro",
+      "Second chance, transition and off-turnover points are the box score’s, and a basket can be in more than one.": "Los puntos de segunda oportunidad, de contraataque y tras pérdida son los de las estadísticas, y una canasta puede estar en más de uno.",
+      "After-timeout plays run from the first play after the timeout to the end of that possession.": "Las jugadas tras tiempo muerto van de la primera jugada después del tiempo muerto al final de esa posesión.",
+      "Tap a row to see its shots.": "Toca una fila para ver sus tiros.",
+      "shots: rim · mid · three": "Tiros: aro · media · triple",
+      "Shot types": "Tipos de tiro",
+      "No field goals.": "Sin tiros de campo.",
+      "everything else": "Todo lo demás",
+      "two, type not recorded": "De 2 (tipo sin registrar)",
+      "Who scored": "Quién anotó",
+      "Nobody scored.": "Nadie anotó.",
+      "Every play after a timeout": "Todas las jugadas tras tiempo muerto",
+      "No timeouts were followed by a play from this side.": "Ningún tiempo muerto fue seguido de una jugada de este equipo.",
+      "official timeout": "Tiempo muerto oficial",
+      "Every player’s shots": "Los tiros de cada jugador",
+      "tap a player for every situation": "Toca un jugador para ver cada situación",
+      "No play in this game has a player’s name on it.": "Ninguna jugada de este partido lleva nombre de jugador.",
+      "Rim · mid · 3PT share": "Reparto aro · media · triple",
+      "Made baskets": "Canastas anotadas",
+      "Baskets": "Canastas",
+      "Per basket": "Por canasta",
+      "no attempts": "Sin intentos",
+      "no baskets": "Sin canastas",
+      "The situations overlap (a break off a steal is transition and off a turnover at once), so they do not add up to all shots.": "Las situaciones se solapan (un contraataque tras un robo es contraataque y tras pérdida a la vez), así que no suman todos los tiros.",
+      "Assisted and unassisted count made baskets only, because a missed shot has no assist: those rows give baskets, their share of the player’s makes (and, under each zone, of that zone’s makes) and points per basket, where the rows above give FG and eFG%.": "Asistidas y no asistidas cuentan solo canastas anotadas, porque un tiro fallado no tiene asistencia: esas filas dan las canastas, su parte de los aciertos del jugador (y, bajo cada zona, de los aciertos de esa zona) y los puntos por canasta, mientras que las filas de arriba dan TC y eFG%.",
+      "Grey percentages rest on fewer than three shots.": "Los porcentajes en gris se basan en menos de tres tiros.",
+      "By zone": "Por zona",
+      "Shooting from each zone, and how its baskets were made": "El tiro desde cada zona y cómo llegaron sus canastas",
+      "% assisted": "% asistidas",
+      "Points per basket": "Puntos por canasta",
+      "There is no eFG% for assisted shots.": "No hay eFG% para los tiros asistidos.",
+      "Only a basket can be assisted, a miss cannot, so assisted shots have makes but no misses to set them against.": "Solo una canasta puede ser asistida, un fallo no, así que los tiros asistidos tienen aciertos pero ningún fallo con el que compararlos.",
+      "FG% and eFG% here are every attempt from the zone (a three counts one and a half); the assisted and unassisted columns say how that zone’s baskets were made, with the zone’s share of each group under the count.": "Aquí TC% y eFG% son todos los intentos desde la zona (un triple cuenta uno y medio); las columnas de asistidas y no asistidas dicen cómo llegaron las canastas de esa zona, con la parte de cada grupo que corresponde a la zona bajo el recuento.",
+      "share of made baskets on the right": "A la derecha, % de las canastas anotadas",
+      "Most unassisted baskets": "Más canastas no asistidas",
+      "Every basket was assisted.": "Todas las canastas fueron asistidas.",
+      "No plays yet": "Aún no hay jugadas",
+      "This tab is drawn from the play-by-play, and there is none for this game yet.": "Esta pestaña se genera a partir de las jugadas, y este partido aún no tiene.",
+      "missed free throw": "Tiro libre fallado",
+      "missed three": "Triple fallado",
+      "missed two": "Tiro de 2 fallado",
+      "two": "Tiro de 2",
+      "alley-oop": "Alley-oop",
+      "tip-in": "Palmeo",
+      "putback": "Tras rebote",
+      "pull-up": "Tras bote",
+      "step-back": "Step-back",
+      "fadeaway": "Fadeaway",
+      "floater": "Bomba",
+      "hook": "Gancho",
+      "bad pass": "Mal pase",
+      "travel": "Pasos",
+      "out of bounds": "Fuera de banda",
+      "double dribble": "Dobles",
+      "other": "Otra",
+      "offensive rebound (team)": "Rebote ofensivo de equipo",
+      "defensive rebound (team)": "Rebote defensivo de equipo",
+      "turnover (team)": "Pérdida de equipo",
+      "held ball": "Balón retenido",
+      "alternating possession": "Posesión alterna",
+      "on-the-floor foul": "Falta sin tiro",
+      "this stretch is in a period the clock was not read in": "Este tramo está en un periodo en el que no se leyó el reloj",
+      "This game's log has no starting fives recorded, so who was on the floor cannot be followed.": "El registro de este partido no tiene los quintetos iniciales, así que no se puede seguir quién estuvo en pista.",
+      "This game's log has no starting fives recorded, so the fives cannot be followed.": "El registro de este partido no tiene los quintetos iniciales, así que no se pueden seguir los quintetos.",
+      "Nobody matches that filter.": "Nadie coincide con ese filtro.",
+      "No five matches that filter.": "Ningún quinteto coincide con ese filtro.",
+      "The runs could not be worked out on this page.": "No se pudieron calcular los parciales en esta página.",
+      "none of this run's baskets could be placed in the footage": "Ninguna canasta de este parcial pudo situarse en las imágenes",
+      "No run matches that filter.": "Ningún parcial coincide con ese filtro.",
+      "Nobody put together 6 unanswered points in this game.": "Nadie firmó un parcial de 6 puntos sin respuesta en este partido.",
+      "team momentum runs": "Parciales de equipo",
+      "6+ unanswered points": "6+ puntos sin respuesta",
+      "player scoring runs": "Rachas individuales",
+      "6+ inside a run": "6+ dentro de un parcial",
+      "anybody": "Cualquiera",
+      "everyone": "Todos",
+      "this side": "Este equipo",
+      "This play-by-play was": "Estas jugadas se",
+      "imported in bulk": "importaron en bloque",
+      ", so its events carry no time of day. The plays below are the ones the": ", así que sus eventos no llevan hora. Las jugadas de abajo son las que la",
+      "clock reading": "lectura del reloj",
+      "of the broadcast could place; any the reading did not cover are not listed, because their only other timestamp is the moment the file was imported.": "de la retransmisión pudo situar; las que la lectura no cubrió no aparecen, porque su única otra marca de tiempo es el momento en que se importó el archivo.",
+      "This is the league channel, live. It plays whatever is on air now and cannot be wound back to a particular play — there is no recording to seek within yet.": "Este es el canal de la liga, en directo. Reproduce lo que se emite ahora y no se puede rebobinar a una jugada concreta: aún no hay grabación en la que buscar.",
+      "The play list appears here as soon as the archive link is attached": "La lista de jugadas aparece aquí en cuanto se adjunta el enlace del archivo",
+      ", and every position in it is already known.": ", y la posición de cada jugada ya se conoce.",
+      "The play-by-play for this game was": "Las jugadas de este partido se",
+      "rather than scored live, so its events carry no time of day and cannot be located in the footage. The video is here in full; the play list is not available for this game.": "en lugar de anotarse en directo, así que sus eventos no llevan hora y no se pueden localizar en las imágenes. El vídeo está completo; la lista de jugadas no está disponible para este partido.",
+      "This video has not been lined up with the game clock yet, so individual plays cannot be found in it. Whoever scored the game can line it up from": "Este vídeo aún no está sincronizado con el reloj del partido, así que no se pueden encontrar jugadas concretas. Quien anotó el partido puede sincronizarlo desde",
+      "in the scoring app — it takes one number.": "en la app de anotación: basta con un número.",
+      "Player minutes": "Minutos por jugador",
+      "Runs": "Parciales",
+      "in sequence": "En secuencia",
+      "every stretch on the floor, by the game clock": "Cada tramo en pista, según el reloj de partido",
+      "tap one to watch it from the start": "Toca uno para verlo desde el principio",
+      "every five, and every stretch it was on": "Cada quinteto y cada tramo en que estuvo en pista",
+      "every run of 6+ unanswered points": "Cada parcial de 6+ puntos sin respuesta",
+      "tap one to watch it, first basket to last": "Toca uno para verlo, de la primera canasta a la última",
+      "tap one to jump to it": "Toca una para ir a ella",
+      "in the reel": "En el montaje",
+      "placed by hand — this position is worked out from the plays either side": "Situada a mano: esta posición se calcula a partir de las jugadas de alrededor",
+      "the source": "la fuente",
+      "not lined up yet": "Aún sin sincronizar",
+      "a fed game's plays are stamped by the ingest worker's poll; this is the poll interval": "Las jugadas de un partido con feed llevan la marca del sondeo del importador; este es el intervalo de sondeo",
+      "export clips": "Exportar clips",
+      "every listed play as a clip list (JSON) for the labelling studio or an editor": "Todas las jugadas de la lista como lista de clips (JSON) para el estudio de etiquetado o un editor",
+      "export highlights": "Exportar resumen",
+      "a vertical reel of the plays you choose, cut from the footage, the ball kept in frame": "Un montaje vertical de las jugadas que elijas, cortado de las imágenes, con el balón siempre en cuadro",
+      "tick the plays in the list, or tick whole kinds here. Choose a player above to narrow it.": "Marca las jugadas en la lista o marca aquí tipos enteros. Elige un jugador arriba para acotar.",
+      "every play listed": "Todas las jugadas de la lista",
+      "vertical 9:16 (Instagram, TikTok)": "Vertical 9:16 (Instagram, TikTok)",
+      "landscape": "Horizontal",
+      "the first 80 go in": "Entran los 80 primeros",
+      "create the reel": "Crear el montaje",
+      "queued — the reel is cut on the league’s PC; it opens in the edit suite when ready (your bell will say)": "En cola: el montaje se corta en el PC de la liga; se abre en el editor cuando esté listo (te avisará la campana)",
+      "ready": "Listo",
+      "working": "Procesando",
+      "open in the edit suite": "Abrir en el editor",
+      "download the MP4": "Descargar el MP4",
+      "checked": "Verificado",
+      "scoring plays only": "Solo jugadas de anotación",
+      "placed by the broadcast’s timestamps": "Situadas por las marcas de tiempo de la retransmisión",
+      "the reading of this broadcast was discarded": "Se descartó la lectura de esta retransmisión",
+      "placed by the log’s own timestamps": "Situadas por las marcas de tiempo del registro",
+      "no clock on this broadcast: the score overlay was read instead, so each basket is placed by its own score change and only scoring plays are listed.": "Esta retransmisión no tiene reloj: se leyó el marcador en su lugar, así que cada canasta se sitúa por su propio cambio de marcador y solo aparecen las jugadas de anotación.",
+      "no clock could be read off this broadcast, so every play is placed by the moment the live log recorded it against the stream’s own start time.": "No se pudo leer ningún reloj en esta retransmisión, así que cada jugada se sitúa por el momento en que el registro en directo la anotó, respecto a la hora de inicio de la emisión.",
+      "the clock overlay was read at these points in the footage; every play sits where its clock was on screen.": "El rótulo del reloj se leyó en estos puntos de las imágenes; cada jugada está donde su reloj aparecía en pantalla.",
+      "nothing was read off the picture, so every play sits where the log says it happened.": "No se leyó nada de la imagen, así que cada jugada está donde el registro dice que ocurrió.",
+      "Every game in this league whose broadcast has been read by the clock reader, in one place: pick a game and the play-by-play becomes footage — jump to any basket, any player's minutes, any run. Filter by club or competition first.": "Todos los partidos de esta liga cuya retransmisión ha leído el lector de reloj, en un solo sitio: elige un partido y las jugadas se convierten en vídeo; salta a cualquier canasta, a los minutos de cualquier jugador o a cualquier parcial. Filtra antes por club o competición.",
+      "Game": "Partido",
+      "Loading the read games": "Cargando los partidos leídos",
+      "This broadcast has not been read.": "Esta retransmisión no se ha leído.",
+      "The clock was never read running in this broadcast, so no play can be placed in it.": "En esta retransmisión nunca se leyó el reloj en marcha, así que no se puede situar ninguna jugada.",
+      "The scoreboard was read too few times in this broadcast to place a play in it.": "En esta retransmisión el marcador se leyó demasiado pocas veces para situar una jugada.",
+      "first half only": "Solo la primera parte",
+      "second half only": "Solo la segunda parte",
+      "Only the first half of this broadcast was read.": "Solo se leyó la primera parte de esta retransmisión.",
+      "Only the second half of this broadcast was read.": "Solo se leyó la segunda parte de esta retransmisión.",
+      "Plays there are not in the list at all: this play-by-play was imported in bulk, so it carries no time of day to place them by either.": "Las jugadas de ese tramo no aparecen en la lista: estas jugadas se importaron en bloque, así que tampoco tienen hora con la que situarlas.",
+      "Plays there are placed from the scorer’s own timing rather than from the footage, so they land near the moment rather than on it — the list marks those with a tilde.": "Las jugadas de ese tramo se sitúan con los tiempos del propio anotador y no con las imágenes, así que caen cerca del momento y no justo en él; la lista las marca con una virgulilla.",
+      "No read game matches": "Ningún partido leído coincide",
+      "No read game matches those filters.": "Ningún partido leído coincide con esos filtros.",
+      "Clear them": "Quítalos",
+      "to see the rest.": "para ver el resto.",
+      "error": "Error",
+      "that game is no longer readable": "Ese partido ya no se puede leer",
+      "This page could not start.": "No se pudo iniciar esta página.",
+      "The video hub belongs to a league.": "Los vídeos pertenecen a una liga.",
+      "Pick one": "Elige una",
+      "from the rail to see its read games.": "en el menú para ver sus partidos leídos.",
+      "There is no league at that address.": "No hay ninguna liga en esa dirección.",
+      "This league has": "Esta liga tiene",
+      ", but the reading found no stretch of any of them the clock could be trusted in — so there is nothing here that would take you to the right moment. They will appear as they are read again.": ", pero la lectura no encontró en ninguna un tramo en el que fiarse del reloj, así que aquí no hay nada que te lleve al momento adecuado. Aparecerán cuando se vuelvan a leer.",
+      "No game in this league has had its broadcast read yet.": "Ningún partido de esta liga tiene aún su retransmisión leída.",
+      "Starting five": "Quinteto inicial",
+      "Confirmed at the table.": "Confirmado en la mesa.",
+      "Nobody missing.": "Sin bajas.",
+      "Worked out from the box scores: players each club was using who have not taken the floor since. Nobody files this, and it clears itself the moment they play.": "Calculado a partir de las estadísticas: jugadores que cada club venía utilizando y que no han vuelto a pisar la pista. Nadie lo comunica, y se borra solo en cuanto juegan.",
+      "the whole report ↗": "Todas las bajas ↗",
+      "offensive glass": "Rebote ofensivo",
+      "turnover rate": "Tasa de pérdidas",
+      "offensive rebound %": "% de rebote ofensivo",
+      "free throw rate": "Tasa de tiros libres",
+      "Venue map": "Mapa del pabellón",
+      "Date to be confirmed": "Fecha por confirmar",
+      "no games yet this season": "Sin partidos esta temporada",
+      "How to get there": "Cómo llegar",
+      "To be confirmed": "Por confirmar",
+      "directions ↗": "Cómo llegar ↗",
+      "The story so far": "La temporada hasta ahora",
+      "Key team stats": "Estadísticas clave de los equipos",
+      "offensive rating": "OER",
+      "defensive rating": "DER",
+      "points per 100": "Puntos por 100 posesiones",
+      "allowed per 100": "Permitidos por 100 posesiones",
+      "possessions per 40": "Posesiones por 40 minutos",
+      "per 100": "Por 100 posesiones",
+      "with the ball": "en ataque",
+      "without it": "en defensa",
+      "every team stat ↗": "Todas las estadísticas de equipo ↗",
+      "Key players": "Jugadores clave",
+      "every player ↗": "Todos los jugadores ↗",
+      "long-term": "Larga duración",
+      "Scoring by period": "Parciales",
+      "deciding stretch": "Tramo decisivo",
+      "best group": "Mejor quinteto",
+      "toughest minutes": "Minutos más difíciles",
+      "Who was on the floor": "Quién estuvo en pista",
+      "Leading lines": "Actuaciones destacadas",
+      "The two sides, measure by measure": "Los dos equipos, dato a dato",
+      "no percentile scales are built for this competition yet, so these are the two sides against each other rather than against the league": "Aún no hay escalas de percentiles para esta competición, así que se comparan los dos equipos entre sí y no con la liga",
+      "Against every other game in this league": "Frente al resto de partidos de la liga",
+      "the bar is the percentile — how this game compares with real games in this competition · grey rows are a style, not a score": "La barra es el percentil: cómo se compara este partido con los partidos reales de esta competición · las filas grises son un estilo, no un rendimiento",
+      "generated from the play-by-play": "Generada a partir de las jugadas",
+      "Written from the first half’s event log. This tab goes when the third quarter starts, and the full match report arrives when the game is final.": "Escrita a partir del registro de eventos de la primera parte. Esta pestaña desaparece cuando empieza el tercer cuarto, y la crónica completa llega cuando el partido termina.",
+      "Written from the event log: every number above is computed from the same replay that draws the box score below.": "Escrita a partir del registro de eventos: cada número de arriba sale de la misma reconstrucción que dibuja las estadísticas de abajo.",
+      "The first half": "La primera parte",
+      "Where it is being decided": "Dónde se está decidiendo",
+      "Who has it going": "Quién está enchufado",
+      "3PT%": "T3%"
+    },
+
+    ctx: {
+      col: {
+        "Passer": "Pasador",
+        "Scorer": "Anotador",
+        "2PT": "T2",
+        "PPP": "PPP",
+        "pts + ast": "Pts+As",
+        "ast%": "AST%",
+        "to%": "TOV%",
+        "orb%": "ORB%",
+        "drb%": "DRB%",
+        "stl%": "STL%",
+        "blk%": "BLK%",
+        "a/u": "AST/USG",
+        "pace ±": "Ritmo ±"
+      },
+      pos: {
+        "point": "Base",
+        "guard": "Escolta",
+        "wing": "Alero",
+        "forward": "Ala-pívot",
+        "big": "Pívot"
+      },
+      view: {
+        "cards": "Tarjetas",
+        "table": "Tabla"
+      },
+      vidtab: {
+        "Events": "Jugadas"
+      },
+      ev: {
+        "FG": "TC",
+        "FT": "TL",
+        "TO": "Pér",
+        "eFG": "eFG",
+        "Profile": "Perfil",
+        "Shots": "Tiros",
+        "against": "contra la defensa de",
+        "per chance": "por oportunidad",
+        "per poss.": "por posesión",
+        "made": "anotado",
+        "missed": "fallado",
+        "eFG,": "eFG,",
+        "turnovers.": "de pérdidas."
+      }
+    },
+
+    units: {
+      "bpm": "{n} BPM",
+      "chances": "{n} oportunidades",
+      "chance": "{n} oportunidad",
+      "turnovers": "{n} pérdidas",
+      "turnover": "{n} pérdida",
+      "baskets": "{n} canastas",
+      "basket": "{n} canasta",
+      "readings": "{n} lecturas",
+      "rim": "Aro {n}",
+      "mid": "Media {n}",
+      "three": "Triple {n}",
+      "stint": "{n} tramo",
+      "play": "{n} jugada",
+      "clips": "{n} clips",
+      "clip": "{n} clip",
+      "combinations": "{n} combinaciones",
+      "net": "{n} Net"
+    },
+
+    patterns: [
+      /* ---- the page ---- */
+      [/^transport: (.+)$/, 'Transporte: $1'],
+      [/^(.+), members only$/, (m, T) => T(m[1]) + ', solo socios'],
+      [/^the FIBA LiveStats page this game is fed from \((.+)\)$/, 'La página de FIBA LiveStats de la que se alimenta este partido ($1)'],
+      [/^Could not load this game: (.+)$/, (m, T) => 'No se pudo cargar este partido: ' + T(m[1])],
+      [/^Could not build the preview: (.+)$/, (m, T) => 'No se pudo crear la previa: ' + T(m[1])],
+      [/^Could not save it: (.+)$/, (m, T) => 'No se pudo guardar: ' + T(m[1])],
+      [/^team (\d)$/, 'Equipo $1'],
+      /* alert() and confirm() text: ready for EpinoiaI18n.t(), which game.js does not call yet */
+      [/^That was refused: (.+)$/, (m, T) => 'Se ha rechazado: ' + T(m[1])],
+      [/^Move this game to (.+)\? Both tables will be rebuilt\.$/, '¿Mover este partido a $1? Se recalcularán las dos clasificaciones.'],
+      [/^Could not move the game \(HTTP (\d+)\)\.$/, 'No se pudo mover el partido (HTTP $1).'],
+      [/^Put this game back on the fixture list\?\s+(\d+) recorded events? will be discarded permanently\. The clubs, the date and the venue are kept, so the fixture can be scored properly when it is played\.\s+Any device still open on this game in the scorer will be told to stop within a few seconds\.$/, m =>
+        '¿Devolver este partido al calendario?\n\nSe borrará' + (m[1] === '1' ? ' para siempre 1 evento registrado' : 'n para siempre ' + m[1] + ' eventos registrados') +
+        '. Se conservan los clubes, la fecha y el pabellón, así que el partido podrá anotarse bien cuando se juegue.\n\nCualquier dispositivo que tenga este partido abierto en el anotador recibirá la orden de parar en unos segundos.'],
+
+      /* ---- the attach sheet's job card ---- */
+      [/^(\d+) (s|min|h|d) ago$/, 'hace $1 $2'],
+      [/^queued (\d+ (?:s|min|h|d) ago)$/, (m, T) => 'En cola ' + T(m[1])],
+      [/^processing machine last seen (.+)$/, (m, T) => 'Máquina de procesamiento vista por última vez ' + T(m[1])],
+      [/^finished (.+)$/, (m, T) => 'Terminado ' + T(m[1])],
+      [/^(\d+) score changes$/, '$1 cambios de marcador'],
+      [/^score (\d+)–(\d+)$/, 'Marcador $1–$2'],
+      [/^(\d+) readings across (\d+) periods$/, '$1 lecturas en $2 periodos'],
+      [/^read from the (.+)$/, (m, T) => 'Leído de: ' + T(m[1])],
+      [/^(\d+) of (\d+) score changes matched$/, '$1 de $2 cambios de marcador coinciden'],
+      [/^learned (\d+) ball \+ (\d+) rim labels$/, 'Aprendidas $1 etiquetas de balón y $2 de aro'],
+      [/^(\d+) readings on file$/, '$1 lecturas guardadas'],
+      [/^(\d+) readings saved$/, '$1 lecturas guardadas'],
+      [/^(\d+) readings saved — every play now sits where its clock was on screen$/, '$1 lecturas guardadas: cada jugada está ahora donde su reloj aparecía en pantalla'],
+      [/^read (\d+) readings but could not save them \(signed in\? migration 0099 applied\?\)$/, 'Se leyeron $1 lecturas pero no se pudieron guardar (¿sesión iniciada? ¿migración 0099 aplicada?)'],
+      [/^could not read the footage: (.+)$/, (m, T) => 'No se pudieron leer las imágenes: ' + T(m[1])],
+      [/^not a clock track: (.+)$/, 'No es una pista de reloj: $1'],
+      [/^reading… (\d+%)$/, 'Leyendo… $1'],
+      [/^reading the scoreboard at ([\d:]+)$/, 'Leyendo el marcador en $1'],
+      [/^looking for the clock… "(.*)"$/, 'Buscando el reloj… "$1"'],
+      [/^read (\d+) clock readings$/, 'Leídas $1 lecturas del reloj'],
+
+      /* ---- the live text (engine.js's lines), as Spanish live text writes it ---- */
+      [/^([23])pt (made|missed)(?: \((.+)\))?$/, (m, T) => (m[1] === '3' ? 'Triple' : 'Tiro de 2') + (m[2] === 'made' ? ' anotado' : ' fallado') +
+        (m[3] ? ' (' + m[3].split(', ').map(x => T(x)).join(', ') + ')' : '')],
+      /* a shot's descriptors in brackets, "layup, transition": each one a known word, or nothing */
+      [/^([a-z][a-z -]*(?:, [a-z][a-z -]*)+)$/, (m, T, Q) => {
+        const p = m[1].split(', ').map(x => Q(x));
+        return p.some(x => x == null) ? null : p.join(', ');
+      }],
+      [/^sub: (.+) in, (.+) out$/, 'Cambio: entra $1, sale $2'],
+      [/^ASSIST: (.+)$/, 'Asistencia: $1'],
+
+      /* ---- game flow ---- */
+      [/^P([1-4])$/, '$1C'],
+      [/^#(\d+)\s+(.+) (\d+) pts$/, '#$1 $2 $3 Pts'],
+      [/^On court: (.+)$/, 'En pista: $1'],
+      [/^Watch run (\d+) on video$/, 'Ver el parcial $1 en vídeo'],
+      [/^Biggest (.+) Run$/, 'Mayor parcial de $1'],
+      [/^TO: ([+-]?\d+)$/, 'Pér: $1'],
+      [/^OREB: ([+-]?\d+)$/, 'RO: $1'],
+      [/^eFG%: ([+-]?[\d.]+)$/, 'eFG%: $1'],
+      [/^FT Rate: ([+-]?[\d.]+)$/, 'Tasa de TL: $1'],
+
+      /* ---- the video tab ---- */
+      [/^(q[1-4]|ot\d+) (\d+:\d{2}) to (\d+:\d{2})$/i, (m, T) => T(m[1]) + ' ' + m[2] + ' a ' + m[3]],
+      [/^(q[1-4]|ot\d+) (\d+:\d{2})–(?:(q[1-4]|ot\d+) )?(\d+:\d{2})$/i, (m, T) => T(m[1]) + ' ' + m[2] + '–' + (m[3] ? T(m[3]) + ' ' : '') + m[4]],
+      [/^from ([\d:]+) in the video$/, 'Desde el $1 del vídeo'],
+      [/^(.+), at ([\d:]+) in the video$/, (m, T) => T(m[1]) + ', en el ' + m[2] + ' del vídeo'],
+      [/^(.+), (.+), (.+), from ([\d:]+) in the video$/, (m, T) => T(m[1]) + ', ' + T(m[2]) + ', ' + T(m[3]) + ', desde el ' + m[4] + ' del vídeo'],
+      [/^plays ([\d:]+)$/, 'Dura $1'],
+      [/^(\d+) of (\d+) baskets placed$/, '$1 de $2 canastas situadas'],
+      [/^(\d+) left$/, 'Quedan $1'],
+      [/^open on (.+) ↗$/, (m, T) => 'Abrir en ' + T(m[1]) + ' ↗'],
+      [/^open this play on its own, at ([\d:]+)$/, 'Abrir solo esta jugada, en el $1'],
+      [/^(−?[\d:]+) before tip-off$/, '$1 antes del salto inicial'],
+      [/^move every clip (\d+) s (later|earlier)$/, m => (m[2] === 'later' ? 'Retrasar' : 'Adelantar') + ' todos los clips ' + m[1] + ' s'],
+      [/^plays placed to within ±(\d+) s$/, 'Jugadas situadas con un margen de ±$1 s'],
+      [/^(\d+) readings discarded$/, '$1 lecturas descartadas'],
+      [/^(\d+)% of the footage read$/, 'Leído el $1% de las imágenes'],
+      [/^nothing placed in (.+)$/, (m, T) => 'Nada situado en ' + periods(m[1], T)],
+      [/^(\d+) of (\d+) plays placed$/, '$1 de $2 jugadas situadas'],
+      [/^could not ask: (.+)$/, 'No se pudo solicitar: $1'],
+      [/^failed: (.*)$/, 'Error: $1'],
+
+      /* ---- the video hub ---- */
+      [/^\s*(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?: (\d{4}))?\s*$/, m =>
+        m[1] + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'][['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(m[2])] + (m[3] ? ' ' + m[3] : '')],
+      [/^\s*((?:Q|OT)\d(?:\/(?:Q|OT)\d)*) only\s*$/, (m, T) => 'Solo ' + m[1].split('/').map(x => T(x)).join('/')],
+      [/^\s*no ((?:Q|OT)\d(?:\/(?:Q|OT)\d)*)\s*$/, (m, T) => 'Sin ' + m[1].split('/').map(x => T(x)).join('/')],
+      [/^(\d+) read broadcasts?$/, m => m[1] === '1' ? '1 retransmisión leída' : m[1] + ' retransmisiones leídas'],
+      [/^(\d+) further broadcasts? (?:was|were) read too poorly to place a play, and (?:is|are) not listed\.$/, m => m[1] === '1'
+        ? 'Otra retransmisión se leyó demasiado mal para situar una jugada y no aparece.'
+        : 'Otras ' + m[1] + ' retransmisiones se leyeron demasiado mal para situar una jugada y no aparecen.'],
+      [/^That game could not be loaded: (.+)$/, (m, T) => 'No se pudo cargar ese partido: ' + T(m[1])],
+      [/^That game could not be replayed: (.+)$/, (m, T) => 'No se pudo reproducir ese partido: ' + T(m[1])],
+      [/^The league could not be loaded: (.+)$/, (m, T) => 'No se pudo cargar la liga: ' + T(m[1])],
+      [/^The read games could not be loaded: (.+)$/, (m, T) => 'No se pudieron cargar los partidos leídos: ' + T(m[1])],
+      [/^The video hub could not start: (.+)$/, (m, T) => 'No se pudo iniciar la página de vídeos: ' + T(m[1])],
+
+      /* ---- the preview ---- */
+      [/^Confirmed at the table\. Tip-off is (.+)\.$/, (m, T) => /^tbc$/i.test(m[1])
+        ? 'Confirmado en la mesa. Hora del salto inicial por confirmar.'
+        : 'Confirmado en la mesa. El salto inicial es a las ' + m[1] + '.'],
+      [/^Confirmed at the table\. Tipped off at (.+)\.$/, 'Confirmado en la mesa. Salto inicial a las $1.'],
+      [/^([\d.—]+) for, ([\d.—]+) against$/, '$1 a favor, $2 en contra'],
+      [/^(out|did not play) for the last game$/, m => m[1] === 'out' ? 'Baja en el último partido' : 'No jugó el último partido'],
+      [/^(out|did not play) for the last (\d+) games$/, m => (m[1] === 'out' ? 'Baja en los últimos ' : 'No jugó los últimos ') + m[2] + ' partidos'],
+      [/^([\d.—]+) minutes last time out$/, '$1 min en su último partido'],
+      [/^([\d.—]+) minutes a game$/, '$1 min por partido'],
+      [/^(\d+) of the club’s last (\d+), ([\d.—]+) minutes a game$/, '$1 de los últimos $2 partidos del club, $3 min por partido'],
+
+      /* ---- the match report's cards ---- */
+      [/^(\d+)\/(\d+) fg$/i, '$1/$2 TC'],
+      [/^(\d+)\/(\d+) 3pt$/i, '$1/$2 T3'],
+      [/^(\d+)\/(\d+) ft$/i, '$1/$2 TL'],
+
+      /* ---- a figure's percentile against real games ---- */
+      [/^(.+?): (\d+)(?:st|nd|rd|th) percentile( \(a style, not a score\))? against (.+)$/, (m, T) =>
+        statLabel(m[1], T) + ': percentil ' + m[2] + (m[3] ? ' (un estilo, no un rendimiento)' : '') + ' frente a ' + T(m[4])],
+      [/^coloured by percentile against (.+)$/, (m, T) => 'Coloreado por percentil frente a ' + T(m[1])],
+      [/^(\S+) (\d{4}-\d{2}) games, weighted to season averages$/, 'partidos de $1 $2, ponderados por las medias de temporada']
+    ],
+
+    ctxPatterns: {
+      /* the attach sheet's notes, whole: they carry dashes the separators would cut */
+      vs: [
+        [/^the stream started ([\d:]+) (after|before) the tip — that does not look like this game’s stream$/, m =>
+          'La emisión empezó ' + m[1] + (m[2] === 'after' ? ' después' : ' antes') + ' del salto inicial: no parece la emisión de este partido'],
+        [/^stream began ([\d:]+) before tip \(platform delay is usually 5–30 s: check one play, nudge if needed\)$/,
+          'La emisión empezó $1 antes del salto inicial (el retraso de la plataforma suele ser de 5–30 s: comprueba una jugada y ajusta si hace falta)'],
+        [/^file made (.+), but this game has no recorded tip-off yet$/, 'Archivo creado el $1, pero este partido aún no tiene salto inicial registrado'],
+        [/^file made (.+) — ([\d:]+) (after|before) tip, which does not look like this game’s recording$/, m =>
+          'Archivo creado el ' + m[1] + ': ' + m[2] + (m[3] === 'after' ? ' después' : ' antes') + ' del salto inicial, no parece la grabación de este partido'],
+        [/^file made ([\d:]+) before tip \((.+)\)\. Camera clocks drift — confirm on the scoreboard\.$/,
+          'Archivo creado $1 antes del salto inicial ($2). Los relojes de las cámaras se desvían: confírmalo con el marcador.'],
+        [/^no clock overlay found in the picture at ([\d:]+) — type the time by hand, or try a link with the broadcast graphics$/,
+          'No se encontró el rótulo del reloj en la imagen en $1: escribe la hora a mano o prueba con un enlace que tenga los gráficos de la retransmisión'],
+        [/^no running first-period clock was read between ([\d:]+) and ([\d:]+)$/, 'No se leyó ningún reloj del primer periodo en marcha entre $1 y $2'],
+        [/^clock read ([\d:]+) at ([\d:]+) → tip at ([\d:]+) \(to about (a second|2 s)\)$/, m =>
+          'Reloj leído ' + m[1] + ' en ' + m[2] + ' → salto inicial en ' + m[3] + ' (con un margen de ' + (m[4] === 'a second' ? 'un segundo' : '2 s') + ')'],
+        [/^From the scoreboard in the picture: it read ([\d:]+) at ([\d:]+), so the ball went up at ([\d:]+)\. Press save\.$/,
+          'Según el marcador de la imagen: leyó $1 en $2, así que el salto inicial fue en $3. Pulsa guardar.'],
+        [/^could not queue it: (.+?)( — migration 0100 applied\?)?$/, (m, T) =>
+          'No se pudo poner en cola: ' + T(m[1]) + (m[2] ? ' (¿migración 0100 aplicada?)' : '')]
+      ],
+      /* the modern box score's popover: the slot, where the estimate came from, the minutes */
+      pos: [
+        [/^(point|guard|wing|forward|big) \((season|this game)\)$/, (m, T) => T(m[1]) + (m[2] === 'season' ? ' (temporada)' : ' (este partido)')],
+        [/^listed (.+)$/, 'Pos. registrada: $1'],
+        [/^(\d+:\d{2}) min$/, '$1 min']
+      ],
+      /* game flow's legends */
+      legend: [
+        [/^(.+) Lead$/, '$1 por delante'],
+        [/^(.+) Advantage$/, 'Ventaja de $1']
+      ],
+      /* the video tab's nudge */
+      nudge: [
+        [/^clips land early\?$/, '¿Los clips llegan pronto?'],
+        [/^·\s*late\?$/, '· ¿tarde?']
+      ],
+      /* what the reading placed, as a hover: a sentence at a time */
+      vidnote: [
+        [/^the clock overlay was read at these points in the footage; every play sits where its clock was on screen; checked against the broadcast’s own timestamps on (\d+) plays\.$/,
+          'El rótulo del reloj se leyó en estos puntos de las imágenes; cada jugada está donde su reloj aparecía en pantalla; comprobado con las marcas de tiempo de la retransmisión en $1 jugadas.'],
+        [/^this game was read by the vision worker, but (?:its one reading could not|none of its (\d+) readings could) have come from this game, so the plays are placed by their timestamps instead\.$/, m =>
+          'El lector de visión leyó este partido, pero ' + (m[1] ? 'ninguna de sus ' + m[1] + ' lecturas podía' : 'su única lectura no podía') + ' venir de este partido, así que las jugadas se sitúan por sus marcas de tiempo.'],
+        [/^No play in (.+) could be placed in this footage at all, so (?:that period is|those periods are) missing from the list\.$/, (m, T) =>
+          'Ninguna jugada de ' + periods(m[1], T) + ' pudo situarse en estas imágenes, así que faltan en la lista.'],
+        [/^(\d+) of the log’s (\d+) plays are listed; the rest had no position this footage can vouch for\.$/,
+          'Aparecen $1 de las $2 jugadas del registro; el resto no tenía una posición que estas imágenes puedan garantizar.'],
+        [/^The reader looked at (\d+)% of the broadcast\.$/, 'El lector revisó el $1% de la retransmisión.']
+      ],
+      /* the video hub's notes and messages, a sentence at a time */
+      hub: [
+        [/^The (.+) (?:was|were) not read in this broadcast\.$/, m => 'En esta retransmisión no se leyó: ' + listY(periodWords('the ' + m[1])) + '.'],
+        [/^Only the (.+) of this broadcast (?:was|were) read\.$/, m => 'De esta retransmisión solo se leyó: ' + listY(periodWords('the ' + m[1])) + '.']
+      ],
+      /* the events tab's figures and sentences */
+      ev: [
+        [/^on offence: (\d+) chances, (\d+) points,$/, 'en ataque: $1 oportunidades, $2 puntos,'],
+        [/^’s defence: (\d+) chances, (\d+) points,$/, ': $1 oportunidades, $2 puntos,'],
+        [/^points per chance,(?: ([\d.]+%) eFG,)?(?: ([\d.]+%|–) turnovers\.)?$/, m =>
+          'puntos por oportunidad,' + (m[1] ? ' ' + m[1] + ' de eFG,' : '') + (m[2] ? ' ' + m[2] + ' de pérdidas.' : '')],
+        [/^eFG,(?: ([\d.]+%|–) turnovers\.)?$/, m => 'de eFG,' + (m[1] ? ' ' + m[1] + ' de pérdidas.' : '')],
+        [/^Where (.+)’ points came from$/, 'De dónde salieron los puntos de $1'],
+        [/^([\d.]+) per chance overall$/, '$1 por oportunidad en total'],
+        [/^(\d+)% of points$/, 'el $1% de los puntos'],
+        [/^(\d+) poss\.$/, '$1 pos.'],
+        [/^(FG|3PT|FT) (\d+)\/(\d+)$/, m => ({ FG: 'TC', '3PT': 'T3', FT: 'TL' })[m[1]] + ' ' + m[2] + '/' + m[3]],
+        [/^(.+?): (\d+) pts on (\d+) (chances|possessions)(?:, ([\d.]+) per (?:chance|possession))?$/, (m, T) =>
+          T(m[1]) + ': ' + m[2] + ' puntos en ' + m[3] + (m[4] === 'chances' ? ' oportunidades' : ' posesiones') +
+          (m[5] ? ', ' + m[5] + (m[4] === 'chances' ? ' por oportunidad' : ' por posesión') : '')],
+        [/^No shot locations were recorded for (this shot|these (\d+) shots|this situation)\.$/, m =>
+          'No se registró la posición ' + (m[2] ? 'de estos ' + m[2] + ' tiros' : m[1] === 'this shot' ? 'de este tiro' : 'de ningún tiro de esta situación') + '.'],
+        [/^(\d+) of (\d+) shots located$/, '$1 de $2 tiros con posición'],
+        [/^missed ([a-z][a-z-]*(?: [a-z-]+)?) three$/, (m, T) => 'Triple fallado (' + T(m[1]) + ')'],
+        [/^missed ([^·]+)$/, (m, T) => missed(T(m[1]))],
+        [/^([a-z][a-z-]*(?: [a-z-]+)?) three$/, (m, T) => 'Triple (' + T(m[1]) + ')'],
+        [/^(.+?): (\d+) made of (\d+)(?: \((\d+)%\))?$/, (m, T) => statLabel(m[1], T) + ': ' + m[2] + ' de ' + m[3] + (m[4] ? ' (' + m[4] + '%)' : '')],
+        [/^Shots by situation: (.+)$/, 'Tiros por situación: $1'],
+        [/^Profile: (.+)$/, 'Perfil: $1'],
+        [/^(.+) timeout$/, 'Tiempo muerto de $1'],
+        [/^(\d+)% of makes$/, 'el $1% de sus aciertos'],
+        [/^(.+?): (\d+) of (\d+) (attempts?|baskets?) \((\d+%)\)$/, (m, T) =>
+          T(m[1]) + ': ' + m[2] + ' de ' + m[3] + (/^a/.test(m[4]) ? ' intentos' : ' canastas') + ' (' + m[5] + ')'],
+        [/^(.+?): (\d+) of (\d+) made baskets? (assisted|unassisted) \((\d+%)\)$/, (m, T) =>
+          T(m[1]) + ': ' + m[2] + ' de ' + m[3] + ' canastas ' + (m[4] === 'assisted' ? 'asistidas' : 'no asistidas') + ' (' + m[5] + ')'],
+        [/^(.+): shots in every situation, then made baskets assisted and unassisted$/, '$1: tiros en cada situación, y después canastas asistidas y no asistidas'],
+        [/^(\d+)% of (assisted|unassisted)$/, m => 'el ' + m[1] + '% de las ' + (m[2] === 'assisted' ? 'asistidas' : 'no asistidas')],
+        [/^(.+?): (\d+) (at the rim|mid-range|threes)$/, (m, T) => T(m[1]) + ': ' + m[2] + ({ 'at the rim': ' cerca del aro', 'mid-range': ' de media distancia', threes: ' triples' })[m[3]]],
+        [/^Plus (\d+) assists? on a pass that drew free throws, which the box score’s assists include\.$/, m =>
+          'Además, ' + m[1] + (m[1] === '1' ? ' asistencia' : ' asistencias') + ' en pases que provocaron tiros libres, que las asistencias de las estadísticas incluyen.'],
+        [/^(\d+)% of their baskets$/, 'el $1% de sus canastas'],
+        [/^(?!.*percentile)([^:]+?) against ([^:]+)$/, '$1 contra $2']
+      ]
+    },
+
+    sentences: ["ev","hub","vidnote"]
+  }, 'game');
+})();

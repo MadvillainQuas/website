@@ -1154,6 +1154,7 @@ function render(opts) {
     const line = el('div', 'ft-fline');
     const sel = el('select', 'ep-input ft-fstat');
     sel.setAttribute('aria-label', 'stat');
+    sel.dataset.i18nCtx = 'col';          // i18n.js: these are column labels, as in the header
     stats.forEach(c => { const o = document.createElement('option');
       o.value = c.k; o.textContent = c.t ? c.l + ' — ' + c.t : c.l; sel.appendChild(o); });
     sel.value = f.k;
@@ -1296,6 +1297,7 @@ function render(opts) {
       const on = shown.has(c.k);
       const b = el('button', 'ft-col' + (on ? ' on' : ''), c.l);
       b.type = 'button';
+      b.dataset.i18nCtx = 'col';
       if (c.t) b.title = c.t;
       b.addEventListener('click', () => {
         if (shown.has(c.k)) { extra.delete(c.k); removed.add(c.k); }
@@ -1615,7 +1617,10 @@ function render(opts) {
     cols.forEach((c, i) => {
       if (i < 2) { out[c.k] = i === 0 ? w0 : (phone ? W1_PHONE : W1_WIDE); return; }
       ctx2d.font = headFont;
-      const hw = ctx2d.measureText(c.l).width + String(c.l).length * TRACK;
+      /* the heading as it will be read: Japanese or Spanish (i18n.js) can be wider than the English */
+      const I = typeof window !== 'undefined' && window.EpinoiaI18n;
+      const lab = I ? I.t(c.l, 'col') : c.l;
+      const hw = ctx2d.measureText(lab).width + String(lab).length * TRACK;
       let w = 0;
       ctx2d.font = dataFont;
       sample.forEach((r, idx) => {

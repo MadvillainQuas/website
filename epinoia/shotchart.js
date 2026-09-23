@@ -310,7 +310,7 @@
     const g = rows.games > 0;
     const head = '<tr><th class="l">zone</th><th>shots</th><th>% of shots</th>' + (g ? '<th>att / g</th><th>made / g</th><th>missed / g</th>' : '<th>made</th><th>missed</th>') +
                  '<th>fg%</th><th>efg%</th></tr>';
-    const tr = r => '<tr' + (r.att ? '' : ' class="none"') + '><td class="l">' + r.label + '</td><td>' + r.att + '</td><td>' + f1(r.share) + '</td>' +
+    const tr = r => '<tr' + (r.att ? '' : ' class="none"') + '><td class="l" data-i18n-ctx="zone">' + r.label + '</td><td>' + r.att + '</td><td>' + f1(r.share) + '</td>' +
       (g ? '<td>' + f1(r.attG) + '</td><td>' + f1(r.madeG) + '</td><td>' + f1(r.missG) + '</td>' : '<td>' + r.made + '</td><td>' + r.miss + '</td>') +
       '<td>' + f0(r.fg) + '</td><td>' + f0(r.efg) + '</td></tr>';
     return '<div class="sc-tablewrap"><table class="sc-table">' +
@@ -393,7 +393,7 @@
     const fills = dotsOnly ? '' : ZONES.map(zz => {
       const v = z[zz.k]; const h = heat(v.pct, zz.kind, v.att, floor);
       return '<path d="' + paths[zz.k] + '" fill="' + h.fill + '" fill-rule="evenodd" stroke="' + h.stroke + '" stroke-width="3" stroke-opacity=".35">' +
-        '<title>' + zz.label + ': ' + v.made + ' of ' + v.att + (v.att ? ' \u00b7 ' + v.pct.toFixed(0) + '%' : '') + '</title></path>';
+        '<title data-i18n-ctx="zone">' + zz.label + ': ' + v.made + ' of ' + v.att + (v.att ? ' \u00b7 ' + v.pct.toFixed(0) + '%' : '') + '</title></path>';
     }).join('');
     const labels = dotsOnly ? '' : ZONES.map(zz => {
       const v = z[zz.k];
@@ -402,7 +402,7 @@
       const vertical = zz.k === 'c3l' || zz.k === 'c3r';
       const tf = vertical ? ' transform="rotate(' + (zz.k === 'c3l' ? -90 : 90) + ' ' + zz.x + ' ' + zz.y + ')"' : '';
       return '<g class="sc-zone" opacity="' + (v.att ? 1 : .5) + '"' + tf + '>' +
-        '<text x="' + zz.x + '" y="' + (zz.y - 18) + '" text-anchor="middle" font-size="22" letter-spacing="2" fill="var(--ink-2, #cfe)" font-family="var(--f-micro, monospace)" stroke="var(--panel, #0a1a13)" stroke-width="5" paint-order="stroke" stroke-linejoin="round">' + zz.label.toUpperCase() + '</text>' +
+        '<text data-i18n-ctx="zone" x="' + zz.x + '" y="' + (zz.y - 18) + '" text-anchor="middle" font-size="22" letter-spacing="2" fill="var(--ink-2, #cfe)" font-family="var(--f-micro, monospace)" stroke="var(--panel, #0a1a13)" stroke-width="5" paint-order="stroke" stroke-linejoin="round">' + zz.label.toUpperCase() + '</text>' +
         '<text x="' + zz.x + '" y="' + (zz.y + 16) + '" text-anchor="middle" font-size="34" font-weight="700" fill="var(--ink, #e6fff1)" font-family="var(--f-data, monospace)" stroke="var(--panel, #0a1a13)" stroke-width="6" paint-order="stroke" stroke-linejoin="round">' + txt + (pct ? ' \u00b7 ' + pct : '') + '</text></g>';
     }).join('');
     const court = (B && B.courtSVG) ? B.courtSVG(null, { plain: true }) : '<svg viewBox="0 0 ' + C.W + ' ' + C.H + '"></svg>';

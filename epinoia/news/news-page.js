@@ -143,6 +143,11 @@ async function one(league) {
   }
 
   document.title = a.title + ' · ' + league.name;
+  /* a filed match report is the report writer's prose: in another language the report pack's
+     sentence templates translate its headline, standfirst and body (nothing else is tagged) */
+  const generated = a.author_name === 'Epinoia match report';
+  if (generated) $('#head').dataset.i18nCtx = 'report';
+  else delete $('#head').dataset.i18nCtx;
   $('#head').textContent = a.title;
   $('#leagueName').textContent = league.name +
     (a.published_at ? ' · ' + N.when(a.published_at) : '') +
@@ -158,6 +163,7 @@ async function one(league) {
   }
 
   const body = el('div', 'art-body');
+  if (generated) body.dataset.i18nCtx = 'report';
   if (a.standfirst) body.appendChild(el('p', 'art-stand', a.standfirst));
   /* the report's game, straight after the standfirst: filled in when it answers */
   const gameSlot = el('div', 'art-game-slot');

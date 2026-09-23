@@ -373,6 +373,7 @@
   function marquee(text) {
     const box = el('span', 'marq');
     const inner = el('span', null, text);
+    inner.setAttribute('translate', 'no');     // a league or club name, never a dictionary word
     /* a small negative offset per row, so a rail of long names is not a
        departures board sliding in lockstep */
     box.style.setProperty('--stag', (-1.3 * (marqN++ % 5)).toFixed(1) + 's');
@@ -1285,6 +1286,32 @@
   contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact'));
   contact.title = 'contact';
   navFoot.appendChild(contact);
+
+  /* LANGUAGE, the last row of the foot: bottom-left on a desktop, the bottom of the phone's menu
+     sheet. One press per language, each written in itself; i18n.js keeps the choice. */
+  const I18N = window.EpinoiaI18n;
+  if (I18N && I18N.LANGS) {
+    const langRow = el('div', 'lang-row');
+    langRow.setAttribute('role', 'group');
+    langRow.setAttribute('aria-label', 'Language · 言語 · Idioma');
+    langRow.setAttribute('translate', 'no');
+    langRow.title = 'Language · 言語 · Idioma';
+    const langs = el('span', 'langs');
+    /* a language still being built is hidden (tools/i18n.mjs new-language); ?lang= reaches it */
+    I18N.LANGS.filter(l => !l.hidden || l.code === I18N.lang).forEach(l => {
+      const on = l.code === I18N.lang;
+      const b = el('button', 'lang' + (on ? ' on' : ''), l.short);
+      b.type = 'button';
+      b.lang = l.code;
+      b.title = l.native;
+      b.setAttribute('aria-label', l.native);
+      b.setAttribute('aria-pressed', String(on));
+      b.addEventListener('click', () => { if (!on) I18N.set(l.code); });
+      langs.appendChild(b);
+    });
+    langRow.append(el('span', 'ic', '文'), langs);
+    navFoot.appendChild(langRow);
+  }
 
   /* ------------------------------------------------------------ the tab bar ---
      ON A PHONE THE BAR IS THE LEAGUE'S FIVE PLACES, NOT THE WHOLE RAIL. The rail's row-flow

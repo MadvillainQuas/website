@@ -622,7 +622,7 @@ function faceHTML(p, colour) {
   const url = PHOTOS[p.id];
   const ini = String(p.name || '?').trim().split(/\s+/)
     .map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
-  return '<span class="face" style="--tc:' + esc(colour) + '">' +
+  return '<span class="face" translate="no" style="--tc:' + esc(colour) + '">' +
     '<span class="ini">' + esc(ini) + '</span>' +
     (url ? '<img src="' + esc(url) + '" alt=""  data-fade="hasface">' : '') +
     '</span>';
@@ -662,13 +662,19 @@ function rosterCard(st, mode) {
           '<div class="bp' + (starters.has(p.id) ? ' isstart' : '') + '">' +
             '<div class="bpcut">' + portraitHTML(p, T.colour) +
               '<span class="bpnum">' + esc(p.number || '') + '</span></div>' +
-            '<div class="fpname">' +
+            '<div class="fpname" translate="no">' +
               '<span class="last">' + esc(shortName(p.name)) + '</span>' +
               vitalsHTML(p) +
             '</div>' +
           '</div>').join('') + '</div>' +
     '</div></div>';
 }
+
+/* THE RAIL'S WRITING RUNS UP THE SIDE (vertical-rl, turned half a circle). Latin letters lie on
+   their side there whatever this says; kana and kanji would stand upright and then be turned upside
+   down with the rest, so everything is set sideways and a Japanese label reads the way an English
+   one does. */
+const SIDEWAYS = ' style="text-orientation:sideways"';
 
 /* ONE RAIL, TWO CARDS. The starting five and the bench are the same document
    at different scales, and the rail is what makes that read — writing it twice
@@ -678,12 +684,12 @@ function railHTML(T, st, label) {
     '<div class="railtop">' +
       (st.game.leagueLogo
         ? '<img class="lgmark" src="' + esc(st.game.leagueLogo) + '" alt="">'
-        : '<span class="lgword">' + esc(st.game.leagueShort || 'Epinoia') + '</span>') +
+        : '<span class="lgword" translate="no">' + esc(st.game.leagueShort || 'Epinoia') + '</span>') +
       '<span class="railrule"></span>' +
       crestHTML(T, 'lg') +
     '</div>' +
-    '<div class="railname">' + esc(T.name) + '</div>' +
-    '<div class="raillabel">' + esc(label) + '</div>' +
+    '<div class="railname" translate="no"' + SIDEWAYS + '>' + esc(T.name) + '</div>' +
+    '<div class="raillabel"' + SIDEWAYS + '>' + esc(label) + '</div>' +
   '</div>';
 }
 
@@ -695,7 +701,7 @@ function portraitHTML(p, colour) {
   const ini = String(p.name || '?').trim().split(/\s+/)
     .map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
   return '<span class="port2' + (CUTOUTS[p.id] ? ' fromcut' : '') +
-    '" style="--tc:' + esc(colour) + '">' +
+    '" translate="no" style="--tc:' + esc(colour) + '">' +
     '<span class="ini">' + esc(ini) + '</span>' +
     (url ? '<img src="' + esc(url) + '" alt="" data-fade="hasface">' : '') +
     '</span>';
@@ -830,7 +836,7 @@ function crestHTML(T, cls) {
   const img = T.logo
     ? '<img class="crest" src="' + esc(T.logo) + '" alt=""  data-fade="hascrest">'
     : '';
-  return '<span class="badge ' + (cls || '') + '" style="--tc:' + esc(T.colour) + '">' +
+  return '<span class="badge ' + (cls || '') + '" translate="no" style="--tc:' + esc(T.colour) + '">' +
          mono + img + '</span>';
 }
 
@@ -897,7 +903,7 @@ const SCENES = {
           '<div class="fp">' +
             '<div class="fpnum">' + esc(p.number || '') + '</div>' +
             '<div class="fpcut">' + cutoutHTML(p, T.colour) + '</div>' +
-            '<div class="fpname">' +
+            '<div class="fpname" translate="no">' +
               '<span class="first">' + esc(firstName(p.name)) + '</span>' +
               '<span class="last">' + esc(shortName(p.name)) + '</span>' +
               vitalsHTML(p) +
@@ -949,7 +955,7 @@ const SCENES = {
         ? T.squad.concat(T.roster).filter((p, i, a) =>
             ids.includes(p.id) && a.findIndex(x => x.id === p.id) === i)
         : (T.squad.length ? T.squad : T.roster).slice(0, 5);
-      return '<div class="fivecol" style="--tc:' + esc(T.colour) + '">' +
+      return '<div class="fivecol" translate="no" style="--tc:' + esc(T.colour) + '">' +
         '<div class="fh">' + crestHTML(T, 'sm') +
           '<span>' + esc(T.short) + '</span></div>' +
         men.slice(0, 5).map(p =>
@@ -980,10 +986,10 @@ const SCENES = {
       ? '<div class="ogrp"><div class="ot">' + title + '</div>' +
         rows.map(([k, label]) =>
           '<div class="orow"><span class="r">' + label + '</span>' +
-          '<span class="n">' + esc(st.game.officials[k]) + '</span></div>').join('') +
+          '<span class="n" translate="no">' + esc(st.game.officials[k]) + '</span></div>').join('') +
         '</div>'
       : '';
-    return '<div class="card offs"><div class="hd"><span>match officials</span>' +
+    return '<div class="card offs" data-i18n-ctx="officials"><div class="hd"><span>match officials</span>' +
       '<i>' + esc(st.game.venue || st.game.competition || '') + '</i></div>' +
       '<div class="ogrps">' + group('court', court) + group('table', table) + '</div></div>';
   },
@@ -991,13 +997,13 @@ const SCENES = {
   /* THE FIXTURE CARD. What a stream sits on while people are still arriving:
      who, where, when, and how full the hall is expected to be. */
   fixture(st) {
-    const side_ = (T) => '<div class="fx1" style="--tc:' + esc(T.colour) + '">' +
+    const side_ = (T) => '<div class="fx1" translate="no" style="--tc:' + esc(T.colour) + '">' +
       crestHTML(T, 'lg') + '<span class="t">' + esc(T.name) + '</span></div>';
     const bits = [st.game.venue, st.game.tipoff].filter(Boolean);
     return '<div class="card fixcard">' +
       (st.game.competition ? '<div class="lbl">' + esc(st.game.competition) + '</div>' : '') +
       '<div class="row">' + side_(st.home) + '<span class="vs">v</span>' + side_(st.away) + '</div>' +
-      (bits.length ? '<div class="meta">' + bits.map(esc).join('<span class="sep">·</span>') +
+      (bits.length ? '<div class="meta" translate="no">' + bits.map(esc).join('<span class="sep">·</span>') +
         '</div>' : '') + '</div>';
   },
 
@@ -1020,10 +1026,10 @@ const SCENES = {
        bottom of a 5.4vmin square wastes most of the square and comes out
        smaller than it needs to be. */
     const mark = st.game.leagueLogo
-      ? '<span class="lgm"><img src="' + esc(st.game.leagueLogo) + '" alt="" ' +
+      ? '<span class="lgm" translate="no"><img src="' + esc(st.game.leagueLogo) + '" alt="" ' +
         'data-fade="haslgm">' + initialsHTML(st.game.leagueInitials) + '</span>'
       : (st.game.leagueInitials
-          ? '<span class="lgm">' + initialsHTML(st.game.leagueInitials) + '</span>'
+          ? '<span class="lgm" translate="no">' + initialsHTML(st.game.leagueInitials) + '</span>'
           : '');
 
     const dots = n => '<span class="dots">' +
@@ -1032,7 +1038,7 @@ const SCENES = {
     const sideHTML = (T, t) =>
       '<div class="side ' + (t === 0 ? 'home' : 'away') + '" style="--tc:' + esc(T.colour) + '">' +
         crestHTML(T) +
-        '<span class="tag">' + esc(T.short) + '</span>' +
+        '<span class="tag" translate="no">' + esc(T.short) + '</span>' +
         '<span class="sc">' + figures(T.score) + '</span>' +
       '</div>';
 
@@ -1055,10 +1061,10 @@ const SCENES = {
       sideHTML(st.away, 1) +
       '<div class="rail">' +
         '<span class="fl' + (st.home.bonus ? ' bonus' : '') + '">' +
-          esc(st.home.short) + dots(st.home.periodFouls) +
+          '<span translate="no">' + esc(st.home.short) + '</span>' + dots(st.home.periodFouls) +
           (st.home.bonus ? '<b>bonus</b>' : '') + '</span>' +
         '<span class="fl' + (st.away.bonus ? ' bonus' : '') + '">' +
-          esc(st.away.short) + dots(st.away.periodFouls) +
+          '<span translate="no">' + esc(st.away.short) + '</span>' + dots(st.away.periodFouls) +
           (st.away.bonus ? '<b>bonus</b>' : '') + '</span>' +
       '</div></div>';
   },
@@ -1071,7 +1077,7 @@ const SCENES = {
     if (!pick) return '';
     return '<div class="card l3" style="--tc:' + esc(T.colour) + '">' +
       '<div class="bar"></div>' +
-      '<div class="who">' + crestHTML(T, 'sm') +
+      '<div class="who" translate="no">' + crestHTML(T, 'sm') +
         '<span class="num">' + esc(pick.number) + '</span>' +
         '<span class="nm">' + esc(pick.name) + '</span>' +
         '<span class="tm">' + esc(T.name) + '</span></div>' +
@@ -1133,7 +1139,7 @@ const SCENES = {
       '<i>' + LINEUP_MIN + '+ minutes together</i></div>' +
       rows.map(l =>
         '<div class="lu" style="--tc:' + esc(l.colour) + '">' +
-          '<span class="who">' + l.names.map(n =>
+          '<span class="who" translate="no">' + l.names.map(n =>
             '<span class="p">' + esc(n) + '</span>').join('') + '</span>' +
           '<span class="mins">' + l.min + " min" + '</span>' +
           '<span class="net' + (l.pm >= 0 ? ' up' : ' down') + '">' +
@@ -1150,9 +1156,9 @@ const SCENES = {
       ['fouls',    st.home.periodFouls, st.away.periodFouls]
     ];
     return '<div class="card cmp">' +
-      '<div class="hd"><span>' + crestHTML(st.home, 'sm') + esc(st.home.short) + '</span>' +
+      '<div class="hd"><span translate="no">' + crestHTML(st.home, 'sm') + esc(st.home.short) + '</span>' +
         '<i>team comparison</i>' +
-        '<span>' + esc(st.away.short) + crestHTML(st.away, 'sm') + '</span></div>' +
+        '<span translate="no">' + esc(st.away.short) + crestHTML(st.away, 'sm') + '</span></div>' +
       rows.map(([lab, a, b]) => {
         const tot = (a + b) || 1;
         return '<div class="r"><b class="v">' + a + '</b>' +
@@ -1168,7 +1174,7 @@ const SCENES = {
     const won = st.home.score === st.away.score ? null
               : (st.home.score > st.away.score ? 0 : 1);
     const sideHTML = (T, t) => '<div class="fs' + (won === t ? ' won' : '') +
-      '" style="--tc:' + esc(T.colour) + '">' + crestHTML(T, 'lg') +
+      '" translate="no" style="--tc:' + esc(T.colour) + '">' + crestHTML(T, 'lg') +
       '<span class="t">' + esc(T.name) + '</span>' +
       '<span class="s">' + T.score + '</span></div>';
     return '<div class="card fin"><div class="lbl">' +
@@ -1190,7 +1196,7 @@ function rankCard(title, rows, val, unit, signed) {
     rows.map(p => {
       const v = val(p);
       const n = Math.abs(parseFloat(String(v))) || 0;
-      return '<div class="rr" style="--tc:' + esc(p.T.colour) + '">' +
+      return '<div class="rr" translate="no" style="--tc:' + esc(p.T.colour) + '">' +
         crestHTML(p.T, 'sm') +
         '<span class="num">' + esc(p.number) + '</span>' +
         '<span class="nm">' + esc(p.name) + '</span>' +

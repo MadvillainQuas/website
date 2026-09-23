@@ -307,7 +307,7 @@
     const pm = (x.pm > 0 ? '+' : '') + (x.pm || 0);
     const b = bpmByPid[pid];
     const slot = SLOTS[Math.max(0, Math.min(4, Math.round((pos.n || 3)) - 1))];
-    const cell = (l, v, cls) => '<div class="mv-cell' + (cls ? ' ' + cls : '') + '"><b>' + v + '</b><span>' + l + '</span></div>';
+    const cell = (l, v, cls) => '<div class="mv-cell' + (cls ? ' ' + cls : '') + '" data-i18n-ctx="col"><b>' + v + '</b><span>' + l + '</span></div>';
     /* THE ADVANCED NUMBERS, EACH READ AGAINST REAL GAMES (gamepct.js): the cell takes the
        percentile's colour and carries the percentile in its corner. A number with too little
        behind it (a ts% on no shots) has none, and draws as before. A style rather than a
@@ -318,13 +318,13 @@
     const rcell = (l, v, k, fallback) => {
       const r = ctx ? GPx.rate('player', k, ctx, { league: S.leagueSlug }) : null;
       if (!r) return cell(l, v, fallback);
-      return '<div class="mv-cell' + GPx.cls(r) + '" title="' + esc(l + ': ' + GPx.words(r)) + '"><b>' + v + '</b><span>' + l + '</span>' + GPx.pcHTML(r) + '</div>';
+      return '<div class="mv-cell' + GPx.cls(r) + '" data-i18n-ctx="col" title="' + esc(l + ': ' + GPx.words(r)) + '"><b>' + v + '</b><span>' + l + '</span>' + GPx.pcHTML(r) + '</div>';
     };
     const href = /^[0-9a-f-]{36}$/i.test(pid) ? '../p/?p=' + encodeURIComponent(pid) : null;
     return '<div class="mv-pophead" style="--c:' + esc(colour) + '">' +
         '<span class="mv-popnum">' + esc(p.num || '') + '</span>' +
         '<div><b>' + (href ? '<a href="' + esc(href) + '">' + esc(p.name) + '</a>' : esc(p.name)) + '</b>' +
-        '<small>' + esc(slot.label) + (pos.src === 'season' ? ' (season)' : pos.src === 'game' ? ' (this game)' : '') + (pos.listed ? ' · listed ' + esc(pos.listed) : '') + ' · ' + B.fmtMin(x.min || 0) + ' min' +
+        '<small data-i18n-ctx="pos">' + esc(slot.label) + (pos.src === 'season' ? ' (season)' : pos.src === 'game' ? ' (this game)' : '') + (pos.listed ? ' · listed ' + esc(pos.listed) : '') + ' · ' + B.fmtMin(x.min || 0) + ' min' +
           (b == null ? '' : ' · ' + (b > 0 ? '+' : '') + b.toFixed(1) + ' bpm') + '</small></div>' +
         '<button class="mv-close" type="button" aria-label="close">×</button></div>' +
       '<div class="mv-grid">' +

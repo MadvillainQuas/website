@@ -251,7 +251,7 @@ function pickerChip(c, isOn, onPick) {
   const b = el('button', 'ep-chip' + (isOn ? ' on' : ''), c.name);
   b.type = 'button';
   const tag = kindTag(c);
-  if (tag) b.appendChild(el('span', 'kindtag', tag));
+  if (tag) { const k = el('span', 'kindtag', tag); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
   b.addEventListener('click', onPick);
   return b;
 }
@@ -306,6 +306,7 @@ async function renderCup() {
   if (cupComp.format !== 'groups') {
     const host = el('div');
     host.id = 'cupBracket';
+    host.setAttribute('data-i18n-ctx', 'bracket');     // i18n.js: a round called "Final" is the final, not a game's state
     body.appendChild(host);
     if (B) await B.renderBracket({ host: '#cupBracket', api, comp: cupComp });
   }
@@ -333,6 +334,7 @@ async function renderTable() {
   if (knockout) {
     const host = el('div');
     host.id = 'phaseBracket';
+    host.setAttribute('data-i18n-ctx', 'bracket');     // i18n.js: a round called "Final" is the final, not a game's state
     body.appendChild(host);
     const B = window.EpinoiaBracket;
     if (B) await B.renderBracket({ host: '#phaseBracket', api, comp });

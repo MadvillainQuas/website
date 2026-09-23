@@ -377,24 +377,30 @@ function paint() {
 
     const label = node.querySelector('.st');
     if (label) {
+      /* _said is the English this code last wrote. The words on screen may be Japanese or
+         Spanish by now (i18n.js), and comparing against them would rewrite the badge, and
+         restart its pulsing dot, on every tick. */
       if (live) {
-        if (!label.querySelector('.dot')) {
+        if (!label.querySelector('.dot') || label._said !== 'LIVE') {
           label.textContent = '';
           label.appendChild(el('span', 'dot'));
           label.appendChild(document.createTextNode('LIVE'));
+          label._said = 'LIVE';
         }
       } else if (primed) {
         /* textContent would read "LINEUPS IN" with the dot counted out of it,
            so the dot's presence is what is compared. */
-        if (!label.querySelector('.dot') || label.textContent !== PRIMED_BADGE) {
+        if (!label.querySelector('.dot') || label._said !== PRIMED_BADGE) {
           label.textContent = '';
           label.appendChild(el('span', 'dot'));
           label.appendChild(document.createTextNode(PRIMED_BADGE));
+          label._said = PRIMED_BADGE;
         }
       } else {
         const want = final ? 'FT' : 'PREVIEW & INFO';
-        if (label.querySelector('.dot') || label.textContent !== want) {
+        if (label.querySelector('.dot') || label._said !== want) {
           label.textContent = want;
+          label._said = want;
         }
       }
     }
@@ -422,7 +428,7 @@ function paint() {
         ? (ms == null ? (g.venue || 'in progress')
                       : (periodLabel(s.period) + ' · ' + fmtClock(ms)))
         : fmtDate(g.tipoff_at);
-      if (vn.textContent !== want) vn.textContent = want;
+      if (vn._said !== want) { vn.textContent = want; vn._said = want; }
       vn.classList.toggle('clock', live && ms != null);
     }
 
@@ -432,7 +438,7 @@ function paint() {
     if (go) {
       const want = live ? 'watch ↗' : final ? fmtTime(g.tipoff_at)
         : fmtTime(g.tipoff_at) + (primed ? ' · lineups ↗' : ' · preview ↗');
-      if (go.textContent !== want) go.textContent = want;
+      if (go._said !== want) { go.textContent = want; go._said = want; }
     }
   });
   tickCadence();
@@ -664,6 +670,7 @@ function card(g) {
   const meta = el('div', 'meta');
   meta.appendChild(el('span', 'comp', (g.competitions && g.competitions.name) || 'Fixture'));
   const st = el('span', 'st');
+  st.setAttribute('data-i18n-ctx', 'status');      // FT here is the final whistle, not free throws
   if (live) { st.appendChild(el('span', 'dot')); st.appendChild(document.createTextNode('LIVE')); }
   /* A scheduled fixture is not a placeholder any more — it has a page with the
      venue, a map and a written preview behind it, and "UPCOMING" said nothing
@@ -696,6 +703,7 @@ function card(g) {
       cr.textContent = ''; cr.appendChild(img);
     }
     box.append(cr, el('span', 'abbr', abbr(t)));
+    box.setAttribute('translate', 'no');           // a club's letters, never a word to translate
     return box;
   };
   row.appendChild(side(g.home, g.home_score, g.away_score));

@@ -115,6 +115,7 @@ function mount(o) {
   lgPick.type = 'button';
   lgPick.addEventListener('click', () => lgFile.click());
   const lgPrev = el('span', 'mt');
+  lgPrev.setAttribute('data-i18n-ctx', 'visibility');
   /* the same pairing as everywhere else: add, and take down */
   const lgRm = el('button', 'ep-btn mini', 'remove logo');
   lgRm.type = 'button';

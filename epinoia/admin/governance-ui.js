@@ -209,6 +209,7 @@ function mountDiscipline(o) {
   const host = typeof o.host === 'string' ? document.querySelector(o.host) : o.host;
   if (!host) return;
   host.textContent = '';
+  host.setAttribute('data-i18n-ctx', 'sanction');
   if (!o.comp) {
     host.appendChild(el('div', 'empty', 'Pick a competition above to record a sanction.'));
     return;

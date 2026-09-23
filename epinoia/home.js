@@ -184,7 +184,7 @@ function gamesPicker(gs) {
   gs.forEach(g => { const c = g.competitions; if (c && c.id && !comps.has(c.id)) comps.set(c.id, c); });
   const chip = (label, on, fn, tag) => {
     const b = el('button', 'ep-chip' + (on ? ' on' : ''), label); b.type = 'button';
-    if (tag) b.appendChild(el('small', 'kind', tag));
+    if (tag) { const k = el('small', 'kind', tag); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
     b.addEventListener('click', () => { fn(); gamesKey = ''; games(); });
     return b;
   };
@@ -749,7 +749,7 @@ async function clubs() {
       groups.forEach(g => {
         const b = el('button', 'ep-chip' + (g.id === picked ? ' on' : ''), g.name);
         b.type = 'button';
-        if (g.kind && KIND_LABEL[g.kind]) b.appendChild(el('small', 'kind', KIND_LABEL[g.kind]));
+        if (g.kind && KIND_LABEL[g.kind]) { const k = el('small', 'kind', KIND_LABEL[g.kind]); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
         b.addEventListener('click', () => { picked = g.id; paint(); });
         row.appendChild(b);
       });
@@ -1249,7 +1249,7 @@ function splash() {
         b.type = 'button';
         b.setAttribute('aria-pressed', splashComp === c.id ? 'true' : 'false');
         const tag = KIND_LABEL[c.kind] || '';
-        if (tag) b.appendChild(el('small', 'kind', tag));
+        if (tag) { const k = el('small', 'kind', tag); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
         b.addEventListener('click', () => { point(c.id); draw(); });
         row.appendChild(b);
       });

@@ -27,6 +27,8 @@ if (window.top !== window.self) {
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
+/* the sentences this page builds are translated as the console's own (i18n/<code>/platform.js) */
+$('.ep-frame').setAttribute('data-i18n-ctx', 'console');
 
 let sb = null, me = null, isAdmin = false;
 let hashTabOpened = false;            // a #tab link has been followed this visit
@@ -1694,7 +1696,7 @@ function drawAnalyticsDefault() {
     (on ? '.' : ', but memberships are switched off, so the analytics are free everywhere until ' +
       'they are switched on.') +
     ' The analytics are drawn in the browser, so members only hides the ' +
-    'analysis, not the play-by-play it is built from.'));
+    'analysis, not the play-by-play it is built from.')).dataset.i18nCtx = 'prose';
 
   const choice = el('div', 'ax-choice');
   const radio = (value, title, words) => {
@@ -1857,6 +1859,7 @@ function drawLeagueAccess() {
     c0.appendChild(el('div', 'mt', l.slug));
 
     const c1 = tr.insertCell();
+    c1.dataset.i18nCtx = 'access';
     const membersOnly = l.access_mode === 'members';
     c1.appendChild(el('span', 'pill' + (membersOnly ? ' pa' : ''), membersOnly ? 'members only' : 'open'));
     if (membersOnly) {
@@ -2204,6 +2207,7 @@ function drawOrgDetail(d, scroll) {
   const o = d.organisation;
   const host = $('#orgDetail'); host.textContent = '';
   const card = el('div', 'org-card');
+  card.dataset.i18nCtx = 'org';
 
   const head = el('div', 'row');
   const title = el('div');
@@ -2507,6 +2511,7 @@ function orgAffiliationsSection(o, affs, today) {
     'Records, not rights. The annual affiliation to the governing body carries the Level 1 or 2 ' +
     'accreditation; a league membership and a season invite are its relationships with local ' +
     'leagues. The public sees only whether it is affiliated today, and at what level.');
+  box.dataset.i18nCtx = 'aff';
 
   /* a national body's list holds every club affiliated to it; a page of
      editable rows that long helps nobody, so the newest seasons come first
@@ -2836,6 +2841,7 @@ function drawPrivTiles() {
   ].forEach(([k, label, urgent]) => {
     const n = Number(c[k] || 0);
     const tile = el('div', 'tile');
+    tile.dataset.i18nCtx = 'tally';
     tile.append(el('div', 'n' + (!n ? ' dim' : urgent ? ' warn' : ''), String(n)), el('div', 'k', label));
     host.appendChild(tile);
   });
@@ -2861,6 +2867,7 @@ function drawPrivList() {
     if (r.id === privOpenId) tr.classList.add('org-on');
 
     const c0 = tr.insertCell();
+    c0.dataset.i18nCtx = 'queue';
     c0.append(el('div', 'nm', (PRIV_KINDS[r.kind] || r.kind) + ' · ' + r.reference),
               el('div', 'mt', 'received ' + londonDay(r.received_at)));
     const c1 = tr.insertCell();
@@ -2908,6 +2915,7 @@ async function privAct(r, action, p, done) {
 function drawPrivDetail(r, scroll) {
   const host = $('#prDetail'); host.textContent = '';
   const card = el('div', 'org-card');
+  card.dataset.i18nCtx = 'queue';
 
   const head = el('div', 'row');
   const title = el('div'); title.style.minWidth = '0';

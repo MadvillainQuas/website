@@ -139,7 +139,7 @@ function startersHTML(ctx) {
   const labels = ctx.nameLabels || {};
   return '<section class="pv-sec" id="starters">' +
     '<h2>Starting five</h2>' +
-    '<p class="pv-fivenote">' + note + '</p>' +
+    '<p class="pv-fivenote" data-i18n-ctx="report">' + note + '</p>' +
     '<div class="pv-fives">' +
       sideHTML(A, ctx.colourA, ctx.nameA, labels) +
       sideHTML(B, ctx.colourB, ctx.nameB, labels) +
@@ -170,12 +170,12 @@ function outSide(list, colour, name) {
       '<span class="wr-who">' +
         (p.href ? '<a class="wr-name" href="' + esc(p.href) + '">' + esc(p.name) + '</a>'
                 : '<span class="wr-name">' + esc(p.name) + '</span>') +
-        '<span class="wr-line">' + esc(p.line) + '</span>' +
+        '<span class="wr-line" data-i18n-ctx="report">' + esc(p.line) + '</span>' +
       '</span>' +
     '</div>').join('');
   return '<div class="pv-out-side" style="--pc:' + esc(colour) + '">' +
     '<div class="pv-out-h">' + esc(name) + '</div>' +
-    (rows || '<p class="pv-out-none">Nobody missing.</p>') +
+    (rows || '<p class="pv-out-none" data-i18n-ctx="report">Nobody missing.</p>') +
     '</div>';
 }
 function injuriesHTML(ctx) {
@@ -183,7 +183,7 @@ function injuriesHTML(ctx) {
   if (!A.length && !B.length) return '';
   return '<section class="pv-sec" id="injuries">' +
     '<h2>Injury report</h2>' +
-    '<p class="pv-fivenote">Worked out from the box scores: players each club was using who have ' +
+    '<p class="pv-fivenote" data-i18n-ctx="report">Worked out from the box scores: players each club was using who have ' +
     'not taken the floor since. Nobody files this, and it clears itself the moment they play.</p>' +
     '<div class="pv-out">' + outSide(A, ctx.colourA, ctx.nameA) + outSide(B, ctx.colourB, ctx.nameB) + '</div>' +
     '<a class="pv-more" href="../injuries/' + (ctx.leagueSlug ? '?l=' + esc(encodeURIComponent(ctx.leagueSlug)) : '') +
@@ -500,7 +500,7 @@ function render(ctx) {
 
     (paras
       ? '<section class="pv-sec"><h2>The story so far</h2>' +
-        '<div class="pv-prose">' + paras + '</div></section>'
+        '<div class="pv-prose" data-i18n-ctx="report">' + paras + '</div></section>'
       : '') +
 
     '<section class="pv-sec">' +

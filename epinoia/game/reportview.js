@@ -231,8 +231,10 @@ function render(g, rep) {
     '</section>';
   }).join('');
 
-  /* the half-time report (report.js halftime) is the same article at twenty minutes */
-  return '<article class="rep' + (rep.half ? ' rep-half' : '') + '">' +
+  /* the half-time report (report.js halftime) is the same article at twenty minutes.
+     data-i18n-ctx="report": in another language the generated sentences are matched by the
+     report pack's templates (epinoia/i18n/<code>/report.js) */
+  return '<article class="rep' + (rep.half ? ' rep-half' : '') + '" data-i18n-ctx="report">' +
     '<div class="rep-head">' +
       '<div class="rep-kicker">' + (rep.half ? 'half-time report' : 'match report') + ' · generated from the play-by-play</div>' +
       '<h1 class="rep-hl">' + rep.headline + '</h1>' +

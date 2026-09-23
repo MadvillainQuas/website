@@ -33,6 +33,8 @@
    snippet says outright wins: data-theme, data-accent, data-accent2.
    data-colourway="off" turns the reading off and leaves only those.
 
+   IT SPEAKS THE SNIPPET'S LANGUAGE: data-lang="ja" or "es" (English otherwise).
+
    NOTHING IS TRACKED. No cookies, no storage, no third-party requests. The
    embed reads public fixtures with the anonymous key and nothing else.
    ============================================================================ */
@@ -151,6 +153,9 @@
   if (me.dataset.game)   url.searchParams.set('g', me.dataset.game);
   if (me.dataset.count)  url.searchParams.set('n', me.dataset.count);
   if (me.dataset.stat)   url.searchParams.set('stat', me.dataset.stat);
+  /* the language the snippet asks for (data-lang="ja"): inside another site's frame the widget
+     has no stored choice of its own, so without this it is always English */
+  if (/^(en|ja|es)$/.test(me.dataset.lang || '')) url.searchParams.set('lang', me.dataset.lang);
   /* the colourway as the URL too, so the first paint is already right; validated on the far side
      before any of it is written into a style */
   if (first.theme)   url.searchParams.set('theme', first.theme);

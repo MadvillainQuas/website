@@ -20,12 +20,13 @@
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode (html.m-app) before anything paints, so the app
      never flashes the App Store button before it says "You are using the app". -->
-<script src="../appmode.js?v=342"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=342">
-<link rel="stylesheet" href="../kit/nav.css?v=342">
+<script src="../appmode.js?v=344"></script>
+<script src="../i18n.js?v=344" data-i18n-packs="info"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=344">
+<link rel="stylesheet" href="../kit/nav.css?v=344">
 <!-- the download pages share one stylesheet: the show/hide matrix, the hero, the steps -->
-<link rel="stylesheet" href="../android/android.css?v=342">
-<link rel="stylesheet" href="ios.css?v=342">
+<link rel="stylesheet" href="../android/android.css?v=344">
+<link rel="stylesheet" href="ios.css?v=344">
 </head>
 <body>
 <!-- WHAT SHOWS WHERE: ios.js puts classes on #page (in-app, ios, android, desktop, released,
@@ -124,7 +125,7 @@
   <section class="sec out-only" id="alertsSec" aria-labelledby="alertsH">
     <div class="ep-hdr"><span class="idx">02</span><h2 id="alertsH">Game alerts</h2></div>
     <div class="body">
-      <ol class="steps">
+      <ol class="steps" data-i18n-ctx="steps">
         <li>
           <div>
             <h3>Sign in</h3>
@@ -144,7 +145,7 @@
             <p>iOS asks the first time: choose <b>Allow</b>. Tip-off reminders, starting lineups,
               half-time and full-time scores then arrive on the lock screen.</p>
             <p class="aside">Chose Don't Allow? Open <span class="path">Settings › Notifications › EPINOIΛ</span>
-              and turn on <b>Allow Notifications</b>.</p>
+              and turn on <b data-i18n-ctx="ui">Allow Notifications</b>.</p>
           </div>
         </li>
       </ol>
@@ -156,7 +157,7 @@
     <div class="ep-hdr"><span class="idx">03</span><h2 id="homeH"><span class="soon-only">Before the app: your Home Screen</span><span class="released-only">Without the app</span></h2></div>
     <div class="body">
       <p class="intro">Add EPINOIΛ to your Home Screen from Safari: it opens full screen, like an app.</p>
-      <ol class="mini">
+      <ol class="mini" data-i18n-ctx="steps">
         <li>Open <a href="../home/">Epinoia</a> in Safari.</li>
         <li>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
         <li>Open EPINOIΛ from the new icon and turn notifications on from your <a href="../me/">Profile</a> page. Game alerts need iOS 16.4 or later.</li>
@@ -181,15 +182,15 @@
   </section>
 
   <footer class="foot">
-    <a href="../home/">&larr; HOME</a>
+    <a href="../home/" data-i18n-ctx="nav">&larr; HOME</a>
     <a href="../me/">Your profile</a>
     <a href="../privacy/">Privacy</a>
     <a href="../contact/">Contact</a>
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=342" defer></script>
-<script src="ios.js?v=342" defer></script>
-<script src="../nav.js?v=342" defer></script>
+<script src="../config.js?v=344" defer></script>
+<script src="ios.js?v=344" defer></script>
+<script src="../nav.js?v=344" defer></script>
 </body>
 </html>

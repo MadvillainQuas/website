@@ -88,6 +88,8 @@ function optionsFrom(el) {
     theme: d.theme === 'light' ? 'light' : 'dark',
     accent: /^#[0-9a-f]{6}$/i.test(String(d.accent || '')) ? String(d.accent).toLowerCase() : '',
     into: typeof d.into === 'string' ? d.into : '',
+    /* the language of Epinoia's window (data-lang="ja"); the button itself stays English */
+    lang: /^(en|ja|es)$/.test(String(d.lang || '')) ? String(d.lang) : '',
     /* a path on the site itself: not protocol-relative (//host/x.js), no climbing (..) */
     sw: /^\/(?!\/)[A-Za-z0-9._/-]{1,100}\.js$/.test(String(d.sw || '')) && String(d.sw).indexOf('..') < 0 ? String(d.sw) : ''
   };
@@ -218,6 +220,7 @@ function windowUrl(o, info, origin) {
   u.searchParams.set('l', o.league);
   if (info.kind !== 'league' && info.id) u.searchParams.set(info.kind, info.id);
   if (/^https:\/\/[^\s/]+$/.test(String(origin || ''))) u.searchParams.set('from', origin);
+  if (o.lang) u.searchParams.set('lang', o.lang);
   return u.href;
 }
 const hintKey = (o, info) => HINT + o.league + ':' + info.kind + ':' + (info.id || 'league');

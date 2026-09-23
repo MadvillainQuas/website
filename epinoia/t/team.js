@@ -983,7 +983,7 @@ async function roster(team) {
        the same permission: the club's own manager, a league administrator over
        that club, or a platform administrator. */
     if (!canEdit) {
-      tr.appendChild(el('td', null, r.position || ''));
+      { const pd = el('td', null, r.position || ''); pd.setAttribute('data-i18n-ctx', 'pos'); tr.appendChild(pd); }
     } else {
       const td = el('td', 'meas');
       const inp = el('input', 'meas-in pos-in');
@@ -1134,7 +1134,7 @@ function paintGames(team) {
   const pick = el('div', 'gpick');
   const chip = (label, on, fn, kind) => {
     const b = el('button', 'ep-chip' + (on ? ' on' : ''), label); b.type = 'button';
-    if (kind) b.appendChild(el('small', 'kind', kind));
+    if (kind) { const k = el('small', 'kind', kind); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
     b.addEventListener('click', () => { fn(); paintGames(team); });
     return b;
   };
@@ -1186,7 +1186,7 @@ function paintGames(team) {
     row.appendChild(o);
     row.appendChild(el('div', 's', final ? `${us}\u2013${them}` : (g.status === 'live' ? 'LIVE' : '')));
     const res = final ? (us > them ? 'W' : 'L') : (g.status === 'live' ? 'LIVE' : (g.venue || 'SCHEDULED'));
-    row.appendChild(el('div', 'r ' + (final ? (us > them ? 'w' : 'ls') : ''), res));
+    { const rd = el('div', 'r ' + (final ? (us > them ? 'w' : 'ls') : ''), res); rd.setAttribute('data-i18n-ctx', 'res'); row.appendChild(rd); }
     if (window.EpinoiaFollow && !final) row.appendChild(window.EpinoiaFollow.bell('game', g.id));
     else row.appendChild(el('span'));
     row.style.cursor = 'pointer';

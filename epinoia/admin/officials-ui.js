@@ -97,6 +97,7 @@ function mount(opts) {
         const rl = el('td', 'ep-micro',
           (r.roles || []).map(k => (ROLES.find(x => x[0] === k) || [k, k])[1]).join(', '));
         rl.style.cssText = 'text-align:left;color:var(--ink-3)';
+        rl.setAttribute('data-i18n-ctx', 'official');
         tr.appendChild(rl);
 
         const lc = el('td', 'ep-micro', r.licence || '—');
@@ -149,6 +150,7 @@ function mount(opts) {
       keys.forEach(k => {
         const lab = el('label', 'ep-micro');
         lab.style.cssText = 'display:flex;align-items:center;gap:5px;color:var(--ink-2)';
+        lab.setAttribute('data-i18n-ctx', 'official');
         const cb = el('input'); cb.type = 'checkbox'; cb.value = k;
         if (k === 'referee') cb.checked = true;      // the commonest case, pre-ticked
         boxes[k] = cb;

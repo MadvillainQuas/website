@@ -22,10 +22,11 @@
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode (html.m-app) before anything paints, so the app
      never flashes the download button before it says "You are using the app". -->
-<script src="../appmode.js?v=342"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=342">
-<link rel="stylesheet" href="../kit/nav.css?v=342">
-<link rel="stylesheet" href="android.css?v=342">
+<script src="../appmode.js?v=344"></script>
+<script src="../i18n.js?v=344" data-i18n-packs="info"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=344">
+<link rel="stylesheet" href="../kit/nav.css?v=344">
+<link rel="stylesheet" href="android.css?v=344">
 </head>
 <body>
 <!-- WHAT SHOWS WHERE is decided by classes on #page, set by android.js (in-app, webapp, ios,
@@ -157,13 +158,13 @@
     <div class="ep-hdr"><span class="idx">02</span><h2 id="stepsH">Install it</h2></div>
     <div class="body">
       <p class="intro">Written for a Samsung. On other Android phones the steps are the same, and the settings may have slightly different names.</p>
-      <ol class="steps">
+      <ol class="steps" data-i18n-ctx="steps">
         <li>
           <div>
             <h3>Download</h3>
             <p>Tap <b>Download for Android</b> above. If <span data-browser>your browser</span> warns
               that this type of file can harm your device, choose <b>Download anyway</b>. When it
-              has finished, tap <b>Open</b>.</p>
+              has finished, tap <b data-i18n-ctx="ui">Open</b>.</p>
           </div>
         </li>
         <li>
@@ -230,7 +231,7 @@
     <div class="ep-hdr"><span class="idx">04</span><h2 id="iosH">On an iPhone</h2></div>
     <div class="body">
       <p class="intro">There is no iPhone app, and the download above will not open on one. Add EPINOIΛ to your Home Screen instead: it opens full screen, like an app.</p>
-      <ol class="mini">
+      <ol class="mini" data-i18n-ctx="steps">
         <li>Open <a href="../home/">Epinoia</a> in Safari.</li>
         <li>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
         <li>Open EPINOIΛ from the new icon and turn notifications on from your <a href="../me/">Profile</a> page. Game alerts need iOS 16.4 or later.</li>
@@ -239,15 +240,15 @@
   </section>
 
   <footer class="foot">
-    <a href="../home/">&larr; HOME</a>
+    <a href="../home/" data-i18n-ctx="nav">&larr; HOME</a>
     <a href="../me/">Your profile</a>
     <a href="../privacy/">Privacy</a>
     <a href="../contact/">Contact</a>
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=342" defer></script>
-<script src="android.js?v=342" defer></script>
-<script src="../nav.js?v=342" defer></script>
+<script src="../config.js?v=344" defer></script>
+<script src="android.js?v=344" defer></script>
+<script src="../nav.js?v=344" defer></script>
 </body>
 </html>

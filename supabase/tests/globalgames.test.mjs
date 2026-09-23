@@ -466,9 +466,12 @@ section('pages');
   ok('games/ links the manifest and a strict CSP', head.includes('/epinoia/manifest.webmanifest') && /script-src 'self'/.test(head));
   ok('games/ links the kit, nav and fxc stylesheets', ['../kit/epinoia-kit.css?v=', '../kit/nav.css?v=', '../kit/fxc.css?v='].every(s => head.includes(s)));
   const order = ['../config.js', '../data.js', '../globalgames.js', 'games.js?v', '../nav.js', '../xscroll.js'].map(s => games.indexOf(s));
+  /* all deferred but the two that must run in <head> before the page paints: appmode.js and
+     i18n.js (the language, docs/i18n.md) */
   ok('games/ scripts: config, data, globalgames, games, nav, xscroll, in order, all deferred',
      order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])) &&
-     (games.match(/<script src="[^"]+" defer><\/script>/g) || []).length === (games.match(/<script /g) || []).length - 1);
+     (games.match(/<script src="[^"]+" defer><\/script>/g) || []).length === (games.match(/<script /g) || []).length - 2 &&
+     /<script src="\.\.\/i18n\.js\?v=\d+"><\/script>/.test(games));
   ok('games/ has no inline script or inline handler', !/<script>(?!<)/.test(games) && !/<script(?![^>]*src=)[^>]*>/.test(games) && !/\son[a-z]+="/i.test(games));
   ok('games/ carries the heading, a Show more button and the count', games.includes('Global fixtures') &&
      /<button type="button" class="ep-btn more" id="gmMore" hidden>/.test(games) && games.includes('id="gmCount"'));

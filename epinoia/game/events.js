@@ -455,7 +455,7 @@ function controlsHTML(nm) {
 }
 
 function render(S) {
-  return '<div class="ev">' + inner(S) + '<div class="ev-tip" role="tooltip" hidden></div></div>';
+  return '<div class="ev" data-i18n-ctx="ev">' + inner(S) + '<div class="ev-tip" role="tooltip" hidden></div></div>';
 }
 
 /* the clubs' colours, inked for this theme, as game flow does it */

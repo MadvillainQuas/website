@@ -28,6 +28,7 @@ let seasons = [], comps = [], teams = [], fixtures = [], enteredRows = [];
 
 function say(text, kind) {
   const m = $('#msg');
+  m.setAttribute('data-i18n-ctx', 'msg');
   m.textContent = text || '';
   m.className = 'msg ' + (kind || '');
   m.classList.toggle('hide', !text);
@@ -470,7 +471,7 @@ async function loadAnnouncements() {
   (data || []).forEach(a => {
     const row = document.createElement('div'); row.className = 'item';
     const t = teams.find(x => x.id === a.team_id);
-    row.innerHTML = '<b>' + esc(a.title) + '</b> <span class="ep-micro">' +
+    row.innerHTML = '<b>' + esc(a.title) + '</b> <span class="ep-micro" data-i18n-ctx="audience">' +
       esc(a.audience === 'fans' ? 'fans' : a.audience === 'club_admins' ? ('managers' + (t ? ' of ' + t.name : '')) : 'fans + managers') +
       ' · ' + new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + '</span>' +
       (a.body ? '<div class="ep-micro" style="margin-top:3px">' + esc(a.body).slice(0, 200) + '</div>' : '');
@@ -732,6 +733,7 @@ function buildFixtureRows(host) {
 
   /* which games are shown: every one, the ones still to play, or the ones played */
   const filter = el('div', 'fxfilter');
+  filter.setAttribute('data-i18n-ctx', 'chip');
   const chips = [['all', 'all'], ['toplay', 'to play'], ['played', 'played']].map(([k, label]) => {
     const b = el('button', 'ep-chip' + (fxShow === k ? ' on' : ''), label);
     b.type = 'button';
@@ -1308,6 +1310,7 @@ async function loadMembers() {
     const r = el('div', 'item');
     r.append(el('div', 'nm', m.email),
              el('div', 'mt', m.role.replace('_', ' ') + ' · ' + m.scope_type));
+    r.lastChild.setAttribute('data-i18n-ctx', 'role');
     const sp = el('div', 'sp');
     const rm = el('button', 'ep-btn mini dgr', 'revoke'); rm.type = 'button';
     rm.addEventListener('click', async () => {
@@ -1339,6 +1342,7 @@ async function loadPendingMembers(host) {
     r.append(el('div', 'nm', p.email),
              el('div', 'mt', p.role.replace(/_/g, ' ') + ' · waiting — no account on that ' +
                              'address yet, so it applies when they sign up'));
+    r.lastChild.setAttribute('data-i18n-ctx', 'role');
     const sp = el('div', 'sp');
     const rm = el('button', 'ep-btn mini dgr', 'take back'); rm.type = 'button';
     rm.addEventListener('click', async () => {

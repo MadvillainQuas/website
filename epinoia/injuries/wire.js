@@ -96,6 +96,7 @@
     const name = el(m.slug || e.playerId ? 'a' : 'span', 'wr-name', m.name || 'Player');
     if (name.tagName === 'A') name.href = '../p/?p=' + encodeURIComponent(e.playerId);
     const line = el('span', 'wr-line', I().line(e, { stale: true }));
+    line.dataset.i18nCtx = 'report';          // "out for the last 3 games · …": the report pack's templates
     who.append(name, line);
     row.append(q, who);
     if (mine.has(String(e.teamId))) row.appendChild(releaseButton(e, m));
@@ -119,6 +120,7 @@
         if (error) throw error;
         const row = wrap.parentNode;
         const note = el('div', 'wr-note', (m.name || 'That player') + ' is released — off the report and the previews.');
+        note.dataset.i18nCtx = 'report';
         if (row && row.parentNode) row.parentNode.replaceChild(note, row);
       } catch (err) {
         b.disabled = false;

@@ -143,6 +143,7 @@ function mount(opts) {
     head.appendChild(title);
 
     const sp = el('div', 'sp');
+    sp.setAttribute('data-i18n-ctx', 'btn');
     const editBtn = el('button', 'ep-btn mini', 'configure');
     editBtn.type = 'button';
     const prevBtn = el('button', 'ep-btn mini', 'preview');
@@ -252,7 +253,9 @@ function mount(opts) {
       i.type = 'checkbox';
       i.checked = !!(f.sections || {})[k];
       boxes[k] = i;
-      lab.append(i, el('span', null, k), el('span', 'fwhy', why));
+      const key = el('span', null, k);
+      key.setAttribute('translate', 'no');     // the section's name in the payload, which a partner reads
+      lab.append(i, key, el('span', 'fwhy', why));
       secs.appendChild(lab);
     });
     body.appendChild(secs);

@@ -3,6 +3,8 @@
    GitHub Pages cannot send X-Frame-Options. Bust out before anything else runs. */
 if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (_) {} document.documentElement.innerHTML = ''; throw new Error('framed'); }
 const $ = s => document.querySelector(s);
+/* the sentences this page builds are translated as the console's own (i18n/<code>/platform.js) */
+$('.ep-frame').setAttribute('data-i18n-ctx', 'console');
 const show = (id, on) => $(id).classList.toggle('hide', !on);
 const TEAMCOLORS = ['#93f2bf','#8ff5ff','#ffb3ef','#ffd166','#b7a8ff','#ff8f97',
                     '#ffffff','#ff9f43','#c8ff5a','#5ab8ff','#ff5fb0','#d7c4a1'];

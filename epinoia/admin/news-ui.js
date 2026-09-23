@@ -213,6 +213,7 @@ function mount(o) {
 
     /* ---- toolbar ---- */
     const bar = el('div', 'news-bar');
+    bar.setAttribute('data-i18n-ctx', 'editor');
     const cmd = (label, fn, title) => {
       const b = el('button', 'ep-btn mini', label);
       b.type = 'button'; if (title) b.title = title;

@@ -41,6 +41,7 @@ function mount(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
   const C = window.EpinoiaCSV;
+  host.dataset.i18nCtx = 'csv';
   host.textContent = '';
   let parsed = null;
 

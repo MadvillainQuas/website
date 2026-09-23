@@ -1403,7 +1403,7 @@ function openAttach() {
   const wrap = document.createElement('div');
   wrap.className = 'vsheet';
   wrap.innerHTML =
-    '<div class="box">' +
+    '<div class="box" data-i18n-ctx="vs">' +
       '<h3>The recording of this game</h3>' +
       '<p>Paste the link, then say where the jump ball is on the scrub bar — or let ' +
       'the page find it. The tip-off time comes from the event log, so from that one ' +

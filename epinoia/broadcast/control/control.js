@@ -91,6 +91,10 @@ function sceneURL(scene, live, opts) {
   const ch = $('#chroma').value.trim();
   if (ch) p.set('chroma', ch);
   if (!$('#safe').checked) p.set('safe', '0');
+  /* THE LAYER RUNS IN THE STREAMING SOFTWARE'S OWN BROWSER, which has no stored language: a
+     room working in Japanese or Spanish hands its graphics that language in the address. */
+  const I = window.EpinoiaI18n;
+  if (I && I.lang && I.lang !== 'en') p.set('lang', I.lang);
   return location.origin + '/epinoia/broadcast/?' + p.toString();
 }
 
@@ -1408,6 +1412,7 @@ function paintReady() {
   });
   const pill = $('#fxReady');
   if (pill) {
+    pill.setAttribute('data-i18n-ctx', 'ready');   // one line of three ticks and a status
     const bits = [];
     bits.push(ready.roster ? 'squads ✓' : 'squads —');
     bits.push(ready.fives ? 'fives ✓' : 'fives —');

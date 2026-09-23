@@ -131,7 +131,7 @@ function row(noun, items, value, onPick) {
     const b = el('button', 'ep-chip' + (on ? ' on' : ''), text);
     b.type = 'button';
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    if (tag) b.appendChild(el('span', 'kindtag', tag));
+    if (tag) { const k = el('span', 'kindtag', tag); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
     b.addEventListener('click', () => { if (!on) onPick(v); });
     wrap.appendChild(b);
   });

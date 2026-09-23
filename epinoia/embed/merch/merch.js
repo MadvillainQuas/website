@@ -107,7 +107,11 @@ const money = (p, c) => p == null ? '' :
       ft.append(el('span', 'nm', KIND_LABEL[r.kind] || r.kind),
                 el('span', 'pr', money(r.price_pennies, r.currency)));
       card.appendChild(ft);
-      if (r.teams) card.appendChild(el('div', 'cl', r.teams.short_name || r.teams.name));
+      if (r.teams) {
+        const cl = el('div', 'cl', r.teams.short_name || r.teams.name);
+        cl.setAttribute('translate', 'no');          // a club's name, never a word to translate
+        card.appendChild(cl);
+      }
       grid.appendChild(card);
     });
     host.appendChild(grid);

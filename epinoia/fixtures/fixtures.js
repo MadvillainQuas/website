@@ -167,7 +167,7 @@ function renderFilters() {
       cp.parentNode.style.display = '';
       const mkc = (label, on, click, kind) => {
         const b = el('button', 'ep-chip' + (on ? ' on' : ''), label); b.type = 'button';
-        if (kind) b.appendChild(el('small', 'kind', kind));
+        if (kind) { const k = el('small', 'kind', kind); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
         b.addEventListener('click', click); return b;
       };
       cp.appendChild(mkc('All competitions', !compFilter, () => { compFilter = ''; syncUrl(); renderFilters(); render(); }));

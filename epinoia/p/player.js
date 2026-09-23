@@ -130,7 +130,7 @@ function paintIdentity(pl, entry, team) {
     sub.appendChild(el('span', null, 'Free agent'));
     $('#teamLink').style.display = 'none';
   }
-  if (entry && entry.position) sub.appendChild(el('span', 'pos-chip', entry.position));
+  if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
   if (pl.birth_year) sub.appendChild(el('span', null, 'born ' + pl.birth_year));
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
 }
@@ -325,7 +325,7 @@ function paintBars(mine, field) {
       const dp = (k === 'ast_to' || k === 'au') ? 2 : 1;
       /* a differential carries its sign: +12.5 is a claim, 12.5 is a number */
       const val = el('div', 'bv', v == null ? '—' : ((String(k).startsWith('diff_') && Number(v) > 0 ? '+' : '') + Number(v).toFixed(dp)));
-      if (p != null) val.appendChild(el('div', 'bp', ord(p)));
+      if (p != null) { const bp = el('div', 'bp', ord(p)); bp.setAttribute('data-i18n-ctx', 'pctl'); val.appendChild(bp); }
       row.appendChild(val);
       wrap.appendChild(row);
     });

@@ -172,6 +172,7 @@ function mount(opts) {
       const r = el('div', 'fg-round');
       r.appendChild(el('div', 'fg-rnum',
         'Round ' + n + ' · ' + dt(games[0].tipoff_at)));
+      r.lastChild.setAttribute('data-i18n-ctx', 'matchday');
       games.forEach(g => {
         const line = el('div', 'fg-game');
         if (g.group) line.appendChild(el('span', 'fg-grp', g.group));

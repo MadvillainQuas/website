@@ -16,9 +16,10 @@
 <meta name="description" content="Epinoia is a competition platform for basketball: one scoring app, one event log, and every surface a league needs derived from it — public site, club pages, embeddable widgets, an API, phone apps and alerts.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=342"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=342">
-<link rel="stylesheet" href="../kit/nav.css?v=342">
+<script src="../appmode.js?v=344"></script>
+<script src="../i18n.js?v=344" data-i18n-packs="info"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=344">
+<link rel="stylesheet" href="../kit/nav.css?v=344">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -376,7 +377,7 @@
       <figure>
         <img src="shots/home.webp" width="1600" height="1000" loading="lazy" decoding="async"
              alt="The Epinoia home page: today's fixtures across every league.">
-        <figcaption><span class="t">Home</span><span class="d">Every league, today&rsquo;s
+        <figcaption><span class="t" data-i18n-ctx="nav">Home</span><span class="d">Every league, today&rsquo;s
           games and the players having the best season, on one page.</span></figcaption>
       </figure>
       <figure>
@@ -468,7 +469,7 @@
       The difference between the two is the public surface. Nothing below
       changes between them, because there is only one pipeline underneath.
     </p>
-    <div class="spec">
+    <div class="spec" data-i18n-ctx="spec">
       <div class="k">Capture</div>
       <div class="v">A browser-based scoring application, local-first: the game
         is held on the device and published as connectivity allows, so a hall
@@ -775,7 +776,7 @@
       <section>
         <h3>For supporters</h3>
         <ul>
-          <li><b>Home</b> &mdash; every league, the day&rsquo;s games and the players
+          <li><b data-i18n-ctx="nav">Home</b> &mdash; every league, the day&rsquo;s games and the players
             having the best season, on one page.</li>
           <li><b>Global fixtures</b> &mdash; every league&rsquo;s games in one list,
             nearest to now first; and a page per country.</li>
@@ -908,11 +909,11 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=342" defer></script>
-<script src="learn.js?v=342" defer></script>
-<script src="../nav.js?v=342" defer></script>
+<script src="../config.js?v=344" defer></script>
+<script src="learn.js?v=344" defer></script>
+<script src="../nav.js?v=344" defer></script>
 <!-- four tabs now, which runs off a phone; the platform's standard scroller
      keeps the strip one row high and reachable -->
-<script src="../xscroll.js?v=342" defer></script>
+<script src="../xscroll.js?v=344" defer></script>
 </body>
 </html>
