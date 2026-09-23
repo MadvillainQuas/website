@@ -48,7 +48,7 @@ function norm(code) {
    ADDING ONE IS TWO STEPS, deliberately: drop <code>.svg into brand/flags and
    add the code here. The alternative — try the image and fall back on error —
    means a 404 on every page load for every country we have not drawn. */
-const HAVE_FLAG = ['CZ', 'DE', 'ES', 'EU', 'FR', 'GB', 'JP', 'SK'];
+const HAVE_FLAG = ['CA', 'CZ', 'DE', 'ES', 'EU', 'FR', 'GB', 'JP', 'SK'];
 
 /* Root-relative on purpose: this file is DOM-free and node runs it, so it does
    not know how deep the page asking is. The caller prefixes its own root. */
