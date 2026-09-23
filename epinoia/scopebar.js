@@ -39,11 +39,11 @@ const FORMAT_RANK = { conferences: 0, groups: 1, groups_knockout: 1 };
 const rankOf = c => (c && Object.prototype.hasOwnProperty.call(FORMAT_RANK, c.format) ? FORMAT_RANK[c.format] : 2);
 
 /* named the way the standings name them (standings.js): a conference as itself, a group of a
-   single league as "Group X" */
+   single league as "Group X", a group with a name of its own ("NBL1 South") as that */
 function label(name, comp) {
   const ST = root && root.EpinoiaStandings;
   if (ST && typeof ST.groupLabel === 'function') return ST.groupLabel(name, comp);
-  return comp && comp.format === 'conferences' ? name : 'Group ' + name;
+  return (comp && comp.format === 'conferences') || /\s/.test(String(name).trim()) ? name : 'Group ' + name;
 }
 
 /* ------------------------------------------------------------- the model ---

@@ -365,7 +365,7 @@ async function renderStandingsInto(pane, competition) {
     groups.get(k).push(r);
   });
   groups.forEach((groupRows, name) => {
-    if (name) pane.appendChild(el('div', 'grouphead', 'Group ' + name));
+    if (name) pane.appendChild(el('div', 'grouphead', ST ? ST.groupLabel(name, competition) : 'Group ' + name));
     pane.appendChild(groupTable(groupRows));
   });
 }

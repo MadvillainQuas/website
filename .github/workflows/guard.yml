@@ -393,6 +393,16 @@ jobs:
         # overtime, double overtime and a play-off final included
         run: python scripts/ingest/lba_test.py
 
+      - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
+        # nbl.py over cached season lists, schedules and game replies: only each league's main
+        # season is discovered (never the pre-season, the Blitz or a cup final), the WNBL's finals
+        # are found without a match_type, NBL1 is one gender over its conferences with each
+        # fixture's conference on it (groups.learn), and every box, team total, score, 5v5 stint
+        # and event-log line reconciles with the league's own - through a frozen league box, score
+        # columns away-first, team actions with no team, blocks typed before their shots,
+        # substitutions typed twice and a DNP flagged as a starter
+        run: python scripts/ingest/nbl_test.py
+
       - name: Groups, conferences and divisions from config/groups
         # groups.py (0144): a source with a groups file enters its clubs under their group or
         # conference (and division); a source without one writes exactly what it always did; and

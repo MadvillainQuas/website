@@ -149,6 +149,11 @@ ok('a conference is named as itself, a league group as Group X', () => {
   assert.equal(S.groupLabel('Nord', groups), 'Group Nord');
   assert.equal(S.groupLabel('', table), '');
 });
+ok('a group whose name is a name of its own is not made Group X (the NBL1 conferences)', () => {
+  assert.equal(S.groupLabel('NBL1 South', groups), 'NBL1 South');
+  assert.equal(S.groupLabel('A', groups), 'Group A');
+  assert.equal(S.groupLabel(' Süd ', groups), 'Group  Süd ');
+});
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

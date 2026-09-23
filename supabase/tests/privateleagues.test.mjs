@@ -447,7 +447,7 @@ console.log('\n20. the rail shows flags, not the two letters a flag is made of')
    Edge on Windows draw "CZ", "DE", "GB" down the rail. No CSS fixes that; the
    only cure is to ship the picture. */
 {
-  const CODES = ['cz', 'de', 'es', 'eu', 'fr', 'gb', 'jp', 'sk'];
+  const CODES = ['au', 'cz', 'de', 'es', 'eu', 'fr', 'gb', 'jp', 'sk'];
   const dir = path.join(ROOT, 'epinoia', 'brand', 'flags');
   for (const c of CODES) {
     const svg = readFileSync(path.join(dir, c + '.svg'), 'utf8');

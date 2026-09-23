@@ -43,6 +43,26 @@ conference until the file names it. `python scripts/ingest/groups_test.py` valid
 An administrator can still set groups by hand in the console (Formats) for a league whose source
 has no groups file; the ingest never touches those.
 
+### When the feed says so itself: NBL1
+
+NBL1 (Australia) is served one season per conference and gender ("2026 South Men"), so every
+fixture already knows its conference. Its source rows say `"groups_from_feed": true` (and
+`"competition_format": "groups"` on the regular season): `adapters/nbl.py` puts each fixture's
+conference on it (`extra.home_group` / `away_group`, e.g. "NBL1 South"), run_ingest hands the
+discovered games to `groups.learn()`, and from then on the run treats that membership exactly as it
+would a file's. No file to keep for ~140 clubs that change every year. A run that discovers nothing
+(the live lane) learns nothing and leaves every club's group where the last discovery put it.
+
+NBL1 is a `groups` competition, not `conferences`: its clubs only ever play their own conference
+before the finals, so a conference record would repeat the overall one. The heading is the group's
+own name: `groupLabel` writes "Group X" only for a one-word group ("Group Nord", "Group A"), so a
+group named "NBL1 South" is headed "NBL1 South".
+
+NBL1 is also the one calendar-year league (March to August): its rows say `"season_calendar": true`
+and play in a season named for the year ("2027", 1 Jan - 31 Dec), not the August cut-over's
+"2026-27", which would put its finals in a different season from its ladder. `"first_season":
+"2027"` keeps the rows quiet until then; writing `"season": "2026"` into the rows reads a past one.
+
 ## Reading it
 
 `epinoia/standings.js` (shared) — `epinoia/l/league.js` draws a conference league as

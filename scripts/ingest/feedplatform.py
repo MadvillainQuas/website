@@ -101,9 +101,14 @@ class Platform:
             return r
         y = re.match(r"(\d{4})", name)
         self.log(f"  + season {name}")
+        if re.fullmatch(r"\d{4}", name):
+            # a calendar-year league's season ("2027": NBL1, March to August) is that year
+            starts, ends = f"{name}-01-01", f"{name}-12-31"
+        else:
+            starts = f"{y.group(1)}-09-01" if y else None
+            ends = f"{int(y.group(1)) + 1}-06-30" if y else None
         return self.insert("seasons", {"league_id": league_id, "name": name,
-                                       "starts_on": f"{y.group(1)}-09-01" if y else None,
-                                       "ends_on": f"{int(y.group(1)) + 1}-06-30" if y else None}, "league_id,name")
+                                       "starts_on": starts, "ends_on": ends}, "league_id,name")
 
     def competition(self, season_id: str, name: str, kind: str | None = None) -> dict:
         r = self.one("competitions", f"season_id=eq.{season_id}&name=eq.{name}&select=id,name,kind")

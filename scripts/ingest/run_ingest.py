@@ -1397,6 +1397,14 @@ def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> lis
     out = list(rows.values())
     if only:
         out = [r for r in out if r.get("label") == only or r.get("code") == only]
+    # A CALENDAR-YEAR LEAGUE (NBL1: March to August) is not a 2026-27 season - read by the August
+    # cut-over, its finals would land in the next season from its ladder. Such a source says
+    # "season_calendar" and plays in the season named for the year (season_auto: the year it is,
+    # not a season anybody asked for); a season written into the row, or a backfill, pins its own.
+    for r in out:
+        ac = r.get("adapter_config") or {}
+        if ac.get("season_calendar") and not ac.get("season"):
+            r["adapter_config"] = {**ac, "season": str(datetime.now(timezone.utc).year), "season_auto": True}
     return out
 
 
@@ -2095,6 +2103,11 @@ def main() -> int:
                 print(f"   {len(games)} live/due game(s): " + ", ".join(f"{g.home_name or g.external_id} v {g.away_name}" for g in games[:6]))
             else:
                 games = list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code"))))
+                # the groups a feed names on its own fixtures (groups.learn: NBL1's conferences),
+                # known before a single club is entered
+                learnt = groups.learn(src, (src.get("adapter_config") or {}).get("season") or season_name_for(), games)
+                if learnt:
+                    print(f"   groups from the feed: {len({g for g in (x.extra.get('home_group') for x in games) if g})} group(s)")
                 if sb and not args.dry_run:
                     try:
                         sync_logos(sb, src, games, run)

@@ -104,10 +104,14 @@ function overall(rows) {
 }
 
 /* the heading a group gets: a conference is named as itself, a group of a
-   single league is "Group X" as it always was */
+   single league is "Group X" as it always was - unless its name is already a
+   name of its own. NBL1 plays its season in five conferences called "NBL1
+   South", "NBL1 North" ..., and "Group NBL1 South" is nobody's name for one;
+   a bare "Nord" or "A" is still "Group Nord", "Group A". */
 function groupLabel(name, comp) {
   if (!name) return isConferences(comp) ? 'Unassigned' : '';
-  return isConferences(comp) ? name : 'Group ' + name;
+  if (isConferences(comp) || /\s/.test(String(name).trim())) return name;
+  return 'Group ' + name;
 }
 
 return { isConferences, columns, pct, record, split, overall, groupLabel, BASE_COLS, CONF_COLS };

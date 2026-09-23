@@ -36,6 +36,9 @@ matter - because "St. Francis Xavier" and "St Francis Xavier" are one university
 A club the file does not know is reported once per run and entered with no group (it still plays,
 it still has a record; it just appears under no conference until the file names it). That is the
 case for a non-conference opponent from outside the league, which is exactly right.
+
+A FEED THAT STATES MEMBERSHIP ITSELF needs no file: "groups_from_feed": true in adapter_config, and
+the adapter names each fixture's group (NBL1: its conference). See learn() below.
 """
 from __future__ import annotations
 
@@ -79,7 +82,56 @@ def load(path: str) -> dict:
 
 def spec_for(src: dict) -> dict | None:
     path = _path_of(src)
-    return load(path) if path else None
+    if path:
+        return load(path)
+    return _learnt_spec(src)
+
+
+# ------------------------------------------------------------------ membership the feed states
+# SOME FEEDS SAY IT THEMSELVES. NBL1's schedule is served one season per conference ("2026 South
+# Men"), so every fixture arrives already knowing its conference - more reliably than any file could,
+# for a hundred and forty clubs that change every year. A source with
+#     "groups_from_feed": true                       (adapter_config)
+# has its adapter put ScheduleGame.extra["home_group"] / ["away_group"] on each fixture, and
+# run_ingest hands the discovered games to learn() before anything is written. The membership then
+# works exactly like a file's - spec_for returns it in a file's shape - for the rest of the run. A run
+# that learnt nothing (the live lane, which does not discover) has no spec, so it leaves every club's
+# group as the last discovery pass set it.
+_LEARNT: dict = {}                   # source key -> {season: {group: set(names)}}
+
+
+def _feed_key(src: dict) -> tuple:
+    return (src.get("adapter"), src.get("code"), src.get("schedule_url") or tuple(src.get("scheduleUrls") or ()))
+
+
+def learn(src: dict, season: str | None, games) -> int:
+    """Take each fixture's group from the feed (extra home_group / away_group). Returns how many
+    club-in-group facts were read; 0 for a source that does not take its groups from the feed."""
+    ac = src.get("adapter_config") or {}
+    if not ac.get("groups_from_feed"):
+        return 0
+    book = _LEARNT.setdefault(_feed_key(src), {}).setdefault(season, {})
+    n = 0
+    for g in games or []:
+        ex = getattr(g, "extra", None) or {}
+        for side, name in (("home", getattr(g, "home_name", "")), ("away", getattr(g, "away_name", ""))):
+            grp = str(ex.get(f"{side}_group") or "").strip()
+            if grp and name:
+                book.setdefault(grp, set()).add(name)
+                n += 1
+    return n
+
+
+def _learnt_spec(src: dict) -> dict | None:
+    ac = src.get("adapter_config") or {}
+    if not ac.get("groups_from_feed"):
+        return None
+    learnt = _LEARNT.get(_feed_key(src)) or {}
+    if not any(learnt.values()):
+        return None
+    return {"format": src.get("competition_format") or ac.get("competition_format"),
+            "seasons": {season: {grp: sorted(names) for grp, names in book.items()}
+                        for season, book in learnt.items()}}
 
 
 def _spellings(entry) -> list:
@@ -137,7 +189,8 @@ def entry(src: dict, season: str | None, *names: str) -> dict:
     if key not in _WARNED:
         _WARNED.add(key)
         shown = next((n for n in names if n), "?")
-        print(f"    ! {shown} is in no group of {_path_of(src)} ({season or 'default'}) - entered with none")
+        where = _path_of(src) or "the groups its feed named this run"
+        print(f"    ! {shown} is in no group of {where} ({season or 'default'}) - entered with none")
     return {}
 
 
