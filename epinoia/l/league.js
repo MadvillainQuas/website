@@ -116,11 +116,13 @@ function watchAccess() {
   } catch (_) { /* the page as drawn */ }
 }
 
-/* every pane a season change or a first load draws; behind the wall, only the fixtures */
+/* every pane a season change or a first load draws; behind the wall, only the fixtures.
+   Strength of schedule only once somebody has opened it (showTab): it reads the fixture list
+   as well, and most visits to a table never go near it. */
 function renderPanes() {
   if (PAYWALLED) return document.body.classList.contains('fixtures-public') ? renderFixtures() : Promise.resolve();
   return Promise.all([renderTable(), renderFixtures(), renderLeaders(),
-                      renderTeamStats(), renderExtras()]);
+                      renderTeamStats(), renderExtras(), sosShown ? renderSOS() : null]);
 }
 
 async function boot() {
@@ -175,6 +177,8 @@ async function boot() {
       renderPhasePicker();
       renderCupPicker();
     }
+    /* from here a tab opened for the first time can draw itself (showTab) */
+    booted = true;
     await renderPanes();
     $('#foot').textContent = 'Epinoia Network · ' + league.name + ' · ' + season.name;
   } catch (e) {
@@ -183,7 +187,7 @@ async function boot() {
 }
 
 function fail(msg) {
-  ['#tableBody', '#pane-fixtures', '#pane-leaders', '#cupBody'].forEach(s => {
+  ['#tableBody', '#pane-fixtures', '#pane-leaders', '#cupBody', '#pane-sos'].forEach(s => {
     const p = $(s); p.textContent = ''; p.appendChild(el('div', 'empty', msg));
   });
 }
@@ -265,6 +269,7 @@ function renderPhasePicker() {
     history.replaceState(null, '', u);
     renderPhasePicker();
     renderTable(); renderFixtures(); renderLeaders(); renderTeamStats(); renderExtras();
+    if (sosShown) renderSOS();
   })));
 }
 
@@ -729,14 +734,80 @@ async function renderTeamStats() {
   });
 }
 
+/* ------------------------------------------------- strength of schedule --- */
+/* index_9's Strength of Schedule tab (epinoia/sos.js) over the same season read and the same
+   "covering" control as the team statistics: both sides of every finalised game, which is
+   what that table is built from. Drawn the first time the tab is opened; after that it
+   follows the season, the phase and the scope like every other pane. */
+let sosShown = false, booted = false, sosSeq = 0;
+
+async function renderSOS() {
+  const pane = $('#pane-sos');
+  if (!pane) return;
+  const seq = ++sosSeq;
+  pane.textContent = '';
+  pane.appendChild(scopePicker(renderSOS));
+  const board = el('div', 'boardhost'); pane.appendChild(board);
+  const X = window.EpinoiaSOS;
+  if (!X) { board.appendChild(el('div', 'empty', 'The strength of schedule could not be loaded.')); return; }
+  board.appendChild(el('div', 'empty', 'working out the schedule…'));
+  let S, meetings = null;
+  try {
+    const [season, fixtures] = await Promise.all([
+      loadSeason(),
+      /* how often each pair of clubs meets, from the whole fixture list (played and to come).
+         Without it the projected record assumes four meetings, which is index_9's SLB. */
+      window.EpinoiaData.all(`games?competition_id=in.(${scopeIds().join(',')})` +
+        `&select=home_team_id,away_team_id`).catch(() => [])
+    ]);
+    S = season;
+    meetings = X.meetingsFrom(fixtures);
+  } catch (e) {
+    if (seq !== sosSeq) return;
+    board.textContent = '';
+    board.appendChild(el('div', 'empty', 'Could not load: ' + e.message));
+    return;
+  }
+  /* a newer scope or season is already drawing into a pane this one no longer owns */
+  if (seq !== sosSeq) return;
+  const byId = new Map((S.teams || []).map(t => [t.id, t]));
+  X.render({
+    host: board, games: X.gameLines(S), meetings,
+    team: id => {
+      const t = byId.get(id) || {};
+      return { name: t.name || 'Team', short: t.teamShort, colour: t.colour, logo: t.logo,
+               href: t.slug ? '../t/?t=' + encodeURIComponent(t.slug) : null };
+    }
+  });
+}
+
+/* SIX TABS RUN PAST A NARROW SCREEN, so the one being shown is scrolled into sight -- sideways
+   only, so the page itself never jumps. Arriving on #sos the row is not a scroller yet (xscroll.js
+   runs after this file), so it is asked again once the page has loaded. */
+function revealTab(btn) {
+  const row = btn.parentElement;
+  if (!row) return;
+  const go = () => {
+    if (row.scrollWidth <= row.clientWidth) return;
+    const rb = row.getBoundingClientRect(), bb = btn.getBoundingClientRect();
+    if (bb.right > rb.right) row.scrollLeft += bb.right - rb.right + 16;
+    else if (bb.left < rb.left) row.scrollLeft -= rb.left - bb.left + 16;
+  };
+  go();
+  if (document.readyState !== 'complete') window.addEventListener('load', go, { once: true });
+}
+
 function showTab(name) {
   const btn = [...document.querySelectorAll('.ep-tab')].find(b => b.dataset.p === name);
   if (!btn) return false;
   document.querySelectorAll('.ep-tab').forEach(x => x.classList.remove('on'));
   btn.classList.add('on');
+  revealTab(btn);
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
   const pane = document.getElementById('pane-' + name);
   if (pane) pane.classList.add('on');
+  /* opened before the page has its season, renderPanes draws it when the season arrives */
+  if (name === 'sos' && !sosShown) { sosShown = true; if (booted && !PAYWALLED) renderSOS(); }
   return true;
 }
 

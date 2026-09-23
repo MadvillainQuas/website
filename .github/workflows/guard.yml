@@ -579,6 +579,13 @@ jobs:
         # epinoia/rotation.js follows the engine's minutes to the millisecond on real games
         run: node supabase/tests/rotation.test.mjs
 
+      - name: The Table page's strength of schedule is index_9's, number for number
+        # epinoia/sos.js is index_9.html's SOS tab: index_9's own code is lifted out of the file
+        # and run beside it on one league under all four filters, and every number of every team
+        # has to agree; then reading a season's rows, how often clubs meet (from the fixture list),
+        # the tab's wiring and the rail's "Table / Team Stats" label
+        run: node supabase/tests/sos.test.mjs
+
       - name: The events tab's situations are the box score's
         # second-chance, off-turnover and fast-break points by the engine's own windows,
         # on a hand-worked log and three real LiveStats games

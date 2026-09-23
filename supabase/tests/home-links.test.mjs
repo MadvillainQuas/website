@@ -270,10 +270,12 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
   eq('a page with no league (profile): platform tabs, profile lit', [r.tabs.map(t => t.tx), r.tabs.filter(t => t.on).map(t => t.tx)], [PLATFORM, ['profile']]);
   eq('...hrefs one folder down', r.tabs.map(t => t.href), ['../home/', '../games/', '../scouting/', '../home/#leagues', '../me/']);
 }
+/* the Table page's tab reads "Table / Team Stats" since 2026-09-23 (nav.js PAGES), a no-break
+   space holding "Team Stats" together when the label takes two lines */
 {
   const r = rail('/epinoia/stats/?l=bcb');
   eq('a league page keeps its own tabs, the first now called "league"', r.tabs.map(t => t.tx),
-     ['league', 'fixtures', 'table', 'teams', 'statistics', 'news']);
+     ['league', 'fixtures', 'Table / Team\xa0Stats', 'teams', 'statistics', 'news']);
   eq('...the league tab opens the league front page', r.tabs[0].href, '../?l=bcb');
   eq('...statistics lit', r.tabs.filter(t => t.on).map(t => t.tx), ['statistics']);
   const first = r.foot && r.foot.children[0];
@@ -297,7 +299,7 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
 {
   const r = rail('/epinoia/stats/', { after: ctx => { ctx.window.__CS_LEAGUE_SLUG = 'bcb'; } });
   eq('a league page that learns its league late swaps the platform tabs for the league\'s', r.tabs.map(t => t.tx),
-     ['league', 'fixtures', 'table', 'teams', 'statistics', 'news']);
+     ['league', 'fixtures', 'Table / Team\xa0Stats', 'teams', 'statistics', 'news']);
 }
 
 /* ------------------------------------------------------------------ 3 --- */
@@ -323,7 +325,7 @@ ok('nothing in the rail links to countries/ any more', !/'countries\/'/.test(NAV
      probe finds one (here fetch rejects, which is the offline case). */
   const r = rail('/epinoia/stats/?l=bcb');
   eq('the league tab bar is unchanged by the video hub', r.tabs.map(t => t.tx),
-     ['league', 'fixtures', 'table', 'teams', 'statistics', 'news']);
+     ['league', 'fixtures', 'Table / Team\xa0Stats', 'teams', 'statistics', 'news']);
   const video = r.nav && r.nav.all().find(n => n.tagName === 'A' && /\/video\//.test(n.href || ''));
   ok('the video hub row exists in the rail', !!video, video && video.href);
   ok('...and starts hidden, so a league with no read video never shows it', !!video && video.hidden === true);

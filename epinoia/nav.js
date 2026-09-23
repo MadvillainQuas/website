@@ -306,7 +306,10 @@
       match: /\/epinoia\/stats\/$/ },
     { href: 'stats/wowy/', ic: '◫', tx: 'wowy',       lg: true, key: 'wowy',
       match: /\/epinoia\/stats\/wowy\// },
-    { href: 'l/',          ic: '▤', tx: 'table',      lg: true, key: 'table',
+    /* the league's Table page: its standings and, a tab along, every club's statistics. The one
+       label longer than a row is wide, so it may take TWO lines (the rail and the phone bar),
+       and the no-break space keeps "Team Stats" together: it breaks after the slash or not at all. */
+    { href: 'l/',          ic: '▤', tx: 'Table / Team\xa0Stats', two: true, lg: true, key: 'table',
       match: /\/epinoia\/l\// },
     /* not a page: a layer of the rail (the clubs), see openTeams */
     { href: 'l/',          ic: '◉', tx: 'teams',      lg: true, key: 'teams', teams: true,
@@ -847,6 +850,7 @@
     if (it.lg) carriers.push([a, root + it.href]);
     a.append(el('span', 'ic', it.ic), el('span', 'tx', it.tx));
     a.title = it.tx;
+    if (it.two) a.classList.add('two-line');
     if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
     if (it.probe) { a.hidden = true; probed.push([a, it.probe]); }
     if (it.key) navKeyed.push([a, it.key]);
@@ -1322,12 +1326,14 @@
   }
   function paintTabbar() {
     tabbar.textContent = '';
+    tabbar.classList.remove('fit');
     if (!lg) { paintPlatformTabs(); return; }
     TABS.forEach(t => {
       const spec = t.href !== undefined ? t : PAGES.find(p => p.key === t.key);
       if (!spec) return;
       const a = el('a', 'tab');
       a.href = withLeague(root + (spec.href || ''));
+      if (spec.two) { a.classList.add('two-line'); tabbar.classList.add('fit'); }
       a.append(el('span', 'ic', spec.ic), el('span', 'tx', spec.tx));
       const on = t.on ? t.on() : (spec.match && spec.match.test(here));
       if (on) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
