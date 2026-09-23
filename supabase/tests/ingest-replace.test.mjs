@@ -545,6 +545,14 @@ console.log('\na play is timed by the version it first appeared in');
   ok('the memory block falls back to today\'s stamps on any exception',
      /except Exception as exc:\s*\n\s*print\(f"    ! feedstamp:/.test(src));
   ok('a refill takes the rewrite branch', /if existing and same_prefix and not refill:/.test(src));
+  /* A substitution has no pid: who came on and who went off are its payload. A corrected one at
+     the same place in the log matched every other column, was taken for a grown log, and kept
+     its stale row (LNBP f822ee66: a fouled-out player left on court, the game refused by
+     finalise and left "live"). The payload is part of the prefix test, stamps excepted. */
+  ok('a changed payload is a correction, not a grown log',
+     /same_prefix = len\(existing\) <= len\(rows\) and all\([\s\S]{0,400}?and _play\(e\.get\("payload"\)\) == _play\(r\.get\("payload"\)\)/.test(src));
+  ok('...compared without the stamps a stored row gains after it is written',
+     /def _play\(p\):\s*\n\s*return \{k: v for k, v in \(p or \{\}\)\.items\(\) if k not in \("wall", "wall_err"\)\}/.test(src));
   ok('the live lane hands the observer\'s memory to the write, and the kill switch hands none',
      /* use_obs, not observer: a source that is not on the CDN has no observer snapshot either,
         so it hands none for the same reason the kill switch does. The test lagged the rename. */

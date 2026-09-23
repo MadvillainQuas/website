@@ -1078,8 +1078,18 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     # LIVE GAMES GROW: if the existing log is a prefix of the new one, append only the tail — the
     # game page's gap check (last_seq) then pulls just the new rows, like a scorer's frames.
     existing = sb.select("game_events", f"game_id=eq.{game_id}&select=seq,t,team,pid,period,clock,payload,created_at&order=seq")
+    # THE PAYLOAD IS PART OF THE PLAY. A substitution has no pid: who came on and who went off
+    # live in its payload. So a re-translation that corrects one (a different player sent on at
+    # the same place in the log) matched the stored row on every other column, and was taken for
+    # a log that had only grown. The stale row stayed, the tail was appended, and the game kept
+    # the old lineups: LNBP f822ee66 kept a fouled-out player on court, finalise-game refused it,
+    # and it stayed "live". Payloads are compared without the stamps (wall, wall_err), which a
+    # stored row gains after it is written and a fresh translation never carries.
+    def _play(p):
+        return {k: v for k, v in (p or {}).items() if k not in ("wall", "wall_err")}
     same_prefix = len(existing) <= len(rows) and all(
         e["seq"] == r["seq"] and e["t"] == r["t"] and e.get("team") == r["team"] and e.get("pid") == r["pid"] and e["period"] == r["period"] and e["clock"] == r["clock"]
+        and _play(e.get("payload")) == _play(r.get("payload"))
         for e, r in zip(existing, rows))
     # THE ERROR BAR IS WHAT THE LOG SAYS IT IS, NOT WHAT THE SCHEDULE HOPED.
     #
