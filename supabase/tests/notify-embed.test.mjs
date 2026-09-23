@@ -221,6 +221,9 @@ function buttonBrowser(o = {}) {
     document: doc, window: win, location: { origin: o.origin || 'https://club.example' },
     localStorage: { getItem: k => (k in calls.storage ? calls.storage[k] : null), setItem: (k, v) => { calls.storage[k] = String(v); }, removeItem: k => { delete calls.storage[k]; } },
     atob, isSecureContext: true,
+    /* a fixed zone (0144): the machine running this test has its own real one, and the
+       button's p_tz must not depend on it */
+    Intl: { DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: 'Europe/London' }) }) },
     fetch: async (url, init = {}) => {
       const body = init.body ? JSON.parse(init.body) : undefined;
       calls.fetch.push({ url, method: init.method || 'GET', body });
@@ -311,7 +314,8 @@ const labelOf = b => walkText(b.main);
   ok('...subscribed with Epinoia\'s VAPID key', B.calls.subscribe.length === 1 && Buffer.from(B.calls.subscribe[0].applicationServerKey).equals(Buffer.from(CFG_VAPID, 'base64url')));
   const follow = B.calls.fetch.find(f => /notify_device_follow$/.test(f.url));
   eq('...and saved as a device following that one club', follow && follow.body,
-     { p_league: 'slb-men', p_endpoint: 'https://fcm.googleapis.com/fcm/send/site', p_p256dh: 'PKEY', p_auth: 'AKEY', p_add: { teams: [LIONS.id] }, p_remove: {}, p_prefs: {} });
+     { p_league: 'slb-men', p_endpoint: 'https://fcm.googleapis.com/fcm/send/site', p_p256dh: 'PKEY', p_auth: 'AKEY',
+       p_add: { teams: [LIONS.id] }, p_remove: {}, p_prefs: {}, p_tz: 'Europe/London' });
   eq('it says Following', labelOf(b), 'Following');
   b.main.click();
   ok('tapped again: stop and test', !b.menu.hidden);
@@ -391,6 +395,7 @@ const NW = require(path.join(ROOT, 'epinoia', 'embed', 'notify', 'page.js'));
   let following = false;
   NW._test.env({
     document: doc, atob, isSecureContext: true, PushManager: function () {},
+    Intl: { DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: 'Europe/London' }) }) },
     location: { search: '?l=slb-men&team=' + LIONS.id + '&from=https://club.example' },
     EPINOIA_CONFIG: { supabaseUrl: CFG_URL, supabaseAnonKey: CFG_KEY }, EPINOIA_VAPID: CFG_VAPID,
     opener: { postMessage: (m, origin) => calls.posted.push([m, origin]) },

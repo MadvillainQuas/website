@@ -21,8 +21,17 @@ async function api(p) {
 }
 function status(t) { $('#status').textContent = t; }
 
+/* the browser's own IANA zone (0144): a fact about this device, sent with every save so a
+   reminder reads the reader's own clock rather than always London's. Never throws — an
+   unsupported or blocked Intl just means this save carries no time_zone key, and the row
+   keeps whatever it already had. */
+function myTimeZone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (_) { return null; }
+}
+
 /* ------------------------------------------------------------------ save --- */
 function collect() {
+  const tz = myTimeZone();
   return {
     theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark',
     colour: prefs.colour,
@@ -35,7 +44,9 @@ function collect() {
     want_fixture_2d: $('#wFix2d').checked, want_fixture_2h: $('#wFix2h').checked,
     want_lineups: $('#wLineups').checked, want_player_games: $('#wPlayerGames').checked,
     /* half-time (0124) */
-    want_halftime: $('#wHalftime').checked
+    want_halftime: $('#wHalftime').checked,
+    /* the reminder clock (0144); omitted rather than sent empty when Intl has nothing to say */
+    ...(tz ? { time_zone: tz } : {})
   };
 }
 function save() {

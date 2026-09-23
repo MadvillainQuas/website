@@ -156,7 +156,10 @@ function browser(o = {}) {
     matchMedia: q => ({ matches: !!(o.displayStandalone && /standalone/.test(q)) }),
     EPINOIA_CONFIG: { supabaseUrl: 'https://' + REF + '.supabase.co', supabaseAnonKey: 'sb_publishable_test' },
     EPINOIA_VAPID: o.vapid === undefined ? CFG_VAPID : o.vapid,
-    isSecureContext: !o.insecure, document: o.referrer !== undefined ? { referrer: o.referrer } : undefined, EpinoiaAccess: undefined
+    isSecureContext: !o.insecure, document: o.referrer !== undefined ? { referrer: o.referrer } : undefined, EpinoiaAccess: undefined,
+    /* a fixed zone (0144): the machine running this test has its own real one, and
+       setNotifyPush's time_zone must not depend on it */
+    Intl: { DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: 'Europe/London' }) }) }
   };
   /* o.twaSeen: appmode.js has seen the Android app's launcher on this phone before */
   if (o.twaSeen) ls.setItem('epinoia_twa_seen', String(o.twaSeen));
@@ -293,8 +296,8 @@ console.log('\nenable(): permission, worker, subscription, the two writes');
      ['sb_publishable_test', 'Bearer ' + tok, 'application/json']);
   eq('...and the row: who, where, both keys, which browser, which kind of client (0128)', up.body,
      { user_id: 'u1', endpoint: 'https://push.example/ep1', p256dh: 'P256-ep1', auth: 'AUTH-ep1', ua: UA.android, client: 'tab' });
-  eq('then notify_push is switched on', [pref.method, pref.url, pref.body],
-     ['POST', 'https://' + REF + '.supabase.co/rest/v1/rpc/set_fan_prefs', { p: { notify_push: true } }]);
+  eq('then notify_push is switched on, with this phone\'s zone (0144)', [pref.method, pref.url, pref.body],
+     ['POST', 'https://' + REF + '.supabase.co/rest/v1/rpc/set_fan_prefs', { p: { notify_push: true, time_zone: 'Europe/London' } }]);
   eq('...with the same credentials', [pref.headers.apikey, pref.headers.Authorization], ['sb_publishable_test', 'Bearer ' + tok]);
 }
 {
@@ -1333,7 +1336,7 @@ console.log('\nthe iPhone app: notifications through Apple, via window.EpinoiaNa
        { user_id: 'u1', endpoint: 'apns:production:' + TOK, ua: UA.iphone17 + ' EpinoiaApp-iOS/1', client: 'ios' });
     eq('...upserted on endpoint', [up.method, up.url, up.headers.Prefer],
        ['POST', 'https://' + REF + '.supabase.co/rest/v1/push_subscriptions?on_conflict=endpoint', 'resolution=merge-duplicates']);
-    eq('...then notify_push on', pref.body, { p: { notify_push: true } });
+    eq('...then notify_push on, with this phone\'s zone (0144)', pref.body, { p: { notify_push: true, time_zone: 'Europe/London' } });
     eq('...no worker, no subscribe, no browser prompt', [b.calls.register.length, b.calls.subscribe.length, b.calls.perm], [0, 0, 0]);
     eq('...remembered as on', b.ls.getItem(T.IOS_ON_KEY), 'apns:production:' + TOK);
     b.nat.permission = 'granted'; b.nat.token = TOK;

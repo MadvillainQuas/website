@@ -67,6 +67,13 @@ const WORDS = Object.freeze({
 let ENV = null;
 const g = k => (ENV && Object.prototype.hasOwnProperty.call(ENV, k)) ? ENV[k] : root[k];
 
+/* this browser's own IANA zone (0144), through g() like every other global so the test
+   harness can stub it; never throws — a browser with nothing to say just sends no p_tz,
+   and notify_device_follow leaves the device's zone exactly as it was. */
+function myTimeZone() {
+  try { const I = g('Intl'); return I && I.DateTimeFormat().resolvedOptions().timeZone || null; } catch (_) { return null; }
+}
+
 /* ---------------------------------------------------------------- options --- */
 function optionsFrom(el) {
   const d = (el && el.dataset) || {};
@@ -325,7 +332,7 @@ function mount(el) {
     if (!sub) throw new Error('no subscription');
     const k = subKeys(sub);
     return rpc('notify_device_follow', { p_league: o.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
-                                         p_add: add || {}, p_remove: remove || {}, p_prefs: {} });
+                                         p_add: add || {}, p_remove: remove || {}, p_prefs: {}, p_tz: myTimeZone() });
   }
 
   /* site mode: permission here, in the tap; then the site's worker, the subscription, the follow */

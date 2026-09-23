@@ -393,10 +393,18 @@ async function deleteSubscription(endpoint, sess) {
     return r.status;
   } catch (_) { return 0; }
 }
+/* this browser's own IANA zone (0144), best effort: turning push on is the moment we know
+   for certain what phone is about to receive it, so it rides along with that call only —
+   never on a plain toggle-off, which has nothing new to say about where the reader is. */
+function myTimeZone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (_) { return null; }
+}
 async function setNotifyPush(on, sess) {
   try {
+    const tz = on ? myTimeZone() : null;
+    const p = Object.assign({ notify_push: !!on }, tz ? { time_zone: tz } : {});
     const r = await call(cfg().supabaseUrl + '/rest/v1/rpc/set_fan_prefs', {
-      method: 'POST', headers: headers(sess.token), body: JSON.stringify({ p: { notify_push: !!on } })
+      method: 'POST', headers: headers(sess.token), body: JSON.stringify({ p })
     });
     return r.status;
   } catch (_) { return 0; }

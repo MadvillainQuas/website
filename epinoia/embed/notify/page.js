@@ -40,6 +40,13 @@ let ENV = null;
 const g = k => (ENV && Object.prototype.hasOwnProperty.call(ENV, k)) ? ENV[k] : root[k];
 const cfg = () => g('EPINOIA_CONFIG') || {};
 
+/* this browser's own IANA zone (0144), through g() like every other global so the test
+   harness can stub it; never throws — a browser with nothing to say just sends no p_tz,
+   and notify_device_follow leaves the device's zone exactly as it was. */
+function myTimeZone() {
+  try { const I = g('Intl'); return I && I.DateTimeFormat().resolvedOptions().timeZone || null; } catch (_) { return null; }
+}
+
 /* ---------------------------------------------------------------- the ask --- */
 function params(search) {
   const q = new URLSearchParams(String(search || ''));
@@ -232,7 +239,7 @@ function boot() {
     st.busy = true; paint();
     try {
       st.state = await rpc('notify_device_follow', { p_league: p.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
-                                                     p_add: add, p_remove: remove, p_prefs: prefs });
+                                                     p_add: add, p_remove: remove, p_prefs: prefs, p_tz: myTimeZone() });
       report();
       say(st.state && st.state.device ? 'Saved.' : 'Notifications are off. You can close this window.', 'ok');
     } catch (_) {
@@ -252,7 +259,7 @@ function boot() {
       st.sub = await subscribe();
       const k = subKeys(st.sub);
       st.state = await rpc('notify_device_follow', { p_league: p.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
-                                                     p_add: add, p_remove: {}, p_prefs: {} });
+                                                     p_add: add, p_remove: {}, p_prefs: {}, p_tz: myTimeZone() });
       report();
       say('Notifications are on.' + (g('opener') ? ' You can close this window.' : ''), 'ok');
     }).catch(() => say('Notifications could not be turned on just now. Try again in a minute.', 'bad'))
