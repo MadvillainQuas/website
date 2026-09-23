@@ -2,7 +2,7 @@
 "code": "BLJ",
 "label": "B.LEAGUE Premier",
 "adapter": "bleague",
-"updated": "2026-09-23T02:18:15.626523+00:00",
+"updated": "2026-09-23T09:11:40.844949+00:00",
 "games": [
 {
 "id": "507158",
@@ -9344,13 +9344,13 @@
 "id": "506389",
 "home": "Alvark Tokyo",
 "away": "Ryukyu Golden Kings",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-23T05:05:00Z",
 "venue": "トヨタA",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 74,
+"awayScore": 85,
+"hash": "a39eec784232b4f81e324228ed32bb84943b8f9c",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bleague/506389.json"
 },
 {
 "id": "506381",

@@ -2,7 +2,7 @@
 "code": "BLJ2",
 "label": "B.LEAGUE One",
 "adapter": "bleague",
-"updated": "2026-09-23T02:29:49.403287+00:00",
+"updated": "2026-09-23T09:24:09.611319+00:00",
 "games": [
 {
 "id": "507892",
@@ -8816,13 +8816,13 @@
 "id": "507176",
 "home": "Tokushima Gambarous",
 "away": "Yokohama Excellence",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-23T05:05:00Z",
 "venue": "アスティ",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 93,
+"awayScore": 92,
+"hash": "313bb2c4b3958c569e90b170b134c763126cf0fb",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bleague/507176.json"
 },
 {
 "id": "507175",
