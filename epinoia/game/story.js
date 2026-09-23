@@ -298,6 +298,82 @@ function factTeamShape(g) {
   return out;
 }
 
+/* ---- where the points came from: the events tab, in facts -----------------
+   The box score counts second-chance, fast-break and off-turnover points. The events tab
+   (situations.js) says more: how many chances of each kind a side got, what it scored per
+   chance, and — against the league's own games — whether getting that many is unusual. A
+   report that says "they scored 22 on the break" has said half of it; "they got a quarter of
+   their chances on the break and scored 1.4 a time" is the other half. g.sits is [side0, side1]
+   of situations.js buckets, or null when nothing computed them, and then nothing is said. */
+const SIT_NAME = { transition: 'in transition', second: 'on second chances', offTo: 'off turnovers' };
+function sitGrade(g, scope, key, ctx) {
+  const GP = typeof globalThis !== 'undefined' && globalThis.EpinoiaGamePct;
+  if (!GP || !GP.rate) return null;
+  const r = GP.rate(scope, key, ctx, { league: (g.meta && g.meta.leagueSlug) || null });
+  return r ? (r.d ? r.g : r.p) : null;
+}
+function factSituations(g) {
+  const out = [];
+  const S = g.sits;
+  if (!S || !S[0] || !S[1] || !S[0].all || !S[1].all) return out;
+  const line = (t, k) => {
+    const s = S[t][k], all = S[t].all;
+    if (!s) return null;
+    return { pts: s.pts || 0, chances: s.chances || 0, ppp: s.ppp, efg: s.efg,
+             freq: all.chances ? 100 * s.chances / all.chances : null,
+             freqPct: sitGrade(g, 'sit', k + '.freq', { s, all }),
+             pppPct: sitGrade(g, 'sit', k + '.ppp', { s }) };
+  };
+
+  /* the opportunistic situation the two sides were furthest apart on, in points */
+  let best = null;
+  ['transition', 'second', 'offTo'].forEach(k => {
+    const a = line(0, k), b = line(1, k);
+    if (!a || !b) return;
+    const gap = a.pts - b.pts;
+    if (Math.abs(gap) < 6) return;
+    const side = gap > 0 ? 0 : 1;
+    const mine = side === 0 ? a : b, theirs = side === 0 ? b : a;
+    if (mine.chances < 4) return;
+    if (!best || Math.abs(gap) > best.gap) best = { key: k, side, gap: Math.abs(gap), mine, theirs };
+  });
+  if (best) {
+    out.push(F('sitEdge', best.side, 66 + Math.min(12, best.gap),
+      { key: best.key, where: SIT_NAME[best.key], gap: best.gap, mine: best.mine, theirs: best.theirs },
+      g.names[best.side] + ' outscored the other side ' + SIT_NAME[best.key] + ' by ' + best.gap));
+  }
+
+  /* the half court: where most of any game is played, and the honest test of an offence */
+  const h0 = line(0, 'half'), h1 = line(1, 'half');
+  if (h0 && h1 && h0.chances >= 15 && h1.chances >= 15 && h0.ppp != null && h1.ppp != null &&
+      Math.abs(h0.ppp - h1.ppp) >= 0.15) {
+    const side = h0.ppp > h1.ppp ? 0 : 1;
+    out.push(F('halfCourt', side, 60,
+      { mine: side === 0 ? h0 : h1, theirs: side === 0 ? h1 : h0 },
+      g.names[side] + ' were the better half-court offence'));
+  }
+
+  /* a side that lives in one situation, read against the league rather than the opponent */
+  for (const t of [0, 1]) {
+    ['transition', 'second'].forEach(k => {
+      const x = line(t, k);
+      if (x && x.freqPct != null && x.freqPct >= 88 && x.chances >= 8) {
+        out.push(F('sitStyle', t, 52, { key: k, where: SIT_NAME[k], freq: x.freq, pct: x.freqPct, ppp: x.ppp },
+          g.names[t] + ' got an unusual share of their chances ' + SIT_NAME[k]));
+      }
+    });
+  }
+
+  /* straight out of a timeout: the one set a coach draws up with the clock stopped */
+  for (const t of [0, 1]) {
+    const x = line(t, 'ato');
+    if (!x || x.chances < 3 || x.ppp == null) continue;
+    if (x.ppp >= 1.4) out.push(F('atoSharp', t, 48, x, g.names[t] + ' scored out of timeouts'));
+    else if (x.ppp <= 0.35 && x.chances >= 4) out.push(F('atoBlank', t, 46, x, g.names[t] + ' drew blanks out of timeouts'));
+  }
+  return out;
+}
+
 /* ---- defence: the half of the game the report never mentioned ------------
    Measured 0 of 12 games talking about a steal, a block or a defensive rating,
    which is a report describing one team's night twice rather than two teams'
@@ -762,7 +838,7 @@ function ordinal(n) {
 function facts(g) {
   return [].concat(
     factResult(g), factQuarters(g), factFlow(g), factFactors(g),
-    factLineups(g), factPlayers(g), factTeamShape(g),
+    factLineups(g), factPlayers(g), factTeamShape(g), factSituations(g),
     factDefence(g), factFouls(g), factPassing(g), factZones(g),
     factTempo(g), factSeasonContext(g),
     /* 2026-09-07: the half, the finish, the box score in words, fuller player
@@ -812,7 +888,7 @@ const SCOUT = [
   { k: 'rimr',    lab: 'how much they got to the rim', short: 'rim rate', style: true },
   { k: 'rimp',    lab: 'finishing at the rim',         short: 'rim%' },
   { k: 'astp',    lab: 'sharing the ball',             short: 'AST%' },
-  { k: 'astTo',   lab: 'passing against turning it over', short: 'AST/TO' },
+  { k: 'astTo',   lab: 'assists against turnovers',    short: 'AST/TO' },
   { k: 'stlp',    lab: 'forcing turnovers',            short: 'STL%' },
   { k: 'blkp',    lab: 'protecting the rim',           short: 'BLK%' },
   { k: 'ppp',     lab: 'scoring per possession',       short: 'PPP', mirror: true },

@@ -215,14 +215,15 @@ function pickVaried(seed, options) {
 
 /* the register is "next week", not "last week": every weakness is phrased as a
    thing to work on, and every strength as a thing to keep doing */
+/* every phrase reads after "X was ___" -- see report.js's own bank, which this mirrors */
 const PCT_BANDS = [
-  [90, ['better than nine weeks in ten', 'among the best in the league', 'as good as almost anyone plays this in the league']],
-  [75, ['better than three weeks in four', 'comfortably above the league', 'one of the stronger numbers in the league']],
-  [60, ['better than most teams in the league', 'above the league’s middle', 'on the better side of the league']],
-  [40, ['about average for this league', 'in the middle of the league', 'neither a strength nor a weakness']],
-  [25, ['worse than most teams in the league', 'below the league’s middle', 'on the weaker side of the league']],
-  [10, ['worse than three weeks in four', 'comfortably below the league', 'one of the softer numbers in the league']],
-  [-1, ['worse than nine weeks in ten', 'among the weakest in the league', 'rare to see this low in the league']]
+  [90, ['better than nine weeks in ten', 'among the best in the league', 'at the very top of the league']],
+  [75, ['better than three weeks in four', 'comfortably above the league', 'well above the league average']],
+  [60, ['better than most', 'above the league’s middle', 'on the good side of average']],
+  [40, ['about average for this league', 'in the middle of the league', 'right on the league average']],
+  [25, ['worse than most', 'below the league’s middle', 'on the wrong side of average']],
+  [10, ['worse than three weeks in four', 'comfortably below the league', 'well below the league average']],
+  [-1, ['worse than nine weeks in ten', 'among the weakest in the league', 'near the bottom of the league']]
 ];
 function pctOptions(r) {
   if (r >= 90) return PCT_BANDS[0][1];

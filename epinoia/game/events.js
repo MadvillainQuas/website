@@ -99,21 +99,31 @@ function dietHTML(z, colour) {
     '<small>' + z.rim.a + ' rim · ' + z.mid.a + ' mid · ' + z.three.a + ' three</small></span>';
 }
 
-function rowHTML(key, s, base, scale) {
+function rowHTML(key, s, base, scale, all) {
   const S0 = SIT[key], on = view.sit === key;
   const few = s.fga < 3;
   const rp = gpRate('sit', key + '.ppp', { s }), re = few ? null : gpRate('sit', key + '.efg', { s }), rt = gpRate('sit', key + '.tov', { s });
+  /* HOW OFTEN, NOT JUST HOW WELL. rp/re/rt grade what a side did with this kind of chance;
+     rf grades how often it got one at all, against every other side's own share of its chances
+     -- a side that lives in transition and one that barely gets there are two different teams
+     before either takes a shot. Only defined for the four situations gamepct.js gives a
+     direction to (not 'all', trivially always 100%, and not 'ato', a count of timeouts called
+     rather than a skill), so a null result here just means no colour, same as everywhere else. */
+  const rf = key === 'all' ? null : gpRate('sit', key + '.freq', { s, all });
   const tip = S0.name + ': ' + s.pts + ' pts on ' + s.chances + (key === 'ato' ? ' possessions' : ' chances') +
     (s.ppp != null ? ', ' + s.ppp.toFixed(2) + ' per ' + (key === 'ato' ? 'possession' : 'chance') : '') +
     ' · FG ' + s.fgm + '/' + s.fga + ' · 3PT ' + s.p3m + '/' + s.p3a + ' · FT ' + s.ftm + '/' + s.fta + ' · ' + s.tov + ' turnovers' +
-    gpTip(rp, 'points per ' + (key === 'ato' ? 'possession' : 'chance')) + gpTip(re, 'eFG%') + gpTip(rt, 'turnover rate');
+    gpTip(rp, 'points per ' + (key === 'ato' ? 'possession' : 'chance')) + gpTip(re, 'eFG%') + gpTip(rt, 'turnover rate') +
+    gpTip(rf, 'share of chances');
   return '<button type="button" class="ev-row' + (on ? ' on' : '') + (key === 'all' ? ' ref' : '') + '" data-evsit="' + key + '" aria-pressed="' + on + '" style="--s:' + sitColour(key) + '" data-tip="' + esc(tip) + '">' +
     '<span class="ev-name"><i class="ev-sw"></i><span><b>' + S0.name + '</b><small>' + S0.what + '</small></span></span>' +
     '<span class="ev-pts"><b>' + s.pts + '</b><small>' + (key === 'all' ? 'points' : pct(s.share) + ' of points') + '</small></span>' +
+    '<span class="ev-freq">' + gpOpen('b', rf) + (key === 'all' ? '100%' : pct(s.chances / (all.chances || 1))) + '</b><small>' + (key === 'ato' ? 'of possessions' : 'of chances') + '</small></span>' +
     '<span class="ev-ppp"><span class="ev-track"><i class="ev-fill" style="width:' + (s.ppp == null ? 0 : Math.min(100, 100 * s.ppp / scale)).toFixed(1) + '%"></i>' +
       (key === 'all' || base == null ? '' : '<i class="ev-tick" style="left:' + Math.min(100, 100 * base / scale).toFixed(1) + '%"></i>') + '</span>' +
       gpOpen('b', rp) + dec2(s.ppp) + '</b><small>' + s.chances + (key === 'ato' ? ' poss.' : ' chances') + '</small></span>' +
     '<span class="ev-efg' + (few ? ' few' : '') + '">' + gpOpen('b', re) + (s.efg == null ? '–' : (100 * s.efg).toFixed(0) + '%') + '</b><small>' + s.fgm + '/' + s.fga + ' FG' + (few && s.fga ? ' · few shots' : '') + '</small></span>' +
+    '<span class="ev-tov' + (s.chances < 3 ? ' few' : '') + '">' + gpOpen('b', s.chances < 3 ? null : rt) + pct(s.tovPct) + '</b><small>' + s.tov + (s.tov === 1 ? ' turnover' : ' turnovers') + '</small></span>' +
     dietHTML(s.zones, sitColour(key)) +
   '</button>';
 }
@@ -401,8 +411,8 @@ function inner(S) {
     '<section class="ev-card">' +
       '<div class="ev-head"><h3 class="ev-title">Where ' + attackers + '’ points came from</h3>' +
         '<p class="ev-key"><span><i class="tick"></i>' + dec2(all.ppp) + ' per chance overall</span><span>shots: rim · mid · three</span></p></div>' +
-      '<div class="ev-cols" aria-hidden="true"><span>situation</span><span>points</span><span>points per chance</span><span>eFG%</span><span>shot diet</span></div>' +
-      '<div class="ev-rows">' + keys.map(k => rowHTML(k, D.sits[k], all.ppp, scale)).join('') + '</div>' +
+      '<div class="ev-cols" aria-hidden="true"><span>situation</span><span>points</span><span>share of chances</span><span>points per chance</span><span>eFG%</span><span>TOV%</span><span>shot diet</span></div>' +
+      '<div class="ev-rows">' + keys.map(k => rowHTML(k, D.sits[k], all.ppp, scale, all)).join('') + '</div>' +
       '<p class="ev-note">Second chance, transition and off-turnover points are the box score’s, and a basket can be in more than one. ' +
         'After-timeout plays run from the first play after the timeout to the end of that possession. Tap a row to see its shots.</p>' +
     '</section>' +

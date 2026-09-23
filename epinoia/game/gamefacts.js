@@ -56,10 +56,19 @@ function brief(S, d, B) {
   let periods = 1;
   (S.events || []).forEach(e => { if (e.period > periods) periods = e.period; });
 
+  /* WHAT EACH KIND OF PLAY TURNED INTO: the events tab's own numbers (situations.js), per side,
+     so the report can say where the points came from and not only how many there were. Null
+     when the page has not loaded the calculator; every sentence built on it is then left out. */
+  let sits = null;
+  const Sit = root.EpinoiaSituations;
+  if (Sit && Sit.compute) {
+    try { const C = Sit.compute(S); if (C && C.side) sits = [C.side[0].sits, C.side[1].sits]; } catch (_) { sits = null; }
+  }
+
   return {
     names, score: d.score.slice(), players, byId,
     team: [d.team[0], d.team[1]], adv, lineups, stints,
-    perQ: d.perQ, periods, events: S.events || [],
+    perQ: d.perQ, periods, events: S.events || [], sits,
     /* who started, so a 20-point night off the bench can be called that */
     starters: S.starters || [[], []],
     /* where and when: the fixture's own facts, for the dateline */
@@ -68,7 +77,11 @@ function brief(S, d, B) {
       attendance: (S.details && S.details.attendance) || null,
       tipoff_at: (S.meta && S.meta.tipoff_at) || null,
       competition: (S.meta && S.meta.competitionName) || null,
-      league: (S.meta && S.meta.leagueName) || null
+      league: (S.meta && S.meta.leagueName) || null,
+      /* the percentile scales to read this game against. Without it story.js's scout fell back
+         to SLB men's for every league, so a BCB report graded BCB numbers against a higher-
+         scoring league's distribution. */
+      leagueSlug: S.leagueSlug || null
     },
     /* set by game.js once the season aggregates land; the fact engine
        simply omits its season sentences when it is absent */

@@ -59,8 +59,18 @@ function tc(str) {
       /* a roman numeral is set in capitals whatever case it arrived in: the
          scorer stores "bristol flyers ii", and that is "Flyers II", never "Ii" */
       : /^(ii|iii|iv|vi|vii|viii|ix|xi|xii)$/i.test(w) ? w.toUpperCase()
-      : w.charAt(0).toUpperCase() + w.slice(1))
+      : capParts(w.charAt(0).toUpperCase() + w.slice(1)))
     .join(' ');
+}
+/* Inside a word: "Mccormack" is McCormack, "king-danchie" is King-Danchie and "o'garro" is
+   O'Garro. Feeds send these in every case there is, and a report that prints "Mccormack"
+   has told the reader it was not written by anybody who knows the player. Mac is left alone
+   (Mack, Macey, Machado are not Mac-anything). A letter after a hyphen or an apostrophe is only
+   raised when the name part before it is short (O', D'), so "Wasn't" in a club name stays. */
+function capParts(w) {
+  let out = w.replace(/^Mc([a-z])/, (m, c) => 'Mc' + c.toUpperCase());
+  out = out.split('-').map(p => (p ? p.charAt(0).toUpperCase() + p.slice(1) : p)).join('-');
+  return out.replace(/^([A-Z])(['’])([a-z])/, (m, a, q, c) => a + q + c.toUpperCase());
 }
 const nm = (g, t) => esc(tc(g.names[t]));
 /* "Derby Trailblazers'" not "Derby Trailblazers's": a name ending in s takes
@@ -71,14 +81,20 @@ const nmPoss = (g, t) => possOf(nm(g, t));
 /* Surnames only for a lineup sentence — five full names in one clause is a
    list, not a sentence. */
 function five(g, ids) {
-  const names = (ids || []).map(id => {
+  const split = (ids || []).map(id => {
     const p = g.byId[id];
     if (!p) return null;
     const parts = String(p.name || '').split(/\s+/).filter(Boolean);
     /* "Glasgow Jr" is Glasgow; a suffix on its own names nobody */
     while (parts.length > 1 && /^(jr|sr|ii|iii|iv)\.?$/i.test(parts[parts.length - 1])) parts.pop();
-    return tc(parts[parts.length - 1] || '');
+    return { last: tc(parts[parts.length - 1] || ''), first: tc(parts.length > 1 ? parts[0] : '') };
   }).filter(Boolean);
+  /* TWO ANDERSONS ARE NOT ONE. "Anderson, Brodie, Holden, Yoakum and Anderson" was two
+     different men (Bristol Flyers, 2026-09-23 read-through), and read as a typo. A surname
+     that appears twice in the group carries its first initial. */
+  const count = {};
+  split.forEach(n => { count[n.last] = (count[n.last] || 0) + 1; });
+  const names = split.map(n => (count[n.last] > 1 && n.first ? n.first.charAt(0) + '. ' + n.last : n.last));
   if (!names.length) return 'that group';
   if (names.length === 1) return esc(names[0]);
   return esc(names.slice(0, -1).join(', ')) + ' and ' + esc(names[names.length - 1]);
@@ -109,13 +125,15 @@ function makeRef(g, fs) {
      question is only ever "was the previous sentence about this side". */
   let last = null;
   const named = [false, false];
-  /* the roles a side can be called, each once: winners/losers, and hosts/
-     visitors (side 0 is the home side throughout the platform) */
+  /* the roles a side can be called, each once: winners/losers only. Hosts and visitors used
+     to be in here too, and a report that called the same club "the winners", then "the
+     visitors", then "Bristol Flyers" three sentences running made the reader stop and work
+     out which side was home (read-through of three SLB games, 2026-09-23). Nobody reading a
+     report tracks that; everybody knows who won. */
   const roles = [[], []];
   if (winner != null) {
     roles[winner].push('the winners'); roles[1 - winner].push('the losers');
   }
-  roles[0].push('the hosts'); roles[1].push('the visitors');
   const role = t => (roles[t].length ? roles[t][0] : null);
   const spendRole = t => roles[t].shift();
 
@@ -264,7 +282,7 @@ function headline(g, fs) {
     ' to beat ' + nm(g, l);
   if (turned) return nm(g, w) + ' come from behind to beat ' + nm(g, l) + ' ' + sc;
   if (pulled && r.data.how !== 'rout') return nm(g, w) + ' pull away late from ' + nm(g, l) + ', ' + sc;
-  if (td) return esc(tc(td.data.p.name)) + ' triple-double carries ' + nm(g, w);
+  if (td) return possOf(esc(tc(td.data.p.name))) + ' triple-double carries ' + nm(g, w);
   if (r.data.how === 'rout') return nm(g, w) + ' overwhelm ' + nm(g, l) + ', ' + sc;
   if (r.data.how === 'squeaker') return nm(g, w) + ' edge ' + nm(g, l) + ' ' + sc;
   if (big && big.side === w) return esc(tc(big.data.p.name)) + '’s ' +
@@ -308,6 +326,9 @@ function standfirst(g, fs) {
     const mine = factor.side === 0 ? factor.data.a : factor.data.b;
     const theirs = factor.side === 0 ? factor.data.b : factor.data.a;
     const who = nm(g, factor.side);
+    /* the body's four-factor sentence skips this one: the same two figures a paragraph apart
+       read as the writer forgetting what it had just said */
+    SPENT.add('factor:' + factor.data.factor);
     /* THE CLUB NAME DOES NOT LEAD THIS LINE.
 
        It used to — "East Dock controlled the offensive glass, 41.2% to 25.0%"
@@ -317,7 +338,7 @@ function standfirst(g, fs) {
        inside the clause rather than in front of it, so the standfirst and the
        first body sentence no longer start the same way. */
     bits.push(
-      factor.data.factor === 'efg'  ? 'The shooting went ' + who + '\u2019s way, ' + pct1(mine) + ' eFG to ' + pct1(theirs)
+      factor.data.factor === 'efg'  ? 'The shooting went ' + possOf(who) + ' way, ' + pct1(mine) + ' eFG to ' + pct1(theirs)
     : factor.data.factor === 'tov'  ? 'Possessions decided it: ' + pct1(mine) + ' turnover rate for ' + who + ', ' + pct1(theirs) + ' against'
     : factor.data.factor === 'oreb' ? 'The offensive glass belonged to ' + who + ', ' + pct1(mine) + ' to ' + pct1(theirs)
     : 'The whistle sent ' + who + ' to the line far more often');
@@ -375,8 +396,11 @@ function joinSentences(parts, mode) {
       ? [', so ', ', which is why ', '. From there, ']
       : [', and ', '. ', '. In turn, '];
   let out = list[0];
+  /* a clause that opens with its own connective ("Even so, ...") is a sentence: welded on with
+     ", and" it read "the game never came back, and even so, they took the period" */
+  const ownLink = /^(Even so|But|Still|However|Yet|Instead|Meanwhile)\b/;
   for (let i = 1; i < list.length; i++) {
-    const link = links[(i - 1) % links.length];
+    const link = ownLink.test(list[i]) ? '. ' : links[(i - 1) % links.length];
     const next = link.startsWith('.') ? list[i] : lower(list[i], PROPER);
     out = out.replace(/\.$/, '') + link + next;
   }
@@ -543,18 +567,23 @@ function sectionFlow(g, fs, R) {
        written. A phrase that good is worse than a plain one when it is the
        only phrase available: a reader who follows a league sees it weekly and
        it stops meaning anything. */
-    mid.push(pick('run' + run.data.n + run.data.period, [
-      'The decisive spell was ' + anFor(run.data.n) + ' ' + run.data.n +
-        '\u20130 run in the ' + ordinal(run.data.period) + ', long enough to turn a ' +
-        'close game into a lead that held.',
+    /* A RUN ONLY "DECIDED IT" WHEN IT DID. These phrasings all claim the game was settled --
+       "a lead that held", "the game never really came back" -- and were being used about an
+       80-78 game with 26 lead changes, and about runs by the side that lost (read-through,
+       2026-09-23). They are kept for a run by the winner in a game that was comfortable or
+       more; anything else is told as what it was, the biggest swing, with whose it was. */
+    const held = run.data.team === r.data.winner && ['comfortable', 'convincing', 'rout'].indexOf(r.data.how) >= 0;
+    const theRun = anFor(run.data.n) + ' ' + run.data.n + '\u20130 run in the ' + ordinal(run.data.period);
+    mid.push(held ? pick('run' + run.data.n + run.data.period, [
+      'The decisive spell was ' + theRun + ', long enough to turn a close game into a lead that held.',
       'It turned on ' + anFor(run.data.n) + ' ' + run.data.n + '\u20130 burst in the ' +
         ordinal(run.data.period) + ', and the game did not come back.',
-      anFor(run.data.n).charAt(0).toUpperCase() + anFor(run.data.n).slice(1) + ' ' +
-        run.data.n + '\u20130 run in the ' + ordinal(run.data.period) +
-        ' did the damage, and the game never really came back.',
-      'The gap opened during ' + anFor(run.data.n) + ' ' + run.data.n +
-        '\u20130 run in the ' + ordinal(run.data.period) + '.'
-    ]));
+      theRun.charAt(0).toUpperCase() + theRun.slice(1) + ' did the damage, and the game never really came back.',
+      'The gap opened during ' + theRun + '.'
+    ]) : (seedOf('swing' + run.data.n + run.data.period) % 2 === 0
+      ? 'The biggest swing was ' + theRun + ' from ' + R.obj(run.data.team)
+      : 'The longest run of the game was ' + nmPoss(g, run.data.team) + ' ' + run.data.n + '\u20130 in the ' + ordinal(run.data.period)
+    ) + (run.data.team === r.data.winner ? '.' : ', and it still was not enough.'));
   }
   if (q && sameSpell) {
     /* One event, one sentence: the run is the detail, the quarter score is the
@@ -583,7 +612,11 @@ function sectionFlow(g, fs, R) {
      games. The sweep is the harder fact, so it wins and the other is dropped. */
   if (sw) mid.push(R.subj(sw.side) + ' were in front at every break.');
   const early = fs.find(f => f.kind === 'earlyLead');
-  if (early && !sw && !(run && run.data.period === 1)) {
+  /* An early lead is worth a sentence when it did not last (the game turned) or when nothing
+     else has been said about how it went. After "they won the third 23–6", "They were 10–2 up
+     early" walks the reader back to the first minutes for no reason. */
+  if (early && !sw && !(run && run.data.period === 1) &&
+      (early.side !== r.data.winner || (!q && !run))) {
     mid.push(R.subj(early.side, { allowRole: true }) + ' were ' + early.data.score[early.side] + '\u2013' + early.data.score[1 - early.side] + ' up early' +
       (early.side !== r.data.winner ? ', and it did not last.' : '.'));
   }
@@ -645,11 +678,15 @@ function sectionFlow(g, fs, R) {
     endBits.push(R.subj(lastPts.side) + ' scored the last ' + spell(lastPts.data.n) + ' points of the game.');
   }
   if (iced) {
-    endBits.push(R.subj(iced.side) + ' went ' + spell(iced.data.made) + ' of ' + spell(iced.data.att) + ' from the line in the last two minutes to see it out.');
+    /* straight after a finish sentence that has just named the same winner, "they" */
+    const sameAsFinish = endBits.length && fin && closing && iced.side === fin.data.winner;
+    endBits.push((sameAsFinish ? 'They' : R.subj(iced.side)) + ' went ' + spell(iced.data.made) + ' of ' + spell(iced.data.att) + ' from the line in the last two minutes to see it out.');
   } else if (cost) {
     endBits.push(R.subj(cost.side) + ' missed ' + spell(cost.data.att - cost.data.made) + ' of ' + spell(cost.data.att) + ' free throws in the last two minutes, in a game they lost by ' + cost.data.margin + '.');
   }
-  if (endBits.length) out.push(joinSentences(endBits, 'plain'));
+  /* a finish sentence that already has its own ", and" stays a sentence: welding the next one
+     on gave "..., and the last five went 16-13 to Bristol Flyers, and Bristol Flyers went..." */
+  if (endBits.length) out.push(endBits.some(b => b.indexOf(', and ') >= 0) ? endBits.join(' ') : joinSentences(endBits, 'plain'));
 
   /* tempo and season context close the section, because they are the frame
      rather than the events */
@@ -674,9 +711,94 @@ function sectionFlow(g, fs, R) {
   return out;
 }
 
+/* ---------------------------------------------------------------------------
+   WHERE THE POINTS CAME FROM — the events tab, in words.
+
+   The box line already says "scored 18 on the break". What it cannot say is how many chances
+   that took, whether getting that many is unusual for this league, or how the two sides did
+   in the half court, where most of any game is played. story.js's situation facts carry all
+   of that; this turns them into one paragraph. `tense` is 'past' for the match report and
+   'present' for the half-time report, which asks the same questions of a game still going.
+
+   A share of chances is only mentioned when it is unusual against the league (the 75th
+   percentile and up, the 25th and down): "12% of their chances came that way" is noise unless
+   it is a lot or a little, and a reader cannot tell which without being told.
+   --------------------------------------------------------------------------- */
+const ppc = v => (v == null ? '–' : (+v).toFixed(2));
+function freqWords(p) {
+  if (p == null) return '';
+  if (p >= 90) return 'a share few sides in this league ever reach';
+  if (p >= 75) return 'more than most sides manage';
+  if (p <= 10) return 'as few as any side in this league gets';
+  if (p <= 25) return 'fewer than most sides get';
+  return '';
+}
+/* which box-line facts the situations paragraph makes redundant: it gives the same points
+   plus the chances behind them, so the plain count is dropped rather than said twice */
+function sitCovers(fs) {
+  const e = fs.find(f => f.kind === 'sitEdge');
+  return e ? e.data.key : null;
+}
+function sitSentences(g, fs, R, tense) {
+  const now = tense === 'present';
+  const bits = [];
+  const edge = fs.find(f => f.kind === 'sitEdge');
+  if (edge) {
+    const m = edge.data.mine, o = edge.data.theirs, k = edge.data.key, where = edge.data.where;
+    /* The two figures that belong together stay together: THEIR points, THEIR chances and
+       what that came to a time; then the other side's points, named, so "to 17" is never left
+       for the reader to attach. Only the chosen phrasing is built, because building both would
+       spend the referrer twice. */
+    const other = nmPoss(g, 1 - edge.side);
+    const rate = m.ppp != null ? ', ' + ppc(m.ppp) + ' a time' : '';
+    const Where = where.charAt(0).toUpperCase() + where.slice(1);
+    let s;
+    if (seedOf('sit' + k + edge.side + tense) % 2 === 0) {
+      s = R.subj(edge.side) + (now ? ' have the edge ' : ' had the edge ') + where + ': ' + m.pts + ' points from ' +
+        plural(m.chances, 'chance') + rate + ', against ' + other + ' ' + o.pts;
+    } else {
+      R.subj(edge.side, { noPronoun: true });                          // named below, not pronominalised
+      s = Where + (now ? ' it is ' : ' it was ') + m.pts + '–' + o.pts + ' to ' + nm(g, edge.side) +
+        (now ? ' so far' : '') + ', from ' + plural(m.chances, 'chance') + rate;
+    }
+    const fw = m.freqPct != null && m.freqPct >= 75 ? freqWords(m.freqPct) : '';
+    if (fw && m.freq != null) s += '. They ' + (now ? 'are getting ' : 'got ') + Math.round(m.freq) + '% of their chances that way, ' + fw;
+    bits.push(s + '.');
+  }
+  const hc = fs.find(f => f.kind === 'halfCourt');
+  if (hc) {
+    const m = hc.data.mine, o = hc.data.theirs;
+    const who = R.subj(hc.side, { allowRole: !now, noPronoun: !!edge && edge.side !== hc.side });
+    bits.push(pick('hc' + hc.side + tense, now ? [
+      'In the half court ' + midCase(who) + ' are getting ' + ppc(m.ppp) + ' points a chance to ' + ppc(o.ppp),
+      who + ' have been the better set offence, ' + ppc(m.ppp) + ' a chance in the half court against ' + ppc(o.ppp)
+    ] : [
+      'In the half court, where most of any game is played, ' + midCase(who) + ' scored ' + ppc(m.ppp) + ' points a chance to ' + ppc(o.ppp),
+      who + ' were the better set offence — ' + ppc(m.ppp) + ' points a chance in the half court against ' + ppc(o.ppp)
+    ]) + '.');
+  }
+  fs.filter(f => f.kind === 'sitStyle' && !(edge && edge.side === f.side && edge.data.key === f.data.key)).slice(0, 1).forEach(f => {
+    const fw = freqWords(f.data.pct);
+    if (!fw) return;
+    const who = R.subj(f.side);
+    bits.push(who + (now ? ' are living ' : ' lived ') + f.data.where + ': ' + Math.round(f.data.freq) + '% of their chances ' +
+      (now ? 'have come' : 'came') + ' that way, ' + fw + '.');
+  });
+  const ato = fs.find(f => f.kind === 'atoSharp') || fs.find(f => f.kind === 'atoBlank');
+  if (ato) {
+    const x = ato.data, who = R.subj(ato.side);
+    const tally = spell(x.pts) + (x.pts === 1 ? ' point' : ' points') + ' from ' + spell(x.chances) + ' possessions';
+    bits.push(ato.kind === 'atoSharp'
+      ? 'Out of timeouts ' + midCase(who) + (now ? ' have been' : ' were') + ' sharp: ' + tally + '.'
+      : who + (now ? ' are getting' : ' got') + ' nothing out of their timeouts, ' + tally + '.');
+  }
+  return bits;
+}
+
 function sectionNumbers(g, fs, R) {
   const out = [];
   R.neutral();                     // a new section: name the club again before any "they"
+  const covered = sitCovers(fs);
 
   /* THE BOX SCORE, SAID. Field-goal percentage, the three-point line, the free
      throws, the boards and the break, each only when it says something, and
@@ -685,7 +807,7 @@ function sectionNumbers(g, fs, R) {
   const hot = fs.find(f => f.kind === 'hotThree'), cold = fs.find(f => f.kind === 'coldThree');
   const poorL = fs.find(f => f.kind === 'poorLine');
   const boards = fs.find(f => f.kind === 'boards');
-  const fb = fs.find(f => f.kind === 'fastBreak');
+  const fb = covered === 'transition' ? null : fs.find(f => f.kind === 'fastBreak');
   const careless = fs.find(f => f.kind === 'careless');
   const drought = fs.filter(f => f.kind === 'drought').sort((a, b) => b.data.dur - a.data.dur)[0];
   const box = [];
@@ -712,7 +834,11 @@ function sectionNumbers(g, fs, R) {
     out.push(R.subj(drought.side) + ' went ' + mins(drought.data.dur) + ' without a field goal in the ' + ordinal(drought.data.period) + '.');
   }
 
-  const factors = fs.filter(f => f.kind === 'factor').slice(0, 3);
+  /* not a second shooting claim for the side the field-goal line has just credited: "The
+     winners shot 47% to 37%" followed by "They shot it better, 54.2% eFG" is one fact twice */
+  const saidFloor = floor && Math.abs(floor.data.a - floor.data.b) >= 5 ? floor.side : null;
+  const factors = fs.filter(f => f.kind === 'factor' && !SPENT.has('factor:' + f.data.factor) &&
+    !(f.data.factor === 'efg' && f.side === saidFloor)).slice(0, 3);
   if (factors.length) {
     /* EACH FACTOR IS A DIFFERENT SENTENCE, because each is a different thing.
        "The winners won this at shooting, 55.7% against 49.3%" is not something
@@ -729,8 +855,7 @@ function sectionNumbers(g, fs, R) {
     let sentence;
     if (lead.data.factor === 'efg') {
       sentence = pick(sd, [
-        who + ' shot it better, ' + pct1(mine) + ' effective field goal ' +
-          'against ' + pct1(theirs),
+        who + ' shot it better, ' + pct1(mine) + ' eFG against ' + pct1(theirs),
         who + ' were the sharper side from the floor \u2014 ' + pct1(mine) +
           ' eFG to ' + pct1(theirs),
         'The shooting decided it: ' + midCase(who) + ' at ' + pct1(mine) + ' eFG, their ' +
@@ -769,9 +894,13 @@ function sectionNumbers(g, fs, R) {
 
     const also = factors.slice(1).filter(f => f.side === lead.side)
       .map(f => f.data.label);
-    if (also.length === 1) sentence += ', and had the better of ' + also[0] + ' too';
-    else if (also.length > 1) sentence += ', with ' + also.slice(0, -1).join(', ') +
-      ' and ' + also[also.length - 1] + ' going the same way';
+    /* After a dash the tail cannot hang off the sentence: "kept possessions alive — 29.5% of
+       their misses came back to them, against 11.6%, and had the better of shooting too" has
+       lost its subject by the time it gets there. A sentence with a dash in it gets its own. */
+    const dashed = sentence.indexOf('—') >= 0;
+    if (also.length === 1) sentence += dashed ? '. They had the better of ' + also[0] + ' too' : ', and had the better of ' + also[0] + ' too';
+    else if (also.length > 1) sentence += (dashed ? '. ' + listOf(also).replace(/^./, c => c.toUpperCase()) + ' went their way as well'
+      : ', with ' + also.slice(0, -1).join(', ') + ' and ' + also[also.length - 1] + ' going the same way');
     out.push(sentence + '.');
   }
 
@@ -796,7 +925,15 @@ function sectionNumbers(g, fs, R) {
     shapeBits.push(R.subj(share.side, { allowRole: true }) + ' moved it well, assisting on ' +
       pct1(share.data.astp) + ' of their field goals');
   }
-  if (shapeBits.length) out.push(joinSentences(shapeBits, 'plain') + '.');
+  /* a clause with a dash in it has already used its "and"s; the next one is its own sentence */
+  if (shapeBits.length) {
+    out.push((shapeBits.some(b => b.indexOf('—') >= 0) ? shapeBits.join('. ') : joinSentences(shapeBits, 'plain')) + '.');
+  }
+
+  /* where the points came from, as one paragraph */
+  R.neutral();
+  const sitBits = sitSentences(g, fs, R, 'past');
+  if (sitBits.length) out.push(sitBits.join(' '));
 
   /* the defensive half, which the report used never to mention */
   const dr = fs.find(f => f.kind === 'defRating');
@@ -818,16 +955,17 @@ function sectionNumbers(g, fs, R) {
       plural(disrupt.data.stl, 'steal') + ' and ' +
       plural(disrupt.data.blk, 'block'));
   }
-  /* "so" only joins two claims about the SAME side. The first version welded
-     one club's defensive rating to the other club's steals with "so", which
-     read as one causing the other. */
-  const defSides = [dr, forced, (disrupt && !forced) ? disrupt : null].filter(Boolean).map(f => f.side);
-  const oneSide = defSides.every(x => x === defSides[0]);
-  if (defBits.length) out.push(joinSentences(defBits, oneSide ? 'cause' : 'plain') + '.');
+  /* Never "so". It once welded one club's rating to the other's steals, which read as one
+     causing the other; and even about one side, "giving up 92 per 100, so they forced the
+     ball loose" runs the causation backwards -- the forced turnovers are part of WHY the
+     rating was low. */
+  if (defBits.length) out.push(joinSentences(defBits, 'plain') + '.');
 
   /* the team-shape numbers */
   let shape = fs.filter(f =>
-    ['bench', 'pointsOffTurnovers', 'paint', 'secondChance'].indexOf(f.kind) >= 0);
+    ['bench', 'pointsOffTurnovers', 'paint', 'secondChance'].indexOf(f.kind) >= 0)
+    .filter(f => !(covered === 'second' && f.kind === 'secondChance') &&
+                 !(covered === 'offTo' && f.kind === 'pointsOffTurnovers'));
   const scBoth = shape.filter(f => f.kind === 'secondChance');
   if (scBoth.length === 2) {
     shape = shape.filter(f => f.kind !== 'secondChance');
@@ -858,7 +996,7 @@ function sectionNumbers(g, fs, R) {
   /* the whistle, when it fell one way */
   const w = fs.find(f => f.kind === 'whistle');
   if (w) {
-    out.push('The whistle fell one way: ' + R.subj(w.side, { allowRole: true }) +
+    out.push('The whistle fell one way: ' + midCase(R.subj(w.side, { allowRole: true, noPronoun: true })) +
       ' were called for ' + w.data.mine + ' fouls to ' + w.data.theirs + '.');
   }
   return out;
@@ -884,9 +1022,14 @@ function sectionLineups(g, fs, R) {
      ranked highest. */
   const told = new Set();
   const key = f => (f.data.ids || []).slice().sort().join(',') + '@' + f.data.dur;
+  /* the same five over a different span: the deciding spell is one unbroken stint, the best
+     group is every minute they shared. Named once; the second mention is only the new number. */
+  const toldFive = new Set();
+  const fiveKey = f => (f.data.ids || []).slice().sort().join(',');
 
   if (stretch) {
     told.add(key(stretch));
+    toldFive.add(fiveKey(stretch));
     const owner = stretch.data.owner, gained = owner === stretch.side;
     /* WHEN THE STANDFIRST HAS ALREADY SPENT THIS, say the part it could not.
 
@@ -918,6 +1061,14 @@ function sectionLineups(g, fs, R) {
        plus-minus and the minutes are counts: they mean exactly what they say
        at any sample size, and they are what a match report should carry. */
     const rate = '';
+    if (toldFive.has(fiveKey(f))) {
+      /* the club is named: another side's group can sit between the two mentions, and "that
+         five" then points at the wrong team */
+      out.push('Across every minute they shared, ' + nmPoss(g, f.side) + ' five from that swing were ' +
+        (f.data.pm >= 0 ? '+' : '') + f.data.pm + ' in ' + mins(f.data.dur) + '.');
+      return;
+    }
+    toldFive.add(fiveKey(f));
     /* sentence-initial: "their strongest group" needs its capital, and the
        referrer returns the mid-sentence form */
     const ps = R.poss(f.side);
@@ -929,7 +1080,7 @@ function sectionLineups(g, fs, R) {
     out.push(pick('worst' + worst.data.pm + worst.data.dur, [
       'At the other end of it, ', 'At the other end, ',
       'The reverse was true at the other end: '
-    ]) + R.subj(worst.side) + ' lost ' +
+    ]) + midCase(R.subj(worst.side)) + ' lost ' +
       Math.abs(worst.data.pm) + ' points in ' + mins(worst.data.dur) + ' with ' +
       five(g, worst.data.ids) + ' out there \u2014 the combination that cost ' +
       'them most.');
@@ -1039,32 +1190,44 @@ function sectionPlayers(g, fs, R) {
      rebounds and four assists" is what a report says about the man of the
      match. The other side's leader follows in his own sentence, so neither
      line is squeezed to make room for the other. */
+  /* A TRIPLE-DOUBLE IS SAID, not left for the reader to add up. The headline could lead with
+     "Cameron Holden's triple-double carries Bristol Flyers" while the body only said "Cameron
+     Holden had ten assists" (read-through, 2026-09-23). A leader's is marked on his line; anybody
+     else's gets a sentence of its own ahead of the other deeds. */
+  const tdF = byKind('tripleDouble')[0];
+  const tdP = tdF && tdF.data.p;
+  const tdMark = p => (tdP && p.id === tdP.id ? ', a triple-double' : '');
   const tailA = leaders[0] ? lineTail(leaders[0]) : '';
   if (leaders.length === 2) {
     const [a, b] = leaders;
     const tailB = lineTail(b, { rebMin: 7, astMin: 5 });
     const first = pickVaried('lead' + a.id + b.id, [
-      nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ' points' + tailA + '.',
-      nameOf(a) + ' top-scored for ' + club(a.team) + ' with ' + a.pts + tailA + '.',
-      club(a.team) + ' had ' + a.pts + ' points' + tailA + ' from ' + nameOf(a) + '.'
+      nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ' points' + tailA + tdMark(a) + '.',
+      nameOf(a) + ' top-scored for ' + club(a.team) + ' with ' + a.pts + tailA + tdMark(a) + '.',
+      club(a.team) + ' had ' + a.pts + ' points' + tailA + ' from ' + nameOf(a) + tdMark(a) + '.'
     ]);
     const second = pickVaried('lead2' + b.id, [
-      nameOf(b) + ' answered with ' + b.pts + tailB + ' for ' + club(b.team) + '.',
-      'For ' + club(b.team) + ', ' + nameOf(b) + ' had ' + b.pts + tailB + '.',
-      nameOf(b) + ' finished with ' + b.pts + tailB + ' for ' + club(b.team) + '.'
+      nameOf(b) + ' answered with ' + b.pts + tailB + tdMark(b) + ' for ' + club(b.team) + '.',
+      'For ' + club(b.team) + ', ' + nameOf(b) + ' had ' + b.pts + tailB + tdMark(b) + '.',
+      nameOf(b) + ' finished with ' + b.pts + tailB + tdMark(b) + ' for ' + club(b.team) + '.'
     ]);
     out.push(first + ' ' + second);
   } else if (leaders.length === 1) {
     const a = leaders[0];
     out.push(nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ' points' + tailA +
-      (aboveAverage(a) ? ', a season high.' : '.'));
+      (aboveAverage(a) ? ', a season high' : '') + tdMark(a) + '.');
+  }
+  if (tdP && !leaders.some(p => p.id === tdP.id)) {
+    const cats = [[tdP.pts || 0, 'points'], [(tdP.or || 0) + (tdP.dr || 0), 'rebounds'], [tdP.ast || 0, 'assists'],
+                  [tdP.stl || 0, 'steals'], [tdP.blk || 0, 'blocks']].filter(c => c[0] >= 10).map(c => c[0] + ' ' + c[1]);
+    out.push(nameOf(tdP) + ' had a triple-double for ' + club(tdP.team) + ': ' + listOf(cats) + '.');
   }
 
   /* off the bench, a personal spree, the boards, the line: the deeds a box
      score buries and a person watching would have noticed. A man already
      given his line above is not re-introduced here with the same total. */
   const deeds = [];
-  const deedSeen = new Set(leaders.map(p => p.id));
+  const deedSeen = new Set(leaders.map(p => p.id).concat(tdP ? [tdP.id] : []));
   byKind('benchSpark').slice(0, 2).forEach(f => {
     const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
     deeds.push({ side: p.team, txt: nameOf(p) + ' came off the bench for ' + p.pts + lineTail(p, { rebMin: 7, astMin: 5 }) });
@@ -1116,7 +1279,7 @@ function sectionPlayers(g, fs, R) {
      listed twice in the same sentence — "Beck Sandoval had seven assists and
      Beck Sandoval hit five from three". */
   const specialSeen = new Set();
-  const inLine = new Set(leaders.map(p => p.id));          // their assists/steals were said with their points
+  const inLine = new Set(leaders.map(p => p.id).concat(tdP ? [tdP.id] : []));   // their assists/steals were said with their points
   byKind('creator').slice(0, 2).forEach(f => {
     const p = f.data.p;
     if (specialSeen.has(p.id) || inLine.has(p.id)) return;
@@ -1188,10 +1351,14 @@ function sectionPlayers(g, fs, R) {
        naturally here than trailing "for X" onto a list of shooting lines */
     const clauses = sides(rough.slice(0, 4)).map(grp =>
       possOf(club(grp.t)) + ' ' + list(grp.items.map(x => x.txt)));
+    /* Two clubs are two clauses, joined as English joins them. The generic joiner fell back to
+       a semicolon when a clause had its own "and", which left the second club as a fragment:
+       "...Kareem Queeley and Owen Koonce; Bristol Flyers' Joseph Anderson." */
+    const two = clauses.length === 2;
     out.push(pickVaried('rough' + rough.length, [
-      'It was a long night for ' + joinClauses(clauses) + '.',
-      'Little went right for ' + joinClauses(clauses) + '.',
-      joinClauses(clauses) + ' never got going.'
+      'It was a long night for ' + clauses[0] + (two ? ', and for ' + clauses[1] : '') + '.',
+      'Little went right for ' + clauses[0] + (two ? ', or for ' + clauses[1] : '') + '.',
+      clauses[0] + ' never got going' + (two ? ', and neither did ' + clauses[1] : '') + '.'
     ]));
   }
 
@@ -1208,9 +1375,11 @@ function sectionPlayers(g, fs, R) {
        Harbour Bay Cline and Bankole." */
     const grps = sides(dq);
     if (grps.length === 2) {
+      /* not the gapped "..., Bristol Flyers Darnell Brodie": with a club name that ends in a
+         plural it reads as one name, not as a club and the player it lost */
       out.push(club(grps[0].t) + ' lost ' + list(grps[0].items.map(x => x.txt)) +
-        ' to fouls, ' + club(grps[1].t) + ' ' +
-        list(grps[1].items.map(x => x.txt)) + '.');
+        ' to fouls, and ' + club(grps[1].t) + ' lost ' +
+        list(grps[1].items.map(x => x.txt)) + ' the same way.');
     } else {
       out.push(club(grps[0].t) + ' lost ' + list(grps[0].items.map(x => x.txt)) +
         ' to fouls.');
@@ -1259,25 +1428,42 @@ function capitalise(text) {
    line that told a coach to shoot fewer of them because the percentile was low
    would be inventing an instruction out of a preference. story.js marks those,
    and they are described in the ledger card without ever appearing here. */
-function sectionScout(g, fs, R) {
+function sectionScout(g, fs, R, opts) {
   const st = S();
   if (!st.scout) return [];
+  /* HALF A GAME IS NOT A RESULT. At the interval nobody has "won this on" anything and there
+     is no week to take a lesson into -- there is a second half, and a dressing room. `half`
+     keeps every judgement (the same percentiles, the same gaps) and changes only the tense
+     and the framing: who has had the better of it, and what needs fixing at the break. */
+  const half = !!(opts && opts.half);
   const sc = st.scout(g);
   const out = [];
   R.neutral();
   lastPick = null;             // this section's phrasing must not inherit the last section's
   const W = sc.winner, L = 1 - W;
   const nm = t => tc(g.names[t]);
+  const tied = g.score[0] === g.score[1];
 
   if (sc.decided.length) {
     const top = sc.decided[0];
     if (sc.graded) {
-      out.push(nm(top.winner) + ' won this on ' + top.label + ' before anything else: ' +
-        pctPhrase(top.pcts[top.winner], g.names[top.winner] + top.key + 'a') + ' where ' + nm(1 - top.winner) + ' were ' +
-        pctPhrase(top.pcts[1 - top.winner], g.names[1 - top.winner] + top.key + 'b') + '.');
+      /* THE SIDE AHEAD ON A MEASURE IS NOT ALWAYS THE SIDE THAT WON. top.winner is whoever was
+         better on the widest gap; "Bristol Flyers won this on protecting the rim" was printed
+         about a game Bristol Flyers LOST 72-60 (read-through, 2026-09-23). When the two differ
+         the sentence says the gap went the loser's way and was not enough. */
+      const gw = top.winner, gl = 1 - gw;
+      const pw = pctPhrase(top.pcts[gw], g.names[gw] + top.key + 'a');
+      const pl = pctPhrase(top.pcts[gl], g.names[gl] + top.key + 'b');
+      const tail = (half ? 'they have been ' : 'they were ') + pw + ' there, ' + nm(gl) + ' ' + pl;
+      out.push(gw === W
+        ? nm(gw) + (half ? ' have had the better of ' + top.label + ' more than anything: '
+                         : ' won this on ' + top.label + ' before anything else: ') + tail + '.'
+        : (half ? 'The widest gap so far is ' + top.label + ', and it favours ' + nm(gw) + (tied ? ': ' : ', who trail: ')
+                : 'The widest gap between them was ' + top.label + ', and it went ' + nmPoss(g, gw) + ' way — ') +
+          tail + (half ? '.' : ' — but it was not enough.'));
       const rest = sc.decided.slice(1, 3);
       if (rest.length) {
-        out.push('The other gaps worth the film room: ' +
+        out.push((half ? 'The other gaps to watch after the break: ' : 'The other gaps worth the film room: ') +
           rest.map(x => x.label + ' (' + nm(x.winner) + ', ' +
             Math.round(x.gap) + ' percentile points clear)').join(' and ') + '.');
       }
@@ -1288,44 +1474,62 @@ function sectionScout(g, fs, R) {
       const mine = sc.decided.filter(x => sideAhead(sc, x, W)).slice(0, 3);
       const theirs = sc.decided.filter(x => sideAhead(sc, x, L)).slice(0, 2);
       if (mine.length) {
-        out.push(nm(W) + ' came out ahead on ' + listOf(mine.map(x => x.label)) +
+        out.push(nm(W) + (half ? ' are ahead on ' : ' came out ahead on ') + listOf(mine.map(x => x.label)) +
           ', and with no league scales built for this competition yet those are the two sides ' +
           'against each other rather than against anybody else.');
       }
       if (theirs.length) {
-        out.push(nm(L) + ' had the better of ' + listOf(theirs.map(x => x.label)) +
-          ' — the part of their game that did not cost them.');
+        out.push(nm(L) + (half ? ' have had the better of ' : ' had the better of ') + listOf(theirs.map(x => x.label)) +
+          (half ? ' — something to build on after the break.' : ' — the part of their game that did not cost them.'));
       }
     }
   }
 
-  /* each side in turn, the winner first, because a coach reads their own column */
+  /* EACH SIDE IN TURN, the leader first, because a coach reads their own column.
+
+     The percentile is attached to the measure it describes ("the defensive glass, where they
+     were better than nine games in ten") rather than trailed after a list ("... — better than
+     nine games in ten on the first of those"), which made the reader count back. And the
+     losing side's worst measure is left to the closing line, which is about exactly that: it
+     used to be named, graded, and then named and graded again one sentence later. */
+  const were = half ? 'have been ' : 'were ';
   [W, L].forEach(t => {
     const side = sc.sides[t];
     if (!side || !side.graded) return;
     const bits = [];
     if (side.good.length) {
-      bits.push(nm(t) + ' did their best work on ' + listOf(side.good.map(r => r.label)) +
-        ' — ' + pctPhrase(side.good[0].pct, g.names[t] + side.good[0].key + 'good') + ' on the first of those.');
+      const g0 = side.good[0], rest = side.good.slice(1).map(r => r.label);
+      bits.push(nm(t) + (half ? ' are doing their best work on ' : ' did their best work on ') + g0.label +
+        ', where they ' + were + pctPhrase(g0.pct, g.names[t] + g0.key + 'good') +
+        (rest.length ? ', with ' + listOf(rest) + ' not far behind' : '') + '.');
     }
-    if (side.bad.length) {
+    const closer = t === L;                          // its first weakness is the closing line's
+    const bad = closer ? side.bad.slice(1) : side.bad;
+    if (bad.length) {
       /* a side that won by twenty did not have anything "cost them", and saying so in a
          report they will read on the Monday is the quickest way to lose a coach */
-      const lead = t === W;
-      bits.push((lead ? 'The parts of it they will still want back: '
-                      : (bits.length ? 'What cost them was ' : nm(t) + ' were let down by ')) +
-        listOf(side.bad.map(r => r.label)) + ', ' +
-        pctPhrase(side.bad[0].pct, g.names[t] + side.bad[0].key + 'bad') + ' on ' + side.bad[0].label + '.');
+      if (!closer) {
+        const b0 = bad[0], rest = bad.slice(1).map(r => r.label);
+        bits.push((half ? 'What they will want to tighten starts with ' : 'What they will still want back starts with ') +
+          b0.label + ', where they ' + were + pctPhrase(b0.pct, g.names[t] + b0.key + 'bad') +
+          (rest.length ? '; ' + listOf(rest) + (half ? ' are lagging too' : ' lagged too') : '') + '.');
+      } else {
+        bits.push((bits.length ? 'They ' : nm(t) + ' ') + (half ? 'are also struggling with ' : 'also struggled with ') +
+          listOf(bad.map(r => r.label)) + '.');
+      }
     }
     if (bits.length) out.push(bits.join(' '));
   });
 
-  /* and the one thing to take into the week */
+  /* and the one thing to take into the week -- or into the dressing room */
   const lose = sc.sides[L];
   if (lose && lose.bad.length) {
-    out.push('If there is one thing to take into the week, it is ' + lose.bad[0].label +
-      ': ' + nm(L) + ' were ' + pctPhrase(lose.bad[0].pct, g.names[L] + lose.bad[0].key + 'take') +
-      ' there, and no other part of their game was further behind the league.');
+    const b0 = lose.bad[0], ph = pctPhrase(b0.pct, g.names[L] + b0.key + 'take');
+    out.push(half
+      ? 'The one thing to fix at the break is ' + b0.label + ': ' + nm(L) + ' have been ' + ph +
+          ' there, further behind the league than anything else in their game.'
+      : 'If there is one thing to take into the week, it is ' + b0.label + ': ' + nm(L) + ' were ' + ph +
+          ' there, further behind the league than anything else in their game.');
   }
   return out;
 }
@@ -1351,14 +1555,19 @@ function sideAhead(sc, dec, t) {
    exact words, whatever their two numbers happen to be. The seed is passed in by the caller,
    not derived from the number: two teams sitting in the same band should not therefore say the
    same thing, but the SAME team's SAME stat read twice in one report should. */
+/* EVERY PHRASE HAS TO READ AFTER A TEAM AND AFTER "WHERE THEY WERE". The bank is used both
+   ways ("London Lions were ___", "the defensive glass, where they were ___"), and three of the
+   old entries only worked after a statistic: "London Lions were rare to see this low in the
+   league", "as good as almost anyone plays this in the league" and "neither a strength nor a
+   weakness" all failed the first frame (read-through of three SLB games, 2026-09-23). */
 const PCT_BANDS = [
-  [90, ['better than nine games in ten', 'among the best in the league', 'as good as almost anyone plays this in the league']],
-  [75, ['better than three games in four', 'comfortably above the league', 'one of the stronger numbers in the league']],
-  [60, ['better than most teams in the league', 'above the league’s middle', 'on the better side of the league']],
-  [40, ['about league average', 'in the middle of the league', 'neither a strength nor a weakness']],
-  [25, ['worse than most teams in the league', 'below the league’s middle', 'on the weaker side of the league']],
-  [10, ['worse than three games in four', 'comfortably below the league', 'one of the softer numbers in the league']],
-  [-1, ['worse than nine games in ten', 'among the weakest in the league', 'rare to see this low in the league']]
+  [90, ['better than nine games in ten', 'among the best in the league', 'at the very top of the league']],
+  [75, ['better than three games in four', 'comfortably above the league', 'well above the league average']],
+  [60, ['better than most', 'above the league’s middle', 'on the good side of average']],
+  [40, ['about league average', 'in the middle of the league', 'right on the league average']],
+  [25, ['worse than most', 'below the league’s middle', 'on the wrong side of average']],
+  [10, ['worse than three games in four', 'comfortably below the league', 'well below the league average']],
+  [-1, ['worse than nine games in ten', 'among the weakest in the league', 'near the bottom of the league']]
 ];
 function pctOptions(r) {
   if (r >= 90) return PCT_BANDS[0][1];
@@ -1383,6 +1592,152 @@ function listOf(xs) {
   const a = xs.slice(0, 3);
   if (a.length <= 1) return a[0] || '';
   return a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+}
+
+/* ===========================================================================
+   THE HALF-TIME REPORT — the same questions, asked of a game still going.
+
+   The caller passes a brief built from the FIRST HALF ONLY (game.js slices the log at the end
+   of the second quarter and replays it), so every fact story.js finds is a first-half fact and
+   nothing here has to filter. What changes is the register: nobody has won, so nothing is
+   "decided"; the lead is a lead, the tense is present, and the last word is what to fix at the
+   break rather than what to take into the week. makeRef still knows a "winner" (the side ahead)
+   but nothing here asks it for a role, so no one is called "the winners" at 20 minutes.
+   =========================================================================== */
+function halftime(g) {
+  const st = S();
+  const fs = st.facts(g);
+  const R = makeRef(g, fs);
+  PROPER = new Set(g.names.map(n => tc(String(n)).split(' ')[0]));
+  SPENT = new Set();
+  lastPick = null;
+  const [a, b] = g.score;
+  const L = a > b ? 0 : a < b ? 1 : null, T = L == null ? null : 1 - L;
+  const m = Math.abs(a - b), hi = Math.max(a, b), lo = Math.min(a, b);
+  const nameOf = p => esc(tc(p.name));
+  const run = fs.find(f => f.kind === 'run');
+
+  /* ---- headline ---- */
+  const hl = L == null
+    ? nm(g, 0) + ' and ' + nm(g, 1) + ' level at ' + a + '–' + b + ' at the half'
+    : m <= 3 ? nm(g, L) + ' edge ' + nm(g, T) + ' ' + hi + '–' + lo + ' at the break'
+    : m >= 15 ? nm(g, L) + ' lead ' + nm(g, T) + ' by ' + m + ' at the half'
+    : nm(g, L) + ' lead ' + nm(g, T) + ' ' + hi + '–' + lo + ' at the half';
+
+  /* ---- standfirst: how the two quarters went, then who is carrying it ---- */
+  const q = p => [(g.perQ[0][p] || 0), (g.perQ[1][p] || 0)];
+  const won = s => (s[0] > s[1] ? 0 : s[0] < s[1] ? 1 : null);
+  const q1 = q(1), q2 = q(2), w1 = won(q1), w2 = won(q2);
+  const qs = (s, t) => s[t] + '–' + s[1 - t];
+  let lede;
+  if (L == null) {
+    lede = 'Twenty minutes in there is nothing between them' +
+      (w1 != null && w2 != null && w1 !== w2
+        ? ': ' + nm(g, w1) + ' took the first quarter ' + qs(q1, w1) + ' and ' + nm(g, w2) + ' answered with the second, ' + qs(q2, w2)
+        : '');
+  } else if (w1 === L && w2 === L) {
+    lede = nm(g, L) + ' have won both quarters, ' + qs(q1, L) + ' and ' + qs(q2, L);
+  } else if (w2 === L) {
+    lede = nm(g, L) + (w1 == null ? ' were level after one' : ' trailed after one') +
+      ' and took over in the second, winning it ' + qs(q2, L);
+  } else if (w1 === L) {
+    lede = nm(g, L) + ' built the lead in the first quarter, ' + qs(q1, L) + ', and ' +
+      (w2 === T ? nm(g, T) + ' have been chipping at it since' : 'have held on to it since');
+  } else {
+    lede = nm(g, L) + ' lead by ' + m;
+  }
+  let usedRun = false;
+  if (run && run.data.n >= 8 && L != null && run.side === L) {
+    lede += ', helped by ' + anFor(run.data.n) + ' ' + run.data.n + '–0 run in the ' + ordinal(run.data.period);
+    usedRun = true;
+  }
+  const scorers = (g.players || []).filter(p => (p.pts || 0) > 0).sort((x, y) => (y.pts || 0) - (x.pts || 0));
+  /* the scorers are "who has it going", below; saying the top one here as well gave the same
+     clause twice on one screen */
+  const stand = lede + '.';
+
+  const secs = [];
+  const add = (heading, paras, card) => { if (paras && paras.length) secs.push({ heading, paras: paras.map(capitalise), card }); };
+
+  /* ---- the first half: its shape ---- */
+  {
+    R.neutral();
+    const bits = [];
+    if (run && run.data.n >= 8 && !usedRun) {
+      bits.push(R.subj(run.side) + ' had the best spell of the half, ' + anFor(run.data.n) + ' ' + run.data.n + '–0 run in the ' + ordinal(run.data.period) + '.');
+    }
+    const bl = fs.find(f => f.kind === 'biggestLead');
+    if (bl) {
+      const who = R.subj(bl.side);
+      const still = L === bl.side;
+      bits.push(who + ' have led by as many as ' + bl.data.by +
+        (still ? (m <= bl.data.by - 8 ? ', and have given most of it back' : '') : ', and all of it has gone') + '.');
+    }
+    const lc = fs.find(f => f.kind === 'leadChanges');
+    if (lc) { R.neutral(); bits.push('The lead has already changed hands ' + lc.data.changes + ' times.'); }
+    const dr = fs.filter(f => f.kind === 'drought').sort((x, y) => y.data.dur - x.data.dur)[0];
+    if (dr) bits.push(R.subj(dr.side, { noPronoun: true }) + ' went ' + mins(dr.data.dur) + ' without a field goal in the ' + ordinal(dr.data.period) + '.');
+    add('The first half', bits.length ? [bits.join(' ')] : [], 'quarters');
+  }
+
+  /* ---- where it is being decided: shooting, the four factors, the events tab ---- */
+  {
+    R.neutral();
+    const paras = [];
+    const box = [];
+    const floor = fs.find(f => f.kind === 'floor');
+    if (floor && Math.abs(floor.data.a - floor.data.b) >= 5) {
+      const up = Math.max(floor.data.a, floor.data.b), dn = Math.min(floor.data.a, floor.data.b);
+      box.push(R.subj(floor.side) + ' are shooting ' + Math.round(up) + '% from the field to ' + Math.round(dn) + '%');
+    }
+    const lead = fs.find(f => f.kind === 'factor');
+    if (lead) {
+      const mine = lead.side === 0 ? lead.data.a : lead.data.b, theirs = lead.side === 0 ? lead.data.b : lead.data.a;
+      const who = R.subj(lead.side);
+      const per = n => Math.round(num(n) || 0);
+      const s = lead.data.factor === 'efg' ? (floor && floor.side === lead.side ? null : who + ' are the sharper side, ' + pct1(mine) + ' eFG to ' + pct1(theirs))
+        : lead.data.factor === 'tov' ? who + ' are looking after the ball, turning it over on ' + pct1(mine) + ' of possessions to ' + pct1(theirs)
+        : lead.data.factor === 'oreb' ? who + ' own the offensive glass so far, getting ' + pct1(mine) + ' of their misses back to ' + pct1(theirs)
+        : who + ' are living at the line, ' + per(mine) + ' free throws per hundred shots to ' + per(theirs);
+      if (s) box.push(s);
+    }
+    if (box.length) paras.push(joinSentences(box, 'plain') + '.');
+    R.neutral();
+    const sit = sitSentences(g, fs, R, 'present');
+    if (sit.length) paras.push(sit.join(' '));
+    add('Where it is being decided', paras, 'factors');
+  }
+
+  /* ---- who has it going, and who is carrying fouls into the second half ---- */
+  {
+    const paras = [];
+    const side = t => scorers.filter(p => p.team === t);
+    const lines = [];
+    [L == null ? 0 : L, L == null ? 1 : T].forEach(t => {
+      const top = side(t);
+      if (!top.length || top[0].pts < 6) return;
+      const p = top[0];
+      const fgm = (p.p2m || 0) + (p.p3m || 0), fga = (p.p2a || 0) + (p.p3a || 0);
+      const ff = fromField(fgm, fga);
+      let s = nameOf(p) + ' has ' + p.pts + ' for ' + nm(g, t) + (ff && fga >= 4 ? ' on ' + ff + ' shooting' : '') + lineTail(p, { rebMin: 5, astMin: 3 });
+      if (top[1] && top[1].pts >= 8) s += ', with ' + nameOf(top[1]) + ' on ' + top[1].pts;
+      lines.push(s);
+    });
+    if (lines.length) paras.push(lines.join('; ') + '.');
+    const fouls = (g.players || []).filter(p => (p.pf || 0) >= 3).sort((x, y) => (y.pf || 0) - (x.pf || 0));
+    if (fouls.length) {
+      paras.push('Foul trouble to watch: ' + listOf(fouls.map(p => nameOf(p) + ' of ' + nm(g, p.team) + ' with ' + spell(p.pf))) +
+        (fouls.length > 3 ? ', among others' : '') + '.');
+    }
+    add('Who has it going', paras, null);
+  }
+
+  /* ---- the scout's note, at the break ---- */
+  add('The scout’s note', sectionScout(g, fs, R, { half: true }), 'scout');
+
+  let sc = null;
+  try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }
+  return { headline: hl, standfirst: stand, sections: secs, facts: fs, scout: sc, half: true };
 }
 
 function report(g) {
@@ -1430,6 +1785,6 @@ function plain(g) {
   return lines.join('\n').trim();
 }
 
-return { report, plain, headline, standfirst, five,
+return { report, plain, headline, standfirst, five, halftime,
          __x: { sectionFlow, sectionNumbers, sectionLineups, sectionPlayers, makeRef, joinSentences } };
 }));

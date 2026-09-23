@@ -61,6 +61,8 @@ export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, met
     periods,
     events: game.events ?? [],
     starters: game.starters ?? [[], []],
+    /* the events tab's situations per side (gamefacts.js carries the same) */
+    sits: meta?.sits ?? null,
     /* venue, crowd, date and competition for the dateline; null when the
        caller has none, and the report simply opens without one */
     meta: meta ? {
@@ -68,7 +70,8 @@ export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, met
       attendance: meta.attendance ?? null,
       tipoff_at: meta.tipoff_at ?? null,
       competition: meta.competition ?? null,
-      league: meta.league ?? null
+      league: meta.league ?? null,
+      leagueSlug: meta.leagueSlug ?? null
     } : null
   };
 }

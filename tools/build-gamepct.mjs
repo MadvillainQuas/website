@@ -217,7 +217,9 @@ const slb = { games: 0, dropped: [], team: [], player: [], sit: [], psit: [], zo
       const side = C.side[t];
       GP.SITS.forEach(k => {
         const s = side.sits[k];
-        slb.sit.push({ key: k, s });
+        /* .freq (how often this side gets this kind of chance at all) reads the game's own
+           'all' bucket alongside the situation's -- see gamepct.js's SIT[..'.freq'] */
+        slb.sit.push({ key: k, s, all: side.sits.all });
         ST.sit[k] = addInto(ST.sit[k] || {}, s, SIT_COUNTS);
         const zs = ST.zone[k] = ST.zone[k] || {};
         ZONES.forEach(zn => { zs[zn] = addInto(zs[zn] || {}, s.zones[zn], ['a', 'm']); });
@@ -398,12 +400,15 @@ function put(league, scope, key, G, QA, how) {
     if (dev && dev.length >= 200) put('slb-men', 'player', k, G, quantiles(dev).map(v => v + mean(vals)), 'season: 48 leagues (' + dev.length + ') about SLB\'s ' + sig(mean(vals)));
     else if (vals.length >= 30) put('slb-men', 'player', k, G, quantiles(vals), 'season: SLB players (' + vals.length + ')');
   });
-  /* SITUATIONS, a side's */
-  GP.SITS.forEach(sk => ['ppp', 'efg', 'tov'].forEach(stat => {
+  /* SITUATIONS, a side's. freq (how often this side gets the chance at all, not what it did
+     with the ones it got) only exists for the four keys gamepct.js defines a direction for --
+     'all' is trivially 100% of itself and after-timeout frequency is a count of timeouts
+     called, not a skill. */
+  GP.SITS.forEach(sk => ['ppp', 'efg', 'tov'].concat((sk + '.freq') in GP.SIT ? ['freq'] : []).forEach(stat => {
     const key = sk + '.' + stat;
     const G = gameScale('sit', key, slb.sit.filter(r => r.key === sk));
     if (!G) return;
-    const vals = seasonsT.length ? Object.values(slb.seasonTeam).map(ST => GP.sample('sit', key, { s: bucketOf(ST.sit[sk]) })).filter(Boolean).map(s => s.x) : [];
+    const vals = seasonsT.length ? Object.values(slb.seasonTeam).map(ST => GP.sample('sit', key, { s: bucketOf(ST.sit[sk]), all: bucketOf(ST.sit.all) })).filter(Boolean).map(s => s.x) : [];
     put('slb-men', 'sit', key, G, normalQ(mean(vals), sd(vals)), 'season: SLB teams (' + vals.length + ')');
   }));
   /* A SPLIT TOO THIN FOR ITS OWN SEASON SPREAD. Few players take thirty shots after a timeout

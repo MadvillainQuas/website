@@ -231,14 +231,18 @@ function render(g, rep) {
     '</section>';
   }).join('');
 
-  return '<article class="rep">' +
+  /* the half-time report (report.js halftime) is the same article at twenty minutes */
+  return '<article class="rep' + (rep.half ? ' rep-half' : '') + '">' +
     '<div class="rep-head">' +
-      '<div class="rep-kicker">match report · generated from the play-by-play</div>' +
+      '<div class="rep-kicker">' + (rep.half ? 'half-time report' : 'match report') + ' · generated from the play-by-play</div>' +
       '<h1 class="rep-hl">' + rep.headline + '</h1>' +
       '<p class="rep-stand">' + rep.standfirst + '</p>' +
     '</div>' + secs +
-    '<div class="rep-foot">Written from the event log: every number above is ' +
-      'computed from the same replay that draws the box score below.</div>' +
+    (rep.half
+      ? '<div class="rep-foot">Written from the first half’s event log. This tab goes when the third ' +
+          'quarter starts, and the full match report arrives when the game is final.</div>'
+      : '<div class="rep-foot">Written from the event log: every number above is ' +
+          'computed from the same replay that draws the box score below.</div>') +
   '</article>';
 }
 

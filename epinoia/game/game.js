@@ -312,6 +312,20 @@ const BODIES = {
     setTimeout(squadPhotos, 0);
     return strip ? html.replace('</p></div>', '</p></div>' + strip) : html;   // the standfirst is the last thing in .rep-head
   },
+  /* THE HALF-TIME REPORT: the match report's writer, handed the first half only. The log is
+     cut at the end of the second quarter and replayed on its own, so every number in it is a
+     first-half number even if a third-quarter play lands while somebody is reading. */
+  halftime: () => {
+    if (!window.EpinoiaStory || !window.EpinoiaReport || !window.EpinoiaReport.halftime ||
+        !window.EpinoiaGameFacts || !window.EpinoiaReportView) {
+      return '<div class="msg">The half-time report could not be loaded.</div>';
+    }
+    const S = window.S;
+    const hS = Object.assign({}, S, { events: (S.events || []).filter(e => (e.period || 1) <= 2), period: 2 });
+    const hd = E.deriveGame(hS);
+    const g = window.EpinoiaGameFacts.brief(hS, hd, B);
+    return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g));
+  },
   /* TWO WAYS TO READ THE SAME NUMBERS. Traditional is the table; Modern is the five on the
      floor drawn on a half court with the bench beneath (modern.js). The choice is remembered. */
   box:     d => boxSwitchHTML() + (boxMode === 'modern' && window.EpinoiaModernBox
@@ -512,12 +526,50 @@ const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot cha
    "no video has been attached" is a tab that trains people not to press it,
    and every league without a camera would carry it for ever. */
 function tabsFor(status) {
+  const S = window.S;
+  /* HALF-TIME HAS ITS OWN REPORT, and it leads while the break lasts (see atHalf) */
   const base = status === 'final'
     ? [['report', 'match report']].concat(TABS)
+    : atHalf(S) ? [['halftime', 'half-time report']].concat(TABS)
     : TABS;
-  const S = window.S;
   const v = S && S.video;
   return (v && (v.url || v.live_src)) ? base.concat([['video', 'video']]) : base;
+}
+
+/* IS IT HALF-TIME? The same rule notify_halftime (0124) uses to send the half-time notice, so
+   the tab and the notification can never disagree about whether the break has started. The
+   log has no "period ended" event, so the state has to say it: a live game in the second
+   quarter at 0:00, or with its clock already reset to a full period (in the second or the
+   third quarter, before the third has started) -- AND a second quarter that was actually
+   played (subs and the period_start logged at 10:00 of the second do not count, or the break
+   after the first quarter would qualify), AND no play yet in the third. */
+function atHalf(S) {
+  if (!S || S.status !== 'live' || S.phase === 'final') return false;
+  const P = B.PLEN, per = +S.period, clk = S.clockMs;
+  if (clk == null || !isFinite(clk)) return false;
+  const onClock = (per === 2 && (clk <= 0 || clk >= P(2))) || (per === 3 && clk >= P(3));
+  if (!onClock) return false;
+  const ev = S.events || [];
+  const q2 = ev.some(e => e.period === 2 && e.clock != null && e.clock < P(2) && e.t !== 'period_start');
+  const q3 = ev.some(e => (e.period || 0) >= 3 && (e.clock == null ? P(e.period) : e.clock) < P(e.period) && e.t !== 'period_start');
+  return q2 && !q3;
+}
+/* THE TAB COMES AND GOES ON ITS OWN. It opens by itself once, the moment the break is seen
+   (someone watching the box score at the buzzer is exactly who wants it), and when the third
+   quarter starts it disappears -- anyone still reading it is moved to the box score, where the
+   game now is. Checked from the clock tick, not only on a new play, because the one thing that
+   ends a break may be the clock starting, and a quiet feed sends no play for a minute. */
+let lastHalf = false, halfOpened = false;
+function checkHalf() {
+  const brk = atHalf(window.S);
+  if (brk === lastHalf) return;
+  lastHalf = brk;
+  if (brk && !halfOpened) { halfOpened = true; fTab = 'halftime'; }
+  else if (!brk && fTab === 'halftime') fTab = 'box';
+  /* render(), not renderShell() alone: a rebuilt shell has an empty header and body, and the
+     body cache would otherwise keep them empty until the next play arrived */
+  shellBuilt = false; lastBodyKey = '';
+  render();
 }
 
 /* ------------------------------------------------------------- memberships ---
@@ -2380,6 +2432,7 @@ function goLive() {
     if (pill.firstChild && pill.firstChild.nodeType === 3) {
       if (pill.firstChild.nodeValue !== want) pill.firstChild.nodeValue = want;
     } else renderHead();
+    checkHalf();
   }, 500);
 }
 
@@ -2576,8 +2629,11 @@ function watchForVideo() {
     window.S.video = Object.assign({}, window.S.video || {}, rows[0]);
     clearInterval(timer);
     /* Rebuild the shell rather than the whole page: somebody is watching a
-       game, and a reload would throw away their scroll and their tab. */
-    shellBuilt = false; renderShell(); shellBuilt = true;
+       game, and a reload would throw away their scroll and their tab. Through
+       render(), which redraws the header and body the new shell starts without;
+       renderShell() alone left both blank until the next play landed. */
+    shellBuilt = false; lastBodyKey = '';
+    render();
   }, VIDEO_POLL_MS);
 }
 

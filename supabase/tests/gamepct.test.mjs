@@ -173,6 +173,23 @@ console.log('\nthe pages, on a real LiveStats game');
     Ev.setView({ team: 1, side: 'def', sit: 'second', pid: null });
     const defBand = ledeBand(Ev.render(G));
     ok('events: the same offence read as the other side\'s defence mirrors its band (' + offBand + ' -> ' + defBand + ')', Math.abs(offBand + defBand - 6) <= 1);
+
+    /* HOW OFTEN, NOT JUST HOW WELL. Every situation row (bar 'all', trivially 100% of itself,
+       and 'ato', a count of timeouts rather than a skill) now also grades how often the side
+       gets that kind of chance at all, and a turnover-rate figure is visible on the row itself
+       rather than sitting only in its tooltip. */
+    Ev.setView({ team: 0, side: 'off', sit: 'second', pid: null });
+    const evFreq = Ev.render(G);
+    ok('events: second/transition/off-turnover/half-court rows shade how often the side gets that chance',
+       ['second', 'transition', 'offTo', 'half'].every(k =>
+         new RegExp('data-evsit="' + k + '"[^>]*data-tip="[^"]*share of chances: \\d+(st|nd|rd|th) percentile[^"]*"[\\s\\S]{0,900}?class="ev-freq"><b class="gp gp-b\\d">\\d+%').test(evFreq)));
+    ok('...but the reference row (100% of itself) and after-timeout (a count of timeouts, not a skill) are never shaded',
+       !/data-evsit="all"[\s\S]{0,900}?class="ev-freq"><b class="gp/.test(evFreq) &&
+       !/data-evsit="ato"[\s\S]{0,900}?class="ev-freq"><b class="gp/.test(evFreq) &&
+       /data-evsit="all"[\s\S]{0,900}?class="ev-freq"><b>100%/.test(evFreq));
+    ok('events: turnover rate is now a visible figure on the row, not only in its tooltip',
+       (evFreq.match(/class="ev-tov[^"]*"><b[^>]*>\d+%<\/b><small>\d+ turnovers?<\/small>/g) || []).length >= 5);
+
     Ev.setView({ team: 0, side: 'off', sit: 'second', pid: null });
     delete globalThis.EpinoiaGamePct;
   }

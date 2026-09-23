@@ -666,12 +666,43 @@ ok('...and drives the same engine the browser does',
   const sec = r.sections.find(s => /scout/i.test(s.heading));
   const opener = sec.paras[0];
   ok('the opening sentence names two different comparisons, not one repeated twice',
-     !/(better than nine games in ten|worse than nine games in ten|among the best in the league|among the weakest in the league|rare to see this low in the league|as good as almost anyone plays this in the league).*\1/i
+     !/(better than nine games in ten|worse than nine games in ten|among the best in the league|among the weakest in the league|at the very top of the league|near the bottom of the league).*\1/i
        .test(opener) || (opener.match(/nine games in ten/g) || []).length < 2,
      opener);
-  const halves = opener.split(' where ');
-  ok('...concretely: the phrase before "where" differs from the phrase after it',
-     halves.length === 2 && halves[0].split(':')[1] !== halves[1].split('were')[1], opener);
+  /* the opener reads "<side> won this on X ...: they were <phrase A> there, <other side> <phrase B>." */
+  const m = /they (?:were|have been) (.+?) there, (.+?)\.?$/.exec(opener);
+  ok('...concretely: one side\'s phrase is not the other side\'s',
+     !!m && !m[2].endsWith(m[1]), opener);
+}
+
+{
+  /* EVERY PHRASE READS AFTER A TEAM. The bank is used as "<team> were ___" and "where they
+     were ___"; three old entries only worked after a statistic ("London Lions were rare to see
+     this low in the league"), read-through of three SLB games, 2026-09-23. */
+  const src = require('node:fs').readFileSync(path.join(ROOT, 'epinoia', 'game', 'report.js'), 'utf8');
+  const bank = (/const PCT_BANDS = \[[\s\S]*?\n\];/.exec(src) || [''])[0];
+  ok('the phrase bank carries none of the phrasings that failed after a team name',
+     bank.length > 100 && !/rare to see this low|as good as almost anyone plays|neither a strength nor a weakness|one of the (stronger|softer) numbers/.test(bank));
+}
+
+{
+  /* THE SIDE AHEAD ON A MEASURE IS NOT THE SIDE THAT WON. When the widest gap went the losing
+     side's way, the opener must not say they "won this on" it (it did: Bristol Flyers, a 72-60
+     loss, "won this on protecting the rim"). */
+  const g = game({ score: [60, 72],
+    adv: [{ efg: 50, tovp: 14, orebp: 28, ftr: 22, blkp: 12 }, { efg: 51, tovp: 14, orebp: 28, ftr: 22, blkp: 3 }] });
+  globalThis.EpinoiaGamePct = {
+    rate: (scope, key, ctx) => {
+      const t = g.adv.indexOf(ctx.T);
+      const v = key === 'blkp' ? [95, 8][t] : 50;
+      return { p: v, g: v, d: 1, band: 0 };
+    }
+  };
+  const r = Report.report(g);
+  delete globalThis.EpinoiaGamePct;
+  const opener = (r.sections.find(s => /scout/i.test(s.heading)) || { paras: [''] }).paras[0];
+  ok('a gap that went the loser\'s way is said as one, not as how they "won this"',
+     !/^[^:]*won this on/.test(opener.replace(/<[^>]*>/g, '')) && /not enough/.test(opener), opener);
 }
 
 {
@@ -683,6 +714,31 @@ ok('...and drives the same engine the browser does',
   const secA = a.sections.find(s => /scout/i.test(s.heading));
   const secB = b.sections.find(s => /scout/i.test(s.heading));
   ok('the same game reports the same way twice', JSON.stringify(secA) === JSON.stringify(secB));
+}
+
+{
+  /* THE HALF-TIME REPORT. The same writer, handed the first half only (game.js slices the log),
+     in the register of a game still going: a lead, not a result; nobody is "the winners"; the
+     scout's note says what to fix at the break, not what to take into the week. */
+  const h = game({ score: [30, 38], periods: 2, perQ: [[0, 18, 12], [0, 14, 24]],
+    events: [].concat(Array.from({ length: 9 }, (_, i) => ({ id: i, t: 'p2_made', team: 1, period: 1 })),
+                      Array.from({ length: 6 }, (_, i) => ({ id: 20 + i, t: 'p2_made', team: 0, period: 2 }))) });
+  globalThis.EpinoiaGamePct = { rate: (scope, key, ctx) => {
+    const t = h.adv.indexOf(ctx.T); const v = key === 'efg' ? [12, 91][t] : key === 'tovp' ? [30, 20][t] : 50;
+    return { p: v, g: v, d: 1, band: 0 }; } };
+  const r = Report.halftime(h);
+  delete globalThis.EpinoiaGamePct;
+  const all = [r.headline, r.standfirst].concat(r.sections.flatMap(s => s.paras)).join(' ').replace(/<[^>]*>/g, '');
+  ok('the half-time report is marked as one, for the view', r.half === true);
+  ok('its headline is a lead at the half, not a result', /at the (half|break)$/.test(r.headline.replace(/<[^>]*>/g, '')) && !/beat|took this|won/.test(r.headline), r.headline);
+  ok('...and it says who is ahead by the real score', /Harbour Bay (lead|edge) Neon City 38–30/.test(r.headline.replace(/<[^>]*>/g, '')), r.headline);
+  ok('nobody at half-time is "the winners" or "the losers"', !/\bthe (winners|losers)\b/i.test(all), all.slice(0, 300));
+  ok('nothing at half-time "won this" or goes "into the week"', !/won this on|into the week/.test(all), all.slice(0, 300));
+  const note = (r.sections.find(s => /scout/i.test(s.heading)) || { paras: [] }).paras.join(' ');
+  ok('the scout\'s note speaks to the break', /at the break|after the break/.test(note), note);
+  ok('the quarters are told from the first half alone', /Neon City|Harbour Bay/.test(r.standfirst) && /second/.test(r.standfirst), r.standfirst);
+  const tied = Report.halftime(game({ score: [35, 35], periods: 2, perQ: [[0, 20, 15], [0, 15, 20]] }));
+  ok('a level half says level', /level at 35–35 at the half/.test(tied.headline.replace(/<[^>]*>/g, '')), tied.headline);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

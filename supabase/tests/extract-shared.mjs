@@ -69,6 +69,22 @@ const FILES = [
      these two ever diverged, a published article and the page it links to
      would describe the same game differently — which is the one failure a
      generated report cannot survive. */
+  /* THE PERCENTILE SCALES, data before reader. story.js's scout grades a game against them
+     through globalThis.EpinoiaGamePct; without these two the server-filed article silently
+     wrote the ungraded note ("with no league scales built for this competition yet") for a
+     game the public page graded properly. */
+  {
+    src: join(repo, 'epinoia', 'gamepct-data.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'gamepct-data.js'),
+    global: 'EpinoiaGamePctData',
+    names: ['version', 'grid', 'leagues', 'fallback', 'alias']
+  },
+  {
+    src: join(repo, 'epinoia', 'gamepct.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'gamepct.js'),
+    global: 'EpinoiaGamePct',
+    names: ['rate', 'sample', 'adjusted', 'percentileOf', 'leagueKey', 'band', 'ord', 'cls', 'words', 'against']
+  },
   {
     src: join(repo, 'epinoia', 'game', 'story.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'story.js'),
@@ -79,7 +95,7 @@ const FILES = [
     src: join(repo, 'epinoia', 'game', 'report.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'report.js'),
     global: 'EpinoiaReport',
-    names: ['report', 'plain', 'headline', 'standfirst', 'five']
+    names: ['report', 'plain', 'headline', 'standfirst', 'five', 'halftime']
   },
   /* THE SITUATIONS: what second chances, breaks, turnovers and timeouts turned
      into, per side and per player. finalise-game stores a compact copy of them on

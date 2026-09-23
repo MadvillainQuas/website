@@ -21,6 +21,8 @@ import { dispatchGame } from '../_shared/feeds.ts';
 import { bpmMvp } from '../_shared/awards.ts';
 // the match-report writer. story.js FIRST and for its side effect: report.js
 // finds the fact engine on globalThis, which story.js is what puts there.
+import '../_shared/gamepct-data.js';   // side effect: globalThis.EpinoiaGamePctData, before its reader
+import '../_shared/gamepct.js';        // side effect: globalThis.EpinoiaGamePct, which story.js's scout grades with
 import '../_shared/story.js';
 import { report as buildReport } from '../_shared/report.js';
 import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';
@@ -302,9 +304,10 @@ Deno.serve(async (req) => {
      writes no `sit` at all rather than a wrong one, says so in the warnings,
      and leaves the game for scripts/backfill_situations.mjs to fill in. */
   let SIT: { teams: any[]; players: Record<string, any> } | null = null;
+  let SITC: any = null;             // the full result too: the match report reads each side's buckets
   try {
     const C = computeSituations(game);
-    if (C && C.possessions) SIT = storedSituations(C);
+    if (C && C.possessions) { SIT = storedSituations(C); SITC = C; }
     else {
       console.warn(`[finalise] situations for ${gameId}: possessions.js did not load, no sit written`);
       warnings.push('the events splits were not stored (no chance enumerator) — run the situations backfill');
@@ -434,12 +437,14 @@ Deno.serve(async (req) => {
         let comp: any = null;
         try {
           const { data: c } = await admin.from('competitions')
-            .select('name,seasons(leagues(name))').eq('id', g.competition_id).maybeSingle();
+            .select('name,seasons(leagues(name,slug))').eq('id', g.competition_id).maybeSingle();
           comp = c;
         } catch (_) { /* a report without a dateline is still a report */ }
         const brief = gameBrief(game, d, TA, lineupAgg, {
           venue: g.venue, attendance: g.attendance, tipoff_at: g.tipoff_at,
-          competition: comp?.name ?? null, league: comp?.seasons?.leagues?.name ?? null
+          competition: comp?.name ?? null, league: comp?.seasons?.leagues?.name ?? null,
+          leagueSlug: comp?.seasons?.leagues?.slug ?? null,
+          sits: SITC ? [SITC.side[0].sits, SITC.side[1].sits] : null
         });
         const rep = buildReport(brief);
         const slug = reportSlug(gameId);

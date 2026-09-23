@@ -47,7 +47,20 @@
 
 /* ---- the situation table: a row is a button, and its bars are the chart ---- */
 /* the minimums fit the narrowest two-column page (sidebar open, just over the phone width) */
-.ev-cols, .ev-row{ display:grid; grid-template-columns:minmax(130px,1.5fr) minmax(64px,.6fr) minmax(110px,1.3fr) minmax(60px,.55fr) minmax(110px,1.2fr); gap:4px 18px; align-items:center }
+.ev-cols, .ev-row{ display:grid; grid-template-columns:minmax(120px,1.5fr) minmax(60px,.6fr) minmax(52px,.5fr) minmax(100px,1.3fr) minmax(56px,.55fr) minmax(52px,.5fr) minmax(96px,1.2fr); gap:4px 14px; align-items:center }
+/* SEVEN COLUMNS NEED A WIDE CARD. With the share of chances and the turnover rate added, the
+   row no longer fits the narrowest two-column page (sidebar open), and the shot diet ran off the
+   card's edge. The card, not the window, decides: below ~660px of its own width the table
+   takes the stacked layout a phone gets, whatever the viewport. */
+.ev-card{ container-type:inline-size }
+@container (max-width:660px){
+  .ev-cols{ display:none }
+  .ev-row{ grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name pts" "freq tov" "ppp efg" "diet diet"; gap:8px 14px; padding:11px 12px }
+  .ev-name{ grid-area:name } .ev-pts{ grid-area:pts; text-align:right } .ev-ppp{ grid-area:ppp } .ev-efg{ grid-area:efg; text-align:right } .ev-diet{ grid-area:diet }
+  .ev-freq{ grid-area:freq } .ev-tov{ grid-area:tov; text-align:right }
+  .ev-name small{ display:none }
+  .ev-row.on .ev-name small{ display:block }
+}
 .ev-cols{ padding:0 12px 6px; font:600 10px var(--f-head); text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted) }
 .ev-rows{ display:grid; gap:4px }
 .ev-row{ width:100%; text-align:left; font:inherit; color:var(--text-primary); background:var(--bg-glass); border:1px solid transparent; border-radius:var(--r-sm,10px);
@@ -67,7 +80,7 @@
 .ev-track{ position:relative; height:8px; border-radius:4px; background:var(--ev-track) }
 .ev-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:var(--s) }
 .ev-tick{ position:absolute; top:-4px; bottom:-4px; width:2px; margin-left:-1px; border-radius:1px; background:var(--text-primary) }
-.ev-efg.few b{ color:var(--text-muted) }
+.ev-efg.few b, .ev-tov.few b{ color:var(--text-muted) }
 .ev-stack{ display:flex; gap:2px; height:10px; border-radius:4px; overflow:hidden; background:var(--ev-track) }
 .ev-stack i{ display:block; min-width:3px; height:100% }
 .ev-stack .z0{ background:var(--s) }
@@ -212,8 +225,9 @@ a.ev-person:hover{ text-decoration:underline }
 /* ---- a phone ---- */
 @media (max-width:760px){
   .ev-cols{ display:none }
-  .ev-row{ grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name pts" "ppp efg" "diet diet"; gap:8px 14px; padding:11px 12px }
+  .ev-row{ grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name pts" "freq tov" "ppp efg" "diet diet"; gap:8px 14px; padding:11px 12px }
   .ev-name{ grid-area:name } .ev-pts{ grid-area:pts; text-align:right } .ev-ppp{ grid-area:ppp } .ev-efg{ grid-area:efg; text-align:right } .ev-diet{ grid-area:diet }
+  .ev-freq{ grid-area:freq } .ev-tov{ grid-area:tov; text-align:right }
   .ev-name small{ display:none }
   .ev-row.on .ev-name small{ display:block }
   .ev-grid{ grid-template-columns:minmax(0,1fr) }
