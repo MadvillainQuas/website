@@ -10419,6 +10419,163 @@
    ]
   ]
  },
+ "https://stats.basket.gr/2026-2027/elite-league/games-final4/gamelevel/1/gamedate/1": {
+  "at": "2026-09-24T09:35:42.413275+00:00",
+  "final": false,
+  "games": [
+   {
+    "away": {
+     "id": "1BC51562-E531-43E0-8BF1-ACB47AA5FE68",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00639.png",
+     "name": "ΠΑΝΕΡΥΘΡΑΙΚΟΣ ΑΣ"
+    },
+    "final": false,
+    "home": {
+     "id": "59116018-AE39-4072-B7B7-96934038C626",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00016.png",
+     "name": "ΑΣ ΠΑΠΑΓΟΥ"
+    },
+    "id": "9097587B-C5D9-4A2F-A6CF-29574C6796A9",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "ΕΑΚ ΠΑΠΑΓΟΥ"
+   },
+   {
+    "away": {
+     "id": "B3FA7726-B737-45EB-A67D-15181CA77C62",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00659.png",
+     "name": "ΠΡΩΤΕΥΣ ΑΕΟ ΒΟΥΛΑΣ"
+    },
+    "final": false,
+    "home": {
+     "id": "CA0C2790-0299-4ED4-9ABC-97B9C1D7706D",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00020.png",
+     "name": "ΓΑΣ ΚΟΜΟΤΗΝΗ"
+    },
+    "id": "2174FA61-714B-4238-93C6-0C9DD11C1E19",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "2ο ΓΕΝΙΚΟ ΛΥΚΕΙΟ ΚΟΜΟΤΗΝΗΣ"
+   },
+   {
+    "away": {
+     "id": "E7707636-30CA-4C76-82F8-8CB0B4986E5F",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/9-101_team-00003.png",
+     "name": "ΚΑΕ ΠΑΝΙΩΝΙΟΣ ΓΣΣ 1890"
+    },
+    "final": false,
+    "home": {
+     "id": "6FBF51DD-D2D9-4105-8061-A355660DDA62",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00031.png",
+     "name": "ΚΡΟΝΟΣ ΑΓ. ΔΗΜΗΤΡΙΟΥ ΓΣ"
+    },
+    "id": "B2D96C47-EF41-4FB0-BF3A-FA1D1993D153",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "Ν. ΚΛΕΙΣΤΟ ΑΓΙΟΥ ΒΑΣΙΛΕΙΟΥ"
+   },
+   {
+    "away": {
+     "id": "8A8E4B88-2B90-461B-A4C0-3A9A5CC89A7A",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00493.png",
+     "name": "ΑΟ ΑΜΥΝΤΑΣ"
+    },
+    "final": false,
+    "home": {
+     "id": "A873A0DC-2DDB-4168-A636-B0ED28245516",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00201.png",
+     "name": "ΓΣ ΣΟΦΑΔΩΝ"
+    },
+    "id": "D2BC637E-8620-478F-96EB-316D43FA469B",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "ΣΟΦΑΔΩΝ"
+   },
+   {
+    "away": {
+     "id": "5C29B244-66AC-441C-A246-B8697961985B",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00701.png",
+     "name": "ΨΥΧΙΚΟΥ ΑΕ"
+    },
+    "final": false,
+    "home": {
+     "id": "72CD4268-3FFD-4F73-A92E-5AE7A739A092",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00607.png",
+     "name": "ΓΣ ΛΑΥΡΙΟΥ"
+    },
+    "id": "5616425F-5581-41CC-B384-10197E677C56",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "ΚΛ. ΛΑΥΡΙΟΥ"
+   },
+   {
+    "away": {
+     "id": "CDCB0A6F-0835-4073-A1BE-7CCC88AE1F8A",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00143.png",
+     "name": "ΚΟΡΟΙΒΟΣ ΑΣ ΑΜΑΛΙΑΔΑΣ"
+    },
+    "final": false,
+    "home": {
+     "id": "DE6BE9CE-8CC7-4D2A-A76C-140A19B471BC",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00622.png",
+     "name": "ΝΕΑΝΙΚΗ ΕΣΤΙΑ ΜΕΓΑΡΙΔΟΣ"
+    },
+    "id": "B450C228-E116-4FF4-AFCE-507D8E630B0F",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "ΝΕΜ BC ARENA"
+   },
+   {
+    "away": {
+     "id": "D7A84377-12F5-42BE-934D-42DA2FF31E44",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-00103.png",
+     "name": "ΑΕ ΓΛΑΥΚΟΣ ΕΣΠΕΡΟΣ ΠΑΤΡΑΣ"
+    },
+    "final": false,
+    "home": {
+     "id": "C3F251F1-1C7D-4130-9238-4C2B7A4353FD",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-01737.png",
+     "name": "ΑΣΑ ΑΝΑΓΕΝΝΗΣΗ ΑΡΚΑΛΟΧΩΡΙΟΥ"
+    },
+    "id": "96B01FC3-1DF3-4CAE-8E5A-A68E126F749A",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "ΚΛ. ΑΛΙΚΑΡΝΑΣΣΟΥ"
+   },
+   {
+    "away": {
+     "id": "8E075EE0-9BE2-4BAA-8EEF-90F0403FE130",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-01333.png",
+     "name": "ΑΕΠΣ ΜΑΧΗΤΕΣ ΠΕΙΡΑΜΑΤΙΚΟ"
+    },
+    "final": false,
+    "home": {
+     "id": "C03FA255-664C-4F55-97FA-56027424FBF3",
+     "logo": "https://media.sportstats.gr/sportstats_global/images/eok/teams/team-01956.png",
+     "name": "ΑΓΕ ΧΑΛΚΙΔΑΣ"
+    },
+    "id": "5196002B-6BF9-41C9-8AC7-9D2377AE89EF",
+    "score": null,
+    "tbc": false,
+    "tip": "2026-10-03T14:00:00+00:00",
+    "venue": "ΚΑΝΗΘΟΥ 'ΤΑΣΟΣ ΚΑΜΠΟΥΡΗΣ'"
+   }
+  ],
+  "nav": []
+ },
+ "https://stats.basket.gr/2026-2027/elite-league/games-playoffs-playouts/gamelevel/1/gamedate/1": {
+  "at": "2026-09-24T09:35:39.914331+00:00",
+  "final": false,
+  "games": [],
+  "nav": []
+ },
  "https://stats.basket.gr/2026-2027/elite-league/games-regular-season/gamelevel/1/gamedate/1": {
   "at": "2026-09-24T09:23:52.016037+00:00",
   "final": false,
