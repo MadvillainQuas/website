@@ -1389,7 +1389,10 @@
       'fans’ vote': 'ファン投票',
       'Balkans': 'バルカン半島',
       'Finland': 'フィンランド',
-      'Mexico': 'メキシコ'
+      'Mexico': 'メキシコ',
+      'Women’s league': '女子リーグ',
+      'Belgium + Netherlands': 'ベルギー + オランダ',
+      'Kosovo': 'コソボ'
     },
 
     ctx: {
@@ -1634,6 +1637,46 @@
       },
       zone: {
         'top 3': 'トップ3P'
+      },
+      favourites: {
+        'Who’s your favourite?': 'お気に入りは？',
+        'Who’s your favourite? Pick the leagues you watch and the clubs you back': 'お気に入りは？ 観るリーグと応援するクラブを選ぶ',
+        'Which Leagues Do You Prefer to Watch?': 'どのリーグを観るのが好きですか？',
+        'Who Do You Back?': '応援しているクラブは？',
+        'Tap the clubs you want to follow.': 'フォローしたいクラブをタップしてください。',
+        'Step 1 of 2 · Leagues': 'ステップ 1/2 · リーグ',
+        'Step 2 of 2 · Clubs': 'ステップ 2/2 · クラブ',
+        'All set': '準備完了',
+        'You’re In': 'フォローしました',
+        'Here’s who you’re following.': 'フォロー中はこちらです。',
+        'Tap a country to see its leagues.': '国をタップすると、その国のリーグが表示されます。',
+        'Tap a league to follow it.': 'リーグをタップするとフォローできます。',
+        'Tap the clubs you back.': '応援するクラブをタップしてください。',
+        'Following': 'フォロー中',
+        'Skip': 'スキップ',
+        'Advance': '次へ',
+        'Done': '完了',
+        'Pick another league': '別のリーグを選ぶ',
+        'Add more leagues': 'リーグを追加',
+        'Add more': 'さらに追加',
+        'Remind me later': 'あとで再表示',
+        'Don’t show this again': '今後表示しない',
+        'Find them on your profile and in My followed.': 'マイページと「フォロー中」で確認できます。',
+        'Loading the leagues…': 'リーグを読み込み中…',
+        'Loading the clubs…': 'クラブを読み込み中…',
+        'The clubs could not be loaded just now.': '現在、クラブを読み込めません。',
+        'These leagues have no clubs listed yet.': 'これらのリーグにはまだクラブが登録されていません。',
+        'Pick a league first, and its clubs are here.': '先にリーグを選ぶと、そのクラブがここに表示されます。',
+        'Following is not available just now. Try again in a little while.': '現在フォローできません。しばらくしてからもう一度お試しください。',
+        'Other leagues': 'その他のリーグ',
+        'Back to the countries': '国の一覧に戻る',
+        'Previous countries': '前の国',
+        'More countries': '次の国',
+        'Previous leagues': '前のリーグ',
+        'More leagues': '次のリーグ',
+        'Previous clubs': '前のクラブ',
+        'More clubs': '次のクラブ',
+        'no clubs': 'クラブなし'
       }
     },
 

@@ -416,8 +416,9 @@ ok('...and the bell that was pressed says it',
    /b\.title = 'not saved: ' \+ res\.reason/.test(follow));
 ok('it is three seconds, not a stuck state',
    /setTimeout\(\(\) => \{ if \(sp\) sp\.textContent = was;/.test(follow));
+/* (unless the caller said quiet: HOME's favourites panel saves several and offers once, at the end) */
 ok('a successful follow still offers push and reports ok',
-   /if \(cur\.has\(id\)\) offerPush\(kind, name\);[\s\S]{0,80}return \{ ok: true/.test(follow));
+   /if \(cur\.has\(id\) && !o\.quiet\) offerPush\(kind, name\);[\s\S]{0,120}return \{ ok: true/.test(follow));
 ok('the failed bell has a style of its own',
    /\.ep-follow\.failed\{/.test(kit));
 

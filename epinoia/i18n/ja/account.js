@@ -309,7 +309,10 @@
       'This invitation is no longer valid. Ask for another link.': 'この招待はもう有効ではありません。別のリンクを依頼してください。',
       'you were already in': 'すでに参加しています',
       'you are in': '参加しました',
-      'League console': 'リーグ管理画面'
+      'League console': 'リーグ管理画面',
+      'On HOME': 'トップページ',
+      'Favourites prompt': 'お気に入りの案内',
+      'open “Who’s your favourite?” on HOME once, when you have not followed a club yet, to pick the leagues you watch and the clubs you back. Off, it stays out of your way, and it can still be opened from the line under the daily fixtures.': 'クラブをまだフォローしていないとき、トップページで「お気に入りは？」を一度だけ開き、観るリーグと応援するクラブを選べます。オフにすると表示されなくなりますが、「今日の試合」の下のラインからいつでも開けます。'
     },
 
     ctx: {

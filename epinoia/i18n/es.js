@@ -1391,7 +1391,10 @@
       'fans’ vote': 'Voto de la afición',
       'Balkans': 'Balcanes',
       'Finland': 'Finlandia',
-      'Mexico': 'México'
+      'Mexico': 'México',
+      'Women’s league': 'Liga femenina',
+      'Belgium + Netherlands': 'Bélgica + Países Bajos',
+      'Kosovo': 'Kosovo'
     },
 
     ctx: {
@@ -1635,6 +1638,46 @@
       },
       zone: {
         'top 3': 'Triple frontal'
+      },
+      favourites: {
+        'Who’s your favourite?': '¿Cuál es tu favorito?',
+        'Who’s your favourite? Pick the leagues you watch and the clubs you back': '¿Cuál es tu favorito? Elige las ligas que ves y los clubes que apoyas',
+        'Which Leagues Do You Prefer to Watch?': '¿Qué ligas prefieres ver?',
+        'Who Do You Back?': '¿A quién apoyas?',
+        'Tap the clubs you want to follow.': 'Toca los clubes que quieres seguir.',
+        'Step 1 of 2 · Leagues': 'Paso 1 de 2 · Ligas',
+        'Step 2 of 2 · Clubs': 'Paso 2 de 2 · Clubes',
+        'All set': 'Todo listo',
+        'You’re In': '¡Ya estás dentro!',
+        'Here’s who you’re following.': 'Esto es lo que estás siguiendo.',
+        'Tap a country to see its leagues.': 'Toca un país para ver sus ligas.',
+        'Tap a league to follow it.': 'Toca una liga para seguirla.',
+        'Tap the clubs you back.': 'Toca los clubes que apoyas.',
+        'Following': 'Siguiendo',
+        'Skip': 'Omitir',
+        'Advance': 'Continuar',
+        'Done': 'Hecho',
+        'Pick another league': 'Elegir otra liga',
+        'Add more leagues': 'Añadir más ligas',
+        'Add more': 'Añadir más',
+        'Remind me later': 'Recordármelo más tarde',
+        'Don’t show this again': 'No volver a mostrar',
+        'Find them on your profile and in My followed.': 'Los encontrarás en tu perfil y en «Siguiendo».',
+        'Loading the leagues…': 'Cargando las ligas…',
+        'Loading the clubs…': 'Cargando los clubes…',
+        'The clubs could not be loaded just now.': 'Ahora mismo no se pudieron cargar los clubes.',
+        'These leagues have no clubs listed yet.': 'Estas ligas aún no tienen clubes.',
+        'Pick a league first, and its clubs are here.': 'Elige primero una liga y sus clubes aparecerán aquí.',
+        'Following is not available just now. Try again in a little while.': 'Ahora mismo no se puede seguir. Inténtalo de nuevo en un rato.',
+        'Other leagues': 'Otras ligas',
+        'Back to the countries': 'Volver a los países',
+        'Previous countries': 'Países anteriores',
+        'More countries': 'Más países',
+        'Previous leagues': 'Ligas anteriores',
+        'More leagues': 'Más ligas',
+        'Previous clubs': 'Clubes anteriores',
+        'More clubs': 'Más clubes',
+        'no clubs': 'sin clubes'
       }
     },
 

@@ -314,7 +314,10 @@
       'This invitation is no longer valid. Ask for another link.': 'Esta invitación ya no es válida. Pide otro enlace.',
       'you were already in': 'ya estabas dentro',
       'you are in': 'ya estás dentro',
-      'League console': 'Consola de la liga'
+      'League console': 'Consola de la liga',
+      'On HOME': 'En Inicio',
+      'Favourites prompt': 'Aviso de favoritos',
+      'open “Who’s your favourite?” on HOME once, when you have not followed a club yet, to pick the leagues you watch and the clubs you back. Off, it stays out of your way, and it can still be opened from the line under the daily fixtures.': 'abre «¿Cuál es tu favorito?» en Inicio una sola vez, cuando aún no sigues ningún club, para elegir las ligas que ves y los clubes que apoyas. Desactivado, no te molesta, y aún puedes abrirlo desde la línea bajo los partidos del día.'
     },
 
     ctx: {

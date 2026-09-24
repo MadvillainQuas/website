@@ -682,6 +682,12 @@
   });
 
   let followsDrawn = false;
+  /* A FOLLOW MADE ON THIS PAGE (follow.js says so: a bell, or HOME's "Who's your favourite?") is on the
+     list the next time it is opened, and at once if it is open now. */
+  window.addEventListener('epinoia:follows', () => {
+    followsDrawn = false;
+    if (nav.dataset.view === 'follows') drawFollows().then(() => sizeDeck(false)).catch(() => { /* drawn again next time */ });
+  });
   function openFollows() {
     setView('follows', true);
     /* AND AGAIN WHEN THE ROWS LAND. setView sizes the deck immediately, which

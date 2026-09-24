@@ -11,6 +11,11 @@
    fan's row once, and keeps every bell on the page for the same thing in step.
      window.EpinoiaFollow.bell('game' | 'team' | 'player' | 'league', id, { label, name })  -> element
 
+   A page that follows things without a bell (HOME's "Who's your favourite?", home/favourites.js) calls
+     toggle(kind, id, name, { want: true | false, quiet: true })   set rather than flip; no push offer
+     offer(kind, name)                                             the push offer, once, at the end
+   and every follow that saved dispatches `epinoia:follows` ({ kind, id, on }) on the window.
+
    A LEAGUE IS THE WHOLE LEAGUE (0133): following one brings every game in it, and every
    game of a club that joins it later, because the audience expands the league into its
    clubs when the notices are made rather than when the follow was saved.
@@ -92,10 +97,15 @@
   }
   const has = (kind, id) => !!(prefs && (prefs[KEY[kind]] || []).includes(id));
 
-  async function toggle(kind, id, name) {
+  /* opts.want: true or false SETS the follow to that rather than flipping it, so a caller that means "on"
+     can never turn it off by being asked twice (HOME's favourites panel queues its taps). opts.quiet: no
+     push offer, for a caller that saves several follows in a row and offers once at the end (offer()). */
+  async function toggle(kind, id, name, opts) {
+    const o = opts || {};
     await load();
     const k = KEY[kind];
     const cur = new Set(prefs[k] || []);
+    if (typeof o.want === 'boolean' && cur.has(id) === o.want) return { ok: true, on: o.want };   // already so
     if (cur.has(id)) cur.delete(id); else cur.add(id);
     prefs[k] = [...cur];
     paintAll(kind, id);
@@ -130,8 +140,19 @@
       prefs[k] = [...cur]; paintAll(kind, id);
       return { ok: false, reason: (e && e.message) || 'could not be saved' };
     }
-    if (cur.has(id)) offerPush(kind, name);                   // followed, and saved
+    if (cur.has(id) && !o.quiet) offerPush(kind, name);       // followed, and saved
+    changed(kind, id, cur.has(id));
     return { ok: true, on: cur.has(id) };
+  }
+
+  /* A FOLLOW THAT SAVED IS SAID TO THE PAGE. The rail's "your follows" list is drawn once and kept, and
+     HOME's MY FOLLOWED was drawn at load; each listens for this and draws again. */
+  function changed(kind, id, on) {
+    try {
+      if (typeof window.dispatchEvent === 'function' && typeof window.CustomEvent === 'function') {
+        window.dispatchEvent(new window.CustomEvent('epinoia:follows', { detail: { kind, id, on } }));
+      }
+    } catch (_) { /* a page with no events is not a reason to fail a follow */ }
   }
 
   /* push.js, fetched the first time a follow needs it: from beside this file, with
@@ -215,5 +236,5 @@
      right — the bell would lead to sign-in and the answer would be known by then. */
   const supports = kind => !!(cols && cols.indexOf(KEY[kind]) >= 0);
 
-  window.EpinoiaFollow = { bell, load, has, toggle, session, supports };
+  window.EpinoiaFollow = { bell, load, has, toggle, session, supports, offer: offerPush };
 })();

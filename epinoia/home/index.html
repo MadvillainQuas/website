@@ -20,17 +20,18 @@
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode before anything paints. Never the splash's mode
      script, its stylesheet or splash-body here: HOME is where the app goes instead of the water. -->
-<script src="../appmode.js?v=372"></script>
-<script src="../i18n.js?v=372" data-i18n-packs="report"></script>
-<script src="../glyphs.js?v=372" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=372">
-<link rel="stylesheet" href="../kit/nav.css?v=372">
-<link rel="stylesheet" href="../kit/card.css?v=372">
-<link rel="stylesheet" href="../kit/home.css?v=372">
-<link rel="stylesheet" href="../kit/fxc.css?v=372">
-<link rel="stylesheet" href="stars.css?v=372">
-<link rel="stylesheet" href="leagues.css?v=372">
-<link rel="stylesheet" href="../kit/haze.css?v=372">
+<script src="../appmode.js?v=373"></script>
+<script src="../i18n.js?v=373" data-i18n-packs="report"></script>
+<script src="../glyphs.js?v=373" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=373">
+<link rel="stylesheet" href="../kit/nav.css?v=373">
+<link rel="stylesheet" href="../kit/card.css?v=373">
+<link rel="stylesheet" href="../kit/home.css?v=373">
+<link rel="stylesheet" href="../kit/fxc.css?v=373">
+<link rel="stylesheet" href="stars.css?v=373">
+<link rel="stylesheet" href="leagues.css?v=373">
+<link rel="stylesheet" href="favourites.css?v=373">
+<link rel="stylesheet" href="../kit/haze.css?v=373">
 </head>
 <body data-haze>
 <div class="ep-frame hm">
@@ -60,6 +61,14 @@
       <div class="hm-skel fx" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     </div>
   </section>
+
+  <!-- who's your favourite? --------------------------------------------------
+       The line between the daily fixtures and MY FOLLOWED is a handle (favourites.js): a panel unrolls
+       out of it, black in the light theme and white in the dark, asking which leagues you prefer to
+       watch and which clubs you back — and what you pick is followed. It opens by itself once, for
+       somebody signed in who follows no club; the line stays, so it can always be opened again.
+       Empty here: with no script it takes no room. -->
+  <div class="fav-anchor" id="favourites" data-i18n-ctx="favourites"></div>
 
   <!-- my followed ----------------------------------------------------------
        One dropdown per followed league and club — its results, its fixtures
@@ -139,28 +148,29 @@
     </div>
   </footer>
 </div>
-<script src="../config.js?v=372" defer></script>
-<script src="../season.js?v=372" defer></script>
-<script src="../bpm.js?v=372" defer></script>
-<script src="../data.js?v=372" defer></script>
-<script src="../teamcolour.js?v=372" defer></script>
-<script src="../rt.js?v=372" defer></script>
-<script src="../initials.js?v=372" defer></script>
-<script src="../globalgames.js?v=372" defer></script>
-<script src="../stars.js?v=372" defer></script>
-<script src="../country.js?v=372" defer></script>
+<script src="../config.js?v=373" defer></script>
+<script src="../season.js?v=373" defer></script>
+<script src="../bpm.js?v=373" defer></script>
+<script src="../data.js?v=373" defer></script>
+<script src="../teamcolour.js?v=373" defer></script>
+<script src="../rt.js?v=373" defer></script>
+<script src="../initials.js?v=373" defer></script>
+<script src="../globalgames.js?v=373" defer></script>
+<script src="../stars.js?v=373" defer></script>
+<script src="../country.js?v=373" defer></script>
 <!-- the follow list, and the only thing on HOME that knows who is signed in:
      access.js deliberately sends no token here (see followed-home.js) -->
-<script src="../follow.js?v=372" defer></script>
-<script src="front.js?v=372" defer></script>
-<script src="daily.js?v=372" defer></script>
-<script src="followed-home.js?v=372" defer></script>
-<script src="stars-home.js?v=372" defer></script>
-<script src="leagues.js?v=372" defer></script>
-<script src="private-leagues.js?v=372" defer></script>
+<script src="../follow.js?v=373" defer></script>
+<script src="front.js?v=373" defer></script>
+<script src="daily.js?v=373" defer></script>
+<script src="followed-home.js?v=373" defer></script>
+<script src="stars-home.js?v=373" defer></script>
+<script src="leagues.js?v=373" defer></script>
+<script src="private-leagues.js?v=373" defer></script>
+<script src="favourites.js?v=373" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="../haze.js?v=372" defer></script>
-<script src="../nav.js?v=372" defer></script>
-<script src="../xscroll.js?v=372" defer></script>
+<script src="../haze.js?v=373" defer></script>
+<script src="../nav.js?v=373" defer></script>
+<script src="../xscroll.js?v=373" defer></script>
 </body>
 </html>

@@ -285,6 +285,20 @@ async function run(name) {
   }
 }
 
+/* A SECTION DRAWN AGAIN, after something the reader did changed what it shows: HOME's "Who's your
+   favourite?" (favourites.js) follows leagues and clubs, and MY FOLLOWED is then out of date. It waits
+   for the section's own first run (boot records it in firstRuns), so the two can never race, and
+   renumbers afterwards because a section can appear or go. Resolves when drawn; never rejects. */
+const firstRuns = Object.create(null);
+function refresh(name) {
+  const p = Promise.resolve(firstRuns[name]).catch(() => {})
+    .then(() => run(name))
+    .then(renumber)
+    .catch(() => {});
+  firstRuns[name] = p;
+  return p;
+}
+
 /* THE SECTION NUMBERS ARE WRITTEN FOR THE PAGE AS IT STANDS, and two of the
    five sections exist only for a signed-in reader — what they follow, and the
    private leagues they were let into. Left to the markup the front door would
@@ -314,6 +328,7 @@ function boot() {
   /* both of these need the follow list, and follow.js reads it once for the
      whole page, so the second to ask gets it for nothing */
   const followed = fixtures.then(() => run('followed'));
+  firstRuns.followed = followed;
   const priv = run('privateLeagues');
   const stars = fixtures.then(() => run('stars'));
   Promise.all([fixtures, followed, leagues, stars, priv])
@@ -335,5 +350,5 @@ if (typeof document !== 'undefined' && typeof location !== 'undefined') {
   }
 }
 
-return { register, fadeIn, paintApp, now: NOW };
+return { register, refresh, fadeIn, paintApp, now: NOW };
 }));

@@ -47,6 +47,8 @@ function collect() {
     want_halftime: $('#wHalftime').checked,
     /* the weekly fans' vote panel on league pages (0150); ignored by a database without it */
     want_fanvote: $('#wFanvote').checked,
+    /* HOME's "Who's your favourite?" prompt (0161); ignored by a database without it */
+    want_favourites: $('#wFavourites').checked,
     /* the reminder clock (0144); omitted rather than sent empty when Intl has nothing to say */
     ...(tz ? { time_zone: tz } : {})
   };
@@ -956,6 +958,8 @@ function wireTabs() {
   $('#wHalftime').checked = prefs.want_halftime !== false;
   /* the fans' vote panel (0150): on unless this account said "don't show this again" */
   $('#wFanvote').checked = prefs.want_fanvote !== false;
+  /* HOME's favourites prompt (0161): on unless this account said "don't show this again" */
+  $('#wFavourites').checked = prefs.want_favourites !== false;
   paintFixtureSubs();
   ['#nInapp', '#nEmail', '#wResults', '#wPlayers', '#wFixtures', '#wAnn',
    '#wFix2d', '#wFix2h', '#wLineups', '#wPlayerGames', '#wHalftime'].forEach(s => { $(s).onchange = () => { paintFixtureSubs(); save(); }; });
@@ -968,6 +972,18 @@ function wireTabs() {
         const k = (window.EpinoiaFanVote && window.EpinoiaFanVote.STORE) || 'epinoia.fanvote';
         const s = JSON.parse(localStorage.getItem(k) || '{}') || {};
         if (s.never) { delete s.never; localStorage.setItem(k, JSON.stringify(s)); }
+      } catch (_) { /* nothing stored, or storage refused */ }
+    }
+    save();
+  };
+  /* Same for HOME's favourites prompt: turning it back on also clears this browser's own "don't show this
+     again" for this account (home/favourites.js keeps one per account in epinoia.favourites). */
+  $('#wFavourites').onchange = () => {
+    if ($('#wFavourites').checked) {
+      try {
+        const s = JSON.parse(localStorage.getItem('epinoia.favourites') || '{}') || {};
+        const u = s.users && user && s.users[user.id];
+        if (u && u.never) { delete u.never; localStorage.setItem('epinoia.favourites', JSON.stringify(s)); }
       } catch (_) { /* nothing stored, or storage refused */ }
     }
     save();

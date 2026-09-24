@@ -272,6 +272,14 @@ jobs:
         # capture) and every club that won; fifteen players in 0150
         run: node --experimental-strip-types supabase/tests/fanvote.test.mjs
 
+      - name: Who's your favourite? (HOME's prompt for a fan who follows no club)
+        # home/favourites.js: who is asked and when it stays shut (once per account and browser, remind
+        # me later, never), the country and club rows, the store, follow.js's set-rather-than-flip and
+        # quiet options run in a VM, the anchor between the daily fixtures and MY FOLLOWED, the panel
+        # black in the light theme and white in the dark, and 0161's set_fan_prefs being 0150's plus
+        # one line; every string the panel writes has a Japanese and a Spanish entry
+        run: node supabase/tests/favourites.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the
