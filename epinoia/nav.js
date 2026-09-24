@@ -1592,7 +1592,10 @@
      bigger one than this.
 
      Returns a NODE, because one of the two answers is an <img>. */
-  const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XK'];
+  const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XB', 'XK'];
+  /* A region filed under a user-assigned code (country.js says why); its
+     "flag" is an outline of the area, and its name is ours, not Intl's. */
+  const REGIONS = { XB: { name: 'Balkans', glyph: '\u{1F5FA}\uFE0F' } };
 
   /* A LEAGUE IN SEVERAL COUNTRIES names them joined by '+' (0160: the BNXT League is 'BE+NL'), and
      the rail shows each flag beside its own name: the first in the row's flag slot, the others
@@ -1649,6 +1652,7 @@
        for one state, which is the kind of thing a reader notices and cannot
        account for. */
     if (!/^[A-Za-z]{2}$/.test(code || '')) return '\u{1F30D}';
+    if (REGIONS[code.toUpperCase()]) return REGIONS[code.toUpperCase()].glyph;
     return String.fromCodePoint(...[...code.toUpperCase()]
       .map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
   }
@@ -1659,6 +1663,7 @@
     if (!code) return 'Not yet filed';
     const cs = countryCodes(code);
     if (cs.length > 1) return cs.map(countryName).join(' + ');
+    if (REGIONS[String(code).toUpperCase()]) return REGIONS[String(code).toUpperCase()].name;
     if (regionNames === undefined) return code;
     if (!regionNames) {
       try { regionNames = new Intl.DisplayNames(undefined, { type: 'region' }); }

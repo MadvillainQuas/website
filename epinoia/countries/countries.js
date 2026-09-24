@@ -20,8 +20,12 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
 /* The flag is DERIVED from the two letters of the ISO code, exactly as the rail
    derives it: the regional-indicator code points a font renders as that flag.
    Nothing is stored and nothing can go out of step with the code beside it. */
+/* A region filed under a user-assigned code, named by us (country.js says why). */
+const REGIONS = { XB: { name: 'Balkans', glyph: '\u{1F5FA}\uFE0F' } };
+
 function flagOf(code) {
   if (!/^[A-Za-z]{2}$/.test(code || '')) return '\u{1F30D}';   // a globe, for the unfiled
+  if (REGIONS[code.toUpperCase()]) return REGIONS[code.toUpperCase()].glyph;
   return String.fromCodePoint(...[...code.toUpperCase()]
     .map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 }
@@ -32,6 +36,7 @@ function flagOf(code) {
 let regionNames;
 function countryName(code) {
   if (!/^[A-Za-z]{2}$/.test(code || '')) return 'Not yet filed';
+  if (REGIONS[code.toUpperCase()]) return REGIONS[code.toUpperCase()].name;
   if (regionNames === undefined) {
     try { regionNames = new Intl.DisplayNames(undefined, { type: 'region' }); }
     catch (_) { regionNames = null; }

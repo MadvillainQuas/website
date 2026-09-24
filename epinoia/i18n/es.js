@@ -1388,7 +1388,10 @@
       'Choose what you get': 'Elige qué quieres recibir',
       'Notifications are on': 'Notificaciones activadas',
       'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:': 'En iPhone y iPad, las notificaciones llegan a través de EPINOIΛ en tu pantalla de inicio:',
-      'fans’ vote': 'Voto de la afición'
+      'fans’ vote': 'Voto de la afición',
+      'Balkans': 'Balcanes',
+      'Finland': 'Finlandia',
+      'Mexico': 'México'
     },
 
     ctx: {

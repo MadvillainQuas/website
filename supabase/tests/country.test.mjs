@@ -53,8 +53,26 @@ if (intl) {
   ok('without Intl the code is the name', C.countryName('gb') === 'GB');
 }
 
+section('regions (a user-assigned code, named and drawn by us)');
+ok('XB is the Balkans, whatever Intl says', C.countryName('XB') === 'Balkans' && C.countryName(' xb ') === 'Balkans');
+ok('XB is a map, not the letters X B', C.flagOf('XB') === '\u{1F5FA}\uFE0F', cps(C.flagOf('XB')));
+ok('XB has its outline drawn', C.flagSrc('xb') === 'brand/flags/xb.svg');
+ok('every region is in the drawn list', Object.keys(C.REGIONS).every(c => C.HAVE_FLAG.indexOf(c) >= 0));
+ok('every region code is ISO user-assigned (XA-XZ)', Object.keys(C.REGIONS).every(c => /^X[A-Z]$/.test(c)));
+ok('every drawn flag has its file', C.HAVE_FLAG.every(c => {
+  try { return rd('epinoia', 'brand', 'flags', c.toLowerCase() + '.svg').startsWith('<svg'); } catch (_) { return false; }
+}), C.HAVE_FLAG.join(','));
+const copies = { 'nav.js': rd('epinoia', 'nav.js'), 'countries.js': rd('epinoia', 'countries', 'countries.js'),
+  'appearance-ui.js': rd('epinoia', 'admin', 'appearance-ui.js') };
+Object.keys(copies).forEach(f => ok(f + ' names XB the Balkans too', /XB: \{ name: 'Balkans'/.test(copies[f])));
+ok('nav.js draws the XB outline', /HAVE_FLAG = \[[^\]]*'XB'/.test(copies['nav.js']));
+ok('Balkans is translated (ja, es)', /'Balkans': /.test(rd('epinoia', 'i18n', 'ja.js')) && /'Balkans': /.test(rd('epinoia', 'i18n', 'es.js')));
+ok('a region sorts among countries by its name',
+  C.group([L0('a', 'A', 'XB'), L0('b', 'B', 'AU'), L0('c', 'C', 'CA')]).map(x => x.code).join(',') === 'AU,XB,CA');
+
 section('groups');
-const L = (slug, name, country) => ({ id: slug, slug, name, country });
+function L0(slug, name, country) { return { id: slug, slug, name, country }; }
+const L = L0;
 const rows = [
   L('slb-women', 'Super League Basketball Women', 'GB'),
   L('bbl-de', 'Basketball Bundesliga', 'DE'),

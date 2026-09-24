@@ -58,7 +58,18 @@ function norm(code) {
    ADDING ONE IS TWO STEPS, deliberately: drop <code>.svg into brand/flags and
    add the code here. The alternative — try the image and fall back on error —
    means a 404 on every page load for every country we have not drawn. */
-const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XK'];
+const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XB', 'XK'];
+
+/* A REGION IS NOT A COUNTRY, but some leagues belong to one: the ABA League is
+   played across the former Yugoslavia and no single flag is its home. Such a
+   league is filed under a code from ISO's user-assigned range (XA-XZ, which ISO
+   promises never to give a country, so it can never collide with one), named
+   here because Intl has never heard of it, and drawn as an OUTLINE OF THE AREA
+   in brand/flags rather than a flag. Its emoji, for where the picture is not
+   drawn, is a map. nav.js, countries.js and admin/appearance-ui.js carry the
+   same table. (Kosovo's XK is from the same range but is a country, with a flag
+   of its own and a name Intl knows; it is not a region.) */
+const REGIONS = { XB: { name: 'Balkans', glyph: '\u{1F5FA}\uFE0F' } };
 
 /* Root-relative on purpose: this file is DOM-free and node runs it, so it does
    not know how deep the page asking is. The caller prefixes its own root. */
@@ -74,7 +85,8 @@ function flagSrc(code) {
 function flagOf(code) {
   const c = codes(code);
   if (!c.length) return GLOBE;
-  return c.map(one => String.fromCodePoint(...[...one].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))).join(' ');
+  return c.map(one => REGIONS[one] ? REGIONS[one].glyph
+    : String.fromCodePoint(...[...one].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))).join(' ');
 }
 
 /* The NAME from Intl, in the reader's own language, rather than a hard-coded
@@ -85,6 +97,7 @@ function flagOf(code) {
    under a code nobody recognises should say what it was filed under. */
 let regionNames, unknownRegion;
 function oneName(c) {
+  if (REGIONS[c]) return REGIONS[c].name;
   if (regionNames === undefined) {
     try {
       regionNames = new Intl.DisplayNames(undefined, { type: 'region' });
@@ -135,5 +148,5 @@ function group(leagues) {
       (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }
 
-return { flagOf, flagSrc, countryName, parts, codes, group, norm, UNFILED, HAVE_FLAG };
+return { flagOf, flagSrc, countryName, parts, codes, group, norm, UNFILED, HAVE_FLAG, REGIONS };
 }));

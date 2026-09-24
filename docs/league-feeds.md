@@ -504,3 +504,80 @@ one of them joined to a stats fixture.
   pages' whole-season numbers take every competition, friendlies included. Six of its games are the
   test's vetting set, one of them a player with six fouls, which the translator files as the bench's
   after his fifth as it does everywhere.
+
+## Balkans: ABA League, ABA League 2, ABA U19 League (aba-liga.com)
+
+Added 2026-09-24. Adapter `scripts/ingest/adapters/aba.py`, test `scripts/ingest/aba_test.py`, source
+codes ABA, ABA2, ABAU19 (a regular-season row and a play-off row each). Filed under the region code XB,
+"Balkans" (ISO's user-assigned range; epinoia/country.js REGIONS), drawn as an outline of the former
+Yugoslavia in epinoia/brand/flags/xb.svg rather than a flag.
+
+### host
+
+The league's own server-rendered site. One site, three leagues, told apart by a league number and a host:
+1 ABA on www.aba-liga.com, 2 ABA 2 on druga.aba-liga.com, 7 the U19 on www (calendar-u19).
+
+### current_season
+
+The site's season number is the start year less 2000 (2026-27 = 26), derived from the platform's season
+name. `adapter_config.aba_season` overrides it.
+
+### schedule_recipe
+
+    GET https://www.aba-liga.com/calendar/26/1/          (ABA)
+    GET https://druga.aba-liga.com/calendar/26/2/        (ABA 2)
+    GET https://www.aba-liga.com/calendar-u19/26/7/      (U19)
+
+One page per league-season: a panel per round heading, a row per game (clubs, phone codes, score, date
+and time, group). Games are keyed `<league>-<season>-<game id>`. Play-offs are the headings that say so
+(play-in, quarter, semi, final, classification, place); "Top8 - R1" and "Play-out - R1" (ABA 2025-26's
+second phase) are regular season. Groups ride on regular-season games only (`groups_from_feed`).
+
+### game_recipe
+
+    GET https://<host>/match/<id>/<season>/<league>/                     every tab at once
+    GET https://<host>/live-match/rezultati-1718/create_shooting_chart.php?id=&sez=&lea=
+    GET https://<host>/player/<id>/<season>/<league>/<slug>/              only for a name nobody printed
+
+### parser_entry
+
+`AbaAdapter` (adapters/aba.py) builds FIBA's data.json shape from the page and hands it to
+`FibaLiveStatsAdapter.bundle_from_raw`. The play-by-play is FIBA LiveStats written out in English
+("made 2 points (drivinglayup)"), newest first, clock = time remaining, home left and away right.
+
+### names
+
+Clubs: the calendar's (the sponsor's form, "Igokea m:tel"), coded with the calendar's phone column.
+Players: keyed by the site's player id. The box prints "Jovanović Đ.", so the full name comes from the
+shot feed's `player_name`, the leader tables ("Sulaimon Rasheed"), or the player's own page (its h1),
+read once a process and at most 8 a game. The family name is always the box's own.
+
+### logos
+
+https://www.aba-liga.com/images/club/150x150/<club id>.png, the club id from the site's club menu, joined
+on the name (or on initials: "GGD Šenčur" is "Gorenjska gradbena družba Šenčur"). The menu lists the
+current season's clubs, so a past season's departed club has no crest in discovery; its games carry one.
+
+### shots
+
+The chart feed: x/y in percent of the full court, `ekipa` 1/2, made, `player_id`. No clock and no type,
+so each is joined to the play-by-play's shots of the same player and result, preferring the type its
+distance says (beyond 6.75 m a three).
+
+### probe
+
+2026-09-24: ABA 2026-27 180 fixtures from 25 Sep (two groups of ten, 20 clubs x 18), 136 of them dated
+with no time yet (TBC); ABA 2 50 fixtures published (16 clubs, groups A-D); U19 2026-27 not published.
+ABA 2025-26 226 regular + 22 play-off games; U19 2025-26 24 + 12.
+
+### gotchas
+
+- Times: ABA prints "CET", the others "Local time"; all are Europe/Belgrade (Dubai's games are printed
+  on the league's clock). A date with no time is noon UTC with `time_tbc`.
+- The server HTML single-quotes the box score's links (a browser-saved page double-quotes them): every
+  pattern accepts either.
+- The chart's player lists are filled by JavaScript: empty in the server HTML.
+- The shot chart over-counts: a shot with player_id 0, or one more for a player than his box has. Those
+  are left out; the box and the play-by-play agree exactly.
+- A bare "(defensive)" / "(offensive)" line is the club's rebound; a bare other bracket ("(outofbounds)")
+  its turnover. "turnover (offensive)" on a player is an offensive foul.

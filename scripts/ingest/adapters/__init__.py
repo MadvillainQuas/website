@@ -17,6 +17,7 @@ from .acb import ACBAdapter
 from .lnb import LnbAdapter
 from .lnbp import LnbpAdapter
 from .basketfi import BasketFiAdapter
+from .aba import AbaAdapter
 from .bleague import BLeagueAdapter
 from .bbl import BBLAdapter
 from .twobbl import TwoBBLAdapter
@@ -88,6 +89,7 @@ REGISTRY: dict[str, type[BaseAdapter]] = {
     LnbAdapter.name: LnbAdapter,
     LnbpAdapter.name: LnbpAdapter,
     BasketFiAdapter.name: BasketFiAdapter,
+    AbaAdapter.name: AbaAdapter,
     BLeagueAdapter.name: BLeagueAdapter,
     BBLAdapter.name: BBLAdapter,
     TwoBBLAdapter.name: TwoBBLAdapter,

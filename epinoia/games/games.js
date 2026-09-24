@@ -52,6 +52,7 @@
   function countryName(code) {
     const C = window.EpinoiaCountry;
     if (C && typeof C.countryName === 'function') return C.countryName(code);
+    if (String(code).toUpperCase() === 'XB') return 'Balkans';   // a region, not a country (country.js)
     try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(String(code).toUpperCase()); }
     catch (_) { return code || ''; }
   }

@@ -1386,7 +1386,10 @@
       'Choose what you get': '受け取る内容を選ぶ',
       'Notifications are on': '通知がオンになりました',
       'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:': 'iPhoneとiPadでは、通知はホーム画面のEPINOIΛを通じて届きます:',
-      'fans’ vote': 'ファン投票'
+      'fans’ vote': 'ファン投票',
+      'Balkans': 'バルカン半島',
+      'Finland': 'フィンランド',
+      'Mexico': 'メキシコ'
     },
 
     ctx: {

@@ -2388,6 +2388,192 @@
       "scheduleUrls": [
         "https://bnxtleague.com/en/calendar#playoffs-netherlands"
       ]
+    },
+    {
+      "code": "ABA",
+      "label": "ABA League",
+      "adapter": "aba",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        8,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "aba-league",
+      "league_name": "ABA League",
+      "league_country": "XB",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ABA",
+        "league": 1,
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "groups_from_feed": true,
+        "competition_format": "groups"
+      },
+      "scheduleUrls": [
+        "https://www.aba-liga.com/calendar/"
+      ]
+    },
+    {
+      "code": "ABA",
+      "label": "ABA League",
+      "adapter": "aba",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        8,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "aba-league",
+      "league_name": "ABA League",
+      "league_country": "XB",
+      "league_gender": "men",
+      "competition_label": "ABA League Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "ABA",
+        "league": 1,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.aba-liga.com/calendar/#playoffs"
+      ]
+    },
+    {
+      "code": "ABA2",
+      "label": "ABA League 2",
+      "adapter": "aba",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        8,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "aba-league-2",
+      "league_name": "ABA League 2",
+      "league_country": "XB",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ABA2",
+        "league": 2,
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "groups_from_feed": true,
+        "competition_format": "groups"
+      },
+      "scheduleUrls": [
+        "https://druga.aba-liga.com/calendar/"
+      ]
+    },
+    {
+      "code": "ABA2",
+      "label": "ABA League 2",
+      "adapter": "aba",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        8,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "aba-league-2",
+      "league_name": "ABA League 2",
+      "league_country": "XB",
+      "league_gender": "men",
+      "competition_label": "ABA League 2 Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "ABA2",
+        "league": 2,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://druga.aba-liga.com/calendar/#playoffs"
+      ]
+    },
+    {
+      "code": "ABAU19",
+      "label": "ABA U19 League",
+      "adapter": "aba",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        8,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "aba-u19-league",
+      "league_name": "ABA U19 League",
+      "league_country": "XB",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ABAU19",
+        "league": 7,
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "groups_from_feed": true,
+        "competition_format": "groups"
+      },
+      "scheduleUrls": [
+        "https://www.aba-liga.com/calendar-u19/"
+      ]
+    },
+    {
+      "code": "ABAU19",
+      "label": "ABA U19 League",
+      "adapter": "aba",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        8,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "aba-u19-league",
+      "league_name": "ABA U19 League",
+      "league_country": "XB",
+      "league_gender": "men",
+      "competition_label": "ABA U19 League Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "ABAU19",
+        "league": 7,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.aba-liga.com/calendar-u19/#playoffs"
+      ]
     }
   ]
 }

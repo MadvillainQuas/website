@@ -28,14 +28,18 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
    and the rail deliberately loads nothing. */
 /* A LEAGUE IN SEVERAL COUNTRIES names them joined by '+' (0160: BE+NL), up to four. */
 const COUNTRY_RE = /^[A-Za-z]{2}(\+[A-Za-z]{2}){0,3}$/;
-const oneFlag = code => /^[A-Za-z]{2}$/.test(code || '') ? String.fromCodePoint(
-  ...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : '\u{1F3F3}';
+/* A region filed under a user-assigned code, named by us (country.js says why). */
+const REGIONS = { XB: { name: 'Balkans', glyph: '\u{1F5FA}\uFE0F' } };
+const oneFlag = code => !/^[A-Za-z]{2}$/.test(code || '') ? '\u{1F3F3}'
+  : REGIONS[code.toUpperCase()] ? REGIONS[code.toUpperCase()].glyph
+  : String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 const flagOf = code => COUNTRY_RE.test(code || '') ? String(code).split('+').map(oneFlag).join(' ') : '\u{1F3F3}';
 
 let regionNames;
 function countryName(code) {
   if (COUNTRY_RE.test(code || '') && String(code).includes('+')) return String(code).split('+').map(countryName).join(' + ');
   if (!/^[A-Za-z]{2}$/.test(code || '')) return '';
+  if (REGIONS[code.toUpperCase()]) return REGIONS[code.toUpperCase()].name;
   if (regionNames === undefined) {
     try { regionNames = new Intl.DisplayNames(undefined, { type: 'region' }); }
     catch (_) { regionNames = null; }

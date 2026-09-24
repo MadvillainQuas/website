@@ -489,6 +489,14 @@ jobs:
         # game whose stats feed lost its overtime held rather than filed as a draw
         run: python scripts/ingest/basketfi_test.py
 
+      - name: The Balkans (ABA League, ABA League 2, ABA U19) from aba-liga.com's own pages
+        # aba.py over cached calendars, game pages, shot charts and player pages: one site and three
+        # leagues by number and host, Central European tip-offs to UTC, a second league phase kept in the
+        # regular season, groups only on regular-season games, crests joined on initials, and six games
+        # (an overtime game, both finals, the U19 final) reconciling box, score, 5v5 stints, event log and
+        # the shot chart - with full player names from the shot feed, the leader tables or the player's page
+        run: python scripts/ingest/aba_test.py
+
       - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
         # nbl.py over cached season lists, schedules and game replies: only each league's main
         # season is discovered (never the pre-season, the Blitz or a cup final), the WNBL's finals
