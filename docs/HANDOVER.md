@@ -325,8 +325,8 @@ picks between them.
 - **Enable Google auth** in Supabase → Authentication → Providers. The button
   on `/epinoia/signin/` hides itself until then and appears automatically after;
   no code change needed.
-- **Set contact secrets** or the form stores without sending:
-  `npx supabase secrets set CONTACT_TO=… RESEND_API_KEY=…`
+- ~~Set contact secrets~~ Done 2026-09-24: CONTACT_TO, RESEND_API_KEY and
+  CONTACT_FROM are all set; the form emails the owner (checked with a test message).
 - **Recompute the scraper's BPM.** See §8.
 
 **Known and unfixed:**
