@@ -166,10 +166,10 @@ def fresh():
 print("-- the source rows")
 src = json.load(open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8"))["sources"]
 rows = [s for s in src if s.get("adapter") == "bnxt"]
-ok("the regular season and the two national play-offs, one league, filed under Belgium",
+ok("the regular season and the two national play-offs, one league, filed under Belgium + the Netherlands (0160)",
    sorted((s["adapter_config"]["stage"], s["adapter_config"].get("phase_match", "")) for s in rows)
    == [("playoffs", "belgium"), ("playoffs", "netherlands"), ("regular", "")]
-   and {s["league_slug"] for s in rows} == {"bnxt-league"} and all(s["league_country"] == "BE" for s in rows), rows)
+   and {s["league_slug"] for s in rows} == {"bnxt-league"} and all(s["league_country"] == "BE+NL" for s in rows), rows)
 ok("each play-off is a competition of its own, with its own URL",
    sorted(s.get("competition_label") for s in rows if s["adapter_config"]["stage"] == "playoffs")
    == ["BNXT Playoffs Belgium", "BNXT Playoffs Netherlands"]
