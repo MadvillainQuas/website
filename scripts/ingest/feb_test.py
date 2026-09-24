@@ -75,8 +75,15 @@ PAGES = {r"calendario\.aspx\?g=1&t=2026$": "cal-1-2026.html", r"calendario\.aspx
          r"calendario\.aspx\?g=2&t=2026$": "cal-2-2026.html", r"calendario\.aspx\?g=74&t=2025$": "cal-74-2025.html",
          r"resultados\.aspx\?g=1&t=2025$": "res-1-2025.html", r"/series/44449$": "series-44449.html",
          r"/equipo/981431$": "equipo-981431.html", r"/jugador/981431/1517914$": "jugador-981431-1517914.html",
+         r"resultados\.aspx\?g=4&t=2026$": "res-4-2026.html", r"/series/45080$": "series-45080.html",
+         r"calendario\.aspx\?g=4&t=2026$": "INLINE:lfe-cal",
          r"/partido/\d+$": "res-1-2025.html"}           # any page carries the token
 POSTBACKS = {"90000": "cal-2-2026-90000.html"}
+# LF Endesa's 2026/27 calendar before its first round: one regular group and nothing else
+INLINE = {"lfe-cal": ('<html><body><form name="aspnetForm" method="post" action="/calendario/lfendesa/4/2026">'
+                      '<input type="hidden" name="_ctl0:token" value="eyJhbGciOiJub25lIn0.eyJleHAiOjQxMDI0NDQ4MDB9.test">'
+                      '<select name="_ctl0:MainContentPlaceHolderMaster:gruposDropDownList">'
+                      '<option selected="selected" value="89975">Liga Regular &#218;nico</option></select></body></html>')}
 GAMES = ("2513900", "2486258", "2479452", "2513595")
 
 
@@ -100,7 +107,7 @@ class Offline(F.FebAdapter):
             return Resp(200, text(f"keyfacts-{gid}.json")) if os.path.exists(p) else Resp(404, "")
         for pat, name in PAGES.items():
             if re.search(pat, url):
-                return Resp(200, text(name))
+                return Resp(200, INLINE[name[7:]] if name.startswith("INLINE:") else text(name))
         return Resp(404, "")
 
     def _postback(self, url, page, group_value):
@@ -201,6 +208,24 @@ lu = list(a.discover("", {"code": "LIGAU", "competition": 74, "stage": "playoffs
 ok("Liga U's later phases are its play-off source (the third-place game, named by its phase)",
    any(g.external_id == "2513595" and g.extra["round"].startswith("3º-4º") for g in lu), [(g.external_id, g.extra["round"]) for g in lu])
 ok("...a phase whose page cannot be read is skipped, not a failure", len(lu) >= 1)
+
+print("\n-- a cup filed under the league")
+for label, cup in (("Supercopa 1/2 Final", True), ("Supercopa Final", True), ("C.SM Reina 1/4 Final", True),
+                   ("C.SM Reina Final", True), ("Play-Offs Final", False), ("Play-offs 1/4 Final", False),
+                   ('2ª FASE Grupo "A"', False), ("PLAY-OUT 2ºB-7ºA", False), ("3º-4º 3º-4º", False)):
+    ok(f"{label!r} is {'a cup, never' if cup else 'the league’s own phase, and'} read as the league's",
+       bool(F.CUP.search(label)) == cup)
+lfe_root = tempfile.mkdtemp()
+a = fresh()
+lfe = list(a.discover("", {"code": "LFE", "competition": 4, "stage": "playoffs", "season": "2026-27", "repo_root": lfe_root}))
+ok("LF Endesa 2026/27 before its first round: the play-off source finds nothing - the Supercopa semi-finals "
+   "(the results page's latest phase) are not the league's play-offs", lfe == [], [(g.external_id, g.extra) for g in lfe])
+cache = a._cache({"code": "LFE", "repo_root": lfe_root})
+ok("...and they are remembered as cup games (2528245 Casademont Zaragoza v Valencia, 2528246 Leganés v Jairis)",
+   cache.get("cup_games") == ["2528245", "2528246"], cache.get("cup_games"))
+b = fresh()
+ok("...so a lane that fetches by stored id (the live lane, with no schedule) never fetches one as the league's",
+   b.fetch("2528245", {"code": "LFE", "repo_root": lfe_root}) is None and not any(u.startswith(F.API) for u in b.asked), b.asked)
 
 print("\n-- time zones and groups")
 for name, canary in (("SPAR GRAN CANARIA", True), ("LA LAGUNA TOYOTA  ADAREVA", True), ("VEGA LAGUNERA TOYOTA  ADAREVA TENERIFE", True),

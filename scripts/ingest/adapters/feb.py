@@ -23,7 +23,11 @@ THE SCHEDULE is server-rendered ASP.NET, one request per group:
     (resultados.aspx) links them from its bracket as series/<f>, one page listing every series and
     game of the phase with both clubs, the score and the date.
 THE STAGE: a group named "Liga Regular ..." is the regular season; every other group or phase
-(play-offs, Liga U's second phase and play-outs) is the "playoffs" source.
+(play-offs, Liga U's second phase and play-outs) is the "playoffs" source - except a CUP. LF
+Endesa's pages carry the Supercopa and the Copa de la Reina as phases of the league, and the game
+feed cannot tell those games from the league's, so a phase named for a cup is never read as the
+league's, and the cup games seen are remembered (data/feed/<CODE>/feb.json "cup_games") so that no
+lane - the live lane fetches by stored id, without a schedule - fetches one as the league's.
 GROUPS: a league played in two groups carries each fixture's group (home_group / away_group) so
 the table splits itself (groups_from_feed in the source row).
 
@@ -100,6 +104,11 @@ LIVE_GUARD_S = 3 * 3600
 #: before this, the game endpoint has nothing to say about a game
 FETCH_LEAD_S = 30 * 60
 REGULAR = re.compile(r"^\s*liga\s+regular", re.I)
+#: a cup the site files under a league: LF Endesa's page carries the Supercopa and the Copa de S.M. la
+#: Reina ("C.SM Reina 1/4 Final") as phases of its own, and their games are indistinguishable from the
+#: league's in the game feed (the 2025/26 Supercopa final says CompID 210, 'LF ENDESA', round 'Final').
+#: The phase name is the only thing that tells them apart, so it is read here and nowhere else.
+CUP = re.compile(r"super\s*copa|\bcopa\b|\breina\b|\bcup\b", re.I)
 #: a home club in the Canary Islands, by name (the fixture list prints no venue)
 CANARY_CLUB = re.compile(r"CANARIA|TENERIFE|LANZAROTE|FUERTEVENTURA|\bLA\s+LAGUNA\b|LAGUNERA|\bLA\s+PALMA\b|"
                          r"GOMERA|\bHIERRO\b|\bTELDE\b|\bARUCAS\b|\bADEJE\b|\bT[IÍ]AS\b|\bARONA\b|\bG[AÁ]LDAR\b|"
@@ -685,7 +694,9 @@ class FebAdapter(FibaLiveStatsAdapter):
             return []
         groups = groups_of(page)
         regular = [g for g in groups if REGULAR.match(g[1])]
-        other = [g for g in groups if not REGULAR.match(g[1])]
+        other = [g for g in groups if not REGULAR.match(g[1]) and not CUP.search(g[1])]
+        cache = self._cache(config)
+        cups = set(cache.get("cup_games") or [])
         rows: List[Tuple[dict, str, str]] = []     # (game, stage, group label)
         if stage in ("", "regular"):
             split = len(regular) > 1
@@ -699,15 +710,36 @@ class FebAdapter(FibaLiveStatsAdapter):
                 for g in calendar_games(gp or ""):
                     g["round"] = " · ".join(x for x in (label.strip(), g.get("round")) if x)
                     rows.append((g, "playoffs", ""))
-            res = self._page(f"{SITE}/resultados.aspx?g={comp}&t={season}") or ""
-            for f in series_links(res):
-                for g in series_games(self._page(f"{SITE}/series/{f}") or ""):
-                    rows.append((g, "playoffs", ""))
+            # the knockout rounds: the results page links the series of the phase it has selected, so
+            # each of the league's own play-off phases is selected in turn (the latest one is already)
+            res_url = f"{SITE}/resultados.aspx?g={comp}&t={season}"
+            res = self._page(res_url) or ""
+            seen_f = set()
+            for value, label, selected in groups_of(res):
+                if REGULAR.match(label):
+                    continue
+                if CUP.search(label):
+                    if selected:
+                        # a cup is the latest phase (LF Endesa's Supercopa in September): its games
+                        # are remembered as not the league's, so no lane ever fetches them as the league's
+                        for f in series_links(res):
+                            cups |= {g["id"] for g in series_games(self._page(f"{SITE}/series/{f}") or "")}
+                    continue
+                rp = res if selected else self._postback(res_url, res, value)
+                for f in series_links(rp or ""):
+                    if f in seen_f:
+                        continue
+                    seen_f.add(f)
+                    for g in series_games(self._page(f"{SITE}/series/{f}") or ""):
+                        rows.append((g, "playoffs", ""))
+            if cups != set(cache.get("cup_games") or []):
+                cache["cup_games"] = sorted(cups)
+                self._save_cache(config, cache)
         tzmap = self._cache(config).get("tz") or {}
         now = datetime.now(timezone.utc)
         out, seen = [], set()
         for g, st, grp in rows:
-            if g["id"] in seen:
+            if g["id"] in seen or g["id"] in cups:
                 continue
             seen.add(g["id"])
             FebAdapter._fixtures[g["id"]] = (g["home_id"], g["away_id"])
@@ -747,6 +779,9 @@ class FebAdapter(FibaLiveStatsAdapter):
         gid = str(external_id).strip()
         if not gid.isdigit() or self._too_early(config.get("_tipoff_at")):
             return None                        # decided before a single request is made
+        if gid in set(self._cache(config).get("cup_games") or []):
+            print(f"     FEB {gid}: a cup game filed under the league's page, not the league's - not fetched")
+            return None
         reply = self._api(f"KeyFacts/{gid}", gid)
         if not isinstance(reply, dict):
             return None
