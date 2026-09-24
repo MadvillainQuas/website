@@ -15,11 +15,11 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
 <title>Your profile · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<script src="../appmode.js?v=374"></script>
-<script src="../i18n.js?v=374" data-i18n-packs="account"></script>
-<script src="../glyphs.js?v=374" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=374">
-<link rel="stylesheet" href="../kit/nav.css?v=374">
+<script src="../appmode.js?v=375"></script>
+<script src="../i18n.js?v=375" data-i18n-packs="account"></script>
+<script src="../glyphs.js?v=375" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=375">
+<link rel="stylesheet" href="../kit/nav.css?v=375">
 <style>
   .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
@@ -53,6 +53,18 @@
   .ntf small{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
   .ntf time{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);white-space:nowrap;padding-top:4px}
   .hide{display:none}
+  /* the username (0163) */
+  .uname-lead{margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*.5);font-family:var(--f-ui);font-size:14px;line-height:1.55;color:var(--ink-2);max-width:64ch}
+  .uname-row{flex-wrap:nowrap}
+  .uname-at{font-family:var(--f-data);font-size:15px;color:var(--ink-3)}
+  .uname-row .ep-input{flex:1 1 220px;max-width:320px;font-size:15px}
+  .uname-row .ep-btn{min-height:42px}
+  /* the UI face, not the pixel one: that one has no lower case, and a username's case is the fan's */
+  .uname-msg{font-family:var(--f-ui);font-size:13px;line-height:1.6;min-height:1.6em;
+    padding:0 calc(var(--u)*3);color:var(--ink-3)}
+  .uname-msg.ok{color:var(--lume)} .uname-msg.bad{color:var(--flare)}
+  .uname-rules{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.04em;line-height:1.8;color:var(--ink-3);
+    padding:0 calc(var(--u)*3) calc(var(--u))}
 
   /* membership: one row per plan or grant, the words on the left, the buttons
      on the right (under the words on a phone) */
@@ -165,6 +177,22 @@
     </div>
 
     <div id="pane-profile" role="tabpanel">
+    <!-- Your username (0163): the public name EPINOIA GO's leaderboards and photos show, never the email.
+         me.js fills it; before the migration is applied the RPC is missing and the section stays hidden.
+         #username in the address brings it into view (EPINOIA GO sends a fan here to choose one). -->
+    <section class="sec hide" id="unameSec" aria-labelledby="unameH">
+      <div class="ep-hdr"><span class="idx">01</span><h2 id="unameH">Username</h2></div>
+      <p class="uname-lead" id="unameLead">Your name on leaderboards and in the fans&rsquo; photos. Never your email.</p>
+      <div class="row uname-row">
+        <span class="uname-at" aria-hidden="true">@</span>
+        <input id="unameIn" class="ep-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20"
+               placeholder="choose a username" aria-describedby="unameMsg unameRules">
+        <button class="ep-btn pri" id="unameSave" type="button" disabled>Save</button>
+      </div>
+      <div class="uname-msg" id="unameMsg" role="status" aria-live="polite"></div>
+      <div class="uname-rules" id="unameRules">3&ndash;20 letters, digits and underscores, starting with a letter. You can change it once a month.</div>
+    </section>
+
     <!-- Membership (my_access, 0117). me.js fills it; before the migration is
          applied the RPC is missing and me.js hides the section and renumbers
          the rest. Cancelling here is the "one step, online" the join page's
@@ -281,10 +309,10 @@
     </div>
   </div>
 </div>
-<script src="../config.js?v=374" defer></script>
-<script src="../vendor/supabase.js?v=374" defer></script>
-<script src="../push.js?v=374" defer></script>
-<script src="me.js?v=374" defer></script>
-<script src="../nav.js?v=374" defer></script>
+<script src="../config.js?v=375" defer></script>
+<script src="../vendor/supabase.js?v=375" defer></script>
+<script src="../push.js?v=375" defer></script>
+<script src="me.js?v=375" defer></script>
+<script src="../nav.js?v=375" defer></script>
 </body>
 </html>

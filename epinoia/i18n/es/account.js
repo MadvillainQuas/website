@@ -317,7 +317,26 @@
       'League console': 'Consola de la liga',
       'On HOME': 'En Inicio',
       'Favourites prompt': 'Aviso de favoritos',
-      'open “Who’s your favourite?” on HOME once, when you have not followed a club yet, to pick the leagues you watch and the clubs you back. Off, it stays out of your way, and it can still be opened from the line under the daily fixtures.': 'abre «¿Cuál es tu favorito?» en Inicio una sola vez, cuando aún no sigues ningún club, para elegir las ligas que ves y los clubes que apoyas. Desactivado, no te molesta, y aún puedes abrirlo desde la línea bajo los partidos del día.'
+      'open “Who’s your favourite?” on HOME once, when you have not followed a club yet, to pick the leagues you watch and the clubs you back. Off, it stays out of your way, and it can still be opened from the line under the daily fixtures.': 'abre «¿Cuál es tu favorito?» en Inicio una sola vez, cuando aún no sigues ningún club, para elegir las ligas que ves y los clubes que apoyas. Desactivado, no te molesta, y aún puedes abrirlo desde la línea bajo los partidos del día.',
+      'Username': 'Nombre de usuario',
+      'Your name on leaderboards and in the fans’ photos. Never your email.': 'Tu nombre en las clasificaciones y en las fotos de la afición. Nunca tu correo.',
+      'choose a username': 'elige un nombre de usuario',
+      '3–20 letters, digits and underscores, starting with a letter. You can change it once a month.': 'De 3 a 20 letras, números y guiones bajos, empezando por una letra. Puedes cambiarlo una vez al mes.',
+      'You have not chosen one yet.': 'Aún no has elegido uno.',
+      'At least 3 characters.': 'Al menos 3 caracteres.',
+      '20 characters at most.': '20 caracteres como máximo.',
+      'Start with a letter.': 'Empieza por una letra.',
+      'Letters, digits and underscores only.': 'Solo letras, números y guiones bajos.',
+      'That name is kept for EPINOIA itself.': 'Ese nombre está reservado para EPINOIΛ.',
+      'Please choose a different name.': 'Elige otro nombre, por favor.',
+      'Taken. Try another.': 'Ya está en uso. Prueba otro.',
+      'That is your username.': 'Ese es tu nombre de usuario.',
+      'Checking…': 'Comprobando…',
+      'Could not check just now.': 'Ahora mismo no se pudo comprobar.',
+      'is available.': 'está disponible.',
+      'Saving…': 'Guardando…',
+      'Saved. Your username is': 'Guardado. Tu nombre de usuario es',
+      'You can change it again on': 'Podrás cambiarlo de nuevo el'
     },
 
     ctx: {

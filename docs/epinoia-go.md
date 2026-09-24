@@ -60,10 +60,16 @@ needs Louie says so.
 
 ## Phase 2 — Usernames
 
-- [ ] **2.1 Username** on the profile (migration): unique whatever the case, 3–20 letters, digits and
-      underscores, reserved words and an abuse list refused, changeable once a month. A public view exposes
-      the username and nothing else, never an email.
-- [ ] **2.2 Asking for one**: on first use of EPINOIA GO, and on the profile page.
+- [x] **2.1 Username** — migration `0163_usernames.sql`: its own table (profiles is writable by its owner,
+      every column, so a name there could be anything), read only by its owner, written only by
+      `set_username()`. Unique whatever the case, 3–20 letters, digits and underscores starting with a letter,
+      the platform's own words reserved, an abuse list that sees through 0/1/3/4/5 disguises but leaves
+      Dickson, Peacock and Fagerlund alone (the admin can add words), once in 30 days (case changes free).
+      Leaderboards will publish names through their own functions, so a name is never tied to an account
+      id in public. PGlite: 24 checks. **Live once Louie runs `db push`.**
+- [x] **2.2 Asking for one** — on the profile page, first section: checked as it is typed, saved, every
+      refusal in words, ja/es. `/epinoia/me/#username` opens it, which is where EPINOIA GO will send a fan
+      with no name (3.4). Driven in Chromium against the real Supabase SDK: 18 checks.
 
 ## Phase 3 — Stamping
 

@@ -280,6 +280,12 @@ jobs:
         # one line; every string the panel writes has a Japanese and a Spanish entry
         run: node supabase/tests/favourites.test.mjs
 
+      - name: Usernames (EPINOIA GO, migration 0163)
+        # a table nobody writes directly, one verdict for every rule (format, reserved, blocklist with
+        # disguises, taken whatever the case), 30 days between changes, a race lost to "taken"; the profile
+        # page checking as it is typed and never translating a name
+        run: node supabase/tests/usernames.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the

@@ -312,7 +312,26 @@
       'League console': 'リーグ管理画面',
       'On HOME': 'トップページ',
       'Favourites prompt': 'お気に入りの案内',
-      'open “Who’s your favourite?” on HOME once, when you have not followed a club yet, to pick the leagues you watch and the clubs you back. Off, it stays out of your way, and it can still be opened from the line under the daily fixtures.': 'クラブをまだフォローしていないとき、トップページで「お気に入りは？」を一度だけ開き、観るリーグと応援するクラブを選べます。オフにすると表示されなくなりますが、「今日の試合」の下のラインからいつでも開けます。'
+      'open “Who’s your favourite?” on HOME once, when you have not followed a club yet, to pick the leagues you watch and the clubs you back. Off, it stays out of your way, and it can still be opened from the line under the daily fixtures.': 'クラブをまだフォローしていないとき、トップページで「お気に入りは？」を一度だけ開き、観るリーグと応援するクラブを選べます。オフにすると表示されなくなりますが、「今日の試合」の下のラインからいつでも開けます。',
+      'Username': 'ユーザー名',
+      'Your name on leaderboards and in the fans’ photos. Never your email.': 'ランキングやファンの写真に表示される名前です。メールアドレスは表示されません。',
+      'choose a username': 'ユーザー名を選ぶ',
+      '3–20 letters, digits and underscores, starting with a letter. You can change it once a month.': '英字・数字・アンダースコアで3〜20文字、英字で始めてください。変更は月に1回までです。',
+      'You have not chosen one yet.': 'まだ選ばれていません。',
+      'At least 3 characters.': '3文字以上にしてください。',
+      '20 characters at most.': '20文字以内にしてください。',
+      'Start with a letter.': '英字で始めてください。',
+      'Letters, digits and underscores only.': '英字・数字・アンダースコアのみ使えます。',
+      'That name is kept for EPINOIA itself.': 'その名前はEPINOIΛ用に予約されています。',
+      'Please choose a different name.': '別の名前を選んでください。',
+      'Taken. Try another.': '使用されています。別の名前をお試しください。',
+      'That is your username.': '現在のユーザー名です。',
+      'Checking…': '確認中…',
+      'Could not check just now.': '現在確認できません。',
+      'is available.': 'は使用できます。',
+      'Saving…': '保存中…',
+      'Saved. Your username is': '保存しました。ユーザー名：',
+      'You can change it again on': '次に変更できる日：'
     },
 
     ctx: {
