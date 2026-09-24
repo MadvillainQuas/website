@@ -638,8 +638,9 @@ async function loadGames() {
           '&owner_id=in.(' + ids.join(',') + ')&select=owner_id,storage_path'))
           .forEach(r => {
             if (!LOGOS.has(r.owner_id) || !LOGOS.get(r.owner_id).includes('/media-public/')) {
-              LOGOS.set(r.owner_id, window.EPINOIA_CONFIG.supabaseUrl +
-                '/storage/v1/object/public/media-public/' + r.storage_path);
+              /* sized (0158); the URL still names media-public, which is what the test above reads */
+              LOGOS.set(r.owner_id, (window.epinoiaLogoUrl && window.epinoiaLogoUrl(r.storage_path)) ||
+                window.EPINOIA_CONFIG.supabaseUrl + '/storage/v1/object/public/media-public/' + r.storage_path);
             }
           });
       }

@@ -401,7 +401,9 @@
     const cfg = window.EPINOIA_CONFIG;
     if (l.logo_path && cfg && cfg.supabaseUrl) {
       const img = document.createElement('img');
-      img.src = cfg.supabaseUrl + '/storage/v1/object/public/media-public/' + l.logo_path;
+      /* at the size the rail draws it (0158): the uploads are 400-512 px, the plate ~30 */
+      img.src = (window.epinoiaLogoUrl && window.epinoiaLogoUrl(l.logo_path, 64)) ||
+                cfg.supabaseUrl + '/storage/v1/object/public/media-public/' + l.logo_path;
       img.alt = '';
       /* a logo that fails to load falls back to the monogram rather than
          leaving a blank plate */

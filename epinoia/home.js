@@ -717,9 +717,11 @@ async function clubs() {
            so every club card would have asked for a path that cannot exist.
            EpinoiaUpload.publicUrl has always built it correctly; this was a
            second, hand-rolled copy of the same job. */
-        logos.set(r.owner_id, window.EpinoiaUpload
-          ? window.EpinoiaUpload.publicUrl(CFG, r.storage_path)
-          : CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + r.storage_path);
+        /* at the size a card draws it, through the image transformation (0158) */
+        logos.set(r.owner_id, (window.epinoiaLogoUrl && window.epinoiaLogoUrl(r.storage_path)) ||
+          (window.EpinoiaUpload
+            ? window.EpinoiaUpload.publicUrl(CFG, r.storage_path)
+            : CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + r.storage_path));
       }
     });
   } catch (_) { /* monograms all round */ }
