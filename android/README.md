@@ -8,6 +8,9 @@ The app adds the native parts a website can't have:
 - a **Game alerts** notification channel (`epinoia_alerts`, importance HIGH)
 - a native notification permission request on first launch
 - a native notification settings screen
+- the phone's location for EPINOIA GO (`epinoia/go/`), asked for only when a fan presses a button
+  there: Chrome delegates the question to the app (`locationdelegation`, registered in
+  `EpinoiaDelegationService`), so the app's own Android location permission answers it
 
 Website changes never need a new app. The app shows whatever the site serves on its next launch.
 A new APK is only needed when something in this folder changes.
@@ -22,6 +25,7 @@ A new APK is only needed when something in this folder changes.
 | Gradle | 8.14.x, installed by CI (there is no wrapper, see below) |
 | android-browser-helper | `com.google.androidbrowserhelper:androidbrowserhelper:2.7.3` (brings androidx.browser 1.10.0) |
 | androidx.core | 1.17.0 |
+| location delegation | `com.google.androidbrowserhelper:locationdelegation:1.1.2` (brings play-services-location 21.0.1) |
 
 ## What's in here
 

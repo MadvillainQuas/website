@@ -103,8 +103,12 @@ needs Louie says so.
       `go_games_now()` lists the games a fan can stamp now or in the next day with their pins, and takes no
       location: the phone measures, so the location leaves it only at the moment of stamping. A merge moves
       stamps. PGlite: 40 checks; `stamps.test.mjs`: 28. **Live once Louie runs `db push`.**
-- [ ] **3.3 Location in the apps**: the Android app (location permission, WebView geolocation prompt) and the
-      iPhone app (location usage text). Needs a new app release each.
+- [x] **3.3 Location in the apps** — Android (a Trusted Web Activity: Chrome delegates the site's location
+      question to the app): `locationdelegation` 1.1.2 registered in `EpinoiaDelegationService`, the two
+      location permissions in the manifest. iPhone (WKWebView): `NSLocationWhenInUseUsageDescription` in
+      `Info.plist`. In a phone's browser the page works already. **Needs a new release of each app
+      (Louie)**: bump `epinoia/android/version.json` and `epinoia/ios/version.json`, and in App Store
+      Connect's privacy answers, location is used for app functionality and not collected (never stored).
 - [x] **3.4 The GO page** — `/epinoia/go/`: one button, "find the game I'm at"; the phone says where it is,
       once, and the games on now or soon are listed nearest first, measured on the phone: the one at this
       arena with **stamp this venue**, the others with how far, when stamping opens, or that the arena's pin

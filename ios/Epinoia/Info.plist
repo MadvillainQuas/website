@@ -37,6 +37,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>EPINOIΛ uses the camera only when you choose to, to take a photo to upload or to read a scoreboard clock.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>EPINOIΛ GO uses your location only when you press a button to stamp an arena, to check you are at the game. It is never stored.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

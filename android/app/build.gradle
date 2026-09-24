@@ -95,4 +95,12 @@ dependencies {
     // NotificationManagerCompat and ContextCompat. The same version androidbrowserhelper 2.7.3
     // declares, so Gradle resolves one copy.
     implementation 'androidx.core:core:1.17.0'
+
+    // EPINOIA GO: the site asks where the phone is to stamp an arena (epinoia/go/). In a TWA,
+    // Chrome delegates that question to the app, and this module answers it with the app's own
+    // Android location permission (its manifest merges ACCESS_FINE/COARSE_LOCATION and the
+    // PermissionRequestActivity that asks). 1.1.2 (Apr 2025) is the latest on Google's Maven; it
+    // brings play-services-location 21.0.1, and its androidx.browser 1.4.0 resolves up to the
+    // 1.10.0 above.
+    implementation 'com.google.androidbrowserhelper:locationdelegation:1.1.2'
 }

@@ -13,6 +13,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Below Android 8 a notification's own vibration is how Game alerts buzz. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- EPINOIA GO: where the phone is, asked only when a fan presses a button on epinoia/go/ to
+         stamp an arena. The locationdelegation library's manifest merges these two already; they
+         are written here too so this file says everything the app asks for. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- PACKAGE VISIBILITY, ANDROID 11+. Without this the launcher cannot see whether Chrome is
          installed and enabled, and would always think it is missing. The library already

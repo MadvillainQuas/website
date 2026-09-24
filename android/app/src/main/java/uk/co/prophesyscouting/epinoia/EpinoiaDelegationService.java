@@ -14,6 +14,7 @@ import androidx.browser.trusted.TrustedWebActivityCallbackRemote;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.androidbrowserhelper.locationdelegation.LocationDelegationExtraCommandHandler;
 import com.google.androidbrowserhelper.trusted.DelegationService;
 import com.google.androidbrowserhelper.trusted.ExtraCommandHandler;
 import com.google.androidbrowserhelper.trusted.PermissionStatus;
@@ -49,6 +50,10 @@ public class EpinoiaDelegationService extends DelegationService {
     public void onCreate() {
         super.onCreate();
         Channels.ensure(this);
+        // EPINOIA GO: where the phone is, when a fan presses "find the game I'm at" or "stamp this
+        // venue" (epinoia/go/). Chrome asks this service; the handler answers with the app's own
+        // location permission, asking for it the first time. onExtraCommand below passes it on.
+        registerExtraCommandHandler(new LocationDelegationExtraCommandHandler());
     }
 
     /**
