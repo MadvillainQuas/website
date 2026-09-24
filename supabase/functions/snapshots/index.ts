@@ -77,13 +77,12 @@ const realFetch = globalThis.fetch.bind(globalThis);
   supabaseAnonKey: PUBLISHABLE
 };
 
-/* A SEASON IS A FILE (0153): snapshots/season/<competition id(s)>/<token>.json, one path per
-   version, so the CDN can keep it forever and a new token is a new URL. The token turned into a
-   file name exactly as epinoia/data.js turns it (snapFile there):
-     154@2026-09-23T23:05:29.983+00:00  ->  154-2026-09-23T23-05-29-983-00-00.json */
-const snapFile = (token: string) => String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json';
-/* the layout of a season file: 2 added `meta`, the players' names (data.js seedMeta) */
-const SEASON_FILE_V = 2;
+/* A SEASON IS A FILE (0153): snapshots/season/<competition id(s)>/<name>.json, one path per
+   version, so the CDN can keep it forever and a new token is a new URL. The name is epinoia/
+   data.js's own snapFile() (its shared copy, below), which puts the file's layout in front of
+   the token, so a new layout is a new URL too and nobody is left holding an old one:
+     154@2026-09-23T23:05:29.983+00:00  ->  v2-154-2026-09-23T23-05-29-983-00-00.json */
+const snapFile = (token: string): string => (globalThis as any).EpinoiaData.snapFile(token);
 const BUCKET = 'snapshots';
 
 async function removeFiles(admin: any, unit: string, keep: string | null) {
@@ -122,7 +121,7 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
   if (error) throw new Error('seasons: ' + error.message);
   /* the index rows: a season's token and its file (a row from before 0153 has no file, and is
      built again as a file) */
-  const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at,file:data->>file,v:data->>v').like('key', 'season:%');
+  const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at,file:data->>file').like('key', 'season:%');
   const held = new Map((heldRows || []).map((r: any) => [r.key, r]));
 
   /* WHAT PAGES ASK FOR: every competition on its own (a league page scoped to one), and each
@@ -167,8 +166,8 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
       continue;
     }
     const h: any = held.get(key);
-    /* a file of an older layout (before SEASON_FILE_V) is built again, once */
-    if (h && h.file && h.v === String(SEASON_FILE_V) && h.token === tok &&
+    /* current: the file this token would be named, in this layout (snapFile carries both) */
+    if (h && h.file === 'season/' + unit + '/' + snapFile(tok) && h.token === tok &&
         Date.now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { current++; continue; }
     if (built >= maxBuilds || Date.now() - started > WALL_MS) { left++; continue; }
 
@@ -189,7 +188,7 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
       { contentType: 'application/json', upsert: true, cacheControl: '31536000' });
     if (fileErr) throw new Error(file + ': ' + fileErr.message);
     const { error: upErr } = await admin.from('snapshots').upsert(
-      { key, competition_id: withFinals, token: tok, data: { file, v: SEASON_FILE_V }, built_at: new Date().toISOString() }, { onConflict: 'key' });
+      { key, competition_id: withFinals, token: tok, data: { file }, built_at: new Date().toISOString() }, { onConflict: 'key' });
     if (upErr) throw new Error(key + ': ' + upErr.message);
     await removeFiles(admin, unit, name);     // the versions before this one
     built++;

@@ -74,7 +74,7 @@ console.log('\ndata.js season(): the file named by the current token, the rows w
 const SNAP = { games: [{ id: 'g1', home_team_id: 't1', away_team_id: 't2', home_score: 80, away_score: 70, tipoff_at: '2026-09-01T18:00:00Z' }],
                players: [{ id: 'p1', gp: 1, pts: 20 }], teams: [{ id: 't1', gp: 1 }], teamOfPlayer: [['p1', 't1']] };
 const T1 = '1@2026-09-02T00:00:00+00:00';
-const F1 = '1-2026-09-02T00-00-00-00-00.json';   // the token as a file name (data.js snapFile, the function's too)
+const F1 = 'v2-1-2026-09-02T00-00-00-00-00.json';   // layout 2, then the token (data.js snapFile, which the function calls)
 const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test(rest)
   ? { body: [{ id: 'g1', finalised_at: fin }], total: 1 }
   : { body: [], total: 0 });                // the season's games: none, so a fallback read ends at once
@@ -86,7 +86,7 @@ const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test
   ok('the file named by the current token is the season', s.players.length === 1 && s.players[0].id === 'p1' && s.games[0].id === 'g1');
   ok('...rebuilt whole: byId and teamOfPlayer as a Map', s.byId.g1 && s.teamOfPlayer instanceof Map && s.teamOfPlayer.get('p1') === 't1');
   ok('...two requests, the token from the database and the file from the CDN, and no box scores',
-     calls.length === 2 && asked(/\/storage\/v1\/object\/public\/snapshots\/season\/c1\/1-2026-09-02T00-00-00-00-00\.json$/).length === 1 &&
+     calls.length === 2 && asked(/\/storage\/v1\/object\/public\/snapshots\/season\/c1\/v2-1-2026-09-02T00-00-00-00-00\.json$/).length === 1 &&
      !asked(/player_game_stats|team_game_stats/).length, calls);
   calls.length = 0;
   const again = await D.season('c1', { trim: true, rows: false });

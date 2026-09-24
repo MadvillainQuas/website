@@ -412,8 +412,17 @@ function seasonCachePut(key, token, out) {
    every policy, so a league this reader may not read gives no games, no token and no file. A
    version is never rewritten, only replaced by a new name, so the browser and the CDN may keep
    it as long as they like. Missing (not built yet), or any blip: null, and the caller reads the
-   rows as before. */
-function snapFile(token) { return String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json'; }
+   rows as before.
+
+   THE LAYOUT IS IN THE NAME TOO. A file keeps its name for as long as its token stands, and a
+   browser keeps a file for a year, so a file rewritten in a new layout under the old name is
+   never seen by anybody who already has the old one (the names, `meta`, were added that way and
+   reached new visitors only). SEASON_FILE_V goes in front of the token: a new layout is a new
+   name, for everybody at once. The snapshots function names its files with this very function
+   (its shared copy of this file), so the two cannot disagree.
+     154@2026-09-23T23:05:29.983+00:00  ->  v2-154-2026-09-23T23-05-29-983-00-00.json */
+const SEASON_FILE_V = 2;       // 2: `meta`, every player's playerMeta() (seedMeta below)
+function snapFile(token) { return 'v' + SEASON_FILE_V + '-' + String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json'; }
 async function seasonSnapshot(ids, token) {
   try {
     const c = CFG();
@@ -829,5 +838,5 @@ function pickSeason(seasons, ref) {
 }
 
 return { get, all, season, statsForGames, stints, events, gameLog, playerMeta, teamMeta,
-         releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken };
+         releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile };
 }));
