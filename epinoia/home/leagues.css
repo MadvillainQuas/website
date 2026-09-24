@@ -24,6 +24,10 @@
 .lgc-country + .lgc-country{border-top:0}
 .lgc-country:first-child{border-top:1px solid var(--rule)}
 .lgc-country .lgc-flag-img{width:24px}
+/* a second country's flag inline before its own name (a league in two countries: BE+NL) */
+.lgc-cn .lgc-flag-in{display:inline-block;vertical-align:-2px;margin:0 .4em 0 .15em}
+.lgc-country .lgc-cn .lgc-flag-img.lgc-flag-in{width:20px}
+.lgc-cn span.lgc-flag-in{font-size:1em}
 /* the country's name is a heading for the grid under it, dressed as the star rows' label */
 .lgc-h .lgc-cn{margin:0;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lgc-h .lgc-n{margin-left:auto;flex:none}

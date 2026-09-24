@@ -26,11 +26,15 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
 /* The same derivation the rail uses: two ISO letters onto two regional
    indicators. Kept in both places rather than shared because it is four lines
    and the rail deliberately loads nothing. */
-const flagOf = code => /^[A-Za-z]{2}$/.test(code || '') ? String.fromCodePoint(
+/* A LEAGUE IN SEVERAL COUNTRIES names them joined by '+' (0160: BE+NL), up to four. */
+const COUNTRY_RE = /^[A-Za-z]{2}(\+[A-Za-z]{2}){0,3}$/;
+const oneFlag = code => /^[A-Za-z]{2}$/.test(code || '') ? String.fromCodePoint(
   ...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : '\u{1F3F3}';
+const flagOf = code => COUNTRY_RE.test(code || '') ? String(code).split('+').map(oneFlag).join(' ') : '\u{1F3F3}';
 
 let regionNames;
 function countryName(code) {
+  if (COUNTRY_RE.test(code || '') && String(code).includes('+')) return String(code).split('+').map(countryName).join(' + ');
   if (!/^[A-Za-z]{2}$/.test(code || '')) return '';
   if (regionNames === undefined) {
     try { regionNames = new Intl.DisplayNames(undefined, { type: 'region' }); }
@@ -313,14 +317,14 @@ function mount(o) {
     'country is filed under “Elsewhere”.'));
   const cRow = el('div', 'row');
   const code = el('input', 'ep-input');
-  code.maxLength = 2; code.placeholder = 'GB'; code.style.flex = '0 0 80px';
+  code.maxLength = 14; code.placeholder = 'GB'; code.style.flex = '0 0 96px';
   code.style.textTransform = 'uppercase';
   const preview = el('span', 'mt', '');
   preview.style.fontSize = '15px';
   cRow.append(code, preview);
   host.appendChild(cRow);
   const drawFlag = () => {
-    const v = code.value.trim();
+    const v = code.value.replace(/\s+/g, '');
     preview.textContent = v ? flagOf(v) + '  ' + countryName(v) : 'no country — “Elsewhere”';
   };
   code.addEventListener('input', drawFlag);
@@ -397,9 +401,9 @@ function mount(o) {
   });
 
   save.addEventListener('click', async () => {
-    const v = code.value.trim();
-    if (v && !/^[A-Za-z]{2}$/.test(v)) {
-      return o.say('A country code is exactly two letters.', 'err');
+    const v = code.value.replace(/\s+/g, '').toUpperCase();
+    if (v && !COUNTRY_RE.test(v)) {
+      return o.say('A country is two letters (GB) - or, for a league played in several, up to four joined by + (BE+NL).', 'err');
     }
     const sections = {}, nav = {}, theme = {};
     /* ONLY THE SWITCHED-OFF ONES ARE SENT. Absent means shown, everywhere, so

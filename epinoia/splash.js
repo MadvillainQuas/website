@@ -258,7 +258,8 @@ async function leagues(api, cfg) {
     return;
   }
 
-  const countries = new Set(ls.map(l => (l.country || '').toUpperCase()));
+  /* a league in two countries (BE+NL) counts both */
+  const countries = new Set(ls.flatMap(l => String(l.country || '').toUpperCase().split('+')));
   const nC = countries.size;
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 

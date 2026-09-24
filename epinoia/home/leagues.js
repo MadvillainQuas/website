@@ -288,7 +288,20 @@
 
       const head = el('summary', 'starrow-h lgc-h');
       const t = el('h3', 'starrow-t lgc-cn', grp.name);
-      head.append(flagEl(grp), t,
+      /* A LEAGUE IN TWO COUNTRIES (0160, 'BE+NL') shows each flag beside its own name: the first in
+         the row's flag slot, the others inline - "[BE] Belgium + [NL] Netherlands". */
+      const cs = typeof C.parts === 'function' ? C.parts(grp.code) : [];
+      let lead = grp;
+      if (cs.length > 1) {
+        lead = { code: cs[0].code, flag: cs[0].flag };
+        t.textContent = cs[0].name;
+        cs.slice(1).forEach(p => {
+          const f = flagEl({ code: p.code, flag: p.flag });
+          f.classList.add('lgc-flag-in');
+          t.append(' + ', f, p.name);
+        });
+      }
+      head.append(flagEl(lead), t,
         el('span', 'starrow-s lgc-n', grp.leagues.length + (grp.leagues.length === 1 ? ' league' : ' leagues')));
       box.appendChild(head);
 

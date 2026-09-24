@@ -1592,7 +1592,36 @@
      bigger one than this.
 
      Returns a NODE, because one of the two answers is an <img>. */
-  const HAVE_FLAG = ['AU', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'PL', 'SK'];
+  const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XK'];
+
+  /* A LEAGUE IN SEVERAL COUNTRIES names them joined by '+' (0160: the BNXT League is 'BE+NL'), and
+     the rail shows each flag beside its own name: the first in the row's flag slot, the others
+     inline before theirs - "[BE] Belgium + [NL] Netherlands". */
+  function countryCodes(code) {
+    const p = String(code || '').split('+').map(s => s.trim());
+    return p.length <= 4 && p.every(s => /^[A-Za-z]{2}$/.test(s)) ? p.map(s => s.toUpperCase()) : [];
+  }
+  function inlineFlag(code) {
+    const node = flagNode(code);
+    node.className = 'flagin' + (node.classList.contains('flagimg') ? ' flagimg' : '');
+    return node;
+  }
+  /* [flag slot, the name] for a country row or the leagues panel's head */
+  function countryLabel(code) {
+    const cs = countryCodes(code);
+    if (cs.length < 2) return [flagNode(code), marquee(countryName(code))];
+    const box = marquee('');
+    const inner = box.firstChild;
+    cs.forEach((c, i) => {
+      if (!i) { inner.append(countryName(c)); return; }
+      /* a flag never parts from its name: a desktop rail wraps a long name, and the break
+         belongs after the "+", not between the Dutch flag and "Netherlands" */
+      const part = el('span', 'cpart');
+      part.append(inlineFlag(c), countryName(c));
+      inner.append(' + ', part);
+    });
+    return [flagNode(cs[0]), box];
+  }
 
   function flagNode(code) {
     const c = /^[A-Za-z]{2}$/.test(code || '') ? code.toUpperCase() : '';
@@ -1628,6 +1657,8 @@
   function countryName(code) {
     if (code === PRIVATE_KEY) return 'Private';
     if (!code) return 'Not yet filed';
+    const cs = countryCodes(code);
+    if (cs.length > 1) return cs.map(countryName).join(' + ');
     if (regionNames === undefined) return code;
     if (!regionNames) {
       try { regionNames = new Intl.DisplayNames(undefined, { type: 'region' }); }
@@ -1663,7 +1694,7 @@
         const name = countryName(code);
         row.title = name + ' \u00b7 ' + groups.get(code) +
                     (groups.get(code) === 1 ? ' league' : ' leagues');
-        row.append(flagNode(code), marquee(name));
+        row.append(...countryLabel(code));
         row.addEventListener('click', () => {
           country = code;
           fillCountryHead(code);
@@ -1683,7 +1714,7 @@
   function fillCountryHead(code) {
     const name = countryName(code);
     cname.textContent = '';
-    cname.append(flagNode(code), marquee(name));
+    cname.append(...countryLabel(code));
     cname.title = name + ' — every league, by country, on HOME';
     cname.href = root + 'home/#leagues';
   }

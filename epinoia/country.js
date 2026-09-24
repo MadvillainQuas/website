@@ -25,10 +25,20 @@ const GLOBE = '\u{1F30D}';
 const UNFILED = 'Not yet filed';
 
 /* A CODE IS TWO LETTERS, either case, with the spaces a hand-typed value
-   brings trimmed. Anything else (null, 'GBR', '12') is not a country. */
+   brings trimmed. Anything else (null, 'GBR', '12') is not a country.
+
+   A LEAGUE PLAYED IN SEVERAL COUNTRIES names them all, joined by '+', in the
+   order it wants them shown (0160): the BNXT League is 'BE+NL', "Belgium +
+   Netherlands", each flag beside its own name - not filed under Belgium with
+   half its clubs in the wrong country. Up to four; one bad part makes the whole
+   value no country, as a malformed single code always has. */
+function codes(code) {
+  const parts = String(code == null ? '' : code).split('+').map(s => s.trim());
+  if (!parts.length || parts.length > 4 || parts.some(p => !/^[A-Za-z]{2}$/.test(p))) return [];
+  return parts.map(p => p.toUpperCase()).filter((p, i, a) => a.indexOf(p) === i);
+}
 function norm(code) {
-  const c = String(code == null ? '' : code).trim();
-  return /^[A-Za-z]{2}$/.test(c) ? c.toUpperCase() : '';
+  return codes(code).join('+');
 }
 
 /* WINDOWS HAS NO FLAGS, which is what this used to shrug at. Segoe UI Emoji
@@ -48,22 +58,23 @@ function norm(code) {
    ADDING ONE IS TWO STEPS, deliberately: drop <code>.svg into brand/flags and
    add the code here. The alternative — try the image and fall back on error —
    means a 404 on every page load for every country we have not drawn. */
-const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'PL', 'SK', 'XK'];
+const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XK'];
 
 /* Root-relative on purpose: this file is DOM-free and node runs it, so it does
    not know how deep the page asking is. The caller prefixes its own root. */
 function flagSrc(code) {
-  const c = norm(code);
-  return HAVE_FLAG.indexOf(c) >= 0 ? 'brand/flags/' + c.toLowerCase() + '.svg' : '';
+  const c = codes(code);
+  return c.length === 1 && HAVE_FLAG.indexOf(c[0]) >= 0 ? 'brand/flags/' + c[0].toLowerCase() + '.svg' : '';
 }
 
 /* The emoji, DERIVED from the two letters of the ISO code: the regional-
    indicator code points a font renders as that flag. Nothing is stored and
-   nothing can go out of step with the code beside it. */
+   nothing can go out of step with the code beside it. Several countries are
+   several flags, a space apart. */
 function flagOf(code) {
-  const c = norm(code);
-  if (!c) return GLOBE;
-  return String.fromCodePoint(...[...c].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65));
+  const c = codes(code);
+  if (!c.length) return GLOBE;
+  return c.map(one => String.fromCodePoint(...[...one].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65))).join(' ');
 }
 
 /* The NAME from Intl, in the reader's own language, rather than a hard-coded
@@ -73,9 +84,7 @@ function flagOf(code) {
    ZZ, as a phrase like "Unknown Region". Both read as the code: a league filed
    under a code nobody recognises should say what it was filed under. */
 let regionNames, unknownRegion;
-function countryName(code) {
-  const c = norm(code);
-  if (!c) return UNFILED;
+function oneName(c) {
   if (regionNames === undefined) {
     try {
       regionNames = new Intl.DisplayNames(undefined, { type: 'region' });
@@ -87,6 +96,18 @@ function countryName(code) {
     const n = regionNames.of(c);
     return !n || n === unknownRegion ? c : n;
   } catch (_) { return c; }
+}
+function countryName(code) {
+  const c = codes(code);
+  if (!c.length) return UNFILED;
+  return c.map(oneName).join(' + ');
+}
+
+/* EACH COUNTRY OF A VALUE, for a caller that draws a flag beside each name:
+   [{ code, name, flag, src }] - one entry for 'GB', two for 'BE+NL', none for
+   a value that is not a country. src is the drawn flag ('' where we have none). */
+function parts(code) {
+  return codes(code).map(c => ({ code: c, name: oneName(c), flag: flagOf(c), src: flagSrc(c) }));
 }
 
 const byName = (a, b) => String((a && a.name) || '').localeCompare(String((b && b.name) || '')) ||
@@ -114,5 +135,5 @@ function group(leagues) {
       (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }
 
-return { flagOf, flagSrc, countryName, group, norm, UNFILED, HAVE_FLAG };
+return { flagOf, flagSrc, countryName, parts, codes, group, norm, UNFILED, HAVE_FLAG };
 }));

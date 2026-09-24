@@ -2317,7 +2317,7 @@
       "create_league": true,
       "league_slug": "bnxt-league",
       "league_name": "BNXT League",
-      "league_country": "BE",
+      "league_country": "BE+NL",
       "adapter_config": {
         "code": "BNXT",
         "stage": "regular",
@@ -2344,7 +2344,7 @@
       "create_league": true,
       "league_slug": "bnxt-league",
       "league_name": "BNXT League",
-      "league_country": "BE",
+      "league_country": "BE+NL",
       "competition_label": "BNXT Playoffs Belgium",
       "competition_kind": "playoff",
       "adapter_config": {
@@ -2374,7 +2374,7 @@
       "create_league": true,
       "league_slug": "bnxt-league",
       "league_name": "BNXT League",
-      "league_country": "BE",
+      "league_country": "BE+NL",
       "competition_label": "BNXT Playoffs Netherlands",
       "competition_kind": "playoff",
       "adapter_config": {

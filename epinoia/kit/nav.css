@@ -114,6 +114,15 @@
   width:16px; height:10.67px; display:block; border-radius:1px;
   box-shadow:0 0 0 .5px color-mix(in oklch,var(--ink) 30%,transparent);
 }
+/* A SECOND COUNTRY'S FLAG, inline before its own name ("[BE] Belgium + [NL] Netherlands" - a
+   league played in two countries, nav.js countryLabel): a little smaller than the slot's, on the
+   text's own line. */
+.ep-nav .flagin{ display:inline-flex; align-items:center; vertical-align:-1px; margin:0 .35em 0 .1em; font-size:.95em }
+.ep-nav .cpart{ white-space:nowrap }
+.ep-nav .flagin img{
+  width:13px; height:8.67px; display:block; border-radius:1px;
+  box-shadow:0 0 0 .5px color-mix(in oklch,var(--ink) 30%,transparent);
+}
 .ep-nav .tx{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;

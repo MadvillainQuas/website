@@ -543,7 +543,8 @@ async function render(opts) {
                       IT: 'Italy', NL: 'Netherlands', BE: 'Belgium', PT: 'Portugal', US: 'United States',
                       CA: 'Canada', AU: 'Australia', NZ: 'New Zealand' };
     const cc = team.leagues && team.leagues.country;
-    const hint = !addr && cc ? (COUNTRY[String(cc).toUpperCase()] || cc) : null;
+    /* a league in two countries (BE+NL) says nothing about which one this club's hall is in */
+    const hint = !addr && cc && !String(cc).includes('+') ? (COUNTRY[String(cc).toUpperCase()] || cc) : null;
     const query = [name, addr, hint].filter(Boolean).join(', ');
     const grid = el('div', 'vgrid');
     grid.append(photoUrl ? photoPane(team, photoUrl) : stockPane(),

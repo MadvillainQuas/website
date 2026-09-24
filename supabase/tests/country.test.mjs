@@ -97,6 +97,40 @@ ok('only unfiled leagues still make one group', only.length === 1 && only[0].cod
 const tie = C.group([L('b', 'Same', 'FR'), L('a', 'Same', 'FR')]);
 ok('same name ties break by slug', tie[0].leagues.map(l => l.slug).join(',') === 'a,b');
 
+section('a league in two countries (0160)');
+ok('BE+NL is a country value, either case, spaces trimmed', C.norm(' be + nl ') === 'BE+NL' && C.norm('BE+NL') === 'BE+NL');
+ok('...up to four, and one bad part makes it none', C.norm('FR+DE+IT+ES') === 'FR+DE+IT+ES' && C.norm('FR+DE+IT+ES+PT') === ''
+   && C.norm('BE+') === '' && C.norm('BE+NLD') === '' && C.norm('BENL') === '');
+ok('one code is exactly what it was', C.norm('gb') === 'GB' && C.codes('GB').join() === 'GB');
+if (intl) {
+  ok('the name is each country\'s, joined: Belgium + Netherlands',
+    C.countryName('BE+NL') === intl.of('BE') + ' + ' + intl.of('NL'), C.countryName('BE+NL'));
+}
+const bp = C.parts('BE+NL');
+ok('parts(): each country with its own flag and drawn picture, in the order given',
+  bp.length === 2 && bp[0].code === 'BE' && bp[1].code === 'NL' && bp[0].flag === C.flagOf('BE')
+  && bp[0].src === 'brand/flags/be.svg' && bp[1].src === 'brand/flags/nl.svg', bp);
+ok('parts() of one country is one entry, of none is none', C.parts('GB').length === 1 && C.parts('').length === 0 && C.parts('GBR').length === 0);
+ok('the emoji of two countries is both flags', C.flagOf('BE+NL') === C.flagOf('BE') + ' ' + C.flagOf('NL'));
+ok('flagSrc() is for one country (a caller draws each part itself)', C.flagSrc('BE+NL') === '' && C.flagSrc('NL') === 'brand/flags/nl.svg');
+const g2 = C.group([L('bnxt', 'BNXT League', 'BE+NL'), L('x', 'Belgian League', 'BE'), L('y', 'Dutch League', 'nl + be')]);
+ok('BE+NL is a group of its own - one entry, not the league under two countries twice',
+  g2.length === 3 && g2.some(x => x.code === 'BE+NL' && x.leagues.length === 1) && g2.some(x => x.code === 'BE'), g2.map(x => x.code));
+ok('...and the order it was given is kept (NL+BE is not BE+NL)', g2.some(x => x.code === 'NL+BE'));
+ok('every drawn flag is on disk', C.HAVE_FLAG.every(c => { try { rd('epinoia', 'brand', 'flags', c.toLowerCase() + '.svg'); return true; } catch (_) { return false; } }),
+  C.HAVE_FLAG);
+const nav = rd('epinoia', 'nav.js');
+const navFlags = (/const HAVE_FLAG = \[([^\]]*)\]/.exec(nav) || [])[1] || '';
+ok('the rail draws the same flags as country.js (it keeps its own list)',
+  JSON.stringify(navFlags.match(/[A-Z]{2}/g)) === JSON.stringify(C.HAVE_FLAG), navFlags);
+ok('the rail shows each flag beside its own name (countryLabel)', /function countryLabel\(code\)/.test(nav)
+  && /row\.append\(\.\.\.countryLabel\(code\)\)/.test(nav) && /cname\.append\(\.\.\.countryLabel\(code\)\)/.test(nav));
+ok('HOME does the same with country.js parts()', /C\.parts\(grp\.code\)/.test(rd('epinoia', 'home', 'leagues.js')));
+const mig = rd('supabase', 'migrations', '0160_leagues_in_two_countries.sql');
+ok('0160 lets the database hold it, and files the BNXT League under both',
+  /country ~ '\^\[A-Z\]\{2\}\(\\\+\[A-Z\]\{2\}\)\{0,3\}\$'/.test(mig) && /set country = 'BE\+NL' where slug = 'bnxt-league'/.test(mig));
+ok('...and a two-country league keeps its first country\'s clock for the fans\' vote', /split_part\(upper\(btrim/.test(mig));
+
 section('HOME wiring');
 const html = rd('epinoia', 'home', 'index.html');
 const js = rd('epinoia', 'home', 'leagues.js');
