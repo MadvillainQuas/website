@@ -85,6 +85,15 @@ for cyr, lat in (("Христо Стоичков", "Hristo Stoichkov"), ("Шум
 eq("a whole payload, keys untouched", names.bulgarian_payload({"name": "Левски", "rows": [{"personName": "Иван"}], "n": 3}),
    {"name": "Levski", "rows": [{"personName": "Ivan"}], "n": 3})
 
+print("\n-- Greek: ELOT 743, the passport standard, not letter by letter")
+for gr, lat in (("Αντετοκούνμπο", "Antetokounmpo"), ("Σπανούλης", "Spanoulis"), ("Διαμαντίδης", "Diamantidis"),
+                ("Ευάγγελος", "Evangelos"), ("Ευθύμιος", "Efthymios"), ("Ναύπλιο", "Nafplio"),
+                ("Ταΰγετος", "Taygetos"), ("Γκάλης", "Gkalis"), ("Μπουρούσης", "Bourousis"),
+                ("Χαράλαμπος", "Charalampos"), ("Αγγελόπουλος", "Angelopoulos"), ("Ψυχικού", "Psychikou"),
+                ("ΠΑΠΑΓΙΑΝΝΗΣ", "PAPAGIANNIS"), ("ΕVERTECH", "EVERTECH"), ("VIKOS ΦALCONS", "VIKOS FALCONS")):
+    eq("greek_latin: " + lat, names.greek_latin(gr), lat)
+eq("latinise routes Greek through the standard", names.latinise("Ευάγγελος Αγγελόπουλος"), "Evangelos Angelopoulos")
+
 print("\n-- capitalisation a .title() gets wrong")
 eq("Mc", names.person({"name": "MCDONALD, JAMES"})[:2], ("James", "McDonald"))
 eq("Mac", names.person({"name": "MACDONALD, JAMES"})[:2], ("James", "MacDonald"))

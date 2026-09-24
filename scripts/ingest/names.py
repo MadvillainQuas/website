@@ -95,6 +95,10 @@ def latinise(s: str) -> str:
     s = str(s or "")
     if has_cjk(s):
         return s
+    # Greek by its own standard (ELOT 743, greek_latin) rather than the letter table below, which
+    # gets every pair wrong (Evangelos, Antetokounmpo, Angelopoulos); what is left of the string is
+    # Latin, and passes through the rest unchanged
+    s = greek_latin(s)
     out = []
     for ch in s:
         if ch in _LETTERS:
@@ -166,6 +170,99 @@ def bulgarian_latin(s: str) -> str:
             else:
                 out.append(t.upper() if caps else t[0].upper() + t[1:])
     return "".join(out)
+
+
+# ------------------------------------------------------------------ Greek -> Latin (ELOT 743)
+# GREECE'S OWN STANDARD: ELOT 743 (= ISO 843 transcription), the system on Greek passports - which
+# is why the famous names read Antetokounmpo, Spanoulis, Diamantidis. The letter table alone gets
+# the pairs wrong, so they are handled first: ου ou; αυ ευ ηυ av/ev/iv before a vowel or a voiced
+# consonant (β γ δ ζ λ μ ν ρ), af/ef/if otherwise (Evangelos, Efthymios); γγ ng, γκ gk, γξ nx,
+# γχ nch; μπ b at a word's start or end, mp inside it (Bourousis, Antetokounmpo); ντ nt. Accents
+# are dropped; a diaeresis breaks a pair (Taygetos). The scraper spells Greek with the same rules
+# (scraper files/gr_translit.py).
+_GR_LETTERS = {
+    "α": "a", "β": "v", "γ": "g", "δ": "d", "ε": "e", "ζ": "z", "η": "i", "θ": "th", "ι": "i",
+    "κ": "k", "λ": "l", "μ": "m", "ν": "n", "ξ": "x", "ο": "o", "π": "p", "ρ": "r", "σ": "s",
+    "ς": "s", "τ": "t", "υ": "y", "φ": "f", "χ": "ch", "ψ": "ps", "ω": "o",
+}
+_GR_VOICED = set("αεηιουωβγδζλμνρ")
+_GR_PAIRS = {"γγ": "ng", "γκ": "gk", "γξ": "nx", "γχ": "nch", "ντ": "nt", "ου": "ou"}
+_GR = re.compile("[Ͱ-Ͽἀ-῿]")
+# capitals that look alike, Greek -> Latin: a league's data entry types one into the other script's
+# word ("ΕVERTECH" is a Greek Epsilon + VERTECH), which letter-by-letter would half-transliterate
+_GR_LOOKALIKE = {"Α": "A", "Β": "B", "Ε": "E", "Ζ": "Z", "Η": "H", "Ι": "I", "Κ": "K", "Μ": "M",
+                 "Ν": "N", "Ο": "O", "Ρ": "P", "Τ": "T", "Υ": "Y", "Χ": "X"}
+_LA_LOOKALIKE = {v: k for k, v in _GR_LOOKALIKE.items()}
+
+
+def has_greek(s) -> bool:
+    return bool(_GR.search(str(s or "")))
+
+
+def _gr_repair(w: str) -> str:
+    greek_only = sum(1 for c in w if _GR.match(c) and c not in _GR_LOOKALIKE)
+    latin_only = sum(1 for c in w if c.isascii() and c.isalpha() and c.upper() not in _LA_LOOKALIKE)
+    if greek_only and latin_only:
+        return w
+    if latin_only and any(c in _GR_LOOKALIKE for c in w):
+        return "".join(_GR_LOOKALIKE.get(c, c) for c in w)
+    if greek_only and any(c in _LA_LOOKALIKE for c in w):
+        return "".join(_LA_LOOKALIKE.get(c, c) for c in w)
+    return w
+
+
+def _gr_word(w: str) -> str:
+    """One Greek word, lower case and decomposed (NFD): accents gone, a diaeresis marks its letter."""
+    chars, marks = [], []
+    for c in w:
+        if c == "̈":
+            if marks:
+                marks[-1] = True
+            continue
+        if unicodedata.combining(c):
+            continue
+        chars.append(c)
+        marks.append(False)
+    out, i, n = [], 0, len(chars)
+    while i < n:
+        c = chars[i]
+        nxt = chars[i + 1] if i + 1 < n else ""
+        nxt_marked = marks[i + 1] if i + 1 < n else False
+        if c in "αεη" and nxt == "υ" and not nxt_marked:
+            after = chars[i + 2] if i + 2 < n else ""
+            out.append({"α": "a", "ε": "e", "η": "i"}[c] + ("v" if after in _GR_VOICED else "f"))
+            i += 2
+            continue
+        if c == "μ" and nxt == "π":
+            out.append("b" if i == 0 or i + 2 >= n else "mp")
+            i += 2
+            continue
+        if c + nxt in _GR_PAIRS and not nxt_marked:
+            out.append(_GR_PAIRS[c + nxt])
+            i += 2
+            continue
+        out.append(_GR_LETTERS.get(c, c))
+        i += 1
+    return "".join(out)
+
+
+def greek_latin(s: str) -> str:
+    """Greek words by ELOT 743; everything else untouched. A word all in capitals stays capitals,
+    a Capitalised word stays Capitalised."""
+    if not isinstance(s, str) or not _GR.search(s):
+        return s
+    s = re.sub(r"[^\W\d_]+", lambda m: _gr_repair(m.group(0)), s)
+
+    def one(m):
+        w = m.group(0)
+        if not _GR.search(w):
+            return w
+        lat = _gr_word(unicodedata.normalize("NFD", w.lower()))
+        letters = [c for c in w if c.isalpha()]
+        if len(letters) > 1 and all(c.isupper() for c in letters):
+            return lat.upper()
+        return lat[:1].upper() + lat[1:] if w[:1].isupper() else lat
+    return re.sub(r"[^\W\d_]+", one, s)
 
 
 def bulgarian_payload(obj):

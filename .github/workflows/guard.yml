@@ -484,6 +484,13 @@ jobs:
         # a season the feed is not on refused, and box, stints and event log reconciling
         run: python scripts/ingest/bgnbl_test.py
 
+      - name: Greek Elite League from stats.basket.gr
+        # grel.py over three cached game pages and the 2025-26 round cache: every name by ELOT 743
+        # (the Greek passport standard) with surname-first turned round and mixed-script entries
+        # repaired, rounds all final never re-read, whole-five substitutions turned into off/on
+        # pairs, and box, stints, fast breaks and event log reconciling, overtime included
+        run: python scripts/ingest/grel_test.py
+
       - name: LKL (Lithuania) from lkl.lt's own calendar and game data
         # lkl.py over the cached calendar, schedule pages and five games: every club coded by its
         # league team id, home found even where the feed lists the away side first, starters
