@@ -101,8 +101,12 @@ const tokenRoute = (tok) => rest => (/finalised_at/.test(rest) && /limit=1/.test
   await D.season('c1', { trim: true, rows: false, snapshot: false });
   ok('snapshot:false (the function building it) never reads a snapshot', !asked(/snapshots/).length, calls);
   reset();
-  await D.season(['c1', 'c2'], { trim: true, rows: false });
-  ok('a season merged across competitions is its own sum: no snapshot read', !asked(/snapshots/).length, calls);
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00'),
+             snapshots: rest => (/season:c1,c2/.test(rest) ? [{ token: '1@2026-09-02T00:00:00+00:00', data: SNAP }] : []) };
+  const m = await D.season(['c2', 'c1'], { trim: true, rows: false });
+  ok('a season merged across competitions has its own snapshot, keyed by the sorted ids',
+     asked(/snapshots\?key=eq\.season:c1,c2&/).length === 1 && m.players[0].id === 'p1' &&
+     !asked(/player_game_stats|team_game_stats/).length, calls);
   reset();
   await D.season('c1', { trim: true });
   ok('a read that keeps the rows reads the rows', !asked(/snapshots/).length && asked(/select=id,home_team_id/).length === 1, calls);

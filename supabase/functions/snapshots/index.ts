@@ -94,32 +94,46 @@ async function buildStars(admin: any, D: any, ST: any) {
 }
 
 async function buildSeasons(admin: any, D: any, started: number, maxBuilds: number) {
-  /* every competition, newest seasons first; the signed-out token decides which have a
-     season an anonymous reader can see, and which changed since their snapshot */
-  const { data: comps, error } = await admin.from('competitions').select('id,seasons!inner(starts_on)');
-  if (error) throw new Error('competitions: ' + error.message);
+  /* every season with its competitions, newest first, as global scouting orders them
+     (starts_on descending: data.js pickSeason's rule) */
+  const { data: seasons, error } = await admin.from('seasons')
+    .select('id,league_id,starts_on,competitions(id)').order('starts_on', { ascending: false });
+  if (error) throw new Error('seasons: ' + error.message);
   const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at').like('key', 'season:%');
   const held = new Map((heldRows || []).map((r: any) => [r.key, r]));
 
-  const ids: string[] = (comps || [])
-    .sort((a: any, b: any) => String(b.seasons?.starts_on || '').localeCompare(String(a.seasons?.starts_on || '')))
-    .map((c: any) => c.id);
+  /* WHAT PAGES ASK FOR: every competition on its own (a league page scoped to one), and each
+     league's newest season whole when it has more than one competition (global scouting, and a
+     league page's "all competitions"), keyed by the sorted ids as data.js looks it up. The
+     merged ones first: they serve the most readers. */
+  const singles: string[] = [];
+  const merged: string[][] = [];
+  const newestSeen = new Set<string>();
+  for (const s of seasons || []) {
+    const ids = (s.competitions || []).map((c: any) => c.id).filter(Boolean).sort();
+    ids.forEach((id: string) => singles.push(id));
+    if (!newestSeen.has(s.league_id)) {
+      newestSeen.add(s.league_id);
+      if (ids.length > 1) merged.push(ids);
+    }
+  }
 
-  /* the tokens, eight at a time: 94-byte answers */
+  /* the tokens, eight at a time: 94-byte answers, read as a signed-out visitor */
   const tokens = new Map<string, string | null>();
-  for (let i = 0; i < ids.length; i += 8) {
-    const part = ids.slice(i, i + 8);
-    const got = await Promise.all(part.map(id => D.seasonToken(`competition_id=eq.${id}`).catch(() => null)));
-    part.forEach((id, k) => tokens.set(id, got[k]));
+  const units = [...merged.map(ids => ids.join(',')), ...singles];
+  for (let i = 0; i < units.length; i += 8) {
+    const part = units.slice(i, i + 8);
+    const got = await Promise.all(part.map(u =>
+      D.seasonToken(u.includes(',') ? `competition_id=in.(${u})` : `competition_id=eq.${u}`).catch(() => null)));
+    part.forEach((u, k) => tokens.set(u, got[k]));
   }
 
   let built = 0, current = 0, removed = 0, left = 0;
-  for (const id of ids) {
-    const key = 'season:' + id;
-    const tok = tokens.get(id);
+  for (const unit of units) {
+    const key = 'season:' + unit;
+    const tok = tokens.get(unit);
     if (tok == null) continue;       // not known this call (a blip, or no count): leave it as it is
-    const visible = !/^0@/.test(tok);
-    if (!visible) {
+    if (/^0@/.test(tok)) {
       /* nothing a signed-out reader can see (private, members-only, or no finals): no
          snapshot. One kept from before is dropped; its policy already hides it. */
       if (held.has(key)) { await admin.from('snapshots').delete().eq('key', key); removed++; }
@@ -129,11 +143,16 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
     if (h && h.token === tok && Date.now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { current++; continue; }
     if (built >= maxBuilds || Date.now() - started > WALL_MS) { left++; continue; }
 
-    const s = await D.season(id, { trim: true, rows: false, snapshot: false });
+    const ids = unit.split(',');
+    /* THE POLICY'S COMPETITION: one of the set with finished games a signed-out reader can see
+       (they are one league's, so one rule), or a merged snapshot would be hidden by, say, a
+       play-off competition with nothing played yet */
+    const withFinals = ids.find(id => { const t = tokens.get(id); return t != null && !/^0@/.test(t); }) || ids[0];
+    const s = await D.season(ids.length === 1 ? ids[0] : ids, { trim: true, rows: false, snapshot: false });
     const data = { games: s.games || [], players: s.players || [], teams: s.teams || [],
                    teamOfPlayer: Array.from((s.teamOfPlayer || new Map()).entries()) };
     const { error: upErr } = await admin.from('snapshots').upsert(
-      { key, competition_id: id, token: tok, data, built_at: new Date().toISOString() }, { onConflict: 'key' });
+      { key, competition_id: withFinals, token: tok, data, built_at: new Date().toISOString() }, { onConflict: 'key' });
     if (upErr) throw new Error(key + ': ' + upErr.message);
     built++;
   }

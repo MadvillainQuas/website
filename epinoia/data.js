@@ -401,12 +401,13 @@ function seasonCachePut(key, token, out) {
   } catch (___) { /* nothing more to try */ }
 }
 
-/* A competition's snapshot (0152), as the season cache holds it, or null. A reader who
-   may not read the competition's games is refused the row by its policy, and a 404 (the
-   table not there yet) or any blip is a null too: the caller then reads the rows. */
-async function seasonSnapshot(competitionId, token) {
+/* A season's snapshot (0152), as the season cache holds it, or null. `ids` is one
+   competition id, or several sorted and comma-joined. A reader who may not read the
+   competition's games is refused the row by its policy, and a 404 (the table not there yet)
+   or any blip is a null too: the caller then reads the rows. */
+async function seasonSnapshot(ids, token) {
   try {
-    const rows = await get('snapshots?key=eq.' + encodeURIComponent('season:' + competitionId) + '&select=token,data');
+    const rows = await get('snapshots?key=eq.' + encodeURIComponent('season:' + ids) + '&select=token,data');
     const r = rows && rows[0];
     if (!r || r.token !== token || !r.data) return null;
     const d = r.data;
@@ -468,10 +469,12 @@ async function season(competitionId, opts) {
        signed-out reader, and stores the same shape the cache above keeps. It is used only
        when its token is the one just read, so it is the season this read would have
        computed; anything else (no snapshot, an older one, no table yet) reads the rows as
-       before. One competition at a time: a season merged across several is its own sum.
+       before. A season merged across competitions is its own sum, so it has its own snapshot,
+       keyed by the sorted ids (the function builds each league's newest season whole, which is
+       what global scouting and a league page's "all competitions" scope ask for).
        The function itself passes snapshot:false, since it is the one building it. */
-    if (list.length === 1 && token && !(opts && opts.snapshot === false)) {
-      const snap = await seasonSnapshot(list[0], token);
+    if (token && !(opts && opts.snapshot === false)) {
+      const snap = await seasonSnapshot(list.slice().sort().join(','), token);
       if (snap) { seasonCachePut(ckey, token, snap); return snap; }
     }
   }

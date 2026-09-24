@@ -212,7 +212,7 @@ function renderSeasonPicker() {
     onPick: async sn => {
       /* statScope names a competition of the season being left, and a filter
          pointing into last season would have asked for nobody's statistics. */
-      season = sn; comp = null; SEASON = null; statScope = 'all'; statConf = null;
+      season = sn; comp = null; SEASON = null; LINES = null; statScope = 'all'; statConf = null;
       $('#seasonName').textContent = season.name;
       $('#ctx').textContent = league.name + ' · ' + season.name;
       /* the URL carries the season so a past table is linkable */
@@ -266,7 +266,7 @@ function renderPhasePicker() {
   wrap.style.display = '';
   phases.forEach(c => wrap.appendChild(pickerChip(c, comp && c.id === comp.id, () => {
     if (comp && c.id === comp.id) return;
-    comp = c; SEASON = null;
+    comp = c; SEASON = null; LINES = null;
     const u = new URL(location.href);
     u.searchParams.set('c', c.id);
     history.replaceState(null, '', u);
@@ -637,6 +637,29 @@ function scopeIds() {
   return ids.length ? ids : (comp ? [comp.id] : []);
 }
 
+/* THE SEASON LINE ALONE, for Leaders and Team Stats: trimmed and without the rows, so it is
+   the one data.js keeps between visits and the one the snapshots function builds (0152) --
+   one small read when it is current, instead of the season's box scores. Strength of
+   schedule needs the team game rows (sos.js reads .tgs) and keeps loadSeason's full read; a
+   full read already in hand serves the line too. */
+let LINES = null;
+async function loadLines() {
+  const ids = scopeIds();
+  const key = ids.slice().sort().join(',');
+  if (SEASON && SEASON.__comp === key) return SEASON;
+  if (LINES && LINES.__comp === key) return LINES;
+  const S = await window.EpinoiaData.season(ids, { trim: true, rows: false });
+  S.__comp = key;
+  const [pmeta, tmeta] = await Promise.all([
+    window.EpinoiaData.playerMeta(S.players.map(p => p.id)),
+    window.EpinoiaData.teamMeta(league.id)
+  ]);
+  S.players.forEach(p => Object.assign(p, pmeta[p.id] || { name: 'Player' }));
+  S.teams.forEach(t => Object.assign(t, tmeta[t.id] || { name: 'Team' }));
+  LINES = S;
+  return S;
+}
+
 async function loadSeason() {
   const ids = scopeIds();
   const key = ids.slice().sort().join(',');
@@ -685,7 +708,7 @@ async function scopePicker(host, onChange) {
     scopeIds: s => (s === 'all' ? comps.map(c => c.id).filter(Boolean) : [s]),
     onScope: s => {
       statScope = s;
-      SEASON = null;                   // the scope changed, so the numbers did
+      SEASON = null; LINES = null;     // the scope changed, so the numbers did
       onChange();
     },
     onConf: g => { statConf = g; onChange(); }
@@ -704,7 +727,7 @@ async function renderLeaders() {
      put there, which is why it appeared to do nothing. */
   const board = el('div', 'boardhost'); pane.appendChild(board);
   let S, keep;
-  try { [S, keep] = await Promise.all([loadSeason(), scopePicker(bar, renderLeaders)]); }
+  try { [S, keep] = await Promise.all([loadLines(), scopePicker(bar, renderLeaders)]); }
   catch (e) { pane.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
 
   if (!S.players.length) {
@@ -739,7 +762,7 @@ async function renderTeamStats() {
   const bar = el('div', 'scopehost'); pane.appendChild(bar);
   const board = el('div', 'boardhost'); pane.appendChild(board);
   let S, keep;
-  try { [S, keep] = await Promise.all([loadSeason(), scopePicker(bar, renderTeamStats)]); }
+  try { [S, keep] = await Promise.all([loadLines(), scopePicker(bar, renderTeamStats)]); }
   catch (e) { pane.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
 
   if (!S.teams.length) {
