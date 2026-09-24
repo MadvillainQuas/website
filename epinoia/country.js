@@ -58,7 +58,7 @@ function norm(code) {
    ADDING ONE IS TWO STEPS, deliberately: drop <code>.svg into brand/flags and
    add the code here. The alternative — try the image and fall back on error —
    means a 404 on every page load for every country we have not drawn. */
-const HAVE_FLAG = ['AU', 'BE', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XB', 'XK'];
+const HAVE_FLAG = ['AU', 'BE', 'BG', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FI', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'NL', 'PL', 'SK', 'XB', 'XK'];
 
 /* A REGION IS NOT A COUNTRY, but some leagues belong to one: the ABA League is
    played across the former Yugoslavia and no single flag is its home. Such a

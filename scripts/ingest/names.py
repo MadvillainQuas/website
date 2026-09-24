@@ -116,6 +116,69 @@ def latinise(s: str) -> str:
     return s
 
 
+# ------------------------------------------------------------------ Bulgarian -> Latin
+# BULGARIA'S OWN STANDARD, not the Russian-style table above: the Transliteration Act (State
+# Gazette 19/2009), the "Streamlined System" on Bulgarian passports and road signs. It differs
+# exactly where it matters for names: х h (Hristo, not Khristo), щ sht (Shterev), ъ a (Lachezar),
+# ь y, ц ts, and "ия" at the end of a word is "ia" (Maria, Sofia). The country itself is Bulgaria.
+# The scraper spells Bulgarian feeds with the same table (scraper files/bg_translit.py), so a
+# player reads the same on the site as in the CSVs.
+_BULGARIAN = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ж": "zh", "з": "z", "и": "i",
+    "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s",
+    "т": "t", "у": "u", "ф": "f", "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sht", "ъ": "a",
+    "ь": "y", "ю": "yu", "я": "ya",
+    # not Bulgarian letters, but met in names typed into a Bulgarian feed
+    "ѝ": "i", "ё": "yo", "ы": "y", "э": "e", "ї": "yi", "і": "i", "є": "ye", "ґ": "g",
+    "ђ": "dj", "ј": "j", "љ": "lj", "њ": "nj", "ћ": "c", "џ": "dz",
+}
+_CYR = re.compile("[Ѐ-ӿ]")
+_BG_COUNTRY = re.compile(r"(?<![\w])(България|БЪЛГАРИЯ)(?![\w])")
+
+
+def bulgarian_latin(s: str) -> str:
+    """One string in Bulgaria's official transliteration; anything not Cyrillic passes through.
+    Capitals follow the source: Живков -> Zhivkov, ЖИВКОВ -> ZHIVKOV."""
+    if not isinstance(s, str) or not _CYR.search(s):
+        return s
+    s = _BG_COUNTRY.sub(lambda m: "BULGARIA" if m.group(1).isupper() else "Bulgaria", s)
+    out: list = []
+    n, i = len(s), 0
+    while i < n:
+        ch = s[i]
+        low = ch.lower()
+        if low not in _BULGARIAN:
+            out.append(ch)
+            i += 1
+            continue
+        start = i
+        if low == "и" and i + 1 < n and s[i + 1].lower() == "я" and (i + 2 >= n or not s[i + 2].isalpha()):
+            pair = [("i", ch), ("a", s[i + 1])]
+            i += 2
+        else:
+            pair = [(_BULGARIAN[low], ch)]
+            i += 1
+        # ALL CAPS when a neighbouring letter is a capital too; otherwise only the first letter
+        caps = (start > 0 and s[start - 1].isupper()) or (i < n and s[i].isupper())
+        for t, src in pair:
+            if not src.isupper() or not t:
+                out.append(t)
+            else:
+                out.append(t.upper() if caps else t[0].upper() + t[1:])
+    return "".join(out)
+
+
+def bulgarian_payload(obj):
+    """Every string of a parsed JSON payload through bulgarian_latin (keys left alone)."""
+    if isinstance(obj, str):
+        return bulgarian_latin(obj)
+    if isinstance(obj, list):
+        return [bulgarian_payload(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: bulgarian_payload(v) for k, v in obj.items()}
+    return obj
+
+
 # ------------------------------------------------------------------ kana -> romaji
 # Hepburn as a Japanese passport writes a name: no macrons, no apostrophes, long vowels not
 # written (さとう Sato, おおわき Owaki, ゆうき Yuki), ん as m before b/m/p (なんば Namba) and n

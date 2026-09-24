@@ -471,6 +471,13 @@ jobs:
         # event-log line reconciling with the league's own figures
         run: python scripts/ingest/wjbl_test.py
 
+      - name: NBL Bulgaria from Sportradar's EUI embed (308)
+        # bgnbl.py over the cached 2025-26 schedule and three games: every name in Latin by
+        # Bulgaria's own standard (the feed sends Cyrillic only), the games left on SCHEDULED
+        # although played counted, regular season and play-offs split by the rounds restarting,
+        # a season the feed is not on refused, and box, stints and event log reconciling
+        run: python scripts/ingest/bgnbl_test.py
+
       - name: LKL (Lithuania) from lkl.lt's own calendar and game data
         # lkl.py over the cached calendar, schedule pages and five games: every club coded by its
         # league team id, home found even where the feed lists the away side first, starters

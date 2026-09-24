@@ -74,6 +74,17 @@ eq("kanji is not kana, and comes back untouched", names.kana_romaji("山本 ま�
 ok("is_kana: a reading is kana, a name in kanji is not",
    names.is_kana("やまもと まい") and names.is_kana("カサンドラ・ブラウン") and not names.is_kana("山本 麻衣"))
 
+print("\n-- Bulgarian: the country's own standard (Transliteration Act 2009), not the Russian table")
+for cyr, lat in (("Христо Стоичков", "Hristo Stoichkov"), ("Шумен", "Shumen"), ("Щерев", "Shterev"),
+                 ("Лъчезар Тошков", "Lachezar Toshkov"), ("Живков", "Zhivkov"), ("ЖИВКОВ", "ZHIVKOV"),
+                 ("Ботев 2012 Враца", "Botev 2012 Vratsa"), ("Миньор 2015", "Minyor 2015"),
+                 ("София", "Sofia"), ("Мария Ияна", "Maria Iyana"), ("България", "Bulgaria"),
+                 ("Берое-Стара Загора", "Beroe-Stara Zagora"), ("Sesame НБЛ", "Sesame NBL"),
+                 ("Georgi Ivanov", "Georgi Ivanov")):
+    eq("bulgarian_latin: " + lat, names.bulgarian_latin(cyr), lat)
+eq("a whole payload, keys untouched", names.bulgarian_payload({"name": "Левски", "rows": [{"personName": "Иван"}], "n": 3}),
+   {"name": "Levski", "rows": [{"personName": "Ivan"}], "n": 3})
+
 print("\n-- capitalisation a .title() gets wrong")
 eq("Mc", names.person({"name": "MCDONALD, JAMES"})[:2], ("James", "McDonald"))
 eq("Mac", names.person({"name": "MACDONALD, JAMES"})[:2], ("James", "MacDonald"))

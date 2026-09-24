@@ -29,6 +29,7 @@ from .nbl import NblAdapter
 from .feb import FebAdapter
 from .bnxt import BnxtAdapter
 from .wjbl import WjblAdapter
+from .bgnbl import BgNblAdapter
 
 
 class _PipelineBridge(BaseAdapter):
@@ -102,6 +103,7 @@ REGISTRY: dict[str, type[BaseAdapter]] = {
     FebAdapter.name: FebAdapter,
     BnxtAdapter.name: BnxtAdapter,
     WjblAdapter.name: WjblAdapter,
+    BgNblAdapter.name: BgNblAdapter,
     Bbl2BblAdapter.name: Bbl2BblAdapter,
     EuroLeagueApiAdapter.name: EuroLeagueApiAdapter,
     EurobasketHtmlAdapter.name: EurobasketHtmlAdapter,
