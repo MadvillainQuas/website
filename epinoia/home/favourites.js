@@ -628,6 +628,12 @@ async function mount(o) {
     if (i < 0) return;
     P.at = name;
     P.sec.dataset.stage = name;
+    /* A SCREEN THAT IS STILL ARRIVING TAKES NO PICKS. A country's leagues slide in where the
+       countries were, so a second tap on the country (a quick double tap, or the delayed click a
+       phone sends after a touch) landed on whichever league was now under the finger and FOLLOWED
+       it - every game of a league nobody chose, straight to their phone (an easyCredit BBL follow
+       nobody made, reported 2026-09-24). pick() ignores a tap until the slide has settled. */
+    P.quietUntil = Date.now() + (instant || reduced() ? 150 : 500);
     P.stages.forEach(s => { s.removeAttribute('inert'); s.setAttribute('aria-hidden', 'false'); });
     clearTimeout(P.settleT);
     if (instant || reduced()) { P.deck.classList.add('still'); }
@@ -701,6 +707,7 @@ async function mount(o) {
 
   /* A TAP: shown at once, saved in turn, put back with a word if it does not save */
   async function pick(P, kind, item) {
+    if (P.quietUntil && Date.now() < P.quietUntil) return;      /* see go(): a tap meant for the last screen */
     const k = key(kind, item.id);
     const want = !on(kind, item.id);
     ctx.override.set(k, want);
