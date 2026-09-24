@@ -1490,6 +1490,16 @@
   function setView(view, animate) {
     const changing = nav.dataset.view !== view;
     nav.dataset.view = view;
+    /* EVERY LEVEL OPENS AT ITS TOP. The panels sit side by side inside ONE scroller (the sidebar,
+       or the phone drawer), so its scroll position is shared: scroll down a long list of
+       countries, tap one, and the leagues panel slid in already scrolled past all its rows -
+       blank, until the reader scrolled back up. A level the reader has just arrived at starts
+       from its first row, going forwards or back. Only on a real change of level, so a re-paint
+       of the panel the reader is already on (a league's roles arriving, say) never moves them. */
+    if (changing) {
+      navScroll.scrollTop = 0; navScroll.scrollLeft = 0;
+      nav.scrollTop = 0;
+    }
     /* Both panels stay visible FOR THE DURATION of the slide — hiding the one
        being left would make it vanish mid-travel — and the one that ends up
        off screen is then taken out of the tab order, because a keyboard user
