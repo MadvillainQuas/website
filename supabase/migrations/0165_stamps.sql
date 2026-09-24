@@ -301,6 +301,26 @@ revoke all on function public.merge_venues(uuid, uuid) from public, anon;
 grant execute on function public.merge_venues(uuid, uuid) to authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
+-- 5b. OLD TRIES ARE FORGOTTEN
+-- ----------------------------------------------------------------------------
+-- stamp_venue() forgets a fan's own tries older than 30 days when they next try. This forgets everybody's,
+-- nightly, so a fan who never tries again is forgotten too: the privacy page promises 30 days.
+create index if not exists stamp_attempts_at on public.stamp_attempts (tried_at);
+do $$
+declare v_job bigint;
+begin
+  if to_regclass('cron.job') is not null then
+    execute 'select cron.unschedule(j.jobid) from cron.job j where j.jobname = $1' using 'epinoia-go-forget-tries'::text;
+    execute 'select cron.schedule($1, $2, $3)' into v_job
+      using 'epinoia-go-forget-tries'::text, '25 3 * * *'::text,
+            'delete from public.stamp_attempts where tried_at < now() - interval ''30 days'''::text;
+    raise notice '0165: pg_cron job epinoia-go-forget-tries (job %) forgets tries older than 30 days, nightly', v_job;
+  else
+    raise warning '0165: pg_cron is not installed here, so only a fan''s next try forgets their old ones';
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
 -- 6. A READ-ONLY CHECK
 -- ----------------------------------------------------------------------------
 do $$

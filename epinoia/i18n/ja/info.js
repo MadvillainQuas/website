@@ -308,7 +308,6 @@
       'The data you gave us, in a file another service can read.': 'あなたが提供したデータを、ほかのサービスで読める形式のファイルで。',
       'Complain': '苦情を申し立てる',
       'About how your personal data has been collected, used or protected.': '個人データの収集、利用、保護の方法について。',
-      'To delete your Epinoia account, send this with Erase it chosen. We delete the account and what it holds: your email address, your name, what you follow and your notification subscriptions. If a record has to be kept, we tell you which and why; statistics stay, without your name. Signed in, the request comes from the account; signed out, give the address it uses.': 'Epinoiaのアカウントを削除するには、「消去する」を選んで送信してください。アカウントとその中身（メールアドレス、お名前、フォロー中の項目、通知の登録）を削除します。保存しなければならない記録がある場合は、どれを、なぜ残すのかをお知らせします。成績は、お名前を外した形で残ります。ログイン中はそのアカウントから請求が行われます。ログインしていない場合は、アカウントのメールアドレスを入力してください。',
       'Someone I represent (with their authority)': '代理人として（本人の委任あり）',
       'Who holds the data': 'データの管理者',
       'Epinoia: your account and this site': 'Epinoia: あなたのアカウントとこのサイト',
@@ -585,7 +584,23 @@
       'Ask for access': 'アクセスを申請する',
       'Back to Epinoia': 'Epinoiaに戻る',
       'Leagues by country are on': '国別のリーグ一覧はこちら:',
-      'Countries': '国'
+      'Countries': '国',
+      'Location': '位置情報',
+      'Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. Android asks first; what happens to your location is below.': 'EPINOIA GOでのみ、今いる試合を探すボタンやアリーナをスタンプするボタンを押したときだけ使います。Androidが先に許可を求めます。位置情報の扱いは下記のとおりです。',
+      'Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. iOS asks first; what happens to your location is below.': 'EPINOIA GOでのみ、今いる試合を探すボタンやアリーナをスタンプするボタンを押したときだけ使います。iOSが先に許可を求めます。位置情報の扱いは下記のとおりです。',
+      'Your location': '位置情報',
+      'Used only when you press a button on EPINOIA GO. Finding the games near you is worked out on your phone, from a list of today’s games: your location is not sent for it. When you stamp an arena, your location is sent once, to check you are there, and is not stored.': 'EPINOIA GOでボタンを押したときだけ使います。近くの試合を探す処理は、その日の試合一覧をもとにスマートフォン上で行い、位置情報は送信しません。アリーナをスタンプするときは、そこにいるかを確認するために位置情報を一度だけ送信し、保存はしません。',
+      'What a stamp keeps': 'スタンプに残るもの',
+      'The arena, the game, its league, the time, and how precise your phone said its location was. Never where you were. Only you can see your stamps, and you can take one back.': 'アリーナ、試合、そのリーグ、時刻、そしてスマートフォンが示した位置情報の精度です。あなたがいた場所は残りません。スタンプを見られるのはあなただけで、取り消すこともできます。',
+      'Your tries': 'スタンプの試行',
+      'Only if you choose, and only if you are 18 or over. They show your username and your numbers (arenas stamped and the distance between them), never your email or which arenas. You can come off them at any time.': '参加を選んだ場合のみ、18歳以上の方に限ります。表示されるのはユーザー名と記録（スタンプしたアリーナの数とその間の距離）だけで、メールアドレスや訪れたアリーナは表示されません。いつでも参加をやめられます。',
+      'Your photographs': 'あなたの写真',
+      'Deleting your account': 'アカウントの削除',
+      'Takes your stamps, your choices and your photographs with it, and the photographs’ files are removed.': 'スタンプ、設定、写真もあわせて削除され、写真のファイルも消去されます。',
+      'The leaderboards': 'ランキング',
+      'Each try at a stamp is noted: the game, whether it worked and why not, never your location. It stops one account trying without end, and the notes are forgotten after 30 days.': 'スタンプを試すたびに、試合、成功したかどうか、失敗の理由を記録します。位置情報は記録しません。1つのアカウントが際限なく試せないようにするためで、記録は30日後に消去されます。',
+      'To delete your Epinoia account, send this with Erase it chosen. We delete the account and what it holds: your email address, your name, what you follow, your notification subscriptions, and your EPINOIA GO stamps and photographs. If a record has to be kept, we tell you which and why; statistics stay, without your name. Signed in, the request comes from the account; signed out, give the address it uses.': 'Epinoiaのアカウントを削除するには、「消去する」を選んで送信してください。アカウントとその中身（メールアドレス、お名前、フォロー中の項目、通知の登録、EPINOIA GOのスタンプと写真）を削除します。保存しなければならない記録がある場合は、どれを、なぜ残すのかをお知らせします。成績は、お名前を外した形で残ります。ログイン中はそのアカウントから請求が行われます。ログインしていない場合は、アカウントのメールアドレスを入力してください。',
+      'Only of games you stamped. Before a photograph leaves your phone it is resized, which removes its hidden details, including where it was taken. A person looks at every photograph before it is public; once it is, it shows your username, the game and the arena. You can remove it at any time. No photographs are accepted from youth leagues’ games.': 'スタンプした試合の写真に限ります。写真はスマートフォンから送信される前に縮小され、撮影場所を含む隠れた情報が取り除かれます。すべての写真は公開前にスタッフが確認し、公開後はあなたのユーザー名、試合、アリーナとともに表示されます。いつでも削除できます。ユースリーグの試合の写真は投稿できません。'
     },
 
     ctx: {

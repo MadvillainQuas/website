@@ -375,7 +375,9 @@
       "The first half": "前半",
       "Where it is being decided": "勝負の分かれ目",
       "Who has it going": "好調な選手",
-      "3PT%": "3FG%"
+      "3PT%": "3FG%",
+      'Fans at this game': 'この試合のファン',
+      'all their photographs': 'すべての写真'
     },
 
     ctx: {

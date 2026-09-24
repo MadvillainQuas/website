@@ -5,13 +5,15 @@
    own folder; an approved file is named for the photograph, never its fan, so a public address ties no
    username to an account; photographs only of a game the fan stamped (D8), never at a youth league's game
    or one with a player flagged under 18, and only by a fan who confirmed 18 or over; three reports take
-   one down until a person looks. Run under Node: the wall's addresses, every refusal in words, the
-   uploader's new options (a bigger tile; a move to another bucket under another name); the console's
-   queue; the words in ja and es.
+   one down until a person looks; files nobody needs any more are listed for the console to remove. Run
+   under Node: the wall's addresses, every refusal in words, the uploader's new options (a bigger tile; a
+   move to another bucket under another name); the console's queue and its sweep; the game page's strip;
+   the words in ja and es.
 
-   0167 was run on a real Postgres (PGlite) with 46 checks over a stub of Supabase Storage, twice over, and
+   0167 was run on a real Postgres (PGlite) with 53 checks over a stub of Supabase Storage, twice over, and
    the pages were driven in Chromium: posting (a real JPEG carrying a phone's make and GPS goes up as WebP
-   with no EXIF at all), the wall, the console's queue - 61 checks. The harnesses live outside the repo.
+   with no EXIF at all) and taking a stamp back 29, the wall 24, the console's queue and sweep 16, the game
+   page's strip 8. The harnesses live outside the repo.
 
      node supabase/tests/go-photos.test.mjs
    ============================================================================ */
@@ -88,6 +90,40 @@ ok('approve moves the files to their public names, then records it', /U\.publish
    && q.indexOf('publishPending') < q.indexOf("sb.rpc('approve_go_photo'"));
 ok('reject records it, then removes the files', q.indexOf("sb.rpc('reject_go_photo'") < q.indexOf('sb.storage.from(r.bucket).remove'));
 
+console.log('\nfiles nobody needs (the privacy page: deleting an account removes the photographs\' files)');
+ok('a row deleted - an account erased, most often - leaves its files\' names: public ones, or a waiting one\'s private ones',
+   /create trigger go_photos_to_trash after delete on public\.go_photos/.test(sql)
+   && /if old\.status in \('approved', 'hidden'\) then\s*insert into go_photo_trash \(path, bucket\) values \(old\.path, 'go-public'\), \(old\.thumb_path, 'go-public'\)/.test(sql)
+   && /elsif old\.status = 'pending' then\s*insert into go_photo_trash \(path, bucket\) values \(old\.path, 'go-pending'\), \(old\.thumb_path, 'go-pending'\)/.test(sql));
+const tl = sql.slice(sql.indexOf('create or replace function public.go_photo_trash_list'), sql.indexOf('create or replace function public.go_photo_trash_done'));
+ok('...and so does an upload that never became a photograph, once it is a day old',
+   /o\.bucket_id = 'go-pending' and o\.created_at < now\(\) - interval '1 day'/.test(tl)
+   && /not exists \(select 1 from go_photos p where p\.path = o\.name or p\.thumb_path = o\.name\)/.test(tl)
+   && /not exists \(select 1 from go_photo_trash t where t\.path = o\.name\)/.test(tl));
+ok('the list is for administrators, and nobody writes it directly', /raise exception 'platform administrators only'/.test(tl)
+   && /revoke insert, update, delete on public\.go_photo_trash from anon, authenticated/.test(sql));
+ok('the console removes them from their buckets, then clears the names; a refusal keeps a name on the list',
+   /await sb\.rpc\('go_photo_trash_list', \{ p_limit: 500 \}\)/.test(q) && q.indexOf("sb.storage.from(bucket).remove(paths)") < q.indexOf("sb.rpc('go_photo_trash_done'")
+   && /if \(!r\.error \|\| \/not found\|does not exist\/i\.test\(r\.error\.message \|\| ''\)\) done\.push\(\.\.\.paths\)/.test(q));
+
+console.log('\nwhere it shows (5.4)');
+const F = require(path.join(ROOT, 'epinoia', 'go', 'fans.js'));
+const gid = '11111111-2222-4333-8444-555555555555';
+const rows = Array.from({ length: F.MAX + 1 }, (_, i) => ({ id: 'ph' + i, thumb_path: 'p/ph' + i + '-t.webp', username: 'Fan_' + i }));
+const fp = F.plan(rows, { supabaseUrl: 'https://x.supabase.co' }, gid);
+ok('a game\'s strip: eight tiles, each to its photograph on the wall, and a link to them all',
+   fp && fp.tiles.length === 8 && fp.more === true && fp.all === '../go/photos/?g=' + gid
+   && fp.tiles[0].href === '../go/photos/?g=' + gid + '&p=ph0'
+   && fp.tiles[0].src === 'https://x.supabase.co/storage/v1/object/public/go-public/p/ph0-t.webp' && fp.tiles[0].alt === '@Fan_0', fp);
+ok('...nothing at all for a game with none, or for an id that is not one',
+   F.plan([], { supabaseUrl: 'x' }, gid) === null && F.plan(null, { supabaseUrl: 'x' }, gid) === null && F.plan(rows, { supabaseUrl: 'x' }, 'nonsense') === null);
+const gh = rd('epinoia', 'game', 'index.html'), fjs = rd('epinoia', 'go', 'fans.js');
+ok('the game page has it after the game, hidden until there is something to show',
+   /<div class="gofans hide" id="goFans"><\/div>/.test(gh) && gh.indexOf('<div id="view">') < gh.indexOf('id="goFans"')
+   && /<script src="\.\.\/go\/fans\.js\?v=\d+" defer><\/script>/.test(gh));
+ok('...from the wall\'s own function, one more than it shows to know there are more',
+   /\/rest\/v1\/rpc\/go_photos_feed/.test(fjs) && /JSON\.stringify\(\{ p_game: gameId, p_limit: MAX \+ 1 \}\)/.test(fjs));
+
 console.log('\nthe words');
 for (const code of ['ja', 'es']) {
   const src = rd('epinoia', 'i18n', code, 'go.js');
@@ -96,8 +132,11 @@ for (const code of ['ja', 'es']) {
   const miss = words.filter(w => !src.includes("'" + w + "':"));
   ok(code + ': posting and the wall are translated', !miss.length, miss);
   const plat = rd('epinoia', 'i18n', code, 'platform.js');
-  ok(code + ': the console\'s queue too', ['Fans’ photographs (EPINOIA GO)', 'Approved: it is on the wall.', 'Nothing waiting. Every fan photograph has been dealt with.']
+  ok(code + ': the console\'s queue too', ['Fans’ photographs (EPINOIA GO)', 'Approved: it is on the wall.', 'Nothing waiting. Every fan photograph has been dealt with.',
+     'Photograph files left behind', 'remove them', 'Some files could not be removed; they stay on the list.']
      .every(w => plat.includes("'" + w + "':")));
+  const game = rd('epinoia', 'i18n', code, 'game.js');
+  ok(code + ': the game page\'s strip too', ['Fans at this game', 'all their photographs'].every(w => game.includes("'" + w + "':")));
 }
 const photosHtml = rd('epinoia', 'go', 'photos', 'index.html');
 ok('the wall loads the go pack', /<script src="\.\.\/\.\.\/i18n\.js\?v=\d+" data-i18n-packs="go"><\/script>/.test(photosHtml));

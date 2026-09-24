@@ -460,6 +460,88 @@ revoke all on function public.go_photo_queue(integer) from public, anon;
 grant execute on function public.go_photo_queue(integer) to authenticated;
 
 -- ----------------------------------------------------------------------------
+-- 6b. FILES LEFT BEHIND
+--
+-- A row can go without its files: an account erased (auth.users cascades, platform_delete_account), a row
+-- deleted from the dashboard. An approved photograph's files would then stay public with no row to say
+-- whose they were. So every deleted row leaves its files' names here, and the console's queue offers to
+-- remove them. A fan removing their own photograph removes the files first (the page does), so theirs
+-- come through as names already gone: the sweep finds nothing and clears them.
+-- ----------------------------------------------------------------------------
+create table if not exists public.go_photo_trash (
+  path     text primary key,
+  bucket   text not null check (bucket in ('go-pending', 'go-public')),
+  at       timestamptz not null default now()
+);
+alter table public.go_photo_trash enable row level security;
+drop policy if exists go_photo_trash_admin on public.go_photo_trash;
+create policy go_photo_trash_admin on public.go_photo_trash for select using (public.is_platform_admin());
+revoke insert, update, delete on public.go_photo_trash from anon, authenticated;
+
+create or replace function public.go_photos_to_trash()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  -- a rejected photograph's files were removed when it was rejected; the others are somewhere
+  if old.status in ('approved', 'hidden') then
+    insert into go_photo_trash (path, bucket) values (old.path, 'go-public'), (old.thumb_path, 'go-public')
+    on conflict (path) do nothing;
+  elsif old.status = 'pending' then
+    insert into go_photo_trash (path, bucket) values (old.path, 'go-pending'), (old.thumb_path, 'go-pending')
+    on conflict (path) do nothing;
+  end if;
+  return old;
+end; $$;
+alter function public.go_photos_to_trash() owner to postgres;
+revoke all on function public.go_photos_to_trash() from public, anon, authenticated;
+drop trigger if exists go_photos_to_trash on public.go_photos;
+create trigger go_photos_to_trash after delete on public.go_photos
+  for each row execute function public.go_photos_to_trash();
+
+create or replace function public.go_photo_trash_list(p_limit integer default 200)
+returns table (path text, bucket text, at timestamptz)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform administrators only' using errcode = '42501';
+  end if;
+  -- the files of removed photographs, and a fan's uploads that never became one (the page lost its
+  -- connection between sending the files and posting them, or the account went in between): a day old,
+  -- in the private bucket, and nobody's photograph
+  return query
+    select x.path, x.bucket, x.at from (
+      select t.path, t.bucket, t.at from go_photo_trash t
+      union all
+      select o.name::text, 'go-pending'::text, o.created_at from storage.objects o
+       where o.bucket_id = 'go-pending' and o.created_at < now() - interval '1 day'
+         and not exists (select 1 from go_photos p where p.path = o.name or p.thumb_path = o.name)
+         and not exists (select 1 from go_photo_trash t where t.path = o.name)
+    ) x
+    order by x.at
+    limit greatest(1, least(coalesce(p_limit, 200), 1000));
+end; $$;
+
+create or replace function public.go_photo_trash_done(p_paths text[])
+returns integer language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform administrators only' using errcode = '42501';
+  end if;
+  delete from go_photo_trash where path = any(coalesce(p_paths, '{}'));
+  get diagnostics n = row_count;
+  return n;
+end; $$;
+do $$
+declare f text;
+begin
+  foreach f in array array['go_photo_trash_list(integer)', 'go_photo_trash_done(text[])'] loop
+    execute format('alter function public.%s owner to postgres', f);
+    execute format('revoke all on function public.%s from public, anon', f);
+    execute format('grant execute on function public.%s to authenticated', f);
+  end loop;
+end $$;
+
+-- ----------------------------------------------------------------------------
 -- 7. A MERGE MOVES PHOTOGRAPHS TOO (0165's function, with the photographs line)
 -- ----------------------------------------------------------------------------
 create or replace function public.merge_venues(p_keep uuid, p_other uuid)

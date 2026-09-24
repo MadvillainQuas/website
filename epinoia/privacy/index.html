@@ -18,11 +18,11 @@
 <meta name="description" content="Your data protection rights on Epinoia: see, correct or erase your data, object, or complain, and how long each takes.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=382"></script>
-<script src="../i18n.js?v=382" data-i18n-packs="info"></script>
-<script src="../glyphs.js?v=382" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=382">
-<link rel="stylesheet" href="../kit/nav.css?v=382">
+<script src="../appmode.js?v=383"></script>
+<script src="../i18n.js?v=383" data-i18n-packs="info"></script>
+<script src="../glyphs.js?v=383" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=383">
+<link rel="stylesheet" href="../kit/nav.css?v=383">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -162,7 +162,8 @@
         <p class="fine hide" id="deleteNote" style="margin:calc(var(--u)*1.5) 0 0">
           To delete your Epinoia account, send this with Erase it chosen. We delete
           the account and what it holds: your email address, your name, what you
-          follow and your notification subscriptions. If a record has to be kept,
+          follow, your notification subscriptions, and your EPINOIA GO stamps and
+          photographs. If a record has to be kept,
           we tell you which and why; statistics stay, without your name. Signed in,
           the request comes from the account; signed out, give the address it uses.
         </p>
@@ -299,6 +300,8 @@
         <div class="a">None. There are no adverts, no advertising or analytics trackers, and nothing about you is sold or shared for marketing.</div>
         <div class="q">Notifications</div>
         <div class="a">Optional. The app asks once; you can say no, and turn them on or off at any time in the app&rsquo;s notification settings or in Android&rsquo;s settings for the app.</div>
+        <div class="q">Location</div>
+        <div class="a">Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. Android asks first; what happens to your location is below.</div>
         <div class="q">Delete your account</div>
         <div class="a">Choose Erase it in the form above and send it; <a href="#delete">this link</a> chooses it for you.</div>
       </div>
@@ -319,10 +322,34 @@
         <div class="a">None. The app does not track you across other apps or websites, shows no adverts, and contains no analytics.</div>
         <div class="q">Camera</div>
         <div class="a">Only if you choose to take a photo to upload, or to read a scoreboard clock. iOS asks first, and nothing is recorded unless you start it.</div>
+        <div class="q">Location</div>
+        <div class="a">Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. iOS asks first; what happens to your location is below.</div>
         <div class="q">Notifications</div>
         <div class="a">Optional. iOS asks the first time you turn them on; you can turn them off at any time on your Profile page or in the iPhone&rsquo;s Settings, then Notifications, then EPINOIΛ.</div>
         <div class="q">Delete your account</div>
         <div class="a">In the app, open your Profile page and tap Delete my account, or choose Erase it in the form above and send it; <a href="#delete">this link</a> chooses it for you.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EPINOIA GO (docs/epinoia-go.md, 6.2): what stamping, the leaderboards and the fans' photographs keep.
+       Keep it in step with migrations 0165-0167. -->
+  <section class="sec" id="goSec" aria-labelledby="goH">
+    <div class="ep-hdr"><span class="idx">08</span><h2 id="goH" translate="no">EPINOIA GO</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">Your location</div>
+        <div class="a">Used only when you press a button on EPINOIA GO. Finding the games near you is worked out on your phone, from a list of today&rsquo;s games: your location is not sent for it. When you stamp an arena, your location is sent once, to check you are there, and is not stored.</div>
+        <div class="q">What a stamp keeps</div>
+        <div class="a">The arena, the game, its league, the time, and how precise your phone said its location was. Never where you were. Only you can see your stamps, and you can take one back.</div>
+        <div class="q">Your tries</div>
+        <div class="a">Each try at a stamp is noted: the game, whether it worked and why not, never your location. It stops one account trying without end, and the notes are forgotten after 30 days.</div>
+        <div class="q">The leaderboards</div>
+        <div class="a">Only if you choose, and only if you are 18 or over. They show your username and your numbers (arenas stamped and the distance between them), never your email or which arenas. You can come off them at any time.</div>
+        <div class="q">Your photographs</div>
+        <div class="a">Only of games you stamped. Before a photograph leaves your phone it is resized, which removes its hidden details, including where it was taken. A person looks at every photograph before it is public; once it is, it shows your username, the game and the arena. You can remove it at any time. No photographs are accepted from youth leagues&rsquo; games.</div>
+        <div class="q">Deleting your account</div>
+        <div class="a">Takes your stamps, your choices and your photographs with it, and the photographs&rsquo; files are removed.</div>
       </div>
     </div>
   </section>
@@ -334,9 +361,9 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=382" defer></script>
-<script src="../access.js?v=382" defer></script>
-<script src="privacy.js?v=382" defer></script>
-<script src="../nav.js?v=382" defer></script>
+<script src="../config.js?v=383" defer></script>
+<script src="../access.js?v=383" defer></script>
+<script src="privacy.js?v=383" defer></script>
+<script src="../nav.js?v=383" defer></script>
 </body>
 </html>

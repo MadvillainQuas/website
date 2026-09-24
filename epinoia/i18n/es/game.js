@@ -382,7 +382,9 @@
       "The first half": "La primera parte",
       "Where it is being decided": "Dónde se está decidiendo",
       "Who has it going": "Quién está enchufado",
-      "3PT%": "T3%"
+      "3PT%": "T3%",
+      'Fans at this game': 'Aficionados en este partido',
+      'all their photographs': 'todas sus fotos'
     },
 
     ctx: {

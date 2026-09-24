@@ -340,12 +340,36 @@ function drawPassport() {
     li.appendChild(data('b', null, (x.venues && x.venues.name) || '—'));
     li.appendChild(data('small', null, [x.venues && x.venues.city, x.venues && x.venues.country, x.leagues && x.leagues.name]
       .filter(Boolean).join(' · ')));
+    const acts = li.appendChild(el('div', 'go-acts'));
     if (S.photos && x.game_id) {
-      const add = li.appendChild(el('button', 'go-addph', 'add a photo'));
+      const add = acts.appendChild(el('button', 'go-addph', 'add a photo'));
       add.type = 'button';
       add.addEventListener('click', () => photoForm(li, x, add));
     }
+    const back = acts.appendChild(el('button', 'go-unst', 'take back'));
+    back.type = 'button';
+    back.addEventListener('click', () => takeBack(li, x, back));
   });
+}
+
+/* A stamp is the fan's to take back (0165's stamps_own_delete; the privacy page promises it): it leaves the
+   passport, the numbers and the boards. A photograph from that game stays until the fan removes it. */
+async function takeBack(li, x, btn) {
+  if (!window.confirm('Take this stamp back? It comes off your passport and your numbers.')) return;
+  btn.disabled = true;
+  S.session = await session();
+  let gone = false;
+  try {
+    // representation, because a delete the policy refuses still answers 204 with nothing gone
+    const r = await fetch(S.cfg.supabaseUrl + '/rest/v1/stamps?id=eq.' + encodeURIComponent(x.id),
+      { method: 'DELETE', headers: Object.assign(headers(false), { Prefer: 'return=representation' }) });
+    gone = r.ok && (await r.json()).length === 1;
+  } catch (_) { gone = false; }
+  if (gone) return loadMine();
+  btn.disabled = false;
+  const old = li.querySelector('.go-unerr');
+  if (old) old.remove();
+  li.appendChild(el('div', 'go-unerr', 'Could not take it back. Try again.'));
 }
 
 /* ----------------------------------------------------- games been to (5) --- */

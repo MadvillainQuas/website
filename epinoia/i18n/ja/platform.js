@@ -1059,7 +1059,10 @@
       'upload.js did not load. Reload the page.': 'upload.js が読み込まれませんでした。ページを再読み込みしてください。',
       'That photograph was already dealt with.': 'その写真はすでに処理されています。',
       'Approved: it is on the wall.': '承認しました。ウォールに掲載されています。',
-      'Why is it not going up? (optional, shown to the fan)': '掲載しない理由は？（任意・ファンに表示されます）'
+      'Why is it not going up? (optional, shown to the fan)': '掲載しない理由は？（任意・ファンに表示されます）',
+      'remove them': '削除する',
+      'Some files could not be removed; they stay on the list.': '一部のファイルを削除できませんでした。一覧に残しています。',
+      'Photograph files left behind': '残った写真ファイル'
     },
 
     /* matched only as written: the pager's "next" (the core file has it as the next game), a

@@ -85,7 +85,7 @@ needs Louie says so.
       id in public. PGlite: 24 checks. **Live once Louie runs `db push`.**
 - [x] **2.2 Asking for one** — on the profile page, first section: checked as it is typed, saved, every
       refusal in words, ja/es. `/epinoia/me/#username` opens it, which is where EPINOIA GO will send a fan
-      with no name (3.4). Driven in Chromium against the real Supabase SDK: 18 checks.
+      with no name (3.4). Driven in Chromium against the real Supabase SDK: 22 checks (en/ja/es).
 
 ## Phase 3 — Stamping
 
@@ -102,7 +102,7 @@ needs Louie says so.
       Every refusal has a reason and the number that goes with it (how far, when it opens, the last arena).
       `go_games_now()` lists the games a fan can stamp now or in the next day with their pins, and takes no
       location: the phone measures, so the location leaves it only at the moment of stamping. A merge moves
-      stamps. PGlite: 40 checks; `stamps.test.mjs`: 28. **Live once Louie runs `db push`.**
+      stamps. PGlite: 40 checks; `stamps.test.mjs`: 30. **Live once Louie runs `db push`.**
 - [x] **3.3 Location in the apps** — Android (a Trusted Web Activity: Chrome delegates the site's location
       question to the app): `locationdelegation` 1.1.2 registered in `EpinoiaDelegationService`, the two
       location permissions in the manifest. iPhone (WKWebView): `NSLocationWhenInUseUsageDescription` in
@@ -116,7 +116,7 @@ needs Louie says so.
       counts; every refusal in words, with its numbers. Below, the fan's stamps. Signed out it still finds
       the game and asks for a sign-in to stamp; a fan with no username is sent to the profile (2.2). Before
       0165 is pushed it says EPINOIA GO opens soon. ja/es (pack `go`). Not in the rail yet (6.3). Chromium:
-      34 checks; `go-page.test.mjs`: 26.
+      56 checks; `go-page.test.mjs`: 28.
 
 ## Phase 4 — Passport and leaderboards
 
@@ -153,14 +153,32 @@ needs Louie says so.
 - [x] **5.3 The feed** — `/epinoia/go/photos/`, "Games been to": a wall of square tiles, newest or most
       liked, by league, fan, arena or game, a page more at a time; a photograph whole with who took it and
       where, a like, a report, and more from the same game, arena or fan; every photograph its own link.
-- [ ] **5.4 Where it shows** — a fan's photographs are the wall's `?u=<username>`, a game's are `?g=<id>`
-      (both working). Still to do: the "Fans at this game" strip on the game page itself.
+- [x] **5.4 Where it shows** — a fan's photographs are the wall's `?u=<username>`, a game's are `?g=<id>`.
+      The game page has a "Fans at this game" strip under the game (`epinoia/go/fans.js`): up to eight
+      tiles, each opening its photograph on the wall, and a link to them all; nothing at all when a game has
+      none, which is most games, or before 0167 is pushed.
+- [x] **Files nobody needs** — a photograph's row deleted (an account erased, most often) leaves its files'
+      names in `go_photo_trash`; the list also takes a fan's upload that never became a photograph once it
+      is a day old. The Moderation tab offers them ("Photograph files left behind") and removes them.
 
-  0167: PGlite 46 checks; Chromium: posting 23, the wall 24, the queue 14; `go-photos.test.mjs`: 37.
-  **Live once Louie runs `db push`**; until then the page and the wall say it opens soon.
+  0167: PGlite 53 checks; Chromium: posting 29, the wall 24, the queue and the sweep 16, the game page's
+  strip 8; `go-photos.test.mjs`: 47. **Live once Louie runs `db push`**; until then the page and the wall
+  say it opens soon, and the game page is as it was.
 
 ## Phase 6 — Finish
 
-- [ ] **6.1** Japanese and Spanish throughout.
-- [ ] **6.2** The privacy page (location stamps, photos) and account deletion covering both.
-- [ ] **6.3** EPINOIA GO in the rail and the phone bar; docs.
+- [x] **6.1** Japanese and Spanish throughout: packs `go` (the GO page, the wall), `game` (the strip),
+      `platform` (Arenas, the queue, the sweep), `account` (the username), `info` (the privacy page). Every
+      surface driven in Chromium in ja and es with the engine's list of misses: nothing left in English but
+      names.
+- [x] **6.2** The privacy page, section 08 "EPINOIA GO": the location (used when a button is pressed; the
+      games near you worked out on the phone; sent once to stamp and not stored), what a stamp keeps, the
+      tries (the game and the reason, never the location; forgotten after 30 days, now for everybody,
+      nightly, by a pg_cron job in 0165), the leaderboards (a choice, 18 or over, username and numbers only),
+      the photographs (stamped games, hidden details removed on the phone, a person looks first, removable,
+      never at youth leagues), and deleting the account. The Android and iPhone sections answer Location;
+      the account-deletion note names the stamps and photographs. The GO page's location note links to it.
+      A stamp can now be taken back from the passport ("take back"), as 0165 always allowed and the page
+      says. Chromium: 17 checks (en/ja/es, a phone's width).
+- [ ] **6.3** EPINOIA GO in the rail and the phone bar; docs. **Louie's call**: it is a launch decision
+      (the rail and the phone bar are on every page), best made once 0163-0167 are live.

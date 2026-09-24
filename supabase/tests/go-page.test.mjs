@@ -63,7 +63,9 @@ ok('...and the numbers that go with them', G.factsOf({ reason: 'too_far', distan
 ok('an hour\'s wait is said as one', G.whyOf({ reason: 'slow_down', retry_after: 3600 }) !== G.whyOf({ reason: 'slow_down', retry_after: 60 }));
 for (const code of ['ja', 'es']) {
   const src = rd('epinoia', 'i18n', code, 'go.js');
-  const words = [...Object.values(G.WHY), ...Object.values(G.GEO), 'stamp this venue', 'find the game I’m at', 'Stamping opens', 'Stamping closed'];
+  const words = [...Object.values(G.WHY), ...Object.values(G.GEO), 'stamp this venue', 'find the game I’m at', 'Stamping opens', 'Stamping closed',
+                 'take back', 'Take this stamp back? It comes off your passport and your numbers.', 'Could not take it back. Try again.',
+                 'More in the privacy notice'];
   const miss = words.filter(w => !src.includes("'" + w + "':"));
   ok(code + ': every sentence the page can show is translated', !miss.length, miss);
 }
@@ -77,6 +79,13 @@ ok('a position older than 45 seconds is asked for again before stamping', /Date\
 ok('the phone is asked for its best fix', /enableHighAccuracy: true/.test(js));
 const html = rd('epinoia', 'go', 'index.html');
 ok('the page says what happens to the location', /Your location is used once, when you stamp, to check you are at the arena, and then\s+forgotten/.test(html));
+ok('...and points to the privacy notice\'s EPINOIA GO section', /<a class="go-plink" href="\.\.\/privacy\/#goSec">More in the privacy notice<\/a>/.test(html)
+   && /<section class="sec" id="goSec"/.test(rd('epinoia', 'privacy', 'index.html')));
+// the privacy notice promises it: 0165's stamps_own_delete lets a fan delete their own
+ok('a stamp is the fan\'s to take back: by its id, asked to show what went (a refused delete answers 204 as well)',
+   /'\/rest\/v1\/stamps\?id=eq\.' \+ encodeURIComponent\(x\.id\)/.test(js) && /method: 'DELETE'/.test(js)
+   && /Prefer: 'return=representation'/.test(js) && /gone = r\.ok && \(await r\.json\(\)\)\.length === 1/.test(js)
+   && /create policy stamps_own_delete on public\.stamps for delete using \(user_id = auth\.uid\(\)\)/.test(sql));
 
 console.log('\nthe page');
 ok('before 0165: EPINOIA GO opens soon, nothing that cannot work', /if \(games === 'missing'\) return closed\(\)/.test(js) && /EPINOIA GO opens soon\./.test(html));

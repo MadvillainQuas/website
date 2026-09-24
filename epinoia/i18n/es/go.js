@@ -128,7 +128,11 @@
       'That did not go through. Try again in a moment.': 'No se ha podido enviar. Vuelve a intentarlo en un momento.',
       'Order': 'Orden',
       'Photograph': 'Foto',
-      'Previous': 'Anterior'
+      'Previous': 'Anterior',
+      'take back': 'retirar',
+      'Take this stamp back? It comes off your passport and your numbers.': '¿Retirar este sello? Desaparece de tu pasaporte y de tus cifras.',
+      'Could not take it back. Try again.': 'No se pudo retirar. Inténtalo de nuevo.',
+      'More in the privacy notice': 'Más en el aviso de privacidad'
     },
     units: {
       'arena': '{n} pabellón',

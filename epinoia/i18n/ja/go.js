@@ -128,7 +128,11 @@
       'That did not go through. Try again in a moment.': '送信できませんでした。少ししてからお試しください。',
       'Order': '並び順',
       'Photograph': '写真',
-      'Previous': '前へ'
+      'Previous': '前へ',
+      'take back': '取り消す',
+      'Take this stamp back? It comes off your passport and your numbers.': 'このスタンプを取り消しますか？パスポートと記録から外れます。',
+      'Could not take it back. Try again.': '取り消せませんでした。もう一度お試しください。',
+      'More in the privacy notice': '詳しくはプライバシーのお知らせへ'
     },
     units: {
       'arena': '{n}アリーナ',

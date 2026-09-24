@@ -36,6 +36,14 @@ ok('the account goes, its stamps and tries go', /user_id\s+uuid not null referen
    && (sql.match(/references auth\.users on delete cascade/g) || []).length === 2);
 ok('an arena with stamps is only removed by a merge that moves them',
    /venue_id\s+uuid not null references public\.venues on delete restrict/.test(sql) && /update stamps set venue_id = p_keep where venue_id = p_other/.test(sql));
+// the privacy page (section 08) says tries are forgotten after 30 days: for everybody, not only a fan who tries again
+ok('tries are forgotten after 30 days, everybody\'s, nightly (the privacy page promises it)',
+   /delete from stamp_attempts where user_id = me and tried_at < now\(\) - interval '30 days'/.test(sql)
+   && /'epinoia-go-forget-tries'::text, '25 3 \* \* \*'::text,\s*'delete from public\.stamp_attempts where tried_at < now\(\) - interval ''30 days'''::text/.test(sql)
+   && /create index if not exists stamp_attempts_at on public\.stamp_attempts \(tried_at\)/.test(sql));
+const priv = rd('epinoia', 'privacy', 'index.html');
+ok('...and the privacy page says what 0165 does', /id="goSec"/.test(priv) && /forgotten after 30 days/.test(priv) && /never your location/.test(priv)
+   && /Never where you were/.test(priv));
 
 console.log('\nwho reads and writes');
 ok('a fan reads their own stamps, and may take one back', /create policy stamps_own_read on public\.stamps for select using \(user_id = auth\.uid\(\)\)/.test(sql)

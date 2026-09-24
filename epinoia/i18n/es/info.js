@@ -311,7 +311,6 @@
       'The data you gave us, in a file another service can read.': 'Los datos que nos diste, en un archivo que otro servicio pueda leer.',
       'Complain': 'Reclamar',
       'About how your personal data has been collected, used or protected.': 'Sobre cómo se han recogido, usado o protegido tus datos personales.',
-      'To delete your Epinoia account, send this with Erase it chosen. We delete the account and what it holds: your email address, your name, what you follow and your notification subscriptions. If a record has to be kept, we tell you which and why; statistics stay, without your name. Signed in, the request comes from the account; signed out, give the address it uses.': 'Para eliminar tu cuenta de Epinoia, envía esto con Suprimirlos elegido. Eliminamos la cuenta y lo que contiene: tu correo, tu nombre, lo que sigues y tus suscripciones a notificaciones. Si hay que conservar algún registro, te decimos cuál y por qué; las estadísticas se quedan, sin tu nombre. Con la sesión iniciada, la solicitud sale de la cuenta; sin ella, indica el correo que usa.',
       'Someone I represent (with their authority)': 'Alguien a quien represento (con su autorización)',
       'Who holds the data': 'Quién tiene los datos',
       'Epinoia: your account and this site': 'Epinoia: tu cuenta y este sitio',
@@ -588,7 +587,23 @@
       'Ask for access': 'Pedir acceso',
       'Back to Epinoia': 'Volver a Epinoia',
       'Leagues by country are on': 'Las ligas por país están en',
-      'Countries': 'Países'
+      'Countries': 'Países',
+      'Location': 'Ubicación',
+      'Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. Android asks first; what happens to your location is below.': 'Solo para EPINOIA GO, y solo cuando pulsas su botón para buscar el partido en el que estás o para sellar un pabellón. Android pregunta antes; lo que pasa con tu ubicación está más abajo.',
+      'Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. iOS asks first; what happens to your location is below.': 'Solo para EPINOIA GO, y solo cuando pulsas su botón para buscar el partido en el que estás o para sellar un pabellón. iOS pregunta antes; lo que pasa con tu ubicación está más abajo.',
+      'Your location': 'Tu ubicación',
+      'Used only when you press a button on EPINOIA GO. Finding the games near you is worked out on your phone, from a list of today’s games: your location is not sent for it. When you stamp an arena, your location is sent once, to check you are there, and is not stored.': 'Solo se usa cuando pulsas un botón en EPINOIA GO. Los partidos cercanos se calculan en tu móvil a partir de la lista de partidos del día: tu ubicación no se envía para eso. Cuando sellas un pabellón, tu ubicación se envía una vez para comprobar que estás allí, y no se guarda.',
+      'What a stamp keeps': 'Qué guarda un sello',
+      'The arena, the game, its league, the time, and how precise your phone said its location was. Never where you were. Only you can see your stamps, and you can take one back.': 'El pabellón, el partido, su liga, la hora y la precisión que indicó tu móvil. Nunca dónde estabas. Solo tú puedes ver tus sellos, y puedes retirar uno.',
+      'Your tries': 'Tus intentos',
+      'Only if you choose, and only if you are 18 or over. They show your username and your numbers (arenas stamped and the distance between them), never your email or which arenas. You can come off them at any time.': 'Solo si lo eliges, y solo si tienes 18 años o más. Muestran tu nombre de usuario y tus cifras (pabellones sellados y la distancia entre ellos), nunca tu correo ni qué pabellones. Puedes salir cuando quieras.',
+      'Your photographs': 'Tus fotos',
+      'Deleting your account': 'Borrar tu cuenta',
+      'Takes your stamps, your choices and your photographs with it, and the photographs’ files are removed.': 'Se lleva tus sellos, tus preferencias y tus fotos, y los archivos de las fotos se eliminan.',
+      'The leaderboards': 'Las clasificaciones',
+      'Each try at a stamp is noted: the game, whether it worked and why not, never your location. It stops one account trying without end, and the notes are forgotten after 30 days.': 'Cada intento de sellar queda anotado: el partido, si funcionó y por qué no, nunca tu ubicación. Así una cuenta no puede intentarlo sin fin, y las notas se olvidan a los 30 días.',
+      'To delete your Epinoia account, send this with Erase it chosen. We delete the account and what it holds: your email address, your name, what you follow, your notification subscriptions, and your EPINOIA GO stamps and photographs. If a record has to be kept, we tell you which and why; statistics stay, without your name. Signed in, the request comes from the account; signed out, give the address it uses.': 'Para eliminar tu cuenta de Epinoia, envía esto con Suprimirlos elegido. Eliminamos la cuenta y lo que contiene: tu correo, tu nombre, lo que sigues, tus suscripciones a notificaciones y tus sellos y fotos de EPINOIA GO. Si hay que conservar algún registro, te decimos cuál y por qué; las estadísticas se quedan, sin tu nombre. Con la sesión iniciada, la solicitud sale de la cuenta; sin ella, indica el correo que usa.',
+      'Only of games you stamped. Before a photograph leaves your phone it is resized, which removes its hidden details, including where it was taken. A person looks at every photograph before it is public; once it is, it shows your username, the game and the arena. You can remove it at any time. No photographs are accepted from youth leagues’ games.': 'Solo de partidos que hayas sellado. Antes de salir de tu móvil, la foto se redimensiona, lo que elimina sus datos ocultos, incluido dónde se hizo. Una persona revisa cada foto antes de hacerla pública; cuando lo es, muestra tu nombre de usuario, el partido y el pabellón. Puedes quitarla cuando quieras. No se admiten fotos de partidos de ligas juveniles.'
     },
 
     ctx: {

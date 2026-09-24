@@ -44,6 +44,7 @@ async function mount(o) {
     }
     return oops(error);
   }
+  sweep(o, host);
   if (!rows || !rows.length) {
     host.appendChild(el('div', 'empty', 'Nothing waiting. Every fan photograph has been dealt with.'));
     return;
@@ -72,6 +73,39 @@ async function mount(o) {
     const no = acts.appendChild(el('button', 'ep-btn mini danger', 'reject'));
     no.type = 'button';
     no.addEventListener('click', () => reject(o, p, no));
+  });
+}
+
+/* FILES LEFT BEHIND (0167's go_photo_trash_list): a photograph's row went - an account erased, most often -
+   and its files may still be in a bucket, an approved one's in public; or a fan's upload never became a
+   photograph (the connection went between sending the files and posting). Offered here, removed on a click. */
+async function sweep(o, host) {
+  const { sb, say, oops } = o;
+  const { data: left, error } = await sb.rpc('go_photo_trash_list', { p_limit: 500 });
+  if (error || !left || !left.length) return;
+  const line = el('div', 'row gq-trash');
+  host.insertBefore(line, host.firstChild);
+  const t = line.appendChild(el('span', 'mt'));
+  t.appendChild(el('span', null, 'Photograph files left behind'));
+  t.appendChild(document.createTextNode(': '));
+  t.appendChild(data('b', null, String(left.length)));
+  const go = line.appendChild(el('button', 'ep-btn mini danger', 'remove them'));
+  go.type = 'button';
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    const done = [];
+    for (const bucket of ['go-pending', 'go-public']) {
+      const paths = left.filter(x => x.bucket === bucket).map(x => x.path);
+      if (!paths.length) continue;
+      const r = await sb.storage.from(bucket).remove(paths);
+      // a file already gone is gone: only a refusal keeps a name on the list
+      if (!r.error || /not found|does not exist/i.test(r.error.message || '')) done.push(...paths);
+    }
+    const { error: e2 } = await sb.rpc('go_photo_trash_done', { p_paths: done });
+    go.disabled = false;
+    if (e2) return oops(e2);
+    say(done.length === left.length ? 'Removed.' : 'Some files could not be removed; they stay on the list.', done.length === left.length ? 'ok' : 'err');
+    mount(o);
   });
 }
 
