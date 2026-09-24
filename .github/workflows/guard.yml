@@ -426,6 +426,14 @@ jobs:
         # (never invented for a game not yet set up), Warsaw tip-offs in UTC, the score the league's
         run: python scripts/ingest/pulsbasketu_test.py
 
+      - name: The FEB's leagues (Spain) from its live-score site and stats API
+        # feb.py over cached calendar, results, series and club pages and four KeyFacts replies: six
+        # leagues and two stages, groups by the page's own postback, knockout rounds from the series
+        # page, Canary time, one API request per game, and every box, total, score, 5v5 stint and
+        # event-log line reconciling with the league's own figures - with a line filed under the
+        # other club repaired and the opening five read as a lineup
+        run: python scripts/ingest/feb_test.py
+
       - name: Lega Basket Serie A (Italy) from legabasket.it's own API
         # lba.py over cached championship, calendar, team and game replies: the cups are never
         # discovered, the match id is the key and the club_id the code (a club keeps it through a

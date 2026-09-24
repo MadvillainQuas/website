@@ -1875,6 +1875,360 @@
       "scheduleUrls": [
         "https://tulospalvelu.basket.fi/category/29461#playoffs"
       ]
+    },
+    {
+      "code": "FEB1",
+      "label": "Primera FEB",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "primera-feb",
+      "league_name": "Primera FEB",
+      "league_country": "ES",
+      "adapter_config": {
+        "code": "FEB1",
+        "competition": 1,
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/primerafeb/1"
+      ]
+    },
+    {
+      "code": "FEB1",
+      "label": "Primera FEB",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "primera-feb",
+      "league_name": "Primera FEB",
+      "league_country": "ES",
+      "competition_label": "Primera FEB Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "FEB1",
+        "competition": 1,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/primerafeb/1#playoffs"
+      ]
+    },
+    {
+      "code": "FEB2",
+      "label": "Segunda FEB",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "segunda-feb",
+      "league_name": "Segunda FEB",
+      "league_country": "ES",
+      "adapter_config": {
+        "code": "FEB2",
+        "competition": 2,
+        "stage": "regular",
+        "groups_from_feed": true,
+        "competition_format": "groups",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/segundafeb/2"
+      ]
+    },
+    {
+      "code": "FEB2",
+      "label": "Segunda FEB",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "segunda-feb",
+      "league_name": "Segunda FEB",
+      "league_country": "ES",
+      "competition_label": "Segunda FEB Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "FEB2",
+        "competition": 2,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/segundafeb/2#playoffs"
+      ]
+    },
+    {
+      "code": "LFE",
+      "label": "Liga Femenina Endesa",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-femenina-endesa",
+      "league_name": "Liga Femenina Endesa",
+      "league_country": "ES",
+      "adapter_config": {
+        "code": "LFE",
+        "competition": 4,
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/lfendesa/4"
+      ]
+    },
+    {
+      "code": "LFE",
+      "label": "Liga Femenina Endesa",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-femenina-endesa",
+      "league_name": "Liga Femenina Endesa",
+      "league_country": "ES",
+      "competition_label": "Liga Femenina Endesa Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "LFE",
+        "competition": 4,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/lfendesa/4#playoffs"
+      ]
+    },
+    {
+      "code": "LFCH",
+      "label": "Liga Femenina Challenge",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-femenina-challenge",
+      "league_name": "Liga Femenina Challenge",
+      "league_country": "ES",
+      "adapter_config": {
+        "code": "LFCH",
+        "competition": 67,
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/lfchallenge/67"
+      ]
+    },
+    {
+      "code": "LFCH",
+      "label": "Liga Femenina Challenge",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-femenina-challenge",
+      "league_name": "Liga Femenina Challenge",
+      "league_country": "ES",
+      "competition_label": "Liga Femenina Challenge Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "LFCH",
+        "competition": 67,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/lfchallenge/67#playoffs"
+      ]
+    },
+    {
+      "code": "LF2",
+      "label": "Liga Femenina 2",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-femenina-2",
+      "league_name": "Liga Femenina 2",
+      "league_country": "ES",
+      "adapter_config": {
+        "code": "LF2",
+        "competition": 9,
+        "stage": "regular",
+        "groups_from_feed": true,
+        "competition_format": "groups",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/lf2/9"
+      ]
+    },
+    {
+      "code": "LF2",
+      "label": "Liga Femenina 2",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-femenina-2",
+      "league_name": "Liga Femenina 2",
+      "league_country": "ES",
+      "competition_label": "Liga Femenina 2 Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "LF2",
+        "competition": 9,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/lf2/9#playoffs"
+      ]
+    },
+    {
+      "code": "LIGAU",
+      "label": "Liga U",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-u",
+      "league_name": "Liga U",
+      "league_country": "ES",
+      "adapter_config": {
+        "code": "LIGAU",
+        "competition": 74,
+        "stage": "regular",
+        "groups_from_feed": true,
+        "competition_format": "groups",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/ligau/74"
+      ]
+    },
+    {
+      "code": "LIGAU",
+      "label": "Liga U",
+      "adapter": "feb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-u",
+      "league_name": "Liga U",
+      "league_country": "ES",
+      "competition_label": "Liga U Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "LIGAU",
+        "competition": 74,
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://baloncestoenvivo.feb.es/calendario/ligau/74#playoffs"
+      ]
     }
   ]
 }
