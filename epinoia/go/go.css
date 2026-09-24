@@ -41,9 +41,24 @@ a.plain{color:inherit;text-decoration:none}
 .gi-alt a.gi-signin{opacity:1;text-decoration:none;border:2px solid currentColor;border-radius:999px;padding:10px 22px;
   font-family:var(--f-go);font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase}
 html.go-intro-open,html.go-intro-open body{overflow:hidden}
+/* UP BEFORE THE FIRST PAINT: intro-early.js marks <html data-go-intro="…"> from what this browser knows,
+   so the screen is there, already black (white on the dark theme), before the page can show - no fade in,
+   no second of the page first. go.js takes it over (the box's data-mode) once the database has answered. */
+html[data-go-intro] .go-intro,html[data-go-intro] .go-intro[hidden]{display:grid;opacity:1}
+/* what the screen says, by mode: every mode's words are in the page, and only its own are shown */
+.gi-form,.gi-if-ask,.gi-if-signin{display:none}
+html[data-go-intro="ask"] .gi-form,.go-intro[data-mode="ask"] .gi-form{display:flex}
+html[data-go-intro="ask"] .gi-if-ask,.go-intro[data-mode="ask"] .gi-if-ask,
+html[data-go-intro="signin"] .gi-if-signin,.go-intro[data-mode="signin"] .gi-if-signin{display:inline-block}
+html[data-go-intro="signin"] p.gi-if-signin,.go-intro[data-mode="signin"] p.gi-if-signin{display:block}
+/* nothing to say yet (signed in, the username not known on this browser): the plain screen, a moment */
+html[data-go-intro="wait"] .gi-stage,.go-intro[data-mode="wait"] .gi-stage{visibility:hidden}
+/* a fan with a name, first visit: the screen, then "Have Fun!" - never the question they have answered */
+html[data-go-intro="welcome"] .gi-msg:not(.fun),.go-intro[data-mode="welcome"] .gi-msg:not(.fun){opacity:0}
+.gi-note{margin:0;max-width:44ch;font-family:var(--f-ui);font-size:15px;line-height:1.5;opacity:.8}
 
 /* ---- the hero: the logo over the night sky (inverted in the dark theme) ------------------------ */
-.go-hero{position:relative;isolation:isolate;overflow:hidden;min-height:33.4vh;display:flex;flex-direction:column;
+.go-hero{position:relative;z-index:3;isolation:isolate;overflow:visible;min-height:33.4vh;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:16px;padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3.5);
   text-align:center;border-bottom:1px solid var(--rule);container-type:inline-size}
 .go-hero-bg{position:absolute;inset:0;z-index:-2;background:#150d3d url('img/stars-2400.jpg') center/cover no-repeat}
@@ -82,12 +97,61 @@ html.go-entered .go-logo.hero .gl-go{animation:go-neon 1.6s steps(1,end) .35s bo
 :root:not([data-theme="light"]) .go-find{background:rgba(255,255,255,.66);color:#06120d;border-color:#13b862;
   box-shadow:0 0 0 1px rgba(19,184,98,.25),0 0 18px rgba(19,184,98,.35),inset 0 0 12px rgba(19,184,98,.12)}
 :root:not([data-theme="light"]) .go-find::before{color:#0c9a50}
-.go-today{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
-.go-today span{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;
-  color:rgba(240,250,245,.92);background:rgba(0,0,0,.34);border:1px solid rgba(255,255,255,.14)}
-.go-today b{font-family:var(--f-data);font-size:11.5px;letter-spacing:0;font-weight:400;color:#fff}
-:root:not([data-theme="light"]) .go-today span{color:#0c1a13;background:rgba(255,255,255,.55);border-color:rgba(0,0,0,.12)}
-:root:not([data-theme="light"]) .go-today b{color:#06120d}
+/* today's counts: two of them open their games as a list (7.11), so they are buttons, lit when open */
+.go-today{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.go-today .go-chip{display:inline-block;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;padding:6px 11px;border-radius:999px;color:rgba(240,250,245,.92);background:rgba(0,0,0,.34);
+  border:1px solid rgba(255,255,255,.14)}
+.go-today button.go-chip{cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.go-today button.go-chip::after{content:"▾";margin-left:6px;font-family:system-ui,sans-serif;font-size:9px;letter-spacing:0;opacity:.7}
+.go-today button.go-chip:hover,.go-today button.go-chip[aria-expanded="true"],.go-today button.go-chip:focus-visible{
+  border-color:var(--neon);box-shadow:0 0 12px rgba(61,255,138,.35);background:rgba(0,0,0,.5)}
+.go-today .go-chip b{font-family:var(--f-data);font-size:11.5px;letter-spacing:0;font-weight:400;color:#fff}
+:root:not([data-theme="light"]) .go-today .go-chip{color:#0c1a13;background:rgba(255,255,255,.55);border-color:rgba(0,0,0,.12)}
+:root:not([data-theme="light"]) .go-today button.go-chip:hover,:root:not([data-theme="light"]) .go-today button.go-chip[aria-expanded="true"]{
+  border-color:#13b862;background:rgba(255,255,255,.8)}
+:root:not([data-theme="light"]) .go-today .go-chip b{color:#06120d}
+
+/* the list: under the chips on a desktop (the hero lets it hang over the page), a sheet on a phone */
+.go-pop{z-index:60;text-align:left;background:var(--panel);color:var(--ink);border:1px solid var(--rule-2);border-radius:16px;
+  box-shadow:0 26px 60px -22px rgba(0,0,0,.6);overflow:hidden;font-family:var(--f-ui);text-transform:none;letter-spacing:0}
+.go-pop[hidden]{display:none}
+.go-pop.drop{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);width:min(460px,92cqi)}
+.go-pop.sheet{position:fixed;z-index:1200;left:0;right:0;bottom:0;border-radius:18px 18px 0 0;border-bottom:0;max-height:78vh;
+  display:flex;flex-direction:column;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+.go-pop.sheet[hidden]{display:none}
+.gp-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.gp-head b{font-family:var(--f-go);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.gp-count{font-family:var(--f-data);font-size:12px;padding:1px 8px;border-radius:999px;color:var(--lume);
+  background:color-mix(in oklch,var(--lume) 14%,transparent)}
+.gp-x{margin-left:auto;background:none;border:0;font-size:22px;line-height:1;cursor:pointer;color:var(--ink-2);padding:0 4px}
+.gp-loc{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 14px;font-size:12.5px;color:var(--ink-2);
+  border-bottom:1px solid var(--rule)}
+.gp-loc .bad{color:var(--flare)}
+.gp-where{font:inherit;font-weight:600;color:var(--lume);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
+  text-underline-offset:3px}
+.gp-where::before{content:"◎ ";text-decoration:none;display:inline-block}
+.gp-list{list-style:none;margin:0;padding:0 0 4px;max-height:min(52vh,420px);overflow-y:auto;overscroll-behavior:contain}
+.go-pop.sheet .gp-list{max-height:none;flex:1 1 auto;min-height:0}
+.gp-day{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding:12px 14px 4px}
+.gp-row{display:grid;gap:3px;padding:10px 14px;border-top:1px solid var(--rule)}
+.gp-day + .gp-row{border-top:0}
+.gp-row.here{background:color-mix(in oklch,var(--lume) 10%,transparent);box-shadow:inset 3px 0 0 var(--lume)}
+.gp-top{display:flex;align-items:baseline;gap:8px;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3)}
+.gp-time{font-family:var(--f-data);font-size:11.5px;letter-spacing:0;color:var(--ink-2)}
+.gp-st{margin-left:auto;white-space:nowrap}
+.gp-st b{font-family:var(--f-data);font-size:11px;letter-spacing:0;font-weight:400}
+.gp-st.open{color:var(--lume)}
+.gp-m{font-weight:700;font-size:14.5px;line-height:1.3;color:var(--ink);text-decoration:none}
+.gp-m:hover{text-decoration:underline}
+.gp-ar{display:flex;align-items:baseline;gap:10px;font-size:12.5px;color:var(--ink-2);min-width:0}
+.gp-venue{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gp-d{margin-left:auto;font-family:var(--f-data);font-size:13px;color:var(--lume);white-space:nowrap}
+.gp-stamp{justify-self:start;margin-top:6px;min-height:36px}
+.gp-none{padding:18px 14px;font-size:14px;color:var(--ink-2)}
+html.go-pop-sheet,html.go-pop-sheet body{overflow:hidden}
+html.go-pop-sheet .ep-bell{visibility:hidden}          /* the bell floats over everything; not over the sheet */
 @media (prefers-reduced-motion:reduce){
   html.go-entered .go-logo.hero,html.go-entered .go-logo.hero .gl-go{animation:none}
   .go-intro,.gi-msg,.gi-form,.gi-hint,.gi-alt{transition-duration:.01s}

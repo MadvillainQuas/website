@@ -20,12 +20,13 @@
 <meta name="description" content="Stamp the arenas you go to, at a game, with your phone.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=391"></script>
-<script src="../i18n.js?v=391" data-i18n-packs="go account"></script>
-<script src="../glyphs.js?v=391" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=391">
-<link rel="stylesheet" href="../kit/nav.css?v=391">
-<link rel="stylesheet" href="go.css?v=391">
+<script src="../appmode.js?v=392"></script>
+<script src="intro-early.js?v=392"></script>
+<script src="../i18n.js?v=392" data-i18n-packs="go account"></script>
+<script src="../glyphs.js?v=392" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=392">
+<link rel="stylesheet" href="../kit/nav.css?v=392">
+<link rel="stylesheet" href="go.css?v=392">
 </head>
 <body>
 <div class="ep-frame go" id="goPage">
@@ -36,14 +37,21 @@
     <div class="gi-stage">
       <div class="gi-msg" id="goIntroMsg">Please Enter A Username.</div>
       <!-- hangs below the message, so the message (and "Have Fun!" after it) sits in the middle of the screen -->
+      <!-- every mode's words are here from the start, so the screen needs no script to say them:
+           intro-early.js (in the head) marks the mode before the first paint, and go.css shows its set -->
       <div class="gi-below">
-        <form class="gi-form hide" id="goIntroForm" novalidate>
+        <form class="gi-form" id="goIntroForm" novalidate>
           <input class="gi-in" id="goIntroIn" maxlength="20" autocomplete="nickname" autocapitalize="off" spellcheck="false"
                  aria-label="Username" aria-describedby="goIntroHint">
           <button class="gi-ok" id="goIntroOk" type="submit" disabled>ok</button>
         </form>
+        <p class="gi-note gi-if-signin">Sign in first: your username is how the leaderboard and the feed show you.</p>
         <div class="gi-hint" id="goIntroHint" role="status" aria-live="polite"></div>
-        <div class="gi-alt" id="goIntroAlt"></div>
+        <div class="gi-alt" id="goIntroAlt">
+          <a class="gi-signin gi-if-signin" id="goIntroSignin" href="../signin/">sign in</a>
+          <button class="gi-if-signin" id="goIntroLook" type="button">just looking</button>
+          <button class="gi-if-ask" id="goIntroLater" type="button">later</button>
+        </div>
       </div>
     </div>
   </div>
@@ -109,11 +117,11 @@
     <footer class="go-foot">Epinoia Network</footer>
   </main>
 </div>
-<script src="../config.js?v=391" defer></script>
-<script src="../access.js?v=391" defer></script>
-<script src="../upload.js?v=391" defer></script>
-<script src="logo.js?v=391" defer></script>
-<script src="go.js?v=391" defer></script>
-<script src="../nav.js?v=391" defer></script>
+<script src="../config.js?v=392" defer></script>
+<script src="../access.js?v=392" defer></script>
+<script src="../upload.js?v=392" defer></script>
+<script src="logo.js?v=392" defer></script>
+<script src="go.js?v=392" defer></script>
+<script src="../nav.js?v=392" defer></script>
 </body>
 </html>

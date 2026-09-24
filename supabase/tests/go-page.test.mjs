@@ -101,10 +101,11 @@ ok('names are data: never translated', /data\('div', 'm', \(g\.home \|\| '—'\)
    && /<h1 id="goTitle"><span class="go-logo hero" role="img" aria-label="EPINOIA GO" translate="no" data-i18n="off">/.test(html));
 ok('the go pack is loaded, and the account pack (the intro\'s username words are the profile\'s)',
    /<script src="\.\.\/i18n\.js\?v=\d+" data-i18n-packs="go account"><\/script>/.test(html));
-ok('no location in the page\'s own storage: only the intro seen, "later" for this visit, and the country picked',
+ok('no location in the page\'s own storage: only the intro seen, "later" for this visit, the country picked, and whether the account has a username',
    (js.match(/localStorage|sessionStorage/g) || []).length === 4 && !/indexedDB/.test(js)
-   && /const KEYS = \{ intro: 'epinoia_go_intro', later: 'epinoia_go_intro_later', country: 'epinoia_go_country' \};/.test(js)
-   && [...js.matchAll(/(?<!function )\bstored?\(([^,)]+)/g)].every(m => /^KEYS\.(intro|later|country)$/.test(m[1].trim())));
+   && /const KEYS = \{ intro: 'epinoia_go_intro', later: 'epinoia_go_intro_later', country: 'epinoia_go_country',\s*uname: 'epinoia_go_uname' \};/.test(js)
+   && [...js.matchAll(/(?<!function )\bstored?\(([^,)]+)/g)].every(m => /^KEYS\.(intro|later|country|uname)$/.test(m[1].trim()))
+   && /store\(KEYS\.uname, JSON\.stringify\(\{ u: S\.session\.userId, has: !!S\.username \}\)\)/.test(js));
 
 console.log('\nthe redesign (Louie, 2026-09-24): the intro');
 const css = rd('epinoia', 'go', 'go.css');
@@ -115,9 +116,22 @@ ok('the screen goes black on the light theme, white on the dark, and asks in a s
 ok('...then "Have Fun!" takes the prompt\'s place, and the page comes back',
    /msg\.textContent = 'Have Fun!';/.test(js) && /box\.classList\.remove\('on'\);\s*entered\(\);/.test(js)
    && /<div class="gi-below">/.test(html));
-ok('...once on a device; and for a fan with no username until they choose one, or say later (for this visit)',
-   /if \(noName && stored\(KEYS\.later, true\) !== '1'\) return 'ask';/.test(js) && /if \(stored\(KEYS\.intro\) === '1'\) return null;/.test(js)
-   && /return S\.session \? \(noName \? null : 'welcome'\) : 'signin';/.test(js));
+ok('...once on a device; and for a fan with no username every visit until they choose one, or say later (for this visit)',
+   /if \(noName\) return stored\(KEYS\.later, true\) === '1' \? null : 'ask';/.test(js) && /if \(stored\(KEYS\.intro\) === '1'\) return null;/.test(js)
+   && /return S\.session \? 'welcome' : 'signin';/.test(js));
+ok('..."Have Fun!" on the first visit only: after that, answering gives the page straight back (Louie, 7.11)',
+   /const first = stored\(KEYS\.intro\) !== '1';/.test(js) && /if \(!first\) \{ setTimeout\(\(\) => fadeIntro\(box\), quick \? 0 : 300\); return; \}/.test(js)
+   && js.indexOf('if (!first)') < js.indexOf("msg.textContent = 'Have Fun!';"));
+const early = rd('epinoia', 'go', 'intro-early.js');
+ok('...up before the page paints: intro-early.js, in the head and not deferred, from this browser\'s storage alone',
+   /<script src="\.\.\/appmode\.js\?v=\d+"><\/script>\s*<script src="intro-early\.js\?v=\d+"><\/script>/.test(html)
+   && html.indexOf('intro-early.js?v=') < html.indexOf('go.css?v=') && !/fetch\(|XMLHttpRequest|navigator\.geolocation/.test(early)
+   && /html\.setAttribute\('data-go-intro', mode\)/.test(early) && /'epinoia_go_uname'/.test(early)
+   && /html\[data-go-intro\] \.go-intro,html\[data-go-intro\] \.go-intro\[hidden\]\{display:grid;opacity:1\}/.test(css));
+ok('...every mode\'s words in the page from the start (no script needed to say them)',
+   /<p class="gi-note gi-if-signin">Sign in first:/.test(html) && /id="goIntroSignin" href="\.\.\/signin\/"/.test(html)
+   && /id="goIntroLook" type="button">just looking</.test(html) && /id="goIntroLater" type="button">later</.test(html)
+   && !/class="gi-form hide"/.test(html));
 ok('...the name checked as it is typed and saved by 0163, which applies every rule again',
    /rpc\('username_check', \{ p: v \}\)/.test(js) && /rpc\('set_username', \{ p: input\.value\.trim\(\) \}\)/.test(js)
    && G.unameLocal('lo') === 'short' && G.unameLocal('9lives') === 'start' && G.unameLocal('bad name') === 'characters' && G.unameLocal('Louie_99') === '');
@@ -225,6 +239,34 @@ ok('GO is Orbitron 700, served from the site with its licence, declared in the k
    && /--f-go:'Orbitron'/.test(kit) && /\.go-go\{ font-family:var\(--f-go,'Orbitron'/.test(navCss)
    && existsSync(path.join(ROOT, 'epinoia', 'kit', 'fonts', 'orbitron.woff2'))
    && /SIL Open Font License/.test(rd('epinoia', 'kit', 'fonts', 'OFL-orbitron.txt')));
+
+console.log('\ntoday\'s games, listed from the counts (7.11)');
+const t0 = Date.parse('2026-10-03T16:00:00Z');
+const lg = (id, lat, lng, op, cl, tip) => game({ game_id: id, lat, lng, opens_at: op, closes_at: cl, tipoff_at: tip });
+const day = [lg('far', 60.4677, 26.9458, '2026-10-03T15:00:00Z', '2026-10-03T19:00:00Z', '2026-10-03T17:00:00Z'),
+             lg('near', 60.1896, 24.9278, '2026-10-03T15:30:00Z', '2026-10-03T19:30:00Z', '2026-10-03T17:30:00Z'),
+             lg('tomorrow', 60.1757, 24.8052, '2026-10-04T15:00:00Z', '2026-10-04T19:00:00Z', '2026-10-04T17:00:00Z')];
+ok('open now: only games whose window is open, nearest first once the phone has said where it is',
+   G.gamesFor('open', at(60.19, 24.93), t0, day).map(r => r.g.game_id).join() === 'near,far'
+   && Math.round(G.gamesFor('open', at(60.19, 24.93), t0, day)[0].d) < 200);
+ok('...by tip-off before that, with no distances', G.gamesFor('open', null, t0, day).map(r => r.g.game_id + ':' + r.d).join() === 'far:null,near:null');
+ok('today and tomorrow: every game, by tip-off, under its day', G.gamesFor('all', at(60.19, 24.93), t0, day).map(r => r.g.game_id).join() === 'far,near,tomorrow'
+   && G.dayLabel('2026-10-03T20:00:00Z', t0) === 'Today' && G.dayLabel('2026-10-04T17:00:00Z', t0) === 'Tomorrow');
+ok('the two counts are buttons that open their list on a hover or a press; leagues stays a count',
+   /chip\('open', 'Games open to stamp now'/.test(js) && /chip\('all', 'Today and tomorrow'/.test(js) && /chip\(null, 'Leagues'/.test(js)
+   && /btn\.addEventListener\('mouseenter'/.test(js) && /openPop\(key, btn, true\);\s*whereAmI\(true\);/.test(js));
+ok('a hover never makes the browser ask where the phone is: only a location this site may already have',
+   /if \(!pressed\) \{[\s\S]{0,260}if \(state !== 'granted'\) return;/.test(js) && /openPop\(key, btn, false\); whereAmI\(false\);/.test(js));
+ok('...how far is worked out on the phone: the location still goes to the server in the stamp call only',
+   (js.match(/p_lat/g) || []).length === 1 && /metres\(pos, \{ lat: g\.lat, lng: g\.lng \}\)/.test(js));
+ok('...and the privacy notice says the list uses it, in its three answers',
+   (rd('epinoia', 'privacy', 'index.html').match(/open its list of today&rsquo;s games to see how far each one is/g) || []).length === 3);
+ok('each game links to its page; at the arena, with its window open, it can be stamped from the list',
+   /m\.href = '\.\.\/game\/\?g=' \+ encodeURIComponent\(g\.game_id\);/.test(js)
+   && /const here = !!pos && placeOf\(g, pos, now\)\.state === 'here';/.test(js) && /if \(here && open && g\.trusted && !stamped\(g\.game_id\)\)/.test(js));
+ok('a drop-down where a pointer can hover, a sheet from the foot of the screen on a phone; the list scrolls',
+   /matchMedia\('\(hover: hover\) and \(min-width: 700px\)'\)/.test(js) && /\.go-pop\.sheet\{position:fixed;z-index:1200;left:0;right:0;bottom:0;/.test(css)
+   && /\.gp-list\{[^}]*overflow-y:auto/.test(css));
 
 console.log('\nGO\'s own layer in the rail, and its own bar on a phone (7.9)');
 const navCss2 = rd('epinoia', 'kit', 'nav.css');

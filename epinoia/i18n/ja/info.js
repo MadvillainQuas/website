@@ -517,7 +517,7 @@
       'A new app': '新しいアプリ',
       'Rarely needed. When it is, Epinoia tells you inside the app. Download it from this page: it installs over the old one and keeps you signed in.': 'めったに必要ありません。必要なときはEpinoiaがアプリ内でお知らせします。このページからダウンロードすると、古いアプリに上書きでインストールされ、ログインもそのまま保たれます。',
       'Where the file comes from': 'ファイルの提供元',
-      'Epinoia\'s': 'Epinoiaの',
+      'Epinoia\'s': 'Epinoiaの',
       'On an iPhone': 'iPhoneの場合',
       'There is no iPhone app, and the download above will not open on one. Add EPINOIΛ to your Home Screen instead: it opens full screen, like an app.': 'iPhoneアプリはなく、上のダウンロードもiPhoneでは開けません。代わりにEPINOIΛをホーム画面に追加してください。アプリのように全画面で開きます。',
       'Share': '共有',
@@ -584,10 +584,7 @@
       'Leagues by country are on': '国別のリーグ一覧はこちら:',
       'Countries': '国',
       'Location': '位置情報',
-      'Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. Android asks first; what happens to your location is below.': 'EPINOIA GOでのみ、今いる試合を探すボタンやアリーナをスタンプするボタンを押したときだけ使います。Androidが先に許可を求めます。位置情報の扱いは下記のとおりです。',
-      'Only for EPINOIA GO, and only when you press its button to find the game you are at or to stamp an arena. iOS asks first; what happens to your location is below.': 'EPINOIA GOでのみ、今いる試合を探すボタンやアリーナをスタンプするボタンを押したときだけ使います。iOSが先に許可を求めます。位置情報の扱いは下記のとおりです。',
       'Your location': '位置情報',
-      'Used only when you press a button on EPINOIA GO. Finding the games near you is worked out on your phone, from a list of today’s games: your location is not sent for it. When you stamp an arena, your location is sent once, to check you are there, and is not stored.': 'EPINOIA GOでボタンを押したときだけ使います。近くの試合を探す処理は、その日の試合一覧をもとにスマートフォン上で行い、位置情報は送信しません。アリーナをスタンプするときは、そこにいるかを確認するために位置情報を一度だけ送信し、保存はしません。',
       'What a stamp keeps': 'スタンプに残るもの',
       'Your tries': 'スタンプの試行',
       'Your photographs': 'あなたの写真',
@@ -599,7 +596,10 @@
       'Only of games you stamped. Before a photograph leaves your phone it is resized, which removes its hidden details, including where it was taken. A person looks at every photograph before it is public; once it is, it shows your username, the game and the arena. You can remove it at any time. No photographs are accepted from youth leagues’ games.': 'スタンプした試合の写真に限ります。写真はスマートフォンから送信される前に縮小され、撮影場所を含む隠れた情報が取り除かれます。すべての写真は公開前にスタッフが確認し、公開後はあなたのユーザー名、試合、アリーナとともに表示されます。いつでも削除できます。ユースリーグの試合の写真は投稿できません。',
       'The arena, the game, its league, the time, how precise your phone said its location was, and your note about the game if you write one. Never where you were. Only you can see your stamps and notes, and you can take a stamp back.': 'アリーナ、試合、そのリーグ、時刻、スマートフォンが示した位置情報の精度、そしてメモを書いた場合はそのメモです。あなたがいた場所は残りません。スタンプとメモを見られるのはあなただけで、スタンプは取り消すこともできます。',
       'Only if you choose, and only if you are 18 or over. They show your username and your numbers (arenas stamped, games stamped and the distance between them), never your email or which arenas. You can come off them at any time.': '参加を選んだ場合のみ、18歳以上の方に限ります。表示されるのはユーザー名と記録（スタンプしたアリーナの数と試合数、その間の距離）だけで、メールアドレスや訪れたアリーナは表示されません。いつでも参加をやめられます。',
-      'Epinoia itself: every release is built from the website\'s own code and signed with Epinoia\'s key. Android only installs an update signed with the same key.': 'Epinoia自身です。すべてのリリースはウェブサイト自体のコードからビルドされ、Epinoiaの鍵で署名されています。Androidは、同じ鍵で署名されたアップデートしかインストールしません。'
+      'Epinoia itself: every release is built from the website\'s own code and signed with Epinoia\'s key. Android only installs an update signed with the same key.': 'Epinoia自身です。すべてのリリースはウェブサイト自体のコードからビルドされ、Epinoiaの鍵で署名されています。Androidは、同じ鍵で署名されたアップデートしかインストールしません。',
+      'Only for EPINOIA GO: when you press its button to find the game you are at or to stamp an arena, or open its list of today’s games to see how far each one is. Android asks first; what happens to your location is below.': 'EPINOIA GOでのみ、今いる試合を探すボタンやアリーナをスタンプするボタンを押したとき、またはその日の試合一覧を開いて各試合までの距離を見るときに使います。Androidが先に許可を求めます。位置情報の扱いは下記のとおりです。',
+      'Only for EPINOIA GO: when you press its button to find the game you are at or to stamp an arena, or open its list of today’s games to see how far each one is. iOS asks first; what happens to your location is below.': 'EPINOIA GOでのみ、今いる試合を探すボタンやアリーナをスタンプするボタンを押したとき、またはその日の試合一覧を開いて各試合までの距離を見るときに使います。iOSが先に許可を求めます。位置情報の扱いは下記のとおりです。',
+      'Used only when you press a button on EPINOIA GO, or open its list of today’s games to see how far each one is. Finding the games near you, and how far they are, is worked out on your phone, from a list of today’s games: your location is not sent for it. When you stamp an arena, your location is sent once, to check you are there, and is not stored.': 'EPINOIA GOでボタンを押したとき、またはその日の試合一覧を開いて各試合までの距離を見るときだけ使います。近くの試合とその距離は、その日の試合一覧をもとにスマートフォン上で計算し、位置情報は送信しません。アリーナをスタンプするときは、そこにいるかを確認するために位置情報を一度だけ送信し、保存はしません。'
     },
 
     ctx: {

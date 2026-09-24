@@ -284,7 +284,8 @@ const signinHref = () => (S.access && S.access.signinHref ? S.access.signinHref(
 
 /* THE ONLY THINGS THIS PAGE KEEPS IN THE BROWSER: whether the intro has played, a "later" for this visit,
    and the country the fan picked for the strip. Never a location. */
-const KEYS = { intro: 'epinoia_go_intro', later: 'epinoia_go_intro_later', country: 'epinoia_go_country' };
+const KEYS = { intro: 'epinoia_go_intro', later: 'epinoia_go_intro_later', country: 'epinoia_go_country',
+               uname: 'epinoia_go_uname' };
 function stored(k, session) { try { return (session ? sessionStorage : localStorage).getItem(k); } catch (_) { return null; } }
 function store(k, v, session) { try { (session ? sessionStorage : localStorage).setItem(k, v); } catch (_) { /* private mode */ } }
 
@@ -367,59 +368,274 @@ function drawToday() {
   const t = $('#goToday');
   if (!t) return;
   t.textContent = '';
-  const now = Date.now();
-  const on = S.games.filter(g => now >= Date.parse(g.opens_at) && now <= Date.parse(g.closes_at)).length;
   const leagues = new Set(S.games.map(g => g.league_id).filter(Boolean)).size;
-  const pairs = [['Games open to stamp now', String(on)], ['Today and tomorrow', String(S.games.length)], ['Leagues', String(leagues)]];
-  pairs.forEach(([k, v]) => {
-    const s = t.appendChild(el('span'));
-    s.appendChild(el('span', null, k));
+  const chip = (key, k, v) => {
+    const s = t.appendChild(el(key ? 'button' : 'span', 'go-chip'));
+    s.appendChild(el('span', 'k', k));
     s.appendChild(document.createTextNode(': '));
     s.appendChild(data('b', null, v));
+    if (!key) return;
+    s.type = 'button';
+    s.setAttribute('aria-haspopup', 'dialog');
+    s.setAttribute('aria-expanded', 'false');
+    wireChip(s, key);
+  };
+  chip('open', 'Games open to stamp now', String(openNow(Date.now()).length));
+  chip('all', 'Today and tomorrow', String(S.games.length));
+  chip(null, 'Leagues', String(leagues));
+}
+
+/* ------------------------------------------------- today's games, listed (7.11) --- */
+
+/* Louie, 2026-09-24: hovering or pressing "Games open to stamp now" or "Today and tomorrow" lists those games
+   - the teams, the arena, and how far each one is from the fan. How far is worked out on the phone, from the
+   list go_games_now already gave it: the location is never sent for it. A press asks the phone where it is
+   (the browser asks the fan first, the first time); a hover only uses a location this site may already have,
+   so a pointer passing over never makes the browser ask. A drop-down under the chips on a desktop, a sheet
+   from the foot of the screen on a phone; scrolls when it is long. */
+const openNow = (now, games) => (games || S.games).filter(g => now >= Date.parse(g.opens_at) && now <= Date.parse(g.closes_at));
+const POP = { el: null, key: null, pinned: false, hover: false, anchor: null, timer: null, locating: false, geo: null };
+
+/* the list: open now nearest first (by tip-off until the phone has said where it is); today and tomorrow by
+   tip-off, under their days */
+function gamesFor(key, pos, now, games) {
+  const list = key === 'open' ? openNow(now, games) : (games || S.games).slice();
+  const rows = list.map(g => ({ g, d: pos && g.lat != null && g.lng != null ? metres(pos, { lat: g.lat, lng: g.lng }) : null }));
+  if (key === 'open' && pos) rows.sort((a, b) => (a.d == null) - (b.d == null) || (a.d || 0) - (b.d || 0));
+  else rows.sort((a, b) => Date.parse(a.g.tipoff_at) - Date.parse(b.g.tipoff_at));
+  return rows;
+}
+
+function dayLabel(iso, now) {
+  const a = new Date(now), b = new Date(iso);
+  const k = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000);
+  return k === 0 ? 'Today' : k === 1 ? 'Tomorrow' : k === -1 ? 'Yesterday' : dayText(iso);
+}
+
+function drawPop() {
+  const p = POP.el, key = POP.key, now = Date.now();
+  const pos = S.pos && now - S.pos.at < 10 * 60000 ? S.pos : null;
+  p.textContent = '';
+  const rows = gamesFor(key, pos, now);
+  const head = p.appendChild(el('div', 'gp-head'));
+  head.appendChild(el('b', null, key === 'open' ? 'Games open to stamp now' : 'Today and tomorrow'));
+  head.appendChild(data('span', 'gp-count', String(rows.length)));
+  const x = head.appendChild(el('button', 'gp-x', '×'));
+  x.type = 'button';
+  x.setAttribute('aria-label', 'close');
+  x.addEventListener('click', () => closePop());
+  const loc = p.appendChild(el('div', 'gp-loc'));
+  if (pos) loc.appendChild(el('span', null, 'How far each one is from where you are.'));
+  else if (POP.locating) loc.appendChild(el('span', null, 'Finding where you are…'));
+  else {
+    if (POP.geo) loc.appendChild(el('span', 'bad', GEO[POP.geo] || GEO.unavailable));
+    const b = loc.appendChild(el('button', 'gp-where', 'show how far each one is'));
+    b.type = 'button';
+    b.addEventListener('click', () => whereAmI(true));
+  }
+  if (!rows.length) {
+    p.appendChild(el('div', 'gp-none', key === 'open' ? 'No games open to stamp right now.' : 'No games today or tomorrow.'));
+    return;
+  }
+  const ol = p.appendChild(el('ol', 'gp-list'));
+  let day = null;
+  rows.forEach(({ g, d }) => {
+    if (key === 'all') {
+      const dl = dayLabel(g.tipoff_at, now);
+      if (dl !== day) { day = dl; ol.appendChild(el('li', 'gp-day', dl)); }
+    }
+    const open = now >= Date.parse(g.opens_at) && now <= Date.parse(g.closes_at);
+    const here = !!pos && placeOf(g, pos, now).state === 'here';        // the stamp's own rule
+    const li = ol.appendChild(el('li', 'gp-row' + (here ? ' here' : '')));
+    const top = li.appendChild(el('div', 'gp-top'));
+    top.appendChild(data('span', 'gp-lg', g.league || ''));
+    top.appendChild(data('time', 'gp-time', timeText(g.tipoff_at))).dateTime = g.tipoff_at;
+    const st = top.appendChild(el('span', 'gp-st' + (open ? ' open' : '')));
+    if (open) st.appendChild(el('span', null, 'open now'));
+    else { st.appendChild(el('span', null, 'Stamping opens')); st.appendChild(document.createTextNode(' ')); st.appendChild(data('b', null, timeText(g.opens_at))); }
+    const m = li.appendChild(data('a', 'gp-m', (g.home || '—') + ' v ' + (g.away || '—')));
+    m.href = '../game/?g=' + encodeURIComponent(g.game_id);
+    const ar = li.appendChild(el('div', 'gp-ar'));
+    ar.appendChild(data('span', 'gp-venue', [g.venue, g.city].filter(Boolean).join(' · ') || '—'));
+    if (d != null) ar.appendChild(data('b', 'gp-d', distanceText(d)));
+    if (here && open && g.trusted && !stamped(g.game_id)) {
+      const b = li.appendChild(el('button', 'ep-btn pri gp-stamp', S.session ? 'stamp this venue' : 'sign in to stamp'));
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        if (!S.session) { location.href = signinHref(); return; }
+        closePop();
+        const at = $('#goAt');
+        if (at && at.scrollIntoView) at.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+        stamp(g, b);
+      });
+    }
+  });
+}
+
+/* a drop-down under the chips where a pointer can hover; a sheet from the foot of the screen on a phone */
+function placePop() {
+  const p = POP.el;
+  const sheet = !(typeof matchMedia === 'function' && matchMedia('(hover: hover) and (min-width: 700px)').matches);
+  p.classList.toggle('sheet', sheet);
+  p.classList.toggle('drop', !sheet);
+  const host = sheet ? document.body : $('#goToday');
+  if (host && p.parentNode !== host) host.appendChild(p);
+}
+
+function openPop(key, anchor, pinned) {
+  if (!POP.el) {
+    POP.el = el('div', 'go-pop');
+    POP.el.setAttribute('role', 'dialog');
+    POP.el.hidden = true;
+    POP.el.addEventListener('mouseenter', () => { POP.hover = true; clearTimeout(POP.timer); });
+    POP.el.addEventListener('mouseleave', () => { POP.hover = false; if (!POP.pinned) closeSoon(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && POP.el && !POP.el.hidden) closePop(true); });
+    document.addEventListener('click', e => {
+      if (!POP.el || POP.el.hidden || POP.el.contains(e.target) || (e.target.closest && e.target.closest('#goToday .go-chip'))) return;
+      closePop();
+    });
+  }
+  clearTimeout(POP.timer);
+  POP.pinned = pinned || (POP.pinned && POP.key === key);
+  POP.key = key;
+  POP.anchor = anchor;
+  POP.el.setAttribute('aria-label', key === 'open' ? 'Games open to stamp now' : 'Today and tomorrow');
+  document.querySelectorAll('#goToday button.go-chip').forEach(b => b.setAttribute('aria-expanded', String(b === anchor)));
+  placePop();
+  drawPop();
+  POP.el.hidden = false;
+  document.documentElement.classList.toggle('go-pop-sheet', POP.el.classList.contains('sheet'));
+}
+
+function closePop(refocus) {
+  if (!POP.el || POP.el.hidden) return;
+  POP.el.hidden = true;
+  POP.pinned = false;
+  POP.hover = false;
+  document.documentElement.classList.remove('go-pop-sheet');
+  document.querySelectorAll('#goToday button.go-chip').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  if (refocus && POP.anchor) POP.anchor.focus();
+}
+
+function closeSoon() {
+  clearTimeout(POP.timer);
+  POP.timer = setTimeout(() => { if (!POP.pinned && !POP.hover) closePop(); }, 220);
+}
+
+/* where the fan is, for how far: a press may make the browser ask; a hover only uses what this site may have */
+async function whereAmI(pressed) {
+  if (S.pos && Date.now() - S.pos.at < 2 * 60000) { if (POP.el && !POP.el.hidden) drawPop(); return; }
+  if (!pressed) {
+    let state = null;
+    try { state = navigator.permissions ? (await navigator.permissions.query({ name: 'geolocation' })).state : null; } catch (_) { state = null; }
+    if (state !== 'granted') return;
+  }
+  POP.locating = true;
+  POP.geo = null;
+  if (POP.el && !POP.el.hidden) drawPop();
+  const pos = await locate();
+  POP.locating = false;
+  if (pos.error) POP.geo = pos.error; else S.pos = pos;
+  if (POP.el && !POP.el.hidden) drawPop();
+}
+
+function wireChip(btn, key) {
+  const hoverable = () => typeof matchMedia === 'function' && matchMedia('(hover: hover)').matches;
+  btn.addEventListener('mouseenter', () => {
+    if (!hoverable() || POP.pinned) return;
+    clearTimeout(POP.timer);
+    POP.timer = setTimeout(() => { openPop(key, btn, false); whereAmI(false); }, 120);
+  });
+  btn.addEventListener('mouseleave', () => { if (!POP.pinned) closeSoon(); });
+  btn.addEventListener('click', () => {
+    if (POP.el && !POP.el.hidden && POP.key === key && POP.pinned) { closePop(); return; }
+    openPop(key, btn, true);
+    whereAmI(true);
   });
 }
 
 /* ------------------------------------------------------------- the intro --- */
 
-/* Played on a first visit on this device, and for a signed-in fan with no username (until they choose one,
-   or say "later" for this visit). A fan who has a name only sees "Have Fun!". Signed out, a username needs
-   an account first: the intro says so, with a way in and a way past. */
+/* A fan's first visit on this device, and a signed-in fan with no username - every visit until they choose
+   one, or say "later" for this visit. "Have Fun!" is the first visit's alone: after that, answering just gives
+   the page back. Signed out, a username needs an account first: the intro says so, with a way in and a way
+   past. intro-early.js has already put the screen up, before the first paint, from what this browser knew;
+   this settles it once the database has answered. */
 function introMode() {
   const noName = !!S.session && S.username === null;         // 0163 answered: no name yet
-  if (noName && stored(KEYS.later, true) !== '1') return 'ask';
+  if (noName) return stored(KEYS.later, true) === '1' ? null : 'ask';
   if (stored(KEYS.intro) === '1') return null;
-  return S.session ? (noName ? null : 'welcome') : 'signin';
+  return S.session ? 'welcome' : 'signin';
 }
 
 function entered() { document.documentElement.classList.add('go-entered'); }
 
+/* for intro-early.js next time: whether this account has a username - never the name */
+function rememberName() {
+  if (S.session && S.session.userId && S.username !== undefined) {
+    store(KEYS.uname, JSON.stringify({ u: S.session.userId, has: !!S.username }));
+  }
+}
+
+/* the page back: the screen fades (it stays up while intro-early.js's mark comes off, then goes) */
+function fadeIntro(box) {
+  const html = document.documentElement;
+  box.hidden = false;
+  box.classList.add('on');
+  html.removeAttribute('data-go-intro');
+  requestAnimationFrame(() => {
+    box.classList.remove('on');
+    entered();
+    setTimeout(() => { box.hidden = true; html.classList.remove('go-intro-open'); }, reduced() ? 50 : 760);
+  });
+}
+
+/* "Have Fun!" takes the prompt's place, holds, and the page comes back - on the first visit only */
+function leaveIntro(box, msg, others) {
+  const first = stored(KEYS.intro) !== '1';
+  store(KEYS.intro, '1');
+  others.forEach(n => n && n.classList.add('out'));
+  msg.classList.add('out');
+  const quick = reduced();
+  if (!first) { setTimeout(() => fadeIntro(box), quick ? 0 : 300); return; }
+  setTimeout(() => {
+    msg.textContent = 'Have Fun!';
+    msg.classList.add('fun');
+    msg.classList.remove('out');
+  }, quick ? 60 : 520);
+  setTimeout(() => fadeIntro(box), quick ? 900 : 520 + 1600);
+}
+
 function intro() {
   const box = $('#goIntro');
+  const html = document.documentElement;
+  const early = html.getAttribute('data-go-intro');
+  rememberName();
   const mode = box ? introMode() : null;
-  if (!mode) return entered();
-  const msg = $('#goIntroMsg'), form = $('#goIntroForm'), input = $('#goIntroIn'), ok = $('#goIntroOk'),
-        hint = $('#goIntroHint'), alt = $('#goIntroAlt');
-  document.documentElement.classList.add('go-intro-open');
-  box.hidden = false;
-  requestAnimationFrame(() => requestAnimationFrame(() => box.classList.add('on')));
-  const finish = () => haveFun(box, msg, [form, hint, alt]);
-  if (mode === 'welcome') { msg.classList.add('out'); setTimeout(finish, 450); return; }
-  alt.textContent = '';
-  if (mode === 'signin') {
-    hint.textContent = 'Sign in first: your username is how the leaderboard and the feed show you.';
-    const a = alt.appendChild(el('a', 'gi-signin', 'sign in'));
-    a.href = signinHref();
-    const later = alt.appendChild(el('button', null, 'just looking'));
-    later.type = 'button';
-    later.addEventListener('click', finish);
-    setTimeout(() => a.focus(), 700);
+  if (!mode) {
+    // the screen went up on a guess (the username not known on this browser), and there is nothing to ask
+    if (box && early) fadeIntro(box);
+    else entered();
     return;
   }
-  form.classList.remove('hide');
-  const later = alt.appendChild(el('button', null, 'later'));
-  later.type = 'button';
-  later.addEventListener('click', () => { store(KEYS.later, '1', true); finish(); });
-  setTimeout(() => input.focus(), 650);
+  const msg = $('#goIntroMsg'), form = $('#goIntroForm'), input = $('#goIntroIn'), ok = $('#goIntroOk'),
+        hint = $('#goIntroHint'), alt = $('#goIntroAlt'), note = box.querySelector('.gi-note');
+  // up at once, with this mode's words: already up if intro-early.js guessed so
+  box.dataset.mode = mode;
+  html.setAttribute('data-go-intro', mode);
+  html.classList.add('go-intro-open');
+  box.hidden = false;
+  const finish = () => leaveIntro(box, msg, [form, hint, alt, note]);
+  if (mode === 'welcome') { setTimeout(finish, reduced() ? 0 : 450); return; }
+  if (mode === 'signin') {
+    const a = $('#goIntroSignin');
+    a.href = signinHref();
+    $('#goIntroLook').addEventListener('click', finish, { once: true });
+    setTimeout(() => a.focus(), 200);
+    return;
+  }
+  $('#goIntroLater').addEventListener('click', () => { store(KEYS.later, '1', true); finish(); }, { once: true });
+  if (document.activeElement !== input) setTimeout(() => input.focus(), 100);
   const setHint = (t, kind) => { hint.textContent = ''; hint.className = 'gi-hint' + (kind ? ' ' + kind : '');
     [].concat(t || []).forEach(p => hint.appendChild(p && p.name ? data('b', null, '@' + p.name) : document.createTextNode(p || ''))); };
   let asked = 0, timer = null;
@@ -440,6 +656,8 @@ function intro() {
       else setHint(UNAME_WHY[r.data.reason] || 'Please choose a different name.', 'bad');
     }, 320);
   });
+  // a name typed while the page was still arriving (the box is there from the first paint) is checked now
+  if (input.value.trim()) input.dispatchEvent(new Event('input'));
   form.addEventListener('submit', async e => {
     e.preventDefault();
     if (ok.disabled) return;
@@ -449,6 +667,7 @@ function intro() {
     const r = await rpc('set_username', { p: input.value.trim() });
     if (r.data && r.data.ok) {
       S.username = r.data.username;
+      rememberName();
       try { window.dispatchEvent(new CustomEvent('epinoia:username', { detail: { username: S.username } })); } catch (_) { /* a nicety */ }
       finish();
       drawPublic();
@@ -457,24 +676,6 @@ function intro() {
     ok.disabled = false;
     setHint((r.data && UNAME_WHY[r.data.reason]) || 'Please choose a different name.', 'bad');
   });
-}
-
-/* "Have Fun!" takes the prompt's place, holds, and the page comes back */
-function haveFun(box, msg, others) {
-  others.forEach(n => n && n.classList.add('out'));
-  msg.classList.add('out');
-  store(KEYS.intro, '1');
-  const quick = reduced();
-  setTimeout(() => {
-    msg.textContent = 'Have Fun!';
-    msg.classList.add('fun');
-    msg.classList.remove('out');
-  }, quick ? 60 : 520);
-  setTimeout(() => {
-    box.classList.remove('on');
-    entered();
-    setTimeout(() => { box.hidden = true; document.documentElement.classList.remove('go-intro-open'); }, quick ? 50 : 760);
-  }, quick ? 900 : 520 + 1600);
 }
 
 /* ------------------------------------------------------------ the stamps --- */
@@ -1403,5 +1604,5 @@ async function boot() {
 }
 
 return { boot, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, journeyOf, byLeague, badgesOf, rerank,
-         countryGuess, clubsAt, whyOf, factsOf, unameLocal, WHY, GEO, UNAME_WHY, NOTE_WHY, PHOTO_WHY, PHOTO_STATE, BY, ALLOW_M, NEAR_M, TZ_CC };
+         countryGuess, clubsAt, gamesFor, dayLabel, whyOf, factsOf, unameLocal, WHY, GEO, UNAME_WHY, NOTE_WHY, PHOTO_WHY, PHOTO_STATE, BY, ALLOW_M, NEAR_M, TZ_CC };
 }));

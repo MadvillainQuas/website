@@ -167,7 +167,13 @@
       'A map of the arenas you stamped': 'スタンプしたアリーナの地図',
       'Every game': 'すべての試合',
       'Newest first: the game, the score, how far it was from the one before, and your note.': '新しい順：試合、スコア、前の試合からの距離、そしてあなたのメモ。',
-      'The feed opens soon.': 'フィードはまもなく始まります。'
+      'The feed opens soon.': 'フィードはまもなく始まります。',
+      'How far each one is from where you are.': 'それぞれ、今いる場所からの距離です。',
+      'Finding where you are…': '現在地を確認しています…',
+      'show how far each one is': 'それぞれの距離を表示',
+      'No games open to stamp right now.': '今スタンプできる試合はありません。',
+      'No games today or tomorrow.': '今日と明日の試合はありません。',
+      'open now': '受付中'
     },
     units: {
       'arena': '{n}アリーナ',

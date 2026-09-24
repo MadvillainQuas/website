@@ -264,3 +264,18 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       league's own board and badge still count that league's games. 0170: PGlite 15 checks (the live state
       reproduced first; a mixed game stops it). **Live once Louie runs `db push`**; the strip already hides
       the demo clubs without it.
+- [x] **7.11 Today's games as a list; the intro at once; "Have Fun!" once** (Louie, the same night) - "Games
+      open to stamp now" and "Today and tomorrow" are buttons: a hover (where a pointer can hover) or a press
+      lists their games - league, tip-off, open now or when stamping opens, the teams (a link to the game),
+      the arena, and how far each one is from the fan, nearest first for the open ones; at the arena with its
+      window open, "stamp this venue" is right there. A drop-down under the chips on a desktop, a sheet from
+      the foot of the screen on a phone; the list scrolls. How far is worked out on the phone from the list
+      `go_games_now` already sent - the location still goes to the server only in the stamp call; a press asks
+      the phone (the browser asks the fan first), a hover only uses a location the site may already have. The
+      privacy notice's three location answers say so (en/ja/es). The intro now comes up before the page
+      paints: `go/intro-early.js` (head, not deferred) decides from this browser's storage alone - the session,
+      the first-visit mark, and whether this account has a username (a yes/no, never the name, remembered
+      by go.js) - and every mode's words are in the page, so nothing waits for a script or the database.
+      "Have Fun!" is the first visit's only: on a later visit the question (a fan still without a username)
+      gives the page straight back. Chromium: the list 21, the intro 18 (four with go.js blocked);
+      `go-page.test.mjs`: 90.

@@ -167,7 +167,13 @@
       'A map of the arenas you stamped': 'Un mapa de los pabellones que sellaste',
       'Every game': 'Todos los partidos',
       'Newest first: the game, the score, how far it was from the one before, and your note.': 'Del más reciente al más antiguo: el partido, el marcador, la distancia desde el anterior y tu nota.',
-      'The feed opens soon.': 'El muro abre pronto.'
+      'The feed opens soon.': 'El muro abre pronto.',
+      'How far each one is from where you are.': 'A qué distancia está cada uno de donde estás.',
+      'Finding where you are…': 'Buscando dónde estás…',
+      'show how far each one is': 'ver a qué distancia está cada uno',
+      'No games open to stamp right now.': 'Ahora mismo no hay partidos abiertos para sellar.',
+      'No games today or tomorrow.': 'No hay partidos hoy ni mañana.',
+      'open now': 'abierto ahora'
     },
     units: {
       'arena': '{n} pabellón',
