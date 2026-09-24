@@ -130,7 +130,7 @@ html.go-entered .go-logo.hero .gl-go{animation:go-neon 1.6s steps(1,end) .35s bo
 .gp-loc .bad{color:var(--flare)}
 .gp-where{font:inherit;font-weight:600;color:var(--lume);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;
   text-underline-offset:3px}
-.gp-where::before{content:"◎ ";text-decoration:none;display:inline-block}
+.gp-where::before{content:"◎";margin-right:5px;text-decoration:none;display:inline-block}
 .gp-list{list-style:none;margin:0;padding:0 0 4px;max-height:min(52vh,420px);overflow-y:auto;overscroll-behavior:contain}
 .go-pop.sheet .gp-list{max-height:none;flex:1 1 auto;min-height:0}
 .gp-day{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding:12px 14px 4px}
