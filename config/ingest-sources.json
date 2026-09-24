@@ -1515,6 +1515,126 @@
       "scheduleUrls": [
         "https://www.lnbp.mx/stats.html#playoffs"
       ]
+    },
+    {
+      "code": "PL1LM",
+      "label": "1 Liga Mężczyzn",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "1-liga-mezczyzn",
+      "league_name": "1 Liga Mężczyzn",
+      "league_country": "PL",
+      "adapter_config": {
+        "code": "PL1LM",
+        "site": "pulsbasketu",
+        "league": "1lm",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://pulsbasketu.com/league/1lm/games"
+      ]
+    },
+    {
+      "code": "PL1LM",
+      "label": "1 Liga Mężczyzn",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "1-liga-mezczyzn",
+      "league_name": "1 Liga Mężczyzn",
+      "league_country": "PL",
+      "competition_label": "1 Liga Mężczyzn Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "PL1LM",
+        "site": "pulsbasketu",
+        "league": "1lm",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://pulsbasketu.com/league/1lm/games#playoffs"
+      ]
+    },
+    {
+      "code": "PL1LK",
+      "label": "1 Liga Kobiet",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "1-liga-kobiet",
+      "league_name": "1 Liga Kobiet",
+      "league_country": "PL",
+      "adapter_config": {
+        "code": "PL1LK",
+        "site": "pulsbasketu",
+        "league": "1lk",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://pulsbasketu.com/league/1lk/games"
+      ]
+    },
+    {
+      "code": "PL1LK",
+      "label": "1 Liga Kobiet",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "1-liga-kobiet",
+      "league_name": "1 Liga Kobiet",
+      "league_country": "PL",
+      "competition_label": "1 Liga Kobiet Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "PL1LK",
+        "site": "pulsbasketu",
+        "league": "1lk",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://pulsbasketu.com/league/1lk/games#playoffs"
+      ]
     }
   ]
 }

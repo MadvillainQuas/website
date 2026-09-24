@@ -87,6 +87,10 @@ _SK_VENUE = re.compile(r'class="match-ticket-header">.*?<span>\s*([^<]+?)\s*</sp
 # strip read (2026-09-23) the LiveStats id was the site id + 2769710 - the season's webcasts were
 # created in the league's own order. So: the strip's links are cached as they appear, and the
 # offset they share is only ever TRIED, and kept once the feed itself names the fixture's clubs.
+# Puls Basketu (pulsbasketu.com): the Polish federation's leagues below the PLK, from the site's own
+# JSON API. robots.txt on pulsbasketu.com allows every path to every agent; api.pulsbasketu.com
+# publishes none (404), so nothing is disallowed there either.
+PULS_API = "https://api.pulsbasketu.com/api/v1"
 NKL_SITE = "https://nkl.lt"
 NKL_MATCHES = NKL_SITE + "/matches/?type=schedule"
 _NKL_ALL = re.compile(r"const allMatches\s*=\s*(\[.*?\]);\s*\n", re.S)
@@ -186,6 +190,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return super().fetch(mid, config)
         if site == "nkl":
             return self._nkl_fetch(str(external_id), config)
+        if site == "pulsbasketu":
+            return self._puls_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -197,8 +203,119 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._slovakia(config)
         if site == "nkl":
             return self._nkl(config)
+        if site == "pulsbasketu":
+            return self._puls(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
+
+    # ------------------------------------------------------------ pulsbasketu.com ---
+    # THE POLISH LEAGUES BELOW THE PLK (1 Liga Mężczyzn, 1 Liga Kobiet). The federation scores them
+    # on FIBA LiveStats (client POL), but its own sites (1lm.pzkosz.pl, rozgrywki.pzkosz.pl) never
+    # link a game to LiveStats, and POL's hosted Genius site is switched off (every page empty). Puls
+    # Basketu keeps the link: its API names every game's LiveStats id (fiba_game_id).
+    #   GET /league-seasons/<abbr>/games?season=<end year>   the season, one request, every stage
+    #   GET /games/<id>                                      one game, with fiba_game_id
+    # A fixture is keyed on the Puls game id, which exists from the day the schedule is published;
+    # its LiveStats id appears only once the federation has set the game up (none on 2026-09-24 for
+    # a game six days away), so fetch() asks for it until it is there and remembers it for good.
+    _puls_cache: dict = {}            # (abbr, season) -> (fetched_at, schedule) - shared by both stages
+
+    def _puls_json(self, url: str):
+        gap = time.time() - getattr(self, "_last_page", 0.0)
+        if gap < 1.0:
+            time.sleep(1.0 - gap)
+        self._last_page = time.time()
+        r = requests.get(url, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=40)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
+
+    def _puls_games(self, config: dict) -> list:
+        """Every game of the configured league's season, each tagged with its schedule stage key."""
+        abbr = str(config.get("league") or "").strip().lower()
+        if not abbr:
+            raise ValueError("pulsbasketu: adapter_config needs league (e.g. \"1lm\")")
+        season = str(_start_year(config.get("season") or "") + 1)      # the site names a season by its end year
+        key = (abbr, season)
+        at, cached = FibaSiteScheduleAdapter._puls_cache.get(key, (0.0, None))
+        if cached is None or time.time() - at > 300:
+            reply = self._puls_json(f"{PULS_API}/league-seasons/{abbr}/games?season={season}") or {}
+            cached = []
+            for stage_key, stage in (reply.get("schedule") or {}).items():
+                for line in (stage.get("lines") or {}).values():
+                    for g in line.get("games") or []:
+                        cached.append(dict(g, _stage_key=stage_key))
+            FibaSiteScheduleAdapter._puls_cache[key] = (time.time(), cached)
+        return cached
+
+    def _puls(self, config: dict) -> list[ScheduleGame]:
+        """stage "regular" is the REGULAR_SEASON block, "playoffs" every other block."""
+        stage = (config.get("stage") or "").strip().lower()
+        out = []
+        for g in self._puls_games(config):
+            st = "regular" if g.get("_stage_key") == "REGULAR_SEASON" else "playoffs"
+            if stage and st != stage:
+                continue
+            home, away = g.get("home_team") or {}, g.get("away_team") or {}
+            m = re.match(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})", str(g.get("date") or ""))
+            tbc = not m or (m.group(4), m.group(5)) == ("00", "00")   # 00:00 local = no time set yet
+            if m and not tbc:
+                tip = _utc("Europe/Warsaw", *m.groups())
+            else:
+                tip = f"{m.group(1)}-{m.group(2)}-{m.group(3)}T12:00:00Z" if m else None
+            logo = lambda t: (t.get("logo_url") if str(t.get("logo_url") or "").startswith("https://") else None)  # noqa: E731
+            extra = {"home_code": str(home.get("team_id") or "") or None,
+                     "away_code": str(away.get("team_id") or "") or None,
+                     "home_logo": logo(home), "away_logo": logo(away),
+                     "round": " · ".join(x for x in (g.get("stage"), g.get("round")) if x), "stage": st}
+            grp = str((g.get("league") or {}).get("group") or "").strip()
+            if grp:
+                extra["home_group"] = extra["away_group"] = grp
+            if tbc:
+                extra["time_tbc"] = True
+            out.append(ScheduleGame(
+                external_id=str(g["game_id"]), home_name=(home.get("name") or "").strip(),
+                away_name=(away.get("name") or "").strip(), tipoff_at=tip,
+                status="final" if g.get("finished") else "live" if g.get("in_progress") else "scheduled",
+                extra=extra))
+        print(f"     Puls Basketu {config.get('league')} {stage or 'all stages'}: {len(out)} games "
+              f"({sum(1 for g in out if g.status == 'final')} final)")
+        return out
+
+    def _puls_fiba_id(self, gid: str, config: dict) -> Optional[str]:
+        known = self._idmap(config)
+        if known.get(gid):
+            return known[gid]
+        reply = self._puls_json(f"{PULS_API}/games/{gid}") or {}
+        fid = str(reply.get("fiba_game_id") or "").strip()
+        if not fid.isdigit():
+            return None                   # the federation has not set this game up on LiveStats yet
+        known[gid] = fid
+        self._save_idmap(config, known)
+        return fid
+
+    def _puls_fetch(self, gid: str, config: dict):
+        """The FIBA fetch for a Puls Basketu fixture, with the site's own club ids and names put on
+        the payload - LiveStats' team codes are three letters the operator types, not an identity."""
+        fid = self._puls_fiba_id(gid, config)
+        if not fid:
+            return None
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
+        if not raw or "tm" not in raw:
+            return None
+        fixture = next((g for g in self._puls_games(config) if str(g.get("game_id")) == gid), None)
+        if fixture:
+            for tno, side in (("1", "home_team"), ("2", "away_team")):
+                t = fixture.get(side) or {}
+                if isinstance(raw["tm"].get(tno), dict):
+                    raw["tm"][tno]["code"] = str(t.get("team_id") or raw["tm"][tno].get("code") or "")
+                    raw["tm"][tno]["name"] = (t.get("name") or "").strip() or raw["tm"][tno].get("name") or ""
+        b = self.bundle_from_raw(raw, gid, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
 
     # ------------------------------------------------------------------ nkl.lt ---
     _nkl_cache: tuple = (0.0, [])        # (fetched_at, allMatches) - shared: two sources, many fetches

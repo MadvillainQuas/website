@@ -1,0 +1,22 @@
+{
+ "date": "2026-09-30T19:00:00",
+ "finished": false,
+ "in_progress": false,
+ "fiba_game_id": null,
+ "season": "2027",
+ "league_abbr": "1LM",
+ "round": {
+  "name": "1 kolejka",
+  "stage": "Runda Zasadnicza"
+ },
+ "home_team": {
+  "name": "WKK Active Hotel Wrocław",
+  "team_id": 65,
+  "points": 66
+ },
+ "away_team": {
+  "name": "KSK Qemetica Noteć Inowrocław",
+  "team_id": 2,
+  "points": 80
+ }
+}

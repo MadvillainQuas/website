@@ -410,6 +410,12 @@ jobs:
         # substitution split around a free throw and one player logged under two ids
         run: python scripts/ingest/plk_test.py
 
+      - name: 1 Liga Mężczyzn and 1 Liga Kobiet (Poland) on FIBA LiveStats via Puls Basketu
+        # fiba_site_schedule site "pulsbasketu" over a cached season list, game replies and one real
+        # data.json: keyed on the Puls game id, the LiveStats id read from the game and remembered
+        # (never invented for a game not yet set up), Warsaw tip-offs in UTC, the score the league's
+        run: python scripts/ingest/pulsbasketu_test.py
+
       - name: Lega Basket Serie A (Italy) from legabasket.it's own API
         # lba.py over cached championship, calendar, team and game replies: the cups are never
         # discovered, the match id is the key and the club_id the code (a club keeps it through a
