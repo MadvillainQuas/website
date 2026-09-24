@@ -8,14 +8,13 @@ name: pages
 # what tools/build-site.py copies (the site's own folders and pages), and that script
 # refuses to finish if anything from its never-publish list gets in.
 #
-# ONE-TIME SWITCH (the owner's): Settings -> Pages -> Build and deployment -> Source:
-# "GitHub Actions". Until then this runs only by hand; after it, uncomment `push` so every
+# The Pages source is "GitHub Actions" (switched 2026-09-24, with HTTPS enforced), so every
 # commit to main deploys, as the old branch publishing did.
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
