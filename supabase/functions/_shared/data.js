@@ -365,8 +365,9 @@ function seasonCacheGet(key, token) {
     const d = j.data || {};
     const byId = {};
     (d.games || []).forEach(g => { byId[g.id] = g; });
+    seedMeta(d.meta);
     return { games: d.games || [], byId, players: d.players || [], teams: d.teams || [],
-             teamOfPlayer: new Map(d.teamOfPlayer || []) };
+             teamOfPlayer: new Map(d.teamOfPlayer || []), meta: d.meta || null };
   } catch (_) { return null; }
 }
 
@@ -374,7 +375,8 @@ function seasonCachePut(key, token, out) {
   if (!token) return;
   const body = JSON.stringify({ tok: token, at: Date.now(), data: {
     games: out.games, players: out.players, teams: out.teams,
-    teamOfPlayer: [...(out.teamOfPlayer || new Map())]
+    teamOfPlayer: [...(out.teamOfPlayer || new Map())],
+    meta: out.meta || undefined
   } });
   const ls = root && root.localStorage;
   if (!ls) return;
@@ -423,9 +425,23 @@ async function seasonSnapshot(ids, token) {
     const d = j.data;
     const byId = {};
     (d.games || []).forEach(g => { byId[g.id] = g; });
+    seedMeta(d.meta);
     return { games: d.games || [], byId, players: d.players || [], teams: d.teams || [],
-             teamOfPlayer: new Map(d.teamOfPlayer || []) };
+             teamOfPlayer: new Map(d.teamOfPlayer || []), meta: d.meta || null };
   } catch (_) { return null; }
+}
+
+/* THE NAMES RIDE WITH THE SEASON. A season file also carries playerMeta() for every player on
+   it, read by the snapshots function as a signed-out reader, which is also what this page's
+   own name reads are for an open league (access.js adds a token only for a members-only one,
+   and such a league has no file). Seeded here, playerMeta() answers those ids without asking:
+   global scouting asked for about two thousand players, a hundred requests, on every visit.
+   For this page's lifetime only, and never from a read of its own, so nothing a signed-in
+   reader was shown can outlive a sign-out. */
+const META = new Map();
+function seedMeta(m) {
+  if (!m || typeof m !== 'object') return;
+  Object.keys(m).forEach(id => { if (m[id] && typeof m[id] === 'object') META.set(id, m[id]); });
 }
 
 /* one trimmed row back into the shape the untrimmed read returns */
@@ -737,7 +753,11 @@ async function playerMeta(allIds) {
   if (!allIds || !allIds.length) return {};
   const out = {};
   const ids = [];
-  allIds.forEach(id => { if (REGISTER_ID.test(String(id))) ids.push(id); else if (id != null) out[id] = unregistered(id); });
+  allIds.forEach(id => {
+    if (META.has(id)) out[id] = META.get(id);                 // from a season file (seedMeta)
+    else if (REGISTER_ID.test(String(id))) ids.push(id);
+    else if (id != null) out[id] = unregistered(id);
+  });
   if (!ids.length) return out;
   const chunks = [];
   for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));

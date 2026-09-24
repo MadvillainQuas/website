@@ -80,6 +80,8 @@ const realFetch = globalThis.fetch.bind(globalThis);
    file name exactly as epinoia/data.js turns it (snapFile there):
      154@2026-09-23T23:05:29.983+00:00  ->  154-2026-09-23T23-05-29-983-00-00.json */
 const snapFile = (token: string) => String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json';
+/* the layout of a season file: 2 added `meta`, the players' names (data.js seedMeta) */
+const SEASON_FILE_V = 2;
 const BUCKET = 'snapshots';
 
 async function removeFiles(admin: any, unit: string, keep: string | null) {
@@ -118,7 +120,7 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
   if (error) throw new Error('seasons: ' + error.message);
   /* the index rows: a season's token and its file (a row from before 0153 has no file, and is
      built again as a file) */
-  const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at,file:data->>file').like('key', 'season:%');
+  const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at,file:data->>file,v:data->>v').like('key', 'season:%');
   const held = new Map((heldRows || []).map((r: any) => [r.key, r]));
 
   /* WHAT PAGES ASK FOR: every competition on its own (a league page scoped to one), and each
@@ -163,7 +165,9 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
       continue;
     }
     const h: any = held.get(key);
-    if (h && h.file && h.token === tok && Date.now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { current++; continue; }
+    /* a file of an older layout (before SEASON_FILE_V) is built again, once */
+    if (h && h.file && h.v === String(SEASON_FILE_V) && h.token === tok &&
+        Date.now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { current++; continue; }
     if (built >= maxBuilds || Date.now() - started > WALL_MS) { left++; continue; }
 
     const ids = unit.split(',');
@@ -172,15 +176,18 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
        play-off competition with nothing played yet */
     const withFinals = ids.find(id => { const t = tokens.get(id); return t != null && !/^0@/.test(t); }) || ids[0];
     const s = await D.season(ids.length === 1 ? ids[0] : ids, { trim: true, rows: false, snapshot: false });
+    /* the names, jerseys and clubs of everybody on it, as the page's playerMeta() reads them
+       signed out, so a page that has the season has its names too (data.js seedMeta) */
+    const meta = await D.playerMeta((s.players || []).map((p: any) => p.id).filter(Boolean));
     const data = { games: s.games || [], players: s.players || [], teams: s.teams || [],
-                   teamOfPlayer: Array.from((s.teamOfPlayer || new Map()).entries()) };
+                   teamOfPlayer: Array.from((s.teamOfPlayer || new Map()).entries()), meta };
     const name = snapFile(tok);
     const file = 'season/' + unit + '/' + name;
     const { error: fileErr } = await admin.storage.from(BUCKET).upload(file, JSON.stringify({ token: tok, data }),
       { contentType: 'application/json', upsert: true, cacheControl: '31536000' });
     if (fileErr) throw new Error(file + ': ' + fileErr.message);
     const { error: upErr } = await admin.from('snapshots').upsert(
-      { key, competition_id: withFinals, token: tok, data: { file }, built_at: new Date().toISOString() }, { onConflict: 'key' });
+      { key, competition_id: withFinals, token: tok, data: { file, v: SEASON_FILE_V }, built_at: new Date().toISOString() }, { onConflict: 'key' });
     if (upErr) throw new Error(key + ': ' + upErr.message);
     await removeFiles(admin, unit, name);     // the versions before this one
     built++;

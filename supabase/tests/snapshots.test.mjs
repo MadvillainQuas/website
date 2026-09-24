@@ -125,6 +125,38 @@ const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test
   ok('a read that keeps the rows reads the rows', !asked(/storage\/v1/).length && asked(/select=id,home_team_id/).length === 1, calls);
 }
 
+{
+  /* THE NAMES RIDE WITH THE SEASON: a file's meta seeds playerMeta(), which then asks only for
+     the players the file did not name */
+  reset();
+  routes = {
+    games: tokenRoute('2026-09-02T00:00:00+00:00'),
+    players: rest => [{ id: '00000000-0000-4000-8000-000000000002', first_name: 'Fresh', last_name: 'Read', slug: 'fresh-read', photo_url: null }],
+    roster_entries: []
+  };
+  const P1 = '00000000-0000-4000-8000-000000000001', P2 = '00000000-0000-4000-8000-000000000002';
+  files['season/c7/' + F1] = { token: T1, data: Object.assign({}, SNAP, {
+    meta: { [P1]: { name: 'From The File', slug: 'from-the-file', photo_url: null, jersey: '9', position: 'G',
+                    teamId: 't1', teamName: 'T1', teamFull: 'Team One', teamShort: 'T1', teamSlug: 't1', colour: null, teamLogo: null } } }) };
+  await D.season('c7', { trim: true, rows: false });
+  calls.length = 0;
+  const m1 = await D.playerMeta([P1]);
+  ok('a player the season file names is answered from it, with no request',
+     m1[P1] && m1[P1].name === 'From The File' && calls.length === 0, calls);
+  const m2 = await D.playerMeta([P1, P2]);
+  ok('...and only the players it does not name are asked for',
+     m2[P1].name === 'From The File' && m2[P2] && m2[P2].name === 'Fresh Read' &&
+     asked(/players\?id=in\./).length === 1 && asked(/players\?id=in\.\([^)]*0001/).length === 0, calls);
+  reset();
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
+  files['season/c7/' + F1] = { token: T1, data: SNAP };
+  const kept = await D.season('c7', { trim: true, rows: false });
+  calls.length = 0;
+  const again = await D.season('c7', { trim: true, rows: false });
+  ok('the season cache keeps what the file had (no meta here, and nothing breaks for it)',
+     again.players[0].id === 'p1' && kept.meta === null && calls.length === 1, calls);
+}
+
 /* ------------------------------------------------------------------ stars --- */
 console.log('\nstars.js global(): the stored podiums when they are current and all visible');
 const PODIUM = { w: 'week', top: [{ id: 'p1', bpm: 9.5, gp: 2, min: 60, _league: { id: 'L1', slug: 'l1' } }],
