@@ -15,9 +15,9 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=385" data-no-ground></script>
-<script src="../i18n.js?v=385" data-i18n-packs="scorer"></script>
-<script src="../glyphs.js?v=385" defer></script>
+<script src="../appmode.js?v=386" data-no-ground></script>
+<script src="../i18n.js?v=386" data-i18n-packs="scorer"></script>
+<script src="../glyphs.js?v=386" defer></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -5968,7 +5968,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
     '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)'+
-      (rated?' · shaded cells: the rate’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor; hover for the number)':'')+'</div></div>';
+      (rated?' · shaded cells: the rate’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)':'')+'</div></div>';
 }
 /* ---- player card popup (final box score name click) ---- */
 const PC_LOWER = new Set(['ocDrtg','ocOppEfg','ocOppOreb','ocTov','tovP']);   // lower is better
@@ -6122,7 +6122,7 @@ function advHTML(d){
   const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
     '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+
     /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
-    (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
+    (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
   // 2. true shot attempts strip
   /* TWO FIGURES, TWO LINES. The attempts and the true shooting shared one line with a "·"
      between them: on a phone it broke after "tsa" and left the dot opening the next line, and
@@ -6955,15 +6955,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=385">
-<link rel="stylesheet" href="../video.css?v=385">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=385">
-<script src="../config.js?v=385" defer></script>
-<script src="../vendor/supabase.js?v=385" defer></script>
-<script src="../live.js?v=385" defer></script>
-<script src="../video.js?v=385" defer></script>
-<script src="sync.js?v=385" defer></script>
-<script src="bootstrap.js?v=385" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=386">
+<link rel="stylesheet" href="../video.css?v=386">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=386">
+<script src="../config.js?v=386" defer></script>
+<script src="../vendor/supabase.js?v=386" defer></script>
+<script src="../live.js?v=386" defer></script>
+<script src="../video.js?v=386" defer></script>
+<script src="sync.js?v=386" defer></script>
+<script src="bootstrap.js?v=386" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it

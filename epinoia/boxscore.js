@@ -657,7 +657,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
     '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)'+
-      (rated?' · shaded cells: the rate’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor; hover for the number)':'')+'</div></div>';
+      (rated?' · shaded cells: the rate’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)':'')+'</div></div>';
 }
 
 function lineupAgg(d,t){
@@ -907,7 +907,7 @@ function advHTML(d){
   const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
     '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+
     /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
-    (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
+    (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
   // 2. true shot attempts strip
   /* TWO FIGURES, TWO LINES. The attempts and the true shooting shared one line with a "·"
      between them: on a phone it broke after "tsa" and left the dot opening the next line, and

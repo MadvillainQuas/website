@@ -19,6 +19,8 @@
      BCB 2025-26, 364 team games    data/data_2026-06-29T22-39_HBBC/team_totals.csv:
                                     box totals for each side of each game, no
                                     play-by-play.
+     EuroLeague 2025-26, 401 games  data/data_2026-08-11T07-59_EL/team_totals.csv:
+                                    the same, regular season to the Final Four.
      season averages, 48 leagues    data/player-stats: 12,800 player-seasons and
                                     810 team-seasons, for how far apart season
                                     averages sit.
@@ -38,8 +40,8 @@
      4. SEASON_WEIGHT (60%) of the season spread, the rest single games, quantile
         by quantile.
 
-   BCB's team rates that box totals can give are built from its own 364 games.
-   Everything that needs the play-by-play (players, situations, zones, paint and
+   BCB's and the EuroLeague's team rates that box totals can give are built from
+   their own games. Everything that needs the play-by-play (players, situations, zones, paint and
    fast-break points) is SLB's scale moved by the ratio of the two leagues'
    averages of the nearest box-score rate, both measured from the same scraper's
    team totals, so the ratio compares like with like.
@@ -60,6 +62,7 @@ const E = await import('data:text/javascript;base64,' + Buffer.from(engineSrc).t
 const SRC = {
   slbFeeds: 'data/data_2026-05-09T15-59_SLB/game_data',
   bcbTeams: 'data/data_2026-06-29T22-39_HBBC/team_totals.csv',
+  elTeams: 'data/data_2026-08-11T07-59_EL/team_totals.csv',
   slbTeams: 'data/data_2026-06-12T15-42_SLB/team_totals.csv',
   seasonTeams: 'data/player-stats/team_totals.csv',
   seasonPlayers: 'data/player-stats/raw_player_stats.csv'
@@ -442,27 +445,33 @@ function put(league, scope, key, G, QA, how) {
   });
 }
 
-/* BCB: its own team games for what box totals give, SLB's scales moved by the leagues' ratio for the rest */
-const ratios = (() => {
-  const league = rel => {
-    const rows = csv(rel), byGame = {};
-    rows.forEach(r => { (byGame[r.game_id] = byGame[r.game_id] || []).push(r); });
-    const T = {}, O = {};
-    Object.values(byGame).filter(g => g.length === 2).forEach(g => [0, 1].forEach(i => {
-      const me = g[i], them = g[1 - i];
-      const tot = r => ({ pts: f(r.points), fgm: f(r.fgm), fga: f(r.fga), fg3m: f(r.fg3m), fg3a: f(r.fg3a), fg2m: f(r.fg2m), fg2a: f(r.fg2a),
-        ftm: f(r.ftm), fta: f(r.fta), oreb: f(r.oreb), dreb: f(r.dreb), ast: f(r.ast), stl: f(r.stl), blk: f(r.blk), tov: f(r.tov), minutes: 200 });
-      addInto(T, tot(me), Object.keys(tot(me))); addInto(O, tot(them), Object.keys(tot(them)));
-    }));
-    ['rimA', 'rimM', 'midA', 'midM', 'ptsAst'].forEach(k => { T[k] = 0; O[k] = 0; });
-    return advFromTotals(T, O);
-  };
-  const S0 = league(SRC.slbTeams), B0 = league(SRC.bcbTeams);
-  const r = {};
-  ['ortg', 'ppp', 'efg', 'ts', 'tovp', 'orebp', 'drebp', 'ftr', 'ftp', 'astp', 'stlp', 'blkp', 'p3p', 'p3r', 'fgp', 'pppUsed', 'ptsPer40', 'paceOwn', 'tsaPer100']
-    .forEach(k => { r[k] = S0[k] ? B0[k] / S0[k] : 1; });
-  return r;
-})();
+/* THE BOX-SCORE LEAGUES: their own team games for what box totals give, SLB's scales moved by
+   the two leagues' ratio for the rest. A league's season spread is its row in the 48 leagues'
+   season averages where it has one (BCB); the EuroLeague has none, so its season is its own
+   clubs' games added up, and the width stays the 48 leagues' either way. */
+const BOX_LEAGUES = [
+  { key: 'bcb', name: 'BCB', teams: SRC.bcbTeams, season: 'BCB|2025-2026' },
+  { key: 'euroleague', name: 'EuroLeague', teams: SRC.elTeams, season: null }
+];
+const boxTot = (r, minutes) => ({ pts: f(r.points), fgm: f(r.fgm), fga: f(r.fga), fg3m: f(r.fg3m), fg3a: f(r.fg3a), fg2m: f(r.fg2m), fg2a: f(r.fg2a),
+  ftm: f(r.ftm), fta: f(r.fta), oreb: f(r.oreb), dreb: f(r.dreb), ast: f(r.ast), stl: f(r.stl), blk: f(r.blk), tov: f(r.tov),
+  rimA: 0, rimM: 0, midA: 0, midM: 0, ptsAst: 0, minutes });
+const pairs = rel => {
+  const byGame = {};
+  csv(rel).forEach(r => { (byGame[r.game_id] = byGame[r.game_id] || []).push(r); });
+  return Object.values(byGame).filter(g => g.length === 2);
+};
+/* a league's rates over all its games, only for the ratios */
+const leagueRates = rel => {
+  const T = {}, O = {};
+  pairs(rel).forEach(g => [0, 1].forEach(i => {
+    const me = boxTot(g[i], 200), them = boxTot(g[1 - i], 200);
+    addInto(T, me, Object.keys(me)); addInto(O, them, Object.keys(them));
+  }));
+  return advFromTotals(T, O);
+};
+const RATIO_KEYS = ['ortg', 'ppp', 'efg', 'ts', 'tovp', 'orebp', 'drebp', 'ftr', 'ftp', 'astp', 'stlp', 'blkp', 'p3p', 'p3r', 'fgp', 'pppUsed', 'ptsPer40', 'paceOwn', 'tsaPer100'];
+const SLB_RATES = leagueRates(SRC.slbTeams);
 const ANALOG = {
   team: { rimp: 'efg', midp: 'efg', rimr: null, astPtsP: null, tsa: 'tsaPer100', possessions: 'paceOwn',
           paint: 'ptsPer40', fast: 'ptsPer40', sc: 'ptsPer40', pot: 'ptsPer40', bench: 'ptsPer40', lead: null },
@@ -473,47 +482,54 @@ const ANALOG = {
   psit: () => 'efg',
   zone: key => (key.endsWith('.three') ? 'p3p' : key.endsWith('.all') ? 'fgp' : 'efg')
 };
-const bcbTeamGames = (() => {
-  const byGame = {};
-  csv(SRC.bcbTeams).forEach(r => { (byGame[r.game_id] = byGame[r.game_id] || []).push(r); });
-  const out = [];
-  Object.values(byGame).filter(g => g.length === 2).forEach(g => {
+/* every side of every game, and each club's games added up (for a league with no season row) */
+function teamGames(rel) {
+  const games = [], club = {};
+  pairs(rel).forEach(g => {
     /* the pipeline's own possessions and pace put the game's length back: 40 minutes, or 45 with an overtime */
     const mins = Math.max(40, 5 * Math.round((40 * f(g[0].poss) / Math.max(1, f(g[0].pace))) / 5));
-    const tot = r => ({ pts: f(r.points), fgm: f(r.fgm), fga: f(r.fga), fg3m: f(r.fg3m), fg3a: f(r.fg3a), fg2m: f(r.fg2m), fg2a: f(r.fg2a),
-      ftm: f(r.ftm), fta: f(r.fta), oreb: f(r.oreb), dreb: f(r.dreb), ast: f(r.ast), stl: f(r.stl), blk: f(r.blk), tov: f(r.tov),
-      rimA: 0, rimM: 0, midA: 0, midM: 0, ptsAst: 0, minutes: 5 * mins });
-    const A = [advFromTotals(tot(g[0]), tot(g[1])), advFromTotals(tot(g[1]), tot(g[0]))];
+    const t = [boxTot(g[0], 5 * mins), boxTot(g[1], 5 * mins)];
+    const A = [advFromTotals(t[0], t[1]), advFromTotals(t[1], t[0])];
     if (A.some(a => a.possessions < 55 || a.possessions > 115 || a.pts < 35)) return;
-    out.push({ T: A[0], O: A[1] }, { T: A[1], O: A[0] });
+    games.push({ T: A[0], O: A[1] }, { T: A[1], O: A[0] });
+    [0, 1].forEach(i => {
+      const c = club[g[i].team] = club[g[i].team] || { T: {}, O: {}, gp: 0 };
+      addInto(c.T, t[i], Object.keys(t[i])); addInto(c.O, t[1 - i], Object.keys(t[1 - i])); c.gp++;
+    });
   });
-  return out;
-})();
-{
-  const bcbSeasons = pooledTeams.filter(r => r.league === 'BCB|2025-2026');
+  const clubs = Object.values(club).filter(c => c.gp >= 10).map(c => ({ T: advFromTotals(c.T, c.O) }));
+  return { games, clubs };
+}
+BOX_LEAGUES.forEach(BL => {
+  const rates = leagueRates(BL.teams), ratios = {};
+  RATIO_KEYS.forEach(k => { ratios[k] = SLB_RATES[k] ? rates[k] / SLB_RATES[k] : 1; });
+  const TG = teamGames(BL.teams);
+  const seasons = BL.season ? pooledTeams.filter(r => r.league === BL.season) : TG.clubs;
+  BL.games = TG.games.length / 2;
   const moved = (scope, key, ref) => {
     const a = typeof ANALOG[scope] === 'function' ? ANALOG[scope](key) : ANALOG[scope][key];
     const r = a ? ratios[a] : 1;
     return { mu: sig(ref.mu * r), q: ref.q.map(v => sig(v * r)), analog: a, r };
   };
   const S0 = leagues['slb-men'];
+  const L = leagues[BL.key] = leagues[BL.key] || {};
   Object.keys(S0).forEach(scope => Object.keys(S0[scope]).forEach(key => {
-    const L = leagues.bcb = leagues.bcb || {};
     if (scope === 'team' && TEAM_BOX.indexOf(key) >= 0) {
-      const G = gameScale('team', key, bcbTeamGames);
-      const vals = bcbSeasons.map(s => s.T[key]);
+      const G = gameScale('team', key, TG.games);
+      const vals = seasons.map(s => s.T[key]);
       if (G && vals.length >= 10) {
-        put('bcb', 'team', key, G, normalQ(mean(vals), pooledTeamSD[key].sd), 'BCB games (' + G.n + '), season: BCB ' + sig(mean(vals)) + ' ± 48 leagues');
+        put(BL.key, 'team', key, G, normalQ(mean(vals), pooledTeamSD[key].sd), BL.name + ' games (' + G.n + '), season: ' +
+          (BL.season ? BL.name : BL.name + ' clubs (' + vals.length + ')') + ' ' + sig(mean(vals)) + ' ± 48 leagues');
         return;
       }
     }
     const m = moved(scope, key, S0[scope][key]);
     (L[scope] = L[scope] || {})[key] = { mu: m.mu, q: m.q };
-    if (REPORT) report.push(['bcb', scope, key, 'SLB × ' + (m.analog ? m.analog + ' ' + m.r.toFixed(3) : '1'), '', m.mu, '', '', [3, 11, 19].map(i => m.q[i]).join(' / ')].join('  '));
+    if (REPORT) report.push([BL.key, scope, key, 'SLB × ' + (m.analog ? m.analog + ' ' + m.r.toFixed(3) : '1'), '', m.mu, '', '', [3, 11, 19].map(i => m.q[i]).join(' / ')].join('  '));
   }));
-  console.log('BCB: ' + bcbTeamGames.length + ' team games; SLB → BCB ratios ' +
+  console.log(BL.name + ': ' + TG.games.length + ' team games, ' + seasons.length + ' season rows; SLB → ' + BL.name + ' ratios ' +
     Object.entries(ratios).map(([k, v]) => k + ' ' + v.toFixed(3)).join(', '));
-}
+});
 
 /* ------------------------------------------------------------------ write --- */
 const count = L => Object.values(L).reduce((n, s) => n + Object.keys(s).length, 0);
@@ -524,10 +540,10 @@ const DATA = {
   seasonWeight: W,
   fallback: 'slb-men',
   alias: {},
-  leagues: {
-    'slb-men': Object.assign({ label: 'SLB 2025-26 games, weighted to season averages', games: slb.games }, leagues['slb-men']),
-    'bcb': Object.assign({ label: 'BCB 2025-26 games, weighted to season averages', games: bcbTeamGames.length / 2 }, leagues.bcb)
-  }
+  leagues: Object.assign({
+    'slb-men': Object.assign({ label: 'SLB 2025-26 games, weighted to season averages', games: slb.games }, leagues['slb-men'])
+  }, Object.fromEntries(BOX_LEAGUES.map(BL => [BL.key,
+    Object.assign({ label: BL.name + ' 2025-26 games, weighted to season averages', games: BL.games }, leagues[BL.key])])))
 };
 const body = JSON.stringify(DATA).replace(/\},"/g, '},\n"');
 const out = `/* ============================================================================
@@ -547,8 +563,8 @@ const out = `/* ================================================================
 }(typeof globalThis !== 'undefined' ? globalThis : self));
 `;
 fs.writeFileSync(OUT, out);
-console.log('wrote ' + path.relative(ROOT, OUT) + ' — slb-men ' + count(leagues['slb-men']) + ' scales, bcb ' + count(leagues.bcb) +
-  ' scales, ' + (out.length / 1024).toFixed(0) + 'KB');
+console.log('wrote ' + path.relative(ROOT, OUT) + ' — ' + Object.keys(DATA.leagues).map(k => k + ' ' + count(leagues[k]) + ' scales').join(', ') +
+  ', ' + (out.length / 1024).toFixed(0) + 'KB');
 if (REPORT) {
   console.log('\nleague  scope  stat  source  games  mu  single-game p10/p50/p90  season p10/p50/p90  blended p10/p50/p90');
   report.forEach(l => console.log(l));

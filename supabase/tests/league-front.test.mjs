@@ -64,7 +64,11 @@ function node(t, c, x) {
 
 function run(fields) {
   const host = node('div');
+  const scrolled = [];
   const ctx = {
+    /* the wheel and drag pass-through is real events on a real frame; here it is only
+       counted, so the test can say every card was given it */
+    scrollThrough: (link, frame) => scrolled.push([link, frame]),
     console, Promise, String, encodeURIComponent, JSON,
     document: {
       documentElement: { getAttribute: () => 'dark' },
@@ -86,7 +90,7 @@ function run(fields) {
      links under the cards wear the same class and are not a choice of competition. */
   const picker = () => find(host, 'gpick')[0] || null;
   return {
-    host, picker,
+    host, picker, scrolled,
     chips: () => (picker() ? find(picker(), 'ep-chip') : []),
     frames: () => find(host, 'embedframe'),
     hits: () => find(host, 'embedhit')
@@ -115,6 +119,9 @@ console.log('\n1. one row of buttons, above both cards');
   })());
   ok('the buttons are buttons, not links that would navigate',
      r.chips().length > 0 && r.chips().every(c => c.tag === 'button' && c.type === 'button'));
+  ok('each card\'s link still lets its table scroll underneath (a wheel or a drag is not a tap)',
+     r.hits().length === 2 && r.scrolled.length === 2 &&
+     r.hits().every(h => r.scrolled.some(([l, f]) => l === h && r.frames().indexOf(f) >= 0)));
 }
 
 /* ------------------------------------------------- 2. what choosing one does --- */

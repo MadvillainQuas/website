@@ -228,6 +228,14 @@ function leagueKey(slug) {
   const s = String(slug || '').toLowerCase();
   return (D.alias && D.alias[s]) || (D.leagues && D.leagues[s] ? s : D.fallback);
 }
+/* the scale a league reads, and whether it is another league's: a league with no games in the
+   build reads the default's, and says so wherever the percentile is named */
+function scaleOf(slug) {
+  const D = DATA(), lk = leagueKey(slug);
+  if (!lk) return null;
+  const s = String(slug || '').toLowerCase();
+  return { league: lk, borrowed: !((D.alias && D.alias[s]) || (D.leagues && D.leagues[s])) };
+}
 
 /* THE READING. rate('player', 'ts', ctx, { league, flip }) -> null, or
      { p: the raw percentile, g: its goodness (p, or 100 - p for less-is-better),
@@ -253,7 +261,7 @@ function rate(scope, key, ctx, opts) {
   if (small) p = Math.min(89, Math.max(11, p));
   const d = o.flip ? -st.d : st.d;
   const g = d < 0 ? 100 - p : p;
-  return { p, g, d, band: d ? band(g) : null, league: lk, small, n: s.n };
+  return { p, g, d, band: d ? band(g) : null, league: lk, borrowed: scaleOf(o.league).borrowed, small, n: s.n };
 }
 
 /* the statistics pages' seven bands (fulltable.js heatStyle), 6 the best */
@@ -271,8 +279,9 @@ const ord = n => {
 function against(r) {
   const D = DATA();
   const L = D && r && D.leagues[r.league];
-  return L ? L.label : 'real games';
+  return L ? L.label + (r.borrowed ? BORROWED : '') : 'real games';
 }
+const BORROWED = ' (borrowed: no scale of this league\'s own yet)';
 /* ' gp gp-b5' for an element's class list, '' for nothing to colour */
 const cls = r => (r && r.band != null ? ' gp gp-b' + r.band : '');
 /* "71st percentile" (for a neutral stat, "71st percentile, neither good nor bad") */
@@ -283,7 +292,7 @@ function words(r) {
 /* the small percentile figure a tile or a card shows under its number */
 const pcHTML = r => (r ? '<i class="gp-pc' + (r.band != null ? ' gp-b' + r.band : '') + '">' + Math.round(r.d ? r.g : r.p) + '</i>' : '');
 
-return { rate, sample, adjusted, percentileOf, leagueKey, band, ord, cls, words, pcHTML, against,
+return { rate, sample, adjusted, percentileOf, leagueKey, scaleOf, band, ord, cls, words, pcHTML, against,
          GRID, SEASON_WEIGHT, SCOPES, TEAM, PLAYER, SIT, PSIT, ZONE, SITS,
          _setData: v => { data = v; } };
 }));

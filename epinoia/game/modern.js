@@ -343,7 +343,7 @@
       '<div class="mv-sect">on court</div><div class="mv-grid four">' +
         rcell('ortg', f1(a.ocOrtg), 'ocOrtg') + rcell('drtg', f1(a.ocDrtg), 'ocDrtg') + rcell('net', (a.net > 0 ? '+' : '') + f1(a.net), 'net', a.net > 0 ? 'pos' : a.net < 0 ? 'neg' : '') + rcell('efg', f1(a.ocEfg), 'ocEfg') +
       '</div>' +
-      (ctx ? '<div class="mv-gpnote">coloured by percentile against ' + esc(GPx.against({ league: GPx.leagueKey(S.leagueSlug) })) + '</div>' : '');
+      (ctx ? '<div class="mv-gpnote">coloured by percentile against ' + esc(GPx.against(GPx.scaleOf(S.leagueSlug))) + '</div>' : '');
   }
 
   function popEl() {

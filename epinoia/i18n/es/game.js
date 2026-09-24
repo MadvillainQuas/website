@@ -586,7 +586,8 @@
       [/^(.+?): (\d+)(?:st|nd|rd|th) percentile( \(a style, not a score\))? against (.+)$/, (m, T) =>
         statLabel(m[1], T) + ': percentil ' + m[2] + (m[3] ? ' (un estilo, no un rendimiento)' : '') + ' frente a ' + T(m[4])],
       [/^coloured by percentile against (.+)$/, (m, T) => 'Coloreado por percentil frente a ' + T(m[1])],
-      [/^(\S+) (\d{4}-\d{2}) games, weighted to season averages$/, 'partidos de $1 $2, ponderados por las medias de temporada']
+      [/^(\S+) (\d{4}-\d{2}) games, weighted to season averages$/, 'partidos de $1 $2, ponderados por las medias de temporada'],
+      [/^(.+) \(borrowed: no scale of this league's own yet\)$/, (m, T) => T(m[1]) + ' (prestada: esta liga aún no tiene escala propia)']
     ],
 
     ctxPatterns: {

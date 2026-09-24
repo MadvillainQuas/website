@@ -104,6 +104,18 @@ console.log('\nreading a number');
 
   ok('SLB women and an unknown league read SLB men\'s scales; BCB its own',
      GP.leagueKey('slb-women') === 'slb-men' && GP.leagueKey('nobody') === 'slb-men' && GP.leagueKey(null) === 'slb-men' && GP.leagueKey('bcb') === 'bcb');
+  ok('the EuroLeague reads its own scales, built from its own games',
+     GP.leagueKey('euroleague') === 'euroleague' && DATA.leagues.euroleague.games >= 300 &&
+     DATA.leagues.euroleague.team.ortg.mu > DATA.leagues['slb-men'].team.ortg.mu, DATA.leagues.euroleague && DATA.leagues.euroleague.team.ortg.mu);
+  ok('a league with no scale of its own says whose it is reading',
+     GP.scaleOf('nobody').borrowed && GP.scaleOf('slb-women').borrowed && !GP.scaleOf('euroleague').borrowed && !GP.scaleOf('bcb').borrowed &&
+     / \(borrowed: no scale of this league's own yet\)$/.test(GP.against(GP.scaleOf('nobody'))) &&
+     GP.against(GP.scaleOf('euroleague')) === 'EuroLeague 2025-26 games, weighted to season averages');
+  {
+    const r = GP.rate('sit', 'all.ppp', sit, { league: 'nba' }), own = GP.rate('sit', 'all.ppp', sit, { league: 'slb-men' });
+    ok('...and so does every percentile it shows', r && r.borrowed && / against SLB 2025-26 games.*\(borrowed: /.test(GP.words(r)) &&
+       own && !own.borrowed && !/borrowed/.test(GP.words(own)));
+  }
 
   const st = GP.TEAM.paint, mu = DATA.leagues['slb-men'].team.paint.mu;
   ok('a count at half time is its tally plus a league-average second half', Math.abs(GP.adjusted(st, 20, 20, mu) - (20 + mu / 2)) < 1e-9);

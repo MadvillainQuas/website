@@ -576,7 +576,8 @@
       [/^(.+?): (\d+)(?:st|nd|rd|th) percentile( \(a style, not a score\))? against (.+)$/, (m, T) =>
         statLabel(m[1], T) + ': ' + T(m[4]) + '比で' + m[2] + 'パーセンタイル' + (m[3] ? '（スタイル指標のため良し悪しなし）' : '')],
       [/^coloured by percentile against (.+)$/, (m, T) => T(m[1]) + '比のパーセンタイルで色分け'],
-      [/^(\S+) (\d{4}-\d{2}) games, weighted to season averages$/, '$1 $2の試合（シーズン平均で加重）']
+      [/^(\S+) (\d{4}-\d{2}) games, weighted to season averages$/, '$1 $2の試合（シーズン平均で加重）'],
+      [/^(.+) \(borrowed: no scale of this league's own yet\)$/, (m, T) => T(m[1]) + '（このリーグ独自の基準はまだないため借用）']
     ],
 
     ctxPatterns: {
