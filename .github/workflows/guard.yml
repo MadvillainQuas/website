@@ -192,6 +192,11 @@ jobs:
           TZ=UTC node supabase/tests/i18n.test.mjs
           node supabase/tests/i18n-tool.test.mjs
 
+      # A letter the pixel faces cannot draw (Ę in MĘŻCZYZN) is transliterated under those faces
+      # only; the coverage table is generated from the fonts by tools/font-coverage.py
+      - name: Display-face transliteration
+        run: node supabase/tests/glyphs.test.mjs
+
       # A new league starts without its merchandise shelf (0148), a shouted club is written as a
       # name in the ingest and in the database (0149; two implementations, one rule), and the game
       # page's tab strip fits by measurement.
