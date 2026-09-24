@@ -32,20 +32,16 @@
  * via Cloudflare Access (see README, "Real authentication").
  * ============================================================ */
 (function () {
-    // SHA-256 hex of the invite code. Default: PROPHESY-2026-MdVilCxl-9kpTs0Q3J
-    // To rotate (== revoke everyone currently unlocked):
+    // SHA-256 hex of the invite code. The code itself must never be
+    // written into any file of the site (they are all public).
+    // To rotate (== revoke everyone currently unlocked): use the admin
+    // dashboard's Rotate button, or by hand:
     //   1. Pick a new code.
     //   2. echo -n "<new code>" | openssl dgst -sha256
     //   3. Replace INVITE_HASH_HEX below with the new hex.
-    //   4. Update SHARED_INVITE_CODE in admin.html to match (so the
-    //      "Share invite link" card shows the new code).
-    //   5. Commit + push. Every existing visitor's stored unlock now
+    //   4. Commit + push. Every existing visitor's stored unlock now
     //      hashes to the OLD value and is rejected on next page load.
     const INVITE_HASH_HEX  = 'b56aad31ab2d5f0426f4ca1baf42f53b0626f9159bb83f2665c0087f9892ac70';
-    // Expose the hash as a stable global so other scripts can reuse it as
-    // an XOR key for sharing tokens (so GitHub's secret-scanning bot
-    // doesn't auto-revoke published PATs).
-    try { window.PROPHESY_INVITE_HASH_HEX = INVITE_HASH_HEX; } catch (_) {}
     // Storage key bumped to _v2 because the schema changed (we now
     // store { ts, hash } instead of just { ts }). Old _v1 entries
     // would be rejected anyway since they lack a hash field, so this

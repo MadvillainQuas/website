@@ -104,9 +104,9 @@ a change that is not in a migration is a change that cannot be reviewed or repla
 
 ## Before real data
 
-* **Rotate the GitHub PAT.** `config/github-token.json` in the website repo is XOR-encoded
-  against a hash published in `gate.js` — both halves are public, so the token is recoverable
-  and grants write access to the site. Revoke it, then purge it from git history.
+* **The shared repository token is gone (2026-09-24).** The file that published it and the
+  admin feature that wrote it were removed; the token itself must be revoked by the account
+  owner, since every copy ever published stays recoverable from history.
 * **`leagues.youth_protected` ships `true`.** Under-18 profiles stay behind league membership,
   and the database refuses to approve a photo of a minor without recorded guardian consent.
   Turning that off should be a deliberate, per-league act.

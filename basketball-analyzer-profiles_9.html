@@ -31343,46 +31343,22 @@ function App() {
         setCurrentSaveSlug(slug || '');
     }, []);
 
-    // Decode a PROPHESY:<base64> XOR-encoded string using the invite hash
-    // exposed by gate.js as window.PROPHESY_INVITE_HASH_HEX.
-    const decodeSharedToken = useCallback((encoded) => {
-        if (!encoded || typeof encoded !== 'string') return null;
-        const stripped = encoded.replace(/^PROPHESY:/, '');
-        let bin;
-        try { bin = atob(stripped); } catch (_) { return null; }
-        const key = window.PROPHESY_INVITE_HASH_HEX;
-        if (!key) return null;
-        const keyBytes = [];
-        for (let i = 0; i < key.length; i += 2) keyBytes.push(parseInt(key.substr(i, 2), 16));
-        const out = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i) ^ keyBytes[i % keyBytes.length];
-        try { return new TextDecoder().decode(out); } catch (_) { return null; }
-    }, []);
-
-    // Resolve a usable GitHub token. Tries the local PAT (admin) first,
-    // then the shared encoded one.
+    // The admin's own token, from this browser only. There is no shared
+    // token any more: it was published, reversibly encoded, in a public file.
     const resolveGitHubToken = useCallback(async () => {
         if (cachedSharedToken) return cachedSharedToken;
         try {
             const local = localStorage.getItem('prophesy_ghPat_v1');
             if (local) { cachedSharedToken = local; return local; }
         } catch (_) {}
-        try {
-            const res = await fetch('config/github-token.json', { cache: 'no-cache' });
-            if (!res.ok) return null;
-            const j = await res.json();
-            if (!j || !j.encoded) return null;
-            const decoded = decodeSharedToken(j.encoded);
-            if (decoded) { cachedSharedToken = decoded; return decoded; }
-        } catch (_) {}
         return null;
-    }, [decodeSharedToken]);
+    }, []);
 
     // Upload arbitrary bytes to a path in the repo. Looks up the existing
     // SHA so updates work. Returns { ok, status, message }.
     const ghPutBytes = useCallback(async (repoPath, bytes, message) => {
         const tok = await resolveGitHubToken();
-        if (!tok) return { ok: false, status: 0, message: 'No GitHub token (admin must publish one)' };
+        if (!tok) return { ok: false, status: 0, message: 'Saving is available to the site admin only' };
         const apiBase = 'https://api.github.com/repos/MadvillainQuas/website/contents/' + repoPath;
         const headers = { 'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json' };
 

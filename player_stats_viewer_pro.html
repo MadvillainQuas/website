@@ -3780,29 +3780,11 @@
         var isAdmin = !!(session && session.role === 'admin');
         var autoLoading = false;
 
-        // ---- GitHub token resolve/decode (ported from basketball-analyzer) ----
+        // ---- the admin's own token, from this browser only (there is no shared token any more) ----
         var cachedToken = null;
-        function decodeSharedToken(encoded) {
-            if (!encoded || typeof encoded !== 'string') return null;
-            var stripped = encoded.replace(/^PROPHESY:/, '');
-            var bin; try { bin = atob(stripped); } catch (_) { return null; }
-            var key = window.PROPHESY_INVITE_HASH_HEX; if (!key) return null;
-            var keyBytes = []; for (var i = 0; i < key.length; i += 2) keyBytes.push(parseInt(key.substr(i, 2), 16));
-            var out = new Uint8Array(bin.length);
-            for (var j = 0; j < bin.length; j++) out[j] = bin.charCodeAt(j) ^ keyBytes[j % keyBytes.length];
-            try { return new TextDecoder().decode(out); } catch (_) { return null; }
-        }
         async function resolveToken() {
             if (cachedToken) return cachedToken;
             try { var local = localStorage.getItem('prophesy_ghPat_v1'); if (local) { cachedToken = local; return local; } } catch (_) {}
-            try {
-                var res = await fetch('config/github-token.json', { cache: 'no-cache' });
-                if (!res.ok) return null;
-                var j = await res.json();
-                if (!j || !j.encoded) return null;
-                var dec = decodeSharedToken(j.encoded);
-                if (dec) { cachedToken = dec; return dec; }
-            } catch (_) {}
             return null;
         }
         function bytesToBase64(bytes) {
@@ -3813,7 +3795,7 @@
         }
         async function ghPutBytes(repoPath, bytes, message) {
             var token = await resolveToken();
-            if (!token) return { ok: false, status: 0, message: 'No GitHub token available — set a PAT in the Admin Dashboard (or have the admin share one) first.' };
+            if (!token) return { ok: false, status: 0, message: 'Saving is available to the site admin only.' };
             var apiBase = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + repoPath;
             var sha = null;
             try {

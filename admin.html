@@ -443,7 +443,7 @@
                         <li>Pick a new code (any string).</li>
                         <li>Run <code>echo -n "MY-NEW-CODE" | openssl dgst -sha256</code> to get its SHA-256 hex.</li>
                         <li>Paste the hex into <code>INVITE_HASH_HEX</code> near the top of <code>gate.js</code>.</li>
-                        <li>Update <code>SHARED_INVITE_CODE</code> near the top of this admin file's script so the "Share invite link" card shows the new code.</li>
+                        <li>Keep the new code to yourself: never write it into any file on the site (every file here is public).</li>
                         <li>Commit + push. Done — old links are now dead, send the new link to anyone who should still have access.</li>
                     </ol>
                 </details>
@@ -653,16 +653,6 @@
                 <strong>Heads-up:</strong> a PAT with <code>repo</code> scope can <em>write to all your repos</em>. Treat it like a password. If you ever lose your laptop or share the browser, click <strong>Forget</strong> here and revoke the token at <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:#a8d8c8;">github.com/settings/tokens</a>.
             </div>
 
-            <h3>Share token with all users</h3>
-            <div class="step">
-                For the per-user save buttons in the Prophesy Shortlist to work for non-admins, the token has to be reachable from every signed-in browser. Publishing it XOR-encodes it against the invite-code hash and commits to <code>config/github-token.json</code>. GitHub's secret-scanning bot won't recognise it as a token, but anyone with the invite link can decode it (so any signed-in user can save). Use a fine-grained token scoped only to this repo if you can.
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <button class="btn primary" id="ghPatShareBtn" style="height:36px;">📤 Publish current token to all users</button>
-                <button class="btn danger" id="ghPatUnshareBtn" style="height:36px;">🚫 Unpublish (clear shared token)</button>
-                <span id="ghPatShareStatus" class="small" style="font-family:'IBM Plex Mono',monospace;"></span>
-            </div>
-
             <h3>Per-user folders</h3>
             <div id="dataFoldersList" style="display:flex;flex-direction:column;gap:14px;margin-top:8px;"></div>
 
@@ -730,13 +720,13 @@
         // with INVITE_HASH_HEX in gate.js. Used by the "Share invite
         // link" card to display + copy the URL admins send to coaches.
         //
-        // To rotate: generate a new code (any string), compute its
-        // SHA-256 (`echo -n "..." | openssl dgst -sha256`), paste the
-        // hash into gate.js's INVITE_HASH_HEX, and update the constant
-        // below to match. Both must be in lockstep or new visitors see
-        // the "Not available" placeholder.
+        // NEVER WRITTEN INTO A FILE: this page is public, so a code
+        // written here is a code published. It is kept in this admin's
+        // browser only (set by Rotate, or typed into the share card).
         // ─────────────────────────────────────────────────────────────
-        const SHARED_INVITE_CODE = 'PROPHESY-2026-MdVilCxl-9kpTs0Q3J';
+        let SHARED_INVITE_CODE = (() => {
+            try { return localStorage.getItem('prophesy_invite_code_v1') || ''; } catch (_) { return ''; }
+        })();
 
         // ─────────────────────────────────────────────────────────────
         // APP CATALOG — every launcher card on the user-facing menu in
@@ -1557,7 +1547,7 @@
             const ok = confirm(
                 'Rotate the invite code right now?\n\n'
                 + '• Everyone currently unlocked will see the gate again on their next page load (after GitHub Pages rebuilds, ~30–60 s).\n'
-                + '• A new random code is generated and committed to gate.js + admin.html.\n'
+                + '• A new random code is generated; only its hash is committed (to gate.js), the code stays in this browser.\n'
                 + '• THIS browser is auto-updated so you stay in.\n'
                 + '• You\'ll see the new link to send to anyone who should keep access.\n\n'
                 + 'Continue?'
@@ -1582,16 +1572,6 @@
                 }
                 const newGateText = gj.text.replace(gateRe, "const INVITE_HASH_HEX  = '" + newHash + "';");
 
-                setRotateStatus('reading admin.html…');
-                const ah = await ghGetFileText('admin.html');
-                if (!ah.ok) { setRotateStatus('Failed to read admin.html: ' + ah.message, 'err'); return; }
-                const codeRe = /const\s+SHARED_INVITE_CODE\s*=\s*'[^']*'\s*;/;
-                if (!codeRe.test(ah.text)) {
-                    setRotateStatus('Could not find SHARED_INVITE_CODE in admin.html. Aborting.', 'err');
-                    return;
-                }
-                const newAdminText = ah.text.replace(codeRe, "const SHARED_INVITE_CODE = '" + newCode + "';");
-
                 // 2) Update LOCAL gate unlock storage FIRST so we don't lock ourselves out
                 //    the moment the new gate.js goes live. Key must match gate.js's STORAGE_KEY.
                 try {
@@ -1607,20 +1587,9 @@
                     return;
                 }
 
-                // 4) Commit admin.html (cosmetic)
-                setRotateStatus('committing admin.html…');
-                const adminBytes = new TextEncoder().encode(newAdminText);
-                const adminRes   = await ghPutFile('admin.html', adminBytes, 'admin: rotate invite code — refresh SHARED_INVITE_CODE (auto)');
-                if (!adminRes.ok) {
-                    setRotateStatus(
-                        'gate.js updated, admin.html update FAILED (' + adminRes.message + '). New code: '
-                        + newCode + ' — copy it now and paste it into SHARED_INVITE_CODE in admin.html, or hit Rotate again to retry.',
-                        'err'
-                    );
-                    // Still refresh the on-screen displays so the admin sees the new code.
-                    refreshShareInviteDisplay(newCode);
-                    return;
-                }
+                // 4) The new code is kept in THIS browser only -- never committed (this page is public)
+                SHARED_INVITE_CODE = newCode;
+                try { localStorage.setItem('prophesy_invite_code_v1', newCode); } catch (_) {}
 
                 // 5) Refresh on-screen displays so the admin sees the new code immediately.
                 refreshShareInviteDisplay(newCode);
@@ -1882,68 +1851,9 @@
             }
         });
 
-        // ============================================================
-        // SHARE TOKEN WITH ALL USERS (XOR-encoded so GH scanner skips it)
-        // ============================================================
-        const ghPatShareBtn    = document.getElementById('ghPatShareBtn');
-        const ghPatUnshareBtn  = document.getElementById('ghPatUnshareBtn');
-        const ghPatShareStatus = document.getElementById('ghPatShareStatus');
-
-        function setShareStatus(msg, kind) {
-            if (!ghPatShareStatus) return;
-            ghPatShareStatus.style.color = kind === 'ok' ? '#88c8a8' : (kind === 'err' ? '#c08888' : 'var(--text-muted)');
-            ghPatShareStatus.textContent = msg || '';
-        }
-        // XOR a string against a hex key, then base64 the result. Reversible
-        // by anyone holding the same key (gate.js publishes the invite hash
-        // as window.PROPHESY_INVITE_HASH_HEX). This isn't real encryption —
-        // its only purpose is to defeat GitHub's secret-scanning patterns.
-        function xorEncodeWithHexKey(plain, hexKey) {
-            // Convert hex key → byte array
-            const keyBytes = [];
-            for (let i = 0; i < hexKey.length; i += 2) keyBytes.push(parseInt(hexKey.substr(i, 2), 16));
-            const utf8 = new TextEncoder().encode(plain);
-            const out = new Uint8Array(utf8.length);
-            for (let i = 0; i < utf8.length; i++) out[i] = utf8[i] ^ keyBytes[i % keyBytes.length];
-            // base64
-            let bin = '';
-            const chunk = 0x8000;
-            for (let i = 0; i < out.length; i += chunk) bin += String.fromCharCode.apply(null, out.subarray(i, i + chunk));
-            return 'PROPHESY:' + btoa(bin);
-        }
-
-        ghPatShareBtn?.addEventListener('click', async () => {
-            const tok = getGhPat();
-            if (!tok) { setShareStatus('save a token first', 'err'); return; }
-            const key = window.PROPHESY_INVITE_HASH_HEX;
-            if (!key) { setShareStatus('invite hash unavailable — refresh the page', 'err'); return; }
-            setShareStatus('encoding + uploading…');
-
-            const encoded = xorEncodeWithHexKey(tok, key);
-            const payload = {
-                _comment: "Shared GitHub token for save/load operations. The token is XOR-encoded against the invite-code hash before being committed here so GitHub's secret-scanning bot doesn't auto-revoke it. Anyone with site access (i.e. the invite link) can decode it. Treat it like a write-key for this repo: rotate any time it's misused. Set/refresh via the admin dashboard's 'Share token with all users' button.",
-                encoded: encoded,
-                publishedAt: new Date().toISOString()
-            };
-            const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + '\n');
-            const res = await ghPutFile('config/github-token.json', bytes, 'admin: share encoded GitHub token with all users');
-            if (res.ok) setShareStatus('✓ shared — non-admin users can now save', 'ok');
-            else setShareStatus('failed: ' + res.message, 'err');
-        });
-
-        ghPatUnshareBtn?.addEventListener('click', async () => {
-            if (!confirm('Clear the shared token? Non-admin users will no longer be able to save until you re-share.')) return;
-            setShareStatus('clearing…');
-            const payload = {
-                _comment: "Shared GitHub token cleared. Re-publish via the admin dashboard's 'Share token with all users' button to restore non-admin save capability.",
-                encoded: '',
-                publishedAt: null
-            };
-            const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + '\n');
-            const res = await ghPutFile('config/github-token.json', bytes, 'admin: clear shared GitHub token');
-            if (res.ok) setShareStatus('✓ cleared', 'ok');
-            else setShareStatus('failed: ' + res.message, 'err');
-        });
+        // (The "share token with all users" feature is gone: it published the
+        // admin's repository token, reversibly encoded, in a public file.
+        // A token never leaves the browser it was pasted into.)
 
         // Helper: PUT a file into the repo at the given path. Updates if it
         // already exists (we look up the SHA first), creates if not.

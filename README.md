@@ -85,16 +85,12 @@ hidden and a generic "Not available" placeholder is shown. The
 valid code's **SHA-256 hash** is hardcoded in `gate.js`; the cleartext
 code never appears in the source.
 
-The seed invite code is:
+The code itself is never written into any file of the site: every
+file here is public. The admin dashboard's "Share invite link" card
+shows it to the admin who set it, from that browser only.
 
-```
-PROPHESY-2026-MdVilCxl-9kpTs0Q3J
-```
-
-Use it in the URL the first time you visit:
-`https://prophesyscouting.co.uk/?invite=PROPHESY-2026-MdVilCxl-9kpTs0Q3J`
-
-After that the browser remembers the unlock for 60 days. To rotate
+After a first visit with `?invite=<code>` the browser remembers the
+unlock. To rotate
 the code (e.g. someone you sent it to leaks it), generate a new
 code, hash it, and replace `INVITE_HASH_HEX` near the top of
 `gate.js`:
