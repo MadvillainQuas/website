@@ -1397,7 +1397,8 @@
       'Kosovo': 'Kosovo',
       'Averages': 'Promedios',
       'full table': 'Tabla completa',
-      'screenshot': 'Captura'
+      'screenshot': 'Captura',
+      'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO: sella los pabellones a los que vas, en el partido'
     },
 
     ctx: {

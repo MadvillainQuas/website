@@ -21,7 +21,7 @@ needs Louie says so.
 | D7 | Photos: pre-moderated (an admin approves each before it is public) to start, relaxed to post-then-report for trusted fans later | **Louie** |
 | D8 | A photo can only be posted for a game the fan stamped, which keeps the feed real and spam-free | proposed |
 | D9 | Photos are re-encoded in the browser before upload, which strips the EXIF data (including the phone's GPS) | proposed |
-| D10 | The map drawn on EPINOIA GO: our own SVG (no dependency, no key in the page, no CSP change) with "open in Google Maps" links, vs an embedded Google map | our own SVG, 2026-09-24 (4.3): the journey itself, points and trips on a grid; no coastlines yet (no map data in the repo) |
+| D10 | The map drawn on EPINOIA GO: our own SVG (no dependency, no key in the page, no CSP change) with "open in Google Maps" links, vs an embedded Google map | our own SVG, 2026-09-24 (4.3): the journey itself, points and trips on a grid. **Superseded the same day (7.6)**: Louie asked for a real map, so OpenStreetMap's raster tiles with our own pins and trip line (`go/map.js`: no library, no key, the tiles' attribution shown); journey.js removed |
 | D11 | A game's arena is its own venue, else its home club's arena (`game_venue_id`, 0162). Seven feeds never name a venue, and their leagues play at fixed home arenas | done 2026-09-24 |
 
 ## Where we start (inventory, 2026-09-24)
@@ -190,3 +190,54 @@ needs Louie says so.
       declared in the kit and in nav.css, which loads without it). Lit on the GO pages; never
       translated. The phone's bottom bar is unchanged (not asked for). Chromium: 17 checks (desktop
       light and dark, the GO page, ja/es, the phone's sheet); `go-page.test.mjs`: 31.
+
+## Phase 7 — The redesign (Louie, 2026-09-24)
+
+Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO page and its stamps page).
+
+- [x] **7.1 The intro** — on a first visit, the screen fades to black (white on the dark theme) and asks
+      "Please Enter A Username." in the site's sans serif; a signed-in fan types one there (0163's
+      `username_check` as they type, `set_username` to save), then "Have Fun!" takes the prompt's place in the
+      middle, holds, and the page comes back. A fan without a username is asked on every visit until they
+      choose one or say "later" (for that visit). Signed out, it says why an account comes first, with sign
+      in and "just looking". A fan who has a name sees only "Have Fun!", once. Reduced motion: the same, fast.
+- [x] **7.2 The hero** — EPINOIΛ GO blown up in the top middle with a drop shadow, GO in neon green with a
+      glow (it flickers on, then breathes); under it, on the same panel (a third of the screen at least),
+      the Milky Way photograph Louie chose (`go/img/stars-2400.jpg`, 1200 on a phone), inverted on the dark
+      theme; "find the game I'm at" restyled as a neon pill under the logo, and today's counts. The logo is
+      sized from the panel's own width (container units), so it fits beside the rail and under the kit's
+      zoom. **Louie: the photograph's licence** (from rawpixel).
+- [x] **7.3 Arenas to tick off** — cards on a strip that slides across the screen (paused on hover; still
+      with reduced motion): the arenas of the fan's country that have a club and that the fan has not
+      stamped, each in its club's colours with its crest, or the arena's photograph where a fan's approved
+      one exists; each opens in Google Maps. The country: the one picked before (a picker beside the
+      title), else the country of the clubs and leagues the fan follows, else where their stamps are, else
+      the time zone, else the language's region.
+- [x] **7.4 The leaderboard** — three ways, each explained on its own button: distance (kilometres between
+      arenas, in the order made), games (every game stamped) and venues (each arena once); overall or by
+      league; the podium in gold, silver and bronze, the fan's own row lit. By games is new: migration
+      `0168_go_notes_and_games_board.sql` ranks it on the server, and the page ranks again, so it is right
+      before 0168 is pushed too.
+- [x] **7.5 THE FEED** — two rows of the fans' approved photographs (0167), one card changing at a time; with
+      none, the card outlines faded and "Prove your fandom — show your pictures of games". Two small buttons:
+      "add yours" (the stamps page, where each game takes a photograph) and "see the full feed" (the wall).
+      **Louie: the brief's sentence about a small button was cut off** — this is a guess.
+- [x] **7.6 Your stamps** — the latest six as cards like the strip's: the date, which game of the fan's it was
+      (#4), the teams with their crests and the score, and the trip that led there (115 km · from which
+      arena). "all your games" opens `/epinoia/go/stamps/`: the numbers and badges (4.4, moved here), the
+      map (D10: every arena pinned and numbered in the order gone, the trips drawn; zoom, pan, fit), and
+      every game, newest first, with the distance from the one before, the note, a photograph, take back.
+- [x] **7.7 A note about the occasion** — after a stamp, an optional note (and the photograph form); on the
+      stamps page, add or edit one per game. 0168: `stamps.note`, 280 characters, read only by the fan
+      (0165's own-read policy), written only by `set_stamp_note()`. Before 0168 is pushed the page asks
+      once, finds no column, and offers no note.
+- [x] **7.8 The logo wherever the name is written** — `go/logo.js` turns every "EPINOIA GO" in a page's
+      text into the logo (EPINOIΛ in the logotype, GO in Orbitron, the rail's pair; the kit styles it),
+      after translation, so Japanese and Spanish keep it too: the GO pages, the wall, the privacy page and
+      the platform console. Not in a browser tab's title, which cannot take a font.
+
+  Japanese and Spanish throughout (packs `go`, `info`, core for the rail's tooltip): every state harvested
+  in Chromium, nothing left in English but names. The privacy page's "What a stamp keeps" names the note,
+  and "The leaderboards" the games. 0168: PGlite 28 checks. Chromium: the intro 29, a stamp with its note
+  and the stamps page 20 (with and without 0168), screenshots light and dark, desktop and phone, en/ja/es.
+  `go-page.test.mjs`: 61, `go-boards.test.mjs`: 36. **0168 is live once Louie runs `db push`.**

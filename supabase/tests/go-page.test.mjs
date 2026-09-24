@@ -8,7 +8,13 @@
 
    The page itself was driven in Chromium with the phone's location faked and the database answered by a
    stand-in with 34 checks: signed out, no username yet, a stamp, refusals, location refused, nowhere
-   near a game, Japanese, Spanish, a phone in the dark. The harness lives outside the repo.
+   near a game, Japanese, Spanish, a phone in the dark. The redesign (2026-09-24) was driven the same way:
+   the intro in each of its modes (29 checks), a stamp with its note and photograph after it, the stamps
+   page with and without 0168 (20), every state harvested for English left in Japanese and Spanish, and
+   screenshots light and dark, desktop and phone. The harnesses live outside the repo.
+
+   Also here: the redesign - the intro, the hero, the sections, a note about the occasion (0168), the
+   stamps page and its map, and the EPINOIA GO logo wherever the name is written.
 
      node supabase/tests/go-page.test.mjs
    ============================================================================ */
@@ -91,9 +97,118 @@ console.log('\nthe page');
 ok('before 0165: EPINOIA GO opens soon, nothing that cannot work', /if \(games === 'missing'\) return closed\(\)/.test(js) && /EPINOIA GO opens soon\./.test(html));
 ok('a fan with no username is sent to the profile\'s username section', /a\.href = '\.\.\/me\/#username'/.test(js));
 ok('signed out: a sign-in that comes back here', /S\.access\.signinHref\(\)/.test(js));
-ok('names are data: never translated', /data\('div', 'm', \(g\.home \|\| '—'\) \+ ' v ' \+ \(g\.away \|\| '—'\)\)/.test(js) && /translate="no">EPINOIA GO</.test(html));
-ok('the go pack is loaded', /<script src="\.\.\/i18n\.js\?v=\d+" data-i18n-packs="go"><\/script>/.test(html));
-ok('no location in the page\'s own storage', !/localStorage|sessionStorage|indexedDB/.test(js));
+ok('names are data: never translated', /data\('div', 'm', \(g\.home \|\| '—'\) \+ ' v ' \+ \(g\.away \|\| '—'\)\)/.test(js)
+   && /<h1 id="goTitle"><span class="go-logo hero" role="img" aria-label="EPINOIA GO" translate="no" data-i18n="off">/.test(html));
+ok('the go pack is loaded, and the account pack (the intro\'s username words are the profile\'s)',
+   /<script src="\.\.\/i18n\.js\?v=\d+" data-i18n-packs="go account"><\/script>/.test(html));
+ok('no location in the page\'s own storage: only the intro seen, "later" for this visit, and the country picked',
+   (js.match(/localStorage|sessionStorage/g) || []).length === 4 && !/indexedDB/.test(js)
+   && /const KEYS = \{ intro: 'epinoia_go_intro', later: 'epinoia_go_intro_later', country: 'epinoia_go_country' \};/.test(js)
+   && [...js.matchAll(/(?<!function )\bstored?\(([^,)]+)/g)].every(m => /^KEYS\.(intro|later|country)$/.test(m[1].trim())));
+
+console.log('\nthe redesign (Louie, 2026-09-24): the intro');
+const css = rd('epinoia', 'go', 'go.css');
+ok('the screen goes black on the light theme, white on the dark, and asks in a sans serif',
+   /<div class="gi-msg" id="goIntroMsg">Please Enter A Username\.<\/div>/.test(html)
+   && /\.go-intro\{[^}]*background:#fbfdfc;/.test(css) && /:root\[data-theme="light"\] \.go-intro\{background:#000;/.test(css)
+   && /\.gi-msg\{font-family:var\(--f-ui\)/.test(css));
+ok('...then "Have Fun!" takes the prompt\'s place, and the page comes back',
+   /msg\.textContent = 'Have Fun!';/.test(js) && /box\.classList\.remove\('on'\);\s*entered\(\);/.test(js)
+   && /<div class="gi-below">/.test(html));
+ok('...once on a device; and for a fan with no username until they choose one, or say later (for this visit)',
+   /if \(noName && stored\(KEYS\.later, true\) !== '1'\) return 'ask';/.test(js) && /if \(stored\(KEYS\.intro\) === '1'\) return null;/.test(js)
+   && /return S\.session \? \(noName \? null : 'welcome'\) : 'signin';/.test(js));
+ok('...the name checked as it is typed and saved by 0163, which applies every rule again',
+   /rpc\('username_check', \{ p: v \}\)/.test(js) && /rpc\('set_username', \{ p: input\.value\.trim\(\) \}\)/.test(js)
+   && G.unameLocal('lo') === 'short' && G.unameLocal('9lives') === 'start' && G.unameLocal('bad name') === 'characters' && G.unameLocal('Louie_99') === '');
+ok('...every refusal in the profile\'s words, which the account pack translates',
+   ['ja', 'es'].every(code => Object.values(G.UNAME_WHY).every(w => rd('epinoia', 'i18n', code, 'account.js').includes("'" + w + "':"))));
+
+console.log('\nthe redesign: the hero');
+ok('the night sky under the logo, inverted on the dark theme',
+   existsSync(path.join(ROOT, 'epinoia', 'go', 'img', 'stars-2400.jpg')) && existsSync(path.join(ROOT, 'epinoia', 'go', 'img', 'stars-1200.jpg'))
+   && /\.go-hero-bg\{[^}]*url\('img\/stars-2400\.jpg'\)/.test(css) && /:root:not\(\[data-theme="light"\]\) \.go-hero-bg\{filter:invert\(1\)\}/.test(css));
+ok('...the logo sized from the hero\'s own width, so it fits beside the rail and under the kit\'s zoom',
+   /\.go-hero\{[^}]*container-type:inline-size\}/.test(css) && /\.go-logo\.hero\{[^}]*font-size:min\(13cqi,124px\)/.test(css));
+ok('...GO lit in neon green, and the one button under the logo',
+   /\.go-logo\.hero \.gl-go\{color:var\(--neon\);text-shadow:/.test(css)
+   && html.indexOf('id="goTitle"') < html.indexOf('id="goFind"') && html.indexOf('id="goFind"') < html.indexOf('</header>'));
+
+console.log('\nthe redesign: the sections');
+ok('arenas to tick off, then the leaderboard, the feed and the fan\'s stamps, in that order',
+   ['goStripSec', 'goBoardsSec', 'goFeedSec', 'goMineSec'].map(id => html.indexOf('id="' + id + '"')).every((v, i, a) => v > 0 && (!i || v > a[i - 1])));
+ok('the strip: the arenas of the fan\'s country with a club and no stamp of theirs, looping when there are enough',
+   /venues\?country=eq\./.test(js) && /teams!teams_home_venue_id_fkey\(name,short_name,colour,logo_path\)/.test(js)
+   && /@keyframes go-slide\{to\{transform:translateX\(-50%\)\}\}/.test(css) && /\.go-strip-track\{animation:none\}/.test(css));
+const guess = o => G.countryGuess(Object.assign({ available: ['FI', 'GB', 'JP'] }, o));
+ok('the country: the one picked before, then the clubs followed, the stamps, the time zone, the language, the first with arenas',
+   guess({ stored: 'gb', follows: ['FI'] }) === 'GB' && guess({ follows: ['JP', 'JP', 'FI'], stamps: ['FI'] }) === 'JP'
+   && guess({ stamps: ['FI', 'FI', 'GB'], tz: 'Asia/Tokyo' }) === 'FI' && guess({ tz: 'Asia/Tokyo', lang: 'en-GB' }) === 'JP'
+   && guess({ tz: 'America/Chicago', lang: 'en-GB' }) === 'GB' && guess({ stored: 'US', tz: 'Europe/Paris' }) === 'FI');
+ok('the feed: two rows of the fans\' photographs changing one at a time; with none, the outlines and the call',
+   /const FEED_N = 10;/.test(js) && /'Prove your fandom — show your pictures of games'/.test(js)
+   && /\.feed\.empty \.feed-card\{opacity:\.32;/.test(css) && /if \(document\.hidden\) return;/.test(js));
+ok('...a small button to add yours, and one to the whole wall',
+   /<a class="go-small fill" href="stamps\/#goListH">add yours<\/a><a class="go-small" href="photos\/">see the full feed<\/a>/.test(html));
+
+console.log('\na note about the occasion (0168)');
+const m168 = rd('supabase', 'migrations', '0168_go_notes_and_games_board.sql');
+ok('0168: one line, 280 characters, the fan\'s alone (stamps are read only by their owner)',
+   /alter table public\.stamps add column if not exists note text;/.test(m168)
+   && /check \(note is null or char_length\(note\) between 1 and 280\)/.test(m168) && /create policy stamps_own_read/.test(sql));
+ok('...written only by set_stamp_note, to the caller\'s own stamp; never by anon, never a direct update',
+   /update stamps set note = n where id = p_stamp and user_id = me;/.test(m168)
+   && /revoke all on function public\.set_stamp_note\(uuid, text\) from public, anon;/.test(m168)
+   && /grant execute on function public\.set_stamp_note\(uuid, text\) to authenticated;/.test(m168)
+   && /has_table_privilege\('authenticated', 'public\.stamps', 'update'\)/.test(m168));
+const reasons168 = [...new Set([...m168.matchAll(/'reason', '([a-z_]+)'/g)].map(m => m[1]))];
+ok('...each refusal in words on the page', reasons168.length === 3 && reasons168.every(r => G.NOTE_WHY[r]), reasons168);
+ok('the page asks for it after a stamp and on the stamps page; before 0168 the stamps still come, with no note',
+   /rpc\('set_stamp_note', \{ p_stamp: x\.id, p_note: text \}\)/.test(js) && /get\('note,' \+ STAMP_COLS\)/.test(js)
+   && /if \(rows === 'retry'\) rows = await get\(STAMP_COLS\);/.test(js) && /if \(S\.noteOk\) \{\s*box\.appendChild\(el\('h3', null, 'A note about the occasion'\)\);/.test(js));
+const nums168 = (await import('node:fs')).readdirSync(path.join(ROOT, 'supabase', 'migrations')).filter(f => /^0168_/.test(f));
+ok('0168 is the only 0168', nums168.length === 1, nums168);
+
+console.log('\nthe stamps page (go/stamps/)');
+const sp = rd('epinoia', 'go', 'stamps', 'index.html');
+ok('the numbers and badges, the map, every game with the distance from the one before, and the photographs',
+   ['goTally', 'goBadges', 'goBigMap', 'goStampList', 'goPhotos'].map(id => sp.indexOf('id="' + id + '"')).every((v, i, a) => v > 0 && (!i || v > a[i - 1])));
+ok('...its own page to the page\'s script (go.js knows it by #goStampsPage), with the map\'s',
+   /<div class="ep-frame go" id="goStampsPage">/.test(sp) && /<script src="\.\.\/map\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\.js\?v=\d+" defer><\/script>/.test(sp)
+   && /const onStampsPage = \(\) => !!document\.getElementById\('goStampsPage'\)/.test(js));
+ok('...signed out, a way in and nothing else', /out\.classList\.remove\('hide'\)/.test(js) && /body\.classList\.add\('hide'\)/.test(js));
+ok('..."from" there is the arena before (its own context: the core file\'s "from" is a date\'s start)',
+   /leg\.setAttribute\('data-i18n-ctx', 'goleg'\)/.test(js)
+   && ['ja', 'es'].every(code => /goleg: \{\s*'from':/.test(rd('epinoia', 'i18n', code, 'go.js'))));
+const M = require(path.join(ROOT, 'epinoia', 'go', 'map.js'));
+const one = M.fit([{ lat: 60.19, lng: 24.93 }], 800, 500);
+ok('the map: one arena, a street-level view of it', one.z === 13 && one.lat === 60.19 && one.lng === 24.93, one);
+const fin = [{ lat: 60.1896, lng: 24.9278 }, { lat: 60.4677, lng: 26.9458 }];
+const inView = (v, p) => { const x = M.lngX(p.lng, v.z) - M.lngX(v.lng, v.z) + 400, y = M.latY(p.lat, v.z) - M.latY(v.lat, v.z) + 250;
+  return x >= 47.5 && x <= 752.5 && y >= 47.5 && y <= 452.5; };
+const f = M.fit(fin, 800, 500);
+ok('...several: the closest zoom that shows them all, with a margin', fin.every(p => inView(f, p))
+   && !fin.every(p => inView(Object.assign({}, f, { z: f.z + 1 }), p)), f);
+ok('...Helsinki to Tokyo still on one screen', M.fit([{ lat: 60.19, lng: 24.93 }, { lat: 35.64, lng: 139.79 }], 800, 500).z === 3);
+const mj = rd('epinoia', 'go', 'map.js');
+ok('...OpenStreetMap\'s tiles as plain images (the CSP allows images from https), credited as their licence asks',
+   /'https:\/\/tile\.openstreetmap\.org\/' \+ z/.test(mj) && /attr\.textContent = '© OpenStreetMap contributors';/.test(mj)
+   && /https:\/\/www\.openstreetmap\.org\/copyright/.test(mj) && /img-src 'self' data: blob: https:;/.test(sp) && !/<script src="http/.test(sp));
+
+console.log('\nthe logo, wherever the name is written');
+const L = require(path.join(ROOT, 'epinoia', 'go', 'logo.js'));
+const parts = L.split('Stamp a game on EPINOIA GO and add yours.');
+ok('the name is found in a sentence, in either spelling', parts.length === 3 && parts[1] === null && parts[0] === 'Stamp a game on '
+   && L.split('EPINOIΛ GO').length === 1 && L.split('Epinoia go') === null);
+ok('...on every page that writes it, after the page is translated (the name is kept in every language)',
+   ['go/index.html', 'go/stamps/index.html', 'go/photos/index.html', 'privacy/index.html', 'admin/platform/index.html']
+     .every(p => /<script src="[./]*(go\/)?logo\.js\?v=\d+" defer><\/script>/.test(rd('epinoia', ...p.split('/'))))
+   && /window\.EpinoiaI18n\.whenReady\(go\)/.test(rd('epinoia', 'go', 'logo.js')));
+ok('...EPINOIΛ in the logotype and GO in Orbitron, lit: the rail\'s pair, in the kit',
+   /\.go-logo \.gl-ep\{ font-family:'EpinoiaMark'/.test(rd('epinoia', 'kit', 'epinoia-kit.css'))
+   && /\.go-logo \.gl-go\{ font-family:var\(--f-go,'Orbitron'/.test(rd('epinoia', 'kit', 'epinoia-kit.css')));
+ok('...and the translations keep the name as it is, so it is found in Japanese and Spanish too',
+   ['ja', 'es'].every(code => { const s = rd('epinoia', 'i18n', code, 'go.js'); return /'‹ back to EPINOIA GO': '[^']*EPINOIA GO[^']*'/.test(s); }));
 
 console.log('\nin the rail (6.3)');
 const nav = rd('epinoia', 'nav.js'), navCss = rd('epinoia', 'kit', 'nav.css'), kit = rd('epinoia', 'kit', 'epinoia-kit.css');

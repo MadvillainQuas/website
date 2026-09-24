@@ -74,6 +74,22 @@
   font-weight:400;
 }
 
+/* THE EPINOIA GO LOGO (epinoia/go/logo.js), wherever the name is written: EPINOIΛ in the logotype, GO in
+   Orbitron in the site's green, on one baseline with their capitals the same height - GO at .9545 of the
+   logotype's size, the ratio measured for the rail's row (Orbitron draws taller capitals per em). Inline
+   in running text it is a little smaller than the capitals around it (the logotype's capitals are as
+   tall as Archivo's, and a full-height wide mark shouts in a sentence), and plain inline so a link's
+   underline runs under it; in a heading it takes the heading's size; the GO page sets its own. */
+.go-logo{ display:inline-flex; align-items:baseline; gap:.3em; white-space:nowrap; line-height:1;
+  letter-spacing:0; text-transform:none; vertical-align:baseline }
+.go-logo .gl-ep{ font-family:'EpinoiaMark','Archivo',system-ui,sans-serif; text-transform:uppercase;
+  letter-spacing:.02em; font-weight:400 }
+.go-logo .gl-go{ font-family:var(--f-go,'Orbitron',system-ui,sans-serif); font-weight:700; font-size:.9545em;
+  letter-spacing:.06em; color:var(--lume) }
+.go-logo.inline{ display:inline; font-size:.82em }
+.go-logo.inline .gl-go{ margin-left:.3em }
+.go-logo.head{ font-size:1em }
+
 /* SIZED BY WIDTH, NOT BY POINTS. The logotype sets at 467px per 100px against
    the scoreboard face's 298px, so a size that suited the old wordmark reads as
    a much bigger object in this one. 60px puts EPINOIΛ at about 280px, against

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- PUBLIC PAGE, PRIVATE CONTENT: a fan's own stamps (only they can read them, 0165), EPINOIA GO's stamps
+     page (docs/epinoia-go.md, phase 7): the numbers and badges, the map of every arena and the trips
+     between them (map.js, OpenStreetMap's tiles), every game with the distance from the last and the fan's
+     note (0168), and their photographs. Behaviour in ../go.js (it knows this page by #goStampsPage). -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Your stamps · EPINOIA GO · Epinoia</title>
+<meta name="description" content="Every game you have been to: the arenas, the distance between them, and the map.">
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
+<script src="../../appmode.js?v=389"></script>
+<script src="../../i18n.js?v=389" data-i18n-packs="go"></script>
+<script src="../../glyphs.js?v=389" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=389">
+<link rel="stylesheet" href="../../kit/nav.css?v=389">
+<link rel="stylesheet" href="../go.css?v=389">
+</head>
+<body>
+<div class="ep-frame go" id="goStampsPage">
+  <header class="go-hero sm">
+    <div class="go-hero-bg" aria-hidden="true"></div>
+    <a class="plain" href="../"><span class="go-logo hero sm" role="img" aria-label="EPINOIA GO" translate="no" data-i18n="off"><span class="gl-ep" aria-hidden="true">EPINOIΛ</span><span class="gl-go" aria-hidden="true">GO</span></span></a>
+    <h1 class="go-h1">Your stamps</h1>
+    <a class="go-back" href="../">‹ back to EPINOIA GO</a>
+  </header>
+
+  <main class="go-main">
+    <div id="goStampsOut" class="hide"></div>
+    <div id="goStampsBody">
+      <section class="gb" aria-labelledby="goNumsH">
+        <div class="gb-hdr"><span class="gb-idx">01</span><h2 class="gb-title" id="goNumsH">So far</h2></div>
+        <div class="go-tally" id="goTally"></div>
+        <!-- badges (4.4): the first stamp, 10 arenas, 1,000 km, every arena in a league - go.js -->
+        <div class="go-badges" id="goBadges" role="list" aria-label="Badges"></div>
+      </section>
+
+      <section class="gb" aria-labelledby="goMapH">
+        <div class="gb-hdr"><span class="gb-idx">02</span><h2 class="gb-title" id="goMapH">The map</h2>
+          <p class="gb-sub">Every arena you stamped, numbered in the order you went, and the trips between them.</p></div>
+        <div id="goBigMap" role="img" aria-label="A map of the arenas you stamped"></div>
+      </section>
+
+      <section class="gb" aria-labelledby="goListH">
+        <div class="gb-hdr"><span class="gb-idx">03</span><h2 class="gb-title" id="goListH">Every game</h2>
+          <p class="gb-sub">Newest first: the game, the score, how far it was from the one before, and your note.</p></div>
+        <ol class="sl-list" id="goStampList"></ol>
+      </section>
+
+      <section class="gb" aria-label="Your photographs">
+        <div id="goPhotos"></div>
+      </section>
+    </div>
+    <footer class="go-foot">Epinoia Network</footer>
+  </main>
+</div>
+<script src="../../config.js?v=389" defer></script>
+<script src="../../access.js?v=389" defer></script>
+<script src="../../upload.js?v=389" defer></script>
+<script src="../logo.js?v=389" defer></script>
+<script src="../map.js?v=389" defer></script>
+<script src="../go.js?v=389" defer></script>
+<script src="../../nav.js?v=389" defer></script>
+</body>
+</html>

@@ -1395,7 +1395,8 @@
       'Kosovo': 'コソボ',
       'Averages': '平均',
       'full table': '成績表',
-      'screenshot': 'スクリーンショット'
+      'screenshot': 'スクリーンショット',
+      'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO：試合会場で、行ったアリーナをスタンプ'
     },
 
     ctx: {
