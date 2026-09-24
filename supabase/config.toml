@@ -82,3 +82,10 @@ verify_jwt = false
 # answer is only { opened: true|false }.
 [functions.fanvote]
 verify_jwt = false
+
+# snapshots (migration 0152) is called by the database's five-minute tick (pg_cron +
+# pg_net), which holds no user token. It takes nothing from the caller: it rebuilds
+# only what changed since it last ran, reads as a signed-out visitor, writes only
+# the snapshots tables, and answers counts.
+[functions.snapshots]
+verify_jwt = false

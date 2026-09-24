@@ -117,7 +117,8 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
   for (const id of ids) {
     const key = 'season:' + id;
     const tok = tokens.get(id);
-    const visible = !!tok && !/^0@/.test(tok);
+    if (tok == null) continue;       // not known this call (a blip, or no count): leave it as it is
+    const visible = !/^0@/.test(tok);
     if (!visible) {
       /* nothing a signed-out reader can see (private, members-only, or no finals): no
          snapshot. One kept from before is dropped; its policy already hides it. */
