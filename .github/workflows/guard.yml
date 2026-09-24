@@ -461,6 +461,14 @@ jobs:
         # overtime and a basket the league logged with no player included
         run: python scripts/ingest/lnbp_test.py
 
+      - name: Finland (Korisliiga, Naisten Korisliiga, I divisioona A and B) from TorneoPal and Sportradar
+        # basketfi.py over cached TorneoPal lists and EUI replies: each league a TorneoPal category, the
+        # fixtures TorneoPal never linked joined on clubs and date, the jatkosarja kept in the regular
+        # season and a play-off series row never taken for a game, club codes only when they abbreviate
+        # the club, and six pre-season games reconciling box, score, 5v5 stints and event log - with a
+        # game whose stats feed lost its overtime held rather than filed as a draw
+        run: python scripts/ingest/basketfi_test.py
+
       - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
         # nbl.py over cached season lists, schedules and game replies: only each league's main
         # season is discovered (never the pre-season, the Blitz or a cup final), the WNBL's finals

@@ -71,13 +71,22 @@ class Platform:
         return self.sb.upsert(table, row, on_conflict)[0]
 
     # -- league / season / competition ------------------------------------------
-    def league(self, code: str, name: str, slug: str | None = None, country: str | None = None) -> dict:
+    def league(self, code: str, name: str, slug: str | None = None, country: str | None = None,
+               gender: str | None = None) -> dict:
         slug = slug or slugify(code)
-        r = self.one("leagues", f"slug=eq.{slug}&select=id,slug,name,country")
+        # a source row's league_gender (0131: the scouting page's men's / women's split). Only ever
+        # FILLS a blank: the platform console's set_league_gender is the owner of a league's gender.
+        gender = gender if gender in ("men", "women", "mixed") else None
+        r = self.one("leagues", f"slug=eq.{slug}&select=id,slug,name,country" + (",gender" if gender else ""))
         if r:
-            if country and not r.get("country") and self.sb and not self.dry:
+            fill = {}
+            if country and not r.get("country"):
+                fill["country"] = country
+            if gender and not r.get("gender"):
+                fill["gender"] = gender
+            if fill and self.sb and not self.dry:
                 try:
-                    self.sb.patch("leagues", f"id=eq.{r['id']}", {"country": country})
+                    self.sb.patch("leagues", f"id=eq.{r['id']}", fill)
                 except Exception:
                     pass
             return r
@@ -85,6 +94,8 @@ class Platform:
         row = {"slug": slug, "name": name, "public_live": True, "youth_protected": False}
         if country:
             row["country"] = country
+        if gender:
+            row["gender"] = gender
         lg = self.insert("leagues", row)
         # a league nobody administers is invisible in the console: hand it to every platform admin
         if self.sb and not self.dry:

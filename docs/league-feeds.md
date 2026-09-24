@@ -428,3 +428,79 @@ AreaCD is a court-zone id that comes free alongside the raw X/Y, and the box row
 - Game date comes from Game.GameDateTime, a UNIX EPOCH STRING (e.g. "1772859900"), converted at :14939-14944. The schedule card deliberately leaves game_date empty.
 - The seed constant scrape-now.py:103 is pinned to year=2025 — see current_season. Also `tab=1` is the B1 tab; nothing in the codebase scrapes B2, and event codes beyond 2/3 are not enumerated.
 - Game page is ~940 KB of HTML for one game; the blob regex is anchored with re.M and `\s*$`, so the assignment must be the last thing on its line.
+
+## Finland: Korisliiga, Naisten Korisliiga, I divisioona A and B (basket.fi)
+
+Added 2026-09-24. Adapter `scripts/ingest/adapters/basketfi.py`, test `scripts/ingest/basketfi_test.py`,
+source codes KORIS, KORISW, FIN1A, FIN1B (a regular-season row and a play-off row each).
+
+### host
+
+TorneoPal (the federation's result service, tulospalvelu.basket.fi) for the schedule and the official
+results; Sportradar EUI website 322 (the widget every match page embeds) for the box score and the
+play-by-play. The game side is LnbAdapter's, unchanged.
+
+### current_season
+
+TorneoPal's `competition_id` is the season's top series, "huki" + the two years: 2026-27 = huki2627,
+2025-26 = huki2526. Derived from the platform's season name (the July cut-over when none is set). A
+league is a category within it: 4 Korisliiga, 1 Naisten Korisliiga, 2 Miesten I divisioona A,
+29461 Miesten I divisioona B. The same category ids held in 2025-26.
+
+### schedule_recipe
+
+    GET https://koripallo-api.torneopal.net/taso/rest/getMatches?competition_id=huki2627&category_id=4
+        headers: Accept: json/df8e84j9xtdz269euy3h, Origin/Referer https://tulospalvelu.basket.fi
+    GET https://embed-api.eui.connect.sportradar.com/v1/embed/322/fixtures?state=<{"l":"en-EN","s":<season>,"z":"RESULTS"|"FIXTURES"}>
+        the same season in the EUI's words, for club codes and each fixture's status
+
+A category's `category_external_id` IS the EUI season id; a match's `match_external_id` IS the EUI
+fixture id. Games are keyed `<season>_<fixture>`, as LNB's are. Stages come from `group_type`:
+knockout_* = play-offs, group_stage and additional_group_stage (Korisliiga's upper/lower
+jatkosarja) = regular season. A `match_type` "series" row is a play-off series' summary, not a game.
+Tip-offs are local date + time + the match's own `time_zone_offset` ("+0200" in lists, "+03:00" in
+one match).
+
+### game_recipe
+
+LnbAdapter.fetch with website 322 and locale en-EN (fi-FI answers 500): `fixture_detail` twice,
+`z` = pbp and statistics, `f` = the fixture, `s` = the category's season id.
+
+### parser_entry
+
+`BasketFiAdapter` (adapters/basketfi.py) over `LnbAdapter`: discovery is new, the game is inherited.
+
+### names
+
+The two systems name clubs identically (every linked fixture of all four leagues in 2026-27 checked,
+none differs), so the TorneoPal names stand. Players come from the EUI box ("Daniel Dolenc").
+
+### logos
+
+TorneoPal's club crest, `club_A_crest` / `club_B_crest` (https://cdn.torneopal.net/logo/koripallo/<club id>x.png).
+
+### shots
+
+The EUI's x/y on every shot, as for LNB.
+
+### probe
+
+Discovery for all four leagues on 2026-09-24: Korisliiga 204 fixtures from 29 Sep (12 clubs x 34),
+Naisten Korisliiga 108 from 2 Oct, I divisioona A 132 from 8 Oct, I divisioona B 110 from 9 Oct; every
+one of them joined to a stats fixture.
+
+### gotchas
+
+- TorneoPal leaves `match_external_id` blank on some fixtures (18 of Naisten Korisliiga's 108, 15 of
+  I divisioona A's 132 in 2026-27) though the EUI has them all. They are joined on the two clubs and the
+  local date; a moved game only when exactly one partner is within 21 days.
+- The official result is TorneoPal's. Leppävaaran Pyrintö v Puhuttaret (women's pre-season, 4 Sep 2026)
+  is 64-63 after overtime there, and the EUI stops at 63-63 with no overtime in it. A game the two
+  disagree on is held (fetch returns nothing and says so) rather than filed as a draw.
+- EUI codes are believed only when they abbreviate the club (Kouvottaret is "SAL", ACO Basket "OUL",
+  Korihait "UKI"), and a code two clubs of one league share is dropped (Espoo Basket Team's first and
+  second teams are both "EBT" in the women's pre-season). A code becomes a club's short name and its key.
+- The pre-season ("Valmistavat ottelut", categories 39227 and 42825) is not published: the league
+  pages' whole-season numbers take every competition, friendlies included. Six of its games are the
+  test's vetting set, one of them a player with six fouls, which the translator files as the bench's
+  after his fifth as it does everywhere.

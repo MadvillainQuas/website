@@ -265,12 +265,15 @@ def resolve_league(sb: Supabase, src: dict, run: dict) -> str | None:
         fc = sb.select("feed_competitions", f"code=eq.{src['code']}&select=league_id")
         league_id = fc[0]["league_id"] if fc and fc[0].get("league_id") else None
         if not league_id:
-            lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"), src.get("league_country"))
+            lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"),
+                             src.get("league_country"), src.get("league_gender"))
             league_id = lg["id"]
             sb.upsert("feed_competitions", {"code": src["code"], "label": src.get("label", src["code"]), "adapter": src["adapter"], "league_id": league_id, "updated_at": now_iso()}, "code")
             print(f"    + league {src.get('league_slug') or src['code']} created for {src['code']}")
-        elif src.get("league_country"):        # keep an existing league's country in step with the registry
-            plat.league(src["code"], src.get("league_name") or src["code"], src.get("league_slug"), src["league_country"])
+        elif src.get("league_country") or src.get("league_gender"):
+            # keep an existing league's country (and a blank gender) in step with the registry
+            plat.league(src["code"], src.get("league_name") or src["code"], src.get("league_slug"),
+                        src.get("league_country"), src.get("league_gender"))
         src["league_id"] = league_id
     except Exception as exc:
         print(f"    (league creation failed: {exc})")

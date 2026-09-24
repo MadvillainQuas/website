@@ -316,7 +316,7 @@ class LnbAdapter(FibaLiveStatsAdapter):
             c, side = comps.get(eid) or {}, by_entity.get(eid) or {}
             qs = quarters.get(eid) or {}
             t = S.team(
-                self._club_name(c), (c.get("code") or "").strip(),
+                self._club_name(c), self._club_code(c),
                 score=c.get("score"),           # the club's official final, not a re-sum
                 quarters=[qs.get(i) for i in (1, 2, 3, 4)],
                 players=rosters.get(eid) or {},
@@ -354,6 +354,11 @@ class LnbAdapter(FibaLiveStatsAdapter):
     def _club_name(self, competitor: dict) -> str:
         """The club's name as the game feed spells it (lnbp.py, whose feed gives only the code, overrides this)."""
         return (competitor.get("name") or "").strip()
+
+    def _club_code(self, competitor: dict) -> str:
+        """The club's code as the game feed spells it: the key a club is found by (basketfi.py drops a code
+        two clubs of one league share, which would otherwise make them one club)."""
+        return (competitor.get("code") or "").strip()
 
     @staticmethod
     def _played(fixture: dict, pbp: dict) -> bool:
