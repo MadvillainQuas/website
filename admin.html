@@ -1373,8 +1373,15 @@
                 return 'https://prophesyscouting.co.uk/?invite=' + encodeURIComponent(code);
             }
         }
-        if (inviteLinkInput) inviteLinkInput.value = buildInviteUrl();
-        if (inviteCodeOnly) inviteCodeOnly.textContent = currentInviteCode();
+        /* the code lives only in the browser that set it (never in this public file): a
+           browser without one says how to get one rather than offering a link with no code */
+        if (currentInviteCode()) {
+            if (inviteLinkInput) inviteLinkInput.value = buildInviteUrl();
+            if (inviteCodeOnly) inviteCodeOnly.textContent = currentInviteCode();
+        } else {
+            if (inviteLinkInput) { inviteLinkInput.value = ''; inviteLinkInput.placeholder = 'No invite code in this browser: press Rotate invite code below to make one'; }
+            if (inviteCodeOnly) inviteCodeOnly.textContent = '(rotate to create)';
+        }
 
         function flashInviteStatus(msg, kind) {
             if (!inviteCopyStatus) return;
