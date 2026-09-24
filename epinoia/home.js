@@ -1187,6 +1187,78 @@ async function comps() {
   return compIdsCache;
 }
 
+/* THE CARD IS A LINK, AND THE TABLE UNDER IT STILL SCROLLS. The link lies over the whole embed
+   so a tap anywhere opens the page - which also meant the rows inside (every club, the top
+   thirty) could not be scrolled at all: the wheel and the finger both landed on the link
+   (reported 2026-09-24). So the link passes on what is not a tap:
+     a wheel over the card    scrolls the table; at its top or bottom the page scrolls instead
+     a drag (finger or mouse) scrolls the table, with a little glide when a finger lets go;
+                              one that is mostly sideways, or that meets the table's end, is
+                              left to the page
+     a tap or a click         is still the link - unless the pointer moved, which was a drag
+   The embed is this site's own page, so its scroller (#host) is reached directly. */
+function scrollThrough(link, frame) {
+  const box = () => {
+    try { return frame.contentDocument && frame.contentDocument.getElementById('host'); } catch (_) { return null; }
+  };
+  /* how far the table moved: 0 when it was already at that end, so the page may have the gesture */
+  const move = (s, dy) => {
+    const was = s.scrollTop;
+    s.scrollTop = Math.max(0, Math.min(s.scrollHeight - s.clientHeight, was + dy));
+    return s.scrollTop - was;
+  };
+  link.addEventListener('wheel', e => {
+    const s = box();
+    if (!s || e.ctrlKey) return;                       /* ctrl+wheel is the browser's zoom */
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? s.clientHeight : 1;
+    if (move(s, e.deltaY * unit)) e.preventDefault();
+  }, { passive: false });
+
+  let drag = null, dragged = false, glide = 0;
+  const stop = () => { if (glide) cancelAnimationFrame(glide); glide = 0; };
+  const start = (x, y) => { stop(); drag = { x, y, last: y, t: performance.now(), v: 0, axis: '' }; };
+  const step = (x, y, e) => {
+    if (!drag) return;
+    const s = box();
+    if (!s) return;
+    if (!drag.axis) {
+      if (Math.abs(x - drag.x) < 6 && Math.abs(y - drag.y) < 6) return;
+      drag.axis = Math.abs(y - drag.y) >= Math.abs(x - drag.x) ? 'y' : 'x';
+    }
+    if (drag.axis !== 'y') { dragged = true; return; }
+    const dy = drag.last - y;
+    const now = performance.now();
+    drag.v = dy / Math.max(1, now - drag.t);
+    drag.last = y; drag.t = now;
+    if (move(s, dy)) { dragged = true; if (e && e.cancelable) e.preventDefault(); }
+  };
+  const end = () => {
+    if (!drag) return;
+    const s = box();
+    let v = drag.v * 16;                              /* px per frame */
+    drag = null;
+    if (!s || Math.abs(v) < 1) return;
+    const run = () => {
+      v *= 0.94;
+      if (Math.abs(v) < 0.5 || !move(s, v)) { glide = 0; return; }
+      glide = requestAnimationFrame(run);
+    };
+    glide = requestAnimationFrame(run);
+  };
+  link.addEventListener('touchstart', e => { dragged = false; const t = e.touches[0]; if (t) start(t.clientX, t.clientY); }, { passive: true });
+  link.addEventListener('touchmove', e => { const t = e.touches[0]; if (t) step(t.clientX, t.clientY, e); }, { passive: false });
+  link.addEventListener('touchend', end, { passive: true });
+  link.addEventListener('touchcancel', () => { drag = null; }, { passive: true });
+  /* a mouse drag too: the link's own drag (of its URL) would otherwise take it */
+  link.addEventListener('dragstart', e => e.preventDefault());
+  link.addEventListener('mousedown', e => { if (e.button === 0) { dragged = false; start(e.clientX, e.clientY); } });
+  window.addEventListener('mousemove', e => { if (drag && e.buttons & 1) step(e.clientX, e.clientY, e); });
+  window.addEventListener('mouseup', () => { if (drag) end(); });
+  link.addEventListener('click', e => {
+    if (dragged) { e.preventDefault(); dragged = false; }
+  });
+}
+
 /* which competition the two embeds are showing; '' until the season is known,
    which is the embed's own default (its first competition) */
 let splashComp = '';
@@ -1233,6 +1305,8 @@ function splash() {
     a.href = c.href;
     a.setAttribute('aria-label', 'Open the ' + LEAGUE.name + ' ' + c.title.toLowerCase());
     card.appendChild(a);
+
+    scrollThrough(a, f);
 
     c.frame = f; c.link = a;
     grid.appendChild(card);

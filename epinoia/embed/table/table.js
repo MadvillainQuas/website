@@ -103,7 +103,7 @@ const nameCell = (label, colour, abbr, logo) => {
     const img = document.createElement('img');
     img.src = url; img.alt = '';
     img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';
-    img.addEventListener('error', () => { img.remove(); c.textContent = (abbr || '').slice(0, 2).toUpperCase(); c.style.background = colour || '#93f2bf'; });
+    img.addEventListener('error', () => { img.remove(); c.textContent = (abbr || '').slice(0, 2).toUpperCase(); c.style.background = colour || 'var(--ep-accent)'; });
     c.appendChild(img); w.appendChild(c);
   } else if (colour) {
     const c = el('span', 'c', (abbr || '').slice(0, 2).toUpperCase());

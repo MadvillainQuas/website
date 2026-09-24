@@ -381,11 +381,11 @@
 
 .ep-foot{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
-  padding:7px 12px; border-top:1px solid rgba(147,242,191,.14);
+  padding:7px 12px; border-top:1px solid color-mix(in oklch, var(--ep-accent) 20%, transparent);
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
   letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.34);
 }
-.ep-foot a:hover{ color:#93f2bf }
+.ep-foot a:hover{ color:var(--ep-accent-ink, var(--ep-accent)) }
 
 .ep-empty{
   padding:26px 16px; text-align:center; color:rgba(230,255,241,.45);
@@ -479,7 +479,7 @@
 }
 .cse[data-theme="light"] .ep-game .lead b{ color:#0d1f17 }
 .cse[data-theme="light"] .ep-foot{
-  color:rgba(13,31,23,.45); border-top-color:rgba(13,31,23,.12);
+  color:rgba(13,31,23,.45); border-top-color:color-mix(in oklch, var(--ep-accent) 24%, transparent);
 }
 .cse[data-theme="light"] .ep-empty{ color:rgba(13,31,23,.5) }
 .cse[data-theme="light"] .ep-tbl th{
