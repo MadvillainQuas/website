@@ -47,6 +47,7 @@ import requests
 from . import fibashape as S
 from .base import GameBundle, ScheduleGame
 from .fiba_livestats import FibaLiveStatsAdapter
+import names as _names                  # noqa: E402  (scripts/ingest is on sys.path via fiba_livestats)
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36"
 SCHEDULE = ("https://feeds.incrowdsports.com/provider/euroleague-feeds/v2/competitions/"
@@ -185,31 +186,54 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
              "code": (pbp.get("CodeTeamB") or "").strip(), "box": stats[1]},
         ]
         quarters = self._quarters(box)
-        shots = self._shots_by_code(points)
         joined = self._pbp_join(points)
 
-        tm, rosters = [], []
-        for i, side in enumerate(sides):
+        rosters = []
+        for side in sides:
             players = {}
             for row in side["box"].get("PlayersStats") or []:
-                # Player_ID is the one stable handle in this feed; the NAME is shouted and
-                # comma-flipped, which names.py sorts out downstream.
+                # Player_ID is the one stable handle in this feed. THE NAME IS SHOUTED AND
+                # COMMA-FLIPPED ("OKOBO, ELIE"), and it is turned into the platform's form HERE, in
+                # the payload, because the payload is what the game page reads: its roster, its
+                # court and its box score come from games.roster_snapshot and game_advanced, built
+                # straight from these fields, not from the players table names.py fills. Passed
+                # through raw, every EuroLeague game page read "OKOBO, ELIE" (reported 24 Sep
+                # 2026). The feed's own form stays as scoreboardName, so it is still an alias.
                 pno = (row.get("Player_ID") or "").strip() or str(len(players) + 1)
+                shouted = (row.get("Player") or "").strip()
+                first, last, _ = _names.person(shouted)
                 players[pno] = S.player(
-                    name=(row.get("Player") or "").strip(),
+                    first=first, last=last, name=f"{first} {last}".strip() or shouted,
                     shirt=(row.get("Dorsal") or "").strip(),
                     starter=row.get("IsStarter"), active=1,
                     minutes=(row.get("Minutes") or "0:00").strip() or "0:00",
                     stats=_stats(row))
-            totals = self._team_totals(side["box"], players)
+                if shouted:
+                    players[pno]["scoreboardName"] = shouted
             rosters.append(players)
+
+        # the plays first: each is numbered, and the shot chart joins its dots to those numbers
+        numbered: dict = {}
+        events = self._events(pbp, sides, rosters, joined, numbered)
+        shots = self._shots_by_code(points, numbered)
+
+        tm = []
+        for i, side in enumerate(sides):
+            totals = self._team_totals(side["box"], rosters[i])
             tm.append(S.team(side["name"], side["code"],
                              score=totals.get("sPoints"),
-                             quarters=quarters[i], players=players,
+                             quarters=quarters[i], players=rosters[i],
                              shots=shots.get(side["code"], []), totals=totals))
 
         played = self._played(box, pbp, tm)
-        raw = S.game(tm[0], tm[1], played=played, pbp=self._events(pbp, sides, rosters, joined))
+        raw = S.game(tm[0], tm[1], played=played, pbp=events)
+        # S.game closes a finished game whose log never did with a game-end of its own; it is a
+        # play like the others and needs its number, or the translator drops it with the rest
+        top = max((e.get("actionNumber") or 0 for e in raw["pbp"]), default=0)
+        for e in raw["pbp"]:
+            if e.get("actionNumber") is None:
+                top += 1
+                e["actionNumber"] = top
         b = self.bundle_from_raw(raw, str(external_id), config)
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
@@ -261,11 +285,13 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
         return out
 
     @staticmethod
-    def _shots_by_code(points: dict) -> dict:
+    def _shots_by_code(points: dict, numbered: Optional[dict] = None) -> dict:
         """The Points rows as chart-percentage shots, per team code.
 
         Free throws are sentinel-coded (-1, -1) and are not shots on a chart; everything else is
-        an offset in centimetres from the basket it was taken at."""
+        an offset in centimetres from the basket it was taken at. `numbered` (NUMBEROFPLAY ->
+        actionNumber, from _events) gives each dot the number of its play, which is how the event
+        translator puts a shot on the game page's chart."""
         out: dict = {}
         for r in (points or {}).get("Rows") or []:
             act = (r.get("ID_ACTION") or "").strip()
@@ -276,9 +302,12 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
                 continue
             x, y = S.at_rim_offset(cx, cy)
             code = (r.get("TEAM") or "").strip()
-            out.setdefault(code, []).append(
-                S.shot(x, y, made=act.endswith("M"), three=act.startswith("3"),
-                       period=S.num(r.get("MINUTE")) // 10 + 1))
+            s = S.shot(x, y, made=act.endswith("M"), three=act.startswith("3"),
+                       period=S.num(r.get("MINUTE")) // 10 + 1)
+            an = (numbered or {}).get(S.num(r.get("NUM_ANOT"), -1))
+            if an is not None:
+                s["actionNumber"] = an
+            out.setdefault(code, []).append(s)
         return out
 
     # ----------------------------------------------------------- play-by-play ---
@@ -334,8 +363,16 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
         return per
 
     @classmethod
-    def _events(cls, pbp: dict, sides: list, rosters: list, joined: dict) -> list:
+    def _events(cls, pbp: dict, sides: list, rosters: list, joined: dict, numbered: Optional[dict] = None) -> list:
         """The PlayByPlay feed as the event stream scripts/ingest/stints.py replays.
+
+        EVERY EVENT IS NUMBERED, actionNumber 1..n in play order, as every other adapter's are:
+        the event translator (translate/fiba_events.py) sorts by it and drops an event without
+        one. These had none, so no EuroLeague game ever had an event log on the site - the page's
+        box score, built from that log, read 0-0 at the end of the first quarter with every
+        player on ten minutes (24 Sep 2026). `numbered`, when given, is filled with the feed's
+        NUMBEROFPLAY -> actionNumber, for the shot chart's join; a "foul drawn" row carries the
+        number of the foul it answers (previousAction), which the translator needs to credit it.
 
         THE CLOCK IS THE POINT OF THIS, more than the stats are. MARKERTIME is time REMAINING in
         the period, which is already FIBA's convention, so `gt` is passed straight through; what
@@ -359,6 +396,20 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
         rows += list(zip(cls._ot_periods(extra), extra))
 
         out: list = []
+
+        def add(ev: dict, row: dict) -> dict:
+            ev["actionNumber"] = len(out) + 1
+            out.append(ev)
+            n = S.num(row.get("NUMBEROFPLAY"), -1)
+            if numbered is not None and n != -1:
+                numbered[n] = ev["actionNumber"]
+            return ev
+
+        # the foul a "foul drawn" row answers: the feed writes the drawn row straight after its
+        # foul (24 of 32 on opening night), or a row or two later behind the turnover an
+        # offensive foul also is - never before it, and never further than this
+        last_foul = None
+        FOUL_REACH = 3
         period, gt = 0, "10:00"
         for p, e in rows:
             play = (e.get("PLAYTYPE") or "").strip()
@@ -367,12 +418,12 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
                 period, gt = p, full
             gt = (e.get("MARKERTIME") or "").strip() or gt
             if play == "BP":
-                out.append({"actionType": "period", "subType": "start", "period": p,
-                            "gt": full, "tno": 0})
+                add({"actionType": "period", "subType": "start", "period": p,
+                     "gt": full, "tno": 0}, e)
                 continue
             if play in ("EP", "EG"):
-                out.append({"actionType": "game" if play == "EG" else "period", "subType": "end",
-                            "period": p, "gt": "00:00", "tno": 0})
+                add({"actionType": "game" if play == "EG" else "period", "subType": "end",
+                     "period": p, "gt": "00:00", "tno": 0}, e)
                 continue
 
             tno = where.get((e.get("CODETEAM") or "").strip()) or \
@@ -403,7 +454,11 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
                 ev["actionType"], ev["subType"] = "foul", FOUL_PLAYS[play]
             elif play in PLAYS:
                 ev["actionType"], ev["subType"] = PLAYS[play]
+                if play == "RV" and last_foul is not None and len(out) + 1 - last_foul <= FOUL_REACH:
+                    ev["previousAction"] = last_foul
             else:
                 continue
-            out.append(ev)
+            add(ev, e)
+            if play in FOUL_PLAYS:
+                last_foul = ev["actionNumber"]
         return out

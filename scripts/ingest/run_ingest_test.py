@@ -164,5 +164,30 @@ ok("...and so does the Boxscore no longer live with points on the board", EL._pl
 ok("...never played=True written into the fetch again", "played=True" not in open(os.path.join(
    os.path.dirname(os.path.abspath(__file__)), "adapters", "euroleague.py"), encoding="utf-8").read().split("def fetch", 1)[1].split("def _played", 1)[0])
 
+# ...AND ITS PLAYS WERE NEVER NUMBERED, so the translator (which sorts by actionNumber and drops an
+# event without one) wrote no EuroLeague event log at all: the page read 0-0, END OF Q1.
+from translate.fiba_events import translate  # noqa: E402
+sides = [{"code": "DUB", "name": "Dubai"}, {"code": "MAD", "name": "Real Madrid"}]
+rosters = [{"P1": {"shirtNumber": "0"}}, {"P2": {"shirtNumber": "22"}}]
+row = lambda n, play, team="", pid="", t="09:30": {"NUMBEROFPLAY": n, "PLAYTYPE": play, "CODETEAM": team, "PLAYER_ID": pid, "MARKERTIME": t}
+feed = {"FirstQuarter": [row(1, "BP", t=""), row(5, "2FGM", "DUB", "P1"), row(6, "CM", "MAD", "P2"), row(7, "RV", "DUB", "P1"),
+                         row(9, "TO", "MAD", "P2"), row(10, "EP", t="")]}
+numbered = {}
+evs = EL._events(feed, sides, rosters, {}, numbered)
+ok("EuroLeague: every play numbered 1..n in order", [e["actionNumber"] for e in evs] == list(range(1, len(evs) + 1)), evs)
+ok("...the feed's play numbers mapped to them, for the shot chart's join", numbered.get(5) == 2 and numbered.get(10) == len(evs), numbered)
+foul = next(e for e in evs if e.get("actionType") == "foul")
+ok("...and a foul drawn names the foul it answers", next(e for e in evs if e.get("actionType") == "foulon").get("previousAction") == foul["actionNumber"])
+raw = {"tm": {"1": {"code": "DUB", "name": "Dubai", "pl": {"P1": {"firstName": "Elie", "familyName": "Okobo", "name": "Elie Okobo", "shirtNumber": "0", "starter": 1}}},
+              "2": {"code": "MAD", "name": "Real Madrid", "pl": {"P2": {"firstName": "Walter", "familyName": "Tavares", "name": "Walter Tavares", "shirtNumber": "22", "starter": 1}}}},
+       "pbp": evs}
+T = translate(raw)
+ok("...so the translator keeps them: a made two, a foul with its drawer, a turnover",
+   [e["t"] for e in T["events"] if e["t"] in ("p2_made", "foul", "to")] == ["p2_made", "foul", "to"]
+   and next(e for e in T["events"] if e["t"] == "foul")["payload"].get("drawn") == "0:P1", T["events"])
+src_el = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "adapters", "euroleague.py"), encoding="utf-8").read()
+ok("...and a player's name is put in reading order, title case, in the payload the game page reads ('OKOBO, ELIE' -> Elie Okobo)",
+   "first, last, _ = _names.person(shouted)" in src_el and 'first=first, last=last, name=f"{first} {last}".strip() or shouted' in src_el)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
