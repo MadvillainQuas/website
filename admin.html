@@ -2539,12 +2539,26 @@
             }
             return { _comment: "League feed registry. Edited from the admin dashboard (League feeds card). Read by scripts/ingest/run_ingest.py (GitHub Actions worker), build_dataset.py / Scrape Now, and mirrored into config/gamevis-competitions.json.", sources: out };
         }
+        /* The registry is no longer published on the site (tools/build-site.py
+           keeps it out), so it is read from the repository with the saved
+           token. If it cannot be read, Publish stays refused: publishing the
+           empty list this card would otherwise show deletes every feed the
+           EPINOIA ingest runs on. */
+        let lfLoaded = false;
         async function lfLoad() {
+            lfLoaded = false;
             try {
-                const res = await fetch(LF_CONFIG_PATH + '?t=' + Date.now(), { cache: 'no-cache' });
-                const j = res.ok ? await res.json() : { sources: [] };
-                lfSources = (j.sources || []).map(s => ({ ...s, scheduleUrls: Array.isArray(s.scheduleUrls) ? [...s.scheduleUrls] : [] }));
-            } catch (e) { lfSources = []; }
+                const r = await ghGetFileText(LF_CONFIG_PATH);
+                if (!r.ok) throw new Error(r.message);
+                const j = JSON.parse(r.text);
+                if (!j || !Array.isArray(j.sources)) throw new Error('no sources list in the file');
+                lfSources = j.sources.map(s => ({ ...s, scheduleUrls: Array.isArray(s.scheduleUrls) ? [...s.scheduleUrls] : [] }));
+                lfLoaded = true;
+                lfSet('');
+            } catch (e) {
+                lfSources = [];
+                lfSet('Could not read the feed registry (' + (e?.message || e) + '). Publishing is off so it cannot be overwritten.', 'err');
+            }
             lfRender(); lfLoadRuns();
         }
         async function lfLoadRuns() {
@@ -2564,6 +2578,7 @@
         });
         document.getElementById('lfSaveBtn')?.addEventListener('click', async () => {
             if (!getGhPat()) return lfSet('Save a GitHub token in the publishing card first.', 'err');
+            if (!lfLoaded) return lfSet('The feed registry was not loaded, so publishing would erase it. Reload the page once the token is saved.', 'err');
             const btn = document.getElementById('lfSaveBtn'); btn.disabled = true;
             try {
                 lfSet('publishing…');
