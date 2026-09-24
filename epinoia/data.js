@@ -482,7 +482,8 @@ async function season(competitionId, opts) {
        keyed by the sorted ids (the function builds each league's newest season whole, which is
        what global scouting and a league page's "all competitions" scope ask for).
        The function itself passes snapshot:false, since it is the one building it. */
-    if (token && !(opts && opts.snapshot === false)) {
+    /* a season with nothing finished ("0@") has no file to look for */
+    if (token && !/^0@/.test(token) && !(opts && opts.snapshot === false)) {
       const snap = await seasonSnapshot(list.slice().sort().join(','), token);
       if (snap) { seasonCachePut(ckey, token, snap); return snap; }
     }
