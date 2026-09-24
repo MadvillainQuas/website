@@ -413,6 +413,17 @@
     return c;
   }
   const halftone = () => el('span', 'halftone');
+  /* A WOMEN'S LEAGUE IS MARKED, QUIETLY: a small "W" after its name in the rail, and on the league tab
+     of the phone's bar. It is read off leagues.gender (0131, set by the console or by a source row's
+     league_gender), so a league with no stated gender is never marked. */
+  const isWomen = (l) => !!l && l.gender === 'women';
+  const wtag = () => {
+    const t = el('span', 'wtag', 'W');
+    t.title = 'Women\u2019s league';
+    t.setAttribute('role', 'img');
+    t.setAttribute('aria-label', 'women\u2019s league');
+    return t;
+  };
   const mono = (l) => el('span', 'mono',
     (l.name || '?').replace(/[^A-Za-z0-9 ]/g, '').trim().charAt(0).toUpperCase() || '?');
 
@@ -1329,6 +1340,7 @@
      THE LEAGUE'S FRONT PAGE IS "league", NOT "home". HOME is the platform's front page now,
      and two tabs called home that open different pages is one too many. */
   const tabbar = el('div', 'ep-tabbar');
+  let pageWomen = false;              // the page's own league is a women's league (settled when the list arrives)
   const TABS = [
     { key: 'home', ic: '◈', tx: 'league', href: '', on: () => /\/epinoia\/$/.test(here) && !!qp.get('l') },
     { key: 'fixtures' }, { key: 'table' }, { key: 'teams' }, { key: 'statistics' }, { key: 'news' }
@@ -1367,6 +1379,7 @@
       a.href = withLeague(root + (spec.href || ''));
       if (spec.two) { a.classList.add('two-line'); tabbar.classList.add('fit'); }
       a.append(el('span', 'ic', spec.ic), el('span', 'tx', spec.tx));
+      if (t.key === 'home' && pageWomen) { a.classList.add('is-women'); a.title = 'Women\u2019s league'; }
       const on = t.on ? t.on() : (spec.match && spec.match.test(here));
       if (on) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
       if (spec.teams) {
@@ -1700,7 +1713,10 @@
        it to lose. */
     const sess = storedSession();
     const url = cfg.supabaseUrl +
-      '/rest/v1/leagues?select=id,slug,name,colour_a,colour_b,colour_source,theme,logo_path,country,nav,visibility&order=name';
+      '/rest/v1/leagues?select=id,slug,name,colour_a,colour_b,colour_source,theme,logo_path,country,nav,visibility,gender&order=name';
+    /* `gender` (0131) marks a women's league in the rail; a database without it answers 400 and the
+       list is asked for again without it, so the rail never depends on it */
+    const urlNoGender = url.replace(',gender&', '&');
     /* A TOKEN MUST NEVER COST SOMEBODY THE WHOLE RAIL. storedSession only
        refuses an EXPIRED token; one that is malformed, revoked, or left over
        from a rotated project passes that check and comes back 401 — and this
@@ -1711,7 +1727,8 @@
     const pull = async (anon) => {
       const headers = { apikey: cfg.supabaseAnonKey, Accept: 'application/json' };
       if (!anon && sess && sess.token) headers.Authorization = 'Bearer ' + sess.token;
-      const r = await fetch(url, { cache: 'no-store', headers });
+      let r = await fetch(url, { cache: 'no-store', headers });
+      if (r.status === 400) r = await fetch(urlNoGender, { cache: 'no-store', headers });
       if (r.status === 401 && headers.Authorization) return pull(true);
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
@@ -1751,6 +1768,7 @@
     fillCountryHead(country === null ? '' : country);
     drawLeagues();
     themeLeague();
+    syncWomen();
     if (held && Date.now() - heldAt > 30 * 1000) {
       pull(false).then(fresh => {
         if (!Array.isArray(fresh)) return;
@@ -1760,8 +1778,17 @@
         drawCountries();
         drawLeagues();
         themeLeague();
+        syncWomen();
       }).catch(() => { /* the copy on screen stands */ });
     }
+  }
+
+  /* the league tab of the phone's bar wears the marker when the page's league is a women's league */
+  function syncWomen() {
+    const now = isWomen(bySlug());
+    if (now === pageWomen) return;
+    pageWomen = now;
+    try { paintTabbar(); } catch (_) { /* before the bar exists */ }
   }
 
   /* SETTLED LATE, for a page that names its league only after this ran. `country` starts at
@@ -1851,6 +1878,7 @@
       a.dataset.leagueSlug = l.slug;
       a.title = l.name;
       a.append(crest(l), marquee(l.name));
+      if (isWomen(l)) { a.appendChild(wtag()); a.title = l.name + ' · women’s league'; }
 
       a.addEventListener('click', (e) => {
         /* Let a middle click, a modified click or a right click do what the

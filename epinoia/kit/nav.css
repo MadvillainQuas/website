@@ -262,6 +262,11 @@ body.nav-drawer-open{ overflow:hidden }
 
 /* a league: its plate, then its name */
 .ep-nav .lrow{ gap:9px; padding-right:6px }
+/* a women's league: a small "W" after its name, quiet enough to be read only by somebody looking for it */
+.ep-nav .wtag{ flex:none; align-self:center; font-family:var(--f-micro); font-size:8px; line-height:1; letter-spacing:.04em;
+  padding:2px 3px 1px; margin-left:auto; color:var(--ink-3); border:1px solid color-mix(in srgb,var(--ink-3) 55%,transparent);
+  opacity:.8; user-select:none }
+.ep-nav .lrow.on .wtag{ color:inherit; border-color:color-mix(in srgb,currentColor 55%,transparent) }
 .ep-nav .lrow.on{ color:var(--lume); border-left-color:var(--lume);
   background:color-mix(in oklch,var(--lume) 11%,transparent) }
 
@@ -600,6 +605,10 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
   .ep-tabbar a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:3px; padding:8px 2px 7px; text-decoration:none; color:var(--ink-2); border-top:2px solid transparent }
   .ep-tabbar a .ic{ font-size:15px; line-height:1 }
+  /* the league tab of a women's league: a "W" beside the icon */
+  .ep-tabbar a.is-women .ic{ position:relative }
+  .ep-tabbar a.is-women .ic::after{ content:"W"; position:absolute; left:100%; top:-3px; margin-left:2px;
+    font-family:var(--f-micro); font-size:7px; line-height:1; letter-spacing:0; opacity:.7 }
   .ep-tabbar a .tx{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.06em; text-transform:uppercase;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100% }
   .ep-tabbar a.on{ color:var(--lume); border-top-color:var(--lume) }

@@ -56,6 +56,7 @@
   3px 3px 0 color-mix(in oklch,var(--ink-c) 40%,transparent)}
 
 /* a members-only league says so on the plate */
+.lgc-tag.lgc-w{left:auto;right:6px;transform:none;padding:2px 5px;letter-spacing:.06em;opacity:.85}
 .lgc-tag{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:2;
   font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;
   padding:2px 6px;background:var(--panel);color:var(--ink-2);border:1px solid var(--rule-2)}

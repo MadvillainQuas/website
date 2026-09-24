@@ -172,6 +172,12 @@
     plate.appendChild(band);
     plate.appendChild(el('div', 'club-grain'));
     if (l.access_mode === 'members') plate.appendChild(el('span', 'lgc-tag', 'members'));
+    if (l.gender === 'women') {
+      const w = el('span', 'lgc-tag lgc-w', 'W');
+      w.title = 'Women\u2019s league';
+      w.setAttribute('aria-hidden', 'true');
+      plate.appendChild(w);
+    }
 
     const foot = el('div', 'club-foot lgc-foot');
     foot.append(el('span', 'club-name lgc-name', l.name || l.slug || 'League'),
@@ -186,7 +192,7 @@
     next.appendChild(el('span', 'v', ' '));
 
     a.append(plate, foot, meta, next);
-    a.setAttribute('aria-label', (l.name || l.slug) +
+    a.setAttribute('aria-label', (l.name || l.slug) + (l.gender === 'women' ? ', women\u2019s league' : '') +
       (clubs != null ? ', ' + clubs + (clubs === 1 ? ' club' : ' clubs') : ''));
     return { a, next };
   }

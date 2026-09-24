@@ -59,7 +59,8 @@
       "scheduleUrls": [
         "https://hosted.wh.geniussports.com/WBBL/en/schedule"
       ],
-      "league_country": "GB"
+      "league_country": "GB",
+      "league_gender": "women"
     },
     {
       "code": "BCB",
@@ -463,7 +464,8 @@
       "scheduleUrls": [
         "https://hosted.wh.geniussports.com/BBE/en/schedule"
       ],
-      "league_country": "GB"
+      "league_country": "GB",
+      "league_gender": "women"
     },
     {
       "code": "WEABL",
@@ -495,7 +497,8 @@
       "scheduleUrls": [
         "https://hosted.wh.geniussports.com/BBE/en/schedule"
       ],
-      "league_country": "GB"
+      "league_country": "GB",
+      "league_gender": "women"
     },
     {
       "code": "SBFW",
@@ -1016,6 +1019,7 @@
       "league_slug": "wnbl",
       "league_name": "WNBL",
       "league_country": "AU",
+      "league_gender": "women",
       "adapter_config": {
         "code": "WNBL",
         "org": "wnbl",
@@ -1044,6 +1048,7 @@
       "league_slug": "wnbl",
       "league_name": "WNBL",
       "league_country": "AU",
+      "league_gender": "women",
       "competition_label": "WNBL Finals",
       "competition_kind": "playoff",
       "adapter_config": {
@@ -1174,6 +1179,7 @@
       "league_slug": "nbl1-women",
       "league_name": "NBL1 Women",
       "league_country": "AU",
+      "league_gender": "women",
       "adapter_config": {
         "code": "NBL1W",
         "org": "nbl1",
@@ -1207,6 +1213,7 @@
       "league_slug": "nbl1-women",
       "league_name": "NBL1 Women",
       "league_country": "AU",
+      "league_gender": "women",
       "competition_label": "NBL1 Women Finals",
       "competition_kind": "playoff",
       "adapter_config": {
@@ -1241,6 +1248,7 @@
       "league_slug": "nbl1-women",
       "league_name": "NBL1 Women",
       "league_country": "AU",
+      "league_gender": "women",
       "competition_label": "NBL1 Women National Finals",
       "competition_kind": "playoff",
       "adapter_config": {
@@ -2010,6 +2018,7 @@
       "league_slug": "liga-femenina-endesa",
       "league_name": "Liga Femenina Endesa",
       "league_country": "ES",
+      "league_gender": "women",
       "adapter_config": {
         "code": "LFE",
         "competition": 4,
@@ -2038,6 +2047,7 @@
       "league_slug": "liga-femenina-endesa",
       "league_name": "Liga Femenina Endesa",
       "league_country": "ES",
+      "league_gender": "women",
       "competition_label": "Liga Femenina Endesa Playoffs",
       "competition_kind": "playoff",
       "adapter_config": {
@@ -2068,6 +2078,7 @@
       "league_slug": "liga-femenina-challenge",
       "league_name": "Liga Femenina Challenge",
       "league_country": "ES",
+      "league_gender": "women",
       "adapter_config": {
         "code": "LFCH",
         "competition": 67,
@@ -2096,6 +2107,7 @@
       "league_slug": "liga-femenina-challenge",
       "league_name": "Liga Femenina Challenge",
       "league_country": "ES",
+      "league_gender": "women",
       "competition_label": "Liga Femenina Challenge Playoffs",
       "competition_kind": "playoff",
       "adapter_config": {
@@ -2126,6 +2138,7 @@
       "league_slug": "liga-femenina-2",
       "league_name": "Liga Femenina 2",
       "league_country": "ES",
+      "league_gender": "women",
       "adapter_config": {
         "code": "LF2",
         "competition": 9,
@@ -2156,6 +2169,7 @@
       "league_slug": "liga-femenina-2",
       "league_name": "Liga Femenina 2",
       "league_country": "ES",
+      "league_gender": "women",
       "competition_label": "Liga Femenina 2 Playoffs",
       "competition_kind": "playoff",
       "adapter_config": {

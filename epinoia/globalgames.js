@@ -100,7 +100,10 @@ let leaguesP = null;
 /* Every league a reader may see, once per page. */
 function leagues() {
   if (!leaguesP) {
-    leaguesP = request('leagues?select=' + LEAGUE + '&order=name.asc', false)
+    /* `gender` (0131) marks a women's league on HOME's cards; a database without it answers 400 and the list
+       is asked for again without it */
+    leaguesP = request('leagues?select=' + LEAGUE + ',gender&order=name.asc', false)
+      .catch(() => request('leagues?select=' + LEAGUE + '&order=name.asc', false))
       .catch(e => { leaguesP = null; throw e; });
   }
   return leaguesP.then(r => r.slice());

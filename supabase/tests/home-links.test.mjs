@@ -440,9 +440,33 @@ console.log('\n-- the foot\'s way back, and the platform tabs land somewhere');
      /Date\.now\(\) - heldAt > 30 \* 1000/.test(nav) && /pull\(false\)\.then\(fresh =>/.test(nav));
   ok('...and redraws only if the fresh answer differs from what is on screen',
      /JSON\.stringify\(fresh\) === JSON\.stringify\(leagues\)\) return;/.test(nav) &&
-     /drawCountries\(\);\s*drawLeagues\(\);\s*themeLeague\(\);\s*\}\)\.catch/.test(nav));
+     /drawCountries\(\);\s*drawLeagues\(\);\s*themeLeague\(\);\s*syncWomen\(\);\s*\}\)\.catch/.test(nav));
   ok('...and the held copy is still valid for five minutes, so a ten-page visit does not read ten times',
      /Date\.now\(\) - j\.at < 5 \* 60 \* 1000/.test(nav));
+}
+
+{
+  /* A WOMEN'S LEAGUE IS MARKED, QUIETLY, in the rail, on the phone bar's league tab and on HOME's card.
+     It reads leagues.gender (0131), asks for it with a fallback so a database without the column never costs
+     the rail or HOME its list, and marks nothing whose gender is not stated. */
+  const nav = rd('epinoia', 'nav.js');
+  ok('the rail asks for gender and asks again without it on a 400',
+     /visibility,gender&order=name'/.test(nav) && /urlNoGender = url\.replace\(',gender&', '&'\)/.test(nav) && /if \(r\.status === 400\) r = await fetch\(urlNoGender/.test(nav));
+  ok('only a league whose gender is women is marked',
+     /const isWomen = \(l\) => !!l && l\.gender === 'women';/.test(nav) && /if \(isWomen\(l\)\) \{ a\.appendChild\(wtag\(\)\)/.test(nav));
+  ok('the league tab of the phone bar is marked, and repainted when the list arrives or changes',
+     /t\.key === 'home' && pageWomen/.test(nav) && (nav.match(/syncWomen\(\);/g) || []).length === 2);
+  ok('the tags are styled quietly in nav.css',
+     /\.ep-nav \.wtag\{[^}]*font-size:8px/.test(rd('epinoia', 'kit', 'nav.css')) && /\.is-women \.ic::after\{/.test(rd('epinoia', 'kit', 'nav.css')));
+  const gg = rd('epinoia', 'globalgames.js'), hl = rd('epinoia', 'home', 'leagues.js');
+  ok('HOME asks for gender with a fallback, and its card carries the tag',
+     /LEAGUE \+ ',gender&order=name\.asc'/.test(gg) && /\.catch\(\(\) => request\('leagues\?select=' \+ LEAGUE \+ '&order=name\.asc'/.test(gg) &&
+     /l\.gender === 'women'/.test(hl) && /lgc-tag lgc-w/.test(hl));
+  const cfg = JSON.parse(rd('config', 'ingest-sources.json'));
+  const womenRows = ['SLBW', 'WNBLD1', 'WEABL', 'WNBL', 'NBL1W', 'LFE', 'LFCH', 'LF2', 'KORISW'];
+  const missing = womenRows.filter(code => !cfg.sources.filter(x => x.code === code).every(x => x.league_gender === 'women'));
+  ok('every women\u2019s league\u2019s source rows say league_gender women (so a league created later is marked)',
+     missing.length === 0 && cfg.sources.filter(x => womenRows.includes(x.code)).length >= 9, missing);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
