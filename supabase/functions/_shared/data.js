@@ -648,7 +648,19 @@ async function stints(gameIds, teamId, byId) {
 
    THE RESULT IS THE ARRAY IT WAS, order included: each block of forty ids in
    uuid order, which is how `order=game_id,seq` sorted them, and every game's
-   events in seq order. */
+   events in seq order.
+
+   A FINISHED GAME'S LOG IS A FILE ON THE CDN FIRST (migration 0156). The
+   snapshots function writes snapshots/events/<game id>.json for every finished
+   game a signed-out reader may read, holding exactly the rows gameLog() reads
+   (it calls gameLog to make it), and rewrites it when the game is finalised
+   again or any of its events change. A club's shot zones, a player's profile,
+   WOWY and a league's zone table read dozens to hundreds of logs; from the CDN
+   those cost the database nothing and come from the edge nearest the reader.
+   Anything without a file (a game still being played, one finalised in the
+   last few minutes, a members-only or private league's) is read from the
+   database exactly as before, so a missing or late file costs one CDN round
+   trip, never a wrong answer. opts.files === false reads the database only. */
 const EVENT_PAGE = 1000;
 const EVENT_LANES = 8;
 
@@ -664,8 +676,20 @@ async function gameLog(id) {
   }
 }
 
-async function events(gameIds) {
+/* the file's rows, or null for anything but a file that names this game */
+async function fileLog(id) {
+  try {
+    const c = CFG();
+    const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/events/${id}.json`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j && j.game === id && Array.isArray(j.rows) ? j.rows : null;
+  } catch (_) { return null; }
+}
+
+async function events(gameIds, opts) {
   if (!gameIds || !gameIds.length) return [];
+  const files = !(opts && opts.files === false);
   const ids = [];
   for (let i = 0; i < gameIds.length; i += 40) ids.push(...[...new Set(gameIds.slice(i, i + 40))].sort());
   const logs = new Array(ids.length);
@@ -674,7 +698,7 @@ async function events(gameIds) {
   const lane = async () => {
     while (next < ids.length) {
       const i = next++;
-      try { logs[i] = await gameLog(ids[i]); } catch (e) { next = ids.length; throw e; }
+      try { logs[i] = (files && await fileLog(ids[i])) || await gameLog(ids[i]); } catch (e) { next = ids.length; throw e; }
     }
   };
   await Promise.all(Array.from({ length: Math.min(EVENT_LANES, ids.length) }, lane));
@@ -785,7 +809,7 @@ function pickSeason(seasons, ref) {
          seasons[0];
 }
 
-return { get, all, season, statsForGames, stints, events, playerMeta, teamMeta,
+return { get, all, season, statsForGames, stints, events, gameLog, playerMeta, teamMeta,
          releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken };
 }));
 
@@ -797,5 +821,5 @@ return { get, all, season, statsForGames, stints, events, playerMeta, teamMeta,
    so the Edge Function and the browser run one identical file.
    --------------------------------------------------------------------------- */
 const __api = globalThis.EpinoiaData;
-export const { get, all, season, statsForGames, playerMeta, teamMeta, seasonToken, PLAYER_STAT_KEYS, untrim } = __api;
+export const { get, all, season, statsForGames, playerMeta, teamMeta, seasonToken, PLAYER_STAT_KEYS, untrim, gameLog } = __api;
 export default __api;

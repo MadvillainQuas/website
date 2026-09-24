@@ -142,7 +142,7 @@ const FILES = [
     out: join(repo, 'supabase', 'functions', '_shared', 'data.js'),
     global: 'EpinoiaData',
     names: ['get', 'all', 'season', 'statsForGames', 'playerMeta', 'teamMeta', 'seasonToken',
-            'PLAYER_STAT_KEYS', 'untrim']
+            'PLAYER_STAT_KEYS', 'untrim', 'gameLog']
   }
 ];
 

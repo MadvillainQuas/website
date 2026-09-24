@@ -130,9 +130,12 @@ console.log('\nan event log is read game by game, and no page walks the rows bef
 const EVENT_LANES = +(datajs.match(/const EVENT_LANES = (\d+);/) || [])[1];
 const EVENT_PAGE = +(datajs.match(/const EVENT_PAGE = (\d+);/) || [])[1];
 const eventsSrc = lift(datajs, 'async function gameLog(id)') + '\n' +
-                  lift(datajs, 'async function events(gameIds)');
-const makeEvents = get => new Function('get', 'EVENT_PAGE', 'EVENT_LANES',
-  eventsSrc + '\nreturn events;')(get, EVENT_PAGE, EVENT_LANES);
+                  lift(datajs, 'async function fileLog(id)') + '\n' +
+                  lift(datajs, 'async function events(gameIds, opts)');
+/* the CDN, for the files of 0156: none unless a test puts one there */
+const noFiles = async () => ({ ok: false, status: 400, json: async () => ({ error: 'not_found' }) });
+const makeEvents = (get, cdn = noFiles) => new Function('get', 'EVENT_PAGE', 'EVENT_LANES', 'CFG', 'fetch',
+  eventsSrc + '\nreturn events;')(get, EVENT_PAGE, EVENT_LANES, () => ({ supabaseUrl: 'https://abcref.supabase.co' }), cdn);
 
 function fakeLogs(sizes, failOn) {
   const calls = [];
@@ -223,6 +226,36 @@ function fakeLogs(sizes, failOn) {
   await new Promise(r => setTimeout(r, 50));
   ok('a game that cannot be read fails the read, as a failed page did', threw);
   ok('...and no new game is asked for once it has', srv.calls.length < 30, srv.calls.length + ' requests');
+}
+
+{
+  /* 0156: A FINISHED GAME'S LOG FROM ITS FILE. The file holds exactly the rows the database read
+     returns, so the events come out identical; a game without a file, or with a file that names
+     another game, is read from the database; files:false never asks the CDN. */
+  const sizes = { g1: 4, g2: 1200, g3: 3, g4: 2 };
+  const srv = fakeLogs(sizes);
+  const dbOut = await makeEvents(srv.get)(Object.keys(sizes));
+  const fileRows = id => Array.from({ length: sizes[id] }, (_, i) => srv.row(id, i + 1));
+  const asked = [];
+  const cdn = async url => {
+    asked.push(url);
+    const id = (String(url).match(/snapshots\/events\/([^/]+)\.json$/) || [])[1];
+    if (id === 'g1' || id === 'g2') return { ok: true, status: 200, json: async () => ({ v: 1, game: id, rows: fileRows(id) }) };
+    if (id === 'g3') return { ok: true, status: 200, json: async () => ({ v: 1, game: 'g9', rows: fileRows('g3') }) };
+    return { ok: false, status: 400, json: async () => ({ error: 'not_found' }) };
+  };
+  const srv2 = fakeLogs(sizes);
+  const out = await makeEvents(srv2.get, cdn)(Object.keys(sizes));
+  ok('a game with a file is read from it: the same events, in the same order, as the database gives',
+     JSON.stringify(out) === JSON.stringify(dbOut), out.length + ' events against ' + dbOut.length);
+  ok('...and only the games without a usable file reach the database',
+     srv2.calls.length > 0 && srv2.calls.every(c => /game_id=eq\.(g3|g4)&/.test(c)), srv2.calls);
+  ok('...every game was looked for on the CDN, under snapshots/events/<id>.json',
+     asked.length === 4 && asked.every(u => /^https:\/\/abcref\.supabase\.co\/storage\/v1\/object\/public\/snapshots\/events\/g\d\.json$/.test(u)), asked);
+  asked.length = 0;
+  const srv3 = fakeLogs(sizes);
+  await makeEvents(srv3.get, cdn)(Object.keys(sizes), { files: false });
+  ok('files:false reads the database alone', asked.length === 0 && srv3.calls.length === srv.calls.length, asked);
 }
 
 /* ---- 2. the profile asks for a bounded amount of work -------------------- */

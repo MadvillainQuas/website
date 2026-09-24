@@ -7,7 +7,7 @@
 //
 // The public pages worked everything out from raw per-game rows in each
 // visitor's browser, so each visit cost more as leagues and games were added.
-// This builds the two biggest results once, for everybody:
+// This builds the biggest results once, for everybody:
 //
 //   'stars_global'          HOME's podiums: EpinoiaStars.global(), the very
 //                           function HOME runs, rebuilt when its anchor (the
@@ -15,7 +15,10 @@
 //   'season:<competition>'  a competition's season lines: EpinoiaData.season(),
 //                           the very function the league pages and scouting run,
 //                           rebuilt when the competition's token (finished games
-//                           and the latest finalised_at) moves.
+//                           and the latest finalised_at) moves;
+//   events/<game>.json      a finished game's event log (0156): EpinoiaData.gameLog(),
+//                           the very read events() makes, rewritten when the game is
+//                           finalised again or its log changes.
 //
 // AS A SIGNED-OUT VISITOR. Every read goes out with the publishable key and no
 // session, through the page's own data.js, so every policy applies and a
@@ -185,6 +188,77 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
   return { built, current, removed, left };
 }
 
+/* A FINISHED GAME'S EVENT LOG IS A FILE (0156): snapshots/events/<game id>.json, one stable path
+   per game, rewritten in place when the game is finalised again or its log changes (Smart CDN
+   purges a rewritten file within a minute; browsers keep a copy five minutes). Written for the
+   games a signed-out reader may read, final ones only: the ids come from game_rows_public read
+   with the publishable key, the rows from the page's own gameLog(), so a file holds exactly what
+   such a reader's browser would have read from the database. */
+const EVENT_LANES = 6;
+const MAX_EVENT_FILES = 60;          // written per call (JSON in and out, about 4 ms of CPU each)
+const MAX_EVENT_REMOVALS = 200;      // and removed
+
+async function allAdmin(admin: any, table: string, cols: string, filter?: (q: any) => any) {
+  const out: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    let q = admin.from(table).select(cols).order(cols.split(',')[0]).range(from, from + 999);
+    if (filter) q = filter(q);
+    const { data, error } = await q;
+    if (error) throw new Error(table + ': ' + error.message);
+    out.push(...(data || []));
+    if (!data || data.length < 1000) return out;
+  }
+}
+
+async function buildEventFiles(admin: any, D: any, started: number, maxBuilds: number) {
+  /* what a signed-out reader may read: the public games (final, or live where the league shows
+     live), and the finished ones among them with the finalisation their file is named from */
+  /* (a paged read needs a total order, or two pages can overlap: hence the ids) */
+  const pub = new Set((await D.all('game_rows_public?select=id&order=id')).map((r: any) => r.id));
+  const finals = (await D.all('games?select=id,finalised_at&status=eq.final&order=finalised_at.desc.nullslast,id'))
+    .filter((g: any) => pub.has(g.id));
+  const want = new Map(finals.map((g: any) => [g.id, g.finalised_at]));
+  const held = new Map((await allAdmin(admin, 'event_files', 'game_id,finalised_at'))
+    .map((r: any) => [r.game_id, r.finalised_at]));
+
+  /* newest finals first: the games people are opening now */
+  const same = (a: any, b: any) => a != null && b != null && Date.parse(a) === Date.parse(b);
+  const due = finals.filter((g: any) => !same(held.get(g.id), g.finalised_at)).map((g: any) => g.id);
+  const gone = [...held.keys()].filter(id => !want.has(id));
+
+  let removed = 0;
+  const drop = gone.slice(0, MAX_EVENT_REMOVALS);
+  if (drop.length) {
+    const { error } = await admin.storage.from(BUCKET).remove(drop.map(id => 'events/' + id + '.json'));
+    if (error) throw new Error('events remove: ' + error.message);
+    const { error: delErr } = await admin.from('event_files').delete().in('game_id', drop);
+    if (delErr) throw new Error('event_files delete: ' + delErr.message);
+    removed = drop.length;
+  }
+
+  let built = 0, next = 0;
+  const todo = due.slice(0, maxBuilds);
+  const lane = async () => {
+    while (next < todo.length && Date.now() - started < WALL_MS) {
+      const id = todo[next++];
+      const finalisedAt = want.get(id);
+      const rows = await D.gameLog(id);
+      const { error } = await admin.storage.from(BUCKET).upload('events/' + id + '.json',
+        JSON.stringify({ v: 1, game: id, finalised_at: finalisedAt, rows }),
+        { contentType: 'application/json', upsert: true, cacheControl: '300' });
+      if (error) throw new Error('events/' + id + ': ' + error.message);
+      const { error: upErr } = await admin.from('event_files').upsert(
+        { game_id: id, finalised_at: finalisedAt, events: rows.length, built_at: new Date().toISOString() },
+        { onConflict: 'game_id' });
+      if (upErr) throw new Error('event_files ' + id + ': ' + upErr.message);
+      built++;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(EVENT_LANES, todo.length) }, lane));
+  return { built, removed, current: finals.length - due.length,
+           left: (due.length - built) + (gone.length - removed) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -199,12 +273,16 @@ Deno.serve(async (req) => {
     const stars = await buildStars(admin, D, ST);
     const seasons = await buildSeasons(admin, D, started,
       stars === 'built' ? MAX_SEASONS_AFTER_STARS : MAX_SEASONS);
-    if (seasons.left === 0) {
+    /* the event files take what is left of the call: fewer when seasons were rebuilt in it */
+    const events = await buildEventFiles(admin, D, started,
+      seasons.built ? Math.floor(MAX_EVENT_FILES / 2) : MAX_EVENT_FILES);
+    const complete = seasons.left === 0 && events.left === 0;
+    if (complete) {
       await admin.from('snapshot_ticks').upsert(
         { id: 1, done_fingerprint: tick ? tick.fingerprint : null, done_at: new Date().toISOString() },
         { onConflict: 'id' });
     }
-    return json({ stars, seasons, complete: seasons.left === 0, ms: Date.now() - started });
+    return json({ stars, seasons, events, complete, ms: Date.now() - started });
   } catch (e) {
     return json({ error: String((e as Error)?.message || e), ms: Date.now() - started }, 500);
   }
