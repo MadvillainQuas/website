@@ -614,6 +614,24 @@ class GrelAdapter(FibaLiveStatsAdapter):
                 games.setdefault(c["id"], c)
             if sec == "games-regular-season":
                 rounds_per_level[lv] = max(rounds_per_level.get(lv, 0), d)
+        if stage == "playoffs":
+            # A POST-SEASON PAGE THAT DOES NOT EXIST YET SHOWS ROUND 1 INSTEAD: 2026-27's Final Four
+            # page, a month before the season, listed the 8 opening-round fixtures, which would have
+            # filed regular-season games under the play-offs. So a game that is on any regular-season
+            # page is never a post-season game.
+            regular, todo = set(), [(path, REGULAR[0], 1, 1)]
+            done_ = set()
+            while todo:
+                key = todo.pop(0)
+                if key in done_:
+                    continue
+                done_.add(key)
+                url = f"{SITE}/{path}/{COMP}/{key[1]}/gamelevel/{key[2]}/gamedate/{key[3]}"
+                cards, nav, fresh = self._round(url, cache, REGULAR)
+                changed |= fresh
+                regular |= {c["id"] for c in cards}
+                todo += [link for link in nav if link not in done_]
+            games = {k: v for k, v in games.items() if k not in regular}
         if changed:
             self._save_round_cache(config, cache)
         out = []

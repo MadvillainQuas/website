@@ -116,6 +116,10 @@ ok("AO Dafnis v Psychikou AE, 4 Oct 2025 17:00 Greek time = 14:00 UTC, key seaso
    (g0.home_name, g0.away_name, g0.tipoff_at, g0.external_id)
    == ("AO Dafnis", "Psychikou AE", "2025-10-04T14:00:00+00:00", "2025-2026_106C4619-AFD0-498A-9BF3-65F2C838ABC9"),
    (g0.home_name, g0.away_name, g0.tipoff_at, g0.external_id))
+a = fresh()
+po27 = list(a.discover("x", dict(CFG, season="2026-27", stage="playoffs")))
+ok("2026-27 post-season before it exists: the Final Four page's stand-in Round 1 is not taken as play-offs",
+   po27 == [], [g.external_id for g in po27][:3])
 for bad, cfg in (("a season token that is not a season", {"season": "twenty"}),
                  ("a stage that is neither regular nor playoffs", {"stage": "cup"})):
     try:
