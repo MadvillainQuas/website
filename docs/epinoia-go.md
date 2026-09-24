@@ -133,9 +133,13 @@ needs Louie says so.
 - [x] **4.3 My passport** — on the GO page: arenas, stamps and kilometres; the journey drawn (D10, our own
       SVG: every arena a point opening in Google Maps, every trip a line, names placed so none overlaps);
       the numbers per league with the fan's rank; the offer to go on the boards; every stamp. Worked out
-      on the phone from the fan's stamps, so it stands on 0165 alone. Chromium: 56 checks (en/ja/es);
-      `go-boards.test.mjs`: 28.
-- [ ] **4.4 Badges** (optional): first stamp, 10 arenas, every arena in a league, 1,000 km.
+      on the phone from the fan's stamps, so it stands on 0165 alone. Chromium: 58 checks (en/ja/es);
+      `go-boards.test.mjs`: 35.
+- [x] **4.4 Badges** — on the passport, under the counts: the first stamp, 10 arenas, 1,000 km, and every
+      arena a league has played in over the last 13 months (0166's `go_leagues` counts them; a league with
+      a single arena has none). An earned badge is lit like a stamp; the others show the way there (3/10,
+      129 km, 3/16). Worked out on the phone from the fan's stamps, so nothing new on the server; before
+      0166 is pushed the league badges are left out. `go-boards.test.mjs`: 35; Chromium: 58 (en/ja/es).
 
 ## Phase 5 — Games been to
 

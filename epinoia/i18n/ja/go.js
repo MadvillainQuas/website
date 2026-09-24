@@ -132,7 +132,10 @@
       'take back': '取り消す',
       'Take this stamp back? It comes off your passport and your numbers.': 'このスタンプを取り消しますか？パスポートと記録から外れます。',
       'Could not take it back. Try again.': '取り消せませんでした。もう一度お試しください。',
-      'More in the privacy notice': '詳しくはプライバシーのお知らせへ'
+      'More in the privacy notice': '詳しくはプライバシーのお知らせへ',
+      'Badges': 'バッジ',
+      'first stamp': '初スタンプ',
+      'every arena': '全アリーナ制覇'
     },
     units: {
       'arena': '{n}アリーナ',

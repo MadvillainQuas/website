@@ -91,6 +91,28 @@ function byLeague(stamps) {
     .sort((a, b) => b.arenas - a.arenas || b.km - a.km || a.league.localeCompare(b.league));
 }
 
+/* BADGES (4.4), worked out on the phone from the fan's stamps like the rest of the passport: the first stamp,
+   ten arenas, a thousand kilometres, and every arena a league has played in over the last 13 months (0166's
+   go_leagues counts them; before 0166 is pushed, or for a league with fewer than two, there is no such
+   badge). [{ key, label, got, have, of, km?, league? }]: have and of are the way there. */
+const BADGE_ARENAS = 10, BADGE_KM = 1000;
+function badgesOf(stamps, leagues) {
+  const n = numbersOf(stamps);
+  const out = [
+    { key: 'first', label: 'first stamp', got: n.stamps >= 1, have: Math.min(n.stamps, 1), of: 1 },
+    { key: 'arenas', label: 'arenas', got: n.arenas >= BADGE_ARENAS, have: Math.min(n.arenas, BADGE_ARENAS), of: BADGE_ARENAS },
+    { key: 'km', label: 'travelled', km: true, got: n.km >= BADGE_KM, have: Math.min(n.km, BADGE_KM), of: BADGE_KM },
+  ];
+  byLeague(stamps).forEach(l => {
+    const lg = (leagues || []).find(x => x.league_id === l.league_id);
+    const total = lg ? Number(lg.arenas_total) || 0 : 0;
+    if (total < 2) return;
+    out.push({ key: 'league:' + l.league_id, label: 'every arena', league: l.league || lg.league || '',
+               got: l.arenas >= total, have: Math.min(l.arenas, total), of: total });
+  });
+  return out;
+}
+
 const loc = () => (typeof window !== 'undefined' && window.EpinoiaI18n && window.EpinoiaI18n.locale) || undefined;
 
 function kmText(km, locale) {
@@ -283,6 +305,24 @@ async function loadMine() {
   drawPassport();
 }
 
+/* the badges: earned ones lit like a stamp; the others with the way there */
+function drawBadges() {
+  const host = $('#goBadges');
+  if (!host) return;
+  host.textContent = '';
+  badgesOf(S.mine || [], S.leagues).forEach(b => {
+    const d = host.appendChild(el('div', 'go-badge' + (b.got ? ' got' : '')));
+    d.setAttribute('role', 'listitem');
+    d.appendChild(data('div', 'v', b.km ? kmText(b.of) : String(b.of)));
+    d.appendChild(el('div', 'k', b.label));
+    if (b.league) d.appendChild(data('div', 'l', b.league));
+    if (b.got) return;
+    const bar = d.appendChild(el('div', 'bar'));
+    bar.appendChild(el('i')).style.width = Math.round(100 * b.have / b.of) + '%';
+    d.appendChild(data('div', 'p', b.km ? kmText(b.have) : b.have + '/' + b.of));
+  });
+}
+
 /* the fan's rank on a board (overall when league is null), or null */
 function rankOf(leagueId, by) {
   const r = (S.ranks || []).find(x => (x.league_id || null) === (leagueId || null));
@@ -300,6 +340,7 @@ function drawPassport() {
     d.appendChild(el('div', 'k', k));
   });
   $('#goCount').textContent = n.arenas ? n.arenas + (n.arenas === 1 ? ' arena' : ' arenas') : '';
+  drawBadges();
 
   const J = window.EpinoiaJourney;
   const map = $('#goMap');
@@ -596,6 +637,7 @@ async function loadBoards() {
   const sec = $('#goBoardsSec');
   if (r.missing || r.error) { sec.classList.add('hide'); return; }
   S.leagues = Array.isArray(r.data) ? r.data : [];
+  drawBadges();                                           // a league's arena count makes its badge
   sec.classList.remove('hide');
   drawBoardPick();
   loadBoard();
@@ -795,6 +837,6 @@ async function boot() {
   loadBoards();
 }
 
-return { boot, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, byLeague, whyOf, factsOf, WHY, GEO,
+return { boot, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, byLeague, badgesOf, whyOf, factsOf, WHY, GEO,
          PHOTO_WHY, PHOTO_STATE, ALLOW_M, NEAR_M };
 }));

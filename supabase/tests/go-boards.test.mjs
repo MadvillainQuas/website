@@ -86,12 +86,34 @@ ok('no pinned arena, no drawing', J.build([{ venue_id: 'a', name: 'A', lat: null
 const js = rd('epinoia', 'go', 'journey.js');
 ok('every arena opens in Google Maps, with no key: the Maps URLs form', /https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/.test(js) && !/key=|AIza/.test(js));
 
+console.log('\nbadges (4.4)');
+const kl = [{ league_id: 'kl', league: 'kl', arenas_total: 3 }, { league_id: 'bl', league: 'bl', arenas_total: 1 }];
+const none = G.badgesOf([], kl);
+ok('before a first stamp: three to earn, none earned, nothing per league',
+   none.map(b => b.key).join() === 'first,arenas,km' && none.every(b => !b.got && b.have === 0), none);
+const got = G.badgesOf(mine, kl);
+const by = k => got.find(b => b.key === k) || {};
+ok('a first stamp; every arena of a league once the fan has stamped as many as it played in',
+   by('first').got && by('league:kl').got && by('league:kl').have === 3 && by('league:kl').of === 3 && by('league:kl').league === 'kl', got);
+ok('...not for a league with a single arena (one arena is not a collection)', !got.some(b => b.key === 'league:bl'), got);
+ok('ten arenas and 1,000 km: the way there (4 arenas; Helsinki to Tokyo is 7,800 km, so that one is earned)',
+   !by('arenas').got && by('arenas').have === 4 && by('arenas').of === 10 && by('km').got && by('km').have === 1000, [by('arenas'), by('km')]);
+const three = G.badgesOf(mine.slice(0, 2), [{ league_id: 'kl', arenas_total: 3 }]);
+ok('...and part of the way to a league\'s', three.find(b => b.key === 'league:kl').have === 2 && !three.find(b => b.key === 'league:kl').got, three);
+ok('without the leagues\' counts (0166 not pushed) there are no league badges, the rest stand',
+   G.badgesOf(mine, null).map(b => b.key).join() === 'first,arenas,km');
+const goHtml = rd('epinoia', 'go', 'index.html'), goJs = rd('epinoia', 'go', 'go.js');
+ok('on the passport, under the counts; drawn again when the leagues\' counts arrive',
+   /<div class="go-tally" id="goTally"><\/div>\s*<!--[^>]*-->\s*<div class="go-badges" id="goBadges" role="list" aria-label="Badges"><\/div>/.test(goHtml)
+   && /S\.leagues = Array\.isArray\(r\.data\) \? r\.data : \[\];\s*drawBadges\(\);/.test(goJs));
+
 console.log('\nthe words');
 for (const code of ['ja', 'es']) {
   const src = rd('epinoia', 'i18n', code, 'go.js');
   const words = ['Your passport', 'travelled', 'Leaderboards', 'by arenas', 'by distance', 'Put yourself on the leaderboards',
                  'I am 18 or over', 'put me on', 'take me off', 'You are on the leaderboards', 'Tick the box to confirm you are 18 or over.',
-                 'Nobody is on this board yet. Stamp an arena and put yourself on it.', 'Fan', 'Arenas in this league', 'Your journey'];
+                 'Nobody is on this board yet. Stamp an arena and put yourself on it.', 'Fan', 'Arenas in this league', 'Your journey',
+                 'Badges', 'first stamp', 'every arena'];
   const miss = words.filter(w => !src.includes("'" + w + "':"));
   ok(code + ': the passport and the boards are translated', !miss.length, miss);
 }

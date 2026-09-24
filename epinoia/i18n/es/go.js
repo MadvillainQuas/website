@@ -132,7 +132,10 @@
       'take back': 'retirar',
       'Take this stamp back? It comes off your passport and your numbers.': '¿Retirar este sello? Desaparece de tu pasaporte y de tus cifras.',
       'Could not take it back. Try again.': 'No se pudo retirar. Inténtalo de nuevo.',
-      'More in the privacy notice': 'Más en el aviso de privacidad'
+      'More in the privacy notice': 'Más en el aviso de privacidad',
+      'Badges': 'Insignias',
+      'first stamp': 'primer sello',
+      'every arena': 'todos los pabellones'
     },
     units: {
       'arena': '{n} pabellón',
