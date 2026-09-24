@@ -36,6 +36,12 @@ const G = (typeof globalThis !== 'undefined') ? globalThis
 const FRAME_MS   = 250;    // coalescing window
 const POLL_MS    = 3000;   // fallback cadence when the socket is down
 const STALE_MS   = 12000;  // no traffic for this long => degrade (> 2 heartbeats)
+/* A FED GAME WHOSE FRAMES COME FROM THE DATABASE (migration 0157) is as current as its
+   feed: every write the ingest makes is broadcast, and a feed moves at most every thirty
+   seconds or so (its own CDN). So once such a frame has arrived, silence only means
+   degradation after longer than any feed keeps quiet, and the fallback poll is slow. */
+const FED_STALE_MS = 45000;
+const FED_POLL_MS  = 15000;
 /* how far a stamped clock may be run forward with no fresh reading behind it:
    past this the source is gone and the graphics hold rather than invent */
 const CLOCK_RUN_ON_MS = 20000;
@@ -653,6 +659,7 @@ function subscriber(opts) {
   let stopListen = null, pollTimer = null, watchdog = null, retry = 1000;
   let maxSeq = 0;            // the highest event sequence held, for the cheap poll
   let polling = false, lastFull = 0;
+  let staleMs = STALE_MS, fallbackEvery = pollEvery;   // relaxed by the first database frame
   const FULL_EVERY_MS = 30000;   // a retraction cannot be seen in a delta; a full read catches it
   const setStatus = s => { if (s !== status) { status = s; onStatus && onStatus(s); } };
   const noteSeqs = evs => { (evs || []).forEach(e => { const s = +(e.seq != null ? e.seq : e.id); if (s > maxSeq) maxSeq = s; }); };
@@ -738,6 +745,15 @@ function subscriber(opts) {
   }
   function applyFrame(f) {
     if (!f) return;
+    /* THE DATABASE SPEAKS FOR A FED GAME (0157). Its frames carry src 'db' and no seq (the
+       gap check below is the scorer's, whose frames are numbered); the first one ends the
+       fast poll a fed game needed while nobody published for it. A caller that asked for
+       polling from the start (pollNow: the broadcast graphics) keeps its own cadence. */
+    if (f.src === 'db' && staleMs === STALE_MS && !pollNow) {
+      staleMs = FED_STALE_MS;
+      fallbackEvery = Math.max(pollEvery, FED_POLL_MS);
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
     /* ONLY THE SCORER'S OWN FRAMES COUNT AS THE SCORER BEING ALIVE.
 
        The clause used to include f.state, and the reasoning above it -- a phone
@@ -812,9 +828,9 @@ function subscriber(opts) {
     if (pollNow && !pollTimer) pollTimer = setInterval(poll, pollEvery);
     // degradation ladder: if nothing arrives for STALE_MS, poll instead of pretending
     watchdog = setInterval(() => {
-      if (Date.now() - lastTraffic > STALE_MS) {
+      if (Date.now() - lastTraffic > staleMs) {
         if (status !== 'delayed') setStatus('delayed');
-        if (!pollTimer) pollTimer = setInterval(poll, pollEvery);
+        if (!pollTimer) pollTimer = setInterval(poll, fallbackEvery);
       } else if (pollTimer && !pollNow) { clearInterval(pollTimer); pollTimer = null; }
     }, 2000);
     /* shown again after polls were skipped: the whole log at once, not a delta from before */
@@ -833,6 +849,8 @@ function subscriber(opts) {
     get state() { return state; },
     /** who is driving the clock right now: 'keeper', 'cam', or 'feed' */
     clockSource() { return (authority && Date.now() < authority.until) ? authority.source : 'feed'; },
+    /** how long a silence is tolerated, and how often the fallback polls (0157 relaxes both) */
+    cadence() { return { staleMs, pollMs: fallbackEvery, polling: !!pollTimer }; },
     /** IS ANYBODY STILL DRIVING IT?
 
         clockMs() stops running the last reading forward once it is older than

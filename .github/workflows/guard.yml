@@ -575,6 +575,12 @@ jobs:
         # transport, so it exercises adoptState rather than a copy of its rule.
         run: node supabase/tests/clockauthority.test.mjs
 
+      - name: A fed game's frames come from the database (0157)
+        # the first frame marked src 'db' ends the fast poll a fed game needed while nobody
+        # published for it; the broadcast graphics keep their own cadence; a database frame
+        # has no seq, so it never trips the scorer's gap check
+        run: node supabase/tests/live-dbframes.test.mjs
+
       - name: The scorer keeps itself on the phone
         # the push worker registers at scope /epinoia/, which covers the scorer,
         # and answers a failed request with "Nothing is stored on this phone" --
