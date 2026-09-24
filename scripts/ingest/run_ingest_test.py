@@ -160,7 +160,12 @@ ok("EuroLeague: a game being played is not over", EL._played({"Live": True}, q("
 ok("...nor one about to start (the Boxscore lists both clubs, nothing scored)", EL._played({"Live": True}, {}, [side(0), side(0)]) is False
    and EL._played({"Live": False}, {}, [side(0), side(0)]) is False)
 ok("...the End Game play ends it", EL._played({"Live": True}, {"ExtraTime": [{"PLAYTYPE": "EG"}]}, [side(90), side(88)]) is True)
-ok("...and so does the Boxscore no longer live with points on the board", EL._played({"Live": False}, q("BP"), [side(85), side(78)]) is True)
+q4 = lambda *plays: {"FirstQuarter": [{"PLAYTYPE": "BP"}], "ForthQuarter": [{"PLAYTYPE": p} for p in plays]}
+ok("...and so does the Boxscore no longer live, once the fourth quarter is closed with somebody ahead",
+   EL._played({"Live": False}, q4("BP", "2FGM", "EP"), [side(85), side(78)]) is True)
+ok("...but not the flag alone: it read false minutes into a game on opening night, 2-0 up",
+   EL._played({"Live": False}, q("BP", "2FGM"), [side(2), side(0)]) is False)
+ok("...nor a fourth quarter closed level (overtime is coming)", EL._played({"Live": False}, q4("BP", "EP"), [side(80), side(80)]) is False)
 ok("...never played=True written into the fetch again", "played=True" not in open(os.path.join(
    os.path.dirname(os.path.abspath(__file__)), "adapters", "euroleague.py"), encoding="utf-8").read().split("def fetch", 1)[1].split("def _played", 1)[0])
 

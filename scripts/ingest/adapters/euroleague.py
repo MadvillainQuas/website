@@ -249,14 +249,22 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
         the first look at each game, six minutes before tip-off, came back "final": the lane never
         looked at it again and the site sat at 0-0 while it was played.
 
-        Over is the End Game play in the play-by-play (_events turns it into the game-end event),
-        or the Boxscore no longer flagging the game live once points are on the board - the second
-        for a finished game whose log lacks the play. Live, or not started, is neither."""
+        Over is the End Game play in the play-by-play (_events turns it into the game-end event).
+        For a finished game whose log lacks that play, the Boxscore no longer flagging it live -
+        BUT ONLY WITH THE FOURTH QUARTER OR AN OVERTIME CLOSED AND SOMEBODY AHEAD: the flag alone
+        is not to be trusted. On opening night it read false for a moment minutes into Crvena
+        Zvezda v Zalgiris (18:00 tip, 2-0 on the board) and flipped back, which is all it took to
+        file a game being played as finished."""
         rows = [e for key, _ in QUARTERS for e in pbp.get(key) or []] + list(pbp.get("ExtraTime") or [])
-        if any((e.get("PLAYTYPE") or "").strip() == "EG" for e in rows):
+        plays = [(e.get("PLAYTYPE") or "").strip() for e in rows]
+        if "EG" in plays:
             return True
-        scored = any(S.num(t.get("score")) for t in tm)
-        return (box or {}).get("Live") is False and scored
+        if (box or {}).get("Live") is not False:
+            return False
+        tail = list(pbp.get("ExtraTime") or []) or list(pbp.get("ForthQuarter") or [])
+        closed = bool(tail) and (tail[-1].get("PLAYTYPE") or "").strip() == "EP"
+        home, away = (S.num(t.get("score")) for t in tm)
+        return closed and home != away
 
     # ----------------------------------------------------------------- pieces ---
     @staticmethod
