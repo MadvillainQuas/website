@@ -174,6 +174,28 @@
   body.members-only section.card{display:none}
   /* the one line a group of percentile bars carries when some of its bars are members' */
   .barteaser{padding:6px 0 2px}
+  /* THE SEASON AS A SCREENSHOT (player.js paintSeasonShot): the per-game line alone, in the
+     one-row averages grid a scouting report prints, framed so it can be captured as it is.
+     The season buttons above it are the only thing outside the frame. */
+  .seasonview{display:flex;gap:8px;flex-wrap:wrap;padding:0 calc(var(--u)*3) calc(var(--u)*1.5)}
+  .seasonview .ep-btn,.shotpick .ep-btn{font-size:9px;padding:7px 11px}
+  #seasonShot{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  .shotpick{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 calc(var(--u)*1.5)}
+  .shotcard{background:var(--panel);border:1px solid var(--rule-2);padding:10px 12px 12px}
+  .shotcard .shot-h{text-align:center;font-family:var(--f-ui);font-weight:800;font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
+  .shot-wrap{overflow-x:auto}
+  table.shot{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  /* the figures in the sans with tabular digits, not the mono: fifteen columns then fit a
+     600px column without scrolling, and a scouting report's grid reads that way anyway */
+  table.shot th,table.shot td{border:1px solid var(--rule-2);padding:6px 5px;text-align:center;white-space:nowrap}
+  table.shot th{font-family:var(--f-ui);font-weight:800;font-size:10px;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--ink)}
+  table.shot td{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
+  /* the club's name wraps rather than push the grid wider than the frame (two clubs in one
+     competition read "A / B") */
+  table.shot td.shot-team{font-weight:600;font-size:13px;color:var(--ink);
+    white-space:normal;min-width:6em}
 </style>
 </head>
 <body>
@@ -220,7 +242,12 @@
   <div class="sec">
     <div class="sec-h"><span class="idx">03</span><h2>Season</h2>
       <span class="note" id="seasonNote"></span></div>
+    <div class="seasonview" id="seasonView" hidden>
+      <button type="button" class="ep-btn pri" data-view="table">full table</button>
+      <button type="button" class="ep-btn" data-view="screenshot">screenshot</button>
+    </div>
     <div id="seasons"></div>
+    <div id="seasonShot" hidden></div>
   </div>
 
   <div class="sec">

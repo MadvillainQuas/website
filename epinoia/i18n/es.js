@@ -1394,7 +1394,10 @@
       'Mexico': 'México',
       'Women’s league': 'Liga femenina',
       'Belgium + Netherlands': 'Bélgica + Países Bajos',
-      'Kosovo': 'Kosovo'
+      'Kosovo': 'Kosovo',
+      'Averages': 'Promedios',
+      'full table': 'Tabla completa',
+      'screenshot': 'Captura'
     },
 
     ctx: {
@@ -1582,7 +1585,16 @@
         'no': 'Nº',
         '2pt': 'T2',
         'opp ftr': 'Rival FTR',
-        'TOP 3': 'Triple frontal'
+        'TOP 3': 'Triple frontal',
+        'G': 'PJ',
+        '2FGP': 'T2%',
+        '3FGP': 'T3%',
+        'RO': 'RO',
+        'RD': 'RD',
+        'RT': 'RT',
+        'AS': 'As',
+        'BS': 'Tap',
+        'ST': 'Rec'
       },
       /* a standings row (a PA beside it), as Spanish standings write it (PJ PG PP PF PC PT) */
       standings: {

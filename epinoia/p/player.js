@@ -56,6 +56,9 @@ async function api(p, anon) {
 function fail(msg) {
   $('#seasons').textContent = '';
   $('#seasons').appendChild(el('div', 'empty', msg));
+  $('#seasons').hidden = false;
+  const shot = $('#seasonShot'); if (shot) { shot.textContent = ''; shot.hidden = true; }
+  const view = $('#seasonView'); if (view) view.hidden = true;
   $('#log').textContent = '';
 }
 
@@ -366,7 +369,8 @@ async function paintCareer(pl, current, team) {
       return renderCareerRows(host, [Object.assign({}, current, {
         name: ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim(),
         teamName: (team && team.short_name) || '', teamShort: (team && team.short_name) || '',
-        colour: (team && team.colour) || null
+        colour: (team && team.colour) || null,
+        _club: (team && (team.name || team.short_name)) || ''
       })], pl);
     }
     host.appendChild(el('div', 'empty',
@@ -382,6 +386,17 @@ async function paintCareer(pl, current, team) {
       `&select=id,name,seasons(id,name,starts_on,leagues(name,slug))`);
   } catch (e) { console.warn('[career comps]', e); }
   const compById = new Map(comps.map(c => [c.id, c]));
+
+  /* THE CLUB HE PLAYED FOR IN EACH, for the screenshot's TEAM column (the table's rows all
+     carry today's club). The full name: a short name is as often a three-letter code. */
+  const clubIds = [...new Set(appearances.map(a => a.team_id).filter(Boolean))];
+  let clubs = [];
+  try {
+    if (clubIds.length) clubs = await D.all(`teams?id=in.(${clubIds.join(',')})&select=id,name,short_name`);
+  } catch (e) { console.warn('[career clubs]', e); }
+  const clubName = new Map(clubs.map(t => [t.id, t.name || t.short_name]));
+  const clubsIn = cid => [...new Set(appearances.filter(a => a.competition_id === cid)
+    .map(a => clubName.get(a.team_id)).filter(Boolean))];
 
   /* newest first, by the season's start date */
   const ordered = compIds.slice().sort((a, b) => {
@@ -406,7 +421,9 @@ async function paintCareer(pl, current, team) {
         teamName: (team && team.short_name) || '',
         teamShort: (team && team.short_name) || '',
         colour: (team && team.colour) || null,
-        _comp: c.name || '', _league: (sn.leagues && sn.leagues.name) || ''
+        _comp: c.name || '', _league: (sn.leagues && sn.leagues.name) || '',
+        _club: clubsIn(cid).join(' / ') || (team && (team.name || team.short_name)) || '',
+        _label: [sn.name, c.name].filter(Boolean).join(' · ')
       }));
     } catch (e) { console.warn('[career season]', cid, e); }
   }
@@ -434,7 +451,92 @@ function renderCareerRows(host, rows, pl) {
     leagueId: ACCESS_LEAGUE.id, leagueSlug: ACCESS_LEAGUE.slug,
     rows
   });
+  paintSeasonShot(rows);
 }
+
+/* ------------------------------------------------------ the season, as a picture ---
+   THE SAME ROWS, FRAMED TO BE CAPTURED. The full table is for reading; this is the per-game
+   line a scouting report prints: one averages grid, the club he played for and fourteen
+   numbers, and nothing else inside the frame. Every figure is the table's own season line
+   (EpinoiaData.season), only fewer of them. A player with more than one season or
+   competition chooses which with the buttons above the frame; the choice of view is
+   remembered for the next profile, as the bars' is. */
+const pc1 = v => (v == null ? '—' : Number(v).toFixed(1) + '%');
+const SHOT_COLS = [
+  ['G',    r => (r.gp == null ? '—' : String(r.gp))],
+  ['MIN',  r => n1(r.mpg)],
+  ['PTS',  r => n1(r.ppg)],
+  ['2FGP', r => pc1(r.p2_pct)],
+  ['3FGP', r => pc1(r.p3_pct)],
+  ['FT',   r => pc1(r.ft_pct)],
+  ['RO',   r => n1(r.orpg)],
+  ['RD',   r => n1(r.drpg)],
+  ['RT',   r => n1(r.rpg)],
+  ['AS',   r => n1(r.apg)],
+  ['PF',   r => n1(r.pfpg)],
+  ['BS',   r => n1(r.bpg)],
+  ['ST',   r => n1(r.spg)],
+  ['TO',   r => n1(r.topg)]
+];
+let seasonView = 'table';
+try { if (localStorage.getItem('epinoia_season_view') === 'screenshot') seasonView = 'screenshot'; } catch (_) { /* default */ }
+let shotRows = [], shotAt = 0;
+
+function paintSeasonShot(rows) {
+  shotRows = rows || [];
+  if (shotAt >= shotRows.length) shotAt = 0;
+  const host = $('#seasonShot');
+  if (!host) return;
+  host.textContent = '';
+  if (shotRows.length > 1) {
+    const pick = el('div', 'shotpick');
+    shotRows.forEach((r, i) => {
+      const b = el('button', 'ep-btn' + (i === shotAt ? ' pri' : ''), r._label || r.name || '—');
+      b.type = 'button';
+      b.setAttribute('translate', 'no');           // a season's and a competition's names
+      b.addEventListener('click', () => { shotAt = i; paintSeasonShot(shotRows); });
+      pick.appendChild(b);
+    });
+    host.appendChild(pick);
+  }
+  const r = shotRows[shotAt];
+  if (r) {
+    const card = el('div', 'shotcard');
+    card.appendChild(el('div', 'shot-h', 'Averages'));
+    const t = el('table', 'shot');
+    const thead = el('thead'), hr = el('tr');
+    hr.appendChild(el('th', null, 'TEAM'));
+    SHOT_COLS.forEach(([h]) => hr.appendChild(el('th', null, h)));
+    thead.appendChild(hr); t.appendChild(thead);
+    const tb = el('tbody'), tr = el('tr');
+    const club = el('td', 'shot-team', r._club || r.teamName || '—');
+    club.setAttribute('translate', 'no');          // a club's name is never translated
+    tr.appendChild(club);
+    SHOT_COLS.forEach(([, f]) => tr.appendChild(el('td', null, f(r))));
+    tb.appendChild(tr); t.appendChild(tb);
+    const wrap = el('div', 'shot-wrap');
+    wrap.appendChild(t); card.appendChild(wrap); host.appendChild(card);
+  }
+  const bar = $('#seasonView');
+  if (bar) bar.hidden = !shotRows.length;
+  applySeasonView();
+}
+
+function applySeasonView() {
+  const shot = seasonView === 'screenshot' && shotRows.length > 0;
+  $('#seasons').hidden = shot;
+  $('#seasonShot').hidden = !shot;
+  document.querySelectorAll('#seasonView button[data-view]').forEach(b =>
+    b.classList.toggle('pri', b.dataset.view === (shot ? 'screenshot' : 'table')));
+}
+
+document.addEventListener('click', e => {
+  const b = e.target && e.target.closest && e.target.closest('#seasonView button[data-view]');
+  if (!b) return;
+  seasonView = b.dataset.view === 'screenshot' ? 'screenshot' : 'table';
+  try { localStorage.setItem('epinoia_season_view', seasonView); } catch (_) { /* this page only */ }
+  applySeasonView();
+});
 
 /* -------------------------------------------------------------- game log --- */
 function paintLog(rows) {

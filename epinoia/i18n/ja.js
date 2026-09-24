@@ -1392,7 +1392,10 @@
       'Mexico': 'メキシコ',
       'Women’s league': '女子リーグ',
       'Belgium + Netherlands': 'ベルギー + オランダ',
-      'Kosovo': 'コソボ'
+      'Kosovo': 'コソボ',
+      'Averages': '平均',
+      'full table': '成績表',
+      'screenshot': 'スクリーンショット'
     },
 
     ctx: {
@@ -1580,7 +1583,16 @@
         'no': 'No.',
         '2pt': '2FG',
         'opp ftr': '相手 FTR',
-        'TOP 3': 'トップ3P'
+        'TOP 3': 'トップ3P',
+        'G': '試合数',
+        '2FGP': '2FG%',
+        '3FGP': '3FG%',
+        'RO': 'OR',
+        'RD': 'DR',
+        'RT': 'TR',
+        'AS': 'AS',
+        'BS': 'BS',
+        'ST': 'ST'
       },
       /* a standings row (a PA beside it), as Japanese standings write it */
       standings: {
