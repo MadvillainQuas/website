@@ -282,8 +282,9 @@ console.log('\na live game is timed whichever lane sees it');
   }
 
   const lane = src.slice(src.indexOf('live_set = []'), src.indexOf('if not args.dry_run:', src.indexOf('live_set = []')));
+  /* a write may also carry the schedule's arena (EPINOIA GO 1.3, venues_test.py): that is not memory */
   ok('both of the discovery lane\'s writes pass it',
-     (lane.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)\)/g) || []).length === 2 &&
+     (lane.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)(, venue=\(g\.extra or \{\}\)\.get\("venue"\))?\)/g) || []).length === 2 &&
      !/write_platform\(sb, src, b, run\)\s*$/m.test(src), (lane.match(/write_platform\([^)]*\)/g) || []).join(' | '));
   ok('...each timed from just before its own fetch',
      (lane.match(/t_obs = time\.time\(\)\s*\n\s*try:\s*\n\s*b = adapter\.fetch/g) || []).length === 2);
@@ -556,10 +557,10 @@ console.log('\na play is timed by the version it first appeared in');
   ok('the live lane hands the observer\'s memory to the write, and the kill switch hands none',
      /* use_obs, not observer: a source that is not on the CDN has no observer snapshot either,
         so it hands none for the same reason the kill switch does. The test lagged the rename. */
-     /write_platform\(sb, src, b, run, observed, observer\.stamps\(xid\) if use_obs else None\)/.test(src) &&
+     /write_platform\(sb, src, b, run, observed, observer\.stamps\(xid\) if use_obs else None(, venue=\(g\.extra or \{\}\)\.get\("venue"\))?\)/.test(src) &&
      /write_event_log\(sb, src, b, game_id, people\["pids"\], observed, stamps\)/.test(src));
   ok('the discovery lane passes no memory (a different process: its own writes stay poll-stamped)',
-     (src.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)\)/g) || []).length === 2);
+     (src.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)(, venue=\(g\.extra or \{\}\)\.get\("venue"\))?\)/g) || []).length === 2);
 }
 
 /* ---------------------------------------------------------------------------
