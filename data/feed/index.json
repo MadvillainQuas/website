@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-24T05:26:27.159485+00:00",
+ "updated": "2026-09-24T05:30:52.295983+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -112,6 +112,13 @@
    "adapter": "wjbl",
    "games": 112,
    "updated": "2026-09-24T05:26:27.149083+00:00"
+  },
+  {
+   "code": "WJBL2",
+   "label": "W League Future",
+   "adapter": "wjbl",
+   "games": 84,
+   "updated": "2026-09-24T05:30:52.288112+00:00"
   }
  ]
 }
