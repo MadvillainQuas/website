@@ -105,7 +105,14 @@ needs Louie says so.
       stamps. PGlite: 40 checks; `stamps.test.mjs`: 28. **Live once Louie runs `db push`.**
 - [ ] **3.3 Location in the apps**: the Android app (location permission, WebView geolocation prompt) and the
       iPhone app (location usage text). Needs a new app release each.
-- [ ] **3.4 The GO page, "Stamp this venue"**: the games on now or soon near you, one button, the result.
+- [x] **3.4 The GO page** — `/epinoia/go/`: one button, "find the game I'm at"; the phone says where it is,
+      once, and the games on now or soon are listed nearest first, measured on the phone: the one at this
+      arena with **stamp this venue**, the others with how far, when stamping opens, or that the arena's pin
+      is being checked. The stamp lands like a passport stamp, with whether the arena is new and the fan's
+      counts; every refusal in words, with its numbers. Below, the fan's stamps. Signed out it still finds
+      the game and asks for a sign-in to stamp; a fan with no username is sent to the profile (2.2). Before
+      0165 is pushed it says EPINOIA GO opens soon. ja/es (pack `go`). Not in the rail yet (6.3). Chromium:
+      34 checks; `go-page.test.mjs`: 26.
 
 ## Phase 4 — Passport and leaderboards
 

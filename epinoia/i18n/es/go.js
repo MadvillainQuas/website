@@ -1,0 +1,68 @@
+'use strict';
+/* The "go" pack, Español. Keys are the English on screen; every language carries the same keys
+   (supabase/tests/i18n.test.mjs). No other site is named in these files. */
+(function () {
+  const I = window.EpinoiaI18n;
+  if (!I) return;
+  I.register('es', {
+    phrases: {
+      'Stamp the arenas you go to: at a game, with your phone. Every arena you stamp is yours, and so is every kilometre between them.': 'Sella los pabellones a los que vas: en un partido, con tu móvil. Cada pabellón que sellas es tuyo, y también cada kilómetro entre ellos.',
+      'EPINOIA GO opens soon.': 'EPINOIA GO abre pronto.',
+      'At a game': 'En un partido',
+      'Open this page at the arena and press the button. Your phone says where it is, once, and EPINOIA checks there is a game on here.': 'Abre esta página en el pabellón y pulsa el botón. Tu móvil dice dónde está, una sola vez, y EPINOIA comprueba que hay un partido aquí.',
+      'find the game I’m at': 'buscar el partido en el que estoy',
+      'Your stamps': 'Tus sellos',
+      'Your location is used once, when you stamp, to check you are at the arena, and then forgotten: a stamp keeps the arena, the game and the time, never where your phone was.': 'Tu ubicación se usa una vez, al sellar, para comprobar que estás en el pabellón, y después se olvida: un sello guarda el pabellón, el partido y la hora, nunca dónde estaba tu móvil.',
+      'Sign in to stamp.': 'Inicia sesión para sellar.',
+      'Too many tries in a row. Wait a minute, then try again.': 'Demasiados intentos seguidos. Espera un minuto y vuelve a intentarlo.',
+      'Too many tries this hour. Try again later.': 'Demasiados intentos en esta hora. Vuelve a intentarlo más tarde.',
+      'Your phone gave a location that is not one. Try again.': 'Tu móvil ha dado una ubicación que no es válida. Vuelve a intentarlo.',
+      'That game is not there any more.': 'Ese partido ya no está.',
+      'That game is not being played.': 'Ese partido no se está jugando.',
+      'That game has no tip-off time yet, so it cannot be stamped.': 'Ese partido aún no tiene hora de inicio, así que no se puede sellar.',
+      'Stamping opens two hours before tip-off.': 'Se puede sellar desde dos horas antes del inicio.',
+      'Stamping closed an hour after the game.': 'El sellado se cerró una hora después del partido.',
+      'Nobody knows yet where this game is played.': 'Todavía no se sabe dónde se juega este partido.',
+      'This arena’s pin is being checked. Stamping opens here once it is.': 'Se está revisando el marcador de este pabellón. Se podrá sellar aquí en cuanto esté revisado.',
+      'Your phone does not know precisely enough where it is. Turn on precise location, or step outside, and try again.': 'Tu móvil no sabe con suficiente precisión dónde está. Activa la ubicación precisa, o sal al exterior, y vuelve a intentarlo.',
+      'You are too far from the arena to stamp it.': 'Estás demasiado lejos del pabellón para sellarlo.',
+      'Your last stamp was too far from here, too recently.': 'Tu último sello fue demasiado lejos de aquí, y hace demasiado poco.',
+      'It did not stamp. Try again in a moment.': 'No se ha podido sellar. Vuelve a intentarlo en un momento.',
+      'Distance': 'Distancia',
+      'A stamp needs you within': 'Para sellar hay que estar a menos de',
+      'Your phone’s accuracy': 'Precisión de tu móvil',
+      'Last stamp': 'Último sello',
+      'Minutes ago': 'Hace (minutos)',
+      'Arena': 'Pabellón',
+      'This browser cannot tell where it is.': 'Este navegador no puede saber dónde está.',
+      'Your phone said no to sharing its location. Allow location for this site, or for the EPINOIA app, in the phone’s settings, then try again.': 'Tu móvil no ha permitido compartir la ubicación. Permite la ubicación para este sitio, o para la app de EPINOIA, en los ajustes del móvil y vuelve a intentarlo.',
+      'Your phone could not find where it is. Step outside, or away from thick walls, and try again.': 'Tu móvil no ha encontrado dónde está. Sal al exterior, o apártate de las paredes gruesas, y vuelve a intentarlo.',
+      'Finding where you are took too long. Try again.': 'Encontrar dónde estás ha tardado demasiado. Vuelve a intentarlo.',
+      'Games open to stamp now': 'Partidos que se pueden sellar ahora',
+      'Today and tomorrow': 'Hoy y mañana',
+      'Sign in to stamp arenas': 'Inicia sesión para sellar pabellones',
+      'Stamping needs an account, so your stamps are yours on every phone.': 'Para sellar hace falta una cuenta, así tus sellos son tuyos en cualquier móvil.',
+      'Choose a username': 'Elige un nombre de usuario',
+      'It is how the leaderboards will show you. Never your email.': 'Es como te mostrarán las clasificaciones. Nunca tu correo.',
+      'choose one': 'elegir uno',
+      'No stamps yet. Your first one is at your next game.': 'Todavía no tienes sellos. El primero, en tu próximo partido.',
+      'No game near you right now.': 'Ahora mismo no hay ningún partido cerca de ti.',
+      'Nearest game': 'Partido más cercano',
+      'Stamped': 'Sellado',
+      'stamp this venue': 'sellar este pabellón',
+      'sign in to stamp': 'inicia sesión para sellar',
+      'Stamping opens': 'Se puede sellar desde',
+      'This arena’s pin is being checked': 'Se está revisando el marcador de este pabellón',
+      'a new arena': 'un pabellón nuevo',
+      'another visit': 'otra visita',
+      'You had already stamped this game.': 'Ya habías sellado este partido.',
+      'Arenas': 'Pabellones',
+      'Stamps': 'Sellos',
+      'Stamping closed': 'Se cerró el sellado'
+    },
+    units: {
+      'arena': '{n} pabellón',
+      'arenas': '{n} pabellones'
+    }
+  }, 'go');
+})();

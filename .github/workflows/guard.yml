@@ -298,6 +298,11 @@ jobs:
         # the games a fan can stamp, asked for with no location at all
         run: node supabase/tests/stamps.test.mjs
 
+      - name: The EPINOIA GO page (epinoia/go/)
+        # what a game is to a fan standing somewhere, the order games are listed in; every refusal the
+        # check can give has words, in ja and es too; the location leaves the phone in the stamp call only
+        run: node supabase/tests/go-page.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the

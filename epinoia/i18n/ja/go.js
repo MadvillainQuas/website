@@ -1,0 +1,68 @@
+'use strict';
+/* The "go" pack, 日本語. Keys are the English on screen; every language carries the same keys
+   (supabase/tests/i18n.test.mjs). No other site is named in these files. */
+(function () {
+  const I = window.EpinoiaI18n;
+  if (!I) return;
+  I.register('ja', {
+    phrases: {
+      'Stamp the arenas you go to: at a game, with your phone. Every arena you stamp is yours, and so is every kilometre between them.': '観戦に行ったアリーナを、試合会場でスマートフォンからスタンプしよう。スタンプしたアリーナも、その間の移動距離も、すべてあなたの記録になります。',
+      'EPINOIA GO opens soon.': 'EPINOIA GOはまもなく始まります。',
+      'At a game': '試合会場で',
+      'Open this page at the arena and press the button. Your phone says where it is, once, and EPINOIA checks there is a game on here.': 'アリーナでこのページを開き、ボタンを押してください。スマートフォンが一度だけ現在地を伝え、EPINOIAがここで試合が行われているか確認します。',
+      'find the game I’m at': '今いる試合を探す',
+      'Your stamps': 'あなたのスタンプ',
+      'Your location is used once, when you stamp, to check you are at the arena, and then forgotten: a stamp keeps the arena, the game and the time, never where your phone was.': '位置情報はスタンプするときに一度だけ、あなたがアリーナにいるかの確認に使い、その後は破棄します。スタンプに残るのはアリーナ・試合・時刻だけで、スマートフォンの位置は残りません。',
+      'Sign in to stamp.': 'スタンプするにはログインしてください。',
+      'Too many tries in a row. Wait a minute, then try again.': '続けて試しすぎです。1分待ってから、もう一度お試しください。',
+      'Too many tries this hour. Try again later.': 'この1時間の試行回数が多すぎます。しばらくしてからお試しください。',
+      'Your phone gave a location that is not one. Try again.': 'スマートフォンから正しくない位置情報が届きました。もう一度お試しください。',
+      'That game is not there any more.': 'その試合はもうありません。',
+      'That game is not being played.': 'その試合は行われていません。',
+      'That game has no tip-off time yet, so it cannot be stamped.': 'その試合はまだ開始時刻が決まっていないため、スタンプできません。',
+      'Stamping opens two hours before tip-off.': 'スタンプは試合開始の2時間前から押せます。',
+      'Stamping closed an hour after the game.': 'スタンプの受付は試合終了の1時間後に締め切られました。',
+      'Nobody knows yet where this game is played.': 'この試合の会場はまだわかっていません。',
+      'This arena’s pin is being checked. Stamping opens here once it is.': 'このアリーナのピンは確認中です。確認が済むとスタンプできるようになります。',
+      'Your phone does not know precisely enough where it is. Turn on precise location, or step outside, and try again.': 'スマートフォンが現在地を十分に正確に把握できていません。「正確な位置情報」をオンにするか屋外に出て、もう一度お試しください。',
+      'You are too far from the arena to stamp it.': 'アリーナから離れすぎているため、スタンプできません。',
+      'Your last stamp was too far from here, too recently.': '前回のスタンプが、ここから遠すぎる場所で、つい先ほど押されています。',
+      'It did not stamp. Try again in a moment.': 'スタンプできませんでした。少ししてからお試しください。',
+      'Distance': '距離',
+      'A stamp needs you within': 'スタンプできる範囲',
+      'Your phone’s accuracy': '位置情報の精度',
+      'Last stamp': '前回のスタンプ',
+      'Minutes ago': '何分前',
+      'Arena': 'アリーナ',
+      'This browser cannot tell where it is.': 'このブラウザでは現在地を取得できません。',
+      'Your phone said no to sharing its location. Allow location for this site, or for the EPINOIA app, in the phone’s settings, then try again.': 'スマートフォンが位置情報の共有を許可しませんでした。スマートフォンの設定で、このサイトまたはEPINOIAアプリに位置情報を許可してから、もう一度お試しください。',
+      'Your phone could not find where it is. Step outside, or away from thick walls, and try again.': 'スマートフォンが現在地を見つけられませんでした。屋外や厚い壁から離れた場所で、もう一度お試しください。',
+      'Finding where you are took too long. Try again.': '現在地の取得に時間がかかりすぎました。もう一度お試しください。',
+      'Games open to stamp now': '今スタンプできる試合',
+      'Today and tomorrow': '今日と明日',
+      'Sign in to stamp arenas': 'ログインしてアリーナをスタンプ',
+      'Stamping needs an account, so your stamps are yours on every phone.': 'スタンプにはアカウントが必要です。どのスマートフォンからでも、スタンプはあなたのものです。',
+      'Choose a username': 'ユーザー名を選ぶ',
+      'It is how the leaderboards will show you. Never your email.': 'ランキングではこの名前で表示されます。メールアドレスは表示されません。',
+      'choose one': '選ぶ',
+      'No stamps yet. Your first one is at your next game.': 'まだスタンプはありません。最初のスタンプは次の観戦で。',
+      'No game near you right now.': '今、近くで行われている試合はありません。',
+      'Nearest game': '最寄りの試合',
+      'Stamped': 'スタンプ済み',
+      'stamp this venue': 'この会場をスタンプ',
+      'sign in to stamp': 'ログインしてスタンプ',
+      'Stamping opens': 'スタンプ受付開始',
+      'This arena’s pin is being checked': 'このアリーナのピンは確認中です',
+      'a new arena': '新しいアリーナ',
+      'another visit': '再訪',
+      'You had already stamped this game.': 'この試合はすでにスタンプ済みです。',
+      'Arenas': 'アリーナ',
+      'Stamps': 'スタンプ',
+      'Stamping closed': 'スタンプ受付終了'
+    },
+    units: {
+      'arena': '{n}アリーナ',
+      'arenas': '{n}アリーナ'
+    }
+  }, 'go');
+})();
