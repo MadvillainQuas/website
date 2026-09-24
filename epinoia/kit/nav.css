@@ -218,13 +218,15 @@ body.nav-drawer-open{ overflow:hidden }
    width the label it replaced occupied. */
 .ep-nav .tx.epinoia-mark{ font-size:11px; letter-spacing:.02em !important }
 /* EPINOIA GO in the rail (nav.js goRow): the logotype at the same 11px as the head's, then GO in
-   its own Y2K face, a size up so the two short letters carry the same weight as the long word.
+   its own Y2K face, ON ONE LINE WITH IT: the two share a baseline, and GO is sized so its capitals
+   stand exactly as tall as the logotype's. Orbitron draws caps taller per em than EpinoiaMark, so at
+   13px GO stood 2.5px above the word beside it (measured at 4x: 14px of ink against 11.75px).
    The face is declared here as well as in the kit, because this file loads on pages without it. */
 @font-face{font-family:'Orbitron';src:url('fonts/orbitron.woff2') format('woff2');
   font-weight:700;font-style:normal;font-display:swap}
 .ep-nav .tx.go-word{ display:inline-flex; align-items:baseline; gap:6px; letter-spacing:0; text-transform:none }
 .ep-nav .go-word .epinoia-mark{ font-size:11px; letter-spacing:.02em !important; color:var(--nav-ink,var(--ink)) }
-.ep-nav .go-word .go-go{ font-family:var(--f-go,'Orbitron',system-ui,sans-serif); font-size:13px; line-height:1;
+.ep-nav .go-word .go-go{ font-family:var(--f-go,'Orbitron',system-ui,sans-serif); font-size:10.5px; line-height:1;
   font-weight:700; letter-spacing:.06em; color:var(--lume) }
 .ep-nav.drawer-open .tx.go-word{ font-size:inherit }
 /* the panel that is off screen is out of the tab order as well as out of
