@@ -669,7 +669,12 @@ async function loadCareerAccess(pl, lgRow) {
   if (!want) return fail('No player specified.');
   try {
     const key = isUuid ? 'id' : 'slug';
-    const ps = await api(`players?${key}=eq.${encodeURIComponent(want)}&select=*&limit=1`);
+    /* Named columns, not select=*: a guardian's name and the account that
+       recorded consent are not public columns (0171), and * asks for them. */
+    const ps = await api(`players?${key}=eq.${encodeURIComponent(want)}` +
+      '&select=id,slug,first_name,last_name,birth_year,is_minor,photo_media_id,photo_consent,' +
+      'created_by,created_at,photo_url,height_cm,weight_kg,wingspan_cm,previous_club,' +
+      'public_consent,consent_at,aliases,external_ids&limit=1');
     if (!ps.length) {
       return fail('This profile is not public. Under-18 players are only visible to their club.');
     }

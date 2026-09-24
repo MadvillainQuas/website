@@ -61,9 +61,13 @@ const team = (t: any) => t ? {
   name: t.name, short_name: t.short_name, slug: t.slug, colour: t.colour
 } : null;
 
-const player = (p: any) => p ? {
+/* A MINOR IS NEVER NAMED HERE, consented or not (0049: consent was given to a
+   league for its own website, not for a partner's republication). This reads
+   with the service role, which sees every row, so the rule is applied here —
+   every select that feeds this asks for is_minor. */
+const player = (p: any) => p ? (p.is_minor ? { name: null, slug: null, withheld: true } : {
   name: [p.first_name, p.last_name].filter(Boolean).join(' '), slug: p.slug
-} : null;
+}) : null;
 
 /* ------------------------------------------------- members-only leagues --- */
 // docs/memberships.md §2. This function reads with the service role, which the
@@ -224,7 +228,7 @@ async function route(parts: string[], url: URL, leagueScope: string | null, ctx:
       const pids = [...new Set((data || []).map((r: any) => r.player_id).filter(Boolean))];
       const tids = [...new Set((data || []).map((r: any) => r.team_id).filter(Boolean))];
       const [{ data: ps }, { data: ts }] = await Promise.all([
-        pids.length ? admin.from('players').select('id,first_name,last_name,slug').in('id', pids)
+        pids.length ? admin.from('players').select('id,first_name,last_name,slug,is_minor').in('id', pids)
                     : Promise.resolve({ data: [] as any[] }),
         tids.length ? admin.from('teams').select('id,name,short_name,slug,colour').in('id', tids)
                     : Promise.resolve({ data: [] as any[] })
@@ -272,7 +276,7 @@ async function route(parts: string[], url: URL, leagueScope: string | null, ctx:
 
     if (tail === 'awards') {
       const { data, error } = await admin.from('season_awards')
-        .select('code,value,detail,players(first_name,last_name,slug),' +
+        .select('code,value,detail,players(first_name,last_name,slug,is_minor),' +
                 'teams(name,short_name,slug,colour)')
         .eq('competition_id', comp.id);
       if (error) return fail(500, error.message);
@@ -347,7 +351,7 @@ async function route(parts: string[], url: URL, leagueScope: string | null, ctx:
     }
 
     const { data: rows } = await admin.from('player_game_stats')
-      .select('team_idx,stats,players(first_name,last_name,slug)')
+      .select('team_idx,stats,players(first_name,last_name,slug,is_minor)')
       .eq('game_id', g.id);
 
     const box = [[], []] as any[][];

@@ -894,7 +894,7 @@ $('#addp').addEventListener('click', async () => {
   const { data: p, error } = await sb.from('players').insert({
     slug: slug(first + '-' + last), first_name: first, last_name: last,
     birth_year: Number.isFinite(yr) ? yr : null, is_minor: isMinor, created_by: me.id
-  }).select().single();
+  }).select('id').single();   // not every column of players is readable (0171)
   if (error) return say(error.message, 'err');
   const { error: rErr } = await sb.from('roster_entries')
     .insert({ team_id: team.id, player_id: p.id, jersey: $('#pnum').value.trim() });

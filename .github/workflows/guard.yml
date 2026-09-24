@@ -163,6 +163,15 @@ jobs:
       - name: No migration can stop a db push half way
         run: node supabase/tests/migration-lint.test.mjs
 
+      # 0171 closed gaps a later migration can reopen by re-creating a function,
+      # view or policy from an older copy: a withheld child's name in the season
+      # view, an official's email, fake results, another club's player on your
+      # roster. And players lost its table-wide SELECT (a guardian's name is not
+      # public), so a column added later must be granted by name or every page
+      # selecting it is refused.
+      - name: The security sweep stays swept
+        run: node supabase/tests/security-sweep.test.mjs
+
       # The uploader inserted `w` and `h` into a table whose columns are
       # `width` and `height`, so PostgREST refused every upload the platform
       # ever attempted and the media table stood at nought rows. The failure is
