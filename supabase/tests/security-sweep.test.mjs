@@ -114,12 +114,20 @@ for (const f of walk('epinoia').concat(walk('share'))) {
 }
 ok('no page asks for players?select=* (a guardian\'s name is not a public column)', !star.length, star);
 
-/* the API: a minor is never named */
+/* the API: a player is named exactly when the site names them (a minor with no
+   consent recorded keeps their stats and loses the name), and with nothing but
+   a name and a slug */
 {
   const api = rd('supabase', 'functions', 'api', 'index.ts');
-  ok('the API\'s player() withholds a minor', /p\.is_minor \? \{ name: null/.test(api));
+  ok('the API withholds the name of a player the site withholds',
+     /const withheld = \(p: any\) => !!p\.is_minor && !p\.public_consent/.test(api) &&
+     /withheld\(p\) \? \{ name: null, slug: null, withheld: true \}/.test(api));
+  const shape = (api.match(/const player = [\s\S]*?\) : null;/) || [''])[0];
+  ok('...and says nothing about a player but their name and slug',
+     !!shape && !/birth|photo|height|weight|consent_|guardian|previous_club/.test(shape.replace(/withheld\(p\)/, '')), shape);
   const sel = [...api.matchAll(/players\(([^)]*)\)|from\('players'\)\.select\('([^']*)'\)/g)].map(m => m[1] || m[2]);
-  ok('...and every players select that feeds it asks for is_minor', sel.length > 0 && sel.every(s => /\bis_minor\b/.test(s)), sel);
+  ok('...and every players select that feeds it asks for is_minor and public_consent',
+     sel.length > 0 && sel.every(s => /\bis_minor\b/.test(s) && /\bpublic_consent\b/.test(s)), sel);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
