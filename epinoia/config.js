@@ -96,20 +96,65 @@ try {
 /* the public half of the Web Push key pair (the private half lives with the notify function) */
 window.EPINOIA_VAPID = 'BLskwAuRGoAJnRcYe0gyLE5R0otKhcvu8fL5UxE06ep_VGzxfbirqziIS4uu3N6BmQob4Vl9vSiokUuVKpa7toM';
 
-window.epinoiaLogoUrl = function (path) {
+/* A CREST AT THE SIZE IT IS SHOWN (migration 0158). Nearly every club crest is another site's
+   URL, hot-linked: PNGs of 100-780 KB drawn at 24-64 px. The snapshots function copies each one
+   into the public 'crests' bucket under crestKey(url), and this asks Storage's image
+   transformation for it at `px` (128 by default: sharp at 64 CSS px on a 2x screen), as WebP
+   where the browser takes it. An upload of our own (a media-public path) is sized the same way.
+   An SVG is drawn as it is (it is already small, and vector).
+
+   A COPY THAT IS NOT THERE FALLS BACK TO THE ORIGINAL. A crest the function has not reached
+   yet, or could not copy (a dead host, not an image), answers the transformation with an error;
+   the listener below catches the image's error before the page's own handlers do and points it
+   at the URL it would have used before, so no crest is ever drawn worse than it was. crestKey is
+   cyrb53 of the exact URL; supabase/functions/snapshots holds the same function, and
+   supabase/tests/crests.test.mjs keeps the two identical. */
+function crestKey(s) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+const CREST_ORIGINAL = new Map();            // transformation URL -> the URL to fall back to
+window.epinoiaLogoUrl = function (path, px) {
   if (!path) return null;
   let p = String(path).trim();
   if (p.charAt(0) === '{') {
     try { p = (JSON.parse(p) || {}).url || ''; } catch (_) { return null; }
   }
   if (!p) return null;
-  if (/^https:\/\//i.test(p)) return p;
   if (/^http:\/\//i.test(p)) return null;          // mixed content: the browser would block it anyway
   const c = window.EPINOIA_CONFIG || {};
-  if (!c.supabaseUrl) return null;
-  return c.supabaseUrl + '/storage/v1/object/public/media-public/' +
-         p.split('/').map(encodeURIComponent).join('/');
+  const external = /^https:\/\//i.test(p);
+  if (!c.supabaseUrl) return external ? p : null;
+  const original = external ? p
+    : c.supabaseUrl + '/storage/v1/object/public/media-public/' + p.split('/').map(encodeURIComponent).join('/');
+  if (c.crestSizes === false || /\.svg(\?|#|$)/i.test(p)) return original;
+  const w = Math.max(32, Math.min(512, Math.round(+px || 128)));
+  const object = external ? 'crests/' + crestKey(p) : 'media-public/' + p.split('/').map(encodeURIComponent).join('/');
+  const sized = c.supabaseUrl + '/storage/v1/render/image/public/' + object +
+                '?width=' + w + '&height=' + w + '&resize=contain';
+  CREST_ORIGINAL.set(sized, original);
+  return sized;
 };
+window.epinoiaCrestKey = crestKey;
+/* Capture phase, on the window: it runs before any handler on the image itself (epinoiaCrest's
+   swap to initials, a badge's monogram), and stopping the event there keeps those for the
+   original URL failing too, which then errors afresh with nothing left to fall back to. */
+if (typeof window.addEventListener === 'function') window.addEventListener('error', function (e) {
+  const img = e.target;
+  if (!img || img.tagName !== 'IMG') return;
+  /* kept, not deleted: the same crest drawn in five places fails five times, and each needs it */
+  const original = CREST_ORIGINAL.get(img.currentSrc || img.src);
+  if (!original) return;
+  e.stopImmediatePropagation();
+  img.src = original;
+}, true);
 
 /* A LEAGUE'S BADGE, WHEREVER GAMES FROM MORE THAN ONE LEAGUE SIT SIDE BY SIDE (HOME's daily
    fixtures, the global fixtures page). An HTML string: span.lgb holding a small tile with the

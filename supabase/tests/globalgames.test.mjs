@@ -396,7 +396,8 @@ section('the league badge (config.js)');
   const B = sandbox.epinoiaLeagueBadge;
   ok('epinoiaLeagueBadge is defined', typeof B === 'function');
   const withLogo = B({ name: 'Super League', logo_path: 'league/1/logo-a.webp', colour_source: 'logo', colour_a: '#f2594c', colour_b: '#000000' });
-  ok('a logo from the bucket, on a tile, then the name', /^<span class="lgb"><span class="lgb-tile" data-mono="SL" style="--lgb-a:#f2594c;--lgb-b:#000000"><img src="https:\/\/hhvofgqqadtyvcjudhjx\.supabase\.co\/storage\/v1\/object\/public\/media-public\/league\/1\/logo-a\.webp" alt=""/.test(withLogo)
+  /* at the size it is drawn, through Storage's image transformation (0158) */
+  ok('a logo from the bucket, on a tile, then the name', /^<span class="lgb"><span class="lgb-tile" data-mono="SL" style="--lgb-a:#f2594c;--lgb-b:#000000"><img src="https:\/\/hhvofgqqadtyvcjudhjx\.supabase\.co\/storage\/v1\/render\/image\/public\/media-public\/league\/1\/logo-a\.webp\?width=128&amp;height=128&amp;resize=contain" alt=""/.test(withLogo)
      && withLogo.includes('<span class="lgb-name">Super League</span>'), withLogo);
   const noLogo = B({ name: 'Basketball <b>Club</b> "B"', colour_source: 'default', colour_a: '#93f2bf' });
   ok('the name is escaped', noLogo.includes('Basketball &lt;b&gt;Club&lt;/b&gt; &quot;B&quot;') && !noLogo.includes('<b>'));

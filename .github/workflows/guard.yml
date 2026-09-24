@@ -575,6 +575,12 @@ jobs:
         # transport, so it exercises adoptState rather than a copy of its rule.
         run: node supabase/tests/clockauthority.test.mjs
 
+      - name: Crests at the size they are shown (0158)
+        # config.js and the snapshots function name a crest's copy with the same crestKey;
+        # the function copies exactly what the page transforms; a missing copy falls back to
+        # the original URL before the image's own error handler runs
+        run: node supabase/tests/crests.test.mjs
+
       - name: A fed game's frames come from the database (0157)
         # the first frame marked src 'db' ends the fast poll a fed game needed while nobody
         # published for it; the broadcast graphics keep their own cadence; a database frame

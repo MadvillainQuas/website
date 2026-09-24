@@ -19,6 +19,8 @@
 //   events/<game>.json      a finished game's event log (0156): EpinoiaData.gameLog(),
 //                           the very read events() makes, rewritten when the game is
 //                           finalised again or its log changes.
+//   crests/<key>            a copy of each crest that is another site's URL (0158), which
+//                           pages ask Storage's image transformation for at display size.
 //
 // AS A SIGNED-OUT VISITOR. Every read goes out with the publishable key and no
 // session, through the page's own data.js, so every policy applies and a
@@ -266,6 +268,95 @@ async function buildEventFiles(admin: any, D: any, started: number, maxBuilds: n
            left: (due.length - built) + (gone.length - removed) };
 }
 
+/* CRESTS, COPIED ONCE (0158). A club's or league's crest that is another site's URL is fetched
+   and stored in the public 'crests' bucket as crests/<crestKey(url)>, which is what
+   epinoia/config.js asks Storage's image transformation for, at display size. A URL is fetched
+   once; one that cannot be copied (dead, not a raster image, over 5 MB) is noted and tried again
+   after a week, and pages keep drawing it from its own URL. An SVG is never copied: config.js
+   draws those as they are. crestKey is config.js's, character for character (tested). */
+const MAX_CRESTS = 40;
+const CREST_LANES = 6;
+const CREST_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
+const CREST_MAX_BYTES = 5 * 1024 * 1024;
+
+function crestKey(s: string) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+/* the URL config.js would transform, or null (a stored upload, an SVG, anything else) */
+function crestSource(path: any) {
+  if (!path) return null;
+  let p = String(path).trim();
+  if (p.charAt(0) === '{') {
+    try { p = (JSON.parse(p) || {}).url || ''; } catch (_) { return null; }
+  }
+  return /^https:\/\//i.test(p) && !/\.svg(\?|#|$)/i.test(p) ? p : null;
+}
+
+/* what the bytes are, whatever the host said they were */
+function rasterType(b: Uint8Array) {
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length > 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return 'image/gif';
+  const ascii = (from: number, to: number) => String.fromCharCode(...b.subarray(from, to));
+  if (b.length > 12 && ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'image/webp';
+  if (b.length > 12 && ascii(4, 8) === 'ftyp' && /^avi[fs]$/.test(ascii(8, 12))) return 'image/avif';
+  return null;
+}
+
+async function buildCrests(admin: any, D: any, started: number, maxBuilds: number) {
+  const rows = [...await D.all('teams?select=logo_path&logo_path=not.is.null&order=id'),
+                ...await D.all('leagues?select=logo_path&logo_path=not.is.null&order=id')];
+  const urls = [...new Set(rows.map((r: any) => crestSource(r.logo_path)).filter(Boolean))] as string[];
+  const held = new Map((await allAdmin(admin, 'crest_files', 'url,ok,checked_at')).map((r: any) => [r.url, r]));
+  const due = urls.filter(u => {
+    const h: any = held.get(u);
+    return !h || (!h.ok && Date.now() - Date.parse(h.checked_at) > CREST_RETRY_MS);
+  });
+
+  let built = 0, failed = 0, next = 0;
+  const todo = due.slice(0, maxBuilds);
+  const lane = async () => {
+    while (next < todo.length && Date.now() - started < WALL_MS) {
+      const url = todo[next++];
+      const row: any = { url, key: crestKey(url), ok: false, content_type: null, bytes: null, error: null,
+                         checked_at: new Date().toISOString() };
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 10_000);
+      try {
+        const r = await realFetch(url, { signal: ctl.signal, redirect: 'follow',
+          headers: { Accept: 'image/png,image/jpeg,image/webp,image/gif,image/avif;q=0.9,*/*;q=0.1' } });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        if (bytes.length > CREST_MAX_BYTES) throw new Error('too big: ' + bytes.length + ' bytes');
+        const type = rasterType(bytes);
+        if (!type) throw new Error('not a raster image (' + (r.headers.get('content-type') || 'no type') + ')');
+        const { error } = await admin.storage.from('crests').upload(row.key, bytes,
+          { contentType: type, upsert: true, cacheControl: '604800' });
+        if (error) throw new Error('upload: ' + error.message);
+        Object.assign(row, { ok: true, content_type: type, bytes: bytes.length });
+        built++;
+      } catch (e) {
+        row.error = String((e as Error)?.message || e).slice(0, 300);
+        failed++;
+      } finally {
+        clearTimeout(timer);
+      }
+      await admin.from('crest_files').upsert(row, { onConflict: 'url' });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CREST_LANES, todo.length) }, lane));
+  return { built, failed, current: urls.length - due.length, left: due.length - built - failed };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -283,13 +374,14 @@ Deno.serve(async (req) => {
     /* the event files take what is left of the call: fewer when seasons were rebuilt in it */
     const events = await buildEventFiles(admin, D, started,
       seasons.built ? Math.floor(MAX_EVENT_FILES / 2) : MAX_EVENT_FILES);
-    const complete = seasons.left === 0 && events.left === 0;
+    const crests = await buildCrests(admin, D, started, MAX_CRESTS);
+    const complete = seasons.left === 0 && events.left === 0 && crests.left === 0;
     if (complete) {
       await admin.from('snapshot_ticks').upsert(
         { id: 1, done_fingerprint: tick ? tick.fingerprint : null, done_at: new Date().toISOString() },
         { onConflict: 'id' });
     }
-    return json({ stars, seasons, events, complete, ms: Date.now() - started });
+    return json({ stars, seasons, events, crests, complete, ms: Date.now() - started });
   } catch (e) {
     return json({ error: String((e as Error)?.message || e), ms: Date.now() - started }, 500);
   }
