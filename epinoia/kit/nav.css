@@ -435,6 +435,23 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
 
 /* ---- account ------------------------------------------------------------- */
 .ep-nav .acct{ display:flex; flex-direction:column }
+/* THE SIGNED-IN EMAIL: one line at every width, and a marquee when it does not fit (nav.js
+   acctMq). The desktop rule above stacks names in several lines and switches the slide off, which
+   is right for a league and wrong for an address, so this one restates the marquee for itself and
+   is more specific than that rule. "sign in" / "account" keep the row's capitals; an address is
+   shown as written. */
+.ep-nav .acct-tx{ flex:1; min-width:0; overflow:hidden; display:flex }
+.ep-nav .acct .marq > span{
+  display:inline-block; white-space:nowrap; overflow-wrap:normal;
+  font-size:9px; line-height:1.4; letter-spacing:.11em; text-transform:uppercase;
+}
+.ep-nav .acct .marq.is-email > span{ text-transform:none; letter-spacing:.02em }
+.ep-nav .acct .marq:not(.scrolls) > span{ display:block; overflow:hidden; text-overflow:ellipsis }
+.ep-nav .acct .marq.scrolls > span{
+  animation:ep-marq 7s ease-in-out infinite alternate; animation-delay:var(--stag,0s);
+}
+.ep-nav .acct a.item:hover .marq.scrolls > span{ animation-play-state:paused }
+.ep-nav.drawer-open .acct .marq > span{ font-size:10px }
 
 /* ---- motion off ---------------------------------------------------------- */
 @media (prefers-reduced-motion:reduce){

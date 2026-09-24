@@ -383,14 +383,16 @@
        departures board sliding in lockstep */
     box.style.setProperty('--stag', (-1.3 * (marqN++ % 5)).toFixed(1) + 's');
     box.appendChild(inner);
-    /* after layout, not during it */
-    afterPaint(() => {
+    /* refit() is what decides; it is on the box so text that CHANGES after the row is built (the
+       signed-in email, below) can be measured again. */
+    box.refit = () => {
       const over = inner.scrollWidth - box.clientWidth;
-      if (over > 2) {
-        box.classList.add('scrolls');
-        box.style.setProperty('--shift', (-over - 4) + 'px');
-      }
-    });
+      box.classList.toggle('scrolls', over > 2);
+      if (over > 2) box.style.setProperty('--shift', (-over - 4) + 'px');
+    };
+    box.setText = t => { inner.textContent = t; box.classList.remove('scrolls'); afterPaint(box.refit); };
+    /* after layout, not during it */
+    afterPaint(box.refit);
     return box;
   }
 
@@ -927,7 +929,17 @@
   const acct = el('div', 'acct');
   const acctLink = el('a', 'item');
   const acctIc = el('span', 'ic', '◐');
-  const acctTx = el('span', 'tx', 'sign in');
+  /* THE SIGNED-IN EMAIL IS OFTEN LONGER THAN THE RAIL ("britishbasketballleague@…"), and plain text
+     cut it off mid-word with nothing to say so. It is a marquee like a league's name: it fits, or
+     it slides to show the rest (pointing at it holds it still), and the full address is the
+     link's title. Lower case, because an address is read as written. Measured again whenever the
+     row's width changes (the phone sheet opening) and never while it is not laid out. */
+  const acctMq = marquee('sign in');
+  acctMq.classList.add('acct-mq');
+  const acctTx = el('span', 'tx acct-tx');
+  acctTx.appendChild(acctMq);
+  const setAcct = t => { acctMq.classList.toggle('is-email', /@/.test(t)); acctMq.setText(t); };
+  if (window.ResizeObserver) new ResizeObserver(() => { if (acctMq.clientWidth) acctMq.refit(); }).observe(acctMq);
   acctLink.append(acctIc, acctTx);
   acctLink.href = root + 'signin/?next=' +
     encodeURIComponent(location.pathname + location.search);
@@ -2199,7 +2211,7 @@
     if (!sess) {
       gated.forEach(([node]) => { node.hidden = true; });
       demoRows.forEach(([node, spec, demoHref]) => applyDemo(node, spec, demoHref, true));
-      acctTx.textContent = 'sign in';
+      setAcct('sign in');
       acctIc.textContent = '◐';
       meLink.hidden = true;
       unmountBell();
@@ -2210,7 +2222,7 @@
       return;
     }
 
-    acctTx.textContent = sess.email || 'account';
+    setAcct(sess.email || 'account');
     acctIc.textContent = '◉';
     meLink.hidden = false;
     mountBell(sess);
