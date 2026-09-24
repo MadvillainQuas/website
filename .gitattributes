@@ -1,0 +1,2 @@
+# Shell scripts run on Linux (tools/runner/setup-runner.sh on the runner server): never CRLF.
+*.sh text eol=lf
