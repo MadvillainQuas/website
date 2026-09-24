@@ -115,7 +115,7 @@ needs Louie says so.
       is being checked. The stamp lands like a passport stamp, with whether the arena is new and the fan's
       counts; every refusal in words, with its numbers. Below, the fan's stamps. Signed out it still finds
       the game and asks for a sign-in to stamp; a fan with no username is sent to the profile (2.2). Before
-      0165 is pushed it says EPINOIA GO opens soon. ja/es (pack `go`). Not in the rail yet (6.3). Chromium:
+      0165 is pushed it says EPINOIA GO opens soon. ja/es (pack `go`). In the rail since 6.3. Chromium:
       56 checks; `go-page.test.mjs`: 28.
 
 ## Phase 4 — Passport and leaderboards
@@ -184,5 +184,9 @@ needs Louie says so.
       the account-deletion note names the stamps and photographs. The GO page's location note links to it.
       A stamp can now be taken back from the passport ("take back"), as 0165 always allowed and the page
       says. Chromium: 17 checks (en/ja/es, a phone's width).
-- [ ] **6.3** EPINOIA GO in the rail and the phone bar; docs. **Louie's call**: it is a launch decision
-      (the rail and the phone bar are on every page), best made once 0163-0167 are live.
+- [x] **6.3** EPINOIA GO in the rail - Louie, 2026-09-24, once 0163-0167 were live: the row under
+      "leagues" in the first rail (and so in the phone's menu sheet), EPINOIΛ in the logotype and GO in
+      Orbitron 700, his pick of four Y2K faces (Google Fonts, SIL OFL; `kit/fonts/orbitron.woff2`, 6.5 KB,
+      declared in the kit and in nav.css, which loads without it). Lit on the GO pages; never
+      translated. The phone's bottom bar is unchanged (not asked for). Chromium: 17 checks (desktop
+      light and dark, the GO page, ja/es, the phone's sheet); `go-page.test.mjs`: 31.

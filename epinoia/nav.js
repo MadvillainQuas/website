@@ -570,6 +570,20 @@
     setView(country === null ? 'country' : 'root', true);
   });
   hlist.appendChild(leaguesRow);
+
+  /* EPINOIA GO (epinoia/go/, docs/epinoia-go.md 6.3), under the leagues. Set in its own letters -
+     EPINOIΛ in the logotype, GO in a Y2K face of its own (--f-go, epinoia-kit.css) - because it is
+     a thing to do at a game rather than one more page to read, and a row in the rail's label type
+     would say the opposite. A name, so never translated. */
+  const goRow = el('a', 'item go-row' + (/\/epinoia\/go\//.test(here) ? ' on' : ''));
+  goRow.href = root + 'go/';
+  const goWord = el('span', 'tx go-word');
+  goWord.setAttribute('translate', 'no');
+  goWord.append(el('span', 'epinoia-mark', 'EPINOIΛ'), el('span', 'go-go', 'GO'));
+  goRow.append(el('span', 'ic', '◎'), goWord);
+  goRow.title = 'EPINOIA GO: stamp the arenas you go to, at a game';
+  if (goRow.classList.contains('on')) goRow.setAttribute('aria-current', 'page');
+  hlist.appendChild(goRow);
   homePanel.append(htitle, hlist);
 
   /* ---- root panel: the title, then the leagues ---- */

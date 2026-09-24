@@ -224,11 +224,11 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
   ok('the rail starts with a home panel', !!r.homeTitle);
   ok('...headed with the logotype, linking HOME',
      r.homeTitle.href === '../home/' && r.homeTitle.cls.has('epinoia-mark'), r.homeTitle && r.homeTitle.href);
-  eq('...holding home, global fixtures, global scouting, the waiver wire, then the leagues',
-     r.homeRows.map(x => x.tx), ['home', 'fixtures', 'scouting', 'injury report', 'leagues']);
-  eq('...pointing at HOME, global fixtures, global scouting, the wire and the leagues on HOME',
+  eq('...holding home, global fixtures, global scouting, the waiver wire, the leagues, then EPINOIA GO',
+     r.homeRows.map(x => x.tx), ['home', 'fixtures', 'scouting', 'injury report', 'leagues', 'EPINOIΛGO']);
+  eq('...pointing at HOME, global fixtures, global scouting, the wire, the leagues on HOME and EPINOIA GO',
      r.homeRows.map(x => x.href),
-     ['../home/', '../games/', '../scouting/', '../injuries/', '../home/#leagues']);
+     ['../home/', '../games/', '../scouting/', '../injuries/', '../home/#leagues', '../go/']);
   eq('...with the home row lit on HOME', r.homeRows.filter(x => x.on).map(x => x.tx), ['home']);
   ok('the foot no longer carries a scouting row',
      !r.foot.all().some(n => n.tagName === 'A' && /\/scouting\//.test(n.href || '')));
@@ -246,7 +246,7 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
   const r = rail('/epinoia/stats/wowy/?l=bcb');
   eq('two folders down, the rows in the home panel climb with it',
      r.homeRows.map(x => x.href),
-     ['../../home/', '../../games/', '../../scouting/', '../../injuries/', '../../home/#leagues']);
+     ['../../home/', '../../games/', '../../scouting/', '../../injuries/', '../../home/#leagues', '../../go/']);
 }
 {
   const r = rail('/epinoia/home/?l=bcb');

@@ -217,6 +217,16 @@ body.nav-drawer-open{ overflow:hidden }
    that fits perfectly well at the right size. 11px puts EPINOIΛ at roughly the
    width the label it replaced occupied. */
 .ep-nav .tx.epinoia-mark{ font-size:11px; letter-spacing:.02em !important }
+/* EPINOIA GO in the rail (nav.js goRow): the logotype at the same 11px as the head's, then GO in
+   its own Y2K face, a size up so the two short letters carry the same weight as the long word.
+   The face is declared here as well as in the kit, because this file loads on pages without it. */
+@font-face{font-family:'Orbitron';src:url('fonts/orbitron.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap}
+.ep-nav .tx.go-word{ display:inline-flex; align-items:baseline; gap:6px; letter-spacing:0; text-transform:none }
+.ep-nav .go-word .epinoia-mark{ font-size:11px; letter-spacing:.02em !important; color:var(--nav-ink,var(--ink)) }
+.ep-nav .go-word .go-go{ font-family:var(--f-go,'Orbitron',system-ui,sans-serif); font-size:13px; line-height:1;
+  font-weight:700; letter-spacing:.06em; color:var(--lume) }
+.ep-nav.drawer-open .tx.go-word{ font-size:inherit }
 /* the panel that is off screen is out of the tab order as well as out of
    sight — a keyboard user should never land on a link they cannot see */
 .ep-nav .panel[aria-hidden="true"]{ visibility:hidden }

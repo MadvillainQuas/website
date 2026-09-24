@@ -13,7 +13,7 @@
      node supabase/tests/go-page.test.mjs
    ============================================================================ */
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
@@ -94,6 +94,22 @@ ok('signed out: a sign-in that comes back here', /S\.access\.signinHref\(\)/.tes
 ok('names are data: never translated', /data\('div', 'm', \(g\.home \|\| '—'\) \+ ' v ' \+ \(g\.away \|\| '—'\)\)/.test(js) && /translate="no">EPINOIA GO</.test(html));
 ok('the go pack is loaded', /<script src="\.\.\/i18n\.js\?v=\d+" data-i18n-packs="go"><\/script>/.test(html));
 ok('no location in the page\'s own storage', !/localStorage|sessionStorage|indexedDB/.test(js));
+
+console.log('\nin the rail (6.3)');
+const nav = rd('epinoia', 'nav.js'), navCss = rd('epinoia', 'kit', 'nav.css'), kit = rd('epinoia', 'kit', 'epinoia-kit.css');
+ok('EPINOIA GO is the row under "leagues" in the first rail, lit on its own pages',
+   nav.indexOf('hlist.appendChild(leaguesRow);') < nav.indexOf('hlist.appendChild(goRow);')
+   && nav.indexOf('hlist.appendChild(goRow);') < nav.indexOf('homePanel.append(htitle, hlist);')
+   && /goRow\.href = root \+ 'go\/';/.test(nav) && /\/\\\/epinoia\\\/go\\\/\/\.test\(here\)/.test(nav));
+ok('...EPINOIΛ in the logotype and GO in its own face, as a name (never translated)',
+   /goWord\.append\(el\('span', 'epinoia-mark', 'EPINOIΛ'\), el\('span', 'go-go', 'GO'\)\)/.test(nav)
+   && /goWord\.setAttribute\('translate', 'no'\)/.test(nav));
+ok('GO is Orbitron 700, served from the site with its licence, declared in the kit and in nav.css (which loads without it)',
+   /@font-face\{font-family:'Orbitron';src:url\('fonts\/orbitron\.woff2'\) format\('woff2'\);\s*font-weight:700/.test(kit)
+   && /@font-face\{font-family:'Orbitron';src:url\('fonts\/orbitron\.woff2'\) format\('woff2'\);\s*font-weight:700/.test(navCss)
+   && /--f-go:'Orbitron'/.test(kit) && /\.go-go\{ font-family:var\(--f-go,'Orbitron'/.test(navCss)
+   && existsSync(path.join(ROOT, 'epinoia', 'kit', 'fonts', 'orbitron.woff2'))
+   && /SIL Open Font License/.test(rd('epinoia', 'kit', 'fonts', 'OFL-orbitron.txt')));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

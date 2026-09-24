@@ -25,6 +25,10 @@
   font-weight:100 900;font-stretch:62% 125%;font-style:normal;font-display:swap}
 @font-face{font-family:'MartianMono';src:url('fonts/martian.woff2') format('woff2');
   font-weight:100 800;font-stretch:75% 112.5%;font-style:normal;font-display:swap}
+/* EPINOIA GO's "GO" and nothing else (the rail, the GO pages): Orbitron 700, Latin, from Google Fonts,
+   SIL Open Font License 1.1 (fonts/OFL-orbitron.txt). Chosen by Louie, 2026-09-24. */
+@font-face{font-family:'Orbitron';src:url('fonts/orbitron.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap}
 
 /* ---------- 1b. the logotype ----------------------------------------------
    EPINOIA'S OWN FACE, and it is not the one that was supplied.
@@ -99,6 +103,7 @@
   --f-micro:'Silkscreen',ui-monospace,monospace; /* labels, ticker, badges    */
   --f-ui:'Archivo',system-ui,sans-serif;         /* names, prose, buttons     */
   --f-data:'MartianMono',ui-monospace,monospace; /* table figures             */
+  --f-go:'Orbitron',var(--f-ui);                 /* EPINOIA GO's "GO" only    */
   /* rhythm */
   --u:8px; --ease:cubic-bezier(.22,.9,.24,1);
   color-scheme:dark;
