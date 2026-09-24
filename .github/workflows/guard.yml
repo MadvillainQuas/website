@@ -434,6 +434,18 @@ jobs:
         # other club repaired and the opening five read as a lineup
         run: python scripts/ingest/feb_test.py
 
+      - name: Kosovo Superliga on FIBA LiveStats via the federation's own site
+        # fiba_site_schedule site "kosovo": the season's page from the site's menu (the leagueId is new
+        # every season), fixtures keyed on season, week and clubs, the LiveStats id remembered when it
+        # appears, a forfeit and an undated game left out, and a real game reconciled end to end
+        run: python scripts/ingest/kosovo_test.py
+
+      - name: BNXT League (Belgium + the Netherlands) from the league's own API
+        # bnxt.py: end-year seasons, one request per phase, Supercups never read as the league's, the
+        # national play-offs apart, a purged game not fetched, and the play-by-play translator on the
+        # event codes the scraper validated (to be checked on the first real 2026-27 round)
+        run: python scripts/ingest/bnxt_test.py
+
       - name: Lega Basket Serie A (Italy) from legabasket.it's own API
         # lba.py over cached championship, calendar, team and game replies: the cups are never
         # discovered, the match id is the key and the club_id the code (a club keeps it through a

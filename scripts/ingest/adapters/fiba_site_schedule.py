@@ -87,6 +87,61 @@ _SK_VENUE = re.compile(r'class="match-ticket-header">.*?<span>\s*([^<]+?)\s*</sp
 # strip read (2026-09-23) the LiveStats id was the site id + 2769710 - the season's webcasts were
 # created in the league's own order. So: the strip's links are cached as they appear, and the
 # offset they share is only ever TRIED, and kept once the feed itself names the fixture's clubs.
+# basketbolli.com (the Kosovo federation): the Superliga on FIBA LiveStats (client KOS). No robots.txt
+# (404), so nothing is disallowed. The league gets a NEW leagueId every season and the old season's
+# page is purged, so the current id is read off the site's own menu, never kept in a constant.
+KOS_SITE = "https://basketbolli.com"
+KOS_MENU_LABEL = "PROCREDIT SUPERLIGA"
+_KOS_ROW = re.compile(r'<div class="match-row">')
+_KOS_WEEK = re.compile(r"<h2>\s*JAVA\s+([IVXLC]+)", re.I)
+_KOS_SIDE = re.compile(r'<div class="team(?: team-(?:home|away))?">(.*?)</div>', re.S)
+_KOS_H4 = re.compile(r"<h4[^>]*>(.*?)</h4>", re.S)
+_KOS_WHEN = re.compile(r"(\d{2})/(\d{2})/(\d{4})\s+(\d{1,2}):(\d{2})")
+_KOS_CREST = re.compile(r'<img[^>]*src="(?:\.\./)?(images/[^"]+)"', re.I)
+_ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100}
+
+
+def _roman(s: str) -> int:
+    total, prev = 0, 0
+    for ch in reversed(str(s or "").upper()):
+        v = _ROMAN.get(ch, 0)
+        total += -v if v < prev else v
+        prev = max(prev, v)
+    return total
+
+
+def _kos_slug(name: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+
+def kosovo_rows(page: str) -> list[dict]:
+    """Every fixture on a basketbolli.com Results page, with the week it sits under. Each side is a
+    <div class="team ..."> whose first <h4> is the club (names carry digits: "Rahoveci 029") and
+    second its score; only a game set up on LiveStats has a webcast link."""
+    import html as _html
+    T = lambda x: re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", x or ""))).strip()  # noqa: E731
+    weeks = [(m.start(), _roman(m.group(1)), m.group(0)) for m in _KOS_WEEK.finditer(page)]
+    starts = [m.start() for m in _KOS_ROW.finditer(page)]
+    out = []
+    for i, st in enumerate(starts):
+        chunk = page[st:(starts[i + 1] if i + 1 < len(starts) else st + 5000)]
+        sides = _KOS_SIDE.findall(chunk)[:2]
+        cells = [[T(h) for h in _KOS_H4.findall(s)] for s in sides]
+        if len(cells) < 2 or not cells[0] or not cells[1]:
+            continue
+        crests = [(_KOS_CREST.search(s) or [None, None])[1] for s in sides]
+        wk = next(((n, lbl) for pos, n, lbl in reversed(weeks) if pos < st), (0, ""))
+        when = _KOS_WHEN.search(T(chunk))
+        link = _WEBCAST.search(chunk) or re.search(r"geniussports\.com/webcast/[A-Za-z]+/(\d+)", chunk)
+        sc = lambda c: int(c[1]) if len(c) > 1 and c[1].isdigit() else None  # noqa: E731
+        out.append({"home": cells[0][0], "away": cells[1][0], "home_score": sc(cells[0]), "away_score": sc(cells[1]),
+                    "home_crest": crests[0], "away_crest": crests[1], "week": wk[0],
+                    "date": when.groups() if when else None, "fiba_id": link.group(1) if link else None})
+    return out
+
+
 # Puls Basketu (pulsbasketu.com): the Polish federation's leagues below the PLK, from the site's own
 # JSON API. robots.txt on pulsbasketu.com allows every path to every agent; api.pulsbasketu.com
 # publishes none (404), so nothing is disallowed there either.
@@ -192,6 +247,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._nkl_fetch(str(external_id), config)
         if site == "pulsbasketu":
             return self._puls_fetch(str(external_id), config)
+        if site == "kosovo":
+            return self._kos_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -205,8 +262,119 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._nkl(config)
         if site == "pulsbasketu":
             return self._puls(config)
+        if site == "kosovo":
+            return self._kos(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
+
+    # ------------------------------------------------------------ basketbolli.com ---
+    # THE KOSOVO SUPERLIGA. The Results page lists the whole season (112 games, 8 clubs x 28) under
+    # its weeks ("JAVA I" ...), played and to come; a game gets a LiveStats link once the federation
+    # sets it up. A fixture has no id of its own before that, so it is keyed on the season's
+    # leagueId, the week and the two clubs - "KOS150-W1-rahoveci-029-trepca" - which holds from the
+    # fixture to the final, and the LiveStats id is remembered against the key when it appears.
+    # A 20-0 forfeit has no LiveStats data and is left out (it would sit as "scheduled" for good).
+    # A row with no date yet is left out until the federation dates it.
+    _kos_cache: tuple = (0.0, "", "")      # (fetched_at, url, page)
+
+    def _kos_url(self, config: dict) -> Optional[str]:
+        label = (config.get("menu_label") or KOS_MENU_LABEL).upper()
+        try:
+            home = self._page(KOS_SITE + "/")
+        except Exception as exc:
+            print(f"     KOS: the site's menu could not be read ({exc})")
+            return None
+        import html as _html
+        for href, text in re.findall(r'href="(/Results\?leagueId=\d+)"[^>]*>([^<]+)</a>', home):
+            if _html.unescape(text).strip().upper() == label:
+                return KOS_SITE + href
+        print(f"     KOS: no '{label}' in the site's menu")
+        return None
+
+    def _kos_page(self, config: dict) -> tuple[Optional[str], str]:
+        at, url, page = FibaSiteScheduleAdapter._kos_cache
+        if page and time.time() - at < 300:
+            return url, page
+        url = self._kos_url(config)
+        if not url:
+            return None, ""
+        page = self._page(url)
+        FibaSiteScheduleAdapter._kos_cache = (time.time(), url, page)
+        return url, page
+
+    @staticmethod
+    def _kos_key(league_id: str, r: dict) -> str:
+        return f"KOS{league_id}-W{r['week']}-{_kos_slug(r['home'])}-{_kos_slug(r['away'])}"
+
+    def _kos(self, config: dict) -> list[ScheduleGame]:
+        stage = (config.get("stage") or "").strip().lower()
+        want_year = _start_year(config.get("season") or "")
+        now_year = _start_year("")
+        if want_year != now_year:
+            print(f"     KOS: only the current season is on the site ({now_year}/{now_year + 1}); "
+                  f"{want_year}/{want_year + 1} has been purged")
+            return []
+        url, page = self._kos_page(config)
+        if not page:
+            return []
+        league_id = (re.search(r"leagueId=(\d+)", url or "") or [None, "0"])[1]
+        known = self._idmap(config)
+        out, changed = [], False
+        for r in kosovo_rows(page):
+            st = "regular" if r["week"] else "playoffs"
+            if stage and st != stage:
+                continue
+            if {r["home_score"], r["away_score"]} == {20, 0}:
+                continue                      # a forfeit: no game to show
+            if not r["date"]:
+                continue                      # not dated yet
+            key = self._kos_key(league_id, r)
+            if r["fiba_id"] and known.get(key) != r["fiba_id"]:
+                known[key] = r["fiba_id"]
+                changed = True
+            d, mo, y, h, mi = r["date"]
+            tip = _utc("Europe/Belgrade", y, mo, d, h, mi)
+            played = r["home_score"] is not None and r["away_score"] is not None and (r["home_score"] or r["away_score"])
+            crest = lambda c: f"{KOS_SITE}/{c}" if c else None  # noqa: E731
+            out.append(ScheduleGame(
+                external_id=key, home_name=r["home"], away_name=r["away"], tipoff_at=tip,
+                status="final" if played else "scheduled",
+                extra={"home_code": _kos_slug(r["home"]), "away_code": _kos_slug(r["away"]),
+                       "home_logo": crest(r["home_crest"]), "away_logo": crest(r["away_crest"]),
+                       "round": f"Java {r['week']}" if r["week"] else "", "stage": st}))
+        if changed:
+            self._save_idmap(config, known)
+        print(f"     KOS leagueId {league_id} {stage or 'all stages'}: {len(out)} games "
+              f"({sum(1 for g in out if g.status == 'final')} final)")
+        return out
+
+    def _kos_fetch(self, key: str, config: dict):
+        known = self._idmap(config)
+        fid = known.get(key)
+        # the row names the clubs (the feed's codes are three letters an operator typed) and, for a
+        # game set up since the last pass, carries its LiveStats id; the page is cached for 5 minutes
+        url, page = self._kos_page(config)
+        league_id = (re.search(r"leagueId=(\d+)", url or "") or [None, "0"])[1]
+        row = next((r for r in kosovo_rows(page or "") if self._kos_key(league_id, r) == key), None)
+        if row and row["fiba_id"] and not fid:
+            fid = row["fiba_id"]
+            known[key] = fid
+            self._save_idmap(config, known)
+        if not fid:
+            return None                    # not set up on LiveStats yet
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
+        if not raw or "tm" not in raw:
+            return None
+        if row:
+            for tno, side in (("1", "home"), ("2", "away")):
+                if isinstance(raw["tm"].get(tno), dict):
+                    raw["tm"][tno]["code"] = _kos_slug(row[side])
+                    raw["tm"][tno]["name"] = row[side]
+        b = self.bundle_from_raw(raw, key, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
 
     # ------------------------------------------------------------ pulsbasketu.com ---
     # THE POLISH LEAGUES BELOW THE PLK (1 Liga Mężczyzn, 1 Liga Kobiet). The federation scores them
