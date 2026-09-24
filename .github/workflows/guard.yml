@@ -95,6 +95,18 @@ jobs:
           fi
           echo "ok — no personal addresses committed"
 
+      # THE SITE NEVER NAMES WHERE ITS CODE IS KEPT (2026-09-24): no link, API call, text or
+      # comment in anything EPINOIA ships. Third-party files are exempt (the vendored SDK and
+      # the fonts' licences name their own projects), and so is Markdown, which is never
+      # published (tools/build-site.py).
+      - name: The site never names the code host
+        run: |
+          if grep -rIil "github" epinoia/ share/ --exclude-dir=vendor --exclude='*.md' --exclude='OFL-*.txt'; then
+            echo "::error::a shipped file under epinoia/ or share/ names GitHub (listed above)."
+            exit 1
+          fi
+          echo "ok - nothing shipped names the code host"
+
       - name: The service worker must not cache the public section
         run: |
           if [ -f sw.js ] && ! grep -q "startsWith('/epinoia/')" sw.js; then
