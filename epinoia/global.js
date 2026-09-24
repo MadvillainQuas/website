@@ -135,7 +135,7 @@ function mergeLeague(league, S, meta, teams) {
     const pid = p.id;
     const m = M[pid];
     /* no name, no row: a withheld minor (see the top), or a player nobody named */
-    if (!m || !m.name || m.name === 'Player') return;
+    if (!m || !m.name || m.name === 'Player' || m.unregistered) return;      // (an unregistered one is a shirt number, not somebody to scout)
     const teamId = p._teamId || (tOf && (tOf.get ? tOf.get(pid) : tOf[pid])) || null;
     const t = (teamId && T[teamId]) || {};
     const teamGp = (teamId && gpOfTeam.has(teamId)) ? gpOfTeam.get(teamId) : leagueGp;

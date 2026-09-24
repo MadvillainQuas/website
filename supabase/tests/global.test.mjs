@@ -88,6 +88,13 @@ const LEAGUES = [
   { id: L2, slug: 'slb-women', name: 'Super League Basketball Women', initials: null, country: 'GB', access_mode: 'open', colour_a: null, logo_path: null }
 ];
 
+/* REAL PLAYER IDS ARE UUIDS, and playerMeta only asks the database for those (a feed's "0:12" is a 400
+   there, unregistered-players.test.mjs). The fixtures' ids are made uuid-shaped, so this suite exercises
+   the path a register id takes. */
+import { createHash } from 'node:crypto';
+const uid = name => { const h = createHash('md5').update(name).digest('hex'); return h.slice(0,8)+'-'+h.slice(8,12)+'-4'+h.slice(13,16)+'-8'+h.slice(17,20)+'-'+h.slice(20,32); };
+const P_SHARED = uid('P-SHARED'), P_MINOR = uid('P-MINOR');
+
 function seeded(seed) {
   let s = seed >>> 0;
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
@@ -100,9 +107,9 @@ function buildLeague(lid, tag, sharedAt, extra) {
   const comp = 'c-' + tag, season = 's-' + tag, oldSeason = 's-' + tag + '-old';
   const squads = [[], []];
   for (let side = 0; side < 2; side++) {
-    for (let i = 0; i < 6; i++) squads[side].push('p-' + tag + '-' + side + '-' + i);
+    for (let i = 0; i < 6; i++) squads[side].push(uid('p-' + tag + '-' + side + '-' + i));
   }
-  if (sharedAt) squads[sharedAt.side][sharedAt.slot] = 'P-SHARED';
+  if (sharedAt) squads[sharedAt.side][sharedAt.slot] = P_SHARED;
   (extra || []).forEach(x => { squads[x.side][x.slot] = x.id; });
   const games = [], pgs = [], tgs = [];
   for (let g = 0; g < 3; g++) {
@@ -151,20 +158,20 @@ function buildLeague(lid, tag, sharedAt, extra) {
   return { lid, tag, games, pgs, tgs, teams, seasons, squads };
 }
 
-const W1 = buildLeague(L1, 'bcb', { side: 0, slot: 2 }, [{ side: 1, slot: 4, id: 'P-MINOR' }]);
+const W1 = buildLeague(L1, 'bcb', { side: 0, slot: 2 }, [{ side: 1, slot: 4, id: P_MINOR }]);
 const W2 = buildLeague(L2, 'slbw', { side: 1, slot: 0 });
 const W3 = buildLeague(L3, 'mem', null);
 const WORLD = [W1, W2, W3];
 
 const allPlayers = new Set();
 WORLD.forEach(w => w.squads.flat().forEach(p => allPlayers.add(p)));
-const PLAYERS = [...allPlayers].filter(p => p !== 'P-MINOR').map(id => ({
-  id, first_name: id === 'P-SHARED' ? 'Sam' : 'First', last_name: id === 'P-SHARED' ? 'Shared' : id, slug: id.toLowerCase(), photo_url: null }));
+const PLAYERS = [...allPlayers].filter(p => p !== P_MINOR).map(id => ({
+  id, first_name: id === P_SHARED ? 'Sam' : 'First', last_name: id === P_SHARED ? 'Shared' : id, slug: id.toLowerCase(), photo_url: null }));
 /* rosters: the shared player's only active entry is with the L2 club -- so a row
    that took its team from the roster would be wrong in L1 */
 const ROSTERS = [];
 WORLD.forEach(w => w.squads.forEach((sq, side) => sq.forEach((pid, i) => {
-  if (pid === 'P-SHARED' && w !== W2) return;
+  if (pid === P_SHARED && w !== W2) return;
   const t = w.teams[side];
   ROSTERS.push({ player_id: pid, jersey: String(i + 4), position: i < 2 ? 'G' : i < 4 ? 'F' : 'C', active: true,
     teams: { id: t.id, name: t.name, short_name: t.short_name, slug: t.slug, colour: t.colour, logo_path: null } });
@@ -426,8 +433,8 @@ console.log('\ndata.js season({rows:false}): the line without the rows, and kept
 
   const ids = [...allPlayers];
   fresh();
-  const meta = await D.playerMeta(ids.concat(Array.from({ length: 85 }, (_, i) => 'nobody-' + i)));
-  ok('playerMeta: the withheld player has no entry, the others do', !meta['P-MINOR'] && ids.filter(p => p !== 'P-MINOR').every(p => meta[p] && meta[p].name));
+  const meta = await D.playerMeta(ids.concat(Array.from({ length: 85 }, (_, i) => uid('nobody-' + i))));
+  ok('playerMeta: the withheld player has no entry, the others do', !meta[P_MINOR] && ids.filter(p => p !== P_MINOR).every(p => meta[p] && meta[p].name));
   ok('playerMeta: chunks of 40 (3 chunks, 6 requests)', net.calls.length === 6, String(net.calls.length));
 }
 
@@ -511,15 +518,15 @@ console.log('\nplayers(): every visible league, merged, as an anonymous viewer')
 
   const ids = out.rows.map(r => r.id);
   ok('ids are unique across leagues', new Set(ids).size === ids.length && ids.every(id => /^aaaaaaaa-0000-0000-0000-00000000000[12]:/.test(id)));
-  const shared = out.rows.filter(r => r.playerId === 'P-SHARED');
-  eq('the same player in two leagues is two rows', shared.map(r => [r.id, r.leagueShort]), [[L1 + ':P-SHARED', 'BCB'], [L2 + ':P-SHARED', 'SLB W']]);
+  const shared = out.rows.filter(r => r.playerId === P_SHARED);
+  eq('the same player in two leagues is two rows', shared.map(r => [r.id, r.leagueShort]), [[L1 + ':' + P_SHARED, 'BCB'], [L2 + ':' + P_SHARED, 'SLB W']]);
   const s1 = shared[0], s2 = shared[1];
-  const onlyL1 = Season.players(W1.pgs, W1.tgs).find(p => p.id === 'P-SHARED');
+  const onlyL1 = Season.players(W1.pgs, W1.tgs).find(p => p.id === P_SHARED);
   ok('...each with only its own league\'s games (not blended)', s1.pts === onlyL1.pts && s1.gp === 3 && s1.pts !== s2.pts);
   ok('...the team from the games, named from that league\'s teams, not the roster', s1.teamId === 't-bcb-home' && s1.teamFull === 'BCB Club 0' && s2.teamId === 't-slbw-away');
   ok('...the jersey only where the roster entry is for that club', s1.jersey === '' && s2.jersey === '4');
   ok('...and the person the same in both', s1.name === 'Sam Shared' && s2.name === 'Sam Shared' && s1.playerId === s2.playerId);
-  ok('the withheld minor is dropped', !out.rows.some(r => r.playerId === 'P-MINOR') && out.rows.filter(r => r.leagueId === L1).length === 11);
+  ok('the withheld minor is dropped', !out.rows.some(r => r.playerId === P_MINOR) && out.rows.filter(r => r.leagueId === L1).length === 11);
   ok('every row names its league', out.rows.every(r => r.leagueId && r.leagueSlug && r.leagueName && r.leagueShort));
   ok('qualified follows the rule on every row', out.rows.every(r => r.qualified === G.qualifies(r, r.teamGp)) && out.rows.some(r => r.qualified) && out.rows.every(r => r.teamGp === 3));
   ok('BPM is attached per league', out.rows.every(r => typeof r.bpm === 'number'));

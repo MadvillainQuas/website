@@ -569,9 +569,12 @@ async function loadRosters() {
 
 /* Position, height and weight for whoever is already in the squad, whatever
    put them there. */
+/* only register ids go into an id=in.(...) list: a feed's unmatched player ("0:12") is a 400 for the whole list,
+   and with it every height, weight and photograph on the card */
+const REGISTER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function mergeMeasurements() {
   const ids = [];
-  S.teams.forEach(tm => (tm.players || []).forEach(p => { if (p.id) ids.push(p.id); }));
+  S.teams.forEach(tm => (tm.players || []).forEach(p => { if (p.id && REGISTER_ID.test(String(p.id))) ids.push(p.id); }));
   if (!ids.length) return;
   const tids = [game.home_team_id, game.away_team_id].filter(Boolean);
   try {
@@ -594,7 +597,7 @@ async function mergeMeasurements() {
 
 async function loadPhotos() {
   const ids = [];
-  S.teams.forEach(tm => (tm.players || []).forEach(p => { if (p.id) ids.push(p.id); }));
+  S.teams.forEach(tm => (tm.players || []).forEach(p => { if (p.id && REGISTER_ID.test(String(p.id))) ids.push(p.id); }));
   if (!ids.length) return;
   try {
     /* One request for both squads. media is embedded through the foreign key, so

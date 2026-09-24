@@ -655,9 +655,24 @@ async function events(gameIds) {
    league of 237 players was six round trips in a row and 1.55 s of a 3.4 s page;
    no chunk depends on another, so the wait is now the slowest one. The answers are
    still folded in chunk order, so the object comes out exactly as it did. */
-async function playerMeta(ids) {
-  if (!ids.length) return {};
+/* NOT EVERY PLAYER IN A BOX SCORE IS ON THE REGISTER. A feed whose people could not be matched (CIBACOPA's,
+   from Genius Sports) files them under "<side>:<shirt number>", e.g. "0:12". Asked for in an id=in.(...) list
+   that is a 400 ("invalid input syntax for type uuid"), and the 400 fails the whole read, so every page
+   built on it went blank ("could not load: 400 on players") and took the teams' names with it. Only real
+   ids are asked for; the others get the name a box score can honestly give: "#12". */
+const REGISTER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function unregistered(id) {
+  const shirt = String(id).split(':').pop();
+  return { unregistered: true, name: /^\d+$/.test(shirt) ? 'Player #' + shirt : 'Player', slug: null, photo_url: null,
+           jersey: /^\d+$/.test(shirt) ? shirt : '', position: '',
+           teamId: null, teamName: '', teamFull: '', teamShort: '', teamSlug: '', colour: null, teamLogo: null };
+}
+async function playerMeta(allIds) {
+  if (!allIds || !allIds.length) return {};
   const out = {};
+  const ids = [];
+  allIds.forEach(id => { if (REGISTER_ID.test(String(id))) ids.push(id); else if (id != null) out[id] = unregistered(id); });
+  if (!ids.length) return out;
   const chunks = [];
   for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
   const answers = await Promise.all(chunks.map(c => Promise.all([

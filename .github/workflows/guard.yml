@@ -256,6 +256,11 @@ jobs:
         # non-UUID player id being declined rather than failing a finalise
         run: node --experimental-strip-types supabase/tests/awards.test.mjs
 
+      - name: A player who is not on the register does not break a page
+        # CIBACOPA's feed files unmatched players as "0:12"; in an id=in.(...) list that is a 400 for
+        # the whole read, which blanked Team Stats, the leaders and the global tables
+        run: node supabase/tests/unregistered-players.test.mjs
+
       - name: The weekly fans' vote
         # the once-a-week rule and the podium's moves; the ballot being the Stars
         # podium's own week (the fanvote function runs stars.js, checked on the BCB
