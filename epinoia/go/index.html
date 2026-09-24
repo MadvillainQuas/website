@@ -17,11 +17,11 @@
 <meta name="description" content="Stamp the arenas you go to, at a game, with your phone.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=381"></script>
-<script src="../i18n.js?v=381" data-i18n-packs="go"></script>
-<script src="../glyphs.js?v=381" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=381">
-<link rel="stylesheet" href="../kit/nav.css?v=381">
+<script src="../appmode.js?v=382"></script>
+<script src="../i18n.js?v=382" data-i18n-packs="go"></script>
+<script src="../glyphs.js?v=382" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=382">
+<link rel="stylesheet" href="../kit/nav.css?v=382">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .go{overflow-x:clip}
@@ -122,6 +122,29 @@
   .go-adult input{width:18px;height:18px}
   .go-pub-msg{flex-basis:100%;font-family:var(--f-ui);font-size:13.5px;color:var(--flare)}
 
+  /* games been to: posting, and the fan's own photographs */
+  .go-mine li{position:relative}
+  .go-addph{grid-column:2;justify-self:start;margin-top:4px;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;
+    text-transform:uppercase;background:transparent;border:1px solid var(--rule-2);color:var(--ink-2);padding:5px 9px;cursor:pointer}
+  .go-addph:hover{border-color:var(--lume);color:var(--ink)}
+  .go-phform{grid-column:1 / -1;display:grid;gap:8px;padding:10px 0 4px;max-width:520px}
+  .go-phpick{display:flex;align-items:center;gap:10px;font-family:var(--f-ui);font-size:14px;color:var(--ink);cursor:pointer}
+  .go-phpick input{max-width:100%}
+  .go-phform .ep-btn{justify-self:start;min-height:44px}
+  .go-phsent{grid-column:1 / -1;font-family:var(--f-ui);font-size:13.5px;color:var(--lume);padding-top:4px}
+  .go-photos{padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .go-phhead{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .go-phhead b{font-family:var(--f-ui);font-size:15px;color:var(--ink)}
+  .go-phhead .ep-btn{margin-left:auto;text-decoration:none;min-height:40px;display:inline-flex;align-items:center}
+  .go-phgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;max-width:720px}
+  .go-ph{margin:0;border:1px solid var(--rule)}
+  .go-ph img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;background:var(--panel)}
+  .go-ph figcaption{display:grid;gap:3px;padding:6px 7px 7px}
+  .go-ph .st{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .go-ph-approved .st{color:var(--lume)} .go-ph-rejected .st,.go-ph-hidden .st{color:var(--flare)}
+  .go-ph .why{font-family:var(--f-ui);font-size:12px;color:var(--ink-2)}
+  .go-phdel{justify-self:start;font-family:var(--f-ui);font-size:12px;background:transparent;border:0;color:var(--ink-3);padding:2px 0;cursor:pointer;text-decoration:underline}
+
   /* the boards */
   .go-boards-bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:10px}
   .go-seg{display:flex;flex-wrap:wrap}
@@ -145,7 +168,7 @@
     .go-top{padding:calc(var(--u)*1.5) calc(var(--u)*2)}
     .go .ep-hdr{padding:calc(var(--u)*1.5) calc(var(--u)*2)}
     .go .ep-hdr h2{font-size:22px}
-    .go-lede,.go-lead,.go-pad,.go-list,.go-none,.go-mine,.go-privacy{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
+    .go-lede,.go-lead,.go-pad,.go-list,.go-none,.go-mine,.go-privacy,.go-photos{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
     .go-me,.go-say,.go-stamped,.go-tally,.go-map-wrap,.go-lnums{margin-left:calc(var(--u)*2);margin-right:calc(var(--u)*2)}
     .go-me .ep-btn{margin-left:0}
     .ep-frame{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
@@ -190,6 +213,8 @@
     <div id="goLeagueNums"></div>
     <div id="goPublic"></div>
     <ul class="go-mine" id="goMine"></ul>
+    <!-- games been to: the fan's photographs, every state - go.js -->
+    <div class="go-photos" id="goPhotos"></div>
   </section>
 
   <section class="go-sec hide" id="goBoardsSec" aria-labelledby="goBoardsH">
@@ -208,10 +233,11 @@
     forgotten: a stamp keeps the arena, the game and the time, never where your phone was.</p>
   <footer style="padding:0 calc(var(--u)*3) calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
 </div>
-<script src="../config.js?v=381" defer></script>
-<script src="../access.js?v=381" defer></script>
-<script src="journey.js?v=381" defer></script>
-<script src="go.js?v=381" defer></script>
-<script src="../nav.js?v=381" defer></script>
+<script src="../config.js?v=382" defer></script>
+<script src="../access.js?v=382" defer></script>
+<script src="../upload.js?v=382" defer></script>
+<script src="journey.js?v=382" defer></script>
+<script src="go.js?v=382" defer></script>
+<script src="../nav.js?v=382" defer></script>
 </body>
 </html>

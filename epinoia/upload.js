@@ -31,6 +31,9 @@ const SIZES = {
      full height of a 1080-line frame, so 800 — fine for a profile thumbnail —
      is visibly soft the moment it is composited over video. */
   broadcast: 1200,
+  /* A FAN'S PHOTOGRAPH OF A GAME (EPINOIA GO, "Games been to") is looked at big, on a wall and on its own
+     page, so it keeps more than a profile picture; its wall tile is prepare's thumb option (480). */
+  gamephoto: 1600,
   thumb:  96      // roster and table use
 };
 const MAX_BYTES = 2 * 1024 * 1024;   // matches the bucket limit in 0017
@@ -249,8 +252,10 @@ function dominantColour(bitmap) {
 }
 
 /* ------------------------------------------------------------------ public ---
-   prepare(file, kind)  ->  { main, thumb, type, w, h }                        */
-async function prepare(file, kind) {
+   prepare(file, kind, opts)  ->  { main, thumb, type, w, h }
+   opts.thumb: the thumbnail's long edge, where 96 is too small (a photo wall's tile).
+   Re-encoding drops the file's EXIF - the phone's GPS among it - which is what EPINOIA GO relies on (D9). */
+async function prepare(file, kind, opts) {
   if (!file || !/^image\//.test(file.type)) throw new Error('choose an image file');
 
   if (kind === 'logo' && /^image\/svg\+xml$/i.test(file.type)) {
@@ -286,7 +291,7 @@ async function prepare(file, kind) {
   if (main.blob && main.blob.size > MAX_BYTES) {
     throw new Error('that image is too detailed to compress — try a smaller one');
   }
-  const thumb = await scaleTo(bmp, SIZES.thumb, type, 0.8);
+  const thumb = await scaleTo(bmp, (opts && opts.thumb) || SIZES.thumb, type, 0.8);
   /* read the colour before the bitmap is released */
   const colour = kind === 'logo' ? dominantColour(bmp) : null;
   if (bmp.close) bmp.close();
@@ -388,24 +393,29 @@ function publicUrl(cfg, path) {
    refused: downloaded from media-pending (the approver can read it), uploaded to media-public
    (0065 lets whoever may approve write there), and the pending copy removed. "Already exists"
    counts as done on either route: the file is where it needs to be. */
-async function publishPending(sb, path) {
+async function publishPending(sb, path, opts) {
+  /* opts (EPINOIA GO's photographs, 0167): other buckets, and a new name - an approved fan photograph
+     leaves its fan's folder for p/<photo id>, so its public address says nothing about whose it is */
+  const from = (opts && opts.from) || 'media-pending';
+  const to = (opts && opts.to) || 'media-public';
+  const dest = (opts && opts.toPath) || path;
   const exists = e => /exist|duplicate/i.test((e && e.message) || '');
-  const mv = await sb.storage.from('media-pending')
-    .move(path, path, { destinationBucket: 'media-public' });
+  const mv = await sb.storage.from(from)
+    .move(path, dest, { destinationBucket: to });
   if (!mv.error || exists(mv.error)) return { ok: true, copied: false };
 
-  const dl = await sb.storage.from('media-pending').download(path);
+  const dl = await sb.storage.from(from).download(path);
   if (dl.error || !dl.data) {
     return { ok: false, error: new Error(mv.error.message + ' (and the copy could not read the file: ' +
       ((dl.error && dl.error.message) || 'nothing came back') + ')') };
   }
-  const up = await sb.storage.from('media-public')
-    .upload(path, dl.data, { contentType: dl.data.type || undefined, upsert: false });
+  const up = await sb.storage.from(to)
+    .upload(dest, dl.data, { contentType: dl.data.type || undefined, upsert: false });
   if (up.error && !exists(up.error)) {
     return { ok: false, error: new Error(mv.error.message + ' (and the copy could not write the file: ' + up.error.message + ')') };
   }
   /* the private copy is only tidiness now; failing to remove it publishes nothing wrong */
-  try { await sb.storage.from('media-pending').remove([path]); } catch (_) { /* left behind */ }
+  try { await sb.storage.from(from).remove([path]); } catch (_) { /* left behind */ }
   return { ok: true, copied: true };
 }
 

@@ -309,6 +309,12 @@ jobs:
         # never overlapping or off the edge; ja/es
         run: node supabase/tests/go-boards.test.mjs
 
+      - name: EPINOIA GO's "Games been to", the fans' photographs (migration 0167)
+        # private until a person approves; a fan writes only in their own folder; a public file named for
+        # the photograph, never its fan; only stamped games, never a youth league's or one with an under-18
+        # on a roster, only 18 or over; three reports take one down; every refusal in words; ja/es
+        run: node supabase/tests/go-photos.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the

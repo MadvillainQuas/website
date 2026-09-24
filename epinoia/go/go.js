@@ -154,7 +154,8 @@ const GEO = {
 /* ---------------------------------------------------------------- page --- */
 
 const S = { cfg: null, access: null, session: null, games: [], pos: null, mine: null, username: undefined,
-            ranks: null, settings: null, leagues: null, board: { league: null, by: 'arenas' } };
+            ranks: null, settings: null, leagues: null, board: { league: null, by: 'arenas' },
+            photos: undefined };      // undefined: not asked yet; false: 0167 not pushed; true: photographs on
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
@@ -274,7 +275,8 @@ async function loadMine() {
   if (!Array.isArray(rows)) { sec.classList.add('hide'); return; }
   S.mine = rows;
   sec.classList.remove('hide');
-  // the ranks and the leaderboard choice are 0166's: without it the passport still stands
+  // the ranks and the leaderboard choice are 0166's, the photographs 0167's: without them the passport stands
+  if (S.photos === undefined) await loadPhotos();
   const [ranks, settings] = await Promise.all([rpc('go_my_numbers'), rpc('go_my_settings')]);
   S.ranks = Array.isArray(ranks.data) ? ranks.data : null;
   S.settings = settings.data && !settings.missing ? settings.data : null;
@@ -338,7 +340,172 @@ function drawPassport() {
     li.appendChild(data('b', null, (x.venues && x.venues.name) || '—'));
     li.appendChild(data('small', null, [x.venues && x.venues.city, x.venues && x.venues.country, x.leagues && x.leagues.name]
       .filter(Boolean).join(' · ')));
+    if (S.photos && x.game_id) {
+      const add = li.appendChild(el('button', 'go-addph', 'add a photo'));
+      add.type = 'button';
+      add.addEventListener('click', () => photoForm(li, x, add));
+    }
   });
+}
+
+/* ----------------------------------------------------- games been to (5) --- */
+
+/* every reason submit_go_photo (0167) can refuse with, in words */
+const PHOTO_WHY = {
+  signed_out: 'Sign in first.',
+  username: 'Choose a username first: it is how the wall shows who took a photograph.',
+  adult: 'Tick the box to confirm you are 18 or over.',
+  not_stamped: 'Only a game you stamped can have your photographs.',
+  no_photos_here: 'This game takes no photographs: its league has players under 18.',
+  no_file: 'The photograph did not arrive. Try again.',
+  caption: 'That caption cannot go on the wall. Change it and try again.',
+  game_full: 'Three photographs of one game is the most.',
+  day_full: 'Ten photographs a day is the most. Try again tomorrow.',
+};
+const PHOTO_STATE = { pending: 'waiting for a look', approved: 'on the wall', rejected: 'not put up', hidden: 'taken down after reports' };
+
+function storageHeaders(type) {
+  const h = { apikey: S.cfg.supabaseAnonKey };
+  if (S.session && S.session.token) h.Authorization = 'Bearer ' + S.session.token;
+  if (type) h['Content-Type'] = type;
+  return h;
+}
+
+async function putFile(bucket, path, blob, type) {
+  const r = await fetch(S.cfg.supabaseUrl + '/storage/v1/object/' + bucket + '/' + path,
+    { method: 'POST', headers: Object.assign(storageHeaders(type), { 'x-upsert': 'false' }), body: blob });
+  if (!r.ok) throw new Error('upload ' + r.status);
+}
+
+async function removeFiles(bucket, paths) {
+  try {
+    await fetch(S.cfg.supabaseUrl + '/storage/v1/object/' + bucket, { method: 'DELETE',
+      headers: storageHeaders('application/json'), body: JSON.stringify({ prefixes: paths }) });
+  } catch (_) { /* a file left behind in the fan's own private folder is untidy, not public */ }
+}
+
+/* a photograph's picture for its fan: public once approved, a short-lived signed link while it waits */
+async function photoSrc(p) {
+  if (p.status === 'approved' || p.status === 'hidden') {
+    return S.cfg.supabaseUrl + '/storage/v1/object/public/go-public/' + p.thumb_path;
+  }
+  try {
+    const r = await fetch(S.cfg.supabaseUrl + '/storage/v1/object/sign/go-pending/' + p.thumb_path,
+      { method: 'POST', headers: storageHeaders('application/json'), body: JSON.stringify({ expiresIn: 3600 }) });
+    const j = r.ok ? await r.json() : null;
+    return j && (j.signedURL || j.signedUrl) ? S.cfg.supabaseUrl + '/storage/v1' + (j.signedURL || j.signedUrl) : null;
+  } catch (_) { return null; }
+}
+
+function photoForm(li, stamp, btn) {
+  const was = li.querySelector('.go-phform');
+  if (was) { was.remove(); return; }
+  const f = li.appendChild(el('div', 'go-phform'));
+  const pick = f.appendChild(el('label', 'go-phpick'));
+  const file = pick.appendChild(el('input'));
+  file.type = 'file';
+  file.accept = 'image/*';
+  pick.appendChild(el('span', null, 'choose a photograph'));
+  const cap = f.appendChild(el('input', 'ep-input'));
+  cap.maxLength = 140;
+  cap.placeholder = 'a caption, if you like';
+  let adult = null;
+  if (!(S.settings && S.settings.adult)) {
+    const lab = f.appendChild(el('label', 'go-adult'));
+    adult = lab.appendChild(el('input'));
+    adult.type = 'checkbox';
+    lab.appendChild(el('span', null, 'I am 18 or over'));
+  }
+  const post = f.appendChild(el('button', 'ep-btn pri', 'post it'));
+  post.type = 'button';
+  const msg = f.appendChild(el('div', 'go-pub-msg'));
+  msg.setAttribute('role', 'status');
+  post.addEventListener('click', async () => {
+    if (!file.files || !file.files[0]) { msg.textContent = 'Choose a photograph first.'; return; }
+    post.disabled = true;
+    msg.textContent = 'Sending…';
+    const res = await sendPhoto(stamp, file.files[0], cap.value, adult ? adult.checked : false);
+    post.disabled = false;
+    if (res.ok) {
+      f.remove();
+      if (S.settings && adult && adult.checked) S.settings.adult = true;
+      await loadPhotos();
+      const note = li.appendChild(el('div', 'go-phsent', 'Sent. A person looks at every photograph before it goes on the wall.'));
+      setTimeout(() => note.remove(), 8000);
+      return;
+    }
+    msg.textContent = PHOTO_WHY[res.reason] || res.message || 'It did not go through. Try again in a moment.';
+  });
+}
+
+async function sendPhoto(stamp, fileObj, caption, adult) {
+  const U = window.EpinoiaUpload;
+  S.session = await session();
+  if (!S.session || !S.session.userId) return { ok: false, reason: 'signed_out' };
+  if (!U || !U.prepare) return { ok: false, message: 'This page could not load. Try again in a moment.' };
+  let out;
+  try {
+    // re-encoded in the browser: its EXIF - the phone's GPS among it - never leaves the phone (D9)
+    out = await U.prepare(fileObj, 'gamephoto', { thumb: 480 });
+  } catch (e) { return { ok: false, message: 'That photograph could not be read. Try another.' }; }
+  const ext = out.type === 'image/webp' ? 'webp' : 'jpg';
+  const base = S.session.userId + '/' + stamp.game_id + '-' + Date.now().toString(36);
+  const path = base + '.' + ext, thumb = base + '-t.' + ext;
+  try {
+    await putFile('go-pending', path, out.main, out.type);
+    await putFile('go-pending', thumb, out.thumb, out.type);
+  } catch (_) {
+    await removeFiles('go-pending', [path, thumb]);
+    return { ok: false, message: 'The photograph did not arrive. Try again.' };
+  }
+  const r = await rpc('submit_go_photo', { p_game: stamp.game_id, p_path: path, p_thumb: thumb,
+    p_width: out.w, p_height: out.h, p_caption: caption || null, p_adult: !!adult });
+  if (r.data && r.data.ok) return { ok: true };
+  await removeFiles('go-pending', [path, thumb]);          // refused: the files go too
+  return { ok: false, reason: r.data && r.data.reason };
+}
+
+async function loadPhotos() {
+  const host = $('#goPhotos');
+  const r = await rpc('go_my_photos');
+  S.photos = !r.missing && !r.error;
+  host.textContent = '';
+  if (!S.photos) return;
+  const rows = Array.isArray(r.data) ? r.data : [];
+  const head = host.appendChild(el('div', 'go-phhead'));
+  head.appendChild(el('b', null, 'Your photographs'));
+  const wall = head.appendChild(el('a', 'ep-btn', 'see the wall'));
+  wall.href = 'photos/';
+  if (!rows.length) {
+    host.appendChild(el('div', 'go-none', 'None yet. Add one to a game you stamped.'));
+    return;
+  }
+  const grid = host.appendChild(el('div', 'go-phgrid'));
+  rows.forEach(p => {
+    const c = grid.appendChild(el('figure', 'go-ph go-ph-' + p.status));
+    const img = c.appendChild(el('img'));
+    img.alt = p.venue || '';
+    img.setAttribute('translate', 'no');
+    img.loading = 'lazy';
+    photoSrc(p).then(src => { if (src) img.src = src; });
+    const cap = c.appendChild(el('figcaption'));
+    cap.appendChild(el('span', 'st', PHOTO_STATE[p.status] || p.status));
+    if (p.reason && p.status !== 'approved') cap.appendChild(data('span', 'why', p.reason));
+    const del = cap.appendChild(el('button', 'go-phdel', 'remove'));
+    del.type = 'button';
+    del.addEventListener('click', () => removePhoto(p, del));
+  });
+}
+
+async function removePhoto(p, btn) {
+  if (!window.confirm('Remove this photograph?')) return;
+  btn.disabled = true;
+  S.session = await session();
+  // the files first: a public one's permission asks the row whose it is
+  const bucket = p.status === 'approved' || p.status === 'hidden' ? 'go-public' : 'go-pending';
+  if (p.status !== 'rejected') await removeFiles(bucket, [p.path, p.thumb_path]);
+  await rpc('delete_go_photo', { p_photo: p.id });
+  await loadPhotos();
 }
 
 /* being on the leaderboards (D6): a choice, with a username and 18 or over confirmed */
@@ -605,5 +772,5 @@ async function boot() {
 }
 
 return { boot, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, byLeague, whyOf, factsOf, WHY, GEO,
-         ALLOW_M, NEAR_M };
+         PHOTO_WHY, PHOTO_STATE, ALLOW_M, NEAR_M };
 }));

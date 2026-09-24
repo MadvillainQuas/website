@@ -139,11 +139,25 @@ needs Louie says so.
 
 ## Phase 5 — Games been to
 
-- [ ] **5.1 Photo upload** from a stamped game (D8): re-encoded in the browser (D9), size-limited, a caption.
-- [ ] **5.2 Moderation** (D7): the approval queue in the console, a report button, auto-hide on reports.
-- [ ] **5.3 The feed**: the thumbnail wall, filters (league, club, arena, fan), newest / most liked, likes, a
-      page per photo.
-- [ ] **5.4 Where it shows**: "Fans at this game" on the game page, a fan's photos on their GO profile.
+- [x] **5.1 Photo upload** — migration `0167_go_photos.sql` and the GO page's passport: "add a photo" on
+      each stamped game (D8), re-encoded in the browser to WebP at 1600 px with a 480 px tile, which drops
+      every EXIF field, the phone's GPS among them (D9: proved with a real JPEG carrying a make and a GPS
+      position), into the fan's own private folder; a caption checked against 0163's blocklist; three a
+      game, ten a day. Never at a youth league's game (`leagues.go_photos`, closed for ABA U19, NBL U18s and
+      the two Espoirs leagues) or a game with a player flagged under 18, and only by a fan with a username
+      who confirmed 18 or over. The fan's own photographs, every state, each removable.
+- [x] **5.2 Moderation** (D7, pre-moderation until Louie decides) — the console's Moderation tab has a
+      queue of fans' photographs: approve moves both files to names that carry the photograph's id, never
+      the fan's (so no public address ties a username to an account), then records it; reject records it,
+      then removes the files. Three reports take an approved photograph down until a person looks.
+- [x] **5.3 The feed** — `/epinoia/go/photos/`, "Games been to": a wall of square tiles, newest or most
+      liked, by league, fan, arena or game, a page more at a time; a photograph whole with who took it and
+      where, a like, a report, and more from the same game, arena or fan; every photograph its own link.
+- [ ] **5.4 Where it shows** — a fan's photographs are the wall's `?u=<username>`, a game's are `?g=<id>`
+      (both working). Still to do: the "Fans at this game" strip on the game page itself.
+
+  0167: PGlite 46 checks; Chromium: posting 23, the wall 24, the queue 14; `go-photos.test.mjs`: 37.
+  **Live once Louie runs `db push`**; until then the page and the wall say it opens soon.
 
 ## Phase 6 — Finish
 

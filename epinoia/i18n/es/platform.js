@@ -1056,7 +1056,14 @@
       'An arena needs a name.': 'Un pabellón necesita un nombre.',
       'Renamed.': 'Nombre cambiado.',
       'Merged.': 'Unidos.',
-      'Nothing was saved: this account may not change arenas.': 'No se ha guardado nada: esta cuenta no puede cambiar pabellones.'
+      'Nothing was saved: this account may not change arenas.': 'No se ha guardado nada: esta cuenta no puede cambiar pabellones.',
+      'Fans’ photographs (EPINOIA GO)': 'Fotos de los aficionados (EPINOIA GO)',
+      'Not on the server yet: migration 0167 needs pushing.': 'Aún no está en el servidor: hay que aplicar la migración 0167.',
+      'Nothing waiting. Every fan photograph has been dealt with.': 'No hay nada pendiente. Todas las fotos de los aficionados están revisadas.',
+      'upload.js did not load. Reload the page.': 'No se ha cargado upload.js. Recarga la página.',
+      'That photograph was already dealt with.': 'Esa foto ya estaba revisada.',
+      'Approved: it is on the wall.': 'Aprobada: ya está en el muro.',
+      'Why is it not going up? (optional, shown to the fan)': '¿Por qué no se publica? (opcional, se muestra al aficionado)'
     },
 
     /* matched only as written: the pager's "next" (the core file has it as the next game), a
@@ -1165,6 +1172,9 @@
         'merge into this one': 'unir a este',
         'Ask Google Maps again': 'Volver a preguntar a Google Maps',
         'From the computer that holds the Google key:': 'Desde el ordenador que tiene la clave de Google:'
+      },
+      gophotos: {
+        'taken down after reports': 'retirada tras denuncias'
       }
     },
 

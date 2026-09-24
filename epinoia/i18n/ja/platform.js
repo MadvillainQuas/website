@@ -1052,7 +1052,14 @@
       'An arena needs a name.': 'アリーナには名称が必要です。',
       'Renamed.': '名称を変更しました。',
       'Merged.': '統合しました。',
-      'Nothing was saved: this account may not change arenas.': '保存されませんでした。このアカウントにはアリーナを変更する権限がありません。'
+      'Nothing was saved: this account may not change arenas.': '保存されませんでした。このアカウントにはアリーナを変更する権限がありません。',
+      'Fans’ photographs (EPINOIA GO)': 'ファンの写真（EPINOIA GO）',
+      'Not on the server yet: migration 0167 needs pushing.': 'まだサーバーにありません。マイグレーション0167の適用が必要です。',
+      'Nothing waiting. Every fan photograph has been dealt with.': '確認待ちはありません。すべてのファンの写真が処理済みです。',
+      'upload.js did not load. Reload the page.': 'upload.js が読み込まれませんでした。ページを再読み込みしてください。',
+      'That photograph was already dealt with.': 'その写真はすでに処理されています。',
+      'Approved: it is on the wall.': '承認しました。ウォールに掲載されています。',
+      'Why is it not going up? (optional, shown to the fan)': '掲載しない理由は？（任意・ファンに表示されます）'
     },
 
     /* matched only as written: the pager's "next" (the core file has it as the next game), a
@@ -1161,6 +1168,9 @@
         'merge into this one': 'このアリーナに統合',
         'Ask Google Maps again': 'Google マップで再検索',
         'From the computer that holds the Google key:': 'Google のキーがあるパソコンで:'
+      },
+      gophotos: {
+        'taken down after reports': '報告により非表示'
       }
     },
 

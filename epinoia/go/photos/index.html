@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- LIGHT: the default theme; appmode.js turns it dark before paint for a reader who chose dark. -->
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- PUBLIC. No gate.js, no topnav.js. EPINOIA GO's "Games been to" (docs/epinoia-go.md, phase 5). -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Games been to · EPINOIA GO · Epinoia</title>
+<meta name="description" content="The fans' photographs of the games they went to.">
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
+<script src="../../appmode.js?v=382"></script>
+<script src="../../i18n.js?v=382" data-i18n-packs="go"></script>
+<script src="../../glyphs.js?v=382" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=382">
+<link rel="stylesheet" href="../../kit/nav.css?v=382">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .gp{overflow-x:clip}
+  .gp-top{display:flex;align-items:center;gap:10px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .gp-top .wm{background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding-top:3px;padding-bottom:1px;
+    view-transition-name:ep-mark}
+  .gp-tag{font-family:var(--f-score);font-size:15px;letter-spacing:.06em;color:#04100b;background:var(--amber);padding:3px 9px 1px;
+    text-decoration:none}
+  .gp .ep-hdr{flex-wrap:wrap;row-gap:4px}
+  .gp-lede{margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule);
+    font-family:var(--f-ui);font-size:15px;line-height:1.55;color:var(--ink-2);max-width:70ch}
+  .gp-bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:calc(var(--u)*2) calc(var(--u)*3) calc(var(--u)*1.5)}
+  .gp-bar .ep-tabs{display:flex;flex-wrap:wrap}
+  .gp-bar .ep-tab{border-bottom:1px solid var(--rule-2)}
+  .gp-bar .ep-tab.on{border-bottom-color:var(--lume)}
+  .gp-bar select.ep-input{max-width:260px}
+  .gp-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3)}
+  .gp-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-ui);font-size:13px;padding:5px 10px;
+    border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);cursor:pointer}
+  .gp-chip:hover{border-color:var(--flare);color:var(--ink)}
+  .gp-chip b{font-weight:700;color:var(--ink)}
+
+  /* THE WALL: square tiles, as many as fit, the way a collection is browsed */
+  .gp-wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
+  .gp-tile{position:relative;aspect-ratio:1/1;overflow:hidden;border:0;padding:0;background:var(--panel);cursor:zoom-in;display:block}
+  .gp-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease}
+  .gp-tile:hover img,.gp-tile:focus-visible img{transform:scale(1.04)}
+  .gp-tile .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 8px 6px;text-align:left;
+    background:linear-gradient(transparent,rgba(4,16,11,.78));color:#f3faf6;font-family:var(--f-ui);font-size:12px;line-height:1.3;
+    opacity:0;transition:opacity .2s ease}
+  .gp-tile:hover .cap,.gp-tile:focus-visible .cap{opacity:1}
+  .gp-tile .lk{position:absolute;top:6px;right:6px;font-family:var(--f-data);font-size:11px;color:#f3faf6;
+    background:rgba(4,16,11,.6);padding:2px 6px}
+  @media (hover:none){ .gp-tile .cap{opacity:1} }
+  @media (prefers-reduced-motion:reduce){ .gp-tile img{transition:none} }
+  .gp-more{display:flex;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*3)}
+  .gp-empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-ui);font-size:15px;line-height:1.6}
+  .gp-empty a{color:inherit}
+
+  /* ONE PHOTOGRAPH: the whole of it, who took it and where */
+  /* above the rail (900), the bell (1500) and the phone's tab bar (2000): a photograph shown whole covers all */
+  .gp-view{position:fixed;inset:0;z-index:2100;display:none;background:rgba(4,16,11,.94);color:#f3faf6;
+    grid-template-rows:1fr auto;padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0)}
+  .gp-view.on{display:grid}
+  .gp-view figure{margin:0;display:flex;align-items:center;justify-content:center;min-height:0;padding:44px 12px 8px}
+  .gp-view img{max-width:100%;max-height:100%;object-fit:contain}
+  .gp-info{padding:10px 16px 16px;display:grid;gap:8px;max-width:900px;width:100%;margin:0 auto}
+  .gp-info .c{font-family:var(--f-ui);font-size:16px;line-height:1.45}
+  .gp-info .w{font-family:var(--f-ui);font-size:13.5px;color:rgba(243,250,246,.78)}
+  .gp-info .w b{color:#f3faf6}
+  .gp-acts{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+  .gp-acts button,.gp-acts a{font-family:var(--f-ui);font-size:13.5px;color:#f3faf6;background:transparent;border:1px solid rgba(243,250,246,.35);
+    padding:7px 12px;cursor:pointer;text-decoration:none;min-height:40px;display:inline-flex;align-items:center;gap:6px}
+  .gp-acts button:hover,.gp-acts a:hover{border-color:#f3faf6}
+  .gp-acts .liked{background:#f3faf6;color:#04100b}
+  .gp-acts .gp-rep{border-color:transparent;color:rgba(243,250,246,.7);margin-left:auto}
+  .gp-x,.gp-nav{position:absolute;background:rgba(4,16,11,.55);color:#f3faf6;border:1px solid rgba(243,250,246,.3);cursor:pointer;
+    font-family:var(--f-ui);font-size:20px;line-height:1;width:44px;height:44px}
+  .gp-x{top:calc(8px + env(safe-area-inset-top,0));right:calc(8px + env(safe-area-inset-right,0))}
+  .gp-nav{top:45%}
+  .gp-nav.prev{left:8px} .gp-nav.next{right:8px}
+  .gp-say{font-family:var(--f-ui);font-size:13px;color:#ffd68a}
+
+  @media (max-width:820px){
+    .gp-top{padding:calc(var(--u)*1.5) calc(var(--u)*2)}
+    .gp .ep-hdr{padding:calc(var(--u)*1.5) calc(var(--u)*2)}
+    .gp .ep-hdr h2{font-size:22px}
+    .gp-lede,.gp-bar,.gp-chips,.gp-wall,.gp-more{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
+    .gp-wall{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:4px}
+    .ep-frame{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+    body.has-nav .ep-bell{top:auto;bottom:calc(58px + env(safe-area-inset-bottom,0px) + 10px)}
+  }
+  @media (display-mode:standalone){ body{padding-top:env(safe-area-inset-top,0px)} }
+</style>
+</head>
+<body>
+<div class="ep-frame gp">
+  <div class="gp-top">
+    <a href="../../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <a class="gp-tag" href="../" translate="no">GO</a>
+  </div>
+  <div class="ep-hdr"><span class="idx">05</span><h2 id="gpTitle">Games been to</h2></div>
+  <p class="gp-lede">The fans’ photographs of the games they stamped. A person looks at every one before it goes up.</p>
+
+  <div class="gp-bar">
+    <div class="ep-tabs" id="gpSort" role="group" aria-label="Order"></div>
+    <select class="ep-input" id="gpLeague" aria-label="League"></select>
+  </div>
+  <div class="gp-chips" id="gpChips"></div>
+
+  <div class="gp-wall" id="gpWall" aria-live="polite" aria-busy="true"></div>
+  <div class="gp-more"><button id="gpMore" class="ep-btn hide" type="button">more</button></div>
+
+  <footer style="padding:0 calc(var(--u)*3) calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
+</div>
+
+<!-- one photograph, full size - photos.js -->
+<div class="gp-view" id="gpView" role="dialog" aria-modal="true" aria-label="Photograph">
+  <figure><img id="gpImg" alt=""></figure>
+  <div class="gp-info" id="gpInfo"></div>
+  <button class="gp-nav prev" id="gpPrev" type="button" aria-label="Previous">‹</button>
+  <button class="gp-nav next" id="gpNext" type="button" aria-label="Next">›</button>
+  <button class="gp-x" id="gpClose" type="button" aria-label="Close">×</button>
+</div>
+
+<script src="../../config.js?v=382" defer></script>
+<script src="../../access.js?v=382" defer></script>
+<script src="photos.js?v=382" defer></script>
+<script src="../../nav.js?v=382" defer></script>
+</body>
+</html>

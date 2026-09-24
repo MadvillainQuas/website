@@ -1404,6 +1404,9 @@ async function loadModeration() {
     });
   }
 
+  /* EPINOIA GO's fans' photographs (0167): their own queue, below the clubs' */
+  if (window.EpinoiaGoPhotosUI) window.EpinoiaGoPhotosUI.mount({ host: '#goPhotoQueue', sb, say, oops });
+
   const msgs = await rpc('platform_messages',
     { p_open_only: $('#msgOpen').checked, p_limit: 100 });
   const mh = $('#msgList'); mh.textContent = '';
