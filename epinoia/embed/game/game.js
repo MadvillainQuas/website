@@ -242,6 +242,7 @@ function merge(g, events, removed, full) {
       sub = L.subscriber({
         gameId, mode: 'supabase',
         supabase: window.epinoiaClient ? epinoiaClient() : null,
+        pauseHidden: true,             // a background tab skips its polls; shown again, it reads the whole log
         onSnapshot(s) { merge(s.game, s.events, s.removed); render(); },
         onFrame(f) { merge(f.game, f.events, f.removed, f.full); render(); },
         onStatus() {}

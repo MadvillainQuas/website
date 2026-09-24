@@ -1716,8 +1716,20 @@
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     };
+    /* KEPT FOR FIVE MINUTES IN THIS TAB. The rail is on every page, so a visit of ten pages
+       read the whole league list, theme and nav blocks included, ten times. The copy is keyed
+       by who asked (the token's tail, as data.js keys its shared reads), so a sign-in, a
+       sign-out or a refreshed token starts clean, and a signed-in list is never shown to
+       anybody else. sessionStorage, so it ends with the tab; any failure just reads again. */
+    const heldKey = 'ep-nav-leagues:' + (sess && sess.token ? String(sess.token).slice(-16) : 'anon');
+    let held = null;
     try {
-      leagues = await pull(false);
+      const j = JSON.parse(sessionStorage.getItem(heldKey) || 'null');
+      if (j && Array.isArray(j.rows) && Date.now() >= j.at && Date.now() - j.at < 5 * 60 * 1000) held = j.rows;
+    } catch (_) { held = null; }
+    try {
+      leagues = held || await pull(false);
+      if (!held) { try { sessionStorage.setItem(heldKey, JSON.stringify({ at: Date.now(), rows: leagues })); } catch (_) { /* full */ } }
     } catch (_) {
       holding.textContent = 'unavailable';
       return;

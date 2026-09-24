@@ -2484,6 +2484,7 @@ function goLive() {
   sub = L.subscriber({
     gameId, mode,
     supabase: (mode === 'supabase' && window.epinoiaClient) ? epinoiaClient() : null,
+    pauseHidden: true,                 // a background tab skips its polls; shown again, it reads the whole log
     onSnapshot(snap) {
       if (snap.game) mergeLive(snap.game, snap.events);
       else if (snap.events) mergeLive(null, snap.events);

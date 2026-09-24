@@ -16,7 +16,7 @@
      node supabase/tests/scale.test.mjs
    ============================================================================ */
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1'));
@@ -27,7 +27,6 @@ const gamejs  = rd('epinoia', 'game', 'game.js');
 const tabjs   = rd('epinoia', 'game', 'video.js');
 const playerjs = rd('epinoia', 'p', 'player.js');
 const sql84   = rd('supabase', 'migrations', '0084_events_read_scale.sql');
-const sql05   = rd('supabase', 'migrations', '0005_public_fixtures.sql');
 
 let pass = 0, fail = 0;
 const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); }
@@ -446,38 +445,119 @@ ok('...and checks the lock is not taken after the write',
    /the lock is taken after the write it protects/.test(sql86));
 
 /* ---- 5. the policy that runs per row ------------------------------------- */
-console.log('\nrow-level security is a join, not a function call per row');
+console.log('\nthe five per-row read policies: a fast path, then the rule');
 
-ok('events_read is inlined', /create policy events_read on public\.game_events for select\s*\nusing \(\s*\n\s*exists \(/.test(sql84.replace(/\r/g, '')));
-ok('game_state matches it, so the two cannot drift',
-   /create policy state_read on public\.game_state for select/.test(sql84));
+/* THE LIVE POLICY, NOT A HISTORICAL ONE. This section used to read 0084 and check
+   that events_read was an inlined EXISTS. 0118 inlined it again, then 0136 put all
+   five tables back on a function call per row (can_read_game_rows: security
+   definer, a SET clause and a sub-select, so never inlined), and those checks
+   kept passing for a week because they only ever read 0084's file. Measured on
+   2026-09-23, that cost ~0.04 ms for every row a read walked. So this section
+   reads whichever migration LAST set each policy, and whichever LAST defined
+   each piece of the rule, and checks those. */
+const MIG = path.join(ROOT, 'supabase', 'migrations');
+const migs = readdirSync(MIG).filter(f => /^\d{4}_.*\.sql$/.test(f)).sort()
+  .map(f => ({ f, n: +f.slice(0, 4), sql: readFileSync(path.join(MIG, f), 'utf8').replace(/\r/g, '') }));
+const lastWith = re => [...migs].reverse().find(m => re.test(m.sql));
+const norm = t => t.replace(/\s+/g, ' ').trim();
 
-/* THE PREDICATE MUST NOT HAVE CHANGED. Compared clause by clause against the
-   function it replaces, because an inlined security rule that quietly gained
-   or lost a condition is the worst possible outcome of a performance fix. */
-const clauses = [
-  "g.status = 'final'",
-  "g.status = 'live' and coalesce(l.public_live, false)",
-  'public.is_team_manager(g.home_team_id)',
-  'public.is_team_manager(g.away_team_id)',
-  'go.game_id = g.id and go.user_id = auth.uid()',
-  's.league_id is not null and public.is_league_admin(s.league_id)'
-];
-const norm = t => t.replace(/\s+/g, ' ');
-const fnBody = norm(sql05.slice(sql05.indexOf('can_read_game_detail')));
-const inlined = norm(sql84);
-let missing = clauses.filter(c => !inlined.includes(norm(c)));
-ok('every clause of the original rule is present in the inlined one',
-   missing.length === 0, missing.join(' | '));
-let absent = clauses.filter(c => !fnBody.includes(norm(c.replace(/, false/, ',false'))) &&
-                                 !fnBody.includes(norm(c)));
-ok('...and those are the same clauses the function has', absent.length === 0, absent.join(' | '));
-ok('nothing was added that the function did not have',
-   !/is_platform_admin/.test(sql84.split('SELF-TEST')[0]),
-   'the function grants no platform-admin bypass here, so neither may the policy');
-ok('the migration proves the equivalence against real rows rather than asserting it',
-   /inline_ok is distinct from fn_ok/.test(sql84) &&
-   /raise exception '0084: the inlined policy is NOT the same rule/.test(sql84));
+const READS = [['game_events', 'events_read'], ['game_state', 'state_read'],
+               ['player_game_stats', 'pgs_read'], ['team_game_stats', 'tgs_read'],
+               ['lineup_stints', 'ls_read']];
+const fast = lastWith(/create or replace view public\.game_rows_public\b/);
+ok('the fast path exists (a view of the games whose rows are public)', !!fast);
+const fsql = fast ? fast.sql : '';
+
+for (const [tbl, pol] of READS) {
+  const setter = lastWith(new RegExp(`(create|alter) policy (${pol}\\b|%I on public\\.%I)`));
+  ok(`${pol} was last set by the migration that proves the fast path (${setter && setter.f})`,
+     setter && fast && setter.f === fast.f && fsql.includes(`'${tbl}'`) && fsql.includes(`'${pol}'`));
+}
+const tablesArr = /tables\s+text\[\] := array\[([^\]]*)\]/.exec(fsql);
+const polsArr = /policies\s+text\[\] := array\[([^\]]*)\]/.exec(fsql);
+ok('...each policy paired with its own table, in order',
+   tablesArr && polsArr &&
+   JSON.stringify(tablesArr[1].match(/'[^']+'/g)) === JSON.stringify(READS.map(r => `'${r[0]}'`)) &&
+   JSON.stringify(polsArr[1].match(/'[^']+'/g)) === JSON.stringify(READS.map(r => `'${r[1]}'`)));
+
+/* THE TEXT THAT IS ATTACHED. One template, proved and then attached; this is the
+   whole of the security argument, so it is compared exactly: a fast path OR the
+   rule itself, never anything else. */
+const tplLit = /expr_tpl\s+text\s*:=\s*((?:'[^']*'\s*)+);/.exec(fsql);
+const tpl = tplLit ? tplLit[1].match(/'([^']*)'/g).map(s => s.slice(1, -1)).join('') : '';
+ok('the policy is "fast path OR can_read_game_rows", exactly',
+   tpl === 'coalesce((select true from public.game_rows_public p where p.id = %1$s), false) '
+         + 'or public.can_read_game_rows(%1$s)', tpl);
+ok('...attached with each table\'s own game_id, from that same text',
+   /format\('alter policy %I on public\.%I using \(%s\)',\s*policies\[i\], tables\[i\], format\(expr_tpl, format\('%I\.game_id', tables\[i\]\)\)\)/.test(fsql));
+ok('...and ALTERed, so no moment passes with no read policy at all',
+   !/drop policy[^\n]*(events_read|state_read|pgs_read|tgs_read|ls_read)/.test(fsql));
+
+/* A SCALAR SUB-SELECT, NOT EXISTS OR IN. Written either of those ways the planner
+   may hash the whole view once per statement: every public game on the platform,
+   enumerated for every read. Measured with 40,000 finished games that is ~110 ms
+   even for one row; the scalar form is one primary-key probe per row. */
+ok('the fast path cannot be hashed into a per-statement scan of every game',
+   !/exists|\bin \(/i.test(tpl) && /coalesce\(\(select true from/.test(tpl));
+
+/* SOUND BY CONSTRUCTION, AND KEPT THAT WAY. The fast path may only ever be
+   narrower than can_read_game_rows' public half: the same statuses, the same
+   league condition letter for letter, plus a public league. Compared against
+   the LATEST definition of the rule, so a later change to the rule shows up here. */
+const viewBody = norm((/create or replace view public\.game_rows_public as([\s\S]*?);/.exec(fsql) || [, ''])[1]);
+ok('the fast path admits finished games, and live ones only through the live list',
+   viewBody.includes("g.status = 'final' and ( g.competition_id is null or g.competition_id in (select public.game_rows_open_competitions(false)) )") &&
+   viewBody.includes("g.status = 'live' and g.competition_id in (select public.game_rows_open_competitions(true))") &&
+   !/scheduled|finalising|void/.test(viewBody), viewBody);
+const compsFn = lastWith(/create or replace function public\.game_rows_open_competitions\(/);
+const compsBody = compsFn ? norm(compsFn.sql.slice(compsFn.sql.indexOf('create or replace function public.game_rows_open_competitions('))
+                                           .split('$fn$')[1] || '') : '';
+ok('...only in PUBLIC leagues, and only live where the league publishes live',
+   compsBody.includes("where l.visibility = 'public' and (not p_live or l.public_live)"), compsBody);
+const rule = lastWith(/create or replace function public\.can_read_game_rows\(/);
+const ruleCase = rule ? norm((/case when l\.id is null or l\.access_mode = 'open'[\s\S]*?end/.exec(
+  rule.sql.slice(rule.sql.indexOf('create or replace function public.can_read_game_rows('))) || [''])[0]) : '';
+const fastCase = norm((/case when l\.access_mode = 'open'[\s\S]*?end/.exec(compsBody) || [''])[0]);
+ok(`...and the league condition is the rule's own (${rule && rule.f})`,
+   ruleCase !== '' && ruleCase === fastCase.replace('case when ', 'case when l.id is null or '),
+   `rule: ${ruleCase}\n          fast: ${fastCase}`);
+
+/* A LATER CHANGE TO THE RULE MUST PROVE THE FAST PATH AGAIN. If can_read_game_rows
+   is tightened (a private league, a hidden season), a fast path written against
+   the old rule could admit what the new one refuses. So the migration that last
+   defines the rule must be no newer than the one that last proved the fast path,
+   or must carry the proof itself: copy 0151's section 2. */
+ok('the rule has not changed since the fast path was last proved',
+   rule && fast && (rule.n <= fast.n || /the fast path admits % games that can_read_game_rows refuses/.test(rule.sql)),
+   rule && fast ? `${rule.f} changes can_read_game_rows after ${fast.f} proved the fast path` : '');
+
+/* THE VIEW WRITES AS ITS OWNER. It is one table with no aggregate, so it is
+   automatically updatable, and Supabase's default privileges give every browser
+   role ALL on a new relation. SELECT only, granted inside the same statement that
+   creates it, and never security_invoker (that would put games' own per-row
+   policy back inside the fast path). */
+const iRev = fsql.indexOf('revoke all on public.game_rows_public from public, anon, authenticated, service_role;');
+const iGrant = fsql.indexOf('grant select on public.game_rows_public to anon, authenticated;');
+const iProof = fsql.indexOf('2. THE PROOF');
+ok('the view is SELECT-only for browsers, before anything reads it',
+   iRev > 0 && iGrant > iRev && iProof > iGrant && !/grant (all|insert|update|delete)[^;]*game_rows_public/.test(fsql));
+ok('...owner-rights on purpose',
+   !/create or replace view public\.game_rows_public with/.test(fsql) &&
+   /alter view public\.game_rows_public owner to postgres/.test(fsql));
+
+/* PROVED ON THE DATABASE IT CHANGES, IN ONE STATEMENT. A push has not always
+   been one transaction (0140 stopped half way; CLI 2.117 rolled 0145's failed
+   push back whole), so the migration is a single DO block: a proof that fails
+   takes the helpers and the swap down with it on any CLI. */
+const body = fsql.replace(/--[^\n]*\n/g, '\n').trim();
+ok('the migration is one statement, so a failed proof leaves nothing behind',
+   /^do \$mig\$/.test(body) && /end \$mig\$;$/.test(body) && body.split('$mig$').length === 3);
+ok('...which proves soundness on every game, for every kind of reader, before the swap',
+   /the fast path admits % games that can_read_game_rows refuses/.test(fsql) &&
+   /if passes <> 22 then/.test(fsql) &&
+   fsql.indexOf('the fast path admits % games') < fsql.indexOf("format('alter policy"));
+ok('...and never RESET ROLE (the push connects through a temporary login role)',
+   !/reset role/i.test(fsql.replace(/--[^\n]*\n/g, '\n')));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

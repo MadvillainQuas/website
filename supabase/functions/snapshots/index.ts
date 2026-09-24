@@ -1,0 +1,165 @@
+// ============================================================================
+// snapshots — WORK DONE ONCE, SHARED BY EVERY READER (migration 0152).
+//
+//   POST {}   anyone; the database's tick (snapshots_tick, every five minutes)
+//             calls it with the publishable key when a game has been finalised.
+//             Answers counts and nothing else.
+//
+// The public pages worked everything out from raw per-game rows in each
+// visitor's browser, so each visit cost more as leagues and games were added.
+// This builds the two biggest results once, for everybody:
+//
+//   'stars_global'          HOME's podiums: EpinoiaStars.global(), the very
+//                           function HOME runs, rebuilt when its anchor (the
+//                           latest final) moves, or after an hour;
+//   'season:<competition>'  a competition's season lines: EpinoiaData.season(),
+//                           the very function the league pages and scouting run,
+//                           rebuilt when the competition's token (finished games
+//                           and the latest finalised_at) moves.
+//
+// AS A SIGNED-OUT VISITOR. Every read goes out with the publishable key and no
+// session, through the page's own data.js, so every policy applies and a
+// snapshot can only hold what an anonymous reader could already read: no second
+// copy of the access rules to keep in step. The service role is used for one
+// thing, writing snapshots and snapshot_ticks. Pages use a snapshot only when
+// its token is the one they read themselves, and work it out the old way
+// otherwise, so a late or failed build costs speed, never correctness.
+//
+// BOUNDED. An Edge Function has a small CPU budget per request, so each call
+// builds the podiums and at most MAX_SEASONS competitions, newest seasons first;
+// the tick calls again five minutes later while anything is left (it compares
+// what the database has finalised with what this function last finished).
+// SAFE TO CALL BY ANYBODY, ANY NUMBER OF TIMES: it only rebuilds what changed.
+// ============================================================================
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+import '../_shared/bpm.js';        // globalThis.EpinoiaBPM
+import '../_shared/season.js';     // globalThis.EpinoiaSeason
+import '../_shared/data.js';       // globalThis.EpinoiaData — the page's own reads and sums
+import '../_shared/stars.js';      // globalThis.EpinoiaStars
+
+const PUBLISHABLE = 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO';   // epinoia/config.js publishes it
+/* CPU, measured under node on 2026-09-24: the podiums about 0.6 s (a month of box scores
+   across every league), a season 0.15-0.3 s. The runtime allows about two seconds a call. */
+const MAX_SEASONS = 6;             // competitions rebuilt per call...
+const MAX_SEASONS_AFTER_STARS = 3; // ...or this many when the podiums were rebuilt in the same call
+const WALL_MS = 60_000;            // and none started after this
+const STARS_MAX_AGE_MS = 60 * 60 * 1000;
+/* a season rebuilt once a day even when its token has not moved: a box score corrected
+   without a new finalised_at would otherwise stay as it was (the page's own cache has the
+   same backstop, six hours, in data.js) */
+const SEASON_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+/* data.js asks fetch for {cache: 'no-store'}, which is a browser option; Deno is not asked */
+const realFetch = globalThis.fetch.bind(globalThis);
+(globalThis as any).fetch = (input: any, init?: any) => {
+  if (init && typeof init === 'object' && 'cache' in init) {
+    const { cache: _cache, ...rest } = init;
+    return realFetch(input, rest);
+  }
+  return realFetch(input, init);
+};
+/* the reads are a signed-out visitor's: the publishable key, no session, no EpinoiaAccess */
+(globalThis as any).EPINOIA_CONFIG = {
+  supabaseUrl: Deno.env.get('SUPABASE_URL'),
+  supabaseAnonKey: PUBLISHABLE
+};
+
+/* stars.js hands back its windows revived (w = the WINDOWS entry); stored, w is the key */
+const unrevive = (row: any) => (row ? { ...row, w: row.w && row.w.key ? row.w.key : row.w } : null);
+
+async function buildStars(admin: any, D: any, ST: any) {
+  const anchorRows = await D.get('games?select=tipoff_at&status=eq.final&competition_id=not.is.null' +
+    '&tipoff_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=tipoff_at.desc&limit=1');
+  const anchor = anchorRows[0] && anchorRows[0].tipoff_at;
+  if (!anchor) return 'no finals';
+  const { data: held } = await admin.from('snapshots').select('token,built_at').eq('key', 'stars_global').maybeSingle();
+  if (held && held.token === anchor && Date.now() - Date.parse(held.built_at) < STARS_MAX_AGE_MS) return 'current';
+
+  const res = await ST.global({ now: new Date(), snapshot: false });
+  if (!res || res.anchor !== anchor) return 'anchor moved while building';   // the next tick builds it
+  const data = { week: unrevive(res.week), month: unrevive(res.month), anchor };
+  const { error } = await admin.from('snapshots').upsert(
+    { key: 'stars_global', competition_id: null, token: anchor, data, built_at: new Date().toISOString() },
+    { onConflict: 'key' });
+  if (error) throw new Error('stars_global: ' + error.message);
+  return 'built';
+}
+
+async function buildSeasons(admin: any, D: any, started: number, maxBuilds: number) {
+  /* every competition, newest seasons first; the signed-out token decides which have a
+     season an anonymous reader can see, and which changed since their snapshot */
+  const { data: comps, error } = await admin.from('competitions').select('id,seasons!inner(starts_on)');
+  if (error) throw new Error('competitions: ' + error.message);
+  const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at').like('key', 'season:%');
+  const held = new Map((heldRows || []).map((r: any) => [r.key, r]));
+
+  const ids: string[] = (comps || [])
+    .sort((a: any, b: any) => String(b.seasons?.starts_on || '').localeCompare(String(a.seasons?.starts_on || '')))
+    .map((c: any) => c.id);
+
+  /* the tokens, eight at a time: 94-byte answers */
+  const tokens = new Map<string, string | null>();
+  for (let i = 0; i < ids.length; i += 8) {
+    const part = ids.slice(i, i + 8);
+    const got = await Promise.all(part.map(id => D.seasonToken(`competition_id=eq.${id}`).catch(() => null)));
+    part.forEach((id, k) => tokens.set(id, got[k]));
+  }
+
+  let built = 0, current = 0, removed = 0, left = 0;
+  for (const id of ids) {
+    const key = 'season:' + id;
+    const tok = tokens.get(id);
+    const visible = !!tok && !/^0@/.test(tok);
+    if (!visible) {
+      /* nothing a signed-out reader can see (private, members-only, or no finals): no
+         snapshot. One kept from before is dropped; its policy already hides it. */
+      if (held.has(key)) { await admin.from('snapshots').delete().eq('key', key); removed++; }
+      continue;
+    }
+    const h: any = held.get(key);
+    if (h && h.token === tok && Date.now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { current++; continue; }
+    if (built >= maxBuilds || Date.now() - started > WALL_MS) { left++; continue; }
+
+    const s = await D.season(id, { trim: true, rows: false, snapshot: false });
+    const data = { games: s.games || [], players: s.players || [], teams: s.teams || [],
+                   teamOfPlayer: Array.from((s.teamOfPlayer || new Map()).entries()) };
+    const { error: upErr } = await admin.from('snapshots').upsert(
+      { key, competition_id: id, token: tok, data, built_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (upErr) throw new Error(key + ': ' + upErr.message);
+    built++;
+  }
+  return { built, current, removed, left };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+  const started = Date.now();
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+                             { auth: { persistSession: false } });
+  const D = (globalThis as any).EpinoiaData, ST = (globalThis as any).EpinoiaStars;
+  try {
+    /* what the tick last saw: marking THAT done means a game finalised while this runs
+       leaves the two different, and the next tick calls again */
+    const { data: tick } = await admin.from('snapshot_ticks').select('fingerprint').eq('id', 1).maybeSingle();
+    const stars = await buildStars(admin, D, ST);
+    const seasons = await buildSeasons(admin, D, started,
+      stars === 'built' ? MAX_SEASONS_AFTER_STARS : MAX_SEASONS);
+    if (seasons.left === 0) {
+      await admin.from('snapshot_ticks').upsert(
+        { id: 1, done_fingerprint: tick ? tick.fingerprint : null, done_at: new Date().toISOString() },
+        { onConflict: 'id' });
+    }
+    return json({ stars, seasons, complete: seasons.left === 0, ms: Date.now() - started });
+  } catch (e) {
+    return json({ error: String((e as Error)?.message || e), ms: Date.now() - started }, 500);
+  }
+});

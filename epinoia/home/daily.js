@@ -7,9 +7,10 @@
    Without the per-league rule the busiest league takes almost every slot and a
    league whose season starts in ten days never appears on the front door.
 
-   THREE READS IN PARALLEL: the live games, the forty scheduled games from two
-   hours ago onwards, and one "next game" per league (cached for the page, and
-   asked again once that game's tip-off has passed).
+   THREE READS IN PARALLEL: the live games; the forty scheduled games from two
+   hours ago onwards (kept between ticks until one tips off); and every league's
+   next game in one read (EpinoiaGlobalGames.nextAll, 0152's view), which was one
+   query per league until 2026-09-24: 26 of them, two seconds before a card.
 
    KEPT FRESH the way the league front page keeps its games (home.js
    watchGames): every 15 s while a game is live, every 30 s otherwise, and at
@@ -31,17 +32,38 @@
 
   function hidden() { return typeof document !== 'undefined' && document.visibilityState === 'hidden'; }
 
+  /* THE FORTY UPCOMING GAMES CHANGE WHEN ONE TIPS OFF, not every thirty seconds: a
+     game going live is the live read's business. So they are kept between ticks
+     and read again once the first of them has tipped, or after two minutes (a
+     fixture the ingest has just added, or one moved). */
+  const UP_MS = 2 * 60 * 1000;
+  let upHeld = null;
+  function upcoming(G, now) {
+    const first = upHeld && upHeld.rows[0];
+    const tipped = first && Date.parse(first.tipoff_at || '') <= now;
+    if (upHeld && !tipped && now - upHeld.at < UP_MS) return Promise.resolve(upHeld.rows);
+    const from = new Date(now - G.STALE_MS).toISOString();
+    return G.upcoming(from, 40).then(rows => { upHeld = { at: now, rows }; return rows; });
+  }
+
+  /* each league's next game: one read for all of them (nextAll), or, where the
+     database does not have its view yet, league by league as before */
+  async function nextGames(G) {
+    const m = typeof G.nextAll === 'function' ? await G.nextAll().catch(() => null) : null;
+    if (m) return Array.from(m.values());
+    const lgs = await G.leagues().catch(() => []);
+    return Promise.all(lgs.map(l => G.nextFor(l.id).catch(() => null)));
+  }
+
   async function read() {
     const G = window.EpinoiaGlobalGames;
     if (!G) throw new Error('globalgames.js has not loaded');
     const now = Date.now();
-    const from = new Date(now - G.STALE_MS).toISOString();
-    const [lgs, live, up] = await Promise.all([
-      G.leagues().catch(() => []),
+    const [live, up, nexts] = await Promise.all([
       G.live().catch(() => []),
-      G.upcoming(from, 40)
+      upcoming(G, now),
+      nextGames(G)
     ]);
-    const nexts = await Promise.all(lgs.map(l => G.nextFor(l.id).catch(() => null)));
     const rows = G.pickDaily(live, up, nexts, now, N);
     const liveIds = rows.filter(g => g.status === 'live').map(g => g.id);
     const state = liveIds.length ? await G.liveState(liveIds) : {};

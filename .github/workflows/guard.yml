@@ -850,6 +850,14 @@ jobs:
           node supabase/tests/compare.test.mjs
           node supabase/tests/scouting-page.test.mjs
 
+      - name: Pages read a snapshot only when it is current (0152)
+        # data.js season() takes a competition's season lines from the snapshots table when the
+        # snapshot's token is the one the page just read, and reads the rows as before when it
+        # is not (older token, no table yet, a merged season, the builder itself); stars.js
+        # takes HOME's podiums from it only for the same anchor, a signed-out reader, and
+        # leagues the reader can see
+        run: node supabase/tests/snapshots.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the

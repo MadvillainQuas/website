@@ -104,7 +104,7 @@ function watchAccess() {
     if (now.paywalled !== PAYWALLED) { location.reload(); return; }
     if (now.locked === ANALYTICS_LOCKED) return;
     ANALYTICS_LOCKED = now.locked;
-    if (!ANALYTICS_LOCKED && !PAYWALLED && comp) renderTeamStats().catch(() => {});
+    if (!ANALYTICS_LOCKED && !PAYWALLED && comp && teamsShown) renderTeamStats().catch(() => {});
   };
   try {
     A.onChange(d => {
@@ -117,12 +117,15 @@ function watchAccess() {
 }
 
 /* every pane a season change or a first load draws; behind the wall, only the fixtures.
-   Strength of schedule only once somebody has opened it (showTab): it reads the fixture list
-   as well, and most visits to a table never go near it. */
+   LEADERS, TEAM STATS AND STRENGTH OF SCHEDULE ONLY ONCE SOMEBODY HAS OPENED THEM (showTab).
+   The table and the fixtures are two small reads; the other three read the whole season's box
+   scores, and Team Stats the event log of every finished game in scope as well (its shot
+   zones), one request a game: about 285 requests for a 240-game season, made on every visit
+   while most visits never leave the table (measured 2026-09-24). */
 function renderPanes() {
   if (PAYWALLED) return document.body.classList.contains('fixtures-public') ? renderFixtures() : Promise.resolve();
-  return Promise.all([renderTable(), renderFixtures(), renderLeaders(),
-                      renderTeamStats(), renderExtras(), sosShown ? renderSOS() : null]);
+  return Promise.all([renderTable(), renderFixtures(), leadersShown ? renderLeaders() : null,
+                      teamsShown ? renderTeamStats() : null, renderExtras(), sosShown ? renderSOS() : null]);
 }
 
 async function boot() {
@@ -268,7 +271,9 @@ function renderPhasePicker() {
     u.searchParams.set('c', c.id);
     history.replaceState(null, '', u);
     renderPhasePicker();
-    renderTable(); renderFixtures(); renderLeaders(); renderTeamStats(); renderExtras();
+    renderTable(); renderFixtures(); renderExtras();
+    if (leadersShown) renderLeaders();
+    if (teamsShown) renderTeamStats();
     if (sosShown) renderSOS();
   })));
 }
@@ -773,6 +778,7 @@ async function renderTeamStats() {
    what that table is built from. Drawn the first time the tab is opened; after that it
    follows the season, the phase and the scope like every other pane. */
 let sosShown = false, booted = false, sosSeq = 0;
+let leadersShown = false, teamsShown = false;   // drawn the first time their tab is opened (renderPanes)
 
 async function renderSOS() {
   const pane = $('#pane-sos');
@@ -846,6 +852,8 @@ function showTab(name) {
   if (pane) pane.classList.add('on');
   /* opened before the page has its season, renderPanes draws it when the season arrives */
   if (name === 'sos' && !sosShown) { sosShown = true; if (booted && !PAYWALLED) renderSOS(); }
+  if (name === 'leaders' && !leadersShown) { leadersShown = true; if (booted && !PAYWALLED) renderLeaders(); }
+  if (name === 'teams' && !teamsShown) { teamsShown = true; if (booted && !PAYWALLED) renderTeamStats(); }
   return true;
 }
 

@@ -636,6 +636,13 @@ function subscriber(opts) {
      stale timer and then polling at the fallback rate. */
   const pollEvery = Math.max(500, +opts.pollMs || POLL_MS);
   const pollNow = !!opts.pollNow;
+  /* A READER NOBODY IS LOOKING AT NEED NOT POLL. A fed game's page polls every three seconds
+     (three requests) and takes the whole log every thirty, for every viewer, background tabs
+     included. With pauseHidden a hidden page skips its polls and takes a full read the moment
+     it is shown again. Opt-in, and only the public game page and its embed ask for it: a
+     broadcast source must stay current whatever its browser says about visibility. */
+  const pauseHidden = !!opts.pauseHidden;
+  const isHidden = () => pauseHidden && !!(G.document && G.document.visibilityState === 'hidden');
   const tx = makeTransport(gameId, mode, supabase);   // a reader writes nothing
 
   let state = null;          // last known clock state
@@ -769,7 +776,7 @@ function subscriber(opts) {
      FULL_EVERY_MS it takes the whole snapshot instead, which is what retracted events and a
      replaced roster need. */
   async function poll() {
-    if (polling) return;
+    if (polling || isHidden()) return;
     polling = true;
     try {
       if (!tx.delta || Date.now() - lastFull > FULL_EVERY_MS) { await resync('poll'); return; }
@@ -810,6 +817,12 @@ function subscriber(opts) {
         if (!pollTimer) pollTimer = setInterval(poll, pollEvery);
       } else if (pollTimer && !pollNow) { clearInterval(pollTimer); pollTimer = null; }
     }, 2000);
+    /* shown again after polls were skipped: the whole log at once, not a delta from before */
+    if (pauseHidden && G.document && typeof G.document.addEventListener === 'function') {
+      G.document.addEventListener('visibilitychange', () => {
+        if (G.document.visibilityState === 'visible' && pollTimer) { lastFull = 0; poll(); }
+      });
+    }
   }
 
   start();

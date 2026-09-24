@@ -219,6 +219,27 @@ const LEADER_KEYS = [
   ['ast', 'Assists', s => s.ast]
 ];
 
+/* the four box numbers the leaders read (aliased: `or` is a PostgREST word), and what has
+   been read already this page (render) */
+const BOX_SEL = 'game_id,player_uuid,player_id,s_pts:stats->pts,s_or:stats->or,s_dr:stats->dr,s_ast:stats->ast';
+const boxHeld = new Map();             // finished game id -> its trimmed rows
+const nameHeld = new Map();            // player id -> name
+const nameAsked = new Set();           // asked for already (a hidden player has no name to come back)
+
+/* the players leaders() would name for one game, so only their names are asked for */
+function leaderIds(perGame) {
+  const out = [];
+  LEADER_KEYS.forEach(([, , get]) => {
+    let best = null;
+    (perGame || []).forEach(r => {
+      const v = get(r.stats || {}) || 0;
+      if (v > 0 && (!best || v > best.v)) best = { v, id: r.player_uuid || r.player_id };
+    });
+    if (best && best.id) out.push(best.id);
+  });
+  return out;
+}
+
 function leaders(perGame, names) {
   const wrap = el('div', 'leaders');
   if (!perGame || !perGame.length) return wrap;
@@ -372,27 +393,40 @@ async function render() {
     return;
   }
 
-  /* Box scores only for the finished games actually on screen. A season of
-     player_game_stats is a lot of rows to pull so somebody can skim. */
+  /* Box scores only for the finished games actually on screen, ONLY THE FOUR NUMBERS THE
+     LEADERS READ, AND ONCE A PAGE. The poll redraws the list whenever any score moves (every
+     15-30 s on a live evening), and every redraw fetched every finished game's whole stats row
+     and every player's name again: about 6 MB for 160 games, each time. A finished game's box
+     does not change while the page is open, so it is kept (boxHeld); names are asked for the
+     leaders alone, once each (nameHeld). */
   const finals = list.filter(g => g.status === 'final').map(g => g.id);
-  const byGame = new Map();
-  const names = new Map();
-  if (finals.length) {
+  const missing = finals.filter(id => !boxHeld.has(id));
+  if (missing.length) {
     try {
       const chunks = [];
-      for (let i = 0; i < finals.length; i += 40) chunks.push(finals.slice(i, i + 40));
+      for (let i = 0; i < missing.length; i += 40) chunks.push(missing.slice(i, i + 40));
       const parts = await Promise.all(chunks.map(c =>
-        D.all(`player_game_stats?game_id=in.(${c.join(',')})` +
-              `&select=game_id,player_uuid,player_id,stats`)));
+        D.all(`player_game_stats?game_id=in.(${c.join(',')})&select=${BOX_SEL}`)));
+      const got = new Map(missing.map(id => [id, []]));
       parts.flat().forEach(r => {
-        if (!byGame.has(r.game_id)) byGame.set(r.game_id, []);
-        byGame.get(r.game_id).push(r);
+        const rows = got.get(r.game_id);
+        if (rows) rows.push({ game_id: r.game_id, player_uuid: r.player_uuid, player_id: r.player_id,
+                              stats: { pts: r.s_pts, or: r.s_or, dr: r.s_dr, ast: r.s_ast } });
       });
-      const ids = [...new Set(parts.flat().map(r => r.player_uuid || r.player_id).filter(Boolean))];
-      const meta = await D.playerMeta(ids);
-      Object.keys(meta).forEach(k => names.set(k, meta[k].name));
+      got.forEach((rows, id) => boxHeld.set(id, rows));
     } catch (_) { /* the list still stands without leaders */ }
   }
+  const byGame = new Map();
+  finals.forEach(id => { if (boxHeld.has(id)) byGame.set(id, boxHeld.get(id)); });
+  const need = [...new Set([].concat(...[...byGame.values()].map(leaderIds)))].filter(id => !nameAsked.has(id));
+  if (need.length) {
+    need.forEach(id => nameAsked.add(id));
+    try {
+      const meta = await D.playerMeta(need);
+      Object.keys(meta).forEach(k => nameHeld.set(k, meta[k].name));
+    } catch (_) { need.forEach(id => nameAsked.delete(id)); }
+  }
+  const names = nameHeld;
 
   let lastDay = null;
   list.forEach(g => {
@@ -502,8 +536,18 @@ function watchLive(delay) {
   clearTimeout(liveTimer);
   const anyLive = GAMES.some(g => g.status === 'live' || g.status === 'finalising');
   liveTimer = setTimeout(async () => {
+    /* A TAB NOBODY IS LOOKING AT DOES NOT POLL: it skips its turn and catches up the moment it
+       is shown again (the listener below the function). */
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') { watchLive(); return; }
     try {
-      const ids = GAMES.map(g => g.id);
+      /* ONLY THE GAMES THAT CAN STILL MOVE: live or finalising, or due from four hours ago to
+         half an hour ahead. Every game of the season was asked for, in one in.() list, every
+         15-30 s: the finished ones cannot change, and a long season's list outgrows a URL
+         (about 200 ids, a 414 that the catch below hid, and no live updates at all). */
+      const now = Date.now();
+      const ids = GAMES.filter(g => g.status === 'live' || g.status === 'finalising' ||
+        (g.status === 'scheduled' && g.tipoff_at &&
+         Date.parse(g.tipoff_at) > now - 4 * 3600e3 && Date.parse(g.tipoff_at) < now + 30 * 60e3)).map(g => g.id);
       if (ids.length) {
         const fresh = await D.all('games?id=in.(' + ids.join(',') + ')' +
           '&select=id,status,home_score,away_score');
@@ -534,6 +578,11 @@ function watchLive(delay) {
     } catch (_) { /* a blip must not stop the watch */ }
     watchLive();
   }, delay != null ? delay : (anyLive ? LIVE_MS : IDLE_MS));
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && liveTimer) watchLive(0);
+  });
 }
 
 /* The season's games, into GAMES. Its own function because the season picker

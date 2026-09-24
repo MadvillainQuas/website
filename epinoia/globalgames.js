@@ -123,13 +123,62 @@ function recent(beforeISO, offset, limit) {
     '&order=tipoff_at.desc,id.desc&limit=' + (limit || 30) + (offset ? '&offset=' + offset : ''), false);
 }
 
-/* EACH LEAGUE'S NEXT GAME, on its own query, because the time-ordered list of
-   forty can be all one busy league's. Cached per page, but a cached game whose
-   tip-off has passed is asked for again: it has gone live or been played, and
-   the next one is somebody else. */
+/* EVERY LEAGUE'S NEXT GAME, IN TWO READS. It was one query per league — 26 on
+   HOME, two seconds before the first card, and asked again for every league whose
+   cached game had tipped off. league_next_games (0152) is the first scheduled game
+   of each league, read with the reader's own rights, so it holds exactly the
+   games the per-league queries would have found; its ids then come back in ONE
+   read of the full select. Kept for five minutes, or until one of its games tips
+   off (that league's next game is then somebody else).
+
+   Resolves to a Map (league id -> game) of every league with something coming,
+   or to null where the view is not there yet (the migration not pushed), and
+   nextFor then asks league by league, as it always did. */
+const NEXT_ALL_MS = 5 * 60 * 1000;
+let nextAllP = null, nextAllAt = 0, nextAllMissing = false;
+function nextAll(opts) {
+  const fresh = opts && opts.fresh;
+  if (nextAllMissing) return Promise.resolve(null);
+  const held = nextAllP;
+  if (held && !fresh && Date.now() - nextAllAt < NEXT_ALL_MS) {
+    const stillAhead = held.then(m => !m || Array.from(m.values()).every(g => t(g) > Date.now()), () => false);
+    return stillAhead.then(ok => (ok ? held : readNextAll()));
+  }
+  return readNextAll();
+}
+function readNextAll() {
+  nextAllAt = Date.now();
+  const p = request('league_next_games?select=league_id,game_id', false).then(async heads => {
+    const ids = [...new Set((heads || []).map(h => h.game_id).filter(Boolean))];
+    const m = new Map();
+    if (!ids.length) return m;
+    const rows = await request('games?select=' + SEL + '&id=in.(' + ids.map(encodeURIComponent).join(',') + ')', false);
+    rows.forEach(g => { const id = leagueId(g); if (id != null) m.set(id, g); });
+    return m;
+  }, e => {
+    // a 404 is the view not being there yet: stop asking this page, answer league by league
+    if (/^404 /.test(String(e && e.message))) { nextAllMissing = true; return null; }
+    throw e;
+  });
+  nextAllP = p;
+  p.catch(() => { if (nextAllP === p) nextAllP = null; });
+  return p;
+}
+
+/* EACH LEAGUE'S NEXT GAME: from nextAll when the view is there, otherwise on its
+   own query, because the time-ordered list of forty can be all one busy league's.
+   Cached per page, but a cached game whose tip-off has passed is asked for again:
+   it has gone live or been played, and the next one is somebody else. */
 const nextCache = new Map();
 function nextFor(id, opts) {
   const fresh = opts && opts.fresh;
+  if (!nextAllMissing) {
+    return nextAll(opts).then(m => (m ? (m.get(id) || null) : nextForAlone(id, fresh)),
+                             () => nextForAlone(id, fresh));
+  }
+  return nextForAlone(id, fresh);
+}
+function nextForAlone(id, fresh) {
   const held = nextCache.get(id);
   if (held && !fresh) {
     const stillAhead = held.then(g => !g || t(g) > Date.now(), () => false);
@@ -555,7 +604,7 @@ function card(g, opts) {
 
 return {
   SEL, STALE_MS, LEAGUE_WINDOW_MS,
-  leagues, live, upcoming, recent, nextFor, liveState, leagueOf, request,
+  leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
   pickDaily, mergeNearest, groupOrder, nearer, feed, dedupe,
   card, wireBadges, dayLabel, timeLabel, esc
 };

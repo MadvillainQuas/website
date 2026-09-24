@@ -275,6 +275,8 @@ section('reads: URLs and per-page caches (stubbed fetch, no network)');
     fetch: async (url, o) => {
       seen.push({ url, headers: o.headers });
       const body = answer(url);
+      // {__status: 404} stands for a relation the database does not have
+      if (body && body.__status) return { ok: false, status: body.__status, json: async () => ({}), headers: { get: () => null } };
       return { ok: true, status: 200, json: async () => body,
         headers: { get: k => (k === 'content-range' ? '0-29/484' : null) } };
     },
@@ -288,6 +290,14 @@ section('reads: URLs and per-page caches (stubbed fetch, no network)');
   answer = () => [L.bcb, L.slbm];
   await W.leagues(); await W.leagues();
   ok('leagues() is read once per page', seen.filter(s => /\/leagues\?/.test(s.url)).length === 1);
+
+  /* WHERE THE DATABASE HAS NO league_next_games YET (0152 not pushed): the view
+     answers 404 once, and every league is asked on its own, exactly as before. */
+  seen.length = 0;
+  answer = u => (/league_next_games/.test(u) ? { __status: 404 } : []);
+  ok('without the view, nextAll answers null (league by league from here)', (await W.nextAll()) === null);
+  await W.nextAll();
+  ok('...and the missing view is asked about once per page', seen.filter(s => /league_next_games/.test(s.url)).length === 1);
 
   seen.length = 0;
   /* dates far from the real clock: nextFor compares a cached game with Date.now() */
@@ -322,6 +332,52 @@ section('reads: URLs and per-page caches (stubbed fetch, no network)');
   ok('later reads use a quoted keyset, not an offset',
      keyset && decodeURIComponent(keyset.url).includes('(tipoff_at.gt."' + new Date(NOW + D + 29 * H).toISOString() + '",and(tipoff_at.eq."') &&
      !/offset=/.test(keyset.url) && !keyset.headers.Prefer, keyset && decodeURIComponent(keyset.url).slice(-160));
+}
+
+/* ------------------------------------------------------------------------- */
+section('every league\'s next game in two reads (0152 league_next_games)');
+{
+  /* HOME asked for each league's next game on its own: 26 queries, two seconds
+     before the first card. The view answers the first scheduled game per league
+     and one read fetches those games in full. */
+  const seen = [];
+  let answer = () => [];
+  const sandbox = {
+    EPINOIA_CONFIG: { supabaseUrl: 'https://ref.supabase.co', supabaseAnonKey: 'anon' },
+    fetch: async (url, o) => {
+      seen.push({ url, headers: o.headers });
+      const body = answer(url);
+      return { ok: true, status: 200, json: async () => body, headers: { get: () => null } };
+    },
+    setTimeout, clearTimeout, Date, Promise, JSON, Math, Map, Set, encodeURIComponent, isFinite, parseInt, String, Array, Object
+  };
+  sandbox.globalThis = sandbox; sandbox.self = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(rd('epinoia', 'globalgames.js'), sandbox);
+  const W = sandbox.EpinoiaGlobalGames;
+
+  const heads = [{ league_id: 'l-bcb', game_id: 'nb' }, { league_id: 'l-slbm', game_id: 'ns' }];
+  let games = [game('nb', L.bcb, 400 * D), game('ns', L.slbm, 401 * D)];
+  answer = u => (/league_next_games/.test(u) ? heads : games);
+  const m = await W.nextAll();
+  ok('two reads: the view, then those games by id through SEL',
+     seen.length === 2 && /league_next_games\?select=league_id,game_id/.test(seen[0].url) &&
+     /\/games\?/.test(seen[1].url) && /id=in\.\(nb,ns\)/.test(seen[1].url) && seen[1].url.includes('competitions!inner'),
+     seen.map(s => s.url.slice(0, 90)));
+  ok('...keyed by league', m.get('l-bcb').id === 'nb' && m.get('l-slbm').id === 'ns');
+  seen.length = 0;
+  const a = await W.nextFor('l-bcb'), b = await W.nextFor('l-slbm'), c = await W.nextFor('l-none');
+  ok('nextFor is answered from it, with no request of its own', seen.length === 0 && a.id === 'nb' && b.id === 'ns');
+  ok('...and a league with nothing coming is null, not asked for', c === null && seen.length === 0);
+  await W.nextAll();
+  ok('kept between calls', seen.length === 0);
+  games = [game('nb', L.bcb, -400 * D), game('ns', L.slbm, 401 * D)];
+  await W.nextAll({ fresh: true });
+  seen.length = 0;
+  games = [game('nb2', L.bcb, 402 * D), game('ns', L.slbm, 401 * D)];
+  heads[0].game_id = 'nb2';
+  const again = await W.nextFor('l-bcb');
+  ok('read again once one of its games has tipped off', seen.length === 2 && again.id === 'nb2', seen.length);
 }
 
 /* ------------------------------------------------------------------------- */

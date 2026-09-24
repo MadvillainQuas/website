@@ -333,6 +333,32 @@ function cachePut(key, data) {
   catch (_) { /* private mode or full: the page works, it just asks again next time */ }
 }
 
+function signedIn() {
+  try {
+    const A = root.EpinoiaAccess;
+    return !!(A && typeof A.session === 'function' && A.session());
+  } catch (_) { return false; }
+}
+
+/* The stored podiums for this anchor, or null. EVERY LEAGUE ON THEM MUST STILL BE ONE THE
+   READER CAN SEE: a league made private after the build would otherwise keep its players
+   on HOME until the next one (the function rebuilds at least hourly). The visible list is
+   globalgames.js's, cached for the page and already asked for by HOME. */
+async function starsSnapshot(anchor, D) {
+  try {
+    const rows = await D.get('snapshots?key=eq.stars_global&select=token,data');
+    const r = rows && rows[0];
+    if (!r || r.token !== anchor || !r.data) return null;
+    const G = root.EpinoiaGlobalGames;
+    const lgs = G && typeof G.leagues === 'function' ? await G.leagues() : await D.get('leagues?select=id');
+    const visible = new Set((lgs || []).map(l => l.id));
+    const onPodium = WINDOWS.flatMap(w => ((r.data[w.key] || {}).top || []))
+      .map(p => p && p._league && p._league.id).filter(Boolean);
+    if (onPodium.some(id => !visible.has(id))) return null;
+    return r.data;
+  } catch (_) { return null; }   // no table yet (404), or a blip: work it out as before
+}
+
 /* a cached row's window is stored by key and restored to the WINDOWS entry */
 function revive(row) {
   if (!row) return null;
@@ -353,6 +379,20 @@ async function global(opts) {
 
   const hit = cacheGet(CACHE_KEY + anchor);
   if (hit) return { week: revive(hit.week), month: revive(hit.month), anchor };
+
+  /* THE SERVER'S PODIUMS (0152), when they were built from this same anchor. The snapshots
+     function runs this very function once after each final, as a signed-out reader, and
+     stores the `out` below; every visitor shares it instead of reading a month of box
+     scores across every league (1.44 MB and eight queries on 2026-09-24) and running BPM.
+     A signed-in reader may see leagues a signed-out one cannot, so they work it out
+     themselves; o.snapshot === false is the function itself. */
+  if (o.snapshot !== false && !signedIn()) {
+    const snap = await starsSnapshot(anchor, D);
+    if (snap) {
+      cachePut(CACHE_KEY + anchor, snap);
+      return { week: revive(snap.week), month: revive(snap.month), anchor };
+    }
+  }
 
   const widest = Math.max.apply(null, WINDOWS.map(w => w.days));
   const from = new Date(at - widest * dayMs).toISOString();

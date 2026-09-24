@@ -417,9 +417,19 @@ function anyLiveShown() {
 function watchGames(delay) {
   clearTimeout(gamesTimer);
   gamesTimer = setTimeout(async () => {
-    try { await games(); } catch (_) { /* a blip must not stop the watch */ }
+    /* A TAB NOBODY IS LOOKING AT DOES NOT POLL. This re-read is up to 400 games every 15 to 30
+       seconds, and it ran in every tab left open in the background, all evening. A hidden tab
+       now skips its turn and catches up the moment it is shown again (below). */
+    if (!(typeof document !== 'undefined' && document.visibilityState === 'hidden')) {
+      try { await games(); } catch (_) { /* a blip must not stop the watch */ }
+    }
     watchGames();
   }, delay != null ? delay : (anyLiveShown() ? GAMES_LIVE_MS : GAMES_IDLE_MS));
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && gamesTimer) watchGames(0);
+  });
 }
 
 /* The message is a nudge to look, never a fact to show: the games table still

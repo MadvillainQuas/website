@@ -205,10 +205,10 @@ function decideAccess(lg) {
     await Promise.all([venue(team), roster(team),
                        accessReady.then(() => { try { decideAccess(lg); } catch (_) { /* open */ }
                          return Promise.all([record(team), teamStats(team), games(team)]); })]);
-    teamShots(team);
-    teamShotClock(team);
-    teamRotations(team);
-    await lineupPanels(team);
+    whenNear($('#teamshots'), () => teamShots(team));
+    whenNear($('#teamclock'), () => teamShotClock(team));
+    whenNear($('#teamrot'), () => teamRotations(team));
+    whenNear($('#lulist') || $('#wowy'), () => { lineupPanels(team).catch(() => {}); });
     await videoPanel(team);
     weeklyTab(team);
   } catch (e) { oops('Could not load: ' + e.message); }
@@ -220,6 +220,22 @@ function decideAccess(lg) {
    with each zone's makes, attempts and percentage. Locations live in the event log, so the
    logs are fetched; the video panel below fetches its own subset for the games with footage.
    --------------------------------------------------------------------------- */
+/* START A SECTION WHEN IT IS NEARLY IN VIEW. The club page's lower sections are its heaviest
+   reads: the shot zones read the event log of every game in the club's competitions (other
+   clubs' games too, for the league percentiles), the chart, clock and rotations forty more
+   logs, the lineups every stint the club has played. All of it was fetched on arrival, 330 to
+   600 requests (measured 2026-09-24), while many visits read the roster and the results and
+   leave. A section now starts when it comes within a screen or so of the viewport, which to a
+   reader who scrolls looks the same. No IntersectionObserver: start at once, as before. A
+   section hidden behind the wall never comes into view, so it is never read, which is right. */
+function whenNear(node, run) {
+  if (!node || typeof IntersectionObserver !== 'function') { run(); return; }
+  const io = new IntersectionObserver(entries => {
+    if (entries.some(e => e.isIntersecting)) { io.disconnect(); run(); }
+  }, { rootMargin: '600px 0px' });
+  io.observe(node);
+}
+
 /* ONE SEASON OF LOGS, FETCHED ONCE. The shot chart, the shot clock and the rotations all read
    the club's last forty finalised games, and the event logs are the heaviest request this page
    makes; three sections asking for them separately would be three times that. The starters and
@@ -538,7 +554,8 @@ async function teamStats(team, kind) {
     tz.innerHTML = accessTeaser({ title: 'Shot zones, ranked in the league',
       lines: ['Share of shots, attempts per 100 possessions, makes and eFG% from every area of the floor, each a percentile among the league’s clubs.'] });
     zh.appendChild(tz);
-  } else zoneStats(zh, S, team).catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.')));
+  } else whenNear(zh, () => zoneStats(zh, S, team)
+    .catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.'))));
 
   /* EVENTS, AT BOTH ENDS. What the club made of second chances, breaks, turnovers,
      timeouts and half-court sets over the scoped season, and what opponents made of

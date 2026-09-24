@@ -131,7 +131,18 @@ const FILES = [
     out: join(repo, 'supabase', 'functions', '_shared', 'stars.js'),
     global: 'EpinoiaStars',
     names: ['WINDOWS', 'PLAYER_KEYS', 'TEAM_KEYS', 'PLAYER_SEL', 'TEAM_SEL', 'unpick',
-            'computeWindow', 'pick', 'span']
+            'computeWindow', 'pick', 'span', 'boxScores', 'global']
+  },
+  /* THE DATA LAYER, for the snapshots function (0152). It builds HOME's podiums and each
+     competition's season lines by running the page's own reads and sums (stars.global,
+     EpinoiaData.season) as a signed-out reader, so a snapshot is what a visitor's browser
+     would have computed: one implementation, and no second copy of the access rules. */
+  {
+    src: join(repo, 'epinoia', 'data.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'data.js'),
+    global: 'EpinoiaData',
+    names: ['get', 'all', 'season', 'statsForGames', 'playerMeta', 'teamMeta', 'seasonToken',
+            'PLAYER_STAT_KEYS', 'untrim']
   }
 ];
 
