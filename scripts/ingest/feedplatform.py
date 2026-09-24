@@ -289,7 +289,11 @@ class Platform:
             # the crest's FILE NAME ("at", "rg", "sr"), which put "AT" and "RG" on the strip's
             # cards for every club in both Japanese divisions (reported 2026-09-18). A club's own
             # name, trimmed, says more in the same three characters.
-            sn_code = code if (re.search(r"[A-Za-z]", code) and code != code.lower()) else nice
+            # ...NOR AN ID. The Greek federation keys a club by an upper-case GUID
+            # ("72C1B0A4-..."), which passed both tests above and put "72C" on the strip
+            # (reported 2026-09-24): an abbreviation is short and has no dash.
+            sn_code = code if (re.search(r"[A-Za-z]", code) and code != code.lower()
+                               and len(code) <= 8 and "-" not in code) else nice
             r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, base), "name": nice,
                                       "short_name": names.short_form(names.team_name(t.get("shortName") or "") or sn_code), "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},

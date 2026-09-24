@@ -182,10 +182,36 @@ def _cap(w: str) -> str:
     return "-".join(out)
 
 
+#: Greek club-type initials longer than three letters (the three-letter ones are caught by length)
+LONG_INITIALS = {"ΑΕΠΣ", "ΠΑΟΚ", "ΓΑΣΚ", "ΑΕΚΑ", "ΑΣΠΑ"}
+
+
 def club_name(raw: str) -> str:
-    """A club in Latin: initials of up to three letters (ΑΕ, ΓΣ, ΑΕΟ) stay capitals."""
-    words = _names.greek_latin(re.sub(r"\s+", " ", raw or "").strip()).split(" ")
-    return " ".join(w.upper() if (len(w) <= 3 and w.isalpha()) else _cap(w) for w in words if w)
+    """A club in Latin: initials (ΑΕ, ΓΣ, ΑΕΟ, ΑΕΠΣ) stay capitals, the rest title case."""
+    src = re.sub(r"\s+", " ", raw or "").strip().split(" ")
+    out = []
+    for w in src:
+        if not w:
+            continue
+        lat = _names.greek_latin(w)
+        out.append(lat.upper() if ((len(lat) <= 3 and lat.isalpha()) or w.upper() in LONG_INITIALS) else _cap(lat))
+    return " ".join(out)
+
+
+def short_club(name: str) -> str:
+    """A club's SHORT name from its Latin name: the first word that says WHICH club, not what kind
+    of club - GAS Komotini -> Komotini, AS Papagou -> Papagou, AEPS Machites Peiramatiko -> Machites,
+    Protefs AEO Voulas -> Protefs. Initials (all capitals), numbers and abbreviations ending in a
+    full stop are skipped; a name that is nothing else keeps its first word.
+
+    Without one the platform fell back to the club's code, which here is the federation's team GUID,
+    and the fixture strip printed its first three characters: "72C" v "5C2" (reported 2026-09-24)."""
+    words = [w for w in re.sub(r"\s+", " ", name or "").strip().split(" ") if w]
+    for w in words:
+        if w.isupper() or w.endswith(".") or any(c.isdigit() for c in w):
+            continue
+        return w
+    return words[0] if words else ""
 
 
 # ============================================================================ the schedule
@@ -519,7 +545,7 @@ def raw_from_page(page: str, now: Optional[datetime] = None, club_names: Optiona
                 bench += p["sPoints"]
             pl[pid] = p
         greek = (club_names or {}).get(teams[t - 1]["id"]) or teams[t - 1]["name"]
-        tt = S.team(club_name(greek), teams[t - 1]["id"], score=home_score if t == 1 else away_score,
+        tt = S.team(club_name(greek), teams[t - 1]["id"], short_name=short_club(club_name(greek)), score=home_score if t == 1 else away_score,
                     quarters=[quarters[t].get(q) for q in range(1, min(last_q, 4) + 1)], players=pl, shots=[],
                     logo=teams[t - 1]["logo"], totals=_stats(totals) if totals else None)
         tt["nameInternational"] = greek
@@ -641,6 +667,8 @@ class GrelAdapter(FibaLiveStatsAdapter):
             rnd = c["gamedate"] + (sum(rounds_per_level.get(l, 0) for l in range(1, c["level"]))
                                    if c["section"] == "games-regular-season" else 0)
             extra = {"home_code": c["home"]["id"], "away_code": c["away"]["id"],
+                     "home_short": short_club(club_name(c["home"]["name"])),
+                     "away_short": short_club(club_name(c["away"]["name"])),
                      "home_logo": c["home"]["logo"], "away_logo": c["away"]["logo"],
                      "round": (f"Round {rnd}" if c["section"] == "games-regular-season"
                                else ("Final Four" if c["section"] == "games-final4" else "Play-offs / play-outs")),

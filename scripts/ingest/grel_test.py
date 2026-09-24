@@ -91,6 +91,11 @@ for raw, want in (("ΕVERTECH ΠΑΠΑΓΟΥ", "Evertech Papagou"), ("ΚΟΡΟΙ
                   ("VIKOS ΦALCONS", "Vikos Falcons"), ("ΚΑΕ ΠΑΝΙΩΝΙΟΣ ΓΣΣ 1890", "KAE Panionios GSS 1890"),
                   ("ΠΡΩΤΕΥΣ ΑΕΟ ΒΟΥΛΑΣ", "Protefs AEO Voulas")):
     ok(f"club {raw} -> {want}", G.club_name(raw) == want, G.club_name(raw))
+for name, short in (("GAS Komotini", "Komotini"), ("AS Papagou", "Papagou"), ("Protefs AEO Voulas", "Protefs"),
+                    ("AEPS Machites Peiramatiko", "Machites"), ("KAE Panionios GSS 1890", "Panionios"),
+                    ("Kronos Ag. Dimitriou GS", "Kronos"), ("Vikos Falcons", "Vikos")):
+    ok(f"short name: {name} -> {short} (never the club's GUID)", G.short_club(name) == short, G.short_club(name))
+ok("club: ΑΕΠΣ is initials too", G.club_name("ΑΕΠΣ ΜΑΧΗΤΕΣ") == "AEPS Machites")
 ok("Greek local time: 17:00 on 4 Oct 2025 (summer time) is 14:00 UTC; 17:00 on 10 Jan 2026 is 15:00 UTC",
    G.athens_to_utc(2025, 10, 4, "17:00")[0] == "2025-10-04T14:00:00+00:00"
    and G.athens_to_utc(2026, 1, 10, "17:00")[0] == "2026-01-10T15:00:00+00:00")
@@ -109,6 +114,8 @@ ok("not one Greek character in a club or venue", not any(GREEK.search(n) for n i
    [n for n in names_ if GREEK.search(n)][:3])
 ok("15 clubs (one sits out each round), each by its own team id, one name each",
    len({g.extra["home_code"] for g in reg}) == 15 and len({(g.extra["home_code"], g.home_name) for g in reg}) == 15)
+ok("every fixture carries both clubs' short names, and none is a code",
+   all(g.extra["home_short"] and "-" not in g.extra["home_short"] and g.extra["away_short"] for g in reg))
 ok("Evertech Papagou and Vikos Falcons: the mixed-script names repaired",
    {"Evertech Papagou", "Vikos Falcons"} <= {g.home_name for g in reg})
 g0 = next(g for g in reg if "106C4619" in g.external_id)

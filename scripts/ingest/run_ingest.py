@@ -679,8 +679,12 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
     plat = run["_platform"]
     comp_id = source_competition(sb, plat, src, league_id, ac)["id"]
     ex = g.extra or {}
-    home = plat.team(league_id, {"name": g.home_name, "code": ex.get("home_code") or ""})
-    away = plat.team(league_id, {"name": g.away_name, "code": ex.get("away_code") or ""})
+    # a short name when the adapter knows one (grel: "Komotini" for GAS Komotini), so a club created
+    # from its first fixture is not given its code - a GUID on some feeds - as its short name
+    home = plat.team(league_id, {"name": g.home_name, "code": ex.get("home_code") or "",
+                                 "shortName": ex.get("home_short") or ""})
+    away = plat.team(league_id, {"name": g.away_name, "code": ex.get("away_code") or "",
+                                 "shortName": ex.get("away_short") or ""})
     if not (home and away):
         return
     existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{g.external_id}&select=game_id")
