@@ -132,7 +132,7 @@ function hexA(hex, a) {
 }
 
 const SECTION_OF = {
-  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', stars: '#starsSec',
+  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec',
   games: '#gamesSec', season: '#seasonSec', merch: '#merchSec',
   socials: '#socialSec', takepart: '#takepartSec'
 };
@@ -859,6 +859,20 @@ async function stars() {
     team: m.teamsById.get(m.teamOf && m.teamOf.get(p.id)) || null,
     span: m.span
   };
+}
+
+/* ------------------------------------------------------- the fans' vote ---
+   MAKE YOUR VOICE HEARD (epinoia/fanvote.js, migration 0150): the panel that
+   unrolls out of the hero's rule once a voting week, and last week's fans'
+   picks above the Stars. Everything it shows comes from fanvote_state, asked as
+   the reader when they are signed in (so their ballot is their account's and
+   their profile switch is honoured) and anonymously otherwise. A league that
+   turned the section off in Appearance gets neither. */
+async function fanVote() {
+  const sec = $('#fvSec');
+  const FV = window.EpinoiaFanVote;
+  if (!sec || !LEAGUE || !FV || !sectionOn('fanvote')) { if (sec) sec.classList.add('hide'); return null; }
+  return FV.mount({ league: LEAGUE, cfg: CFG, anchor: document.querySelector('#hub .hero'), sec, base: '' });
 }
 
 /* ------------------------------------------------------ the shop window ---
@@ -1621,6 +1635,9 @@ function renumber() {
     const gamesP = ast.known && ast.accessMode === 'members' && ast.membershipsEnabled !== false
       ? gamesFirst.then(() => { gamesKey = ''; return games(); }).catch(() => null)
       : gamesFirst;
+    /* the fans' vote starts now and is NOT waited for: it is the one section whose panel can appear
+       late, and a slow database must never hold the rest of the page's set-up behind it */
+    if (!wall.walled) fanVote().catch(() => null);
     const [, roster, star] = await Promise.all([
       gamesP,
       clubsP,

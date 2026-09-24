@@ -1385,7 +1385,8 @@
       'Your phone is hiding it': '端末が通知を隠しています',
       'Choose what you get': '受け取る内容を選ぶ',
       'Notifications are on': '通知がオンになりました',
-      'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:': 'iPhoneとiPadでは、通知はホーム画面のEPINOIΛを通じて届きます:'
+      'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:': 'iPhoneとiPadでは、通知はホーム画面のEPINOIΛを通じて届きます:',
+      'fans’ vote': 'ファン投票'
     },
 
     ctx: {

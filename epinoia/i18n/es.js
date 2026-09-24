@@ -1387,7 +1387,8 @@
       'Your phone is hiding it': 'Tu teléfono la está ocultando',
       'Choose what you get': 'Elige qué quieres recibir',
       'Notifications are on': 'Notificaciones activadas',
-      'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:': 'En iPhone y iPad, las notificaciones llegan a través de EPINOIΛ en tu pantalla de inicio:'
+      'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:': 'En iPhone y iPad, las notificaciones llegan a través de EPINOIΛ en tu pantalla de inicio:',
+      'fans’ vote': 'Voto de la afición'
     },
 
     ctx: {

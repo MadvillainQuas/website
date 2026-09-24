@@ -119,6 +119,19 @@ const FILES = [
     global: 'EpinoiaSituations',
     names: ['compute', 'toStored', 'finish', 'howEnded', 'surname', 'KEYS', 'STAMPED',
             'FIELDS', 'AFIELDS', 'VERSION', 'cumEl', 'inGameOrder']
+  },
+  /* THE STARS' RULE, for the weekly fans' vote (0150). The fanvote function puts the
+     week's ten best players by BPM on the ballot, and "best" has to mean what the
+     Stars podium on the same page means: the same window minimum and the same
+     ordering, from the same file. computeWindow reads EpinoiaSeason (and through it
+     EpinoiaBPM) off globalThis when it is CALLED, so season.js and bpm.js are
+     imported first by the caller, not by this file. */
+  {
+    src: join(repo, 'epinoia', 'stars.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'stars.js'),
+    global: 'EpinoiaStars',
+    names: ['WINDOWS', 'PLAYER_KEYS', 'TEAM_KEYS', 'PLAYER_SEL', 'TEAM_SEL', 'unpick',
+            'computeWindow', 'pick', 'span']
   }
 ];
 
