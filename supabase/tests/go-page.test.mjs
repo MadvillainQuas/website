@@ -153,7 +153,15 @@ ok('arenas to tick off, then the leaderboard, the feed and the fan\'s stamps, in
    ['goStripSec', 'goBoardsSec', 'goFeedSec', 'goMineSec'].map(id => html.indexOf('id="' + id + '"')).every((v, i, a) => v > 0 && (!i || v > a[i - 1])));
 ok('the strip: the arenas of the fan\'s country with a club and no stamp of theirs, looping when there are enough',
    /venues\?country=eq\./.test(js) && /teams!teams_home_venue_id_fkey\(name,short_name,colour,logo_path,leagues\(slug\)\)/.test(js)
-   && /@keyframes go-slide\{to\{transform:translateX\(-50%\)\}\}/.test(css) && /\.go-strip-track\{animation:none\}/.test(css));
+   && /mountStrip\(host, list, photos\);/.test(js));
+ok('...it slides on its own but is the fan\'s to take: dragged with the mouse (a drag is not a click), swiped, or moved by an arrow at each end',
+   /const loop = n >= 3;/.test(js) && /const SPEED = 40;/.test(js) && /e\.pointerType !== 'mouse'/.test(js)
+   && /if \(travelled > 5\) \{ e\.preventDefault\(\); e\.stopPropagation\(\)/.test(js)
+   && /prev\.addEventListener\('click', \(\) => step\(-1\)\);/.test(js) && /'Previous arenas'/.test(js) && /'Next arenas'/.test(js)
+   && /\.go-strip-view\{overflow-x:auto;/.test(css) && /\.go-strip-btn\{position:absolute;/.test(css) && !/go-slide/.test(css));
+ok('...waiting while a pointer is over it, something in it has focus, or the fan has just moved it; still under reduced motion (the arrows jump)',
+   /!hover && !focus && t > pausedUntil/.test(js) && /if \(reduced\(\)\) return;/.test(js) && /if \(reduced\(\)\) \{ pos \+= by; apply\(\); \}/.test(js)
+   && ['ja', 'es'].every(code => ['Previous arenas', 'Next arenas'].every(w => rd('epinoia', 'i18n', code, 'go.js').includes("'" + w + "':"))));
 const guess = o => G.countryGuess(Object.assign({ available: ['FI', 'GB', 'JP'] }, o));
 ok('the country: the one picked before, then the clubs followed, the stamps, the time zone, the language, the first with arenas',
    guess({ stored: 'gb', follows: ['FI'] }) === 'GB' && guess({ follows: ['JP', 'JP', 'FI'], stamps: ['FI'] }) === 'JP'

@@ -173,7 +173,9 @@
       'show how far each one is': 'ver a qué distancia está cada uno',
       'No games open to stamp right now.': 'Ahora mismo no hay partidos abiertos para sellar.',
       'No games today or tomorrow.': 'No hay partidos hoy ni mañana.',
-      'open now': 'abierto ahora'
+      'open now': 'abierto ahora',
+      'Previous arenas': 'Pabellones anteriores',
+      'Next arenas': 'Pabellones siguientes'
     },
     units: {
       'arena': '{n} pabellón',

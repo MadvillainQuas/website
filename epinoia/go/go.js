@@ -1119,15 +1119,128 @@ async function drawStrip() {
   }
   const photos = new Map();
   (await feedRows()).forEach(p => { if (p.venue_id && !photos.has(p.venue_id)) photos.set(p.venue_id, publicUrl(p.thumb_path)); });
-  const track = host.appendChild(el('div', 'go-strip-track'));
+  mountStrip(host, list, photos);
+}
+
+/* THE STRIP: slides on its own, and the fan can take it (Louie, 2026-09-24): drag it with the mouse, swipe it,
+   or press the arrows at its ends; it waits while a pointer is over it, something in it has focus, or the fan has
+   just moved it. A ring: with three or more arenas the cards are laid out in enough copies (the extra ones
+   hidden from readers) that going past either end comes round to the other; with fewer it is a plain row,
+   arrows only when it overflows. Reduced motion: no sliding, the arrows jump. Scrolling is the browser's own
+   overflow (so touch, trackpad and keyboard focus all work); a drag and the arrows move it by script. */
+const STRIP = { raf: 0, io: null };
+function stopStrip() {
+  if (STRIP.raf) cancelAnimationFrame(STRIP.raf);
+  STRIP.raf = 0;
+  if (STRIP.io) STRIP.io.disconnect();
+  STRIP.io = null;
+}
+
+function mountStrip(host, list, photos) {
+  stopStrip();
+  const n = list.length;
+  const view = host.appendChild(el('div', 'go-strip-view'));
+  const track = view.appendChild(el('div', 'go-strip-track'));
   list.forEach(v => track.appendChild(venueCard(v, photos.get(v.id))));
-  // a loop needs the cards twice; the second copy is for the eye only
-  if (list.length >= 3 && !reduced()) {
-    list.forEach(v => { const c = venueCard(v, photos.get(v.id)); c.setAttribute('aria-hidden', 'true'); c.tabIndex = -1; track.appendChild(c); });
-    track.style.setProperty('--slide-s', Math.max(24, list.length * 5) + 's');
-  } else {
-    track.style.animation = 'none';
+  const prev = host.appendChild(el('button', 'go-strip-btn prev'));
+  const next = host.appendChild(el('button', 'go-strip-btn next'));
+  prev.type = next.type = 'button';
+  prev.setAttribute('aria-label', 'Previous arenas');
+  next.setAttribute('aria-label', 'Next arenas');
+
+  const loop = n >= 3;
+  let period = 0;
+  if (loop) {
+    const copy = () => list.forEach(v => {
+      const c = venueCard(v, photos.get(v.id));
+      c.setAttribute('aria-hidden', 'true');
+      c.tabIndex = -1;
+      track.appendChild(c);
+    });
+    copy(); copy();
+    period = track.children[n].offsetLeft - track.children[0].offsetLeft;
+    if (!(period > 50)) period = n * 266;
+    // the window (up to 1200 px) always has cards under it while the position stays within one period
+    for (let sets = 3; sets < 2 + Math.ceil(1200 / period); sets++) copy();
   }
+
+  const SPEED = 40;                                   // px a second
+  let pos = loop ? period : 0, glide = 0, lastSet = -1, pausedUntil = 0, last = 0;
+  let hover = false, focus = false, dragging = false, visible = true;
+  const maxPos = () => Math.max(0, track.scrollWidth - view.clientWidth);
+  const buttons = () => {
+    const room = loop || maxPos() > 1;
+    prev.hidden = next.hidden = !room;
+    if (!loop) { prev.disabled = pos <= 1; next.disabled = pos >= maxPos() - 1; }
+  };
+  // keeps the position inside the window that has cards under it; a plain row stops at its ends
+  const norm = () => {
+    if (loop) { while (pos >= 2 * period) pos -= period; while (pos < period) pos += period; return; }
+    const c = Math.min(maxPos(), Math.max(0, pos));
+    if (c !== pos) { pos = c; glide = 0; }
+  };
+  const apply = () => { norm(); lastSet = pos; view.scrollLeft = pos; buttons(); };
+  const pause = ms => { pausedUntil = performance.now() + ms; };
+
+  // a scroll the script did not make (a swipe, a trackpad, focus reaching a card): follow it, and wait
+  view.addEventListener('scroll', () => {
+    if (Math.abs(view.scrollLeft - lastSet) < 1.5) return;
+    pos = view.scrollLeft;
+    glide = 0;
+    pause(4000);
+    if (loop) { const was = pos; norm(); if (pos !== was) { lastSet = pos; view.scrollLeft = pos; } } else buttons();
+  }, { passive: true });
+
+  const step = dir => {
+    pause(6000);
+    const by = dir * Math.max(220, view.clientWidth * 0.8);
+    if (reduced()) { pos += by; apply(); } else glide += by;
+  };
+  prev.addEventListener('click', () => step(-1));
+  next.addEventListener('click', () => step(1));
+
+  // the mouse drags; a finger scrolls the overflow itself
+  let sx = 0, from = 0, travelled = 0;
+  view.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    dragging = true; travelled = 0; sx = e.clientX; from = view.scrollLeft; glide = 0;
+    view.classList.add('dragging');
+    const move = ev => { travelled = Math.max(travelled, Math.abs(ev.clientX - sx)); pos = from - (ev.clientX - sx); apply(); };
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      dragging = false; view.classList.remove('dragging'); pause(4000);
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  });
+  view.addEventListener('dragstart', e => e.preventDefault());       // not the browser's drag of a link
+  view.addEventListener('click', e => { if (travelled > 5) { e.preventDefault(); e.stopPropagation(); travelled = 0; } }, true);
+
+  host.addEventListener('mouseenter', () => { hover = true; });
+  host.addEventListener('mouseleave', () => { hover = false; });
+  host.addEventListener('focusin', () => { focus = true; });
+  host.addEventListener('focusout', () => { focus = false; });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(buttons).observe(view);
+  if (typeof IntersectionObserver === 'function') {
+    STRIP.io = new IntersectionObserver(es => { visible = es.some(x => x.isIntersecting); });
+    STRIP.io.observe(host);
+  }
+
+  apply();
+  if (reduced()) return;                              // no sliding, no glide: the arrows jump
+  const frame = t => {
+    STRIP.raf = requestAnimationFrame(frame);
+    const dt = Math.min(64, t - (last || t));
+    last = t;
+    if (!visible || document.hidden || dragging) return;
+    if (Math.abs(glide) > 0.5) { const d = glide * (1 - Math.exp(-dt / 110)); pos += d; glide -= d; apply(); }
+    else if (glide) { pos += glide; glide = 0; apply(); }
+    else if (loop && !hover && !focus && t > pausedUntil) { pos += SPEED * dt / 1000; apply(); }
+  };
+  STRIP.raf = requestAnimationFrame(frame);
 }
 
 /* ------------------------------------------------------------- the boards --- */

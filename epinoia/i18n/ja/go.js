@@ -173,7 +173,9 @@
       'show how far each one is': 'それぞれの距離を表示',
       'No games open to stamp right now.': '今スタンプできる試合はありません。',
       'No games today or tomorrow.': '今日と明日の試合はありません。',
-      'open now': '受付中'
+      'open now': '受付中',
+      'Previous arenas': '前のアリーナ',
+      'Next arenas': '次のアリーナ'
     },
     units: {
       'arena': '{n}アリーナ',

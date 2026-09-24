@@ -279,3 +279,11 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       "Have Fun!" is the first visit's only: on a later visit the question (a fan still without a username)
       gives the page straight back. Chromium: the list 21, the intro 18 (four with go.js blocked);
       `go-page.test.mjs`: 90.
+- [x] **7.12 The arenas strip is the fan's to move** (Louie, the same night) - draggable with the mouse (a drag
+      over a card does not open it), swipeable, and an arrow at each end that moves it by most of a screen; it
+      still slides on its own, waiting while a pointer is over it, something in it has focus, or the fan has
+      just moved it. With three or more arenas it is a ring (going past either end comes round; enough copies
+      of the cards, the extra ones hidden from readers, that the window always has cards under it); fewer is a
+      plain row with arrows only if it overflows. Under reduced motion it does not slide and the arrows jump.
+      Real browser scrolling underneath (`go.js` mountStrip), so touch, trackpad and keyboard focus all work.
+      Chromium: 19 checks (desktop, phone, a short list, reduced motion, redrawing on a country change).
