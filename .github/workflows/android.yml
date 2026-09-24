@@ -69,8 +69,8 @@ jobs:
     steps:
       # THE TOKEN IS NOT LEFT IN .git/config. Gradle runs AGP and downloaded
       # dependency code, and a write token there could push to main, which is the
-      # live site. The release step passes github.token itself, and ls-remote on
-      # this public repo needs no credentials.
+      # live site. The release step and the tag check pass github.token themselves,
+      # for that one command (a private repository answers nothing without it).
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -263,9 +263,10 @@ jobs:
         if: steps.signing.outputs.signed == 'true' && github.ref == 'refs/heads/main'
         env:
           TAG: android-v${{ steps.version.outputs.code }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set +e
-          git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null
+          git ls-remote --exit-code --tags "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$TAG" > /dev/null
           status=$?
           set -e
           if [ "$status" -eq 0 ]; then

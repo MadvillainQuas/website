@@ -67,7 +67,8 @@ jobs:
     steps:
       # THE TOKEN IS NOT LEFT IN .git/config. xcodebuild and Homebrew run on this checkout, and a
       # write token there could push to main, which is the live site. The tag step passes
-      # github.token to gh itself, and ls-remote on this public repo needs no credentials.
+      # github.token to gh itself, and the tag check passes it to that one ls-remote (a private
+      # repository answers nothing without it).
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -331,6 +332,7 @@ jobs:
         id: release
         env:
           TAG: ios-v${{ steps.version.outputs.build }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "$HAS_SIGNING" != "true" ]; then
             echo "go=false" >> "$GITHUB_OUTPUT"
@@ -343,7 +345,7 @@ jobs:
             exit 0
           fi
           set +e
-          git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null
+          git ls-remote --exit-code --tags "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$TAG" > /dev/null
           status=$?
           set -e
           if [ "$status" -eq 0 ]; then

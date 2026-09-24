@@ -8,12 +8,12 @@ on:
   push:
     paths: ['epinoia/**', 'share/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml',
             '.well-known/**', 'android/**', '.github/workflows/android.yml', 'tools/ios-team.mjs']
-  pull_request:
   workflow_dispatch:
 
 jobs:
   carve-out:
-    runs-on: ubuntu-latest
+    # RUNS_ON: see ingest.yml
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -116,7 +116,8 @@ jobs:
           echo "ok — service worker bypasses /epinoia/"
 
   engine-parity:
-    runs-on: ubuntu-latest
+    # RUNS_ON: see ingest.yml
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -133,8 +134,8 @@ jobs:
           # Since 9ef8dbe the copy opens with a one-line GENERATED banner from extract-shared.mjs;
           # comparing byte-for-byte from byte 0 failed on that banner alone, on every commit, and
           # because this step comes first no suite after it ran. The banner is skipped, nothing else.
-          sed '1{/GENERATED from epinoia\/engine\.js/d}' supabase/functions/_shared/engine.js | head -c $(wc -c < epinoia/engine.js) > /tmp/shared_head.js
-          if ! diff -q epinoia/engine.js /tmp/shared_head.js > /dev/null; then
+          sed '1{/GENERATED from epinoia\/engine\.js/d}' supabase/functions/_shared/engine.js | head -c $(wc -c < epinoia/engine.js) > "$RUNNER_TEMP/shared_head.js"
+          if ! diff -q epinoia/engine.js "$RUNNER_TEMP/shared_head.js" > /dev/null; then
             echo "::error::supabase/functions/_shared/engine.js has drifted from epinoia/engine.js."
             echo "Re-sync with:  cp epinoia/engine.js supabase/functions/_shared/engine.js && (re-append the ESM tail)"
             exit 1
