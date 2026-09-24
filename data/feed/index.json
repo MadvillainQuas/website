@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-23T09:24:47.634046+00:00",
+ "updated": "2026-09-24T05:26:27.159485+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -105,6 +105,13 @@
    "adapter": "fiba_livestats",
    "games": 106,
    "updated": "2026-09-23T08:37:55.574020+00:00"
+  },
+  {
+   "code": "WJBL",
+   "label": "W League Premier",
+   "adapter": "wjbl",
+   "games": 112,
+   "updated": "2026-09-24T05:26:27.149083+00:00"
   }
  ]
 }
