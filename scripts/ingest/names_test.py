@@ -58,6 +58,22 @@ ok("the kanji is kept as an alias", any("富樫" in a for a in aliases), aliases
 eq("with no Latin field the kanji is left alone rather than guessed at",
    names.person({"firstName": "勇樹", "familyName": "富樫"})[:2], ("勇樹", "富樫"))
 
+print("\n-- kana are spelt, the way a passport writes a name (the W League's furigana)")
+eq("hiragana, word breaks kept", names.kana_romaji("やまもと まい"), "yamamoto mai")
+eq("long vowels written once", [names.kana_romaji(k) for k in ("さとう", "おおわき", "とうどう", "ゆうき", "こういち")],
+   ["sato", "owaki", "todo", "yuki", "koichi"])
+eq("...but not the 'ue' of Inoue", names.kana_romaji("いのうえ"), "inoue")
+eq("n before b/m/p is m", [names.kana_romaji(k) for k in ("なんば", "ほんま", "さんぺい", "こんの")],
+   ["namba", "homma", "sampei", "konno"])
+eq("small kana and the doubling small tsu", [names.kana_romaji(k) for k in ("きょうこ", "しゅり", "ちひろ", "はっとり", "いっち")],
+   ["kyoko", "shuri", "chihiro", "hattori", "itchi"])
+eq("katakana, and the sounds a foreign name needs",
+   [names.kana_romaji(k) for k in ("ディマロ", "ファトゥ", "ジェシカ", "ウォーカー", "ヴィクトリア", "カサンドラ・ブラウン")],
+   ["dimaro", "fatu", "jeshika", "woka", "vikutoria", "kasandora buraun"])
+eq("kanji is not kana, and comes back untouched", names.kana_romaji("山本 まい"), "山本 mai")
+ok("is_kana: a reading is kana, a name in kanji is not",
+   names.is_kana("やまもと まい") and names.is_kana("カサンドラ・ブラウン") and not names.is_kana("山本 麻衣"))
+
 print("\n-- capitalisation a .title() gets wrong")
 eq("Mc", names.person({"name": "MCDONALD, JAMES"})[:2], ("James", "McDonald"))
 eq("Mac", names.person({"name": "MACDONALD, JAMES"})[:2], ("James", "MacDonald"))

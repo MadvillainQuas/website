@@ -454,6 +454,15 @@ jobs:
         # overtime, double overtime and a play-off final included
         run: python scripts/ingest/lba_test.py
 
+      - name: W League (Japan) from wjbl.org's own API
+        # wjbl.py over the cached 2025-26 and 2026-27 schedules and five games (Premier, Future,
+        # two overtimes, two games of the 2026 final): Premier, Future and the play-offs kept apart
+        # and the cups never read, every player named in Latin letters (the league's romaji, her
+        # kana reading spelt, or a checked spelling) with the Japanese kept, the starter
+        # announcement not replayed, and every box, team total, score, plus/minus, 5v5 stint and
+        # event-log line reconciling with the league's own figures
+        run: python scripts/ingest/wjbl_test.py
+
       - name: LKL (Lithuania) from lkl.lt's own calendar and game data
         # lkl.py over the cached calendar, schedule pages and five games: every club coded by its
         # league team id, home found even where the feed lists the away side first, starters

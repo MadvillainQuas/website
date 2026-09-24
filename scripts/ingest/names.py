@@ -25,6 +25,12 @@ dictionary, and guessing at somebody's name is worse than leaving it. A CJK name
 (and kept as an alias) unless the feed also carries a Latin form, which every league here does —
 the B.LEAGUE's own API has both, and that is the field the adapter is told to prefer.
 
+KANA ARE A DIFFERENT MATTER. A reading written in kana (the furigana a league prints above a
+name) is a spelling, not a guess: every kana is one sound, so kana_romaji() turns 「やまもと まい」
+into "yamamoto mai" by table, the way a Japanese passport writes it. That is how the W League
+(adapters/wjbl.py) names the players its API gives no English spelling for; the kanji is still
+the familyName and still an alias, exactly as on the B.LEAGUE.
+
 Cyrillic and Greek ARE transliterated, because those are one-to-one enough to be safe and the
 alternative is a Latin-alphabet site with unreadable rows in it.
 """
@@ -108,6 +114,114 @@ def latinise(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     return s
+
+
+# ------------------------------------------------------------------ kana -> romaji
+# Hepburn as a Japanese passport writes a name: no macrons, no apostrophes, long vowels not
+# written (さとう Sato, おおわき Owaki, ゆうき Yuki), ん as m before b/m/p (なんば Namba) and n
+# everywhere else, っ doubling the next consonant (っち -> tchi).
+_KANA_ROMAJI = {
+    "あ": "a", "い": "i", "う": "u", "え": "e", "お": "o",
+    "か": "ka", "き": "ki", "く": "ku", "け": "ke", "こ": "ko",
+    "が": "ga", "ぎ": "gi", "ぐ": "gu", "げ": "ge", "ご": "go",
+    "さ": "sa", "し": "shi", "す": "su", "せ": "se", "そ": "so",
+    "ざ": "za", "じ": "ji", "ず": "zu", "ぜ": "ze", "ぞ": "zo",
+    "た": "ta", "ち": "chi", "つ": "tsu", "て": "te", "と": "to",
+    "だ": "da", "ぢ": "ji", "づ": "zu", "で": "de", "ど": "do",
+    "な": "na", "に": "ni", "ぬ": "nu", "ね": "ne", "の": "no",
+    "は": "ha", "ひ": "hi", "ふ": "fu", "へ": "he", "ほ": "ho",
+    "ば": "ba", "び": "bi", "ぶ": "bu", "べ": "be", "ぼ": "bo",
+    "ぱ": "pa", "ぴ": "pi", "ぷ": "pu", "ぺ": "pe", "ぽ": "po",
+    "ま": "ma", "み": "mi", "む": "mu", "め": "me", "も": "mo",
+    "や": "ya", "ゆ": "yu", "よ": "yo",
+    "ら": "ra", "り": "ri", "る": "ru", "れ": "re", "ろ": "ro",
+    "わ": "wa", "ゐ": "i", "ゑ": "e", "を": "o", "ゔ": "vu",
+    "ぁ": "a", "ぃ": "i", "ぅ": "u", "ぇ": "e", "ぉ": "o", "ゃ": "ya", "ゅ": "yu", "ょ": "yo", "ゎ": "wa",
+}
+_SMALL_Y = {"ゃ": "a", "ゅ": "u", "ょ": "o"}
+_SMALL_V = {"ぁ": "a", "ぃ": "i", "ぅ": "u", "ぇ": "e", "ぉ": "o"}
+#: a kana + a small vowel whose sound is not "the kana's consonant + that vowel"
+_KANA_PAIRS = {"うぃ": "wi", "うぇ": "we", "うぉ": "wo", "いぇ": "ye", "くぁ": "kwa", "ぐぁ": "gwa",
+               "てゅ": "tyu", "でゅ": "dyu", "ふゅ": "fyu"}
+_VOWELS = set("aeiou")
+
+
+def _hira(ch: str) -> str:
+    """Katakana to hiragana (ヴ to ゔ); anything else unchanged. ー is kept: it is not a kana."""
+    o = ord(ch)
+    return chr(o - 0x60) if 0x30A1 <= o <= 0x30F6 else ch
+
+
+def is_kana(s: str) -> bool:
+    """Only kana (either script), spaces and the name dot: a reading, which kana_romaji can spell."""
+    s = str(s or "").strip()
+    return bool(s) and all(c in " 　・ー" or "ぁ" <= c <= "ゖ" or "ァ" <= c <= "ヺ"
+                           for c in s)
+
+
+def kana_romaji(s: str) -> str:
+    """A kana reading -> lower-case Hepburn, word breaks kept ("やまもと まい" -> "yamamoto mai").
+
+    Either script: furigana is hiragana, a foreign player's name is katakana (チドム オデラ ->
+    "chidomu odera"), and the extended katakana a foreign name needs (ティ di ファ ジェ ウォ ヴ)
+    are spelt as they sound. The long-vowel mark is dropped, as passports drop long vowels.
+
+    ONE HEURISTIC, stated: おう/おお/うう are a long vowel and written once, EXCEPT before え,
+    where the う is the "ue" of 上 (いのうえ Inoue, not Inoe). Kana cannot say which, and this
+    is the case names actually hit.
+
+    Anything that is not kana (kanji, Latin) comes back untouched, so a caller can see it failed."""
+    words = re.split(r"[\s　・]+", str(s or "").strip())
+    return " ".join(w for w in (_kana_word([_hira(c) for c in w]) for w in words) if w)
+
+
+def _kana_word(k: list) -> str:
+    # one syllable at a time: (romaji, kana it came from)
+    syl = []
+    i = 0
+    while i < len(k):
+        c, nxt = k[i], (k[i + 1] if i + 1 < len(k) else "")
+        pair = c + nxt
+        if pair in _KANA_PAIRS:
+            syl.append(_KANA_PAIRS[pair])
+            i += 2
+            continue
+        base = _KANA_ROMAJI.get(c)
+        if base and nxt in _SMALL_Y and base.endswith("i") and c not in "いぃ":
+            head = base[:-1]
+            syl.append(head + _SMALL_Y[nxt] if head in ("sh", "ch", "j") else head + "y" + _SMALL_Y[nxt])
+            i += 2
+            continue
+        if base and nxt in _SMALL_V and c not in _SMALL_V and len(base) > 1:
+            syl.append(base.rstrip("aeiou") + _SMALL_V[nxt])     # ふぁ fa, てぃ ti, じぇ je, ゔぁ va
+            i += 2
+            continue
+        if c in ("っ", "ー", "ん"):
+            syl.append(c)                     # resolved against their neighbours below
+        elif base:
+            syl.append(base)
+        else:
+            syl.append(c)                     # not kana: left as it is
+        i += 1
+
+    out = []
+    for j, s in enumerate(syl):
+        nxt = syl[j + 1] if j + 1 < len(syl) else ""
+        if s == "ー":
+            continue
+        if s == "っ":
+            if nxt[:1] and nxt[:1] not in _VOWELS and nxt[:1].isascii() and nxt[:1].isalpha():
+                out.append("t" if nxt.startswith("ch") else nxt[0])
+            continue
+        if s == "ん":
+            out.append("m" if nxt[:1] in ("b", "m", "p") else "n")
+            continue
+        # a long vowel: o+u, o+o, u+u written once -- unless the second one opens "ue"
+        if s in ("u", "o") and out and out[-1][-1:] in ("o", "u") and nxt != "e":
+            if (out[-1][-1], s) in (("o", "u"), ("o", "o"), ("u", "u")):
+                continue
+        out.append(s)
+    return "".join(out)
 
 
 def _cap_word(w: str, first_in_name: bool) -> str:
