@@ -17,11 +17,11 @@
 <meta name="description" content="Stamp the arenas you go to, at a game, with your phone.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=380"></script>
-<script src="../i18n.js?v=380" data-i18n-packs="go"></script>
-<script src="../glyphs.js?v=380" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=380">
-<link rel="stylesheet" href="../kit/nav.css?v=380">
+<script src="../appmode.js?v=381"></script>
+<script src="../i18n.js?v=381" data-i18n-packs="go"></script>
+<script src="../glyphs.js?v=381" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=381">
+<link rel="stylesheet" href="../kit/nav.css?v=381">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .go{overflow-x:clip}
@@ -101,6 +101,42 @@
   .go-mine b{font-family:var(--f-ui);font-size:14px;color:var(--ink)}
   .go-mine small{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;color:var(--ink-3)}
 
+  /* the journey (journey.js): the arenas, and the trips between them */
+  .go-map-wrap{margin:0 calc(var(--u)*3) calc(var(--u)*1.5);border:1px solid var(--rule);max-width:720px}
+  .go-map{display:block;width:100%;height:auto;max-height:420px}
+  .go-map-bg{fill:color-mix(in oklch,var(--ink) 3%,var(--ground))}
+  .go-map-grid{stroke:var(--rule);stroke-width:1}
+  .go-map-trip{stroke:var(--aqua);stroke-width:2;stroke-dasharray:6 5;stroke-linecap:round;opacity:.85}
+  .go-map-pt{fill:var(--lume);stroke:var(--ground);stroke-width:2}
+  .go-map-pt.last{fill:var(--amber)}
+  .go-map a:hover .go-map-pt,.go-map a:focus .go-map-pt{stroke:var(--ink)}
+  .go-map-label{font-family:var(--f-ui);font-size:12px;fill:var(--ink-2);paint-order:stroke;stroke:var(--ground);stroke-width:3px}
+  .go-map-scale{stroke:var(--ink-3);stroke-width:2}
+  .go-lnums{display:grid;gap:1px;margin:0 calc(var(--u)*3) calc(var(--u)*1.5);max-width:720px;border-top:1px solid var(--rule)}
+  .go-lnum{padding:9px 0;border-bottom:1px solid var(--rule)}
+  .go-lnum b{font-family:var(--f-ui);font-size:14px;color:var(--ink)}
+  .go-lnum .go-facts{margin-top:4px}
+  .go-pub{border-left-color:var(--lume);margin-bottom:calc(var(--u)*1.5)}
+  .go-pub .go-at{font-family:var(--f-data);font-size:13px;color:var(--ink)}
+  .go-adult{display:flex;gap:8px;align-items:center;margin-top:8px;font-family:var(--f-ui);font-size:14px;color:var(--ink);cursor:pointer}
+  .go-adult input{width:18px;height:18px}
+  .go-pub-msg{flex-basis:100%;font-family:var(--f-ui);font-size:13.5px;color:var(--flare)}
+
+  /* the boards */
+  .go-boards-bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:10px}
+  .go-seg{display:flex;flex-wrap:wrap}
+  .go-seg .ep-tab{border-bottom:1px solid var(--rule-2)}
+  .go-seg .ep-tab.on{border-bottom-color:var(--lume)}
+  .go-board-wrap{overflow-x:auto;border:1px solid var(--rule);max-width:720px;margin-top:10px}
+  .go-board{width:100%;border-collapse:collapse}
+  .go-board th{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+    text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule-2)}
+  .go-board td{padding:9px 10px;border-bottom:1px solid var(--rule);font-family:var(--f-ui);font-size:14px;color:var(--ink)}
+  .go-board .n{text-align:right;font-family:var(--f-data);font-size:12.5px;white-space:nowrap;width:1%}
+  .go-board th.n{font-family:var(--f-micro);font-size:8px}
+  .go-board .who{font-family:var(--f-data);font-size:13px}
+  .go-board tr.me td{background:color-mix(in oklch,var(--lume) 12%,transparent);font-weight:700}
+
   .go-privacy{margin:0;padding:calc(var(--u)*2.5) calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;line-height:1.9;
     color:var(--ink-3);max-width:78ch}
   .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:10px;line-height:1.9}
@@ -110,7 +146,7 @@
     .go .ep-hdr{padding:calc(var(--u)*1.5) calc(var(--u)*2)}
     .go .ep-hdr h2{font-size:22px}
     .go-lede,.go-lead,.go-pad,.go-list,.go-none,.go-mine,.go-privacy{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
-    .go-me,.go-say,.go-stamped,.go-tally{margin-left:calc(var(--u)*2);margin-right:calc(var(--u)*2)}
+    .go-me,.go-say,.go-stamped,.go-tally,.go-map-wrap,.go-lnums{margin-left:calc(var(--u)*2);margin-right:calc(var(--u)*2)}
     .go-me .ep-btn{margin-left:0}
     .ep-frame{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
     body.has-nav .ep-bell{top:auto;bottom:calc(58px + env(safe-area-inset-bottom,0px) + 10px)}
@@ -147,18 +183,35 @@
   </section>
 
   <section class="go-sec hide" id="goMineSec" aria-labelledby="goMineH">
-    <div class="ep-hdr"><span class="idx">03</span><h2 id="goMineH">Your stamps</h2></div>
+    <div class="ep-hdr"><span class="idx">03</span><h2 id="goMineH">Your passport</h2></div>
     <div class="go-tally" id="goTally"></div>
+    <!-- the journey: every arena stamped, and the trips between them in the order made - journey.js -->
+    <div class="go-map-wrap hide" id="goMap"></div>
+    <div id="goLeagueNums"></div>
+    <div id="goPublic"></div>
     <ul class="go-mine" id="goMine"></ul>
+  </section>
+
+  <section class="go-sec hide" id="goBoardsSec" aria-labelledby="goBoardsH">
+    <div class="ep-hdr"><span class="idx">04</span><h2 id="goBoardsH">Leaderboards</h2></div>
+    <p class="go-lead">The fans who chose to be on them, by username: arenas stamped, and the distance travelled
+      between them. Overall, or one league at a time.</p>
+    <div class="go-pad go-boards-bar">
+      <div class="ep-tabs go-seg" id="goBoardPick" role="group" aria-label="Board"></div>
+      <div class="ep-tabs go-seg" id="goBoardBy" role="group" aria-label="Ranked by"></div>
+    </div>
+    <div class="go-pad go-facts" id="goBoardNote"></div>
+    <div class="go-pad" id="goBoard" aria-live="polite"></div>
   </section>
 
   <p class="go-privacy">Your location is used once, when you stamp, to check you are at the arena, and then
     forgotten: a stamp keeps the arena, the game and the time, never where your phone was.</p>
   <footer style="padding:0 calc(var(--u)*3) calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
 </div>
-<script src="../config.js?v=380" defer></script>
-<script src="../access.js?v=380" defer></script>
-<script src="go.js?v=380" defer></script>
-<script src="../nav.js?v=380" defer></script>
+<script src="../config.js?v=381" defer></script>
+<script src="../access.js?v=381" defer></script>
+<script src="journey.js?v=381" defer></script>
+<script src="go.js?v=381" defer></script>
+<script src="../nav.js?v=381" defer></script>
 </body>
 </html>

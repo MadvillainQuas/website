@@ -65,7 +65,38 @@ function nearest(games, pos) {
   return best;
 }
 
+/* A fan's numbers from their own stamps - arenas, stamps, and the journey (D2): from each stamp's arena to
+   the next one's in the order made, summed. The same arithmetic as migration 0166's go_numbers, so the
+   passport needs nothing but the fan's stamps; the ranks come from the server. */
+function numbersOf(stamps) {
+  const s = (stamps || []).filter(x => x.venues && x.venues.lat != null && x.venues.lng != null)
+    .slice().sort((a, b) => String(a.stamped_at).localeCompare(String(b.stamped_at)));
+  let km = 0;
+  for (let i = 1; i < s.length; i++) {
+    km += metres({ lat: s[i - 1].venues.lat, lng: s[i - 1].venues.lng }, { lat: s[i].venues.lat, lng: s[i].venues.lng }) / 1000;
+  }
+  return { arenas: new Set((stamps || []).map(x => x.venue_id)).size, stamps: (stamps || []).length, km };
+}
+
+/* per league, busiest first: [{ league_id, league, arenas, stamps, km }] */
+function byLeague(stamps) {
+  const groups = new Map();
+  (stamps || []).forEach(x => {
+    if (!x.league_id) return;
+    const g = groups.get(x.league_id) || { league_id: x.league_id, league: (x.leagues && x.leagues.name) || '', list: [] };
+    g.list.push(x);
+    groups.set(x.league_id, g);
+  });
+  return [...groups.values()].map(g => Object.assign({ league_id: g.league_id, league: g.league }, numbersOf(g.list)))
+    .sort((a, b) => b.arenas - a.arenas || b.km - a.km || a.league.localeCompare(b.league));
+}
+
 const loc = () => (typeof window !== 'undefined' && window.EpinoiaI18n && window.EpinoiaI18n.locale) || undefined;
+
+function kmText(km, locale) {
+  if (km == null || !isFinite(km)) return '—';
+  return new Intl.NumberFormat(locale || loc(), { maximumFractionDigits: km < 100 ? 1 : 0 }).format(km) + ' km';
+}
 
 function distanceText(m, locale) {
   if (m == null || !isFinite(m)) return '—';
@@ -122,7 +153,8 @@ const GEO = {
 
 /* ---------------------------------------------------------------- page --- */
 
-const S = { cfg: null, access: null, session: null, games: [], pos: null, mine: null, username: undefined };
+const S = { cfg: null, access: null, session: null, games: [], pos: null, mine: null, username: undefined,
+            ranks: null, settings: null, leagues: null, board: { league: null, by: 'arenas' } };
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
@@ -234,24 +266,64 @@ async function loadMine() {
   if (!S.session) { sec.classList.add('hide'); return; }
   let rows = null;
   try {
-    const r = await fetch(S.cfg.supabaseUrl + '/rest/v1/stamps?select=id,game_id,venue_id,stamped_at,' +
-      'venues(name,city,country),leagues(name)&order=stamped_at.desc&limit=1000',
+    const r = await fetch(S.cfg.supabaseUrl + '/rest/v1/stamps?select=id,game_id,venue_id,league_id,stamped_at,' +
+      'venues(name,city,country,lat,lng),leagues(name)&order=stamped_at.desc&limit=1000',
       { cache: 'no-store', headers: headers(false) });
     rows = r.ok ? await r.json() : null;
   } catch (_) { rows = null; }
   if (!Array.isArray(rows)) { sec.classList.add('hide'); return; }
   S.mine = rows;
   sec.classList.remove('hide');
-  const arenas = new Set(rows.map(x => x.venue_id)).size;
+  // the ranks and the leaderboard choice are 0166's: without it the passport still stands
+  const [ranks, settings] = await Promise.all([rpc('go_my_numbers'), rpc('go_my_settings')]);
+  S.ranks = Array.isArray(ranks.data) ? ranks.data : null;
+  S.settings = settings.data && !settings.missing ? settings.data : null;
+  drawPassport();
+}
+
+/* the fan's rank on a board (overall when league is null), or null */
+function rankOf(leagueId, by) {
+  const r = (S.ranks || []).find(x => (x.league_id || null) === (leagueId || null));
+  return r ? r[by === 'km' ? 'rank_km' : 'rank_arenas'] : null;
+}
+
+function drawPassport() {
+  const rows = S.mine || [];
+  const n = numbersOf(rows);
   const tally = $('#goTally');
   tally.textContent = '';
-  [[arenas, 'arenas'], [rows.length, 'stamps']].forEach(([n, k]) => {
+  [[String(n.arenas), 'arenas'], [String(n.stamps), 'stamps'], [kmText(n.km), 'travelled']].forEach(([v, k]) => {
     const d = tally.appendChild(el('div'));
-    d.appendChild(data('div', 'n', String(n)));
+    d.appendChild(data('div', 'n', v));
     d.appendChild(el('div', 'k', k));
   });
-  const count = $('#goCount');
-  count.textContent = arenas ? arenas + (arenas === 1 ? ' arena' : ' arenas') : '';
+  $('#goCount').textContent = n.arenas ? n.arenas + (n.arenas === 1 ? ' arena' : ' arenas') : '';
+
+  const J = window.EpinoiaJourney;
+  const map = $('#goMap');
+  const plan = J ? J.draw(map, rows.map(x => ({ venue_id: x.venue_id, name: x.venues && x.venues.name,
+    lat: x.venues && x.venues.lat, lng: x.venues && x.venues.lng, stamped_at: x.stamped_at }))) : null;
+  map.classList.toggle('hide', !plan);
+
+  const lg = $('#goLeagueNums');
+  lg.textContent = '';
+  const leagues = byLeague(rows);
+  if (leagues.length) {
+    const t = lg.appendChild(el('div', 'go-lnums'));
+    leagues.forEach(l => {
+      const row = t.appendChild(el('div', 'go-lnum'));
+      row.appendChild(data('b', null, l.league || '—'));
+      const f = row.appendChild(el('div', 'go-facts'));
+      const fact = (k, v) => { const s = f.appendChild(el('span')); s.appendChild(el('span', null, k));
+        s.appendChild(document.createTextNode(': ')); s.appendChild(data('b', null, v)); };
+      fact('Arenas', String(l.arenas));
+      fact('Distance', kmText(l.km));
+      const ra = rankOf(l.league_id, 'arenas');
+      if (ra) fact('Rank', '#' + ra);
+    });
+  }
+  drawPublic();
+
   const list = $('#goMine');
   list.textContent = '';
   if (!rows.length) {
@@ -260,11 +332,141 @@ async function loadMine() {
   }
   rows.slice(0, 50).forEach(x => {
     const li = list.appendChild(el('li'));
-    const tm = li.appendChild(el('time', null, dayText(x.stamped_at)));
+    // formatted in the reader's own locale already: data, not a phrase to look up
+    const tm = li.appendChild(data('time', null, dayText(x.stamped_at)));
     tm.dateTime = x.stamped_at;
     li.appendChild(data('b', null, (x.venues && x.venues.name) || '—'));
     li.appendChild(data('small', null, [x.venues && x.venues.city, x.venues && x.venues.country, x.leagues && x.leagues.name]
       .filter(Boolean).join(' · ')));
+  });
+}
+
+/* being on the leaderboards (D6): a choice, with a username and 18 or over confirmed */
+function drawPublic(msg) {
+  const host = $('#goPublic');
+  host.textContent = '';
+  const st = S.settings;
+  if (!st) return;                                        // 0166 not pushed yet
+  const c = host.appendChild(el('div', 'go-me go-pub'));
+  const t = c.appendChild(el('div'));
+  if (st.public) {
+    t.appendChild(el('b', null, 'You are on the leaderboards'));
+    const who = t.appendChild(el('span'));
+    who.appendChild(el('span', null, 'Your username'));
+    who.appendChild(document.createTextNode(': '));
+    who.appendChild(data('b', 'go-at', '@' + (st.username || '')));
+    const off = c.appendChild(el('button', 'ep-btn', 'take me off'));
+    off.type = 'button';
+    off.addEventListener('click', () => setPublic(false, false, off));
+  } else if (!st.username) {
+    t.appendChild(el('b', null, 'The leaderboards'));
+    t.appendChild(el('span', null, 'To be on them, choose a username first. It is how they will show you.'));
+    const a = c.appendChild(el('a', 'ep-btn', 'choose one'));
+    a.href = '../me/#username';
+  } else {
+    t.appendChild(el('b', null, 'Put yourself on the leaderboards'));
+    t.appendChild(el('span', null, 'They show your username and your numbers, never your email or which arenas. You can come off at any time.'));
+    let tick = null;
+    if (!st.adult) {
+      const lab = t.appendChild(el('label', 'go-adult'));
+      tick = lab.appendChild(el('input'));
+      tick.type = 'checkbox';
+      lab.appendChild(el('span', null, 'I am 18 or over'));
+    }
+    const on = c.appendChild(el('button', 'ep-btn pri', 'put me on'));
+    on.type = 'button';
+    on.addEventListener('click', () => setPublic(true, tick ? tick.checked : true, on));
+  }
+  if (msg) c.appendChild(el('div', 'go-pub-msg', msg));
+}
+
+async function setPublic(on, adult, btn) {
+  btn.disabled = true;
+  S.session = await session();
+  const r = await rpc('set_go_public', { p_public: on, p_adult: !!adult });
+  btn.disabled = false;
+  if (r.missing || r.error || !r.data) return drawPublic('It did not save. Try again in a moment.');
+  if (!r.data.ok) {
+    return drawPublic({ adult: 'Tick the box to confirm you are 18 or over.',
+                        username: 'Choose a username first.', signed_out: 'Sign in first.' }[r.data.reason] ||
+                      'It did not save. Try again in a moment.');
+  }
+  const [ranks, settings] = await Promise.all([rpc('go_my_numbers'), rpc('go_my_settings')]);
+  S.ranks = Array.isArray(ranks.data) ? ranks.data : S.ranks;
+  S.settings = settings.data || S.settings;
+  drawPassport();
+  loadBoard();
+}
+
+/* ------------------------------------------------------------- the boards --- */
+
+async function loadBoards() {
+  const r = await rpc('go_leagues');
+  const sec = $('#goBoardsSec');
+  if (r.missing || r.error) { sec.classList.add('hide'); return; }
+  S.leagues = Array.isArray(r.data) ? r.data : [];
+  sec.classList.remove('hide');
+  drawBoardPick();
+  loadBoard();
+}
+
+function drawBoardPick() {
+  const pick = $('#goBoardPick');
+  pick.textContent = '';
+  const add = (id, label, isName) => {
+    const b = pick.appendChild(isName ? data('button', 'ep-tab', label) : el('button', 'ep-tab', label));
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String((S.board.league || null) === (id || null)));
+    if ((S.board.league || null) === (id || null)) b.classList.add('on');
+    b.addEventListener('click', () => { S.board.league = id; drawBoardPick(); loadBoard(); });
+  };
+  add(null, 'Overall', false);
+  (S.leagues || []).forEach(l => add(l.league_id, l.league, true));
+  const by = $('#goBoardBy');
+  by.textContent = '';
+  [['arenas', 'by arenas'], ['km', 'by distance']].forEach(([v, label]) => {
+    const b = by.appendChild(el('button', 'ep-tab' + (S.board.by === v ? ' on' : ''), label));
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(S.board.by === v));
+    b.addEventListener('click', () => { S.board.by = v; drawBoardPick(); loadBoard(); });
+  });
+}
+
+async function loadBoard() {
+  const host = $('#goBoard');
+  if (!host || !S.leagues) return;
+  const want = JSON.stringify(S.board);
+  const r = await rpc('go_leaderboard', { p_league: S.board.league, p_by: S.board.by, p_limit: 100 });
+  if (want !== JSON.stringify(S.board)) return;           // the fan chose another board meanwhile
+  host.textContent = '';
+  const note = $('#goBoardNote');
+  note.textContent = '';
+  const lg = (S.leagues || []).find(l => l.league_id === S.board.league);
+  if (lg && lg.arenas_total) {
+    const s = note.appendChild(el('span'));
+    s.appendChild(el('span', null, 'Arenas in this league'));
+    s.appendChild(document.createTextNode(': '));
+    s.appendChild(data('b', null, String(lg.arenas_total)));
+  }
+  const rows = Array.isArray(r.data) ? r.data : [];
+  if (!rows.length) {
+    host.appendChild(el('div', 'go-none', 'Nobody is on this board yet. Stamp an arena and put yourself on it.'));
+    return;
+  }
+  const wrap = host.appendChild(el('div', 'go-board-wrap'));
+  const t = wrap.appendChild(el('table', 'go-board'));
+  const hr = t.appendChild(el('thead')).appendChild(el('tr'));
+  ['#', 'Fan', 'Arenas', 'Distance'].forEach((h, i) => {
+    const th = hr.appendChild(el('th', i === 1 ? '' : 'n', h));
+    th.scope = 'col';
+  });
+  const tb = t.appendChild(el('tbody'));
+  rows.forEach(x => {
+    const tr = tb.appendChild(el('tr', x.me ? 'me' : ''));
+    tr.appendChild(data('td', 'n', String(x.rank)));
+    tr.appendChild(data('td', 'who', '@' + x.username));
+    tr.appendChild(data('td', 'n', String(x.arenas)));
+    tr.appendChild(data('td', 'n', kmText(Number(x.km))));
   });
 }
 
@@ -376,6 +578,7 @@ async function stamp(g, btn) {
       showStamped(r.data);
       await loadMine();
       drawList();
+      loadBoard();
       return;
     }
     const link = r.data.reason === 'signed_out' && S.access && S.access.signinHref
@@ -398,7 +601,9 @@ async function boot() {
   drawToday();
   drawMe();
   loadMine();
+  loadBoards();
 }
 
-return { boot, metres, placeOf, nearby, nearest, distanceText, whyOf, factsOf, WHY, GEO, ALLOW_M, NEAR_M };
+return { boot, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, byLeague, whyOf, factsOf, WHY, GEO,
+         ALLOW_M, NEAR_M };
 }));

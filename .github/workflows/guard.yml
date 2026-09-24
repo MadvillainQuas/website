@@ -303,6 +303,12 @@ jobs:
         # check can give has words, in ja and es too; the location leaves the phone in the stamp call only
         run: node supabase/tests/go-page.test.mjs
 
+      - name: EPINOIA GO's numbers, passport and leaderboards (migration 0166)
+        # on a board only by choice, with a username and 18 or over confirmed; names and numbers, never an
+        # id; a private league's board not a stranger's; the journey in the order made; the drawing's names
+        # never overlapping or off the edge; ja/es
+        run: node supabase/tests/go-boards.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the

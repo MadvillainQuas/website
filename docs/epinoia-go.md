@@ -21,7 +21,7 @@ needs Louie says so.
 | D7 | Photos: pre-moderated (an admin approves each before it is public) to start, relaxed to post-then-report for trusted fans later | **Louie** |
 | D8 | A photo can only be posted for a game the fan stamped, which keeps the feed real and spam-free | proposed |
 | D9 | Photos are re-encoded in the browser before upload, which strips the EXIF data (including the phone's GPS) | proposed |
-| D10 | The map drawn on EPINOIA GO: our own SVG (no dependency, like the country outlines) with "open in Google Maps" links, vs an embedded Google map (API key in the page, CSP change) | decide at 4.3 |
+| D10 | The map drawn on EPINOIA GO: our own SVG (no dependency, no key in the page, no CSP change) with "open in Google Maps" links, vs an embedded Google map | our own SVG, 2026-09-24 (4.3): the journey itself, points and trips on a grid; no coastlines yet (no map data in the repo) |
 | D11 | A game's arena is its own venue, else its home club's arena (`game_venue_id`, 0162). Seven feeds never name a venue, and their leagues play at fixed home arenas | done 2026-09-24 |
 
 ## Where we start (inventory, 2026-09-24)
@@ -120,9 +120,21 @@ needs Louie says so.
 
 ## Phase 4 — Passport and leaderboards
 
-- [ ] **4.1 The numbers** (SQL): arenas stamped and journey distance (D2) per fan, per league and overall.
-- [ ] **4.2 Leaderboards**: Overall and one button per league, arenas or distance, opt-in (D6).
-- [ ] **4.3 My passport**: every arena stamped on a map (D10), the journey, the distance, per league.
+- [x] **4.1 The numbers** — migration `0166_go_leaderboards.sql`: `go_numbers()` (internal) gives each fan's
+      arenas, stamps and journey (D2: from each stamp's arena to the next one's in the order made, summed),
+      overall or over one league's stamps; `go_my_numbers()` the fan's own, with their ranks if public.
+- [x] **4.2 Leaderboards** — `go_leaderboard(league, by)`: overall or one league, by arenas (then distance)
+      or by distance; names and numbers only, never an id or which arenas; a private league's board only
+      for those who may see the league. Opt-in (D6): `set_go_public()` needs a username and "I am 18 or
+      over" confirmed once (fans' ages are not otherwise recorded), and the table itself refuses a public
+      row without it. On the GO page: Overall and a button per league (`go_leagues()`, with each league's
+      arenas), by arenas or by distance, the fan's own row lit. PGlite: 31 checks. **Live once Louie runs
+      `db push`**; until then the page shows no boards and no offer.
+- [x] **4.3 My passport** — on the GO page: arenas, stamps and kilometres; the journey drawn (D10, our own
+      SVG: every arena a point opening in Google Maps, every trip a line, names placed so none overlaps);
+      the numbers per league with the fan's rank; the offer to go on the boards; every stamp. Worked out
+      on the phone from the fan's stamps, so it stands on 0165 alone. Chromium: 56 checks (en/ja/es);
+      `go-boards.test.mjs`: 28.
 - [ ] **4.4 Badges** (optional): first stamp, 10 arenas, every arena in a league, 1,000 km.
 
 ## Phase 5 — Games been to
