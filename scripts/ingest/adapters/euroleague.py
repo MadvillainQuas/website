@@ -132,6 +132,8 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
         if r.status_code in (403, 404):
             return None
         r.raise_for_status()
+        if not r.content.strip():
+            return None              # a game not started yet: live.euroleague.net answers 200 with nothing
         return r.json()
 
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
@@ -206,11 +208,31 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
                              quarters=quarters[i], players=players,
                              shots=shots.get(side["code"], []), totals=totals))
 
-        raw = S.game(tm[0], tm[1], played=True, pbp=self._events(pbp, sides, rosters, joined))
+        played = self._played(box, pbp, tm)
+        raw = S.game(tm[0], tm[1], played=played, pbp=self._events(pbp, sides, rosters, joined))
         b = self.bundle_from_raw(raw, str(external_id), config)
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b
+
+    @staticmethod
+    def _played(box: dict, pbp: dict, tm: list) -> bool:
+        """Is the game over? Read from the feed, never assumed.
+
+        THIS WAS `played=True`, from when this adapter only ever fetched finished games. The live
+        lane fetches a game from twenty minutes before its tip-off, and the Boxscore carries both
+        clubs as soon as the line-ups are entered, so on 24 Sep 2026 - EuroLeague's opening night -
+        the first look at each game, six minutes before tip-off, came back "final": the lane never
+        looked at it again and the site sat at 0-0 while it was played.
+
+        Over is the End Game play in the play-by-play (_events turns it into the game-end event),
+        or the Boxscore no longer flagging the game live once points are on the board - the second
+        for a finished game whose log lacks the play. Live, or not started, is neither."""
+        rows = [e for key, _ in QUARTERS for e in pbp.get(key) or []] + list(pbp.get("ExtraTime") or [])
+        if any((e.get("PLAYTYPE") or "").strip() == "EG" for e in rows):
+            return True
+        scored = any(S.num(t.get("score")) for t in tm)
+        return (box or {}).get("Live") is False and scored
 
     # ----------------------------------------------------------------- pieces ---
     @staticmethod

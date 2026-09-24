@@ -149,5 +149,20 @@ ok("write_platform zeroes the clock of a period that has ended, before game_stat
    'if live and _period_over(b.raw, T["period"]):\n        clock_ms = 0' in state)
 ok("...and a clock at 0:00 is never written as running", "clock_ms > 0" in state.split("moving = ", 1)[1])
 
+# EUROLEAGUE'S OPENING NIGHT, 24 Sep 2026: the adapter passed played=True, so the live lane's first
+# look at each game - six minutes before tip-off, the Boxscore already carrying both clubs - came
+# back "final", and a final row is never polled again. Over is read from the feed now.
+from adapters.euroleague import EuroLeagueAdapter  # noqa: E402
+EL = EuroLeagueAdapter
+q = lambda *plays: {"FirstQuarter": [{"PLAYTYPE": p} for p in plays]}
+side = lambda pts: {"score": pts}
+ok("EuroLeague: a game being played is not over", EL._played({"Live": True}, q("BP", "2FGM"), [side(20), side(18)]) is False)
+ok("...nor one about to start (the Boxscore lists both clubs, nothing scored)", EL._played({"Live": True}, {}, [side(0), side(0)]) is False
+   and EL._played({"Live": False}, {}, [side(0), side(0)]) is False)
+ok("...the End Game play ends it", EL._played({"Live": True}, {"ExtraTime": [{"PLAYTYPE": "EG"}]}, [side(90), side(88)]) is True)
+ok("...and so does the Boxscore no longer live with points on the board", EL._played({"Live": False}, q("BP"), [side(85), side(78)]) is True)
+ok("...never played=True written into the fetch again", "played=True" not in open(os.path.join(
+   os.path.dirname(os.path.abspath(__file__)), "adapters", "euroleague.py"), encoding="utf-8").read().split("def fetch", 1)[1].split("def _played", 1)[0])
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
