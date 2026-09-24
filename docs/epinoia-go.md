@@ -55,6 +55,15 @@ needs Louie says so.
       flagged for a human. Two passes: the venues games name, and **the home arena of every club** in the
       leagues whose feeds name none (D11), found by the club's name and city. Two spellings that land on the
       same place id are one arena (their aliases merge).
+      *Progress 2026-09-24:* `scripts/ingest/pin_arenas.py` (Places API Text Search; the key in
+      `%APPDATA%\epinoia\google.json`; every lookup counted before it is sent, 1,000 a day and 4,000 a month;
+      answers cached 30 days). All 488 venues looked up; 47 rows merged (one arena under a feed's short form
+      and another league's full name: "トヨタA" = TOYOTA ARENA TOKYO, "大田総合" = EBARA WAVE アリーナおおた).
+      Then **every pin read by hand**: 378 arenas, 86% of games, are right and marked checked; 58 carry a
+      note (a car dealer, a ramen shop, a park for its gymnasium...) and 4 were not found - for most of those
+      the arena's full name is now in `scripts/ingest/arena_hints.json`, to be asked with `--hinted` once the
+      day's lookups allow (the first day's went on the full pass). Still to do: the hinted run, then the
+      clubs pass (`--clubs`) for the leagues whose feeds name no venue. Offline tests: `pin_arenas_test.py`.
 - [ ] **1.5 Arena editor** in the platform console: the list, unpinned and flagged first, move a pin, merge two
       names that are one arena.
 
@@ -77,7 +86,7 @@ needs Louie says so.
       account deletes them.
 - [ ] **3.2 The check** (server side): within the arena's radius allowing for the reported accuracy, a game on
       there (D1), one stamp per game, no impossible travel between two stamps, rate-limited. Every refusal
-      says why.
+      says why. Only a pin without a note counts (a noted pin waits for a person).
 - [ ] **3.3 Location in the apps**: the Android app (location permission, WebView geolocation prompt) and the
       iPhone app (location usage text). Needs a new app release each.
 - [ ] **3.4 The GO page, "Stamp this venue"**: the games on now or soon near you, one button, the result.

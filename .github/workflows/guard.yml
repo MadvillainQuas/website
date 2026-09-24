@@ -541,6 +541,13 @@ jobs:
         # linking trigger, placeholders, home-club fallback, permissions and self-check
         run: python scripts/ingest/venues_test.py
 
+      - name: Arena pins for EPINOIA GO (pin_arenas.py, Google Maps)
+        # every lookup counted before it is sent, 1,000 a day and 4,000 a month, never raised; the key in a
+        # header and never in a message; cached answers free, a recheck never sends; the judging rules on the
+        # shapes of real answers (a car dealer for a Tokyo arena, a club's office, a town-only name, BNXT's
+        # two countries); merges move everything before deleting; no Google and no database here
+        run: python scripts/ingest/pin_arenas_test.py
+
       - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
         # nbl.py over cached season lists, schedules and game replies: only each league's main
         # season is discovered (never the pre-season, the Blitz or a cup final), the WNBL's finals
