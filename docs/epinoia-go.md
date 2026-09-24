@@ -89,11 +89,20 @@ needs Louie says so.
 
 ## Phase 3 — Stamping
 
-- [ ] **3.1 Stamps** (migration): fan, arena, game, time, accuracy. Only the fan reads their own; deleting the
-      account deletes them.
-- [ ] **3.2 The check** (server side): within the arena's radius allowing for the reported accuracy, a game on
-      there (D1), one stamp per game, no impossible travel between two stamps, rate-limited. Every refusal
-      says why. Only a pin without a note counts (a noted pin waits for a person).
+- [x] **3.1 Stamps** — migration `0165_stamps.sql`: `stamps` (fan, arena, game, league, time, the accuracy the
+      phone reported; never the location, D5), one per fan per game; only the fan reads theirs and may take
+      one back; nobody writes one but the check; deleting the account deletes them. `stamp_attempts` logs
+      every try and its reason, without a location, for the rate limit and for looking into "it would not
+      stamp me" (administrators only; a fan's tries are forgotten after 30 days).
+- [x] **3.2 The check** — `stamp_venue(game, lat, lng, accuracy)`: signed in; six tries a minute, thirty an
+      hour; a game the fan may see, not void, inside its window (D1: two hours before tip-off to an hour
+      after the end - the end is when it was finalised, else 2½ hours after tip-off, 5 while live); its arena
+      (its own, else its home club's, D11) pinned and without a note; the phone inside the radius, its
+      reported doubt allowed for up to 200 m; no faster than a plane (900 km/h) since the fan's last stamp.
+      Every refusal has a reason and the number that goes with it (how far, when it opens, the last arena).
+      `go_games_now()` lists the games a fan can stamp now or in the next day with their pins, and takes no
+      location: the phone measures, so the location leaves it only at the moment of stamping. A merge moves
+      stamps. PGlite: 40 checks; `stamps.test.mjs`: 28. **Live once Louie runs `db push`.**
 - [ ] **3.3 Location in the apps**: the Android app (location permission, WebView geolocation prompt) and the
       iPhone app (location usage text). Needs a new app release each.
 - [ ] **3.4 The GO page, "Stamp this venue"**: the games on now or soon near you, one button, the result.

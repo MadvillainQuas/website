@@ -292,6 +292,12 @@ jobs:
         # everything moved before the row goes, "checked by" always the person signed in; ja/es
         run: node supabase/tests/arena-editor.test.mjs
 
+      - name: Stamps (EPINOIA GO, migration 0165)
+        # a stamp keeps no location, only the fan reads theirs, nobody writes one but the check; the check's
+        # window, trusted pins, the accuracy allowance, no faster than a plane, the rate limit, private games;
+        # the games a fan can stamp, asked for with no location at all
+        run: node supabase/tests/stamps.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the
