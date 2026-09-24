@@ -168,7 +168,7 @@ ok('the country: the one picked before, then the clubs followed, the stamps, the
    && guess({ stamps: ['FI', 'FI', 'GB'], tz: 'Asia/Tokyo' }) === 'FI' && guess({ tz: 'Asia/Tokyo', lang: 'en-GB' }) === 'JP'
    && guess({ tz: 'America/Chicago', lang: 'en-GB' }) === 'GB' && guess({ stored: 'US', tz: 'Europe/Paris' }) === 'FI');
 ok('the feed: two rows of the fans\' photographs changing one at a time; with none, the outlines and the call',
-   /const FEED_N = 10;/.test(js) && /'Prove your fandom — show your pictures of games'/.test(js)
+   /const FEED_N = 10;/.test(js) && /'Prove your fandom — attend games, file them, take snaps!'/.test(js)
    && /\.feed\.empty \.feed-card\{opacity:\.32;/.test(css) && /if \(document\.hidden\) return;/.test(js));
 ok('...a small button to add yours, and one to the whole wall',
    /<a class="go-small fill" href="stamps\/#goListH">add yours<\/a><a class="go-small" href="photos\/">see the full feed<\/a>/.test(html));

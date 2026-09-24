@@ -142,7 +142,6 @@
       'Venues': 'Pabellones',
       'add yours': 'añade las tuyas',
       'see the full feed': 'ver el muro completo',
-      'Prove your fandom — show your pictures of games': 'Demuestra tu afición: comparte tus fotos de partidos',
       'all your games': 'todos tus partidos',
       'game': 'partido',
       'Your stamps could not be read just now.': 'No se pudieron cargar tus sellos ahora mismo.',
@@ -175,7 +174,8 @@
       'No games today or tomorrow.': 'No hay partidos hoy ni mañana.',
       'open now': 'abierto ahora',
       'Previous arenas': 'Pabellones anteriores',
-      'Next arenas': 'Pabellones siguientes'
+      'Next arenas': 'Pabellones siguientes',
+      'Prove your fandom — attend games, file them, take snaps!': 'Demuestra tu afición: ¡ve a partidos, séllalos y haz fotos!'
     },
     units: {
       'arena': '{n} pabellón',

@@ -1441,7 +1441,7 @@ function drawFeed(rows) {
     host.classList.add('empty');
     for (let i = 0; i < FEED_N; i++) grid.appendChild(el('div', 'feed-card')).setAttribute('aria-hidden', 'true');
     const m = host.appendChild(el('div', 'feed-empty'));
-    m.appendChild(el('p', null, 'Prove your fandom — show your pictures of games'));
+    m.appendChild(el('p', null, 'Prove your fandom — attend games, file them, take snaps!'));
     return;
   }
   host.classList.remove('empty');

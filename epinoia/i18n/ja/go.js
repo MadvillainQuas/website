@@ -142,7 +142,6 @@
       'Venues': 'アリーナ',
       'add yours': '写真を追加',
       'see the full feed': 'フィードをすべて見る',
-      'Prove your fandom — show your pictures of games': 'ファンの証を見せよう — 試合の写真を投稿しよう',
       'all your games': 'すべての試合を見る',
       'game': '試合',
       'Your stamps could not be read just now.': 'スタンプを読み込めませんでした。',
@@ -175,7 +174,8 @@
       'No games today or tomorrow.': '今日と明日の試合はありません。',
       'open now': '受付中',
       'Previous arenas': '前のアリーナ',
-      'Next arenas': '次のアリーナ'
+      'Next arenas': '次のアリーナ',
+      'Prove your fandom — attend games, file them, take snaps!': 'ファンの証を見せよう — 試合に行って、スタンプして、写真を撮ろう！'
     },
     units: {
       'arena': '{n}アリーナ',
