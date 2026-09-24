@@ -278,6 +278,34 @@ jobs:
             exit 1
           fi
 
+      # THE DOWNLOAD PAGE LINKS OUR OWN STORAGE (migration 0169), never this repository: the
+      # signed APK under its stable name and by version, and the record the page reads for the
+      # version and size. First, so the page never points at a build the release step dropped.
+      - name: Publish the download to storage
+        if: steps.signing.outputs.signed == 'true' && github.ref == 'refs/heads/main' && steps.tag.outputs.exists == 'false'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          apk="$RUNNER_TEMP/out/epinoia.apk"
+          put() {  # storage path, local file, content type, browser max-age
+            curl -fsS -X POST "${SUPABASE_URL%/}/storage/v1/object/apps/$1" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: $3" -H "x-upsert: true" -H "cache-control: max-age=$4" \
+              --data-binary "@$2" > /dev/null
+          }
+          put "epinoia-$VERSION_NAME.apk" "$apk" application/vnd.android.package-archive 31536000
+          put "epinoia.apk" "$apk" application/vnd.android.package-archive 300
+          bytes=$(stat -c %s "$apk")
+          sha=$(sha256sum "$apk" | awk '{print $1}')
+          jq -n --arg n "$VERSION_NAME" --argjson c "$VERSION_CODE" --argjson b "$bytes" --arg s "$sha" \
+                --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                '{versionName: $n, versionCode: $c, bytes: $b, sha256: $s, publishedAt: $t}' > "$RUNNER_TEMP/out/epinoia.json"
+          put "epinoia.json" "$RUNNER_TEMP/out/epinoia.json" application/json 60
+          echo "published epinoia.apk $VERSION_NAME ($bytes bytes) to storage"
+
       - name: Publish the release
         if: steps.signing.outputs.signed == 'true' && github.ref == 'refs/heads/main' && steps.tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v3

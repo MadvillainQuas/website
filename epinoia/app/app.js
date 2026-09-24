@@ -1,6 +1,6 @@
 'use strict';
 /* The portal must never be framed — a clickjacked "remove player" is a real risk and
-   GitHub Pages cannot send X-Frame-Options. Bust out before anything else runs. */
+   a static host cannot send X-Frame-Options. Bust out before anything else runs. */
 if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (_) {} document.documentElement.innerHTML = ''; throw new Error('framed'); }
 const $ = s => document.querySelector(s);
 /* the sentences this page builds are translated as the console's own (i18n/<code>/platform.js) */

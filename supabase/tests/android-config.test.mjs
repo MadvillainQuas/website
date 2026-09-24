@@ -70,8 +70,8 @@ ok('versionCode is a positive integer', Number.isInteger(ver.versionCode) && ver
 ok('versionName is x.y.z', typeof ver.versionName === 'string' && /^\d+\.\d+\.\d+$/.test(ver.versionName));
 ok('minShell is a positive integer no higher than versionCode (or no shell could satisfy it)',
    Number.isInteger(ver.minShell) && ver.minShell > 0 && ver.minShell <= ver.versionCode);
-ok('apk is the stable latest-release link to epinoia.apk',
-   ver.apk === 'https://github.com/MadvillainQuas/website/releases/latest/download/epinoia.apk');
+ok('apk is the stable link to epinoia.apk in our own storage (0169), never the code host',
+   ver.apk === 'https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/apps/epinoia.apk');
 ok('play is null or an https Play link',
    ver.play === null || (typeof ver.play === 'string' && ver.play.startsWith('https://play.google.com/')));
 
@@ -154,6 +154,15 @@ if (!existsSync(wfPath)) {
      release.length === 1 && /tag_name:\s*android-v\$\{\{\s*steps\.version\.outputs\.code\s*\}\}/.test(release[0])
      && /epinoia\.apk/.test(release[0]) && /epinoia\.aab/.test(release[0]));
   ok('no other step publishes (gh release create / upload)', !/gh release (create|upload)/.test(code));
+  /* the download page links our own storage (0169): the same guard as the release, main only */
+  const store = steps.filter(s => /\/storage\/v1\/object\/apps\//.test(s));
+  ok('one step publishes the APK and its record to storage (apps/)',
+     store.length === 1 && /epinoia\.apk/.test(store[0]) && /epinoia\.json/.test(store[0]));
+  ok('...only on main, only when signed, only for a new versionCode',
+     store.length === 1 && /github\.ref\s*==\s*'refs\/heads\/main'/.test(stepIf(store[0]))
+     && /signed\s*==\s*'true'/.test(stepIf(store[0])) && /exists\s*==\s*'false'/.test(stepIf(store[0])));
+  ok('...with the service key from secrets, never written into the file',
+     store.length === 1 && /secrets\.SUPABASE_SERVICE_KEY/.test(store[0]) && !/sb_secret_|eyJ[A-Za-z0-9_-]{20,}/.test(store[0]));
 
   const del = steps.filter(s => /rm -f "\$RUNNER_TEMP\/epinoia\.jks"/.test(s));
   ok('the keystore is deleted in an if: always() step', del.length === 1 && /always\(\)/.test(stepIf(del[0])));

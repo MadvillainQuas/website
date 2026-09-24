@@ -1425,7 +1425,7 @@ async function offerToAttachVideo() {
    links to the Genius LiveStats page it is read from. The client code that
    page needs comes from the feed's schedule_sources row (console-made
    leagues; readable by that league's admins) or, for registry leagues, from
-   config/ingest-sources.json on this site; the feed code itself is the last
+   livestats-clients.json beside this folder; the feed code itself is the last
    resort (SLB's client code is SLB). */
 let lsShown = false;
 async function offerLiveStatsLink() {
@@ -1450,10 +1450,11 @@ async function offerLiveStatsLink() {
       client = src && src.adapter_config && (src.adapter_config.client_code || src.adapter_config.code);
     }
     if (!client) {
-      const rc = await fetch('../../config/ingest-sources.json', { cache: 'no-store' });
+      /* each registry feed's client code, the one fact this page needs from the ingest
+         configuration (tools/build-site.py writes it; the configuration is not published) */
+      const rc = await fetch('../livestats-clients.json', { cache: 'no-store' });
       const reg = rc.ok ? await rc.json() : null;
-      const src = reg && (reg.sources || []).find(x => x.code === ext.competition_code);
-      client = src && ((src.adapter_config && src.adapter_config.client_code) || src.code);
+      client = (reg && reg.clients && reg.clients[ext.competition_code]) || null;
     }
     client = client || ext.competition_code;
     if (!client) return;

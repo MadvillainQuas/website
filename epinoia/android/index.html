@@ -10,24 +10,22 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
-<!-- PUBLIC. No gate.js, no topnav.js. THE ONE ADDITION TO THE USUAL CSP is api.github.com in
-     connect-src: android.js asks GitHub's public releases API for the file's real size, and
-     whether a release exists at all yet, because releases/latest/download/epinoia.apk is a
-     404 until the first signed build is published. -->
+<!-- PUBLIC. No gate.js, no topnav.js. The APK and its record (apps/epinoia.json, the real size
+     and version) are in our own storage, under *.supabase.co, so the usual CSP covers them. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.github.com">
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>EPINOIΛ for Android</title>
 <meta name="description" content="Download EPINOIΛ for Android: live scores, fixtures, statistics and game alerts from every league on Epinoia, in an app of its own. Free.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode (html.m-app) before anything paints, so the app
      never flashes the download button before it says "You are using the app". -->
-<script src="../appmode.js?v=389"></script>
-<script src="../i18n.js?v=389" data-i18n-packs="info"></script>
-<script src="../glyphs.js?v=389" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=389">
-<link rel="stylesheet" href="../kit/nav.css?v=389">
-<link rel="stylesheet" href="android.css?v=389">
+<script src="../appmode.js?v=390"></script>
+<script src="../i18n.js?v=390" data-i18n-packs="info"></script>
+<script src="../glyphs.js?v=390" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=390">
+<link rel="stylesheet" href="../kit/nav.css?v=390">
+<link rel="stylesheet" href="android.css?v=390">
 </head>
 <body>
 <!-- WHAT SHOWS WHERE is decided by classes on #page, set by android.js (in-app, webapp, ios,
@@ -96,7 +94,7 @@
 
           <!-- THE HREF IS THE CONTRACT'S STABLE LINK, so the button works before android.js runs;
                android.js swaps in version.json's apk. -->
-          <a class="ep-btn pri dl not-ios" id="dl" href="https://github.com/MadvillainQuas/website/releases/latest/download/epinoia.apk">
+          <a class="ep-btn pri dl not-ios" id="dl" href="https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/apps/epinoia.apk">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M4 20.5h16"/></svg>
             <span id="dlText">Download for Android</span>
           </a>
@@ -131,7 +129,7 @@
             This copy of the app is too old for some of Epinoia's features. Download the new
             version: it installs over this one and keeps you signed in.
           </p>
-          <a class="ep-btn pri dl" id="updBtn" href="https://github.com/MadvillainQuas/website/releases/latest/download/epinoia.apk">
+          <a class="ep-btn pri dl" id="updBtn" href="https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/apps/epinoia.apk">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M4 20.5h16"/></svg>
             <span>Update the app</span>
           </a>
@@ -222,7 +220,7 @@
         <div class="q">A new app</div>
         <div class="a">Rarely needed. When it is, Epinoia tells you inside the app. Download it from this page: it installs over the old one and keeps you signed in.</div>
         <div class="q">Where the file comes from</div>
-        <div class="a">Epinoia's <a id="relLink" href="https://github.com/MadvillainQuas/website/releases" rel="noopener">releases on GitHub</a>, built from the website's own code and signed with Epinoia's key. Android only installs an update signed with the same key.</div>
+        <div class="a">Epinoia itself: every release is built from the website's own code and signed with Epinoia's key. Android only installs an update signed with the same key.</div>
       </div>
     </div>
   </section>
@@ -248,8 +246,8 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=389" defer></script>
-<script src="android.js?v=389" defer></script>
-<script src="../nav.js?v=389" defer></script>
+<script src="../config.js?v=390" defer></script>
+<script src="android.js?v=390" defer></script>
+<script src="../nav.js?v=390" defer></script>
 </body>
 </html>

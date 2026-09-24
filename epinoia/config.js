@@ -7,8 +7,8 @@
    security policies in supabase/migrations/0001_init.sql.
 
    NEVER put the service_role key in this file, or anywhere under /epinoia/.
-   That key bypasses RLS entirely. It lives only in Edge Function secrets and
-   GitHub Actions secrets.
+   That key bypasses RLS entirely. It lives only in server-side secrets (the
+   Edge Functions' and the ingest's), never in anything the browser loads.
 
    Get the anon key:  Supabase dashboard -> Project Settings -> API
                       -> Project API keys -> "anon / public"

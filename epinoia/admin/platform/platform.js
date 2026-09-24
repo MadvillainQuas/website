@@ -17,7 +17,7 @@
    ============================================================================ */
 
 /* Never framed. A clickjacked "delete league" on this page is not a bug
-   report, and GitHub Pages cannot send X-Frame-Options. */
+   report, and a static host cannot send X-Frame-Options. */
 if (window.top !== window.self) {
   try { window.top.location = window.self.location; } catch (_) {}
   document.documentElement.innerHTML = '';

@@ -27,18 +27,19 @@
         update    that shell is older than version.json's minShell
         ios / android / desktop
    2. version.json: the download link, the version, the Play link.
-   3. GITHUB'S LATEST RELEASE, for the file's real size and the version you
-      actually get. It also answers the question the link cannot: until the
-      owner's first signed build, releases/latest/download/epinoia.apk is a
-      404, and a big button to a 404 is worse than saying "not released yet".
-      Anything else going wrong (rate limit, offline, blocked) fails OPEN:
-      the button stays, the size just says "a small download".
+   3. THE PUBLISHED FILE'S OWN RECORD (apps/epinoia.json, beside the APK in our
+      storage, written by the release workflow with the file), for the file's
+      real size and the version you actually get. It also answers the question
+      the link cannot: with no build published the link is a 404, and a big
+      button to a 404 is worse than saying "not released yet". Anything else
+      going wrong (offline, blocked) fails OPEN: the button stays, the size
+      just says "a small download".
    4. No "Add to home screen" banner on this page: nav.js offers the web app
       on beforeinstallprompt, and this page is here to offer the real one.
    ============================================================================ */
 (function () {
   const PACKAGE = 'uk.co.prophesyscouting.epinoia';
-  const APK_FALLBACK = 'https://github.com/MadvillainQuas/website/releases/latest/download/epinoia.apk';
+  const APK_FALLBACK = 'https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/apps/epinoia.apk';
   const PLAY_PREFIX = 'https://play.google.com/';
   const API_TIMEOUT_MS = 6000;
 
@@ -214,28 +215,19 @@
     }
   }
 
-  /* THE LATEST RELEASE ON GITHUB, when the apk link is GitHub's stable "latest" link (the only
-     kind whose size can be looked up). "none" only on GitHub's own answer: a 404 (no release at
-     all) or a release without the file, both of which make the link a 404 too. */
-  async function latestRelease(apk) {
-    const m = /^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/releases\/latest\/download\/([^/?#]+)$/.exec(apk);
+  /* THE PUBLISHED FILE'S RECORD, when the apk link is our storage's stable name (the only kind
+     whose record sits beside it): epinoia.json in the same folder. "none" only on storage's own
+     answer that there is no such record (400/404: nothing published), which makes the file link
+     a dead one too. */
+  async function published(apk) {
+    const m = /^(https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/apps\/)[^/?#]+\.apk$/.exec(apk);
     if (!m) return { state: 'unknown' };
-    let file = m[3];
-    try { file = decodeURIComponent(file); } catch (_) { /* keep it as written */ }
-    const repo = m[1] + '/' + m[2];
-    /* Accept is a CORS-safelisted header, so this is a simple request with no preflight;
-       api.github.com answers with Access-Control-Allow-Origin: *. */
-    const r = await getJson('https://api.github.com/repos/' + repo + '/releases/latest',
-                            { Accept: 'application/vnd.github+json' });
-    const releases = 'https://github.com/' + repo + '/releases';
-    if (r.status === 404) return { state: 'none', releases: releases };
-    if (!r.body || typeof r.body !== 'object') return { state: 'unknown', releases: releases };
-    const assets = Array.isArray(r.body.assets) ? r.body.assets : [];
-    const asset = assets.find(a => a && a.name === file && (a.state === undefined || a.state === 'uploaded'));
-    if (!asset) return { state: 'none', releases: releases };
-    /* CI names each release "Epinoia for Android <versionName>" (.github/workflows/android.yml). */
-    const named = /(\d+\.\d+\.\d+)\s*$/.exec(String(r.body.name || ''));
-    return { state: 'ready', size: Number(asset.size) || 0, versionName: named ? named[1] : '', releases: releases };
+    const r = await getJson(m[1] + 'epinoia.json');
+    if (r.status === 400 || r.status === 404) return { state: 'none' };
+    if (!r.body || typeof r.body !== 'object') return { state: 'unknown' };
+    const name = typeof r.body.versionName === 'string' && /^\d+(\.\d+){1,3}$/.test(r.body.versionName)
+      ? r.body.versionName : '';
+    return { state: 'ready', size: Number(r.body.bytes) || 0, versionName: name };
   }
 
   async function main() {
@@ -258,11 +250,10 @@
     if (inApp && twa && shellCode !== null && minShell !== null && shellCode < minShell) cls.add('update');
 
     /* Inside the app nothing below is on screen, unless an update is due, and an iPhone never
-       shows the button at all; spare GitHub's 60-an-hour anonymous limit in both. */
+       shows the button at all; no need to ask about the file in either. */
     if ((inApp && !cls.contains('update')) || ios) return;
 
-    const rel = await latestRelease(apk);
-    if (rel.releases) { const link = $('relLink'); if (link) link.href = rel.releases; }
+    const rel = await published(apk);
     if (rel.state === 'none') {
       if (!inApp) notReleased();
       return;

@@ -517,9 +517,7 @@
       'A new app': '新しいアプリ',
       'Rarely needed. When it is, Epinoia tells you inside the app. Download it from this page: it installs over the old one and keeps you signed in.': 'めったに必要ありません。必要なときはEpinoiaがアプリ内でお知らせします。このページからダウンロードすると、古いアプリに上書きでインストールされ、ログインもそのまま保たれます。',
       'Where the file comes from': 'ファイルの提供元',
-      'Epinoia\'s': 'Epinoiaの',
-      'releases on GitHub': 'GitHubのリリース',
-      ', built from the website\'s own code and signed with Epinoia\'s key. Android only installs an update signed with the same key.': '。ウェブサイト自体のコードからビルドされ、Epinoiaの鍵で署名されています。Androidは、同じ鍵で署名されたアップデートしかインストールしません。',
+      'Epinoia\'s': 'Epinoiaの',
       'On an iPhone': 'iPhoneの場合',
       'There is no iPhone app, and the download above will not open on one. Add EPINOIΛ to your Home Screen instead: it opens full screen, like an app.': 'iPhoneアプリはなく、上のダウンロードもiPhoneでは開けません。代わりにEPINOIΛをホーム画面に追加してください。アプリのように全画面で開きます。',
       'Share': '共有',
@@ -600,7 +598,8 @@
       'To delete your Epinoia account, send this with Erase it chosen. We delete the account and what it holds: your email address, your name, what you follow, your notification subscriptions, and your EPINOIA GO stamps and photographs. If a record has to be kept, we tell you which and why; statistics stay, without your name. Signed in, the request comes from the account; signed out, give the address it uses.': 'Epinoiaのアカウントを削除するには、「消去する」を選んで送信してください。アカウントとその中身（メールアドレス、お名前、フォロー中の項目、通知の登録、EPINOIA GOのスタンプと写真）を削除します。保存しなければならない記録がある場合は、どれを、なぜ残すのかをお知らせします。成績は、お名前を外した形で残ります。ログイン中はそのアカウントから請求が行われます。ログインしていない場合は、アカウントのメールアドレスを入力してください。',
       'Only of games you stamped. Before a photograph leaves your phone it is resized, which removes its hidden details, including where it was taken. A person looks at every photograph before it is public; once it is, it shows your username, the game and the arena. You can remove it at any time. No photographs are accepted from youth leagues’ games.': 'スタンプした試合の写真に限ります。写真はスマートフォンから送信される前に縮小され、撮影場所を含む隠れた情報が取り除かれます。すべての写真は公開前にスタッフが確認し、公開後はあなたのユーザー名、試合、アリーナとともに表示されます。いつでも削除できます。ユースリーグの試合の写真は投稿できません。',
       'The arena, the game, its league, the time, how precise your phone said its location was, and your note about the game if you write one. Never where you were. Only you can see your stamps and notes, and you can take a stamp back.': 'アリーナ、試合、そのリーグ、時刻、スマートフォンが示した位置情報の精度、そしてメモを書いた場合はそのメモです。あなたがいた場所は残りません。スタンプとメモを見られるのはあなただけで、スタンプは取り消すこともできます。',
-      'Only if you choose, and only if you are 18 or over. They show your username and your numbers (arenas stamped, games stamped and the distance between them), never your email or which arenas. You can come off them at any time.': '参加を選んだ場合のみ、18歳以上の方に限ります。表示されるのはユーザー名と記録（スタンプしたアリーナの数と試合数、その間の距離）だけで、メールアドレスや訪れたアリーナは表示されません。いつでも参加をやめられます。'
+      'Only if you choose, and only if you are 18 or over. They show your username and your numbers (arenas stamped, games stamped and the distance between them), never your email or which arenas. You can come off them at any time.': '参加を選んだ場合のみ、18歳以上の方に限ります。表示されるのはユーザー名と記録（スタンプしたアリーナの数と試合数、その間の距離）だけで、メールアドレスや訪れたアリーナは表示されません。いつでも参加をやめられます。',
+      'Epinoia itself: every release is built from the website\'s own code and signed with Epinoia\'s key. Android only installs an update signed with the same key.': 'Epinoia自身です。すべてのリリースはウェブサイト自体のコードからビルドされ、Epinoiaの鍵で署名されています。Androidは、同じ鍵で署名されたアップデートしかインストールしません。'
     },
 
     ctx: {

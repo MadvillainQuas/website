@@ -10,7 +10,7 @@
    ============================================================================ */
 
 /* The admin console must never be framed: a clickjacked "revoke role" or
-   "schedule fixture" is a real risk and GitHub Pages cannot send X-Frame-Options. */
+   "schedule fixture" is a real risk and a static host cannot send X-Frame-Options. */
 if (window.top !== window.self) {
   try { window.top.location = window.self.location; } catch (_) {}
   document.documentElement.innerHTML = '';
