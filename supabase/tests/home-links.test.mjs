@@ -430,5 +430,20 @@ console.log('\n-- the foot\'s way back, and the platform tabs land somewhere');
   ok('manifest: the Fixtures shortcut opens the global fixtures page', !!fx && fx.url === '/epinoia/games/', fx && fx.url);
 }
 
+{
+  /* THE RAIL'S LEAGUE LIST IS NEVER LEFT STALE. It is kept in the tab for five minutes so a visit of ten
+     pages does not read it ten times, but a copy older than 30 seconds is drawn at once and re-read in
+     the background, redrawing only when the answer differs: a logo added in the console reached no tab
+     that already held the list (the Finnish leagues sat as lettered tiles, 2026-09-24). */
+  const nav = rd('epinoia', 'nav.js');
+  ok('the rail draws its held league list and then re-reads it when the copy is over 30 s old',
+     /Date\.now\(\) - heldAt > 30 \* 1000/.test(nav) && /pull\(false\)\.then\(fresh =>/.test(nav));
+  ok('...and redraws only if the fresh answer differs from what is on screen',
+     /JSON\.stringify\(fresh\) === JSON\.stringify\(leagues\)\) return;/.test(nav) &&
+     /drawCountries\(\);\s*drawLeagues\(\);\s*themeLeague\(\);\s*\}\)\.catch/.test(nav));
+  ok('...and the held copy is still valid for five minutes, so a ten-page visit does not read ten times',
+     /Date\.now\(\) - j\.at < 5 \* 60 \* 1000/.test(nav));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

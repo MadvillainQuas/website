@@ -1716,20 +1716,27 @@
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     };
-    /* KEPT FOR FIVE MINUTES IN THIS TAB. The rail is on every page, so a visit of ten pages
-       read the whole league list, theme and nav blocks included, ten times. The copy is keyed
-       by who asked (the token's tail, as data.js keys its shared reads), so a sign-in, a
-       sign-out or a refreshed token starts clean, and a signed-in list is never shown to
-       anybody else. sessionStorage, so it ends with the tab; any failure just reads again. */
+    /* KEPT FOR FIVE MINUTES IN THIS TAB, AND CHECKED AGAIN AFTER HALF A MINUTE. The rail is on
+       every page, so a visit of ten pages read the whole league list, theme and nav blocks
+       included, ten times. The copy is keyed by who asked (the token's tail, as data.js keys its
+       shared reads), so a sign-in, a sign-out or a refreshed token starts clean, and a signed-in
+       list is never shown to anybody else. sessionStorage, so it ends with the tab; any failure
+       just reads again.
+       A COPY IS SHOWN AT ONCE BUT NEVER LEFT TO GO STALE. A league's logo, colours or name changed
+       in the console, or a league added, did not reach a tab that already held the list until the
+       five minutes were up (reported 2026-09-24: the Finnish leagues sat as lettered tiles in a
+       tab opened before their logos went up). So a copy older than 30 seconds is drawn first and
+       then re-read in the background, and the rail is redrawn only if the answer differs. */
     const heldKey = 'ep-nav-leagues:' + (sess && sess.token ? String(sess.token).slice(-16) : 'anon');
-    let held = null;
+    let held = null, heldAt = 0;
     try {
       const j = JSON.parse(sessionStorage.getItem(heldKey) || 'null');
-      if (j && Array.isArray(j.rows) && Date.now() >= j.at && Date.now() - j.at < 5 * 60 * 1000) held = j.rows;
+      if (j && Array.isArray(j.rows) && Date.now() >= j.at && Date.now() - j.at < 5 * 60 * 1000) { held = j.rows; heldAt = j.at; }
     } catch (_) { held = null; }
+    const keep = (rows) => { try { sessionStorage.setItem(heldKey, JSON.stringify({ at: Date.now(), rows })); } catch (_) { /* full */ } };
     try {
       leagues = held || await pull(false);
-      if (!held) { try { sessionStorage.setItem(heldKey, JSON.stringify({ at: Date.now(), rows: leagues })); } catch (_) { /* full */ } }
+      if (!held) keep(leagues);
     } catch (_) {
       holding.textContent = 'unavailable';
       return;
@@ -1744,6 +1751,17 @@
     fillCountryHead(country === null ? '' : country);
     drawLeagues();
     themeLeague();
+    if (held && Date.now() - heldAt > 30 * 1000) {
+      pull(false).then(fresh => {
+        if (!Array.isArray(fresh)) return;
+        keep(fresh);
+        if (JSON.stringify(fresh) === JSON.stringify(leagues)) return;       // nothing changed: nothing redrawn
+        leagues = fresh;
+        drawCountries();
+        drawLeagues();
+        themeLeague();
+      }).catch(() => { /* the copy on screen stands */ });
+    }
   }
 
   /* SETTLED LATE, for a page that names its league only after this ran. `country` starts at
