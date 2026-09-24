@@ -402,16 +402,25 @@ function seasonCachePut(key, token, out) {
   } catch (___) { /* nothing more to try */ }
 }
 
-/* A season's snapshot (0152), as the season cache holds it, or null. `ids` is one
-   competition id, or several sorted and comma-joined. A reader who may not read the
-   competition's games is refused the row by its policy, and a 404 (the table not there yet)
-   or any blip is a null too: the caller then reads the rows. */
+/* A season's snapshot, as the season cache holds it, or null. `ids` is one competition id, or
+   several sorted and comma-joined.
+
+   A FILE ON THE CDN (0153), NAMED BY ITS TOKEN: snapshots/season/<ids>/<token>.json. Postgres
+   serving the same seasons as jsonb took 11-13 s for global scouting's seventeen at once, with
+   timeouts; the CDN serves files. The token was read from the database a moment ago, under
+   every policy, so a league this reader may not read gives no games, no token and no file. A
+   version is never rewritten, only replaced by a new name, so the browser and the CDN may keep
+   it as long as they like. Missing (not built yet), or any blip: null, and the caller reads the
+   rows as before. */
+function snapFile(token) { return String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json'; }
 async function seasonSnapshot(ids, token) {
   try {
-    const rows = await get('snapshots?key=eq.' + encodeURIComponent('season:' + ids) + '&select=token,data');
-    const r = rows && rows[0];
-    if (!r || r.token !== token || !r.data) return null;
-    const d = r.data;
+    const c = CFG();
+    const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/season/${ids}/${snapFile(token)}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j || j.token !== token || !j.data) return null;
+    const d = j.data;
     const byId = {};
     (d.games || []).forEach(g => { byId[g.id] = g; });
     return { games: d.games || [], byId, players: d.players || [], teams: d.teams || [],

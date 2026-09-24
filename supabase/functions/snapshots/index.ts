@@ -72,6 +72,20 @@ const realFetch = globalThis.fetch.bind(globalThis);
   supabaseAnonKey: PUBLISHABLE
 };
 
+/* A SEASON IS A FILE (0153): snapshots/season/<competition id(s)>/<token>.json, one path per
+   version, so the CDN can keep it forever and a new token is a new URL. The token turned into a
+   file name exactly as epinoia/data.js turns it (snapFile there):
+     154@2026-09-23T23:05:29.983+00:00  ->  154-2026-09-23T23-05-29-983-00-00.json */
+const snapFile = (token: string) => String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json';
+const BUCKET = 'snapshots';
+
+async function removeFiles(admin: any, unit: string, keep: string | null) {
+  const dir = 'season/' + unit;
+  const { data: list } = await admin.storage.from(BUCKET).list(dir, { limit: 100 });
+  const old = (list || []).map((o: any) => o.name).filter((n: string) => n && n !== keep).map((n: string) => dir + '/' + n);
+  if (old.length) await admin.storage.from(BUCKET).remove(old);
+}
+
 /* stars.js hands back its windows revived (w = the WINDOWS entry); stored, w is the key */
 const unrevive = (row: any) => (row ? { ...row, w: row.w && row.w.key ? row.w.key : row.w } : null);
 
@@ -99,7 +113,9 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
   const { data: seasons, error } = await admin.from('seasons')
     .select('id,league_id,starts_on,competitions(id)').order('starts_on', { ascending: false });
   if (error) throw new Error('seasons: ' + error.message);
-  const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at').like('key', 'season:%');
+  /* the index rows: a season's token and its file (a row from before 0153 has no file, and is
+     built again as a file) */
+  const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at,file:data->>file').like('key', 'season:%');
   const held = new Map((heldRows || []).map((r: any) => [r.key, r]));
 
   /* WHAT PAGES ASK FOR: every competition on its own (a league page scoped to one), and each
@@ -135,12 +151,16 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
     if (tok == null) continue;       // not known this call (a blip, or no count): leave it as it is
     if (/^0@/.test(tok)) {
       /* nothing a signed-out reader can see (private, members-only, or no finals): no
-         snapshot. One kept from before is dropped; its policy already hides it. */
-      if (held.has(key)) { await admin.from('snapshots').delete().eq('key', key); removed++; }
+         snapshot. One kept from before is dropped, file and index row. */
+      if (held.has(key)) {
+        await removeFiles(admin, unit, null);
+        await admin.from('snapshots').delete().eq('key', key);
+        removed++;
+      }
       continue;
     }
     const h: any = held.get(key);
-    if (h && h.token === tok && Date.now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { current++; continue; }
+    if (h && h.file && h.token === tok && Date.now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { current++; continue; }
     if (built >= maxBuilds || Date.now() - started > WALL_MS) { left++; continue; }
 
     const ids = unit.split(',');
@@ -151,9 +171,15 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
     const s = await D.season(ids.length === 1 ? ids[0] : ids, { trim: true, rows: false, snapshot: false });
     const data = { games: s.games || [], players: s.players || [], teams: s.teams || [],
                    teamOfPlayer: Array.from((s.teamOfPlayer || new Map()).entries()) };
+    const name = snapFile(tok);
+    const file = 'season/' + unit + '/' + name;
+    const { error: fileErr } = await admin.storage.from(BUCKET).upload(file, JSON.stringify({ token: tok, data }),
+      { contentType: 'application/json', upsert: true, cacheControl: '31536000' });
+    if (fileErr) throw new Error(file + ': ' + fileErr.message);
     const { error: upErr } = await admin.from('snapshots').upsert(
-      { key, competition_id: withFinals, token: tok, data, built_at: new Date().toISOString() }, { onConflict: 'key' });
+      { key, competition_id: withFinals, token: tok, data: { file }, built_at: new Date().toISOString() }, { onConflict: 'key' });
     if (upErr) throw new Error(key + ': ' + upErr.message);
+    await removeFiles(admin, unit, name);     // the versions before this one
     built++;
   }
   return { built, current, removed, left };

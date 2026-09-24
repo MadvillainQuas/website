@@ -1,18 +1,19 @@
 /* ============================================================================
    Pages read a snapshot only when it is current, and work it out themselves
-   otherwise (migration 0152, supabase/functions/snapshots).
+   otherwise (migrations 0152 and 0153, supabase/functions/snapshots).
 
      node supabase/tests/snapshots.test.mjs
 
-   data.js season(): a competition's season lines from 'season:<id>' when the
-   snapshot's token is the token the page just read (then kept for the next visit),
-   and the rows read and summed exactly as before when it is not: an older token,
-   no table yet (404), a season merged across competitions, or the snapshots
-   function itself asking (snapshot:false).
+   data.js season(): a season's lines from its file on the CDN,
+   snapshots/season/<ids>/<token>.json, named by the token the page just read
+   from the database (then kept for the next visit); the rows read and summed
+   exactly as before when there is no such file (not built yet, or built from
+   an older token), and never for the snapshots function itself (snapshot:false).
+   A season merged across competitions is looked up by its sorted ids.
 
-   stars.js global(): HOME's podiums from 'stars_global' when it was built from the
-   same anchor, every league on it is one the reader can see, and the reader is
-   signed out; the month of box scores read and summed otherwise.
+   stars.js global(): HOME's podiums from the 'stars_global' row when it was
+   built from the same anchor, every league on it is one the reader can see, and
+   the reader is signed out; the month of box scores read and summed otherwise.
    ============================================================================ */
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -43,12 +44,20 @@ const D = require(path.join(ROOT, 'epinoia', 'data.js'));
 globalThis.EpinoiaData = D;
 const ST = require(path.join(ROOT, 'epinoia', 'stars.js'));
 
-/* ---- a fake PostgREST: every request recorded, answers set per test ---- */
+/* ---- a fake Supabase: every request recorded, answers set per test ---- */
 const calls = [];
-let routes = {};
+let routes = {};                        // PostgREST table -> rows, or a function of the query
+let files = {};                         // Storage path under snapshots/ -> JSON body
 globalThis.fetch = async (url) => {
   const u = decodeURIComponent(String(url));
   calls.push(u);
+  const sp = u.split('/storage/v1/object/public/snapshots/')[1];
+  if (sp !== undefined) {
+    const body = files[sp];
+    return body === undefined
+      ? { ok: false, status: 400, headers: { get: () => null }, json: async () => ({ error: 'not found' }) }
+      : { ok: true, status: 200, headers: { get: () => null }, json: async () => JSON.parse(JSON.stringify(body)) };
+  }
   const rest = u.split('/rest/v1/')[1] || '';
   const table = rest.split('?')[0];
   const r = typeof routes[table] === 'function' ? routes[table](rest) : routes[table];
@@ -57,59 +66,63 @@ globalThis.fetch = async (url) => {
   return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(body)),
            headers: { get: h => (String(h).toLowerCase() === 'content-range' ? `0-${Math.max(0, body.length - 1)}/${total}` : null) } };
 };
-const reset = () => { calls.length = 0; LS.clear(); SS.clear(); };
+const reset = () => { calls.length = 0; LS.clear(); SS.clear(); files = {}; };
 const asked = re => calls.filter(u => re.test(u));
 
 /* ---------------------------------------------------------------- seasons --- */
-console.log('\ndata.js season(): the snapshot when it is current, the rows when it is not');
+console.log('\ndata.js season(): the file named by the current token, the rows when there is none');
 const SNAP = { games: [{ id: 'g1', home_team_id: 't1', away_team_id: 't2', home_score: 80, away_score: 70, tipoff_at: '2026-09-01T18:00:00Z' }],
                players: [{ id: 'p1', gp: 1, pts: 20 }], teams: [{ id: 't1', gp: 1 }], teamOfPlayer: [['p1', 't1']] };
-const tokenRoute = (tok) => rest => (/finalised_at/.test(rest) && /limit=1/.test(rest)
-  ? { body: [{ id: 'g1', finalised_at: tok }], total: 1 }
+const T1 = '1@2026-09-02T00:00:00+00:00';
+const F1 = '1-2026-09-02T00-00-00-00-00.json';   // the token as a file name (data.js snapFile, the function's too)
+const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test(rest)
+  ? { body: [{ id: 'g1', finalised_at: fin }], total: 1 }
   : { body: [], total: 0 });                // the season's games: none, so a fallback read ends at once
 {
   reset();
-  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00'),
-             snapshots: [{ token: '1@2026-09-02T00:00:00+00:00', data: SNAP }] };
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
+  files['season/c1/' + F1] = { token: T1, data: SNAP };
   const s = await D.season('c1', { trim: true, rows: false });
-  ok('a current snapshot is the season', s.players.length === 1 && s.players[0].id === 'p1' && s.games[0].id === 'g1');
+  ok('the file named by the current token is the season', s.players.length === 1 && s.players[0].id === 'p1' && s.games[0].id === 'g1');
   ok('...rebuilt whole: byId and teamOfPlayer as a Map', s.byId.g1 && s.teamOfPlayer instanceof Map && s.teamOfPlayer.get('p1') === 't1');
-  ok('...two small requests, the token and the snapshot, and no box scores',
-     calls.length === 2 && asked(/snapshots\?key=eq\.season:c1/).length === 1 && !asked(/player_game_stats|team_game_stats/).length,
-     calls);
+  ok('...two requests, the token from the database and the file from the CDN, and no box scores',
+     calls.length === 2 && asked(/\/storage\/v1\/object\/public\/snapshots\/season\/c1\/1-2026-09-02T00-00-00-00-00\.json$/).length === 1 &&
+     !asked(/player_game_stats|team_game_stats/).length, calls);
   calls.length = 0;
   const again = await D.season('c1', { trim: true, rows: false });
   ok('kept for the next visit: one request, the token', calls.length === 1 && again.players[0].id === 'p1', calls);
 }
 {
   reset();
-  routes = { games: tokenRoute('2026-09-03T00:00:00+00:00'),
-             snapshots: [{ token: '1@2026-09-02T00:00:00+00:00', data: SNAP }] };
+  routes = { games: tokenRoute('2026-09-03T00:00:00+00:00') };        // a game finalised since
+  files['season/c1/' + F1] = { token: T1, data: SNAP };
   const s = await D.season('c1', { trim: true, rows: false });
-  ok('an older snapshot is not used: the season is read', asked(/status=in\.\(final,finalising\)&select=id,home_team_id/).length === 1 && s.players.length === 0, calls);
+  ok('a newer token names a file that is not there yet: the season is read',
+     asked(/select=id,home_team_id/).length === 1 && s.players.length === 0, calls);
 }
 {
   reset();
-  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };   // no snapshots table: 404
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
+  files['season/c1/' + F1] = { token: '9@elsewhere', data: SNAP };   // a file whose own token disagrees
   const s = await D.season('c1', { trim: true, rows: false });
-  ok('no snapshots table yet (404): the season is read as before',
-     asked(/snapshots/).length === 1 && asked(/select=id,home_team_id/).length === 1 && Array.isArray(s.players), calls);
+  ok('a file whose own token is not the one read is not used', asked(/select=id,home_team_id/).length === 1 && s.players.length === 0, calls);
 }
 {
   reset();
-  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00'), snapshots: [{ token: '1@2026-09-02T00:00:00+00:00', data: SNAP }] };
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
+  files['season/c1/' + F1] = { token: T1, data: SNAP };
   await D.season('c1', { trim: true, rows: false, snapshot: false });
-  ok('snapshot:false (the function building it) never reads a snapshot', !asked(/snapshots/).length, calls);
+  ok('snapshot:false (the function building it) never reads a file', !asked(/storage\/v1/).length, calls);
   reset();
-  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00'),
-             snapshots: rest => (/season:c1,c2/.test(rest) ? [{ token: '1@2026-09-02T00:00:00+00:00', data: SNAP }] : []) };
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
+  files['season/c1,c2/' + F1] = { token: T1, data: SNAP };
   const m = await D.season(['c2', 'c1'], { trim: true, rows: false });
-  ok('a season merged across competitions has its own snapshot, keyed by the sorted ids',
-     asked(/snapshots\?key=eq\.season:c1,c2&/).length === 1 && m.players[0].id === 'p1' &&
-     !asked(/player_game_stats|team_game_stats/).length, calls);
+  ok('a season merged across competitions has its own file, under the sorted ids',
+     asked(/snapshots\/season\/c1,c2\//).length === 1 && m.players[0].id === 'p1' && !asked(/player_game_stats/).length, calls);
   reset();
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
   await D.season('c1', { trim: true });
-  ok('a read that keeps the rows reads the rows', !asked(/snapshots/).length && asked(/select=id,home_team_id/).length === 1, calls);
+  ok('a read that keeps the rows reads the rows', !asked(/storage\/v1/).length && asked(/select=id,home_team_id/).length === 1, calls);
 }
 
 /* ------------------------------------------------------------------ stars --- */
