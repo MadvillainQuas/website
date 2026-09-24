@@ -168,22 +168,25 @@ body.nav-drawer-open{ overflow:hidden }
    minimum height is nothing, so it was quietly shrunk to fit and the scroller never overflowed
    -- twenty clubs, eight visible, no way to reach the rest */
 .ep-nav .navdeck{ overflow:hidden; flex:none; transition:height .34s cubic-bezier(.4,0,.2,1) }
-/* SIX PANELS: the platform, countries, that country's leagues, a league's
+/* SEVEN PANELS: the platform, countries, that country's leagues, a league's
    pages, its clubs — and your own, which is a leaf off the footer rather than
-   another rung of that ladder, but rides the same deck so it inherits the
-   slide, the focus handling and the phone drawer instead of inventing a second
-   mechanism. The deck is six screens wide and slides a sixth at a time, so
-   every percentage here is a sixth: they were fifths before your profile,
-   quarters before the platform layer, thirds before the clubs. */
+   another rung of that ladder, and EPINOIA GO's three places, a leaf off the
+   platform layer; both ride the same deck so they inherit the slide, the focus
+   handling and the phone drawer instead of inventing a second mechanism. The
+   deck is seven screens wide and slides a seventh at a time, so every
+   percentage here is a seventh: they were sixths before GO's layer, fifths
+   before your profile, quarters before the platform layer, thirds before the
+   clubs. */
 .ep-nav .deck{
-  display:flex; width:600%; align-items:flex-start;
+  display:flex; width:700%; align-items:flex-start;
   transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
 }
-.ep-nav[data-view="country"] .deck{ transform:translateX(-16.6667%) }
-.ep-nav[data-view="root"] .deck{ transform:translateX(-33.3333%) }
-.ep-nav[data-view="league"] .deck{ transform:translateX(-50%) }
-.ep-nav[data-view="teams"] .deck{ transform:translateX(-66.6667%) }
-.ep-nav[data-view="follows"] .deck{ transform:translateX(-83.3333%) }
+.ep-nav[data-view="country"] .deck{ transform:translateX(-14.2857%) }
+.ep-nav[data-view="root"] .deck{ transform:translateX(-28.5714%) }
+.ep-nav[data-view="league"] .deck{ transform:translateX(-42.8571%) }
+.ep-nav[data-view="teams"] .deck{ transform:translateX(-57.1429%) }
+.ep-nav[data-view="follows"] .deck{ transform:translateX(-71.4286%) }
+.ep-nav[data-view="go"] .deck{ transform:translateX(-85.7143%) }
 /* the clubs: a crest (or a monogram in the club's colour) beside each name */
 .ep-nav .teams .trow .ep-crest{ width:22px; height:22px; border-radius:50%; display:inline-grid; place-items:center; overflow:hidden;
   font-family:var(--f-micro); font-size:7px; letter-spacing:.04em; color:#04100b; flex:none; margin-right:8px }
@@ -195,7 +198,7 @@ body.nav-drawer-open{ overflow:hidden }
    or tab that is not compositing at the time. The class comes off after the
    first paint, so every LATER change animates. */
 .ep-nav.noanim .deck, .ep-nav.noanim .navdeck{ transition:none }
-.ep-nav .panel{ width:16.6667%; flex:0 0 16.6667%; min-width:0 }
+.ep-nav .panel{ width:14.2857%; flex:0 0 14.2857%; min-width:0 }
 /* the country panel's heading sits in a head beside its back chevron, so the
    chevron is in the same place at every level; the heading keeps its own type
    rather than the head's smaller link style. */

@@ -863,9 +863,20 @@ function mapsHref(v) {
 
 /* AN ARENA AS A CARD: a fan's photograph taken there when one is on the wall, else its home club's crest,
    big and faint, over the club's colour */
+/* THE CLUBS THAT PLAY AT AN ARENA, for its card: only a club whose league the reader can see (a club left
+   behind by a deleted league, or a private league's, has none to show), and each club once - the same club
+   in two competitions (London Lions, SLB and EuroCup) is one. Two clubs sharing a building (the Sharks and
+   the Hatters) are one arena with both on its card: a stamp there ticks it off for both. */
+function clubsAt(v) {
+  const out = [];
+  (v.teams || []).forEach(t => { if (t && t.name && t.leagues && !out.some(c => c.name === t.name)) out.push(t); });
+  return out.sort((a, b) => (b.logo_path ? 1 : 0) - (a.logo_path ? 1 : 0) || a.name.localeCompare(b.name));
+}
+
 function venueCard(v, photo) {
-  const club = (v.teams || [])[0] || {};
-  const a = el('a', 'vcard');
+  const clubs = clubsAt(v);
+  const club = clubs[0] || {};
+  const a = el('a', 'vcard' + (clubs.length > 1 ? ' shared' : ''));
   a.href = mapsHref(v);
   a.target = '_blank';
   a.rel = 'noopener';
@@ -874,14 +885,18 @@ function venueCard(v, photo) {
   const mk = a.appendChild(el('span', 'vc-mark'));
   mk.setAttribute('aria-hidden', 'true');
   mk.appendChild(crestOf(club));
-  const disc = a.appendChild(el('span', 'vc-crest'));
-  disc.appendChild(crestOf(club));
+  const discs = a.appendChild(el('span', 'vc-crests'));
+  clubs.slice(0, 3).forEach(c => discs.appendChild(el('span', 'vc-crest')).appendChild(crestOf(c)));
   const b = a.appendChild(el('span', 'vc-body'));
   const nm = b.appendChild(data('span', 'vc-venue', v.name));
   nm.style.display = 'block';
-  const meta = b.appendChild(data('span', 'vc-meta', [v.city, club.name].filter(Boolean).join(' · ')));
+  const meta = b.appendChild(data('span', 'vc-meta', clubs.length > 1 ? v.city || '' : [v.city, club.name].filter(Boolean).join(' · ')));
   meta.style.display = 'block';
-  a.title = v.name;
+  if (clubs.length > 1) {
+    b.appendChild(data('span', 'vc-clubs', clubs.map(c => c.name).join(' · ')));
+  }
+  a.title = [v.name].concat(clubs.map(c => c.name)).join(' · ');
+  a.setAttribute('translate', 'no');                 // names only, the tooltip too
   return a;
 }
 
@@ -890,10 +905,11 @@ async function drawStrip() {
   if (!host || !S.country) return;
   const want = S.country;
   const r = await restGet('venues?country=eq.' + encodeURIComponent(want) + '&lat=not.is.null&pin_note=is.null' +
-    '&select=id,name,city,place_id,teams!teams_home_venue_id_fkey(name,short_name,colour,logo_path)&order=name&limit=500');
+    '&select=id,name,city,place_id,teams!teams_home_venue_id_fkey(name,short_name,colour,logo_path,leagues(slug))' +
+    '&order=name&limit=500');
   if (want !== S.country) return;
   const mine = new Set((S.mine || []).map(x => x.venue_id));
-  const list = (Array.isArray(r.data) ? r.data : []).filter(v => (v.teams || []).length && !mine.has(v.id));
+  const list = (Array.isArray(r.data) ? r.data : []).filter(v => clubsAt(v).length && !mine.has(v.id));
   host.textContent = '';
   if (!list.length) {
     host.appendChild(el('div', 'go-strip-done', r.error ? 'The arenas could not be read just now.'
@@ -1387,5 +1403,5 @@ async function boot() {
 }
 
 return { boot, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, journeyOf, byLeague, badgesOf, rerank,
-         countryGuess, whyOf, factsOf, unameLocal, WHY, GEO, UNAME_WHY, NOTE_WHY, PHOTO_WHY, PHOTO_STATE, BY, ALLOW_M, NEAR_M, TZ_CC };
+         countryGuess, clubsAt, whyOf, factsOf, unameLocal, WHY, GEO, UNAME_WHY, NOTE_WHY, PHOTO_WHY, PHOTO_STATE, BY, ALLOW_M, NEAR_M, TZ_CC };
 }));

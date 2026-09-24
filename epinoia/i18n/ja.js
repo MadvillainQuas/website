@@ -1396,20 +1396,27 @@
       'Averages': '平均',
       'full table': '成績表',
       'screenshot': 'スクリーンショット',
-      'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO：試合会場で、行ったアリーナをスタンプ'
+      'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO：試合会場で、行ったアリーナをスタンプ',
+      'EPINOIA GO: find the game you are at, the arenas to tick off, the leaderboard': 'EPINOIA GO：今いる試合を探す、未スタンプのアリーナ、ランキング',
+      'THE FEED: the fans’ photographs of the games they stamped': 'フィード：ファンがスタンプした試合で撮った写真',
+      'your stamps: every game, the map, and the distance between them': 'あなたのスタンプ：すべての試合、地図、その間の距離'
     },
 
     ctx: {
       /* the rail: HOME is the front page (トップ), not the home side (ホーム) */
       nav: {
-        'home': 'トップ'
+        'home': 'トップ',
+        'feed': 'フィード',
+        'your stamps': 'あなたのスタンプ'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
         'home': 'トップ',
         'fixtures': '日程',
         'statistics': 'スタッツ',
-        'Table / Team Stats': '順位'
+        'Table / Team Stats': '順位',
+        'feed': 'フィード',
+        'stamps': 'スタンプ'
       },
       /* a column header: the Latin letters Japanese box scores use */
       col: {

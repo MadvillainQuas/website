@@ -328,12 +328,13 @@ ok('every place that groups a league uses the one rule',
    'the counter, the list filter, the page-opens-its-own-group path and settleCountry');
 
 console.log('\n13. your profile is a rail, and the way back to a private league');
-ok('the deck carries a sixth panel',
+ok('the deck carries a sixth panel (and a seventh since, EPINOIA GO\'s layer)',
    /const followsPanel = el\('div', 'panel followspanel'\);/.test(nav) &&
-   /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel\)/.test(nav));
-ok('...and the CSS is a sixth, not a fifth',
-   /width:600%/.test(navcss) && /width:16\.6667%/.test(navcss) &&
-   /data-view="follows"\] \.deck\{ transform:translateX\(-83\.3333%\)/.test(navcss));
+   /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel\)/.test(nav));
+ok('...and the CSS is a seventh, not a sixth',
+   /width:700%/.test(navcss) && /width:14\.2857%/.test(navcss) &&
+   /data-view="follows"\] \.deck\{ transform:translateX\(-71\.4286%\)/.test(navcss) &&
+   /data-view="go"\] \.deck\{ transform:translateX\(-85\.7143%\)/.test(navcss));
 ok('the panel is hidden from the tab order like every other',
    /followsPanel\.setAttribute\('aria-hidden', String\(v !== 'follows'\)\)/.test(nav));
 ok('"your profile" opens it, and is still a real link for a modified click',

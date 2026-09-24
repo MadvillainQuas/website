@@ -97,12 +97,10 @@
       'Your photographs': 'あなたの写真',
       'None yet. Add one to a game you stamped.': 'まだありません。スタンプした試合に写真を追加しましょう。',
       'Remove this photograph?': 'この写真を削除しますか？',
-      'Games been to': '観戦した試合',
       'The fans’ photographs of the games they stamped. A person looks at every one before it goes up.': 'ファンがスタンプした試合で撮った写真です。すべての写真は掲載前にスタッフが確認しています。',
       'newest': '新着順',
       'most liked': 'いいね順',
       'more': 'もっと見る',
-      'Games been to opens soon.': '「観戦した試合」はまもなく始まります。',
       'No photographs here yet.': 'まだ写真はありません。',
       'Stamp a game on EPINOIA GO and add yours.': 'EPINOIA GOで試合をスタンプして、あなたの写真を追加しましょう。',
       'like': 'いいね',
@@ -142,7 +140,6 @@
       'Every game you stamped, however many at one arena.': 'スタンプしたすべての試合。同じアリーナでも1試合ずつ数えます。',
       'Different arenas stamped: each one counts once.': 'スタンプした異なるアリーナの数。1つのアリーナは1回だけ数えます。',
       'Venues': 'アリーナ',
-      'The feed': 'フィード',
       'add yours': '写真を追加',
       'see the full feed': 'フィードをすべて見る',
       'Prove your fandom — show your pictures of games': 'ファンの証を見せよう — 試合の写真を投稿しよう',
@@ -169,7 +166,8 @@
       'Every arena you stamped, numbered in the order you went, and the trips between them.': 'スタンプしたすべてのアリーナに行った順の番号を付け、その間の移動を線で結びました。',
       'A map of the arenas you stamped': 'スタンプしたアリーナの地図',
       'Every game': 'すべての試合',
-      'Newest first: the game, the score, how far it was from the one before, and your note.': '新しい順：試合、スコア、前の試合からの距離、そしてあなたのメモ。'
+      'Newest first: the game, the score, how far it was from the one before, and your note.': '新しい順：試合、スコア、前の試合からの距離、そしてあなたのメモ。',
+      'The feed opens soon.': 'フィードはまもなく始まります。'
     },
     units: {
       'arena': '{n}アリーナ',
@@ -178,6 +176,12 @@
     ctx: {
       goleg: {
         'from': '前の会場:'
+      },
+      gofeed: {
+        'The feed': 'フィード'
+      },
+      title: {
+        'The feed': 'フィード'
       }
     }
   }, 'go');

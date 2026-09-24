@@ -1398,20 +1398,27 @@
       'Averages': 'Promedios',
       'full table': 'Tabla completa',
       'screenshot': 'Captura',
-      'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO: sella los pabellones a los que vas, en el partido'
+      'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO: sella los pabellones a los que vas, en el partido',
+      'EPINOIA GO: find the game you are at, the arenas to tick off, the leaderboard': 'EPINOIA GO: busca el partido en el que estás, los pabellones pendientes, la clasificación',
+      'THE FEED: the fans’ photographs of the games they stamped': 'EL MURO: las fotos de los aficionados de los partidos que sellaron',
+      'your stamps: every game, the map, and the distance between them': 'tus sellos: cada partido, el mapa y la distancia entre ellos'
     },
 
     ctx: {
       /* the rail: HOME is the front page (Inicio), not the home side (Local) */
       nav: {
-        'home': 'Inicio'
+        'home': 'Inicio',
+        'feed': 'muro',
+        'your stamps': 'tus sellos'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
         'home': 'Inicio',
         'fixtures': 'Calendario',
         'statistics': 'Estad.',
-        'Table / Team Stats': 'Clasif. / Equipos'
+        'Table / Team Stats': 'Clasif. / Equipos',
+        'feed': 'muro',
+        'stamps': 'sellos'
       },
       /* a column header, as a Spanish box score writes it (Min, Pts, T2, T3, TL, RO, RD, RT, As, Rec, Pér, Tap, Fp, Fr) */
       col: {

@@ -241,3 +241,26 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
   and "The leaderboards" the games. 0168: PGlite 28 checks. Chromium: the intro 29, a stamp with its note
   and the stamps page 20 (with and without 0168), screenshots light and dark, desktop and phone, en/ja/es.
   `go-page.test.mjs`: 61, `go-boards.test.mjs`: 36. **0168 is live once Louie runs `db push`.**
+
+- [x] **7.9 GO's own rail and bar** (Louie: "Home (typical Epinoia GO page), FEED + Your Stamps pages be an
+      additional rail coming off of EPINOIA GO") - "EPINOIΛ GO ›" in the rail now opens GO's own layer, a
+      seventh panel on the deck (`nav.js` goPanel): the way back, the logo (the GO page), then **home** (the
+      GO page), **feed** (the wall) and **your stamps**; GO's pages open the rail on it with their own row
+      lit. On a phone the bar on GO's pages is GO's: home, feed, stamps, profile, and the menu opens on GO's
+      layer. GO's pages are nobody's league now (`PLATFORM_PAGE`), which also fixes the wall's own `?l=`
+      filter drawing a league's tab bar with dead links. The wall is called **THE FEED** throughout, as the
+      GO page calls it ("Games been to" before). Chromium: 29 checks (desktop, phone, the sheet, ja/es).
+- [x] **7.10 Demo clubs gone; one arena, every club on its card** - the demo league (0004) had been deleted,
+      but its four clubs were left with no league, 22 games and 48 players, and still the home clubs of four
+      REAL arenas (0035 gave them real addresses to test the map), so Neon City showed on the Emirates
+      Arena's card. Migration `0170_go_demo_clubs_gone.sql` deletes exactly those (the demo slugs with no
+      league; their games only where both sides are demo clubs, else it stops; their players by the demo
+      prefix with no club) and makes `go_games_now()` offer only a league's games; the arenas stay (real,
+      pinned, checked). The strip also shows only clubs whose league the reader can see (the embed of the
+      club's league, so a private league's clubs stay private too). Two clubs sharing a building - the
+      Sharks and the Hatters at the Canon Medical Arena - were already one arena (one venue row: a stamp at
+      either club's game ticks it off, and the Venues count counts it once); the card now shows both
+      crests and both names, and one club in two competitions (London Lions, SLB and EuroCup) once. A
+      league's own board and badge still count that league's games. 0170: PGlite 15 checks (the live state
+      reproduced first; a mixed game stops it). **Live once Louie runs `db push`**; the strip already hides
+      the demo clubs without it.

@@ -97,12 +97,10 @@
       'Your photographs': 'Tus fotos',
       'None yet. Add one to a game you stamped.': 'Todavía ninguna. Añade una a un partido que hayas sellado.',
       'Remove this photograph?': '¿Quitar esta foto?',
-      'Games been to': 'Partidos vividos',
       'The fans’ photographs of the games they stamped. A person looks at every one before it goes up.': 'Las fotos de los aficionados en los partidos que sellaron. Una persona revisa cada una antes de publicarla.',
       'newest': 'más recientes',
       'most liked': 'más gustadas',
       'more': 'ver más',
-      'Games been to opens soon.': 'Partidos vividos abre pronto.',
       'No photographs here yet.': 'Todavía no hay fotos aquí.',
       'Stamp a game on EPINOIA GO and add yours.': 'Sella un partido en EPINOIA GO y añade la tuya.',
       'like': 'me gusta',
@@ -142,7 +140,6 @@
       'Every game you stamped, however many at one arena.': 'Cada partido que sellaste, aunque sean varios en un mismo pabellón.',
       'Different arenas stamped: each one counts once.': 'Pabellones distintos sellados: cada uno cuenta una vez.',
       'Venues': 'Pabellones',
-      'The feed': 'El muro',
       'add yours': 'añade las tuyas',
       'see the full feed': 'ver el muro completo',
       'Prove your fandom — show your pictures of games': 'Demuestra tu afición: comparte tus fotos de partidos',
@@ -169,7 +166,8 @@
       'Every arena you stamped, numbered in the order you went, and the trips between them.': 'Cada pabellón que sellaste, numerado en el orden en que fuiste, y los viajes entre ellos.',
       'A map of the arenas you stamped': 'Un mapa de los pabellones que sellaste',
       'Every game': 'Todos los partidos',
-      'Newest first: the game, the score, how far it was from the one before, and your note.': 'Del más reciente al más antiguo: el partido, el marcador, la distancia desde el anterior y tu nota.'
+      'Newest first: the game, the score, how far it was from the one before, and your note.': 'Del más reciente al más antiguo: el partido, el marcador, la distancia desde el anterior y tu nota.',
+      'The feed opens soon.': 'El muro abre pronto.'
     },
     units: {
       'arena': '{n} pabellón',
@@ -178,6 +176,12 @@
     ctx: {
       goleg: {
         'from': 'desde'
+      },
+      gofeed: {
+        'The feed': 'El muro'
+      },
+      title: {
+        'The feed': 'El muro'
       }
     }
   }, 'go');

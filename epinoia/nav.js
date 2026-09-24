@@ -261,9 +261,12 @@
      address (a shared link, a sign-in that came back with one) must not drill
      the rail into a league or draw that league's tab bar over a page that is
      not about it. */
-  const PLATFORM_PAGE = /\/epinoia\/(home|games|scouting)\//;
+  /* EPINOIA GO's pages are nobody's league either - and the wall uses ?l= for its own filter, a league's
+     id, which read as a league here drew that league's tab bar with links that went nowhere. */
+  const PLATFORM_PAGE = /\/epinoia\/(home|games|scouting|go)\//;
   const onPlatform = PLATFORM_PAGE.test(here);
   const atHome = /\/epinoia\/home\/$/.test(here);
+  const onGo = /\/epinoia\/go\//.test(here);
   let lg = onPlatform ? '' : (qp.get('l') || (window.__CS_LEAGUE_SLUG || ''));
   /* The league THIS PAGE is about, as opposed to the one the rail is currently
      showing. They are the same until somebody browses to another league in the
@@ -435,7 +438,7 @@
   const nav = document.createElement('nav');
   nav.className = 'ep-nav';
   nav.setAttribute('aria-label', 'Epinoia');
-  nav.dataset.view = 'root';
+  nav.dataset.view = onGo ? 'go' : 'root';
   /* No sliding until the rail has settled into the view this page belongs in.
      Removed once the leagues have arrived and the first view is chosen. */
   nav.classList.add('noanim');
@@ -475,7 +478,11 @@
      the focus handling, the height animation and the phone drawer rather than
      growing a second mechanism beside them. */
   const followsPanel = el('div', 'panel followspanel');
-  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel);
+  /* EPINOIA GO'S OWN LAYER (Louie, 2026-09-24): the GO page, THE FEED and the fan's stamps, one step in
+     from the GO row the way a league's pages are one step in from the league. A leaf off the platform
+     layer, like the follows panel, riding the same deck. GO's pages open on it. */
+  const goPanel = el('div', 'panel gopanel');
+  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel);
   navdeck.appendChild(deck);
   navScroll.appendChild(navdeck);
 
@@ -575,16 +582,49 @@
      EPINOIΛ in the logotype, GO in a Y2K face of its own (--f-go, epinoia-kit.css) - because it is
      a thing to do at a game rather than one more page to read, and a row in the rail's label type
      would say the opposite. A name, so never translated. */
-  const goRow = el('a', 'item go-row' + (/\/epinoia\/go\//.test(here) ? ' on' : ''));
+  const goRow = el('a', 'item go-row' + (onGo ? ' on' : ''));
   goRow.href = root + 'go/';
   const goWord = el('span', 'tx go-word');
   goWord.setAttribute('translate', 'no');
   goWord.append(el('span', 'epinoia-mark', 'EPINOIΛ'), el('span', 'go-go', 'GO'));
-  goRow.append(el('span', 'ic', '◎'), goWord);
+  goRow.append(el('span', 'ic', '◎'), goWord, el('span', 'lgo', '›'));
   goRow.title = 'EPINOIA GO: stamp the arenas you go to, at a game';
   if (goRow.classList.contains('on')) goRow.setAttribute('aria-current', 'page');
+  /* it opens GO's own layer rather than going anywhere, as "leagues ›" does (and so the phone's sheet
+     stays open on it); a modified click is still the link to the GO page */
+  goRow.dataset.railMove = '1';
+  goRow.addEventListener('click', e => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setView('go', true);
+  });
   hlist.appendChild(goRow);
   homePanel.append(htitle, hlist);
+
+  /* ---- GO's layer: the way back, the logo (the GO page), then its three places ---- */
+  const gohead = el('div', 'phead');
+  const goback = el('button', 'back', '‹');
+  goback.type = 'button';
+  goback.title = 'Back';
+  goback.setAttribute('aria-label', 'Back to the Epinoia menu');
+  goback.addEventListener('click', () => setView('home', true));
+  const goname = el('a', 'lname go-name');
+  goname.href = root + 'go/';
+  goname.title = 'EPINOIA GO: stamp the arenas you go to, at a game';
+  const goname2 = el('span', 'tx go-word');
+  goname2.setAttribute('translate', 'no');
+  goname2.append(el('span', 'epinoia-mark', 'EPINOIΛ'), el('span', 'go-go', 'GO'));
+  goname.appendChild(goname2);
+  gohead.append(goback, goname);
+  const golist = el('div', 'pages');
+  golist.append(
+    platformRow('◎', 'home', 'go/', /\/epinoia\/go\/$/,
+                'EPINOIA GO: find the game you are at, the arenas to tick off, the leaderboard'),
+    platformRow('▦', 'feed', 'go/photos/', /\/epinoia\/go\/photos\//,
+                'THE FEED: the fans’ photographs of the games they stamped'),
+    platformRow('▣', 'your stamps', 'go/stamps/', /\/epinoia\/go\/stamps\//,
+                'your stamps: every game, the map, and the distance between them'));
+  goPanel.append(gohead, golist);
 
   /* ---- root panel: the title, then the leagues ---- */
   const title = el('a', 'ptitle', 'Leagues');
@@ -1391,8 +1431,17 @@
     { key: 'leagues',  ic: '◉', tx: 'leagues',  href: 'home/#leagues', on: () => false },
     { key: 'profile',  ic: '☆', tx: 'profile',  href: 'me/',           on: () => /\/epinoia\/me\//.test(here) }
   ];
+  /* EPINOIA GO'S PAGES GET GO'S PLACES (Louie, 2026-09-24): the GO page, THE FEED, the fan's stamps, and
+     their profile, where the username is. "home" here is GO's own - the platform's HOME is one step up in
+     the menu, and two tabs called home that open different pages would be one too many. */
+  const GO_TABS = [
+    { key: 'go',      ic: '◎', tx: 'home',    href: 'go/',        on: () => /\/epinoia\/go\/$/.test(here) },
+    { key: 'feed',    ic: '▦', tx: 'feed',    href: 'go/photos/', on: () => /\/epinoia\/go\/photos\//.test(here) },
+    { key: 'stamps',  ic: '▣', tx: 'stamps',  href: 'go/stamps/', on: () => /\/epinoia\/go\/stamps\//.test(here) },
+    { key: 'profile', ic: '☆', tx: 'profile', href: 'me/',        on: () => false }
+  ];
   function paintPlatformTabs() {
-    PLATFORM_TABS.forEach(t => {
+    (onGo ? GO_TABS : PLATFORM_TABS).forEach(t => {
       const a = el('a', 'tab');
       a.href = root + t.href;
       a.dataset.tab = t.key;
@@ -1501,6 +1550,7 @@
          : view === 'root'    ? rootPanel
          : view === 'country' ? countryPanel
          : view === 'follows' ? followsPanel
+         : view === 'go'      ? goPanel
          : homePanel;
   }
 
@@ -1544,6 +1594,7 @@
       leaguePanel.setAttribute('aria-hidden', 'false');
       teamsPanel.setAttribute('aria-hidden', 'false');
       followsPanel.setAttribute('aria-hidden', 'false');
+      goPanel.setAttribute('aria-hidden', 'false');
       setTimeout(() => {
         navdeck.classList.remove('animating');
         applyHidden();
@@ -1561,6 +1612,7 @@
     leaguePanel.setAttribute('aria-hidden', String(v !== 'league'));
     teamsPanel.setAttribute('aria-hidden', String(v !== 'teams'));
     followsPanel.setAttribute('aria-hidden', String(v !== 'follows'));
+    goPanel.setAttribute('aria-hidden', String(v !== 'go'));
   }
 
   function fillHeader(l) {
@@ -1994,7 +2046,7 @@
        top, which is now the countries rather than a flat list of every league
        on the platform. */
     if (l) { fillHeader(l); applyNav(l); setView('league', false); }
-    else { setView(country === null ? 'home' : 'root', false); }
+    else { setView(onGo ? 'go' : country === null ? 'home' : 'root', false); }
     /* one more measure after the marquee pass has run, and only then is the
        rail allowed to animate — everything up to here is the page's opening
        position, not a change somebody made */

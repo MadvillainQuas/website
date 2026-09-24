@@ -127,7 +127,7 @@ ok('...from the wall\'s own function, one more than it shows to know there are m
 console.log('\nthe words');
 for (const code of ['ja', 'es']) {
   const src = rd('epinoia', 'i18n', code, 'go.js');
-  const words = [...Object.values(G.PHOTO_WHY), ...Object.values(G.PHOTO_STATE), 'add a photo', 'post it', 'Games been to', 'most liked', 'this fan',
+  const words = [...Object.values(G.PHOTO_WHY), ...Object.values(G.PHOTO_STATE), 'add a photo', 'post it', 'The feed', 'The feed opens soon.', 'most liked', 'this fan',
                  'Sent. A person looks at every photograph before it goes on the wall.'];
   const miss = words.filter(w => !src.includes("'" + w + "':"));
   ok(code + ': posting and the wall are translated', !miss.length, miss);

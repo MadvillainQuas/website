@@ -132,7 +132,7 @@ async function load() {
     p_league: S.f.league, p_venue: S.f.venue, p_game: S.f.game, p_username: S.f.username, p_sort: S.f.sort,
     p_before: S.f.sort === 'new' && last ? last.created_at : null,
     p_offset: S.f.sort === 'liked' ? S.rows.length : 0, p_limit: PAGE });
-  if (r.missing) { say('Games been to opens soon.'); $('#gpMore').classList.add('hide'); return; }
+  if (r.missing) { say('The feed opens soon.'); $('#gpMore').classList.add('hide'); return; }
   const rows = Array.isArray(r.data) ? r.data : [];
   if (!S.rows.length) w.textContent = '';
   S.rows = S.rows.concat(rows);

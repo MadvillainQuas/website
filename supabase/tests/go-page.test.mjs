@@ -138,7 +138,7 @@ console.log('\nthe redesign: the sections');
 ok('arenas to tick off, then the leaderboard, the feed and the fan\'s stamps, in that order',
    ['goStripSec', 'goBoardsSec', 'goFeedSec', 'goMineSec'].map(id => html.indexOf('id="' + id + '"')).every((v, i, a) => v > 0 && (!i || v > a[i - 1])));
 ok('the strip: the arenas of the fan\'s country with a club and no stamp of theirs, looping when there are enough',
-   /venues\?country=eq\./.test(js) && /teams!teams_home_venue_id_fkey\(name,short_name,colour,logo_path\)/.test(js)
+   /venues\?country=eq\./.test(js) && /teams!teams_home_venue_id_fkey\(name,short_name,colour,logo_path,leagues\(slug\)\)/.test(js)
    && /@keyframes go-slide\{to\{transform:translateX\(-50%\)\}\}/.test(css) && /\.go-strip-track\{animation:none\}/.test(css));
 const guess = o => G.countryGuess(Object.assign({ available: ['FI', 'GB', 'JP'] }, o));
 ok('the country: the one picked before, then the clubs followed, the stamps, the time zone, the language, the first with arenas',
@@ -225,6 +225,61 @@ ok('GO is Orbitron 700, served from the site with its licence, declared in the k
    && /--f-go:'Orbitron'/.test(kit) && /\.go-go\{ font-family:var\(--f-go,'Orbitron'/.test(navCss)
    && existsSync(path.join(ROOT, 'epinoia', 'kit', 'fonts', 'orbitron.woff2'))
    && /SIL Open Font License/.test(rd('epinoia', 'kit', 'fonts', 'OFL-orbitron.txt')));
+
+console.log('\nGO\'s own layer in the rail, and its own bar on a phone (7.9)');
+const navCss2 = rd('epinoia', 'kit', 'nav.css');
+ok('a seventh panel on the deck, GO\'s, sized and slid like the others',
+   /const goPanel = el\('div', 'panel gopanel'\);/.test(nav) && /view === 'go'      \? goPanel/.test(nav)
+   && /goPanel\.setAttribute\('aria-hidden', String\(v !== 'go'\)\)/.test(nav)
+   && /data-view="go"\] \.deck\{ transform:translateX\(-85\.7143%\)/.test(navCss2));
+ok('"EPINOIA GO ›" opens it and goes nowhere (a modified click is still the link); the sheet stays open',
+   /goRow\.append\(el\('span', 'ic', '◎'\), goWord, el\('span', 'lgo', '›'\)\);/.test(nav)
+   && /goRow\.dataset\.railMove = '1';/.test(nav) && /e\.preventDefault\(\);\s*setView\('go', true\);/.test(nav));
+ok('...its head: the way back to the platform layer, and the logo, the GO page',
+   /goback\.addEventListener\('click', \(\) => setView\('home', true\)\);/.test(nav) && /goname\.href = root \+ 'go\/';/.test(nav));
+ok('...its three places: home (the GO page), feed (the wall), your stamps, each lit on its own page',
+   /platformRow\('◎', 'home', 'go\/', \/\\\/epinoia\\\/go\\\/\$\//.test(nav)
+   && /platformRow\('▦', 'feed', 'go\/photos\/', \/\\\/epinoia\\\/go\\\/photos\\\/\//.test(nav)
+   && /platformRow\('▣', 'your stamps', 'go\/stamps\/', \/\\\/epinoia\\\/go\\\/stamps\\\/\//.test(nav));
+ok('GO\'s pages open the rail on it, and are nobody\'s league (the wall\'s ?l= is its own filter)',
+   /nav\.dataset\.view = onGo \? 'go' : 'root';/.test(nav) && /setView\(onGo \? 'go' : country === null \? 'home' : 'root', false\)/.test(nav)
+   && /const PLATFORM_PAGE = \/\\\/epinoia\\\/\(home\|games\|scouting\|go\)\\\/\/;/.test(nav));
+ok('the phone\'s bar on GO\'s pages: home (GO\'s), feed, stamps, profile',
+   /const GO_TABS = \[/.test(nav) && /\(onGo \? GO_TABS : PLATFORM_TABS\)\.forEach/.test(nav)
+   && ["href: 'go/',", "href: 'go/photos/',", "href: 'go/stamps/',", "href: 'me/',"].every(h => nav.slice(nav.indexOf('const GO_TABS'), nav.indexOf('function paintPlatformTabs')).includes(h)));
+ok('...in Japanese and Spanish: the rail\'s words and the bar\'s, in their own contexts ("feed" alone is a data feed elsewhere)',
+   ['ja', 'es'].every(code => { const s = rd('epinoia', 'i18n', code + '.js');
+     const nav0 = s.slice(s.indexOf('nav: {'), s.indexOf('}', s.indexOf('nav: {')));
+     const tab0 = s.slice(s.indexOf('tab: {'), s.indexOf('}', s.indexOf('tab: {')));
+     return /'feed':/.test(nav0) && /'your stamps':/.test(nav0) && /'feed':/.test(tab0) && /'stamps':/.test(tab0); }));
+ok('the wall is THE FEED, as the GO page calls it', /<title>The feed · EPINOIA GO · Epinoia<\/title>/.test(rd('epinoia', 'go', 'photos', 'index.html'))
+   && /<h2 id="gpTitle" data-i18n-ctx="gofeed">The feed<\/h2>/.test(rd('epinoia', 'go', 'photos', 'index.html'))
+   && ['ja', 'es'].every(code => /gofeed: \{\s*'The feed':/.test(rd('epinoia', 'i18n', code, 'go.js'))));
+
+console.log('\nan arena\'s clubs on its card, and the demo league\'s leftovers (7.10, 0170)');
+const club = (name, lg, logo) => ({ name, leagues: lg ? { slug: lg } : null, logo_path: logo || null });
+const shared = G.clubsAt({ teams: [club('B. Braun Sheffield Sharks', 'slb-men'), club('B. Braun Sheffield Hatters', 'slb-women')] });
+ok('two clubs sharing a building: one arena, both on its card', shared.length === 2 && shared.map(c => c.name).join() === 'B. Braun Sheffield Hatters,B. Braun Sheffield Sharks');
+ok('...the same club in two competitions once (London Lions, SLB and EuroCup)',
+   G.clubsAt({ teams: [club('London Lions', 'slb-men'), club('London Lions', 'eurocup')] }).length === 1);
+ok('...a club whose league the reader cannot see is on no card (the demo league\'s, left behind; a private league\'s)',
+   G.clubsAt({ teams: [club('East Dock', null), club('London Lions', 'slb-men')] }).map(c => c.name).join() === 'London Lions'
+   && G.clubsAt({ teams: [club('Neon City', null)] }).length === 0);
+ok('...a club with its crest first', G.clubsAt({ teams: [club('Alpha', 'x'), club('Beta', 'x', 'crest.png')] })[0].name === 'Beta');
+ok('the strip asks for each club\'s league and keeps only arenas with a club to show',
+   /teams!teams_home_venue_id_fkey\(name,short_name,colour,logo_path,leagues\(slug\)\)/.test(js) && /filter\(v => clubsAt\(v\)\.length && !mine\.has\(v\.id\)\)/.test(js));
+const m170 = rd('supabase', 'migrations', '0170_go_demo_clubs_gone.sql');
+ok('0170: the demo clubs, only when their league is gone; their games only when both sides are demo clubs, and a mixed one stops it all',
+   /where league_id is null\s+and slug in \('neon-city', 'soft-club', 'harbour-bay', 'east-dock'\)/.test(m170)
+   && /raise exception '0170: a demo club played a real one/.test(m170)
+   && /delete from games where home_team_id = any\(demo\) and away_team_id = any\(demo\);/.test(m170)
+   && m170.indexOf('delete from games') < m170.indexOf('delete from teams'));
+ok('...their players by the demo prefix and only with no club', /p\.slug like 'neon-city-%'/.test(m170)
+   && /and not exists \(select 1 from roster_entries r where r\.player_id = p\.id\);/.test(m170));
+ok('...and GO offers only a league\'s games', /and l\.id is not null\s+-- 0170/.test(m170)
+   && /grant execute on function public\.go_games_now\(\) to anon, authenticated;/.test(m170));
+const nums170 = (await import('node:fs')).readdirSync(path.join(ROOT, 'supabase', 'migrations')).filter(f => /^0170_/.test(f));
+ok('0170 is the only 0170', nums170.length === 1, nums170);
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
