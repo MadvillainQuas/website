@@ -154,7 +154,10 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
                 extra={"home_logo": (home.get("imageUrls") or {}).get("crest"),
                        "away_logo": (away.get("imageUrls") or {}).get("crest"),
                        "home_code": (home.get("code") or home.get("tla") or "").strip(),
-                       "away_code": (away.get("code") or away.get("tla") or "").strip()}))
+                       "away_code": (away.get("code") or away.get("tla") or "").strip(),
+                       # the arena (0162, EPINOIA GO): {"code": "AUM6", "name": "TELEKOM CENTER ATHENS", "address": ...}
+                       "venue": ((g.get("venue") or {}).get("name") or "").strip() or None,
+                       "venue_address": ((g.get("venue") or {}).get("address") or "").strip() or None}))
         self.last_competitions = []
         return out
 

@@ -81,6 +81,7 @@ class GameBundle:
     raw: Any = None                          # raw payload for archiving (never written to Postgres)
     feed_lm_ms: Optional[int] = None         # data.json Last-Modified, epoch ms (None: header absent)
     feed_recv_ms: Optional[int] = None       # when that response arrived, epoch ms
+    venue: Optional[str] = None              # the arena, where only the game's own page names it (0162)
 
     def __post_init__(self):
         _clean(self)

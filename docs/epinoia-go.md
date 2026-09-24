@@ -22,6 +22,7 @@ needs Louie says so.
 | D8 | A photo can only be posted for a game the fan stamped, which keeps the feed real and spam-free | proposed |
 | D9 | Photos are re-encoded in the browser before upload, which strips the EXIF data (including the phone's GPS) | proposed |
 | D10 | The map drawn on EPINOIA GO: our own SVG (no dependency, like the country outlines) with "open in Google Maps" links, vs an embedded Google map (API key in the page, CSP change) | decide at 4.3 |
+| D11 | A game's arena is its own venue, else its home club's arena (`game_venue_id`, 0162). Seven feeds never name a venue, and their leagues play at fixed home arenas | done 2026-09-24 |
 
 ## Where we start (inventory, 2026-09-24)
 
@@ -38,13 +39,22 @@ needs Louie says so.
 ## Phase 1 — Arenas
 
 - [x] **1.1 Inventory** what the database knows (above).
-- [ ] **1.2 The venues table** (migration): name, aliases, address, country, latitude/longitude, stamp radius,
-      Google place ID, how it was pinned and who checked it; `games.venue_id` and `teams.home_venue_id`. One
-      matcher (name folding, aliases, the home club as fallback) used by the ingest and the backfill.
-- [ ] **1.3 Venue names from every feed**: each adapter that drops a venue keeps it, league by league; where a
-      feed has none, the home club's venue. Backfill the games already stored.
+- [x] **1.2 The venues table** — migration `0162_venues.sql`: `venues` (name, country, address, pin, radius,
+      Google place id, who checked it) and `venue_aliases` (every spelling, folded); `games.venue_id` linked by a
+      trigger whenever `games.venue` is written, so the ingest, the scorer and the console all link without
+      knowing; `teams.home_venue_id` learnt from home games; `game_venue_id()`, the arena of a game (D11).
+      Placeholders ("調整中", "TBD") link nothing. Run on a real Postgres (PGlite) with 25 checks, twice over.
+      **Live once Louie runs `db push`.**
+- [x] **1.3 Venue names from every feed** — the pipeline now stores the venue on games first seen already
+      played (it only did for fixtures still to come), from the schedule or else the game's own page (ABA,
+      PLK, NBL, FEB keep it there). EuroLeague and EuroCup now carry venue and address. Checked every other
+      feed: Liga Endesa, ProA/ProB, LNBP, Kooperativa NBL, 1 Liga Mężczyzn, Kosovo and the FEB fixture lists
+      name no venue anywhere (D11 covers them). `venue_backfill.py` (schedules only, never a game) filled 615
+      games (EuroLeague 380, EuroCup 224, BCB 9, LKL 2); every other league already had its venues.
 - [ ] **1.4 Pin every arena** with Google Maps (D3, D4): place ID and coordinates, low-confidence matches
-      flagged for a human.
+      flagged for a human. Two passes: the venues games name, and **the home arena of every club** in the
+      leagues whose feeds name none (D11), found by the club's name and city. Two spellings that land on the
+      same place id are one arena (their aliases merge).
 - [ ] **1.5 Arena editor** in the platform console: the list, unpinned and flagged first, move a pin, merge two
       names that are one arena.
 

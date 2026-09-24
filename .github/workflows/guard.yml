@@ -521,6 +521,13 @@ jobs:
         # the shot chart - with full player names from the shot feed, the leader tables or the player's page
         run: python scripts/ingest/aba_test.py
 
+      - name: Arenas for EPINOIA GO (every game's venue, and migration 0162)
+        # venue_of reads a game's arena off its own page where the schedule has none (ABA, PLK, NBL, FEB);
+        # EuroLeague and EuroCup schedule rows carry venue and address; write_platform stores the venue on
+        # games first seen already played, at all three call sites, never clearing one; 0162's tables,
+        # linking trigger, placeholders, home-club fallback, permissions and self-check
+        run: python scripts/ingest/venues_test.py
+
       - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
         # nbl.py over cached season lists, schedules and game replies: only each league's main
         # season is discovered (never the pre-season, the Blitz or a cup final), the WNBL's finals

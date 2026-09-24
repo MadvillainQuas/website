@@ -18,7 +18,8 @@ WHERE THE DATA IS. Two hosts, both public, no key, no browser:
     went quiet on 2026-09-18. Tokens are normalised and a page without slides is refused.
 
   * THE GAMES come from the lionkeen ticker behind live.2basketballbundesliga.de:
-        GET  live.../init/{gameId}          clubs (id, letter, caption, coach), player dict, venue
+        GET  live.../init/{gameId}          clubs (id, letter, caption, coach), player dict (no venue:
+                                            checked 2026-09-24, neither /init nor /lt/info names the arena)
         GET  api.../lt/info/{gameId}        season, league ("ProA", "ProB Nord", "ProB Süd"), round
         socket.io v4, emit('history', "{gameId}") on the game's own event name -> the whole game:
             [0, id, q, clockRemain, scoreA, scoreB]                    score series

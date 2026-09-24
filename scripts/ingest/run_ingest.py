@@ -685,7 +685,7 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
         return
     existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{g.external_id}&select=game_id")
     game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
-    row = {"tipoff_at": g.tipoff_at, "venue": ex.get("venue")}
+    row = {"tipoff_at": g.tipoff_at, "venue": ex.get("venue"), "venue_address": ex.get("venue_address")}
     # WHETHER THIS GAME COUNTS IN THE CONFERENCE TABLE (0144), when the adapter knows: False for a
     # conference playoff (two members of one conference, not a conference game), True/False where
     # the feed flags it. Absent = the database works it out from the clubs' groups. Kept out of
@@ -801,11 +801,31 @@ def _period_over(raw: dict, period: int) -> bool:
         return False
 
 
+def venue_of(b: GameBundle) -> str | None:
+    """The arena a game's own page names, where the schedule did not: the bundle's `venue`, else the
+    adapter's metadata block in the raw payload (raw["aba"], raw["plk"], raw["nbl"], raw["feb"]... each
+    carry "venue"). None when nothing names one."""
+    v = (getattr(b, "venue", None) or "").strip()
+    if v:
+        return v
+    raw = b.raw if isinstance(b.raw, dict) else {}
+    for k in sorted(raw):
+        meta = raw[k]
+        if isinstance(meta, dict) and isinstance(meta.get("venue"), str) and meta["venue"].strip():
+            return meta["venue"].strip()
+    return None
+
+
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None,
-                   stamps: dict | None = None) -> bool:
+                   stamps: dict | None = None, venue: str | None = None) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
     A league connected from the console (auto_create) has its clubs / players / rosters created
-    from the payload the first time they appear; a hand-mapped league only matches, never invents."""
+    from the payload the first time they appear; a hand-mapped league only matches, never invents.
+
+    `venue` is the schedule's arena for this game. write_fixture stores it for a game still to come,
+    but a game first seen already played (a backfilled season, a league added mid-season) never went
+    through write_fixture, so it is written here too - whatever the game's state, the arena is a fact
+    about where it was played (0162 links it to games.venue_id). An empty one never clears a stored one."""
     ac = src.get("adapter_config") or {}
     league_id = resolve_league(sb, src, run)
     plat = run["_platform"]
@@ -829,13 +849,17 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     # "log closed" to the platform (insert trigger refuses events, finalise refuses a second pass)
     status = ("live" if will_translate else "final") if b.status == "final" else ("live" if b.status == "live" else "scheduled")
     scores = {"home_score": int(b.team["home"].get("points", 0)), "away_score": int(b.team["away"].get("points", 0))}
+    venue = (venue or "").strip() or venue_of(b)
     if not game_id:
         g = sb.upsert("games", {"competition_id": comp["id"], "home_team_id": home["id"], "away_team_id": away["id"],
-                                "tipoff_at": b.tipoff_at, "status": status, **scores}, "id")
+                                "tipoff_at": b.tipoff_at, "status": status, **scores,
+                                **({"venue": venue} if venue else {})}, "id")
         game_id = g[0]["id"]
     else:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id")
+        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id,venue")
         extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and cur[0].get("tipoff_at") != b.tipoff_at) else {}
+        if venue and cur and cur[0].get("venue") != venue:
+            extra["venue"] = venue
         # A game filed under the league's catch-all competition before the feed's phases were known
         # moves to the phase this source is (Trophy, League, playoffs). A game an administrator has
         # already placed somewhere specific is never touched - only the catch-all is.
@@ -1828,7 +1852,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             try:
                 # the observer's per-action memory (step 3); the kill switch has none, and passes
                 # None, which is exactly the write this lane made before memory existed
-                write_platform(sb, src, b, run, observed, observer.stamps(xid) if use_obs else None); run["games_written"] += 1
+                write_platform(sb, src, b, run, observed, observer.stamps(xid) if use_obs else None, venue=(g.extra or {}).get("venue")); run["games_written"] += 1
             except Exception as exc:
                 print(f"    (platform write failed: {exc})")
             if use_obs:
@@ -2253,7 +2277,7 @@ def main() -> int:
                 entries[g.external_id] = entry
                 if sb:
                     try:
-                        write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every))
+                        write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"))
                     except Exception as exc:
                         print(f"    (platform write failed: {exc})")
                 if args.fixture_out:
@@ -2288,7 +2312,7 @@ def main() -> int:
                     entries[g.external_id] = entry_for(b, prev, raw_ref, g)
                     if sb:
                         try:
-                            write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every))
+                            write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"))
                         except Exception as exc:
                             print(f"    (platform write failed: {exc})")
                     print(f"    ~ {b.home_name} {entries[g.external_id]['homeScore']}-{entries[g.external_id]['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
