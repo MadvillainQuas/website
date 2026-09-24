@@ -44,6 +44,16 @@ const rowToEvent = r => {
   return e;
 };
 
+/* a finished game's log from its file on the CDN (migration 0156), or null: see game/game.js */
+async function fileLog() {
+  try {
+    const r = await fetch(`${CFG.supabaseUrl}/storage/v1/object/public/snapshots/events/${encodeURIComponent(gameId)}.json`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j && j.game === gameId && Array.isArray(j.rows) ? j.rows : null;
+  } catch (_) { return null; }
+}
+
 /* the host page cannot know how tall this wants to be */
 function postHeight() {
   try {
@@ -219,11 +229,14 @@ function merge(g, events, removed, full) {
     if (!gs.length) return fail('Game not found');
     game = gs[0];
 
-    let rows = [];
-    try {
-      rows = await api(`game_events?game_id=eq.${encodeURIComponent(gameId)}` +
-        `&select=seq,t,team,pid,period,clock,payload&order=seq&limit=1000`);
-    } catch (_) { /* a live game with nothing written yet is normal */ }
+    let rows = (game.status === 'final' && await fileLog()) || null;
+    if (!rows) {
+      rows = [];
+      try {
+        rows = await api(`game_events?game_id=eq.${encodeURIComponent(gameId)}` +
+          `&select=seq,t,team,pid,period,clock,payload&order=seq&limit=1000`);
+      } catch (_) { /* a live game with nothing written yet is normal */ }
+    }
 
     const snap = game.roster_snapshot;
     S = {

@@ -102,10 +102,29 @@ function rowToEvent(r) {
   return e;
 }
 
+/* A FINISHED GAME'S LOG IS A FILE ON THE CDN (migration 0156): the rows this
+   page reads below, written by the snapshots function for every finished game a
+   signed-out reader may read. A shared link to a final is opened by everybody at
+   once, and from the edge that costs the database nothing. No file (a game
+   finalised in the last few minutes, a members-only league's) reads the
+   database as before. */
+async function fileLog() {
+  try {
+    const r = await fetch(`${CFG.supabaseUrl}/storage/v1/object/public/snapshots/events/${encodeURIComponent(gameId)}.json`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j && j.game === gameId && Array.isArray(j.rows) ? j.rows : null;
+  } catch (_) { return null; }
+}
+
 /* Page through the log. PostgREST caps a response and a game runs to ~800
    events; a silent truncation would show a box score that is quietly wrong,
    which is worse than one that fails. */
-async function fetchLog() {
+async function fetchLog(final) {
+  if (final) {
+    const rows = await fileLog();
+    if (rows) return rows;
+  }
   let events = [], from = 0;
   for (;;) {
     const page = await api(`game_events?game_id=eq.${encodeURIComponent(gameId)}` +
@@ -188,7 +207,7 @@ async function loadStored() {
      first quarter the starters read ten minutes each, and kept them until the next play was
      logged, because a clock alone never redraws the tables (reported 2026-09-23). */
   const [events, state] = await Promise.all([
-    fetchLog(),
+    fetchLog(g.status === 'final'),
     g.status === 'live'
       ? api(`game_state?game_id=eq.${encodeURIComponent(gameId)}&select=period,clock_ms,last_seq&limit=1`)
           .then(r => r[0] || null, () => null)
