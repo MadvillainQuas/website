@@ -64,8 +64,15 @@ needs Louie says so.
       the arena's full name is now in `scripts/ingest/arena_hints.json`, to be asked with `--hinted` once the
       day's lookups allow (the first day's went on the full pass). Still to do: the hinted run, then the
       clubs pass (`--clubs`) for the leagues whose feeds name no venue. Offline tests: `pin_arenas_test.py`.
-- [ ] **1.5 Arena editor** in the platform console: the list, unpinned and flagged first, move a pin, merge two
-      names that are one arena.
+- [x] **1.5 Arena editor** — the platform console's **Arenas** tab (`epinoia/admin/platform/arenas-ui.js`):
+      counts, the list with the ones that need a look first (busiest first; search by arena, town, club or
+      spelling), and a card per arena: its spellings and clubs, "open in Google Maps", **right as it is**,
+      **move the pin** by pasting the Google Maps address of the right place (the place's own point is read,
+      not the map's centre; a nudge keeps the Google place id), flag for a look, the stamp radius, the name,
+      **merge** two rows, and the command to ask Google again. Works on 0162 as it is live; the merge needs
+      migration `0164_arena_editor.sql` (`merge_venues`, and a trigger that audits every change by hand and
+      makes "checked by" the person signed in) - **live once Louie runs `db push`**; until then the merge says
+      so. PGlite: 19 checks; Chromium: 41 (en/ja/es, phone, dark); `arena-editor.test.mjs`: 35.
 
 ## Phase 2 — Usernames
 

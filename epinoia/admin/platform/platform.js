@@ -150,7 +150,7 @@ function wire() {
          neither. */
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
-                     plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy };
+                     plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1201,6 +1201,15 @@ async function newLeague() {
     $('#nlName').value = ''; $('#nlSlug').value = ''; delete $('#nlSlug').dataset.touched;
     loadLeagues(); loadOverview();
   }
+}
+
+/* ---------------------------------------------------------------- arenas --- */
+/* EPINOIA GO's arena editor (docs/epinoia-go.md, step 1.5) lives in arenas-ui.js; it is drawn afresh
+   each time the tab opens, so a pin moved from the pinning script meanwhile shows. */
+function loadArenas() {
+  const A = window.EpinoiaArenasUI;
+  if (!A) return say('arenas-ui.js did not load, so arenas cannot be edited. Reload the page.', 'err');
+  A.mount({ host: '#arenasHost', sb, say, oops, me: me && me.id });
 }
 
 /* ----------------------------------------------------------------- clubs --- */

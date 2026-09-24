@@ -284,8 +284,10 @@ ok('the consoles were read and call something', uniq.length > 10, String(uniq.le
   /* and each one loads something rather than sitting empty */
   const loaders = [...js.matchAll(/function (load[A-Za-z]+)\s*\(/g)].map(m => m[1]);
   ok('each panel has a loader behind it', loaders.length >= 6, loaders.join(', '));
+  /* used = named anywhere besides its own definition: called, or handed to the tab map or a button
+     ("arenas: loadArenas" is how a tab calls it; counting only "loadArenas(" missed that) */
   const unused = loaders.filter(fn =>
-    (js.match(new RegExp('\\b' + fn + '\\s*\\(', 'g')) || []).length < 2);
+    (js.match(new RegExp('\\b' + fn + '\\b', 'g')) || []).length < 2);
   ok('no panel loader is defined and never called', unused.length === 0, unused.join(', '));
 }
 

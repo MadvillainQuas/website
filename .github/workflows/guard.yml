@@ -286,6 +286,12 @@ jobs:
         # page checking as it is typed and never translating a name
         run: node supabase/tests/usernames.test.mjs
 
+      - name: The arena editor (EPINOIA GO, migration 0164)
+        # a pin moved by pasting a Google Maps address (the place's own point, not the map's centre), the
+        # place id a moved pin keeps, the states and their order; merge_venues for administrators only,
+        # everything moved before the row goes, "checked by" always the person signed in; ja/es
+        run: node supabase/tests/arena-editor.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the
