@@ -259,10 +259,16 @@ const state = (o) => Object.assign({
   ok('the strip asks the database for those rows',
      /status=in\.\([^)]*finalising/.test(stripSrc));
 
-  const homeSrc = readFileSync(path.join(ROOT, 'epinoia', 'home.js'), 'utf8');
-  ok('so does the league front page', /status=in\.\([^)]*finalising/.test(homeSrc));
+  /* the league front page's reads live in gameslist.js (its own test, gameslist.test.mjs, runs
+     them against a season of games) */
+  const listSrc = readFileSync(path.join(ROOT, 'epinoia', 'gameslist.js'), 'utf8');
+  ok('so does the league front page', /status=in\.\([^)]*finalising/.test(listSrc));
+  const GL = (await import('node:module')).createRequire(import.meta.url)(path.join(ROOT, 'epinoia', 'gameslist.js'));
+  const NOW = Date.parse('2026-09-24T12:00:00Z');
+  const written = { id: 'w', status: 'finalising', tipoff_at: '2026-09-24T08:00:00Z', home_score: 88, away_score: 84 };
+  const picked = GL.pick([written], 'week', NOW, null);
   ok('...and counts one as a result rather than a fixture',
-     /DONE\(g\.status\) && at\(g\) >= weekAgo/.test(homeSrc));
+     picked.shown.length === 1 && picked.recent === 1 && picked.soon === 0, picked.note);
 
   const fxSrc = readFileSync(path.join(ROOT, 'epinoia', 'fixtures', 'fixtures.js'), 'utf8');
   ok('and the fixtures page draws it as finished',

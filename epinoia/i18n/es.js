@@ -1401,7 +1401,9 @@
       'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO: sella los pabellones a los que vas, en el partido',
       'EPINOIA GO: find the game you are at, the arenas to tick off, the leaderboard': 'EPINOIA GO: busca el partido en el que estás, los pabellones pendientes, la clasificación',
       'THE FEED: the fans’ photographs of the games they stamped': 'EL MURO: las fotos de los aficionados de los partidos que sellaron',
-      'your stamps: every game, the map, and the distance between them': 'tus sellos: cada partido, el mapa y la distancia entre ellos'
+      'your stamps: every game, the map, and the distance between them': 'tus sellos: cada partido, el mapa y la distancia entre ellos',
+      'Nothing this week.': 'Nada esta semana.',
+      'No results yet.': 'Aún no hay resultados.'
     },
 
     ctx: {

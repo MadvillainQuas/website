@@ -841,6 +841,13 @@ jobs:
         # and every player's minutes within a minute of the feed's own box where that adds up
         run: node supabase/tests/lineups-five.test.mjs
 
+      - name: A league's games section shows the games of this week
+        # epinoia/gameslist.js: the front page used to read the newest 400 games of a league, so
+        # a league with 780 fixtures showed January as "this week" and no results at all
+        # (B.LEAGUE Premier, 2026-09-24). Its reads are run against a season of that shape:
+        # this week, results, upcoming, live, an empty week, a league too big for any window
+        run: node supabase/tests/gameslist.test.mjs
+
       - name: The Table page's strength of schedule is index_9's, number for number
         # epinoia/sos.js is index_9.html's SOS tab: index_9's own code is lifted out of the file
         # and run beside it on one league under all four filters, and every number of every team

@@ -67,6 +67,18 @@ async function api(p, anon) {
   return r.json();
 }
 
+/* A READ THAT ALSO SAYS HOW MANY ROWS THE DATABASE HAD. `Prefer: count=exact` puts the total in
+   Content-Range even when a limit cut the rows short, which is what the games section's header
+   needs: "776 upcoming" is a fact about the league, "60 upcoming" is a fact about the read. */
+async function apiPage(p, anon) {
+  const headers = withAuth({ apikey: CFG.supabaseAnonKey, Accept: 'application/json', Prefer: 'count=exact' }, anon);
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`, { cache: 'no-store', headers });
+  if (r.status === 401 && headers.Authorization) return apiPage(p, true);
+  if (!r.ok) throw new Error(r.status + ' ' + p.split('?')[0]);
+  const tail = (r.headers.get('content-range') || '').split('/')[1];
+  return { rows: await r.json(), total: tail && /^\d+$/.test(tail) ? +tail : null };
+}
+
 /* POST to a function rather than GET a table. The anonymous reads on this
    page all go through PostgREST's table endpoints; the ballot and the socials
    go through SECURITY DEFINER functions instead, because both have to return
@@ -169,29 +181,58 @@ function applySections() {
    again, so the reader is told what is true: it is finished. */
 const DONE = st => st === 'final' || st === 'finalising';
 
-/* WHICH COMPETITION, AND WHAT STATE. The section defaults to the week either side of now
-   across every competition; the chips narrow it to one competition (only those that have
-   games appear) and to results or upcoming, in which case the whole list of that kind is
-   shown, newest result first, next fixture first. */
+/* WHICH COMPETITION, AND WHAT STATE. The section defaults to the week either side of now across
+   every competition; the chips narrow it to one competition (only those that have games appear)
+   and to results or upcoming, in which case the list of that kind is shown, latest result first,
+   next fixture first.
+
+   WHAT IS READ FOLLOWS WHAT IS SHOWN (epinoia/gameslist.js). This used to read every game of the
+   league, newest first, capped at 400, and sort the week out of whatever came back -- so a league
+   with more than 400 fixtures showed the LAST 400 of its season and none of the present: B.LEAGUE
+   Premier's "this week" listed 21 January and its results were empty (reported 2026-09-24). It
+   now asks for the live games, and the results and fixtures the chosen view needs, each ordered
+   and limited, and a competition chip narrows the read itself. */
 let gamesComp = '', gamesShow = 'week';
 const KIND_LABEL = { league: 'league', cup: 'cup', trophy: 'trophy', playoff: 'playoffs', playoffs: 'playoffs', friendly: 'friendly' };
-function gamesPicker(gs) {
+
+/* WHICH COMPETITIONS GET A CHIP: the season's own that have at least one game, asked once (a row
+   each) rather than worked out from whichever games the current view happened to read, which
+   would drop a cup whose games all lie beyond the window. The hub has no season, so it offers
+   what it has come across. */
+const compsSeen = new Map();
+let chipCache = null;
+async function chipComps() {
+  if (LEAGUE) {
+    if (!chipCache) {
+      chipCache = (async () => {
+        const s = await seasonNow();
+        const cs = (s && s.comps) || [];
+        const has = await Promise.all(cs.map(c =>
+          api('games?competition_id=eq.' + encodeURIComponent(c.id) + '&select=id&limit=1').then(r => r.length > 0, () => true)));
+        return cs.filter((c, i) => has[i]);
+      })();
+      chipCache.catch(() => { chipCache = null; });
+    }
+    try { return await chipCache; } catch (_) { /* the chips fall back to what has been read */ }
+  }
+  return [...compsSeen.values()];
+}
+
+function gamesPicker(comps) {
   const sec = $('#gamesSec'); if (!sec) return;
   let pick = $('#gamesPick');
   if (!pick) { pick = el('div', 'gpick'); pick.id = 'gamesPick'; $('#games').before(pick); }
   pick.textContent = '';
-  const comps = new Map();
-  gs.forEach(g => { const c = g.competitions; if (c && c.id && !comps.has(c.id)) comps.set(c.id, c); });
   const chip = (label, on, fn, tag) => {
     const b = el('button', 'ep-chip' + (on ? ' on' : ''), label); b.type = 'button';
     if (tag) { const k = el('small', 'kind', tag); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
     b.addEventListener('click', () => { fn(); gamesKey = ''; games(); });
     return b;
   };
-  if (comps.size > 1) {
+  if (comps.length > 1) {
     const row = el('div', 'grow');
     row.appendChild(chip('all competitions', !gamesComp, () => { gamesComp = ''; }));
-    [...comps.values()].sort((a, b) => String(a.name).localeCompare(String(b.name))).forEach(c =>
+    comps.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))).forEach(c =>
       row.appendChild(chip(c.name, gamesComp === c.id, () => { gamesComp = c.id; }, KIND_LABEL[c.kind] || '')));
     pick.appendChild(row);
   }
@@ -201,13 +242,46 @@ function gamesPicker(gs) {
   pick.appendChild(row2);
 }
 
+/* the columns a row needs: the club's id as well as its name, because a fixture row asks
+   initials.js for that club's letters by id (teamName), which is what a phone shows in place of
+   a name it has no room for */
+const GAMES_SELECT = 'id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
+  'competitions(id,name,kind),' +
+  'home:home_team_id(id,name,short_name,colour,logo_path),away:away_team_id(id,name,short_name,colour,logo_path)';
+
+/* THE NUMBER ON "SHOW ALL": every game the fixtures page would list, counted by the database.
+   It moves when a fixture is added, not when a score changes, so it is asked for again every
+   five minutes rather than every poll. */
+const totalCache = new Map();
+async function gamesTotal(scope) {
+  const hit = totalCache.get(scope);
+  if (hit && Date.now() - hit.at < 5 * 60 * 1000) return hit.n;
+  let n = null;
+  try {
+    n = (await apiPage('games?select=id&status=in.(live,final,finalising,scheduled)' + scope + '&limit=1')).total;
+  } catch (_) { /* the link simply loses its number */ }
+  if (n != null) totalCache.set(scope, { n, at: Date.now() });
+  return n;
+}
+
+/* "Thu 21 Jan · 15:00", the way a fixture row writes it */
+function whenText(iso) {
+  const when = iso ? new Date(iso) : null;
+  if (!when || isNaN(when)) return '';
+  return when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+         ' · ' + when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+let gamesSeq = 0;
 async function games() {
   /* behind a members-only league's wall with its fixtures private there is nothing
      this viewer may be shown, so the timer below asks for nothing either */
   if (WALL.walled && !WALL.fixturesPublic) return;
-  let gs;
+  const GL = window.EpinoiaGamesList;
+  const mine = ++gamesSeq;                 // a chip pressed while a read is out supersedes it
+  const now = Date.now();
+  let rows, totals, total, scope = '';
   try {
-    let scope = '';
     if (LEAGUE) {
       /* A game belongs to a competition, which belongs to a season, which
          belongs to a league — so the league's competitions are resolved first
@@ -221,19 +295,29 @@ async function games() {
       }
       scope = '&competition_id=in.(' + comps.join(',') + ')';
     }
-    gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
-      'competitions(id,name,kind),' +
-      /* the club's id as well: a fixture row asks initials.js for that club's letters by id
-         (teamName), which is what a phone shows in place of a name it has no room for */
-      'home:home_team_id(id,name,short_name,colour,logo_path),away:away_team_id(id,name,short_name,colour,logo_path)' +
-      '&status=in.(live,final,finalising,scheduled)' + scope + '&order=tipoff_at.desc&limit=400');
+    /* a chosen competition narrows the READ: filtering what came back would find nothing for a
+       cup whose games all lie beyond the window */
+    if (gamesComp) scope = '&competition_id=eq.' + encodeURIComponent(gamesComp);
+    const Q = GL.queries(gamesShow, now, scope);
+    const none = { rows: [], total: null };
+    const [lv, dn, nx, tot] = await Promise.all([
+      apiPage('games?select=' + GAMES_SELECT + Q.live),
+      Q.done ? apiPage('games?select=' + GAMES_SELECT + Q.done) : none,
+      Q.next ? apiPage('games?select=' + GAMES_SELECT + Q.next) : none,
+      gamesTotal(scope)
+    ]);
+    rows = lv.rows.concat(dn.rows, nx.rows);
+    totals = { done: dn.total, next: nx.total };
+    total = tot;
   } catch (e) {
     return fail('#games', 'Could not reach the server. ' + e.message);
   }
+  if (mine !== gamesSeq) return;
   /* Behind the wall only the fixtures are this viewer's. The database already
      refuses the rest; this keeps the list honest where it has not (a league
      previewed through the admins' access simulation, or before enforcement). */
-  if (WALL.walled) gs = gs.filter(g => g.status === 'scheduled');
+  if (WALL.walled) rows = rows.filter(g => g.status === 'scheduled');
+  rows.forEach(g => { const c = g.competitions; if (c && c.id) compsSeen.set(c.id, c); });
 
   /* NOTHING CHANGED, NOTHING REDRAWN.
 
@@ -242,104 +326,48 @@ async function games() {
      time. Rebuilding fifteen rows every half minute would throw away focus,
      restart the crest animations and flash the section for no reason. The
      fingerprint is what a reader would notice: which games, in what state, at
-     what score. */
-  const key = gamesComp + '/' + gamesShow + '|' + gs.map(g => g.id + ':' + g.status + ':' +
+     what score -- and the hour, because "this week" moves with the clock even
+     when no game does. */
+  const key = gamesComp + '/' + gamesShow + '|' + Math.floor(now / 3600000) + '|' + total + '|' +
+                     totals.done + '/' + totals.next + '|' + rows.map(g => g.id + ':' + g.status + ':' +
                      g.home_score + '-' + g.away_score).join('|');
   if (key === gamesKey && $('#games').childElementCount) return;
+
+  const comps = await chipComps();
+  const v = GL.pick(rows, gamesShow, now, totals);
+  /* an empty week is an answer; "the next game is on the 2nd" is a better one */
+  let next = null;
+  if (!v.shown.length && gamesShow === 'week' && total !== 0) {
+    try { next = (await api('games?select=id,tipoff_at' + GL.after(now, scope)))[0] || null; }
+    catch (_) { /* the sentence below simply says less */ }
+  }
+  if (mine !== gamesSeq) return;
   gamesKey = key;
 
-  gamesPicker(gs);
-  if (gamesComp) gs = gs.filter(g => g.competition_id === gamesComp);
-
+  gamesPicker(comps);
   const host = $('#games'); host.textContent = '';
-  if (!gs.length) {
+  if (total === 0) {
     host.appendChild(el('div', 'empty',
       'No games yet. A fixture appears here as soon as a league schedules one.'));
     return;
   }
-
-  /* The splash answers "what just happened and what is next", not "show me
-     the season" — that is what the fixtures page is for. So: anything live,
-     results from the past week, and the next fixtures up, capped at fifteen.
-
-     The week is measured from NOW rather than from the last game played,
-     because this list is explicitly about recency; a league that has not
-     played for a month should show an empty result set and a run of upcoming
-     fixtures, which is the truth. */
-  const now = Date.now();
-  const weekAgo = now - 7 * 86400000;
-  const at = g => new Date(g.tipoff_at || 0).getTime();
-
-  const live = gs.filter(g => g.status === 'live');
-  /* Both ends matter. Without the upper bound a finalised game dated in the
-     future counts as "this week" — which is not hypothetical: the demo season
-     carries finals dated months ahead, and they filled the recent list. */
-  const recent = gs.filter(g => DONE(g.status) && at(g) >= weekAgo && at(g) <= now)
-                   .sort((a, b) => at(b) - at(a));
-  const upcoming = gs.filter(g => g.status === 'scheduled' && at(g) >= now)
-                     .sort((a, b) => at(a) - at(b));
-
-  /* Anything finalised but dated ahead is neither "this week" nor "upcoming".
-     Rather than drop it silently it rides after the rest, so a mis-dated
-     fixture is visible on the page it belongs to instead of only in the
-     database. */
-  const odd = gs.filter(g => DONE(g.status) && at(g) > now)
-                .sort((a, b) => at(a) - at(b));
-
-  /* THE NEXT GAME FIRST — the club pages' own rule (epinoia/t/team.js, "THE NEXT GAME
-     FIRST"), which this page did not follow.
-
-     It used to print one strict date order: this week's results, then the fixtures, all
-     ascending. Read from the top that opens on the OLDEST thing in the window — a result
-     from six days ago — and the game about to be played sat wherever the week's results
-     happened to leave it. On a league with a busy week it was off the bottom of the
-     fifteen entirely, so "what is on next" needed a tab (reported 2026-09-18).
-
-     So: anything LIVE, then what is still to come soonest-first, then the results
-     latest-first. The first row is always the nearest game, and the rest fan out from it
-     in both directions the way somebody scanning the page actually reads.
-
-     RESULTS KEEP A FEW OF THE FIFTEEN. Upcoming alone would fill the cap on any league
-     with a season ahead of it, and the default view would stop answering "what just
-     happened" at all — which is half of what this section is for. Four is enough to show
-     the last round; the rest of the room goes to the fixtures. */
-  const CAP = gamesShow === 'week' ? 15 : 60;
-  const RECENT_SLOTS = 4;
-  let rest;
-  if (gamesShow === 'results') {
-    rest = gs.filter(g => DONE(g.status)).sort((a, b) => at(b) - at(a));
-  } else if (gamesShow === 'upcoming') {
-    rest = gs.filter(g => g.status === 'scheduled').sort((a, b) => at(a) - at(b));
-  } else {
-    const room = Math.max(0, CAP - live.length);
-    /* up to four slots held back for results, and the fixtures take the rest -- but a league
-       with only two fixtures left does not waste the other thirteen rows: whatever the
-       fixtures do not use falls back to the results. */
-    const reserved = Math.min(recent.length, RECENT_SLOTS);
-    const keepUpcoming = Math.min(upcoming.length, Math.max(0, room - reserved));
-    const keepRecent = Math.min(recent.length, Math.max(0, room - keepUpcoming));
-    rest = upcoming.slice(0, keepUpcoming)
-             .concat(recent.slice(0, keepRecent), odd);
-  }
-  const shown = live.concat(rest).slice(0, CAP);
-  const total = gs.length;
-
-  if (!shown.length) {
-    host.appendChild(el('div', 'empty',
-      'Nothing in the last week and nothing scheduled. The full fixture list is ' +
-      'still there — see all fixtures.'));
-    showAllLink(total);
+  $('#gamesNote').textContent = v.note;
+  showAllLink(total);
+  if (!v.shown.length) {
+    if (gamesShow === 'upcoming') host.appendChild(el('div', 'empty', 'No upcoming fixtures.'));
+    else if (gamesShow === 'results') host.appendChild(el('div', 'empty', 'No results yet.'));
+    else if (next && next.tipoff_at) {
+      const b = el('div', 'empty', 'Next: ' + whenText(next.tipoff_at));
+      b.style.paddingTop = '0';
+      host.append(el('div', 'empty', 'Nothing this week.'), b);
+    } else {
+      host.appendChild(el('div', 'empty',
+        'Nothing in the last week and nothing scheduled. The full fixture list is ' +
+        'still there — see all fixtures.'));
+    }
     return;
   }
-
-  $('#gamesNote').textContent = live.length
-    ? live.length + ' live now'
-    : gamesShow === 'results' ? rest.length + (rest.length === 1 ? ' result' : ' results')
-    : gamesShow === 'upcoming' ? rest.length + ' upcoming'
-    : recent.length + ' this week · ' + upcoming.length + ' upcoming' +
-      (odd.length ? ' · ' + odd.length + ' dated ahead' : '');
-  showAllLink(total);
-  gs = shown;
+  const gs = v.shown;
 
   gs.forEach(g => {
     const final = DONE(g.status), live = g.status === 'live';
@@ -379,10 +407,7 @@ async function games() {
     /* Where and when, on a line of its own. A fixture list without a venue is
        a list you have to ask somebody about. */
     const bits = [];
-    if (when) {
-      bits.push(when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
-                ' · ' + when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-    }
+    if (when) bits.push(whenText(g.tipoff_at));
     if (g.venue) bits.push(g.venue);
     if (bits.length) row.appendChild(el('div', 'fxwhere', bits.join('  ·  ')));
 

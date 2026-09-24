@@ -1399,7 +1399,9 @@
       'EPINOIA GO: stamp the arenas you go to, at a game': 'EPINOIA GO：試合会場で、行ったアリーナをスタンプ',
       'EPINOIA GO: find the game you are at, the arenas to tick off, the leaderboard': 'EPINOIA GO：今いる試合を探す、未スタンプのアリーナ、ランキング',
       'THE FEED: the fans’ photographs of the games they stamped': 'フィード：ファンがスタンプした試合で撮った写真',
-      'your stamps: every game, the map, and the distance between them': 'あなたのスタンプ：すべての試合、地図、その間の距離'
+      'your stamps: every game, the map, and the distance between them': 'あなたのスタンプ：すべての試合、地図、その間の距離',
+      'Nothing this week.': '今週の試合はありません。',
+      'No results yet.': 'まだ結果はありません。'
     },
 
     ctx: {
