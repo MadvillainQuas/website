@@ -1,45 +1,44 @@
 'use strict';
 /* ============================================================================
-   /epinoia/games/ — GLOBAL FIXTURES (roadmap Phase 2).
+   /epinoia/games/ — GLOBAL FIXTURES (roadmap Phase 2), one dropdown per league.
 
-   Every league's games on one page, 30 at a time, nearest to now first.
+   Every league with a game in the NEXT SEVEN DAYS, each as its own dropdown, nearest first. A league with nothing
+   in the next week is not on the page (its own pages have its results and its calendar); a league with a game
+   live now is, whatever else it has.
 
-   "NOW" IS FROZEN AT LOAD. Both cursors (EpinoiaGlobalGames.feed) measure
-   from it: upcoming games from two hours before it, forwards; results before
-   it, backwards. A reader pressing Show more ten minutes later gets the next
-   thirty of the same list, not a list that has shifted under them.
+   WHICH LEAGUES: one light read (EpinoiaGlobalGames.weekLeagues: ids and tip-offs of the scheduled games from two
+   hours ago to seven days ahead, counted per league). The dropdown's heading carries that league's count.
 
-   LIVE GAMES ARE PINNED above every group, read on their own query and kept
-   fresh (15 s while any is live, 30 s otherwise, and at once on rt.js's
-   'epinoia:live'). A pinned game that finishes stays pinned with its final
-   score for the rest of the visit rather than vanishing from under the reader;
-   while it is being finalised anonymous reads cannot see it at all, so its
-   last card is kept until it comes back.
+   WHAT A DROPDOWN HOLDS, AND SHOW MORE IS ITS OWN. A league's games are read when its dropdown is opened (the
+   first one is opened for the reader) with a feed of that league alone (EpinoiaGlobalGames.feed({ league })):
+   the games nearest to now first - the next ones and the latest results - PAGE of them, and a Show more at the
+   foot of THAT dropdown reads the next PAGE of that league. Nothing about one league's button moves another
+   league's list, and a league nobody opens is never read. Inside a dropdown: 'next' soonest first, then
+   'results' newest first.
 
-   GROUPS. One details.ep-acc per league, ordered by its most imminent game.
-   The first group is open. Show more adds into the groups already on the page
-   and keeps each one's open or closed state, because the elements are kept and
-   only their lists are redrawn. Inside a group: 'next' soonest first, then
-   'results' newest first (EpinoiaGlobalGames.groupOrder).
+   "NOW" IS FROZEN AT LOAD. Every league's cursors measure from it, so pressing Show more ten minutes later gets the
+   next games of the same list, not a list that has shifted under the reader.
 
-   THE COUNT reads "30 of N", then "all N shown" when both cursors run out. N
-   comes from the two exact counts on the first reads, and becomes what was
-   actually shown at the end, because a game can drop out while it is being
-   finalised: a count is never assumed only to grow.
+   LIVE GAMES ARE PINNED above every dropdown, read on their own query and kept fresh (15 s while any is live, 30 s
+   otherwise, and at once on rt.js's 'epinoia:live'). A pinned game that finishes stays pinned with its final
+   score for the rest of the visit rather than vanishing from under the reader; while it is being finalised
+   anonymous reads cannot see it at all, so its last card is kept until it comes back.
+
+   THE COUNT under each heading is the league's games in the next seven days; the count beside its button reads
+   "8 of 47", then "all 47 shown" when that league's cursors run out (and becomes what was actually shown, because
+   a game can drop out while it is being finalised).
    ============================================================================ */
 (function () {
-  const PAGE = 30, LIVE_MS = 15000, IDLE_MS = 30000;
+  const PAGE = 8, WEEK_DAYS = 7, LIVE_MS = 15000, IDLE_MS = 30000;
   const NOW = Date.now();
 
   const $ = id => document.getElementById(id);
   const G = () => window.EpinoiaGlobalGames;
 
-  let feed = null;
-  const rows = new Map();          // every non-pinned game shown, by id
+  const groups = new Map();        // league id -> { id, league, det, body, n, foot, btn, count, weekN, first, rows, feed, ... }
   const pinned = new Map();        // live games (and ones that finished while pinned), by id
   const liveState = {};
-  const groupEls = new Map();      // league id -> { det, body, n }
-  let firstGroup = true;
+  let liveIds = [];                // the games live when the page opened: no league's feed repeats them
   let liveTimer = null;
 
   /* --------------------------------------------------------------- flags --- */
@@ -64,6 +63,8 @@
     return e;
   }
 
+  const leagueKey = g => ((G().leagueOf(g) || {}).id) || '';
+
   /* --------------------------------------------------------------- live --- */
   function drawLive() {
     const box = $('gmLive'), grid = $('gmLiveGrid');
@@ -75,19 +76,25 @@
     list.forEach(g => grid.appendChild(G().card(g, { base: '../', now: Date.now(), state: liveState[g.id] })));
   }
 
-  /* A game that is now live is pinned, and comes out of its group if a page had listed it. */
+  /* A game that is now live is pinned, and comes out of its league's list if that had shown it: the league
+     whose list changed is returned, to be redrawn. */
   function pin(g) {
     pinned.set(g.id, g);
-    if (rows.has(g.id)) { rows.delete(g.id); return true; }
-    return false;
+    const rec = groups.get(leagueKey(g));
+    return rec && rec.rows.delete(g.id) ? rec : null;
   }
 
   async function readLive() {
     const gg = G();
     const live = await gg.live();
-    let regroup = false;
+    const touched = new Set();
     const seen = new Set();
-    live.forEach(g => { seen.add(g.id); if (pin(g)) regroup = true; });
+    live.forEach(g => {
+      seen.add(g.id);
+      const rec = pin(g);
+      if (rec) touched.add(rec);
+      if (!groups.has(leagueKey(g)) && leagueKey(g)) { addGroup(gg.leagueOf(g), 0, 0); touched.add(groups.get(leagueKey(g))); }
+    });
     /* pinned games no longer live: ask for them by id (final comes back; finalising does not,
        and keeps its last card) */
     const gone = Array.from(pinned.keys()).filter(id => !seen.has(id) && pinned.get(id).status === 'live');
@@ -101,7 +108,8 @@
     const st = ids.length ? await gg.liveState(ids) : {};
     Object.keys(st).forEach(k => { liveState[k] = st[k]; });
     drawLive();
-    if (regroup) drawGroups();
+    touched.forEach(rec => { if (rec) drawGroup(rec); });
+    if (touched.size) orderGroups();
   }
 
   function watchLive(delay) {
@@ -128,24 +136,14 @@
     });
   }
 
-  /* A LEAGUE'S NAME, SHORT, for the Show more button: the same rule as a star card's league
-     tag (EpinoiaStars.leagueShort: the name up to 14 characters, otherwise its initials), so
-     three full league names never make the button three lines tall on a phone */
-  function shortName(l) {
-    const name = String((l && (l.name || l.slug)) || 'League').trim();
-    if (name.length <= 14) return name;
-    const words = name.split(/\s+/).filter(w => /^[A-Za-z0-9]/.test(w));
-    return words.length >= 2 ? words.map(w => w[0]).join('').toUpperCase() : name;
-  }
-
   /* ------------------------------------------------------------- groups --- */
-  function groupEl(grp) {
-    const key = grp.key;
-    if (groupEls.has(key)) return groupEls.get(key);
-    const l = grp.league || {};
+  /* one dropdown for a league: `weekN` its games in the next seven days, `first` its nearest tip-off (ms) */
+  function addGroup(league, weekN, first) {
+    const l = league || {};
+    const key = l.id || '';
+    if (groups.has(key)) return groups.get(key);
     const det = el('details', 'ep-acc gm-acc');
     det.setAttribute('data-league', key);
-    if (firstGroup) { det.open = true; firstGroup = false; }
     const sum = el('summary');
     const t = el('span', 't');
     t.innerHTML = typeof window.epinoiaLeagueBadge === 'function'
@@ -161,14 +159,39 @@
       f.setAttribute('role', 'img');
       sum.appendChild(f);
     }
-    const n = el('span', 'n');
+    const n = el('span', 'n', weekN ? weekN + (weekN === 1 ? ' game' : ' games') : '');
     sum.appendChild(n);
     det.appendChild(sum);
     const body = el('div', 'gm-body');
     det.appendChild(body);
-    const rec = { det, body, n, name: shortName(l), grewTimer: null };
-    groupEls.set(key, rec);
+    /* this league's own Show more, at the foot of its list */
+    const foot = el('div', 'gm-more');
+    const btn = el('button', 'ep-btn more', 'Show more');
+    btn.type = 'button';
+    const count = el('span', 'gm-gcount');
+    count.setAttribute('aria-live', 'polite');
+    foot.append(btn, count);
+    const rec = { id: key, league: l, det, body, n, foot, btn, count, weekN: weekN || 0, first: first || Infinity,
+                  rows: new Map(), feed: null, started: false, loading: false, done: false };
+    btn.addEventListener('click', () => { loadGroup(rec).catch(failedGroup(rec)); });
+    /* a league is read when it is opened (the first one is opened for the reader, below) */
+    det.addEventListener('toggle', () => { if (det.open && !rec.started) loadGroup(rec).catch(failedGroup(rec)); });
+    groups.set(key, rec);
     return rec;
+  }
+
+  /* leagues with a game live come first, then by nearest tip-off; appending moves an element into order (open state
+     is the element's own) */
+  function orderGroups() {
+    const host = $('gmGroups');
+    const hasLive = rec => Array.from(pinned.values()).some(g => g.status === 'live' && leagueKey(g) === rec.id);
+    Array.from(groups.values())
+      .sort((a, b) => (hasLive(b) - hasLive(a)) || (a.first - b.first) ||
+        String(a.league.name || '').localeCompare(String(b.league.name || '')))
+      .forEach(rec => host.appendChild(rec.det));
+    const c = $('gmCount');
+    const n = groups.size;
+    c.textContent = n ? n + (n === 1 ? ' league' : ' leagues') : '';
   }
 
   function section(title, list, now) {
@@ -184,102 +207,68 @@
     return frag;
   }
 
-  function drawGroups() {
-    const host = $('gmGroups');
-    const groups = G().groupOrder(Array.from(rows.values()), NOW);
-    const skel = host.querySelector('.gm-skel');
-    if (skel) skel.remove();
-    const empty = host.querySelector('.empty');
-    if (empty) empty.remove();
-
-    const want = new Set(groups.map(g => g.key));
-    groupEls.forEach((rec, key) => { if (!want.has(key)) { rec.det.remove(); groupEls.delete(key); } });
-
-    groups.forEach(grp => {
-      const rec = groupEl(grp);
-      rec.body.textContent = '';
-      rec.body.appendChild(section('next', grp.next, NOW));
-      rec.body.appendChild(section('results', grp.results, NOW));
-      rec.n.textContent = grp.count + (grp.count === 1 ? ' game' : ' games');
-      host.appendChild(rec.det);        // appending moves it into order; open state is the element's own
-    });
-
-    if (!groups.length && !pinned.size) {
-      host.appendChild(el('div', 'empty', 'No fixtures or results yet.'));
+  /* one league's list: 'next' soonest first, then 'results' newest first, then its Show more */
+  function drawGroup(rec, res) {
+    const all = Array.from(rec.rows.values());
+    const time = g => Date.parse(g.tipoff_at) || 0;
+    const next = all.filter(g => g.status !== 'final').sort((a, b) => time(a) - time(b));
+    const results = all.filter(g => g.status === 'final').sort((a, b) => time(b) - time(a));
+    rec.body.textContent = '';
+    rec.body.appendChild(section('next', next, NOW));
+    rec.body.appendChild(section('results', results, NOW));
+    if (!all.length && rec.started && !rec.loading) {
+      rec.body.appendChild(el('div', 'empty', 'No games to show here yet.'));
     }
+    if (res) {
+      rec.done = res.done;
+      if (res.done) rec.count.textContent = 'all ' + res.shown + ' shown';
+      else if (res.total != null) rec.count.textContent = res.shown + ' of ' + res.total;
+      else rec.count.textContent = res.shown + ' shown';
+    }
+    rec.btn.hidden = rec.done;
+    rec.body.appendChild(rec.foot);
   }
 
-  /* ---------------------------------------------------------- the pages --- */
-  function paintCount(res) {
-    const c = $('gmCount');
-    if (!res) { c.textContent = ''; return; }
-    if (res.done) c.textContent = 'all ' + res.shown + ' shown';
-    else if (res.total != null) c.textContent = res.shown + ' of ' + res.total;
-    else c.textContent = res.shown + ' shown';
-  }
-
-  /* SHOW MORE SAYS WHERE THE ROWS WENT. Most of a later page lands in groups that are closed,
-     or in a league's group that did not exist yet, and on a phone the count at the top is off
-     screen by the time you reach the button: a press that changed nothing visible reads as
-     broken. So after a press, a group this press created opens, every group that grew has its
-     count lit for a moment, and the button names the leagues that received games. The first
-     page does none of this (only the first group opens, as before). */
-  /* counts are read off the groups just before and just after the redraw, not remembered
-     between presses, because pinning a game that went live also shrinks a group meanwhile */
-  const countOf = rec => Number.parseInt(rec.n.textContent, 10) || 0;
-  function snapshot() {
-    const m = new Map();
-    groupEls.forEach((rec, key) => m.set(key, countOf(rec)));
-    return m;
-  }
-  function grown(before) {
-    const out = [];
-    groupEls.forEach((rec, key) => {
-      const was = before.has(key) ? before.get(key) : 0;
-      const now = countOf(rec);
-      if (now > was) out.push({ rec, added: now - was, fresh: !before.has(key) });
-    });
-    return out;
-  }
-
-  let pages = 0;
-  async function page() {
-    const btn = $('gmMore');
-    btn.disabled = true;
-    btn.textContent = 'Loading…';
-    let label = 'Show more';
+  async function loadGroup(rec) {
+    if (rec.loading || rec.done) return;
+    rec.loading = true;
+    if (!rec.started && !rec.rows.size) { rec.body.textContent = ''; rec.body.appendChild(el('div', 'gm-sub', 'Loading…')); rec.body.appendChild(rec.foot); }
+    rec.started = true;
+    rec.btn.disabled = true;
+    rec.btn.textContent = 'Loading…';
     try {
-      const res = await feed.next(PAGE);
-      res.rows.forEach(g => { if (!pinned.has(g.id)) rows.set(g.id, g); });
-      const before = snapshot();
-      drawGroups();
-      paintCount(res);
-      const grew = grown(before);
-      if (pages++ > 0 && grew.length) {
-        grew.forEach(({ rec, fresh }) => {
-          if (fresh) rec.det.open = true;
-          rec.n.classList.remove('gm-grew');
-          void rec.n.offsetWidth;          // restart the highlight on a second quick press
-          rec.n.classList.add('gm-grew');
-          clearTimeout(rec.grewTimer);
-          rec.grewTimer = setTimeout(() => rec.n.classList.remove('gm-grew'), 1200);
-        });
-        const added = grew.reduce((s, x) => s + x.added, 0);
-        label = 'Show more · ' + added + ' added to ' + grew.map(x => x.rec.name).join(', ');
-      }
-      btn.hidden = res.done;
-      return res;
+      if (!rec.feed) rec.feed = G().feed({ now: NOW, exclude: liveIds, batch: PAGE, league: rec.id });
+      const res = await rec.feed.next(PAGE);
+      res.rows.forEach(g => { if (!pinned.has(g.id)) rec.rows.set(g.id, g); });
+      rec.loading = false;
+      drawGroup(rec, res);
+    } catch (e) {
+      rec.loading = false;
+      rec.started = rec.rows.size > 0;          // an opened league that failed to read asks again when opened
+      throw e;
     } finally {
-      btn.disabled = false;
-      btn.textContent = label;
+      rec.loading = false;
+      rec.btn.disabled = false;
+      rec.btn.textContent = 'Show more';
     }
   }
 
+  /* a league that could not be read keeps what it showed, and says so beside its button */
+  function failedGroup(rec) {
+    return e => {
+      console.warn('[games]', rec.id, e);
+      rec.count.textContent = 'Could not load. Press Show more to try again.';
+      rec.btn.hidden = false;
+      rec.body.appendChild(rec.foot);
+    };
+  }
+
+  /* ---------------------------------------------------------- the page --- */
   function failed(e) {
     console.warn('[games]', e);
     const host = $('gmGroups');
     host.removeAttribute('aria-busy');
-    if (rows.size) return;             // keep what is shown; the button stays for another try
+    if (groups.size) return;
     host.textContent = '';
     const box = el('div', 'empty', 'Fixtures could not be loaded just now.');
     const again = el('button', 'ep-btn', 'Try again');
@@ -297,22 +286,32 @@
     let live = [];
     try { live = await gg.live(); } catch (_) { live = []; }
     live.forEach(g => pinned.set(g.id, g));
+    liveIds = live.map(g => g.id);
     if (live.length) {
       const st = await gg.liveState(live.map(g => g.id));
       Object.keys(st).forEach(k => { liveState[k] = st[k]; });
     }
     drawLive();
-    feed = gg.feed({ now: NOW, exclude: live, batch: PAGE });
-    try {
-      await page();
-      $('gmGroups').removeAttribute('aria-busy');
-    } catch (e) { feed = null; return failed(e); }
+
+    let week, all;
+    try { [week, all] = await Promise.all([gg.weekLeagues(NOW, WEEK_DAYS), gg.leagues().catch(() => [])]); }
+    catch (e) { return failed(e); }
+    const byId = new Map((all || []).map(l => [l.id, l]));
+    week.forEach(w => { if (byId.has(w.id)) addGroup(byId.get(w.id), w.n, w.first); });
+    live.forEach(g => { const l = gg.leagueOf(g); if (l && l.id && !groups.has(l.id)) addGroup(l, 0, 0); });
+
+    const host = $('gmGroups');
+    host.textContent = '';
+    if (!groups.size && !pinned.size) {
+      host.appendChild(el('div', 'empty', 'No games in the next 7 days. A league appears here when it has one.'));
+    }
+    orderGroups();
+    host.removeAttribute('aria-busy');
+    /* the league at the top is open, and read */
+    const top = host.querySelector('details.gm-acc');
+    if (top) { top.open = true; const rec = groups.get(top.getAttribute('data-league')); if (rec) loadGroup(rec).catch(failedGroup(rec)); }
     if (!started) {
       started = true;
-      $('gmMore').addEventListener('click', () => {
-        if (!feed) return;
-        page().catch(failed);
-      });
       watchLive();
       listen();
       document.addEventListener('visibilitychange', () => {

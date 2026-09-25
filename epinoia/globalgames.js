@@ -320,6 +320,40 @@ function groupOrder(rows, now) {
   return groups;
 }
 
+/* ================================================ the week's leagues ===
+   WHICH LEAGUES HAVE A GAME IN THE NEXT SEVEN DAYS, and how many, from one light read (ids and tip-offs only,
+   paged past PostgREST's cap): [{ id, n, first }] soonest first, `first` the league's nearest tip-off. The global
+   page shows exactly these leagues (plus any with a live game). Read with the reader's own rights, so a league
+   whose games this reader may not see is not in it. */
+async function weekLeagues(now, days) {
+  const at = ms(now == null ? Date.now() : now);
+  const from = iso(at - STALE_MS), to = iso(at + (days || 7) * DAY);
+  const rows = [];
+  for (let page = 0; page < 8; page++) {
+    const part = await request('games?select=id,tipoff_at,competitions!inner(seasons!inner(league_id))' +
+      '&status=eq.scheduled&tipoff_at=gte.' + encodeURIComponent(from) + '&tipoff_at=lt.' + encodeURIComponent(to) +
+      '&order=tipoff_at.asc,id.asc&limit=1000' + (page ? '&offset=' + page * 1000 : ''), false);
+    rows.push(...part);
+    if (part.length < 1000) break;
+  }
+  return leagueCounts(rows);
+}
+
+/* the rows of that read as [{ id, n, first }], soonest first */
+function leagueCounts(rows) {
+  const by = new Map();
+  (rows || []).forEach(g => {
+    const c = one(g && g.competitions), s = one(c && c.seasons), id = s && s.league_id;
+    if (!id) return;
+    const at = t(g);
+    const e = by.get(id) || { id, n: 0, first: Infinity };
+    e.n++;
+    if (at && at < e.first) e.first = at;
+    by.set(id, e);
+  });
+  return Array.from(by.values()).sort((a, b) => a.first - b.first);
+}
+
 /* =================================================== the two cursors ===
    feed({ now, fetch, exclude, batch }) -> { next(n) -> Promise<{ rows, done, total, shown }> }
 
@@ -343,12 +377,16 @@ function groupOrder(rows, now) {
    'res', after null or { t (ms), id }. The first read of each side is counted;
    total is live games' ids excluded (exclude) plus both counts, and when both
    sides are finished it becomes what was actually shown, because games do
-   drop out. */
+   drop out.
+
+   ONE LEAGUE'S FEED (opts.league, a league id): the same two cursors over that league's games alone. The global
+   page keeps one per league group, so "Show more" in a league's dropdown reads more of THAT league and nothing
+   else. */
 function feed(opts) {
   const o = opts || {};
   const at = ms(o.now == null ? Date.now() : o.now);
   const batch = o.batch || 30;
-  const fetchSide = o.fetch || defaultFetch(at);
+  const fetchSide = o.fetch || defaultFetch(at, o.league);
   const seen = new Set((o.exclude || []).map(g => (g && g.id != null ? g.id : g)));
   const sides = {
     up: { buf: [], after: null, done: false, total: null, started: false },
@@ -421,10 +459,14 @@ function feed(opts) {
 
 /* The real reads behind feed(): quoted timestamps inside or=(), because an
    ISO time is full of the dots and colons PostgREST's grammar splits on. */
-function defaultFetch(at) {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function defaultFetch(at, league) {
   const fromUp = iso(at - STALE_MS), before = iso(at);
+  /* one league: a filter on the inner-embedded season's league (SEL joins them with !inner) */
+  const only = league && UUID.test(String(league)) ? '&competitions.seasons.league_id=eq.' + league : '';
   return function (side, after, limit, counted) {
-    let q = 'games?select=' + SEL;
+    let q = 'games?select=' + SEL + only;
     if (side === 'up') {
       q += '&status=eq.scheduled&tipoff_at=gte.' + encodeURIComponent(fromUp) + '&order=tipoff_at.asc,id.asc';
       if (after) q += '&or=' + encodeURIComponent('(tipoff_at.gt."' + iso(after.t) + '",and(tipoff_at.eq."' +
@@ -608,7 +650,7 @@ function card(g, opts) {
 return {
   SEL, STALE_MS, LEAGUE_WINDOW_MS,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
-  pickDaily, mergeNearest, groupOrder, nearer, feed, dedupe,
+  pickDaily, mergeNearest, groupOrder, nearer, feed, dedupe, weekLeagues, leagueCounts,
   card, wireBadges, dayLabel, timeLabel, esc
 };
 }));

@@ -530,12 +530,78 @@ section('pages');
      (games.match(/<script src="[^"]+" defer><\/script>/g) || []).length === (games.match(/<script /g) || []).length - 2 &&
      /<script src="\.\.\/i18n\.js\?v=\d+"><\/script>/.test(games));
   ok('games/ has no inline script or inline handler', !/<script>(?!<)/.test(games) && !/<script(?![^>]*src=)[^>]*>/.test(games) && !/\son[a-z]+="/i.test(games));
-  ok('games/ carries the heading, a Show more button and the count', games.includes('Global fixtures') &&
-     /<button type="button" class="ep-btn more" id="gmMore" hidden>/.test(games) && games.includes('id="gmCount"'));
+  ok('games/ carries the heading and the count of leagues, and no page-wide Show more (each league\'s is its own)', games.includes('Global fixtures') &&
+     !/id="gmMore"/.test(games) && games.includes('id="gmCount"'));
   const stamps = new Set((games.match(/\?v=(\d+)/g) || []));
   ok('games/ uses one ?v= stamp throughout', stamps.size === 1, [...stamps].join());
   const gjs = rd('epinoia', 'games', 'games.js');
-  ok('games.js pages 30 at a time and reads "of" / "all N shown"', /PAGE = 30/.test(gjs) && gjs.includes("' of '") && gjs.includes("'all '"));
+  ok('games.js pages 8 at a time, per league, and reads "of" / "all N shown"', /PAGE = 8/.test(gjs) && gjs.includes("' of '") && gjs.includes("'all '"));
+}
+
+/* ------------------------------------------------------------------------- */
+section('one dropdown per league: the leagues with a game this week, and a feed of one league');
+{
+  const seen = [];
+  const week = [
+    { id: 'g1', tipoff_at: '2026-10-03T18:00:00Z', competitions: { seasons: { league_id: 'LB' } } },
+    { id: 'g2', tipoff_at: '2026-10-03T14:00:00Z', competitions: { seasons: { league_id: 'LA' } } },
+    { id: 'g3', tipoff_at: '2026-10-04T14:00:00Z', competitions: { seasons: { league_id: 'LA' } } },
+    { id: 'g4', tipoff_at: '2026-10-05T14:00:00Z', competitions: { seasons: { league_id: 'LC' } } },
+    { id: 'gx', tipoff_at: '2026-10-05T14:00:00Z', competitions: null }
+  ];
+  const sandbox = {
+    EPINOIA_CONFIG: { supabaseUrl: 'https://ref.supabase.co', supabaseAnonKey: 'anon' },
+    fetch: async url => { seen.push(decodeURIComponent(url)); return { ok: true, status: 200, json: async () => (/status=eq\.scheduled/.test(url) && /select=id,tipoff_at,competitions/.test(url) ? week : []), headers: { get: () => null } }; },
+    setTimeout, clearTimeout, Date, Promise, JSON, Math, Map, Set, encodeURIComponent, decodeURIComponent, isFinite, parseInt, String, Array, Object
+  };
+  sandbox.globalThis = sandbox; sandbox.self = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(rd('epinoia', 'globalgames.js'), sandbox);
+  const W = sandbox.EpinoiaGlobalGames;
+  const NOWW = Date.parse('2026-10-03T12:00:00Z');
+
+  const lw = await W.weekLeagues(NOWW, 7);
+  ok('weekLeagues counts each league\'s scheduled games in the next seven days, soonest league first, and skips a row with no league',
+     JSON.stringify(lw.map(x => [x.id, x.n])) === JSON.stringify([['LA', 2], ['LB', 1], ['LC', 1]]) && lw[0].first === Date.parse('2026-10-03T14:00:00Z'), lw);
+  const q = seen.find(u => /select=id,tipoff_at,competitions/.test(u));
+  ok('...one light read: ids and tip-offs, scheduled only, from two hours ago to seven days on, inner-joined to the league',
+     /status=eq\.scheduled/.test(q) && /tipoff_at=gte\.2026-10-03T10:00:00\.000Z/.test(q) && /tipoff_at=lt\.2026-10-10T12:00:00\.000Z/.test(q)
+     && /competitions!inner\(seasons!inner\(league_id\)\)/.test(q) && /limit=1000/.test(q), q);
+  ok('...and a different number of days moves the far edge', (await W.weekLeagues(NOWW, 3), /tipoff_at=lt\.2026-10-06T12:00:00\.000Z/.test(seen[seen.length - 1])), seen[seen.length - 1]);
+
+  const LG = '3f4858ce-a146-4acc-aa36-53af617d3fdb';
+  seen.length = 0;
+  await W.feed({ now: NOWW, batch: 5, league: LG }).next(5);
+  const reads = seen.filter(u => /\/games\?/.test(u));
+  ok('a league\'s feed reads that league alone, on both sides (upcoming and results)',
+     reads.length >= 2 && reads.every(u => u.includes('&competitions.seasons.league_id=eq.' + LG)) && reads.some(u => /status=eq\.scheduled/.test(u)) && reads.some(u => /status=eq\.final/.test(u)), reads);
+  seen.length = 0;
+  await W.feed({ now: NOWW, batch: 5 }).next(5);
+  ok('...and the global feed still reads every league', seen.filter(u => /\/games\?/.test(u)).every(u => !/league_id=eq\./.test(u)));
+  seen.length = 0;
+  await W.feed({ now: NOWW, batch: 5, league: "x'); drop table games; --" }).next(5);
+  ok('...a league that is not an id is not put in the address', seen.filter(u => /\/games\?/.test(u)).every(u => !/league_id/.test(u) && !/drop table/.test(u)));
+}
+
+section('/epinoia/games/: a dropdown per league, its own Show more');
+{
+  const gjs2 = rd('epinoia', 'games', 'games.js'), ghtml = rd('epinoia', 'games', 'index.html');
+  ok('the page reads the week\'s leagues, and shows those (and a league with a game live) - no others',
+     /gg\.weekLeagues\(NOW, WEEK_DAYS\)/.test(gjs2) && /const PAGE = 8, WEEK_DAYS = 7/.test(gjs2) && /week\.forEach\(w => \{ if \(byId\.has\(w\.id\)\) addGroup\(/.test(gjs2)
+     && /live\.forEach\(g => \{ const l = gg\.leagueOf\(g\); if \(l && l\.id && !groups\.has\(l\.id\)\) addGroup\(l, 0, 0\); \}\);/.test(gjs2));
+  ok('each league has its own feed (that league only) and its own Show more at the foot of its list',
+     /G\(\)\.feed\(\{ now: NOW, exclude: liveIds, batch: PAGE, league: rec\.id \}\)/.test(gjs2) && /const btn = el\('button', 'ep-btn more', 'Show more'\)/.test(gjs2)
+     && /btn\.addEventListener\('click', \(\) => \{ loadGroup\(rec\)/.test(gjs2) && /rec\.body\.appendChild\(rec\.foot\)/.test(gjs2));
+  ok('a league is read when it is opened, the first one is opened for the reader, and there is no page-wide Show more',
+     /det\.addEventListener\('toggle', \(\) => \{ if \(det\.open && !rec\.started\)/.test(gjs2) && /const top = host\.querySelector\('details\.gm-acc'\);/.test(gjs2)
+     && !/gmMore/.test(gjs2 + ghtml) && !/PAGE = 30/.test(gjs2));
+  ok('the heading count is the league\'s games in the week; beside its button "N of M" then "all N shown"; the header says how many leagues',
+     /weekN \+ \(weekN === 1 \? ' game' : ' games'\)/.test(gjs2) && gjs2.includes("' of '") && gjs2.includes("'all '") && /n \+ \(n === 1 \? ' league' : ' leagues'\)/.test(gjs2));
+  ok('live games are still pinned above every dropdown and a game that goes live leaves its league\'s list',
+     /rec && rec\.rows\.delete\(g\.id\) \? rec : null/.test(gjs2) && /id="gmLive"/.test(ghtml) && /touched\.forEach\(rec => \{ if \(rec\) drawGroup\(rec\); \}\)/.test(gjs2));
+  ok('the page says what it is: leagues with a game in the next 7 days, and its Show more is a league\'s',
+     /Every league with a game in the next 7 days, nearest first\./.test(ghtml) && /its Show more reads more of that league/.test(ghtml)
+     && ['ja', 'es'].every(code => rd('epinoia', 'i18n', code + '.js').includes("'Every league with a game in the next 7 days, nearest first.")));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

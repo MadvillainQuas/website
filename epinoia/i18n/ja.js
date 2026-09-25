@@ -207,8 +207,6 @@
       'finalising': '確定中',
       'scheduled': '予定',
       'possessions': 'ポゼッション',
-      'Nearest to now first: the next games and the latest results, grouped by league.':
-        '直近順: 次の試合と最新の結果をリーグ別に表示。',
 
       /* ---- the league's Table page ---- */
       'Team Stats': 'クラブ成績',
@@ -718,7 +716,6 @@
       'This season has no competitions yet.': 'このシーズンにはまだ大会がありません。',
       'watch': '見る',
       'Try again': '再試行',
-      'No fixtures or results yet.': '試合・結果はまだありません。',
       'Download the fixtures as a file and open it in your calendar app. This is a snapshot: it does not update by itself, so add it again after fixtures move.': '日程をファイルでダウンロードし、カレンダーアプリで開きます。その時点のスナップショットで自動では更新されないため、日程が変わったら追加し直してください。',
       'iPhone or iPad': 'iPhone・iPad',
       'Apple Calendar': 'Appleカレンダー',
@@ -1418,7 +1415,11 @@
       'Also plays home games at': 'その他のホームアリーナ',
       'Main home arena': 'メインのホームアリーナ',
       'No results yet. The full list is on the fixtures page.': 'まだ結果はありません。全日程は日程・結果ページにあります。',
-      'Fixtures or results': '日程・結果の切り替え'
+      'Fixtures or results': '日程・結果の切り替え',
+      'Every league with a game in the next 7 days, nearest first. Open a league for its next games and latest results; its Show more reads more of that league.': 'この先7日間に試合があるリーグを近い順に表示しています。リーグを開くと直近の試合と最新の結果が見られ、「もっと見る」はそのリーグの試合をさらに読み込みます。',
+      'No games in the next 7 days. A league appears here when it has one.': 'この先7日間に試合はありません。試合があるリーグがここに表示されます。',
+      'No games to show here yet.': 'まだ表示できる試合はありません。',
+      'Could not load. Press Show more to try again.': '読み込めませんでした。「もっと見る」を押してやり直してください。'
     },
 
     ctx: {

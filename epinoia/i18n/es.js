@@ -209,8 +209,6 @@
       'finalising': 'Finalizando',
       'scheduled': 'Programado',
       'possessions': 'Posesiones',
-      'Nearest to now first: the next games and the latest results, grouped by league.':
-        'Lo más cercano primero: los próximos partidos y los últimos resultados, por liga.',
 
       /* ---- the league's Table page ---- */
       'Team Stats': 'Estadísticas de equipo',
@@ -720,7 +718,6 @@
       'This season has no competitions yet.': 'Esta temporada aún no tiene competiciones.',
       'watch': 'Ver',
       'Try again': 'Reintentar',
-      'No fixtures or results yet.': 'Aún no hay partidos ni resultados.',
       'Download the fixtures as a file and open it in your calendar app. This is a snapshot: it does not update by itself, so add it again after fixtures move.': 'Descarga los partidos como archivo y ábrelo en tu app de calendario. Es una instantánea: no se actualiza sola, así que vuelve a añadirlo si cambian los partidos.',
       'iPhone or iPad': 'iPhone o iPad',
       'Apple Calendar': 'Calendario de Apple',
@@ -1420,7 +1417,11 @@
       'Also plays home games at': 'También juega en casa en',
       'Main home arena': 'Pabellón principal',
       'No results yet. The full list is on the fixtures page.': 'Aún no hay resultados. La lista completa está en el calendario.',
-      'Fixtures or results': 'Calendario o resultados'
+      'Fixtures or results': 'Calendario o resultados',
+      'Every league with a game in the next 7 days, nearest first. Open a league for its next games and latest results; its Show more reads more of that league.': 'Todas las ligas con partido en los próximos 7 días, las más cercanas primero. Abre una liga para ver sus próximos partidos y últimos resultados; su «Mostrar más» carga más de esa liga.',
+      'No games in the next 7 days. A league appears here when it has one.': 'No hay partidos en los próximos 7 días. Una liga aparece aquí cuando tiene alguno.',
+      'No games to show here yet.': 'Todavía no hay partidos que mostrar aquí.',
+      'Could not load. Press Show more to try again.': 'No se pudo cargar. Pulsa «Mostrar más» para volver a intentarlo.'
     },
 
     ctx: {
