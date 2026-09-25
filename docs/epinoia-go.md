@@ -311,3 +311,33 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       mode, and what the map is (en/ja/es). Words: 41 in the `go` pack plus the rail's and the bar's, ja and es.
       Chromium: 16 checks (granted location, a card, the map, the preview, windows, passport, the phone, no
       location), ja and es harvested (only names and Spanish dates left); `go-page.test.mjs`: 128.
+- [x] **7.14 Look without an account; STAMP THIS VENUE on a club's page; UPCOMING | RESULTS on HOME** (Louie,
+      2026-09-25) - three changes.
+      (a) **GO can be looked at signed out.** The first-visit wall for a visitor ("Please enter a username. Sign in
+      first", with a small "just looking") is gone: the intro is now only for a signed-in fan (the username, then
+      "Have Fun!"). The stamps page no longer shows only a sign-in card to a visitor: it shows the page as a fan
+      with no stamps has it (zeros, the badges there are to earn, an empty map and list, their photographs). THE
+      FEED was already public. All three carry a slim banner (`go/look.js`, `look.css`): "You're looking around.
+      Sign in to stamp arenas, add photographs and notes, and join the leaderboard." with the sign-in button; it
+      appears only once the session is known to be none. **Everything that needs an account still does, on the server
+      as well:** `stamp_venue`, `set_stamp_note`, `submit_go_photo`, `go_my_photos`, `set_go_public` and
+      `go_my_numbers` are revoked from anon (0165-0168; a test reads each migration), while the games, the
+      leaderboard, the leagues and THE FEED are public by design.
+      (b) **STAMP THIS VENUE on a team profile.** The home-venue panel carries a small EPINOIA GO card - the logo,
+      "Stamp the arenas you go to: at a game, with your phone.", a neon STAMP THIS VENUE pill (go.css `.go-find`, a size
+      down) and "how it works" - for the club's recorded arena, else the one its home games were played at
+      (`go/venuestamp.js`, `venuestamp.css`; the page names the `go` words). Signed out, the button says a stamp needs
+      an account and gives the way in, and does not ask the phone anything. Signed in, the phone says where it is,
+      `go_games_now` is read (no location goes in) and the games at THIS arena are looked at: one whose window is
+      open is stamped with `stamp_venue` (the server checks the phone is there, the game is on, and every other rule;
+      the location goes in that call and nowhere else); one still to come says when stamping opens; none says so; an
+      arena whose pin is unchecked is refused with the GO page's words. Every refusal is the GO page's own sentence
+      (a test holds `WHY`, `GEO` and the facts to go.js's). Success says new arena or another visit, the counts, and
+      links to your stamps. No migration.
+      (c) **UPCOMING | RESULTS beside HOME's "Daily fixtures"** - two buttons in the section heading. UPCOMING is what
+      was always there and is pressed first; RESULTS is the eight most recent finals, newest first, no more than three
+      from one league so a busy night in one does not take the shelf. The choice is kept for the visit
+      (sessionStorage), draws at once, and the live/next reads are untouched. "No results yet" has its empty state.
+      Chromium: home 6 checks (buttons, only finals, kept across reload, phone, ja), GO signed out 8, the team card
+      9 (signed out; signed in with the database faked: stamped, too far, opens later, no game here); ja and es
+      harvested clean; `go-page.test.mjs`: 149.

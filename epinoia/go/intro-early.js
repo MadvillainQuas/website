@@ -14,7 +14,8 @@
                                               that says "Have Fun!" ('welcome')
      signed in, not known yet                 the black screen with nothing on it ('wait'), for as long
                                               as the database takes to say which
-     signed out, first visit                  the prompt with its way in ('signin')
+     signed out                               nothing: a visitor looks around first (7.14), and every
+                                              action asks for an account when it is tried
 
    It only reads this browser's storage: the session access.js keeps (sb-<project>-auth-token), and
    what go.js remembers (epinoia_go_intro, epinoia_go_intro_later, epinoia_go_uname - whether this
@@ -59,7 +60,7 @@
     else if (named === false) mode = later ? null : 'ask';
     else mode = seen && later ? null : 'wait';
   } else {
-    mode = seen ? null : 'signin';
+    mode = null;
   }
   if (mode) {
     html.setAttribute('data-go-intro', mode);

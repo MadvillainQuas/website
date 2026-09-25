@@ -30,6 +30,14 @@
      a failed launch must still replace front.js's error message with the "no games" one */
   let host = null, base = '../', timer = null, rt = null, lastKey = null, busy = false;
 
+  /* UPCOMING (the live games and what is next) or RESULTS (the most recent finals): the reader's choice for this
+     visit. Results are read newest first, forty of them, and no league takes more than three of the eight cards, so
+     a busy night in one league does not push every other league off the front door. */
+  const MODE_KEY = 'epinoia_home_fixtures';
+  const PER_LEAGUE = 3;
+  let mode = 'up';
+  try { if (sessionStorage.getItem(MODE_KEY) === 'res') mode = 'res'; } catch (_) { /* private mode */ }
+
   function hidden() { return typeof document !== 'undefined' && document.visibilityState === 'hidden'; }
 
   /* THE FORTY UPCOMING GAMES CHANGE WHEN ONE TIPS OFF, not every thirty seconds: a
@@ -55,10 +63,31 @@
     return Promise.all(lgs.map(l => G.nextFor(l.id).catch(() => null)));
   }
 
+  /* the results: finals before now, newest first, a few from each league */
+  const RES_MS = 60 * 1000;
+  let resHeld = null;
+  async function results(G, now) {
+    if (!resHeld || now - resHeld.at > RES_MS) {
+      const rows = await G.recent(new Date(now).toISOString(), 0, 40);
+      resHeld = { at: now, rows };
+    }
+    const per = new Map(), out = [];
+    resHeld.rows.forEach(g => {
+      if (out.length >= N || g.status !== 'final') return;
+      const l = G.leagueOf ? G.leagueOf(g) : null;
+      const k = l ? l.id : '';
+      if ((per.get(k) || 0) >= PER_LEAGUE) return;
+      per.set(k, (per.get(k) || 0) + 1);
+      out.push(g);
+    });
+    return out;
+  }
+
   async function read() {
     const G = window.EpinoiaGlobalGames;
     if (!G) throw new Error('globalgames.js has not loaded');
     const now = Date.now();
+    if (mode === 'res') return { rows: await results(G, now), state: {}, now, mode };
     const [live, up, nexts] = await Promise.all([
       G.live().catch(() => []),
       upcoming(G, now),
@@ -67,11 +96,11 @@
     const rows = G.pickDaily(live, up, nexts, now, N);
     const liveIds = rows.filter(g => g.status === 'live').map(g => g.id);
     const state = liveIds.length ? await G.liveState(liveIds) : {};
-    return { rows, state, now };
+    return { rows, state, now, mode };
   }
 
   function keyOf(rows, state) {
-    return rows.map(g => {
+    return mode + '>' + rows.map(g => {
       const s = state[g.id] || {};
       return [g.id, g.status, g.tipoff_at, g.home_score, g.away_score, s.period, s.score_home, s.score_away].join(':');
     }).join('|');
@@ -87,7 +116,8 @@
       host.textContent = '';
       const d = document.createElement('div');
       d.className = 'empty';
-      d.textContent = 'No games in the next few days. The full list is on the fixtures page.';
+      d.textContent = data.mode === 'res' ? 'No results yet. The full list is on the fixtures page.'
+        : 'No games in the next few days. The full list is on the fixtures page.';
       host.appendChild(d);
       if (first) H.fadeIn(d);
       return;
@@ -140,9 +170,32 @@
     });
   }
 
+  /* the two buttons: the chosen one is pressed; choosing the other reads and draws it at once */
+  function wireSeg() {
+    /* a page without the buttons (or a stand-in document) just has the one view */
+    const seg = typeof document.getElementById === 'function' ? document.getElementById('fxSeg') : null;
+    if (!seg) return;
+    const paint = () => seg.querySelectorAll('button[data-fx]').forEach(b =>
+      b.setAttribute('aria-pressed', String(b.dataset.fx === mode)));
+    paint();
+    seg.addEventListener('click', async e => {
+      const b = e.target.closest && e.target.closest('button[data-fx]');
+      if (!b || b.dataset.fx === mode) return;
+      mode = b.dataset.fx;
+      try { sessionStorage.setItem(MODE_KEY, mode); } catch (_) { /* private mode */ }
+      paint();
+      clearTimeout(timer);
+      host.setAttribute('aria-busy', 'true');
+      try { const d = await read(); if (d.mode === mode) { lastKey = null; draw(d, true); } }
+      catch (_) { /* what is on screen stays; the next tick tries again */ }
+      finally { host.removeAttribute('aria-busy'); schedule(); }
+    });
+  }
+
   H.register('fixtures', async function (ctx) {
     host = ctx.host;
     base = ctx.base || '../';
+    wireSeg();
     /* THE REFRESH IS SET UP BEFORE THE FIRST READ CAN FAIL. A network blip at app launch
        rethrows (front.js shows its quiet empty state), but the poll, the live nudge and the
        return-to-foreground check still run, and draw() replaces that empty state the first

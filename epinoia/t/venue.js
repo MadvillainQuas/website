@@ -570,6 +570,13 @@ async function render(opts) {
       m.appendChild(el('span', 'vmain-g', A.main.n + (A.main.n === 1 ? ' home game' : ' home games')));
       head.appendChild(m);
     }
+    /* EPINOIA GO: the arena is one a fan can stamp, so its card carries the reference and STAMP THIS VENUE
+       (go/venuestamp.js). Only where the arena is known as an arena - the club's recorded one, else the one
+       its home games were played at - because a stamp is kept against an arena, not a name. */
+    const goVenue = team.home_venue_id || (A && A.main && A.main.id) || null;
+    if (goVenue && window.EpinoiaGoVenue) {
+      window.EpinoiaGoVenue.mount(head, { venueId: goVenue, venueName: name, base: '../' });
+    }
     wrap.appendChild(head);
 
     /* WHAT THE MAP IS ASKED FOR. The address when the club recorded one.

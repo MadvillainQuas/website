@@ -1403,7 +1403,7 @@
       'THE FEED: the fans’ photographs of the games they stamped': 'EL MURO: las fotos de los aficionados de los partidos que sellaron',
       'your stamps: every game, the map, and the distance between them': 'tus sellos: cada partido, el mapa y la distancia entre ellos',
       'Nothing this week.': 'Nada esta semana.',
-      'No results yet.': 'Aún no hay resultados.',
+      'No results yet.': 'Aún no hay resultados.',
       'the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none': 'cuenta el primer rebote tras cada fallo, también los de equipo; un fallo seguido de falta y tiros libres, una pérdida o el final de un periodo no tiene rebote',
       'No rebound': 'Sin rebote',
       'what became of every shot attempt': 'qué pasó con cada tiro',
@@ -1418,7 +1418,9 @@
       'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': 'el número pequeño es el percentil entre los equipos, más alto es mejor, y una tasa con menos de 15 tiros no se clasifica',
       'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': 'buscar partido: los partidos más cercanos a ti, o a cualquier lugar al que vayas (modo pasaporte)',
       'Also plays home games at': 'También juega en casa en',
-      'Main home arena': 'Pabellón principal'
+      'Main home arena': 'Pabellón principal',
+      'No results yet. The full list is on the fixtures page.': 'Aún no hay resultados. La lista completa está en el calendario.',
+      'Fixtures or results': 'Calendario o resultados'
     },
 
     ctx: {

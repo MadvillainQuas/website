@@ -118,7 +118,7 @@ ok('...then "Have Fun!" takes the prompt\'s place, and the page comes back',
    && /<div class="gi-below">/.test(html));
 ok('...once on a device; and for a fan with no username every visit until they choose one, or say later (for this visit)',
    /if \(noName\) return stored\(KEYS\.later, true\) === '1' \? null : 'ask';/.test(js) && /if \(stored\(KEYS\.intro\) === '1'\) return null;/.test(js)
-   && /return S\.session \? 'welcome' : 'signin';/.test(js));
+   && /return S\.session \? 'welcome' : null;/.test(js));
 ok('..."Have Fun!" on the first visit only: after that, answering gives the page straight back (Louie, 7.11)',
    /const first = stored\(KEYS\.intro\) !== '1';/.test(js) && /if \(!first\) \{ setTimeout\(\(\) => fadeIntro\(box\), quick \? 0 : 300\); return; \}/.test(js)
    && js.indexOf('if (!first)') < js.indexOf("msg.textContent = 'Have Fun!';"));
@@ -128,10 +128,9 @@ ok('...up before the page paints: intro-early.js, in the head and not deferred, 
    && html.indexOf('intro-early.js?v=') < html.indexOf('go.css?v=') && !/fetch\(|XMLHttpRequest|navigator\.geolocation/.test(early)
    && /html\.setAttribute\('data-go-intro', mode\)/.test(early) && /'epinoia_go_uname'/.test(early)
    && /html\[data-go-intro\] \.go-intro,html\[data-go-intro\] \.go-intro\[hidden\]\{display:grid;opacity:1\}/.test(css));
-ok('...every mode\'s words in the page from the start (no script needed to say them)',
-   /<p class="gi-note gi-if-signin">Sign in first:/.test(html) && /id="goIntroSignin" href="\.\.\/signin\/"/.test(html)
-   && /id="goIntroLook" type="button">just looking</.test(html) && /id="goIntroLater" type="button">later</.test(html)
-   && !/class="gi-form hide"/.test(html));
+ok('...every mode\'s words in the page from the start (no script needed to say them); a visitor with no account gets no screen at all (7.14)',
+   /id="goIntroLater" type="button">later</.test(html) && !/class="gi-form hide"/.test(html)
+   && !/goIntroSignin|goIntroLook|gi-if-signin/.test(html + js + css) && /mode = null;/.test(rd('epinoia', 'go', 'intro-early.js')));
 ok('...the name checked as it is typed and saved by 0163, which applies every rule again',
    /rpc\('username_check', \{ p: v \}\)/.test(js) && /rpc\('set_username', \{ p: input\.value\.trim\(\) \}\)/.test(js)
    && G.unameLocal('lo') === 'short' && G.unameLocal('9lives') === 'start' && G.unameLocal('bad name') === 'characters' && G.unameLocal('Louie_99') === '');
@@ -198,7 +197,8 @@ ok('the numbers and badges, the map, every game with the distance from the one b
 ok('...its own page to the page\'s script (go.js knows it by #goStampsPage), with the map\'s',
    /<div class="ep-frame go" id="goStampsPage">/.test(sp) && /<script src="\.\.\/map\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\.js\?v=\d+" defer><\/script>/.test(sp)
    && /const onStampsPage = \(\) => !!document\.getElementById\('goStampsPage'\)/.test(js));
-ok('...signed out, a way in and nothing else', /out\.classList\.remove\('hide'\)/.test(js) && /body\.classList\.add\('hide'\)/.test(js));
+ok('...signed out (7.14): the page as it is with no stamps, under a sign-in banner - not a wall',
+   /S\.mine = null;\s*drawPassport\(\);/.test(js) && !/body\.classList\.add\('hide'\)/.test(js) && !/signInCard\(out\)/.test(js));
 ok('..."from" there is the arena before (its own context: the core file\'s "from" is a date\'s start)',
    /leg\.setAttribute\('data-i18n-ctx', 'goleg'\)/.test(js)
    && ['ja', 'es'].every(code => /goleg: \{\s*'from':/.test(rd('epinoia', 'i18n', code, 'go.js'))));
@@ -455,6 +455,87 @@ ok('the GO page\'s hero has FIND A GAME under the first button and above the cou
    (h => h.indexOf('id="goFind"') > 0 && h.indexOf('id="goNearby"') > h.indexOf('id="goFind"') && h.indexOf('id="goToday"') > h.indexOf('id="goNearby"')
      && /<a id="goNearby" class="go-find alt" href="nearby\/">find a game<\/a>/.test(h))(rd('epinoia', 'go', 'index.html'))
    && /\.go-find\.alt\{min-height:46px/.test(rd('epinoia', 'go', 'go.css')) && /\.go-find\.alt::before\{content:"⌖"/.test(rd('epinoia', 'go', 'go.css')));
+
+/* ---- 7.14: looking around without an account, STAMP THIS VENUE on a club's page, UPCOMING | RESULTS on HOME ---- */
+console.log('\nGO can be looked at signed out, and does nothing without an account (7.14)');
+const lookJs = rd('epinoia', 'go', 'look.js'), lookCss = rd('epinoia', 'go', 'look.css');
+const pages3 = { home: rd('epinoia', 'go', 'index.html'), stamps: rd('epinoia', 'go', 'stamps', 'index.html'), feed: rd('epinoia', 'go', 'photos', 'index.html') };
+ok('all three pages - the GO page, your stamps, THE FEED - carry the looking-around banner, after access.js and with its own styles',
+   Object.values(pages3).every(h => /access\.js\?v=\d+" defer><\/script>\s*<script src="(\.\.\/)?look\.js\?v=\d+" defer>/.test(h) && /href="(\.\.\/)?look\.css\?v=\d+"/.test(h)));
+ok('...only for a visitor with no session, once the session is known, into the main column (or under THE FEED\'s brand bar)',
+   /if \(s \|\| !at \|\| document\.getElementById\('goLook'\)\) return;/.test(lookJs) && /A\.sessionReady/.test(lookJs)
+   && /main\.go-main/.test(lookJs) && /\.ep-frame\.gp > \.gp-top/.test(lookJs) && /signinHref/.test(lookJs));
+ok('...saying what an account is for, in the words the packs translate',
+   /You’re looking around\./.test(lookJs) && /Sign in to stamp arenas, add photographs and notes, and join the leaderboard\./.test(lookJs)
+   && ['ja', 'es'].every(code => { const go = rd('epinoia', 'i18n', code, 'go.js'); return go.includes("'You’re looking around.':") && go.includes("'Sign in to stamp arenas, add photographs and notes, and join the leaderboard.':"); }));
+ok('...a visitor is not walled out of the stamps page any more: the page as a fan with no stamps sees it',
+   /LOOKING AROUND \(7\.14\)/.test(js) && /drawPassport\(\);\s*const ph = \$\('#goPhotos'\);/.test(js));
+ok('...and the sign-in wall of the first visit is gone (the screen is for a username, which needs an account)',
+   !/'signin'/.test(js) && !/signin/.test(rd('epinoia', 'go', 'intro-early.js').replace(/signed out/g, '')));
+ok('nothing needs an account only on this page: stamping, notes, photographs and settings are refused to a signed-out caller by the database, and the browser\'s ways in',
+   ['0165_stamps.sql|stamp_venue\\(uuid, double precision, double precision, double precision\\)', '0168_go_notes_and_games_board.sql|set_stamp_note\\(uuid, text\\)',
+    '0167_go_photos.sql|submit_go_photo\\(uuid, text, text, integer, integer, text, boolean\\)', '0167_go_photos.sql|go_my_photos\\(\\)',
+    '0166_go_leaderboards.sql|set_go_public\\(boolean, boolean\\)', '0166_go_leaderboards.sql|go_my_numbers\\(\\)'].every(x => {
+     const [f, fn] = x.split('|'); const m = readFileSync(path.join(ROOT, 'supabase', 'migrations', f), 'utf8');
+     return new RegExp('revoke all on function public\\.' + fn + ' from public, anon;').test(m) && new RegExp('grant execute on function public\\.' + fn + ' to authenticated;').test(m); }));
+ok('...and what a visitor CAN read is public by design: the games, the leaderboard, the leagues, THE FEED',
+   /grant execute on function public\.go_games_now\(\) to anon, authenticated;/.test(readFileSync(path.join(ROOT, 'supabase', 'migrations', '0170_go_demo_clubs_gone.sql'), 'utf8'))
+   && /grant execute on function public\.go_photos_feed\([^)]*\) to anon, authenticated;/.test(readFileSync(path.join(ROOT, 'supabase', 'migrations', '0167_go_photos.sql'), 'utf8')));
+
+console.log('\nSTAMP THIS VENUE on a club\'s page (7.14)');
+const GV = require(path.join(ROOT, 'epinoia', 'go', 'venuestamp.js'));
+const gvJs = rd('epinoia', 'go', 'venuestamp.js'), gvCss = rd('epinoia', 'go', 'venuestamp.css');
+const teamHtml = rd('epinoia', 't', 'index.html'), venueJs = rd('epinoia', 't', 'venue.js');
+ok('its refusals are the GO page\'s, word for word (WHY, GEO, the facts that go with them)',
+   JSON.stringify(GV.WHY) === JSON.stringify(G.WHY) && JSON.stringify(GV.GEO) === JSON.stringify(G.GEO)
+   && [{ reason: 'too_early', opens_at: '2026-10-03T14:00:00Z' }, { reason: 'too_far', distance_m: 4200, radius_m: 300 }, { reason: 'imprecise', accuracy_m: 900 },
+       { reason: 'too_fast', last_venue: 'X', minutes_ago: 3 }, { reason: 'arena_unchecked', venue: 'Y' }, { reason: 'slow_down' }]
+     .every(r => JSON.stringify(GV.factsOf(r, 'en-GB')) === JSON.stringify(G.factsOf(r)) || r.reason === 'too_early' || r.reason === 'too_far'));
+ok('...too far is worded as the GO page words it (distance and the radius)',
+   JSON.stringify(GV.factsOf({ reason: 'too_far', distance_m: 4200, radius_m: 300 }, 'en-GB')) === JSON.stringify([['Distance', '4.2 km'], ['A stamp needs you within', '300 m']])
+   && GV.whyOf({ reason: 'nonsense' }) === 'It did not stamp. Try again in a moment.');
+const nowGV = Date.parse('2026-10-03T12:00:00Z');
+const rowGV = (id, venue, opens, closes, tip) => ({ game_id: id, venue_id: venue, opens_at: opens, closes_at: closes, tipoff_at: tip });
+const hereGV = GV.gamesHere([rowGV('a', 'V', '2026-10-03T10:00:00Z', '2026-10-03T17:00:00Z', '2026-10-03T12:00:00Z'), rowGV('b', 'V', '2026-10-03T16:00:00Z', '2026-10-03T22:00:00Z', '2026-10-03T18:00:00Z'),
+  rowGV('c', 'W', '2026-10-03T10:00:00Z', '2026-10-03T17:00:00Z', '2026-10-03T12:00:00Z')], 'V', nowGV);
+ok('the games at THIS arena only: the one whose window is open, then the next to open',
+   hereGV.all.length === 2 && hereGV.open.map(x => x.g.game_id).join() === 'a' && hereGV.next && hereGV.next.g.game_id === 'b'
+   && GV.gamesHere([], 'V', nowGV).open.length === 0 && GV.gamesHere(null, 'V', nowGV).next === null);
+ok('a stamp is the fan\'s own: with no session it says so and gives the way in, and asks the phone nothing; only signed in does it locate',
+   /if \(!session\) \{\s*return show\(WHY\.signed_out, 'warn', \[\], \{ text: 'sign in'/.test(gvJs)
+   && gvJs.indexOf('if (!session)') < gvJs.indexOf('await locate()'));
+ok('...the phone\'s location goes to stamp_venue and nowhere else (go_games_now takes none), and nothing is kept',
+   (gvJs.match(/p_lat/g) || []).length === 1 && /call\(cfg, session, 'go_games_now'\)/.test(gvJs) && !/localStorage|sessionStorage/.test(gvJs)
+   && (gvJs.match(/fetch\(/g) || []).length === 1);
+ok('...only the arena it is asked about is stamped, only where the arena is known as one, and an unchecked pin is refused with its words',
+   /g\.venue_id === venueId/.test(gvJs) && /if \(!g\.trusted\) return show\(WHY\.arena_unchecked/.test(gvJs)
+   && /const goVenue = team\.home_venue_id \|\| \(A && A\.main && A\.main\.id\) \|\| null;\s*if \(goVenue && window\.EpinoiaGoVenue\)/.test(venueJs)
+   && /EpinoiaGoVenue\.mount\(head, \{ venueId: goVenue/.test(venueJs));
+ok('the team page loads it: the logo, the card and its styles before venue.js, the go words with the report\'s',
+   /<script src="\.\.\/go\/logo\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\/venuestamp\.js\?v=\d+" defer><\/script>\s*<script src="venue\.js\?v=\d+" defer>/.test(teamHtml)
+   && /href="\.\.\/go\/venuestamp\.css\?v=\d+"/.test(teamHtml) && /data-i18n-packs="report go"/.test(teamHtml));
+ok('...in GO\'s style: the night sky, the logo, the neon pill (as go.css .go-find), light and dark',
+   /\.gv-btn\{[^}]*border:2px solid var\(--neon/.test(gvCss) && /\.gv-bg\{[^}]*stars-1200\.jpg/.test(gvCss)
+   && /:root:not\(\[data-theme="light"\]\) \.gv-btn\{/.test(gvCss) && /el\('button', 'gv-btn', 'stamp this venue'\)/.test(gvJs));
+ok('...and in Japanese and Spanish: the new sentences (the rest are the GO page\'s)',
+   ['ja', 'es'].every(code => { const go = rd('epinoia', 'i18n', code, 'go.js');
+     return ['stamp this venue', 'how it works ›', 'Stamped: a new arena.', 'Stamped: another visit.',
+             'No game is being played at this arena in the next day. Stamping opens two hours before tip-off.'].every(k => go.includes("'" + k + "'")); }));
+
+console.log('\nUPCOMING | RESULTS beside HOME\'s daily fixtures (7.14)');
+const homeHtml = rd('epinoia', 'home', 'index.html'), dailyJs = rd('epinoia', 'home', 'daily.js'), homeCss = rd('epinoia', 'kit', 'home.css');
+ok('two buttons in the section\'s heading: UPCOMING (pressed, the view that was always there) and RESULTS',
+   /<div class="hm-seg" id="fxSeg" role="group" aria-label="Fixtures or results">\s*<button type="button" data-fx="up" aria-pressed="true">Upcoming<\/button>\s*<button type="button" data-fx="res" aria-pressed="false">Results<\/button>/.test(homeHtml)
+   && homeHtml.indexOf('id="fxSeg"') > homeHtml.indexOf('id="hmFixturesH"') && homeHtml.indexOf('id="fxSeg"') < homeHtml.indexOf('all fixtures'));
+ok('...RESULTS is the most recent finals, newest first, a few from each league so one busy night does not take the shelf',
+   /G\.recent\(new Date\(now\)\.toISOString\(\), 0, 40\)/.test(dailyJs) && /const PER_LEAGUE = 3;/.test(dailyJs) && /g\.status !== 'final'/.test(dailyJs)
+   && /out\.length >= N/.test(dailyJs));
+ok('...the choice is the reader\'s for the visit, changes the cards at once, and never touches the live/next reads it replaces',
+   /sessionStorage\.setItem\(MODE_KEY, mode\)/.test(dailyJs) && /if \(mode === 'res'\) return \{ rows: await results\(G, now\), state: \{\}, now, mode \};/.test(dailyJs)
+   && /return mode \+ '>' \+ rows\.map/.test(dailyJs) && /No results yet\. The full list is on the fixtures page\./.test(dailyJs));
+ok('...styled as the section\'s own small type, the chosen one filled, a 40px target on a phone; and worded in Japanese and Spanish',
+   /\.hm \.sec-h \.hm-seg button\[aria-pressed="true"\]\{background:var\(--lume\)/.test(homeCss) && /min-height:40px/.test(homeCss.slice(homeCss.indexOf('.hm-seg button{min-height:40px')))
+   && ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code + '.js'); return c.includes("'No results yet. The full list is on the fixtures page.':") && c.includes("'Fixtures or results':") && /'results':/.test(c) && /'upcoming':/.test(c); }));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

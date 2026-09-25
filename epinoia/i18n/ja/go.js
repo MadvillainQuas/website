@@ -126,8 +126,6 @@
       'Please Enter A Username.': 'ユーザー名を入力してください。',
       'Have Fun!': '楽しんで！',
       'ok': 'OK',
-      'just looking': '見るだけ',
-      'Sign in first: your username is how the leaderboard and the feed show you.': 'まずログインしてください。ランキングとフィードでは、ユーザー名であなたを表示します。',
       'Stamp the arenas you go to: at a game, with your phone.': '観戦に行ったアリーナを、試合会場でスマートフォンからスタンプしよう。',
       'Arenas to tick off': '未スタンプのアリーナ',
       'Country': '国',
@@ -216,7 +214,13 @@
       'Use my location': '現在地を使う',
       'city': '都市',
       'open in Google Maps ↗': 'Googleマップで開く ↗',
-      'the full preview ↗': 'プレビュー全文 ↗'
+      'the full preview ↗': 'プレビュー全文 ↗',
+      'You’re looking around.': 'ゲストとして見ています。',
+      'Sign in to stamp arenas, add photographs and notes, and join the leaderboard.': 'ログインすると、アリーナのスタンプ、写真とメモの追加、ランキングへの参加ができます。',
+      'how it works ›': '仕組み ›',
+      'No game is being played at this arena in the next day. Stamping opens two hours before tip-off.': 'このアリーナでは、この先24時間に行われる試合はありません。スタンプは試合開始の2時間前から押せます。',
+      'Stamped: a new arena.': 'スタンプしました：新しいアリーナです。',
+      'Stamped: another visit.': 'スタンプしました：再訪です。'
     },
     units: {
       'arena': '{n}アリーナ',

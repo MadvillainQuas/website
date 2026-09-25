@@ -1416,7 +1416,9 @@
       'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': '小さい数字はチーム内のパーセンタイルです。高いほど良く、試投15本未満の割合は順位付けしません',
       'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': '試合を探す：近くの試合、または行き先に近い試合（パスポートモード）',
       'Also plays home games at': 'その他のホームアリーナ',
-      'Main home arena': 'メインのホームアリーナ'
+      'Main home arena': 'メインのホームアリーナ',
+      'No results yet. The full list is on the fixtures page.': 'まだ結果はありません。全日程は日程・結果ページにあります。',
+      'Fixtures or results': '日程・結果の切り替え'
     },
 
     ctx: {

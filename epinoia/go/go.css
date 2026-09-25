@@ -38,24 +38,19 @@ a.plain{color:inherit;text-decoration:none}
   transition:opacity .4s ease}
 .gi-alt a,.gi-alt button{color:inherit;opacity:.72;background:none;border:0;cursor:pointer;font:inherit;text-decoration:underline;
   text-underline-offset:3px;padding:6px}
-.gi-alt a.gi-signin{opacity:1;text-decoration:none;border:2px solid currentColor;border-radius:999px;padding:10px 22px;
-  font-family:var(--f-go);font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase}
 html.go-intro-open,html.go-intro-open body{overflow:hidden}
 /* UP BEFORE THE FIRST PAINT: intro-early.js marks <html data-go-intro="…"> from what this browser knows,
    so the screen is there, already black (white on the dark theme), before the page can show - no fade in,
    no second of the page first. go.js takes it over (the box's data-mode) once the database has answered. */
 html[data-go-intro] .go-intro,html[data-go-intro] .go-intro[hidden]{display:grid;opacity:1}
 /* what the screen says, by mode: every mode's words are in the page, and only its own are shown */
-.gi-form,.gi-if-ask,.gi-if-signin{display:none}
+.gi-form,.gi-if-ask{display:none}
 html[data-go-intro="ask"] .gi-form,.go-intro[data-mode="ask"] .gi-form{display:flex}
-html[data-go-intro="ask"] .gi-if-ask,.go-intro[data-mode="ask"] .gi-if-ask,
-html[data-go-intro="signin"] .gi-if-signin,.go-intro[data-mode="signin"] .gi-if-signin{display:inline-block}
-html[data-go-intro="signin"] p.gi-if-signin,.go-intro[data-mode="signin"] p.gi-if-signin{display:block}
+html[data-go-intro="ask"] .gi-if-ask,.go-intro[data-mode="ask"] .gi-if-ask{display:inline-block}
 /* nothing to say yet (signed in, the username not known on this browser): the plain screen, a moment */
 html[data-go-intro="wait"] .gi-stage,.go-intro[data-mode="wait"] .gi-stage{visibility:hidden}
 /* a fan with a name, first visit: the screen, then "Have Fun!" - never the question they have answered */
 html[data-go-intro="welcome"] .gi-msg:not(.fun),.go-intro[data-mode="welcome"] .gi-msg:not(.fun){opacity:0}
-.gi-note{margin:0;max-width:44ch;font-family:var(--f-ui);font-size:15px;line-height:1.5;opacity:.8}
 
 /* ---- the hero: the logo over the night sky (inverted in the dark theme) ------------------------ */
 .go-hero{position:relative;z-index:3;isolation:isolate;overflow:visible;min-height:33.4vh;display:flex;flex-direction:column;

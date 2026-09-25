@@ -126,8 +126,6 @@
       'Please Enter A Username.': 'Introduce un nombre de usuario.',
       'Have Fun!': '¡Diviértete!',
       'ok': 'OK',
-      'just looking': 'solo mirar',
-      'Sign in first: your username is how the leaderboard and the feed show you.': 'Inicia sesión primero: tu nombre de usuario es como te muestran la clasificación y el muro.',
       'Stamp the arenas you go to: at a game, with your phone.': 'Sella los pabellones a los que vas: en el partido, con tu móvil.',
       'Arenas to tick off': 'Pabellones pendientes',
       'Country': 'País',
@@ -216,7 +214,13 @@
       'Use my location': 'Usar mi ubicación',
       'city': 'ciudad',
       'open in Google Maps ↗': 'abrir en Google Maps ↗',
-      'the full preview ↗': 'la previa completa ↗'
+      'the full preview ↗': 'la previa completa ↗',
+      'You’re looking around.': 'Estás echando un vistazo.',
+      'Sign in to stamp arenas, add photographs and notes, and join the leaderboard.': 'Inicia sesión para sellar pabellones, añadir fotos y notas y entrar en la clasificación.',
+      'how it works ›': 'cómo funciona ›',
+      'No game is being played at this arena in the next day. Stamping opens two hours before tip-off.': 'No hay ningún partido en este pabellón en las próximas 24 horas. Se puede sellar desde dos horas antes del inicio.',
+      'Stamped: a new arena.': 'Sellado: un pabellón nuevo.',
+      'Stamped: another visit.': 'Sellado: otra visita.'
     },
     units: {
       'arena': '{n} pabellón',

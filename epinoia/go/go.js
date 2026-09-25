@@ -565,7 +565,7 @@ function introMode() {
   const noName = !!S.session && S.username === null;         // 0163 answered: no name yet
   if (noName) return stored(KEYS.later, true) === '1' ? null : 'ask';
   if (stored(KEYS.intro) === '1') return null;
-  return S.session ? 'welcome' : 'signin';
+  return S.session ? 'welcome' : null;             // signed out: the page itself, with its sign-in banner (look.js)
 }
 
 function entered() { document.documentElement.classList.add('go-entered'); }
@@ -619,21 +619,14 @@ function intro() {
     return;
   }
   const msg = $('#goIntroMsg'), form = $('#goIntroForm'), input = $('#goIntroIn'), ok = $('#goIntroOk'),
-        hint = $('#goIntroHint'), alt = $('#goIntroAlt'), note = box.querySelector('.gi-note');
+        hint = $('#goIntroHint'), alt = $('#goIntroAlt');
   // up at once, with this mode's words: already up if intro-early.js guessed so
   box.dataset.mode = mode;
   html.setAttribute('data-go-intro', mode);
   html.classList.add('go-intro-open');
   box.hidden = false;
-  const finish = () => leaveIntro(box, msg, [form, hint, alt, note]);
+  const finish = () => leaveIntro(box, msg, [form, hint, alt]);
   if (mode === 'welcome') { setTimeout(finish, reduced() ? 0 : 450); return; }
-  if (mode === 'signin') {
-    const a = $('#goIntroSignin');
-    a.href = signinHref();
-    $('#goIntroLook').addEventListener('click', finish, { once: true });
-    setTimeout(() => a.focus(), 200);
-    return;
-  }
   $('#goIntroLater').addEventListener('click', () => { store(KEYS.later, '1', true); finish(); }, { once: true });
   if (document.activeElement !== input) setTimeout(() => input.focus(), 100);
   const setHint = (t, kind) => { hint.textContent = ''; hint.className = 'gi-hint' + (kind ? ' ' + kind : '');
@@ -1695,10 +1688,21 @@ function drawPassport() {
 
 async function bootStamps() {
   if (!S.session) {
-    const out = $('#goStampsOut');
-    if (out) { signInCard(out); out.classList.remove('hide'); }
-    const body = $('#goStampsBody');
-    if (body) body.classList.add('hide');
+    /* LOOKING AROUND (7.14): the page as it is for a fan with no stamps yet - zeros, the badges there are to
+       earn, an empty map and list, their photographs - under look.js's sign-in banner. Nothing on it can be done
+       without an account: the stamps, notes and photographs are all behind one, on the server as well. */
+    S.mine = null;
+    drawPassport();
+    const ph = $('#goPhotos');
+    if (ph) {
+      ph.textContent = '';
+      const head = ph.appendChild(el('div', 'go-phhead'));
+      head.appendChild(el('b', null, 'Your photographs'));
+      const wall = head.appendChild(el('a', 'go-small', 'see the full feed'));
+      wall.href = '../photos/';
+      ph.appendChild(el('div', 'go-none', 'None yet. Add one to a game you stamped.'));
+    }
+    loadBoards();                                    // the leagues' badges
     return;
   }
   await loadMine();

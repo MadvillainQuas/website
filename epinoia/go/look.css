@@ -1,0 +1,9 @@
+/* the looking-around banner (look.js): a slim card for a visitor who is not signed in, on the GO page, THE FEED and the
+   stamps page. Standalone: THE FEED does not load go.css. */
+.go-look{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:calc(var(--u)*3) 0 0;padding:14px 16px;border-radius:14px;
+  border:1px solid var(--rule-2,var(--rule));border-left:3px solid var(--aqua,var(--lume));background:var(--panel)}
+.gp > .go-look{margin:calc(var(--u)*2) calc(var(--u)*3) 0}
+.go-look b{font-family:var(--f-ui);font-size:15px;color:var(--ink);display:block}
+.go-look span{font-family:var(--f-ui);font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.go-look .ep-btn{margin-left:auto;min-height:44px;display:inline-flex;align-items:center;text-decoration:none}
+@media (max-width:820px){.gp > .go-look{margin-left:calc(var(--u)*2);margin-right:calc(var(--u)*2)}}
