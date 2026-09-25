@@ -255,14 +255,10 @@ already wired up — GitHub will accept it the moment DNS resolves.
 
 ### 4. Sign in for the first time
 
-Open `prophesyscouting.co.uk` in a browser. The starter admin
-credentials are in [`config/users.json`](./config/users.json):
-
-- Username: `admin`
-- Password: `prophesy`
-
-**Change them immediately** via the admin dashboard (see below) or
-by editing `config/users.json` directly.
+Open `prophesyscouting.co.uk` in a browser and sign in with the account
+you were given (see "Accounts and passwords" above — no password is
+written down in this repository). Change it from the admin dashboard
+(see below) the first time you use it.
 
 ---
 
