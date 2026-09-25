@@ -77,11 +77,6 @@ html[data-go-intro="welcome"] .gi-msg:not(.fun),.go-intro[data-mode="welcome"] .
   0 .05em .1em rgba(0,0,0,.26),0 .12em .34em rgba(0,0,0,.2)}
 :root:not([data-theme="light"]) .go-logo.hero .gl-go{color:#21e57c;-webkit-text-stroke:.014em #05532a;
   text-shadow:0 0 .08em rgba(33,229,124,.9),0 0 .24em rgba(33,229,124,.6),0 0 .55em rgba(33,229,124,.35),0 .04em .08em rgba(0,0,0,.3)}
-html.go-entered .go-logo.hero{animation:go-rise .9s cubic-bezier(.2,.9,.25,1) both}
-html.go-entered .go-logo.hero .gl-go{animation:go-neon 1.6s steps(1,end) .35s both,go-breathe 3.6s ease-in-out 2.2s infinite}
-@keyframes go-rise{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}
-@keyframes go-neon{0%{opacity:.15}10%{opacity:1}14%{opacity:.35}20%{opacity:1}52%{opacity:1}55%{opacity:.55}58%{opacity:1}100%{opacity:1}}
-@keyframes go-breathe{50%{filter:brightness(1.18) drop-shadow(0 0 .1em rgba(61,255,138,.5))}}
 .go-hero-tag{margin:0;font-family:var(--f-ui);font-size:15.5px;line-height:1.5;max-width:46ch;color:rgba(245,251,248,.88);
   text-shadow:0 1px 3px rgba(0,0,0,.6)}
 :root:not([data-theme="light"]) .go-hero-tag{color:#0c1a13;text-shadow:0 1px 2px rgba(255,255,255,.6)}
@@ -153,7 +148,6 @@ html.go-entered .go-logo.hero .gl-go{animation:go-neon 1.6s steps(1,end) .35s bo
 html.go-pop-sheet,html.go-pop-sheet body{overflow:hidden}
 html.go-pop-sheet .ep-bell{visibility:hidden}          /* the bell floats over everything; not over the sheet */
 @media (prefers-reduced-motion:reduce){
-  html.go-entered .go-logo.hero,html.go-entered .go-logo.hero .gl-go{animation:none}
   .go-intro,.gi-msg,.gi-form,.gi-hint,.gi-alt{transition-duration:.01s}
 }
 

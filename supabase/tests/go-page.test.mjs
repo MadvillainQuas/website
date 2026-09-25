@@ -315,6 +315,10 @@ ok('...the same club in two competitions once (London Lions, SLB and EuroCup)',
 ok('...a club whose league the reader cannot see is on no card (the demo league\'s, left behind; a private league\'s)',
    G.clubsAt({ teams: [club('East Dock', null), club('London Lions', 'slb-men')] }).map(c => c.name).join() === 'London Lions'
    && G.clubsAt({ teams: [club('Neon City', null)] }).length === 0);
+ok('...a sponsor in the name is still one club (Lietkabelis / Lietkabelis Panevezys)',
+   G.clubsAt({ teams: [club('Lietkabelis', 'lkl', 'a.png'), club('Lietkabelis Panevežys', 'lkl', 'b.png')] }).length === 1
+   && G.clubsAt({ teams: [club('Rytas', 'lkl', 'same.png'), club('Rytas Vilnius', 'lkl', 'same.png')] }).length === 1);
+ok('...and the go hero title has no entrance animation', !/go-rise|go-neon|go-breathe/.test(rd('epinoia', 'go', 'go.css')));
 ok('...a club with its crest first', G.clubsAt({ teams: [club('Alpha', 'x'), club('Beta', 'x', 'crest.png')] })[0].name === 'Beta');
 ok('the strip asks for each club\'s league and keeps only arenas with a club to show',
    /teams!teams_home_venue_id_fkey\(name,short_name,colour,logo_path,leagues\(slug\)\)/.test(js) && /filter\(v => clubsAt\(v\)\.length && !mine\.has\(v\.id\)\)/.test(js));

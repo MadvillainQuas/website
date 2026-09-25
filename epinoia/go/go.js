@@ -1070,7 +1070,14 @@ function mapsHref(v) {
    the Hatters) are one arena with both on its card: a stamp there ticks it off for both. */
 function clubsAt(v) {
   const out = [];
-  (v.teams || []).forEach(t => { if (t && t.name && t.leagues && !out.some(c => c.name === t.name)) out.push(t); });
+  /* ONE CLUB, WHATEVER THE FEED CALLS IT: a sponsor in the name ("Lietkabelis" and "Lietkabelis
+     Panevezys") makes two rows for one club, and its crest drew twice. The same crest file, or one name's
+     words all inside the other's, is the same club. */
+  const words = n => String(n).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
+  const inside = (x, y) => x.length && x.every(w => y.indexOf(w) >= 0);
+  const same = (a, b) => a.name === b.name || (a.logo_path && a.logo_path === b.logo_path)
+    || (w => inside(w[0], w[1]) || inside(w[1], w[0]))([words(a.name), words(b.name)]);
+  (v.teams || []).forEach(t => { if (t && t.name && t.leagues && !out.some(c => same(c, t))) out.push(t); });
   return out.sort((a, b) => (b.logo_path ? 1 : 0) - (a.logo_path ? 1 : 0) || a.name.localeCompare(b.name));
 }
 
