@@ -354,6 +354,46 @@ function assistZonesHTML(A) {
       'with the zone’s share of each group under the count. Grey percentages rest on fewer than three shots.</p>';
 }
 
+/* WHERE EACH SHOT ATTEMPT WENT. Per team, every shot attempt in each zone: it went in, or it was missed and the
+   shooter's own side got the rebound (offensive), or the other side did (defensive), or neither -- a foul and free
+   throws, a turnover, the period ending, a feed that logged no rebound. So each zone's attempts split into
+   made / offensive rebound / defensive rebound / neither, the way FG% splits them into made and missed, and the
+   four add up to the attempts. The rebounds are situations.js's: the first rebound after the miss, before
+   anything else happens to the ball, and team rebounds count. One table for each team's own attempts, so the
+   Offence/Defence switch does not change this card: both teams are always here. */
+function reboundsHTML(Z, colour, shooter, other) {
+  const rows = ZONES.map(([z, label]) => [z, label, Z[z]]);
+  const sum = f => ZONES.reduce((n, [z]) => n + (f(Z[z]) || 0), 0);
+  const all = { a: sum(q => q.a), m: sum(q => q.m), o: sum(q => q.o), d: sum(q => q.d) };
+  if (!all.a) return '<p class="ev-none">No shot attempts.</p>';
+  const row = (key, label, q, isAll) => {
+    const n = q.a, m = q.m, o = q.o || 0, d = q.d || 0, none = n - m - o - d, miss = n - m;
+    const cell = (c, what, extra) => n
+      ? '<td data-tip="' + esc(label + ': ' + c + ' of ' + n + ' ' + (n === 1 ? 'shot' : 'shots') + ' ' + what + ' (' + share(c, n) + ')') + '"><b>' + c + '</b><small' + few(n) + '>' + share(c, n) + (extra || '') + '</small></td>'
+      : '<td><b class="nil">–</b></td>';
+    const bar = n ? '<span class="ev-stack">' + (m ? '<i class="rbm" style="flex:' + m + '"></i>' : '') + (o ? '<i class="rbo" style="flex:' + o + '"></i>' : '') +
+      (d ? '<i class="rbd" style="flex:' + d + '"></i>' : '') + (none ? '<i class="rbn" style="flex:' + none + '"></i>' : '') + '</span>' : '<span class="ev-stack"></span>';
+    return '<tr' + (isAll ? ' class="ev-azall"' : '') + ' data-evrb="' + key + '"><th scope="row">' + label + '</th>' +
+      '<td><b' + (n ? '' : ' class="nil"') + '>' + (n ? n : '–') + '</b>' + (miss ? '<small' + few(miss) + '>' + miss + ' missed</small>' : '') + '</td>' +
+      cell(m, 'went in') + cell(o, 'missed and rebounded by the shooter’s own side') + cell(d, 'missed and rebounded by the other side') + cell(none, 'missed with no rebound') +
+      '<td class="ev-mxbar">' + bar + '</td></tr>';
+  };
+  return '<div class="ev-mwrap"><table class="ev-mx az rb" style="--s:' + colour + '">' +
+    '<caption class="ev-vh">What became of each shot attempt, by zone</caption>' +
+    '<thead><tr><th scope="col">Zone</th><th scope="col">Attempts</th><th scope="col">Made</th><th scope="col">Off. rebound</th><th scope="col">Def. rebound</th><th scope="col">No rebound</th>' +
+      '<th scope="col" class="ev-mxbar">What became of it</th></tr></thead>' +
+    '<tbody>' + rows.map(([z, label, q]) => row(z, label, q, false)).join('') + row('all', 'All', all, true) + '</tbody></table></div>' +
+    '<p class="ev-key" style="--s:' + colour + '"><span><i class="rbm"></i>made</span><span><i class="rbo"></i><span translate="no">' + shooter + '</span> offensive rebound</span>' +
+    '<span><i class="rbd"></i><span translate="no">' + other + '</span> defensive rebound</span><span><i class="rbn"></i>neither</span></p>';
+}
+
+function reboundsNote() {
+  return '<p class="ev-note">Every shot attempt is one of four things: it went in, or it was missed and the first rebound before anything else happens to the ball was the shooter’s own side’s (offensive) or the other side’s (defensive); team rebounds count. ' +
+    'Neither is a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log. ' +
+    'The percentage is the share of that zone’s attempts, and the four add up to the attempts. ' +
+    'The situation rows above do not change these tables: they are every shot. Grey percentages rest on fewer than three attempts.</p>';
+}
+
 function assistsHTML(A, colour, players) {
   const max = Math.max(1, A.ast.fgm, A.unast.fgm);
   const made = A.ast.fgm + A.unast.fgm;
@@ -427,6 +467,12 @@ function inner(S) {
           (s.zones[z].a ? Math.round(100 * s.zones[z].m / s.zones[z].a) + '%' : '–') + '</em></span>').join('') + '</div>' +
         '<h4 class="ev-sub">Who scored</h4>' + scorersHTML(s, D.players) + '</div></div>' +
       (sit === 'ato' ? '<h4 class="ev-sub">Every play after a timeout</h4>' + atoHTML(D.ato, S, nm, o) : '') +
+    '</section>' +
+    '<section class="ev-card ev-rebounds">' +
+      '<div class="ev-head"><h3 class="ev-title">What became of every shot attempt <small>rebounds by zone, both teams</small></h3></div>' +
+      [0, 1].map(k => '<h4 class="ev-sub"><span translate="no">' + esc(nm[k]) + '</span>’s shot attempts</h4>' +
+        reboundsHTML(C.side[k].sits.all.zones, 'var(--vis-t' + k + ',var(--team' + k + '))', esc(nm[k]), esc(nm[1 - k]))).join('') +
+      reboundsNote() +
     '</section>' +
     '<section class="ev-card ev-players" style="--s:' + teamColour + '">' +
       '<div class="ev-head"><h3 class="ev-title">Every player’s shots <small>' + attackers + (off ? '' : ' against ' + me) + '</small></h3>' +

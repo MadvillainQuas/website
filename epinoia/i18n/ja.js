@@ -1401,7 +1401,19 @@
       'THE FEED: the fans’ photographs of the games they stamped': 'フィード：ファンがスタンプした試合で撮った写真',
       'your stamps: every game, the map, and the distance between them': 'あなたのスタンプ：すべての試合、地図、その間の距離',
       'Nothing this week.': '今週の試合はありません。',
-      'No results yet.': 'まだ結果はありません。'
+      'No results yet.': 'まだ結果はありません。',
+      'the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none': '各失敗の直後の最初のリバウンドを数え、チームリバウンドも含みます。ファウルとフリースロー、ターンオーバー、ピリオド終了が続いた失敗にはリバウンドがありません',
+      'No rebound': 'リバウンドなし',
+      'what became of every shot attempt': 'すべてのシュート試投の行方',
+      'the club’s own attempts': 'クラブ自身の試投',
+      'attempts against the club': 'クラブに対する相手の試投',
+      'own offensive rebound': '自チームのオフェンスリバウンド',
+      'other side’s defensive rebound': '相手のディフェンスリバウンド',
+      'other side’s offensive rebound': '相手のオフェンスリバウンド',
+      'own defensive rebound': '自チームのディフェンスリバウンド',
+      'every shot attempt in a zone went in, or was missed and rebounded by the shooter’s side (offensive) or the other side (defensive), or had no rebound': 'ゾーン内のシュート試投はすべて、決まった、または外れてシュートを打ったチームがリバウンドを取った（オフェンス）か相手が取った（ディフェンス）か、リバウンドなしのどれかです',
+      'the four add up to the attempts': '4つを合わせると試投数になります',
+      'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': '小さい数字はチーム内のパーセンタイルです。高いほど良く、試投15本未満の割合は順位付けしません'
     },
 
     ctx: {

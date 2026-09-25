@@ -1403,7 +1403,19 @@
       'THE FEED: the fans’ photographs of the games they stamped': 'EL MURO: las fotos de los aficionados de los partidos que sellaron',
       'your stamps: every game, the map, and the distance between them': 'tus sellos: cada partido, el mapa y la distancia entre ellos',
       'Nothing this week.': 'Nada esta semana.',
-      'No results yet.': 'Aún no hay resultados.'
+      'No results yet.': 'Aún no hay resultados.',
+      'the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none': 'cuenta el primer rebote tras cada fallo, también los de equipo; un fallo seguido de falta y tiros libres, una pérdida o el final de un periodo no tiene rebote',
+      'No rebound': 'Sin rebote',
+      'what became of every shot attempt': 'qué pasó con cada tiro',
+      'the club’s own attempts': 'los tiros del club',
+      'attempts against the club': 'tiros del rival contra el club',
+      'own offensive rebound': 'rebote ofensivo propio',
+      'other side’s defensive rebound': 'rebote defensivo del rival',
+      'other side’s offensive rebound': 'rebote ofensivo del rival',
+      'own defensive rebound': 'rebote defensivo propio',
+      'every shot attempt in a zone went in, or was missed and rebounded by the shooter’s side (offensive) or the other side (defensive), or had no rebound': 'cada tiro de una zona entró, o falló y lo rebotó el equipo del tirador (ofensivo) o el rival (defensivo), o no tuvo rebote',
+      'the four add up to the attempts': 'las cuatro suman los tiros',
+      'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': 'el número pequeño es el percentil entre los equipos, más alto es mejor, y una tasa con menos de 15 tiros no se clasifica'
     },
 
     ctx: {

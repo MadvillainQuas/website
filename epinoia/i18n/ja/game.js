@@ -377,7 +377,19 @@
       "Who has it going": "好調な選手",
       "3PT%": "3FG%",
       'Fans at this game': 'この試合のファン',
-      'all their photographs': 'すべての写真'
+      'all their photographs': 'すべての写真',
+      'neither': 'どちらでもない',
+      'Neither is a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log.': '「どちらでもない」は、ファウルとフリースロー、ターンオーバー、ピリオド終了、または記録されなかったリバウンドです。',
+      'rebounds by zone, both teams': 'ゾーン別のリバウンド、両チーム',
+      'Off. rebound': 'オフェンスリバウンド',
+      'Def. rebound': 'ディフェンスリバウンド',
+      'What became of it': 'その行方',
+      'No shot attempts.': 'シュート試投はありません。',
+      'Every shot attempt is one of four things: it went in, or it was missed and the first rebound before anything else happens to the ball was the shooter’s own side’s (offensive) or the other side’s (defensive); team rebounds count.': 'シュート試投は次の4つのどれかです。決まった、または外れて、ボールに他の動きが起きる前の最初のリバウンドをシュートを打ったチームが取った（オフェンスリバウンド）か、相手が取った（ディフェンスリバウンド）。チームリバウンドも含みます。',
+      'The percentage is the share of that zone’s attempts, and the four add up to the attempts.': '割合はそのゾーンの試投に占めるシェアで、4つを合わせると試投数になります。',
+      'The situation rows above do not change these tables: they are every shot.': '上の状況の行を選んでもこれらの表は変わりません。全シュートが対象です。',
+      'Grey percentages rest on fewer than three attempts.': 'グレーの割合は、試投3本未満のものです。',
+      'What became of each shot attempt, by zone': 'ゾーン別の各シュート試投の行方'
     },
 
     ctx: {
@@ -421,7 +433,7 @@
         "per chance": "チャンスあたり",
         "per poss.": "ポゼッションあたり",
         "made": "成功",
-        "missed": "失敗",
+        "missed": '失敗',
         "eFG,": "EFG、",
         "turnovers.": "ターンオーバー率。"
       },
@@ -653,6 +665,10 @@
         [/^No shot locations were recorded for (this shot|these (\d+) shots|this situation)\.$/, m =>
           (m[2] ? 'この' + m[2] + '本のシュート' : m[1] === 'this shot' ? 'このシュート' : 'この状況') + 'の位置は記録されていません。'],
         [/^(\d+) of (\d+) shots located$/, '$2本中$1本の位置を記録'],
+        [/^’s shot attempts$/, 'のシュート試投'],
+        [/^(\d+) missed$/, '$1本失敗'],
+        [/^(.+?): (\d+) of (\d+) shots? (went in|missed and rebounded by the shooter’s own side|missed and rebounded by the other side|missed with no rebound) \((\d+)%\)$/, (m, T) =>
+          T(m[1]) + ': ' + m[3] + '本中' + m[2] + '本が' + ({ 'went in': '成功', 'missed and rebounded by the shooter’s own side': '失敗してシュートを打ったチームがオフェンスリバウンド', 'missed and rebounded by the other side': '失敗して相手がディフェンスリバウンド', 'missed with no rebound': '失敗してリバウンドなし' })[m[4]] + '（' + m[5] + '%）'],
         [/^missed ([a-z][a-z-]*(?: [a-z-]+)?) three$/, (m, T) => '3Pシュート×（' + T(m[1]) + '）'],
         [/^missed ([^·]+)$/, (m, T) => T(m[1]) + '×'],
         [/^([a-z][a-z-]*(?: [a-z-]+)?) three$/, (m, T) => '3P（' + T(m[1]) + '）'],

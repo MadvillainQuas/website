@@ -384,7 +384,19 @@
       "Who has it going": "Quién está enchufado",
       "3PT%": "T3%",
       'Fans at this game': 'Aficionados en este partido',
-      'all their photographs': 'todas sus fotos'
+      'all their photographs': 'todas sus fotos',
+      'neither': 'ninguno',
+      'Neither is a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log.': '«Ninguno» es una falta y tiros libres, una pérdida, el final de un periodo o un rebote que la fuente no registró.',
+      'rebounds by zone, both teams': 'rebotes por zona, los dos equipos',
+      'Off. rebound': 'Rebote of.',
+      'Def. rebound': 'Rebote def.',
+      'What became of it': 'Qué pasó',
+      'No shot attempts.': 'No hubo tiros.',
+      'Every shot attempt is one of four things: it went in, or it was missed and the first rebound before anything else happens to the ball was the shooter’s own side’s (offensive) or the other side’s (defensive); team rebounds count.': 'Cada tiro es una de cuatro cosas: entró, o falló y el primer rebote, antes de que ocurra otra cosa con el balón, fue del propio equipo del tirador (ofensivo) o del rival (defensivo); cuentan los rebotes de equipo.',
+      'The percentage is the share of that zone’s attempts, and the four add up to the attempts.': 'El porcentaje es la parte de los tiros de esa zona, y las cuatro suman los tiros.',
+      'The situation rows above do not change these tables: they are every shot.': 'Las filas de situaciones de arriba no cambian estas tablas: incluyen todos los tiros.',
+      'Grey percentages rest on fewer than three attempts.': 'Los porcentajes en gris se basan en menos de tres tiros.',
+      'What became of each shot attempt, by zone': 'Qué pasó con cada tiro, por zona'
     },
 
     ctx: {
@@ -428,7 +440,7 @@
         "per chance": "por oportunidad",
         "per poss.": "por posesión",
         "made": "anotado",
-        "missed": "fallado",
+        "missed": 'Fallados',
         "eFG,": "eFG,",
         "turnovers.": "de pérdidas."
       },
@@ -663,6 +675,10 @@
         [/^No shot locations were recorded for (this shot|these (\d+) shots|this situation)\.$/, m =>
           'No se registró la posición ' + (m[2] ? 'de estos ' + m[2] + ' tiros' : m[1] === 'this shot' ? 'de este tiro' : 'de ningún tiro de esta situación') + '.'],
         [/^(\d+) of (\d+) shots located$/, '$1 de $2 tiros con posición'],
+        [/^’s shot attempts$/, ': tiros'],
+        [/^(\d+) missed$/, m => m[1] + (m[1] === '1' ? ' fallado' : ' fallados')],
+        [/^(.+?): (\d+) of (\d+) shots? (went in|missed and rebounded by the shooter’s own side|missed and rebounded by the other side|missed with no rebound) \((\d+)%\)$/, (m, T) =>
+          T(m[1]) + ': ' + m[2] + ' de ' + m[3] + (m[3] === '1' ? ' tiro ' : ' tiros ') + ({ 'went in': 'entraron', 'missed and rebounded by the shooter’s own side': 'fallaron y los rebotó su propio equipo', 'missed and rebounded by the other side': 'fallaron y los rebotó el rival', 'missed with no rebound': 'fallaron sin rebote' })[m[4]] + ' (' + m[5] + '%)'],
         [/^missed ([a-z][a-z-]*(?: [a-z-]+)?) three$/, (m, T) => 'Triple fallado (' + T(m[1]) + ')'],
         [/^missed ([^·]+)$/, (m, T) => missed(T(m[1]))],
         [/^([a-z][a-z-]*(?: [a-z-]+)?) three$/, (m, T) => 'Triple (' + T(m[1]) + ')'],

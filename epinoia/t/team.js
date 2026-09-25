@@ -607,7 +607,10 @@ async function zoneStats(host, S, team) {
   const zr = await SC.attachZoneStats(S, D);
   holding.remove();
   const mine = S.teams.find(tm => tm.id === team.id);
-  if (!mine || !zr[team.id] || !mine.z_located) { host.appendChild(el('div', 'empty', 'No located shots for this club yet.')); return; }
+  if (!mine || !zr[team.id]) { host.appendChild(el('div', 'empty', 'No located shots for this club yet.')); return; }
+  /* the rebounds off each zone's misses need no locations (they are the box score's zones), so they are drawn
+     whether or not there are located shots to chart */
+  if (!mine.z_located) { host.appendChild(el('div', 'empty', 'No located shots for this club yet.')); reboundZones(host, S, mine); return; }
   const groups = SC.GROUPS.concat(SC.BIG);
   const keys = [];
   groups.forEach(g => ['share', 'att100', 'attG', 'madeG', 'efg'].forEach(m => keys.push('z_' + g.k + '_' + m)));
@@ -625,6 +628,48 @@ async function zoneStats(host, S, team) {
     '<thead><tr><th class="l" colspan="6">the larger cuts</th></tr>' + head + '</thead><tbody>' + SC.BIG.map(tr).join('') + '</tbody></table></div>' +
     '<div class="sc-note">every located shot in the competition' + (teamScopeKind !== 'all' ? ' (' + (KIND_LABEL[teamScopeKind] || teamScopeKind).toLowerCase() + ')' : '') +
     ' \u00b7 the small number is the percentile among the ' + S.teams.length + ' teams (higher is more, or better) \u00b7 att / 100 = attempts per 100 of the club\u2019s own possessions \u00b7 the same numbers for every club are under \u201cshot zones\u201d in the league table\u2019s team statistics</div>';
+  host.appendChild(wrap);
+  reboundZones(host, S, mine);
+}
+
+/* WHAT BECAME OF EVERY SHOT ATTEMPT, by zone, for the club's own attempts and for the attempts taken against it
+   (Louie, 2026-09-25). Rim, mid-range and three by the box score's own zone rule, over every game in the scope: of
+   the attempts in a zone, the share that went in, the share missed and rebounded by the shooter's own side
+   (offensive), and by the other side (defensive) -- the four kinds add up to the attempts, the way FG% splits them
+   into made and missed. The rebounds are the first one after each miss, before anything else happens to the ball
+   (epinoia/situations.js reboundZones); a miss with none is a foul and free throws, a turnover, the end of a
+   period or a rebound the feed did not log. The club's own OREB% and DREB% carry a percentile among the teams. */
+function reboundZones(host, S, mine) {
+  if (!mine || !mine.rb_ready) return;
+  const SE = window.EpinoiaSeason;
+  const ZS = [['rim', 'at the rim'], ['mid', 'mid-range'], ['three', 'threes'], ['all', 'every shot']];
+  const keys = [];
+  ZS.forEach(([z]) => ['orp', 'drp'].forEach(m => keys.push('rb_' + z + '_' + m)));
+  const ranks = SE ? SE.percentiles(S.teams, keys, []) : new Map();
+  const pctOf = k => { const tb = ranks.get(k); return tb ? tb.get(mine.id) : null; };
+  const heat = window.EpinoiaTable && window.EpinoiaTable.heatStyle ? window.EpinoiaTable.heatStyle : () => '';
+  const pc = v => v == null ? '\u2014' : (+v).toFixed(1) + '%';
+  const share = (n, d) => (d ? pc(100 * n / d) : '\u2014');
+  const FEWA = 15;                                             // a rate on fewer attempts than this is not ranked
+  const plain = (n, d) => '<td>' + share(n, d) + '</td>';
+  const ranked = (k, n) => { const p = n < FEWA ? null : pctOf(k); return '<td class="heat" style="' + heat(p) + '">' + pc(mine[k]) + (p == null ? '' : '<span class="pctl">' + Math.round(p) + '</span>') + '</td>'; };
+  /* own: the club's attempts (its own offensive rebound is the good one, ranked); against: the attempts taken
+     against it (its own defensive rebound is the good one, ranked) */
+  const tr = ([z, label], end) => {
+    const own = end === 'own', g = f => mine['rb_' + z + '_' + (own ? '' : 'g') + f], a = g('a');
+    return '<tr' + (a ? '' : ' class="none"') + '><td class="l">' + label + '</td><td>' + a + '</td>' + plain(g('m'), a) +
+      (own ? ranked('rb_' + z + '_orp', a) + plain(g('d'), a) : plain(g('o'), a) + ranked('rb_' + z + '_drp', a)) +
+      '<td>' + share(a - g('m') - g('o') - g('d'), a) + '</td></tr>';
+  };
+  const head = (first, off, def) => '<tr><th class="l">' + first + '</th><th>attempts</th><th>made</th><th>' + off + '</th><th>' + def + '</th><th>no rebound</th></tr>';
+  const wrap = el('div');
+  wrap.innerHTML = '<div class="ffhead">what became of every shot attempt</div>' +
+    '<div class="sc-tablewrap"><table class="sc-table">' +
+      '<thead>' + head('the club\u2019s own attempts', 'own offensive rebound', 'other side\u2019s defensive rebound') + '</thead><tbody>' + ZS.map(z => tr(z, 'own')).join('') + '</tbody>' +
+      '<thead>' + head('attempts against the club', 'other side\u2019s offensive rebound', 'own defensive rebound') + '</thead><tbody>' + ZS.map(z => tr(z, 'against')).join('') + '</tbody></table></div>' +
+    '<div class="sc-note">every shot attempt in a zone went in, or was missed and rebounded by the shooter\u2019s side (offensive) or the other side (defensive), or had no rebound \u00b7 ' +
+    'the four add up to the attempts \u00b7 the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none \u00b7 ' +
+    'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked</div>';
   host.appendChild(wrap);
 }
 

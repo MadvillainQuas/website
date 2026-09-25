@@ -823,6 +823,12 @@ jobs:
         # epinoia/rotation.js follows the engine's minutes to the millisecond on real games
         run: node supabase/tests/rotation.test.mjs
 
+      - name: Rebounds off each zone's misses (events tab, club profile)
+        # AHEAD OF events.test with the steps above: every miss is followed by the first rebound before
+        # anything else happens to the ball, and its zone keeps whose it was; hand-worked log, the events
+        # tab's table on both views, a season of logs at both ends, and a real LiveStats game
+        run: node supabase/tests/rebound-zones.test.mjs
+
       - name: A substitution is one change however its two halves were logged
         # translate/fiba_events.py paired an OUT and an IN only when they arrived back to back;
         # split by the free throws at their clock, or completed by a late correction, both were

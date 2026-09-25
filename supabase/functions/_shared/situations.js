@@ -43,6 +43,11 @@
    unassisted baskets came from, beside the attempts from each zone, which is
    the context an efficiency number needs.
 
+   REBOUNDS OFF EACH ZONE'S MISSES: every missed field goal is followed by the first rebound that comes before
+   anything else happens to the ball, and the zone it was shot from keeps whose it was -- the shooter's own
+   offensive rebound, or the other side's defensive one. Every side's zone cells carry them (o and d beside a and m),
+   in each situation, and reboundZones() gives them for a whole log, which is what a season's profile adds up.
+
    Needs epinoia/possessions.js loaded first (a global in the browser and in the
    Edge Function, a module in node). Without it every chance-based number comes
    out zero, so compute() reports that rather than guessing.
@@ -96,9 +101,13 @@ const AFIELDS = ['fgm', 'pts', 'p3m', 'rimM', 'midM'];
 const VERSION = 1;
 
 /* ---------------------------------------------------------------- compute --- */
+/* a zone's shooting, and what became of its misses: o = the side's own offensive rebounds off them, d = the
+   other side's defensive rebounds off them; what is left of a zone's misses (a foul and free throws, a turnover,
+   the period ending, a feed that logged no rebound) is neither */
+const zoneCell = () => ({ a: 0, m: 0, o: 0, d: 0 });
 function bucket() {
   return { chances: 0, pts: 0, fga: 0, fgm: 0, p3a: 0, p3m: 0, fta: 0, ftm: 0, tov: 0,
-           zones: { rim: { a: 0, m: 0 }, mid: { a: 0, m: 0 }, three: { a: 0, m: 0 } },
+           zones: { rim: zoneCell(), mid: zoneCell(), three: zoneCell() },
            types: {}, scorers: {}, shots: [], players: {} };
 }
 function pbucket() {
@@ -107,15 +116,9 @@ function pbucket() {
 }
 const agroup = () => ({ fgm: 0, pts: 0, p3m: 0, zones: { rim: 0, mid: 0, three: 0 } });
 
-function compute(S) {
-  const teams = (S && S.teams) || [{}, {}];
-  const names = {};
-  teams.forEach(tm => ((tm && tm.players) || []).forEach(p => {
-    names[p.id] = p.name || (p.num != null && p.num !== '' ? '#' + p.num : '#?');
-  }));
-  const all = inGameOrder((S && S.events) || []);
-
-  /* the descriptors, read exactly as deriveGame reads them (a repeated tag or type toggles) */
+/* the descriptors, read exactly as deriveGame reads them (a repeated tag or type toggles), and the zone
+   rule built on them: the shot type decides when it is decisive, the location fills the gaps */
+function describe(all) {
   const tags = {}, stypes = {}, locs = {};
   all.forEach(ev => {
     if (ev.t === 'tag') { const s = tags[ev.ref] = tags[ev.ref] || new Set(); s.has(ev.tag) ? s.delete(ev.tag) : s.add(ev.tag); }
@@ -130,8 +133,62 @@ function compute(S) {
     const l = locs[ev.id];
     return ((l && l.x > 0.33 && l.x < 0.67 && l.y < 0.42) || (tags[ev.id] && tags[ev.id].has('paint'))) ? 'rim' : 'mid';
   };
+  return { tags, stypes, locs, zoneOf };
+}
+
+/* WHAT BECAME OF EACH MISSED FIELD GOAL: the first rebound after it, before anything else happens to the
+   ball -- another shot, a free throw, a turnover, the period ending. 'off' when the shooter's own side got it,
+   'def' when the other side did (team rebounds count: a rebound is a rebound); a miss with no rebound in
+   between (a foul and free throws, a feed that logged none) is 'none'. A rebound of a missed FREE throw is
+   not any zone's: the free throw is not a field goal. plays: descriptors already left out, in game order. */
+const BALL_DEAD = /^(period_|end_|game_)/;
+function reboundOutcomes(plays) {
+  const out = new Map();
+  plays.forEach((ev, i) => {
+    if (!(ev.t === 'p2_miss' || ev.t === 'p3_miss') || !(ev.team === 0 || ev.team === 1)) return;
+    let r = 'none';
+    for (let j = i + 1; j < plays.length; j++) {
+      const n = plays[j];
+      if (n.t === 'reb') { r = n.team === ev.team ? 'off' : (n.team === 0 || n.team === 1) ? 'def' : 'none'; break; }
+      if (n.t in FG || n.t in FT || n.t === 'to' || BALL_DEAD.test(n.t)) break;
+    }
+    out.set(ev, r);
+  });
+  return out;
+}
+
+/* Every side's shooting by zone with the rebounds off its misses, from one game's event log (the log as the page
+   loads it: descriptors point at their shot by id). For a season, add the games up. [side 0, side 1], each
+   { rim, mid, three } of { a, m, o, d } -- o: the side's own offensive rebounds off its misses in that zone, d: the
+   other side's defensive rebounds off them. */
+function reboundZones(events) {
+  const all = inGameOrder(events || []);
+  const { zoneOf } = describe(all);
+  const plays = all.filter(ev => ev && !DESCRIPTOR[ev.t]);
+  const rebOf = reboundOutcomes(plays);
+  const out = [0, 1].map(() => ({ rim: zoneCell(), mid: zoneCell(), three: zoneCell() }));
+  plays.forEach(ev => {
+    if (!(ev.t in FG) || !(ev.team === 0 || ev.team === 1)) return;
+    const q = out[ev.team][zoneOf(ev)];
+    q.a++;
+    if (FG[ev.t] > 0) { q.m++; return; }
+    const r = rebOf.get(ev);
+    if (r === 'off') q.o++; else if (r === 'def') q.d++;
+  });
+  return out;
+}
+
+function compute(S) {
+  const teams = (S && S.teams) || [{}, {}];
+  const names = {};
+  teams.forEach(tm => ((tm && tm.players) || []).forEach(p => {
+    names[p.id] = p.name || (p.num != null && p.num !== '' ? '#' + p.num : '#?');
+  }));
+  const all = inGameOrder((S && S.events) || []);
+  const { tags, stypes, locs, zoneOf } = describe(all);
 
   const plays = all.filter(ev => ev && !DESCRIPTOR[ev.t]);
+  const rebOf = reboundOutcomes(plays);
   const isAction = ev => (ev.t in FG || ev.t in FT || ev.t === 'to') && (ev.team === 0 || ev.team === 1);
 
   /* ---- the engine's windows, stamped on every action ----
@@ -217,6 +274,7 @@ function compute(S) {
       b.fga++; b.zones[z].a++;
       if (three) b.p3a++;
       if (made) { b.fgm++; b.zones[z].m++; b.pts += FG[ev.t]; if (three) b.p3m++; }
+      else { const r = rebOf.get(ev); if (r === 'off') b.zones[z].o++; else if (r === 'def') b.zones[z].d++; }
       if (pl) {
         pl.fga++; pl.zones[z].a++;
         if (three) pl.p3a++;
@@ -419,7 +477,7 @@ function toStored(C) {
   return out;
 }
 
-return { compute, toStored, finish, howEnded, surname, KEYS, STAMPED, FIELDS, AFIELDS, VERSION, cumEl, inGameOrder };
+return { compute, toStored, finish, howEnded, surname, reboundZones, reboundOutcomes, KEYS, STAMPED, FIELDS, AFIELDS, VERSION, cumEl, inGameOrder };
 }));
 
 /* ---------------------------------------------------------------------------
@@ -430,5 +488,5 @@ return { compute, toStored, finish, howEnded, surname, KEYS, STAMPED, FIELDS, AF
    so the Edge Function and the browser run one identical file.
    --------------------------------------------------------------------------- */
 const __api = globalThis.EpinoiaSituations;
-export const { compute, toStored, finish, howEnded, surname, KEYS, STAMPED, FIELDS, AFIELDS, VERSION, cumEl, inGameOrder } = __api;
+export const { compute, toStored, finish, howEnded, surname, reboundZones, reboundOutcomes, KEYS, STAMPED, FIELDS, AFIELDS, VERSION, cumEl, inGameOrder } = __api;
 export default __api;

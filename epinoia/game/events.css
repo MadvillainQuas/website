@@ -86,6 +86,13 @@
 .ev-stack .z0{ background:var(--s) }
 .ev-stack .z1{ background:color-mix(in srgb,var(--s) 60%,var(--bg-card)) }
 .ev-stack .z2{ background:color-mix(in srgb,var(--s) 30%,var(--bg-card)) }
+/* what became of a shot attempt: it went in (the team colour), the shooter's own side rebounded it (a lighter tint), the other side did (grey), neither (the track) */
+.ev-stack .rbm, .ev-key i.rbm{ background:var(--s) }
+.ev-stack .rbo, .ev-key i.rbo{ background:color-mix(in srgb,var(--s) 55%,var(--bg-card)) }
+.ev-stack .rbd, .ev-key i.rbd{ background:color-mix(in srgb,var(--text-primary) 45%,transparent) }
+.ev-stack .rbn, .ev-key i.rbn{ background:color-mix(in srgb,var(--text-primary) 12%,transparent) }
+.ev-key i.rbm, .ev-key i.rbo, .ev-key i.rbd, .ev-key i.rbn{ border-radius:2px }
+.ev-mx.rb{ min-width:520px }
 .ev-diet.none .ev-stack{ opacity:.5 }
 
 /* ---- the chosen situation ---- */

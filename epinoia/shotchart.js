@@ -327,22 +327,63 @@
      numbers onto each team row under z_<zone>_<measure>, which is what the full table's
      "shot zones" columns and the club profile's block both read. Cached per set of games. */
   const attachCache = {};
+
+  /* THE REBOUNDS OFF EACH ZONE'S MISSES, from the same logs (situations.js reboundZones: rim / mid / three by the
+     box score's rule, whose rebound each miss ended in). Per club, both ends: `off` its own shots -- o its own
+     offensive rebounds off them, d the other side's defensive ones -- and `def` the shots taken against it -- o the
+     other side's offensive rebounds, d its own defensive ones. Only where situations.js is on the page. */
+  const REB_ZONES = ['rim', 'mid', 'three'];
+  function reboundsOf(byG, side) {
+    const Sit = (typeof globalThis !== 'undefined' && globalThis.EpinoiaSituations) || null;
+    if (!Sit || !Sit.reboundZones) return null;
+    const cells = () => ({ rim: { a: 0, m: 0, o: 0, d: 0 }, mid: { a: 0, m: 0, o: 0, d: 0 }, three: { a: 0, m: 0, o: 0, d: 0 } });
+    const add = (into, from) => REB_ZONES.forEach(z => { ['a', 'm', 'o', 'd'].forEach(f => { into[z][f] += from[z][f]; }); });
+    const out = {};
+    Object.keys(byG).forEach(gid => {
+      const sd = side[gid];
+      if (!sd) return;
+      const rz = Sit.reboundZones(byG[gid]);
+      [0, 1].forEach(t => {
+        const tid = sd[t];
+        if (!tid) return;
+        const r = out[tid] = out[tid] || { off: cells(), def: cells() };
+        add(r.off, rz[t]); add(r.def, rz[1 - t]);
+      });
+    });
+    return out;
+  }
+  /* one zone's line on a club's row, per shot ATTEMPT at each end: own = the club's shots (a attempts, m made, o its own
+     offensive rebounds off the misses, d the other side's defensive ones), against = the shots taken against it (o the
+     other side's offensive rebounds, d its own defensive ones); the rates are shares of those attempts */
+  function rebRow(r, z) {
+    const g = (end, f) => (z === 'all' ? REB_ZONES.reduce((n, k) => n + r[end][k][f], 0) : r[end][z][f]);
+    const line = end => ({ a: g(end, 'a'), m: g(end, 'm'), o: g(end, 'o'), d: g(end, 'd') });
+    const own = line('off'), against = line('def');
+    const pct = (n, d) => (d ? 100 * n / d : null);
+    return { own, against,
+             orp: pct(own.o, own.a),           // its own offensive rebounds, per attempt of its own
+             odp: pct(own.d, own.a),           // the other side's defensive rebounds off them
+             drp: pct(against.d, against.a),   // its own defensive rebounds, per attempt against it
+             oop: pct(against.o, against.a) }; // the other side's offensive rebounds off them
+  }
+
   async function attachZoneStats(S, D) {
     if (!S || !S.games || !S.games.length || !S.teams || !D || !D.events) return {};
     const key = S.games.map(g => g.id).sort().join(',');
-    let perTeam = attachCache[key];
-    if (!perTeam) {
+    let cached = attachCache[key];
+    if (!cached) {
       const evs = await D.events(S.games.map(g => g.id));
       const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
       const all = await gather({ fetchEvents: async () => Object.values(byG), gameIds: S.games.map(g => g.id), playerId: null });
       const side = {}; S.games.forEach(g => { side[g.id] = [g.home_team_id, g.away_team_id]; });
-      perTeam = {};
+      const shotsBy = {};
       all.forEach(sh => {
         const tid = (side[sh.gameId] || [])[+sh.team];
-        if (tid) (perTeam[tid] = perTeam[tid] || []).push(sh);
+        if (tid) (shotsBy[tid] = shotsBy[tid] || []).push(sh);
       });
-      attachCache[key] = perTeam;
+      cached = attachCache[key] = { perTeam: shotsBy, reb: reboundsOf(byG, side) };
     }
+    const perTeam = cached.perTeam;
     const out = {};
     S.teams.forEach(tm => {
       const shots = perTeam[tm.id] || [];
@@ -355,6 +396,17 @@
         tm['z_' + r.k + '_fg'] = r.fg; tm['z_' + r.k + '_efg'] = r.efg; tm['z_' + r.k + '_att'] = r.att;
       });
       tm.z_located = shots.length;
+      const rb = cached.reb && cached.reb[tm.id];
+      if (rb) {
+        REB_ZONES.concat('all').forEach(z => {
+          const r = rebRow(rb, z);
+          ['a', 'm', 'o', 'd'].forEach(f => { tm['rb_' + z + '_' + f] = r.own[f]; tm['rb_' + z + '_g' + f] = r.against[f]; });
+          tm['rb_' + z + '_orp'] = r.orp; tm['rb_' + z + '_odp'] = r.odp; tm['rb_' + z + '_drp'] = r.drp; tm['rb_' + z + '_oop'] = r.oop;
+          tm['rb_' + z + '_fg'] = r.own.a ? 100 * r.own.m / r.own.a : null;
+          tm['rb_' + z + '_gfg'] = r.against.a ? 100 * r.against.m / r.against.a : null;
+        });
+        tm.rb_ready = true;
+      }
       out[tm.id] = zr;
     });
     return out;
@@ -426,5 +478,5 @@
     return { zones: z, attempts: shots.length };
   }
 
-  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, attachZoneStats, markColour, ZONES, GROUPS, BIG };
+  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, attachZoneStats, reboundsOf, rebRow, markColour, ZONES, GROUPS, BIG };
 }));

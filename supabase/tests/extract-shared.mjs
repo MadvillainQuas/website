@@ -117,7 +117,7 @@ const FILES = [
     src: join(repo, 'epinoia', 'situations.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'situations.js'),
     global: 'EpinoiaSituations',
-    names: ['compute', 'toStored', 'finish', 'howEnded', 'surname', 'KEYS', 'STAMPED',
+    names: ['compute', 'toStored', 'finish', 'howEnded', 'surname', 'reboundZones', 'reboundOutcomes', 'KEYS', 'STAMPED',
             'FIELDS', 'AFIELDS', 'VERSION', 'cumEl', 'inGameOrder']
   },
   /* THE STARS' RULE, for the weekly fans' vote (0150). The fanvote function puts the
