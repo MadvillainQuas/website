@@ -5,6 +5,16 @@
      --pb-ink:var(--text-primary, #e8f2ec); --pb-dim:var(--text-secondary, #9fb3a8); margin-top:10px }
 :root[data-theme="light"] .pb{ --pb-card:#ffffff; --pb-ink:#0d1f17; --pb-dim:#5a6b62 }
 
+/* ---- the heading: the tab's name, what is shown, and the two clubs' colours ---- */
+.pb{ --pb-c0:#93f2bf; --pb-c1:#8ff5ff }
+.pb-head{ position:relative; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 16px; margin:4px 0 18px; padding:8px 0 14px }
+.pb-head::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:3px; border-radius:2px;
+  background:linear-gradient(90deg, var(--pb-c0) 0%, var(--pb-c0) 38%, var(--pb-c1) 62%, var(--pb-c1) 100%); opacity:.85 }
+.pb-title{ margin:0; font-family:var(--f-head, var(--f-ui, inherit)); font-weight:800; font-size:clamp(28px, 5.4vw, 42px); line-height:1;
+  letter-spacing:.07em; text-transform:uppercase; color:var(--pb-ink) }
+.pb-sub{ font-family:var(--f-score, var(--f-micro, monospace)); font-size:clamp(16px, 2.6vw, 22px); line-height:1; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--pb-dim); padding:5px 12px 3px; border:1px solid color-mix(in srgb, var(--pb-dim) 45%, transparent); border-radius:999px }
+
 /* ---- the quarter tabs and the order ---- */
 .pb-bar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin:0 0 12px }
 .pb-tabs{ display:flex; gap:4px; flex-wrap:wrap; padding:4px; border-radius:999px;

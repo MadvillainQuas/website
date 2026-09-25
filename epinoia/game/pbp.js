@@ -362,8 +362,14 @@ function mount(host, S, d, box) {
     order: stored(ORDER_KEY) || (live ? 'new' : 'old'),
     io: null
   };
-  host.innerHTML = '<div class="pb" data-i18n-ctx="pbp"><div class="pb-bar"><div class="pb-tabs" role="tablist"></div>' +
+  /* the heading, so the tab does not begin on empty space: the tab's name, and under it (smaller) what is being shown -
+     ALL, or the period picked; a rule in the two clubs' colours closes it */
+  host.innerHTML = '<div class="pb" data-i18n-ctx="pbp"><div class="pb-head"><h2 class="pb-title">Play-by-play</h2>' +
+    '<span class="pb-sub" aria-live="polite"></span></div>' +
+    '<div class="pb-bar"><div class="pb-tabs" role="tablist"></div>' +
     '<button type="button" class="pb-order"></button></div><div class="pb-list"></div></div>';
+  st.root = host.querySelector('.pb');
+  st.sub = host.querySelector('.pb-sub');
   st.tabs = host.querySelector('.pb-tabs');
   st.list = host.querySelector('.pb-list');
   st.orderBtn = host.querySelector('.pb-order');
@@ -388,6 +394,7 @@ function update(S, d, first) {
   const col = colours(S), TC = root.EpinoiaTeamColour;
   st.ctx = { S, d, pm: players(S), col, on: col.map(c => (TC && TC.on ? TC.on(c) : '#0b0f0d')), tags: tagMap(S) };
   st.groups = group(d.pbp || [], byId);
+  if (st.root) { st.root.style.setProperty('--pb-c0', col[0]); st.root.style.setProperty('--pb-c1', col[1]); }
   /* the five on the floor after each stoppage's substitutions, and the names to print under their circles */
   const after = lineupsAfter(d.pbp || [], byId, S.starters);
   st.groups.forEach(g => { if (g.subs) g.lineup = after[g.subs[g.subs.length - 1].ev.id] || null; });
@@ -415,7 +422,7 @@ function drawTabs() {
   if (st.tabs.dataset.have !== want) {
     st.tabs.dataset.have = want;
     st.tabs.innerHTML = ['all'].concat(ps).map(p =>
-      '<button type="button" role="tab" class="pb-tab" data-per="' + p + '">' + (p === 'all' ? 'All' : esc(B.perName(p).toUpperCase())) + '</button>').join('');
+      '<button type="button" role="tab" class="pb-tab" data-per="' + p + '">' + (p === 'all' ? 'All' : esc(perLabel(p))) + '</button>').join('');
     st.tabs.querySelectorAll('.pb-tab').forEach(b => b.addEventListener('click', () => {
       st.per = b.dataset.per;
       store(PER_KEY, st.per);
@@ -427,7 +434,11 @@ function drawTabs() {
   st.orderBtn.textContent = st.order === 'new' ? 'newest first' : 'oldest first';
 }
 
+/* what the heading says is being shown: ALL, or the period, worded as its tab is */
+const perLabel = per => (per === 'all' ? 'All' : B.perName(per).toUpperCase());
+
 function paintTabs() {
+  if (st.sub) st.sub.textContent = perLabel(st.per);
   st.tabs.querySelectorAll('.pb-tab').forEach(b => {
     const on = b.dataset.per === String(st.per);
     b.classList.toggle('on', on);
@@ -479,5 +490,5 @@ function draw(animate) {
 
 function mounted() { return !!(st && st.host && st.host.isConnected && st.host.querySelector('.pb')); }
 
-return { mount, update, mounted, _test: { group, actionParts, kindOf, lineupsAfter, cardHTML, setBox: b => { B = b; } } };
+return { mount, update, mounted, _test: { group, actionParts, kindOf, lineupsAfter, cardHTML, perLabel, setBox: b => { B = b; } } };
 }));

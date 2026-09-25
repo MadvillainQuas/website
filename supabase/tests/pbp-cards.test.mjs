@@ -154,6 +154,20 @@ console.log('-- real games');
   });
 }
 
+console.log('-- the heading');
+{
+  P.setBox({ perName: p => (p <= 4 ? 'Q' + p : 'OT' + (p - 4)) });
+  ok('the line under the title is ALL, or the period as its tab words it', P.perLabel('all') === 'All' && P.perLabel(1) === 'Q1' && P.perLabel('3') === 'Q3' && P.perLabel(5) === 'OT1');
+  P.setBox(null);
+  const src = fs.readFileSync(path.join(here, '..', '..', 'epinoia', 'game', 'pbp.js'), 'utf8').replace(/\r\n/g, '\n');
+  const css = fs.readFileSync(path.join(here, '..', '..', 'epinoia', 'game', 'pbp.css'), 'utf8').replace(/\r\n/g, '\n');
+  ok('the tab opens on a heading - PLAY-BY-PLAY, and what is shown - before the tabs and the cards',
+     /<div class="pb-head"><h2 class="pb-title">Play-by-play<\/h2>/.test(src) && /<span class="pb-sub" aria-live="polite">/.test(src) && src.indexOf('class="pb-head"') < src.indexOf('class="pb-bar"') && src.indexOf('class="pb-bar"') < src.indexOf('class="pb-list"'));
+  ok('...the line follows the tab picked, on every repaint of the tabs', /function paintTabs\(\) \{\s*if \(st\.sub\) st\.sub\.textContent = perLabel\(st\.per\);/.test(src));
+  ok('...and a rule under it is in the two clubs\' colours, set on the tab from the log\'s teams', /--pb-c0', col\[0\]/.test(src) && /--pb-c1', col\[1\]/.test(src) && /\.pb-head::after\{[^}]*var\(--pb-c0\)[^}]*var\(--pb-c1\)/.test(css));
+  ok('...set large, with the period beside it as a small pill', /\.pb-title\{[^}]*font-size:clamp\(28px/.test(css) && /\.pb-sub\{[^}]*border-radius:999px/.test(css));
+}
+
 console.log('-- the kind of card');
 const k = t => P.kindOf({ main: { ev: { t } }, extras: [] });
 ok('baskets and free throws made score; misses miss; subs and timeouts are slim; quarters are markers',
