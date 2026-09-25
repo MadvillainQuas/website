@@ -1062,7 +1062,8 @@
       'Why is it not going up? (optional, shown to the fan)': '掲載しない理由は？（任意・ファンに表示されます）',
       'remove them': '削除する',
       'Some files could not be removed; they stay on the list.': '一部のファイルを削除できませんでした。一覧に残しています。',
-      'Photograph files left behind': '残った写真ファイル'
+      'Photograph files left behind': '残った写真ファイル',
+      'Home games played by': 'ホームゲームを行ったクラブ'
     },
 
     /* matched only as written: the pager's "next" (the core file has it as the next game), a

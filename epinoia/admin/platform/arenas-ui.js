@@ -245,17 +245,24 @@ function fact(dl, label, value) {
    profile uses. Counted from the games on request: an arena's card is opened one at a time. */
 const SEC_LIMIT = 3000;
 
-async function addSecondary(v, dd) {
+async function addSecondary(v, dd, playedBy) {
   const H = root.EpinoiaHomeArenas;
   if (!H || !S.sb) return;
   const open = S.open;
   try {
     const at = await S.sb.from('games').select('home_team_id,teams:home_team_id(name)')
       .eq('venue_id', v.id).not('home_team_id', 'is', null).limit(SEC_LIMIT);
-    if (at.error || !at.data || !at.data.length) return;
+    if (at.error || !at.data || !at.data.length) { if (playedBy) playedBy.replaceChildren(data('span', null, '—')); return; }
     const recorded = (v.teams || []).map(t => t.id);
-    const names = {};
-    at.data.forEach(r => { names[r.home_team_id] = r.teams && r.teams.name; });
+    const names = {}, played = {};
+    at.data.forEach(r => { names[r.home_team_id] = r.teams && r.teams.name; played[r.home_team_id] = (played[r.home_team_id] || 0) + 1; });
+    /* EVERY CLUB THAT HAS PLAYED A HOME GAME HERE, however few: an arena flagged for a look is one a person has
+       to place, and "whose team is this?" is what they need to know (a club with two games here is not a
+       secondary home, so the line above leaves it out) */
+    if (playedBy && S.open === open) {
+      playedBy.replaceChildren(data('span', null, Object.keys(played).sort((a, b) => played[b] - played[a])
+        .map(id => (names[id] || '—') + ' (' + played[id] + ')').join(' · ')));
+    }
     const cands = [...new Set(at.data.map(r => r.home_team_id))].filter(id => !recorded.includes(id));
     if (!cands.length) return;
     const tot = await S.sb.from('games').select('home_team_id').in('home_team_id', cands)
@@ -341,7 +348,8 @@ function drawDetail(v) {
   fact(dl, 'Games', gamesOf(v));
   fact(dl, 'Spellings the feeds use', (v.venue_aliases || []).map(a => a.spelling).join(' · '));
   const homeOf = fact(dl, 'Home arena of', (v.teams || []).map(t => t.name).join(' · '));
-  addSecondary(v, homeOf);
+  const playedBy = fact(dl, 'Home games played by', '…');
+  addSecondary(v, homeOf, playedBy);
   fact(dl, 'Address', v.address);
   fact(dl, 'Pin', v.lat != null ? v.lat.toFixed(6) + ', ' + v.lng.toFixed(6) : null);
   fact(dl, 'Google place', v.place_id);
