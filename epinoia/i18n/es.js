@@ -1403,7 +1403,7 @@
       'THE FEED: the fans’ photographs of the games they stamped': 'EL MURO: las fotos de los aficionados de los partidos que sellaron',
       'your stamps: every game, the map, and the distance between them': 'tus sellos: cada partido, el mapa y la distancia entre ellos',
       'Nothing this week.': 'Nada esta semana.',
-      'No results yet.': 'Aún no hay resultados.',
+      'No results yet.': 'Aún no hay resultados.',
       'the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none': 'cuenta el primer rebote tras cada fallo, también los de equipo; un fallo seguido de falta y tiros libres, una pérdida o el final de un periodo no tiene rebote',
       'No rebound': 'Sin rebote',
       'what became of every shot attempt': 'qué pasó con cada tiro',
@@ -1416,7 +1416,9 @@
       'every shot attempt in a zone went in, or was missed and rebounded by the shooter’s side (offensive) or the other side (defensive), or had no rebound': 'cada tiro de una zona entró, o falló y lo rebotó el equipo del tirador (ofensivo) o el rival (defensivo), o no tuvo rebote',
       'the four add up to the attempts': 'las cuatro suman los tiros',
       'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': 'el número pequeño es el percentil entre los equipos, más alto es mejor, y una tasa con menos de 15 tiros no se clasifica',
-      'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': 'buscar partido: los partidos más cercanos a ti, o a cualquier lugar al que vayas (modo pasaporte)'
+      'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': 'buscar partido: los partidos más cercanos a ti, o a cualquier lugar al que vayas (modo pasaporte)',
+      'Also plays home games at': 'También juega en casa en',
+      'Main home arena': 'Pabellón principal'
     },
 
     ctx: {
@@ -1857,6 +1859,8 @@
       [/^Sent\. If you asked for a reply it will come to (.+)\.$/, 'Enviado. Si pediste respuesta, llegará a $1.'],
       [/^Could not reach the server: (.+)\. Nothing was lost, but it needs sending again\.$/, (m, T) => 'No se pudo conectar con el servidor: ' + T(m[1]) + '. No se ha perdido nada, pero hay que volver a enviarlo.'],
       [/^from the club’s home fixtures(?: \((\d+) games\))?$/, m => 'según los partidos en casa del club' + (m[1] ? ' (' + m[1] + ' partidos)' : '')],
+      [/^(\d+) home games?$/i, m => m[1] + (m[1] === '1' ? ' partido en casa' : ' partidos en casa')],
+      [/^\(secondary · (\d+) of (\d+) home games\)$/, '(secundario · $1 de $2 partidos en casa)'],
       [/^The team overall is ([+−-]?[\d.]+|—) net\. This selection is ([+−-]?[\d.]+|—), (?:(the same)|([+−-]?[\d.]+) better|([+−-]?[\d.]+) worse)\.$/, m => 'El equipo en conjunto tiene un net de ' + m[1] + '. Esta selección, ' + m[2] + ' (' + (m[3] ? 'lo mismo' : m[4] ? m[4] + ' mejor' : m[5] + ' peor') + ').'],
       [/^(\d+) stints? with (?:(that player)|all (\d+) on the floor together)$/, m => m[1] + (m[1] === '1' ? ' tramo' : ' tramos') + (m[2] ? ' con ese jugador' : ' con los ' + m[3] + ' en pista a la vez')],
       [/^born (\d{4})$/, 'Nacido en $1'],

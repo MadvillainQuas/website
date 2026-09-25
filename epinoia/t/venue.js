@@ -474,6 +474,35 @@ async function contactBlock(team, opts) {
   return wrap;
 }
 
+/* ---------------------------------------------------- the other arenas ---
+   A club that plays at more than one arena: the main one is the panel above, and
+   the others are listed here, smaller, busiest first, each with how many of the
+   club's home games it hosted (homearenas.js decides which count as a home). A
+   name and a town are data, so they are never run through the translator. */
+function mapsHref(v) {
+  const q = [v.name, v.city].filter(Boolean).join(', ');
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) +
+         (v.place_id ? '&query_place_id=' + encodeURIComponent(v.place_id) : '');
+}
+
+function otherArenas(team) {
+  const A = team.home_arenas;
+  if (!A || !A.others || !A.others.length) return null;
+  const box = el('div', 'varenas');
+  box.appendChild(el('div', 'varenas-h', 'Also plays home games at'));
+  A.others.forEach(v => {
+    const row = el('div', 'varena');
+    const a = el('a', 'varena-n', v.name);
+    a.href = mapsHref(v); a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.setAttribute('translate', 'no');
+    row.appendChild(a);
+    if (v.city) { const c = el('span', 'varena-c', v.city); c.setAttribute('translate', 'no'); row.appendChild(c); }
+    row.appendChild(el('span', 'varena-g', v.n + (v.n === 1 ? ' home game' : ' home games')));
+    box.appendChild(row);
+  });
+  return box;
+}
+
 /* opts: { host, team, api, cfg } */
 async function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
@@ -532,6 +561,14 @@ async function render(opts) {
       });
       head.appendChild(a);
     }
+    const A = team.home_arenas;
+    if (A && A.main && A.others && A.others.length) {
+      // the main arena says so, and how much of the club's home schedule it hosted
+      const m = el('div', 'vmain');
+      m.appendChild(el('span', null, 'Main home arena'));
+      m.appendChild(el('span', 'vmain-g', A.main.n + (A.main.n === 1 ? ' home game' : ' home games')));
+      head.appendChild(m);
+    }
     wrap.appendChild(head);
 
     /* WHAT THE MAP IS ASKED FOR. The address when the club recorded one.
@@ -550,6 +587,8 @@ async function render(opts) {
     grid.append(photoUrl ? photoPane(team, photoUrl) : stockPane(),
                 mapPane(team, query));
     wrap.appendChild(grid);
+    const more = otherArenas(team);
+    if (more) wrap.appendChild(more);
     wrap.dataset.photo = photoUrl ? '1' : '';
   }
 
@@ -560,5 +599,5 @@ async function render(opts) {
   return { photo: wrap.dataset.photo === '1' };
 }
 
-return { render, stockPane };
+return { render, stockPane, otherArenas };
 }));

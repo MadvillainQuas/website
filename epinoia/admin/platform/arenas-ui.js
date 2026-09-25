@@ -239,11 +239,78 @@ function fact(dl, label, value) {
   return dd;
 }
 
+/* THE CLUBS THAT PLAY HOME GAMES HERE WITHOUT THIS BEING THEIR RECORDED ARENA, added to the "Home arena
+   of" line as they are found: the recorded clubs stay as they were, and these follow in a smaller,
+   lighter type with their counts. The rule for what counts is homearenas.js's, the same one the team
+   profile uses. Counted from the games on request: an arena's card is opened one at a time. */
+const SEC_LIMIT = 3000;
+
+async function addSecondary(v, dd) {
+  const H = root.EpinoiaHomeArenas;
+  if (!H || !S.sb) return;
+  const open = S.open;
+  try {
+    const at = await S.sb.from('games').select('home_team_id,teams:home_team_id(name)')
+      .eq('venue_id', v.id).not('home_team_id', 'is', null).limit(SEC_LIMIT);
+    if (at.error || !at.data || !at.data.length) return;
+    const recorded = (v.teams || []).map(t => t.id);
+    const names = {};
+    at.data.forEach(r => { names[r.home_team_id] = r.teams && r.teams.name; });
+    const cands = [...new Set(at.data.map(r => r.home_team_id))].filter(id => !recorded.includes(id));
+    if (!cands.length) return;
+    const tot = await S.sb.from('games').select('home_team_id').in('home_team_id', cands)
+      .not('venue_id', 'is', null).limit(SEC_LIMIT * 2);
+    if (tot.error) return;
+    const totals = {};
+    (tot.data || []).forEach(r => { totals[r.home_team_id] = (totals[r.home_team_id] || 0) + 1; });
+    const more = H.clubsUsing(at.data.map(r => r.home_team_id), totals, recorded);
+    if (!more.length || S.open !== open) return;      // nothing to add, or another arena has been opened since
+    const box = el('span', 'sec-arenas');
+    more.forEach(c => {
+      if (recorded.length || box.childNodes.length) box.appendChild(document.createTextNode(' · '));
+      box.appendChild(data('span', null, names[c.id] || '—'));
+      const w = el('small', 'mt', '(secondary · ' + c.n + ' of ' + c.total + ' home games)');
+      w.style.marginLeft = '6px';
+      box.appendChild(w);
+    });
+    const first = dd.querySelector('span');
+    if (first && first.textContent === '—') first.remove();     // the "—" shown while nobody had it as a home
+    dd.appendChild(box);
+  } catch (_) { /* the line stays as it was */ }
+}
+
 async function write(v, body, done) {
   const { data: got, error } = await S.sb.from('venues').update(body).eq('id', v.id).select('id');
   if (error) return S.oops(error);
   if (!got || !got.length) return S.say('Nothing was saved: this account may not change arenas.', 'err');
   S.say(done, 'ok');
+  await load();
+  return true;
+}
+
+/* WHAT THE PIN SAYS ABOUT WHERE IT IS. A moved pin left the name, address, town and Google place of the
+   OLD spot beside it (Saga's arena read Wembley). The arena-place function reads the new spot from Google
+   and puts an arena of that place on the row - name, address, town, country, place - or finds nothing and
+   leaves the name (the database has already dropped the old address and town). The pin is never moved. */
+async function errText(error) {
+  try {
+    const b = error && error.context && typeof error.context.json === 'function' ? await error.context.json() : null;
+    if (b && b.error) return b.error;
+  } catch (_) { /* fall through */ }
+  return (error && error.message) || 'unknown error';
+}
+
+async function readPlace(v) {
+  S.say('Reading the place at the pin…', 'ok');
+  const { data: out, error } = await S.sb.functions.invoke('arena-place', { body: { venueId: v.id } });
+  if (error) { S.say('The place at the pin could not be read: ' + await errText(error), 'err'); return; }
+  if (!out || !out.found) {
+    S.say('Google lists no arena within 150 m of the pin, so the name is left as it was and the old address stays cleared.', 'ok');
+  } else {
+    const a = out.applied || {};
+    S.say('Updated from Google Maps: ' + [a.name || v.name, a.city].filter(Boolean).join(', ') +
+          (out.aliasNote ? ' (' + out.aliasNote + ')' : '') + '.', 'ok');
+  }
   await load();
 }
 
@@ -273,7 +340,8 @@ function drawDetail(v) {
   dl.style.marginTop = '12px';
   fact(dl, 'Games', gamesOf(v));
   fact(dl, 'Spellings the feeds use', (v.venue_aliases || []).map(a => a.spelling).join(' · '));
-  fact(dl, 'Home arena of', (v.teams || []).map(t => t.name).join(' · '));
+  const homeOf = fact(dl, 'Home arena of', (v.teams || []).map(t => t.name).join(' · '));
+  addSecondary(v, homeOf);
   fact(dl, 'Address', v.address);
   fact(dl, 'Pin', v.lat != null ? v.lat.toFixed(6) + ', ' + v.lng.toFixed(6) : null);
   fact(dl, 'Google place', v.place_id);
@@ -287,6 +355,11 @@ function drawDetail(v) {
   acts.style.marginTop = '12px';
   const open = acts.appendChild(el('a', 'ep-btn mini', v.lat != null ? 'open the pin in Google Maps' : 'search for it in Google Maps'));
   open.href = mapsUrl(v); open.target = '_blank'; open.rel = 'noopener noreferrer';
+  if (v.lat != null) {
+    const rp = acts.appendChild(el('button', 'ep-btn mini', 'read the name and address at this pin'));
+    rp.type = 'button';
+    rp.addEventListener('click', () => readPlace(v));
+  }
   if (v.lat != null && (v.pin_note || !v.checked_at)) {
     const ok = acts.appendChild(el('button', 'ep-btn mini pri', 'right as it is'));
     ok.type = 'button';
@@ -340,12 +413,15 @@ function drawDetail(v) {
       read.appendChild(data('b', null, Math.round(metres(v, parsed)) + ' m'));
     }
   });
-  save.addEventListener('click', () => {
+  save.addEventListener('click', async () => {
     if (!parsed || parsed.error) return;
-    write(v, { lat: parsed.lat, lng: parsed.lng, place_id: placeFor(v, parsed), pin_source: 'manual',
+    const saved = await write(v, { lat: parsed.lat, lng: parsed.lng, place_id: placeFor(v, parsed), pin_source: 'manual',
                pinned_at: new Date().toISOString(), pin_note: null,
                checked_at: new Date().toISOString(), checked_by: S.me },
           'Pin moved and checked.');
+    // a pin that moved to another place takes that place's name and address; a nudge within the
+    // building has nothing new to read
+    if (saved && (v.lat == null || metres(v, parsed) > KEEP_PLACE_M)) await readPlace(v);
   });
 
   /* how near */

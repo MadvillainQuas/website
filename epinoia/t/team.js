@@ -753,12 +753,38 @@ async function lineupPanels(team) {
 /* the home venue panel lives in its own module — it is a self-contained
    piece of page with its own illustration and its own privacy rule */
 async function venue(team) {
+  /* THE ARENAS THE CLUB'S HOME GAMES WERE PLAYED AT (0162's games.venue_id): the main one large
+     and the others smaller, with their counts (homearenas.js holds the rule). Where nobody has
+     typed a venue in, the main arena's own name and address stand in for it. A read that fails
+     leaves the panel exactly as it was. */
+  team.home_arenas = null;
+  try {
+    const H = window.EpinoiaHomeArenas;
+    if (H) {
+      const rows = await api('games?home_team_id=eq.' + team.id + '&venue_id=not.is.null&select=venue_id&limit=1000');
+      const s = H.split((rows || []).map(r => r.venue_id), team.home_venue_id);
+      const ids = [s.primary, ...s.others.map(o => o.id)].filter(Boolean);
+      if (ids.length) {
+        const vs = await api('venues?id=in.(' + ids.join(',') + ')&select=id,name,city,address,lat,lng,place_id');
+        const by = {}; (vs || []).forEach(v => { by[v.id] = v; });
+        const main = by[s.primary] ? { ...by[s.primary], n: s.primaryN } : null;
+        const others = s.others.filter(o => by[o.id]).map(o => ({ ...by[o.id], n: o.n }));
+        team.home_arenas = { main, others, total: s.total };
+        if (main && !team.home_venue) {
+          team.home_venue_auto = main.name;
+          team.home_venue_auto_n = main.n;
+          if (!team.home_venue_address && main.address) team.home_venue_address = main.address;
+        }
+      }
+    }
+  } catch (_) { /* the panel is shown without the other arenas */ }
+
   /* THE HOME VENUE, READ OFF THE FIXTURES when nobody has typed one in. Every
      home fixture the feed (or a league admin) files carries a venue, and the
      one that appears most is the club's hall. A recorded venue still wins —
      this only fills the gap, and a league administrator or the club can
      overwrite it from their own settings. */
-  if (!team.home_venue && !team.home_venue_address) {
+  if (!team.home_venue && !team.home_venue_address && !team.home_venue_auto) {
     try {
       const rows = await api('games?home_team_id=eq.' + team.id + '&venue=not.is.null&select=venue&order=tipoff_at.desc&limit=60');
       const count = new Map();

@@ -463,6 +463,15 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/assumed-venue.test.mjs
 
+      - name: Home arenas, and a moved pin moves its place (0175)
+        # the rule for a club's secondary arenas (team profile and console), the panel that lists them,
+        # and: moving a pin drops the old place's address and town, on a real Postgres; which arena
+        # Google's answer names; the daily lookup allowance
+        run: |
+          node supabase/tests/homearenas.test.mjs
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/arena-place.test.mjs
+
       - name: The ingest asks the database only what it needs
         # 24 and 25 Sep 2026: the database stopped answering from ~23:40 UTC after a day of the
         # ingest re-reading every season to find two games near tip-off, rewriting ~2,000 unchanged

@@ -1401,7 +1401,7 @@
       'THE FEED: the fans’ photographs of the games they stamped': 'フィード：ファンがスタンプした試合で撮った写真',
       'your stamps: every game, the map, and the distance between them': 'あなたのスタンプ：すべての試合、地図、その間の距離',
       'Nothing this week.': '今週の試合はありません。',
-      'No results yet.': 'まだ結果はありません。',
+      'No results yet.': 'まだ結果はありません。',
       'the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none': '各失敗の直後の最初のリバウンドを数え、チームリバウンドも含みます。ファウルとフリースロー、ターンオーバー、ピリオド終了が続いた失敗にはリバウンドがありません',
       'No rebound': 'リバウンドなし',
       'what became of every shot attempt': 'すべてのシュート試投の行方',
@@ -1414,7 +1414,9 @@
       'every shot attempt in a zone went in, or was missed and rebounded by the shooter’s side (offensive) or the other side (defensive), or had no rebound': 'ゾーン内のシュート試投はすべて、決まった、または外れてシュートを打ったチームがリバウンドを取った（オフェンス）か相手が取った（ディフェンス）か、リバウンドなしのどれかです',
       'the four add up to the attempts': '4つを合わせると試投数になります',
       'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': '小さい数字はチーム内のパーセンタイルです。高いほど良く、試投15本未満の割合は順位付けしません',
-      'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': '試合を探す：近くの試合、または行き先に近い試合（パスポートモード）'
+      'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': '試合を探す：近くの試合、または行き先に近い試合（パスポートモード）',
+      'Also plays home games at': 'その他のホームアリーナ',
+      'Main home arena': 'メインのホームアリーナ'
     },
 
     ctx: {
@@ -1857,6 +1859,8 @@
       [/^Sent\. If you asked for a reply it will come to (.+)\.$/, '送信しました。返信を希望した場合は$1に届きます。'],
       [/^Could not reach the server: (.+)\. Nothing was lost, but it needs sending again\.$/, (m, T) => 'サーバーに接続できませんでした: ' + T(m[1]) + '。内容は失われていませんが、もう一度送信してください。'],
       [/^from the club’s home fixtures(?: \((\d+) games\))?$/, m => 'クラブのホームゲームから' + (m[1] ? '（' + m[1] + '試合）' : '')],
+      [/^(\d+) home games?$/i, 'ホームゲーム$1試合'],
+      [/^\(secondary · (\d+) of (\d+) home games\)$/, '（サブ · ホームゲーム$2試合中$1試合）'],
       [/^The team overall is ([+−-]?[\d.]+|—) net\. This selection is ([+−-]?[\d.]+|—), (?:(the same)|([+−-]?[\d.]+) better|([+−-]?[\d.]+) worse)\.$/, m => 'チーム全体のNETRTGは' + m[1] + '。この組み合わせは' + m[2] + '（' + (m[3] ? '同じ' : m[4] ? m[4] + '良い' : m[5] + '悪い') + '）。'],
       [/^(\d+) stints? with (?:(that player)|all (\d+) on the floor together)$/, m => (m[2] ? 'その選手の出場' : m[3] + '人の同時出場') + ' ' + m[1] + 'スティント'],
       [/^born (\d{4})$/, '$1年生まれ'],
