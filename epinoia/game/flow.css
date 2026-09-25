@@ -174,7 +174,10 @@
   .gf-stack .gf-card{ padding:8px 12px }
   .gf-rot + .gf-stack{ margin-top:-8px }
   /* a phone has no room for a title, its legend and the buttons on one line: they wrap, the buttons keep the right */
-  .gf-stack .gf-card-head{ flex-wrap:wrap }
+  .gf-stack .gf-card-head{ flex-wrap:wrap; align-items:center }
+  .gf-stack .gf-title{ order:1; flex:1 1 0; min-width:0; white-space:normal }
+  .gf-stack .gf-mv{ order:2 }
+  .gf-stack .gf-legend{ order:3; flex-basis:100% }
   .gf-stack .gf-mvb{ width:34px; height:30px }
   /* the rotations keep a width of their own on a phone (rotation.css): so do the charts, and they scroll together */
   .gf-scroll .gf-al{ min-width:420px }
