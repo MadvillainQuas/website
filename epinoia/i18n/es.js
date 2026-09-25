@@ -1722,7 +1722,9 @@
         'More leagues': 'Más ligas',
         'Previous clubs': 'Clubes anteriores',
         'More clubs': 'Más clubes',
-        'no clubs': 'sin clubes'
+        'no clubs': 'sin clubes',
+        'You’ll get their notifications on your phone and this site.': 'Recibirás sus notificaciones en el móvil y en la web.',
+        'Following is how you get notifications - game reminders, line-ups and final scores - on your phone and on the site.': 'Seguir es lo que te da las notificaciones (recordatorios de partidos, quintetos confirmados y resultados) en el móvil y en la web.'
       }
     },
 

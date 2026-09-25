@@ -550,6 +550,7 @@ async function mount(o) {
     const said = el('div', 'fav-said');
     const dAlt = btn('fav-alt', 'Add more'), dGo = btn('fav-go', 'Close');
     sD.append(el('div', 'fav-stamp', 'Following'), said,
+      el('p', 'fav-how', 'Following is how you get notifications - game reminders, line-ups and final scores - on your phone and on the site.'),
       el('p', 'fav-how', 'Find them on your profile and in My followed.'), acts(null, dAlt, dGo));
 
     track.append(sC, sL, sT, sD);
@@ -687,7 +688,9 @@ async function mount(o) {
       h.textContent = '';
       if (P.flash && P.flash.until > Date.now() && P.flash.hint === h) { h.textContent = P.flash.text; return; }
       if (!n) { h.textContent = none; return; }
-      h.append(el('span', 'fav-hint-k', 'Following'), ' ', el('b', null, plural(n, what)));
+      /* WHAT FOLLOWING IS FOR, right beside the word: it is how a fan gets notifications */
+      h.append(el('span', 'fav-hint-k', 'Following'), ' ', el('b', null, plural(n, what)),
+               el('span', 'fav-hint-why', 'You’ll get their notifications on your phone and this site.'));
     };
     says(P.c.hint, nl, 'league', 'Tap a country to see its leagues.');
     says(P.l.hint, nl, 'league', 'Tap a league to follow it.');

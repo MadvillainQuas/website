@@ -335,7 +335,9 @@ section('the words');
     'Loading the leagues…', 'Loading the clubs…', 'The clubs could not be loaded just now.',
     'These leagues have no clubs listed yet.', 'Pick a league first, and its clubs are here.',
     'Following is not available just now. Try again in a little while.', 'Other leagues', 'Back to the countries',
-    'Previous countries', 'More countries', 'Previous leagues', 'More leagues', 'Previous clubs', 'More clubs', 'no clubs'
+    'Previous countries', 'More countries', 'Previous leagues', 'More leagues', 'Previous clubs', 'More clubs', 'no clubs',
+    'You’ll get their notifications on your phone and this site.',
+    'Following is how you get notifications - game reminders, line-ups and final scores - on your phone and on the site.'
   ];
   const core = require(path.join(ROOT, 'epinoia', 'i18n.js'));
   const tr = (D, s, ctx) => { const o = core.translateText(D, s, ctx, null); return typeof o === 'string' ? o : (o && o.t != null ? o.t : o); };

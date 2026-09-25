@@ -1721,7 +1721,9 @@
         'More leagues': '次のリーグ',
         'Previous clubs': '前のクラブ',
         'More clubs': '次のクラブ',
-        'no clubs': 'クラブなし'
+        'no clubs': 'クラブなし',
+        'You’ll get their notifications on your phone and this site.': 'スマートフォンとサイトに通知が届きます。',
+        'Following is how you get notifications - game reminders, line-ups and final scores - on your phone and on the site.': 'フォローすると、試合前のお知らせ・スタメン発表・試合結果の通知がスマートフォンとサイトに届きます。'
       }
     },
 

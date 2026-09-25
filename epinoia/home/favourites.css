@@ -230,6 +230,8 @@
   color:var(--fav-dim)}
 .fav-hint b{color:var(--fav-fg);font-weight:400}
 .fav-hint-k{text-transform:uppercase;letter-spacing:.12em}
+.fav-hint-why{color:var(--ink-3);text-transform:none;letter-spacing:.03em}
+.fav-hint-why::before{content:' — '}
 .fav-hint.shake{animation:fav-shake .42s;color:var(--fav-fg)}
 @keyframes fav-shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 .fav-go,.fav-skip,.fav-alt{appearance:none;cursor:pointer;font:800 12px/1 var(--f-ui);letter-spacing:.14em;
