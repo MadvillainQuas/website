@@ -156,9 +156,10 @@ console.log('\n3. the language row: the bottom of the foot');
   const nav = read('epinoia', 'nav.js');
   const css = read('epinoia', 'kit', 'nav.css');
   const i18n = read('epinoia', 'i18n.js');
-  ok('it is appended to the foot, after contact',
+  ok('it is in the foot's last row (beside the HOME button), after contact',
      nav.indexOf('navFoot.appendChild(contact);') > 0 &&
-     nav.indexOf('navFoot.appendChild(langRow);') > nav.indexOf('navFoot.appendChild(contact);'));
+     nav.indexOf('footEnd.appendChild(langRow);') > nav.indexOf('navFoot.appendChild(contact);') &&
+     nav.indexOf('navFoot.appendChild(footEnd);') > nav.indexOf('footEnd.appendChild(langRow);'));
   ok('one button per language, each written in itself and tagged with its language',
      /I18N\.LANGS\.filter\(l => !l\.hidden \|\| l\.code === I18N\.lang\)\.forEach\(l => \{/.test(nav) &&
      /b\.lang = l\.code;/.test(nav) && /b\.title = l\.native;/.test(nav));
