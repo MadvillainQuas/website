@@ -451,5 +451,10 @@ ok('...the rail\'s and the bar\'s words, and every sentence of the page, in Japa
 ok('...no other site is named in what ships (the map link says Google Maps: the page frames it and the fan asked for it)',
    !/kenpom|basketball-reference|fivethirtyeight/i.test(nbHtml + nbJs + rd('epinoia', 'go', 'nearby', 'nearby.css')));
 
+ok('the GO page\'s hero has FIND A GAME under the first button and above the counts: a link in the same style, a size down',
+   (h => h.indexOf('id="goFind"') > 0 && h.indexOf('id="goNearby"') > h.indexOf('id="goFind"') && h.indexOf('id="goToday"') > h.indexOf('id="goNearby"')
+     && /<a id="goNearby" class="go-find alt" href="nearby\/">find a game<\/a>/.test(h))(rd('epinoia', 'go', 'index.html'))
+   && /\.go-find\.alt\{min-height:46px/.test(rd('epinoia', 'go', 'go.css')) && /\.go-find\.alt::before\{content:"⌖"/.test(rd('epinoia', 'go', 'go.css')));
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
