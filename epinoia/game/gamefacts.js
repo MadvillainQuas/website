@@ -81,7 +81,8 @@ function brief(S, d, B) {
       /* the percentile scales to read this game against. Without it story.js's scout fell back
          to SLB men's for every league, so a BCB report graded BCB numbers against a higher-
          scoring league's distribution. */
-      leagueSlug: S.leagueSlug || null
+      leagueSlug: S.leagueSlug || null,
+      timezone: (S.meta && S.meta.leagueTimezone) || null
     },
     /* set by game.js once the season aggregates land; the fact engine
        simply omits its season sentences when it is absent */

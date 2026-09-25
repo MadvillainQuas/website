@@ -142,7 +142,7 @@ async function loadStored() {
 
     `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
     `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),` +
-    `away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),competitions(name,seasons(name,leagues(id,name,slug)))&limit=1`);
+    `away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),competitions(name,seasons(name,leagues(id,name,slug,timezone)))&limit=1`);
   if (!gs.length) return null;
   const g = gs[0];
 
@@ -285,6 +285,7 @@ async function loadStored() {
       home: g.home, away: g.away,
       homeTeamId: g.home_team_id, awayTeamId: g.away_team_id,
       competitionId: g.competition_id,
+      leagueTimezone: league.timezone || null,
       leagueName: league.name || null, competitionName: comp.name || null
     }
   };

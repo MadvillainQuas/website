@@ -741,5 +741,25 @@ ok('...and drives the same engine the browser does',
   ok('a level half says level', /level at 35–35 at the half/.test(tied.headline.replace(/<[^>]*>/g, '')), tied.headline);
 }
 
+/* THE DATELINE READS THE VENUE'S CLOCK, NOT THE MACHINE'S. 19:30 in Melbourne (09:30Z) used
+   to be "Saturday morning" on a UTC server and to a UK reader. */
+{
+  console.log('\ndateline timezone');
+  const line = (tz, tipoff, machine) => {
+    process.env.TZ = machine;
+    const f = Story.__x.factMeta({ meta: { tipoff_at: tipoff, timezone: tz } })[0].data;
+    return f.day + ' ' + f.evening;
+  };
+  const NBL = '2026-09-19T09:30:00Z';
+  for (const m of ['UTC', 'Europe/London', 'America/Los_Angeles', 'Pacific/Auckland'])
+    ok('Melbourne 19:30 is Saturday evening on a ' + m + ' machine', line('Australia/Melbourne', NBL, m) === 'Saturday evening', line('Australia/Melbourne', NBL, m));
+  ok('a late Toronto game keeps its own day', line('America/Toronto', '2026-09-20T02:00:00Z', 'UTC') === 'Saturday evening', line('America/Toronto', '2026-09-20T02:00:00Z', 'UTC'));
+  ok('Tokyo morning tip is a morning', line('Asia/Tokyo', '2026-09-19T01:00:00Z', 'America/Los_Angeles') === 'Saturday morning');
+  ok('no zone keeps the machine clock', line(null, NBL, 'UTC') === 'Saturday morning' && line(null, NBL, 'Australia/Melbourne') === 'Saturday evening');
+  ok('a bogus zone falls back rather than throwing', line('Not/AZone', NBL, 'UTC') === 'Saturday morning');
+  process.env.TZ = 'UTC';
+}
+
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
