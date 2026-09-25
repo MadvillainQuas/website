@@ -473,6 +473,16 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/arena-place.test.mjs
 
+      - name: The analytics tab - capped lists and a live view that only runs when switched on (0176)
+        # on a real Postgres (PGlite): every report list has a row limit; the live report says what visitors are
+        # doing with no session token or identifier in it, and refuses anyone but a platform administrator. And the
+        # tab itself: nothing live is asked until the button is pressed, it pauses while hidden, stops after ten
+        # minutes or when the tab is left, and a table shows ten rows and scrolls
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/analytics-live.test.mjs
+          node supabase/tests/analytics-ui.test.mjs
+
       - name: The ingest asks the database only what it needs
         # 24 and 25 Sep 2026: the database stopped answering from ~23:40 UTC after a day of the
         # ingest re-reading every season to find two games near tip-off, rewriting ~2,000 unchanged

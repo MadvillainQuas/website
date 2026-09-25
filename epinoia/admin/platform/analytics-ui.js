@@ -9,7 +9,9 @@
    to recognise them.
 
    One call, analytics_report(p_days), returns every figure; it answers platform
-   administrators only. Charts are one accent hue on the kit's own tokens (light and dark),
+   administrators only. LIVE NOW (analytics_live, migration 0176) is a separate call that runs only
+   while somebody has switched it on: it is off when the tab opens, polls every ten seconds, pauses
+   while the window is hidden, and stops by itself after ten minutes or when the tab is left. Charts are one accent hue on the kit's own tokens (light and dark),
    every bar list is also its own table, and every column carries its numbers on hover.
    ============================================================================ */
 (function (root, factory) {
@@ -17,6 +19,10 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.EpinoiaAnalyticsUI = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
+
+const LIVE_EVERY_MS = 10000;          // one call every ten seconds, and only while live mode is on
+const LIVE_MAX_MS = 10 * 60 * 1000;   // ...for at most ten minutes at a time
+const ROWS_SHOWN = 10;                // a table shows this many rows and scrolls for the rest
 
 const RANGES = [[1, 'last 24 hours'], [7, '7 days'], [30, '30 days'], [90, '90 days'], [365, '1 year']];
 
@@ -63,6 +69,22 @@ const CSS = `
   color:var(--ink);white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 .an-heat td.num{position:relative}
 .an-empty{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);padding:10px 0}
+/* EVERY TABLE IS CAPPED. It shows about ten rows and scrolls for the rest, its header held in place, so a list
+   that grows (games, clubs, pages) can never push the page out of reach. */
+.an-card .scroll{max-height:340px;overflow:auto;overscroll-behavior:contain}
+.an-card .scroll thead th{position:sticky;top:0;z-index:2;background:var(--ground)}
+.an-more{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3);margin:6px 0 0}
+/* live now */
+.an-live{border:1px solid var(--rule);padding:calc(var(--u)*2) calc(var(--u)*3);margin:0 0 calc(var(--u)*3)}
+.an-live h3{margin:0}
+.an-live-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px}
+.an-live-head .an-note{margin-left:0}
+.an-live .ep-btn.on{border-color:var(--lume);color:var(--lume)}
+.an-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-3);margin-right:6px}
+.an-live.running .an-dot{background:var(--lume);animation:an-pulse 1.4s ease-in-out infinite}
+@keyframes an-pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.an-live.running .an-dot{animation:none}}
+.an-live-off{font-family:var(--f-micro);font-size:9.5px;line-height:1.8;color:var(--ink-3);margin:6px 0 0;max-width:70ch}
 `;
 
 function el(t, c, x) { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
@@ -75,7 +97,7 @@ function mount(o) {
   const host = typeof o.host === 'string' ? document.querySelector(o.host) : o.host;
   if (!host) return;
   if (!document.getElementById('an-css')) { const s = el('style'); s.id = 'an-css'; s.textContent = CSS; document.head.appendChild(s); }
-  st = st || { days: 30 };
+  st = st || { days: 30, live: { on: false } };
   st.sb = o.sb; st.say = o.say || (() => {}); st.host = host;
   draw();
 }
@@ -96,6 +118,7 @@ async function draw() {
   const note = el('span', 'an-note', 'loading…');
   bar.appendChild(note);
   host.appendChild(bar);
+  host.appendChild(liveCard());          // its own element, kept across redraws so a running live view is not reset
 
   const cfg = window.EPINOIA_CONFIG || {};
   if (cfg.analytics !== true) {
@@ -236,6 +259,171 @@ function render(host, r) {
     ['Clicks', x => fmt(x.clicks), 'num'], ['Visits', x => fmt(x.sessions), 'num']], x => +x.clicks)));
 }
 
+/* ------------------------------------------------------------- live now --- */
+const ago = s => (s == null ? '' : s < 90 ? Math.max(0, s) + ' s' : Math.round(s / 60) + ' min');
+
+/* what a visitor's tab is on, in words. Names come from the database and are only ever set as text. */
+function doing(v) {
+  const page = PAGE[v.page] || v.page;
+  let what = page;
+  if (v.page === 'game' && (v.home || v.away)) what = page + ': ' + (v.home || '?') + ' v ' + (v.away || '?');
+  else if (v.club) what = page + ': ' + v.club;
+  else if (v.league && v.page === 'l') what = page + ': ' + v.league;
+  if (v.tab && v.page === 'game') what += ' - ' + (GAME_TAB[v.tab] || v.tab);
+  else if (v.tab) what += ' - ' + v.tab;
+  const who = [DEVICE[v.device] || v.device, APP[v.app] || v.app, LANG[v.lang] || v.lang, v.signed_in ? 'signed in' : null]
+    .filter(Boolean).join(' · ');
+  return { what, who };
+}
+
+/* a plain table (no bar), with the same cap and scroll as every other */
+function plain(rows, cols, empty) {
+  const wrap = el('div');
+  if (!rows || !rows.length) { wrap.appendChild(el('div', 'an-empty', empty || 'Nothing right now.')); return wrap; }
+  const sc = el('div', 'scroll');
+  const tbl = el('table', 'tbl');
+  const hr = el('tr');
+  cols.forEach(([h, , cls]) => hr.appendChild(el('th', cls ? 'r' : null, h)));
+  tbl.appendChild(el('thead')).appendChild(hr);
+  const tb = el('tbody');
+  rows.forEach(x => {
+    const tr = el('tr');
+    cols.forEach(([, f, cls], i) => tr.appendChild(el('td', cls || (i === 0 ? 'nm' : null), f(x))));
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  sc.appendChild(tbl);
+  wrap.appendChild(sc);
+  if (rows.length > ROWS_SHOWN) wrap.appendChild(el('p', 'an-more', rows.length + ' rows - scroll the table for the rest'));
+  return wrap;
+}
+
+function liveCard() {
+  if (st.liveEl) return st.liveEl;
+  const c = el('section', 'an-live');
+  const head = el('div', 'an-live-head');
+  const dot = el('span', 'an-dot');
+  const h = el('h3'); h.append(dot, document.createTextNode('Live now'));
+  const btn = el('button', 'ep-btn mini', 'start live view'); btn.type = 'button';
+  const status = el('span', 'an-note');
+  head.append(h, btn, status);
+  const body = el('div');
+  c.append(head, body);
+  st.liveEl = c; st.liveBtn = btn; st.liveStatus = status; st.liveBody = body;
+  btn.addEventListener('click', () => (st.live.on ? liveStop('Stopped.') : liveStart()));
+  paintLive(null);
+  return c;
+}
+
+/* NOTHING RUNS UNTIL THIS IS PRESSED. */
+function liveStart() {
+  st.live = { on: true, at: Date.now(), busy: false, last: null };
+  st.liveTimer = setInterval(liveTick, LIVE_EVERY_MS);
+  paintLive(null);
+  liveTick();
+}
+
+function liveStop(why) {
+  if (st.liveTimer) clearInterval(st.liveTimer);
+  st.liveTimer = null;
+  st.live = { on: false, why: why || '', last: st.live && st.live.last };
+  paintLive(st.live.last);
+}
+
+async function liveTick() {
+  const L = st.live;
+  if (!L.on || L.busy) return;
+  if (!st.liveEl.isConnected || !st.host.getClientRects().length) return liveStop('Stopped: you left the Analytics tab.');
+  if (Date.now() - L.at > LIVE_MAX_MS) return liveStop('Stopped after 10 minutes. Start it again to keep watching.');
+  if (document.hidden) { st.liveStatus.textContent = 'paused while this window is hidden'; return; }
+  L.busy = true;
+  try {
+    const res = await st.sb.rpc('analytics_live', { p_window_s: 300 });
+    if (res.error) throw res.error;
+    L.last = res.data || {};
+    L.updated = new Date();
+    if (st.live === L && L.on) paintLive(L.last);
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    liveStop(/analytics_live|schema cache|does not exist/i.test(msg)
+      ? 'Live view needs migration 0176, which has not been applied yet.' : 'The live view could not be read: ' + msg);
+  } finally { L.busy = false; }
+}
+
+function paintLive(r) {
+  const c = st.liveEl, L = st.live || {}, body = st.liveBody;
+  c.classList.toggle('running', !!L.on);
+  st.liveBtn.textContent = L.on ? 'stop' : 'start live view';
+  st.liveBtn.classList.toggle('on', !!L.on);
+  body.textContent = '';
+  if (L.on) {
+    const left = Math.max(0, Math.round((LIVE_MAX_MS - (Date.now() - L.at)) / 60000));
+    st.liveStatus.textContent = L.updated ? 'updated ' + L.updated.toLocaleTimeString('en-GB') + ' · every 10 s · stops in ' + left + ' min' : 'reading…';
+  } else {
+    st.liveStatus.textContent = L.why || '';
+    if (!r) {
+      body.appendChild(el('p', 'an-live-off',
+        'Off. Live view shows what visitors are doing on the site right now, with nothing that identifies anyone. ' +
+        'It reads the last five minutes every ten seconds while it is on, and only then: it stops by itself after ten ' +
+        'minutes, when you leave this tab, and it pauses while this window is hidden.'));
+      return;
+    }
+  }
+  if (r) renderLive(body, r, !L.on);
+}
+
+function renderLive(host, r, stale) {
+  const tiles = el('div', 'tiles');
+  const tile = (n, k, sub, dim) => {
+    const d = el('div', 'tile'); d.append(el('div', 'n' + (dim ? ' dim' : ''), n), el('div', 'k', k));
+    if (sub) d.appendChild(el('div', 'sub', sub));
+    tiles.appendChild(d);
+  };
+  const dev = (r.devices || []).map(x => fmt(x.sessions) + ' ' + (DEVICE[x.k] || x.k).toLowerCase()).join(', ');
+  const open = (r.games || []).length;
+  tile(fmt(r.sessions), 'on the site now', 'active in the last ' + Math.round((r.window_s || 300) / 60) + ' minutes');
+  tile(fmt(r.last_30m), 'in the last 30 minutes', 'one per browser tab', true);
+  tile(fmt(r.signed_in), 'signed in', dev);
+  tile(fmt((r.games || []).reduce((a, g) => a + (+g.sessions || 0), 0)), 'reading a game', open + ' game' + (open === 1 ? '' : 's') + ' open');
+  host.appendChild(tiles);
+  if (stale) host.appendChild(el('p', 'an-more', 'Last reading - live view is off.'));
+
+  const pm = (r.per_minute || []).map(m => ({
+    label: m.ago_min ? '-' + m.ago_min + 'm' : 'now', value: +m.views || 0,
+    tip: (m.ago_min ? m.ago_min + ' min ago' : 'this minute') + ' — ' + fmt(m.views) + ' views, ' + fmt(m.sessions) + ' tabs'
+  }));
+  const g0 = el('div', 'an-grid');
+  g0.appendChild(card('Views a minute, last 30 minutes', columns(pm, 'No activity in the last half hour.')));
+  g0.appendChild(card('What each visitor is doing', plain(r.visitors, [
+    ['Doing', x => doing(x).what],
+    ['On it', x => ago(x.on_page_s), 'num'],
+    ['Idle', x => ago(x.idle_s), 'num'],
+    ['Who', x => doing(x).who]], 'Nobody has done anything in the last five minutes.')));
+  host.appendChild(g0);
+
+  const g1 = el('div', 'an-grid');
+  g1.appendChild(card('Games being watched', plain(r.games, [
+    ['Game', x => (x.home || '?') + ' v ' + (x.away || '?')],
+    ['League', x => x.league || ''],
+    ['State', x => x.status || ''],
+    ['Watching', x => fmt(x.sessions), 'num']], 'No game is open right now.')));
+  g1.appendChild(card('Pages open now', plain(r.where, [
+    ['Page', x => PAGE[x.page] || x.page], ['Tabs', x => fmt(x.sessions), 'num']])));
+  host.appendChild(g1);
+
+  const g2 = el('div', 'an-grid');
+  g2.appendChild(card('Leagues being read', plain(r.leagues, [
+    ['League', x => x.name], ['Tabs', x => fmt(x.sessions), 'num']])));
+  g2.appendChild(card('Box-score tabs open now', plain(r.tabs, [
+    ['Tab', x => GAME_TAB[x.tab] || x.tab], ['Tabs', x => fmt(x.sessions), 'num']], 'None.')));
+  host.appendChild(g2);
+
+  host.appendChild(card('Latest activity', plain(r.feed, [
+    ['When', x => ago(x.ago_s) + ' ago'],
+    ['What', x => (x.kind === 'tab' ? 'opened the ' + (GAME_TAB[x.tab] || x.tab) + ' tab on ' : 'opened ') +
+      doing({ page: x.page, club: x.club, league: x.league, home: x.home, away: x.away }).what]], 'Nothing in the last half hour.')));
+}
+
 /* ---------------------------------------------------------------- pieces --- */
 function card(title, body) {
   const c = el('section', 'an-card');
@@ -270,6 +458,7 @@ function ranked(rows, cols, value, foot) {
   tbl.appendChild(tb);
   sc.appendChild(tbl);
   wrap.appendChild(sc);
+  if (rows.length > ROWS_SHOWN) wrap.appendChild(el('p', 'an-more', rows.length + ' rows - scroll the table for the rest'));
   if (foot) wrap.appendChild(el('p', 'lead', foot));
   return wrap;
 }
@@ -370,5 +559,5 @@ function shortDay(d) {
   return isNaN(x) ? String(d) : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
-return { mount, _test: { niceMax, PAGE, GAME_TAB } };
+return { mount, _test: { niceMax, PAGE, GAME_TAB, doing, ago, LIVE_EVERY_MS, LIVE_MAX_MS, ROWS_SHOWN } };
 }));
