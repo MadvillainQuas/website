@@ -187,7 +187,9 @@ function directionsHref(g, origin) {
     + (origin ? '&origin=' + encodeURIComponent(origin.lat + ',' + origin.lng) : '');
 }
 function mapHref(g) {
-  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([g.venue, g.city].filter(Boolean).join(', '))
+  // the arena's pin, not a search for its name (see go.js mapsHref)
+  const q = g.lat != null && g.lng != null ? g.lat + ',' + g.lng : [g.venue, g.city].filter(Boolean).join(', ');
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q)
     + (g.placeId ? '&query_place_id=' + encodeURIComponent(g.placeId) : '');
 }
 

@@ -469,6 +469,7 @@ jobs:
         # Google's answer names; the daily lookup allowance
         run: |
           node supabase/tests/homearenas.test.mjs
+          node supabase/tests/arena-links.test.mjs
           npm i --no-save @electric-sql/pglite
           node supabase/tests/arena-place.test.mjs
 

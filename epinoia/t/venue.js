@@ -480,7 +480,8 @@ async function contactBlock(team, opts) {
    club's home games it hosted (homearenas.js decides which count as a home). A
    name and a town are data, so they are never run through the translator. */
 function mapsHref(v) {
-  const q = [v.name, v.city].filter(Boolean).join(', ');
+  // the arena's pin when it has one: a search for the name finds another arena of the same name
+  const q = v.lat != null && v.lng != null ? v.lat + ',' + v.lng : [v.name, v.city].filter(Boolean).join(', ');
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) +
          (v.place_id ? '&query_place_id=' + encodeURIComponent(v.place_id) : '');
 }
@@ -582,7 +583,11 @@ async function render(opts) {
     const cc = team.leagues && team.leagues.country;
     /* a league in two countries (BE+NL) says nothing about which one this club's hall is in */
     const hint = !addr && cc && !String(cc).includes('+') ? (COUNTRY[String(cc).toUpperCase()] || cc) : null;
-    const query = [name, addr, hint].filter(Boolean).join(', ');
+    /* an arena taken from the arena table (nothing recorded by the club) is shown at its PIN: searching its
+       name lands on another arena of the same name */
+    const pinned = !team.home_venue && team.home_arenas && team.home_arenas.main && team.home_arenas.main.lat != null
+      ? team.home_arenas.main.lat + ',' + team.home_arenas.main.lng : null;
+    const query = pinned || [name, addr, hint].filter(Boolean).join(', ');
     const grid = el('div', 'vgrid');
     grid.append(photoUrl ? photoPane(team, photoUrl) : stockPane(),
                 mapPane(team, query));

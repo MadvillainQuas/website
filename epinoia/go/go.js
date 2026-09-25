@@ -1057,8 +1057,12 @@ async function loadStrip() {
   drawStrip();
 }
 
+/* THE PIN, NOT THE NAME. A search for "Archers Arena" lands on whichever Archers Arena Google likes best (a random
+   one in London, for an arena pinned in Cardiff by hand). The arena's own pin is what a person confirmed, so
+   the link goes to it; the name (with the town) is only for an arena with no pin. */
 function mapsHref(v) {
-  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([v.name, v.city].filter(Boolean).join(', '))
+  const q = v.lat != null && v.lng != null ? v.lat + ',' + v.lng : [v.name, v.city].filter(Boolean).join(', ');
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q)
     + (v.place_id ? '&query_place_id=' + encodeURIComponent(v.place_id) : '');
 }
 
@@ -1113,7 +1117,7 @@ async function drawStrip() {
   if (!host || !S.country) return;
   const want = S.country;
   const r = await restGet('venues?country=eq.' + encodeURIComponent(want) + '&lat=not.is.null&pin_note=is.null' +
-    '&select=id,name,city,place_id,teams!teams_home_venue_id_fkey(name,short_name,colour,logo_path,leagues(slug))' +
+    '&select=id,name,city,lat,lng,place_id,teams!teams_home_venue_id_fkey(name,short_name,colour,logo_path,leagues(slug))' +
     '&order=name&limit=500');
   if (want !== S.country) return;
   const mine = new Set((S.mine || []).map(x => x.venue_id));
