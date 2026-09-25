@@ -71,7 +71,8 @@ export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, met
       tipoff_at: meta.tipoff_at ?? null,
       competition: meta.competition ?? null,
       league: meta.league ?? null,
-      leagueSlug: meta.leagueSlug ?? null
+      leagueSlug: meta.leagueSlug ?? null,
+      timezone: meta.timezone ?? null
     } : null
   };
 }

@@ -456,13 +456,14 @@ Deno.serve(async (req) => {
         let comp: any = null;
         try {
           const { data: c } = await admin.from('competitions')
-            .select('name,seasons(leagues(name,slug))').eq('id', g.competition_id).maybeSingle();
+            .select('name,seasons(leagues(name,slug,timezone))').eq('id', g.competition_id).maybeSingle();
           comp = c;
         } catch (_) { /* a report without a dateline is still a report */ }
         const brief = gameBrief(game, d, TA, lineupAgg, {
           venue: g.venue, attendance: g.attendance, tipoff_at: g.tipoff_at,
           competition: comp?.name ?? null, league: comp?.seasons?.leagues?.name ?? null,
           leagueSlug: comp?.seasons?.leagues?.slug ?? null,
+          timezone: comp?.seasons?.leagues?.timezone ?? null,
           sits: SITC ? [SITC.side[0].sits, SITC.side[1].sits] : null
         });
         const rep = buildReport(brief);

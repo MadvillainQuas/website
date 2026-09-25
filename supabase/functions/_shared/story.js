@@ -818,8 +818,20 @@ function factMeta(g) {
   if (m.tipoff_at) {
     const d = new Date(m.tipoff_at);
     if (!isNaN(d)) {
-      day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
-      const h = d.getHours();
+      /* the VENUE's clock, not the machine's: this runs in the reader's browser and in
+         UTC on the server, and a 19:30 Melbourne tip is "morning" to both. m.timezone is
+         the league's IANA zone; null (or a name Intl rejects) keeps the machine clock. */
+      let dow = d.getDay(), h = d.getHours();
+      if (m.timezone) {
+        try {
+          const p = new Intl.DateTimeFormat('en-GB', { timeZone: m.timezone, weekday: 'long',
+            hour: 'numeric', hourCycle: 'h23' }).formatToParts(d);
+          const wd = p.find(x => x.type === 'weekday'), hr = p.find(x => x.type === 'hour');
+          const di = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(wd && wd.value);
+          if (di >= 0 && hr) { dow = di; h = +hr.value; }
+        } catch (_) { /* unknown zone: fall back to the machine clock */ }
+      }
+      day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow];
       evening = h >= 17 ? 'evening' : h >= 12 ? 'afternoon' : 'morning';
     }
   }
