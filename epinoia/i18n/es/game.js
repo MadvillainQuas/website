@@ -499,7 +499,12 @@
         'Held ball': 'Salto entre dos',
         'alternating possession': 'posesión alterna',
         'final': 'Final',
-        'Final': 'Final'
+        'Final': 'Final',
+        'Substitutions': 'Sustituciones',
+        'on court': 'en pista'
+      },
+      pbpin: {
+        'in': 'entra'
       }
     },
 

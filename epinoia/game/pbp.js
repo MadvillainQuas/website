@@ -14,13 +14,27 @@
      · a missed shot and the block on it
      · a missed shot (or a missed free throw) and the rebound that followed
      · a turnover and the steal that caused it
-   A miss can carry both a block and a rebound. A combined card is taller and
-   shows every player in it; the first face is the one the play is about.
+   A miss can carry both a block and a rebound: three plays, one card (the shot,
+   the block, and the rebound that came of it, offensive or defensive). A combined
+   card is taller and shows every player in it; the first face is the one the play
+   is about.
+
+   SUBSTITUTIONS ARE ONE CARD PER TEAM PER STOPPAGE: every sub a team made at the
+   same period and clock (other teams' subs and timeouts may sit between them; any
+   other play ends the group), listed in and out, and under them the five that
+   were on the floor once those subs were done, as the match report's row of player
+   circles and names - the players who have just come on are marked. The five are
+   replayed from the starters through every substitution, a player coming on in
+   the place of the one going off so the row keeps its order.
 
    Pairing is done by position and clock, never by trusting feed order alone:
    an assist or a block may be logged just before or just after its shot, within
-   three seconds; a rebound follows its miss within six, with nothing but
-   substitutions or timeouts in between.
+   three seconds; a rebound follows its miss (and its block) with nothing but
+   substitutions or timeouts in between, and within fifteen seconds: the feed
+   stamps a rebound when it is entered, and in the real games checked that was up to nine
+   seconds after the shot (a blocked ball that had to be chased down), so six
+   seconds split those. What guards the pairing is that nothing else happened
+   first, not the clock.
 
    COST: this file is not loaded with the page. game.js fetches it the first time
    somebody opens the play-by-play tab. It then keeps its cards: a new play adds a
@@ -36,7 +50,7 @@
   else root.EpinoiaPBP = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
-const AST_MS = 3000, BLK_MS = 3000, REB_MS = 6000, STL_MS = 3000;
+const AST_MS = 3000, BLK_MS = 3000, REB_MS = 15000, STL_MS = 3000;
 const SHOT = /^p[23]_/, MISS = /^(p[23]|ft)_miss$/, MADE = /^p[23]_made$/;
 const QUIET = new Set(['sub', 'timeout']);            // may sit between a miss and its rebound
 const ORDER_KEY = 'epinoia_pbp_order', PER_KEY = 'epinoia_pbp_period';
@@ -44,7 +58,8 @@ const ORDER_KEY = 'epinoia_pbp_order', PER_KEY = 'epinoia_pbp_period';
 /* ------------------------------------------------------------------ pure --- */
 
 /* The groups, in game order. `lines` is d.pbp (each {id, period, clock, s}); `byId` the raw events.
-   Returns [{ key, main, extras:[{role, ev, line}], period, clock, score, idx }]. */
+   Returns [{ key, main, extras:[{role, ev, line}], subs?, period, clock, score, idx }]; a substitution card
+   carries `subs`, every sub of its team at that stoppage (main first). */
 function group(lines, byId) {
   const L = lines.map((l, i) => ({ l, ev: byId[l.id] || {}, i })).filter(x => x.ev.t);
   const used = new Array(L.length).fill(false);
@@ -85,15 +100,54 @@ function group(lines, byId) {
       if (!QUIET.has(y.ev.t) && y.ev.t !== 'blk') break;   // anything else happened first
     }
   });
+  /* 3. a team's substitutions at one stoppage: same team, period and clock. The other team's subs and timeouts
+        at that moment may sit between them; any other play ends the group. */
+  const subs = L.map(() => null);
+  L.forEach((x, i) => {
+    if (used[i] || x.ev.t !== 'sub') return;
+    const e = x.ev, mine = [x];
+    for (let j = i + 1; j < L.length; j++) {
+      const y = L[j];
+      if (y.ev.period !== e.period || y.ev.clock !== e.clock) break;
+      if (used[j]) continue;
+      if (y.ev.t === 'sub' && y.ev.team === e.team) { used[j] = true; mine.push(y); continue; }
+      if (y.ev.t === 'sub' || y.ev.t === 'timeout') continue;
+      break;
+    }
+    subs[i] = mine;
+  });
   const out = [];
   L.forEach((x, i) => {
     if (used[i]) return;
     const ex = extras[i].sort((a, b) => a.i - b.i);
-    const last = ex.reduce((m, z) => (z.i > m.i ? z : m), x);
-    out.push({ key: String(x.l.id), main: x, extras: ex, period: x.ev.period || 1, clock: x.ev.clock,
-               score: last.l.s || x.l.s || [0, 0], idx: x.i });
+    const all = subs[i] || null;
+    const last = all ? all[all.length - 1] : ex.reduce((m, z) => (z.i > m.i ? z : m), x);
+    const g = { key: String(x.l.id), main: x, extras: ex, period: x.ev.period || 1, clock: x.ev.clock,
+                score: last.l.s || x.l.s || [0, 0], idx: x.i };
+    if (all) g.subs = all;
+    out.push(g);
   });
   return out;
+}
+
+/* WHO WAS ON THE FLOOR after each substitution: id of the sub -> that team's players, from the starters,
+   a player coming on taking the place of the one going off so the row keeps its order. `lines` is d.pbp
+   (the engine's order), `byId` the raw events, `starters` [[pids], [pids]]. A team with no starters on
+   record has no lineup to show (a row of only the players who came on would be a lie): null for it. */
+function lineupsAfter(lines, byId, starters) {
+  const on = [0, 1].map(t => ((starters && starters[t]) || []).slice());
+  const known = on.map(a => a.length > 0);
+  const after = {};
+  lines.forEach(l => {
+    const ev = byId[l.id];
+    if (!ev || ev.t !== 'sub' || (ev.team !== 0 && ev.team !== 1)) return;
+    const a = on[ev.team];
+    const k = ev.out != null ? a.indexOf(ev.out) : -1;
+    if (ev.in != null && a.indexOf(ev.in) < 0) { if (k >= 0) a[k] = ev.in; else a.push(ev.in); }
+    else if (k >= 0) a.splice(k, 1);
+    after[ev.id] = known[ev.team] ? a.slice() : null;
+  });
+  return after;
 }
 
 /* the words for one action (each piece a separate text node, so the translator can take each) */
@@ -216,7 +270,34 @@ function locOf(ctx, g) {
   return null;
 }
 
+/* THE SUBSTITUTION CARD: each sub as a line (who came on, for whom), then the five on the floor now as the match
+   report's row of circles with the names under them, the ones who have just come on marked */
+function subCardHTML(ctx, g) {
+  const ev = g.main.ev, team = ev.team != null ? ev.team : 0;
+  const col = ctx.col[team] || ctx.col[0];
+  const per = B.perName(g.period).toUpperCase();
+  const came = new Set(g.subs.map(x => x.ev.in).filter(Boolean));
+  const lines = g.subs.map(x => '<div class="pb-row pb-sub">' + face(ctx, x.ev.in, team, true) + lineHTML(ctx, x.ev) + '</div>').join('');
+  const five = g.lineup && g.lineup.length
+    ? '<div class="pb-lu" aria-label="' + esc('on court') + '"><span class="pb-lu-h">on court</span><div class="pb-lu-row">' +
+      g.lineup.map(pid => {
+        const who = ctx.pm[pid];
+        if (!who) return '';
+        return '<a class="pb-lu-p' + (came.has(pid) ? ' new' : '') + '" translate="no" href="../p/?p=' + encodeURIComponent(pid) + '" title="' + esc(who.p.name) + '">' +
+          face(ctx, pid, team, false) + (came.has(pid) ? '<span class="pb-lu-in" data-i18n-ctx="pbpin">in</span>' : '') + '<span class="pb-lu-n">' + esc(ctx.label ? ctx.label(pid) : String(who.p.name).split(/\s+/).pop()) + '</span></a>';
+      }).join('') + '</div></div>'
+    : '';
+  return '<div class="pb-card k-slim k-subs" data-key="' + esc(g.key) + '" data-p="' + g.period + '" data-t="' + team + '" style="--c:' + esc(col) +
+    ';--on:' + esc(ctx.on[team] || '#0b0f0d') + '"><div class="pb-in">' +
+    '<div class="pb-rows"><div class="pb-subhead"><span class="pb-lead">' + (g.subs.length > 1 ? 'Substitutions' : 'Substitution') + '</span> <span class="pb-bit" translate="no">' +
+      esc((ctx.S.teams[team] || {}).name || '') + '</span></div>' + lines + five + '</div>' +
+    '<div class="pb-meta"><span class="pb-clock"><span class="pb-per">' + esc(per) + '</span> ' + esc(g.clock != null ? B.fmtClock(g.clock) : '') + '</span>' +
+      '<span class="pb-score"><b>' + g.score[0] + '</b>–<b>' + g.score[1] + '</b></span></div>' +
+    '</div></div>';
+}
+
 function cardHTML(ctx, g) {
+  if (g.subs) return subCardHTML(ctx, g);
   const ev = g.main.ev, kind = kindOf(g);
   const team = ev.team != null ? ev.team : 0;
   const col = ctx.col[team] || ctx.col[0];
@@ -307,6 +388,15 @@ function update(S, d, first) {
   const col = colours(S), TC = root.EpinoiaTeamColour;
   st.ctx = { S, d, pm: players(S), col, on: col.map(c => (TC && TC.on ? TC.on(c) : '#0b0f0d')), tags: tagMap(S) };
   st.groups = group(d.pbp || [], byId);
+  /* the five on the floor after each stoppage's substitutions, and the names to print under their circles */
+  const after = lineupsAfter(d.pbp || [], byId, S.starters);
+  st.groups.forEach(g => { if (g.subs) g.lineup = after[g.subs[g.subs.length - 1].ev.id] || null; });
+  const MB = root.EpinoiaModernBox;
+  const everyone = [];
+  (S.teams || []).forEach(tm => (tm.players || []).forEach(p => everyone.push(p)));
+  const labels = MB && MB.nameLabels ? MB.nameLabels(everyone) : {};
+  const last = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); return w.length ? w[w.length - 1] : '?'; };
+  st.ctx.label = pid => (labels[pid]) || last((st.ctx.pm[pid] || { p: {} }).p.name);
   drawTabs();
   draw(!first);
 }
@@ -359,7 +449,7 @@ function draw(animate) {
   const keep = new Set();
   const frag = [];
   gs.forEach(g => {
-    const sig = [g.main.i].concat(g.extras.map(x => x.i)).join(',') + '|' + g.score.join('-') + '|' + (ctx.col.join());
+    const sig = [g.main.i].concat(g.extras.map(x => x.i), (g.subs || []).map(x => x.i)).join(',') + '|' + g.score.join('-') + '|' + (ctx.col.join()) + '|' + (g.lineup || []).join();
     let node = st.nodes.get(g.key);
     const known = !!node;
     if (!node || st.sigs.get(g.key) !== sig) {
@@ -389,5 +479,5 @@ function draw(animate) {
 
 function mounted() { return !!(st && st.host && st.host.isConnected && st.host.querySelector('.pb')); }
 
-return { mount, update, mounted, _test: { group, actionParts, kindOf } };
+return { mount, update, mounted, _test: { group, actionParts, kindOf, lineupsAfter, cardHTML, setBox: b => { B = b; } } };
 }));

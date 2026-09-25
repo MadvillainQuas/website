@@ -492,7 +492,12 @@
         'Held ball': 'ジャンプボール',
         'alternating possession': 'オルタネイティングポゼッション',
         'final': 'FINAL',
-        'Final': 'FINAL'
+        'Final': 'FINAL',
+        'Substitutions': '選手交代',
+        'on court': 'コート上'
+      },
+      pbpin: {
+        'in': 'IN'
       }
     },
 
