@@ -147,21 +147,22 @@ server, no edge auth. So:
 For real protection of the data files themselves, you have two
 solid upgrade paths — see "Real authentication" below.
 
-### Seed credentials (rotate immediately)
+### Accounts and passwords
 
-| Username | Password | Role  |
-| -------- | -------- | ----- |
-| `admin`  | `prophesy` (plaintext)  | admin |
+There are no default credentials to look up: every account lives in
+`config/users.json` as a salted hash, and this file never documents a
+working password. To add an account or change a password, sign in to the
+Admin Dashboard and use **Set password** on the user's row (the password is
+hashed in the browser), then click **⬆ Publish to repo** — or
+**⬇ Download users.json** and commit the file to `config/users.json`.
+Use 12+ characters.
 
-On first sign-in:
-
-1. Open the Admin Dashboard.
-2. Click **🔒 Hash all plaintext** in the red SECURITY banner.
-3. Click **⬇ Download users.json** in the orange UNSAVED banner.
-4. Commit the downloaded file to `config/users.json` on GitHub.
-
-The plaintext password is gone within minutes of you picking up
-the keys.
+**The in-page sign-in is light protection, not security.** It runs in
+the visitor's own browser, so it keeps casual visitors out of the UI and
+nothing more; `config/users.json` (hashes included) is served with the
+site. Treat every password here as one that could be attacked offline, and
+never reuse it anywhere else. For data that must stay private, use the
+"Real authentication" option below.
 
 ### Real authentication (recommended next step)
 
