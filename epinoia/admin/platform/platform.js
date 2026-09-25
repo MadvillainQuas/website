@@ -76,7 +76,10 @@ const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-')
    refusal reads the same wherever it happens. */
 async function rpc(fn, args) {
   const { data, error } = await sb.rpc(fn, args || {});
-  if (error) { oops(error); return null; }
+  /* NAME THE CALL. "canceling statement due to statement timeout" alone left a dozen calls to
+     choose from (the banner outlives the tab that caused it); the function's name is what makes
+     it findable. */
+  if (error) { oops({ code: error.code, message: fn + ': ' + (error.message || String(error)) }); return null; }
   return data;
 }
 
