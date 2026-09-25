@@ -242,18 +242,38 @@ function mergeNearest(up, rec, now, n) {
   return n == null ? all : all.slice(0, n);
 }
 
+/* WHAT THE READER FOLLOWS, as pickDaily takes it: { leagues: [ids], teams: [ids] } (fan_prefs' fav_league_ids and
+   fav_team_ids). A game is followed when its league is, or either club is. Nothing followed - no session, an
+   empty list, a caller that does not say - is the order everybody else gets. */
+function followSets(f) {
+  const set = v => new Set((Array.isArray(v) ? v : v instanceof Set ? Array.from(v) : []).filter(x => x != null));
+  return f ? { leagues: set(f.leagues), teams: set(f.teams) } : { leagues: new Set(), teams: new Set() };
+}
+function isFollowed(g, f) {
+  if (!f || (!f.leagues.size && !f.teams.size)) return false;
+  const lid = leagueId(g);
+  return (lid != null && f.leagues.has(lid)) ||
+    !!(g && ((g.home && f.teams.has(g.home.id)) || (g.away && f.teams.has(g.away.id)) ||
+             f.teams.has(g.home_team_id) || f.teams.has(g.away_team_id)));
+}
+
 /* DAILY FIXTURES: n cards.
-     1. every live game;
-     2. each league not already on a card gets its next game, when that is
+     1. every live game - the ones in a league or of a club the reader follows FIRST, all of them, then the rest;
+     2. the next game of each league and each club the reader follows, when it is within 14 days;
+     3. each league not already on a card gets its next game, when that is
         within 14 days, nearest first while slots last (BCB would otherwise take
         six of the next eight);
-     3. the rest by tip-off.
-   Shown live first, then by tip-off. nextByLeague is a Map, a plain object or
-   an array of games; a null entry is a league with nothing coming. */
-function pickDaily(liveRows, upRows, nextByLeague, now, n) {
+     4. the rest by tip-off.
+   Shown live first, then by tip-off, and inside each of those the followed ones before the others. nextByLeague
+   is a Map, a plain object or an array of games; a null entry is a league with nothing coming. `followed` is
+   { leagues, teams } (see followSets). */
+function pickDaily(liveRows, upRows, nextByLeague, now, n, followed) {
   const N = n == null ? 8 : n;
   const at = ms(now);
-  const lives = dedupe(liveRows).filter(g => g.status === 'live').sort((a, b) => t(a) - t(b));
+  const fol = followSets(followed);
+  const mine = g => isFollowed(g, fol);
+  const lives = dedupe(liveRows).filter(g => g.status === 'live')
+    .sort((a, b) => (mine(b) - mine(a)) || (t(a) - t(b)));
   const liveIds = new Set(lives.map(g => g.id));
   const ups = dedupe(upRows).filter(g => !liveIds.has(g.id) && g.status !== 'final' && g.status !== 'live')
     .sort((a, b) => t(a) - t(b) || (String(a.id) < String(b.id) ? -1 : 1));
@@ -268,6 +288,24 @@ function pickDaily(liveRows, upRows, nextByLeague, now, n) {
   const ids = new Set(liveIds);
   const shown = new Set(lives.map(leagueId));
   const room = () => Math.max(chosen.length, N) - chosen.length;
+
+  /* what the reader follows: each followed league's next game and each followed club's, nearest first, before
+     anybody else's game takes a slot (a league that already has a card - its game is live - needs no second) */
+  if (fol.leagues.size || fol.teams.size) {
+    const pool = ups.concat(nexts).filter(g => mine(g) && t(g) - at <= LEAGUE_WINDOW_MS).sort((a, b) => nearer(a, b, at));
+    const doneLeague = new Set(), doneTeam = new Set();
+    pool.forEach(g => {
+      if (room() <= 0 || ids.has(g.id)) return;
+      const lid = leagueId(g), ha = g.home && g.home.id, aw = g.away && g.away.id;
+      const viaLeague = lid != null && fol.leagues.has(lid) && !doneLeague.has(lid) && !shown.has(lid);
+      const viaTeam = (ha != null && fol.teams.has(ha) && !doneTeam.has(ha)) || (aw != null && fol.teams.has(aw) && !doneTeam.has(aw));
+      if (!viaLeague && !viaTeam) return;
+      chosen.push(g); ids.add(g.id); shown.add(lid);
+      if (lid != null) doneLeague.add(lid);
+      if (ha != null) doneTeam.add(ha);
+      if (aw != null) doneTeam.add(aw);
+    });
+  }
 
   /* each league's first game from either source */
   const firstOf = new Map();
@@ -290,7 +328,7 @@ function pickDaily(liveRows, upRows, nextByLeague, now, n) {
     chosen.push(g); ids.add(g.id);
   });
 
-  const rest = chosen.slice(lives.length).sort((a, b) => t(a) - t(b));
+  const rest = chosen.slice(lives.length).sort((a, b) => (mine(b) - mine(a)) || (t(a) - t(b)));
   return lives.concat(rest);
 }
 
@@ -699,7 +737,7 @@ function card(g, opts) {
 return {
   SEL, STALE_MS, LEAGUE_WINDOW_MS,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
-  pickDaily, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
+  pickDaily, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
   card, wireBadges, dayLabel, timeLabel, esc
 };
 }));

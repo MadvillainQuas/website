@@ -539,6 +539,55 @@ section('pages');
 }
 
 /* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+section('daily fixtures: what the reader follows comes first');
+{
+  const live = (id, league, off) => game(id, league, off, 'live');
+  /* six live games across three leagues, the followed league's spread through the tip-off order */
+  const lives = [live('b1', L.bcb, -50 * 60e3), live('m1', L.slbm, -45 * 60e3), live('w1', L.slbw, -40 * 60e3),
+                 live('b2', L.bcb, -30 * 60e3), live('m2', L.slbm, -20 * 60e3), live('b3', L.bcb, -10 * 60e3)];
+  const none = ids(G.pickDaily(lives, [], [], NOW, 8));
+  ok('nothing followed: the order is everybody\'s (tip-off order), whether the argument is missing, empty or null',
+     none.join() === 'b1,m1,w1,b2,m2,b3' && ids(G.pickDaily(lives, [], [], NOW, 8, null)).join() === none.join()
+     && ids(G.pickDaily(lives, [], [], NOW, 8, { leagues: [], teams: [] })).join() === none.join());
+  ok('a followed LEAGUE with several games live: all of its games are pulled to the front, in tip-off order, then the rest',
+     ids(G.pickDaily(lives, [], [], NOW, 8, { leagues: ['l-bcb'], teams: [] })).join() === 'b1,b2,b3,m1,w1,m2');
+  ok('a followed CLUB (either side of the game): its game leads',
+     ids(G.pickDaily(lives, [], [], NOW, 8, { leagues: [], teams: ['a-w1'] })).join() === 'w1,b1,m1,b2,m2,b3'
+     && ids(G.pickDaily(lives, [], [], NOW, 8, { leagues: [], teams: ['h-m2'] }))[0] === 'm2');
+  ok('a league and a club together: both come first, the followed club\'s game among them by tip-off',
+     ids(G.pickDaily(lives, [], [], NOW, 8, { leagues: ['l-slbm'], teams: ['h-b3'] })).join() === 'm1,m2,b3,b1,w1,b2');
+  ok('following changes the order, never the games: the same set, every live game shown even past the eight cards',
+     [...ids(G.pickDaily(lives, [], [], NOW, 8, { leagues: ['l-bcb'], teams: [] }))].sort().join() === [...none].sort().join());
+  const many = [];
+  for (let i = 0; i < 11; i++) many.push(live('x' + i, i % 2 ? L.slbm : L.bcb, -(60 - i) * 60e3));
+  const manyPick = ids(G.pickDaily(many, [], [], NOW, 8, { leagues: ['l-slbm'], teams: [] }));
+  ok('more live games than cards: the followed league\'s are still all there, and first',
+     manyPick.length === 11 && manyPick.slice(0, 5).every(id => Number(id.slice(1)) % 2 === 1), manyPick.join());
+
+  /* and the next games: each followed league's and each followed club's, before anybody else's */
+  const ups = [game('u-b', L.bcb, 1 * H), game('u-m', L.slbm, 2 * H), game('u-w', L.slbw, 3 * H)];
+  const nextsAll = [ups[0], ups[1], ups[2]];
+  const withFollow = ids(G.pickDaily([], ups, nextsAll, NOW, 2, { leagues: ['l-slbw'], teams: [] }));
+  ok('with room for two cards, a followed league\'s next game takes one before the nearer ones, and leads',
+     withFollow.join() === 'u-w,u-b', withFollow.join());
+  const byTeam = ids(G.pickDaily([], ups, nextsAll, NOW, 2, { leagues: [], teams: ['a-u-m'] }));
+  ok('...so does a followed club\'s (the away side counts)', byTeam[0] === 'u-m' && byTeam.length === 2, byTeam.join());
+  const extra = game('u-w2', L.slbw, 5 * H);
+  ok('only the NEXT game of a followed league is pulled forward, not the whole league: a league with a card already (live) is not given a second',
+     ids(G.pickDaily([live('w-live', L.slbw, -10 * 60e3)], ups.concat([extra]), nextsAll, NOW, 3, { leagues: ['l-slbw'], teams: [] })).filter(id => id.startsWith('u-w')).length === 0);
+  ok('a followed game more than 14 days away does not jump the queue (the same window as everybody\'s): with one card, the nearer game keeps it',
+     ids(G.pickDaily([], [game('near', L.bcb, 2 * H), game('far', L.slbw, 20 * D)], [], NOW, 1, { leagues: ['l-slbw'], teams: [] })).join() === 'near');
+  ok('followSets / isFollowed: a league or either club; nothing followed follows nothing',
+     G.isFollowed(ups[0], G.followSets({ leagues: ['l-bcb'] })) && G.isFollowed(ups[1], G.followSets({ teams: ['h-u-m'] }))
+     && !G.isFollowed(ups[2], G.followSets({ leagues: ['l-bcb'], teams: ['h-u-m'] })) && !G.isFollowed(ups[0], G.followSets(null)));
+  const dj = rd('epinoia', 'home', 'daily.js');
+  ok('the home rail asks follow.js (never access.js), hands the lists to pickDaily, and re-orders when a follow is saved',
+     /F\.load\(\)/.test(dj) && /fav_league_ids/.test(dj) && /fav_team_ids/.test(dj) && !/EpinoiaAccess/.test(dj)
+     && /G\.pickDaily\(live, up, nexts, now, N, fol\)/.test(dj) && /addEventListener\('epinoia:follows', \(\) => schedule\(0\)\)/.test(dj)
+     && /<script src="\.\.\/follow\.js\?v=\d+" defer><\/script>\s*<script src="front\.js/.test(rd('epinoia', 'home', 'index.html')));
+}
+
 section('one dropdown per league: the leagues with a game this week, and a feed of one league');
 {
   const seen = [];

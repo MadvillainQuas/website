@@ -4,6 +4,9 @@
 
    Eight cards: every live game, then each league's next game when it is
    within a fortnight, then the rest by tip-off (EpinoiaGlobalGames.pickDaily).
+   WHAT THE READER FOLLOWS COMES FIRST: with several games live, those in a league or of a club they follow are
+   pulled to the front (all of them), and the next game of each league and club they follow takes a card before
+   anybody else's does (follow.js: fan_prefs, signed in; nothing followed is everybody's order).
    Without the per-league rule the busiest league takes almost every slot and a
    league whose season starts in ten days never appears on the front door.
 
@@ -83,17 +86,30 @@
     return out;
   }
 
+  /* WHAT THE READER FOLLOWS, through follow.js (never access.js: one read of the fan's row, shared with MY FOLLOWED
+     and every bell). Signed out, nothing followed, or no follow.js: null, and the order is everybody's. */
+  async function followed() {
+    const F = window.EpinoiaFollow;
+    if (!F || typeof F.load !== 'function') return null;
+    try {
+      const p = await F.load();
+      if (!p) return null;
+      return { leagues: p.fav_league_ids || [], teams: p.fav_team_ids || [] };
+    } catch (_) { return null; }
+  }
+
   async function read() {
     const G = window.EpinoiaGlobalGames;
     if (!G) throw new Error('globalgames.js has not loaded');
     const now = Date.now();
     if (mode === 'res') return { rows: await results(G, now), state: {}, now, mode };
-    const [live, up, nexts] = await Promise.all([
+    const [live, up, nexts, fol] = await Promise.all([
       G.live().catch(() => []),
       upcoming(G, now),
-      nextGames(G)
+      nextGames(G),
+      followed()
     ]);
-    const rows = G.pickDaily(live, up, nexts, now, N);
+    const rows = G.pickDaily(live, up, nexts, now, N, fol);
     const liveIds = rows.filter(g => g.status === 'live').map(g => g.id);
     const state = liveIds.length ? await G.liveState(liveIds) : {};
     return { rows, state, now, mode };
@@ -202,6 +218,8 @@
        time a read succeeds. lastKey stays null until then, so that first draw always paints. */
     listen();
     document.addEventListener('visibilitychange', () => { if (!hidden()) schedule(0); });
+    /* a follow saved on this page (a bell, "Who's your favourite?") re-orders the cards at once */
+    if (typeof window.addEventListener === 'function') window.addEventListener('epinoia:follows', () => schedule(0));
     busy = true;
     try { draw(await read(), true); }
     finally { busy = false; schedule(); }
