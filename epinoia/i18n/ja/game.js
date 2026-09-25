@@ -397,7 +397,9 @@
       'loading the play-by-play…': 'テキスト速報を読み込んでいます…',
       'The charts beneath use these same minutes: move one up to read it against the rotations.': '下のグラフはこのローテーションと同じ分数の軸を使っています。見比べたいグラフを上に動かしてください。',
       'Move up': '上へ移動',
-      'Move down': '下へ移動'
+      'Move down': '下へ移動',
+      'Collapse': '折りたたむ',
+      'Expand': '展開する'
     },
 
     ctx: {

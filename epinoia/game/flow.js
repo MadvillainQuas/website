@@ -347,7 +347,7 @@ function chartCard(o) {
   const plabels = o.tl.periods.map(p =>
     '<span class="gf-pl" style="left:' + pct((p.from + p.to) / 2, o.tl.total) + '%">' + p.label + '</span>').join('');
   return '<section class="gf-card gf-chart" data-chart="' + o.key + '">' +
-    '<div class="gf-card-head"><h3 class="gf-title">' + o.title + '</h3>' + o.legendHTML + '<span class="gf-mv"></span></div>' +
+    '<div class="gf-card-head"><h3 class="gf-title">' + o.title + '</h3>' + o.legendHTML + '<span class="gf-mv"></span>' + foldButton(o.key) + '</div>' +
     (o.note ? '<div class="gf-note">' + o.note + '</div>' : '') +
     '<div class="gf-scroll"><div class="gf-al gf-plotrow">' +
       '<div class="gf-yl" aria-hidden="true">' + ticks + '<span class="gf-ytitle">' + esc(o.ytitle) + '</span></div>' +
@@ -405,6 +405,38 @@ function keepOrder(list) {
   order = normaliseOrder(list);
   try { root.localStorage.setItem(ORDER_KEY, JSON.stringify(order)); } catch (_) { /* a nicety */ }
 }
+/* FOLDING: any of the four charts, and either side's rotations, can be shut to its title. Which are
+   shut is kept per reader (this browser), like the order, and put back after every redraw. */
+const FOLD_KEY = 'epinoia_gf_fold';
+function foldState() {
+  try { const v = JSON.parse(root.localStorage.getItem(FOLD_KEY) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (_) { return {}; }
+}
+function keepFold(key, shut) {
+  const st = foldState();
+  if (shut) st[key] = true; else delete st[key];
+  try { root.localStorage.setItem(FOLD_KEY, JSON.stringify(st)); } catch (_) { /* a nicety */ }
+}
+const foldButton = key =>
+  '<button type="button" class="gf-fold" data-fold="' + key + '" aria-expanded="true" title="Collapse" aria-label="Collapse"><i aria-hidden="true"></i></button>';
+/* the rotations are rotation.js's markup (shared with the club page), so their buttons are put in here */
+function wireFolds(host) {
+  host.querySelectorAll('.gf-rot .rot-team').forEach((t, side) => {
+    t.dataset.fold = 'rot' + side;
+    const h = t.querySelector('.rot-h');
+    if (h && !h.querySelector('.gf-fold')) h.insertAdjacentHTML('beforeend', foldButton('rot' + side));
+  });
+  const st = foldState();
+  host.querySelectorAll('.gf-fold').forEach(b => setFold(host, b, !!st[b.dataset.fold]));
+}
+function setFold(host, b, shut) {
+  const box = b.closest('.gf-chart, .rot-team');
+  if (!box) return;
+  box.classList.toggle('gf-shut', shut);
+  b.setAttribute('aria-expanded', shut ? 'false' : 'true');
+  b.title = shut ? 'Expand' : 'Collapse';
+  b.setAttribute('aria-label', b.title);
+}
+
 const moveButtons = (i, n) =>
   '<span class="gf-mv"><button type="button" class="gf-mvb" data-mv="up" title="Move up" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
   '<button type="button" class="gf-mvb" data-mv="down" title="Move down" aria-label="Move down"' + (i === n - 1 ? ' disabled' : '') + '>▼</button></span>';
@@ -789,8 +821,17 @@ function mounted(host) {
   host.__gfModel = model;
   hideProbe(host);
   wireGuides(host);
+  wireFolds(host);
   if (host.__gfBound) return;
   host.__gfBound = true;
+  host.addEventListener('click', e => {
+    const b = e.target && e.target.closest && e.target.closest('.gf-fold');
+    if (!b || !host.contains(b)) return;
+    const shut = b.getAttribute('aria-expanded') !== 'false';
+    setFold(host, b, shut);
+    keepFold(b.dataset.fold, shut);
+    hideProbe(host);
+  });
   const runOf = e => { const m = e.target && e.target.closest && e.target.closest('[data-run]'); return m && host.contains(m) ? m : null; };
   const mark = (id, cls, on) => host.querySelectorAll('[data-run="' + id + '"]').forEach(x => x.classList.toggle(cls, on));
   host.addEventListener('pointerover', e => { const m = runOf(e); if (m) mark(m.dataset.run, 'hi', true); });
@@ -808,7 +849,7 @@ function mounted(host) {
   host.addEventListener('click', e => {
     const p = plotOf(e);
     if (p) probe(host, p, e.clientX, e.clientY);
-    else if (!(e.target.closest && e.target.closest('.gf-mvb'))) hideProbe(host);
+    else if (!(e.target.closest && e.target.closest('.gf-mvb, .gf-fold'))) hideProbe(host);
   });
   if (!hasHoverBound) {
     hasHoverBound = true;

@@ -192,3 +192,19 @@
 @media (prefers-reduced-motion:reduce){
   .gf-bar, .gf-runrow{ transition:none }
 }
+
+/* folding (flow.js foldButton): a shut chart keeps only its title row, a shut side of the rotations only its name */
+.gf-fold{ flex:none; margin-left:6px; width:26px; height:26px; display:inline-grid; place-items:center; border-radius:8px; cursor:pointer;
+  border:1px solid color-mix(in srgb, var(--text-secondary, #8fb8a5) 35%, transparent); background:transparent; color:var(--text-secondary, #8fb8a5) }
+.gf-fold:hover{ color:var(--text-primary, #e6fff1); border-color:currentColor }
+.gf-fold:focus-visible{ outline:2px solid var(--vis-t0, var(--team0)); outline-offset:2px }
+.gf-fold i{ width:7px; height:7px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:translateY(-2px) rotate(45deg); transition:transform .2s }
+.gf-shut .gf-fold i{ transform:translateY(1px) rotate(-135deg) }
+.gf-card-head .gf-fold{ margin-left:auto }
+.gf-card-head .gf-mv + .gf-fold{ margin-left:6px }
+.gf-chart.gf-shut > :not(.gf-card-head){ display:none }
+.gf-chart.gf-shut .gf-card-head{ margin-bottom:0 }
+.rot-team .rot-h .gf-fold{ width:22px; height:22px }
+.rot-team.gf-shut > :not(.rot-h){ display:none }
+.rot-team.gf-shut .rot-h{ margin-bottom:0; opacity:.8 }
+.rot-h .gf-fold i{ width:7px; height:7px; background:none; flex:none }

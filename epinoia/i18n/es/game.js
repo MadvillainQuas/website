@@ -404,7 +404,9 @@
       'loading the play-by-play…': 'Cargando el minuto a minuto…',
       'The charts beneath use these same minutes: move one up to read it against the rotations.': 'Los gráficos de abajo usan estos mismos minutos: sube uno para leerlo junto a las rotaciones.',
       'Move up': 'Subir',
-      'Move down': 'Bajar'
+      'Move down': 'Bajar',
+      'Collapse': 'Plegar',
+      'Expand': 'Desplegar'
     },
 
     ctx: {
