@@ -47,5 +47,34 @@ for (const [file, name, shape] of CASES) {
   ok('an arena with no pin falls back to its name and town', decodeURIComponent(u).endsWith('query=Some Hall, Luton'), u);
 }
 
+/* THE GAME PREVIEW'S MAP AND ROUTE (Saga Ballooners' arena, pinned by hand in Japan, showed a map of London: the
+   preview asked Google for the name "Sアリ") - the pin when the arena has one, else the address, else the name */
+console.log('-- game/preview.js');
+{
+  const mapQuery = fnFrom('game/preview.js', 'mapQuery'), directionsHref = fnFrom('game/preview.js', 'directionsHref');
+  // directionsHref calls mapQuery: run both in one context
+  const src = readFileSync(path.join(root, 'game/preview.js'), 'utf8');
+  const cut = n => { const at = src.indexOf('function ' + n + '('); let i = src.indexOf('{', at), d = 0, e = i; for (; e < src.length; e++) { if (src[e] === '{') d++; else if (src[e] === '}' && --d === 0) break; } return src.slice(at, e + 1); };
+  const ctx = {}; vm.runInNewContext(cut('mapQuery') + '\n' + cut('directionsHref') + '\nthis.q = mapQuery; this.d = directionsHref;', ctx);
+  const saga = { lat: 33.2764, lng: 130.3002, place_id: null };
+  ok('a pinned arena is asked for at its pin, not by its name', ctx.q('Sアリ', null, saga) === '33.2764,130.3002', ctx.q('Sアリ', null, saga));
+  ok('...even where the fixture carries an address', ctx.q('Sアリ', '1 Some Street, Saga', saga) === '33.2764,130.3002');
+  ok('an arena with no pin keeps the address, then the name', ctx.q('Hall', '1 Road, Town', null) === '1 Road, Town' && ctx.q('Hall', '', { lat: null, lng: null }) === 'Hall' && ctx.q('', '', null) === '');
+  ok('the route goes to the pin, with its Google place when it has one', ctx.d('Sアリ', null, saga) === 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent('33.2764,130.3002')
+    && /&destination_place_id=ChIJabc$/.test(ctx.d('X', null, Object.assign({}, saga, { place_id: 'ChIJabc' }))) && ctx.d('', '', null) === '');
+  const gameSrc = readFileSync(path.join(root, 'game/game.js'), 'utf8'), previewSrc = src;
+  ok('game.js reads the pin off the arena\'s own row (where it was corrected) and hands it to the preview',
+     /venues\?id=eq\.' \+ encodeURIComponent\(m\.venueId\) \+ '&select=id,lat,lng,place_id/.test(gameSrc) && /address: m\.venue_address, pin: pin,/.test(gameSrc));
+  ok('...and the preview draws the map and the directions from it', /mapEmbed\(ctx\.venue, ctx\.address, ctx\.pin\)/.test(previewSrc) && /directionsHref\(ctx\.venue, ctx\.address, ctx\.pin\)/.test(previewSrc));
+}
+console.log('-- t/venue.js (the club\'s page)');
+{
+  const v = readFileSync(path.join(root, 't/venue.js'), 'utf8');
+  ok('a home venue LINKED to an arena is shown at that arena\'s pin even when the club typed its own name for it',
+     /const pinned = main && main\.lat != null && \(!team\.home_venue \|\| team\.home_venue_id\)/.test(v));
+  ok('...with the arena\'s Google place on the "Open in Maps" and "Directions" links', /mapPane\(team, query, pinned && main\.place_id\)/.test(v)
+     && /'&query_place_id='/.test(v) && /'&destination_place_id='/.test(v));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

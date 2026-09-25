@@ -424,10 +424,27 @@ function playerCard(p, colour, teamName) {
    empty query renders a map of nowhere, which reads as a fault rather than as
    an absence. The page's CSP names this origin explicitly and nothing else may
    be framed. */
-function mapEmbed(venue, address) {
-  const q = String(address || venue || '').trim();
+/* THE ARENA'S PIN, NOT A SEARCH FOR ITS NAME. A venue written as a name ("Sアリ", "Archers Arena") finds whichever
+   place Google likes best under it - a pinned arena in Japan opened a map of London. The arena's own pin is
+   what a person confirmed in the platform console, so the map and the route are asked for it; the address, then
+   the name, are only for a game whose arena has none (game.js reads the pin off the arena's row). */
+function mapQuery(venue, address, pin) {
+  if (pin && pin.lat != null && pin.lng != null && isFinite(+pin.lat) && isFinite(+pin.lng)) return (+pin.lat) + ',' + (+pin.lng);
+  return String(address || venue || '').trim();
+}
+
+/* the route to it: from wherever the reader is, to the pin (and its Google place when there is one) */
+function directionsHref(venue, address, pin) {
+  const q = mapQuery(venue, address, pin);
   if (!q) return '';
-  const src = 'https://www.google.com/maps?q=' + encodeURIComponent(q) + '&output=embed';
+  return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(q) +
+    (pin && pin.place_id ? '&destination_place_id=' + encodeURIComponent(pin.place_id) : '');
+}
+
+function mapEmbed(venue, address, pin) {
+  const q = mapQuery(venue, address, pin);
+  if (!q) return '';
+  const src = 'https://www.google.com/maps?q=' + encodeURIComponent(q) + (pin && pin.lat != null ? '&z=16' : '') + '&output=embed';
   return '<div class="pv-map"><iframe src="' + esc(src) + '" loading="lazy" ' +
     'referrerpolicy="no-referrer-when-downgrade" title="Venue map"></iframe></div>';
 }
@@ -490,11 +507,10 @@ function render(ctx) {
         tile('tip-off', w.time, w.day) +
         tile('venue', ctx.venue || 'To be confirmed', ctx.address || '') +
       '</div>' +
-      mapEmbed(ctx.venue, ctx.address) +
-      (ctx.address
+      mapEmbed(ctx.venue, ctx.address, ctx.pin) +
+      (directionsHref(ctx.venue, ctx.address, ctx.pin) && (ctx.address || ctx.pin)
         ? '<a class="pv-more" target="_blank" rel="noopener" href="' +
-          esc('https://www.google.com/maps/dir/?api=1&destination=' +
-              encodeURIComponent(ctx.address)) + '">directions ↗</a>'
+          esc(directionsHref(ctx.venue, ctx.address, ctx.pin)) + '">directions ↗</a>'
         : '') +
       /* EPINOIA GO's STAMP THIS GAME (game.js mounts go/venuestamp.js here, when the arena is known) */
       '<div class="pv-go" id="pvGo"></div>' +
@@ -534,7 +550,7 @@ function render(ctx) {
   '</div>';
 }
 
-return { render: render, narrative: narrative, startersHTML: startersHTML,
+return { render: render, narrative: narrative, startersHTML: startersHTML, mapQuery: mapQuery, directionsHref: directionsHref,
          injuriesHTML: injuriesHTML, FACTORS: FACTORS, MIN_GP: MIN_GP,
          __test: { observations: observations, teamShape: teamShape,
                    playerNote: playerNote, edge: edge, whenText: whenText } };

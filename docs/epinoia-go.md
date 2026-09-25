@@ -344,3 +344,10 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       Chromium: home 6 checks (buttons, only finals, kept across reload, phone, ja), GO signed out 8, the team card
       9 (signed out; signed in with the database faked: stamped, too far, opens later, no game here); ja and es
       harvested clean; `go-page.test.mjs`: 149.
+- [x] **7.15 A pin somebody corrected is the map everywhere** (Louie, 2026-09-25) - Saga Ballooners' arena (Sアリ),
+      pinned by hand in the platform console, still showed a map of London in every game's preview: the preview asked
+      Google for the venue's NAME. The preview's map and its directions now go to the arena's pin (read off the
+      arena's own row by `game.js venuePin`, `preview.js mapQuery`), the address and then the name only for an arena
+      with none. The club's page does the same for the arena its home venue is linked to even when the club typed a
+      name of its own, with the arena's Google place on "Open in Maps" and "Directions". (GO's cards and the
+      find-a-game page already did.) `arena-links.test.mjs`: 20. No migration.

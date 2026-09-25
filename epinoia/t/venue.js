@@ -155,7 +155,7 @@ function photoPane(team, url) {
   return pane;
 }
 
-function mapPane(team, query) {
+function mapPane(team, query, placeId) {
   const pane = el('div', 'vpane vmap');
 
   /* The venue's own address goes straight into the embed, so a club that
@@ -174,9 +174,11 @@ function mapPane(team, query) {
      directions, and an address without a route is half an answer. */
   const links = el('div', 'vlinks over');
   const ext = el('a', null, 'Open in Maps');
-  ext.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
+  ext.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query) +
+    (placeId ? '&query_place_id=' + encodeURIComponent(placeId) : '');
   const dir = el('a', null, 'Directions');
-  dir.href = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(query);
+  dir.href = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(query) +
+    (placeId ? '&destination_place_id=' + encodeURIComponent(placeId) : '');
   [ext, dir].forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
   links.append(ext, dir);
   pane.appendChild(links);
@@ -592,12 +594,16 @@ async function render(opts) {
     const hint = !addr && cc && !String(cc).includes('+') ? (COUNTRY[String(cc).toUpperCase()] || cc) : null;
     /* an arena taken from the arena table (nothing recorded by the club) is shown at its PIN: searching its
        name lands on another arena of the same name */
-    const pinned = !team.home_venue && team.home_arenas && team.home_arenas.main && team.home_arenas.main.lat != null
-      ? team.home_arenas.main.lat + ',' + team.home_arenas.main.lng : null;
+    /* ...and so is the arena a club's home venue is LINKED to (team.home_venue_id, set in the platform console's
+       arena editor), even when the club typed a name of its own for the heading: the pin somebody corrected
+       wins over a search for whatever the name is */
+    const main = team.home_arenas && team.home_arenas.main;
+    const pinned = main && main.lat != null && (!team.home_venue || team.home_venue_id)
+      ? main.lat + ',' + main.lng : null;
     const query = pinned || [name, addr, hint].filter(Boolean).join(', ');
     const grid = el('div', 'vgrid');
     grid.append(photoUrl ? photoPane(team, photoUrl) : stockPane(),
-                mapPane(team, query));
+                mapPane(team, query, pinned && main.place_id));
     wrap.appendChild(grid);
     const more = otherArenas(team);
     if (more) wrap.appendChild(more);

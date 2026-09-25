@@ -3052,6 +3052,17 @@ async function outFor(season, m) {
   return { A: m.homeTeamId ? side(m.homeTeamId) : [], B: m.awayTeamId ? side(m.awayTeamId) : [] };
 }
 
+/* THE ARENA'S PIN, for the preview's map and route (preview.js mapQuery): read off the arena's own row, where a person
+   may have corrected it in the platform console. A failed read (or an arena with no pin) leaves the map asked for by
+   name, as it was. */
+async function venuePin(m) {
+  if (!m.venueId) return null;
+  try {
+    const vr = await api('venues?id=eq.' + encodeURIComponent(m.venueId) + '&select=id,lat,lng,place_id&limit=1');
+    return vr && vr[0] && vr[0].lat != null && vr[0].lng != null ? vr[0] : null;
+  } catch (_) { return null; }
+}
+
 async function renderPreview() {
   const S = window.S, m = S.meta || {};
   let season = { players: [], teams: [], teamOfPlayer: new Map() };
@@ -3121,6 +3132,7 @@ async function renderPreview() {
      gets an empty list rather than a broken preview. The names are already on the
      season rows from the playerMeta merge above, so nobody is asked for twice. */
   const out = await outFor(season, m);
+  const pin = await venuePin(m);
 
   /* Names come from the club rows, not the roster snapshot — a scheduled game
      has no snapshot, because nothing has been frozen yet. */
@@ -3142,7 +3154,7 @@ async function renderPreview() {
        not render. */
     startersA: startingFive(S, 0), startersB: startingFive(S, 1), nameLabels: gameNameLabels(S),
     outA: out.A, outB: out.B,
-    tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address,
+    tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address, pin: pin,
     competition: S.competition, leagueSlug: S.leagueSlug
   });
 
