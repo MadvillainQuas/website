@@ -399,7 +399,9 @@
       'Move up': '上へ移動',
       'Move down': '下へ移動',
       'Collapse': '折りたたむ',
-      'Expand': '展開する'
+      'Expand': '展開する',
+      'time on court': '出場時間帯',
+      'game clock at each check-in and check-out': '各出場・交代時の試合時計'
     },
 
     ctx: {

@@ -49,6 +49,9 @@ console.log('a game worked out by hand');
   ok('the minute h6 came on is half his: 0.5 in the third minute, all of the fourth',
      near(row(0, 'h6').cells[2], 0.5) && near(row(0, 'h6').cells[3], 1) && row(0, 'h6').cells[1] === 0);
   ok('rows are longest first', M.teams[0].rows[0].ms >= M.teams[0].rows[1].ms);
+  ok('each row carries its stretches, which add up to its minutes (h5: two, 2:30 then 25:00)',
+     M.teams.every(T => T.rows.every(r => r.spans.reduce((n, [a, b]) => n + (b - a), 0) === r.ms)) &&
+     JSON.stringify(row(0, 'h5').spans) === JSON.stringify([[0, 150000], [900000, 2400000]]), row(0, 'h5').spans);
   ok('the margin steps with every basket and ends on the score (2-3)',
      M.margin.length === 3 && M.margin[1][1] === 2 && M.margin[2][1] === -1 && M.score[0] === 2 && M.score[1] === 3);
   const html = R.html(M, { colours: ['#112233', '#445566'] });

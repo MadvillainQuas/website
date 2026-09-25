@@ -406,7 +406,9 @@
       'Move up': 'Subir',
       'Move down': 'Bajar',
       'Collapse': 'Plegar',
-      'Expand': 'Desplegar'
+      'Expand': 'Desplegar',
+      'time on court': 'Tiempo en pista',
+      'game clock at each check-in and check-out': 'Reloj de partido en cada entrada y salida'
     },
 
     ctx: {

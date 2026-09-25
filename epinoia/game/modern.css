@@ -130,3 +130,25 @@
   .mv-p.mv-hit .sq-face{ animation:none }
   @keyframes mv-delta-quiet{ 0%{opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{opacity:0} }
 }
+
+/* time on court (modern.js timesHTML): a strip of the whole game with the player's stretches on it, then the list */
+.mv-pop{ overflow:auto }
+.mv-times{ margin-top:6px; border-top:1px solid var(--border-subtle) }
+.mv-tsum{ display:flex; align-items:center; gap:6px; cursor:pointer; list-style:none; user-select:none }
+.mv-tsum::-webkit-details-marker{ display:none }
+.mv-tsum b{ font-family:var(--f-mono); font-weight:300; letter-spacing:0; color:var(--text-primary); font-size:10px }
+.mv-tchev{ margin-left:auto; width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg); transition:transform .2s }
+.mv-times[open] .mv-tchev{ transform:translateY(2px) rotate(-135deg) }
+.mv-tsum:hover{ color:var(--text-primary) }
+.mv-tl{ position:relative; height:12px; margin:4px 2px 2px; border-radius:4px; background:color-mix(in srgb,var(--text-muted) 16%,transparent); overflow:hidden }
+.mv-tl .s{ position:absolute; top:0; bottom:0; background:var(--c,var(--team0)); border-radius:2px; min-width:2px }
+.mv-tl .q{ position:absolute; top:0; bottom:0; width:1px; background:color-mix(in srgb,var(--text-primary) 35%,transparent); z-index:1 }
+.mv-tlax{ position:relative; height:12px; margin:0 2px 4px }
+.mv-tlax span{ position:absolute; transform:translateX(-50%); font-family:var(--f-mono); font-weight:300; font-size:8.5px; color:var(--text-muted) }
+.mv-spells{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr; gap:3px }
+.mv-spells li{ display:grid; grid-template-columns:34px 1fr auto; align-items:baseline; gap:8px; padding:4px 10px; white-space:nowrap; border-radius:8px;
+  background:color-mix(in srgb,var(--c,var(--team0)) 9%,transparent); border:1px solid color-mix(in srgb,var(--c,var(--team0)) 22%,transparent);
+  font-family:var(--f-mono); font-weight:300; font-size:11px; font-variant-numeric:tabular-nums }
+.mv-sper{ font-weight:500; color:color-mix(in srgb,var(--c,var(--team0)) 70%,var(--text-primary)) }
+.mv-sclk{ color:var(--text-primary) }
+.mv-sdur{ font-size:9.5px; color:var(--text-muted) }

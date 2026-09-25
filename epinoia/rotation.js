@@ -85,7 +85,8 @@ function compute(S) {
     const rows = (tm.players || []).map(p => {
       const st = stretches[p.id] || [];
       const ms = st.reduce((n, [a, b]) => n + (b - a), 0);
-      return { pid: p.id, name: p.name || '', num: p.num, starter: starters.has(p.id), ms, cells: cellsOf(st, nMin), dnp: ms <= 0 };
+      /* spans: the stretches themselves, [from, to] in game ms -- the modern box score's popup lists them */
+      return { pid: p.id, name: p.name || '', num: p.num, starter: starters.has(p.id), ms, cells: cellsOf(st, nMin), dnp: ms <= 0, spans: st.slice() };
     });
     rows.sort((a, b) => (a.dnp - b.dnp) || (b.ms - a.ms) || (String(a.num).localeCompare(String(b.num), undefined, { numeric: true })));
     return { name: tm.name || (t ? 'Away' : 'Home'), rows };

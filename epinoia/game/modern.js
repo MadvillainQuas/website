@@ -343,7 +343,53 @@
       '<div class="mv-sect">on court</div><div class="mv-grid four">' +
         rcell('ortg', f1(a.ocOrtg), 'ocOrtg') + rcell('drtg', f1(a.ocDrtg), 'ocDrtg') + rcell('net', (a.net > 0 ? '+' : '') + f1(a.net), 'net', a.net > 0 ? 'pos' : a.net < 0 ? 'neg' : '') + rcell('efg', f1(a.ocEfg), 'ocEfg') +
       '</div>' +
-      (ctx ? '<div class="mv-gpnote">coloured by percentile against ' + esc(GPx.against(GPx.scaleOf(S.leagueSlug))) + '</div>' : '');
+      (ctx ? '<div class="mv-gpnote">coloured by percentile against ' + esc(GPx.against(GPx.scaleOf(S.leagueSlug))) + '</div>' : '') +
+      timesHTML(S, t, pid, colour);
+  }
+
+  /* TIME ON COURT: every stretch the player was on the floor, by period and game clock, so a scout knows where
+     in the tape to look. The stretches are the rotations' own (rotation.js: the engine's accounting, so they add
+     up to the box score's minutes); a stretch across a period break is shown as one line per period, since the
+     clock restarts. Shut until opened, then kept open (or shut) for every player, in this browser. */
+  const TIMES_KEY = 'epinoia_mv_times';
+  let rotMemo = null;
+  function rotModel(S) {
+    const R = window.EpinoiaRotation;
+    if (!R || !S || !S.events) return null;
+    const k = S.events.length + ':' + S.status + ':' + S.period + ':' + S.clockMs;
+    if (!rotMemo || rotMemo.ref !== S.events || rotMemo.k !== k) {
+      let m = null;
+      try { m = R.compute(S); } catch (e) { m = null; }
+      rotMemo = { ref: S.events, k, m };
+    }
+    return rotMemo.m;
+  }
+  function timesOpen() { try { return localStorage.getItem(TIMES_KEY) === '1'; } catch (e) { return false; } }
+  function timesHTML(S, t, pid, colour) {
+    const M = rotModel(S);
+    const row = M && M.teams[t] && M.teams[t].rows.find(r => r.pid === pid);
+    if (!row || !row.spans || !row.spans.length) return '';
+    const B = window.EpinoiaBox, MIN = 60000;
+    const total = (M.periods.length ? M.periods[M.periods.length - 1].to : 40) * MIN;
+    const lines = [];
+    row.spans.forEach(([a, b]) => M.periods.forEach(p => {
+      const from = p.from * MIN, to = p.to * MIN;
+      const s0 = Math.max(a, from), e0 = Math.min(b, to);
+      if (e0 - s0 < 500) return;                                   // under half a second: a substitution's rounding
+      const len = to - from;
+      lines.push({ per: p.label, on: len - (s0 - from), off: len - (e0 - from), ms: e0 - s0 });
+    }));
+    const bar = '<div class="mv-tl" aria-hidden="true">' +
+      M.periods.slice(1).map(p => '<i class="q" style="left:' + (100 * p.from * MIN / total).toFixed(2) + '%"></i>').join('') +
+      row.spans.map(([a, b]) => '<i class="s" style="left:' + (100 * a / total).toFixed(2) + '%;width:' + (100 * (b - a) / total).toFixed(2) + '%"></i>').join('') +
+      '</div><div class="mv-tlax" aria-hidden="true">' + M.periods.map(p =>
+        '<span style="left:' + (100 * ((p.from + p.to) / 2) * MIN / total).toFixed(2) + '%">' + esc(p.label) + '</span>').join('') + '</div>';
+    const list = '<ol class="mv-spells">' + lines.map(l =>
+      '<li><span class="mv-sper">' + esc(l.per) + '</span><span class="mv-sclk">' + B.fmtClock(l.on) + ' – ' + B.fmtClock(l.off) + '</span>' +
+      '<span class="mv-sdur">' + B.fmtMin(l.ms) + '</span></li>').join('') + '</ol>';
+    return '<details class="mv-times" style="--c:' + esc(colour) + '"' + (timesOpen() ? ' open' : '') + '>' +
+      '<summary class="mv-sect mv-tsum"><span>time on court</span> <b>' + B.fmtMin(row.ms) + '</b><i class="mv-tchev" aria-hidden="true"></i></summary>' +
+      bar + list + '<div class="mv-gpnote">game clock at each check-in and check-out</div></details>';
   }
 
   function popEl() {
@@ -352,8 +398,25 @@
       el = document.createElement('div');
       el.id = 'mvPop'; el.className = 'mv-pop'; el.hidden = true;
       document.body.appendChild(el);
+      /* toggle does not bubble: listened for on the way down */
+      el.addEventListener('toggle', ev => {
+        const dd = ev.target;
+        if (!dd || !dd.matches || !dd.matches('details.mv-times')) return;
+        try { localStorage.setItem(TIMES_KEY, dd.open ? '1' : '0'); } catch (e) { /* private window: this card only */ }
+        if (!el.classList.contains('sheet')) refit(el);
+        else if (dd.open && dd.scrollIntoView) dd.scrollIntoView({ block: 'nearest' });   // the phone's sheet scrolls to it
+      }, true);
     }
     return el;
+  }
+  /* a card that has grown past the bottom of the window moves up (it scrolls inside itself if it still does not fit) */
+  function refit(el) {
+    const box = el.getBoundingClientRect();
+    const k = el.offsetWidth ? (box.width / el.offsetWidth) || 1 : 1;
+    const edge = 8 * k;
+    /* the height cap is the window's, in the card's own (zoomed) pixels -- a vh would be the zoomed page's */
+    el.style.maxHeight = ((window.innerHeight - 2 * edge) / k) + 'px';
+    if (box.bottom > window.innerHeight - edge) el.style.top = (Math.max(edge, window.innerHeight - box.height - edge) / k) + 'px';
   }
 
   function showPop(pid, anchor) {
@@ -378,7 +441,7 @@
   function place(el, anchor) {
     const phone = window.matchMedia('(max-width: 720px)').matches;
     el.classList.toggle('sheet', phone);
-    if (phone) { el.style.left = el.style.top = ''; return; }
+    if (phone) { el.style.left = el.style.top = el.style.maxHeight = ''; return; }
     const r = anchor.getBoundingClientRect();
     const box = el.getBoundingClientRect();
     const k = el.offsetWidth ? (box.width / el.offsetWidth) || 1 : 1;
@@ -388,6 +451,7 @@
     if (left < edge) left = Math.max(edge, Math.min(window.innerWidth - w - edge, r.left));
     if (top + h > window.innerHeight - edge) top = Math.max(edge, window.innerHeight - h - edge);
     el.style.left = (left / k) + 'px'; el.style.top = (top / k) + 'px';
+    refit(el);
   }
 
   let bound = false;
