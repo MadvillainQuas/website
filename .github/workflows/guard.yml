@@ -456,6 +456,13 @@ jobs:
           pip install requests
           python scripts/ingest/run_ingest_test.py
 
+      - name: A game that names no arena is played at its home club's (0174)
+        # on a real Postgres (PGlite): the trigger on games, the clubs and venues triggers, the
+        # fill of what exists, the doubtful-pin rule and that a named venue is never overwritten
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/assumed-venue.test.mjs
+
       - name: The ingest asks the database only what it needs
         # 24 and 25 Sep 2026: the database stopped answering from ~23:40 UTC after a day of the
         # ingest re-reading every season to find two games near tip-off, rewriting ~2,000 unchanged
