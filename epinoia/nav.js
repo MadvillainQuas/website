@@ -981,25 +981,19 @@
      keeps the same shape: the list scrolls, the foot does not. */
   const navFoot = el('div', 'ep-nav-foot');
 
-  /* THE WAY OUT IS HOME, and it is the FIRST row of the foot. It went back to
-     the splash, the water page, which has no rail, no fixtures and no way on
-     except through itself; HOME is the platform's front page on the web and in
-     the app alike, so the logotype means one place wherever it appears.
-
-     At the top of the foot rather than the bottom because of the phone sheet: a
-     drawer opened on a league page starts on that league's panel, and the only
-     other route to HOME, the panel heading, sits two panels back. The first row
-     of the foot is on screen the moment the sheet opens.
-
-     In the logotype, so the brand is never set in the rail's own face. */
-  const home = el('a', 'item home-row');
+  /* THE WAY OUT IS HOME, a small house at the very bottom of the rail, beside the language buttons (2026-09-26:
+     as a full row headed by the logotype it looked out of place among the account rows). It went back to the
+     splash once, which had no rail, no fixtures and no way on; HOME is the platform's front page on the web and
+     in the app alike, so the house means one place wherever it appears. In the phone it is at the foot of the
+     open sheet, where the language buttons are. */
+  const home = el('a', 'home-btn');
   home.href = root + 'home/';
-  const homeTx = el('span', 'tx epinoia-mark', 'EPINOIΛ');
-  home.append(el('span', 'ic', '⌂'), homeTx);
+  home.append(el('span', 'ic', '⌂'));
   home.title = 'HOME';
   home.setAttribute('aria-label', 'HOME');
   if (atHome) { home.classList.add('on'); home.setAttribute('aria-current', 'page'); }
-  navFoot.append(home, adminRow, platRow);
+  const footEnd = el('div', 'foot-end');
+  navFoot.append(adminRow, platRow);
 
   const acct = el('div', 'acct');
   const acctLink = el('a', 'item');
@@ -1415,8 +1409,10 @@
       langs.appendChild(b);
     });
     langRow.append(el('span', 'ic', '文'), langs);
-    navFoot.appendChild(langRow);
+    footEnd.appendChild(langRow);
   }
+  footEnd.appendChild(home);
+  navFoot.appendChild(footEnd);
 
   /* ------------------------------------------------------------ the tab bar ---
      ON A PHONE THE BAR IS THE LEAGUE'S FIVE PLACES, NOT THE WHOLE RAIL. The rail's row-flow

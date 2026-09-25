@@ -663,9 +663,6 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
   .ep-tabbar a.two-line .tx{ white-space:normal; text-overflow:clip; text-align:center;
     line-height:1.25; overflow:visible; width:min-content }
   .ep-tabbar.fit a{ flex:1 1 auto }
-  /* the HOME row heads the foot in the open sheet, so a hairline sets it off from the account
-     rows beneath it (the admin rows carry their own hairline above) */
-  .ep-nav.drawer-open a.home-row{ border-bottom:1px solid color-mix(in oklch,var(--lume) 16%,transparent) }
   .ep-tabbar a:active{ background:color-mix(in oklch,var(--lume) 10%,transparent) }
   body.nav-drawer-open{ overflow:hidden }
 }
@@ -770,3 +767,35 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
 /* Japanese breaks between any two characters, so min-content is one character wide: the
    two-line phone tab keeps its label on one line instead */
 :root:lang(ja) .ep-tabbar a.two-line .tx{ width:auto; white-space:nowrap }
+
+/* ---- HOME: a small house at the very bottom, beside the language buttons (nav.js footEnd) ---- */
+.ep-nav .foot-end{ display:flex; align-items:center; justify-content:space-between; gap:4px; min-width:0 }
+.ep-nav .foot-end .lang-row{ flex:1 1 auto; min-width:0; padding-right:4px }
+.ep-nav a.home-btn{ flex:none; width:28px; height:28px; margin-right:10px; display:grid; place-items:center; border-radius:4px; text-decoration:none;
+  border:1px solid color-mix(in oklch,var(--lume) 28%,transparent); color:color-mix(in srgb, var(--nav-ink,var(--ink)) 70%, transparent) }
+.ep-nav a.home-btn .ic{ font-size:15px; line-height:1 }
+.ep-nav a.home-btn:hover, .ep-nav a.home-btn:focus-visible{ color:var(--ground); background:var(--lume); border-color:var(--lume); outline:0 }
+.ep-nav a.home-btn.on{ color:var(--lume); border-color:var(--lume); background:color-mix(in oklch,var(--lume) 11%,transparent) }
+@media (max-width:820px){
+  .ep-nav.drawer-open a.home-btn{ width:36px; height:36px; margin-right:12px }
+  .ep-nav.drawer-open a.home-btn .ic{ font-size:18px }
+}
+
+/* ---- THE TOP OF EACH RAIL STAYS PUT, and the scroll is the open rail's own ---------------------------------
+   The panels sit side by side in one scroller, so (1) the head of whichever is open (a league's name and back
+   arrow, the countries' HOME, the clubs') is sticky at the top of that scroller, and (2) a panel that is not the
+   open one takes no height in the phone sheet -- it is stretched to the tallest panel's height there, so a
+   rail with one row in it scrolled as far as the leagues list is long. overflow:clip on the desktop deck keeps
+   its clipping without making the deck a scroll container, which the sticky heads would otherwise stick to. */
+.ep-nav .panel > .phead, .ep-nav .panel > .ptitle{
+  position:sticky; top:0; z-index:3; background:var(--nav-bg,var(--panel)) }
+@supports (overflow:clip){ .ep-nav .navdeck{ overflow:clip } }
+@media (max-width:820px){
+  .ep-nav.drawer-open .navdeck{ overflow:visible }
+  .ep-nav.drawer-open .navdeck:not(.animating) .panel[aria-hidden="true"]{ height:0; overflow:hidden }
+}
+
+/* the desktop rail is too narrow for the 文 mark, three buttons and the house on one line: the mark goes (the buttons say what they are) */
+.ep-nav:not(.drawer-open) .foot-end .lang-row{ gap:0; padding-left:12px }
+.ep-nav:not(.drawer-open) .foot-end .lang-row > .ic{ display:none }
+.ep-nav .foot-end .lang-row .langs{ flex-wrap:nowrap }

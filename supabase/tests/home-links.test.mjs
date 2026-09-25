@@ -199,6 +199,7 @@ function rail(url, o = {}) {
 }
 
 const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
+const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
 {
   const r = rail('/epinoia/home/');
   ok('HOME: the rail is built', !!r.nav);
@@ -210,11 +211,12 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
   ok('HOME: the country panel heading reads HOME', r.heading && r.heading.textContent === 'HOME', r.heading && r.heading.textContent);
   ok('HOME: ...links to HOME', r.heading && r.heading.href === '../home/', r.heading && r.heading.href);
   ok('HOME: ...and is highlighted there', r.heading && r.heading.cls.has('on') && r.heading.attrs['aria-current'] === 'page');
-  const first = r.foot && r.foot.children[0];
-  ok('HOME: the HOME row is the FIRST row of the foot', first && first.cls.has('home-row'), first && first.className);
+  const first = homeBtn(r);
+  ok('HOME: HOME is a small button in the very last row of the foot (beside the language buttons)',
+     first && r.foot.children[r.foot.children.length - 1].cls.has('foot-end') && first.parent === r.foot.children[r.foot.children.length - 1], first && first.className);
   ok('HOME: ...links to HOME with the title HOME', first && first.href === '../home/' && first.title === 'HOME');
-  ok('HOME: ...in the logotype, after a ⌂',
-     first && first.children[0].textContent === '⌂' && first.children[1].cls.has('epinoia-mark') && first.children[1].textContent === 'EPINOIΛ');
+  ok('HOME: ...a house only, no words', first && first.textContent === '⌂' && !byClass(first, 'epinoia-mark').length);
+  ok('HOME: ...the old full row is gone', !byClass(r.nav, 'home-row').length);
   ok('HOME: the country header links to HOME\'s leagues', r.cname && r.cname.href === '../home/#leagues', r.cname && r.cname.href);
 }
 {
@@ -278,19 +280,19 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
      ['league', 'fixtures', 'Table / Team\xa0Stats', 'teams', 'statistics', 'news']);
   eq('...the league tab opens the league front page', r.tabs[0].href, '../?l=bcb');
   eq('...statistics lit', r.tabs.filter(t => t.on).map(t => t.tx), ['statistics']);
-  const first = r.foot && r.foot.children[0];
-  ok('a league page: the foot\'s first row is HOME', first && first.cls.has('home-row') && first.href === '../home/');
+  const first = homeBtn(r);
+  ok('a league page: the foot\'s HOME button links home', first && first.href === '../home/');
   ok('a league page: the heading is not highlighted', r.heading && !r.heading.cls.has('on'));
 }
 {
   const r = rail('/epinoia/stats/wowy/?l=bcb');
-  const first = r.foot && r.foot.children[0];
+  const first = homeBtn(r);
   ok('two folders down (wowy): HOME is ../../home/', first && first.href === '../../home/' && r.heading.href === '../../home/');
 }
 {
   const r = rail('/epinoia/?l=bcb');
   eq('the league front page: its tab is "league" and lit', [r.tabs[0].tx, r.tabs[0].on, r.tabs[0].href], ['league', true, './?l=bcb']);
-  ok('the league front page: HOME is ./home/', r.foot.children[0].href === './home/');
+  ok('the league front page: HOME is ./home/', homeBtn(r).href === './home/');
 }
 {
   const r = rail('/epinoia/', { htmlClasses: ['m-splash'], before: ctx => { ctx.document.getElementById = id => (id === 'splash' ? {} : null); } });

@@ -480,8 +480,7 @@ const promoFrame = () => {
   ok('Samsung Internet, app out: one "get the app" row in the rail', rows.length === 1 && /get the app/.test(rows[0].textContent), rows.map(r => r.textContent).join('|'));
   ok('...linking ../android/', rows[0] && rows[0].href === '../android/');
   const foot = rows[0] && rows[0].parent;
-  const home = foot && foot.children.find(n => n.cls.has('home-row'));
-  ok('...in the foot, straight after HOME', !!home && foot.children.indexOf(rows[0]) === foot.children.indexOf(home) + 1);
+  ok('...in the foot, at the head of it (HOME is a small button at the very bottom now)', !!foot && foot.children.indexOf(rows[0]) === 0);
   const strips = byClass(f.frame, 'ep-appstrip');
   ok('...and one strip on the page', strips.length === 1 && strips[0].href === '../android/' && strips[0].dataset.kind === 'android');
   ok('...before the page\'s footer', f.frame.children.indexOf(strips[0]) === f.frame.children.indexOf(f.foot) - 1);
