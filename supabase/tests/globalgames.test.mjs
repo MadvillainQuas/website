@@ -589,6 +589,39 @@ section('one dropdown per league: the leagues with a game this week, and a feed 
   ok('...a league that is not an id is not put in the address', seen.filter(u => /\/games\?/.test(u)).every(u => !/league_id/.test(u) && !/drop table/.test(u)));
 }
 
+section('one side of one league: Show more upcoming / Show more results');
+{
+  const T0 = Date.parse('2026-10-03T12:00:00Z');
+  const hr = h => new Date(T0 + h * 3600000).toISOString();
+  const table = [];
+  for (let i = 1; i <= 14; i++) table.push({ id: 'u' + String(i).padStart(2, '0'), tipoff_at: hr(i), status: 'scheduled' });
+  for (let i = 1; i <= 10; i++) table.push({ id: 'r' + String(i).padStart(2, '0'), tipoff_at: hr(-i * 5), status: 'final' });
+  const calls = [];
+  /* the same filters and keyset order the real query applies: up = scheduled from two hours ago, asc; res = finals before now, desc */
+  const fetchSide = async (side, after, limit) => {
+    calls.push({ side, after });
+    let rows = table.filter(g => side === 'up' ? g.status === 'scheduled' && Date.parse(g.tipoff_at) >= T0 - 7200000 : g.status === 'final' && Date.parse(g.tipoff_at) < T0);
+    rows.sort((a, b) => side === 'up' ? (Date.parse(a.tipoff_at) - Date.parse(b.tipoff_at)) || a.id.localeCompare(b.id) : (Date.parse(b.tipoff_at) - Date.parse(a.tipoff_at)) || b.id.localeCompare(a.id));
+    if (after) rows = rows.filter(g => side === 'up' ? (Date.parse(g.tipoff_at) > after.t || (Date.parse(g.tipoff_at) === after.t && g.id > after.id))
+      : (Date.parse(g.tipoff_at) < after.t || (Date.parse(g.tipoff_at) === after.t && g.id < after.id)));
+    return { rows: rows.slice(0, limit), total: null };
+  };
+  const up = G.sideFeed({ now: T0, side: 'up', batch: 5, fetch: fetchSide });
+  const p1 = await up.next(5), p2 = await up.next(5), p3 = await up.next(5);
+  ok('upcoming: the next games, soonest first, five at a time, until the side runs out', ids(p1.rows).join() === 'u01,u02,u03,u04,u05' && ids(p2.rows).join() === 'u06,u07,u08,u09,u10'
+     && ids(p3.rows).join() === 'u11,u12,u13,u14' && p3.done && !p1.done, [ids(p1.rows), ids(p2.rows), ids(p3.rows), p3.done]);
+  const res = G.sideFeed({ now: T0, side: 'res', batch: 4, fetch: fetchSide });
+  const r1 = await res.next(4), r2 = await res.next(4);
+  ok('results: the latest first, going back in time, never touching the upcoming side', ids(r1.rows).join() === 'r01,r02,r03,r04' && ids(r2.rows).join() === 'r05,r06,r07,r08' && calls.filter(c => c.side === 'res').length >= 2);
+  const up2 = G.sideFeed({ now: T0, side: 'up', batch: 3, fetch: fetchSide, after: { t: Date.parse(hr(4)), id: 'u04' } });
+  ok('a cursor that starts after what the page already shows reads on from there, and never repeats it', ids((await up2.next(3)).rows).join() === 'u05,u06,u07');
+  up2.advance({ t: Date.parse(hr(10)), id: 'u10' });
+  ok('...and advance() moves it past what another Show more has since put on the page (never backwards)', ids((await up2.next(3)).rows).join() === 'u11,u12,u13' && (up2.advance({ t: Date.parse(hr(1)), id: 'u01' }), ids((await up2.next(3)).rows).join() === 'u14'));
+  const res2 = G.sideFeed({ now: T0, side: 'res', batch: 3, fetch: fetchSide, after: { t: Date.parse(hr(-15)), id: 'r03' } });
+  res2.advance({ t: Date.parse(hr(-5)), id: 'r01' });
+  ok('...for results, further means older', ids((await res2.next(3)).rows).join() === 'r04,r05,r06');
+}
+
 section('/epinoia/games/: nearest first, only the week\'s leagues, a Show more of its own in each');
 {
   const gjs2 = rd('epinoia', 'games', 'games.js'), ghtml = rd('epinoia', 'games', 'index.html');
@@ -596,12 +629,14 @@ section('/epinoia/games/: nearest first, only the week\'s leagues, a Show more o
      /gg\.weekLeagues\(NOW, WEEK_DAYS\)/.test(gjs2) && /WEEK_DAYS = 7/.test(gjs2) && /week\.forEach\(w => \{ if \(byId\.has\(w\.id\)\) addGroup\(/.test(gjs2)
      && /feed = gg\.feed\(\{ now: NOW, exclude: live, batch: PAGE, league: scope \}\)/.test(gjs2));
   ok('the page still starts with the 30 nearest to now, page-wide, and its Show more reads 30 more across every league',
-     /const PAGE = 30, LEAGUE_PAGE = 8/.test(gjs2) && /const res = await pull\(feed, PAGE\);/.test(gjs2) && /id="gmMore"/.test(ghtml));
-  ok('each league has "Show more in this league": its own feed, that league only, beginning after what is already on the page for it',
-     /el\('button', 'ep-btn more', 'Show more in this league'\)/.test(gjs2) && /G\(\)\.feed\(\{ now: NOW, exclude: liveIds\.concat\(leagueRows\(rec\.id\)\.map\(g => g\.id\)\), batch: LEAGUE_PAGE, league: rec\.id \}\)/.test(gjs2));
-  ok('...a press adds games and never repeats one (a cursor can hand back what the other Show more put there), and a league with nothing on the page yet is read when opened',
-     /if \(!rows\.has\(g\.id\)\) fresh\+\+;/.test(gjs2) && /\} while \(fresh < n && !res\.done\);/.test(gjs2)
-     && /if \(det\.open && !rec\.opened\) \{ rec\.opened = true; if \(!leagueRows\(rec\.id\)\.length\) moreInLeague/.test(gjs2));
+     /const PAGE = 30, LEAGUE_PAGE = 6/.test(gjs2) && /const res = await pull\(feed, PAGE\);/.test(gjs2) && /id="gmMore"/.test(ghtml));
+  ok('each league has ONE button in two halves - "Show more upcoming in this league" and "Show more results in this league" - each half its own cursor of that league, beginning after what the page already shows for that side',
+     /'Show more upcoming in this league'/.test(gjs2) && /'Show more results in this league'/.test(gjs2) && /const split = el\('div', 'gm-split'\)/.test(gjs2)
+     && /G\(\)\.sideFeed\(\{ now: NOW, league: rec\.id, side, batch: n, exclude: liveIds \}\)/.test(gjs2) && /st\.feed\.advance\(edgeOf\(rec, side\)\)/.test(gjs2)
+     && /\.gm-split\{display:flex/.test(ghtml) && /\.gm-split \.ep-btn\.more\{flex:1 1 50%/.test(ghtml));
+  ok('...a press adds games and never repeats one, a half goes when its side has no more, and a league with nothing on the page yet is read on both sides when opened',
+     /if \(!rows\.has\(g\.id\)\) fresh\+\+;/.test(gjs2) && /\} while \(fresh < n && !res\.done\);/.test(gjs2) && /up\.btn\.hidden = up\.done;/.test(gjs2) && /res\.btn\.hidden = res\.done;/.test(gjs2)
+     && /if \(det\.open && !rec\.opened\) \{ rec\.opened = true; if \(!leagueRows\(rec\.id\)\.length\) readBoth\(rec\); \}/.test(gjs2));
   ok('the order, in code: leagues by the game (or result) closest to now; inside one, next soonest first then results newest first',
      /const dist = rec => Math\.min\(/.test(gjs2) && /G\(\)\.groupOrder\(Array\.from\(rows\.values\(\)\), NOW\)/.test(gjs2)
      && /section\('Next games, soonest first'/.test(gjs2) && /section\('Latest results, newest first'/.test(gjs2));
@@ -611,7 +646,7 @@ section('/epinoia/games/: nearest first, only the week\'s leagues, a Show more o
   ok('...translated: the sentence, the sub-headings and the league button, in Japanese and Spanish',
      ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code + '.js');
        return ['Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.',
-         'Next games, soonest first', 'Latest results, newest first', 'Show more in this league']
+         'Next games, soonest first', 'Latest results, newest first', 'Show more upcoming in this league', 'Show more results in this league']
          .every(k => c.includes("'" + k + "'")); }));
   ok('live games are still pinned above every group and a game that goes live leaves its league\'s list',
      /if \(rows\.has\(g\.id\)\) \{ rows\.delete\(g\.id\); return true; \}/.test(gjs2) && /id="gmLive"/.test(ghtml));

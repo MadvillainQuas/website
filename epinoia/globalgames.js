@@ -457,6 +457,52 @@ function feed(opts) {
   return { next };
 }
 
+/* =================================================== one side of one league ===
+   sideFeed({ now, league, side, batch, after }) -> { next(n), advance(cursor) }
+
+   ONE CURSOR OF ONE LEAGUE, for that league's "Show more upcoming" and "Show more results": side 'up' reads its
+   scheduled games from now - 2 h forwards, soonest first; side 'res' its finals before now, newest first, each by
+   the same keyset as feed() (after the last tip-off and id, never an offset). `after` starts it past what the page
+   already shows for that league, and advance({ t, id }) moves it on when the page has since shown more (the
+   page-wide Show more can add to the same league), only ever further along the side. next(n) resolves to
+   { rows, done }: up to n games not returned before, `done` when the side has run out. */
+function sideFeed(opts) {
+  const o = opts || {};
+  const at = ms(o.now == null ? Date.now() : o.now);
+  const side = o.side === 'res' ? 'res' : 'up';
+  const batch = o.batch || 8;
+  const fetchSide = o.fetch || defaultFetch(at, o.league);
+  const seen = new Set((o.exclude || []).map(g => (g && g.id != null ? g.id : g)));
+  let after = o.after || null, done = false;
+  /* is a cursor further along this side than the one held? */
+  const further = (a, b) => (side === 'up' ? (a.t > b.t || (a.t === b.t && a.id > b.id)) : (a.t < b.t || (a.t === b.t && a.id < b.id)));
+
+  function advance(cur) {
+    if (cur && isFinite(cur.t) && cur.id != null && (!after || further(cur, after))) after = { t: cur.t, id: cur.id };
+  }
+
+  async function next(n) {
+    const want = n || batch;
+    const out = [];
+    let guard = 0;
+    while (out.length < want && !done && guard++ < 200) {
+      const res = await fetchSide(side, after, batch, false);
+      const rows = (res && res.rows) || [];
+      if (rows.length) {
+        const last = rows[rows.length - 1];
+        /* a read that did not move the cursor ends the side, as in feed() */
+        if (after && after.t === t(last) && after.id === last.id) done = true;
+        after = { t: t(last), id: last.id };
+      }
+      if (rows.length < batch) done = true;
+      rows.forEach(g => { if (!seen.has(g.id)) { seen.add(g.id); out.push(g); } });
+    }
+    return { rows: out, done };
+  }
+
+  return { next, advance };
+}
+
 /* The real reads behind feed(): quoted timestamps inside or=(), because an
    ISO time is full of the dots and colons PostgREST's grammar splits on. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -653,7 +699,7 @@ function card(g, opts) {
 return {
   SEL, STALE_MS, LEAGUE_WINDOW_MS,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
-  pickDaily, mergeNearest, groupOrder, nearer, feed, dedupe, weekLeagues, leagueCounts,
+  pickDaily, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
   card, wireBadges, dayLabel, timeLabel, esc
 };
 }));

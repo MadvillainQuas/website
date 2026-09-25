@@ -17,10 +17,12 @@
      - the leagues: by the league whose game is closest to now (live games are pinned above them all);
      - in a league: 'next' games soonest first, then 'results' newest first (groupOrder).
    "Show more" (page-wide) reads the next 30 further from now, across all the leagues.
-   "Show more in this league" (each dropdown) reads that league's next games further from now, that league only:
-   its own feed (feed({ league })) that begins after what is already on the page for it, so a press always adds
-   games and never repeats one; a league that has none on the page yet (its games are further from now than the
-   30 nearest overall) is read when its dropdown is opened.
+   Each dropdown's foot is ONE BUTTON IN TWO HALVES, for that league only: "Show more upcoming in this league"
+   (its next games, further from now) and "Show more results in this league" (its results, further back). Each
+   half has its own cursor (EpinoiaGlobalGames.sideFeed) that begins after what the page already shows for that
+   side of that league, so a press always adds games and never repeats one; a half disappears when its side has
+   no more. A league that has none on the page yet (its games are further from now than the 30 nearest overall)
+   is read, both sides, when its dropdown is opened.
 
    "NOW" IS FROZEN AT LOAD. Every cursor measures from it: upcoming games from two hours before it, forwards;
    results before it, backwards. A reader pressing Show more ten minutes later gets the next games of the same
@@ -39,7 +41,7 @@
    finalised: a count is never assumed only to grow.
    ============================================================================ */
 (function () {
-  const PAGE = 30, LEAGUE_PAGE = 8, WEEK_DAYS = 7, LIVE_MS = 15000, IDLE_MS = 30000;
+  const PAGE = 30, LEAGUE_PAGE = 6, WEEK_DAYS = 7, LIVE_MS = 15000, IDLE_MS = 30000;
   const NOW = Date.now();
 
   const $ = id => document.getElementById(id);
@@ -186,19 +188,23 @@
     det.appendChild(sum);
     const body = el('div', 'gm-body');
     det.appendChild(body);
-    /* this league's own Show more, at the foot of its list */
+    /* this league's own Show more, at the foot of its list: one button in two halves - more upcoming games, more results */
     const foot = el('div', 'gm-lmore');
-    const btn = el('button', 'ep-btn more', 'Show more in this league');
-    btn.type = 'button';
+    const split = el('div', 'gm-split');
+    const mk = (side, label) => { const b = el('button', 'ep-btn more', label); b.type = 'button'; b.setAttribute('data-side', side); split.appendChild(b); return b; };
+    const btnUp = mk('up', 'Show more upcoming in this league'), btnRes = mk('res', 'Show more results in this league');
     const count = el('span', 'gm-gcount');
     count.setAttribute('aria-live', 'polite');
-    foot.append(btn, count);
-    const rec = { id: key, league: l, det, body, n, foot, btn, count, name: shortName(l), grewTimer: null,
-                  weekN: weekN || 0, first: first || Infinity, lfeed: null, loading: false, done: false, ltotal: null, opened: false };
-    btn.addEventListener('click', () => { moreInLeague(rec).catch(failedLeague(rec)); });
-    /* a league that has nothing on the page yet is read when it is opened */
+    foot.append(split, count);
+    const rec = { id: key, league: l, det, body, n, foot, split, count, name: shortName(l), grewTimer: null,
+                  weekN: weekN || 0, first: first || Infinity, opened: false,
+                  sides: { up: { btn: btnUp, label: btnUp.textContent, feed: null, loading: false, done: false },
+                           res: { btn: btnRes, label: btnRes.textContent, feed: null, loading: false, done: false } } };
+    btnUp.addEventListener('click', () => { moreSide(rec, 'up', LEAGUE_PAGE).catch(failedLeague(rec)); });
+    btnRes.addEventListener('click', () => { moreSide(rec, 'res', LEAGUE_PAGE).catch(failedLeague(rec)); });
+    /* a league that has nothing on the page yet is read when it is opened: its nearest games on both sides */
     det.addEventListener('toggle', () => {
-      if (det.open && !rec.opened) { rec.opened = true; if (!leagueRows(rec.id).length) moreInLeague(rec).catch(failedLeague(rec)); }
+      if (det.open && !rec.opened) { rec.opened = true; if (!leagueRows(rec.id).length) readBoth(rec); }
     });
     groupEls.set(key, rec);
     return rec;
@@ -219,12 +225,14 @@
     return frag;
   }
 
-  /* what a league's foot says: how many of its games are on the page, of how many it has once its feed has counted */
+  /* what a league's foot says: how many of its games are on the page, and each half only while its side has more */
   function paintLeagueCount(rec, shownN) {
-    if (rec.done) rec.count.textContent = 'all ' + shownN + ' shown';
-    else if (rec.ltotal != null) rec.count.textContent = shownN + ' of ' + rec.ltotal;
-    else rec.count.textContent = shownN + ' shown';
-    rec.btn.hidden = rec.done;
+    const up = rec.sides.up, res = rec.sides.res;
+    up.btn.hidden = up.done;
+    res.btn.hidden = res.done;
+    const all = up.done && res.done;
+    rec.split.hidden = all;
+    rec.count.textContent = all ? 'all ' + shownN + ' shown' : shownN + ' shown';
   }
 
   function drawGroups() {
@@ -263,7 +271,7 @@
       host.dataset.opened = '1';
       first.open = true;
       const rec = groupEls.get(first.getAttribute('data-league'));
-      if (rec) { rec.opened = true; if (!leagueRows(rec.id).length && !pageDone) moreInLeague(rec).catch(failedLeague(rec)); }
+      if (rec) { rec.opened = true; if (!leagueRows(rec.id).length && !pageDone) readBoth(rec); }
     }
 
     if (!groupEls.size && !pinned.size) {
@@ -287,33 +295,61 @@
     return res;
   }
 
-  /* "Show more in this league": that league's next games further from now, its own cursor, after what it already shows */
-  async function moreInLeague(rec) {
-    if (rec.loading || rec.done) return;
-    rec.loading = true;
-    rec.btn.disabled = true;
-    rec.btn.textContent = 'Loading…';
+  /* the edge of what a league shows on one side: the furthest upcoming game (latest tip-off), or the furthest result
+     (earliest tip-off), as a cursor - the side's own cursor starts there, so a press reads on from it */
+  function edgeOf(rec, side) {
+    let edge = null;
+    leagueRows(rec.id).forEach(g => {
+      if ((g.status === 'final') !== (side === 'res')) return;
+      const c = { t: Date.parse(g.tipoff_at) || 0, id: g.id };
+      if (!edge || (side === 'up' ? (c.t > edge.t || (c.t === edge.t && c.id > edge.id)) : (c.t < edge.t || (c.t === edge.t && c.id < edge.id)))) edge = c;
+    });
+    return edge;
+  }
+
+  /* "Show more upcoming in this league" / "Show more results in this league": that league's next games (or latest
+     results) further from now - its own cursor for that side, beginning after what the page already shows */
+  async function moreSide(rec, side, n) {
+    const st = rec.sides[side];
+    if (st.loading || st.done) return;
+    st.loading = true;
+    st.btn.disabled = true;
+    st.btn.textContent = 'Loading…';
     try {
-      if (!rec.lfeed) rec.lfeed = G().feed({ now: NOW, exclude: liveIds.concat(leagueRows(rec.id).map(g => g.id)), batch: LEAGUE_PAGE, league: rec.id });
+      if (!st.feed) st.feed = G().sideFeed({ now: NOW, league: rec.id, side, batch: n, exclude: liveIds });
+      st.feed.advance(edgeOf(rec, side));
       const before = leagueRows(rec.id).length;
-      const res = await pull(rec.lfeed, LEAGUE_PAGE);
-      rec.done = res.done;
-      rec.ltotal = res.total;
+      let fresh = 0, res;
+      do {
+        res = await st.feed.next(n - fresh);
+        res.rows.forEach(g => {
+          if (pinned.has(g.id)) return;
+          if (!rows.has(g.id)) fresh++;
+          rows.set(g.id, g);
+        });
+      } while (fresh < n && !res.done);
+      st.done = res.done;
       drawGroups();
       paintTotal();
       if (leagueRows(rec.id).length > before) lit(rec);
     } finally {
-      rec.loading = false;
-      rec.btn.disabled = false;
-      rec.btn.textContent = 'Show more in this league';
+      st.loading = false;
+      st.btn.disabled = false;
+      st.btn.textContent = st.label;
     }
+  }
+
+  /* a league with nothing on the page yet: its nearest upcoming games and its latest results */
+  function readBoth(rec) {
+    moreSide(rec, 'up', LEAGUE_PAGE).catch(failedLeague(rec));
+    moreSide(rec, 'res', LEAGUE_PAGE).catch(failedLeague(rec));
   }
 
   function failedLeague(rec) {
     return e => {
       console.warn('[games]', rec.id, e);
-      rec.count.textContent = 'Could not load. Press Show more in this league to try again.';
-      rec.btn.hidden = false;
+      rec.count.textContent = 'Could not load. Try again.';
+      rec.split.hidden = false;
       rec.body.appendChild(rec.foot);
     };
   }
@@ -372,7 +408,7 @@
       const res = await pull(feed, PAGE);
       lastRes = res;
       /* every cursor of the page has run out: every league's games are on it, so no league has more to read */
-      if (res.done) { pageDone = true; groupEls.forEach(rec => { rec.done = true; }); }
+      if (res.done) { pageDone = true; groupEls.forEach(rec => { rec.sides.up.done = true; rec.sides.res.done = true; }); }
       drawGroups();
       paintCount(res);
       const grew = grown(before);

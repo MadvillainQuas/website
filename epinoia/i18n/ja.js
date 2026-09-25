@@ -1419,9 +1419,10 @@
       'No games in the next 7 days. A league appears here when it has one.': 'この先7日間に試合はありません。試合があるリーグがここに表示されます。',
       'Next games, soonest first': '次の試合（近い順）',
       'Latest results, newest first': '最新の結果（新しい順）',
-      'Show more in this league': 'このリーグをもっと見る',
-      'Could not load. Press Show more in this league to try again.': '読み込めませんでした。「このリーグをもっと見る」を押してやり直してください。',
-      'Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.': '現在に近い順：この先7日間に試合があるリーグを表示し、各リーグは次の試合（近い順）、続いて最新の結果を並べます。「もっと見る」でさらに先へ。'
+      'Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.': '現在に近い順：この先7日間に試合があるリーグを表示し、各リーグは次の試合（近い順）、続いて最新の結果を並べます。「もっと見る」でさらに先へ。',
+      'Show more upcoming in this league': 'このリーグの今後の試合をもっと見る',
+      'Show more results in this league': 'このリーグの結果をもっと見る',
+      'Could not load. Try again.': '読み込めませんでした。もう一度お試しください。'
     },
 
     ctx: {

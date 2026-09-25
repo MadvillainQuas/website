@@ -1421,9 +1421,10 @@
       'No games in the next 7 days. A league appears here when it has one.': 'No hay partidos en los próximos 7 días. Una liga aparece aquí cuando tiene alguno.',
       'Next games, soonest first': 'Próximos partidos, del más cercano',
       'Latest results, newest first': 'Últimos resultados, del más reciente',
-      'Show more in this league': 'Mostrar más en esta liga',
-      'Could not load. Press Show more in this league to try again.': 'No se pudo cargar. Pulsa «Mostrar más en esta liga» para volver a intentarlo.',
-      'Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.': 'Lo más cercano a ahora, primero: ligas con partido en los próximos 7 días, cada una con sus próximos partidos (del más cercano) y luego sus últimos resultados; «Mostrar más» avanza más lejos.'
+      'Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.': 'Lo más cercano a ahora, primero: ligas con partido en los próximos 7 días, cada una con sus próximos partidos (del más cercano) y luego sus últimos resultados; «Mostrar más» avanza más lejos.',
+      'Show more upcoming in this league': 'Mostrar más próximos en esta liga',
+      'Show more results in this league': 'Mostrar más resultados en esta liga',
+      'Could not load. Try again.': 'No se pudo cargar. Inténtalo de nuevo.'
     },
 
     ctx: {
