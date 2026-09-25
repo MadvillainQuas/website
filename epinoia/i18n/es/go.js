@@ -220,7 +220,8 @@
       'how it works ›': 'cómo funciona ›',
       'No game is being played at this arena in the next day. Stamping opens two hours before tip-off.': 'No hay ningún partido en este pabellón en las próximas 24 horas. Se puede sellar desde dos horas antes del inicio.',
       'Stamped: a new arena.': 'Sellado: un pabellón nuevo.',
-      'Stamped: another visit.': 'Sellado: otra visita.'
+      'Stamped: another visit.': 'Sellado: otra visita.',
+      'stamp this game': 'sellar este partido'
     },
     units: {
       'arena': '{n} pabellón',

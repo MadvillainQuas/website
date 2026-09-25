@@ -496,6 +496,8 @@ function render(ctx) {
           esc('https://www.google.com/maps/dir/?api=1&destination=' +
               encodeURIComponent(ctx.address)) + '">directions ↗</a>'
         : '') +
+      /* EPINOIA GO's STAMP THIS GAME (game.js mounts go/venuestamp.js here, when the arena is known) */
+      '<div class="pv-go" id="pvGo"></div>' +
     '</section>' +
 
     (paras

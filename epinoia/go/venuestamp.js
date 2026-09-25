@@ -17,6 +17,10 @@
      lists together).
 
    The phone's location goes to the server in the stamp call and nowhere else, as on the GO page.
+
+   ON A GAME'S OWN PAGE, before the game (game/preview.js, "How to get there"), the same card is worded "stamp
+   this game" and stamps THAT game: its window is looked up in go_games_now by the game's id, and a game further off
+   than that list looks says when stamping will open (two hours before tip-off) from the tip-off it was given.
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
@@ -113,7 +117,11 @@ async function call(cfg, session, fn, body) {
   } catch (_) { return { error: 'network' }; }
 }
 
-/* the card, into `host`: { venueId, venueName, base } - base is the path up to /epinoia/ ('../' from a team page) */
+/* the card, into `host`: { venueId, venueName, base, gameId, tipoff, label }
+     base    the path up to /epinoia/ ('../' from a team page or a game page)
+     gameId  a game's own page: this game is the one to stamp (its row in go_games_now), not "whichever is on here"
+     tipoff  that game's tip-off, so a game further off than go_games_now looks can still say when stamping opens
+     label   the button's words: "stamp this venue" (a club's page), "stamp this game" (a game's) */
 function mount(host, o) {
   if (!host || !o || !o.venueId) return null;
   const cfg = window.EPINOIA_CONFIG, A = window.EpinoiaAccess;
@@ -130,7 +138,7 @@ function mount(host, o) {
   else { const t = a.appendChild(el('span', 'gv-word')); t.setAttribute('translate', 'no'); t.textContent = 'EPINOIΛ GO'; }
   top.appendChild(el('p', 'gv-tag', 'Stamp the arenas you go to: at a game, with your phone.'));
   const row = box.appendChild(el('div', 'gv-row'));
-  const btn = row.appendChild(el('button', 'gv-btn', 'stamp this venue'));
+  const btn = row.appendChild(el('button', 'gv-btn', o.label || 'stamp this venue'));
   btn.type = 'button';
   const more = row.appendChild(el('a', 'gv-more', 'how it works ›'));
   more.href = base + 'go/';
@@ -169,10 +177,21 @@ function mount(host, o) {
       if (list.missing) return show('EPINOIA GO opens soon.', 'warn');
       if (list.error || !Array.isArray(list.data)) return show('It did not stamp. Try again in a moment.', 'bad');
       const now = Date.now(), here = gamesHere(list.data, o.venueId, now);
+      const opensAt = ms => new Date(ms).toLocaleString(loc(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+      if (o.gameId) {
+        /* THIS game: on its own page it is the one to stamp, whatever else is on at the arena */
+        const mine = (list.data || []).find(x => x && x.game_id === o.gameId);
+        const t = mine ? Date.parse(mine.opens_at) : (o.tipoff ? Date.parse(o.tipoff) - 2 * 3600000 : NaN);
+        if (!mine || !(now >= Date.parse(mine.opens_at) && now <= Date.parse(mine.closes_at))) {
+          if (mine && now > Date.parse(mine.closes_at)) return show(WHY.too_late, 'warn');
+          if (isFinite(t) && t > now) return show(WHY.too_early, 'warn', [['Stamping opens', opensAt(t)]]);
+          return show(WHY.not_on, 'warn');
+        }
+        here.open = [{ g: mine }];
+      }
       if (!here.open.length) {
         if (here.next) {
-          const t = new Date(here.next.opens).toLocaleString(loc(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-          return show('Stamping opens two hours before tip-off.', 'warn', [['Stamping opens', t]]);
+          return show('Stamping opens two hours before tip-off.', 'warn', [['Stamping opens', opensAt(here.next.opens)]]);
         }
         return show('No game is being played at this arena in the next day. Stamping opens two hours before tip-off.', 'warn');
       }

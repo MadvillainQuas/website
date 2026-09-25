@@ -138,10 +138,10 @@ async function fetchLog(final) {
 
 async function loadStored() {
   const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
-    `&select=id,status,period,home_score,away_score,tipoff_at,venue,venue_address,` +
+    `&select=id,status,period,home_score,away_score,tipoff_at,venue,venue_address,venue_id,` +
 
     `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
-    `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),` +
+    `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,colour_2,logo_path,home_venue_id),` +
     `away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),competitions(name,seasons(name,leagues(id,name,slug,timezone)))&limit=1`);
   if (!gs.length) return null;
   const g = gs[0];
@@ -281,6 +281,8 @@ async function loadStored() {
     meta: {
       tipoff_at: g.tipoff_at, status: g.status, venue: g.venue,
       venue_address: g.venue_address,
+      /* the arena as EPINOIA GO knows it (game_venue_id's rule): the game's own, else its home club's usual one */
+      venueId: g.venue_id || (g.home && g.home.home_venue_id) || null,
       home_score: g.home_score, away_score: g.away_score,
       home: g.home, away: g.away,
       homeTeamId: g.home_team_id, awayTeamId: g.away_team_id,
@@ -3159,6 +3161,14 @@ async function renderPreview() {
   offerToScore();
   offerToRevert();
   offerToAttachVideo(); offerToMoveCompetition();
+
+  /* EPINOIA GO: STAMP THIS GAME, in "How to get there". Only where the arena is known as one (a stamp is kept
+     against an arena); it stamps THIS game, when its window opens two hours before tip-off (go/venuestamp.js). */
+  const goHost = document.getElementById('pvGo');
+  if (goHost && window.EpinoiaGoVenue && m.venueId) {
+    window.EpinoiaGoVenue.mount(goHost, { venueId: m.venueId, venueName: m.venue, base: '../', gameId: gameId,
+      tipoff: m.tipoff_at, label: 'stamp this game' });
+  }
 
   /* a lineups notification (show=starters) lands on the fives, when there are fives */
   if (wantStarters()) afterLayout(() => revealStarters(document.getElementById('starters')));

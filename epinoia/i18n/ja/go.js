@@ -220,7 +220,8 @@
       'how it works ›': '仕組み ›',
       'No game is being played at this arena in the next day. Stamping opens two hours before tip-off.': 'このアリーナでは、この先24時間に行われる試合はありません。スタンプは試合開始の2時間前から押せます。',
       'Stamped: a new arena.': 'スタンプしました：新しいアリーナです。',
-      'Stamped: another visit.': 'スタンプしました：再訪です。'
+      'Stamped: another visit.': 'スタンプしました：再訪です。',
+      'stamp this game': 'この試合をスタンプ'
     },
     units: {
       'arena': '{n}アリーナ',

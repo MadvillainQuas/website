@@ -126,6 +126,9 @@
   padding-bottom:2px;
 }
 .pv-more:hover{ color:var(--lume,#93f2bf) }
+/* EPINOIA GO's STAMP THIS GAME under the directions (go/venuestamp.css draws the card) */
+.pv-go:empty{ display:none }
+.pv-go .gv{ margin-top:18px; max-width:none }
 
 /* ------------------------------------------------------------- the prose */
 .pv-prose p{

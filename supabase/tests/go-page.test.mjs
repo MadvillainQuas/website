@@ -516,7 +516,7 @@ ok('the team page loads it: the logo, the card and its styles before venue.js, t
    && /href="\.\.\/go\/venuestamp\.css\?v=\d+"/.test(teamHtml) && /data-i18n-packs="report go"/.test(teamHtml));
 ok('...in GO\'s style: the night sky, the logo, the neon pill (as go.css .go-find), light and dark',
    /\.gv-btn\{[^}]*border:2px solid var\(--neon/.test(gvCss) && /\.gv-bg\{[^}]*stars-1200\.jpg/.test(gvCss)
-   && /:root:not\(\[data-theme="light"\]\) \.gv-btn\{/.test(gvCss) && /el\('button', 'gv-btn', 'stamp this venue'\)/.test(gvJs));
+   && /:root:not\(\[data-theme="light"\]\) \.gv-btn\{/.test(gvCss) && /el\('button', 'gv-btn', o\.label \|\| 'stamp this venue'\)/.test(gvJs));
 ok('...and in Japanese and Spanish: the new sentences (the rest are the GO page\'s)',
    ['ja', 'es'].every(code => { const go = rd('epinoia', 'i18n', code, 'go.js');
      return ['stamp this venue', 'how it works ›', 'Stamped: a new arena.', 'Stamped: another visit.',
@@ -536,6 +536,25 @@ ok('...the choice is the reader\'s for the visit, changes the cards at once, and
 ok('...styled as the section\'s own small type, the chosen one filled, a 40px target on a phone; and worded in Japanese and Spanish',
    /\.hm \.sec-h \.hm-seg button\[aria-pressed="true"\]\{background:var\(--lume\)/.test(homeCss) && /min-height:40px/.test(homeCss.slice(homeCss.indexOf('.hm-seg button{min-height:40px')))
    && ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code + '.js'); return c.includes("'No results yet. The full list is on the fixtures page.':") && c.includes("'Fixtures or results':") && /'results':/.test(c) && /'upcoming':/.test(c); }));
+
+console.log('\nSTAMP THIS GAME in every game\'s preview, before the game (7.14)');
+const gameHtml = rd('epinoia', 'game', 'index.html'), gameJs = rd('epinoia', 'game', 'game.js'), previewJs = rd('epinoia', 'game', 'preview.js');
+ok('the preview\'s "How to get there" has a place for the card, after the directions',
+   /'<div class="pv-go" id="pvGo"><\/div>' \+\s*'<\/section>'/.test(previewJs) && previewJs.indexOf('id="pvGo"') > previewJs.indexOf('directions ↗') && previewJs.indexOf('id="pvGo"') > previewJs.indexOf('mapEmbed(ctx.venue'));
+ok('...game.js mounts it for the game being previewed: this game\'s id and tip-off, the words "stamp this game", only where the arena is known',
+   /if \(goHost && window\.EpinoiaGoVenue && m\.venueId\) \{\s*window\.EpinoiaGoVenue\.mount\(goHost, \{ venueId: m\.venueId, venueName: m\.venue, base: '\.\.\/', gameId: gameId,\s*tipoff: m\.tipoff_at, label: 'stamp this game' \}\);/.test(gameJs));
+ok('...the arena is the game\'s own, else its home club\'s usual one (EPINOIA GO\'s rule), read with the game',
+   /venueId: g\.venue_id \|\| \(g\.home && g\.home\.home_venue_id\) \|\| null,/.test(gameJs) && /venue_address,venue_id,/.test(gameJs) && /logo_path,home_venue_id\),/.test(gameJs));
+ok('...the game page loads the card, its styles and the go words',
+   /<script src="\.\.\/go\/logo\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\/venuestamp\.js\?v=\d+" defer><\/script>\s*<script src="preview\.js\?v=\d+" defer>/.test(gameHtml)
+   && /href="\.\.\/go\/venuestamp\.css\?v=\d+"/.test(gameHtml) && /data-i18n-packs="game report go"/.test(gameHtml));
+ok('...the card stamps THAT game (by its id in go_games_now), says when it opens from the tip-off when the list does not have it yet, and says so when the window has closed',
+   /const mine = \(list\.data \|\| \[\]\)\.find\(x => x && x\.game_id === o\.gameId\);/.test(gvJs) && /Date\.parse\(o\.tipoff\) - 2 \* 3600000/.test(gvJs)
+   && /return show\(WHY\.too_late, 'warn'\);/.test(gvJs) && /here\.open = \[\{ g: mine \}\];/.test(gvJs) && /o\.label \|\| 'stamp this venue'/.test(gvJs));
+ok('...it stands alone on a page that does not load the kit: the logo\'s and the GO font\'s own rules in its stylesheet',
+   /@font-face\{font-family:'Orbitron';src:url\('\.\.\/kit\/fonts\/orbitron\.woff2'\)/.test(gvCss) && /\.gv \.go-logo \.gl-go\{font-family:var\(--f-go,'Orbitron'/.test(gvCss)
+   && /\.pv-go \.gv\{/.test(rd('epinoia', 'game', 'preview.css')));
+ok('...and the words in Japanese and Spanish', ['ja', 'es'].every(code => rd('epinoia', 'i18n', code, 'go.js').includes("'stamp this game':")));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

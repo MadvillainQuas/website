@@ -333,7 +333,10 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       the location goes in that call and nowhere else); one still to come says when stamping opens; none says so; an
       arena whose pin is unchecked is refused with the GO page's words. Every refusal is the GO page's own sentence
       (a test holds `WHY`, `GEO` and the facts to go.js's). Success says new arena or another visit, the counts, and
-      links to your stamps. No migration.
+      links to your stamps. The same card is in **every game's preview before the game** (the box score page's "How to get there",
+      worded **STAMP THIS GAME**): it stamps THAT game (found by its id in `go_games_now`; a game further off says
+      when stamping opens, two hours before tip-off, from its tip-off; a closed window says so), for a game whose arena
+      is known (its own, else its home club's usual one). No migration.
       (c) **UPCOMING | RESULTS beside HOME's "Daily fixtures"** - two buttons in the section heading. UPCOMING is what
       was always there and is pressed first; RESULTS is the eight most recent finals, newest first, no more than three
       from one league so a busy night in one does not take the shelf. The choice is kept for the visit

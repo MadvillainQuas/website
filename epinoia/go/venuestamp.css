@@ -3,6 +3,13 @@
    logo, one line about GO and STAMP THIS VENUE in GO's neon pill (go.css .go-find, a size down). Standalone:
    the team page does not load go.css.
    ============================================================================ */
+/* the fonts and the logo's own rules, for a page that does not load epinoia-kit.css (a game's page): identical to the kit's */
+@font-face{font-family:'Orbitron';src:url('../kit/fonts/orbitron.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'EpinoiaMark';src:url('../brand/epinoia-mark.woff2') format('woff2'),url('../brand/epinoia-mark.ttf') format('truetype');
+  font-weight:400;font-style:normal;font-display:swap}
+.gv .go-logo{display:inline-flex;align-items:baseline;gap:.3em;white-space:nowrap;line-height:1;letter-spacing:0;text-transform:none}
+.gv .go-logo .gl-ep{font-family:'EpinoiaMark','Archivo',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.02em;font-weight:400}
+.gv .go-logo .gl-go{font-family:var(--f-go,'Orbitron',system-ui,sans-serif);font-weight:700;font-size:.9545em;letter-spacing:.06em}
 .gv{position:relative;isolation:isolate;overflow:hidden;margin-top:calc(var(--u)*2);padding:calc(var(--u)*2.5) calc(var(--u)*3);
   border-radius:18px;border:1px solid var(--rule-2,var(--rule));display:grid;gap:14px;max-width:640px;text-align:left}
 .gv-bg{position:absolute;inset:0;z-index:-2;background:#150d3d url('img/stars-1200.jpg') center/cover no-repeat}
