@@ -2328,23 +2328,24 @@ function renderBody(d) {
   }
 }
 
-/* FULL STATS' SECTIONS (advHTML draws each as a <details>, open). The ones a reader shuts stay shut:
-   across the redraw every new play causes, and across visits, in this browser only. */
-const FSEC_KEY = 'epinoia_fsec_shut';
-function fsecShut() {
-  try { const v = JSON.parse(localStorage.getItem(FSEC_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+/* FULL STATS' SECTIONS (advHTML draws each as a <details>: the ones under the true shot attempts
+   start shut, the player tables open). What a reader opens or shuts stays that way: across the
+   redraw every new play causes, and across visits, in this browser only. */
+const FSEC_KEY = 'epinoia_fsec';
+function fsecState() {
+  try { const v = JSON.parse(localStorage.getItem(FSEC_KEY) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (e) { return {}; }
 }
 function mountFullStats(el) {
-  const shut = fsecShut();
-  el.querySelectorAll('details.fsec').forEach(dd => { if (shut.indexOf(dd.dataset.fsec) !== -1) dd.open = false; });
+  const st = fsecState();
+  el.querySelectorAll('details.fsec').forEach(dd => { const k = dd.dataset.fsec; if (typeof st[k] === 'boolean') dd.open = st[k]; });
   if (el.dataset.fsecBound) return;
   el.dataset.fsecBound = '1';
   /* toggle does not bubble: listened for on the way down */
   el.addEventListener('toggle', e => {
     const dd = e.target;
     if (!dd || !dd.matches || !dd.matches('details.fsec')) return;
-    const next = fsecShut().filter(k => k !== dd.dataset.fsec);
-    if (!dd.open) next.push(dd.dataset.fsec);
+    const next = fsecState();
+    next[dd.dataset.fsec] = dd.open;
     try { localStorage.setItem(FSEC_KEY, JSON.stringify(next)); } catch (e2) { /* private window: only this visit */ }
   }, true);
 }

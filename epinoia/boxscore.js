@@ -912,7 +912,7 @@ function assistCard(mirror, sec, sides, c0, c1){
     line('assisted',A[t].ast)+line('unassisted',A[t].unast)+'</div>';
   const key = '<p class="fch-key"><span><i class="z0"></i>rim</span><span><i class="z1"></i>mid-range</span><span><i class="z2"></i>three</span></p>';
   const ft = (A[0].ftAssists||A[1].ftAssists) ? '<div class="setup-note"><span>assists on passes that drew free throws (in the box score’s assists, not above)</span> '+A[0].ftAssists+' · '+A[1].ftAssists+'</div>' : '';
-  return sec('assists', 'assisted & unassisted baskets', 'made field goals', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+ft);
+  return sec('assists', 'assisted & unassisted baskets', 'made field goals', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+ft, true);
 }
 
 function outcomeCard(mirror, sec, sides, c0, c1){
@@ -941,7 +941,7 @@ function outcomeCard(mirror, sec, sides, c0, c1){
     ZN.map(([z,l])=>bar(l,T[t].zones[z])).join('')+bar('all shots',T[t])+'</div>';
   const key = '<p class="fch-key"><span><i class="om"></i>went in</span><span><i class="oo"></i>offensive rebound</span><span><i class="od"></i>defensive rebound</span><span><i class="on"></i>neither</span></p>';
   return sec('outcomes', 'what became of every shot attempt', 'made, rebounded by either side, or neither', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+
-    '<div class="setup-note">neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log · team rebounds count</div>');
+    '<div class="setup-note">neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log · team rebounds count</div>', true);
 }
 
 function advHTML(d){
@@ -981,9 +981,10 @@ function advHTML(d){
       '<div class="r"><i'+(aWin?' class="win"':'')+' style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
       gpv(k?rate(k,1):null, aTxt!=null?aTxt:fmt(a), 'ffval r'+(aWin?' winner':''), label)+'</div>';
   /* A SECTION: its own bordered, tinted card with a title that opens and shuts it (a <details>,
-     so it needs no script; the game page remembers which a reader shut). The top card is not one:
+     so it needs no script; the game page remembers what a reader opened or shut). `shut`: it starts
+     closed -- every section under the true shot attempts except the player tables. The top card is not one:
      the four factors and the tempo are what the tab is for, and stay open. */
-  const sec = (key, title, sub, body) => '<details class="fsec" data-fsec="'+key+'" open><summary class="fsec-h">'+
+  const sec = (key, title, sub, body, shut) => '<details class="fsec" data-fsec="'+key+'"'+(shut?'':' open')+'><summary class="fsec-h">'+
     '<span class="fsec-t">'+title+'</span>'+(sub?'<span class="fsec-sub">'+sub+'</span>':'')+'<i class="fsec-chev" aria-hidden="true"></i></summary>'+
     '<div class="fsec-b">'+body+'</div></details>';
   const sides = '<div class="fsides"><span style="color:'+c0+'" data-team-slot="0">'+esc(tname(0))+'</span><span style="color:'+c1+'" data-team-slot="1">'+esc(tname(1))+'</span></div>';
@@ -997,7 +998,6 @@ function advHTML(d){
   const tempo = FF.filter(x=>TEMPO.indexOf(x.k)>=0).map(x=>'<div class="ftile" data-k="'+x.k+'">'+ffRow(x)+'</div>').join('');
   const ffCard = '<div class="fsec fsec-top" data-fsec="factors"><div class="fsec-h"><span class="fsec-t">offensive rating & four factors</span></div>'+
     '<div class="fsec-b">'+sides+ffRows+'</div>'+
-    '<div class="fsec-h sub"><span class="fsec-t">tempo</span><span class="fsec-sub"><span>game pace</span> '+f1(TA[0].pace)+' / 40</span></div>'+
     '<div class="ftempo">'+tempo+'</div>'+
     /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
     (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
@@ -1034,8 +1034,8 @@ function advHTML(d){
   /* counts: the row's larger value is the full bar, so the two are read against each other */
   const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const max=Math.max(h,a,1);
     return mirror(l, h, a, max, v=>String(v), h>a, a>h, k); }).join('');
-  const mrCard = mrGroups.map(g=>sec(g.key, g.title, '', sides+g.rows.join(''))).join('')+
-    sec('situational', 'situational points', '', sides+sitRows)+assistCard(mirror, sec, sides, c0, c1)+outcomeCard(mirror, sec, sides, c0, c1);
+  const mrCard = mrGroups.map(g=>sec(g.key, g.title, '', sides+g.rows.join(''), true)).join('')+
+    sec('situational', 'situational points', '', sides+sitRows, true)+assistCard(mirror, sec, sides, c0, c1)+outcomeCard(mirror, sec, sides, c0, c1);
   // 4. player tables — game-relative bar ranges across both rosters, on-court diffs vs game average
   const gameAvg = {ortg:(TA[0].ortg+TA[1].ortg)/2, efg:(TA[0].efg+TA[1].efg)/2,
     orebp:(TA[0].orebp+TA[1].orebp)/2, tovp:(TA[0].tovp+TA[1].tovp)/2, ftr:(TA[0].ftr+TA[1].ftr)/2};

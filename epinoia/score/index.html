@@ -891,7 +891,6 @@ table.bx th,table.adv th,.qstrip th,.benchsep,.thead .tsub{
 summary.fsec-h{cursor:pointer;user-select:none;padding-right:28px;position:relative;}
 .fsec-t{font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:color-mix(in srgb,var(--sec) 55%,var(--text-primary));}
 .fsec-sub{font-size:10px;letter-spacing:.12em;text-transform:lowercase;color:var(--text-muted);}
-.fsec-h.sub{padding:16px 2px 8px;border-top:1px dashed color-mix(in srgb,var(--sec) 25%,transparent);margin-top:6px;}
 .fsec-chev{position:absolute;right:6px;top:50%;width:9px;height:9px;margin-top:-6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
   color:color-mix(in srgb,var(--sec) 60%,var(--text-secondary));transform:rotate(45deg);transition:transform .25s;}
 .fsec:not([open]) .fsec-chev{transform:rotate(-45deg);margin-top:-4px;}
@@ -903,15 +902,18 @@ summary.fsec-h:focus-visible{outline:2px solid var(--sec);outline-offset:2px;bor
 .fsec .advcard > h3{display:none;}
 .fsides{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;text-transform:uppercase;font-weight:600;}
 .fsides span[data-team-slot="0"]{color:var(--team0) !important;} .fsides span[data-team-slot="1"]{color:var(--team1) !important;}
-.ftempo{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
+.ftempo{margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
 .ftile{border-radius:12px;padding:6px 12px;border:1px solid color-mix(in srgb,#60a5fa 30%,transparent);
   background:color-mix(in srgb,#60a5fa 8%,transparent);}
 .ftile .mrlabel{font-size:10px;letter-spacing:.16em;}
 .ffsub{display:block;font-size:9px;font-weight:400;letter-spacing:.04em;color:var(--text-muted);text-shadow:none;margin-top:1px;}
 /* the winner's bar: a soft glow in its own colour (the track lets it spill) */
 .fstats .mrbars .l,.fstats .mrbars .r{overflow:visible;}
-.mrbars .l i.win{box-shadow:0 0 10px 1px color-mix(in srgb,var(--team0) 65%,transparent),0 0 3px color-mix(in srgb,var(--team0) 80%,transparent);}
-.mrbars .r i.win{box-shadow:0 0 10px 1px color-mix(in srgb,var(--team1) 65%,transparent),0 0 3px color-mix(in srgb,var(--team1) 80%,transparent);}
+.fstats .mrbars i.win{background-image:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,0) 70%) !important;}
+.fstats .mrbars .l i.win{box-shadow:0 0 6px 0 color-mix(in srgb,color-mix(in srgb,var(--team0) 70%,#ffffff) 45%,transparent);}
+.fstats .mrbars .r i.win{box-shadow:0 0 6px 0 color-mix(in srgb,color-mix(in srgb,var(--team1) 70%,#ffffff) 45%,transparent);}
+.fstats .ffval{text-shadow:none;font-weight:500;letter-spacing:.01em;opacity:.72;}
+.fstats .ffval.winner{text-shadow:none;font-weight:800;opacity:1;}
 /* each side's own chart, side by side (the assists and the shot outcomes) */
 .fcharts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
 .fch{border-radius:12px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--c) 30%,transparent);background:color-mix(in srgb,var(--c) 7%,transparent);}
@@ -6197,9 +6199,10 @@ function advHTML(d){
       '<div class="r"><i'+(aWin?' class="win"':'')+' style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
       gpv(k?rate(k,1):null, aTxt!=null?aTxt:fmt(a), 'ffval r'+(aWin?' winner':''), label)+'</div>';
   /* A SECTION: its own bordered, tinted card with a title that opens and shuts it (a <details>,
-     so it needs no script; the game page remembers which a reader shut). The top card is not one:
+     so it needs no script; the game page remembers what a reader opened or shut). `shut`: it starts
+     closed -- every section under the true shot attempts except the player tables. The top card is not one:
      the four factors and the tempo are what the tab is for, and stay open. */
-  const sec = (key, title, sub, body) => '<details class="fsec" data-fsec="'+key+'" open><summary class="fsec-h">'+
+  const sec = (key, title, sub, body, shut) => '<details class="fsec" data-fsec="'+key+'"'+(shut?'':' open')+'><summary class="fsec-h">'+
     '<span class="fsec-t">'+title+'</span>'+(sub?'<span class="fsec-sub">'+sub+'</span>':'')+'<i class="fsec-chev" aria-hidden="true"></i></summary>'+
     '<div class="fsec-b">'+body+'</div></details>';
   const sides = '<div class="fsides"><span style="color:'+c0+'" data-team-slot="0">'+esc(tname(0))+'</span><span style="color:'+c1+'" data-team-slot="1">'+esc(tname(1))+'</span></div>';
@@ -6213,7 +6216,6 @@ function advHTML(d){
   const tempo = FF.filter(x=>TEMPO.indexOf(x.k)>=0).map(x=>'<div class="ftile" data-k="'+x.k+'">'+ffRow(x)+'</div>').join('');
   const ffCard = '<div class="fsec fsec-top" data-fsec="factors"><div class="fsec-h"><span class="fsec-t">offensive rating & four factors</span></div>'+
     '<div class="fsec-b">'+sides+ffRows+'</div>'+
-    '<div class="fsec-h sub"><span class="fsec-t">tempo</span><span class="fsec-sub"><span>game pace</span> '+f1(TA[0].pace)+' / 40</span></div>'+
     '<div class="ftempo">'+tempo+'</div>'+
     /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
     (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
@@ -6250,8 +6252,8 @@ function advHTML(d){
   /* counts: the row's larger value is the full bar, so the two are read against each other */
   const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const max=Math.max(h,a,1);
     return mirror(l, h, a, max, v=>String(v), h>a, a>h, k); }).join('');
-  const mrCard = mrGroups.map(g=>sec(g.key, g.title, '', sides+g.rows.join(''))).join('')+
-    sec('situational', 'situational points', '', sides+sitRows)+assistCard(mirror, sec, sides, c0, c1)+outcomeCard(mirror, sec, sides, c0, c1);
+  const mrCard = mrGroups.map(g=>sec(g.key, g.title, '', sides+g.rows.join(''), true)).join('')+
+    sec('situational', 'situational points', '', sides+sitRows, true)+assistCard(mirror, sec, sides, c0, c1)+outcomeCard(mirror, sec, sides, c0, c1);
   // 4. player tables — game-relative bar ranges across both rosters, on-court diffs vs game average
   const gameAvg = {ortg:(TA[0].ortg+TA[1].ortg)/2, efg:(TA[0].efg+TA[1].efg)/2,
     orebp:(TA[0].orebp+TA[1].orebp)/2, tovp:(TA[0].tovp+TA[1].tovp)/2, ftr:(TA[0].ftr+TA[1].ftr)/2};
@@ -6314,7 +6316,7 @@ function assistCard(mirror, sec, sides, c0, c1){
     line('assisted',A[t].ast)+line('unassisted',A[t].unast)+'</div>';
   const key = '<p class="fch-key"><span><i class="z0"></i>rim</span><span><i class="z1"></i>mid-range</span><span><i class="z2"></i>three</span></p>';
   const ft = (A[0].ftAssists||A[1].ftAssists) ? '<div class="setup-note"><span>assists on passes that drew free throws (in the box score’s assists, not above)</span> '+A[0].ftAssists+' · '+A[1].ftAssists+'</div>' : '';
-  return sec('assists', 'assisted & unassisted baskets', 'made field goals', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+ft);
+  return sec('assists', 'assisted & unassisted baskets', 'made field goals', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+ft, true);
 }
 
 function outcomeCard(mirror, sec, sides, c0, c1){
@@ -6343,7 +6345,7 @@ function outcomeCard(mirror, sec, sides, c0, c1){
     ZN.map(([z,l])=>bar(l,T[t].zones[z])).join('')+bar('all shots',T[t])+'</div>';
   const key = '<p class="fch-key"><span><i class="om"></i>went in</span><span><i class="oo"></i>offensive rebound</span><span><i class="od"></i>defensive rebound</span><span><i class="on"></i>neither</span></p>';
   return sec('outcomes', 'what became of every shot attempt', 'made, rebounded by either side, or neither', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+
-    '<div class="setup-note">neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log · team rebounds count</div>');
+    '<div class="setup-note">neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log · team rebounds count</div>', true);
 }
 
 function advHTML_legacy(d){
