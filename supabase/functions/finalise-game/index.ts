@@ -253,6 +253,30 @@ Deno.serve(async (req) => {
   };
   if (!game.teams || !game.starters) return json({ error: 'game has no roster snapshot' }, 422);
 
+  /* A translated feed (B.LEAGUE) snapshots its players in katakana and kanji; the players
+     rows carry the romanised name their profile shows. Swap it in here so the published
+     report -- headline, standfirst, prose -- names players the way the page around it does
+     (the game page does the same in game.js romanise()). A name with no romanised twin, or
+     a failed read, stays as the feed wrote it. */
+  try {
+    const NON_LATIN = /[぀-ヿㇰ-ㇿ㐀-鿿豈-﫿ｦ-ﾟ가-힯]/;
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const need: any[] = [];
+    for (const tm of game.teams) for (const p of (tm?.players ?? []))
+      if (p && UUID.test(String(p.id ?? '')) && NON_LATIN.test(String(p.name ?? ''))) need.push(p);
+    if (need.length) {
+      const { data: prs } = await admin.from('players').select('id,first_name,last_name')
+        .in('id', need.map((p) => p.id));
+      const latin = new Map<string, string>();
+      for (const r of (prs ?? []) as any[]) {
+        const n = `${r.first_name ?? ''} ${r.last_name ?? ''}`.replace(/\s+/g, ' ').trim();
+        if (n && !NON_LATIN.test(n)) latin.set(r.id, n);
+      }
+      for (const p of need) if (latin.has(p.id)) p.name = latin.get(p.id);
+    }
+  } catch (_) { /* a report in the feed's script beats no report */ }
+
+
   // ---------------------------------------------------------- sanity gate ---
   const d = deriveGame(game);
   const TA = [teamAdv(game, d, 0), teamAdv(game, d, 1)];
