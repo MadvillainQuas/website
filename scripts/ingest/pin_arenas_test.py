@@ -300,5 +300,49 @@ try:
 finally:
     P.requests.post = orig_post
 
+# ---- the place at a pin: the same choice as the arena-place Edge Function ----
+def _pl(pid, name, lat, lng, types, city="Saga", cc="JP"):
+    return {"id": pid, "displayName": {"text": name}, "location": {"latitude": lat, "longitude": lng}, "types": types,
+            "formattedAddress": name + " address",
+            "addressComponents": [{"types": ["locality"], "longText": city}, {"types": ["country"], "shortText": cc}]}
+
+
+pin = (33.2766, 130.29267)
+got = P.pick_at_pin([_pl("far", "Far Hall", 33.2790, 130.2927, ["arena"]), _pl("a", "SAGA Arena", 33.27664, 130.29270, ["stadium"], "佐賀市")], *pin)
+ok("the nearest arena at the pin: its name, town and place", got and got["name"] == "SAGA Arena" and got["city"] == "佐賀市" and got["place_id"] == "a", got)
+ok("...with its country code carried for the caller", got and got["_cc"] == "JP")
+ok("an arena beyond reach, or a bakery beside the pin, is nobody",
+   P.pick_at_pin([_pl("far", "Far Hall", 33.2790, 130.2927, ["arena"]), _pl("b", "Bakery", 33.27661, 130.29267, ["bakery"])], *pin) is None)
+ok("nothing at all is nobody", P.pick_at_pin([], *pin) is None and P.pick_at_pin(None, *pin) is None)
+ok("the distance is the same metres the console uses", abs(P.metres_between(33.2766, 130.29267, 33.2766, 130.29267)) < 1e-6
+   and 9.4e6 < P.metres_between(33.2766, 130.29267, 51.556, -0.2796) < 9.8e6)
+
+ng_calls = []
+
+
+def _nearby_post(url, json=None, headers=None, timeout=None):
+    ng_calls.append((url, json, headers))
+
+    class R:
+        status_code = 200
+        text = ""
+
+        def json(_):
+            return {"places": [_pl("a", "SAGA Arena", 33.27664, 130.29270, ["stadium"], "佐賀市")]}
+    return R()
+
+
+_orig = P.requests.post
+P.requests.post = _nearby_post
+try:
+    places = P.nearby_search("K", P.Budget(tmp / "u11.json"), 33.2766, 130.29267, "ja")
+finally:
+    P.requests.post = _orig
+ok("Nearby Search asks for arena kinds by distance around the pin, in the country's language, and is counted",
+   ng_calls and ng_calls[0][0] == P.NEARBY_URL and ng_calls[0][1]["rankPreference"] == "DISTANCE" and ng_calls[0][1]["languageCode"] == "ja"
+   and "arena" in ng_calls[0][1]["includedTypes"] and ng_calls[0][1]["locationRestriction"]["circle"]["radius"] == P.REACH_M
+   and P.Budget(tmp / "u11.json").state()["day_count"] == 1 and len(places) == 1, ng_calls and ng_calls[0][1])
+ok("the key travels in a header, never in the URL", ng_calls[0][2]["X-Goog-Api-Key"] == "K" and "key=" not in ng_calls[0][0])
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

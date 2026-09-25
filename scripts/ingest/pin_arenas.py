@@ -579,6 +579,83 @@ def pin_clubs(sb, key, budget, limit, write, out=print, cache=None):
         sb.patch("teams", f"id=eq.{t['id']}&home_venue_id=is.null", {"home_venue_id": vid})
 
 
+# ─────────────────────────────────────────────────────────── the place at a pin
+NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby"
+ARENA_TYPES = ["stadium", "arena", "sports_complex", "sports_activity_location", "gym", "sports_club"]
+REACH_M = 150      # the same reach as supabase/functions/_shared/arenaplace.js: the arena the person meant
+
+
+def metres_between(a_lat, a_lng, b_lat, b_lng) -> float:
+    r = math.radians
+    h = math.sin(r(b_lat - a_lat) / 2) ** 2 + math.cos(r(a_lat)) * math.cos(r(b_lat)) * math.sin(r(b_lng - a_lng) / 2) ** 2
+    return 6371008.8 * 2 * math.asin(math.sqrt(h))
+
+
+def pick_at_pin(places: list, lat: float, lng: float):
+    """The arena-kind place nearest the pin within REACH_M, as the fields a venue row stores; None if none is.
+    The same choice arena-place makes (supabase/functions/_shared/arenaplace.js has the tests)."""
+    best = None
+    for p in places or []:
+        loc = p.get("location") or {}
+        name = ((p.get("displayName") or {}).get("text") or "").strip()
+        if not (p.get("id") and name and "latitude" in loc) or not set(p.get("types") or []) & set(ARENA_TYPES):
+            continue
+        d = metres_between(lat, lng, loc["latitude"], loc["longitude"])
+        if d <= REACH_M and (best is None or d < best[0]):
+            best = (d, p, name)
+    if not best:
+        return None
+    d, p, name = best
+    cc = component(p, "country")
+    return {"place_id": p["id"], "name": name, "address": p.get("formattedAddress"),
+            "city": component(p, "locality", "postal_town", "administrative_area_level_3", "administrative_area_level_2") or None,
+            "country": None, "distance_m": round(d), "_cc": cc}
+
+
+def nearby_search(key: str, budget: Budget, lat: float, lng: float, lang: str = "en", session=None):
+    """Places API (New) Nearby Search around a pin: arena kinds, nearest first. One request, one count."""
+    budget.take()
+    r = (session or requests).post(NEARBY_URL, timeout=30, json={
+        "includedTypes": ARENA_TYPES, "maxResultCount": 10, "rankPreference": "DISTANCE", "languageCode": lang,
+        "locationRestriction": {"circle": {"center": {"latitude": lat, "longitude": lng}, "radius": float(REACH_M)}}},
+        headers={"X-Goog-Api-Key": key, "X-Goog-FieldMask": FIELDS, "Content-Type": "application/json"})
+    if r.status_code != 200:
+        raise GoogleError(f"Google answered {r.status_code}: {r.text[:160]}")
+    return r.json().get("places") or []
+
+
+def fill_from_pins(sb, key, budget, ids, write, out=print):
+    """What is at each arena's OWN pin (never moved): its name, address, town, country and Google place put
+    on the row. For an arena whose pin was corrected by hand and whose place data still describes the old
+    spot (0175 stops that happening; this mends the ones from before, and is what the console's "read the
+    name and address at this pin" does, through the arena-place function)."""
+    for vid in ids:
+        rows = sb.select("venues", f"id=eq.{vid}&select=id,name,country,city,address,lat,lng,place_id")
+        if not rows or rows[0].get("lat") is None:
+            out(f"  {vid}: no such arena, or no pin")
+            continue
+        v = rows[0]
+        got = pick_at_pin(nearby_search(key, budget, v["lat"], v["lng"], LANGS.get(v.get("country") or "", "en")), v["lat"], v["lng"])
+        if not got:
+            out(f"  NONE {v['name']}: no arena within {REACH_M} m of its pin")
+            continue
+        cc = (got.pop("_cc", None) or "").upper()
+        patch = {"address": got["address"], "city": got["city"], "place_id": got["place_id"]}
+        if real_country(cc):
+            patch["country"] = cc
+        if got["name"].strip().lower() != v["name"].strip().lower():
+            patch["name"] = got["name"]
+        out(f"  {'SET ' if write else 'WOULD'} {v['name']}  ->  {got['name']} | {got['city']} | {patch.get('country', v['country'])} | "
+            f"{got['distance_m']} m from the pin | {(got['address'] or '')[:70]}")
+        if not write:
+            continue
+        sb.patch("venues", f"id=eq.{v['id']}", patch)
+        if "name" in patch:
+            k = sb.rpc("venue_key", {"p_name": patch["name"]})
+            if k and not sb.select("venue_aliases", f"key=eq.{k}&select=venue_id"):
+                sb.insert("venue_aliases", {"key": k, "venue_id": v["id"], "spelling": patch["name"]})
+
+
 def merge_rows(sb, keep: str, other: str):
     """One arena under two rows: `other`'s spellings, games and clubs move to `keep`, then `other` goes.
     Everything that points at the row first: deleting it first would null the links (on delete set null)."""
@@ -637,6 +714,8 @@ def main(argv=None) -> int:
                     help="look up again, by their full names, the arenas arena_hints.json names (replaces their pins)")
     ap.add_argument("--recheck", action="store_true",
                     help="judge every unchecked Google pin again by the current rules; list (or --write) the changes")
+    ap.add_argument("--from-pin", nargs="+", metavar="ID",
+                    help="arenas by id: read what is at each one's own pin (name, address, town, country, place) and put it on the row")
     ap.add_argument("--cap", type=int, default=DAY_CAP, help=f"lookups a day, at most {DAY_CAP}")
     ap.add_argument("--usage", action="store_true", help="print the lookups used and stop")
     args = ap.parse_args(argv)
@@ -671,7 +750,9 @@ def main(argv=None) -> int:
     limit = 10 ** 6 if args.all else max(0, args.limit)
     cache = Cache(appdata("google_cache.json"))
     try:
-        if args.clubs:
+        if args.from_pin:
+            fill_from_pins(sb, key, budget, args.from_pin, args.write)
+        elif args.clubs:
             pin_clubs(sb, key, budget, limit, args.write, cache=cache)
         else:
             pin_venues(sb, key, budget, limit, args.write, retry=args.retry, cache=cache, venue=args.venue,
