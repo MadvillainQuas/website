@@ -1515,7 +1515,10 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     print(f"    = {how}" + (f", warnings: {'; '.join(T['report']['warnings'])}" if T["report"]["warnings"] else ""))
     if b.status == "final":
         code, body = sb.function("finalise-game", {"gameId": game_id})
-        if code >= 300:
+        if code == 409:
+            # the other lane is finalising it (or already has) - the one outcome that is not a fault
+            print(f"    = finalise: {str(body)[:120]}")
+        elif code >= 300:
             msg = f"finalise-game {code}: {str(body)[:300]}"
             print(f"    ! {msg}")
             try:

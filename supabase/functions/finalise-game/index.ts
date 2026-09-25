@@ -318,7 +318,26 @@ Deno.serve(async (req) => {
   }
 
   // ---------------------------------------------------------------- lock ---
-  await admin.from('games').update({ status: 'finalising' }).eq('id', gameId);
+  /* ONE FINALISE AT A TIME, AND THE LOCK SAYS WHOSE IT IS. This was a plain update to
+     'finalising', so two calls for the same game - the GitHub lane and the PC's lane both see
+     the final whistle within a second - both took it, both rebuilt the box score, and the one
+     whose insert lost the race hit player_game_stats_pkey, fell into the catch below and set the
+     game back to 'live' AFTER the other had published it. Alba Berlin v Skyliners (24 Sep 2026,
+     84a0d371) sat at "live" with a complete box score and an audit row saying it was finalised.
+
+     Now the update only happens if the game is not final and not already being finalised, and
+     stamps the lock's start in finalised_at (publishing overwrites it with the real time). A lock
+     older than five minutes is a finalise that died without reaching its catch, and may be taken
+     over, so a crashed run can never leave a game unfinalisable. */
+  const lockedAt = new Date().toISOString();
+  const staleLock = new Date(Date.now() - 5 * 60_000).toISOString();
+  const { data: locked, error: lockErr } = await admin.from('games')
+    .update({ status: 'finalising', finalised_at: lockedAt })
+    .eq('id', gameId)
+    .or(`status.not.in.(final,finalising),and(status.eq.finalising,or(finalised_at.is.null,finalised_at.lt."${staleLock}"))`)
+    .select('id');
+  if (lockErr) return json({ error: 'the game could not be locked', detail: lockErr.message }, 500);
+  if (!locked?.length) return json({ error: 'already being finalised' }, 409);
 
   try {
     // ------------------------------------------------------------ rebuild ---
@@ -512,8 +531,10 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, status: 'final', score: d.score, warnings, feeds });
   } catch (err) {
-    // never strand a game in 'finalising'
-    await admin.from('games').update({ status: 'live' }).eq('id', gameId);
+    // never strand a game in 'finalising' - but only ever undo THIS call's own lock: a game
+    // somebody else has since finalised (or re-locked) is theirs, and stays as they left it
+    await admin.from('games').update({ status: 'live', finalised_at: null })
+      .eq('id', gameId).eq('status', 'finalising').eq('finalised_at', lockedAt);
     return json({ error: 'finalise failed, game reopened', detail: String(err) }, 500);
   }
 });
