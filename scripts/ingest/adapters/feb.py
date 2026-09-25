@@ -298,7 +298,11 @@ def player_page_name(page: str) -> Optional[str]:
 
 # ============================================================================ one game
 FOUL_CODES = {"1": "personal", "2": "technical", "3": "unsportsmanlike", "4": "disqualifying",
-              "6": "coachtechnical", "8": "offensive"}
+              "6": "coachtechnical", "8": "offensive",
+              # FIBA's 2026 rules (in force from 1 October 2026) replaced the unsportsmanlike foul with two:
+              # the disruptive foul (17, "FALTA Disruptiva") and the flagrant foul; the technicals became
+              # categories (15 is "Técnica Categoría 1"). The words decide first; these are the fallback.
+              "15": "technical", "17": "personal"}
 
 
 def foul_kind(line: dict) -> Tuple[str, Optional[str]]:
@@ -309,6 +313,16 @@ def foul_kind(line: dict) -> Tuple[str, Optional[str]]:
     if "descalificante" in txt:
         return ("disqualifying" if has_player else "coachdisqualifying"), None
     if "antideportiva" in txt:
+        return "unsportsmanlike", None
+    # THE 2026 RULES (from 1 Oct 2026). A DISRUPTIVE foul is two free throws and the ball, charged to the
+    # player and the team's count, and NOT toward disqualification (the federation's own play-by-play adds it
+    # to "Faltas" and "Faltas de equipo"): a personal foul here, because the engine's unsportsmanlike kind
+    # counts toward a disqualification a disruptive foul never brings. (What it cannot say is that the ball
+    # stays with the shooter after the free throws - a possession estimate, not a box-score figure.) A FLAGRANT
+    # foul is what the unsportsmanlike foul was: two count toward a disqualification, and it keeps the ball.
+    if "disruptiva" in txt:
+        return "personal", None
+    if "flagrante" in txt:
         return "unsportsmanlike", None
     if "técnica" in txt or "tecnica" in txt:
         if has_player:
@@ -793,7 +807,14 @@ class FebAdapter(FibaLiveStatsAdapter):
             return None
         meta = raw["feb"]
         if meta["unknown"]:
-            print(f"     FEB {gid}: {len(meta['unknown'])} line(s) the adapter does not know, left out: {meta['unknown'][:3]}")
+            # a foul of a kind the adapter does not know is KEPT (as a personal foul, so the player's count and the team's
+            # stay the federation's); any other line it does not know is left out
+            kept = [u for u in meta["unknown"] if u.startswith("foul:")]
+            out = [u for u in meta["unknown"] if not u.startswith("foul:")]
+            if kept:
+                print(f"     FEB {gid}: {len(kept)} foul kind(s) the adapter does not know, kept as personal fouls: {kept[:3]}")
+            if out:
+                print(f"     FEB {gid}: {len(out)} line(s) the adapter does not know, left out: {out[:3]}")
         # a club's time zone, learnt from its own venue, for the fixtures still to come
         tz = CANARY if meta["canary"] else MADRID
         if cache.setdefault("tz", {}).get(meta["home_id"]) != tz and meta.get("place"):

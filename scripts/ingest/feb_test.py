@@ -480,5 +480,21 @@ ok("...Q1 and Q2 are closed, Q3 is open, and no final whistle is invented",
 ok("a game with no play-by-play yet has no payload",
    F.raw_from_keyfacts(dict(live, PLAYBYPLAY={"LINES": []})) is None)
 
+# ---------------------------------------------------------------- FIBA's 2026 fouls (from 1 October 2026)
+# The line the live lane reported every poll ("1 line(s) the adapter does not know, left out"), as the federation
+# writes it: 2538911, Burgos v Barça Atlètic, Q3 08:44 - "FALTA Disruptiva", code 17, two free throws awarded.
+disr = {"text": "(BARÇA ATLÈTIC) O. FILBA GONZALEZ: FALTA Disruptiva (Faltas: 1. Faltas de equipo: 13). Tiros libres: 2",
+        "idPlayer": "2218824", "action": "foul", "logParam3": "17", "logParam6": "2"}
+ok("a DISRUPTIVE foul (2026 rules) is known: a personal foul, nothing unknown to report", F.foul_kind(disr) == ("personal", None), F.foul_kind(disr))
+ok("...by its code too, when the words are missing", F.foul_kind(dict(disr, text="")) == ("personal", None))
+ok("a FLAGRANT foul is what the unsportsmanlike foul was", F.foul_kind({"text": "(X) A. PLAYER: FALTA Flagrante", "idPlayer": "1", "logParam3": "18"}) == ("unsportsmanlike", None))
+ok("'Técnica Categoría 1' (code 15) is a technical foul; Categoría 2 too",
+   F.foul_kind({"text": "(X) A. PLAYER: FALTA Técnica Categoría 1", "idPlayer": "1", "logParam3": "15"}) == ("technical", None)
+   and F.foul_kind({"text": "(X) A. PLAYER: FALTA Técnica Categoría 2", "idPlayer": "1", "logParam3": "16"}) == ("technical", None)
+   and F.foul_kind({"text": "", "idPlayer": "1", "logParam3": "15"}) == ("technical", None))
+ok("a kind nobody has seen is still reported (and kept as a personal foul, never dropped)",
+   F.foul_kind({"text": "(X) A. PLAYER: FALTA Rarísima", "idPlayer": "1", "logParam3": "99"})[1] is not None
+   and F.foul_kind({"text": "(X) A. PLAYER: FALTA Rarísima", "idPlayer": "1", "logParam3": "99"})[0] == "personal")
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)
