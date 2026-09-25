@@ -199,3 +199,7 @@ table.adv .gp-pc, .ffval .gp-pc, .tsacell .gp-pc{ display:none }
 #view .pb-pts, #view .gf-stat-value, #view .ev-mx tr.ev-azall td b, #view .pb-num, #view .mv-num, #view table.bx tr.oncourt td
 { font-family:var(--f-mono); font-weight:500 }
 #view .ffval:not(.winner){ opacity:.8 }
+
+/* the modern box's stat line in the figure face is wider than the pixel face it replaced: it may run past its
+   104px card (centred under the player, whose neighbours are far enough away) rather than lose its assists to an ellipsis */
+#view .mv-p .mv-line{ max-width:none; overflow:visible; text-overflow:clip; letter-spacing:0 }
