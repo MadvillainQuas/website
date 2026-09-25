@@ -23,6 +23,11 @@ window.EPINOIA_CONFIG = {
   // 'local' drives everything through BroadcastChannel for offline development.
   defaultMode: 'local',
 
+  // true ONLY once migration 0173 (site_events, analytics_track) is applied: then every page
+  // counts its views and tab clicks, anonymously (track.js). Until then nothing is sent, so
+  // no browser asks for a function the database does not have yet.
+  analytics: false,
+
   // true ONLY once the Supabase Magic Link email template carries {{ .Token }}:
   // then the sign-in forms inside the app offer a field for the email's code.
   // Until then the app is told the link signs in the phone's browser instead.

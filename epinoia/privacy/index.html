@@ -18,11 +18,11 @@
 <meta name="description" content="Your data protection rights on Epinoia: see, correct or erase your data, object, or complain, and how long each takes.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=401"></script>
-<script src="../i18n.js?v=401" data-i18n-packs="info"></script>
-<script src="../glyphs.js?v=401" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=401">
-<link rel="stylesheet" href="../kit/nav.css?v=401">
+<script src="../appmode.js?v=402"></script>
+<script src="../i18n.js?v=402" data-i18n-packs="info"></script>
+<script src="../glyphs.js?v=402" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=402">
+<link rel="stylesheet" href="../kit/nav.css?v=402">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -96,6 +96,8 @@
     background:var(--rule);border:1px solid var(--rule)}
   .faq > div{background:var(--ground);padding:12px 14px}
   .faq .q{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--lume);line-height:1.8}
+  .count-me{display:flex;gap:10px;align-items:center;margin:calc(var(--u)*2) 0 calc(var(--u));font-family:var(--f-ui);font-weight:700;font-size:13px;cursor:pointer}
+  .count-me input{width:18px;height:18px;accent-color:var(--lume)}
   .faq .a{font-size:14px;line-height:1.6;color:var(--ink-2)}
   .prose p{font-size:14.5px;line-height:1.65;color:var(--ink-2);margin:0 0 calc(var(--u)*2);max-width:66ch}
   .prose p b{color:var(--ink)}
@@ -297,7 +299,7 @@
         <div class="q">Email</div>
         <div class="a">Emails we send you, such as notifications you choose to have by email, go through Resend, which delivers them for us and uses your address for nothing else.</div>
         <div class="q">Ads and tracking</div>
-        <div class="a">None. There are no adverts, no advertising or analytics trackers, and nothing about you is sold or shared for marketing.</div>
+        <div class="a">None. There are no adverts, no advertising trackers and no one else&rsquo;s analytics, and nothing about you is sold or shared for marketing. Like the website, the app counts which pages are opened, anonymously: see <a href="#countSec">Visit counts</a> below.</div>
         <div class="q">Notifications</div>
         <div class="a">Optional. The app asks once; you can say no, and turn them on or off at any time in the app&rsquo;s notification settings or in Android&rsquo;s settings for the app.</div>
         <div class="q">Location</div>
@@ -319,7 +321,7 @@
         <div class="q">Apple</div>
         <div class="a">Notifications to the app are delivered by Apple Push Notification service, which receives each notification&rsquo;s title, text and link in order to show it on your phone. Apple&rsquo;s own handling of that is covered by Apple&rsquo;s privacy policy.</div>
         <div class="q">Ads and tracking</div>
-        <div class="a">None. The app does not track you across other apps or websites, shows no adverts, and contains no analytics.</div>
+        <div class="a">None. The app does not track you across other apps or websites, shows no adverts, and contains no one else&rsquo;s analytics. Like the website, it counts which pages are opened, anonymously and linked to no one: see <a href="#countSec">Visit counts</a> below.</div>
         <div class="q">Camera</div>
         <div class="a">Only if you choose to take a photo to upload, or to read a scoreboard clock. iOS asks first, and nothing is recorded unless you start it.</div>
         <div class="q">Location</div>
@@ -354,6 +356,32 @@
     </div>
   </section>
 
+  <!-- VISIT COUNTS (migration 0173, epinoia/track.js): what the anonymous page counts send and keep.
+       Keep it in step with both files. -->
+  <section class="sec" id="countSec" aria-labelledby="countH">
+    <div class="ep-hdr"><span class="idx">09</span><h2 id="countH">Visit counts</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">What is counted</div>
+        <div class="a">Which pages of the site are opened and which tabs on them are chosen, so we can see what is read and make it better: the page, the league, club or game already named in its address, and the name of a tab.</div>
+        <div class="q">What each count carries</div>
+        <div class="a">Four facts about the visit that describe no one: whether you are signed in (yes or no, never who), whether it is a phone, a tablet or a computer, the language the site is shown in, and whether it is the app or a browser. If you came from another website, that website&rsquo;s name, never the page.</div>
+        <div class="q">What is never kept</div>
+        <div class="a">Your account, your email address, your IP address, your browser&rsquo;s details, a cookie, or anything that lasts beyond the browser tab. The counts are anonymous for good: nothing in them can be tied back to you, now or later, because nothing that could identify you is ever recorded.</div>
+        <div class="q">How one visit is told apart</div>
+        <div class="a">By a random code your browser makes for that tab and keeps in its session storage, which the browser deletes when the tab is closed. The code is linked to nothing, and your next visit gets a new one.</div>
+        <div class="q">Who sees them</div>
+        <div class="a">Only Epinoia&rsquo;s platform administrators, as totals, such as visits a day or the most read leagues. They go straight to Epinoia&rsquo;s own database: no other company&rsquo;s analytics or advertising service is involved, and nothing is shared or sold.</div>
+        <div class="q">How long they are kept</div>
+        <div class="a">400 days, then they are deleted.</div>
+        <div class="q">Turning it off</div>
+        <div class="a">If your browser sends Global Privacy Control or Do Not Track, nothing is counted. You can also switch it off here, for this browser.</div>
+      </div>
+      <label class="count-me"><input type="checkbox" id="countMe" checked> Count my visits in this browser</label>
+      <p class="fine" id="countWhy"></p>
+    </div>
+  </section>
+
   <footer class="foot">
     <a href="../home/">&larr; Epinoia</a>
     <a href="../me/">Your profile</a>
@@ -361,10 +389,10 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=401" defer></script>
-<script src="../access.js?v=401" defer></script>
-<script src="privacy.js?v=401" defer></script>
-<script src="../go/logo.js?v=401" defer></script>
-<script src="../nav.js?v=401" defer></script>
+<script src="../config.js?v=402" defer></script>
+<script src="../access.js?v=402" defer></script>
+<script src="privacy.js?v=402" defer></script>
+<script src="../go/logo.js?v=402" defer></script>
+<script src="../nav.js?v=402" defer></script>
 </body>
 </html>

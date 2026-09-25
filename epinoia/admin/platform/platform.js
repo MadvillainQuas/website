@@ -150,7 +150,8 @@ function wire() {
          neither. */
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
-                     plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas };
+                     plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
+                     analytics: loadAnalytics };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1210,6 +1211,15 @@ function loadArenas() {
   const A = window.EpinoiaArenasUI;
   if (!A) return say('arenas-ui.js did not load, so arenas cannot be edited. Reload the page.', 'err');
   A.mount({ host: '#arenasHost', sb, say, oops, me: me && me.id });
+}
+
+/* ------------------------------------------------------------- analytics --- */
+/* How the site is used, anonymously (migration 0173, track.js): analytics-ui.js draws the whole
+   tab from one analytics_report call, afresh each time it opens. */
+function loadAnalytics() {
+  const A = window.EpinoiaAnalyticsUI;
+  if (!A) return say('analytics-ui.js did not load, so the analytics cannot be drawn. Reload the page.', 'err');
+  A.mount({ host: '#analyticsHost', sb, say });
 }
 
 /* ----------------------------------------------------------------- clubs --- */

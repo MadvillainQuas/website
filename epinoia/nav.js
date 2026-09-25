@@ -228,6 +228,19 @@
      together identify the splash exactly. Neither depends on where the folder
      lives. The second half matters: the news archive also carries m-splash
      when no league is named, and that page does want its rail. */
+  /* VISIT COUNTS (track.js, 0173) — anonymous, and off until config.js says analytics: true.
+     Loaded from here because this is the one script every page of the site carries, and
+     before the splash's early return so the splash counts too. Same ?v= stamp as this file. */
+  (function loadTrack() {
+    if (window.EpinoiaTrack || !(window.EPINOIA_CONFIG && window.EPINOIA_CONFIG.analytics === true)) return;
+    const me = document.currentScript;
+    if (!me || !me.src) return;
+    const s = document.createElement('script');
+    s.src = me.src.replace(/nav\.js(\?.*)?$/, 'track.js$1');
+    s.defer = true;
+    document.head.appendChild(s);
+  })();
+
   const atSplash = document.documentElement.classList.contains('m-splash')
                    && !!document.getElementById('splash');
   if (atSplash) return;

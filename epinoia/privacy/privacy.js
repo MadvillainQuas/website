@@ -336,6 +336,36 @@
     if (a && location.hash === '#delete') chooseDelete();
   });
 
+  /* ------------------------------------------------------- visit counts --- */
+  /* The switch for track.js (0173), kept in this browser's localStorage under the key track.js
+     reads. A browser sending Global Privacy Control or Do Not Track is never counted, whatever
+     the switch says, so then it is shown off and cannot be turned on. */
+  (function countSwitch() {
+    const box = $('#countMe'), why = $('#countWhy');
+    if (!box || !why) return;
+    const KEY = 'epinoia_no_count';
+    const nav = (typeof navigator !== 'undefined' && navigator) || {};
+    const w = typeof window !== 'undefined' ? window : {};
+    const browserSaysNo = nav.globalPrivacyControl === true || nav.doNotTrack === '1' || w.doNotTrack === '1';
+    const paint = () => {
+      let off = false;
+      try { off = localStorage.getItem(KEY) === '1'; } catch (_) { off = false; }
+      box.checked = !browserSaysNo && !off;
+      box.disabled = browserSaysNo;
+      why.textContent = browserSaysNo
+        ? 'Your browser asks not to be tracked, so nothing is counted, whatever this switch says.'
+        : box.checked ? 'Your visits are counted anonymously, as described above.' : 'Your visits are not counted in this browser.';
+    };
+    box.addEventListener('change', () => {
+      if (window.EpinoiaTrack) window.EpinoiaTrack.setCounting(box.checked);
+      else {
+        try { if (box.checked) localStorage.removeItem(KEY); else localStorage.setItem(KEY, '1'); } catch (_) { /* nothing stored */ }
+      }
+      paint();
+    });
+    paint();
+  })();
+
   /* ------------------------------------------------------------- start --- */
   async function start() {
     session = await sessNow();
