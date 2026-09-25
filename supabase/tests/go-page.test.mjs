@@ -267,8 +267,9 @@ ok('a hover never makes the browser ask where the phone is: only a location this
    /if \(!pressed\) \{[\s\S]{0,260}if \(state !== 'granted'\) return;/.test(js) && /openPop\(key, btn, false\); whereAmI\(false\);/.test(js));
 ok('...how far is worked out on the phone: the location still goes to the server in the stamp call only',
    (js.match(/p_lat/g) || []).length === 1 && /metres\(pos, \{ lat: g\.lat, lng: g\.lng \}\)/.test(js));
-ok('...and the privacy notice says the list uses it, in its three answers',
-   (rd('epinoia', 'privacy', 'index.html').match(/open its list of today&rsquo;s games to see how far each one is/g) || []).length === 3);
+ok('...and the privacy notice says the list and the find-a-game page use it, in its three answers, and says what the map is',
+   (rd('epinoia', 'privacy', 'index.html').match(/open its list of today&rsquo;s games or its find-a-game page to see how far each one is/g) || []).length === 3
+   && /Passport mode never uses it/.test(rd('epinoia', 'privacy', 'index.html')) && /map on the find-a-game page is Google&rsquo;s and loads only when you open a game/.test(rd('epinoia', 'privacy', 'index.html')));
 ok('each game links to its page; at the arena, with its window open, it can be stamped from the list',
    /m\.href = '\.\.\/game\/\?g=' \+ encodeURIComponent\(g\.game_id\);/.test(js)
    && /const here = !!pos && placeOf\(g, pos, now\)\.state === 'here';/.test(js) && /if \(here && open && g\.trusted && !stamped\(g\.game_id\)\)/.test(js));
@@ -334,6 +335,121 @@ ok('...and GO offers only a league\'s games', /and l\.id is not null\s+-- 0170/.
    && /grant execute on function public\.go_games_now\(\) to anon, authenticated;/.test(m170));
 const nums170 = (await import('node:fs')).readdirSync(path.join(ROOT, 'supabase', 'migrations')).filter(f => /^0170_/.test(f));
 ok('0170 is the only 0170', nums170.length === 1, nums170);
+
+/* ---- FIND A GAME (7.13): go/nearby/, the rail row, passport mode ------------------------------------------ */
+console.log('\nfind a game: the games nearest the fan in a window they set (7.13)');
+const NB = require(path.join(ROOT, 'epinoia', 'go', 'nearby', 'nearby.js'));
+const nbHtml = rd('epinoia', 'go', 'nearby', 'index.html'), nbJs = rd('epinoia', 'go', 'nearby', 'nearby.js');
+const navSrc = rd('epinoia', 'nav.js');
+
+ok('it measures like the GO page: the same arithmetic, to the metre',
+   [[{ lat: 51.5074, lng: -0.1278 }, { lat: 48.8566, lng: 2.3522 }], [{ lat: 60.19, lng: 24.93 }, { lat: 60.19, lng: 24.93 }],
+    [{ lat: -37.82, lng: 144.98 }, { lat: 35.68, lng: 139.69 }]].every(([a, b]) => NB.metres(a, b) === G.metres(a, b)));
+ok('...and says it in the same words (12 km, 340 m)', NB.distanceText(12345, 'en-GB') === G.distanceText(12345, 'en-GB')
+   && NB.distanceText(343, 'en-GB') === G.distanceText(343, 'en-GB'));
+ok('the windows are 24 hours to 30 days, 7 days first', NB.WINDOWS.map(w => w.key).join() === '24h,3d,7d,14d,30d'
+   && NB.DEFAULT_WINDOW === '7d' && NB.windowOf('nonsense').key === '7d' && NB.windowOf('30d').hours === 720);
+
+const arena = (id, lat, lng, extra) => Object.assign({ id, name: 'Arena ' + id, city: 'Town ' + id, country: 'GB', address: '1 Road', lat, lng, place_id: null, pin_note: null }, extra);
+const venues = new Map([['v1', arena('v1', 51.55, -0.01)], ['v2', arena('v2', 53.4, -2.99)], ['v3', arena('v3', 35.68, 139.69, { pin_note: 'Google\'s best match is in GB' })]]);
+const raw = (id, iso, vid, o) => Object.assign({ id, tipoff_at: iso, status: 'scheduled', venue: 'typed name', venue_address: null, venue_id: vid,
+  home_team_id: 'h' + id, away_team_id: 'a' + id, competition_id: 'c1', home: { name: 'Home ' + id, home_venue_id: null }, away: { name: 'Away ' + id },
+  competitions: { name: 'Cup', season_id: 's1', seasons: { leagues: { id: 'L', name: 'League', slug: 'lg', timezone: 'Europe/London' } } } }, o);
+const T0 = Date.parse('2026-10-03T12:00:00Z');
+const at2 = (h) => new Date(T0 + h * 3600000).toISOString();
+const games = [raw('1', at2(30), 'v2'), raw('2', at2(5), 'v1'), raw('3', at2(2), 'v3'), raw('4', at2(-1), 'v1'), raw('5', at2(-6), 'v1'),
+  raw('6', at2(60), null, { home: { name: 'Home 6', home_venue_id: 'v2' } }), raw('7', at2(8), null)].map(g => NB.shape(g, venues));
+ok('a game\'s arena is its own, else its home club\'s usual one, else it has none',
+   games[5].venue === 'Arena v2' && games[5].lat === 53.4 && games[6].lat === null && games[0].city === 'Town v2');
+ok('...the league\'s time zone rides along', games[0].tz === 'Europe/London' && games[0].leagueSlug === 'lg');
+ok('a pin nobody has checked is not trusted', games[2].trusted === false && games[0].trusted === true && games[6].trusted === false);
+const near = NB.nearest(games, { lat: 51.5074, lng: -0.1278 }, T0, 24 * 7);
+ok('nearest first, inside the window, a game that tipped off an hour ago is still on',
+   near.shown.map(r => r.g.id).join() === '4,2,1,6', near.shown.map(r => r.g.id));
+ok('...a game 6 hours gone and one with no arena are not offered', !near.shown.some(r => r.g.id === '5' || r.g.id === '7'));
+ok('...the unchecked pin is counted, never placed (it would read as Japan to London)', near.unchecked === 1 && !near.shown.some(r => r.g.id === '3'));
+ok('a short window is a shorter list', NB.nearest(games, { lat: 51.5074, lng: -0.1278 }, T0, 24).shown.map(r => r.g.id).join() === '4,2');
+ok('...and the strip holds the nearest few', NB.nearest(games, { lat: 51.5074, lng: -0.1278 }, T0, 720, 2).shown.length === 2
+   && NB.nearest(games, { lat: 51.5074, lng: -0.1278 }, T0, 720, 2).all === 4 && NB.SHOWN === 30);
+ok('distances only grow along the strip', near.shown.every((r, i, a) => !i || a[i - 1].d <= r.d));
+
+/* the time is the arena's, whatever machine reads it */
+const nbTz = (iso, tz, mach, nowIso) => { process.env.TZ = mach; const w = NB.whenOf(iso, tz, Date.parse(nowIso), 'en-GB'); return w.day + ' ' + w.time + (w.local ? ' local' : '') + (w.tbc ? ' tbc' : ''); };
+ok('19:30 in Melbourne reads 19:30 on any machine, with "local" where the clock is not the reader\'s',
+   nbTz('2026-09-19T09:30:00Z', 'Australia/Melbourne', 'UTC', '2026-09-18T00:00:00Z') === 'Tomorrow 19:30 local'
+   && nbTz('2026-09-19T09:30:00Z', 'Australia/Melbourne', 'Australia/Melbourne', '2026-09-18T00:00:00Z') === 'Tomorrow 19:30'
+   && nbTz('2026-09-19T09:30:00Z', 'Australia/Melbourne', 'America/Los_Angeles', '2026-09-18T00:00:00Z').endsWith('19:30 local'));
+ok('...the day is the arena\'s day: a Toronto game at 9 pm is that evening, not the next morning in London',
+   nbTz('2026-09-21T01:00:00Z', 'America/Toronto', 'Europe/London', '2026-09-20T12:00:00Z') === 'Today 21:00 local');
+ok('...no zone shows the reader\'s clock, no "local"', nbTz('2026-09-19T09:30:00Z', null, 'UTC', '2026-09-19T00:00:00Z') === 'Today 09:30'
+   && nbTz('2026-09-19T09:30:00Z', 'Not/AZone', 'UTC', '2026-09-19T00:00:00Z') === 'Today 09:30');
+ok('...midnight at the arena is a time not fixed yet', /tbc$/.test(nbTz('2026-09-19T14:00:00Z', 'Australia/Melbourne', 'UTC', '2026-09-18T00:00:00Z')));
+process.env.TZ = 'UTC';
+
+/* passport mode: places from the arenas we know, only pins somebody has checked */
+const pv = [arena('a', 54.69, 25.28, { name: 'Vilnius Arena', city: 'Vilnius', country: 'LT' }), arena('b', 54.7, 25.3, { name: 'Ozas Hall', city: 'Vilnius', country: 'LT' }),
+  arena('c', 55.7, 21.1, { name: 'Klaipeda Arena', city: 'Klaipėda', country: 'LT' }), arena('d', 35.68, 139.69, { name: 'Sアリ', city: 'Wembley', country: 'JP', pin_note: 'wrong' }),
+  arena('e', -37.8, 144.9, { name: 'John Cain Arena', city: 'Melbourne', country: 'AU' })];
+const places = NB.placesOf(pv);
+ok('every city once (its arenas\' centre) and every arena; the unchecked pin is nowhere to stand',
+   places.filter(p => p.kind === 'city').length === 3 && places.filter(p => p.kind === 'arena').length === 4 && !places.some(p => /Wembley|Sアリ/.test(p.label)));
+ok('...a city sits between its arenas', (c => c.n === 2 && Math.abs(c.lat - 54.695) < 1e-9 && Math.abs(c.lng - 25.29) < 1e-9)(places.find(p => p.kind === 'city' && p.city === 'Vilnius')));
+const names = { LT: 'Lithuania', AU: 'Australia' };
+ok('search: an accent-free spelling finds it, a city before its arena, the country\'s name finds its places',
+   NB.findPlaces(places, 'klaipeda', c => names[c])[0].label.startsWith('Klaipėda')
+   && NB.findPlaces(places, 'vilnius', c => names[c])[0].kind === 'city'
+   && NB.findPlaces(places, 'lithuania', c => names[c]).length === 5
+   && NB.findPlaces(places, 'melb', c => names[c])[0].label === 'Melbourne, AU'
+   && NB.findPlaces(places, 'zzzz', c => names[c]).length === 0);
+ok('...nothing typed offers the cities, most arenas first', (l => l.length === 3 && l.every(p => p.kind === 'city') && l[0].city === 'Vilnius')(NB.findPlaces(places, '', c => names[c])));
+
+const nbFin = (id, h, a, hs, as, t) => ({ id, home_team_id: h, away_team_id: a, home_score: hs, away_score: as, tipoff_at: t });
+ok('a club\'s last five, oldest first, W or L',
+   NB.formOf([nbFin(1, 'X', 'Y', 80, 70, '2026-09-01'), nbFin(2, 'Y', 'X', 90, 60, '2026-09-08'), nbFin(3, 'X', 'Z', 70, 71, '2026-09-15'), nbFin(4, 'Z', 'Y', 1, 2, '2026-09-16'),
+     nbFin(5, 'X', 'Y', 88, 80, '2026-09-22')], 'X').join('') === 'WLLW' && NB.formOf([], 'X').length === 0
+   && NB.formOf([nbFin(1, 'X', 'Y', 1, 0, '2026-01-01'), nbFin(2, 'X', 'Y', 1, 0, '2026-01-02'), nbFin(3, 'X', 'Y', 1, 0, '2026-01-03'), nbFin(4, 'X', 'Y', 1, 0, '2026-01-04'),
+     nbFin(5, 'X', 'Y', 1, 0, '2026-01-05'), nbFin(6, 'X', 'Y', 0, 1, '2026-01-06')], 'X').join('') === 'WWWWL');
+
+const gm = { lat: 54.6961, lng: 25.2929, venue: 'Avia Solutions Group Arena', city: 'Vilnius', placeId: 'ChIJxyz' };
+ok('the map is the arena\'s pin on Google\'s embed, in the site\'s language; directions start from the passport place when there is one',
+   NB.mapSrc(gm, 'ja') === 'https://www.google.com/maps?q=54.6961%2C25.2929&z=16&output=embed&hl=ja'
+   && NB.directionsHref(gm, null) === 'https://www.google.com/maps/dir/?api=1&destination=54.6961%2C25.2929'
+   && NB.directionsHref(gm, { lat: 51.5, lng: -0.12 }).endsWith('&origin=51.5%2C-0.12')
+   && /query_place_id=ChIJxyz/.test(NB.mapHref(gm)));
+
+ok('the location goes nowhere: the page sends no request of its own, and no read carries a position',
+   !/fetch\(|XMLHttpRequest|sendBeacon|\/rpc\//.test(nbJs) && /EpinoiaData\.all\(/.test(nbJs) && /EpinoiaData\.season\(/.test(nbJs)
+   && !/EpinoiaData\.(all|season)\([^)]*(S\.pos|S\.place|curPos)/.test(nbJs));
+ok('...passport\'s place is kept for the visit (sessionStorage) and the window as a convenience (localStorage); the phone\'s own position is never kept',
+   (nbJs.match(/store[d]?\(KEYS\.place[^\n]*/g) || []).length >= 3 && (nbJs.match(/store[d]?\(KEYS\.place[^\n]*/g) || []).every(l => /true\)/.test(l))
+   && /store\(KEYS\.win, w\.key\)/.test(nbJs) && !/store\([^)]*S\.pos/.test(nbJs));
+ok('a page that names its own words for the map only frames Google, and only on this page',
+   /frame-src https:\/\/www\.google\.com"/.test(nbHtml) && !/frame-src/.test(rd('epinoia', 'go', 'index.html')) && !/frame-src/.test(rd('epinoia', 'go', 'stamps', 'index.html'))
+   && /script-src 'self'; connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co; frame-src/.test(nbHtml));
+ok('the page reads the games with the reader\'s own rights, so a private league\'s stay private',
+   /EpinoiaAccess\.sessionReady/.test(nbJs) && /<script src="\.\.\/\.\.\/access\.js/.test(nbHtml) && /<script src="\.\.\/\.\.\/data\.js/.test(nbHtml));
+ok('the strip is a real scroller with arrows that hide at its ends, a card is a button that opens the game',
+   /'go-strip-view nb-view'/.test(nbJs) && /prev\.hidden = max < 2 \|\| view\.scrollLeft < 2/.test(nbJs) && /el\('button', 'vcard nb-card'\)/.test(nbJs)
+   && /aria-expanded/.test(nbJs));
+
+console.log('\nfind a game in the rail, the bar, and in three languages');
+ok('GO\'s layer of the rail has it, after "your stamps", worded "find a game"',
+   /platformRow\('⌖', 'find a game', 'go\/nearby\/', \/\\\/epinoia\\\/go\\\/nearby\\\/\//.test(navSrc)
+   && navSrc.indexOf("'find a game', 'go/nearby/'") > navSrc.indexOf("'your stamps', 'go/stamps/'"));
+ok('...and it is not a row of the root rail under EPINOIA GO itself (Louie: after EPINOIA GO has been clicked)',
+   !/find a game|nearby/.test(navSrc.slice(navSrc.indexOf('const goRow'), navSrc.indexOf('hlist.appendChild(goRow)'))));
+ok('GO\'s phone bar has it: home, feed, stamps, find, profile',
+   (t => ['go/', 'go/photos/', 'go/stamps/', 'go/nearby/', 'me/'].every((h, i, a) => t.includes("href: '" + h + "'") && (!i || t.indexOf("href: '" + h + "'") > t.indexOf("href: '" + a[i - 1] + "'"))))(
+     navSrc.slice(navSrc.indexOf('const GO_TABS'), navSrc.indexOf('function paintPlatformTabs'))));
+ok('GO\'s pages, this one too, are nobody\'s league (the rail opens on GO)', /\\\/epinoia\\\/\(home\|games\|scouting\|go\)\\\//.test(navSrc) && /const onGo = \/\\\/epinoia\\\/go\\\//.test(navSrc));
+ok('...the page loads the go, game and report words (the record and the story are the game page\'s)', /data-i18n-packs="go game report"/.test(nbHtml));
+ok('...the rail\'s and the bar\'s words, and every sentence of the page, in Japanese and Spanish',
+   ['ja', 'es'].every(code => { const core = rd('epinoia', 'i18n', code + '.js'), go = rd('epinoia', 'i18n', code, 'go.js');
+     return /'find a game':/.test(core.slice(core.indexOf('nav: {'), core.indexOf('}', core.indexOf('nav: {')))) && /'find':/.test(core.slice(core.indexOf('tab: {'), core.indexOf('}', core.indexOf('tab: {'))))
+       && ['Where are you?', 'Games near you', 'Passport mode', 'you are here', 'time to be confirmed', 'Games in this window', 'Not shown: the arena’s pin is being checked', 'local time', '2 weeks']
+         .every(k => go.includes("'" + k + "'")); }));
+ok('...no other site is named in what ships (the map link says Google Maps: the page frames it and the fan asked for it)',
+   !/kenpom|basketball-reference|fivethirtyeight/i.test(nbHtml + nbJs + rd('epinoia', 'go', 'nearby', 'nearby.css')));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

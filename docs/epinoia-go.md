@@ -287,3 +287,27 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       plain row with arrows only if it overflows. Under reduced motion it does not slide and the arrows jump.
       Real browser scrolling underneath (`go.js` mountStrip), so touch, trackpad and keyboard focus all work.
       Chromium: 19 checks (desktop, phone, a short list, reduced motion, redrawing on a country change).
+- [x] **7.13 Find a game** (Louie, 2026-09-25) - a fifth place in GO's layer of the rail, **find a game** (after
+      "your stamps"; a "find" tab on the phone's GO bar), and its page `go/nearby/` (`nearby.js`, `nearby.css`).
+      The games nearest the fan inside a window the fan sets - 24 hours, 3 days, 7 (the first), 2 weeks, 30 days,
+      remembered in the browser - as a strip that slides sideways (the arenas strip's rail and arrows, cards that
+      are pressed): the two clubs, **how far** the arena is, the **day and the time**, the arena. The nearest 30
+      are shown, and the count of what the window holds beside them. A card opens the game underneath: distance,
+      tip-off, the arena and its address, **Google's map** of the arena's pin (the same embed the game page's
+      preview uses; the page's own CSP adds `frame-src https://www.google.com`, and nothing on the GO page or the
+      stamps page), directions and "open in Google Maps", and a **short preview** - each club's record and last
+      five and the first two paragraphs of "the story so far", written by the game page's own preview writer from
+      the same season file (`EpinoiaData.season`, the CDN snapshot, no box scores read) - with a link to the full
+      preview. **Passport mode** stands the fan somewhere else: a search over the cities and arenas EPINOIA knows
+      (only pins somebody has checked), the games shown are the nearest to there, the banner says where they are
+      standing with "change" and "back to my location", and directions start from that place. It is kept for the
+      visit only (sessionStorage). Nothing about the fan's position leaves the phone: the page reads games and
+      arenas once with the reader's own rights (so a private league's games are members' only) and measures here,
+      as 7.11's list does. **No migration:** the reads are `games`, `venues` and `competitions` (and
+      `leagues.timezone`, 0172). Times are the arena's own (the league's zone, "local time" where it is not the
+      fan's; 00:00 there is "time to be confirmed"). **A pin nobody has checked is counted, never placed** (58
+      arenas carry a pin note today, some a country out - a Japanese arena pinned to Wembley): the count line
+      says how many games that hides. The privacy notice's three location answers now name the page, passport
+      mode, and what the map is (en/ja/es). Words: 41 in the `go` pack plus the rail's and the bar's, ja and es.
+      Chromium: 16 checks (granted location, a card, the map, the preview, windows, passport, the phone, no
+      location), ja and es harvested (only names and Spanish dates left); `go-page.test.mjs`: 128.

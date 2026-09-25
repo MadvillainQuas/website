@@ -636,7 +636,9 @@
     platformRow('▦', 'feed', 'go/photos/', /\/epinoia\/go\/photos\//,
                 'THE FEED: the fans’ photographs of the games they stamped'),
     platformRow('▣', 'your stamps', 'go/stamps/', /\/epinoia\/go\/stamps\//,
-                'your stamps: every game, the map, and the distance between them'));
+                'your stamps: every game, the map, and the distance between them'),
+    platformRow('⌖', 'find a game', 'go/nearby/', /\/epinoia\/go\/nearby\//,
+                'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)'));
   goPanel.append(gohead, golist);
 
   /* ---- root panel: the title, then the leagues ---- */
@@ -1451,6 +1453,7 @@
     { key: 'go',      ic: '◎', tx: 'home',    href: 'go/',        on: () => /\/epinoia\/go\/$/.test(here) },
     { key: 'feed',    ic: '▦', tx: 'feed',    href: 'go/photos/', on: () => /\/epinoia\/go\/photos\//.test(here) },
     { key: 'stamps',  ic: '▣', tx: 'stamps',  href: 'go/stamps/', on: () => /\/epinoia\/go\/stamps\//.test(here) },
+    { key: 'nearby',  ic: '⌖', tx: 'find',    href: 'go/nearby/', on: () => /\/epinoia\/go\/nearby\//.test(here) },
     { key: 'profile', ic: '☆', tx: 'profile', href: 'me/',        on: () => false }
   ];
   function paintPlatformTabs() {

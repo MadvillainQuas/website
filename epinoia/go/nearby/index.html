@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- EPINOIA GO's FIND A GAME (docs/epinoia-go.md 7.13): the games nearest the fan in a time window the fan sets,
+     a strip of them with the distance, the day and the time; a card opens the arena on Google's map with the
+     game's short preview underneath. PASSPORT MODE stands the fan somewhere else and the games follow.
+     The fan's location is measured against the list ON THE PHONE and goes nowhere; passport mode's place is kept
+     for this visit only. Behaviour in nearby.js. The map is the one place this page frames another site
+     (frame-src), and only once a game has been opened. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.google.com">
+<title>Find a game · EPINOIA GO · Epinoia</title>
+<meta name="description" content="The games nearest you, or nearest anywhere you are headed: distance, day and time, the arena on the map and a short preview.">
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
+<script src="../../appmode.js?v=403"></script>
+<script src="../../i18n.js?v=403" data-i18n-packs="go game report"></script>
+<script src="../../glyphs.js?v=403" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=403">
+<link rel="stylesheet" href="../../kit/nav.css?v=403">
+<link rel="stylesheet" href="../go.css?v=403">
+<link rel="stylesheet" href="nearby.css?v=403">
+</head>
+<body>
+<div class="ep-frame go" id="goNearbyPage">
+  <header class="go-hero sm">
+    <div class="go-hero-bg" aria-hidden="true"></div>
+    <a class="plain" href="../"><span class="go-logo hero sm" role="img" aria-label="EPINOIA GO" translate="no" data-i18n="off"><span class="gl-ep" aria-hidden="true">EPINOIΛ</span><span class="gl-go" aria-hidden="true">GO</span></span></a>
+    <h1 class="go-h1">Find a game</h1>
+    <a class="go-back" href="../">‹ back to EPINOIA GO</a>
+  </header>
+
+  <main class="go-main">
+    <section class="gb" aria-labelledby="nbWhereH">
+      <div class="gb-hdr"><span class="gb-idx">01</span><h2 class="gb-title" id="nbWhereH">Where are you?</h2>
+        <p class="gb-sub">Your phone says where you are and the games are measured on it: your location is not sent anywhere. Or go on passport mode and stand somewhere else.</p></div>
+      <div class="nb-where" id="nbWhere">
+        <div class="nb-here" id="nbHere" role="status" aria-live="polite"></div>
+        <div class="nb-actions">
+          <button type="button" class="ep-btn pri" id="nbLocate"><span aria-hidden="true">◎</span> Use my location</button>
+          <button type="button" class="ep-btn nb-passport" id="nbPassport" aria-pressed="false" aria-controls="nbPlaces"><span aria-hidden="true">✈</span> Passport mode</button>
+        </div>
+        <div class="nb-places hide" id="nbPlaces">
+          <label class="nb-search"><span class="nb-lab">Go to a city, a country or an arena</span>
+            <input type="search" id="nbQuery" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="nbList" aria-autocomplete="list"></label>
+          <ul class="nb-list" id="nbList" role="listbox" aria-label="Places"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="gb" aria-labelledby="nbGamesH">
+      <div class="gb-hdr"><span class="gb-idx">02</span><h2 class="gb-title" id="nbGamesH">Games near you</h2>
+        <p class="gb-sub" id="nbSub">Nearest first, with the distance, the day and the time.</p></div>
+      <div class="nb-when" id="nbWhen" role="radiogroup" aria-label="How far ahead"></div>
+      <div class="nb-count" id="nbCount" role="status" aria-live="polite"></div>
+      <div class="go-strip nb-strip hide" id="nbStrip"></div>
+      <div class="nb-detail hide" id="nbDetail" aria-live="polite"></div>
+    </section>
+
+    <footer class="go-foot">Epinoia Network</footer>
+  </main>
+</div>
+<script src="../../config.js?v=403" defer></script>
+<script src="../../access.js?v=403" defer></script>
+<script src="../../season.js?v=403" defer></script>
+<script src="../../bpm.js?v=403" defer></script>
+<script src="../../data.js?v=403" defer></script>
+<script src="../../game/preview.js?v=403" defer></script>
+<script src="../logo.js?v=403" defer></script>
+<script src="nearby.js?v=403" defer></script>
+<script src="../../nav.js?v=403" defer></script>
+</body>
+</html>
