@@ -124,8 +124,8 @@ ok('on the stamps page, under the counts; drawn again when the leagues\' counts 
 console.log('\nthe words');
 for (const code of ['ja', 'es']) {
   const src = rd('epinoia', 'i18n', code, 'go.js');
-  const words = ['travelled', 'Leaderboard', 'Distance', 'Venues', ...G.BY.map(b => b.d), 'Put yourself on the leaderboards',
-                 'I am 18 or over', 'put me on', 'take me off', 'You are on the leaderboards', 'Tick the box to confirm you are 18 or over.',
+  const words = ['travelled', 'Leaderboard', 'Distance', 'Venues', ...G.BY.map(b => b.d), 'go public',
+                 'I am 18 or over', 'go private', 'show my stamps', 'take me off', 'You are on the leaderboards', 'Tick the box to confirm you are 18 or over.',
                  'Nobody is on this board yet. Stamp an arena and put yourself on it.', 'Arenas in this league',
                  'Badges', 'first stamp', 'every arena', 'So far', 'The map', 'Every game', 'Zoom in', 'Zoom out', 'Show every arena',
                  'Your map fills in as you stamp arenas.'];

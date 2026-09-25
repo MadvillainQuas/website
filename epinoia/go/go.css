@@ -259,7 +259,7 @@ html.go-pop-sheet .ep-bell{visibility:hidden}          /* the bell floats over e
   background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.72));transition:opacity .6s}
 .feed-card .cap b{display:block;font-weight:700}
 .feed-card .cap span{opacity:.8;font-size:11.5px}
-.feed.empty .feed-card{opacity:.32;background:transparent;border:1.5px dashed var(--ink-3)}
+.feed.empty .feed-card,.feed-card.spare{opacity:.32;background:transparent;border:1.5px dashed var(--ink-3)}
 .feed-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;pointer-events:none}
 .feed-empty p{margin:0;font-family:var(--f-score);font-size:clamp(20px,3vw,34px);line-height:1.05;letter-spacing:.04em;
   text-transform:uppercase;color:var(--ink);max-width:26ch;text-wrap:balance;text-shadow:0 0 18px var(--ground),0 0 6px var(--ground)}

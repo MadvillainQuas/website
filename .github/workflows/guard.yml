@@ -337,6 +337,13 @@ jobs:
         # on a roster, only 18 or over; three reports take one down; every refusal in words; ja/es
         run: node supabase/tests/go-photos.test.mjs
 
+      - name: EPINOIA GO's feed of stamps, and going public in one tap (migration 0177)
+        # a fan's stamps are shown only by their own choice, never because they joined the leaderboards before;
+        # one call turns on both, needing a username and 18 or over; the feed is the photographs, then the stamps
+        # of the fans who chose, a stamp with a photograph shown once; no account id, note or location in a row;
+        # the day and hour on the league's clock; the card's tap, its order of calls and its fall-back; ja/es
+        run: node supabase/tests/go-public.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the

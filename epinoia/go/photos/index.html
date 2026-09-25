@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="../../kit/epinoia-kit.css?v=417">
 <link rel="stylesheet" href="../../kit/nav.css?v=417">
 <link rel="stylesheet" href="../look.css?v=417">
+<link rel="stylesheet" href="../stampcard.css?v=417">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .gp{overflow-x:clip}
@@ -58,6 +59,9 @@
     background:rgba(4,16,11,.6);padding:2px 6px}
   @media (hover:none){ .gp-tile .cap{opacity:1} }
   @media (prefers-reduced-motion:reduce){ .gp-tile img{transition:none} }
+  /* a stamp: a card two tiles wide (stampcard.css) */
+  .gp-sc{grid-column:span 2;aspect-ratio:3/2}
+  .gp-sep{grid-column:1 / -1;padding:calc(var(--u)*1.5) 0 2px;font-family:var(--f-go);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
   .gp-more{display:flex;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*3)}
   .gp-empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-ui);font-size:15px;line-height:1.6}
   .gp-empty a{color:inherit}
@@ -105,7 +109,8 @@
     <a href="../" class="plain gp-brand"><span class="go-logo head" role="img" aria-label="EPINOIA GO" translate="no" data-i18n="off"><span class="gl-ep" aria-hidden="true">EPINOIΛ</span><span class="gl-go" aria-hidden="true">GO</span></span></a>
   </div>
   <div class="ep-hdr"><span class="idx">03</span><h2 id="gpTitle" data-i18n-ctx="gofeed">The feed</h2></div>
-  <p class="gp-lede">The fans’ photographs of the games they stamped. A person looks at every one before it goes up.</p>
+  <p class="gp-lede">Photographs of stamped games first, then the stamps of fans who chose to show them. A person looks at every photograph before it goes up.</p>
+  <div id="gpJoin"></div>
 
   <div class="gp-bar">
     <div class="ep-tabs" id="gpSort" role="group" aria-label="Order"></div>
@@ -131,6 +136,8 @@
 <script src="../../config.js?v=417" defer></script>
 <script src="../../access.js?v=417" defer></script>
 <script src="../look.js?v=417" defer></script>
+<script src="../public.js?v=417" defer></script>
+<script src="../stampcard.js?v=417" defer></script>
 <script src="photos.js?v=417" defer></script>
 <script src="../logo.js?v=417" defer></script>
 <script src="../../nav.js?v=417" defer></script>

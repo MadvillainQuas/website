@@ -1000,8 +1000,15 @@ async function removePhoto(p, btn) {
 /* ------------------------------------------------ arenas still to tick off --- */
 
 let feedP = null;
+const isPhoto = x => !!x && x.kind !== 'stamp';
+/* THE FEED'S ROWS (0177): the photographs first, then the stamps of the fans who chose to show them. Before 0177 is
+   pushed the photographs alone, as before. */
 function feedRows() {
-  if (!feedP) feedP = rpc('go_photos_feed', { p_limit: 60 }).then(r => (Array.isArray(r.data) ? r.data : []));
+  if (!feedP) {
+    feedP = rpc('go_feed', { p_limit: 60 })
+      .then(r => (r.missing ? rpc('go_photos_feed', { p_limit: 60 }) : r))
+      .then(r => (Array.isArray(r.data) ? r.data : []).map(x => (x.kind ? x : Object.assign({ kind: 'photo' }, x))));
+  }
   return feedP;
 }
 
@@ -1122,7 +1129,7 @@ async function drawStrip() {
     return;
   }
   const photos = new Map();
-  (await feedRows()).forEach(p => { if (p.venue_id && !photos.has(p.venue_id)) photos.set(p.venue_id, publicUrl(p.thumb_path)); });
+  (await feedRows()).forEach(p => { if (isPhoto(p) && p.thumb_path && p.venue_id && !photos.has(p.venue_id)) photos.set(p.venue_id, publicUrl(p.thumb_path)); });
   mountStrip(host, list, photos);
 }
 
@@ -1336,62 +1343,33 @@ async function loadBoard() {
   });
 }
 
-/* being on the leaderboard (D6): a choice, with a username and 18 or over confirmed */
-function drawPublic(msg) {
-  const host = $('#goPublic');
-  if (!host) return;
-  host.textContent = '';
-  const st = S.settings;
-  if (!st) return;                                        // signed out, or 0166 not pushed yet
-  const c = host.appendChild(el('div', 'go-me go-pub'));
-  const t = c.appendChild(el('div'));
-  if (st.public) {
-    t.appendChild(el('b', null, 'You are on the leaderboards'));
-    const who = t.appendChild(el('span'));
-    who.appendChild(el('span', null, 'Your username'));
-    who.appendChild(document.createTextNode(': '));
-    who.appendChild(data('b', 'go-at', '@' + (st.username || S.username || '')));
-    const off = c.appendChild(el('button', 'ep-btn', 'take me off'));
-    off.type = 'button';
-    off.addEventListener('click', () => setPublic(false, false, off));
-  } else if (!st.username && !S.username) {
-    t.appendChild(el('b', null, 'The leaderboards'));
-    t.appendChild(el('span', null, 'To be on them, choose a username first. It is how they will show you.'));
-    const a = c.appendChild(el('a', 'ep-btn', 'choose one'));
-    a.href = '../me/#username';
-  } else {
-    t.appendChild(el('b', null, 'Put yourself on the leaderboards'));
-    t.appendChild(el('span', null, 'They show your username and your numbers, never your email or which arenas. You can come off at any time.'));
-    let tick = null;
-    if (!st.adult) {
-      const lab = t.appendChild(el('label', 'go-adult'));
-      tick = lab.appendChild(el('input'));
-      tick.type = 'checkbox';
-      lab.appendChild(el('span', null, 'I am 18 or over'));
-    }
-    const on = c.appendChild(el('button', 'ep-btn pri', 'put me on'));
-    on.type = 'button';
-    on.addEventListener('click', () => setPublic(true, tick ? tick.checked : true, on));
-  }
-  if (msg) c.appendChild(el('div', 'go-pub-msg', msg));
+/* GOING PUBLIC (D6, 0177): one tap - the leaderboards and the stamps on the feed - with a username and 18 or over
+   as the only conditions. public.js draws it (a card here and on the stamps page, a strip beside the feed and after a
+   stamp); this hands it the page's rpc and redraws everything that depends on the choice when it changes. */
+function publicOpts(host) {
+  const st = Object.assign({}, S.settings, { username: (S.settings && S.settings.username) || S.username || null });
+  return { rpc, settings: st, variant: host.getAttribute('data-go-public') === 'strip' ? 'strip' : 'card',
+           ready: async () => { S.session = await session(); }, changed: publicChanged, homeHref: '#goPublic' };
 }
 
-async function setPublic(on, adult, btn) {
-  btn.disabled = true;
-  S.session = await session();
-  const r = await rpc('set_go_public', { p_public: on, p_adult: !!adult });
-  btn.disabled = false;
-  if (r.missing || r.error || !r.data) return drawPublic('It did not save. Try again in a moment.');
-  if (!r.data.ok) {
-    return drawPublic({ adult: 'Tick the box to confirm you are 18 or over.',
-                        username: 'Choose a username first.', signed_out: 'Sign in first.' }[r.data.reason] ||
-                      'It did not save. Try again in a moment.');
-  }
-  const [ranks, settings] = await Promise.all([rpc('go_my_numbers'), rpc('go_my_settings')]);
+function drawPublic(msg) {
+  const P = window.EpinoiaGoPublic;
+  document.querySelectorAll('[data-go-public]').forEach(host => {
+    host.textContent = '';
+    if (P && S.settings) P.mount(host, publicOpts(host), msg);
+  });
+}
+
+/* the choice changed: the numbers, the boards and the feed follow it (the fan's own stamps join the feed) */
+async function publicChanged(st) {
+  S.settings = st;
+  const ranks = await rpc('go_my_numbers');
   S.ranks = Array.isArray(ranks.data) ? ranks.data : S.ranks;
-  S.settings = settings.data || S.settings;
+  drawMine();
   drawPublic();
   loadBoard();
+  feedP = null;
+  loadFeed();
 }
 
 /* -------------------------------------------------------------- the feed --- */
@@ -1434,8 +1412,13 @@ function feedCard(p) {
   };
 }
 
-/* TWO ROWS OF THE FANS' PHOTOGRAPHS, one changing every few seconds. None yet: the frames stay, faded,
-   with the invitation over them. */
+/* A STAMP AS A TILE: the find-a-game cards' look (stampcard.js), into that fan's page on the wall */
+function stampTile(q) {
+  return window.EpinoiaGoStampCard.build(q, { href: 'photos/?u=' + encodeURIComponent(q.username || ''), cls: 'feed-card' });
+}
+
+/* TWO ROWS OF THE FEED: the fans' photographs first, one changing every few seconds, and after them the stamps of the
+   fans who chose to show them. None yet: the frames stay, faded, with the invitation over them. */
 function drawFeed(rows) {
   const host = $('#goFeed');
   host.textContent = '';
@@ -1449,11 +1432,26 @@ function drawFeed(rows) {
     return;
   }
   host.classList.remove('empty');
-  let next = 0;
-  const take = () => rows[next++ % rows.length];
-  const cards = [];
-  for (let i = 0; i < FEED_N; i++) { const c = feedCard(take()); grid.appendChild(c.el); cards.push(c); }
-  if (rows.length <= 1 || reduced()) return;
+  const photos = rows.filter(isPhoto), stamps = window.EpinoiaGoStampCard ? rows.filter(x => !isPhoto(x)) : [];
+  const cards = [];                                       // the photograph cards: the ones that swap
+  let take;
+  if (!stamps.length) {
+    /* photographs alone: ten cards, going round them when there are fewer */
+    let next = 0;
+    take = () => photos[next++ % photos.length];
+    for (let i = 0; i < FEED_N; i++) { const c = feedCard(take()); grid.appendChild(c.el); cards.push(c); }
+  } else {
+    /* photographs, then stamps to fill the rest; a frame left over is faded, not a repeat */
+    const shown = photos.concat(stamps).slice(0, FEED_N);
+    shown.forEach(x => {
+      if (isPhoto(x)) { const c = feedCard(x); grid.appendChild(c.el); cards.push(c); } else grid.appendChild(stampTile(x));
+    });
+    for (let i = shown.length; i < FEED_N; i++) grid.appendChild(el('div', 'feed-card spare')).setAttribute('aria-hidden', 'true');
+    const rest = photos.slice(cards.length);
+    let next = 0;
+    take = rest.length ? () => rest[next++ % rest.length] : null;
+  }
+  if (!take || cards.length < 1 || photos.length <= 1 || reduced()) return;
   S.feedTimer = setInterval(() => {
     if (document.hidden) return;
     cards[Math.floor(Math.random() * cards.length)].swap(take());
@@ -1559,7 +1557,7 @@ function showStamped(r) {
 function afterStamp(gameId) {
   const x = (S.mine || []).find(s => s.game_id === gameId);
   const host = $('#goSay');
-  if (!x || !host || (!S.noteOk && !S.photos)) return;
+  if (!x || !host) return;
   const box = host.appendChild(el('div', 'go-after'));
   if (S.noteOk) {
     box.appendChild(el('h3', null, 'A note about the occasion'));
@@ -1569,6 +1567,11 @@ function afterStamp(gameId) {
     box.appendChild(el('h3', null, 'A photograph of the game'));
     photoForm(box, x);
   }
+  // a fan who is not public yet is asked once, here, where the stamp is fresh: one tap
+  const ask = box.appendChild(el('div'));
+  ask.setAttribute('data-go-public', 'strip');
+  drawPublic();
+  if (!box.textContent && !box.querySelector('.gpub')) box.remove();
 }
 
 async function stamp(g, btn) {

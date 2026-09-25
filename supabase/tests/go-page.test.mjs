@@ -95,7 +95,8 @@ ok('a stamp is the fan\'s to take back: by its id, asked to show what went (a re
 
 console.log('\nthe page');
 ok('before 0165: EPINOIA GO opens soon, nothing that cannot work', /if \(games === 'missing'\) return closed\(\)/.test(js) && /EPINOIA GO opens soon\./.test(html));
-ok('a fan with no username is sent to the profile\'s username section', /a\.href = '\.\.\/me\/#username'/.test(js));
+ok('a fan with no username chooses one in the card itself (public.js), not on the profile page',
+   /input\.placeholder = 'username'/.test(rd('epinoia', 'go', 'public.js')) && /rpc\('set_username', \{ p: v \}\)/.test(rd('epinoia', 'go', 'public.js')));
 ok('signed out: a sign-in that comes back here', /S\.access\.signinHref\(\)/.test(js));
 ok('names are data: never translated', /data\('div', 'm', \(g\.home \|\| '—'\) \+ ' v ' \+ \(g\.away \|\| '—'\)\)/.test(js)
    && /<h1 id="goTitle"><span class="go-logo hero" role="img" aria-label="EPINOIA GO" translate="no" data-i18n="off">/.test(html));
@@ -168,7 +169,7 @@ ok('the country: the one picked before, then the clubs followed, the stamps, the
    && guess({ tz: 'America/Chicago', lang: 'en-GB' }) === 'GB' && guess({ stored: 'US', tz: 'Europe/Paris' }) === 'FI');
 ok('the feed: two rows of the fans\' photographs changing one at a time; with none, the outlines and the call',
    /const FEED_N = 10;/.test(js) && /'Prove your fandom — attend games, file them, take snaps!'/.test(js)
-   && /\.feed\.empty \.feed-card\{opacity:\.32;/.test(css) && /if \(document\.hidden\) return;/.test(js));
+   && /\.feed\.empty \.feed-card,\.feed-card\.spare\{opacity:\.32;/.test(css) && /if \(document\.hidden\) return;/.test(js));
 ok('...a small button to add yours, and one to the whole wall',
    /<a class="go-small fill" href="stamps\/#goListH">add yours<\/a><a class="go-small" href="photos\/">see the full feed<\/a>/.test(html));
 
@@ -195,7 +196,7 @@ const sp = rd('epinoia', 'go', 'stamps', 'index.html');
 ok('the numbers and badges, the map, every game with the distance from the one before, and the photographs',
    ['goTally', 'goBadges', 'goBigMap', 'goStampList', 'goPhotos'].map(id => sp.indexOf('id="' + id + '"')).every((v, i, a) => v > 0 && (!i || v > a[i - 1])));
 ok('...its own page to the page\'s script (go.js knows it by #goStampsPage), with the map\'s',
-   /<div class="ep-frame go" id="goStampsPage">/.test(sp) && /<script src="\.\.\/map\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\.js\?v=\d+" defer><\/script>/.test(sp)
+   /<div class="ep-frame go" id="goStampsPage">/.test(sp) && /<script src="\.\.\/map\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/public\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\.js\?v=\d+" defer><\/script>/.test(sp)
    && /const onStampsPage = \(\) => !!document\.getElementById\('goStampsPage'\)/.test(js));
 ok('...signed out (7.14): the page as it is with no stamps, under a sign-in banner - not a wall',
    /S\.mine = null;\s*drawPassport\(\);/.test(js) && !/body\.classList\.add\('hide'\)/.test(js) && !/signInCard\(out\)/.test(js));

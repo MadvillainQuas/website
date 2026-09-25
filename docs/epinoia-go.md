@@ -351,3 +351,34 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       with none. The club's page does the same for the arena its home venue is linked to even when the club typed a
       name of its own, with the arena's Google place on "Open in Maps" and "Directions". (GO's cards and the
       find-a-game page already did.) `arena-links.test.mjs`: 20. No migration.
+- [x] **7.16 THE FEED is everybody's stamps, and going public is one tap** (Louie, 2026-09-25; migration 0177) - the
+      feed was the fans' photographs and a stamp was private; it is now **every stamp a fan chose to show,
+      photographs first**, and the choice to show them is as small as it can be, as the ground for a public profile.
+      **What is on it.** The approved photographs (a fan chose to post each), then the stamps of fans who are public,
+      show their stamps and are 18 or over, newest first; a stamp with an approved photograph is the photograph, shown
+      once. A stamp shows the username, the game, the arena and the date: never the note (private, 0168), never the
+      email, never an account id. A youth league's stamps are never shown (`leagues.go_photos`, 0167) and a private
+      league's only to those who may see it. `go_feed()` (public, paged by offset, filters as the wall's: league,
+      arena, game, fan) reads it; the GO page's feed, the wall (`go/photos/`) and later a profile all use it.
+      **Why a new switch, not the leaderboard's.** A fan who joined the leaderboards was told they show "never which
+      arenas" (0166), so nobody's stamps are shown because of that choice: `go_settings.stamps_public` is its own
+      switch, off unless chosen, and needs `public` (a check constraint). Fans already on the leaderboards are asked
+      once, on the card and in the strip: "Show your stamps on the feed too?" - `set_go_public` still works as it
+      did (on = leaderboards only; off = both off). The privacy notice's "The leaderboards" is now **Going public**
+      and says all of this.
+      **One tap.** `go/public.js` draws it, in two shapes: a **card** (the leaderboard section of the GO page and the
+      top of the stamps page: what going public shows, and what it is now) and a **strip** (one line under the feed,
+      above the wall, and after a fresh stamp - drawn only for a fan who is not public yet). The button says "I am 18
+      or over · go public" until the fan has confirmed once (the tap is the confirmation; then just "go public"). A fan
+      with no username types one in the card and it is saved first, then `set_go_profile(true, true)` turns on both,
+      so the whole opt-in is one tap. Off is one tap and both go off. Before 0177 is pushed `set_go_profile` is not
+      there: the same tap falls back to `set_go_public` (leaderboards only) and no question about stamps is asked.
+      **The stamp card** (`go/stampcard.js`, `stampcard.css`) is the find-a-game cards' look - the home club's colour
+      into the away club's, both crests, the home crest as the watermark, "Home v Away" big, the day and hour on the
+      league's clock (`leagues.timezone`, 0172), the arena and town - with "stamped by @user"; narrow cards (five to
+      a row on the home page) drop the words and keep the @name; a game removed later leaves the arena and the day.
+      On the GO page the feed is photographs then stamp cards, then faded frames (never repeats) - only the
+      photographs swap; on the wall a stamp is a card two tiles wide under a divider ("Stamps without a photograph")
+      and opens that fan's page there (`?u=`), which is where a public profile will grow. Ja/es for all of it.
+      **To apply:** `npx supabase@latest db push` for 0177 (the client works before it, as it was); the feed then fills
+      as fans go public. Real Postgres (PGlite): 45 checks; Chromium: 40; `go-public.test.mjs`: 70.

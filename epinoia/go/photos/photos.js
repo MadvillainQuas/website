@@ -1,11 +1,12 @@
 'use strict';
 /* ============================================================================
-   GAMES BEEN TO - the fans' photographs of the games they stamped (EPINOIA GO phase 5, migration 0167).
+   THE FEED - the fans' photographs of the games they stamped (EPINOIA GO phase 5, migration 0167), and after
+   them the stamps of the fans who chose to show them (migration 0177).
 
    A wall of square tiles, browsed the way a collection is: newest or most liked, one league, one fan, one
-   arena or one game (?u= ?v= ?g=), a page more at a time. A tile opens the photograph whole, with who
+   arena or one game (?u= ?v= ?g=), a page more at a time. A photograph's tile opens it whole, with who
    took it and where, a like, a report, and the ways into more of the same game, arena or fan; ?p=<id>
-   opens one by its link.
+   opens one by its link. A stamp's tile is words - who was where, at which game - and opens that fan's page.
 
    Everything on the wall was approved by a person first (D7). Public files are named for the photograph,
    never for its fan (0167), so nothing here ties a username to an account.
@@ -50,7 +51,8 @@ function writeParams(f) {
 
 /* ---------------------------------------------------------------- page --- */
 
-const S = { cfg: null, access: null, session: null, f: null, rows: [], done: false, leagues: [], open: -1, venueName: null, gameName: null };
+const S = { cfg: null, access: null, session: null, f: null, rows: [], done: false, leagues: [], open: -1, venueName: null, gameName: null,
+            legacy: false, sep: false, settings: null };
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const data = (t, c, x) => { const n = el(t, c, x); n.setAttribute('translate', 'no'); return n; };
@@ -87,7 +89,7 @@ function say(msg) {
 function go(f, keepRows) {
   S.f = Object.assign({}, f, { photo: null });
   history.replaceState(null, '', location.pathname + writeParams(S.f));
-  if (!keepRows) { S.rows = []; S.done = false; }
+  if (!keepRows) { S.rows = []; S.done = false; S.sep = false; }
   drawBar();
   load();
 }
@@ -127,30 +129,59 @@ function drawBar() {
 async function load() {
   const w = $('#gpWall');
   w.setAttribute('aria-busy', 'true');
-  const last = S.rows[S.rows.length - 1];
-  const r = await rpc('go_photos_feed', {
-    p_league: S.f.league, p_venue: S.f.venue, p_game: S.f.game, p_username: S.f.username, p_sort: S.f.sort,
-    p_before: S.f.sort === 'new' && last ? last.created_at : null,
-    p_offset: S.f.sort === 'liked' ? S.rows.length : 0, p_limit: PAGE });
+  const ask = { p_league: S.f.league, p_venue: S.f.venue, p_game: S.f.game, p_username: S.f.username, p_sort: S.f.sort };
+  let r = S.legacy ? { missing: true } : await rpc('go_feed', Object.assign({ p_offset: S.rows.length, p_limit: PAGE }, ask));
+  if (r.missing) {
+    // before 0177 is pushed: the photographs alone, paged the way they were
+    S.legacy = true;
+    const last = S.rows[S.rows.length - 1];
+    r = await rpc('go_photos_feed', Object.assign({ p_before: S.f.sort === 'new' && last ? last.created_at : null,
+      p_offset: S.f.sort === 'liked' ? S.rows.length : 0, p_limit: PAGE }, ask));
+  }
   if (r.missing) { say('The feed opens soon.'); $('#gpMore').classList.add('hide'); return; }
-  const rows = Array.isArray(r.data) ? r.data : [];
+  const got = (Array.isArray(r.data) ? r.data : []).map(x => (x.kind ? x : Object.assign({ kind: 'photo' }, x)));
+  // a row added while the wall is open moves the pages along by one: never show the same one twice
+  const seen = new Set(S.rows.map(rowKey));
+  const rows = got.filter(x => !seen.has(rowKey(x)));
   if (!S.rows.length) w.textContent = '';
+  const base = S.rows.length;
   S.rows = S.rows.concat(rows);
-  S.done = rows.length < PAGE;
+  S.done = got.length < PAGE;
   if (S.f.venue && rows[0]) S.venueName = rows[0].venue;
   if (S.f.game && rows[0]) S.gameName = (rows[0].home || '—') + ' v ' + (rows[0].away || '—');
   drawBar();
   if (!S.rows.length) {
-    const e = say('No photographs here yet. Stamp a game on EPINOIA GO and add yours.');
+    const e = say('Nothing here yet. Stamp a game on EPINOIA GO and add yours.');
     e.textContent = '';
-    e.appendChild(el('span', null, 'No photographs here yet.'));
+    e.appendChild(el('span', null, 'Nothing here yet.'));
     e.appendChild(document.createTextNode(' '));
     const a = e.appendChild(el('a', null, 'Stamp a game on EPINOIA GO and add yours.'));
     a.href = '../';
   }
-  rows.forEach((x, i) => w.appendChild(tile(x, S.rows.length - rows.length + i)));
+  rows.forEach((x, i) => {
+    if (!isPhoto(x) && !window.EpinoiaGoStampCard) return;
+    if (!isPhoto(x) && !S.sep) {
+      S.sep = true;
+      w.appendChild(el('div', 'gp-sep', 'Stamps without a photograph'));
+    }
+    w.appendChild(isPhoto(x) ? tile(x, base + i) : stampTile(x));
+  });
   w.setAttribute('aria-busy', 'false');
   $('#gpMore').classList.toggle('hide', S.done || !S.rows.length);
+}
+
+const isPhoto = x => !!x && x.kind !== 'stamp';
+const rowKey = x => (isPhoto(x) ? 'p' : 's') + x.id;
+/* the next photograph in a direction: the wall's stamps have no whole view to step through */
+function photoAt(i, dir) {
+  for (let k = i + dir; k >= 0 && k < S.rows.length; k += dir) if (isPhoto(S.rows[k])) return k;
+  return -1;
+}
+
+/* A STAMP: the find-a-game cards' look (stampcard.js), two tiles wide, into that fan's page on the wall */
+function stampTile(x) {
+  const f = { sort: S.f.sort, username: x.username };
+  return window.EpinoiaGoStampCard.build(x, { href: location.pathname + writeParams(f), cls: 'gp-sc', onOpen: () => go(f) });
 }
 
 function tile(x, i) {
@@ -203,8 +234,8 @@ function view(i, row) {
   rep.addEventListener('click', () => report(x));
   const note = info.appendChild(el('div', 'gp-say'));
   note.id = 'gpNote';
-  $('#gpPrev').classList.toggle('hide', S.open <= 0);
-  $('#gpNext').classList.toggle('hide', S.open < 0 || S.open >= S.rows.length - 1);
+  $('#gpPrev').classList.toggle('hide', S.open < 0 || photoAt(S.open, -1) < 0);
+  $('#gpNext').classList.toggle('hide', S.open < 0 || photoAt(S.open, 1) < 0);
   v.classList.add('on');
   document.body.style.overflow = 'hidden';
   history.replaceState(null, '', location.pathname + writeParams(Object.assign({}, S.f, { photo: x.id })));
@@ -241,6 +272,18 @@ async function report(x) {
   n.textContent = r.data && r.data.ok ? 'Thank you. A person will look at it.' : 'That did not go through. Try again in a moment.';
 }
 
+/* a signed-in fan who is not public yet is asked, once, in a line above the wall: one tap (public.js) */
+async function drawJoin() {
+  const host = $('#gpJoin'), P = window.EpinoiaGoPublic;
+  if (!host || !P || !S.session) return;
+  const st = await rpc('go_my_settings');
+  S.settings = st.data && !st.missing ? st.data : null;
+  if (!S.settings) return;
+  P.mount(host, { rpc, settings: S.settings, variant: 'strip', homeHref: '../#goPublic',
+    ready: async () => { S.session = await session(); },
+    changed: s => { S.settings = s; go(S.f); } });
+}
+
 async function boot() {
   S.cfg = window.EPINOIA_CONFIG;
   S.access = window.EpinoiaAccess || null;
@@ -251,18 +294,19 @@ async function boot() {
   $('#gpMore').addEventListener('click', load);
   $('#gpClose').addEventListener('click', close);
   $('#gpView').addEventListener('click', e => { if (e.target.id === 'gpView' || e.target.tagName === 'FIGURE') close(); });
-  $('#gpPrev').addEventListener('click', () => view(S.open - 1));
-  $('#gpNext').addEventListener('click', () => view(S.open + 1));
+  $('#gpPrev').addEventListener('click', () => { const k = photoAt(S.open, -1); if (k >= 0) view(k); });
+  $('#gpNext').addEventListener('click', () => { const k = photoAt(S.open, 1); if (k >= 0) view(k); });
   document.addEventListener('keydown', e => {
     if (!$('#gpView').classList.contains('on')) return;
     if (e.key === 'Escape') close();
-    else if (e.key === 'ArrowLeft' && S.open > 0) view(S.open - 1);
-    else if (e.key === 'ArrowRight' && S.open >= 0 && S.open < S.rows.length - 1) view(S.open + 1);
+    else if (e.key === 'ArrowLeft' && S.open >= 0 && photoAt(S.open, -1) >= 0) view(photoAt(S.open, -1));
+    else if (e.key === 'ArrowRight' && S.open >= 0 && photoAt(S.open, 1) >= 0) view(photoAt(S.open, 1));
   });
   const lg = await rpc('go_leagues');
   S.leagues = Array.isArray(lg.data) ? lg.data : [];
   const first = S.f.photo;
   drawBar();
+  drawJoin();
   await load();
   if (first) {
     const r = await rpc('go_photo', { p_photo: first });
@@ -273,5 +317,5 @@ async function boot() {
   }
 }
 
-return { boot, publicUrl, readParams, writeParams, PAGE };
+return { boot, publicUrl, readParams, writeParams, PAGE, rowKey };
 }));
