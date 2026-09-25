@@ -401,7 +401,10 @@
       'Advanced stats are for members': 'Las estadísticas avanzadas son para socios',
       'Full stats: the four factors, shooting by zone and every advanced rate, player by player.': 'Estadísticas completas: los cuatro factores, el tiro por zonas y cada índice avanzado, jugador por jugador.',
       'Lineups: every five that played, with their minutes, points and net rating.': 'Quintetos: cada quinteto que jugó, con sus minutos, puntos y valoración neta.',
-      'loading the play-by-play…': 'Cargando el minuto a minuto…'
+      'loading the play-by-play…': 'Cargando el minuto a minuto…',
+      'The charts beneath use these same minutes: move one up to read it against the rotations.': 'Los gráficos de abajo usan estos mismos minutos: sube uno para leerlo junto a las rotaciones.',
+      'Move up': 'Subir',
+      'Move down': 'Bajar'
     },
 
     ctx: {

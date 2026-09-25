@@ -45,6 +45,18 @@
    out to a whole number of steps either side of zero, and the step widens until
    there are at most a dozen lines.
 
+   THE CHARTS SHARE THE ROTATIONS' TIME AXIS. Rotations is the first card after the
+   runs, and Scoring Development, EPA, Scoring Battle and PPP follow it in one tight
+   stack. All of them draw on the same axis: the whole game, from the tip to the last
+   period's buzzer, laid across the same columns the rotations grid uses (a label
+   gutter --gf-lw to the left, then the cells to the edge), so a moment is the same
+   distance across whichever card you look at - a run in the margin sits over the five
+   who were out there for it. Pointing at any of them draws a line through all of them and the
+   rotations at that moment and names the game clock, the score and both five on the floor (a tap
+   does the same on a phone). Each chart in the stack has move up / move down buttons,
+   so the one being read can be brought up against the rotations; the order is kept in
+   the browser. On a phone the cards scroll sideways together.
+
    Everything is rebuilt from window.S whenever the log changes (game.js's body
    key), so a live game's charts move with it. The interaction — hovering or
    tapping a run lights it in both the strip and the list beneath — is one
@@ -103,6 +115,9 @@ function compute(S) {
   const R = [run0(), run0()];
   const starters = (S && S.starters) || [[], []];
   const onCourt = [[...(starters[0] || [])], [...(starters[1] || [])]];
+  /* who was on the floor, from the tip and after every substitution (names, for the hover): the last entry at or
+     before a moment is the five each side had then */
+  const lineups = [{ sec: 0, on: [onCourt[0].map(fullName), onCourt[1].map(fullName)] }];
 
   const points = [];
   const playerRuns = [];
@@ -156,6 +171,7 @@ function compute(S) {
     if (ev.t === 'sub' && (t === 0 || t === 1)) {
       onCourt[t] = onCourt[t].filter(x => x !== ev.out);
       if (ev.in && !onCourt[t].includes(ev.in)) onCourt[t].push(ev.in);
+      lineups.push({ sec: elapsed, on: [onCourt[0].map(fullName), onCourt[1].map(fullName)] });
       return;
     }
     if (t !== 0 && t !== 1) return;
@@ -225,7 +241,7 @@ function compute(S) {
   });
   finalize();                                        // the run the game ended on
 
-  return { points, playerRuns, teamRuns, summary: summarise(points), period, lastElapsed };
+  return { points, playerRuns, teamRuns, summary: summarise(points), period, lastElapsed, lineups };
 }
 
 /* renderGameFlowTab's strip: lead changes and runs read off the flow points */
@@ -249,21 +265,31 @@ function summarise(points) {
 }
 
 /* ----------------------------------------------------------------- render --- */
-const W = 800, H = 240, PAD = { top: 20, right: 60, bottom: 40, left: 50 };
-const CW = W - PAD.left - PAD.right, CH = H - PAD.top - PAD.bottom;
 const f1 = n => n.toFixed(1);
+/* a plot is drawn in these units and stretched to its box (preserveAspectRatio none): x is a share of the game,
+   so the lines are stroked without scaling (vector-effect) and every word is HTML, never distorted */
+const VW = 1000, VH = 200;
+const pct = (v, of) => (100 * v / of).toFixed(3);
 
-function periodLines(maxPeriod, maxElapsed) {
-  let out = '';
-  for (let p = 1; p <= maxPeriod; p++) {
-    const end = periodEnd(p);
-    if (end < maxElapsed) {
-      const x = PAD.left + (end / maxElapsed) * CW;
-      out += '<line x1="' + f1(x) + '" y1="' + PAD.top + '" x2="' + f1(x) + '" y2="' + (H - PAD.bottom) + '" class="gf-period-line"/>' +
-             '<text x="' + f1(x) + '" y="' + (H - 8) + '" class="gf-period-label" text-anchor="middle">' + (p <= 4 ? 'P' + p : 'OT' + (p - 4)) + '</text>';
-    }
-  }
-  return out;
+/* THE GAME'S TIME AXIS, the rotations' own: the number of periods is rotation.js's rule (four, or the
+   period the game is in, or the last one with a play in it), each period's length is FIBA's, and the axis
+   is all of it - a live game's charts are drawn on the same width, filled as far as it has got. Seconds. */
+function timeline(S) {
+  const events = ((S && S.events) || []).filter(Boolean);
+  const seen = events.reduce((m, e) => Math.max(m, e.period || 1), 1);
+  const nP = Math.max(4, (S && S.period) || 1, seen);
+  const periods = [];
+  for (let n = 1; n <= nP; n++) periods.push({ n, label: n <= 4 ? 'Q' + n : 'OT' + (n - 4), from: n === 1 ? 0 : periodEnd(n - 1), to: periodEnd(n) });
+  return { periods, total: periodEnd(nP) };
+}
+const xOf = (sec, tl) => Math.max(0, Math.min(VW, sec / tl.total * VW));
+
+/* the dashed line between two periods, through the whole plot */
+function periodLines(tl) {
+  return tl.periods.slice(0, -1).map(p => {
+    const x = f1(p.to / tl.total * VW);
+    return '<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + VH + '" class="gf-period-line"/>';
+  }).join('');
 }
 
 /* the area between the line and zero, one closed shape per side of it */
@@ -311,15 +337,77 @@ const legend = (a, b) =>
     '<span class="gf-legend-item"><span class="gf-legend-line away"></span><span class="gf-away">' + b + '</span></span>' +
   '</div>';
 
-const card = (title, legendHTML, note, svg) =>
-  '<section class="gf-card">' +
-    '<div class="gf-card-head"><h3 class="gf-title">' + title + '</h3>' + legendHTML + '</div>' +
-    (note ? '<div class="gf-note">' + note + '</div>' : '') +
-    '<div class="gf-scroll"><svg class="gf-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(title) + '">' + svg + '</svg></div>' +
+/* A CHART OF THE STACK: a label column, then the plot, the rotations' own two columns (so the plot
+   begins where its cells begin and ends where they end), and the periods under it in the same place.
+   The y labels and the axis title are HTML in the label column; the plot is one stretched svg, with the
+   periods named along its top edge. */
+function chartCard(o) {
+  const ticks = o.ticks.map(t => '<span class="gf-yt" style="top:' + pct(t.y, VH) + '%">' + t.label + '</span>').join('');
+  /* the periods are named inside the plot, along its top edge, so a card has no axis row of its own: the stack stays tight */
+  const plabels = o.tl.periods.map(p =>
+    '<span class="gf-pl" style="left:' + pct((p.from + p.to) / 2, o.tl.total) + '%">' + p.label + '</span>').join('');
+  return '<section class="gf-card gf-chart" data-chart="' + o.key + '">' +
+    '<div class="gf-card-head"><h3 class="gf-title">' + o.title + '</h3>' + o.legendHTML + '<span class="gf-mv"></span></div>' +
+    (o.note ? '<div class="gf-note">' + o.note + '</div>' : '') +
+    '<div class="gf-scroll"><div class="gf-al gf-plotrow">' +
+      '<div class="gf-yl" aria-hidden="true">' + ticks + '<span class="gf-ytitle">' + esc(o.ytitle) + '</span></div>' +
+      '<div class="gf-plot"><svg class="gf-svg" viewBox="0 0 ' + VW + ' ' + VH + '" preserveAspectRatio="none" role="img" aria-label="' + esc(o.title) + '">' + o.svg + '</svg>' +
+        plabels + (o.overlay || '') + '<i class="gf-guide" aria-hidden="true"></i></div>' +
+    '</div></div>' +
   '</section>';
+}
 
-const yTitle = label => '<text x="12" y="' + (H / 2) + '" class="gf-axis-label" text-anchor="middle" transform="rotate(-90, 12, ' + (H / 2) + ')">' + label + '</text>';
+/* WHAT WAS HAPPENING AT A MOMENT. model: { tl, points, lineups, until } from render(). The clock is the box score's
+   (remaining time in the period, rounded up), the score is the last one on or before the moment, and the lineups are
+   the last substitution's at or before it - so at the very second of a substitution the new five are shown. Nothing
+   for a moment a live game has not got to. */
+function stateAt(model, sec) {
+  if (!model || !model.tl || !(sec >= 0) || sec > model.until + 1) return null;
+  const at = (list, key) => { let k = -1; for (let i = 0; i < list.length && list[i][key] <= sec; i++) k = i; return k; };
+  const tl = model.tl;
+  const p = tl.periods.find(q => sec < q.to) || tl.periods[tl.periods.length - 1];
+  const pi = at(model.points, 'elapsed'), li = at(model.lineups, 'sec');
+  const pt = pi >= 0 ? model.points[pi] : null;
+  return {
+    sec, period: p.n, clock: clockText(p.n, Math.max(0, (p.to - Math.min(sec, p.to)) * 1000)),
+    score: pt ? [pt.homePoints, pt.awayPoints] : [0, 0], margin: pt ? pt.margin : 0,
+    on: li >= 0 ? model.lineups[li].on : [[], []]
+  };
+}
+
+/* a value's end of line, in words above or below the point (HTML, so it never stretches) */
+function endLabel(pt, text, side, up) {
+  const near = pt.x < VW * 0.1;
+  return '<span class="gf-endl ' + side + (up ? '' : ' down') + (near ? ' start' : '') + '" style="left:' + pct(pt.x, VW) + '%;top:' + pct(pt.y, VH) + '%">' + text + '</span>';
+}
+const endDot = (pt, side) => '<span class="gf-dotm ' + side + '" style="left:' + pct(pt.x, VW) + '%;top:' + pct(pt.y, VH) + '%"></span>';
+
 const signed = (v, dp) => (v >= 0 ? '+' : '') + (dp == null ? v : v.toFixed(dp));
+
+/* the order of the stack, and which of its cards have data */
+const CHART_KEYS = ['margin', 'epa', 'battle', 'ppp'];
+const ORDER_KEY = 'epinoia_gf_order';
+let order = null;
+function normaliseOrder(list) {
+  const a = Array.isArray(list) ? list.filter((k, i) => CHART_KEYS.indexOf(k) >= 0 && list.indexOf(k) === i) : [];
+  CHART_KEYS.forEach(k => { if (a.indexOf(k) < 0) a.push(k); });
+  return a;
+}
+function orderNow() {
+  if (!order) {
+    let saved = null;
+    try { saved = JSON.parse(root.localStorage.getItem(ORDER_KEY)); } catch (_) { /* private mode, or nothing kept */ }
+    order = normaliseOrder(saved);
+  }
+  return order;
+}
+function keepOrder(list) {
+  order = normaliseOrder(list);
+  try { root.localStorage.setItem(ORDER_KEY, JSON.stringify(order)); } catch (_) { /* a nicety */ }
+}
+const moveButtons = (i, n) =>
+  '<span class="gf-mv"><button type="button" class="gf-mvb" data-mv="up" title="Move up" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+  '<button type="button" class="gf-mvb" data-mv="down" title="Move down" aria-label="Move down"' + (i === n - 1 ? ' disabled' : '') + '>▼</button></span>';
 
 /* a symmetric axis: GAMEVIS's step, widened until 2 x max / step is at most 12, and the
    max rounded out to a whole number of steps so zero is always a labelled line */
@@ -435,26 +523,24 @@ function runsCharts(F, names, watch) {
 }
 
 /* renderScoreMarginChart */
-function marginChart(F, names) {
+function marginChart(F, names, tl) {
   const data = F.points;
   if (data.length < 2) return '';
-  const maxElapsed = Math.max(...data.map(d => d.elapsed)) || 1;
-  const maxPeriod = Math.max(...data.map(d => d.period));
   const maxMargin = Math.max(...data.map(d => Math.abs(d.margin)));
   const ax = symAxis(Math.max(30, Math.ceil(maxMargin / 5) * 5 + 5), 10);
   const yMax = ax.yMax;
-  const zeroY = PAD.top + CH / 2;
-  const pts = data.map(d => ({ x: PAD.left + (d.elapsed / maxElapsed) * CW, y: zeroY - (d.margin / yMax) * (CH / 2), margin: d.margin }));
+  const zeroY = VH / 2;
+  const pts = data.map(d => ({ x: xOf(d.elapsed, tl), y: zeroY - (d.margin / yMax) * (VH / 2), margin: d.margin }));
   let grid = '';
+  const ticks = [];
   for (let v = -yMax; v <= yMax; v += ax.step) {
-    const y = zeroY - (v / yMax) * (CH / 2);
-    grid += '<text x="' + (PAD.left - 8) + '" y="' + f1(y + 4) + '" class="gf-axis-label" text-anchor="end">' + (v > 0 ? '+' : '') + v + '</text>' +
-            '<line x1="' + PAD.left + '" y1="' + f1(y) + '" x2="' + (W - PAD.right) + '" y2="' + f1(y) + '" class="gf-axis-line"/>';
+    const y = zeroY - (v / yMax) * (VH / 2);
+    ticks.push({ y, label: (v > 0 ? '+' : '') + v });
+    grid += '<line x1="0" y1="' + f1(y) + '" x2="' + VW + '" y2="' + f1(y) + '" class="gf-axis-line"/>';
   }
-  return card('Scoring Development (Score Margin)', legend(esc(names[0]) + ' Lead', esc(names[1]) + ' Lead'), '',
-    grid +
-    '<line x1="' + PAD.left + '" y1="' + zeroY + '" x2="' + (W - PAD.right) + '" y2="' + zeroY + '" class="gf-zero-line"/>' +
-    periodLines(maxPeriod, maxElapsed) + fillAreas(pts, 'margin', zeroY) + segmentedLines(pts, 'margin') + yTitle('Score Margin'));
+  return chartCard({ key: 'margin', title: 'Scoring Development (Score Margin)', legendHTML: legend(esc(names[0]) + ' Lead', esc(names[1]) + ' Lead'), ytitle: 'Score Margin', tl, ticks,
+    svg: grid + '<line x1="0" y1="' + zeroY + '" x2="' + VW + '" y2="' + zeroY + '" class="gf-zero-line"/>' +
+         periodLines(tl) + fillAreas(pts, 'margin', zeroY) + segmentedLines(pts, 'margin') });
 }
 
 /* ROTATIONS: a row per player and a cell per minute, shaded by how much of that minute he was
@@ -465,53 +551,52 @@ function rotationCard(S, names) {
   if (!R) return '';
   const M = R.compute(S);
   if (!M.teams.some(t => t.rows.some(r => !r.dnp))) return '';
-  /* no margin strip between the sides: the Scoring Development chart a card above is the margin */
+  /* no margin strip between the sides: the Scoring Development chart under it is the margin, on the same minutes */
   return '<section class="gf-card gf-rot">' +
     '<div class="gf-card-head"><h3 class="gf-title">Rotations</h3></div>' +
-    '<div class="gf-note">Each cell is a minute of the game, shaded by how much of it the player was on the floor.</div>' +
+    '<div class="gf-note">Each cell is a minute of the game, shaded by how much of it the player was on the floor. ' +
+      '<span>The charts beneath use these same minutes: move one up to read it against the rotations.</span></div>' +
     R.html(M, { colours: ['var(--vis-t0, var(--team0))', 'var(--vis-t1, var(--team1))'], margin: false }) +
   '</section>';
 }
 
 /* the EPA and Scoring Battle charts share one shape: a signed value about zero, an end label */
 function signedChart(opts) {
-  const { data, all, key, title, names, note, axisTitle } = opts;
-  const maxElapsed = Math.max(...all.map(d => d.elapsed)) || 1;
-  const maxPeriod = Math.max(...all.map(d => d.period));
+  const { data, key, title, names, note, axisTitle, tl } = opts;
   const maxAbs = Math.max(...data.map(d => Math.abs(d[key] || 0)));
   const raw = Math.max(5, Math.ceil(maxAbs) + 2);
   const ax = symAxis(raw, raw > 15 ? 5 : (raw > 8 ? 4 : 2));
   const yMax = ax.yMax, step = ax.step;
-  const zeroY = PAD.top + CH / 2;
+  const zeroY = VH / 2;
   const pts = data.map(d => {
     const v = d[key] || 0;
-    return { x: PAD.left + (d.elapsed / maxElapsed) * CW, y: zeroY - (v / yMax) * (CH / 2), [key]: v };
+    return { x: xOf(d.elapsed, tl), y: zeroY - (v / yMax) * (VH / 2), [key]: v };
   });
   let grid = '';
+  const ticks = [];
   for (let v = -yMax; v <= yMax; v += step) {
-    const y = zeroY - (v / yMax) * (CH / 2);
-    grid += '<text x="' + (PAD.left - 8) + '" y="' + f1(y + 4) + '" class="gf-axis-label" text-anchor="end">' + (v > 0 ? '+' : '') + v.toFixed(0) + '</text>' +
-            '<line x1="' + PAD.left + '" y1="' + f1(y) + '" x2="' + (W - PAD.right) + '" y2="' + f1(y) + '" class="gf-axis-line"/>';
+    const y = zeroY - (v / yMax) * (VH / 2);
+    ticks.push({ y, label: (v > 0 ? '+' : '') + v.toFixed(0) });
+    grid += '<line x1="0" y1="' + f1(y) + '" x2="' + VW + '" y2="' + f1(y) + '" class="gf-axis-line"/>';
   }
   const end = pts[pts.length - 1], fin = end[key];
-  return card(title, legend(esc(names[0]) + ' Advantage', esc(names[1]) + ' Advantage'), note,
-    grid +
-    '<line x1="' + PAD.left + '" y1="' + zeroY + '" x2="' + (W - PAD.right) + '" y2="' + zeroY + '" class="gf-zero-line"/>' +
-    periodLines(maxPeriod, maxElapsed) + fillAreas(pts, key, zeroY) + segmentedLines(pts, key) + yTitle(axisTitle) +
-    '<text x="' + f1(end.x + 8) + '" y="' + f1(end.y + 4) + '" class="gf-end-label ' + (fin >= 0 ? 'home' : 'away') + '">' + signed(fin, 1) + '</text>');
+  return chartCard({ key: opts.key, title, legendHTML: legend(esc(names[0]) + ' Advantage', esc(names[1]) + ' Advantage'), note, ytitle: axisTitle, tl, ticks,
+    svg: grid + '<line x1="0" y1="' + zeroY + '" x2="' + VW + '" y2="' + zeroY + '" class="gf-zero-line"/>' +
+         periodLines(tl) + fillAreas(pts, key, zeroY) + segmentedLines(pts, key),
+    overlay: endLabel(end, signed(fin, 1), fin >= 0 ? 'home' : 'away', fin >= 0) });
 }
 
-function epaChart(F, names) {
+function epaChart(F, names, tl) {
   const data = F.points;
   if (data.length < 2) return '';
   const last = data[data.length - 1];
   const note = 'EPA = (TO Margin + OREB Margin) × 1.05 PPP | ' +
     '<span class="' + sideCls(last.toMargin) + '">TO: ' + signed(last.toMargin) + '</span> | ' +
     '<span class="' + sideCls(last.orebMargin) + '">OREB: ' + signed(last.orebMargin) + '</span>';
-  return signedChart({ data, all: data, key: 'epa', title: 'Expected Points Added (EPA)', names, note, axisTitle: 'EPA (pts)' });
+  return signedChart({ key: 'epa', data, title: 'Expected Points Added (EPA)', names, note, axisTitle: 'EPA (pts)', tl });
 }
 
-function battleChart(F, names) {
+function battleChart(F, names, tl) {
   const all = F.points;
   if (all.length < 2) return '';
   /* buffered until both sides have scored, so one early basket is not a landslide */
@@ -522,52 +607,52 @@ function battleChart(F, names) {
   const note = 'SB = (eFG% Margin × 1.77 + FT Rate Margin × 0.25) × Pace/100 | ' +
     '<span class="' + sideCls(last.efgMargin) + '">eFG%: ' + signed(last.efgMargin, 1) + '</span> | ' +
     '<span class="' + sideCls(last.ftRateMargin) + '">FT Rate: ' + signed(last.ftRateMargin, 1) + '</span>';
-  return signedChart({ data, all, key: 'scoringBattle', title: 'Scoring Battle (eFG% + FT Rate)', names, note, axisTitle: 'SB (pts)' });
+  return signedChart({ key: 'battle', data, title: 'Scoring Battle (eFG% + FT Rate)', names, note, axisTitle: 'SB (pts)', tl });
 }
 
 /* renderPPPDevelopmentChart */
-function pppChart(F, names) {
+function pppChart(F, names, tl) {
   const all = F.points;
   const data = all.filter(d => d.homePPP > 0 || d.awayPPP > 0);
   if (data.length < 2) return '';
   const maxPPP = Math.max(...all.map(d => Math.max(d.homePPP, d.awayPPP)));
   const minPPP = Math.min(...data.map(d => Math.min(d.homePPP || 99, d.awayPPP || 99)));
-  const maxElapsed = Math.max(...data.map(d => d.elapsed)) || 1;
-  const maxPeriod = Math.max(...data.map(d => d.period));
   const yMin = Math.max(0, Math.floor((minPPP - 0.1) * 10) / 10);
   const yMax = Math.min(2.0, Math.ceil((maxPPP + 0.1) * 10) / 10);
   const yRange = (yMax - yMin) || 1;
-  const toXY = v => PAD.top + CH - ((v - yMin) / yRange) * CH;
-  const line = k => data.filter(d => d[k] > 0).map(d => ({ x: PAD.left + (d.elapsed / maxElapsed) * CW, y: toXY(d[k]), ppp: d[k] }));
+  const toY = v => VH - ((v - yMin) / yRange) * VH;
+  const line = k => data.filter(d => d[k] > 0).map(d => ({ x: xOf(d.elapsed, tl), y: toY(d[k]), ppp: d[k] }));
   const hp = line('homePPP'), ap = line('awayPPP');
   const pathOf = ps => ps.map((p, i) => (i ? 'L ' : 'M ') + f1(p.x) + ' ' + f1(p.y)).join(' ');
   const step = yRange > 0.6 ? 0.2 : 0.1;
   let grid = '';
+  const ticks = [];
   for (let i = 0, v = yMin; v <= yMax + 1e-9; i++, v = yMin + i * step) {
-    const y = toXY(v);
-    grid += '<text x="' + (PAD.left - 8) + '" y="' + f1(y + 4) + '" class="gf-axis-label" text-anchor="end">' + v.toFixed(2) + '</text>' +
-            '<line x1="' + PAD.left + '" y1="' + f1(y) + '" x2="' + (W - PAD.right) + '" y2="' + f1(y) + '" class="gf-axis-line"/>';
+    const y = toY(v);
+    ticks.push({ y, label: v.toFixed(2) });
+    grid += '<line x1="0" y1="' + f1(y) + '" x2="' + VW + '" y2="' + f1(y) + '" class="gf-axis-line"/>';
   }
-  const avgY = toXY(1.0);
-  const ref = (avgY >= PAD.top && avgY <= H - PAD.bottom)
-    ? '<line x1="' + PAD.left + '" y1="' + f1(avgY) + '" x2="' + (W - PAD.right) + '" y2="' + f1(avgY) + '" class="gf-ref-line"/>' +
-      /* GAMEVIS put this label at the right-hand end, exactly where a side finishing near
-         1.00 prints its own PPP; inside the left edge it collides with nothing */
-      '<text x="' + (PAD.left + 6) + '" y="' + f1(avgY - 5) + '" class="gf-axis-label" text-anchor="start">1.00</text>'
-    : '';
-  const endMark = (ps, side) => ps.length
-    ? '<circle cx="' + f1(ps[ps.length - 1].x) + '" cy="' + f1(ps[ps.length - 1].y) + '" r="4" class="gf-dot ' + side + '"/>' +
-      '<text x="' + f1(ps[ps.length - 1].x + 8) + '" y="' + f1(ps[ps.length - 1].y + 4) + '" class="gf-end-label ' + side + '">' + ps[ps.length - 1].ppp.toFixed(3) + '</text>'
-    : '';
-  return card('Points Per Possession Development', legend(esc(names[0]), esc(names[1])), '',
-    grid + ref + periodLines(maxPeriod, maxElapsed) +
-    '<path d="' + pathOf(hp) + '" class="gf-line home"/><path d="' + pathOf(ap) + '" class="gf-line away"/>' +
-    yTitle('PPP') + endMark(hp, 'home') + endMark(ap, 'away'));
+  const avgY = toY(1.0);
+  const showRef = avgY >= 0 && avgY <= VH;
+  const ref = showRef ? '<line x1="0" y1="' + f1(avgY) + '" x2="' + VW + '" y2="' + f1(avgY) + '" class="gf-ref-line"/>' : '';
+  /* GAMEVIS put the 1.00 label at the right-hand end, exactly where a side finishing near 1.00 prints its own
+     PPP; inside the left edge it collides with nothing */
+  const refLabel = showRef ? '<span class="gf-refl" style="top:' + pct(avgY, VH) + '%">1.00</span>' : '';
+  /* the two ends are labelled on opposite sides of their points - the higher above, the lower below - so
+     two sides finishing close together never print over each other */
+  const eh = hp[hp.length - 1], ea = ap[ap.length - 1];
+  const homeUp = !eh || !ea || eh.y <= ea.y;
+  const overlay = refLabel +
+    (eh ? endDot(eh, 'home') + endLabel(eh, eh.ppp.toFixed(3), 'home', homeUp) : '') +
+    (ea ? endDot(ea, 'away') + endLabel(ea, ea.ppp.toFixed(3), 'away', !homeUp) : '');
+  return chartCard({ key: 'ppp', title: 'Points Per Possession Development', legendHTML: legend(esc(names[0]), esc(names[1])), ytitle: 'PPP', tl, ticks,
+    svg: grid + ref + periodLines(tl) + '<path d="' + pathOf(hp) + '" class="gf-line home"/><path d="' + pathOf(ap) + '" class="gf-line away"/>', overlay });
 }
 
 /* a video row that can be wound to a moment: a recording or an archived stream, not the
    league channel's live edge (that has no video id to seek within) */
 const hasFootage = S => !!(S && S.video && S.video.url);
+let model = null;                       // the last render's, for the hover
 
 function render(S) {
   const F = compute(S);
@@ -581,9 +666,19 @@ function render(S) {
   const s = F.summary;
   const item = (label, value, cls) =>
     '<div class="gf-stat"><span class="gf-stat-label">' + label + '</span><span class="gf-stat-value' + (cls ? ' ' + cls : '') + '">' + value + '</span></div>';
+  /* the rotations, then the four charts on their minutes in one tight stack, in the reader's order */
+  const tl = timeline(S);
+  /* the hover reads this: the moment a live game has got to is its last play, or its clock */
+  const until = S && S.status === 'final' ? tl.total
+    : Math.max(F.lastElapsed || 0, S && S.clockMs != null && S.period ? cumEl(S.period, S.clockMs) / 1000 : 0);
+  model = { tl, points: F.points, lineups: F.lineups, until, names };
+  const charts = { margin: marginChart(F, names, tl), epa: epaChart(F, names, tl), battle: battleChart(F, names, tl), ppp: pppChart(F, names, tl) };
+  const shown = orderNow().filter(k => charts[k]);
+  const stack = shown.length
+    ? '<div class="gf-stack">' + shown.map((k, i) => charts[k].replace('<span class="gf-mv"></span>', moveButtons(i, shown.length))).join('') + '</div>'
+    : '';
   return '<div class="gf">' +
-    runsCharts(F, names, hasFootage(S)) + marginChart(F, names) + rotationCard(S, names) +
-    epaChart(F, names) + battleChart(F, names) + pppChart(F, names) +
+    runsCharts(F, names, hasFootage(S)) + rotationCard(S, names) + stack +
     '<div class="gf-summary">' +
       item('Final Score', s.homePoints + ' - ' + s.awayPoints, s.homePoints > s.awayPoints ? 'gf-home' : 'gf-away') +
       item('Lead Changes', s.leadChanges) +
@@ -613,12 +708,87 @@ function inkTeams(host) {
   });
 }
 
+/* THE HOVER. Pointing at a chart's plot (a tap, on a phone) reads the moment under the pointer off the shared
+   axis: a line goes through every chart and through the rotations at that minute, the players on the floor are
+   marked in the rotations, and a card by the pointer says the clock, the score and both five. It is one card on
+   the page (fixed to the window, so no box clips it), told which colours to use by the host. */
+let tipEl = null, hasHoverBound = false;
+function ensureTip() {
+  if (tipEl && tipEl.isConnected) return tipEl;
+  tipEl = document.createElement('div');
+  tipEl.className = 'gf-tip';
+  tipEl.hidden = true;
+  tipEl.setAttribute('role', 'status');
+  document.body.appendChild(tipEl);
+  return tipEl;
+}
+
+/* a line through the rotations' cells, one per side: the rotations are rotation.js's markup, so the line is put in */
+function wireGuides(host) {
+  host.querySelectorAll('.gf-rot .rot-team').forEach(t => {
+    if (t.querySelector('.gf-guidebox')) return;
+    const b = document.createElement('span');
+    b.className = 'gf-guidebox';
+    b.setAttribute('aria-hidden', 'true');
+    b.innerHTML = '<i class="gf-guide"></i>';
+    t.appendChild(b);
+  });
+}
+
+function hideProbe(host) {
+  if (tipEl) tipEl.hidden = true;
+  if (!host) return;
+  host.querySelectorAll('.gf-guide.on').forEach(g => g.classList.remove('on'));
+  host.querySelectorAll('.rot-row.on-floor').forEach(r => r.classList.remove('on-floor'));
+}
+
+function probe(host, plot, clientX, clientY) {
+  const M = host.__gfModel;
+  const rect = plot.getBoundingClientRect();
+  if (!M || !(rect.width > 0)) return hideProbe(host);
+  const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const st = stateAt(M, frac * M.tl.total);
+  if (!st) return hideProbe(host);
+  host.querySelectorAll('.gf-guide').forEach(g => { g.style.left = (frac * 100).toFixed(3) + '%'; g.classList.add('on'); });
+  /* the players on the floor, marked in the rotations (matched by name within each side) */
+  host.querySelectorAll('.gf-rot .rot-team').forEach((t, side) => {
+    const on = new Set(st.on[side] || []);
+    t.querySelectorAll('.rot-row').forEach(r => {
+      const b = r.querySelector('.rot-nm b');
+      r.classList.toggle('on-floor', !!b && on.has(b.textContent));
+    });
+  });
+  const tip = ensureTip();
+  ['--vis-t0', '--vis-t1'].forEach(k => { const v = host.style.getPropertyValue(k); if (v) tip.style.setProperty(k, v); else tip.style.removeProperty(k); });
+  const name = i => esc((M.names && M.names[i]) || (i ? 'Away' : 'Home'));
+  const lead = st.margin === 0 ? 'level' : signed(st.margin);
+  const side = i => '<div class="gf-tip-t ' + (i ? 'away' : 'home') + '"><b>' + name(i) + '</b><span>' +
+    (st.on[i].length ? st.on[i].map(esc).join(' · ') : '—') + '</span></div>';
+  tip.innerHTML = '<div class="gf-tip-h"><b>' + esc(st.clock) + '</b><span class="gf-tip-s">' + name(0) + ' ' + st.score[0] + '–' + st.score[1] + ' ' + name(1) +
+    ' · <span class="' + (st.margin > 0 ? 'gf-home' : st.margin < 0 ? 'gf-away' : '') + '">' + lead + '</span></span></div>' + side(0) + side(1);
+  tip.hidden = false;
+  /* by the pointer: above it, to its right, and kept inside the window. THE PAGE IS ZOOMED on a desktop (theme.css: 1.25
+     from 1000px, 1.5 from 1200px) and the card sits on the body, so the sums are done in screen pixels and divided back
+     by the card's own scale, read off the card (as modern.js place does), right at any zoom and in a browser with none. */
+  const box = tip.getBoundingClientRect();
+  const k = tip.offsetWidth ? (box.width / tip.offsetWidth) || 1 : 1;
+  const w = box.width, h = box.height, vw = window.innerWidth, vh = window.innerHeight;
+  let x = clientX + 16, y = clientY - h - 14;
+  if (x + w > vw - 8) x = Math.max(8, clientX - w - 16);
+  if (y < 8) y = Math.max(8, Math.min(vh - h - 8, clientY + 18));
+  tip.style.left = (x / k).toFixed(1) + 'px';
+  tip.style.top = (y / k).toFixed(1) + 'px';
+}
+
 /* A run is drawn twice, as a bar and as a row, under one data-run id. Hovering either
    lights both; a tap (a phone has no hover) pins them, and tapping a bar brings its row
    into view. One set of listeners on the host, which renderBody keeps across redraws. */
 function mounted(host) {
   if (!host) return;
   inkTeams(host);
+  host.__gfModel = model;
+  hideProbe(host);
+  wireGuides(host);
   if (host.__gfBound) return;
   host.__gfBound = true;
   const runOf = e => { const m = e.target && e.target.closest && e.target.closest('[data-run]'); return m && host.contains(m) ? m : null; };
@@ -628,6 +798,57 @@ function mounted(host) {
     const m = runOf(e);
     if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) mark(m.dataset.run, 'hi', false);
   });
+  const plotOf = e => { const p = e.target && e.target.closest && e.target.closest('.gf-plot'); return p && host.contains(p) ? p : null; };
+  host.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;                 // a finger scrolls; it taps instead
+    const p = plotOf(e);
+    if (p) probe(host, p, e.clientX, e.clientY); else hideProbe(host);
+  });
+  host.addEventListener('pointerleave', () => hideProbe(host));
+  host.addEventListener('click', e => {
+    const p = plotOf(e);
+    if (p) probe(host, p, e.clientX, e.clientY);
+    else if (!(e.target.closest && e.target.closest('.gf-mvb'))) hideProbe(host);
+  });
+  if (!hasHoverBound) {
+    hasHoverBound = true;
+    /* the card is fixed to the window, so anything that moves the page moves the moment away from under it */
+    document.addEventListener('scroll', () => { if (tipEl) tipEl.hidden = true; }, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && tipEl) tipEl.hidden = true; });
+  }
+  /* MOVE A CHART: one place up or down in the stack, the card itself moved (nothing is redrawn), the order kept.
+     A button that has just been used keeps the focus, and the card stays in view. */
+  host.addEventListener('click', e => {
+    const b = e.target && e.target.closest && e.target.closest('.gf-mvb');
+    if (!b || !host.contains(b) || b.disabled) return;
+    const card = b.closest('.gf-chart'), stack = card && card.parentNode;
+    if (!stack) return;
+    const cards = () => Array.prototype.slice.call(stack.children).filter(c => c.classList && c.classList.contains('gf-chart'));
+    const at = cards().indexOf(card);
+    if (b.dataset.mv === 'up' && at > 0) stack.insertBefore(card, cards()[at - 1]);
+    else if (b.dataset.mv === 'down' && at < cards().length - 1) stack.insertBefore(cards()[at + 1], card);
+    else return;
+    const now = cards();
+    keepOrder(now.map(c => c.dataset.chart));
+    now.forEach((c, i) => {
+      const up = c.querySelector('[data-mv="up"]'), down = c.querySelector('[data-mv="down"]');
+      if (up) up.disabled = i === 0;
+      if (down) down.disabled = i === now.length - 1;
+    });
+    (b.disabled ? (card.querySelector('.gf-mvb:not(:disabled)') || b) : b).focus();
+    if (card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+  /* the rotations and the charts scroll sideways together (a phone gives them a width of their own),
+     so a moment stays over the same minute whichever card is being looked at */
+  const scrollers = () => host.querySelectorAll('.gf-rot .rot, .gf-scroll');
+  host.addEventListener('scroll', e => {
+    const t = e.target;
+    if (host.__gfSyncing || !t || !t.matches || !t.matches('.gf-rot .rot, .gf-scroll')) return;
+    host.__gfSyncing = true;
+    scrollers().forEach(x => { if (x !== t) x.scrollLeft = t.scrollLeft; });
+    const done = () => { host.__gfSyncing = false; };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(done)); else done();
+  }, true);
   host.addEventListener('click', e => {
     const w = e.target && e.target.closest && e.target.closest('.gf-watch');
     if (w && host.contains(w)) {
@@ -649,5 +870,5 @@ function mounted(host) {
   });
 }
 
-return { compute, summarise, render, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage };
+return { compute, summarise, render, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage, timeline, normaliseOrder, keepOrder, orderNow, stateAt };
 }));

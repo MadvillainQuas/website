@@ -394,7 +394,10 @@
       'Advanced stats are for members': 'アドバンストスタッツは会員限定です',
       'Full stats: the four factors, shooting by zone and every advanced rate, player by player.': '詳細スタッツ：4ファクター、ゾーン別シュート、すべてのアドバンスト指標を選手ごとに。',
       'Lineups: every five that played, with their minutes, points and net rating.': 'ラインナップ：出場したすべての5人組の出場時間、得点、ネットレーティング。',
-      'loading the play-by-play…': 'テキスト速報を読み込んでいます…'
+      'loading the play-by-play…': 'テキスト速報を読み込んでいます…',
+      'The charts beneath use these same minutes: move one up to read it against the rotations.': '下のグラフはこのローテーションと同じ分数の軸を使っています。見比べたいグラフを上に動かしてください。',
+      'Move up': '上へ移動',
+      'Move down': '下へ移動'
     },
 
     ctx: {

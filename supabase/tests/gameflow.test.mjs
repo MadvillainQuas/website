@@ -147,7 +147,7 @@ console.log('\nthe charts');
   ok('an axis never carries more than a dozen gridlines', a1.step === 25 && a1.yMax === 150, JSON.stringify(a1));
   ok('...keeps the GAMEVIS step when that is few enough, rounded out so zero is a line',
      a2.step === 4 && a2.yMax === 12 && a3.step === 10 && a3.yMax === 30, JSON.stringify([a2, a3]));
-  ok('the margin axis labels zero', />0<\/text>/.test(html));
+  ok('the margin axis labels zero, in the label column', /class="gf-yt" style="top:50\.000%">0<\/span>/.test(html));
   ok('a game without enough play-by-play says so', /Game flow is not available yet/.test(Flow.render({ teams: S.teams, starters: S.starters, events: S.events.slice(0, 2) })));
   ok('...as does an empty one', /not available/.test(Flow.render({ teams: S.teams, events: [] })));
 }
@@ -286,6 +286,108 @@ console.log('\na run goes to the video, first basket to last');
   Tab.render({ host: hostEl, video: G.video, events: G.events, S: G, d, focus: { run: 'p8-h1' } });
   ok('asking for another run moves to it', Tab.state().current === 'run@p8-h1');
   Tab.reset();
+}
+
+/* ---- the charts on the rotations' time axis ---------------------------------- */
+console.log('\nthe stack: rotations, then the charts on their minutes');
+{
+  const Rot = require(path.join(ROOT, 'epinoia', 'rotation.js'));
+  globalThis.EpinoiaRotation = Rot;
+  try {
+    /* ONE AXIS: the number of periods and their lengths are rotation.js's, in seconds */
+    const OT = { events: [{ t: 'period_start', period: 1, clock: 600000 }, { t: 'p2_made', team: 0, pid: 'h1', period: 5, clock: 200000 }], period: 5, teams: S.teams, starters: S.starters };
+    [S, OT, { events: [], teams: S.teams }, Object.assign({}, S, { period: 6 })].forEach((g, i) => {
+      const a = Flow.timeline(g).periods, b = Rot.compute(g).periods;
+      ok('the flow timeline is the rotations\' timeline (game ' + i + ': ' + a.length + ' periods)',
+         a.length === b.length && a.every((p, k) => p.n === b[k].n && p.label === b[k].label && near(p.from / 60, b[k].from) && near(p.to / 60, b[k].to)),
+         JSON.stringify([a, b]));
+    });
+    ok('...four periods of 10 minutes, then 5 a period of overtime', Flow.timeline(S).total === 2400 && Flow.timeline(OT).total === 2700);
+
+    const html = Flow.render(S);
+    const at = (needle) => html.indexOf(needle);
+    ok('Rotations comes after the runs and before every chart, which follow it in one stack',
+       at('class="gf-card gf-rot"') > at('Team Momentum Runs') && at('class="gf-stack"') > at('class="gf-card gf-rot"') &&
+       ['margin', 'epa', 'battle', 'ppp'].every(k => at('data-chart="' + k + '"') > at('class="gf-stack"')) && at('class="gf-summary"') > at('data-chart="ppp"'));
+    ok('...in the order Scoring Development, EPA, Scoring Battle, PPP', ['margin', 'epa', 'battle', 'ppp'].map(k => at('data-chart="' + k + '"')).every((v, i, a) => !i || v > a[i - 1]));
+    ok('...each chart a card of its own with buttons to move it: the first cannot go up, the last cannot go down',
+       (html.match(/class="gf-card gf-chart"/g) || []).length === 4 && (html.match(/data-mv="up"/g) || []).length === 4 &&
+       /data-chart="margin"[\s\S]*?data-mv="up"[^>]*disabled/.test(html) && /data-chart="ppp"[\s\S]*?data-mv="down"[^>]*disabled/.test(html) &&
+       !/data-chart="epa"[\s\S]{0,900}?data-mv="up"[^>]*disabled/.test(html.slice(at('data-chart="epa"'), at('data-chart="battle"'))));
+    ok('the rotations say the charts beneath use their minutes', /The charts beneath use these same minutes: move one up to read it against the rotations\./.test(html));
+
+    /* THE PLOT IS THE GAME: x is the share of it, the whole of it */
+    const first = html.slice(at('data-chart="margin"'), at('data-chart="epa"'));
+    ok('a play at 10 seconds is 10/2400 of the way across the plot, not across the plays', /d="M 4\.2 [\d.]+ L/.test(first), (first.match(/class="gf-line[^>]*>/g) || []).join(' '));
+    ok('a period break is a quarter of the way across, and the periods are named inside the plot, along its top',
+       /x1="250\.0"/.test(first) && /<span class="gf-pl" style="left:12\.500%">Q1<\/span>/.test(first) && /<span class="gf-pl" style="left:87\.500%">Q4<\/span>/.test(first));
+    ok('a plot is one stretched svg with its words in HTML: labels in the label column, the axis title, no svg text',
+       /viewBox="0 0 1000 200" preserveAspectRatio="none"/.test(first) && /class="gf-yt" style="top:50\.000%">0<\/span>/.test(first) && /class="gf-ytitle">Score Margin</.test(first) && !/<text/.test(first));
+
+    /* THE READER'S ORDER */
+    ok('an order is made whole: unknown names and repeats go, missing charts come back in the default order',
+       JSON.stringify(Flow.normaliseOrder(['ppp', 'nope', 'ppp', 'epa'])) === '["ppp","epa","margin","battle"]' && JSON.stringify(Flow.normaliseOrder(null)) === '["margin","epa","battle","ppp"]'
+       && JSON.stringify(Flow.normaliseOrder('ppp')) === '["margin","epa","battle","ppp"]');
+    Flow.keepOrder(['battle', 'margin']);
+    const moved = Flow.render(S);
+    ok('a kept order is the order drawn (a chart can sit directly under the rotations)',
+       ['battle', 'margin', 'epa', 'ppp'].map(k => moved.indexOf('data-chart="' + k + '"')).every((v, i, a) => !i || v > a[i - 1]));
+    Flow.keepOrder(['margin', 'epa', 'battle', 'ppp']);
+
+    /* WHO WAS ON THE FLOOR, AT A MOMENT */
+    const F = Flow.compute(S);
+    const M = { tl: Flow.timeline(S), points: F.points, lineups: F.lineups, until: 2400 };
+    ok('the lineups start with the starters', F.lineups[0].sec === 0 && F.lineups[0].on[0].join() === 'Ada Stone,Bea Moss,Cy Hart,Dee Lowe,Eve Park', JSON.stringify(F.lineups[0]));
+    const s84 = Flow.stateAt(M, 84), s85 = Flow.stateAt(M, 85);
+    ok('before a substitution the old five, at the second of it the new five (Flo comes on for Eve at 1:25)',
+       s84.on[0].includes('Eve Park') && !s84.on[0].includes('Flo <b>Ray</b>') && s85.on[0].includes('Flo <b>Ray</b>') && !s85.on[0].includes('Eve Park') && s85.on[0].length === 5, JSON.stringify([s84.on[0], s85.on[0]]));
+    ok('...the other side is untouched, and there are always five', s84.on[1].join() === s85.on[1].join() && s84.on[1].length === 5);
+    ok('the clock is the box score\'s: what is left in the period', s85.clock === 'Q1 8:35' && Flow.stateAt(M, 0).clock === 'Q1 10:00' && Flow.stateAt(M, 600).clock === 'Q2 10:00' && Flow.stateAt(M, 2400).clock === 'Q4 0:00', [s85.clock, Flow.stateAt(M, 600).clock, Flow.stateAt(M, 2400).clock].join());
+    ok('the score is the last one on or before the moment', Flow.stateAt(M, 5).score.join('-') === '0-0' && Flow.stateAt(M, 30).score.join('-') === '2-3' && s85.score.join('-') === '7-3' && s85.margin === 4 && Flow.stateAt(M, 90).score.join('-') === '9-3');
+    ok('a moment a live game has not got to has nothing', Flow.stateAt(Object.assign({}, M, { until: 100 }), 200) === null && Flow.stateAt(M, -1) === null && Flow.stateAt(null, 5) === null);
+
+    /* the tie between the two pictures: a player's minutes from the lineups are his minutes in the rotations */
+    const G = { teams: S.teams, starters: S.starters, events: S.events, status: 'final', period: 1, clockMs: 0 };
+    const RM = Rot.compute(G), FG = Flow.compute(G);
+    const floor = {};
+    FG.lineups.forEach((l, i) => {
+      const end = i + 1 < FG.lineups.length ? FG.lineups[i + 1].sec : RM.now * 60;
+      [0, 1].forEach(t => l.on[t].forEach(n => { floor[t + n] = (floor[t + n] || 0) + Math.max(0, end - l.sec); }));
+    });
+    const bad = [];
+    RM.teams.forEach((T, t) => T.rows.forEach(r => { const a = Math.round((floor[t + r.name] || 0)), b = Math.round(r.ms / 1000); if (Math.abs(a - b) > 1) bad.push(r.name + ' ' + a + ' vs ' + b); }));
+    ok('every player\'s time on the floor from the lineups is his time in the rotations', !bad.length, bad.join('; '));
+
+    /* THE ALIGNMENT CONTRACT, in the stylesheets: a plot's row is the rotations' own two columns */
+    const rcss = fs.readFileSync(path.join(ROOT, 'epinoia', 'kit', 'rotation.css'), 'utf8').replace(/\r\n/g, '\n');
+    const fcss = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'flow.css'), 'utf8').replace(/\r\n/g, '\n');
+    const rule = (css, sel) => (css.match(new RegExp('(?:^|\\n)' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}')) || [, ''])[1];
+    const decl = (body, prop) => ((body.match(new RegExp('(?:^|[;\\s])' + prop + '\\s*:\\s*([^;]+)')) || [, ''])[1] || '').trim();
+    const rrow = rule(rcss, '.rot-row'), arow = rule(fcss, '.gf-al'), rroot = rule(rcss, '.rot');
+    ok('a chart row has the rotations\' columns and gap: a label column, then the plot',
+       decl(rrow, 'grid-template-columns') === 'var(--rot-nw) minmax(0,1fr)' && decl(arow, 'grid-template-columns') === 'var(--gf-lw) minmax(0,1fr)' && decl(rrow, 'gap') === '8px' && decl(arow, 'gap') === '8px', [rrow, arow].join(' | '));
+    ok('...centred and capped at the same width as the rotations', decl(rroot, 'max-width') === '1100px' && decl(arow, 'max-width') === '1100px' && /margin:0 auto/.test(rroot) && /margin:0 auto/.test(arow));
+    ok('...and the rotations\' label column IS the charts\' (--rot-nw is --gf-lw inside the card), on a phone too',
+       /\.gf-rot \.rot\{ --rot-nw:var\(--gf-lw\) \}/.test(fcss) && /--gf-lw:150px/.test(fcss) && /--gf-lw:96px/.test(fcss) && /\.rot\{--rot-nw:96px/.test(rcss));
+    ok('...a phone gives both the same width of their own, and they scroll together',
+       /\.rot-team,\.rot-margin,\.rot-legend\{min-width:420px\}/.test(rcss) && /\.gf-scroll \.gf-al\{ min-width:420px \}/.test(fcss) && /host\.addEventListener\('scroll'/.test(fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'flow.js'), 'utf8')));
+    ok('the stack is compact: no axis row per chart, a small title with its legend and buttons on one line, close cards, a short plot',
+       !/gf-xrow|gf-xax/.test(first) && /\.gf-stack \.gf-card\{ padding:8px 16px 8px/.test(fcss) && /\.gf-stack \.gf-card\{ padding:8px 12px \}/.test(fcss) && /\.gf-stack \.gf-card-head\{ margin-bottom:0;[^}]*flex-wrap:nowrap/.test(fcss)
+       && /\.gf-stack\{ display:grid; gap:4px/.test(fcss) && /--gf-h:120px/.test(fcss) && /\.gf-rot \+ \.gf-stack\{ margin-top:-14px \}/.test(fcss));
+    ok('the plot\'s lines keep their width when the svg is stretched', /\.gf-plot \.gf-line[^{]*\{ vector-effect:non-scaling-stroke \}/.test(fcss));
+
+    /* THE HOVER'S PLACING is the modern box score's: in screen pixels, divided back by the zoom */
+    const fjs = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'flow.js'), 'utf8');
+    ok('the card is placed by the pointer in screen pixels and divided back by the page\'s zoom (theme.css zooms the body 1.5 from 1200px)',
+       /const k = tip\.offsetWidth \? \(box\.width \/ tip\.offsetWidth\) \|\| 1 : 1;/.test(fjs) && /tip\.style\.left = \(x \/ k\)/.test(fjs) && /body\{ zoom:1\.5 \}/.test(fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'theme.css'), 'utf8')));
+    ok('a mouse hovers, a finger taps; the moment goes with the page\'s scroll or Escape', /e\.pointerType === 'touch'/.test(fjs) && /document\.addEventListener\('scroll'/.test(fjs) && /e\.key === 'Escape'/.test(fjs));
+    ok('names in the card are escaped', /st\.on\[i\]\.map\(esc\)\.join/.test(fjs) && /esc\(st\.clock\)/.test(fjs));
+    const evil2 = JSON.parse(JSON.stringify(S));
+    evil2.teams[0].players[0].name = 'Ada <img src=x onerror=1>';
+    ok('a name is escaped in the rotations and nowhere raw in the flow model', !/<img src=x/.test(Flow.render(evil2)));
+  } finally {
+    delete globalThis.EpinoiaRotation;
+  }
 }
 
 console.log('\nwired into the game page');
