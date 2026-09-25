@@ -167,3 +167,35 @@ table.adv .gp-pc, .ffval .gp-pc, .tsacell .gp-pc{ display:none }
 
 /* every tab the same height, in and out of the advanced stats frame: the strip centres rather than stretches */
 .tabrow{ align-items:center }
+
+/* ONE FACE FOR EVERY FIGURE (2026-09-26). The game's numbers were drawn in four faces -- the mono,
+   the pixel scoreboard face, the pixel micro face and the UI sans -- at weights from 200 to 800.
+   Every number in every tab is now the mono at the true shot attempts' light weight: 300 for
+   reading sizes, 200 for the big ones, 500 where a figure is picked out (a winner, a total, a
+   pill); colour does the rest of the picking out. Scoped under #view so it outranks each tab's
+   own stylesheet (pbp.css and the modules arrive after this one). The scoreboard's score in the
+   header keeps its face: it is the page's headline, not a table figure. */
+#view table.bx td, #view table.adv td, #view table.ev-mx td b, #view .ev-mx td small,
+#view .ffval, #view .ffsub, #view .fch-l small, #view .tsacell .fm, #view .tsacell .gp,
+#view td.name small, #view .statchip b, #view .sc-chip b, #view .luname span,
+#view .pb-num, #view .pb-clock, #view .pb-per, #view .pb-score b, #view .pb-mk, #view .pb-mks,
+#view .mv-num, #view .mv-sub, #view .mv-line .w, #view .mv-line,
+#view .gf-runwhen, #view .gf-runtop, #view .gf-runscore, #view .gf-stat-value, #view .gf-badge, #view .gf-runno,
+#view .gf-yt, #view .gf-pl, #view .gf-endl, #view .gf-refl, #view .gf-strip-q,
+#view .rot-nm small, #view .rot-ax span, #view .rot-legend span,
+#view .cx-value, #view .cx-combos,
+#view .ev-lede b, #view .ev-diet small, #view .ev-ppp small, #view .ev-efg small, #view .ev-pts b, #view .ev-ppts b, #view .ev-pfg b,
+#view .ev-tval, #view .ev-scorers b, #view .ev-scorers small, #view .ev-freq b, #view .ev-ppp b, #view .ev-efg b, #view .ev-tov b,
+#view .scx-axis span, #view .scx-f small, #view .scx-big small, #view .sc-chip b,
+#view .ev-figs b, #view .ev-figs em, #view .ev-alabel small, #view .ev-pts small, #view .ev-tov small, #view .ev-freq small, #view .scx-whole b
+{ font-family:var(--f-mono); font-weight:300; font-variant-numeric:tabular-nums; letter-spacing:0; text-shadow:none }
+
+/* the big figures: the true shot attempts' own 200 */
+#view .tsacell .big, #view .gf-runbig, #view .cx-count, #view .scx-fv, #view .scx-big b
+{ font-family:var(--f-mono); font-weight:200; font-variant-numeric:tabular-nums; letter-spacing:-.01em; text-shadow:none }
+
+/* picked out */
+#view .ffval.winner, #view table.bx tr.tot td, #view .netpill, #view .fch-stack i, #view .pb-score b.up,
+#view .pb-pts, #view .gf-stat-value, #view .ev-mx tr.ev-azall td b, #view .pb-num, #view .mv-num, #view table.bx tr.oncourt td
+{ font-family:var(--f-mono); font-weight:500 }
+#view .ffval:not(.winner){ opacity:.8 }
