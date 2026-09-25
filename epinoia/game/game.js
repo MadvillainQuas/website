@@ -612,7 +612,7 @@ function bindBoxSwitch(el) {
    screen does not carry (flow.js, connections.js), and events (events.js) */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
               ['adv', 'full stats'], ['lineups', 'lineups'],
-              ['flow', 'game flow'], ['connections', 'connections'], ['events', 'events'],
+              ['flow', 'game flow'], ['connections', 'connections'], ['events', 'play-type + reb'],
               ['shotclock', 'shot clock analysis']];
 
 /* THE TAB STRIP FITS ON A DESKTOP, whatever the language. Ten to twelve tabs at 12px are wider

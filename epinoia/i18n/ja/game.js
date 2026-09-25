@@ -377,7 +377,7 @@
       "Who has it going": "好調な選手",
       "3PT%": "3FG%",
       'Fans at this game': 'この試合のファン',
-      'all their photographs': 'すべての写真',
+      'all their photographs': 'すべての写真',
       'neither': 'どちらでもない',
       'Neither is a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log.': '「どちらでもない」は、ファウルとフリースロー、ターンオーバー、ピリオド終了、または記録されなかったリバウンドです。',
       'rebounds by zone, both teams': 'ゾーン別のリバウンド、両チーム',
@@ -447,9 +447,9 @@
         'lineups': 'ラインナップ',
         'game flow': 'スコアチャート',
         'connections': 'コンビネーション',
-        'events': '状況別',
         'shot clock analysis': 'ショットクロック分析',
-        'video': '動画'
+        'video': '動画',
+        'play-type + reb': 'プレータイプ + リバウンド'
       }
     },
 

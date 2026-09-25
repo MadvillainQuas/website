@@ -530,12 +530,12 @@ section('pages');
      (games.match(/<script src="[^"]+" defer><\/script>/g) || []).length === (games.match(/<script /g) || []).length - 2 &&
      /<script src="\.\.\/i18n\.js\?v=\d+"><\/script>/.test(games));
   ok('games/ has no inline script or inline handler', !/<script>(?!<)/.test(games) && !/<script(?![^>]*src=)[^>]*>/.test(games) && !/\son[a-z]+="/i.test(games));
-  ok('games/ carries the heading and the count of leagues, and no page-wide Show more (each league\'s is its own)', games.includes('Global fixtures') &&
-     !/id="gmMore"/.test(games) && games.includes('id="gmCount"'));
+  ok('games/ carries the heading, a Show more button and the count', games.includes('Global fixtures') &&
+     /<button type="button" class="ep-btn more" id="gmMore" hidden>/.test(games) && games.includes('id="gmCount"'));
   const stamps = new Set((games.match(/\?v=(\d+)/g) || []));
   ok('games/ uses one ?v= stamp throughout', stamps.size === 1, [...stamps].join());
   const gjs = rd('epinoia', 'games', 'games.js');
-  ok('games.js pages 8 at a time, per league, and reads "of" / "all N shown"', /PAGE = 8/.test(gjs) && gjs.includes("' of '") && gjs.includes("'all '"));
+  ok('games.js pages 30 at a time and reads "of" / "all N shown"', /PAGE = 30/.test(gjs) && gjs.includes("' of '") && gjs.includes("'all '"));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -580,28 +580,41 @@ section('one dropdown per league: the leagues with a game this week, and a feed 
   ok('...and the global feed still reads every league', seen.filter(u => /\/games\?/.test(u)).every(u => !/league_id=eq\./.test(u)));
   seen.length = 0;
   await W.feed({ now: NOWW, batch: 5, league: "x'); drop table games; --" }).next(5);
+  seen.length = 0;
+  await W.feed({ now: NOWW, batch: 5, league: [LG, 'not-an-id', '11111111-2222-3333-4444-555555555555'] }).next(5);
+  ok('a list of leagues is one filter over them all (an id that is not one is left out)',
+     seen.filter(u => /\/games\?/.test(u)).length >= 2 && seen.filter(u => /\/games\?/.test(u)).every(u => u.includes('&competitions.seasons.league_id=in.(' + LG + ',11111111-2222-3333-4444-555555555555)') && !/not-an-id/.test(u)));
+  seen.length = 0;
+  await W.feed({ now: NOWW, batch: 5, league: "x'); drop table games; --" }).next(5);
   ok('...a league that is not an id is not put in the address', seen.filter(u => /\/games\?/.test(u)).every(u => !/league_id/.test(u) && !/drop table/.test(u)));
 }
 
-section('/epinoia/games/: a dropdown per league, its own Show more');
+section('/epinoia/games/: nearest first, only the week\'s leagues, a Show more of its own in each');
 {
   const gjs2 = rd('epinoia', 'games', 'games.js'), ghtml = rd('epinoia', 'games', 'index.html');
-  ok('the page reads the week\'s leagues, and shows those (and a league with a game live) - no others',
-     /gg\.weekLeagues\(NOW, WEEK_DAYS\)/.test(gjs2) && /const PAGE = 8, WEEK_DAYS = 7/.test(gjs2) && /week\.forEach\(w => \{ if \(byId\.has\(w\.id\)\) addGroup\(/.test(gjs2)
-     && /live\.forEach\(g => \{ const l = gg\.leagueOf\(g\); if \(l && l\.id && !groups\.has\(l\.id\)\) addGroup\(l, 0, 0\); \}\);/.test(gjs2));
-  ok('each league has its own feed (that league only) and its own Show more at the foot of its list',
-     /G\(\)\.feed\(\{ now: NOW, exclude: liveIds, batch: PAGE, league: rec\.id \}\)/.test(gjs2) && /const btn = el\('button', 'ep-btn more', 'Show more'\)/.test(gjs2)
-     && /btn\.addEventListener\('click', \(\) => \{ loadGroup\(rec\)/.test(gjs2) && /rec\.body\.appendChild\(rec\.foot\)/.test(gjs2));
-  ok('a league is read when it is opened, the first one is opened for the reader, and there is no page-wide Show more',
-     /det\.addEventListener\('toggle', \(\) => \{ if \(det\.open && !rec\.started\)/.test(gjs2) && /const top = host\.querySelector\('details\.gm-acc'\);/.test(gjs2)
-     && !/gmMore/.test(gjs2 + ghtml) && !/PAGE = 30/.test(gjs2));
-  ok('the heading count is the league\'s games in the week; beside its button "N of M" then "all N shown"; the header says how many leagues',
-     /weekN \+ \(weekN === 1 \? ' game' : ' games'\)/.test(gjs2) && gjs2.includes("' of '") && gjs2.includes("'all '") && /n \+ \(n === 1 \? ' league' : ' leagues'\)/.test(gjs2));
-  ok('live games are still pinned above every dropdown and a game that goes live leaves its league\'s list',
-     /rec && rec\.rows\.delete\(g\.id\) \? rec : null/.test(gjs2) && /id="gmLive"/.test(ghtml) && /touched\.forEach\(rec => \{ if \(rec\) drawGroup\(rec\); \}\)/.test(gjs2));
-  ok('the page says what it is: leagues with a game in the next 7 days, and its Show more is a league\'s',
-     /Every league with a game in the next 7 days, nearest first\./.test(ghtml) && /its Show more reads more of that league/.test(ghtml)
-     && ['ja', 'es'].every(code => rd('epinoia', 'i18n', code + '.js').includes("'Every league with a game in the next 7 days, nearest first.")));
+  ok('the leagues on the page are the ones with a game in the next 7 days (and any with a game live) - and both cursors are scoped to them',
+     /gg\.weekLeagues\(NOW, WEEK_DAYS\)/.test(gjs2) && /WEEK_DAYS = 7/.test(gjs2) && /week\.forEach\(w => \{ if \(byId\.has\(w\.id\)\) addGroup\(/.test(gjs2)
+     && /feed = gg\.feed\(\{ now: NOW, exclude: live, batch: PAGE, league: scope \}\)/.test(gjs2));
+  ok('the page still starts with the 30 nearest to now, page-wide, and its Show more reads 30 more across every league',
+     /const PAGE = 30, LEAGUE_PAGE = 8/.test(gjs2) && /const res = await pull\(feed, PAGE\);/.test(gjs2) && /id="gmMore"/.test(ghtml));
+  ok('each league has "Show more in this league": its own feed, that league only, beginning after what is already on the page for it',
+     /el\('button', 'ep-btn more', 'Show more in this league'\)/.test(gjs2) && /G\(\)\.feed\(\{ now: NOW, exclude: liveIds\.concat\(leagueRows\(rec\.id\)\.map\(g => g\.id\)\), batch: LEAGUE_PAGE, league: rec\.id \}\)/.test(gjs2));
+  ok('...a press adds games and never repeats one (a cursor can hand back what the other Show more put there), and a league with nothing on the page yet is read when opened',
+     /if \(!rows\.has\(g\.id\)\) fresh\+\+;/.test(gjs2) && /\} while \(fresh < n && !res\.done\);/.test(gjs2)
+     && /if \(det\.open && !rec\.opened\) \{ rec\.opened = true; if \(!leagueRows\(rec\.id\)\.length\) moreInLeague/.test(gjs2));
+  ok('the order, in code: leagues by the game (or result) closest to now; inside one, next soonest first then results newest first',
+     /const dist = rec => Math\.min\(/.test(gjs2) && /G\(\)\.groupOrder\(Array\.from\(rows\.values\(\)\), NOW\)/.test(gjs2)
+     && /section\('Next games, soonest first'/.test(gjs2) && /section\('Latest results, newest first'/.test(gjs2));
+  ok('...and in words, at the top, in one sentence: nearest to now first, the week\'s leagues, next games then results, Show more goes further out',
+     ghtml.includes('<p class="gm-lede">Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.</p>')
+     && !/gm-rules/.test(ghtml));
+  ok('...translated: the sentence, the sub-headings and the league button, in Japanese and Spanish',
+     ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code + '.js');
+       return ['Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.',
+         'Next games, soonest first', 'Latest results, newest first', 'Show more in this league']
+         .every(k => c.includes("'" + k + "'")); }));
+  ok('live games are still pinned above every group and a game that goes live leaves its league\'s list',
+     /if \(rows\.has\(g\.id\)\) \{ rows\.delete\(g\.id\); return true; \}/.test(gjs2) && /id="gmLive"/.test(ghtml));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

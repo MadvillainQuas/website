@@ -384,7 +384,7 @@
       "Who has it going": "Quién está enchufado",
       "3PT%": "T3%",
       'Fans at this game': 'Aficionados en este partido',
-      'all their photographs': 'todas sus fotos',
+      'all their photographs': 'todas sus fotos',
       'neither': 'ninguno',
       'Neither is a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log.': '«Ninguno» es una falta y tiros libres, una pérdida, el final de un periodo o un rebote que la fuente no registró.',
       'rebounds by zone, both teams': 'rebotes por zona, los dos equipos',
@@ -454,9 +454,9 @@
         'lineups': 'quintetos',
         'game flow': 'evolución',
         'connections': 'conexiones',
-        'events': 'situaciones',
         'shot clock analysis': 'reloj de posesión',
-        'video': 'vídeo'
+        'video': 'vídeo',
+        'play-type + reb': 'tipo de jugada + reb.'
       }
     },
 

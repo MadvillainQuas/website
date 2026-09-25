@@ -379,9 +379,9 @@ function leagueCounts(rows) {
    sides are finished it becomes what was actually shown, because games do
    drop out.
 
-   ONE LEAGUE'S FEED (opts.league, a league id): the same two cursors over that league's games alone. The global
-   page keeps one per league group, so "Show more" in a league's dropdown reads more of THAT league and nothing
-   else. */
+   ONE LEAGUE'S FEED (opts.league, a league id), or a LIST of leagues (an array of ids): the same two cursors over
+   those leagues' games alone. The global page runs one over the leagues that have a game in the week, and keeps
+   one per league group, so "Show more in this league" reads more of THAT league and nothing else. */
 function feed(opts) {
   const o = opts || {};
   const at = ms(o.now == null ? Date.now() : o.now);
@@ -463,8 +463,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function defaultFetch(at, league) {
   const fromUp = iso(at - STALE_MS), before = iso(at);
-  /* one league: a filter on the inner-embedded season's league (SEL joins them with !inner) */
-  const only = league && UUID.test(String(league)) ? '&competitions.seasons.league_id=eq.' + league : '';
+  /* one league, or a list of them: a filter on the inner-embedded season's league (SEL joins them with !inner).
+     Anything that is not a league id is left out of the address. */
+  const ids = (Array.isArray(league) ? league : (league ? [league] : [])).map(String).filter(x => UUID.test(x));
+  const only = ids.length === 1 ? '&competitions.seasons.league_id=eq.' + ids[0]
+    : ids.length ? '&competitions.seasons.league_id=in.(' + ids.join(',') + ')' : '';
   return function (side, after, limit, counted) {
     let q = 'games?select=' + SEL + only;
     if (side === 'up') {

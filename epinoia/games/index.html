@@ -17,12 +17,12 @@
 <meta name="description" content="Every fixture and result across all leagues on Epinoia, nearest to now first.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=412"></script>
-<script src="../i18n.js?v=412"></script>
-<script src="../glyphs.js?v=412" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=412">
-<link rel="stylesheet" href="../kit/nav.css?v=412">
-<link rel="stylesheet" href="../kit/fxc.css?v=412">
+<script src="../appmode.js?v=414"></script>
+<script src="../i18n.js?v=414"></script>
+<script src="../glyphs.js?v=414" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=414">
+<link rel="stylesheet" href="../kit/nav.css?v=414">
+<link rel="stylesheet" href="../kit/fxc.css?v=414">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .gm{overflow-x:clip}
@@ -32,8 +32,9 @@
   .gm .ep-hdr{flex-wrap:wrap;row-gap:4px}
   .gm-count{margin-left:auto;font-family:var(--f-micro);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
     color:var(--ink-3);white-space:nowrap}
+  /* the one-line answer to "what am I looking at" */
   .gm-lede{margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3);border-bottom:1px solid var(--rule);
-    font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3)}
+    font-family:var(--f-ui);font-weight:600;font-size:14.5px;line-height:1.45;color:var(--ink)}
 
   /* LIVE, PINNED above every group: the thing somebody opened the page for */
   .gm-live{border-bottom:1px solid var(--rule);background:color-mix(in oklch,var(--flare) 5%,var(--ground))}
@@ -50,6 +51,8 @@
   .gm-acc>summary .t{display:flex;min-width:0}
   .gm-acc>summary .flag{flex:none;font-size:16px;line-height:1}
   .gm-acc>summary .n{flex:none;white-space:nowrap;transition:color .3s ease}
+  /* a group that Show more just added to (games.js lit()) */
+  .gm-acc>summary .n.gm-grew{color:var(--lume)}
   /* the button names where the rows went, which can run long on a phone */
   .gm-more .ep-btn.more{white-space:normal;line-height:1.3;text-wrap:balance}
   .gm-body{padding-bottom:calc(var(--u)*1)}
@@ -59,11 +62,14 @@
     animation:gm-shimmer 1.4s ease-in-out infinite}
   @keyframes gm-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
   @media (prefers-reduced-motion:reduce){ .gm-skel i{animation:none} }
-  /* each league's own Show more, at the foot of its list, with what it has read beside it */
-  .gm-more{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*2)}
+  .gm-more{padding:0 0 calc(var(--u)*2)}
   .gm-more .ep-btn.more{border-top:none}
+  /* each league's own "Show more in this league", at the foot of its list, with what it has read beside it */
+  .gm-lmore{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*2)}
+  .gm-lmore .ep-btn.more{white-space:normal;line-height:1.3;text-wrap:balance}
   .gm-gcount{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
   .gm-body > .gm-sub:only-child{padding-bottom:calc(var(--u)*2)}
+
   .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:10px;line-height:1.9}
   .empty .ep-btn{margin-top:12px}
 
@@ -73,7 +79,7 @@
     .gm .ep-hdr h2{font-size:22px}
     .gm-lede{padding:calc(var(--u)*1.25) calc(var(--u)*2)}
     .gm-sub{padding:calc(var(--u)*1.25) 12px 0}
-    .gm-more{padding:calc(var(--u)*1.25) 12px calc(var(--u)*2)}
+    .gm-lmore{padding:calc(var(--u)*1.25) 12px calc(var(--u)*2)}
     .gm-skel{padding:10px 12px;grid-template-columns:repeat(2,minmax(0,1fr))}
     .ep-frame{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
     body.has-nav .ep-bell{top:auto;bottom:calc(58px + env(safe-area-inset-bottom,0px) + 10px)}
@@ -93,7 +99,8 @@
   </div>
   <div class="ep-hdr"><span class="idx">01</span><h2 id="gmTitle">Global fixtures</h2>
     <span class="gm-count" id="gmCount" aria-live="polite"></span></div>
-  <p class="gm-lede">Every league with a game in the next 7 days, nearest first. Open a league for its next games and latest results; its Show more reads more of that league.</p>
+  <!-- HOW THE PAGE IS ORDERED, in one line (games.js does exactly this) -->
+  <p class="gm-lede">Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.</p>
 
   <!-- live games, pinned above the groups; hidden while there are none -->
   <section class="gm-live" id="gmLive" aria-labelledby="gmLiveH" hidden>
@@ -106,16 +113,20 @@
     <div class="gm-skel" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   </div>
 
+  <div class="gm-more">
+    <button type="button" class="ep-btn more" id="gmMore" hidden>Show more</button>
+  </div>
+
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
 </div>
-<script src="../config.js?v=412" defer></script>
-<script src="../data.js?v=412" defer></script>
-<script src="../rt.js?v=412" defer></script>
-<script src="../country.js?v=412" defer></script>
-<script src="../initials.js?v=412" defer></script>
-<script src="../globalgames.js?v=412" defer></script>
-<script src="games.js?v=412" defer></script>
-<script src="../nav.js?v=412" defer></script>
-<script src="../xscroll.js?v=412" defer></script>
+<script src="../config.js?v=414" defer></script>
+<script src="../data.js?v=414" defer></script>
+<script src="../rt.js?v=414" defer></script>
+<script src="../country.js?v=414" defer></script>
+<script src="../initials.js?v=414" defer></script>
+<script src="../globalgames.js?v=414" defer></script>
+<script src="games.js?v=414" defer></script>
+<script src="../nav.js?v=414" defer></script>
+<script src="../xscroll.js?v=414" defer></script>
 </body>
 </html>

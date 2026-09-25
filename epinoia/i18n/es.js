@@ -1418,10 +1418,12 @@
       'Main home arena': 'Pabellón principal',
       'No results yet. The full list is on the fixtures page.': 'Aún no hay resultados. La lista completa está en el calendario.',
       'Fixtures or results': 'Calendario o resultados',
-      'Every league with a game in the next 7 days, nearest first. Open a league for its next games and latest results; its Show more reads more of that league.': 'Todas las ligas con partido en los próximos 7 días, las más cercanas primero. Abre una liga para ver sus próximos partidos y últimos resultados; su «Mostrar más» carga más de esa liga.',
       'No games in the next 7 days. A league appears here when it has one.': 'No hay partidos en los próximos 7 días. Una liga aparece aquí cuando tiene alguno.',
-      'No games to show here yet.': 'Todavía no hay partidos que mostrar aquí.',
-      'Could not load. Press Show more to try again.': 'No se pudo cargar. Pulsa «Mostrar más» para volver a intentarlo.'
+      'Next games, soonest first': 'Próximos partidos, del más cercano',
+      'Latest results, newest first': 'Últimos resultados, del más reciente',
+      'Show more in this league': 'Mostrar más en esta liga',
+      'Could not load. Press Show more in this league to try again.': 'No se pudo cargar. Pulsa «Mostrar más en esta liga» para volver a intentarlo.',
+      'Nearest to now first: leagues with a game in the next 7 days, each showing next games (soonest first) then latest results; Show more goes further out.': 'Lo más cercano a ahora, primero: ligas con partido en los próximos 7 días, cada una con sus próximos partidos (del más cercano) y luego sus últimos resultados; «Mostrar más» avanza más lejos.'
     },
 
     ctx: {
