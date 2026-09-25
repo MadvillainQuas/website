@@ -7,11 +7,13 @@ name: League clubs (codes + crests from the preview pages)
 # crestless clubs until each one's first game. Players and head shots are not taken here: they come
 # from the game feed as games are played (the League ingest workflow).
 #
-# Daily, well before the ingest's first discovery pass (12:00 UTC), so clubs exist under their real
-# codes before any fixture is written against them. Run it by hand after adding a league.
+# Mon + Thu 05:10 UTC, half an hour before the ingest's discovery pass (05:40 on the same days), so
+# clubs exist under their real codes before any fixture is written against them - it only ever ran
+# to serve that pass, so it runs when that pass does (it was daily). Run it by hand after adding a
+# league.
 on:
   schedule:
-    - cron: "40 6 * * *"
+    - cron: "10 5 * * 1,4"
   workflow_dispatch:
     inputs:
       source:

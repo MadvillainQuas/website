@@ -456,6 +456,15 @@ jobs:
           pip install requests
           python scripts/ingest/run_ingest_test.py
 
+      - name: The ingest asks the database only what it needs
+        # 24 and 25 Sep 2026: the database stopped answering from ~23:40 UTC after a day of the
+        # ingest re-reading every season to find two games near tip-off, rewriting ~2,000 unchanged
+        # fixtures every half hour ("...Z" never equalled the stored "...+00:00"), and rewriting
+        # eleven finished Czech games on every catch-up. The bulk reads are held to the answers the
+        # per-league reads gave, on the same rows; a fixture nobody moved costs no request; a
+        # finished game is never touched from the schedule; a Czech game keeps its fixture's id.
+        run: python scripts/ingest/quiet_test.py
+
       - name: A side not known yet is never a club
         # "To be determined", "TBC", "Winner of QF1": the ingest, the console and the
         # database (0126) share one rule, tested against the same names

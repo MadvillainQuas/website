@@ -11,9 +11,19 @@ name: League ingest (schedule → feed → Supabase)
 # host at a time.
 on:
   schedule:
-    - cron: "*/30 12-23 * * *"      # every 30 min, 12:00–23:30 UTC (UK/EU evenings + US daytime): discovery + new games
-    # THE LIVE LANE RUNS AROUND THE CLOCK, not 12-23. A fixture list is known days ahead, so
-    # discovery can keep to the evenings -- but a game is only live while it is being played, and
+    # DISCOVERY TWICE A WEEK, AND ONLY A PEEK. The leagues are connected and their fixture lists are
+    # published weeks ahead; what changes between two looks is the odd tip-off moved or venue named.
+    # This ran every 30 min from 12:00 to 23:30 UTC and re-read (and rewrote) ~2,000 fixtures each
+    # time - the load that had the database refusing requests from ~23:40 UTC on 24 and 25 Sep 2026.
+    # A pass now writes only what differs from what is stored (run_ingest: fixture_changed), and
+    # never touches a finished game. 05:40 UTC Monday and Thursday: nothing anywhere is live.
+    # Everything that used to ride on the half-hourly pass has its own trigger now: fixture
+    # reminders are pg_cron's minute tick (notify_tick, from the stored fixtures); a game played while
+    # no lane was watching is caught up by the hourly floor below; a broadcast is looked for by the
+    # live lane when the game comes due.
+    - cron: "40 5 * * 1,4"          # Mon + Thu 05:40 UTC: discovery (schedule changes only)
+    # THE LIVE LANE RUNS AROUND THE CLOCK. A fixture list is known days ahead, so discovery can
+    # run twice a week -- but a game is only live while it is being played, and
     # B.LEAGUE tips at 06:00 and 07:50 UTC. The old window covered France at 18:30 and never Japan
     # at all, so a B.LEAGUE game read 0-0 from tip to final however well the lane worked.
     - cron: "5-55/10 * * * *"       # every 10 min, all day: live games only
@@ -23,7 +33,7 @@ on:
     # foot of this file is what actually holds a game live; this is the cold start for when the
     # chain is not running and every 10-minute slot has been dropped.
     - cron: "2 * * * *"
-    - cron: "15 3 * * *"            # nightly dataset rebuild
+    - cron: "15 3 * * *"            # nightly dataset rebuild (only - it no longer runs discovery)
   workflow_dispatch:
     inputs:
       source:
@@ -52,7 +62,7 @@ on:
 # The live lane is a long-lived pass (up to ~5.5 h: polls in-progress games every 30 s, naps until
 # the next tip-off, and re-dispatches itself while games are live or due - GitHub's cron is
 # best-effort and cannot be relied on for liveness). It must not queue behind, or block, the
-# half-hourly discovery run, so the two lanes have their own concurrency groups; at most one live
+# discovery run, so the two lanes have their own concurrency groups; at most one live
 # pass runs and one waits, and GitHub cancels any further pending ones -- which is what keeps four
 # cron entries and the chain from piling up.
 #
@@ -66,7 +76,7 @@ on:
 # THIS TEST APPEARS FOUR TIMES: here, timeout-minutes, the run step, and the commit step.
 # Change one, change all four.
 concurrency:
-  group: league-ingest-${{ ((github.event.schedule != '' && github.event.schedule != '*/30 12-23 * * *' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && 'live' || 'main' }}
+  group: league-ingest-${{ ((github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && 'live' || 'main' }}
   cancel-in-progress: false
 
 permissions:
@@ -78,7 +88,7 @@ jobs:
     # The repository variable RUNS_ON moves the job to the self-hosted runners, e.g.
     # ["self-hosted","linux","epinoia"] (tools/runner/README.md); unset, GitHub's own runners.
     runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
-    timeout-minutes: ${{ ((github.event.schedule != '' && github.event.schedule != '*/30 12-23 * * *' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && 350 || 60 }}
+    timeout-minutes: ${{ ((github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && 350 || 60 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -104,8 +114,23 @@ jobs:
           # RUNNER_TEMP, not /tmp: two runner instances on one machine would share /tmp.
           grep -viE "win10toast|pywin32" scraper/requirements.txt > "$RUNNER_TEMP/req.txt" || true
           pip install -r "$RUNNER_TEMP/req.txt" || pip install selenium beautifulsoup4 requests pandas numpy scikit-learn tqdm
+      # A GAME PLAYED WHILE NO LANE WAS WATCHING (the PC off, the chain broken, a cron slot dropped)
+      # used to be picked up by the next half-hourly discovery pass. Discovery is twice a week now,
+      # so the hourly floor asks the one question itself: anything that tipped off 4 h - 7 days ago
+      # and is still not final? One or two reads when the answer is no, which is nearly always.
+      - name: Catch up games played while no lane was watching
+        if: ${{ github.event.schedule == '2 * * * *' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: python scripts/ingest/run_ingest.py --config --catch-up --feed-out "" || echo "catch-up failed - the live lane still runs"
       - name: Run ingest
         id: run
+        # the nightly slot rebuilds the dataset and nothing else
+        if: ${{ github.event.schedule != '15 3 * * *' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -120,7 +145,7 @@ jobs:
         run: |
           python scripts/ingest/run_ingest.py --config \
             ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ ((github.event.schedule != '' && github.event.schedule != '*/30 12-23 * * *' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && '--live-only --live-loop 19800 --live-every 10 --feed-out ""' || '' }}
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ ((github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && '--live-only --live-loop 19800 --live-every 10 --feed-out ""' || '' }}
       # The worker says chain=true when a game is live or a tip-off is near: the live lane starts
       # (or continues) its next pass straight away instead of waiting for a cron slot.
       - name: Start the next live-lane pass
@@ -142,7 +167,7 @@ jobs:
             python scripts/ingest/build_dataset.py --source "$code" || echo "dataset build failed for $code"
           done
       - name: Commit feed + datasets
-        if: ${{ github.event.inputs.dry_run != 'true' && !((github.event.schedule != '' && github.event.schedule != '*/30 12-23 * * *' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') }}
+        if: ${{ github.event.inputs.dry_run != 'true' && !((github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') }}
         run: |
           git config user.name "league-ingest[bot]"
           git config user.email "league-ingest@users.noreply.github.com"

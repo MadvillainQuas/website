@@ -551,19 +551,21 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
                 continue
     if n:
         print(f"   {n} club crest(s) taken from the schedule")
-    # THE CREST SAYS WHAT COLOUR THE CLUB IS. Every team with a crest and no colour of its own
-    # (colour_source 'default': never coloured, or its crest just changed) is read now; a team
-    # already coloured from its crest, or by an admin, is left alone. Pillow or (for an SVG
-    # crest) cairosvg/libcairo missing -> that team is skipped, not the whole sweep.
-    # THE FANS' DIARY. A club's followers hear three days before it plays and again on the day
-    # (notify_fixtures, 0106); the notify function then emails and pushes what is waiting.
-    try:
-        k = sb.rpc('notify_fixtures')
-        if k:
-            print(f"   {k} fixture reminder(s) written")
-        sb.function('notify', {})
-    except Exception as exc:
-        print(f"   (notifications: {exc})")
+    # THE FANS' DIARY IS NOT KEPT FROM HERE ANY MORE. This called notify_fixtures and the notify
+    # function once per SOURCE on every discovery pass (~90 times a pass, every half hour), each one
+    # a scan of every fixture for the reminder windows. pg_cron's epinoia-notify-tick has done that
+    # job every minute since 0155 (notify_tick -> notify_fixture_windows, then the notify function),
+    # which is also the only way a 2-hour reminder can be on time for a tip-off at 06:00 UTC.
+
+
+def colour_sweep(sb: Supabase) -> None:
+    """THE CREST SAYS WHAT COLOUR THE CLUB IS. Every team with a crest and no colour of its own
+    (colour_source 'default': never coloured, or its crest just changed) is read now; a team
+    already coloured from its crest, or by an admin, is left alone. Pillow or (for an SVG
+    crest) cairosvg/libcairo missing -> that team is skipped, not the whole sweep.
+
+    ONCE PER PASS, after every source's crests are in - it used to run inside sync_logos, i.e.
+    once per source, downloading the same unreadable crests ~90 times a pass."""
     try:
         import team_colours
         c = team_colours.sweep(sb, log=lambda m: print(m))
@@ -577,9 +579,10 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
 
 def refile_from_catchall(sb: Supabase, src: dict, games: list, run: dict) -> None:
     """Games this phase's schedule lists that still sit in the league's catch-all competition (filed
-    there before the feed's phases were known) move to the phase - fixtures and finished games alike.
-    Discovery skips games it already holds, so this is a pass of its own. A game an administrator
-    has placed in any OTHER competition is left exactly where it is."""
+    there before the feed's phases were known) move to the phase - fixtures and games in progress;
+    a finished game is left where it is (moved from the console, if at all). Discovery skips games
+    it already holds, so this is a pass of its own. A game an administrator has placed in any OTHER
+    competition is left exactly where it is."""
     if not src.get("competition_label") or not games:
         return
     league_id = resolve_league(sb, src, run)
@@ -601,7 +604,9 @@ def refile_from_catchall(sb: Supabase, src: dict, games: list, run: dict) -> Non
     moved = 0; team_ids: set = set()
     for i in range(0, len(game_ids), 100):
         try:
-            rows = sb.select("games", f"id=in.({','.join(game_ids[i:i + 100])})&competition_id=eq.{dflt}&select=id,home_team_id,away_team_id")
+            # a FINISHED game stays where it is: moving one rebuilds two tables, and finished games
+            # are only ever touched when somebody asks (the console, or a --refresh run)
+            rows = sb.select("games", f"id=in.({','.join(game_ids[i:i + 100])})&competition_id=eq.{dflt}&status=neq.final&select=id,home_team_id,away_team_id")
         except Exception:
             continue
         for r in rows:
@@ -653,25 +658,72 @@ def sync_videos(sb: Supabase, src: dict, games: list, run: dict) -> None:
                 by_ext[str(r["external_id"])] = r["game_id"]
         except Exception:
             continue
+    # WHAT EACH GAME ALREADY HAS, eighty games to a read - not two reads per game on every pass. A
+    # game with a video whose anchor is complete is left alone; an incomplete anchor is only worth
+    # another look for two days after tip-off (the stream's real start and the tip are known by then,
+    # and nothing a later pass could read would change them).
+    have: dict = {}
+    gids = sorted(set(by_ext.values()))
+    for i in range(0, len(gids), 80):
+        try:
+            for r in sb.select("game_videos", f"game_id=in.({','.join(gids[i:i + 80])})&is_primary=eq.true"
+                                              "&select=game_id,provider,stream_started_at,tip_at,tip_wall"):
+                have[str(r["game_id"])] = r
+        except Exception:
+            return
     n_att = n_done = 0
     for g in recent:
         gid = by_ext.get(str(g.external_id))
         if not gid:
             continue
+        v = have.get(str(gid))
         try:
-            if attach_video(sb, gid, g.home_name, g.away_name, g.tipoff_at, ac, log=lambda *a: None):
-                n_att += 1
-            elif complete_video(sb, gid, log=lambda *a: None):
-                n_done += 1
+            if v is None:
+                if attach_video(sb, gid, g.home_name, g.away_name, g.tipoff_at, ac, log=lambda *a: None):
+                    n_att += 1
+            elif (v.get("provider") == "youtube" and not (v.get("stream_started_at") and v.get("tip_at") and v.get("tip_wall"))
+                  and 0 <= (now - _instant(g.tipoff_at)).total_seconds() <= 2 * 86400):
+                if complete_video(sb, gid, log=lambda *a: None):
+                    n_done += 1
         except Exception:
             continue
     if n_att or n_done:
         print(f"   videos: {n_att} attached, {n_done} anchored")
 
 
-def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
+def games_by_id(sb: Supabase, ids, conf: bool = False) -> dict:
+    """{game id: its row} for write_fixture's comparison, eighty ids to a request."""
+    ids = sorted({str(i) for i in ids if i})
+    cols = "id,status,tipoff_at,venue" + (",conference_game" if conf else "")
+    out = {}
+    for i in range(0, len(ids), 80):
+        try:
+            for r in sb.select("games", f"id=in.({','.join(ids[i:i + 80])})&select={cols}"):
+                out[str(r["id"])] = r
+        except Exception as exc:
+            print(f"   (fixture lookup failed: {exc})")
+    return out
+
+
+def fixture_changed(have: dict | None, g: ScheduleGame) -> bool:
+    """Does the schedule say anything the stored external_games row does not? Timestamps compared
+    as instants (same_instant); an empty name and a missing one are the same nothing."""
+    if not have:
+        return True
+    return not ((have.get("home_name") or None) == (g.home_name or None)
+                and (have.get("away_name") or None) == (g.away_name or None)
+                and (have.get("external_status") or "scheduled") == (g.status or "scheduled")
+                and same_instant(have.get("tipoff_at"), g.tipoff_at)
+                and (have.get("game_date") or None) == ((g.tipoff_at or "")[:10] or None))
+
+
+def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict, pre: dict | None = None) -> None:
     """A scheduled game (no payload yet) becomes an Epinoia fixture with its date and venue, so the
-    fixtures page shows what is coming. Clubs are matched by code/name; unknown clubs wait for the payload."""
+    fixtures page shows what is coming. Clubs are matched by code/name; unknown clubs wait for the payload.
+
+    `pre` = {"ext": this fixture's stored external_games row or None, "games": {id: row}} when the
+    caller has already read them in bulk (the discovery pass). A fixture with no stored row under
+    this source is still looked up here, as before - it may sit under another source's code."""
     league_id = resolve_league(sb, src, run)
     if not league_id or not (g.home_name and g.away_name):
         return
@@ -687,7 +739,10 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
                                  "shortName": ex.get("away_short") or ""})
     if not (home and away):
         return
-    existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{g.external_id}&select=game_id")
+    if pre is not None and pre.get("ext") is not None:
+        existing = [pre["ext"]]
+    else:
+        existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{g.external_id}&select=game_id")
     game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
     row = {"tipoff_at": g.tipoff_at, "venue": ex.get("venue"), "venue_address": ex.get("venue_address")}
     # WHETHER THIS GAME COUNTS IN THE CONFERENCE TABLE (0144), when the adapter knows: False for a
@@ -696,8 +751,14 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
     # `row`, whose filter drops falsy values - and False is exactly the value that matters here.
     conf = {"conference_game": ex["conference_game"]} if "conference_game" in ex else {}
     if game_id:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,venue" + (",conference_game" if conf else ""))
-        if cur and cur[0].get("status") in ("scheduled", None) and (cur[0].get("tipoff_at") != g.tipoff_at or (ex.get("venue") and cur[0].get("venue") != ex.get("venue"))):
+        got = (pre or {}).get("games") or {}
+        if str(game_id) in got and (not conf or "conference_game" in got[str(game_id)]):
+            cur = [got[str(game_id)]]
+        else:
+            cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,venue" + (",conference_game" if conf else ""))
+        # a FINISHED game is never touched from here (nor a live one): the schedule only moves fixtures
+        if cur and cur[0].get("status") in ("scheduled", None) and ((g.tipoff_at and not same_instant(cur[0].get("tipoff_at"), g.tipoff_at))
+                                                                    or (ex.get("venue") and cur[0].get("venue") != ex.get("venue"))):
             sb.patch("games", f"id=eq.{game_id}", {k: v for k, v in row.items() if v})
         if conf and cur and cur[0].get("conference_game") != conf["conference_game"]:
             # a game the schedule has since re-labelled; a finished one moves two tables
@@ -820,6 +881,24 @@ def venue_of(b: GameBundle) -> str | None:
     return None
 
 
+# THE BROADCAST IS LOOKED FOR EVERY FIVE MINUTES OF A LIVE GAME, NOT ON EVERY POLL. write_platform
+# runs on every new version of a live log (every 10-30 s), and each run read game_videos twice -
+# once in attach(), once in complete() - and complete() could read the game's whole event log again
+# to place the tip. A stream is attached once and its start does not move between two polls. The
+# game's final write always gets one last look (the stream's real end and the tip are known by then).
+VIDEO_EVERY_S = 5 * 60
+_VIDEO_LOOKED: dict = {}
+
+
+def video_due(game_id, status: str) -> bool:
+    now = time.time()
+    last = _VIDEO_LOOKED.get(str(game_id))
+    if last and now - last[0] < VIDEO_EVERY_S and (status != "final" or last[1] == "final"):
+        return False
+    _VIDEO_LOOKED[str(game_id)] = (now, status)
+    return True
+
+
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None,
                    stamps: dict | None = None, venue: str | None = None) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
@@ -861,7 +940,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         game_id = g[0]["id"]
     else:
         cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id,venue")
-        extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and cur[0].get("tipoff_at") != b.tipoff_at) else {}
+        extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and not same_instant(cur[0].get("tipoff_at"), b.tipoff_at)) else {}
         if venue and cur and cur[0].get("venue") != venue:
             extra["venue"] = venue
         # A game filed under the league's catch-all competition before the feed's phases were known
@@ -888,7 +967,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     # THE BROADCAST, for a game being played or just finished: linked the moment the game is first
     # seen (so the page carries the stream while the game is on), and its anchor completed whenever
     # a stream start or a tip has since become known - whether or not the log is still open.
-    if b.status in ("live", "final"):
+    if b.status in ("live", "final") and video_due(game_id, b.status):
         try:
             from auto_video import attach as attach_video, complete as complete_video
             if not attach_video(sb, game_id, b.home_name, b.away_name, b.tipoff_at, ac):
@@ -1588,18 +1667,94 @@ def _tip(r: dict):
         return None
 
 
+def _instant(v):
+    """An ISO timestamp as an aware datetime (naive = UTC); None for nothing; the text itself if it
+    will not parse, so two unreadable values still compare as themselves."""
+    if not v:
+        return None
+    try:
+        d = datetime.fromisoformat(str(v).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return str(v)
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+def same_instant(a, b) -> bool:
+    """Do two timestamps name the same moment?
+
+    NOT THE SAME TEXT. Most adapters write "2026-10-04T17:00:00Z" and PostgREST hands the stored
+    value back as "2026-10-04T17:00:00+00:00". Compared as strings every fixture looked moved on
+    every pass, so write_fixture PATCHed every game on every schedule it read: 12,219 PATCHes of
+    `games` in the twelve hours before the database stopped answering on 24 Sep 2026."""
+    return _instant(a) == _instant(b)
+
+
+def _pg_in(values) -> str:
+    """A PostgREST in-list, each value double-quoted (a code with a comma or a dot stays one value)."""
+    return "(" + ",".join('"' + str(v).replace('"', "") + '"' for v in values) + ")"
+
+
+def _zulu(d: datetime) -> str:
+    # 'Z', not '+00:00': a plus sign inside a URL query is a space
+    return d.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def external_rows(sb: "Supabase", sources: list[dict], where: str, cols: str, per_chunk: str = "") -> dict:
+    """external_games rows for MANY sources in a handful of requests, keyed (adapter, code).
+
+    ONE QUESTION, NOT ONE PER LEAGUE. The live lane asked every source for every game it had not
+    finished - ~60 requests returning every fixture of the season, every two minutes of a live
+    pass and twice per quarter-hour probe - to find the two or three games near their tip-off.
+    The window goes into the query instead, and every source is asked at once: all the adapters and
+    all the codes in one request (eighty codes to a request), the rows sorted back to their sources
+    here - a row whose adapter and code are not one source's pair is dropped.
+    `per_chunk` (e.g. "&order=tipoff_at.asc&limit=25") applies to each request, not the whole."""
+    keys = {(s["adapter"], s["code"]) for s in sources}
+    adapters = sorted({a for a, _ in keys})
+    codes = sorted({c for _, c in keys})
+    out: dict = {}
+    for i in range(0, len(codes), 80):
+        rows = sb.select("external_games", f"adapter=in.{_pg_in(adapters)}&competition_code=in.{_pg_in(codes[i:i + 80])}"
+                                           f"&{where}&select=adapter,competition_code,{cols}{per_chunk}")
+        for r in rows:
+            k = (r["adapter"], r["competition_code"])
+            if k in keys:
+                out.setdefault(k, []).append(r)
+    return out
+
+
 def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[tuple[dict, dict]], datetime | None]:
     """(due, next_tip): the games to poll now - live, or inside the tip-off window - and the next
     listed tip-off beyond the window (so a quiet pass knows how long to wait)."""
     due, next_tip = [], None
+    today = now.date().isoformat(); yday = (now - timedelta(days=1)).date().isoformat()
+    # Two small reads for every source at once (external_rows): the games that could be due - live,
+    # inside [now - LIVE_STALE, now + LIVE_BEFORE_TIP], or undated but of today/yesterday - and the
+    # single next tip-off after that window. The rules below are unchanged; the database simply no
+    # longer sends the rest of the season to be thrown away.
+    lo, hi = _zulu(now - timedelta(seconds=LIVE_STALE)), _zulu(now + timedelta(seconds=LIVE_BEFORE_TIP))
+    cols = "external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash,game_id"
+    try:
+        # (the instants are quoted: ':' is one of the characters PostgREST reserves inside or=())
+        near = external_rows(sb, sources, f"external_status=neq.final&or=(external_status.eq.live,"
+                                          f'and(tipoff_at.gte."{lo}",tipoff_at.lte."{hi}"),and(tipoff_at.is.null,game_date.gte.{yday}))', cols)
+    except Exception as exc:
+        print(f"   (live lookup failed: {exc})"); near = {}
+    try:
+        # a live row is due (or stale), never "the next tip-off" - the old loop's elif, in the query
+        # the soonest few, not the soonest one: a row of an adapter/code pair that is not a source
+        # of ours is dropped after the read, and must not hide the next real tip-off
+        ahead = external_rows(sb, sources, f"external_status=not.in.(final,live)&tipoff_at=gt.{hi}", "tipoff_at",
+                              "&order=tipoff_at.asc&limit=25")
+        for rows in ahead.values():
+            for r in rows:
+                t = _tip(r)
+                if t and (next_tip is None or t < next_tip):
+                    next_tip = t
+    except Exception as exc:
+        print(f"   (next tip-off lookup failed: {exc})")
     for src in sources:
-        try:
-            rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final"
-                                               "&select=external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash,game_id")
-        except Exception as exc:
-            print(f"   (live lookup failed for {src['code']}: {exc})"); continue
-        today = now.date().isoformat(); yday = (now - timedelta(days=1)).date().isoformat()
-        for r in rows:
+        for r in near.get((src["adapter"], src["code"]), []):
             t = _tip(r); since = (now - t).total_seconds() if t else None
             # a game marked live is polled while its tip-off is recent - or, when the schedule never
             # gave one, while its game date is today/yesterday. A log nobody closed last season must
@@ -1619,8 +1774,24 @@ def outstanding_rows(sb: "Supabase", src: dict, now: datetime) -> list[dict]:
     stopped looking), less than OUTSTANDING_MAX_AGE ago (so a postponed game is not chased for
     ever), and are still not final in the database. A game with no tip-off time is skipped: with
     nothing to date it by, there is no telling a missed game from one not yet played."""
-    rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final"
-                                       "&select=external_id,external_status,tipoff_at,home_name,away_name")
+    return _outstanding(sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}"
+                                                    f"&{_outstanding_where(now)}&select=external_id,external_status,tipoff_at,home_name,away_name"), now)
+
+
+def _outstanding_where(now: datetime) -> str:
+    # the window in the query: the rest of a season's fixtures never leave the database
+    return (f"external_status=neq.final&tipoff_at=gt.{_zulu(now - timedelta(seconds=OUTSTANDING_MAX_AGE))}"
+            f"&tipoff_at=lte.{_zulu(now - timedelta(seconds=LIVE_AFTER_TIP))}")
+
+
+def outstanding_by_source(sb: "Supabase", sources: list[dict], now: datetime) -> dict:
+    """outstanding_rows for every source at once, keyed (adapter, code) - so a catch-up pass with
+    nothing to do costs one or two reads instead of a read, a run row and two stamps per source."""
+    got = external_rows(sb, sources, _outstanding_where(now), "external_id,external_status,tipoff_at,home_name,away_name")
+    return {k: _outstanding(v, now) for k, v in got.items()}
+
+
+def _outstanding(rows: list[dict], now: datetime) -> list[dict]:
     out = []
     for r in rows:
         t = _tip(r)
@@ -1661,6 +1832,18 @@ def claim_live_lane() -> bool:
     except Exception:
         pass                                    # not Windows: no mutex, no harm
     return True
+
+
+def version_in_db(sb: "Supabase", src: dict, xid: str, b: GameBundle) -> bool:
+    """Does the database already hold exactly this version of the game - same payload, same status?
+    Then another lane wrote it and writing it again changes nothing. A read that fails says no:
+    a duplicate write is the old behaviour, a skipped one would be a lost version."""
+    try:
+        rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{xid}&select=payload_hash,external_status")
+    except Exception:
+        return False
+    return bool(rows) and bool(b.payload_hash) and rows[0].get("payload_hash") == b.payload_hash \
+        and rows[0].get("external_status") == b.status
 
 
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
@@ -1762,6 +1945,17 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             for s, r in due:
                 hashes.setdefault(str(r["external_id"]), r.get("payload_hash") or "")
                 runs[s["code"]]["games_seen"] = max(runs[s["code"]]["games_seen"], len([1 for s2, _ in due if s2 is s]))
+                # THE BROADCAST, FROM THE MOMENT THE GAME COMES DUE. Discovery used to link a stream
+                # days ahead because it ran every half hour; it runs twice a week now, so the lane -
+                # which knows the game is 20 minutes from tip - looks for it (then every five
+                # minutes at most: video_due), before the feed has published a single action.
+                if r.get("game_id") and video_due(r["game_id"], "due"):
+                    try:
+                        from auto_video import attach as attach_video
+                        attach_video(sb, r["game_id"], r.get("home_name") or "", r.get("away_name") or "",
+                                     r.get("tipoff_at"), s.get("adapter_config") or {})
+                    except Exception as exc:
+                        print(f"    (auto video: {exc})")
             recheck = time.time() + 120
             print(f"{now.strftime('%H:%M:%S')}Z {len(due)} live/due game(s)" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") +
                   ((": " + ", ".join(f"{r.get('home_name') or r['external_id']} v {r.get('away_name') or ''}" for _, r in due[:6])) if due else ""))
@@ -1846,6 +2040,20 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 # the version's upload stamp; the error stays the CONFIGURED interval plus the
                 # poll's own duration, so the heartbeat's `fast` test reads exactly as before
                 observed = (snap.stamp_ms, int((fast_every if is_armed else every) * 1000) + snap.fetch_ms)
+            if version_in_db(sb, src, xid, b):
+                # ANOTHER LANE GOT THERE FIRST. The GitHub lane and the PC's lane both poll a live
+                # game, and each wrote every new version it saw - the same 17-19 round trips twice
+                # (bbl/2007027.json: 426 uploads in two hours from five runners). One read decides.
+                hashes[xid] = b.payload_hash
+                if snap:
+                    written[xid] = snap.version
+                elif vs["basis"] == "lm":
+                    last_lm[xid] = max(last_lm.get(xid) or 0, b.feed_lm_ms)
+                if b.status == "final":
+                    finished.add(xid)
+                    if use_obs:
+                        observer.forget(xid); written.pop(xid, None); last_bundle.pop(xid, None)
+                continue
             run = runs[src["code"]]; run["games_fetched"] += 1
             t_write = time.time()
             raw_ref = None
@@ -1894,12 +2102,18 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         # gaps are over 25 s, the writes are starving the observer - ship 2b, then a thread.
         for xid in list(observer.st):
             print(observer_line(xid))
+    # every source's "polled" stamp in ONE request (it was one PATCH per source, ~60 of them on every
+    # quarter-hour probe of the PC's lane); a run row only where a game was actually fetched
+    ids = sorted({str(s["id"]) for s in fiba if s.get("id")})
+    if ids:
+        try:
+            sb.patch("schedule_sources", f"id=in.({','.join(ids)})", {"last_polled_at": now_iso(), "last_ok_at": now_iso()})
+        except Exception:
+            pass
     for s in fiba:
-        if s.get("id"):
+        if s.get("id") and runs[s["code"]]["games_fetched"]:
             try:
-                sb.patch("schedule_sources", f"id=eq.{s['id']}", {"last_polled_at": now_iso(), "last_ok_at": now_iso()})
-                if runs[s["code"]]["games_fetched"]:
-                    sb.insert("ingest_runs", {**runs[s["code"]], "finished_at": now_iso(), "status": "ok"})
+                sb.insert("ingest_runs", {**runs[s["code"]], "finished_at": now_iso(), "status": "ok"})
             except Exception:
                 pass
     now = datetime.now(timezone.utc)
@@ -2048,10 +2262,10 @@ def main() -> int:
     ap.add_argument("--max-games", type=int, default=400)
     ap.add_argument("--ids", help="comma-separated external ids: skip discovery and fetch just these (tests). "
                     "For the Czech NBL (fiba_site_schedule, site=czech) this is nbl.basketball's OWN /zapas/<id> "
-                    "id, not the LiveStats id external_games.external_id ends up holding -- fetch() translates "
-                    "one to the other on the way in (see data/feed/CBFFE/idmap.json for the mapping). Passing "
-                    "the LiveStats id here fails silently: 'to (re)fetch' but 'fetched 0', no error printed "
-                    "(reported 2026-09-18, cost a fetch() debugging session before the idmap gave up the real id)")
+                    "id, which is also what external_games.external_id holds -- fetch() translates it to the "
+                    "LiveStats id on the way in and hands the game back under the site id (see "
+                    "data/feed/CBFFE/idmap.json for the mapping). Passing the LiveStats id here fails silently: "
+                    "'to (re)fetch' but 'fetched 0', no error printed (reported 2026-09-18)")
     ap.add_argument("--feed-out", default=str(FEED_DIR), help="repo feed directory (default data/feed); '' to disable")
     ap.add_argument("--fixture-out", help="also write each bundle (+ raw) as JSON test fixtures here")
     ap.add_argument("--no-supabase", action="store_true")
@@ -2126,6 +2340,20 @@ def main() -> int:
     worker = os.environ.get("GITHUB_RUN_ID", "local")
     exit_code = 0
     tot = {"seen": 0, "written": 0, "error": None}      # the whole pass, for a backfill's row
+    # A CATCH-UP PASS ASKS ONCE, FOR EVERY SOURCE, and then touches only the sources that have
+    # something outstanding. It runs every two hours on the PC and has nothing to do almost every
+    # time - and each of ~90 sources used to cost a run row, a read and two stamps regardless.
+    outstanding = None
+    if args.catch_up and not args.ids and sb:
+        try:
+            outstanding = outstanding_by_source(sb, sources, datetime.now(timezone.utc))
+        except Exception as exc:
+            print(f"   (catch-up lookup failed: {exc})")
+            return 1
+        sources = [s for s in sources if outstanding.get((s["adapter"], s["code"]))]
+        if not sources:
+            print("   no outstanding games")
+            return 0
     for src in sources:
         adapter = get_adapter(src["adapter"])
         run = {"source_id": src.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0}
@@ -2144,7 +2372,9 @@ def main() -> int:
                 # games that were played while nothing was watching: see OUTSTANDING_MAX_AGE
                 games = []
                 try:
-                    for r in (outstanding_rows(sb, src, datetime.now(timezone.utc)) if sb else []):
+                    rows_ = (outstanding.get((src["adapter"], src["code"]), []) if outstanding is not None
+                             else outstanding_rows(sb, src, datetime.now(timezone.utc)) if sb else [])
+                    for r in rows_:
                         games.append(ScheduleGame(external_id=str(r["external_id"]), home_name=r.get("home_name") or "",
                                                   away_name=r.get("away_name") or "", tipoff_at=r.get("tipoff_at"),
                                                   status=r.get("external_status") or "scheduled"))
@@ -2205,10 +2435,12 @@ def main() -> int:
             # the repo index is merged in afterwards so index.json keeps every game it knew.
             known_repo = feed.known(src["code"]) if feed else {}
             known_db = {}
+            stored: dict = {}       # external_id -> the row as stored, for the fixture pass below
             if sb:
                 try:
-                    for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash,raw_ref,game_date,home_name,away_name,home_score,away_score"):
+                    for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash,raw_ref,game_date,home_name,away_name,home_score,away_score,game_id,tipoff_at"):
                         k = str(r["external_id"])
+                        stored[k] = r
                         known_db[k] = {**known_repo.get(k, {"id": k}), "id": k, "home": r.get("home_name"), "away": r.get("away_name"),
                                        "homeScore": r.get("home_score"), "awayScore": r.get("away_score"),
                                        "status": r.get("external_status"), "hash": r.get("payload_hash"), "raw_ref": r.get("raw_ref"), "date": r.get("game_date")}
@@ -2235,19 +2467,37 @@ def main() -> int:
             print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch"
                   + (f" ({waiting} not tipped off yet)" if waiting else ""))
             entries = {**known_repo, **known}
-            # schedule facts for every game (dates, venues, clubs) even before the feed publishes a payload
+            # schedule facts for every game (dates, venues, clubs) even before the feed publishes a payload.
+            #
+            # A PEEK, NOT A REWRITE. This used to cost every fixture on the schedule two reads and an
+            # upsert on every pass - ~2,000 fixtures, half-hourly - whether or not anything had moved,
+            # and the upsert rewrote the row each time. Now the stored rows come from the one read
+            # above, the games they point at are read eighty to a request, and a fixture is written
+            # only when the schedule says something different from what is stored.
+            fixtures = [g for g in games if (g.tipoff_at or g.home_name) and not (entries.get(g.external_id) or {}).get("hash")]
+            pre_games = {}
+            if sb and not args.dry_run and fixtures:
+                pre_games = games_by_id(sb, [stored[str(g.external_id)]["game_id"] for g in fixtures
+                                             if (stored.get(str(g.external_id)) or {}).get("game_id")],
+                                        conf=any("conference_game" in (g.extra or {}) for g in fixtures))
+            wrote = 0
             for g in games:
                 if g.tipoff_at or g.home_name:
                     entries[g.external_id] = sched_entry(g, entries.get(g.external_id))
                     if sb and not args.dry_run and not entries[g.external_id].get("hash"):
+                        have = stored.get(str(g.external_id))
                         try:
-                            write_fixture(sb, src, g, run)
-                            sb.upsert("external_games", {"adapter": src["adapter"], "external_id": g.external_id, "competition_code": src["code"],
-                                                         "home_name": g.home_name or None, "away_name": g.away_name or None,
-                                                         "external_status": g.status or "scheduled", "tipoff_at": g.tipoff_at,
-                                                         "game_date": (g.tipoff_at or "")[:10] or None}, "adapter,external_id")
+                            write_fixture(sb, src, g, run, pre={"ext": have, "games": pre_games} if sb else None)
+                            if fixture_changed(have, g):
+                                sb.upsert("external_games", {"adapter": src["adapter"], "external_id": g.external_id, "competition_code": src["code"],
+                                                             "home_name": g.home_name or None, "away_name": g.away_name or None,
+                                                             "external_status": g.status or "scheduled", "tipoff_at": g.tipoff_at,
+                                                             "game_date": (g.tipoff_at or "")[:10] or None}, "adapter,external_id")
+                                wrote += 1
                         except Exception as exc:
                             print(f"    (fixture {g.external_id}: {exc})")
+            if fixtures:
+                print(f"   {len(fixtures)} fixture(s) checked, {wrote} changed on the schedule")
             live_set = []
             for g in todo:
                 t_obs = time.time()
@@ -2355,6 +2605,9 @@ def main() -> int:
                 tot["error"] = err
             beat()
             print(f"   done in {time.time() - t0:.1f}s - seen {run['games_seen']}, fetched {run['games_fetched']}, written {run['games_written']}")
+    # crests read above -> colours, once for the whole pass (see colour_sweep)
+    if sb and not args.dry_run and not args.ids and not args.catch_up:
+        colour_sweep(sb)
     # the queued row is closed whatever happened: `running` left behind is a league whose season
     # nobody can ask for again until the lease expires
     if job:

@@ -57,6 +57,12 @@ def fmt_t(t):
 
 
 # --------------------------------------------------------------------------- the data
+JOB_COLS = ('id,game_id,status,mode_requested,mode_used,priority,progress,result,error,requested_via,requested_at,'
+            'worker,claimed_at,heartbeat_at,finished_at,cancel_requested,video_url,'
+            'games(tipoff_at,home:teams!games_home_team_id_fkey(name),away:teams!games_away_team_id_fkey(name))')
+HISTORY_EVERY_S = 600
+
+
 class Model(object):
     def __init__(self, cfg):
         self.cfg = cfg
@@ -64,14 +70,25 @@ class Model(object):
         self.worker_id = cfg.get('worker_id') or socket.gethostname()
         self.jobs, self.workers = [], []
         self.error = None
+        self._history, self._history_at, self._active_ids = None, 0.0, None
 
-    def refresh(self):
+    def refresh(self, full=True):
+        """THE QUEUE, NOT THE WHOLE HISTORY, EVERY TICK. This read the last 200 jobs - each with its
+        game and both clubs joined - and the workers table every three seconds for as long as the
+        window was open, visible or not: 55,000 requests a day, the largest single caller the
+        database had (24 Sep 2026). A tick now reads the jobs that are waiting or running (usually
+        none) and the workers; the finished history is read again only when a job has left the queue
+        since the last look, on any button, or every ten minutes."""
         try:
-            self.jobs = self.db.select('video_jobs',
-                'select=id,game_id,status,mode_requested,mode_used,priority,progress,result,error,requested_via,requested_at,'
-                'worker,claimed_at,heartbeat_at,finished_at,cancel_requested,video_url,'
-                'games(tipoff_at,home:teams!games_home_team_id_fkey(name),away:teams!games_away_team_id_fkey(name))'
-                '&order=requested_at.desc&limit=200')
+            active = self.db.select('video_jobs', 'select=' + JOB_COLS + '&status=in.(queued,claimed,running)'
+                                    '&order=requested_at.desc&limit=200')
+            ids = {j['id'] for j in active}
+            if full or self._history is None or ids != self._active_ids or time.time() - self._history_at > HISTORY_EVERY_S:
+                self._history = self.db.select('video_jobs', 'select=' + JOB_COLS + '&status=not.in.(queued,claimed,running)'
+                                               '&order=requested_at.desc&limit=200')
+                self._history_at = time.time()
+            self._active_ids = ids
+            self.jobs = active + self._history
             self.workers = self.db.select('video_workers', 'select=id,last_seen,busy_job,paused,note&order=last_seen.desc')
             self.error = None
         except Exception as exc:
@@ -625,7 +642,9 @@ def run_window(cfg):
         if keep and tree.exists(keep):
             tree.selection_set(keep)
         me = M.me()
-        def fresh(iso, s=90):
+        # the worker's idle heartbeat is at most a minute apart now (ai_worker's poll backs off to
+        # poll_idle_max_s), so "online" allows two and a half
+        def fresh(iso, s=150):
             try:
                 return bool(iso) and (datetime.now(timezone.utc) - datetime.fromisoformat(iso.replace('Z', '+00:00'))).total_seconds() < s
             except Exception:
@@ -659,19 +678,33 @@ def run_window(cfg):
     render.primed = False
     busy = {'on': False}
 
-    def refresh_now():
+    def refresh_now(full=True):
         if busy['on']:
             return
         busy['on'] = True
         def work():
-            M.refresh()
+            M.refresh(full)
             root.after(0, lambda: (render(), busy.update(on=False)))
         threading.Thread(target=work, daemon=True).start()
 
-    def tick():
-        refresh_now()
-        root.after(3000, tick)
+    def next_tick_ms():
+        """As often as there is something to watch, and no more. A game being read moves its bar
+        when the worker writes it (every 15 s, ai_worker progress_every_s); a queue with nothing in
+        it does not move at all, and a job queued from the site is claimed within the worker's own
+        minute anyway. Minimised, the window is read a quarter as often or less - restoring it
+        refreshes at once (<Map> below), and so does every button."""
+        shown = root.state() != 'iconic'
+        if any(j['status'] in ('claimed', 'running') for j in M.jobs):
+            return 15000 if shown else 60000
+        if any(j['status'] == 'queued' for j in M.jobs):
+            return 30000 if shown else 120000
+        return 60000 if shown else 300000
 
+    def tick():
+        refresh_now(full=False)
+        root.after(next_tick_ms(), tick)
+
+    root.bind('<Map>', lambda e: refresh_now(full=False) if e.widget is root else None)
     tree.bind('<Double-1>', lambda e: act(open_page)())
     tick()
     root.mainloop()

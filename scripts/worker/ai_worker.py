@@ -44,7 +44,9 @@ DEFAULTS = {
     'ffmpeg': '',               # path to ffmpeg.exe for highlight reels; blank = %APPDATA%\epinoia\ffmpeg\bin\ffmpeg.exe
     'step_clock': 5.0,
     'step_score': 2.0,
-    'poll_s': 20,
+    'poll_s': 20,               # the first wait after a job; each empty look waits longer...
+    'poll_idle_max_s': 60,      # ...up to this (the dashboard calls a worker online for 150 s)
+    'progress_every_s': 15,     # how often a running job writes its progress bar
     'harvest': True,
     'harvest_windows': 12,      # ~10 min each at 720p on a GTX 1660 SUPER
     'harvest_stride': 3,
@@ -990,6 +992,7 @@ class Job(object):
 
     def stop(self):
         now = time.time()
+        # a progress write in the last 15 s already brought the cancel flag back with it (report)
         if now - self._last_cancel_check > 15:
             self._last_cancel_check = now
             try:
@@ -1015,10 +1018,19 @@ class Job(object):
             if extra.get('t') is not None:
                 p['t'] = extra['t']
         now = time.time()
-        if now - self._last_push >= 4 or i >= n:
+        # EVERY 15 SECONDS, NOT EVERY FOUR - and on every change of stage, and at the end. Each write
+        # rewrites the job's row; at four seconds a two-hour read was 1,800 of them (4,358 in one day).
+        # The write hands back the cancel flag, so stop() needs no read of its own while one is recent.
+        if now - self._last_push >= float(self.cfg.get('progress_every_s') or 15) or i >= n or stage != getattr(self, '_last_stage', None):
             self._last_push = now
+            self._last_stage = stage
             try:
-                self.db.patch('video_jobs', 'id=eq.%s' % self.id, {'progress': p, 'heartbeat_at': now_iso()})
+                back = self.db.patch('video_jobs', 'id=eq.%s&select=cancel_requested,status' % self.id,
+                                     {'progress': p, 'heartbeat_at': now_iso()})
+                if back:
+                    self._last_cancel_check = now
+                    if back[0].get('cancel_requested') or back[0].get('status') == 'cancelled':
+                        self._cancel = True
             except Exception as exc:
                 log('(progress write failed: %s)' % exc)
             if now - getattr(self, '_last_beat', 0) >= 60:          # the dashboard's "online" light
@@ -1236,6 +1248,16 @@ def may_queue(track, statuses):
     return True, why
 
 
+def slim_track_row(r):
+    """{coverage, samples[:1]} from a row read as cov:clock_track->coverage, first:clock_track->samples->0
+    -- {} when neither is there, which wants_reread() takes as 'no reading stored', as it did the
+    empty column."""
+    cov, first = r.get('cov'), r.get('first')
+    if cov is None and first is None:
+        return {}
+    return {'coverage': cov if isinstance(cov, dict) else {}, 'samples': [first] if first is not None else []}
+
+
 def backfill(db, cfg):
     """Every final game with a stream attached and no usable clock track, tipped off within
     backfill_days, gets a job -- so nothing needs a button, not even games that finished before
@@ -1246,15 +1268,19 @@ def backfill(db, cfg):
     _last_backfill = time.time()
     # 'Z', not '+00:00': a plus sign inside a URL query is a space
     since = datetime.fromtimestamp(time.time() - 86400 * float(cfg.get('backfill_days') or 21), timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    # the clock_track comes back with the row now: whether a stored reading is worth repeating
-    # is a question about what is INSIDE that JSON, and PostgREST cannot weigh it. The whole
-    # column rather than clock_track->coverage, because a track with no coverage key at all is
-    # exactly the case this has to recognise -- a few megabytes once an hour for a few dozen
-    # games, against a game read badly staying read badly for ever.
-    rows = db.select('game_videos', 'select=game_id,url,clock_track,games!inner(status,tipoff_at)&is_primary=eq.true'
+    # whether a stored reading is worth repeating is a question about what is INSIDE the
+    # clock_track, and PostgREST cannot weigh it -- but it can hand back just the two parts the
+    # question needs: the coverage summary, and whether any reading is stored at all (the first
+    # sample), which is how a track with no coverage key is still recognised. This used to fetch
+    # the whole column, a few megabytes an hour for a few dozen games; slim_track_row puts the
+    # two parts back into the shape wants_reread() reads.
+    rows = db.select('game_videos', 'select=game_id,url,cov:clock_track->coverage,first:clock_track->samples->0,'
+                                    'games!inner(status,tipoff_at)&is_primary=eq.true'
                                     '&url=neq.&games.status=eq.final&games.tipoff_at=gte.' + since)
     if not rows:
         return 0
+    for r in rows:
+        r['clock_track'] = slim_track_row(r)
     ids = ','.join(r['game_id'] for r in rows)
     # oldest first: may_queue counts only the failures that came AFTER the last finished reading
     have = db.select('video_jobs', 'select=game_id,status,video_url&game_id=in.(%s)&order=requested_at' % ids)
@@ -1381,10 +1407,17 @@ def main():
         did = one_pass(db, cfg)
         log('done' if did else 'nothing queued')
         return
+    # AN EMPTY QUEUE IS ASKED LESS OFTEN THE LONGER IT STAYS EMPTY: poll_s after a job, then half
+    # as long again each time up to poll_idle_max_s. Each look is a heartbeat and two claims, and a
+    # queue is empty for most of the day.
+    idle = float(cfg['poll_s'])
     while True:
         try:
-            if not one_pass(db, cfg):
-                time.sleep(float(cfg['poll_s']))
+            if one_pass(db, cfg):
+                idle = float(cfg['poll_s'])
+            else:
+                time.sleep(idle)
+                idle = min(float(cfg.get('poll_idle_max_s') or 60), idle * 1.5)
         except KeyboardInterrupt:
             log('stopped')
             return

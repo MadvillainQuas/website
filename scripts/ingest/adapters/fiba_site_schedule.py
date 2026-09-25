@@ -242,7 +242,15 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             mid = self._czech_match_id(str(external_id), config)
             if not mid:
                 return None        # the fixture exists, its webcast does not yet
-            return super().fetch(mid, config)
+            b = super().fetch(mid, config)
+            # THE GAME KEEPS THE FIXTURE'S ID. Handed back under the LiveStats id, every game was
+            # written to a second external_games row and a second game (18-25 Sep 2026), and the
+            # fixture row never became final - so each catch-up and discovery pass fetched and
+            # rewrote every finished Czech game again. The NKL, Puls Basketu and Kosovo paths
+            # already re-key this way. scripts/ingest/repair_czech_split.py mends the old rows.
+            if b is not None:
+                b.external_id = str(external_id)
+            return b
         if site == "nkl":
             return self._nkl_fetch(str(external_id), config)
         if site == "pulsbasketu":
