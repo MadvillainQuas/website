@@ -540,7 +540,7 @@ async function squadPhotos(hostEl) {
      the same on both, so there was nothing to write twice. */
   const host = hostEl || document.getElementById('csBody');
   if (!host) return;
-  const ids = [...new Set([...host.querySelectorAll('.sq[data-pid], .mv-p[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
+  const ids = [...new Set([...host.querySelectorAll('.sq[data-pid], .mv-p[data-pid], .pb-p[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (!ids.length) return;
   /* ASKED ONCE PER PLAYER, not once per page: the first host to ask may hold only
      some of the game's players (the starting fives above the tabs hold ten), and a
@@ -564,7 +564,7 @@ async function squadPhotos(hostEl) {
     ask.forEach(id => { squadPhotoAsking[id] = job; });
   }
   await Promise.all([...new Set(ids.map(id => squadPhotoAsking[id]).filter(Boolean))]);
-  host.querySelectorAll('.sq[data-pid], .mv-p[data-pid]').forEach(e => {
+  host.querySelectorAll('.sq[data-pid], .mv-p[data-pid], .pb-p[data-pid]').forEach(e => {
     const url = squadPhotoCache[e.dataset.pid];
     if (!url) return;
     const face = e.querySelector('.sq-face');
@@ -653,6 +653,25 @@ new MutationObserver(recs => {
   }
 }).observe(document.body, { childList: true, characterData: true, subtree: true });
 
+/* THE ADVANCED STATS ARE ONE SECTION OF THE STRIP. Full stats through the shot clock analysis sit inside a
+   silver frame labelled "advanced stats", so the everyday tabs (report, box score, play-by-play, shot charts)
+   read as the game and the rest as the deeper cut. The frame wraps whichever of them this game offers, in
+   their own order; the buttons inside are the same buttons, so everything that finds them still does. */
+const ADV_TABS = ['adv', 'lineups', 'flow', 'connections', 'events', 'shotclock'];
+function tabStripHTML(tabs) {
+  const btn = t => '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + B.esc(t[1]) + '</button>';
+  let out = '', open = false;
+  tabs.forEach(t => {
+    const adv = ADV_TABS.indexOf(t[0]) !== -1;
+    if (adv && !open) { out += '<span class="tabgroup" role="group" aria-label="advanced stats"><span class="tabgroup-k">' +
+      '<svg class="tabgroup-lock" viewBox="0 0 12 14" aria-hidden="true"><rect x="1" y="6" width="10" height="7.5" rx="1.6"/>' +
+      '<path d="M3.4 6V4.3a2.6 2.6 0 0 1 5.2 0V6" fill="none" stroke-width="1.5"/></svg>advanced stats</span>'; open = true; }
+    if (!adv && open) { out += '</span>'; open = false; }
+    out += btn(t);
+  });
+  return out + (open ? '</span>' : '');
+}
+
 /* THE MATCH REPORT IS A TAB, and on a finished game it is the FIRST one.
    A box score answers "what were the numbers"; the report answers "what
    happened", which is the question most people arrive with. It is only offered
@@ -732,7 +751,9 @@ let drawnLocked = false;            // the analytics lock the body was last draw
 function gatedTabs() {
   const A = window.EpinoiaAccess;
   const t = A && A.CATALOGUE && A.CATALOGUE.gameTabs;
-  return Array.isArray(t) ? t : GATED_TABS_DEFAULT;
+  /* THE WHOLE ADVANCED STATS SECTION is the members' (full stats and lineups included), whatever the
+     catalogue lists: the strip draws it as one section, so it locks as one */
+  return [...new Set((Array.isArray(t) ? t : GATED_TABS_DEFAULT).concat(ADV_TABS))];
 }
 function analyticsLocked() {
   const A = window.EpinoiaAccess;
@@ -770,14 +791,39 @@ function markLockedTabs() {
     if (on) b.setAttribute('aria-label', b.textContent + ', members only');
     else b.removeAttribute('aria-label');
   });
+  /* the silver frame round them carries the lock, and says why on hover */
+  document.querySelectorAll('#view .tabgroup').forEach(g => {
+    g.classList.toggle('locked', locked);
+    g.setAttribute('data-tip', locked ? 'Members only: advanced stats open with a membership' : '');
+    g.setAttribute('aria-label', locked ? 'advanced stats, members only' : 'advanced stats');
+    if (g.dataset.tipBound) return;
+    g.dataset.tipBound = '1';
+    /* ON THE PAGE'S BODY, not inside the strip: the strip scrolls sideways and blurs what is behind it,
+       and either one clips anything positioned inside it */
+    let tip = null;
+    g.addEventListener('mouseenter', () => {
+      const t = g.getAttribute('data-tip');
+      if (!t) return;
+      const r = g.getBoundingClientRect();
+      tip = document.createElement('div');
+      tip.className = 'tabgroup-tip';
+      tip.textContent = t;
+      tip.style.left = (r.left + r.width / 2) + 'px';
+      tip.style.top = r.top + 'px';
+      document.body.appendChild(tip);
+    });
+    g.addEventListener('mouseleave', () => { if (tip) { tip.remove(); tip = null; } });
+  });
 }
 
 function lockedTabHTML() {
   const A = window.EpinoiaAccess, S = window.S || {};
   return A.teaserHTML({
     leagueSlug: S.leagueSlug || null,
-    title: 'Game flow, connections, events and shot clock analysis are for members',
+    title: 'Advanced stats are for members',
     lines: [
+      'Full stats: the four factors, shooting by zone and every advanced rate, player by player.',
+      'Lineups: every five that played, with their minutes, points and net rating.',
       'Game flow: every scoring run and momentum swing, the margin minute by minute, both rotations, expected points added and points per possession as the game went.',
       'Connections: who assisted whom, how often each pair connected and the points and threes every pairing produced.',
       'Events: what second chances, fast breaks, turnovers and timeouts turned into, with the shots, zones and players behind each.',
@@ -925,9 +971,7 @@ function renderShell() {
         ? '<button class="tabbtn" id="csSheet" style="margin-left:auto">scoresheet · pdf</button>'
         : '') + '</div>' +
     '<div id="csHead"></div>' +
-    '<div class="tabrow" style="flex-wrap:wrap" data-i18n-ctx="gtab">' + tabsFor(S.status).map(t =>
-      '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' +
-      B.esc(t[1]) + '</button>').join('') + '</div>' +
+    '<div class="tabrow" style="flex-wrap:wrap" data-i18n-ctx="gtab">' + tabStripHTML(tabsFor(S.status)) + '</div>' +
     '<div id="csBody"></div>';
 
   const sheetBtn = document.getElementById('csSheet');
@@ -2269,6 +2313,7 @@ function renderBody(d) {
       el.innerHTML = lockedTabHTML();
       return;
     }
+    if (fTab === 'pbp') { mountPBP(el, d); return; }
     el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
     linkifyPlayers(el); decorateTeams(el);
     if (fTab === 'video') mountVideo(d);
@@ -2280,6 +2325,47 @@ function renderBody(d) {
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); setTimeout(squadPhotos, 0); }
     }
   }
+}
+
+/* THE PLAY-BY-PLAY DRAWS ITSELF (pbp.js), and is not fetched with the page: the first time somebody opens
+   the tab its script and stylesheet are asked for, and until then no game costs anything for it. Once
+   mounted it keeps its cards, so a new play arrives as one new card (animated) instead of the list being
+   rebuilt under the reader. If the module cannot be fetched, the plain list the scorer draws stands in. */
+let pbpLoading = null;
+function loadPBP() {
+  if (window.EpinoiaPBP) return Promise.resolve();
+  if (pbpLoading) return pbpLoading;
+  const me = document.querySelector('script[src*="game.js"]');
+  const v = me && /[?&]v=([^&]+)/.exec(me.getAttribute('src') || '');
+  const q = v ? '?v=' + v[1] : '';
+  pbpLoading = new Promise((resolve, reject) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = 'pbp.css' + q;
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'pbp.js' + q;
+    js.onload = () => (window.EpinoiaPBP ? resolve() : reject(new Error('pbp.js loaded without EpinoiaPBP')));
+    js.onerror = () => { pbpLoading = null; reject(new Error('pbp.js could not be fetched')); };
+    document.head.appendChild(js);
+  });
+  return pbpLoading;
+}
+function mountPBP(el, d) {
+  const P = window.EpinoiaPBP;
+  if (P && P.mounted() && el.querySelector('.pb')) {
+    P.update(window.S, d);
+    setTimeout(() => squadPhotos(el), 0);
+    return;
+  }
+  if (!P) {
+    el.innerHTML = '<div class="msg">loading the play-by-play…</div>';
+    loadPBP().then(() => { if (fTab === 'pbp') { lastBodyKey = ''; renderBody(); } })
+      .catch(() => { if (fTab === 'pbp') { el.innerHTML = B.pbpHTML(window.derive()); } });
+    return;
+  }
+  el.innerHTML = '<div id="pbpHost"></div>';
+  P.mount(el.querySelector('#pbpHost'), window.S, d, B);
+  setTimeout(() => squadPhotos(el), 0);
 }
 
 /* The video tab draws itself, because it owns a player that must not be

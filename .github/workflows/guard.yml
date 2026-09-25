@@ -490,6 +490,11 @@ jobs:
           node supabase/tests/analytics-live.test.mjs
           node supabase/tests/analytics-ui.test.mjs
 
+      - name: The play-by-play's cards - which plays are one card
+        # a basket and its assist, a miss with its block and rebound, a turnover and its steal: paired
+        # either side of each other by clock, never across a period or past another action, each event once
+        run: node supabase/tests/pbp-cards.test.mjs
+
       - name: The ingest asks the database only what it needs
         # 24 and 25 Sep 2026: the database stopped answering from ~23:40 UTC after a day of the
         # ingest re-reading every season to find two games near tip-off, rewriting ~2,000 unchanged
