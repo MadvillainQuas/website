@@ -56,6 +56,8 @@ const ADV_GROUPS = [
     {k:'ocEfg',l:'efg',diff:'efg',gp:1},
     {k:'ocOreb',l:'orb%',diff:'orebp',gp:1},
     {k:'ocTov',l:'tov%',diff:'tovp',inv:true,gp:1},
+    /* free throws drawn per shot with the player on the floor, against the game's */
+    {k:'ocFtr',l:'ftr',diff:'ftr'},
     /* pace with the player on minus pace with them off (both teams' possessions per 40) */
     {k:'pacePM',l:'pace±',pill:true,dec:1,sep:true}]},
   {key:'defcourt', label:'defensive on-court', cols:[
@@ -63,6 +65,7 @@ const ADV_GROUPS = [
     {k:'ocOppEfg',l:'opp efg',diff:'efg',inv:true,gp:1},
     {k:'ocOppOreb',l:'opp orb',diff:'orebp',inv:true,gp:1},
     {k:'ocTovF',l:'tov frc',diff:'tovp',gp:1},
+    {k:'ocOppFtr',l:'opp ftr',diff:'ftr',inv:true},
     {k:'net',l:'net',pill:true,sep:true,gp:1}]},
   {key:'individual', label:'individual', cols:[
     {k:'ts',l:'ts%',f:v=>v.toFixed(1),bar:'shooting',gp:1},
@@ -598,6 +601,7 @@ function playerAdv(d,t,p,TT,OT,gameAvg){
     ocOreb: dv(oc.tOR,oc.tOR+oc.oDR)*100, ocTov: dv(oc.tTOV,oc.tFGA+0.44*oc.tFTA+oc.tTOV)*100,
     ocDrtg: dv(oc.oPTS,ocOppPoss)*100, ocOppEfg: dv(oc.oFGM+0.5*oc.o3M,oc.oFGA)*100,
     ocOppOreb: dv(oc.oOR,oc.oOR+oc.tDR)*100, ocTovF: dv(oc.oTOV,oc.oFGA+0.44*oc.oFTA+oc.oTOV)*100,
+    ocFtr: dv(oc.tFTA,oc.tFGA)*100, ocOppFtr: dv(oc.oFTA,oc.oFGA)*100,
     ts: dv(s.pts,2*(fga+0.44*s.fta))*100,
     tovP: dv(s.to,fga+0.44*s.fta+s.to)*100,
     stlP: mins ? 100*(s.stl*gameMinutes)/(mins*oppPoss||1) : 0,
@@ -867,6 +871,79 @@ function shotChartHTML(d,t){
     chips+'</div>';
 }
 
+function sitCompute(){
+  const X = globalThis.EpinoiaSituations;
+  if(!X || typeof S === 'undefined' || !S || !S.events) return null;
+  const memo = sitCompute.memo;
+  if(memo && memo.ref === S.events && memo.len === S.events.length) return memo.out;
+  let out = null;
+  try { out = X.compute(S); } catch(e){ out = null; }
+  sitCompute.memo = {ref:S.events, len:S.events.length, out};
+  return out;
+}
+
+function assistCard(mirror, sec, sides, c0, c1){
+  const X = sitCompute();
+  if(!X || !X.side) return '';
+  const A = [0,1].map(t=>X.side[t].assists);
+  if(!A[0] || !A[1] || !(A[0].ast.fgm+A[0].unast.fgm+A[1].ast.fgm+A[1].unast.fgm)) return '';
+  const made = t=>A[t].ast.fgm+A[t].unast.fgm;
+  const pc = (n,t)=>made(t) ? 100*n/made(t) : 0;
+  const cnt = (h,a,l,hb)=>{ const max=Math.max(h,a,1); return mirror(l, h, a, max, v=>String(v), !!hb&&h>a, !!hb&&a>h); };
+  const share = (l,f)=>{ const h=pc(f(0),0), a=pc(f(1),1);
+    return mirror(l, h, a, 100, v=>v.toFixed(0)+'%', h>a, a>h, null,
+      h.toFixed(0)+'%<small class="ffsub">'+f(0)+'/'+made(0)+'</small>', a.toFixed(0)+'%<small class="ffsub">'+f(1)+'/'+made(1)+'</small>'); };
+  const rows = cnt(A[0].ast.fgm, A[1].ast.fgm, 'assisted baskets', true)+
+    cnt(A[0].unast.fgm, A[1].unast.fgm, 'unassisted baskets', false)+
+    share('share of baskets assisted', t=>A[t].ast.fgm)+
+    cnt(A[0].ast.pts, A[1].ast.pts, 'pts from assisted baskets', true)+
+    cnt(A[0].unast.pts, A[1].unast.pts, 'pts from unassisted baskets', false)+
+    cnt(A[0].ast.p3m, A[1].ast.p3m, 'assisted threes', false)+
+    cnt(A[0].unast.p3m, A[1].unast.p3m, 'unassisted threes', false);
+  /* each side's chart: its assisted and its unassisted baskets, each split rim / mid / three,
+     on one scale for both sides so the two are read against each other */
+  const max = Math.max(1, A[0].ast.fgm, A[0].unast.fgm, A[1].ast.fgm, A[1].unast.fgm);
+  const ZN = [['rim','at the rim'],['mid','mid-range'],['three','threes']];
+  const line = (label, g)=>'<div class="fch-row"><span class="fch-l">'+label+'<small>'+g.fgm+' · '+g.pts+' pts</small></span>'+
+    '<span class="fch-bar"><span class="fch-stack" style="width:'+(100*g.fgm/max).toFixed(1)+'%">'+
+    ZN.map(([z,w],i)=>g.zones[z]?'<i class="z'+i+'" style="flex:'+g.zones[z]+'" title="'+esc(label+': '+g.zones[z]+' '+w)+'">'+(g.zones[z]/max>=0.1?g.zones[z]:'')+'</i>':'').join('')+
+    '</span></span></div>';
+  const side = t=>'<div class="fch" style="--c:var(--team'+t+','+(t?c1:c0)+')"><div class="fch-h" data-team-slot="'+t+'">'+esc(tname(t))+'</div>'+
+    line('assisted',A[t].ast)+line('unassisted',A[t].unast)+'</div>';
+  const key = '<p class="fch-key"><span><i class="z0"></i>rim</span><span><i class="z1"></i>mid-range</span><span><i class="z2"></i>three</span></p>';
+  const ft = (A[0].ftAssists||A[1].ftAssists) ? '<div class="setup-note"><span>assists on passes that drew free throws (in the box score’s assists, not above)</span> '+A[0].ftAssists+' · '+A[1].ftAssists+'</div>' : '';
+  return sec('assists', 'assisted & unassisted baskets', 'made field goals', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+ft);
+}
+
+function outcomeCard(mirror, sec, sides, c0, c1){
+  const X = sitCompute();
+  if(!X || !X.side) return '';
+  const ZN = [['rim','rim'],['mid','mid-range'],['three','three']];
+  const T = [0,1].map(t=>{ const Z = X.side[t].sits && X.side[t].sits.all && X.side[t].sits.all.zones; if(!Z) return null;
+    const o = {a:0,m:0,o:0,d:0, zones:{}};
+    ZN.forEach(([z])=>{ const q=Z[z]||{}; const r={a:q.a||0,m:q.m||0,o:q.o||0,d:q.d||0}; r.n=Math.max(0,r.a-r.m-r.o-r.d);
+      o.zones[z]=r; o.a+=r.a; o.m+=r.m; o.o+=r.o; o.d+=r.d; });
+    o.n = Math.max(0, o.a-o.m-o.o-o.d); return o; });
+  if(!T[0] || !T[1] || !(T[0].a+T[1].a)) return '';
+  const pc = (n,a)=>a ? 100*n/a : 0;
+  const row = (l,k,hb)=>{ const h=pc(T[0][k],T[0].a), a=pc(T[1][k],T[1].a);
+    const hw = hb==null?false:(hb?h>a:h<a), aw = hb==null?false:(hb?a>h:a<h);
+    return mirror(l, h, a, 100, v=>v.toFixed(0)+'%', hw, aw, null,
+      h.toFixed(0)+'%<small class="ffsub">'+T[0][k]+'/'+T[0].a+'</small>', a.toFixed(0)+'%<small class="ffsub">'+T[1][k]+'/'+T[1].a+'</small>'); };
+  const rows = mirror('shot attempts', T[0].a, T[1].a, Math.max(T[0].a,T[1].a,1), v=>String(v), false, false)+
+    row('went in','m',true)+row('missed · offensive rebound','o',true)+row('missed · defensive rebound','d',false)+row('missed · neither','n',null);
+  /* each side's chart: every zone's attempts as one bar of what they became */
+  const bar = (label, q)=>'<div class="fch-row"><span class="fch-l">'+label+'<small>'+q.a+' FGA</small></span>'+
+    '<span class="fch-bar"><span class="fch-stack full">'+(q.a?[['m','went in'],['o','offensive rebound'],['d','defensive rebound'],['n','neither']].map(([k,w])=>
+      q[k]?'<i class="o'+k+'" style="flex:'+q[k]+'" title="'+esc(label+': '+q[k]+' of '+q.a+' '+w+' ('+Math.round(100*q[k]/q.a)+'%)')+'">'+(q[k]/q.a>=0.12?q[k]:'')+'</i>':'').join(''):'')+
+    '</span></span></div>';
+  const side = t=>'<div class="fch" style="--c:var(--team'+t+','+(t?c1:c0)+');--o:var(--team'+(1-t)+','+(t?c0:c1)+')"><div class="fch-h" data-team-slot="'+t+'">'+esc(tname(t))+'</div>'+
+    ZN.map(([z,l])=>bar(l,T[t].zones[z])).join('')+bar('all shots',T[t])+'</div>';
+  const key = '<p class="fch-key"><span><i class="om"></i>went in</span><span><i class="oo"></i>offensive rebound</span><span><i class="od"></i>defensive rebound</span><span><i class="on"></i>neither</span></p>';
+  return sec('outcomes', 'what became of every shot attempt', 'made, rebounded by either side, or neither', sides+rows+'<div class="fcharts">'+side(0)+side(1)+'</div>'+key+
+    '<div class="setup-note">neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log · team rebounds count</div>');
+}
+
 function advHTML(d){
   const TA = [teamAdv(d,0), teamAdv(d,1)];
   const c0 = safeColour(S.teams[0].color, '#93f2bf'),
@@ -896,16 +973,32 @@ function advHTML(d){
   const gpv = (r, txt, cls, label) => (r||cls) ? '<span class="'+cls+(r?r.cls:'')+'"'+(r?' title="'+esc(label+': '+r.tip)+'"':'')+'>'+txt+(r?r.pc:'')+'</span>' : txt;
   let rated = false;
   const rate = (k,t)=>{ const r = gpRate('team',k,tctx(t)); if(r) rated = true; return r; };
-  const mirror = (label, h, a, max, fmt, hWin, aWin, k) =>
-    '<div class="mrrow">'+gpv(k?rate(k,0):null, fmt(h), 'ffval'+(hWin?' winner':''), label)+
-      '<div><div class="mrbars"><div class="l"><i style="width:'+Math.max(0,Math.min(100,h/max*100))+'%;background:'+c0+'"></i></div>'+
-      '<div class="r"><i style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
-      gpv(k?rate(k,1):null, fmt(a), 'ffval r'+(aWin?' winner':''), label)+'</div>';
-  const ffRows = FF.map(x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
+  /* hTxt/aTxt: a row that prints something other than fmt(value) beside its bars (a share with
+     its count under it); the winner's bar carries .win, which the stylesheet gives a soft glow */
+  const mirror = (label, h, a, max, fmt, hWin, aWin, k, hTxt, aTxt) =>
+    '<div class="mrrow">'+gpv(k?rate(k,0):null, hTxt!=null?hTxt:fmt(h), 'ffval'+(hWin?' winner':''), label)+
+      '<div><div class="mrbars"><div class="l"><i'+(hWin?' class="win"':'')+' style="width:'+Math.max(0,Math.min(100,h/max*100))+'%;background:'+c0+'"></i></div>'+
+      '<div class="r"><i'+(aWin?' class="win"':'')+' style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
+      gpv(k?rate(k,1):null, aTxt!=null?aTxt:fmt(a), 'ffval r'+(aWin?' winner':''), label)+'</div>';
+  /* A SECTION: its own bordered, tinted card with a title that opens and shuts it (a <details>,
+     so it needs no script; the game page remembers which a reader shut). The top card is not one:
+     the four factors and the tempo are what the tab is for, and stay open. */
+  const sec = (key, title, sub, body) => '<details class="fsec" data-fsec="'+key+'" open><summary class="fsec-h">'+
+    '<span class="fsec-t">'+title+'</span>'+(sub?'<span class="fsec-sub">'+sub+'</span>':'')+'<i class="fsec-chev" aria-hidden="true"></i></summary>'+
+    '<div class="fsec-b">'+body+'</div></details>';
+  const sides = '<div class="fsides"><span style="color:'+c0+'" data-team-slot="0">'+esc(tname(0))+'</span><span style="color:'+c1+'" data-team-slot="1">'+esc(tname(1))+'</span></div>';
+  const ffRow = x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
     const hWin = x.hb==null ? false : (x.hb?hw:aw), aWin = x.hb==null ? false : (x.hb?aw:hw);   // hb null = neither is "better"
-    return mirror(x.l, h, a, x.max, x.f, hWin, aWin, x.k); }).join('');
-  const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
-    '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+
+    return mirror(x.l, h, a, x.max, x.f, hWin, aWin, x.k); };
+  /* the tempo -- possessions, each side's pace, its time of possession -- is not a factor anybody
+     wins: each gets a tile of its own beside the others instead of more rows under the factors */
+  const TEMPO = ['possessions','paceOwn','atop'];
+  const ffRows = FF.filter(x=>TEMPO.indexOf(x.k)<0).map(ffRow).join('');
+  const tempo = FF.filter(x=>TEMPO.indexOf(x.k)>=0).map(x=>'<div class="ftile" data-k="'+x.k+'">'+ffRow(x)+'</div>').join('');
+  const ffCard = '<div class="fsec fsec-top" data-fsec="factors"><div class="fsec-h"><span class="fsec-t">offensive rating & four factors</span></div>'+
+    '<div class="fsec-b">'+sides+ffRows+'</div>'+
+    '<div class="fsec-h sub"><span class="fsec-t">tempo</span><span class="fsec-sub"><span>game pace</span> '+f1(TA[0].pace)+' / 40</span></div>'+
+    '<div class="ftempo">'+tempo+'</div>'+
     /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
     (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
   // 2. true shot attempts strip
@@ -919,7 +1012,7 @@ function advHTML(d){
       '<div style="font-size:15px;margin-top:4px;font-variant-numeric:tabular-nums">'+gpv(rate('ts',t), f1(T.ts)+'%', '', 'true shooting %')+
         ' <span style="font-size:11px;color:var(--dim);margin-left:4px">true shooting</span></div>'+
       '<div class="fm">'+T.fga+' fga + 0.44 × '+T.fta+' fta</div></div>'; };
-  const tsaCard = '<div class="glass ffcard"><h3>true shot attempts</h3><div class="tsastrip">'+tsaCell(0)+tsaCell(1)+'</div></div>';
+  const tsaCard = sec('tsa', 'true shot attempts', 'fga + 0.44 × fta', '<div class="tsastrip">'+tsaCell(0)+tsaCell(1)+'</div>');
   // 3. mirrored metric rows (+ shot zones), then situational tug-of-war
   const MR = [
     {l:'true shooting %', k:'ts', max:100, f:f1}, {l:'ast / to', k:'astTo', max:4, f:f2},
@@ -932,21 +1025,26 @@ function advHTML(d){
     {sep:'defence & control'},
     {l:'stl %', k:'stlp', max:20, f:f1}, {l:'blk %', k:'blkp', max:20, f:f1},
     {l:'dreb %', k:'drebp', max:100, f:f1}, {l:'tsa / 100', k:'tsaPer100', max:120, f:f1}];
-  const mrRows = MR.map(x=>{ if(x.sep) return '<div class="mrsep">— '+x.sep+' —</div>';
+  /* the separators are the sections: shooting & playmaking, shot zones, defence & control */
+  const mrGroups = [{key:'shooting', title:'shooting & playmaking', rows:[]}];
+  MR.forEach(x=>{ if(x.sep){ mrGroups.push({key:x.sep==='shot zones'?'zones':'defence', title:x.sep, rows:[]}); return; }
     const h=TA[0][x.k], a=TA[1][x.k];
-    return mirror(x.l, h, a, x.max, x.f, h>a, a>h, x.k); }).join('');
+    mrGroups[mrGroups.length-1].rows.push(mirror(x.l, h, a, x.max, x.f, h>a, a>h, x.k)); });
   const SIT = [['paint pts','paint'],['transition pts','fast'],['2nd chance pts','sc'],['pts off turnovers','pot'],['bench pts','bench'],['biggest lead','lead']];
   /* counts: the row's larger value is the full bar, so the two are read against each other */
   const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const max=Math.max(h,a,1);
     return mirror(l, h, a, max, v=>String(v), h>a, a>h, k); }).join('');
-  const mrCard = '<div class="glass ffcard"><h3>additional metrics</h3>'+mrRows+'<div class="mrsep">— situational —</div>'+sitRows+'</div>';
+  const mrCard = mrGroups.map(g=>sec(g.key, g.title, '', sides+g.rows.join(''))).join('')+
+    sec('situational', 'situational points', '', sides+sitRows)+assistCard(mirror, sec, sides, c0, c1)+outcomeCard(mirror, sec, sides, c0, c1);
   // 4. player tables — game-relative bar ranges across both rosters, on-court diffs vs game average
   const gameAvg = {ortg:(TA[0].ortg+TA[1].ortg)/2, efg:(TA[0].efg+TA[1].efg)/2,
-    orebp:(TA[0].orebp+TA[1].orebp)/2, tovp:(TA[0].tovp+TA[1].tovp)/2};
+    orebp:(TA[0].orebp+TA[1].orebp)/2, tovp:(TA[0].tovp+TA[1].tovp)/2, ftr:(TA[0].ftr+TA[1].ftr)/2};
   const all = [0,1].flatMap(t=>S.teams[t].players.map(p=>playerAdv(d,t,p,TA[t],TA[1-t],gameAvg))).filter(r=>r.min>0);
   const ranges = {};
   ADV_GROUPS.forEach(g=>g.cols.forEach(c=>{ if(c.bar){ const vs=all.map(r=>r[c.k]); ranges[c.k]={min:Math.min(...vs,0),max:Math.max(...vs,0)}; } }));
-  return ffCard+tsaCard+mrCard+playerAdvTable(d,0,TA,gameAvg,ranges)+playerAdvTable(d,1,TA,gameAvg,ranges);
+  return '<div class="fstats">'+ffCard+tsaCard+mrCard+
+    [0,1].map(t=>sec('players'+t, '<span data-team-slot="'+t+'">'+esc(tname(t))+'</span> players', 'on-court columns: the difference from the game average',
+      playerAdvTable(d,t,TA,gameAvg,ranges))).join('')+'</div>';
 }
 
 function luNames(t, ids){
@@ -995,5 +1093,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, sitCompute, assistCard, outcomeCard, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

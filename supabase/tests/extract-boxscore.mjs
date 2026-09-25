@@ -41,7 +41,7 @@ const WANTED = [
   'teamTotals', 'teamAdv', 'playerAdv', 'gpRate', 'playerAdvTable', 'lineupAgg',
   // HTML builders
   'periodPill', 'scoreHeadHTML', 'qstripHTML', 'teamChipsHTML', 'bxTeamHTML', 'pbpHTML',
-  'shotChartHTML', 'advHTML', 'luNames', 'lineupsHTML'
+  'shotChartHTML', 'sitCompute', 'assistCard', 'outcomeCard', 'advHTML', 'luNames', 'lineupsHTML'
 ];
 
 const src = fs.readFileSync(SRC, 'utf8');

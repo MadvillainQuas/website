@@ -2317,6 +2317,7 @@ function renderBody(d) {
     el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
     linkifyPlayers(el); decorateTeams(el);
     if (fTab === 'video') mountVideo(d);
+    if (fTab === 'adv') mountFullStats(el);
     if (fTab === 'flow' && window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el);
     if (fTab === 'connections' && window.EpinoiaConnections) window.EpinoiaConnections.mounted(el);
     if (fTab === 'events' && window.EpinoiaEvents) window.EpinoiaEvents.mounted(el);
@@ -2325,6 +2326,27 @@ function renderBody(d) {
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); setTimeout(squadPhotos, 0); }
     }
   }
+}
+
+/* FULL STATS' SECTIONS (advHTML draws each as a <details>, open). The ones a reader shuts stay shut:
+   across the redraw every new play causes, and across visits, in this browser only. */
+const FSEC_KEY = 'epinoia_fsec_shut';
+function fsecShut() {
+  try { const v = JSON.parse(localStorage.getItem(FSEC_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+function mountFullStats(el) {
+  const shut = fsecShut();
+  el.querySelectorAll('details.fsec').forEach(dd => { if (shut.indexOf(dd.dataset.fsec) !== -1) dd.open = false; });
+  if (el.dataset.fsecBound) return;
+  el.dataset.fsecBound = '1';
+  /* toggle does not bubble: listened for on the way down */
+  el.addEventListener('toggle', e => {
+    const dd = e.target;
+    if (!dd || !dd.matches || !dd.matches('details.fsec')) return;
+    const next = fsecShut().filter(k => k !== dd.dataset.fsec);
+    if (!dd.open) next.push(dd.dataset.fsec);
+    try { localStorage.setItem(FSEC_KEY, JSON.stringify(next)); } catch (e2) { /* private window: only this visit */ }
+  }, true);
 }
 
 /* THE PLAY-BY-PLAY DRAWS ITSELF (pbp.js), and is not fetched with the page: the first time somebody opens
