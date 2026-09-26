@@ -104,20 +104,41 @@
       (from ? '' : ' · with no league scale yet, the two sides mirror each other') + '</div>';
   }
 
-  /* THE ESTIMATED MARGIN, from the points each side's possessions and shooting were worth.
+  /* THE ESTIMATED MARGIN AT THE END OF THE GAME, from the points each side's possessions and shooting are worth.
        possession battle   (their turnovers - ours) x 1.1  +  (our offensive rebounds - theirs) x 1.1
-       scoring battle      ((our eFG% - theirs) x 1.77  +  (our free throw rate - theirs) x 0.25) x 75 / 100
-       estimated margin    the two together, from the home side's end; the actual margin beside it
-     The 75 is a standard possession count, as the model was written, not this game's own. */
-  function battle(TA) {
-    const h = TA[0], a = TA[1], POSS = 75;
-    const tov = ((a.tov || 0) - (h.tov || 0)) * 1.1, oreb = ((h.oreb || 0) - (a.oreb || 0)) * 1.1;
+       scoring battle      ((our eFG% - theirs) x 1.77  +  (our free throw rate - theirs) x 0.25) x possessions / 100
+       estimated margin    the two together, from the home side's end
+     THE POSSESSIONS ARE THE GAME'S. A finished game uses the real count (the two sides' average), so the
+     turnovers and rebounds are exactly what happened. A game still going is projected: its pace is what it has
+     played at so far, pulled towards the league's average pace by how little of the game is gone (all league at
+     the tip, all its own at the final buzzer), run over the full length of the game; the turnover and rebound
+     counts are carried forward at that pace and the scoring battle is worked over the predicted possessions.
+     With no scale for the league the average pace is 75, the standard possession count the model was written on. */
+  function outlook(S, TA) {
+    const final = S.status === 'final' || S.phase === 'final';
+    const min = Math.max(0, (TA[0].minutes || 0) / 5);
+    const soFar = ((TA[0].possessions || 0) + (TA[1].possessions || 0)) / 2;
+    if (final) return soFar > 0 ? { final: true, poss: soFar, k: 1, pace: TA[0].pace || 0, min } : null;
+    if (soFar <= 0 || min <= 0) return null;
+    const G = window.EpinoiaGamePct;
+    const lg = (G && G.mean ? G.mean('team', 'paceOwn', S.leagueSlug) : null) || 75;
+    const REG = 40, frac = Math.min(1, min / REG);
+    const pace = frac * (TA[0].pace || lg) + (1 - frac) * lg;
+    const poss = pace * Math.max(REG, min) / REG;
+    return { final: false, poss, k: poss / soFar, pace, min };
+  }
+
+  function battle(TA, poss, k) {
+    const h = TA[0], a = TA[1], POSS = poss == null ? 75 : poss, K = k == null ? 1 : k;
+    const tov = ((a.tov || 0) - (h.tov || 0)) * 1.1 * K, oreb = ((h.oreb || 0) - (a.oreb || 0)) * 1.1 * K;
     const efg = ((h.efg || 50) - (a.efg || 50)) * 1.77 * (POSS / 100), ftr = ((h.ftr || 25) - (a.ftr || 25)) * 0.25 * (POSS / 100);
     return { tov, oreb, efg, ftr, possession: tov + oreb, scoring: efg + ftr, estimated: tov + oreb + efg + ftr, actual: (h.pts || 0) - (a.pts || 0) };
   }
 
   function margin(S, TA) {
-    const B = battle(TA);
+    const O = outlook(S, TA);
+    if (!O) return '';
+    const B = battle(TA, O.poss, O.k);
     if (![B.estimated, B.actual].every(isFinite)) return '';
     const c = [teamColour(S, 0), teamColour(S, 1)];
     const name = t => window.EpinoiaBox.tname(t);
@@ -129,11 +150,14 @@
       return '<div class="fm-t ' + cls + '" style="--lc:' + c[t] + '"><small>' + label + '</small><b>' + txt + '</b>' +
         '<em title="' + esc(name(t)) + '">' + (Math.abs(v) < 0.05 ? 'level' : esc(short(t))) + '</em>' + (sub ? '<i>' + sub + '</i>' : '') + '</div>';
     };
-    return '<div class="fmargin"><div class="fm-h">estimated margin <span>from the points added by each factor</span></div><div class="fm-row">' +
+    const basis = O.final
+      ? 'at the game\u2019s real ' + O.poss.toFixed(0) + ' possessions'
+      : 'projected: a predicted ' + O.poss.toFixed(0) + ' possessions (pace ' + O.pace.toFixed(0) + ')';
+    return '<div class="fmargin"><div class="fm-h">estimated margin at the end of the game <span>' + basis + '</span></div><div class="fm-row">' +
       tile('', 'possession battle', B.possession, 'to ' + sg(B.tov) + ' \u00b7 oreb ' + sg(B.oreb)) +
       tile('', 'scoring battle', B.scoring, 'efg ' + sg(B.efg) + ' \u00b7 ft ' + sg(B.ftr)) +
-      tile('est', 'estimated margin', B.estimated, '') +
-      tile('act', 'actual margin', B.actual, TA[0].pts + ' \u2013 ' + TA[1].pts, 0) + '</div></div>';
+      tile('est', 'est. margin at the end', B.estimated, '') +
+      tile('act', O.final ? 'actual margin' : 'margin now', B.actual, TA[0].pts + ' \u2013 ' + TA[1].pts, 0) + '</div></div>';
   }
 
   /* ------------------------------------------------------------ faces ---
@@ -354,5 +378,5 @@
     });
   }
 
-  window.EpinoiaCards = { chart, factorNote, margin, battle, players, box, mounted, pointsAdded, FACTOR };
+  window.EpinoiaCards = { chart, factorNote, margin, battle, outlook, players, box, mounted, pointsAdded, FACTOR };
 }());

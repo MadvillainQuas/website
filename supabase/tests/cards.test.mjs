@@ -49,6 +49,23 @@ console.log('-- the estimated margin (possession battle + scoring battle)');
   ok('the estimate is the two battles together, and the actual margin sits beside it', near(B.estimated, want.tov + want.oreb + want.efg + want.ftr) && B.actual === 10 && near(B.possession + B.scoring, B.estimated));
 }
 
+console.log('-- the margin at the end of the game: real possessions when it is over, a predicted pace while it is on');
+{
+  const mk = (min, poss, pace) => [{ minutes: min * 5, possessions: poss, pace, tov: 5, oreb: 4, efg: 50, ftr: 25, pts: 40 }, { minutes: min * 5, possessions: poss, pace, tov: 8, oreb: 3, efg: 45, ftr: 20, pts: 35 }];
+  const done = C.outlook({ status: 'final', leagueSlug: 'slb-men' }, mk(40, 84, 84));
+  ok('a finished game uses its real possessions, and the counts as they were', done.final && near(done.poss, 84) && done.k === 1);
+  const lgPace = G.mean('team', 'paceOwn', 'slb-men');
+  const early = C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(4, 10, 100));
+  const frac = 4 / 40, wantPace = frac * 100 + (1 - frac) * lgPace;
+  ok('early on, the pace is pulled towards the league average', !early.final && near(early.pace, wantPace) && early.pace < 100 && early.pace > lgPace, early.pace);
+  ok('...and the game is run to its full length: poss = pace x 40 / 40, the counts carried forward by poss / so far', near(early.poss, wantPace) && near(early.k, wantPace / 10), early);
+  const late = C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(40, 84, 84));
+  ok('by the final minute the pace is its own', near(late.pace, 84) && near(late.poss, 84));
+  ok('nothing is drawn before a possession has been played', C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(0, 0, 0)) === null);
+  const B = C.battle(mk(40, 100, 100), 100, 2);
+  ok('the possession battle is carried forward by k and the scoring battle worked over the possessions', near(B.tov, (8 - 5) * 1.1 * 2) && near(B.efg, 5 * 1.77 * 1.0), [B.tov, B.efg]);
+}
+
 console.log('-- a chart in a card, and the scorer untouched');
 const html = C.chart('<div class="mrrow"></div>', { label: 'efg%', h: 56, a: 48, fmt: v => v.toFixed(1), hWin: true, aWin: false, k: 'efg', TA, S: { leagueSlug: 'slb-men', teams: [{ color: '#112233' }, { color: '#445566' }] }, tname: t => t < 0 ? '' : ['Home', 'Away'][t] });
 ok('it is wrapped in a card with the difference under it', /class="fchart has-pa"/.test(html) && /\+8\.0 pp/.test(html) && /Home/.test(html), html.slice(0, 200));
