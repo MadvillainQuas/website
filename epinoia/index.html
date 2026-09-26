@@ -201,10 +201,14 @@
     -webkit-background-clip:text;background-clip:text}
   .clubgrid{display:grid;gap:calc(var(--u)*2);padding:calc(var(--u)*3);
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
-  /* on a desktop the cards fill the row (kit/home.css says the same): no fixed-size cards packed left with empty space beside them,
-     and one or two cards keep the size they would have in a row of four */
-  @media (min-width:721px){ .clubgrid:not(:has(> :nth-child(3))){grid-template-columns:repeat(4,minmax(0,1fr))}
-    .stargrid:not(.starmore):not(:has(> :nth-child(3))){grid-template-columns:repeat(4,minmax(0,1fr))} }
+  /* on a desktop the cards fill the row and are CENTRED (kit/home.css says the same): wrapped, each a quarter of the row (at least
+     178px), so one or two are the size of a row of four and sit in the middle, and a short last row is centred under the full ones;
+     a podium of one or two stars keeps four columns */
+  @media (min-width:721px){
+    .clubgrid, .ig-grid{display:flex;flex-wrap:wrap;justify-content:center}
+    .clubgrid>*, .ig-grid>*{flex:0 0 max(178px, calc((100% - 3 * var(--u) * 2) / 4))}
+    .stargrid:not(.starmore):not(:has(> :nth-child(3))){grid-template-columns:repeat(4,minmax(0,1fr))}
+  }
 
   /* ---- stars: the club plate, with a rank where the monogram goes ---- */
   .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;

@@ -132,10 +132,13 @@ ok('and the desktop grids fill the row: three podium cards and seven more share 
 {
   const kitHome = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'home.css'), 'utf8');
   const rule = c => new RegExp('\\.' + c + ':not\\(:has\\(> :nth-child\\(3\\)\\)\\)\\{grid-template-columns:repeat\\(4,minmax\\(0,1fr\\)\\)\\}');
-  ok('a club directory of one or two clubs keeps the size of a row of four (kit and league page)', rule('clubgrid').test(kitHome) && rule('clubgrid').test(home));
+  const fxc = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'fxc.css'), 'utf8');
+  const centred = css => /\.clubgrid\{display:flex;flex-wrap:wrap;justify-content:center\}/.test(css) && /\.clubgrid>\*\{flex:0 0 max\(178px, calc\(\(100% - 3 \* var\(--u\) \* 2\) \/ 4\)\)\}/.test(css);
+  ok('a club directory is wrapped and CENTRED, each card a quarter of the row (kit and league page): one or two are the size of a row of four, in the middle', centred(kitHome) && /\.clubgrid, \.ig-grid\{display:flex;flex-wrap:wrap;justify-content:center\}/.test(home));
   ok('...and so does a podium of one or two stars (never the smaller ranks 4-10)', /\.stargrid:not\(\.starmore\):not\(:has\(> :nth-child\(3\)\)\)\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)\}/.test(kitHome) && !/\.starmore:not\(:has/.test(kitHome));
-  ok('...and the Instagram tiles', rule('ig-grid').test(card));
-  ok('...only from 721px up: on a phone they are rails', /@media \(min-width:721px\)\{ \.clubgrid:not/.test(kitHome));
+  ok('...the Instagram tiles keep the plain rule elsewhere, and are centred on the league page only', rule('ig-grid').test(card) && /\.ig-grid>\*\{flex:0 0 max\(178px/.test(home));
+  ok('...fixture cards are centred only under .hm (HOME) and .gm (Global fixtures), not on the team page', /\.hm \.fxc-rail, \.gm \.fxc-rail\{display:flex;flex-wrap:wrap;justify-content:center\}/.test(fxc) && /\.hm \.fxc-grid, \.gm \.fxc-grid\{display:flex/.test(fxc) && !/\n\.fxc-rail\{display:flex;flex-wrap/.test(fxc));
+  ok('...only from 721px up: on a phone they are rails', /@media \(min-width:721px\)\{\s*\.clubgrid\{display:flex/.test(kitHome));
 }
 
 /* ---- section titles: centred, in the title face, no numbers ------------------- */

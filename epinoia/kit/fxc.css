@@ -206,6 +206,17 @@
 @media (max-width:560px){
   .fxc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 12px 14px}
 }
+/* CENTRED, on the pages with the centred titles (HOME's .hm, Global fixtures' .gm): on a desktop the fixture cards wrap and centre, each a
+   quarter of the row (at least 240px), so one card, or a short last row, sits under the title instead of packing to the left. The team
+   page and the rest keep the grids above. */
+@media (min-width:721px){
+  .hm .fxc-rail, .gm .fxc-rail{display:flex;flex-wrap:wrap;justify-content:center}
+  .hm .fxc-rail>.fxc, .gm .fxc-rail>.fxc{flex:0 0 max(240px, calc((100% - 3 * var(--u) * 1.5) / 4))}
+}
+@media (min-width:561px){
+  .hm .fxc-grid, .gm .fxc-grid{display:flex;flex-wrap:wrap;justify-content:center}
+  .hm .fxc-grid>.fxc, .gm .fxc-grid>.fxc{flex:0 0 max(240px, calc((100% - 3 * var(--u) * 1.5) / 4))}
+}
 
 /* ------------------------------------------------------------ light theme --- */
 :root[data-theme="light"] .fxc{background:#ffffff;border-color:rgba(13,31,23,.18);

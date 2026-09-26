@@ -35,9 +35,13 @@
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
   /* ON A DESKTOP THE CARDS FILL THE ROW: auto-fit columns of at least 178px that share the width, so the section is never a few
      fixed-size cards with empty space to their right (they used to be capped at 240px and packed left).
-     BUT NEVER BLOWN UP TO FILL IT: one or two cards are the size they would be in a row of four, so they keep four columns and
-     the rest of the row stays empty. */
-  @media (min-width:721px){ .clubgrid:not(:has(> :nth-child(3))){grid-template-columns:repeat(4,minmax(0,1fr))} }
+     BUT NEVER BLOWN UP TO FILL IT, AND CENTRED: on a desktop the cards are wrapped and centred, each a quarter of the row (at least
+     178px), so one or two cards are the size of a row of four and sit in the middle, and a last row of three is centred under
+     the full rows above it, like the section titles. */
+  @media (min-width:721px){
+    .clubgrid{display:flex;flex-wrap:wrap;justify-content:center}
+    .clubgrid>*{flex:0 0 max(178px, calc((100% - 3 * var(--u) * 2) / 4))}
+  }
 
   /* ---- stars: the club plate, with a rank where the monogram goes ---- */
   .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
