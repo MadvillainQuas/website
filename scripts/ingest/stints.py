@@ -519,6 +519,13 @@ def build(raw: dict, team_rows: dict, names: Optional[dict] = None,
     def name_of(side: int, pno: str) -> str:
         return (lookup.get("home" if side == 0 else "away") or {}).get(str(pno), str(pno))
 
+    # NO PLAY YET, NO STINTS. A game whose box is published but whose play-by-play is empty has
+    # not tipped off (B.LEAGUE opens the box before the ball goes up): there is nothing to replay
+    # and no starters to read, so the builder used to write a zero-length stint of empty lineups
+    # and warn "0 on court at 0s" on every poll until the first event arrived.
+    if not [e for e in (raw.get("pbp") or []) if isinstance(e, dict)]:
+        return [], lineups_from_stints([])
+
     b = Builder(raw, game_id=game_id, game_date=game_date, teams=teams, name_of=name_of).run()
     if warnings is not None:
         warnings.extend(b.warnings)
