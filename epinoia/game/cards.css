@@ -129,7 +129,11 @@
 .bxr.head{ background:none; border-color:transparent }
 .bxr.head .bxc-id{ background:none; padding:2px 10px }
 .bxr.head .bxc-c{ padding:2px; font-family:var(--f-micro,var(--f-mono)); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted) }
-.bxr.on{ border-color:color-mix(in srgb,var(--c) 55%,transparent); box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 25%,transparent), 0 0 14px color-mix(in srgb,var(--c) 18%,transparent) }
+/* ON THE FLOOR: outlined AND shaded. The outline alone was easy to miss on a light page; the row is tinted with the club's colour too, and the
+   sticky name cell (which has a background of its own, so the figures scrolling under it are hidden) takes the same tint. */
+.bxr.on{ border-color:color-mix(in srgb,var(--c) 55%,transparent); box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 25%,transparent), 0 0 14px color-mix(in srgb,var(--c) 18%,transparent);
+  background:color-mix(in srgb,var(--c) 16%,var(--bg-card,#0b1a12)) }
+.bxr.on .bxc-id{ background:linear-gradient(90deg,color-mix(in srgb,var(--c) 26%,var(--bg-card,#0b1a12)),color-mix(in srgb,var(--c) 16%,var(--bg-card,#0b1a12))) }
 .bxr.aux, .bxr.tot{ background:color-mix(in srgb,var(--text-primary) 4%,transparent) }
 .bxr.aux .bxc-id, .bxr.tot .bxc-id{ background:none }
 .bxr.tot{ border-color:color-mix(in srgb,var(--c) 40%,transparent) } .bxr.tot .bxc-c{ color:var(--text-bright,var(--text-primary)); font-weight:700 }
