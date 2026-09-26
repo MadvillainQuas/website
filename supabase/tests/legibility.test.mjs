@@ -1,5 +1,5 @@
 // The pixel faces stay, and stay readable: kit/legibility.css is on every page, last; the secondary ink is near full strength in both
-// themes; the light accents clear 7:1 for one-pixel type; the size-adjust flag exists; no label rule tracks wider than it should.
+// themes; the light accents clear 7:1 for one-pixel type; the pixel face keeps its size; no label rule tracks wider than it should.
 //
 //   node supabase/tests/legibility.test.mjs
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -26,11 +26,10 @@ ok('every one of them links legibility.css', missing.length === 0, missing.map(f
 const notLast = pages.filter(f => { const t = readFileSync(f, 'utf8'); const head = t.slice(0, t.indexOf('</head>')); const i = head.lastIndexOf('kit/legibility.css'); return i < 0 || /<link rel="stylesheet"|<style/.test(head.slice(i)); });
 ok('...after every other stylesheet in the head, so it wins', notLast.length === 0, notLast.map(f => path.relative(ROOT, f)));
 
-console.log('-- the pixel face is enlarged, where the browser can, and only there when a place is tight');
+console.log('-- the pixel face keeps its original size');
 const leg = rd('kit', 'legibility.css');
-ok('Silkscreen is enlarged with size-adjust', /font-family:'Silkscreen'[^}]*size-adjust:1[0-9]{2}%/.test(leg.replace(/\n/g, ' ')));
-ok('the tight places are gated on html.pxadj', /html\.pxadj \.ep-tabbar/.test(leg) && /html\.pxadj \.ep-nav/.test(leg));
-ok('appmode.js sets html.pxadj only where size-adjust exists', /'sizeAdjust' in FontFace\.prototype/.test(rd('appmode.js')) && /classList\.add\('pxadj'\)/.test(rd('appmode.js')));
+ok('Silkscreen is not enlarged', !/size-adjust/.test(leg));
+ok('nothing is gated on the retired html.pxadj flag', !/pxadj/.test(leg) && !/pxadj/.test(rd('appmode.js')));
 ok('sentences are in the readable face, not pixel capitals', /\.vaddr[\s\S]{0,400}font-family:var\(--f-ui\) !important/.test(leg));
 
 console.log('-- secondary ink is near full strength');
