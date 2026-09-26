@@ -67,9 +67,12 @@
   .lg .sub{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-top:3px}
   .lg .go{font-family:var(--f-micro);font-size:16px;color:var(--ink-3)}
 
-  .fx{display:grid;grid-template-columns:1fr auto 1fr 62px 30px;gap:10px;align-items:center;
+  .fx{display:grid;grid-template-columns:102px 1fr auto 1fr 62px 30px;gap:10px;align-items:center;
     padding:11px calc(var(--u)*3);border-bottom:1px solid var(--rule);text-decoration:none;color:inherit}
   .fx:hover{background:color-mix(in oklch,var(--lume) 6%,transparent)}
+  /* AN EMPTY FIRST COLUMN as wide as the state and bell columns on the right, so the score (or the "v") between the two clubs sits on the
+     row's centre line, under the centred section title, instead of a little left of it */
+  .fx::before{content:''}
   .fx .tn{font-family:var(--f-ui);font-weight:700;font-size:13px;text-transform:uppercase;
     display:flex;align-items:center;gap:8px;min-width:0}
   .fx .tn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -81,7 +84,7 @@
   @media (max-width:560px){
     .fx .tn .full{display:none}
     .fx .tn .short{display:inline;letter-spacing:.06em}
-    .fx{grid-template-columns:1fr auto 1fr 54px 26px;gap:8px;padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
+    .fx{grid-template-columns:88px 1fr auto 1fr 54px 26px;gap:8px;padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
     .fx .tn{font-size:15px}
   }
   .fx .h{text-align:right;justify-content:flex-end}
