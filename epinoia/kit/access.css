@@ -53,7 +53,7 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important
   display:inline-flex; align-items:center; justify-content:center; min-height:40px;
   padding:8px 16px; box-sizing:border-box;
   background:var(--lume); color:var(--on-accent); border:1px solid var(--lume);
-  font-family:var(--f-micro); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+  font-family:var(--f-micro); font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase;
   text-decoration:none; white-space:nowrap; cursor:pointer;
   transition:background .2s var(--ease), color .2s var(--ease);
 }
@@ -61,7 +61,7 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important
 .ep-lock-or{font-family:var(--f-micro); font-size:9px; color:var(--ink-3)}
 .ep-lock-in{
   display:inline-flex; align-items:center; min-height:40px;
-  font-family:var(--f-micro); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;
+  font-family:var(--f-micro); font-size:9.5px; letter-spacing:0.06em; text-transform:uppercase;
   color:var(--lume); text-decoration:underline; text-underline-offset:3px;
 }
 .ep-lock-in:hover{color:var(--ink)}
@@ -87,7 +87,7 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important
 }
 .ep-paywall-kick{
   display:flex; align-items:center; gap:8px;
-  font-family:var(--f-micro); font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--lume);
+  font-family:var(--f-micro); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--lume);
 }
 .ep-paywall-kick .ep-lock-ic{margin-top:0}
 .ep-paywall-h{
@@ -99,7 +99,7 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important
   margin-top:calc(var(--u)*2.5); padding:calc(var(--u)*1.5) calc(var(--u)*2);
   background:var(--panel-2); border:1px solid var(--rule);
 }
-.ep-paywall-k{font-family:var(--f-micro); font-size:8.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3)}
+.ep-paywall-k{font-family:var(--f-micro); font-size:8.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-3)}
 .ep-paywall-list{margin:8px 0 0; padding-left:18px}
 .ep-paywall-list li{font-family:var(--f-micro); font-size:9.5px; line-height:1.95; color:var(--ink-2)}
 .ep-paywall .ep-lock-cta{margin-top:calc(var(--u)*2.5)}

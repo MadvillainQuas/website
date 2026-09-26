@@ -42,7 +42,7 @@ h3{ font-size:16px }
 
 /* ---- labels: the micro face is wide at any size, so each comes down a point and tracks looser */
 .pcteam, .pcsec, .pctile .l, .pcrow .l, .pcfoot, .sub, .cmdhint, th, .qs .l, .qstrip .l, .pill, .tag, .lbl{
-  font-family:var(--f-micro); font-weight:400; text-transform:uppercase; letter-spacing:.1em }
+  font-family:var(--f-micro); font-weight:400; text-transform:uppercase; letter-spacing:0.06em }
 .pcteam, .pctile .l, .pcrow .l, .pcfoot, .sub, th{ font-size:7.5px }
 .pcsec{ font-size:8px; letter-spacing:.14em }
 .cmdhint{ font-size:8px; letter-spacing:.06em }

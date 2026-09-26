@@ -41,7 +41,7 @@
 :root:not([data-theme="light"]) .gv-btn{background:rgba(255,255,255,.66);color:#06120d;border-color:#13b862;
   box-shadow:0 0 0 1px rgba(19,184,98,.25),0 0 18px rgba(19,184,98,.35),inset 0 0 12px rgba(19,184,98,.12)}
 :root:not([data-theme="light"]) .gv-btn::before{color:#0c9a50}
-.gv-more{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;color:#effff5;
+.gv-more{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;color:#effff5;
   padding:12px 0;min-height:44px;box-sizing:border-box;display:inline-flex;align-items:center}
 .gv-more:hover{text-decoration:underline}
 :root:not([data-theme="light"]) .gv-more{color:#06120d}
@@ -53,7 +53,7 @@
 .gv-msg.bad{border-color:#ff8d7d}
 .gv-msg.warn{border-color:#ffd166}
 :root:not([data-theme="light"]) .gv-msg{background:rgba(255,255,255,.82);color:#06120d;border-color:rgba(0,0,0,.2)}
-.gv-fact{display:inline-block;margin:6px 14px 0 0;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.9}
+.gv-fact{display:inline-block;margin:6px 14px 0 0;font-family:var(--f-micro);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;opacity:.9}
 .gv-fact b{font-family:var(--f-data,inherit);font-weight:400;font-size:13px;letter-spacing:0;text-transform:none}
 .gv-link{display:inline-block;margin:8px 16px 0 0;font-family:var(--f-go,inherit);font-weight:700;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--neon,#3dff8a)}
 :root:not([data-theme="light"]) .gv-link{color:#0c7a40}

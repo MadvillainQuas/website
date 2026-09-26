@@ -135,7 +135,7 @@
 .club-band{position:absolute;left:-10%;right:-10%;top:64%;height:15px;
   background:var(--ink-c2,var(--ink-c));opacity:.9;transform:rotate(-4deg);
   display:grid;place-items:center;overflow:hidden}
-.club-band span{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.42em;
+.club-band span{font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.17em;
   text-transform:uppercase;color:var(--ink-on2,var(--panel));white-space:nowrap;font-weight:700}
 
 .club-foot{display:flex;align-items:baseline;gap:8px;padding:9px 2px 0}
@@ -152,7 +152,7 @@
    of the card and pushed the league front page and the news page to 413px on a 390px phone.
    Where the caption fits, which is everywhere else, min-width and overflow change nothing. */
 .club-ed{margin-left:auto;font-family:var(--f-micro);font-size:8px;
-  color:var(--ink-3);letter-spacing:.1em;white-space:nowrap;
+  color:var(--ink-3);letter-spacing:0.06em;white-space:nowrap;
   min-width:0;overflow:hidden;text-overflow:ellipsis}
 
 @media (prefers-reduced-motion:reduce){

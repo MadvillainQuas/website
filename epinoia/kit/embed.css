@@ -229,7 +229,7 @@
 .ep-card .meta{
   display:flex; align-items:baseline; justify-content:space-between; gap:6px;
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
-  letter-spacing:.12em; text-transform:uppercase; color:rgba(230,255,241,.6);
+  letter-spacing:0.07em; text-transform:uppercase; color:rgba(230,255,241,.6);
   margin-bottom:7px;
 }
 .ep-card .meta .st{ flex:none; color:rgba(230,255,241,.78) }
@@ -274,7 +274,7 @@
 }
 .ep-card .sc .d{ color:rgba(230,255,241,.3); padding:0 3px }
 .ep-card .vs{
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; letter-spacing:.1em;
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; letter-spacing:0.06em;
   color:rgba(230,255,241,.38);
 }
 
@@ -323,7 +323,7 @@
   padding-bottom:10px; margin-bottom:12px;
   border-bottom:1px solid rgba(147,242,191,.18);
   font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
-  letter-spacing:.12em; text-transform:uppercase; color:rgba(230,255,241,.55);
+  letter-spacing:0.07em; text-transform:uppercase; color:rgba(230,255,241,.55);
 }
 .ep-game .board{
   display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center;
@@ -345,7 +345,7 @@
 .cse[data-theme="light"] .ep-game .tm .nm.lose{ color:rgba(13,31,23,.45) }
 .ep-game .tm .rec{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
-  color:rgba(230,255,241,.4); letter-spacing:.1em; margin-top:3px;
+  color:rgba(230,255,241,.4); letter-spacing:0.06em; margin-top:3px;
 }
 .ep-game .mid{ text-align:center; min-width:112px }
 .ep-game .score{
@@ -355,7 +355,7 @@
 .ep-game .score .sep{ color:rgba(230,255,241,.28); padding:0 6px }
 .ep-game .clk{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; margin-top:7px;
-  letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.6);
+  letter-spacing:0.08em; text-transform:uppercase; color:rgba(230,255,241,.6);
 }
 .ep-game .clk.live{ color:#ff5f6b }
 .ep-game .qs{
@@ -365,7 +365,7 @@
 .ep-game .qs > div{ flex:1; background:#0a1a13; padding:5px 2px; text-align:center }
 .ep-game .qs .ql{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
-  color:rgba(230,255,241,.4); letter-spacing:.1em;
+  color:rgba(230,255,241,.4); letter-spacing:0.06em;
 }
 .ep-game .qs .qv{
   font-family:'Jersey25',ui-monospace,monospace; font-size:13px; margin-top:2px;
@@ -383,7 +383,7 @@
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:7px 12px; border-top:1px solid color-mix(in oklch, var(--ep-accent) 20%, transparent);
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
-  letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.34);
+  letter-spacing:0.08em; text-transform:uppercase; color:rgba(230,255,241,.34);
 }
 .ep-foot a:hover{ color:var(--ep-accent-ink, var(--ep-accent)) }
 
@@ -534,7 +534,7 @@
 .ep-league{
   position:absolute; left:12px; bottom:6px; z-index:4; max-width:calc(100% - 64px);
   font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; line-height:1.25;
-  letter-spacing:.12em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  letter-spacing:0.07em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   color:color-mix(in srgb, var(--ep-ink) 72%, transparent);
 }
 .ep-league[hidden]{ display:none }

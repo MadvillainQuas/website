@@ -32,7 +32,7 @@
 .pv-badge{
   display:inline-block; margin-bottom:14px;
   font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:.28em; text-transform:uppercase;
+  font-size:9px; letter-spacing:0.12em; text-transform:uppercase;
   color:#04100b; background:linear-gradient(100deg,var(--lume,#93f2bf),var(--aqua,#8ff5ff));
   border-radius:999px; padding:5px 13px; font-weight:700;
 }
@@ -51,7 +51,7 @@
 .pv-tname a:hover{ text-decoration:underline }
 .pv-trec{
   margin-top:5px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;
+  font-size:9.5px; letter-spacing:0.06em; text-transform:uppercase;
   color:var(--faint,rgba(230,255,241,.45));
 }
 .pv-v{
@@ -60,7 +60,7 @@
 }
 .pv-comp{
   margin-top:16px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:.22em; text-transform:uppercase;
+  font-size:9px; letter-spacing:0.09em; text-transform:uppercase;
   color:var(--dim,rgba(230,255,241,.6));
 }
 
@@ -73,12 +73,12 @@
 .pv-sec h2{
   margin:0 0 16px; font-size:12px; font-weight:400;
   font-family:var(--f-micro,ui-monospace,monospace);
-  letter-spacing:.26em; text-transform:uppercase; color:var(--lume,#93f2bf);
+  letter-spacing:0.11em; text-transform:uppercase; color:var(--lume,#93f2bf);
 }
 .pv-sub{
   margin:20px 0 10px; font-size:9px; font-weight:400;
   font-family:var(--f-micro,ui-monospace,monospace);
-  letter-spacing:.22em; text-transform:uppercase;
+  letter-spacing:0.09em; text-transform:uppercase;
   color:var(--faint,rgba(230,255,241,.45));
 }
 
@@ -99,7 +99,7 @@
 }
 .pv-tlabel{
   margin-top:6px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:8.5px; letter-spacing:.2em; text-transform:uppercase;
+  font-size:8.5px; letter-spacing:0.12em; text-transform:uppercase;
   color:var(--lume,#93f2bf);
 }
 .pv-tsub{
@@ -120,7 +120,7 @@
 .pv-more{
   display:inline-block; margin-top:14px;
   font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:.18em; text-transform:uppercase;
+  font-size:9px; letter-spacing:0.11em; text-transform:uppercase;
   color:var(--aqua,#8ff5ff); text-decoration:none;
   border-bottom:1px solid color-mix(in oklch, var(--aqua,#8ff5ff) 40%, transparent);
   padding-bottom:2px;
@@ -141,7 +141,7 @@
 .pv-key{
   display:flex; justify-content:space-between; gap:10px; margin-bottom:14px;
   font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+  font-size:9px; letter-spacing:0.08em; text-transform:uppercase;
 }
 .pv-key span{ color:var(--pc,#93f2bf); min-width:0; overflow-wrap:anywhere }
 .pv-key span:last-child{ text-align:right }
@@ -157,7 +157,7 @@
 }
 .pv-ffull{
   font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:8px; letter-spacing:.14em; text-transform:uppercase;
+  font-size:8px; letter-spacing:0.08em; text-transform:uppercase;
   color:var(--faint,rgba(230,255,241,.4)); text-align:right;
 }
 .pv-fbar{
@@ -195,7 +195,7 @@
 .pv-pname a:hover{ text-decoration:underline }
 .pv-pteam{
   margin-top:3px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:8px; letter-spacing:.16em; text-transform:uppercase;
+  font-size:8px; letter-spacing:0.1em; text-transform:uppercase;
   color:var(--faint,rgba(230,255,241,.42));
 }
 .pv-pline{
@@ -212,7 +212,7 @@
 }
 .pv-padv i{
   font-style:normal; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:7.5px; letter-spacing:.12em; text-transform:uppercase;
+  font-size:7.5px; letter-spacing:0.07em; text-transform:uppercase;
   color:var(--faint,rgba(230,255,241,.42));
 }
 
@@ -246,7 +246,7 @@
 }
 .pv-fivehead{
   font-family:var(--f-micro,ui-monospace,monospace); font-size:10px; font-weight:600;
-  letter-spacing:.18em; text-transform:uppercase; text-align:center; margin-bottom:6px;
+  letter-spacing:0.11em; text-transform:uppercase; text-align:center; margin-bottom:6px;
 }
 .pv-fivenote{
   font-size:13px; color:var(--ink-3,rgba(230,255,241,.6)); margin:0 0 14px;

@@ -27,7 +27,7 @@
 .rot-cells i.off{background:color-mix(in oklch,var(--rule) 45%,transparent)}
 .rot-row.dnp .rot-cells{display:flex;align-items:center;justify-content:center;
   background:color-mix(in oklch,var(--rule) 35%,transparent);border-radius:2px}
-.rot-row.dnp em{font-style:normal;font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;color:var(--ink-3)}
+.rot-row.dnp em{font-style:normal;font-family:var(--f-micro);font-size:9px;letter-spacing:0.12em;color:var(--ink-3)}
 .rot-row.dnp .rot-nm b{color:var(--ink-3)}
 /* the period breaks, drawn over the cells so they read through every row */
 .rot-lines{position:absolute;inset:-2px 0;pointer-events:none}
@@ -35,10 +35,10 @@
 
 .rot-axis{margin-top:4px;min-height:14px}
 .rot-ax{position:relative;height:14px}
-.rot-ax span{position:absolute;transform:translateX(-50%);font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;color:var(--ink-3)}
+.rot-ax span{position:absolute;transform:translateX(-50%);font-family:var(--f-micro);font-size:9px;letter-spacing:0.06em;color:var(--ink-3)}
 
 /* ---- the margin between the two sides ---- */
-.rot-mh{margin:0 0 4px calc(var(--rot-nw) + 8px);font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;
+.rot-mh{margin:0 0 4px calc(var(--rot-nw) + 8px);font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.07em;
   text-transform:uppercase;color:var(--ink-3)}
 .rot-mrow{align-items:stretch}
 .rot-scale{justify-content:space-between;padding:0}

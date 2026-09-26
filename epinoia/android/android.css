@@ -67,7 +67,7 @@ html:not(.m-app) .ad:not(.in-app) .in-only,
 /* ---------- sections ---------- */
 .ad .sec{ border-bottom:1px solid var(--rule) }
 .ad .body{ padding:calc(var(--u)*3) }
-.ad .k{ font-family:var(--f-micro); font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+.ad .k{ font-family:var(--f-micro); font-size:9px; letter-spacing:0.1em; text-transform:uppercase;
   color:var(--ink-3); margin:0 }
 .ad .intro{ font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:0 0 calc(var(--u)*2); max-width:66ch }
 /* Archivo, not Silkscreen: this is a sentence of advice, and a pixel face in capitals turns a
@@ -102,7 +102,7 @@ html:not(.m-app) .ad:not(.in-app) .in-only,
 /* NOT RELEASED YET: the link is removed in android.js; this only makes it look inert. */
 .ad .dl.off{ pointer-events:none; opacity:.55; box-shadow:none }
 
-.ad .play .or{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+.ad .play .or{ font-family:var(--f-micro); font-size:9px; letter-spacing:0.08em; text-transform:uppercase;
   color:var(--ink-3); margin:14px 0 10px }
 
 .ad .dlmeta{ font-family:var(--f-micro); font-size:10px; line-height:1.9; letter-spacing:.04em;
@@ -133,7 +133,7 @@ html:not(.m-app) .ad:not(.in-app) .in-only,
 .ad .rows{ margin:16px 0 0 }
 .ad .row{ display:flex; justify-content:space-between; align-items:baseline; gap:14px;
   padding:10px 0; border-top:1px solid var(--rule) }
-.ad .row span{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3) }
+.ad .row span{ font-family:var(--f-micro); font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-3) }
 .ad .row b{ font-family:var(--f-ui); font-weight:700; font-size:14.5px; color:var(--ink); text-align:right }
 .ad .row b.good{ color:var(--good) }
 .ad .row b.bad{ color:var(--bad) }
@@ -164,7 +164,7 @@ html:not(.m-app) .ad:not(.in-app) .in-only,
 .ad .faq{ display:grid; grid-template-columns:minmax(150px,220px) minmax(0,1fr); gap:1px; max-width:820px;
   background:var(--rule); border:1px solid var(--rule) }
 .ad .faq > div{ background:var(--ground); padding:12px 14px }
-.ad .faq .q{ font-family:var(--f-micro); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--lume); line-height:1.8 }
+.ad .faq .q{ font-family:var(--f-micro); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--lume); line-height:1.8 }
 .ad .faq .a{ font-size:14px; line-height:1.6; color:var(--ink-2) }
 .ad .faq .a a{ color:var(--aqua) }
 

@@ -32,7 +32,7 @@
 .fav-rule:hover::before,.fav-rule:focus-visible::before{transform:scaleY(2)}
 .fav-rule-tab{position:absolute;left:50%;bottom:3px;transform:translate(-50%,6px);opacity:0;pointer-events:none;
   white-space:nowrap;padding:5px 12px;background:var(--fav-bg);color:var(--fav-fg);
-  font:800 10px/1 var(--f-micro,var(--f-ui));letter-spacing:.14em;text-transform:uppercase;
+  font:800 10px/1 var(--f-micro,var(--f-ui));letter-spacing:0.08em;text-transform:uppercase;
   transition:opacity .18s ease,transform .18s cubic-bezier(.2,.8,.3,1)}
 .fav-rule-tab::after{content:" \25be"}
 .fav-rule:hover .fav-rule-tab,.fav-rule:focus-visible .fav-rule-tab{opacity:1;transform:translate(-50%,0)}
@@ -80,7 +80,7 @@
 .fav-x:focus-visible{outline:3px solid var(--fav-fg);outline-offset:3px}
 
 .fav-head{padding-right:56px}
-.fav-step{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+.fav-step{font-family:var(--f-micro);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;
   color:var(--fav-dim);margin-bottom:8px}
 .fav-title{margin:0;font-family:var(--f-score);font-weight:400;font-size:clamp(28px,4.2vw,50px);line-height:.86;
   text-transform:uppercase;letter-spacing:.01em;
@@ -213,7 +213,7 @@
 .fav-crumb-flag .fav-emoji{font-size:20px}
 .fav-crumb-name{font-family:var(--f-ui);font-weight:800;font-size:clamp(14px,1.6vw,18px);
   text-transform:uppercase;letter-spacing:.05em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fav-crumb-n{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+.fav-crumb-n{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;
   color:var(--fav-dim);white-space:nowrap}
 
 /* a row with nothing in it says why, and where it can, how to try again */
@@ -254,7 +254,7 @@
 .fav-said{display:grid;grid-template-columns:auto auto;gap:4px 14px;width:fit-content;margin:0 auto 10px;text-align:left;
   max-width:100%}
 .fav-said-row{display:contents}
-.fav-said-k{font-family:var(--f-micro);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fav-dim)}
+.fav-said-k{font-family:var(--f-micro);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--fav-dim)}
 .fav-said-v{font-family:var(--f-ui);font-weight:800;font-size:14px;min-width:0;overflow-wrap:anywhere}
 .fav-how{margin:0 0 4px;font-family:var(--f-micro);font-size:10px;line-height:1.7;letter-spacing:.04em;color:var(--fav-dim)}
 .fav-stage[data-stage="done"] .fav-acts{justify-content:center}
@@ -263,7 +263,7 @@
 .fav-links{display:flex;justify-content:center;gap:clamp(12px,3vw,28px);flex-wrap:wrap;
   margin-top:calc(var(--u)*1.5);padding-top:calc(var(--u)*1);border-top:1px solid var(--fav-edge)}
 .fav-later,.fav-never{appearance:none;background:none;border:0;color:inherit;cursor:pointer;
-  font-family:var(--f-micro);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  font-family:var(--f-micro);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;
   text-decoration:underline;text-underline-offset:3px;opacity:.9;padding:6px 2px}
 .fav-later:hover,.fav-never:hover{opacity:1}
 .fav-later:focus-visible,.fav-never:focus-visible{outline:2px solid var(--fav-fg);outline-offset:3px}

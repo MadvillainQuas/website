@@ -7,8 +7,9 @@
 :root{
   /* ground — green-biased blacks, never neutral */
   --ground:#04100b; --panel:#0a1a13; --panel-2:#102419;
-  /* ink — mint white; the dim steps are AA-checked against --ground */
-  --ink:#e6fff1; --ink-2:rgba(230,255,241,.72); --ink-3:rgba(230,255,241,.52);
+  /* ink — mint white. THE DIM STEPS ARE NOT DIM (2026-09-26): a pixel face has one-pixel strokes, and grey pixels on either ground
+     were the complaint. Secondary text is now near full strength (full white on dark, near black on light); rank is made by size, not fade. */
+  --ink:#e6fff1; --ink-2:rgba(230,255,241,.94); --ink-3:rgba(230,255,241,.84);
   /* structure — hairlines belong to the palette, not on top of it */
   --rule:rgba(147,242,191,.20); --rule-2:rgba(147,242,191,.44);
   /* neon */
@@ -31,10 +32,10 @@
 :root[data-theme="light"]{
   color-scheme:only light;         /* the browser's own controls follow; 'only' refuses a forced dark mode */
   --ground:#f3faf6; --panel:#ffffff; --panel-2:#e9f4ee;
-  --ink:#0d1f17; --ink-2:rgba(13,31,23,.82); --ink-3:rgba(13,31,23,.64);
+  --ink:#0d1f17; --ink-2:rgba(13,31,23,.95); --ink-3:rgba(13,31,23,.86);
   --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);
-  --lume:#0c7a54; --aqua:#0a6680; --amber:#8a5a06; --flare:#c22f3e; --violet:#5b40c4;
-  --good:#12925f; --bad:#d13a49;
+  --lume:#08603f; --aqua:#075a73; --amber:#714a03; --flare:#a01b2a; --violet:#4a30b0;
+  --good:#0a6d43; --bad:#b32433;
   --team-a:var(--lume); --team-b:var(--aqua);
   --on-accent:#ffffff;
 }

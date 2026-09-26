@@ -435,8 +435,7 @@ const BODIES = {
     const R = SCk.forGame(S);
     /* the ink form on the light theme, as renderShell paints --team0/--team1 */
     const TC = window.EpinoiaTeamColour;
-    const light = !!(TC && TC.ink && document.documentElement.getAttribute('data-theme') === 'light');
-    const colour = t => { const c = B.safeColour(S.teams[t].color, t ? '#8ff5ff' : '#93f2bf'); return light ? TC.ink(c) : c; };
+    const colour = t => { const c = B.safeColour(S.teams[t].color, t ? '#8ff5ff' : '#93f2bf'); return (TC && TC.ink && TC.ink(c)) || c; };
     return V.html('game', { unit: 'game', sides: [0, 1].map(t => ({
       label: S.teams[t].name, colour: colour(t), chances: R.chances.filter(r => r.team === t) })) });
   },
@@ -1021,8 +1020,8 @@ function renderShell() {
   /* on the light theme a club colour is TEXT on a pale page (the names, the scores) and a
      surface under white type (the tab): the ink form reads for both */
   const TC = window.EpinoiaTeamColour;
-  const lightNow = !!(TC && document.documentElement.getAttribute('data-theme') === 'light');
-  const k0 = lightNow ? TC.ink(c0) : c0, k1 = lightNow ? TC.ink(c1) : c1;
+  /* ...and on the dark theme too (2026-09-26): a black or navy club's score and name were invisible on near-black */
+  const k0 = (TC && TC.ink && TC.ink(c0)) || c0, k1 = (TC && TC.ink && TC.ink(c1)) || c1;
   r.setProperty('--team0', k0);
   r.setProperty('--team1', k1);
   r.setProperty('--team0-glow', glow(k0, .4));
@@ -1130,10 +1129,9 @@ function mountStartersCard() {
   const five = [startingFive(S, 0), startingFive(S, 1)];
   if (five[0].length < 5 || five[1].length < 5) return false;
 
-  /* the ink form of a club colour on the light theme, as renderShell does for the page */
+  /* the ink form of a club colour on the theme it is on (a navy club's name is unreadable on the dark ground too) */
   const TC = window.EpinoiaTeamColour;
-  const light = !!(TC && document.documentElement.getAttribute('data-theme') === 'light');
-  const colour = (t, dflt) => { const c = B.safeColour((S.teams[t] || {}).color, dflt); return light ? TC.ink(c) : c; };
+  const colour = (t, dflt) => { const c = B.safeColour((S.teams[t] || {}).color, dflt); return (TC && TC.ink && TC.ink(c)) || c; };
   const html = P.startersHTML({
     nameA: (S.teams[0] || {}).name || 'Home', nameB: (S.teams[1] || {}).name || 'Away',
     colourA: colour(0, '#93f2bf'), colourB: colour(1, '#8ff5ff'),
@@ -2354,6 +2352,9 @@ function mountFullStats(el) {
    the tab its script and stylesheet are asked for, and until then no game costs anything for it. Once
    mounted it keeps its cards, so a new play arrives as one new card (animated) instead of the list being
    rebuilt under the reader. If the module cannot be fetched, the plain list the scorer draws stands in. */
+/* a club's colour as TEXT on this theme's ground (teamcolour.js): a navy club is not navy on near-black */
+function inkOf(c) { const TC = window.EpinoiaTeamColour; return (TC && TC.ink && TC.ink(c)) || c; }
+
 let pbpLoading = null;
 function loadPBP() {
   if (window.EpinoiaPBP) return Promise.resolve();
@@ -3250,8 +3251,8 @@ async function renderPreview() {
   if (walled) return;                   // the paywall went up meanwhile
   $('#view').innerHTML = window.EpinoiaPreview.render({
     nameA: home.name || S.teams[0].name, nameB: away.name || S.teams[1].name,
-    colourA: B.safeColour(home.colour, '#93f2bf'),
-    colourB: B.safeColour(away.colour, '#8ff5ff'),
+    colourA: inkOf(B.safeColour(home.colour, '#93f2bf')),
+    colourB: inkOf(B.safeColour(away.colour, '#8ff5ff')),
     slugA: home.slug || null, slugB: away.slug || null,
     teamA: teamRow(m.homeTeamId), teamB: teamRow(m.awayTeamId),
     starsA: starsOf(m.homeTeamId), starsB: starsOf(m.awayTeamId),

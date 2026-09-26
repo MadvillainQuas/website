@@ -34,7 +34,7 @@
 }
 .co-head p{
   margin:calc(var(--u)*1.5) 0 0;
-  font-family:var(--f-micro); font-size:10px; letter-spacing:.14em;
+  font-family:var(--f-micro); font-size:10px; letter-spacing:0.08em;
   text-transform:uppercase; color:#3d5f6f;
   text-shadow:0 1px 0 rgba(255,255,255,.6);
 }
@@ -45,7 +45,7 @@
   grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
 }
 .co-loading{
-  font-family:var(--f-micro); font-size:10px; letter-spacing:.14em;
+  font-family:var(--f-micro); font-size:10px; letter-spacing:0.08em;
   text-transform:uppercase; color:#3d5f6f;
 }
 
@@ -76,7 +76,7 @@
 }
 .co-count{
   position:relative; margin-top:5px;
-  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.16em;
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:0.1em;
   text-transform:uppercase; color:var(--ink-2);
 }
 

@@ -76,7 +76,7 @@
 .fxc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px;
   padding:7px 10px 5px}
 .fxc-lg{min-width:0;flex:1 1 auto;display:flex}
-.fxc-st{flex:none;margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+.fxc-st{flex:none;margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.06em;
   text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
 .fxc-st-t{display:none}
 .fxc.is-upcoming .fxc-st{color:var(--aqua)}

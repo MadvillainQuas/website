@@ -53,7 +53,7 @@
     background:var(--rule);border:1px solid var(--rule)}
   .plan{background:var(--ground);padding:calc(var(--u)*3);display:flex;flex-direction:column;min-width:0}
   .plan.owned{box-shadow:inset 0 0 0 2px var(--lume)}
-  .plan .eyebrow{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-3)}
+  .plan .eyebrow{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-3)}
   .plan h3{font-family:var(--f-ui);font-weight:800;font-size:20px;line-height:1.2;margin:6px 0 0;color:var(--ink)}
   .plan .price{margin:calc(var(--u)*2) 0 0;display:flex;align-items:baseline;flex-wrap:wrap;gap:8px}
   .plan .price b{font-family:var(--f-score);font-weight:400;font-size:46px;line-height:1;color:var(--lume)}
@@ -67,7 +67,7 @@
   .plan .grow{flex:1}
   .act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:calc(var(--u)*3)}
   .act .ep-btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}
-  .act .mine{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}
+  .act .mine{font-family:var(--f-micro);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--lume)}
   /* as specific as the kit's light-theme button rules, and later, so a disabled
      button does not light up on hover in either theme */
   .act .ep-btn[disabled], .act .ep-btn[disabled]:hover,
@@ -86,9 +86,9 @@
   .pre-body{padding:calc(var(--u)*3);max-width:760px}
   .summary{border:1px solid var(--rule-2);border-top:2px solid var(--lume);background:var(--panel);
     padding:calc(var(--u)*2) calc(var(--u)*2.5)}
-  .summary .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+  .summary .k{font-family:var(--f-micro);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-3)}
   .summary dl{display:grid;grid-template-columns:minmax(110px,150px) minmax(0,1fr);gap:12px 18px;margin:12px 0 0}
-  .summary dt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--lume);padding-top:4px}
+  .summary dt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--lume);padding-top:4px}
   .summary dd{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink)}
   .consent{display:flex;gap:12px;align-items:flex-start;margin-top:calc(var(--u)*3);
     font-size:15px;line-height:1.55;color:var(--ink);cursor:pointer}
@@ -114,10 +114,10 @@
   /* free against members */
   .cmp{width:100%;border-collapse:collapse}
   .cmp th,.cmp td{padding:9px 10px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
-  .cmp thead th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  .cmp thead th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;
     color:var(--ink-3);font-weight:400;border-bottom-color:var(--rule-2)}
   .cmp tbody th{font-family:var(--f-ui);font-weight:400;font-size:14px;line-height:1.45;color:var(--ink-2)}
-  .cmp tr.grp th{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  .cmp tr.grp th{font-family:var(--f-micro);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;
     color:var(--ink);padding-top:20px}
   .cmp .c{text-align:center;width:88px;font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;white-space:nowrap}
   .cmp .yes{color:var(--lume)} .cmp .no{color:var(--ink-3)} .cmp .part{color:var(--amber)}
@@ -125,7 +125,7 @@
   .faq{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:1px;
     background:var(--rule);border:1px solid var(--rule)}
   .faq > div{background:var(--ground);padding:12px 14px}
-  .faq .q{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--lume);line-height:1.8}
+  .faq .q{font-family:var(--f-micro);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--lume);line-height:1.8}
   .faq .a{font-size:14px;line-height:1.6;color:var(--ink-2)}
 
   footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
@@ -145,6 +145,7 @@
     .own{grid-template-columns:minmax(0,1fr)}
   }
 </style>
+<link rel="stylesheet" href="../kit/legibility.css?v=438">
 </head>
 <body>
 <div class="ep-frame">

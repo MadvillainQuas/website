@@ -66,6 +66,11 @@
   var root = doc.documentElement;
   var LIGHT = '#f3faf6', DARK = '#04100b';
 
+  /* ---- 0. THE PIXEL FACES' SIZE (kit/legibility.css). The label face is enlarged with size-adjust, which every current
+     browser honours (Safari from 17); a tight place that needs its label brought back down says so under html.pxadj,
+     so a browser without it shows the site exactly as it was. ---- */
+  try { if (typeof FontFace !== 'undefined' && 'sizeAdjust' in FontFace.prototype) root.classList.add('pxadj'); } catch (_) { /* as it was */ }
+
   /* ---- 1. THE THEME. Same rule as config.js:71-74, which still runs later and agrees. ---- */
   var light = true;
   try { light = localStorage.getItem('epinoia_theme') !== 'dark'; } catch (_) { light = true; }

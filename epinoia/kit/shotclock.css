@@ -72,7 +72,7 @@
 .scx-whole b{color:var(--ink);font-weight:600}
 .scx-ff{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 .scx-f{border:1px solid var(--rule);padding:10px 12px;min-width:0}
-.scx-fl{display:block;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.scx-fl{display:block;font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
 .scx-fv{display:block;margin:4px 0 8px;font-family:var(--f-data);font-size:22px;font-weight:700;color:var(--ink);
   font-variant-numeric:tabular-nums}
 .scx-bar{position:relative;display:block;height:5px;background:var(--rule);border-radius:3px}
@@ -91,7 +91,7 @@
 .scx .sc-wrap svg{width:100%;height:auto;display:block;border-radius:10px}
 .scx .sc-note{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3);text-align:center;margin-top:8px;line-height:1.6}
 .scx .sc-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px}
-.scx .sc-chip{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);
+.scx .sc-chip{font-family:var(--f-micro);font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-2);
   padding:4px 9px;border:1px solid var(--rule);border-radius:999px}
 .scx .sc-chip b{color:var(--ink);font-weight:400;margin-left:5px;font-family:var(--f-data);font-size:10px;letter-spacing:0;text-transform:none}
 .scx-note{margin:14px 0 0;font-family:var(--f-micro);font-size:9px;letter-spacing:.04em;line-height:1.7;color:var(--ink-3)}

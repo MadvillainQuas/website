@@ -145,7 +145,7 @@ table.adv .gp-pc, .ffval .gp-pc, .tsacell .gp-pc{ display:none }
 @media (prefers-reduced-motion:reduce){ .tabrow .tabgroup::after{ animation:none } }
 .tabrow .tabgroup-k{ position:absolute; top:0; left:50%; transform:translate(-50%, -55%); white-space:nowrap; z-index:1;
   padding:1px 8px; border-radius:4px; background:#070f0b; color:#b8c0c6;
-  font-family:var(--f-micro, monospace); font-size:7.5px; letter-spacing:.22em; text-transform:uppercase; line-height:1.2 }
+  font-family:var(--f-micro, monospace); font-size:7.5px; letter-spacing:0.09em; text-transform:uppercase; line-height:1.2 }
 :root[data-theme="light"] .tabrow .tabgroup{
   background:
     linear-gradient(#f3f5f7, #f3f5f7) padding-box,

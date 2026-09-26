@@ -213,7 +213,7 @@ input{font:inherit;color:var(--txt);}
    squads needs to see the columns they are checking, and a screen that hides
    what it is about in order to ask a question is harder to answer. */
 #mpPregame{border-color:var(--lume);box-shadow:0 0 0 1px rgba(147,242,191,.25) inset}
-.pgtitle{font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:.16em;
+.pgtitle{font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:0.1em;
   text-transform:uppercase;color:var(--lume);margin-bottom:6px}
 .pgsub{font-size:11px;line-height:1.7;color:var(--faint);margin-bottom:11px}
 .pgbtns{display:flex;flex-direction:column;gap:8px}
@@ -1494,7 +1494,7 @@ html, body{ height:100dvh; }
      pushed the pair to one side of a circle. Both are stacked in the same
      centred column now — tick over label, one optical centre. */
   #doneB .xin{flex-direction:column; gap:0; line-height:1;}
-  #doneB .dlab{font-family:var(--f-micro); font-size:7px; letter-spacing:.1em;
+  #doneB .dlab{font-family:var(--f-micro); font-size:7px; letter-spacing:0.06em;
     text-transform:uppercase; margin-top:1px; opacity:.85;}
   #doneB .kcap{display:none;}
 
@@ -1570,17 +1570,17 @@ html, body{ height:100dvh; }
   width:min(240px,58%);min-height:40px}
 .detin:focus{border-color:var(--line-hi);outline:none}
 .detin.num{width:118px;text-align:right}
-.detsplit{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;
+.detsplit{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.11em;text-transform:uppercase;
   color:var(--lume);margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
 .detnote{font-family:var(--f-micro);font-size:9px;line-height:1.85;color:var(--faint);
   margin:12px 0 2px}
 
 .mdcard{padding:11px 13px;margin:10px 0;display:flex;flex-direction:column;gap:7px}
 .mdrow{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:baseline}
-.mdk{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;
+.mdk{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.12em;text-transform:uppercase;
   color:var(--lume)}
 .mdv{font-family:var(--f-ui);font-size:12.5px;color:var(--txt);line-height:1.6}
-.mdrole{font-family:var(--f-micro);font-size:8px;letter-spacing:.16em;text-transform:uppercase;
+.mdrole{font-family:var(--f-micro);font-size:8px;letter-spacing:0.1em;text-transform:uppercase;
   color:var(--faint);margin-right:4px}
 .mdsep{color:var(--faint);margin:0 7px}
 .mddim{color:var(--dim)}
@@ -1673,12 +1673,12 @@ body::before, body::after{ position:fixed; }
   --glass-hi:rgba(0,0,0,.04); --glass-lo:rgba(0,0,0,.02);
   --line:var(--rule); --line-hi:var(--rule-2);
   --txt:var(--ink); --dim:var(--ink-2); --faint:var(--ink-3);
-  --lume:#0f8a5f; --aqua:#0b6f8a;
-  --red:#d13a49; --green:#12925f; --amber:#a8700a;
+  --lume:#08603f; --aqua:#075a73;
+  --red:#a01b2a; --green:#0a6d43; --amber:#714a03;
   --bg-base:var(--ground); --bg-card:color-mix(in oklch,var(--panel) 94%,transparent); --bg-elevated:var(--panel-2); --bg-glass:rgba(0,0,0,.03);
   --text-bright:var(--ink); --text-primary:var(--ink); --text-secondary:var(--ink-2); --text-muted:var(--ink-3);
   --border-subtle:rgba(0,0,0,.08); --border-accent:color-mix(in oklch,var(--lume) 35%,transparent);
-  --positive:#12925f; --negative:#d13a49;
+  --positive:#0a6d43; --negative:#b32433;
 }
 
 /* light: the tab strip and the scoreboard card, which kept their own dark values */

@@ -170,12 +170,12 @@ const VIEWER_LIGHT_THEME = `
   --glass-hi:rgba(0,0,0,.04); --glass-lo:rgba(0,0,0,.02);
   --line:var(--rule); --line-hi:var(--rule-2);
   --txt:var(--ink); --dim:var(--ink-2); --faint:var(--ink-3);
-  --lume:#0f8a5f; --aqua:#0b6f8a;
-  --red:#d13a49; --green:#12925f; --amber:#a8700a;
+  --lume:#08603f; --aqua:#075a73;
+  --red:#a01b2a; --green:#0a6d43; --amber:#714a03;
   --bg-base:var(--ground); --bg-card:color-mix(in oklch,var(--panel) 94%,transparent); --bg-elevated:var(--panel-2); --bg-glass:rgba(0,0,0,.03);
   --text-bright:var(--ink); --text-primary:var(--ink); --text-secondary:var(--ink-2); --text-muted:var(--ink-3);
   --border-subtle:rgba(0,0,0,.08); --border-accent:color-mix(in oklch,var(--lume) 35%,transparent);
-  --positive:#12925f; --negative:#d13a49;
+  --positive:#0a6d43; --negative:#b32433;
 }
 
 /* light: the tab strip and the scoreboard card, which kept their own dark values */

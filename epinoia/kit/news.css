@@ -55,13 +55,13 @@
   font-family:var(--f-score);font-size:22px;color:#fff;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.55))}
 .news-card.match .mt-crest img{width:100%;height:100%;object-fit:contain;display:block}
-.news-card.match .mt-name{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+.news-card.match .mt-name{font-family:var(--f-micro);font-size:8px;letter-spacing:0.08em;text-transform:uppercase;
   text-shadow:0 1px 2px rgba(0,0,0,.8);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .news-card.match .mt-mid{font-family:var(--f-score);font-size:clamp(26px,3vw,40px);line-height:1;color:#fff;
   white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 14px rgba(0,0,0,.6);
   background:color-mix(in oklch,var(--ground) 55%,transparent);padding:4px 10px 2px;border:1px solid rgba(255,255,255,.14)}
 .news-card.match .mt-mid .d{padding:0 5px;color:rgba(255,255,255,.45)}
-.news-card.match .mt-mid .vs{font-family:var(--f-micro);font-size:11px;letter-spacing:.2em}
+.news-card.match .mt-mid .vs{font-family:var(--f-micro);font-size:11px;letter-spacing:0.12em}
 .news-card.match .news-over{background:linear-gradient(to top,
     color-mix(in oklch,var(--ground) 96%,transparent) 0%, color-mix(in oklch,var(--ground) 84%,transparent) 55%, rgba(4,16,11,0) 100%)}
 /* THE CLUBS GET THE UPPER HALF. The score and the two crests already say what happened;
@@ -107,7 +107,7 @@
 
 .news-flag{
   position:absolute; top:10px; left:10px; z-index:3;
-  font-family:var(--f-micro); font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
+  font-family:var(--f-micro); font-size:7.5px; letter-spacing:0.1em; text-transform:uppercase;
   background:var(--amber); color:var(--on-accent); padding:3px 8px;
 }
 
@@ -167,7 +167,7 @@
   background:linear-gradient(180deg,var(--lume),var(--aqua))}
 .art-game:hover{border-color:var(--lume)}
 .art-game:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
-.art-game .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}
+.art-game .k{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--lume)}
 .art-game .t{font-family:var(--f-ui);font-weight:800;font-size:16px;line-height:1.35;color:var(--ink)}
 .art-game .t b{font-family:var(--f-score);font-weight:400;font-size:18px;white-space:pre}
 .art-game .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}

@@ -12,7 +12,7 @@
   background:linear-gradient(90deg, var(--pb-c0) 0%, var(--pb-c0) 38%, var(--pb-c1) 62%, var(--pb-c1) 100%); opacity:.85 }
 .pb-title{ margin:0; font-family:var(--f-head, var(--f-ui, inherit)); font-weight:800; font-size:clamp(28px, 5.4vw, 42px); line-height:1;
   letter-spacing:.07em; text-transform:uppercase; color:var(--pb-ink) }
-.pb-sub{ font-family:var(--f-score, var(--f-micro, monospace)); font-size:clamp(16px, 2.6vw, 22px); line-height:1; letter-spacing:.16em; text-transform:uppercase;
+.pb-sub{ font-family:var(--f-score, var(--f-micro, monospace)); font-size:clamp(16px, 2.6vw, 22px); line-height:1; letter-spacing:0.1em; text-transform:uppercase;
   color:var(--pb-dim); padding:5px 12px 3px; border:1px solid color-mix(in srgb, var(--pb-dim) 45%, transparent); border-radius:999px }
 
 /* ---- the quarter tabs and the order ---- */
@@ -24,7 +24,7 @@
 .pb-tab:hover{ color:var(--pb-ink) }
 .pb-tab.on{ background:var(--pb-ink); color:var(--pb-card) }
 .pb-order{ border:1px solid color-mix(in srgb, var(--pb-dim) 40%, transparent); background:none; color:var(--pb-dim);
-  font:600 10px/1 var(--f-micro, monospace); letter-spacing:.12em; text-transform:uppercase; padding:9px 12px; border-radius:999px; cursor:pointer }
+  font:600 10px/1 var(--f-micro, monospace); letter-spacing:0.07em; text-transform:uppercase; padding:9px 12px; border-radius:999px; cursor:pointer }
 .pb-order:hover{ color:var(--pb-ink); border-color:var(--pb-ink) }
 
 /* ---- the cards ---- */
@@ -77,7 +77,7 @@ a.pb-who:hover{ text-decoration:underline }
 .pb-rows > .pb-row.pb-sub{ gap:10px }
 .pb-card.k-subs .pb-rows{ gap:8px }
 .pb-lu{ margin-top:2px; padding-top:8px; border-top:1px dashed color-mix(in srgb, var(--c) 35%, transparent) }
-.pb-lu-h{ font:700 9px/1 var(--f-micro, monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--pb-dim) }
+.pb-lu-h{ font:700 9px/1 var(--f-micro, monospace); letter-spacing:0.08em; text-transform:uppercase; color:var(--pb-dim) }
 .pb-lu-row{ display:flex; gap:10px; margin-top:8px; min-width:0 }
 .pb-lu-p{ position:relative; flex:0 1 92px; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; text-decoration:none; color:var(--pb-ink) }
 a.pb-lu-p:hover .pb-lu-n{ text-decoration:underline }
@@ -85,7 +85,7 @@ a.pb-lu-p:hover .pb-lu-n{ text-decoration:underline }
 /* a player who has just come on: a halo on the circle and a small IN */
 .pb-lu-p.new .pb-p .sq-face{ box-shadow:0 0 0 2px var(--c, #93f2bf), 0 0 0 5px color-mix(in srgb, var(--c, #93f2bf) 30%, transparent) }
 .pb-lu-in{ position:absolute; top:-5px; left:calc(50% - 32px); padding:3px 6px; border-radius:999px; background:var(--c); color:var(--on, #0b0f0d);
-  font:800 8.5px/1 var(--f-micro, monospace); letter-spacing:.1em; text-transform:uppercase; z-index:1 }
+  font:800 8.5px/1 var(--f-micro, monospace); letter-spacing:0.06em; text-transform:uppercase; z-index:1 }
 
 /* the court: the play-type + reb tab's half court, one shot on it */
 .pb-court{ width:74px; height:69px; border-radius:8px; overflow:hidden; background:color-mix(in srgb, var(--c) 8%, transparent) }
@@ -109,7 +109,7 @@ a.pb-lu-p:hover .pb-lu-n{ text-decoration:underline }
 .pb-marker .pb-in::before{ content:''; position:absolute; left:0; right:0; top:50%; bottom:auto; height:1px; width:auto;
   background:color-mix(in srgb, var(--pb-dim) 40%, transparent) }
 .pb-mk, .pb-mks{ position:relative; background:var(--bg-base, #0a120e); padding:0 10px; font:700 11px/1 var(--f-micro, monospace);
-  letter-spacing:.2em; text-transform:uppercase; color:var(--pb-ink) }
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--pb-ink) }
 :root[data-theme="light"] .pb-mk, :root[data-theme="light"] .pb-mks{ background:var(--bg-base, #f3faf6) }
 .pb-mks{ color:var(--pb-dim) }
 .pb-empty{ padding:28px; text-align:center; color:var(--pb-dim); font-size:13px }

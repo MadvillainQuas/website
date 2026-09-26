@@ -61,7 +61,7 @@
   .fx .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}
   .fx .o{font-family:var(--f-ui);font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;min-width:0}
   .fx .o span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .fx .o .comp{font-family:var(--f-micro);font-size:7px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);flex:none}
+  .fx .o .comp{font-family:var(--f-micro);font-size:7px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3);flex:none}
   .fxcrest{display:inline-grid;place-items:center;width:22px;height:22px;flex:none;overflow:hidden;
     font-family:var(--f-score);font-size:10px;color:var(--on-accent);border-radius:3px}
   .fxcrest.has-img{background:#fff}
@@ -79,14 +79,14 @@
   .tile{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*1.5);text-align:center}
   .tile .v{font-family:var(--f-score);font-size:24px;line-height:1;color:var(--ink)}
   .tile .l{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
-    letter-spacing:.14em;text-transform:uppercase;margin-top:6px}
+    letter-spacing:0.08em;text-transform:uppercase;margin-top:6px}
   .tile.hi .v{color:var(--lume)}
-  .ffhead{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.14em;
+  .ffhead{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:0.08em;
     text-transform:uppercase;padding:calc(var(--u)*2) calc(var(--u)*3) 0}
   .ffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
     background:var(--rule);border-top:1px solid var(--rule);margin-top:calc(var(--u))}
   .ffcard{background:var(--ground);padding:calc(var(--u)*2)}
-  .ffl{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);letter-spacing:.12em;
+  .ffl{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);letter-spacing:0.07em;
     text-transform:uppercase;margin-bottom:8px}
   .ffpair{display:flex;gap:10px}
   .ffside{flex:1;text-align:center;padding:6px 4px;border:1px solid var(--rule);border-radius:4px}
@@ -97,7 +97,7 @@
   .ffside .ffv{font-family:var(--f-score);font-size:21px;line-height:1;color:var(--ink)}
   .ffside.win .ffv{color:var(--lume)}
   .ffside .ffk{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);
-    letter-spacing:.12em;text-transform:uppercase;margin-top:5px}
+    letter-spacing:0.07em;text-transform:uppercase;margin-top:5px}
   .lu-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u)*2)}
   .lu-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
     line-height:1.9;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
@@ -106,12 +106,12 @@
   .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
     padding:0 calc(var(--u)*3) calc(var(--u)*2)}
   .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
-    letter-spacing:.1em;text-transform:uppercase}
+    letter-spacing:0.06em;text-transform:uppercase}
   .hnote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto}
   .ep-hdr{display:flex;align-items:baseline;gap:12px}
   /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
   .wb{display:inline-block;min-width:34px;text-align:center;padding:3px 7px 2px;
-    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em}
+    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.06em}
   .wb.on{background:var(--lume);color:var(--on-accent);font-weight:700}
   .wb.off{background:transparent;color:var(--ink-3);border:1px solid var(--rule-2)}
   table.ft td.stick.c0w,table.ft th.stick.c0w{position:sticky;left:0;z-index:2;
@@ -154,15 +154,15 @@
   /* the main arena's caption, and the other arenas a club plays home games at (homearenas.js):
      smaller than the main arena's name on purpose - they are the exception, not the address */
   .vmain{display:flex;gap:10px;align-items:baseline;margin-top:6px;font-family:var(--f-micro);
-    font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}
+    font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--lume)}
   .vmain-g{color:var(--ink-3)}
   .varenas{margin-top:calc(var(--u)*2);padding-top:calc(var(--u)*1.5);border-top:1px solid var(--rule,rgba(255,255,255,.1))}
-  .varenas-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .varenas-h{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
   .varena{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;margin-top:8px}
   .varena-n{font-family:var(--f-score);font-size:15px;line-height:1.1;text-transform:uppercase;color:var(--ink);text-decoration:none}
   .varena-n:hover{color:var(--lume)}
   .varena-c{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);letter-spacing:.05em}
-  .varena-g{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-left:auto}
+  .varena-g{font-family:var(--f-micro);font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-3);margin-left:auto}
   .vgrid{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*2)}
   @media (max-width:760px){ .vgrid{grid-template-columns:1fr} }
   .vpane{position:relative;border:1px solid var(--rule);background:var(--panel);
@@ -178,7 +178,7 @@
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.55'/></svg>")}
   .vcap{position:absolute;left:0;right:0;bottom:0;padding:8px 11px;
     background:linear-gradient(transparent,color-mix(in oklch,var(--ground) 92%,transparent));
-    font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;
+    font-family:var(--f-micro);font-size:8px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--ink-3)}
   /* over a photograph the caption needs its own scrim. The panel-coloured one
      behind it is invisible on a dark picture, which in the light theme left the
@@ -199,17 +199,17 @@
   .vmap-pin{font-family:var(--f-score);font-size:34px;color:var(--ink-c);line-height:1}
   .vmap-why{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);line-height:1.95}
   .vlinks{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:2px}
-  .vlinks a{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+  .vlinks a{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.06em;
     text-transform:uppercase;color:var(--ink-3);text-decoration:none}
   .vlinks a:hover{color:var(--lume)}
 
   /* ---- club contact, under the venue -------------------------------- */
   .vcontact{margin-top:calc(var(--u)*3);padding-top:calc(var(--u)*2.5);
     border-top:1px solid var(--rule)}
-  .vclabel{font-family:var(--f-micro);font-size:8px;letter-spacing:.18em;
+  .vclabel{font-family:var(--f-micro);font-size:8px;letter-spacing:0.11em;
     text-transform:uppercase;color:var(--lume);margin-bottom:calc(var(--u)*2)}
   .vcrow{display:flex;gap:calc(var(--u)*4);flex-wrap:wrap;align-items:flex-end}
-  .vcitem .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+  .vcitem .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--ink-3)}
   .vcitem .v{font-family:var(--f-ui);font-weight:600;font-size:13.5px;color:var(--ink);
     margin-top:4px;display:block;text-decoration:none}
@@ -219,7 +219,7 @@
 
   /* the manager's editor */
   .vcedit{margin-top:calc(var(--u)*3);border:1px solid var(--rule);padding:calc(var(--u)*2)}
-  .vcedit summary{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;
+  .vcedit summary{font-family:var(--f-micro);font-size:9px;letter-spacing:0.07em;
     text-transform:uppercase;color:var(--ink-3);cursor:pointer}
   .vcedit summary:hover{color:var(--lume)}
   .vegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
@@ -232,7 +232,7 @@
 
   /* shared by the editor and the pop-up */
   .vfield{display:block}
-  .vflabel{display:block;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+  .vflabel{display:block;font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
   .vfield input,.vfield textarea{width:100%;box-sizing:border-box;background:var(--panel-2);
     border:1px solid var(--rule-2);color:var(--ink);font-family:var(--f-ui);font-size:13px;
@@ -259,26 +259,26 @@
   /* ---- staff, above the players ------------------------------------- */
   .staffhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
     padding:calc(var(--u)*2) calc(var(--u)*3) 0}
-  .staffhead .sh{font-family:var(--f-micro);font-size:8px;letter-spacing:.18em;
+  .staffhead .sh{font-family:var(--f-micro);font-size:8px;letter-spacing:0.11em;
     text-transform:uppercase;color:var(--lume)}
   .staffhead .sn{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
   .staffgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;
     background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
     margin:calc(var(--u)*1.5) 0 calc(var(--u)*3)}
   .staffcard{background:var(--ground);padding:calc(var(--u)*2)}
-  .staffrole{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+  .staffrole{font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--ink-3)}
   .staffname{font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink);
     margin-top:6px;line-height:1.25}
   .staffage{font-family:var(--f-score);font-size:15px;color:var(--lume);margin-top:6px}
   .staffage span{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);
-    letter-spacing:.14em;margin-left:5px}
+    letter-spacing:0.08em;margin-left:5px}
   /* editing, for whoever runs the club */
   .staffcard.edit{display:flex;flex-direction:column;gap:7px}
   .staffcard input{width:100%;box-sizing:border-box;background:transparent;
     border:1px solid transparent;color:var(--ink);font-family:var(--f-ui);font-size:13px;
     padding:3px 5px;border-radius:2px}
-  .staffcard input.role{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;
+  .staffcard input.role{font-family:var(--f-micro);font-size:8px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--ink-3)}
   .staffcard input.yr{font-family:var(--f-data);font-size:12px;color:var(--lume);width:76px}
   .staffcard input:hover{border-color:var(--rule-2)}
@@ -286,13 +286,13 @@
   .staffcard input.bad{border-color:var(--flare);color:var(--flare)}
   .staffcard .srow{display:flex;align-items:center;gap:8px}
   .staffdel{background:none;border:1px solid var(--rule-2);color:var(--ink-3);
-    font-family:var(--f-micro);font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;
+    font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.07em;text-transform:uppercase;
     padding:3px 7px;cursor:pointer;margin-left:auto}
   .staffdel:hover{border-color:var(--flare);color:var(--flare)}
   .staffcard.add{display:grid;place-items:center;background:var(--panel);
     border:1px dashed var(--rule-2)}
   .staffcard.add button{background:none;border:none;color:var(--ink-3);cursor:pointer;
-    font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+    font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase}
   .staffcard.add button:hover{color:var(--lume)}
 
   /* ---- the club's socials, under the venue ---- */
@@ -300,7 +300,7 @@
     margin-top:calc(var(--u)*2)}
   .vsocial-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
     margin-bottom:calc(var(--u)*2)}
-  .vsocial-t{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
+  .vsocial-t{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--ink-3)}
   .vsocial-l{font-family:var(--f-ui);font-weight:700;font-size:12.5px;
     color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule-2)}
@@ -364,6 +364,7 @@
   #paywall{padding:calc(var(--u)*3)}
   body.paywalled .rec, body.paywalled .pw-hide{display:none}
 </style>
+<link rel="stylesheet" href="../kit/legibility.css?v=438">
 </head>
 <body>
 <div class="ep-frame">

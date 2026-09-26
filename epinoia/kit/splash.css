@@ -374,7 +374,7 @@
 .sp-by{
   display:flex; align-items:center; justify-content:center; gap:10px;
   margin-top:calc(var(--u)*2);
-  font-family:var(--f-micro); font-size:10px; letter-spacing:.22em;
+  font-family:var(--f-micro); font-size:10px; letter-spacing:0.09em;
   text-transform:uppercase; color:var(--ink-2);
 }
 /* the mark is supplied as white-on-alpha, so it is tinted rather than
@@ -390,7 +390,7 @@
 .sp-login{ width:min(560px, 92vw); padding:calc(var(--u)*2.5) calc(var(--u)*3) }
 .sp-login h2{
   margin:0 0 calc(var(--u)*1.5); font-family:var(--f-micro); font-size:9px;
-  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-2); font-weight:400;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-2); font-weight:400;
 }
 .sp-row{ display:flex; gap:8px; flex-wrap:wrap }
 .sp-in{
@@ -403,7 +403,7 @@
 .sp-btn{
   flex:0 0 auto; cursor:pointer; border:1px solid var(--ink);
   background:var(--ink); color:#f2fbff;
-  font-family:var(--f-micro); font-size:9px; letter-spacing:.16em;
+  font-family:var(--f-micro); font-size:9px; letter-spacing:0.1em;
   text-transform:uppercase; padding:10px 18px; border-radius:2px;
 }
 .sp-btn:hover{ background:transparent; color:var(--ink) }
@@ -412,7 +412,7 @@
 .sp-btn[disabled]{ opacity:.5; cursor:default }
 .sp-or{
   text-align:center; font-family:var(--f-micro); font-size:8px;
-  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-2);
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-2);
   margin:calc(var(--u)*1.5) 0;
 }
 .sp-msg{ font-family:var(--f-micro); font-size:9px; line-height:1.85;
@@ -469,7 +469,7 @@
    Slightly darker than the slab type too, because the water behind it is
    darker than marble. */
 .deck-h{
-  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.2em;
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:0.12em;
   text-transform:uppercase; color:var(--ink);
   height:20px; line-height:13px; padding:0 0 7px 2px;
   display:flex; align-items:flex-end; gap:5px;
@@ -576,7 +576,7 @@
 .seg:focus-visible{ outline:2px solid var(--ink); outline-offset:-3px }
 .seg > *{ position:relative; z-index:1 }
 .seg .k{
-  font-family:var(--f-micro); font-size:8px; letter-spacing:.18em;
+  font-family:var(--f-micro); font-size:8px; letter-spacing:0.11em;
   text-transform:uppercase; color:var(--ink-2);
 }
 .seg .t{
@@ -622,7 +622,7 @@
 .sp-foot{
   display:flex; gap:16px; flex-wrap:wrap; align-items:center;
   padding:calc(var(--u)*2) 2px 0;
-  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.1em;
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:0.06em;
   color:var(--ink);
   text-shadow:0 0 9px rgba(255,255,255,.7), 0 1px 0 rgba(255,255,255,.45);
 }

@@ -62,7 +62,7 @@ a.wr-name:hover{ color:var(--lume) }
 .pv-out .wr-row{ padding-left:0; padding-right:0 }
 .pv-out{ display:grid; gap:calc(var(--u)*2) }
 .pv-out-side{ min-width:0 }
-.pv-out-h{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+.pv-out-h{ font-family:var(--f-micro); font-size:9px; letter-spacing:0.08em; text-transform:uppercase;
   color:var(--pc, var(--ink-3)); padding-bottom:4px; border-bottom:1px solid var(--rule) }
 .pv-out-none{ font-family:var(--f-micro); font-size:9px; letter-spacing:.06em; text-transform:uppercase;
   color:var(--ink-3); padding:10px 0 }

@@ -149,12 +149,12 @@
 
 /* ---- the tabs above the list: events, player minutes, lineups ---- */
 .vidtabs{ display:flex; gap:0; border-bottom:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 20%,transparent)); margin:0 0 6px; }
-.vidtab{ font-family:var(--f-micro,ui-monospace); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+.vidtab{ font-family:var(--f-micro,ui-monospace); font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase;
   padding:9px 14px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 55%,transparent)); cursor:pointer; }
 .vidtab:hover{ color:var(--v-ink,var(--ink)); }
 .vidtab.on{ color:var(--v-lume,var(--lume)); border-bottom-color:var(--v-lume,var(--lume)); }
 /* ---- minutes and fives ---- */
-.vidsec{ font-family:var(--f-micro,ui-monospace); font-size:8.5px; letter-spacing:.16em; text-transform:uppercase;
+.vidsec{ font-family:var(--f-micro,ui-monospace); font-size:8.5px; letter-spacing:0.1em; text-transform:uppercase;
   color:var(--v-lume,var(--lume)); padding:10px 12px 4px; border-top:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 20%,transparent)); }
 .vidmin{ padding:7px 12px 9px; border-bottom:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 12%,transparent)); }
 .vidmin-h{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
@@ -163,11 +163,11 @@
 .vidmin-n em{ font-style:normal; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 40%,transparent)); }
 .vidmin.five .vidmin-n{ font-weight:600; font-size:12px; }
 .vidmin-t{ font-family:var(--f-score,ui-monospace); font-size:17px; color:var(--v-ink,var(--ink)); white-space:nowrap; }
-.vidmin-t small{ font-family:var(--f-micro,ui-monospace); font-size:7.5px; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 50%,transparent)); letter-spacing:.1em; }
+.vidmin-t small{ font-family:var(--f-micro,ui-monospace); font-size:7.5px; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 50%,transparent)); letter-spacing:0.06em; }
 .vidspans{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
 .vidspan{ font-family:var(--f-data,ui-monospace); font-size:10.5px; padding:4px 8px; cursor:pointer;
   background:color-mix(in oklch,var(--lume) 6%,transparent); border:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 22%,transparent)); color:var(--v-ink-2,color-mix(in oklch,var(--ink) 80%,transparent)); }
-.vidspan b{ font-family:var(--f-micro,ui-monospace); font-size:8px; letter-spacing:.1em; color:var(--v-lume,var(--lume)); font-weight:400; }
+.vidspan b{ font-family:var(--f-micro,ui-monospace); font-size:8px; letter-spacing:0.06em; color:var(--v-lume,var(--lume)); font-weight:400; }
 .vidspan i{ font-style:normal; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 50%,transparent)); }
 .vidspan:hover{ border-color:var(--v-lume,var(--lume)); color:var(--v-ink,var(--ink)); }
 .vidspan.on{ background:var(--v-lume,var(--lume)); color:var(--on-accent); border-color:var(--v-lume,var(--lume)); }

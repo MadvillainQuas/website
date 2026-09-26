@@ -26,7 +26,7 @@
   .hsub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);margin-top:6px}
   .sec{border-bottom:1px solid var(--rule);padding-bottom:calc(var(--u)*2)}
   .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:calc(var(--u)) calc(var(--u)*3)}
-  .lbl{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);flex:0 0 100%}
+  .lbl{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3);flex:0 0 100%}
   .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u))}
   .chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--f-ui);font-weight:700;font-size:12px;
     padding:6px 10px 6px 6px;border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);cursor:pointer}
@@ -36,7 +36,7 @@
   .chip.on .ep-crest{box-shadow:0 0 0 1px rgba(0,0,0,.25)}
   .pl{display:flex;align-items:center;gap:10px;padding:7px calc(var(--u)*3);border-top:1px solid var(--rule)}
   .pl b{font-family:var(--f-ui);font-size:13px}
-  .pl small{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .pl small{font-family:var(--f-micro);font-size:8px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-3)}
   .pl button{margin-left:auto}
   .opt{display:flex;align-items:flex-start;gap:10px;padding:8px calc(var(--u)*3);border-top:1px solid var(--rule)}
   .opt input{margin-top:3px}
@@ -48,7 +48,7 @@
   .note{padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:1.9}
   .ntf{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:9px calc(var(--u)*3);border-top:1px solid var(--rule);text-decoration:none;color:inherit}
   .ntf.unread{background:color-mix(in oklch,var(--lume) 7%,transparent)}
-  .ntf .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume);padding-top:4px}
+  .ntf .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--lume);padding-top:4px}
   .ntf b{font-family:var(--f-ui);font-size:13px;display:block}
   .ntf small{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
   .ntf time{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);white-space:nowrap;padding-top:4px}
@@ -148,6 +148,7 @@
   /* the rail, as the learn page and the league page draw it */
   .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
 </style>
+<link rel="stylesheet" href="../kit/legibility.css?v=438">
 </head>
 <body>
 <div class="ep-frame">

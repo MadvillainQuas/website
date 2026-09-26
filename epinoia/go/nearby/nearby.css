@@ -4,7 +4,7 @@
    ============================================================================ */
 .nb-where{display:grid;gap:14px;max-width:760px}
 .nb-line{font-family:var(--f-ui);font-size:15px;line-height:1.5;color:var(--ink)}
-.nb-line .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.nb-line .k{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
 .nb-line.passport .k{color:var(--lume)}
 .nb-line .bad,.nb-count .bad{color:var(--flare)}
 .nb-actions{display:flex;flex-wrap:wrap;gap:10px}
@@ -16,7 +16,7 @@
 /* passport mode's search */
 .nb-places{display:grid;gap:8px;max-width:520px}
 .nb-search{display:grid;gap:6px}
-.nb-lab{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.nb-lab{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
 .nb-search input{font:inherit;font-size:16px;color:var(--ink);background:var(--panel);border:1px solid var(--rule-2);border-radius:12px;
   padding:11px 14px;min-height:46px;width:100%;box-sizing:border-box}
 .nb-search input:focus-visible{outline:2px solid var(--lume);outline-offset:1px}
@@ -27,12 +27,12 @@
 .nb-place{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;font:inherit;font-size:14.5px;color:var(--ink);
   background:none;border:0;padding:10px 14px;min-height:44px;cursor:pointer}
 .nb-pn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nb-pk{margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.nb-pk{margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
 .nb-none{padding:14px;font-size:14px;color:var(--ink-2)}
 
 /* how far ahead */
 .nb-when{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px}
-.nb-when .k,.nb-count .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:4px}
+.nb-when .k,.nb-count .k{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3);margin-right:4px}
 .nb-chip{font-family:var(--f-ui);font-size:13.5px;color:var(--ink);background:var(--panel);border:1px solid var(--rule-2);border-radius:999px;
   padding:0 14px;min-height:40px;cursor:pointer;transition:border-color .15s ease,background .15s ease}
 .nb-chip:hover,.nb-chip:focus-visible{border-color:var(--lume)}
@@ -51,7 +51,7 @@
   text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .nb-day{color:#fff}
 .nb-time{font-family:var(--f-data);font-weight:400;font-size:13px;color:var(--neon)}
-.nb-local,.nb-tbc{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.nb-local,.nb-tbc{font-family:var(--f-micro);font-size:8px;letter-spacing:0.07em;text-transform:uppercase;opacity:.8}
 .nb-view.dragging .nb-card{pointer-events:none}
 
 /* the opened game */
@@ -64,10 +64,10 @@
 .nb-dc .vc-crest + .vc-crest{margin-left:-10px}
 .nb-dt{min-width:0}
 .nb-dt h3{margin:0;font-family:var(--f-ui);font-weight:800;font-size:clamp(18px,2.4vw,24px);line-height:1.2;color:var(--ink)}
-.nb-dl{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-top:4px}
+.nb-dl{font-family:var(--f-micro);font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3);margin-top:4px}
 .nb-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
 .nb-tile{background:var(--panel);padding:12px 14px;min-width:0}
-.nb-tk{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.nb-tk{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
 .nb-tv{font-family:var(--f-ui);font-weight:700;font-size:16px;line-height:1.25;color:var(--ink);margin-top:4px;overflow-wrap:anywhere}
 .nb-ts{font-size:12px;line-height:1.35;color:var(--ink-2);margin-top:3px;overflow-wrap:anywhere}
 .nb-map{border:1px solid var(--rule);border-radius:14px;overflow:hidden;background:var(--ground);aspect-ratio:16/7;min-height:260px}

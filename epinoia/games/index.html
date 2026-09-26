@@ -30,7 +30,7 @@
   .gm-top .wm{background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding-top:3px;padding-bottom:1px;
     view-transition-name:ep-mark}
   .gm .ep-hdr{flex-wrap:wrap;row-gap:4px}
-  .gm-count{margin-left:auto;font-family:var(--f-micro);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  .gm-count{margin-left:auto;font-family:var(--f-micro);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;
     color:var(--ink-3);white-space:nowrap}
   /* the one-line answer to "what am I looking at" */
   .gm-lede{margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3);border-bottom:1px solid var(--rule);
@@ -40,7 +40,7 @@
   .gm-live{border-bottom:1px solid var(--rule);background:color-mix(in oklch,var(--flare) 5%,var(--ground))}
   .gm-live[hidden]{display:none}
   .gm-sub{display:flex;align-items:center;gap:8px;margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3) 0;
-    font-family:var(--f-micro);font-weight:400;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+    font-family:var(--f-micro);font-weight:400;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
   .gm-sub .n{color:var(--ink-3)}
   .gm-live .gm-sub{color:var(--flare)}
   .gm-live .gm-sub .dot{width:7px;height:7px;border-radius:50%;background:var(--flare);animation:fxc-pulse 1.6s ease-in-out infinite}
@@ -74,7 +74,7 @@
   .gm-split .ep-btn.more{flex:1 1 50%;min-width:0}
   .gm-split .ep-btn.more[hidden]{display:none}
   .gm-split .ep-btn.more + .ep-btn.more{border-left:1px solid var(--rule-2,var(--rule))}
-  .gm-gcount{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .gm-gcount{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
   .gm-body > .gm-sub:only-child{padding-bottom:calc(var(--u)*2)}
 
   .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:10px;line-height:1.9}
@@ -97,6 +97,7 @@
   }
   :root[data-theme="light"] .gm-live{background:color-mix(in oklch,var(--flare) 4%,#f3faf6)}
 </style>
+<link rel="stylesheet" href="../kit/legibility.css?v=438">
 </head>
 <body>
 <div class="ep-frame gm">

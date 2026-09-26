@@ -105,8 +105,9 @@
 :root{
   /* ground — green-biased blacks, never neutral */
   --ground:#04100b; --panel:#0a1a13; --panel-2:#102419;
-  /* ink — mint white; the dim steps are AA-checked against --ground */
-  --ink:#e6fff1; --ink-2:rgba(230,255,241,.72); --ink-3:rgba(230,255,241,.52);
+  /* ink — mint white. THE DIM STEPS ARE NOT DIM (2026-09-26): a pixel face has one-pixel strokes, and grey pixels on either ground
+     were the complaint. Secondary text is now near full strength (full white on dark, near black on light); rank is made by size, not fade. */
+  --ink:#e6fff1; --ink-2:rgba(230,255,241,.94); --ink-3:rgba(230,255,241,.84);
   /* structure — hairlines belong to the palette, not on top of it */
   --rule:rgba(147,242,191,.20); --rule-2:rgba(147,242,191,.44);
   /* neon */
@@ -132,10 +133,10 @@
   color-scheme:only light;         /* the browser's own controls follow; 'only' refuses a forced dark mode */
   --line-hi:rgba(13,31,23,.42);
   --ground:#f3faf6; --panel:#ffffff; --panel-2:#e9f4ee;
-  --ink:#0d1f17; --ink-2:rgba(13,31,23,.82); --ink-3:rgba(13,31,23,.64);
+  --ink:#0d1f17; --ink-2:rgba(13,31,23,.95); --ink-3:rgba(13,31,23,.86);
   --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);
-  --lume:#0c7a54; --aqua:#0a6680; --amber:#8a5a06; --flare:#c22f3e; --violet:#5b40c4;
-  --good:#12925f; --bad:#d13a49;
+  --lume:#08603f; --aqua:#075a73; --amber:#714a03; --flare:#a01b2a; --violet:#4a30b0;
+  --good:#0a6d43; --bad:#b32433;
   --team-a:var(--lume); --team-b:var(--aqua);
   --on-accent:#ffffff;
 }
@@ -289,11 +290,11 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .sc-wrap{max-width:520px;margin:0 auto}
 .sc-wrap svg{width:100%;height:auto;display:block;border-radius:10px}
 .sc-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px}
-.sc-chip{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);padding:4px 9px;border:1px solid var(--rule);border-radius:999px}
+.sc-chip{font-family:var(--f-micro);font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-2);padding:4px 9px;border:1px solid var(--rule);border-radius:999px}
 .sc-chip b{color:var(--ink);font-weight:400;margin-left:5px;font-family:var(--f-data);font-size:10px;letter-spacing:0;text-transform:none}
 .sc-tablewrap{overflow-x:auto;margin:14px 0 4px;-webkit-overflow-scrolling:touch}
 .sc-table{border-collapse:collapse;width:100%;min-width:520px;font-family:var(--f-data,ui-monospace,monospace);font-size:11.5px;font-variant-numeric:tabular-nums}
-.sc-table th{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:400;padding:8px 8px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+.sc-table th{font-family:var(--f-micro);font-size:8px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-3);font-weight:400;padding:8px 8px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
 .sc-table th.l,.sc-table td.l{text-align:left}
 .sc-table thead+tbody+thead th{padding-top:18px}
 .sc-table td{padding:6px 8px;text-align:right;border-bottom:1px solid color-mix(in oklch,var(--rule) 60%,transparent);color:var(--ink)}
@@ -305,13 +306,13 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
   text-align:center;padding:calc(var(--u)*1.5) 0 0;line-height:1.8}
 .sc-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .sc-ctl{display:flex;flex-direction:column;gap:3px}
-.sc-ctl > span{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;
+.sc-ctl > span{font-family:var(--f-micro);font-size:8px;letter-spacing:0.08em;
   text-transform:uppercase;color:var(--ink-3)}
 .sc-ctl .ep-input{font-size:12px;padding:4px 7px;min-height:34px}
 
 .scopebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:0 0 calc(var(--u)*1.5)}
-.scopelab{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
+.scopelab{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.08em;
   text-transform:uppercase;color:var(--ink-3)}
 .scopesel{font-size:12px;padding:5px 8px;max-width:100%;min-height:36px}
 /* on a phone the select takes the row, and 16px type so iOS does not zoom the page on focus.
@@ -483,7 +484,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-acc>summary::-webkit-details-marker{display:none}
 .ep-acc>summary::marker{content:""}
 .ep-acc>summary .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ep-acc>summary .n{font-family:var(--f-micro);font-size:9px;font-weight:400;letter-spacing:.1em;color:var(--ink-3)}
+.ep-acc>summary .n{font-family:var(--f-micro);font-size:9px;font-weight:400;letter-spacing:0.06em;color:var(--ink-3)}
 .ep-acc>summary::after{content:"";flex:none;margin-left:auto;width:8px;height:8px;
   border-right:2px solid var(--ink-3);border-bottom:2px solid var(--ink-3);
   transform:translateY(-2px) rotate(45deg);transition:transform .18s var(--ease)}
@@ -568,14 +569,14 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
   background:var(--panel);border:1px solid var(--rule-2);box-shadow:0 12px 40px rgba(0,0,0,.45)}
 .ep-bell .panel[hidden]{display:none}
 .ep-bell .ph{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--rule);
-  font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
-.ep-bell .ph a,.ep-bell .ph button{margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;
+  font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
+.ep-bell .ph a,.ep-bell .ph button{margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.07em;text-transform:uppercase;
   color:var(--lume);background:transparent;border:none;cursor:pointer;text-decoration:none}
 .ep-bell .ph a+button{margin-left:10px}
 .ep-bell .it{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:9px 12px;border-bottom:1px solid var(--rule);
   text-decoration:none;color:inherit}
 .ep-bell .it.unread{background:color-mix(in oklch,var(--lume) 8%,transparent)}
-.ep-bell .it .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume);padding-top:4px}
+.ep-bell .it .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--lume);padding-top:4px}
 .ep-bell .it b{font-family:var(--f-ui);font-size:12.5px;display:block;line-height:1.3}
 .ep-bell .it small{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);line-height:1.6}
 .ep-bell .it time{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);white-space:nowrap;padding-top:4px}
@@ -589,7 +590,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-install img{width:44px;height:44px;border-radius:9px;display:block}
 .ep-install .tx b{display:block;font-size:13px;color:var(--ink)}
 .ep-install .tx span{display:block;font-family:var(--f-micro);font-size:8.5px;line-height:1.6;color:var(--ink-3);margin-top:2px}
-.ep-install .go{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:var(--lume);color:var(--on-accent);
+.ep-install .go{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;background:var(--lume);color:var(--on-accent);
   border:none;padding:10px 14px;cursor:pointer}
 .ep-install .x{background:transparent;border:none;color:var(--ink-3);font-size:20px;cursor:pointer;padding:4px 6px}
 :root[data-theme="light"] .ep-install .go{color:#fff}
@@ -602,7 +603,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-follow:hover{color:var(--lume);border-color:var(--lume)}
 .ep-follow.on{background:var(--lume);border-color:var(--lume);color:var(--on-accent,var(--ground))}
 .ep-follow.on svg{fill:currentColor}
-.ep-follow span{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-left:6px}
+.ep-follow span{font-family:var(--f-micro);font-size:8px;letter-spacing:0.07em;text-transform:uppercase;margin-left:6px}
 .ep-follow.lbl{width:auto;border-radius:15px;padding:0 10px 0 8px;grid-auto-flow:column}
 .ep-follow.big{width:36px;height:36px}
 .ep-follow.big.lbl{width:auto;height:30px}

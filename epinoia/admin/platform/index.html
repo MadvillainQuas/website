@@ -30,7 +30,7 @@
   /* The one visual difference from the league console, and it is load-bearing:
      every control on this page reaches across every league, and it should not
      look like the page that reaches into one. */
-  .bar .scope{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;
+  .bar .scope{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.1em;
     text-transform:uppercase;color:#04100b;background:var(--amber);padding:3px 8px}
 
   .msg{font-family:var(--f-micro);font-size:10px;padding:9px 11px;border-radius:4px;
@@ -71,7 +71,7 @@
   .tabs-wrap .ep-tab{border-bottom:1px solid var(--rule-2)}
   .tabs-wrap .ep-tab.on{border-bottom-color:var(--lume)}
   .pane{display:none;padding:calc(var(--u)*3)} .pane.on{display:block}
-  .pane h3{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  .pane h3{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;
     color:var(--lume);margin:calc(var(--u)*3) 0 calc(var(--u));}
   .pane h3:first-child{margin-top:0}
   .lead{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.95;
@@ -81,7 +81,7 @@
   .row > .ep-input{flex:1 1 160px;min-width:0}
   .row > .grow{flex:3 1 240px}
   label.f{display:flex;flex-direction:column;gap:4px;flex:1 1 150px;min-width:0}
-  label.f > span{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);letter-spacing:.1em}
+  label.f > span{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);letter-spacing:0.06em}
   label.f > .ep-input{width:100%}
   .sw{display:flex;align-items:center;gap:7px;font-family:var(--f-micro);font-size:9px;color:var(--ink-2)}
   .mini{font-size:9px;padding:6px 9px}
@@ -92,7 +92,7 @@
   /* ---- the Links tab (links-ui.js): possible matches, the finder, the linked groups ---- */
   .lk-bar{justify-content:space-between}
   .lk-seg{display:inline-flex;border:1px solid var(--rule-2)}
-  .lk-segb{background:none;border:0;color:var(--ink-2);font-family:var(--f-micro);font-size:10px;letter-spacing:.1em;
+  .lk-segb{background:none;border:0;color:var(--ink-2);font-family:var(--f-micro);font-size:10px;letter-spacing:0.06em;
     text-transform:uppercase;padding:8px 16px;cursor:pointer}
   .lk-segb.on{background:var(--lume);color:#04100b}
   .lk-tiles{color:var(--ink-3)}
@@ -102,9 +102,9 @@
   .lk-sug.c-high{border-left-color:var(--lume)} .lk-sug.c-medium{border-left-color:var(--amber)} .lk-sug.c-low{border-left-color:var(--flare)}
   .lk-grp{border-left-color:var(--aqua)}
   .lk-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
-  .lk-flag{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;
+  .lk-flag{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.07em;text-transform:uppercase;padding:3px 8px;
     color:#04100b;background:var(--amber)}
-  .lk-conf{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid}
+  .lk-conf{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.06em;text-transform:uppercase;padding:2px 7px;border:1px solid}
   .lk-conf.c-high{color:var(--lume)} .lk-conf.c-medium{color:var(--amber)} .lk-conf.c-low{color:var(--flare)}
   .lk-why{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-2);flex:1 1 240px}
   .lk-gname{font-family:var(--f-ui);font-size:14px}
@@ -125,7 +125,7 @@
   .lk-foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
   .lk-confbar{gap:6px}
   .lk-chipb{background:none;border:1px solid var(--rule-2);color:var(--ink-2);font-family:var(--f-micro);font-size:9px;
-    letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;cursor:pointer}
+    letter-spacing:0.06em;text-transform:uppercase;padding:5px 11px;cursor:pointer}
   .lk-chipb.on{background:var(--ink);color:var(--ground);border-color:var(--ink)}
   .lk-chipb.c-high{border-color:color-mix(in oklch,var(--lume) 55%,transparent)}
   .lk-chipb.c-medium{border-color:color-mix(in oklch,var(--amber) 55%,transparent)}
@@ -167,13 +167,13 @@
   .tile .n{font-family:var(--f-score);font-size:28px;line-height:1;color:var(--lume)}
   .tile .n.dim{color:var(--ink-2)}
   .tile .n.warn{color:var(--amber)}
-  .tile .k{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;
+  .tile .k{font-family:var(--f-micro);font-size:8px;letter-spacing:0.07em;text-transform:uppercase;
     color:var(--ink-3);margin-top:6px}
   .tile .sub{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);margin-top:3px}
 
   /* ---- generic listing ---- */
   .tbl{width:100%;border-collapse:collapse;font-size:12px}
-  .tbl th{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;
+  .tbl th{font-family:var(--f-micro);font-size:8px;letter-spacing:0.07em;text-transform:uppercase;
     color:var(--ink-3);text-align:left;padding:7px 9px;border-bottom:1px solid var(--rule-2);
     white-space:nowrap}
   .tbl td{padding:8px 9px;border-bottom:1px solid var(--rule);vertical-align:top}
@@ -236,7 +236,7 @@
     background:color-mix(in oklch,var(--lume) 4%,transparent)}
   .ax-form .ep-input{max-width:none}
   .ax-form textarea.ep-input{resize:vertical;font-family:var(--f-ui);font-size:12.5px}
-  .ax-sub{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;
+  .ax-sub{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;
     color:var(--ink-3);margin:calc(var(--u)*2) 0 7px}
   .ax-form .ax-sub:first-child{margin-top:0;color:var(--lume)}
   .ax-hint{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.8;
@@ -273,7 +273,7 @@
   .pr-late{color:var(--flare)} .pr-soon{color:var(--amber)}
   .pr-dl{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr);gap:6px 14px;margin:0;
     font-size:12.5px;line-height:1.55}
-  .pr-dl dt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
+  .pr-dl dt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
   .pr-dl dd{margin:0;color:var(--ink);word-break:break-word}
   .org-card input[type=date].ep-input{width:150px;flex:0 0 auto}
   @media (max-width:560px){ .pr-dl{grid-template-columns:minmax(0,1fr)} .pr-dl dd{margin-bottom:6px} }
@@ -289,6 +289,7 @@
   .gq-cap{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
   .gq-card .row{padding:0 10px 10px;margin:0}
 </style>
+<link rel="stylesheet" href="../../kit/legibility.css?v=438">
 </head>
 <body>
 <div class="ep-frame">

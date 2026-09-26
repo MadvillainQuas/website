@@ -50,7 +50,7 @@
   .step .t{font-family:var(--f-ui);font-weight:700;font-size:13px;margin:7px 0 5px}
   .step .d{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9}
   .cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:calc(var(--u)*3)}
-  .cta a{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  .cta a{font-family:var(--f-micro);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;
     text-decoration:none;padding:10px 18px;border:1px solid var(--lume);color:var(--lume)}
   .cta a.pri{background:var(--lume);color:var(--on-accent)}
   .cta a:hover{background:transparent;color:var(--lume)}
@@ -89,13 +89,13 @@
   .model{min-width:0}
   .shot,.port,.live,.live iframe{max-width:100%}
   .model{background:var(--ground);padding:calc(var(--u)*3);display:flex;flex-direction:column}
-  .model .eyebrow{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.28em;
+  .model .eyebrow{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.12em;
     text-transform:uppercase;color:var(--ink-3)}
   .model h3{font-family:var(--f-ui);font-weight:800;font-size:clamp(15px,2.1vw,20px);
     line-height:1.15;margin:6px 0 0;color:var(--lume);text-transform:none;letter-spacing:0}
   .model .who{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-2);
     margin:calc(var(--u)*1.5) 0 0;border-left:2px solid var(--lume);padding-left:11px}
-  .model h4{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;
+  .model h4{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;
     color:var(--ink-3);margin:calc(var(--u)*3) 0 calc(var(--u));font-weight:400}
   .model ul{padding-left:16px;margin:0}
   .model li{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
@@ -110,9 +110,9 @@
   .shot .bar{display:flex;align-items:center;gap:6px;padding:7px 9px;
     border-bottom:1px solid var(--rule);background:color-mix(in oklch,var(--lume) 5%,transparent)}
   .shot .dot{width:7px;height:7px;border-radius:50%;background:var(--rule-2);flex:0 0 auto}
-  .shot .url{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;color:var(--ink-3);
+  .shot .url{font-family:var(--f-micro);font-size:8px;letter-spacing:0.07em;color:var(--ink-3);
     margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .shot .cap{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+  .shot .cap{font-family:var(--f-micro);font-size:8px;letter-spacing:0.08em;text-transform:uppercase;
     color:var(--ink-3);padding:7px 9px;border-top:1px solid var(--rule)}
 
   /* A whole page, scaled to fit. The iframe is rendered at desktop width and
@@ -131,7 +131,7 @@
   .spec{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:1px;
     background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
   .spec > div{background:var(--ground);padding:11px 13px}
-  .spec .k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;
+  .spec .k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.12em;text-transform:uppercase;
     color:var(--lume)}
   .spec .v{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2)}
   .spec .v b{color:var(--ink);font-weight:400}
@@ -173,7 +173,7 @@
   .auds{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));
     gap:1px;background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
   .aud{background:var(--ground);padding:calc(var(--u)*2.5);display:flex;flex-direction:column}
-  .aud .k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;
+  .aud .k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.11em;text-transform:uppercase;
     color:var(--ink-3)}
   .aud h3{font-family:var(--f-ui);font-weight:800;font-size:15px;line-height:1.2;margin:6px 0 0;
     color:var(--lume);text-transform:none;letter-spacing:0}
@@ -184,7 +184,7 @@
     margin-bottom:5px;max-width:none}
   .aud li b{color:var(--ink);font-weight:400}
   .aud .grow{flex:1}
-  .aud .go{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  .aud .go{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;
     color:var(--lume);text-decoration:none;margin-top:calc(var(--u)*2);display:inline-block}
   .aud .go:hover{text-decoration:underline}
 
@@ -195,7 +195,7 @@
   .news{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));
     gap:1px;background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
   .news section{background:var(--ground);padding:calc(var(--u)*2.5)}
-  .news h3{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;
+  .news h3{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;
     color:var(--lume);margin:0 0 calc(var(--u)*1.5);font-weight:400}
   .news ul{padding-left:16px;margin:0}
   .news li{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
@@ -209,6 +209,7 @@
     .spec .v{padding-top:5px;border-bottom:1px solid var(--rule)}
   }
 </style>
+<link rel="stylesheet" href="../kit/legibility.css?v=438">
 </head>
 <body>
 <div class="ep-frame">

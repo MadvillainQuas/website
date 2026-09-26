@@ -81,7 +81,7 @@ console.log('\nthe page');
   const css = [...head.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);
   eq('stylesheets, in order', css,
      ['../kit/epinoia-kit.css?v=' + V, '../kit/access.css?v=' + V,
-      '../kit/nav.css?v=' + V, '../video.css?v=' + V]);
+      '../kit/nav.css?v=' + V, '../video.css?v=' + V, '../kit/legibility.css?v=' + V]);
 
   const scripts = [...HTML.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   ok('no inline script: every <script> has a src and no body', scripts.every(m => /\bsrc="/.test(m[1]) && !m[2].trim()));

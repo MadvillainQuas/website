@@ -42,7 +42,7 @@
   .idmeta h1{font-family:var(--f-ui);font-weight:800;font-size:clamp(22px,4.6vw,34px);
     margin:0;letter-spacing:-.01em;line-height:1.05}
   .idmeta .sub{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
-    letter-spacing:.12em;text-transform:uppercase;margin-top:7px;display:flex;
+    letter-spacing:0.07em;text-transform:uppercase;margin-top:7px;display:flex;
     gap:8px;flex-wrap:wrap;align-items:center}
   .idmeta .sub a{color:var(--ink-2);text-decoration:none}
   .idmeta .sub a:hover{color:var(--lume)}
@@ -54,13 +54,13 @@
   .tile{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*1.5);text-align:center}
   .tile .v{font-family:var(--f-score);font-size:26px;line-height:1;color:var(--ink)}
   .tile .l{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
-    letter-spacing:.14em;text-transform:uppercase;margin-top:6px}
+    letter-spacing:0.08em;text-transform:uppercase;margin-top:6px}
   .tile.hi .v{color:var(--lume)}
 
   .sec{border-bottom:1px solid var(--rule)}
   .sec-h{display:flex;align-items:baseline;gap:12px;
     padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*1.5)}
-  .sec-h .idx{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.14em}
+  .sec-h .idx{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:0.08em}
   .sec-h h2{font-family:var(--f-ui);font-weight:800;font-size:13px;text-transform:uppercase;
     letter-spacing:.05em;margin:0}
   .sec-h .note{margin-left:auto;font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
@@ -85,7 +85,7 @@
   .barrow{display:grid;grid-template-columns:104px 1fr 56px;gap:10px;align-items:center;
     padding:5px 0}
   .barrow .bl{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
-    letter-spacing:.11em;text-transform:uppercase;text-align:right}
+    letter-spacing:0.07em;text-transform:uppercase;text-align:right}
   .barrow .bt{height:9px;border-radius:2px;background:var(--panel-2);overflow:hidden;position:relative}
   .barrow .bt i{display:block;height:100%;border-radius:2px}
   .barrow .bv{font-family:var(--f-data);font-size:11.5px;text-align:right;color:var(--ink)}
@@ -100,14 +100,14 @@
   .barrow{align-items:start}
   .barrow .bl{padding-top:1px}
   .bargroup{font-family:var(--f-micro);font-size:8.5px;color:var(--lume);
-    letter-spacing:.14em;text-transform:uppercase;padding:12px 0 4px}
+    letter-spacing:0.08em;text-transform:uppercase;padding:12px 0 4px}
   .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
     padding:0 calc(var(--u)*3) calc(var(--u)*2)}
   .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
-    letter-spacing:.1em;text-transform:uppercase}
+    letter-spacing:0.06em;text-transform:uppercase}
   /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
   .wb{display:inline-block;min-width:34px;text-align:center;padding:3px 7px 2px;
-    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em}
+    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.06em}
   .wb.on{background:var(--lume);color:var(--on-accent);font-weight:700}
   .wb.off{background:transparent;color:var(--ink-3);border:1px solid var(--rule-2)}
   table.ft td.stick.c0w,table.ft th.stick.c0w{position:sticky;left:0;z-index:2;
@@ -122,7 +122,7 @@
   table.ft td.novalue{text-align:left;font-family:var(--f-micro);font-size:8.5px;
     color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
   .with-tbl td.stick.c1{text-align:left}
-  .with-tbl .ft-name{font-family:var(--f-micro);font-size:9px;letter-spacing:.09em;
+  .with-tbl .ft-name{font-family:var(--f-micro);font-size:9px;letter-spacing:0.05em;
     text-transform:uppercase;color:var(--ink-3)}
   .ptabs{padding:calc(var(--u)*2) calc(var(--u)*3) 0}
   .compscope{padding:0 0 calc(var(--u)*2)}
@@ -199,6 +199,7 @@
   table.shot td.shot-team{font-weight:600;font-size:13px;color:var(--ink);
     white-space:normal;min-width:6em}
 </style>
+<link rel="stylesheet" href="../kit/legibility.css?v=438">
 </head>
 <body>
 <div class="ep-frame">

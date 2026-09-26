@@ -19,7 +19,7 @@
 .sc-crest .ep-crest{margin:0;width:30px;height:30px;font-size:9.5px;font-family:var(--f-micro,var(--f-ui,sans-serif));display:grid;place-items:center;border-radius:50%;color:#fff}
 .sc-crest img{width:30px;height:30px;object-fit:contain}
 .sc-body{position:absolute;left:14px;right:14px;bottom:12px;display:grid;gap:4px}
-.sc-k{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.86;
+.sc-k{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:8.5px;letter-spacing:0.07em;text-transform:uppercase;opacity:.86;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sc-k b{font-family:var(--f-ui,sans-serif);font-weight:700;text-transform:none;letter-spacing:0;font-size:11px;opacity:1}
 .sc-title{font-family:var(--f-ui,sans-serif);font-weight:800;font-size:16px;line-height:1.15;text-shadow:0 1px 3px rgba(0,0,0,.6);
@@ -27,7 +27,7 @@
 .sc-when{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;font-family:var(--f-ui,sans-serif);font-size:12.5px;font-weight:600;
   text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .sc-time{font-family:var(--f-data,ui-monospace,monospace);font-weight:400;font-size:13px;color:var(--neon,#3dff8a)}
-.sc-meta{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.86;
+.sc-meta{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:8.5px;letter-spacing:0.07em;text-transform:uppercase;opacity:.86;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* a narrow card - five to a row on the home page: smaller crests and type, and the word "stamped by" goes, the @name stays */
 @container (max-width:150px){

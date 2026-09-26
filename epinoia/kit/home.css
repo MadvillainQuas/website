@@ -23,7 +23,7 @@
 
   .sec{border-bottom:1px solid var(--rule)}
   .sec-h{display:flex;align-items:baseline;gap:12px;padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*2)}
-  .sec-h .idx{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.14em}
+  .sec-h .idx{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:0.08em}
   .sec-h h2{font-family:var(--f-ui);font-weight:800;font-size:14px;text-transform:uppercase;
     letter-spacing:.05em;margin:0}
   .sec-h .note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto}
@@ -47,7 +47,7 @@
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
   /* the podium head opens ranks four to ten, as smaller cards */
   .starrow-h.can-open{cursor:pointer;user-select:none}
-  .starrow-x{margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
+  .starrow-x{margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--lume);background:transparent;
     border:1px solid var(--rule-2);padding:4px 9px;cursor:pointer}
   .starrow-x::after{content:" \25BE";font-size:9px}
@@ -143,7 +143,7 @@
   .star-team{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-t,var(--ink-3));
     letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-  .showall{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;
+  .showall{font-family:var(--f-micro);font-size:9px;letter-spacing:0.06em;
     text-transform:uppercase;color:var(--lume);text-decoration:none;margin-left:12px;
     white-space:nowrap}
   .showall:hover{text-decoration:underline}
@@ -189,7 +189,7 @@ a.plain{color:inherit;text-decoration:none}
    one filled with the lume the section index is set in. The link at the far end keeps its place. */
 .hm .sec-h .hm-seg{display:inline-flex;gap:0;margin-left:6px;border:1px solid var(--rule-2,var(--rule));border-radius:999px;overflow:hidden;
   align-self:center;flex:none}
-.hm .sec-h .hm-seg button{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2,var(--ink-3));
+.hm .sec-h .hm-seg button{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-2,var(--ink-3));
   background:none;border:0;margin:0;padding:8px 13px;min-height:30px;cursor:pointer;transition:background .15s ease,color .15s ease}
 .hm .sec-h .hm-seg button + button{border-left:1px solid var(--rule-2,var(--rule))}
 .hm .sec-h .hm-seg button:hover,.hm .sec-h .hm-seg button:focus-visible{color:var(--ink);background:color-mix(in oklch,var(--lume) 12%,transparent)}
@@ -258,7 +258,7 @@ a.plain{color:inherit;text-decoration:none}
   background:linear-gradient(180deg,var(--lume),var(--aqua))}
 .hm-scout:hover{border-color:var(--lume);background:color-mix(in oklch,var(--lume) 7%,var(--panel))}
 .hm-scout:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
-.hm-scout .k{grid-column:1;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;
+.hm-scout .k{grid-column:1;font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;
   text-transform:uppercase;color:var(--lume)}
 .hm-scout .t{grid-column:1;font-family:var(--f-score);font-size:clamp(26px,6vw,38px);line-height:.95;
   text-transform:uppercase;color:var(--ink)}
@@ -282,12 +282,12 @@ a.plain{color:inherit;text-decoration:none}
   background:linear-gradient(180deg,var(--aqua),var(--lume))}
 .hm-app:hover{border-color:var(--aqua);background:color-mix(in oklch,var(--aqua) 7%,var(--panel))}
 .hm-app:focus-visible{outline:2px solid var(--aqua);outline-offset:2px}
-.hm-app .k{grid-column:1;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;
+.hm-app .k{grid-column:1;font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;
   text-transform:uppercase;color:var(--aqua)}
 .hm-app .t{grid-column:1;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;
   font-family:var(--f-score);font-size:clamp(24px,5.5vw,34px);line-height:.95;
   text-transform:uppercase;color:var(--ink)}
-.hm-app .v{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;line-height:1;
+.hm-app .v{font-family:var(--f-micro);font-size:8.5px;letter-spacing:0.06em;line-height:1;
   color:var(--ink-3);border:1px solid var(--rule-2);padding:3px 6px}
 .hm-app .v:empty{display:none}
 .hm-app .d{grid-column:1;font-family:var(--f-micro);font-size:9.5px;line-height:1.8;color:var(--ink-3);max-width:60ch}
@@ -308,7 +308,7 @@ a.plain{color:inherit;text-decoration:none}
 .hm-fols{border-top:1px solid var(--rule)}
 .hmf-acc>summary{gap:9px}
 .hmf-go{flex:none;margin-left:auto;font-family:var(--f-micro);font-size:8.5px;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--lume);text-decoration:none;
+  letter-spacing:0.08em;text-transform:uppercase;color:var(--lume);text-decoration:none;
   border:1px solid var(--rule-2);padding:4px 9px;white-space:nowrap}
 .hmf-go:hover{background:var(--lume);color:var(--on-accent);border-color:var(--lume)}
 /* the link takes the auto margin the kit gave the chevron, so the chevron
@@ -328,11 +328,11 @@ a.plain{color:inherit;text-decoration:none}
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hmf-body{padding-bottom:calc(var(--u)*1)}
 .hm-fol-h{margin:calc(var(--u)*2) 0 calc(var(--u)*1.25) calc(var(--u)*3);
-  font-family:var(--f-micro);font-size:9px;font-weight:400;letter-spacing:.14em;
+  font-family:var(--f-micro);font-size:9px;font-weight:400;letter-spacing:0.08em;
   text-transform:uppercase;color:var(--ink-3)}
 .hm-fol-h .n{opacity:.7}
 .hmf-wait{margin:0 0 calc(var(--u)*2) calc(var(--u)*3);font-family:var(--f-micro);
-  font-size:9px;letter-spacing:.1em;color:var(--ink-3)}
+  font-size:9px;letter-spacing:0.06em;color:var(--ink-3)}
 @media (max-width:560px){
   .hm-fol-h,.hmf-wait{margin-left:12px}
   .hmf-go{padding:4px 7px;letter-spacing:.1em}
@@ -347,7 +347,7 @@ a.plain{color:inherit;text-decoration:none}
   border:1px solid var(--rule);background:var(--panel)}
 .hm-invite-t{margin:0;flex:1 1 280px;min-width:0;font-family:var(--f-ui);
   font-size:13px;line-height:1.55;color:var(--ink-2)}
-.hm-invite-go{flex:none;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;
+.hm-invite-go{flex:none;font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;
   text-transform:uppercase;color:var(--on-accent);background:var(--lume);
   text-decoration:none;padding:10px 15px;white-space:nowrap}
 .hm-invite-go:hover{filter:brightness(1.08)}
@@ -361,7 +361,7 @@ a.plain{color:inherit;text-decoration:none}
    and the API, embeds and contact links. Two columns of 48px rows on a phone,
    one row across on a wide screen. */
 .hm-foot{border-top:1px solid var(--rule);padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*4)}
-.hm-foot-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+.hm-foot-h{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;
   color:var(--ink-3);margin:0 0 calc(var(--u)*1.5)}
 /* hairlines drawn by each link rather than by a grid gap, so an odd count leaves a clean empty
    cell and not a block of rule colour */

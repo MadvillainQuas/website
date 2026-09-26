@@ -7,7 +7,7 @@
 
      --team-a / --team-b        the colours as the club has them
      --team-a-ink / --team-b-ink  the same colours as TEXT on the dark ground: a navy or a
-                                black is lifted until it clears WCAG AA (4.5:1) against the
+                                black is lifted until it clears 6.5:1 (past WCAG AA's 4.5, for one-pixel type) against the
                                 page, a gold or a white is left alone
      --team-on-a / --team-on-b  text ON a surface filled with the colour — near-black or
                                 white, whichever contrasts more
@@ -44,7 +44,7 @@
     let c = parse(hex); if (!c) return null;
     const g = parse(ground());
     const towards = light() ? [0, 0, 0] : [255, 255, 255];
-    for (let i = 0; i < 24 && contrast(c, g) < 4.5; i++) c = mix(c, towards, 0.09);
+    for (let i = 0; i < 28 && contrast(c, g) < 6.5; i++) c = mix(c, towards, 0.09);
     return toHex(c);
   }
   /* THE COLOUR AS A SURFACE: a tab, a badge, a trim. A white club's white on the light page
