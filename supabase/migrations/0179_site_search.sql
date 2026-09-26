@@ -561,11 +561,14 @@ alter function public.site_close(text, text) owner to postgres;
 alter function public.site_musts(text[], boolean, text) owner to postgres;
 alter function public.site_rank(text, text[], text, text, boolean) owner to postgres;
 alter function public.site_search(text, integer, boolean) owner to postgres;
-revoke all on function public.site_fold(text) from public;
-revoke all on function public.site_nicks(text) from public;
-revoke all on function public.site_close(text, text) from public;
-revoke all on function public.site_musts(text[], boolean, text) from public;
-revoke all on function public.site_rank(text, text[], text, text, boolean) from public;
+/* Supabase grants execute on every new function in public to anon and authenticated by name (default privileges), which
+   "from public" does not undo: the helpers say so explicitly. Only site_search is for the browser; it is security definer,
+   so it reaches the helpers as their owner. */
+revoke all on function public.site_fold(text) from public, anon, authenticated;
+revoke all on function public.site_nicks(text) from public, anon, authenticated;
+revoke all on function public.site_close(text, text) from public, anon, authenticated;
+revoke all on function public.site_musts(text[], boolean, text) from public, anon, authenticated;
+revoke all on function public.site_rank(text, text[], text, text, boolean) from public, anon, authenticated;
 revoke all on function public.site_search(text, integer, boolean) from public;
 -- the helpers are the search's own (it runs as its owner); only the search is for the site to call
 grant execute on function public.site_fold(text) to service_role;

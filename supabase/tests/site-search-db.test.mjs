@@ -21,6 +21,10 @@ const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); } else {
 
 await db.exec(`
 create role anon; create role authenticated; create role service_role;
+-- what Supabase does: every new function and table in public is granted to the three roles by name, so "revoke ... from public"
+-- alone leaves a helper callable (0179's first push failed its own check on exactly this)
+alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 create table public.leagues (id uuid primary key, name text not null, slug text not null, country text, colour_a text, logo_path text, initials text, visible boolean not null default true);
 create table public.teams (id uuid primary key, league_id uuid not null references public.leagues, slug text not null, name text not null, short_name text not null default '', colour text not null default '#93f2bf', logo_path text, initials text, aliases text[] not null default '{}');
 create table public.players (id uuid primary key, slug text not null, first_name text not null, last_name text not null default '', is_minor boolean not null default false, public_consent boolean not null default false, aliases text[] not null default '{}');

@@ -19,6 +19,7 @@ const mig = n => readFileSync(path.join(here, '..', 'migrations', n), 'utf8');
 const db = new PGlite();
 await db.exec(`
   create role anon; create role authenticated; create role service_role;
+  alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;   -- as Supabase does: "revoke from public" alone leaves them callable
   create schema auth;
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
   create function public.is_platform_admin() returns boolean language sql stable as $$ select coalesce(current_setting('test.admin', true), 'on') = 'on' $$;
