@@ -393,6 +393,7 @@ section('the league badge (config.js)');
   sandbox.window = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(rd('epinoia', 'config.js'), sandbox);
+  sandbox.EPINOIA_CONFIG.crestSizes = true;          /* the shipped config has sizing off (quota); this exercises the sized path */
   const B = sandbox.epinoiaLeagueBadge;
   ok('epinoiaLeagueBadge is defined', typeof B === 'function');
   const withLogo = B({ name: 'Super League', logo_path: 'league/1/logo-a.webp', colour_source: 'logo', colour_a: '#f2594c', colour_b: '#000000' });

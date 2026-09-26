@@ -29,6 +29,12 @@ window.EPINOIA_CONFIG = {
   // 2026-09-25 (analytics_track answers a signed-out browser), so counting is on.
   analytics: true,
 
+  // FALSE: crests and logos are served as the stored files, not through Storage's image
+  // transformation. Pro includes 100 transformed images a month; the site asked for 671 in one
+  // cycle (each distinct crest counts once), which put the project over its quota (2026-09-26).
+  // Turn it back on only after the plan's transformation allowance is raised or uncapped.
+  crestSizes: false,
+
   // true ONLY once the Supabase Magic Link email template carries {{ .Token }}:
   // then the sign-in forms inside the app offer a field for the email's code.
   // Until then the app is told the link signs in the phone's browser instead.

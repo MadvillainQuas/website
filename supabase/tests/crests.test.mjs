@@ -72,6 +72,11 @@ const L = sandbox.epinoiaLogoUrl;
 /* config.js sets its own config; the URLs are built on its project URL */
 const BASE = sandbox.EPINOIA_CONFIG.supabaseUrl;
 const ext = 'https://www.lnbp.mx/img/equipos/astros.png?v=2';
+/* the SHIPPED config has sizing off (Pro's 100 transformed images a month were exceeded, 2026-09-26): the
+   page hands out the stored file until the allowance is raised. The rest of this section exercises the
+   sizing code with it switched on. */
+ok('the shipped config serves stored files, not transformations', sandbox.EPINOIA_CONFIG.crestSizes === false && L(ext) === ext && !L('team/9d/logo-a.webp').includes('/render/'));
+sandbox.EPINOIA_CONFIG.crestSizes = true;
 const sized = L(ext);
 ok('another site\'s crest: its copy in "crests", through the image transformation, at 128',
    sized === BASE + '/storage/v1/render/image/public/crests/' + pageKey(ext) +
