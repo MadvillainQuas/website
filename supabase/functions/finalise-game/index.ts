@@ -34,6 +34,12 @@ import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';
 // chance-based numbers are all zero, which compute() reports as possessions:false.
 import '../_shared/possessions.js';
 import { compute as computeSituations, toStored as storedSituations } from '../_shared/situations.js';
+// THE BRIDGE TO THE TABS the match report also reads (connections, play type + rebounds, the shot clock). The calculators are
+// imported for their side effect, like situations above (shotclock.js finds possessions.js and situations.js on globalThis),
+// and gamefacts.js tabInputs() is the one function that asks them, here as on the page.
+import '../_shared/connections.js';
+import '../_shared/shotclock.js';
+import { tabInputs } from '../_shared/gamefacts.js';
 
 /* EVERY HEADER A BROWSER ACTUALLY SENDS HAS TO BE NAMED HERE.
 
@@ -490,7 +496,7 @@ Deno.serve(async (req) => {
           leagueSlug: comp?.seasons?.leagues?.slug ?? null,
           timezone: comp?.seasons?.leagues?.timezone ?? null,
           sits: SITC ? [SITC.side[0].sits, SITC.side[1].sits] : null
-        });
+        }, tabInputs(game));
         const rep = buildReport(brief);
         const slug = reportSlug(gameId);
         const { error } = await admin.from('news_articles').upsert({

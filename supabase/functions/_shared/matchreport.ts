@@ -33,7 +33,7 @@ export function advTS(s: any): number | null {
 
 /* `game` is the scorer's state (teams, events), `d` the replayed derive(),
    `TA` the two teamAdv() results, `lineupAgg` the shared engine's aggregator. */
-export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, meta: any = null) {
+export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, meta: any = null, tabs: any = null) {
   const names = [game.teams[0].name, game.teams[1].name];
 
   const players: any[] = [], byId: Record<string, any> = {};
@@ -62,7 +62,14 @@ export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, met
     events: game.events ?? [],
     starters: game.starters ?? [[], []],
     /* the events tab's situations per side (gamefacts.js carries the same) */
-    sits: meta?.sits ?? null,
+    sits: tabs?.sits ?? meta?.sits ?? null,
+    /* THE BRIDGE TO THE TABS: connections, play type + rebounds, the shot clock and the assisted baskets, from the same
+       gamefacts.js tabInputs() the page builds its brief with (null where a calculator did not run) */
+    assists: tabs?.assists ?? null,
+    sitPlayers: tabs?.sitPlayers ?? null,
+    connections: tabs?.connections ?? null,
+    clock: tabs?.clock ?? null,
+    atop: tabs?.atop ?? null,
     /* venue, crowd, date and competition for the dateline; null when the
        caller has none, and the report simply opens without one */
     meta: meta ? {

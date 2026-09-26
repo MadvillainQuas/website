@@ -1791,7 +1791,7 @@ function halftime(g) {
   const R = makeRef(g, fs);
   PROPER = new Set(g.names.map(n => tc(String(n)).split(' ')[0]));
   SPENT = new Set();
-  lastPick = null;
+  lastPick = null; RECENT = [];
   const [a, b] = g.score;
   const L = a > b ? 0 : a < b ? 1 : null, T = L == null ? null : 1 - L;
   const m = Math.abs(a - b), hi = Math.max(a, b), lo = Math.min(a, b);
@@ -1952,7 +1952,7 @@ function finish(g, secs, stand, headline) {
 function report(g) {
   const st = S();
   const fs = st.facts(g);
-  RECENT = [];                     // what the last few sentences opened with: reset per article
+  RECENT = []; lastPick = null;      // what the last few sentences opened with, and the last template used: reset per article
   /* One referrer for the whole article, so "they" in the third section still
      knows who the second section was talking about. */
   const R = makeRef(g, fs);

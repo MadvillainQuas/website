@@ -514,6 +514,11 @@ jobs:
         # critique() scores a text 0-100 and revise() improves it until it is good enough; the report is held to it end to end
         run: node supabase/tests/language.test.mjs
 
+      - name: The report's bridge to the tabs - the edge function sees what the connections, play type + rebounds and shot clock tabs show
+        # runs the edge function's own copies (supabase/functions/_shared) on a real game: gamefacts.js tabInputs() gives the
+        # browser's answers, a missing calculator leaves only its own field out, and the report the server files has the sections
+        run: node supabase/tests/tabbridge.test.mjs
+
       - name: Cards on the game page - each chart and each player row a card, the points added are strength of schedule's
         # game/cards.js is the game page's dress for the box score and full stats; its weights are sos.js's and its renderers
         # hand their rows over only where it is loaded, so the scorer's own screens stay tables

@@ -87,6 +87,27 @@ const FILES = [
   },
   /* THE LANGUAGE MODEL the writer uses (articles, plurals, possessives, agreement, names in capitals, and the critic and
      reviser that improve a paragraph until it scores well): report.js finds it on globalThis, so it is imported first. */
+  /* THE BRIDGE TO THE TABS: the report reads the CONNECTIONS, PLAY TYPE + REB and SHOT CLOCK tabs' own calculators, and
+     gamefacts.js tabInputs() is the single function that asks them, on the page and in finalise-game. Generated, so the article
+     the server files is written from exactly what the tab shows. */
+  {
+    src: join(repo, 'epinoia', 'game', 'connections.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'connections.js'),
+    global: 'EpinoiaConnections',
+    names: ['compute']
+  },
+  {
+    src: join(repo, 'epinoia', 'shotclock.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'shotclock.js'),
+    global: 'EpinoiaShotClock',
+    names: ['compute', 'forGame', 'inWindow', 'histogram', 'summary', 'averages', 'MAX', 'LONGEST']
+  },
+  {
+    src: join(repo, 'epinoia', 'game', 'gamefacts.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'gamefacts.js'),
+    global: 'EpinoiaGameFacts',
+    names: ['brief', 'advTS', 'tabInputs']
+  },
   {
     src: join(repo, 'epinoia', 'game', 'language.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'language.js'),
