@@ -149,6 +149,35 @@ function teamSwitcher(linked, currentId) {
   return bar;
 }
 
+/* ---------------------------------------------------- the administrator's editor --- */
+/* linkedit.js (a search bar and unlink buttons on the team page) is for platform administrators alone. A signed-out reader is
+   never asked anything; a signed-in one costs one whoami(); the file is fetched only on a yes, from the same folder and with this
+   file's own ?v= stamp. Hiding it from everybody else is a courtesy: the database refuses each of its calls (link_require_admin). */
+const SELF = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || '';
+const editorUrl = self => String(self).replace(/linkswitch\.js(\?.*)?$/, 'linkedit.js$1');
+function loadEditor() {
+  if (root.EpinoiaLinkEdit) return Promise.resolve(root.EpinoiaLinkEdit);
+  if (!SELF) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = editorUrl(SELF);
+    s.onload = () => resolve(root.EpinoiaLinkEdit || null);
+    s.onerror = () => resolve(null);
+    (document.head || document.documentElement).appendChild(s);
+  });
+}
+async function adminEditor(team, ctx) {
+  if (typeof root.epinoiaMaybeSignedIn !== 'function' || !root.epinoiaMaybeSignedIn()) return null;   // signed out: nothing asked
+  const sb = typeof root.epinoiaClientReady === 'function' ? await root.epinoiaClientReady() : null;
+  if (!sb) return null;
+  const r = await sb.rpc('whoami');
+  if (r.error || !r.data || r.data.is_platform_admin !== true) return null;                           // could not ask is not a yes
+  const E = await loadEditor();
+  if (!E) return null;
+  ctx.attach();
+  return E.mount({ host: ctx.host, team, sb, linked: ctx.linked, onChange: ctx.redraw });
+}
+
 /* asked once for the team page: its women and youth indicators and its links. Fills the header and returns what it found. */
 async function paintTeam(team, o) {
   o = o || {};
@@ -171,9 +200,24 @@ async function paintTeam(team, o) {
     if (women) { const chip = womenChip(); chip.title = 'a women\'s team'; o.sub.appendChild(document.createTextNode(' ')); o.sub.appendChild(chip); }
     if (youth) { o.sub.appendChild(document.createTextNode(' ')); o.sub.appendChild(youthChip(age)); }
   }
-  const sw = teamSwitcher(linked, team.id);
-  if (sw && o.sub && o.sub.parentNode) { const row = el('div', 'ls-row-host'); row.appendChild(sw); o.sub.parentNode.appendChild(row); }
-  return { women, youth, age, linked };
+  /* THE CLUB'S LEAGUE BUTTONS sit in a host that can be drawn again after an edit (linkedit.js), and is only put on the page
+     once there is something to put in it: the buttons, or an administrator's editor for a club with no links yet */
+  const host = el('div', 'ls-row-host');
+  const barSlot = host.appendChild(el('div', 'ls-slot'));
+  const editSlot = host.appendChild(el('div', 'ls-edit'));
+  let attached = false;
+  const attach = () => { if (!attached && o.sub && o.sub.parentNode) { o.sub.parentNode.appendChild(host); attached = true; } };
+  function drawBar(l) {
+    barSlot.textContent = '';
+    const sw = teamSwitcher(l, team.id);
+    if (sw) { barSlot.appendChild(sw); attach(); }
+  }
+  drawBar(linked);
+  const found = { women, youth, age, linked };
+  adminEditor(team, { host: editSlot, linked, attach,
+    redraw: async () => { const l = await call('linked_teams', { p_team: team.id }); found.linked = l; drawBar(l); return l; } })
+    .catch(() => { /* the page as it was */ });
+  return found;
 }
 
 /* ----------------------------------------------------------- the player --- */
@@ -213,5 +257,5 @@ function paintPlayer(pl, linked, o) {
   return sw;
 }
 
-return { paintTeam, looksWomen, looksYouth, youthAge, youthChip, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, seasonsAcross, bySeason, womenChip, call };
+return { paintTeam, adminEditor, editorUrl, looksWomen, looksYouth, youthAge, youthChip, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, seasonsAcross, bySeason, womenChip, call };
 }));

@@ -55,6 +55,21 @@ names; a `mixed` or unset league says nothing.
   (`link_team_cards`) carry `league_gender` and `women_from` (`team` / `team_gender` / `league` / `names`).
 * Audited twice: `team_women_flag` (the team) and `set_league_gender` (the league, with the team it came from).
 
+## Editing a club's links from its own page (platform administrators only)
+
+On a team's page an administrator gets a small **✎ edit links** button under the league buttons (`epinoia/linkedit.js`). It opens an
+inline panel: the teams this one is linked to (this page marked, each with **unlink**) and a **search bar** (name, league or alias;
+teams already linked are left out) whose results link to this team with one click or Enter. A team that already has a group brings
+the whole group in, and linking clubs links their matching players (the message says how many). After each edit the league buttons
+are drawn again from `linked_teams`; the page never scrolls or reloads.
+
+* **Who sees it:** `linkswitch.js` asks `whoami()` only when `epinoiaMaybeSignedIn()` says there might be a session (a signed-out reader
+  costs nothing), and fetches `linkedit.js` (with its own `?v=` stamp) only on `is_platform_admin === true`. A league administrator or a
+  fan never downloads it. That is a courtesy: the calls are the console's own `platform_link_search / _apply / _remove`, refused by
+  `link_require_admin` in the database for anybody else.
+* A club with no links yet gets the button too (it needs no league buttons to appear), which is how the first link is made.
+* Test: `supabase/tests/linkedit.test.mjs` (the panel, the search, both edits, stale answers, and who is shown it).
+
 ## The possible matches (flagged, with a confidence and a reason)
 
 `platform_link_suggestions(kind)` — computed from expression indexes on the folded names, so it is quick at thousands of rows.

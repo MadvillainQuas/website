@@ -55,6 +55,59 @@
 .ls-season:hover{ color:var(--ink, #fff); border-color:var(--lume, #93f2bf) }
 .ls-season:focus-visible{ outline:2px solid var(--lume, #93f2bf); outline-offset:2px }
 .ls-season option{ color:#0d1f17; background:#fff; text-transform:none; letter-spacing:normal }
+
+/* EDITING A CLUB'S LINKS FROM ITS PAGE (platform administrators only; epinoia/linkedit.js): a small "edit links" button under the
+   league buttons that opens a panel with the linked teams (unlink) and a search bar (link). Inline, so it never covers the page. */
+.ls-edit:empty{ display:none }
+.le-box{ margin-top:5px; font-family:var(--f-ui, inherit); text-transform:none; letter-spacing:normal }
+.le-toggle{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; background:none; color:var(--ink-2, #b9d2c5);
+  border:1px dashed color-mix(in srgb, var(--lume, #93f2bf) 55%, transparent); border-radius:999px; padding:3px 9px; min-height:22px;
+  font-family:var(--f-micro, monospace); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase }
+.le-toggle:hover, .le-toggle[aria-expanded="true"]{ color:var(--ink, #fff); border-color:var(--lume, #93f2bf);
+  background:color-mix(in srgb, var(--lume, #93f2bf) 10%, transparent) }
+.le-toggle:focus-visible{ outline:2px solid var(--lume, #93f2bf); outline-offset:2px }
+.le-panel{ margin-top:6px; width:min(460px, 100%); box-sizing:border-box; padding:10px; border-radius:12px; background:var(--ground, #060c09);
+  color:var(--ink, #e6fff1); border:1px solid color-mix(in srgb, var(--lume, #93f2bf) 45%, transparent); box-shadow:0 12px 32px rgba(0,0,0,.35) }
+:root[data-theme="light"] .le-panel{ background:#fff; box-shadow:0 12px 32px rgba(13,31,23,.2) }
+.le-panel[hidden], .le-list[hidden]{ display:none }
+.le-h{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; margin:0 2px 6px }
+.le-h b{ font-family:var(--f-micro, monospace); font-size:8px; letter-spacing:.14em; text-transform:uppercase; font-weight:400; color:var(--ink-3, #7d9a8b) }
+.le-g{ font-weight:800; font-size:12.5px }
+.le-mems{ display:flex; flex-direction:column; gap:5px; margin:0 0 8px }
+.le-none{ padding:6px 2px; font-family:var(--f-micro, monospace); font-size:8.5px; color:var(--ink-3, #7d9a8b) }
+.le-mem{ display:flex; align-items:center; gap:8px; padding:6px 9px; border-radius:9px; border:1px solid var(--rule-2, rgba(170,255,215,.22)) }
+.le-mem.here{ border-color:var(--lume, #93f2bf); background:color-mix(in srgb, var(--lume, #93f2bf) 8%, transparent) }
+.le-main{ flex:1 1 auto; min-width:0 }
+.le-top{ display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px }
+.le-name{ font-family:var(--f-ui, inherit); font-weight:800; font-size:12px; color:inherit; text-decoration:none }
+a.le-name:hover{ text-decoration:underline }
+.le-lg{ font-family:var(--f-micro, monospace); font-size:8px; color:var(--ink-2, #b9d2c5) }
+.le-chip{ font-family:var(--f-micro, monospace); font-size:6.5px; letter-spacing:.12em; text-transform:uppercase; padding:2px 5px; border:1px solid currentColor;
+  border-radius:999px; color:var(--lume, #93f2bf); line-height:1 }
+.le-here{ font-family:var(--f-micro, monospace); font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:var(--lume, #93f2bf) }
+.le-sub{ margin-top:2px; display:flex; flex-wrap:wrap; gap:1px 8px; font-family:var(--f-micro, monospace); font-size:8px; color:var(--ink-2, #b9d2c5); line-height:1.5 }
+.le-in{ color:var(--amber, #e6b84a) }
+:root[data-theme="light"] .le-in{ color:#8a5d00 }
+.le-x{ flex:none; cursor:pointer; background:none; color:var(--ink-2, #b9d2c5); border:1px solid var(--rule-2, rgba(170,255,215,.3)); border-radius:999px;
+  padding:3px 9px; font-family:var(--f-micro, monospace); font-size:7px; letter-spacing:.1em; text-transform:uppercase }
+.le-x:hover{ color:var(--flare, #ff8a8a); border-color:var(--flare, #ff8a8a) }
+.le-sw{ position:relative }
+.le-search{ width:100%; box-sizing:border-box; padding:7px 10px; font:inherit; font-size:12px; color:inherit; background:transparent;
+  border:1px solid color-mix(in srgb, var(--lume, #93f2bf) 45%, transparent); border-radius:8px }
+.le-search:focus-visible{ outline:2px solid var(--lume, #93f2bf); outline-offset:1px }
+.le-list{ list-style:none; margin:4px 0 0; padding:0; max-height:240px; overflow:auto; border-radius:8px;
+  border:1px solid var(--rule-2, rgba(170,255,215,.3)); background:var(--ground, #060c09) }
+:root[data-theme="light"] .le-list{ background:#fff }
+.le-opt{ padding:7px 10px; cursor:pointer; border-bottom:1px solid var(--rule-2, rgba(170,255,215,.12)) }
+.le-opt:last-child{ border-bottom:0 }
+.le-opt.on, .le-opt:hover{ background:color-mix(in srgb, var(--lume, #93f2bf) 12%, transparent) }
+.le-empty, .le-more{ padding:8px 10px; font-family:var(--f-micro, monospace); font-size:8px; color:var(--ink-3, #7d9a8b) }
+.le-msg{ min-height:12px; margin-top:6px; font-family:var(--f-micro, monospace); font-size:8.5px; line-height:1.5; color:var(--ink-2, #b9d2c5) }
+.le-msg.ok{ color:var(--lume, #93f2bf) }
+:root[data-theme="light"] .le-msg.ok{ color:#0a6b47 }
+.le-msg.err{ color:var(--flare, #ff8a8a) }
+:root[data-theme="light"] .le-msg.err{ color:#b3261e }
+@media (max-width:640px){ .le-search{ font-size:16px } }   /* 16px: iOS does not zoom the page on focus */
 .ls-list{ display:flex; flex-direction:column; gap:6px }
 .ls-item{ display:block; text-decoration:none; color:inherit; padding:10px 12px; border-radius:10px;
   border:1px solid var(--rule-2, rgba(170,255,215,.22)); background:color-mix(in srgb, var(--lume, #93f2bf) 3%, transparent) }
