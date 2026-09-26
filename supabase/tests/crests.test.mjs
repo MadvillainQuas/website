@@ -75,7 +75,10 @@ const ext = 'https://www.lnbp.mx/img/equipos/astros.png?v=2';
 /* the SHIPPED config has sizing off (Pro's 100 transformed images a month were exceeded, 2026-09-26): the
    page hands out the stored file until the allowance is raised. The rest of this section exercises the
    sizing code with it switched on. */
-ok('the shipped config serves stored files, not transformations', sandbox.EPINOIA_CONFIG.crestSizes === false && L(ext) === ext && !L('team/9d/logo-a.webp').includes('/render/'));
+ok('the shipped config serves stored files, not transformations',
+   sandbox.EPINOIA_CONFIG.crestSizes === false && !L(ext).includes('/render/') && !L('team/9d/logo-a.webp').includes('/render/'));
+ok('...another site\'s crest from its copy in "crests" (kept small by shrink_crests.py), a stored upload as it is',
+   L(ext) === BASE + '/storage/v1/object/public/crests/' + pageKey(ext) && L('team/9d/logo-a.webp') === BASE + '/storage/v1/object/public/media-public/team/9d/logo-a.webp', L(ext));
 sandbox.EPINOIA_CONFIG.crestSizes = true;
 const sized = L(ext);
 ok('another site\'s crest: its copy in "crests", through the image transformation, at 128',
@@ -103,8 +106,11 @@ const d = { tagName: 'IMG', src: 'https://elsewhere/x.png', currentSrc: 'https:/
 ok('any other image is none of its business', fire(d) === false && d.src === 'https://elsewhere/x.png');
 
 sandbox.EPINOIA_CONFIG.crestSizes = false;
-ok('crestSizes:false in the config turns it off: the original URLs', L(ext) === ext &&
+ok('crestSizes:false in the config turns it off: the stored copy, no transformation', L(ext) === BASE + '/storage/v1/object/public/crests/' + pageKey(ext) &&
    L('team/9d/logo-a.webp') === BASE + '/storage/v1/object/public/media-public/team/9d/logo-a.webp');
+const copyUrl = L(ext), e = { tagName: 'IMG', src: copyUrl, currentSrc: copyUrl };
+ok('...and a copy that is not there yet still falls back to the original', fire(e) === true && e.src === ext);
+ok('...an SVG and a refused http:// are unchanged with sizing off', L('https://a.b/crest.svg') === 'https://a.b/crest.svg' && L('http://a.b/c.png') === null);
 
 console.log('\nthe function copies only what it can prove is a raster image');
 const bytes = (...xs) => new Uint8Array([...xs, ...new Array(16).fill(0)]);

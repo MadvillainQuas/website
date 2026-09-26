@@ -29,10 +29,11 @@ window.EPINOIA_CONFIG = {
   // 2026-09-25 (analytics_track answers a signed-out browser), so counting is on.
   analytics: true,
 
-  // FALSE: crests and logos are served as the stored files, not through Storage's image
+  // FALSE: crests and logos are served as stored files, never through Storage's image
   // transformation. Pro includes 100 transformed images a month; the site asked for 671 in one
   // cycle (each distinct crest counts once), which put the project over its quota (2026-09-26).
-  // Turn it back on only after the plan's transformation allowance is raised or uncapped.
+  // Another site's crest comes from its copy in the 'crests' bucket, kept small by
+  // scripts/ingest/shrink_crests.py. Turn it on only if the transformation allowance is raised.
   crestSizes: false,
 
   // true ONLY once the Supabase Magic Link email template carries {{ .Token }}:
@@ -146,7 +147,17 @@ window.epinoiaLogoUrl = function (path, px) {
   if (!c.supabaseUrl) return external ? p : null;
   const original = external ? p
     : c.supabaseUrl + '/storage/v1/object/public/media-public/' + p.split('/').map(encodeURIComponent).join('/');
-  if (c.crestSizes === false || /\.svg(\?|#|$)/i.test(p)) return original;
+  if (/\.svg(\?|#|$)/i.test(p)) return original;
+  if (c.crestSizes === false) {
+    /* NO TRANSFORMATION (the plan's allowance is 100 a month). Another site's crest is drawn from its copy in
+       the 'crests' bucket, which scripts/ingest/shrink_crests.py keeps at 256 px; a stored upload is already
+       at most 512 px (upload.js), so it is drawn as it is. A copy that does not exist yet fails to load and
+       the handler below puts the original back. */
+    if (!external) return original;
+    const copy = c.supabaseUrl + '/storage/v1/object/public/crests/' + crestKey(p);
+    CREST_ORIGINAL.set(copy, original);
+    return copy;
+  }
   const w = Math.max(32, Math.min(512, Math.round(+px || 128)));
   const object = external ? 'crests/' + crestKey(p) : 'media-public/' + p.split('/').map(encodeURIComponent).join('/');
   const sized = c.supabaseUrl + '/storage/v1/render/image/public/' + object +

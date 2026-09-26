@@ -166,6 +166,17 @@ jobs:
           for code in $(python -c "import json;print(' '.join(dict.fromkeys(s['code'] for s in json.load(open('config/ingest-sources.json'))['sources'] if s['adapter']=='fiba_livestats' and s['scheduleUrls'])))"); do
             python scripts/ingest/build_dataset.py --source "$code" || echo "dataset build failed for $code"
           done
+      - name: Shrink newly copied crests (nightly / on request)
+        # snapshots copies each club's crest at the size its own site serves it (up to 3 MB); pages draw
+        # them at 32-128 px and no longer use Storage's resizing (Pro includes 100 a month). This makes
+        # each copy 256 px WebP, once - see scripts/ingest/shrink_crests.py.
+        if: ${{ github.event.schedule == '15 3 * * *' || github.event.inputs.rebuild_dataset == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python -m pip install --quiet pillow requests
+          python scripts/ingest/shrink_crests.py || echo "crest shrink failed - it will try again tomorrow"
       - name: Commit feed + datasets
         if: ${{ github.event.inputs.dry_run != 'true' && !((github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') }}
         run: |

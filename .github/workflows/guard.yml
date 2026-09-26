@@ -551,6 +551,13 @@ jobs:
         # finished game is never touched from the schedule; a Czech game keeps its fixture's id.
         run: python scripts/ingest/quiet_test.py
 
+      - name: Crest copies are shrunk to the size they are drawn at
+        # Storage's image transformation went 671 over its 100 a month (26 Sep 2026); crests are now served as
+        # stored files, so the copies are kept at 256 px WebP with their transparency, once each
+        run: |
+          python -m pip install --quiet pillow requests
+          python scripts/ingest/shrink_crests_test.py
+
       - name: A side not known yet is never a club
         # "To be determined", "TBC", "Winner of QF1": the ingest, the console and the
         # database (0126) share one rule, tested against the same names
