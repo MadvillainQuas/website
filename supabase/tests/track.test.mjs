@@ -119,6 +119,55 @@ for (const [name, o] of [
   ok('...and switching it on again clears the setting', B.ls.getItem('epinoia_no_count') === null && T.counting() === true);
 }
 
+console.log('\nvisits that are not fans are not counted');
+{
+  const UA = {
+    claudeApp: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/2.9939.2 Chrome/152.0.7977.130 Safari/537.36',
+    headless: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/126.0.0.0 Safari/537.36',
+    googlebot: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    playwright: 'Mozilla/5.0 (Windows NT 10.0) Playwright/1.45 Chrome/126',
+    iphone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1',
+    chrome: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
+    cubot: 'Mozilla/5.0 (Linux; Android 12; CUBOT KingKong 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36'
+  };
+  for (const [name, o] of [
+    ['the Claude app\u2019s browser (its user agent says Claude)', { nav: { userAgent: UA.claudeApp, webdriver: false } }],
+    ['a browser an automation tool reports as driven (navigator.webdriver)', { nav: { userAgent: UA.chrome, webdriver: true } }],
+    ['a headless browser', { nav: { userAgent: UA.headless } }],
+    ['Playwright by name', { nav: { userAgent: UA.playwright } }],
+    ['a crawler', { nav: { userAgent: UA.googlebot } }]
+  ]) {
+    const B = browser(o); T.boot(); await T.flush(false); await tick(5);
+    ok(name + ' is not counted', B.calls.length === 0 && X.automated() === true, B.calls.length);
+  }
+  for (const [name, o] of [
+    ['an iPhone', { nav: { userAgent: UA.iphone } }],
+    ['a desktop Chrome', { nav: { userAgent: UA.chrome, webdriver: false } }],
+    ['a phone whose maker\u2019s name ends in \u201cbot\u201d (Cubot)', { nav: { userAgent: UA.cubot } }]
+  ]) {
+    const B = browser(o); T.boot(); await T.flush(false); await tick(5);
+    ok(name + ' is counted', B.calls.length === 1 && X.automated() === false, B.calls.length);
+  }
+  { const B = browser({ nav: { userAgent: UA.iphone } }); T.boot(); await T.flush(false);
+    ok('...and the user agent is decided on here and never sent', !JSON.stringify(B.calls).includes('iPhone') && !JSON.stringify(B.calls).includes('Mozilla')); }
+
+  const staff = () => { const m = mem(); m.setItem('epinoia_staff', '1'); return m; };
+  { const B = browser({ signedIn: true, ls: (() => { const m = staff(); m.setItem('sb-hhvofgqqadtyvcjudhjx-auth-token', JSON.stringify({ user: { id: 'u' } })); return m; })() });
+    T.boot(); await T.flush(false); await tick(5);
+    ok('the site\u2019s staff, signed in, are not counted', B.calls.length === 0 && X.staffSignedIn() === true, B.calls.length); }
+  { const B = browser({ ls: staff() }); T.boot(); await T.flush(false);
+    ok('...but the same browser signed out is a visitor like any other', B.calls.length === 1 && X.staffSignedIn() === false, B.calls.length); }
+  { const B = browser({ signedIn: true }); T.boot(); await T.flush(false);
+    ok('an ordinary signed-in fan is still counted (as \u201csigned in\u201d)', B.calls.length === 1 && B.calls[0].body.p_signed_in === true, B.calls.length); }
+  { const B = browser({ signedIn: true }); T.boot();
+    B.ls.setItem('epinoia_staff', '1');            // whoami() answers after the page view was queued
+    await T.flush(false); await tick(5);
+    ok('a page view queued before whoami() said this is staff is dropped, not sent', B.calls.length === 0 && X.queue.length === 0, [B.calls.length, X.queue.length]); }
+  { const B = browser({ signedIn: true, ls: (() => { const m = staff(); m.setItem('sb-hhvofgqqadtyvcjudhjx-auth-token', JSON.stringify({ user: { id: 'u' } })); return m; })() });
+    const r = await T.search({ q: 'brisbane', n: 3, kind: 'team', ref: 'brisbane-bullets' });
+    ok('staff searches are not counted either', B.calls.length === 0 && r === 0, B.calls.length); }
+}
+
 console.log('\ntabs');
 {
   const B = browser({ path: '/epinoia/game/', search: '?g=' + GAME });

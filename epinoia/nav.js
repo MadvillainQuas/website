@@ -2365,9 +2365,17 @@
     acctLink.href = root + 'signin/';
     acctLink.title = sess.email ? sess.email + ' — manage or sign out' : 'account';
 
-    let who = {};
-    try { who = await whoami(sess.token) || {}; } catch (_) { who = {}; }
+    let who = {}, answered = false;
+    try { who = await whoami(sess.token) || {}; answered = true; } catch (_) { who = {}; }
     if (run !== authRun) return;          // a newer sign-in overtook this one
+    /* STAFF ARE NOT VISITORS: track.js (visit counts) reads this while somebody is signed in. Only a real answer
+       changes it - a failed whoami() leaves what was known. */
+    if (answered) {
+      try {
+        if (who.is_platform_admin || (who.leagues || []).length > 0) localStorage.setItem('epinoia_staff', '1');
+        else localStorage.removeItem('epinoia_staff');
+      } catch (_) { /* private mode: the flag simply is not kept */ }
+    }
     gated.forEach(([node, pred]) => {
       let ok = false;
       try { ok = !!pred(who); } catch (_) { ok = false; }

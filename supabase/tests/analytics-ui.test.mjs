@@ -118,6 +118,21 @@ for (let i = 0; i < 61; i++) await advance(10_000);
 ok('after ten minutes it stops by itself and says so', timers.length === 0 && /Stopped after 10 minutes/.test(HOST.cls('an-live')[0].textContent));
 ok('it never made more than 60 reads in that ten minutes', count('analytics_live') <= t0 + 1 + 1 + 62, count('analytics_live'));
 
+console.log('-- extending it to an hour');
+const more = HOST.find(n => n.tag === 'button' && n.textContent === 'extend to 1 hr')[0];
+ok('there is an "extend to 1 hr" button, hidden while live view is off', !!more && more.hidden === true);
+btn.click(); await tick(); await tick();
+ok('...and shown while it runs', more.hidden === false);
+for (let i = 0; i < 30; i++) await advance(10_000);                 // five minutes in
+more.click(); await tick();
+ok('pressing it hides the button and moves the stop to an hour from now', more.hidden === true && /stops in 60 min/.test(HOST.cls('an-live')[0].textContent), HOST.cls('an-live')[0].textContent.slice(0, 160));
+for (let i = 0; i < 61; i++) await advance(10_000);                 // past where ten minutes would have stopped it
+ok('it is still running after the original ten minutes, still one timer', timers.length === 1 && HOST.cls('an-live')[0].classList.contains('running'), timers.length);
+for (let i = 0; i < 330; i++) await advance(10_000);
+ok('and it stops by itself after the hour, and says so', timers.length === 0 && /Stopped after 60 minutes/.test(HOST.cls('an-live')[0].textContent), HOST.cls('an-live')[0].textContent.slice(0, 160));
+ok('the next live view starts from ten minutes again, with the button back', (btn.click(), await tick(), await tick(), more.hidden === false && timers.length === 1));
+btn.click(); await tick();
+
 console.log('-- a refresh of the report does not reset a running live view');
 btn.click(); await tick(); await tick();
 const liveBefore = HOST.cls('an-live')[0];

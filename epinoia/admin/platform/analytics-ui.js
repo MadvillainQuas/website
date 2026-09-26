@@ -26,6 +26,7 @@
 
 const LIVE_EVERY_MS = 10000;          // one call every ten seconds, and only while live mode is on
 const LIVE_MAX_MS = 10 * 60 * 1000;   // ...for at most ten minutes at a time
+const LIVE_LONG_MS = 60 * 60 * 1000;  // ...or an hour, when the button next to it is pressed
 const ROWS_SHOWN = 10;                // a table shows this many rows and scrolls for the rest
 
 const RANGES = [[1, 'last 24 hours'], [7, '7 days'], [30, '30 days'], [90, '90 days'], [365, '1 year']];
@@ -385,19 +386,28 @@ function liveCard() {
   const dot = el('span', 'an-dot');
   const h = el('h3'); h.append(dot, document.createTextNode('Live now'));
   const btn = el('button', 'ep-btn mini', 'start live view'); btn.type = 'button';
+  const more = el('button', 'ep-btn mini', 'extend to 1 hr'); more.type = 'button'; more.hidden = true;
   const status = el('span', 'an-note');
-  head.append(h, btn, status);
+  head.append(h, btn, more, status);
   const body = el('div');
   c.append(head, body);
-  st.liveEl = c; st.liveBtn = btn; st.liveStatus = status; st.liveBody = body;
+  st.liveEl = c; st.liveBtn = btn; st.liveMore = more; st.liveStatus = status; st.liveBody = body;
   btn.addEventListener('click', () => (st.live.on ? liveStop('Stopped.') : liveStart()));
+  /* AN HOUR, FROM NOW, ON REQUEST. Still one call every ten seconds and only while this tab is showing; the only change is
+     when it stops by itself. */
+  more.addEventListener('click', () => {
+    const L = st.live;
+    if (!L || !L.on) return;
+    L.at = Date.now(); L.max = LIVE_LONG_MS;
+    paintLive(L.last);
+  });
   paintLive(null);
   return c;
 }
 
 /* NOTHING RUNS UNTIL THIS IS PRESSED. */
 function liveStart() {
-  st.live = { on: true, at: Date.now(), busy: false, last: null };
+  st.live = { on: true, at: Date.now(), max: LIVE_MAX_MS, busy: false, last: null };
   st.liveTimer = setInterval(liveTick, LIVE_EVERY_MS);
   paintLive(null);
   liveTick();
@@ -414,7 +424,7 @@ async function liveTick() {
   const L = st.live;
   if (!L.on || L.busy) return;
   if (!st.liveEl.isConnected || !st.host.getClientRects().length) return liveStop('Stopped: you left the Analytics tab.');
-  if (Date.now() - L.at > LIVE_MAX_MS) return liveStop('Stopped after 10 minutes. Start it again to keep watching.');
+  if (Date.now() - L.at > L.max) return liveStop('Stopped after ' + Math.round(L.max / 60000) + ' minutes. Start it again to keep watching.');
   if (document.hidden) { st.liveStatus.textContent = 'paused while this window is hidden'; return; }
   L.busy = true;
   try {
@@ -435,9 +445,10 @@ function paintLive(r) {
   c.classList.toggle('running', !!L.on);
   st.liveBtn.textContent = L.on ? 'stop' : 'start live view';
   st.liveBtn.classList.toggle('on', !!L.on);
+  st.liveMore.hidden = !(L.on && L.max < LIVE_LONG_MS);      // once it has been extended there is nothing more to offer
   body.textContent = '';
   if (L.on) {
-    const left = Math.max(0, Math.round((LIVE_MAX_MS - (Date.now() - L.at)) / 60000));
+    const left = Math.max(0, Math.round((L.max - (Date.now() - L.at)) / 60000));
     st.liveStatus.textContent = L.updated ? 'updated ' + L.updated.toLocaleTimeString('en-GB') + ' · every 10 s · stops in ' + left + ' min' : 'reading…';
   } else {
     st.liveStatus.textContent = L.why || '';
@@ -445,7 +456,7 @@ function paintLive(r) {
       body.appendChild(el('p', 'an-live-off',
         'Off. Live view shows what visitors are doing on the site right now, with nothing that identifies anyone. ' +
         'It reads the last five minutes every ten seconds while it is on, and only then: it stops by itself after ten ' +
-        'minutes, when you leave this tab, and it pauses while this window is hidden.'));
+        'minutes (an hour if you extend it), when you leave this tab, and it pauses while this window is hidden.'));
       return;
     }
   }

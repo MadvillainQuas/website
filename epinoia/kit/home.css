@@ -22,6 +22,9 @@
 /* ============================== 1. LIFTED FROM index.html ================== */
 
   .sec{border-bottom:1px solid var(--rule)}
+  /* THE LINE UNDER MY FOLLOWED: the hairline every section has was lost against the sign-in / follow card's own edge, so the
+     step from what you follow to the best performers had no visible seam. A firmer rule, only while the section is showing. */
+  #followed:not([hidden]){border-bottom:2px solid var(--rule-2)}
   .sec-h{display:flex;align-items:baseline;gap:12px;padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*2)}
   .sec-h .idx{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:0.08em}
   .sec-h h2{font-family:var(--f-ui);font-weight:800;font-size:14px;text-transform:uppercase;

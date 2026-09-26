@@ -25,6 +25,15 @@
    Do Not Track), when the privacy page's "don't count my visits" is on, or until config.js
    says analytics: true (the table exists only once 0173 is applied).
 
+   NOR IS ANYTHING SENT FOR VISITS THAT ARE NOT FANS (26 Sep 2026):
+     * a browser driven by a program - an AI assistant's browser (its user agent says Claude), a
+       headless or automated one (navigator.webdriver, Puppeteer, Playwright, Selenium...), a crawler
+       or link-preview robot. The user agent is read here to decide THAT and is never sent.
+     * the site's own staff while signed in: nav.js writes STAFF_KEY when whoami() says the account
+       is a platform admin or holds a league role, and clears it when a signed-in account is not.
+       It only silences this browser while somebody is signed in; ordinary signed-in fans still count
+       (as the yes/no `signed in`).
+
    Loaded by nav.js, so every page with the rail counts; staff tools (admin/, score/,
    broadcast/, clockcam/) and the embeds on other sites never do.
    ============================================================================ */
@@ -40,6 +49,7 @@ const g = k => (ENV && Object.prototype.hasOwnProperty.call(ENV, k)) ? ENV[k] : 
 const OPT_OUT_KEY = 'epinoia_no_count';
 const SESSION_KEY = 'epinoia_visit';
 const REF_SENT_KEY = 'epinoia_visit_ref';
+const STAFF_KEY = 'epinoia_staff';       // written by nav.js from whoami(): '1' for a platform admin or league staff
 const STAFF = /^(admin|score|broadcast|clockcam|embed)(\/|$)/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG = /^[a-z0-9-]{1,100}$/;
@@ -59,9 +69,23 @@ function optedOut() {
   if (nav.doNotTrack === '1' || g('doNotTrack') === '1') return true;
   return get(store('localStorage'), OPT_OUT_KEY) === '1';
 }
+/* A BROWSER A PROGRAM IS DRIVING, or a robot: not a visit. The Claude desktop app's browser puts "Claude/<version>" in its
+   user agent; automation frameworks set navigator.webdriver or say Headless / Puppeteer / Playwright / Selenium / PhantomJS /
+   Lighthouse; crawlers and link previewers name themselves. Real phones and browsers never say any of these ("Cubot" is a
+   phone, so "bot" has to stand alone or end a known crawler's name). */
+const AUTOMATED = /\b(claude|anthropic)\b|headless|puppeteer|playwright|selenium|phantomjs|lighthouse|(^|[^a-z])bot([^a-z]|$)|(google|bing|yandex|baidu|duckduck|petal|semrush|ahrefs|mj12|apple|facebook|twitter|linkedin|slack|discord|telegram|whatsapp|pinterest|amazon|yahoo)bot|facebookexternalhit|crawl|spider|slurp|python-requests|node-fetch|axios|go-http-client|^curl\/|^wget\//i;
+function automated() {
+  const nav = g('navigator') || {};
+  if (nav.webdriver === true) return true;
+  return AUTOMATED.test(String(nav.userAgent || ''));
+}
+/* the site's own staff, and only while signed in (see the header) */
+function staffSignedIn() {
+  return get(store('localStorage'), STAFF_KEY) === '1' && signedIn();
+}
 function enabled() {
   const cfg = g('EPINOIA_CONFIG') || {};
-  return cfg.analytics === true && !!cfg.supabaseUrl && !!cfg.supabaseAnonKey && !optedOut();
+  return cfg.analytics === true && !!cfg.supabaseUrl && !!cfg.supabaseAnonKey && !optedOut() && !automated() && !staffSignedIn();
 }
 
 /* random, per tab, forgotten when the tab closes */
@@ -158,7 +182,8 @@ function push(ev) {
 let ref = undefined;
 function flush(leaving) {
   if (timer) { g('clearTimeout').call(root, timer); timer = null; }
-  if (stopped || !queue.length || !enabled()) return Promise.resolve(0);
+  if (stopped || !queue.length) return Promise.resolve(0);
+  if (!enabled()) { queue.length = 0; return Promise.resolve(0); }     // e.g. whoami() has since said this is staff
   const events = queue.splice(0, 50);
   const cfg = g('EPINOIA_CONFIG') || {};
   if (ref === undefined) ref = referrerHost();
@@ -242,7 +267,7 @@ return {
   boot, flush, setCounting, counting, search,
   _test: {
     env(e) { ENV = e || null; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null; },
-    pageKey, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, onClick, queue
+    pageKey, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, automated, staffSignedIn, onClick, queue
   }
 };
 }));
