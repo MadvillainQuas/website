@@ -39,7 +39,8 @@ const ADV_GROUPS = [
     {k:'pts',l:'pts',f:v=>v.toFixed(0)},
     {k:'ptsAst',l:'+ast',f:v=>v.toFixed(0)},
     {k:'tpc',l:'tpc',f:v=>v.toFixed(0),bar:'mins'},
-    {k:'ppp',l:'ppp',f:v=>v.toFixed(2),bar:'shooting',sep:true,gp:1}]},
+    {k:'ppp',l:'ppp',f:v=>v.toFixed(2),bar:'shooting',gp:1},
+    {k:'ts',l:'ts%',f:v=>v.toFixed(1),bar:'shooting',sep:true,gp:1}]},
   {key:'usage', label:'usage', cols:[
     {k:'usg',l:'usg',f:v=>v.toFixed(1),bar:'mins',gp:1},
     {k:'au',l:'a/u',f:v=>v.toFixed(2),bar:'playmaking',gp:1},
@@ -50,7 +51,8 @@ const ADV_GROUPS = [
     {k:'midA',l:'mid',f:v=>v.toFixed(0),shot:true},
     {k:'midP',l:'mid%',f:v=>v.toFixed(0),gp:1},
     {k:'p3a',l:'3pt',f:v=>v.toFixed(0),shot:true},
-    {k:'p3P',l:'3pt%',f:v=>v.toFixed(0),sep:true,gp:1}]},
+    {k:'p3P',l:'3pt%',f:v=>v.toFixed(0),gp:1},
+    {k:'efg',l:'efg%',f:v=>v.toFixed(1),bar:'shooting',sep:true}]},
   {key:'offcourt', label:'offensive on-court', cols:[
     {k:'ocOrtg',l:'ortg',diff:'ortg',gp:1},
     {k:'ocEfg',l:'efg',diff:'efg',gp:1},
@@ -68,7 +70,6 @@ const ADV_GROUPS = [
     {k:'ocOppFtr',l:'opp ftr',diff:'ftr',inv:true},
     {k:'net',l:'net',pill:true,sep:true,gp:1}]},
   {key:'individual', label:'individual', cols:[
-    {k:'ts',l:'ts%',f:v=>v.toFixed(1),bar:'shooting',gp:1},
     {k:'astPct',l:'ast%',f:v=>v.toFixed(1),bar:'playmaking',gp:1},
     {k:'tovP',l:'to%',f:v=>v.toFixed(1),bar:'handling',invbar:true,gp:1},
     {k:'stlP',l:'stl%',f:v=>v.toFixed(1),bar:'defense',gp:1},
@@ -603,6 +604,7 @@ function playerAdv(d,t,p,TT,OT,gameAvg){
     ocOppOreb: dv(oc.oOR,oc.oOR+oc.tDR)*100, ocTovF: dv(oc.oTOV,oc.oFGA+0.44*oc.oFTA+oc.oTOV)*100,
     ocFtr: dv(oc.tFTA,oc.tFGA)*100, ocOppFtr: dv(oc.oFTA,oc.oFGA)*100,
     ts: dv(s.pts,2*(fga+0.44*s.fta))*100,
+    efg: dv(fgm+0.5*s.p3m,fga)*100,
     tovP: dv(s.to,fga+0.44*s.fta+s.to)*100,
     stlP: mins ? 100*(s.stl*gameMinutes)/(mins*oppPoss||1) : 0,
     blkP: mins ? 100*(s.blk*gameMinutes)/(mins*(OT.fga-OT.fg3a)||1) : 0,

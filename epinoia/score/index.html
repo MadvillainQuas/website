@@ -15,9 +15,9 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=452" data-no-ground></script>
-<script src="../i18n.js?v=452" data-i18n-packs="scorer"></script>
-<script src="../glyphs.js?v=452" defer></script>
+<script src="../appmode.js?v=453" data-no-ground></script>
+<script src="../i18n.js?v=453" data-i18n-packs="scorer"></script>
+<script src="../glyphs.js?v=453" defer></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -5944,6 +5944,7 @@ function playerAdv(d,t,p,TT,OT,gameAvg){
     ocOppOreb: dv(oc.oOR,oc.oOR+oc.tDR)*100, ocTovF: dv(oc.oTOV,oc.oFGA+0.44*oc.oFTA+oc.oTOV)*100,
     ocFtr: dv(oc.tFTA,oc.tFGA)*100, ocOppFtr: dv(oc.oFTA,oc.oFGA)*100,
     ts: dv(s.pts,2*(fga+0.44*s.fta))*100,
+    efg: dv(fgm+0.5*s.p3m,fga)*100,
     tovP: dv(s.to,fga+0.44*s.fta+s.to)*100,
     stlP: mins ? 100*(s.stl*gameMinutes)/(mins*oppPoss||1) : 0,
     blkP: mins ? 100*(s.blk*gameMinutes)/(mins*(OT.fga-OT.fg3a)||1) : 0,
@@ -5973,7 +5974,8 @@ const ADV_GROUPS = [
     {k:'pts',l:'pts',f:v=>v.toFixed(0)},
     {k:'ptsAst',l:'+ast',f:v=>v.toFixed(0)},
     {k:'tpc',l:'tpc',f:v=>v.toFixed(0),bar:'mins'},
-    {k:'ppp',l:'ppp',f:v=>v.toFixed(2),bar:'shooting',sep:true,gp:1}]},
+    {k:'ppp',l:'ppp',f:v=>v.toFixed(2),bar:'shooting',gp:1},
+    {k:'ts',l:'ts%',f:v=>v.toFixed(1),bar:'shooting',sep:true,gp:1}]},
   {key:'usage', label:'usage', cols:[
     {k:'usg',l:'usg',f:v=>v.toFixed(1),bar:'mins',gp:1},
     {k:'au',l:'a/u',f:v=>v.toFixed(2),bar:'playmaking',gp:1},
@@ -5984,7 +5986,8 @@ const ADV_GROUPS = [
     {k:'midA',l:'mid',f:v=>v.toFixed(0),shot:true},
     {k:'midP',l:'mid%',f:v=>v.toFixed(0),gp:1},
     {k:'p3a',l:'3pt',f:v=>v.toFixed(0),shot:true},
-    {k:'p3P',l:'3pt%',f:v=>v.toFixed(0),sep:true,gp:1}]},
+    {k:'p3P',l:'3pt%',f:v=>v.toFixed(0),gp:1},
+    {k:'efg',l:'efg%',f:v=>v.toFixed(1),bar:'shooting',sep:true}]},
   {key:'offcourt', label:'offensive on-court', cols:[
     {k:'ocOrtg',l:'ortg',diff:'ortg',gp:1},
     {k:'ocEfg',l:'efg',diff:'efg',gp:1},
@@ -6002,7 +6005,6 @@ const ADV_GROUPS = [
     {k:'ocOppFtr',l:'opp ftr',diff:'ftr',inv:true},
     {k:'net',l:'net',pill:true,sep:true,gp:1}]},
   {key:'individual', label:'individual', cols:[
-    {k:'ts',l:'ts%',f:v=>v.toFixed(1),bar:'shooting',gp:1},
     {k:'astPct',l:'ast%',f:v=>v.toFixed(1),bar:'playmaking',gp:1},
     {k:'tovP',l:'to%',f:v=>v.toFixed(1),bar:'handling',invbar:true,gp:1},
     {k:'stlP',l:'stl%',f:v=>v.toFixed(1),bar:'defense',gp:1},
@@ -7148,15 +7150,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=452">
-<link rel="stylesheet" href="../video.css?v=452">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=452">
-<script src="../config.js?v=452" defer></script>
-<script src="../vendor/supabase.js?v=452" defer></script>
-<script src="../live.js?v=452" defer></script>
-<script src="../video.js?v=452" defer></script>
-<script src="sync.js?v=452" defer></script>
-<script src="bootstrap.js?v=452" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=453">
+<link rel="stylesheet" href="../video.css?v=453">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=453">
+<script src="../config.js?v=453" defer></script>
+<script src="../vendor/supabase.js?v=453" defer></script>
+<script src="../live.js?v=453" defer></script>
+<script src="../video.js?v=453" defer></script>
+<script src="sync.js?v=453" defer></script>
+<script src="bootstrap.js?v=453" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it

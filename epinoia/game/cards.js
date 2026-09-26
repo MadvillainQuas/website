@@ -222,7 +222,10 @@
         const R = p[1] ? rate(r, col) : null;
         return '<span class="pcs-zone ' + p[3] + shade(R) + '"' + tip(col, R) + '><small>' + p[0] + '</small><b>' + (p[1] ? p[2].toFixed(0) + '%' : '–') + '</b><em>' + p[1] + ' att</em></span>';
       }).join('');
-      return '<div class="pcs-shots"><div class="pcs-stack">' + (bar || '<span class="pcs-none">no shots</span>') + '</div><div class="pcs-zones">' + pills + '</div></div>';
+      /* effective field goal %, the fourth figure, counts a three as one and a half twos */
+      const ef = r.rimA + r.midA + r.p3a ? r.efg.toFixed(1) + '%' : '\u2013';
+      const efg = '<span class="pcs-zone efg"><small>efg%</small><b>' + ef + '</b><em>' + (r.rimA + r.midA + r.p3a) + ' fga</em></span>';
+      return '<div class="pcs-shots"><div class="pcs-stack">' + (bar || '<span class="pcs-none">no shots</span>') + '</div><div class="pcs-zones">' + pills + efg + '</div></div>';
     };
 
     /* every numeric column can be sorted on, in either view: the value rides on the row */
