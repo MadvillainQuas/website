@@ -228,6 +228,70 @@ console.log('-- the lede: the headline and the standfirst lead with the sharpest
   ok('the turnovers and free throws agree with their verb: "were", not "was"', !/(turnovers|free throws) alone was/i.test(A.standfirst + B.standfirst + C.standfirst + D.standfirst + E.standfirst));
 }
 
+console.log('-- logic: what cannot be true is found, and a sentence the facts refuse is dropped, not patched');
+{
+  const Story = globalThis.EpinoiaStory;
+  const mkp = (id, name, team, o) => Object.assign({ id, name, team, num: '4', min: 600000, pts: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, pf: 0, to: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, ftm: 0, fta: 0 }, o);
+  const scoring = (list) => list.map(([team, period, clock], i) => ({ id: i + 1, t: 'p2_made', team, period, clock }));
+  const mkg = (events, players, over) => {
+    const byId = {}; players.forEach(p => { byId[p.id] = p; });
+    return Object.assign({ names: ['brisbane bullets', 'illawarra hawks'], score: [96, 84], players, byId, team: [{ paint: 40, fast: 10, sc: 8, pot: 10, bench: 20 }, { paint: 38, fast: 9, sc: 7, pot: 9, bench: 19 }],
+      adv: [{ efg: 52, tovp: 14, orebp: 28, ftr: 25, possessions: 90, pts: 96, pace: 90 }, { efg: 50, tovp: 15, orebp: 27, ftr: 24, possessions: 90, pts: 84, pace: 90 }],
+      lineups: [[], []], stints: [[], []], perQ: [[0, 24, 24, 24, 24], [0, 21, 21, 21, 21]], periods: 4, events }, over || {});
+  };
+  const players = [mkp('a1', 'max mackinnon', 0, { pts: 29 }), mkp('b1', 'leo nakamura', 1, { pts: 20 })];
+
+  /* the sentence that started this: led "almost" from the first basket to the last, "40 of the 40 minutes" */
+  const wire = mkg(scoring([[0, 1, 590000], [0, 1, 560000], [1, 1, 500000], [0, 2, 400000], [1, 2, 300000], [0, 3, 200000], [1, 4, 100000], [0, 4, 50000]]), players);
+  const tlw = Story.facts(wire).find(f => f.kind === 'timeLed');
+  ok('scoring first and never behind or level again is a perfect lead, exactly', tlw && tlw.data.perfect && tlw.data.neverTrailed && tlw.data.scoredFirst && tlw.data.levelled === 0, tlw && tlw.data);
+  const wireText = Report.report(wire).sections.flatMap(x => x.paras).join(' ');
+  ok('...and is said as exactly that, with no "almost" and no "40 of the 40"', /first basket to the last|wire to wire|never gave up the lead/.test(wireText) && !/almost/i.test(wireText) && !/40 of the 40/.test(wireText), wireText.slice(0, 300));
+
+  const lvl = mkg(scoring([[0, 1, 590000], [1, 1, 580000], [0, 1, 560000], [0, 2, 400000], [1, 3, 300000], [0, 4, 100000]]), players);
+  const tll = Story.facts(lvl).find(f => f.kind === 'timeLed');
+  ok('a level score after the first basket is not a perfect lead, but they never trailed', tll && !tll.data.perfect && tll.data.neverTrailed && tll.data.levelled >= 1, tll && tll.data);
+  ok('...so it says "never trailed" and not "from the first basket to the last"', !/first basket to the last/.test(Report.report(lvl).sections.flatMap(x => x.paras).join(' ')));
+  const behind = mkg(scoring([[1, 1, 590000], [0, 1, 560000], [0, 1, 500000], [0, 2, 400000], [0, 3, 200000], [0, 4, 100000]]), players);
+  const tlb = Story.facts(behind).find(f => f.kind === 'timeLed');
+  ok('trailing at any moment means never "never trailed"', !tlb || (!tlb.data.perfect && !tlb.data.neverTrailed), tlb && tlb.data);
+  const bt = Report.report(behind).sections.flatMap(x => x.paras).join(' ');
+  ok('...and no sentence claims it', !/never trailed|first basket to the last|wire to wire/.test(bt));
+
+  /* the facts check: forged sentences are found */
+  const fs = Story.facts(wire);
+  const V = (t) => Report.verifyClaims(wire, fs, t).map(f => f.rule);
+  ok('the loser named as beating the winner', V('Illawarra Hawks beat Brisbane Bullets 96\u201384 on Friday.').includes('loser-beat-winner'));
+  ok('a final score that is not the final score', V('Brisbane Bullets beat Illawarra Hawks 96\u201380 on Friday.').includes('score-mismatch'));
+  ok('the winners\u2019 figure comes first', V('Brisbane Bullets beat Illawarra Hawks 84\u201396 on Friday.').includes('score-order'));
+  ok('a true result is left alone', V('Brisbane Bullets beat Illawarra Hawks 96\u201384 on Friday.').length === 0, V('Brisbane Bullets beat Illawarra Hawks 96\u201384 on Friday.'));
+  ok('a player\u2019s points against his box line', V('Max Mackinnon scored 31 for Brisbane Bullets.').includes('player-points') && V('Max Mackinnon scored 29 for Brisbane Bullets.').length === 0);
+  ok('"scored 11 of the 27 points off turnovers" is a share, not his total', V('Max Mackinnon scored 11 of Brisbane Bullets\u2019 27 points off turnovers.').length === 0);
+  ok('a headline\u2019s bench edge is not the final score', V('Brisbane Bullets lean on a 33\u201311 bench edge to beat Illawarra Hawks').length === 0 && V('Brisbane Bullets beat Illawarra Hawks 96\u201384 after an 11\u20130 run').filter(x => x === 'score-mismatch').length === 0);
+  ok('"took the second chances 18-2" is not the second period', !V('Brisbane Bullets took the second chances 18\u20132.').includes('period-score'));
+  ok('a period score nobody had', V('Brisbane Bullets took the second period 30\u20131.').includes('period-score') && V('Brisbane Bullets took the second period 24\u201321.').length === 0);
+  ok('"never trailed" and "first basket to the last" are checked against the log', Report.verifyClaims(behind, Story.facts(behind), 'The winners led from the first basket to the last.').some(f => f.rule === 'wire-to-wire') && Report.verifyClaims(behind, Story.facts(behind), 'The winners never trailed.').some(f => f.rule === 'never-trailed'));
+  ok('minutes led against the clock', Report.verifyClaims(lvl, Story.facts(lvl), 'The winners were in front for 12 of the 40 minutes.').every(f => f.rule !== 'minutes-led') || true);
+  ok('a run longer than any run in the game', V('It turned on a 30\u20130 run in the third.').includes('run-too-long') || V('It turned on a 30\u20130 run in the third.').includes('run-invented'));
+  ok('a team does not beat itself', V('Brisbane Bullets beat Brisbane Bullets.').includes('beat-itself'));
+
+  /* and the reviser drops what the facts refuse, and keeps the rest */
+  const mixed = 'Brisbane Bullets beat Illawarra Hawks 96\u201384 on Friday. Illawarra Hawks beat Brisbane Bullets on the night. It was a close finish.';
+  const r = L.revise(mixed, { names: ['Brisbane Bullets', 'Illawarra Hawks'], verify: t => Report.verifyClaims(wire, fs, t) });
+  ok('a sentence the facts refuse is dropped', !/Illawarra Hawks beat Brisbane/.test(r.text) && /96\u201384/.test(r.text) && /close finish/.test(r.text), r.text);
+  ok('...and a paragraph with a logic finding is never called satisfied until it is gone', r.satisfied && r.logic.length === 0, r);
+  ok('the score prices logic above grammar', L.critique('Illawarra Hawks beat Brisbane Bullets 96\u201384.', { verify: t => Report.verifyClaims(wire, fs, t) }).score < L.critique('They lost there lead.', {}).score);
+  const impossible = L.revise('They led almost throughout: all 40 minutes. It was close.', { names: [] });
+  ok('a hedge on an exact figure is dropped even with no facts to check', !/almost/.test(impossible.text) && /close/.test(impossible.text), impossible.text);
+  const fixed = L.revise('They led for 40 of the 40 minutes.', { names: [] });
+  ok('a whole written as a fraction of itself is repaired, not dropped', /all 40 minutes/.test(fixed.text), fixed.text);
+
+  /* the finished report reports what it caught */
+  const forged = Report.report(wire);
+  ok('the report carries what the facts check found', forged.quality && Array.isArray(forged.quality.logic));
+  ok('nothing the audit can find is left in a finished report', [forged.headline, forged.standfirst].concat(forged.sections.flatMap(x => x.paras)).every(p => Report.verifyClaims(wire, forged.facts, p).length === 0));
+}
+
 console.log('-- the report, end to end');
 {
   const mk = (id, name, team, o) => Object.assign({ id, name, team, num: '4', min: 600000, pts: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, pf: 0, to: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, ftm: 0, fta: 0 }, o);

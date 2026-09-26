@@ -18,7 +18,7 @@ const load = async name => import('data:text/javascript;base64,' + Buffer.from(f
 
 /* the edge function's imports, in its order: side effects put each calculator on globalThis */
 await load('gamepct-data.js'); await load('gamepct.js'); await load('language.js'); await load('story.js');
-const { report } = await load('report.js');
+const { report, verifyClaims } = await load('report.js');
 await load('possessions.js');
 const SIT = await load('situations.js');
 await load('connections.js'); await load('shotclock.js');
@@ -65,6 +65,8 @@ console.log('-- the edge function’s brief and the report written from it');
   const withTabs = report(brief);
   const headings = withTabs.sections.map(s => s.heading);
   ok('with them the report has the sections that read the tabs', ['How the ball moved', 'Play types and rebounds', 'The shot clock', 'What the four factors were worth'].every(h => headings.includes(h)), headings);
+  ok('the filed article passes the facts check: no claim in it that the game refuses', [withTabs.headline, withTabs.standfirst].concat(withTabs.sections.flatMap(x => x.paras)).every(p => verifyClaims(brief, withTabs.facts, p).length === 0));
+  ok('...and it reports what the check caught in its drafts', withTabs.quality && Array.isArray(withTabs.quality.logic));
   const without = report(gameBrief(game, d, TA, E.lineupAgg, { leagueSlug: 'slb-men', competition: 'Championship', league: 'SLB' }, null));
   const h2 = without.sections.map(s => s.heading);
   ok('without them it does not write them, and still has the four factors', !h2.includes('How the ball moved') && !h2.includes('The shot clock') && h2.includes('What the four factors were worth'), h2);

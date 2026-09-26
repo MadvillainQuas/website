@@ -127,7 +127,7 @@ const FILES = [
     src: join(repo, 'epinoia', 'game', 'report.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'report.js'),
     global: 'EpinoiaReport',
-    names: ['report', 'plain', 'headline', 'standfirst', 'five', 'halftime']
+    names: ['report', 'plain', 'headline', 'standfirst', 'five', 'halftime', 'verifyClaims']
   },
   /* THE SITUATIONS: what second chances, breaks, turnovers and timeouts turned
      into, per side and per player. finalise-game stores a compact copy of them on

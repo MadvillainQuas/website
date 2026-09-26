@@ -754,19 +754,43 @@ function sectionFlow(g, fs, R) {
   if (led) {
     R.neutral();
     const d = led.data, total0 = Math.round(d.total / 60000), mine0 = Math.round(d.led[led.side] / 60000);
-    const [mine, total] = L().spellSet([mine0, total0]);
     const who = R.subj(led.side, { allowRole: true, noPronoun: true });
-    out.push(d.kind === 'ledMost'
-      ? pick('ledmost' + led.side + mine0, [
-          who + ' were in front for ' + mine + ' of the ' + total + ' minutes and still lost.',
-          'For ' + mine + ' of the ' + total + ' minutes it was ' + nmPoss(g, led.side) + ' game, and they lost it anyway.',
-          who + ' led for most of it, ' + mine + ' of the ' + total + ' minutes, and it was not enough.'
-        ])
-      : pick('wire' + led.side + mine0, [
-          who + ' were in front for ' + mine + ' of the ' + total + ' minutes.',
-          who + ' led almost from the first basket to the last: ' + mine + ' of the ' + total + ' minutes.',
-          'It was ' + nmPoss(g, led.side) + ' game from the start, in front for ' + mine + ' of the ' + total + ' minutes.'
-        ]));
+    if (d.kind === 'wire' && d.perfect) {
+      /* never behind, never level again, and they scored first: the strongest true thing there is to say about it */
+      out.push(pick('perfect' + led.side + total0, [
+        who + ' led from the first basket to the last.',
+        'It was wire to wire for ' + nm(g, led.side) + ': never behind, and never level after the first basket.',
+        who + ' never gave up the lead after the first basket.'
+      ]));
+    } else if (d.kind === 'wire' && d.neverTrailed) {
+      out.push(pick('never' + led.side + total0, [
+        who + ' never trailed.',
+        'At no point was ' + nm(g, led.side) + ' behind.'
+      ]));
+    } else {
+      /* A ROUNDED FIGURE IS NOT ALLOWED TO SAY MORE THAN THE CLOCK DID: forty of forty minutes is "all but 20 seconds", not "almost
+         throughout: forty of the forty". Whole minutes only while they are fewer than the game's. */
+      const gap = Math.round((d.total - d.led[led.side]) / 1000);
+      const all = mine0 >= total0;
+      const [mine, total] = L().spellSet([mine0, total0]);
+      const allBut = gap <= 90 ? 'all but ' + gap + ' seconds' : 'all but ' + spell(Math.max(1, Math.round(gap / 60))) + ' minutes';
+      out.push(d.kind === 'ledMost'
+        ? (all ? pick('ledall' + led.side + gap, [
+            who + ' led for ' + allBut + ' of it and still lost.',
+            'For ' + allBut + ' of the game it was ' + nmPoss(g, led.side) + ', and they lost it anyway.'
+          ]) : pick('ledmost' + led.side + mine0, [
+            who + ' were in front for ' + mine + ' of the ' + total + ' minutes and still lost.',
+            'For ' + mine + ' of the ' + total + ' minutes it was ' + nmPoss(g, led.side) + ' game, and they lost it anyway.',
+            who + ' led for most of it, ' + mine + ' of the ' + total + ' minutes, and it was not enough.'
+          ]))
+        : (all ? pick('wireall' + led.side + gap, [
+            who + ' were in front for ' + allBut + ' of the game.',
+            'It was ' + nmPoss(g, led.side) + ' game from the start, in front for ' + allBut + ' of it.'
+          ]) : pick('wire' + led.side + mine0, [
+            who + ' were in front for ' + mine + ' of the ' + total + ' minutes.',
+            'It was ' + nmPoss(g, led.side) + ' game from the start, in front for ' + mine + ' of the ' + total + ' minutes.'
+          ])));
+    }
   }
 
   /* THE FINISH. What happened in the last five minutes is the paragraph a
@@ -2058,8 +2082,112 @@ function halftime(g) {
 
   let sc = null;
   try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }
-  const done = finish(g, secs, stand, hl);
-  return { headline: done.headline, standfirst: done.standfirst, quality: done.quality, sections: secs, facts: fs, scout: sc, half: true };
+  const done = finish(g, secs, stand, hl, fs);
+  return { headline: done.headline, standfirst: done.standfirst, quality: done.quality, sections: secs.filter(x => x.paras.length), facts: fs, scout: sc, half: true };
+}
+
+/* ============================================================== the facts check ===
+   LOGIC AGAINST THE GAME. A sentence can be grammatical, well phrased and wrong: "led almost from the first basket to the last:
+   40 of the 40 minutes" (they led from the first basket to the last), "X beat Y 96-84" (Y won), "Jo Bloggs scored 31" (he scored 29).
+   verifyClaims(g, fs, text) reads a finished sentence or paragraph and the brief it was written from, and returns each claim the
+   facts refuse: [{ rule, why, sentence }]. It is the reviser's logic check (language.js revise takes it as opts.verify): a paragraph
+   with a finding is never satisfied, and the repair is to drop the sentence, never to patch it into something plausible.
+
+   It checks the claims the writer makes, by pattern, against what the fact engine holds:
+     the winner is named first where a verb of winning is used           the final score, in any sentence that gives one
+     a run of N-0 is no longer than the game's longest                   "led by as many as N" is the biggest lead
+     "from the first basket to the last" / "never trailed" / minutes led  a period's or the half's score is a score somebody had
+     a player's points match his box line                                 the boards, and the comeback's size
+     a team does not beat itself                                          a hedge has no exact figure */
+const WIN_VERBS = /\b(?:beat|beats|overwhelm|overwhelms|outlast|outlasts|see off|sees off|blow it open with [^.]*? to beat|steal it late from|pull away late from)\b|\bedges?\s+(?=[A-Z])/;
+const PERIOD_WORDS = /\b(period|quarter|first|second|third|fourth|half|break|half-time|halftime|early|overtime|run|stretch|swing|burst)\b/i;
+function verifyClaims(g, fs, text) {
+  const found = [];
+  const plain = String(text).replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, '\u2019').replace(/&quot;/g, '"');
+  const sents = plain.split(/(?<=[.!?])\s+/).map(x => x.trim()).filter(Boolean);
+  const res = fs.find(f => f.kind === 'result');
+  if (!res) return found;
+  const w = res.data.winner, l = res.data.loser;
+  const N = [tc(g.names[0]), tc(g.names[1])];
+  const flag = (rule, why, sentence) => found.push({ rule, why, sentence });
+  const hi = Math.max(g.score[0], g.score[1]), lo = Math.min(g.score[0], g.score[1]);
+  const pairs = sn => { const out = []; const re = /(\d{1,3})[\u2013-](\d{1,3})\b/g; let m; while ((m = re.exec(sn))) out.push([+m[1], +m[2]]); return out; };
+  const allowedPairs = new Set();
+  const addPair = (a, b) => { allowedPairs.add(a + '-' + b); allowedPairs.add(b + '-' + a); };
+  addPair(g.score[0], g.score[1]);
+  let h0 = 0, h1 = 0, h2a = 0, h2b = 0;
+  for (let p = 1; p <= (g.periods || 4); p++) {
+    const a = (g.perQ && g.perQ[0] && g.perQ[0][p]) || 0, b = (g.perQ && g.perQ[1] && g.perQ[1][p]) || 0;
+    addPair(a, b);
+    if (p <= 2) { h0 += a; h1 += b; } else { h2a += a; h2b += b; }
+  }
+  addPair(h0, h1); addPair(h2a, h2b);
+  const run = fs.find(f => f.kind === 'run');
+  const lead = fs.find(f => f.kind === 'biggestLead');
+  const cb = fs.find(f => f.kind === 'comeback');
+  const tl = fs.find(f => f.kind === 'timeLed');
+  const byName = {};
+  (g.players || []).forEach(p => { byName[tc(p.name)] = p; });
+
+  sents.forEach(sn => {
+    /* 1. a team is named first where the sentence says it won */
+    if (WIN_VERBS.test(sn) && !/\bnot enough\b|\bnever\b|\bfor\b.+\bnot\b/.test(sn)) {
+      const iw = sn.indexOf(N[w]), il = sn.indexOf(N[l]);
+      const verb = sn.search(WIN_VERBS);
+      if (il >= 0 && iw >= 0 && il < verb && iw > verb) flag('loser-beat-winner', N[l] + ' is named as beating ' + N[w], sn);
+      if (il >= 0 && iw < 0 && il < verb) flag('loser-beat-winner', N[l] + ' is named as the winner', sn);
+      if (iw >= 0 && sn.indexOf(N[w], iw + 1) > verb && iw < verb) flag('beat-itself', N[w] + ' is named on both sides of the verb', sn);
+    }
+    /* 2. a final score is the final score */
+    /* only a pair that is put AS the result: right after a verb of winning and the opponent's name ("beat Bristol Flyers 94-68"), or
+       after "took this" / "finished". A 33-11 bench edge or a 57-32 rebounding gap in the same headline is another claim. */
+    const resultPairs = [];
+    const rr = /(?:\b(?:beat|beats|overwhelm|overwhelms|outlast|outlasts|see off|sees off)\b[^\d\u2013.]{0,70}?|\bedges?\s+(?=[A-Z])[^\d\u2013.]{0,70}?|\b(?:took this|finished)\s+)(\d{1,3})\u2013(\d{1,3})\b/g;
+    let mm;
+    while ((mm = rr.exec(sn))) resultPairs.push([+mm[1], +mm[2]]);
+    resultPairs.forEach(([a, b]) => {
+      if (!(Math.max(a, b) === hi && Math.min(a, b) === lo)) flag('score-mismatch', a + '\u2013' + b + ' is not the final score, ' + hi + '\u2013' + lo, sn);
+      else if (a < b) flag('score-order', 'the winners\u2019 figure comes first: ' + hi + '\u2013' + lo, sn);
+    });
+    /* a period's score, or the half's: a score somebody actually had */
+    const pp = /(?:\b(?:took|won|taken)\s+the\s+(?:period|quarter|first|second|third|fourth)\b(?!\s+chance)(?!\s+half)[^\d\u2013.]{0,20}?|\b(?:at the break|at half-time|at the half|half-time score was)\b[^\d\u2013.]{0,12}?)(\d{1,3})\u2013(\d{1,3})\b/gi;
+    while ((mm = pp.exec(sn))) if (!allowedPairs.has(mm[1] + '-' + mm[2])) flag('period-score', mm[1] + '\u2013' + mm[2] + ' is not a score the sides had at that point', sn);
+    /* 3. runs, leads, comebacks */
+    const rn = /(\d+)\u20130 (?:run|burst)/.exec(sn);
+    if (rn && run && +rn[1] > run.data.n) flag('run-too-long', 'the longest run was ' + run.data.n + '\u20130', sn);
+    if (rn && !run) flag('run-invented', 'no run of eight or more was found', sn);
+    const lb = /led by as many as (\d+)/.exec(sn);
+    if (lb && lead && +lb[1] !== lead.data.by) flag('lead-size', 'the biggest lead was ' + lead.data.by, sn);
+    const ov = /overturn (\d+)/i.exec(sn);
+    if (ov && (!cb || +ov[1] !== cb.data.deficit)) flag('comeback-size', 'the deficit overturned was ' + (cb ? cb.data.deficit : 'none'), sn);
+    if (/come from behind|came from behind|overturn/i.test(sn) && !cb && !fs.find(f => f.kind === 'turnedAfterHalf')) flag('comeback-invented', 'nobody came from behind', sn);
+    /* 4. who led, and for how long */
+    const timeD = tl ? tl.data : null;
+    if (/from the first basket to the last|wire to wire/i.test(sn) && !(timeD && timeD.perfect)) flag('wire-to-wire', 'the winners did trail or the score was level after the first basket', sn);
+    if (/\bnever trailed\b|\bat no point was\b/i.test(sn) && !(timeD && timeD.neverTrailed)) flag('never-trailed', 'the winners did trail', sn);
+    if (/\b(almost|nearly|virtually)\b/i.test(sn) && /\b(\d+|all) (?:of the )?(\d+ )?minutes\b/i.test(sn) && timeD && timeD.perfect) flag('hedge-on-perfect', 'they did lead throughout: no hedge', sn);
+    const lm = /(?:in front for|led for) (\d+|\w+) of the (\d+|\w+) minutes/i.exec(sn);
+    if (lm && timeD) {
+      const word = x => { const i = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'].indexOf(String(x).toLowerCase()); return i >= 0 ? i : +x; };
+      const side = tl.side, mins = Math.round(timeD.led[side] / 60000), tot = Math.round(timeD.total / 60000);
+      if (word(lm[1]) !== mins || word(lm[2]) !== tot) flag('minutes-led', 'they led ' + mins + ' of ' + tot + ' minutes', sn);
+    }
+    /* 5. players' points */
+    Object.keys(byName).forEach(name => {
+      if (sn.indexOf(name) < 0) return;
+      const p = byName[name], esc2 = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      [new RegExp(esc2 + '\\u2019s (\\d+)\\b(?! (?:assists|rebounds))'), new RegExp(esc2 + ' (?:scored|scores|hit|hits|posted) (\\d+)\\b(?! (?:of|threes|three|from|assists|rebounds|points (?:off|in|from)|off|in))')].forEach(re => {
+        const m = re.exec(sn);
+        if (m && (p.pts || 0) !== +m[1]) flag('player-points', name + ' scored ' + (p.pts || 0) + ', not ' + m[1], sn);
+      });
+    });
+    /* 6. the boards */
+    const bd = /won the boards (\d+)\u2013(\d+)/.exec(sn);
+    const bf = fs.find(f => f.kind === 'boards');
+    if (bd && bf && (+bd[1] !== bf.data.mine || +bd[2] !== bf.data.theirs)) flag('boards', 'the boards were ' + bf.data.mine + '\u2013' + bf.data.theirs, sn);
+    if (bd && !bf && +bd[1] < +bd[2]) flag('boards', 'the winners of the boards have the larger figure', sn);
+  });
+  return found;
 }
 
 /* ============================================================== revising ===
@@ -2067,26 +2195,38 @@ function halftime(g) {
    (grammar, length, rhythm, density, repetition, filler), and while it is below the target the reviser tries each repair it
    knows (split a run-on, cut a filler, a pronoun for a club just named, drop a sentence said twice), keeps the one that raises
    the score most, and goes again. What it did is returned with the report (quality), so it can be read and measured. */
-function finish(g, secs, stand, headline) {
+function finish(g, secs, stand, headline, fs) {
   const Lg = L();
   const names = [nm(g, 0), nm(g, 1)];
-  const initial = [], final = [], log = [];
+  const initial = [], final = [], log = [], logic = [];
   let before = null;
+  const verify = text => verifyClaims(g, fs || [], text);
   const one = (text, section, first) => {
-    const r = Lg.revise(text, { names, before, paragraphStart: !!first, target: Lg.TARGET });
+    const r = Lg.revise(text, { names, before, paragraphStart: !!first, target: Lg.TARGET, verify });
     initial.push(r.initial); final.push(r.score);
     r.log.forEach(x => log.push(Object.assign({ section }, x)));
+    /* what the facts check found in the first draft, and what it could not get rid of */
+    verify(text).forEach(f => logic.push({ section, rule: f.rule, why: f.why, fixed: verify(r.text).every(x => x.sentence !== f.sentence) }));
     const sn = Lg.sentencesOf(r.text.replace(/<[^>]*>/g, ''));
     before = sn.length ? sn[sn.length - 1] : before;
     return r.text;
   };
-  const head = Lg.polish(headline, { names });
-  const st = stand ? one(stand, 'standfirst', false) : stand;
-  secs.forEach(sec => { sec.paras = sec.paras.map((p, i) => one(p, sec.heading, i === 0)); });
+  let head = Lg.polish(headline, { names });
+  /* a headline the facts refuse falls back to the plain result, which is always true */
+  const hv = verify(head);
+  if (hv.length) {
+    hv.forEach(f => logic.push({ section: 'headline', rule: f.rule, why: f.why, fixed: true }));
+    const r0 = (fs || []).find(f => f.kind === 'result');
+    head = r0 ? nm(g, r0.data.winner) + ' beat ' + nm(g, r0.data.loser) + ' ' + Math.max(g.score[0], g.score[1]) + '\u2013' + Math.min(g.score[0], g.score[1]) : head;
+  }
+  let st = stand ? one(stand, 'standfirst', false) : stand;
+  /* a standfirst the facts emptied falls back to the one thing that is always true */
+  if (stand && !(st && st.trim())) st = 'Final score ' + Math.max(g.score[0], g.score[1]) + '\u2013' + Math.min(g.score[0], g.score[1]) + '.';
+  secs.forEach(sec => { sec.paras = sec.paras.map((p, i) => one(p, sec.heading, i === 0)).filter(p => p && p.trim()); });
   const mean = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 100);
   return { headline: head, standfirst: st,
            quality: { target: Lg.TARGET, initial: mean(initial), score: mean(final), min: final.length ? Math.min.apply(null, final) : 100,
-                      paragraphs: final.length, satisfied: final.filter(x => x >= Lg.TARGET).length, revisions: log } };
+                      paragraphs: final.length, satisfied: final.filter(x => x >= Lg.TARGET).length, revisions: log, logic } };
 }
 
 function report(g) {
@@ -2122,9 +2262,9 @@ function report(g) {
   addCapped('The scout’s note', sectionScout(g, fs, R), 'scout');
   let sc = null;
   try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }
-  const done = finish(g, secs, stand, hl);
+  const done = finish(g, secs, stand, hl, fs);
   return { headline: done.headline, standfirst: done.standfirst, quality: done.quality,
-           sections: secs, facts: fs, scout: sc };
+           sections: secs.filter(x => x.paras.length), facts: fs, scout: sc };
 }
 
 /* Plain text, for a news article body or a feed — same words, no markup. */
@@ -2142,6 +2282,6 @@ function plain(g) {
   return lines.join('\n').trim();
 }
 
-return { report, plain, headline, standfirst, five, halftime,
+return { report, plain, headline, standfirst, five, halftime, verifyClaims,
          __x: { sectionFlow, sectionNumbers, sectionFactors, sectionPassing, sectionPlayTypes, sectionClock, sectionLineups, sectionPlayers, makeRef, joinSentences } };
 }));

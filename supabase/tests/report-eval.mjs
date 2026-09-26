@@ -149,7 +149,7 @@ const FAMILIES = {
   'second shots':   /won the ball back on|came back to them/i
 };
 
-function measure(rep) {
+function measure(rep, brief) {
   const paras = rep.sections.flatMap(s => s.paras);
   const prose = [rep.headline, rep.standfirst].concat(paras).join(' ');
   const sentences = prose.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 4);
@@ -189,7 +189,11 @@ function measure(rep) {
   /* the language model's own findings on the FINISHED text, and what its reviser did to get there */
   const issues = Lang ? paras.concat([rep.headline, rep.standfirst]).flatMap(p => Lang.lint(p, { allowEntities: true })) : [];
   const q = rep.quality || { initial: 100, score: 100, satisfied: 0, paragraphs: 0, revisions: [] };
+  const q0 = q;
   return {
+    /* the facts check: what it found in the first drafts, and an independent audit of the finished text against the brief */
+    logicFound: (q0.logic || []).length, logicKinds: (q0.logic || []).map(x => x.rule),
+    logicLeft: brief ? paras.concat([rep.headline, rep.standfirst]).flatMap(p => Report.verifyClaims(brief, rep.facts, p)).length : 0,
     lintIssues: issues.length, lintKinds: issues.map(i => i.rule), qInitial: q.initial, qScore: q.score, qSatisfied: q.satisfied,
     qParagraphs: q.paragraphs, revisions: q.revisions.length, revisionKinds: q.revisions.map(r => r.repair),
     words, sentences: sentences.length, facts: rep.facts.length,
@@ -259,8 +263,13 @@ for (const g of games) {
   b.season = { players: SEASON.players, teams: SEASON.teams,
                teamIndex: { [g.home_team_id]: 0, [g.away_team_id]: 1 } };
   const rep = Report.report(b);
-  const m = measure(rep);
+  const m = measure(rep, b);
   rows.push({ id: g.id.slice(0, 8), score: b.score.join('-'), ...m });
+  if (process.argv.includes('--logic')) {
+    (rep.quality.logic || []).forEach(x => console.log('  CAUGHT ' + g.id.slice(0, 8) + ' [' + x.rule + '] in ' + x.section + ': ' + x.why + (x.fixed ? ' (dropped)' : ' (STILL THERE)')));
+    [rep.headline, rep.standfirst].concat(rep.sections.flatMap(x => x.paras)).forEach(p => Report.verifyClaims(b, rep.facts, p).forEach(f =>
+      console.log('  LOGIC ' + g.id.slice(0, 8) + ' [' + f.rule + '] ' + f.why + '\n         ' + f.sentence)));
+  }
 
   if ((shown < show && !only) || (only && g.id.startsWith(only))) {
     shown++;
@@ -297,6 +306,8 @@ console.log('  score before revising ' + avg('qInitial').toFixed(1));
 console.log('  score after           ' + avg('qScore').toFixed(1) + '   (target ' + (Lang ? Lang.TARGET : '?') + ')');
 console.log('  paragraphs at target  ' + rows.reduce((a, r) => a + r.qSatisfied, 0) + ' of ' + rows.reduce((a, r) => a + r.qParagraphs, 0));
 console.log('  revisions / report    ' + avg('revisions').toFixed(2) + '   (' + summarise(rows.flatMap(r => r.revisionKinds)) + ')');
+console.log('  logic errors caught   ' + avg('logicFound').toFixed(2) + '   (' + summarise(rows.flatMap(r => r.logicKinds)) + ')');
+console.log('  logic errors left     ' + avg('logicLeft').toFixed(2) + '   (an independent audit of the finished text against the facts)');
 console.log('  grammar findings left ' + avg('lintIssues').toFixed(2) + '   (' + summarise(rows.flatMap(r => r.lintKinds)) + ')');
 
 /* which families are never touched, across every game — the clearest list of

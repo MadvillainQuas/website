@@ -647,13 +647,16 @@ function factTimeLed(g) {
   const out = [];
   const ev = g.events || [];
   if (!clocked(ev) || g.score[0] === g.score[1]) return out;
-  let s = [0, 0], led = [0, 0], level = 0, last = 0;
+  let s = [0, 0], led = [0, 0], level = 0, last = 0, first = null, levelled = 0, trailedAt = [false, false];
   const upTo = t => { const d = Math.max(0, t - last); const diff = s[0] - s[1]; if (diff > 0) led[0] += d; else if (diff < 0) led[1] += d; else level += d; last = t; };
   ev.forEach(e => {
     const v = SCORE_PTS[e.t];
     if (!v || e.team == null || e.clock == null) return;
     upTo(elapsed(e.period, e.clock));
     s[e.team] += v;
+    if (first == null) first = e.team;
+    if (s[0] === s[1]) levelled++;                                   // the score was level again after a basket
+    else if (s[0] > s[1]) trailedAt[1] = true; else trailedAt[0] = true;   // somebody was behind, if only for a moment
   });
   let total = 0;
   for (let p = 1; p <= (g.periods || 4); p++) total += PLEN_(p);
@@ -661,8 +664,15 @@ function factTimeLed(g) {
   if (total <= 0) return out;
   const w = g.score[0] > g.score[1] ? 0 : 1;
   const wShare = led[w] / total, lShare = led[1 - w] / total;
-  const data = { winner: w, led, level, total, winnerShare: wShare, loserShare: lShare };
+  /* THE EXACT STORY, not a rounded one: did the winners ever trail (a single basket by the other side counts), was the score ever
+     level again after the first basket, and did they score first. "From the first basket to the last" is only true when all three
+     hold; "never trailed" when the first two do. The shares are for everything else. */
+  const neverTrailed = !trailedAt[w] && led[1 - w] === 0;
+  const perfect = neverTrailed && first === w && levelled === 0;
+  const data = { winner: w, led, level, total, winnerShare: wShare, loserShare: lShare, neverTrailed, perfect, scoredFirst: first === w, levelled };
   if (lShare >= 0.55) out.push(F('timeLed', 1 - w, 77, Object.assign({ kind: 'ledMost' }, data), g.names[1 - w] + ' led most of the game and lost it'));
+  else if (perfect) out.push(F('timeLed', w, 70, Object.assign({ kind: 'wire' }, data), g.names[w] + ' led from the first basket to the last'));
+  else if (neverTrailed) out.push(F('timeLed', w, 66, Object.assign({ kind: 'wire' }, data), g.names[w] + ' never trailed'));
   else if (wShare >= 0.93) out.push(F('timeLed', w, 64, Object.assign({ kind: 'wire' }, data), g.names[w] + ' led almost throughout'));
   return out;
 }

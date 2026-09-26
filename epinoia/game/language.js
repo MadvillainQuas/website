@@ -395,6 +395,29 @@ const COMPOUND_NUM = new RegExp('\\b(' + NUM_WORD + ') (point|minute|second|game
 
 /* each rule: id, level, message, find (RegExp, global) or test(text) -> [{sample, index}], fix(match...) -> replacement, examples */
 const GRAMMAR = [
+  /* -------------------------------------------------------------- logic
+     A sentence can be grammatical and impossible. These find what cannot be true whatever the game was: a part larger than its
+     whole, a whole written as a fraction of itself, a hedge on an exact figure, a margin over nothing, two equal figures compared. */
+  { id: 'all-of-all', logic: true, level: 'error', msg: 'a whole written as a share of itself ("40 of the 40"): "all 40"',
+    find: new RegExp('\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) of (?:the|their|his|her|its) \\1\\b', 'gi'), fix: (m, n) => 'all ' + n,
+    bad: 'They led for 40 of the 40 minutes.', good: 'They led for all 40 minutes.' },
+  { id: 'part-exceeds-whole', logic: true, level: 'error', msg: 'a part larger than its whole ("12 of 10")', test: 'partwhole', fix: null,
+    bad: 'They made 12 of 10 free throws.', good: 'They made 10 of 12 free throws.' },
+  { id: 'hedged-exact', logic: true, level: 'error', msg: 'a hedge on an exact figure ("almost ... all 40")',
+    find: /\b(?:almost|nearly|virtually|practically)\b[^.!?]{0,70}\b(?:all \d+|every single|\d+ of the \d+ (?:minutes|games|shots)|100%)/gi, fix: null,
+    bad: 'They led almost throughout: all 40 minutes.', good: 'They led for all 40 minutes.' },
+  { id: 'equal-figures-compared', logic: true, level: 'error', msg: 'two equal figures put as a difference ("won the boards 40\u201340")',
+    find: /\b(?:won|beat|outscored|outshot|outrebounded|edged|took)\b[^.!?]{0,50}\b(\d+(?:\.\d+)?)%?\u2013\1%?\b/gi, fix: null,
+    bad: 'They won the boards 40\u201340.', good: 'They won the boards 41\u201340.' },
+  { id: 'zero-of-zero', logic: true, level: 'error', msg: 'a share of nothing ("0 of 0")', find: /\b(?:0|no|zero) of (?:0|no|zero)\b/gi, fix: null,
+    bad: 'They went 0 of 0 from three.', good: 'They took no threes.' },
+  { id: 'impossible-percent', logic: true, level: 'error', msg: 'a share above 100%', find: /\b(?:1[0-9]{2}|[2-9][0-9]{2})(?:\.\d+)?% of\b/g, fix: null,
+    bad: 'They took 140% of their shots from three.', good: 'They took 40% of their shots from three.' },
+  { id: 'lead-by-nothing', logic: true, level: 'error', msg: 'a lead of nothing', find: /\bled by (?:no|zero|0)\b/gi, fix: null,
+    bad: 'They led by 0.', good: 'They led by 4.' },
+  { id: 'won-with-less', logic: true, level: 'error', msg: '"won" a comparison the figures say was lost or level ("won the boards 30\u201340")',
+    find: /\b(?:won|took|owned|controlled) the (?:boards|paint|glass)\b[^.!?]{0,30}\b(\d+)\u2013(\d+)\b/gi, test: 'lowerwins', fix: null,
+    bad: 'They won the boards 30\u201340.', good: 'They won the boards 40\u201330.' },
   /* ------------------------------------------------------------- spelling */
   { id: 'misspelling', level: 'error', msg: 'a misspelt word', find: new RegExp('\\b(' + Object.keys(MISSPELL).filter(k => !/_$/.test(k)).join('|') + ')\\b', 'gi'),
     fix: m => matchCase(m, MISSPELL[m.toLowerCase()]), bad: 'They recieve the ball.', good: 'They receive the ball.' },
@@ -499,7 +522,22 @@ function findParallel(text) {
   }
   return out;
 }
-const SPECIAL = { hyphen: findHyphens, passive: findPassive, parallel: findParallel };
+function findPartWhole(text) {
+  const out = [];
+  const re = /\b(\d+) of (?:the |their |his |her |its )?(\d+)\b/g;
+  let m;
+  while ((m = re.exec(text))) if (Number(m[1]) > Number(m[2])) out.push({ sample: m[0], index: m.index });
+  return out;
+}
+/* "won the boards 30-40": the winner's figure is the first one in every sentence the report writes */
+function findLowerWins(text) {
+  const out = [];
+  const re = /\b(?:won|took|owned|controlled) the (?:boards|paint|glass)\b[^.!?]{0,30}\b(\d+)\u2013(\d+)\b/gi;
+  let m;
+  while ((m = re.exec(text))) if (Number(m[1]) < Number(m[2])) out.push({ sample: m[0], index: m.index });
+  return out;
+}
+const SPECIAL = { hyphen: findHyphens, passive: findPassive, parallel: findParallel, partwhole: findPartWhole, lowerwins: findLowerWins };
 
 /* what the grammar finds in a text (tags are ignored): [{ id, level, msg, sample }] */
 function grammar(html, opts) {
@@ -508,10 +546,10 @@ function grammar(html, opts) {
   const out = [];
   GRAMMAR.forEach(r => {
     let hits = [];
-    if (r.find) { r.find.lastIndex = 0; let m; while ((m = r.find.exec(text))) hits.push({ sample: m[0], index: m.index }); }
-    else if (typeof r.test === 'string' && SPECIAL[r.test]) hits = SPECIAL[r.test](text);
+    if (typeof r.test === 'string' && SPECIAL[r.test]) hits = SPECIAL[r.test](text);
+    else if (r.find) { r.find.lastIndex = 0; let m; while ((m = r.find.exec(text))) hits.push({ sample: m[0], index: m.index }); }
     if (r.id === 'american-spelling' && o.american) hits = [];
-    hits.forEach(h => out.push({ id: r.id, level: r.level, msg: r.msg, sample: h.sample.trim().slice(0, 60) }));
+    hits.forEach(h => out.push({ id: r.id, level: r.level, logic: !!r.logic, msg: r.msg, sample: h.sample.trim().slice(0, 60) }));
   });
   /* a club is plural in this report: "Bristol Flyers were", never "was" */
   (o.names || []).forEach(n => {
@@ -617,7 +655,7 @@ function lint(html, opts) {
   if ((m = /\bthe (?:winners|losers)’s\b/i.exec(plain))) add('possessive', m[0]);
   const long = plain.split(/(?<=[.!?])\s+/).find(x => (x.match(/\b\d+(?:\.\d+)?%?/g) || []).length > (o.maxNumerals || 5));
   if (long) add('too-many-numbers', long);
-  grammar(html, o).forEach(f => { if (f.level !== 'hint' || o.hints) issues.push({ rule: f.id, level: f.level, sample: f.sample }); });
+  grammar(html, o).forEach(f => { if (f.level !== 'hint' || o.hints) issues.push({ rule: f.id, level: f.level, logic: f.logic, sample: f.sample }); });
   return issues;
 }
 
@@ -674,7 +712,7 @@ function critique(html, o) {
   const notes = [];
   let score = 100;
   const pen = (cost, why) => { score -= cost; notes.push({ why, cost }); };
-  lint(html, { maxNumerals: 99, allowEntities: true, names: opts.names, hints: true }).forEach(i => { if (i.rule !== 'too-many-numbers') pen(i.level ? LEVEL_COST[i.level] : 12, 'grammar: ' + i.rule + ' (' + i.sample.trim() + ')'); });
+  lint(html, { maxNumerals: 99, allowEntities: true, names: opts.names, hints: true }).forEach(i => { if (i.rule !== 'too-many-numbers') pen(i.logic ? 25 : (i.level ? LEVEL_COST[i.level] : 12), (i.logic ? 'logic: ' : 'grammar: ') + i.rule + ' (' + i.sample.trim() + ')'); });
   const sents = sentencesOf(plain);
   sents.forEach((sn, i) => {
     const words = sn.split(/\s+/).length;
@@ -698,6 +736,8 @@ function critique(html, o) {
   if (sents.length && /^(They|Their)\b/.test(sents[0]) && opts.paragraphStart) pen(4, 'opens on a bare pronoun');
   const rp = repeatedPhrase(sents);
   if (rp) pen(6, 'says "' + rp.phrase + '" twice');
+  /* LOGIC AGAINST THE FACTS: the caller's verifier reads a sentence and the game it describes, and says what is not so */
+  if (typeof opts.verify === 'function') opts.verify(html).forEach(f => pen(25, 'logic: ' + f.rule + ' (' + String(f.why || f.sentence).slice(0, 60) + ')'));
   sents.forEach(sn => { if (mixedNumbers(sn)) pen(4, 'digits and number words in one breath'); });
   (opts.names || []).forEach(n => {
     const plainName = stripTags(n);
@@ -813,7 +853,22 @@ function opTail(text) {
   sents[rp.later] = sn.slice(0, comma) + '.';
   return sents.join(' ');
 }
-const REPAIRS = [['fillers', opFillers], ['numbers', opNumbers], ['tail', opTail], ['split', opSplit], ['pronoun', opPronoun], ['dedupe', opDedupe]];
+/* A SENTENCE THE FACTS REFUSE IS DROPPED. It is never rewritten by guessing what was meant: a report with one sentence fewer is true,
+   and one with a plausible patch may not be. */
+function opClaims(text, opts) {
+  const o = opts || {};
+  if (/<[^>]+>/.test(text)) return text;
+  const bad = (typeof o.verify === 'function' ? o.verify(text).map(f => f.sentence) : []).filter(Boolean);
+  /* ... and one the text alone shows to be impossible (a part larger than its whole, a hedge on an exact figure) */
+  grammar(text, {}).filter(f => f.logic).forEach(f => {
+    const sn = sentencesOf(text).find(x => x.indexOf(f.sample) >= 0);
+    if (sn) bad.push(sn);
+  });
+  if (!bad.length) return text;
+  const kept = sentencesOf(text).filter(sn => !bad.some(b => sn.indexOf(b) >= 0 || b.indexOf(sn) >= 0));
+  return kept.join(' ');
+}
+const REPAIRS = [['claims', opClaims], ['fillers', opFillers], ['numbers', opNumbers], ['tail', opTail], ['split', opSplit], ['pronoun', opPronoun], ['dedupe', opDedupe]];
 
 /* REVISE until satisfied: hill-climb on critique(), one repair a pass, the one that gains most, until the target or until
    nothing helps. Deterministic, and it says what it did. */
@@ -822,21 +877,22 @@ function revise(html, o) {
   const target = opts.target || TARGET, max = opts.max || 8;
   let cur = polish(html, opts), c = critique(cur, opts);
   const first = c.score, log = [];
-  for (let pass = 0; pass < max && c.score < 100; pass++) {
+  const logicLeft = cc => cc.notes.some(n => /^logic:/.test(n.why));
+  for (let pass = 0; pass < max && (c.score < 100 || logicLeft(c)); pass++) {
     let best = null;
     REPAIRS.forEach(([name, fn]) => {
       const cand = polish(fn(cur, opts), opts);
-      if (cand === cur || !cand.trim()) return;
+      if (cand === cur || (!cand.trim() && name !== 'claims')) return;
       const cc = critique(cand, opts);
       if (cc.score > c.score && (!best || cc.score > best.c.score)) best = { cand, c: cc, name };
     });
     if (!best) break;
     /* satisfied, and nothing left that is worth more than a point or two: stop rather than fiddle with a text that is good */
-    if (c.score >= target && best.c.score - c.score < 4) break;
+    if (c.score >= target && !logicLeft(c) && best.c.score - c.score < 4) break;
     log.push({ repair: best.name, from: c.score, to: best.c.score });
     cur = best.cand; c = best.c;
   }
-  return { text: cur, score: c.score, initial: first, log, notes: c.notes, satisfied: c.score >= target };
+  return { text: cur, score: c.score, initial: first, log, notes: c.notes, satisfied: c.score >= target && !logicLeft(c), logic: c.notes.filter(n => /^logic:/.test(n.why)) };
 }
 
 /* CHOOSE between a template's phrasings by score, not by luck: the option the critic likes best given what has just been
@@ -863,5 +919,5 @@ return { spell, spellFull, ordinalWord, ordinalNum, periodName, numeral, signed,
          an, withArticle, plural, count, spellSet, fewer, possessive, POSSESSIVE_PRONOUN, isPlural, verb, be, list,
          unshout, capParts, titleCase, capitalise, polish, lint, inText, IRREG_VERBS,
          critique, revise, choose, opener, sentencesOf, TARGET,
-         GRAMMAR, grammar, fixGrammar, LEVEL_COST };
+         GRAMMAR, grammar, fixGrammar, LEVEL_COST, opClaims };
 }));
