@@ -143,7 +143,7 @@ function paintIdentity(pl, entry, team) {
     $('#teamLink').style.display = 'none';
   }
   if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
-  if (pl.birth_year) sub.appendChild(el('span', null, 'born ' + pl.birth_year));
+  if (pl.birth_year) sub.appendChild(el('span', 'born', 'born ' + pl.birth_year));
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
 }
 
@@ -352,7 +352,29 @@ function barCard(k, label, mine, ranks, pool) {
   return card;
 }
 
+/* HIS ESTIMATED POSITION, IN THE IDENTITY BAND where the listed position sits: the same guard / wing / big the "adjust for
+   position" switch ranks him in (season.js positionGroups: what he did with the ball and on the boards, corrected by the
+   position the club listed). Always shown once the season is known, whether or not the switch is on; a listed position, if
+   the club gave one, stays beside it. */
+const EST_POS = { G: 'guard', F: 'wing', C: 'big' };
+function paintEstPos(mine, field) {
+  const sub = document.querySelector('.idmeta .sub');
+  if (!sub) return;
+  const old = sub.querySelector('.est-pos');
+  if (old) old.remove();
+  const SE = window.EpinoiaSeason;
+  const g = mine && field && field.length >= 3 && SE && SE.positionGroups ? SE.positionGroups(field).get(mine.id) : null;
+  if (!g) return;
+  const chip = el('span', 'pos-chip est-pos', 'EST POS: ' + EST_POS[g]);
+  chip.title = 'Estimated position: worked out from his rebounds, assists, blocks, steals and fouls as a share of his team\u2019s, ' +
+    'corrected by the position the club lists. It is the group "adjust for position" ranks him in.';
+  const listed = sub.querySelector('.pos-chip');
+  const born = sub.querySelector('.born');
+  if (listed) listed.after(chip); else if (born) sub.insertBefore(chip, born); else sub.appendChild(chip);
+}
+
 function paintBars(mine, field) {
+  paintEstPos(mine, field);
   const host = $('#bars'); host.textContent = '';
   if (!mine || field.length < 3) {
     host.appendChild(el('div', 'empty',

@@ -1926,6 +1926,7 @@
       [/^Could not do that: (.+)$/, (m, T) => 'No se pudo hacer: ' + T(m[1])],
       [/^vs (\d+) (.+)$/, (m, T) => 'frente a ' + m[1] + ' ' + T(m[2])],
       /* the league percentile cards and the gap to the league average (cards.js) */
+      [/^EST POS: (guard|wing|big)$/i, m => 'Pos. est.: ' + ({ guard: 'base/escolta', wing: 'alero', big: 'pívot' })[m[1].toLowerCase()]],
       [/^avg (\d+)(?:st|nd|rd|th)$/, 'prom. $1.º'],
       [/^([+-][\d.]+) (above|below) league avg$/, m => m[1] + (m[2] === 'above' ? ' por encima' : ' por debajo') + ' de la media de la liga'],
       [/^lg avg ([+-]?[\d.]+)$/, 'media liga $1'],

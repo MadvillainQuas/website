@@ -1926,6 +1926,7 @@
       [/^Could not do that: (.+)$/, (m, T) => 'できませんでした: ' + T(m[1])],
       [/^vs (\d+) (.+)$/, (m, T) => T(m[2]) + m[1] + '人と比較'],
       /* the league percentile cards and the gap to the league average (cards.js) */
+      [/^EST POS: (guard|wing|big)$/i, m => '推定ポジション: ' + ({ guard: 'ガード', wing: 'ウイング', big: 'ビッグマン' })[m[1].toLowerCase()]],
       [/^avg (\d+)(?:st|nd|rd|th)$/, '平均 $1'],
       [/^[+-]([\d.]+) (above|below) league avg$/, m => 'リーグ平均より ' + m[1] + (m[2] === 'above' ? ' 上' : ' 下')],
       [/^lg avg ([+-]?[\d.]+)$/, 'リーグ平均 $1'],
