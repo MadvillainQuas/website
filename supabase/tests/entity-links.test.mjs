@@ -1,4 +1,4 @@
-// 0178 + 0179: clubs and people linked across leagues and seasons, the possible matches flagged, the women indicator and youth sides.
+// 0178 + 0181: clubs and people linked across leagues and seasons, the possible matches flagged, the women indicator and youth sides.
 // On a real Postgres (PGlite; skipped with a note when it is not installed - PGLITE_DIR=<its folder> or
 // `npm i --no-save @electric-sql/pglite`). Loads 0178 on the minimum schema it reads.
 //
@@ -36,7 +36,7 @@ await db.exec(`
   grant usage on schema public to anon, authenticated; grant usage on schema auth to anon, authenticated;
 `);
 await db.exec(mig('0178_entity_links.sql'));
-await db.exec(mig('0179_youth_teams.sql'));
+await db.exec(mig('0181_youth_teams.sql'));
 
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const as = async (role, admin, fn) => {                    // run something as a browser role
@@ -236,7 +236,7 @@ await as('authenticated', true, async () => { await q(`select platform_link_rena
 ok('a group can be renamed', (await q(`select name from team_groups`))[0].name === 'London Lions (all sides)');
 
 
-console.log('-- youth teams (0179)');
+console.log('-- youth teams (0181)');
 {
   const looks = async t => (await q(`select link_looks_youth($1) y, link_youth_age($1) a`, [t]))[0];
   ok('the youth words are told in English and the leagues\' languages', (await Promise.all(['Liga U', 'Espoirs ÉLITE', 'Seawolves Academy', 'SKYLINERS Juniors', 'PuHu Juniorit', 'Baskets Nachwuchs', 'Jong Donar', 'Youth League', 'Cadete A'].map(looks))).every(r => r.y === true));

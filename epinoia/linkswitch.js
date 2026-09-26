@@ -49,7 +49,7 @@ function foldName(s) {
 }
 const looksWomen = (...parts) => WOMEN_RE.test(foldName(parts.join(' ')));
 
-/* A YOUTH SIDE by what it and its league are called (0179's link_looks_youth and link_youth_age, word for word): the word
+/* A YOUTH SIDE by what it and its league are called (0181's link_looks_youth and link_youth_age, word for word): the word
    in English and the leagues' languages, an academy or a junior side, "Liga U", an age (U19, U-21, Under 18, Sub-20; 12 to 25) */
 const YOUTH_RE = /(^| )(youth|junior|juniors|juniorit|junioren|juvenil|juveniles|cadete|cadetes|infantil|academy|academia|akademie|nachwuchs|jugend|jeunes|espoirs|espoir|primavera|jong|liga u|((u|under|sub) ?(1[2-9]|2[0-5])))( |$)/;
 const AGE_RE = /(^| )(u|under|sub) ?(1[2-9]|2[0-5])( |$)/;
@@ -157,7 +157,7 @@ async function paintTeam(team, o) {
   if (traits) { women = !!traits.women; youth = !!traits.youth; age = traits.age || null; }
   else if (self) { women = !!self.women; youth = !!self.youth; age = self.age || null; }
   else {
-    const w = await call('team_is_women', { p_team: team.id });          // a database that has 0178 but not 0179
+    const w = await call('team_is_women', { p_team: team.id });          // a database that has 0178 but not 0181
     women = w === true || (w === null && looksWomen(...parts));
     youth = looksYouth(...parts); age = youth ? youthAge(...parts) : null;
   }

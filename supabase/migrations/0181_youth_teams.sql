@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0179 — YOUTH TEAMS: a specification beside the women's indicator (follows 0178).
+-- 0181 — YOUTH TEAMS: a specification beside the women's indicator (follows 0178).
 --
 -- Liga U, the ABA U19 League, Espoirs ÉLITE, and the academy and junior sides that play inside senior leagues
 -- (Seawolves Academy, SKYLINERS Juniors, PuHu Juniorit, Kataja Basket Academy) are youth teams. They are told the
@@ -417,11 +417,11 @@ alter function public.platform_team_set_youth(uuid, boolean, text) owner to post
 do $$
 begin
   if has_function_privilege('anon', 'public.platform_team_set_youth(uuid, boolean, text)', 'execute') then
-    raise exception '0179: a signed-out visitor can set a youth flag';
+    raise exception '0181: a signed-out visitor can set a youth flag';
   end if;
   if not has_function_privilege('anon', 'public.team_traits(uuid)', 'execute')
      or not has_function_privilege('anon', 'public.team_is_youth(uuid)', 'execute') then
-    raise exception '0179: the team page cannot read a team''s traits';
+    raise exception '0181: the team page cannot read a team''s traits';
   end if;
-  raise notice '0179 ok: youth sides are told by name and age, set by administrators only, and read by everybody through team_traits';
+  raise notice '0181 ok: youth sides are told by name and age, set by administrators only, and read by everybody through team_traits';
 end $$;

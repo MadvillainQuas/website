@@ -19,7 +19,7 @@ was written against, so a link can be made, moved and undone at any size and not
 Writers are the security-definer functions, each checking `is_platform_admin()`: `platform_link_apply / _remove / _rename /
 _dismiss / _groups / _search / _suggestions / _filters / _auto`, `platform_team_set_women`. Browsers cannot write a table.
 
-## Women's and youth sides (0179)
+## Women's and youth sides (0181)
 
 A side can be a women's team, a youth team, both, or neither; both are **told by name and settable by hand**.
 
