@@ -178,10 +178,7 @@
    --------------------------------------------------------------------------- */
 .ig-grid{display:grid;gap:calc(var(--u)*2);
   grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
-@media (min-width:1100px){
-  .ig-grid{grid-template-columns:repeat(auto-fit,minmax(178px,240px));
-    justify-content:start}
-}
+/* on a desktop the tiles share the row (they were capped at 240px and packed left); the tile keeps its aspect ratio */
 .ig-tile{position:relative;overflow:hidden;aspect-ratio:326/470;
   border:1px solid var(--rule);background:#fff}
 .ig-tile iframe{position:absolute;top:0;left:0;width:326px;height:470px;

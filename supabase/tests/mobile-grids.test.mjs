@@ -123,8 +123,10 @@ ok('the edition byline keeps the fix it was given first',
 /* ---- the desktop layout is untouched -------------------------------------- */
 ok('the desktop news layout still leads with one wide card',
    /@media \(min-width:1000px\)[\s\S]{0,220}first-child\{grid-column:span 3\}/.test(news));
-ok('and the desktop grids still cap their card width',
-   /@media \(min-width:1100px\)[\s\S]{0,140}minmax\(178px,240px\)/.test(home));
+ok('and the desktop grids fill the row: three podium cards and seven more share the width, the directory\'s columns stretch (nothing capped at 240px and packed left)',
+   /@media \(min-width:1100px\)\{ \.stargrid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\} \}/.test(home)
+   && /@media \(min-width:1100px\)\{ \.stargrid\.starmore\{grid-template-columns:repeat\(7,minmax\(0,1fr\)\)\} \}/.test(home)
+   && !/minmax\(178px,240px\)|justify-content:start/.test(home) && !/minmax\(178px,240px\)/.test(card));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

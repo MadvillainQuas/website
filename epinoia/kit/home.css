@@ -33,8 +33,8 @@
 
   .clubgrid{display:grid;gap:calc(var(--u)*2);padding:calc(var(--u)*3);
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
-  /* a four-club league should not stretch four cards across a 2000px screen */
-  @media (min-width:1100px){ .clubgrid{grid-template-columns:repeat(auto-fit,minmax(178px,240px));justify-content:start} }
+  /* ON A DESKTOP THE CARDS FILL THE ROW: auto-fit columns of at least 178px that share the width, so the section is never a few
+     fixed-size cards with empty space to their right (they used to be capped at 240px and packed left). */
 
   /* ---- stars: the club plate, with a rank where the monogram goes ---- */
   .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
@@ -55,7 +55,8 @@
   .starrow-x:hover,.starrow-h.can-open:hover .starrow-x{background:var(--lume);color:var(--on-accent)}
   .stargrid.starmore{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:calc(var(--u)*1.5);
     padding-top:0;margin-top:calc(var(--u)*-1)}
-  @media (min-width:1100px){ .stargrid.starmore{grid-template-columns:repeat(7,minmax(96px,132px));justify-content:start} }
+  /* ranks four to ten: seven across, sharing the whole row */
+  @media (min-width:1100px){ .stargrid.starmore{grid-template-columns:repeat(7,minmax(0,1fr))} }
   .stargrid.starmore[hidden]{display:none}
   .star.small .club-plate{aspect-ratio:1}
   .star.small .club-mono{font-size:clamp(22px,4vw,34px)}
@@ -63,7 +64,8 @@
   .star.small .club-reg{width:7px;height:7px}
   .star.small .star-name{font-size:10px} .star.small .star-team{font-size:7px}
   .star.small .club-ed{display:none}
-  @media (min-width:1100px){ .stargrid{grid-template-columns:repeat(3,minmax(178px,240px));justify-content:start} }
+  /* the podium: three cards that share the whole row (they were capped at 240px and left the right of the section empty) */
+  @media (min-width:1100px){ .stargrid{grid-template-columns:repeat(3,minmax(0,1fr))} }
 
   /* -------------------------------------------------------------------------
      PHONE: THE DIRECTORY IS A DIRECTORY, AND A ROW OF STARS IS A ROW.

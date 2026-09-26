@@ -197,8 +197,7 @@
     -webkit-background-clip:text;background-clip:text}
   .clubgrid{display:grid;gap:calc(var(--u)*2);padding:calc(var(--u)*3);
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
-  /* a four-club league should not stretch four cards across a 2000px screen */
-  @media (min-width:1100px){ .clubgrid{grid-template-columns:repeat(auto-fit,minmax(178px,240px));justify-content:start} }
+  /* on a desktop the cards fill the row (kit/home.css says the same): no fixed-size cards packed left with empty space beside them */
 
   /* ---- stars: the club plate, with a rank where the monogram goes ---- */
   .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
@@ -219,7 +218,7 @@
   .starrow-x:hover,.starrow-h.can-open:hover .starrow-x{background:var(--lume);color:var(--on-accent)}
   .stargrid.starmore{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:calc(var(--u)*1.5);
     padding-top:0;margin-top:calc(var(--u)*-1)}
-  @media (min-width:1100px){ .stargrid.starmore{grid-template-columns:repeat(7,minmax(96px,132px));justify-content:start} }
+  @media (min-width:1100px){ .stargrid.starmore{grid-template-columns:repeat(7,minmax(0,1fr))} }
   .stargrid.starmore[hidden]{display:none}
   .star.small .club-plate{aspect-ratio:1}
   .star.small .club-mono{font-size:clamp(22px,4vw,34px)}
@@ -227,7 +226,7 @@
   .star.small .club-reg{width:7px;height:7px}
   .star.small .star-name{font-size:10px} .star.small .star-team{font-size:7px}
   .star.small .club-ed{display:none}
-  @media (min-width:1100px){ .stargrid{grid-template-columns:repeat(3,minmax(178px,240px));justify-content:start} }
+  @media (min-width:1100px){ .stargrid{grid-template-columns:repeat(3,minmax(0,1fr))} }
 
   /* -------------------------------------------------------------------------
      PHONE: THE DIRECTORY IS A DIRECTORY, AND A ROW OF STARS IS A ROW.
@@ -435,8 +434,7 @@
      the club already has on it. */
   .toty-grid{display:grid;gap:calc(var(--u)*2);padding:0 calc(var(--u)*3) calc(var(--u)*2);
     grid-template-columns:repeat(auto-fill,minmax(158px,1fr))}
-  @media (min-width:1100px){ .toty-grid{grid-template-columns:repeat(5,minmax(150px,220px));
-    justify-content:start} }
+  @media (min-width:1100px){ .toty-grid{grid-template-columns:repeat(5,minmax(0,1fr))} }
   .toty .club-plate{aspect-ratio:4/3}
   .toty-ribbon{position:absolute;top:9px;left:-30px;transform:rotate(-38deg);
     background:var(--amber);color:var(--on-accent);font-family:var(--f-micro);font-size:7px;
