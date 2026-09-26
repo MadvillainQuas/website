@@ -152,3 +152,23 @@
 .mv-sper{ font-weight:500; color:color-mix(in srgb,var(--c,var(--team0)) 70%,var(--text-primary)) }
 .mv-sclk{ color:var(--text-primary) }
 .mv-sdur{ font-size:9.5px; color:var(--text-muted) }
+
+/* ---------- offensive rating and the four factors, under the squads ---------- */
+.mv-fx{ margin-top:14px; padding:14px 14px 10px; min-width:0 }
+.mv-fxtitle{ font-family:var(--f-micro,var(--f-mono)); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px }
+.mv-fxnames{ display:flex; justify-content:space-between; gap:12px; font-family:var(--f-ui,var(--f-head)); font-weight:800; font-size:12px; letter-spacing:.02em; text-transform:uppercase; margin-bottom:6px }
+.mv-fxnames span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.mv-fxhero{ display:grid; grid-template-columns:1fr auto 1fr; align-items:baseline; gap:10px; padding:2px 0 12px; margin-bottom:8px; border-bottom:1px solid var(--border-subtle) }
+.mv-fxbig{ font-family:var(--f-score); font-size:38px; line-height:1; color:var(--text-secondary); font-variant-numeric:tabular-nums }
+.mv-fxbig.r{ text-align:right }
+.mv-fxbig.w{ color:var(--c) }
+.mv-fxlabel{ font-family:var(--f-micro,var(--f-mono)); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); text-align:center }
+.mv-fxrow{ display:grid; grid-template-columns:48px 1fr 48px; align-items:center; gap:10px; padding:7px 0 }
+.mv-fxv{ font-family:var(--f-data,var(--f-mono)); font-size:14px; font-variant-numeric:tabular-nums; color:var(--text-secondary) }
+.mv-fxv.r{ text-align:right }
+.mv-fxv.w{ color:var(--c); font-weight:700 }
+.mv-fxmid{ min-width:0 }
+.mv-fxmid .mv-fxlabel{ margin-bottom:4px }
+.mv-fxbar{ display:flex; gap:2px; height:6px }
+.mv-fxbar i{ display:block; height:100%; border-radius:3px; min-width:3px; opacity:.9 }
+.mv-fxv:not(.w), .mv-fxbig:not(.w){ opacity:.6 }

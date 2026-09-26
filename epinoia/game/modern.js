@@ -283,10 +283,46 @@
       '</div>';
   }
 
+  /* OFFENSIVE RATING AND THE FOUR FACTORS, beneath the two squads. Full stats draws these as
+     mirrored bars from a centre line; here each is ONE bar shared between the clubs -- the left
+     club's share in its colour, the right club's in its own -- with the figures at the ends and
+     the better side's set in its colour. The same numbers (teamAdv, computed in compute()), a
+     quieter dress for a page that is about the players. Nothing here is drawn until both clubs
+     have a row, and a factor with no possessions behind it yet is left out. */
+  function factorsHTML() {
+    const S = window.S, B = window.EpinoiaBox, TA = teamAdvs;
+    if (!TA || !TA[0] || !TA[1] || !(TA[0].possessions > 0 || TA[1].possessions > 0)) return '';
+    /* inked for BOTH themes: a black club is not black on a dark ground, and these are figures and bars */
+    const TC = window.EpinoiaTeamColour;
+    const cols = [0, 1].map(t => { const c = B.safeColour((S.teams[t] || {}).color, t ? '#8ff5ff' : '#93f2bf'); return (TC && TC.ink && TC.ink(c)) || c; });
+    const num = v => (v == null || !isFinite(v)) ? 0 : v;
+    const f1 = v => num(v).toFixed(1);
+    /* hb: higher is better (turnover % is the one that is not) */
+    const ROWS = [['efg%', 'efg', true], ['tov%', 'tovp', false], ['oreb%', 'orebp', true], ['fta rate', 'ftr', true]];
+    const rows = ROWS.map(([label, k, hb]) => {
+      const h = num(TA[0][k]), a = num(TA[1][k]), tot = h + a;
+      const share = tot > 0 ? Math.max(4, Math.min(96, h / tot * 100)) : 50;
+      const hw = h !== a && (hb ? h > a : h < a), aw = h !== a && !hw;
+      return '<div class="mv-fxrow"><span class="mv-fxv' + (hw ? ' w' : '') + '" style="--c:' + esc(cols[0]) + '">' + f1(h) + '</span>' +
+        '<div class="mv-fxmid"><div class="mv-fxlabel">' + label + '</div>' +
+        '<div class="mv-fxbar"><i style="width:' + share.toFixed(1) + '%;background:' + esc(cols[0]) + '"></i>' +
+        '<i style="width:' + (100 - share).toFixed(1) + '%;background:' + esc(cols[1]) + '"></i></div></div>' +
+        '<span class="mv-fxv r' + (aw ? ' w' : '') + '" style="--c:' + esc(cols[1]) + '">' + f1(a) + '</span></div>';
+    }).join('');
+    const oh = num(TA[0].ortg), oa = num(TA[1].ortg);
+    const hero = '<div class="mv-fxhero">' +
+      '<span class="mv-fxbig' + (oh > oa ? ' w' : '') + '" style="--c:' + esc(cols[0]) + '">' + f1(oh) + '</span>' +
+      '<span class="mv-fxlabel">ortg</span>' +
+      '<span class="mv-fxbig r' + (oa > oh ? ' w' : '') + '" style="--c:' + esc(cols[1]) + '">' + f1(oa) + '</span></div>';
+    const names = '<div class="mv-fxnames"><span data-team-slot="0" style="color:' + esc(cols[0]) + '">' + esc(B.tname(0)) + '</span>' +
+      '<span data-team-slot="1" style="color:' + esc(cols[1]) + '">' + esc(B.tname(1)) + '</span></div>';
+    return '<div class="glass mv-fx"><div class="mv-fxtitle">offensive rating &amp; four factors</div>' + names + hero + rows + '</div>';
+  }
+
   function render(d) {
     compute(d);
     labelsFor(window.S);
-    return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' +
+    return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' + factorsHTML() +
       '<div class="setup-note mv-note">positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has twenty season minutes) · tap or hover a player for the full line</div>';
   }
 
