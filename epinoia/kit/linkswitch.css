@@ -1,5 +1,5 @@
 /* Linked clubs and people on the public pages (epinoia/linkswitch.js, migration 0178): the WOMEN indicator,
-   and the button that opens a club's other competitions and seasons or a player's other profiles. */
+   a club's leagues as buttons with the seasons as a drop-down, and the button that opens a player's other profiles. */
 
 .ls-women{ display:inline-flex; align-items:center; font-family:var(--f-micro, monospace); font-size:8.5px; letter-spacing:.14em;
   text-transform:uppercase; line-height:1; padding:4px 7px; border:1px solid currentColor; color:var(--lume, #93f2bf);
@@ -10,7 +10,7 @@
   border-radius:999px; vertical-align:middle; white-space:nowrap }
 :root[data-theme="light"] .ls-youth{ color:#8a5d00 }
 
-.ls-row-host{ margin-top:10px }
+.ls-row-host{ margin-top:6px }
 .ls-wrap{ position:relative; display:inline-block; font-family:var(--f-ui, inherit); text-transform:none; letter-spacing:normal; font-size:13px; line-height:1.4 }
 .ls-btn{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; background:none; color:var(--ink-2, #b9d2c5);
   border:1px solid color-mix(in srgb, var(--lume, #93f2bf) 45%, transparent); border-radius:999px;
@@ -32,8 +32,29 @@
 .ls-h{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; margin:0 2px 8px }
 .ls-h b{ font-family:var(--f-micro, monospace); font-size:9px; letter-spacing:.14em; text-transform:uppercase; font-weight:400; color:var(--ink-3, #7d9a8b) }
 .ls-g{ font-family:var(--f-ui, inherit); font-weight:800; font-size:14px }
-.ls-season{ width:100%; margin:0 0 8px; padding:8px 10px; font:inherit; font-size:12px; color:inherit;
-  background:transparent; border:1px solid var(--rule-2, rgba(170,255,215,.25)); border-radius:8px }
+
+/* A CLUB'S PAGE: its leagues as buttons and the seasons as the one drop-down (linkswitch.js teamSwitcher). A button is a link to that
+   side's page; the one you are on is filled. The drop-down is a pill like the buttons, a native select so a phone opens its own list. */
+.ls-bar{ display:flex; flex-wrap:wrap; align-items:center; gap:5px 6px; font-family:var(--f-ui, inherit); text-transform:none; letter-spacing:normal }
+.ls-comps{ display:flex; flex-wrap:wrap; align-items:stretch; gap:5px }
+.ls-comp{ display:inline-flex; flex-direction:column; justify-content:center; gap:2px; text-decoration:none; color:var(--ink-2, #b9d2c5);
+  border:1px solid color-mix(in srgb, var(--lume, #93f2bf) 45%, transparent); border-radius:999px; padding:3px 9px; line-height:1.2;
+  min-height:22px; box-sizing:border-box }
+.ls-comp:hover{ color:var(--ink, #fff); border-color:var(--lume, #93f2bf); background:color-mix(in srgb, var(--lume, #93f2bf) 10%, transparent) }
+.ls-comp:focus-visible{ outline:2px solid var(--lume, #93f2bf); outline-offset:2px }
+.ls-comp.on{ color:var(--ink, #fff); border-color:var(--lume, #93f2bf); background:color-mix(in srgb, var(--lume, #93f2bf) 16%, transparent) }
+.ls-comp-t{ display:inline-flex; align-items:center; gap:5px }
+.ls-comp-t b{ font-family:var(--f-micro, monospace); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:400 }
+.ls-comp-t .ls-women, .ls-comp-t .ls-youth{ padding:2px 4px; font-size:6px }
+.ls-comp-s{ font-family:var(--f-micro, monospace); font-size:6.5px; letter-spacing:.05em; text-transform:none; color:var(--lume, #93f2bf) }
+.ls-sw{ position:relative; display:inline-block }
+.ls-sw .ls-chev{ position:absolute; right:9px; top:50%; margin-top:-2px; width:4px; height:4px; pointer-events:none; color:var(--ink-2, #b9d2c5) }
+.ls-season{ appearance:none; -webkit-appearance:none; cursor:pointer; min-height:22px; padding:3px 21px 3px 9px; color:var(--ink-2, #b9d2c5);
+  background:transparent; border:1px solid color-mix(in srgb, var(--lume, #93f2bf) 45%, transparent); border-radius:999px;
+  font-family:var(--f-micro, monospace); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase }
+.ls-season:hover{ color:var(--ink, #fff); border-color:var(--lume, #93f2bf) }
+.ls-season:focus-visible{ outline:2px solid var(--lume, #93f2bf); outline-offset:2px }
+.ls-season option{ color:#0d1f17; background:#fff; text-transform:none; letter-spacing:normal }
 .ls-list{ display:flex; flex-direction:column; gap:6px }
 .ls-item{ display:block; text-decoration:none; color:inherit; padding:10px 12px; border-radius:10px;
   border:1px solid var(--rule-2, rgba(170,255,215,.22)); background:color-mix(in srgb, var(--lume, #93f2bf) 3%, transparent) }

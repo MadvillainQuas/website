@@ -3,8 +3,8 @@
    LINKED CLUBS AND PEOPLE, ON THE PUBLIC PAGES (migration 0178; the console's Links tab makes the links).
 
    A team page for a club that plays in more than one competition -- London Lions in the SLB, in the
-   EuroCup and the women's side -- gets a button at the top that opens the club's other competitions and
-   seasons; a team page for a women's side carries a WOMEN indicator beside its league, and one for a youth side
+   EuroCup and the women's side -- gets a button at the top for each of the club's leagues (the page you are on marked)
+   and a drop-down of the seasons alone; a team page for a women's side carries a WOMEN indicator beside its league, and one for a youth side
    (Liga U, an academy, an U19 team) a YOUTH indicator, or its age group. A player's profile
    offers the other rows that are the same person, and his career table runs across all of them.
 
@@ -102,47 +102,51 @@ function popover(label, count) {
 }
 
 /* ------------------------------------------------------------- the team --- */
+/* THE CLUB'S OTHER LEAGUES AND COMPETITIONS ARE BUTTONS ON THE PAGE, and the drop-down beside them holds the SEASONS alone.
+   One button per side (a team row: London Lions in the SLB, in the EuroCup, the women's side), each a link to that side's page,
+   the one you are on marked. Choosing a season keeps the buttons of the sides that played it (your own side always stays) and
+   says under each name which competitions it entered that season; "all seasons" shows every side. (It was one button that
+   opened a panel listing every side with every season, which put the league and the season in the same place.) */
 function teamSwitcher(linked, currentId) {
   const cards = (linked && linked.teams) || [];
   if (cards.length < 2) return null;
-  const P = popover('competitions & seasons', cards.length);
-  const head = P.pop.appendChild(el('div', 'ls-h'));
-  head.appendChild(el('b', null, 'the same club in other competitions'));
-  if (linked.group) head.appendChild(nm('span', 'ls-g', linked.group));
+  const bar = el('div', 'ls-bar');
+  bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'the same club in other leagues and competitions');
   const seasons = seasonsAcross(cards);
   let sel = null;
-  if (seasons.length > 1) {
-    sel = P.pop.appendChild(el('select', 'ls-season')); sel.setAttribute('aria-label', 'season');
-    const all = el('option', null, 'all seasons'); all.value = ''; sel.appendChild(all);
+  if (seasons.length) {                                          // the season first: it decides which buttons are there
+    const wrap = bar.appendChild(el('span', 'ls-sw'));
+    sel = wrap.appendChild(el('select', 'ls-season')); sel.setAttribute('aria-label', 'season');
+    /* "all seasons" is the way to see every side, so it is offered once there is more than one season to choose between */
+    if (seasons.length > 1) { const all = el('option', null, 'all seasons'); all.value = ''; sel.appendChild(all); }
     seasons.forEach(s => { const o = nm('option', null, s); o.value = s; sel.appendChild(o); });
+    sel.value = seasons.length > 1 ? '' : seasons[0];
+    wrap.appendChild(el('i', 'ls-chev'));
   }
-  const list = P.pop.appendChild(el('div', 'ls-list'));
+  const comps = bar.appendChild(el('div', 'ls-comps'));
   function draw() {
     const only = sel ? sel.value : '';
-    list.textContent = '';
+    comps.textContent = '';
     cards.forEach(c => {
+      const here = c.id === currentId;
       const groups = bySeason(c, only);
-      if (only && !groups.length) return;                          // that season: this side did not play
-      const a = list.appendChild(el('a', 'ls-item' + (c.id === currentId ? ' on' : '')));
+      if (only && !groups.length && !here) return;                 // that season: this side did not play
+      const a = comps.appendChild(el('a', 'ls-comp' + (here ? ' on' : '')));
       a.href = teamHref(c);
-      const top = a.appendChild(el('div', 'ls-top'));
+      if (here) a.setAttribute('aria-current', 'page');
+      const all = bySeason(c, null);
+      a.title = all.map(g => g.season + ': ' + g.names.join(' · ')).join('\n');
+      const top = a.appendChild(el('span', 'ls-comp-t'));
       top.appendChild(nm('b', null, c.league || c.name));
       if (c.women) top.appendChild(womenChip());
       if (c.youth) top.appendChild(youthChip(c.age));
-      if (c.id === currentId) top.appendChild(el('span', 'ls-here', 'you are here'));
-      const sub = a.appendChild(el('div', 'ls-sub'));
-      if (!groups.length) sub.appendChild(el('span', null, 'no competition yet'));
-      groups.forEach(g => {
-        const row = sub.appendChild(el('div', 'ls-row'));
-        row.appendChild(nm('span', 'ls-s', g.season));
-        row.appendChild(nm('span', 'ls-c', g.names.join(' · ')));
-      });
+      /* with a season picked out of several, what the side entered that season goes under its name */
+      if (only && seasons.length > 1 && groups.length) a.appendChild(nm('span', 'ls-comp-s', groups[0].names.join(' · ')));
     });
-    if (!list.children.length) list.appendChild(el('div', 'ls-none', 'nothing in that season'));
   }
   if (sel) sel.addEventListener('change', draw);
   draw();
-  return P.wrap;
+  return bar;
 }
 
 /* asked once for the team page: its women and youth indicators and its links. Fills the header and returns what it found. */

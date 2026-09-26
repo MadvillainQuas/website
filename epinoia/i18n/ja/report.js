@@ -667,7 +667,8 @@
       'the same player in other competitions': '他の大会での同じ選手',
       'no club yet': 'まだクラブはありません',
       'youth': 'ユース',
-      'a youth team': 'ユースチーム'
+      'a youth team': 'ユースチーム',
+      'the same club in other leagues and competitions': 'このクラブの他のリーグ・大会'
     },
 
     ctxPatterns: {

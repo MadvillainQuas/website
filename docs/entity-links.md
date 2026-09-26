@@ -13,7 +13,7 @@ was written against, so a link can be made, moved and undone at any size and not
 | `player_groups`, `player_group_members` | a person and the player rows that are them; a member has `auto` + `auto_reason` when the link was made by the automatic pass |
 | `team_flags` | "this side is / is not a women's team", set by hand where the names do not say so |
 | `link_dismissals` | a set somebody said is **not** the same (an md5 of the sorted ids: a new member makes it a new candidate) |
-| `team_is_women(team)` | the women indicator: the hand flag, then `teams.gender`, then the team / league names (English and the leagues' languages, diacritics folded) |
+| `team_is_women(team)` | the women indicator: the hand flag, then `teams.gender`, then **the league's gender** (0182), then the team / league names (English and the leagues' languages, diacritics folded) |
 | `linked_teams(team)`, `linked_players(player)` | public reads for the team page and the profile: the other rows, with leagues, seasons, competitions, women flags; never a birth year |
 
 Writers are the security-definer functions, each checking `is_platform_admin()`: `platform_link_apply / _remove / _rename /
@@ -23,7 +23,7 @@ _dismiss / _groups / _search / _suggestions / _filters / _auto`, `platform_team_
 
 A side can be a women's team, a youth team, both, or neither; both are **told by name and settable by hand**.
 
-* `team_is_women(team)` — the hand flag, then `teams.gender`, then the team / league names.
+* `team_is_women(team)` — the hand flag, then `teams.gender`, then the league's gender (0182, see below), then the team / league names.
 * `team_is_youth(team)` / `team_age_group(team)` / `team_traits(team)` (women + youth + age in one public call) — the hand flag,
   then `teams.age_group` (0119: `senior`/`masters`/`open` mean not youth; `U18` means youth U18), then the names: the word
   (youth, junior(s), juniorit, junioren, juvenil, cadete, infantil, academy, akademie, nachwuchs, jugend, jeunes, espoirs, primavera,
@@ -37,6 +37,23 @@ A side can be a women's team, a youth team, both, or neither; both are **told by
   automatic pass, exactly as for any linked club.
 * Team page: a **WOMEN** and/or **YOUTH** (or the age group, U19) chip beside the league; the switcher shows the same chips. Before the
   database has the functions the page falls back on the same names, so the chips show straight away.
+
+## One club sets its whole league (0182)
+
+In the console the club row's first dropdown is **women · whole league / men · whole league** (or, for the odd side, **women /
+not women · this team only**, or *auto*). Choosing a whole-league answer does two things: it sets the team's own flag, and it sets
+**`leagues.gender`** (0131) of the team's league to `women` / `men`, so every team in that league counts as women's / men's whatever
+its name says, and so does the rest of the site that reads the league's gender (the rail's W chip, HOME's league cards, the
+favourites, the scouting filter). `team_is_women` reads the league step after the team's own flag and recorded gender, before the
+names; a `mixed` or unset league says nothing.
+
+* Hand flags on **other** teams of that league that say the opposite are handed back (the answer says how many); a team's own recorded
+  `teams.gender` (0119) is left alone and is counted as "kept", since it is more specific than its league.
+* *Auto* clears that team's flag only: a league is never un-set from a club. Change or clear the league itself in the league console.
+* `platform_team_set_women(team, women, whole_league default true)` returns json `{ women, whole_league, league, teams, cleared, kept }`
+  for the console to say ("Aussie Premier is now a women's league: all 12 of its teams count as women's."). The cards
+  (`link_team_cards`) carry `league_gender` and `women_from` (`team` / `team_gender` / `league` / `names`).
+* Audited twice: `team_women_flag` (the team) and `set_league_gender` (the league, with the team it came from).
 
 ## The possible matches (flagged, with a confidence and a reason)
 
@@ -73,9 +90,11 @@ It runs when clubs are linked in the console (the answer says how many players),
   league and season, picked into a basket), **linked** (searchable groups, rename, unlink, add from a search inside the card,
   women's flag per team, `auto` marker per player). Every dropdown is one component (`combo`): server-side search,
   arrows / Enter / Escape, a slow answer never replaces a newer one.
-* `epinoia/linkswitch.js` + `epinoia/kit/linkswitch.css` — the team page's **WOMEN** indicator and its
-  **competitions & seasons** button (the club's other sides, each with its seasons and competitions, a season filter),
-  the player profile's **other profiles** button, and the profile's career table running across the linked profiles
+* `epinoia/linkswitch.js` + `epinoia/kit/linkswitch.css` — the team page's **WOMEN** indicator; under the header a small row with a
+  **season drop-down (seasons only)** and **one button per league the club plays in** (each a link to that side's page, the one you
+  are on filled, the competitions of each in its tooltip). A season picked out of several keeps the buttons of the sides that played
+  it (yours always stays) and names the competitions under each; "all seasons" shows every side. It was one "competitions & seasons"
+  button opening a panel of every side and season. Also the player profile's **other profiles** button, and the profile's career table running across the linked profiles
   (`player.js` reads `player_season_stats` for every id in the group). Two plain `fetch` calls, no SDK; a database without
   0178 answers 404 and the pages show nothing new.
 

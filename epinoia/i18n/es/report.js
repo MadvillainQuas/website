@@ -685,7 +685,8 @@
       'the same player in other competitions': 'El mismo jugador en otras competiciones',
       'no club yet': 'Aún sin club',
       'youth': 'juvenil',
-      'a youth team': 'equipo juvenil'
+      'a youth team': 'equipo juvenil',
+      'the same club in other leagues and competitions': 'El mismo club en otras ligas y competiciones'
     },
 
     ctxPatterns: {

@@ -15,7 +15,8 @@
      FIND AND LINK      type-ahead over thousands of rows, narrowed by league and season, picked into a
                         basket, linked together (a row already in a group brings its group).
      LINKED             every group, searchable, renamed in place, a row taken out with one click, another
-                        added from a search inside the group's own card; a team's women's flag corrected.
+                        added from a search inside the group's own card; a team's women's / men's setting, which
+                        sets its whole league (migration 0182), or the one team.
      WHEN CLUBS ARE LINKED THEIR PLAYERS ARE TOO: the players whose names match across the linked clubs are
                         linked automatically (migration 0178, link_auto_players) and marked "auto", one click
                         undoes one and it is not made again; a club's card has a button to run it again.
@@ -50,6 +51,33 @@ const CONF_HELP = {
   low: 'something disagrees (a birth year, a league): only link if you are sure'
 };
 const KIND_WORD = { exact: 'same name', core: 'middle name ignored', short: 'initial + surname', ambiguous: 'initial: which one?' };
+
+/* THE WOMEN'S / MEN'S SELECT ON A TEAM'S ROW (migration 0182). What it offers, which option is showing, and what each sends.
+   A hand flag that agrees with the league's gender is shown as the whole-league option; one that does not (a women's side in a
+   men's league) as "this team only". "auto" sends nothing about the league: a league is never un-set from a club. */
+function womenChoices(card) {
+  const lg = card.league_gender;
+  let auto;
+  if (card.women_set) auto = 'auto (back to league / names)';
+  else if (card.women_from === 'league') auto = card.women ? 'women (its league)' : 'men (its league)';
+  else if (card.women_from === 'team_gender') auto = card.women ? 'women (recorded)' : 'men (recorded)';
+  else auto = card.women ? 'women (names)' : 'men / mixed (names)';
+  const value = !card.women_set ? 'auto' : card.women ? (lg === 'women' ? 'yes' : 'yes1') : (lg === 'men' ? 'no' : 'no1');
+  return { value, options: [['auto', auto], ['yes', 'women · whole league'], ['no', 'men · whole league'], ['yes1', 'women · this team only'], ['no1', 'not women · this team only']] };
+}
+function womenArgs(value, team) {
+  if (value === 'auto') return { p_team: team, p_women: null };
+  return { p_team: team, p_women: value === 'yes' || value === 'yes1', p_league: value === 'yes' || value === 'no' };
+}
+/* what to say after it: the league that was set, how many teams that reached, what was reset, what kept its own answer */
+function leagueWords(res, women) {
+  if (!res || typeof res !== 'object' || !res.whole_league || !res.league) return 'Saved.';
+  const w = women ? 'women\'s' : 'men\'s', n = res.teams || 1, c = res.cleared || 0, k = res.kept || 0;
+  let t = 'Saved. ' + res.league.name + ' is now a ' + w + ' league: ' + (n === 1 ? 'its one team counts' : 'all ' + n + ' of its teams count') + ' as ' + w + '.';
+  if (c) t += ' ' + c + ' team setting' + (c === 1 ? '' : 's') + ' that said otherwise ' + (c === 1 ? 'was' : 'were') + ' reset.';
+  if (k) t += ' ' + k + ' team' + (k === 1 ? '' : 's') + (k === 1 ? ' keeps' : ' keep') + ' a gender recorded on the team itself.';
+  return t;
+}
 
 /* what to say after a link: "Linked 3 clubs. 8 players at those clubs were linked automatically." */
 function linkedWords(kind, n, result, merged) {
@@ -280,7 +308,9 @@ function memberRow(card, o) {
   a.href = publicHref(S.kind, card); a.target = '_blank'; a.rel = 'noopener'; a.title = 'open the public page';
   if (isTeam()) {
     top.appendChild(data('span', 'lk-lg', card.league || 'no league'));
-    if (card.women) top.appendChild(pill('women', 'st', card.women_set ? 'a women\'s side (set by hand)' : 'a women\'s side (from the names)'));
+    if (card.women) top.appendChild(pill('women', 'st', card.women_set ? 'a women\'s side (set by hand)'
+      : card.women_from === 'league' ? 'a women\'s side (its league is set to women)'
+      : card.women_from === 'team_gender' ? 'a women\'s side (the team\'s recorded gender)' : 'a women\'s side (from the names)'));
     if (card.youth) top.appendChild(pill(card.age || 'youth', 'pa', card.youth_set ? 'a youth side (set by hand)' : 'a youth side (from the names' + (card.age ? ', the age from the name)' : ')')));
   } else if (card.birth_year) {
     top.appendChild(data('span', 'lk-lg', 'born ' + card.birth_year));
@@ -302,14 +332,17 @@ function memberRow(card, o) {
   }
   const act = row.appendChild(el('div', 'lk-act'));
   if (isTeam() && o.women !== false) {
-    /* the women's indicator: what the names say, or what somebody set. "auto" hands it back to the names. */
-    const sel = act.appendChild(el('select', 'ep-input lk-w')); sel.title = 'is this a women\'s side?';
-    [['auto', card.women_set ? 'women\'s: by names' : (card.women ? 'women (names)' : 'men / mixed (names)')], ['yes', 'women (set)'], ['no', 'not women (set)']]
-      .forEach(([v, t]) => { const op = el('option', null, t); op.value = v; sel.appendChild(op); });
-    sel.value = card.women_set ? (card.women ? 'yes' : 'no') : 'auto';
+    /* the women's / men's setting. A club's setting is its LEAGUE's (migration 0182): "women · whole league" makes every team in
+       its league women's, so a league whose names say nothing is one edit, not one per club. The "this team only" pair is for
+       the odd side. "auto" hands the team back to its league and its names. */
+    const sel = act.appendChild(el('select', 'ep-input lk-w')); sel.title = 'is this a women\'s side? A club\'s setting is its whole league\'s';
+    const ch = womenChoices(card);
+    ch.options.forEach(([v, t]) => { const op = el('option', null, t); op.value = v; sel.appendChild(op); });
+    sel.value = ch.value;
     sel.addEventListener('change', () => {
-      rpc('platform_team_set_women', { p_team: card.id, p_women: sel.value === 'auto' ? null : sel.value === 'yes' })
-        .then(() => { S.say('Saved.', 'ok'); return refresh(); }).catch(fail);
+      const a = womenArgs(sel.value, card.id);
+      rpc('platform_team_set_women', a)
+        .then(res => { S.say(leagueWords(res, a.p_women), 'ok'); return refresh(); }).catch(fail);
     });
   }
   if (isTeam() && o.women !== false) {
@@ -527,5 +560,5 @@ const autoWords = res => (res && res.players
 /* -------------------------------------------------------------- misc --- */
 function fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 
-return { mount, combo, bySureness, narrowed, tally, seasonsOf, spellLines, publicHref, KIND_WORD, CONF_HELP, _state: () => S };
+return { mount, combo, bySureness, narrowed, tally, seasonsOf, spellLines, publicHref, womenChoices, womenArgs, leagueWords, KIND_WORD, CONF_HELP, _state: () => S };
 }));

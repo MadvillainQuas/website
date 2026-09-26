@@ -23,7 +23,7 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
   create function public.is_platform_admin() returns boolean language sql stable as $$ select coalesce(current_setting('test.admin', true), 'on') = 'on' $$;
   create table public.audit_log (id bigserial primary key, actor uuid, action text, subject text, subject_id text, detail jsonb, at timestamptz default now());
-  create table public.leagues (id uuid primary key default gen_random_uuid(), slug text, name text);
+  create table public.leagues (id uuid primary key default gen_random_uuid(), slug text, name text, gender text);
   create table public.seasons (id uuid primary key default gen_random_uuid(), league_id uuid references public.leagues, name text, starts_on date);
   create table public.competitions (id uuid primary key default gen_random_uuid(), season_id uuid references public.seasons, name text, kind text default 'league');
   create table public.teams (id uuid primary key default gen_random_uuid(), league_id uuid references public.leagues, slug text unique, name text, short_name text default '',
@@ -37,6 +37,7 @@ await db.exec(`
 `);
 await db.exec(mig('0178_entity_links.sql'));
 await db.exec(mig('0181_youth_teams.sql'));
+await db.exec(mig('0182_league_follows_team_gender.sql'));
 
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const as = async (role, admin, fn) => {                    // run something as a browser role
@@ -80,7 +81,7 @@ ok('the women\'s league\'s side is women\'s (by its league\'s name and slug)', a
 ok('the men\'s side of the same club is not', await w(llSlb) === false && await w(llEuro) === false);
 ok('a side named as women\'s in another language is (folded)', await (async () => { const t = await team(fr, 'x-feminin', 'Basket Landes Féminin'); return (await w(t)) === true; })());
 ok('a hand-set flag outranks the names, and clearing it puts the names back', await as('authenticated', true, async () => {
-  await q(`select platform_team_set_women($1, false)`, [llW]);
+  await q(`select platform_team_set_women($1, false, false)`, [llW]);          // this team only: its league is not touched
   const off = await w(llW);
   await q(`select platform_team_set_women($1, null)`, [llW]);
   return off === false && (await w(llW)) === true;
@@ -277,7 +278,7 @@ console.log('-- youth teams (0181)');
   ok('a card says youth, the age, and that it was set by hand', await (async () => { const c = await cards(tSen); return c && c.youth === true && c.age === 'U21' && c.youth_set === true; })());
   ok('...and an unset one says it was not', await (async () => { const c = await cards(tJun); return c && c.youth === true && c.youth_set === false; })());
   await as('authenticated', true, async () => {
-    await q(`select platform_team_set_women($1, true)`, [tSen]);
+    await q(`select platform_team_set_women($1, true, false)`, [tSen]);
     await q(`select platform_team_set_youth($1, null, null)`, [tSen]);
   });
   ok('clearing youth keeps the women flag on the same row', (await q(`select women, youth, age_group from team_flags where team_id = $1`, [tSen]))[0].women === true
@@ -304,6 +305,53 @@ console.log('-- youth teams (0181)');
   const gl3 = await as('authenticated', true, async () => (await q(`select platform_link_groups('team', 'lions') r`))[0].r);
   ok('a group\'s members list the senior side first and the youth side after', gl3.rows[0].members[gl3.rows[0].members.length - 1].youth === true && gl3.rows[0].members[0].youth === false);
   ok('anybody can ask a team\'s traits', await as('anon', false, async () => (await q(`select team_traits($1) t`, [t18]))[0].t.youth === true));
+}
+
+console.log('-- one club set to women\'s / men\'s sets its whole league (0182)');
+{
+  const wl = await lg('aus-premier', 'Aussie Premier');                      // nothing in the names says who plays
+  const aces = await team(wl, 'aces', 'Aces'), comets = await team(wl, 'comets', 'Comets'), sparks = await team(wl, 'sparks', 'Sparks'), odd = await team(wl, 'odd-ones', 'Odd Ones');
+  const gen = async () => (await q(`select gender from leagues where id = $1`, [wl]))[0].gender;
+  const reads = async ids => Promise.all(ids.map(w));
+  const cardOf = async id => (await q(`select link_team_cards($1::uuid[]) r`, [[id]]))[0].r[0];
+  ok('nothing in the names says women, and the league says nothing: all four read as not women', (await reads([aces, comets, sparks, odd])).every(x => x === false));
+  await as('authenticated', true, async () => { await q(`select platform_team_set_women($1, false, false)`, [odd]); });          // a hand flag on one of them, the other way
+  const r1 = await as('authenticated', true, async () => (await q(`select platform_team_set_women($1, true) r`, [aces]))[0].r);
+  ok('setting one club to women\'s says it did the whole league: the league, how many teams, what was undone', r1.whole_league === true && r1.league.gender === 'women' && r1.league.slug === 'aus-premier' && r1.teams === 4 && r1.women === true, r1);
+  ok('the league\'s gender is now women (the column the rail\'s W chip and the scouting filter read)', await gen() === 'women', await gen());
+  ok('every team in it reads as women\'s, though nothing in its name says so', (await reads([aces, comets, sparks])).every(x => x === true), await reads([aces, comets, sparks]));
+  ok('...and a hand flag on another team that said the opposite is handed back, so that team follows the league too', r1.cleared === 1 && await w(odd) === true
+     && (await q(`select count(*) n from team_flags where team_id = $1`, [odd]))[0].n === 0, r1);
+  ok('...the team that was set keeps its own flag', (await q(`select women from team_flags where team_id = $1`, [aces]))[0].women === true);
+  ok('a team that joins the league later is women\'s straight away', await w(await team(wl, 'newbies', 'Newbies')) === true);
+  const cA = await cardOf(aces), cC = await cardOf(comets);
+  ok('a card says where the answer comes from: its own flag, or the league', cA.women_from === 'team' && cA.women_set === true && cC.women_from === 'league' && cC.women_set === false && cC.league_gender === 'women', [cA.women_from, cC.women_from, cC.league_gender]);
+  ok('...and a team told by its name says "names"', (await cardOf(llW)).women_from === 'names');
+  ok('the league change is in the audit log, with the team it came from', await (async () => { const a = (await q(`select detail from audit_log where action = 'set_league_gender' and subject_id = $1`, [wl])); return a.length === 1 && a[0].detail.gender === 'women' && a[0].detail.via_team === aces && a[0].detail.flags_cleared === 1; })());
+  ok('anybody can ask, and a signed-out reader sees the same answer', await as('anon', false, async () => (await q(`select team_is_women($1) w`, [comets]))[0].w === true));
+
+  const r2 = await as('authenticated', true, async () => (await q(`select platform_team_set_women($1, false) r`, [comets]))[0].r);
+  ok('setting a club to men\'s sets the league to men\'s and every team reads so', r2.league.gender === 'men' && await gen() === 'men' && (await reads([aces, comets, sparks, odd])).every(x => x === false), r2);
+  ok('...the women\'s flag that had been set on the first club is handed back', r2.cleared === 1 && (await q(`select count(*) n from team_flags where team_id = $1`, [aces]))[0].n === 0, r2);
+  const r3 = await as('authenticated', true, async () => (await q(`select platform_team_set_women($1, true, false) r`, [sparks]))[0].r);
+  ok('"this team only" leaves the league alone: one women\'s side in a men\'s league', r3.whole_league === false && await gen() === 'men' && await w(sparks) === true && await w(comets) === false && r3.cleared === 0, r3);
+  await q(`update teams set gender = 'women' where id = $1`, [aces]);
+  const r4 = await as('authenticated', true, async () => (await q(`select platform_team_set_women($1, false) r`, [comets]))[0].r);
+  ok('a team\'s own recorded gender outranks its league\'s, and the answer says how many still read otherwise', await w(aces) === true && r4.kept === 1 && r4.teams >= 5, r4);
+  ok('...and a hand flag set the other way on Sparks (women) was cleared by the men\'s setting', await w(sparks) === false && r4.cleared === 1, r4);
+  await q(`update teams set gender = null where id = $1`, [aces]);
+  await q(`update leagues set gender = 'mixed' where id = $1`, [wl]);
+  const shy = await team(wl, 'shy-women', 'Shy Women');
+  ok('a "mixed" league says nothing, so the names decide again', await w(shy) === true && await w(aces) === false);
+  await as('authenticated', true, async () => { await q(`select platform_team_set_women($1, true)`, [shy]); });
+  await as('authenticated', true, async () => { await q(`select platform_team_set_women($1, null)`, [shy]); });
+  ok('handing a club back to "auto" clears that team\'s flag only: the league is not un-set from a club', await gen() === 'women' && (await q(`select count(*) n from team_flags where team_id = $1`, [shy]))[0].n === 0);
+  const loose = (await q(`insert into teams (league_id, slug, name) values (null, 'no-league', 'Free Floaters') returning id`))[0].id;
+  const r5 = await as('authenticated', true, async () => (await q(`select platform_team_set_women($1, true) r`, [loose]))[0].r);
+  ok('a team with no league is only ever set alone', r5.whole_league === false && r5.league === null && r5.women === true && await w(loose) === true, r5);
+  ok('a team that does not exist is refused', await as('authenticated', true, async () => { try { await db.query(`select platform_team_set_women(gen_random_uuid(), true)`); return false; } catch (e) { return /does not exist/.test(e.message); } }));
+  ok('there is one setter: the old two-argument one is gone', (await q(`select count(*) n from pg_proc where proname = 'platform_team_set_women'`))[0].n === 1);
+  ok('a signed-out visitor cannot set a league to women\'s through a team', await as('anon', false, async () => { try { await db.query(`select platform_team_set_women($1, true)`, [aces]); return false; } catch (e) { return /permission denied/.test(e.message); } }));
 }
 
 console.log('-- nobody but a platform administrator');
