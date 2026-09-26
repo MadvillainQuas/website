@@ -595,13 +595,16 @@ function rotationCard(S, names) {
 /* the EPA and Scoring Battle charts share one shape: a signed value about zero, an end label */
 function signedChart(opts) {
   const { data, key, title, names, note, axisTitle, tl } = opts;
-  const maxAbs = Math.max(...data.map(d => Math.abs(d[key] || 0)));
+  /* the chart's id (key) is not always the name of the value in the points: the Scoring Battle chart is 'battle' and its
+     value is scoringBattle. It read d.battle, which is nothing, so the whole chart was drawn at zero. */
+  const field = opts.field || key;
+  const maxAbs = Math.max(...data.map(d => Math.abs(d[field] || 0)));
   const raw = Math.max(5, Math.ceil(maxAbs) + 2);
   const ax = symAxis(raw, raw > 15 ? 5 : (raw > 8 ? 4 : 2));
   const yMax = ax.yMax, step = ax.step;
   const zeroY = VH / 2;
   const pts = data.map(d => {
-    const v = d[key] || 0;
+    const v = d[field] || 0;
     return { x: xOf(d.elapsed, tl), y: zeroY - (v / yMax) * (VH / 2), [key]: v };
   });
   let grid = '';
@@ -639,7 +642,7 @@ function battleChart(F, names, tl) {
   const note = 'SB = (eFG% Margin × 1.77 + FT Rate Margin × 0.25) × Pace/100 | ' +
     '<span class="' + sideCls(last.efgMargin) + '">eFG%: ' + signed(last.efgMargin, 1) + '</span> | ' +
     '<span class="' + sideCls(last.ftRateMargin) + '">FT Rate: ' + signed(last.ftRateMargin, 1) + '</span>';
-  return signedChart({ key: 'battle', data, title: 'Scoring Battle (eFG% + FT Rate)', names, note, axisTitle: 'SB (pts)', tl });
+  return signedChart({ key: 'battle', field: 'scoringBattle', data, title: 'Scoring Battle (eFG% + FT Rate)', names, note, axisTitle: 'SB (pts)', tl });
 }
 
 /* renderPPPDevelopmentChart */

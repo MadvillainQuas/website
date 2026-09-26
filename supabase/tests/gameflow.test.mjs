@@ -310,6 +310,15 @@ console.log('\nthe stack: rotations, then the charts on their minutes');
        at('class="gf-card gf-rot"') > at('Team Momentum Runs') && at('class="gf-stack"') > at('class="gf-card gf-rot"') &&
        ['margin', 'epa', 'battle', 'ppp'].every(k => at('data-chart="' + k + '"') > at('class="gf-stack"')) && at('class="gf-summary"') > at('data-chart="ppp"'));
     ok('...in the order Scoring Development, EPA, Scoring Battle, PPP', ['margin', 'epa', 'battle', 'ppp'].map(k => at('data-chart="' + k + '"')).every((v, i, a) => !i || v > a[i - 1]));
+    {
+      /* the Scoring Battle chart read a value called "battle" that the points do not have (they call it scoringBattle), so it was drawn at zero */
+      const pts = Flow.compute(S).points, lastPt = pts[pts.length - 1];
+      const card = html.slice(at('data-chart="battle"'), at('data-chart="ppp"'));
+      const label = (/class="gf-endl[^"]*"[^>]*>([^<]*)</.exec(card) || [])[1];
+      const want = (lastPt.scoringBattle >= 0 ? '+' : '') + lastPt.scoringBattle.toFixed(1);
+      ok('the Scoring Battle chart draws the game\'s scoring battle, not zero: its end label is the last point\'s value (' + want + ')',
+         Math.abs(lastPt.scoringBattle) >= 0.05 && label === want, [label, want]);
+    }
     ok('...each chart a card of its own with buttons to move it: the first cannot go up, the last cannot go down',
        (html.match(/class="gf-card gf-chart"/g) || []).length === 4 && (html.match(/data-mv="up"/g) || []).length === 4 &&
        /data-chart="margin"[\s\S]*?data-mv="up"[^>]*disabled/.test(html) && /data-chart="ppp"[\s\S]*?data-mv="down"[^>]*disabled/.test(html) &&
