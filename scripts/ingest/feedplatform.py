@@ -511,8 +511,14 @@ class Platform:
                 # group_of: the club's group / division from the source's groups file (groups.py),
                 # {} for every source without one - so their rows are written as they always were
                 fields = group_of(t.get("name") or "", team.get("name") or "") if group_of else {}
-                self.sb.upsert("competition_teams", {"competition_id": comp["id"], "team_id": team["id"], **fields},
-                               "competition_id,team_id")
+                # A CLUB IS ENTERED ONCE PER PROCESS (per group it is entered in): a live game came through here on every
+                # poll and wrote the same competition_teams row each time, 13,000 writes a day
+                seen = self.cache.setdefault("comp_team", set())
+                ck = (comp["id"], team["id"], tuple(sorted(fields.items())))
+                if ck not in seen:
+                    (getattr(self.sb, "upsert_quiet", None) or self.sb.upsert)(
+                        "competition_teams", {"competition_id": comp["id"], "team_id": team["id"], **fields}, "competition_id,team_id")
+                    seen.add(ck)
             tcode = (t.get("code") or "").strip() or slugify(t.get("name", ""))
             for pno, p in (t.get("pl") or {}).items():
                 pl = self.player(team, tcode, str(pno), p, avoid=set(taken))

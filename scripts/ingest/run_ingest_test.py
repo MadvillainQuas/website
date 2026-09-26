@@ -144,7 +144,7 @@ ok("a period the feed cannot spell is not a period that has ended",
    RI._period_over({"period": "third", "pbp": q1}, 1) is False)
 
 src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
-state = src[src.index("# scoreboard state: FIBA's clock"):src.index('sb.upsert("game_state"')]
+state = src[src.index("# scoreboard state: FIBA's clock"):src.index('upsert_min(sb, "game_state"')]
 ok("write_platform zeroes the clock of a period that has ended, before game_state is written",
    'if live and _period_over(b.raw, T["period"]):\n        clock_ms = 0' in state)
 ok("...and a clock at 0:00 is never written as running", "clock_ms > 0" in state.split("moving = ", 1)[1])
@@ -193,6 +193,36 @@ ok("...so the translator keeps them: a made two, a foul with its drawer, a turno
 src_el = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "adapters", "euroleague.py"), encoding="utf-8").read()
 ok("...and a player's name is put in reading order, title case, in the payload the game page reads ('OKOBO, ELIE' -> Elie Okobo)",
    "first, last, _ = _names.person(shouted)" in src_el and 'first=first, last=last, name=f"{first} {last}".strip() or shouted' in src_el)
+
+print("\n-- a live poll does not ask for, or write, what has not changed (database load, 2026-09-26)")
+calls = []
+
+
+class _Fake:
+    def upsert(self, table, rows, on_conflict=None):
+        calls.append(("upsert", table)); return [rows]
+
+
+class _Quiet(_Fake):
+    def upsert_quiet(self, table, rows, on_conflict):
+        calls.append(("quiet", table)); return True
+
+
+RI.upsert_min(_Fake(), "game_advanced", {"a": 1}, "game_id")
+RI.upsert_min(_Quiet(), "game_advanced", {"a": 1}, "game_id")
+ok("a write nobody reads uses upsert_quiet where the client has it, and the plain upsert where it does not",
+   calls == [("upsert", "game_advanced"), ("quiet", "game_advanced")], calls)
+src_ri = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
+ok("upsert_quiet asks for no rows back (return=minimal)",
+   "def upsert_quiet" in src_ri and "return=minimal" in src_ri.split("def upsert_quiet")[1].split("def patch")[0])
+ok("the four hot upserts (external_games, competition_teams, game_advanced, game_state) no longer echo their rows",
+   all(('upsert_min(sb, "%s"' % t) in src_ri for t in ("external_games", "competition_teams", "game_advanced", "game_state")))
+ok("the games row is patched only when its status, score or place moved", "if not unchanged:" in src_ri and "home_score" in src_ri)
+ok("the season roll-up is throttled while a game is live and always runs for a final",
+   "REFRESH_EVERY_S" in src_ri and 'b.status == "final" or last is None' in src_ri)
+ok("the season id and the game id are looked up once per run", 'pf["season"]' in src_ri and 'pf["game"]' in src_ri)
+src_fp = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedplatform.py"), encoding="utf-8").read()
+ok("a club is entered in a competition once per process, not on every poll", '"comp_team"' in src_fp and "if ck not in seen" in src_fp)
 
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

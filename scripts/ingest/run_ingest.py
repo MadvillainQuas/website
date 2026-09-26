@@ -87,6 +87,14 @@ FEED_DIR = REPO_ROOT / "data" / "feed"
 STORAGE_BUCKET = "feed"
 
 
+REFRESH_EVERY_S = 120          # the season roll-up, while a game is live (write_platform)
+
+
+def upsert_min(sb, table: str, rows, on_conflict: str):
+    """upsert_quiet where the client has it (a test's fake client falls back to its own upsert)."""
+    return (getattr(sb, "upsert_quiet", None) or sb.upsert)(table, rows, on_conflict)
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -144,6 +152,13 @@ class Supabase:
         h = dict(self.h, Prefer="resolution=merge-duplicates,return=representation")
         r = self._again(lambda: self.s.post(f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}", headers=h, json=rows, timeout=60))
         self._ok(r); return r.json()
+
+    def upsert_quiet(self, table: str, rows, on_conflict: str):
+        """An upsert whose answer nobody reads. `return=representation` sends every written row back: for game_advanced
+        (the whole box, stints, lineups and shots) that is the biggest thing a live pass downloads, on every poll."""
+        h = dict(self.h, Prefer="resolution=merge-duplicates,return=minimal")
+        r = self._again(lambda: self.s.post(f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}", headers=h, json=rows, timeout=60))
+        self._ok(r); return True
 
     def patch(self, table: str, query: str, body: dict):
         r = self._again(lambda: self.s.patch(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, json=body, timeout=30))
@@ -239,7 +254,7 @@ def write_supabase_feed(sb: Supabase, src: dict, b: GameBundle, entry: dict) -> 
     raw_ref = None
     if b.raw is not None:
         raw_ref = sb.storage_put(STORAGE_BUCKET, f"{src['adapter']}/{b.external_id}.json", json.dumps(b.raw, ensure_ascii=False).encode("utf-8"))
-    sb.upsert("external_games", {
+    upsert_min(sb, "external_games", {
         "adapter": src["adapter"], "external_id": b.external_id, "source_id": src.get("id"),
         "competition_code": src["code"], "home_name": b.home_name, "away_name": b.away_name,
         "home_score": entry["homeScore"], "away_score": entry["awayScore"], "game_date": (entry.get("date") or "")[:10] or None,
@@ -498,8 +513,8 @@ def enter_teams(sb: Supabase, src: dict, comp_id: str, pairs, run: dict) -> None
             have = current.get(tm["id"])
             if have is not None and all(have.get(k) == v for k, v in fields.items()):
                 continue
-        sb.upsert("competition_teams", {"competition_id": comp_id, "team_id": tm["id"], **fields},
-                  "competition_id,team_id")
+        upsert_min(sb, "competition_teams", {"competition_id": comp_id, "team_id": tm["id"], **fields},
+                   "competition_id,team_id")
         if current is not None and fields:
             current[tm["id"]] = {"team_id": tm["id"], **fields}
             run.setdefault("_recompute", set()).add(comp_id)
@@ -932,8 +947,16 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     if not league_id or b.raw is None:
         return False
     comp = source_competition(sb, plat, src, league_id, ac)
-    srow = sb.select("competitions", f"id=eq.{comp['id']}&select=season_id")
-    season_id = srow[0]["season_id"] if srow else None
+    # WHAT DOES NOT CHANGE BETWEEN POLLS IS ASKED FOR ONCE. A live game is written every few seconds, and each write used to
+    # look up the competition's season and the game's id again (8,000 and 6,600 requests a day on a small database).
+    pf = run.setdefault("_pf", {"season": {}, "game": {}, "refresh": {}})
+    if comp["id"] in pf["season"]:
+        season_id = pf["season"][comp["id"]]
+    else:
+        srow = sb.select("competitions", f"id=eq.{comp['id']}&select=season_id")
+        season_id = srow[0]["season_id"] if srow else None
+        if season_id:
+            pf["season"][comp["id"]] = season_id
     people = plat.ensure_game_people(league_id, comp, season_id, b.raw,
                                      group_of=(lambda *n: group_fields(src, *n)) if groups.spec_for(src) else None)
     home, away = people.get("1"), people.get("2")
@@ -942,8 +965,13 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                  {"error": f"unmatched team: {'' if home else b.home_name} {'' if away else b.away_name}".strip()})
         print(f"    !! unmatched team for {b.home_name} v {b.away_name} - add an alias in public.teams.aliases")
         return False
-    existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}&select=game_id")
-    game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
+    gkey = (src["adapter"], b.external_id)
+    game_id = pf["game"].get(gkey)
+    if not game_id:
+        existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}&select=game_id")
+        game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
+        if game_id:
+            pf["game"][gkey] = game_id
     will_translate = src["adapter"] in TRANSLATABLE_ADAPTERS and ac.get("translate", True)
     # a game we are about to translate stays 'live' until finalise-game closes it — 'final' means
     # "log closed" to the platform (insert trigger refuses events, finalise refuses a second pass)
@@ -956,7 +984,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                                 **({"venue": venue} if venue else {})}, "id")
         game_id = g[0]["id"]
     else:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id,venue")
+        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id,venue,home_score,away_score")
         extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and not same_instant(cur[0].get("tipoff_at"), b.tipoff_at)) else {}
         if venue and cur and cur[0].get("venue") != venue:
             extra["venue"] = venue
@@ -980,7 +1008,12 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
             if extra:
                 sb.patch("games", f"id=eq.{game_id}", extra)
         else:
-            sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores, **extra})
+            # NOTHING NEW, NO WRITE: a poll that finds the status, both scores and everything else as the row already
+            # has them (most polls of a live game) used to PATCH the row anyway, 6,600 times a day.
+            unchanged = bool(cur) and cur[0].get("status") == status and not extra \
+                and cur[0].get("home_score") == scores["home_score"] and cur[0].get("away_score") == scores["away_score"]
+            if not unchanged:
+                sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores, **extra})
     # THE BROADCAST, for a game being played or just finished: linked the moment the game is first
     # seen (so the page carries the stream while the game is on), and its anchor completed whenever
     # a stream start or a tip has since become known - whether or not the log is still open.
@@ -1000,7 +1033,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
             enqueue_video_job(sb, game_id)
         except Exception as exc:
             print(f"    (auto process: {exc})")
-    sb.upsert("game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
+    upsert_min(sb, "game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
                                 "box": b.box, "team": b.team, "stints": b.stints, "lineups": b.lineups,
                                 "four_factors": b.four_factors, "shots": b.shots, "transition": b.transition,
                                 "pbp": b.pbp if ac.get("store_pbp") else None, "computed_at": now_iso()}, "game_id")
@@ -1010,10 +1043,15 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
             write_event_log(sb, src, b, game_id, people["pids"], observed, stamps)
         except Exception as exc:
             print(f"    (event translation failed: {exc})")
-    try:
-        sb.rpc("refresh_feed_team_season", {"p_competition": comp["id"]})
-    except Exception as exc:
-        print(f"    (season roll-up skipped: {exc})")
+    # THE SEASON ROLL-UP, at most every REFRESH_EVERY_S while a game is on, and always when one has finished: it re-adds a
+    # whole competition's team lines (170 ms a call, 6,600 a day) and a live game moves them by a few points at a time.
+    last = pf["refresh"].get(comp["id"])
+    if b.status == "final" or last is None or time.monotonic() - last >= REFRESH_EVERY_S:
+        try:
+            sb.rpc("refresh_feed_team_season", {"p_competition": comp["id"]})
+            pf["refresh"][comp["id"]] = time.monotonic()
+        except Exception as exc:
+            print(f"    (season roll-up skipped: {exc})")
     return True
 
 
@@ -1527,7 +1565,7 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     moving = bool(live and fast and clock_ms > 0 and prev and prev[0] is not None and clock_ms < prev[0]
                   and (time.time() - prev[1]) < 15)
     _CLOCK_SEEN[game_id] = (clock_ms if live else None, time.time())
-    sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": moving,
+    upsert_min(sb, "game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": moving,
                              "score_home": T["home_score"], "score_away": T["away_score"], "last_seq": len(rows), "updated_at": now_iso()}, "game_id")
     print(f"    = {how}" + (f", warnings: {'; '.join(T['report']['warnings'])}" if T["report"]["warnings"] else ""))
     if b.status == "final":
