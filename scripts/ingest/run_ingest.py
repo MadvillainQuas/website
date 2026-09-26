@@ -577,6 +577,23 @@ def colour_sweep(sb: Supabase) -> None:
         print(f"   (colours: {exc})")
 
 
+def link_sweep(sb: Supabase) -> None:
+    """THE PLAYERS OF LINKED CLUBS ARE LINKED (migration 0178). Once clubs are linked in the console (London Lions in
+    the SLB and in the EuroCup), a player row at one and a player row at the other whose names match -- the same
+    first and last name whatever is between them, or a surname with an initial where a feed abbreviates -- is one
+    person. Linking the clubs does that at once; this is for the rosters that arrive later. Conservative by design:
+    two of a name on one team, birth years that disagree, an initial that could be two people, or a link somebody
+    undid are all left for the console's flagged possible matches. Skipped, quietly, where 0178 is not applied yet.
+
+    ONCE PER PASS, like colour_sweep: it reads only the rosters of linked clubs, so it costs a few rows."""
+    try:
+        r = sb.rpc("link_auto_players", {})
+        if isinstance(r, dict) and r.get("players"):
+            print(f"   {r['players']} player(s) linked across {r.get('sets')} set(s) at linked clubs")
+    except Exception as exc:
+        print(f"   (links: {str(exc)[:120]})")
+
+
 def refile_from_catchall(sb: Supabase, src: dict, games: list, run: dict) -> None:
     """Games this phase's schedule lists that still sit in the league's catch-all competition (filed
     there before the feed's phases were known) move to the phase - fixtures and games in progress;
@@ -2611,6 +2628,7 @@ def main() -> int:
     # crests read above -> colours, once for the whole pass (see colour_sweep)
     if sb and not args.dry_run and not args.ids and not args.catch_up:
         colour_sweep(sb)
+        link_sweep(sb)
     # the queued row is closed whatever happened: `running` left behind is a league whose season
     # nobody can ask for again until the lease expires
     if job:

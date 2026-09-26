@@ -1,0 +1,45 @@
+/* Linked clubs and people on the public pages (epinoia/linkswitch.js, migration 0178): the WOMEN indicator,
+   and the button that opens a club's other competitions and seasons or a player's other profiles. */
+
+.ls-women{ display:inline-flex; align-items:center; font-family:var(--f-micro, monospace); font-size:8.5px; letter-spacing:.14em;
+  text-transform:uppercase; line-height:1; padding:4px 7px; border:1px solid currentColor; color:var(--lume, #93f2bf);
+  border-radius:999px; vertical-align:middle; white-space:nowrap }
+
+.ls-row-host{ margin-top:10px }
+.ls-wrap{ position:relative; display:inline-block; font-family:var(--f-ui, inherit); text-transform:none; letter-spacing:normal; font-size:13px; line-height:1.4 }
+.ls-btn{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; background:none; color:var(--ink-2, #b9d2c5);
+  border:1px solid color-mix(in srgb, var(--lume, #93f2bf) 45%, transparent); border-radius:999px;
+  font-family:var(--f-micro, monospace); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; padding:8px 13px }
+.ls-btn:hover, .ls-btn[aria-expanded="true"]{ color:var(--ink, #fff); border-color:var(--lume, #93f2bf);
+  background:color-mix(in srgb, var(--lume, #93f2bf) 10%, transparent) }
+.ls-btn:focus-visible{ outline:2px solid var(--lume, #93f2bf); outline-offset:2px }
+.ls-btn-n{ display:inline-grid; place-items:center; min-width:17px; height:17px; padding:0 4px; border-radius:9px;
+  background:var(--lume, #93f2bf); color:#04100b; font-size:9px; letter-spacing:0 }
+.ls-chev{ width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor;
+  transform:translateY(-2px) rotate(45deg); transition:transform .2s }
+.ls-btn[aria-expanded="true"] .ls-chev{ transform:translateY(1px) rotate(-135deg) }
+
+.ls-pop{ position:absolute; z-index:40; top:calc(100% + 8px); left:0; width:min(400px, calc(100vw - 32px)); max-height:min(70vh, 520px);
+  overflow:auto; padding:12px; border-radius:14px; background:var(--ground, #060c09); color:var(--ink, #e6fff1);
+  border:1px solid color-mix(in srgb, var(--lume, #93f2bf) 45%, transparent); box-shadow:0 20px 50px rgba(0,0,0,.4) }
+:root[data-theme="light"] .ls-pop{ background:#fff; box-shadow:0 20px 50px rgba(13,31,23,.22) }
+.ls-pop[hidden]{ display:none }
+.ls-h{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; margin:0 2px 8px }
+.ls-h b{ font-family:var(--f-micro, monospace); font-size:9px; letter-spacing:.14em; text-transform:uppercase; font-weight:400; color:var(--ink-3, #7d9a8b) }
+.ls-g{ font-family:var(--f-ui, inherit); font-weight:800; font-size:14px }
+.ls-season{ width:100%; margin:0 0 8px; padding:8px 10px; font:inherit; font-size:12px; color:inherit;
+  background:transparent; border:1px solid var(--rule-2, rgba(170,255,215,.25)); border-radius:8px }
+.ls-list{ display:flex; flex-direction:column; gap:6px }
+.ls-item{ display:block; text-decoration:none; color:inherit; padding:10px 12px; border-radius:10px;
+  border:1px solid var(--rule-2, rgba(170,255,215,.22)); background:color-mix(in srgb, var(--lume, #93f2bf) 3%, transparent) }
+a.ls-item:hover{ border-color:var(--lume, #93f2bf); background:color-mix(in srgb, var(--lume, #93f2bf) 9%, transparent) }
+.ls-item.on{ border-color:var(--lume, #93f2bf); background:color-mix(in srgb, var(--lume, #93f2bf) 12%, transparent) }
+.ls-top{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px }
+.ls-top b{ font-family:var(--f-ui, inherit); font-weight:800; font-size:13.5px }
+.ls-here{ margin-left:auto; font-family:var(--f-micro, monospace); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--lume, #93f2bf) }
+.ls-sub{ margin-top:5px; display:flex; flex-direction:column; gap:3px; font-family:var(--f-micro, monospace); font-size:9.5px; color:var(--ink-2, #b9d2c5); line-height:1.6 }
+.ls-row{ display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 9px }
+.ls-s{ font-family:var(--f-data, var(--f-mono, monospace)); font-weight:300; color:var(--lume, #93f2bf) }
+.ls-c{ color:var(--ink-2, #b9d2c5) }
+.ls-none{ padding:14px 4px; font-family:var(--f-micro, monospace); font-size:10px; color:var(--ink-3, #7d9a8b) }
+@media (max-width:640px){ .ls-pop{ position:fixed; left:16px; right:16px; width:auto; top:auto; bottom:calc(var(--tabbar-h, 62px) + 14px + env(safe-area-inset-bottom)); max-height:min(64vh, calc(100vh - var(--tabbar-h, 62px) - 40px)) } }

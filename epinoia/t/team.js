@@ -191,6 +191,9 @@ function decideAccess(lg) {
     $('#ctx').textContent = lg.name ? lg.name + ' · ' + team.name : team.name;
     if (lg.slug) $('#leagueLink').href = '../l/?l=' + encodeURIComponent(lg.slug);
     else $('#leagueLink').style.display = 'none';
+    /* A WOMEN'S SIDE SAYS SO beside its league, and a club linked to its other competitions (the SLB, the EuroCup,
+       the women's side) gets a button that opens them (linkswitch.js, migration 0178). Asked without waiting. */
+    if (window.EpinoiaLinks) window.EpinoiaLinks.paintTeam(team, { sub: $('#tsub') }).catch(() => { /* the page as it was */ });
     document.title = team.name + ' · Epinoia';
     teamStrip(team, lg);
 

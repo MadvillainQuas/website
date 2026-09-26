@@ -655,7 +655,17 @@
       'Written from the event log: every number above is computed from the same replay that draws the box score below.':
         'イベントログから作成：上記の数字はすべて、下のボックススコアと同じリプレイから算出されています。',
       'Written from the first half’s event log. This tab goes when the third quarter starts, and the full match report arrives when the game is final.':
-        '前半のイベントログから作成。このタブは第3クォーター開始とともに消え、試合終了後に完全なレポートが掲載されます。'
+        '前半のイベントログから作成。このタブは第3クォーター開始とともに消え、試合終了後に完全なレポートが掲載されます。',
+      'competitions & seasons': '大会・シーズン',
+      'the same club in other competitions': '同じクラブの他の大会',
+      'all seasons': '全シーズン',
+      'you are here': '現在地',
+      'no competition yet': 'まだ大会はありません',
+      'women': '女子',
+      'a women\'s team': '女子チーム',
+      'other profiles': '他のプロフィール',
+      'the same player in other competitions': '他の大会での同じ選手',
+      'no club yet': 'まだクラブはありません'
     },
 
     ctxPatterns: {

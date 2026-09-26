@@ -154,7 +154,7 @@ function wire() {
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
-                     analytics: loadAnalytics };
+                     analytics: loadAnalytics, links: loadLinks };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1214,6 +1214,15 @@ function loadArenas() {
   const A = window.EpinoiaArenasUI;
   if (!A) return say('arenas-ui.js did not load, so arenas cannot be edited. Reload the page.', 'err');
   A.mount({ host: '#arenasHost', sb, say, oops, me: me && me.id });
+}
+
+/* ----------------------------------------------------------------- links --- */
+/* Clubs and players linked across competitions, leagues and seasons (migration 0178): links-ui.js draws the
+   whole tab; what is linked is decided here and shown on the team and player pages. */
+function loadLinks() {
+  const L = window.EpinoiaLinksUI;
+  if (!L) return say('links-ui.js did not load, so links cannot be edited. Reload the page.', 'err');
+  L.mount({ host: '#linksHost', sb, say, oops });
 }
 
 /* ------------------------------------------------------------- analytics --- */

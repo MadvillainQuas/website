@@ -490,6 +490,17 @@ jobs:
           node supabase/tests/analytics-live.test.mjs
           node supabase/tests/analytics-ui.test.mjs
 
+      - name: Clubs and players linked across competitions - the possible matches, the automatic links, the women's indicator (0178)
+        # on a real Postgres (PGlite): the same club in several leagues and a player under several spellings are flagged
+        # with a confidence and a reason (middle names ignored, an initial for a first name, birth years that disagree);
+        # linking clubs links their players, cautiously (two of a name on one team, an initial that could be two people
+        # and an undone link are left alone); nothing but a platform administrator can write a link and the public pages
+        # never see a birth year. And the two front ends: the console's dropdowns and the public switchers
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/entity-links.test.mjs
+          node supabase/tests/links-ui.test.mjs
+
       - name: The play-by-play's cards - which plays are one card
         # a basket and its assist, a miss with its block and rebound, a turnover and its steal: paired
         # either side of each other by clock, never across a period or past another action, each event once

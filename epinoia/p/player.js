@@ -352,6 +352,10 @@ function paintBars(mine, field) {
 }
 
 
+/* THE OTHER PROFILES THAT ARE THIS PERSON (migration 0178, linkswitch.js): asked for at boot so the career can
+   wait for it; null when he is linked to nothing, or the database has not had 0178 yet. */
+let LINKED_P = Promise.resolve(null);
+
 /* Every competition this player has appeared in, newest first, aggregated
    through the shared intermediary.
 
@@ -365,9 +369,13 @@ async function paintCareer(pl, current, team) {
   const host = $('#seasons');
   host.textContent = '';
 
+  /* HIS CAREER RUNS ACROSS EVERY PROFILE LINKED TO HIS: the same person written differently in another
+     competition's feed appears here as one row per competition, whichever profile it was played under */
+  const linked = await LINKED_P;
+  const ids = window.EpinoiaLinks ? window.EpinoiaLinks.playerIds(linked, pl.id) : [pl.id];
   let appearances = [];
   try {
-    appearances = await D.all(`player_season_stats?player_id=eq.${pl.id}` +
+    appearances = await D.all(`player_season_stats?player_id=${ids.length > 1 ? 'in.(' + ids.join(',') + ')' : 'eq.' + pl.id}` +
       `&select=competition_id,season_id,team_id,gp`);
   } catch (e) { console.warn('[career]', e); }
 
@@ -419,7 +427,7 @@ async function paintCareer(pl, current, team) {
   for (const cid of shown) {
     try {
       const S = await D.season(cid);
-      const row = S.players.find(r => r.id === pl.id);
+      const row = S.players.find(r => r.id === pl.id) || S.players.find(r => ids.indexOf(r.id) >= 0);
       if (!row) continue;
       const c = compById.get(cid) || {};
       const sn = c.seasons || {};
@@ -703,6 +711,10 @@ async function loadCareerAccess(pl, lgRow) {
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
+    if (window.EpinoiaLinks) {
+      LINKED_P = window.EpinoiaLinks.loadPlayer(pl.id);
+      LINKED_P.then(l => window.EpinoiaLinks.paintPlayer(pl, l, { sub: $('#sub') })).catch(() => { /* no switcher */ });
+    }
     /* the club's own button, if this is the club's own person (nothing is fetched for anybody else) */
     offerRelease(pl, team).catch(() => { /* no button */ });
     if (team && team.leagues && team.leagues.slug) window.__CS_LEAGUE_SLUG = team.leagues.slug;

@@ -673,7 +673,17 @@
       'Written from the event log: every number above is computed from the same replay that draws the box score below.':
         'Escrita a partir del registro de jugadas: cada cifra de arriba sale de la misma reconstrucción que genera las estadísticas de abajo.',
       'Written from the first half’s event log. This tab goes when the third quarter starts, and the full match report arrives when the game is final.':
-        'Escrita a partir del registro de jugadas de la primera parte. Esta pestaña desaparece al empezar el tercer cuarto, y la crónica completa llega cuando termina el partido.'
+        'Escrita a partir del registro de jugadas de la primera parte. Esta pestaña desaparece al empezar el tercer cuarto, y la crónica completa llega cuando termina el partido.',
+      'competitions & seasons': 'Competiciones y temporadas',
+      'the same club in other competitions': 'El mismo club en otras competiciones',
+      'all seasons': 'Todas las temporadas',
+      'you are here': 'estás aquí',
+      'no competition yet': 'Aún sin competición',
+      'women': 'femenino',
+      'a women\'s team': 'equipo femenino',
+      'other profiles': 'Otros perfiles',
+      'the same player in other competitions': 'El mismo jugador en otras competiciones',
+      'no club yet': 'Aún sin club'
     },
 
     ctxPatterns: {
