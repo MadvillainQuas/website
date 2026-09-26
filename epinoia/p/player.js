@@ -129,6 +129,15 @@ function paintIdentity(pl, entry, team) {
     a.href = '../t/?t=' + encodeURIComponent(team.slug || '');
     sub.appendChild(a);
     $('#teamLink').href = a.href;
+    /* a divider, then the league he plays in (a name of its own: never translated) */
+    const lg = team.leagues;
+    if (lg && lg.name) {
+      sub.appendChild(el('i', 'sub-div'));
+      const la = el(lg.slug ? 'a' : 'span', 'sub-league', lg.name);
+      if (lg.slug) la.href = '../l/?l=' + encodeURIComponent(lg.slug);
+      la.setAttribute('translate', 'no');
+      sub.appendChild(la);
+    }
   } else {
     sub.appendChild(el('span', null, 'Free agent'));
     $('#teamLink').style.display = 'none';
