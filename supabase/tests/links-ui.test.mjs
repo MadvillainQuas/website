@@ -105,6 +105,17 @@ ok("the women's indicator falls back on the names before the database has it: le
    K.looksWomen('London Lions', 'london-lions-slb-women', 'Super League Basketball Women', 'slb-women') && K.looksWomen('Basket Landes', 'landes', 'Ligue Féminine de Basket')
    && K.looksWomen('Estudiantes', 'e', 'Liga Femenina Endesa') && K.looksWomen('Team', 'team', 'W League')
    && !K.looksWomen('London Lions', 'london-lions', 'Super League Basketball Men') && !K.looksWomen('Womenswear FC'));
+ok('a youth side is told from its names too: Liga U, an academy, an age; its age when the name states one',
+   K.looksYouth('Casademont Zaragoza', 'zaragoza', 'Liga U', 'liga-u') && K.looksYouth('Seawolves Academy', 'seawolves-academy', 'ProB') && K.looksYouth('Zagreb', 'zagreb', 'ABA U19 League')
+   && K.looksYouth('PuHu Juniorit') && K.looksYouth('Chalon', 'c', 'Espoirs ÉLITE') && !K.looksYouth('Sheffield Sharks', 'sheffield-sharks', 'Super League Basketball Men') && !K.looksYouth('Ubuntu FC')
+   && K.youthAge('Zagreb', 'ABA U19 League') === 'U19' && K.youthAge('London Lions U-21') === 'U21' && K.youthAge('Under 18 Lions') === 'U18' && K.youthAge('Liga U') === null && K.youthAge('Under 30 Club') === null);
+{
+  const YOUTH = [CARDS[0], { id: 'd', slug: 'london-lions-u18', name: 'London Lions U18', league: 'Liga U', women: false, youth: true, age: 'U18', competitions: [{ season: '2026-27', name: 'Liga U' }] },
+                 { id: 'e', slug: 'london-lions-academy', name: 'London Lions Academy', league: 'Pro B', women: false, youth: true, age: null, competitions: [] }];
+  const yi = K.teamSwitcher({ group: 'London Lions', teams: YOUTH }, 'a').cls('ls-item');
+  ok('a youth side in the switcher carries its age, or the word when it has none', yi[1].cls('ls-youth')[0].textContent === 'U18' && yi[2].cls('ls-youth')[0].textContent === 'youth' && yi[0].cls('ls-youth').length === 0);
+  ok('the youth chip is a chip of its own, apart from the womens', yi[1].cls('ls-women').length === 0 && K.youthChip('U16').textContent === 'U16');
+}
 ok('a club linked to nothing gets no switcher; one alone neither', K.teamSwitcher(null, 'a') === null && K.teamSwitcher({ teams: [CARDS[0]] }, 'a') === null);
 {
   const sw = K.teamSwitcher({ group: 'London Lions', teams: CARDS }, 'a');

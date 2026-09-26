@@ -19,6 +19,25 @@ was written against, so a link can be made, moved and undone at any size and not
 Writers are the security-definer functions, each checking `is_platform_admin()`: `platform_link_apply / _remove / _rename /
 _dismiss / _groups / _search / _suggestions / _filters / _auto`, `platform_team_set_women`. Browsers cannot write a table.
 
+## Women's and youth sides (0179)
+
+A side can be a women's team, a youth team, both, or neither; both are **told by name and settable by hand**.
+
+* `team_is_women(team)` — the hand flag, then `teams.gender`, then the team / league names.
+* `team_is_youth(team)` / `team_age_group(team)` / `team_traits(team)` (women + youth + age in one public call) — the hand flag,
+  then `teams.age_group` (0119: `senior`/`masters`/`open` mean not youth; `U18` means youth U18), then the names: the word
+  (youth, junior(s), juniorit, junioren, juvenil, cadete, infantil, academy, akademie, nachwuchs, jugend, jeunes, espoirs, primavera,
+  jong), **"Liga U"**, or an age (U19, U-21, Under 18, Sub-20; 12–25). "Liga U" says youth with no age; "ABA U19 League" says U19.
+  Academy and junior sides that play inside senior leagues (Seawolves Academy, SKYLINERS Juniors, PuHu Juniorit) are youth sides.
+* By hand (`platform_team_set_youth(team, youth, age)`, the second dropdown on every club row in the console): auto (the names),
+  youth of any age, youth U14…U23, or not youth. `team_flags` holds both hand flags on one row and is removed when it says nothing.
+* The club key ignores the youth words and ages (and the gender and legal-form words), so "London Lions U18" and "Real Madrid" in
+  Liga U are flagged as possible matches for their club; a youth side links into the club's group like any other and is listed
+  last, after the senior and women's sides. Players of a linked youth side are linked to the same person at the senior side by the
+  automatic pass, exactly as for any linked club.
+* Team page: a **WOMEN** and/or **YOUTH** (or the age group, U19) chip beside the league; the switcher shows the same chips. Before the
+  database has the functions the page falls back on the same names, so the chips show straight away.
+
 ## The possible matches (flagged, with a confidence and a reason)
 
 `platform_link_suggestions(kind)` — computed from expression indexes on the folded names, so it is quick at thousands of rows.

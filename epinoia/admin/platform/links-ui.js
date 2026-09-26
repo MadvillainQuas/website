@@ -38,6 +38,7 @@ const btn = (text, cls, fn) => { const b = el('button', 'ep-btn ' + (cls || 'min
   if (fn) b.addEventListener('click', fn); return b; };
 
 const PAGE = 25;
+const AGES = ['U14', 'U15', 'U16', 'U17', 'U18', 'U19', 'U20', 'U21', 'U22', 'U23'];
 const SUB = '../../';                                    // the console is epinoia/admin/platform/
 
 /* ---------------------------------------------------------------- pure --- */
@@ -280,6 +281,7 @@ function memberRow(card, o) {
   if (isTeam()) {
     top.appendChild(data('span', 'lk-lg', card.league || 'no league'));
     if (card.women) top.appendChild(pill('women', 'st', card.women_set ? 'a women\'s side (set by hand)' : 'a women\'s side (from the names)'));
+    if (card.youth) top.appendChild(pill(card.age || 'youth', 'pa', card.youth_set ? 'a youth side (set by hand)' : 'a youth side (from the names' + (card.age ? ', the age from the name)' : ')')));
   } else if (card.birth_year) {
     top.appendChild(data('span', 'lk-lg', 'born ' + card.birth_year));
   }
@@ -308,6 +310,19 @@ function memberRow(card, o) {
     sel.addEventListener('change', () => {
       rpc('platform_team_set_women', { p_team: card.id, p_women: sel.value === 'auto' ? null : sel.value === 'yes' })
         .then(() => { S.say('Saved.', 'ok'); return refresh(); }).catch(fail);
+    });
+  }
+  if (isTeam() && o.women !== false) {
+    /* the youth specification: what the names say, youth of any age, an age group, or not youth. "auto" hands it back to the names. */
+    const ys = act.appendChild(el('select', 'ep-input lk-w lk-y')); ys.title = 'is this a youth side, and what age?';
+    const auto = card.youth ? 'youth' + (card.age ? ' ' + card.age : '') + ' (names)' : 'senior (names)';
+    const opts = [['auto', auto], ['yes', 'youth (any age)']].concat(AGES.map(a => [a, 'youth ' + a]), [['no', 'not youth (set)']]);
+    opts.forEach(([v, t]) => { const op = el('option', null, t); op.value = v; ys.appendChild(op); });
+    ys.value = !card.youth_set ? 'auto' : (!card.youth ? 'no' : (card.age && AGES.indexOf(card.age) >= 0 ? card.age : 'yes'));
+    ys.addEventListener('change', () => {
+      const v = ys.value;
+      const args = v === 'auto' ? { p_youth: null, p_age: null } : v === 'yes' ? { p_youth: true, p_age: null } : v === 'no' ? { p_youth: false, p_age: null } : { p_youth: true, p_age: v };
+      rpc('platform_team_set_youth', Object.assign({ p_team: card.id }, args)).then(() => { S.say('Saved.', 'ok'); return refresh(); }).catch(fail);
     });
   }
   if (o.remove) act.appendChild(btn('unlink', 'mini danger', () => o.remove(card)));

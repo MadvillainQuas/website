@@ -5,6 +5,11 @@
   text-transform:uppercase; line-height:1; padding:4px 7px; border:1px solid currentColor; color:var(--lume, #93f2bf);
   border-radius:999px; vertical-align:middle; white-space:nowrap }
 
+.ls-youth{ display:inline-flex; align-items:center; font-family:var(--f-micro, monospace); font-size:8.5px; letter-spacing:.14em;
+  text-transform:uppercase; line-height:1; padding:4px 7px; border:1px solid currentColor; color:var(--amber, #e6b84a);
+  border-radius:999px; vertical-align:middle; white-space:nowrap }
+:root[data-theme="light"] .ls-youth{ color:#8a5d00 }
+
 .ls-row-host{ margin-top:10px }
 .ls-wrap{ position:relative; display:inline-block; font-family:var(--f-ui, inherit); text-transform:none; letter-spacing:normal; font-size:13px; line-height:1.4 }
 .ls-btn{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; background:none; color:var(--ink-2, #b9d2c5);

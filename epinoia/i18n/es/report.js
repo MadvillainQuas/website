@@ -683,7 +683,9 @@
       'a women\'s team': 'equipo femenino',
       'other profiles': 'Otros perfiles',
       'the same player in other competitions': 'El mismo jugador en otras competiciones',
-      'no club yet': 'Aún sin club'
+      'no club yet': 'Aún sin club',
+      'youth': 'juvenil',
+      'a youth team': 'equipo juvenil'
     },
 
     ctxPatterns: {

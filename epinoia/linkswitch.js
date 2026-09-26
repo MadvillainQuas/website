@@ -4,7 +4,8 @@
 
    A team page for a club that plays in more than one competition -- London Lions in the SLB, in the
    EuroCup and the women's side -- gets a button at the top that opens the club's other competitions and
-   seasons; a team page for a women's side carries a WOMEN indicator beside its league. A player's profile
+   seasons; a team page for a women's side carries a WOMEN indicator beside its league, and one for a youth side
+   (Liga U, an academy, an U19 team) a YOUTH indicator, or its age group. A player's profile
    offers the other rows that are the same person, and his career table runs across all of them.
 
    Nothing here is required: a page whose club or player is linked to nothing shows nothing new, and a
@@ -48,6 +49,13 @@ function foldName(s) {
 }
 const looksWomen = (...parts) => WOMEN_RE.test(foldName(parts.join(' ')));
 
+/* A YOUTH SIDE by what it and its league are called (0179's link_looks_youth and link_youth_age, word for word): the word
+   in English and the leagues' languages, an academy or a junior side, "Liga U", an age (U19, U-21, Under 18, Sub-20; 12 to 25) */
+const YOUTH_RE = /(^| )(youth|junior|juniors|juniorit|junioren|juvenil|juveniles|cadete|cadetes|infantil|academy|academia|akademie|nachwuchs|jugend|jeunes|espoirs|espoir|primavera|jong|liga u|((u|under|sub) ?(1[2-9]|2[0-5])))( |$)/;
+const AGE_RE = /(^| )(u|under|sub) ?(1[2-9]|2[0-5])( |$)/;
+const looksYouth = (...parts) => YOUTH_RE.test(foldName(parts.join(' ')));
+const youthAge = (...parts) => { const m = AGE_RE.exec(foldName(parts.join(' '))); return m ? 'U' + m[3] : null; };
+
 /* the distinct season names across a list of team cards, newest first */
 function seasonsAcross(cards) {
   const seen = [];
@@ -73,6 +81,8 @@ function playerIds(linked, id) {
 const teamHref = c => './?t=' + encodeURIComponent(c.slug || c.id);
 const playerHref = c => './?p=' + encodeURIComponent(c.slug || c.id);
 const womenChip = () => el('span', 'ls-women', 'women');
+/* the age group when there is one (a name: never translated), else the word */
+const youthChip = age => { const c = age ? nm('span', 'ls-youth', age) : el('span', 'ls-youth', 'youth'); c.title = 'a youth team'; return c; };
 
 /* ------------------------------------------------------------ the popover --- */
 /* a button that opens a small panel; closes on an outside press, Escape, or choosing a link */
@@ -118,6 +128,7 @@ function teamSwitcher(linked, currentId) {
       const top = a.appendChild(el('div', 'ls-top'));
       top.appendChild(nm('b', null, c.league || c.name));
       if (c.women) top.appendChild(womenChip());
+      if (c.youth) top.appendChild(youthChip(c.age));
       if (c.id === currentId) top.appendChild(el('span', 'ls-here', 'you are here'));
       const sub = a.appendChild(el('div', 'ls-sub'));
       if (!groups.length) sub.appendChild(el('span', null, 'no competition yet'));
@@ -134,21 +145,31 @@ function teamSwitcher(linked, currentId) {
   return P.wrap;
 }
 
-/* asked once for the team page: its women indicator and its links. Fills the header and returns what it found. */
+/* asked once for the team page: its women and youth indicators and its links. Fills the header and returns what it found. */
 async function paintTeam(team, o) {
   o = o || {};
-  const [w, linked] = await Promise.all([call('team_is_women', { p_team: team.id }), call('linked_teams', { p_team: team.id })]);
+  const [traits, linked] = await Promise.all([call('team_traits', { p_team: team.id }), call('linked_teams', { p_team: team.id })]);
   const self = linked && (linked.teams || []).find(c => c.id === team.id);
   const lg = team.leagues || {};
+  const parts = [team.name, team.slug, lg.name, lg.slug];
   /* the database's answer when it has one (a hand-set flag outranks the names); the names themselves before it does */
-  const women = w === true || !!(self && self.women) || (w === null && !self && looksWomen(team.name, team.slug, lg.name, lg.slug));
-  if (women) {
-    document.body.classList.add('is-women');
-    if (o.sub) { const chip = womenChip(); chip.title = 'a women\'s team'; o.sub.appendChild(document.createTextNode(' ')); o.sub.appendChild(chip); }
+  let women, youth, age;
+  if (traits) { women = !!traits.women; youth = !!traits.youth; age = traits.age || null; }
+  else if (self) { women = !!self.women; youth = !!self.youth; age = self.age || null; }
+  else {
+    const w = await call('team_is_women', { p_team: team.id });          // a database that has 0178 but not 0179
+    women = w === true || (w === null && looksWomen(...parts));
+    youth = looksYouth(...parts); age = youth ? youthAge(...parts) : null;
+  }
+  if (women) document.body.classList.add('is-women');
+  if (youth) document.body.classList.add('is-youth');
+  if (o.sub) {
+    if (women) { const chip = womenChip(); chip.title = 'a women\'s team'; o.sub.appendChild(document.createTextNode(' ')); o.sub.appendChild(chip); }
+    if (youth) { o.sub.appendChild(document.createTextNode(' ')); o.sub.appendChild(youthChip(age)); }
   }
   const sw = teamSwitcher(linked, team.id);
   if (sw && o.sub && o.sub.parentNode) { const row = el('div', 'ls-row-host'); row.appendChild(sw); o.sub.parentNode.appendChild(row); }
-  return { women, linked };
+  return { women, youth, age, linked };
 }
 
 /* ----------------------------------------------------------- the player --- */
@@ -188,5 +209,5 @@ function paintPlayer(pl, linked, o) {
   return sw;
 }
 
-return { paintTeam, looksWomen, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, seasonsAcross, bySeason, womenChip, call };
+return { paintTeam, looksWomen, looksYouth, youthAge, youthChip, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, seasonsAcross, bySeason, womenChip, call };
 }));

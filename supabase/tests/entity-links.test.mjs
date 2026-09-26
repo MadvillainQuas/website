@@ -1,4 +1,4 @@
-// 0178: clubs and people linked across leagues and seasons, the possible matches flagged, and the women indicator.
+// 0178 + 0179: clubs and people linked across leagues and seasons, the possible matches flagged, the women indicator and youth sides.
 // On a real Postgres (PGlite; skipped with a note when it is not installed - PGLITE_DIR=<its folder> or
 // `npm i --no-save @electric-sql/pglite`). Loads 0178 on the minimum schema it reads.
 //
@@ -27,7 +27,7 @@ await db.exec(`
   create table public.seasons (id uuid primary key default gen_random_uuid(), league_id uuid references public.leagues, name text, starts_on date);
   create table public.competitions (id uuid primary key default gen_random_uuid(), season_id uuid references public.seasons, name text, kind text default 'league');
   create table public.teams (id uuid primary key default gen_random_uuid(), league_id uuid references public.leagues, slug text unique, name text, short_name text default '',
-    gender text, aliases text[] not null default '{}');
+    gender text, age_group text, aliases text[] not null default '{}');
   create table public.competition_teams (competition_id uuid references public.competitions, team_id uuid references public.teams, primary key (competition_id, team_id));
   create table public.players (id uuid primary key default gen_random_uuid(), slug text unique, first_name text not null, last_name text not null default '',
     birth_year int, is_minor boolean not null default false, aliases text[] not null default '{}');
@@ -36,6 +36,7 @@ await db.exec(`
   grant usage on schema public to anon, authenticated; grant usage on schema auth to anon, authenticated;
 `);
 await db.exec(mig('0178_entity_links.sql'));
+await db.exec(mig('0179_youth_teams.sql'));
 
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const as = async (role, admin, fn) => {                    // run something as a browser role
@@ -234,10 +235,82 @@ ok('a team group is found by name', gl2.total === 1 && gl2.rows[0].members.lengt
 await as('authenticated', true, async () => { await q(`select platform_link_rename('team', $1, 'London Lions (all sides)')`, [gl2.rows[0].id]); });
 ok('a group can be renamed', (await q(`select name from team_groups`))[0].name === 'London Lions (all sides)');
 
+
+console.log('-- youth teams (0179)');
+{
+  const looks = async t => (await q(`select link_looks_youth($1) y, link_youth_age($1) a`, [t]))[0];
+  ok('the youth words are told in English and the leagues\' languages', (await Promise.all(['Liga U', 'Espoirs ÉLITE', 'Seawolves Academy', 'SKYLINERS Juniors', 'PuHu Juniorit', 'Baskets Nachwuchs', 'Jong Donar', 'Youth League', 'Cadete A'].map(looks))).every(r => r.y === true));
+  ok('an age is read from U19, U-21, Under 18 and Sub-20', (await q(`select link_youth_age('ABA U19 League') a, link_youth_age('Zagreb U-21') b, link_youth_age('Under 18 Lions') c, link_youth_age('Liga Sub-20') d`))
+     .every(r => r.a === 'U19' && r.b === 'U21' && r.c === 'U18' && r.d === 'U20'));
+  ok('a name without youth in it is not, and a number that is not an age is not one', (await Promise.all(['Sheffield Sharks', 'Ubuntu FC', 'Team 99', 'U 4 Club', 'Under 30 Club', 'Super League Basketball Men'].map(looks))).every(r => r.y === false && r.a === null));
+  ok('"Liga U" says youth but no age', (await looks('Liga U')).y === true && (await looks('Liga U')).a === null);
+
+  const yl = await lg('liga-u', 'Liga U'), ya = await lg('aba-u19-league', 'ABA U19 League'), yf = await lg('lnb-espoirs-elite', 'Espoirs ÉLITE');
+  const tLigaU = await team(yl, 'zaragoza-u', 'Casademont Zaragoza'), tAba = await team(ya, 'zagreb-u19', 'Zagreb'), t18 = await team(slb, 'london-lions-u18', 'London Lions U18');
+  const tAcad = await team(fr2, 'seawolves-academy', 'Seawolves Academy'), tJun = await team(fr2, 'skyliners-juniors', 'SKYLINERS Juniors'), tEsp = await team(yf, 'chalon-esp', 'Chalon');
+  const tSen = await team(slb, 'sheffield-sharks', 'Sheffield Sharks');
+  const traits = async id => (await q(`select team_traits($1) t`, [id]))[0].t;
+  ok('a side in Liga U is a youth side (by its league), no age stated', (await traits(tLigaU)).youth === true && (await traits(tLigaU)).age === null && (await traits(tLigaU)).women === false, await traits(tLigaU));
+  ok('a side in the ABA U19 League: youth, U19', (await traits(tAba)).youth === true && (await traits(tAba)).age === 'U19', await traits(tAba));
+  ok('"London Lions U18": youth, U18, by its own name', (await traits(t18)).youth === true && (await traits(t18)).age === 'U18');
+  ok('an academy and a junior side in senior leagues are youth sides', (await traits(tAcad)).youth === true && (await traits(tJun)).youth === true);
+  ok('Espoirs ÉLITE is youth', (await traits(tEsp)).youth === true);
+  ok('a senior side is not', (await traits(tSen)).youth === false && (await traits(tSen)).age === null);
+  ok('the women\'s and the youth indicators are separate', (await traits(llW)).women === true && (await traits(llW)).youth === false);
+
+  console.log('   the team\'s own age group column (0119) and hand-set flags');
+  await q(`update teams set age_group = 'senior' where id = $1`, [tLigaU]);
+  ok('a team recorded as senior is not youth whatever its league is called', (await traits(tLigaU)).youth === false);
+  await q(`update teams set age_group = 'U16' where id = $1`, [tLigaU]);
+  ok('one recorded as U16 is youth, U16', (await traits(tLigaU)).youth === true && (await traits(tLigaU)).age === 'U16');
+  await q(`update teams set age_group = null where id = $1`, [tLigaU]);
+  const cards = async id => (await as('authenticated', true, async () => (await q(`select platform_link_search('team', $1, null, null, 5) r`, [(await q(`select name from teams where id = $1`, [id]))[0].name]))[0].r)).rows.find(c => c.id === id);
+  await as('authenticated', true, async () => {
+    const a = (await q(`select platform_team_set_youth($1, false, null) r`, [t18]))[0].r;
+    ok('a hand flag says "not youth" whatever the name says', a.youth === false && a.age === null, a);
+    const b = (await q(`select platform_team_set_youth($1, true, 'u21') r`, [tSen]))[0].r;
+    ok('a hand flag says "youth", with an age (any case)', b.youth === true && b.age === 'U21', b);
+    const c = (await q(`select platform_team_set_youth($1, null, 'U15') r`, [tAcad]))[0].r;
+    ok('an age alone means youth of that age', c.youth === true && c.age === 'U15', c);
+    ok('an age group is U and two digits', await (async () => { try { await db.query(`select platform_team_set_youth($1, true, 'U9')`, [tSen]); return false; } catch (e) { return /U and two digits/.test(e.message); } })());
+  });
+  ok('a card says youth, the age, and that it was set by hand', await (async () => { const c = await cards(tSen); return c && c.youth === true && c.age === 'U21' && c.youth_set === true; })());
+  ok('...and an unset one says it was not', await (async () => { const c = await cards(tJun); return c && c.youth === true && c.youth_set === false; })());
+  await as('authenticated', true, async () => {
+    await q(`select platform_team_set_women($1, true)`, [tSen]);
+    await q(`select platform_team_set_youth($1, null, null)`, [tSen]);
+  });
+  ok('clearing youth keeps the women flag on the same row', (await q(`select women, youth, age_group from team_flags where team_id = $1`, [tSen]))[0].women === true
+     && (await q(`select women, youth, age_group from team_flags where team_id = $1`, [tSen]))[0].youth === null);
+  ok('...and the side is back to what its names say', (await traits(tSen)).youth === false && (await traits(tSen)).women === true);
+  await as('authenticated', true, async () => { await q(`select platform_team_set_women($1, null)`, [tSen]); });
+  ok('a row that says nothing is removed', (await q(`select count(*) n from team_flags where team_id = $1`, [tSen]))[0].n === 0);
+  await as('authenticated', true, async () => { await q(`select platform_team_set_youth($1, null, null)`, [tAcad]); await q(`select platform_team_set_youth($1, null, null)`, [t18]); });
+
+  console.log('   a youth side in the club\'s group');
+  ok('the club key does not see the youth words', (await q(`select link_team_key('London Lions U18') a, link_team_key('Seawolves Academy') b, link_team_key('Casademont Zaragoza Under 21') c`))
+     .every(r => r.a === 'london lions' && r.b === 'seawolves' && r.c === 'casademont zaragoza'));
+  ok('(the index was rebuilt: the youth side is found by the club\'s key)', (await q(`select count(*) n from teams where link_team_key(name) = 'london lions'`))[0].n === 5);
+  const sg = await as('authenticated', true, async () => (await q(`select platform_link_suggestions('team') r`))[0].r);
+  const llset = sg.rows.find(r => r.key === 'london lions');
+  ok('London Lions U18 is flagged as a possible match for the club, medium: the spelling differs', llset && llset.ids.includes(t18) && llset.confidence === 'medium' && /youth words/.test(llset.reason), llset && [llset.confidence, llset.reason]);
+  ok('...its card says youth, U18', llset.cards.find(c => c.id === t18).youth === true && llset.cards.find(c => c.id === t18).age === 'U18');
+  const joined = await as('authenticated', true, async () => (await q(`select platform_link_apply('team', $1::uuid[]) r`, [[t18, llSlb]]))[0].r);
+  ok('a youth side links into the club\'s group', joined.members >= 3, joined);
+  ok('the group keeps the club\'s own name, not the youth side\'s', (await q(`select g.name from team_groups g join team_group_members m on m.group_id = g.id where m.team_id = $1`, [t18]))[0].name !== 'London Lions U18');
+  const pubLL = await as('anon', false, async () => (await q(`select linked_teams($1) r`, [llSlb]))[0].r);
+  ok('the public list puts the youth side last, and says youth and the age', pubLL.teams[pubLL.teams.length - 1].id === t18 && pubLL.teams[pubLL.teams.length - 1].youth === true && pubLL.teams[pubLL.teams.length - 1].age === 'U18'
+     && pubLL.teams[0].id === llSlb, pubLL.teams.map(t => [t.slug, t.youth]));
+  const gl3 = await as('authenticated', true, async () => (await q(`select platform_link_groups('team', 'lions') r`))[0].r);
+  ok('a group\'s members list the senior side first and the youth side after', gl3.rows[0].members[gl3.rows[0].members.length - 1].youth === true && gl3.rows[0].members[0].youth === false);
+  ok('anybody can ask a team\'s traits', await as('anon', false, async () => (await q(`select team_traits($1) t`, [t18]))[0].t.youth === true));
+}
+
 console.log('-- nobody but a platform administrator');
 for (const [what, sql] of [['search', `select platform_link_search('team', 'x')`], ['suggestions', `select platform_link_suggestions('team')`],
     ['apply', `select platform_link_apply('team', '{}')`], ['remove', `select platform_link_remove('team', gen_random_uuid())`],
-    ['groups', `select platform_link_groups('team')`], ['flag', `select platform_team_set_women(gen_random_uuid(), true)`]]) {
+    ['groups', `select platform_link_groups('team')`], ['flag', `select platform_team_set_women(gen_random_uuid(), true)`],
+    ['youth flag', `select platform_team_set_youth(gen_random_uuid(), true, null)`]]) {
   const asAnon = await as('anon', false, async () => { try { await db.query(sql); return 'ran'; } catch (e) { return e.message; } });
   const asUser = await as('authenticated', false, async () => { try { await db.query(sql); return 'ran'; } catch (e) { return e.message; } });
   ok(`${what}: a signed-out visitor cannot call it`, /permission denied/.test(asAnon), asAnon);

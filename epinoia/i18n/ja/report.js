@@ -665,7 +665,9 @@
       'a women\'s team': '女子チーム',
       'other profiles': '他のプロフィール',
       'the same player in other competitions': '他の大会での同じ選手',
-      'no club yet': 'まだクラブはありません'
+      'no club yet': 'まだクラブはありません',
+      'youth': 'ユース',
+      'a youth team': 'ユースチーム'
     },
 
     ctxPatterns: {
