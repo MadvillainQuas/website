@@ -1,0 +1,33 @@
+/* ============================================================================
+   SECTION TITLES (.sec-h), on HOME, a league's front page and a player's page.
+
+   Centred, in the title face (the pixel face the club and page names use), the number that used to lead each one gone, and a short accent bar
+   under the name. Whatever else sat on the same line (the Upcoming / Results switch, "all fixtures", a note like "by box plus/minus") now
+   sits on a line of its own under the title, centred, instead of being pushed to the right edge.
+
+   `body .sec-h` (one element more than each page's own `.sec-h` rule) wins wherever this file is placed, so the pages keep their old rules
+   for anything not set here and this stays the one place the look is decided. Sizes are in the kit's own pixels: the body's zoom
+   (1.25 / 1.5 on a desktop) scales them, so the clamp is a phone's 22px up to 28px. The admin console keeps its own compact headings.
+   ============================================================================ */
+body .sec-h{
+  flex-wrap:wrap; justify-content:center; align-items:center; text-align:center;
+  gap:10px 16px; padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2.5);
+}
+body .sec-h .idx{ display:none }
+body .sec-h h2{
+  flex:0 0 100%; margin:0; text-align:center;
+  font-family:var(--f-score); font-weight:400; font-size:clamp(22px, 2.4vw, 28px); line-height:1.05;
+  letter-spacing:.04em; text-transform:uppercase;
+}
+body .sec-h h2::after{
+  content:''; display:block; width:36px; height:3px; margin:12px auto 0; border-radius:2px; background:var(--lume);
+}
+/* the things that shared the line: centred under the title, not pushed to the far edge */
+body .sec-h .note{ margin:0; text-align:center; flex:0 0 100%; margin-top:-2px }
+body .sec-h .showall, body.hm .sec-h .showall, .hm .sec-h .showall{ margin-left:0; margin-right:0; text-align:center }
+.hm .sec-h .hm-seg{ order:0; margin-left:0 }             /* the switch and the link share the line under the title, switch first */
+/* a control that belongs to the title above it, on a player's page: "adjust for position" under "league percentile" */
+body .barswitch{ display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:8px 12px; text-align:center }
+@media (max-width:720px){
+  body .sec-h{ padding:calc(var(--u)*4) calc(var(--u)*2) calc(var(--u)*2) }
+}

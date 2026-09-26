@@ -138,5 +138,14 @@ ok('and the desktop grids fill the row: three podium cards and seven more share 
   ok('...only from 721px up: on a phone they are rails', /@media \(min-width:721px\)\{ \.clubgrid:not/.test(kitHome));
 }
 
+/* ---- section titles: centred, in the title face, no numbers ------------------- */
+{
+  const st = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'sectitle.css'), 'utf8');
+  ok('section titles are centred, in the title face, and the numbers are hidden', /body \.sec-h h2\{[^}]*font-family:var\(--f-score\)/.test(st) && /body \.sec-h h2\{[^}]*text-align:center/.test(st) && /body \.sec-h \.idx\{ display:none \}/.test(st));
+  ok('...what shared the line (the switch, "all fixtures", a note) is centred under the title, not pushed to the edge', /\.showall[^{]*\{ margin-left:0; margin-right:0/.test(st) && /body \.sec-h \.note\{[^}]*flex:0 0 100%/.test(st));
+  const links = f => readFileSync(path.join(ROOT, 'epinoia', ...f), 'utf8').includes('kit/sectitle.css?v=');
+  ok('HOME, a league\'s front page and a player\'s page link it', links(['home', 'index.html']) && links(['index.html']) && links(['p', 'index.html']));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
