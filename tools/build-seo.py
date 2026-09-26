@@ -69,6 +69,33 @@ COUNTRY = {
     "NZ": "New Zealand", "KR": "South Korea", "CN": "China", "PH": "Philippines", "TW": "Taiwan",
 }
 
+# The language a league's own country reads, for the extra copies at /epinoia/<lang>/l/ and /epinoia/<lang>/t/
+# (Japan and Spain only, and only their leagues and clubs). The page then opens in that language, and the
+# title and description a search engine shows are written in it.
+LANG_OF_COUNTRY = {"JP": "ja", "ES": "es"}
+OG_LOCALE = {"ja": "ja_JP", "es": "es_ES"}
+COUNTRY_LOCAL = {"ja": {"JP": "日本"}, "es": {"ES": "España"}}
+# what people search a league as, where it is not the name the site holds
+NATIVE_NAME = {
+    "ja": {"B.LEAGUE Premier": "Bリーグ", "B.LEAGUE One": "Bリーグ", "W League Premier": "Wリーグ", "W League Future": "Wリーグ"},
+    "es": {"Liga Endesa": "Liga ACB", "Liga Femenina Endesa": "Liga Femenina", "Primera FEB": "Primera Federación",
+           "Segunda FEB": "Segunda Federación"},
+}
+
+
+def lang_of(lg) -> str:
+    """'ja' or 'es' for a league whose country is exactly Japan or Spain, else ''."""
+    return LANG_OF_COUNTRY.get(str((lg or {}).get("country") or ""), "")
+
+
+def shown(lang: str, name: str) -> str:
+    """A league's name as its own country's fans write it: 'B.LEAGUE Premier（Bリーグ）'."""
+    nat = NATIVE_NAME.get(lang, {}).get(name)
+    if not nat or nat.lower() in name.lower():
+        return name
+    return f"{name}（{nat}）" if lang == "ja" else f"{name} ({nat})"
+
+
 
 # ============================================================================ reading the database
 def read_config() -> tuple[str, str]:
@@ -223,11 +250,16 @@ def clip(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0].rstrip(",;:- ") + "…"
 
 
+def width(s: str) -> int:
+    """Display width: a full-width (Japanese) character takes two places, as it does in a search result."""
+    return sum(2 if ord(c) >= 0x2E80 else 1 for c in s)
+
+
 def fit_title(options: list, limit: int = 65) -> str:
     """The first title that fits (a search result shows about 60 characters): the fullest wording that
     still ends with the brand, and only as a last resort a clipped one."""
     for t in options:
-        if len(t) <= limit:
+        if width(t) <= limit:
             return t
     return clip(options[-1], limit)
 
@@ -243,12 +275,12 @@ def breadcrumb(items) -> dict:
     return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": out}
 
 
-def league_path(m: Model, lg) -> str:
-    return f"{BASE}/l/{slugify(lg['slug'])}.html"
+def league_path(m: Model, lg, lang: str = "") -> str:
+    return f"{BASE}/{lang + '/' if lang else ''}l/{slugify(lg['slug'])}.html"
 
 
-def team_path(t: dict) -> str:
-    return f"{BASE}/t/{t['file']}.html"
+def team_path(t: dict, lang: str = "") -> str:
+    return f"{BASE}/{lang + '/' if lang else ''}t/{t['file']}.html"
 
 
 def player_head(m: Model, p: dict) -> dict:
@@ -292,42 +324,92 @@ def latest_rows(m: Model, rows: list) -> list:
     return [r for r in rows if m.comp.get(r["competition_id"], {}).get("starts", "") == best]
 
 
-def team_head(m: Model, t: dict) -> dict:
+def alts(path_by_lang: dict) -> list:
+    """The same page in each language, for hreflang: [(code, absolute url)], x-default being the English one."""
+    out = [(c, ORIGIN + p) for c, p in path_by_lang.items()]
+    out.append(("x-default", ORIGIN + path_by_lang["en"]))
+    return out
+
+
+def team_head(m: Model, t: dict, lang: str = "") -> dict:
     cur = latest_rows(m, m.team_rows.get(t["id"], []))
     lg = m.leagues.get(t["league_id"])
-    league = (lg or {}).get("name") or ""
+    lname = (lg or {}).get("name") or ""
+    league = shown(lang, lname) if lang else lname
     season = (m.comp.get(cur[0]["competition_id"], {}) if cur else {}).get("season", "")
     name = t["name"]
     n = len({r["player_id"] for r in cur})
-    title = fit_title([f"{name} – {league} roster and stats | {SITE_NAME}", f"{name} – {league} | {SITE_NAME}", f"{name} | {SITE_NAME}"])
-    if n:
-        d = (f"{name} in {league} {season}: roster, points, rebounds and assists per game for {n} players, "
-             f"plus fixtures, results and standings on {SITE_NAME}.")
+    limit = 65
+    if lang == "ja":
+        opts = [f"{name}｜{league}のロスターと成績 | {SITE_NAME}", f"{name}｜{lname}のロスターと成績 | {SITE_NAME}",
+                f"{name}｜{lname} | {SITE_NAME}", f"{name} | {SITE_NAME}"]
+        d = (f"{name}の{league} {season}：所属{n}選手のロスター、1試合平均の得点・リバウンド・アシスト、試合日程・結果、順位表を{SITE_NAME}で。" if n else
+             f"{name}の{league}での試合日程・結果、順位表、選手成績を{SITE_NAME}で。")
+    elif lang == "es":
+        opts = [f"{name} – plantilla y estadísticas de {league} | {SITE_NAME}", f"{name} – plantilla y estadísticas | {SITE_NAME}",
+                f"{name} – {lname} | {SITE_NAME}", f"{name} | {SITE_NAME}"]
+        d = (f"{name} en {league} {season}: plantilla, puntos, rebotes y asistencias por partido de {n} jugadores, "
+             f"más calendario, resultados y clasificación en {SITE_NAME}." if n else
+             f"{name} en {league}: calendario, resultados, clasificación y estadísticas de jugadores en {SITE_NAME}.")
     else:
-        d = f"{name} in {league}: fixtures, results, standings and player statistics on {SITE_NAME}."
-    path = team_path(t)
+        opts = [f"{name} – {league} roster and stats | {SITE_NAME}", f"{name} – {league} | {SITE_NAME}", f"{name} | {SITE_NAME}"]
+        d = (f"{name} in {league} {season}: roster, points, rebounds and assists per game for {n} players, "
+             f"plus fixtures, results and standings on {SITE_NAME}." if n else
+             f"{name} in {league}: fixtures, results, standings and player statistics on {SITE_NAME}.")
+    title = fit_title(opts, limit)
+    path = team_path(t, lang)
     org = {"@context": "https://schema.org", "@type": "SportsTeam", "name": name, "sport": "Basketball", "url": ORIGIN + path}
+    if lang:
+        org["inLanguage"] = lang
     if lg:
-        org["memberOf"] = {"@type": "SportsOrganization", "name": league, "sport": "Basketball", "url": ORIGIN + league_path(m, lg)}
-    trail = [(SITE_NAME, f"{BASE}/home/")] + ([(league, league_path(m, lg))] if lg else []) + [(name, None)]
-    return {"title": title, "desc": clip(d, 300), "path": path, "entity": t["id"], "og": "website",
-            "ld": [org, breadcrumb(trail)]}
+        org["memberOf"] = {"@type": "SportsOrganization", "name": lname, "sport": "Basketball", "url": ORIGIN + league_path(m, lg, lang)}
+    trail = [(SITE_NAME, f"{BASE}/home/")] + ([(lname, league_path(m, lg, lang))] if lg else []) + [(name, None)]
+    h = {"title": title, "desc": clip(d, 300), "path": path, "entity": t["id"], "og": "website",
+         "ld": [org, breadcrumb(trail)], "lang": lang, "base": f"{BASE}/t/" if lang else ""}
+    if lang_of(lg):
+        h["alts"] = alts({"en": team_path(t), lang_of(lg): team_path(t, lang_of(lg))})
+    return h
 
 
-def league_head(m: Model, lg: dict) -> dict:
-    name = lg["name"]
-    country = " and ".join(COUNTRY[c] for c in str(lg.get("country") or "").split("+") if c in COUNTRY)
+def league_head(m: Model, lg: dict, lang: str = "") -> dict:
+    lname = lg["name"]
+    name = shown(lang, lname) if lang else lname
+    codes = str(lg.get("country") or "").split("+")
+    country = " and ".join(COUNTRY[c] for c in codes if c in COUNTRY)
+    if lang:
+        country = COUNTRY_LOCAL[lang].get(codes[0], country)
     clubs = [t for t in m.teams.values() if t["league_id"] == lg["id"]]
     rows = [r for t in clubs for r in m.team_rows.get(t["id"], [])]
     cur = latest_rows(m, rows)
     season = (m.comp.get(cur[0]["competition_id"], {}) if cur else {}).get("season", "")
-    title = fit_title([f"{name} – fixtures, standings and player stats | {SITE_NAME}", f"{name} – fixtures and stats | {SITE_NAME}", f"{name} | {SITE_NAME}"])
-    d = (f"{name}{' (' + country + ')' if country else ''} on {SITE_NAME}: fixtures and results, standings, box scores "
-         f"and player statistics{' for ' + season if season else ''}{' across ' + str(len(clubs)) + ' clubs' if clubs else ''}.")
-    path = league_path(m, lg)
-    org = {"@context": "https://schema.org", "@type": "SportsOrganization", "name": name, "sport": "Basketball", "url": ORIGIN + path}
-    return {"title": title, "desc": clip(d, 300), "path": path, "entity": lg["slug"], "og": "website",
-            "ld": [org, breadcrumb([(SITE_NAME, f"{BASE}/home/"), (name, None)])]}
+    limit = 65
+    if lang == "ja":
+        opts = [f"{name}｜日程・順位表・選手成績 | {SITE_NAME}", f"{name}｜日程・順位表 | {SITE_NAME}", f"{lname}｜日程・順位表・成績 | {SITE_NAME}",
+                f"{lname}｜日程と成績 | {SITE_NAME}", f"{lname} | {SITE_NAME}"]
+        d = (f"{name}の試合日程・結果、順位表、ボックススコア、選手成績{'（' + season + '）' if season else ''}"
+             f"を{'全' + str(len(clubs)) + 'クラブ分、' if clubs else ''}{SITE_NAME}で。")
+    elif lang == "es":
+        opts = [f"{name} – calendario, clasificación y estadísticas | {SITE_NAME}", f"{lname} – calendario y estadísticas | {SITE_NAME}",
+                f"{lname} | {SITE_NAME}"]
+        d = (f"{name}{' (' + country + ')' if country else ''} en {SITE_NAME}: calendario y resultados, clasificación, boxscores "
+             f"y estadísticas de jugadores{' de la temporada ' + season if season else ''}{' de ' + str(len(clubs)) + ' clubes' if clubs else ''}.")
+    else:
+        opts = [f"{name} – fixtures, standings and player stats | {SITE_NAME}", f"{name} – fixtures and stats | {SITE_NAME}", f"{name} | {SITE_NAME}"]
+        d = (f"{name}{' (' + country + ')' if country else ''} on {SITE_NAME}: fixtures and results, standings, box scores "
+             f"and player statistics{' for ' + season if season else ''}{' across ' + str(len(clubs)) + ' clubs' if clubs else ''}.")
+    title = fit_title(opts, limit)
+    path = league_path(m, lg, lang)
+    org = {"@context": "https://schema.org", "@type": "SportsOrganization", "name": lname, "sport": "Basketball", "url": ORIGIN + path}
+    nat = NATIVE_NAME.get(lang, {}).get(lname) if lang else None
+    if nat:
+        org["alternateName"] = nat
+    if lang:
+        org["inLanguage"] = lang
+    h = {"title": title, "desc": clip(d, 300), "path": path, "entity": lg["slug"], "og": "website",
+         "ld": [org, breadcrumb([(SITE_NAME, f"{BASE}/home/"), (lname, None)])], "lang": lang, "base": f"{BASE}/l/" if lang else ""}
+    if lang_of(lg):
+        h["alts"] = alts({"en": league_path(m, lg), lang_of(lg): league_path(m, lg, lang_of(lg))})
+    return h
 
 
 def bake(shell: str, h: dict) -> str:
@@ -338,13 +420,23 @@ def bake(shell: str, h: dict) -> str:
     s = re.sub(r'<link[^>]*\brel="canonical"[^>]*>\s*', "", s)
     s = re.sub(r'<meta[^>]*\bproperty="og:[^"]*"[^>]*>\s*', "", s)
     s = re.sub(r'<meta[^>]*\bname="twitter:[^"]*"[^>]*>\s*', "", s)
-    block = (f'<title>{esc(h["title"])}</title>\n'
+    lang = h.get("lang") or ""
+    extra = ""
+    if lang:
+        # a copy one folder down: its relative links and scripts are the page's own through <base>; the
+        # language is stated for the page itself (i18n.js reads epinoia-lang) and for the crawler
+        s = re.sub(r'<html lang="[^"]*"', f'<html lang="{lang}"', s, count=1)
+        extra = (f'<base href="{esc(h["base"])}">\n<meta name="epinoia-lang" content="{lang}">\n'
+                 f'<meta property="og:locale" content="{OG_LOCALE[lang]}">\n')
+    hre = "".join(f'<link rel="alternate" hreflang="{c}" href="{esc(u)}">\n' for c, u in h.get("alts", []))
+    block = (extra + f'<title>{esc(h["title"])}</title>\n'
              f'<meta name="description" content="{esc(h["desc"])}">\n'
              f'<link rel="canonical" href="{esc(url)}">\n'
              f'<meta name="epinoia-entity" content="{esc(h["entity"])}">\n'
              f'<meta property="og:type" content="{h["og"]}">\n<meta property="og:site_name" content="{SITE_NAME}">\n'
              f'<meta property="og:title" content="{esc(h["title"])}">\n<meta property="og:description" content="{esc(h["desc"])}">\n'
              f'<meta property="og:url" content="{esc(url)}">\n'
+             + hre +
              f'<meta property="og:image" content="{ORIGIN}{BASE}/brand/epinoia-mark-512.png">\n<meta name="twitter:card" content="summary">\n'
              + "".join(f'<script type="application/ld+json">{ld(o)}</script>\n' for o in h["ld"]))
     out, n = re.subn(r"<title>.*?</title>\s*", lambda _m: block, s, count=1, flags=re.S)
@@ -410,10 +502,20 @@ def build(site: str, source, min_players: int, min_teams: int = 50, min_leagues:
         h = league_head(m, lg)
         write(site, h["path"], bake(sh["l"], h))
         urls.append(h["path"])
+    for lg in m.leagues.values():
+        if lang_of(lg):
+            h = league_head(m, lg, lang_of(lg))
+            write(site, h["path"], bake(sh["l"], h))
+            urls.append(h["path"])
     for t in m.teams.values():
         h = team_head(m, t)
         write(site, h["path"], bake(sh["t"], h))
         urls.append(h["path"])
+        lang = lang_of(m.leagues.get(t["league_id"]))
+        if lang:
+            h = team_head(m, t, lang)
+            write(site, h["path"], bake(sh["t"], h))
+            urls.append(h["path"])
     for p in m.players.values():
         h = player_head(m, p)
         write(site, h["path"], bake(sh["p"], h))

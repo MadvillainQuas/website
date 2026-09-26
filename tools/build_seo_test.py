@@ -205,5 +205,57 @@ ok("...the query still wins (?p= ?t= ?l=)", "get('p') ||" in pj and "get('t') ||
 ok("each keeps the baked title instead of overwriting it",
    all(re.search(r"if \(!document\.querySelector\('meta\[name=\"epinoia-entity\"\]'\)\) document\.title", js) for js in (pj, tj, lj)))
 
+print("\n-- the Japanese and Spanish copies (leagues and clubs of Japan and Spain only)")
+JP = {"id": "L3", "slug": "b-league-premier", "name": "B.LEAGUE Premier", "country": "JP"}
+ES = {"id": "L4", "slug": "liga-endesa", "name": "Liga Endesa", "country": "ES"}
+MX = {"id": "L5", "slug": "lnbp", "name": "LNBP", "country": "MX"}
+CJ = [{"id": "C3", "name": "B.LEAGUE Premier", "seasons": {"id": "S3", "name": "2026-27", "starts_on": "2026-09-01", "leagues": {"id": "L3"}}},
+      {"id": "C4", "name": "Liga Endesa", "seasons": {"id": "S4", "name": "2026-27", "starts_on": "2026-09-01", "leagues": {"id": "L4"}}},
+      {"id": "C5", "name": "LNBP", "seasons": {"id": "S5", "name": "2026-27", "starts_on": "2026-09-01", "leagues": {"id": "L5"}}}]
+TJ = [{"id": "T10", "slug": "tokyo-x", "name": "Tokyo X", "short_name": "TKX", "league_id": "L3"},
+      {"id": "T11", "slug": "madrid-y", "name": "Madrid Y", "short_name": "MDY", "league_id": "L4"},
+      {"id": "T12", "slug": "monterrey-z", "name": "Monterrey Z", "short_name": "MTZ", "league_id": "L5"},
+      {"id": "T13", "slug": "london-w", "name": "London W", "short_name": "LDW", "league_id": "L1"}]
+SJ = [dict(row("P20", "Yuki", "Tanaka", "T1", comp="C3", season="S3"), team_id="T10", team_name="Tokyo X"),
+      dict(row("P21", "Pau", "Ruiz", "T1", comp="C4", season="S4"), team_id="T11", team_name="Madrid Y"),
+      dict(row("P22", "Luis", "Perez", "T1", comp="C5", season="S5"), team_id="T12", team_name="Monterrey Z")]
+fx2, out2 = tempfile.mkdtemp(), tempfile.mkdtemp()
+for name, data in (("leagues", [LG1, JP, ES, MX]), ("competitions", COMPS[:1] + CJ), ("teams", TJ), ("player_season_stats", SJ)):
+    with open(os.path.join(fx2, name + ".json"), "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+res2 = B.build(out2, Src(fx2), 1, min_teams=1, min_leagues=1)
+sm2 = re.findall(r"<loc>(.*?)</loc>", read(out2, "epinoia", "sitemap.xml"))
+ok("Japan: a league and a club each have a /ja/ copy",
+   os.path.exists(os.path.join(out2, "epinoia", "ja", "l", "b-league-premier.html")) and os.path.exists(os.path.join(out2, "epinoia", "ja", "t", "tokyo-x.html")))
+ok("Spain: a league and a club each have an /es/ copy",
+   os.path.exists(os.path.join(out2, "epinoia", "es", "l", "liga-endesa.html")) and os.path.exists(os.path.join(out2, "epinoia", "es", "t", "madrid-y.html")))
+ok("no other country (Mexico, England) gets one, and the English pages all stay",
+   sorted(os.listdir(os.path.join(out2, "epinoia", "ja", "t"))) == ["tokyo-x.html"] and sorted(os.listdir(os.path.join(out2, "epinoia", "es", "t"))) == ["madrid-y.html"]
+   and not os.path.exists(os.path.join(out2, "epinoia", "ja", "p")) and not os.path.exists(os.path.join(out2, "epinoia", "es", "p"))
+   and all(os.path.exists(os.path.join(out2, "epinoia", "t", f"{t['slug']}.html")) for t in TJ))
+ok("...players get no /ja/ or /es/ copy (leagues and clubs only)", not any("/ja/p/" in u or "/es/p/" in u for u in sm2))
+ok("the sitemap lists the four extra copies", all(f"{B.ORIGIN}/epinoia/{x}" in sm2 for x in ("ja/l/b-league-premier.html", "ja/t/tokyo-x.html", "es/l/liga-endesa.html", "es/t/madrid-y.html")), sm2)
+ja = read(out2, "epinoia", "ja", "l", "b-league-premier.html")
+jt = read(out2, "epinoia", "ja", "t", "tokyo-x.html")
+es = read(out2, "epinoia", "es", "l", "liga-endesa.html")
+en = read(out2, "epinoia", "l", "b-league-premier.html")
+ok("a Japanese page is in Japanese (title, description, html lang, og:locale, page language default)",
+   re.search(r"<title>[^<]*[ぁ-んァ-ン一-龥]", ja) and re.search(r'<meta name="description" content="[^"]*[ぁ-んァ-ン一-龥]', ja) and '<html lang="ja"' in ja
+   and 'property="og:locale" content="ja_JP"' in ja and '<meta name="epinoia-lang" content="ja">' in ja)
+ok("...it names the league as Japanese fans search it (Bリーグ)", "Bリーグ" in ja, re.search(r"<title>.*?</title>", ja).group(0))
+ok("a Spanish page is in Spanish, with the league's usual name (Liga ACB)", "clasificación" in es and "Liga ACB" in es and '<html lang="es"' in es)
+ok("the copies are the full page one folder down: <base> makes every relative link the page's own",
+   '<base href="/epinoia/l/">' in ja and '<base href="/epinoia/t/">' in jt and "<base" not in en)
+ok("the canonical is the copy's own address", f'rel="canonical" href="{B.ORIGIN}/epinoia/ja/l/b-league-premier.html"' in ja)
+ok("English and Japanese point at each other (hreflang), English being the default",
+   all(f'hreflang="{c}" href="{B.ORIGIN}{p}"' in x for x in (ja, en) for c, p in (("en", "/epinoia/l/b-league-premier.html"), ("ja", "/epinoia/ja/l/b-league-premier.html"), ("x-default", "/epinoia/l/b-league-premier.html"))))
+ok("a league with no copy carries no hreflang", "hreflang" not in read(out2, "epinoia", "l", "lnbp.html") and "hreflang" not in read(out2, "epinoia", "t", "london-w.html"))
+ok("the page body is the shell's, byte for byte, in every copy",
+   all(x.split("</head>", 1)[1] == sh_body for x, sh_body in ((ja, B.shells()["l"].split("</head>", 1)[1]), (jt, B.shells()["t"].split("</head>", 1)[1]), (es, B.shells()["l"].split("</head>", 1)[1]))))
+ok("Japanese titles fit a result (a full-width character counts two)",
+   all(B.width(html.unescape(re.search(r"<title>(.*?)</title>", x).group(1))) <= 65 for x in (ja, jt)))
+ok("the page's language script and nav read the page's own language and base",
+   "meta[name=\"epinoia-lang\"]" in rd("epinoia", "i18n.js") and "document.baseURI" in rd("epinoia", "nav.js"))
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

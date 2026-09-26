@@ -245,7 +245,11 @@
                    && !!document.getElementById('splash');
   if (atSplash) return;
 
-  const here = location.pathname.replace(/\/index\.html$/, '/');
+  /* The page's own folder, from its base: an address that is a copy of a page one level down (the
+     /ja/l/ and /es/t/ ones) sets a <base> so every relative link and script is the page's own, and the
+     rail's way back to /epinoia/ has to be counted from there, not from the address in the bar. */
+  const here = (() => { try { return new URL(document.baseURI).pathname; } catch (_) { return location.pathname; } })()
+    .replace(/\/index\.html$/, '/');
   /* this file's own ?v= stamp, so a script it loads later is the same build */
   const stamp = (() => {
     const me = document.currentScript;

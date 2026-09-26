@@ -263,6 +263,9 @@
   try { stored = G.localStorage.getItem(STORE); } catch (_) { /* private mode */ }
   let asked = null;
   try { asked = new URLSearchParams(G.location.search).get('lang'); } catch (_) { /* no URL */ }
+  /* a page written in one language (the /ja/ and /es/ league and club addresses) says so in its head; that is
+     the visitor asking for it as ?lang= does, so it is kept the same way and its links stay in it */
+  if (!asked) { try { const dm = doc.querySelector('meta[name="epinoia-lang"]'); asked = dm && dm.content; } catch (_) { /* no head yet */ } }
   const lang = pick(asked, stored);
   if (asked && asked === lang && asked !== stored) {
     try { G.localStorage.setItem(STORE, lang); } catch (_) { /* private mode */ }
