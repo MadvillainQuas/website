@@ -551,6 +551,10 @@ jobs:
         # finished game is never touched from the schedule; a Czech game keeps its fixture's id.
         run: python scripts/ingest/quiet_test.py
 
+      - name: robots.txt is at the root, slow, and polite
+        # crawlers read /robots.txt at the domain root only; the old file under /epinoia/ was never read
+        run: node supabase/tests/robots.test.mjs
+
       - name: Crest copies are shrunk to the size they are drawn at
         # Storage's image transformation went 671 over its 100 a month (26 Sep 2026); crests are now served as
         # stored files, so the copies are kept at 256 px WebP with their transparency, once each

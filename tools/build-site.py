@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBLIC_DIRS = ["epinoia", "share", ".well-known", "league", "transfermatrix", "data", "config"]
 # single files at the root
 PUBLIC_FILES = [
-    "CNAME", "index.html", "admin.html", "allstats.html", "basketball-analyzer-profiles_9.html",
+    "CNAME", "robots.txt", "index.html", "admin.html", "allstats.html", "basketball-analyzer-profiles_9.html",
     "gamevis.html", "GAMEVIS_with_ShotChart_v2_6.html", "index_9.html", "lineup.html", "pitch.html",
     "player_stats_viewer_pro.html", "gate.js", "topnav.js", "stat-glossary.js", "sw.js",
     "manifest.webmanifest", "logo.jpg",

@@ -1,0 +1,77 @@
+# prophesyscouting.co.uk - written 2026-09-26.
+#
+# The public section (/epinoia/) is meant to be found, slowly. The pages are static, but most of them
+# fill themselves from a small database when they are opened, and a crawler that renders a page opens
+# it: a fast crawl is a load on the site's database, not on its host. So: come, read, and take your time.
+#
+# CRAWL-DELAY is seconds between requests. Bing, DuckDuckGo, Yandex, Baidu and most others honour it
+# (10 s is about 8,000 pages a day, far more than this site has). Google does not read it and sets its
+# own pace, backing off when a site answers 429 or 503.
+
+User-agent: *
+Crawl-delay: 10
+# (everything not named below is open: that is the default, so there is no Allow line to outweigh the rules)
+
+# --- the tools that are not for search: signed-in apps, the statistician's scorer, the broadcast
+#     overlays, the admin consoles, one person's stamps and photos. Behind sign-in regardless; there is
+#     no reason to spend a crawler's time discovering that.
+Disallow: /epinoia/admin/
+Disallow: /epinoia/app/
+Disallow: /epinoia/score/
+Disallow: /epinoia/broadcast/
+Disallow: /epinoia/clockcam/
+Disallow: /epinoia/edit/
+Disallow: /epinoia/me/
+Disallow: /epinoia/signin/
+Disallow: /epinoia/join/
+Disallow: /epinoia/go/
+Disallow: /epinoia/devfeed.html
+# An invitation to a private league carries its token in the address. The page is noindex as well, but
+# a crawler that never fetches it cannot put the token in a log, a referrer or an index.
+Disallow: /epinoia/invite/
+
+# --- the widgets other sites embed (the page that explains them, /epinoia/embed/, is left open)
+Disallow: /epinoia/embed/game/
+Disallow: /epinoia/embed/merch/
+Disallow: /epinoia/embed/notify/
+Disallow: /epinoia/embed/strip/
+Disallow: /epinoia/embed/table/
+
+# --- the same page in another language or mode is not another page: one crawl of each is enough
+Disallow: /epinoia/*?lang=
+Disallow: /epinoia/*&lang=
+Disallow: /epinoia/*?mode=
+Disallow: /epinoia/*&mode=
+Disallow: /epinoia/*?next=
+Disallow: /epinoia/*?email=
+
+# --- the analytics apps at the root (behind the licence gate) and the data files they read. /data/ is
+#     hundreds of megabytes of CSV: never for a crawler.
+Disallow: /data/
+Disallow: /config/
+Disallow: /transfermatrix/
+Disallow: /league/admin/
+Disallow: /league/api/
+Disallow: /league/app/
+Disallow: /admin.html
+Disallow: /allstats.html
+Disallow: /basketball-analyzer-profiles_9.html
+Disallow: /gamevis.html
+Disallow: /GAMEVIS_with_ShotChart_v2_6.html
+Disallow: /index_9.html
+Disallow: /lineup.html
+Disallow: /pitch.html
+Disallow: /player_stats_viewer_pro.html
+
+# --- search-marketing crawlers: they list the site for their customers and send it nobody
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: DotBot
+User-agent: PetalBot
+User-agent: BLEXBot
+User-agent: DataForSeoBot
+User-agent: serpstatbot
+Disallow: /
+
+Sitemap: https://prophesyscouting.co.uk/epinoia/sitemap.xml
