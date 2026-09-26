@@ -13,7 +13,12 @@
 
 const CFG = window.EPINOIA_CONFIG;
 const T = window.EpinoiaTable;
-const want = new URLSearchParams(location.search).get('p') || '';
+/* WHICH PLAYER: the address's ?p= - or, on the copy of this page that tools/build-seo.py writes for one
+   player (p/<name>.html, whose head carries that player's title, description and structured data for
+   search engines), the id in <meta name="epinoia-entity">. The query wins, so a ?p= link on a copy
+   still shows the player it names. A meta tag rather than a script: the page's CSP allows no inline script. */
+const want = new URLSearchParams(location.search).get('p') ||
+  ((document.querySelector('meta[name="epinoia-entity"]') || {}).content || '');
 const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(want);
 
 const $ = s => document.querySelector(s);
@@ -79,7 +84,8 @@ function weeklyTab(pl, name) {
 function paintIdentity(pl, entry, team) {
   const name = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
   $('#name').textContent = name;
-  document.title = name + ' · Epinoia';
+  /* the copy tools/build-seo.py wrote for him already has his title (team and league in it); keep that one */
+  if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = name + ' · Epinoia';
   weeklyTab(pl, name);
   /* follow the player: his line after every game */
   if (window.EpinoiaFollow && pl.id) {

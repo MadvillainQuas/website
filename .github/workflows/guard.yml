@@ -622,6 +622,11 @@ jobs:
         # event codes the scraper validated (to be checked on the first real 2026-27 round)
         run: python scripts/ingest/bnxt_test.py
 
+      # The search pages (tools/build-seo.py): every eligible player, team and league has its own address
+      # on the REAL page with its own head, minors and masked names have none, the sitemap lists them all.
+      - name: Search-engine pages
+        run: python tools/build_seo_test.py
+
       - name: Lega Basket Serie A (Italy) from legabasket.it's own API
         # lba.py over cached championship, calendar, team and game replies: the cups are never
         # discovered, the match id is the key and the club_id the code (a club keeps it through a

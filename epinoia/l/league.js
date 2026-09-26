@@ -5,7 +5,9 @@
 
 const CFG = window.EPINOIA_CONFIG;
 const qp  = new URLSearchParams(location.search);
-const wantLeague = qp.get('l') || 'demo-league';
+/* WHICH LEAGUE: ?l=, or on the copy of this page tools/build-seo.py writes for one league (l/<slug>.html)
+   the slug in <meta name="epinoia-entity"> (see p/player.js). */
+const wantLeague = qp.get('l') || ((document.querySelector('meta[name="epinoia-entity"]') || {}).content || '') || 'demo-league';
 const wantComp   = qp.get('c');
 const wantSeason = qp.get('s') || '';
 
@@ -150,7 +152,7 @@ async function boot() {
     }
     if (ownAccent) document.documentElement.style.setProperty('--lume', ownAccent);
     $('#leagueName').textContent = league.name;
-    document.title = league.name + ' · Epinoia';
+    if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = league.name + ' · Epinoia';   // a build-seo.py copy keeps its own
 
     /* EVERY SEASON THE READER CAN ACTUALLY GO TO, and its competitions with it
        (seasonbar.js): a league's history was previously unreachable rather

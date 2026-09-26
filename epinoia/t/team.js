@@ -10,7 +10,10 @@
 
 const CFG = window.EPINOIA_CONFIG;
 const T = window.EpinoiaTable;
-const want = new URLSearchParams(location.search).get('t') || '';
+/* WHICH TEAM: ?t=, or on the copy of this page tools/build-seo.py writes for one team (t/<slug>.html) the
+   id in <meta name="epinoia-entity"> (see p/player.js). */
+const want = new URLSearchParams(location.search).get('t') ||
+  ((document.querySelector('meta[name="epinoia-entity"]') || {}).content || '');
 const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(want);
 
 const $ = s => document.querySelector(s);
@@ -220,7 +223,7 @@ async function chooseSeason(team, lg) {
     /* A WOMEN'S SIDE SAYS SO beside its league, and a club linked to its other competitions (the SLB, the EuroCup,
        the women's side) gets a button that opens them (linkswitch.js, migration 0178). Asked without waiting. */
     if (window.EpinoiaLinks) window.EpinoiaLinks.paintTeam(team, { sub: $('#tsub') }).catch(() => { /* the page as it was */ });
-    document.title = team.name + ' · Epinoia';
+    if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = team.name + ' · Epinoia';   // a build-seo.py copy keeps its own
     teamStrip(team, lg);
 
     /* ACCESS FIRST FOR THE SECTIONS IT DECIDES, and only for those: the venue and the squad

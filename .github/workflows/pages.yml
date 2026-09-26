@@ -15,6 +15,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  # Every night: the pages a search engine reads (a full page for every player, team and league,
+  # written by tools/build-seo.py from the database) follow the data, not the commits.
+  schedule:
+    - cron: '35 4 * * *'
 
 permissions:
   contents: read
@@ -37,6 +41,42 @@ jobs:
 
       - name: Assemble the public site (allowlist)
         run: python3 tools/build-site.py _site
+
+      # THE ADDRESSES A SEARCH ENGINE FINDS: p/<name>.html, t/<slug>.html and l/<slug>.html are the full
+      # player, team and league pages with their own title, description, canonical and structured data,
+      # and /epinoia/sitemap.xml lists them (tools/build-seo.py). They are made from the public database
+      # on every deploy, and a deploy REPLACES the site - so a night the database cannot be read must not
+      # publish a site with no player pages. The last good copy is kept in the Actions cache and used
+      # instead; only when there is neither is the deploy stopped.
+      - name: Restore the last good search pages
+        uses: actions/cache/restore@v4
+        with:
+          path: _seo-cache
+          key: seo-pages-restore
+          restore-keys: seo-pages-
+
+      - name: Search-engine pages (every player, team and league)
+        run: |
+          rm -rf _seo-new
+          if python3 tools/build-seo.py _seo-new; then
+            rm -rf _seo-cache && mkdir -p _seo-cache && cp -r _seo-new/epinoia _seo-cache/
+            cp -r _seo-new/epinoia/. _site/epinoia/
+            echo "SEO_FRESH=1" >> "$GITHUB_ENV"
+          elif [ -d _seo-cache/epinoia ]; then
+            echo "::warning::the search pages could not be built from the database; deploying the last good copy"
+            cp -r _seo-cache/epinoia/. _site/epinoia/
+          else
+            echo "::error::the search pages could not be built and there is no earlier copy to fall back on"
+            exit 1
+          fi
+
+      # kept only from a night's own run, so a day of pushes does not fill the cache with copies
+      - name: Keep these search pages as the last good copy
+        if: env.SEO_FRESH == '1' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: actions/cache/save@v4
+        with:
+          path: _seo-cache
+          key: seo-pages-${{ github.run_id }}
 
       - uses: actions/configure-pages@v5
 
