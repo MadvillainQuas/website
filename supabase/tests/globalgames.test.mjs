@@ -456,6 +456,26 @@ section('the card (a small DOM stub)');
   ok('a live card takes the scorer\'s score and quarter', /is-live/.test(lv.className) &&
      mid(lv) === '50–48' && find(lv, 'fxc-st').textContent.includes('Q3'));
   ok('an upcoming card has a "v" there instead', mid(up) === 'v');
+
+  /* THE GAME CLOCK UNDER THE SCORE of a live game */
+  const T0 = Date.parse('2026-09-26T12:00:00Z');
+  const S = (o) => Object.assign({ period: 1, score_home: 13, score_away: 10, clock_ms: 255000, running: false, updated_at: '2026-09-26T12:00:00Z' }, o);
+  ok('a stopped clock reads as it stands, m:ss (4:15)', W.clockText(S({}), T0) === '4:15' && W.clockText(S({ clock_ms: 600000 }), T0) === '10:00');
+  ok('a running clock is the reading less the time since it was written (4:15 written 20 s ago: 3:55)', W.clockText(S({ running: true }), T0 + 20000) === '3:55');
+  ok('...counted in whole seconds, rounded up as a scoreboard does', W.clockText(S({ running: true, clock_ms: 61000 }), T0 + 500) === '1:01' && W.clockText(S({ clock_ms: 900 }), T0) === '0:01');
+  ok('a running clock never goes below nothing, and a clock that has run out says the period ended', W.clockText(S({ running: true, clock_ms: 5000 }), T0 + 60000) === 'End Q1'
+     && W.clockText(S({ clock_ms: 0, period: 4 }), T0) === 'End Q4' && W.clockText(S({ clock_ms: 0, period: 5 }), T0) === 'End OT');
+  ok('half-time says so', W.clockText(S({ period: 2, clock_ms: 0, break_ms: 600000 }), T0) === 'Half-time');
+  ok('no clock in the state, no clock text', W.clockText(null, T0) === '' && W.clockText({ period: 2 }, T0) === '' && W.clockText({ clock_ms: null }, T0) === '');
+  const lc = W.card(game('g4', L.slbm, -H, 'live', {}), { now: NOW, state: S({}) });
+  ok('a live card carries the clock under the score, in its own element beside the middle column (the score line is unchanged)',
+     find(lc, 'fxc-clk') && find(lc, 'fxc-clk').textContent === '4:15' && find(lc, 'fxc-body').className.includes('has-clk') && mid(lc) === '13–10', find(lc, 'fxc-clk') && find(lc, 'fxc-clk').textContent);
+  ok('a stopped clock is not ticked: it has no run marker', !find(lc, 'fxc-clk').attrs['data-run'] && !find(lc, 'fxc-clk').className.includes(' run'));
+  const rc = W.card(game('g5', L.slbm, -H, 'live', {}), { now: NOW, state: S({ running: true, updated_at: new Date().toISOString() }) });
+  ok('a running clock carries the reading it was drawn from, for the ticker (ms, when written, the period)',
+     find(rc, 'fxc-clk').attrs['data-run'] === '1' && find(rc, 'fxc-clk').attrs['data-ms'] === '255000' && !!find(rc, 'fxc-clk').attrs['data-at'] && find(rc, 'fxc-clk').attrs['data-p'] === '1');
+  ok('a live game with no state, a final and an upcoming card have no clock', !find(W.card(game('g6', L.slbm, -H, 'live', {}), { now: NOW }), 'fxc-clk')
+     && !find(fin, 'fxc-clk') && !find(up, 'fxc-clk') && !find(W.card(game('g7', L.slbm, -H, 'live', {}), { now: NOW, state: { period: 2 } }), 'fxc-clk'));
 }
 
 /* ------------------------------------------------------------------------- */

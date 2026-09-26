@@ -118,7 +118,8 @@
   function keyOf(rows, state) {
     return mode + '>' + rows.map(g => {
       const s = state[g.id] || {};
-      return [g.id, g.status, g.tipoff_at, g.home_score, g.away_score, s.period, s.score_home, s.score_away].join(':');
+      /* the clock is in the key too, so a stopped clock that moved (a timeout ended, a new quarter) redraws the card */
+      return [g.id, g.status, g.tipoff_at, g.home_score, g.away_score, s.period, s.score_home, s.score_away, s.clock_ms, s.running, s.break_ms].join(':');
     }).join('|');
   }
 

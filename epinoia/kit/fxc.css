@@ -126,6 +126,17 @@
 .fxc.is-live .fxc-sc{color:var(--ink)}
 .fxc.is-live .fxc-sc.win{color:var(--lume)}
 
+/* THE GAME CLOCK, under a live score: the score and the clock are one block in the middle column, centred against the two clubs
+   (rows: a spring above, the score, the clock, a spring below; the clubs span all four) */
+.fxc-body.has-clk{grid-template-rows:1fr auto auto 1fr}
+.fxc-body.has-clk .fxc-tm{grid-row:1 / span 4}
+.fxc-body.has-clk .fxc-tm.h{grid-column:1}
+.fxc-body.has-clk .fxc-tm.a{grid-column:3}
+.fxc-body.has-clk .fxc-mid{grid-column:2;grid-row:2;align-self:end}
+.fxc-clk{grid-column:2;grid-row:3;align-self:start;justify-self:center;margin-top:4px;white-space:nowrap;
+  font-family:var(--f-score);font-size:14px;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--ink-3)}
+.fxc-clk.run{color:var(--ink-2)}
+
 /* when it is, under the two clubs and in full */
 .fxc-when{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 12px 7px;
   font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}

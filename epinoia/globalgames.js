@@ -204,7 +204,7 @@ function refetchNext(id) {
 async function liveState(ids) {
   if (!ids || !ids.length) return {};
   try {
-    const rows = await request('game_state?select=game_id,period,score_home,score_away,updated_at' +
+    const rows = await request('game_state?select=game_id,period,score_home,score_away,updated_at,clock_ms,running,break_ms' +
       '&game_id=in.(' + ids.map(encodeURIComponent).join(',') + ')', false);
     const out = {};
     rows.forEach(r => { out[r.game_id] = r; });
@@ -580,6 +580,33 @@ function periodLabel(p) {
   if (!p) return '';
   return p <= 4 ? 'Q' + p : p === 5 ? 'OT' : 'OT' + (p - 4);
 }
+/* THE GAME CLOCK, for the line under a live score. The scorer writes the clock about every ten seconds with the moment it wrote it
+   (game_state.updated_at) and whether it is running, so a running clock is that reading less the time since, counted down again each
+   second by the ticker below; a stopped one is read as it stands. Whole seconds, rounded up as a scoreboard does. Half-time says
+   so; a period that has run out says "end of Q1". Empty when the state has no clock (a database or a game that has none). */
+function clockText(st, nowMs) {
+  if (!st || st.clock_ms == null || !isFinite(+st.clock_ms)) return '';
+  if (+st.break_ms > 0 && st.period === 2 && +st.clock_ms === 0) return 'Half-time';
+  let left = +st.clock_ms;
+  const at = st.updated_at ? Date.parse(st.updated_at) : NaN;
+  if (st.running && isFinite(at)) left -= Math.max(0, (nowMs == null ? Date.now() : nowMs) - at);
+  if (left <= 0) return st.period ? 'End ' + periodLabel(st.period) : '0:00';
+  const s = Math.ceil(left / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+/* one ticker for every live clock on the page: a card's clock element carries the reading it was drawn from (data-ms, data-at, data-p) */
+let clockTimer = 0;
+function tickClocks() {
+  if (typeof document === 'undefined' || !document.querySelectorAll) return;
+  const els = document.querySelectorAll('.fxc-clk[data-run="1"]');
+  if (!els.length) { clearInterval(clockTimer); clockTimer = 0; return; }
+  const now = Date.now();
+  els.forEach(e => {
+    const t = clockText({ clock_ms: +e.getAttribute('data-ms'), running: true, updated_at: e.getAttribute('data-at'), period: +e.getAttribute('data-p') || null }, now);
+    if (t && e.textContent !== t) e.textContent = t;
+  });
+}
+function startClocks() { if (!clockTimer && typeof setInterval === 'function') clockTimer = setInterval(tickClocks, 1000); }
 function dayLabel(v, now) {
   const d = new Date(v), n = new Date(ms(now == null ? Date.now() : now));
   const key = x => x.getFullYear() + '-' + x.getMonth() + '-' + x.getDate();
@@ -712,6 +739,19 @@ function card(g, opts) {
   }
   body.appendChild(mid);
   body.appendChild(side(g.away, away, 'a', winA, winH));
+  /* THE GAME CLOCK UNDER THE SCORE of a live game (fxc.css puts it in the middle column, under the two figures) */
+  const clk = isLive ? clockText(st, Date.now()) : '';
+  if (clk) {
+    body.className += ' has-clk';
+    const c = node('span', 'fxc-clk' + (st.running ? ' run' : ''), clk);
+    c.setAttribute('aria-label', 'game clock ' + clk);
+    if (st.running) {
+      c.setAttribute('data-run', '1'); c.setAttribute('data-ms', String(st.clock_ms));
+      c.setAttribute('data-at', st.updated_at || ''); c.setAttribute('data-p', String(st.period || ''));
+      startClocks();
+    }
+    body.appendChild(c);
+  }
   a.appendChild(body);
 
   /* WHEN IT IS, under the two clubs and in full: the day the top line abbreviates and the
@@ -738,6 +778,6 @@ return {
   SEL, STALE_MS, LEAGUE_WINDOW_MS,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
   pickDaily, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
-  card, wireBadges, dayLabel, timeLabel, esc
+  card, wireBadges, dayLabel, timeLabel, clockText, tickClocks, esc
 };
 }));
