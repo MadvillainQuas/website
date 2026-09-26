@@ -68,6 +68,10 @@ console.log('-- the edge function’s brief and the report written from it');
   const without = report(gameBrief(game, d, TA, E.lineupAgg, { leagueSlug: 'slb-men', competition: 'Championship', league: 'SLB' }, null));
   const h2 = without.sections.map(s => s.heading);
   ok('without them it does not write them, and still has the four factors', !h2.includes('How the ball moved') && !h2.includes('The shot clock') && h2.includes('What the four factors were worth'), h2);
+  const { articleBody } = await import(new URL('../functions/_shared/matchreport.ts', import.meta.url));
+  const strip = x => String(x).replace(/<[^>]*>/g, '');
+  ok('the filed article leads with the lede: a specific headline and a standfirst that adds to it', /\d/.test(strip(withTabs.headline)) && strip(withTabs.standfirst).length > 20 && strip(withTabs.standfirst) !== strip(withTabs.headline), [withTabs.headline, withTabs.standfirst]);
+  ok('...and the article body carries every section, starting with the headline’s own game', articleBody(withTabs, 'g1').filter(b => b.type === 'h2').length === withTabs.sections.length);
   ok('the article the server files is the article the page shows: same words for the same brief', JSON.stringify(report(brief).sections) === JSON.stringify(withTabs.sections));
 }
 

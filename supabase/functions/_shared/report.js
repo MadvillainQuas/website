@@ -236,6 +236,133 @@ function dateline(g, fs) {
 }
 
 /* ------------------------------------------------------------- headline --- */
+/* ============================================================================
+   THE LEDE: the sharpest thing the game did, found before anything is written.
+
+   A headline and a standfirst have room for one or two facts, and which two is the whole craft. The old rule took whichever
+   fact ranked first in its own family, so a game with a 27-point night and a 49-32 rebounding gap got "The whistle sent
+   Brisbane Bullets to the line far more often". This asks the game three questions and puts the answers on ONE scale (0-100):
+
+     A STRETCH       a run or a spell that swung the score          62 + twice the swing (a 16-0 run: 100 capped at 90)
+     A STAT WIN      one measure the sides were furthest apart on   55 to 85, by how far past its threshold the gap ran
+                     (boards, paint, the break, the bench, points off turnovers, second chances, threes, steals, assists,
+                     eFG%, and the biggest of the four factors in points added)
+     A PERFORMANCE   the night one player had                       25 points is 55; 40 is 90; a triple-double is 92
+
+   The strongest becomes the headline (a stat or a stretch by the winners, or a player on either side), the next strongest of
+   a DIFFERENT kind leads the standfirst, and neither is said again where the body would have repeated it (SPENT). */
+let HEAD_ANGLE = null;
+const sumOf = (g, t, k) => (g.players || []).filter(p => p.team === t).reduce((n, p) => n + (p[k] || 0), 0);
+function ledeAngles(g, fs) {
+  const r = fs.find(f => f.kind === 'result');
+  if (!r) return [];
+  const w = r.data.winner, l = r.data.loser, out = [];
+  const W = nm(g, w), Lo = nm(g, l);
+  const sc = Math.max(g.score[0], g.score[1]) + '\u2013' + Math.min(g.score[0], g.score[1]);
+  const T = g.team || [{}, {}];
+
+  /* A STRETCH */
+  const st = fs.find(f => f.kind === 'stretch' || f.kind === 'run');
+  if (st) {
+    const isRun = st.kind === 'run';
+    const strength = isRun ? 60 + Math.min(30, st.data.n * 2.5) : 62 + Math.min(28, st.data.swing * 2);
+    const text = isRun
+      ? anFor(st.data.n).charAt(0).toUpperCase() + anFor(st.data.n).slice(1) + ' ' + st.data.n + '\u20130 run in the ' + ordinal(st.data.period) + ' settled it'
+      : 'A ' + mins(st.data.dur) + ' stretch swung it by ' + st.data.swing;
+    const by = isRun ? st.data.team : st.data.owner;
+    out.push({ cat: 'stretch', key: st.kind, strength, text, spend: [st.kind],
+      head: (isRun && by === w) ? () => pick('hrun' + st.data.n + w, [
+        W + ' blow it open with ' + anFor(st.data.n) + ' ' + st.data.n + '\u20130 run to beat ' + Lo,
+        W + ' beat ' + Lo + ' ' + sc + ' after ' + anFor(st.data.n) + ' ' + st.data.n + '\u20130 run in the ' + ordinal(st.data.period)
+      ]) : null });
+  }
+
+  /* A STAT WIN: the winners' edge is a headline; either side's edge can lead a standfirst */
+  const reb = t => sumOf(g, t, 'or') + sumOf(g, t, 'dr') + ((T[t] || {}).teamRebO || 0) + ((T[t] || {}).teamRebD || 0);
+  const STATS = [
+    { key: 'boards', a: reb(0), b: reb(1), min: 12,
+      clause: (W, a, b) => W + ' won the boards ' + a + '\u2013' + b, head: (W, Lo, a, b) => W + ' win the boards ' + a + '\u2013' + b + ' to beat ' + Lo },
+    { key: 'paint', a: (T[0] || {}).paint || 0, b: (T[1] || {}).paint || 0, min: 16,
+      clause: (W, a, b) => W + ' outscored them ' + a + '\u2013' + b + ' in the paint', head: (W, Lo, a, b) => W + ' own the paint, ' + a + '\u2013' + b + ', to beat ' + Lo },
+    { key: 'break', a: (T[0] || {}).fast || 0, b: (T[1] || {}).fast || 0, min: 12,
+      clause: (W, a, b) => W + ' scored ' + a + ' on the break to ' + b, head: (W, Lo, a, b) => W + ' run ' + Lo + ' ragged, ' + a + ' fast-break points to ' + b },
+    { key: 'bench', a: (T[0] || {}).bench || 0, b: (T[1] || {}).bench || 0, min: 20,
+      clause: (W, a, b) => possOf(W) + ' bench outscored theirs ' + a + '\u2013' + b, head: (W, Lo, a, b) => W + ' lean on a ' + a + '\u2013' + b + ' bench edge to beat ' + Lo },
+    { key: 'pot', a: (T[0] || {}).pot || 0, b: (T[1] || {}).pot || 0, min: 14,
+      clause: (W, a, b) => W + ' scored ' + a + ' points off turnovers to ' + b, head: (W, Lo, a) => W + ' score ' + a + ' points off turnovers to beat ' + Lo },
+    { key: 'sc', a: (T[0] || {}).sc || 0, b: (T[1] || {}).sc || 0, min: 10,
+      clause: (W, a, b) => W + ' took the second chances ' + a + '\u2013' + b, head: (W, Lo, a, b) => W + ' live off second chances, ' + a + '\u2013' + b + ', to beat ' + Lo },
+    { key: 'threes', a: sumOf(g, 0, 'p3m'), b: sumOf(g, 1, 'p3m'), min: 6,
+      clause: (W, a, b) => W + ' made ' + a + ' threes to ' + b, head: (W, Lo, a) => W + ' hit ' + a + ' threes to beat ' + Lo },
+    { key: 'steals', a: sumOf(g, 0, 'stl'), b: sumOf(g, 1, 'stl'), min: 6,
+      clause: (W, a, b) => W + ' had ' + a + ' steals to ' + b, head: (W, Lo, a, b) => W + ' pick ' + Lo + ' clean, ' + a + ' steals to ' + b },
+    { key: 'assists', a: sumOf(g, 0, 'ast'), b: sumOf(g, 1, 'ast'), min: 10,
+      clause: (W, a, b) => W + ' had ' + a + ' assists to ' + b, head: (W, Lo, a, b) => W + ' share it, ' + a + ' assists to ' + b + ', to beat ' + Lo }
+  ];
+  STATS.forEach(x => {
+    const gap = Math.abs(x.a - x.b);
+    if (gap < x.min) return;
+    const side = x.a > x.b ? 0 : 1, hi = Math.max(x.a, x.b), lo = Math.min(x.a, x.b);
+    const strength = 55 + 30 * Math.min(1, (gap - x.min) / x.min);
+    const N = nm(g, side);
+    out.push({ cat: 'stat', key: x.key, side, strength, text: x.clause(N, hi, lo), spend: ['stat:' + x.key],
+      head: side === w ? () => x.head(W, Lo, hi, lo) : null });
+  });
+  const A0 = g.adv && g.adv[0], A1 = g.adv && g.adv[1];
+  if (A0 && A1 && num(A0.efg) != null && num(A1.efg) != null && Math.abs(A0.efg - A1.efg) >= 8) {
+    const side = A0.efg > A1.efg ? 0 : 1, hi = Math.max(A0.efg, A1.efg), lo = Math.min(A0.efg, A1.efg);
+    const N = nm(g, side);
+    out.push({ cat: 'stat', key: 'efg', side, strength: 55 + 30 * Math.min(1, (hi - lo - 8) / 8), spend: ['factor:efg'],
+      text: N + ' shot ' + Math.round(hi) + '% eFG to ' + Math.round(lo) + '%',
+      head: side === w ? () => W + ' out-shoot ' + Lo + ' ' + Math.round(hi) + '% to ' + Math.round(lo) + '% eFG' : null });
+  }
+  const pa = fs.find(f => f.kind === 'pointsAdded');
+  if (pa) {
+    const top = pa.data.rows.slice().sort((x, y) => Math.abs(y.net) - Math.abs(x.net))[0];
+    if (top && Math.abs(top.net) >= 8) {
+      const side = top.net > 0 ? 0 : 1, n = Math.round(Math.abs(top.net));
+      const label = top.label.charAt(0).toUpperCase() + top.label.slice(1);
+      out.push({ cat: 'stat', key: 'pa', side, strength: 58 + Math.min(27, (Math.abs(top.net) - 8) * 2.2), spend: ['factor:' + ({ shooting: 'efg', turnovers: 'tov', 'the offensive glass': 'oreb', 'free throws': 'ftr' })[top.label]],
+        text: label + ' alone ' + (/s$/i.test(top.label) ? 'were' : 'was') + ' worth ' + n + ' points to ' + nm(g, side), head: null });
+    }
+  }
+
+  /* A PERFORMANCE: the best individual night of the game, on either side */
+  const top = (g.players || []).slice().sort((x, y) => (y.pts || 0) - (x.pts || 0))[0];
+  const td = fs.find(f => f.kind === 'tripleDouble');
+  const star = td ? td.data.p : top;
+  if (star) {
+    const pts = star.pts || 0, reb2 = (star.or || 0) + (star.dr || 0);
+    let strength = pts >= 25 ? 55 + Math.min(37, (pts - 25) * 2.2) : 0;
+    if (td) strength = Math.max(strength, 92);
+    if ((star.ast || 0) >= 12) strength = Math.max(strength, 70);
+    if (reb2 >= 18) strength = Math.max(strength, 68);
+    if ((star.stl || 0) >= 5 || (star.blk || 0) >= 6) strength = Math.max(strength, 66);
+    if (strength > 0) {
+      const name = esc(tc(star.name)), club = nm(g, star.team), won = star.team === w;
+      const extras = [];
+      if (reb2 >= 8) extras.push(spell(reb2) + ' rebounds');
+      if ((star.ast || 0) >= 6) extras.push(spell(star.ast) + ' assists');
+      if ((star.stl || 0) >= 3) extras.push(spell(star.stl) + ' steals');
+      if ((star.blk || 0) >= 3 && extras.length < 3) extras.push(spell(star.blk) + ' blocks');
+      const tail = extras.length ? ', adding ' + L().list(extras) : '';
+      const fg = (star.p2a || 0) + (star.p3a || 0);
+      const ss = L().spellSet([star.p2m + star.p3m, fg]); const shoot = fg >= 10 && (star.p2m + star.p3m) / fg >= 0.6 ? ' on ' + ss[0] + ' of ' + ss[1] + ' shooting' : '';
+      out.push({ cat: 'player', key: 'player', side: star.team, strength, spend: ['player'],
+        text: td ? name + ' had a triple-double for ' + club : name + ' scored ' + pts + (won ? ' for ' + club : ' in defeat for ' + club) + shoot + tail,
+        head: () => (td && won ? possOf(name) + ' triple-double carries ' + club
+          : td ? name + ' posts a triple-double in defeat for ' + club
+          : won ? pick('hplayer' + star.pts + star.team, [
+              name + '\u2019s ' + pts + ' sees off ' + Lo,
+              name + ' scores ' + pts + ' as ' + W + ' beat ' + Lo,
+              name + ' hits ' + pts + ' to lift ' + W + ' past ' + Lo
+            ])
+          : name + '\u2019s ' + pts + ' is not enough for ' + club) });
+    }
+  }
+  return out.sort((a, b) => b.strength - a.strength);
+}
+
 function headline(g, fs) {
   const r = fs.find(f => f.kind === 'result');
   if (!r) return nm(g, 0) + ' v ' + nm(g, 1);
@@ -256,6 +383,8 @@ function headline(g, fs) {
     ' to beat ' + nm(g, l);
   if (turned) return nm(g, w) + ' come from behind to beat ' + nm(g, l) + ' ' + sc;
   if (pulled && r.data.how !== 'rout') return nm(g, w) + ' pull away late from ' + nm(g, l) + ', ' + sc;
+  const lede = ledeAngles(g, fs).filter(a => a.head)[0];
+  if (lede && lede.strength >= 58 && r.data.how !== 'squeaker') { HEAD_ANGLE = lede; return lede.head(); }
   if (td) return possOf(esc(tc(td.data.p.name))) + ' triple-double carries ' + nm(g, w);
   if (r.data.how === 'rout') return nm(g, w) + ' overwhelm ' + nm(g, l) + ', ' + sc;
   if (r.data.how === 'squeaker') return nm(g, w) + ' edge ' + nm(g, l) + ' ' + sc;
@@ -285,6 +414,15 @@ let SPENT = new Set();
    says something else about it instead. */
 function standfirst(g, fs) {
   const bits = [];
+  /* THE SHARPEST TWO THINGS THE GAME DID, of different kinds, that the headline has not already said (ledeAngles) */
+  const spent = HEAD_ANGLE ? HEAD_ANGLE.key : null;
+  const pool = ledeAngles(g, fs).filter(a => a.strength >= 55 && a.key !== spent && !(HEAD_ANGLE && a.cat === 'player' && HEAD_ANGLE.cat === 'player'));
+  const first = pool[0], second = first ? pool.find(a => a.cat !== first.cat) : null;
+  const picked = [first, second].filter(Boolean);
+  if (picked.length) {
+    picked.forEach(a => { bits.push(a.text); a.spend.forEach(k => SPENT.add(k)); });
+    return bits.join('. ') + '.';
+  }
   const decisive = fs.find(f => f.kind === 'stretch' || f.kind === 'run');
   if (decisive) SPENT.add(decisive.kind);
   if (decisive) {
@@ -804,7 +942,7 @@ function sectionNumbers(g, fs, R) {
   const hot = fs.find(f => f.kind === 'hotThree'), cold = fs.find(f => f.kind === 'coldThree');
   const poorL = fs.find(f => f.kind === 'poorLine');
   const boards = fs.find(f => f.kind === 'boards');
-  const fb = covered === 'transition' ? null : fs.find(f => f.kind === 'fastBreak');
+  const fb = covered === 'transition' || SPENT.has('stat:break') ? null : fs.find(f => f.kind === 'fastBreak');
   const careless = fs.find(f => f.kind === 'careless');
   const drought = fs.filter(f => f.kind === 'drought').sort((a, b) => b.data.dur - a.data.dur)[0];
   const box = [];
@@ -819,7 +957,7 @@ function sectionNumbers(g, fs, R) {
   if (hot) box.push(R.subj(hot.side, { allowRole: true }) + ' made ' + hot.data.m + ' of ' + hot.data.a + ' from three');
   if (cold) box.push(R.subj(cold.side, { allowRole: true }) + ' went ' + cold.data.m + ' of ' + cold.data.a + ' from three');
   if (poorL) box.push(R.subj(poorL.side) + ' made only ' + poorL.data.m + ' of ' + poorL.data.a + ' free throws');
-  if (boards) box.push(R.subj(boards.side, { allowRole: true }) + ' won the boards ' + boards.data.mine + '\u2013' + boards.data.theirs);
+  if (boards && !SPENT.has('stat:boards')) box.push(R.subj(boards.side, { allowRole: true }) + ' won the boards ' + boards.data.mine + '\u2013' + boards.data.theirs);
   if (fb) box.push(R.subj(fb.side, { allowRole: true }) + ' scored ' + fb.data.mine + ' on the break to ' + fb.data.theirs);
   if (careless) box.push(R.subj(careless.side) + ' gave the ball away ' + careless.data.tov + ' times');
   /* two figure pairs to a sentence at most; the rest start a new one */
@@ -984,7 +1122,9 @@ function sectionNumbers(g, fs, R) {
   let shape = fs.filter(f =>
     ['bench', 'pointsOffTurnovers', 'paint', 'secondChance'].indexOf(f.kind) >= 0)
     .filter(f => !(covered === 'second' && f.kind === 'secondChance') &&
-                 !(covered === 'offTo' && f.kind === 'pointsOffTurnovers'));
+                 !(covered === 'offTo' && f.kind === 'pointsOffTurnovers') &&
+                 !(SPENT.has('stat:sc') && f.kind === 'secondChance') && !(SPENT.has('stat:pot') && f.kind === 'pointsOffTurnovers') &&
+                 !(SPENT.has('stat:bench') && f.kind === 'bench') && !(SPENT.has('stat:paint') && f.kind === 'paint'));
   const scBoth = shape.filter(f => f.kind === 'secondChance');
   if (scBoth.length === 2) {
     shape = shape.filter(f => f.kind !== 'secondChance');
@@ -1962,6 +2102,8 @@ function report(g) {
   /* standfirst() fills this; the sections read it. Built before them, and
      cleared per report so one game cannot silence the next. */
   SPENT = new Set();
+  HEAD_ANGLE = null;
+  const hl = headline(g, fs);         // first: the standfirst leaves out whatever the headline has said
   const stand = standfirst(g, fs);
   const secs = [];
   const add = (heading, paras, card) => {
@@ -1981,7 +2123,7 @@ function report(g) {
   addCapped('The scout’s note', sectionScout(g, fs, R), 'scout');
   let sc = null;
   try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }
-  const done = finish(g, secs, stand, headline(g, fs));
+  const done = finish(g, secs, stand, hl);
   return { headline: done.headline, standfirst: done.standfirst, quality: done.quality,
            sections: secs, facts: fs, scout: sc };
 }

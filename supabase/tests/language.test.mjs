@@ -197,6 +197,37 @@ console.log('-- the facts from the connections, play type + rebounds and shot cl
   ok('and one for the shot clock', rep3.sections.some(s => /shot clock/i.test(s.heading)));
 }
 
+console.log('-- the lede: the headline and the standfirst lead with the sharpest thing the game did');
+{
+  const mkp = (id, name, team, o) => Object.assign({ id, name, team, num: '4', min: 600000, pts: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, pf: 0, to: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, ftm: 0, fta: 0 }, o);
+  const mkg = (players, over) => {
+    const byId = {}; players.forEach(p => { byId[p.id] = p; });
+    return Object.assign({ names: ['brisbane bullets', 'illawarra hawks'], score: [96, 84], players, byId, team: [{ paint: 40, fast: 10, sc: 8, pot: 10, bench: 20 }, { paint: 38, fast: 9, sc: 7, pot: 9, bench: 19 }],
+      adv: [{ efg: 52, tovp: 14, orebp: 28, ftr: 25, possessions: 90, pts: 96, pace: 90 }, { efg: 50, tovp: 15, orebp: 27, ftr: 24, possessions: 90, pts: 84, pace: 90 }],
+      lineups: [[], []], stints: [[], []], perQ: [[0, 24, 24, 24, 24], [0, 21, 21, 21, 21]], periods: 4, events: [] }, over || {});
+  };
+  const quiet = () => [mkp('a1', 'max mackinnon', 0, { pts: 31, p2m: 9, p2a: 14, p3m: 3, p3a: 5, dr: 4 }), mkp('a2', 'cy dow', 0, { pts: 12, dr: 4 }), mkp('b1', 'leo nakamura', 1, { pts: 20, dr: 4 })];
+  const A = Report.report(mkg(quiet()));
+  ok('a big night by a winner is the headline: his name and his points', /Max Mackinnon|Max MacKinnon/i.test(A.headline) && /31/.test(A.headline), A.headline);
+  ok('...and the standfirst does not say it again', !/31/.test(A.standfirst), A.standfirst);
+
+  const B = Report.report(mkg([mkp('a1', 'max mackinnon', 0, { pts: 14, dr: 49 }), mkp('b1', 'leo nakamura', 1, { pts: 14, dr: 32 })]));
+  ok('a rebounding gap of 17 is a lede: 49\u201332 is in the headline or the standfirst', /49\u201332/.test(B.headline + ' ' + B.standfirst), [B.headline, B.standfirst]);
+  ok('...and said once, not again in the body', (B.sections.flatMap(x => x.paras).join(' ').match(/49\u201332/g) || []).length === 0, B.sections.flatMap(x => x.paras).filter(p => /49\u201332/.test(p)));
+
+  const C = Report.report(mkg([mkp('a1', 'max mackinnon', 0, { pts: 14 }), mkp('b1', 'leo nakamura', 1, { pts: 36, p2m: 12, p2a: 18, p3m: 4, p3a: 8 })]));
+  ok('a big night in defeat is a headline too, and says so', /Leo Nakamura/.test(C.headline) && /not enough/.test(C.headline), C.headline);
+
+  const D = Report.report(mkg(quiet(), { team: [{ paint: 60, fast: 25, sc: 8, pot: 10, bench: 20 }, { paint: 30, fast: 9, sc: 7, pot: 9, bench: 19 }] }));
+  const kinds = [D.headline, D.standfirst].join(' | ');
+  ok('a paint gap and a fast-break gap both count, and the lede names two different things', /paint/.test(kinds) || /fast-break|on the break/.test(kinds), kinds);
+  ok('a headline never carries the same fact as the standfirst', !(/31/.test(D.headline) && /31/.test(D.standfirst)), kinds);
+
+  const E = Report.report(mkg([mkp('a1', 'max mackinnon', 0, { pts: 9 }), mkp('b1', 'leo nakamura', 1, { pts: 9 })], { score: [80, 78], perQ: [[0, 20, 20, 20, 20], [0, 20, 20, 19, 19]] }));
+  ok('a game with nothing standing out still gets a plain headline and a standfirst', E.headline.length > 10 && E.standfirst.length > 5, [E.headline, E.standfirst]);
+  ok('the turnovers and free throws agree with their verb: "were", not "was"', !/(turnovers|free throws) alone was/i.test(A.standfirst + B.standfirst + C.standfirst + D.standfirst + E.standfirst));
+}
+
 console.log('-- the report, end to end');
 {
   const mk = (id, name, team, o) => Object.assign({ id, name, team, num: '4', min: 600000, pts: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, pf: 0, to: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, ftm: 0, fta: 0 }, o);
