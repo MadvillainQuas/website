@@ -140,6 +140,9 @@
       return;
     }
 
+    /* MORE LIVE GAMES THAN THE RAIL HOLDS: split by league, one dropdown row each, the shape of MY FOLLOWED's rows */
+    if (isSplit(data)) { drawSplit(G, data, first); return; }
+
     /* the old rail's scroll position survives a redraw */
     const old = host.querySelector('.fxc-rail');
     const left = old ? old.scrollLeft : 0;
@@ -155,6 +158,70 @@
     host.appendChild(rail);
     if (left) rail.scrollLeft = left;
     if (first) H.fadeIn(rail);
+  }
+
+  /* THE LIVE GAMES BY LEAGUE. pickDaily already keeps every live game, followed ones first, and with more than eight the
+     day is nothing but live games: one long rail of them says nothing about where they are. Above eight they are split into
+     a row per league, in the order the games arrive (a followed league first), each row a dropdown like the ones in MY FOLLOWED
+     (the league's badge, how many are live, a link to the league) open on that league's cards, which then need no badge of
+     their own. What a reader shuts stays shut, and each row's sideways scroll stays put, across the redraws of a live night. */
+  const shut = new Set();
+  function isSplit(data) {
+    return data.mode !== 'res' && data.rows.length > N && data.rows.every(g => g.status === 'live');
+  }
+  function drawSplit(G, data, first) {
+    const groups = new Map();
+    data.rows.forEach(g => {
+      const l = G.leagueOf ? G.leagueOf(g) : null;
+      const k = l && l.id != null ? String(l.id) : '';
+      if (!groups.has(k)) groups.set(k, { key: k, league: l, games: [] });
+      groups.get(k).games.push(g);
+    });
+    const lefts = new Map();
+    host.querySelectorAll('.fxc-rail[data-lg]').forEach(r => lefts.set(r.getAttribute('data-lg'), r.scrollLeft));
+    const wrap = document.createElement('div');
+    wrap.className = 'fxc-groups';
+    groups.forEach(gr => {
+      const det = document.createElement('details');
+      det.className = 'ep-acc hmf-acc fxc-lgrp';
+      det.setAttribute('data-lg', gr.key);
+      if (!shut.has(gr.key)) det.open = true;
+      det.addEventListener('toggle', () => { if (det.open) shut.delete(gr.key); else shut.add(gr.key); });
+      const sum = document.createElement('summary');
+      const t = document.createElement('span');
+      t.className = 't';
+      if (gr.league && typeof window.epinoiaLeagueBadge === 'function') { t.innerHTML = window.epinoiaLeagueBadge(gr.league, { cls: 'lg' }); G.wireBadges(t); }
+      else t.textContent = (gr.league && gr.league.name) || 'League';
+      const n = document.createElement('span');
+      n.className = 'hmf-n';
+      n.textContent = gr.games.length + ' live';
+      t.appendChild(n);
+      sum.appendChild(t);
+      if (gr.league && gr.league.slug) {
+        const go = document.createElement('a');
+        go.className = 'hmf-go';
+        go.textContent = 'league →';
+        go.href = base + '?l=' + encodeURIComponent(gr.league.slug);
+        go.addEventListener('click', e => e.stopPropagation());       // inside a summary a click would toggle the row instead
+        sum.appendChild(go);
+      }
+      det.appendChild(sum);
+      const rail = document.createElement('div');
+      rail.className = 'fxc-rail';
+      rail.setAttribute('role', 'list');
+      rail.setAttribute('data-lg', gr.key);
+      gr.games.forEach(g => {
+        const c = G.card(g, { base, now: data.now, state: data.state[g.id], badge: false });
+        c.setAttribute('role', 'listitem');
+        rail.appendChild(c);
+      });
+      det.appendChild(rail);
+      wrap.appendChild(det);
+      if (lefts.get(gr.key)) setTimeout(() => { rail.scrollLeft = lefts.get(gr.key); }, 0);
+    });
+    host.textContent = '';
+    host.appendChild(wrap);
+    if (first) H.fadeIn(wrap);
   }
 
   function anyLive() { return !!(host && host.querySelector('.fxc.is-live')); }
