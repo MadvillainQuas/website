@@ -39,14 +39,16 @@ const noScale = { leagueSlug: 'nowhere-at-all' };
 ok('an unknown league still has a scale (the default\'s)', G.mean('team', 'efg', 'nowhere-at-all') != null);
 ok('a stat that is not a factor has no points added', C.pointsAdded(S, TA, 'ts', 0) === null);
 
-console.log('-- the estimated margin (possession battle + scoring battle)');
+console.log('-- the estimated margin is the points added, summed');
 {
-  const H = { tov: 10, oreb: 12, efg: 55, ftr: 30, pts: 90 }, A = { tov: 14, oreb: 8, efg: 50, ftr: 20, pts: 80 };
-  const B = C.battle([H, A]);
-  const want = { tov: (14 - 10) * 1.1, oreb: (12 - 8) * 1.1, efg: (55 - 50) * 1.77 * 0.75, ftr: (30 - 20) * 0.25 * 0.75 };
-  ok('turnovers and offensive rebounds are worth 1.1 points each', near(B.tov, want.tov) && near(B.oreb, want.oreb), [B.tov, B.oreb]);
-  ok('efg is 1.77 and free throw rate 0.25 per point, over 75 possessions', near(B.efg, want.efg) && near(B.ftr, want.ftr), [B.efg, B.ftr]);
-  ok('the estimate is the two battles together, and the actual margin sits beside it', near(B.estimated, want.tov + want.oreb + want.efg + want.ftr) && B.actual === 10 && near(B.possession + B.scoring, B.estimated));
+  const TA2 = [{ efg: 56, tovp: 12, orebp: 30, ftr: 30, possessions: 100, pts: 90, tov: 12, oreb: 10 }, { efg: 48, tovp: 18, orebp: 25, ftr: 40, possessions: 96, pts: 80, tov: 18, oreb: 8 }];
+  const B = C.battle(S, TA2);
+  const diff = k => C.pointsAdded(S, TA2, k, 0) - C.pointsAdded(S, TA2, k, 1);
+  ok('each battle is the two sides\' pills, one taken from the other', near(B.efg, diff('efg')) && near(B.ftr, diff('ftr')) && near(B.tov, diff('tovp')) && near(B.oreb, diff('orebp')));
+  ok('possession battle = turnovers + offensive rebounds; scoring battle = efg + free throw rate', near(B.possession, B.tov + B.oreb) && near(B.scoring, B.efg + B.ftr));
+  ok('the estimate is all four, and the actual margin sits beside it', near(B.estimated, B.possession + B.scoring) && B.actual === 10);
+  const same = [Object.assign({}, TA2[0], { possessions: 100 }), Object.assign({}, TA2[1], { possessions: 100 })];
+  ok('at equal possessions the efg gap is (efg difference) x 2.0 x possessions / 100, the weight in the pills', near(C.battle(S, same).efg, (56 - 48) * 2.0), C.battle(S, same).efg);
 }
 
 console.log('-- the margin at the end of the game: real possessions when it is over, the game so far and a regressed rest while it is on');
@@ -66,14 +68,12 @@ console.log('-- the margin at the end of the game: real possessions when it is o
   ok('by the final minute the pace is its own and nothing is left', near(late.pace, 84) && near(late.remaining, 0));
   ok('nothing is drawn before a possession has been played', C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(0, 0, 0)) === null);
   const TA = mk(20, 40, 80);
-  const B = C.battle(TA, mid.poss, 1);
+  const B = C.battle(S, TA);
   const P = C.projected(B, mid);
   ok('the estimate at the end is the margin now plus the shrunk rate over what is left', near(P.end, B.actual + (40 / 140) * (B.estimated / 40) * mid.remaining) && near(P.toCome, P.end - B.actual), P);
   ok('a lopsided shooting night so far is not carried whole to the end', Math.abs(P.toCome) < Math.abs(B.estimated / 40 * mid.remaining));
-  const fin = C.projected(C.battle(mk(40, 84, 84), 84, 1), done);
-  ok('a finished game\'s estimate is the battle on its real possessions', near(fin.end, C.battle(mk(40, 84, 84), 84, 1).estimated) && fin.toCome === 0);
-  const B2 = C.battle(mk(40, 100, 100), 100, 2);
-  ok('battle(): counts scaled by k, the scoring battle worked over the possessions', near(B2.tov, (8 - 5) * 1.1 * 2) && near(B2.efg, 5 * 1.77 * 1.0), [B2.tov, B2.efg]);
+  const fin = C.projected(C.battle(S, mk(40, 84, 84)), done);
+  ok('a finished game\'s estimate is the points added, summed, with nothing to come', near(fin.end, C.battle(S, mk(40, 84, 84)).estimated) && fin.toCome === 0);
 }
 
 console.log('-- a chart in a card, and the scorer untouched');

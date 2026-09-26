@@ -104,20 +104,21 @@
       (from ? '' : ' · with no league scale yet, the two sides mirror each other') + '</div>';
   }
 
-  /* THE ESTIMATED MARGIN AT THE END OF THE GAME, from the points each side's possessions and shooting are worth.
-       possession battle   (their turnovers - ours) x 1.1  +  (our offensive rebounds - theirs) x 1.1
-       scoring battle      ((our eFG% - theirs) x 1.77  +  (our free throw rate - theirs) x 0.25) x possessions / 100
-       estimated margin    the two together, from the home side's end
-     A FINISHED GAME is worked on its real possessions (the two sides' average): what the four factors say the
-     margin should have been, beside the one it was.
-     A GAME STILL GOING is worked on the possessions played so far, so the battles are the game to date and read
-     against the points added above them. The estimate at the end is the margin now plus what is still to come:
-     the battle's rate per possession, over the possessions left, PULLED TOWARDS LEVEL: what one game's shooting
-     and turnovers say about the rest of that game is a fraction of what they said so far (a rate over n
-     possessions counts n / (n + 100): 29% after forty, 46% after a whole game), which is about how far a lead
-     built on a hot half carries on. The possessions left come from a predicted pace: the pace so
-     far, pulled towards the league's average (75 with no scale) by how little of the game is gone, run over the
-     full length. With no possession played there is nothing to say. */
+  /* THE ESTIMATED MARGIN AT THE END OF THE GAME IS THE POINTS ADDED, SUMMED. Each factor's pill under a chart says how
+     many points that side gained or lost in it; the two sides' pills, taken one from the other, are what that factor
+     was worth to the margin, and the four together are the margin the four factors say there should have been:
+       possession battle   the turnover and offensive rebound pills, home minus away
+       scoring battle      the efg and free throw rate pills, home minus away
+       estimated margin    the two together
+     They are worked by pointsAdded(), the function that draws the pills, so what is summed is what is on the page.
+     A FINISHED GAME is on its real possessions: what the four factors say the margin should have been, beside the
+     one it was. A GAME STILL GOING is the game so far, on the possessions played, so the battles read against the
+     pills above them; the estimate at the end is the margin now plus what is still to come: the battle's rate per
+     possession over the possessions left, PULLED TOWARDS LEVEL, because what one game's shooting and turnovers say
+     about the rest of that game is a fraction of what they said so far (a rate over n possessions counts
+     n / (n + 100): 29% after forty, 46% after a whole game). The possessions left come from a predicted pace: the
+     pace so far, pulled towards the league's average (75 with no scale) by how little of the game is gone, run
+     over the full length. With no possession played there is nothing to say. */
   const PRIOR = 100;
   function outlook(S, TA) {
     const final = S.status === 'final' || S.phase === 'final';
@@ -133,11 +134,10 @@
     return { final: false, poss: soFar, total, remaining: total - soFar, shrink: soFar / (soFar + PRIOR), pace, min };
   }
 
-  function battle(TA, poss, k) {
-    const h = TA[0], a = TA[1], POSS = poss == null ? 75 : poss, K = k == null ? 1 : k;
-    const tov = ((a.tov || 0) - (h.tov || 0)) * 1.1 * K, oreb = ((h.oreb || 0) - (a.oreb || 0)) * 1.1 * K;
-    const efg = ((h.efg || 50) - (a.efg || 50)) * 1.77 * (POSS / 100), ftr = ((h.ftr || 25) - (a.ftr || 25)) * 0.25 * (POSS / 100);
-    return { tov, oreb, efg, ftr, possession: tov + oreb, scoring: efg + ftr, estimated: tov + oreb + efg + ftr, actual: (h.pts || 0) - (a.pts || 0) };
+  function battle(S, TA) {
+    const net = k => (pointsAdded(S, TA, k, 0) || 0) - (pointsAdded(S, TA, k, 1) || 0);
+    const efg = net('efg'), ftr = net('ftr'), tov = net('tovp'), oreb = net('orebp');
+    return { tov, oreb, efg, ftr, possession: tov + oreb, scoring: efg + ftr, estimated: tov + oreb + efg + ftr, actual: (TA[0].pts || 0) - (TA[1].pts || 0) };
   }
 
   /* the margin at the end: a finished game's is the battle itself; a live one's is the margin now plus the rest */
@@ -150,7 +150,7 @@
   function margin(S, TA) {
     const O = outlook(S, TA);
     if (!O) return '';
-    const B = battle(TA, O.poss, 1);
+    const B = battle(S, TA);
     const P = projected(B, O);
     if (![B.estimated, B.actual, P.end].every(isFinite)) return '';
     const c = [teamColour(S, 0), teamColour(S, 1)];
@@ -164,8 +164,8 @@
         '<em title="' + esc(name(t)) + '">' + (Math.abs(v) < 0.05 ? 'level' : esc(short(t))) + '</em>' + (sub ? '<i>' + sub + '</i>' : '') + '</div>';
     };
     const basis = O.final
-      ? 'at the game\u2019s real ' + O.poss.toFixed(0) + ' possessions'
-      : 'the game so far (' + O.poss.toFixed(0) + ' possessions), projected to a predicted ' + O.total.toFixed(0) + ' at pace ' + O.pace.toFixed(0);
+      ? 'the points added, summed \u00b7 ' + O.poss.toFixed(0) + ' possessions'
+      : 'the points added so far, summed (' + O.poss.toFixed(0) + ' possessions), projected to a predicted ' + O.total.toFixed(0) + ' at pace ' + O.pace.toFixed(0);
     const so = O.final ? '' : ' so far';
     return '<div class="fmargin"><div class="fm-h">estimated margin at the end of the game <span>' + basis + '</span></div><div class="fm-row">' +
       tile('', 'possession battle' + so, B.possession, 'to ' + sg(B.tov) + ' \u00b7 oreb ' + sg(B.oreb)) +
