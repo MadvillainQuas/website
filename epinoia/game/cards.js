@@ -104,6 +104,38 @@
       (from ? '' : ' · with no league scale yet, the two sides mirror each other') + '</div>';
   }
 
+  /* THE ESTIMATED MARGIN, from the points each side's possessions and shooting were worth.
+       possession battle   (their turnovers - ours) x 1.1  +  (our offensive rebounds - theirs) x 1.1
+       scoring battle      ((our eFG% - theirs) x 1.77  +  (our free throw rate - theirs) x 0.25) x 75 / 100
+       estimated margin    the two together, from the home side's end; the actual margin beside it
+     The 75 is a standard possession count, as the model was written, not this game's own. */
+  function battle(TA) {
+    const h = TA[0], a = TA[1], POSS = 75;
+    const tov = ((a.tov || 0) - (h.tov || 0)) * 1.1, oreb = ((h.oreb || 0) - (a.oreb || 0)) * 1.1;
+    const efg = ((h.efg || 50) - (a.efg || 50)) * 1.77 * (POSS / 100), ftr = ((h.ftr || 25) - (a.ftr || 25)) * 0.25 * (POSS / 100);
+    return { tov, oreb, efg, ftr, possession: tov + oreb, scoring: efg + ftr, estimated: tov + oreb + efg + ftr, actual: (h.pts || 0) - (a.pts || 0) };
+  }
+
+  function margin(S, TA) {
+    const B = battle(TA);
+    if (![B.estimated, B.actual].every(isFinite)) return '';
+    const c = [teamColour(S, 0), teamColour(S, 1)];
+    const name = t => window.EpinoiaBox.tname(t);
+    const short = t => shortName(S, t, name);
+    const sg = v => (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(1);
+    const side = v => (v >= 0 ? 0 : 1);
+    const tile = (cls, label, v, sub, dec) => {
+      const t = side(v), txt = dec === 0 ? (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v) : sg(v);
+      return '<div class="fm-t ' + cls + '" style="--lc:' + c[t] + '"><small>' + label + '</small><b>' + txt + '</b>' +
+        '<em title="' + esc(name(t)) + '">' + (Math.abs(v) < 0.05 ? 'level' : esc(short(t))) + '</em>' + (sub ? '<i>' + sub + '</i>' : '') + '</div>';
+    };
+    return '<div class="fmargin"><div class="fm-h">estimated margin <span>from the points added by each factor</span></div><div class="fm-row">' +
+      tile('', 'possession battle', B.possession, 'to ' + sg(B.tov) + ' \u00b7 oreb ' + sg(B.oreb)) +
+      tile('', 'scoring battle', B.scoring, 'efg ' + sg(B.efg) + ' \u00b7 ft ' + sg(B.ftr)) +
+      tile('est', 'estimated margin', B.estimated, '') +
+      tile('act', 'actual margin', B.actual, TA[0].pts + ' \u2013 ' + TA[1].pts, 0) + '</div></div>';
+  }
+
   /* ------------------------------------------------------------ faces ---
      The face is report.css's .sq-face (a silhouette, or the photograph squadPhotos swaps in). */
   function face(p, colour, cls) {
@@ -209,7 +241,7 @@
         groups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(col => tcell(r, col)).join('') + '</div>').join('') + '</div>';
     };
     const thead = '<div class="ptr head"><div class="pt-id"><span class="pt-who"><small>player</small></span></div>' +
-      groups.map(g => '<div class="pt-grp g-' + g.key + '"><div class="pt-gh">' + esc(g.label) + '</div><div class="pt-gl">' +
+      groups.map(g => '<div class="pt-grp g-' + g.key + '"><div class="pt-gh" data-grp="' + g.key + '" role="button" tabindex="0" title="' + esc(g.label) + ' \u2014 click to fold or open">' + esc(g.label) + '</div><div class="pt-gl">' +
         g.cols.map(col => '<button type="button" class="pt-c ' + wOf(col) + (col.sep ? ' sep' : '') + (sortK === col.k ? ' sorted' : '') + '" data-sk="' + col.k + '">' + esc(col.l) +
           (sortK === col.k ? '<i>' + (sortDir < 0 ? '\u25BC' : '\u25B2') + '</i>' : '') + '</button>').join('') + '</div></div>').join('') + '</div>';
 
@@ -312,7 +344,7 @@
       if (h) { pick(host, h.dataset.sk); return; }
       const s = ev.target.closest && ev.target.closest('.pcs-sort button');
       if (s) { pick(host, s.dataset.sortk); return; }
-      const g = ev.target.closest && ev.target.closest('.pcs-grp button');
+      const g = ev.target.closest && ev.target.closest('.pcs-grp button, .pt-gh[data-grp]');
       if (!g) return;
       const k = g.dataset.grp;
       if (hiddenGroups.has(k)) hiddenGroups.delete(k); else hiddenGroups.add(k);
@@ -322,5 +354,5 @@
     });
   }
 
-  window.EpinoiaCards = { chart, factorNote, players, box, mounted, pointsAdded, FACTOR };
+  window.EpinoiaCards = { chart, factorNote, margin, battle, players, box, mounted, pointsAdded, FACTOR };
 }());

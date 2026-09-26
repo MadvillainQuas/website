@@ -39,6 +39,16 @@ const noScale = { leagueSlug: 'nowhere-at-all' };
 ok('an unknown league still has a scale (the default\'s)', G.mean('team', 'efg', 'nowhere-at-all') != null);
 ok('a stat that is not a factor has no points added', C.pointsAdded(S, TA, 'ts', 0) === null);
 
+console.log('-- the estimated margin (possession battle + scoring battle)');
+{
+  const H = { tov: 10, oreb: 12, efg: 55, ftr: 30, pts: 90 }, A = { tov: 14, oreb: 8, efg: 50, ftr: 20, pts: 80 };
+  const B = C.battle([H, A]);
+  const want = { tov: (14 - 10) * 1.1, oreb: (12 - 8) * 1.1, efg: (55 - 50) * 1.77 * 0.75, ftr: (30 - 20) * 0.25 * 0.75 };
+  ok('turnovers and offensive rebounds are worth 1.1 points each', near(B.tov, want.tov) && near(B.oreb, want.oreb), [B.tov, B.oreb]);
+  ok('efg is 1.77 and free throw rate 0.25 per point, over 75 possessions', near(B.efg, want.efg) && near(B.ftr, want.ftr), [B.efg, B.ftr]);
+  ok('the estimate is the two battles together, and the actual margin sits beside it', near(B.estimated, want.tov + want.oreb + want.efg + want.ftr) && B.actual === 10 && near(B.possession + B.scoring, B.estimated));
+}
+
 console.log('-- a chart in a card, and the scorer untouched');
 const html = C.chart('<div class="mrrow"></div>', { label: 'efg%', h: 56, a: 48, fmt: v => v.toFixed(1), hWin: true, aWin: false, k: 'efg', TA, S: { leagueSlug: 'slb-men', teams: [{ color: '#112233' }, { color: '#445566' }] }, tname: t => t < 0 ? '' : ['Home', 'Away'][t] });
 ok('it is wrapped in a card with the difference under it', /class="fchart has-pa"/.test(html) && /\+8\.0 pp/.test(html) && /Home/.test(html), html.slice(0, 200));

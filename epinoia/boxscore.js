@@ -1012,6 +1012,7 @@ function advHTML(d){
   const ffCard = '<div class="fsec fsec-top" data-fsec="factors"><div class="fsec-h"><span class="fsec-t">offensive rating & four factors</span></div>'+
     '<div class="fsec-b">'+sides+ffRows+(globalThis.EpinoiaCards && globalThis.EpinoiaCards.factorNote ? globalThis.EpinoiaCards.factorNote(S, TA) : '')+'</div>'+
     '<div class="ftempo">'+tempo+'</div>'+
+    (globalThis.EpinoiaCards && globalThis.EpinoiaCards.margin ? globalThis.EpinoiaCards.margin(S, TA) : '')+
     /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
     (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
   // 2. true shot attempts strip

@@ -103,8 +103,8 @@
 .pcs-zone.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6), .pcs-n.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6){ background:var(--gp) }
 .pcs .gp-pc{ display:none }
 /* the switches the reader has turned off */
-.pcs.hide-scoring .g-scoring, .pcs.hide-usage .g-usage, .pcs.hide-shotdist .g-shotdist, .pcs.hide-offcourt .g-offcourt,
-.pcs.hide-defcourt .g-defcourt, .pcs.hide-individual .g-individual{ display:none }
+.pcs.hide-scoring .pcg.g-scoring, .pcs.hide-usage .pcg.g-usage, .pcs.hide-shotdist .pcg.g-shotdist, .pcs.hide-offcourt .pcg.g-offcourt,
+.pcs.hide-defcourt .pcg.g-defcourt, .pcs.hide-individual .pcg.g-individual{ display:none }
 @media (max-width:640px){
   .pcr{ padding:10px 10px 4px }
   .pcr-id .sq-face{ width:44px; height:44px }
@@ -249,3 +249,63 @@ span.pcs-zone.gp{ border-radius:10px; padding:5px 7px; margin:0 }
 .pcs-d .pcs-l{ overflow:visible; text-overflow:clip; max-width:none }
 .pcs-d{ grid-template-columns:auto minmax(10px,1fr) auto }
 @media (max-width:640px){ .pcs-items{ grid-template-columns:repeat(2,minmax(0,1fr)) } }
+
+/* ===== the table stays aligned =====
+   theme.css gives every shaded span a negative margin and side padding (a figure inside a line of text). A shaded
+   cell took them and every row with a different set of shaded cells slid by a different amount. A cell is a box. */
+.pt-c, .pt-c.gp{ margin:0 !important }
+.ptr:not(.head) .pt-c{ padding:8px 4px !important }
+.pt-c.w-n{ width:54px !important } .pt-c.w-bar{ width:68px !important } .pt-c.w-diff{ width:62px !important } .pt-c.w-pill{ width:70px !important }
+.pt-grp{ flex:none }
+.pt-gh{ cursor:pointer; user-select:none; padding-right:14px; position:relative }
+.pt-gh::after{ content:'\25BE'; position:absolute; right:4px; top:1px; font-size:9px; opacity:.7 }
+.pt-gh:hover{ color:var(--c) }
+/* a folded group keeps its heading and a narrow stub, so every column after it stays under its own heading */
+.pcs.hide-scoring .pt-grp.g-scoring, .pcs.hide-usage .pt-grp.g-usage, .pcs.hide-shotdist .pt-grp.g-shotdist,
+.pcs.hide-offcourt .pt-grp.g-offcourt, .pcs.hide-defcourt .pt-grp.g-defcourt, .pcs.hide-individual .pt-grp.g-individual{ width:96px; overflow:hidden }
+.pcs[class*="hide-"] .pt-grp[class*="g-"] > .pt-c{ }
+.pcs.hide-scoring .pt-grp.g-scoring > .pt-c, .pcs.hide-usage .pt-grp.g-usage > .pt-c, .pcs.hide-shotdist .pt-grp.g-shotdist > .pt-c,
+.pcs.hide-offcourt .pt-grp.g-offcourt > .pt-c, .pcs.hide-defcourt .pt-grp.g-defcourt > .pt-c, .pcs.hide-individual .pt-grp.g-individual > .pt-c,
+.pcs.hide-scoring .pt-grp.g-scoring .pt-gl, .pcs.hide-usage .pt-grp.g-usage .pt-gl, .pcs.hide-shotdist .pt-grp.g-shotdist .pt-gl,
+.pcs.hide-offcourt .pt-grp.g-offcourt .pt-gl, .pcs.hide-defcourt .pt-grp.g-defcourt .pt-gl, .pcs.hide-individual .pt-grp.g-individual .pt-gl{ display:none }
+.pcs.hide-scoring .g-scoring .pt-gh::after, .pcs.hide-usage .g-usage .pt-gh::after, .pcs.hide-shotdist .g-shotdist .pt-gh::after,
+.pcs.hide-offcourt .g-offcourt .pt-gh::after, .pcs.hide-defcourt .g-defcourt .pt-gh::after, .pcs.hide-individual .g-individual .pt-gh::after{ content:'\25B8' }
+
+/* ===== full stats: calm section cards =====
+   Every section had its own bright colour (mint, amber, green, violet, red, orange, cyan, indigo) and the tempo
+   tiles were blue: a rainbow of tinted panels behind the figures. One quiet surface for all of them, the accent
+   a thin edge; the two player sections take their club's colour there and nowhere else. */
+.fstats .fsec[data-fsec]{ --sec:color-mix(in srgb,var(--lume,#5eead4) 38%,var(--text-muted)) }
+.fstats .fsec[data-fsec="players0"]{ --sec:var(--team0) }
+.fstats .fsec[data-fsec="players1"]{ --sec:var(--team1) }
+.fstats .fsec{ border-color:var(--border-subtle); box-shadow:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--text-primary) 4.5%,var(--bg-card)),color-mix(in srgb,var(--text-primary) 1.5%,var(--bg-card))) }
+.fstats .fsec::before{ width:3px; opacity:.4 }
+.fstats .fsec-t{ color:var(--text-secondary) }
+.fstats .fsec-chev{ color:var(--text-muted) }
+.fstats .ftile{ border-color:var(--border-subtle); background:color-mix(in srgb,var(--text-primary) 3%,transparent) }
+.fstats .tsacell{ border-color:var(--border-subtle) }
+.fstats .tsacell.winner{ border-color:color-mix(in srgb,var(--text-primary) 28%,transparent); box-shadow:none }
+/* the percentile shades, softer: they say good or poor, they do not shout it */
+.fstats .gp-b6{ --gp:color-mix(in oklch,var(--good) 20%,transparent) }
+.fstats .gp-b5{ --gp:color-mix(in oklch,var(--good) 12%,transparent) }
+.fstats .gp-b4{ --gp:color-mix(in oklch,var(--good) 6%,transparent) }
+.fstats .gp-b2{ --gp:color-mix(in oklch,var(--amber) 9%,transparent) }
+.fstats .gp-b1{ --gp:color-mix(in oklch,var(--bad) 10%,transparent) }
+.fstats .gp-b0{ --gp:color-mix(in oklch,var(--bad) 18%,transparent) }
+/* the players on the floor: a quiet edge, not a ring (a black club made it a heavy line on the light theme) */
+.ptr.on, .bxr.on{ border-color:color-mix(in srgb,var(--c) 28%,var(--border-subtle)); box-shadow:none }
+.ptr.on .pt-id::after, .bxr.on .bxc-id::after{ content:''; position:absolute; right:6px; top:50%; width:6px; height:6px; margin-top:-3px; border-radius:50%; background:var(--good,#34d399) }
+
+/* ===== the estimated margin, at the foot of the offensive rating & four factors card ===== */
+.fmargin{ margin-top:12px; padding-top:10px; border-top:1px dashed color-mix(in srgb,var(--text-primary) 12%,transparent) }
+.fm-h{ font-family:var(--f-micro,var(--f-mono)); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px }
+.fm-h span{ color:var(--text-muted); letter-spacing:.06em; margin-left:6px; text-transform:lowercase }
+.fm-row{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px }
+.fm-t{ min-width:0; padding:8px 10px 7px; border-radius:12px; border:1px solid var(--border-subtle); background:color-mix(in srgb,var(--text-primary) 3%,transparent) }
+.fm-t small{ display:block; font-family:var(--f-micro,var(--f-mono)); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.fm-t b{ display:block; margin-top:3px; font-family:var(--f-score); font-size:24px; font-weight:400; line-height:1; color:var(--lc,var(--text-primary)); font-variant-numeric:tabular-nums }
+.fm-t em{ display:block; margin-top:3px; font-style:normal; font-family:var(--f-ui,var(--f-head)); font-size:10px; text-transform:uppercase; letter-spacing:.02em; color:var(--lc,var(--text-muted)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.fm-t i{ display:block; margin-top:2px; font-style:normal; font-family:var(--f-data,var(--f-mono)); font-size:9px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.fm-t.est{ border-color:color-mix(in srgb,var(--lc) 50%,transparent); background:color-mix(in srgb,var(--lc) 9%,transparent) }
+@media (max-width:640px){ .fm-row{ grid-template-columns:repeat(2,minmax(0,1fr)) } }
