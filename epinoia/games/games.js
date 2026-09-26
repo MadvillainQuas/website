@@ -304,8 +304,18 @@
     rec.count.textContent = all ? 'all ' + shownN + ' shown' : shownN + ' shown';
   }
 
+  /* PUT AN ELEMENT AT A POSITION ONLY IF IT IS NOT THERE ALREADY. drawGroups used to append every dropdown again on each redraw
+     (which is how the order was kept), and taking an element out of the page and putting it back drops its focus and can move the
+     scroll: clicking a league row read its games, redrew, and threw the reader back to the top. Now nothing that is already in
+     its place is touched. */
+  function ensureAt(parent, node, i) {
+    const cur = parent.children[i] || null;
+    if (cur !== node) parent.insertBefore(node, cur);
+  }
+
   function drawGroups() {
     const host = $('gmGroups');
+    const keepY = window.scrollY;
     const groups = G().groupOrder(Array.from(rows.values()), NOW);
     const skel = host.querySelector('.gm-skel');
     if (skel) skel.remove();
@@ -324,26 +334,33 @@
 
     order.forEach(rec => {
       const grp = byKey.get(rec.id) || { next: [], results: [], count: 0 };
-      rec.body.textContent = '';
-      rec.body.appendChild(section('Next games, soonest first', grp.next, NOW));
-      rec.body.appendChild(section('Latest results, newest first', grp.results, NOW));
+      /* a league's cards are drawn again only when its games changed: a redraw for another league (or the same list) leaves the
+         open dropdowns exactly as they are, so nothing under a reader's finger is rebuilt */
+      const sig = [grp.next, grp.results].map(l => l.map(g => [g.id, g.status, g.home_score, g.away_score, g.tipoff_at].join(':')).join(',')).join('|');
+      if (sig !== rec.sig) {
+        rec.sig = sig;
+        rec.body.textContent = '';
+        rec.body.appendChild(section('Next games, soonest first', grp.next, NOW));
+        rec.body.appendChild(section('Latest results, newest first', grp.results, NOW));
+      }
       rec.shown = grp.count;
       if (rec.weekN) rec.n.textContent = rec.weekN + (rec.weekN === 1 ? ' game' : ' games');
       else rec.n.textContent = grp.count + (grp.count === 1 ? ' game' : ' games');
       paintLeagueCount(rec, grp.count);
-      rec.body.appendChild(rec.foot);
+      if (rec.body.lastElementChild !== rec.foot) rec.body.appendChild(rec.foot);      // the foot holds the buttons being pressed: never moved when it is already last
     });
     /* THE COUNTRY LAYER: each league sits in its country's dropdown. Countries come in the order of their nearest league, and the
-       leagues inside a country keep that order; appending an element that is already on the page moves it, so every open state
-       (a country's, a league's) is the element's own and survives a redraw. */
+       leagues inside a country keep that order; an element is only moved when it is not already where it belongs (ensureAt), so every
+       open state (a country's, a league's) is the element's own and survives a redraw. */
     const byCountry = new Map();
     order.forEach(rec => { const k = countryKey(rec); if (!byCountry.has(k)) byCountry.set(k, []); byCountry.get(k).push(rec); });
+    let ci = 0;
     byCountry.forEach((recs, k) => {
       const c = countryEl(k);
-      recs.forEach(r => { c.body.appendChild(r.det); r.cty = c; });
+      recs.forEach((r, i) => { ensureAt(c.body, r.det, i); r.cty = c; });
       const games = recs.reduce((s, r) => s + (r.weekN || r.shown || 0), 0);
       c.n.textContent = recs.length + (recs.length === 1 ? ' league' : ' leagues') + (games ? ' · ' + games + (games === 1 ? ' game' : ' games') : '');
-      host.appendChild(c.det);
+      ensureAt(host, c.det, ci++);
     });
     /* the league at the top is open (and read, if the page has nothing of it yet), inside its country, which is open too */
     const first = host.querySelector('details.gm-acc');
@@ -359,6 +376,8 @@
     if (!groupEls.size && !pinned.size) {
       host.appendChild(el('div', 'empty', 'No games in the next 7 days. A league appears here when it has one.'));
     }
+    /* whatever a redraw did, the page stays where the reader had it */
+    if (Math.abs(window.scrollY - keepY) > 1) window.scrollTo(0, keepY);
   }
 
   /* ------------------------------------------------- the two Show mores --- */
