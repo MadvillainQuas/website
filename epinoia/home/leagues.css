@@ -119,3 +119,8 @@
 .lgc-country>summary.lgc-h{justify-content:flex-start;text-align:left;padding-inline:32px}
 .lgc-country>summary.lgc-h .lgc-cn{text-align:left}
 @media (max-width:560px){ .lgc-country>summary.lgc-h{padding-inline:16px} }
+
+/* THE CHEVRON STAYS IN THE ROW, AFTER THE COUNT. home's section titles pin an accordion's chevron to the
+   row's right edge (kit/sectitle.css), which put it on top of "4 LEAGUES" once the row was left-aligned.
+   In the flow it takes its own place at the end, a clear gap after the count, at any width. */
+.hm .lgc-country>summary.lgc-h::after{position:static;margin:0 0 0 14px}
