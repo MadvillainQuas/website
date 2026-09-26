@@ -1391,7 +1391,7 @@ function splash() {
      find it was an accident of where the entry points were first collected. */
   const more = el('div', 'seasonmore');
   const full = el('a', 'ep-chip', 'Full statistics table →');
-  full.href = 'stats/?l=' + slug;
+  full.href = 'stats/?l=' + slug + seasonQuery();
   full.title = 'Every player, sortable, with eFG%, TS% and rim rates';
   const tbl = el('a', 'ep-chip', 'Full league table →');
   tbl.href = table;

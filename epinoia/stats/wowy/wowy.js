@@ -27,7 +27,7 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
-let league = null, teams = [], loadToken = 0, current = null;
+let league = null, teams = [], loadToken = 0, current = null, seasonComps = null;
 
 /* ---------------------------------------------------------------- memberships ---
    docs/memberships.md. This screen is the full WOWY, which is the members'; a
@@ -98,6 +98,7 @@ function note(host, msg) {
    panels cannot half-update. */
 async function fetchTeam(team) {
   const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+    (seasonComps && seasonComps.length ? `&competition_id=in.(${seasonComps.join(',')})` : '') +
     `&status=eq.final&select=id,home_team_id,away_team_id,starters`);
   if (!gs.length) return { games: [] };
 
@@ -238,8 +239,16 @@ async function select(team) {
 
 (async function boot() {
   try {
-    const ctx = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
+    /* WHICH SEASON (seasonbar.js): the games every panel reads are the chosen season's. With one
+       season on offer nothing is filtered, as before. The chips are links, so a pick reloads. */
+    const SB = window.EpinoiaSeasonBar;
+    const ctx = SB ? await SB.context(D.get, qp.get('l') || 'demo-league', qp.get('s'))
+                   : await D.context(qp.get('l') || 'demo-league', qp.get('c'));
     league = ctx.league;
+    if (SB && ctx.seasons.length > 1 && ctx.season) {
+      seasonComps = (ctx.season.comps || []).map(c => c.id);
+      SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: ctx.seasons, season: ctx.season });
+    }
     window.__CS_LEAGUE_SLUG = league.slug;
 
     /* Awaited, unlike the analytics on a box score: whether panel 01 fetches a

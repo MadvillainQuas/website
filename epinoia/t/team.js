@@ -104,6 +104,32 @@ function decideAccess(lg) {
   }
 }
 
+/* WHICH SEASON. The club's league may have more than one season with games (seasonbar.js); every
+   read of the club's games below appends inSeason(), so the page is one season at a time. With one
+   season on offer nothing is set and the page reads as it always did. */
+let SEASON_COMPS = null;
+const inSeason = () => (SEASON_COMPS && SEASON_COMPS.length ? '&competition_id=in.(' + SEASON_COMPS.join(',') + ')' : '');
+async function chooseSeason(team, lg) {
+  const SB = window.EpinoiaSeasonBar;
+  if (!SB || !lg || !lg.id) return;
+  try {
+    const o = await SB.load(api, lg.id);
+    if (!o.list || o.list.length < 2) return;
+    const wantS = new URLSearchParams(location.search).get('s');
+    let season = wantS ? SB.pick(o.list, wantS) : null;
+    if (!season) {
+      /* no ?s=: the season of the club's latest game, so a club that sat out the newest season
+         still opens on its own games rather than on an empty page */
+      const last = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+        `&select=competition_id&order=tipoff_at.desc&limit=1`);
+      const cid = last[0] && last[0].competition_id;
+      season = (cid && o.list.find(s => (s.comps || []).some(c => c.id === cid))) || o.list[0];
+    }
+    SEASON_COMPS = (season.comps || []).map(c => c.id);
+    SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: o.list, season });
+  } catch (_) { /* every season, as before */ }
+}
+
 (async function boot() {
   if (!want) return oops('No team specified.');
   try {
@@ -202,6 +228,7 @@ function decideAccess(lg) {
        results wait for the answer (by id: a slug would cost a leagues read first). The
        module gives up by itself after 4 s and answers open. */
     const A = window.EpinoiaAccess;
+    await chooseSeason(team, lg);
     const accessReady = (A && typeof A.load === 'function' && lg.id)
       ? Promise.resolve().then(() => A.load({ leagueId: lg.id })).catch(() => null)
       : Promise.resolve(null);
@@ -249,7 +276,7 @@ function seasonLogs(team) {
   const D = window.EpinoiaData;
   logsP = (async () => {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,period,starters,roster_snapshot` +
+      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,period,starters,roster_snapshot` + inSeason() +
       `&order=tipoff_at.desc&limit=40`);
     const evs = gs.length ? await D.events(gs.map(g => g.id)) : [];
     const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
@@ -373,7 +400,7 @@ async function videoPanel(team) {
   if (!D || !window.EpinoiaPlayerVideo) return;
   try {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,` +
+      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,` + inSeason() +
       `home:home_team_id(short_name,name),away:away_team_id(short_name,name)&order=tipoff_at.desc&limit=40`);
     if (!gs.length) return;
     const chunk = async (ids, build) => {
@@ -436,7 +463,7 @@ function weeklyTab(team) {
 
 async function record(team) {
   if (ACCESS.paywall) return;          // standings are behind the wall; the strip is hidden
-  const st = await api(`standings?team_id=eq.${team.id}` +
+  const st = await api(`standings?team_id=eq.${team.id}` + inSeason() +
     `&select=gp,w,l,pts_for,pts_against,diff,league_points,rank,streak&limit=1`);
   const wrap = $('#rec'); wrap.textContent = '';
   const s = st[0];
@@ -467,7 +494,7 @@ async function teamStats(team, kind) {
     /* WHICH COMPETITION. The club's finalised games name the competitions it plays
        in; the reader takes all of them or one kind (league, cup, trophy, playoffs). */
     const played = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-                               `&status=eq.final&select=competition_id`);
+                               `&status=eq.final&select=competition_id` + inSeason());
     const ids = [...new Set(played.map(g => g.competition_id).filter(Boolean))];
     const comps = ids.length ? await D.all(`competitions?id=in.(${ids.join(',')})&select=id,name,kind`) : [];
     const kinds = [...new Set(comps.map(c => c.kind || 'league'))];
@@ -683,7 +710,7 @@ async function lineupPanels(team) {
   if (ACCESS.paywall) return;          // stints are behind the wall; the sections are hidden
   try {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-      `&status=eq.final&select=id,home_team_id,away_team_id`);
+      `&status=eq.final&select=id,home_team_id,away_team_id` + inSeason());
     if (!gs.length) {
       ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
         $(sel).appendChild(el('div', 'empty',
@@ -1197,7 +1224,7 @@ function teamStrip(team, lg) {
 
 let TG = { comp: '', show: 'all', rows: [] };
 async function games(team) {
-  const gs = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+  const gs = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` + inSeason() +
     `&select=id,tipoff_at,status,home_score,away_score,home_team_id,venue,competition_id,competitions(id,name,kind),` +
     `home:home_team_id(name,slug,short_name,colour,logo_path),away:away_team_id(name,slug,short_name,colour,logo_path)&order=tipoff_at.desc`);
   const host = $('#games'); host.textContent = '';

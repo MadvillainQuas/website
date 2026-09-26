@@ -15,20 +15,20 @@
 <title>Team · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=441"></script>
-<script src="../i18n.js?v=441" data-i18n-packs="report go"></script>
-<script src="../glyphs.js?v=441" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=441">
-<link rel="stylesheet" href="../kit/linkswitch.css?v=441">
-<link rel="stylesheet" href="../kit/table.css?v=441">
-<link rel="stylesheet" href="../kit/nav.css?v=441">
-<link rel="stylesheet" href="../video.css?v=441">
-<link rel="stylesheet" href="../kit/card.css?v=441">
-<link rel="stylesheet" href="../kit/sitpanel.css?v=441">
-<link rel="stylesheet" href="../kit/shotclock.css?v=441">
-<link rel="stylesheet" href="../kit/rotation.css?v=441">
-<link rel="stylesheet" href="../kit/access.css?v=441">
-<link rel="stylesheet" href="../go/venuestamp.css?v=441">
+<script src="../appmode.js?v=442"></script>
+<script src="../i18n.js?v=442" data-i18n-packs="report go"></script>
+<script src="../glyphs.js?v=442" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=442">
+<link rel="stylesheet" href="../kit/linkswitch.css?v=442">
+<link rel="stylesheet" href="../kit/table.css?v=442">
+<link rel="stylesheet" href="../kit/nav.css?v=442">
+<link rel="stylesheet" href="../video.css?v=442">
+<link rel="stylesheet" href="../kit/card.css?v=442">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=442">
+<link rel="stylesheet" href="../kit/shotclock.css?v=442">
+<link rel="stylesheet" href="../kit/rotation.css?v=442">
+<link rel="stylesheet" href="../kit/access.css?v=442">
+<link rel="stylesheet" href="../go/venuestamp.css?v=442">
 <style>
   .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .badge{width:58px;height:58px;display:grid;place-items:center;font-family:var(--f-score);
@@ -45,6 +45,7 @@
   .badge img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
     display:block}
   .hname{font-family:var(--f-score);font-size:clamp(24px,5vw,40px);text-transform:uppercase;line-height:1}
+  #seasonPick .ep-chip{text-decoration:none}
   .hsub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);margin-top:6px}
   .rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));border-bottom:1px solid var(--rule)}
   .rec div{padding:13px 10px;text-align:center;border-right:1px solid var(--rule)}
@@ -364,7 +365,7 @@
   #paywall{padding:calc(var(--u)*3)}
   body.paywalled .rec, body.paywalled .pw-hide{display:none}
 </style>
-<link rel="stylesheet" href="../kit/legibility.css?v=441">
+<link rel="stylesheet" href="../kit/legibility.css?v=442">
 </head>
 <body>
 <div class="ep-frame">
@@ -376,6 +377,11 @@
   <div class="hero">
     <div class="badge" id="badge"></div>
     <div><div class="hname" id="tname">—</div><div class="hsub" id="tsub"></div></div>
+  </div>
+  <!-- WHICH SEASON (team.js, drawn by seasonbar.js). Hidden until the club's league has more than one
+       season with games in it; the chips are links, so a past season can be sent and reloaded into. -->
+  <div class="ctl" id="seasonRow" style="display:none;padding:0 calc(var(--u)*3) calc(var(--u)*2)">
+    <span class="scopelab" style="font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-right:8px">season</span><span id="seasonPick" style="display:inline-flex;gap:7px;flex-wrap:wrap"></span>
   </div>
 
   <div class="rec" id="rec"></div>
@@ -454,45 +460,46 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../vendor/supabase.js?v=441" defer></script>
-<script src="../config.js?v=441" defer></script>
-<script src="../access.js?v=441" defer></script>
-<script src="../follow.js?v=441" defer></script>
-<script src="../linkswitch.js?v=441" defer></script>
-<script src="../teamcolour.js?v=441" defer></script>
-<script src="../bpm.js?v=441" defer></script>
-<script src="../season.js?v=441" defer></script>
-<script src="../data.js?v=441" defer></script>
-<script src="../lineups.js?v=441" defer></script>
-<script src="../wowy.js?v=441" defer></script>
-<script src="lineupui.js?v=441" defer></script>
-<script src="../fulltable.js?v=441" defer></script>
-<script src="../igtile.js?v=441" defer></script>
-<script src="../video.js?v=441" defer></script>
-<script src="../p/video.js?v=441" defer></script>
-<script src="../homearenas.js?v=441" defer></script>
-<script src="../go/logo.js?v=441" defer></script>
-<script src="../go/venuestamp.js?v=441" defer></script>
-<script src="venue.js?v=441" defer></script>
+<script src="../vendor/supabase.js?v=442" defer></script>
+<script src="../config.js?v=442" defer></script>
+<script src="../access.js?v=442" defer></script>
+<script src="../follow.js?v=442" defer></script>
+<script src="../linkswitch.js?v=442" defer></script>
+<script src="../teamcolour.js?v=442" defer></script>
+<script src="../bpm.js?v=442" defer></script>
+<script src="../season.js?v=442" defer></script>
+<script src="../seasonbar.js?v=442" defer></script>
+<script src="../data.js?v=442" defer></script>
+<script src="../lineups.js?v=442" defer></script>
+<script src="../wowy.js?v=442" defer></script>
+<script src="lineupui.js?v=442" defer></script>
+<script src="../fulltable.js?v=442" defer></script>
+<script src="../igtile.js?v=442" defer></script>
+<script src="../video.js?v=442" defer></script>
+<script src="../p/video.js?v=442" defer></script>
+<script src="../homearenas.js?v=442" defer></script>
+<script src="../go/logo.js?v=442" defer></script>
+<script src="../go/venuestamp.js?v=442" defer></script>
+<script src="venue.js?v=442" defer></script>
 <!-- the "add to calendar" panel: loaded before team.js, which mounts it -->
-<script src="../calendar.js?v=441" defer></script>
-<script src="../boxscore.js?v=441" defer></script>
-<script src="../shotchart.js?v=441" defer></script>
+<script src="../calendar.js?v=442" defer></script>
+<script src="../boxscore.js?v=442" defer></script>
+<script src="../shotchart.js?v=442" defer></script>
 <!-- the shot clock and rotation sections: possessions and chances (possessions.js), the
      events tab's ordering (situations.js), the calculators and their views -->
-<script src="../possessions.js?v=441" defer></script>
-<script src="../situations.js?v=441" defer></script>
-<script src="../shotclock.js?v=441" defer></script>
-<script src="../shotclock-view.js?v=441" defer></script>
-<script src="../rotation.js?v=441" defer></script>
-<script src="../sitpanel.js?v=441" defer></script>
+<script src="../possessions.js?v=442" defer></script>
+<script src="../situations.js?v=442" defer></script>
+<script src="../shotclock.js?v=442" defer></script>
+<script src="../shotclock-view.js?v=442" defer></script>
+<script src="../rotation.js?v=442" defer></script>
+<script src="../sitpanel.js?v=442" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box
      score reads, needed here by the weekly report's ledger -->
-<script src="../gamepct-data.js?v=441" defer></script>
-<script src="../gamepct.js?v=441" defer></script>
-<script src="../weekly.js?v=441" defer></script>
-<script src="team.js?v=441" defer></script>
-<script src="../nav.js?v=441" defer></script>
-<script src="../xscroll.js?v=441" defer></script>
+<script src="../gamepct-data.js?v=442" defer></script>
+<script src="../gamepct.js?v=442" defer></script>
+<script src="../weekly.js?v=442" defer></script>
+<script src="team.js?v=442" defer></script>
+<script src="../nav.js?v=442" defer></script>
+<script src="../xscroll.js?v=442" defer></script>
 </body>
 </html>
