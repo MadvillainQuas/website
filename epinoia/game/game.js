@@ -539,7 +539,7 @@ async function squadPhotos(hostEl) {
      the same on both, so there was nothing to write twice. */
   const host = hostEl || document.getElementById('csBody');
   if (!host) return;
-  const ids = [...new Set([...host.querySelectorAll('.sq[data-pid], .mv-p[data-pid], .pb-p[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
+  const ids = [...new Set([...host.querySelectorAll('.sq[data-pid], .mv-p[data-pid], .pb-p[data-pid], .bxr[data-pid], .pcr[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (!ids.length) return;
   /* ASKED ONCE PER PLAYER, not once per page: the first host to ask may hold only
      some of the game's players (the starting fives above the tabs hold ten), and a
@@ -563,7 +563,7 @@ async function squadPhotos(hostEl) {
     ask.forEach(id => { squadPhotoAsking[id] = job; });
   }
   await Promise.all([...new Set(ids.map(id => squadPhotoAsking[id]).filter(Boolean))]);
-  host.querySelectorAll('.sq[data-pid], .mv-p[data-pid], .pb-p[data-pid]').forEach(e => {
+  host.querySelectorAll('.sq[data-pid], .mv-p[data-pid], .pb-p[data-pid], .bxr[data-pid], .pcr[data-pid]').forEach(e => {
     const url = squadPhotoCache[e.dataset.pid];
     if (!url) return;
     const face = e.querySelector('.sq-face');
@@ -2315,13 +2315,14 @@ function renderBody(d) {
     el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
     linkifyPlayers(el); decorateTeams(el);
     if (fTab === 'video') mountVideo(d);
-    if (fTab === 'adv') mountFullStats(el);
+    if (fTab === 'adv') { mountFullStats(el); if (window.EpinoiaCards) window.EpinoiaCards.mounted(el); setTimeout(() => squadPhotos(el), 0); }
     if (fTab === 'flow' && window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el);
     if (fTab === 'connections' && window.EpinoiaConnections) window.EpinoiaConnections.mounted(el);
     if (fTab === 'events' && window.EpinoiaEvents) window.EpinoiaEvents.mounted(el);
     if (fTab === 'box') {
       bindBoxSwitch(el);
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); setTimeout(squadPhotos, 0); }
+      else setTimeout(() => squadPhotos(el), 0);      // the traditional rows are cards with a face each (cards.js)
     }
   }
 }

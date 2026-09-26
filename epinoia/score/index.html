@@ -5258,6 +5258,9 @@ function bxTeamHTML(d,t){
   const five = startIds.map(id => squad.find(p => p.id === id)).filter(Boolean);
   const rest = squad.filter(p => !isStarter(p));
   const ordered = five.length ? five.concat(rest) : squad;
+  /* THE GAME PAGE DRAWS EACH ROW AS A CARD (cards.js); the scorer keeps the table */
+  const CK = globalThis.EpinoiaCards;
+  if (CK && CK.box) return CK.box({d, t, T, S, five, rest, ordered, cols, teamChips:teamChipsHTML(d,t), tname, fmtMin});
   const line = p=>{
     const s = d.stats[p.id];
     const onc = d.onCourt[t].includes(p.id);
@@ -6014,6 +6017,9 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
   let rows = S.teams[t].players.map(p=>playerAdv(d,t,p,TT,OT,gameAvg)).filter(r=>r.min>0);
   rows.sort((a,b)=>{ const va=a[advSort.k], vb=b[advSort.k];
     return (typeof va==='string' ? va.localeCompare(vb) : va-vb)*advSort.dir; });
+  /* THE GAME PAGE DRAWS EACH PLAYER AS A CARD (cards.js) from the same rows, ranges and percentiles */
+  const CK = globalThis.EpinoiaCards;
+  if (CK && CK.players) return CK.players({d, t, TT, OT, rows, ranges, gameAvg, groups:ADV_GROUPS, S, tname, gpRate, sort:advSort});
   const barW = (v,k)=>{ const r=ranges[k]; if(!r || r.max===r.min) return 0; return Math.max(0,Math.min(100,(v-r.min)/(r.max-r.min)*100)); };
   const diffTxt = (v,avg,inv)=>{ const dff=v-avg; const good = inv ? dff<0 : dff>0;
     const cls = Math.abs(dff)<0.5 ? '' : (good?'pos':'neg'); return {cls, txt:(dff>0?'+':'')+dff.toFixed(0), dff}; };
@@ -6193,11 +6199,18 @@ function advHTML(d){
   const rate = (k,t)=>{ const r = gpRate('team',k,tctx(t)); if(r) rated = true; return r; };
   /* hTxt/aTxt: a row that prints something other than fmt(value) beside its bars (a share with
      its count under it); the winner's bar carries .win, which the stylesheet gives a soft glow */
-  const mirror = (label, h, a, max, fmt, hWin, aWin, k, hTxt, aTxt) =>
-    '<div class="mrrow">'+gpv(k?rate(k,0):null, hTxt!=null?hTxt:fmt(h), 'ffval'+(hWin?' winner':''), label)+
+  /* THE GAME PAGE MAY DRESS EACH CHART AS A CARD (epinoia/game/cards.js, EpinoiaCards): the row goes in
+     as drawn and comes back inside a card with the difference between the two sides under it. The scorer
+     does not load it, so its own screens draw exactly as they always have. `o.plain` opts a row out (the
+     tempo tiles are tiles already). */
+  const mirror = (label, h, a, max, fmt, hWin, aWin, k, hTxt, aTxt, o) => {
+    const row = '<div class="mrrow">'+gpv(k?rate(k,0):null, hTxt!=null?hTxt:fmt(h), 'ffval'+(hWin?' winner':''), label)+
       '<div><div class="mrbars"><div class="l"><i'+(hWin?' class="win"':'')+' style="width:'+Math.max(0,Math.min(100,h/max*100))+'%;background:'+c0+'"></i></div>'+
       '<div class="r"><i'+(aWin?' class="win"':'')+' style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
       gpv(k?rate(k,1):null, aTxt!=null?aTxt:fmt(a), 'ffval r'+(aWin?' winner':''), label)+'</div>';
+    const CK = globalThis.EpinoiaCards;
+    return (CK && CK.chart && !(o && o.plain)) ? CK.chart(row, {label, h, a, fmt, hWin, aWin, k, TA, S, c0, c1, tname}) : row;
+  };
   /* A SECTION: its own bordered, tinted card with a title that opens and shuts it (a <details>,
      so it needs no script; the game page remembers what a reader opened or shut). `shut`: it starts
      closed -- every section under the true shot attempts except the player tables. The top card is not one:
@@ -6206,16 +6219,16 @@ function advHTML(d){
     '<span class="fsec-t">'+title+'</span>'+(sub?'<span class="fsec-sub">'+sub+'</span>':'')+'<i class="fsec-chev" aria-hidden="true"></i></summary>'+
     '<div class="fsec-b">'+body+'</div></details>';
   const sides = '<div class="fsides"><span style="color:'+c0+'" data-team-slot="0">'+esc(tname(0))+'</span><span style="color:'+c1+'" data-team-slot="1">'+esc(tname(1))+'</span></div>';
-  const ffRow = x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
+  const ffRow = (x, plain)=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
     const hWin = x.hb==null ? false : (x.hb?hw:aw), aWin = x.hb==null ? false : (x.hb?aw:hw);   // hb null = neither is "better"
-    return mirror(x.l, h, a, x.max, x.f, hWin, aWin, x.k); };
+    return mirror(x.l, h, a, x.max, x.f, hWin, aWin, x.k, undefined, undefined, plain ? {plain:true} : undefined); };
   /* the tempo -- possessions, each side's pace, its time of possession -- is not a factor anybody
      wins: each gets a tile of its own beside the others instead of more rows under the factors */
   const TEMPO = ['possessions','paceOwn','atop'];
-  const ffRows = FF.filter(x=>TEMPO.indexOf(x.k)<0).map(ffRow).join('');
-  const tempo = FF.filter(x=>TEMPO.indexOf(x.k)>=0).map(x=>'<div class="ftile" data-k="'+x.k+'">'+ffRow(x)+'</div>').join('');
+  const ffRows = FF.filter(x=>TEMPO.indexOf(x.k)<0).map(x=>ffRow(x)).join('');
+  const tempo = FF.filter(x=>TEMPO.indexOf(x.k)>=0).map(x=>'<div class="ftile" data-k="'+x.k+'">'+ffRow(x,true)+'</div>').join('');
   const ffCard = '<div class="fsec fsec-top" data-fsec="factors"><div class="fsec-h"><span class="fsec-t">offensive rating & four factors</span></div>'+
-    '<div class="fsec-b">'+sides+ffRows+'</div>'+
+    '<div class="fsec-b">'+sides+ffRows+(globalThis.EpinoiaCards && globalThis.EpinoiaCards.factorNote ? globalThis.EpinoiaCards.factorNote(S, TA) : '')+'</div>'+
     '<div class="ftempo">'+tempo+'</div>'+
     /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
     (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)</div>':'')+'</div>';

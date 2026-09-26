@@ -505,8 +505,14 @@ jobs:
         # kit/legibility.css is linked after every other stylesheet on every kit page; the secondary ink is near full strength
         # in both themes; the light accents clear 7:1 for one-pixel type; a club colour as text is inked to 6.5:1; no label rule
         # that sets the pixel face tracks wider than .2em
-        run: node supabase/tests/legibility.test.mjs
+        run: |
+          node supabase/tests/legibility.test.mjs
           node supabase/tests/linkedit.test.mjs
+
+      - name: Cards on the game page - each chart and each player row a card, the points added are strength of schedule's
+        # game/cards.js is the game page's dress for the box score and full stats; its weights are sos.js's and its renderers
+        # hand their rows over only where it is loaded, so the scorer's own screens stay tables
+        run: node supabase/tests/cards.test.mjs
 
       - name: The platform console's message is a pop-up, never a scroll to the top
         run: node supabase/tests/platform-toast.test.mjs

@@ -1,0 +1,149 @@
+/* ---------- cards: each chart and each player row in full stats and the traditional box score ---------- */
+
+/* ===== a chart in its own card, the difference between the sides underneath ===== */
+.fchart{ --c0:var(--team0,#93f2bf); --c1:var(--team1,#8ff5ff); margin:10px 0; padding:12px 12px 10px; border-radius:14px; min-width:0;
+  border:1px solid var(--border-subtle); background:linear-gradient(180deg,color-mix(in srgb,var(--text-primary) 4%,transparent),color-mix(in srgb,var(--text-primary) 1%,transparent));
+  box-shadow:0 1px 0 color-mix(in srgb,var(--text-primary) 6%,transparent) inset }
+.fchart .mrrow{ padding:2px 0 }
+.fdelta{ display:flex; justify-content:center; margin-top:8px; padding-top:8px; border-top:1px dashed color-mix(in srgb,var(--text-primary) 12%,transparent) }
+.fd-chip{ display:inline-flex; align-items:center; gap:7px; max-width:100%; min-width:0; padding:3px 11px 3px 9px; border-radius:999px;
+  font-family:var(--f-data,var(--f-mono)); font-size:12px; line-height:1.4; color:var(--text-secondary);
+  border:1px solid color-mix(in srgb,var(--text-primary) 14%,transparent); background:color-mix(in srgb,var(--text-primary) 4%,transparent) }
+.fd-chip i{ font-style:normal; font-size:9px; color:var(--lc,var(--text-muted)) }
+.fd-chip b{ font-weight:700; color:var(--text-bright,var(--text-primary)); font-variant-numeric:tabular-nums }
+.fd-chip em{ font-style:normal; font-family:var(--f-ui,var(--f-head)); font-size:11px; letter-spacing:.02em; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
+.fd-chip.lead{ border-color:color-mix(in srgb,var(--lc) 55%,transparent); background:color-mix(in srgb,var(--lc) 13%,transparent) }
+.fd-chip.lead em, .fd-chip.lead b{ color:var(--lc) }
+.fd-chip.level b{ color:var(--text-muted); font-weight:500; text-transform:uppercase; font-size:10px; letter-spacing:.08em }
+/* the four factors: the points each side gained or lost in this factor, under its own figure */
+.fpa{ display:grid; grid-template-columns:56px 1fr 56px; gap:8px; align-items:center; margin-top:8px }
+.fpa-l{ text-align:center; font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-muted) }
+.fpa-v{ justify-self:start; display:inline-flex; align-items:baseline; gap:2px; padding:2px 7px; border-radius:8px; font-family:var(--f-data,var(--f-mono)); font-size:12px; font-weight:700;
+  font-variant-numeric:tabular-nums; color:var(--text-secondary); background:color-mix(in srgb,var(--text-primary) 6%,transparent) }
+.fpa-v.r{ justify-self:end }
+.fpa-v small{ font-size:7.5px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; opacity:.7 }
+.fpa-v.pos{ color:var(--good,var(--positive)); background:color-mix(in srgb,var(--good,var(--positive)) 15%,transparent) }
+.fpa-v.neg{ color:var(--bad,var(--negative)); background:color-mix(in srgb,var(--bad,var(--negative)) 15%,transparent) }
+.fpa-note{ margin-top:2px }
+/* a chart inside a section card is a card of its own now: the section keeps only its title */
+.fsec-b .fchart:first-child{ margin-top:6px }
+.fch{ border-radius:14px; border:1px solid var(--border-subtle) }
+
+/* ===== full stats: a player is a card ===== */
+.pcs-tools{ display:flex; flex-direction:column; gap:8px; margin:2px 0 12px }
+.pcs-sort, .pcs-grp{ display:flex; flex-wrap:wrap; gap:6px; align-items:center }
+.pcs-sort > span, .pcs-grp > span{ font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-muted); margin-right:2px }
+.pcs-tools button{ border:1px solid var(--border-subtle); background:none; color:var(--text-secondary); border-radius:999px; padding:4px 11px; cursor:pointer;
+  font-family:var(--f-ui,var(--f-head)); font-size:11px; font-weight:600; letter-spacing:.02em }
+.pcs-tools button.on{ color:var(--c); border-color:color-mix(in srgb,var(--c) 60%,transparent); background:color-mix(in srgb,var(--c) 14%,transparent) }
+.pcs-list{ display:flex; flex-direction:column; gap:10px }
+.pcr{ position:relative; border-radius:16px; padding:12px 12px 6px; border:1px solid var(--border-subtle); min-width:0;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--c) 7%,var(--bg-card,transparent)),var(--bg-card,transparent) 55%) }
+.pcr::before{ content:''; position:absolute; left:0; top:14px; bottom:14px; width:3px; border-radius:0 3px 3px 0; background:var(--c); opacity:.55 }
+.pcr.on::before{ opacity:1; box-shadow:0 0 10px var(--c) }
+.pcr-id{ display:flex; align-items:center; gap:12px; padding-bottom:10px }
+.pcr-id .sq-face{ flex:none; width:52px; height:52px; border-width:2.5px; border-color:color-mix(in srgb,var(--c) 75%,transparent) }
+.pcr-who{ flex:1; min-width:0 }
+.pcr-who b{ display:block; font-family:var(--f-ui,var(--f-head)); font-weight:800; font-size:14px; letter-spacing:.01em; color:var(--text-bright,var(--text-primary)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.pcr-who b a{ color:inherit; text-decoration:none } .pcr-who b a:hover{ text-decoration:underline }
+.pcr-who small{ display:block; margin-top:2px; font-family:var(--f-data,var(--f-mono)); font-size:11px; color:var(--text-muted) }
+.pcr-num{ color:var(--c); margin-right:8px; font-weight:700 }
+.pcr-pills{ display:flex; gap:6px; flex:none }
+.pcs-pill{ display:inline-flex; flex-direction:column; align-items:center; min-width:42px; padding:4px 8px 3px; border-radius:11px; line-height:1.1;
+  background:color-mix(in srgb,var(--text-primary) 7%,transparent); color:var(--text-primary) }
+.pcs-pill b{ font-family:var(--f-score); font-size:17px; font-weight:400; font-variant-numeric:tabular-nums }
+.pcs-pill small{ font-family:var(--f-micro,var(--f-mono)); font-size:7px; letter-spacing:.1em; text-transform:uppercase; opacity:.7; margin-top:1px }
+.pcs-pill.pos{ background:color-mix(in srgb,var(--good,var(--positive)) 17%,transparent); color:var(--good,var(--positive)) }
+.pcs-pill.neg{ background:color-mix(in srgb,var(--bad,var(--negative)) 17%,transparent); color:var(--bad,var(--negative)) }
+.pcs-pill.pts{ background:color-mix(in srgb,var(--c) 18%,transparent); color:var(--c) }
+.pcs-pill.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6){ background:var(--gp) }
+
+.pcr-body{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:2px 18px; border-top:1px solid color-mix(in srgb,var(--text-primary) 9%,transparent) }
+.pcg{ padding:10px 0 8px; min-width:0 }
+.pcg h5{ margin:0 0 7px; font-family:var(--f-micro,var(--f-mono)); font-size:8px; font-weight:400; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted) }
+.pcs-items{ display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:6px }
+/* a count: a small tile */
+.pcs-n{ padding:6px 8px 5px; border-radius:10px; background:color-mix(in srgb,var(--text-primary) 5%,transparent); text-align:left }
+.pcs-n b{ display:block; font-family:var(--f-score); font-size:20px; font-weight:400; line-height:1.05; color:var(--text-bright,var(--text-primary)); font-variant-numeric:tabular-nums }
+.pcs-n small{ font-family:var(--f-micro,var(--f-mono)); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted) }
+/* a rate: the figure and a bar read against the game's other players */
+.pcs-b{ position:relative; padding:6px 8px 7px; border-radius:10px; background:color-mix(in srgb,var(--text-primary) 5%,transparent) }
+.pcs-b b{ float:right; font-family:var(--f-data,var(--f-mono)); font-size:13px; font-weight:600; color:var(--text-bright,var(--text-primary)); font-variant-numeric:tabular-nums }
+.pcs-l{ font-family:var(--f-micro,var(--f-mono)); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); line-height:18px }
+.pcs-bt{ display:block; clear:both; height:5px; border-radius:3px; background:color-mix(in srgb,var(--text-primary) 10%,transparent); overflow:hidden }
+.pcs-bt i{ display:block; height:100%; border-radius:3px; background:var(--c) }
+.pcs-bt i.shooting{ background:linear-gradient(90deg,#3b82f6,#60a5fa) }
+.pcs-bt i.playmaking{ background:linear-gradient(90deg,#f59e0b,#fbbf24) }
+.pcs-bt i.rebounding{ background:linear-gradient(90deg,#14b8a6,#2dd4bf) }
+.pcs-bt i.handling{ background:linear-gradient(90deg,#8b5cf6,#a78bfa) }
+.pcs-bt i.defense{ background:linear-gradient(90deg,#ef4444,#f87171) }
+.pcs-bt i.mins{ background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 55%,transparent)) }
+/* an on-court figure: how far the team ran from the game average with this player on, either way from a centre line */
+.pcs-d{ display:grid; grid-template-columns:52px 1fr 30px; align-items:center; gap:8px; padding:5px 8px; border-radius:10px; background:color-mix(in srgb,var(--text-primary) 5%,transparent) }
+.pcs-d .pcs-l{ line-height:1.2 }
+.pcs-dt{ position:relative; height:6px; border-radius:3px; background:color-mix(in srgb,var(--text-primary) 10%,transparent) }
+.pcs-dt::after{ content:''; position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:color-mix(in srgb,var(--text-primary) 35%,transparent) }
+.pcs-dt i{ position:absolute; top:0; height:100%; background:color-mix(in srgb,var(--text-primary) 35%,transparent); border-radius:3px }
+.pcs-dt i.pos{ background:var(--good,var(--positive)) } .pcs-dt i.neg{ background:var(--bad,var(--negative)) }
+.pcs-d b{ text-align:right; font-family:var(--f-data,var(--f-mono)); font-size:12px; font-weight:600; color:var(--text-secondary) }
+.pcs-d b.pos{ color:var(--good,var(--positive)) } .pcs-d b.neg{ color:var(--bad,var(--negative)) }
+.pcs-items:has(.pcs-pill) .pcs-pill{ align-self:stretch; justify-content:center }
+/* shot distribution: one bar cut by attempts, the percentage made under each part */
+.pcs-stack{ display:flex; height:16px; gap:2px; border-radius:8px; overflow:hidden; background:color-mix(in srgb,var(--text-primary) 8%,transparent) }
+.pcs-stack i{ display:grid; place-items:center; font-style:normal; font-family:var(--f-data,var(--f-mono)); font-size:9.5px; font-weight:700; color:#fff; min-width:4px }
+.pcs-none{ flex:1; text-align:center; font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); line-height:16px }
+.pcs-zones{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:7px }
+.pcs-zone{ padding:5px 7px; border-radius:10px; background:color-mix(in srgb,var(--text-primary) 5%,transparent); border-top:2px solid var(--zc,transparent); text-align:left }
+.pcs-zone small{ display:block; font-family:var(--f-micro,var(--f-mono)); font-size:7.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-muted) }
+.pcs-zone b{ font-family:var(--f-score); font-size:19px; font-weight:400; color:var(--text-bright,var(--text-primary)) }
+.pcs-zone em{ display:block; font-style:normal; font-family:var(--f-data,var(--f-mono)); font-size:9.5px; color:var(--text-muted) }
+.pcs-zone.z0{ --zc:#f97316 } .pcs-zone.z1{ --zc:#a855f7 } .pcs-zone.z2{ --zc:#10b981 }
+.pcs-stack i.z0{ background:#f97316 } .pcs-stack i.z1{ background:#a855f7 } .pcs-stack i.z2{ background:#10b981 }
+.pcs-b.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6), .pcs-d.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6),
+.pcs-zone.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6), .pcs-n.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6){ background:var(--gp) }
+.pcs .gp-pc{ display:none }
+/* the switches the reader has turned off */
+.pcs.hide-scoring .g-scoring, .pcs.hide-usage .g-usage, .pcs.hide-shotdist .g-shotdist, .pcs.hide-offcourt .g-offcourt,
+.pcs.hide-defcourt .g-defcourt, .pcs.hide-individual .g-individual{ display:none }
+@media (max-width:640px){
+  .pcr{ padding:10px 10px 4px }
+  .pcr-id .sq-face{ width:44px; height:44px }
+  .pcr-pills .pcs-pill{ min-width:38px }
+  .pcr-body{ grid-template-columns:1fr }
+}
+
+/* ===== the traditional box score: a row is a card, the face and name at its left ===== */
+.bxc-wrap{ overflow-x:auto; margin:0 -4px; padding:2px 4px 6px; scrollbar-width:thin }
+.bxc-in{ min-width:770px; display:flex; flex-direction:column; gap:6px }
+.bxr{ display:grid; grid-template-columns:170px repeat(15,minmax(40px,1fr)); align-items:center; border-radius:14px; border:1px solid var(--border-subtle);
+  background:var(--bg-card,transparent); position:relative }
+.bxr .bxc-id{ position:sticky; left:0; z-index:2; display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:14px 0 0 14px; min-width:0;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 10%,var(--bg-card,#0b1a12)),var(--bg-card,#0b1a12)) }
+.bxr .sq-face{ flex:none; width:36px; height:36px; border-width:2px }
+.bxc-who{ min-width:0; display:flex; flex-direction:column }
+.bxc-who b{ font-family:var(--f-ui,var(--f-head)); font-weight:700; font-size:12.5px; line-height:1.2; color:var(--text-bright,var(--text-primary)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.bxc-who b a{ color:inherit; text-decoration:none } .bxc-who b a:hover{ text-decoration:underline }
+.bxc-who small{ font-family:var(--f-data,var(--f-mono)); font-size:10px; color:var(--c) }
+.bxc-c{ text-align:center; padding:9px 2px; font-family:var(--f-data,var(--f-mono)); font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--text-secondary) }
+.bxc-c.key{ color:var(--text-bright,var(--text-primary)); font-weight:700 }
+.bxr.head{ background:none; border-color:transparent }
+.bxr.head .bxc-id{ background:none; padding:2px 10px }
+.bxr.head .bxc-c{ padding:2px; font-family:var(--f-micro,var(--f-mono)); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted) }
+.bxr.on{ border-color:color-mix(in srgb,var(--c) 55%,transparent); box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 25%,transparent), 0 0 14px color-mix(in srgb,var(--c) 18%,transparent) }
+.bxr.aux, .bxr.tot{ background:color-mix(in srgb,var(--text-primary) 4%,transparent) }
+.bxr.aux .bxc-id, .bxr.tot .bxc-id{ background:none }
+.bxr.tot{ border-color:color-mix(in srgb,var(--c) 40%,transparent) } .bxr.tot .bxc-c{ color:var(--text-bright,var(--text-primary)); font-weight:700 }
+.bxc-sep{ font-family:var(--f-micro,var(--f-mono)); font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-muted); padding:6px 10px 0; position:sticky; left:0 }
+@media (max-width:640px){
+  .bxr{ grid-template-columns:140px repeat(15,minmax(38px,1fr)) }
+  .bxc-in{ min-width:720px }
+  .bxr .bxc-id{ padding:6px 8px; gap:8px }
+  .bxr .sq-face{ width:32px; height:32px }
+}
+:root[data-theme="light"] .fchart, :root[data-theme="light"] .pcr{ box-shadow:0 1px 2px rgba(13,31,23,.06) }
+/* theme.css gives every shaded span a small radius and a negative margin (a figure in a line of text); these are boxes */
+span.pcs-pill.gp{ border-radius:11px; padding:4px 8px 3px; margin:0 }
+span.pcs-zone.gp{ border-radius:10px; padding:5px 7px; margin:0 }
+@media (max-width:640px){
+  .bxc-who b{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px }
+}
