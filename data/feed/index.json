@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-26T23:06:12.083652+00:00",
+ "updated": "2026-09-26T23:10:36.839811+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -104,7 +104,7 @@
    "label": "1 Liga Mężczyzn",
    "adapter": "fiba_site_schedule",
    "games": 240,
-   "updated": "2026-09-26T23:06:12.071433+00:00"
+   "updated": "2026-09-26T23:10:36.830840+00:00"
   },
   {
    "code": "SBA",

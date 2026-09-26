@@ -2,7 +2,7 @@
 "code": "PL1LM",
 "label": "1 Liga Mężczyzn",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-26T23:06:12.071433+00:00",
+"updated": "2026-09-26T23:10:36.830840+00:00",
 "games": [
 {
 "id": "39888",
@@ -2776,7 +2776,7 @@
 "hash": "e79fd363fdead89a984a27b2696a2a130d486d46",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/37600.json",
-"updated": "2026-09-26T23:05:55.475389+00:00"
+"updated": "2026-09-26T23:09:59.314556+00:00"
 },
 {
 "id": "37599",
