@@ -2331,8 +2331,21 @@ function renderBody(d) {
    start shut, the player tables open). What a reader opens or shuts stays that way: across the
    redraw every new play causes, and across visits, in this browser only. */
 const FSEC_KEY = 'epinoia_fsec';
+/* THE TWO PLAYER TABLES OPEN EVERY TIME YOU COME TO FULL STATS. They are the point of the tab, and a shut state saved in this
+   browser (by a click once, and for good) meant they came up collapsed on every later game. Their state is only kept for the
+   visit (sessionStorage): shut one and it stays shut through the redraws of a live game, but the next visit opens them again.
+   The other sections (shut by default) keep being remembered across visits. */
+const FSEC_VISIT = /^players[01]$/;
+function readJSON(store, key) {
+  try { const v = JSON.parse(store.getItem(key) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (e) { return {}; }
+}
 function fsecState() {
-  try { const v = JSON.parse(localStorage.getItem(FSEC_KEY) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (e) { return {}; }
+  const forever = readJSON(localStorage, FSEC_KEY);
+  const old = Object.keys(forever).filter(k => FSEC_VISIT.test(k));                       // an old saved "shut" no longer counts, and is cleared
+  if (old.length) { old.forEach(k => { delete forever[k]; }); try { localStorage.setItem(FSEC_KEY, JSON.stringify(forever)); } catch (e) { /* nothing kept */ } }
+  let visit = {};
+  try { visit = readJSON(sessionStorage, FSEC_KEY); } catch (e) { visit = {}; }
+  return Object.assign(forever, visit);
 }
 function mountFullStats(el) {
   const st = fsecState();
@@ -2343,8 +2356,13 @@ function mountFullStats(el) {
   el.addEventListener('toggle', e => {
     const dd = e.target;
     if (!dd || !dd.matches || !dd.matches('details.fsec')) return;
-    const next = fsecState();
-    next[dd.dataset.fsec] = dd.open;
+    const k = dd.dataset.fsec;
+    if (FSEC_VISIT.test(k)) {
+      try { const v = readJSON(sessionStorage, FSEC_KEY); v[k] = dd.open; sessionStorage.setItem(FSEC_KEY, JSON.stringify(v)); } catch (e2) { /* nothing kept */ }
+      return;
+    }
+    const next = readJSON(localStorage, FSEC_KEY);
+    next[k] = dd.open;
     try { localStorage.setItem(FSEC_KEY, JSON.stringify(next)); } catch (e2) { /* private window: only this visit */ }
   }, true);
 }
