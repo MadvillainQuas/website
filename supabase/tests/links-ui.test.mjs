@@ -101,6 +101,10 @@ ok('a team\'s competitions by season, optionally one season', JSON.stringify(K.b
    && K.bySeason(CARDS[0], '2025-26').length === 1 && K.bySeason(CARDS[0], '2026-27')[0].names.join() === 'SLB,Cup');
 ok('a player\'s link group: every id, himself first if missing', K.playerIds({ players: [{ id: 'x' }, { id: 'y' }] }, 'me').join() === 'me,x,y' && K.playerIds(null, 'me').join() === 'me'
    && K.playerIds({ players: [{ id: 'me' }, { id: 'y' }] }, 'me').join() === 'me,y');
+ok("the women's indicator falls back on the names before the database has it: league, team and the leagues' own languages",
+   K.looksWomen('London Lions', 'london-lions-slb-women', 'Super League Basketball Women', 'slb-women') && K.looksWomen('Basket Landes', 'landes', 'Ligue Féminine de Basket')
+   && K.looksWomen('Estudiantes', 'e', 'Liga Femenina Endesa') && K.looksWomen('Team', 'team', 'W League')
+   && !K.looksWomen('London Lions', 'london-lions', 'Super League Basketball Men') && !K.looksWomen('Womenswear FC'));
 ok('a club linked to nothing gets no switcher; one alone neither', K.teamSwitcher(null, 'a') === null && K.teamSwitcher({ teams: [CARDS[0]] }, 'a') === null);
 {
   const sw = K.teamSwitcher({ group: 'London Lions', teams: CARDS }, 'a');

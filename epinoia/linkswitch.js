@@ -40,6 +40,14 @@ async function call(name, args) {
 
 /* ---------------------------------------------------------------- pure --- */
 
+/* A SIDE THAT LOOKS LIKE A WOMEN'S TEAM by what it and its league are called -- the same words and the same folding as the
+   database's team_is_women (0178), so the indicator shows before that migration is applied and agrees with it after */
+const WOMEN_RE = /(^| )(women|womens|woman|female|ladies|feminin|feminine|femenina|femenino|femminile|damen|frauen|dames|vrouwen|wnba|wnbl|wjbl|lfb|kadinlar|kobiet|w league)( |$)/;
+function foldName(s) {
+  return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9-￿]+/g, ' ').trim();
+}
+const looksWomen = (...parts) => WOMEN_RE.test(foldName(parts.join(' ')));
+
 /* the distinct season names across a list of team cards, newest first */
 function seasonsAcross(cards) {
   const seen = [];
@@ -131,7 +139,9 @@ async function paintTeam(team, o) {
   o = o || {};
   const [w, linked] = await Promise.all([call('team_is_women', { p_team: team.id }), call('linked_teams', { p_team: team.id })]);
   const self = linked && (linked.teams || []).find(c => c.id === team.id);
-  const women = w === true || !!(self && self.women);
+  const lg = team.leagues || {};
+  /* the database's answer when it has one (a hand-set flag outranks the names); the names themselves before it does */
+  const women = w === true || !!(self && self.women) || (w === null && !self && looksWomen(team.name, team.slug, lg.name, lg.slug));
   if (women) {
     document.body.classList.add('is-women');
     if (o.sub) { const chip = womenChip(); chip.title = 'a women\'s team'; o.sub.appendChild(document.createTextNode(' ')); o.sub.appendChild(chip); }
@@ -178,5 +188,5 @@ function paintPlayer(pl, linked, o) {
   return sw;
 }
 
-return { paintTeam, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, seasonsAcross, bySeason, womenChip, call };
+return { paintTeam, looksWomen, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, seasonsAcross, bySeason, womenChip, call };
 }));
