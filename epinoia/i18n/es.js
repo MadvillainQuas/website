@@ -1465,7 +1465,8 @@
         'feed': 'muro',
         'your stamps': 'tus sellos',
         'find a game': 'buscar partido',
-        'search': 'buscar'
+        'search': 'buscar',
+        'search bar': 'barra de búsqueda'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {

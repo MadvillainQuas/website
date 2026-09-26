@@ -1463,7 +1463,8 @@
         'feed': 'フィード',
         'your stamps': 'あなたのスタンプ',
         'find a game': '試合を探す',
-        'search': '検索'
+        'search': '検索',
+        'search bar': '検索バー'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {

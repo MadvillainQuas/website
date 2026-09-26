@@ -232,7 +232,7 @@ const P1 = { kind: 'player', id: '13eff2f4-bd51-425b-93a5-af524786e20e', name: '
 console.log('\nthe rail\'s row');
 const nav = rd('epinoia', 'nav.js'), css = rd('epinoia', 'kit', 'nav.css'), js = rd('epinoia', 'search.js');
 ok('the search is the FIRST row of the foot, where the HOME row was, and HOME is still the small house at the bottom', /navFoot\.append\(searchRow, adminRow, platRow\);/.test(nav) && /footEnd\.appendChild\(home\)/.test(nav));
-ok('it is a rail row that says "search", with the slash key, and a label for a screen reader', /el\('span', 'tx', 'search'\), el\('kbd', 'ep-sr-key', '\/'\)/.test(nav) && /aria-label', 'Search teams, players and leagues'/.test(nav));
+ok('it is a rail row that says "search bar", with the slash key, and a label for a screen reader', /el\('span', 'tx', 'search bar'\), el\('kbd', 'ep-sr-key', '\/'\)/.test(nav) && /aria-label', 'Search teams, players and leagues'/.test(nav));
 ok('the script is fetched the first time it is wanted (a hand over the row, a touch, a focus, a click, the slash key), never with every page',
    /s\.src = root \+ 'search\.js' \+ stamp;/.test(nav) && /\['pointerenter', 'touchstart', 'focus'\]\.forEach/.test(nav) && !/<script[^>]*search\.js/.test(rd('epinoia', 'home', 'index.html')));
 ok('the slash key opens it from anywhere but a box that is being typed in', /e\.key !== '\/'/.test(nav) && /tag === 'INPUT' \|\| tag === 'TEXTAREA' \|\| tag === 'SELECT'/.test(nav) && /isContentEditable/.test(nav));

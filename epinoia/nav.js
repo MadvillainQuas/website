@@ -1003,7 +1003,7 @@
   searchBtn.type = 'button';
   searchBtn.setAttribute('aria-label', 'Search teams, players and leagues');
   searchBtn.setAttribute('aria-expanded', 'false');
-  searchBtn.append(el('span', 'ic', '⌕'), el('span', 'tx', 'search'), el('kbd', 'ep-sr-key', '/'));
+  searchBtn.append(el('span', 'ic', '⌕'), el('span', 'tx', 'search bar'), el('kbd', 'ep-sr-key', '/'));
   searchRow.appendChild(searchBtn);
   let searchApi = null, searchLoading = null;
   function loadSearch() {
