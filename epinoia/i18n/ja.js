@@ -1462,7 +1462,11 @@
       'team, with him on vs off': 'チーム、本人の出場時と非出場時',
       'opponents, with him on vs off': '相手チーム、本人の出場時と非出場時',
       'season line': 'シーズン成績',
-      'level with league average': 'リーグ平均並み'
+      'level with league average': 'リーグ平均並み',
+      'RIM ATT / 100': 'ゴール下試投 / 100',
+      'MID ATT / 100': 'ミドル試投 / 100',
+      '3P ATT / 100': '3FGA / 100',
+      'FT ATT / 100': 'FTA / 100'
     },
 
     ctx: {

@@ -406,6 +406,11 @@ function finishPlayer(A, m) {
        and nothing at all on one */
     rim_apg: r1(A.rimA / g), mid_apg: r1(A.midA / g), p3_apg: r1(A.p3a / g),
     ft_apg:  r1(A.fta / g),
+    /* AND PER 100 POSSESSIONS: attempts per 100 of his team's possessions while he is on the floor (the on-court
+       possessions the on/off block below is built from), so a player who plays 12 minutes and one who plays 36 are
+       read at the same rate. Under 20 possessions on the floor it is noise, and is left null. */
+    rim_a100: r1(onPoss >= 20 ? 100 * A.rimA / onPoss : null), mid_a100: r1(onPoss >= 20 ? 100 * A.midA / onPoss : null),
+    p3_a100:  r1(onPoss >= 20 ? 100 * A.p3a / onPoss : null),  ft_a100:  r1(onPoss >= 20 ? 100 * A.fta / onPoss : null),
     rim_rate: r1(pct(A.rimA, fga)), mid_rate: r1(pct(A.midA, fga)),
     p3_rate:  r1(pct(A.p3a, fga)),
     ftr: r1(pct(A.fta, fga)),

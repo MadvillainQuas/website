@@ -250,10 +250,10 @@ const BAR_SECTIONS = [
      ASSISTED% in scoring is the same question of his points: how much of what he scored
      came off somebody's pass, free throws included in the total. */
   { key: 'shooting', title: 'shooting', blocks: [
-    { title: 'at the rim',   rows: [['rim_pct','RIM%'], ['rim_apg','RIM ATT / G'], ['ev_rim_astp','RIM ASSISTED%']] },
-    { title: 'mid-range',    rows: [['mid_pct','MID%'], ['mid_apg','MID ATT / G'], ['ev_mid_astp','MID ASSISTED%']] },
-    { title: 'three-pointers', rows: [['p3_pct','3P%'],  ['p3_apg','3P ATT / G'],  ['ev_p3_astp','3P ASSISTED%']] },
-    { title: 'free throws',  rows: [['ft_pct','FT%'],   ['ft_apg','FT ATT / G']] }
+    { title: 'at the rim',   rows: [['rim_pct','RIM%'], ['rim_a100','RIM ATT / 100'], ['ev_rim_astp','RIM ASSISTED%']] },
+    { title: 'mid-range',    rows: [['mid_pct','MID%'], ['mid_a100','MID ATT / 100'], ['ev_mid_astp','MID ASSISTED%']] },
+    { title: 'three-pointers', rows: [['p3_pct','3P%'],  ['p3_a100','3P ATT / 100'],  ['ev_p3_astp','3P ASSISTED%']] },
+    { title: 'free throws',  rows: [['ft_pct','FT%'],   ['ft_a100','FT ATT / 100']] }
   ]},
   { key: 'playmaking', title: 'playmaking', blocks: [
     { rows: [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],['tov_pct','TURNOVER%']] }
@@ -322,7 +322,7 @@ function barCard(k, label, mine, ranks, pool) {
   const card = el('div', 'bc');
   /* volume rows are visibly subordinate to the rate they belong to, so
      the group still reads as shot types rather than a wall of statistics */
-  if (/ATT \/ G$/.test(label)) card.classList.add('vol');
+  if (/ATT \/ 100$/.test(label)) card.classList.add('vol');
   if (v == null) card.classList.add('none');
   if (BAR_HINT[k]) card.title = BAR_HINT[k];
   card.style.setProperty('--bc-band', barBand(p));

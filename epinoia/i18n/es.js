@@ -1464,7 +1464,11 @@
       'team, with him on vs off': 'equipo, con él en pista y sin él',
       'opponents, with him on vs off': 'rivales, con él en pista y sin él',
       'season line': 'Línea de temporada',
-      'level with league average': 'en la media de la liga'
+      'level with league average': 'en la media de la liga',
+      'RIM ATT / 100': 'Int. aro / 100',
+      'MID ATT / 100': 'Int. media / 100',
+      '3P ATT / 100': 'Int. T3 / 100',
+      'FT ATT / 100': 'Int. TL / 100'
     },
 
     ctx: {

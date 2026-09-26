@@ -123,8 +123,8 @@ ok('...the figure is season.js’s points scored plus points off assists, per ga
 const shooting = blockOf('shooting');
 const titles = [...shooting.matchAll(/title: '([^']+)'/g)].map(m => m[1]).slice(1);      // the first is the card's own
 ok('shooting: the four distances are groups in the one card', JSON.stringify(titles) === JSON.stringify(['at the rim', 'mid-range', 'three-pointers', 'free throws']), titles);
-ok('...each with its rate, its volume and its assisted share together', ['rim_pct', 'rim_apg', 'ev_rim_astp'].every(k => /title: 'at the rim'[^\]]*\]/.test(shooting) && shooting.indexOf(k) > 0)
-   && /title: 'at the rim'.*\['rim_pct'.*\['rim_apg'.*\['ev_rim_astp'/.test(shooting.replace(/\n/g, ' ')));
+ok('...each with its rate, its volume and its assisted share together', ['rim_pct', 'rim_a100', 'ev_rim_astp'].every(k => /title: 'at the rim'[^\]]*\]/.test(shooting) && shooting.indexOf(k) > 0)
+   && /title: 'at the rim'.*\['rim_pct'.*\['rim_a100'.*\['ev_rim_astp'/.test(shooting.replace(/\n/g, ' ')));
 ok('...and none of them folds (grouped, not another collapsible card)', !/fold:/.test(shooting));
 const impact = blockOf('impact');
 const off4 = ['diff_efg', 'diff_tov', 'diff_oreb', 'diff_ftr'], def4 = ['diff_vs_efg', 'diff_vs_tov', 'diff_vs_oreb', 'diff_vs_ftr'];
@@ -140,6 +140,30 @@ ok('the defence card no longer repeats the opponents’ eFG% (it is in impact)',
 ok('every section is a card, and every bar a card with its delta', /C\.collapsible\(\{ key: 'p_' \+ s\.key/.test(pjs) && /C\.delta\(v, C\.mean\(pool, k\)/.test(pjs) && /el\('div', 'bc'\)/.test(pjs));
 ok('the average is over the same pool the bar is ranked in (his position when adjusted)', /pool = group \? field\.filter/.test(pjs) && /barCard\(k, label, mine, ranks, pool\)/.test(pjs));
 ok('expand all / collapse all are on the switch row', /'expand all'/.test(pjs) && /'collapse all'/.test(pjs));
+
+console.log('\nattempts per 100 possessions (not per game) in shooting');
+{
+  const Season = require(path.join(ROOT, 'epinoia', 'season.js'));
+  const oc = { tFGA: 100, tFGM: 45, t3M: 10, tFTA: 25, tTOV: 10, tOR: 10, tPTS: 110, tDR: 30, oFGA: 90, oFGM: 40, o3M: 8, oFTA: 20, oTOV: 12, oOR: 8, oDR: 28, oPTS: 100 };
+  const poss = Season.POSS(oc.tFGA, oc.tFTA, oc.tTOV, oc.tOR);
+  const game = (id, min, extra) => ({ game_id: id, player_uuid: 'P', team_idx: 0, stats: Object.assign({ min: min * 60000, pts: 20, p2a: 10, p2m: 5, p3a: 6, p3m: 2, fta: 5, ftm: 4, rimA: 8, rimM: 5, midA: 4, midM: 1, oc }, extra) });
+  const tg = id => [{ game_id: id, team_idx: 0, stats: { adv: { pts: 110, fga: 100, fta: 25, tov: 10, oreb: 10 } } }, { game_id: id, team_idx: 1, stats: { adv: { pts: 100 } } }];
+  const row = Season.players([game('g1', 30)], tg('g1'))[0];
+  const per100 = n => Math.round(100 * n / poss * 10) / 10;
+  ok('rim, mid-range, three-point and free-throw attempts per 100 of his team\u2019s possessions while he is on the floor',
+     row.rim_a100 === per100(8) && row.mid_a100 === per100(4) && row.p3_a100 === per100(6) && row.ft_a100 === per100(5), [row.rim_a100, row.mid_a100, row.p3_a100, row.ft_a100, poss]);
+  ok('...and the per-game figures are still there for the tables that use them', row.rim_apg === 8 && row.p3_apg === 6);
+  const two = Season.players([game('g1', 30), game('g2', 30)], tg('g1').concat(tg('g2')))[0];
+  ok('over two games the attempts and the possessions both add up, so the rate is the same', two.rim_a100 === row.rim_a100, two.rim_a100);
+  const tiny = Season.players([game('g1', 2, { oc: Object.assign({}, oc, { tFGA: 8, tFTA: 2, tTOV: 1, tOR: 1 }) })], tg('g1'))[0];
+  ok('under 20 possessions on the floor is noise, and gives no rate', tiny.rim_a100 === null && tiny.ft_a100 === null, tiny.rim_a100);
+  const shared = rd('supabase', 'functions', '_shared', 'season.js');
+  ok('the Edge Functions\u2019 copy of season.js carries it too', /rim_a100:/.test(shared));
+  const shooting = pjs.slice(pjs.indexOf("{ key: 'shooting'"), pjs.indexOf('  ]}', pjs.indexOf("{ key: 'shooting'")));
+  ok('the shooting volume bars are per 100 possessions, labelled so, and none is per game',
+     ['rim_a100', 'mid_a100', 'p3_a100', 'ft_a100'].every(k => shooting.includes("'" + k + "'")) && /RIM ATT \/ 100/.test(shooting) && !/_apg|ATT \/ G/.test(shooting));
+  ok('...and they still take the quiet volume-row styling', pjs.includes('/ATT \\/ 100$/.test(label)'));
+}
 
 console.log('\nthe club page');
 const tjs = rd('epinoia', 't', 'team.js');
