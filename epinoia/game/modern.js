@@ -299,6 +299,16 @@
     const f1 = v => num(v).toFixed(1);
     /* hb: higher is better (turnover % is the one that is not) */
     const ROWS = [['efg%', 'efg', true], ['tov%', 'tovp', false], ['oreb%', 'orebp', true], ['fta rate', 'ftr', true]];
+    /* THE GAP BETWEEN THE TWO MARKS, under each label: how many points (of the rate) separate the clubs, an arrow to the side
+       that is ahead and the figure in that club's colour. Ahead means higher, except turnover %, where lower is. Even, or
+       within the rounding, says "even". */
+    const delta = (h, a, hb) => {
+      const d = Math.abs(h - a), t = d.toFixed(1);
+      if (h === a || t === '0.0') return '<div class="mv-fxd even"><b>even</b></div>';
+      const left = hb ? h > a : h < a;
+      return '<div class="mv-fxd" style="--c:' + esc(cols[left ? 0 : 1]) + '">' + (left ? '<i class="mv-fxarr l"></i>' : '') + '<b>' + t + '</b>' + (left ? '' : '<i class="mv-fxarr r"></i>') + '</div>';
+    };
+    /* each factor is a small card of its own: the two figures at the ends, the label, the shared bar and the gap in the middle */
     const rows = ROWS.map(([label, k, hb]) => {
       const h = num(TA[0][k]), a = num(TA[1][k]), tot = h + a;
       const share = tot > 0 ? Math.max(4, Math.min(96, h / tot * 100)) : 50;
@@ -306,17 +316,19 @@
       return '<div class="mv-fxrow"><span class="mv-fxv' + (hw ? ' w' : '') + '" style="--c:' + esc(cols[0]) + '">' + f1(h) + '</span>' +
         '<div class="mv-fxmid"><div class="mv-fxlabel">' + label + '</div>' +
         '<div class="mv-fxbar"><i style="width:' + share.toFixed(1) + '%;background:' + esc(cols[0]) + '"></i>' +
-        '<i style="width:' + (100 - share).toFixed(1) + '%;background:' + esc(cols[1]) + '"></i></div></div>' +
+        '<i style="width:' + (100 - share).toFixed(1) + '%;background:' + esc(cols[1]) + '"></i></div>' + delta(h, a, hb) + '</div>' +
         '<span class="mv-fxv r' + (aw ? ' w' : '') + '" style="--c:' + esc(cols[1]) + '">' + f1(a) + '</span></div>';
     }).join('');
     const oh = num(TA[0].ortg), oa = num(TA[1].ortg);
     const hero = '<div class="mv-fxhero">' +
       '<span class="mv-fxbig' + (oh > oa ? ' w' : '') + '" style="--c:' + esc(cols[0]) + '">' + f1(oh) + '</span>' +
-      '<span class="mv-fxlabel">ortg</span>' +
+      '<div class="mv-fxmid"><span class="mv-fxlabel">ortg</span>' + delta(oh, oa, true) + '</div>' +
       '<span class="mv-fxbig r' + (oa > oh ? ' w' : '') + '" style="--c:' + esc(cols[1]) + '">' + f1(oa) + '</span></div>';
+    /* THE TITLE SITS IN THE MIDDLE OF THE NAMES LINE, which was empty: the clubs at the two ends, what is being compared between */
     const names = '<div class="mv-fxnames"><span data-team-slot="0" style="color:' + esc(cols[0]) + '">' + esc(B.tname(0)) + '</span>' +
-      '<span data-team-slot="1" style="color:' + esc(cols[1]) + '">' + esc(B.tname(1)) + '</span></div>';
-    return '<div class="glass mv-fx"><div class="mv-fxtitle">offensive rating &amp; four factors</div>' + names + hero + rows + '</div>';
+      '<div class="mv-fxtitle">offensive rating &amp; four factors</div>' +
+      '<span class="r" data-team-slot="1" style="color:' + esc(cols[1]) + '">' + esc(B.tname(1)) + '</span></div>';
+    return '<div class="glass mv-fx">' + names + hero + '<div class="mv-fxgrid">' + rows + '</div></div>';
   }
 
   function render(d) {

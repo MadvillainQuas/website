@@ -154,21 +154,35 @@
 .mv-sdur{ font-size:9.5px; color:var(--text-muted) }
 
 /* ---------- offensive rating and the four factors, under the squads ---------- */
-.mv-fx{ margin-top:14px; padding:14px 14px 10px; min-width:0 }
-.mv-fxtitle{ font-family:var(--f-micro,var(--f-mono)); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px }
-.mv-fxnames{ display:flex; justify-content:space-between; gap:12px; font-family:var(--f-ui,var(--f-head)); font-weight:800; font-size:12px; letter-spacing:.02em; text-transform:uppercase; margin-bottom:6px }
+.mv-fx{ margin-top:14px; padding:14px; min-width:0 }
+/* the clubs at the two ends of one line and the title between them, where the line was empty */
+.mv-fxnames{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:12px; font-family:var(--f-ui,var(--f-head)); font-weight:800; font-size:12px; letter-spacing:.02em; text-transform:uppercase; margin-bottom:12px }
 .mv-fxnames span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.mv-fxhero{ display:grid; grid-template-columns:1fr auto 1fr; align-items:baseline; gap:10px; padding:2px 0 12px; margin-bottom:8px; border-bottom:1px solid var(--border-subtle) }
+.mv-fxnames .r{ text-align:right }
+.mv-fxtitle{ font-family:var(--f-micro,var(--f-mono)); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); text-align:center; white-space:nowrap; font-weight:400 }
+/* every figure block is a small card: the rating on its own, then the four factors two by two (one under another on a phone) */
+.mv-fxhero, .mv-fxrow{ border:1px solid var(--border-subtle); border-radius:12px; background:color-mix(in srgb,var(--text-primary) 3%,transparent) }
+.mv-fxhero{ display:grid; grid-template-columns:minmax(0,1fr) minmax(90px,auto) minmax(0,1fr); align-items:center; gap:10px; padding:12px 14px; margin-bottom:10px }
+.mv-fxgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+@media (max-width:640px){ .mv-fxgrid{ grid-template-columns:1fr } .mv-fxbig{ font-size:32px }
+  /* no room for the title between two club names on a phone: it takes a line above them */
+  .mv-fxnames{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); row-gap:8px } .mv-fxtitle{ grid-column:1 / -1; order:-1 } }
 .mv-fxbig{ font-family:var(--f-score); font-size:38px; line-height:1; color:var(--text-secondary); font-variant-numeric:tabular-nums }
 .mv-fxbig.r{ text-align:right }
 .mv-fxbig.w{ color:var(--c) }
 .mv-fxlabel{ font-family:var(--f-micro,var(--f-mono)); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); text-align:center }
-.mv-fxrow{ display:grid; grid-template-columns:48px 1fr 48px; align-items:center; gap:10px; padding:7px 0 }
+.mv-fxrow{ display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:10px; padding:10px 12px }
 .mv-fxv{ font-family:var(--f-data,var(--f-mono)); font-size:14px; font-variant-numeric:tabular-nums; color:var(--text-secondary) }
 .mv-fxv.r{ text-align:right }
 .mv-fxv.w{ color:var(--c); font-weight:700 }
-.mv-fxmid{ min-width:0 }
-.mv-fxmid .mv-fxlabel{ margin-bottom:4px }
+.mv-fxmid{ min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:5px }
+.mv-fxhero .mv-fxmid{ align-items:center }
 .mv-fxbar{ display:flex; gap:2px; height:6px }
 .mv-fxbar i{ display:block; height:100%; border-radius:3px; min-width:3px; opacity:.9 }
+/* the gap between the two marks: an arrow to the side that is ahead and how far, in that club's colour */
+.mv-fxd{ display:flex; align-items:center; justify-content:center; gap:5px; color:var(--c,var(--text-muted)); font-family:var(--f-data,var(--f-mono)); font-size:11px; line-height:1; font-variant-numeric:tabular-nums }
+.mv-fxd b{ font-weight:700 }
+.mv-fxd.even{ color:var(--text-muted) } .mv-fxd.even b{ font-weight:400; font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.08em; text-transform:uppercase }
+.mv-fxarr{ width:0; height:0; border-top:4px solid transparent; border-bottom:4px solid transparent }
+.mv-fxarr.l{ border-right:6px solid currentColor } .mv-fxarr.r{ border-left:6px solid currentColor }
 .mv-fxv:not(.w), .mv-fxbig:not(.w){ opacity:.6 }
