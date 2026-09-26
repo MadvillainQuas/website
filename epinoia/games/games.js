@@ -89,6 +89,8 @@
       ((a.status === 'live') !== (b.status === 'live') ? (a.status === 'live' ? -1 : 1)
         : Date.parse(a.tipoff_at) - Date.parse(b.tipoff_at)));
     box.hidden = !list.length;
+    const cn = $('gmLiveN');
+    if (cn) cn.textContent = list.filter(g => g.status === 'live').length + ' live · ' + list.length + (list.length === 1 ? ' game' : ' games');
     /* MORE LIVE GAMES THAN A GRID HOLDS (eight, as on HOME): split by league into dropdown rows, the same shape as HOME's Daily
        fixtures, each open on that league's cards, which then need no badge of their own; what a reader shuts stays shut */
     if (list.length > LIVE_SPLIT) { drawLiveSplit(grid, list); return; }

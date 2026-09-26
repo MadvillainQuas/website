@@ -37,8 +37,22 @@
     font-family:var(--f-ui);font-weight:600;font-size:14.5px;line-height:1.45;color:var(--ink)}
 
   /* LIVE, PINNED above every group: the thing somebody opened the page for */
-  .gm-live{border-bottom:1px solid var(--rule);background:color-mix(in oklch,var(--flare) 5%,var(--ground))}
+  /* LIVE NOW IS A SECTION OF ITS OWN: a tinted band with a firm flare-coloured rule above and below, a title in the centre, and the
+     fixtures start under a heading of theirs, on the plain ground */
+  .gm-live{border-top:3px solid var(--flare);border-bottom:3px solid var(--flare);background:color-mix(in oklch,var(--flare) 5%,var(--ground));
+    padding-bottom:calc(var(--u)*2);margin-bottom:calc(var(--u)*1)}
   .gm-live[hidden]{display:none}
+  .gm-sech{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px;text-align:center;
+    padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*2)}
+  .gm-sech h2{flex:0 0 100%;margin:0;display:flex;align-items:center;justify-content:center;gap:10px;
+    font-family:var(--f-score);font-weight:400;font-size:clamp(22px,2.4vw,28px);line-height:1.05;letter-spacing:.04em;text-transform:uppercase}
+  .gm-sech h2::after{content:none}
+  .gm-sech:not(.live) h2{flex-direction:column;gap:12px}
+  .gm-sech:not(.live) h2::after{content:'';display:block;width:36px;height:3px;border-radius:2px;background:var(--lume)}
+  .gm-sech.live h2{color:var(--flare)}
+  .gm-sech.live h2 .dot{width:9px;height:9px;border-radius:50%;background:var(--flare);animation:fxc-pulse 1.6s ease-in-out infinite;flex:none}
+  .gm-sech-n{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  @media (prefers-reduced-motion:reduce){ .gm-sech.live h2 .dot{animation:none} }
   .gm-sub{display:flex;align-items:center;gap:8px;margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3) 0;
     font-family:var(--f-micro);font-weight:400;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
   .gm-sub .n{color:var(--ink-3)}
@@ -50,6 +64,7 @@
   .gm-lv>summary .n{color:var(--lume);margin-left:8px}
   .gm-go{flex:none;margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--lume);
     text-decoration:none;border:1px solid var(--rule-2,var(--rule));padding:4px 8px}
+  .gm-lv>summary::after{margin-left:14px}                 /* the link takes the free space, so it sits by the chevron in every row */
   .gm-go:hover{background:var(--lume);color:var(--on-accent,#04100b);border-color:var(--lume)}
 
   /* THE COUNTRY LAYER: a dropdown per country (games.js countryEl) around the league dropdowns, the leagues inset under a rule */
@@ -127,12 +142,15 @@
 
   <!-- live games, pinned above the groups; hidden while there are none -->
   <section class="gm-live" id="gmLive" aria-labelledby="gmLiveH" hidden>
-    <h3 class="gm-sub" id="gmLiveH"><span class="dot" aria-hidden="true"></span>Live now</h3>
+    <div class="gm-sech live"><h2 id="gmLiveH"><span class="dot" aria-hidden="true"></span>Live now</h2><span class="gm-sech-n" id="gmLiveN"></span></div>
     <div class="fxc-grid" id="gmLiveGrid"></div>
   </section>
 
+  <!-- the fixtures proper, under a heading of their own so the live games above are a section apart -->
+  <div class="gm-sech" id="gmFixH"><h2>Fixtures by country</h2></div>
+
   <!-- one details.ep-acc per league, most imminent game first (games.js) -->
-  <div class="gm-groups" id="gmGroups" aria-busy="true" aria-labelledby="gmTitle">
+  <div class="gm-groups" id="gmGroups" aria-busy="true" aria-labelledby="gmFixH">
     <div class="gm-skel" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   </div>
 
