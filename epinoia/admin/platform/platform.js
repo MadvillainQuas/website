@@ -37,12 +37,34 @@ const PAGE = 40;
 let acctOffset = 0, acctTotal = 0, acctQuery = '';
 let auOffset = 0, auTotal = 0, auAction = '';
 
+/* THE MESSAGE IS A POP-UP, NOT A LINE AT THE TOP OF THE PAGE. It used to sit under the header and scroll itself
+   into view, so saving something far down a long tab threw you back to the top to read "Saved." and you lost
+   your place. Now it floats in the corner (bottom right; above the bar on a phone) whatever the scroll, and the
+   page never moves. "Saved" and the like go by themselves after a few seconds; a refusal stays longer, and both
+   wait while the pointer is over them or the close button has focus. A new message replaces the one showing. */
+let sayTimer = 0;
 function say(text, kind) {
   const m = $('#msg');
-  m.textContent = text || '';
-  m.className = 'msg ' + (kind || '');
-  m.classList.toggle('hide', !text);
-  if (text) m.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  clearTimeout(sayTimer);
+  m.textContent = '';
+  m.className = 'msg ' + (kind || '') + (text ? '' : ' hide');
+  if (!text) return;
+  const tx = el('span', 'msg-tx', text);
+  const x = el('button', 'msg-x', '×');
+  x.type = 'button';
+  x.setAttribute('aria-label', 'close');
+  x.addEventListener('click', () => say(''));
+  m.append(tx, x);
+  m.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+  void m.offsetWidth;                                   // a second "Saved." pops again rather than sitting still
+  m.classList.add('pop');
+  const ms = kind === 'err' ? 20000 : 5000;
+  const arm = () => { clearTimeout(sayTimer); if (!m.matches(':hover')) sayTimer = setTimeout(() => say(''), ms); };
+  m.onmouseenter = () => clearTimeout(sayTimer);
+  m.onmouseleave = arm;
+  x.onfocus = () => clearTimeout(sayTimer);
+  x.onblur = arm;
+  arm();
 }
 
 function oops(e, fallback) {

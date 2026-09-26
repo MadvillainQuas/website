@@ -501,6 +501,9 @@ jobs:
           node supabase/tests/entity-links.test.mjs
           node supabase/tests/links-ui.test.mjs
 
+      - name: The platform console's message is a pop-up, never a scroll to the top
+        run: node supabase/tests/platform-toast.test.mjs
+
       - name: The search box - smart matching, what may be found, and what is kept about searches (0179, 0180)
         # the client: words in any order, a middle name or a sponsor's brand not needed, a fallback while 0179 is not yet
         # applied, the rail's row and sheet, and the search tracker (no session token, nothing that looks like an address).
