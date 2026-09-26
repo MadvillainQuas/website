@@ -1455,7 +1455,16 @@
       'Close matches are shown too.': 'También se muestran coincidencias cercanas.',
       'searching…': 'buscando…',
       'Search is not available just now.': 'La búsqueda no está disponible ahora mismo.',
-      'Nothing matches': 'Nada coincide con'
+      'Nothing matches': 'Nada coincide con',
+      'expand all': 'Expandir todo',
+      'collapse all': 'Contraer todo',
+      'TPC / GAME': 'TPC / P',
+      'offence four factors': 'Cuatro factores en ataque',
+      'defence four factors': 'Cuatro factores en defensa',
+      'team, with him on vs off': 'equipo, con él en pista y sin él',
+      'opponents, with him on vs off': 'rivales, con él en pista y sin él',
+      'season line': 'Línea de temporada',
+      'level with league average': 'en la media de la liga'
     },
 
     ctx: {
@@ -1912,6 +1921,10 @@
       [/^Mark as released from (.+)$/, 'Marcar como desvinculado de $1'],
       [/^Could not do that: (.+)$/, (m, T) => 'No se pudo hacer: ' + T(m[1])],
       [/^vs (\d+) (.+)$/, (m, T) => 'frente a ' + m[1] + ' ' + T(m[2])],
+      /* the league percentile cards and the gap to the league average (cards.js) */
+      [/^avg (\d+)(?:st|nd|rd|th)$/, 'prom. $1.º'],
+      [/^([+-][\d.]+) (above|below) league avg$/, m => m[1] + (m[2] === 'above' ? ' por encima' : ' por debajo') + ' de la media de la liga'],
+      [/^lg avg ([+-]?[\d.]+)$/, 'media liga $1'],
       [/^showing the last (\d+)$/, 'mostrando las últimas $1'],
       [/^With (.+) on the floor, against with (them|none of them) on\.$/, m => 'Con ' + m[1].split(' and ').join(' y ') + ' en pista, frente a ' + (m[2] === 'them' ? 'sin él' : 'sin ninguno de ellos') + '.'],
       [/^(.+) \(([^()]+)\)$/, (m, T, Q) => { const b = Q(m[1]); return b == null ? null : b + ' (' + T(m[2]) + ')'; }],

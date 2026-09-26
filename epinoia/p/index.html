@@ -15,19 +15,20 @@
 <title>Player · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=487"></script>
-<script src="../i18n.js?v=487" data-i18n-packs="report"></script>
-<script src="../glyphs.js?v=487" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=487">
-<link rel="stylesheet" href="../kit/sectitle.css?v=487">
-<link rel="stylesheet" href="../kit/linkswitch.css?v=487">
-<link rel="stylesheet" href="../kit/table.css?v=487">
-<link rel="stylesheet" href="../video.css?v=487">
-<link rel="stylesheet" href="../kit/nav.css?v=487">
-<link rel="stylesheet" href="../kit/sitpanel.css?v=487">
-<link rel="stylesheet" href="../kit/access.css?v=487">
+<script src="../appmode.js?v=488"></script>
+<script src="../i18n.js?v=488" data-i18n-packs="report"></script>
+<script src="../glyphs.js?v=488" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=488">
+<link rel="stylesheet" href="../kit/sectitle.css?v=488">
+<link rel="stylesheet" href="../kit/linkswitch.css?v=488">
+<link rel="stylesheet" href="../kit/table.css?v=488">
+<link rel="stylesheet" href="../video.css?v=488">
+<link rel="stylesheet" href="../kit/nav.css?v=488">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=488">
+<link rel="stylesheet" href="../kit/cards.css?v=488">
+<link rel="stylesheet" href="../kit/access.css?v=488">
 <!-- the club's "released" button (offerRelease), styled with the injury report it feeds -->
-<link rel="stylesheet" href="../kit/wire.css?v=487">
+<link rel="stylesheet" href="../kit/wire.css?v=488">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -83,25 +84,6 @@
   .barswitch .ep-btn{font-size:9px;padding:7px 11px}
   .barswitch-note{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3)}
   .bars{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
-  .barrow{display:grid;grid-template-columns:104px 1fr 56px;gap:10px;align-items:center;
-    padding:5px 0}
-  .barrow .bl{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
-    letter-spacing:0.07em;text-transform:uppercase;text-align:right}
-  .barrow .bt{height:9px;border-radius:2px;background:var(--panel-2);overflow:hidden;position:relative}
-  .barrow .bt i{display:block;height:100%;border-radius:2px}
-  .barrow .bv{font-family:var(--f-data);font-size:11.5px;text-align:right;color:var(--ink)}
-  .barrow .bp{font-family:var(--f-micro);font-size:8px;color:var(--ink-3)}
-  /* A volume row is a statistic in its own right — ranked like every other —
-     but it belongs to the rate above it, so it is indented and quieter. The
-     group should still read as four shot types, not eight unrelated bars. */
-  .barrow.volrow{margin-top:-4px}
-  .barrow.volrow .bl{color:var(--ink-3);opacity:.85;padding-left:10px}
-  .barrow.volrow .bt{height:6px;opacity:.8}
-  .barrow.volrow .bv{font-size:10.5px;color:var(--ink-2)}
-  .barrow{align-items:start}
-  .barrow .bl{padding-top:1px}
-  .bargroup{font-family:var(--f-micro);font-size:8.5px;color:var(--lume);
-    letter-spacing:0.08em;text-transform:uppercase;padding:12px 0 4px}
   .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
     padding:0 calc(var(--u)*3) calc(var(--u)*2)}
   .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
@@ -200,7 +182,7 @@
   table.shot td.shot-team{font-weight:600;font-size:13px;color:var(--ink);
     white-space:normal;min-width:6em}
 </style>
-<link rel="stylesheet" href="../kit/legibility.css?v=487">
+<link rel="stylesheet" href="../kit/legibility.css?v=488">
 </head>
 <body>
 <div class="ep-frame">
@@ -292,32 +274,33 @@
     <span>Epinoia Network</span>
   </div>
 </div>
-<script src="../config.js?v=487" defer></script>
-<script src="../access.js?v=487" defer></script>
-<script src="../follow.js?v=487" defer></script>
-<script src="../teamcolour.js?v=487" defer></script>
-<script src="../bpm.js?v=487" defer></script>
-<script src="../season.js?v=487" defer></script>
-<script src="../data.js?v=487" defer></script>
-<script src="../boxscore.js?v=487" defer></script>
-<script src="../shotchart.js?v=487" defer></script>
-<script src="../upload.js?v=487" defer></script>
-<script src="../lineups.js?v=487" defer></script>
-<script src="../wowy.js?v=487" defer></script>
-<script src="../withstats.js?v=487" defer></script>
-<script src="withui.js?v=487" defer></script>
-<script src="../fulltable.js?v=487" defer></script>
-<script src="../video.js?v=487" defer></script>
-<script src="video.js?v=487" defer></script>
-<script src="../sitpanel.js?v=487" defer></script>
+<script src="../config.js?v=488" defer></script>
+<script src="../access.js?v=488" defer></script>
+<script src="../follow.js?v=488" defer></script>
+<script src="../teamcolour.js?v=488" defer></script>
+<script src="../bpm.js?v=488" defer></script>
+<script src="../season.js?v=488" defer></script>
+<script src="../data.js?v=488" defer></script>
+<script src="../boxscore.js?v=488" defer></script>
+<script src="../shotchart.js?v=488" defer></script>
+<script src="../upload.js?v=488" defer></script>
+<script src="../lineups.js?v=488" defer></script>
+<script src="../wowy.js?v=488" defer></script>
+<script src="../withstats.js?v=488" defer></script>
+<script src="withui.js?v=488" defer></script>
+<script src="../fulltable.js?v=488" defer></script>
+<script src="../video.js?v=488" defer></script>
+<script src="video.js?v=488" defer></script>
+<script src="../sitpanel.js?v=488" defer></script>
+<script src="../cards.js?v=488" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box
      score reads, needed here by the weekly report's ledger -->
-<script src="../gamepct-data.js?v=487" defer></script>
-<script src="../gamepct.js?v=487" defer></script>
-<script src="../weekly.js?v=487" defer></script>
-<script src="../linkswitch.js?v=487" defer></script>
-<script src="player.js?v=487" defer></script>
-<script src="../nav.js?v=487" defer></script>
-<script src="../xscroll.js?v=487" defer></script>
+<script src="../gamepct-data.js?v=488" defer></script>
+<script src="../gamepct.js?v=488" defer></script>
+<script src="../weekly.js?v=488" defer></script>
+<script src="../linkswitch.js?v=488" defer></script>
+<script src="player.js?v=488" defer></script>
+<script src="../nav.js?v=488" defer></script>
+<script src="../xscroll.js?v=488" defer></script>
 </body>
 </html>

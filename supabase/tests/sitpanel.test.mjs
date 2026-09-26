@@ -411,7 +411,7 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
   ok('team.js: teamStats renders the panel after the shot zones and before the squad, inside its own try',
      stats.indexOf("'shot zones'") > 0 && stats.indexOf('EpinoiaSitPanel.render') > stats.indexOf("'shot zones'") &&
      stats.indexOf('EpinoiaSitPanel.render') < stats.indexOf('T.render(') && insideTry(stats, 'EpinoiaSitPanel.render(') &&
-     /kind: 'team', row: mine, field: S\.teams/.test(stats) && /el\('div', 'ffhead', 'events'\)/.test(stats));
+     /kind: 'team', row: mine, field: S\.teams/.test(stats) && /card\('events', 'events'/.test(stats));    // the events are a card of team statistics now (cards.js)
   const guard = /innerHTML\s*=\s*[^;]*\b(p\.name|player\.name|team\.name|\.display_name)\b/;
   const offenders = [['sitpanel.js', sjs], ['player.js', pjs], ['team.js', tjs]]
     .flatMap(([n, s]) => s.split(';').filter(st => guard.test(st)).map(st => n + ': ' + st.trim().slice(0, 80)));

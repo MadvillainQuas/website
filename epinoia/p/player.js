@@ -230,36 +230,80 @@ function paintTiles(s) {
    bare number beside the rate is barely better, because nobody knows whether
    four rim attempts a game is a lot. Ranked against the league, it answers
    both questions at once: how often he goes there, and how he does when he
-   gets there. Those are different skills and they deserve different bars. */
-const BAR_GROUPS = [
-  ['scoring',    [['ppg','PTS / GAME'],['ts','TS%'],['efg','eFG%'],['usg','USAGE'],['ftr','FT RATE'],
-                  ['ev_ast_pts_sh','ASSISTED%']]],
+   gets there. Those are different skills and they deserve different bars.
+
+   THE SECTIONS ARE CARDS (cards.js): each folds away, and each bar in it is a card of its own with the
+   gap to the league average under it. A section is a list of BLOCKS. A block with a title is a group inside
+   the card: the shooting card's four distances are grouped (not folded), and the impact card keeps its
+   on/off and box plus/minus blocks open while the two four-factor blocks are folds of their own. */
+const BAR_SECTIONS = [
+  { key: 'scoring', title: 'scoring', blocks: [
+    { rows: [['ppg','PTS / GAME'],['ts','TS%'],['efg','eFG%'],['usg','USAGE'],['ftr','FT RATE'],
+             ['ev_ast_pts_sh','ASSISTED%'],
+             /* TOTAL POINT CONTRIBUTION per game: the points he scored plus the points scored off his assists
+                (index_9's TPC). Total-points-based, so it is a volume, ranked like points a game. */
+             ['contrib_pg','TPC / GAME']] }
+  ]},
   /* ASSISTED% under each distance: of the shots he MADE there, how many came off a pass.
      Only a make can be assisted -- nobody records the pass before a miss -- so it is a
      share of makes, and the row above it is that distance's accuracy over every attempt.
      ASSISTED% in scoring is the same question of his points: how much of what he scored
      came off somebody's pass, free throws included in the total. */
-  ['shooting',   [['rim_pct','RIM%'],   ['rim_apg','RIM ATT / G'], ['ev_rim_astp','RIM ASSISTED%'],
-                  ['mid_pct','MID%'],   ['mid_apg','MID ATT / G'], ['ev_mid_astp','MID ASSISTED%'],
-                  ['p3_pct','3P%'],     ['p3_apg','3P ATT / G'],   ['ev_p3_astp','3P ASSISTED%'],
-                  ['ft_pct','FT%'],     ['ft_apg','FT ATT / G']]],
-  ['playmaking', [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],
-                  ['tov_pct','TURNOVER%']]],
-  ['rebounding', [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']]],
-  ['defence',    [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['diff_vs_efg','OPP eFG% ±']]],
-  /* on/off as differentials: how much better the team is in each with him on */
-  ['impact',     [['diff_net','NET ±'],['diff_ortg','ORTG ±'],['diff_drtg','DRTG ±'],
-                  ['diff_efg','eFG% ±'],['diff_tov','TOV% ±'],['diff_oreb','OREB% ±']]]
+  { key: 'shooting', title: 'shooting', blocks: [
+    { title: 'at the rim',   rows: [['rim_pct','RIM%'], ['rim_apg','RIM ATT / G'], ['ev_rim_astp','RIM ASSISTED%']] },
+    { title: 'mid-range',    rows: [['mid_pct','MID%'], ['mid_apg','MID ATT / G'], ['ev_mid_astp','MID ASSISTED%']] },
+    { title: 'three-pointers', rows: [['p3_pct','3P%'],  ['p3_apg','3P ATT / G'],  ['ev_p3_astp','3P ASSISTED%']] },
+    { title: 'free throws',  rows: [['ft_pct','FT%'],   ['ft_apg','FT ATT / G']] }
+  ]},
+  { key: 'playmaking', title: 'playmaking', blocks: [
+    { rows: [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],['tov_pct','TURNOVER%']] }
+  ]},
+  { key: 'rebounding', title: 'rebounding', blocks: [
+    { rows: [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']] }
+  ]},
+  { key: 'defence', title: 'defence', blocks: [
+    { rows: [['stl_pct','STEAL%'],['blk_pct','BLOCK%']] }
+  ]},
+  /* IMPACT: on/off as differentials -- how much better the team is in each with him on -- and the box
+     plus/minus family. The four factors are shown in full, offence and defence, each end its own fold. */
+  { key: 'impact', title: 'impact', blocks: [
+    { title: 'on / off', rows: [['diff_net','NET ±'],['diff_ortg','ORTG ±'],['diff_drtg','DRTG ±']] },
+    /* VORP is a season's worth of value over a replacement player, so it carries his minutes as well as his level */
+    { title: 'box plus / minus', rows: [['bpm','BPM'],['obpm','OBPM'],['dbpm','DBPM'],['vorp','VORP']] },
+    { title: 'offence four factors', fold: true, note: 'team, with him on vs off',
+      rows: [['diff_efg','eFG% ±'],['diff_tov','TOV% ±'],['diff_oreb','OREB% ±'],['diff_ftr','FT RATE ±']] },
+    { title: 'defence four factors', fold: true, note: 'opponents, with him on vs off',
+      rows: [['diff_vs_efg','OPP eFG% ±'],['diff_vs_tov','OPP TOV% ±'],['diff_vs_oreb','OPP OREB% ±'],['diff_vs_ftr','OPP FT RATE ±']] }
+  ]}
 ];
+const BAR_GROUPS = BAR_SECTIONS.map(s => [s.title, s.blocks.flatMap(b => b.rows)]);   // the flat view: every row of a section
 /* the ones where a smaller number is the better performance */
 /* ASSISTED% RANKS THE OTHER WAY UP. Every other bar here reads high-is-better, but a
    basket somebody else created is the easier one to make: between two players shooting
    the same percentage from the same distance, the one doing it off his own dribble is
    the rarer player. So the LEAST assisted scoring takes the top percentile, and the bar
    fills for the share he created himself. (For a CLUB the opposite is true — ball
-   movement — which is why this list is the player profile's alone.) */
-const BAR_LOW = ['tov_pct', 'diff_vs_efg', 'diff_drtg', 'diff_tov',
+   movement — which is why this list is the player profile's alone.)
+   The defensive four factors: the team's opponents shooting, rebounding and getting to the line LESS with him on
+   is the good direction; opponent turnovers going UP is (so diff_vs_tov is not here). */
+const BAR_LOW = ['tov_pct', 'diff_drtg', 'diff_tov',
+                 'diff_vs_efg', 'diff_vs_oreb', 'diff_vs_ftr',
                  'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp'];
+/* a differential (or a plus/minus) carries its sign: +12.5 is a claim, 12.5 is a number */
+const BAR_SIGNED = k => /^diff_/.test(k) || k === 'bpm' || k === 'obpm' || k === 'dbpm';
+const BAR_DP = k => (k === 'ast_to' || k === 'au') ? 2 : 1;
+const BAR_HINT = {
+  contrib_pg: 'Total point contribution per game: the points he scored plus the points scored off his assists.',
+  vorp: 'Value over replacement player: box plus/minus turned into a season total, so minutes count as well as level.'
+};
+
+/* THE FIVE-BAND SCALE the table's heat map uses, in --good rather than --lume: this page wears the club's
+   colours (--lume is its ink), and a good number must stay green */
+function barBand(p) {
+  return p == null ? 'var(--rule-2)'
+    : p >= 75 ? 'var(--good)' : p >= 50 ? 'color-mix(in oklch,var(--good) 70%,var(--amber))'
+    : p >= 25 ? 'var(--amber)' : 'var(--flare)';
+}
 
 /* ADJUSTED FOR POSITION: the same bars, ranked inside his own position group.
    A centre's assist rate against every player in the competition says only that he
@@ -269,6 +313,45 @@ const BAR_LOW = ['tov_pct', 'diff_vs_efg', 'diff_drtg', 'diff_tov',
 let barsByPos = false;
 try { barsByPos = localStorage.getItem('epinoia_bars_pos') === '1'; } catch (_) { /* default */ }
 
+/* ONE BAR, IN ITS OWN CARD: label and value across the top with his percentile under the value, the fill,
+   and under it how far the value sits above or below the league average (the field the bar is ranked in) */
+function barCard(k, label, mine, ranks, pool) {
+  const C = window.EpinoiaCards;
+  const v = mine[k];
+  const p = (ranks.get(k) || new Map()).get(mine.id);
+  const card = el('div', 'bc');
+  /* volume rows are visibly subordinate to the rate they belong to, so
+     the group still reads as shot types rather than a wall of statistics */
+  if (/ATT \/ G$/.test(label)) card.classList.add('vol');
+  if (v == null) card.classList.add('none');
+  if (BAR_HINT[k]) card.title = BAR_HINT[k];
+  card.style.setProperty('--bc-band', barBand(p));
+
+  const top = el('div', 'bc-top');
+  top.appendChild(el('div', 'bc-l', label));
+  const dp = BAR_DP(k);
+  const val = el('div', 'bc-v', v == null ? '—' : ((BAR_SIGNED(k) && Number(v) > 0 ? '+' : '') + Number(v).toFixed(dp)));
+  if (p != null) { const bp = el('div', 'bp', ord(p)); bp.setAttribute('data-i18n-ctx', 'pctl'); val.appendChild(bp); }
+  top.appendChild(val);
+  card.appendChild(top);
+
+  const track = el('div', 'bc-track');
+  const fill = el('i');
+  fill.style.width = (p == null ? 0 : Math.max(2, p)) + '%';
+  fill.style.background = barBand(p);
+  track.appendChild(fill);
+  card.appendChild(track);
+
+  const d = C ? C.delta(v, C.mean(pool, k), BAR_LOW.indexOf(k) !== -1, dp) : null;
+  if (d) {
+    const row = el('div', 'bc-d ' + d.dir + ' ' + d.tone);
+    row.appendChild(el('b', null, d.text));
+    row.appendChild(el('span', null, 'lg avg ' + ((BAR_SIGNED(k) && d.avg > 0) ? '+' : '') + d.avg.toFixed(dp)));
+    card.appendChild(row);
+  }
+  return card;
+}
+
 function paintBars(mine, field) {
   const host = $('#bars'); host.textContent = '';
   if (!mine || field.length < 3) {
@@ -276,16 +359,19 @@ function paintBars(mine, field) {
       'Percentiles appear once enough of the competition has played.'));
     return;
   }
-  const SE = window.EpinoiaSeason;
+  const SE = window.EpinoiaSeason, C = window.EpinoiaCards;
   /* PREMIUM BARS ARE LEFT OUT, not drawn empty: an empty track reads as a bottom percentile.
      The catalogue says which keys they are (today the assisted shares, from the events
      splits); the group they came from says so in one line instead. */
   const CAT = ANALYTICS_LOCKED && window.EpinoiaAccess ? window.EpinoiaAccess.CATALOGUE : null;
   const premiumBar = k => !!CAT && (typeof CAT.barKeys === 'function' ? !!CAT.barKeys(k)
     : Array.isArray(CAT.barKeys) && CAT.barKeys.indexOf(k) !== -1);
-  const groups = BAR_GROUPS.map(([title, rows]) =>
-    [title, rows.filter(r => !premiumBar(r[0])), rows.some(r => premiumBar(r[0]))]);
-  const keys = groups.flatMap(([, rows]) => rows.map(r => r[0]));
+  const sections = BAR_SECTIONS.map(s => ({
+    key: s.key, title: s.title,
+    held: s.blocks.some(b => b.rows.some(r => premiumBar(r[0]))),
+    blocks: s.blocks.map(b => Object.assign({}, b, { rows: b.rows.filter(r => !premiumBar(r[0])) })).filter(b => b.rows.length)
+  }));
+  const keys = sections.flatMap(s => s.blocks.flatMap(b => b.rows.map(r => r[0])));
   const posMap = barsByPos && SE.positionGroups ? SE.positionGroups(field) : null;
   const group = posMap ? (posMap.get(mine.id) || null) : null;
   const ranks = SE.percentiles(field, keys, BAR_LOW, group ? (r => posMap.get(r.id) || null) : null);
@@ -307,48 +393,54 @@ function paintBars(mine, field) {
   });
   sw.appendChild(btn);
   if (barsByPos && !group) sw.appendChild(el('span', 'barswitch-note', 'no position for this player'));
+  const all = el('span', 'xc-all');
+  const open = el('button', 'ep-btn', 'expand all'), shut = el('button', 'ep-btn', 'collapse all');
+  open.type = shut.type = 'button';
+  all.append(open, shut);
+  sw.appendChild(all);
   host.appendChild(sw);
 
   const wrap = el('div', 'bars');
-  groups.forEach(([title, rows, held]) => {
-    wrap.appendChild(el('div', 'bargroup', title));
-    rows.forEach(([k, label]) => {
-      const v = mine[k];
-      const p = (ranks.get(k) || new Map()).get(mine.id);
-      const row = el('div', 'barrow');
-
-      /* volume rows are visibly subordinate to the rate they belong to, so
-         the group still reads as four shot types rather than eight statistics */
-      const isVol = /ATT \/ G$/.test(label);
-      if (isVol) row.classList.add('volrow');
-      row.appendChild(el('div', 'bl', label));
-
-      const track = el('div', 'bt');
-      const fill = el('i');
-      fill.style.width = (p == null ? 0 : Math.max(2, p)) + '%';
-      /* the same five-band scale the table's heat map uses, in --good rather than --lume: this
-         page wears the club's colours (--lume is its ink), and a good number must stay green */
-      fill.style.background = p == null ? 'var(--rule-2)'
-        : p >= 75 ? 'var(--good)' : p >= 50 ? 'color-mix(in oklch,var(--good) 70%,var(--amber))'
-        : p >= 25 ? 'var(--amber)' : 'var(--flare)';
-      track.appendChild(fill);
-      row.appendChild(track);
-
-      const dp = (k === 'ast_to' || k === 'au') ? 2 : 1;
-      /* a differential carries its sign: +12.5 is a claim, 12.5 is a number */
-      const val = el('div', 'bv', v == null ? '—' : ((String(k).startsWith('diff_') && Number(v) > 0 ? '+' : '') + Number(v).toFixed(dp)));
-      if (p != null) { const bp = el('div', 'bp', ord(p)); bp.setAttribute('data-i18n-ctx', 'pctl'); val.appendChild(bp); }
-      row.appendChild(val);
-      wrap.appendChild(row);
-    });
-    if (held) {
-      const line = el('div', 'barteaser');
-      line.innerHTML = accessTeaser({ compact: true, title: 'Assisted and self-created scoring',
-        lines: ['How much of the scoring came off a pass, by distance — part of Epinoia analytics.'] });
-      wrap.appendChild(line);
-    }
+  const cardsOf = rows => {
+    const g = el('div', 'bcs');
+    rows.forEach(([k, label]) => g.appendChild(barCard(k, label, mine, ranks, pool)));
+    return g;
+  };
+  /* what a section says about itself when it is folded: the average percentile of its bars */
+  const summary = rows => {
+    const ps = rows.map(([k]) => (ranks.get(k) || new Map()).get(mine.id)).filter(p => p != null);
+    return ps.length ? 'avg ' + ord(ps.reduce((a, b) => a + b, 0) / ps.length) : null;
+  };
+  sections.forEach(s => {
+    const body = () => {
+      const b = el('div');
+      s.blocks.forEach(blk => {
+        if (blk.fold) {
+          /* a fold of its own inside the card (impact's four factors) */
+          b.appendChild(C.collapsible({ key: 'p_' + s.key + '_' + blk.title, title: blk.title, note: blk.note, sub: true, open: false,
+            summary: summary(blk.rows), body: () => cardsOf(blk.rows) }));
+        } else if (blk.title) {
+          /* a group inside the card, not folded: the distances of the shooting card, impact's on/off and BPM */
+          const g = el('div', 'bsub');
+          g.appendChild(el('div', 'bsub-h', blk.title));
+          g.appendChild(cardsOf(blk.rows));
+          b.appendChild(g);
+        } else b.appendChild(cardsOf(blk.rows));
+      });
+      if (s.held) {
+        const line = el('div', 'barteaser');
+        line.innerHTML = accessTeaser({ compact: true, title: 'Assisted and self-created scoring',
+          lines: ['How much of the scoring came off a pass, by distance — part of Epinoia analytics.'] });
+        b.appendChild(line);
+      }
+      return b;
+    };
+    wrap.appendChild(C.collapsible({ key: 'p_' + s.key, title: s.title,
+      summary: summary(s.blocks.flatMap(b => b.rows)), body }));
   });
   host.appendChild(wrap);
+  open.addEventListener('click', () => C.setAll(wrap, true));
+  shut.addEventListener('click', () => C.setAll(wrap, false));
 }
 
 

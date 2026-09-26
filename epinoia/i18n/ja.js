@@ -1453,7 +1453,16 @@
       'Close matches are shown too.': '近い候補も表示しています。',
       'searching…': '検索中…',
       'Search is not available just now.': '現在、検索を利用できません。',
-      'Nothing matches': '一致するものはありません'
+      'Nothing matches': '一致するものはありません',
+      'expand all': 'すべて開く',
+      'collapse all': 'すべて閉じる',
+      'TPC / GAME': 'TPC / G',
+      'offence four factors': 'オフェンス4ファクター',
+      'defence four factors': 'ディフェンス4ファクター',
+      'team, with him on vs off': 'チーム、本人の出場時と非出場時',
+      'opponents, with him on vs off': '相手チーム、本人の出場時と非出場時',
+      'season line': 'シーズン成績',
+      'level with league average': 'リーグ平均並み'
     },
 
     ctx: {
@@ -1912,6 +1921,10 @@
       [/^Mark as released from (.+)$/, '$1を退団済みにする'],
       [/^Could not do that: (.+)$/, (m, T) => 'できませんでした: ' + T(m[1])],
       [/^vs (\d+) (.+)$/, (m, T) => T(m[2]) + m[1] + '人と比較'],
+      /* the league percentile cards and the gap to the league average (cards.js) */
+      [/^avg (\d+)(?:st|nd|rd|th)$/, '平均 $1'],
+      [/^[+-]([\d.]+) (above|below) league avg$/, m => 'リーグ平均より ' + m[1] + (m[2] === 'above' ? ' 上' : ' 下')],
+      [/^lg avg ([+-]?[\d.]+)$/, 'リーグ平均 $1'],
       [/^showing the last (\d+)$/, '直近$1シーズンを表示'],
       [/^With (.+) on the floor, against with (them|none of them) on\.$/, m => m[1].split(' and ').join('・') + 'が出場中と、' + (m[2] === 'them' ? 'いないとき' : '誰も出場していないとき') + 'の比較。'],
       [/^(.+) \(([^()]+)\)$/, (m, T, Q) => { const b = Q(m[1]); return b == null ? null : b + '（' + T(m[2]) + '）'; }],

@@ -551,6 +551,11 @@ jobs:
         # finished game is never touched from the schedule; a Czech game keeps its fixture's id.
         run: python scripts/ingest/quiet_test.py
 
+      - name: Player percentile bars and team statistics are collapsible cards
+        # cards.js: every section folds, every bar is a card with its gap to the league average; TPC per game, the
+        # shooting distances grouped, impact with every on/off four factor and BPM/OBPM/DBPM/VORP; the players' table stays out
+        run: node supabase/tests/collapsible-cards.test.mjs
+
       - name: robots.txt is at the root, slow, and polite
         # crawlers read /robots.txt at the domain root only; the old file under /epinoia/ was never read
         run: node supabase/tests/robots.test.mjs

@@ -1,0 +1,115 @@
+/* ============================================================================
+   COLLAPSIBLE CARDS AND BAR CARDS (epinoia/cards.js) - the player profile's league percentile bars and the
+   club page's team statistics.
+
+   THE CLUB'S COLOURS, everywhere: --team-a and --team-b are the two colours the page was given (teamcolour.js
+   sets them, and the -ink variants that are safe as text on either theme); with none they are the site's mint
+   and aqua, so the same rules dress an un-themed page too. Surfaces are the club colour mixed into --panel, so
+   they follow the light and dark themes on their own; text on them is the page's ink, and a colour used AS TEXT
+   is the -ink variant, never the raw club colour. Good and bad stay --good and --bad whatever the club wears:
+   a club in red must not make a strength look like a weakness.
+   ============================================================================ */
+
+/* ---- the fold ---- */
+.xc{--xc-a:var(--team-a,var(--lume));--xc-b:var(--team-b,var(--aqua));
+  --xc-ink:var(--team-a-ink,var(--lume));--xc-ink-b:var(--team-b-ink,var(--aqua));
+  position:relative;margin:0 0 calc(var(--u)*1.5);border-radius:14px;overflow:hidden;
+  border:1px solid color-mix(in oklch,var(--xc-a) 42%,var(--rule));
+  background:linear-gradient(160deg,color-mix(in oklch,var(--xc-a) 12%,var(--panel)) 0%,var(--panel) 62%);
+  box-shadow:0 1px 0 color-mix(in oklch,var(--xc-a) 18%,transparent) inset}
+.xc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;z-index:1;
+  background:linear-gradient(180deg,var(--xc-a),var(--xc-b))}
+.xc-h{appearance:none;display:flex;align-items:center;gap:10px;width:100%;margin:0;
+  padding:13px 16px 13px 21px;background:none;border:0;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.xc-h:hover{background:color-mix(in oklch,var(--xc-a) 8%,transparent)}
+.xc-h:focus-visible{outline:2px solid var(--xc-ink);outline-offset:-3px}
+.xc-t{font-family:var(--f-micro);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--xc-ink)}
+.xc-n{font-family:var(--f-micro);font-size:8px;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase}
+.xc-g{flex:1}
+.xc-s{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;
+  padding:4px 9px 3px;border-radius:999px;color:var(--ink);
+  border:1px solid color-mix(in oklch,var(--xc-b) 55%,transparent);
+  background:color-mix(in oklch,var(--xc-b) 14%,transparent)}
+/* the chevron: a triangle from borders, turned when the card is open */
+.xc-c{flex:none;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+  border-top:6px solid var(--xc-ink);transition:transform .22s var(--ease)}
+.xc.shut .xc-c{transform:rotate(-90deg)}
+/* the body folds with the grid trick: 1fr to 0fr animates height without measuring it */
+.xc-b{display:grid;grid-template-rows:1fr;transition:grid-template-rows .26s var(--ease)}
+.xc.shut .xc-b{grid-template-rows:0fr}
+.xc-bi{min-height:0;overflow:hidden;padding:0 16px 0 21px}
+.xc:not(.shut) .xc-bi{padding-bottom:calc(var(--u)*1.75)}
+.xc.shut .xc-bi{visibility:hidden}
+@media (prefers-reduced-motion:reduce){.xc-b,.xc-c{transition:none}}
+
+/* a card inside a card: quieter, so the outer one still reads as the section */
+.xc.sub{margin:calc(var(--u)*1.25) 0 0;border-radius:11px;
+  background:color-mix(in oklch,var(--xc-b) 6%,var(--panel))}
+.xc.sub::before{width:3px;background:var(--xc-b)}
+.xc.sub .xc-h{padding:10px 13px 10px 17px}
+.xc.sub .xc-t{font-size:9.5px;color:var(--xc-ink-b)}
+.xc.sub .xc-c{border-top-color:var(--xc-ink-b)}
+.xc.sub .xc-bi{padding:0 13px 0 17px}
+.xc.sub:not(.shut) .xc-bi{padding-bottom:calc(var(--u)*1.5)}
+
+/* "expand all / collapse all" beside the bars' own switch */
+.xc-all{display:inline-flex;gap:6px;margin-left:auto}
+.xc-all .ep-btn{font-size:9px;padding:7px 11px}
+
+/* ---- one bar, in its own card ---- */
+.bcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:10px}
+.bc{--bc-band:var(--rule-2);position:relative;display:grid;gap:8px;padding:11px 13px 11px 15px;border-radius:11px;
+  border:1px solid color-mix(in oklch,var(--team-a,var(--lume)) 24%,var(--rule));
+  background:color-mix(in oklch,var(--team-a,var(--lume)) 6%,var(--panel));overflow:hidden}
+.bc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bc-band)}
+.bc-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.bc-l{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);line-height:1.5}
+.bc-v{font-family:var(--f-data);font-size:15px;line-height:1;color:var(--ink);white-space:nowrap;text-align:right}
+.bc-v .bp{display:block;margin-top:5px;font-family:var(--f-micro);font-size:8px;letter-spacing:.04em;color:var(--ink-3)}
+.bc-track{height:8px;border-radius:999px;overflow:hidden;position:relative;
+  background:color-mix(in oklch,var(--team-b,var(--aqua)) 14%,var(--panel-2))}
+.bc-track i{display:block;height:100%;border-radius:999px}
+.bc.vol{padding-top:9px;padding-bottom:9px}
+.bc.vol .bc-l{opacity:.9}
+.bc.vol .bc-v{font-size:13px}
+.bc.vol .bc-track{height:6px}
+.bc.none{opacity:.75}
+
+/* the delta: a triangle for above or below, the size of the gap, and the average it is measured from */
+.bc-d{display:flex;align-items:center;flex-wrap:wrap;gap:3px 7px;font-family:var(--f-micro);font-size:8px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-3);line-height:1.5}
+.bc-d b{display:inline-flex;align-items:center;gap:5px;font-weight:400;padding:2px 7px 1px;border-radius:999px;
+  border:1px solid var(--d,var(--rule-2));background:color-mix(in oklch,var(--d,var(--rule-2)) 15%,transparent);color:var(--ink)}
+.bc-d b::before{content:"";flex:none;width:0;height:0;border-left:3.5px solid transparent;border-right:3.5px solid transparent}
+.bc-d.above b::before{border-bottom:5px solid var(--d)}
+.bc-d.below b::before{border-top:5px solid var(--d)}
+.bc-d.level b::before{width:7px;height:2px;border:0;background:var(--d)}
+.bc-d.good{--d:var(--good)}
+.bc-d.bad{--d:var(--bad)}
+.bc-d.level{--d:var(--ink-3)}
+.bc-d span{white-space:nowrap}
+
+/* ---- the shooting card's distances: grouped, not folded ---- */
+.bsub{margin:calc(var(--u)*1.25) 0 0;padding:calc(var(--u)*1.25) calc(var(--u)*1.25) calc(var(--u)*1.5);border-radius:12px;
+  border:1px solid color-mix(in oklch,var(--team-b,var(--aqua)) 32%,var(--rule));
+  background:color-mix(in oklch,var(--team-b,var(--aqua)) 6%,transparent)}
+.bsub:first-child{margin-top:0}
+.bsub-h{display:flex;align-items:center;gap:9px;margin:0 0 calc(var(--u)*1.1);
+  font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--team-b-ink,var(--aqua))}
+.bsub-h::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,color-mix(in oklch,var(--team-b,var(--aqua)) 55%,transparent),transparent)}
+.bsub-h .n{color:var(--ink-3)}
+
+/* ---- team statistics: the plain sections that used to sit loose now sit in cards ---- */
+.xcs{padding:0 calc(var(--u)*3) calc(var(--u)*1.5)}
+@media (max-width:520px){.xcs{padding-left:calc(var(--u)*1.5);padding-right:calc(var(--u)*1.5)}}
+.xc .tiles,.xc .ffgrid{display:grid;gap:9px;background:none;border:0;margin:0;padding:0}
+.xc .tiles{grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
+.xc .ffgrid{grid-template-columns:repeat(auto-fit,minmax(168px,1fr))}
+.xc .tile,.xc .ffcard{border-radius:11px;border:1px solid color-mix(in oklch,var(--xc-a) 24%,var(--rule));
+  background:color-mix(in oklch,var(--xc-a) 6%,var(--panel))}
+.xc .tile .v{color:var(--ink)}
+.xc .tile.hi .v{color:var(--xc-ink)}
+.xc .ffside{border-radius:8px;background:color-mix(in oklch,var(--xc-b) 5%,transparent)}
+/* the events and shot-zone panels bring their own side padding; the card already has it */
+.xc .sp{padding:0 0 calc(var(--u)*1)}
+.xc .sc-tablewrap{margin:0}

@@ -520,96 +520,118 @@ async function teamStats(team, kind) {
     return;
   }
 
+  /* THE SECTIONS ARE CARDS (cards.js): four factors, the season line, shot zones and events each fold away, and the
+     state is remembered in this browser. A shut card draws nothing, which is the point for the two that read every
+     event of the competition (shot zones) or every situation (events): they are only built when opened.
+     The players' table below is not one of them - it stays on the page. */
+  const C = window.EpinoiaCards;
+  const cards = el('div', 'xcs');
+  host.appendChild(cards);
+  const card = (key, title, body, note) => {
+    const c = C.collapsible({ key: 't_' + key, title, note, body });
+    cards.appendChild(c);
+    return c;
+  };
+
   /* The four factors first and labelled as such: they are the four things that
      decide a basketball game, and both ends of each are shown because a
      defence is only describable relative to what it faced. */
-  const ff = el('div');
-  ff.appendChild(el('div', 'ffhead', 'four factors'));
-  const grid = el('div', 'ffgrid');
-  [['shooting', 'eFG%', mine.ff_efg, mine.dff_efg, false],
-   ['turnovers', 'TOV%', mine.ff_tov, mine.dff_tov, true],
-   ['rebounding', 'OREB%', mine.ff_oreb, mine.dff_oreb, false],
-   ['free throws', 'FTr', mine.ff_ftr, mine.dff_ftr, false]]
-    .forEach(([label, unit, off, def, lowGood]) => {
-      const card = el('div', 'ffcard');
-      card.appendChild(el('div', 'ffl', label + ' · ' + unit));
-      const pair = el('div', 'ffpair');
-      const o = el('div', 'ffside');
-      o.append(el('div', 'ffv', n1(off)), el('div', 'ffk', 'own'));
-      const d = el('div', 'ffside');
-      d.append(el('div', 'ffv', n1(def)), el('div', 'ffk', 'allowed'));
-      /* Green marks an ADVANTAGE TO THIS TEAM, never simply the larger number.
-         Opponents shooting a better eFG% than you is a weakness; colouring
-         "allowed" green because 49.1 > 48.1 would read as a strength and say
-         the opposite of what happened. So the edge is computed in the team's
-         favour, and a deficit is marked as such rather than dressed up. */
-      const edge = (off == null || def == null) ? null
-        : (lowGood ? def - off : off - def);          // positive = this team ahead
-      if (edge != null && Math.abs(edge) >= 0.05) {
-        (edge > 0 ? o : d).classList.add(edge > 0 ? 'win' : 'lose');
-      }
-      pair.append(o, d); card.appendChild(pair);
-      grid.appendChild(card);
-    });
-  ff.appendChild(grid);
-  host.appendChild(ff);
+  card('ff', 'four factors', () => {
+    const grid = el('div', 'ffgrid');
+    [['shooting', 'eFG%', mine.ff_efg, mine.dff_efg, false],
+     ['turnovers', 'TOV%', mine.ff_tov, mine.dff_tov, true],
+     ['rebounding', 'OREB%', mine.ff_oreb, mine.dff_oreb, false],
+     ['free throws', 'FTr', mine.ff_ftr, mine.dff_ftr, false]]
+      .forEach(([label, unit, off, def, lowGood]) => {
+        const fc = el('div', 'ffcard');
+        fc.appendChild(el('div', 'ffl', label + ' · ' + unit));
+        const pair = el('div', 'ffpair');
+        const o = el('div', 'ffside');
+        o.append(el('div', 'ffv', n1(off)), el('div', 'ffk', 'own'));
+        const d = el('div', 'ffside');
+        d.append(el('div', 'ffv', n1(def)), el('div', 'ffk', 'allowed'));
+        /* Green marks an ADVANTAGE TO THIS TEAM, never simply the larger number.
+           Opponents shooting a better eFG% than you is a weakness; colouring
+           "allowed" green because 49.1 > 48.1 would read as a strength and say
+           the opposite of what happened. So the edge is computed in the team's
+           favour, and a deficit is marked as such rather than dressed up. */
+        const edge = (off == null || def == null) ? null
+          : (lowGood ? def - off : off - def);          // positive = this team ahead
+        if (edge != null && Math.abs(edge) >= 0.05) {
+          (edge > 0 ? o : d).classList.add(edge > 0 ? 'win' : 'lose');
+        }
+        pair.append(o, d); fc.appendChild(pair);
+        grid.appendChild(fc);
+      });
+    return grid;
+  }, 'own · allowed');
 
   const pg = v => (v == null || !isFinite(v)) ? null : v / (mine.gp || 1);
-  const tiles = el('div', 'tiles');
-  [['ppg', n1(mine.ppg), true], ['opp ppg', n1(mine.papg), false],
-   ['diff', mine.diffpg == null ? '—' : (mine.diffpg > 0 ? '+' : '') + n1(mine.diffpg), true],
-   ['ortg', n1(mine.ortg), true], ['drtg', n1(mine.drtg), false],
-   ['net', mine.net == null ? '—' : (mine.net > 0 ? '+' : '') + n1(mine.net), true],
-   ['pace', n1(mine.pace), false], ['ts%', n1(mine.ts), false],
-   ['ast/to', mine.ast_to == null ? '—' : Number(mine.ast_to).toFixed(2), false],
-   ['reb / g', n1(pg(mine.reb)), false], ['ast / g', n1(pg(mine.ast)), false], ['stl / g', n1(pg(mine.stl)), false],
-   ['blk / g', n1(pg(mine.blk)), false], ['paint / g', n1(pg(mine.paint)), false], ['fast / g', n1(pg(mine.fast)), false],
-   ['2nd chance / g', n1(pg(mine.second_chance)), false], ['off turnovers / g', n1(pg(mine.pts_off_to)), false],
-   ['bench / g', n1(pg(mine.bench)), false]]
-    .forEach(([l, v, hi]) => {
-      const d = el('div', 'tile' + (hi ? ' hi' : ''));
-      d.append(el('div', 'v', v == null ? '—' : v), el('div', 'l', l));
-      tiles.appendChild(d);
-    });
-  host.appendChild(tiles);
+  card('line', 'season line', () => {
+    const tiles = el('div', 'tiles');
+    [['ppg', n1(mine.ppg), true], ['opp ppg', n1(mine.papg), false],
+     ['diff', mine.diffpg == null ? '—' : (mine.diffpg > 0 ? '+' : '') + n1(mine.diffpg), true],
+     ['ortg', n1(mine.ortg), true], ['drtg', n1(mine.drtg), false],
+     ['net', mine.net == null ? '—' : (mine.net > 0 ? '+' : '') + n1(mine.net), true],
+     ['pace', n1(mine.pace), false], ['ts%', n1(mine.ts), false],
+     ['ast/to', mine.ast_to == null ? '—' : Number(mine.ast_to).toFixed(2), false],
+     ['reb / g', n1(pg(mine.reb)), false], ['ast / g', n1(pg(mine.ast)), false], ['stl / g', n1(pg(mine.stl)), false],
+     ['blk / g', n1(pg(mine.blk)), false], ['paint / g', n1(pg(mine.paint)), false], ['fast / g', n1(pg(mine.fast)), false],
+     ['2nd chance / g', n1(pg(mine.second_chance)), false], ['off turnovers / g', n1(pg(mine.pts_off_to)), false],
+     ['bench / g', n1(pg(mine.bench)), false]]
+      .forEach(([l, v, hi]) => {
+        const d = el('div', 'tile' + (hi ? ' hi' : ''));
+        d.append(el('div', 'v', v == null ? '—' : v), el('div', 'l', l));
+        tiles.appendChild(d);
+      });
+    return tiles;
+  }, mine.gp ? mine.gp + (mine.gp === 1 ? ' game' : ' games') : null);
 
   /* SHOT ZONES, RANKED IN THE LEAGUE. Every located shot of every side in the scoped
      competitions, cut into the chart's zones; this club's share, rate per 100 possessions,
      per-game attempts and makes and eFG% in each, each one a percentile among the teams. */
-  const zh = el('div'); zh.appendChild(el('div', 'ffhead', 'shot zones')); host.appendChild(zh);
-  /* Without analytics the teaser stands in, and the zone read is never made: it fetches the
-     event log of every game in the competition, and saving that is half the point. */
-  if (ACCESS.locked) {
-    const tz = el('div');
-    tz.innerHTML = accessTeaser({ title: 'Shot zones, ranked in the league',
-      lines: ['Share of shots, attempts per 100 possessions, makes and eFG% from every area of the floor, each a percentile among the league’s clubs.'] });
-    zh.appendChild(tz);
-  } else whenNear(zh, () => zoneStats(zh, S, team)
-    .catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.'))));
+  card('zones', 'shot zones', () => {
+    const zh = el('div');
+    /* Without analytics the teaser stands in, and the zone read is never made: it fetches the
+       event log of every game in the competition, and saving that is half the point. */
+    if (ACCESS.locked) {
+      const tz = el('div');
+      tz.innerHTML = accessTeaser({ title: 'Shot zones, ranked in the league',
+        lines: ['Share of shots, attempts per 100 possessions, makes and eFG% from every area of the floor, each a percentile among the league’s clubs.'] });
+      zh.appendChild(tz);
+    } else {
+      /* after the card has attached the node: whenNear watches where it is on the page */
+      Promise.resolve().then(() => whenNear(zh, () => zoneStats(zh, S, team)
+        .catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.')))));
+    }
+    return zh;
+  });
 
   /* EVENTS, AT BOTH ENDS. What the club made of second chances, breaks, turnovers,
      timeouts and half-court sets over the scoped season, and what opponents made of
      the same against it -- from the season rows' ev_ / evd_ keys, ranked among
      S.teams. Its own try, because anything thrown here would reach boot's catch and
      blank the roster and the results. */
-  const evWrap = el('div'); evWrap.appendChild(el('div', 'ffhead', 'events'));
-  const evHost = el('div'); evWrap.appendChild(evHost); host.appendChild(evWrap);
-  try {
-    const clubLabel = team.name || team.short_name || '';
-    if (ACCESS.locked) {
-      evHost.innerHTML = accessTeaser({ title: 'Events, at both ends',
-        lines: ['Second chances, transition, points off turnovers, after-timeout sets and the half court — what the club made of each, and what opponents made of the same.'] });
-    } else if (window.EpinoiaSitPanel) {
-      window.EpinoiaSitPanel.render({
-        host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',
-        note: teamScopeKind !== 'all' ? (KIND_LABEL[teamScopeKind] || teamScopeKind) : ''
-      });
+  card('events', 'events', () => {
+    const evHost = el('div');
+    try {
+      const clubLabel = team.name || team.short_name || '';
+      if (ACCESS.locked) {
+        evHost.innerHTML = accessTeaser({ title: 'Events, at both ends',
+          lines: ['Second chances, transition, points off turnovers, after-timeout sets and the half court — what the club made of each, and what opponents made of the same.'] });
+      } else if (window.EpinoiaSitPanel) {
+        window.EpinoiaSitPanel.render({
+          host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',
+          note: teamScopeKind !== 'all' ? (KIND_LABEL[teamScopeKind] || teamScopeKind) : ''
+        });
+      }
+    } catch (e) {
+      console.warn('[events]', e);
+      evHost.textContent = '';
+      evHost.appendChild(el('div', 'empty', 'The event splits could not be drawn.'));
     }
-  } catch (e) {
-    console.warn('[events]', e);
-    evHost.textContent = '';
-    evHost.appendChild(el('div', 'empty', 'The event splits could not be drawn.'));
-  }
+    return evHost;
+  });
 
   /* every player on the roster, ranked within their own team */
   const meta = await D.playerMeta(S.players.map(p => p.id));
