@@ -128,5 +128,15 @@ ok('and the desktop grids fill the row: three podium cards and seven more share 
    && /@media \(min-width:1100px\)\{ \.stargrid\.starmore\{grid-template-columns:repeat\(7,minmax\(0,1fr\)\)\} \}/.test(home)
    && !/minmax\(178px,240px\)|justify-content:start/.test(home) && !/minmax\(178px,240px\)/.test(card));
 
+/* ---- one or two cards are not blown up to fill the row ---------------------- */
+{
+  const kitHome = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'home.css'), 'utf8');
+  const rule = c => new RegExp('\\.' + c + ':not\\(:has\\(> :nth-child\\(3\\)\\)\\)\\{grid-template-columns:repeat\\(3,minmax\\(0,1fr\\)\\)\\}');
+  ok('a club directory of one or two clubs keeps the size of a row of three (kit and league page)', rule('clubgrid').test(kitHome) && rule('clubgrid').test(home));
+  ok('...and so does a podium of one or two stars (never the smaller ranks 4-10)', /\.stargrid:not\(\.starmore\):not\(:has\(> :nth-child\(3\)\)\)\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\}/.test(kitHome) && !/\.starmore:not\(:has/.test(kitHome));
+  ok('...and the Instagram tiles', rule('ig-grid').test(card));
+  ok('...only from 721px up: on a phone they are rails', /@media \(min-width:721px\)\{ \.clubgrid:not/.test(kitHome));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

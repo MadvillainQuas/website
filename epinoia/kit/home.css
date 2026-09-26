@@ -34,7 +34,10 @@
   .clubgrid{display:grid;gap:calc(var(--u)*2);padding:calc(var(--u)*3);
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
   /* ON A DESKTOP THE CARDS FILL THE ROW: auto-fit columns of at least 178px that share the width, so the section is never a few
-     fixed-size cards with empty space to their right (they used to be capped at 240px and packed left). */
+     fixed-size cards with empty space to their right (they used to be capped at 240px and packed left).
+     BUT NEVER BLOWN UP TO FILL IT: one or two cards are the size they would be in a row of three, so they keep three columns and
+     the rest of the row stays empty. */
+  @media (min-width:721px){ .clubgrid:not(:has(> :nth-child(3))){grid-template-columns:repeat(3,minmax(0,1fr))} }
 
   /* ---- stars: the club plate, with a rank where the monogram goes ---- */
   .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
@@ -64,7 +67,9 @@
   .star.small .club-reg{width:7px;height:7px}
   .star.small .star-name{font-size:10px} .star.small .star-team{font-size:7px}
   .star.small .club-ed{display:none}
-  /* the podium: three cards that share the whole row (they were capped at 240px and left the right of the section empty) */
+  /* the podium: three cards that share the whole row (they were capped at 240px and left the right of the section empty);
+     a podium of one or two is still three columns wide, so its cards are not stretched */
+  @media (min-width:721px){ .stargrid:not(.starmore):not(:has(> :nth-child(3))){grid-template-columns:repeat(3,minmax(0,1fr))} }
   @media (min-width:1100px){ .stargrid{grid-template-columns:repeat(3,minmax(0,1fr))} }
 
   /* -------------------------------------------------------------------------

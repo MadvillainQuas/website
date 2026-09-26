@@ -197,7 +197,10 @@
     -webkit-background-clip:text;background-clip:text}
   .clubgrid{display:grid;gap:calc(var(--u)*2);padding:calc(var(--u)*3);
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
-  /* on a desktop the cards fill the row (kit/home.css says the same): no fixed-size cards packed left with empty space beside them */
+  /* on a desktop the cards fill the row (kit/home.css says the same): no fixed-size cards packed left with empty space beside them,
+     and one or two cards keep the size they would have in a row of three */
+  @media (min-width:721px){ .clubgrid:not(:has(> :nth-child(3))){grid-template-columns:repeat(3,minmax(0,1fr))}
+    .stargrid:not(.starmore):not(:has(> :nth-child(3))){grid-template-columns:repeat(3,minmax(0,1fr))} }
 
   /* ---- stars: the club plate, with a rank where the monogram goes ---- */
   .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;

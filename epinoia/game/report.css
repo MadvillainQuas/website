@@ -143,6 +143,8 @@
 
 /* ---- performances -------------------------------------------------------- */
 .rps{ display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:10px }
+/* one or two cards are the size they would be in a row of three, not stretched to fill the row */
+@media (min-width:721px){ .rps:not(:has(> :nth-child(3))){ grid-template-columns:repeat(3,minmax(0,1fr)) } }
 .rp{
   padding:12px; border-radius:10px; background:color-mix(in oklch,var(--ground) 40%,transparent);
   border-top:2px solid var(--team0,var(--lume));

@@ -178,7 +178,9 @@
    --------------------------------------------------------------------------- */
 .ig-grid{display:grid;gap:calc(var(--u)*2);
   grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
-/* on a desktop the tiles share the row (they were capped at 240px and packed left); the tile keeps its aspect ratio */
+/* on a desktop the tiles share the row (they were capped at 240px and packed left); the tile keeps its aspect ratio.
+   One or two tiles keep the size they would have in a row of three, rather than being stretched to fill it. */
+@media (min-width:721px){ .ig-grid:not(:has(> :nth-child(3))){grid-template-columns:repeat(3,minmax(0,1fr))} }
 .ig-tile{position:relative;overflow:hidden;aspect-ratio:326/470;
   border:1px solid var(--rule);background:#fff}
 .ig-tile iframe{position:absolute;top:0;left:0;width:326px;height:470px;
