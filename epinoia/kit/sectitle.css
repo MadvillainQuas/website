@@ -31,3 +31,31 @@ body .barswitch{ display:flex; justify-content:center; align-items:center; flex-
 @media (max-width:720px){
   body .sec-h{ padding:calc(var(--u)*4) calc(var(--u)*2) calc(var(--u)*2) }
 }
+
+/* ============================================================================
+   THE DROPDOWN ROWS AND WHAT IS UNDER THEM, CENTRED to match the titles (HOME's .hm and Global fixtures' .gm).
+   A row's badge / name / count / link sit in the middle of the row, the chevron stays at the right edge; the small headings inside
+   an open row ("Next games, soonest first", "Recent results"), each league's Show more and its count are centred; and a country's leagues
+   are inset the same on both sides instead of hanging from a rule on the left.
+   ============================================================================ */
+.hm .ep-acc>summary, .gm .ep-acc>summary{
+  position:relative; justify-content:center; text-align:center; flex-wrap:wrap; row-gap:4px;
+  padding-left:calc(var(--u)*6); padding-right:calc(var(--u)*6);
+}
+.hm .ep-acc>summary::after, .gm .ep-acc>summary::after{
+  position:absolute; right:calc(var(--u)*3); top:50%; margin:-5px 0 0 0;
+}
+.hm .ep-acc>summary .t, .gm .ep-acc>summary .t{ justify-content:center; overflow:visible; white-space:normal }
+.hm .hmf-go, .gm .gm-go{ margin-left:0 }
+.gm .gm-lv>summary .n, .gm .gm-acc>summary .n{ margin-left:0 }
+.hm .hm-fol-h, .hm .hmf-wait{ margin-left:0; margin-right:0; text-align:center }
+.gm .gm-sub{ justify-content:center; text-align:center; padding-left:calc(var(--u)*3); padding-right:calc(var(--u)*3) }
+.gm .gm-lmore{ justify-content:center; text-align:center }
+.gm .gm-gcount{ display:block; width:100%; text-align:center }
+.gm .gm-cbody{ margin-left:calc(var(--u)*3); margin-right:calc(var(--u)*3); border-left:0;
+  background:color-mix(in oklch,var(--lume) 3%,transparent) }
+@media (max-width:820px){
+  .gm .gm-cbody{ margin-left:calc(var(--u)*1); margin-right:calc(var(--u)*1) }
+  .hm .ep-acc>summary, .gm .ep-acc>summary{ padding-left:calc(var(--u)*5); padding-right:calc(var(--u)*5) }
+  .hm .ep-acc>summary::after, .gm .ep-acc>summary::after{ right:calc(var(--u)*2) }
+}
