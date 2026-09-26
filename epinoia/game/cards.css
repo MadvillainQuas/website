@@ -147,3 +147,101 @@ span.pcs-zone.gp{ border-radius:10px; padding:5px 7px; margin:0 }
 @media (max-width:640px){
   .bxc-who b{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px }
 }
+
+/* ===== full stats, the table view (the default): a row is a card, the face and name at its left, and every column is still a column ===== */
+.pcs-view{ display:flex; gap:6px; align-items:center }
+.pcs-view > span{ font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-muted); margin-right:2px }
+.pcs.view-rows .pcs-list{ display:none }
+.pcs.view-cards .pt-wrap{ display:none }
+.pcs.view-rows .pcs-sort{ display:none }
+.pt-wrap{ overflow-x:auto; margin:0 -4px; padding:2px 4px 8px; scrollbar-width:thin }
+.pt-in{ display:flex; flex-direction:column; gap:6px; width:max-content; min-width:100% }
+.pt-body{ display:flex; flex-direction:column; gap:6px }
+.ptr{ display:flex; align-items:stretch; border-radius:14px; border:1px solid var(--border-subtle); background:var(--bg-card,transparent) }
+.ptr.on{ border-color:color-mix(in srgb,var(--c) 55%,transparent); box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 25%,transparent), 0 0 14px color-mix(in srgb,var(--c) 18%,transparent) }
+.pt-id{ position:sticky; left:0; z-index:3; flex:0 0 172px; width:172px; display:flex; align-items:center; gap:10px; padding:8px 10px; box-sizing:border-box; border-radius:14px 0 0 14px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 11%,var(--bg-card,#0b1a12)),var(--bg-card,#0b1a12)) }
+.pt-id .sq-face{ flex:none; width:38px; height:38px; border-width:2px; border-color:color-mix(in srgb,var(--c) 75%,transparent) }
+.pt-who{ min-width:0; display:flex; flex-direction:column }
+.pt-who b{ font-family:var(--f-ui,var(--f-head)); font-weight:700; font-size:12.5px; line-height:1.2; color:var(--text-bright,var(--text-primary)); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.pt-who b a{ color:inherit; text-decoration:none } .pt-who b a:hover{ text-decoration:underline }
+.pt-who small{ font-family:var(--f-data,var(--f-mono)); font-size:10px; color:var(--c) }
+.pt-grp{ display:flex; flex-direction:column; border-left:1px solid color-mix(in srgb,var(--text-primary) 9%,transparent) }
+.ptr:not(.head) .pt-grp{ flex-direction:row }
+/* the cells: fixed widths by kind, so every row lines up under its heading */
+.pt-c{ box-sizing:border-box; flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:8px 4px; min-width:0; margin:0; border:0; background:none; color:var(--text-secondary);
+  font-family:var(--f-data,var(--f-mono)); font-size:12.5px; font-variant-numeric:tabular-nums; text-align:center; overflow:hidden }
+.pt-c.w-n{ width:54px } .pt-c.w-bar{ width:68px } .pt-c.w-diff{ width:62px } .pt-c.w-pill{ width:70px }
+.pt-c b{ font-weight:600; color:var(--text-bright,var(--text-primary)); line-height:1.1; white-space:nowrap }
+.pt-c b.pos{ color:var(--good,var(--positive)) } .pt-c b.neg{ color:var(--bad,var(--negative)) }
+.pt-c.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6){ background:var(--gp); border-radius:0 }
+.pt-bt{ display:block; width:100%; max-width:52px; height:4px; border-radius:2px; background:color-mix(in srgb,var(--text-primary) 12%,transparent); overflow:hidden }
+.pt-bt i{ display:block; height:100%; border-radius:2px; background:var(--c) }
+.pt-bt i.shooting{ background:linear-gradient(90deg,#3b82f6,#60a5fa) } .pt-bt i.playmaking{ background:linear-gradient(90deg,#f59e0b,#fbbf24) }
+.pt-bt i.rebounding{ background:linear-gradient(90deg,#14b8a6,#2dd4bf) } .pt-bt i.handling{ background:linear-gradient(90deg,#8b5cf6,#a78bfa) }
+.pt-bt i.defense{ background:linear-gradient(90deg,#ef4444,#f87171) } .pt-bt i.mins{ background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 55%,transparent)) }
+.pt-dt{ position:relative; display:block; width:100%; max-width:46px; height:4px; border-radius:2px; background:color-mix(in srgb,var(--text-primary) 12%,transparent) }
+.pt-dt::after{ content:''; position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:color-mix(in srgb,var(--text-primary) 35%,transparent) }
+.pt-dt i{ position:absolute; top:0; height:100%; border-radius:2px; background:color-mix(in srgb,var(--text-primary) 35%,transparent) }
+.pt-dt i.pos{ background:var(--good,var(--positive)) } .pt-dt i.neg{ background:var(--bad,var(--negative)) }
+.pt-pill{ font-style:normal; font-weight:700; font-size:12px; padding:3px 9px; border-radius:999px; background:color-mix(in srgb,var(--text-primary) 8%,transparent); color:var(--text-primary) }
+.pt-pill.pos{ background:color-mix(in srgb,var(--good,var(--positive)) 20%,transparent); color:var(--good,var(--positive)) }
+.pt-pill.neg{ background:color-mix(in srgb,var(--bad,var(--negative)) 20%,transparent); color:var(--bad,var(--negative)) }
+.pt-c.gp .pt-pill{ background:none }
+/* the heading: a group's name over its columns, each column a button that sorts */
+.ptr.head{ border-color:transparent; background:none; position:sticky; top:0 }
+.ptr.head .pt-id{ background:none; padding:2px 10px; align-items:flex-end }
+.pt-gh{ padding:2px 6px 4px; font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.pt-gl{ display:flex }
+.pt-gl .pt-c{ padding:3px 2px 4px; flex-direction:row; gap:3px; cursor:pointer; font-family:var(--f-micro,var(--f-mono)); font-size:8.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted) }
+.pt-gl .pt-c:hover, .pt-gl .pt-c.sorted{ color:var(--c) }
+.pt-gl .pt-c i{ font-style:normal; font-size:7px }
+.pt-who small{ white-space:nowrap }
+@media (max-width:640px){
+  .pt-id{ flex-basis:138px; width:138px; padding:6px 8px; gap:8px }
+  .pt-id .sq-face{ width:32px; height:32px }
+  .pt-who b{ font-size:12px }
+}
+
+/* ===== the cards view: figures that must fit their tiles ===== */
+.pcs-items{ grid-template-columns:repeat(auto-fill,minmax(96px,1fr)) }
+.pcs-n, .pcs-b, .pcs-d, .pcs-zone, .pcs-pill{ min-width:0; overflow:hidden }
+.pcs-n b{ font-size:18px; white-space:nowrap }
+.pcs-b b{ font-size:12.5px; white-space:nowrap }
+.pcs-l{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100% }
+.pcs-b .pcs-l{ display:block; max-width:calc(100% - 44px); float:left }
+.pcs-d{ grid-template-columns:minmax(0,auto) minmax(14px,1fr) auto; gap:6px }
+.pcs-d b{ min-width:26px; white-space:nowrap }
+.pcs-zone b{ font-size:17px; white-space:nowrap }
+.pcs-zone em{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.pcs-pill{ padding:4px 6px 3px; min-width:0 } .pcs-pill b{ font-size:15px; white-space:nowrap }
+.pcr-pills{ flex:none; max-width:45% }
+
+/* ===== compact: a chart card is two short lines, the bars and one footer ===== */
+.fchart{ margin:5px 0; padding:6px 10px 6px; border-radius:11px }
+.fchart .mrrow{ padding:0 }
+.fchart .mrlabel{ margin-top:1px; font-size:8.5px }
+.fdelta{ display:grid; grid-template-columns:56px 1fr 56px; gap:8px; align-items:center; margin-top:3px; padding-top:0; border-top:0 }
+.fdelta .fd-chip{ grid-column:2; justify-self:center }
+.fdelta .fpa-v:first-child{ grid-column:1; justify-self:start }
+.fdelta .fpa-v:last-child{ grid-column:3; justify-self:end }
+.fd-chip{ padding:1px 9px 1px 7px; font-size:11px; gap:5px }
+.fd-chip em{ font-size:9.5px }
+.fd-chip i{ font-size:8px }
+.fpa-v{ padding:1px 6px; font-size:11px; border-radius:7px }
+.fsec-b .fchart:first-child{ margin-top:4px }
+.fdelta{ grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) }
+.fd-chip{ max-width:100%; white-space:nowrap }
+.fd-chip b{ white-space:nowrap }
+.fd-chip em{ flex:0 1 auto }
+.fpa-v{ white-space:nowrap }
+.fdelta .fd-chip:only-child{ grid-column:1 / -1; grid-row:1; justify-self:center }
+.fdelta .fpa-v:first-child + .fd-chip{ grid-column:2 }
+/* a rate tile: the label and its figure on one line, the bar under both */
+.pcs-b{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:6px }
+.pcs-b b{ float:none }
+.pcs-b .pcs-l{ float:none; max-width:none }
+.pcs-b .pcs-bt{ grid-column:1 / -1; margin-top:3px }
+.pcs-d .pcs-l{ overflow:visible; text-overflow:clip; max-width:none }
+.pcs-d{ grid-template-columns:auto minmax(10px,1fr) auto }
+@media (max-width:640px){ .pcs-items{ grid-template-columns:repeat(2,minmax(0,1fr)) } }

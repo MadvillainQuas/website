@@ -56,6 +56,16 @@
     return per100 * (TA[t].possessions || 0) / 100;
   }
 
+  /* A CLUB'S SHORT NAME where its full one is long (the chips are small): the club's own short_name from the
+     fixture's club rows, else the full name, which the chip then cuts with an ellipsis */
+  function shortName(S, t, tname) {
+    const full = tname(t);
+    if (full.length <= 14) return full;
+    const club = S.meta && (t === 0 ? S.meta.home : S.meta.away);
+    const sn = club && club.short_name;
+    return sn && sn.length < full.length ? sn : full;
+  }
+
   function chart(row, o) {
     const { label, h, a, fmt, hWin, aWin, k, TA, S, tname } = o;
     if (!isFinite(h) || !isFinite(a)) return row;
@@ -72,15 +82,16 @@
     const chip = level
       ? '<span class="fd-chip level"><b>level</b></span>'
       : '<span class="fd-chip ' + (neutral ? 'neutral' : 'lead') + '" style="--lc:' + (lead === 0 ? c0 : c1) + '">' +
-          '<i aria-hidden="true">' + arrow + '</i><b>+' + esc(txt) + (pct ? ' pp' : '') + '</b><em>' + esc(tname(lead)) + (neutral ? ' higher' : '') + '</em></span>';
-    let pa = '';
+          '<i aria-hidden="true">' + arrow + '</i><b>+' + esc(txt) + (pct ? ' pp' : '') + '</b><em title="' + esc(tname(lead)) + '">' + esc(shortName(S, lead, tname)) + (neutral ? ' higher' : '') + '</em></span>';
+    /* ONE FOOTER LINE: the difference in the middle and, for a factor, each side's points added at its own end */
+    let l = '', r = '';
     if (FACTOR[k]) {
       const p = [0, 1].map(t => pointsAdded(S, TA, k, t));
-      const cell = (v, t) => '<span class="fpa-v ' + (v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : '') + (t ? ' r' : '') + '" title="' + esc(tname(t) + ': ' + signed(v, 1) + ' points from ' + label) + '">' + signed(v, 1) + '<small>pts</small></span>';
-      pa = '<div class="fpa">' + cell(p[0], 0) + '<span class="fpa-l">points added</span>' + cell(p[1], 1) + '</div>';
+      const cell = (v, t) => '<span class="fpa-v ' + (v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : '') + '" title="' + esc(tname(t) + ': ' + signed(v, 1) + ' points added from ' + label) + '">' + signed(v, 1) + '<small>pts</small></span>';
+      l = cell(p[0], 0); r = cell(p[1], 1);
     }
     return '<div class="fchart' + (FACTOR[k] ? ' has-pa' : '') + '" data-k="' + esc(k || '') + '">' + row +
-      '<div class="fdelta">' + chip + '</div>' + pa + '</div>';
+      '<div class="fdelta">' + l + chip + r + '</div></div>';
   }
 
   function factorNote(S, TA) {
@@ -104,7 +115,10 @@
 
   /* ------------------------------------------------------- full stats players --- */
   const GROUP_KEY = 'epinoia_pcs_groups';
-  let sortK = 'min';
+  const VIEW_KEY = 'epinoia_pcs_view';
+  let view = 'rows';                    // 'rows': the table, each row a card | 'cards': a card a player
+  try { if (localStorage.getItem(VIEW_KEY) === 'cards') view = 'cards'; } catch (_) { /* the table */ }
+  let sortK = 'min', sortDir = -1;
   const hiddenGroups = new Set();
   try { JSON.parse(localStorage.getItem(GROUP_KEY) || '[]').forEach(k => hiddenGroups.add(k)); } catch (_) { /* all shown */ }
   const SORTS = [['min', 'min'], ['pts', 'pts'], ['usg', 'usg'], ['ts', 'ts%'], ['ocOrtg', 'ortg'], ['net', 'net']];
@@ -155,15 +169,58 @@
       return '<div class="pcs-shots"><div class="pcs-stack">' + (bar || '<span class="pcs-none">no shots</span>') + '</div><div class="pcs-zones">' + pills + '</div></div>';
     };
 
+    /* every numeric column can be sorted on, in either view: the value rides on the row */
+    const sortKeys = [...new Set(groups.flatMap(g => g.cols.map(x => x.k)))];
+    const sortAttrs = r => sortKeys.map(k => ' data-s-' + k.toLowerCase() + '="' + (+r[k] || 0).toFixed(3) + '"').join('');
+
+    /* ---- THE TABLE: a row is a card, the face and name at its left, and every column is still a column ---
+       Each figure is drawn where it stands: a bar under it, a centred bar for an on-court difference, a
+       pill for a net, the percentile's shade behind it. Columns are fixed widths so every row lines up. */
+    const wOf = col => col.pill ? 'w-pill' : col.diff ? 'w-diff' : (col.bar || col.shot) ? 'w-bar' : col.k === 'min' ? 'w-bar' : 'w-n';
+    const tcell = (r, col) => {
+      const v = r[col.k], R = rate(r, col);
+      const base = 'pt-c ' + wOf(col) + (col.sep ? ' sep' : '') + shade(R);
+      const t = tip(col, R);
+      if (col.pill) {
+        const dec = col.dec != null ? col.dec : 0;
+        return '<span class="' + base + '"' + t + '><i class="pt-pill ' + (v >= 0 ? 'pos' : 'neg') + '">' + (v > 0 ? '+' : '') + v.toFixed(dec) + '</i></span>';
+      }
+      if (col.diff) {
+        const dff = v - gameAvg[col.diff], good = col.inv ? dff < 0 : dff > 0, eff = col.inv ? -dff : dff;
+        const cls = Math.abs(dff) < 0.5 ? '' : (good ? 'pos' : 'neg');
+        const w = Math.max(0, Math.min(50, Math.abs(eff) / 15 * 50));
+        return '<span class="' + base + '"' + t + '><b class="' + cls + '">' + (dff > 0 ? '+' : '') + dff.toFixed(0) + '</b>' +
+          '<span class="pt-dt"><i class="' + cls + '" style="' + (eff >= 0 ? 'left:50%' : 'right:50%') + ';width:' + w + '%"></i></span></span>';
+      }
+      if (col.shot) {
+        return '<span class="' + base + '"' + t + '><b>' + v + '</b><span class="pt-bt"><i class="shooting" style="width:' + Math.max(2, Math.min(100, v / 10 * 100)).toFixed(0) + '%"></i></span></span>';
+      }
+      if (col.bar) {
+        let w = barW(v, col.k); if (col.invbar) w = 100 - w;
+        return '<span class="' + base + '"' + t + '><b>' + col.f(v, r) + '</b><span class="pt-bt"><i class="' + col.bar + '" style="width:' + Math.max(2, w).toFixed(0) + '%"></i></span></span>';
+      }
+      return '<span class="' + base + '"' + t + '><b>' + col.f(v, r) + '</b></span>';
+    };
+    const trow = r => {
+      const on = d.onCourt[t].indexOf(r.id) !== -1;
+      return '<div class="ptr' + (on ? ' on' : '') + '" data-pid="' + esc(r.id) + '"' + sortAttrs(r) + '><div class="pt-id">' +
+        face({ id: r.id, name: r.name }, colour) +
+        '<span class="pt-who"><b>' + nameHTML({ id: r.id, name: r.name }) + '</b><small>#' + esc(r.num) + '</small></span></div>' +
+        groups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(col => tcell(r, col)).join('') + '</div>').join('') + '</div>';
+    };
+    const thead = '<div class="ptr head"><div class="pt-id"><span class="pt-who"><small>player</small></span></div>' +
+      groups.map(g => '<div class="pt-grp g-' + g.key + '"><div class="pt-gh">' + esc(g.label) + '</div><div class="pt-gl">' +
+        g.cols.map(col => '<button type="button" class="pt-c ' + wOf(col) + (col.sep ? ' sep' : '') + (sortK === col.k ? ' sorted' : '') + '" data-sk="' + col.k + '">' + esc(col.l) +
+          (sortK === col.k ? '<i>' + (sortDir < 0 ? '\u25BC' : '\u25B2') + '</i>' : '') + '</button>').join('') + '</div></div>').join('') + '</div>';
+
     const card = r => {
       const s = d.stats[r.id];
       const body = groups.map(g => {
         const inner = g.key === 'shotdist' ? shots(r) : '<div class="pcs-items">' + g.cols.filter(col => !col.pillHead).map(col => item(r, col)).join('') + '</div>';
         return '<section class="pcg g-' + g.key + '"><h5>' + esc(g.label) + '</h5>' + inner + '</section>';
       }).join('');
-      const sortAttrs = SORTS.map(([k]) => ' data-s-' + k.toLowerCase() + '="' + (+r[k] || 0).toFixed(3) + '"').join('');
       const net = r.net, on = d.onCourt[t].indexOf(r.id) !== -1;
-      return '<article class="pcr' + (on ? ' on' : '') + '" data-pid="' + esc(r.id) + '"' + sortAttrs + '>' +
+      return '<article class="pcr' + (on ? ' on' : '') + '" data-pid="' + esc(r.id) + '"' + sortAttrs(r) + '>' +
         '<header class="pcr-id">' + face({ id: r.id, name: r.name }, colour) +
           '<div class="pcr-who"><b>' + nameHTML({ id: r.id, name: r.name }) + '</b><small><span class="pcr-num">#' + esc(r.num) + '</span>' + esc(r.minTxt) + ' min</small></div>' +
           '<div class="pcr-pills"><span class="pcs-pill pts"><b>' + s.pts + '</b><small>pts</small></span>' +
@@ -171,13 +228,16 @@
         '</header><div class="pcr-body">' + body + '</div></article>';
     };
 
-    const tools = '<div class="pcs-tools"><div class="pcs-sort"><span>sort</span>' +
+    const tools = '<div class="pcs-tools"><div class="pcs-view"><span>view</span>' +
+      [['rows', 'table'], ['cards', 'cards']].map(([k, l]) => '<button type="button" data-view="' + k + '" class="' + (view === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
+      '<div class="pcs-sort"><span>sort</span>' +
       SORTS.map(([k, l]) => '<button type="button" data-sortk="' + k + '" class="' + (sortK === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<div class="pcs-grp"><span>show</span>' + groups.map(g => '<button type="button" data-grp="' + g.key + '" class="' + (hiddenGroups.has(g.key) ? '' : 'on') + '">' + esc(g.label) + '</button>').join('') + '</div></div>';
     const hide = [...hiddenGroups].map(k => ' hide-' + k).join('');
     const G = window.EpinoiaGamePct;
-    return '<div class="glass bxteam advcard pcs' + hide + '" data-team="' + t + '" style="--c:' + esc(colour) + '">' +
+    return '<div class="glass bxteam advcard pcs view-' + view + hide + '" data-team="' + t + '" style="--c:' + esc(colour) + '">' +
       '<h3 data-team-slot="' + t + '" style="color:' + esc(colour) + '">' + esc(tname(t)) + '</h3>' + tools +
+      '<div class="pt-wrap"><div class="pt-in">' + thead + '<div class="pt-body">' + rows.map(trow).join('') + '</div></div></div>' +
       '<div class="pcs-list">' + rows.map(card).join('') + '</div>' +
       '<div class="setup-note" style="text-align:left;padding-top:8px">on-court bars = difference from the game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)' +
         (rated && G ? ' · shaded figures: the rate’s percentile against ' + esc(G.against(G.scaleOf(S.leagueSlug))) + ' (green good, red poor; hover for the number)' : '') + '</div></div>';
@@ -217,21 +277,41 @@
   /* ----------------------------------------------------------- after a draw --- */
   function resort(host) {
     const attr = 'data-s-' + sortK.toLowerCase();
-    host.querySelectorAll('.pcs-list').forEach(list => {
-      const cards = [...list.children];
-      cards.sort((x, y) => (+y.getAttribute(attr) || 0) - (+x.getAttribute(attr) || 0));
-      cards.forEach(c => list.appendChild(c));
+    host.querySelectorAll('.pcs-list, .pt-body').forEach(list => {
+      const items = [...list.children];
+      items.sort((x, y) => ((+x.getAttribute(attr) || 0) - (+y.getAttribute(attr) || 0)) * sortDir);
+      items.forEach(c => list.appendChild(c));
     });
     host.querySelectorAll('.pcs-sort button').forEach(b => b.classList.toggle('on', b.dataset.sortk === sortK));
+    host.querySelectorAll('.pt-c[data-sk]').forEach(b => {
+      const on = b.dataset.sk === sortK;
+      b.classList.toggle('sorted', on);
+      const i = b.querySelector('i'); if (i) i.remove();
+      if (on) { const m = document.createElement('i'); m.textContent = sortDir < 0 ? '\u25BC' : '\u25B2'; b.appendChild(m); }
+    });
+  }
+  function pick(host, k) {
+    if (sortK === k) sortDir = -sortDir; else { sortK = k; sortDir = -1; }
+    resort(host);
   }
   function mounted(host) {
     if (!host) return;
-    if (sortK !== 'min') resort(host);
+    if (sortK !== 'min' || sortDir !== -1) resort(host);
     if (host.dataset.cardsBound) return;
     host.dataset.cardsBound = '1';
     host.addEventListener('click', ev => {
+      const v = ev.target.closest && ev.target.closest('.pcs-view button');
+      if (v) {
+        view = v.dataset.view;
+        try { localStorage.setItem(VIEW_KEY, view); } catch (_) { /* this visit only */ }
+        host.querySelectorAll('.pcs').forEach(p => { p.classList.toggle('view-rows', view === 'rows'); p.classList.toggle('view-cards', view === 'cards'); });
+        host.querySelectorAll('.pcs-view button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+        return;
+      }
+      const h = ev.target.closest && ev.target.closest('.pt-c[data-sk]');
+      if (h) { pick(host, h.dataset.sk); return; }
       const s = ev.target.closest && ev.target.closest('.pcs-sort button');
-      if (s) { sortK = s.dataset.sortk; resort(host); return; }
+      if (s) { pick(host, s.dataset.sortk); return; }
       const g = ev.target.closest && ev.target.closest('.pcs-grp button');
       if (!g) return;
       const k = g.dataset.grp;

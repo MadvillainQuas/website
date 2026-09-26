@@ -2321,7 +2321,7 @@ function renderBody(d) {
     if (fTab === 'events' && window.EpinoiaEvents) window.EpinoiaEvents.mounted(el);
     if (fTab === 'box') {
       bindBoxSwitch(el);
-      if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); setTimeout(squadPhotos, 0); }
+      if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); if (window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el); setTimeout(squadPhotos, 0); }
       else setTimeout(() => squadPhotos(el), 0);      // the traditional rows are cards with a face each (cards.js)
     }
   }

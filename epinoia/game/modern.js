@@ -331,10 +331,17 @@
     return '<div class="glass mv-fx">' + names + hero + '<div class="mv-fxgrid">' + rows + '</div></div>';
   }
 
+  /* THE SCORING DEVELOPMENT CHART from the Game Flow tab, at the foot of the box score: the score margin
+     over the game, on the same card and with the same hover (flow.js). Drawn only where flow.js is loaded. */
+  function marginHTML() {
+    const GF = window.EpinoiaGameFlow;
+    try { return GF && GF.margin ? GF.margin(window.S) : ''; } catch (_) { return ''; }
+  }
+
   function render(d) {
     compute(d);
     labelsFor(window.S);
-    return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' + factorsHTML() +
+    return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' + factorsHTML() + marginHTML() +
       '<div class="setup-note mv-note">positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has twenty season minutes) · tap or hover a player for the full line</div>';
   }
 

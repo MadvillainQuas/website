@@ -686,6 +686,25 @@ function pppChart(F, names, tl) {
 const hasFootage = S => !!(S && S.video && S.video.url);
 let model = null;                       // the last render's, for the hover
 
+/* the timeline, and the model the hover reads: the moment a live game has got to is its last play, or its clock */
+function setModel(S, F, names) {
+  const tl = timeline(S);
+  const until = S && S.status === 'final' ? tl.total
+    : Math.max(F.lastElapsed || 0, S && S.clockMs != null && S.period ? cumEl(S.period, S.clockMs) / 1000 : 0);
+  model = { tl, points: F.points, lineups: F.lineups, until, names };
+  return tl;
+}
+
+/* THE SCORING DEVELOPMENT CHART ALONE, for the modern box score: the same card the Game Flow tab draws
+   (same axis, fold button and hover), without the tab's other charts. Empty until there is a game to draw. */
+function marginOnly(S) {
+  const F = compute(S);
+  if (F.points.length < 2) return '';
+  const names = [0, 1].map(t => (S && S.teams && S.teams[t] && S.teams[t].name) || (t ? 'Away' : 'Home'));
+  const tl = setModel(S, F, names);
+  return '<div class="gf gf-solo">' + marginChart(F, names, tl).replace('<span class="gf-mv"></span>', '') + '</div>';
+}
+
 function render(S) {
   const F = compute(S);
   const names = [0, 1].map(t => (S && S.teams && S.teams[t] && S.teams[t].name) || (t ? 'Away' : 'Home'));
@@ -699,11 +718,7 @@ function render(S) {
   const item = (label, value, cls) =>
     '<div class="gf-stat"><span class="gf-stat-label">' + label + '</span><span class="gf-stat-value' + (cls ? ' ' + cls : '') + '">' + value + '</span></div>';
   /* the rotations, then the four charts on their minutes in one tight stack, in the reader's order */
-  const tl = timeline(S);
-  /* the hover reads this: the moment a live game has got to is its last play, or its clock */
-  const until = S && S.status === 'final' ? tl.total
-    : Math.max(F.lastElapsed || 0, S && S.clockMs != null && S.period ? cumEl(S.period, S.clockMs) / 1000 : 0);
-  model = { tl, points: F.points, lineups: F.lineups, until, names };
+  const tl = setModel(S, F, names);
   const charts = { margin: marginChart(F, names, tl), epa: epaChart(F, names, tl), battle: battleChart(F, names, tl), ppp: pppChart(F, names, tl) };
   const shown = orderNow().filter(k => charts[k]);
   const stack = shown.length
@@ -911,5 +926,5 @@ function mounted(host) {
   });
 }
 
-return { compute, summarise, render, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage, timeline, normaliseOrder, keepOrder, orderNow, stateAt };
+return { compute, summarise, render, margin: marginOnly, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage, timeline, normaliseOrder, keepOrder, orderNow, stateAt };
 }));
