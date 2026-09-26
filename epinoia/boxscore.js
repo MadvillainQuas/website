@@ -1058,9 +1058,10 @@ function advHTML(d){
   const all = [0,1].flatMap(t=>S.teams[t].players.map(p=>playerAdv(d,t,p,TA[t],TA[1-t],gameAvg))).filter(r=>r.min>0);
   const ranges = {};
   ADV_GROUPS.forEach(g=>g.cols.forEach(c=>{ if(c.bar){ const vs=all.map(r=>r[c.k]); ranges[c.k]={min:Math.min(...vs,0),max:Math.max(...vs,0)}; } }));
-  return '<div class="fstats">'+ffCard+tsaCard+mrCard+
-    [0,1].map(t=>sec('players'+t, '<span data-team-slot="'+t+'">'+esc(tname(t))+'</span> players', 'on-court columns: the difference from the game average',
-      playerAdvTable(d,t,TA,gameAvg,ranges))).join('')+'</div>';
+  /* THE PLAYER TABLES SIT RIGHT UNDER OFFENSIVE RATING & FOUR FACTORS, above true shot attempts and the shut sections */
+  const playersCard = [0,1].map(t=>sec('players'+t, '<span data-team-slot="'+t+'">'+esc(tname(t))+'</span> players', 'on-court columns: the difference from the game average',
+      playerAdvTable(d,t,TA,gameAvg,ranges))).join('');
+  return '<div class="fstats">'+ffCard+playersCard+tsaCard+mrCard+'</div>';
 }
 
 function luNames(t, ids){
