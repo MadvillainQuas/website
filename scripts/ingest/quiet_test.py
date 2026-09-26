@@ -322,6 +322,30 @@ src_ = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest
 ok("the batch pass neither calls such a game done nor skips it as unchanged",
    src_.count("str(g.external_id) not in stuck") == 2 and "unsettled_finals(sb, src)" in src_)
 
+print("-- a game's whole event log is read, not the first 1,000 plays")
+
+
+class _Paged:
+    """A PostgREST that caps every answer at 1,000 rows, honouring limit/offset like the real one."""
+
+    def __init__(self, n):
+        self.rows = [{"seq": i + 1} for i in range(n)]
+        self.calls = 0
+
+    def select(self, table, query):
+        self.calls += 1
+        kv = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
+        lim, off = min(int(kv.get("limit", 1000)), 1000), int(kv.get("offset", 0))
+        return self.rows[off:off + lim]
+
+
+for n_, calls_ in ((0, 1), (999, 1), (1000, 2), (1004, 2), (2500, 3)):
+    fake_ = _Paged(n_)
+    got_ = RI.Supabase.select_all(fake_, "game_events", "game_id=eq.x&select=seq&order=seq")
+    ok(f"{n_} plays: all of them, in order, in {calls_} read(s)", [r["seq"] for r in got_] == list(range(1, n_ + 1)) and fake_.calls == calls_, (len(got_), fake_.calls))
+ok("the event log read in run_ingest.py is the paged one",
+   'existing = sb.select_all("game_events"' in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read())
+
 print("-- the broadcast is looked for every five minutes of a live game, not every poll")
 RI._VIDEO_LOOKED.clear()
 seen = [RI.video_due("gA", "live") for _ in range(30)]

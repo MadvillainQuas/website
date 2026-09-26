@@ -148,6 +148,18 @@ class Supabase:
         r = self._again(lambda: self.s.get(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=30))
         self._ok(r); return r.json()
 
+    def select_all(self, table: str, query: str, page: int = 1000):
+        """Every row of a query, however many. PostgREST answers at most 1,000 rows (the project's max-rows) to
+        a plain GET and says nothing about the rest, so a read that must see ALL of a table's rows for a key
+        - a game's whole event log - asks a page at a time until one comes back short. `query` must be ordered
+        (a page is only a stable slice of an ordered set) and carry no limit/offset of its own."""
+        out: list = []
+        while True:
+            got = self.select(table, f"{query}&limit={page}&offset={len(out)}")
+            out.extend(got)
+            if len(got) < page:
+                return out
+
     def upsert(self, table: str, rows, on_conflict: str):
         h = dict(self.h, Prefer="resolution=merge-duplicates,return=representation")
         r = self._again(lambda: self.s.post(f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}", headers=h, json=rows, timeout=60))
@@ -1242,7 +1254,11 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     rows = game_rows(game_id, T["events"])
     # LIVE GAMES GROW: if the existing log is a prefix of the new one, append only the tail — the
     # game page's gap check (last_seq) then pulls just the new rows, like a scorer's frames.
-    existing = sb.select("game_events", f"game_id=eq.{game_id}&select=seq,t,team,pid,period,clock,payload,created_at&order=seq")
+    # ALL of it: a plain read stops at 1,000 rows, and a game past that (Kotwica v Polonia, 26 Sep: 1,004 plays in
+    # a double overtime) looked like a log of 1,000 that had grown. Nothing was deleted, the "new tail" from seq
+    # 1,001 collided with the plays already stored, every later poll failed the same way, and the game sat on
+    # the last write's score and clock - LIVE, OT2 1:27 - for hours after it had finished.
+    existing = sb.select_all("game_events", f"game_id=eq.{game_id}&select=seq,t,team,pid,period,clock,payload,created_at&order=seq")
     # THE PAYLOAD IS PART OF THE PLAY. A substitution has no pid: who came on and who went off
     # live in its payload. So a re-translation that corrects one (a different player sent on at
     # the same place in the log) matched the stored row on every other column, and was taken for
