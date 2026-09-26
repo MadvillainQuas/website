@@ -49,21 +49,31 @@ console.log('-- the estimated margin (possession battle + scoring battle)');
   ok('the estimate is the two battles together, and the actual margin sits beside it', near(B.estimated, want.tov + want.oreb + want.efg + want.ftr) && B.actual === 10 && near(B.possession + B.scoring, B.estimated));
 }
 
-console.log('-- the margin at the end of the game: real possessions when it is over, a predicted pace while it is on');
+console.log('-- the margin at the end of the game: real possessions when it is over, the game so far and a regressed rest while it is on');
 {
-  const mk = (min, poss, pace) => [{ minutes: min * 5, possessions: poss, pace, tov: 5, oreb: 4, efg: 50, ftr: 25, pts: 40 }, { minutes: min * 5, possessions: poss, pace, tov: 8, oreb: 3, efg: 45, ftr: 20, pts: 35 }];
+  const mk = (min, poss, pace, extra) => [Object.assign({ minutes: min * 5, possessions: poss, pace, tov: 5, oreb: 4, efg: 50, ftr: 25, pts: 40 }, extra), { minutes: min * 5, possessions: poss, pace, tov: 8, oreb: 3, efg: 45, ftr: 20, pts: 35 }];
   const done = C.outlook({ status: 'final', leagueSlug: 'slb-men' }, mk(40, 84, 84));
-  ok('a finished game uses its real possessions, and the counts as they were', done.final && near(done.poss, 84) && done.k === 1);
+  ok('a finished game is worked on its real possessions, with nothing left to come', done.final && near(done.poss, 84) && done.remaining === 0);
   const lgPace = G.mean('team', 'paceOwn', 'slb-men');
   const early = C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(4, 10, 100));
   const frac = 4 / 40, wantPace = frac * 100 + (1 - frac) * lgPace;
   ok('early on, the pace is pulled towards the league average', !early.final && near(early.pace, wantPace) && early.pace < 100 && early.pace > lgPace, early.pace);
-  ok('...and the game is run to its full length: poss = pace x 40 / 40, the counts carried forward by poss / so far', near(early.poss, wantPace) && near(early.k, wantPace / 10), early);
+  ok('the battles are the game so far; the game is run to its full length at that pace', near(early.poss, 10) && near(early.total, wantPace) && near(early.remaining, wantPace - 10), early);
+  ok('a rate of n possessions counts n / (n + 100)', near(early.shrink, 10 / 110), early.shrink);
+  const mid = C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(20, 40, 80));
+  ok('at forty possessions the gap is 29% believed', near(mid.shrink, 40 / 140));
   const late = C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(40, 84, 84));
-  ok('by the final minute the pace is its own', near(late.pace, 84) && near(late.poss, 84));
+  ok('by the final minute the pace is its own and nothing is left', near(late.pace, 84) && near(late.remaining, 0));
   ok('nothing is drawn before a possession has been played', C.outlook({ status: 'live', leagueSlug: 'slb-men' }, mk(0, 0, 0)) === null);
-  const B = C.battle(mk(40, 100, 100), 100, 2);
-  ok('the possession battle is carried forward by k and the scoring battle worked over the possessions', near(B.tov, (8 - 5) * 1.1 * 2) && near(B.efg, 5 * 1.77 * 1.0), [B.tov, B.efg]);
+  const TA = mk(20, 40, 80);
+  const B = C.battle(TA, mid.poss, 1);
+  const P = C.projected(B, mid);
+  ok('the estimate at the end is the margin now plus the shrunk rate over what is left', near(P.end, B.actual + (40 / 140) * (B.estimated / 40) * mid.remaining) && near(P.toCome, P.end - B.actual), P);
+  ok('a lopsided shooting night so far is not carried whole to the end', Math.abs(P.toCome) < Math.abs(B.estimated / 40 * mid.remaining));
+  const fin = C.projected(C.battle(mk(40, 84, 84), 84, 1), done);
+  ok('a finished game\'s estimate is the battle on its real possessions', near(fin.end, C.battle(mk(40, 84, 84), 84, 1).estimated) && fin.toCome === 0);
+  const B2 = C.battle(mk(40, 100, 100), 100, 2);
+  ok('battle(): counts scaled by k, the scoring battle worked over the possessions', near(B2.tov, (8 - 5) * 1.1 * 2) && near(B2.efg, 5 * 1.77 * 1.0), [B2.tov, B2.efg]);
 }
 
 console.log('-- a chart in a card, and the scorer untouched');

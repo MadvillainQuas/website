@@ -108,24 +108,29 @@
        possession battle   (their turnovers - ours) x 1.1  +  (our offensive rebounds - theirs) x 1.1
        scoring battle      ((our eFG% - theirs) x 1.77  +  (our free throw rate - theirs) x 0.25) x possessions / 100
        estimated margin    the two together, from the home side's end
-     THE POSSESSIONS ARE THE GAME'S. A finished game uses the real count (the two sides' average), so the
-     turnovers and rebounds are exactly what happened. A game still going is projected: its pace is what it has
-     played at so far, pulled towards the league's average pace by how little of the game is gone (all league at
-     the tip, all its own at the final buzzer), run over the full length of the game; the turnover and rebound
-     counts are carried forward at that pace and the scoring battle is worked over the predicted possessions.
-     With no scale for the league the average pace is 75, the standard possession count the model was written on. */
+     A FINISHED GAME is worked on its real possessions (the two sides' average): what the four factors say the
+     margin should have been, beside the one it was.
+     A GAME STILL GOING is worked on the possessions played so far, so the battles are the game to date and read
+     against the points added above them. The estimate at the end is the margin now plus what is still to come:
+     the battle's rate per possession, over the possessions left, PULLED TOWARDS LEVEL: what one game's shooting
+     and turnovers say about the rest of that game is a fraction of what they said so far (a rate over n
+     possessions counts n / (n + 100): 29% after forty, 46% after a whole game), which is about how far a lead
+     built on a hot half carries on. The possessions left come from a predicted pace: the pace so
+     far, pulled towards the league's average (75 with no scale) by how little of the game is gone, run over the
+     full length. With no possession played there is nothing to say. */
+  const PRIOR = 100;
   function outlook(S, TA) {
     const final = S.status === 'final' || S.phase === 'final';
     const min = Math.max(0, (TA[0].minutes || 0) / 5);
     const soFar = ((TA[0].possessions || 0) + (TA[1].possessions || 0)) / 2;
-    if (final) return soFar > 0 ? { final: true, poss: soFar, k: 1, pace: TA[0].pace || 0, min } : null;
+    if (final) return soFar > 0 ? { final: true, poss: soFar, total: soFar, remaining: 0, shrink: 1, pace: TA[0].pace || 0, min } : null;
     if (soFar <= 0 || min <= 0) return null;
     const G = window.EpinoiaGamePct;
     const lg = (G && G.mean ? G.mean('team', 'paceOwn', S.leagueSlug) : null) || 75;
     const REG = 40, frac = Math.min(1, min / REG);
     const pace = frac * (TA[0].pace || lg) + (1 - frac) * lg;
-    const poss = pace * Math.max(REG, min) / REG;
-    return { final: false, poss, k: poss / soFar, pace, min };
+    const total = Math.max(soFar, pace * Math.max(REG, min) / REG);
+    return { final: false, poss: soFar, total, remaining: total - soFar, shrink: soFar / (soFar + PRIOR), pace, min };
   }
 
   function battle(TA, poss, k) {
@@ -135,11 +140,19 @@
     return { tov, oreb, efg, ftr, possession: tov + oreb, scoring: efg + ftr, estimated: tov + oreb + efg + ftr, actual: (h.pts || 0) - (a.pts || 0) };
   }
 
+  /* the margin at the end: a finished game's is the battle itself; a live one's is the margin now plus the rest */
+  function projected(B, O) {
+    if (O.final) return { end: B.estimated, toCome: 0 };
+    const toCome = O.poss > 0 ? O.shrink * (B.estimated / O.poss) * O.remaining : 0;
+    return { end: B.actual + toCome, toCome };
+  }
+
   function margin(S, TA) {
     const O = outlook(S, TA);
     if (!O) return '';
-    const B = battle(TA, O.poss, O.k);
-    if (![B.estimated, B.actual].every(isFinite)) return '';
+    const B = battle(TA, O.poss, 1);
+    const P = projected(B, O);
+    if (![B.estimated, B.actual, P.end].every(isFinite)) return '';
     const c = [teamColour(S, 0), teamColour(S, 1)];
     const name = t => window.EpinoiaBox.tname(t);
     const short = t => shortName(S, t, name);
@@ -152,11 +165,12 @@
     };
     const basis = O.final
       ? 'at the game\u2019s real ' + O.poss.toFixed(0) + ' possessions'
-      : 'projected: a predicted ' + O.poss.toFixed(0) + ' possessions (pace ' + O.pace.toFixed(0) + ')';
+      : 'the game so far (' + O.poss.toFixed(0) + ' possessions), projected to a predicted ' + O.total.toFixed(0) + ' at pace ' + O.pace.toFixed(0);
+    const so = O.final ? '' : ' so far';
     return '<div class="fmargin"><div class="fm-h">estimated margin at the end of the game <span>' + basis + '</span></div><div class="fm-row">' +
-      tile('', 'possession battle', B.possession, 'to ' + sg(B.tov) + ' \u00b7 oreb ' + sg(B.oreb)) +
-      tile('', 'scoring battle', B.scoring, 'efg ' + sg(B.efg) + ' \u00b7 ft ' + sg(B.ftr)) +
-      tile('est', 'est. margin at the end', B.estimated, '') +
+      tile('', 'possession battle' + so, B.possession, 'to ' + sg(B.tov) + ' \u00b7 oreb ' + sg(B.oreb)) +
+      tile('', 'scoring battle' + so, B.scoring, 'efg ' + sg(B.efg) + ' \u00b7 ft ' + sg(B.ftr)) +
+      tile('est', 'est. margin at the end', P.end, O.final ? '' : 'now ' + (B.actual > 0 ? '+' : B.actual < 0 ? '\u2212' : '') + Math.abs(B.actual) + ' \u00b7 to come ' + sg(P.toCome)) +
       tile('act', O.final ? 'actual margin' : 'margin now', B.actual, TA[0].pts + ' \u2013 ' + TA[1].pts, 0) + '</div></div>';
   }
 
@@ -381,5 +395,5 @@
     });
   }
 
-  window.EpinoiaCards = { chart, factorNote, margin, battle, outlook, players, box, mounted, pointsAdded, FACTOR };
+  window.EpinoiaCards = { chart, factorNote, margin, battle, outlook, projected, players, box, mounted, pointsAdded, FACTOR };
 }());
