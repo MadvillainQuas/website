@@ -281,6 +281,30 @@
         '<span class="pt-who"><b>' + nameHTML({ id: r.id, name: r.name }) + '</b><small>#' + esc(r.num) + '</small></span></div>' +
         groups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(col => tcell(r, col)).join('') + '</div>').join('') + '</div>';
     };
+    /* THE TOTALS ROW, last in the table: the team's own figure for every column (the same numbers the four factors and the team
+       lines are made of), so a column reads as the players added up. What is only a player's (usage, a/u, pace±) is a dash;
+       the on-court columns show the team's ortg / drtg / four factors, against the game average like every row above. Plain figures:
+       no bars, and no percentile shading, which rates a player and not a side. */
+    const tmm = Math.floor(TT.minutes || 0), tss = Math.round(((TT.minutes || 0) - tmm) * 60);
+    const T2 = Object.assign({ minTxt: tmm + ':' + String(tss === 60 ? 59 : tss).padStart(2, '0') }, {
+      fgm: TT.fgm, ast: TT.ast, pts: TT.pts, ptsAst: TT.ptsAst, tpc: TT.pts + TT.ptsAst, ppp: TT.ppp, ts: TT.ts, min: TT.minutes,
+      rimA: TT.rimA, rimP: TT.rimp, midA: TT.midA, midP: TT.midp, p3a: TT.fg3a, p3P: TT.p3p, efg: TT.efg,
+      ocOrtg: TT.ortg, ocEfg: TT.efg, ocOreb: TT.orebp, ocTov: TT.tovp, ocFtr: TT.ftr,
+      ocDrtg: TT.drtg, ocOppEfg: OT.efg, ocOppOreb: OT.orebp, ocTovF: OT.tovp, ocOppFtr: OT.ftr, net: TT.ortg - TT.drtg,
+      astPct: TT.astp, tovP: TT.tovp, stlP: TT.stlp, blkP: TT.blkp, ftr: TT.ftr, orebP: TT.orebp, drebP: TT.drebp });
+    const totCell = col => {
+      const v = T2[col.k], base = 'pt-c ' + wOf(col) + (col.sep ? ' sep' : '');
+      if (v == null || !isFinite(v)) return '<span class="' + base + '"><b>–</b></span>';
+      if (col.pill) return '<span class="' + base + '"><i class="pt-pill ' + (v >= 0 ? 'pos' : 'neg') + '">' + (v > 0 ? '+' : '') + v.toFixed(col.dec != null ? col.dec : 0) + '</i></span>';
+      if (col.diff) {
+        const dff = v - gameAvg[col.diff], good = col.inv ? dff < 0 : dff > 0, cls = Math.abs(dff) < 0.5 ? '' : (good ? 'pos' : 'neg');
+        return '<span class="' + base + '"><b class="' + cls + '">' + (dff > 0 ? '+' : '') + dff.toFixed(0) + '</b></span>';
+      }
+      if (col.shot) return '<span class="' + base + '"><b>' + v + '</b></span>';
+      return '<span class="' + base + '"><b>' + col.f(v, T2) + '</b></span>';
+    };
+    const totRow = '<div class="ptr tot"><div class="pt-id"><span class="pt-who"><b>totals</b></span></div>' +
+      groups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(totCell).join('') + '</div>').join('') + '</div>';
     const thead = '<div class="ptr head"><div class="pt-id"><span class="pt-who"><small>player</small></span></div>' +
       groups.map(g => '<div class="pt-grp g-' + g.key + '"><div class="pt-gh" data-grp="' + g.key + '" role="button" tabindex="0" title="' + esc(g.label) + ' \u2014 click to fold or open">' + esc(g.label) + '</div><div class="pt-gl">' +
         g.cols.map(col => '<button type="button" class="pt-c ' + wOf(col) + (col.sep ? ' sep' : '') + (sortK === col.k ? ' sorted' : '') + '" data-sk="' + col.k + '">' + esc(col.l) +
@@ -310,7 +334,7 @@
     const G = window.EpinoiaGamePct;
     return '<div class="glass bxteam advcard pcs view-' + view + hide + '" data-team="' + t + '" style="--c:' + esc(colour) + '">' +
       '<h3 data-team-slot="' + t + '" style="color:' + esc(colour) + '">' + esc(tname(t)) + '</h3>' + tools +
-      '<div class="pt-wrap"><div class="pt-in">' + thead + '<div class="pt-body">' + rows.map(trow).join('') + '</div></div></div>' +
+      '<div class="pt-wrap"><div class="pt-in">' + thead + '<div class="pt-body">' + rows.map(trow).join('') + '</div>' + totRow + '</div></div>' +
       '<div class="pcs-list">' + rows.map(card).join('') + '</div>' +
       '<div class="setup-note" style="text-align:left;padding-top:8px">on-court bars = difference from the game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)' +
         (rated && G ? ' · shaded figures: the rate’s percentile against ' + esc(G.against(G.scaleOf(S.leagueSlug))) + ' (green good, red poor; hover for the number)' : '') + '</div></div>';
