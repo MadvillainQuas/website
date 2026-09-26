@@ -491,6 +491,24 @@
   /* the two links under the season embeds */
   .seasonmore{display:flex;gap:8px;flex-wrap:wrap;padding:0 calc(var(--u)*3) calc(var(--u)*3)}
   .seasonmore .ep-chip{font-family:var(--f-micro);font-size:9.5px}
+
+  /* ============================================================================
+     CENTRED, TO MATCH THE CENTRED TITLES: the rows of chips, the news cards, the merchandise rack and the "Take part" cards.
+     On a desktop the card grids are wrapped and centred, each a fixed share of the row, so a short last row (two news cards under three,
+     four products under five) sits in the middle instead of packing left. Phones keep their own stacking.
+     ============================================================================ */
+  .gpick{align-items:center}
+  .gpick .grow, .seasonmore, .news-more, .merch-rail{display:flex;flex-wrap:wrap;justify-content:center;text-align:center}
+  .seasonmore, .news-more{padding-left:calc(var(--u)*3);padding-right:calc(var(--u)*3)}
+  .merch-foot{text-align:center} .merch-note{margin:10px auto 0;text-align:center}
+  @media (min-width:721px){
+    #news .news-grid{display:flex;flex-wrap:wrap;justify-content:center}
+    #news .news-grid>.news-card, #news .news-grid>.news-card:first-child{flex:0 0 calc((100% - 4 * var(--u)) / 3)}
+    .merch-rack{display:flex;flex-wrap:wrap;justify-content:center}
+    .merch-rack>.prod{flex:0 0 max(132px, calc((100% - 8 * var(--u)) / 5))}
+    #takepartSec .grid{display:flex;flex-wrap:wrap;justify-content:center;gap:0;background:none}
+    #takepartSec .grid>.card{flex:0 0 max(230px, 33.333%);box-sizing:border-box;box-shadow:0 0 0 1px var(--rule);align-items:center;text-align:center}
+  }
 </style>
 <link rel="stylesheet" href="kit/legibility.css?v=482">
 </head>
