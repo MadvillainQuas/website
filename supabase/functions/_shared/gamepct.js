@@ -265,6 +265,14 @@ function rate(scope, key, ctx, opts) {
   return { p, g, d, band: d ? band(g) : null, league: lk, borrowed: scaleOf(o.league).borrowed, small, n: s.n };
 }
 
+/* THE LEAGUE AVERAGE of a stat on a league's scale (the mu a small sample is pulled towards), or null
+   when the preset has none for it. Full stats reads it for the points each factor added or lost. */
+function mean(scope, key, slug) {
+  const D = DATA(), lk = leagueKey(slug);
+  const ref = D && lk && D.leagues[lk] && D.leagues[lk][scope] && D.leagues[lk][scope][key];
+  return ref && isFinite(ref.mu) ? ref.mu : null;
+}
+
 /* the statistics pages' seven bands (fulltable.js heatStyle), 6 the best */
 function band(g) {
   if (g == null) return null;
@@ -293,7 +301,7 @@ function words(r) {
 /* the small percentile figure a tile or a card shows under its number */
 const pcHTML = r => (r ? '<i class="gp-pc' + (r.band != null ? ' gp-b' + r.band : '') + '">' + Math.round(r.d ? r.g : r.p) + '</i>' : '');
 
-return { rate, sample, adjusted, percentileOf, leagueKey, scaleOf, band, ord, cls, words, pcHTML, against,
+return { rate, sample, adjusted, percentileOf, leagueKey, scaleOf, mean, band, ord, cls, words, pcHTML, against,
          GRID, SEASON_WEIGHT, SCOPES, TEAM, PLAYER, SIT, PSIT, ZONE, SITS,
          _setData: v => { data = v; } };
 }));

@@ -38,7 +38,15 @@ const G = path.join(ROOT, 'epinoia', 'game');
 const Engine = require(path.join(ROOT, 'epinoia', 'engine.js'));
 globalThis.EpinoiaStory = require(path.join(G, 'story.js'));
 const Story = globalThis.EpinoiaStory;
+globalThis.EpinoiaLanguage = require(path.join(G, 'language.js'));
 const Report = require(path.join(G, 'report.js'));
+const Lang = globalThis.EpinoiaLanguage;
+/* what the game page loads besides the engine: the percentile scales, the situations and the shot clock */
+globalThis.EpinoiaGamePctData = require(path.join(ROOT, 'epinoia', 'gamepct-data.js'));
+globalThis.EpinoiaGamePct = require(path.join(ROOT, 'epinoia', 'gamepct.js'));
+globalThis.EpinoiaPossessions = require(path.join(ROOT, 'epinoia', 'possessions.js'));
+globalThis.EpinoiaSituations = require(path.join(ROOT, 'epinoia', 'situations.js'));
+try { globalThis.EpinoiaShotClock = require(path.join(ROOT, 'epinoia', 'shotclock.js')); } catch (_) { /* no shot clock in this runtime */ }
 
 const CFG = { url: 'https://hhvofgqqadtyvcjudhjx.supabase.co',
               key: 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO' };
@@ -80,6 +88,13 @@ function brief(S, d) {
   }));
   let periods = 1;
   (S.events || []).forEach(e => { if (e.period > periods) periods = e.period; });
+  /* the same three inputs gamefacts.js gives the page: what each kind of play turned into, the assisted baskets, the time of possession */
+  let sits = null, assists = null, atop = null;
+  try {
+    const C = globalThis.EpinoiaSituations.compute(S);
+    if (C && C.side) { sits = [C.side[0].sits, C.side[1].sits]; if (C.side[0].assists && C.side[1].assists) assists = [C.side[0].assists, C.side[1].assists]; }
+  } catch (_) { /* no situations */ }
+  try { const A = globalThis.EpinoiaShotClock && globalThis.EpinoiaShotClock.averages(S); if (A && A[0] != null && A[1] != null) atop = [A[0], A[1]]; } catch (_) { /* no shot clock */ }
   return {
     names: [S.teams[0].name, S.teams[1].name], score: d.score.slice(),
     players, byId, team: [d.team[0], d.team[1]],
@@ -91,7 +106,8 @@ function brief(S, d) {
     perQ: d.perQ, periods, events: S.events || [],
     starters: S.starters || [[], []],
     meta: S.meta || null,
-    season: S.season || null
+    season: S.season || null,
+    sits, assists, atop
   };
 }
 
@@ -120,7 +136,13 @@ const FAMILIES = {
   'half-time':      /half-time|at the break|went in level|second half/i,
   'the finish':     /five minutes|last five|last two minutes|closed it out|hang on|see it out|last \w+ points of the game/i,
   'dateline':       /in front of \d+|on (Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday)/i,
-  'full lines':     /rebounds and|assists and|points, \w+ rebounds|off the bench/i
+  'full lines':     /rebounds and|assists and|points, \w+ rebounds|off the bench/i,
+  /* 2026-09-26: the newer stats */
+  'points added':   /four factors|factor by factor|points ahead|made up \w+ of that|won \w+ back on/i,
+  'time in front':  /in front for|led for|first basket to the last|led for most/i,
+  'how scored':     /off a pass|came off a pass|nobody set up|own shots/i,
+  'time of possession': /seconds a possession|used the clock|more patient/i,
+  'second shots':   /won the ball back on|came back to them/i
 };
 
 function measure(rep) {
@@ -160,7 +182,12 @@ function measure(rep) {
   const density = nums2.reduce((a, b) => a + b, 0) / Math.max(1, sentences.length);
   const dense = nums2.filter(n => n >= 4).length;
   const commaLists = sentences.filter(x => (x.match(/,/g) || []).length >= 3).length;
+  /* the language model's own findings on the FINISHED text, and what its reviser did to get there */
+  const issues = Lang ? paras.concat([rep.headline, rep.standfirst]).flatMap(p => Lang.lint(p, { allowEntities: true })) : [];
+  const q = rep.quality || { initial: 100, score: 100, satisfied: 0, paragraphs: 0, revisions: [] };
   return {
+    lintIssues: issues.length, lintKinds: issues.map(i => i.rule), qInitial: q.initial, qScore: q.score, qSatisfied: q.satisfied,
+    qParagraphs: q.paragraphs, revisions: q.revisions.length, revisionKinds: q.revisions.map(r => r.repair),
     words, sentences: sentences.length, facts: rep.facts.length,
     sections: rep.sections.length,
     coverage: covered.length, coverageOf: Object.keys(FAMILIES).length,
@@ -178,7 +205,7 @@ const show = (() => { const i = process.argv.indexOf('--show');
 const only = (() => { const i = process.argv.indexOf('--only'); return i > 0 ? String(process.argv[i + 1] || '') : ''; })();
 
 const games = await api('games?status=eq.final&select=id,home_team_id,away_team_id' +
-  ',competition_id,venue,attendance,tipoff_at,competitions(name,seasons(leagues(name)))&order=tipoff_at.desc&limit=30');
+  ',competition_id,venue,attendance,tipoff_at,competitions(name,seasons(leagues(name,slug)))&order=tipoff_at.desc&limit=30');
 
 /* Season aggregates, exactly as the page loads them, so the evaluator
    measures the prose the reader actually gets rather than a version
@@ -199,6 +226,7 @@ async function seasonFor(games) {
 const SEASON = await seasonFor(games);
 if (!games.length) { console.log('no finished games to evaluate'); process.exit(0); }
 
+const summarise = xs => { const c = {}; xs.forEach(x => { c[x] = (c[x] || 0) + 1; }); return Object.entries(c).map(([k, v]) => k + ' x' + v).join(', ') || 'none'; };
 const rows = [];
 let shown = 0;
 for (const g of games) {
@@ -215,7 +243,11 @@ for (const g of games) {
           meta: { venue: g.venue, attendance: g.attendance, tipoff_at: g.tipoff_at,
                   competition: g.competitions && g.competitions.name || null,
                   league: g.competitions && g.competitions.seasons && g.competitions.seasons.leagues &&
-                          g.competitions.seasons.leagues.name || null } };
+                          g.competitions.seasons.leagues.name || null,
+                  leagueSlug: g.competitions && g.competitions.seasons && g.competitions.seasons.leagues &&
+                          g.competitions.seasons.leagues.slug || null },
+          leagueSlug: g.competitions && g.competitions.seasons && g.competitions.seasons.leagues &&
+                          g.competitions.seasons.leagues.slug || null };
     d = Engine.deriveGame(S);
   } catch (e) { continue; }
 
@@ -256,6 +288,12 @@ console.log('  over-used numbers     ' + avg('overUsedNumbers').toFixed(2) + '  
 console.log('  numerals / sentence   ' + avg('density').toFixed(2) + '   (lower is better)');
 console.log('  4+ number sentences   ' + avg('denseSentences').toFixed(2) + '   (lower is better)');
 console.log('  comma-list sentences  ' + avg('commaLists').toFixed(2) + '   (lower is better)');
+console.log('\nTHE LANGUAGE MODEL (language.js): each paragraph scored 0-100, revised until it reaches ' + (Lang ? Lang.TARGET : '?'));
+console.log('  score before revising ' + avg('qInitial').toFixed(1));
+console.log('  score after           ' + avg('qScore').toFixed(1) + '   (target ' + (Lang ? Lang.TARGET : '?') + ')');
+console.log('  paragraphs at target  ' + rows.reduce((a, r) => a + r.qSatisfied, 0) + ' of ' + rows.reduce((a, r) => a + r.qParagraphs, 0));
+console.log('  revisions / report    ' + avg('revisions').toFixed(2) + '   (' + summarise(rows.flatMap(r => r.revisionKinds)) + ')');
+console.log('  grammar findings left ' + avg('lintIssues').toFixed(2) + '   (' + summarise(rows.flatMap(r => r.lintKinds)) + ')');
 
 /* which families are never touched, across every game — the clearest list of
    what the writer is not yet saying */

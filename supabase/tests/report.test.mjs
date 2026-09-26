@@ -30,6 +30,7 @@ const require = createRequire(import.meta.url);
 const G = path.join(ROOT, 'epinoia', 'game');
 globalThis.EpinoiaStory = require(path.join(G, 'story.js'));
 const Story = globalThis.EpinoiaStory;
+globalThis.EpinoiaLanguage = require(path.join(G, 'language.js'));
 const Report = require(path.join(G, 'report.js'));
 const View = require(path.join(G, 'reportview.js'));
 

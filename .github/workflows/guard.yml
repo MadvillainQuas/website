@@ -509,6 +509,11 @@ jobs:
           node supabase/tests/legibility.test.mjs
           node supabase/tests/linkedit.test.mjs
 
+      - name: The match report's language model - the rules of the English it is written in, and the critic that improves it
+        # game/language.js: a and an by sound, plurals, possessives, agreement, lists, number words, names in capitals; polish() and lint();
+        # critique() scores a text 0-100 and revise() improves it until it is good enough; the report is held to it end to end
+        run: node supabase/tests/language.test.mjs
+
       - name: Cards on the game page - each chart and each player row a card, the points added are strength of schedule's
         # game/cards.js is the game page's dress for the box score and full stats; its weights are sos.js's and its renderers
         # hand their rows over only where it is loaded, so the scorer's own screens stay tables

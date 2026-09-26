@@ -85,6 +85,17 @@ const FILES = [
     global: 'EpinoiaGamePct',
     names: ['rate', 'sample', 'adjusted', 'percentileOf', 'leagueKey', 'band', 'ord', 'cls', 'words', 'against']
   },
+  /* THE LANGUAGE MODEL the writer uses (articles, plurals, possessives, agreement, names in capitals, and the critic and
+     reviser that improve a paragraph until it scores well): report.js finds it on globalThis, so it is imported first. */
+  {
+    src: join(repo, 'epinoia', 'game', 'language.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'language.js'),
+    global: 'EpinoiaLanguage',
+    names: ['spell', 'spellFull', 'spellSet', 'ordinalWord', 'ordinalNum', 'periodName', 'numeral', 'signed', 'pct', 'score', 'clock', 'approxMinutes',
+            'an', 'withArticle', 'plural', 'count', 'fewer', 'possessive', 'POSSESSIVE_PRONOUN', 'isPlural', 'verb', 'be', 'list',
+            'unshout', 'capParts', 'titleCase', 'capitalise', 'polish', 'lint', 'inText', 'IRREG_VERBS',
+            'critique', 'revise', 'choose', 'opener', 'sentencesOf', 'TARGET']
+  },
   {
     src: join(repo, 'epinoia', 'game', 'story.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'story.js'),

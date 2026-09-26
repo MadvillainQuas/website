@@ -65,8 +65,21 @@ function brief(S, d, B) {
     try { const C = Sit.compute(S); if (C && C.side) sits = [C.side[0].sits, C.side[1].sits]; } catch (_) { sits = null; }
   }
 
+  /* ASSISTED AND UNASSISTED BASKETS, and what became of every miss: the same counting the full stats tab draws
+     (situations.js side[t].assists), kept whole so the report can say how a side scored as well as how much. */
+  let assists = null;
+  if (Sit && Sit.compute) {
+    try { const C = Sit.compute(S); if (C && C.side && C.side[0].assists && C.side[1].assists) assists = [C.side[0].assists, C.side[1].assists]; } catch (_) { assists = null; }
+  }
+  /* AVERAGE TIME OF POSSESSION, per side, in seconds: the full stats tab's own (shotclock.js) */
+  let atop = null;
+  const SC = root.EpinoiaShotClock;
+  if (SC && SC.averages) {
+    try { const A = SC.averages(S); if (A && A[0] != null && A[1] != null) atop = [A[0], A[1]]; } catch (_) { atop = null; }
+  }
+
   return {
-    names, score: d.score.slice(), players, byId,
+    names, score: d.score.slice(), players, byId, assists, atop,
     team: [d.team[0], d.team[1]], adv, lineups, stints,
     perQ: d.perQ, periods, events: S.events || [], sits,
     /* who started, so a 20-point night off the bench can be called that */

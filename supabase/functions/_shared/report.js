@@ -31,6 +31,10 @@
 
 const S = () => (root.EpinoiaStory ||
   (typeof require === 'function' ? require('./story.js') : null));
+/* THE RULES OF THE ENGLISH IT IS WRITTEN IN (language.js): articles, plurals, possessives, agreement, lists, number
+   words, names in capitals, and the critic that scores a sentence and the reviser that improves it. */
+const L = () => (root.EpinoiaLanguage ||
+  (typeof require === 'function' ? require('./language.js') : null));
 
 const esc = s => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -44,35 +48,10 @@ const plural = (n, s, p) => n + ' ' + (n === 1 ? s : (p || s + 's'));
 const ordinal = n => n === 1 ? 'first' : n === 2 ? 'second' : n === 3 ? 'third'
   : n === 4 ? 'fourth' : n + 'th';
 
-/* THE SCORER STORES NAMES LOWERCASE and the box score up-cases them in CSS,
-   which is fine for a table heading and wrong in a sentence: "soft club took
-   this 106-79" reads as a typo, and at the start of a paragraph it plainly is
-   one. Prose has to carry its own capitalisation because it cannot borrow the
-   stylesheet's. Existing capitals are left alone, so "McBride" survives. */
-function tc(str) {
-  /* Split rather than a word-boundary regex: this file is edited by tools
-     that treat a backslash escape as their own, and an earlier version of
-     this line shipped with a literal control character where \b was meant,
-     so the regex matched nothing and every name stayed lowercase. No
-     escapes here means nothing to get lost in transit. */
-  return String(str == null ? '' : str).split(' ')
-    .map(w => !w ? w
-      /* a roman numeral is set in capitals whatever case it arrived in: the
-         scorer stores "bristol flyers ii", and that is "Flyers II", never "Ii" */
-      : /^(ii|iii|iv|vi|vii|viii|ix|xi|xii)$/i.test(w) ? w.toUpperCase()
-      : capParts(w.charAt(0).toUpperCase() + w.slice(1)))
-    .join(' ');
-}
-/* Inside a word: "Mccormack" is McCormack, "king-danchie" is King-Danchie and "o'garro" is
-   O'Garro. Feeds send these in every case there is, and a report that prints "Mccormack"
-   has told the reader it was not written by anybody who knows the player. Mac is left alone
-   (Mack, Macey, Machado are not Mac-anything). A letter after a hyphen or an apostrophe is only
-   raised when the name part before it is short (O', D'), so "Wasn't" in a club name stays. */
-function capParts(w) {
-  let out = w.replace(/^Mc([a-z])/, (m, c) => 'Mc' + c.toUpperCase());
-  out = out.split('-').map(p => (p ? p.charAt(0).toUpperCase() + p.slice(1) : p)).join('-');
-  return out.replace(/^([A-Z])(['’])([a-z])/, (m, a, q, c) => a + q + c.toUpperCase());
-}
+/* THE SCORER STORES NAMES LOWERCASE and feeds send them in every case there is; a name in a sentence is written the way a
+   person writes it (language.js titleCase: "soft club" and "FUERZA REGIA" and "JIMOND  IVEY" alike, McBride and KK Split left as
+   they are). */
+const tc = str => L().titleCase(str);
 const nm = (g, t) => esc(tc(g.names[t]));
 /* "Derby Trailblazers'" not "Derby Trailblazers's": a name ending in s takes
    the bare apostrophe */
@@ -170,16 +149,8 @@ function makeRef(g, fs) {
 }
 
 
-/* "A 8-0 run" — the indefinite article follows the SOUND of what comes next,
-   and a numeral spells out to a vowel more often than its digits suggest: 8,
-   11 and 18 all take "an", while 1 takes "a" despite starting with a vowel
-   letter. Cheaper and more reliable than a spell-out. */
-function anFor(n) {
-  const s = String(n);
-  if (/^(8|11|18)/.test(s)) return 'an';
-  if (/^1[0-9]/.test(s)) return 'a';        // 10, 12-17, 19 all sound consonantal
-  return 'a';
-}
+/* "an 8-0 run", "a 12-0 run": the article follows the SOUND of the numeral (language.js an) */
+function anFor(n) { return L().an(String(n)); }
 
 /* A stable choice from a set of phrasings. Seeded by the thing being described
    rather than by position, so a report does not reshuffle when a fact above it
@@ -195,7 +166,8 @@ function seedOf(str) {
 let lastPick = null;
 function pickVaried(seed, options) {
   if (options.length < 2) return pick(seed, options);
-  let i = seedOf(seed) % options.length;
+  let i = options.indexOf(L().choose(seedOf(seed), options, RECENT));
+  if (i < 0) i = seedOf(seed) % options.length;
   /* Compare the TEMPLATE, not the rendered sentence. The first version tested
      the finished strings, which differ by name and number for every player, so
      it never matched and two men were still "chipped in 21 … well up on his
@@ -208,14 +180,15 @@ function pickVaried(seed, options) {
   return options[i];
 }
 
+/* THE BEST OF SEVERAL PHRASINGS, not the luckiest: language.js scores each option on the 0-100 scale (grammar, length, rhythm,
+   density, repetition) and takes the highest, with a mild penalty for opening the way one of the last few sentences did; the
+   seed only breaks a tie, so the same game still reads the same way twice. Options must be plain values: anything that names a
+   club has to be resolved BEFORE the array is built, because every element of an array literal is evaluated. */
+let RECENT = [];
 function pick(seed, options) {
-  /* Options must be plain values. Anything that names a club has to be
-     resolved BEFORE the array is built — every element of an array literal is
-     evaluated, so a referrer called inside one runs for all of them and the
-     chosen sentence can end up carrying a pronoun the reader never saw
-     introduced. Passing functions would work too; hoisting is simpler to read
-     and impossible to get wrong by accident. */
-  return options[seedOf(seed) % options.length];
+  const chosen = L().choose(seedOf(seed), options, RECENT);
+  if (typeof chosen === 'string') { RECENT.push(L().opener(chosen)); if (RECENT.length > 4) RECENT.shift(); }
+  return chosen;
 }
 
 /* Small counts read as words in running prose — "nine of seventeen" is a
@@ -395,13 +368,16 @@ function joinSentences(parts, mode) {
     ? [', but ', ', though ', '. Even so, ']
     : mode === 'cause'
       ? [', so ', ', which is why ', '. From there, ']
-      : [', and ', '. ', '. In turn, '];
+      : [', and ', '. ', '. '];
   let out = list[0];
   /* a clause that opens with its own connective ("Even so, ...") is a sentence: welded on with
      ", and" it read "the game never came back, and even so, they took the period" */
   const ownLink = /^(Even so|But|Still|However|Yet|Instead|Meanwhile)\b/;
   for (let i = 1; i < list.length; i++) {
-    const link = ownLink.test(list[i]) ? '. ' : links[(i - 1) % links.length];
+    /* ONE ", and" TO A SENTENCE: a clause that has already been welded to the last with one (or has its
+       own inside it) starts a sentence, so a paragraph does not read as a single breathless line */
+    const chained = out.indexOf(', and ') >= 0 && links[(i - 1) % links.length] === ', and ';
+    const link = ownLink.test(list[i]) || chained ? '. ' : links[(i - 1) % links.length];
     const next = link.startsWith('.') ? list[i] : lower(list[i], PROPER);
     out = out.replace(/\.$/, '') + link + next;
   }
@@ -578,13 +554,13 @@ function sectionFlow(g, fs, R) {
     mid.push(held ? pick('run' + run.data.n + run.data.period, [
       'The decisive spell was ' + theRun + ', long enough to turn a close game into a lead that held.',
       'It turned on ' + anFor(run.data.n) + ' ' + run.data.n + '\u20130 burst in the ' +
-        ordinal(run.data.period) + ', and the game did not come back.',
-      theRun.charAt(0).toUpperCase() + theRun.slice(1) + ' did the damage, and the game never really came back.',
+        ordinal(run.data.period) + ', and the other side never got back into it.',
+      theRun.charAt(0).toUpperCase() + theRun.slice(1) + ' did the damage. The game never really came back.',
       'The gap opened during ' + theRun + '.'
     ]) : (seedOf('swing' + run.data.n + run.data.period) % 2 === 0
       ? 'The biggest swing was ' + theRun + ' from ' + R.obj(run.data.team)
       : 'The longest run of the game was ' + nmPoss(g, run.data.team) + ' ' + run.data.n + '\u20130 in the ' + ordinal(run.data.period)
-    ) + (run.data.team === r.data.winner ? '.' : ', and it still was not enough.'));
+    ) + (run.data.team === r.data.winner ? '.' : '. It was not enough.'));
   }
   if (q && sameSpell) {
     /* One event, one sentence: the run is the detail, the quarter score is the
@@ -604,7 +580,7 @@ function sectionFlow(g, fs, R) {
        already been claimed, the quarter is context for it \u2014 what the run was
        built on, or what it overturned \u2014 and is said as a plain fact. */
     const sep = run ? '.' : ', the period that separated them.';
-    mid.push(R.subj(q.side, { allowRole: true }) +
+    mid.push(R.subj(q.side, { allowRole: true, noPronoun: !!run && run.data.team !== q.side }) +
       (run && q.data.period < run.data.period ? ' had already taken the ' : ' won the ') +
       ordinal(q.data.period) + ' ' +
       Math.max(q.data.pf, q.data.pa) + '\u2013' + Math.min(q.data.pf, q.data.pa) + sep);
@@ -635,6 +611,26 @@ function sectionFlow(g, fs, R) {
     mid.push('The scores were level ' + spell(ties.data.ties) + ' times.');
   }
   if (mid.length) out.push(joinSentences(mid, 'plain'));
+
+  /* WHO WAS IN FRONT, AND FOR HOW LONG: the share of the clock each side led (story.js factTimeLed) */
+  const led = fs.find(f => f.kind === 'timeLed');
+  if (led) {
+    R.neutral();
+    const d = led.data, total0 = Math.round(d.total / 60000), mine0 = Math.round(d.led[led.side] / 60000);
+    const [mine, total] = L().spellSet([mine0, total0]);
+    const who = R.subj(led.side, { allowRole: true, noPronoun: true });
+    out.push(d.kind === 'ledMost'
+      ? pick('ledmost' + led.side + mine0, [
+          who + ' were in front for ' + mine + ' of the ' + total + ' minutes and still lost.',
+          'For ' + mine + ' of the ' + total + ' minutes it was ' + nmPoss(g, led.side) + ' game, and they lost it anyway.',
+          who + ' led for most of it, ' + mine + ' of the ' + total + ' minutes, and it was not enough.'
+        ])
+      : pick('wire' + led.side + mine0, [
+          who + ' were in front for ' + mine + ' of the ' + total + ' minutes.',
+          who + ' led almost from the first basket to the last: ' + mine + ' of the ' + total + ' minutes.',
+          'It was ' + nmPoss(g, led.side) + ' game from the start, in front for ' + mine + ' of the ' + total + ' minutes.'
+        ]));
+  }
 
   /* THE FINISH. What happened in the last five minutes is the paragraph a
      person who was there would write first and this report never wrote at
@@ -694,11 +690,11 @@ function sectionFlow(g, fs, R) {
   const frame = [];
   if (tempo) {
     R.neutral();
+    const pl = fs.find(f => f.kind === 'paceVsLeague');
+    const lgTail = pl ? (pl.data.faster ? ', quicker than this league\u2019s usual ' : ', slower than this league\u2019s usual ') + Math.round(pl.data.league) : '';
     frame.push(tempo.kind === 'fast'
-      ? 'It was played at speed \u2014 ' + one(tempo.data.pace) +
-        ' possessions per 40'
-      : 'It was a slow, half-court game at ' + one(tempo.data.pace) +
-        ' possessions per 40');
+      ? 'It was played at speed, ' + one(tempo.data.pace) + ' possessions per 40' + lgTail
+      : 'It was a slow, half-court game at ' + one(tempo.data.pace) + ' possessions per 40' + lgTail);
   }
   if (above) {
     frame.push(R.subj(above.side, { allowRole: true }) +
@@ -816,7 +812,7 @@ function sectionNumbers(g, fs, R) {
     const hiP = Math.max(floor.data.a, floor.data.b), loP = Math.min(floor.data.a, floor.data.b);
     const who = R.subj(floor.side, { allowRole: true, noPronoun: true });   // resolved once, before the options
     box.push(pick('floor' + Math.round(hiP), [
-      'From the floor it was ' + Math.round(hiP) + '% to ' + Math.round(loP) + '% in ' + midCase(who) + '\u2019s favour',
+      'From the floor it was ' + Math.round(hiP) + '% to ' + Math.round(loP) + '% in ' + possOf(midCase(who)) + ' favour',
       who + ' shot ' + Math.round(hiP) + '% from the field to ' + Math.round(loP) + '%'
     ]));
   }
@@ -850,7 +846,7 @@ function sectionNumbers(g, fs, R) {
     const lead = factors[0];
     const mine = lead.side === 0 ? lead.data.a : lead.data.b;
     const theirs = lead.side === 0 ? lead.data.b : lead.data.a;
-    const who = R.subj(lead.side, { allowRole: true });
+    const who = R.subj(lead.side, { allowRole: true, noPronoun: lead.data.factor === 'ftr' });
     const sd = 'ff' + lead.data.factor + lead.side;
 
     let sentence;
@@ -888,8 +884,8 @@ function sectionNumbers(g, fs, R) {
           ' free throws for every hundred shots, against ' + per(theirs),
         who + ' lived at the line, drawing ' + per(mine) +
           ' free-throw attempts per hundred field goals to ' + per(theirs),
-        'The whistle paid ' + midCase(who) + ': ' + per(mine) + ' free throws per hundred ' +
-          'shots, their opponents ' + per(theirs)
+        'The whistle was kind to ' + midCase(who) + ': ' + per(mine) + ' free throws per hundred ' +
+          'shots, against ' + per(theirs) + ' for the other side'
       ]);
     }
 
@@ -898,16 +894,47 @@ function sectionNumbers(g, fs, R) {
     /* After a dash the tail cannot hang off the sentence: "kept possessions alive — 29.5% of
        their misses came back to them, against 11.6%, and had the better of shooting too" has
        lost its subject by the time it gets there. A sentence with a dash in it gets its own. */
-    const dashed = sentence.indexOf('—') >= 0;
+    const dashed = sentence.indexOf('—') >= 0 || sentence.indexOf(': ') >= 0;
     if (also.length === 1) sentence += dashed ? '. They had the better of ' + also[0] + ' too' : ', and had the better of ' + also[0] + ' too';
     else if (also.length > 1) sentence += (dashed ? '. ' + listOf(also).replace(/^./, c => c.toUpperCase()) + ' went their way as well'
       : ', with ' + also.slice(0, -1).join(', ') + ' and ' + also[also.length - 1] + ' going the same way');
     out.push(sentence + '.');
   }
 
+  /* WHAT THE FOUR FACTORS WERE WORTH, ADDED UP: the points-added pills on the full stats tab, summed (story.js
+     factEstimatedMargin). Said as the estimate it is, beside the scoreboard's margin. */
+  const em = fs.find(f => f.kind === 'estMargin');
+  if (em) {
+    R.neutral();
+    const d = em.data, est = Math.round(d.estimated), act = Math.round(d.actual), gap = Math.abs(est - act);
+    const who = R.subj(em.side, { allowRole: true, noPronoun: true });
+    const other = nm(g, 1 - em.side);
+    const bits = [pick('estm' + em.side + est, [
+      'Add up the four factors and the game was worth about ' + spell(est) + ' points to ' + midCase(who),
+      'Weighed factor by factor, ' + midCase(who) + ' came out roughly ' + spell(est) + ' points ahead',
+      'The four factors alone make it about ' + spell(est) + ' points to ' + midCase(who)
+    ])];
+    let split = null;
+    if (d.lead && d.lead.pts >= 2) {
+      split = 'The biggest gain came from ' + d.lead.label + ', worth ' + spell(Math.round(d.lead.pts)) + ' points' +
+        (d.second ? ', then ' + d.second.label + ' at ' + spell(Math.round(d.second.pts)) : '');
+    }
+    if (d.against) split = (split ? split + '; ' : '') + other + ' won ' + spell(Math.round(-d.against.pts)) + ' back on ' + d.against.label;
+    out.push(bits[0] + '.');
+    if (split) out.push(split + '.');
+    if (d.agrees && gap <= 4) {
+      out.push(pick('estm-agree' + act, ['The scoreboard margin was ' + spell(act) + (act === 1 ? ' point.' : ' points.'), 'The final margin was ' + spell(act) + (act === 1 ? ' point' : ' points') + ', close to what the factors say.']));
+    } else if (d.agrees) {
+      out.push('The final margin was ' + spell(act) + (act === 1 ? ' point' : ' points') + ', ' + (act > est ? 'more' : 'less') + ' than the factors alone account for.');
+    } else if (d.actualSide != null) {
+      out.push('The scoreboard told a different story: ' + nm(g, d.actualSide) + ' won by ' + spell(act) + (act === 1 ? ' point.' : ' points.'));
+    }
+  }
+
   /* how they scored, not just how well */
   const zone = fs.find(f => f.kind === 'fromRange' || f.kind === 'atRim');
-  const share = fs.find(f => f.kind === 'sharing');
+  const asShare = fs.find(f => f.kind === 'assistedShare');
+  const share = asShare ? null : fs.find(f => f.kind === 'sharing');
   const shapeBits = [];
   if (zone) {
     /* SHARE OF ATTEMPTS, which is what rimr/p3r measure — the accuracy is a
@@ -926,9 +953,30 @@ function sectionNumbers(g, fs, R) {
     shapeBits.push(R.subj(share.side, { allowRole: true }) + ' moved it well, assisting on ' +
       pct1(share.data.astp) + ' of their field goals');
   }
+  if (asShare) {
+    const d = asShare.data, hi = asShare.side, lo = 1 - hi;
+    const [a1, m1, a2, m2] = L().spellSet([d.assisted[hi], d.made[hi], d.assisted[lo], d.made[lo]]);
+    shapeBits.push(R.subj(hi, { allowRole: true }) + ' moved it well: ' + a1 + ' of their ' + m1 +
+      ' baskets came off a pass, against ' + a2 + ' of ' + m2 + ' for ' + nm(g, lo));
+    if (d.unastPts[lo] - d.unastPts[hi] >= 8) {
+      shapeBits.push(nm(g, lo) + ' had to make more of their own shots, with ' + d.unastPts[lo] + ' of their points from baskets nobody set up');
+    }
+  }
   /* a clause with a dash in it has already used its "and"s; the next one is its own sentence */
   if (shapeBits.length) {
     out.push((shapeBits.some(b => b.indexOf('—') >= 0) ? shapeBits.join('. ') : joinSentences(shapeBits, 'plain')) + '.');
+  }
+
+  /* WHAT BECAME OF THE MISSES: a second shot is worth saying once, and not when the offensive-glass factor above already did */
+  const mf = fs.find(f => f.kind === 'missFate');
+  if (mf && covered !== 'second' && !factors.some(f => f.data.factor === 'oreb')) {
+    R.neutral();
+    const d = mf.data, who = R.subj(mf.side, { allowRole: true, noPronoun: true });
+    const [o1, m1, o2, m2] = L().spellSet([d.orb, d.misses, d.theirs.orb, d.theirs.misses]);      // one style for all four figures
+    out.push(pick('missfate' + mf.side + d.orb, [
+      who + ' won the ball back on ' + o1 + ' of their ' + m1 + ' misses, against ' + o2 + ' of ' + m2 + ' for ' + nm(g, 1 - mf.side) + '.',
+      'Misses were not the end of it for ' + midCase(who) + ': ' + o1 + ' of ' + m1 + ' came back to them, to ' + o2 + ' of ' + m2 + ' for the other side.'
+    ]));
   }
 
   /* where the points came from, as one paragraph */
@@ -942,8 +990,8 @@ function sectionNumbers(g, fs, R) {
   const disrupt = fs.find(f => f.kind === 'disruption');
   const defBits = [];
   if (dr) {
-    defBits.push(R.subj(dr.side, { allowRole: true }) + ' defended better, ' +
-      'giving up ' + one(dr.data.drtg) + ' points per 100 possessions to ' +
+    defBits.push(R.subj(dr.side, { allowRole: true }) + ' defended better, allowing ' +
+      one(dr.data.drtg) + ' points per 100 possessions where the other side allowed ' +
       one(dr.data.theirs));
   }
   if (forced) {
@@ -994,6 +1042,17 @@ function sectionNumbers(g, fs, R) {
     ), 'plain') + '.');
   }
 
+  /* HOW LONG EACH SIDE KEPT THE BALL (the average time of possession on the full stats tab) */
+  const pt = fs.find(f => f.kind === 'possessionTime');
+  if (pt) {
+    R.neutral();
+    const d = pt.data, who = R.subj(pt.side, { allowRole: true, noPronoun: true });
+    out.push(pick('ptime' + pt.side + Math.round(d.slow * 10), [
+      who + ' were the more patient side, taking ' + d.slow.toFixed(1) + ' seconds a possession to ' + d.quick.toFixed(1) + ' for ' + nm(g, 1 - pt.side) + '.',
+      who + ' used the clock: ' + d.slow.toFixed(1) + ' seconds a possession, against ' + d.quick.toFixed(1) + ' for ' + nm(g, 1 - pt.side) + '.'
+    ]));
+  }
+
   /* the whistle, when it fell one way */
   const w = fs.find(f => f.kind === 'whistle');
   if (w) {
@@ -1041,9 +1100,9 @@ function sectionLineups(g, fs, R) {
        WHO was on the floor, which is the only reason this section exists. */
     if (SPENT.has('stretch')) {
       out.push(gained
-        ? 'The five who did it: ' + five(g, stretch.data.ids) + ' for ' + R.obj(owner) + ', together for the whole of that swing.'
-        : 'The damage was done with ' + five(g, stretch.data.ids) + ' on the floor for ' + R.obj(owner) +
-          ', a group outscored by ' + stretch.data.swing + ' in that time.');
+        ? 'It came with ' + five(g, stretch.data.ids) + ' on the floor for ' + R.obj(owner) + ', together for the whole of it.'
+        : 'It was ' + nmPoss(g, owner) + ' worst stretch: ' + five(g, stretch.data.ids) + ' were on the floor, and the other side outscored them by ' +
+          stretch.data.swing + ' in that time.');
     } else {
       out.push('The game turned inside a single ' + mins(stretch.data.dur) +
         ' spell with ' + five(g, stretch.data.ids) + ' on the floor for ' +
@@ -1065,26 +1124,24 @@ function sectionLineups(g, fs, R) {
     if (toldFive.has(fiveKey(f))) {
       /* the club is named: another side's group can sit between the two mentions, and "that
          five" then points at the wrong team */
-      out.push('Across every minute they shared, ' + nmPoss(g, f.side) + ' five from that swing were ' +
-        (f.data.pm >= 0 ? '+' : '') + f.data.pm + ' in ' + mins(f.data.dur) + '.');
+      out.push('Over every minute those five shared, ' + nm(g, f.side) + ' ' + (f.data.pm >= 0
+        ? 'outscored the opposition by ' + f.data.pm : 'were outscored by ' + Math.abs(f.data.pm)) + ' in ' + mins(f.data.dur) + '.');
       return;
     }
     toldFive.add(fiveKey(f));
     /* sentence-initial: "their strongest group" needs its capital, and the
        referrer returns the mid-sentence form */
     const ps = R.poss(f.side);
-    out.push(ps.charAt(0).toUpperCase() + ps.slice(1) + ' strongest group \u2014 ' + five(g, f.data.ids) +
-      ' \u2014 was ' + (f.data.pm > 0 ? '+' : '') + f.data.pm + ' across ' +
-      mins(f.data.dur) + rate + '.');
+    out.push(ps.charAt(0).toUpperCase() + ps.slice(1) + ' strongest group, ' + five(g, f.data.ids) + ', ' +
+      (f.data.pm >= 0 ? 'outscored the other side by ' + f.data.pm : 'was outscored by ' + Math.abs(f.data.pm)) +
+      ' in ' + mins(f.data.dur) + rate + '.');
   });
   if (worst && !told.has(key(worst))) {
     out.push(pick('worst' + worst.data.pm + worst.data.dur, [
-      'At the other end of it, ', 'At the other end, ',
-      'The reverse was true at the other end: '
-    ]) + midCase(R.subj(worst.side)) + ' lost ' +
-      Math.abs(worst.data.pm) + ' points in ' + mins(worst.data.dur) + ' with ' +
-      five(g, worst.data.ids) + ' out there \u2014 the combination that cost ' +
-      'them most.');
+      'The other end of it was ugly for ', 'It went the other way for ',
+      'The worst of it fell on '
+    ]) + R.obj(worst.side) + ', who were outscored by ' + Math.abs(worst.data.pm) + ' in ' + mins(worst.data.dur) +
+      ' with ' + five(g, worst.data.ids) + ' out there.');
   }
   return out;
 }
@@ -1476,12 +1533,11 @@ function sectionScout(g, fs, R, opts) {
       const theirs = sc.decided.filter(x => sideAhead(sc, x, L)).slice(0, 2);
       if (mine.length) {
         out.push(nm(W) + (half ? ' are ahead on ' : ' came out ahead on ') + listOf(mine.map(x => x.label)) +
-          ', and with no league scales built for this competition yet those are the two sides ' +
-          'against each other rather than against anybody else.');
+          '. There is no league scale for this competition yet, so that is a comparison of the two sides with each other.');
       }
       if (theirs.length) {
         out.push(nm(L) + (half ? ' have had the better of ' : ' had the better of ') + listOf(theirs.map(x => x.label)) +
-          (half ? ' — something to build on after the break.' : ' — the part of their game that did not cost them.'));
+          (half ? ', something to build on after the break.' : ', which is where they can take some credit.'));
       }
     }
   }
@@ -1738,12 +1794,41 @@ function halftime(g) {
 
   let sc = null;
   try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }
-  return { headline: hl, standfirst: stand, sections: secs, facts: fs, scout: sc, half: true };
+  const done = finish(g, secs, stand, hl);
+  return { headline: done.headline, standfirst: done.standfirst, quality: done.quality, sections: secs, facts: fs, scout: sc, half: true };
+}
+
+/* ============================================================== revising ===
+   THE REPORT IS NOT LEFT AS FIRST WRITTEN. Every paragraph goes through language.js revise(): it is scored on the 0-100 scale
+   (grammar, length, rhythm, density, repetition, filler), and while it is below the target the reviser tries each repair it
+   knows (split a run-on, cut a filler, a pronoun for a club just named, drop a sentence said twice), keeps the one that raises
+   the score most, and goes again. What it did is returned with the report (quality), so it can be read and measured. */
+function finish(g, secs, stand, headline) {
+  const Lg = L();
+  const names = [nm(g, 0), nm(g, 1)];
+  const initial = [], final = [], log = [];
+  let before = null;
+  const one = (text, section, first) => {
+    const r = Lg.revise(text, { names, before, paragraphStart: !!first, target: Lg.TARGET });
+    initial.push(r.initial); final.push(r.score);
+    r.log.forEach(x => log.push(Object.assign({ section }, x)));
+    const sn = Lg.sentencesOf(r.text.replace(/<[^>]*>/g, ''));
+    before = sn.length ? sn[sn.length - 1] : before;
+    return r.text;
+  };
+  const head = Lg.polish(headline);
+  const st = stand ? one(stand, 'standfirst', false) : stand;
+  secs.forEach(sec => { sec.paras = sec.paras.map((p, i) => one(p, sec.heading, i === 0)); });
+  const mean = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 100);
+  return { headline: head, standfirst: st,
+           quality: { target: Lg.TARGET, initial: mean(initial), score: mean(final), min: final.length ? Math.min.apply(null, final) : 100,
+                      paragraphs: final.length, satisfied: final.filter(x => x >= Lg.TARGET).length, revisions: log } };
 }
 
 function report(g) {
   const st = S();
   const fs = st.facts(g);
+  RECENT = [];                     // what the last few sentences opened with: reset per article
   /* One referrer for the whole article, so "they" in the third section still
      knows who the second section was talking about. */
   const R = makeRef(g, fs);
@@ -1767,7 +1852,8 @@ function report(g) {
   addCapped('The scout’s note', sectionScout(g, fs, R), 'scout');
   let sc = null;
   try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }
-  return { headline: headline(g, fs), standfirst: stand,
+  const done = finish(g, secs, stand, headline(g, fs));
+  return { headline: done.headline, standfirst: done.standfirst, quality: done.quality,
            sections: secs, facts: fs, scout: sc };
 }
 

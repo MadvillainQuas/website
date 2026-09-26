@@ -23,6 +23,7 @@ import { bpmMvp } from '../_shared/awards.ts';
 // finds the fact engine on globalThis, which story.js is what puts there.
 import '../_shared/gamepct-data.js';   // side effect: globalThis.EpinoiaGamePctData, before its reader
 import '../_shared/gamepct.js';        // side effect: globalThis.EpinoiaGamePct, which story.js's scout grades with
+import '../_shared/language.js';     // side effect: globalThis.EpinoiaLanguage, which report.js writes with (rules, critic, reviser)
 import '../_shared/story.js';
 import { report as buildReport } from '../_shared/report.js';
 import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';

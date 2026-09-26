@@ -524,6 +524,142 @@ function factTempo(g) {
   return out;
 }
 
+/* ============================================================================
+   THE NEWER STATS, IN FACTS (2026-09-26): what the four factors were worth, how long each side kept the ball, how
+   the baskets were made, what became of the misses, and who led for how long. Each is the number the full stats
+   tab already draws, so a sentence here cannot disagree with the page under it; each is left out when the brief does
+   not carry what it needs (a server-side brief has no shot-clock or situations counts, and says nothing about them).
+   ============================================================================ */
+
+/* POINTS ADDED, strength of schedule's: (the factor - the league average) x its weight, in points per 100
+   possessions per 1%, turnovers the other way round, then scaled to the side's possessions in this game. The league
+   average is the game scale's own; with none it is the mean of the two sides. The weights are sos.js's
+   POINTS_PER_PCT (supabase/tests/cards.test.mjs holds the copies equal). */
+const PA_W = { efg: 2.0, tovp: 1.4, orebp: 0.7, ftr: 0.4 };
+const PA_LABEL = { efg: 'shooting', tovp: 'turnovers', orebp: 'the offensive glass', ftr: 'free throws' };
+function paBase(g, k) {
+  const GP = typeof globalThis !== 'undefined' && globalThis.EpinoiaGamePct;
+  const mu = GP && GP.mean ? GP.mean('team', k, (g.meta && g.meta.leagueSlug) || null) : null;
+  if (mu != null) return { v: mu, league: true };
+  return { v: ((num(g.adv[0][k]) || 0) + (num(g.adv[1][k]) || 0)) / 2, league: false };
+}
+function paSide(g, k, t) {
+  const A = g.adv[t], v = num(A[k]), poss = num(A.possessions);
+  if (v == null || poss == null) return null;
+  const b = paBase(g, k).v;
+  return (k === 'tovp' ? b - v : v - b) * PA_W[k] * poss / 100;
+}
+function factEstimatedMargin(g) {
+  const out = [];
+  if (!g.adv || !g.adv[0] || !g.adv[1]) return out;
+  const net = {};
+  for (const k of Object.keys(PA_W)) {
+    const a = paSide(g, k, 0), b = paSide(g, k, 1);
+    if (a == null || b == null) return out;
+    net[k] = a - b;
+  }
+  const est = net.efg + net.tovp + net.orebp + net.ftr;
+  const actual = g.score[0] - g.score[1];
+  if (Math.abs(est) < 3 || !(g.adv[0].possessions > 0)) return out;
+  const side = est > 0 ? 0 : 1, sgn = side === 0 ? 1 : -1;
+  /* each factor from the favoured side's end: positive helped them */
+  const parts = Object.keys(PA_W).map(k => ({ key: k, label: PA_LABEL[k], pts: net[k] * sgn })).sort((x, y) => y.pts - x.pts);
+  const lead = parts[0], second = parts[1] && parts[1].pts >= 2 ? parts[1] : null;
+  const against = parts.filter(p => p.pts <= -2).sort((x, y) => x.pts - y.pts)[0] || null;
+  out.push(F('estMargin', side, 79, {
+    estimated: Math.abs(est), actual: Math.abs(actual), actualSide: actual === 0 ? null : (actual > 0 ? 0 : 1),
+    agrees: actual !== 0 && (actual > 0) === (est > 0), lead, second, against,
+    baseline: paBase(g, 'efg').league ? 'league' : 'game'
+  }, g.names[side] + ' were worth ' + Math.round(Math.abs(est)) + ' points on the four factors'));
+  return out;
+}
+
+/* THE PACE OF IT: how long each side kept the ball, and how the game's pace sits against the league's */
+function factClock(g) {
+  const out = [];
+  if (g.atop && g.atop[0] != null && g.atop[1] != null && isFinite(g.atop[0]) && isFinite(g.atop[1])) {
+    const a = g.atop[0], b = g.atop[1];
+    if (Math.abs(a - b) >= 1.5 && Math.min(a, b) > 3) {
+      const slow = a > b ? 0 : 1;                       // the side that holds the ball longer
+      out.push(F('possessionTime', slow, 58, { slow: Math.max(a, b), quick: Math.min(a, b) },
+        g.names[slow] + ' worked the clock'));
+    }
+  }
+  const GP = typeof globalThis !== 'undefined' && globalThis.EpinoiaGamePct;
+  const lg = GP && GP.mean ? GP.mean('team', 'paceOwn', (g.meta && g.meta.leagueSlug) || null) : null;
+  const p = g.adv && g.adv[0] ? num(g.adv[0].pace) : null;
+  if (lg != null && p != null && p > 0 && Math.abs(p - lg) >= 6) {
+    out.push(F('paceVsLeague', null, 40, { pace: p, league: lg, faster: p > lg }, 'the pace against the league'));
+  }
+  return out;
+}
+
+/* HOW THE BASKETS WERE MADE: assisted or on their own */
+function factHowScored(g) {
+  const out = [];
+  const A = g.assists;
+  if (!A || !A[0] || !A[1] || !A[0].ast || !A[1].ast) return out;
+  const made = t => A[t].ast.fgm + A[t].unast.fgm;
+  if (made(0) < 8 || made(1) < 8) return out;
+  const share = t => 100 * A[t].ast.fgm / made(t);
+  const s0 = share(0), s1 = share(1);
+  if (Math.abs(s0 - s1) >= 14) {
+    const hi = s0 > s1 ? 0 : 1;
+    out.push(F('assistedShare', hi, 57, {
+      share: [s0, s1], made: [made(0), made(1)], assisted: [A[0].ast.fgm, A[1].ast.fgm],
+      unastPts: [A[0].unast.pts, A[1].unast.pts], unastThrees: [A[0].unast.p3m, A[1].unast.p3m]
+    }, g.names[hi] + ' scored off the pass'));
+  }
+  return out;
+}
+
+/* WHAT BECAME OF THE MISSES: the offensive rebound is a second shot, and the side that lives on them says so */
+function factMisses(g) {
+  const out = [];
+  const S = g.sits;
+  if (!S || !S[0] || !S[1] || !S[0].all || !S[1].all || !S[0].all.zones || !S[1].all.zones) return out;
+  const tot = t => {
+    const Z = S[t].all.zones, o = { a: 0, m: 0, o: 0, d: 0 };
+    ['rim', 'mid', 'three'].forEach(z => { const q = Z[z] || {}; o.a += q.a || 0; o.m += q.m || 0; o.o += q.o || 0; o.d += q.d || 0; });
+    o.miss = Math.max(0, o.a - o.m);
+    return o;
+  };
+  const a = tot(0), b = tot(1);
+  if (a.miss < 12 || b.miss < 12) return out;
+  const sa = 100 * a.o / a.miss, sb = 100 * b.o / b.miss;
+  if (Math.abs(sa - sb) >= 12) {
+    const hi = sa > sb ? 0 : 1, m = hi === 0 ? a : b, o = hi === 0 ? b : a;
+    out.push(F('missFate', hi, 59, { orb: m.o, misses: m.miss, share: hi === 0 ? sa : sb, theirs: { orb: o.o, misses: o.miss, share: hi === 0 ? sb : sa } },
+      g.names[hi] + ' kept their misses alive'));
+  }
+  return out;
+}
+
+/* WHO LED, AND FOR HOW LONG: the share of the game each side was in front, from the scoring log */
+function factTimeLed(g) {
+  const out = [];
+  const ev = g.events || [];
+  if (!clocked(ev) || g.score[0] === g.score[1]) return out;
+  let s = [0, 0], led = [0, 0], level = 0, last = 0;
+  const upTo = t => { const d = Math.max(0, t - last); const diff = s[0] - s[1]; if (diff > 0) led[0] += d; else if (diff < 0) led[1] += d; else level += d; last = t; };
+  ev.forEach(e => {
+    const v = SCORE_PTS[e.t];
+    if (!v || e.team == null || e.clock == null) return;
+    upTo(elapsed(e.period, e.clock));
+    s[e.team] += v;
+  });
+  let total = 0;
+  for (let p = 1; p <= (g.periods || 4); p++) total += PLEN_(p);
+  upTo(total);
+  if (total <= 0) return out;
+  const w = g.score[0] > g.score[1] ? 0 : 1;
+  const wShare = led[w] / total, lShare = led[1 - w] / total;
+  const data = { winner: w, led, level, total, winnerShare: wShare, loserShare: lShare };
+  if (lShare >= 0.55) out.push(F('timeLed', 1 - w, 77, Object.assign({ kind: 'ledMost' }, data), g.names[1 - w] + ' led most of the game and lost it'));
+  else if (wShare >= 0.93) out.push(F('timeLed', w, 64, Object.assign({ kind: 'wire' }, data), g.names[w] + ' led almost throughout'));
+  return out;
+}
+
 /* ---- SEASON CONTEXT: is this normal for them? ----------------------------
    The single largest gap the evaluator found. "24 points" is a fact; "24
    points, nine clear of his average" is the sentence somebody reads. Only runs
@@ -853,6 +989,7 @@ function facts(g) {
     factLineups(g), factPlayers(g), factTeamShape(g), factSituations(g),
     factDefence(g), factFouls(g), factPassing(g), factZones(g),
     factTempo(g), factSeasonContext(g),
+    factEstimatedMargin(g), factClock(g), factHowScored(g), factMisses(g), factTimeLed(g),
     /* 2026-09-07: the half, the finish, the box score in words, fuller player
        lines, ties/droughts/early leads, and the dateline */
     factHalf(g), factClosing(g), factTeamLines(g), factPlayerLines(g),
