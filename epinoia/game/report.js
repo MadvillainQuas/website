@@ -900,36 +900,6 @@ function sectionNumbers(g, fs, R) {
     out.push(sentence + '.');
   }
 
-  /* WHAT THE FOUR FACTORS WERE WORTH, ADDED UP: the points-added pills on the full stats tab, summed (story.js
-     factEstimatedMargin). Said as the estimate it is, beside the scoreboard's margin. */
-  const em = fs.find(f => f.kind === 'estMargin');
-  if (em) {
-    R.neutral();
-    const d = em.data, est = Math.round(d.estimated), act = Math.round(d.actual), gap = Math.abs(est - act);
-    const who = R.subj(em.side, { allowRole: true, noPronoun: true });
-    const other = nm(g, 1 - em.side);
-    const bits = [pick('estm' + em.side + est, [
-      'Add up the four factors and the game was worth about ' + spell(est) + ' points to ' + midCase(who),
-      'Weighed factor by factor, ' + midCase(who) + ' came out roughly ' + spell(est) + ' points ahead',
-      'The four factors alone make it about ' + spell(est) + ' points to ' + midCase(who)
-    ])];
-    let split = null;
-    if (d.lead && d.lead.pts >= 2) {
-      split = 'The biggest gain came from ' + d.lead.label + ', worth ' + spell(Math.round(d.lead.pts)) + ' points' +
-        (d.second ? ', then ' + d.second.label + ' at ' + spell(Math.round(d.second.pts)) : '');
-    }
-    if (d.against) split = (split ? split + '; ' : '') + other + ' won ' + spell(Math.round(-d.against.pts)) + ' back on ' + d.against.label;
-    out.push(bits[0] + '.');
-    if (split) out.push(split + '.');
-    if (d.agrees && gap <= 4) {
-      out.push(pick('estm-agree' + act, ['The scoreboard margin was ' + spell(act) + (act === 1 ? ' point.' : ' points.'), 'The final margin was ' + spell(act) + (act === 1 ? ' point' : ' points') + ', close to what the factors say.']));
-    } else if (d.agrees) {
-      out.push('The final margin was ' + spell(act) + (act === 1 ? ' point' : ' points') + ', ' + (act > est ? 'more' : 'less') + ' than the factors alone account for.');
-    } else if (d.actualSide != null) {
-      out.push('The scoreboard told a different story: ' + nm(g, d.actualSide) + ' won by ' + spell(act) + (act === 1 ? ' point.' : ' points.'));
-    }
-  }
-
   /* how they scored, not just how well */
   const zone = fs.find(f => f.kind === 'fromRange' || f.kind === 'atRim');
   const asShare = fs.find(f => f.kind === 'assistedShare');
@@ -1041,23 +1011,178 @@ function sectionNumbers(g, fs, R) {
     ), 'plain') + '.');
   }
 
-  /* HOW LONG EACH SIDE KEPT THE BALL (the average time of possession on the full stats tab) */
-  const pt = fs.find(f => f.kind === 'possessionTime');
-  if (pt) {
-    R.neutral();
-    const d = pt.data, who = R.subj(pt.side, { allowRole: true, noPronoun: true });
-    out.push(pick('ptime' + pt.side + Math.round(d.slow * 10), [
-      who + ' were the more patient side, taking ' + d.slow.toFixed(1) + ' seconds a possession to ' + d.quick.toFixed(1) + ' for ' + nm(g, 1 - pt.side) + '.',
-      who + ' used the clock: ' + d.slow.toFixed(1) + ' seconds a possession, against ' + d.quick.toFixed(1) + ' for ' + nm(g, 1 - pt.side) + '.'
-    ]));
-  }
-
   /* the whistle, when it fell one way */
   const w = fs.find(f => f.kind === 'whistle');
   if (w) {
     out.push('The whistle fell one way: ' + midCase(R.subj(w.side, { allowRole: true, noPronoun: true })) +
       ' were called for ' + w.data.mine + ' fouls to ' + w.data.theirs + '.');
   }
+  return out;
+}
+
+/* ============================================================================
+   WHAT THE FOUR FACTORS WERE WORTH: the points added, factor by factor, both sides (the pills on the full stats tab).
+   ============================================================================ */
+function sectionFactors(g, fs, R) {
+  const out = [];
+  const pa = fs.find(f => f.kind === 'pointsAdded');
+  if (!pa) return out;
+  R.neutral();
+  const d = pa.data, em = fs.find(f => f.kind === 'estMargin');
+  const round = v => Math.round(Math.abs(v));
+  const Lg = L();
+  const pts = n => spell(n) + (n === 1 ? ' point' : ' points');
+
+  /* 1. the total, and where it came from */
+  if (em) {
+    const e = em.data, est = Math.round(e.estimated), who = R.subj(em.side, { allowRole: true, noPronoun: true });
+    const other = nm(g, 1 - em.side);
+    out.push(pick('estm' + em.side + est, [
+      'Add up the four factors and the game was worth about ' + pts(est) + ' to ' + midCase(who) + '.',
+      'Weighed factor by factor, ' + midCase(who) + ' came out roughly ' + pts(est) + ' ahead.',
+      'The four factors alone make it about ' + pts(est) + ' to ' + midCase(who) + '.'
+    ]));
+    let split = null;
+    if (e.lead && e.lead.pts >= 2) {
+      split = 'The biggest gain came from ' + e.lead.label + ', worth ' + pts(round(e.lead.pts)) +
+        (e.second ? ', then ' + e.second.label + ' at ' + spell(round(e.second.pts)) : '');
+    }
+    if (e.against) split = (split ? split + '; ' : '') + other + ' won ' + spell(round(e.against.pts)) + ' back on ' + e.against.label;
+    if (split) out.push(split + '.');
+  } else {
+    out.push('The four factors cancelled out: neither side came out more than ' + pts(3) + ' ahead on them.');
+  }
+
+  /* 2. each side's ledger: what it gained, and what it gave back */
+  const winner = g.score[0] >= g.score[1] ? 0 : 1;
+  [winner, 1 - winner].forEach((t, i) => {
+    const gains = d.rows.filter(r => r.pts[t] != null && r.pts[t] >= 1).sort((x, y) => y.pts[t] - x.pts[t]).slice(0, 3);
+    const losses = d.rows.filter(r => r.pts[t] != null && r.pts[t] <= -1).sort((x, y) => x.pts[t] - y.pts[t]).slice(0, 2);
+    if (!gains.length && !losses.length) return;
+    R.neutral();
+    const who = R.subj(t, { allowRole: false, noPronoun: true });
+    const nums = Lg.spellSet(gains.map(r => round(r.pts[t])).concat(losses.map(r => round(r.pts[t]))));
+    const unit = n => (n === '1' || n === 'one' ? ' point' : ' points');
+    const gainText = gains.map((r, k) => nums[k] + (k === 0 ? unit(nums[k]) : '') + ' on ' + r.label);
+    const lossText = losses.map((r, k) => nums[gains.length + k] + (!gains.length && k === 0 ? unit(nums[k]) : '') + ' on ' + r.label);
+    let sentence;
+    if (gains.length && losses.length) {
+      sentence = who + ' gained ' + Lg.list(gainText) + ', and gave back ' + Lg.list(lossText);
+    } else if (gains.length) {
+      sentence = who + ' gained ' + Lg.list(gainText) + ' and gave nothing back';
+    } else {
+      sentence = who + ' gained nothing on any factor and gave up ' + Lg.list(lossText);
+    }
+    out.push(sentence + '.');
+  });
+
+  /* 3. against the scoreboard */
+  if (em) {
+    const e = em.data, est = Math.round(e.estimated), act = Math.round(e.actual), gap = Math.abs(est - act);
+    if (e.agrees && gap <= 4) {
+      out.push(pick('estm-agree' + act, ['The scoreboard margin was ' + pts(act) + '.', 'The final margin was ' + pts(act) + ', close to what the factors say.']));
+    } else if (e.agrees) {
+      out.push('The final margin was ' + pts(act) + ', ' + (act > est ? 'more' : 'less') + ' than the factors alone account for.');
+    } else if (e.actualSide != null) {
+      out.push('The scoreboard told a different story: ' + nm(g, e.actualSide) + ' won by ' + pts(act) + '.');
+    }
+  }
+  return out;
+}
+
+/* ============================================================================
+   HOW THE BALL MOVED: the connections tab. Every player sentence names a club.
+   ============================================================================ */
+function sectionPassing(g, fs, R) {
+  const out = [];
+  const nameOf = n => esc(tc(n));
+  R.neutral();
+  const duos = fs.filter(f => f.kind === 'duo').sort((a, b) => b.data.count - a.data.count);
+  const hubs = fs.filter(f => f.kind === 'passingHub');
+  const fed = fs.filter(f => f.kind === 'fedScorer');
+  const used = new Set();
+  if (duos.length) {
+    const f = duos[0], d = f.data;
+    used.add(d.scorer);
+    const all3 = d.threes === d.count && d.count >= 2;
+    const n = spell(d.count), p = spell(d.points);
+    out.push(pick('duo' + f.side + d.count + d.points, [
+      'The most productive pairing was ' + nameOf(d.assister) + ' to ' + nameOf(d.scorer) + ' for ' + nm(g, f.side) + ': ' + n + ' baskets worth ' + p + ' points' + (all3 ? ', every one of them a three' : '') + '.',
+      nameOf(d.assister) + ' found ' + nameOf(d.scorer) + ' ' + n + ' times for ' + nm(g, f.side) + ', ' + p + ' points in all' + (all3 ? ' and all of them threes' : '') + '.'
+    ]));
+    const second = duos.find(x => x.side !== f.side && x.data.count >= 3);
+    if (second) {
+      const d2 = second.data, n2 = spell(d2.count), p2 = spell(d2.points);
+      used.add(d2.scorer);
+      out.push('For ' + nm(g, second.side) + ', ' + nameOf(d2.assister) + ' and ' + nameOf(d2.scorer) + ' connected ' + n2 + ' times, worth ' + p2 + ' points.');
+    }
+  }
+  hubs.slice(0, 2).forEach(f => {
+    const d = f.data;
+    const [c, tot] = L().spellSet([d.count, d.total]), tg = spell(d.targets);
+    out.push(nameOf(d.name) + ' set up ' + c + ' of ' + nmPoss(g, f.side) + ' ' + tot + ' assisted baskets, finding ' + tg + ' different scorers.');
+  });
+  fed.filter(f => !used.has(f.data.name)).slice(0, 1).forEach(f => {
+    out.push(nameOf(f.data.name) + ' scored ' + f.data.pts + ' points off assists for ' + nm(g, f.side) + '.');
+  });
+  return out.slice(0, 4);
+}
+
+/* ============================================================================
+   PLAY TYPES AND REBOUNDS: the play type + reb tab.
+   ============================================================================ */
+function sectionPlayTypes(g, fs, R) {
+  const out = [];
+  R.neutral();
+  const nameOf = n => esc(tc(n));
+  fs.filter(f => f.kind === 'sitLeader').forEach(f => {
+    const d = f.data, [p, t] = L().spellSet([d.pts, d.teamPts]);
+    out.push(nameOf(d.name) + ' scored ' + p + ' of ' + nm(g, f.side) + '\u2019s ' + t + ' points ' + d.where + '.');
+  });
+  const mids = fs.filter(f => f.kind === 'midCold');
+  if (mids.length === 2) {
+    out.push('Neither side found the mid-range: ' + nm(g, mids[0].side) + ' made ' + spell(mids[0].data.m) + ' of ' + spell(mids[0].data.a) + ' from there, ' + nm(g, mids[1].side) + ' ' + spell(mids[1].data.m) + ' of ' + spell(mids[1].data.a) + '.');
+  } else if (mids.length === 1) {
+    const d = mids[0].data, [m, a] = L().spellSet([d.m, d.a]);
+    out.push(nm(g, mids[0].side) + ' could not buy a mid-range basket, ' + m + ' of ' + a + ' from there.');
+  }
+  const zb = fs.find(f => f.kind === 'zoneBoards');
+  if (zb) {
+    const d = zb.data, [o1, m1, o2, m2] = L().spellSet([d.mine.o, d.mine.miss, d.theirs.o, d.theirs.miss]);
+    out.push(pick('zoneb' + zb.side + d.zone, [
+      nm(g, zb.side) + ' got ' + o1 + ' of their ' + m1 + ' misses ' + d.where + ' back, against ' + o2 + ' of ' + m2 + ' for ' + nm(g, 1 - zb.side) + '.',
+      'The second shots came ' + d.where + ' for ' + nm(g, zb.side) + ': ' + o1 + ' of ' + m1 + ' misses came back, to ' + o2 + ' of ' + m2 + ' for the other side.'
+    ]));
+  }
+  return out;
+}
+
+/* ============================================================================
+   THE SHOT CLOCK: how long each side kept the ball, and what the early and the late shots were worth.
+   ============================================================================ */
+function sectionClock(g, fs, R) {
+  const out = [];
+  R.neutral();
+  const pt = fs.find(f => f.kind === 'possessionTime');
+  if (pt) {
+    const d = pt.data, who = R.subj(pt.side, { allowRole: true, noPronoun: true });
+    out.push(pick('ptime' + pt.side + Math.round(d.slow * 10), [
+      who + ' were the more patient side, taking ' + d.slow.toFixed(1) + ' seconds a possession to ' + d.quick.toFixed(1) + ' for ' + nm(g, 1 - pt.side) + '.',
+      who + ' used the clock: ' + d.slow.toFixed(1) + ' seconds a possession, against ' + d.quick.toFixed(1) + ' for ' + nm(g, 1 - pt.side) + '.'
+    ]));
+  }
+  const ce = fs.find(f => f.kind === 'clockEarly');
+  if (ce) {
+    R.neutral();
+    const d = ce.data, who = R.subj(ce.side, { allowRole: true, noPronoun: true });
+    out.push(who + ' were sharper early in the clock: in the first eight seconds they scored ' + ppc(d.mine.ppp) + ' points a chance, ' + nm(g, 1 - ce.side) + ' ' + ppc(d.theirs.ppp) + '.');
+  }
+  fs.filter(f => f.kind === 'clockLate').forEach(f => {
+    R.neutral();
+    const d = f.data, [n, tot] = L().spellSet([d.late.n, d.all.n]);
+    out.push(nm(g, f.side) + ' ran the clock down and paid for it: ' + n + ' of their ' + tot + ' chances went past 17 seconds, and they scored ' +
+      ppc(d.late.ppp) + ' a time there against ' + ppc(d.all.ppp) + ' overall.');
+  });
   return out;
 }
 
@@ -1815,7 +1940,7 @@ function finish(g, secs, stand, headline) {
     before = sn.length ? sn[sn.length - 1] : before;
     return r.text;
   };
-  const head = Lg.polish(headline);
+  const head = Lg.polish(headline, { names });
   const st = stand ? one(stand, 'standfirst', false) : stand;
   secs.forEach(sec => { sec.paras = sec.paras.map((p, i) => one(p, sec.heading, i === 0)); });
   const mean = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 100);
@@ -1846,6 +1971,10 @@ function report(g) {
   };
   addCapped('How it was won', sectionFlow(g, fs, R), 'quarters');
   addCapped('The numbers that decided it', sectionNumbers(g, fs, R), 'factors');
+  addCapped('What the four factors were worth', sectionFactors(g, fs, R), 'pointsAdded');
+  addCapped('How the ball moved', sectionPassing(g, fs, R), null);
+  addCapped('Play types and rebounds', sectionPlayTypes(g, fs, R), null);
+  addCapped('The shot clock', sectionClock(g, fs, R), null);
   addCapped('On the floor', sectionLineups(g, fs, R), 'lineups');
   addCapped('The performances', sectionPlayers(g, fs, R), 'players');
   addCapped('The scout’s note', sectionScout(g, fs, R), 'scout');
@@ -1872,5 +2001,5 @@ function plain(g) {
 }
 
 return { report, plain, headline, standfirst, five, halftime,
-         __x: { sectionFlow, sectionNumbers, sectionLineups, sectionPlayers, makeRef, joinSentences } };
+         __x: { sectionFlow, sectionNumbers, sectionFactors, sectionPassing, sectionPlayTypes, sectionClock, sectionLineups, sectionPlayers, makeRef, joinSentences } };
 }));

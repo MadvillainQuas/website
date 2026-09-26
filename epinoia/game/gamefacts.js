@@ -78,8 +78,22 @@ function brief(S, d, B) {
     try { const A = SC.averages(S); if (A && A[0] != null && A[1] != null) atop = [A[0], A[1]]; } catch (_) { atop = null; }
   }
 
+  /* THE THREE TABS THE REPORT ALSO READS. CONNECTIONS: who assisted whom, per side (connections.js). PLAY TYPE + REB: what each
+     kind of play was worth and who scored it (situations.js, kept whole per player); the rebound zones ride on `sits`. SHOT CLOCK:
+     every first chance with how long the side had the ball before it ended (shotclock.js). Each is null without its calculator. */
+  let connections = null, sitPlayers = null, clock = null;
+  const Cn = root.EpinoiaConnections;
+  if (Cn && Cn.compute) { try { const C = Cn.compute(S); if (C && C.byTeam) connections = [C.byTeam[0] || [], C.byTeam[1] || []]; } catch (_) { connections = null; } }
+  if (Sit && Sit.compute) { try { const C = Sit.compute(S); if (C && C.side) sitPlayers = [C.side[0].players || {}, C.side[1].players || {}]; } catch (_) { sitPlayers = null; } }
+  if (SC && SC.forGame) {
+    try {
+      const R2 = SC.forGame(S);
+      if (R2 && R2.ok) clock = { chances: R2.chances.map(r => ({ team: r.team, second: !!r.second, dur: r.dur, pts: r.pts, fga: r.fga, fgm: r.fgm, tov: r.tov })) };
+    } catch (_) { clock = null; }
+  }
+
   return {
-    names, score: d.score.slice(), players, byId, assists, atop,
+    names, score: d.score.slice(), players, byId, assists, atop, connections, sitPlayers, clock,
     team: [d.team[0], d.team[1]], adv, lineups, stints,
     perQ: d.perQ, periods, events: S.events || [], sits,
     /* who started, so a 20-point night off the bench can be called that */

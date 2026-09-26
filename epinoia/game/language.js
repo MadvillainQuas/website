@@ -342,10 +342,215 @@ function inText(html, fn) {
   return String(html).split(/(<[^>]+>)/).map(seg => (seg.charAt(0) === '<' ? seg : fn(seg))).join('');
 }
 
+/* ============================================================================
+   THE GRAMMAR: a register of the rules of formal written English, each with what it says, how serious a breach is, the
+   repair when one is certain, and an example of the wrong and the right. It is what a careful university-level writer
+   checks a paragraph against, in the order they would: SPELLING (misspellings, and American forms in a British report),
+   WORD CHOICE (its/it's, their/there, then/than, of for have, fewer/less, number/amount, loose/lose, affect/effect),
+   AGREEMENT (one of the ... was; there were two; a team is plural), COMPARISON (no "more better"), HYPHENATION (a compound
+   before a noun: second-chance points, an 11-point lead), PUNCTUATION (dashes for ranges, curly quotes, an ellipsis, a percent
+   sign that is not spaced off, a decade with no apostrophe, capitals for days and months), STYLE (wordiness, redundancy,
+   clichés, contractions in a formal register, a sentence that starts with a numeral or a conjunction, a comma splice, a
+   dangling modifier, an overworked passive, a list whose items are not parallel).
+
+   Three levels: ERROR (wrong: -12 on the critic's scale), STYLE (weak: -5), HINT (worth a look: -2). A rule with a `fix` is
+   repaired by polish() wherever it can be repaired without changing what a sentence claims; the rest is reported by lint()
+   and pulls the score down so the reviser and the phrasing chooser steer away from it. Every rule carries its own examples,
+   and the tests run each one both ways: the wrong form is found (and repaired, where there is a fix), the right one is not.
+   ============================================================================ */
+const matchCase = (orig, repl) => (/^[A-Z]/.test(orig) && repl ? repl.charAt(0).toUpperCase() + repl.slice(1) : repl);
+const NUM_WORD = '(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty)';
+const COUNT_PL = 'times|days|turnovers|fouls|rebounds|assists|points|steals|blocks|possessions|shots|attempts|baskets|threes|misses|games|players|minutes|seconds|chances|free throws|lead changes';
+const MASS_N = 'time|pressure|space|luck|defence|offence|energy|help|room|ground';
+const MONTHS = 'january|february|april|june|july|august|september|october|november|december';
+const DAYS = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday';
+const MISSPELL = { seperate: 'separate', definately: 'definitely', occured: 'occurred', recieve: 'receive', recieved: 'received', untill: 'until',
+  acheive: 'achieve', acheived: 'achieved', begining: 'beginning', beleive: 'believe', goverment: 'government', occassion: 'occasion',
+  succesful: 'successful', neccessary: 'necessary', wich: 'which', teh: 'the', adn: 'and', thier: 'their', becuase: 'because',
+  definitly: 'definitely', occurence: 'occurrence', existance: 'existence', independant: 'independent', persistant: 'persistent',
+  comitted: 'committed', embarass: 'embarrass', accomodate: 'accommodate', publically: 'publicly', tounge: 'tongue', wierd: 'weird',
+  rebouding: 'rebounding', defence_: 'defence', aggresive: 'aggressive', competitve: 'competitive', dissapointing: 'disappointing', sucess: 'success' };
+const AMERICAN = [
+  ['defense', 'defence'], ['defenses', 'defences'], ['defensive', 'defensive'], ['offense', 'offence'], ['offenses', 'offences'],
+  ['center', 'centre'], ['centers', 'centres'], ['color', 'colour'], ['colors', 'colours'], ['favor', 'favour'], ['favors', 'favours'],
+  ['favorite', 'favourite'], ['honor', 'honour'], ['honors', 'honours'], ['analyze', 'analyse'], ['analyzed', 'analysed'], ['realize', 'realise'],
+  ['realized', 'realised'], ['organize', 'organise'], ['organized', 'organised'], ['recognize', 'recognise'], ['recognized', 'recognised'],
+  ['emphasize', 'emphasise'], ['emphasized', 'emphasised'], ['minimize', 'minimise'], ['maximize', 'maximise'], ['gray', 'grey'],
+  ['traveling', 'travelling'], ['traveled', 'travelled'], ['labeled', 'labelled'], ['canceled', 'cancelled'], ['fulfill', 'fulfil'],
+  ['skeptical', 'sceptical'], ['judgment', 'judgement'], ['program', 'programme'], ['catalog', 'catalogue'], ['tire', 'tyre']
+].filter(([a]) => a !== 'defensive' && a !== 'program' && a !== 'tire');           // "defensive" is the same word; "program" and "tire" have other senses
+const AMERICAN_RE = new RegExp('\\b(' + AMERICAN.map(x => x[0]).join('|') + ')\\b', 'g');
+const AMERICAN_TO = {}; AMERICAN.forEach(([a, b]) => { AMERICAN_TO[a] = b; });
+const HYPHENS = [
+  ['second chance', 'points|basket|baskets|shot|shots|opportunity|opportunities|scoring'], ['fast break', 'points|basket|baskets|chance|chances|scoring|offence'],
+  ['half court', 'offence|defence|set|sets|game|basket|offense|possession|possessions'], ['full court', 'press|pressure|defence'],
+  ['three point', 'shot|shots|attempt|attempts|line|shooting|percentage|range|play|specialist|shooter'], ['two point', 'shot|shots|attempt|attempts|game|lead|shooting'],
+  ['one point', 'game|win|loss|lead|margin|victory|defeat'], ['late clock', 'shot|shots|possession|possessions|chance|chances|situation'],
+  ['high scoring', 'game|quarter|half|affair|night'], ['low scoring', 'game|quarter|half|affair|night'], ['hard fought', 'game|win|victory|contest'],
+  ['last minute', 'basket|shot|surge|charge|change'], ['long range', 'shot|shots|jumper|shooting|attempt'], ['off ball', 'movement|screen|defence|action'],
+  ['open floor', 'play|running']
+];
+const HYPHEN_RES = HYPHENS.map(([a, b]) => [new RegExp('\\b(' + a + ') (' + b + ')\\b', 'gi'), a.replace(' ', '-')]);
+const COMPOUND_NUM = new RegExp('\\b(' + NUM_WORD + ') (point|minute|second|game|possession|quarter|man|foot) (lead|run|game|stretch|spell|deficit|win|loss|victory|defeat|night|margin|burst|swing|advantage|cushion|halftime|streak|period|effort|performance|specialist)\\b', 'gi');
+
+/* each rule: id, level, message, find (RegExp, global) or test(text) -> [{sample, index}], fix(match...) -> replacement, examples */
+const GRAMMAR = [
+  /* ------------------------------------------------------------- spelling */
+  { id: 'misspelling', level: 'error', msg: 'a misspelt word', find: new RegExp('\\b(' + Object.keys(MISSPELL).filter(k => !/_$/.test(k)).join('|') + ')\\b', 'gi'),
+    fix: m => matchCase(m, MISSPELL[m.toLowerCase()]), bad: 'They recieve the ball.', good: 'They receive the ball.' },
+  { id: 'american-spelling', level: 'style', msg: 'an American spelling in a British report', find: AMERICAN_RE,
+    fix: m => AMERICAN_TO[m], bad: 'They played tough defense.', good: 'They played tough defence.' },
+  /* ---------------------------------------------------------- word choice */
+  { id: 'its-possessive', level: 'error', msg: '"it\u2019s" where the possessive "its" is meant', find: /\bit[\u2019']s (own|lead|bench|first|second|third|last|best|worst|defence|offence|players|coach|record|season|rhythm|shooting|rebounding)\b/gi,
+    fix: (m, w) => 'its ' + w, bad: 'The team lost it\u2019s lead.', good: 'The team lost its lead.' },
+  { id: 'its-contraction', level: 'error', msg: '"its" where "it is" or "it has" is meant', find: /\bits (been|not|going|just now|a (?:good|bad|big|long)|an? (?:easy|early|old))\b/gi,
+    fix: (m, w) => 'it\u2019s ' + w, bad: 'Its been a long night.', good: 'It\u2019s been a long night.' },
+  { id: 'its-apostrophe', level: 'error', msg: '"its\u2019" is not a word', find: /\bits[\u2019'](?=\s|[.,;:!?]|$)/gi, fix: () => 'its', bad: 'The side lost its\u2019 way.', good: 'The side lost its way.' },
+  { id: 'their-there', level: 'error', msg: '"there" where "their" is meant', find: /\bthere (own|bench|best|worst|coach|players|lead|defence|offence|first|second|last)\b/gi, fix: (m, w) => 'their ' + w, bad: 'They lost there lead.', good: 'They lost their lead.' },
+  { id: 'there-their', level: 'error', msg: '"their" where "there" is meant', find: /\btheir (was|were|is|are|will be|has been|have been)\b/gi, fix: (m, w) => 'there ' + w, bad: 'Their were two runs.', good: 'There were two runs.' },
+  { id: 'theyre-their', level: 'error', msg: '"they\u2019re" where "their" is meant', find: /\bthey[\u2019']re (own|bench|best|worst|coach|players|lead|defence|offence|first|second|last)\b/gi, fix: (m, w) => 'their ' + w, bad: 'They lost they\u2019re lead.', good: 'They lost their lead.' },
+  { id: 'then-than', level: 'error', msg: '"then" after a comparative: "than"', find: /\b(better|worse|more|less|fewer|higher|lower|bigger|smaller|faster|slower|rather|other|earlier|later|greater|larger|longer|shorter|stronger|weaker) then\b/gi,
+    fix: (m, w) => w + ' than', bad: 'They shot better then their rivals.', good: 'They shot better than their rivals.' },
+  { id: 'modal-of', level: 'error', msg: '"of" for "have"', find: /\b(could|would|should|must|might) of\b/gi, fix: (m, w) => w + ' have', bad: 'They could of won.', good: 'They could have won.' },
+  { id: 'alot', level: 'error', msg: '"alot" is two words', find: /\balot\b/gi, fix: m => matchCase(m, 'a lot'), bad: 'They shot alot of threes.', good: 'They shot a lot of threes.' },
+  { id: 'fewer-less', level: 'error', msg: '"less" with something counted: "fewer"', find: new RegExp('\\bless (' + COUNT_PL + ')\\b', 'gi'), fix: (m, w) => 'fewer ' + w, bad: 'They gave it away less times.', good: 'They gave it away fewer times.' },
+  { id: 'less-fewer', level: 'error', msg: '"fewer" with something measured: "less"', find: new RegExp('\\bfewer (' + MASS_N + ')\\b', 'gi'), fix: (m, w) => 'less ' + w, bad: 'They had fewer time.', good: 'They had less time.' },
+  { id: 'amount-number', level: 'error', msg: '"amount" of something counted: "number"', find: new RegExp('\\bamount of (' + COUNT_PL + ')\\b', 'gi'), fix: (m, w) => 'number of ' + w, bad: 'A large amount of turnovers.', good: 'A large number of turnovers.' },
+  { id: 'whos-whose', level: 'error', msg: '"who\u2019s" where "whose" is meant', find: /\bwho[\u2019']s (own|bench|game|team|side|lead)\b/gi, fix: (m, w) => 'whose ' + w, bad: 'A side who\u2019s bench scored 40.', good: 'A side whose bench scored 40.' },
+  { id: 'loose-lose', level: 'error', msg: '"loose" for "lose"', find: /\bloose (the|a|it|his|their|control|ground|track|possession)\b/gi, fix: (m, w) => 'lose ' + w, bad: 'They will loose the game.', good: 'They will lose the game.' },
+  { id: 'loosing', level: 'error', msg: '"loosing" for "losing"', find: /\bloosing\b/gi, fix: m => matchCase(m, 'losing'), bad: 'They are loosing ground.', good: 'They are losing ground.' },
+  { id: 'affect-noun', level: 'error', msg: '"affect" as a noun: "effect"', find: /\b(a|an|the|no|little|any|big|real|lasting) affect\b/gi, fix: (m, w) => w + ' effect', bad: 'It had a big affect.', good: 'It had a big effect.' },
+  { id: 'irregardless', level: 'error', msg: '"irregardless" is "regardless"', find: /\birregardless\b/gi, fix: m => matchCase(m, 'regardless'), bad: 'Irregardless of the score.', good: 'Regardless of the score.' },
+  { id: 'supposed-to', level: 'error', msg: '"suppose to" is "supposed to"', find: /\bsuppose to\b/gi, fix: () => 'supposed to', bad: 'They were suppose to win.', good: 'They were supposed to win.' },
+  { id: 'who-that', level: 'hint', msg: '"that" for a person: "who"', find: /\b(player|man|woman|guard|forward|centre|scorer|coach|captain) that (?=(?:scored|led|made|took|won|played|had))/gi, fix: (m, w) => w + ' who ', bad: 'The player that scored 20.', good: 'The player who scored 20.' },
+  /* ------------------------------------------------------------ agreement */
+  { id: 'one-of-plural', level: 'error', msg: '"one of the ..." takes a singular verb', find: /\b(one of the [a-z][a-z' \u2019-]{2,50}?) (were|are|have)\b/gi,
+    fix: (m, head, v) => head + ' ' + ({ were: 'was', are: 'is', have: 'has' })[v.toLowerCase()], bad: 'One of the best sides were beaten.', good: 'One of the best sides was beaten.' },
+  { id: 'there-was-plural', level: 'error', msg: '"there was" before a plural', find: new RegExp('\\bthere was (' + NUM_WORD + '(?<!\\bone)(?<!\\b1)|several|many|both) ', 'gi'), test: null,
+    fix: (m, w) => 'there were ' + w + ' ', bad: 'There was two runs.', good: 'There were two runs.' },
+  { id: 'there-were-singular', level: 'error', msg: '"there were" before a singular', find: /\bthere were (one|1|a|an) /gi, fix: (m, w) => 'there was ' + w + ' ', bad: 'There were a run.', good: 'There was a run.' },
+  { id: 'number-of-verb', level: 'error', msg: '"a number of ..." takes a plural verb; "the number of ..." a singular one', find: /\b(a number of [a-z]+(?: [a-z]+)?) (is|was|has)\b/gi,
+    fix: (m, head, v) => head + ' ' + ({ is: 'are', was: 'were', has: 'have' })[v.toLowerCase()], bad: 'A number of players was hurt.', good: 'A number of players were hurt.' },
+  /* ----------------------------------------------------------- comparison */
+  { id: 'double-comparative', level: 'error', msg: 'a comparative or superlative twice ("more better")', find: /\b(more|most) (better|worse|faster|slower|higher|lower|bigger|smaller|best|worst|greatest|easier|harder)\b/gi,
+    fix: (m, a, w) => w, bad: 'They were more better.', good: 'They were better.' },
+  { id: 'double-negative', level: 'error', msg: 'a double negative', find: /\b(?:not|never|hardly|barely|didn[\u2019']t|wasn[\u2019']t|couldn[\u2019']t)(?: [a-z]+){0,2} (?:no|nobody|nothing|nowhere)\b/gi, fix: null, bad: 'They did not score nothing.', good: 'They scored nothing.' },
+  /* ---------------------------------------------------------- hyphenation */
+  { id: 'compound-modifier', level: 'style', msg: 'a compound modifier before a noun takes a hyphen', test: 'hyphen', fix: 'hyphen',
+    bad: 'They scored 15 second chance points.', good: 'They scored 15 second-chance points.' },
+  { id: 'numeral-compound', level: 'style', msg: 'a number and a unit before a noun take a hyphen: an 11-point lead', find: COMPOUND_NUM, fix: (m, n, unit, noun) => n + '-' + unit + ' ' + noun,
+    bad: 'It was an 11 point lead.', good: 'It was an 11-point lead.' },
+  /* ---------------------------------------------------------- punctuation */
+  { id: 'spaced-hyphen', level: 'style', msg: 'a spaced hyphen is a dash', find: /([A-Za-z]) - (?=[A-Za-z])/g, fix: (m, a) => a + ' \u2014 ', bad: 'They won - easily.', good: 'They won \u2014 easily.' },
+  { id: 'double-hyphen', level: 'style', msg: '"--" is a dash', find: /\s?--\s?/g, fix: () => ' \u2014 ', bad: 'They won--easily.', good: 'They won \u2014 easily.' },
+  { id: 'score-hyphen', level: 'style', msg: 'a range or a score takes an en dash', find: /(?<![\d-])(\d{1,4})-(\d{1,4})(?![\d-])/g, fix: (m, a, b) => a + '\u2013' + b, bad: 'They won 94-68.', good: 'They won 94\u201368.' },
+  { id: 'straight-quotes', level: 'style', msg: 'straight quotation marks: use curly ones', find: /"([^"<>\n]{1,80})"/g, fix: (m, t) => '\u201c' + t + '\u201d', bad: 'They "collapsed".', good: 'They \u201ccollapsed\u201d.' },
+  { id: 'ellipsis', level: 'style', msg: 'three full stops are an ellipsis', find: /\.\.\./g, fix: () => '\u2026', bad: 'And then...', good: 'And then\u2026' },
+  { id: 'percent-space', level: 'style', msg: 'no space before a percent sign', find: /(\d) %/g, fix: (m, d) => d + '%', bad: 'They shot 55.7 %.', good: 'They shot 55.7%.' },
+  { id: 'decade-apostrophe', level: 'error', msg: 'no apostrophe in a decade or a plural numeral', find: /\b(\d{2,4})[\u2019']s\b/g, fix: (m, d) => d + 's', bad: 'The 1990\u2019s.', good: 'The 1990s.' },
+  { id: 'day-capital', level: 'error', msg: 'days and months take capitals', find: new RegExp('\\b(' + DAYS + '|' + MONTHS + ')\\b', 'g'), fix: m => m.charAt(0).toUpperCase() + m.slice(1), bad: 'On saturday night.', good: 'On Saturday night.' },
+  { id: 'space-before-semicolon', level: 'style', msg: 'no space before a semicolon or colon', find: /(\w) ([;:])(?=\s)/g, fix: (m, w, p) => w + p, bad: 'They won ; easily.', good: 'They won; easily.' },
+  /* ---------------------------------------------------------------- style */
+  { id: 'redundant-phrase', level: 'style', msg: 'a redundant phrase', find: /\b(each and every|end result|past history|in the event that|at this point in time|due to the fact that|the reason why|completely eliminate|very unique|advance planning|future plans|close proximity|absolutely essential)\b/gi,
+    fix: m => matchCase(m, ({ 'each and every': 'every', 'end result': 'result', 'past history': 'history', 'in the event that': 'if', 'at this point in time': 'now', 'due to the fact that': 'because',
+      'the reason why': 'the reason', 'completely eliminate': 'eliminate', 'very unique': 'unique', 'advance planning': 'planning', 'future plans': 'plans', 'close proximity': 'proximity', 'absolutely essential': 'essential' })[m.toLowerCase()]),
+    bad: 'The end result was clear.', good: 'The result was clear.' },
+  { id: 'wordy-phrase', level: 'style', msg: 'a wordy phrase', find: /\b(in order to|it is worth noting that|a total of|in terms of|as a matter of fact|for the purpose of)\b/gi,
+    fix: m => matchCase(m, ({ 'in order to': 'to', 'it is worth noting that': '', 'a total of': '', 'in terms of': 'in', 'as a matter of fact': 'in fact', 'for the purpose of': 'for' })[m.toLowerCase()]),
+    bad: 'They did it in order to win.', good: 'They did it to win.' },
+  { id: 'intensifier', level: 'style', msg: 'an empty intensifier', find: /\b(very|really|basically|literally|totally|extremely|incredibly|absolutely)\s+(?=[a-z])/gi, fix: () => '', bad: 'They played really well.', good: 'They played well.' },
+  { id: 'cliche', level: 'hint', msg: 'a cliché', find: /\b(at the end of the day|give 110%|game of two halves|left it all on the floor|tale of the tape|in the driver[\u2019']s seat|take it to the next level|sent a message|the dagger|step up to the plate|back against the wall)\b/gi, fix: null, bad: 'At the end of the day it was close.', good: 'It was close.' },
+  { id: 'contraction', level: 'hint', msg: 'a contraction in a formal register', find: /\b(?:did|does|do|was|were|is|are|has|have|had|could|would|should|can|won|isn|aren|wasn|weren|hasn|haven|hadn|couldn|wouldn|shouldn|doesn|didn|don)[\u2019']t\b|\b(?:they|we|it|that|there|he|she)[\u2019'](?:re|ll|ve|d)\b/gi, fix: null, bad: 'They didn\u2019t score.', good: 'They did not score.' },
+  { id: 'colloquial', level: 'hint', msg: 'a colloquial word', find: /\b(gonna|wanna|kinda|sorta|gotta|lots of|guys|stuff|a bit of a|pretty much)\b/gi, fix: null, bad: 'They were pretty much done.', good: 'They were done.' },
+  { id: 'numeral-start', level: 'hint', msg: 'a sentence that starts with a numeral', find: /(?:^|[.!?]\s+)(\d[\d,.]*%?)(?=\s+[a-z])/g, fix: null, bad: '38 free throws were taken.', good: 'They took 38 free throws.' },
+  { id: 'conjunction-start', level: 'hint', msg: 'a sentence that starts with a conjunction', find: /(?:^|[.!?]\s+)(And|But|So|Or|Because)\s+(?=[a-z])/g, fix: null, bad: 'And they won.', good: 'They won, too.' },
+  { id: 'fragment', level: 'error', msg: 'a sentence that is only a subordinate clause', find: /(?:^|[.!?]\s+)(Which|Whereas)\b[^.!?]{3,80}[.!?]/g, fix: null, bad: 'Which was the difference.', good: 'That was the difference.' },
+  { id: 'comma-splice', level: 'error', msg: 'a comma splice: two sentences joined by a comma', find: /\b[A-Z][a-z]+(?: [A-Z][a-z]+)* (?:won|lost|led|scored|beat|took|trailed|shot)\b[^.,;:!?]{0,40}, (?:they|it|he|she) (?:were|was|had|did|made|took|scored|won|lost|led|went|got|shot|ran|gave|finished)\b/g, fix: null,
+    bad: 'Newcastle won 94\u201368, they led throughout.', good: 'Newcastle won 94\u201368, and they led throughout.' },
+  { id: 'dangling-modifier', level: 'hint', msg: 'an opening participle whose subject may not be the main clause\u2019s', find: /(?:^|[.!?]\s+)(?:Having|Being|Looking|Shooting|Driving|Coming|Trailing|Leading|Facing)\b[^,.!?]{2,60}, (?:the|a|an|their|its) /g, fix: null,
+    bad: 'Trailing by ten, the crowd roared.', good: 'Trailing by ten, they pressed.' },
+  { id: 'passive-pileup', level: 'hint', msg: 'the passive three times in a paragraph', test: 'passive', fix: null,
+    bad: 'It was played by them. It was decided by him. It was watched by her.', good: 'They played it.' },
+  { id: 'unparallel-list', level: 'style', msg: 'a list whose items are not parallel (a gerund beside a noun)', test: 'parallel', fix: null,
+    bad: 'They led on shooting, the boards and taking care of the ball.', good: 'They led on shooting, rebounding and ball security.' }
+];
+GRAMMAR.forEach(r => { if (r.find && !r.find.global) throw new Error('grammar rule ' + r.id + ' needs a global pattern'); });
+const LEVEL_COST = { error: 12, style: 5, hint: 2 };
+
+/* the two rules that need more than a pattern */
+function findHyphens(text) {
+  const out = [];
+  HYPHEN_RES.forEach(([re]) => { re.lastIndex = 0; let m; while ((m = re.exec(text))) out.push({ sample: m[0], index: m.index }); });
+  return out;
+}
+function findPassive(text) {
+  const n = (text.match(/\b(?:was|were|been|being|is|are) \w+ed by\b/g) || []).length;
+  return n >= 3 ? [{ sample: 'passive x' + n, index: 0 }] : [];
+}
+function findParallel(text) {
+  const out = [];
+  const re = /\b(?:on|at|in|with|for) ((?:[A-Za-z-]+ ?){1,3}), ((?:[A-Za-z-]+ ?){1,3}) and ((?:[A-Za-z-]+ ?){1,5})(?=[.,;])/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const items = [m[1], m[2], m[3]].map(x => x.trim());
+    /* a verbal gerund phrase ("taking care of the ball") beside a plain noun ("the boards") is the break; "shooting, rebounding and ball security" is fine */
+    const verbal = items.map(x => /^[a-z]+ing\s+[a-z]+/i.test(x) && !/^(?:free|ball|three|shot)\b/i.test(x));
+    if (verbal.some(Boolean) && !verbal.every(Boolean)) out.push({ sample: m[0], index: m.index });
+  }
+  return out;
+}
+const SPECIAL = { hyphen: findHyphens, passive: findPassive, parallel: findParallel };
+
+/* what the grammar finds in a text (tags are ignored): [{ id, level, msg, sample }] */
+function grammar(html, opts) {
+  const o = opts || {};
+  const text = String(html).replace(/<[^>]*>/g, '');
+  const out = [];
+  GRAMMAR.forEach(r => {
+    let hits = [];
+    if (r.find) { r.find.lastIndex = 0; let m; while ((m = r.find.exec(text))) hits.push({ sample: m[0], index: m.index }); }
+    else if (typeof r.test === 'string' && SPECIAL[r.test]) hits = SPECIAL[r.test](text);
+    if (r.id === 'american-spelling' && o.american) hits = [];
+    hits.forEach(h => out.push({ id: r.id, level: r.level, msg: r.msg, sample: h.sample.trim().slice(0, 60) }));
+  });
+  /* a club is plural in this report: "Bristol Flyers were", never "was" */
+  (o.names || []).forEach(n => {
+    const plain = String(n).replace(/<[^>]*>/g, '');
+    if (!plain) return;
+    const re = new RegExp('\\b' + plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' (was|is|has)\\b', 'g');
+    let m; while ((m = re.exec(text))) out.push({ id: 'team-agreement', level: 'error', msg: 'a club is plural in this report', sample: m[0] });
+  });
+  return out;
+}
+
+/* REPAIR the certain ones, in a piece of text with no tags in it */
+function fixGrammar(seg, opts) {
+  const o = opts || {};
+  let s = seg;
+  GRAMMAR.forEach(r => {
+    if (!r.fix) return;
+    if (r.fix === 'hyphen') { HYPHEN_RES.forEach(([re, hy]) => { s = s.replace(re, (m, a, b) => matchCase(a, hy) + ' ' + b); }); return; }
+    if (r.id === 'american-spelling' && o.american) return;
+    r.find.lastIndex = 0;
+    s = s.replace(r.find, (...m) => {
+      const groups = m.slice(0, -2);                       // the match and its groups, without index and input
+      const out = r.fix.apply(null, groups);
+      /* a repair that starts a sentence keeps the capital the wrong form had */
+      return out == null ? groups[0] : (/^[A-Z]/.test(groups[0]) && /^[a-z]/.test(out) ? out.charAt(0).toUpperCase() + out.slice(1) : out);
+    });
+  });
+  (o.names || []).forEach(n => {
+    const plain = String(n).replace(/<[^>]*>/g, '');
+    if (!plain) return;
+    s = s.replace(new RegExp('\\b(' + plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ') (was|is|has)\\b', 'g'), (m, name, v) => name + ' ' + ({ was: 'were', is: 'are', has: 'have' })[v]);
+  });
+  return s.replace(/\s{2,}/g, ' ').replace(/\s+([,.;:!?])/g, '$1');
+}
+
 /* REPAIR what a finished paragraph got wrong. Only the rules that cannot change what a sentence claims. */
-function polish(html) {
+function polish(html, opts) {
   let out = inText(html, seg => {
-    let s = seg;
+    let s = fixGrammar(seg, opts);
     s = s.replace(/[ \t ]{2,}/g, ' ');                                  // one space between words
     s = s.replace(/\s+([,;:!?])(?=\s|$)/g, '$1');                            // none before a comma
     s = s.replace(/\s+\.(?=\s|$)/g, '.');                                    // ... or a full stop
@@ -412,6 +617,7 @@ function lint(html, opts) {
   if ((m = /\bthe (?:winners|losers)’s\b/i.exec(plain))) add('possessive', m[0]);
   const long = plain.split(/(?<=[.!?])\s+/).find(x => (x.match(/\b\d+(?:\.\d+)?%?/g) || []).length > (o.maxNumerals || 5));
   if (long) add('too-many-numbers', long);
+  grammar(html, o).forEach(f => { if (f.level !== 'hint' || o.hints) issues.push({ rule: f.id, level: f.level, sample: f.sample }); });
   return issues;
 }
 
@@ -468,7 +674,7 @@ function critique(html, o) {
   const notes = [];
   let score = 100;
   const pen = (cost, why) => { score -= cost; notes.push({ why, cost }); };
-  lint(html, { maxNumerals: 99, allowEntities: true }).forEach(i => { if (i.rule !== 'too-many-numbers') pen(12, 'lint: ' + i.rule + ' (' + i.sample.trim() + ')'); });
+  lint(html, { maxNumerals: 99, allowEntities: true, names: opts.names, hints: true }).forEach(i => { if (i.rule !== 'too-many-numbers') pen(i.level ? LEVEL_COST[i.level] : 12, 'grammar: ' + i.rule + ' (' + i.sample.trim() + ')'); });
   const sents = sentencesOf(plain);
   sents.forEach((sn, i) => {
     const words = sn.split(/\s+/).length;
@@ -614,12 +820,12 @@ const REPAIRS = [['fillers', opFillers], ['numbers', opNumbers], ['tail', opTail
 function revise(html, o) {
   const opts = o || {};
   const target = opts.target || TARGET, max = opts.max || 8;
-  let cur = polish(html), c = critique(cur, opts);
+  let cur = polish(html, opts), c = critique(cur, opts);
   const first = c.score, log = [];
   for (let pass = 0; pass < max && c.score < 100; pass++) {
     let best = null;
     REPAIRS.forEach(([name, fn]) => {
-      const cand = polish(fn(cur, opts));
+      const cand = polish(fn(cur, opts), opts);
       if (cand === cur || !cand.trim()) return;
       const cc = critique(cand, opts);
       if (cc.score > c.score && (!best || cc.score > best.c.score)) best = { cand, c: cc, name };
@@ -656,5 +862,6 @@ function choose(seed, options, recent) {
 return { spell, spellFull, ordinalWord, ordinalNum, periodName, numeral, signed, pct, score, clock, approxMinutes,
          an, withArticle, plural, count, spellSet, fewer, possessive, POSSESSIVE_PRONOUN, isPlural, verb, be, list,
          unshout, capParts, titleCase, capitalise, polish, lint, inText, IRREG_VERBS,
-         critique, revise, choose, opener, sentencesOf, TARGET };
+         critique, revise, choose, opener, sentencesOf, TARGET,
+         GRAMMAR, grammar, fixGrammar, LEVEL_COST };
 }));

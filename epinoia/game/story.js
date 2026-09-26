@@ -560,7 +560,13 @@ function factEstimatedMargin(g) {
   }
   const est = net.efg + net.tovp + net.orebp + net.ftr;
   const actual = g.score[0] - g.score[1];
-  if (Math.abs(est) < 3 || !(g.adv[0].possessions > 0)) return out;
+  if (!(g.adv[0].possessions > 0)) return out;
+  /* EVERY FACTOR, BOTH SIDES: what each gained or lost in it, and what it was worth to the margin (home minus away) */
+  out.push(F('pointsAdded', null, 70, {
+    rows: Object.keys(PA_W).map(k => ({ key: k, label: PA_LABEL[k], pts: [paSide(g, k, 0), paSide(g, k, 1)], net: net[k] })),
+    estimated: est, actual, baseline: paBase(g, 'efg').league ? 'league' : 'game'
+  }, 'the four factors, in points'));
+  if (Math.abs(est) < 3) return out;
   const side = est > 0 ? 0 : 1, sgn = side === 0 ? 1 : -1;
   /* each factor from the favoured side's end: positive helped them */
   const parts = Object.keys(PA_W).map(k => ({ key: k, label: PA_LABEL[k], pts: net[k] * sgn })).sort((x, y) => y.pts - x.pts);
@@ -657,6 +663,121 @@ function factTimeLed(g) {
   const data = { winner: w, led, level, total, winnerShare: wShare, loserShare: lShare };
   if (lShare >= 0.55) out.push(F('timeLed', 1 - w, 77, Object.assign({ kind: 'ledMost' }, data), g.names[1 - w] + ' led most of the game and lost it'));
   else if (wShare >= 0.93) out.push(F('timeLed', w, 64, Object.assign({ kind: 'wire' }, data), g.names[w] + ' led almost throughout'));
+  return out;
+}
+
+/* ============================================================================
+   THE THREE TABS THE REPORT READS TOO: connections, play type + rebounds, and the shot clock.
+   ============================================================================ */
+
+/* CONNECTIONS: who set up whom. A pair's count is assists; every figure is the connections tab's own. */
+function factConnections(g) {
+  const out = [];
+  const C = g.connections;
+  if (!C || !C[0] || !C[1]) return out;
+  for (const t of [0, 1]) {
+    const list = C[t];
+    const total = list.reduce((n, c) => n + c.count, 0);
+    if (total < 5) continue;
+    const top = list[0];
+    if (top && top.count >= 3) {
+      out.push(F('duo', t, 55 + Math.min(10, top.count),
+        { assister: top.assisterName, scorer: top.scorerName, count: top.count, points: top.points, threes: top.threes, twos: top.twos, total, pairs: list.length },
+        g.names[t] + ': ' + top.assisterName + ' to ' + top.scorerName));
+    }
+    const by = {};
+    list.forEach(c => { by[c.assisterName] = (by[c.assisterName] || 0) + c.count; });
+    const hub = Object.keys(by).map(n => ({ name: n, count: by[n] })).sort((a, b) => b.count - a.count)[0];
+    if (hub && hub.count >= 5 && hub.count / total >= 0.4) {
+      out.push(F('passingHub', t, 57, { name: hub.name, count: hub.count, total, targets: list.filter(c => c.assisterName === hub.name).length },
+        hub.name + ' ran the offence'));
+    }
+    const got = {};
+    list.forEach(c => { got[c.scorerName] = (got[c.scorerName] || 0) + c.points; });
+    const fed = Object.keys(got).map(n => ({ name: n, pts: got[n] })).sort((a, b) => b.pts - a.pts)[0];
+    if (fed && fed.pts >= 12) out.push(F('fedScorer', t, 52, { name: fed.name, pts: fed.pts, total }, fed.name + ' scored off the pass'));
+  }
+  return out;
+}
+
+/* PLAY TYPE: who scored the breaks, the second chances and the points off turnovers; and the mid-range that did not go in */
+function factPlayTypes(g) {
+  const out = [];
+  const P = g.sitPlayers, S = g.sits;
+  if (P && S && S[0] && S[1]) {
+    const found = [];
+    for (const t of [0, 1]) {
+      ['transition', 'second', 'offTo'].forEach(k => {
+        const team = S[t] && S[t][k] ? S[t][k].pts : 0;
+        if (team < 10) return;
+        let best = null;
+        Object.keys(P[t] || {}).forEach(pid => {
+          const x = P[t][pid].sits && P[t][pid].sits[k];
+          if (x && (!best || x.pts > best.pts)) best = { name: P[t][pid].name, pts: x.pts };
+        });
+        if (best && best.pts >= 6 && best.pts / team >= 0.4) found.push({ t, k, name: best.name, pts: best.pts, team });
+      });
+    }
+    found.sort((a, b) => b.pts - a.pts).slice(0, 2).forEach(f => out.push(F('sitLeader', f.t, 53,
+      { key: f.k, where: SIT_NAME[f.k], name: f.name, pts: f.pts, teamPts: f.team }, f.name + ' led the scoring ' + SIT_NAME[f.k])));
+  }
+  if (S) {
+    for (const t of [0, 1]) {
+      const z = S[t] && S[t].all && S[t].all.zones && S[t].all.zones.mid;
+      if (z && z.a >= 8 && z.m / z.a <= 0.2) out.push(F('midCold', t, 51, { m: z.m, a: z.a }, g.names[t] + ' could not buy a mid-range basket'));
+    }
+  }
+  return out;
+}
+
+/* REBOUNDS BY ZONE: where a side's misses came back to it, against where the other side's did */
+const ZONE_WORDS = { rim: 'at the rim', mid: 'from mid-range', three: 'from three' };
+function factRebZones(g) {
+  const out = [];
+  const S = g.sits;
+  if (!S || !S[0] || !S[1] || !S[0].all || !S[1].all || !S[0].all.zones || !S[1].all.zones) return out;
+  let best = null;
+  ['rim', 'mid', 'three'].forEach(z => {
+    const a = S[0].all.zones[z], b = S[1].all.zones[z];
+    if (!a || !b) return;
+    const ma = a.a - a.m, mb = b.a - b.m;
+    if (ma < 6 || mb < 6) return;
+    const ra = 100 * (a.o || 0) / ma, rb = 100 * (b.o || 0) / mb;
+    const gap = Math.abs(ra - rb);
+    if (gap >= 18 && (!best || gap > best.gap)) best = { z, gap, side: ra > rb ? 0 : 1, a, b, ma, mb };
+  });
+  if (best) {
+    const m = best.side === 0 ? best.a : best.b, o = best.side === 0 ? best.b : best.a;
+    out.push(F('zoneBoards', best.side, 55, {
+      zone: best.z, where: ZONE_WORDS[best.z], mine: { o: m.o || 0, miss: m.a - m.m }, theirs: { o: o.o || 0, miss: o.a - o.m }
+    }, g.names[best.side] + ' got their ' + best.z + ' misses back'));
+  }
+  return out;
+}
+
+/* THE SHOT CLOCK: how each side did early in it, and how often it ran the clock down */
+function factShotClock(g) {
+  const out = [];
+  const C = g.clock && g.clock.chances;
+  if (!C || !C.length) return out;
+  const stats = (t, lo, hi) => {
+    const xs = C.filter(r => r.team === t && !r.second && r.dur != null && r.dur >= lo && r.dur < hi);
+    const pts = xs.reduce((n, r) => n + r.pts, 0);
+    return { n: xs.length, pts, ppp: xs.length ? pts / xs.length : null };
+  };
+  const all = [0, 1].map(t => stats(t, 0, 1e9));
+  const early = [0, 1].map(t => stats(t, 0, 8)), late = [0, 1].map(t => stats(t, 17, 1e9));
+  if (early[0].n >= 8 && early[1].n >= 8 && Math.abs(early[0].ppp - early[1].ppp) >= 0.25) {
+    const hi = early[0].ppp > early[1].ppp ? 0 : 1;
+    out.push(F('clockEarly', hi, 56, { mine: early[hi], theirs: early[1 - hi] }, g.names[hi] + ' were sharper early in the clock'));
+  }
+  for (const t of [0, 1]) {
+    const share = all[t].n ? late[t].n / all[t].n : 0;
+    if (late[t].n >= 6 && share >= 0.25 && late[t].ppp != null && all[t].ppp != null && late[t].ppp <= all[t].ppp - 0.2) {
+      out.push(F('clockLate', t, 54, { late: late[t], all: all[t], share: 100 * share, theirShare: all[1 - t].n ? 100 * late[1 - t].n / all[1 - t].n : null },
+        g.names[t] + ' ran the clock down and paid for it'));
+    }
+  }
   return out;
 }
 
@@ -990,6 +1111,7 @@ function facts(g) {
     factDefence(g), factFouls(g), factPassing(g), factZones(g),
     factTempo(g), factSeasonContext(g),
     factEstimatedMargin(g), factClock(g), factHowScored(g), factMisses(g), factTimeLed(g),
+    factConnections(g), factPlayTypes(g), factRebZones(g), factShotClock(g),
     /* 2026-09-07: the half, the finish, the box score in words, fuller player
        lines, ties/droughts/early leads, and the dateline */
     factHalf(g), factClosing(g), factTeamLines(g), factPlayerLines(g),

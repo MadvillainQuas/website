@@ -70,7 +70,7 @@ eq('McBride is left', L.titleCase('McBride'), 'McBride'); eq('mccormack is McCor
 eq('KK Split is left', L.titleCase('KK Split'), 'KK Split');
 
 console.log('-- polish repairs what a paragraph got wrong');
-eq('doubled space and space before a comma', L.polish('It was  close , very close.'), 'It was close, very close.');
+eq('doubled space and space before a comma', L.polish('It was  close , tight.'), 'It was close, tight.');
 eq('a doubled word', L.polish('They won the the game.'), 'They won the game.'); eq('"had had" is English', L.polish('They had had enough.'), 'They had had enough.');
 eq('the winners’s -> the winners’', L.polish('in the winners’s favour'), 'in the winners’ favour'); eq('Flyers’s -> Flyers’', L.polish('Bristol Flyers’s bench'), 'Bristol Flyers’ bench');
 eq('a 8-0 run -> an 8-0 run', L.polish('It was a 8–0 run.'), 'It was an 8–0 run.'); eq('an 7-0 run -> a 7-0 run', L.polish('It was an 7–0 run.'), 'It was a 7–0 run.'); eq('An at the start keeps its capital', L.polish('An 7–0 run'), 'A 7–0 run');
@@ -88,6 +88,26 @@ ok('a double space', kinds('It was  close.').includes('double-space')); ok('a wr
 ok('a wrong possessive', kinds('the winners’s favour').includes('possessive')); ok('number agreement', kinds('He had 1 points.').includes('number-agreement'));
 ok('a lower-case sentence start', kinds('They won. it was close.').includes('sentence-capital')); ok('a leaked value', kinds('scored undefined points').includes('leaked-value'));
 ok('unbalanced brackets', kinds('He scored (twice.').includes('unbalanced-brackets'));
+
+console.log('-- the register of grammar rules, each held to its own examples');
+ok('the register carries a full set of rules', L.GRAMMAR.length >= 45, L.GRAMMAR.length);
+ok('every rule has an id, a level, a message and an example both ways', L.GRAMMAR.every(r => r.id && ['error', 'style', 'hint'].includes(r.level) && r.msg && r.bad && r.good));
+ok('ids are unique', new Set(L.GRAMMAR.map(r => r.id)).size === L.GRAMMAR.length);
+L.GRAMMAR.forEach(r => {
+  ok(r.id + ': the wrong form is found', L.grammar(r.bad).some(f => f.id === r.id), r.bad);
+  ok(r.id + ': the right form is not', !L.grammar(r.good).some(f => f.id === r.id), r.good);
+  if (r.fix) ok(r.id + ': and it is repaired', !L.grammar(L.polish(r.bad)).some(f => f.id === r.id), L.polish(r.bad));
+});
+eq('a club is plural: Bristol Flyers were', L.polish('Bristol Flyers was ahead and Newcastle Eagles has won.', { names: ['Bristol Flyers', 'Newcastle Eagles'] }), 'Bristol Flyers were ahead and Newcastle Eagles have won.');
+ok('...and reported when it is not repaired', L.grammar('Bristol Flyers was ahead.', { names: ['Bristol Flyers'] }).some(f => f.id === 'team-agreement'));
+eq('a date is not a score', L.polish('On 2026-09-26 they won 94-68.'), 'On 2026-09-26 they won 94\u201368.');
+eq('a season is a range', L.polish('The 2025-26 season.'), 'The 2025\u201326 season.');
+eq('several repairs at once', L.polish('They scored 15 second chance points, alot of it in a 11 point lead on saturday.'), 'They scored 15 second-chance points, a lot of it in an 11-point lead on Saturday.');
+eq('one of the ... was', L.polish('One of the best players were hurt.'), 'One of the best players was hurt.');
+eq('there were two', L.polish('There was three runs.'), 'There were three runs.'); eq('there was one', L.polish('There were a run.'), 'There was a run.');
+eq('a hyphen is kept where it belongs', L.polish('a full-court press and a two-point game'), 'a full-court press and a two-point game');
+ok('hints are reported only on request', L.lint('They didn\u2019t score.').every(i => i.rule !== 'contraction') && L.lint('They didn\u2019t score.', { hints: true }).some(i => i.rule === 'contraction'));
+ok('the critic prices a grammar error above a hint', L.critique('They lost there lead.', {}).score < L.critique('They didn\u2019t score.', {}).score);
 
 console.log('-- the critic scores on a 0-100 scale');
 const sc = t => L.critique(t, {}).score;
@@ -122,6 +142,59 @@ console.log('-- choosing between phrasings by score, not by luck');
   eq('the best-scoring option wins, whatever the seed', [0, 1, 2, 3, 4].map(s => L.choose(s, opts, [])).filter(x => x === opts[1]).length, 5);
   ok('the same seed always gives the same option', L.choose(7, ['A one.', 'A two.'], []) === L.choose(7, ['A one.', 'A two.'], []));
   ok('a phrasing that opens the way the last sentence did is avoided', L.choose(0, ['Newcastle won the boards.', 'The boards went to Newcastle.'], [L.opener('Newcastle won it.')]) === 'The boards went to Newcastle.');
+}
+
+console.log('-- the facts from the connections, play type + rebounds and shot clock tabs');
+{
+  const Story = globalThis.EpinoiaStory;
+  const conn = (a, s, n, pts, th) => ({ assisterName: a, scorerName: s, count: n, points: pts, threes: th, twos: n - th });
+  const base = () => ({ names: ['neon city', 'harbour bay'], score: [80, 70], players: [], byId: {}, team: [{}, {}], perQ: [[0, 10, 10, 10, 10], [0, 10, 10, 10, 10]], periods: 4, events: [],
+    adv: [{ efg: 55, tovp: 12, orebp: 30, ftr: 30, possessions: 80, pts: 80, pace: 80 }, { efg: 48, tovp: 16, orebp: 25, ftr: 25, possessions: 80, pts: 70, pace: 80 }], lineups: [[], []], stints: [[], []] });
+  const g = base();
+  g.connections = [[conn('ann lee', 'bo kim', 4, 9, 3), conn('ann lee', 'cy dow', 3, 6, 0), conn('ann lee', 'di fox', 2, 4, 0), conn('bo kim', 'ann lee', 1, 2, 0)], [conn('ed roe', 'fay gil', 2, 4, 0), conn('gus ho', 'ed roe', 2, 5, 1), conn('ed roe', 'gus ho', 1, 3, 1)]];
+  const duo = Story.facts(g).find(f => f.kind === 'duo' && f.side === 0);
+  ok('the best pairing on a side is a fact, with its assists and points', duo && duo.data.assister === 'ann lee' && duo.data.scorer === 'bo kim' && duo.data.count === 4 && duo.data.points === 9 && duo.data.threes === 3, duo && duo.data);
+  const hub = Story.facts(g).find(f => f.kind === 'passingHub');
+  ok('a passer who made most of a side\u2019s assists is its hub', hub && hub.data.name === 'ann lee' && hub.data.count === 9 && hub.data.total === 10 && hub.data.targets === 3, hub && hub.data);
+  ok('a side with fewer than five assists has no connection facts', !Story.facts(g).some(f => (f.kind === 'duo' || f.kind === 'passingHub') && f.side === 1));
+
+  const g2 = base();
+  const z = (a, m, o) => ({ a, m, o, d: a - m - o });
+  g2.sits = [{ all: { zones: { rim: z(20, 10, 6), mid: z(9, 1, 1), three: z(20, 8, 2) } }, transition: { pts: 14 }, second: { pts: 4 }, offTo: { pts: 3 } },
+             { all: { zones: { rim: z(20, 10, 1), mid: z(9, 2, 1), three: z(20, 8, 2) } }, transition: { pts: 6 }, second: { pts: 2 }, offTo: { pts: 2 } }];
+  g2.sitPlayers = [{ p1: { name: 'ann lee', sits: { transition: { pts: 9 }, second: { pts: 2 }, offTo: { pts: 3 } } }, p2: { name: 'bo kim', sits: { transition: { pts: 5 } } } }, {}];
+  const f2 = Story.facts(g2);
+  const lead = f2.find(f => f.kind === 'sitLeader');
+  ok('the player who scored most of a side\u2019s breaks is named', lead && lead.data.name === 'ann lee' && lead.data.pts === 9 && lead.data.teamPts === 14, lead && lead.data);
+  const zb = f2.find(f => f.kind === 'zoneBoards');
+  ok('the zone where a side got its misses back far more often is a fact', zb && zb.side === 0 && zb.data.zone === 'rim' && zb.data.mine.o === 6 && zb.data.mine.miss === 10, zb && zb.data);
+  ok('a side that made one of nine from mid-range is cold there', f2.filter(f => f.kind === 'midCold').length === 1 && f2.find(f => f.kind === 'midCold').side === 0);
+
+  const g3 = base();
+  const ch = (team, dur, pts, second) => ({ team, second: !!second, dur, pts, fga: 1, fgm: pts ? 1 : 0, tov: 0 });
+  g3.clock = { chances: [].concat(
+    Array.from({ length: 10 }, (_, i) => ch(0, 5, i < 7 ? 2 : 0)), Array.from({ length: 10 }, (_, i) => ch(1, 5, i < 3 ? 2 : 0)),
+    Array.from({ length: 10 }, (_, i) => ch(0, 12, i < 5 ? 2 : 0)), Array.from({ length: 10 }, (_, i) => ch(1, 12, i < 8 ? 2 : 0)),
+    Array.from({ length: 7 }, () => ch(1, 20, 0)), Array.from({ length: 3 }, () => ch(1, 20, 2)), Array.from({ length: 2 }, () => ch(0, 20, 2))) };
+  const f3 = Story.facts(g3);
+  const early = f3.find(f => f.kind === 'clockEarly');
+  ok('the side that scored more early in the clock is a fact', early && early.side === 0 && Math.abs(early.data.mine.ppp - 1.4) < 1e-9 && Math.abs(early.data.theirs.ppp - 0.6) < 1e-9, early && early.data);
+  const late = f3.find(f => f.kind === 'clockLate');
+  ok('a side that ran the clock down and scored less for it is a fact', late && late.side === 1 && late.data.late.n === 10 && late.data.share > 30, late && late.data);
+  ok('second chances are never counted in a clock window', !Story.facts(Object.assign(base(), { clock: { chances: Array.from({ length: 30 }, () => ch(0, 5, 2, true)) } })).some(f => f.kind === 'clockEarly'));
+
+  const g4 = base();
+  const pa = Story.facts(g4).find(f => f.kind === 'pointsAdded');
+  ok('every factor is worked for both sides, with what it was worth', pa && pa.data.rows.length === 4 && pa.data.rows.every(r => r.pts.length === 2 && isFinite(r.net)), pa && pa.data);
+  const efg = pa.data.rows.find(r => r.key === 'efg');
+  ok('the efg row is (efg - the average) x 2.0 x possessions / 100 for each side', efg && Math.abs(efg.pts[0] - (55 - 51.5) * 2 * 0.8) < 1e-9, efg && efg.pts);
+  const rep4 = Report.report(g4);
+  ok('the report has a section for the four factors, with its card', rep4.sections.some(s => /four factors were worth/i.test(s.heading) && s.card === 'pointsAdded'), rep4.sections.map(s => s.heading));
+  const rep1 = Report.report(Object.assign(base(), { connections: g.connections }));
+  const moved = rep1.sections.filter(s => /ball moved/i.test(s.heading))[0];
+  ok('and one for how the ball moved, naming a club with every player', moved && moved.paras.every(p => /Neon City|Harbour Bay/.test(p)), moved && moved.paras);
+  const rep3 = Report.report(Object.assign(base(), { clock: g3.clock }));
+  ok('and one for the shot clock', rep3.sections.some(s => /shot clock/i.test(s.heading)));
 }
 
 console.log('-- the report, end to end');

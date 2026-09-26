@@ -47,6 +47,7 @@ globalThis.EpinoiaGamePct = require(path.join(ROOT, 'epinoia', 'gamepct.js'));
 globalThis.EpinoiaPossessions = require(path.join(ROOT, 'epinoia', 'possessions.js'));
 globalThis.EpinoiaSituations = require(path.join(ROOT, 'epinoia', 'situations.js'));
 try { globalThis.EpinoiaShotClock = require(path.join(ROOT, 'epinoia', 'shotclock.js')); } catch (_) { /* no shot clock in this runtime */ }
+try { globalThis.EpinoiaConnections = require(path.join(ROOT, 'epinoia', 'game', 'connections.js')); } catch (_) { /* no connections in this runtime */ }
 
 const CFG = { url: 'https://hhvofgqqadtyvcjudhjx.supabase.co',
               key: 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO' };
@@ -89,12 +90,15 @@ function brief(S, d) {
   let periods = 1;
   (S.events || []).forEach(e => { if (e.period > periods) periods = e.period; });
   /* the same three inputs gamefacts.js gives the page: what each kind of play turned into, the assisted baskets, the time of possession */
-  let sits = null, assists = null, atop = null;
+  let sits = null, assists = null, atop = null, connections = null, sitPlayers = null, clock = null;
   try {
     const C = globalThis.EpinoiaSituations.compute(S);
     if (C && C.side) { sits = [C.side[0].sits, C.side[1].sits]; if (C.side[0].assists && C.side[1].assists) assists = [C.side[0].assists, C.side[1].assists]; }
   } catch (_) { /* no situations */ }
   try { const A = globalThis.EpinoiaShotClock && globalThis.EpinoiaShotClock.averages(S); if (A && A[0] != null && A[1] != null) atop = [A[0], A[1]]; } catch (_) { /* no shot clock */ }
+  try { const C = globalThis.EpinoiaConnections.compute(S); connections = [C.byTeam[0] || [], C.byTeam[1] || []]; } catch (_) { /* no connections */ }
+  try { const C = globalThis.EpinoiaSituations.compute(S); sitPlayers = [C.side[0].players || {}, C.side[1].players || {}]; } catch (_) { /* no situations */ }
+  try { const R2 = globalThis.EpinoiaShotClock.forGame(S); if (R2 && R2.ok) clock = { chances: R2.chances.map(r => ({ team: r.team, second: !!r.second, dur: r.dur, pts: r.pts, fga: r.fga, fgm: r.fgm, tov: r.tov })) }; } catch (_) { /* no clock */ }
   return {
     names: [S.teams[0].name, S.teams[1].name], score: d.score.slice(),
     players, byId, team: [d.team[0], d.team[1]],
@@ -107,7 +111,7 @@ function brief(S, d) {
     starters: S.starters || [[], []],
     meta: S.meta || null,
     season: S.season || null,
-    sits, assists, atop
+    sits, assists, atop, connections, sitPlayers, clock
   };
 }
 

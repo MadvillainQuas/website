@@ -270,3 +270,18 @@
   color:var(--ink-3) }
 .sn-hrow .sn-h:first-child{ text-align:right }
 .sn-h.win{ color:var(--ink) }
+
+/* ---- the four factors, in points ---- */
+.pa{ display:flex; flex-direction:column; gap:2px; margin-top:6px }
+.pa-row{ display:grid; grid-template-columns:minmax(96px,1.1fr) minmax(0,1.4fr) minmax(0,1.4fr) 56px; gap:10px; align-items:center; padding:5px 0; border-top:1px solid color-mix(in srgb,var(--text-primary,#fff) 8%,transparent) }
+.pa-head{ border-top:0; font-family:var(--f-micro,var(--f-mono)); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted,#889) }
+.pa-head .pa-side, .pa-head .pa-net{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.pa-l{ font-family:var(--f-ui,var(--f-head)); font-size:12px }
+.pa-side{ display:flex; align-items:center; gap:8px; min-width:0 }
+.pa-v{ flex:none; min-width:44px; font-family:var(--f-data,var(--f-mono)); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-secondary,#aab) }
+.pa-v.pos{ color:var(--good,#34d399) } .pa-v.neg{ color:var(--bad,#f87171) }
+.pa-bar{ flex:1; height:5px; border-radius:3px; background:color-mix(in srgb,var(--text-primary,#fff) 10%,transparent); overflow:hidden; min-width:24px }
+.pa-bar i{ display:block; height:100%; border-radius:3px; background:var(--team0,#93f2bf) } .pa-bar i.t1{ background:var(--team1,#8ff5ff) } .pa-bar i.neg{ opacity:.45 }
+.pa-net{ text-align:right; font-family:var(--f-data,var(--f-mono)); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums }
+.pa-total .pa-l{ font-weight:700 } .pa-total .pa-net{ font-size:14px }
+@media (max-width:640px){ .pa-row{ grid-template-columns:minmax(70px,1fr) minmax(0,1.2fr) minmax(0,1.2fr) 46px; gap:6px } .pa-v{ min-width:36px; font-size:11px } }

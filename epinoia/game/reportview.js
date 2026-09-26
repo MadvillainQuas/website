@@ -212,7 +212,31 @@ function cardScout(g, fs, rep) {
     'this competition · grey rows are a style, not a score</div></div>';
 }
 
+/* ---- the four factors, in points: each side's gain or loss in each factor, and what it was worth to the margin ---------------------- */
+function cardPointsAdded(g, facts) {
+  const f = facts.find(x => x.kind === 'pointsAdded');
+  if (!f) return '';
+  const d = f.data;
+  const max = Math.max(1, ...d.rows.map(r => Math.max(Math.abs(r.pts[0] || 0), Math.abs(r.pts[1] || 0))));
+  const sg = v => (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(1);
+  const cell = (v, t) => '<span class="pa-v ' + (v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : '') + '">' + sg(v || 0) + '</span>';
+  const rows = d.rows.map(r => {
+    const w = t => Math.max(0, Math.min(100, Math.abs(r.pts[t] || 0) / max * 100));
+    return '<div class="pa-row"><div class="pa-l">' + esc(r.label.charAt(0).toUpperCase() + r.label.slice(1)) + '</div>' +
+      '<div class="pa-side">' + cell(r.pts[0], 0) + '<span class="pa-bar"><i class="t0 ' + ((r.pts[0] || 0) < 0 ? 'neg' : '') + '" style="width:' + w(0).toFixed(0) + '%"></i></span></div>' +
+      '<div class="pa-side">' + cell(r.pts[1], 1) + '<span class="pa-bar"><i class="t1 ' + ((r.pts[1] || 0) < 0 ? 'neg' : '') + '" style="width:' + w(1).toFixed(0) + '%"></i></span></div>' +
+      '<div class="pa-net">' + sg(r.net) + '</div></div>';
+  }).join('');
+  const est = d.estimated;
+  return '<div class="rcard"><div class="rcard-h">The four factors, in points</div>' +
+    '<div class="pa"><div class="pa-row pa-head"><div class="pa-l"></div><div class="pa-side">' + esc(g.names[0]) + '</div><div class="pa-side">' + esc(g.names[1]) + '</div><div class="pa-net">margin</div></div>' + rows +
+    '<div class="pa-row pa-total"><div class="pa-l">Estimated margin</div><div class="pa-side"></div><div class="pa-side"></div><div class="pa-net">' + sg(est) + '</div></div>' +
+    '<div class="pa-row pa-total"><div class="pa-l">Scoreboard margin</div><div class="pa-side"></div><div class="pa-side"></div><div class="pa-net">' + sg(d.actual) + '</div></div></div>' +
+    '<div class="sn-key">points added by each factor against ' + (d.baseline === 'league' ? 'the league average' : 'the average of the two sides') + ', worked as on the full stats tab \u00b7 margin is the home side\u2019s minus the away side\u2019s</div></div>';
+}
+
 const CARDS = {
+  pointsAdded: cardPointsAdded,
   quarters: cardQuarters,
   factors:  cardFactors,
   lineups:  cardLineups,
