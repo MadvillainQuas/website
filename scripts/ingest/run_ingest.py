@@ -1904,6 +1904,28 @@ def version_in_db(sb: "Supabase", src: dict, xid: str, b: GameBundle) -> bool:
         and rows[0].get("external_status") == b.status
 
 
+def unsettled_finals(sb: "Supabase", src: dict, now: datetime | None = None) -> set:
+    """external_ids of this source's games the FEED calls final but the platform never closed.
+
+    A FINAL THAT DID NOT LAND IS NOT DONE. write_supabase_feed stores the feed's version (payload hash and
+    'final') before write_platform and finalise-game have done their part, and every later pass reads that hash
+    as "already have it": the batch pass skips a final game with a hash, the live lane only looks at games
+    whose external status is not final, and version_in_db calls it another lane's work. So one statement
+    timeout - finalise-game 'could not be locked' on 26 Sep, or the platform write dying after the feed row was
+    saved - left two 1 Liga games showing LIVE (Q4, OT2) for good, though the feed had said final for hours.
+    The games are found by what the platform says (games.status), not by an error flag, because the platform
+    write's failure is only ever printed. Bounded to the outstanding window so a season-old game that can
+    never finalise is not chased for ever; a read that fails says none, as version_in_db does."""
+    now = now or datetime.now(timezone.utc)
+    try:
+        rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=eq.final"
+                                           f"&tipoff_at=gt.{_zulu(now - timedelta(seconds=OUTSTANDING_MAX_AGE))}"
+                                           f"&games.status=neq.final&select=external_id,games!inner(status)")
+    except Exception:
+        return set()
+    return {str(r["external_id"]) for r in rows}
+
+
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
     """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
     if not claim_live_lane():
@@ -2505,6 +2527,10 @@ def main() -> int:
                 except Exception as exc:
                     print(f"   (external_games unavailable: {exc})")
             known = known_db if sb else known_repo
+            # games the feed has finished that the platform has not: fetched again and written through, not skipped
+            stuck = unsettled_finals(sb, src) if sb and not args.dry_run else set()
+            if stuck:
+                print(f"   {len(stuck)} game(s) final on the feed but not closed here - writing them again: {', '.join(sorted(stuck))}")
             # A GAME THAT HAS NOT TIPPED OFF HAS NOTHING TO FETCH. The feed answers
             # 403/404 until the scoresheet is opened, so asking about a fixture three
             # weeks away buys a refusal and costs a request plus its politeness gap.
@@ -2512,7 +2538,7 @@ def main() -> int:
             # the game feed is left alone. See fetchwindow.py.
             def done(g):
                 k = known.get(g.external_id, {})
-                return k.get("status") == "final" and k.get("hash")
+                return k.get("status") == "final" and k.get("hash") and str(g.external_id) not in stuck
 
             now_utc = datetime.now(timezone.utc)
             if args.refresh:
@@ -2569,7 +2595,8 @@ def main() -> int:
                 run["games_fetched"] += 1
                 beat()                      # a backfill's lease, kept alive through a long season
                 prev = known.get(g.external_id)
-                if prev and prev.get("hash") == b.payload_hash and b.status != "live" and not args.refresh:
+                if prev and prev.get("hash") == b.payload_hash and b.status != "live" and not args.refresh \
+                        and str(g.external_id) not in stuck:
                     continue
                 if args.dry_run:
                     print(f"    [dry] {b.home_name} vs {b.away_name} ({b.status}) stints={len(b.stints)} box={len(b.box.get('home', []))}+{len(b.box.get('away', []))}"

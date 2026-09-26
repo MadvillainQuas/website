@@ -297,6 +297,31 @@ ok("same payload but now final (the stale-final rule): write", not RI.version_in
 b.status, b.payload_hash = "live", "new"
 ok("a new payload: write", not RI.version_in_db(db, {"adapter": "fiba_livestats"}, "99", b))
 
+print("-- a game the feed calls final that the platform never closed is found, and written again")
+
+
+class _StuckSB:
+    def __init__(self, rows=None, boom=False):
+        self.rows, self.boom, self.q = rows or [], boom, None
+
+    def select(self, table, query):
+        if self.boom:
+            raise RuntimeError("statement timeout")
+        self.q = (table, query)
+        return self.rows
+
+
+sb_ = _StuckSB([{"external_id": 37600, "games": {"status": "live"}}, {"external_id": "37601", "games": {"status": "live"}}])
+got = RI.unsettled_finals(sb_, {"adapter": "fiba_site_schedule", "code": "PL1LM"})
+ok("the ids the platform still has live, as strings", got == {"37600", "37601"}, got)
+ok("...asked of external_games by what games.status says, inside the outstanding window only",
+   sb_.q[0] == "external_games" and "external_status=eq.final" in sb_.q[1] and "games.status=neq.final" in sb_.q[1]
+   and "adapter=eq.fiba_site_schedule" in sb_.q[1] and "competition_code=eq.PL1LM" in sb_.q[1] and "tipoff_at=gt." in sb_.q[1], sb_.q)
+ok("a read that fails finds none (never blocks a pass)", RI.unsettled_finals(_StuckSB(boom=True), {"adapter": "x", "code": "Y"}) == set())
+src_ = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
+ok("the batch pass neither calls such a game done nor skips it as unchanged",
+   src_.count("str(g.external_id) not in stuck") == 2 and "unsettled_finals(sb, src)" in src_)
+
 print("-- the broadcast is looked for every five minutes of a live game, not every poll")
 RI._VIDEO_LOOKED.clear()
 seen = [RI.video_due("gA", "live") for _ in range(30)]
