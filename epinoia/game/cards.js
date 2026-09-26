@@ -285,9 +285,10 @@
        lines are made of), so a column reads as the players added up. What is only a player's (usage, a/u, pace±) is a dash;
        the on-court columns show the team's ortg / drtg / four factors, against the game average like every row above. Plain figures:
        no bars, and no percentile shading, which rates a player and not a side. */
-    const tmm = Math.floor(TT.minutes || 0), tss = Math.round(((TT.minutes || 0) - tmm) * 60);
-    const T2 = Object.assign({ minTxt: tmm + ':' + String(tss === 60 ? 59 : tss).padStart(2, '0') }, {
-      fgm: TT.fgm, ast: TT.ast, pts: TT.pts, ptsAst: TT.ptsAst, tpc: TT.pts + TT.ptsAst, ppp: TT.ppp, ts: TT.ts, min: TT.minutes,
+    /* THE PLAIN COUNTS ARE LEFT OUT (minutes, made, assists, points): the traditional box score already totals them, and a column
+       of five players' minutes says nothing. What is here is what the rows above cannot say for a whole side. */
+    const T2 = Object.assign({}, {
+      ptsAst: TT.ptsAst, tpc: TT.pts + TT.ptsAst, ppp: TT.ppp, ts: TT.ts,
       rimA: TT.rimA, rimP: TT.rimp, midA: TT.midA, midP: TT.midp, p3a: TT.fg3a, p3P: TT.p3p, efg: TT.efg,
       ocOrtg: TT.ortg, ocEfg: TT.efg, ocOreb: TT.orebp, ocTov: TT.tovp, ocFtr: TT.ftr,
       ocDrtg: TT.drtg, ocOppEfg: OT.efg, ocOppOreb: OT.orebp, ocTovF: OT.tovp, ocOppFtr: OT.ftr, net: TT.ortg - TT.drtg,
