@@ -3,7 +3,8 @@
    /epinoia/games/ — GLOBAL FIXTURES (roadmap Phase 2).
 
    The games NEAREST TO NOW first, 30 at a time, across every league that has a game in the next seven days,
-   grouped into one dropdown per league.
+   grouped into one dropdown per league, and the leagues into one dropdown per COUNTRY (a flag, the country's name, how
+   many leagues and games): country > league > games. Countries are ordered by their nearest league.
 
    WHICH LEAGUES. One light read (EpinoiaGlobalGames.weekLeagues: ids and tip-offs of the scheduled games from
    two hours ago to seven days ahead, counted per league) decides it: a league with nothing in the next week is not
@@ -88,8 +89,49 @@
       ((a.status === 'live') !== (b.status === 'live') ? (a.status === 'live' ? -1 : 1)
         : Date.parse(a.tipoff_at) - Date.parse(b.tipoff_at)));
     box.hidden = !list.length;
+    /* MORE LIVE GAMES THAN A GRID HOLDS (eight, as on HOME): split by league into dropdown rows, the same shape as HOME's Daily
+       fixtures, each open on that league's cards, which then need no badge of their own; what a reader shuts stays shut */
+    if (list.length > LIVE_SPLIT) { drawLiveSplit(grid, list); return; }
+    grid.className = 'fxc-grid';
     grid.textContent = '';
     list.forEach(g => grid.appendChild(G().card(g, { base: '../', now: Date.now(), state: liveState[g.id] })));
+  }
+
+  const LIVE_SPLIT = 8;
+  const shutLive = new Set();
+  function drawLiveSplit(grid, list) {
+    const groups = new Map();
+    list.forEach(g => {
+      const l = G().leagueOf(g);
+      const k = l && l.id != null ? String(l.id) : '';
+      if (!groups.has(k)) groups.set(k, { key: k, league: l, games: [] });
+      groups.get(k).games.push(g);
+    });
+    grid.className = 'gm-lgroups';
+    grid.textContent = '';
+    groups.forEach(gr => {
+      const det = el('details', 'ep-acc gm-acc gm-lv');
+      det.setAttribute('data-lg', gr.key);
+      if (!shutLive.has(gr.key)) det.open = true;
+      det.addEventListener('toggle', () => { if (det.open) shutLive.delete(gr.key); else shutLive.add(gr.key); });
+      const sum = el('summary');
+      const t = el('span', 't');
+      if (gr.league && typeof window.epinoiaLeagueBadge === 'function') { t.innerHTML = window.epinoiaLeagueBadge(gr.league, { cls: 'lg' }); G().wireBadges(t); }
+      else t.textContent = (gr.league && gr.league.name) || 'League';
+      sum.appendChild(t);
+      sum.appendChild(el('span', 'n', gr.games.length + ' live'));
+      if (gr.league && gr.league.slug) {
+        const go = el('a', 'gm-go', 'league →');
+        go.href = '../?l=' + encodeURIComponent(gr.league.slug);
+        go.addEventListener('click', e => e.stopPropagation());        // inside a summary a click would toggle the row
+        sum.appendChild(go);
+      }
+      det.appendChild(sum);
+      const body = el('div', 'fxc-grid');
+      gr.games.forEach(g => body.appendChild(G().card(g, { base: '../', now: Date.now(), state: liveState[g.id], badge: false })));
+      det.appendChild(body);
+      grid.appendChild(det);
+    });
   }
 
   /* A game that is now live is pinned, and comes out of its group if a page had listed it. */
@@ -212,6 +254,31 @@
 
   const leagueRows = id => Array.from(rows.values()).filter(g => leagueKey(g) === id);
 
+  /* ---------------------------------------------------- the country layer --- */
+  /* a league's country code, upper case ('' for a league with none, which goes under "Other leagues"); a region such as the Balkans
+     ('XB', country.js) is its own country here, as everywhere else on the site */
+  const countryKey = rec => String((rec.league && rec.league.country) || '').toUpperCase();
+  const ctyEls = new Map();
+  function countryEl(code) {
+    if (ctyEls.has(code)) return ctyEls.get(code);
+    const det = el('details', 'ep-acc gm-cty');
+    det.setAttribute('data-country', code);
+    const sum = el('summary');
+    const t = el('span', 't');
+    const name = code ? countryName(code) : 'Other leagues';
+    if (code) { const f = el('span', 'flag', flagOf(code)); f.setAttribute('aria-hidden', 'true'); t.appendChild(f); }
+    t.appendChild(el('span', 'gm-cname', name));
+    sum.appendChild(t);
+    const n = el('span', 'n');
+    sum.appendChild(n);
+    det.appendChild(sum);
+    const body = el('div', 'gm-cbody');
+    det.appendChild(body);
+    const rec = { code, det, body, n };
+    ctyEls.set(code, rec);
+    return rec;
+  }
+
   function section(title, list, now) {
     const frag = document.createDocumentFragment();
     if (!list.length) return frag;
@@ -263,13 +330,26 @@
       else rec.n.textContent = grp.count + (grp.count === 1 ? ' game' : ' games');
       paintLeagueCount(rec, grp.count);
       rec.body.appendChild(rec.foot);
-      host.appendChild(rec.det);        // appending moves it into order; open state is the element's own
     });
-    /* the league at the top is open (and read, if the page has nothing of it yet) */
+    /* THE COUNTRY LAYER: each league sits in its country's dropdown. Countries come in the order of their nearest league, and the
+       leagues inside a country keep that order; appending an element that is already on the page moves it, so every open state
+       (a country's, a league's) is the element's own and survives a redraw. */
+    const byCountry = new Map();
+    order.forEach(rec => { const k = countryKey(rec); if (!byCountry.has(k)) byCountry.set(k, []); byCountry.get(k).push(rec); });
+    byCountry.forEach((recs, k) => {
+      const c = countryEl(k);
+      recs.forEach(r => { c.body.appendChild(r.det); r.cty = c; });
+      const games = recs.reduce((s, r) => s + (r.weekN || r.shown || 0), 0);
+      c.n.textContent = recs.length + (recs.length === 1 ? ' league' : ' leagues') + (games ? ' · ' + games + (games === 1 ? ' game' : ' games') : '');
+      host.appendChild(c.det);
+    });
+    /* the league at the top is open (and read, if the page has nothing of it yet), inside its country, which is open too */
     const first = host.querySelector('details.gm-acc');
     if (first && !host.dataset.opened) {
       host.dataset.opened = '1';
       first.open = true;
+      const parent = first.closest && first.closest('details.gm-cty');
+      if (parent) parent.open = true;
       const rec = groupEls.get(first.getAttribute('data-league'));
       if (rec) { rec.opened = true; if (!leagueRows(rec.id).length && !pageDone) readBoth(rec); }
     }
@@ -413,7 +493,7 @@
       paintCount(res);
       const grew = grown(before);
       if (pages++ > 0 && grew.length) {
-        grew.forEach(({ rec, fresh }) => { if (fresh) { rec.det.open = true; rec.opened = true; } lit(rec); });
+        grew.forEach(({ rec, fresh }) => { if (fresh) { rec.det.open = true; rec.opened = true; if (rec.cty) rec.cty.det.open = true; } lit(rec); });
         const added = grew.reduce((s, x) => s + x.added, 0);
         label = 'Show more · ' + added + ' added to ' + grew.map(x => x.rec.name).join(', ');
       }

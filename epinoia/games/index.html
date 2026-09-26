@@ -30,7 +30,7 @@
   .gm-top .wm{background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding-top:3px;padding-bottom:1px;
     view-transition-name:ep-mark}
   .gm .ep-hdr{flex-wrap:wrap;row-gap:4px}
-  .gm-count{margin-left:auto;font-family:var(--f-micro);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;
+  .gm-count{font-family:var(--f-micro);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;
     color:var(--ink-3);white-space:nowrap}
   /* the one-line answer to "what am I looking at" */
   .gm-lede{margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3);border-bottom:1px solid var(--rule);
@@ -45,6 +45,21 @@
   .gm-live .gm-sub{color:var(--flare)}
   .gm-live .gm-sub .dot{width:7px;height:7px;border-radius:50%;background:var(--flare);animation:fxc-pulse 1.6s ease-in-out infinite}
   @media (prefers-reduced-motion:reduce){ .gm-live .gm-sub .dot{animation:none} }
+
+  /* LIVE NOW, above eight games: a dropdown row per league (games.js drawLiveSplit), as on HOME */
+  .gm-lv>summary .n{color:var(--lume);margin-left:8px}
+  .gm-go{flex:none;margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--lume);
+    text-decoration:none;border:1px solid var(--rule-2,var(--rule));padding:4px 8px}
+  .gm-go:hover{background:var(--lume);color:var(--on-accent,#04100b);border-color:var(--lume)}
+
+  /* THE COUNTRY LAYER: a dropdown per country (games.js countryEl) around the league dropdowns, the leagues inset under a rule */
+  .gm-cty>summary .t{display:flex;align-items:center;gap:10px;min-width:0}
+  .gm-cty>summary .flag{flex:none;font-size:22px;line-height:1}
+  .gm-cname{font-family:var(--f-score);font-size:20px;letter-spacing:.03em;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gm-cty>summary .n{flex:none;white-space:nowrap;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .gm-cbody{margin-left:calc(var(--u)*3);border-left:2px solid var(--rule-2,var(--rule))}
+  .gm-cbody .gm-acc>summary .flag{display:none}          /* the country is the dropdown around it: its flag is not said again on every league */
+  @media (max-width:820px){ .gm-cbody{margin-left:calc(var(--u)*1.5)} .gm-cname{font-size:17px} }
 
   /* one league per group */
   .gm-groups[aria-busy="true"]{min-height:320px}
