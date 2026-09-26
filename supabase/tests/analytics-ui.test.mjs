@@ -57,8 +57,16 @@ const LIVE = { window_s: 300, sessions: 3, signed_in: 1, last_30m: 5, devices: [
   visitors: [{ page: 'game', tab: 'shotclock', home: 'Home Club', away: 'Away Club', device: 'desktop', lang: 'en', app: 'web', signed_in: false, idle_s: 12, on_page_s: 95 }],
   feed: [{ ago_s: 5, kind: 'tab', page: 'game', tab: 'shotclock', home: 'Home Club', away: 'Away Club' }],
   per_minute: Array.from({ length: 30 }, (_, i) => ({ ago_min: 29 - i, views: i % 3, sessions: 1 })) };
-let liveFails = null;
-const sb = { rpc: async (fn, args) => { calls.push(fn); if (fn === 'analytics_report') return { data: REPORT }; if (liveFails) return { error: { message: liveFails } }; return { data: LIVE }; } };
+let liveFails = null, searchFails = null;
+const SEARCH = { range: { days: 30 }, totals: { searches: 40, queries: 25, picked: 30, no_results: 6 },
+  daily: [{ day: '2026-09-24', searches: 15, picked: 11, no_results: 2 }, { day: '2026-09-25', searches: 25, picked: 19, no_results: 4 }],
+  top: [{ q: 'diggins', searches: 9, results: 1, picked: 7, no_results: 0 }, { q: 'newcastle', searches: 6, results: 2, picked: 5, no_results: 0 }],
+  nothing: [{ q: 'apu udine', searches: 3 }, { q: 'zzz', searches: 1 }],
+  picked_kinds: [{ kind: 'player', n: 18 }, { kind: 'team', n: 10 }, { kind: 'league', n: 2 }],
+  picked: [{ kind: 'player', ref: 'michael-diggins', n: 7, name: 'Michael Diggins' }, { kind: 'team', ref: 'newcastle-eagles', n: 5, name: 'Newcastle Eagles' }],
+  devices: [{ k: 'desktop', n: 30 }, { k: 'phone', n: 10 }], langs: [{ k: 'en', n: 38 }, { k: 'ja', n: 2 }], apps: [{ k: 'web', n: 40 }] };
+const sb = { rpc: async (fn, args) => { calls.push(fn); if (fn === 'analytics_report') return { data: REPORT };
+  if (fn === 'analytics_search_report') return searchFails ? { error: { message: searchFails } } : { data: SEARCH }; if (liveFails) return { error: { message: liveFails } }; return { data: LIVE }; } };
 
 const UI = createRequire(import.meta.url)(path.join(here, '..', '..', 'epinoia', 'admin', 'platform', 'analytics-ui.js'));
 const T = UI._test;
@@ -140,6 +148,26 @@ ok('a game and its tab', T.doing({ page: 'game', home: 'A', away: 'B', tab: 'sho
 ok('who: device, app, language, signed in - and nothing else', T.doing({ page: 'l', league: 'X', device: 'phone', app: 'android', lang: 'ja', signed_in: true }).who === 'Phone · Android app · Japanese · signed in');
 ok('a club page', T.doing({ page: 't', club: 'Home Club' }).what === 'Club profile: Home Club');
 ok('seconds, then minutes', T.ago(5) === '5 s' && T.ago(89) === '89 s' && T.ago(120) === '2 min');
+
+console.log('-- what people search for (migration 0180)');
+{
+  HOST.textContent = ''; ROOT.children = [HOST];
+  UI.mount({ host: HOST, sb }); await tick(); await tick(); await tick();
+  const text = HOST.textContent;
+  ok('the tab asks for it with the same range as the visits', calls.filter(c => c === 'analytics_search_report').length >= 1);
+  ok('it draws under the visits: a heading, and the three figures - searches, picked, found nothing',
+     /What people search for/.test(text) && /searches/.test(text) && /picked a result/.test(text) && /found nothing/.test(text) && /75%/.test(text) && /15%/.test(text), text.slice(-700));
+  const card = title => HOST.find(n => n.tag === 'section' && new RegExp(title).test(n.children[0] && n.children[0].textContent))[0];
+  ok('the most common searches, with how many results and how often one was picked', /diggins/.test(card('Most common searches').textContent) && /78%/.test(card('Most common searches').textContent), card('Most common searches') && card('Most common searches').textContent);
+  ok('the ones that found nothing, to read down', /apu udine/.test(card('Searches that found nothing').textContent));
+  ok('what gets picked, by kind and by name', /Player/.test(card('What gets picked').textContent) && /Michael Diggins/.test(card('Most picked results').textContent));
+  ok('it says what is kept and what is not (no account, no visit token; no address, phone number or web address)', /no visit token/.test(text) && /never kept/.test(text));
+  searchFails = 'Could not find the function public.analytics_search_report(p_days) in the schema cache';
+  HOST.textContent = ''; ROOT.children = [HOST];
+  UI.mount({ host: HOST, sb }); await tick(); await tick(); await tick();
+  ok('a database without 0180 says so in a line, and the visits still draw', /migration 0180 has not been applied/.test(HOST.textContent) && /Most read leagues/.test(HOST.textContent));
+  searchFails = null;
+}
 
 Date.now = realNow;
 console.log(`\n${pass} passed, ${fail} failed`);

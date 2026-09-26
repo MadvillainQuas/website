@@ -15,6 +15,12 @@
    deletes when the tab is closed, so tomorrow's visit is a stranger to today's and no row
    can ever be tied back to a person.
 
+   THE SEARCH BOX (migration 0180, epinoia/search.js) reports each search once it is done - a result picked or the box closed
+   - to its own function, analytics_search: the words typed (the server folds them again), how many results were shown, the
+   kind of thing picked and its page name, and the same three facts as a visit (device, language, app). No session token, not
+   even the per-tab one: a search cannot be joined to a visit or to another search. A query that looks like an address, a phone
+   number or a web address is never sent (and never stored: the server refuses it too).
+
    Nothing is sent at all when the browser asks not to be tracked (Global Privacy Control or
    Do Not Track), when the privacy page's "don't count my visits" is on, or until config.js
    says analytics: true (the table exists only once 0173 is applied).
@@ -172,6 +178,28 @@ function flush(leaving) {
   }, () => 0);
 }
 
+/* One finished search (search.js): { q, n, kind, ref }. Its own switch (a failure of this call, before 0180 is applied, does not
+   stop the page views) and its own function; the same opt-outs as everything else here. */
+let searchStopped = false;
+const NOT_A_QUERY = /@|https?:|www\.|\.(com|net|org|edu|gov|io)(\b|\/)/i;
+function search(o) {
+  if (searchStopped || stopped || !enabled()) return Promise.resolve(0);
+  const q = String((o && o.q) || '').trim().slice(0, 100);
+  if (q.length < 2 || NOT_A_QUERY.test(q) || q.replace(/\D/g, '').length >= 6) return Promise.resolve(0);
+  const kind = o && ['league', 'team', 'player'].indexOf(o.kind) >= 0 ? o.kind : null;
+  const refv = kind ? String((o && o.ref) || '').toLowerCase() : '';
+  const cfg = g('EPINOIA_CONFIG') || {};
+  const f = g('fetch');
+  if (typeof f !== 'function') return Promise.resolve(0);
+  const body = { p_q: q, p_results: Math.max(0, Math.min(30, (o && o.n) | 0)), p_picked: kind, p_ref: kind && SLUG.test(refv) ? refv : null,
+                 p_device: device(), p_lang: lang(), p_app: app() };
+  return Promise.resolve(f.call(root, cfg.supabaseUrl + '/rest/v1/rpc/analytics_search', {
+    method: 'POST', keepalive: true,
+    headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })).then(r => { if (!r || !r.ok) searchStopped = true; return r && r.ok ? 1 : 0; }, () => 0);
+}
+
 /* A tab is recorded by its KEY, which is the same in every language: data-tab (the box
    score, the league page), data-p, data-key. A tab that has no key is not recorded. */
 function onClick(e) {
@@ -211,9 +239,9 @@ function setCounting(on) {
 function counting() { return !optedOut(); }
 
 return {
-  boot, flush, setCounting, counting,
+  boot, flush, setCounting, counting, search,
   _test: {
-    env(e) { ENV = e || null; queue.length = 0; stopped = false; session = null; ref = undefined; timer = null; },
+    env(e) { ENV = e || null; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null; },
     pageKey, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, onClick, queue
   }
 };

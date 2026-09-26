@@ -1444,7 +1444,16 @@
       'neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log': 'どちらでもない: ファウルとフリースロー、ターンオーバー、ピリオド終了、またはフィードに記録されなかったリバウンド',
       'team rebounds count': 'チームリバウンドも含む',
       'on-court columns: the difference from the game average': 'オンコート列: 試合平均との差',
-      'assists on passes that drew free throws (in the box score’s assists, not above)': 'フリースローを誘ったパスのアシスト（ボックススコアのアシストに含む、上記には含まない）'
+      'assists on passes that drew free throws (in the box score’s assists, not above)': 'フリースローを誘ったパスのアシスト（ボックススコアのアシストに含む、上記には含まない）',
+      'Search teams, players and leagues': 'チーム・選手・リーグを検索',
+      'teams, players, leagues': 'チーム・選手・リーグ',
+      'Close search': '検索を閉じる',
+      'Search results': '検索結果',
+      'Type a team, a player or a league.': 'チーム、選手、リーグの名前を入力してください。',
+      'Close matches are shown too.': '近い候補も表示しています。',
+      'searching…': '検索中…',
+      'Search is not available just now.': '現在、検索を利用できません。',
+      'Nothing matches': '一致するものはありません'
     },
 
     ctx: {
@@ -1453,7 +1462,8 @@
         'home': 'トップ',
         'feed': 'フィード',
         'your stamps': 'あなたのスタンプ',
-        'find a game': '試合を探す'
+        'find a game': '試合を探す',
+        'search': '検索'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {

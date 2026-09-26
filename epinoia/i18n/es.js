@@ -1446,7 +1446,16 @@
       'neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log': 'Ninguno: falta y tiros libres, pérdida, final del periodo o un rebote que el feed no registró',
       'team rebounds count': 'Los rebotes de equipo cuentan',
       'on-court columns: the difference from the game average': 'Columnas en pista: diferencia con la media del partido',
-      'assists on passes that drew free throws (in the box score’s assists, not above)': 'Asistencias en pases que provocaron tiros libres (en las asistencias del box score, no arriba)'
+      'assists on passes that drew free throws (in the box score’s assists, not above)': 'Asistencias en pases que provocaron tiros libres (en las asistencias del box score, no arriba)',
+      'Search teams, players and leagues': 'Buscar equipos, jugadores y ligas',
+      'teams, players, leagues': 'equipos, jugadores, ligas',
+      'Close search': 'Cerrar la búsqueda',
+      'Search results': 'Resultados de la búsqueda',
+      'Type a team, a player or a league.': 'Escribe un equipo, un jugador o una liga.',
+      'Close matches are shown too.': 'También se muestran coincidencias cercanas.',
+      'searching…': 'buscando…',
+      'Search is not available just now.': 'La búsqueda no está disponible ahora mismo.',
+      'Nothing matches': 'Nada coincide con'
     },
 
     ctx: {
@@ -1455,7 +1464,8 @@
         'home': 'Inicio',
         'feed': 'muro',
         'your stamps': 'tus sellos',
-        'find a game': 'buscar partido'
+        'find a game': 'buscar partido',
+        'search': 'buscar'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {

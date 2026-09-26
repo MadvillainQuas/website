@@ -993,7 +993,59 @@
   home.setAttribute('aria-label', 'HOME');
   if (atHome) { home.classList.add('on'); home.setAttribute('aria-current', 'page'); }
   const footEnd = el('div', 'foot-end');
-  navFoot.append(adminRow, platRow);
+
+  /* THE SEARCH is the first row of the foot, where the HOME row was: a row that opens into a search box for teams,
+     players and leagues across the whole site (search.js, migration 0179). The script is fetched the first time
+     it is wanted - a hand over the row, a tap, or the slash key - not with every page; the box opens in the rail on a
+     desktop and as a sheet over the page on a phone (the keyboard would cover a list that opened upward). */
+  const searchRow = el('div', 'ep-search');
+  const searchBtn = el('button', 'item ep-sr-btn');
+  searchBtn.type = 'button';
+  searchBtn.setAttribute('aria-label', 'Search teams, players and leagues');
+  searchBtn.setAttribute('aria-expanded', 'false');
+  searchBtn.append(el('span', 'ic', '⌕'), el('span', 'tx', 'search'), el('kbd', 'ep-sr-key', '/'));
+  searchRow.appendChild(searchBtn);
+  let searchApi = null, searchLoading = null;
+  function loadSearch() {
+    if (window.EpinoiaSearch) return Promise.resolve(window.EpinoiaSearch);
+    if (!searchLoading) {
+      searchLoading = new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = root + 'search.js' + stamp;
+        s.onload = () => resolve(window.EpinoiaSearch || null);
+        s.onerror = () => { searchLoading = null; resolve(null); };
+        (document.head || document.documentElement).appendChild(s);
+      });
+    }
+    return searchLoading;
+  }
+  async function openSearch() {
+    const S = await loadSearch();
+    if (!S) return;
+    if (!searchApi) {
+      searchApi = S.mount(searchRow, {
+        cfg: window.EPINOIA_CONFIG, root,
+        phone: () => !!(window.matchMedia && window.matchMedia('(max-width: 820px)').matches),
+        closeSheet: () => { if (nav.classList.contains('drawer-open')) navToggle.click(); },
+        focusRow: () => searchBtn.focus(),
+        closed: () => searchBtn.setAttribute('aria-expanded', 'false'),
+        /* recorded anonymously for the console's Analytics tab (track.js, 0180), and only where counting is on */
+        log: e => { if (window.EpinoiaTrack && typeof window.EpinoiaTrack.search === 'function') window.EpinoiaTrack.search(e); }
+      });
+    }
+    searchBtn.setAttribute('aria-expanded', 'true');
+    searchApi.open();
+  }
+  ['pointerenter', 'touchstart', 'focus'].forEach(t => searchBtn.addEventListener(t, loadSearch, { once: true, passive: true }));
+  searchBtn.addEventListener('click', openSearch);
+  document.addEventListener('keydown', e => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.key !== '/') return;
+    const t = e.target, tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+    e.preventDefault();
+    openSearch();
+  });
+  navFoot.append(searchRow, adminRow, platRow);
 
   const acct = el('div', 'acct');
   const acctLink = el('a', 'item');

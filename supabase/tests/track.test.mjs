@@ -151,5 +151,52 @@ console.log('\nwhen the database is not ready');
   ok('a refused call (0173 not applied) stops this page sending again', B.calls.length === 1, B.calls.length);
 }
 
+console.log('\nthe search box (0180)');
+{
+  const B = browser({ signedIn: true, lang: 'es', width: 1400 });
+  const r = await T.search({ q: 'Michael Diggins', n: 3, kind: 'player', ref: 'Bristol-Flyers-Michael-Diggins' });
+  const c = B.calls[0];
+  ok('a finished search goes to analytics_search, and to nothing else', r === 1 && B.calls.length === 1 && /\/rest\/v1\/rpc\/analytics_search$/.test(c.url), B.calls.map(x => x.url));
+  ok('it carries exactly the documented fields', JSON.stringify(Object.keys(c.body).sort()) === JSON.stringify(['p_app', 'p_device', 'p_lang', 'p_picked', 'p_q', 'p_ref', 'p_results']), Object.keys(c.body));
+  ok('NO SESSION TOKEN, no account, no email, no user agent: a search is tied to nothing', !('p_session' in c.body) && !/u-123|fan@example|secret-jwt|Secret Device/.test(JSON.stringify(c.body) + JSON.stringify(c.init.headers) ), c.body);
+  ok('...and no sign-in flag either (a search does not say whether you are signed in)', !('p_signed_in' in c.body));
+  ok('the page name of what was picked is a lower-case slug, the kind one of three', c.body.p_ref === 'bristol-flyers-michael-diggins' && c.body.p_picked === 'player' && c.body.p_results === 3);
+  ok('device, language and app are the coarse classes', c.body.p_device === 'desktop' && c.body.p_lang === 'es' && c.body.p_app === 'web');
+  ok('sent with the public key only', c.init.headers.apikey === 'sb_publishable_test' && !('Authorization' in c.init.headers));
+}
+{
+  for (const [what, o] of [['an email address', { q: 'me@example.com' }], ['a phone number', { q: '+44 7700 900123' }], ['a web address', { q: 'https://example.org/x' }],
+                          ['www', { q: 'www.site.io' }], ['a domain', { q: 'mysite.com' }], ['one letter', { q: 'a' }], ['nothing', { q: '   ' }], ['no object', null]]) {
+    const B = browser();
+    const r = await T.search(o);
+    ok('a query that is ' + what + ' is never sent', r === 0 && B.calls.length === 0, B.calls.length);
+  }
+  let B = browser();
+  await T.search({ q: 'cole 15', n: 1 });
+  ok('a short number is a search like any other ("cole 15")', B.calls.length === 1);
+  B = browser();
+  await T.search({ q: 'x'.repeat(300), n: 999, kind: 'admin', ref: 'x' });
+  ok('a long query is cut, the count capped, a kind that is not one dropped with its name', B.calls[0].body.p_q.length === 100 && B.calls[0].body.p_results === 30 && B.calls[0].body.p_picked === null && B.calls[0].body.p_ref === null, B.calls[0].body);
+  B = browser({ ref: undefined });
+  await T.search({ q: 'diggins', n: 1, kind: 'team', ref: 'Not A Slug!' });
+  ok('a page name that is not a slug is dropped, the kind stays', B.calls[0].body.p_picked === 'team' && B.calls[0].body.p_ref === null);
+}
+{
+  const off = [['config.js has analytics off', { analytics: false }], ['Global Privacy Control', { nav: { globalPrivacyControl: true } }], ['Do Not Track', { nav: { doNotTrack: '1' } }]];
+  for (const [what, o] of off) { const B = browser(o); await T.search({ q: 'diggins', n: 1 }); ok('nothing is sent when ' + what, B.calls.length === 0); }
+  const ls = mem(); ls.setItem('epinoia_no_count', '1');
+  const B = browser({ ls });
+  await T.search({ q: 'diggins', n: 1 });
+  ok('...or when the privacy page\'s switch is off', B.calls.length === 0);
+}
+{
+  const B = browser({ status: 404 });
+  await T.search({ q: 'diggins', n: 1 });
+  await T.search({ q: 'newcastle', n: 1 });
+  ok('a refused call (0180 not applied) stops the search reports, and only those (a page view still goes)', B.calls.length === 1);
+  T.boot(); await T.flush(false);
+  ok('...the page views are their own switch', B.calls.length === 2 && /analytics_track$/.test(B.calls[1].url), B.calls.map(x => x.url));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -501,6 +501,16 @@ jobs:
           node supabase/tests/entity-links.test.mjs
           node supabase/tests/links-ui.test.mjs
 
+      - name: The search box - smart matching, what may be found, and what is kept about searches (0179, 0180)
+        # the client: words in any order, a middle name or a sponsor's brand not needed, a fallback while 0179 is not yet
+        # applied, the rail's row and sheet, and the search tracker (no session token, nothing that looks like an address).
+        # And on a real Postgres (PGlite): the same rules in SQL, a hidden league / withheld player never found, and the
+        # search analytics holding folded words only
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/site-search.test.mjs
+          node supabase/tests/site-search-db.test.mjs
+
       - name: The play-by-play's cards - which plays are one card
         # a basket and its assist, a miss with its block and rebound, a turnover and its steal: paired
         # either side of each other by clock, never across a period or past another action, each event once

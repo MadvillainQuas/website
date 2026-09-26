@@ -9,7 +9,11 @@
    to recognise them.
 
    One call, analytics_report(p_days), returns every figure; it answers platform
-   administrators only. LIVE NOW (analytics_live, migration 0176) is a separate call that runs only
+   administrators only. WHAT PEOPLE SEARCH FOR (the rail's search box, migration 0180) is a second call,
+   analytics_search_report(p_days), drawn under the visits: the searches, the most common, the ones that found
+   nothing (what the site is missing, or how it is spelled), and what gets picked. It is as anonymous as the
+   rest - only the folded words, how many results there were and what was picked; no visit token, so a search is
+   tied to nothing - and a database that has not had 0180 says so in a line instead of failing the tab. LIVE NOW (analytics_live, migration 0176) is a separate call that runs only
    while somebody has switched it on: it is off when the tab opens, polls every ten seconds, pauses
    while the window is hidden, and stops by itself after ten minutes or when the tab is left. Charts are one accent hue on the kit's own tokens (light and dark),
    every bar list is also its own table, and every column carries its numbers on hover.
@@ -85,6 +89,7 @@ const CSS = `
 @keyframes an-pulse{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.an-live.running .an-dot{animation:none}}
 .an-live-off{font-family:var(--f-micro);font-size:9.5px;line-height:1.8;color:var(--ink-3);margin:6px 0 0;max-width:70ch}
+.an-h2{font-family:var(--f-ui);font-weight:800;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin:calc(var(--u)*4) 0 calc(var(--u)*2)}
 `;
 
 function el(t, c, x) { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
@@ -142,6 +147,81 @@ async function draw() {
   }
   note.textContent = 'updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   render(host, r || {});
+  const sBox = el('div', 'an-search');
+  host.appendChild(sBox);
+  drawSearch(sBox);
+}
+
+/* ------------------------------------------------------- what is searched --- */
+async function drawSearch(box) {
+  let s = null;
+  try {
+    const res = await st.sb.rpc('analytics_search_report', { p_days: st.days });
+    if (res.error) throw res.error;
+    s = res.data;
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    box.appendChild(el('div', 'an-off', /analytics_search_report|schema cache|does not exist/i.test(msg)
+      ? 'Search analytics are not in the database yet: migration 0180 has not been applied.'
+      : 'The search report could not be read: ' + msg));
+    return;
+  }
+  renderSearch(box, s || {});
+}
+
+const KIND = { league: 'League', team: 'Club', player: 'Player' };
+
+function renderSearch(host, s) {
+  const t = s.totals || {};
+  const n = +t.searches || 0;
+  host.appendChild(el('h2', 'an-h2', 'What people search for'));
+  const tiles = el('div', 'tiles');
+  const tile = (v, k, sub, dim) => {
+    const d = el('div', 'tile');
+    d.append(el('div', 'n' + (dim ? ' dim' : ''), v), el('div', 'k', k));
+    if (sub) d.appendChild(el('div', 'sub', sub));
+    tiles.appendChild(d);
+  };
+  tile(fmt(n), 'searches', fmt(t.queries) + ' different ones');
+  tile(pct(+t.picked || 0, n), 'picked a result', fmt(t.picked) + ' of ' + fmt(n));
+  tile(pct(+t.no_results || 0, n), 'found nothing', fmt(t.no_results) + ' of ' + fmt(n), true);
+  host.appendChild(tiles);
+  host.appendChild(el('p', 'lead',
+    'Only the words typed (lower case, accents and punctuation off), how many results the box showed, and what was picked. ' +
+    'No account, no visit token: a search is tied to no visit and to no other search. Anything that looks like an ' +
+    'address, a phone number or a web address is never kept.'));
+
+  const g1 = el('div', 'an-grid');
+  g1.appendChild(card('Searches a day', columns((s.daily || []).map(d => ({
+    label: shortDay(d.day), value: +d.searches || 0,
+    tip: shortDay(d.day) + ' — ' + fmt(d.searches) + ' searches, ' + fmt(d.picked) + ' picked, ' + fmt(d.no_results) + ' found nothing'
+  })), 'No searches in this range yet.')));
+  g1.appendChild(card('What gets picked', ranked(s.picked_kinds, [
+    ['Kind', x => KIND[x.kind] || x.kind], ['Picks', x => fmt(x.n), 'num'],
+    ['Share', x => pct(+x.n || 0, +t.picked || 0), 'num']], x => +x.n)));
+  host.appendChild(g1);
+
+  const g2 = el('div', 'an-grid');
+  g2.appendChild(card('Most common searches', ranked(s.top, [
+    ['Search', x => x.q],
+    ['Times', x => fmt(x.searches), 'num'],
+    ['Results', x => (x.results == null ? '' : String(x.results)), 'num'],
+    ['Picked', x => pct(+x.picked || 0, +x.searches || 0), 'num']
+  ], x => +x.searches, 'Results is the average number the box showed; Picked is how often one was chosen.')));
+  g2.appendChild(card('Searches that found nothing', ranked(s.nothing, [
+    ['Search', x => x.q], ['Times', x => fmt(x.searches), 'num']], x => +x.searches,
+    'A name the site does not have yet, or one spelled a way the search cannot reach: worth reading down.')));
+  host.appendChild(g2);
+
+  const g3 = el('div', 'an-grid');
+  g3.appendChild(card('Most picked results', ranked(s.picked, [
+    ['Result', x => x.name || x.ref || ''], ['Kind', x => KIND[x.kind] || x.kind],
+    ['Picks', x => fmt(x.n), 'num']], x => +x.n)));
+  const dev = el('div');
+  dev.appendChild(ranked(s.devices, [['Device', x => DEVICE[x.k] || x.k], ['Searches', x => fmt(x.n), 'num']], x => +x.n));
+  dev.appendChild(ranked(s.langs, [['Language shown', x => LANG[x.k] || x.k], ['Searches', x => fmt(x.n), 'num']], x => +x.n));
+  g3.appendChild(card('Who searches, roughly', dev));
+  host.appendChild(g3);
 }
 
 function render(host, r) {

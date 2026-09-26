@@ -799,3 +799,59 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
 .ep-nav:not(.drawer-open) .foot-end .lang-row{ gap:0; padding-left:12px }
 .ep-nav:not(.drawer-open) .foot-end .lang-row > .ic{ display:none }
 .ep-nav .foot-end .lang-row .langs{ flex-wrap:nowrap }
+
+/* ---- SEARCH: the first row of the foot, opening into a search box (nav.js, search.js) --------------------------
+   The row is an ordinary rail row until it is used; then it becomes the box, with the list above it (fixed to the
+   window, so the rail's clip does not cut it) or, on a phone, a sheet over the page. */
+.ep-nav .ep-search{ display:block }
+.ep-nav .ep-sr-key{ margin-left:auto; padding:3px 6px; border:1px solid color-mix(in oklch,var(--lume) 28%,transparent); border-radius:4px;
+  font:600 10px/1 var(--f-micro,monospace); color:color-mix(in srgb,var(--nav-ink,var(--ink)) 55%,transparent) }
+.ep-nav .ep-search.open > .ep-sr-btn{ display:none }
+.ep-nav .ep-sr-field, .ep-sr-sbar .ep-sr-field{ display:flex; align-items:center; gap:8px; margin:1px 6px 1px 0; padding:5px 6px 5px 12px;
+  border-left:2px solid var(--lume); border-radius:0 8px 8px 0; background:color-mix(in oklch,var(--lume) 10%,transparent) }
+.ep-sr-field .ic{ flex:none; font-size:15px; line-height:1; color:var(--lume) }
+.ep-sr-wrap{ position:relative; flex:1 1 auto; min-width:0; display:block; height:24px }
+.ep-sr-in, .ep-sr-ghost{ position:absolute; left:0; top:0; right:0; margin:0; padding:0; font:inherit; font-size:13.5px; line-height:24px; letter-spacing:0 }
+.ep-sr-in{ width:100%; border:0; outline:0; background:transparent; color:var(--nav-ink,var(--ink)); box-shadow:none; -webkit-appearance:none; appearance:none }
+.ep-sr-in::placeholder{ color:color-mix(in srgb,var(--nav-ink,var(--ink)) 45%,transparent) }
+.ep-sr-ghost{ white-space:pre; overflow:hidden; pointer-events:none; color:color-mix(in srgb,var(--nav-ink,var(--ink)) 40%,transparent) }
+.ep-sr-ghost i{ font-style:normal; visibility:hidden }
+.ep-sr-x{ flex:none; width:24px; height:24px; display:grid; place-items:center; padding:0; border:0; border-radius:6px; background:transparent; cursor:pointer;
+  font-size:18px; line-height:1; color:color-mix(in srgb,var(--nav-ink,var(--ink)) 60%,transparent) }
+.ep-sr-x:hover, .ep-sr-x:focus-visible{ color:var(--lume); background:color-mix(in oklch,var(--lume) 12%,transparent); outline:0 }
+
+/* the list, above the box on a desktop */
+.ep-sr-panel{ position:fixed; z-index:2600; overflow:auto; overscroll-behavior:contain; padding:6px; border-radius:14px;
+  background:var(--panel,#fff); color:var(--ink,#0d1f17); border:1px solid color-mix(in oklch,var(--lume,#0a8f4b) 28%,transparent);
+  box-shadow:0 18px 44px -14px rgba(0,0,0,.55) }
+.ep-sr-panel[hidden], .ep-sr-sheet[hidden]{ display:none }
+.ep-sr-list{ display:block }
+.sr-h{ padding:8px 10px 4px; font:700 9px/1 var(--f-micro,monospace); letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3,#5a6b62) }
+.sr-o{ display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:10px; text-decoration:none; color:inherit; cursor:pointer;
+  -webkit-tap-highlight-color:transparent }
+.sr-o.on{ background:color-mix(in oklch,var(--lume,#0a8f4b) 14%,transparent) }
+.sr-face, .sr-crest{ flex:none; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; overflow:hidden; margin:0 }
+.sr-face{ background:var(--c,#93f2bf); color:#fff; font:800 10px/1 var(--f-ui,sans-serif); letter-spacing:.02em; text-shadow:0 1px 2px rgba(0,0,0,.35) }
+.sr-crest img{ width:100%; height:100%; object-fit:contain }
+.sr-t{ display:flex; flex-direction:column; gap:1px; min-width:0 }
+.sr-n{ font:700 13.5px/1.25 var(--f-ui,sans-serif); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.sr-n mark{ background:none; color:inherit; font-weight:900; text-decoration:underline; text-decoration-color:var(--lume,#0a8f4b); text-decoration-thickness:2px; text-underline-offset:3px }
+.sr-s{ font:500 11.5px/1.25 var(--f-ui,sans-serif); color:var(--ink-3,#5a6b62); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.sr-say{ padding:12px 10px; font:500 13px/1.4 var(--f-ui,sans-serif); color:var(--ink-2,#3d4f45) }
+.sr-say.busy, .sr-say.near{ font-size:11.5px; color:var(--ink-3,#5a6b62) }
+.sr-say.bad{ color:var(--flare,#c0392b) }
+
+/* on a phone: a sheet over the page, the box at its top (the keyboard would cover a list opening upward) */
+.ep-sr-sheet{ position:fixed; inset:0; z-index:2600; display:flex; flex-direction:column; background:var(--ground,#f3faf6); color:var(--ink,#0d1f17) }
+.ep-sr-sbar{ flex:none; padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 8px; border-bottom:1px solid color-mix(in oklch,var(--lume,#0a8f4b) 24%,transparent) }
+.ep-sr-sbar .ep-sr-field{ margin:0; padding:6px 6px 6px 12px; border-radius:12px; border-left-width:3px }
+.ep-sr-sbar .ep-sr-in, .ep-sr-sbar .ep-sr-ghost{ font-size:16px; line-height:28px }
+.ep-sr-sbar .ep-sr-wrap{ height:28px }
+.ep-sr-sbar .ep-sr-x{ width:34px; height:34px; font-size:22px }
+.ep-sr-sheet .ep-sr-list{ flex:1 1 auto; overflow:auto; overscroll-behavior:contain; padding:6px 8px calc(env(safe-area-inset-bottom,0px) + 12px) }
+.ep-sr-sheet .sr-o{ padding:10px }
+.ep-sr-sheet .sr-n{ font-size:15px }
+.ep-sr-sheet .sr-face, .ep-sr-sheet .sr-crest{ width:36px; height:36px }
+body.ep-sr-locked{ overflow:hidden }
+@media (prefers-reduced-motion:no-preference){ .ep-sr-sheet{ animation:ep-sr-in .16s ease-out } }
+@keyframes ep-sr-in{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
