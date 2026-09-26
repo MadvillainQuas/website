@@ -28,6 +28,14 @@
 #scorebox .snum, .bx-scorehead .bscore, .bscore, .pcnum, .clock, .bxclock, .qs .v{
   font-family:var(--f-score); font-weight:400; letter-spacing:.01em; font-variant-numeric:tabular-nums }
 .bx-scorehead .bscore{ font-size:54px }
+
+/* ---- the score and the clock are always the middle of the card, whatever the team names are.
+   The header was three flex items spaced apart, so the centre sat wherever the two names left room: a long name on one side
+   pushed the score off to the other. Two equal columns with the score between them keep it on the card's centre line; a name
+   too long for its column is cut with an ellipsis (the rule that already sets that) instead of taking the space. */
+.bx-scorehead{ display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); align-items:center; column-gap:12px }
+.bx-scorehead .bteam{ max-width:none; min-width:0 }
+.bx-scorehead .bteam:last-child{ text-align:right }
 .pcnum{ font-size:46px; min-width:60px }
 #scorebox .snum{ font-size:48px }
 
