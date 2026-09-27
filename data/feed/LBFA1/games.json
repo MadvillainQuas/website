@@ -1,0 +1,796 @@
+{
+ "04264748-b3ce-4c09-aa90-a76ff8fa798b": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "0434fdb2-2528-4974-ad3a-3cc964071400": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "04af6465-1edb-4c4f-a5b2-b3a5517b845d": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "0720f6c6-3d03-49e6-a59e-b05b21bbb955": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "0821e107-96a4-412e-b8e9-4a5bf03c2060": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "0e4d91e8-6be1-4649-b89e-eb05c60a3ce9": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "0f7c6d2f-991e-49a5-8d1c-fc909aa3985c": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "12541242-b85b-4657-9bae-0264987e2f5c": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "127415f8-3133-4a30-a470-54c57ff9a87e": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "12d3ca88-7713-4ab0-a2c6-35ee93d5cb05": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "144f5545-af99-4b2c-bdef-1d9b88a54d0b": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "1541852d-e1bb-490a-8a87-8d56d252a0c0": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "157933b5-1e0f-49d1-b1c8-8d2dcb5ebb3d": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "163859e8-4e77-4937-98c6-f1eb4d955a87": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "19594761-eb48-42e4-ac15-c4f6aef87026": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "19da93fd-065a-49b0-8377-299586f20b2f": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "19e23fb4-0567-4fc3-886b-9829692addb5": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "1a2036fd-43a6-46ee-86a7-86b6100bff3b": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "1aada04b-d267-4384-aeb1-f6594b3ece9d": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "1ad1669b-2689-4bca-a9b0-23d28041e1b3": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "1adfbe1c-7504-466a-9d35-8d886bdda1e6": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "1c6ce654-2a02-4671-a0bb-30a955cf5248": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "220bf2ea-8680-450f-85cd-6b85c2f4bfdb": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "2b74d7d8-1b34-4710-ae6e-8da0881e621a": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "2ec429bc-807f-498a-aa00-255f7f72acc6": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "306023a2-948a-482a-9e41-3156bb2573fd": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "checked": 1790507199.8040636,
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "30a92704-4c62-49a2-9ca3-48a1e2a5048e": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "321fd020-9515-453e-944a-2865d54735e6": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "33566e7c-8957-41d3-9467-db0053199b9c": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "35ea759a-a6b1-443f-886e-3d296e690f85": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "36820558-36c4-498d-b0a5-ce42a3b19ee6": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "386452ea-296f-4376-8df1-f35112861b5b": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "3cbc6f84-8971-45f8-8aba-833670343541": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "3ccfa6ed-da35-4a00-b24f-e7adefe41e20": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "3cf258f5-3e65-41b9-a076-41d8a4ed69a8": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "40a1dfe6-4cf2-4270-9e4e-fd4ba3d13869": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "44ebc571-648b-4305-9216-90e8a4bc8a3d": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "45c53314-09b4-4c14-b67c-a23fe8977f46": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "469158e2-b4b9-432d-a70e-eea60c68c337": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "48212e5e-4414-441d-93d9-6fde2d68e009": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "4a1259aa-f0f0-4085-828e-8c1532021ee5": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "checked": 1790507197.9721222,
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "4b6267e0-a91b-41c1-92c5-bd2e9b845b98": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "4cdc9dc7-7902-4cec-bcaa-47f1e77cfc79": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "4e77b9b7-b6f6-4f54-902e-00917b8468e6": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "4fc9c624-6b84-4891-bac2-972894b61d69": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "590963a4-3199-4b13-9c6e-a145c4c42e56": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "5be5a2a0-6a3f-4481-bc13-19553e7755fd": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "5e8057fa-5796-4d4e-b4ba-617a4de54452": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "5f05f517-af8e-44e6-b8c5-fd82745c0e00": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "5f08d84e-3390-433a-9e75-70f33c4ad1ee": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "60fd7fe4-9174-450c-bf8c-1d107d10fd11": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "64656b37-5f22-4578-bfde-83d11001390f": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "64b9c51c-cab6-42af-be80-451f79054c81": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "6545be9b-f91a-47cb-86e5-85f391b6e035": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "6567555a-17d0-4aa1-8e13-85d5d6cb9495": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "65c787f0-725e-4111-abf1-11abda415c59": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "6bea3803-a59b-4aa6-9638-8fb3421d5ec7": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "719048a5-03cb-46b9-a80a-aefff4575328": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "72059b73-05ed-4edf-a831-993a4b16a489": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "72992c67-ad0d-4953-ad2e-0ef2103e47f2": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "72cb2d61-4569-4647-a74e-aee78af7818b": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "778acb60-90eb-42cc-87cd-ec97def77f4f": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "780cd126-54a2-4145-ac35-63a6c55c2bee": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "7c8d6e49-1209-4f77-a15a-37a65c2f9c8d": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "7e53d327-8a42-44b0-a91c-173365f1f6b2": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "82a1e695-2c32-4219-bb22-7db91e0767cf": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "82ef0509-1473-4d4b-b2a8-5740226499fd": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "8426ec8e-663f-4082-a869-eb80af292ca8": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "885ca2d1-c894-4350-85cb-57de8d58570a": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "8bb8ba0a-8231-4121-9820-34fd988b31be": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "8bf3f85a-1d00-450f-a5bc-97b66f7d1491": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "8c04b3d6-70f5-45db-a194-3fba4673ebc4": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "8c499d08-4fd3-4cae-b035-95385a56fc12": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "906a71a3-823e-4445-bacb-4ff3423c085b": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "92ac3a6c-7eb6-49d4-9744-9ec9f330d383": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "9326871b-68b1-4fc7-b342-e927549836a2": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "96f36aa6-39bd-48bc-b4f0-6d438295f9e2": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "97d63800-de79-4dc5-b714-e51dd706f8d2": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "97dc3835-9e00-4f74-9006-c9ee74c0d3b7": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "99c5b03c-251a-4c1b-a182-8a338fac8f9b": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "99db51ce-312a-4944-a9e6-64bafb6a81b5": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "9b1a877a-b5db-4f44-beee-10c7281be094": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "a33102cd-d65e-4858-9bc1-c0594032cc58": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "a6f98b53-3d3c-4e21-9103-8d36e6646367": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "ace65157-0f8c-4cb1-96e7-e7f08e310896": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "aec546c0-7a50-4771-997f-946155a8e732": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "b13a014c-d5f7-4f20-9143-e4651aa82db2": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "b151d7f9-d882-4d4a-b968-00b2844b57c6": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "b21811e5-5261-42be-bd13-23519f8c11ce": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "b24b1043-2ef8-4283-a109-75159c2e311e": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "b3d72607-e995-4880-8877-b484c0d5cc3c": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "b667c05a-84ba-4133-b796-a46022fe33f1": {
+  "away": "broni",
+  "away_name": "Logiman Broni",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "b747b9e0-104a-47f7-8df7-dae60114164c": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "b74dfb60-c6e2-4b10-9898-d47054f3fb2c": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "b7bb8c66-8ffd-439c-b972-44bbb7fd7d2e": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "b9a6964b-02f0-4640-83ac-408b519a2e1d": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "roseto",
+  "home_name": "People Strategy Panthers Roseto"
+ },
+ "b9f6e42e-45e7-4fcc-b720-3c2a8a94d6bc": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "bb671102-eb42-4536-91a8-41391fc1255b": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "bca5c6e2-5caf-448b-beb4-6a4036d02f21": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "bf377856-08f4-47ad-810b-7989ed2ee8c2": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "bf6dabe0-9edd-4441-ab7e-31a1689887cc": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "bffe8045-597c-430f-a68d-9f6f5a3db991": {
+  "away": "san-martino-di-lupari",
+  "away_name": "Alama San Martino di Lupari",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "c15afc7e-a9cb-4274-ab84-4f02bc8f966d": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "c304e272-3128-4a98-9a21-a515385408ba": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "c60012f4-864e-4f50-9a14-4d102d06ff4d": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "c7e31072-0207-4f66-8405-8ea55fd4f8eb": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "c8464e40-1f33-4298-9f1d-594441488e03": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "c8509789-21a8-446c-bd99-35c497dea6c8": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "c8fcc197-c634-44d0-8b9d-038f652d0d17": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "caa622de-c8c9-45cb-8a91-110815bba1c1": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "cc4092bf-c2cc-4183-afca-cdcfa5b6beb8": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "cdeb1290-e62d-4606-b628-4463a35edd63": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "san-martino-di-lupari",
+  "home_name": "Alama San Martino di Lupari"
+ },
+ "d0290a3e-2e93-45aa-8210-d83bd26af487": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "d5bd3b86-6861-4555-98e2-d74f063a8454": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "d612d1f2-46e2-4641-9d36-8c7c5b288121": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "d8faa8b6-1e07-4f3a-9748-8ca2d70a1242": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "dbc0a11a-6c7b-43ae-be61-af7929db7721": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "campobasso",
+  "home_name": "La Molisana Magnolia Campobasso"
+ },
+ "dfc6b90c-46c1-4963-ab00-20cc8ec0e1e1": {
+  "away": "livorno",
+  "away_name": "Ladies Libertas Livorno",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "e3a1c3fa-1461-433d-95e5-a8da6c22955e": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "livorno",
+  "home_name": "Ladies Libertas Livorno"
+ },
+ "e560565e-0e2c-435e-b3fa-ee9ddf3631b0": {
+  "away": "san-paolo",
+  "away_name": "RMB Brixia Basket",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "e80d0834-8b32-4af5-8959-fd67db09d7c7": {
+  "away": "castelnuovo-scrivia",
+  "away_name": "Autosped G BCC Derthona",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "eb1ca19c-3ebb-46fb-9309-8c15385be07c": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "schio",
+  "home_name": "Famila Wuber Schio"
+ },
+ "ebe18f7c-c8a1-4f3b-b24c-0769f766c4d6": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "venezia",
+  "home_name": "Umana Reyer Venezia"
+ },
+ "ee9110e2-9be8-45ff-9d7c-d36ce427105d": {
+  "away": "schio",
+  "away_name": "Famila Wuber Schio",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ },
+ "f096a666-f38d-4098-b4a5-58c602d5afbc": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "broni",
+  "home_name": "Logiman Broni"
+ },
+ "f3717df2-de42-4f6e-924b-bc5f7ef2d575": {
+  "away": "sesto-san-giovanni",
+  "away_name": "Geas Basket",
+  "home": "san-paolo",
+  "home_name": "RMB Brixia Basket"
+ },
+ "f3f25f96-9cf2-41d4-9752-5c3499aad12a": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "f433b39f-2fc1-4332-8a08-75650b659007": {
+  "away": "venezia",
+  "away_name": "Umana Reyer Venezia",
+  "home": "costa-masnaga",
+  "home_name": "CLV-Limonta Costa Masnaga"
+ },
+ "f50715f8-149c-46ae-9edc-b049d857fbd3": {
+  "away": "costa-masnaga",
+  "away_name": "CLV-Limonta Costa Masnaga",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "fa67a97b-de7b-4f75-8264-320c9dbb3746": {
+  "away": "roseto",
+  "away_name": "People Strategy Panthers Roseto",
+  "home": "castelnuovo-scrivia",
+  "home_name": "Autosped G BCC Derthona"
+ },
+ "fb7b4984-a0ae-49ee-8ef3-2770b1153868": {
+  "away": "campobasso",
+  "away_name": "La Molisana Magnolia Campobasso",
+  "home": "battipaglia",
+  "home_name": "O.ME.P.S. Battipaglia"
+ },
+ "fe566d20-384c-400a-9491-dc3cd25fd072": {
+  "away": "battipaglia",
+  "away_name": "O.ME.P.S. Battipaglia",
+  "home": "sesto-san-giovanni",
+  "home_name": "Geas Basket"
+ }
+}

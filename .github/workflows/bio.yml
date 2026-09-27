@@ -1,15 +1,20 @@
 name: Player bio (height, weight, age from the leagues' own feeds)
 
 # Fills players' height, weight and date of birth from what each league publishes (scripts/ingest/bio_sources.py:
-# EuroLeague / EuroCup, Basketligaen, BNXT League so far), matched to the players the game feeds already made. Blanks
+# one reader per league, see docs/player-bio.md), matched to the players the game feeds already made. Blanks
 # only, never a hand-typed value; an adult's full date goes to a column no browser can read (the site shows his age and
 # birth year), an under-18's is never kept. The rules are at the top of scripts/ingest/bio.py.
 #
 # Weekly, Wednesday 06:20 UTC: the ingest's discovery passes are Monday + Thursday, so this never lands on one. A pass
 # writes only what is new, so after the first it is a handful of requests. Run it by hand after adding a league reader.
+#
+# Daily, 07:40 UTC, --stash-only: no feed is read. A roster row that matched nobody (a league read before its first game,
+# a signing who has not played) was kept in player_bio_pending (0186); this pass gives it to the players the ingest has
+# made since, so a new player has his height and age the day after his first game, not up to a week later.
 on:
   schedule:
     - cron: "20 6 * * 3"
+    - cron: "40 7 * * *"
   workflow_dispatch:
     inputs:
       league:
@@ -17,6 +22,10 @@ on:
         required: false
       dry_run:
         description: "Read, match and print; write nothing"
+        type: boolean
+        default: false
+      stash_only:
+        description: "Read no feed: only give kept rows to the players made since"
         type: boolean
         default: false
 
@@ -31,7 +40,7 @@ jobs:
   bio:
     # RUNS_ON: see ingest.yml
     runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,4 +53,5 @@ jobs:
         run: |
           python scripts/ingest/bio_sync.py \
             ${{ github.event.inputs.league && format('--league "{0}"', github.event.inputs.league) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }} \
+            ${{ (github.event.schedule == '40 7 * * *' || github.event.inputs.stash_only == 'true') && '--stash-only' || '' }}

@@ -399,6 +399,95 @@
       "league_country": "CZ"
     },
     {
+      "code": "ZBL",
+      "label": "Czech ŽBL",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "czech-zbl",
+      "league_name": "Chance ŽBL",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "ZBL",
+        "site": "czech",
+        "czech_base": "https://zbl.basketball",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://zbl.basketball/zapasy"
+      ],
+      "league_country": "CZ"
+    },
+    {
+      "code": "CZ1L",
+      "label": "Czech 1. liga",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "czech-1-liga",
+      "league_name": "1. liga mužů",
+      "adapter_config": {
+        "code": "CZ1L",
+        "site": "czech",
+        "czech_base": "https://cz.basketball",
+        "czech_competition": "1. liga mužů",
+        "groups_from_feed": true,
+        "competition_format": "groups",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://cz.basketball/soutez#1-liga-muzu"
+      ],
+      "league_country": "CZ"
+    },
+    {
+      "code": "ESTLAT",
+      "label": "Estonian-Latvian Basketball League",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "estonian-latvian-basketball-league",
+      "league_name": "Estonian-Latvian Basketball League",
+      "adapter_config": {
+        "code": "ESTLAT",
+        "site": "basketee",
+        "basketee_league": "Estonian-Latvian Basketball League",
+        "basketee_chid": "212",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://online.basket.ee/en"
+      ],
+      "league_country": "EE+LV"
+    },
+    {
       "code": "SBA",
       "label": "Slovak SBL",
       "adapter": "fiba_site_schedule",
@@ -1144,6 +1233,132 @@
       },
       "scheduleUrls": [
         "https://www.legabasket.it/competizioni/1/serie-a#playoffs"
+      ]
+    },
+    {
+      "code": "LBFA1",
+      "label": "Serie A1 Femminile",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "serie-a1-femminile",
+      "league_name": "Serie A1 Femminile",
+      "league_gender": "women",
+      "league_country": "IT",
+      "adapter_config": {
+        "code": "LBFA1",
+        "site": "lbf",
+        "lbf_competition": "serie-a1",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.legabasketfemminile.it/it/serie-a1/"
+      ]
+    },
+    {
+      "code": "LBFA1",
+      "label": "Serie A1 Femminile",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "serie-a1-femminile",
+      "league_name": "Serie A1 Femminile",
+      "league_gender": "women",
+      "league_country": "IT",
+      "competition_label": "Serie A1 Femminile Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "LBFA1",
+        "site": "lbf",
+        "lbf_competition": "serie-a1",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.legabasketfemminile.it/it/serie-a1/#playoffs"
+      ]
+    },
+    {
+      "code": "LBFA2",
+      "label": "Serie A2 Femminile",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "serie-a2-femminile",
+      "league_name": "Serie A2 Femminile",
+      "league_gender": "women",
+      "league_country": "IT",
+      "adapter_config": {
+        "code": "LBFA2",
+        "site": "lbf",
+        "lbf_competition": "serie-a2",
+        "stage": "regular",
+        "groups_from_feed": true,
+        "competition_format": "groups",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.legabasketfemminile.it/it/serie-a2/"
+      ]
+    },
+    {
+      "code": "LBFA2",
+      "label": "Serie A2 Femminile",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "serie-a2-femminile",
+      "league_name": "Serie A2 Femminile",
+      "league_gender": "women",
+      "league_country": "IT",
+      "competition_label": "Serie A2 Femminile Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "LBFA2",
+        "site": "lbf",
+        "lbf_competition": "serie-a2",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.legabasketfemminile.it/it/serie-a2/#playoffs"
       ]
     },
     {
@@ -2865,6 +3080,124 @@
       },
       "scheduleUrls": [
         "https://hosted.wh.geniussports.com/DAM/en/schedule"
+      ]
+    },
+    {
+      "code": "NBB",
+      "label": "NBB",
+      "adapter": "lnbbr",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "nbb",
+      "league_name": "NBB",
+      "league_country": "BR",
+      "adapter_config": {
+        "code": "NBB",
+        "league_path": "nbb",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://lnb.com.br/nbb/tabela-de-jogos/"
+      ]
+    },
+    {
+      "code": "NBB",
+      "label": "NBB",
+      "adapter": "lnbbr",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "nbb",
+      "league_name": "NBB",
+      "league_country": "BR",
+      "competition_label": "NBB Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "NBB",
+        "league_path": "nbb",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://lnb.com.br/nbb/tabela-de-jogos/#playoffs"
+      ]
+    },
+    {
+      "code": "LOURO",
+      "label": "Liga Ouro",
+      "adapter": "lnbbr",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-ouro",
+      "league_name": "Liga Ouro",
+      "league_country": "BR",
+      "adapter_config": {
+        "code": "LOURO",
+        "league_path": "liga-ouro",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "season_calendar": true
+      },
+      "scheduleUrls": [
+        "https://lnb.com.br/liga-ouro/tabela-de-jogos/"
+      ]
+    },
+    {
+      "code": "LOURO",
+      "label": "Liga Ouro",
+      "adapter": "lnbbr",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-ouro",
+      "league_name": "Liga Ouro",
+      "league_country": "BR",
+      "competition_label": "Liga Ouro Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "LOURO",
+        "league_path": "liga-ouro",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "season_calendar": true
+      },
+      "scheduleUrls": [
+        "https://lnb.com.br/liga-ouro/tabela-de-jogos/#playoffs"
       ]
     }
   ]

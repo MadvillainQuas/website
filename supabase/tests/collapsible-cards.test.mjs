@@ -179,6 +179,27 @@ console.log('\nattempts per 100 possessions (not per game) in shooting');
   ok('...and they still take the quiet volume-row styling', pjs.includes('/ATT \\/ 100$/.test(label)'));
 }
 
+console.log('\nfouls conceded per 30 minutes, in defence');
+{
+  const Season = require(path.join(ROOT, 'epinoia', 'season.js'));
+  const game = (id, min, pf) => ({ game_id: id, player_uuid: 'P', team_idx: 0, stats: { min: min * 60000, pts: 10, pf } });
+  const row = Season.players([game('g1', 24, 3), game('g2', 36, 3)])[0];
+  ok('fouls per 30 minutes on the floor, over the season: 6 fouls in 60 minutes is 3.0', row.pf30 === 3, row.pf30);
+  ok('...a different number from fouls per game (6 in 2 games)', row.pfpg === 3 && Season.players([game('g1', 15, 3)])[0].pf30 === null);
+  const bench = Season.players([game('g1', 20, 2)])[0];
+  ok('a player of 20 minutes is read (2 fouls in 20 is 3.0 per 30); under 20 it is noise and null', bench.pf30 === 3 && Season.players([game('g1', 19, 2)])[0].pf30 === null, bench.pf30);
+  const clean = Season.players([game('g1', 30, 0)])[0];
+  ok('no fouls is 0.0, not blank', clean.pf30 === 0, clean.pf30);
+  const defence = blockOf('defence');
+  ok('the defence card: STEAL%, BLOCK%, then FOULS CONCEDED / 30', /\['stl_pct','STEAL%'\],\['blk_pct','BLOCK%'\],\['pf30','FOULS CONCEDED \/ 30'\]/.test(defence), defence);
+  ok('...fewer is better (lower-is-better), with a hint that says so', low.includes("'pf30'") && /pf30: 'Personal fouls he commits per 30 minutes on the floor\. Fewer is better/.test(pjs));
+  const field = [{ id: 'a', pf30: 1.5 }, { id: 'b', pf30: 3 }, { id: 'c', pf30: 4.5 }];
+  const r = Season.percentiles(field, ['pf30'], ['pf30']).get('pf30');
+  ok('...so the player who fouls least ranks top and the one who fouls most ranks bottom', r.get('a') === 100 && r.get('c') === 0, [...r]);
+  ok('the Edge Functions’ copy of season.js carries it', /pf30:/.test(rd('supabase', 'functions', '_shared', 'season.js')));
+  ok('Spanish and Japanese have the label', ['es', 'ja'].every(c => rd('epinoia', 'i18n', c + '.js').includes("'FOULS CONCEDED / 30':")));
+}
+
 console.log('\nthe club page');
 const tjs = rd('epinoia', 't', 'team.js');
 const ts = tjs.slice(tjs.indexOf('async function teamStats'), tjs.indexOf('async function zoneStats') > 0 ? tjs.indexOf('/* ------------------------------------------------------------- shot zones --- */') : undefined);

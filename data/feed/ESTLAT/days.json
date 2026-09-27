@@ -1,0 +1,337 @@
+{
+ "2026-09-15": {
+  "final": true,
+  "games": [],
+  "t": 1790500678.016547
+ },
+ "2026-09-16": {
+  "final": true,
+  "games": [],
+  "t": 1790500706.8215783
+ },
+ "2026-09-17": {
+  "final": true,
+  "games": [],
+  "t": 1790500767.0240138
+ },
+ "2026-09-18": {
+  "final": true,
+  "games": [],
+  "t": 1790500796.7714953
+ },
+ "2026-09-19": {
+  "final": true,
+  "games": [],
+  "t": 1790500856.7489583
+ },
+ "2026-09-20": {
+  "final": true,
+  "games": [],
+  "t": 1790500886.771093
+ },
+ "2026-09-21": {
+  "final": true,
+  "games": [],
+  "t": 1790500916.6682274
+ },
+ "2026-09-22": {
+  "final": true,
+  "games": [
+   {
+    "away": "Valmiera Glass VIA",
+    "date": "2026-09-22",
+    "fls": "2904663",
+    "gid": "2027212141",
+    "h_tid": "10028",
+    "home": "Rigas Ekselences Juniori",
+    "over": true,
+    "place": "Komandas Sporta Spelu Halle",
+    "time": "19:00:00",
+    "v_tid": "9897"
+   }
+  ],
+  "t": 1790500946.9956074
+ },
+ "2026-09-23": {
+  "final": true,
+  "games": [
+   {
+    "away": "Latvijas Universitāte",
+    "date": "2026-09-23",
+    "fls": "2906144",
+    "gid": "2027212155",
+    "h_tid": "9900",
+    "home": "VEF Rīga",
+    "over": true,
+    "place": "Rimi Olimpiskais centrs",
+    "time": "19:30:00",
+    "v_tid": "9903"
+   }
+  ],
+  "t": 1790500976.8319407
+ },
+ "2026-09-24": {
+  "final": true,
+  "games": [
+   {
+    "away": "Bigbank/Kalev",
+    "date": "2026-09-24",
+    "fls": "2898901",
+    "gid": "2027212015",
+    "h_tid": "9892",
+    "home": "Tartu Ülikool Maks & Moorits",
+    "over": true,
+    "place": "Tartu, TÜ sph (Kullami peaväljak)",
+    "time": "19:00:00",
+    "v_tid": "9891"
+   }
+  ],
+  "t": 1790501006.8561037
+ },
+ "2026-09-25": {
+  "final": true,
+  "games": [
+   {
+    "away": "BK Ventspils",
+    "date": "2026-09-25",
+    "fls": "2909382",
+    "gid": "2027212071",
+    "h_tid": "9897",
+    "home": "Valmiera Glass VIA",
+    "over": true,
+    "place": "Valmieras Olimpiskais Centrs",
+    "time": "19:00:00",
+    "v_tid": "9899"
+   },
+   {
+    "away": "Rīgas Zeļļi",
+    "date": "2026-09-25",
+    "fls": "2909430",
+    "gid": "2027212029",
+    "h_tid": "9894",
+    "home": "Keila Basket",
+    "over": true,
+    "place": "Keila Tervisekeskus",
+    "time": "19:30:00",
+    "v_tid": "9898"
+   }
+  ],
+  "t": 1790501036.7355018
+ },
+ "2026-09-26": {
+  "final": true,
+  "games": [
+   {
+    "away": "Rīgas Zeļļi",
+    "date": "2026-09-26",
+    "fls": "2910161",
+    "gid": "2027212001",
+    "h_tid": "9896",
+    "home": "TalTech/ALEXELA",
+    "over": true,
+    "place": "Tallinn, TalTech Spordihoone",
+    "time": "17:00:00",
+    "v_tid": "9898"
+   },
+   {
+    "away": "BK Liepaja",
+    "date": "2026-09-26",
+    "fls": "2910162",
+    "gid": "2027212043",
+    "h_tid": "9893",
+    "home": "BC Pärnu",
+    "over": true,
+    "place": "Pärnu Spordihall",
+    "time": "17:00:00",
+    "v_tid": "9901"
+   },
+   {
+    "away": "VEF Rīga",
+    "date": "2026-09-26",
+    "fls": "2910163",
+    "gid": "2027212085",
+    "h_tid": "9902",
+    "home": "BK Ogre",
+    "over": true,
+    "place": "Sporta arena Ogre",
+    "time": "17:00:00",
+    "v_tid": "9900"
+   }
+  ],
+  "t": 1790501096.947958
+ },
+ "2026-09-27": {
+  "final": false,
+  "games": [
+   {
+    "away": "Bigbank/Kalev",
+    "date": "2026-09-27",
+    "fls": "2898859",
+    "gid": "2027212057",
+    "h_tid": "9890",
+    "home": "Viimsi",
+    "over": false,
+    "place": "Forus Spordikeskus Viimsi",
+    "time": "17:00:00",
+    "v_tid": "9891"
+   }
+  ],
+  "t": 1790508769.7584217
+ },
+ "2026-09-28": {
+  "final": false,
+  "games": [
+   {
+    "away": "BK Ventspils",
+    "date": "2026-09-28",
+    "fls": "2911020",
+    "gid": "2027212169",
+    "h_tid": "9903",
+    "home": "Latvijas Universitāte",
+    "over": false,
+    "place": "Marupe SC",
+    "time": "20:30:00",
+    "v_tid": "9899"
+   }
+  ],
+  "t": 1790501216.7157068
+ },
+ "2026-09-29": {
+  "final": false,
+  "games": [
+   {
+    "away": "Keila Basket",
+    "date": "2026-09-29",
+    "fls": "2912463",
+    "gid": "2027212072",
+    "h_tid": "9897",
+    "home": "Valmiera Glass VIA",
+    "over": false,
+    "place": "Valmieras Olimpiskais Centrs",
+    "time": "19:00:00",
+    "v_tid": "9894"
+   },
+   {
+    "away": "Keila KK",
+    "date": "2026-09-29",
+    "fls": "2912465",
+    "gid": "2027212156",
+    "h_tid": "9900",
+    "home": "VEF Rīga",
+    "over": false,
+    "place": "Rimi Olimpiskais centrs",
+    "time": "19:00:00",
+    "v_tid": "9895"
+   }
+  ],
+  "t": 1790501246.706578
+ },
+ "2026-09-30": {
+  "final": false,
+  "games": [
+   {
+    "away": "Tartu Ülikool Maks & Moorits",
+    "date": "2026-09-30",
+    "fls": "2915532",
+    "gid": "2027212183",
+    "h_tid": "9901",
+    "home": "BK Liepaja",
+    "over": false,
+    "place": "Liepajas Olimpiskais centrs",
+    "time": "19:00:00",
+    "v_tid": "9892"
+   }
+  ],
+  "t": 1790501276.7586231
+ },
+ "2026-10-01": {
+  "final": false,
+  "games": [
+   {
+    "away": "Latvijas Universitāte",
+    "date": "2026-10-01",
+    "fls": "2918501",
+    "gid": "2027212142",
+    "h_tid": "10028",
+    "home": "Rigas Ekselences Juniori",
+    "over": false,
+    "place": "Komandas Sporta Spelu Halle",
+    "time": "19:00:00",
+    "v_tid": "9903"
+   }
+  ],
+  "t": 1790501511.5009613
+ },
+ "2026-10-02": {
+  "final": false,
+  "games": [
+   {
+    "away": "Tartu Ülikool Maks & Moorits",
+    "date": "2026-10-02",
+    "fls": "2920614",
+    "gid": "2027212127",
+    "h_tid": "9899",
+    "home": "BK Ventspils",
+    "over": false,
+    "place": "Olimpiskais centrs \"Ventspils\"",
+    "time": "18:30:00",
+    "v_tid": "9892"
+   }
+  ],
+  "t": 1790501397.018121
+ },
+ "2026-10-03": {
+  "final": false,
+  "games": [
+   {
+    "away": "BK Liepaja",
+    "date": "2026-10-03",
+    "fls": "2922089",
+    "gid": "2027212157",
+    "h_tid": "9900",
+    "home": "VEF Rīga",
+    "over": false,
+    "place": "Rimi Olimpiskais centrs",
+    "time": "17:00:00",
+    "v_tid": "9901"
+   },
+   {
+    "away": "BK Ogre",
+    "date": "2026-10-03",
+    "fls": "2922114",
+    "gid": "2027212197",
+    "h_tid": "9898",
+    "home": "Rīgas Zeļļi",
+    "over": false,
+    "place": "Komandas Sporta Spelu Halle",
+    "time": "18:00:00",
+    "v_tid": "9902"
+   },
+   {
+    "away": "Valmiera Glass VIA",
+    "date": "2026-10-03",
+    "fls": "2922112",
+    "gid": "2027212099",
+    "h_tid": "9895",
+    "home": "Keila KK",
+    "over": false,
+    "place": "Keila Tervisekeskus",
+    "time": "18:00:00",
+    "v_tid": "9897"
+   },
+   {
+    "away": "BC Pärnu",
+    "date": "2026-10-03",
+    "fls": "2922113",
+    "gid": "2027212113",
+    "h_tid": "9891",
+    "home": "Bigbank/Kalev",
+    "over": false,
+    "place": "Nord Spordihoone",
+    "time": "18:00:00",
+    "v_tid": "9893"
+   }
+  ],
+  "t": 1790501426.666524
+ }
+}

@@ -41,6 +41,18 @@ from .fiba_livestats import FIBA_DATA_URL, FibaLiveStatsAdapter, UA, ZoneInfo
 
 CZECH_BASE = "https://nbl.basketball"
 CZECH_SCHEDULE = CZECH_BASE + "/zapasy?y={year}&p1=0&c=0&d_od=&d_do=&k=0"
+# THE OTHER CZECH LEAGUES RUN ON THE SAME SYSTEM (the federation's, ČBF). A league with its own site
+# (ŽBL: zbl.basketball) has the identical /zapasy page, so it is NBL with another address
+# ("czech_base"). A league without one (1. liga mužů) lives on the federation's site, cz.basketball,
+# one page per PART of the competition (its two groups, later its play-off): "czech_competition" names
+# it as the site's competitions page does, and its id and parts are read off that page each season.
+CZ_FED = "https://cz.basketball"
+CZ_COMPETITIONS = "{base}/soutez?y={year}"
+# <h2 class="gamma">1. liga mužů</h2> ... <a href="/soutez/5404?p=10223" ...><div class="font-weight-bold mb-1">Skupina VÝCHOD</div>
+_CZ_COMP_H2 = re.compile(r'<h2 class="gamma">\s*([^<]+?)\s*</h2>')
+_CZ_PART = re.compile(r'href="/soutez/(\d+)\?p=(\d+)"[^>]*>\s*<div class="font-weight-bold mb-1">\s*([^<]+?)\s*</div>')
+# a first-phase group is "Skupina VÝCHOD"; a later placement group carries its places ("Skupina C 1.-6.")
+_CZ_GROUP = re.compile(r"skupina\s+([^\d]+?)\s*$", re.I)
 SLOVAK_BASE = "https://sbl.slovakbasket.sk"
 SLOVAK_LIST = (SLOVAK_BASE + "/sk/stats/match-list/{sid}/tipos-slovenska-basketbalova-liga"
                "?month={month}&listtype=grid&tournamentpartid=0&competitorid=0")
@@ -185,6 +197,102 @@ def _name_tokens(name) -> set:
     return {t for t in re.split(r"[^a-z0-9]+", s) if len(t) >= 4}
 
 
+# online.basket.ee (the Estonian federation's live scores, BestIT's "basketis"): the ESTONIAN-LATVIAN league on FIBA
+# LiveStats (client EBF). The league's own site (estlatbl.com) and the federation's (basket.ee) both disallow every
+# crawler but the search engines in robots.txt; this portal publishes none (404) and serves each date's games as JSON,
+# every game with its LiveStats id (sporting_id_live), upcoming ones included. BUT only for the dates its own menu
+# offers - 13 days back to 7 ahead - and a date outside them answers an error page that e-mails their webmaster. So:
+# the menu is read first and only its dates, a day inside each end, are ever asked for; one request every 30 s (the
+# federation's crawl delay on its other sites); and each date is cached in data/feed/<CODE>/days.json, where a
+# finished day is never asked for again. A pass after the first is the menu and a day or two.
+BASKETEE = "https://online.basket.ee"
+BASKETEE_HOME = BASKETEE + "/en"
+BASKETEE_DAY = BASKETEE + "/s2/list/{date}/data.json"
+BASKETEE_GAP_S = 30
+BASKETEE_MENU_TTL_S = 6 * 3600
+_BEE_SELECT = re.compile(r'<select\b[^>]*name="(date|chid)"[^>]*>(.*?)</select>', re.S)
+_BEE_OPTION = re.compile(r'<option[^>]*value="([^"]*)"[^>]*>\s*([^<]*?)\s*</option>', re.S)
+
+
+def basketee_menu(page: str) -> dict:
+    """{"dates": [ISO date, ...], "chids": {championship name: id}} off the portal's two menus."""
+    import html as _html
+    out = {"dates": [], "chids": {}}
+    for which, body in _BEE_SELECT.findall(page or ""):
+        for value, label in _BEE_OPTION.findall(body):
+            if which == "date":
+                m = re.fullmatch(r"(\d{2})\.(\d{2})\.(\d{4})", value.strip())
+                if m:
+                    out["dates"].append(f"{m.group(3)}-{m.group(2)}-{m.group(1)}")
+            elif value.strip():
+                out["chids"][_html.unescape(label).strip()] = value.strip()
+    return out
+
+
+def basketee_rows(payload, chid: str) -> Optional[list]:
+    """One date's games of one championship, slimmed to what a fixture needs. None when the payload is not the list
+    (the portal's error page is HTML)."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        return None
+    out = []
+    for r in payload["data"]:
+        if str(r.get("chid")) != str(chid) or not r.get("gid"):
+            continue
+        out.append({"gid": str(r["gid"]), "date": r.get("date") or "", "time": r.get("time") or "",
+                    "home": (r.get("team_home") or "").strip(), "away": (r.get("team_visitor") or "").strip(),
+                    "h_tid": str(r.get("h_tid") or ""), "v_tid": str(r.get("v_tid") or ""),
+                    "place": (r.get("place") or "").strip() or None,
+                    "fls": str(r["sporting_id_live"]) if r.get("sporting_id_live") else None,
+                    "over": str(r.get("is_over")) == "1"})
+    return out
+
+
+def _tallinn_today():
+    """The portal's own date: Estonian time (the Latvian clubs' is the same)."""
+    if ZoneInfo is None:
+        return datetime.now(timezone.utc).date()
+    return datetime.now(ZoneInfo("Europe/Tallinn")).date()
+
+
+# legabasketfemminile.it (Lega Basket Femminile: Serie A1 and A2, women): games on FIBA LiveStats (client LEGBF). The
+# site is a SvelteKit front on its own JSON API, and robots.txt allows every path to a general crawler (it closes the
+# team and player PAGES to AI crawlers only; neither is read here):
+#   /rm/v1/competitions/<serie-a1|serie-a2>/<2026-27>/calendar-index.json   every round and game of a season: the
+#        game's id (a uuid), start_at (UTC), both clubs (id, slug, name, short_name, crest), status, points
+#   /rm/v1/competitions/<...>/<season>/overview.json    the phases (Serie A2: "Girone A" and "Girone B", each a
+#        round robin; a play-off phase is another format)
+#   /rm/v1/matches/<id>.json                             one game: genius_id (the LiveStats id, null until the game
+#        is set up), the officials, and a venue that is not to be trusted (see _lbf_fetch)
+# The LiveStats id is asked for once per game, when the game is fetched, and kept in data/feed/<CODE>/games.json with
+# its clubs; a game not set up yet is asked about again at most every 10 minutes. Clubs are keyed on the league's own
+# team slug ("costa-masnaga"): its three-letter codes are not unique (two Cagliari clubs are both CAG in 2026-27, three
+# clubs have none) and are not FIBA's (San Martino: SAN here, SML in the feed).
+LBF_API = "https://www.legabasketfemminile.it/rm/v1"
+LBF_GAP_S = 2.0
+LBF_RECHECK_S = 600
+
+
+def lbf_games(calendar: dict, overview: dict, stage: str = "regular") -> list[dict]:
+    """The games of one stage off a calendar index: {id, start, status, home, away (club dicts), group}. Regular =
+    the round-robin phases; a phase is a GROUP when there is more than one of them (Serie A2's two gironi)."""
+    phases = {p.get("id"): p for p in (overview or {}).get("phases") or []}
+    rr = [p for p in phases.values() if (p.get("format") or "round_robin") == "round_robin"]
+    out = []
+    for rnd in (calendar or {}).get("rounds") or []:
+        ph = phases.get(rnd.get("phase_id")) or {}
+        regular = (ph.get("format") or "round_robin") == "round_robin"
+        if regular != (stage != "playoffs"):
+            continue
+        name = ph.get("name") or {}
+        group = (name.get("it") or name.get("en") or "").strip() if regular and len(rr) > 1 else None
+        for m in rnd.get("matches") or []:
+            if not (m.get("id") and m.get("home") and m.get("away")):
+                continue
+            out.append({"id": m["id"], "start": m.get("start_at"), "status": m.get("status") or "scheduled",
+                        "home": m["home"], "away": m["away"], "group": group or None})
+    return out
+
+
 def _utc(tz_name, y, mo, d, h, mi):
     """A local kick-off as an ISO instant, or None where the zone database is unavailable.
 
@@ -205,6 +313,18 @@ def _slug_of(row: str, i: int):
     return found[i] if len(found) > i else None
 
 
+def livestats_crest(t: dict) -> Optional[str]:
+    """A club's crest in a LiveStats payload's tm: logo / logoS / logoT (the largest first), an https URL only
+    (feedplatform.Platform.logo_url reads the same fields the same way)."""
+    for k in ("logo", "logoS", "logoT"):
+        v = t.get(k)
+        if isinstance(v, dict):
+            v = v.get("url")
+        if isinstance(v, str) and v.startswith("https://"):
+            return v
+    return None
+
+
 def _start_year(season: str) -> int:
     """"2026-27" -> 2026. The platform's season name is the one thing every source agrees on."""
     m = re.match(r"(\d{4})", str(season or ""))
@@ -215,6 +335,39 @@ def _start_year(season: str) -> int:
     # to July - 2027 in March 2027, when the season being played started in 2026
     now = time.gmtime()
     return now.tm_year if now.tm_mon >= 8 else now.tm_year - 1
+
+
+def czech_rows(page: str, base: str, competition_page: bool = False) -> list[dict]:
+    """Every fixture row on a ČBF schedule page: an NBL-style /zapasy page, or the "Zápasy" tab of a
+    federation competition page (which also carries the part's name in its first cell and the hall
+    after the kick-off). A row names the fixture (/zapas/<id>), both clubs, the kick-off, and - once the
+    game is set up - its LiveStats webcast, which saves the hop to the game's own page."""
+    import html as _html
+    i = page.find('id="tab-pane-one"') if competition_page else -1
+    if i >= 0:                                              # a competition page: its fixtures tab only (the
+        j = page.find('id="tab-pane-two"', i)               # table and the records tabs link games too)
+        page = page[i:j if j > i else None]
+    out, seen = [], set()
+    for row in _CZ_ROW.findall(page):
+        m = _ZAPAS.search(row)
+        if not m or m.group(1) in seen:
+            continue
+        seen.add(m.group(1))
+        cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row, re.S)
+        text = lambda c: re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", c or ""))).strip()  # noqa: E731
+        names_ = [n.strip() for n in _CZ_TEAM.findall(row) if n.strip()]
+        when = _CZ_WHEN.search(row)
+        web = _WEBCAST.search(row) or _WEBCAST_ANY.search(row)
+        # the hall: a plain cell straight after the kick-off's (a competition page has one; NBL's page has the clubs there)
+        venue = None
+        dt = next((k for k, c in enumerate(re.findall(r"<td\b[^>]*>", row)) if _CZ_WHEN.search(c)), None)
+        if dt is not None and dt + 1 < len(cells) and "<" not in cells[dt + 1] and re.search(r"[^\W\d_]", cells[dt + 1]):
+            venue = text(cells[dt + 1]) or None
+        part = text(cells[0]) if cells and re.match(r"\s*(skupina|z[áa]kladn|nadstavb|play|baráž|final)", text(cells[0]), re.I) else None
+        out.append({"sid": m.group(1), "home": names_[0] if names_ else "", "away": names_[1] if len(names_) > 1 else "",
+                    "when": when.groups() if when else None, "crests": [base + u for u in _CZ_LOGO.findall(row)],
+                    "fiba_id": web.group(1) if web else None, "venue": venue, "part": part})
+    return out
 
 
 class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
@@ -284,6 +437,10 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._kos_fetch(str(external_id), config)
         if site == "basketligaen":
             return self._dbl_fetch(str(external_id), config)
+        if site == "basketee":
+            return self._bee_fetch(str(external_id), config)
+        if site == "lbf":
+            return self._lbf_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -301,6 +458,10 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._kos(config)
         if site == "basketligaen":
             return self._dbl(config)
+        if site == "basketee":
+            return self._bee(config)
+        if site == "lbf":
+            return self._lbf(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
 
@@ -773,52 +934,388 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             b.tipoff_at = config["_tipoff_at"]
         return b
 
+    # ------------------------------------------------------------ legabasketfemminile.it ---
+    _lbf_last = 0.0
+
+    def _lbf_json(self, path: str):
+        gap = time.time() - FibaSiteScheduleAdapter._lbf_last
+        if gap < LBF_GAP_S:
+            time.sleep(LBF_GAP_S - gap)
+        FibaSiteScheduleAdapter._lbf_last = time.time()
+        try:
+            r = requests.get(LBF_API + path, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=40)
+        except requests.RequestException:
+            return None
+        if r.status_code != 200:
+            return None
+        try:
+            return r.json()
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _lbf_season(config: dict) -> str:
+        y = _start_year(config.get("season") or "")
+        return f"{y}-{str(y + 1)[2:]}"
+
+    def _lbf_cache(self, config: dict) -> tuple[Optional[str], dict]:
+        p = self._map_path(config)
+        p = os.path.join(os.path.dirname(p), "games.json") if p else None
+        try:
+            with open(p, encoding="utf-8") as f:
+                return p, json.load(f)
+        except (OSError, TypeError, ValueError):
+            return p, {}
+
+    @staticmethod
+    def _lbf_save(p: Optional[str], games: dict) -> None:
+        if not p:
+            return
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(games, f, ensure_ascii=False, indent=1, sort_keys=True)
+        except OSError:
+            pass
+
+    def _lbf(self, config: dict) -> list[ScheduleGame]:
+        comp, season = config.get("lbf_competition") or "serie-a1", self._lbf_season(config)
+        stage = (config.get("stage") or "regular").lower()
+        cal = self._lbf_json(f"/competitions/{comp}/{season}/calendar-index.json")
+        ov = self._lbf_json(f"/competitions/{comp}/{season}/overview.json")
+        if not cal:
+            print(f"     LBF {comp} {season}: no calendar")
+            return []
+        games = lbf_games(cal, ov or {}, stage)
+        shorts: dict = {}
+        for g in games:                                  # a league abbreviation is a short name only if it is unique
+            for side in ("home", "away"):
+                c = g[side]
+                if c.get("short_name"):
+                    shorts.setdefault(c["short_name"], set()).add(c.get("slug"))
+        p, cache = self._lbf_cache(config)
+        changed, out = False, []
+        for g in games:
+            h, a = g["home"], g["away"]
+            ent = cache.setdefault(g["id"], {})
+            want = {"home": h.get("slug"), "away": a.get("slug"), "home_name": h.get("name"), "away_name": a.get("name")}
+            if any(ent.get(k) != v for k, v in want.items()):
+                ent.update(want)
+                changed = True
+            extra = {"home_code": h.get("slug"), "away_code": a.get("slug"),
+                     "home_logo": h.get("logo_url"), "away_logo": a.get("logo_url")}
+            for side, c in (("home", h), ("away", a)):
+                if c.get("short_name") and len(shorts.get(c["short_name"], ())) == 1:
+                    extra[f"{side}_short"] = c["short_name"]
+            if g["group"]:
+                extra["home_group"] = extra["away_group"] = g["group"]
+            start = (g["start"] or "").replace(".000Z", "Z") or None
+            out.append(ScheduleGame(external_id=g["id"], home_name=h.get("name") or "", away_name=a.get("name") or "",
+                                    tipoff_at=start, status={"final": "final", "live": "live"}.get(g["status"], "scheduled"),
+                                    extra=extra))
+        if changed:
+            self._lbf_save(p, cache)
+        return out
+
+    def _lbf_fetch(self, mid: str, config: dict):
+        """A game by the league's id: its LiveStats id asked for once (again after LBF_RECHECK_S while there is none), and
+        the feed under the league's club names and slugs."""
+        p, cache = self._lbf_cache(config)
+        ent = cache.get(mid)
+        if ent is None:
+            self._lbf(config)
+            p, cache = self._lbf_cache(config)
+            ent = cache.get(mid)
+        if ent is None:
+            return None
+        if not ent.get("fls"):
+            if time.time() - ent.get("checked", 0) < LBF_RECHECK_S:
+                return None
+            m = self._lbf_json(f"/matches/{mid}.json") or {}
+            ent["checked"] = time.time()
+            if m.get("genius_id"):
+                ent["fls"] = str(m["genius_id"])
+            # NOT its venue: on the two games checked (2026-09-27) it named another club's arena (Sassari at home in
+            # "Palaleonessa", Brescia's; Costa Masnaga in "La Molisana Arena", Campobasso's)
+            self._lbf_save(p, cache)
+            if not ent.get("fls"):
+                return None                        # not set up on LiveStats yet
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=ent["fls"]))
+        if not raw or "tm" not in raw:
+            return None
+        for tno, side in (("1", "home"), ("2", "away")):
+            if isinstance(raw["tm"].get(tno), dict):
+                raw["tm"][tno]["name"] = ent.get(f"{side}_name") or raw["tm"][tno].get("name") or ""
+                raw["tm"][tno]["code"] = ent.get(side) or raw["tm"][tno].get("code") or ""
+        b = self.bundle_from_raw(raw, mid, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    # ------------------------------------------------------------ online.basket.ee ---
+    _bee_last = 0.0                          # one request every BASKETEE_GAP_S, whichever source row asks
+    _bee_menu_at: tuple = (0.0, None)        # (read at, basketee_menu())
+
+    def _bee_get(self, url: str, want_json: bool = True):
+        """One polite GET on the portal: JSON (or the page), None for anything else. The server drops a connection now
+        and then, so a reset is tried again (three times in all); an answer that is not JSON is never retried - on
+        this portal that is the error page."""
+        for _ in range(3):
+            gap = time.time() - FibaSiteScheduleAdapter._bee_last
+            if gap < BASKETEE_GAP_S:
+                time.sleep(BASKETEE_GAP_S - gap)
+            FibaSiteScheduleAdapter._bee_last = time.time()
+            try:
+                r = requests.get(url, headers={"User-Agent": UA}, timeout=40)
+            except requests.RequestException:
+                continue
+            if r.status_code != 200:
+                return None
+            if not want_json:
+                return r.text
+            try:
+                return r.json()
+            except ValueError:
+                return None
+        return None
+
+    def _bee_menu(self) -> dict:
+        at, menu = FibaSiteScheduleAdapter._bee_menu_at
+        if menu is None or time.time() - at > BASKETEE_MENU_TTL_S:
+            page = self._bee_get(BASKETEE_HOME, want_json=False)
+            got = basketee_menu(page or "")
+            if got["dates"]:
+                FibaSiteScheduleAdapter._bee_menu_at = (time.time(), got)
+                menu = got
+        return menu or {"dates": [], "chids": {}}
+
+    @staticmethod
+    def _bee_path(config: dict) -> Optional[str]:
+        p = FibaSiteScheduleAdapter._map_path(config)
+        return os.path.join(os.path.dirname(p), "days.json") if p else None
+
+    def _bee_days(self, config: dict) -> dict:
+        p = self._bee_path(config)
+        try:
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, TypeError, ValueError):
+            return {}
+
+    def _bee_save(self, config: dict, days: dict) -> None:
+        p = self._bee_path(config)
+        if not p:
+            return
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(days, f, ensure_ascii=False, indent=1, sort_keys=True)
+        except OSError:
+            pass
+
+    # THE CRESTS. The portal's day list names no crest, so a club first met on the schedule had none, and the crest
+    # in a game's LiveStats data (tm.logoS) never reached it (feedplatform.take_crest now takes it from the payload
+    # too). Every crest a payload shows is kept here under the federation's club id, and the schedule hands it on
+    # (home_logo / away_logo, run_ingest.sync_logos), so a club has its crest from the fixture list onwards.
+    @staticmethod
+    def _bee_crest_path(config: dict) -> Optional[str]:
+        p = FibaSiteScheduleAdapter._map_path(config)
+        return os.path.join(os.path.dirname(p), "crests.json") if p else None
+
+    def _bee_crests(self, config: dict) -> dict:
+        try:
+            with open(self._bee_crest_path(config), encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, TypeError, ValueError):
+            return {}
+
+    def _bee_keep_crests(self, config: dict, raw: dict, g: dict) -> None:
+        crests = self._bee_crests(config)
+        new = {}
+        for tno, tid in (("1", g.get("h_tid")), ("2", g.get("v_tid"))):
+            url = livestats_crest((raw.get("tm") or {}).get(tno) or {})
+            if tid and url and crests.get(str(tid)) != url:
+                new[str(tid)] = url
+        p = self._bee_crest_path(config)
+        if new and p:
+            crests.update(new)
+            try:
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, "w", encoding="utf-8") as f:
+                    json.dump(crests, f, ensure_ascii=False, indent=1, sort_keys=True)
+            except OSError:
+                pass
+
+    def _bee(self, config: dict) -> list[ScheduleGame]:
+        """The league's games on the dates the portal offers, and every game read before (from the day cache)."""
+        from datetime import timedelta
+        label = config.get("basketee_league") or ""
+        want_year, now_year = _start_year(config.get("season") or ""), _start_year("")
+        if want_year != now_year:          # a backfill: the portal shows the last two weeks, never another season
+            print(f"     {label}: the portal only shows the current season ({now_year}/{now_year + 1}); "
+                  f"{want_year}/{want_year + 1} cannot be read from it")
+            return []
+        menu = self._bee_menu()
+        chid = next((cid for name, cid in menu["chids"].items() if name.casefold() == label.casefold()),
+                    str(config.get("basketee_chid") or ""))
+        days = self._bee_days(config)
+        if not chid:
+            print(f"     {label}: not on the portal's menu, and no basketee_chid configured")
+        else:
+            today = _tallinn_today()
+            lo, hi = (today - timedelta(days=12)).isoformat(), (today + timedelta(days=6)).isoformat()
+            ttl = {-1: 3 * 3600, 0: 1800, 1: 12 * 3600}
+            changed = False
+            for d in sorted(x for x in menu["dates"] if lo <= x <= hi):     # never a date the menu does not offer
+                ent = days.get(d)
+                when = (d > today.isoformat()) - (d < today.isoformat())
+                if ent and (ent.get("final") or time.time() - ent.get("t", 0) < ttl[when]):
+                    continue
+                rows = basketee_rows(self._bee_get(BASKETEE_DAY.format(date=d)), chid)
+                if rows is None:
+                    continue                  # not read this time: the cache keeps what it had
+                days[d] = {"t": time.time(), "games": rows, "final": when < 0 and all(g["over"] for g in rows)}
+                changed = True
+            if changed:
+                self._bee_save(config, days)
+        best: dict = {}
+        for d, ent in days.items():                   # a game moved to another date: its newest reading wins
+            for g in ent.get("games") or []:
+                if g["gid"] not in best or ent.get("t", 0) >= best[g["gid"]][0]:
+                    best[g["gid"]] = (ent.get("t", 0), g)
+        out = []
+        crests = self._bee_crests(config)
+        for _, g in sorted(best.values(), key=lambda x: (x[1]["date"], x[1]["time"], x[1]["gid"])):
+            dm = re.match(r"(\d{4})-(\d{2})-(\d{2})", g["date"])
+            tm = re.match(r"(\d{1,2}):(\d{2})", g["time"])
+            extra = {"venue": g["place"], "home_code": g["h_tid"], "away_code": g["v_tid"]}
+            for side, tid in (("home", g["h_tid"]), ("away", g["v_tid"])):
+                if crests.get(str(tid)):
+                    extra[side + "_logo"] = crests[str(tid)]
+            out.append(ScheduleGame(
+                external_id=g["gid"], home_name=g["home"], away_name=g["away"],
+                tipoff_at=_utc("Europe/Tallinn", *dm.groups(), *tm.groups()) if dm and tm else None,
+                status="final" if g["over"] else "scheduled", extra=extra))
+        return out
+
+    def _bee_fetch(self, gid: str, config: dict):
+        """A game by the league's own id: its LiveStats id and clubs from the day cache (read once more if this machine
+        has not seen the game), the feed under the schedule's names and club ids, so a club is one club whichever
+        side of the pipeline met it first."""
+        def row():
+            for ent in self._bee_days(config).values():
+                for g in ent.get("games") or []:
+                    if g["gid"] == gid:
+                        return g
+            return None
+        g = row()
+        if g is None:
+            self._bee(config)
+            g = row()
+        if not g or not g.get("fls"):
+            return None                        # not set up on LiveStats yet
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=g["fls"]))
+        if not raw or "tm" not in raw:
+            return None
+        self._bee_keep_crests(config, raw, g)
+        for tno, name, code in (("1", g["home"], g["h_tid"]), ("2", g["away"], g["v_tid"])):
+            if isinstance(raw["tm"].get(tno), dict):
+                raw["tm"][tno]["name"] = name or raw["tm"][tno].get("name") or ""
+                raw["tm"][tno]["code"] = code or raw["tm"][tno].get("code") or ""
+        b = self.bundle_from_raw(raw, gid, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
     def _czech(self, config: dict) -> list[ScheduleGame]:
-        """nbl.basketball: one <tr> per fixture — id, both clubs and the kick-off, in one request.
+        """A ČBF league: nbl.basketball (or a site built the same way, "czech_base": zbl.basketball) prints one
+        <tr> per fixture - id, both clubs and the kick-off - in one request. A league on the federation's own
+        site ("czech_competition", on cz.basketball) is read one competition part at a time, the same rows.
 
         THE FIXTURE IS KEYED ON THE SITE'S OWN ID, not on the LiveStats id. The LiveStats id is
-        the one thing the schedule does NOT carry (it appears on the game's page, and for a
+        the one thing the schedule does NOT always carry (it appears once the game is set up, and for a
         fixture far out it does not exist yet), so keying on it meant two thirds of the season
         was invisible — 37 fixtures out of 132 — and a game that gained its id later would have
         arrived as a SECOND row beside the one already written. The site id is on every row from
         the moment a fixture exists and never changes, so it is the id; resolving it to a
-        LiveStats id is fetch()'s problem, once, and cached.
+        LiveStats id is fetch()'s problem, once, and cached. A row that already links its webcast
+        hands the id over here, so that game never needs the hop at all.
 
-        That also takes ~130 requests out of every discovery pass: nothing is hopped here at all."""
+        FIRST-PHASE GROUPS ("Skupina VÝCHOD", "Skupina ZÁPAD") name each fixture's group (home_group /
+        away_group), which a source with groups_from_feed ranks in separate tables; every later part
+        (placement groups, play-out, play-off) is read into the same competition, as NBL's are."""
         year = _start_year(config.get("season") or "")
-        html = self._page(CZECH_SCHEDULE.format(year=year))
+        base = (config.get("czech_base") or CZECH_BASE).rstrip("/")
+        comp = config.get("czech_competition")
+        pages = []
+        if comp:
+            for pid, label in self._czech_parts(base, comp, year):
+                try:
+                    pages.append((label, self._page(f"{base}/soutez/{pid}")))
+                except Exception as exc:
+                    print(f"     {comp}: part '{label}' could not be read ({exc})")
+        else:
+            pages.append((None, self._page(f"{base}/zapasy?y={year}&p1=0&c=0&d_od=&d_do=&k=0")))
         out, seen = [], set()
-        for row in _CZ_ROW.findall(html):
-            m = _ZAPAS.search(row)
-            if not m or m.group(1) in seen:
-                continue
-            sid = m.group(1)
-            seen.add(sid)
-            names_ = [n.strip() for n in _CZ_TEAM.findall(row) if n.strip()]
-            when = _CZ_WHEN.search(row)
-            crests = [CZECH_BASE + u for u in _CZ_LOGO.findall(row)]
-            out.append(ScheduleGame(
-                external_id=sid,
-                home_name=names_[0] if len(names_) > 0 else "",
-                away_name=names_[1] if len(names_) > 1 else "",
-                tipoff_at=_utc("Europe/Prague", *when.groups()) if when else None,
-                # no code: this site names no club code anywhere, and the clubs already written
-                # were keyed on the slug of their name (feedplatform's own fallback), so inventing
-                # one now would strand every fixture already filed against them.
-                extra={"home_logo": crests[0] if len(crests) > 0 else None,
-                       "away_logo": crests[1] if len(crests) > 1 else None}))
+        known, learnt = self._idmap(config), 0
+        for label, html in pages:
+            for r in czech_rows(html, base, competition_page=bool(comp)):
+                if r["sid"] in seen:
+                    continue
+                seen.add(r["sid"])
+                if r["fiba_id"] and known.get(r["sid"]) != r["fiba_id"]:
+                    known[r["sid"]] = r["fiba_id"]
+                    learnt += 1
+                grp = _CZ_GROUP.match(r["part"] or label or "") if comp else None
+                extra = {"home_logo": r["crests"][0] if len(r["crests"]) > 0 else None,
+                         "away_logo": r["crests"][1] if len(r["crests"]) > 1 else None}
+                if r["venue"]:
+                    extra["venue"] = r["venue"]
+                if grp:
+                    extra["home_group"] = extra["away_group"] = grp.group(1).strip().title()
+                out.append(ScheduleGame(
+                    external_id=r["sid"], home_name=r["home"], away_name=r["away"],
+                    tipoff_at=_utc("Europe/Prague", *r["when"]) if r["when"] else None,
+                    # no code: this site names no club code anywhere, and the clubs already written
+                    # were keyed on the slug of their name (feedplatform's own fallback), so inventing
+                    # one now would strand every fixture already filed against them.
+                    extra=extra))
+        if learnt:
+            self._save_idmap(config, known)
         return out
+
+    def _czech_parts(self, base: str, comp: str, year: int) -> list:
+        """[(competition id?p=part id, part name)] of one competition on the federation's site, for one season,
+        read off its competitions page (the ids are new every season)."""
+        try:
+            page = self._page(CZ_COMPETITIONS.format(base=base, year=year))
+        except Exception as exc:
+            print(f"     {comp}: the competitions page could not be read ({exc})")
+            return []
+        import html as _html
+        want = re.sub(r"\s+", " ", comp).strip().casefold()
+        heads = list(_CZ_COMP_H2.finditer(page))
+        for k, h in enumerate(heads):
+            if re.sub(r"\s+", " ", _html.unescape(h.group(1))).strip().casefold() != want:
+                continue
+            block = page[h.end():heads[k + 1].start() if k + 1 < len(heads) else None]
+            return [(f"{cid}?p={pid}", _html.unescape(label)) for cid, pid, label in _CZ_PART.findall(block)]
+        print(f"     no '{comp}' on {CZ_COMPETITIONS.format(base=base, year=year)}")
+        return []
 
     def _czech_match_id(self, sid: str, config: dict) -> Optional[str]:
         """The LiveStats id behind a Czech fixture id, learnt once and remembered.
 
         A game's LiveStats id never changes, so the map is written to data/feed/<CODE>/idmap.json
-        and a fixture costs this hop exactly once in its life."""
+        and a fixture costs this hop exactly once in its life (none, if its schedule row linked it)."""
         known = self._idmap(config)
         if known.get(sid):
             return known[sid]
+        base = (config.get("czech_base") or CZECH_BASE).rstrip("/")
         try:
-            page = self._page(f"{CZECH_BASE}/zapas/{sid}")
+            page = self._page(f"{base}/zapas/{sid}")
         except Exception:
             return None
         w = _WEBCAST.search(page) or _WEBCAST_ANY.search(page)

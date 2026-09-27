@@ -1,0 +1,743 @@
+{
+"code": "ZBL",
+"label": "Czech ŽBL",
+"adapter": "fiba_site_schedule",
+"updated": "2026-09-27T10:50:02.940063+00:00",
+"games": [
+{
+"id": "546845",
+"home": "Basket Ostrava",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2027-02-07T16:00:00Z",
+"venue": null
+},
+{
+"id": "546886",
+"home": "DSK Basketball Brandýs",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2027-02-06T16:00:00Z",
+"venue": null
+},
+{
+"id": "546870",
+"home": "KARA Trutnov",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2027-02-05T17:30:00Z",
+"venue": null
+},
+{
+"id": "546907",
+"home": "Levhartice Chomutov",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2027-02-05T17:00:00Z",
+"venue": null
+},
+{
+"id": "546829",
+"home": "ZVVZ USK Praha",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2027-01-31T09:30:00Z",
+"venue": null
+},
+{
+"id": "546836",
+"home": "Slovanka",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2027-01-24T16:00:00Z",
+"venue": null
+},
+{
+"id": "546828",
+"home": "SBŠ Ostrava",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2027-01-24T16:00:00Z",
+"venue": null
+},
+{
+"id": "546861",
+"home": "Sokol Hradec Králové",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2027-01-24T09:30:00Z",
+"venue": null
+},
+{
+"id": "546869",
+"home": "KP Brno",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2027-01-23T16:00:00Z",
+"venue": null
+},
+{
+"id": "546911",
+"home": "ZVVZ USK Praha",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": null
+},
+{
+"id": "546868",
+"home": "DSK Basketball Brandýs",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2027-01-20T19:00:00Z",
+"venue": null
+},
+{
+"id": "546857",
+"home": "Levhartice Chomutov",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2027-01-20T17:00:00Z",
+"venue": null
+},
+{
+"id": "546827",
+"home": "Slovanka",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2027-01-20T16:30:00Z",
+"venue": null
+},
+{
+"id": "546892",
+"home": "ZVVZ USK Praha",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2027-01-19T23:00:00Z",
+"venue": null
+},
+{
+"id": "546860",
+"home": "Basket Ostrava",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2027-01-19T23:00:00Z",
+"venue": null
+},
+{
+"id": "546910",
+"home": "SBŠ Ostrava",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2027-01-17T16:00:00Z",
+"venue": null
+},
+{
+"id": "546883",
+"home": "Slovanka",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2027-01-17T16:00:00Z",
+"venue": null
+},
+{
+"id": "546826",
+"home": "KP Brno",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2027-01-17T09:30:00Z",
+"venue": null
+},
+{
+"id": "546834",
+"home": "Sokol Hradec Králové",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2027-01-16T15:00:00Z",
+"venue": null
+},
+{
+"id": "546842",
+"home": "KARA Trutnov",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2027-01-15T17:30:00Z",
+"venue": null
+},
+{
+"id": "546882",
+"home": "SBŠ Ostrava",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2027-01-10T16:00:00Z",
+"venue": null
+},
+{
+"id": "546850",
+"home": "DSK Basketball Brandýs",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2027-01-10T09:30:00Z",
+"venue": null
+},
+{
+"id": "546858",
+"home": "Žabiny Brno",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2027-01-09T16:00:00Z",
+"venue": null
+},
+{
+"id": "546874",
+"home": "ZVVZ USK Praha",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2027-01-09T15:00:00Z",
+"venue": null
+},
+{
+"id": "546905",
+"home": "Levhartice Chomutov",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2027-01-08T17:00:00Z",
+"venue": null
+},
+{
+"id": "546893",
+"home": "Levhartice Chomutov",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2027-01-05T17:00:00Z",
+"venue": null
+},
+{
+"id": "546903",
+"home": "Žabiny Brno",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2026-12-21T16:00:00Z",
+"venue": null
+},
+{
+"id": "546909",
+"home": "Slovanka",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2026-12-20T16:00:00Z",
+"venue": null
+},
+{
+"id": "546832",
+"home": "Basket Ostrava",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2026-12-20T16:00:00Z",
+"venue": null
+},
+{
+"id": "546873",
+"home": "SBŠ Ostrava",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2026-12-19T16:00:00Z",
+"venue": null
+},
+{
+"id": "546898",
+"home": "Sokol Hradec Králové",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2026-12-19T15:00:00Z",
+"venue": null
+},
+{
+"id": "546824",
+"home": "KARA Trutnov",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2026-12-18T17:30:00Z",
+"venue": null
+},
+{
+"id": "546864",
+"home": "SBŠ Ostrava",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2026-12-13T17:00:00Z",
+"venue": null
+},
+{
+"id": "546872",
+"home": "Slovanka",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2026-12-13T16:00:00Z",
+"venue": null
+},
+{
+"id": "546856",
+"home": "ZVVZ USK Praha",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2026-12-13T15:00:00Z",
+"venue": null
+},
+{
+"id": "546839",
+"home": "Levhartice Chomutov",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2026-12-13T09:30:00Z",
+"venue": null
+},
+{
+"id": "546823",
+"home": "Žabiny Brno",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2026-12-12T16:00:00Z",
+"venue": null
+},
+{
+"id": "546822",
+"home": "DSK Basketball Brandýs",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2026-12-09T19:00:00Z",
+"venue": null
+},
+{
+"id": "546888",
+"home": "KARA Trutnov",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2026-12-09T18:00:00Z",
+"venue": null
+},
+{
+"id": "546908",
+"home": "KP Brno",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2026-12-09T16:30:00Z",
+"venue": null
+},
+{
+"id": "546896",
+"home": "Basket Ostrava",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2026-12-08T23:00:00Z",
+"venue": null
+},
+{
+"id": "546880",
+"home": "Sokol Hradec Králové",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2026-12-08T23:00:00Z",
+"venue": null
+},
+{
+"id": "546854",
+"home": "Slovanka",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2026-12-06T16:00:00Z",
+"venue": null
+},
+{
+"id": "546846",
+"home": "SBŠ Ostrava",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2026-12-06T09:30:00Z",
+"venue": null
+},
+{
+"id": "546871",
+"home": "Sokol Hradec Králové",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2026-12-05T15:00:00Z",
+"venue": null
+},
+{
+"id": "546838",
+"home": "ZVVZ USK Praha",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2026-12-05T15:00:00Z",
+"venue": null
+},
+{
+"id": "546830",
+"home": "Levhartice Chomutov",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2026-12-04T18:00:00Z",
+"venue": null
+},
+{
+"id": "546878",
+"home": "Slovanka",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2026-11-29T16:00:00Z",
+"venue": null
+},
+{
+"id": "546837",
+"home": "SBŠ Ostrava",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2026-11-29T16:00:00Z",
+"venue": null
+},
+{
+"id": "546894",
+"home": "Žabiny Brno",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2026-11-29T09:30:00Z",
+"venue": null
+},
+{
+"id": "546866",
+"home": "Sokol Hradec Králové",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2026-11-28T15:00:00Z",
+"venue": null
+},
+{
+"id": "546853",
+"home": "KP Brno",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2026-11-28T14:00:00Z",
+"venue": null
+},
+{
+"id": "546844",
+"home": "Basket Ostrava",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2026-11-22T16:00:00Z",
+"venue": null
+},
+{
+"id": "546852",
+"home": "KARA Trutnov",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2026-11-22T09:30:00Z",
+"venue": null
+},
+{
+"id": "546885",
+"home": "Žabiny Brno",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2026-11-21T16:00:00Z",
+"venue": null
+},
+{
+"id": "546877",
+"home": "DSK Basketball Brandýs",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2026-11-21T16:00:00Z",
+"venue": null
+},
+{
+"id": "546902",
+"home": "Levhartice Chomutov",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2026-11-20T17:00:00Z",
+"venue": null
+},
+{
+"id": "546901",
+"home": "SBŠ Ostrava",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00Z",
+"venue": null
+},
+{
+"id": "546876",
+"home": "Žabiny Brno",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00Z",
+"venue": null
+},
+{
+"id": "546843",
+"home": "Sokol Hradec Králové",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2026-10-31T15:00:00Z",
+"venue": null
+},
+{
+"id": "546835",
+"home": "KP Brno",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2026-10-31T14:00:00Z",
+"venue": null
+},
+{
+"id": "546906",
+"home": "KARA Trutnov",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2026-10-30T17:30:00Z",
+"venue": null
+},
+{
+"id": "546851",
+"home": "Basket Ostrava",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2026-10-25T16:00:00Z",
+"venue": null
+},
+{
+"id": "546867",
+"home": "Žabiny Brno",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2026-10-25T09:30:00Z",
+"venue": null
+},
+{
+"id": "546859",
+"home": "DSK Basketball Brandýs",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2026-10-24T15:00:00Z",
+"venue": null
+},
+{
+"id": "546900",
+"home": "ZVVZ USK Praha",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2026-10-24T14:00:00Z",
+"venue": null
+},
+{
+"id": "546891",
+"home": "Slovanka",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2026-10-18T15:00:00Z",
+"venue": null
+},
+{
+"id": "546848",
+"home": "Basket Ostrava",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2026-10-18T15:00:00Z",
+"venue": null
+},
+{
+"id": "546833",
+"home": "KARA Trutnov",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2026-10-18T08:30:00Z",
+"venue": null
+},
+{
+"id": "546899",
+"home": "KP Brno",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2026-10-17T17:00:00Z",
+"venue": null
+},
+{
+"id": "546825",
+"home": "Sokol Hradec Králové",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2026-10-17T14:00:00Z",
+"venue": null
+},
+{
+"id": "546890",
+"home": "KP Brno",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2026-10-10T16:00:00Z",
+"venue": null
+},
+{
+"id": "546849",
+"home": "Žabiny Brno",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00Z",
+"venue": null
+},
+{
+"id": "546841",
+"home": "DSK Basketball Brandýs",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00Z",
+"venue": null
+},
+{
+"id": "546865",
+"home": "ZVVZ USK Praha",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2026-10-10T14:00:00Z",
+"venue": null
+},
+{
+"id": "546884",
+"home": "Levhartice Chomutov",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2026-10-09T16:00:00Z",
+"venue": null
+},
+{
+"id": "546904",
+"home": "DSK Basketball Brandýs",
+"away": "Levhartice Chomutov",
+"status": "scheduled",
+"date": "2026-10-07T18:00:00Z",
+"venue": null
+},
+{
+"id": "546897",
+"home": "KARA Trutnov",
+"away": "ZVVZ USK Praha",
+"status": "scheduled",
+"date": "2026-10-07T17:00:00Z",
+"venue": null
+},
+{
+"id": "546889",
+"home": "Sokol Hradec Králové",
+"away": "SBŠ Ostrava",
+"status": "scheduled",
+"date": "2026-10-07T16:30:00Z",
+"venue": null
+},
+{
+"id": "546881",
+"home": "KP Brno",
+"away": "Slovanka",
+"status": "scheduled",
+"date": "2026-10-07T15:30:00Z",
+"venue": null
+},
+{
+"id": "546840",
+"home": "Basket Ostrava",
+"away": "Žabiny Brno",
+"status": "scheduled",
+"date": "2026-10-07T15:00:00Z",
+"venue": null
+},
+{
+"id": "546863",
+"home": "Slovanka",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2026-10-04T15:00:00Z",
+"venue": null
+},
+{
+"id": "546855",
+"home": "SBŠ Ostrava",
+"away": "KARA Trutnov",
+"status": "scheduled",
+"date": "2026-10-04T15:00:00Z",
+"venue": null
+},
+{
+"id": "546847",
+"home": "ZVVZ USK Praha",
+"away": "Basket Ostrava",
+"status": "scheduled",
+"date": "2026-10-04T14:00:00Z",
+"venue": null
+},
+{
+"id": "546875",
+"home": "Levhartice Chomutov",
+"away": "KP Brno",
+"status": "scheduled",
+"date": "2026-10-04T08:30:00Z",
+"venue": null
+},
+{
+"id": "546831",
+"home": "Žabiny Brno",
+"away": "DSK Basketball Brandýs",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00Z",
+"venue": null
+},
+{
+"id": "546862",
+"home": "KP Brno",
+"away": "Sokol Hradec Králové",
+"status": "scheduled",
+"date": "2026-09-27T13:30:00Z",
+"venue": null
+},
+{
+"id": "546887",
+"home": "Basket Ostrava",
+"away": "SBŠ Ostrava",
+"homeScore": 65,
+"awayScore": 84,
+"status": "final",
+"date": "2026-09-27T08:30:00Z",
+"hash": "d02380c292242f0c626483c9b7a4b982451b1f50",
+"venue": null,
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/546887.json",
+"updated": "2026-09-27T10:49:33.088892+00:00"
+},
+{
+"id": "546879",
+"home": "KARA Trutnov",
+"away": "Slovanka",
+"homeScore": 72,
+"awayScore": 40,
+"status": "final",
+"date": "2026-09-25T16:30:00Z",
+"hash": "d2252b43cee35d975c455a83f8d2b4ee8e500dea",
+"venue": null,
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/546879.json",
+"updated": "2026-09-27T10:48:23.708348+00:00"
+},
+{
+"id": "546895",
+"home": "DSK Basketball",
+"away": "ZVVZ USK Praha",
+"homeScore": 77,
+"awayScore": 91,
+"status": "final",
+"date": "2026-09-25T16:00:00Z",
+"hash": "f163dc269192e603152cffb6848889106e740749",
+"venue": null,
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/546895.json",
+"updated": "2026-09-27T10:49:00.098723+00:00"
+}
+]
+}

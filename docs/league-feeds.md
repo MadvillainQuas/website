@@ -634,3 +634,314 @@ Copenhagen time. The same path as SLB and WBBL: source `KBL`, adapter `fiba_live
 - `DBBF` is the men's LiveStats client, `DAM` the women's. Only `DAM` is in `epinoia/livestats-clients.json`, which
   serves `fiba_livestats` sources; a game fed through `fiba_site_schedule` (the men's, like Kosovo's) has no
   LiveStats link on its game page.
+
+## Czech Republic: ŽBL and 1. liga mužů (FIBA LiveStats via the federation's system)
+
+### host
+
+The Czech federation (ČBF) runs one system behind three addresses, and every game on it links a FIBA LiveStats
+webcast (client `CBFFE`, the same as NBL). So both leagues are Czech NBL again (`fiba_site_schedule`, site `czech`):
+only the list of fixtures differs.
+
+- **ŽBL** (Chance ŽBL, women): `zbl.basketball`, the identical `/zapasy?y=<start year>` page NBL has
+  (`czech_base: https://zbl.basketball`). 90 fixtures in 2026-27, crests through the site's own resizer.
+- **1. liga mužů** (men's second tier): no site of its own. It lives on the federation's `cz.basketball`, one page per
+  PART of the competition (`/soutez/<competition id>?p=<part id>`), found each season by name
+  (`czech_competition: 1. liga mužů`) on `cz.basketball/soutez?y=<start year>`. 2026-27: competition 5404, parts
+  10223 (Skupina VÝCHOD) and 10224 (Skupina ZÁPAD), 90 fixtures each, 20 clubs. Only the page's "Zápasy" tab
+  (`tab-pane-one`) is read: the table and records tabs link games too.
+- Page titles read "… | CZ.BASKETBALL" (a browser's translation turns that into "PART II. BASKETBALL").
+- `cz.basketball/zapasy` is NOT usable: it ignores the part filter (`p1[]=`) and returns every game in the country
+  (56 MB); its rows also lack the `data-sort` kick-off.
+
+### current_season
+
+`?y=2026` = 2026-27 on all three. The federation's competition and part ids are new every season, so they are read
+off the competitions page each pass, never stored.
+
+### schedule_recipe
+
+`adapters/fiba_site_schedule.py` `czech_rows()`: one `<tr>` per fixture with `/zapas/<site id>` (the fixture's key),
+both clubs in `<div>`s, the kick-off in `data-sort="YYYY-MM-DD-HH-MM"` (Prague time), and - once the game is set
+up - `fibalivestats.com/webcast/CBFFE/<LiveStats id>/`, which goes straight into `data/feed/<CODE>/idmap.json` (no hop
+to the game page). A 1. liga row also names its part in the first cell ("skupina VÝCHOD") and the hall straight
+after the kick-off; the two first-phase groups become each fixture's `home_group`/`away_group` ("Východ", "Západ";
+`groups_from_feed`), later parts (placement groups "Skupina C 1.-6.", play-out, play-off) go into the same
+competition untagged, as NBL's later parts do.
+
+### game_recipe
+
+`fibalivestats.dcd.shared.geniussports.com/data/<LiveStats id>/data.json`, unchanged (FibaLiveStatsAdapter); the
+bundle keeps the fixture's site id. A row without a webcast yet is looked up once on
+`<czech_base>/zapas/<site id>` and remembered.
+
+### logos
+
+ŽBL rows carry both crests (`/min.php?...file=http://cbf.cz/files/<id>.png` on zbl.basketball). 1. liga pages carry
+NONE (fixtures, standings and club pages checked), so its clubs start without crests or colours.
+
+### bio
+
+`bio_sources.czech_site()` reads ŽBL's club pages exactly as NBL's (date, height). `czech_federation("1. liga mužů")`
+reads each club's squad tab on `cz.basketball/tym/<id>?y=<year>`: birth YEAR as printed and height where entered
+(no date anywhere; a player page says "narození 2000 - 26 let").
+
+## Italy: Serie A2 and Serie B Nazionale (Lega Nazionale Pallacanestro) - NOT BUILT
+
+Looked at 2026-09-27 and left out on purpose: the public play-by-play cannot give lineups (see gotchas). Everything
+found is here so the next attempt starts from it.
+
+### host
+
+`www.legapallacanestro.com` (Drupal). **robots.txt: `Crawl-delay: 10`** - one request per 10 s on this host. The
+schedule and standings come from a JSON host with no robots.txt (404): `lnpstat.domino.it`.
+
+### current_season
+
+`Drupal.settings.wpCurrentYear` on any page: `x2627` = 2026-27.
+
+### schedule_recipe
+
+The calendar pages (`/serie/1/calendario` = A2, `/serie/4/calendario` = Serie B with two tabs, `?qt-campionato-selector=0|1`)
+render an empty table; their script fills it from JSON, one round at a time:
+
+    https://lnpstat.domino.it/getstatisticsfiles?task=schedule&year=x2627&league=<league>&round=<n>
+
+- Leagues: `ita2` (Serie A2, 20 clubs, 38 rounds), `ita3_a` and `ita3_b` (Serie B Nazionale groups A and B,
+  18 clubs, 34 rounds each). The round list and the current round are in `Drupal.settings.calendario.<league>`
+  (`round_options`, `curr_round`). `round=all` does not exist. The script also knows `ita2_a`/`ita2_b`,
+  `ita2_2ph_*` and `ita2_clock` (phases of other seasons' formats).
+- Each game: `gameid` ("ita2_403"), `teamid_home`/`teamid_away` (numeric), `teamname_*`, `score_*`, `round`,
+  `date` ("26/09/2026") and `time` ("20:00", Italian local), `arena`, `stream_url`, `game_status`
+  ("finished", "ready", ...).
+- Standings: `task=standings&year=x2627&league=<league>&round=ista`.
+- Crests: `static.legapallacanestro.com/sites/default/files/styles/255_x/public/team_logo/<teamid>.png`.
+
+### game_recipe
+
+No JSON for a game was found (`task=boxscore|tabellino|playbyplay|pbp|match|partita|game|stats|livestats|team`, with
+`round` = the game id or its number: all "file not found"). The game centre is server-rendered HTML:
+
+- `/wp/match/<gameid>/<league>/x2627` - box score. Per club, a names table (`Num` empty, `Q` = `*` for a starter,
+  the player linked `/giocatore/wp/<id>`, then "Squadra" and "Totali" rows) and a stats table of 23 columns:
+  Pun, Min (whole minutes), Falli C (committed), S (drawn), Tiri da 2 R/T/%, Tiri da 3 R/T/%, Tiri liberi R/T/%,
+  Rimbalzi O/D/T, Stop D (blocks)/S (received), Palle P (turnovers)/R (steals), Ass, Val Lega, OER.
+  The quarter table is headed "Ospite | Casa" but its FIRST column is the home club's.
+- `/play-by-play` - `<tr data-period="n">`: Minuto (elapsed game time, 0:00-40:00), the home club's event, the
+  score (home-away), the margin, the away club's event; "<player link>, <description>". Descriptions seen: Tiro
+  realizzato da 2 punti da fuori area / da 3 punti, Tiro sbagliato da fuori area / dall'area / da 3 punti, Tiro
+  libero segnato / sbagliato, Rimbalzo offensivo / difensivo (di squadra), Assist, Palla recuperata, Stoppata,
+  Fallo subito, Timeout, Cambio.
+- `/tabellino` - a text summary only.
+
+### gotchas
+
+- **The play-by-play cannot give lineups.** "Cambio" names ONE player and it is the player coming ON (of the
+  substitutions with any play by that player within 90 s, 27 of 30 had them after and 1 before); who went off
+  is never written. There are also NO committed fouls and NO turnovers in it (the box score has both). Building
+  it would mean inferring each substitution's player off from who keeps acting and checking the result against
+  the box score's minutes, keeping a game's lineups only when they agree.
+- Other leads checked: the live page's Genius SportingPulse widget (`widget.wh.sportingpulseinternational.com/widget/?OPJA9B6WM5WC7JWV52HAFSRKR5F7GC`)
+  serves an empty table; the Netcasting page embeds `lnpscoreboard.webpont.com/?nat=ita2`, a plain HTML
+  scoreboard; the live page links `organizer.statbasket.it/Matches/OffLineMatches` (the federation's stats system,
+  which timed out from here). None exposes game data.
+- Player pages `/giocatore/wp/<id>` are the obvious bio source when the league is built.
+
+## Turkey: BSL, TBL, KBSL, TKBL, BGL (Turkish Basketball Federation) - NOT BUILT
+
+Looked at 2026-09-27 and left out: the federation's site will not answer an automated client from anywhere.
+
+### host
+
+`www.tbf.org.tr` (a Nuxt app: leagues under `/ligler/<league>-<season>/`, e.g. `bsl-2026-2027`; fixtures by game
+week, one button per week; a game at `/ligler/<league>-<season>/mac-detay/<game id>` (346279), with a "Statistics"
+tab (box score) and a "Game Flow" tab (play-by-play, including substitutions with an in/out icon). Crests and
+player photos are served from `tbf.org.tr/res/...`. There is also `api.tbf.org.tr`.
+
+### gotchas
+
+- **Every request gets Cloudflare's interactive "Just a moment..." challenge (403)**: the pages, `robots.txt` and
+  `api.tbf.org.tr` alike, from a server AND from a home connection (checked from the operator's PC with plain
+  `requests`, 2026-09-27: `403 BLOCKED`). Unlike lnb.fr, which only refuses GitHub's addresses, this tests the client
+  itself, so the home live lane does not help. The only way through would be a browser passing Cloudflare's bot
+  check, which is not something the ingest does.
+- No FIBA LiveStats / Genius tenant for the federation or its leagues (TBF, TUR, BSL, TBL, KBSL, TKBL: none), and
+  no other public source of box scores was found.
+- The route is data access from the federation itself (an API key or an allowed feed).
+
+## Estonian-Latvian Basketball League (FIBA LiveStats via the Estonian federation's live-score portal)
+
+### host
+
+The games are on FIBA LiveStats (the Estonian federation's account, `fibalivestats.com/u/EBF/<id>`). The fixtures and
+each game's LiveStats id come from **online.basket.ee**, the federation's live-score portal (BestIT "basketis", the
+same system and game ids as the league's site). `fiba_site_schedule`, site `basketee`.
+
+- NOT estlatbl.com and NOT www.basket.ee: both robots.txt files disallow every crawler except Google, Bing and Apple
+  (`User-agent: * / Disallow: /`, crawl delay 30). online.basket.ee publishes no robots.txt (404) and marks its pages
+  `index,follow`.
+- The Genius hosted tenant `EBF` is the Egyptian federation (a 2019 U16 schedule): unrelated to the LiveStats `u/EBF`.
+
+### schedule_recipe
+
+- `https://online.basket.ee/en`: two menus, `chid` (the championships: "Estonian-Latvian Basketball League" = 212,
+  read by name) and `date` (13 days back to 7 ahead, `dd.mm.yyyy`).
+- `https://online.basket.ee/s2/list/<YYYY-MM-DD>/data.json`: every federation game that day - `gid` (the league's own
+  id, `2027212001` = season, championship, game), `chid`, `date`, `time` (Tallinn time; Riga's is the same), `place`,
+  `team_home`/`team_visitor`, `h_tid`/`v_tid` (federation club ids, used as the clubs' codes), scores, `is_over`,
+  `sporting_id_live` (the LiveStats id, there for upcoming games too; null until set up).
+- **A date outside the menu answers an error page that e-mails their webmaster.** So only menu dates are asked for, and
+  not its first or last day (clock and midnight margin).
+- One request every 30 s (the federation's crawl delay on its other sites), retried on a dropped connection. Each date
+  is cached in `data/feed/ESTLAT/days.json` (committed with the other feed caches): a past day whose games are all
+  over is never asked for again; today is re-read after 30 minutes, a day ahead after 12 hours, a past day still in
+  play after 3 hours. The first pass is ~20 requests (~10 minutes); after that the menu and a day or two.
+
+### game_recipe
+
+`fibalivestats.dcd.shared.geniussports.com/data/<sporting_id_live>/data.json` (tm "1" is home), unchanged, with the
+clubs' names and codes replaced by the schedule's; the game keeps its `gid`. Full play-by-play with substitutions, so
+stints and lineups are built as for any LiveStats league.
+
+### gotchas
+
+- The window is only 13 days back: the ingest must run at least every ~12 days or a finished game drops out of reach
+  (the full season is only on the two disallowed sites).
+- The server drops connections now and then (about half the requests in one probe): each request is tried three times.
+- No bio source: the portal's per-game stats (`/s2/stats/<gid>/<tid>/data.json`) and LiveStats carry none, and the
+  two sites that might are disallowed (`bio_sources.NO_BIO`).
+- Crests: the portal names none. Each game's LiveStats data does (`tm.logoS`, Genius's image host), so every crest a
+  payload shows is kept in `data/feed/ESTLAT/crests.json` under the federation's club id, and the schedule hands it on
+  as `home_logo` / `away_logo` (run_ingest.sync_logos). A club that has not played yet has none (LiveStats answers 403
+  for a game that has not started). Before this, the crest a payload carried was dropped when its club had been met on
+  the schedule earlier in the same pass (feedplatform.Platform.take_crest now fills it on a cached club too).
+
+## Italy (women): Serie A1 and Serie A2 Femminile (Lega Basket Femminile)
+
+### host
+
+`www.legabasketfemminile.it`, a SvelteKit front on the league's own JSON API; games on FIBA LiveStats (client `LEGBF`).
+robots.txt allows every path to a general crawler (`User-agent: * / Allow: /`); it closes `/it/squadre/`, `/it/atlete/`
+(and the English equivalents) to AI crawlers only. `fiba_site_schedule`, site `lbf`. No Genius hosted tenant (`LBF` is
+a 2021 leftover, `LEGBF` nothing).
+
+### schedule_recipe
+
+- `/rm/v1/competitions/<serie-a1|serie-a2>/<2026-27>/calendar-index.json`: every round with its `phase_id` and games:
+  `id` (uuid), `start_at` (UTC), `status` (scheduled / final ...), `home`/`away` {id, slug, name, short_name, logo_url}.
+- `/rm/v1/competitions/<...>/<season>/overview.json`: `phases` - A1 one round robin; A2 "Girone A" and "Girone B",
+  both round robins (so they are groups, `groups_from_feed`); a play-off phase has another `format`. Two sources per
+  league: `stage` regular (the round robins) and playoffs (the rest).
+- Clubs are keyed on the league's `slug`: the three-letter `short_name` is not unique (A2 2026-27: two Cagliari clubs
+  CAG, two Milan clubs MIL, three clubs none) and not FIBA's (San Martino: SAN here, SML in the feed). It is passed as
+  the short name only where no other club has it.
+
+### game_recipe
+
+`/rm/v1/matches/<id>.json` gives `genius_id` (the LiveStats id; null until the game is set up) - asked for once per
+game when it is fetched, kept in `data/feed/<CODE>/games.json`, asked again at most every 10 minutes while null. Then
+`fibalivestats.dcd.shared.geniussports.com/data/<genius_id>/data.json` under the league's club names and slugs.
+
+### gotchas
+
+- The API's `venue` is wrong: Sassari at home in "Palaleonessa" (Brescia's arena), Costa Masnaga in "La Molisana Arena"
+  (Campobasso's). Not used.
+- No bio reader (`bio_sources.NO_BIO`): see docs/player-bio.md.
+
+## Brazil: NBB and Liga Ouro (Liga Nacional de Basquete) - LDB NOT BUILT
+
+### host
+
+`lnb.com.br`, the league's own WordPress site, server-rendered. No robots.txt (`/robots.txt` redirects to the 404 page);
+Cloudflare's Rocket Loader is on the pages but not its bot check - a plain GET answers. The Content-Type names no charset:
+the pages are UTF-8.
+
+**It refuses GitHub's runners (403)**, as lnb.fr does: the first run from Actions (2026-09-27) read no fixture at all.
+NBB and Liga Ouro are read from the processing PC: `scripts/ingest/home_sources.bat` (a normal pass for the two
+sources, straight to Supabase; run by hand or daily from Task Scheduler), and the PC's live lane follows a game once
+its fixture is on the schedule. The adapter says so in the log when it meets the 403. Adapter `lnbbr` (`scripts/ingest/adapters/lnbbr.py`), one request every 3 s. Two sources per
+league (`stage` regular / playoffs), codes `NBB` and `LOURO`.
+
+### current_season
+
+`/<nbb|liga-ouro>/tabela-de-jogos/` shows the current season (the season filter's checked radio: NBB 2026/2027 = 106,
+Liga Ouro 2026 = 102). `season_id` in adapter_config asks for another (`?season[]=<id>`, what the FILTRAR button sends).
+
+### schedule_recipe
+
+One `<tr>` per game on the schedule page: `data-real-id` (the league's game id, the game's external id), date and time
+(Brasilia, UTC-3 all year), both clubs (name, crest, and the three-letter code in the small-screen cell - the clubs'
+codes, which follow a club through a sponsor rename), round, stage ("1º TURNO", "2º TURNO" = regular season; "OITAVAS",
+"QUARTAS", "SEMIFINAL", "FINAL" = play-offs) and one link: `/partidas/<slug>/` until the game's report is published,
+then `/noticias/<slug>/`. A game with a report is final. The page is read once per pass; a fetch that finds no report
+link cached re-reads it at most every 30 minutes. Links are kept in `data/feed/<CODE>/games.json`.
+
+### game_recipe
+
+The report (`/noticias/<slug>/`): the score and quarters, the hall (`p.score_header_place`), and three tabs.
+
+- `#stats`: a box score per club (`team_home_stats` / `team_away_stats`): shirt, display name, games, minutes
+  (decimal), points ("20/35 (57)": the first number), rebounds "D+O T", assists, 3P / 2P / FT "made/attempted (pct)",
+  steals (BR), blocks (TO), fouls committed (FC) and drawn (FR), turnovers (ER), dunks (EN), +/-, efficiency; an
+  "Equipe" row with the club's totals (team rebounds and turnovers are the difference from its players' sum).
+- `#movethemove`: the play-by-play, NEWEST FIRST, in Portuguese: quarter (`idq`), club (`idt`: 1 home, 2 away), clock
+  (counting down), running score ("78 x 87", home first), a title and a sentence naming the player by the box score's
+  display name. The adapter reads it oldest first and translates each sentence (made/missed twos, threes, dunks and free
+  throws, rebounds, assists, steals, blocks, fouls committed and drawn, turnovers and violations, timeouts, both sides of
+  each substitution). A sentence it does not know is kept on `raw.lnbbr.unknown` and printed ("not translated"), never
+  guessed.
+- `#graphic` ("GRÁFICO DE ARREMESSO"): the shot chart, NEWEST FIRST, one `<li>` per shot in `div.graphic_gym`:
+  `idj` (the site's player id), `idp` (the quarter, 5+ overtime), `ide` (1 home, 2 away), class `2pt` / `3pt` / `ll`
+  (free throw, no place) and `correct` / `incorrect`, `style="top: T%; left: L%"` and `time` (the clock). Left and top
+  are FIBA's own chart frame (28 x 15 m, rims at x 6 and 94, y 50): of 8,629 twos in the 113 games none is beyond
+  6.75 m of its rim, and 4 of 6,414 threes are inside 6.6 m. The club's players stand beside the court
+  (`players_block_left` = home, `players_block_right` = away), named as the play-by-play names them.
+- **The shot chart is what splits the rim from mid-range.** Each dot is joined to its play-by-play shot by quarter,
+  clock, club, two or three, and made or missed (where two shots share all five, by player, then in order): all 15,043
+  shots of the 113 games placed, none left over. They go on `tm[side].shot` with the shot's `actionNumber`, so the
+  box score's zones, the stints and the game stream all measure the shot from the ring: 4,222 twos at the rim (61.7%),
+  4,407 mid-range (37.9%). A report whose shots cannot all be placed says so in the log ("N of M shots have no place
+  on the shot chart"); counts are on `raw.lnbbr.shots`.
+- **A shot on the ring itself is a putback.** The scorers' quick button puts a tap-in exactly on the rim (x 6 or 94,
+  y 50: 639 shots, 5.7 a game, where no other spot is used three times in a game), and 622 of them follow their own club's
+  offensive rebound, 613 in the same second. Such a two is labelled `putback` when the play before it (substitutions,
+  assists, blocks and timeouts passed over) is its club's offensive rebound or missed shot, in the same quarter, at
+  most 5 s earlier: 635, with 3 dunks there left as dunks. Without the label the game stream would not believe the
+  spot: one place used three times or more in a game is how a quick-tap default looks (`translate/fiba_events.py`),
+  and it keeps a shot there only with a label that says the rim.
+- Players have no id in the box score or the play-by-play: a player is his display name and shirt within his club (`pno`
+  `pedro-nunes-11`; a club can have two players of one display name - Paulistano 2025-26, Gabriel 14 and Gabriel 11).
+  The shot chart's `idj` is the site's player id (one name per id across the sample); it is used only to tell two
+  shots of one second apart.
+- **The play-by-play does not always name a player as the box score does**: it uses the scorers' name ("Gama",
+  "JV Martins", "Sbardelotti"), the box score the site's ("Juan", "Martins", "Thiago") - IVV/CETAF in most Liga Ouro
+  games, 22 names in the sample. A name the box score does not have is given the box line of its club that its own
+  plays add up to exactly (shots made and missed, free throws, rebounds, assists, steals, blocks, fouls both ways,
+  turnovers), only where no other line fits; quiet players (all zeros) by their time on court from their own
+  substitutions. Kept on `raw.lnbbr.renamed`.
+- Starters: each club's five "Entra" lines at 10:00 before the first play.
+- **The changes made between quarters are not logged**: a player who starts a quarter is simply there. Each later
+  quarter's opening five is the five of the club that the quarter's own lines contradict least (a play by someone not
+  on court weighs more than a substitution line that cannot be), and the substitutions are written at the quarter's
+  start, marked `"inferred": 1`. That is what lets the lineups and stints be built.
+- A change entered the wrong way round is put right by entering its reverse at the same clock ("Sai L. Muller, Entra
+  Emerson, Sai Emerson, Entra L. Muller"), and a change can be written in two halves with plays between them: the
+  lines are kept as logged, the second half moved up beside the first.
+- Checked against every Liga Ouro 2026 report and 78 NBB 2025-26 ones (113 with stats): every sentence translated, the
+  play-by-play's points equal to the box score's for both clubs in every game, five starters, no lineup warnings.
+
+### gotchas
+
+- The report is published some hours after the game (the adapter polls 12:00-24:00 UTC; weekend games tip as early as
+  late morning Brasilia time).
+- About one report in twelve is an article with no stats and no link to any (Liga Ouro 2026 game 26825; 9 of 78 NBB
+  2025-26 games sampled, mostly play-offs): no game is made from it, and it is read again at most every 12 hours
+  (`nobox` in `games.json`) in case the stats are added.
+- A free-throw trip is numbered from its made/missed lines (1of2, 2of2); a drawn foul is paired with the other club's foul
+  at the same clock.
+- **LDB (Liga de Desenvolvimento) is not built**: its games (2025 and 2026, the final included) have a result and
+  nothing else - the game page's tabs are empty and no report is ever published - so there is no box score to ingest.
+- Bio (`bio_sources.lnb_br`): each club's page (`/<path>/equipes/` -> `/equipes/<slug>/`) is its squad with the display
+  name, shirt and height; the athlete's own page has the date of birth and weight, but about half of them are the site's
+  "not found" page. A club page does not name its three-letter code, so it is matched to the athletes page's club filter
+  (`?equipe=BCE`) by crest.

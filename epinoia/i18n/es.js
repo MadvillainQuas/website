@@ -479,6 +479,7 @@
       'TOTAL REB%': '% Rebote total',
       'STEAL%': '% Recuperaciones',
       'BLOCK%': '% Tapones',
+      'FOULS CONCEDED / 30': 'Faltas cometidas / 30',
       'impact': 'Impacto',
       'Game log': 'Partido a partido',
       'No teammate selected': 'Ningún compañero seleccionado',

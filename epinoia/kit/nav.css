@@ -998,3 +998,18 @@ html .ep-nav a:focus-visible, html .ep-nav button:focus-visible{ outline:2px sol
   html .ep-nav.drawer-open button.navtoggle{ color:var(--acc-ink); background:var(--acc); border-top:0; border-left:0 }
   html .ep-nav.drawer-open button.navtoggle .ic{ color:var(--acc-ink) }
 }
+
+/* THE STICKY HEADS ON THE RAIL'S OWN GROUND. The head of the open panel (a league's name and back key, HOME's
+   masthead, a club's, the countries') stays put while the rows scroll under it, so it has to be opaque - drawn
+   transparent, the rows showed through a league's name as they scrolled ("TABLE / TEAM STATS" behind the NBL's
+   crest) - and it has to be the rail's own ground, scan lines and the league's wash included, or HOME's masthead
+   is a flat card on a teletext screen. */
+html .ep-nav{ --rail-ground:var(--nav-bg,var(--panel));
+  --rail-lines:repeating-linear-gradient(180deg,color-mix(in srgb,var(--nav-ink,var(--ink)) 4%,transparent) 0 1px,transparent 1px 3px) }
+html body.league-themed .ep-nav{ --rail-ground:color-mix(in srgb,var(--league-a) 12%,var(--nav-bg,var(--panel))) }
+html .ep-nav .panel > .phead, html .ep-nav .panel > .ptitle,
+html body.league-themed .ep-nav .panel > .phead, html body.league-themed .ep-nav .panel > .ptitle{
+  background:var(--rail-lines),var(--rail-ground) }
+/* ...and HOME's masthead is ruled off as a league's head is (the old teal hairline of .ptitle.on outranked the
+   new rule colour) */
+html .ep-nav .panel > .ptitle, html .ep-nav .panel > .ptitle.on{ border-bottom:0; box-shadow:inset 0 -2px 0 var(--line) }

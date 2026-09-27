@@ -13,12 +13,19 @@ WHAT IS WRITTEN, AND WHAT IS NEVER:
 MATCHING: a feed that names the same player key the game feed did (EuroLeague's person code is the box score's Player_ID) is matched by
 that key alone. Everything else goes through the shared matcher (matching.match_player: surname, forename, club) and only an outright
 "match" is accepted; "ambiguous" and "weak" are counted and left. A wrong height on a stranger is worse than a blank.
+
+WAITING FOR THE PLAYER (0186): a roster is published before the season's first game, and the ingest makes a player only when he is in a
+box score. A feed row that matches nobody on the site (and carries something) is kept in player_bio_pending, by league, under the
+feed's key or name + club (Stash). Every later pass offers those rows to the players made since - the weekly one after the feed's own
+rows, the daily `--stash-only` one without reading any feed - through the same matcher and the same rules, and a row that finds its
+player is deleted. Same privacy as players: an adult's date, a minor's year only, never a date in a log.
 """
 from __future__ import annotations
 
 import re
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
+from urllib.parse import quote
 from typing import Callable, Iterable, Optional
 
 import matching
@@ -27,6 +34,8 @@ MIN_AGE, MAX_AGE = 14, 50          # a player's age as a feed states it; outside
 ADULT_AT = 18
 WRITE_GAP_S = 0.25                 # a pause after every write: a first run is a few thousand small updates, and the database is a small one
 VERBOSE = False                    # bio_sync --verbose: also print every feed row that matched nobody
+STASH_KEEP_DAYS = 540              # a waiting row nobody has claimed in eighteen months is dropped
+STASH_DETAILS = 200                # at most this many detail pages a league, per pass, for players not on the site yet
 
 
 # ---------------------------------------------------------------- cleaners ---
@@ -118,11 +127,15 @@ def plan(existing: dict, rec: dict, today: Optional[date] = None, has_dob: bool 
 
 
 # -------------------------------------------------------------- the players ---
+class NoLeague(LookupError):
+    """The league is not on the site yet (the ingest makes it with its first game)."""
+
+
 def load_players(sb, league_slug: str, has_dob: bool = True) -> list[dict]:
     """Every player who has ever been on a roster in the league, with the columns bio needs. One row per player."""
     lg = sb.select("leagues", f"slug=eq.{league_slug}&select=id&limit=1")
     if not lg:
-        raise SystemExit(f"no league '{league_slug}'")
+        raise NoLeague(league_slug)
     cols = "id,first_name,last_name,aliases,external_ids,birth_year,height_cm,weight_kg,is_minor" + (",birth_date" if has_dob else "")
     rows = sb.select_all("roster_entries", "select=jersey,teams!inner(name,short_name,league_id),players(" + cols + ")"
                                             f"&teams.league_id=eq.{lg[0]['id']}&order=id")
@@ -149,7 +162,7 @@ def load_teams(sb, league_slug: str) -> list[dict]:
     goes club by club."""
     lg = sb.select("leagues", f"slug=eq.{league_slug}&select=id&limit=1")
     if not lg:
-        raise SystemExit(f"no league '{league_slug}'")
+        raise NoLeague(league_slug)
     rows = sb.select_all("teams", f"league_id=eq.{lg[0]['id']}&select=id,name,short_name,external_ids&order=id")
     return [{"id": t["id"], "name": t.get("name"), "short_name": t.get("short_name"),
              "code": str((t.get("external_ids") or {}).get("fiba_livestats") or "")} for t in rows]
@@ -193,10 +206,11 @@ def find(rec: dict, players: list, key_idx: dict) -> tuple[Optional[dict], str]:
 
 # -------------------------------------------------------------------- sync ---
 def sync(sb, players: list, records: Iterable[dict], *, dry: bool, has_dob: bool = True, log: Callable = print,
-         today: Optional[date] = None, limit: int = 0) -> dict:
+         today: Optional[date] = None, limit: int = 0, stash: Optional["Stash"] = None) -> dict:
     """Match each record, write the blanks it can fill. A record may carry `detail`: a function that fetches the height, weight and
     birth date lazily (called only for a player who has something missing, so a roster page costs one request per NEW bio, not per
-    player)."""
+    player). With a `stash`, a record that matches nobody is kept for the player the ingest has not made yet, and a kept one that
+    matches is let go."""
     key_idx = _key_index(players)
     st = {"records": 0, "matched": 0, "written": 0, "nothing_new": 0, "ambiguous": 0, "unmatched": 0, "conflicts": 0, "detail_calls": 0}
     seen: dict = {}
@@ -207,7 +221,11 @@ def sync(sb, players: list, records: Iterable[dict], *, dry: bool, has_dob: bool
             st["ambiguous" if how in ("ambiguous", "weak") else "unmatched"] += 1
             if how != "none" and VERBOSE:
                 log(f"    ? {rec.get('label') or rec.get('name')}: {how}")
+            if stash is not None and how in ("none", "weak"):   # nobody like him on the site yet: keep it for when he is
+                stash.orphan(rec)
             continue
+        if stash is not None:
+            stash.claimed(rec)
         if p["id"] in seen:
             continue                                        # two feed rows for one player: the first wins
         seen[p["id"]] = 1
@@ -242,3 +260,128 @@ def sync(sb, players: list, records: Iterable[dict], *, dry: bool, has_dob: bool
         if limit and st["written"] >= limit:
             break
     return st
+
+
+# ------------------------------------------------------------ the waiting room ---
+def ident(rec: dict) -> str:
+    """One person in one league's feed: the feed's own key, or failing that his name and club."""
+    key = str(rec.get("key") or "").strip()
+    if key:
+        return "k:" + key
+    nm = rec.get("name") if isinstance(rec.get("name"), str) else f"{rec.get('first') or ''} {rec.get('last') or ''}"
+    return "n:" + matching.normalize(nm) + "|" + matching.normalize(rec.get("team") or "")
+
+
+def stash_row(league_slug: str, rec: dict, today: Optional[date] = None) -> Optional[dict]:
+    """The row kept for a feed record nobody on the site is: cleaned numbers, an adult's date or a minor's year. None when it carries nothing."""
+    today = today or date.today()
+    h, w, b = clean_height(rec.get("height_cm")), clean_weight(rec.get("weight_kg")), parse_birth(rec.get("birth"))
+    born, year = None, None
+    if b and MIN_AGE <= age_on(b, today) <= MAX_AGE:
+        if age_on(b, today) >= ADULT_AT:
+            born = b.isoformat()
+        year = b.year
+    elif not b and rec.get("birth_year") and MIN_AGE <= today.year - int(rec["birth_year"]) <= MAX_AGE:
+        year = int(rec["birth_year"])
+    if not (h or w or year):
+        return None
+    name = rec.get("name") if isinstance(rec.get("name"), str) else None
+    return {"league_slug": league_slug, "ident": ident(rec), "feed_key": str(rec.get("key") or "") or None,
+            "first_name": rec.get("first") or None, "last_name": rec.get("last") or None,
+            "full_name": name or (f"{rec.get('first') or ''} {rec.get('last') or ''}".strip() or None),
+            "team": rec.get("team") or None, "height_cm": h, "weight_kg": w, "birth_date": born, "birth_year": year}
+
+
+_DATA = ("height_cm", "weight_kg", "birth_date", "birth_year")
+
+
+class Stash:
+    """player_bio_pending for one league: what the pass found for people not on the site yet, and what it can now give away.
+
+        st = Stash.load(sb, slug)          # None when 0186 is not applied: the pass then runs as before
+        bio.sync(..., records=chain(feed, st.records()), stash=st)
+        st.flush()                         # one upsert of what was kept, a delete per row that found its player, old rows dropped
+    """
+
+    def __init__(self, sb, league_slug: str, rows: list, *, dry: bool = False, today: Optional[date] = None, log: Callable = print,
+                 detail_cap: int = STASH_DETAILS):
+        self.sb, self.league, self.dry, self.today, self.log, self.detail_cap = sb, league_slug, dry, today or date.today(), log, detail_cap
+        self.rows = {r["ident"]: r for r in rows}
+        self.waiting = list(self.rows.values())         # what was there before this pass: offered to the players, after the feed's own rows
+        self.put: dict = {}
+        self.gone: set = set()
+        self.st = {"waiting": len(self.rows), "kept": 0, "claimed": 0, "stash_details": 0}
+
+    @classmethod
+    def load(cls, sb, league_slug: str, **kw) -> Optional["Stash"]:
+        try:
+            rows = sb.select_all("player_bio_pending", f"league_slug=eq.{quote(league_slug)}&select=*&order=ident")
+        except Exception:
+            return None                                     # 0186 not applied yet
+        return cls(sb, league_slug, rows, **kw)
+
+    @staticmethod
+    def leagues(sb) -> list:
+        """Every league that has someone waiting (for the --stash-only pass)."""
+        try:
+            return sorted({r["league_slug"] for r in sb.select_all("player_bio_pending", "select=league_slug&order=league_slug,ident")})
+        except Exception:
+            return []
+
+    def records(self) -> Iterable[dict]:
+        """The rows kept by earlier passes, as feed records."""
+        for r in self.waiting:
+            if r["ident"] in self.gone:
+                continue
+            yield {"key": r.get("feed_key"), "first": r.get("first_name"), "last": r.get("last_name"),
+                   "name": None if (r.get("first_name") or r.get("last_name")) else r.get("full_name"), "team": r.get("team"),
+                   "height_cm": r.get("height_cm"), "weight_kg": r.get("weight_kg"), "birth": r.get("birth_date"),
+                   "birth_year": None if r.get("birth_date") else r.get("birth_year"),
+                   "label": r.get("full_name") or r["ident"], "_stash": r["ident"]}
+
+    def orphan(self, rec: dict) -> None:
+        """A feed row that matched nobody: keep what it says (a waiting row that still matches nobody is left as it is)."""
+        if rec.get("_stash"):
+            return
+        idn = ident(rec)
+        old = self.rows.get(idn) or {}
+        full = dict(rec)
+        if (rec.get("detail") and not (rec.get("height_cm") and rec.get("birth")) and not (old.get("height_cm") and old.get("birth_year"))
+                and self.st["stash_details"] < self.detail_cap):
+            self.st["stash_details"] += 1
+            try:
+                full.update({k: v for k, v in (rec["detail"]() or {}).items() if v})
+            except Exception as exc:
+                self.log(f"    ! {rec.get('label') or rec.get('name')}: detail failed ({exc})")
+        row = stash_row(self.league, full, self.today)
+        if not row:
+            return
+        for k in _DATA:                                     # a number the feed did not give this time is still known
+            if row[k] is None and old.get(k) is not None and not (k == "birth_year" and row["birth_date"]):
+                row[k] = old[k]
+        if row["birth_date"]:
+            row["birth_year"] = int(row["birth_date"][:4])
+        row["last_seen"] = datetime.now(timezone.utc).isoformat()
+        if idn not in self.rows:
+            self.st["kept"] += 1
+        self.rows[idn] = self.put[idn] = row
+        self.gone.discard(idn)
+
+    def claimed(self, rec: dict) -> None:
+        """A record that found its player: a row waiting for him has done its job."""
+        idn = rec.get("_stash") or ident(rec)
+        if idn in self.rows and idn not in self.put and idn not in self.gone:
+            self.gone.add(idn)
+            self.st["claimed"] += 1
+
+    def flush(self) -> dict:
+        if not self.dry:
+            rows = list(self.put.values())
+            for i in range(0, len(rows), 500):
+                self.sb.upsert_quiet("player_bio_pending", rows[i:i + 500], "league_slug,ident")
+            for idn in sorted(self.gone):
+                self.sb.delete("player_bio_pending", f"league_slug=eq.{quote(self.league)}&ident=eq.{quote(idn, safe='')}")
+                time.sleep(WRITE_GAP_S)
+            old = (datetime.now(timezone.utc) - timedelta(days=STASH_KEEP_DAYS)).isoformat()
+            self.sb.delete("player_bio_pending", f"league_slug=eq.{quote(self.league)}&last_seen=lt.{quote(old)}")
+        return self.st

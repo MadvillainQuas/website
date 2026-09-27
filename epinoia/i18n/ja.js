@@ -477,6 +477,7 @@
       'TOTAL REB%': 'リバウンド率',
       'STEAL%': 'スティール率',
       'BLOCK%': 'ブロック率',
+      'FOULS CONCEDED / 30': 'ファウル数 / 30分',
       'impact': 'インパクト',
       'Game log': '試合別成績',
       'No teammate selected': 'チームメイト未選択',

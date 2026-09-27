@@ -28,6 +28,7 @@ await db.exec(`
 `);
 await db.exec(mig('0184_player_bio.sql'));
 await db.exec(mig('0185_player_bio_rpc.sql'));
+await db.exec(mig('0186_player_bio_pending.sql'));
 
 const one = async (sql, args) => (await db.query(sql, args)).rows[0];
 const ins = async (first, date, year, extra = '') => (await one(`insert into public.players (first_name, birth_date, birth_year ${extra ? ', ' + extra.split('=')[0] : ''}) values ($1, $2, $3 ${extra ? ', ' + extra.split('=')[1] : ''}) returning *`, [first, date, year]));
@@ -95,6 +96,22 @@ ok('the date is not granted to the browser roles', (await one("select has_column
    && (await one("select has_column_privilege('authenticated', 'public.players', 'birth_date', 'select') b")).b === false);
 ok('...while the year is', (await one("select has_column_privilege('anon', 'public.players', 'birth_year', 'select') a")).a === true);
 ok('the age function is executable by the browser roles', (await one("select has_function_privilege('anon', 'public.player_ages(uuid[])', 'execute') a")).a === true);
+
+console.log('\n-- 0186: bio waiting for its player');
+{
+  const put = async (ident, date, year) => one('insert into public.player_bio_pending (league_slug, ident, birth_date, birth_year) values ($1, $2, $3, $4) returning *', ['aba-league', ident, date, year]);
+  const a = await put('k:1', '1996-03-14', null);
+  ok('an adult’s date is kept, and its year', a.birth_date !== null && a.birth_year === 1996, a);
+  const m = await put('k:2', yearsAgo(16, 2), null);
+  ok('a minor’s date is never kept, only his year', m.birth_date === null && m.birth_year === new Date(yearsAgo(16, 2)).getFullYear(), m);
+  const u = await one("update public.player_bio_pending set birth_date = $1 where ident = 'k:1' returning *", [yearsAgo(17)]);
+  ok('...on an update too', u.birth_date === null, u);
+  let dup = false;
+  try { await put('k:1', null, 1990); } catch { dup = true; }
+  ok('one row per person per league', dup);
+  const priv = await one("select has_table_privilege('anon', 'public.player_bio_pending', 'select') a, has_table_privilege('authenticated', 'public.player_bio_pending', 'select') b");
+  ok('the browser roles cannot read the table', priv.a === false && priv.b === false, priv);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
