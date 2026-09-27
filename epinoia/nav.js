@@ -324,7 +324,8 @@
       match: /\/epinoia\/fixtures\// },
     { href: 'stats/',      ic: '▦', tx: 'statistics', lg: true, key: 'statistics',
       match: /\/epinoia\/stats\/$/ },
-    { href: 'stats/wowy/', ic: '◫', tx: 'wowy',       lg: true, key: 'wowy',
+    /* WOWY is the lineups page too (every arrangement of up to five players), and says so */
+    { href: 'stats/wowy/', ic: '◫', tx: 'WOWY / Lineups', two: true, lg: true, key: 'wowy',
       match: /\/epinoia\/stats\/wowy\// },
     /* the league's Table page: its standings and, a tab along, every club's statistics. The one
        label longer than a row is wide, so it may take TWO lines (the rail and the phone bar),

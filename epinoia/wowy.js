@@ -71,9 +71,9 @@ function render(opts) {
   if (!picked.length) roster.slice(0, Math.min(2, MAX)).forEach(id => picked.push(id));
 
   const lead = el('p', 'lu-lead');
-  lead.textContent = 'Choose up to ' + MAX + (MAX === 1 ? ' player' : ' players') + '. Every combination of them being ' +
-    'on or off the floor is worked out separately, so you can see what the team does ' +
-    'with a pairing, with one of them, and with neither.';
+  lead.textContent = 'Pick up to ' + MAX + (MAX === 1 ? ' player' : ' players') + '. Each row is one way they ' +
+    'shared the floor (together, one without another, or none of them) and how the team played in those ' +
+    'minutes. Faded rows are too few minutes to read much into.';
   host.appendChild(lead);
 
   const chips = el('div', 'lu-chips');
@@ -133,11 +133,14 @@ function render(opts) {
     const t = el('table', 'ft');
     const thead = el('thead'), hr = el('tr');
 
-    /* one badge column per chosen player, then the numbers */
+    /* THE LINEUP IN WORDS first ("Brakefield + Aita · not Okabe"), so a row can be read without
+       decoding the badges; then one badge column per chosen player, then the numbers */
+    const shortOf = id => (((opts.meta && opts.meta[id]) || {}).name || '?').trim().split(/\s+/).pop();
+    const thd = el('th', 'stick c0w wdesc', 'LINEUP'); thd.style.width = '190px'; hr.appendChild(thd);
     picked.forEach((id, i) => {
       const m = (opts.meta && opts.meta[id]) || {};
       const short = (m.name || '?').trim().split(/\s+/).pop();
-      const th = el('th', i === 0 ? 'stick c0w' : '', short.toUpperCase());
+      const th = el('th', '', short.toUpperCase());
       th.style.width = '84px';
       th.title = m.name || '';
       hr.appendChild(th);
@@ -156,9 +159,19 @@ function render(opts) {
       if (!r.stints) tr.classList.add('none');
       else if (r.mins < floor) tr.classList.add('thin');
 
+      const onN = picked.filter((id, i) => r.state[i]).map(shortOf);
+      const offN = picked.filter((id, i) => !r.state[i]).map(shortOf);
+      const words = picked.length === 1
+        ? (onN.length ? onN[0] + ' on the floor' : offN[0] + ' off the floor')
+        : !onN.length ? (picked.length === 2 ? 'neither of them' : 'none of them')
+        : !offN.length ? (picked.length === 2 ? 'both together' : 'all ' + picked.length + ' together')
+        : onN.join(' + ') + ' · not ' + offN.join(', ');
+      const wd = el('td', 'stick c0w wdesc', words); wd.title = words;
+      tr.appendChild(wd);
       r.state.forEach((on, i) => {
-        const td = el('td', i === 0 ? 'stick c0w' : '');
-        td.appendChild(el('span', 'wb ' + (on ? 'on' : 'off'), on ? 'ON' : 'OFF'));
+        const td = el('td', 'wbc');
+        const b = el('span', 'wb ' + (on ? 'on' : 'off'), on ? 'ON' : 'OFF');
+        td.appendChild(b);
         tr.appendChild(td);
       });
 
