@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-27T11:09:22.460121+00:00",
+ "updated": "2026-09-27T11:33:05.269967+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -76,7 +76,7 @@
    "label": "Estonian-Latvian Basketball League",
    "adapter": "fiba_site_schedule",
    "games": 19,
-   "updated": "2026-09-27T11:05:09.463968+00:00"
+   "updated": "2026-09-27T11:33:05.253870+00:00"
   },
   {
    "code": "FEB1",

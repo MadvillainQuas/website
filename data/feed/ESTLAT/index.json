@@ -2,7 +2,7 @@
 "code": "ESTLAT",
 "label": "Estonian-Latvian Basketball League",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-27T11:05:09.463968+00:00",
+"updated": "2026-09-27T11:33:05.253870+00:00",
 "games": [
 {
 "id": "2027212197",
@@ -10,7 +10,11 @@
 "away": "BK Ogre",
 "status": "scheduled",
 "date": "2026-10-03T15:00:00Z",
-"venue": "Komandas Sporta Spelu Halle"
+"venue": "Komandas Sporta Spelu Halle",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212113",
@@ -18,7 +22,11 @@
 "away": "BC Pärnu",
 "status": "scheduled",
 "date": "2026-10-03T15:00:00Z",
-"venue": "Nord Spordihoone"
+"venue": "Nord Spordihoone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212099",
@@ -26,7 +34,11 @@
 "away": "Valmiera Glass VIA",
 "status": "scheduled",
 "date": "2026-10-03T15:00:00Z",
-"venue": "Keila Tervisekeskus"
+"venue": "Keila Tervisekeskus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212157",
@@ -34,7 +46,11 @@
 "away": "BK Liepaja",
 "status": "scheduled",
 "date": "2026-10-03T14:00:00Z",
-"venue": "Rimi Olimpiskais centrs"
+"venue": "Rimi Olimpiskais centrs",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212127",
@@ -42,7 +58,11 @@
 "away": "Tartu Ülikool Maks & Moorits",
 "status": "scheduled",
 "date": "2026-10-02T15:30:00Z",
-"venue": "Olimpiskais centrs \"Ventspils\""
+"venue": "Olimpiskais centrs \"Ventspils\"",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212142",
@@ -50,7 +70,11 @@
 "away": "Latvijas Universitāte",
 "status": "scheduled",
 "date": "2026-10-01T16:00:00Z",
-"venue": "Komandas Sporta Spelu Halle"
+"venue": "Komandas Sporta Spelu Halle",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212183",
@@ -58,7 +82,11 @@
 "away": "Tartu Ülikool Maks & Moorits",
 "status": "scheduled",
 "date": "2026-09-30T16:00:00Z",
-"venue": "Liepajas Olimpiskais centrs"
+"venue": "Liepajas Olimpiskais centrs",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212156",
@@ -66,7 +94,11 @@
 "away": "Keila KK",
 "status": "scheduled",
 "date": "2026-09-29T16:00:00Z",
-"venue": "Rimi Olimpiskais centrs"
+"venue": "Rimi Olimpiskais centrs",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212072",
@@ -74,7 +106,11 @@
 "away": "Keila Basket",
 "status": "scheduled",
 "date": "2026-09-29T16:00:00Z",
-"venue": "Valmieras Olimpiskais Centrs"
+"venue": "Valmieras Olimpiskais Centrs",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212169",
@@ -82,7 +118,11 @@
 "away": "BK Ventspils",
 "status": "scheduled",
 "date": "2026-09-28T17:30:00Z",
-"venue": "Marupe SC"
+"venue": "Marupe SC",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212057",
@@ -90,7 +130,11 @@
 "away": "Bigbank/Kalev",
 "status": "scheduled",
 "date": "2026-09-27T14:00:00Z",
-"venue": "Forus Spordikeskus Viimsi"
+"venue": "Forus Spordikeskus Viimsi",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2027212085",
