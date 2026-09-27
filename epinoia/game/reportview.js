@@ -295,7 +295,8 @@ function render(g, rep, opts) {
       '<div class="rep-kicker"><span>' + (rep.half ? 'half-time report' : 'match report') + '</span>' +
         (o.competition ? '<span>' + esc(o.competition) + '</span>' : '') +
         '<span>generated from the play-by-play</span></div>' +
-      heroHTML(g, rep, o) +
+      /* the box score's own scoreboard sits right above on the game page, so it asks for none */
+      (o.hero === false ? '' : heroHTML(g, rep, o)) +
       '<h1 class="rep-hl">' + rep.headline + '</h1>' +
       '<p class="rep-stand">' + rep.standfirst + '</p>' +
     '</div>' + secs +

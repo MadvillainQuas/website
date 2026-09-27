@@ -432,7 +432,7 @@ const BODIES = {
     const hS = Object.assign({}, S, { events: (S.events || []).filter(e => (e.period || 1) <= 2), period: 2 });
     const hd = E.deriveGame(hS);
     const g = window.EpinoiaGameFacts.brief(hS, hd, B);
-    return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g));
+    return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g), reportLook());
   },
   /* TWO WAYS TO READ THE SAME NUMBERS. Traditional is the table; Modern is the five on the
      floor drawn on a half court with the bench beneath (modern.js). The choice is remembered. */
@@ -984,21 +984,19 @@ let lastBodyKey = '';
 
 function renderShell() {
   const S = window.S;
+  /* No state heading over the scoreboard: the scoreboard's own plate says live, final or the clock.
+     THE SCORESHEET IS THE RECORD, so it is offered on the scoreboard itself (renderHead), centred
+     under the score, once the game is final: a scoresheet of a game still being played is a
+     document that will be wrong by the time it is printed. */
   $('#view').innerHTML =
-    '<div class="ovhead"><div class="ovtitle" id="csHeading"></div>' +
-      /* THE SCORESHEET IS THE RECORD, so it is offered wherever the record is
-         read — not buried in an admin screen. Only once the game is final:
-         a scoresheet of a game still being played is a document that will be
-         wrong by the time it is printed. */
-      (S.status === 'final'
-        ? '<button class="tabbtn" id="csSheet" style="margin-left:auto">scoresheet · pdf</button>'
-        : '') + '</div>' +
     '<div id="csHead"></div>' +
     '<div class="tabrow" style="flex-wrap:wrap" data-i18n-ctx="gtab">' + tabStripHTML(tabsFor(S.status)) + '</div>' +
     '<div id="csBody"></div>';
 
-  const sheetBtn = document.getElementById('csSheet');
-  if (sheetBtn) sheetBtn.onclick = () => B.printScoresheet();
+  const headEl = document.getElementById('csHead');
+  if (headEl) headEl.addEventListener('click', e => {
+    if (e.target && e.target.closest && e.target.closest('#csSheet')) B.printScoresheet();
+  });
 
   document.querySelectorAll('#view .tabbtn[data-tab]').forEach(b => {
     b.onclick = () => {
@@ -2288,13 +2286,48 @@ function flashScore(el, d) {
   });
 }
 
+/* THE SCOREBOARD, DRESSED (boxscore.js scoreHeadHTML is the scorer's, generated, and not edited):
+   the competition on a teletext label along the top, the two clubs in their colours with their
+   crests large in ringed discs (decorateTeams), the score on a black block (the winner's in yellow
+   once it is final), the state on a plate under it, and the scoresheet under that when final. */
+function dressHead(el, d) {
+  const S = window.S || {};
+  const head = el.querySelector('.bx-scorehead');
+  if (!head) return;
+  const m = S.meta || {};
+  const col = [0, 1].map(t => inkOf(B.safeColour(((t ? m.away : m.home) || {}).colour || (S.teams[t] || {}).color, t ? '#8ff5ff' : '#93f2bf')));
+  head.style.setProperty('--ha', col[0]); head.style.setProperty('--hb', col[1]);
+  head.classList.add('bt-dressed', 'bt-' + (S.status || 'scheduled'));
+  const mid = head.children[1];
+  if (mid) {
+    mid.classList.add('bt-mid');
+    const row = mid.firstElementChild;
+    if (row) row.classList.add('bt-sc');
+    const sc = head.querySelectorAll('.bscore');
+    if (S.status === 'final' && sc.length === 2) {
+      const a = +d.score[0], b = +d.score[1];
+      if (a > b) sc[0].classList.add('w'); else if (b > a) sc[1].classList.add('w');
+    }
+    if (S.status === 'final' && !mid.querySelector('#csSheet')) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'csSheet'; b.className = 'bt-sheet'; b.textContent = 'Scoresheet · PDF';
+      mid.appendChild(b);
+    }
+  }
+  const comp = String(S.competition || '').split(' · ').filter((x, i, a) => x && a.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i).join(' · ');
+  if (comp && !head.querySelector('.bt-kick')) {
+    const k = document.createElement('div');
+    k.className = 'bt-kick';
+    k.textContent = comp;
+    head.insertBefore(k, head.firstChild);
+  }
+}
+
 function renderHead(d) {
   const S = window.S;
   d = d || window.derive();
   const el = $('#csHead');
-  if (el) { el.innerHTML = B.scoreHeadHTML(d); decorateTeams(el); flashScore(el, d); }
-  txt($('#csHeading'), S.status === 'final' ? 'final'
-                     : S.status === 'live' ? 'live' : 'scheduled');
+  if (el) { el.innerHTML = B.scoreHeadHTML(d); dressHead(el, d); decorateTeams(el); flashScore(el, d); }
   document.title = d.score[0] + '–' + d.score[1] + ' ' +
       S.teams[0].name + ' v ' + S.teams[1].name + ' · Epinoia';
 
@@ -2612,7 +2645,7 @@ function reportLook() {
   const pl = [tablePlace(0), tablePlace(1)].map(p => (p ? p.text : ''));
   const comp = String(S.competition || '').split(' · ').filter((x, i, a) => x && a.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i).join(' · ');
   return {
-    colours: col, places: pl, competition: comp,
+    colours: col, places: pl, competition: comp, hero: false,
     crests: [home, away].map(c => (c.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(c.logo_path) : null)),
     tableHTML: repTableHTML(col)
   };
@@ -2688,19 +2721,34 @@ function decorateTeams(scope) {
 
     /* the crest, when the club actually has one */
     const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(club.logo_path) : null;
+    const onBoard = !!node.closest('.bx-scorehead');
+    if (onBoard) {
+      /* on the scoreboard: the club's colours on the side, the crest large in a ringed disc */
+      const TC = window.EpinoiaTeamColour;
+      if (TC && TC.card) TC.card(node, club.colour || (t ? '#8ff5ff' : '#93f2bf'), club.colour_2);
+    }
     if (crestUrl) {
       const img = document.createElement('img');
       img.src = crestUrl;
       img.alt = '';
-      img.style.cssText = TEAM_CREST_CSS;
-      img.addEventListener('error', () => img.remove());
-      node.appendChild(img);
+      if (onBoard) {
+        const disc = document.createElement('span');
+        disc.className = 'bt-disc';
+        img.addEventListener('error', () => disc.remove());
+        disc.appendChild(img);
+        node.appendChild(disc);
+      } else {
+        img.style.cssText = TEAM_CREST_CSS;
+        img.addEventListener('error', () => img.remove());
+        node.appendChild(img);
+      }
     }
 
     if (club.slug) {
       const a = document.createElement('a');
       a.href = '../t/?t=' + encodeURIComponent(club.slug);
       a.textContent = label;
+      if (onBoard) a.className = 'bt-name';
       a.style.cssText = 'color:inherit;text-decoration:none';
       a.addEventListener('mouseenter', () => { a.style.textDecoration = 'underline'; });
       a.addEventListener('mouseleave', () => { a.style.textDecoration = 'none'; });

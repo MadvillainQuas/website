@@ -213,3 +213,135 @@ table.bx th:nth-child(2), table.bx td:nth-child(2){ border-left:0 }
 table.adv th+th, table.adv td+td{ border-left:1px solid rgba(170,255,215,.06) }
 .ev-mx td+td, .ev-mx th+td, .ev-mx th+th{ border-left:1px solid color-mix(in srgb,var(--border-subtle) 70%,transparent) }
 .cx-table th+th, .cx-table td+td{ border-left:1px solid var(--border-subtle) }
+
+/* ============================================================================
+   THE SCOREBOARD (game.js dressHead, decorateTeams): the preview's and the match
+   report's hero, live. The two clubs in their colours down each side and washed in
+   from each edge, the crests large in white discs ringed in the club colour, the
+   names big in text-safe inks, each club's place in the table on a black plate;
+   the competition on a teletext label along the top; the score on a black block
+   (the winner's in yellow once final) with the state on a plate under it and the
+   scoresheet under that. --ha / --hb are the clubs' inks, set on the board.
+   ============================================================================ */
+.bx-scorehead.bt-dressed{ position:relative; overflow:hidden; isolation:isolate;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); column-gap:clamp(12px,3vw,40px); row-gap:0;
+  padding:clamp(18px,2.6vw,28px) clamp(16px,3vw,36px) clamp(20px,2.6vw,28px); border-radius:16px;
+  background:
+    radial-gradient(80% 140% at 0% 50%, color-mix(in srgb, var(--ha) 18%, transparent), transparent 62%),
+    radial-gradient(80% 140% at 100% 50%, color-mix(in srgb, var(--hb) 18%, transparent), transparent 62%),
+    var(--panel) }
+.bx-scorehead.bt-dressed::before{ content:""; position:absolute; left:0; right:0; top:0; height:5px;
+  background:linear-gradient(90deg, var(--ha) 0 50%, var(--hb) 50% 100%) }
+.bx-scorehead.bt-dressed::after{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:repeating-linear-gradient(180deg, color-mix(in srgb, var(--ink) 4%, transparent) 0 1px, transparent 1px 3px) }
+/* the competition, across the top */
+.bx-scorehead.bt-dressed .bt-kick{ grid-column:1 / -1; justify-self:center; margin:0 0 clamp(12px,1.8vw,20px);
+  padding:5px 12px; background:#0a0a0a; color:#ffe14d; font-family:var(--f-micro); font-size:8.5px; letter-spacing:.12em;
+  text-transform:uppercase; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis }
+/* each club: crest over name over its place */
+.bx-scorehead.bt-dressed .bteam{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  text-align:center !important; white-space:normal; overflow:visible; max-width:none; min-width:0; color:var(--ink-t,var(--ink)) }
+.bx-scorehead.bt-dressed .bteam:first-of-type, .bx-scorehead.bt-dressed .bteam:last-child{ color:var(--ink-t,var(--ink)) }
+.bx-scorehead.bt-dressed .bt-disc{ display:grid; place-items:center; width:clamp(60px,8vw,104px); aspect-ratio:1; border-radius:50%;
+  background:#fff; overflow:hidden; box-shadow:0 0 0 3px var(--panel), 0 0 0 6px var(--ink-c,var(--rule-2)),
+  5px 5px 0 6px color-mix(in srgb, var(--ink) 10%, transparent) }
+.bx-scorehead.bt-dressed .bt-disc img{ width:72%; height:72%; object-fit:contain; display:block }
+.bx-scorehead.bt-dressed .bteam, .bx-scorehead.bt-dressed .bt-name{ font-family:var(--f-ui); font-weight:800;
+  font-size:clamp(16px,2.3vw,28px); line-height:1.08; letter-spacing:.005em; text-transform:uppercase; overflow-wrap:anywhere }
+.bx-scorehead.bt-dressed .bt-name:hover{ text-decoration:underline !important; text-underline-offset:4px }
+.bx-scorehead.bt-dressed .bt-pos{ margin:0; padding:4px 9px; background:#0a0a0a; color:#fff; font-size:8.5px;
+  border-left:4px solid var(--ink-c,var(--ink)); white-space:nowrap }
+/* the score, the state and the scoresheet, down the middle */
+.bx-scorehead.bt-dressed .bt-mid{ gap:8px !important }
+.bx-scorehead.bt-dressed .bt-sc{ gap:0 !important; background:#0a0a0a; padding:10px clamp(12px,1.6vw,20px) 6px }
+.bx-scorehead.bt-dressed .bmid{ width:auto !important; height:auto !important; background:none !important; opacity:1 !important;
+  margin:0 clamp(6px,1vw,12px) }
+.bx-scorehead.bt-dressed .bmid::before{ content:"–"; font-family:var(--f-score); font-size:clamp(26px,3.4vw,42px); color:#555 }
+.bx-scorehead.bt-dressed .bscore{ font-size:clamp(44px,6vw,76px); line-height:1; color:#fff; text-shadow:none }
+.bx-scorehead.bt-dressed.bt-final .bscore{ color:#9aa39e }
+.bx-scorehead.bt-dressed.bt-final .bscore.w{ color:#ffe14d }
+.bx-scorehead.bt-dressed .pacepill{ margin:0; padding:4px 12px; border-radius:0; border:1px solid var(--rule-2); background:var(--panel);
+  color:var(--ink); font-family:var(--f-micro); font-size:9px; letter-spacing:.12em; text-transform:uppercase; box-shadow:none }
+.bx-scorehead.bt-dressed.bt-live .pacepill{ background:#0a0a0a; color:#ff4b4b; border-color:#0a0a0a }
+.bx-scorehead.bt-dressed.bt-live .pacepill::before{ content:""; display:inline-block; width:7px; height:7px; margin-right:7px;
+  vertical-align:1px; background:#ff4b4b; animation:btLive 1.2s steps(2,end) infinite }
+@keyframes btLive{ 50%{ opacity:.2 } }
+.bx-scorehead.bt-dressed .bt-sheet{ appearance:none; cursor:pointer; margin-top:2px; padding:6px 12px; border:1px solid var(--ink);
+  background:transparent; color:var(--ink); font-family:var(--f-micro); font-size:8.5px; letter-spacing:.12em; text-transform:uppercase }
+.bx-scorehead.bt-dressed .bt-sheet:hover{ background:#ffe14d; color:#0a0a0a; border-color:#ffe14d }
+.bx-scorehead.bt-dressed .bt-sheet::before{ content:"\2193  "; }
+@media (prefers-reduced-motion:reduce){ .bx-scorehead.bt-dressed.bt-live .pacepill::before{ animation:none } }
+@media (max-width:640px){
+  .bx-scorehead.bt-dressed{ column-gap:8px; padding:16px 10px 18px }
+  .bx-scorehead.bt-dressed .bteam{ gap:7px }
+  .bx-scorehead.bt-dressed .bteam, .bx-scorehead.bt-dressed .bt-name{ font-size:12.5px }
+  .bx-scorehead.bt-dressed .bt-disc{ width:52px }
+  .bx-scorehead.bt-dressed .bt-sc{ padding:7px 8px 4px }
+  .bx-scorehead.bt-dressed .bscore{ font-size:36px }
+  .bx-scorehead.bt-dressed .bmid::before{ font-size:20px }
+  .bx-scorehead.bt-dressed .bt-pos{ font-size:7.5px; padding:3px 6px }
+}
+
+/* the context line and the connection dot repeat the black header line and the scoreboard's plate;
+   the dot comes back when there is something to say (delayed, offline, members) */
+html.tt-on .wrap > .top > .ctx{ display:none }
+.wrap > .top > .status.live, .wrap > .top > .status.final, .wrap > .top > .status.scheduled{ display:none }
+
+/* ============================================================================
+   THE MODERN BOX SCORE, FINISHED (modern.js; scoped to .mv, the box score's own
+   view, so the preview's starting fives keep their look). Each side a card with
+   its club's colour along the top and a teletext header; the court's lines held
+   back so the players read over it; each player a white disc ringed in the club
+   colour with the shirt number on a black key, and the name and line on one
+   label (a black name plate over a panel) so no stat sits on a court line; the
+   bench as a row of small cards under a teletext strip.
+   ============================================================================ */
+.mv .mv-card{ position:relative; border-radius:14px; padding:0 0 12px; overflow:hidden;
+  background:var(--panel); border:1px solid var(--rule-2); box-shadow:4px 4px 0 color-mix(in srgb,var(--c) 30%,transparent) }
+.mv .mv-card::before{ content:""; display:block; height:5px; background:var(--c) }
+.mv .mv-head{ align-items:center; padding:12px 14px 10px; margin-bottom:10px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 14%,transparent),transparent 70%);
+  border-bottom:1px solid var(--rule) }
+.mv .mv-head h3{ padding:0; margin:0; font-size:16px; letter-spacing:.02em; display:flex; align-items:center; gap:8px }
+.mv .mv-head h3 img{ height:1.6em !important; max-width:2.6em !important }
+.mv .mv-tag{ padding:4px 8px; background:#0a0a0a; color:#ffe14d; font-size:8px; letter-spacing:.1em }
+/* the court: framed, its lines held back so the five read over it */
+.mv .mv-court{ margin:4px auto 50px; width:min(calc(100% - 24px),480px) }
+.mv .mv-court svg{ opacity:.55 }
+.mv .mv-court::after{ content:""; position:absolute; inset:0; pointer-events:none; border:1px solid color-mix(in srgb,var(--c) 40%,transparent) }
+/* a player: the disc, the number key, one label */
+.mv .mv-p .sq-face{ background-color:#fff; border:3px solid var(--c); box-shadow:0 0 0 2px var(--panel),3px 3px 0 2px color-mix(in srgb,var(--ink) 12%,transparent) }
+.mv .mv-p .mv-shadow{ display:none }
+.mv .mv-num{ top:-4px; margin-left:16px; min-width:22px; height:20px; padding:0 5px; border-radius:0; line-height:20px;
+  background:#0a0a0a; color:#ffe14d; border:0; font-family:var(--f-score); font-size:12px; box-shadow:none }
+.mv .mv-p .mv-nm{ margin-top:6px; padding:2px 6px 1px; background:#0a0a0a; color:#fff; line-height:1.15; max-width:100%;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.mv .mv-p.floor .mv-line, .mv .mv-p.floor .mv-sub{ padding:0 6px; line-height:1.45; background:color-mix(in srgb,var(--panel) 92%,transparent); color:var(--ink) }
+.mv .mv-p.floor .mv-line{ padding-top:2px }
+.mv .mv-p.floor .mv-sub{ padding-bottom:2px; box-shadow:inset 0 -2px 0 var(--c); color:var(--ink-2) }
+.mv .mv-p:hover .mv-nm, .mv .mv-p.pinned .mv-nm{ background:var(--c); color:var(--kink,#fff) }
+/* the bench: a teletext strip, then small cards */
+.mv .mv-benchlabel{ margin:0 12px 8px; padding:5px 9px 4px; width:max-content; background:#0a0a0a; color:#ffe14d; border-top:0;
+  font-size:8px; letter-spacing:.12em }
+.mv .mv-bench{ gap:8px; padding:0 12px 4px }
+.mv .mv-p.bench{ flex:0 0 78px; width:78px; padding:8px 4px 7px; background:var(--ground); border:1px solid var(--rule);
+  box-shadow:inset 0 3px 0 var(--c) }
+.mv .mv-p.bench .sq-face{ width:40px; height:40px; border-width:2px; filter:none; box-shadow:none }
+.mv .mv-p.bench .mv-num{ top:4px; margin-left:10px; height:15px; min-width:16px; line-height:15px; font-size:9px; padding:0 3px }
+.mv .mv-p.bench .mv-nm{ margin-top:6px; padding:0; background:none; color:var(--ink) }
+.mv .mv-p.bench:hover{ border-color:var(--c) }
+.mv .mv-p.dnp{ opacity:.5 }
+/* the four factors under the two cards: the same card */
+.mv-fx{ border-radius:14px; border:1px solid var(--rule-2); box-shadow:none }
+@media (max-width:640px){
+  .mv .mv-head{ padding:10px 10px 8px }
+  .mv .mv-head h3{ font-size:13px }
+  .mv .mv-court{ width:calc(100% - 12px); margin-bottom:52px }
+  .mv .mv-p .mv-nm{ padding:1px 5px 0; margin-top:4px }
+  .mv .mv-p.floor .mv-line, .mv .mv-p.floor .mv-sub{ padding-left:4px; padding-right:4px }
+  .mv .mv-num{ margin-left:12px; min-width:18px; height:17px; line-height:17px; font-size:10.5px }
+  .mv .mv-p.bench{ flex-basis:70px; width:70px }
+}
+/* the club's name in the page's ink: its colour is the band above and the wash behind, and a dark
+   club colour on the dark theme's card would not read */
+.mv .mv-head h3{ color:var(--ink) }
