@@ -76,7 +76,7 @@ LIVE_ADAPTERS = {name for name, cls in REGISTRY.items() if issubclass(cls, FibaL
 # ...but only these ids exist on FIBA's CDN, so only these can be watched by FeedObserver's
 # conditional GET; the rest reach their own league's back end through their adapter's fetch().
 CDN_ADAPTERS = {"fiba_livestats"}
-from feedplatform import Platform, season_name_for  # noqa: E402
+from feedplatform import Platform, season_name_for, team_code  # noqa: E402
 import groups  # noqa: E402
 from fetchwindow import worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
@@ -1213,7 +1213,9 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     docs/feed-timing.md step 3): when given, a play is stamped by the version it first appeared
     in, pulled by the game clock, and the poll stamp only covers what memory cannot."""
     tm = b.raw.get("tm") or {}
-    codes = {0: (tm.get("1") or {}).get("code", ""), 1: (tm.get("2") or {}).get("code", "")}
+    # the same code the roster was written under (feedplatform.team_code): SBF's payloads have code '' for every
+    # club, so every key here was ":12" and matched nobody - each player of the Swedish league read "Player #12"
+    codes = {0: team_code(tm.get("1") or {}), 1: team_code(tm.get("2") or {})}
     missing = set()
 
     def pid_for(team, pno):

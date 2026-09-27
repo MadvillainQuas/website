@@ -30,6 +30,14 @@ def slugify(s: str) -> str:
     return re.sub(r"-{2,}", "-", s) or "x"
 
 
+def team_code(t: dict) -> str:
+    """A club's code in a payload's player keys ("<code>:<pno>"): the feed's own, or the club's name as a slug
+    when the tenant leaves it blank (Svensk Basketboll's SBF payloads carry code '' for every club). The keys
+    the roster is written under (ensure_game_people) and the keys the event log looks players up by
+    (run_ingest.write_event_log) MUST come from this one place - built two ways, no player ever matched."""
+    return (t.get("code") or "").strip() or slugify(t.get("name", ""))
+
+
 def full_name(p: dict) -> tuple[str, str]:
     """The name as the platform stores it. See scripts/ingest/names.py.
 
@@ -157,7 +165,7 @@ class Platform:
         # until the schedule names the side, and writes it then.
         if is_placeholder_team(t.get("name")):
             return None
-        code = (t.get("code") or "").strip() or slugify(t.get("name", ""))
+        code = team_code(t)
         key = (league_id, code)
         if key in self.cache["team"]:
             return self.cache["team"][key]
@@ -519,7 +527,7 @@ class Platform:
                     (getattr(self.sb, "upsert_quiet", None) or self.sb.upsert)(
                         "competition_teams", {"competition_id": comp["id"], "team_id": team["id"], **fields}, "competition_id,team_id")
                     seen.add(ck)
-            tcode = (t.get("code") or "").strip() or slugify(t.get("name", ""))
+            tcode = team_code(t)
             for pno, p in (t.get("pl") or {}).items():
                 pl = self.player(team, tcode, str(pno), p, avoid=set(taken))
                 if not pl:

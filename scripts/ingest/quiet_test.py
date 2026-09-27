@@ -298,6 +298,15 @@ ok("same payload but now final (the stale-final rule): write", not RI.version_in
 b.status, b.payload_hash = "live", "new"
 ok("a new payload: write", not RI.version_in_db(db, {"adapter": "fiba_livestats"}, "99", b))
 
+print("-- a club whose payload has no code is keyed the same way by the roster and the event log")
+import feedplatform as FP  # noqa: E402
+ok("a blank code falls back to the club's name as a slug", FP.team_code({"code": "", "name": "Borås Basket"}) == FP.slugify("Borås Basket") != "")
+ok("a code the feed gives is used as it is", FP.team_code({"code": " BOR ", "name": "Borås Basket"}) == "BOR")
+_src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
+_fp = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedplatform.py"), encoding="utf-8").read()
+ok("write_event_log and ensure_game_people both take the code from team_code()",
+   'team_code(tm.get("1") or {})' in _src and "tcode = team_code(t)" in _fp and '(tm.get("1") or {}).get("code", "")' not in _src)
+
 print("-- two sources on one schedule page are both loaded")
 _cfg = json.loads(RI.CONFIG_PATH.read_text(encoding="utf-8"))
 _by_url: dict = {}
