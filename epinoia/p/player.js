@@ -315,7 +315,7 @@ const BAR_SECTIONS = [
     { rows: [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']] }
   ]},
   { key: 'defence', title: 'defence', blocks: [
-    { rows: [['stl_pct','STEAL%'],['blk_pct','BLOCK%']] }
+    { rows: [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['pf30','FOULS CONCEDED / 30']] }
   ]},
   /* IMPACT: on/off as differentials -- how much better the team is in each with him on -- and the box
      plus/minus family. The four factors are shown in full, offence and defence, each end its own fold. */
@@ -338,8 +338,8 @@ const BAR_GROUPS = BAR_SECTIONS.map(s => [s.title, s.blocks.flatMap(b => b.rows)
    fills for the share he created himself. (For a CLUB the opposite is true — ball
    movement — which is why this list is the player profile's alone.)
    The defensive four factors: the team's opponents shooting, rebounding and getting to the line LESS with him on
-   is the good direction; opponent turnovers going UP is (so diff_vs_tov is not here). */
-const BAR_LOW = ['tov_pct', 'diff_drtg', 'diff_tov',
+   is the good direction; opponent turnovers going UP is (so diff_vs_tov is not here). Fouls conceded: fewer is better. */
+const BAR_LOW = ['tov_pct', 'diff_drtg', 'diff_tov', 'pf30',
                  'diff_vs_efg', 'diff_vs_oreb', 'diff_vs_ftr',
                  'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp'];
 /* a differential (or a plus/minus) carries its sign: +12.5 is a claim, 12.5 is a number */
@@ -348,6 +348,8 @@ const BAR_DP = k => (k === 'ast_to' || k === 'au') ? 2 : 1;
 const BAR_HINT = {
   contrib_pg: 'Total point contribution per game: the points he scored plus the points scored off his assists.',
   vorp: 'Value over replacement player: box plus/minus turned into a season total, so minutes count as well as level.',
+  pf30: 'Personal fouls he commits per 30 minutes on the floor. Fewer is better, so the top percentile fouls least. ' +
+    'Left blank under 20 minutes played.',
   team_spacing: 'How stretched the floor is around him: the points his teammates\u2019 threes are worth per 100 possessions while he is on the floor ' +
     '(their three-point volume and accuracy in one number, his own threes left out). Higher means more room to work in.'
 };

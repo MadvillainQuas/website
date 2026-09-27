@@ -389,6 +389,9 @@ function finishPlayer(A, m) {
     mpg: r1(A.min / g), ppg: r1(A.pts / g), rpg: r1(reb / g), apg: r1(A.ast / g),
     spg: r1(A.stl / g), bpg: r1(A.blk / g), topg: r1(A.tov / g), pfpg: r1(A.pf / g),
     orpg: r1(A.oreb / g), drpg: r1(A.dreb / g), fdpg: r1(A.fd / g),
+    /* FOULS CONCEDED PER 30 MINUTES on the floor (the profile's defence card): per minute rather than per game, so a
+       starter and a bench big are read at the same rate. Under 20 minutes it is noise, and is left null. */
+    pf30: r1(A.min >= 20 ? 30 * A.pf / A.min : null),
 
     /* Per-game makes and attempts. A season total of "192-440" tells you
        almost nothing about a player without dividing by games in your head;
