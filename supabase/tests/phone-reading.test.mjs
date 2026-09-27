@@ -123,7 +123,7 @@ console.log('\n1. a club\'s letters in a fixture row');
   ok('no league on the page asks for no letters', !run(home1, { league: null }).wanted.length);
 
   /* the query: without the club's id there is nothing for initials.js to key on */
-  ok('the fixture query reads the clubs\' ids', /home:home_team_id\(id,name,short_name,colour,logo_path\),away:away_team_id\(id,name,short_name,colour,logo_path\)/.test(home));
+  ok('the fixture query reads the clubs\' ids', /home:home_team_id\(id,name,short_name,colour,(colour_2,)?logo_path\),away:away_team_id\(id,name,short_name,colour,(colour_2,)?logo_path\)/.test(home));
   ok('every fixture row is built by teamName', (home.match(/teamName\(g\.(home|away)\)/g) || []).length === 4);
 
   /* the width the two are swapped at */
