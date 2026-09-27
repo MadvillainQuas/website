@@ -30,6 +30,11 @@ What each source gives, found by looking, not assumed (2026-09-27):
   lnb-espoirs-elite / -2 the same LNB API as lnb-elite, divisions 3 and 4 (date; height for ~40%; no weight). Refuses a GitHub runner
   u-sports               each club's own roster page (PrestoSports table or Sidearm list): height, weight where the club prints it; no date
   lnbp                   the Sportradar EUI embed's players page (website 14): height, weight for ~96%, date for about a third; keyed
+  lkl                    each player's page on lkl.lt, by the slug the game feed keys him by (date, height, weight)
+  nkl                    each club's page on nkl.lt (height, weight); the date from the player's page, only when missing
+  orlen-basket-liga, 1-liga-mezczyzn, 1-liga-kobiet
+                         the federation's club pages on rozgrywki.pzkosz.pl, this season and last (date, height; no weight anywhere);
+                         PLK rows keyed by the federation person id = the PLK feed's player id
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
 
 A league that is not here has no reader yet; docs/player-bio.md lists what each remaining one publishes.
@@ -753,6 +758,121 @@ def lnbp(today: date | None = None, log: Callable = print, **_) -> Iterator[dict
                        "height_cm": r.get("height"), "weight_kg": r.get("weight"), "birth": r.get("Date of birth"), "label": r.get("name")}
 
 
+# ------------------------------------------------------------------------- LKL ---
+LKL = "https://lkl.lt"
+
+
+def _lkl_page(slug: str) -> dict:
+    """lkl.lt/zaidejai/<slug>: 'Amžius 1994-04-26 (32 m.) ... Svoris 93 kg Ūgis 198 cm'."""
+    t = _txt(get_text(f"{LKL}/zaidejai/{slug}") or "")
+    b = re.search(r"Amžius\s+(\d{4}-\d{2}-\d{2})", t)
+    w = re.search(r"Svoris\s+(\d{2,3})\s*kg", t)
+    h = re.search(r"Ūgis\s+(\d{3})\s*cm", t)
+    return {"birth": b.group(1) if b else None, "weight_kg": w.group(1) if w else None, "height_cm": h.group(1) if h else None}
+
+
+def lkl(today: date | None = None, log: Callable = print, players: list | None = None, **_) -> Iterator[dict]:
+    """The game feed keys an LKL player by his lkl.lt slug (the box score's `slug`), and the slug IS his page: /zaidejai/<slug>
+    gives date, height and weight. A club page lists only its leaders (the squad is a lazy Livewire component), so no roster is
+    read: one record per player already on the site, his page opened only if something is missing."""
+    n = 0
+    for p in players or []:
+        for k in sorted(p["keys"]):
+            slug = k.rsplit(":", 1)[-1]
+            if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)+", slug):
+                n += 1
+                yield {"key": slug, "label": f"{p['first_name']} {p['last_name']}", "detail": (lambda slug=slug: _lkl_page(slug))}
+                break
+    log(f"     LKL: {n} players keyed by their lkl.lt slug")
+
+
+# ------------------------------------------------------------------------- NKL ---
+NKL = "https://nkl.lt"
+_NKL_PLAYER = re.compile(r"""href=["']?https?://nkl\.lt/zaidejai/(\d+)/?["']?\s*>([^<]+)</a>""")
+
+
+def _nkl_page(pid: str) -> dict:
+    t = _txt(get_text(f"{NKL}/zaidejai/{pid}/") or "")
+    b = re.search(r"Amžius\s+(\d{4}-\d{2}-\d{2})", t)
+    w = re.search(r"Svoris\s+(\d{2,3})\s*kg", t)
+    h = re.search(r"Ūgis\s+(\d{3})\s*cm", t)
+    return {"birth": b.group(1) if b else None, "weight_kg": w.group(1) if w else None, "height_cm": h.group(1) if h else None}
+
+
+def nkl(today: date | None = None, log: Callable = print, teams: list | None = None, **_) -> Iterator[dict]:
+    """nkl.lt/komandos/<club id>/ (the club id is the schedule's home_team_id, the feed's club code) is a roster table: shirt, name,
+    position, height, weight and an AGE, not a date. The date is on the player's page (/zaidejai/<id>/, 'Amžius 2004-08-30'), opened
+    only for a player still missing something. The page shows the current squad only; there is no season switch."""
+    clubs = [(t["code"], t.get("name")) for t in teams or [] if re.fullmatch(r"\d{1,6}", t.get("code") or "")]
+    if not clubs:                                         # no clubs on the site yet: the homepage's club strip
+        clubs = [(c, None) for c in dict.fromkeys(re.findall(r"nkl\.lt/komandos/(\d+)/", get_text(NKL + "/") or ""))]
+    log(f"     NKL: {len(clubs)} clubs")
+    for code, name in clubs:
+        page = get_text(f"{NKL}/komandos/{code}/") or ""
+        h1 = re.search(r'<h1[^>]*nkl-team-title[^>]*>(.*?)</h1>', page, re.S)
+        club = name or (_txt(h1.group(1)) if h1 else None)
+        seen: set = set()
+        for row in _rows(page):
+            m = _NKL_PLAYER.search(row)
+            if not m or m.group(1) in seen:
+                continue
+            seen.add(m.group(1))
+            cells = [_txt(c) for c in _cells(row)]
+            num = re.search(r'nkl-roster-num[^>]*>\s*(\d{1,2})\s*<', row)
+            height = next((c[:-3] for c in cells if re.fullmatch(r"\d{3} cm", c)), None)
+            weight = next((c[:-3] for c in cells if re.fullmatch(r"\d{2,3} kg", c)), None)
+            who = _txt(m.group(2))
+            yield {"name": who, "team": club, "number": num.group(1) if num else None, "height_cm": height, "weight_kg": weight,
+                   "detail": (lambda pid=m.group(1): _nkl_page(pid)), "label": who}
+
+
+# ------------------------------------------------- the federation's 1 Liga (PZKosz) ---
+PZKOSZ = "https://rozgrywki.pzkosz.pl"
+_PZ_ROW = re.compile(r'<tr[^>]*data-href="/liga/\d+/(?:sezon/\d+/)?zawodnicy/p/(\d+)/[^"]*"[^>]*>(.*?)</tr>', re.S | re.I)
+
+
+def pzkosz(liga: int, keyed: bool = False) -> Callable[..., Iterator[dict]]:
+    """rozgrywki.pzkosz.pl, the federation's competition site: each club's page is a squad table - shirt, name, date of birth (with
+    the age beside it), height, position; no weight. League 2 = the PLK (ORLEN Basket Liga), 1 = 1 Liga Mężczyzn, 16 = 1 Liga Kobiet.
+    The season switch on the clubs page names each season's id, so this season and last are both read (this season's row wins).
+    The player id in a row is the federation's (esor) person id, which IS the PLK game feed's player id (plk.pl/api/webpage/game
+    players[].id): `keyed` sends it as the key. The 1 Ligas' game feed is FIBA LiveStats, keyed by the game's own pno, so there it
+    is not a key and the match is by name and club (the federation's club names are the ones Puls Basketu prints)."""
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        y = _season_start(today)
+        opts = dict((int(yr), sid) for sid, yr in re.findall(rf'value="/liga/{liga}/sezon/(\d+)/druzyny\.html"[^>]*>\s*(\d{{4}})/',
+                                                               get_text(f"{PZKOSZ}/liga/{liga}/druzyny.html") or ""))
+        seen: set = set()
+        for year in (y, y - 1):
+            sid = opts.get(year)
+            if not sid:
+                log(f"     PZKosz liga {liga}: no {year}/{year + 1} season on the site")
+                continue
+            clubs = dict.fromkeys(re.findall(rf'href="(/liga/{liga}/(?:sezon/{sid}/)?druzyny/d/\d+/[^"]+\.html)"',
+                                             get_text(f"{PZKOSZ}/liga/{liga}/sezon/{sid}/druzyny.html") or ""))
+            n = 0
+            for url in clubs:
+                page = get_text(PZKOSZ + url) or ""
+                h1 = re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S)
+                club = _txt(h1.group(1)) if h1 else None
+                for pid, row in _PZ_ROW.findall(page):
+                    if pid in seen:
+                        continue
+                    h3 = re.search(r"<h3[^>]*>(.*?)</h3>", row, re.S)
+                    if not h3:
+                        continue
+                    first, _, last = _html.unescape(re.sub(r"<[^>]+>", "", h3.group(1))).strip().partition("\xa0")   # 'Julia&nbsp;Jeleńczak'
+                    cells = [_txt(c) for c in _cells(row)]
+                    born = next((re.match(r"\d{2}\.\d{2}\.\d{4}", c).group(0) for c in cells if re.match(r"\d{2}\.\d{2}\.\d{4}", c)), None)
+                    height = next((c[:-3] for c in cells if re.fullmatch(r"\d{3} cm", c)), None)
+                    seen.add(pid)
+                    n += 1
+                    yield {"first": first.strip(), "last": _txt(last), "team": club, "key": pid if keyed else None, "number": cells[0] if cells and cells[0].isdigit() else None,
+                           "height_cm": height, "birth": born, "label": f"{first.strip()} {_txt(last)}"}
+            log(f"     PZKosz liga {liga}, {year}/{year + 1}: {n} players on {len(clubs)} clubs")
+    return read
+
+
 # Keyed by the league's slug (config/ingest-sources.json league_slug).
 READERS: dict = {
     "euroleague": euroleague("E"),
@@ -795,9 +915,14 @@ READERS: dict = {
     "lnb-espoirs-elite-2": lnb(4),
     "u-sports": usports,
     "lnbp": lnbp,
+    "lkl": lkl,
+    "nkl": nkl,
+    "orlen-basket-liga": pzkosz(2, keyed=True),
+    "1-liga-mezczyzn": pzkosz(1),
+    "1-liga-kobiet": pzkosz(16),
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).
-NEEDS_TEAMS = {"primera-feb", "segunda-feb", "liga-femenina-endesa", "liga-femenina-2", "liga-femenina-challenge", "liga-u"}
+NEEDS_TEAMS = {"primera-feb", "segunda-feb", "liga-femenina-endesa", "liga-femenina-2", "liga-femenina-challenge", "liga-u", "nkl"}
 # Leagues whose site refuses a GitHub runner: the weekly workflow leaves them out, run them by hand from a home connection.
 HOME_ONLY = {"lnb-elite", "lnb-elite-2", "lnb-espoirs-elite", "lnb-espoirs-elite-2"}
