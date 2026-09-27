@@ -842,3 +842,75 @@ game when it is fetched, kept in `data/feed/<CODE>/games.json`, asked again at m
 - The API's `venue` is wrong: Sassari at home in "Palaleonessa" (Brescia's arena), Costa Masnaga in "La Molisana Arena"
   (Campobasso's). Not used.
 - No bio reader (`bio_sources.NO_BIO`): see docs/player-bio.md.
+
+## Brazil: NBB and Liga Ouro (Liga Nacional de Basquete) - LDB NOT BUILT
+
+### host
+
+`lnb.com.br`, the league's own WordPress site, server-rendered. No robots.txt (`/robots.txt` redirects to the 404 page);
+Cloudflare's Rocket Loader is on the pages but not its bot check - a plain GET answers. The Content-Type names no charset:
+the pages are UTF-8. Adapter `lnbbr` (`scripts/ingest/adapters/lnbbr.py`), one request every 3 s. Two sources per
+league (`stage` regular / playoffs), codes `NBB` and `LOURO`.
+
+### current_season
+
+`/<nbb|liga-ouro>/tabela-de-jogos/` shows the current season (the season filter's checked radio: NBB 2026/2027 = 106,
+Liga Ouro 2026 = 102). `season_id` in adapter_config asks for another (`?season[]=<id>`, what the FILTRAR button sends).
+
+### schedule_recipe
+
+One `<tr>` per game on the schedule page: `data-real-id` (the league's game id, the game's external id), date and time
+(Brasilia, UTC-3 all year), both clubs (name, crest, and the three-letter code in the small-screen cell - the clubs'
+codes, which follow a club through a sponsor rename), round, stage ("1º TURNO", "2º TURNO" = regular season; "OITAVAS",
+"QUARTAS", "SEMIFINAL", "FINAL" = play-offs) and one link: `/partidas/<slug>/` until the game's report is published,
+then `/noticias/<slug>/`. A game with a report is final. The page is read once per pass; a fetch that finds no report
+link cached re-reads it at most every 30 minutes. Links are kept in `data/feed/<CODE>/games.json`.
+
+### game_recipe
+
+The report (`/noticias/<slug>/`): the score and quarters, the hall (`p.score_header_place`), and two tabs.
+
+- `#stats`: a box score per club (`team_home_stats` / `team_away_stats`): shirt, display name, games, minutes
+  (decimal), points ("20/35 (57)": the first number), rebounds "D+O T", assists, 3P / 2P / FT "made/attempted (pct)",
+  steals (BR), blocks (TO), fouls committed (FC) and drawn (FR), turnovers (ER), dunks (EN), +/-, efficiency; an
+  "Equipe" row with the club's totals (team rebounds and turnovers are the difference from its players' sum).
+- `#movethemove`: the play-by-play, NEWEST FIRST, in Portuguese: quarter (`idq`), club (`idt`: 1 home, 2 away), clock
+  (counting down), running score ("78 x 87", home first), a title and a sentence naming the player by the box score's
+  display name. The adapter reads it oldest first and translates each sentence (made/missed twos, threes, dunks and free
+  throws, rebounds, assists, steals, blocks, fouls committed and drawn, turnovers and violations, timeouts, both sides of
+  each substitution). A sentence it does not know is kept on `raw.lnbbr.unknown` and printed ("not translated"), never
+  guessed.
+- Players have no id anywhere on the site: a player is his display name and shirt within his club (`pno`
+  `pedro-nunes-11`; a club can have two players of one display name - Paulistano 2025-26, Gabriel 14 and Gabriel 11).
+- **The play-by-play does not always name a player as the box score does**: it uses the scorers' name ("Gama",
+  "JV Martins", "Sbardelotti"), the box score the site's ("Juan", "Martins", "Thiago") - IVV/CETAF in most Liga Ouro
+  games, 22 names in the sample. A name the box score does not have is given the box line of its club that its own
+  plays add up to exactly (shots made and missed, free throws, rebounds, assists, steals, blocks, fouls both ways,
+  turnovers), only where no other line fits; quiet players (all zeros) by their time on court from their own
+  substitutions. Kept on `raw.lnbbr.renamed`.
+- Starters: each club's five "Entra" lines at 10:00 before the first play.
+- **The changes made between quarters are not logged**: a player who starts a quarter is simply there. Each later
+  quarter's opening five is the five of the club that the quarter's own lines contradict least (a play by someone not
+  on court weighs more than a substitution line that cannot be), and the substitutions are written at the quarter's
+  start, marked `"inferred": 1`. That is what lets the lineups and stints be built.
+- A change entered the wrong way round is put right by entering its reverse at the same clock ("Sai L. Muller, Entra
+  Emerson, Sai Emerson, Entra L. Muller"), and a change can be written in two halves with plays between them: the
+  lines are kept as logged, the second half moved up beside the first.
+- Checked against every Liga Ouro 2026 report and 78 NBB 2025-26 ones (113 with stats): every sentence translated, the
+  play-by-play's points equal to the box score's for both clubs in every game, five starters, no lineup warnings.
+
+### gotchas
+
+- The report is published some hours after the game (the adapter polls 12:00-24:00 UTC; weekend games tip as early as
+  late morning Brasilia time).
+- About one report in twelve is an article with no stats and no link to any (Liga Ouro 2026 game 26825; 9 of 78 NBB
+  2025-26 games sampled, mostly play-offs): no game is made from it, and it is read again at most every 12 hours
+  (`nobox` in `games.json`) in case the stats are added.
+- A free-throw trip is numbered from its made/missed lines (1of2, 2of2); a drawn foul is paired with the other club's foul
+  at the same clock.
+- **LDB (Liga de Desenvolvimento) is not built**: its games (2025 and 2026, the final included) have a result and
+  nothing else - the game page's tabs are empty and no report is ever published - so there is no box score to ingest.
+- Bio (`bio_sources.lnb_br`): each club's page (`/<path>/equipes/` -> `/equipes/<slug>/`) is its squad with the display
+  name, shirt and height; the athlete's own page has the date of birth and weight, but about half of them are the site's
+  "not found" page. A club page does not name its three-letter code, so it is matched to the athletes page's club filter
+  (`?equipe=BCE`) by crest.

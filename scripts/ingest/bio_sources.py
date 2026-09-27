@@ -40,6 +40,8 @@ What each source gives, found by looking, not assumed (2026-09-27):
                          Genius hosted: each club's roster page in the competition (columns per tenant: SLB date/height/weight,
                          WBBL date/height, HBBC and Basketball England and DAM height only; CIBACOPA date + cibacopa.mx height/weight)
   basketligan, -dam      the Swedish league sites' Sportality API (as basketligaen.dk): roster per club, athlete page per new player
+  nbb, liga-ouro         lnb.com.br: each club's page (the box score's display names, shirt, height), then the athlete's page per new
+                         player (date, weight), which is the site's 'not found' page for about half of them
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
 
 Every league in config/ingest-sources.json has a reader, or is in NO_BIO with the reason it cannot; docs/player-bio.md.
@@ -50,6 +52,7 @@ import html as _html
 import json
 import re
 import time
+from collections import Counter
 from datetime import date
 from typing import Callable, Iterator
 
@@ -80,13 +83,16 @@ def get_json(url: str, params: dict | None = None, headers: dict | None = None):
         return None
 
 
-def get_text(url: str, headers: dict | None = None) -> str | None:
-    """One polite GET of a page: its HTML, or None (403 / 404 / 410)."""
+def get_text(url: str, headers: dict | None = None, encoding: str | None = None) -> str | None:
+    """One polite GET of a page: its HTML, or None (403 / 404 / 410). `encoding` for a site whose Content-Type names no charset
+    (requests would read it as Latin-1)."""
     _wait()
     r = requests.get(url, headers={"User-Agent": UA, "Accept-Language": "en", **(headers or {})}, timeout=40)
     if r.status_code in (403, 404, 410):
         return None
     r.raise_for_status()
+    if encoding:
+        r.encoding = encoding
     return r.text
 
 
@@ -1081,6 +1087,82 @@ def sportality(api: str, series_code: str, label: str) -> Callable[..., Iterator
     return read
 
 
+# ------------------------------------------------------------ Brazil: NBB, Liga Ouro ---
+LNB_BR = "https://lnb.com.br"
+LNB_BR_GAP_S = 2.0                   # as the ingest (adapters/lnbbr.py reads its game pages 3 s apart): a WordPress site, one at a time
+_LNB_BR_CARD = re.compile(r'<a href="(https://lnb\.com\.br/atletas/[^"]+)"[^>]*>\s*<div class="card_player_team_person[^"]*">(.*?)</table>', re.S)
+_LNB_BR_CLUB = re.compile(r'<a href="(https://lnb\.com\.br/equipes/[^"]+)">\s*<div[^>]*team_archive">\s*<div class="circle_team_archive">\s*'
+                          r'<img alt="[^"]*" src="([^"]*)">.*?<div class="perfil_team">\s*<strong>([^<]+)<', re.S)
+
+
+def _lnb_br_get(url: str) -> str | None:
+    time.sleep(max(0.0, LNB_BR_GAP_S - GAP_S))              # get_text keeps GAP_S itself
+    return get_text(url, encoding="utf-8")                  # the site's Content-Type names no charset
+
+
+def _lnb_br_crest(src: str) -> str:
+    """A club's crest file, at whatever size it was served ('osasco-1-150x150.png' is 'osasco-1.png')."""
+    return re.sub(r"-\d+x\d+(?=\.\w+$)", "", (src or "").rsplit("/", 1)[-1]).lower()
+
+
+def _lnb_br_page(url: str) -> dict:
+    """An athlete's FICHA TÉCNICA: 'Data de Nascimento | 04/03/1980', 'Altura / Peso | 1.91 / 100kg'. About half the athletes'
+    pages are the site's 'not found' page instead (nothing to read: the club page's height is then all there is)."""
+    tb = re.search(r'<table class="ficha_tecnica_athlete_stats[^"]*">(.*?)</table>', _lnb_br_get(url) or "", re.S)
+    cells = [_txt(c) for c in _cells(tb.group(1))] if tb else []
+    f = dict(zip(cells[::2], cells[1::2]))
+    height, _, weight = f.get("Altura / Peso", "").partition("/")
+    return {"birth": f.get("Data de Nascimento") or None, "height_cm": height.strip() or None, "weight_kg": weight.strip() or None}
+
+
+def lnb_br(path: str, label: str) -> Callable[..., Iterator[dict]]:
+    """lnb.com.br, the league's own site (adapters/lnbbr.py reads its games). /<path>/equipes/ links the season's clubs; each
+    club's page is its squad, a card per athlete: shirt, the display name the box score uses ('Jeanzinho', 'G. Basílio'),
+    position, height (metres) and an age (not a birth year: it is not used). The date of birth and the weight are on the athlete's
+    own page, opened only for a player still missing something.
+    A club page does not say which club it is in the league's three-letter code (the ingest's club id), so its crest is matched to
+    the crests of the athletes page's club filter (?equipe=BCE); the club is then named as the site (or the schedule) names it:
+    the club pages use a club's full name ('Zopone/Unimed/Bauru Basket/Parmalat Fit' for Bauru Basket)."""
+    def read(today: date | None = None, log: Callable = print, teams: list | None = None, **_) -> Iterator[dict]:
+        from adapters.lnbbr import schedule_rows
+        names = {t["code"]: t["name"] for t in teams or [] if t.get("code") and t.get("name")}
+        for r in schedule_rows(_lnb_br_get(f"{LNB_BR}/{path}/tabela-de-jogos/") or ""):
+            names.setdefault(r["home_code"], r["home"])
+            names.setdefault(r["away_code"], r["away"])
+        code_of: dict = {}
+        for code, src in re.findall(r'/atletas/\?equipe=([A-Z0-9]{2,6})">\s*<img alt="[^"]*" src="([^"]+)"', _lnb_br_get(f"{LNB_BR}/{path}/atletas/") or ""):
+            code_of.setdefault(_lnb_br_crest(src), code)
+        page = _lnb_br_get(f"{LNB_BR}/{path}/equipes/") or ""
+        i = page.find('class="archive_team_screen_one"')
+        clubs = _LNB_BR_CLUB.findall(page[i:page.find("</section>", i)] if i >= 0 else "")
+        log(f"     {label}: {len(clubs)} clubs, {sum(1 for _u, src, _n in clubs if _lnb_br_crest(src) in code_of)} known by code")
+        for url, src, own in clubs:
+            code = code_of.get(_lnb_br_crest(src))
+            club = names.get(code) or _html.unescape(own).strip()
+            try:
+                squad = _lnb_br_get(url) or ""
+            except requests.RequestException as exc:            # one club's page timing out is not the league's
+                log(f"     {label} {club}: {exc.__class__.__name__}, skipped")
+                continue
+            cards = {}
+            for a_url, card in _LNB_BR_CARD.findall(squad):
+                nm = re.search(r'<strong class="name">(.*?)</strong>', card, re.S)
+                if nm and _txt(nm.group(1)):
+                    cards.setdefault(a_url, (_txt(nm.group(1)), card))
+            twice = {n for n, k in Counter(n for n, _c in cards.values()).items() if k > 1}
+            if twice:                                        # two players one name in one club: which is which cannot be told
+                log(f"     {label} {club}: {', '.join(sorted(twice))} twice in the squad, left out")
+            for a_url, (name, card) in cards.items():
+                if name in twice:
+                    continue
+                shirt = re.search(r'<strong class="number[^"]*">\s*#?\s*(\d{1,3})\s*</strong>', card)
+                f = dict(zip([_txt(x) for x in re.findall(r"<th[^>]*>(.*?)</th>", card, re.S)],
+                             [_txt(x) for x in re.findall(r"<td[^>]*>(.*?)</td>", card, re.S)]))
+                yield {"name": name, "team": club, "number": shirt.group(1) if shirt else None, "height_cm": f.get("Altura") or None,
+                       "detail": (lambda a_url=a_url: _lnb_br_page(a_url)), "label": f"{name} ({code or club})"}
+    return read
+
+
 # Keyed by the league's slug (config/ingest-sources.json league_slug).
 READERS: dict = {
     "euroleague": euroleague("E"),
@@ -1144,6 +1226,8 @@ READERS: dict = {
     # / r"^(Damer - )?(SBL|Basketligan) Dam" also works (date of birth only, no request per player) if those sites go away.
     "basketligan": sportality("https://www.sblherr.se/api/sports-v2", "SBL", "Basketligan"),
     "basketligan-dam": sportality("https://www.sbldam.se/api/sports-v2", "SBLD", "Basketligan Dam"),
+    "nbb": lnb_br("nbb", "NBB"),
+    "liga-ouro": lnb_br("liga-ouro", "Liga Ouro"),
 }
 
 # Leagues the ingest reads that have NO reader, and why (bio_test holds the two lists together).
@@ -1157,6 +1241,7 @@ NO_BIO = {
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).
-NEEDS_TEAMS = {"primera-feb", "segunda-feb", "liga-femenina-endesa", "liga-femenina-2", "liga-femenina-challenge", "liga-u", "nkl"}
+NEEDS_TEAMS = {"primera-feb", "segunda-feb", "liga-femenina-endesa", "liga-femenina-2", "liga-femenina-challenge", "liga-u", "nkl",
+               "nbb", "liga-ouro"}
 # Leagues whose site refuses a GitHub runner: the weekly workflow leaves them out, run them by hand from a home connection.
 HOME_ONLY = {"lnb-elite", "lnb-elite-2", "lnb-espoirs-elite", "lnb-espoirs-elite-2"}

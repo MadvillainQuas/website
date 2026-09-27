@@ -88,6 +88,7 @@ python scripts/ingest/bio_sync.py --worker-config --no-stash             # neith
 | 1-liga-mezczyzn, 1-liga-kobiet | rozgrywki.pzkosz.pl club pages (leagues 1, 16) | date, height | feed read: 315 / 598 rows |
 | lnbp | Sportradar EUI embed players list, keyed by the box score's personId | height, weight (~75%), date (~25%) | feed read: 482 rows |
 | u-sports | each university's roster page (PrestoSports / Sidearm), 39 of 48 clubs; feet-inches and lbs converted | height, weight where printed | feed read: 755 players |
+| nbb, liga-ouro | lnb.com.br: each club's page (squad: the box score's display name, shirt, height); the athlete's page for date and weight, opened per new player (about half are the site's "not found" page) | height; date and weight for about half | feed read: 275 / 90 players, all 18 / 6 clubs |
 
 "feed read" = read live on 2026-09-27, not yet dry-run against the site's players (run `--dry-run` to see the match counts).
 

@@ -661,6 +661,12 @@ jobs:
         # clubs keyed on the league's slugs, the LiveStats id asked for once per game, the league's venue not used
         run: python scripts/ingest/lbf_test.py
 
+      - name: NBB and Liga Ouro from the league's own site (lnb.com.br)
+        # adapters/lnbbr.py: the schedule (Brasilia to UTC, the clubs' three-letter codes, final once the report is out),
+        # the report's box score and Portuguese play-by-play translated event by event (a sentence it does not know kept,
+        # not guessed), the starters, and the changes made between quarters (never logged) restated at each quarter's start
+        run: python scripts/ingest/lnbbr_test.py
+
       - name: Basketligaen and Kvinde Basketligaen on FIBA LiveStats
         # men: fiba_site_schedule site "basketligaen" (the site's JSON API names every game's LiveStats id, kept once,
         # the site's club codes over the operator's); women: the Genius-hosted schedule on tenant DAM

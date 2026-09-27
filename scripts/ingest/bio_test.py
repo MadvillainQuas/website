@@ -196,7 +196,7 @@ REAL_TEXT = bio_sources.get_text
 
 
 def with_pages(pages, fn):
-    bio_sources.get_text = lambda url, headers=None: pages.get(url)
+    bio_sources.get_text = lambda url, headers=None, **_: pages.get(url)
     try:
         return list(fn())
     finally:
@@ -252,6 +252,54 @@ finally:
 ok("B.LEAGUE: date, height, weight from the player's page", d_ == {"birth": "1991年9月3日", "height_cm": "193", "weight_kg": "92"}, d_)
 recs = list(bio_sources.by_player_page(lambda pid: {})(players=[pl("z1", "A", "B", [], ["LEAGUE:12345"]), pl("z2", "C", "D", [], [])]))
 ok("a league keyed by its own player id: a record per known player, keyed by the id", [r["key"] for r in recs] == ["12345"], recs)
+
+LNB = "https://lnb.com.br"
+LNB_SCHEDULE = ('<tr class="with-hotel"><td class="position_value show-for-medium" data-label="JOGO" data-real-id="27110">1</td>'
+                '<td class="date_value" data-label="DATA"><span class="">17/10/2026</span> <span class="">16:00</span></td>'
+                '<td><span class="team-shortname">Bauru Basket</span></td><td><span class="team-shortname">Basquete Cearense</span></td>'
+                '<td class="hide-for-medium matche_for_small"><strong class="x">BAU <img src="b.png"></strong>'
+                '<a href="https://lnb.com.br/partidas/x/" class="float-left match_score_relatorio"><span class="home"></span> X <span class="away"></span></a>'
+                '<strong class="x"><img src="c.png"> BCE</strong></td></tr>')
+LNB_FILTER = ('<li><a href="https://lnb.com.br/nbb/atletas/?equipe=BAU"><img alt="BAU" src="https://lnb.com.br/wp-content/uploads/2016/10/bauru-150x150.png"></a></li>'
+              '<li><a href="https://lnb.com.br/nbb/atletas/?equipe=BCE"><img alt="BCE" src="https://lnb.com.br/wp-content/uploads/2015/08/cearense.png"></a></li>')
+LNB_CLUBS = ('<a href="https://lnb.com.br/equipes/bauru/">x</a><section class="archive_team_screen_one">'
+             '<a href="https://lnb.com.br/equipes/bauru/"> <div class="large-3 columns float-left team_archive"> <div class="circle_team_archive">'
+             ' <img alt="" src="https://lnb.com.br/wp-content/uploads/2016/10/bauru.png"> </div> <div class="name_team_archive"> <strong>ZOPONE</strong> </div>'
+             ' <div class="perfil_team"> <strong>Zopone/Unimed/Bauru Basket/Parmalat Fit<strong class="y">&#xE037;</strong></strong> </div> </div> </a>'
+             '<a href="https://lnb.com.br/equipes/basq-cearense/"> <div class="large-3 columns float-left team_archive"> <div class="circle_team_archive">'
+             ' <img alt="" src="https://lnb.com.br/wp-content/uploads/2015/08/cearense-150x150.png"> </div> <div class="name_team_archive"> <strong>BC</strong> </div>'
+             ' <div class="perfil_team"> <strong>Basquete Cearense<strong class="y">&#xE037;</strong></strong> </div> </div> </a></section>')
+
+
+def lnb_card(slug, shirt, name, pos, height, age):
+    return (f'<a href="https://lnb.com.br/atletas/{slug}/" title=""> <div class="card_player_team_person primary-team-color-bg"> <div class="card_player_team_out">'
+            f' <strong class="number secondary-team-color-bg">#{shirt}</strong> <strong class="name">{name}</strong> <img src="p.png" alt="" /> </div>'
+            f' <table> <thead> <tr> <th>Posição</th> <th>Altura</th> <th>Idade</th> </tr> </thead> <tbody> <tr> <td>{pos}</td> <td>{height}</td> <td>{age}</td> </tr> </tbody> </table> </div> </a>')
+
+
+LNB_BAURU = (lnb_card("alex-ribeiro-garcia", 10, "Alex", "Ala", "1.91", 46) + lnb_card("gabriel-a", 5, "Gabriel", "Ala", "1.95", 22)
+             + lnb_card("gabriel-b", 7, "Gabriel", "Pivô", "2.03", 24))
+LNB_ALEX = ('<table class="ficha_tecnica_athlete_stats hide-for-small-only"><tbody><tr><td>Nome</td><td>Alex Ribeiro Garcia</td><td>Posição</td><td>Ala</td></tr>'
+            '<tr><td>Equipe(s)</td><td><a href="https://lnb.com.br/equipes/bauru/"> Bauru </a><br></td><td>Naturalidade</td><td>Orlândia (SP)</td></tr>'
+            '<tr><td>Data de Nascimento</td><td>04/03/1980</td><td>Altura / Peso</td><td>1.91  / 100kg </td></tr></tbody></table>')
+bio_sources.LNB_BR_GAP_S = 0
+lnb_pages = {LNB + "/nbb/tabela-de-jogos/": LNB_SCHEDULE, LNB + "/nbb/atletas/": LNB_FILTER, LNB + "/nbb/equipes/": LNB_CLUBS,
+             LNB + "/equipes/bauru/": LNB_BAURU, LNB + "/equipes/basq-cearense/": lnb_card("michael-marquise-dupree", 11, "Dupree", "Armador", "1.85", 31),
+             LNB + "/atletas/alex-ribeiro-garcia/": LNB_ALEX, LNB + "/atletas/michael-marquise-dupree/": '<p class="text-center">O conteúdo solicitado não foi encontrado.</p>'}
+got = with_pages(lnb_pages, lambda: bio_sources.READERS["nbb"](teams=[{"code": "BCE", "name": "Fortaleza Basquete Cearense"}], log=lambda m: None))
+ok("NBB: each club page's squad, under the box score's display names, with shirt and height", [(g["name"], g["number"], g["height_cm"]) for g in got]
+   == [("Alex", "10", "1.91"), ("Dupree", "11", "1.85")], got)
+ok("...each club known by its crest as its code, and named as the site names it, else as the schedule does (not the club page's full name)",
+   [g["team"] for g in got] == ["Bauru Basket", "Fortaleza Basquete Cearense"], [g["team"] for g in got])
+ok("...two players one name in one club are both left out", not any(g["name"] == "Gabriel" for g in got))
+bio_sources.get_text = lambda url, headers=None, **_: lnb_pages.get(url)
+try:
+    d_, e_ = got[0]["detail"](), got[1]["detail"]()
+finally:
+    bio_sources.get_text = REAL_TEXT
+ok("...the athlete's page: date, height, weight", d_ == {"birth": "04/03/1980", "height_cm": "1.91", "weight_kg": "100kg"}
+   and bio.parse_birth(d_["birth"]) == date(1980, 3, 4) and bio.clean_height(d_["height_cm"]) == 191 and bio.clean_weight(d_["weight_kg"]) == 100, d_)
+ok("...and the site's 'not found' page instead of one is nothing, not an error", e_ == {"birth": None, "height_cm": None, "weight_kg": None}, e_)
 
 print("\n-- waiting for the player (0186)")
 
