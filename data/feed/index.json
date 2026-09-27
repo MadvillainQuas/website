@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-27T01:25:59.950999+00:00",
+ "updated": "2026-09-27T01:27:31.361039+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -70,6 +70,13 @@
    "adapter": "feb",
    "games": 306,
    "updated": "2026-09-27T01:25:59.937679+00:00"
+  },
+  {
+   "code": "FEB2",
+   "label": "Segunda FEB",
+   "adapter": "feb",
+   "games": 364,
+   "updated": "2026-09-27T01:27:31.346462+00:00"
   },
   {
    "code": "GREL",
