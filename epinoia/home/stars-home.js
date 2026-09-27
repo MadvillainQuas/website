@@ -26,24 +26,47 @@
     host.appendChild(d);
   };
 
+  /* the ALL / U22 / MEN'S / WOMEN'S row (front.js), then what it chose */
+  const withBar = (host, node) => {
+    host.textContent = '';
+    if (typeof H.whoBar === 'function') host.appendChild(H.whoBar());
+    host.appendChild(node);
+  };
+  const EMPTY = {
+    u22: 'No player listed as under 22 has met the minutes in the latest month of games.',
+    men: 'No player in a men’s league has met the minutes in the latest month of games.',
+    women: 'No player in a women’s league has met the minutes in the latest month of games.'
+  };
+
   H.register('stars', async function (ctx) {
     const ST = window.EpinoiaStars;
     if (!ST) throw new Error('stars.js has not loaded');
-    const res = await ST.global({ base: ctx.base, now: ctx.now });
+    const filter = typeof H.who === 'function' ? H.who() : 'all';
+    /* a filtered podium is worked out on the reader's side, which takes a moment: say so */
+    if (filter !== 'all') {
+      const wait = document.createElement('div');
+      wait.className = 'empty hm-wait';
+      wait.textContent = 'Working out the podiums…';
+      withBar(ctx.host, wait);
+    }
+    const res = await ST.global({ base: ctx.base, now: ctx.now, filter });
+    if (typeof H.who === 'function' && H.who() !== filter) return;     // the reader has moved on
 
     const rows = ST.WINDOWS.map(w => res[w.key]).filter(Boolean);
     if (!rows.length) {
-      quiet(ctx.host, res.anchor
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = EMPTY[filter] || (res.anchor
         ? 'No player has met the minutes in any league’s latest month of games yet.'
         : 'No league has finished a game yet, so there are no best performers to show.');
+      withBar(ctx.host, d);
       return;
     }
 
     const wrap = document.createElement('div');
     wrap.className = 'hm-stars';
     ST.render(wrap, rows, { base: ctx.base });
-    ctx.host.textContent = '';
-    ctx.host.appendChild(wrap);
+    withBar(ctx.host, wrap);
     ctx.fadeIn(wrap);
   });
 })();

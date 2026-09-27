@@ -265,6 +265,8 @@ function quiet(host, name) {
   const d = document.createElement('div');
   d.className = 'empty';
   d.textContent = QUIET[name] || 'Nothing to show just now.';
+  /* a filtered section that failed keeps its filter row, so the reader can go back to ALL */
+  if (name === 'stars' || name === 'records') host.appendChild(whoBar());
   host.appendChild(d);
   fadeIn(d);
 }
@@ -334,6 +336,7 @@ function boot() {
   const stars = fixtures.then(() => run('stars'));
   /* the global records read every league's season: after the podiums, which are heavier still */
   const records = stars.then(() => run('records'));
+  firstRuns.stars = stars; firstRuns.records = records;
   Promise.all([fixtures, followed, leagues, stars, records, priv])
     .then(renumber, renumber)
     .then(reScroll, reScroll);
@@ -353,5 +356,39 @@ if (typeof document !== 'undefined' && typeof location !== 'undefined') {
   }
 }
 
-return { register, refresh, fadeIn, paintApp, now: NOW };
+/* WHO THE PODIUMS AND THE RECORDS ARE FOR: ALL, U22, MEN'S or WOMEN'S (stars.js says what each
+   means). One choice for both sections, drawn at the head of each, remembered for the reader; a
+   press draws both again. */
+const WHO_KEY = 'epinoia.home.who';
+const WHO = [['all', 'All'], ['u22', 'U22'], ['men', 'Men’s'], ['women', 'Women’s']];
+function who() {
+  let v = 'all';
+  try { v = root.localStorage.getItem(WHO_KEY) || 'all'; } catch (_) { /* all */ }
+  return WHO.some(w => w[0] === v) ? v : 'all';
+}
+function whoBar() {
+  const bar = document.createElement('div');
+  bar.className = 'hm-who rec-sw';
+  bar.setAttribute('role', 'group');
+  bar.setAttribute('aria-label', 'Show players from');
+  const now = who();
+  WHO.forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'rec-b' + (k === now ? ' on' : ''); b.dataset.who = k;
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(k === now));
+    b.addEventListener('click', () => {
+      if (k === who()) return;
+      try { root.localStorage.setItem(WHO_KEY, k); } catch (_) { /* this visit only */ }
+      document.querySelectorAll('.hm-who .rec-b').forEach(x => {
+        const on = x.dataset.who === k; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on));
+      });
+      refresh('stars'); refresh('records');
+    });
+    bar.appendChild(b);
+  });
+  return bar;
+}
+
+return { register, refresh, fadeIn, paintApp, now: NOW, who, whoBar };
 }));

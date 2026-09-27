@@ -78,6 +78,45 @@ console.log('\nload');
   ok('player lines are sorted and cut on the server', asked.filter(q => q.startsWith('player_game_stats')).every(q => /order=stats->\w+\.desc/.test(q) && /limit=\d+/.test(q)));
 }
 
+console.log('\nthe filters');
+{
+  const ST = require(path.join(ROOT, 'epinoia', 'stars.js'));
+  ok('a league marked women\'s is women\'s; one marked mixed is neither; an unmarked league is men\'s',
+     ST.genderOf({ gender: 'women' }) === 'women' && ST.genderOf({ gender: 'mixed' }) === 'mixed' &&
+     ST.genderOf({ gender: null }) === 'men' && ST.genderOf({ gender: 'men' }) === 'men');
+  ok('ALL and U22 keep every league; MEN\'S and WOMEN\'S only their own',
+     ST.leagueFits({ gender: 'women' }, 'all') && ST.leagueFits({ gender: null }, 'u22') &&
+     ST.leagueFits({}, 'men') && !ST.leagueFits({ gender: 'women' }, 'men') && !ST.leagueFits({ gender: 'mixed' }, 'women'));
+  ok('an unknown filter is ALL', ST.cleanFilter('juniors') === 'all' && ST.cleanFilter('u22') === 'u22');
+
+  /* under 22: an exact age wins; a birth year alone counts only when the player cannot be 22 this year */
+  globalThis.EPINOIA_CONFIG = { supabaseUrl: 'https://x', supabaseAnonKey: 'k' };
+  globalThis.fetch = async () => ({ ok: true, json: async () => [{ player_id: 'a', age: 21 }, { player_id: 'b', age: 22 }] });
+  globalThis.EpinoiaData = { get: async () => [
+    { id: 'a', birth_year: 2004 }, { id: 'b', birth_year: 2005 }, { id: 'c', birth_year: 2005 },
+    { id: 'd', birth_year: 2004 }, { id: 'e', birth_year: null }] };
+  const y = await ST.under22(['a', 'b', 'c', 'd', 'e'], new Date('2026-09-27T12:00:00Z'));
+  ok('exact age 21 is in, exact age 22 is out, whatever the year says', y.has('a') && !y.has('b'), [...y]);
+  ok('born 2005 with no exact age is in during 2026; born 2004 is not; no year is not', y.has('c') && !y.has('d') && !y.has('e'), [...y]);
+
+  /* records under U22: the birth-year floor goes to the server, and there are no team records */
+  const asked = [];
+  globalThis.EpinoiaStars = ST;
+  globalThis.EpinoiaData = {
+    all: async q => { asked.push(q); return q.startsWith('games?') ? [{ id: 'g1', tipoff_at: '2026-09-01T00:00:00Z', home_team_id: 'H', away_team_id: 'A', home_score: 80, away_score: 70 }] : []; },
+    get: async q => { asked.push(q);
+      if (q.startsWith('players?id=in.(y1')) return [{ id: 'y1', birth_year: 2006 }];
+      if (q.startsWith('player_game_stats') && /stats->pts\./.test(q)) return [{ game_id: 'g1', player_uuid: 'y1', team_idx: 0, v: 30, games: { tipoff_at: '2026-09-01T00:00:00Z' } }];
+      return []; },
+    playerMeta: async ids => Object.fromEntries(ids.map(id => [id, { name: 'P ' + id, slug: id }]))
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => [] });
+  const d = await R.load({ comps: ['c1'], filter: 'u22', now: new Date('2026-09-27T12:00:00Z') });
+  ok('U22 records ask the server for players born 2004 or later', asked.filter(q => q.startsWith('player_game_stats')).every(q => /players!inner\(birth_year\)/.test(q) && /players\.birth_year=gte\.2004/.test(q)));
+  ok('and hold only a player listed as under 22', d.player.length === 1 && d.player[0].holder.pid === 'y1', d.player);
+  ok('U22 has no team records', d.team.length === 0 && !asked.some(q => q.startsWith('team_game_stats')));
+}
+
 console.log('\nthe page');
 {
   const html = rd('epinoia', 'index.html');
@@ -90,6 +129,17 @@ console.log('\nthe page');
   ok('nav.js puts a skip key on each section but the last', /tt-skip/.test(nav) && /if \(!next\) \{ if \(b\) b\.remove\(\); return; \}/.test(nav));
   ok('the key moves focus to the section it lands on', /to\.focus\(\{ preventScroll: true \}\)/.test(nav));
   ok('the key is styled in the teletext layer', /\.tt-skip\{/.test(rd('epinoia', 'kit', 'teletext.css')));
+}
+
+{
+  const home = rd('epinoia', 'home', 'index.html'), front = rd('epinoia', 'home', 'front.js');
+  const stars = home.indexOf('id="stars"'), recs = home.indexOf('id="records"'), lgs = home.indexOf('id="leagues"');
+  ok('HOME: Global records sits under the best performing players', stars > 0 && recs > stars && lgs > recs);
+  ok('HOME loads records.js, records-home.js and the shared card styles',
+     /\.\.\/records\.js\?v=\d+/.test(home) && /records-home\.js\?v=\d+/.test(home) && /kit\/records\.css\?v=\d+/.test(home));
+  ok('front.js runs the records after the podiums', /stars\.then\(\(\) => run\('records'\)\)/.test(front));
+  ok('the ALL / U22 / MEN\'S / WOMEN\'S row redraws both sections', /refresh\('stars'\); refresh\('records'\);/.test(front));
+  ok('a failed section keeps its filter row', /if \(name === 'stars' \|\| name === 'records'\) host\.appendChild\(whoBar\(\)\)/.test(front));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

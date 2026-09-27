@@ -70,9 +70,14 @@ function joinFilter(comps) {
 }
 
 /* one key's best lines, highest first, with the game's date for the tie-break */
-async function topBy(D, comps, key, n) {
+/* U22 narrows the lines on the server by the birth year (the player's row, embedded): nobody born
+   before this can be under 22; the exact ages then settle the borderline year on this side */
+const youngJoin = born => born ? ',players!inner(birth_year)' : '';
+const youngFilter = born => born ? '&players.birth_year=gte.' + born : '';
+async function topBy(D, comps, key, n, born) {
   const rows = await D.get('player_game_stats?select=game_id,player_id,player_uuid,team_idx,' +
-    'v_or:stats->or,v_dr:stats->dr,v:stats->' + key + ',games!inner(tipoff_at)' + joinFilter(comps) +
+    'v_or:stats->or,v_dr:stats->dr,v:stats->' + key + ',games!inner(tipoff_at)' + youngJoin(born) +
+    joinFilter(comps) + youngFilter(born) +
     '&stats->' + key + '=not.is.null&order=stats->' + key + '.desc.nullslast,game_id.asc&limit=' + n);
   return (rows || []).map(r => ({
     game_id: r.game_id, pid: r.player_uuid || r.player_id, team_idx: r.team_idx,
@@ -82,9 +87,9 @@ async function topBy(D, comps, key, n) {
 
 /* REBOUNDS, EXACTLY: the best offensive and defensive lines, widened until the
    best total found cannot be beaten by a line outside both lists */
-async function topRebounds(D, comps) {
+async function topRebounds(D, comps, born) {
   for (const n of [24, 120, 600]) {
-    const [o, d] = await Promise.all([topBy(D, comps, 'or', n), topBy(D, comps, 'dr', n)]);
+    const [o, d] = await Promise.all([topBy(D, comps, 'or', n, born), topBy(D, comps, 'dr', n, born)]);
     const seen = new Map();
     o.concat(d).forEach(r => {
       const k = r.game_id + '|' + r.pid;
@@ -122,21 +127,29 @@ async function load(opts) {
   if (!games.length) return null;
   const byId = new Map(games.map(g => [g.id, g]));
 
+  /* U22 is a player's filter: a team has no age, so there are no team records under it */
+  const u22 = opts.filter === 'u22';
+  const born = u22 ? (opts.now instanceof Date ? opts.now : new Date()).getFullYear() - 22 : null;
   const [player, team] = await Promise.all([
-    playerRecords(D, comps, byId).catch(() => []),
-    teamRecords(D, comps, games).catch(() => [])
+    playerRecords(D, comps, byId, born).catch(() => []),
+    u22 ? [] : teamRecords(D, comps, games).catch(() => [])
   ]);
   return { player, team, games: games.length };
 }
 
-async function playerRecords(D, comps, byId) {
+async function playerRecords(D, comps, byId, born) {
   const lists = await Promise.all(PLAYER.map(c =>
-    (c.parts ? topRebounds(D, comps) : topBy(D, comps, c.k, 12)).catch(() => [])));
+    (c.parts ? topRebounds(D, comps, born) : topBy(D, comps, c.k, born ? 30 : 12, born)).catch(() => [])));
   const ids = [...new Set(lists.flat().map(r => r.pid))];
   if (!ids.length) return [];
-  let meta = {};
-  try { meta = await D.playerMeta(ids); } catch (_) { meta = {}; }
-  const named = r => { const m = meta[r.pid]; return !!(m && m.slug && m.name && m.name !== 'Player'); };
+  let meta = {}, young = null;
+  const ST = root.EpinoiaStars;
+  await Promise.all([
+    D.playerMeta(ids).then(m => { meta = m || {}; }).catch(() => null),
+    born && ST && ST.under22 ? ST.under22(ids).then(y => { young = y; }).catch(() => null) : null
+  ]);
+  if (born && !young) return [];
+  const named = r => { const m = meta[r.pid]; return !!(m && m.slug && m.name && m.name !== 'Player') && (!young || young.has(r.pid)); };
 
   const out = [];
   const photos = {};
@@ -414,20 +427,26 @@ function cachePut(key, data) {
 }
 const chunk = (a, n) => { const c = []; for (let i = 0; i < a.length; i += n) c.push(a.slice(i, i + n)); return c; };
 
-async function global() {
+async function global(opts) {
+  const o = opts || {};
+  const ST = root.EpinoiaStars;
+  const filter = ST && ST.cleanFilter ? ST.cleanFilter(o.filter) : 'all';
   const D = root.EpinoiaData;
   if (!D) return null;
   const G = root.EpinoiaGlobalGames;
   const lgs = G && typeof G.leagues === 'function' ? await G.leagues()
-    : await D.get('leagues?select=id,slug,name&order=name.asc');
+    : await D.get('leagues?select=id,slug,name,gender&order=name.asc');
   if (!lgs || !lgs.length) return null;
-  const leagueById = new Map(lgs.map(l => [l.id, l]));
+  const fits = l => (ST && ST.leagueFits ? ST.leagueFits(l, filter) : true);
+  const leagueById = new Map(lgs.filter(fits).map(l => [l.id, l]));
+  if (!leagueById.size) return null;
 
   const finals = await D.all('games?status=eq.final&competition_id=not.is.null' +
     '&select=id,tipoff_at,home_team_id,away_team_id,home_score,away_score,competition_id&order=tipoff_at.asc,id.asc');
   if (!finals.length) return null;
   const anchor = finals[finals.length - 1].tipoff_at + '|' + finals.length;
-  const hit = cacheGet(CACHE_KEY + anchor);
+  const key = CACHE_KEY + filter + ':' + anchor;
+  const hit = cacheGet(key);
   if (hit) return hit;
 
   const seasons = [];
@@ -449,7 +468,7 @@ async function global() {
   const compSet = new Set(comps);
   const games = finals.filter(g => compSet.has(g.competition_id));
 
-  const data = await load({ comps, games });
+  const data = await load({ comps, games, filter });
   if (!data || (!data.player.length && !data.team.length)) return null;
   const leagueOfGame = g => {
     const se = seasonOfComp.get(g.competition_id);
@@ -472,7 +491,7 @@ async function global() {
     (ts || []).forEach(t => { teamsById[t.id] = Object.assign({}, t, { __logo: crest[t.id] || null }); });
   }
   const out = { data, teamsById, leagues: current.size };
-  cachePut(CACHE_KEY + anchor, out);
+  cachePut(key, out);
   return out;
 }
 

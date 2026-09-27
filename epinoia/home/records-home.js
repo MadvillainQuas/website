@@ -18,22 +18,39 @@
   H.register('records', async function (ctx) {
     const R = window.EpinoiaRecords;
     if (!R) throw new Error('records.js has not loaded');
-    const res = await R.global();
-    ctx.host.textContent = '';
+    const filter = typeof H.who === 'function' ? H.who() : 'all';
+    const withBar = node => {
+      ctx.host.textContent = '';
+      if (typeof H.whoBar === 'function') ctx.host.appendChild(H.whoBar());
+      ctx.host.appendChild(node);
+    };
+    if (filter !== 'all') {
+      const wait = document.createElement('div');
+      wait.className = 'empty hm-wait';
+      wait.textContent = 'Working out the records…';
+      withBar(wait);
+    }
+    const res = await R.global({ filter });
+    if (typeof H.who === 'function' && H.who() !== filter) return;     // the reader has moved on
     if (!res) {
       const d = document.createElement('div');
       d.className = 'empty';
-      d.textContent = 'No league has finished a game this season yet, so there are no records to show.';
-      ctx.host.appendChild(d);
+      d.textContent = ({
+        u22: 'No record this season is held by a player listed as under 22.',
+        men: 'No men’s league has finished a game this season yet.',
+        women: 'No women’s league has finished a game this season yet.'
+      })[filter] || 'No league has finished a game this season yet, so there are no records to show.';
+      withBar(d);
       return;
     }
     const wrap = document.createElement('div');
     wrap.className = 'hm-records';
+    const label = { u22: 'under 22 · ', men: 'men’s · ', women: 'women’s · ' }[filter] || '';
     R.render(wrap, res.data, {
       teamsById: res.teamsById, base: ctx.base,
-      season: 'this season · ' + res.leagues + (res.leagues === 1 ? ' league' : ' leagues')
+      season: label + 'this season · ' + res.leagues + (res.leagues === 1 ? ' league' : ' leagues')
     });
-    ctx.host.appendChild(wrap);
+    withBar(wrap);
     ctx.fadeIn(wrap);
   });
 })();
