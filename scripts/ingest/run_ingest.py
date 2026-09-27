@@ -1927,6 +1927,34 @@ def version_in_db(sb: "Supabase", src: dict, xid: str, b: GameBundle) -> bool:
         and rows[0].get("external_status") == b.status
 
 
+def release_orphans(sb: "Supabase", src: dict) -> int:
+    """Let go of games whose league was deleted, so the source's schedule builds them afresh.
+
+    Deleting a league (the console's delete, or a reset after a bad first run) sets games.competition_id to NULL
+    on every game of it but leaves the game rows, and leaves external_games pointing at them with their hashes
+    and 'final'. Every skip rule in this file then reads those rows as done: a final game with a hash is not
+    fetched again, and a scheduled one "already has its game" so no new game is made - the league comes back
+    empty however often it is run. An external_games row whose game has no competition is unlinked (game,
+    hash, status and stored feed reference cleared) and the orphan game removed; everything after it in the pass
+    then sees a source it has never met. Returns the number of games released; a failed read releases none."""
+    q = f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}"
+    try:
+        rows = sb.select_all("external_games", f"{q}&games.competition_id=is.null&select=external_id,game_id,games!inner(competition_id)&order=external_id")
+    except Exception:
+        return 0
+    rows = [r for r in rows if r.get("game_id")]
+    for i in range(0, len(rows), 60):
+        chunk = rows[i:i + 60]
+        try:
+            sb.patch("external_games", f"{q}&external_id=in.({','.join(str(r['external_id']) for r in chunk)})",
+                     {"game_id": None, "external_status": "scheduled", "payload_hash": None, "raw_ref": None, "error": None})
+            sb.delete("games", f"id=in.({','.join(str(r['game_id']) for r in chunk)})&competition_id=is.null")
+        except Exception as exc:
+            print(f"   (orphans: {exc})")
+            return i
+    return len(rows)
+
+
 def unsettled_finals(sb: "Supabase", src: dict, now: datetime | None = None) -> set:
     """external_ids of this source's games the FEED calls final but the platform never closed.
 
@@ -2537,6 +2565,10 @@ def main() -> int:
                     except Exception as exc:
                         print(f"   (videos: {exc})")
             run["games_seen"] = len(games)
+            if sb and not args.dry_run:
+                _freed = release_orphans(sb, src)
+                if _freed:
+                    print(f"   {_freed} game(s) of a deleted league released - built again from the schedule")
             # What we already have. When Supabase is configured IT is the authority for "already
             # done" (a game only in the repo index still needs its Supabase rows + storage copy);
             # the repo index is merged in afterwards so index.json keeps every game it knew.

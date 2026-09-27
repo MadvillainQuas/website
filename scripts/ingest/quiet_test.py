@@ -307,6 +307,44 @@ _fp = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedplatfor
 ok("write_event_log and ensure_game_people both take the code from team_code()",
    'team_code(tm.get("1") or {})' in _src and "tcode = team_code(t)" in _fp and '(tm.get("1") or {}).get("code", "")' not in _src)
 
+print("-- the games of a deleted league are let go, so the schedule builds them again")
+
+
+class _OrphanSB:
+    select_all = RI.Supabase.select_all
+
+    def __init__(self, rows=None, boom=False):
+        self.rows, self.boom, self.calls = rows or [], boom, []
+
+    def select(self, table, query):
+        if self.boom:
+            raise RuntimeError("timeout")
+        self.calls.append(("select", table, query))
+        return self.rows if query.count("offset=0") else []
+
+    def patch(self, table, query, body):
+        self.calls.append(("patch", table, query, body))
+
+    def delete(self, table, query):
+        self.calls.append(("delete", table, query))
+
+
+_o = _OrphanSB([{"external_id": "1", "game_id": "g1", "games": {"competition_id": None}},
+                {"external_id": "2", "game_id": "g2", "games": {"competition_id": None}}])
+_n = RI.release_orphans(_o, {"adapter": "fiba_livestats", "code": "SBF"})
+_sel = [c for c in _o.calls if c[0] == "select"][0]
+ok("two orphans found by 'the game has no competition' on this source only", _n == 2 and "games.competition_id=is.null" in _sel[2]
+   and "adapter=eq.fiba_livestats" in _sel[2] and "competition_code=eq.SBF" in _sel[2], _o.calls)
+_pt = [c for c in _o.calls if c[0] == "patch"][0]
+ok("their external_games rows are unlinked (game, hash, status, stored copy) ...",
+   _pt[3] == {"game_id": None, "external_status": "scheduled", "payload_hash": None, "raw_ref": None, "error": None}
+   and "external_id=in.(1,2)" in _pt[2] and "competition_code=eq.SBF" in _pt[2], _pt)
+ok("... and only the games with no competition are deleted", [c for c in _o.calls if c[0] == "delete"][0][2] == "id=in.(g1,g2)&competition_id=is.null", _o.calls)
+ok("a source with none does nothing", RI.release_orphans(_OrphanSB([]), {"adapter": "x", "code": "Y"}) == 0)
+ok("a failed read releases none and does not stop the pass", RI.release_orphans(_OrphanSB(boom=True), {"adapter": "x", "code": "Y"}) == 0)
+_ri2 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
+ok("the pass releases them before it reads what it already has", _ri2.index("release_orphans(sb, src)") < _ri2.index("known_repo = feed.known"))
+
 print("-- two names that play each other in the schedule are two clubs")
 
 
