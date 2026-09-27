@@ -1,0 +1,33 @@
+/* ============================================================================
+   THE STAR CARD, FINISHED (stars.js card(), league page and HOME): the same
+   screenprint plate with the rank as its mark and BPM on its band, set in a
+   card of its own. The club's colour runs down the name panel's edge and casts
+   the card's offset shadow; the name gets its full width (two lines if it needs
+   them) instead of fighting the stat line for one; the line itself sits on a
+   black teletext strip under the club. Markup unchanged: the league page's
+   podium is still held to its capture by supabase/tests/stars.test.mjs.
+   ============================================================================ */
+.stargrid .star{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--rule-2);
+  box-shadow:4px 4px 0 color-mix(in srgb,var(--ink-c) 45%,transparent);
+  transition:transform .14s ease,box-shadow .14s ease}
+.stargrid .star:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 color-mix(in srgb,var(--ink-c) 62%,transparent)}
+.stargrid .star .club-plate{border:0;border-bottom:3px solid #0a0a0a}
+.stargrid .star:hover .club-plate{transform:none}
+.stargrid .star .star-foot{flex:1 1 auto;display:flex;flex-direction:column;align-items:stretch;gap:7px;
+  padding:10px 12px 12px 16px;margin:0;box-shadow:inset 5px 0 0 var(--ink-c)}
+.stargrid .star .star-who{gap:3px}
+.stargrid .star .star-name{font-size:14.5px;line-height:1.15;white-space:normal;overflow:visible;text-overflow:clip;
+  overflow-wrap:anywhere;color:var(--ink)}
+.stargrid .star:hover .star-name{color:var(--ink)}
+.stargrid .star .star-team{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stargrid .star .club-ed{margin:0;align-self:flex-start;max-width:100%;padding:4px 8px 3px;background:#0a0a0a;color:#ffe14d;
+  font-size:9px;letter-spacing:.12em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ranks four to ten, smaller: the shadow and the edge stay, the strip goes (as it always did) */
+.stargrid.starmore .star{box-shadow:3px 3px 0 color-mix(in srgb,var(--ink-c) 40%,transparent)}
+.stargrid.starmore .star .star-foot{padding:7px 8px 8px 11px;gap:4px;box-shadow:inset 3px 0 0 var(--ink-c)}
+.stargrid.starmore .star .star-name{font-size:10.5px}
+@media (max-width:720px){
+  .stargrid .star .star-foot{padding:8px 8px 9px 11px;gap:5px}
+  .stargrid .star .star-name{font-size:11px}
+  .stargrid .star .club-ed{font-size:7.5px;padding:3px 6px 2px;letter-spacing:.06em}
+}

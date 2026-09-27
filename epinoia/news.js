@@ -144,25 +144,31 @@ function card(a, opts) {
   if (a.pinned) plate.appendChild(el('div', 'news-flag pin', 'Pinned'));
   else if (opts && opts.latest) plate.appendChild(el('div', 'news-flag', 'Latest'));
 
-  /* THE HEADLINE IS ON THE PLATE, not under it. A news card whose words sit
-     below the picture reads as a picture with a caption; the point here is
-     the sentence. */
+  plate.appendChild(el('div', 'club-grain'));
+
+  /* THE HEADLINE ON ITS OWN PANEL, under the print. Laid over the plate on a scrim it fought the
+     crests and the score for the same space, and on a narrow card lost; here it has the card's
+     width, a teletext kicker that says what the piece is and when, and the plate keeps the clubs.
+     The panel carries the card's colour down its edge. */
+  const body = el('div', 'news-cbody');
+  const d = a.published_at ? new Date(a.published_at) : null;
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const day = d && !isNaN(d.getTime()) ? d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear() : '';
+  const kick = el('div', 'news-kick');
+  kick.append(el('b', null, isMatch ? 'Match report' : 'News'));
+  if (day) kick.append(el('span', null, day));
   const over = el('div', 'news-over');
   over.appendChild(el('div', 'news-title', a.title));
   if (a.standfirst) over.appendChild(el('div', 'news-stand', a.standfirst));
-  plate.appendChild(over);
-  plate.appendChild(el('div', 'club-grain'));
+  body.append(kick, over);
 
-  /* club-name, not club-nm. The band under a club plate is .club-name and
-     always was; this said club-nm, so the date under every news card fell back
-     to body type — 400-weight Archivo where the clubs beside it are 800-weight
-     and letterspaced. Invisible as a bug and obvious as a difference, which is
-     the worst combination. */
+  /* who wrote it, printed as it was filed (club-ed), and the call to read it (club-name, the band
+     a club plate carries) now that the date rides in the kicker */
   const foot = el('div', 'club-foot');
-  foot.append(el('span', 'club-name', when(a.published_at)),
-              el('span', 'club-ed', a.author_name || ''));
+  foot.append(el('span', 'club-ed', a.author_name || ''),
+              el('span', 'club-name', 'Read \u2192'));
 
-  link.append(plate, foot);
+  link.append(plate, body, foot);
   return link;
 }
 
