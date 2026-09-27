@@ -344,17 +344,22 @@ window.epinoiaSdk = function () {
     /* The version stamp is read off this file's own URL so the SDK cannot be
        served from a stale cache while everything around it is fresh — one
        deploy, one version, no combination of the two. */
-    let v = '';
+    let v = '', beside = '';
     try {
       const me = document.querySelector('script[src*="config.js"]');
       const q = me && me.getAttribute('src').split('?')[1];
       if (q) v = '?' + q;
+      /* THE SDK LIVES BESIDE config.js, WHEREVER THE PAGE IS. "vendor/supabase.js" relative to a page in a folder (/epinoia/p/)
+         is /epinoia/p/vendor/supabase.js, which is nothing: on the player page every lazy load failed, so a platform
+         administrator was never offered the edit-links panel there. The page reached this file by its own path, so the
+         SDK is the same path with the file name changed. */
+      const src = me && me.getAttribute('src').split('?')[0];
+      if (src && /config\.js$/.test(src)) beside = src.replace(/config\.js$/, 'vendor/supabase.js');
     } catch (_) { /* unstamped is still correct, just cacheable for longer */ }
 
     const s = document.createElement('script');
-    /* Relative to the document, matching how the static tag was written on
-       every page that still has one. */
-    s.src = (window.EPINOIA_CONFIG.sdkPath || 'vendor/supabase.js') + v;
+    /* A path set in the configuration wins; else beside config.js; else relative to the document, as the static tags are. */
+    s.src = (window.EPINOIA_CONFIG.sdkPath || beside || 'vendor/supabase.js') + v;
     s.async = true;
     s.addEventListener('load', () => resolve(window.supabase));
     s.addEventListener('error', () => {

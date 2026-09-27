@@ -556,6 +556,11 @@ jobs:
         # shooting distances grouped, impact with every on/off four factor and BPM/OBPM/DBPM/VORP; the players' table stays out
         run: node supabase/tests/collapsible-cards.test.mjs
 
+      - name: The lazy SDK loader finds the SDK beside config.js
+        # on a page in a folder (the player page) "vendor/supabase.js" relative to the document is nothing, so a signed-in platform
+        # administrator never got a client there and was never offered the edit-links panel
+        run: node supabase/tests/sdk-path.test.mjs
+
       - name: Merging two profiles of one person
         # 0183 on a real Postgres: everything that named the merged-away profile moves (stats, the event log's pids and payloads,
         # snapshots, roster, awards, photos, followers), the log stays append-only for everybody else, and the cases that would be a
