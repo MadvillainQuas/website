@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-27T01:27:31.361039+00:00",
+ "updated": "2026-09-27T01:29:06.342803+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -84,6 +84,13 @@
    "adapter": "grel",
    "games": 240,
    "updated": "2026-09-24T09:36:12.008338+00:00"
+  },
+  {
+   "code": "LFE",
+   "label": "Liga Femenina Endesa",
+   "adapter": "feb",
+   "games": 242,
+   "updated": "2026-09-27T01:29:06.330337+00:00"
   },
   {
    "code": "LNB",
