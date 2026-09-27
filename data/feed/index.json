@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-26T23:10:36.839811+00:00",
+ "updated": "2026-09-27T00:28:23.362544+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -112,6 +112,13 @@
    "adapter": "fiba_site_schedule",
    "games": 6,
    "updated": "2026-09-23T08:55:06.613866+00:00"
+  },
+  {
+   "code": "SBF",
+   "label": "Basketligan (Sweden)",
+   "adapter": "fiba_livestats",
+   "games": 187,
+   "updated": "2026-09-27T00:28:23.351732+00:00"
   },
   {
    "code": "SLB",
