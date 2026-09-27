@@ -173,5 +173,76 @@ finally:
 ok("the EuroLeague reader pages through the feed and keeps players, not coaches", [g["key"] for g in got][:1] == ["P008811"] and all(g["key"] != "PCTB" for g in got), got)
 ok("...and asks for this season, then last", {u.split("/seasons/")[1].split("/")[0] for u, _ in feed_calls} == {"E2026", "E2025"}, feed_calls)
 
+print("\n-- the other readers' pages, offline")
+ok("more date shapes", bio.parse_birth("2000/03/18") == date(2000, 3, 18) and bio.parse_birth("23-03-1991") == date(1991, 3, 23)
+   and bio.parse_birth("14. 4. 2002") == date(2002, 4, 14) and bio.parse_birth("19920507") == date(1992, 5, 7)
+   and bio.parse_birth("1991年9月3日") == date(1991, 9, 3))
+ok("'1,81' (ACB, metres with a comma) and '190cm' (WJBL) are heights", bio.clean_height("1,81") == 181 and bio.clean_height("190cm") == 190 and bio.clean_weight("77kg") == 77)
+p_, n_ = bio.plan({}, {"birth_year": 2008}, TODAY)
+ok("a feed that prints only a year gives the year", p_ == {"birth_year": 2008}, p_)
+p_, n_ = bio.plan({"birth_year": 2007}, {"birth_year": 2008}, TODAY)
+ok("...and never replaces one on file", p_ == {}, p_)
+
+REAL_TEXT = bio_sources.get_text
+
+
+def with_pages(pages, fn):
+    bio_sources.get_text = lambda url, headers=None: pages.get(url)
+    try:
+        return list(fn())
+    finally:
+        bio_sources.get_text = REAL_TEXT
+
+
+FEB_PAGE = """<table><tr><td class="nombre jugador"><a href='https://baloncestoenvivo.feb.es/Jugador.aspx?i=979769&c=2866764'>MICHAEL CAICEDO SANCHEZ</a></td>
+<td class="puesto">Alero </td><td class="dorsal">24</td><td class="fecha nacimiento">21/06/2003 Inca (Illes Balears)</td><td class="nacionalidad">ESPAÑA</td>
+<td class="formacion">SI</td><td class="altura">198</td><td class="peso">-</td></tr></table>"""
+got = with_pages({"https://baloncestoenvivo.feb.es/equipo/979769": FEB_PAGE}, lambda: bio_sources.feb(teams=[{"code": "979769", "name": "Melilla"}, {"code": "", "name": "x"}], log=lambda m: None))
+ok("FEB: a club page row gives the player's key, date, height; a dash weight is nothing", len(got) == 1 and got[0]["key"] == "2866764" and got[0]["birth"] == "21/06/2003"
+   and got[0]["height_cm"] == "198" and bio.clean_weight(got[0]["weight_kg"]) is None, got)
+
+ABA_CAL = '<a href="https://www.aba-liga.com/team/18/26/1/0/crvena-zvezda-meridianbet/">Crvena zvezda</a>'
+ABA_TEAM = """<tr><td class="player_number"></td><td><img alt="x"/></td><td><a href="/player/5687/26/1/patrick-o-neal-baldwin-jr/"> Patrick O'Neal Baldwin Jr </a></td>
+<td> Power Forward </td><td>208</td><td> 18.11.2002</td><td>USA</td></tr>"""
+got = with_pages({"https://www.aba-liga.com/calendar/26/1/": ABA_CAL, "https://www.aba-liga.com/team/18/26/1/0/crvena-zvezda-meridianbet/": ABA_TEAM},
+                 lambda: bio_sources.aba(1)(today=TODAY, log=lambda m: None))
+ok("ABA: a roster row gives the site's player id, height and date", len(got) == 1 and got[0]["key"] == "5687" and got[0]["height_cm"] == "208" and got[0]["birth"] == "18.11.2002"
+   and got[0]["team"] == "Crvena zvezda" and "Baldwin" in got[0]["name"], got)
+
+CZ = """<h1>BK KVIS Pardubice</h1><table><tr><td>3</td><td><a>Robert Lee Bonham</a></td><td>1</td><td>14. 4. 2002</td><td class="text-center">24</td><td>180 cm</td><td>3</td></tr>
+<tr><td>10</td><td><a>Ondřej Provazník</a></td><td>3/4</td><td>2007</td><td>19</td><td>196 cm</td><td>0</td></tr></table>"""
+got = with_pages({"https://nbl.basketball/": '<a href="/tym/bk-kvis-pardubice">x</a>', "https://nbl.basketball/tym/bk-kvis-pardubice": CZ}, lambda: bio_sources.czech_nbl(log=lambda m: None))
+ok("Czech NBL: a full date, and a bare year for a minor", len(got) == 2 and got[0]["birth"] == "14. 4. 2002" and got[0]["height_cm"] == "180" and got[1]["birth"] is None and got[1]["birth_year"] == 2007, got)
+
+BBL2 = """<tr><td>5</td><td><a href='/teams/kader/spieler/2004461'>Christopher</a></td><td><a href='/teams/kader/spieler/2004461'>Carter</a></td><td></td>
+<td data-birthdate='19920507'>07.05.1992</td><td>34</td><td>1,93<span> m</span></td><td>94<span> kg</span></td><td>PG</td></tr>"""
+bio_sources._bbl2.clear()
+got = with_pages({"https://www.2basketballbundesliga.de/teams": 'x team-img-container <img alt="GIESSEN 46ers"/> <a href="/kader/421">', "https://www.2basketballbundesliga.de/ProB": "",
+                  "https://www.2basketballbundesliga.de/kader/421": BBL2}, lambda: bio_sources.twobbl(log=lambda m: None))
+bio_sources._bbl2.clear()
+ok("2. Bundesliga: player id, date from the data attribute, metres to cm, kg", len(got) == 1 and got[0]["key"] == "2004461" and got[0]["birth"] == "19920507"
+   and got[0]["height_cm"] == 193 and got[0]["weight_kg"] == "94" and got[0]["team"] == "GIESSEN 46ers", got)
+
+ACB_PLANT = '<a href="/es/liga/jugadores/facundo-campazzo-20211331">x</a>'
+ACB_PLAYER = r'..\"birthDate\":\"23-03-1991\",\"birthPlace\":\"C\",\"height\":\"1,81\",\"currentTeam\"..'
+got = with_pages({"https://acb.com/es/liga/equipos": '<a href="/es/liga/equipos/real-madrid-9">', "https://acb.com/es/liga/equipos/real-madrid-9/plantilla": ACB_PLANT},
+                 lambda: bio_sources.acb(log=lambda m: None))
+ok("ACB: the squad from the club page, the name from the address", len(got) == 1 and got[0]["name"] == "Facundo Campazzo" and got[0]["team"] == "Real Madrid", got)
+bio_sources.get_text = lambda url, headers=None: ACB_PLAYER
+try:
+    d_ = got[0]["detail"]()
+finally:
+    bio_sources.get_text = REAL_TEXT
+ok("...and his date and height from his page's data", d_ == {"birth": "23-03-1991", "height_cm": "1,81"}, d_)
+
+bio_sources.get_text = lambda url, headers=None: "<p>生年月日 1991年9月3日｜35歳 身長／体重 193cm／92kg リーグ登録国籍</p>"
+try:
+    d_ = bio_sources._bleague_page("9037")
+finally:
+    bio_sources.get_text = REAL_TEXT
+ok("B.LEAGUE: date, height, weight from the player's page", d_ == {"birth": "1991年9月3日", "height_cm": "193", "weight_kg": "92"}, d_)
+recs = list(bio_sources.by_player_page(lambda pid: {})(players=[pl("z1", "A", "B", [], ["LEAGUE:12345"]), pl("z2", "C", "D", [], [])]))
+ok("a league keyed by its own player id: a record per known player, keyed by the id", [r["key"] for r in recs] == ["12345"], recs)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

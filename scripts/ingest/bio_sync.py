@@ -34,6 +34,7 @@ def main() -> int:
     ap.add_argument("--league", action="append", help="a league slug (repeatable); default every league with a reader")
     ap.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
     ap.add_argument("--limit", type=int, default=0, help="stop a league after this many writes")
+    ap.add_argument("--verbose", action="store_true", help="also print every feed row that matched nobody")
     ap.add_argument("--worker-config", action="store_true", help=r"take SUPABASE_URL / SUPABASE_SERVICE_KEY from %%APPDATA%%\epinoia\worker.json")
     args = ap.parse_args()
     if args.worker_config:
@@ -44,12 +45,14 @@ def main() -> int:
         except Exception as exc:
             print(f"--worker-config: {exc}")
             return 2
+    bio.VERBOSE = args.verbose
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
     if not (url and key):
         print("SUPABASE_URL / SUPABASE_SERVICE_KEY missing")
         return 2
     sb = RI.Supabase(url, key)
-    slugs = args.league or list(bio_sources.READERS)
+    # a league whose site refuses a GitHub runner is left out of a scheduled run (it is run by hand from home)
+    slugs = args.league or [s for s in bio_sources.READERS if not (os.environ.get("GITHUB_ACTIONS") and s in bio_sources.HOME_ONLY)]
     unknown = [s for s in slugs if s not in bio_sources.READERS]
     if unknown:
         print("no reader for: " + ", ".join(unknown) + "  (have: " + ", ".join(bio_sources.READERS) + ")")
@@ -62,7 +65,8 @@ def main() -> int:
         try:
             players = bio.load_players(sb, slug, has_dob)
             print(f"   {len(players)} players on the site")
-            st = bio.sync(sb, players, bio_sources.READERS[slug](), dry=args.dry_run, has_dob=has_dob, limit=args.limit)
+            teams = bio.load_teams(sb, slug) if slug in bio_sources.NEEDS_TEAMS else None
+            st = bio.sync(sb, players, bio_sources.READERS[slug](players=players, teams=teams), dry=args.dry_run, has_dob=has_dob, limit=args.limit)
             print("   " + ", ".join(f"{k} {v}" for k, v in st.items()) + ("  (dry run: nothing written)" if args.dry_run else ""))
         except Exception as exc:                            # one league's feed being down is not the others'
             failed += 1

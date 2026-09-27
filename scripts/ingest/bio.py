@@ -24,6 +24,7 @@ import matching
 
 MIN_AGE, MAX_AGE = 14, 50          # a player's age as a feed states it; outside this the feed is wrong about him, not right about something rare
 ADULT_AT = 18
+VERBOSE = False                    # bio_sync --verbose: also print every feed row that matched nobody
 
 
 # ---------------------------------------------------------------- cleaners ---
@@ -57,15 +58,17 @@ def clean_weight(v) -> Optional[int]:
 
 
 def parse_birth(v) -> Optional[date]:
-    """ISO date or datetime, dd.mm.yyyy or dd/mm/yyyy. Anything else is None."""
+    """A date as feeds print it: 2004-08-28 (with or without a time), 2000/03/18, 28.08.2004, 28/08/2004, 23-03-1991,
+    '14. 4. 2002', 19920507, 1991年9月3日. Anything else is None."""
     if not v:
         return None
     s = str(v).strip()
-    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
+    m = (re.match(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", s) or re.match(r"(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日", s)
+         or re.match(r"(\d{4})(\d{2})(\d{2})$", s))
     if m:
         y, mo, d = (int(x) for x in m.groups())
     else:
-        m = re.match(r"(\d{1,2})[./](\d{1,2})[./](\d{4})", s)
+        m = re.match(r"(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})", s)
         if not m:
             return None
         d, mo, y = (int(x) for x in m.groups())
@@ -103,6 +106,12 @@ def plan(existing: dict, rec: dict, today: Optional[date] = None, has_dob: bool 
                     patch["birth_date"] = b.isoformat()           # the trigger sets the year from it
             elif not have_year:
                 patch["birth_year"] = b.year                       # a minor, or no date column yet: the year only
+    elif rec.get("birth_year") and not existing.get("birth_year") and not existing.get("birth_date"):
+        y = int(rec["birth_year"])
+        if MIN_AGE <= today.year - y <= MAX_AGE:            # a feed that prints only a year (a youth licence): the year is the whole fact
+            patch["birth_year"] = y
+        else:
+            notes.append(f"implausible birth year {y}: left")
     return patch, notes
 
 
@@ -131,6 +140,17 @@ def load_players(sb, league_slug: str, has_dob: bool = True) -> list[dict]:
             if k:
                 e["keys"].add(str(k))
     return list(by.values())
+
+
+def load_teams(sb, league_slug: str) -> list[dict]:
+    """The league's clubs as {id, name, short_name, code}: code is the feed's own club id (external_ids.fiba_livestats), for a reader that
+    goes club by club."""
+    lg = sb.select("leagues", f"slug=eq.{league_slug}&select=id&limit=1")
+    if not lg:
+        raise SystemExit(f"no league '{league_slug}'")
+    rows = sb.select_all("teams", f"league_id=eq.{lg[0]['id']}&select=id,name,short_name,external_ids&order=id")
+    return [{"id": t["id"], "name": t.get("name"), "short_name": t.get("short_name"),
+             "code": str((t.get("external_ids") or {}).get("fiba_livestats") or "")} for t in rows]
 
 
 def probe_dob(sb) -> bool:
@@ -183,7 +203,7 @@ def sync(sb, players: list, records: Iterable[dict], *, dry: bool, has_dob: bool
         p, how = find(rec, players, key_idx)
         if not p:
             st["ambiguous" if how in ("ambiguous", "weak") else "unmatched"] += 1
-            if how != "none":
+            if how != "none" and VERBOSE:
                 log(f"    ? {rec.get('label') or rec.get('name')}: {how}")
             continue
         if p["id"] in seen:
