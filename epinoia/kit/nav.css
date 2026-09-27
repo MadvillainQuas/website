@@ -855,3 +855,23 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
 body.ep-sr-locked{ overflow:hidden }
 @media (prefers-reduced-motion:no-preference){ .ep-sr-sheet{ animation:ep-sr-in .16s ease-out } }
 @keyframes ep-sr-in{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
+
+/* ---- TELETEXT (kit/teletext.css, nav.js tt-keys) ------------------------------------------------------------
+   Along the top edge of the rail (the top of the bar on a phone) run the four Fastext keys, red, green, yellow,
+   cyan; on a phone the tab you are on is lit like an Aqua button. Here rather than in teletext.css because the
+   rail is on pages that do not load that sheet. */
+.ep-nav .tt-keys{ position:absolute; left:0; right:0; top:0; height:3px; z-index:4; pointer-events:none;
+  background:linear-gradient(90deg,#ff4b4b 0 25%,#35ff78 25% 50%,#ffe44d 50% 75%,#3ff0ff 75%) }
+body.league-themed .ep-nav .tt-keys{ display:none }       /* the league's own trim is there instead */
+.ep-nav .panel > .phead:first-child, .ep-nav .panel > .ptitle:first-child{ margin-top:2px }
+@media (max-width:820px){
+  /* THE TAB YOU ARE ON, lit like an Aqua button: its glyph sits in a glossy pill of the accent */
+  .ep-tabbar a .ic{ position:relative; isolation:isolate; display:grid; place-items:center; min-width:34px; height:22px; border-radius:999px }
+  .ep-tabbar a.on .ic{ color:var(--on-accent,#fff);
+    background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.06) 50%,rgba(0,0,0,.06) 51%,rgba(255,255,255,.14)),var(--lume);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 1px 3px rgba(0,0,0,.2) }
+  body.league-themed .ep-tabbar a.on .ic{ background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.06) 50%,rgba(0,0,0,.06) 51%,rgba(255,255,255,.14)),var(--league-a); color:var(--league-on-a,#fff) }
+  .ep-tabbar a.on{ font-weight:400 }
+  .ep-tabbar a.on .tx{ color:var(--nav-ink,var(--ink)) }
+}
+@media (prefers-reduced-motion:reduce){ .ep-nav .tt-keys{ transition:none } }

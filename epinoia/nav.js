@@ -456,6 +456,11 @@
   nav.className = 'ep-nav';
   nav.setAttribute('aria-label', 'Epinoia');
   nav.dataset.view = onGo ? 'go' : 'root';
+  /* THE FASTEXT KEYS as a trim: red, green, yellow, cyan along the top edge of the rail (and of the
+     phone's bar). Decoration only; a league's own trim (nav.css) covers it on that league's pages. */
+  const ttKeys = el('i', 'tt-keys');
+  ttKeys.setAttribute('aria-hidden', 'true');
+  nav.appendChild(ttKeys);
   /* No sliding until the rail has settled into the view this page belongs in.
      Removed once the leagues have arrived and the first view is chosen. */
   nav.classList.add('noanim');
@@ -2405,6 +2410,234 @@
     sizeDeck(false);
   }
 
+  /* ======================================================= THE TELETEXT LAYER ===
+     kit/teletext.css draws it; this builds it, and only on a page that loads that sheet (it
+     declares --tt on the root, read below). All of it is decoration over what the page already
+     is, so any failure here leaves the page exactly as it was.
+
+       THE HEADER LINE  the page's own brand bar (the EPINOIΛ chip and its context line) becomes a
+                        teletext header: "[EPINOIΛ] B.LEAGUE ONE ········ SUN 27 SEP 14:05/32",
+                        the clock with its seconds after a slash, as CEEFAX set it. A page with no
+                        bar (HOME, a league's front page, the box score) gets one made, titled
+                        from the document title.
+       FASTEXT          four coloured keys at the foot of the page, a short way on from it.
+       THE INDEX        on HOME and a league's front page, the sections as entries under the hero,
+                        each a jump down the page; kept in step as sections appear. */
+  function ttPage() {
+    const s = seg.replace(/index\.html$/, '');
+    const q = k => qp.get(k) || '';
+    const dEl = document.documentElement;
+    const leagueFront = dEl && dEl.classList && dEl.classList.contains('m-league');
+    if (s === '') return leagueFront && q('l') ? { kind: 'league' } : null;
+    const KINDS = [[/^home\/$/, 'home'], [/^games\//, 'games'], [/^fixtures\//, 'fixtures'], [/^stats\/wowy\//, 'wowy'],
+                   [/^stats\//, 'stats'], [/^l\//, 'table'], [/^injuries\//, 'injuries'], [/^news\//, q('a') ? 'article' : 'news'],
+                   [/^votes\//, 'votes'], [/^video\//, 'video'], [/^game\//, 'game'], [/^p\//, 'player'], [/^t\//, 'team'],
+                   [/^scouting\//, 'scouting'], [/^me\//, 'me']];
+    const hit = KINDS.find(k => k[0].test(s));
+    return hit ? { kind: hit[1] } : null;
+  }
+  /* The keys: [label, path, needs the league]. A page about one league leads with that league's
+     places; without a league in hand it falls back to the platform's four. */
+  const TT_PLATFORM = [['fixtures', 'games/'], ['scouting', 'scouting/'], ['leagues', 'home/#leagues'], ['injury report', 'injuries/']];
+  const TT_KEYS = {
+    home:     TT_PLATFORM,
+    games:    [['home', 'home/'], ['scouting', 'scouting/'], ['leagues', 'home/#leagues'], ['injury report', 'injuries/']],
+    scouting: [['home', 'home/'], ['fixtures', 'games/'], ['leagues', 'home/#leagues'], ['injury report', 'injuries/']],
+    me:       [['home', 'home/'], ['fixtures', 'games/'], ['scouting', 'scouting/'], ['leagues', 'home/#leagues']],
+    league:   [['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1], ['news', 'news/', 1]],
+    fixtures: [['table', 'l/', 1], ['statistics', 'stats/', 1], ['injury report', 'injuries/', 1], ['league', '', 1]],
+    stats:    [['table', 'l/', 1], ['wowy', 'stats/wowy/', 1], ['fixtures', 'fixtures/', 1], ['league', '', 1]],
+    wowy:     [['statistics', 'stats/', 1], ['table', 'l/', 1], ['fixtures', 'fixtures/', 1], ['league', '', 1]],
+    table:    [['fixtures', 'fixtures/', 1], ['statistics', 'stats/', 1], ['wowy', 'stats/wowy/', 1], ['league', '', 1]],
+    injuries: [['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1], ['league', '', 1]],
+    team:     [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1]],
+    player:   [['club', '#club'], ['league', '', 1], ['statistics', 'stats/', 1], ['scouting', 'scouting/']],
+    game:     [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['home', 'home/']]
+  };
+  ['news', 'article', 'votes', 'video'].forEach(k => { TT_KEYS[k] = [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1]]; });
+
+  let ttState = null;
+  function ttOn() {
+    try {
+      const dEl = document.documentElement;
+      if (typeof getComputedStyle !== 'function' || !dEl || !document.querySelector) return false;
+      return String(getComputedStyle(dEl).getPropertyValue('--tt')).trim() === '1';
+    } catch (_) { return false; }
+  }
+  function ttFrame() {
+    return document.querySelector('#hub.ep-frame') || document.querySelector('.ep-frame') ||
+           document.querySelector('body > .wrap');
+  }
+  /* what the page is, from its title when it has no context line: "B.LEAGUE ONE · Epinoia" */
+  function ttTitle(kind) {
+    const t = String(document.title || '').trim();
+    const bare = /^epinoia\b/i.test(t) ? '' : t.replace(/\s*[·|—-]\s*epinoia\b.*$/i, '');
+    if (bare) return bare;
+    return kind === 'home' ? 'index · every league' : '';
+  }
+  function ttLine(frame, p) {
+    let line = null, made = false;
+    [].slice.call(frame.children, 0, 3).some(c => {
+      if (c.matches('.hero, .hm-hero, header, section, .top, h1, h2')) return false;
+      if (c.querySelector('.epinoia-mark') && !c.querySelector('h1, h2, iframe')) { line = c; return true; }
+      return false;
+    });
+    let ctx;
+    if (line) {
+      /* the bar's own layout was inline on several pages; the line's is in the sheet */
+      line.removeAttribute('style');
+      ctx = line.querySelector('#ctx') || line.querySelector('.ep-micro');
+    } else {
+      made = true;
+      line = el('div');
+      const a = el('a', 'plain');
+      a.href = root + 'home/';
+      const chip = el('span', 'wm epinoia-mark', 'EPINOIΛ');
+      chip.setAttribute('aria-label', 'Epinoia');
+      a.appendChild(chip);
+      line.appendChild(a);
+      frame.insertBefore(line, frame.firstChild);
+    }
+    if (!ctx) { ctx = el('span'); line.appendChild(ctx); }
+    line.classList.add('tt-line');
+    ctx.classList.add('tt-ctx');
+    const mark = line.querySelector('.epinoia-mark');
+    if (mark && !mark.classList.contains('wm')) mark.classList.add('wm');
+
+    const date = el('span', 'tt-date');
+    const clock = el('span', 'tt-clock');
+    [date, clock].forEach(n => { n.setAttribute('aria-hidden', 'true'); n.setAttribute('translate', 'no'); });
+    line.append(date, clock);
+
+    /* the clock, CEEFAX's way: 14:05/32. Stopped while the tab is hidden. */
+    const docLang = document.documentElement.lang || 'en';
+    const lang = docLang;
+    const two = n => (n < 10 ? '0' : '') + n;
+    const EN_D = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const EN_M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const tick = () => {
+      const d = new Date();
+      let ds = '';
+      /* English as the set printed it, "Sun 27 Sep"; any other language in its own words */
+      if (/^en\b/i.test(docLang)) ds = EN_D[d.getDay()] + ' ' + two(d.getDate()) + ' ' + EN_M[d.getMonth()];
+      else {
+        try { ds = d.toLocaleDateString(lang, { weekday: 'short', day: '2-digit', month: 'short' }); }
+        catch (_) { ds = d.toDateString().slice(0, 10); }
+      }
+      date.textContent = ds.replace(/[,.]/g, '');
+      clock.textContent = two(d.getHours()) + ':' + two(d.getMinutes()) + '/' + two(d.getSeconds());
+    };
+    tick();
+    let timer = setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', () => {
+      clearInterval(timer);
+      if (!document.hidden) { tick(); timer = setInterval(tick, 1000); }
+    });
+
+    /* a made line is titled from the document, and follows it (a league's name arrives late; the
+       box score's title is the live score) */
+    if (made) {
+      const fill = () => { const t = ttTitle(p.kind); if (ctx.textContent !== t) ctx.textContent = t; };
+      fill();
+      const tEl = document.querySelector('title');
+      if (tEl && typeof MutationObserver === 'function') new MutationObserver(fill).observe(tEl, { childList: true, characterData: true, subtree: true });
+    }
+    return line;
+  }
+  function ttFast(frame, p) {
+    const old = frame.querySelector(':scope > .tt-fast');
+    if (old) old.remove();
+    let keys = TT_KEYS[p.kind] || TT_PLATFORM;
+    if (keys.some(k => k[2]) && !lg) keys = TT_PLATFORM;
+    const bar = el('nav', 'tt-fast');
+    bar.setAttribute('aria-label', 'Quick links');
+    ['k-r', 'k-g', 'k-y', 'k-c'].forEach((cls, i) => {
+      const k = keys[i];
+      if (!k) return;
+      const a = el('a', cls);
+      if (k[1] === '#club') {
+        /* the player's club: the page's own link to it, once the page has set it */
+        const tl = document.getElementById('teamLink');
+        a.href = tl && tl.getAttribute('href') && tl.getAttribute('href') !== '#' ? tl.href : root + 'home/';
+      } else if (k[2]) {
+        a.href = k[1] ? withLeague(root + k[1]) : root + '?l=' + encodeURIComponent(lg);
+      } else a.href = root + k[1];
+      a.appendChild(el('span', null, k[0]));
+      bar.appendChild(a);
+    });
+    frame.appendChild(bar);
+    return bar;
+  }
+  function ttIndex(frame, p) {
+    const hero = frame.querySelector(':scope > .hm-hero, :scope > .hero');
+    if (!hero) return;
+    const box = el('nav', 'tt-index');
+    box.setAttribute('aria-label', 'On this page');
+    box.hidden = true;
+    const head = el('p', 'tt-ix-h');
+    head.appendChild(el('b', null, 'index'));
+    const list = el('ol', 'tt-ix-l');
+    box.append(head, list);
+    hero.after(box);
+    let sig = null;
+    const paint = () => {
+      const heads = [].filter.call(frame.querySelectorAll('.sec-h, .ep-hdr'), n => n.getClientRects().length > 0);
+      const names = heads.map(n => { const h = n.querySelector('h2'); return h ? h.textContent.trim() : ''; });
+      const now = names.join('|');
+      if (now === sig) return;
+      sig = now;
+      list.textContent = '';
+      heads.forEach((hd, i) => {
+        if (!names[i]) return;
+        const sec = hd.closest('.sec, section') || hd;
+        if (!sec.id) sec.id = 'tt-sec-' + (i + 1);
+        const li = el('li');
+        const a = el('a');
+        a.href = '#' + sec.id;
+        const k = el('span', 'n');
+        k.setAttribute('aria-hidden', 'true');
+        a.append(k, el('span', 't', names[i]));
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+      box.hidden = list.children.length < 2;
+    };
+    paint();
+    if (typeof MutationObserver === 'function') {
+      let pend = 0;
+      const mo = new MutationObserver(() => {
+        if (pend) return;
+        pend = setTimeout(() => { pend = 0; paint(); }, 220);
+      });
+      mo.observe(frame, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+      setTimeout(() => mo.disconnect(), 60000);
+    }
+  }
+  function ttBuild() {
+    if (ttState || !ttOn()) return;
+    const p = ttPage();
+    const frame = p && ttFrame();
+    if (!frame) return;
+    const dEl = document.documentElement;
+    ttState = { p, frame };
+    try { ttLine(frame, p); } catch (_) { /* the page keeps its own bar */ }
+    try { ttState.fast = ttFast(frame, p); } catch (_) { /* no keys */ }
+    if (p.kind === 'home' || p.kind === 'league') { try { ttIndex(frame, p); } catch (_) { /* no index */ } }
+    dEl.classList.add('tt-on');
+  }
+  /* the league a page resolves late re-points the keys that name it */
+  function ttRefresh() {
+    if (!ttState) return;
+    try { ttState.fast = ttFast(ttState.frame, ttState.p); } catch (_) { /* keep the old keys */ }
+  }
+  function ttStart() {
+    try { ttBuild(); } catch (_) { return; }
+    /* the player's club link is set when the player has loaded: re-point its key then */
+    if (ttState && ttState.p.kind === 'player') setTimeout(ttRefresh, 2500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ttStart);
+  else ttStart();
+
   /* ================================================================ mount === */
   const mount = () => {
     document.body.appendChild(nav);
@@ -2516,6 +2749,7 @@
         else { setView('root', false); }
         applyAuth();                 // role gating is league-scoped
         themeLeague();               // and the page wears that league's colours
+        try { ttRefresh(); } catch (_) { /* the keys keep the league they were built with */ }
       }
     });
   } catch (e) { /* a page that froze the global keeps the rail it was built with */ }

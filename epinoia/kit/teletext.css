@@ -1,0 +1,398 @@
+/* ============================================================================
+   EPINOIΛ TELETEXT — the broadcast layer (2026-09-27).
+
+   One idea across every page a fan sees: a basketball data service as it would
+   have been broadcast in the year 2000. Two sources, deliberately mixed:
+
+     CEEFAX            a black header line with a running clock, the coloured
+                       Fastext keys along the foot, mosaic block graphics, black
+                       "screens" with pure colour on them, a flashing LIVE, an
+                       index of the page's sections.
+     Y2K FUTURISM      chrome that catches the light, glossy Aqua buttons,
+                       a perspective grid floor, HUD corner brackets and a
+                       small sparkle.
+
+   The teletext parts are always BLACK, in either theme: they are screens, not
+   surfaces, which is what makes them read as teletext on the pale default
+   ground as well as the dark one. The Y2K parts take whatever colour the page
+   is already wearing (the platform's, a league's, a club's).
+
+   WHAT DRAWS WHAT. This sheet styles; nav.js's teletext block builds. It turns
+   the brand bar each page already has (the EPINOIΛ chip and the context line)
+   into the header line, adds one where a page has none (HOME, a league's front
+   page, the box score), puts the Fastext keys at the foot of the page, and the
+   index panel under the hero on the two long pages. It does nothing on a page that does not load this
+   sheet: it looks for --tt below before touching anything. html.tt-on is set
+   once it has.
+
+   LOADED LATE ON PURPOSE, just before kit/legibility.css (which must stay last):
+   after each page's own <style>, so equal specificity goes to this file.
+
+   MOTION is small, slow and optional: the sheen and the grid drift stop, and
+   the LIVE flash holds still, for a reader who asks for reduced motion.
+   ============================================================================ */
+
+/* ---------- 0. the flag and the palette ---------- */
+:root{
+  --tt:1;                               /* nav.js reads this: the layer is on this page */
+  /* the screen, and teletext's seven colours tuned to sit on it without buzzing */
+  --tt-scr:#050706; --tt-scr-2:#101614; --tt-edge:#000;
+  --tt-white:#f2f6f4; --tt-red:#ff4b4b; --tt-green:#35ff78; --tt-yellow:#ffe44d;
+  --tt-blue:#5b76ff; --tt-magenta:#ff5cf2; --tt-cyan:#3ff0ff;
+  /* the mosaic's three colours: the platform's by default, a league's or a club's where one is worn */
+  --tt-m1:var(--lume); --tt-m2:var(--aqua); --tt-m3:var(--amber);
+  /* Y2K: the gloss on a button, the grid floor's lines */
+  --y2k-gloss:linear-gradient(180deg,rgba(255,255,255,.62) 0%,rgba(255,255,255,.16) 46%,rgba(255,255,255,0) 50%,rgba(255,255,255,.1) 100%);
+  --y2k-grid:color-mix(in oklch,var(--lume) 22%,transparent);
+  /* the mosaic under a title: a stepped heap of separated blocks, 11 across and 3 high */
+  --tt-mosaic:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='66' height='12'><g fill='black'><rect x='18' y='0' width='5' height='3'/><rect x='24' y='0' width='5' height='3'/><rect x='30' y='0' width='5' height='3'/><rect x='36' y='0' width='5' height='3'/><rect x='42' y='0' width='5' height='3'/><rect x='6' y='4' width='5' height='3'/><rect x='12' y='4' width='5' height='3'/><rect x='18' y='4' width='5' height='3'/><rect x='24' y='4' width='5' height='3'/><rect x='30' y='4' width='5' height='3'/><rect x='36' y='4' width='5' height='3'/><rect x='42' y='4' width='5' height='3'/><rect x='48' y='4' width='5' height='3'/><rect x='54' y='4' width='5' height='3'/><rect x='0' y='8' width='5' height='3'/><rect x='6' y='8' width='5' height='3'/><rect x='12' y='8' width='5' height='3'/><rect x='18' y='8' width='5' height='3'/><rect x='24' y='8' width='5' height='3'/><rect x='30' y='8' width='5' height='3'/><rect x='36' y='8' width='5' height='3'/><rect x='42' y='8' width='5' height='3'/><rect x='48' y='8' width='5' height='3'/><rect x='54' y='8' width='5' height='3'/><rect x='60' y='8' width='5' height='3'/></g></svg>");
+}
+body.league-themed{ --tt-m1:var(--league-a); --tt-m2:var(--league-b); --tt-m3:var(--league-a-ink,var(--league-a)) }
+body.themed{ --tt-m1:var(--team-a); --tt-m2:var(--team-b); --tt-m3:var(--team-a-ink,var(--team-a)) }
+
+/* the reader's own selection, in teletext yellow */
+::selection{ background:#ffe44d; color:#050706 }
+
+/* ============================================================================
+   1. THE HEADER LINE. "[EPINOIΛ] B.LEAGUE ONE ················ SUN 27 SEP 14:05/32"
+   The service, what the page is, then the date and the clock with the seconds
+   after a slash, as CEEFAX set them. For a signed-in reader the right padding
+   keeps the clock clear of the bell, which is fixed over the top right corner.
+   ============================================================================ */
+.tt-line{
+  position:relative; isolation:isolate; overflow:hidden;
+  display:flex; flex-wrap:nowrap; align-items:center; gap:10px; min-width:0;
+  min-height:36px; margin:0; padding:7px 14px 6px 14px;
+  padding-top:calc(7px + env(safe-area-inset-top,0px));
+  background:var(--tt-scr); color:var(--tt-white); border:0; border-bottom:1px solid var(--tt-edge);
+  font-family:var(--f-micro); font-size:10px; line-height:1.2; letter-spacing:.06em; text-transform:uppercase;
+  white-space:nowrap;
+}
+/* the tube: faint scanlines and a glow rolling down it once in a while */
+.tt-line::before{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:
+    linear-gradient(180deg,transparent 0 40%,rgba(63,240,255,.07) 50%,transparent 60% 100%) 0 -60px/100% 200% no-repeat,
+    repeating-linear-gradient(180deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px);
+  animation:tt-glow 9s linear infinite }
+@keyframes tt-glow{ from{ background-position:0 -60px,0 0 } to{ background-position:0 60px,0 0 } }
+body:has(> .ep-bell) .tt-line{ padding-right:66px }
+.tt-line a{ text-decoration:none }
+/* the service chip: the brand gradient in its bright form, whatever the theme (it sits on black) */
+.tt-line .wm, :root[data-theme="light"] .tt-line .wm{
+  flex:none; display:inline-block; margin:0; padding:3px 8px 2px; font-size:12px; line-height:1.15;
+  background:linear-gradient(100deg,#93f2bf,#8ff5ff); color:#04100b; box-shadow:0 0 12px rgba(143,245,255,.28) }
+/* what the page is: the page's own context line, restyled (it keeps its id and its script) */
+.tt-line .tt-ctx, .tt-line .tt-ctx.ep-micro{
+  flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+  font-family:var(--f-micro); font-size:10px; letter-spacing:.06em; color:var(--tt-cyan); text-transform:uppercase }
+.tt-line .tt-ctx a{ color:inherit }
+.tt-line .tt-date{ flex:none; margin-left:auto; color:var(--tt-white) }
+.tt-line .tt-clock{ flex:none; color:var(--tt-yellow); font-variant-numeric:tabular-nums;
+  text-shadow:1px 0 rgba(255,75,75,.35),-1px 0 rgba(63,240,255,.35) }
+.tt-line .tt-ctx + .tt-date{ margin-left:12px }
+@media (max-width:560px){
+  .tt-line{ gap:8px; padding-left:10px; padding-right:10px; font-size:9px }
+  body:has(> .ep-bell) .tt-line{ padding-right:58px }
+  .tt-line .wm, :root[data-theme="light"] .tt-line .wm{ font-size:11px; padding:3px 6px 2px }
+  .tt-line .tt-ctx, .tt-line .tt-ctx.ep-micro{ font-size:9px }
+  .tt-line .tt-date{ display:none }
+}
+/* a line added to a page that had none replaces the page's own way home (HOME's hero, a league's) */
+html.tt-on .hero .hm-home{ display:none }
+/* HOME's wordmark kept clear of the status bar and the bell by its own padding; the line does that now */
+html.tt-on .hm-hero{ padding-top:calc(var(--u)*5) }
+@media (max-width:560px){ html.tt-on .hm-hero{ padding-top:calc(var(--u)*5.5) } }
+/* the box score keeps its own top row of controls; the line carries the brand, so the chip goes */
+html.tt-on .wrap > .top > .wm{ display:none }
+
+/* ============================================================================
+   2. FASTEXT. Four coloured keys at the foot of the page, as the remote had: red,
+   green, yellow, cyan, each a short way on from this page. Pressed (hovered,
+   focused) a key lights up in its own colour.
+   ============================================================================ */
+.tt-fast{
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+  margin:calc(var(--u)*4) 0 0; background:var(--tt-scr); border-top:1px solid var(--tt-edge);
+  position:relative; isolation:isolate }
+.tt-fast::before{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px) }
+.tt-fast a{
+  --k:var(--tt-white);
+  display:flex; align-items:center; justify-content:center; gap:9px; min-width:0; min-height:48px; padding:10px 8px;
+  font-family:var(--f-micro); font-size:10px; line-height:1.2; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--k); text-decoration:none; transition:background .12s ease,color .12s ease }
+.tt-fast a + a{ box-shadow:inset 1px 0 0 rgba(255,255,255,.08) }
+.tt-fast a::before{ content:""; flex:none; width:12px; height:12px; background:var(--k);
+  box-shadow:0 0 10px color-mix(in srgb,var(--k) 60%,transparent) }
+.tt-fast a span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.tt-fast a:hover, .tt-fast a:focus-visible{ background:var(--k); color:var(--tt-scr); outline:0 }
+.tt-fast a:hover::before, .tt-fast a:focus-visible::before{ background:var(--tt-scr); box-shadow:none }
+.tt-fast .k-r{ --k:var(--tt-red) } .tt-fast .k-g{ --k:var(--tt-green) }
+.tt-fast .k-y{ --k:var(--tt-yellow) } .tt-fast .k-c{ --k:var(--tt-cyan) }
+@media (max-width:560px){
+  .tt-fast a{ flex-direction:column; gap:6px; padding:9px 4px 8px; font-size:8.5px; letter-spacing:.04em }
+  .tt-fast a::before{ width:18px; height:5px }
+}
+
+/* ============================================================================
+   3. THE INDEX. On the two long pages (HOME, a league's front page) a black
+   panel under the hero lists the sections as teletext entries, each a jump down
+   the page, each marked with a block in one of teletext's colours.
+   ============================================================================ */
+.tt-index{
+  position:relative; isolation:isolate; display:flex; align-items:center; flex-wrap:wrap; gap:10px 22px;
+  padding:14px calc(var(--u)*3) 13px; background:var(--tt-scr); color:var(--tt-white);
+  border-top:1px solid var(--tt-edge); border-bottom:1px solid var(--tt-edge) }
+.tt-index[hidden]{ display:none }
+.tt-index::before{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px) }
+/* "INDEX" in double height, the way teletext set its headings: the letters stretched to two rows */
+.tt-ix-h{ flex:none; display:flex; flex-direction:column-reverse; align-items:flex-start; gap:6px; margin:0; font-weight:400;
+  padding-right:18px; border-right:1px solid rgba(255,255,255,.14) }
+.tt-ix-h b{ display:inline-block; font-family:var(--f-score); font-weight:400; font-size:18px; line-height:1;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--tt-yellow); transform:scaleY(1.85); transform-origin:bottom;
+  margin-top:16px; text-shadow:1px 0 rgba(255,75,75,.35),-1px 0 rgba(63,240,255,.35) }
+.tt-ix-l{ list-style:none; margin:0; padding:0; flex:1 1 360px; min-width:0;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:0 18px }
+.tt-ix-l a{ display:flex; align-items:baseline; gap:9px; padding:4px 6px; min-height:28px; text-decoration:none;
+  color:var(--tt-white); font-family:var(--f-micro); font-size:10px; letter-spacing:.06em; text-transform:uppercase }
+.tt-ix-l a .n{ flex:none; align-self:center; width:9px; height:9px; background:var(--tt-cyan) }
+.tt-ix-l a .t{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.tt-ix-l li:nth-child(4n+2) a .n{ background:var(--tt-green) }
+.tt-ix-l li:nth-child(4n+3) a .n{ background:var(--tt-yellow) }
+.tt-ix-l li:nth-child(4n+4) a .n{ background:var(--tt-magenta) }
+.tt-ix-l a:hover, .tt-ix-l a:focus-visible{ background:var(--tt-cyan); color:var(--tt-scr); outline:0 }
+.tt-ix-l a:hover .n, .tt-ix-l a:focus-visible .n{ background:var(--tt-scr) }
+@media (max-width:560px){
+  .tt-index{ padding:12px calc(var(--u)*2) 10px; gap:8px 16px }
+  .tt-ix-h{ flex-direction:row; align-items:flex-end; gap:10px; padding-right:0; border-right:0 }
+  .tt-ix-h b{ font-size:15px; margin-top:12px }
+  .tt-ix-l{ flex-basis:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 10px }
+  .tt-ix-l a{ font-size:9px; min-height:32px; align-items:center }
+}
+/* a jump lands the title below the top of the window, not under the edge */
+html.tt-on .sec, html.tt-on section{ scroll-margin-top:12px }
+
+/* ============================================================================
+   4. SECTION TITLES. The plain accent bar under every centred title (.sec-h,
+   .ep-hdr) becomes a small mosaic: a stepped heap of separated blocks in the
+   page's three colours.
+   ============================================================================ */
+body .sec-h h2::after, body .ep-hdr h2::after{
+  width:66px; height:12px; margin:12px auto 0; border-radius:0;
+  background:linear-gradient(90deg,var(--tt-m1) 0 36%,var(--tt-m2) 36% 68%,var(--tt-m3) 68%);
+  -webkit-mask:var(--tt-mosaic) center/66px 12px no-repeat; mask:var(--tt-mosaic) center/66px 12px no-repeat }
+/* Global fixtures draws its own bar under the non-live titles: the same mosaic */
+.gm-sech:not(.live) h2::after{ width:66px; height:12px; border-radius:0;
+  background:linear-gradient(90deg,var(--tt-m1) 0 36%,var(--tt-m2) 36% 68%,var(--tt-m3) 68%);
+  -webkit-mask:var(--tt-mosaic) center/66px 12px no-repeat; mask:var(--tt-mosaic) center/66px 12px no-repeat }
+
+/* ============================================================================
+   5. Y2K CHROME: the hero titles catch the light. A narrow band of white
+   crosses the letters every few seconds, over the colour they already are
+   (currentColor, so a club's ink or a league's gradient keeps its own). The
+   text stays solid colour everywhere else, so it reads at every moment.
+   ============================================================================ */
+@keyframes tt-sheen{ 0%,84%{ background-position:130% 0,0 0 } 100%{ background-position:-30% 0,0 0 } }
+.hname, .idmeta h1, #hub .hero .wordmark, .gm .ep-hdr h2, #leagueName{
+  background-image:linear-gradient(104deg,transparent 0 44%,rgba(255,255,255,.78) 49%,rgba(255,255,255,.15) 52%,transparent 56% 100%),
+                   linear-gradient(currentColor,currentColor);
+  background-size:260% 100%,100% 100%; background-repeat:no-repeat; background-position:130% 0,0 0;
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  animation:tt-sheen 7.5s cubic-bezier(.6,0,.3,1) 1.4s infinite;
+  text-shadow:none }
+/* a text-shadow would paint OVER letters drawn this way; the club's glow is a drop-shadow of the whole title instead */
+body.themed .hname{ filter:drop-shadow(0 0 14px color-mix(in oklch,var(--team-a) 38%,transparent)) }
+/* a league's name is already a gradient of its two inks: the sheen goes over that instead */
+#hub .hero .wordmark{ background-image:linear-gradient(104deg,transparent 0 44%,rgba(255,255,255,.78) 49%,rgba(255,255,255,.15) 52%,transparent 56% 100%),
+                                        linear-gradient(100deg,var(--lume),var(--aqua)) }
+body.league-themed #hub .hero .wordmark{ background-image:linear-gradient(104deg,transparent 0 44%,rgba(255,255,255,.78) 49%,rgba(255,255,255,.15) 52%,transparent 56% 100%),
+                                        linear-gradient(100deg,var(--league-a-ink),var(--league-b-ink)) }
+/* the big title of a league's own pages (Fixtures, News): the sheen over the gradient it already is */
+.ep-frame > .hero h1{
+  background-image:linear-gradient(104deg,transparent 0 44%,rgba(255,255,255,.78) 49%,rgba(255,255,255,.15) 52%,transparent 56% 100%),
+                   linear-gradient(100deg,var(--lume),var(--aqua));
+  background-size:260% 100%,100% 100%; background-repeat:no-repeat; background-position:130% 0,0 0;
+  animation:tt-sheen 7.5s cubic-bezier(.6,0,.3,1) 1.4s infinite }
+body.league-themed .ep-frame > .hero h1{
+  background-image:linear-gradient(104deg,transparent 0 44%,rgba(255,255,255,.78) 49%,rgba(255,255,255,.15) 52%,transparent 56% 100%),
+                   linear-gradient(100deg,var(--league-a-ink),var(--league-b-ink)) }
+/* on the dark ground a white band on pale letters is nothing: it runs in the accent instead */
+:root:not([data-theme="light"]) :is(.hname, .idmeta h1, #hub .hero .wordmark, .gm .ep-hdr h2, #leagueName){
+  background-image:linear-gradient(104deg,transparent 0 44%,color-mix(in oklch,var(--aqua) 90%,#fff) 49%,rgba(255,255,255,.12) 52%,transparent 56% 100%),
+                   linear-gradient(currentColor,currentColor) }
+:root:not([data-theme="light"]) body.league-themed #hub .hero .wordmark,
+:root:not([data-theme="light"]) #hub .hero .wordmark{
+  background-image:linear-gradient(104deg,transparent 0 44%,rgba(255,255,255,.85) 49%,rgba(255,255,255,.15) 52%,transparent 56% 100%),
+                   linear-gradient(100deg,var(--league-a-ink,var(--lume)),var(--league-b-ink,var(--aqua))) }
+
+/* ============================================================================
+   6. Y2K GLOSS: the selected tab, the primary button, HOME's switch and the
+   follow pill are lit from above like Aqua. The highlight is a layer BEHIND
+   the label (isolation + z-index:-1), so it never washes over the letters, and
+   it sits over whatever colour the page gives the button — a club's, a league's.
+   ============================================================================ */
+.ep-tab.on, .ep-btn.pri, .ep-follow.on:not(.corner), .hm-seg button[aria-pressed="true"], .ep-units button.on{ position:relative }
+.ep-tab.on, .ep-btn.pri, .ep-follow.on, .hm-seg button[aria-pressed="true"], .ep-units button.on{ isolation:isolate;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 5px rgba(0,0,0,.16),0 1px 2px rgba(0,0,0,.14) }
+.ep-tab.on::after, .ep-btn.pri::after, .ep-follow.on::after, .hm-seg button[aria-pressed="true"]::after, .ep-units button.on::after{
+  content:""; position:absolute; left:1px; right:1px; top:1px; height:52%; z-index:-1; pointer-events:none;
+  border-radius:inherit; background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.08)) }
+.ep-follow.lbl{ transition:box-shadow .15s ease,border-color .15s ease }
+@media (hover:hover){
+  .ep-follow.lbl:hover, .ep-btn:hover{ box-shadow:0 0 0 3px color-mix(in oklch,var(--lume) 16%,transparent) }
+}
+
+/* ============================================================================
+   7. THE GRID FLOOR. Behind the heroes, a Tron floor in the page's accent,
+   running away to a horizon and fading into it; on HOME and a league's front
+   page it drifts towards the reader. The hero's own content is lifted above it.
+   ============================================================================ */
+.hm-hero, #hub .hero, body.themed .hero, .idband{ position:relative; isolation:isolate }
+.hm-hero::before, #hub .hero::before{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:78%; z-index:-1; pointer-events:none;
+  background-image:linear-gradient(var(--y2k-grid) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--y2k-grid) 1px,transparent 1px);
+  background-size:44px 44px; background-position:center bottom;
+  transform:perspective(260px) rotateX(64deg); transform-origin:50% 100%;
+  -webkit-mask-image:radial-gradient(75% 115% at 50% 100%,#000 25%,rgba(0,0,0,.5) 55%,transparent 88%);
+          mask-image:radial-gradient(75% 115% at 50% 100%,#000 25%,rgba(0,0,0,.5) 55%,transparent 88%) }
+.hm-hero::before, #hub .hero::before{ animation:tt-floor 4.5s linear infinite }
+@keyframes tt-floor{ from{ background-position:center 0 } to{ background-position:center 44px } }
+body.themed .hero::before, .idband::before{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:78%; z-index:-1; pointer-events:none;
+  background-image:linear-gradient(color-mix(in oklch,var(--team-a,var(--lume)) 24%,transparent) 1px,transparent 1px),
+                   linear-gradient(90deg,color-mix(in oklch,var(--team-a,var(--lume)) 24%,transparent) 1px,transparent 1px);
+  background-size:44px 44px; background-position:center bottom;
+  transform:perspective(260px) rotateX(64deg); transform-origin:50% 100%;
+  -webkit-mask-image:radial-gradient(75% 115% at 50% 100%,rgba(0,0,0,.8) 20%,rgba(0,0,0,.3) 55%,transparent 88%);
+          mask-image:radial-gradient(75% 115% at 50% 100%,rgba(0,0,0,.8) 20%,rgba(0,0,0,.3) 55%,transparent 88%) }
+body.league-themed #hub .hero::before{
+  background-image:linear-gradient(color-mix(in oklch,var(--league-a) 26%,transparent) 1px,transparent 1px),
+                   linear-gradient(90deg,color-mix(in oklch,var(--league-a) 26%,transparent) 1px,transparent 1px) }
+
+/* the club's trim along the foot of a hero is set in teletext blocks: the same colours, cut into a row of cells */
+body.themed .hero::after, body.themed .idband::after, body.league-themed .hero::after{
+  height:4px;
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 10px,transparent 10px 12px);
+          mask:repeating-linear-gradient(90deg,#000 0 10px,transparent 10px 12px) }
+
+/* ============================================================================
+   8. HUD BRACKETS: a targeting frame of four corners, drawn in gradients so it
+   needs no markup. Around a player's photo and a club's badge always; around a
+   fixture card while it is pointed at.
+   ============================================================================ */
+.photo, .badge{ isolation:isolate }
+.photo::after, .badge::after, .fxc::after{
+  content:""; position:absolute; inset:4px; z-index:3; pointer-events:none; --h:var(--tt-m1,var(--lume));
+  background:
+    linear-gradient(var(--h),var(--h)) 0 0/11px 2px, linear-gradient(var(--h),var(--h)) 0 0/2px 11px,
+    linear-gradient(var(--h),var(--h)) 100% 0/11px 2px, linear-gradient(var(--h),var(--h)) 100% 0/2px 11px,
+    linear-gradient(var(--h),var(--h)) 0 100%/11px 2px, linear-gradient(var(--h),var(--h)) 0 100%/2px 11px,
+    linear-gradient(var(--h),var(--h)) 100% 100%/11px 2px, linear-gradient(var(--h),var(--h)) 100% 100%/2px 11px;
+  background-repeat:no-repeat }
+/* the photo is also a screen: fine scanlines over the picture or the initials */
+.photo::before{ content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.07) 0 1px,transparent 1px 3px) }
+.badge::after{ inset:2px }
+.fxc::after{ inset:5px; opacity:0; transform:scale(1.04); transition:opacity .16s ease,transform .16s ease; --h:var(--lume) }
+@media (hover:hover){ .fxc:hover::after{ opacity:1; transform:none } }
+.fxc:focus-visible::after{ opacity:1; transform:none }
+
+/* ============================================================================
+   9. THE FIXTURE CARD, on air. A live card's top rule runs a bright pulse along
+   it and its LIVE lamp flashes hard, on and off, the way teletext flashed; its
+   score splits a hair into red and cyan, a tube's convergence slightly out.
+   ============================================================================ */
+.fxc.is-live::before{ height:3px;
+  background:linear-gradient(90deg,var(--flare) 0 38%,#ffd2d6 50%,var(--flare) 62% 100%) 0 0/260% 100%;
+  animation:tt-wire 2.4s linear infinite }
+@keyframes tt-wire{ from{ background-position:130% 0 } to{ background-position:-30% 0 } }
+.fxc-st .dot, .gm-sech.live h2 .dot, .gm-live .gm-sub .dot{ animation:tt-flash 1.1s steps(1,end) infinite }
+@keyframes tt-flash{ 0%{ opacity:1 } 60%{ opacity:.12 } }
+.fxc.is-live .fxc-sc{ text-shadow:1px 0 rgba(255,60,90,.28),-1px 0 rgba(40,200,255,.28) }
+/* the upcoming card's clock face, a little more scoreboard */
+.fxc-when b{ letter-spacing:.02em }
+
+/* ============================================================================
+   10. TABLES: the header row is a teletext row, black with cyan labels, the
+   column it is sorted by lit yellow — the league tables CEEFAX printed.
+   ============================================================================ */
+:root table.ft thead th, :root[data-theme="light"] table.ft thead th,
+:root .ep-tbl thead th, :root[data-theme="light"] .ep-tbl thead th{
+  background:var(--tt-scr); color:var(--tt-cyan); border-color:#000;
+  box-shadow:inset 0 -1px 0 #000 }
+:root table.ft thead th.c0, :root table.ft thead th.c1,
+:root[data-theme="light"] table.ft thead th.c0, :root[data-theme="light"] table.ft thead th.c1,
+:root[data-theme="light"] table.ft thead th.stick, :root table.ft thead th.stick{ background:var(--tt-scr); color:var(--tt-white) }
+:root table.ft thead th:not(.stick)+th:not(.stick), :root[data-theme="light"] table.ft thead th:not(.stick)+th:not(.stick){
+  box-shadow:inset 0 -1px 0 #000,inset 1px 0 0 rgba(255,255,255,.1) }
+:root table.ft thead th:hover, :root[data-theme="light"] table.ft thead th:hover{ color:var(--tt-white) }
+:root table.ft thead th.sorted, :root[data-theme="light"] table.ft thead th.sorted,
+:root .ep-tbl thead th.sorted, :root[data-theme="light"] .ep-tbl thead th.sorted{ background:var(--tt-yellow); color:var(--tt-scr) }
+/* the phone's pinned header strip (a separate table) is the same row */
+:root .ft-head table.ft thead th{ background:var(--tt-scr) }
+.ep-tbl th+th{ border-left-color:rgba(255,255,255,.1) }
+
+/* ============================================================================
+   11. STAT TILES (a player's line, a club's record): glass tiles, lit from the
+   top, the number in the scoreboard face as before.
+   ============================================================================ */
+.tiles .tile, .rec > div{ position:relative;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 58%) }
+:root:not([data-theme="light"]) .tiles .tile, :root:not([data-theme="light"]) .rec > div{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 58%) }
+.tiles .tile::after, .rec > div::after{ content:""; position:absolute; left:14%; right:14%; bottom:0; height:2px;
+  background:linear-gradient(90deg,transparent,var(--tt-m1),transparent); opacity:.55 }
+
+/* ============================================================================
+   12. HOME. The drawn wordmark keeps its own colours and gets the chrome's
+   light across it (a mask of the picture itself, so only the letters shine),
+   and a small sparkle.
+   ============================================================================ */
+.hm-hero .hm-word{ position:relative }
+.hm-hero .hm-word::after{ content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(104deg,transparent 0 40%,rgba(255,255,255,.85) 48%,rgba(255,255,255,.15) 54%,transparent 62% 100%) 130% 0/260% 100% no-repeat;
+  -webkit-mask:url("../brand/wordmark-1026.png") center/min(74vw,500px) auto no-repeat;
+          mask:url("../brand/wordmark-1026.png") center/min(74vw,500px) auto no-repeat;
+  animation:tt-sheen-one 7.5s cubic-bezier(.6,0,.3,1) 1s infinite }
+@keyframes tt-sheen-one{ 0%,84%{ background-position:130% 0 } 100%{ background-position:-30% 0 } }
+/* the sparkle, catching the light off the wordmark's top right */
+.hm-hero::after{ content:"\2726"; content:"\2726" / ""; position:absolute; top:22%; left:calc(50% + min(37vw,250px) - 6px);
+  font-size:20px; line-height:1; color:var(--aqua); pointer-events:none;
+  animation:tt-twinkle 3.2s ease-in-out infinite }
+@keyframes tt-twinkle{ 0%,100%{ opacity:.25; transform:scale(.7) rotate(0) } 50%{ opacity:1; transform:scale(1.1) rotate(45deg) } }
+@media (max-width:560px){ .hm-hero::after{ display:none } }
+
+/* ============================================================================
+   13. GLOBAL FIXTURES: the live band is a NEWSFLASH box — black, the title in
+   flashing-lamp red, the count in yellow — and the lede reads as a caption.
+   ============================================================================ */
+:root .gm-live, :root[data-theme="light"] .gm-live{ background:var(--tt-scr); border-top:3px solid var(--tt-red); border-bottom:3px solid var(--tt-red);
+  position:relative; isolation:isolate }
+.gm-live::before{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px) }
+.gm-live .gm-sech.live h2{ color:var(--tt-red); -webkit-text-fill-color:var(--tt-red); text-shadow:0 0 18px rgba(255,75,75,.45) }
+.gm-live .gm-sech.live h2 .dot{ background:var(--tt-red) }
+.gm-live .gm-sech-n{ color:var(--tt-yellow) }
+.gm-live .gm-sech{ padding-bottom:calc(var(--u)*2) }
+.gm-lede{ font-family:var(--f-ui); font-size:13px; font-weight:600; color:var(--ink-2) }
+.gm-lede::before{ content:"\25B6\FE0E  "; color:var(--lume) }
+
+/* ============================================================================
+   14. THE DARK GROUND. A black screen on a green-black page needs an edge to
+   be seen as a thing apart: a hairline of the accent round each.
+   ============================================================================ */
+:root:not([data-theme="light"]) .tt-line, :root:not([data-theme="light"]) .tt-fast,
+:root:not([data-theme="light"]) .tt-index{ box-shadow:0 0 0 1px color-mix(in oklch,var(--lume) 22%,transparent) }
+:root:not([data-theme="light"]) .tiles .tile::after, :root:not([data-theme="light"]) .rec > div::after{ opacity:.8 }
+
+/* ============================================================================
+   15. MOTION OFF: everything that moves, held still.
+   ============================================================================ */
+@media (prefers-reduced-motion:reduce){
+  .tt-line::before, .hm-hero::before, #hub .hero::before, .hm-hero .hm-word::after, .hm-hero::after,
+  .hname, .idmeta h1, #hub .hero .wordmark, .gm .ep-hdr h2, #leagueName, .ep-frame > .hero h1, .fxc.is-live::before,
+  .fxc-st .dot, .gm-sech.live h2 .dot, .gm-live .gm-sub .dot{ animation:none !important }
+  .hm-hero .hm-word::after{ display:none }
+}
