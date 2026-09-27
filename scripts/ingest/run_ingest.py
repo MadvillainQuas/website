@@ -1612,7 +1612,11 @@ def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> lis
             if not s.get("enabled", True):
                 continue
             for url in s.get("scheduleUrls") or []:
-                rows[url] = {**s, "schedule_url": url, "id": None}
+                # keyed by URL AND code: two sources on one schedule page (Basketligan men and women on
+                # the SBF tenant, the four Basketball England ones on BBE) told apart by their competition
+                # filters; keyed by URL alone the last one silently replaced the rest, so the Swedish
+                # men's league (and EABL, NBL Div 1, WNBL Div 1) never ran at all
+                rows[f"{url}#{s.get('code')}"] = {**s, "schedule_url": url, "id": None}
     except Exception as exc:
         print(f"(config sources unavailable: {exc})")
     if sb and not use_config:
@@ -1620,7 +1624,8 @@ def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> lis
             for r in sb.rpc("due_schedule_sources"):
                 ac = r.get("adapter_config") or {}
                 code = ac.get("code") or r.get("label") or "FEED"
-                rows[r["schedule_url"]] = {**rows.get(r["schedule_url"], {}), **r, "code": code,
+                key = f"{r['schedule_url']}#{code}"
+                rows[key] = {**rows.get(key, {}), **r, "code": code,
                                            "scheduleUrls": [r["schedule_url"]], "adapter_config": ac,
                                            "league_id": r.get("league_id"), "competition_id": r.get("competition_id")}
         except Exception as exc:

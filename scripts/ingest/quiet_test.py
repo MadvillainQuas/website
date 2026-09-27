@@ -12,6 +12,7 @@ The database is a small in-memory stand-in that evaluates the PostgREST filters 
 (eq, neq, gt, gte, lte, in, not.in, is.null, or/and trees, order, limit), so the old per-source
 queries and the new bulk ones are answered from the same rows by the same rules.
 """
+import json
 import os
 import random
 import re
@@ -296,6 +297,20 @@ b.status = "final"
 ok("same payload but now final (the stale-final rule): write", not RI.version_in_db(db, {"adapter": "fiba_livestats"}, "99", b))
 b.status, b.payload_hash = "live", "new"
 ok("a new payload: write", not RI.version_in_db(db, {"adapter": "fiba_livestats"}, "99", b))
+
+print("-- two sources on one schedule page are both loaded")
+_cfg = json.loads(RI.CONFIG_PATH.read_text(encoding="utf-8"))
+_by_url: dict = {}
+for _s in _cfg["sources"]:
+    if _s.get("enabled", True):
+        for _u in _s.get("scheduleUrls") or []:
+            _by_url.setdefault(_u, []).append(_s["code"])
+_shared = {u: c for u, c in _by_url.items() if len(c) > 1}
+_loaded = {r["code"] for r in RI.load_sources(None, True, None)}
+ok("the config has sources that share a schedule page (else this proves nothing)", bool(_shared), _shared)
+ok("every one of them is loaded, not only the last on its page (Basketligan men + women, the four on BBE)",
+   all(c in _loaded for codes in _shared.values() for c in codes), sorted(c for codes in _shared.values() for c in codes if c not in _loaded))
+ok("--source picks the first of them", [r["code"] for r in RI.load_sources(None, True, "SBF")] == ["SBF"])
 
 print("-- a game the feed calls final that the platform never closed is found, and written again")
 
