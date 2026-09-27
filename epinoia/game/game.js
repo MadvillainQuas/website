@@ -2598,7 +2598,46 @@ function clubOf(t) {
   return (t === 0 ? m.home : m.away) || null;
 }
 
+/* WHERE EACH CLUB STANDS, under its name on the scoreboard (epinoia/tablepos.js): its place in the
+   league table of the season this game is in, read once and kept, because the scoreboard is drawn
+   again on every live update. Nothing is said until somebody in the table has played. */
+let TABLE = null, tableAsked = false;
+function tablePlace(t) {
+  const m = window.S && window.S.meta;
+  const TP = window.EpinoiaTablePos;
+  if (!m || !TP) return null;
+  if (!tableAsked) {
+    tableAsked = true;
+    if (m.competitionId) {
+      TP.load(api, m.competitionId).then(T => {
+        TABLE = T;
+        const head = document.querySelector('#csHead');
+        if (T && head) head.querySelectorAll('.bx-scorehead [data-team-slot]').forEach(placeLine);
+      }).catch(() => { /* no line */ });
+    }
+    return null;
+  }
+  const id = t === 0 ? m.homeTeamId : m.awayTeamId;
+  return TABLE && id ? TP.place(TABLE, id) : null;
+}
+const TP_ordinal = n => (window.EpinoiaTablePos ? window.EpinoiaTablePos.ordinal(n) : String(n));
+function placeLine(node) {
+  if (!node.closest('.bx-scorehead') || node.querySelector('.bt-pos')) return;
+  const pl = tablePlace(+node.dataset.teamSlot);
+  if (!pl) return;
+  /* "17th" and " in B.LEAGUE Premier", so a phone can keep the first and let the second go */
+  const s = document.createElement('span');
+  s.className = 'bt-pos';
+  s.title = pl.text;
+  const rank = TP_ordinal(pl.rank);
+  const k = document.createElement('b'); k.textContent = rank;
+  const w = document.createElement('i'); w.textContent = pl.text.slice(rank.length);
+  s.append(k, w);
+  node.appendChild(s);
+}
+
 function decorateTeams(scope) {
+  scope.querySelectorAll('[data-team-slot]').forEach(placeLineLater);
   scope.querySelectorAll('[data-team-slot]').forEach(node => {
     if (node.dataset.teamDone === '1') return;
     const t = +node.dataset.teamSlot;
@@ -2631,8 +2670,11 @@ function decorateTeams(scope) {
     } else {
       node.appendChild(document.createTextNode(label));
     }
+    placeLine(node);
   });
 }
+/* a slot already decorated (a redraw that kept it) still gets its line once the table arrives */
+function placeLineLater(node) { if (node.dataset.teamDone === '1') placeLine(node); }
 
 function render() {
   const S = window.S;
@@ -3284,18 +3326,32 @@ async function renderPreview() {
      only extra request is the clubs' releases, and a league without that table yet
      gets an empty list rather than a broken preview. The names are already on the
      season rows from the playerMeta merge above, so nobody is asked for twice. */
-  const out = await outFor(season, m);
-  const pin = await venuePin(m);
+  const [out, pin, table] = await Promise.all([
+    outFor(season, m),
+    venuePin(m),
+    /* where the two clubs stand, and the table they stand in (epinoia/tablepos.js) */
+    window.EpinoiaTablePos && m.competitionId
+      ? window.EpinoiaTablePos.load(api, m.competitionId).catch(() => null) : null
+  ]);
+  const TP = window.EpinoiaTablePos;
+  const placeOf = id => (TP && table && id ? TP.place(table, id) : null);
+  const crestOf = c => (c && c.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(c.logo_path) : null);
 
   /* Names come from the club rows, not the roster snapshot — a scheduled game
      has no snapshot, because nothing has been frozen yet. */
   const home = m.home || {}, away = m.away || {};
 
   if (walled) return;                   // the paywall went up meanwhile
+  const colourA = inkOf(B.safeColour(home.colour, '#93f2bf')), colourB = inkOf(B.safeColour(away.colour, '#8ff5ff'));
+  const pA = placeOf(m.homeTeamId), pB = placeOf(m.awayTeamId);
   $('#view').innerHTML = window.EpinoiaPreview.render({
     nameA: home.name || S.teams[0].name, nameB: away.name || S.teams[1].name,
-    colourA: inkOf(B.safeColour(home.colour, '#93f2bf')),
-    colourB: inkOf(B.safeColour(away.colour, '#8ff5ff')),
+    colourA, colourB,
+    crestA: crestOf(home), crestB: crestOf(away),
+    placeA: pA && pA.text, placeB: pB && pB.text,
+    tableHTML: TP && table ? TP.tableHTML(table, [m.homeTeamId, m.awayTeamId],
+      { base: '../', colours: { [m.homeTeamId]: colourA, [m.awayTeamId]: colourB } }) : '',
+    tableName: table && table.comp ? table.comp.name : '',
     slugA: home.slug || null, slugB: away.slug || null,
     teamA: teamRow(m.homeTeamId), teamB: teamRow(m.awayTeamId),
     starsA: starsOf(m.homeTeamId), starsB: starsOf(m.awayTeamId),

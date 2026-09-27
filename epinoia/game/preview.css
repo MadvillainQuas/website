@@ -14,221 +14,223 @@
    ============================================================================ */
 
 .pv{
-  max-width:940px; margin:0 auto; padding:0 0 40px;
-  color:var(--txt,#e6fff1);
+  --pa:var(--team0,#93f2bf); --pb:var(--team1,#8ff5ff);
+  max-width:980px; margin:0 auto; padding:0 0 40px;
+  color:var(--ink,#e6fff1);
 }
 
-/* ---------------------------------------------------------------- the hero */
+/* ---------------------------------------------------------------- the hero ---
+   A scoreboard before the score: the two clubs in their colours, crest over name, where each
+   stands in the table under it, and the tip-off in the middle where the score will go. */
 .pv-hero{
-  position:relative; text-align:center;
-  padding:26px 16px 22px; margin-bottom:18px;
-  border:1px solid var(--line,rgba(147,242,191,.18));
-  border-radius:16px;
+  position:relative; overflow:hidden; isolation:isolate;
+  padding:0 0 26px; margin-bottom:18px;
+  border:1px solid var(--rule-2,rgba(147,242,191,.18)); border-radius:16px;
   background:
-    radial-gradient(120% 140% at 0% 0%, color-mix(in oklch, var(--team0,#93f2bf) 12%, transparent), transparent 58%),
-    radial-gradient(120% 140% at 100% 0%, color-mix(in oklch, var(--team1,#8ff5ff) 12%, transparent), transparent 58%),
-    linear-gradient(180deg, rgba(190,255,224,.05), rgba(110,220,180,.015));
+    radial-gradient(90% 140% at 0% 50%, color-mix(in srgb, var(--pa) 16%, transparent), transparent 62%),
+    radial-gradient(90% 140% at 100% 50%, color-mix(in srgb, var(--pb) 16%, transparent), transparent 62%),
+    var(--panel,rgba(255,255,255,.03));
+  box-shadow:0 1px 0 rgba(255,255,255,.4) inset;
 }
+/* the two colours along the top, as the scoreboard carries them */
+.pv-hero::before{ content:""; display:block; height:5px;
+  background:linear-gradient(90deg, var(--pa) 0 50%, var(--pb) 50% 100%) }
+/* the screen's lines */
+.pv-hero::after{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:repeating-linear-gradient(180deg, color-mix(in srgb, var(--ink,#000) 4%, transparent) 0 1px, transparent 1px 3px) }
 .pv-badge{
-  display:inline-block; margin-bottom:14px;
-  font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:0.12em; text-transform:uppercase;
-  color:#04100b; background:linear-gradient(100deg,var(--lume,#93f2bf),var(--aqua,#8ff5ff));
-  border-radius:999px; padding:5px 13px; font-weight:700;
+  display:flex; justify-content:center; gap:0; margin:16px auto 20px; width:max-content; max-width:92%;
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; letter-spacing:.1em; text-transform:uppercase;
 }
+.pv-badge span{ padding:5px 10px; background:#0a0a0a; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.pv-badge span:first-child{ background:#ffe14d; color:#0a0a0a }
 .pv-teams{
-  display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px;
+  display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:clamp(10px,3vw,34px);
+  padding:0 clamp(14px,3vw,30px);
 }
-.pv-side{ min-width:0; text-align:left }
-.pv-side.right{ text-align:right }
+.pv-side{ min-width:0; display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px }
+.pv-crest{ display:grid; place-items:center; width:clamp(58px,8vw,86px); aspect-ratio:1; border-radius:50%;
+  background:#fff; box-shadow:0 0 0 3px var(--panel,#fff), 0 0 0 5px var(--pc), 4px 4px 0 5px color-mix(in srgb, var(--ink,#000) 10%, transparent);
+  margin-bottom:6px; overflow:hidden }
+.pv-crest img{ width:74%; height:74%; object-fit:contain }
 .pv-tname{
-  font-size:clamp(18px,3.4vw,27px); font-weight:600; line-height:1.15;
-  letter-spacing:.01em; color:var(--pc,#e6fff1);
-  text-shadow:0 0 26px color-mix(in oklch, var(--pc,#93f2bf) 40%, transparent);
-  overflow-wrap:anywhere;
+  font-family:var(--f-ui,inherit); font-weight:800; text-transform:uppercase;
+  font-size:clamp(16px,2.6vw,26px); line-height:1.08; letter-spacing:.01em;
+  color:var(--pc); overflow-wrap:anywhere;
 }
 .pv-tname a{ color:inherit; text-decoration:none }
 .pv-tname a:hover{ text-decoration:underline }
-.pv-trec{
-  margin-top:5px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9.5px; letter-spacing:0.06em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.45));
-}
-.pv-v{
-  font-family:var(--f-score,ui-monospace,monospace);
-  font-size:15px; letter-spacing:.2em; color:var(--faint,rgba(230,255,241,.4));
-}
-.pv-comp{
-  margin-top:16px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:0.09em; text-transform:uppercase;
-  color:var(--dim,rgba(230,255,241,.6));
-}
+/* where the club stands: a teletext plate in its colour */
+.pv-pos{ font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+  padding:4px 8px; background:#0a0a0a; color:#fff; border-left:4px solid var(--pc) }
+.pv-trec{ font-family:var(--f-micro,ui-monospace,monospace); font-size:8.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-3,rgba(230,255,241,.5)) }
+.pv-when{ display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; min-width:96px }
+.pv-day{ font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; letter-spacing:.12em; color:var(--ink-2,inherit) }
+.pv-time{ font-family:var(--f-score,ui-monospace,monospace); font-size:clamp(34px,5.4vw,56px); line-height:.9;
+  color:var(--ink,#fff); letter-spacing:.02em; font-variant-numeric:tabular-nums }
+.pv-v{ font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; letter-spacing:.2em; text-transform:uppercase;
+  padding:3px 8px; border:1px solid var(--rule-2,currentColor); color:var(--ink-3,inherit) }
+.pv-venue{ font-size:11.5px; color:var(--ink-2,inherit); max-width:180px; line-height:1.3 }
 
 /* ------------------------------------------------------------- a section */
 .pv-sec{
-  margin:22px 0 0; padding:20px 18px;
-  border:1px solid var(--line,rgba(147,242,191,.18)); border-radius:14px;
-  background:linear-gradient(180deg,rgba(190,255,224,.035),rgba(110,220,180,.012));
+  margin:18px 0 0; padding:22px clamp(14px,2.4vw,24px);
+  border:1px solid var(--rule-2,rgba(147,242,191,.18)); border-radius:14px;
+  background:var(--panel,rgba(255,255,255,.03));
 }
-.pv-sec h2{
-  margin:0 0 16px; font-size:12px; font-weight:400;
-  font-family:var(--f-micro,ui-monospace,monospace);
-  letter-spacing:0.11em; text-transform:uppercase; color:var(--lume,#93f2bf);
+.pv-h{ display:flex; flex-direction:column; align-items:center; gap:6px; margin:0 0 18px; text-align:center }
+.pv-h h2{
+  margin:0; font-family:var(--f-ui,inherit); font-weight:800; font-size:15px;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--ink,#fff);
 }
+/* a short row of teletext blocks under every heading, in the two clubs' colours */
+.pv-h h2::after{ content:""; display:block; width:74px; height:5px; margin:8px auto 0;
+  background:linear-gradient(90deg, var(--pa) 0 50%, var(--pb) 50% 100%);
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 7px,transparent 7px 9px);
+          mask:repeating-linear-gradient(90deg,#000 0 7px,transparent 7px 9px) }
+.pv-note{ font-family:var(--f-micro,ui-monospace,monospace); font-size:8.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3,inherit) }
 .pv-sub{
-  margin:20px 0 10px; font-size:9px; font-weight:400;
-  font-family:var(--f-micro,ui-monospace,monospace);
-  letter-spacing:0.09em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.45));
+  margin:24px 0 12px; font-size:9px; font-weight:400; text-align:center;
+  font-family:var(--f-micro,ui-monospace,monospace); letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-2,inherit);
 }
 
 /* ------------------------------------------------------------------ tiles */
-.pv-tiles{
-  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;
-}
+.pv-tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px }
 .pv-tiles.two{ grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) }
-.pv-tile{
-  padding:13px 14px; border-radius:11px;
-  border:1px solid var(--line,rgba(147,242,191,.14));
-  background:rgba(4,16,11,.4);
-}
-.pv-tval{
-  font-family:var(--f-score,ui-monospace,monospace);
-  font-size:19px; line-height:1.15; color:var(--txt,#e6fff1);
-  font-variant-numeric:tabular-nums; overflow-wrap:anywhere;
-}
-.pv-tlabel{
-  margin-top:6px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:8.5px; letter-spacing:0.12em; text-transform:uppercase;
-  color:var(--lume,#93f2bf);
-}
-.pv-tsub{
-  margin-top:3px; font-size:11px; line-height:1.45;
-  color:var(--faint,rgba(230,255,241,.5));
-}
+.pv-tile{ padding:14px 16px; border:1px solid var(--rule-2,rgba(147,242,191,.14)); border-left:4px solid var(--ink,#000);
+  background:var(--ground,transparent) }
+.pv-tval{ font-family:var(--f-score,ui-monospace,monospace); font-size:22px; line-height:1.1; color:var(--ink,#fff);
+  font-variant-numeric:tabular-nums; overflow-wrap:anywhere }
+.pv-tlabel{ margin-top:7px; font-family:var(--f-micro,ui-monospace,monospace); font-size:8.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-2,inherit) }
+.pv-tsub{ margin-top:3px; font-size:12px; line-height:1.45; color:var(--ink-3,inherit) }
 
 /* -------------------------------------------------------------- the map */
-.pv-map{
-  margin-top:14px; border-radius:12px; overflow:hidden;
-  border:1px solid var(--line,rgba(147,242,191,.18));
-  /* a fixed aspect rather than a fixed height, so it is the same shape on a
-     phone as on a desktop and never a letterbox slot */
-  aspect-ratio:16/9; background:rgba(4,16,11,.6);
-}
+.pv-map{ margin-top:14px; border-radius:10px; overflow:hidden; border:1px solid var(--rule-2,rgba(147,242,191,.18));
+  aspect-ratio:16/9; background:var(--ground,#eee) }
 .pv-map iframe{ width:100%; height:100%; border:0; display:block; filter:saturate(.85) }
-
 .pv-more{
-  display:inline-block; margin-top:14px;
-  font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:0.11em; text-transform:uppercase;
-  color:var(--aqua,#8ff5ff); text-decoration:none;
-  border-bottom:1px solid color-mix(in oklch, var(--aqua,#8ff5ff) 40%, transparent);
-  padding-bottom:2px;
+  display:inline-block; margin-top:16px;
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--ink,#fff); text-decoration:none; padding:6px 10px; border:1px solid var(--rule-2,currentColor);
 }
-.pv-more:hover{ color:var(--lume,#93f2bf) }
-/* EPINOIA GO's STAMP THIS GAME under the directions (go/venuestamp.css draws the card) */
+.pv-more:hover{ background:var(--ink,#fff); color:var(--ground,#000) }
 .pv-go:empty{ display:none }
 .pv-go .gv{ margin-top:18px; max-width:none }
 
 /* ------------------------------------------------------------- the prose */
-.pv-prose p{
-  margin:0 0 12px; font-size:14.5px; line-height:1.72;
-  color:var(--dim,rgba(230,255,241,.82)); max-width:66ch;
-}
+.pv-prose p{ margin:0 auto 12px; font-size:15px; line-height:1.72; color:var(--ink-2,inherit); max-width:68ch }
 .pv-prose p:last-child{ margin-bottom:0 }
 
-/* ------------------------------------------------- the four-factor bars */
-.pv-key{
-  display:flex; justify-content:space-between; gap:10px; margin-bottom:14px;
-  font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9px; letter-spacing:0.08em; text-transform:uppercase;
-}
-.pv-key span{ color:var(--pc,#93f2bf); min-width:0; overflow-wrap:anywhere }
-.pv-key span:last-child{ text-align:right }
+/* ------------------------------------------------------------ the table ---
+   epinoia/tablepos.js's rows, with the two clubs lit in their colours and the rest receding */
+.tp-table{ width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; margin:0 auto; max-width:720px }
+.tp-table + .tp-table{ margin-top:18px }
+.tp-table caption{ caption-side:top; text-align:left; padding:0 0 8px; font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2,inherit) }
+.tp-table th{ font-family:var(--f-micro,ui-monospace,monospace); font-size:8px; letter-spacing:.1em; font-weight:400;
+  text-transform:uppercase; color:#fff; background:#0a0a0a; padding:7px 8px; text-align:right }
+.tp-table td{ padding:7px 8px; text-align:right; font-family:var(--f-score,ui-monospace,monospace); font-size:13px;
+  color:var(--ink-2,inherit); border-bottom:1px solid var(--rule,rgba(0,0,0,.08)) }
+.tp-table .tp-r{ width:34px; text-align:center }
+.tp-table .tp-n{ text-align:left; font-family:var(--f-ui,inherit); font-size:13px; font-weight:600; width:auto }
+.tp-table .tp-n a{ color:inherit; text-decoration:none }
+.tp-table .tp-n a:hover{ text-decoration:underline }
+.tp-table td.tp-p{ font-weight:700; color:var(--ink,inherit) }
+.tp-table thead th, .tp-table thead th.tp-n, .tp-table thead th.tp-p{ font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:8px; font-weight:400; color:#fff; text-transform:uppercase; letter-spacing:.1em }
+.tp-table tr:not(.lit) td{ opacity:.78 }
+.tp-table tr.lit td{ color:var(--ink,inherit); font-weight:700; opacity:1;
+  background:color-mix(in srgb, var(--tc) 14%, transparent) }
+.tp-table tr.lit td:first-child{ box-shadow:inset 5px 0 0 var(--tc); color:var(--ink,inherit) }
+.tp-table tr.lit .tp-n{ color:var(--tc); text-transform:uppercase; letter-spacing:.02em }
+.tp-table tr.tp-gap td{ text-align:center; color:var(--ink-3,inherit); padding:2px; letter-spacing:.3em; border-bottom:0 }
+.pv-table .pv-more{ display:table; margin-left:auto; margin-right:auto }
 
-.pv-factors{ display:grid; gap:12px }
+/* ------------------------------------------ both clubs, one stat each ---
+   the value each side has in its colour, the better one full strength with a marker */
+.pv-key{ display:flex; justify-content:space-between; gap:10px; margin:0 0 10px;
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; letter-spacing:.08em; text-transform:uppercase }
+.pv-key span{ min-width:0; overflow-wrap:anywhere; padding:4px 8px; background:#0a0a0a; color:#fff }
+.pv-key .a{ border-left:4px solid var(--pa) }
+.pv-key .b{ border-right:4px solid var(--pb); text-align:right }
+.pv-vss{ display:grid; gap:0; border-top:1px solid var(--rule,rgba(0,0,0,.08)) }
+.pv-vs{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; padding:12px 4px;
+  border-bottom:1px solid var(--rule,rgba(0,0,0,.08)) }
+.pv-vs b{ font-family:var(--f-score,ui-monospace,monospace); font-weight:400; font-size:clamp(20px,3vw,28px); line-height:1;
+  font-variant-numeric:tabular-nums; opacity:.5 }
+.pv-vs b.a{ color:var(--pa) } .pv-vs b.b{ color:var(--pb); text-align:right }
+.pv-vs b.win{ opacity:1 }
+.pv-vs b.a.win::after{ content:" ◀"; font-size:.4em; vertical-align:middle }
+.pv-vs b.b.win::before{ content:"▶ "; font-size:.4em; vertical-align:middle }
+.pv-vs .k{ display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center;
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink,inherit) }
+.pv-vs .k i{ font-style:normal; font-family:var(--f-ui,inherit); font-size:11px; letter-spacing:0; text-transform:none; color:var(--ink-3,inherit) }
+
+/* ------------------------------------------------- the four-factor bars */
+.pv-factors{ display:grid; gap:14px }
 .pv-factor{ display:block }
-.pv-fhead{
-  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
-  margin-bottom:6px;
-}
-.pv-flabel{
-  font-size:12px; color:var(--txt,#e6fff1); letter-spacing:.02em;
-}
-.pv-ffull{
-  font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:8px; letter-spacing:0.08em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.4)); text-align:right;
-}
-.pv-fbar{
-  display:flex; height:9px; border-radius:5px; overflow:hidden;
-  background:rgba(4,16,11,.55);
-}
+.pv-fhead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:6px }
+.pv-flabel{ font-size:13px; font-weight:600; color:var(--ink,inherit) }
+.pv-ffull{ font-family:var(--f-micro,ui-monospace,monospace); font-size:8px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-3,inherit); text-align:right }
+.pv-fbar{ display:flex; gap:3px; height:12px }
 .pv-fbar span{ display:block; height:100%; transition:width .3s ease }
-.pv-fa{ background:color-mix(in oklch, var(--team0,#93f2bf) 40%, transparent) }
-.pv-fb{ background:color-mix(in oklch, var(--team1,#8ff5ff) 40%, transparent) }
-/* the side that wins the factor is the one drawn at full strength — the bar
-   shows the split, the colour shows who it favours */
-.pv-fa.win{ background:var(--team0,#93f2bf) }
-.pv-fb.win{ background:var(--team1,#8ff5ff) }
-.pv-fvals{
-  display:flex; justify-content:space-between; margin-top:5px;
-  font-family:var(--f-score,ui-monospace,monospace);
-  font-size:12px; font-variant-numeric:tabular-nums;
-  color:var(--faint,rgba(230,255,241,.5));
-}
+.pv-fa{ background:color-mix(in srgb, var(--pa) 38%, transparent) }
+.pv-fb{ background:color-mix(in srgb, var(--pb) 38%, transparent) }
+/* the side that wins the factor is drawn at full strength: the bar shows the split, the colour who it favours */
+.pv-fa.win{ background:var(--pa) }
+.pv-fb.win{ background:var(--pb) }
+.pv-fvals{ display:flex; justify-content:space-between; margin-top:5px;
+  font-family:var(--f-score,ui-monospace,monospace); font-size:13px; font-variant-numeric:tabular-nums; color:var(--ink-3,inherit) }
 .pv-fvals b{ font-weight:400 }
-.pv-fvals b.win{ color:var(--txt,#e6fff1) }
+.pv-fvals b.win{ color:var(--ink,inherit) }
 
 /* ---------------------------------------------------------- key players */
-.pv-players{
-  display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;
-}
-.pv-player{
-  padding:14px; border-radius:12px;
-  border:1px solid color-mix(in oklch, var(--pc,#93f2bf) 26%, transparent);
-  background:linear-gradient(180deg,
-    color-mix(in oklch, var(--pc,#93f2bf) 8%, transparent), rgba(4,16,11,.35));
-}
-.pv-pname{ font-size:15px; font-weight:600; color:var(--pc,#e6fff1); overflow-wrap:anywhere }
+.pv-players{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px }
+.pv-player{ position:relative; padding:14px 14px 14px 18px; border:1px solid var(--rule-2,rgba(0,0,0,.12));
+  background:linear-gradient(135deg, color-mix(in srgb, var(--pc) 12%, transparent), transparent 70%), var(--ground,transparent);
+  box-shadow:3px 3px 0 color-mix(in srgb, var(--pc) 45%, transparent) }
+.pv-player::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--pc) }
+.pv-pname{ font-family:var(--f-ui,inherit); font-size:15px; font-weight:800; text-transform:uppercase; color:var(--pc); overflow-wrap:anywhere }
 .pv-pname a{ color:inherit; text-decoration:none }
 .pv-pname a:hover{ text-decoration:underline }
-.pv-pteam{
-  margin-top:3px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:8px; letter-spacing:0.1em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.42));
-}
-.pv-pline{
-  margin-top:10px; font-family:var(--f-score,ui-monospace,monospace);
-  font-size:13px; color:var(--txt,#e6fff1); font-variant-numeric:tabular-nums;
-}
+.pv-pteam{ margin-top:4px; font-family:var(--f-micro,ui-monospace,monospace); font-size:8px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-3,inherit) }
+.pv-pline{ margin-top:10px; font-family:var(--f-score,ui-monospace,monospace); font-size:15px; color:var(--ink,inherit);
+  font-variant-numeric:tabular-nums }
 .pv-padv{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px }
-.pv-padv span{
-  display:inline-flex; align-items:baseline; gap:4px;
-  padding:4px 7px; border-radius:5px;
-  background:rgba(4,16,11,.5);
-  font-family:var(--f-score,ui-monospace,monospace); font-size:11px;
-  color:var(--dim,rgba(230,255,241,.8)); font-variant-numeric:tabular-nums;
-}
-.pv-padv i{
-  font-style:normal; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:7.5px; letter-spacing:0.07em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.42));
-}
+.pv-padv span{ display:inline-flex; align-items:baseline; gap:5px; padding:4px 7px; background:#0a0a0a; color:#fff;
+  font-family:var(--f-score,ui-monospace,monospace); font-size:11px; font-variant-numeric:tabular-nums }
+.pv-padv i{ font-style:normal; font-family:var(--f-micro,ui-monospace,monospace); font-size:7.5px; letter-spacing:.07em;
+  text-transform:uppercase; color:#ffe14d }
 
 /* ------------------------------------------------------------- phones */
 @media (max-width:640px){
-  .pv-sec{ padding:16px 13px; border-radius:12px }
-  .pv-hero{ padding:20px 12px 18px }
-  /* the three-column scoreboard becomes two rows with the v between them,
-     because two long club names in a 1fr auto 1fr grid at 360px is two
-     columns of single letters */
-  .pv-teams{ grid-template-columns:1fr; gap:6px; text-align:center }
-  .pv-side, .pv-side.right{ text-align:center }
-  .pv-v{ font-size:11px }
-  .pv-prose p{ font-size:13.5px; line-height:1.65 }
+  .pv-sec{ padding:18px 12px; border-radius:12px }
+  .pv-hero{ padding-bottom:20px }
+  .pv-teams{ gap:8px; padding:0 10px }
+  .pv-when{ min-width:0 }
+  .pv-tname{ font-size:14px }
+  .pv-pos{ font-size:7.5px; padding:3px 6px }
+  .pv-trec{ display:none }
+  .pv-venue{ font-size:10px; max-width:90px }
+  .pv-prose p{ font-size:14px; line-height:1.65 }
   .pv-map{ aspect-ratio:4/3 }
+  .tp-table td, .tp-table .tp-n{ font-size:12px; padding:6px 5px }
+  .tp-table th{ padding:6px 5px }
 }
+
+/* ------------------------------------------- the scoreboard's table line ---
+   under each club's name on the box score (game.js placeLine, epinoia/tablepos.js) */
+.bx-scorehead .bt-pos{ display:block; margin-top:5px; font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:8.5px; font-weight:400; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2,inherit);
+  overflow:hidden; text-overflow:ellipsis }
+.bx-scorehead .bt-pos b, .bx-scorehead .bt-pos i{ font-weight:inherit; font-style:normal }
+@media (max-width:640px){ .bx-scorehead .bt-pos{ font-size:8px } .bx-scorehead .bt-pos i{ display:none } }
 
 /* ---------------------------------------------------------- the starting five ---
    The circles, the court and the faces are modern.css's — the game page loads it
