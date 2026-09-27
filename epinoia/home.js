@@ -144,7 +144,7 @@ function hexA(hex, a) {
 }
 
 const SECTION_OF = {
-  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec',
+  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec', records: '#recordsSec',
   games: '#gamesSec', season: '#seasonSec', merch: '#merchSec',
   socials: '#socialSec', takepart: '#takepartSec'
 };
@@ -896,6 +896,29 @@ async function stars() {
     team: m.teamsById.get(m.teamOf && m.teamOf.get(p.id)) || null,
     span: m.span
   };
+}
+
+/* ------------------------------------------------------------ the records ---
+   The season's single-game bests, a player's and a team's, under the Stars
+   (epinoia/records.js). The season is the one being shown, so a past season's
+   page shows that season's records. Hidden when the season has no finals. */
+async function records() {
+  const sec = $('#recordsSec');
+  const R = window.EpinoiaRecords;
+  if (!sec || !LEAGUE || !R) return;
+  const season = await seasonNow();
+  const comps = season ? season.comps.map(c => c.id) : [];
+  if (!comps.length) return;
+  const [data, teams] = await Promise.all([
+    R.load({ comps }),
+    api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour,colour_2').catch(() => [])
+  ]);
+  if (!data) return;
+  const teamsById = new Map((teams || []).map(t => [t.id, t]));
+  if (R.render(sec.querySelector('#records'), data, { teamsById, base: '', season: season.name })) {
+    sec.classList.remove('hide');
+    renumber();
+  }
 }
 
 /* ------------------------------------------------------- the fans' vote ---
@@ -1753,6 +1776,7 @@ function renumber() {
       gamesP,
       clubsP,
       wall.walled ? null : stars().catch(() => null),
+      wall.walled ? null : records().catch(() => null),
       wall.walled ? null : news().catch(() => null),
       wall.walled ? null : teamOfTheYear().catch(() => null),
       socialsP

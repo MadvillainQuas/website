@@ -194,6 +194,24 @@ html.tt-on .wrap > .top > .wm{ display:none }
 }
 /* a jump lands the title below the top of the window, not under the edge */
 html.tt-on .sec, html.tt-on section, html.tt-on .ep-hdr{ scroll-margin-top:12px }
+/* SKIP (nav.js): at the right of every section's heading but the last, a small key that jumps to
+   the next section. The headings are centred, so the right edge is free. */
+html.tt-on .sec-h:has(> .tt-skip), html.tt-on .ep-hdr:has(> .tt-skip){ position:relative }
+.tt-skip{ position:absolute; right:calc(var(--u, 4px)*3); top:50%; transform:translateY(-50%); z-index:2;
+  display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:0 9px; margin:0;
+  font-family:var(--f-micro); font-size:8px; letter-spacing:.1em; text-transform:uppercase; line-height:1;
+  color:var(--ink-2); background:var(--panel, transparent); border:1px solid var(--rule-2, currentColor);
+  cursor:pointer; transition:background .12s ease, color .12s ease }
+.tt-skip::after{ content:""; width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent;
+  border-top:5px solid currentColor }
+.tt-skip:hover, .tt-skip:focus-visible{ background:var(--lume); color:var(--on-accent, #000); border-color:var(--lume); outline:0 }
+html.tt-on .sec[tabindex="-1"]:focus, html.tt-on section[tabindex="-1"]:focus{ outline:none }
+@media (max-width:720px){
+  .tt-skip{ right:calc(var(--u, 4px)*2); top:4px; transform:none; min-height:24px; padding:0 8px; font-size:7.5px }
+  /* a phone's page headings sit close under the section above: room for the key over a long title */
+  html.tt-on :is(.ep-hdr, .hm .sec-h):has(> .tt-skip){ padding-top:34px }
+}
+@media print{ .tt-skip{ display:none } }
 
 /* ============================================================================
    4. SECTION TITLES. The plain accent bar under every centred title (.sec-h,

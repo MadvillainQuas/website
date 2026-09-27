@@ -2605,10 +2605,12 @@
       if (now === sig) return;
       sig = now;
       list.textContent = '';
+      const secs = [];
       heads.forEach((hd, i) => {
         if (!names[i]) return;
         const sec = hd.closest('.sec, section') || hd;
         if (!sec.id) sec.id = 'tt-sec-' + (i + 1);
+        secs.push({ hd, sec, name: names[i] });
         const li = el('li');
         const a = el('a');
         a.href = '#' + sec.id;
@@ -2619,7 +2621,37 @@
         list.appendChild(li);
       });
       box.hidden = list.children.length < 2;
+      /* SKIP: every section but the last carries a button on its heading that goes straight to
+         the next one, for a reader who knows they do not want this one and would otherwise
+         scroll through all of it */
+      secs.forEach((x, i) => {
+        let b = x.hd.querySelector(':scope > .tt-skip');
+        const next = secs[i + 1];
+        if (!next) { if (b) b.remove(); return; }
+        if (!b) {
+          b = el('button', 'tt-skip');
+          b.type = 'button';
+          b.appendChild(el('span', 't', 'Skip'));
+          x.hd.appendChild(b);
+        }
+        b.dataset.to = next.sec.id;
+        b.setAttribute('aria-label', 'Skip ' + x.name + ', go to ' + next.name);
+        b.title = 'Next: ' + next.name;
+      });
     };
+    /* caught on the way down, so a heading that opens and closes its section never sees it */
+    frame.addEventListener('click', e => {
+      const b = e.target && e.target.closest ? e.target.closest('.tt-skip') : null;
+      if (!b) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const to = document.getElementById(b.dataset.to || '');
+      if (!to || !to.scrollIntoView) return;
+      to.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+      /* the keyboard follows the eye: the next section takes focus, without a second jump */
+      if (!to.hasAttribute('tabindex')) to.setAttribute('tabindex', '-1');
+      try { to.focus({ preventScroll: true }); } catch (_) { /* the scroll is what matters */ }
+    }, true);
     paint();
     if (typeof MutationObserver === 'function') {
       let pend = 0;
