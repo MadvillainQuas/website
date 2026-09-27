@@ -23,12 +23,12 @@
 <meta name="twitter:card" content="summary">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=507"></script>
-<script src="../i18n.js?v=507"></script>
-<script src="../glyphs.js?v=507" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=507">
-<link rel="stylesheet" href="../kit/access.css?v=507">
-<link rel="stylesheet" href="../kit/nav.css?v=507">
+<script src="../appmode.js?v=522"></script>
+<script src="../i18n.js?v=522"></script>
+<script src="../glyphs.js?v=522" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=522">
+<link rel="stylesheet" href="../kit/access.css?v=522">
+<link rel="stylesheet" href="../kit/nav.css?v=522">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -156,10 +156,50 @@
   #seasonPick .ep-chip{text-decoration:none}
   .fixture{position:relative}
   .fixture .ep-follow.corner{top:10px;right:10px}
+  /* ---- the club, as dropdowns (fixtures.js pickSelect) ----
+     a teletext label over each, the box in the chosen club's colour down its edge */
+  .fpick{gap:12px;align-items:flex-end}
+  .fsel{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1 1 150px;--sc:var(--ink)}
+  .fsel .fl{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+  .fsel .fbox{position:relative;display:block}
+  .fsel .fbox::after{content:"";position:absolute;right:13px;top:50%;margin-top:-3px;pointer-events:none;
+    border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--ink)}
+  .fsel select{appearance:none;-webkit-appearance:none;width:100%;min-height:42px;padding:0 34px 0 14px;
+    font-family:var(--f-ui);font-weight:700;font-size:13px;color:var(--ink);cursor:pointer;
+    background:var(--panel);border:1px solid var(--rule-2);border-radius:0;
+    box-shadow:inset 6px 0 0 var(--sc),3px 3px 0 color-mix(in srgb,var(--sc) 35%,transparent);text-overflow:ellipsis}
+  .fsel select:hover{background:color-mix(in srgb,var(--sc) 7%,var(--panel))}
+  .fsel select:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+  .fsel.off{opacity:.45} .fsel.off select{cursor:not-allowed}
+  .freset{min-height:42px;padding:0 16px;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+    background:#0a0a0a;color:#ffe14d;border:0;cursor:pointer}
+  .freset:hover{background:#ffe14d;color:#0a0a0a}
+  @media (max-width:700px){ .fsel{flex:1 1 calc(50% - 12px);max-width:none} .freset{flex:0 0 auto;min-height:34px;margin-left:auto} }
+
+  /* ---- each fixture in its two clubs' colours (fixtures.js fixtureRow) ---- */
+  .fixture{--hc:var(--rule-2);--ac:var(--rule-2);
+    background:linear-gradient(90deg,color-mix(in srgb,var(--hc) 13%,transparent),transparent 40%,
+                               transparent 60%,color-mix(in srgb,var(--ac) 13%,transparent));
+    box-shadow:inset 6px 0 0 var(--hc),inset -6px 0 0 var(--ac)}
+  a.fixture:hover{background:linear-gradient(90deg,color-mix(in srgb,var(--hc) 22%,transparent),transparent 45%,
+                               transparent 55%,color-mix(in srgb,var(--ac) 22%,transparent))}
+  .fixture .sname{color:var(--ink-t,var(--ink))}
+  .fixture .badge{border:2px solid var(--ink-c);border-radius:50%;background:#fff}
+  .fixture .badge .bflood,.fixture .badge .btone{display:none}
+  /* the score on a black teletext block, the winner's side in yellow */
+  .fixture .bscore{background:#0a0a0a;color:#fff;padding:7px 14px 5px;gap:12px}
+  .fixture .bscore .win{color:#ffe14d}
+  .fixture .bscore .lose{color:#9aa39e}
+  .fixture .btime{background:#0a0a0a;color:#fff;padding:7px 14px 5px;font-size:24px}
+  .fixture .bstate{padding:2px 7px;border:1px solid var(--rule-2);background:var(--panel)}
+  .fixture .ldr .lv{color:var(--ink)}
+  /* each day on a teletext strip */
+  .day{background:#0a0a0a;color:#ffe14d;border-bottom:0;padding:9px calc(var(--u)*3) 8px;margin-top:calc(var(--u)*2)}
   /* the one-line members banner sits in the page's gutter like the filters do */
   #accessBanner > .ep-lock{width:auto;margin:calc(var(--u)*2) calc(var(--u)*3)}
 </style>
-<link rel="stylesheet" href="../kit/legibility.css?v=507">
+<link rel="stylesheet" href="../kit/teletext.css?v=522">
+<link rel="stylesheet" href="../kit/legibility.css?v=522">
 </head>
 <body>
 <div class="ep-frame">
@@ -187,7 +227,7 @@
          more than one season with games in it. -->
     <div class="frow" style="display:none"><span class="flabel">Season</span><span id="seasonPick"></span></div>
     <div class="frow" style="display:none"><span class="flabel">Competition</span><span id="compPick"></span></div>
-    <div class="frow"><span class="flabel">Club</span><span id="teamPick"></span></div>
+    <div class="frow fpick" id="teamPick"></div>
     <div class="frow"><span class="flabel">Show</span><span id="statePick"></span></div>
   </div>
 
@@ -199,17 +239,19 @@
     <span id="foot">Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=507" defer></script>
+<script src="../config.js?v=522" defer></script>
 <!-- memberships: the members-only banner, and a member's auth headers for data.js -->
-<script src="../access.js?v=507" defer></script>
-<script src="../follow.js?v=507" defer></script>
-<script src="../rt.js?v=507" defer></script>
-<script src="../season.js?v=507" defer></script>
-<script src="../bpm.js?v=507" defer></script>
-<script src="../data.js?v=507" defer></script>
-<script src="../seasonbar.js?v=507" defer></script>
-<script src="fixtures.js?v=507" defer></script>
-<script src="../nav.js?v=507" defer></script>
-<script src="../xscroll.js?v=507" defer></script>
+<script src="../access.js?v=522" defer></script>
+<script src="../follow.js?v=522" defer></script>
+<script src="../rt.js?v=522" defer></script>
+<script src="../season.js?v=522" defer></script>
+<script src="../bpm.js?v=522" defer></script>
+<script src="../data.js?v=522" defer></script>
+<script src="../seasonbar.js?v=522" defer></script>
+<!-- each row in its two clubs' colours, with text-safe inks -->
+<script src="../teamcolour.js?v=522" defer></script>
+<script src="fixtures.js?v=522" defer></script>
+<script src="../nav.js?v=522" defer></script>
+<script src="../xscroll.js?v=522" defer></script>
 </body>
 </html>

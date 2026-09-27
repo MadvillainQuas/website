@@ -203,6 +203,40 @@
 .news-cover{margin:calc(var(--u)) 0}
 .news-cover img{display:block;max-width:min(100%,420px);border:1px solid var(--rule-2)}
 
+/* ---------- the card, restyled: the print on top, the words on a panel under it ----------
+   (news.js card). The plate is the clubs (or the cover); the panel is the headline, with a
+   teletext kicker (what the piece is, and when) and the card's colour down its edge; the foot
+   is who wrote it and the call to read it. Hover lifts the card on its colour's shadow. */
+.news-card{display:flex;flex-direction:column;border:1px solid var(--rule-2);background:var(--panel);
+  box-shadow:4px 4px 0 color-mix(in srgb,var(--ink-c) 45%,transparent);transition:transform .14s ease,box-shadow .14s ease}
+.news-card:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 color-mix(in srgb,var(--ink-c) 60%,transparent)}
+.news-card .club-plate{border:0;border-bottom:3px solid #0a0a0a}
+.news-card.match .club-plate{aspect-ratio:16/8.5}
+.news-card.match:first-child .club-plate{aspect-ratio:16/8}
+.news-card .news-cbody{flex:1 1 auto;padding:12px 14px 6px;box-shadow:inset 5px 0 0 var(--ink-c)}
+.news-card .news-over{position:static;background:none;padding:0}
+.news-card.match .news-over{background:none}
+.news-kick{display:flex;flex-wrap:wrap;gap:0;margin:0 0 8px;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+.news-kick b{font-weight:400;padding:3px 7px;background:#0a0a0a;color:#ffe14d}
+.news-kick span{padding:3px 7px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--ink-2)}
+/* (an attribute selector, so the tests that read the headline's size find the size rules, not this one) */
+.news-card [class~=news-title]{color:var(--ink)}
+.news-card:hover [class~=news-title]{color:var(--ink)}
+.news-card .club-foot{padding:6px 14px 10px 19px;margin:0}
+.news-card .club-ed{margin-left:0;font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.news-card .club-name{margin-left:auto;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);font-weight:400;flex:none}
+/* the match print: crests in white discs, the names as plates, the score on a teletext block */
+.news-card.match .mt-row{top:0;bottom:0;padding:0 7%}
+.news-card.match .mt-crest{width:clamp(40px,19%,70px);border-radius:50%;background:#fff;padding:9%;box-sizing:border-box;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--c,#fff) 70%,#fff),3px 3px 0 3px rgba(0,0,0,.18);filter:none;color:#0a0a0a;font-size:18px}
+.news-card.match .mt-half.home .mt-crest,.news-card.match .mt-club.home .mt-crest{--c:inherit}
+/* the crests name the clubs and the headline names them in full: the clipped short names go */
+.news-card.match .mt-name{display:none}
+.news-card.match .mt-mid{background:#0a0a0a;border:0;padding:6px 12px 4px;text-shadow:none;font-size:clamp(22px,2.3vw,34px);margin:0 6px}
+.news-card.match [class~=news-title]{-webkit-line-clamp:3}
+.news-card.match .mt-mid .d{color:#666}
+.news-flag{background:#ffe14d;color:#0a0a0a}
+
 /* ---------------------------------------------------------------------------
    ON A PHONE, ALL FIVE FIT — TWO THEN THREE.
 
@@ -236,6 +270,10 @@
   .news-card .club-plate{aspect-ratio:1}
   .news-card:first-child .club-plate{aspect-ratio:4/3}
   .news-grid > .news-card:nth-child(-n+2) .club-plate{aspect-ratio:4/3}
+  /* the restyled match card: the print is a band now the headline has its own panel under it */
+  .news-card.match .club-plate,
+  .news-grid > .news-card.match:nth-child(-n+2) .club-plate,
+  .news-card.match:first-child .club-plate{aspect-ratio:16/8}
 
   .news-title{font-size:13px; line-height:1.25}
   .news-card:first-child .news-title{font-size:15px}
@@ -260,7 +298,7 @@
   .news-card .club-plate,
   .news-card:first-child .club-plate,
   .news-grid > .news-card:nth-child(-n+2) .club-plate{aspect-ratio:16/10}
-  .news-card.match .club-plate{aspect-ratio:16/11}
+  .news-card.match .club-plate{aspect-ratio:16/8}
   .news-title,
   .news-card:first-child .news-title,
   .news-card.match .news-title,

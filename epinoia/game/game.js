@@ -381,6 +381,30 @@ function resolveClash(teams, home, away) {
 window.__epinoiaClash = { hexToHsl, coloursClash, resolveClash };
 
 /* ------------------------------------------------------------------ render --- */
+/* THE SHOT CHARTS TAB: both sides side by side on the shared chart (shotchart.js gameHTML) -- a team, a
+   quarter, two or three, makes or misses and a player to choose, and each shot's who and when on hover.
+   The chart keeps those choices across the live redraws of this tab. Every shot is drawn on the side of
+   the arc it was worth (snapToValue), as the scorer's own chart does, which stays the fallback. */
+function shotsTab(d) {
+  const SC = window.EpinoiaShotChart;
+  const S = window.S;
+  if (!SC || !SC.gameHTML || !S || !d || !d.locs) return B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1);
+  const all = (S.events || []).filter(e => /^p[23]_/.test(e.t));
+  const shots = [], names = {};
+  all.forEach(e => {
+    const l = d.locs[e.id];
+    if (!l) return;
+    const three = e.t[1] === '3';
+    const fix = B.snapToValue ? B.snapToValue(l.x, l.y, three) : { x: l.x, y: l.y, moved: false };
+    shots.push({ x: fix.x, y: fix.y, moved: !!fix.moved, made: /made$/.test(e.t), three,
+                 team: e.team, pid: e.pid, period: e.period, clock: e.clock });
+    if (e.pid != null && !names[e.pid]) names[e.pid] = B.pname(e.pid);
+  });
+  const sides = [0, 1].map(t => ({ name: B.tname(t), colour: B.safeColour(S.teams[t].color, '#93f2bf') }));
+  const located = shots.length === all.length ? '' : shots.length + ' of ' + all.length + ' shots have a place on the court';
+  return '<div class="glass scw-host">' + SC.gameHTML({ shots, sides, names, located }) + '</div>';
+}
+
 const BODIES = {
   /* Built from the same derive() every other tab reads, so the prose and the
      tables are two views of one replay rather than two sources that have to be
@@ -390,7 +414,7 @@ const BODIES = {
       return '<div class="msg">The match report could not be loaded.</div>';
     }
     const g = window.EpinoiaGameFacts.brief(window.S, d, B);
-    const html = window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g));
+    const html = window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g), reportLook());
     /* THE SQUADS UNDER THE HEADLINE: both sides, every player who played, the starters first */
     const strip = squadsHTML(d);
     setTimeout(squadPhotos, 0);
@@ -408,7 +432,7 @@ const BODIES = {
     const hS = Object.assign({}, S, { events: (S.events || []).filter(e => (e.period || 1) <= 2), period: 2 });
     const hd = E.deriveGame(hS);
     const g = window.EpinoiaGameFacts.brief(hS, hd, B);
-    return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g));
+    return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g), reportLook());
   },
   /* TWO WAYS TO READ THE SAME NUMBERS. Traditional is the table; Modern is the five on the
      floor drawn on a half court with the bench beneath (modern.js). The choice is remembered. */
@@ -416,7 +440,7 @@ const BODIES = {
                 ? window.EpinoiaModernBox.render(d)
                 : B.qstripHTML(d) + B.matchDetailsHTML() + B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1)),
   pbp:     d => B.pbpHTML(d),
-  shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
+  shots:   d => shotsTab(d),
   adv:     d => B.advHTML(d),
   lineups: () => B.lineupsHTML(),
   /* GAMEVIS's Game Flow and Connections tabs, ported: both replay window.S themselves */
@@ -960,21 +984,19 @@ let lastBodyKey = '';
 
 function renderShell() {
   const S = window.S;
+  /* No state heading over the scoreboard: the scoreboard's own plate says live, final or the clock.
+     THE SCORESHEET IS THE RECORD, so it is offered on the scoreboard itself (renderHead), centred
+     under the score, once the game is final: a scoresheet of a game still being played is a
+     document that will be wrong by the time it is printed. */
   $('#view').innerHTML =
-    '<div class="ovhead"><div class="ovtitle" id="csHeading"></div>' +
-      /* THE SCORESHEET IS THE RECORD, so it is offered wherever the record is
-         read — not buried in an admin screen. Only once the game is final:
-         a scoresheet of a game still being played is a document that will be
-         wrong by the time it is printed. */
-      (S.status === 'final'
-        ? '<button class="tabbtn" id="csSheet" style="margin-left:auto">scoresheet · pdf</button>'
-        : '') + '</div>' +
     '<div id="csHead"></div>' +
     '<div class="tabrow" style="flex-wrap:wrap" data-i18n-ctx="gtab">' + tabStripHTML(tabsFor(S.status)) + '</div>' +
     '<div id="csBody"></div>';
 
-  const sheetBtn = document.getElementById('csSheet');
-  if (sheetBtn) sheetBtn.onclick = () => B.printScoresheet();
+  const headEl = document.getElementById('csHead');
+  if (headEl) headEl.addEventListener('click', e => {
+    if (e.target && e.target.closest && e.target.closest('#csSheet')) B.printScoresheet();
+  });
 
   document.querySelectorAll('#view .tabbtn[data-tab]').forEach(b => {
     b.onclick = () => {
@@ -2264,13 +2286,48 @@ function flashScore(el, d) {
   });
 }
 
+/* THE SCOREBOARD, DRESSED (boxscore.js scoreHeadHTML is the scorer's, generated, and not edited):
+   the competition on a teletext label along the top, the two clubs in their colours with their
+   crests large in ringed discs (decorateTeams), the score on a black block (the winner's in yellow
+   once it is final), the state on a plate under it, and the scoresheet under that when final. */
+function dressHead(el, d) {
+  const S = window.S || {};
+  const head = el.querySelector('.bx-scorehead');
+  if (!head) return;
+  const m = S.meta || {};
+  const col = [0, 1].map(t => inkOf(B.safeColour(((t ? m.away : m.home) || {}).colour || (S.teams[t] || {}).color, t ? '#8ff5ff' : '#93f2bf')));
+  head.style.setProperty('--ha', col[0]); head.style.setProperty('--hb', col[1]);
+  head.classList.add('bt-dressed', 'bt-' + (S.status || 'scheduled'));
+  const mid = head.children[1];
+  if (mid) {
+    mid.classList.add('bt-mid');
+    const row = mid.firstElementChild;
+    if (row) row.classList.add('bt-sc');
+    const sc = head.querySelectorAll('.bscore');
+    if (S.status === 'final' && sc.length === 2) {
+      const a = +d.score[0], b = +d.score[1];
+      if (a > b) sc[0].classList.add('w'); else if (b > a) sc[1].classList.add('w');
+    }
+    if (S.status === 'final' && !mid.querySelector('#csSheet')) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'csSheet'; b.className = 'bt-sheet'; b.textContent = 'Scoresheet · PDF';
+      mid.appendChild(b);
+    }
+  }
+  const comp = String(S.competition || '').split(' · ').filter((x, i, a) => x && a.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i).join(' · ');
+  if (comp && !head.querySelector('.bt-kick')) {
+    const k = document.createElement('div');
+    k.className = 'bt-kick';
+    k.textContent = comp;
+    head.insertBefore(k, head.firstChild);
+  }
+}
+
 function renderHead(d) {
   const S = window.S;
   d = d || window.derive();
   const el = $('#csHead');
-  if (el) { el.innerHTML = B.scoreHeadHTML(d); decorateTeams(el); flashScore(el, d); }
-  txt($('#csHeading'), S.status === 'final' ? 'final'
-                     : S.status === 'live' ? 'live' : 'scheduled');
+  if (el) { el.innerHTML = B.scoreHeadHTML(d); dressHead(el, d); decorateTeams(el); flashScore(el, d); }
   document.title = d.score[0] + '–' + d.score[1] + ' ' +
       S.teams[0].name + ' v ' + S.teams[1].name + ' · Epinoia';
 
@@ -2574,7 +2631,84 @@ function clubOf(t) {
   return (t === 0 ? m.home : m.away) || null;
 }
 
+/* WHERE EACH CLUB STANDS, under its name on the scoreboard (epinoia/tablepos.js): its place in the
+   league table of the season this game is in, read once and kept, because the scoreboard is drawn
+   again on every live update. Nothing is said until somebody in the table has played. */
+let TABLE = null, tableAsked = false;
+/* THE MATCH REPORT'S LOOK (reportview.js): the clubs' inks and crests, where each stands, the
+   competition named once, and the table with both clubs lit once it has been read */
+function reportLook() {
+  const m = (window.S && window.S.meta) || {}, S = window.S || {};
+  const home = m.home || {}, away = m.away || {};
+  tablePlace(0);                                   // asks for the table the first time
+  const col = [inkOf(B.safeColour(home.colour, '#93f2bf')), inkOf(B.safeColour(away.colour, '#8ff5ff'))];
+  const pl = [tablePlace(0), tablePlace(1)].map(p => (p ? p.text : ''));
+  const comp = String(S.competition || '').split(' · ').filter((x, i, a) => x && a.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i).join(' · ');
+  return {
+    colours: col, places: pl, competition: comp, hero: false,
+    crests: [home, away].map(c => (c.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(c.logo_path) : null)),
+    tableHTML: repTableHTML(col)
+  };
+}
+function repTableHTML(col) {
+  const m = (window.S && window.S.meta) || {}, TP = window.EpinoiaTablePos;
+  if (!TP || !TABLE) return '';
+  const c = col || [inkOf(B.safeColour((m.home || {}).colour, '#93f2bf')), inkOf(B.safeColour((m.away || {}).colour, '#8ff5ff'))];
+  return TP.tableHTML(TABLE, [m.homeTeamId, m.awayTeamId],
+    { base: '../', colours: { [m.homeTeamId]: c[0], [m.awayTeamId]: c[1] } });
+}
+/* the table arrived after the report was drawn: into its slot, and the places onto the hero */
+function fillReport() {
+  const slot = document.getElementById('repTable');
+  if (slot && !slot.querySelector('table')) {
+    const html = repTableHTML();
+    if (html) { slot.insertAdjacentHTML('beforeend', html); slot.hidden = false; }
+  }
+  document.querySelectorAll('.rep .rh-side').forEach((side, t) => {
+    if (side.querySelector('.rh-pos')) return;
+    const p = tablePlace(t);
+    if (!p) return;
+    const d = document.createElement('div'); d.className = 'rh-pos'; d.textContent = p.text;
+    side.appendChild(d);
+  });
+}
+function tablePlace(t) {
+  const m = window.S && window.S.meta;
+  const TP = window.EpinoiaTablePos;
+  if (!m || !TP) return null;
+  if (!tableAsked) {
+    tableAsked = true;
+    if (m.competitionId) {
+      TP.load(api, m.competitionId).then(T => {
+        TABLE = T;
+        const head = document.querySelector('#csHead');
+        if (T && head) head.querySelectorAll('.bx-scorehead [data-team-slot]').forEach(placeLine);
+        if (T) fillReport();
+      }).catch(() => { /* no line */ });
+    }
+    return null;
+  }
+  const id = t === 0 ? m.homeTeamId : m.awayTeamId;
+  return TABLE && id ? TP.place(TABLE, id) : null;
+}
+const TP_ordinal = n => (window.EpinoiaTablePos ? window.EpinoiaTablePos.ordinal(n) : String(n));
+function placeLine(node) {
+  if (!node.closest('.bx-scorehead') || node.querySelector('.bt-pos')) return;
+  const pl = tablePlace(+node.dataset.teamSlot);
+  if (!pl) return;
+  /* "17th" and " in B.LEAGUE Premier", so a phone can keep the first and let the second go */
+  const s = document.createElement('span');
+  s.className = 'bt-pos';
+  s.title = pl.text;
+  const rank = TP_ordinal(pl.rank);
+  const k = document.createElement('b'); k.textContent = rank;
+  const w = document.createElement('i'); w.textContent = pl.text.slice(rank.length);
+  s.append(k, w);
+  node.appendChild(s);
+}
+
 function decorateTeams(scope) {
+  scope.querySelectorAll('[data-team-slot]').forEach(placeLineLater);
   scope.querySelectorAll('[data-team-slot]').forEach(node => {
     if (node.dataset.teamDone === '1') return;
     const t = +node.dataset.teamSlot;
@@ -2587,19 +2721,34 @@ function decorateTeams(scope) {
 
     /* the crest, when the club actually has one */
     const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(club.logo_path) : null;
+    const onBoard = !!node.closest('.bx-scorehead');
+    if (onBoard) {
+      /* on the scoreboard: the club's colours on the side, the crest large in a ringed disc */
+      const TC = window.EpinoiaTeamColour;
+      if (TC && TC.card) TC.card(node, club.colour || (t ? '#8ff5ff' : '#93f2bf'), club.colour_2);
+    }
     if (crestUrl) {
       const img = document.createElement('img');
       img.src = crestUrl;
       img.alt = '';
-      img.style.cssText = TEAM_CREST_CSS;
-      img.addEventListener('error', () => img.remove());
-      node.appendChild(img);
+      if (onBoard) {
+        const disc = document.createElement('span');
+        disc.className = 'bt-disc';
+        img.addEventListener('error', () => disc.remove());
+        disc.appendChild(img);
+        node.appendChild(disc);
+      } else {
+        img.style.cssText = TEAM_CREST_CSS;
+        img.addEventListener('error', () => img.remove());
+        node.appendChild(img);
+      }
     }
 
     if (club.slug) {
       const a = document.createElement('a');
       a.href = '../t/?t=' + encodeURIComponent(club.slug);
       a.textContent = label;
+      if (onBoard) a.className = 'bt-name';
       a.style.cssText = 'color:inherit;text-decoration:none';
       a.addEventListener('mouseenter', () => { a.style.textDecoration = 'underline'; });
       a.addEventListener('mouseleave', () => { a.style.textDecoration = 'none'; });
@@ -2607,8 +2756,11 @@ function decorateTeams(scope) {
     } else {
       node.appendChild(document.createTextNode(label));
     }
+    placeLine(node);
   });
 }
+/* a slot already decorated (a redraw that kept it) still gets its line once the table arrives */
+function placeLineLater(node) { if (node.dataset.teamDone === '1') placeLine(node); }
 
 function render() {
   const S = window.S;
@@ -3260,18 +3412,32 @@ async function renderPreview() {
      only extra request is the clubs' releases, and a league without that table yet
      gets an empty list rather than a broken preview. The names are already on the
      season rows from the playerMeta merge above, so nobody is asked for twice. */
-  const out = await outFor(season, m);
-  const pin = await venuePin(m);
+  const [out, pin, table] = await Promise.all([
+    outFor(season, m),
+    venuePin(m),
+    /* where the two clubs stand, and the table they stand in (epinoia/tablepos.js) */
+    window.EpinoiaTablePos && m.competitionId
+      ? window.EpinoiaTablePos.load(api, m.competitionId).catch(() => null) : null
+  ]);
+  const TP = window.EpinoiaTablePos;
+  const placeOf = id => (TP && table && id ? TP.place(table, id) : null);
+  const crestOf = c => (c && c.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(c.logo_path) : null);
 
   /* Names come from the club rows, not the roster snapshot — a scheduled game
      has no snapshot, because nothing has been frozen yet. */
   const home = m.home || {}, away = m.away || {};
 
   if (walled) return;                   // the paywall went up meanwhile
+  const colourA = inkOf(B.safeColour(home.colour, '#93f2bf')), colourB = inkOf(B.safeColour(away.colour, '#8ff5ff'));
+  const pA = placeOf(m.homeTeamId), pB = placeOf(m.awayTeamId);
   $('#view').innerHTML = window.EpinoiaPreview.render({
     nameA: home.name || S.teams[0].name, nameB: away.name || S.teams[1].name,
-    colourA: inkOf(B.safeColour(home.colour, '#93f2bf')),
-    colourB: inkOf(B.safeColour(away.colour, '#8ff5ff')),
+    colourA, colourB,
+    crestA: crestOf(home), crestB: crestOf(away),
+    placeA: pA && pA.text, placeB: pB && pB.text,
+    tableHTML: TP && table ? TP.tableHTML(table, [m.homeTeamId, m.awayTeamId],
+      { base: '../', colours: { [m.homeTeamId]: colourA, [m.awayTeamId]: colourB } }) : '',
+    tableName: table && table.comp ? table.comp.name : '',
     slugA: home.slug || null, slugB: away.slug || null,
     teamA: teamRow(m.homeTeamId), teamB: teamRow(m.awayTeamId),
     starsA: starsOf(m.homeTeamId), starsB: starsOf(m.awayTeamId),

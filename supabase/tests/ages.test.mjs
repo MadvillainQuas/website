@@ -43,10 +43,10 @@ console.log('\n-- loadBio (the stats tables’ AGE / HT / WT)');
 {
   const mem = () => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = v; } }; };
   const calls = [];
-  const f = async (url, o) => { const ids = JSON.parse(o.body).p_ids; calls.push({ url, ids }); return { ok: true, json: async () => ids.filter(i => i !== 'empty').map(i => ({ player_id: i, height_cm: 198, weight_kg: null, age: 27 })) }; };
+  const f = async (url, o) => { const ids = JSON.parse(o.body).p_ids; calls.push({ url, ids }); return { ok: true, json: async () => ids.filter(i => i !== 'empty').map(i => ({ player_id: i, height_cm: 198, weight_kg: null, age: 27, birth_year: 1999 })) }; };
   const st = mem();
   const got = await A.loadBio(CFG, ['a', 'b', 'empty'], f, st, 1000);
-  ok('one call to player_bio; the answers are {id: {h, w, a}}', calls.length === 1 && calls[0].url === 'https://x.test/rest/v1/rpc/player_bio' && got.a.h === 198 && got.a.w === null && got.a.a === 27 && !('empty' in got), { calls, got });
+  ok('one call to player_bio; the answers are {id: {h, w, a, y}}', calls.length === 1 && calls[0].url === 'https://x.test/rest/v1/rpc/player_bio' && got.a.h === 198 && got.a.w === null && got.a.a === 27 && got.a.y === 1999 && !('empty' in got), { calls, got });
   const again = await A.loadBio(CFG, ['a', 'b', 'empty', 'c'], f, st, 1000 + 60000);
   ok('within half an hour only the new id is asked about; a player with nothing is remembered as nothing', calls.length === 2 && calls[1].ids.join() === 'c' && again.a.a === 27 && !('empty' in again), calls);
   await A.loadBio(CFG, ['a'], f, st, 1000 + 31 * 60000);
@@ -57,7 +57,7 @@ console.log('\n-- loadBio (the stats tables’ AGE / HT / WT)');
   const st2 = mem();
   const none = await A.loadBio(CFG, ['a'], async () => ({ ok: false, status: 404 }), st2, 5);
   ok('the function AND the plain fallback both refused: nothing, no throw, and nothing remembered (so the next visit asks again)',
-     Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v1') === null);
+     Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v2') === null);
   ok('a blocked store does not stop it', Object.keys(await A.loadBio(CFG, ['a'], f, { getItem() { throw new Error('no'); }, setItem() { throw new Error('no'); } }, 5)).length === 1);
 }
 
@@ -75,15 +75,26 @@ console.log('\n-- loadBio falls back to the plain, already-public columns before
   const st = mem();
   const got = await A.loadBio(CFG, ['a', 'b', 'c', 'nowhere'], f, st, new Date('2026-06-15').getTime());
   ok('the function is tried first, and refused (PGRST202/404) falls back to a plain read of players', plainCalls.length === 1 && plainCalls[0].includes('/rest/v1/players?id=in.'), plainCalls);
-  ok('height and weight come through exactly, and the age is this year minus the year on file (2026 − 1996)', got.a.h === 198 && got.a.w === 95 && got.a.a === 30, got);
+  ok('height and weight come through exactly, and the birth year as a year - never turned into an age', got.a.h === 198 && got.a.w === 95 && got.a.a === null && got.a.y === 1996, got);
   ok('a player with none of the three, and one never returned at all, are simply absent', !('b' in got) && !('nowhere' in got), got);
-  ok('one with only a height has that and no age', got.c.h === 210 && got.c.a === null, got.c);
+  ok('one with only a height has that and no age or year', got.c.h === 210 && got.c.a === null && got.c.y === null, got.c);
   const again = await A.loadBio(CFG, ['a', 'd'], f, st, new Date('2026-06-15').getTime() + 60000);
   ok('cached, like the function path: only the new id asks again', plainCalls.length === 2 && plainCalls[1].includes('(d)'), plainCalls);
   ok('...and the cached one still answers', again.a.h === 198);
   const st2 = mem();
   const none = await A.loadBio(CFG, ['x'], async (u) => (u.includes('/rpc/') ? { ok: false, status: 404 } : { ok: false, status: 500 }), st2, 5);
-  ok('the plain read itself failing (not just an empty answer) is not cached either', Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v1') === null);
+  ok('the plain read itself failing (not just an empty answer) is not cached either', Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v2') === null);
+}
+
+console.log('\n-- bioColumns: each column only where the players have something for it');
+{
+  const C = A.bioColumns;
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  ok('birth years and nothing else: BORN, and no AGE, HT or WT', same(C([{ y: 1996 }, { y: 2001 }, null]), { age: false, born: true, ht: false, wt: false }));
+  ok('heights but no weights: HT and no WT', same(C([{ h: 198 }, { h: 0, w: 0 }]), { age: false, born: false, ht: true, wt: false }));
+  ok('an exact age anywhere: AGE, and no BORN beside it', same(C([{ a: 27, y: 1999 }, { y: 2001 }]), { age: true, born: false, ht: false, wt: false }));
+  ok('nothing at all (or nothing answered yet): no columns', same(C([]), { age: false, born: false, ht: false, wt: false }) && same(C([null, undefined, {}]), { age: false, born: false, ht: false, wt: false }));
+  ok('ageFromYear is this year minus the year', A.ageFromYear(1996, new Date('2026-06-15').getTime()) === 30 && A.ageFromYear(null) === null);
 }
 
 console.log('\n-- the words');
@@ -104,12 +115,14 @@ console.log('\n-- a squad’s averages');
 console.log('\n-- the pages');
 const player = rd('epinoia', 'p', 'player.js'), team = rd('epinoia', 't', 'team.js');
 ok('the player header asks for his age, adds it beside the year, and shows height and weight in the reader\'s units', /EpinoiaAges\.load\(CFG, \[pl\.id\]\)/.test(player) && /vitalsAge = m\[pl\.id\]/.test(player) && /item\('age', String\(vitalsAge\)\)/.test(player) && /U\.height\(pl\.height_cm\)/.test(player) && /U\.weight\(pl\.weight_kg\)/.test(player) && /item\('born', String\(pl\.birth_year\)\)/.test(player));
-ok('the roster has an AGE column and a squad-average row', /\['#', 'PLAYER', 'POS', 'AGE'\]/.test(team) && /function squadAverages/.test(team) && /squadAverages\(squad, AGES\)/.test(team));
+ok('the roster has an AGE column and a squad-average row', /\['#', 'PLAYER', 'POS'\]\.concat\(plan\.age \? \['AGE'\] : plan\.born \? \['BORN'\] : \[\]\)/.test(team) && /function squadAverages/.test(team) && /squadAverages\(squad, AGES, plan\)/.test(team));
 ok('both pages load ages.js', /ages\.js\?v=\d+/.test(rd('epinoia', 'p', 'index.html')) && /ages\.js\?v=\d+/.test(rd('epinoia', 't', 'index.html')));
 
 const FT = rd('epinoia', 'fulltable.js');
-ok('the player tables have AGE, HT and WT right after the name, not in the drawer, and none on a team or career table',
-   /k: 'bio_age'/.test(FT) && /idCols\.slice\(0, 2\)\.concat\(\s*BIO_COLS,/.test(FT) && /const BIO = !isTeam && !opts\.nameLabel/.test(FT));
+ok('the player tables have AGE / BORN, HT and WT right after the name, not in the drawer, and none on a team or career table',
+   /k: 'bio_age'/.test(FT) && /k: 'bio_born'/.test(FT) && /idCols\.slice\(0, 2\)\.concat\(\s*BIO_COLS\.filter\(c => bioShown\[c\.show\]\),/.test(FT) && /const BIO = !isTeam && !opts\.nameLabel/.test(FT));
+ok('...each shown only where the table has something for it (bioColumns over the rows held)', /bioShown = bioWhich\(list\)/.test(FT) && /A\.bioColumns\(list\.map/.test(FT));
+ok('the roster decides its columns the same way, and a manager keeps every measurement box', /bioColumns\(squadP\.map/.test(team) && /MEASURES\.filter\(m => canEdit \|\|/.test(team));
 ok('the league, stats and scouting pages load ages.js before fulltable.js', ['l', 'scouting', 'stats'].every(d => {
   const h = rd('epinoia', d, 'index.html'); return h.indexOf('../ages.js') > -1 && h.indexOf('../ages.js') < h.indexOf('../fulltable.js'); }));
 

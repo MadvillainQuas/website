@@ -87,6 +87,49 @@ function onAccessChange() {
   }
 }
 
+/* a labelled dropdown, edged in a colour (the fixtures page's control) */
+function pickSelect(label, opts, value, onChange, colour) {
+  const f = el('label', 'fsel');
+  if (colour) f.style.setProperty('--sc', colour);
+  const s = el('select');
+  opts.forEach(([v, t]) => { const op = el('option', null, t); op.value = v; if (v === value) op.selected = true; s.appendChild(op); });
+  s.addEventListener('change', () => onChange(s.value, f));
+  f.append(el('span', 'fl', label), el('span', 'fbox'));
+  f.lastChild.appendChild(s);
+  return f;
+}
+
+/* ON / OFF, as two cards and the swing between them: the team's net rating with the player on the
+   floor and off it, the ratings and minutes under each, and the difference in the middle */
+function onOffPanel(host, stints, playerId, name) {
+  const L = window.EpinoiaLineups;
+  const h = $(host);
+  h.textContent = '';
+  if (!L || !stints || !stints.length || !playerId) return;
+  const oo = L.onOff(stints, playerId);
+  const f1 = v => (v == null || !isFinite(v) ? '—' : (+v).toFixed(1));
+  const sg = v => (v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(1));
+  const cls = v => (v == null || !isFinite(v) ? '' : v > 0 ? ' pos' : v < 0 ? ' neg' : '');
+  const card = (k, side, sub) => {
+    const c = el('div', 'oo-card ' + k);
+    c.append(el('div', 'oo-k', k === 'on' ? name + ' on the floor' : name + ' off the floor'),
+             el('div', 'oo-v' + cls(side.net), sg(side.net)),
+             el('div', 'oo-s', sub));
+    const row = el('div', 'oo-row');
+    [['off. rating', f1(side.ortg)], ['def. rating', f1(side.drtg)], ['minutes', f1(side.mins)]].forEach(([l, v]) => {
+      const d = el('div'); d.append(el('b', null, v), el('i', null, l)); row.appendChild(d);
+    });
+    c.appendChild(row);
+    return c;
+  };
+  const wrap = el('div', 'oo');
+  const sw = el('div', 'oo-swing');
+  sw.append(el('div', 'k', 'swing'), el('div', 'n', sg(oo.diff.net)), el('div', 'k', 'on minus off'));
+  wrap.append(card('on', oo.on, 'team net rating per 100 possessions'), sw,
+              card('off', oo.off, 'team net rating per 100 possessions'));
+  h.appendChild(wrap);
+}
+
 function note(host, msg) {
   const h = $(host);
   h.textContent = '';
@@ -134,7 +177,7 @@ async function fetchTeam(team) {
 function paint(team, d) {
   document.documentElement.style.setProperty('--team-a', team.colour || '#93f2bf');
   $('#ctx').textContent = (league ? league.name + ' · ' : '') + team.name;
-  document.title = team.name + ' WOWY · Epinoia';
+  document.title = team.name + ' · WOWY / Lineups · Epinoia';
 
   if (!d.games.length || !d.stints.length) {
     $('#subjbar').textContent = '';
@@ -165,23 +208,11 @@ function paint(team, d) {
   let subject = d.roster[0];
   const bar = $('#subjbar');
   bar.textContent = '';
-  const rail = el('div', 'lu-chips');
-  rail.style.padding = '0';
-  d.roster.forEach(id => {
+  const nameOf = id => ((d.meta[id] || {}).name || 'Player');
+  bar.appendChild(pickSelect('Player', d.roster.map(id => {
     const m = d.meta[id] || {};
-    const b = el('button', 'ep-chip' + (id === subject ? ' on' : ''), m.name || 'Player');
-    b.type = 'button';
-    if (m.jersey) b.title = '#' + m.jersey + ' ' + (m.position || '');
-    b.addEventListener('click', () => {
-      if (id === subject) return;
-      subject = id;
-      rail.querySelectorAll('.ep-chip').forEach(c => c.classList.remove('on'));
-      b.classList.add('on');
-      drawSubject();
-    });
-    rail.appendChild(b);
-  });
-  bar.appendChild(rail);
+    return [id, (m.jersey ? '#' + m.jersey + ' ' : '') + (m.name || 'Player')];
+  }), subject, v => { if (v && v !== subject) { subject = v; drawSubject(); } }, team.colour));
 
   function drawSubject() {
     /* teammates are whoever actually shared a stint with him — a roster listing
@@ -199,7 +230,8 @@ function paint(team, d) {
         playerId: subject, meta: d.meta, teammates: [...mates]
       });
     }
-    window.EpinoiaWowy.onOffTiles('#onoff', d.stints, subject);
+    onOffPanel('#onoff', d.stints, subject, nameOf(subject));
+
   }
   drawSubject();
 
@@ -213,8 +245,8 @@ function paint(team, d) {
 async function select(team) {
   const token = ++loadToken;
   current = team;
-  $('#teamrail').querySelectorAll('button').forEach(b =>
-    b.classList.toggle('on', b.dataset.id === team.id));
+  const ts = $('#teamrail select');
+  if (ts) { ts.value = team.id; ts.closest('.fsel').style.setProperty('--sc', team.colour || 'var(--ink)'); }
   /* the URL carries the team, so a chosen view is linkable and survives a
      reload — the page is meant to be sent to someone */
   const u = new URL(location.href);
@@ -273,20 +305,14 @@ async function select(team) {
       return;
     }
 
-    const railHost = $('#teamrail');
-    teams.forEach(t => {
-      const b = el('button', 'ep-chip');
-      b.type = 'button'; b.dataset.id = t.id;
-      const sw = el('span', 'swatch');
-      sw.style.background = t.colour || 'var(--lume)';
-      b.append(sw, document.createTextNode(t.short_name || t.name));
-      b.title = t.name;
-      b.addEventListener('click', () => select(t));
-      railHost.appendChild(b);
-    });
-
     const wanted = qp.get('t');
-    await select(teams.find(t => t.slug === wanted) || teams[0]);
+    const first = teams.find(t => t.slug === wanted) || teams[0];
+    const railHost = $('#teamrail');
+    railHost.appendChild(pickSelect('Team', teams.map(t => [t.id, t.name]), first.id, v => {
+      const t = teams.find(x => x.id === v);
+      if (t) select(t);
+    }, first.colour));
+    await select(first);
   } catch (e) {
     console.warn('[wowy]', e);
     note('#withpanel', 'Could not load: ' + (e.message || e));

@@ -77,13 +77,16 @@ console.log('\n-- player_bio: a page of players in one call');
   const B = await one("insert into public.players (first_name, birth_date, height_cm, weight_kg) values ('Bio', '1990-01-01', 198, 95) returning id");
   const H = await one("insert into public.players (first_name, height_cm) values ('HeightOnly', 201) returning id");
   const E = await one("insert into public.players (first_name) values ('Empty') returning id");
+  const Y = await one("insert into public.players (first_name, birth_year) values ('YearOnly', 2001) returning id");
   const M = await one("insert into public.players (first_name, birth_date, height_cm, is_minor, public_consent) values ('Kid', '1988-01-01', 190, true, false) returning id");
-  const rows = (await db.query('select * from public.player_bio($1::uuid[])', [[B.id, H.id, E.id, M.id]])).rows;
+  const rows = (await db.query('select * from public.player_bio($1::uuid[])', [[B.id, H.id, E.id, M.id, Y.id]])).rows;
   const by = id => rows.find(r => r.player_id === id);
   ok('height, weight and the age worked out today, in one row', by(B.id) && by(B.id).height_cm === 198 && by(B.id).weight_kg === 95 && by(B.id).age === new Date().getFullYear() - 1990 - ((new Date().getMonth() > 0 || new Date().getDate() >= 1) ? 0 : 1), rows);
   ok('a player with only a height has that and no age', by(H.id) && by(H.id).height_cm === 201 && by(H.id).age === null);
   ok('a player with nothing is left out, and so is a withheld one', !by(E.id) && !by(M.id), rows);
-  ok('the answer has no date of birth in it', !rows.some(r => 'birth_date' in r || 'birth_year' in r));
+  ok('the answer has no date of birth in it', !rows.some(r => 'birth_date' in r));
+  ok('a player with only a birth year is answered for: the year, and no age', by(Y.id) && by(Y.id).birth_year === 2001 && by(Y.id).age === null, rows);
+  ok('...and the year rides along with an exact age', by(B.id).birth_year === 1990, rows);
   ok('no ids: nothing', (await db.query('select * from public.player_bio(null)')).rows.length === 0);
   ok('executable by the browser roles', (await one("select has_function_privilege('anon', 'public.player_bio(uuid[])', 'execute') a")).a === true);
 }

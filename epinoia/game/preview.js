@@ -460,19 +460,50 @@ function whenText(iso) {
   };
 }
 
+/* ONE STAT, BOTH CLUBS: the value each side has, in its own colour, either side of what it is, and the
+   better one marked. `low` is a stat where less is better (points allowed). */
+function vsRow(label, sub, a, b, low) {
+  const av = num(a), bv = num(b);
+  const better = av == null || bv == null || av === bv ? 0 : ((low ? av < bv : av > bv) ? 1 : -1);
+  return '<div class="pv-vs">' +
+    '<b class="a' + (better > 0 ? ' win' : '') + '">' + one(av) + '</b>' +
+    '<span class="k">' + esc(label) + (sub ? '<i>' + esc(sub) + '</i>' : '') + '</span>' +
+    '<b class="b' + (better < 0 ? ' win' : '') + '">' + one(bv) + '</b></div>';
+}
+
+/* "B.LEAGUE One · B.LEAGUE One" is a competition named after its league: said once */
+function compLine(c) {
+  const parts = String(c || '').split(' · ').map(x => x.trim()).filter(Boolean);
+  return parts.filter((x, i) => parts.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i).join(' · ');
+}
+
 function render(ctx) {
   const nameA = ctx.nameA, nameB = ctx.nameB;
   const A = ctx.teamA, B = ctx.teamB;
   const w = whenText(ctx.tipoff);
   const scope = ctx.leagueSlug ? '?l=' + encodeURIComponent(ctx.leagueSlug) : '';
+  const d = ctx.tipoff ? new Date(ctx.tipoff) : null;
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dayShort = d && !isNaN(d) ? DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] : 'Date TBC';
 
   const record = t => (t && t.gp)
-    ? t.gp + ' games · ' + one(t.ppg) + ' for, ' + one(t.papg) + ' against'
+    ? t.gp + (t.gp === 1 ? ' game' : ' games') + ' · ' + one(t.ppg) + ' for, ' + one(t.papg) + ' against'
     : 'no games yet this season';
 
   const teamLink = (slug, name) => slug
     ? '<a href="../t/?t=' + esc(encodeURIComponent(slug)) + '">' + esc(name) + '</a>'
     : esc(name);
+  const crest = url => url
+    ? '<span class="pv-crest"><img src="' + esc(url) + '" alt="" onerror="this.parentNode.remove()"></span>' : '';
+  /* the club: crest, name, where it stands in the table, and its season so far */
+  const side = (k, slug, name, colour, url, place, t) =>
+    '<div class="pv-side ' + k + '" style="--pc:' + esc(colour) + '">' +
+      crest(url) +
+      '<div class="pv-tname">' + teamLink(slug, name) + '</div>' +
+      (place ? '<div class="pv-pos">' + esc(place) + '</div>' : '') +
+      '<div class="pv-trec">' + esc(record(t)) + '</div>' +
+    '</div>';
 
   const paras = narrative(ctx).map(p => '<p>' + p + '</p>').join('');
   const ffOff = FACTORS.map(f => factorRow(f, A && A[f.off], B && B[f.off])).join('');
@@ -481,28 +512,65 @@ function render(ctx) {
   const stars = (ctx.starsA || []).slice(0, 2).map(p => playerCard(p, ctx.colourA, nameA))
     .concat((ctx.starsB || []).slice(0, 2).map(p => playerCard(p, ctx.colourB, nameB)))
     .join('');
+  const comp = compLine(ctx.competition);
+  const head = (t, note) => '<div class="pv-h"><h2>' + t + '</h2>' + (note ? '<span class="pv-note">' + esc(note) + '</span>' : '') + '</div>';
 
-  return '<div class="pv">' +
+  return '<div class="pv" style="--pa:' + esc(ctx.colourA) + ';--pb:' + esc(ctx.colourB) + '">' +
 
     '<div class="pv-hero">' +
-      '<div class="pv-badge">preview &amp; info</div>' +
+      '<div class="pv-badge"><span>PREVIEW</span>' + (comp ? '<span>' + esc(comp) + '</span>' : '') + '</div>' +
       '<div class="pv-teams">' +
-        '<div class="pv-side" style="--pc:' + esc(ctx.colourA) + '">' +
-          '<div class="pv-tname">' + teamLink(ctx.slugA, nameA) + '</div>' +
-          '<div class="pv-trec">' + esc(record(A)) + '</div></div>' +
-        '<div class="pv-v">v</div>' +
-        '<div class="pv-side right" style="--pc:' + esc(ctx.colourB) + '">' +
-          '<div class="pv-tname">' + teamLink(ctx.slugB, nameB) + '</div>' +
-          '<div class="pv-trec">' + esc(record(B)) + '</div></div>' +
+        side('left', ctx.slugA, nameA, ctx.colourA, ctx.crestA, ctx.placeA, A) +
+        '<div class="pv-when">' +
+          '<span class="pv-day">' + esc(dayShort.toUpperCase()) + '</span>' +
+          '<span class="pv-time">' + esc(w.time) + '</span>' +
+          '<span class="pv-v">vs</span>' +
+          (ctx.venue ? '<span class="pv-venue">' + esc(ctx.venue) + '</span>' : '') +
+        '</div>' +
+        side('right', ctx.slugB, nameB, ctx.colourB, ctx.crestB, ctx.placeB, B) +
       '</div>' +
-      (ctx.competition ? '<div class="pv-comp">' + esc(ctx.competition) + '</div>' : '') +
     '</div>' +
 
     startersHTML(ctx) +
     injuriesHTML(ctx) +
 
-    '<section class="pv-sec">' +
-      '<h2>How to get there</h2>' +
+    (paras
+      ? '<section class="pv-sec">' + head('The story so far') +
+        '<div class="pv-prose" data-i18n-ctx="report">' + paras + '</div></section>'
+      : '') +
+
+    /* THE TABLE, with both clubs lit (epinoia/tablepos.js); only once somebody in it has played */
+    (ctx.tableHTML
+      ? '<section class="pv-sec pv-table">' + head('The table', ctx.tableName || '') + ctx.tableHTML +
+        (ctx.leagueSlug ? '<a class="pv-more" href="../l/' + scope + '">the full table ↗</a>' : '') + '</section>'
+      : '') +
+
+    '<section class="pv-sec">' + head('Key team stats') +
+      '<div class="pv-key">' +
+        '<span class="a">' + esc(nameA) + '</span>' +
+        '<span class="b">' + esc(nameB) + '</span>' +
+      '</div>' +
+      '<div class="pv-vss">' +
+        vsRow('Offensive rating', 'points per 100', A && A.ortg, B && B.ortg) +
+        vsRow('Defensive rating', 'allowed per 100', A && A.drtg, B && B.drtg, true) +
+        vsRow('Net rating', 'per 100', A && A.net, B && B.net) +
+        vsRow('Pace', 'possessions per 40', A && A.pace, B && B.pace) +
+      '</div>' +
+      '<h3 class="pv-sub">Four factors — with the ball</h3>' +
+      '<div class="pv-factors">' + ffOff + '</div>' +
+      '<h3 class="pv-sub">Four factors — without it</h3>' +
+      '<div class="pv-factors">' + ffDef + '</div>' +
+      '<a class="pv-more" href="../stats/' + scope + '">every team stat ↗</a>' +
+    '</section>' +
+
+    (stars
+      ? '<section class="pv-sec">' + head('Key players') +
+        '<div class="pv-players">' + stars + '</div>' +
+        '<a class="pv-more" href="../stats/' + scope + '">every player ↗</a>' +
+        '</section>'
+      : '') +
+
+    '<section class="pv-sec">' + head('How to get there') +
       '<div class="pv-tiles two">' +
         tile('tip-off', w.time, w.day) +
         tile('venue', ctx.venue || 'To be confirmed', ctx.address || '') +
@@ -516,42 +584,11 @@ function render(ctx) {
       '<div class="pv-go" id="pvGo"></div>' +
     '</section>' +
 
-    (paras
-      ? '<section class="pv-sec"><h2>The story so far</h2>' +
-        '<div class="pv-prose" data-i18n-ctx="report">' + paras + '</div></section>'
-      : '') +
-
-    '<section class="pv-sec">' +
-      '<h2>Key team stats</h2>' +
-      '<div class="pv-key">' +
-        '<span style="--pc:' + esc(ctx.colourA) + '">' + esc(nameA) + '</span>' +
-        '<span style="--pc:' + esc(ctx.colourB) + '">' + esc(nameB) + '</span>' +
-      '</div>' +
-      '<div class="pv-tiles">' +
-        tile('offensive rating', one(A && A.ortg) + ' / ' + one(B && B.ortg), 'points per 100') +
-        tile('defensive rating', one(A && A.drtg) + ' / ' + one(B && B.drtg), 'allowed per 100') +
-        tile('pace', one(A && A.pace) + ' / ' + one(B && B.pace), 'possessions per 40') +
-        tile('net', one(A && A.net) + ' / ' + one(B && B.net), 'per 100') +
-      '</div>' +
-      '<h3 class="pv-sub">Four factors — with the ball</h3>' +
-      '<div class="pv-factors">' + ffOff + '</div>' +
-      '<h3 class="pv-sub">Four factors — without it</h3>' +
-      '<div class="pv-factors">' + ffDef + '</div>' +
-      '<a class="pv-more" href="../stats/' + scope + '">every team stat ↗</a>' +
-    '</section>' +
-
-    (stars
-      ? '<section class="pv-sec"><h2>Key players</h2>' +
-        '<div class="pv-players">' + stars + '</div>' +
-        '<a class="pv-more" href="../stats/' + scope + '">every player ↗</a>' +
-        '</section>'
-      : '') +
-
   '</div>';
 }
 
 return { render: render, narrative: narrative, startersHTML: startersHTML, mapQuery: mapQuery, directionsHref: directionsHref,
          injuriesHTML: injuriesHTML, FACTORS: FACTORS, MIN_GP: MIN_GP,
          __test: { observations: observations, teamShape: teamShape,
-                   playerNote: playerNote, edge: edge, whenText: whenText } };
+                   playerNote: playerNote, edge: edge, whenText: whenText, compLine: compLine, vsRow: vsRow } };
 }));

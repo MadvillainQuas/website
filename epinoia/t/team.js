@@ -308,9 +308,26 @@ async function teamShots(team) {
       fetchEvents: async () => Object.values(byG), gameIds: gs.map(g => g.id), playerId: null, sideOf: id => sideOf[id]
     });
     /* the chart alone: the zone numbers live in the team statistics block, ranked in the league.
-       Without analytics, the marks without the zones, and a line saying what they would add. */
-    window.EpinoiaShotChart.renderZones({ host, shots, colour: team.colour || '#93f2bf', minAttempts: 5, games: gs.length, table: false,
-      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games'), zones: !ACCESS.locked });
+       Without analytics, the marks without the zones, and a line saying what they would add. The
+       games (for the "last 5 / 10" control and each shot's date) go with it, and the shooters'
+       names follow once they are read, for the player control (a second draw keeps the choices). */
+    const SC = window.EpinoiaShotChart;
+    const opts = { host, shots, colour: team.colour || '#93f2bf', minAttempts: 5, games: gs.length, table: false,
+      gameList: SC.gameListOf ? SC.gameListOf(gs) : null,
+      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games'), zones: !ACCESS.locked };
+    SC.renderZones(opts);
+    const pids = [...new Set(shots.map(s => s.pid).filter(Boolean))];
+    if (pids.length > 1 && window.EpinoiaData.playerMeta) {
+      window.EpinoiaData.playerMeta(pids).then(meta => {
+        const names = {};
+        pids.forEach(id => { const m = meta && meta[id]; if (m && m.name) names[id] = (m.jersey ? '#' + m.jersey + ' ' : '') + m.name; });
+        SC.renderZones(Object.assign(opts, { names }));
+        if (ACCESS.locked) {
+          host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
+            lines: ['Twelve zones, each tinted against its own break-even.'] }));
+        }
+      }).catch(() => { /* the chart without the player control */ });
+    }
     if (ACCESS.locked) {
       host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
         lines: ['Twelve zones, each tinted against its own break-even.'] }));
@@ -907,21 +924,32 @@ const measTitle = m => {
 };
 
 /* THE SQUAD'S AVERAGES, under the roster: average age, height and weight, each over the players who have that number, with how many
-   that was when it is not everyone (a squad half of whom have no listed weight has an average of the other half, and says so). */
-function squadAverages(players, ages) {
+   that was when it is not everyone (a squad half of whom have no listed weight has an average of the other half, and says so).
+   One cell per column the roster is showing (plan, from roster()), so the row lines up whichever columns a club's data leaves.
+   A roster that shows BORN (birth years, no exact ages) has the average year there. */
+function squadAverages(players, ages, plan) {
   const S = window.EpinoiaAges ? window.EpinoiaAges.summary(players, ages) : null;
   const tf = el('tfoot'), tr = el('tr');
   const cell = (cls, text, note) => { const td = el('td', cls, text); if (note) td.appendChild(el('span', 'meas-alt', note)); return td; };
+  const none = () => el('td', 'meas meas-none', '–');
   tr.appendChild(el('td', 'stick c0', ''));
   tr.appendChild(el('td', 'stick c1 avg-l', 'squad average'));
   tr.appendChild(el('td', ''));
   const of = (n) => (S && n < S.players ? n + ' of ' + S.players : '');
-  tr.appendChild(S && S.age != null ? cell('meas', S.age.toFixed(1), of(S.ageN)) : el('td', 'meas meas-none', '–'));
-  const [htMain, htAlt] = S && S.height != null ? measText(MEASURES[0], Math.round(S.height)) : ['', ''];
-  const [wtMain] = S && S.weight != null ? measText(MEASURES[1], Math.round(S.weight)) : [''];
-  tr.appendChild(S && S.height != null ? cell('meas', htMain, [htAlt, of(S.heightN)].filter(Boolean).join(' · ')) : el('td', 'meas meas-none', '–'));
-  tr.appendChild(S && S.weight != null ? cell('meas', wtMain, of(S.weightN)) : el('td', 'meas meas-none', '–'));
-  tr.appendChild(el('td', '')); tr.appendChild(el('td', ''));
+  if (plan.age) tr.appendChild(S && S.age != null ? cell('meas', S.age.toFixed(1), of(S.ageN)) : none());
+  if (plan.born) {
+    const ys = players.map(p => p.birth_year).filter(v => Number.isFinite(v) && v > 0);
+    tr.appendChild(ys.length ? cell('meas', String(Math.round(ys.reduce((a, b) => a + b, 0) / ys.length)), of(ys.length)) : none());
+  }
+  plan.measures.forEach(m => {
+    if (m.k === 'height_cm') {
+      const [htMain, htAlt] = S && S.height != null ? measText(m, Math.round(S.height)) : ['', ''];
+      tr.appendChild(S && S.height != null ? cell('meas', htMain, [htAlt, of(S.heightN)].filter(Boolean).join(' · ')) : none());
+    } else if (m.k === 'weight_kg') {
+      const [wtMain] = S && S.weight != null ? measText(m, Math.round(S.weight)) : [''];
+      tr.appendChild(S && S.weight != null ? cell('meas', wtMain, of(S.weightN)) : none());
+    } else tr.appendChild(el('td', ''));
+  });
   tf.appendChild(tr);
   return tf;
 }
@@ -1109,7 +1137,7 @@ async function staff(team, canEdit, sb) {
 async function roster(team) {
   const rows = await api(`roster_entries?team_id=eq.${team.id}&active=eq.true` +
     `&select=jersey,position,players(id,first_name,last_name,slug,is_minor,` +
-    `height_cm,weight_kg,wingspan_cm,previous_club)&order=jersey`);
+    `birth_year,height_cm,weight_kg,wingspan_cm,previous_club)&order=jersey`);
   const host = $('#roster'); host.textContent = '';
   /* Ages, from the database's age function (0184): the date of birth itself is never sent to a browser. A server without it gives none. */
   const AGES = window.EpinoiaAges
@@ -1144,11 +1172,26 @@ async function roster(team) {
     document.body.appendChild(dl);
   }
 
+  /* ONLY THE COLUMNS THIS CLUB'S DATA CAN FILL, each decided on its own (ages.js bioColumns): AGE where the database gives exact
+     ages, else BORN with the year where only birth years are known, and HT, WT, WING and PREVIOUS CLUB where anyone has one.
+     A manager sees every measurement column regardless - they are the boxes the numbers are typed into. */
+  const squadP = rows.map(r => r.players).filter(Boolean);
+  const cols = window.EpinoiaAges && window.EpinoiaAges.bioColumns
+    ? window.EpinoiaAges.bioColumns(squadP.map(p => ({ a: AGES[p.id], y: p.birth_year, h: p.height_cm, w: p.weight_kg })))
+    : { age: true, born: false, ht: true, wt: true };
+  const known = k => squadP.some(p => p[k] != null && p[k] !== '' && p[k] !== 0);
+  const plan = {
+    age: cols.age, born: cols.born,
+    measures: MEASURES.filter(m => canEdit || (m.k === 'height_cm' ? cols.ht : m.k === 'weight_kg' ? cols.wt : known(m.k)))
+  };
+  const yearNow = new Date().getFullYear();
+
   const wrap = el('div', 'ft-wrap');
   const t = el('table', 'ft');
   const thead = el('thead'), hr = el('tr');
-  ['#', 'PLAYER', 'POS', 'AGE'].forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));
-  MEASURES.forEach(m => {
+  ['#', 'PLAYER', 'POS'].concat(plan.age ? ['AGE'] : plan.born ? ['BORN'] : [])
+    .forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));
+  plan.measures.forEach(m => {
     const th = el('th', null, m.l);
     th.style.width = m.w + 'px';
     if (!m.text) th.dataset.mk = m.k;
@@ -1210,9 +1253,17 @@ async function roster(team) {
       td.appendChild(inp);
       tr.appendChild(td);
     }
-    tr.appendChild(el('td', 'meas' + (AGES[p.id] == null ? ' meas-none' : ''), AGES[p.id] == null ? '–' : String(AGES[p.id])));
+    if (plan.age) {
+      /* an exact age; a player with only a year reads ~30, marked because it can be a year out */
+      const txt = AGES[p.id] != null ? String(AGES[p.id]) : p.birth_year ? '~' + (yearNow - p.birth_year) : '–';
+      const td = el('td', 'meas' + (txt === '–' ? ' meas-none' : ''), txt);
+      if (AGES[p.id] == null && p.birth_year) td.title = 'born ' + p.birth_year;
+      tr.appendChild(td);
+    } else if (plan.born) {
+      tr.appendChild(el('td', 'meas' + (p.birth_year ? '' : ' meas-none'), p.birth_year ? String(p.birth_year) : '–'));
+    }
 
-    MEASURES.forEach(m => {
+    plan.measures.forEach(m => {
       const td = el('td', 'meas');
       const val = p[m.k];
 
@@ -1264,15 +1315,19 @@ async function roster(team) {
     tb.appendChild(tr);
   });
   t.appendChild(tb);
-  const squad = rows.map(r => r.players).filter(Boolean);
-  t.appendChild(squadAverages(squad, AGES));
+  const squad = squadP;
+  /* no average row when there is nothing to average: a club whose data gives no ages, years or measurements */
+  const averaged = plan.age || plan.born || plan.measures.some(m => m.k === 'height_cm' || m.k === 'weight_kg');
+  if (averaged) t.appendChild(squadAverages(squad, AGES, plan));
   wrap.appendChild(t); host.appendChild(wrap);
 
   /* THE UNITS SWITCH, in the roster's heading: pressing it repaints the heights, weights and the
      squad's averages in place (and every other page's, since the choice is site-wide) */
   const U = UNITS();
   const slot = $('#rosterUnits');
-  if (U && slot && !slot.firstChild) slot.appendChild(U.toggle());
+  const converts = plan.measures.some(m => !m.text);
+  if (U && slot && !slot.firstChild && converts) slot.appendChild(U.toggle());
+  if (slot && !converts) slot.textContent = '';
   if (U && !t.__unitsHooked) {
     t.__unitsHooked = true;
     U.onChange(() => {
@@ -1281,7 +1336,7 @@ async function roster(team) {
       t.querySelectorAll('td[data-mk]').forEach(td => fillMeas(td, byK[td.dataset.mk], td.dataset.mv === '' ? null : +td.dataset.mv));
       t.querySelectorAll('th[data-mk]').forEach(th => { th.title = measTitle(byK[th.dataset.mk]); });
       const old = t.querySelector('tfoot');
-      if (old) old.replaceWith(squadAverages(squad, AGES));
+      if (old) old.replaceWith(squadAverages(squad, AGES, plan));
     });
   }
 

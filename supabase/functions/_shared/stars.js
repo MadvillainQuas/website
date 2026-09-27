@@ -318,7 +318,7 @@ function render(host, rows, opts) {
    render and card read the team through teamFor. */
 const CACHE_KEY = 'epinoia_stars_global:';
 const CACHE_MS = 10 * 60 * 1000;
-const LEAGUE_SEL = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path';
+const LEAGUE_SEL = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,gender';
 
 function cacheGet(key) {
   try {
@@ -360,6 +360,65 @@ async function starsSnapshot(anchor, D) {
   } catch (_) { return null; }   // no table yet (404), or a blip: work it out as before
 }
 
+/* ------------------------------------------------------------ the filters ---
+   HOME's ALL / U22 / MEN'S / WOMEN'S, shared with records.js.
+
+   MEN'S AND WOMEN'S ARE THE LEAGUE'S (leagues.gender, 0131). Every women's league is marked; most
+   men's leagues were never marked at all, so a league that is not marked women's or mixed counts as
+   men's, which is how the rail's W chip has always read it.
+
+   U22 IS WHAT THE PLAYER IS LISTED AS: the exact age the database gives through player_ages (0185,
+   from a date of birth that never leaves it) when it has one, otherwise the birth year, counted as
+   under 22 only when the player cannot be 22 at any point this year. A player with neither is not
+   listed as under 22. */
+const FILTERS = ['all', 'u22', 'men', 'women'];
+const cleanFilter = f => (FILTERS.indexOf(f) === -1 ? 'all' : f);
+function genderOf(league) {
+  const g = league && league.gender;
+  return g === 'women' ? 'women' : g === 'mixed' ? 'mixed' : 'men';
+}
+function leagueFits(league, f) {
+  f = cleanFilter(f);
+  return f === 'men' || f === 'women' ? genderOf(league) === f : true;
+}
+/* {id: age} from player_ages, for the ids the database will give an age for; never rejects */
+async function exactAges(ids) {
+  const cfg = root.EPINOIA_CONFIG || {};
+  const out = {};
+  if (!cfg.supabaseUrl || typeof root.fetch !== 'function') return out;
+  for (let i = 0; i < ids.length; i += 500) {
+    try {
+      const r = await root.fetch(cfg.supabaseUrl + '/rest/v1/rpc/player_ages', {
+        method: 'POST',
+        headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ p_ids: ids.slice(i, i + 500) })
+      });
+      if (!r.ok) return out;
+      (await r.json() || []).forEach(x => { if (x && x.player_id != null && Number.isFinite(x.age)) out[x.player_id] = x.age; });
+    } catch (_) { return out; }
+  }
+  return out;
+}
+/* the ids, of these, listed as under 22 */
+async function under22(ids, now) {
+  const D = root.EpinoiaData;
+  const list = [...new Set((ids || []).filter(Boolean))];
+  const out = new Set();
+  if (!D || !list.length) return out;
+  const year = (now instanceof Date ? now : new Date()).getFullYear();
+  const born = {};
+  const [, ages] = await Promise.all([
+    Promise.all(chunk40(list).map(c => D.get('players?id=in.(' + c.join(',') + ')&select=id,birth_year')
+      .then(rows => (rows || []).forEach(p => { born[p.id] = p.birth_year; })).catch(() => null))),
+    exactAges(list)
+  ]);
+  list.forEach(id => {
+    const a = ages[id], y = born[id];
+    if (a != null ? a < 22 : (y != null && year - y <= 21)) out.add(id);
+  });
+  return out;
+}
+
 /* a cached row's window is stored by key and restored to the WINDOWS entry */
 function revive(row) {
   if (!row) return null;
@@ -378,7 +437,10 @@ async function global(opts) {
   const anchor = anchorRows[0].tipoff_at;
   const at = new Date(anchor).getTime();
 
-  const hit = cacheGet(CACHE_KEY + anchor);
+  /* a filter is its own podium, worked out here: the server's snapshot is everybody's */
+  const filter = cleanFilter(o.filter);
+  const key = CACHE_KEY + (filter === 'all' ? '' : filter + ':') + anchor;
+  const hit = cacheGet(key);
   if (hit) return { week: revive(hit.week), month: revive(hit.month), anchor };
 
   /* THE SERVER'S PODIUMS (0152), when they were built from this same anchor. The snapshots
@@ -387,10 +449,10 @@ async function global(opts) {
      scores across every league (1.44 MB and eight queries on 2026-09-24) and running BPM.
      A signed-in reader may see leagues a signed-out one cannot, so they work it out
      themselves; o.snapshot === false is the function itself. */
-  if (o.snapshot !== false && !signedIn()) {
+  if (filter === 'all' && o.snapshot !== false && !signedIn()) {
     const snap = await starsSnapshot(anchor, D);
     if (snap) {
-      cachePut(CACHE_KEY + anchor, snap);
+      cachePut(key, snap);
       return { week: revive(snap.week), month: revive(snap.month), anchor };
     }
   }
@@ -398,15 +460,16 @@ async function global(opts) {
   const widest = Math.max.apply(null, WINDOWS.map(w => w.days));
   const from = new Date(at - widest * dayMs).toISOString();
   /* competitions!inner drops the test games; the league rides along on each game */
-  const games = await D.all('games?select=id,tipoff_at,home_team_id,away_team_id,competition_id,' +
+  const allGames = await D.all('games?select=id,tipoff_at,home_team_id,away_team_id,competition_id,' +
     'competitions!inner(seasons!inner(leagues!inner(' + LEAGUE_SEL + ')))' +
     '&status=eq.final&competition_id=not.is.null' +
     '&tipoff_at=gte.' + encodeURIComponent(from) + '&tipoff_at=lte.' + encodeURIComponent(anchor) +
     '&order=tipoff_at.desc,id.asc');
   const leagueOf = g => (g && g.competitions && g.competitions.seasons && g.competitions.seasons.leagues) || null;
+  const games = allGames.filter(g => leagueFits(leagueOf(g), filter));
 
   const out = { week: null, month: null, anchor };
-  if (!games.length) { cachePut(CACHE_KEY + anchor, out); return out; }
+  if (!games.length) { cachePut(key, out); return out; }
 
   const teamIds = [...new Set(games.flatMap(g => [g.home_team_id, g.away_team_id]).filter(Boolean))];
   const [box, teamParts] = await Promise.all([
@@ -422,8 +485,20 @@ async function global(opts) {
     const inWindow = games.filter(g => new Date(g.tipoff_at || 0).getTime() >= at - w.days * dayMs);
     if (!inWindow.length) return { w, inWindow, top: [] };
     const agg = computeWindow(box.pgs, box.tgs, inWindow, { leagueOf });
-    return { w, inWindow, top: pick(agg.players, w, 20) };
+    return { w, inWindow, top: pick(agg.players, w, filter === 'u22' ? 5000 : 20) };
   });
+  /* U22: down each list in order, asking ages a batch at a time, until twenty are found */
+  if (filter === 'u22') {
+    for (const c of cands) {
+      const young = [];
+      for (let i = 0; i < c.top.length && young.length < 20; i += 150) {
+        const batch = c.top.slice(i, i + 150);
+        const ok = await under22(batch.map(p => p.id), now);
+        batch.forEach(p => { if (ok.has(p.id) && young.length < 20) young.push(p); });
+      }
+      c.top = young;
+    }
+  }
   const ids = [...new Set(cands.flatMap(c => c.top.map(p => p.id)))];
   let meta = {};
   if (ids.length) { try { meta = await D.playerMeta(ids); } catch (_) { meta = {}; } }
@@ -443,11 +518,11 @@ async function global(opts) {
       games: c.inWindow.length, leagues: lgs.size, span: span(c.inWindow)
     };
   });
-  cachePut(CACHE_KEY + anchor, out);
+  cachePut(key, out);
   return { week: revive(out.week), month: revive(out.month), anchor };
 }
 
-return { WINDOWS, PLAYER_KEYS, TEAM_KEYS, PLAYER_SEL, TEAM_SEL, unpick, boxScores,
+return { FILTERS, cleanFilter, genderOf, leagueFits, under22, exactAges, WINDOWS, PLAYER_KEYS, TEAM_KEYS, PLAYER_SEL, TEAM_SEL, unpick, boxScores,
          computeWindow, pick, span, card, render, global, monogram, paintCard, leagueShort };
 }));
 

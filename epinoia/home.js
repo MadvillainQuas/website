@@ -144,7 +144,7 @@ function hexA(hex, a) {
 }
 
 const SECTION_OF = {
-  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec',
+  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec', records: '#recordsSec',
   games: '#gamesSec', season: '#seasonSec', merch: '#merchSec',
   socials: '#socialSec', takepart: '#takepartSec'
 };
@@ -247,7 +247,7 @@ function gamesPicker(comps) {
    a name it has no room for */
 const GAMES_SELECT = 'id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
   'competitions(id,name,kind),' +
-  'home:home_team_id(id,name,short_name,colour,logo_path),away:away_team_id(id,name,short_name,colour,logo_path)';
+  'home:home_team_id(id,name,short_name,colour,colour_2,logo_path),away:away_team_id(id,name,short_name,colour,colour_2,logo_path)';
 
 /* THE NUMBER ON "SHOW ALL": every game the fixtures page would list, counted by the database.
    It moves when a fixture is added, not when a score changes, so it is asked for again every
@@ -369,46 +369,62 @@ async function games() {
   }
   const gs = v.shown;
 
+  /* EACH GAME IN THE FIXTURES PAGE'S DRESS (fixtures/index.html): the row in its two clubs' colours,
+     the home colour in from the left and the away from the right, the names in text-safe inks, the
+     crests in white discs ringed in the club colour, the score (or the tip-off) on a black block with
+     the winner in yellow, the state under it, and each day on a teletext strip. */
+  const TC = window.EpinoiaTeamColour;
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  let lastDay = null;
   gs.forEach(g => {
     const final = DONE(g.status), live = g.status === 'live';
+    const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
+    const dk = live ? 'live' : (when ? when.toDateString() : 'tbc');
+    if (dk !== lastDay) {
+      lastDay = dk;
+      host.appendChild(el('div', 'fxday' + (live ? ' live' : ''), live ? 'Live now'
+        : when ? DAYS[when.getDay()] + ' ' + when.getDate() + ' ' + MONTHS[when.getMonth()] : 'Date to be confirmed'));
+    }
     /* a scheduled fixture is a link too — same reasoning as the fixtures page */
-    const row = el('a', 'fx');
+    const row = el('a', 'fx' + (live ? ' live' : ''));
     row.href = 'game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
+    const home = g.home || {}, away = g.away || {};
+    if (home.colour) row.style.setProperty('--hc', home.colour);
+    if (away.colour) row.style.setProperty('--ac', away.colour);
 
     const h = el('div', 'tn h'), a = el('div', 'tn');
+    if (TC && TC.card) { TC.card(h, home.colour || '#93f2bf', home.colour_2); TC.card(a, away.colour || '#8ff5ff', away.colour_2); }
     if (window.epinoiaCrest) {
       h.append(teamName(g.home), window.epinoiaCrest(g.home, { cls: 'fxcrest' }));
       a.append(window.epinoiaCrest(g.away, { cls: 'fxcrest' }), teamName(g.away));
     } else { h.appendChild(teamName(g.home)); a.appendChild(teamName(g.away)); }
-    if (final) {
-      if (g.home_score > g.away_score) h.style.color = 'var(--lume)';
-      if (g.away_score > g.home_score) a.style.color = 'var(--lume)';
-    }
 
-    const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
+    const mid = el('div', 'fxm');
+    const sc = el('div', 'sc' + (final || live ? '' : ' t'));
+    if (final || live) {
+      sc.append(el('span', final && g.home_score > g.away_score ? 'w' : '', String(g.home_score ?? 0)),
+                el('span', 'dash', '–'),
+                el('span', final && g.away_score > g.home_score ? 'w' : '', String(g.away_score ?? 0)));
+    } else {
+      sc.textContent = when ? String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0') : 'TBC';
+    }
     const st = el('div', 'st ' + (live ? 'live' : final ? 'final' : 'sched'));
     if (live) { st.appendChild(el('span', 'pulse')); st.appendChild(document.createTextNode('LIVE')); }
     else if (final) st.textContent = 'FINAL';
-    else {
-      /* The date stays the headline — it is what somebody scans a fixture list
-         for — with a quiet second line saying the row leads somewhere. A
-         scheduled fixture now has a venue, a map and a written preview behind
-         it, and nothing on the row said so. */
-      st.textContent = when
-        ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-        : 'TBC';
-      st.appendChild(el('span', 'pv-flag', 'preview'));
-    }
+    /* the row leads to a preview, said on the state's plate */
+    else st.appendChild(el('span', 'pv-flag', 'preview'));
+    mid.append(sc, st);
 
-    row.append(h, el('div', 'sc', final || live ? `${g.home_score}–${g.away_score}` : 'v'), a, st);
+    row.append(h, mid, a);
     if (window.EpinoiaFollow && !final) row.appendChild(window.EpinoiaFollow.bell('game', g.id, { cls: 'fxbell' }));
-    else row.appendChild(el('span', 'fxbell'));
 
-    /* Where and when, on a line of its own. A fixture list without a venue is
-       a list you have to ask somebody about. */
+    /* Where, and the competition when a league plays more than one, on a line of its own. A fixture
+       list without a venue is a list you have to ask somebody about. */
     const bits = [];
-    if (when) bits.push(whenText(g.tipoff_at));
     if (g.venue) bits.push(g.venue);
+    const comp = g.competitions && g.competitions.name;
+    if (comp && compsSeen.size > 1) bits.push(comp);
     if (bits.length) row.appendChild(el('div', 'fxwhere', bits.join('  ·  ')));
 
     host.appendChild(row);
@@ -896,6 +912,31 @@ async function stars() {
     team: m.teamsById.get(m.teamOf && m.teamOf.get(p.id)) || null,
     span: m.span
   };
+}
+
+/* ------------------------------------------------------------ the records ---
+   The season's single-game bests, a player's and a team's, under the Stars
+   (epinoia/records.js). The season is the one being shown, so a past season's
+   page shows that season's records. Hidden when the season has no finals. */
+async function records(clubsP) {
+  const sec = $('#recordsSec');
+  const R = window.EpinoiaRecords;
+  if (!sec || !LEAGUE || !R) return;
+  const season = await seasonNow();
+  const comps = season ? season.comps.map(c => c.id) : [];
+  if (!comps.length) return;
+  /* the clubs the Clubs grid read, with the crests it found approved; read here only without it */
+  const [data, teams] = await Promise.all([
+    R.load({ comps }),
+    Promise.resolve(clubsP).catch(() => null).then(ts => (ts && ts.length) ? ts :
+      api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour,colour_2,logo_path').catch(() => []))
+  ]);
+  if (!data) return;
+  const teamsById = new Map((teams || []).map(t => [t.id, t]));
+  if (R.render(sec.querySelector('#records'), data, { teamsById, base: '', season: season.name })) {
+    sec.classList.remove('hide');
+    renumber();
+  }
 }
 
 /* ------------------------------------------------------- the fans' vote ---
@@ -1753,6 +1794,7 @@ function renumber() {
       gamesP,
       clubsP,
       wall.walled ? null : stars().catch(() => null),
+      wall.walled ? null : records(clubsP).catch(() => null),
       wall.walled ? null : news().catch(() => null),
       wall.walled ? null : teamOfTheYear().catch(() => null),
       socialsP

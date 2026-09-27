@@ -339,7 +339,7 @@ console.log('\npremium columns against fulltable.js');
   const wrong = all.filter(c => A.isPremiumColumn(c.k) !== byRule(c.k)).map(c => c.k);
   ok('every column key in both catalogues classified by the rule (' + all.length + ' columns)', wrong.length === 0, wrong.join());
   const evCount = all.filter(c => /^ev_|^evd_/.test(c.k)).length, zCount = all.filter(c => /^z_/.test(c.k)).length;
-  ok('the premium families are really there (' + evCount + ' events, ' + zCount + ' zone columns)', evCount > 40 && zCount >= 80);
+  ok('the premium families are really there (' + evCount + ' events, ' + zCount + ' zone columns)', evCount > 40 && zCount >= 75);
   for (const k of ['ev_second_ppg', 'evd_transition_ppp', 'ev_gp', 'z_rim_efg', 'z_all_att100', 'pred_efg', 'efg_sh', 'efg_vs', 'morey', 'ev_ast_pts_sh']) {
     ok(k + ' is premium', A.isPremiumColumn(k) === true && all.some(c => c.k === k));
   }

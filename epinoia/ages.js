@@ -67,19 +67,20 @@ function summary(players, ages) {
 /* AGE, HEIGHT AND WEIGHT FOR A TABLE'S WORTH OF PLAYERS - the stats tables' AGE / HT / WT columns. One call to player_bio() (0185) per
    five hundred players, and what came back is kept in the browser for half an hour (a player who has nothing is kept as
    nothing, so a table of thousands is not asked about again on every visit, yet a bio filled in meanwhile shows soon).
-   Returns {id: {h, w, a}} for players who have at least one of the three; never rejects. `store` is a localStorage-like object. */
-const KEY = 'epinoia.bio.v1';
+   Returns {id: {h, w, a, y}} for players who have at least one of the four; never rejects. `store` is a localStorage-like object.
+   `a` is an EXACT age (from a date of birth, which never leaves the database); `y` is the birth year. A player with only a year has
+   a = null and y set: the pages show the year rather than an age guessed from it (bioColumns, below). */
+const KEY = 'epinoia.bio.v2';             // v2: the birth year rides alongside the age ([h, w, a, y])
 const TTL_MS = 30 * 60 * 1000;
 const PLAIN_BATCH = 40;              // an id=in.() URL, not a request body: kept short like every other chunked read in data.js
 
 /* height_cm, weight_kg and birth_year are ordinary PUBLIC columns (0033, 0002 - well before the 0171 sweep that locked the table
    down column by column) and players_read (0049) already keeps an under-18's row out of an anonymous select entirely, so this needs
    no function and no migration: it is what the table showed before player_bio() existed, and what it falls back to if that function
-   is not there yet. The age it gives is a YEAR'S worth, the same approximation team.js's staff list has always shown ("AGE, NOT DATE
-   OF BIRTH"), not the exact one player_bio() computes from a date of birth. */
+   is not there yet. It gives no age: a year is not a date of birth, so the year itself is what comes back (y), and the tables show
+   BORN rather than an age that could be a year out. */
 async function loadBioPlain(cfg, ids, fetchFn, now) {
   const data = {}, answered = new Set();
-  const year = new Date(now == null ? Date.now() : now).getUTCFullYear();
   for (let i = 0; i < ids.length; i += PLAIN_BATCH) {
     const chunk = ids.slice(i, i + PLAIN_BATCH);
     try {
@@ -90,8 +91,8 @@ async function loadBioPlain(cfg, ids, fetchFn, now) {
       (await r.json() || []).forEach(x => {
         if (!x || x.id == null) return;
         const h = x.height_cm == null ? null : x.height_cm, w = x.weight_kg == null ? null : x.weight_kg;
-        const a = x.birth_year == null ? null : year - x.birth_year;
-        if (h != null || w != null || a != null) data[x.id] = [h, w, a];
+        const y = x.birth_year == null ? null : x.birth_year;
+        if (h != null || w != null || y != null) data[x.id] = [h, w, null, y];
       });
     } catch (_) { /* this chunk's ids stay unanswered */ }
   }
@@ -109,7 +110,7 @@ async function loadBio(cfg, ids, fetchFn, store, now) {
   [...new Set((ids || []).filter(Boolean))].forEach(id => {
     const c = cache.m[id];
     if (c === undefined) want.push(id);
-    else if (c) out[id] = { h: c[0], w: c[1], a: c[2] };
+    else if (c) out[id] = unpack(c);
   });
   if (!f || !cfg || !cfg.supabaseUrl || !want.length) return out;
   let fresh = false, rpcDead = false;
@@ -125,8 +126,9 @@ async function loadBio(cfg, ids, fetchFn, store, now) {
       const got = new Map((await r.json() || []).filter(x => x && x.player_id != null).map(x => [x.player_id, x]));
       chunk.forEach(id => {
         const x = got.get(id);
-        cache.m[id] = x ? [x.height_cm == null ? null : x.height_cm, x.weight_kg == null ? null : x.weight_kg, x.age == null ? null : x.age] : 0;
-        if (x) out[id] = { h: cache.m[id][0], w: cache.m[id][1], a: cache.m[id][2] };
+        cache.m[id] = x ? [x.height_cm == null ? null : x.height_cm, x.weight_kg == null ? null : x.weight_kg, x.age == null ? null : x.age,
+                           x.birth_year == null ? null : x.birth_year] : 0;
+        if (x) out[id] = unpack(cache.m[id]);
       });
       fresh = true;
     } catch (_) { rpcDead = true; }
@@ -138,7 +140,7 @@ async function loadBio(cfg, ids, fetchFn, store, now) {
       remain.forEach(id => {
         if (!answered.has(id)) return;      // the plain read failed too: not cached, asked again next visit
         cache.m[id] = data[id] || 0;
-        if (data[id]) out[id] = { h: data[id][0], w: data[id][1], a: data[id][2] };
+        if (data[id]) out[id] = unpack(data[id]);
         fresh = true;
       });
     }
@@ -147,5 +149,27 @@ async function loadBio(cfg, ids, fetchFn, store, now) {
   return out;
 }
 
-return { load, loadBio, bornWords, summary, BATCH };
+const unpack = c => ({ h: c[0], w: c[1], a: c[2], y: c[3] == null ? null : c[3] });
+
+/* WHICH BIO COLUMNS A SET OF PLAYERS CAN FILL, each decided on its own, from loadBio()'s answers ({h, w, a, y} or nothing):
+     age    some player has an exact age                      -> an AGE column
+     born   no exact age anywhere, but some player has a year -> a BORN column, showing the year (never an age guessed from it)
+     ht/wt  some player has one
+   A league whose feed gives birth years and nothing else gets BORN and no AGE, HT or WT; one that gives nothing gets none. */
+function bioColumns(list) {
+  const has = { age: false, year: false, ht: false, wt: false };
+  (list || []).forEach(b => {
+    if (!b) return;
+    if (Number.isFinite(b.a)) has.age = true;
+    if (Number.isFinite(b.y)) has.year = true;
+    if (Number.isFinite(b.h) && b.h > 0) has.ht = true;
+    if (Number.isFinite(b.w) && b.w > 0) has.wt = true;
+  });
+  return { age: has.age, born: !has.age && has.year, ht: has.ht, wt: has.wt };
+}
+
+/* an age the database did not give, from a year: at most a year out, so always shown marked (~30) */
+const ageFromYear = (y, now) => (Number.isFinite(y) ? new Date(now == null ? Date.now() : now).getUTCFullYear() - y : null);
+
+return { load, loadBio, bioColumns, ageFromYear, bornWords, summary, BATCH };
 }));

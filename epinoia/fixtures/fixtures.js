@@ -30,6 +30,8 @@ let LEAGUE = null, TEAMS = new Map(), GAMES = [], LOGOS = new Map();
 let WALL = { walled: false, fixturesPublic: true };
 let teamFilter = qp.get('t') || '';        // team slug, or empty for all
 let stateFilter = qp.get('show') || 'all'; // all | results | upcoming
+/* with a club chosen: one opponent (a head-to-head), its home or its away games; and a month */
+let vsFilter = qp.get('vs') || '', sideFilter = qp.get('ha') || '', monthFilter = qp.get('m') || '';
 
 const STATES = [
   ['all', 'Everything'],
@@ -90,6 +92,9 @@ function syncUrl() {
   if (compFilter) u.searchParams.set('comp', compFilter); else u.searchParams.delete('comp');
   if (teamFilter) u.searchParams.set('t', teamFilter); else u.searchParams.delete('t');
   if (stateFilter !== 'all') u.searchParams.set('show', stateFilter); else u.searchParams.delete('show');
+  [['vs', vsFilter], ['ha', sideFilter], ['m', monthFilter]].forEach(([k, v]) => {
+    if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
+  });
   history.replaceState(null, '', u);
 }
 
@@ -118,18 +123,27 @@ function renderSeasonPicker() {
   });
 }
 
+/* THE CLUB, AS DROPDOWNS. Twenty-five clubs as a wall of chips was a paragraph to read before the list;
+   a dropdown is one control that says what is chosen. With a club chosen two more open: one opponent,
+   for a head-to-head, and its home or away games. The month narrows any of it. Each dropdown carries
+   the chosen club's colour, and a reset appears once anything is narrowed. */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function monthLabel(k) { const [y, m] = k.split('-'); return MONTHS[+m - 1] + ' ' + y; }
+function pickSelect(label, opts, value, onChange, o) {
+  const f = el('label', 'fsel' + (o && o.disabled ? ' off' : ''));
+  if (o && o.colour) f.style.setProperty('--sc', o.colour);
+  const s = el('select');
+  opts.forEach(([v, t]) => { const op = el('option', null, t); op.value = v; if (v === value) op.selected = true; s.appendChild(op); });
+  if (o && o.disabled) s.disabled = true;
+  s.addEventListener('change', () => onChange(s.value));
+  f.append(el('span', 'fl', label), el('span', 'fbox'));
+  f.lastChild.appendChild(s);
+  return f;
+}
+
 function renderFilters() {
   const tp = $('#teamPick'); tp.textContent = '';
-  const mk = (label, on, click, colour) => {
-    const b = el('button', 'ep-chip teamchip' + (on ? ' on' : ''));
-    b.type = 'button';
-    if (colour) {
-      const sw = el('span', 'sw'); sw.style.background = colour; b.appendChild(sw);
-    }
-    b.appendChild(document.createTextNode(label));
-    b.addEventListener('click', click);
-    return b;
-  };
+  const redraw = () => { syncUrl(); renderFilters(); render(); };
   /* THE CLUBS THAT PLAY IN WHAT IS BEING SHOWN. The chips used to be every club
      in the league whatever competition was chosen, so picking BCB's Trophy
      offered fourteen Championship sides that have no Trophy fixture, and
@@ -148,15 +162,31 @@ function renderFilters() {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   /* A club that has just been filtered out cannot stay chosen, or the list is
-     empty and the chip that would clear it is gone. */
+     empty and the control that would clear it is gone. */
   if (teamFilter && !clubs.some(t => t.slug === teamFilter)) { teamFilter = ''; syncUrl(); }
+  const club = clubs.find(t => t.slug === teamFilter) || null;
+  if (!club) { vsFilter = ''; sideFilter = ''; }
+  if (vsFilter && (!clubs.some(t => t.slug === vsFilter) || vsFilter === teamFilter)) vsFilter = '';
+  const vs = clubs.find(t => t.slug === vsFilter) || null;
 
-  tp.appendChild(mk('All clubs', !teamFilter, () => { teamFilter = ''; syncUrl(); renderFilters(); render(); }));
-  clubs.forEach(t => {
-    tp.appendChild(mk(t.name, teamFilter === t.slug, () => {
-      teamFilter = t.slug; syncUrl(); renderFilters(); render();
-    }, t.colour));
-  });
+  tp.appendChild(pickSelect('Club', [['', 'All clubs']].concat(clubs.map(t => [t.slug, t.name])), teamFilter,
+    v => { teamFilter = v; if (!v) { vsFilter = ''; sideFilter = ''; } redraw(); }, { colour: club && club.colour }));
+  tp.appendChild(pickSelect('Against', [['', club ? 'Any opponent' : 'Pick a club first']]
+      .concat(club ? clubs.filter(t => t !== club).map(t => [t.slug, t.name]) : []), vsFilter,
+    v => { vsFilter = v; redraw(); }, { disabled: !club, colour: vs && vs.colour }));
+  tp.appendChild(pickSelect('Home or away', [['', 'Home & away'], ['home', 'Home games'], ['away', 'Away games']], sideFilter,
+    v => { sideFilter = v; redraw(); }, { disabled: !club, colour: club && club.colour }));
+  /* the months that have fixtures in what else is chosen */
+  const months = [...new Set(narrowed({ month: false }).map(g => (g.tipoff_at || '').slice(0, 7)).filter(Boolean))].sort();
+  if (monthFilter && months.indexOf(monthFilter) === -1) { monthFilter = ''; syncUrl(); }
+  tp.appendChild(pickSelect('Month', [['', 'Whole season']].concat(months.map(k => [k, monthLabel(k)])), monthFilter,
+    v => { monthFilter = v; redraw(); }));
+  if (teamFilter || vsFilter || sideFilter || monthFilter || stateFilter !== 'all') {
+    const r = el('button', 'freset', 'Reset');
+    r.type = 'button';
+    r.addEventListener('click', () => { teamFilter = vsFilter = sideFilter = monthFilter = ''; stateFilter = 'all'; redraw(); });
+    tp.appendChild(r);
+  }
 
   /* the competitions of the season that have fixtures: league, cup, trophy, playoffs */
   const cp = $('#compPick');
@@ -299,12 +329,19 @@ function fixtureRow(g, stats, names) {
 
   const top = el('div', 'fxtop');
 
+  /* EACH ROW IN ITS TWO CLUBS' COLOURS: the home colour washes in from the left and the away colour
+     from the right, each down its own edge, and the names in text-safe inks of their colours */
+  const TC = window.EpinoiaTeamColour;
+  if (home.colour) row.style.setProperty('--hc', home.colour);
+  if (away.colour) row.style.setProperty('--ac', away.colour);
   const hs = el('div', 'side home');
+  if (TC && TC.card) TC.card(hs, home.colour || '#93f2bf', home.colour_2);
   const hn = el('div');
   hn.append(el('div', 'sname', home.name || '—'), el('div', 'srec', 'Home'));
   hs.append(badge(home), hn);
 
   const as = el('div', 'side away');
+  if (TC && TC.card) TC.card(as, away.colour || '#8ff5ff', away.colour_2);
   const an = el('div');
   an.append(el('div', 'sname', away.name || '—'), el('div', 'srec', 'Away'));
   as.append(badge(away), an);
@@ -347,18 +384,31 @@ function fixtureRow(g, stats, names) {
 }
 
 /* ---------------------------------------------------------------- render --- */
+/* the fixtures the filters leave: competition, club (and its opponent, and home or away), the state
+   of play, and (unless asked not to, for the month dropdown's own list) the month */
+function narrowed(o) {
+  let list = GAMES.slice();
+  if (compFilter) list = list.filter(g => g.competition_id === compFilter);
+  const bySlug = sl => [...TEAMS.values()].find(x => x.slug === sl);
+  const t = teamFilter && bySlug(teamFilter);
+  if (t) {
+    if (sideFilter === 'home') list = list.filter(g => g.home_team_id === t.id);
+    else if (sideFilter === 'away') list = list.filter(g => g.away_team_id === t.id);
+    else list = list.filter(g => g.home_team_id === t.id || g.away_team_id === t.id);
+    const v = vsFilter && bySlug(vsFilter);
+    if (v) list = list.filter(g => g.home_team_id === v.id || g.away_team_id === v.id);
+  }
+  if (stateFilter === 'results') list = list.filter(g => DONE(g.status) || g.status === 'live');
+  if (stateFilter === 'upcoming') list = list.filter(g => g.status === 'scheduled');
+  if (o && o.month && monthFilter) list = list.filter(g => (g.tipoff_at || '').slice(0, 7) === monthFilter);
+  return list;
+}
+
 async function render() {
   const host = $('#list');
   host.textContent = '';
 
-  let list = GAMES.slice();
-  if (compFilter) list = list.filter(g => g.competition_id === compFilter);
-  if (teamFilter) {
-    const t = [...TEAMS.values()].find(x => x.slug === teamFilter);
-    if (t) list = list.filter(g => g.home_team_id === t.id || g.away_team_id === t.id);
-  }
-  if (stateFilter === 'results') list = list.filter(g => DONE(g.status) || g.status === 'live');
-  if (stateFilter === 'upcoming') list = list.filter(g => g.status === 'scheduled');
+  let list = narrowed({ month: true });
 
   /* EVERY VIEW IS IN DATE ORDER; only the direction changes, and only where
      the direction is the point. Results alone read newest first, because a
@@ -384,9 +434,12 @@ async function render() {
     return stateFilter === 'results' ? at(b) - at(a) : at(a) - at(b);
   });
 
+  const nm = sl => (([...TEAMS.values()].find(x => x.slug === sl) || {}).name || '');
   $('#count').textContent = list.length +
     (list.length === 1 ? ' fixture' : ' fixtures') +
-    (teamFilter ? ' · ' + (([...TEAMS.values()].find(x => x.slug === teamFilter) || {}).name || '') : '');
+    (teamFilter ? ' · ' + nm(teamFilter) + (vsFilter ? ' v ' + nm(vsFilter) : '') +
+      (sideFilter ? ' · ' + sideFilter : '') : '') +
+    (monthFilter ? ' · ' + monthLabel(monthFilter) : '');
 
   if (!list.length) {
     host.appendChild(el('div', 'empty', 'Nothing matches that. Try another club, or show everything.'));
@@ -623,7 +676,7 @@ async function loadGames() {
        before the games are read: a member's read needs the token it enables */
     const accessP = leagueAccess();
 
-    (await D.all(`teams?league_id=eq.${LEAGUE.id}&select=id,name,short_name,slug,colour,logo_path`))
+    (await D.all(`teams?league_id=eq.${LEAGUE.id}&select=id,name,short_name,slug,colour,colour_2,logo_path`))
       .forEach(t => {
         TEAMS.set(t.id, t);
         /* the crest the club's feed publishes, until an approved upload replaces it below */

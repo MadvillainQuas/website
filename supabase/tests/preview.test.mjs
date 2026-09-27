@@ -193,7 +193,7 @@ ok('no map is drawn when there is nowhere to point at',
   ok('nor is the revert CTA',
      revert > -1 && !(revert > view && revert < shut));
   ok('and drawing a preview asks for both of them',
-     /function renderPreview[\s\S]{0,6000}offerToScore\(\)[\s\S]{0,300}offerToRevert\(\)/.test(src));
+     /function renderPreview[\s\S]{0,8000}offerToScore\(\)[\s\S]{0,300}offerToRevert\(\)/.test(src));
 }
 
 

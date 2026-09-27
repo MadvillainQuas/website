@@ -12,7 +12,7 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>WOWY · Epinoia</title>
+<title>WOWY / Lineups · Epinoia</title>
 <meta name="description" content="With-or-without-you: how a team performs with a player on the floor and off it, from the play-by-play of every game.">
 <link rel="canonical" href="https://prophesyscouting.co.uk/epinoia/stats/wowy/">
 <meta property="og:type" content="website">
@@ -23,13 +23,13 @@
 <meta name="twitter:card" content="summary">
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=507"></script>
-<script src="../../i18n.js?v=507"></script>
-<script src="../../glyphs.js?v=507" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=507">
-<link rel="stylesheet" href="../../kit/table.css?v=507">
-<link rel="stylesheet" href="../../kit/access.css?v=507">
-<link rel="stylesheet" href="../../kit/nav.css?v=507">
+<script src="../../appmode.js?v=522"></script>
+<script src="../../i18n.js?v=522"></script>
+<script src="../../glyphs.js?v=522" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=522">
+<link rel="stylesheet" href="../../kit/table.css?v=522">
+<link rel="stylesheet" href="../../kit/access.css?v=522">
+<link rel="stylesheet" href="../../kit/nav.css?v=522">
 <style>
   a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -100,12 +100,71 @@
      belongs at the left edge rather than at c1's usual 36px offset */
   table.ft.with-tbl th.c1,table.ft.with-tbl td.c1{left:0;text-align:left}
 
+  /* ---- WHO: the team and the player, as dropdowns (wowy.js pickSelect) ---- */
+  .wpick{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:calc(var(--u)*2.5) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule)}
+  .wpick > div{display:contents}
+  .fsel{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1 1 220px;max-width:360px;--sc:var(--ink)}
+  .fsel .fl{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+  .fsel .fbox{position:relative;display:block}
+  .fsel .fbox::after{content:"";position:absolute;right:13px;top:50%;margin-top:-3px;pointer-events:none;
+    border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--ink)}
+  .fsel select{appearance:none;-webkit-appearance:none;width:100%;min-height:44px;padding:0 34px 0 16px;
+    font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink);cursor:pointer;
+    background:var(--panel);border:1px solid var(--rule-2);border-radius:0;
+    box-shadow:inset 6px 0 0 var(--sc),3px 3px 0 color-mix(in srgb,var(--sc) 35%,transparent)}
+  .fsel select:hover{background:color-mix(in srgb,var(--sc) 7%,var(--panel))}
+  .fsel select:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+  .wnote{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
+    margin-left:auto;padding-bottom:14px}
+  /* the three questions, as a key */
+  .wsteps{list-style:none;margin:0;padding:calc(var(--u)*2) calc(var(--u)*3);display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border-bottom:1px solid var(--rule)}
+  .wsteps li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--panel);
+    border:1px solid var(--rule-2);box-shadow:inset 4px 0 0 var(--team-a,var(--lume))}
+  .wsteps b{font-family:var(--f-score);font-size:20px;line-height:1;color:var(--ink)}
+  .wsteps span{font-size:12px;line-height:1.45;color:var(--ink-2)}
+  .wsteps em{display:block;font-style:normal;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink);margin-bottom:3px}
+  @media (max-width:720px){ .wsteps{grid-template-columns:1fr} .fsel{max-width:none} .wnote{margin-left:0;padding-bottom:0} }
+  .wlead{margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*2);font-size:13px;line-height:1.55;color:var(--ink-2);max-width:74ch}
+  .lu-lead{font-family:var(--f-ui);font-size:13px;letter-spacing:0;line-height:1.55;color:var(--ink-2)}
+
+  /* ---- ON / OFF: the team with the player, without them, and the swing between ---- */
+  .oo{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:stretch;
+    padding:calc(var(--u)*1) calc(var(--u)*3) calc(var(--u)*3)}
+  .oo-card{padding:16px 18px;border:1px solid var(--rule-2);background:var(--panel);position:relative}
+  .oo-card.on{background:linear-gradient(135deg,color-mix(in srgb,var(--team-a) 18%,transparent),transparent 70%),var(--panel);
+    box-shadow:inset 6px 0 0 var(--team-a)}
+  .oo-card.off{box-shadow:inset 6px 0 0 var(--rule-2)}
+  .oo-k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+  .oo-v{font-family:var(--f-score);font-size:clamp(34px,5vw,54px);line-height:1;margin:8px 0 4px;color:var(--ink)}
+  .oo-v.pos{color:var(--good)} .oo-v.neg{color:var(--bad)}
+  .oo-s{font-size:12px;color:var(--ink-3)}
+  .oo-row{display:flex;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid var(--rule)}
+  .oo-row div{display:flex;flex-direction:column;gap:2px}
+  .oo-row b{font-family:var(--f-score);font-size:17px;font-weight:400;color:var(--ink)}
+  .oo-row i{font-style:normal;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .oo-swing{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0 6px;text-align:center}
+  .oo-swing .n{font-family:var(--f-score);font-size:clamp(24px,3.4vw,34px);line-height:1;padding:8px 12px 6px;background:#0a0a0a;color:#ffe14d}
+  .oo-swing .k{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);max-width:110px;line-height:1.5}
+  @media (max-width:720px){ .oo{grid-template-columns:1fr} .oo-swing{flex-direction:row;padding:4px 0} }
+
+  /* ---- LINEUPS: the rows read in words first; ON in the team's colour, OFF recedes ---- */
+  table.ft td.wdesc,table.ft th.wdesc{text-align:left !important;font-family:var(--f-ui);font-weight:700;font-size:12px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+  table.ft th.wdesc{font-family:var(--f-micro);font-weight:400;font-size:8px}
+  table.ft td.wbc{text-align:center !important}
+  .wb.on{background:var(--team-a,var(--lume));color:#fff;text-shadow:0 0 2px rgba(0,0,0,.4)}
+  .lu-chips .ep-chip.on{box-shadow:inset 0 -3px 0 var(--team-a,var(--lume))}
+
   footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
     font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
   footer.foot a{color:var(--ink-3);text-decoration:none}
   footer.foot a:hover{color:var(--lume)}
 </style>
-<link rel="stylesheet" href="../../kit/legibility.css?v=507">
+<link rel="stylesheet" href="../../kit/teletext.css?v=522">
+<link rel="stylesheet" href="../../kit/legibility.css?v=522">
 </head>
 <body>
 <div class="ep-frame">
@@ -115,16 +174,9 @@
   </div>
 
   <div class="hero">
-    <h1>WOWY</h1>
-    <p>
-      With or without. Pick a team, then a player, and see what he does when he
-      shares the floor with the teammates you choose — his own shooting, his own
-      creation, his own mistakes — against the minutes none of them are out
-      there with him. Below that, the team's side of the same question: every
-      arrangement of up to five players being on or off, each worked out
-      separately, with ratings and the four factors at both ends. Arrangements
-      that never happened are shown as such rather than quietly left out.
-    </p>
+    <h1>WOWY / Lineups</h1>
+    <p>How a team plays with and without its players, and every lineup of up to five of them,
+      from the play-by-play of every game.</p>
   </div>
 
   <!-- a members-only league this viewer may not see: the paywall card, in place
@@ -136,17 +188,23 @@
   <div id="seasonRow" style="display:none;padding:calc(var(--u)*2) calc(var(--u)*3) 0">
     <span style="font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-right:8px">season</span><span id="seasonPick" style="display:inline-flex;gap:7px;flex-wrap:wrap"></span>
   </div>
-  <div id="teamrail" class="teamrail"></div>
+  <!-- WHO: the team, then the player sections 01 and 02 are about (wowy.js pick) -->
+  <div class="wpick" id="wpick"><div id="teamrail"></div><div id="subjbar"></div>
+    <span id="subjNote" class="wnote"></span></div>
+  <!-- the three questions, in the order a reader asks them -->
+  <ol class="wsteps">
+    <li><b>01</b><span><em>With teammates</em>what the player does with the teammates you pick on the floor</span></li>
+    <li><b>02</b><span><em>On / off</em>how the team plays with the player on the floor, and without them</span></li>
+    <li><b>03</b><span><em>Lineups</em>every way up to five players shared the floor</span></li>
+  </ol>
 
-  <div class="ep-hdr"><span class="idx">01</span><h2>On the floor with</h2>
-    <span id="subjNote" class="hnote"></span></div>
-  <div id="subjbar" class="subjbar"></div>
+  <div class="ep-hdr"><span class="idx">01</span><h2>With teammates</h2></div>
   <div id="withpanel"></div>
 
   <div class="ep-hdr"><span class="idx">02</span><h2>On / off</h2></div>
   <div id="onoff"></div>
 
-  <div class="ep-hdr"><span class="idx">03</span><h2>Combinations</h2>
+  <div class="ep-hdr"><span class="idx">03</span><h2>Lineups</h2>
     <span id="comboNote" class="hnote"></span></div>
   <div id="wowy"></div>
   </div>
@@ -157,20 +215,20 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../../config.js?v=507" defer></script>
+<script src="../../config.js?v=522" defer></script>
 <!-- memberships: the full WOWY is the members'; a preview and the paywall card
      come from here. Straight after config.js, before data.js reads anything. -->
-<script src="../../access.js?v=507" defer></script>
-<script src="../../bpm.js?v=507" defer></script>
-<script src="../../season.js?v=507" defer></script>
-<script src="../../seasonbar.js?v=507" defer></script>
-<script src="../../data.js?v=507" defer></script>
-<script src="../../lineups.js?v=507" defer></script>
-<script src="../../withstats.js?v=507" defer></script>
-<script src="../../wowy.js?v=507" defer></script>
-<script src="../../p/withui.js?v=507" defer></script>
-<script src="wowy.js?v=507" defer></script>
-<script src="../../nav.js?v=507" defer></script>
-<script src="../../xscroll.js?v=507" defer></script>
+<script src="../../access.js?v=522" defer></script>
+<script src="../../bpm.js?v=522" defer></script>
+<script src="../../season.js?v=522" defer></script>
+<script src="../../seasonbar.js?v=522" defer></script>
+<script src="../../data.js?v=522" defer></script>
+<script src="../../lineups.js?v=522" defer></script>
+<script src="../../withstats.js?v=522" defer></script>
+<script src="../../wowy.js?v=522" defer></script>
+<script src="../../p/withui.js?v=522" defer></script>
+<script src="wowy.js?v=522" defer></script>
+<script src="../../nav.js?v=522" defer></script>
+<script src="../../xscroll.js?v=522" defer></script>
 </body>
 </html>
