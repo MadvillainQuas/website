@@ -54,6 +54,8 @@ function client(state) {
     if (name === 'platform_link_search') return { data: { rows: typeof s.results === 'function' ? await s.results(args) : s.results, more: !!s.more } };
     if (name === 'platform_link_apply') return { data: { group_id: 'g1', members: 4, auto_players: s.autoPlayers == null ? 6 : s.autoPlayers } };
     if (name === 'platform_link_remove') return { data: s.removed || { removed: true, left: 2 } };
+    if (name === 'platform_player_merge_preview') return { data: s.preview || { keep: { name: 'Max Mackinnon', birth_year: null }, other: { name: 'M. Mackinnon', birth_year: null }, blockers: [], counts: { games: 12, events: 640, rosters: 2, awards: 0, photos: 1, followers: 3 } } };
+    if (name === 'platform_player_merge') return { data: s.merged || { kept: args.p_keep, merged: args.p_other, games: 12, events: 640 } };
     return { data: null };
   } } };
 }
@@ -334,6 +336,85 @@ console.log('-- a player\u2019s profile');
   const sw = K.paintPlayer(pl, GROUP, { sub });
   ok('paintPlayer still draws the "other profiles" button for everyone, in the identity line, and asks a signed-out reader nothing', sw && sub.cls('ls-wrap').length === 1 && mountCalls.length === 0);
   ok('...and for a player linked to nothing draws nothing', K.paintPlayer(pl, null, { sub: new N('div') }) === null);
+}
+
+/* ---------------------------------------------------------------- a merge --- */
+console.log('-- merging two profiles');
+{
+  const mk = (id, name, spells, o) => Object.assign({ id, slug: id, name, spells }, o);
+  const ME = mk('p1', 'Max Mackinnon', [{ team: 'Brisbane Bullets', league: 'NBL', season: '2026-27' }]);
+  const OTHER = mk('p2', 'M. Mackinnon', [{ team: 'Ipswich', league: 'NBL1', season: '2024' }]);
+  const cand = mk('p3', 'Maxwell Mackinnon', [{ team: 'Perth', league: 'NBL', season: '2023-24' }], { birth_year: 1999 });
+  const PL = { kind: 'player', player: { id: 'p1', name: 'Max Mackinnon' }, team: undefined };
+  const mergeCalls = m => m.c.calls.filter(x => /^platform_player_merge/.test(x[0]));
+
+  const m = mounted({ linked: { group: 'Max', players: [ME, OTHER] }, results: [cand] }, PL);
+  m.toggle.fire('click');
+  const rows = m.host.cls('le-mem');
+  ok('another linked profile has a "merge into this page" button; this page\u2019s own row has none', rows[1].cls('le-merge').length === 1 && rows[0].cls('le-merge').length === 0
+     && rows[1].cls('le-merge')[0].textContent === 'merge into this page', rows.map(r => r.cls('le-merge').length));
+  ok('the box that asks first is not there until it is asked for', m.host.cls('le-merge-box')[0].hidden === true);
+  rows[1].cls('le-merge')[0].fire('click');
+  await until(() => mergeCalls(m).length > 0);
+  await tick(15);
+  const box = m.host.cls('le-merge-box')[0];
+  ok('it ASKS the database what would happen (the preview) and does nothing yet', mergeCalls(m).length === 1 && mergeCalls(m)[0][0] === 'platform_player_merge_preview'
+     && mergeCalls(m)[0][1].p_keep === 'p1' && mergeCalls(m)[0][1].p_other === 'p2', mergeCalls(m));
+  ok('the box names both profiles and says what would move', box.hidden === false && /Merge M\. Mackinnon into Max Mackinnon\?/.test(box.cls('le-merge-h')[0].textContent)
+     && /12 games with his stats, 640 plays \(and substitutions\) in the play-by-play, 2 roster entries, 1 photo, 3 followers/.test(box.cls('le-merge-p')[0].textContent), box.textContent);
+  ok('...warns that it deletes the other profile and cannot be undone here', /deletes the other profile and cannot be undone/.test(box.cls('le-merge-warn')[0].textContent));
+  ok('...with a merge button and a cancel button', box.cls('le-merge-go').length === 1 && box.cls('le-x').some(b => b.textContent === 'cancel'));
+  box.cls('le-x').find(b => b.textContent === 'cancel').fire('click');
+  ok('cancel closes it and nothing was merged', box.hidden === true && mergeCalls(m).length === 1);
+
+  rows[1].cls('le-merge')[0].fire('click');
+  await until(() => mergeCalls(m).length > 1);
+  await tick(15);
+  box.cls('le-merge-go')[0].fire('click');
+  await until(() => mergeCalls(m).some(x => x[0] === 'platform_player_merge'));
+  await tick(20);
+  ok('only "merge" runs the merge, keeping THIS page and merging the other into it', mergeCalls(m).some(x => x[0] === 'platform_player_merge' && x[1].p_keep === 'p1' && x[1].p_other === 'p2'), mergeCalls(m));
+  ok('...says what happened, closes the box, refreshes the list and offers the reload for the career',
+     /^Merged: 12 games now belong to this profile\. The other profile is gone/.test(m.msg.textContent) && box.hidden === true && m.changes() === 1
+     && m.host.cls('le-x').some(b => /reload/.test(b.textContent) && b.hidden === false), m.msg.textContent);
+
+  /* a blocker */
+  const b = mounted({ linked: { group: 'Max', players: [ME, OTHER] }, preview: { keep: { name: 'Max Mackinnon' }, other: { name: 'M. Mackinnon' }, blockers: ['They played in the same game, so they are two different people.'], counts: { games: 3 } } }, PL);
+  b.toggle.fire('click');
+  b.host.cls('le-mem')[1].cls('le-merge')[0].fire('click');
+  await until(() => b.host.cls('le-merge-box')[0].hidden === false);
+  const bb = b.host.cls('le-merge-box')[0];
+  ok('a reason the database gives for refusing is shown, in red, with NO merge button, only close',
+     bb.cls('le-merge-block').length === 1 && /same game/.test(bb.cls('le-merge-block')[0].textContent) && bb.cls('le-merge-go').length === 0 && bb.cls('le-x').some(x => x.textContent === 'close'), bb.textContent);
+  ok('...and the "cannot be undone" line is not shown for something that cannot be done', bb.cls('le-merge-warn').length === 0);
+
+  /* differing birth years */
+  const by = mounted({ linked: { group: 'Max', players: [ME, OTHER] }, preview: { keep: { name: 'A', birth_year: 1990 }, other: { name: 'B', birth_year: 1998 }, birth_years_differ: true, blockers: [], counts: {} } }, PL);
+  by.toggle.fire('click');
+  by.host.cls('le-mem')[1].cls('le-merge')[0].fire('click');
+  await until(() => by.host.cls('le-merge-box')[0].hidden === false);
+  ok('birth years that differ are pointed out before he confirms', by.host.cls('le-merge-box')[0].cls('le-merge-warn').some(w => /birth years differ \(1990 and 1998\)/.test(w.textContent)));
+  ok('...and a profile with nothing to move says so', /nothing of his to move/.test(by.host.cls('le-merge-box')[0].cls('le-merge-p')[0].textContent));
+
+  /* from the search */
+  const q1 = mounted({ linked: { group: 'Max', players: [ME, OTHER] }, results: [cand] }, PL);
+  q1.toggle.fire('click');
+  await type(q1, 'maxwell');
+  const opt = q1.host.cls('le-opt')[0];
+  ok('a search result has a "merge\u2026" beside the link', opt && opt.cls('le-merge-opt').length === 1);
+  opt.cls('le-merge-opt')[0].fire('pointerdown');
+  await until(() => q1.c.calls.some(x => x[0] === 'platform_player_merge_preview'));
+  ok('...which asks first about THAT profile, and does not link it', q1.c.calls.some(x => x[0] === 'platform_player_merge_preview' && x[1].p_other === 'p3') && !q1.c.calls.some(x => x[0] === 'platform_link_apply'), q1.c.calls.map(x => x[0]));
+
+  /* a club's panel has none of this */
+  const t = mounted();
+  t.toggle.fire('click');
+  ok('a club\u2019s panel has no merge', t.host.cls('le-merge').length === 0 && t.host.cls('le-merge-box')[0].hidden === true);
+
+  ok('the words', E.mergeLines({ counts: { games: 1, events: 0, followers: 2 } }).join() === '1 game with his stats,2 followers' && E.mergeLines({}).length === 0
+     && /^Merged: 1 game now belongs to this profile/.test(E.mergedWords({ games: 1 })) && /everything now belongs/.test(E.mergedWords({})));
+  ok('a server without 0183 says which migration', /migration 0183/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_player_merge in the schema cache' }))
+     && /migration 0178/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_link_apply in the schema cache' })));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

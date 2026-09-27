@@ -23,6 +23,12 @@
    administrator, his birth year, so two people of one name can be told apart). It is a LINK, not a merge: every game and stat stays
    on its own profile, and the linked ones are read together (the career table, the "other profiles" button). The career on this
    page is read when it opens, so after a change a button offers to reload it.
+
+   AND A MERGE (migration 0183), for the day a link is not enough: one person under two profiles that both rank in the same table, so
+   he is in it twice. "merge into this page" on a linked profile, or "merge" on a search result, first ASKS the database what it would do
+   (platform_player_merge_preview: how many games, plays, roster entries, photos and followers would move, and what stops it: the two
+   played in the same game, or one is in a game not yet finished) and shows it. Only then does "merge" run platform_player_merge, which
+   moves everything to THIS profile and deletes the other. It cannot be undone; the old address redirects here.
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -76,8 +82,27 @@ function unlinkedWords(card, res, kind) {
 function errorWords(e) {
   const msg = (e && (e.message || String(e))) || 'Something went wrong.';
   if ((e && e.code === '42501') || /permission denied|administrators only/i.test(msg)) return 'Refused: only platform administrators can edit links.';
-  if ((e && e.code === 'PGRST202') || /schema cache/i.test(msg)) return 'Links are not on the server yet: migration 0178 has not been applied.';
+  if ((e && e.code === 'PGRST202') || /schema cache/i.test(msg)) return /merge/i.test(msg) ? 'Merging is not on the server yet: migration 0183 has not been applied.' : 'Links are not on the server yet: migration 0178 has not been applied.';
   return msg;
+}
+
+/* what a merge would do, in words: the preview's counts, each only when there is something to say */
+function mergeLines(pv) {
+  const c = (pv && pv.counts) || {};
+  const out = [];
+  const add = (n, one, many) => { if (n) out.push(n + ' ' + (n === 1 ? one : many)); };
+  add(c.games, 'game with his stats', 'games with his stats');
+  add(c.events, 'play (and substitution) in the play-by-play', 'plays (and substitutions) in the play-by-play');
+  add(c.rosters, 'roster entry', 'roster entries');
+  add(c.awards, 'award', 'awards');
+  add(c.photos, 'photo', 'photos');
+  add(c.followers, 'follower', 'followers');
+  return out;
+}
+function mergedWords(res) {
+  const g = res && res.games;
+  return 'Merged: ' + (g ? g + (g === 1 ? ' game' : ' games') + ' now belong' + (g === 1 ? 's' : '') + ' to this profile' : 'everything now belongs to this profile') +
+    '. The other profile is gone, and its old address redirects here.';
 }
 
 /* ---------------------------------------------------------------- mount --- */
@@ -120,6 +145,8 @@ function mount(o) {
   list.hidden = true; list.setAttribute('role', 'listbox');
   const msg = panel.appendChild(el('div', 'le-msg'));
   msg.setAttribute('role', 'status');
+  const mergeBox = panel.appendChild(el('div', 'le-merge-box'));
+  mergeBox.hidden = true;
   /* a player's career and game log are read when the page opens; after an edit this reads them again */
   const reloadBtn = panel.appendChild(el('button', 'le-x', 'reload the page to update the career'));
   reloadBtn.type = 'button'; reloadBtn.hidden = true;
@@ -158,6 +185,11 @@ function mount(o) {
       const x = row.appendChild(el('button', 'le-x', 'unlink'));
       x.type = 'button'; x.title = 'take ' + (c.name || (P ? 'this profile' : 'this team')) + ' out of the link';
       x.addEventListener('click', () => unlink(c));
+      if (P && c.id !== team.id) {
+        const mg = row.appendChild(el('button', 'le-x le-merge', 'merge into this page'));
+        mg.type = 'button'; mg.title = 'move everything of ' + (c.name || 'that profile') + ' to this profile and delete it (asks first)';
+        mg.addEventListener('click', () => startMerge(c));
+      }
     });
   }
 
@@ -195,6 +227,11 @@ function mount(o) {
         if (r.group) sub.appendChild(nm('span', 'le-in', 'in the group "' + r.group + '": the whole group is linked'));
       }
       li.addEventListener('pointerdown', e => { if (e.preventDefault) e.preventDefault(); pick(r); });
+      if (P) {
+        const mg = li.appendChild(el('span', 'le-merge-opt', 'merge\u2026'));
+        mg.title = 'merge this profile into the one you are on (asks first)';
+        mg.addEventListener('pointerdown', e => { if (e.preventDefault) e.preventDefault(); if (e.stopPropagation) e.stopPropagation(); startMerge(r); });
+      }
     });
     if (res && res.more) list.appendChild(el('li', 'le-more', 'more matches: type more of the name'));
     list.hidden = false; input.setAttribute('aria-expanded', 'true');
@@ -258,6 +295,50 @@ function mount(o) {
     finally { busy = false; }
   }
 
+  /* --- a merge: ask what it would do, show it, and only then do it --- */
+  function closeMerge() { mergeBox.hidden = true; mergeBox.textContent = ''; }
+  async function startMerge(card) {
+    if (busy) return;
+    busy = true; closeList(); seq++;
+    say('checking what a merge would do\u2026');
+    try {
+      const pv = await rpc('platform_player_merge_preview', { p_keep: team.id, p_other: card.id });
+      say('');
+      mergeBox.textContent = '';
+      const h = mergeBox.appendChild(el('div', 'le-merge-h'));
+      h.append('Merge ', nm('b', null, (pv.other && pv.other.name) || card.name || 'that profile'), ' into ', nm('b', null, (pv.keep && pv.keep.name) || team.name || 'this profile'), '?');
+      const lines = mergeLines(pv);
+      mergeBox.appendChild(el('div', 'le-merge-p', lines.length ? 'This moves ' + lines.join(', ') + ' to this profile.' : 'There is nothing of his to move but the profile itself.'));
+      const blockers = (pv.blockers || []);
+      if (pv.birth_years_differ) mergeBox.appendChild(el('div', 'le-merge-warn', 'Their birth years differ (' + (pv.keep && pv.keep.birth_year) + ' and ' + (pv.other && pv.other.birth_year) + '): are they really one person?'));
+      blockers.forEach(b => mergeBox.appendChild(el('div', 'le-merge-block', b)));
+      if (!blockers.length) mergeBox.appendChild(el('div', 'le-merge-warn', 'This deletes the other profile and cannot be undone here. Its old address will redirect to this page.'));
+      const btns = mergeBox.appendChild(el('div', 'le-merge-btns'));
+      if (!blockers.length) {
+        const go = btns.appendChild(el('button', 'le-x le-merge-go', 'merge'));
+        go.type = 'button';
+        go.addEventListener('click', () => doMerge(card));
+      }
+      const no = btns.appendChild(el('button', 'le-x', blockers.length ? 'close' : 'cancel'));
+      no.type = 'button';
+      no.addEventListener('click', closeMerge);
+      mergeBox.hidden = false;
+    } catch (e) { say(errorWords(e), 'err'); }
+    finally { busy = false; }
+  }
+  async function doMerge(card) {
+    if (busy) return;
+    busy = true;
+    say('merging\u2026');
+    try {
+      const res = await rpc('platform_player_merge', { p_keep: team.id, p_other: card.id });
+      closeMerge();
+      say(mergedWords(res), 'ok');
+      await changed();
+    } catch (e) { say(errorWords(e), 'err'); }
+    finally { busy = false; }
+  }
+
   /* --- open and shut --- */
   function open() {
     panel.hidden = false; toggle.setAttribute('aria-expanded', 'true');
@@ -276,5 +357,5 @@ function mount(o) {
   return { root: box, open, close, refresh(l) { linked = l || null; drawMembers(); }, _state: () => ({ linked, rows, active, busy }) };
 }
 
-return { mount, seasonsOf, spellLines, playerHref, linkedWords, unlinkedWords, errorWords };
+return { mount, seasonsOf, spellLines, playerHref, linkedWords, unlinkedWords, errorWords, mergeLines, mergedWords };
 }));

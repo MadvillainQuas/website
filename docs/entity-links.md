@@ -76,7 +76,29 @@ site linked itself) and searches for another to link (`platform_link_search` / `
 which 0178 already handles). A result shows his clubs and, to an administrator, his birth year, so two people of one name can be told
 apart. **It is a link, not a merge**: every game and stat stays on its own profile, and the linked ones are read together (the career
 table, the "other profiles" button). The career is read when the page opens, so after an edit a button offers to reload it. There is no
-player merge (rewriting one profile's games onto another); the team side has none either.
+player merge here; that is 0183, below.
+
+## Merging two profiles (0183, platform administrators)
+
+For the day a link is not enough: one person under two profiles that both rank in one table, so he is in it twice. `platform_player_merge(keep,
+other)` makes one profile of them: everything that named the other now names `keep`, and the other profile is deleted. **It cannot be undone**
+(the deleted row is kept whole in `player_merges.detail`). `platform_player_merge_preview` says what would move and what stops it, and the panel
+shows that before it offers the button. Both are platform-administrator only (`link_require_admin`).
+
+* **Moves**: `player_game_stats.player_uuid`, roster entries (a season he had under both is one entry), previous clubs, suspensions, awards, eligibility,
+  releases, TOTY rows (a row both had is not counted twice), photos, the link group, `fan_prefs.fav_player_ids`, fan-vote candidates, highlight jobs;
+  the event log (`game_events.pid` and the ids inside `payload`, which is where a substitution names who came on and off) and `games.roster_snapshot` /
+  `starters`; and `players` itself (blanks filled, aliases gathered, both feed identities kept).
+* **The event log** is append-only (`forbid_event_mutation`). 0183 lets it change **only `pid` and `payload`**, and only inside a merge (the transaction
+  sets `epinoia.player_merge`); the merge reads the log by game, never by scanning it.
+* **Refuses**: the two played in the same game (then they are two people); either has a game not finished (live or finalising) or is named in the lineup
+  or squad of a game not yet played.
+* **The feed still finds him**: the merged-away profile's feed key goes to `external_ids.also`, and `Platform.by_feed_key` looks there too, so the next game
+  of the old feed does not make the duplicate again. **The old address works**: `player_merges` maps the old id and slug to the profile that stayed, and the
+  profile page redirects.
+* **Left as it was**: historical text that names an id (`notifications.ref`, `site_events.ref`, `audit_log`). Browsers' cached season files are read again
+  within six hours; the published season snapshots for his competitions (and the stars) are deleted so the next run rebuilds them.
+* Tests: `supabase/tests/player-merge.test.mjs` (PGlite), `scripts/ingest/player_merge_test.py`, and the panel's in `linkedit.test.mjs`.
 
 ## The possible matches (flagged, with a confidence and a reason)
 

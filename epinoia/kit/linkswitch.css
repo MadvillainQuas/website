@@ -122,3 +122,14 @@ a.ls-item:hover{ border-color:var(--lume, #93f2bf); background:color-mix(in srgb
 .ls-c{ color:var(--ink-2, #b9d2c5) }
 .ls-none{ padding:14px 4px; font-family:var(--f-micro, monospace); font-size:10px; color:var(--ink-3, #7d9a8b) }
 @media (max-width:640px){ .ls-pop{ position:fixed; left:16px; right:16px; width:auto; top:auto; bottom:calc(var(--tabbar-h, 62px) + 14px + env(safe-area-inset-bottom)); max-height:min(64vh, calc(100vh - var(--tabbar-h, 62px) - 40px)) } }
+
+/* a player merge: the confirm box under the linked profiles, and the "merge" links on a result */
+.le-merge-box{ margin-top:8px; padding:9px 10px; border:1px solid var(--bad, #b32433); border-radius:8px; background:color-mix(in oklch, var(--bad, #b32433) 8%, transparent) }
+.le-merge-h{ font-weight:700; margin:0 0 5px }
+.le-merge-p{ margin:0 0 5px; font-size:12px; line-height:1.5 }
+.le-merge-warn{ margin:0 0 5px; font-size:11.5px; line-height:1.5; color:var(--ink) }
+.le-merge-block{ margin:0 0 5px; font-size:11.5px; line-height:1.5; color:var(--bad, #b32433); font-weight:700 }
+.le-merge-btns{ display:flex; gap:8px; margin-top:6px }
+.le-merge-go{ border-color:var(--bad, #b32433); color:var(--bad, #b32433) }
+.le-merge{ margin-left:6px }
+.le-merge-opt{ display:inline-block; margin-top:4px; font-size:11px; text-decoration:underline; cursor:pointer; color:var(--bad, #b32433) }

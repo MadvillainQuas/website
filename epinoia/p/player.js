@@ -865,6 +865,15 @@ async function loadCareerAccess(pl, lgRow) {
       'created_by,created_at,photo_url,height_cm,weight_kg,wingspan_cm,previous_club,' +
       'public_consent,consent_at,aliases,external_ids&limit=1');
     if (!ps.length) {
+      /* A PROFILE THAT WAS MERGED INTO ANOTHER (migration 0183) keeps its address: the old id or slug leads to the one that stayed */
+      try {
+        const mv = await api('player_merges?' + (isUuid ? 'old_id=eq.' : 'old_slug=eq.') + encodeURIComponent(want) + '&select=into_id&limit=1');
+        if (mv.length && mv[0].into_id) {
+          const q = new URLSearchParams(location.search); q.set('p', mv[0].into_id);
+          location.replace(location.pathname + '?' + q.toString() + location.hash);
+          return;
+        }
+      } catch (_) { /* before 0183 there is no such table: the message below */ }
       return fail('This profile is not public. Under-18 players are only visible to their club.');
     }
     const pl = ps[0];

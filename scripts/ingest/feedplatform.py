@@ -14,8 +14,10 @@ Used by bootstrap_league.py (one-off, whole archive) and by run_ingest.write_pla
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
+from urllib.parse import quote
 from datetime import datetime, timezone
 
 import names
@@ -373,7 +375,15 @@ class Platform:
         usable surname) keeps the old behaviour, because then there is nothing better to go on."""
         if not self.sb or str(team.get("id", "")).startswith("dry-"):
             return None
-        rows = self.sb.select("players", f"external_ids->>fiba_livestats=eq.{ext}&select=id,slug,first_name,last_name&limit=20")
+        cols = "select=id,slug,first_name,last_name&limit=20"
+        # A MERGED PROFILE KEEPS THE FEED KEYS OF BOTH (0183): the survivor's own under external_ids.fiba_livestats and the merged-away
+        # profile's under external_ids.also, so a feed that still names the old slot finds him and does not make the duplicate again.
+        # If the server does not understand the combined filter the plain one is asked, exactly as before.
+        try:
+            rows = self.sb.select("players", "or=(external_ids->>fiba_livestats.eq." + quote('"' + ext + '"', safe="") +
+                                  ",external_ids->also.cs." + quote(json.dumps([ext]), safe="") + ")&" + cols)
+        except Exception:
+            rows = self.sb.select("players", f"external_ids->>fiba_livestats=eq.{ext}&{cols}")
         if not rows:
             return None
         if last:

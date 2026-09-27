@@ -556,6 +556,15 @@ jobs:
         # shooting distances grouped, impact with every on/off four factor and BPM/OBPM/DBPM/VORP; the players' table stays out
         run: node supabase/tests/collapsible-cards.test.mjs
 
+      - name: Merging two profiles of one person
+        # 0183 on a real Postgres: everything that named the merged-away profile moves (stats, the event log's pids and payloads,
+        # snapshots, roster, awards, photos, followers), the log stays append-only for everybody else, and the cases that would be a
+        # mistake are refused (same game, unfinished game, not an administrator); the ingest still finds him by his old feed key
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/player-merge.test.mjs
+          python scripts/ingest/player_merge_test.py
+
       - name: Team spacing and 3PT consistency on the player profile
         # team spacing: teammates' three-point points per 100 possessions while he plays (season.js); 3PT consistency:
         # accuracy and volume recalculated after every game, computed for one player when his profile opens (consistency.js)
