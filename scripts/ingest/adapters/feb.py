@@ -83,6 +83,7 @@ import base64
 import html
 import json
 import os
+import math
 import re
 import time
 from datetime import datetime, timezone
@@ -369,6 +370,69 @@ def header_tip(header: dict) -> Optional[str]:
     return local_to_utc(y, mo, d, h, mi, tz)
 
 
+# ------------------------------------------------------------------ the shot chart's frame
+#: FIBA's shot-chart frame: the full court 28 x 15 m in a 0-100 square, the rims at x 6 and 94, y 50
+CHART_W_M, CHART_H_M = 28.0, 15.0
+RIM_L_X, RIM_R_X, RIM_Y = 6.0, 94.0, 50.0
+
+
+def _find_rim(pts: List[Tuple[float, float]], lo: float, hi: float, radius_m: float = 1.4) -> Optional[Tuple[float, float]]:
+    """Where the basket is on one half of a game's shot chart: the middle of the densest `radius_m` circle of
+    two-point shots there (a third to a half of all twos are at the rim, so the basket is the peak). None when
+    there are too few shots on that half to say."""
+    cand = [(x, y) for x, y in pts if lo <= x <= hi and 38.0 <= y <= 62.0]
+    if len(cand) < 8:
+        return None
+
+    def near(cx, cy):
+        return [(x, y) for x, y in cand
+                if math.hypot((x - cx) / 100 * CHART_W_M, (y - cy) / 100 * CHART_H_M) <= radius_m]
+    best: List[Tuple[float, float]] = []
+    for cx, cy in cand:
+        n = near(cx, cy)
+        if len(n) > len(best):
+            best = n
+    mx = sum(x for x, _ in best) / len(best)
+    my = sum(y for _, y in best) / len(best)
+    for _ in range(3):
+        n = near(mx, my)
+        if len(n) < 4:
+            break
+        mx = sum(x for x, _ in n) / len(n)
+        my = sum(y for _, y in n) / len(n)
+    return mx, my
+
+
+def calibrate_court(shots: List[Tuple[float, float, str]]):
+    """THE CHART'S FRAME IS NOT THE SAME FROM GAME TO GAME. The federation's scorers tap a court drawing on a
+    tablet, and the position it returns is on that drawing: in a game like Palmer Mallorca v Fibwi (2535727)
+    both baskets sit at x 13 and 88, not FIBA's 6 and 94 - the whole court is scaled about 1.2 times. The
+    rim test ("within 1.22 m of a basket") then found 4% of that game's twos at the rim where the league's
+    other games find half, 0% in Cajasol v Zamora, 1% in Leganes v Hozono: across the leagues, a rim rate of
+    29% against the 45-55% every other league measures.
+
+    So each game is put on FIBA's frame by ITS OWN baskets: the two peaks of the two-point shots (_find_rim)
+    are moved to x 6 and 94 (a shift and one scale for both axes: the drawing is scaled as a whole) and the
+    height is centred on y 50. Returns (function (x, y) -> (x, y), {"rimL", "rimR", "scale"}), or None where
+    the game cannot say (too few shots yet in a game in progress, or a peak that is not a plausible basket) -
+    the shots then stay as they were. Checked on 10 real games: rim share 29% -> 51%, and every
+    three-pointer stays outside the arc."""
+    two = [(x, y) for x, y, k in shots if k == "2pt"]
+    L = _find_rim(two, 0.0, 30.0)
+    R = _find_rim(two, 70.0, 100.0)
+    if not L or not R or R[0] - L[0] < 50.0:
+        return None
+    scale = (RIM_R_X - RIM_L_X) / (R[0] - L[0])
+    if not 0.85 <= scale <= 1.6 or not 0.0 <= L[0] <= 28.0 or not 72.0 <= R[0] <= 100.0:
+        return None
+    cy = (L[1] + R[1]) / 2.0
+
+    def to_fiba(x: float, y: float) -> Tuple[float, float]:
+        return (min(100.0, max(0.0, RIM_L_X + (x - L[0]) * scale)),
+                min(100.0, max(0.0, RIM_Y + (y - cy) * scale)))
+    return to_fiba, {"rimL": [round(L[0], 2), round(L[1], 2)], "rimR": [round(R[0], 2), round(R[1], 2)], "scale": round(scale, 3)}
+
+
 def raw_from_keyfacts(reply: dict, home_id: Optional[str] = None,
                       rosters: Optional[Dict[str, str]] = None) -> Optional[dict]:
     """One KeyFacts reply -> FIBA LiveStats data.json shape (the shape plk.raw_from_game writes and
@@ -637,11 +701,16 @@ def raw_from_keyfacts(reply: dict, home_id: Optional[str] = None,
             tm[str(tno)]["logoS"] = {"url": logo}
 
     # the shot chart, joined to its action by the renumbered action itself
+    calib = calibrate_court([(x, y, e["actionType"]) for e, x, y in shots_in if e["tno"] in (1, 2)])
     for e, x, y in shots_in:
         if e["tno"] not in (1, 2):
             continue
+        x0, y0 = x, y
+        if calib:
+            x, y = calib[0](x, y)
         tm[str(e["tno"])]["shot"].append({
-            "r": e["success"], "x": x, "y": y, "actionType": e["actionType"], "subType": e["subType"],
+            "r": e["success"], "x": x, "y": y, **({"x0": x0, "y0": y0} if calib else {}),
+            "actionType": e["actionType"], "subType": e["subType"],
             "actionNumber": e["actionNumber"], "pno": e["pno"], "per": e["period"], "perType": e["periodType"],
             "player": e["player"], "shirtNumber": e["shirtNumber"]})
 
@@ -658,7 +727,7 @@ def raw_from_keyfacts(reply: dict, home_id: Optional[str] = None,
         tm[s]["full_score"] = tm[s]["score"]
 
     last_play = next((e for e in reversed(events) if e["actionType"] not in ("period", "game")), None)
-    raw = {"tm": tm, "pbp": events, "period": last_q,
+    raw = {"tm": tm, "pbp": events, "period": last_q, **({"shotFrame": calib[1]} if calib else {}),
            "periodType": "REGULAR" if last_q <= 4 else "OVERTIME", "inOT": 1 if last_q > 4 else 0}
     if finished or last_q in closed:
         raw["clock"] = "00:00"

@@ -496,5 +496,48 @@ ok("a kind nobody has seen is still reported (and kept as a personal foul, never
    F.foul_kind({"text": "(X) A. PLAYER: FALTA Rarísima", "idPlayer": "1", "logParam3": "99"})[1] is not None
    and F.foul_kind({"text": "(X) A. PLAYER: FALTA Rarísima", "idPlayer": "1", "logParam3": "99"})[0] == "personal")
 
+print("\n-- the shot chart's frame is found game by game")
+import math  # noqa: E402
+import random  # noqa: E402
+_rng = random.Random(7)
+
+
+def _chart(rim_l, rim_r, scale, n=90):
+    """A game's twos and threes as the federation's tablet would return them: 45% at a basket, the rest spread
+    to the arc, all drawn `scale` times too large about the court's middle... here: baskets at rim_l / rim_r."""
+    out = []
+    for i in range(n):
+        rx, ry = rim_l if i % 2 else rim_r
+        if i % 9 < 4:
+            out.append((rx + _rng.gauss(0, 0.9), ry + _rng.gauss(0, 1.4), "2pt"))
+        elif i % 9 < 7:
+            out.append((rx + (_rng.random() * 0.5 + 0.1) * (1 if rx < 50 else -1) * 30 * scale, ry + _rng.gauss(0, 12 * scale), "2pt"))
+        else:
+            out.append((rx + (0.32 if rx < 50 else -0.32) * 100 / 1.0 * scale * 0.9, ry + _rng.gauss(0, 15 * scale), "3pt"))
+    return out
+
+
+def _rim_share(shots, f=None):
+    def d(x, y):
+        return min(math.hypot((x - rx) / 100 * 28.0, (y - 50.0) / 100 * 15.0) for rx in (6.0, 94.0))
+    two = [(x, y) for x, y, k in shots if k == "2pt"]
+    if f:
+        two = [f(x, y) for x, y in two]
+    return sum(1 for x, y in two if d(x, y) <= 1.22) / len(two)
+
+
+_wide = _chart((13.4, 50.1), (87.6, 52.8), 1.18)
+_cal = F.calibrate_court(_wide)
+ok("a game drawn 1.2 times too small (baskets at x 13 and 88) is found", _cal is not None and abs(_cal[1]["rimL"][0] - 13.4) < 1.5 and abs(_cal[1]["rimR"][0] - 87.6) < 1.5, _cal and _cal[1])
+ok("...and its rim share goes from a few percent to what a basket gives (30%+)", _rim_share(_wide) < 0.10 and _rim_share(_wide, _cal[0]) > 0.30,
+   (_rim_share(_wide), _rim_share(_wide, _cal[0])))
+_ok_game = _chart((6.0, 50.0), (94.0, 50.0), 1.0)
+_c2 = F.calibrate_court(_ok_game)
+ok("a game already on FIBA's frame is left where it is (moves under half a unit)", _c2 is not None and abs(_c2[0](6.0, 50.0)[0] - 6.0) < 0.7 and abs(_c2[0](50.0, 50.0)[0] - 50.0) < 1.0, _c2 and _c2[1])
+ok("a game in progress with too few shots to say is left as it is", F.calibrate_court(_ok_game[:10]) is None)
+ok("a chart whose 'baskets' are not plausible (scale outside 0.85-1.6) is left as it is",
+   F.calibrate_court(_chart((30.0, 50.0), (70.0, 50.0), 1.0)) is None)
+ok("a calibrated point never leaves the court (0-100)", all(0 <= v <= 100 for x, y, k in _wide for v in _cal[0](x, y)) and _cal[0](-40.0, 300.0) == (0.0, 100.0))
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)
