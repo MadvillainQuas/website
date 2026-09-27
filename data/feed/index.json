@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-27T01:32:11.230701+00:00",
+ "updated": "2026-09-27T01:35:57.290428+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -105,6 +105,13 @@
    "adapter": "feb",
    "games": 242,
    "updated": "2026-09-27T01:29:06.330337+00:00"
+  },
+  {
+   "code": "LIGAU",
+   "label": "Liga U",
+   "adapter": "feb",
+   "games": 84,
+   "updated": "2026-09-27T01:35:57.275796+00:00"
   },
   {
    "code": "LNB",
