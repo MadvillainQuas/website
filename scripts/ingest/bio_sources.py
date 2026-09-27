@@ -35,9 +35,13 @@ What each source gives, found by looking, not assumed (2026-09-27):
   orlen-basket-liga, 1-liga-mezczyzn, 1-liga-kobiet
                          the federation's club pages on rozgrywki.pzkosz.pl, this season and last (date, height; no weight anywhere);
                          PLK rows keyed by the federation person id = the PLK feed's player id
+  slb-men, slb-women, bcb, eabl, nbl-d1, wnbl-d1, weabl, kvinde-basketligaen, cibacopa
+                         Genius hosted: each club's roster page in the competition (columns per tenant: SLB date/height/weight,
+                         WBBL date/height, HBBC and Basketball England and DAM height only; CIBACOPA date + cibacopa.mx height/weight)
+  basketligan, -dam      the Swedish league sites' Sportality API (as basketligaen.dk): roster per club, athlete page per new player
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
 
-A league that is not here has no reader yet; docs/player-bio.md lists what each remaining one publishes.
+Every league in config/ingest-sources.json has a reader except kosovo-superliga (no bio published anywhere); docs/player-bio.md.
 """
 from __future__ import annotations
 
@@ -873,6 +877,155 @@ def pzkosz(liga: int, keyed: bool = False) -> Callable[..., Iterator[dict]]:
     return read
 
 
+# --------------------------------------------------------- Genius Sports hosted leagues ---
+# The person pages ARE empty ("Player Profile" and nothing under it), but the club's ROSTER page of a competition is a server-rendered
+# table whose columns each tenant chooses (checked 2026-09-27):
+#     SLB (men)            shirt, name, position, height, weight, age, date of birth, nationality
+#     WBBL (SLB women)     shirt, name, position, height, age, date of birth, nationality          (no weight)
+#     HBBC (BCB)           shirt, position, name, age, nationality, height, weight                 (no date: age only, never used)
+#     BBE (EABL, NBL D1..) shirt, "Surname, Forename", position, height, age, nationality          (height only)
+#     SBF (Basketligan)    date of birth, shirt, name, position, nationality, age, height          (height mostly blank; Sweden uses sportality below)
+#     DAM (Kvindeligaen)   shirt, name, position, height, age, nationality                         (height only)
+#     CIBA (CIBACOPA)      shirt (blank), "J. SURNAME", position, date of birth                    (date only; initial + surname)
+# The date cell carries the date as ISO in its data-value ("1997-01-03"), whatever the tenant prints (1/3/97, 31/10/97), so that is what
+# is read. The Age column is never read: an age is not a birth year. The clubs come from the competition's standings page (a team link with
+# its full name), the competitions and their years from the tenant's landing page (FibaLiveStatsAdapter.tenant_competitions). No record
+# has a `key`: the game feed's player key is <club code>:<pno>, a per-game slot, not the Genius person id the roster links to.
+GENIUS_HOSTED = "https://hosted.dcd.shared.geniussports.com"
+_G_CELL = re.compile(r"<t([dh])\b([^>]*)>(.*?)</t[dh]>", re.S | re.I)
+_G_TEAM = re.compile(r'/competition/(\d+)/team/(\d+)[^"]*"\s*>\s*<span class="team-name-full">([^<]*)</span>', re.S)
+
+
+def _genius_page(url: str) -> str:
+    """The hosted pages answer a 500 now and then for a page that is there: one retry, then nothing."""
+    for attempt in (1, 2):
+        try:
+            return get_text(url) or ""
+        except Exception:
+            if attempt == 2:
+                return ""
+            time.sleep(3 * GAP_S)
+    return ""
+
+
+def _genius_name(s: str) -> dict:
+    """'Godwin, Harry' (Basketball England) -> first/last; anything else ('Kyle Carey', 'J. AVILA JR') is left whole for the matcher."""
+    last, comma, first = s.partition(",")
+    if comma and first.strip():
+        return {"first": first.strip(), "last": last.strip()}
+    return {"name": s}
+
+
+def genius(client: str, comps: str, exclude: str | None = None,
+           more: Callable[[Callable], dict] | None = None) -> Callable[..., Iterator[dict]]:
+    """`comps` / `exclude`: regexes on the tenant's competition names, as in the league's config (competitions_include / _exclude).
+    `more(log)`: {Genius person id: fields} from another source keyed by the same person id, laid over the roster's row."""
+    want, skip = re.compile(comps, re.I), re.compile(exclude, re.I) if exclude else None
+
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        from adapters.fiba_livestats import FibaLiveStatsAdapter
+        found = [c for c in FibaLiveStatsAdapter.__new__(FibaLiveStatsAdapter).tenant_competitions(client)
+                 if want.search(c["name"]) and not (skip and skip.search(c["name"]))]
+        # this season's and last season's (a tenant's year is the season's first: CIBACOPA's is the calendar year, and so is its season)
+        on = (today or date.today()).year
+        years = sorted({c["year"] for c in found if c["year"] <= on}, reverse=True)[:2]
+        seen: set = set()
+        extra = more(log) if more else {}
+        for year in years:
+            for c in (c for c in found if c["year"] == year):
+                st = _genius_page(f"{GENIUS_HOSTED}/{client}/en/competition/{c['id']}/standings")
+                clubs = {tid: _html.unescape(nm).strip() for cid, tid, nm in _G_TEAM.findall(st) if cid == c["id"]}
+                got = 0
+                for tid, club in clubs.items():
+                    page = _genius_page(f"{GENIUS_HOSTED}/{client}/en/competition/{c['id']}/team/{tid}/roster")
+                    rows = _rows(page.split("roster-table", 1)[-1])
+                    head = [_txt(x[2]).lower() for x in _G_CELL.findall(rows[0])] if rows else []
+                    col = lambda *names: next((i for i, h in enumerate(head) if h in names), None)
+                    i_name, i_no, i_ht, i_wt, i_dob = col("player name"), col("shirt number"), col("height"), col("weight"), col("date of birth")
+                    for row in rows[1:]:
+                        pm = re.search(r"/person/(\d+)", row)
+                        cells = _G_CELL.findall(row)
+                        if not pm or i_name is None or len(cells) != len(head) or pm.group(1) in seen:
+                            continue
+                        seen.add(pm.group(1))
+                        who = _txt(cells[i_name][2])
+                        dv = re.search(r'data-value\s*=\s*"(\d{4}-\d{2}-\d{2})"', cells[i_dob][1]) if i_dob is not None else None
+                        at = lambda i: (_txt(cells[i][2]) or None) if i is not None else None
+                        got += 1
+                        rec = {**_genius_name(who), "team": club, "number": at(i_no), "height_cm": at(i_ht), "weight_kg": at(i_wt),
+                               "birth": dv.group(1) if dv else None, "label": who}
+                        rec.update({k: v for k, v in (extra.get(pm.group(1)) or {}).items() if v})
+                        yield rec
+                log(f"     {client} {c['name']} ({year}): {len(clubs)} clubs, {got} players")
+    return read
+
+
+# CIBACOPA's own site (cibacopa.mx, a single-page app on its own JSON API) lists the season's players with height, weight and the full
+# name, keyed by the Genius person id; the Genius roster gives the date of birth but prints the name as "J. AVILA JR". The two are laid
+# together by that id: one request for the site's list, then the Genius rosters as for every tenant.
+def _cibacopa_site(log: Callable) -> dict:
+    rows = get_json("https://cibacopa.mx/api/public/players") or []
+    log(f"     cibacopa.mx: {len(rows)} players (height, weight)")
+    return {str(r["id"]): {"height_cm": r.get("height"), "weight_kg": r.get("weight"), "full": (r.get("name") or "").strip()}
+            for r in rows if isinstance(r, dict) and r.get("id")}
+
+
+def _ciba_name(rec: dict) -> dict:
+    """'J. AVILA JR' + 'Joseph John Avila Jr' -> first 'Joseph John', last 'Avila Jr'; the roster's own name when they do not agree."""
+    full, short = rec.pop("full", "") or "", rec.get("name") or ""
+    m = re.match(r"^\S+\.\s+(.+)$", short)
+    if full and m and full.lower().endswith(" " + m.group(1).lower()):
+        last = full[-len(m.group(1)):]
+        rec.pop("name", None)
+        rec.update({"first": full[:-len(last)].strip(), "last": last, "label": full})
+    return rec
+
+
+def cibacopa(today: date | None = None, log: Callable = print, **kw) -> Iterator[dict]:
+    for rec in genius("CIBA", r"^CIBACOPA \d{4}", more=_cibacopa_site)(today=today, log=log, **kw):
+        yield _ciba_name(rec)
+
+# ------------------------------------------------------------- Sportality league sites ---
+# The Swedish leagues' own sites run on Sportality, the same JSON API as basketligaen.dk (checked 2026-09-27):
+#     https://www.sblherr.se/api/sports-v2   series "SBL"   (basketligan.se does not resolve)
+#     https://www.sbldam.se/api/sports-v2    series "SBLD"
+# A roster per club (name, shirt), then one athlete page per player the site still misses something for: date of birth nearly always,
+# height often, weight seldom (0 = not given). The existing `basketligaen` reader is this with (DBL_API, "DBL"); it could become
+# `sportality(DBL_API, "DBL", "Basketligaen")`. basketligaen.dk's filter lists only the DBL series: Kvindebasketligaen is not on it.
+def sportality(api: str, series_code: str, label: str) -> Callable[..., Iterator[dict]]:
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        filt = get_json(api + "/season-series-game-types-filter") or {}
+        series = next((x["uuid"] for x in filt.get("series") or [] if x.get("code") == series_code), None)
+        gtype = next((x["uuid"] for x in filt.get("gameType") or [] if x.get("code") == "regular"), None)
+        seen: set = set()
+        y = _season_start(today)
+        for year in (y, y - 1):                              # this season's squads first; last season's for a player not on one yet
+            season = next((x["uuid"] for x in filt.get("season") or [] if str(x.get("code")) == str(year)), None)
+            if not (season and series and gtype):
+                log(f"     {label}: no {year} season on the site")
+                continue
+            sched = get_json(f"{api}/game-schedule", {"seasonUuid": season, "seriesUuid": series, "gameTypeUuid": gtype,
+                                                       "completeSeason": "all", "homeAway": "all", "allGames": "all"}) or {}
+            teams = sched.get("teamList") or []
+            log(f"     {label} {year}: {len(teams)} clubs")
+            for t in teams:
+                names = t.get("teamNames") or {}
+                club = names.get("long") or names.get("short")
+                for grp in get_json(f"{api}/athletes/by-team-uuid/{t['uuid']}") or []:
+                    for pl in grp.get("players") or []:
+                        uid = pl.get("uuid")
+                        if not uid or uid in seen:
+                            continue
+                        seen.add(uid)
+
+                        def detail(uid=uid):
+                            d = (get_json(f"{api}/athlete-details/{uid}") or {}).get("athleteData") or {}
+                            return {"height_cm": d.get("height"), "weight_kg": d.get("weight"), "birth": d.get("dateOfBirth") or d.get("birthDate")}
+                        yield {"first": pl.get("firstName"), "last": pl.get("lastName"), "team": club, "number": pl.get("jerseyNumber"),
+                               "label": pl.get("fullName") or f"{pl.get('firstName')} {pl.get('lastName')}", "detail": detail}
+    return read
+
+
 # Keyed by the league's slug (config/ingest-sources.json league_slug).
 READERS: dict = {
     "euroleague": euroleague("E"),
@@ -920,6 +1073,20 @@ READERS: dict = {
     "orlen-basket-liga": pzkosz(2, keyed=True),
     "1-liga-mezczyzn": pzkosz(1),
     "1-liga-kobiet": pzkosz(16),
+    # Genius hosted leagues: the competition's club roster pages (regexes follow config competitions_include)
+    "slb-men": genius("SLB", r"^Championship"),
+    "slb-women": genius("WBBL", r"^Championship"),
+    "bcb": genius("HBBC", r"^(BCB|British Championship Basketball) \d{4}"),        # not the Trophy, Exhibition Games, Pro Am
+    "eabl": genius("BBE", r"^EABL"),
+    "nbl-d1": genius("BBE", r"^NBL Division (One|1)\b"),
+    "wnbl-d1": genius("BBE", r"^WNBL Division (One|1)\b"),
+    "weabl": genius("BBE", r"^WEABL"),
+    "kvinde-basketligaen": genius("DAM", r"^Kvindebasketligaen"),
+    "cibacopa": cibacopa,
+    # Sweden: the league sites' Sportality API (date nearly always, height often). genius("SBF", r"^(Herrar - )?(SBL|Basketligan) Herr")
+    # / r"^(Damer - )?(SBL|Basketligan) Dam" also works (date of birth only, no request per player) if those sites go away.
+    "basketligan": sportality("https://www.sblherr.se/api/sports-v2", "SBL", "Basketligan"),
+    "basketligan-dam": sportality("https://www.sbldam.se/api/sports-v2", "SBLD", "Basketligan Dam"),
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

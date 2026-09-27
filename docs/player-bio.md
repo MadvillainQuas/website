@@ -32,6 +32,24 @@ python scripts/ingest/bio_sync.py --worker-config --dry-run --verbose    # also 
 
 Until 0184 is pushed (`npx supabase@latest db push`) the job writes birth years only and says so.
 
+## Players not on the site yet (0186)
+
+A league publishes its rosters before its first game; the ingest makes a player only when he is in a box score. So a feed row that
+matches nobody (and carries a height, weight or birth) is kept in `player_bio_pending`, one row per person per league (by the feed's
+key, else name + club). Every later pass offers the kept rows to the players made since, by the same matcher and rules, and deletes a
+row once it has found its player. A league not on the site at all yet (no game ingested) is read too: all its rows are kept.
+
+* Same privacy as `players`: an adult's date, a minor's year only (a trigger holds it), service role only (RLS, no policy, no grant).
+* `bio_sync.py --stash-only` reads no feed and only hands out kept rows: the workflow runs it **daily at 07:40 UTC**, so a new player
+  has his bio the day after his first game. The weekly pass reads the feeds and keeps what is new.
+* A row nobody claims for 18 months is dropped. A player not on the site costs a detail page too (at most 200 a league per pass).
+* Until 0186 is pushed, the job says so and runs as before (nothing kept).
+
+```
+python scripts/ingest/bio_sync.py --worker-config --stash-only           # give kept rows to new players; no feed read
+python scripts/ingest/bio_sync.py --worker-config --no-stash             # neither keep nor offer
+```
+
 ## Sources (found 2026-09-27; match counts are of the players already on the site that day)
 
 | league (slug) | source | gives | dry run |
@@ -39,8 +57,9 @@ Until 0184 is pushed (`npx supabase@latest db push`) the job writes birth years 
 | euroleague | incrowdsports people feed | date, height, weight | 239 / 239 |
 | eurocup | same feed | date, height, weight | no players on the site yet |
 | basketligaen | Sportality API: roster per club, athlete page per new player | date, height, weight | 150 / 155 |
+| basketligan, basketligan-dam | the same Sportality API on sblherr.se / sbldam.se | date, height (often), weight (seldom) | feed read: 140 / 108 rows |
 | lega-basket-serie-a | legabasket.it API, roster per club | date, height, weight | 72 / 72 |
-| lnb-elite, lnb-elite-2 | api-prod.lnb.fr `teams/getRoster` | date, height (no weight) | matched; **refuses a GitHub runner: run from home** |
+| lnb-elite, lnb-elite-2, lnb-espoirs-elite, lnb-espoirs-elite-2 | api-prod.lnb.fr `teams/getRoster` (divisions 1-4) | date, height (no weight; Espoirs ~40% height) | matched; **refuses a GitHub runner: run from home** |
 | nbl, wnbl, nbl1-men, nbl1-women | rosetta `/get/<org>/players/in/season/<year>` | date, height, weight (NBL1 seldom height) | nbl 131 / 132; others: no players yet |
 | bbl | easycredit-bbl.de club pages (page data) | date, height, weight | 219 / 219 |
 | proa, prob | 2basketballbundesliga.de Kader pages | date, height, weight | 151 / 153, 175 / 175 |
@@ -51,18 +70,34 @@ Until 0184 is pushed (`npx supabase@latest db push`) the job writes birth years 
 | w-league-premier, w-league-future | api.wjbl.01core.app `/player` | date, height, weight | no players yet |
 | aba-league, aba-league-2, aba-u19-league | aba-liga.com club pages | date, height | no players yet |
 | bnxt-league | box scores (`birthdate` per player) | date only, 40 games read | no players yet |
+| slb-men | Genius hosted: competition roster page per club | date, height, weight | feed read: 217 rows |
+| slb-women | Genius WBBL roster pages | date, height | feed read: 127 rows |
+| bcb | Genius HBBC roster pages | height, a little weight (age only, never used) | feed read: 298 rows |
+| eabl, nbl-d1, wnbl-d1, weabl | Genius BBE roster pages ("Surname, Forename") | height only | feed read |
+| kvinde-basketligaen | Genius DAM roster pages | height only | feed read: 125 rows |
+| cibacopa | Genius CIBA rosters (date) + cibacopa.mx `/api/public/players` (height, weight, full name), joined on the Genius person id | date, height, weight | feed read: 363 rows |
+| korisliiga, naisten-korisliiga, i-divisioona-a, i-divisioona-b | TorneoPal `getTeams` + `getTeam` | birth YEAR (as printed), height | feed read: 151 / 87 / 101 / 205 rows |
+| slovak-sbl | club Súpiska (Roster) tab; player page for height/weight | date; height and weight on ~25% | feed read: 346 rows |
+| nbl-bulgaria | nbl.basketball.bg player search per club; player page | date, height, weight (Cyrillic, transliterated) | 2025/26: 165 rows |
+| greek-elite-league | stats.basket.gr player page by the feed's GUID, only for players without a date | date only | 6 / 6 sampled |
+| lkl | lkl.lt/zaidejai/<slug>, by the slug the feed keys him by | date, height, weight | 89 / 89 sampled |
+| nkl | nkl.lt club pages; player page for the date | date, height, weight | feed read: 176 rows |
+| orlen-basket-liga | rozgrywki.pzkosz.pl club pages (league 2), keyed: the federation id is the PLK feed's player id | date, height | feed read: 280 rows |
+| 1-liga-mezczyzn, 1-liga-kobiet | rozgrywki.pzkosz.pl club pages (leagues 1, 16) | date, height | feed read: 315 / 598 rows |
+| lnbp | Sportradar EUI embed players list, keyed by the box score's personId | height, weight (~75%), date (~25%) | feed read: 482 rows |
+| u-sports | each university's roster page (PrestoSports / Sidearm), 39 of 48 clubs; feet-inches and lbs converted | height, weight where printed | feed read: 755 players |
+
+"feed read" = read live on 2026-09-27, not yet dry-run against the site's players (run `--dry-run` to see the match counts).
 
 ## Not done, and why
 
-* **Genius Sports hosted leagues** (SLB men and women, WBBL, Kvinde Basketligaen, other Genius clients): the person pages have an empty
-  "Player Profile" on the two tenants checked. No bio anywhere in the feed.
-* **EuroLeague-style Sportradar EUI** (Bulgaria): roster rows carry no bio.
-* **PLK, 1LM, 1LK** (Poland): the game JSON has none and no player endpoint was found under `plk.pl/api/webpage` or the Puls Basketu API.
-* **Slovak SBL**: player pages give height, weight and an **age**, not a date: a birth year from an age is right only to within a year,
-  so it is not written.
-* **Finland (basket.fi TorneoPal)**: `getPlayer?player_id=` gives a birth year (and often height 0), but no roster call lists the ids.
-* **LKL, NKL, Kosovo, Greek Elite (stats.basket.gr), U SPORTS, Mexico (CIBACOPA, LNBP)**: not probed to a working page; U SPORTS club
-  pages carry height, weight and class year only.
+* **kosovo-superliga**: basketbolli.com lists players by name and licence number only; no player page, no bio in the LiveStats data.
+* **Ages are never used**: HBBC, Basketball England, DAM, Slovak player pages and NKL print an age; a year from an age is right only to
+  within a year, so it is not written.
+* **No weight anywhere**: LNB, Poland (plk.pl, the federation site, Puls Basketu), Basketball England, DAM, WBBL.
+* **U SPORTS**: no club publishes a date (class year only, not used). Cape Breton, Dalhousie, Lakehead, Laval, Ottawa, UQAM have no
+  roster page with heights; Algoma, Nipissing, Brandon print none yet.
+* **Genius person pages** are empty; the competition's roster page is what is read.
 
 ## Adding a league
 
