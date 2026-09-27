@@ -586,11 +586,16 @@ function renderExtras() {
 }
 
 /* ------------------------------------------------------------- fixtures --- */
+/* THE FIXTURES TAB, IN THE FIXTURES PAGE'S DRESS (fixtures/index.html): each game a row in its two
+   clubs' colours, the home colour in from the left and the away from the right, crests in white discs
+   ringed in the club colour, the names in text-safe inks, the score (or the tip-off) on a black block
+   with the winner in yellow, and each day on a teletext strip. Every row is a link: a played game
+   opens its box score, an unplayed one its preview. */
 async function renderFixtures() {
   const gs = await api(
     `games?competition_id=eq.${comp.id}` +
     `&select=id,tipoff_at,status,home_score,away_score,venue,` +
-    `home:home_team_id(name,short_name,colour),away:away_team_id(name,short_name,colour)` +
+    `home:home_team_id(name,short_name,colour,colour_2,logo_path),away:away_team_id(name,short_name,colour,colour_2,logo_path)` +
     /* Ascending: this is a FIXTURE LIST. Newest-first is right for a results
        feed and wrong for a schedule, where round one belongs at the top and
        the reader scrolls towards the games that have not happened. */
@@ -598,34 +603,55 @@ async function renderFixtures() {
   const pane = $('#pane-fixtures'); pane.textContent = '';
   if (!gs.length) { pane.appendChild(el('div', 'empty', 'No fixtures scheduled.')); return; }
 
-  gs.forEach(g => {
-    const row = el('div', 'fx');
-    const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
-    row.appendChild(el('div', 'd', when
-      ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) +
-        ' ' + when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-      : 'TBC'));
-
-    const final = g.status === 'final';
-    const homeWon = final && g.home_score > g.away_score;
-    const awayWon = final && g.away_score > g.home_score;
-
-    const h = el('div', 'h'); const hn = el('div', 'tn' + (homeWon ? ' win' : ''), (g.home || {}).name || '—');
-    h.appendChild(hn); row.appendChild(h);
-
-    row.appendChild(el('div', 'sc', final ? `${g.home_score}–${g.away_score}` : 'v'));
-
-    const a = el('div', 'a'); const an = el('div', 'tn' + (awayWon ? ' win' : ''), (g.away || {}).name || '—');
-    a.appendChild(an); row.appendChild(a);
-
-    const cls = g.status === 'live' ? 'live' : (final ? 'final' : 'sched');
-    const st = el('div', 'st ' + cls, g.status === 'live' ? 'LIVE' : (final ? 'FINAL' : (g.venue || 'SCHEDULED')));
-    row.appendChild(st);
-
-    if (final || g.status === 'live') {
-      row.style.cursor = 'pointer';
-      row.addEventListener('click', () => { location.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase'; });
+  const TC = window.EpinoiaTeamColour;
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const hhmm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const side = (t, k) => {
+    const tm = t || {};
+    const sd = el('div', 'fxs ' + k);
+    if (TC && TC.card) TC.card(sd, tm.colour || (k === 'h' ? '#93f2bf' : '#8ff5ff'), tm.colour_2);
+    const disc = el('span', 'fxc', (tm.short_name || tm.name || '?').slice(0, 3).toUpperCase());
+    const url = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(tm.logo_path) : null;
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url; img.alt = ''; img.loading = 'lazy';
+      img.addEventListener('error', () => img.remove());
+      disc.textContent = ''; disc.appendChild(img);
     }
+    const nm = el('div');
+    nm.append(el('div', 'tn', tm.name || '—'), el('div', 'ha', k === 'h' ? 'Home' : 'Away'));
+    sd.append(disc, nm);
+    return sd;
+  };
+  let lastDay = '';
+  gs.forEach(g => {
+    const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
+    const dk = when ? when.toDateString() : 'TBC';
+    if (dk !== lastDay) {
+      lastDay = dk;
+      pane.appendChild(el('div', 'fxday', when
+        ? DAYS[when.getDay()] + ' ' + when.getDate() + ' ' + MONTHS[when.getMonth()] + ' ' + when.getFullYear()
+        : 'Date to be confirmed'));
+    }
+    const final = g.status === 'final' || g.status === 'finalising', live = g.status === 'live';
+    const row = el('a', 'fx');
+    row.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
+    const home = g.home || {}, away = g.away || {};
+    if (home.colour) row.style.setProperty('--hc', home.colour);
+    if (away.colour) row.style.setProperty('--ac', away.colour);
+
+    const mid = el('div', 'fxm');
+    if (final || live) {
+      const sc = el('div', 'sc');
+      const hw = final && g.home_score > g.away_score, aw = final && g.away_score > g.home_score;
+      sc.append(el('span', hw ? 'w' : '', String(g.home_score ?? 0)), el('span', 'dash', '–'),
+                el('span', aw ? 'w' : '', String(g.away_score ?? 0)));
+      mid.append(sc, el('div', 'st ' + (live ? 'live' : 'final'), live ? 'LIVE' : 'Final'));
+    } else {
+      mid.append(el('div', 'sc t', when ? hhmm(when) : 'TBC'), el('div', 'st sched', g.venue || 'Tip-off'));
+    }
+    row.append(side(home, 'h'), mid, side(away, 'a'));
     pane.appendChild(row);
   });
 }

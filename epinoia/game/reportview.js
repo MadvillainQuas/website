@@ -245,22 +245,57 @@ const CARDS = {
 };
 
 /* ---- the whole article --------------------------------------------------- */
-function render(g, rep) {
-  const secs = rep.sections.map(s => {
+/* THE HERO IS THE PREVIEW'S, WITH THE RESULT IN IT (preview.js): the two clubs in their colours, the
+   crests over the names, where each stands in the table on a plate under it, and the final score where
+   the tip-off was; then the headline and the standfirst on the same card. Each section after it is a
+   panel of its own, and after the first one comes the table with both clubs lit (game.js fills
+   #repTable when epinoia/tablepos.js has read it). `o`, all optional: colours [a, b], crests [a, b],
+   places [a, b], competition, tableHTML. */
+function heroHTML(g, rep, o) {
+  const c = o.colours || [];
+  const crest = u => u ? '<span class="rh-crest"><img src="' + esc(u) + '" alt="" onerror="this.parentNode.remove()"></span>' : '';
+  const side = t =>
+    '<div class="rh-side" style="--pc:' + esc(c[t] || (t ? 'var(--team1)' : 'var(--team0)')) + '">' +
+      crest((o.crests || [])[t]) +
+      '<div class="rh-name">' + esc(g.names[t]) + '</div>' +
+      ((o.places || [])[t] ? '<div class="rh-pos">' + esc(o.places[t]) + '</div>' : '') +
+    '</div>';
+  const sc = g.score || [];
+  const win = sc[0] > sc[1] ? 0 : sc[1] > sc[0] ? 1 : -1;
+  return '<div class="rh-teams">' + side(0) +
+    '<div class="rh-score">' +
+      '<span class="rh-v' + (win === 0 ? ' w' : '') + '">' + esc(sc[0] == null ? '' : sc[0]) + '</span>' +
+      '<span class="rh-d">–</span>' +
+      '<span class="rh-v' + (win === 1 ? ' w' : '') + '">' + esc(sc[1] == null ? '' : sc[1]) + '</span>' +
+      '<span class="rh-st">' + (rep.half ? 'half-time' : 'final') + '</span>' +
+    '</div>' + side(1) + '</div>';
+}
+
+function render(g, rep, opts) {
+  const o = opts || {};
+  const c = o.colours || [];
+  const tableSec = '<div class="rsec rsec-table" id="repTable"' + (o.tableHTML ? '' : ' hidden') + '>' +
+    '<h2>The table</h2>' + (o.tableHTML || '') + '</div>';
+  const secs = rep.sections.map((s, i) => {
     const card = CARDS[s.card] ? CARDS[s.card](g, rep.facts, rep) : '';
     return '<section class="rsec">' +
       '<h2>' + esc(s.heading) + '</h2>' +
       '<div class="rprose">' + s.paras.map(p => '<p>' + p + '</p>').join('') + '</div>' +
       card +
-    '</section>';
+    '</section>' + (i === 0 && !rep.half ? tableSec : '');
   }).join('');
 
   /* the half-time report (report.js halftime) is the same article at twenty minutes.
      data-i18n-ctx="report": in another language the generated sentences are matched by the
      report pack's templates (epinoia/i18n/<code>/report.js) */
-  return '<article class="rep' + (rep.half ? ' rep-half' : '') + '" data-i18n-ctx="report">' +
+  const style = (c[0] ? '--ra:' + esc(c[0]) + ';' : '') + (c[1] ? '--rb:' + esc(c[1]) + ';' : '');
+  return '<article class="rep' + (rep.half ? ' rep-half' : '') + '" data-i18n-ctx="report"' +
+      (style ? ' style="' + style + '"' : '') + '>' +
     '<div class="rep-head">' +
-      '<div class="rep-kicker">' + (rep.half ? 'half-time report' : 'match report') + ' · generated from the play-by-play</div>' +
+      '<div class="rep-kicker"><span>' + (rep.half ? 'half-time report' : 'match report') + '</span>' +
+        (o.competition ? '<span>' + esc(o.competition) + '</span>' : '') +
+        '<span>generated from the play-by-play</span></div>' +
+      heroHTML(g, rep, o) +
       '<h1 class="rep-hl">' + rep.headline + '</h1>' +
       '<p class="rep-stand">' + rep.standfirst + '</p>' +
     '</div>' + secs +

@@ -414,7 +414,7 @@ const BODIES = {
       return '<div class="msg">The match report could not be loaded.</div>';
     }
     const g = window.EpinoiaGameFacts.brief(window.S, d, B);
-    const html = window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g));
+    const html = window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g), reportLook());
     /* THE SQUADS UNDER THE HEADLINE: both sides, every player who played, the starters first */
     const strip = squadsHTML(d);
     setTimeout(squadPhotos, 0);
@@ -2602,6 +2602,43 @@ function clubOf(t) {
    league table of the season this game is in, read once and kept, because the scoreboard is drawn
    again on every live update. Nothing is said until somebody in the table has played. */
 let TABLE = null, tableAsked = false;
+/* THE MATCH REPORT'S LOOK (reportview.js): the clubs' inks and crests, where each stands, the
+   competition named once, and the table with both clubs lit once it has been read */
+function reportLook() {
+  const m = (window.S && window.S.meta) || {}, S = window.S || {};
+  const home = m.home || {}, away = m.away || {};
+  tablePlace(0);                                   // asks for the table the first time
+  const col = [inkOf(B.safeColour(home.colour, '#93f2bf')), inkOf(B.safeColour(away.colour, '#8ff5ff'))];
+  const pl = [tablePlace(0), tablePlace(1)].map(p => (p ? p.text : ''));
+  const comp = String(S.competition || '').split(' · ').filter((x, i, a) => x && a.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i).join(' · ');
+  return {
+    colours: col, places: pl, competition: comp,
+    crests: [home, away].map(c => (c.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(c.logo_path) : null)),
+    tableHTML: repTableHTML(col)
+  };
+}
+function repTableHTML(col) {
+  const m = (window.S && window.S.meta) || {}, TP = window.EpinoiaTablePos;
+  if (!TP || !TABLE) return '';
+  const c = col || [inkOf(B.safeColour((m.home || {}).colour, '#93f2bf')), inkOf(B.safeColour((m.away || {}).colour, '#8ff5ff'))];
+  return TP.tableHTML(TABLE, [m.homeTeamId, m.awayTeamId],
+    { base: '../', colours: { [m.homeTeamId]: c[0], [m.awayTeamId]: c[1] } });
+}
+/* the table arrived after the report was drawn: into its slot, and the places onto the hero */
+function fillReport() {
+  const slot = document.getElementById('repTable');
+  if (slot && !slot.querySelector('table')) {
+    const html = repTableHTML();
+    if (html) { slot.insertAdjacentHTML('beforeend', html); slot.hidden = false; }
+  }
+  document.querySelectorAll('.rep .rh-side').forEach((side, t) => {
+    if (side.querySelector('.rh-pos')) return;
+    const p = tablePlace(t);
+    if (!p) return;
+    const d = document.createElement('div'); d.className = 'rh-pos'; d.textContent = p.text;
+    side.appendChild(d);
+  });
+}
 function tablePlace(t) {
   const m = window.S && window.S.meta;
   const TP = window.EpinoiaTablePos;
@@ -2613,6 +2650,7 @@ function tablePlace(t) {
         TABLE = T;
         const head = document.querySelector('#csHead');
         if (T && head) head.querySelectorAll('.bx-scorehead [data-team-slot]').forEach(placeLine);
+        if (T) fillReport();
       }).catch(() => { /* no line */ });
     }
     return null;
