@@ -36,13 +36,14 @@
 const NOW = new Date();
 const BASE = '../';
 const MOUNTS = {
-  fixtures: 'homeDaily', followed: 'homeFollowed', stars: 'homeStars',
+  fixtures: 'homeDaily', followed: 'homeFollowed', stars: 'homeStars', records: 'homeRecords',
   leagues: 'homeLeagues', privateLeagues: 'homePrivateLeagues'
 };
 const QUIET = {
   fixtures: 'Fixtures could not be loaded just now.',
   followed: 'What you follow could not be loaded just now.',
   stars: 'The best performers could not be loaded just now.',
+  records: 'The records could not be loaded just now.',
   leagues: 'The leagues could not be loaded just now.',
   privateLeagues: 'Your private leagues could not be loaded just now.'
 };
@@ -331,7 +332,9 @@ function boot() {
   firstRuns.followed = followed;
   const priv = run('privateLeagues');
   const stars = fixtures.then(() => run('stars'));
-  Promise.all([fixtures, followed, leagues, stars, priv])
+  /* the global records read every league's season: after the podiums, which are heavier still */
+  const records = stars.then(() => run('records'));
+  Promise.all([fixtures, followed, leagues, stars, records, priv])
     .then(renumber, renumber)
     .then(reScroll, reScroll);
 }

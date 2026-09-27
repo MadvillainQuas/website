@@ -117,7 +117,7 @@ async function load(opts) {
   const comps = (opts && opts.comps) || [];
   if (!D || !comps.length) return null;
 
-  const games = await D.all('games?competition_id=' + inList(comps) + '&status=eq.final' +
+  const games = opts.games || await D.all('games?competition_id=' + inList(comps) + '&status=eq.final' +
     '&select=id,tipoff_at,home_team_id,away_team_id,home_score,away_score&order=tipoff_at.asc,id.asc');
   if (!games.length) return null;
   const byId = new Map(games.map(g => [g.id, g]));
@@ -231,7 +231,13 @@ function teamOf(teamsById, id) {
   if (!teamsById || id == null) return null;
   return (typeof teamsById.get === 'function' ? teamsById.get(id) : teamsById[id]) || null;
 }
-const shortName = t => (t && (t.short_name || t.name)) || '';
+/* a club's short name, unless it stops on a joining word ("Rayos de"): then its name */
+const DANGLING = /\s(de|del|da|do|la|las|los|le|of|the|and|y|e|di|van|von)$/i;
+const shortName = t => {
+  if (!t) return '';
+  const sh = String(t.short_name || '').trim();
+  return (sh && !DANGLING.test(sh) ? sh : '') || t.name || '';
+};
 function initials(name) {
   const w = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (!w.length) return '?';
@@ -315,7 +321,16 @@ function card(r, kind, o) {
   }
   const w = el('span', 'rc-who');
   w.append(el('span', 'rc-name', who), el('span', 'rc-sub', sub));
-  foot.append(w, el('span', 'rc-date', date.toUpperCase()));
+  /* across every league (HOME) the strip says which one, over the date */
+  const meta = el('span', 'rc-meta');
+  if (r.league) {
+    const ST = root.EpinoiaStars;
+    const lg = el('span', 'rc-lg', ST && ST.leagueShort ? ST.leagueShort(r.league) : (r.league.name || ''));
+    lg.title = r.league.name || '';
+    meta.appendChild(lg);
+  }
+  meta.appendChild(el('span', 'rc-date', date.toUpperCase()));
+  foot.append(w, meta);
   a.append(body, foot);
   return a;
 }
@@ -370,5 +385,96 @@ function render(host, data, opts) {
   return true;
 }
 
-return { PLAYER, TEAM, load, render, card, settle, when };
+/* ------------------------------------------------------ across leagues ---
+   global() -> {data, teamsById, leagues} | null, for HOME's Global Records.
+
+   THIS SEASON IS EACH LEAGUE'S OWN: the newest season of every league the reader
+   can see that has a finished game, which is the season its front page opens
+   on. Leagues run to different calendars, so one date range would cut one
+   league's season in half and reach back into another's last.
+
+   Every finished game on the platform is one small read (id, date, clubs,
+   scores, competition), which is what decides the seasons; the records
+   themselves are then load()'s, over those seasons' competitions. Cached for
+   ten minutes in sessionStorage, keyed by the newest final, so a result
+   anywhere misses the cache. */
+const CACHE_KEY = 'epinoia_records_global:';
+const CACHE_MS = 10 * 60 * 1000;
+function cacheGet(key) {
+  try {
+    const s = root.sessionStorage && root.sessionStorage.getItem(key);
+    const j = s ? JSON.parse(s) : null;
+    if (!j || typeof j.at !== 'number' || Date.now() - j.at > CACHE_MS || Date.now() < j.at) return null;
+    return j.data;
+  } catch (_) { return null; }
+}
+function cachePut(key, data) {
+  try { root.sessionStorage && root.sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), data })); }
+  catch (_) { /* full or private: asked again next time */ }
+}
+const chunk = (a, n) => { const c = []; for (let i = 0; i < a.length; i += n) c.push(a.slice(i, i + n)); return c; };
+
+async function global() {
+  const D = root.EpinoiaData;
+  if (!D) return null;
+  const G = root.EpinoiaGlobalGames;
+  const lgs = G && typeof G.leagues === 'function' ? await G.leagues()
+    : await D.get('leagues?select=id,slug,name&order=name.asc');
+  if (!lgs || !lgs.length) return null;
+  const leagueById = new Map(lgs.map(l => [l.id, l]));
+
+  const finals = await D.all('games?status=eq.final&competition_id=not.is.null' +
+    '&select=id,tipoff_at,home_team_id,away_team_id,home_score,away_score,competition_id&order=tipoff_at.asc,id.asc');
+  if (!finals.length) return null;
+  const anchor = finals[finals.length - 1].tipoff_at + '|' + finals.length;
+  const hit = cacheGet(CACHE_KEY + anchor);
+  if (hit) return hit;
+
+  const seasons = [];
+  for (const ids of chunk([...leagueById.keys()], 40)) {
+    seasons.push(...await D.get('seasons?league_id=' + inList(ids) +
+      '&select=id,name,league_id,starts_on,competitions(id)&order=starts_on.desc.nullslast'));
+  }
+  /* which season each competition is in, and each league's newest season with a final */
+  const seasonOfComp = new Map();
+  seasons.forEach(se => (se.competitions || []).forEach(c => seasonOfComp.set(c.id, se)));
+  const played = new Set(finals.map(g => (seasonOfComp.get(g.competition_id) || {}).id).filter(Boolean));
+  const current = new Map();                                     // league id -> season
+  seasons.forEach(se => {
+    if (!played.has(se.id) || current.has(se.league_id)) return;
+    current.set(se.league_id, se);                               // newest first, so the first played one
+  });
+  const comps = [...current.values()].flatMap(se => (se.competitions || []).map(c => c.id));
+  if (!comps.length) return null;
+  const compSet = new Set(comps);
+  const games = finals.filter(g => compSet.has(g.competition_id));
+
+  const data = await load({ comps, games });
+  if (!data || (!data.player.length && !data.team.length)) return null;
+  const leagueOfGame = g => {
+    const se = seasonOfComp.get(g.competition_id);
+    const l = se && leagueById.get(se.league_id);
+    return l ? { id: l.id, slug: l.slug, name: l.name } : null;
+  };
+  data.player.concat(data.team).forEach(r => { r.league = leagueOfGame(r.game); });
+
+  /* the clubs on the cards, with their crests: an approved upload first, as the clubs grid does */
+  const teamIds = [...new Set(data.player.concat(data.team).flatMap(r => [r.teamId, r.oppId]).filter(Boolean))];
+  const teamsById = {};
+  if (teamIds.length) {
+    const [ts, crests] = await Promise.all([
+      D.get('teams?id=' + inList(teamIds) + '&select=id,name,short_name,slug,colour,colour_2,logo_path').catch(() => []),
+      D.get('media?owner_type=eq.team&kind=eq.logo&status=eq.approved&owner_id=' + inList(teamIds) +
+        '&select=owner_id,storage_path&order=created_at.desc').catch(() => [])
+    ]);
+    const crest = {};
+    (crests || []).forEach(m => { if (!crest[m.owner_id] && typeof root.epinoiaLogoUrl === 'function') crest[m.owner_id] = root.epinoiaLogoUrl(m.storage_path); });
+    (ts || []).forEach(t => { teamsById[t.id] = Object.assign({}, t, { __logo: crest[t.id] || null }); });
+  }
+  const out = { data, teamsById, leagues: current.size };
+  cachePut(CACHE_KEY + anchor, out);
+  return out;
+}
+
+return { PLAYER, TEAM, load, render, card, settle, when, global };
 }));
