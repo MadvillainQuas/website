@@ -72,7 +72,9 @@ console.log('\nload');
   ok('team points and winning margin from the scores', T.pts.v === 101 && T.margin.v === 31 && T.margin.teamId === 'H', [T.pts, T.margin]);
   ok('team threes from the team line', T.p3m.v === 13 && T.p3m.teamId === 'A', T.p3m);
   ok('rebound margin is one side against the other', T.reb.v === 14 && T.reb.teamId === 'H' && T.reb.game.id === 'g1', T.reb);
-  ok('the season is its competitions\' finals', asked.every(q => /c1/.test(q) && /status=eq\.final/.test(q)), asked);
+  ok('the season is its competitions\' finals', asked.filter(q => !q.startsWith('players?')).every(q => /c1/.test(q) && /status=eq\.final/.test(q)), asked);
+  ok('the holders\' photographs in one request, through the approved media', asked.filter(q => q.startsWith('players?')).length === 1 &&
+     asked.some(q => /^players\?id=in\.\(p1,p2\)&select=id,photo_url,media:photo_media_id\(storage_path\)$/.test(q)));
   ok('player lines are sorted and cut on the server', asked.filter(q => q.startsWith('player_game_stats')).every(q => /order=stats->\w+\.desc/.test(q) && /limit=\d+/.test(q)));
 }
 
