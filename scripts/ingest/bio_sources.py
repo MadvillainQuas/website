@@ -27,6 +27,9 @@ What each source gives, found by looking, not assumed (2026-09-27):
                          weight from the player's page, opened per new player
   greek-elite-league     stats.basket.gr's player page, opened only for players already known by the feed's own player GUID and
                          still without a date: date of birth only (no height or weight anywhere on the site)
+  lnb-espoirs-elite / -2 the same LNB API as lnb-elite, divisions 3 and 4 (date; height for ~40%; no weight). Refuses a GitHub runner
+  u-sports               each club's own roster page (PrestoSports table or Sidearm list): height, weight where the club prints it; no date
+  lnbp                   the Sportradar EUI embed's players page (website 14): height, weight for ~96%, date for about a third; keyed
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
 
 A league that is not here has no reader yet; docs/player-bio.md lists what each remaining one publishes.
@@ -596,6 +599,160 @@ def grel(today: date | None = None, log: Callable = print, players: list | None 
     log(f"     Greek Elite League: {n} players without a date, a page each")
 
 
+# ------------------------------------------------------------------------ U SPORTS ---
+# en.usports.ca's player pages carry no bio at all (name, shirt, stats); the conference sites (oua.ca, canadawest.org, AUS) are the same
+# PrestoSports stats pages. Height and weight are only on each university's own roster page: a PrestoSports table (height, most without
+# weight) or a Sidearm list (height, weight on some). No club prints a date of birth; the class year is never read as an age.
+# The game feed keys a player by his shirt ("j5"), so rows are matched by name and club. The club is named as the box score names it.
+USPORTS_PRESTO = "/sports/mbkb/{this}/roster", "/sports/mbkb/{last}/roster"
+USPORTS_SIDEARM = "/sports/mens-basketball/roster", "/sports/mens-basketball/roster/{last}"
+USPORTS_CLUBS = {
+    "Acadia": ("https://acadiaathletics.ca", USPORTS_PRESTO),
+    "Alberta": ("https://bearsandpandas.ca", USPORTS_SIDEARM),
+    "Algoma": ("https://algomathunderbirds.ca", USPORTS_SIDEARM),
+    "Bishop's": ("https://gaiters.ca", USPORTS_SIDEARM),
+    "Brandon": ("https://gobobcats.ca", USPORTS_SIDEARM),
+    "Brock": ("https://gobadgers.ca", USPORTS_SIDEARM),
+    "Calgary": ("https://godinos.com", USPORTS_SIDEARM),
+    "Carleton": ("https://goravens.ca", USPORTS_PRESTO),
+    "Concordia": ("https://stingers.ca", ("/mbasketball/roster.php",)),
+    "Guelph": ("https://gryphons.ca", ("/sports/mbball/roster", "/sports/mbball/roster/{last}")),
+    "Laurentian": ("https://luvoyageurs.com", USPORTS_PRESTO),
+    "Laurier": ("https://laurierathletics.com", USPORTS_SIDEARM),
+    "Lethbridge": ("https://gohorns.ca", USPORTS_SIDEARM),
+    "MacEwan": ("https://macewangriffins.ca", USPORTS_PRESTO),
+    "Manitoba": ("https://gobisons.ca", USPORTS_SIDEARM),
+    "McGill": ("https://mcgillathletics.ca", USPORTS_SIDEARM),
+    "McMaster": ("https://marauders.ca", USPORTS_SIDEARM),
+    "Memorial": ("https://goseahawks.ca", USPORTS_PRESTO),
+    "Mount Royal": ("https://mrucougars.com", USPORTS_SIDEARM),
+    "Nipissing": ("https://nulakers.ca", USPORTS_SIDEARM),
+    "Ontario Tech": ("https://goridgebacks.com", USPORTS_PRESTO),
+    "Queen's": ("https://gogaelsgo.com", USPORTS_SIDEARM),
+    "Regina": ("https://cougarsandrams.com", USPORTS_SIDEARM),
+    "Saint Mary's": ("https://smuhuskies.ca", USPORTS_PRESTO),
+    "Saskatchewan": ("https://huskies.usask.ca", USPORTS_SIDEARM),
+    "StFX": ("https://goxgo.ca", USPORTS_PRESTO),
+    "Thompson Rivers": ("https://gowolfpack.ca", USPORTS_SIDEARM),
+    "Toronto": ("https://varsityblues.ca", USPORTS_SIDEARM),
+    "Toronto Metropolitan": ("https://tmubold.ca", USPORTS_SIDEARM),
+    "Trinity Western": ("https://gospartans.ca", USPORTS_SIDEARM),
+    "UBC": ("https://gothunderbirds.ca", USPORTS_SIDEARM),
+    "UBCO": ("https://goheat.ca", USPORTS_SIDEARM),
+    "UFV": ("https://gocascades.ca", USPORTS_SIDEARM),
+    "UNB": ("https://goredsgo.ca", USPORTS_PRESTO),
+    "UNBC": ("https://unbctimberwolves.com", USPORTS_SIDEARM),
+    "UPEI": ("https://gopanthersgo.ca", USPORTS_PRESTO),
+    "Victoria": ("https://govikesgo.com", USPORTS_SIDEARM),
+    "Waterloo": ("https://athletics.uwaterloo.ca", USPORTS_SIDEARM),
+    "Western": ("https://westernmustangs.ca", USPORTS_SIDEARM),
+    "Windsor": ("https://golancers.ca", USPORTS_SIDEARM),
+    "Winnipeg": ("https://wesmen.ca", USPORTS_SIDEARM),
+    "York": ("https://yorkulions.ca", USPORTS_SIDEARM),
+}
+# Not read (2026-09-27): Cape Breton, Dalhousie, Lakehead, Laval, Ottawa, UQAM - no roster page found, or one without height. Algoma and
+# Nipissing are read but print no height yet.
+
+
+def _ft_in(s: str) -> int | None:
+    """6'7", 6-7, 6' 7'', 6ft 7 or 201 cm -> centimetres."""
+    m = re.search(r"\b(\d{3})\s*cm\b", s or "")
+    if m:
+        return int(m.group(1))
+    m = re.search(r"\b([4-7])\s*(?:'|’|′|-|ft\.?)\s*(\d{1,2})(?:\.\d+)?(?!\d)", s or "")
+    if not m or int(m.group(2)) > 11:
+        return None
+    return round(int(m.group(1)) * 30.48 + int(m.group(2)) * 2.54)
+
+
+def _lbs(s: str) -> int | None:
+    """'215', '215 lbs' -> kg; '98 kg' stays kg."""
+    m = re.search(r"\b(\d{2,3})\s*kg\b", s or "", re.I)
+    if m:
+        return int(m.group(1))
+    m = re.search(r"\b(\d{3})\b", s or "")
+    return round(int(m.group(1)) * 0.45359237) if m else None
+
+
+def _roster_table(page: str) -> Iterator[dict]:
+    """A roster table (PrestoSports, and Concordia's list of <ul> rows): the header row names the columns."""
+    if 'class="numroster"' in page:                         # Concordia: a <ul> per row, an <li> per cell
+        page = "<table>" + re.sub(r"<(/?)li\b", r"<\1td", re.sub(r"<(/?)ul\b", r"<\1tr", page.split('class="numroster"', 1)[1])) + "</table>"
+    for table in re.findall(r"<table\b.*?</table>", page, re.S | re.I):
+        col: dict = {}
+        for row in _rows(table):
+            cells = _cells(row)
+            if not col:
+                heads = [re.sub(r"[^a-z]", "", _txt(c).lower()) for c in cells]
+                if "name" in heads and ({"ht", "height"} & set(heads)):
+                    col = {k: next((i for i, h in enumerate(heads) if h in names), None)
+                           for k, names in (("name", ("name",)), ("ht", ("ht", "height")), ("wt", ("wt", "weight")), ("no", ("no", "number")))}
+                continue
+            if len(cells) <= max(v for v in col.values() if v is not None):
+                continue
+            a = re.search(r"<a\b[^>]*>(.*?)</a>", cells[col["name"]], re.S)
+            who = _txt(a.group(1) if a else cells[col["name"]])
+            if not who:
+                continue
+            no = _txt(cells[col["no"]]) if col["no"] is not None else ""
+            yield {"name": who, "number": no if re.fullmatch(r"\d{1,2}", no) else None,
+                   "height_cm": _ft_in(_txt(cells[col["ht"]])), "weight_kg": _lbs(_txt(cells[col["wt"]])) if col["wt"] is not None else None}
+        if col:
+            return
+
+
+def _roster_sidearm(page: str) -> Iterator[dict]:
+    """A Sidearm roster: one li.sidearm-roster-player per player, height and weight in their own spans."""
+    for blk in re.split(r'<li class="sidearm-roster-player[" ]', page)[1:]:
+        blk = blk.split('<div class="sidearm-roster-player-extra', 1)[0]
+
+        def span(cls, blk=blk):
+            m = re.search(r'class="sidearm-roster-player-' + cls + r'"[^>]*>(.*?)</', blk, re.S)
+            return _txt(m.group(1)) if m else ""
+        nm = re.search(r'class="sidearm-roster-player-name".*?<a\b[^>]*>(.*?)</a>', blk, re.S)
+        who = _txt(nm.group(1)) if nm else f"{span('first-name')} {span('last-name')}".strip()
+        if who:
+            no = span("jersey-number")
+            yield {"name": who, "number": no if re.fullmatch(r"\d{1,2}", no) else None,
+                   "height_cm": _ft_in(span("height")), "weight_kg": _lbs(span("weight"))}
+
+
+def usports(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+    y = _season_start(today)
+    this, last = f"{y}-{str(y + 1)[2:]}", f"{y - 1}-{str(y)[2:]}"
+    got = 0
+    for club, (site, paths) in USPORTS_CLUBS.items():
+        for p in paths:                                    # this season's roster first; last season's catches a club not posted yet
+            page = get_text(site + p.format(this=this, last=last)) or ""
+            for r in (_roster_sidearm(page) if "sidearm-roster-player" in page else _roster_table(page)):
+                if r["height_cm"] or r["weight_kg"]:
+                    got += 1
+                    yield {**r, "team": club, "label": f"{r['name']} ({club})"}
+    log(f"     U SPORTS: {got} players with a height or weight on {len(USPORTS_CLUBS)} club sites")
+
+
+# ---------------------------------------------------------------------------- LNBP ---
+def lnbp(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+    """The EUI embed's players page ("Jugadores") lists a season's whole league in one request: height, weight, and a date of birth for
+    about a third (the player page has no more than the list). Its id is the box score's personId, the game feed's own key.
+    The season is the calendar year (July to November)."""
+    from adapters import lnbp as M
+    from adapters.lnb import EUI_EMBED, page_state
+    url = f"{EUI_EMBED}/{M.LnbpAdapter.eui_site}/persons"
+    first = (get_json(url, {"state": page_state({"l": M.LnbpAdapter.locale})}, M.HEADERS) or {}).get("data") or {}
+    seasons = [s for s in (first.get("seasons") or {}).get("seasons") or [] if s.get("competitionId") == M.LEAGUE_COMPETITION]
+    y = (today or date.today()).year
+    for year in (y, y - 1):
+        for s in (s for s in seasons if s.get("year") == year):
+            data = first if s["seasonId"] == first.get("seasonId") else \
+                (get_json(url, {"state": page_state({"s": s["seasonId"], "l": M.LnbpAdapter.locale})}, M.HEADERS) or {}).get("data") or {}
+            rows = (data.get("persons") or {}).get("rows") or []
+            log(f"     LNBP {year} ({s.get('nameLocal')}): {len(rows)} players")
+            for r in rows:
+                yield {"name": r.get("name"), "team": r.get("teamName"), "key": r.get("id"), "number": r.get("bib"),
+                       "height_cm": r.get("height"), "weight_kg": r.get("weight"), "birth": r.get("Date of birth"), "label": r.get("name")}
+
+
 # Keyed by the league's slug (config/ingest-sources.json league_slug).
 READERS: dict = {
     "euroleague": euroleague("E"),
@@ -634,9 +791,13 @@ READERS: dict = {
     "slovak-sbl": sbl,
     "nbl-bulgaria": bgnbl,
     "greek-elite-league": grel,
+    "lnb-espoirs-elite": lnb(3),
+    "lnb-espoirs-elite-2": lnb(4),
+    "u-sports": usports,
+    "lnbp": lnbp,
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).
 NEEDS_TEAMS = {"primera-feb", "segunda-feb", "liga-femenina-endesa", "liga-femenina-2", "liga-femenina-challenge", "liga-u"}
 # Leagues whose site refuses a GitHub runner: the weekly workflow leaves them out, run them by hand from a home connection.
-HOME_ONLY = {"lnb-elite", "lnb-elite-2"}
+HOME_ONLY = {"lnb-elite", "lnb-elite-2", "lnb-espoirs-elite", "lnb-espoirs-elite-2"}
