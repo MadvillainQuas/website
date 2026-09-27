@@ -1151,6 +1151,9 @@ NO_BIO = {
     "kosovo-superliga": "basketbolli.com lists players by name and licence number only; no player page, no bio in the LiveStats data",
     "estonian-latvian-basketball-league": "the league's site (estlatbl.com) and the federation's (basket.ee) disallow crawlers in "
                                           "robots.txt; the permitted live-score portal (online.basket.ee) and the LiveStats data carry no bio",
+    "serie-a1-femminile": "legabasketfemminile.it closes its team and player pages to AI crawlers in robots.txt, so the roster data "
+                          "behind them was not probed while this was built; the LiveStats data carries no bio",
+    "serie-a2-femminile": "as serie-a1-femminile (the same site)",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

@@ -810,3 +810,35 @@ stints and lineups are built as for any LiveStats league.
 - The server drops connections now and then (about half the requests in one probe): each request is tried three times.
 - No bio source: the portal's per-game stats (`/s2/stats/<gid>/<tid>/data.json`) and LiveStats carry none, and the
   two sites that might are disallowed (`bio_sources.NO_BIO`).
+
+## Italy (women): Serie A1 and Serie A2 Femminile (Lega Basket Femminile)
+
+### host
+
+`www.legabasketfemminile.it`, a SvelteKit front on the league's own JSON API; games on FIBA LiveStats (client `LEGBF`).
+robots.txt allows every path to a general crawler (`User-agent: * / Allow: /`); it closes `/it/squadre/`, `/it/atlete/`
+(and the English equivalents) to AI crawlers only. `fiba_site_schedule`, site `lbf`. No Genius hosted tenant (`LBF` is
+a 2021 leftover, `LEGBF` nothing).
+
+### schedule_recipe
+
+- `/rm/v1/competitions/<serie-a1|serie-a2>/<2026-27>/calendar-index.json`: every round with its `phase_id` and games:
+  `id` (uuid), `start_at` (UTC), `status` (scheduled / final ...), `home`/`away` {id, slug, name, short_name, logo_url}.
+- `/rm/v1/competitions/<...>/<season>/overview.json`: `phases` - A1 one round robin; A2 "Girone A" and "Girone B",
+  both round robins (so they are groups, `groups_from_feed`); a play-off phase has another `format`. Two sources per
+  league: `stage` regular (the round robins) and playoffs (the rest).
+- Clubs are keyed on the league's `slug`: the three-letter `short_name` is not unique (A2 2026-27: two Cagliari clubs
+  CAG, two Milan clubs MIL, three clubs none) and not FIBA's (San Martino: SAN here, SML in the feed). It is passed as
+  the short name only where no other club has it.
+
+### game_recipe
+
+`/rm/v1/matches/<id>.json` gives `genius_id` (the LiveStats id; null until the game is set up) - asked for once per
+game when it is fetched, kept in `data/feed/<CODE>/games.json`, asked again at most every 10 minutes while null. Then
+`fibalivestats.dcd.shared.geniussports.com/data/<genius_id>/data.json` under the league's club names and slugs.
+
+### gotchas
+
+- The API's `venue` is wrong: Sassari at home in "Palaleonessa" (Brescia's arena), Costa Masnaga in "La Molisana Arena"
+  (Campobasso's). Not used.
+- No bio reader (`bio_sources.NO_BIO`): see docs/player-bio.md.

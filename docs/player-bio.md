@@ -96,6 +96,8 @@ python scripts/ingest/bio_sync.py --worker-config --no-stash             # neith
 `bio_sources.NO_BIO` names every ingested league without a reader, with its reason; `bio_test.py` fails when a league is
 added to the ingest with neither.
 
+* **serie-a1-femminile, serie-a2-femminile**: legabasketfemminile.it closes its team and player pages to AI crawlers in
+  robots.txt (general crawlers are allowed), so the roster data behind them was not probed while the leagues were built.
 * **estonian-latvian-basketball-league**: estlatbl.com and basket.ee disallow every crawler but the search engines in
   robots.txt; the permitted portal (online.basket.ee) lists games and box scores with no bio, and neither does LiveStats.
 

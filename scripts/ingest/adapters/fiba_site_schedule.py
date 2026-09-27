@@ -254,6 +254,45 @@ def _tallinn_today():
     return datetime.now(ZoneInfo("Europe/Tallinn")).date()
 
 
+# legabasketfemminile.it (Lega Basket Femminile: Serie A1 and A2, women): games on FIBA LiveStats (client LEGBF). The
+# site is a SvelteKit front on its own JSON API, and robots.txt allows every path to a general crawler (it closes the
+# team and player PAGES to AI crawlers only; neither is read here):
+#   /rm/v1/competitions/<serie-a1|serie-a2>/<2026-27>/calendar-index.json   every round and game of a season: the
+#        game's id (a uuid), start_at (UTC), both clubs (id, slug, name, short_name, crest), status, points
+#   /rm/v1/competitions/<...>/<season>/overview.json    the phases (Serie A2: "Girone A" and "Girone B", each a
+#        round robin; a play-off phase is another format)
+#   /rm/v1/matches/<id>.json                             one game: genius_id (the LiveStats id, null until the game
+#        is set up), the officials, and a venue that is not to be trusted (see _lbf_fetch)
+# The LiveStats id is asked for once per game, when the game is fetched, and kept in data/feed/<CODE>/games.json with
+# its clubs; a game not set up yet is asked about again at most every 10 minutes. Clubs are keyed on the league's own
+# team slug ("costa-masnaga"): its three-letter codes are not unique (two Cagliari clubs are both CAG in 2026-27, three
+# clubs have none) and are not FIBA's (San Martino: SAN here, SML in the feed).
+LBF_API = "https://www.legabasketfemminile.it/rm/v1"
+LBF_GAP_S = 2.0
+LBF_RECHECK_S = 600
+
+
+def lbf_games(calendar: dict, overview: dict, stage: str = "regular") -> list[dict]:
+    """The games of one stage off a calendar index: {id, start, status, home, away (club dicts), group}. Regular =
+    the round-robin phases; a phase is a GROUP when there is more than one of them (Serie A2's two gironi)."""
+    phases = {p.get("id"): p for p in (overview or {}).get("phases") or []}
+    rr = [p for p in phases.values() if (p.get("format") or "round_robin") == "round_robin"]
+    out = []
+    for rnd in (calendar or {}).get("rounds") or []:
+        ph = phases.get(rnd.get("phase_id")) or {}
+        regular = (ph.get("format") or "round_robin") == "round_robin"
+        if regular != (stage != "playoffs"):
+            continue
+        name = ph.get("name") or {}
+        group = (name.get("it") or name.get("en") or "").strip() if regular and len(rr) > 1 else None
+        for m in rnd.get("matches") or []:
+            if not (m.get("id") and m.get("home") and m.get("away")):
+                continue
+            out.append({"id": m["id"], "start": m.get("start_at"), "status": m.get("status") or "scheduled",
+                        "home": m["home"], "away": m["away"], "group": group or None})
+    return out
+
+
 def _utc(tz_name, y, mo, d, h, mi):
     """A local kick-off as an ISO instant, or None where the zone database is unavailable.
 
@@ -388,6 +427,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._dbl_fetch(str(external_id), config)
         if site == "basketee":
             return self._bee_fetch(str(external_id), config)
+        if site == "lbf":
+            return self._lbf_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -407,6 +448,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._dbl(config)
         if site == "basketee":
             return self._bee(config)
+        if site == "lbf":
+            return self._lbf(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
 
@@ -874,6 +917,125 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                     raw["tm"][tno]["code"] = str(fixture.get(f"{side}_team_id") or raw["tm"][tno].get("code") or "")
                     raw["tm"][tno]["name"] = fixture.get(f"{side}_name") or raw["tm"][tno].get("name") or ""
         b = self.bundle_from_raw(raw, sid, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    # ------------------------------------------------------------ legabasketfemminile.it ---
+    _lbf_last = 0.0
+
+    def _lbf_json(self, path: str):
+        gap = time.time() - FibaSiteScheduleAdapter._lbf_last
+        if gap < LBF_GAP_S:
+            time.sleep(LBF_GAP_S - gap)
+        FibaSiteScheduleAdapter._lbf_last = time.time()
+        try:
+            r = requests.get(LBF_API + path, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=40)
+        except requests.RequestException:
+            return None
+        if r.status_code != 200:
+            return None
+        try:
+            return r.json()
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _lbf_season(config: dict) -> str:
+        y = _start_year(config.get("season") or "")
+        return f"{y}-{str(y + 1)[2:]}"
+
+    def _lbf_cache(self, config: dict) -> tuple[Optional[str], dict]:
+        p = self._map_path(config)
+        p = os.path.join(os.path.dirname(p), "games.json") if p else None
+        try:
+            with open(p, encoding="utf-8") as f:
+                return p, json.load(f)
+        except (OSError, TypeError, ValueError):
+            return p, {}
+
+    @staticmethod
+    def _lbf_save(p: Optional[str], games: dict) -> None:
+        if not p:
+            return
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(games, f, ensure_ascii=False, indent=1, sort_keys=True)
+        except OSError:
+            pass
+
+    def _lbf(self, config: dict) -> list[ScheduleGame]:
+        comp, season = config.get("lbf_competition") or "serie-a1", self._lbf_season(config)
+        stage = (config.get("stage") or "regular").lower()
+        cal = self._lbf_json(f"/competitions/{comp}/{season}/calendar-index.json")
+        ov = self._lbf_json(f"/competitions/{comp}/{season}/overview.json")
+        if not cal:
+            print(f"     LBF {comp} {season}: no calendar")
+            return []
+        games = lbf_games(cal, ov or {}, stage)
+        shorts: dict = {}
+        for g in games:                                  # a league abbreviation is a short name only if it is unique
+            for side in ("home", "away"):
+                c = g[side]
+                if c.get("short_name"):
+                    shorts.setdefault(c["short_name"], set()).add(c.get("slug"))
+        p, cache = self._lbf_cache(config)
+        changed, out = False, []
+        for g in games:
+            h, a = g["home"], g["away"]
+            ent = cache.setdefault(g["id"], {})
+            want = {"home": h.get("slug"), "away": a.get("slug"), "home_name": h.get("name"), "away_name": a.get("name")}
+            if any(ent.get(k) != v for k, v in want.items()):
+                ent.update(want)
+                changed = True
+            extra = {"home_code": h.get("slug"), "away_code": a.get("slug"),
+                     "home_logo": h.get("logo_url"), "away_logo": a.get("logo_url")}
+            for side, c in (("home", h), ("away", a)):
+                if c.get("short_name") and len(shorts.get(c["short_name"], ())) == 1:
+                    extra[f"{side}_short"] = c["short_name"]
+            if g["group"]:
+                extra["home_group"] = extra["away_group"] = g["group"]
+            start = (g["start"] or "").replace(".000Z", "Z") or None
+            out.append(ScheduleGame(external_id=g["id"], home_name=h.get("name") or "", away_name=a.get("name") or "",
+                                    tipoff_at=start, status={"final": "final", "live": "live"}.get(g["status"], "scheduled"),
+                                    extra=extra))
+        if changed:
+            self._lbf_save(p, cache)
+        return out
+
+    def _lbf_fetch(self, mid: str, config: dict):
+        """A game by the league's id: its LiveStats id asked for once (again after LBF_RECHECK_S while there is none), and
+        the feed under the league's club names and slugs."""
+        p, cache = self._lbf_cache(config)
+        ent = cache.get(mid)
+        if ent is None:
+            self._lbf(config)
+            p, cache = self._lbf_cache(config)
+            ent = cache.get(mid)
+        if ent is None:
+            return None
+        if not ent.get("fls"):
+            if time.time() - ent.get("checked", 0) < LBF_RECHECK_S:
+                return None
+            m = self._lbf_json(f"/matches/{mid}.json") or {}
+            ent["checked"] = time.time()
+            if m.get("genius_id"):
+                ent["fls"] = str(m["genius_id"])
+            # NOT its venue: on the two games checked (2026-09-27) it named another club's arena (Sassari at home in
+            # "Palaleonessa", Brescia's; Costa Masnaga in "La Molisana Arena", Campobasso's)
+            self._lbf_save(p, cache)
+            if not ent.get("fls"):
+                return None                        # not set up on LiveStats yet
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=ent["fls"]))
+        if not raw or "tm" not in raw:
+            return None
+        for tno, side in (("1", "home"), ("2", "away")):
+            if isinstance(raw["tm"].get(tno), dict):
+                raw["tm"][tno]["name"] = ent.get(f"{side}_name") or raw["tm"][tno].get("name") or ""
+                raw["tm"][tno]["code"] = ent.get(side) or raw["tm"][tno].get("code") or ""
+        b = self.bundle_from_raw(raw, mid, config)
         b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
