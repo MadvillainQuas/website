@@ -1,0 +1,200 @@
+{
+"code": "ESTLAT",
+"label": "Estonian-Latvian Basketball League",
+"adapter": "fiba_site_schedule",
+"updated": "2026-09-27T11:05:09.463968+00:00",
+"games": [
+{
+"id": "2027212197",
+"home": "Rīgas Zeļļi",
+"away": "BK Ogre",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00Z",
+"venue": "Komandas Sporta Spelu Halle"
+},
+{
+"id": "2027212113",
+"home": "Bigbank/Kalev",
+"away": "BC Pärnu",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00Z",
+"venue": "Nord Spordihoone"
+},
+{
+"id": "2027212099",
+"home": "Keila KK",
+"away": "Valmiera Glass VIA",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00Z",
+"venue": "Keila Tervisekeskus"
+},
+{
+"id": "2027212157",
+"home": "VEF Rīga",
+"away": "BK Liepaja",
+"status": "scheduled",
+"date": "2026-10-03T14:00:00Z",
+"venue": "Rimi Olimpiskais centrs"
+},
+{
+"id": "2027212127",
+"home": "BK Ventspils",
+"away": "Tartu Ülikool Maks & Moorits",
+"status": "scheduled",
+"date": "2026-10-02T15:30:00Z",
+"venue": "Olimpiskais centrs \"Ventspils\""
+},
+{
+"id": "2027212142",
+"home": "Rigas Ekselences Juniori",
+"away": "Latvijas Universitāte",
+"status": "scheduled",
+"date": "2026-10-01T16:00:00Z",
+"venue": "Komandas Sporta Spelu Halle"
+},
+{
+"id": "2027212183",
+"home": "BK Liepaja",
+"away": "Tartu Ülikool Maks & Moorits",
+"status": "scheduled",
+"date": "2026-09-30T16:00:00Z",
+"venue": "Liepajas Olimpiskais centrs"
+},
+{
+"id": "2027212156",
+"home": "VEF Rīga",
+"away": "Keila KK",
+"status": "scheduled",
+"date": "2026-09-29T16:00:00Z",
+"venue": "Rimi Olimpiskais centrs"
+},
+{
+"id": "2027212072",
+"home": "Valmiera Glass VIA",
+"away": "Keila Basket",
+"status": "scheduled",
+"date": "2026-09-29T16:00:00Z",
+"venue": "Valmieras Olimpiskais Centrs"
+},
+{
+"id": "2027212169",
+"home": "Latvijas Universitāte",
+"away": "BK Ventspils",
+"status": "scheduled",
+"date": "2026-09-28T17:30:00Z",
+"venue": "Marupe SC"
+},
+{
+"id": "2027212057",
+"home": "Viimsi",
+"away": "Bigbank/Kalev",
+"status": "scheduled",
+"date": "2026-09-27T14:00:00Z",
+"venue": "Forus Spordikeskus Viimsi"
+},
+{
+"id": "2027212085",
+"home": "BK Ogre",
+"away": "VEF Rīga",
+"homeScore": 73,
+"awayScore": 92,
+"status": "final",
+"date": "2026-09-26T14:00:00Z",
+"hash": "3960636816197281261aea07b3bf63b0958d28ee",
+"venue": "Sporta arena Ogre",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212085.json",
+"updated": "2026-09-27T11:04:39.120814+00:00"
+},
+{
+"id": "2027212043",
+"home": "BC Pärnu",
+"away": "BK Liepaja",
+"homeScore": 76,
+"awayScore": 73,
+"status": "final",
+"date": "2026-09-26T14:00:00Z",
+"hash": "7cbe03697a9ad2536605ccb6e2b51e2740e61574",
+"venue": "Pärnu Spordihall",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212043.json",
+"updated": "2026-09-27T11:03:51.196637+00:00"
+},
+{
+"id": "2027212001",
+"home": "TalTech/ALEXELA",
+"away": "Rīgas Zeļļi",
+"homeScore": 73,
+"awayScore": 79,
+"status": "final",
+"date": "2026-09-26T14:00:00Z",
+"hash": "869246e9073a81ed5bccb31f2644af40832374d5",
+"venue": "Tallinn, TalTech Spordihoone",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212001.json",
+"updated": "2026-09-27T11:03:16.820736+00:00"
+},
+{
+"id": "2027212029",
+"home": "Keila Basket",
+"away": "Rīgas Zeļļi",
+"homeScore": 71,
+"awayScore": 94,
+"status": "final",
+"date": "2026-09-25T16:30:00Z",
+"hash": "90d7626187371b0ccd78d88b46a526256395c7db",
+"venue": "Keila Tervisekeskus",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212029.json",
+"updated": "2026-09-27T11:02:30.153414+00:00"
+},
+{
+"id": "2027212071",
+"home": "Valmiera Glass VIA",
+"away": "BK Ventspils",
+"homeScore": 98,
+"awayScore": 76,
+"status": "final",
+"date": "2026-09-25T16:00:00Z",
+"hash": "90cfc5fc19229ec3c0998e0ff1c8d3f8c357f4aa",
+"venue": "Valmieras Olimpiskais Centrs",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212071.json",
+"updated": "2026-09-27T11:02:02.974287+00:00"
+},
+{
+"id": "2027212015",
+"home": "Tartu Ülikool Maks & Moorits",
+"away": "Bigbank/Kalev",
+"homeScore": 90,
+"awayScore": 63,
+"status": "final",
+"date": "2026-09-24T16:00:00Z",
+"hash": "c6571330d29f05d571edc1dc80ba0d99f2f38eb9",
+"venue": "Tartu, TÜ sph (Kullami peaväljak)",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212015.json",
+"updated": "2026-09-27T11:01:05.772147+00:00"
+},
+{
+"id": "2027212155",
+"home": "VEF Rīga",
+"away": "Latvijas Universitāte",
+"homeScore": 104,
+"awayScore": 66,
+"status": "final",
+"date": "2026-09-23T16:30:00Z",
+"hash": "d6d827cf38660cefdab686c754557ff132775ec8",
+"venue": "Rimi Olimpiskais centrs",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212155.json",
+"updated": "2026-09-27T11:00:19.759781+00:00"
+},
+{
+"id": "2027212141",
+"home": "Rigas Ekselences Juniori",
+"away": "Valmiera Glass VIA",
+"homeScore": 73,
+"awayScore": 82,
+"status": "final",
+"date": "2026-09-22T16:00:00Z",
+"hash": "34101b577692926e47c32db4e90e363650016946",
+"venue": "Komandas Sporta Spelu Halle",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2027212141.json",
+"updated": "2026-09-27T10:59:18.065103+00:00"
+}
+]
+}

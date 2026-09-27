@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-27T01:37:43.730878+00:00",
+ "updated": "2026-09-27T11:09:22.460121+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -51,6 +51,13 @@
    "updated": "2026-09-23T08:54:36.545397+00:00"
   },
   {
+   "code": "CZ1L",
+   "label": "Czech 1. liga",
+   "adapter": "fiba_site_schedule",
+   "games": 180,
+   "updated": "2026-09-27T10:58:22.694699+00:00"
+  },
+  {
    "code": "EC",
    "label": "EuroCup",
    "adapter": "euroleague",
@@ -63,6 +70,13 @@
    "adapter": "euroleague",
    "games": 380,
    "updated": "2026-09-23T08:46:34.682726+00:00"
+  },
+  {
+   "code": "ESTLAT",
+   "label": "Estonian-Latvian Basketball League",
+   "adapter": "fiba_site_schedule",
+   "games": 19,
+   "updated": "2026-09-27T11:05:09.463968+00:00"
   },
   {
    "code": "FEB1",
@@ -84,6 +98,20 @@
    "adapter": "grel",
    "games": 240,
    "updated": "2026-09-24T09:36:12.008338+00:00"
+  },
+  {
+   "code": "LBFA1",
+   "label": "Serie A1 Femminile",
+   "adapter": "fiba_site_schedule",
+   "games": 130,
+   "updated": "2026-09-27T11:06:44.259066+00:00"
+  },
+  {
+   "code": "LBFA2",
+   "label": "Serie A2 Femminile",
+   "adapter": "fiba_site_schedule",
+   "games": 220,
+   "updated": "2026-09-27T11:09:12.412284+00:00"
   },
   {
    "code": "LF2",
@@ -142,6 +170,20 @@
    "updated": "2026-09-23T08:59:52.788840+00:00"
   },
   {
+   "code": "LOURO",
+   "label": "Liga Ouro",
+   "adapter": "lnbbr",
+   "games": 0,
+   "updated": "2026-09-27T11:09:22.444552+00:00"
+  },
+  {
+   "code": "NBB",
+   "label": "NBB",
+   "adapter": "lnbbr",
+   "games": 0,
+   "updated": "2026-09-27T11:09:16.284636+00:00"
+  },
+  {
    "code": "PL1LM",
    "label": "1 Liga Mężczyzn",
    "adapter": "fiba_site_schedule",
@@ -189,6 +231,13 @@
    "adapter": "wjbl",
    "games": 84,
    "updated": "2026-09-24T05:30:52.288112+00:00"
+  },
+  {
+   "code": "ZBL",
+   "label": "Czech ŽBL",
+   "adapter": "fiba_site_schedule",
+   "games": 90,
+   "updated": "2026-09-27T10:50:02.940063+00:00"
   }
  ]
 }
