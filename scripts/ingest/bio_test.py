@@ -245,5 +245,84 @@ ok("B.LEAGUE: date, height, weight from the player's page", d_ == {"birth": "199
 recs = list(bio_sources.by_player_page(lambda pid: {})(players=[pl("z1", "A", "B", [], ["LEAGUE:12345"]), pl("z2", "C", "D", [], [])]))
 ok("a league keyed by its own player id: a record per known player, keyed by the id", [r["key"] for r in recs] == ["12345"], recs)
 
+print("\n-- waiting for the player (0186)")
+
+
+class SBS(SB):
+    """A fake database with player_bio_pending in it."""
+    def __init__(self, pending=()):
+        super().__init__()
+        self.pending = {r["ident"]: dict(r) for r in pending}
+        self.upserts, self.deletes = [], []
+
+    def select_all(self, table, q):
+        return list(self.pending.values())
+
+    def upsert_quiet(self, table, rows, on_conflict):
+        self.upserts.extend(rows)
+        for r in rows:
+            self.pending.setdefault(r["ident"], {}).update(r)
+
+    def delete(self, table, q):
+        self.deletes.append(q)
+        if "ident=eq." in q:
+            from urllib.parse import unquote
+            self.pending.pop(unquote(q.split("ident=eq.", 1)[1]), None)
+
+
+ok("a feed key is the identity; else name and club, normalised",
+   bio.ident({"key": "5687", "name": "X"}) == "k:5687" and bio.ident({"first": "Élan", "last": "O'Neal", "team": "Crvena Zvezda"}) == "n:elan oneal|crvena zvezda")
+r_ = bio.stash_row("x", {"first": "A", "last": "B", "team": "T", "height_cm": "1,98", "weight_kg": 0, "birth": "1996-03-14"}, TODAY)
+ok("a kept row: cleaned numbers, an adult's date and its year", r_["height_cm"] == 198 and r_["weight_kg"] is None and r_["birth_date"] == "1996-03-14" and r_["birth_year"] == 1996, r_)
+r_ = bio.stash_row("x", {"name": "Kid", "birth": "2010-06-01"}, TODAY)
+ok("...a minor's YEAR only, never his date", r_["birth_date"] is None and r_["birth_year"] == 2010, r_)
+ok("...and a row that says nothing is not kept", bio.stash_row("x", {"name": "Nobody", "height_cm": 0, "birth": "1900-01-01"}, TODAY) is None)
+
+log = []
+sb = SBS()
+st_ = bio.Stash(sb, "aba-league", [], today=TODAY, log=log.append)
+recs = [{"first": "Moustapha", "last": "Fall", "team": "Olympiacos Piraeus", "key": "P008811", "height_cm": 218},
+        {"first": "New", "last": "Signing", "team": "Crvena Zvezda", "key": "777", "height_cm": 201, "weight_kg": 98, "birth": "1999-01-02"},
+        {"name": "Young Prospect", "team": "Mega", "height_cm": 205, "birth": "2009-05-05"}]
+st = bio.sync(sb, PLAYERS, recs, dry=False, log=log.append, today=TODAY, stash=st_)
+st_.flush()
+ok("rows for players not on the site are kept; the one who is, is not", st["matched"] == 1 and set(sb.pending) == {"k:777", "n:young prospect|mega"}, (st, sb.pending))
+ok("...the adult's date is kept, the minor's is not", sb.pending["k:777"]["birth_date"] == "1999-01-02" and sb.pending["n:young prospect|mega"]["birth_date"] is None
+   and sb.pending["n:young prospect|mega"]["birth_year"] == 2009, sb.pending)
+ok("...and no date reaches the log", not any("1999" in l for l in log), log)
+
+# the ingest has since made one of them: the next pass (even one that reads no feed) gives him his bio and lets the row go
+later = PLAYERS + [pl("n1", "New", "Signing", ["Crvena zvezda Meridianbet"], ["ABA:777"])]
+sb2 = SBS(sb.pending.values())
+st_ = bio.Stash.load(sb2, "aba-league", today=TODAY, log=log.append)
+st = bio.sync(sb2, later, st_.records(), dry=False, log=log.append, today=TODAY, stash=st_)
+out = st_.flush()
+ok("a kept row finds the player the ingest made since, by the feed key", sb2.patched == [("players", "id=eq.n1", {"height_cm": 201, "weight_kg": 98, "birth_date": "1999-01-02"})], sb2.patched)
+ok("...and is deleted; the one still waiting stays, untouched", set(sb2.pending) == {"n:young prospect|mega"} and out["claimed"] == 1 and not sb2.upserts, (sb2.pending, out, sb2.upserts))
+
+sb3 = SBS([{"league_slug": "x", "ident": "n:young prospect|mega", "full_name": "Young Prospect", "team": "Mega", "height_cm": 205, "birth_year": 2009}])
+st_ = bio.Stash.load(sb3, "x", today=TODAY, log=log.append)
+st = bio.sync(sb3, [pl("y1", "Young", "Prospect", ["KK Mega Superbet"])], st_.records(), dry=False, log=log.append, today=TODAY, stash=st_)
+st_.flush()
+ok("a kept minor's row gives him his year (and height), by name and club", sb3.patched == [("players", "id=eq.y1", {"height_cm": 205, "birth_year": 2009})] and not sb3.pending, (sb3.patched, sb3.pending))
+
+sb4 = SBS([{"league_slug": "x", "ident": "k:777", "feed_key": "777", "full_name": "New Signing", "height_cm": 201, "weight_kg": None, "birth_date": None, "birth_year": None}])
+st_ = bio.Stash.load(sb4, "x", today=TODAY, log=log.append, dry=True)
+bio.sync(sb4, [], [{"first": "New", "last": "Signing", "key": "777", "weight_kg": 98, "birth": "1999-01-02"}], dry=True, log=log.append, today=TODAY, stash=st_)
+out = st_.flush()
+ok("a dry run keeps nothing", not sb4.upserts and not sb4.deletes, (sb4.upserts, sb4.deletes))
+sb4.pending["k:777"]["birth_date"] = None
+st_ = bio.Stash.load(sb4, "x", today=TODAY, log=log.append)
+bio.sync(sb4, [], [{"first": "New", "last": "Signing", "key": "777", "weight_kg": 98, "birth": "1999-01-02"}], dry=False, log=log.append, today=TODAY, stash=st_)
+st_.flush()
+ok("seen again: what the feed adds is merged into what was kept, nothing lost", sb4.pending["k:777"]["height_cm"] == 201 and sb4.pending["k:777"]["weight_kg"] == 98
+   and sb4.pending["k:777"]["birth_date"] == "1999-01-02", sb4.pending)
+ok("old rows are dropped by age", any("last_seen=lt." in q for q in sb4.deletes), sb4.deletes)
+
+calls = []
+st_ = bio.Stash(SBS(), "x", [], today=TODAY, log=log.append, detail_cap=1)
+bio.sync(SBS(), [], [{"name": "A B", "team": "T", "detail": det}, {"name": "C D", "team": "T", "detail": det}], dry=False, log=log.append, today=TODAY, stash=st_)
+ok("a player not on the site yet costs a detail page too, but only up to the cap", len(calls) == 1 and len(st_.put) == 1, (calls, st_.put))
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
