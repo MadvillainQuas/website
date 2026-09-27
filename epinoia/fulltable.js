@@ -647,18 +647,34 @@ function render(opts) {
      a scout reads a row by who he is and how big he is. Read from the database's player_bio() in batches (ages.js) once the rows are
      on screen and filled in when they arrive; a career table (one person, the name column is a season) and a team table have none. */
   const BIO = !isTeam && !opts.nameLabel && opts.bio !== false && !!(root.EpinoiaAges && root.EpinoiaAges.loadBio);
-  const bioMap = new Map();          // player id -> {h, w, a}, what the database answered
+  const bioMap = new Map();          // player id -> {h, w, a, y}, what the database answered
   const bioAsked = new Set();        // ids already asked about this render
   /* a merged row (global scouting) is leagueId:playerId, and the person is playerId */
   const bioKey = r => String(r.playerId || r.id);
   const applyBio = list => {
     if (!BIO) return;
-    list.forEach(r => { const b = bioMap.get(bioKey(r)) || {}; r.bio_age = b.a == null ? null : b.a; r.bio_ht = b.h == null ? null : b.h; r.bio_wt = b.w == null ? null : b.w; });
+    list.forEach(r => { const b = bioMap.get(bioKey(r)) || {}; r.bio_age = b.a == null ? null : b.a; r.bio_born = b.y == null ? null : b.y;
+      r.bio_ht = b.h == null ? null : b.h; r.bio_wt = b.w == null ? null : b.w; });
+    bioShown = bioWhich(list);
   };
+  /* EACH BIO COLUMN ONLY WHERE THIS TABLE HAS SOMETHING TO PUT IN IT (ages.js bioColumns), decided column by column over the rows
+     the table holds: a league whose feed has no weights has no WT column, one with birth years only shows BORN with the year in
+     place of an AGE, and one with nothing has none of them. Nothing shows until the database has answered, so a table never
+     opens with a column of dashes that then disappears. Where some players have an exact age and others only a year, the column
+     is AGE and the year-only ones read ~30: a year is not a birthday, and the mark says so. */
+  let bioShown = { age: false, born: false, ht: false, wt: false };
+  function bioWhich(list) {
+    const A = root.EpinoiaAges;
+    return A && A.bioColumns ? A.bioColumns(list.map(r => bioMap.get(bioKey(r)))) : bioShown;
+  }
+  const yearNow = new Date().getUTCFullYear();
+  const ageOrGuess = r => (r.bio_age != null ? r.bio_age : r.bio_born != null ? yearNow - r.bio_born : null);
   const BIO_COLS = BIO ? [
-    { k: 'bio_age', l: 'AGE', g: ['bio'], fmt: r => f0(r.bio_age), t: 'age today' },
-    { k: 'bio_ht',  l: 'HT',  g: ['bio'], fmt: r => bioUnit(r.bio_ht, 'height'), t: 'height, cm' },
-    { k: 'bio_wt',  l: 'WT',  g: ['bio'], fmt: r => bioUnit(r.bio_wt, 'weight'), t: 'weight, kg' }
+    { k: 'bio_age', l: 'AGE', g: ['bio'], show: 'age', t: 'age today (~ worked out from the birth year alone)', sort: ageOrGuess,
+      fmt: r => (r.bio_age != null ? String(r.bio_age) : r.bio_born != null ? '~' + (yearNow - r.bio_born) : '—') },
+    { k: 'bio_born', l: 'BORN', g: ['bio'], show: 'born', fmt: r => f0(r.bio_born), t: 'year of birth' },
+    { k: 'bio_ht',  l: 'HT',  g: ['bio'], show: 'ht', fmt: r => bioUnit(r.bio_ht, 'height'), t: 'height, cm' },
+    { k: 'bio_wt',  l: 'WT',  g: ['bio'], show: 'wt', fmt: r => bioUnit(r.bio_wt, 'weight'), t: 'weight, kg' }
   ] : [];
   /* HT AND WT IN THE READER'S UNITS (units.js): centimetres and kilograms, or feet-and-inches and pounds - one set, the same
      choice as the profile and the roster. The number without its unit, which the column's title carries; the sort still reads
@@ -798,7 +814,8 @@ function render(opts) {
   const premium = k => { if (!locked) return false; if (OWN_LOCK) return pageLocks(k); const A = ACC();
     return !!(A && typeof A.isPremiumColumn === 'function' && A.isPremiumColumn(k)); };
   /* not drawn, not filtered on, not compared: a locked column, or RAPM where the page has none */
-  const absent = k => premium(k) || (!!opts.noRapm && RAPM_KEYS.has(k));
+  const absent = k => premium(k) || (!!opts.noRapm && RAPM_KEYS.has(k)) ||
+    BIO_COLS.some(c => c.k === k && !bioShown[c.show]);          // a bio column this table has nothing for: never the sort either
   /* A PRESET IS LOCKED when the catalogue names it, or when every column it would show is
      premium. The context columns (GP) do not count: GP rides in almost every preset, the
      events and zone ones included, and one free GP column would otherwise keep a wholly
@@ -855,7 +872,7 @@ function render(opts) {
   const visible = () => {
     /* rank and name, then AGE / HT / WT, then the rest of the identity columns (the club), then the preset */
     const out = idCols.slice(0, 2).concat(
-      BIO_COLS,
+      BIO_COLS.filter(c => bioShown[c.show]),
       idCols.slice(2),
       CAT.filter(c => !c.g.includes('id') && !absent(c.k) &&
                       ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
@@ -1258,8 +1275,11 @@ function render(opts) {
 
   /* THE UNITS SWITCH, beside the CSV, on a table with HT and WT: the choice is site-wide, so pressing it here (or on any other
      page, in any tab) redraws this table's heights and weights */
+  let unitsSw = null;
   if (BIO && UN()) {
-    more.appendChild(UN().toggle({ className: 'ft-units' }));
+    unitsSw = UN().toggle({ className: 'ft-units' });
+    unitsSw.hidden = true;                // until the table has a height or a weight to convert
+    more.appendChild(unitsSw);
     UN().onChange(() => { bioTitles(); if (host.__ftWrap === wrap) draw(); });
   }
 
@@ -1865,6 +1885,7 @@ function render(opts) {
   }
 
   function draw() {
+    if (unitsSw) unitsSw.hidden = !(bioShown.ht || bioShown.wt);
     paintFilters();
     const phone = isPhone();
     let cols = visible();

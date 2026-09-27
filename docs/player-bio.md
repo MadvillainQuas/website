@@ -77,7 +77,15 @@ preset, outside the column drawer and not sortable-away (they sort like any colu
 `BIO_COLS`, filled by `player_bio(ids)` (migration 0185): one call per 500 players, kept in the browser for half an hour
 (`epinoia/ages.js loadBio`). Before 0185 is pushed the columns show dashes. A career table (one person) and a team table have none.
 
+**Each column only where there is something to put in it.** The tables (and a club's roster) decide AGE, BORN, HT and WT one by one
+from the players they hold (`epinoia/ages.js bioColumns`): AGE where the database gives an exact age (a date of birth, 0184/0185);
+BORN, showing the year, where there are birth years but no exact ages - a year is never turned into an age that could be a year
+out; HT and WT where anyone has one. A league whose feed gives nothing gets none of the columns. Where some players have an exact
+age and others only a year, the column is AGE and the year-only ones read `~30`. The roster also drops WING and PREVIOUS CLUB when no
+one has them; a manager signed in to edit still gets every measurement box. `player_bio()` returns `birth_year` alongside the age
+for this (0185, dropped and re-created because its result columns changed).
+
 **Before 0185 is applied**, the table columns still work: `player_bio()` 404s once, and `epinoia/ages.js` falls back to a plain read of
 `players.height_cm/weight_kg/birth_year` (public columns since 0033/0002, and `players_read`, 0049, already keeps an under-18 out of
-that read entirely). Age is then last-birth-year-to-this-year, the same approximation `t/team.js`'s staff list has always shown; once
-0185 is live it is replaced by the exact, date-of-birth-driven age.
+that read entirely). That read gives the birth year rather than an age, so until 0185 is live the tables show BORN; once it is, a league with dates of
+birth shows AGE.
