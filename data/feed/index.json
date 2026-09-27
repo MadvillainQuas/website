@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-27T01:35:57.290428+00:00",
+ "updated": "2026-09-27T01:37:43.730878+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -104,7 +104,7 @@
    "label": "Liga Femenina Endesa",
    "adapter": "feb",
    "games": 242,
-   "updated": "2026-09-27T01:29:06.330337+00:00"
+   "updated": "2026-09-27T01:37:43.715028+00:00"
   },
   {
    "code": "LIGAU",
