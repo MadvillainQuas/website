@@ -265,5 +265,76 @@ console.log('-- who is shown it');
   ok('the editor is fetched from beside linkswitch.js, with its own ?v= stamp', K.editorUrl('https://x.test/epinoia/linkswitch.js?v=438') === 'https://x.test/epinoia/linkedit.js?v=438' && K.editorUrl('../linkswitch.js') === '../linkedit.js');
 }
 
+/* ---------------------------------------------------- the same panel, on a player --- */
+console.log('-- a player\u2019s profile');
+{
+  const spell = (team, league, season) => ({ team, league, season });
+  const mk = (id, name, spells, o) => Object.assign({ id, slug: id, name, spells }, o);
+  const ME = mk('p1', 'Max Mackinnon', [spell('Brisbane Bullets', 'NBL', '2026-27')]);
+  const OTHER = mk('p2', 'M. Mackinnon', [spell('Brisbane Bullets', 'NBL', '2025-26'), spell('Brisbane Bullets', 'NBL', '2025-26'), spell('Ipswich', 'NBL1', '2024')], { auto: true });
+  const GROUP = { group: 'Max Mackinnon', players: [ME, OTHER] };
+  const cand = mk('p3', 'Maxwell Mackinnon', [spell('Perth', 'NBL', '2023-24')], { birth_year: 1999 });
+  const PL = { kind: 'player', player: { id: 'p1', name: 'Max Mackinnon' }, team: undefined };
+  const m = mounted({ linked: GROUP, results: [cand] }, PL);
+  ok('the button and panel say "profiles" and "player", not "teams"', /profiles/.test(m.toggle.title) && m.host.cls('le-h')[0].children[0].textContent === 'linked profiles'
+     && /search a player/.test(m.input.placeholder) && /player to link/.test(m.input.attrs['aria-label']), [m.input.placeholder, m.host.cls('le-h')[0].textContent]);
+  m.toggle.fire('click');
+  const rows = m.host.cls('le-mem');
+  ok('it lists the profiles that are this person, this page first and marked, each a link to its profile page',
+     rows.length === 2 && rows[0].classList.contains('here') && rows.map(r => r.cls('le-name')[0].href).join() === './?p=p1,./?p=p2', rows.map(r => r.cls('le-name')[0].href));
+  ok('...with the clubs each played for, once each, and an "auto" chip on one the site linked itself',
+     rows[1].cls('le-sub')[0].textContent === 'Brisbane Bullets \u00b7 NBL \u00b7 2025-26  |  Ipswich \u00b7 NBL1 \u00b7 2024' && rows[1].cls('le-chip')[0].textContent === 'auto', rows[1].cls('le-sub')[0].textContent);
+  ok('...and the group\u2019s name', m.host.cls('le-g')[0].textContent === 'Max Mackinnon');
+  ok('the reload button is there but hidden until something has changed', m.host.cls('le-x').filter(b => /reload/.test(b.textContent)).every(b => b.hidden === true));
+  const alone = mounted({ linked: null }, PL);
+  alone.toggle.fire('click');
+  ok('a player linked to nothing says so', /Not linked to any other profile yet/.test(alone.host.cls('le-mems')[0].textContent));
+
+  await type(m, 'mackinnon');
+  ok('the search asks for PLAYERS, leaving out the ones already linked and this one',
+     m.c.calls.some(x => x[0] === 'platform_link_search' && x[1].p_kind === 'player' && x[1].p_q === 'mackinnon' && x[1].p_exclude.slice().sort().join() === 'p1,p2'), m.c.calls.filter(x => x[0] === 'platform_link_search'));
+  const opt = m.host.cls('le-opt')[0];
+  ok('a result shows his clubs and, for an administrator, his birth year (to tell two of one name apart)',
+     opt && opt.cls('le-name')[0].textContent === 'Maxwell Mackinnon' && opt.cls('le-lg')[0].textContent === 'b. 1999' && /Perth \u00b7 NBL \u00b7 2023-24/.test(opt.cls('le-sub')[0].textContent), opt && opt.textContent);
+  opt.fire('pointerdown');
+  await until(() => m.c.calls.some(x => x[0] === 'platform_link_apply'));
+  await tick(15);
+  ok('choosing one links it to this profile as players', m.c.calls.some(x => x[0] === 'platform_link_apply' && x[1].p_kind === 'player' && x[1].p_ids.join() === 'p1,p3'), m.c.calls.filter(x => x[0] === 'platform_link_apply'));
+  ok('...says so in profile words, with no "players at those clubs" (that is for clubs)', /^Linked Maxwell Mackinnon to this profile: 4 profiles are linked now\.$/.test(m.msg.textContent), m.msg.textContent);
+  ok('...and offers to reload, because the career is read when the page opens', m.host.cls('le-x').some(b => /reload/.test(b.textContent) && b.hidden === false) && m.changes() === 1);
+  const x = rows[1].cls('le-x')[0];
+  x.fire('click');
+  await until(() => m.c.calls.some(y => y[0] === 'platform_link_remove'));
+  await tick(15);
+  ok('an unlink removes that profile from the group, as a player', m.c.calls.some(y => y[0] === 'platform_link_remove' && y[1].p_kind === 'player' && y[1].p_id === 'p2'), m.c.calls.filter(y => y[0] === 'platform_link_remove'));
+  ok('...in words', /^Unlinked M\. Mackinnon\./.test(m.msg.textContent), m.msg.textContent);
+  ok('the words for players', E.linkedWords({ name: 'X' }, { members: 2 }, 'player') === 'Linked X to this profile: 2 profiles are linked now.'
+     && /That left one profile, so the link is gone/.test(E.unlinkedWords({ name: 'X' }, { removed: true, left: 1 }, 'player'))
+     && /was not linked/.test(E.unlinkedWords({ name: 'X' }, { removed: false }, 'player')));
+  const teamMode = mounted();
+  teamMode.toggle.fire('click');
+  ok('a club\u2019s panel is exactly as it was: no reload button', teamMode.host.cls('le-x').every(b => !/reload/.test(b.textContent) || b.hidden === true));
+  ok('the pure helpers', E.spellLines(OTHER).length === 2 && E.spellLines(OTHER, 1).length === 1 && E.spellLines({}).length === 0 && E.playerHref({ slug: 'a b' }) === './?p=a%20b');
+
+  /* who is shown it, on a player's page */
+  const mountCalls = [];
+  globalThis.EpinoiaLinkEdit = { mount: o => { mountCalls.push(o); return {}; } };
+  const admin = client({});
+  globalThis.epinoiaMaybeSignedIn = () => true;
+  globalThis.epinoiaClientReady = async () => admin.sb;
+  const pl = { id: 'p1', name: 'Max Mackinnon' };
+  const r = await K.adminEditor(pl, { kind: 'player', host: new N('div'), linked: GROUP, attach() {}, redraw: async () => null });
+  ok('a platform administrator gets the editor for this PLAYER (not as a team)', r && mountCalls.length === 1 && mountCalls[0].kind === 'player' && mountCalls[0].player === pl && mountCalls[0].team === undefined, mountCalls[0] && Object.keys(mountCalls[0]));
+  mountCalls.length = 0;
+  const notAdmin = client({ whoami: { is_platform_admin: false, leagues: [{ slug: 'nbl' }] } });
+  globalThis.epinoiaClientReady = async () => notAdmin.sb;
+  ok('a league administrator or anybody else is shown nothing on a player\u2019s page either', await K.adminEditor(pl, { kind: 'player', host: new N('div'), linked: null, attach() {}, redraw: async () => null }) === null && mountCalls.length === 0);
+  globalThis.epinoiaMaybeSignedIn = () => false;
+  const sub = new N('div'); sub.parent = new N('div');
+  const sw = K.paintPlayer(pl, GROUP, { sub });
+  ok('paintPlayer still draws the "other profiles" button for everyone, in the identity line, and asks a signed-out reader nothing', sw && sub.cls('ls-wrap').length === 1 && mountCalls.length === 0);
+  ok('...and for a player linked to nothing draws nothing', K.paintPlayer(pl, null, { sub: new N('div') }) === null);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

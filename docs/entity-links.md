@@ -70,6 +70,14 @@ are drawn again from `linked_teams`; the page never scrolls or reloads.
 * A club with no links yet gets the button too (it needs no league buttons to appear), which is how the first link is made.
 * Test: `supabase/tests/linkedit.test.mjs` (the panel, the search, both edits, stale answers, and who is shown it).
 
+The same panel is on a **player's profile** (`kind: 'player'`, 2026-09-27), under the identity line, for platform administrators
+only, with the same gate. It lists the profiles that are the same person (each with an unlink button; an `auto` chip on one the
+site linked itself) and searches for another to link (`platform_link_search` / `_apply` / `_remove` with `p_kind = 'player'`,
+which 0178 already handles). A result shows his clubs and, to an administrator, his birth year, so two people of one name can be told
+apart. **It is a link, not a merge**: every game and stat stays on its own profile, and the linked ones are read together (the career
+table, the "other profiles" button). The career is read when the page opens, so after an edit a button offers to reload it. There is no
+player merge (rewriting one profile's games onto another); the team side has none either.
+
 ## The possible matches (flagged, with a confidence and a reason)
 
 `platform_link_suggestions(kind)` — computed from expression indexes on the folded names, so it is quick at thousands of rows.

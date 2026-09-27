@@ -175,7 +175,8 @@ async function adminEditor(team, ctx) {
   const E = await loadEditor();
   if (!E) return null;
   ctx.attach();
-  return E.mount({ host: ctx.host, team, sb, linked: ctx.linked, onChange: ctx.redraw });
+  return E.mount({ host: ctx.host, kind: ctx.kind || 'team', team: ctx.kind === 'player' ? undefined : team, player: ctx.kind === 'player' ? team : undefined,
+                   sb, linked: ctx.linked, onChange: ctx.redraw });
 }
 
 /* asked once for the team page: its women and youth indicators and its links. Fills the header and returns what it found. */
@@ -252,8 +253,20 @@ function playerSwitcher(linked, currentId) {
 /* the promise for a profile's link group, started early so the career can wait for it */
 function loadPlayer(playerId) { return call('linked_players', { p_player: playerId }); }
 function paintPlayer(pl, linked, o) {
-  const sw = playerSwitcher(linked, pl.id);
-  if (sw && o && o.sub) o.sub.appendChild(sw);
+  o = o || {};
+  /* THE "OTHER PROFILES" BUTTON sits in a slot, so an administrator's edit (linkedit.js, kind 'player') can draw it again; the
+     editor's own host goes under the identity line, and only once an administrator is confirmed (attach) */
+  const slot = el('span', 'ls-slot-inline');
+  if (o.sub) o.sub.appendChild(slot);
+  const draw = l => { slot.textContent = ''; const sw = playerSwitcher(l, pl.id); if (sw) slot.appendChild(sw); return sw; };
+  const sw = draw(linked);
+  const host = el('div', 'ls-row-host');
+  const editSlot = host.appendChild(el('div', 'ls-edit'));
+  let attached = false;
+  const attach = () => { if (!attached && o.sub && o.sub.parentNode) { o.sub.parentNode.appendChild(host); attached = true; } };
+  adminEditor(pl, { kind: 'player', host: editSlot, linked, attach,
+    redraw: async () => { const l = await call('linked_players', { p_player: pl.id }); draw(l); return l; } })
+    .catch(() => { /* the page as it was */ });
   return sw;
 }
 

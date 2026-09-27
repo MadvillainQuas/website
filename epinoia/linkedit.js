@@ -17,6 +17,12 @@
 
    It does not scroll the page and does not reload it: after a change the club's league buttons are drawn again from the
    database (onChange), and the panel stays open for the next one.
+
+   THE SAME PANEL ON A PLAYER'S PROFILE (kind: 'player'): the profiles that are the same person, each with an unlink button, and a
+   search bar for the other profile to link to this one (a player is found by name or alias, and shown with his clubs and, to an
+   administrator, his birth year, so two people of one name can be told apart). It is a LINK, not a merge: every game and stat stays
+   on its own profile, and the linked ones are read together (the career table, the "other profiles" button). The career on this
+   page is read when it opens, so after a change a button offers to reload it.
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -40,17 +46,29 @@ function seasonsOf(card) {
   return seen.sort().reverse();
 }
 const teamHref = c => './?t=' + encodeURIComponent(c.slug || c.id);
+const playerHref = c => './?p=' + encodeURIComponent(c.slug || c.id);
+/* a player card's clubs as short lines, "Club · League · Season", the distinct ones in the card's order (newest first) */
+function spellLines(card, n) {
+  const seen = [];
+  ((card && card.spells) || []).forEach(x => { const l = [x.team, x.league, x.season].filter(Boolean).join(' \u00b7 '); if (l && seen.indexOf(l) < 0) seen.push(l); });
+  return seen.slice(0, n == null ? 3 : n);
+}
 
 /* what to say after a link: the team, how big the group is now, and the players linked with it */
-function linkedWords(row, res) {
+function linkedWords(row, res, kind) {
   const n = res && res.members;
+  if (kind === 'player') return 'Linked ' + (row.name || 'that player') + ' to this profile' + (n ? ': ' + n + ' profiles are linked now' : '') + '.';
   const a = res && res.auto_players;
   let t = 'Linked ' + (row.name || 'that team') + (row.league ? ' (' + row.league + ')' : '') + ' to this club' + (n ? ': ' + n + ' teams are linked now' : '') + '.';
   if (a) t += ' ' + a + ' player' + (a === 1 ? '' : 's') + ' at those clubs ' + (a === 1 ? 'was' : 'were') + ' linked automatically.';
   return t;
 }
 /* what to say after an unlink; a group left with one team is not a link any more, and the database drops it */
-function unlinkedWords(card, res) {
+function unlinkedWords(card, res, kind) {
+  if (kind === 'player') {
+    if (res && res.removed === false) return (card.name || 'That profile') + ' was not linked.';
+    return 'Unlinked ' + (card.name || 'that profile') + '.' + (res && res.left != null && res.left < 2 ? ' That left one profile, so the link is gone.' : '');
+  }
   if (res && res.removed === false) return (card.name || 'That team') + ' was not linked.';
   return 'Unlinked ' + (card.league ? card.league : (card.name || 'that team')) + '.' + (res && res.left != null && res.left < 2 ? ' That left one team, so the link is gone.' : '');
 }
@@ -66,7 +84,15 @@ function errorWords(e) {
 /* o: { host, team: { id, name }, sb (a supabase client with the administrator's session), linked (linked_teams' answer, or null),
         onChange(): a promise of the fresh linked_teams answer, after the club's league buttons have been drawn again } */
 function mount(o) {
-  const team = o.team, sb = o.sb;
+  const P = o.kind === 'player', kind = P ? 'player' : 'team';
+  const team = P ? o.player : o.team, sb = o.sb;                 // "team" is whatever this page is about: a club, or a player
+  const W = P
+    ? { heading: 'linked profiles', none: 'Not linked to any other profile yet. Search below to link this player to another profile of the same person.',
+        placeholder: 'search a player to link: name or alias', aria: 'search a player to link to this profile',
+        toggle: 'link this profile to other profiles of the same person, or unlink it (platform administrators)', noun: 'player' }
+    : { heading: 'linked teams', none: 'Not linked to any other team yet. Search below to link it to one.',
+        placeholder: 'search a team to link: name, league, alias', aria: 'search a team to link to this one',
+        toggle: 'link this team to others, or unlink it (platform administrators)', noun: 'team' };
   let linked = o.linked || null;
   let seq = 0, timer = 0, active = -1, rows = [], busy = false;
 
@@ -74,29 +100,33 @@ function mount(o) {
   box.setAttribute('data-i18n', 'off');
   const toggle = box.appendChild(el('button', 'le-toggle', '✎ edit links'));
   toggle.type = 'button'; toggle.setAttribute('aria-expanded', 'false');
-  toggle.title = 'link this team to others, or unlink it (platform administrators)';
+  toggle.title = W.toggle;
   const panel = box.appendChild(el('div', 'le-panel'));
   panel.hidden = true;
   panel.id = 'leLinks';
   toggle.setAttribute('aria-controls', panel.id);
 
   const head = panel.appendChild(el('div', 'le-h'));
-  head.appendChild(el('b', null, 'linked teams'));
+  head.appendChild(el('b', null, W.heading));
   const grp = head.appendChild(nm('span', 'le-g', ''));
   const mems = panel.appendChild(el('div', 'le-mems'));
   const searchWrap = panel.appendChild(el('div', 'le-sw'));
   const input = searchWrap.appendChild(el('input', 'le-search'));
   input.type = 'search'; input.setAttribute('autocomplete', 'off'); input.setAttribute('spellcheck', 'false');
-  input.placeholder = 'search a team to link: name, league, alias';
-  input.setAttribute('aria-label', 'search a team to link to this one');
+  input.placeholder = W.placeholder;
+  input.setAttribute('aria-label', W.aria);
   input.setAttribute('role', 'combobox'); input.setAttribute('aria-expanded', 'false'); input.setAttribute('aria-autocomplete', 'list');
   const list = searchWrap.appendChild(el('ul', 'le-list'));
   list.hidden = true; list.setAttribute('role', 'listbox');
   const msg = panel.appendChild(el('div', 'le-msg'));
   msg.setAttribute('role', 'status');
+  /* a player's career and game log are read when the page opens; after an edit this reads them again */
+  const reloadBtn = panel.appendChild(el('button', 'le-x', 'reload the page to update the career'));
+  reloadBtn.type = 'button'; reloadBtn.hidden = true;
+  reloadBtn.addEventListener('click', () => { if (typeof location !== 'undefined' && location.reload) location.reload(); });
 
   const say = (t, kind) => { msg.textContent = t || ''; msg.className = 'le-msg' + (kind ? ' ' + kind : ''); };
-  const teams = () => (linked && linked.teams) || [];
+  const teams = () => (linked && (P ? linked.players : linked.teams)) || [];
   const excluded = () => { const s = teams().map(c => c.id); if (s.indexOf(team.id) < 0) s.push(team.id); return s; };
   async function rpc(name, args) { const r = await sb.rpc(name, args); if (r.error) throw r.error; return r.data; }
 
@@ -105,20 +135,28 @@ function mount(o) {
     mems.textContent = '';
     grp.textContent = (linked && linked.group) || '';
     const ms = teams();
-    if (ms.length < 2) { mems.appendChild(el('div', 'le-none', 'Not linked to any other team yet. Search below to link it to one.')); return; }
+    if (ms.length < 2) { mems.appendChild(el('div', 'le-none', W.none)); return; }
     ms.slice().sort((a, b) => (a.id === team.id ? -1 : 0) - (b.id === team.id ? -1 : 0)).forEach(c => {
       const row = mems.appendChild(el('div', 'le-mem' + (c.id === team.id ? ' here' : '')));
       const main = row.appendChild(el('div', 'le-main'));
       const top = main.appendChild(el('div', 'le-top'));
-      const a = top.appendChild(nm('a', 'le-name', c.league || c.name));
-      a.href = teamHref(c);
-      if (c.women) top.appendChild(el('span', 'le-chip', 'women'));
-      if (c.youth) top.appendChild(nm('span', 'le-chip', c.age || 'youth'));
-      if (c.id === team.id) top.appendChild(el('span', 'le-here', 'this page'));
-      const s = seasonsOf(c);
-      main.appendChild(nm('div', 'le-sub', (c.name && c.league && c.name !== c.league ? c.name + ' · ' : '') + (s.length ? s.slice(0, 3).join(' · ') : 'no competition yet')));
+      if (P) {
+        const a = top.appendChild(nm('a', 'le-name', c.name || '\u2014'));
+        a.href = playerHref(c);
+        if (c.id === team.id) top.appendChild(el('span', 'le-here', 'this page'));
+        if (c.auto) top.appendChild(el('span', 'le-chip', 'auto'));
+        main.appendChild(nm('div', 'le-sub', spellLines(c, 2).join('  |  ') || 'no club yet'));
+      } else {
+        const a = top.appendChild(nm('a', 'le-name', c.league || c.name));
+        a.href = teamHref(c);
+        if (c.women) top.appendChild(el('span', 'le-chip', 'women'));
+        if (c.youth) top.appendChild(nm('span', 'le-chip', c.age || 'youth'));
+        if (c.id === team.id) top.appendChild(el('span', 'le-here', 'this page'));
+        const s = seasonsOf(c);
+        main.appendChild(nm('div', 'le-sub', (c.name && c.league && c.name !== c.league ? c.name + ' \u00b7 ' : '') + (s.length ? s.slice(0, 3).join(' \u00b7 ') : 'no competition yet')));
+      }
       const x = row.appendChild(el('button', 'le-x', 'unlink'));
-      x.type = 'button'; x.title = 'take ' + (c.name || 'this team') + ' out of the link';
+      x.type = 'button'; x.title = 'take ' + (c.name || (P ? 'this profile' : 'this team')) + ' out of the link';
       x.addEventListener('click', () => unlink(c));
     });
   }
@@ -135,20 +173,27 @@ function mount(o) {
     list.textContent = '';
     rows = (res && res.rows) || [];
     if (!rows.length) {
-      const li = list.appendChild(el('li', 'le-empty', 'No team matches "' + q + '" (teams already linked to this one are left out).'));
+      const li = list.appendChild(el('li', 'le-empty', 'No ' + W.noun + ' matches "' + q + '" (' + W.noun + 's already linked to this one are left out).'));
       li.setAttribute('role', 'presentation');
     }
     rows.forEach((r, k) => {
       const li = list.appendChild(el('li', 'le-opt')); li.id = 'leOpt' + k; li.setAttribute('role', 'option');
       const top = li.appendChild(el('div', 'le-top'));
       top.appendChild(nm('b', 'le-name', r.name));
-      if (r.league) top.appendChild(nm('span', 'le-lg', r.league));
-      if (r.women) top.appendChild(el('span', 'le-chip', 'women'));
-      if (r.youth) top.appendChild(nm('span', 'le-chip', r.age || 'youth'));
-      const s = seasonsOf(r);
-      const sub = li.appendChild(el('div', 'le-sub'));
-      sub.appendChild(nm('span', null, s.length ? s.slice(0, 3).join(' · ') : 'no competition yet'));
-      if (r.group) sub.appendChild(nm('span', 'le-in', 'in the group "' + r.group + '": the whole group is linked'));
+      if (P) {
+        if (r.birth_year) top.appendChild(nm('span', 'le-lg', 'b. ' + r.birth_year));
+        const sub = li.appendChild(el('div', 'le-sub'));
+        sub.appendChild(nm('span', null, spellLines(r, 2).join('  |  ') || 'no club yet'));
+        if (r.group) sub.appendChild(nm('span', 'le-in', 'in the group "' + r.group + '": the whole group is linked'));
+      } else {
+        if (r.league) top.appendChild(nm('span', 'le-lg', r.league));
+        if (r.women) top.appendChild(el('span', 'le-chip', 'women'));
+        if (r.youth) top.appendChild(nm('span', 'le-chip', r.age || 'youth'));
+        const s = seasonsOf(r);
+        const sub = li.appendChild(el('div', 'le-sub'));
+        sub.appendChild(nm('span', null, s.length ? s.slice(0, 3).join(' \u00b7 ') : 'no competition yet'));
+        if (r.group) sub.appendChild(nm('span', 'le-in', 'in the group "' + r.group + '": the whole group is linked'));
+      }
       li.addEventListener('pointerdown', e => { if (e.preventDefault) e.preventDefault(); pick(r); });
     });
     if (res && res.more) list.appendChild(el('li', 'le-more', 'more matches: type more of the name'));
@@ -160,7 +205,7 @@ function mount(o) {
     if (!q) { closeList(); return; }
     const mine = ++seq;
     try {
-      const res = await rpc('platform_link_search', { p_kind: 'team', p_q: q, p_limit: SHOWN, p_exclude: excluded() });
+      const res = await rpc('platform_link_search', { p_kind: kind, p_q: q, p_limit: SHOWN, p_exclude: excluded() });
       if (mine !== seq) return;                       // a slower answer to an older question never replaces a newer one
       say('');
       drawList(res, q);
@@ -188,14 +233,15 @@ function mount(o) {
   async function changed() {
     try { linked = (await o.onChange()) || null; } catch (_) { linked = null; }
     drawMembers();
+    if (P) reloadBtn.hidden = false;
   }
   async function pick(row) {
     if (busy) return;
     busy = true; closeList(); input.value = ''; seq++;
     say('linking…');
     try {
-      const res = await rpc('platform_link_apply', { p_kind: 'team', p_ids: [team.id, row.id], p_label: null });
-      say(linkedWords(row, res), 'ok');
+      const res = await rpc('platform_link_apply', { p_kind: kind, p_ids: [team.id, row.id], p_label: null });
+      say(linkedWords(row, res, kind), 'ok');
       await changed();
     } catch (e) { say(errorWords(e), 'err'); }
     finally { busy = false; }
@@ -205,8 +251,8 @@ function mount(o) {
     busy = true;
     say('unlinking…');
     try {
-      const res = await rpc('platform_link_remove', { p_kind: 'team', p_id: card.id });
-      say(unlinkedWords(card, res), 'ok');
+      const res = await rpc('platform_link_remove', { p_kind: kind, p_id: card.id });
+      say(unlinkedWords(card, res, kind), 'ok');
       await changed();
     } catch (e) { say(errorWords(e), 'err'); }
     finally { busy = false; }
@@ -230,5 +276,5 @@ function mount(o) {
   return { root: box, open, close, refresh(l) { linked = l || null; drawMembers(); }, _state: () => ({ linked, rows, active, busy }) };
 }
 
-return { mount, seasonsOf, linkedWords, unlinkedWords, errorWords };
+return { mount, seasonsOf, spellLines, playerHref, linkedWords, unlinkedWords, errorWords };
 }));
