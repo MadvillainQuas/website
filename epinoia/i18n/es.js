@@ -1036,7 +1036,7 @@
       'height': 'Altura',
       'weight': 'Peso',
       'Show heights and weights in metric or imperial — applies across the site': 'Mostrar alturas y pesos en sistema métrico o imperial — se aplica en todo el sitio',
-      'index · every league': 'Índice · todas las ligas',
+      'home · every league': 'Inicio · todas las ligas',
       'Quick links': 'Accesos rápidos',
       'On this page': 'En esta página',
       'Free agent': 'Agente libre',

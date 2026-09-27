@@ -135,40 +135,56 @@ html.tt-on .wrap > .top > .wm{ display:none }
 }
 
 /* ============================================================================
-   3. THE INDEX. On the two long pages (HOME, a league's front page) a black
-   panel under the hero lists the sections as teletext entries, each a jump down
-   the page, each marked with a block in one of teletext's colours.
+   3. THE INDEX. On the two long pages (HOME, a league's front page) a slim
+   black bar under the hero lists the page's sections, each a jump down the
+   page. Its blocks run in the Fastext keys' order (red, green, yellow, cyan,
+   then magenta, blue, white), so the bar and the keys at the foot read as one
+   set, and an entry pointed at lights up in its own colour the way a key does.
+   On a desktop a small caption sits centred over the entries, which are centred
+   under it like the section titles below (a second line, if they need one,
+   stays balanced); on a phone the caption leads one line that scrolls sideways.
    ============================================================================ */
 .tt-index{
-  position:relative; isolation:isolate; display:flex; align-items:center; flex-wrap:wrap; gap:10px 22px;
-  padding:14px calc(var(--u)*3) 13px; background:var(--tt-scr); color:var(--tt-white);
+  position:relative; isolation:isolate; display:flex; flex-direction:column; align-items:center;
+  padding:11px calc(var(--u)*3) 2px; background:var(--tt-scr); color:var(--tt-white);
   border-top:1px solid var(--tt-edge); border-bottom:1px solid var(--tt-edge) }
 .tt-index[hidden]{ display:none }
 .tt-index::before{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
   background:repeating-linear-gradient(180deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px) }
-/* "INDEX" in double height, the way teletext set its headings: the letters stretched to two rows */
-.tt-ix-h{ flex:none; display:flex; flex-direction:column-reverse; align-items:flex-start; gap:6px; margin:0; font-weight:400;
-  padding-right:18px; border-right:1px solid rgba(255,255,255,.14) }
-.tt-ix-h b{ display:inline-block; font-family:var(--f-score); font-weight:400; font-size:18px; line-height:1;
-  letter-spacing:.06em; text-transform:uppercase; color:var(--tt-yellow); transform:scaleY(1.85); transform-origin:bottom;
-  margin-top:16px; text-shadow:1px 0 rgba(255,75,75,.35),-1px 0 rgba(63,240,255,.35) }
-.tt-ix-l{ list-style:none; margin:0; padding:0; flex:1 1 360px; min-width:0;
-  display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:0 18px }
-.tt-ix-l a{ display:flex; align-items:baseline; gap:9px; padding:4px 6px; min-height:28px; text-decoration:none;
-  color:var(--tt-white); font-family:var(--f-micro); font-size:10px; letter-spacing:.06em; text-transform:uppercase }
-.tt-ix-l a .n{ flex:none; align-self:center; width:9px; height:9px; background:var(--tt-cyan) }
-.tt-ix-l a .t{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.tt-ix-l li:nth-child(4n+2) a .n{ background:var(--tt-green) }
-.tt-ix-l li:nth-child(4n+3) a .n{ background:var(--tt-yellow) }
-.tt-ix-l li:nth-child(4n+4) a .n{ background:var(--tt-magenta) }
-.tt-ix-l a:hover, .tt-ix-l a:focus-visible{ background:var(--tt-cyan); color:var(--tt-scr); outline:0 }
-.tt-ix-l a:hover .n, .tt-ix-l a:focus-visible .n{ background:var(--tt-scr) }
-@media (max-width:560px){
-  .tt-index{ padding:12px calc(var(--u)*2) 10px; gap:8px 16px }
-  .tt-ix-h{ flex-direction:row; align-items:flex-end; gap:10px; padding-right:0; border-right:0 }
-  .tt-ix-h b{ font-size:15px; margin-top:12px }
-  .tt-ix-l{ flex-basis:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 10px }
-  .tt-ix-l a{ font-size:9px; min-height:32px; align-items:center }
+.tt-ix-h{ flex:none; display:flex; align-items:center; gap:10px; margin:0; padding:0; white-space:nowrap;
+  font-family:var(--f-micro); font-size:9px; font-weight:400; line-height:1.2; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--tt-yellow) }
+/* the caption's rules: a short line of separated blocks either side */
+.tt-ix-h::before, .tt-ix-h::after{ content:""; width:34px; height:2px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.34) 0 4px,transparent 4px 6px) }
+.tt-ix-l{ list-style:none; margin:0; padding:0; min-width:0; display:flex; flex-wrap:wrap; align-items:stretch; justify-content:center }
+.tt-ix-l li{ display:flex }
+.tt-ix-l a{ --k:var(--tt-red);
+  display:flex; align-items:center; gap:8px; min-height:44px; padding:0 11px; white-space:nowrap; text-decoration:none;
+  font-family:var(--f-micro); font-size:10px; line-height:1.2; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--tt-white); transition:background .12s ease,color .12s ease }
+.tt-ix-l a .n{ flex:none; width:9px; height:9px; background:var(--k);
+  box-shadow:0 0 8px color-mix(in srgb,var(--k) 55%,transparent) }
+.tt-ix-l li:nth-child(7n+2) a{ --k:var(--tt-green) }
+.tt-ix-l li:nth-child(7n+3) a{ --k:var(--tt-yellow) }
+.tt-ix-l li:nth-child(7n+4) a{ --k:var(--tt-cyan) }
+.tt-ix-l li:nth-child(7n+5) a{ --k:var(--tt-magenta) }
+.tt-ix-l li:nth-child(7n+6) a{ --k:var(--tt-blue) }
+.tt-ix-l li:nth-child(7n+7) a{ --k:var(--tt-white) }
+.tt-ix-l a:hover, .tt-ix-l a:focus-visible{ background:var(--k); color:var(--tt-scr); outline:0 }
+.tt-ix-l a:hover .n, .tt-ix-l a:focus-visible .n{ background:var(--tt-scr); box-shadow:none }
+@media (max-width:720px){
+  .tt-index{ flex-direction:row; align-items:stretch; min-height:44px; padding:0 0 0 calc(var(--u)*2) }
+  .tt-ix-h{ padding-right:12px; border-right:1px solid rgba(255,255,255,.16) }
+  .tt-ix-h::before, .tt-ix-h::after{ content:none }
+  /* one line that scrolls sideways, fading at the edge it continues past */
+  .tt-ix-l{ flex:1 1 auto; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; overflow-y:hidden;
+    overscroll-behavior-x:contain; scrollbar-width:none; padding-right:28px;
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);
+            mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent) }
+  .tt-ix-l::-webkit-scrollbar{ display:none }
+  .tt-ix-l a{ min-height:44px; padding:0 11px; font-size:9px; gap:8px }
+  .tt-ix-l a .n{ width:8px; height:8px }
 }
 /* a jump lands the title below the top of the window, not under the edge */
 html.tt-on .sec, html.tt-on section{ scroll-margin-top:12px }

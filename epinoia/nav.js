@@ -2473,7 +2473,7 @@
     const t = String(document.title || '').trim();
     const bare = /^epinoia\b/i.test(t) ? '' : t.replace(/\s*[·|—-]\s*epinoia\b.*$/i, '');
     if (bare) return bare;
-    return kind === 'home' ? 'index · every league' : '';
+    return kind === 'home' ? 'home · every league' : '';
   }
   function ttLine(frame, p) {
     let line = null, made = false;
@@ -2572,13 +2572,24 @@
     const hero = frame.querySelector(':scope > .hm-hero, :scope > .hero');
     if (!hero) return;
     const box = el('nav', 'tt-index');
-    box.setAttribute('aria-label', 'On this page');
     box.hidden = true;
-    const head = el('p', 'tt-ix-h');
-    head.appendChild(el('b', null, 'index'));
+    const head = el('p', 'tt-ix-h', 'On this page');
+    head.id = 'tt-ix-h';
+    box.setAttribute('aria-labelledby', 'tt-ix-h');
     const list = el('ol', 'tt-ix-l');
     box.append(head, list);
     hero.after(box);
+    /* a jump glides down the page (and lands at once for a reader who asked for less motion);
+       the address takes the section's anchor, so it can be shared */
+    list.addEventListener('click', e => {
+      const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const to = document.getElementById(a.getAttribute('href').slice(1));
+      if (!to || !to.scrollIntoView) return;
+      e.preventDefault();
+      to.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+      try { history.replaceState(history.state, '', a.getAttribute('href')); } catch (_) { /* the jump is what matters */ }
+    });
     let sig = null;
     const paint = () => {
       const heads = [].filter.call(frame.querySelectorAll('.sec-h, .ep-hdr'), n => n.getClientRects().length > 0);
