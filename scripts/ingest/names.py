@@ -384,6 +384,93 @@ def _kana_word(k: list) -> str:
     return "".join(out)
 
 
+
+# ------------------------------------------------------------------ Hangul -> Latin
+# HANGUL IS AN ALPHABET, not a set of characters with readings: every syllable block is an initial
+# consonant, a vowel and an optional final, each with one sound. So it is spelt by table the way the
+# kana are, in the Revised Romanization (the Korean government's own system, 2000), with the two
+# rules the same standard sets for PEOPLE'S names:
+#   * the syllables of a given name are spelt one at a time, joined by a hyphen, and no sound change
+#     is carried across them (최승욱 -> Choi Seung-uk, not Seungwook or Seung-ug);
+#   * the FAMILY NAME is spelt the way Koreans spell it in their passports, which the standard itself
+#     leaves to custom: 이 is Lee, 박 Park, 최 Choi, not the table's I, Bak, Choe. _KO_SURNAME holds
+#     those, and the two-syllable family names (남궁, 황보, 제갈, 선우) that would otherwise be read
+#     as one syllable of surname and one of given name.
+# What this cannot know is a name that is not Korean: a foreign player written in Hangul (아셈 마레이
+# for Asem Marei) is a sound-alike, and spelling it back gives "Asem Marei" only by luck. The KBL
+# adapter prefers the league's own English spelling wherever it has one and keeps the Hangul as an
+# alias either way.
+_KO_INITIAL = ["g", "kk", "n", "d", "tt", "r", "m", "b", "pp", "s", "ss", "", "j", "jj", "ch", "k", "t", "p", "h"]
+_KO_VOWEL = ["a", "ae", "ya", "yae", "eo", "e", "yeo", "ye", "o", "wa", "wae", "oe", "yo", "u", "wo", "we",
+             "wi", "yu", "eu", "ui", "i"]
+_KO_FINAL = ["", "k", "k", "k", "n", "n", "n", "t", "l", "k", "m", "l", "l", "l", "p", "l", "m", "p", "p",
+             "t", "t", "ng", "t", "t", "k", "t", "p", "t"]
+_KO_SURNAME = {
+    "김": "Kim", "이": "Lee", "리": "Lee", "박": "Park", "최": "Choi", "정": "Jung", "강": "Kang", "조": "Cho",
+    "윤": "Yoon", "장": "Jang", "임": "Lim", "림": "Lim", "한": "Han", "오": "Oh", "서": "Seo", "신": "Shin",
+    "권": "Kwon", "황": "Hwang", "안": "Ahn", "송": "Song", "류": "Ryu", "유": "Yoo", "전": "Jeon", "홍": "Hong",
+    "고": "Ko", "문": "Moon", "양": "Yang", "손": "Son", "배": "Bae", "백": "Baek", "허": "Heo", "남": "Nam",
+    "심": "Shim", "노": "Noh", "하": "Ha", "곽": "Kwak", "성": "Sung", "차": "Cha", "주": "Joo", "우": "Woo",
+    "구": "Koo", "민": "Min", "진": "Jin", "나": "Na", "라": "Ra", "지": "Ji", "엄": "Um", "변": "Byun",
+    "채": "Chae", "원": "Won", "천": "Chun", "방": "Bang", "공": "Kong", "현": "Hyun", "함": "Ham",
+    "염": "Yeom", "여": "Yeo", "추": "Choo", "도": "Do", "소": "So", "석": "Seok", "선": "Sun", "설": "Seol",
+    "마": "Ma", "길": "Gil", "연": "Yeon", "위": "Wi", "표": "Pyo", "명": "Myung", "기": "Ki", "반": "Ban",
+    "왕": "Wang", "금": "Keum", "옥": "Ok", "육": "Yook", "인": "In", "맹": "Maeng", "제": "Je", "모": "Mo",
+    "탁": "Tak", "국": "Kook", "은": "Eun", "편": "Pyun", "용": "Yong", "예": "Ye", "경": "Kyung", "봉": "Bong",
+    "부": "Boo", "복": "Bok", "태": "Tae", "형": "Hyung", "두": "Doo", "감": "Kam", "동": "Dong", "호": "Ho",
+    "승": "Seung", "상": "Sang", "시": "Si", "갈": "Kal", "빈": "Bin", "피": "Pi", "범": "Bum",
+    "남궁": "Namgoong", "황보": "Hwangbo", "제갈": "Jegal", "선우": "Sunwoo", "독고": "Dokgo", "사공": "Sagong",
+    "서문": "Seomun", "동방": "Dongbang",
+}
+
+
+def is_hangul(s) -> bool:
+    """Hangul syllables (and spaces or a name dot) only: a Korean spelling this module can read."""
+    t = re.sub(r"[\s·・.\-]", "", str(s or ""))
+    return bool(t) and all("가" <= c <= "힣" for c in t)
+
+
+def _ko_syllable(c: str) -> str:
+    n = ord(c) - 0xAC00
+    if not 0 <= n < 11172:
+        return c
+    return _KO_INITIAL[n // 588] + _KO_VOWEL[(n % 588) // 28] + _KO_FINAL[n % 28]
+
+
+def hangul_romaji(s: str) -> str:
+    """Hangul -> lower-case Revised Romanization, one syllable at a time; anything else untouched."""
+    return "".join(_ko_syllable(c) for c in str(s or ""))
+
+
+def korean_name(s: str) -> tuple[str, str]:
+    """A Korean name in Hangul -> (given, family), the way a passport writes it.
+
+    "최승욱" -> ("Seung-uk", "Choi"); "남궁민수" -> ("Min-su", "Namgoong"). The family name is the
+    first syllable, or the first two where they are one of the two-syllable family names. A name
+    written with a space (a foreign player, or a Korean name the league has split) is spelt word by
+    word, each word capitalised, and read given-name-first when it is not a Korean family name
+    first. Anything that is not Hangul comes back as ("", s)."""
+    raw = re.sub(r"\s+", " ", str(s or "").strip())
+    if not is_hangul(raw):
+        return "", raw
+    words = [w for w in re.split(r"[\s·・]+", raw) if w]
+
+    def word(w: str, hyphen: bool) -> str:
+        parts = [hangul_romaji(c) for c in w]
+        t = "-".join(parts) if hyphen else "".join(parts)
+        return t[:1].upper() + t[1:]
+
+    if len(words) == 1:
+        w = words[0]
+        fam = w[:2] if len(w) >= 4 and w[:2] in _KO_SURNAME else w[:1]
+        given = w[len(fam):]
+        family = _KO_SURNAME.get(fam) or word(fam, False)
+        return (word(given, True) if given else ""), family
+    # a spaced name: a foreign player's, spelt back by sound, first word first
+    if words[0] in _KO_SURNAME and len(words) == 2 and len(words[1]) <= 2:
+        return word(words[1], True), _KO_SURNAME[words[0]]
+    return " ".join(word(w, False) for w in words[:-1]), word(words[-1], False)
+
 def _cap_word(w: str, first_in_name: bool) -> str:
     """One word of a name, capitalised the way that word is written.
 
