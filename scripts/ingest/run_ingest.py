@@ -2520,6 +2520,10 @@ def main() -> int:
                 if learnt:
                     print(f"   groups from the feed: {len({g for g in (x.extra.get('home_group') for x in games) if g})} group(s)")
                 if sb and not args.dry_run:
+                    # every fixture's two sides are two clubs, known before a single club is resolved (see Platform.note_rivals)
+                    _pl = run.setdefault("_platform", Platform(sb, dry=False, auto_create=bool((src.get("adapter_config") or {}).get("auto_create", True))))
+                    for _g in games:
+                        _pl.note_rivals(_g.home_name, _g.away_name)
                     try:
                         sync_logos(sb, src, games, run)
                     except Exception as exc:

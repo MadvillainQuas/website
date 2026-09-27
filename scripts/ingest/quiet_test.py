@@ -307,6 +307,51 @@ _fp = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedplatfor
 ok("write_event_log and ensure_game_people both take the code from team_code()",
    'team_code(tm.get("1") or {})' in _src and "tcode = team_code(t)" in _fp and '(tm.get("1") or {}).get("code", "")' not in _src)
 
+print("-- two names that play each other in the schedule are two clubs")
+
+
+class _TeamSB:
+    def __init__(self, rows):
+        self.rows, self.patched = rows, []
+
+    def select(self, table, query):
+        # the by-code lookup (external_ids->>...) finds nothing: the club has no code yet
+        return [] if ("external_ids->>" in query or "slug=" in query) else (list(self.rows) if table == "teams" else [])
+
+    def patch(self, table, query, body):
+        self.patched.append((table, body))
+
+    def upsert(self, table, rows, on_conflict):
+        return [{"id": "new-" + str(rows.get("slug") or rows.get("name")), **rows}]
+
+    def insert(self, table, row, on_conflict="id"):
+        return {"id": "new-" + str(row.get("slug") or row.get("name")), **row}
+
+
+def _resolve(rows, raw, rivals=()):
+    P = FP.Platform(_TeamSB(rows), dry=True, auto_create=True, log=lambda *a: None)
+    for a, b in rivals:
+        P.note_rivals(a, b)
+    return P.team("L1", {"name": raw, "code": ""})
+
+
+_up = {"id": "u1", "slug": "uppsala-basket", "name": "Uppsala Basket", "aliases": [], "external_ids": {}, "logo_path": None}
+r_ = _resolve([_up], "Sloga Uppsala")
+ok("with no fixture to say otherwise the sponsor rule still merges (Baxi Manresa is Manresa)", r_ and r_["id"] == "u1", r_)
+r_ = _resolve([_up], "Sloga Uppsala", [("Sloga Uppsala", "Uppsala Basket")])
+ok("...but once Sloga Uppsala has played Uppsala Basket they are two clubs", not r_ or r_["id"] != "u1", r_)
+_bad = dict(_up, aliases=["Sloga Uppsala"])
+r_ = _resolve([_bad], "Sloga Uppsala", [("Uppsala Basket", "Sloga Uppsala")])
+ok("...and an alias a wrong merge once wrote does not hold them together", not r_ or r_["id"] != "u1", r_)
+r_ = _resolve([_up], "Uppsala Basket", [("Sloga Uppsala", "Uppsala Basket")])
+ok("the club itself still resolves to itself", r_ and r_["id"] == "u1", r_)
+P_ = FP.Platform(_TeamSB([]), dry=True, log=lambda *a: None)
+P_.note_rivals("Sloga Uppsala", "Uppsala Basket")
+ok("the pair is remembered whichever way round, in any case and accent",
+   frozenset(("sloga uppsala", "uppsala basket")) in P_.rivals and len(P_.rivals) == 1)
+_ri = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
+ok("a schedule's fixtures are noted before any club is resolved", _ri.index("note_rivals(_g.home_name") < _ri.index("sync_logos(sb, src, games, run)"))
+
 print("-- two sources on one schedule page are both loaded")
 _cfg = json.loads(RI.CONFIG_PATH.read_text(encoding="utf-8"))
 _by_url: dict = {}

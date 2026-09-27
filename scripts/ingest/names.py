@@ -603,6 +603,11 @@ def club_core(name: str) -> frozenset:
     return frozenset(t for t in toks if t and t not in _CLUB_NOISE)
 
 
+def plain_name(name: str) -> str:
+    """A club's name as a comparison key: Latin, lower case, words joined by single spaces."""
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", latinise(str(name or "")).lower())).strip()
+
+
 def same_club(a: str, b: str) -> bool:
     """Is this the same club wearing a different sponsor?
 

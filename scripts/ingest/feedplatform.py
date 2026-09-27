@@ -66,6 +66,8 @@ class Platform:
         self.sb, self.dry, self.auto_create, self.log = sb, dry, auto_create, log
         self.created: dict[str, int] = {}
         self.cache: dict = {"team": {}, "player": {}, "roster": set()}
+        # names that have been set against each other in a fixture: {frozenset({plain a, plain b})}
+        self.rivals: set = set()
 
     # -- primitives ---------------------------------------------------------------
     def one(self, table, query):
@@ -159,6 +161,22 @@ class Platform:
                 return v
         return None
 
+    def note_rivals(self, a, b) -> None:
+        """Two names on the two sides of one fixture are two clubs - whatever their words share. The sponsor
+        rule (names.same_club) reads "Sloga Uppsala" as "Uppsala Basket" wearing a sponsor; a schedule that has
+        Sloga Uppsala PLAY Uppsala Basket settles it, and no rule about words can overrule a club playing itself.
+        Called with every fixture of a schedule before any club is resolved (run_ingest), and with both sides
+        of a payload (ensure_game_people)."""
+        pa, pb = names.plain_name(a), names.plain_name(b)
+        if pa and pb and pa != pb:
+            self.rivals.add(frozenset((pa, pb)))
+
+    def _rival_of(self, raw: str, row: dict) -> bool:
+        """Has `raw` been set against this club (its name or any alias) in a fixture?"""
+        pr = names.plain_name(raw)
+        return any(frozenset((pr, names.plain_name(n))) in self.rivals
+                   for n in [row.get("name")] + list(row.get("aliases") or []) if n)
+
     def team(self, league_id: str, t: dict) -> dict | None:
         # "To be determined", "TBC", "Winner of QF1": a cup draw's side that is not known yet is
         # never matched to a club or created as one (placeholders.py). The caller skips the fixture
@@ -226,7 +244,9 @@ class Platform:
                 # `known`, not `names`: that is the module this file imports, and shadowing it here
                 # would take the name normaliser away from everything below.
                 known = {row["name"].strip().lower()} | {a.strip().lower() for a in (row.get("aliases") or [])}
-                if nm in known:
+                # an alias a wrong merge once wrote ("Sloga Uppsala" on Uppsala Basket) is not a match
+                # for a name that has since been seen playing that very club
+                if nm in known and not self._rival_of(raw, row):
                     r = adopt(row)
                     break
 
@@ -248,7 +268,7 @@ class Platform:
                     have = str((row.get("external_ids") or {}).get("fiba_livestats") or "").strip()
                     return bool(real_code and have and have != real_code)
                 hits = [row for row in rows
-                        if not other_code(row)
+                        if not other_code(row) and not self._rival_of(raw, row)
                         and (names.same_club(raw, row.get("name") or "")
                              or any(names.same_club(raw, a) for a in (row.get("aliases") or [])))]
                 if len(hits) == 1:
@@ -508,6 +528,7 @@ class Platform:
         run_ingest's pid_for then falls back to a plain "<side>:<pno>" and prints it as a player
         without a platform id, which is visible and harmless where a collision is neither."""
         out = {"pids": {}}
+        self.note_rivals(((raw.get("tm") or {}).get("1") or {}).get("name"), ((raw.get("tm") or {}).get("2") or {}).get("name"))
         taken: dict = {}                    # player id -> the slot that already has them, BOTH sides
         for k in ("1", "2"):
             t = (raw.get("tm") or {}).get(k) or {}
