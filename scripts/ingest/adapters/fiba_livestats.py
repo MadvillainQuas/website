@@ -234,6 +234,13 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 r = requests.get(hu, headers={"User-Agent": UA}, timeout=40)
                 if r.status_code != 200:
                     continue
+                if config.get("date_paged") and "/competition/" in hu:
+                    paged = self.date_paged_games(hu, config)
+                    if paged is None:
+                        return                                  # a day went unread: file nothing this pass
+                    for gid in sorted(paged, key=lambda x: int(x)):
+                        yield paged[gid]
+                    return
                 parsed = self.parse_schedule(r.text, config.get("timezone") or "Europe/London",
                                              config.get("venue_timezones"))
                 for g in parsed:
@@ -305,6 +312,63 @@ class FibaLiveStatsAdapter(BaseAdapter):
         playoffs = str(config.get("stage")).lower().startswith("playoff")
         out = {gid: g for gid, g in games.items() if (gid in playoff_ids) == playoffs}
         print(f"     {config.get('stage')}: {len(out)} of {len(games)} games ({len(playoff_ids)} in the play-off phases)")
+        return out
+
+    # A SCHEDULE PAGED BY DAY. Some clients (the Albanian federation, ALBS) ignore roundNumber=-1: the
+    # competition's schedule shows ONE match day, the latest, with a calendar of the others in
+    # `SelectedDates['2026-04-15']=1;` - and the calendar is per match type, REGULAR (the season) or
+    # FINALS (the play-offs), the bare page showing whichever came last. So each type's calendar is
+    # read and each of its days fetched (?matchType=&dateFilter=): ~70 small pages for a season,
+    # asked on the discovery pass only. The match type is also the stage, so a source configured
+    # stage "regular" or "playoffs" is handed only its own games, as stage_games does for phases.
+    _SELECTED_DATE = re.compile(r"SelectedDates\[\s*'(\d{4}-\d{2}-\d{2})'\s*\]")
+    DATE_PAGED_TYPES = (("REGULAR", "regular"), ("FINALS", "playoffs"))
+
+    def _hosted_page(self, url: str, params: dict) -> Optional[str]:
+        gap = time.time() - self._last
+        if gap < self.min_request_gap_s:
+            time.sleep(self.min_request_gap_s - gap)
+        self._last = time.time()
+        r = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=40)
+        return r.text if r.status_code == 200 else None
+
+    def date_paged_games(self, url: str, config: dict) -> Optional[dict]:
+        """{id: ScheduleGame} for every day of a day-paged competition, cut to the source's stage;
+        None when a day's page could not be read (a partial season would drop fixtures that exist)."""
+        base = url.split("?")[0].split("#")[0]
+        stage = str(config.get("stage") or "").lower()
+        tz, vt = config.get("timezone") or "Europe/London", config.get("venue_timezones")
+        out: dict = {}
+        for mtype, st in self.DATE_PAGED_TYPES:
+            if stage and not stage.startswith(st[:7]):
+                continue
+            try:
+                cal = self._hosted_page(base, {"matchType": mtype})
+            except Exception as exc:
+                print(f"     {mtype} calendar unreadable ({exc}) - nothing filed this pass")
+                return None
+            if cal is None:
+                print(f"     {mtype} calendar unreadable - nothing filed this pass")
+                return None
+            days = sorted(set(self._SELECTED_DATE.findall(cal)))
+            for day in days:
+                try:
+                    page = self._hosted_page(base, {"matchType": mtype, "dateFilter": day})
+                except Exception as exc:
+                    page = None
+                    print(f"     {mtype} {day} unreadable ({exc})")
+                if page is None:
+                    print(f"     {mtype} {day}: no page - nothing filed this pass")
+                    return None
+                for g in self.parse_schedule(page, tz, vt):
+                    g.extra["stage"] = st
+                    out[g.external_id] = g
+        try:
+            self.last_competitions = self.parse_competitions(cal or "")
+        except Exception:
+            self.last_competitions = []
+        print(f"     day-paged schedule {base[-40:]}: {len(out)} games"
+              + (f" ({stage})" if stage else "") + f", {sum(1 for g in out.values() if g.status == 'final')} final")
         return out
 
     _code_hint = None

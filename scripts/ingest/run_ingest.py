@@ -440,7 +440,7 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
         # A season that is ONE competition, play-offs included (CIBACOPA), comes as two sources - the
         # regular season and the play-offs - split by phase in FibaLiveStatsAdapter.stage_games. The
         # play-off source's games are a competition of their own, named for the season's.
-        playoff_stage = bool(ac.get("playoff_phases")) and str(ac.get("stage") or "").lower().startswith("playoff")
+        playoff_stage = bool(ac.get("playoff_phases") or ac.get("date_paged")) and str(ac.get("stage") or "").lower().startswith("playoff")
         named = [(c, f"{c['name']} Playoffs" if playoff_stage else c["name"],
                   "playoff" if playoff_stage else kind_of(c["name"], ac.get("competition_kinds"))) for c in picked]
         print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{label} [{kind}]" for _, label, kind in named))
@@ -2287,7 +2287,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
-                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel"}
+                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl"}
 
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 

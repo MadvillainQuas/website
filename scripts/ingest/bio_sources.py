@@ -36,10 +36,13 @@ What each source gives, found by looking, not assumed (2026-09-27):
   orlen-basket-liga, 1-liga-mezczyzn, 1-liga-kobiet
                          the federation's club pages on rozgrywki.pzkosz.pl, this season and last (date, height; no weight anywhere);
                          PLK rows keyed by the federation person id = the PLK feed's player id
-  slb-men, slb-women, bcb, eabl, nbl-d1, wnbl-d1, weabl, kvinde-basketligaen, cibacopa
+  slb-men, slb-women, bcb, eabl, nbl-d1, wnbl-d1, weabl, kvinde-basketligaen, cibacopa, kkm-albania, kkf-albania,
+  azerbaijan-basketball-league
                          Genius hosted: each club's roster page in the competition (columns per tenant: SLB date/height/weight,
                          WBBL date/height, HBBC and Basketball England and DAM height only; CIBACOPA date + cibacopa.mx height/weight)
   basketligan, -dam      the Swedish league sites' Sportality API (as basketligaen.dk): roster per club, athlete page per new player
+  kbl                    each player's profile on the league's statistics service (sports2i), by the pcode the game feed keys him on:
+                         date of birth, height (no weight)
   nbb, liga-ouro         lnb.com.br: each club's page (the box score's display names, shirt, height), then the athlete's page per new
                          player (date, weight), which is the site's 'not found' page for about half of them
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
@@ -534,6 +537,21 @@ def _wjbl_page(pid: str) -> dict:
     d = get_json(W.API + "/player", {"player_id": pid}, W.HEADERS) or {}
     return {"birth": d.get("player_birthday"), "height_cm": d.get("player_height"), "weight_kg": d.get("player_weight")}
 
+
+
+# THE KBL: a player's profile on the league's statistics service (sports2i, the widget kbl.or.kr embeds), addressed by the league's own
+# player id - the pcode the game feed keys him on - and the season's code (2026-27 is 49: the first division's seasons are the odd
+# numbers). Date of birth ("19890105") and height ("194.0"); no weight. The service answers 403 without the league's own Referer.
+def _kbl_page(pid: str) -> dict:
+    from datetime import date as _d
+    today = _d.today()
+    code = 2 * (today.year if today.month >= 8 else today.year - 1) - 4003
+    d = get_json(f"https://kbl-api.sports2i.com/api/v1/players/profile/{code}/{pid}", None,
+                 {"Referer": "https://www.kbl.or.kr/", "Accept": "application/json"}) or {}
+    info = (d.get("playerInfo") or [{}])[0] if isinstance(d, dict) else {}
+    h = str(info.get("pHeight") or "").strip()
+    return {"birth": info.get("birthday") or None,
+            "height_cm": str(round(float(h))) if re.fullmatch(r"\d+(\.\d+)?", h) and float(h) > 0 else None, "weight_kg": None}
 
 # ------------------------------------------------------------ Finland (TorneoPal) ---
 def torneopal(category: int) -> Callable[..., Iterator[dict]]:
@@ -1194,6 +1212,7 @@ READERS: dict = {
     "liga-u": feb,
     "b-league-premier": by_player_page(_bleague_page),
     "b-league-one": by_player_page(_bleague_page),
+    "kbl": by_player_page(_kbl_page),
     "w-league-premier": by_player_page(_wjbl_page),
     "w-league-future": by_player_page(_wjbl_page),
     "korisliiga": torneopal(4),
@@ -1221,6 +1240,9 @@ READERS: dict = {
     "wnbl-d1": genius("BBE", r"^WNBL Division (One|1)\b"),
     "weabl": genius("BBE", r"^WEABL"),
     "kvinde-basketligaen": genius("DAM", r"^Kvindebasketligaen"),
+    "kkm-albania": genius("ALBS", r"^(K\.?\s?K\.?\s?M\b|Kampionati Komb[eë]tar Meshkuj|Superliga M\b)", r"Kupa|Kategoria"),
+    "kkf-albania": genius("ALBS", r"^(K\.?\s?K\.?\s?F\b|Kampionati Komb[eë]tar Femra)", r"Kupa|Kategoria"),
+    "azerbaijan-basketball-league": genius("ABS", r"^ABL\b"),
     "cibacopa": cibacopa,
     # Sweden: the league sites' Sportality API (date nearly always, height often). genius("SBF", r"^(Herrar - )?(SBL|Basketligan) Herr")
     # / r"^(Damer - )?(SBL|Basketligan) Dam" also works (date of birth only, no request per player) if those sites go away.
@@ -1238,6 +1260,11 @@ NO_BIO = {
     "serie-a1-femminile": "legabasketfemminile.it closes its team and player pages to AI crawlers in robots.txt, so the roster data "
                           "behind them was not probed while this was built; the LiveStats data carries no bio",
     "serie-a2-femminile": "as serie-a1-femminile (the same site)",
+    "sb-league": "swiss.basketball's pages are drawn from Basketplan, whose player data (licences, coaches' contact details) is not "
+                 "published for reading; basketplan.ch disallows every path in robots.txt, and the LiveStats data carries no bio",
+    "sb-league-women": "as sb-league (the same federation database)",
+    "nlb-men": "as sb-league (the same federation database)",
+    "nlb-women": "as sb-league (the same federation database)",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

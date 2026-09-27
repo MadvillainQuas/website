@@ -31,6 +31,7 @@ from .bnxt import BnxtAdapter
 from .wjbl import WjblAdapter
 from .bgnbl import BgNblAdapter
 from .grel import GrelAdapter
+from .kbl import KblAdapter
 from .lnbbr import LnbBrAdapter
 
 
@@ -107,6 +108,7 @@ REGISTRY: dict[str, type[BaseAdapter]] = {
     WjblAdapter.name: WjblAdapter,
     BgNblAdapter.name: BgNblAdapter,
     GrelAdapter.name: GrelAdapter,
+    KblAdapter.name: KblAdapter,
     LnbBrAdapter.name: LnbBrAdapter,
     Bbl2BblAdapter.name: Bbl2BblAdapter,
     EuroLeagueApiAdapter.name: EuroLeagueApiAdapter,

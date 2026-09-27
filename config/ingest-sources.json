@@ -3199,6 +3199,618 @@
       "scheduleUrls": [
         "https://lnb.com.br/liga-ouro/tabela-de-jogos/#playoffs"
       ]
+    },
+    {
+      "code": "ALBM",
+      "label": "Kampionati Kombëtar Meshkuj",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        14,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "kkm-albania",
+      "league_name": "Kampionati Kombëtar Meshkuj",
+      "league_country": "AL",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ALBM",
+        "client_code": "ALBS",
+        "timezone": "Europe/Tirane",
+        "date_paged": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^K\\.?\\s?K\\.?\\s?M\\b",
+          "^Kampionati Komb[eë]tar Meshkuj",
+          "^Superliga M\\b"
+        ],
+        "competitions_exclude": [
+          "Kupa",
+          "Superkupa",
+          "Kategoria",
+          "Femra",
+          "\\bF\\b"
+        ],
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/ALBS/en/schedule"
+      ]
+    },
+    {
+      "code": "ALBM",
+      "label": "Kampionati Kombëtar Meshkuj",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        14,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "kkm-albania",
+      "league_name": "Kampionati Kombëtar Meshkuj",
+      "league_country": "AL",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ALBM",
+        "client_code": "ALBS",
+        "timezone": "Europe/Tirane",
+        "date_paged": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^K\\.?\\s?K\\.?\\s?M\\b",
+          "^Kampionati Komb[eë]tar Meshkuj",
+          "^Superliga M\\b"
+        ],
+        "competitions_exclude": [
+          "Kupa",
+          "Superkupa",
+          "Kategoria",
+          "Femra",
+          "\\bF\\b"
+        ],
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/ALBS/en/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "ALBW",
+      "label": "Kampionati Kombëtar Femra",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        14,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "kkf-albania",
+      "league_name": "Kampionati Kombëtar Femra",
+      "league_country": "AL",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "ALBW",
+        "client_code": "ALBS",
+        "timezone": "Europe/Tirane",
+        "date_paged": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^K\\.?\\s?K\\.?\\s?F\\b",
+          "^Kampionati Komb[eë]tar Femra"
+        ],
+        "competitions_exclude": [
+          "Kupa",
+          "Superkupa",
+          "Kategoria",
+          "Meshkuj"
+        ],
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/ALBS/en/schedule"
+      ]
+    },
+    {
+      "code": "ALBW",
+      "label": "Kampionati Kombëtar Femra",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        14,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "kkf-albania",
+      "league_name": "Kampionati Kombëtar Femra",
+      "league_country": "AL",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "ALBW",
+        "client_code": "ALBS",
+        "timezone": "Europe/Tirane",
+        "date_paged": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^K\\.?\\s?K\\.?\\s?F\\b",
+          "^Kampionati Komb[eë]tar Femra"
+        ],
+        "competitions_exclude": [
+          "Kupa",
+          "Superkupa",
+          "Kategoria",
+          "Meshkuj"
+        ],
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/ALBS/en/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "AZABL",
+      "label": "Azerbaijan Basketball League",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        11,
+        21
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "azerbaijan-basketball-league",
+      "league_name": "Azerbaijan Basketball League",
+      "league_country": "AZ",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "AZABL",
+        "client_code": "ABS",
+        "timezone": "Asia/Baku",
+        "sync_clubs": true,
+        "competitions_include": [
+          "^ABL\\b"
+        ],
+        "competitions_exclude": [
+          "Amateur",
+          "AQL",
+          "CUP",
+          "Cup",
+          "TGBL"
+        ],
+        "playoff_phases": [
+          "^play[- ]?(off|in)",
+          "^final"
+        ],
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/ABS/en/schedule"
+      ]
+    },
+    {
+      "code": "AZABL",
+      "label": "Azerbaijan Basketball League",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        11,
+        21
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "azerbaijan-basketball-league",
+      "league_name": "Azerbaijan Basketball League",
+      "league_country": "AZ",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "AZABL",
+        "client_code": "ABS",
+        "timezone": "Asia/Baku",
+        "sync_clubs": true,
+        "competitions_include": [
+          "^ABL\\b"
+        ],
+        "competitions_exclude": [
+          "Amateur",
+          "AQL",
+          "CUP",
+          "Cup",
+          "TGBL"
+        ],
+        "playoff_phases": [
+          "^play[- ]?(off|in)",
+          "^final"
+        ],
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/ABS/en/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "CHSBL",
+      "label": "SB League",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "sb-league",
+      "league_name": "SB League",
+      "league_country": "CH",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "CHSBL",
+        "site": "swiss",
+        "basketplan_league": "1",
+        "league_path": "sbl/men",
+        "widget": "2",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/sbl/men/schedule"
+      ]
+    },
+    {
+      "code": "CHSBL",
+      "label": "SB League",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "sb-league",
+      "league_name": "SB League",
+      "league_country": "CH",
+      "league_gender": "men",
+      "competition_label": "SB League Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "CHSBL",
+        "site": "swiss",
+        "basketplan_league": "1",
+        "league_path": "sbl/men",
+        "widget": "2",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/sbl/men/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "CHSBLW",
+      "label": "SB League Women",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "sb-league-women",
+      "league_name": "SB League Women",
+      "league_country": "CH",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "CHSBLW",
+        "site": "swiss",
+        "basketplan_league": "6",
+        "league_path": "sbl/women",
+        "widget": "3",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/sbl/women/schedule"
+      ]
+    },
+    {
+      "code": "CHSBLW",
+      "label": "SB League Women",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "sb-league-women",
+      "league_name": "SB League Women",
+      "league_country": "CH",
+      "league_gender": "women",
+      "competition_label": "SB League Women Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "CHSBLW",
+        "site": "swiss",
+        "basketplan_league": "6",
+        "league_path": "sbl/women",
+        "widget": "3",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/sbl/women/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "CHNLB",
+      "label": "NLB Men",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "nlb-men",
+      "league_name": "NLB Men",
+      "league_country": "CH",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "CHNLB",
+        "site": "swiss",
+        "basketplan_league": "2",
+        "league_path": "nlb/men",
+        "widget": "10",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/nlb/men/schedule"
+      ]
+    },
+    {
+      "code": "CHNLB",
+      "label": "NLB Men",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "nlb-men",
+      "league_name": "NLB Men",
+      "league_country": "CH",
+      "league_gender": "men",
+      "competition_label": "NLB Men Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "CHNLB",
+        "site": "swiss",
+        "basketplan_league": "2",
+        "league_path": "nlb/men",
+        "widget": "10",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/nlb/men/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "CHNLBW",
+      "label": "NLB Women",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "nlb-women",
+      "league_name": "NLB Women",
+      "league_country": "CH",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "CHNLBW",
+        "site": "swiss",
+        "basketplan_league": "7",
+        "league_path": "nlb/women",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/nlb/women/schedule"
+      ]
+    },
+    {
+      "code": "CHNLBW",
+      "label": "NLB Women",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        22
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "nlb-women",
+      "league_name": "NLB Women",
+      "league_country": "CH",
+      "league_gender": "women",
+      "competition_label": "NLB Women Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "CHNLBW",
+        "site": "swiss",
+        "basketplan_league": "7",
+        "league_path": "nlb/women",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://swiss.basketball/national-competitions/nlb/women/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "KRKBL",
+      "label": "KBL",
+      "adapter": "kbl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        3,
+        14
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "kbl",
+      "league_name": "KBL",
+      "league_country": "KR",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "KRKBL",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.kbl.or.kr/match/schedule"
+      ]
+    },
+    {
+      "code": "KRKBL",
+      "label": "KBL",
+      "adapter": "kbl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        3,
+        14
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "kbl",
+      "league_name": "KBL",
+      "league_country": "KR",
+      "league_gender": "men",
+      "competition_label": "KBL Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "KRKBL",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.kbl.or.kr/match/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "KRKBL",
+      "label": "KBL",
+      "adapter": "kbl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        3,
+        14
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "kbl",
+      "league_name": "KBL",
+      "league_country": "KR",
+      "league_gender": "men",
+      "competition_label": "KBL Open Match Day",
+      "competition_kind": "friendly",
+      "adapter_config": {
+        "code": "KRKBL",
+        "stage": "preseason",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.kbl.or.kr/match/schedule#preseason"
+      ]
     }
   ]
 }

@@ -113,6 +113,78 @@ _KOS_CREST = re.compile(r'<img[^>]*src="(?:\.\./)?(images/[^"]+)"', re.I)
 _ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100}
 
 
+# swiss.basketball (Swiss Basketball): the SB League and NLB, men and women, on FIBA LiveStats (client SUI).
+# The schedule pages are empty shells drawn in the browser from Basketplan, the federation's own match
+# database (Orcasys), which the site proxies as XML at /basketplan/ - basketplan.ch itself disallows
+# every path in its robots.txt, swiss.basketball disallows none, so the proxy is what is read.
+#   <league>/schedule                    window.seasons = {'2026-2027': 31, ...}: the season ids
+#   findAllLeagueHoldings.do?seasonId=   the season's phases (PRELIMINARY_ROUND, PLAYOFF ...)
+#   showLeagueSchedule.do?leagueHoldingId=  every game of one phase, played and to come
+# The ?gid= a schedule row links to is BASKETPLAN's game id, not a LiveStats one (data/367239 is a
+# 403); the LiveStats id is the row's liveStatsLink, which appears around game day, and the site's own
+# JSON widget (/app-basketball/schedule?widget=N) names it weeks ahead for the leagues it covers.
+SWISS_SITE = "https://swiss.basketball"
+SWISS_PAGE = SWISS_SITE + "/national-competitions/{path}/schedule"
+SWISS_HOLDINGS = (SWISS_SITE + "/basketplan/findAllLeagueHoldings.do?lang=en&xmlView=rss&leagueId={league}"
+                  "&federationId=12&seasonId={season}")
+SWISS_SCHEDULE = (SWISS_SITE + "/basketplan/showLeagueSchedule.do?lang=en&xmlView=rss&leagueId={league}"
+                  "&leagueHoldingId={holding}&daysBack=2500&daysFuture=2250&totalGames=1000&resultType=big")
+SWISS_WIDGET = SWISS_SITE + "/app-basketball/schedule?widget={widget}"
+SWISS_LOGO = "https://www.basketplan.ch/"
+_SWISS_SEASON = re.compile(r"'(\d{4})-(\d{4})'\s*:\s*(\d+)")
+_SWISS_LS = re.compile(r"/u/[A-Za-z]+/(\d+)")
+
+
+def swiss_season_ids(page: str) -> dict:
+    """{start year: Basketplan season id} from a schedule page's window.seasons."""
+    return {int(a): b for a, _y, b in _SWISS_SEASON.findall(page or "")}
+
+
+def swiss_holdings(xml_text: str) -> list[dict]:
+    """[{id, name, phase}] - the phases of one league's season."""
+    import xml.etree.ElementTree as ET
+    try:
+        root = ET.fromstring((xml_text or "").encode("utf-8"))
+    except ET.ParseError:
+        return []
+    return [{"id": h.get("id"), "name": h.get("name") or "", "phase": h.get("phaseId") or ""}
+            for h in root.iter("LeagueHoldingRSS") if h.get("id")]
+
+
+def swiss_games(xml_text: str) -> list[dict]:
+    """Every game of one phase's schedule XML, as plain dicts."""
+    import xml.etree.ElementTree as ET
+    try:
+        root = ET.fromstring((xml_text or "").encode("utf-8"))
+    except ET.ParseError:
+        return []
+    phase = next((h.get("phaseId") or "" for h in root.iter("LeagueHoldingRSS")), "")
+    out, seen = [], set()
+    for g in root.iter("GameRSS"):
+        gid = g.get("id")
+        if not gid or gid in seen:
+            continue
+        seen.add(gid)
+        h, a = g.find("homeTeam"), g.find("guestTeam")
+        if h is None or a is None:
+            continue
+
+        def side(t):
+            r = (t.get("result") or "").strip()
+            logo = (t.get("pathToLogo") or "").strip()
+            return {"id": t.get("id"), "name": (t.get("name") or "").strip(),
+                    "score": int(r) if r.isdigit() else None,
+                    "logo": (SWISS_LOGO + logo.lstrip("/")) if logo else None}
+        ls = _SWISS_LS.search(g.get("liveStatsLink") or "")
+        venue = " ".join(x for x in ((g.get("locationName") or "").strip(),) if x)
+        city = (g.get("locationCity") or "").strip()
+        out.append({"gid": gid, "date": g.get("date") or "", "time": g.get("time") or "",
+                    "home": side(h), "away": side(a), "fiba_id": ls.group(1) if ls else None,
+                    "venue": venue or None, "city": city or None,
+                    "round": (g.get("matchDayName") or "").strip(), "phase": phase})
+    return out
+
+
 def _roman(s: str) -> int:
     total, prev = 0, 0
     for ch in reversed(str(s or "").upper()):
@@ -441,6 +513,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._bee_fetch(str(external_id), config)
         if site == "lbf":
             return self._lbf_fetch(str(external_id), config)
+        if site == "swiss":
+            return self._swiss_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -462,6 +536,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._bee(config)
         if site == "lbf":
             return self._lbf(config)
+        if site == "swiss":
+            return self._swiss(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
 
@@ -702,6 +778,141 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                 t["code"] = hit.get("code") or t.get("code")
                 t["name"] = (hit.get("names") or {}).get("short") or t.get("name")
         b = self.bundle_from_raw(raw, external_id, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    # ------------------------------------------------------------ swiss.basketball ---
+    # A fixture is keyed on its Basketplan game id ("BP367239"), which exists from the day the schedule
+    # is published and is what the site itself links. Its LiveStats id is looked for on every fetch
+    # until one is found whose feed names the fixture's two clubs, and then kept for good in
+    # data/feed/<CODE>/idmap.json. THE CHECK IS NOT A FORMALITY: on 2026-09-27 Basketplan gave one
+    # LiveStats id (2909496) to two different games, an SBL men's and an SBL women's, and the site's
+    # widget had the right one for the men's. So both candidates are tried, the widget's first, and a
+    # feed naming other clubs is never kept. Not yet started, data.json answers 403 and fetch() is None.
+    _swiss_cache: dict = {}          # url -> (fetched_at, text), shared by every Swiss source row
+
+    def _swiss_text(self, url: str, ttl: float = 300.0) -> str:
+        at, text = FibaSiteScheduleAdapter._swiss_cache.get(url, (0.0, None))
+        if text is None or time.time() - at > ttl:
+            text = self._page(url)
+            FibaSiteScheduleAdapter._swiss_cache[url] = (time.time(), text)
+        return text
+
+    def _swiss_rows(self, config: dict) -> tuple[list, Optional[str]]:
+        """(every game of the configured league's season, each with its phase; why-not)."""
+        league = str(config.get("basketplan_league") or "").strip()
+        path = str(config.get("league_path") or "sbl/men").strip("/")
+        if not league:
+            return [], "adapter_config needs basketplan_league"
+        want = _start_year(config.get("season") or "")
+        season = str(config.get("basketplan_season") or "") or swiss_season_ids(
+            self._swiss_text(SWISS_PAGE.format(path=path), ttl=3600)).get(want)
+        if not season:
+            return [], f"no {want}/{want + 1} season on the site yet"
+        holdings = swiss_holdings(self._swiss_text(SWISS_HOLDINGS.format(league=league, season=season)))
+        if not holdings:
+            return [], f"no phases published for {want}/{want + 1} yet"
+        rows = []
+        for h in holdings:
+            for r in swiss_games(self._swiss_text(SWISS_SCHEDULE.format(league=league, holding=h["id"]))):
+                r["phase"] = r["phase"] or h["phase"]
+                rows.append(r)
+        return rows, None
+
+    def _swiss_widget_ids(self, config: dict) -> dict:
+        """{(date, folded home, folded away): LiveStats id} from the site's widget, where it has one."""
+        w = str(config.get("widget") or "").strip()
+        if not w:
+            return {}
+        try:
+            data = json.loads(self._swiss_text(SWISS_WIDGET.format(widget=w)) or "{}")
+        except Exception:
+            return {}
+        out = {}
+        for day, games in (data.items() if isinstance(data, dict) else []):
+            for g in games or []:
+                if g.get("match_id"):
+                    out[(str(day), _fold(g.get("home_team_name")), _fold(g.get("guest_team_name")))] = str(g["match_id"])
+        return out
+
+    @staticmethod
+    def _swiss_stage(r: dict) -> str:
+        return "playoffs" if str(r.get("phase") or "").upper().startswith("PLAYOFF") else "regular"
+
+    def _swiss(self, config: dict) -> list[ScheduleGame]:
+        rows, why = self._swiss_rows(config)
+        if why:
+            print(f"     {config.get('code') or 'SUI'}: {why}")
+            return []
+        stage = (config.get("stage") or "").strip().lower()
+        out = []
+        for r in rows:
+            st = self._swiss_stage(r)
+            if stage and st != stage:
+                continue
+            m = re.match(r"(\d{4})-(\d{2})-(\d{2})$", r["date"])
+            t = re.match(r"(\d{1,2}):(\d{2})", r["time"])
+            if not m:
+                continue                              # not dated yet
+            tip = _utc("Europe/Zurich", *m.groups(), *(t.groups() if t else ("12", "00")))
+            h, a = r["home"], r["away"]
+            played = h["score"] is not None and a["score"] is not None and (h["score"] or a["score"])
+            extra = {"home_code": _kos_slug(h["name"]), "away_code": _kos_slug(a["name"]),
+                     "home_logo": h["logo"], "away_logo": a["logo"],
+                     "venue": ", ".join(x for x in (r["venue"], r["city"]) if x) or None,
+                     "round": r["round"], "stage": st}
+            if not t:
+                extra["time_tbc"] = True
+            out.append(ScheduleGame(external_id="BP" + r["gid"], home_name=h["name"], away_name=a["name"],
+                                    tipoff_at=tip, status="final" if played else "scheduled", extra=extra))
+        print(f"     {config.get('code') or 'SUI'} {stage or 'all stages'}: {len(out)} games "
+              f"({sum(1 for g in out if g.status == 'final')} final)")
+        return out
+
+    @staticmethod
+    def _swiss_same_clubs(raw: dict, row: dict) -> bool:
+        """The feed names the fixture's two clubs, home as home - by a shared word of four letters or more."""
+        tm = (raw or {}).get("tm") or {}
+        for tno, side in (("1", "home"), ("2", "away")):
+            t = tm.get(tno) or {}
+            feed = _name_tokens(t.get("name")) | _name_tokens(t.get("shortName"))
+            if not (feed & _name_tokens(row[side]["name"])) and _fold(t.get("name")) != _fold(row[side]["name"]):
+                return False
+        return True
+
+    def _swiss_fetch(self, key: str, config: dict):
+        gid = re.sub(r"\D", "", key)
+        known = self._idmap(config)
+        rows, _why = self._swiss_rows(config)
+        row = next((r for r in rows if r["gid"] == gid), None)
+        fid, raw, meta = known.get(gid), None, None
+        if fid:
+            raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
+        elif row:
+            wid = self._swiss_widget_ids(config).get((row["date"], _fold(row["home"]["name"]), _fold(row["away"]["name"])))
+            for cand in dict.fromkeys(x for x in (wid, row["fiba_id"]) if x):
+                got, got_meta = self._get_meta(FIBA_DATA_URL.format(game_id=cand))
+                if not got or "tm" not in got:
+                    continue                          # not started yet, or not this id
+                if not self._swiss_same_clubs(got, row):
+                    print(f"     SUI {key}: LiveStats {cand} names other clubs - not kept")
+                    continue
+                fid, raw, meta = cand, got, got_meta
+                known[gid] = cand
+                self._save_idmap(config, known)
+                break
+        if not raw or "tm" not in raw:
+            return None
+        if row:
+            # THE SCHEDULE NAMES THE CLUBS, as it did when the fixture was filed: the same name and the
+            # same code on both, whatever an operator typed into the feed for this game
+            for tno, side in (("1", "home"), ("2", "away")):
+                if isinstance(raw["tm"].get(tno), dict):
+                    raw["tm"][tno]["code"] = _kos_slug(row[side]["name"])
+                    raw["tm"][tno]["name"] = row[side]["name"]
+        b = self.bundle_from_raw(raw, key, config)
         b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]

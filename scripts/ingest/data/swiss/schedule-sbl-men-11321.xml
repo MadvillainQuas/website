@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<basketplan version="2.0" remarks="Data Securtiy changes. If you lack some data please contact contact@orcasys.ch">
+<gameForm>
+  <GameForm/>
+</gameForm>
+<leagueHoldingList>
+  <ArrayList>
+    <LeagueHoldingRSS from="2026-09-24" id="11321" leagueId="1" leagueName="SB League" name="Preliminary phase" numberOfPromotionPlaces="0" numberOfRelegationPlaces="0" phaseId="PRELIMINARY_ROUND" phaseName="Phase préliminaire" to="2027-06-30">
+      <games/>
+      <matchdays>
+        <matchday from="2026-09-25" id="11656" name="Day 1" to="2026-09-27">
+          <games>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-26" id="367242" liveStatsLink="https://fibalivestats.dcd.shared.geniussports.com/u/SUI/2909391/" locationCity="Lausanne" locationId="467" locationName="Vallée de la Jeunesse" locationShortName="Vallée Jeunesse" matchDayName="Day 1" referees="Jeanmonod Kenny/Balletta Davide/Carr Ashley" round="1" time="17:30" videoLink="https://www.youtube.com/watch?v=9TxIeFP2zRU">
+              <guestTeam clubId="54" gender="M" id="1087" name="GC Zürich" pathToLogo="uploadedImages/91906__LOGO_FOR_TEAM__1087__LOGO_GCZ_1000x1000.png" result="55" resultQ1="14" resultQ2="18" resultQ3="12" resultQ4="11"/>
+              <homeTeam clubId="15" gender="M" id="355" name="Pully Lausanne Foxes" pathToLogo="uploadedImages/91877__LOGO_FOR_TEAM__355__PLF-1000x1000.png" result="90" resultQ1="20" resultQ2="26" resultQ3="26" resultQ4="18"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-26" id="367239" liveStatsLink="https://fibalivestats.dcd.shared.geniussports.com/u/SUI/2909390/" locationCity="Birsfelden" locationId="605" locationName="Sporthalle" locationShortName="Sporthalle" matchDayName="Day 1" referees="Michaelides Markos/Richard Lucas/Emra Petrit" round="1" time="17:30" videoLink="https://www.youtube.com/watch?v=7ltzSiCXrjc">
+              <guestTeam clubId="2" gender="M" id="356" name="A++ Massagno" pathToLogo="uploadedImages/91855__LOGO_FOR_TEAM__356__LOGO_A--_MASSAGNO_1000x1000.png" result="91" resultQ1="18" resultQ2="27" resultQ3="29" resultQ4="17"/>
+              <homeTeam clubId="283" gender="M" id="339" name="Starwings Basket" pathToLogo="uploadedImages/58557__LOGO_FOR_TEAM__339__STARWINGS.png" result="73" resultQ1="24" resultQ2="13" resultQ3="14" resultQ4="22"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-26" id="367241" liveStatsLink="https://fibalivestats.dcd.shared.geniussports.com/u/SUI/2909496/" locationCity="Grand-Saconnex" locationId="601" locationName="Salle polyvalente Pommier" locationShortName="Salle polyvalente Pommier" matchDayName="Day 1" referees="Demierre Martin/Mazzoni David/Consigli Raffaello" round="1" time="18:00" videoLink="https://www.youtube.com/watch?v=SEnDqbfu_tw">
+              <guestTeam clubId="18" gender="M" id="337" name="BBC Nyon" pathToLogo="uploadedImages/92986__LOGO_FOR_TEAM__337__BBC_NYON_ORIGINAL_1000x1000.png" result="69" resultQ1="13" resultQ2="20" resultQ3="14" resultQ4="22"/>
+              <homeTeam clubId="120" gender="M" id="1214" name="Lions de Genève pwd by Grand-Saconnex" pathToLogo="uploadedImages/91854__LOGO_FOR_TEAM__1214__LOGO_LDG_1000x1000.png" result="86" resultQ1="24" resultQ2="17" resultQ3="20" resultQ4="25"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-27" id="367240" liveStatsLink="https://fibalivestats.dcd.shared.geniussports.com/u/SUI/2909392/" locationCity="Fribourg" locationId="764" locationName="Site Sportif St. Léonard" locationShortName="St-Léonard" matchDayName="Day 1" referees="Stojcev Bosko/Buttet Yoann/Grasso Vittorio" round="1" time="16:00" videoLink="https://www.youtube.com/watch?v=R_7AaAtoz5g">
+              <guestTeam clubId="49" gender="M" id="169" name="Union Neuchâtel Basket" pathToLogo="uploadedImages/39968__LOGO_FOR_TEAM__169__Sans-titre-1.png"/>
+              <homeTeam clubId="14" gender="M" id="345" name="Fribourg Olympic" pathToLogo="uploadedImages/91904__LOGO_FOR_TEAM__345__Fribourg-1000x1000.png"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-27" id="367243" liveStatsLink="https://fibalivestats.dcd.shared.geniussports.com/u/SUI/2909393/" locationCity="Lugano" locationId="607" locationName="Istituto Elvetico" locationShortName="Istituto Elvetico" matchDayName="Day 1" referees="Tözsér Dénes /Hohler Dejan/Ghiringhelli Sebastian" round="1" time="16:00" videoLink="https://www.youtube.com/watch?v=8abhA_oPwzI">
+              <guestTeam clubId="38" gender="M" id="342" name="BBC Monthey-Chablais" pathToLogo="uploadedImages/58555__LOGO_FOR_TEAM__342__MONTHEY.png"/>
+              <homeTeam clubId="21" gender="M" id="400" name="Lugano Tigers" pathToLogo="uploadedImages/91880__LOGO_FOR_TEAM__400__Lugano-1000x1000.png"/>
+            </GameRSS>
+          </games>
+        </matchday>
+        <matchday from="2026-09-29" id="11657" name="Day 2" to="2026-09-30">
+          <games>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-29" id="367244" locationCity="Zürich" locationId="207" locationName="Im Birch Zürich" locationShortName="Im Birch Zürich" matchDayName="Day 2" referees="Tözsér Dénes /Chalbi Ossama/Emra Petrit" round="1" time="19:30">
+              <guestTeam clubId="120" gender="M" id="1214" name="Lions de Genève pwd by Grand-Saconnex" pathToLogo="uploadedImages/91854__LOGO_FOR_TEAM__1214__LOGO_LDG_1000x1000.png"/>
+              <homeTeam clubId="54" gender="M" id="1087" name="GC Zürich" pathToLogo="uploadedImages/91906__LOGO_FOR_TEAM__1087__LOGO_GCZ_1000x1000.png"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-30" id="367245" locationCity="Massagno" locationId="426" locationName="Scuole Elementari Nosedo" locationShortName="SE Nosedo" matchDayName="Day 2" referees="Stojcev Bosko/Tornay Alexandre/Consigli Raffaello" round="1" time="19:30">
+              <guestTeam clubId="15" gender="M" id="355" name="Pully Lausanne Foxes" pathToLogo="uploadedImages/91877__LOGO_FOR_TEAM__355__PLF-1000x1000.png"/>
+              <homeTeam clubId="2" gender="M" id="356" name="A++ Massagno" pathToLogo="uploadedImages/91855__LOGO_FOR_TEAM__356__LOGO_A--_MASSAGNO_1000x1000.png"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-30" id="367248" locationCity="Monthey" locationId="501" locationName="Reposieux" locationShortName="Reposieux" matchDayName="Day 2" referees="Novakovic Slobodan/Mazzoni David/Nenadic Filip" round="1" time="19:30">
+              <guestTeam clubId="14" gender="M" id="345" name="Fribourg Olympic" pathToLogo="uploadedImages/91904__LOGO_FOR_TEAM__345__Fribourg-1000x1000.png"/>
+              <homeTeam clubId="38" gender="M" id="342" name="BBC Monthey-Chablais" pathToLogo="uploadedImages/58555__LOGO_FOR_TEAM__342__MONTHEY.png"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-30" id="367247" locationCity="Nyon" locationId="604" locationName="Rocher" locationShortName="Rocher" matchDayName="Day 2" referees="Jeanmonod Kenny/Hohler Dejan/Curty Christophe" round="1" time="19:30">
+              <guestTeam clubId="283" gender="M" id="339" name="Starwings Basket" pathToLogo="uploadedImages/58557__LOGO_FOR_TEAM__339__STARWINGS.png"/>
+              <homeTeam clubId="18" gender="M" id="337" name="BBC Nyon" pathToLogo="uploadedImages/92986__LOGO_FOR_TEAM__337__BBC_NYON_ORIGINAL_1000x1000.png"/>
+            </GameRSS>
+            <GameRSS categoryName="Phase préliminaire" date="2026-09-30" id="367246" locationCity="Neuchâtel" locationId="369" locationName="Riveraine" locationShortName="Riveraine" matchDayName="Day 2" referees="Michaelides Markos/Richard Lucas/Carr Ashley" round="1" time="19:30">
+              <guestTeam clubId="21" gender="M" id="400" name="Lugano Tigers" pathToLogo="uploadedImages/91880__LOGO_FOR_TEAM__400__Lugano-1000x1000.png"/>
+              <homeTeam clubId="49" gender="M" id="169" name="Union Neuchâtel Basket" pathToLogo="uploadedImages/39968__LOGO_FOR_TEAM__169__Sans-titre-1.png"/>
+            </GameRSS>
+          </games>
+        </matchday>
+      </matchdays>
+    </LeagueHoldingRSS>
+  </ArrayList>
+</leagueHoldingList>
+</basketplan>

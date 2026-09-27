@@ -82,6 +82,8 @@ python scripts/ingest/bio_sync.py --worker-config --no-stash             # neith
 | slovak-sbl | club Súpiska (Roster) tab; player page for height/weight | date; height and weight on ~25% | feed read: 346 rows |
 | nbl-bulgaria | nbl.basketball.bg player search per club; player page | date, height, weight (Cyrillic, transliterated) | 2025/26: 165 rows |
 | greek-elite-league | stats.basket.gr player page by the feed's GUID, only for players without a date | date only | 6 / 6 sampled |
+| kbl | the league's statistics service (kbl-api.sports2i.com) profile by pcode | date, height | 2 / 2 sampled |
+| kkm-albania, kkf-albania, azerbaijan-basketball-league | Genius hosted club roster pages (ALBS, ABS) | ABS: date, height, weight where given | ABS 3 / 3 sampled |
 | lkl | lkl.lt/zaidejai/<slug>, by the slug the feed keys him by | date, height, weight | 89 / 89 sampled |
 | nkl | nkl.lt club pages; player page for the date | date, height, weight | feed read: 176 rows |
 | orlen-basket-liga | rozgrywki.pzkosz.pl club pages (league 2), keyed: the federation id is the PLK feed's player id | date, height | feed read: 280 rows |
@@ -103,6 +105,7 @@ added to the ingest with neither.
   robots.txt; the permitted portal (online.basket.ee) lists games and box scores with no bio, and neither does LiveStats.
 
 * **kosovo-superliga**: basketbolli.com lists players by name and licence number only; no player page, no bio in the LiveStats data.
+* **sb-league, sb-league-women, nlb-men, nlb-women**: swiss.basketball draws everything from Basketplan, whose player data is not published for reading (basketplan.ch disallows every path in robots.txt); no bio in the LiveStats data.
 * **Ages are never used**: HBBC, Basketball England, DAM, Slovak player pages and NKL print an age; a year from an age is right only to
   within a year, so it is not written.
 * **No weight anywhere**: LNB, Poland (plk.pl, the federation site, Puls Basketu), Basketball England, DAM, WBBL.
