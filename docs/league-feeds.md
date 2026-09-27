@@ -746,3 +746,25 @@ No JSON for a game was found (`task=boxscore|tabellino|playbyplay|pbp|match|part
   scoreboard; the live page links `organizer.statbasket.it/Matches/OffLineMatches` (the federation's stats system,
   which timed out from here). None exposes game data.
 - Player pages `/giocatore/wp/<id>` are the obvious bio source when the league is built.
+
+## Turkey: BSL, TBL, KBSL, TKBL, BGL (Turkish Basketball Federation) - NOT BUILT
+
+Looked at 2026-09-27 and left out: the federation's site will not answer an automated client from anywhere.
+
+### host
+
+`www.tbf.org.tr` (a Nuxt app: leagues under `/ligler/<league>-<season>/`, e.g. `bsl-2026-2027`; fixtures by game
+week, one button per week; a game at `/ligler/<league>-<season>/mac-detay/<game id>` (346279), with a "Statistics"
+tab (box score) and a "Game Flow" tab (play-by-play, including substitutions with an in/out icon). Crests and
+player photos are served from `tbf.org.tr/res/...`. There is also `api.tbf.org.tr`.
+
+### gotchas
+
+- **Every request gets Cloudflare's interactive "Just a moment..." challenge (403)**: the pages, `robots.txt` and
+  `api.tbf.org.tr` alike, from a server AND from a home connection (checked from the operator's PC with plain
+  `requests`, 2026-09-27: `403 BLOCKED`). Unlike lnb.fr, which only refuses GitHub's addresses, this tests the client
+  itself, so the home live lane does not help. The only way through would be a browser passing Cloudflare's bot
+  check, which is not something the ingest does.
+- No FIBA LiveStats / Genius tenant for the federation or its leagues (TBF, TUR, BSL, TBL, KBSL, TKBL: none), and
+  no other public source of box scores was found.
+- The route is data access from the federation itself (an API key or an allowed feed).
