@@ -277,7 +277,13 @@
   filter:drop-shadow(0 14px 22px color-mix(in srgb,#000 30%,transparent))}
 .fvw.lit .fvw-card{animation:fvw-rise .8s cubic-bezier(.2,1.2,.3,1) both}
 @keyframes fvw-rise{from{transform:translateY(24px) rotate(4deg) scale(.86);opacity:0}to{transform:rotate(-2deg);opacity:1}}
-.fvw-card .club{background:var(--panel);padding:6px 6px 8px}
+.fvw-card .club{background:var(--panel);padding:6px 6px 8px;container-type:inline-size}
+/* THE WINNER'S NAME FITS THE CARD, WHOLE: it was one line of 10.5px cut short with an ellipsis, so the player or club that won could not be read.
+   It is sized against the card's own width (container units, so it follows the card at any size), wraps to a second line where it must, and
+   fanvote.js fitWinnerNames() steps it down for a name that is still too long. */
+.fvw-win .star-name,.fvw-win .club-name{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;
+  line-height:1.1;font-size:clamp(8px,10.5cqi,15px)}
+.fvw-win .star-team{white-space:normal;overflow-wrap:anywhere;line-height:1.1;font-size:clamp(7px,7cqi,10px)}
 .fvw-card .club-plate{aspect-ratio:1}
 .fvw-card .club-mono{font-size:clamp(34px,6vw,54px)}
 .fvw-ribbon{position:absolute;z-index:3;left:50%;bottom:7%;transform:translateX(-50%) rotate(-2deg);

@@ -671,6 +671,29 @@ function winnerTeamCard(t, base) {
   return a;
 }
 
+/* A winner's name must be readable whole: it is sized against the card in CSS and wraps to two lines; a name still taller than that
+   (a long club name in a narrow card) is stepped down until it fits, never below 7px. Run again when the section is resized. */
+function fitWinnerNames(scope) {
+  if (!scope || !scope.querySelectorAll) return;
+  scope.querySelectorAll('.fvw-win .star-name, .fvw-win .club-name').forEach(n => {
+    n.style.fontSize = ''; n.style.whiteSpace = '';
+    const cs = getComputedStyle(n);
+    let fs = parseFloat(cs.fontSize) || 10;
+    /* ONE LINE where it fits at 10px or more (the name reads best whole on a line); otherwise it wraps to two and is stepped down to fit */
+    n.style.whiteSpace = 'nowrap';
+    let one = fs, g1 = 0;
+    while (g1++ < 30 && one > 10 && n.scrollWidth > n.clientWidth + 1) { one -= 0.5; n.style.fontSize = one + 'px'; }
+    if (n.scrollWidth <= n.clientWidth + 1) return;
+    n.style.whiteSpace = ''; n.style.fontSize = '';
+    const line = () => (parseFloat(getComputedStyle(n).lineHeight) || fs * 1.1);
+    let guard = 0;
+    while (guard++ < 30 && fs > 7 && (n.scrollHeight > line() * 2.1 || n.scrollWidth > n.clientWidth + 1)) {
+      fs -= 0.5;
+      n.style.fontSize = fs + 'px';
+    }
+  });
+}
+
 /* THE WINNERS SECTION: last week's picks, the way into the open vote, and the
    link to every week's winners. Hidden when there is nothing to show. */
 function renderSection(ctx) {
@@ -702,6 +725,13 @@ function renderSection(ctx) {
         last.team.votes + (last.team.votes === 1 ? ' vote' : ' votes') + ' · ' + (last.team.share || 0) + '% of the club vote'));
     }
     host.appendChild(row);
+    /* the names are fitted to their cards now, again when the fonts are in (they change every width), and when the window changes size */
+    fitWinnerNames(row);
+    try { if (root.document && root.document.fonts && root.document.fonts.ready) root.document.fonts.ready.then(() => fitWinnerNames(row)); } catch (_) { /* fitted once */ }
+    try {
+      let t = 0;
+      root.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (row.isConnected) fitWinnerNames(row); }, 150); });
+    } catch (_) { /* fitted once */ }
     /* the burst plays once, when the section is first on screen */
     try {
       const io = new root.IntersectionObserver(es => {
