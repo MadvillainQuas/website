@@ -651,8 +651,12 @@ class AbaAdapter(FibaLiveStatsAdapter):
             if stage_of(x["round"]) != stage or not (x["home"] and x["away"]):
                 continue                             # a play-off slot whose clubs are not known yet
             tip, tbc = tipoff(x["when"])
-            if not tip:
-                continue
+            # A ROUND PULLED FROM ITS DATES ("TBA") IS STILL ON THE CALENDAR. Skipping it kept whatever
+            # date the platform had stored from an earlier look: ABA's round 1 of 2026-27 was taken off
+            # 25-27 Sep and the site went on showing it as being played on those days, with nothing to
+            # fetch. It is passed on without a date and flagged, so the stored date is cleared
+            # (run_ingest write_fixture) and the game reads "date to be confirmed" until a date returns.
+            date_tbc = not tip
             extra = {"round": x["round"], "stage": stage,
                      "home_code": "" if x["home_code"] in shared else x["home_code"],
                      "away_code": "" if x["away_code"] in shared else x["away_code"]}
@@ -664,8 +668,10 @@ class AbaAdapter(FibaLiveStatsAdapter):
                 extra["home_group"] = extra["away_group"] = x["group"]
             if tbc:
                 extra["time_tbc"] = True
+            if date_tbc:
+                extra["date_tbc"] = True
             out.append(ScheduleGame(external_id=f"{lea}-{sez}-{x['id']}", home_name=x["home"], away_name=x["away"],
-                                    tipoff_at=tip, status="final" if x["score"] else "scheduled", extra=extra))
+                                    tipoff_at=tip or None, status="final" if x["score"] else "scheduled", extra=extra))
         out.sort(key=lambda g: (g.tipoff_at or "", g.external_id))
         print(f"     aba league {lea} season {sez} {stage}: {len(out)} games ({sum(1 for g in out if g.status == 'final')} final)")
         self.__dict__.setdefault("_codes_read", set()).add((lea, sez))
