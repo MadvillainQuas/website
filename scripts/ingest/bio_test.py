@@ -153,7 +153,9 @@ print("\n-- the readers")
 ok("every reader is registered under the league's slug", set(bio_sources.READERS) >= {"euroleague", "eurocup", "basketligaen", "bnxt-league"})
 import json  # noqa: E402
 _cfg = {x["league_slug"] for x in json.load(open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8"))["sources"] if x.get("league_slug")}
-ok("every league the ingest reads has a bio reader (Kosovo publishes none)", _cfg - set(bio_sources.READERS) == {"kosovo-superliga"}, _cfg - set(bio_sources.READERS))
+ok("every league the ingest reads has a bio reader, or is named in NO_BIO with the reason it cannot",
+   _cfg - set(bio_sources.READERS) == set(bio_sources.NO_BIO), sorted(_cfg - set(bio_sources.READERS) ^ set(bio_sources.NO_BIO)))
+ok("...and NO_BIO names no league that has a reader after all", not set(bio_sources.NO_BIO) & set(bio_sources.READERS))
 ok("U SPORTS heights and weights: feet-inches and pounds", bio_sources._ft_in("6'7\"") == 201 and bio_sources._ft_in("6-7") == 201 and bio_sources._ft_in("201 cm") == 201
    and bio_sources._lbs("215 lbs") == 98 and bio_sources._lbs("98 kg") == 98)
 ok("Basketball England's 'Surname, Forename'", bio_sources._genius_name("Godwin, Harry") == {"first": "Harry", "last": "Godwin"} and bio_sources._genius_name("Kyle Carey") == {"name": "Kyle Carey"})

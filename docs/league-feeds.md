@@ -768,3 +768,45 @@ player photos are served from `tbf.org.tr/res/...`. There is also `api.tbf.org.t
 - No FIBA LiveStats / Genius tenant for the federation or its leagues (TBF, TUR, BSL, TBL, KBSL, TKBL: none), and
   no other public source of box scores was found.
 - The route is data access from the federation itself (an API key or an allowed feed).
+
+## Estonian-Latvian Basketball League (FIBA LiveStats via the Estonian federation's live-score portal)
+
+### host
+
+The games are on FIBA LiveStats (the Estonian federation's account, `fibalivestats.com/u/EBF/<id>`). The fixtures and
+each game's LiveStats id come from **online.basket.ee**, the federation's live-score portal (BestIT "basketis", the
+same system and game ids as the league's site). `fiba_site_schedule`, site `basketee`.
+
+- NOT estlatbl.com and NOT www.basket.ee: both robots.txt files disallow every crawler except Google, Bing and Apple
+  (`User-agent: * / Disallow: /`, crawl delay 30). online.basket.ee publishes no robots.txt (404) and marks its pages
+  `index,follow`.
+- The Genius hosted tenant `EBF` is the Egyptian federation (a 2019 U16 schedule): unrelated to the LiveStats `u/EBF`.
+
+### schedule_recipe
+
+- `https://online.basket.ee/en`: two menus, `chid` (the championships: "Estonian-Latvian Basketball League" = 212,
+  read by name) and `date` (13 days back to 7 ahead, `dd.mm.yyyy`).
+- `https://online.basket.ee/s2/list/<YYYY-MM-DD>/data.json`: every federation game that day - `gid` (the league's own
+  id, `2027212001` = season, championship, game), `chid`, `date`, `time` (Tallinn time; Riga's is the same), `place`,
+  `team_home`/`team_visitor`, `h_tid`/`v_tid` (federation club ids, used as the clubs' codes), scores, `is_over`,
+  `sporting_id_live` (the LiveStats id, there for upcoming games too; null until set up).
+- **A date outside the menu answers an error page that e-mails their webmaster.** So only menu dates are asked for, and
+  not its first or last day (clock and midnight margin).
+- One request every 30 s (the federation's crawl delay on its other sites), retried on a dropped connection. Each date
+  is cached in `data/feed/ESTLAT/days.json` (committed with the other feed caches): a past day whose games are all
+  over is never asked for again; today is re-read after 30 minutes, a day ahead after 12 hours, a past day still in
+  play after 3 hours. The first pass is ~20 requests (~10 minutes); after that the menu and a day or two.
+
+### game_recipe
+
+`fibalivestats.dcd.shared.geniussports.com/data/<sporting_id_live>/data.json` (tm "1" is home), unchanged, with the
+clubs' names and codes replaced by the schedule's; the game keeps its `gid`. Full play-by-play with substitutions, so
+stints and lineups are built as for any LiveStats league.
+
+### gotchas
+
+- The window is only 13 days back: the ingest must run at least every ~12 days or a finished game drops out of reach
+  (the full season is only on the two disallowed sites).
+- The server drops connections now and then (about half the requests in one probe): each request is tried three times.
+- No bio source: the portal's per-game stats (`/s2/stats/<gid>/<tid>/data.json`) and LiveStats carry none, and the
+  two sites that might are disallowed (`bio_sources.NO_BIO`).

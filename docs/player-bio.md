@@ -93,6 +93,12 @@ python scripts/ingest/bio_sync.py --worker-config --no-stash             # neith
 
 ## Not done, and why
 
+`bio_sources.NO_BIO` names every ingested league without a reader, with its reason; `bio_test.py` fails when a league is
+added to the ingest with neither.
+
+* **estonian-latvian-basketball-league**: estlatbl.com and basket.ee disallow every crawler but the search engines in
+  robots.txt; the permitted portal (online.basket.ee) lists games and box scores with no bio, and neither does LiveStats.
+
 * **kosovo-superliga**: basketbolli.com lists players by name and licence number only; no player page, no bio in the LiveStats data.
 * **Ages are never used**: HBBC, Basketball England, DAM, Slovak player pages and NKL print an age; a year from an age is right only to
   within a year, so it is not written.

@@ -197,6 +197,63 @@ def _name_tokens(name) -> set:
     return {t for t in re.split(r"[^a-z0-9]+", s) if len(t) >= 4}
 
 
+# online.basket.ee (the Estonian federation's live scores, BestIT's "basketis"): the ESTONIAN-LATVIAN league on FIBA
+# LiveStats (client EBF). The league's own site (estlatbl.com) and the federation's (basket.ee) both disallow every
+# crawler but the search engines in robots.txt; this portal publishes none (404) and serves each date's games as JSON,
+# every game with its LiveStats id (sporting_id_live), upcoming ones included. BUT only for the dates its own menu
+# offers - 13 days back to 7 ahead - and a date outside them answers an error page that e-mails their webmaster. So:
+# the menu is read first and only its dates, a day inside each end, are ever asked for; one request every 30 s (the
+# federation's crawl delay on its other sites); and each date is cached in data/feed/<CODE>/days.json, where a
+# finished day is never asked for again. A pass after the first is the menu and a day or two.
+BASKETEE = "https://online.basket.ee"
+BASKETEE_HOME = BASKETEE + "/en"
+BASKETEE_DAY = BASKETEE + "/s2/list/{date}/data.json"
+BASKETEE_GAP_S = 30
+BASKETEE_MENU_TTL_S = 6 * 3600
+_BEE_SELECT = re.compile(r'<select\b[^>]*name="(date|chid)"[^>]*>(.*?)</select>', re.S)
+_BEE_OPTION = re.compile(r'<option[^>]*value="([^"]*)"[^>]*>\s*([^<]*?)\s*</option>', re.S)
+
+
+def basketee_menu(page: str) -> dict:
+    """{"dates": [ISO date, ...], "chids": {championship name: id}} off the portal's two menus."""
+    import html as _html
+    out = {"dates": [], "chids": {}}
+    for which, body in _BEE_SELECT.findall(page or ""):
+        for value, label in _BEE_OPTION.findall(body):
+            if which == "date":
+                m = re.fullmatch(r"(\d{2})\.(\d{2})\.(\d{4})", value.strip())
+                if m:
+                    out["dates"].append(f"{m.group(3)}-{m.group(2)}-{m.group(1)}")
+            elif value.strip():
+                out["chids"][_html.unescape(label).strip()] = value.strip()
+    return out
+
+
+def basketee_rows(payload, chid: str) -> Optional[list]:
+    """One date's games of one championship, slimmed to what a fixture needs. None when the payload is not the list
+    (the portal's error page is HTML)."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        return None
+    out = []
+    for r in payload["data"]:
+        if str(r.get("chid")) != str(chid) or not r.get("gid"):
+            continue
+        out.append({"gid": str(r["gid"]), "date": r.get("date") or "", "time": r.get("time") or "",
+                    "home": (r.get("team_home") or "").strip(), "away": (r.get("team_visitor") or "").strip(),
+                    "h_tid": str(r.get("h_tid") or ""), "v_tid": str(r.get("v_tid") or ""),
+                    "place": (r.get("place") or "").strip() or None,
+                    "fls": str(r["sporting_id_live"]) if r.get("sporting_id_live") else None,
+                    "over": str(r.get("is_over")) == "1"})
+    return out
+
+
+def _tallinn_today():
+    """The portal's own date: Estonian time (the Latvian clubs' is the same)."""
+    if ZoneInfo is None:
+        return datetime.now(timezone.utc).date()
+    return datetime.now(ZoneInfo("Europe/Tallinn")).date()
+
+
 def _utc(tz_name, y, mo, d, h, mi):
     """A local kick-off as an ISO instant, or None where the zone database is unavailable.
 
@@ -329,6 +386,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._kos_fetch(str(external_id), config)
         if site == "basketligaen":
             return self._dbl_fetch(str(external_id), config)
+        if site == "basketee":
+            return self._bee_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -346,6 +405,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._kos(config)
         if site == "basketligaen":
             return self._dbl(config)
+        if site == "basketee":
+            return self._bee(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
 
@@ -813,6 +874,139 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                     raw["tm"][tno]["code"] = str(fixture.get(f"{side}_team_id") or raw["tm"][tno].get("code") or "")
                     raw["tm"][tno]["name"] = fixture.get(f"{side}_name") or raw["tm"][tno].get("name") or ""
         b = self.bundle_from_raw(raw, sid, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    # ------------------------------------------------------------ online.basket.ee ---
+    _bee_last = 0.0                          # one request every BASKETEE_GAP_S, whichever source row asks
+    _bee_menu_at: tuple = (0.0, None)        # (read at, basketee_menu())
+
+    def _bee_get(self, url: str, want_json: bool = True):
+        """One polite GET on the portal: JSON (or the page), None for anything else. The server drops a connection now
+        and then, so a reset is tried again (three times in all); an answer that is not JSON is never retried - on
+        this portal that is the error page."""
+        for _ in range(3):
+            gap = time.time() - FibaSiteScheduleAdapter._bee_last
+            if gap < BASKETEE_GAP_S:
+                time.sleep(BASKETEE_GAP_S - gap)
+            FibaSiteScheduleAdapter._bee_last = time.time()
+            try:
+                r = requests.get(url, headers={"User-Agent": UA}, timeout=40)
+            except requests.RequestException:
+                continue
+            if r.status_code != 200:
+                return None
+            if not want_json:
+                return r.text
+            try:
+                return r.json()
+            except ValueError:
+                return None
+        return None
+
+    def _bee_menu(self) -> dict:
+        at, menu = FibaSiteScheduleAdapter._bee_menu_at
+        if menu is None or time.time() - at > BASKETEE_MENU_TTL_S:
+            page = self._bee_get(BASKETEE_HOME, want_json=False)
+            got = basketee_menu(page or "")
+            if got["dates"]:
+                FibaSiteScheduleAdapter._bee_menu_at = (time.time(), got)
+                menu = got
+        return menu or {"dates": [], "chids": {}}
+
+    @staticmethod
+    def _bee_path(config: dict) -> Optional[str]:
+        p = FibaSiteScheduleAdapter._map_path(config)
+        return os.path.join(os.path.dirname(p), "days.json") if p else None
+
+    def _bee_days(self, config: dict) -> dict:
+        p = self._bee_path(config)
+        try:
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, TypeError, ValueError):
+            return {}
+
+    def _bee_save(self, config: dict, days: dict) -> None:
+        p = self._bee_path(config)
+        if not p:
+            return
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(days, f, ensure_ascii=False, indent=1, sort_keys=True)
+        except OSError:
+            pass
+
+    def _bee(self, config: dict) -> list[ScheduleGame]:
+        """The league's games on the dates the portal offers, and every game read before (from the day cache)."""
+        from datetime import timedelta
+        label = config.get("basketee_league") or ""
+        menu = self._bee_menu()
+        chid = next((cid for name, cid in menu["chids"].items() if name.casefold() == label.casefold()),
+                    str(config.get("basketee_chid") or ""))
+        days = self._bee_days(config)
+        if not chid:
+            print(f"     {label}: not on the portal's menu, and no basketee_chid configured")
+        else:
+            today = _tallinn_today()
+            lo, hi = (today - timedelta(days=12)).isoformat(), (today + timedelta(days=6)).isoformat()
+            ttl = {-1: 3 * 3600, 0: 1800, 1: 12 * 3600}
+            changed = False
+            for d in sorted(x for x in menu["dates"] if lo <= x <= hi):     # never a date the menu does not offer
+                ent = days.get(d)
+                when = (d > today.isoformat()) - (d < today.isoformat())
+                if ent and (ent.get("final") or time.time() - ent.get("t", 0) < ttl[when]):
+                    continue
+                rows = basketee_rows(self._bee_get(BASKETEE_DAY.format(date=d)), chid)
+                if rows is None:
+                    continue                  # not read this time: the cache keeps what it had
+                days[d] = {"t": time.time(), "games": rows, "final": when < 0 and all(g["over"] for g in rows)}
+                changed = True
+            if changed:
+                self._bee_save(config, days)
+        best: dict = {}
+        for d, ent in days.items():                   # a game moved to another date: its newest reading wins
+            for g in ent.get("games") or []:
+                if g["gid"] not in best or ent.get("t", 0) >= best[g["gid"]][0]:
+                    best[g["gid"]] = (ent.get("t", 0), g)
+        out = []
+        for _, g in sorted(best.values(), key=lambda x: (x[1]["date"], x[1]["time"], x[1]["gid"])):
+            dm = re.match(r"(\d{4})-(\d{2})-(\d{2})", g["date"])
+            tm = re.match(r"(\d{1,2}):(\d{2})", g["time"])
+            out.append(ScheduleGame(
+                external_id=g["gid"], home_name=g["home"], away_name=g["away"],
+                tipoff_at=_utc("Europe/Tallinn", *dm.groups(), *tm.groups()) if dm and tm else None,
+                status="final" if g["over"] else "scheduled",
+                extra={"venue": g["place"], "home_code": g["h_tid"], "away_code": g["v_tid"]}))
+        return out
+
+    def _bee_fetch(self, gid: str, config: dict):
+        """A game by the league's own id: its LiveStats id and clubs from the day cache (read once more if this machine
+        has not seen the game), the feed under the schedule's names and club ids, so a club is one club whichever
+        side of the pipeline met it first."""
+        def row():
+            for ent in self._bee_days(config).values():
+                for g in ent.get("games") or []:
+                    if g["gid"] == gid:
+                        return g
+            return None
+        g = row()
+        if g is None:
+            self._bee(config)
+            g = row()
+        if not g or not g.get("fls"):
+            return None                        # not set up on LiveStats yet
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=g["fls"]))
+        if not raw or "tm" not in raw:
+            return None
+        for tno, name, code in (("1", g["home"], g["h_tid"]), ("2", g["away"], g["v_tid"])):
+            if isinstance(raw["tm"].get(tno), dict):
+                raw["tm"][tno]["name"] = name or raw["tm"][tno].get("name") or ""
+                raw["tm"][tno]["code"] = code or raw["tm"][tno].get("code") or ""
+        b = self.bundle_from_raw(raw, gid, config)
         b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]

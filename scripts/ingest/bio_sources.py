@@ -42,7 +42,7 @@ What each source gives, found by looking, not assumed (2026-09-27):
   basketligan, -dam      the Swedish league sites' Sportality API (as basketligaen.dk): roster per club, athlete page per new player
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
 
-Every league in config/ingest-sources.json has a reader except kosovo-superliga (no bio published anywhere); docs/player-bio.md.
+Every league in config/ingest-sources.json has a reader, or is in NO_BIO with the reason it cannot; docs/player-bio.md.
 """
 from __future__ import annotations
 
@@ -1144,6 +1144,13 @@ READERS: dict = {
     # / r"^(Damer - )?(SBL|Basketligan) Dam" also works (date of birth only, no request per player) if those sites go away.
     "basketligan": sportality("https://www.sblherr.se/api/sports-v2", "SBL", "Basketligan"),
     "basketligan-dam": sportality("https://www.sbldam.se/api/sports-v2", "SBLD", "Basketligan Dam"),
+}
+
+# Leagues the ingest reads that have NO reader, and why (bio_test holds the two lists together).
+NO_BIO = {
+    "kosovo-superliga": "basketbolli.com lists players by name and licence number only; no player page, no bio in the LiveStats data",
+    "estonian-latvian-basketball-league": "the league's site (estlatbl.com) and the federation's (basket.ee) disallow crawlers in "
+                                          "robots.txt; the permitted live-score portal (online.basket.ee) and the LiveStats data carry no bio",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).
