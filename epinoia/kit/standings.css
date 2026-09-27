@@ -1,0 +1,51 @@
+/* ============================================================================
+   A LEAGUE TABLE (l/league.js .ep-tbl.stand): the standings drawn as a column of
+   strips rather than a spreadsheet. Each club's row carries its colour down the
+   rank's edge (--tc, set on the row), the crest sits in a white disc ringed in
+   that colour, the points are the heaviest figure on the row, and the streak is a
+   run of small blocks, ticked for a win and crossed for a loss.
+   The black teletext header row is teletext.css's, as on every table.
+   ============================================================================ */
+.ep-tbl.stand{border-collapse:separate;border-spacing:0 5px;margin-top:-5px}
+.ep-tbl.stand tbody td{padding:7px 12px;background:var(--panel);
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);font-size:13px}
+.ep-tbl.stand tbody td+td{border-left:0}
+.ep-tbl.stand tbody td:last-child{border-right:1px solid var(--rule)}
+/* the rank, on the club's colour edge */
+.ep-tbl.stand tbody td.rk{width:46px;text-align:center;font-family:var(--f-score);font-size:18px;color:var(--ink);
+  border-left:0;box-shadow:inset 6px 0 0 var(--tc,var(--rule-2))}
+/* the first four and the last are marked the way a printed table rules them off */
+.ep-tbl.stand tbody tr:nth-child(1) td.rk{color:#0a0a0a;background:linear-gradient(90deg,var(--tc,#ffe14d) 0 6px,#ffe14d 6px)}
+/* the club */
+.ep-tbl.stand .tname-cell{gap:0}
+.ep-tbl.stand .crest{width:28px;height:28px;border-radius:50%;background:#fff !important;overflow:hidden;margin-right:12px;
+  box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--tc,var(--rule-2));vertical-align:middle;
+  font-size:10px;color:#0a0a0a}
+.ep-tbl.stand .crest img{padding:4px;box-sizing:border-box;border-radius:50%}
+.ep-tbl.stand tbody td:nth-child(2){font-size:14px;font-weight:700;letter-spacing:.01em}
+.ep-tbl.stand .tname-cell a{color:var(--ink)}
+.ep-tbl.stand tbody tr:hover td{background:color-mix(in srgb,var(--tc,var(--lume)) 9%,var(--panel))}
+.ep-tbl.stand tbody tr:hover .tname-cell a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+/* the points: the figure the table is ordered by */
+.ep-tbl.stand tbody td.pts{font-family:var(--f-score);font-size:18px;color:var(--ink);
+  background:color-mix(in srgb,var(--ink) 5%,var(--panel))}
+.ep-tbl.stand tbody tr:hover td.pts{background:color-mix(in srgb,var(--tc,var(--lume)) 14%,var(--panel))}
+/* the streak */
+.ep-tbl.stand td.streak{white-space:nowrap}
+.stk{display:inline-flex;align-items:center;gap:3px;vertical-align:middle}
+.stk i{position:relative;display:block;width:13px;height:13px}
+.stk.w i{background:var(--good,#1f9d55)}
+.stk.l i{background:var(--bad,#c62828)}
+/* a tick for a win, a cross for a loss, drawn in white on the block */
+.stk.w i::after{content:"";position:absolute;left:4px;top:1.5px;width:3.5px;height:7px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.stk.l i::before,.stk.l i::after{content:"";position:absolute;left:5.5px;top:2px;width:2px;height:9px;background:#fff;transform:rotate(45deg)}
+.stk.l i::after{transform:rotate(-45deg)}
+.stk b{margin-left:3px;font-family:var(--f-micro);font-size:8px;font-weight:400;color:var(--ink-2)}
+@media (max-width:720px){
+  .ep-tbl.stand tbody td{padding:8px 9px}
+  .ep-tbl.stand .crest{width:26px;height:26px;margin-right:9px}
+  .stk i{width:11px;height:11px}
+  .stk.w i::after{left:3.5px;top:1px;width:3px;height:6px}
+  .stk.l i::before,.stk.l i::after{left:4.5px;top:1.5px;height:8px}
+}

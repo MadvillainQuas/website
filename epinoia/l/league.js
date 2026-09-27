@@ -381,7 +381,7 @@ async function renderStandingsInto(pane, competition) {
 
 function groupTable(rows) {
   const wrap = el('div', 'ep-tw');
-  const t = el('table', 'ep-tbl'); t.style.minWidth = '620px';
+  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '620px';
   const thead = el('thead'); const hr = el('tr');
   ['#', 'TEAM', 'GP', 'W', 'L', 'PF', 'PA', 'DIFF', 'PTS', 'STREAK']
     .forEach(h => hr.appendChild(el('th', null, h)));
@@ -390,7 +390,8 @@ function groupTable(rows) {
   const tb = el('tbody');
   rows.forEach(r => {
     const tr = el('tr');
-    tr.appendChild(el('td', null, r.rank ?? ''));
+    if (r.teams && r.teams.colour) tr.style.setProperty('--tc', r.teams.colour);
+    tr.appendChild(el('td', 'rk', r.rank ?? ''));
     tr.appendChild(teamCell(r.teams));
 
     [r.gp, r.w, r.l, r.pts_for, r.pts_against].forEach(v => tr.appendChild(el('td', null, v)));
@@ -398,7 +399,7 @@ function groupTable(rows) {
     /* A DOCKED TOTAL HAS TO SAY SO. Without the marker the points column
        simply does not follow from the W-L beside it, and the first thing
        anybody does with a table that does not add up is assume it is broken. */
-    const pts = el('td', null, r.league_points); pts.style.color = 'var(--ink)';
+    const pts = el('td', 'pts', r.league_points);
     if (r.deducted_points) {
       const d = el('span', 'dock', ' −' + r.deducted_points);
       d.title = r.deducted_points + ' points deducted';
@@ -439,9 +440,22 @@ function diffCell(diff) {
   return d;
 }
 
+/* THE STREAK AS BLOCKS: one small square per game of the run, ticked green for a win, crossed red for
+   a loss, up to five and then the count ("W7" is five ticks and +2). The text stays for a screen reader
+   and on hover. A club with no run yet gets an empty cell. */
 function streakCell(streak) {
-  const st = el('td', null, streak || '');
-  st.style.color = (streak || '').startsWith('W') ? 'var(--good)' : 'var(--bad)';
+  const st = el('td', 'streak');
+  const m = /^([WL])\s*(\d+)$/i.exec(String(streak || '').trim());
+  if (!m) { st.textContent = streak || ''; return st; }
+  const win = m[1].toUpperCase() === 'W', n = +m[2];
+  const label = (win ? 'Won ' : 'Lost ') + n + ' in a row';
+  const box = el('span', 'stk ' + (win ? 'w' : 'l'));
+  box.title = label;
+  box.setAttribute('role', 'img');
+  box.setAttribute('aria-label', label);
+  for (let i = 0; i < Math.min(n, 5); i++) box.appendChild(el('i'));
+  if (n > 5) box.appendChild(el('b', null, '+' + (n - 5)));
+  st.appendChild(box);
   return st;
 }
 
@@ -502,7 +516,7 @@ function recordCells(tr, w, l, gp, ST, strong) {
 
 function conferenceTable(rows, ST) {
   const wrap = el('div', 'ep-tw');
-  const t = el('table', 'ep-tbl'); t.style.minWidth = '640px';
+  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '640px';
   const thead = el('thead');
   const top = el('tr');
   [['', 2], ['CONFERENCE', 2], ['OVERALL', 2], ['', 4]].forEach(([h, n]) => {
@@ -516,7 +530,8 @@ function conferenceTable(rows, ST) {
   const tb = el('tbody');
   rows.forEach(r => {
     const tr = el('tr');
-    tr.appendChild(el('td', null, r.rank ?? ''));
+    if (r.teams && r.teams.colour) tr.style.setProperty('--tc', r.teams.colour);
+    tr.appendChild(el('td', 'rk', r.rank ?? ''));
     tr.appendChild(teamCell(r.teams));
     recordCells(tr, r.conf_w, r.conf_l, r.conf_gp, ST, true);
     recordCells(tr, r.w, r.l, r.gp, ST, false);
@@ -532,7 +547,7 @@ function conferenceTable(rows, ST) {
 
 function overallTable(rows, ST) {
   const wrap = el('div', 'ep-tw');
-  const t = el('table', 'ep-tbl'); t.style.minWidth = '680px';
+  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '680px';
   const thead = el('thead'); const hr = el('tr');
   ['#', 'TEAM', 'CONF.', 'W-L', 'PCT', 'CONF. W-L', 'PF', 'PA', 'DIFF', 'STREAK']
     .forEach(h => hr.appendChild(el('th', null, h)));
@@ -541,7 +556,8 @@ function overallTable(rows, ST) {
   const tb = el('tbody');
   rows.forEach(r => {
     const tr = el('tr');
-    tr.appendChild(el('td', null, r.overall_rank));
+    if (r.teams && r.teams.colour) tr.style.setProperty('--tc', r.teams.colour);
+    tr.appendChild(el('td', 'rk', r.overall_rank));
     tr.appendChild(teamCell(r.teams));
     tr.appendChild(el('td', null, [r.group_name, r.division_name].filter(Boolean).join(' · ')));
     recordCells(tr, r.w, r.l, r.gp, ST, true);
