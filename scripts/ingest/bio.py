@@ -17,6 +17,7 @@ that key alone. Everything else goes through the shared matcher (matching.match_
 from __future__ import annotations
 
 import re
+import time
 from datetime import date
 from typing import Callable, Iterable, Optional
 
@@ -24,6 +25,7 @@ import matching
 
 MIN_AGE, MAX_AGE = 14, 50          # a player's age as a feed states it; outside this the feed is wrong about him, not right about something rare
 ADULT_AT = 18
+WRITE_GAP_S = 0.25                 # a pause after every write: a first run is a few thousand small updates, and the database is a small one
 VERBOSE = False                    # bio_sync --verbose: also print every feed row that matched nobody
 
 
@@ -233,6 +235,7 @@ def sync(sb, players: list, records: Iterable[dict], *, dry: bool, has_dob: bool
         log(f"    + {p['first_name']} {p['last_name']}: {show}")
         if not dry:
             sb.patch("players", f"id=eq.{p['id']}", patch)
+            time.sleep(WRITE_GAP_S)
         for k, v in patch.items():
             ex[k] = v                                        # what a later record of the run sees
         st["written"] += 1

@@ -18,6 +18,7 @@ from datetime import date
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import bio  # noqa: E402
+bio.WRITE_GAP_S = 0        # the tests do not wait
 import bio_sources  # noqa: E402
 
 PASS = FAIL = 0
