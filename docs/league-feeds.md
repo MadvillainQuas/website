@@ -581,3 +581,56 @@ ABA 2025-26 226 regular + 22 play-off games; U19 2025-26 24 + 12.
   are left out; the box and the play-by-play agree exactly.
 - A bare "(defensive)" / "(offensive)" line is the club's rebound; a bare other bracket ("(outofbounds)")
   its turnover. "turnover (offensive)" on a player is an offensive foul.
+
+## Denmark: Basketligaen and Kvinde Basketligaen
+
+Added 2026-09-27. Test `scripts/ingest/dbl_test.py` (35 checks). Both are FIBA LiveStats; the games are the
+ordinary data.json path (box, play-by-play, shots, stints). Source codes DBL (a regular-season row and a
+play-off row) and KBL. League slugs `basketligaen` and `kvinde-basketligaen`, country DK (`brand/flags/dk.svg`).
+
+### basketligaen (men) - basketligaen.dk
+
+A Sportality single-page app in front of a JSON API; the site's robots.txt publishes no rules (every path
+answers with the app). Genius's hosted schedule for the league's client, DBBF, is EMPTY, and the site links a
+game to LiveStats ("Tag mig derhen" on the game centre) only once the operator opens it, but **the API names
+the LiveStats game id of every game from the day the schedule exists**, so there is nothing to wait for and no
+game centre to refresh: `gameInfo.extId` of `/api/sports-v2/game-info/<gameUuid>` (all 132 games of 2026-27, all
+different; on the saved post-game page the webcast link `webcast/DBBF/2868197` is the id the API gave for that
+game). Adapter: `adapters/fiba_site_schedule.py`, site `basketligaen`.
+
+    GET /api/sports-v2/season-series-game-types-filter     seasons (code 2026 = 2026/2027), series (DBL), game types (regular = Grundspil)
+    GET /api/sports-v2/game-schedule?seasonUuid=&seriesUuid=&gameTypeUuid=&completeSeason=all&homeAway=all&allGames=all
+                                                            uuid, rawStartDateTime (UTC), state pre-game / post-game, both clubs (code, names, icon), venue
+    GET /api/sports-v2/game-info/<gameUuid>                gameInfo.extId = the LiveStats id, arenaName
+
+- A fixture is keyed on its LiveStats id, so the game keeps one identity from the first sighting to the final.
+- The id is asked for once per game (the schedule list does not carry it) and kept in
+  `data/feed/DBL/idmap.json` (committed with the 132 already read), so a pass after the first is one request.
+- Not yet scored, `data.json` answers 403 and the fetch returns None: the next poll asks again. The live lane
+  covers it (a `FibaLiveStatsAdapter` subclass).
+- The feed's club codes are typed by an operator per game ("Hol" here, "HOL" on the site); the fetch replaces
+  them (and the name) with the site's, so one club is never filed under two codes.
+- The play-off source finds nothing until the site lists a game type that is not `regular` in the filter. Check
+  the filter when the play-offs are near: if the type appears under another key the read has to follow.
+- Series 2025-26 and earlier are on the site under their own season uuids; only the current season is read
+  unless `adapter_config.season` says otherwise.
+
+### kvinde-basketligaen (women) - kvindebasketligaen.dk
+
+A WordPress site embedding Genius's hosted widget (`?WHurl=/competition/49175/...`), on Genius tenant **DAM**.
+The hosted schedule is server-rendered: `https://hosted.wh.geniussports.com/DAM/en/schedule` lists the current
+competition (63 games in 2026-27), each block's id (`extfix_<id>`) is the LiveStats id and its time is
+Copenhagen time. The same path as SLB and WBBL: source `KBL`, adapter `fiba_livestats`, `client_code DAM`,
+`timezone Europe/Copenhagen`, `client_is_league` (the tenant hosts nothing but this league; its archive is
+"Dameligaen 2009/2010 ...") and `sync_clubs`.
+
+- Feed codes differ from the schedule's ("Sko" v "Sir" for Skovbakken Sirens); clubs match on the name.
+- One hosted request straight after another once answered with an empty page in a dry run; the next pass read
+  it (the run only reports a pass with no games, and the following pass fills it in).
+
+### gotchas
+
+- Times: the men's API is UTC already; the women's hosted page is Copenhagen time (CEST/CET), converted.
+- `DBBF` is the men's LiveStats client, `DAM` the women's. Only `DAM` is in `epinoia/livestats-clients.json`, which
+  serves `fiba_livestats` sources; a game fed through `fiba_site_schedule` (the men's, like Kosovo's) has no
+  LiveStats link on its game page.

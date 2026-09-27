@@ -142,6 +142,31 @@ def kosovo_rows(page: str) -> list[dict]:
     return out
 
 
+# basketligaen.dk (Denmark's men's league, on FIBA LiveStats, client DBBF). The site is a Sportality
+# single-page app in front of a plain JSON API, and robots.txt on it publishes no rules (every path
+# answers with the app itself). Genius's hosted schedule for DBBF is EMPTY (0 bytes), and the site
+# links a game to LiveStats only once the operator opens it - but the API already names the LiveStats
+# game id of EVERY game, from the day the schedule exists: gameInfo.extId of
+# GET /api/sports-v2/game-info/<gameUuid> (all 132 games of 2026-27 had one on 2026-09-27, all
+# different, and a played game's id opens its box and play-by-play at once). So nothing here waits for
+# a link or watches a game centre: the id is read once per game and remembered.
+#   GET /season-series-game-types-filter      the seasons, the series and the game types (Grundspil = regular)
+#   GET /game-schedule?seasonUuid&seriesUuid&gameTypeUuid&completeSeason=all&homeAway=all&allGames=all
+#                                              every game of a game type: uuid, UTC start, state, both clubs
+#   GET /game-info/<gameUuid>                 gameInfo.extId = the LiveStats id, arenaName
+DBL_SITE = "https://www.basketligaen.dk"
+DBL_API = DBL_SITE + "/api/sports-v2"
+
+
+def _fold(s) -> str:
+    """A club name as letters and digits only, accents dropped: the feed and the site agree on the club, not
+    on the spelling of its punctuation ("Holbæk-Stenhus" / "Holbaek Stenhus")."""
+    import unicodedata
+    t = str(s or "").replace("æ", "ae").replace("Æ", "AE").replace("ø", "o").replace("Ø", "O").replace("å", "a").replace("Å", "A")
+    t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "", t)
+
+
 # Puls Basketu (pulsbasketu.com): the Polish federation's leagues below the PLK, from the site's own
 # JSON API. robots.txt on pulsbasketu.com allows every path to every agent; api.pulsbasketu.com
 # publishes none (404), so nothing is disallowed there either.
@@ -257,6 +282,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._puls_fetch(str(external_id), config)
         if site == "kosovo":
             return self._kos_fetch(str(external_id), config)
+        if site == "basketligaen":
+            return self._dbl_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -272,6 +299,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._puls(config)
         if site == "kosovo":
             return self._kos(config)
+        if site == "basketligaen":
+            return self._dbl(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
 
@@ -379,6 +408,139 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                     raw["tm"][tno]["code"] = _kos_slug(row[side])
                     raw["tm"][tno]["name"] = row[side]
         b = self.bundle_from_raw(raw, key, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    # ------------------------------------------------------------ basketligaen.dk ---
+    # THE DANISH MEN'S LEAGUE. A fixture is keyed on its LiveStats id (gameInfo.extId), so the ordinary
+    # data.json fetch serves it and the game keeps one identity from the first sighting to the final. The id
+    # is asked for once per game (the schedule list does not carry it) and kept in data/feed/DBL/idmap.json,
+    # so a pass after the first is one schedule request. A game with no id yet is left out until it has one.
+    # Not yet scored, data.json answers 403 and fetch() returns None: the next poll asks again.
+    _dbl_cache: dict = {}            # "filter" / "clubs" -> (fetched_at, payload) - shared by every source row
+
+    def _dbl_json(self, url: str):
+        gap = time.time() - getattr(self, "_last_page", 0.0)
+        if gap < self.min_request_gap_s:
+            time.sleep(self.min_request_gap_s - gap)
+        self._last_page = time.time()
+        r = requests.get(url, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=40)
+        if r.status_code in (400, 404):
+            return None
+        r.raise_for_status()
+        return r.json()
+
+    def _dbl_filter(self):
+        at, cached = FibaSiteScheduleAdapter._dbl_cache.get("filter", (0.0, None))
+        if cached is None or time.time() - at > 300:
+            cached = self._dbl_json(DBL_API + "/season-series-game-types-filter")
+            if cached:
+                FibaSiteScheduleAdapter._dbl_cache["filter"] = (time.time(), cached)
+        return cached
+
+    def _dbl_schedule(self, config: dict) -> tuple[list, list, Optional[str]]:
+        """(games, clubs, why-not): the season's games of the configured stage, and the site's club list."""
+        stage = (config.get("stage") or "regular").strip().lower()
+        want = _start_year(config.get("season") or "")
+        filt = self._dbl_filter()
+        if not filt:
+            return [], [], "the season filter could not be read"
+        series = config.get("series_uuid") or next(
+            (x["uuid"] for x in filt.get("series") or [] if x.get("code") == "DBL"), None) \
+            or next((x["uuid"] for x in filt.get("series") or []), None)
+        season = next((x["uuid"] for x in filt.get("season") or [] if str(x.get("code")) == str(want)), None)
+        if not (series and season):
+            return [], [], f"no {want}/{want + 1} season on the site"
+        types = [t for t in filt.get("gameType") or [] if (t.get("code") == "regular") == (stage == "regular")]
+        games, clubs = [], {}
+        for t in types:
+            reply = self._dbl_json(f"{DBL_API}/game-schedule?seasonUuid={season}&seriesUuid={series}&gameTypeUuid={t['uuid']}"
+                                   "&completeSeason=all&homeAway=all&allGames=all") or {}
+            for g in reply.get("gameInfo") or []:
+                games.append(dict(g, _gt=t.get("code")))
+            for c in reply.get("teamList") or []:
+                clubs[c.get("uuid")] = c
+        return games, list(clubs.values()), None
+
+    def _dbl_clubs(self, config: dict) -> list:
+        """The site's clubs (uuid, code, names), cached five minutes: what a game's feed names are read against."""
+        at, cached = FibaSiteScheduleAdapter._dbl_cache.get("clubs", (0.0, None))
+        if cached is None or time.time() - at > 300:
+            games, clubs, _ = self._dbl_schedule(config)
+            seen = {}
+            for g in games:
+                for side in ("homeTeamInfo", "awayTeamInfo"):
+                    t = g.get(side) or {}
+                    if t.get("uuid"):
+                        seen[t["uuid"]] = t
+            cached = list(seen.values())
+            if cached:
+                FibaSiteScheduleAdapter._dbl_cache["clubs"] = (time.time(), cached)
+        return cached or []
+
+    def _dbl(self, config: dict) -> list[ScheduleGame]:
+        games, _clubs, why = self._dbl_schedule(config)
+        if why:
+            print(f"     DBL: {why}")
+            return []
+        stage = (config.get("stage") or "regular").strip().lower()
+        known = self._idmap(config)
+        out, changed, no_id = [], False, 0
+        for g in games:
+            uuid = g.get("uuid")
+            ext = known.get(uuid)
+            if not ext:
+                info = self._dbl_json(f"{DBL_API}/game-info/{uuid}") or {}
+                ext = str((info.get("gameInfo") or {}).get("extId") or "").strip()
+                if not ext.isdigit():
+                    no_id += 1
+                    continue
+                known[uuid] = ext
+                changed = True
+            h, a = g.get("homeTeamInfo") or {}, g.get("awayTeamInfo") or {}
+            hn, an = h.get("names") or {}, a.get("names") or {}
+            state = str(g.get("state") or "").lower().replace("_", "-")
+            status = "final" if state.startswith("post") else ("live" if "live" in state else "scheduled")
+            rnd = (g.get("roundLabel") or "").strip() or (f"Round {g['roundNumber']}" if g.get("roundNumber") else "")
+            tip = g.get("rawStartDateTime")                    # UTC already ("2026-09-17T17:00:00.000Z"): the platform's own form
+            try:
+                tip = datetime.strptime(tip, "%Y-%m-%dT%H:%M:%S.%fZ").strftime("%Y-%m-%dT%H:%M:%SZ")
+            except (TypeError, ValueError):
+                pass
+            out.append(ScheduleGame(
+                external_id=ext, home_name=hn.get("short") or hn.get("full") or "", away_name=an.get("short") or an.get("full") or "",
+                tipoff_at=tip, status=status,
+                extra={"home_code": h.get("code"), "away_code": a.get("code"), "home_logo": h.get("icon"), "away_logo": a.get("icon"),
+                       "venue": (g.get("venueInfo") or {}).get("name"), "round": rnd, "stage": stage}))
+        if changed:
+            self._save_idmap(config, known)
+        print(f"     DBL {stage}: {len(out)} games ({sum(1 for x in out if x.status == 'final')} final)"
+              + (f", {no_id} without a LiveStats id yet" if no_id else ""))
+        return out
+
+    def _dbl_fetch(self, external_id: str, config: dict):
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=external_id))
+        if not raw or "tm" not in raw:
+            return None                    # not scored yet (403 before the operator opens it)
+        # THE SITE NAMES THE CLUBS: the feed's codes are typed by an operator per game ("Hol" here, "HOL" on
+        # the site; "Sko" for a club the site calls SKO), which would file one club under two codes.
+        try:
+            clubs = self._dbl_clubs(config)
+        except Exception:
+            clubs = []
+        for tno in ("1", "2"):
+            t = raw["tm"].get(tno)
+            if not isinstance(t, dict) or not clubs:
+                continue
+            keys = {_fold(t.get("name")), _fold(t.get("shortName")), _fold(t.get("code"))} - {""}
+            hit = next((c for c in clubs if keys & {_fold((c.get("names") or {}).get(k)) for k in ("short", "full", "long", "code")} - {""}
+                        or _fold(t.get("code")) == _fold(c.get("code"))), None)
+            if hit:
+                t["code"] = hit.get("code") or t.get("code")
+                t["name"] = (hit.get("names") or {}).get("short") or t.get("name")
+        b = self.bundle_from_raw(raw, external_id, config)
         b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]

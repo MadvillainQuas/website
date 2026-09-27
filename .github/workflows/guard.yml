@@ -616,6 +616,11 @@ jobs:
         # appears, a forfeit and an undated game left out, and a real game reconciled end to end
         run: python scripts/ingest/kosovo_test.py
 
+      - name: Basketligaen and Kvinde Basketligaen on FIBA LiveStats
+        # men: fiba_site_schedule site "basketligaen" (the site's JSON API names every game's LiveStats id, kept once,
+        # the site's club codes over the operator's); women: the Genius-hosted schedule on tenant DAM
+        run: python scripts/ingest/dbl_test.py
+
       - name: BNXT League (Belgium + the Netherlands) from the league's own API
         # bnxt.py: end-year seasons, one request per phase, Supercups never read as the league's, the
         # national play-offs apart, a purged game not fetched, and the play-by-play translator on the
