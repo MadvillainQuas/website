@@ -20,6 +20,13 @@ What each source gives, found by looking, not assumed (2026-09-27):
   liga-endesa            each player's page on acb.com (date, height; no weight): a request per player still missing something
   the six FEB leagues    each club's page on the federation site: date, height, weight where given
   b-league-*, w-league-* the leagues' own player pages, opened only for players already known by the league's player id
+  korisliiga, naisten-korisliiga, i-divisioona-a / -b
+                         TorneoPal's getTeams + getTeam (a roster per club): birth YEAR as printed, height (weight is 0 throughout)
+  slovak-sbl             each club's Súpiska (Roster) tab: date of birth; height and weight from the player's page, opened per new player
+  nbl-bulgaria           the league site's player list filtered by club (Cyrillic, transliterated as the game feed is); date, height,
+                         weight from the player's page, opened per new player
+  greek-elite-league     stats.basket.gr's player page, opened only for players already known by the feed's own player GUID and
+                         still without a date: date of birth only (no height or weight anywhere on the site)
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
 
 A league that is not here has no reader yet; docs/player-bio.md lists what each remaining one publishes.
@@ -455,6 +462,140 @@ def _wjbl_page(pid: str) -> dict:
     return {"birth": d.get("player_birthday"), "height_cm": d.get("player_height"), "weight_kg": d.get("player_weight")}
 
 
+# ------------------------------------------------------------ Finland (TorneoPal) ---
+def torneopal(category: int) -> Callable[..., Iterator[dict]]:
+    """basket.fi's result service: getTeams lists a league's clubs, getTeam a club's registered players with the birth YEAR the service
+    prints (it has no date), a height (0 when not given) and a weight (0 throughout, 2026-27). The game feed is Sportradar's EUI, whose
+    person ids are not TorneoPal's, so players are matched by name and club (TorneoPal and the EUI name the clubs identically)."""
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        from adapters.basketfi import TORNEOPAL, TP_HEADERS
+        y = _season_start(today)
+        for year in (y, y - 1):                          # this season's rosters first; last season's catches a club not registered yet
+            comp = f"huki{year % 100:02d}{(year + 1) % 100:02d}"
+            teams = (get_json(f"{TORNEOPAL}/getTeams", {"competition_id": comp, "category_id": category}, TP_HEADERS) or {}).get("teams") or []
+            got = 0
+            for t in teams:
+                team = (get_json(f"{TORNEOPAL}/getTeam", {"team_id": t["team_id"], "competition_id": comp, "category_id": category},
+                                 TP_HEADERS) or {}).get("team") or {}
+                for p in team.get("players") or []:
+                    if str(p.get("inactive") or "0") != "0":
+                        continue
+                    by = str(p.get("birthyear") or "")
+                    got += 1
+                    yield {"first": p.get("first_name"), "last": p.get("last_name"), "team": team.get("team_name") or t.get("team_name"),
+                           "number": p.get("shirt_number"), "height_cm": p.get("height"), "weight_kg": p.get("weight"),
+                           "birth_year": int(by) if re.fullmatch(r"(19|20)\d{2}", by) else None,
+                           "label": f"{p.get('first_name')} {p.get('last_name')}"}
+            log(f"     TorneoPal {comp}/{category}: {got} players on {len(teams)} clubs")
+    return read
+
+
+# ------------------------------------------------------------------- Slovak SBL ---
+SBL = "https://sbl.slovakbasket.sk"
+_SBL_SEED = "11641"                                       # any season's tournament id: its page carries the whole season menu
+
+
+def sbl(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+    """The player page gives an AGE (not used: a year from an age is a year out half the time), height and weight; the club's Súpiska
+    (Roster) tab gives every player's date of birth. So: the roster tab per club, and the player's page only for a player still
+    missing height or weight."""
+    menu = get_text(f"{SBL}/sk/stats/match-list/{_SBL_SEED}/tipos-slovenska-basketbalova-liga") or ""
+    seasons = {_html.unescape(lbl): sid for sid, lbl in re.findall(r'<option[^>]*value="(\d+)"[^>]*>\s*([^<]*?)\s*</option>', menu)}
+    y = _season_start(today)
+    for year in (y, y - 1):
+        sid = next((v for k, v in seasons.items() if f"{year}/{year + 1}" in k), None)
+        if not sid:
+            continue
+        page = get_text(f"{SBL}/sk/stats/teams/{sid}/tipos-slovenska-basketbalova-liga") or ""
+        clubs = list(dict.fromkeys(re.findall(r'href="(/sk/stats/teams/' + sid + r'/[^"/]+/team/\d+/[^"/?#]+)"', page)))
+        got = 0
+        for path in clubs:
+            roster = get_text(f"{SBL}{path}/Roster") or ""
+            tm = re.search(r"<title>\s*([^<|]+?)\s*\|", roster)
+            club = _txt(tm.group(1)) if tm else _title(path.rsplit("/", 1)[-1])
+            for card in roster.split('class="p-name"')[1:]:
+                m = re.search(r'<a href="(/sk/stats/players/\d+/[^"]*/player/(\d+)/[^"]*)">(.*?)<span class="p-lastname">(.*?)</span>', card, re.S)
+                if not m:
+                    continue
+                born = re.search(r'Narodený</td>\s*<td[^>]*>\s*([\d.\s]+?)\s*</td>', card)
+                first, last = _txt(m.group(3)), _txt(m.group(4)).title()
+
+                def detail(url=m.group(1)):
+                    t = _txt(get_text(SBL + url) or "")
+                    h, w = re.search(r"Výška\s*(\d{3})\s*cm", t), re.search(r"Váha\s*(\d{2,3})\s*kg", t)
+                    return {"height_cm": h.group(1) if h else None, "weight_kg": w.group(1) if w else None}
+                got += 1
+                yield {"first": first, "last": last, "team": club, "birth": born.group(1) if born else None, "detail": detail,
+                       "label": f"{first} {last}"}
+        log(f"     SBL {year}/{year + 1}: {got} players on {len(clubs)} clubs")
+
+
+# ----------------------------------------------------------------- NBL Bulgaria ---
+BGNBL = "https://nbl.basketball.bg"
+
+
+def bgnbl(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+    """The league site's player search, one club at a time (the list names no club otherwise); the player's own page gives date,
+    height and weight. All in Cyrillic: names and clubs are transliterated by the same standard as the game feed (names.bulgarian_latin)."""
+    import names as _names
+    tr = _names.bulgarian_latin
+    menu = get_text(f"{BGNBL}/players") or ""
+    seasons = {lbl.strip(): sid for sid, lbl in re.findall(r'<option value="(\d+)"[^>]*>\s*([^<]+)', menu)}
+    y = _season_start(today)
+    for year in (y, y - 1):
+        sid = seasons.get(f"{year}/{year + 1}")
+        if not sid:
+            continue
+        q = f"{BGNBL}/players.inc.php?bg_id=1&act=&season={sid}&age_id=&gender=&region_id=&position_id=&player_id=&team_id="
+        clubs = dict(re.findall(r"dropdown_slct\(this, '(\d+)', '([^']+)'\)", (get_text(q) or "").split('id="position_id"')[0]))
+        got = 0
+        for tid, club in clubs.items():
+            for href, name in re.findall(r'<a href="(player-\d+-[^"]*)" class="itm">.*?<div class="name">(.*?)</div>', get_text(q + tid) or "", re.S):
+                first, _, last = (_html.unescape(x).strip() for x in re.sub(r"\s+", " ", name).partition("<br>"))
+
+                def detail(href=href):
+                    t = _txt(get_text(f"{BGNBL}/{href}") or "")
+                    b = re.search(r"Рождена дата\s*(\d{4}-\d{2}-\d{2})", t)
+                    h, w = re.search(r"Ръст\s*(\d{3})\s*см", t), re.search(r"Тегло\s*(\d{2,3})\s*кг", t)
+                    return {"birth": b.group(1) if b else None, "height_cm": h.group(1) if h else None, "weight_kg": w.group(1) if w else None}
+                got += 1
+                yield {"first": tr(first), "last": tr(last), "team": tr(_html.unescape(club)), "detail": detail, "label": tr(f"{first} {last}")}
+        log(f"     NBL Bulgaria {year}/{year + 1}: {got} players on {len(clubs)} clubs")
+
+
+# ------------------------------------------------------------ Greek Elite League ---
+GREL_PLAYER = "https://stats.basket.gr/{y}-{y1}/elite-league/playerdetails/id/{gid}"
+_GUID = re.compile(r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}")
+
+
+def grel(today: date | None = None, log: Callable = print, players: list | None = None, **_) -> Iterator[dict]:
+    """The feed keys a player by stats.basket.gr's own GUID, which is the address of his page; the page gives a date of birth and
+    nothing else (no height, no weight). A page is ~0.4 MB gzipped, and because height and weight never fill, bio.sync would reopen
+    every page every week: so a page is offered only for a player still without a date (a minor's year already on file is the most
+    that will ever be written for him)."""
+    y = _season_start(today)
+    on = (today or date.today()).year
+    n = 0
+    for p in players or []:
+        row = p.get("row") or {}
+        if row.get("birth_date"):
+            continue
+        yr = row.get("birth_year")
+        if yr and ("birth_date" not in row or yr + 18 > on):     # no date column yet, or a minor: the year is all there is
+            continue
+        gid = next((k.rsplit(":", 1)[-1] for k in sorted(p["keys"]) if _GUID.fullmatch(k.rsplit(":", 1)[-1])), None)
+        if not gid:
+            continue
+
+        def detail(gid=gid):
+            h = get_text(GREL_PLAYER.format(y=y, y1=y + 1, gid=gid), {"Accept": "text/html"}) or ""
+            b = re.search(r"Ημερ\.Γεν\.:\s*</div>\s*<div[^>]*>\s*<b>\s*(\d{1,2}/\d{1,2}/\d{4})", h)
+            return {"birth": b.group(1) if b else None}
+        n += 1
+        yield {"key": gid, "label": f"{p['first_name']} {p['last_name']}", "detail": detail}
+    log(f"     Greek Elite League: {n} players without a date, a page each")
+
+
 # Keyed by the league's slug (config/ingest-sources.json league_slug).
 READERS: dict = {
     "euroleague": euroleague("E"),
@@ -486,6 +627,13 @@ READERS: dict = {
     "b-league-one": by_player_page(_bleague_page),
     "w-league-premier": by_player_page(_wjbl_page),
     "w-league-future": by_player_page(_wjbl_page),
+    "korisliiga": torneopal(4),
+    "naisten-korisliiga": torneopal(1),
+    "i-divisioona-a": torneopal(2),
+    "i-divisioona-b": torneopal(29461),
+    "slovak-sbl": sbl,
+    "nbl-bulgaria": bgnbl,
+    "greek-elite-league": grel,
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).
