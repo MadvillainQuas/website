@@ -83,7 +83,7 @@ console.log('\nthe page');
   ok('Records sits under the Stars and above the Games', stars > 0 && recs > stars && games > recs);
   ok('the page loads records.js', /<script src="records\.js\?v=\d+" defer><\/script>/.test(html));
   const home = rd('epinoia', 'home.js');
-  ok('home.js draws it with the rest of the league page, not behind a members wall', /wall\.walled \? null : records\(\)/.test(home));
+  ok('home.js draws it with the rest of the league page, not behind a members wall', /wall\.walled \? null : records\(clubsP\)/.test(home));
   const nav = rd('epinoia', 'nav.js');
   ok('nav.js puts a skip key on each section but the last', /tt-skip/.test(nav) && /if \(!next\) \{ if \(b\) b\.remove\(\); return; \}/.test(nav));
   ok('the key moves focus to the section it lands on', /to\.focus\(\{ preventScroll: true \}\)/.test(nav));

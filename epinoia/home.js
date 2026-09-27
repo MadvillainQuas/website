@@ -902,16 +902,18 @@ async function stars() {
    The season's single-game bests, a player's and a team's, under the Stars
    (epinoia/records.js). The season is the one being shown, so a past season's
    page shows that season's records. Hidden when the season has no finals. */
-async function records() {
+async function records(clubsP) {
   const sec = $('#recordsSec');
   const R = window.EpinoiaRecords;
   if (!sec || !LEAGUE || !R) return;
   const season = await seasonNow();
   const comps = season ? season.comps.map(c => c.id) : [];
   if (!comps.length) return;
+  /* the clubs the Clubs grid read, with the crests it found approved; read here only without it */
   const [data, teams] = await Promise.all([
     R.load({ comps }),
-    api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour,colour_2').catch(() => [])
+    Promise.resolve(clubsP).catch(() => null).then(ts => (ts && ts.length) ? ts :
+      api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour,colour_2,logo_path').catch(() => []))
   ]);
   if (!data) return;
   const teamsById = new Map((teams || []).map(t => [t.id, t]));
@@ -1776,7 +1778,7 @@ function renumber() {
       gamesP,
       clubsP,
       wall.walled ? null : stars().catch(() => null),
-      wall.walled ? null : records().catch(() => null),
+      wall.walled ? null : records(clubsP).catch(() => null),
       wall.walled ? null : news().catch(() => null),
       wall.walled ? null : teamOfTheYear().catch(() => null),
       socialsP

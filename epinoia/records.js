@@ -139,6 +139,7 @@ async function playerRecords(D, comps, byId) {
   const named = r => { const m = meta[r.pid]; return !!(m && m.slug && m.name && m.name !== 'Player'); };
 
   const out = [];
+  const photos = {};
   PLAYER.forEach((c, i) => {
     const rec = settle(lists[i], named);
     if (!rec) return;
@@ -149,6 +150,24 @@ async function playerRecords(D, comps, byId) {
                game: g, teamId: side === 0 ? g.home_team_id : g.away_team_id,
                oppId: side === 0 ? g.away_team_id : g.home_team_id, side });
   });
+  /* THE HOLDERS' PHOTOGRAPHS, in one request. The media row is embedded through the foreign
+     key, so an unapproved or unconsented photograph is simply not in the answer; an approved
+     upload beats a pasted address, and an insecure address is never drawn. */
+  const holders = [...new Set(out.map(r => r.holder.pid))];
+  if (holders.length) {
+    try {
+      const cfg = root.EPINOIA_CONFIG || {};
+      const U = root.EpinoiaUpload;
+      (await D.get('players?id=' + inList(holders) + '&select=id,photo_url,media:photo_media_id(storage_path)') || []).forEach(p => {
+        const path = p.media && p.media.storage_path;
+        const stored = path ? (U && U.publicUrl ? U.publicUrl(cfg, path)
+          : (cfg.supabaseUrl || '') + '/storage/v1/object/public/media-public/' + path) : null;
+        const url = stored || p.photo_url || null;
+        if (url && /^https:\/\//i.test(url)) photos[p.id] = url;
+      });
+    } catch (_) { /* initials all round */ }
+  }
+  out.forEach(r => { r.photo = photos[r.holder.pid] || null; });
   return out;
 }
 
@@ -213,57 +232,91 @@ function teamOf(teamsById, id) {
   return (typeof teamsById.get === 'function' ? teamsById.get(id) : teamsById[id]) || null;
 }
 const shortName = t => (t && (t.short_name || t.name)) || '';
+function initials(name) {
+  const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return '?';
+  return ((w[0][0] || '') + (w.length > 1 ? w[w.length - 1][0] : (w[0][1] || ''))).toUpperCase();
+}
+/* a club's crest: the approved upload the clubs grid already found, else the feed's logo */
+function crestOf(t) {
+  if (!t) return null;
+  if (t.__logo) return t.__logo;
+  return t.logo_path && typeof root.epinoiaLogoUrl === 'function' ? root.epinoiaLogoUrl(t.logo_path) : null;
+}
 
-/* THE RECORD IS THE MARK: the number printed where a club's monogram goes, the
-   category across the band, and underneath who set it, against whom and when.
-   The whole card opens the game it was set in. */
+/* THE RECORD CARD. Its own card, not the stars' plate: a disc on the left with the player's
+   photograph (initials in the club's colours when there is none) or the club's crest, the record
+   in the middle in the scoreboard face with what it counts stacked beside it, and a teletext
+   strip along the foot naming who set it, against whom and when. The club's two colours run
+   down the left edge and wash in behind the number. The whole card opens the game. */
 function card(r, kind, o) {
-  const ST = root.EpinoiaStars;
+  const TC = root.EpinoiaTeamColour;
   const team = teamOf(o.teamsById, r.teamId) || {};
   const opp = teamOf(o.teamsById, r.oppId) || {};
   const m = r.meta || {};
-  const ink = team.colour || m.colour || '#93f2bf';
   const val = (r.cat.signed && r.v > 0 ? '+' : '') + r.v;
   const date = when(r.game.tipoff_at);
   const score = r.pts != null && r.opp != null ? r.pts + '–' + r.opp : '';
-
-  const a = el('a', 'club star rec rec-' + kind);
-  a.href = (o.base || '') + 'game/?g=' + encodeURIComponent(r.game.id);
-  if (ST && ST.paintCard) ST.paintCard(a, ink, team.colour_2);
   const who = kind === 'player' ? (m.name || 'Player') : (team.name || 'Team');
+
+  const a = el('a', 'rc rc-' + kind);
+  a.href = (o.base || '') + 'game/?g=' + encodeURIComponent(r.game.id);
+  const colour = team.colour || m.colour || '#93f2bf';
+  if (TC && TC.card) TC.card(a, colour, team.colour_2);
+  else a.style.setProperty('--ink-c', colour);
   a.setAttribute('aria-label', r.cat.label + ' record: ' + val + ', ' + who +
     (kind === 'player' && team.name ? ' (' + team.name + ')' : '') +
     (opp.name ? ' against ' + opp.name : '') + (score ? ' ' + score : '') +
     ', ' + whenLong(r.game.tipoff_at) + (r.shared > 1 ? ', shared by ' + r.shared : ''));
 
-  const plate = el('div', 'club-plate');
-  plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
-  ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
-  const mark = el('div', 'club-mark');
-  mark.append(el('span', 'club-mono ghost', val), el('span', 'club-mono', val));
-  plate.appendChild(mark);
-  const band = el('div', 'club-band');
-  band.appendChild(el('span', null, r.cat.band));
-  plate.appendChild(band);
-  plate.appendChild(el('div', 'club-grain'));
+  const body = el('span', 'rc-body');
+  body.appendChild(el('span', 'rc-edge'));
+
+  /* the disc */
+  const av = el('span', 'rc-av' + (kind === 'team' ? ' crest' : ''));
+  av.setAttribute('aria-hidden', 'true');
+  const pic = kind === 'player' ? r.photo : crestOf(team);
+  const letters = el('span', 'rc-ini', kind === 'player' ? initials(m.name) : (shortName(team) || initials(team.name)).slice(0, 3).toUpperCase());
+  av.appendChild(letters);
+  if (pic) {
+    const img = el('img');
+    img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+    img.src = pic;
+    img.addEventListener('load', () => av.classList.add('has-img'));
+    img.addEventListener('error', () => img.remove());
+    av.appendChild(img);
+  }
+  body.appendChild(av);
+
+  /* the number, and what it counts beside it */
+  const fig = el('span', 'rc-fig');
+  fig.appendChild(el('span', 'rc-n' + (String(val).length > 2 ? ' long' : ''), val));
+  const k = el('span', 'rc-k');
+  const words = r.cat.band.split(' ');
+  /* two words stack, so the label stays narrow beside the number */
+  (words.length > 1 ? [words[0], words.slice(1).join(' ')] : words).forEach(t => k.append(el('span', 'rc-stat', t)));
+  k.append(el('span', 'rc-blocks'));
+  fig.appendChild(k);
+  body.appendChild(fig);
+
   if (r.shared > 1) {
-    const j = el('span', 'rec-joint', 'JOINT ×' + r.shared);
+    const j = el('span', 'rc-joint', 'JOINT ×' + r.shared);
     j.title = 'Shared by ' + r.shared + (kind === 'player' ? ' players' : ' teams') + '; the first to set it is shown';
-    plate.appendChild(j);
+    body.appendChild(j);
   }
 
-  const foot = el('div', 'club-foot star-foot');
-  const w = el('div', 'star-who');
+  /* the strip */
+  const foot = el('span', 'rc-foot');
   let sub;
-  if (kind === 'player') {
-    sub = (shortName(team) ? shortName(team) + ' ' : '') + 'v ' + (shortName(opp) || 'opponent');
-  } else {
+  if (kind === 'player') sub = (shortName(team) ? shortName(team) + ' ' : '') + 'v ' + (shortName(opp) || 'opponent');
+  else {
     const won = r.pts != null && r.opp != null && r.pts > r.opp;
     sub = (won ? 'beat ' : 'v ') + (shortName(opp) || 'opponent') + (score ? ' ' + score : '');
   }
-  w.append(el('span', 'star-name', who), el('span', 'star-team', sub));
-  foot.append(w, el('span', 'club-ed', date.toUpperCase()));
-  a.append(plate, foot);
+  const w = el('span', 'rc-who');
+  w.append(el('span', 'rc-name', who), el('span', 'rc-sub', sub));
+  foot.append(w, el('span', 'rc-date', date.toUpperCase()));
+  a.append(body, foot);
   return a;
 }
 
@@ -288,7 +341,7 @@ function render(host, data, opts) {
   const sw = el('div', 'rec-sw');
   sw.setAttribute('role', 'group');
   sw.setAttribute('aria-label', 'Records for');
-  const grid = el('div', 'stargrid recgrid');
+  const grid = el('div', 'recgrid');
   grid.setAttribute('aria-live', 'polite');
   const btns = kinds.map(([k, label]) => {
     const b = el('button', 'rec-b', label);

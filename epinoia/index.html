@@ -25,19 +25,19 @@
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Organization", "name": "Epinoia", "url": "https://prophesyscouting.co.uk/epinoia/", "logo": "https://prophesyscouting.co.uk/epinoia/brand/epinoia-app-180.png"}</script>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-app-180.png">
-<script src="appmode.js?v=510" data-water="front"></script>
-<script src="mode.js?v=510"></script>
-<script src="i18n.js?v=510" data-i18n-packs="report"></script>
-<script src="glyphs.js?v=510" defer></script>
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=510">
-<link rel="stylesheet" href="kit/haze.css?v=510">
-<link rel="stylesheet" href="kit/nav.css?v=510">
-<link rel="stylesheet" href="kit/card.css?v=510">
-<link rel="stylesheet" href="kit/fanvote.css?v=510">
-<link rel="stylesheet" href="kit/news.css?v=510">
-<link rel="stylesheet" href="kit/splash.css?v=510">
-<link rel="stylesheet" href="kit/access.css?v=510">
-<link rel="stylesheet" href="kit/sectitle.css?v=510">
+<script src="appmode.js?v=511" data-water="front"></script>
+<script src="mode.js?v=511"></script>
+<script src="i18n.js?v=511" data-i18n-packs="report"></script>
+<script src="glyphs.js?v=511" defer></script>
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=511">
+<link rel="stylesheet" href="kit/haze.css?v=511">
+<link rel="stylesheet" href="kit/nav.css?v=511">
+<link rel="stylesheet" href="kit/card.css?v=511">
+<link rel="stylesheet" href="kit/fanvote.css?v=511">
+<link rel="stylesheet" href="kit/news.css?v=511">
+<link rel="stylesheet" href="kit/splash.css?v=511">
+<link rel="stylesheet" href="kit/access.css?v=511">
+<link rel="stylesheet" href="kit/sectitle.css?v=511">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   /* the platform's wordmark, top left of a league's front page: the way back to HOME */
@@ -260,22 +260,66 @@
   .rec-b.on{background:var(--lume);color:var(--on-accent);cursor:default}
   .rec-b:not(.on):hover{background:color-mix(in srgb,var(--lume) 16%,transparent)}
   .rec-b:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
-  .rec .club-plate{position:relative}
-  .rec-joint{position:absolute;left:10px;top:10px;z-index:3;padding:3px 6px;
-    font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em;
-    background:#0a0a0a;color:#ffe14d;box-shadow:2px 2px 0 rgba(0,0,0,.25)}
-  .rec .star-team{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .rec .star-who{min-width:0}
-  @media (min-width:721px){
-    .recgrid{display:flex;flex-wrap:wrap;justify-content:center}
-    .recgrid>*{flex:0 0 calc((100% - 2 * var(--u) * 2) / 3)}
-  }
+  /* THE RECORD CARD (records.js): a disc at the left (the player's photograph or the club's
+     crest), the record in the scoreboard face in the middle with what it counts stacked beside
+     it, the club's colours down the edge and washed in behind, and a teletext strip for who,
+     against whom and when. */
+  /* three to a row (two on a narrower screen), and a short last row centred under the rest */
+  .recgrid{--rg:calc(var(--u)*2.5);display:flex;flex-wrap:wrap;justify-content:center;gap:var(--rg);
+    padding:calc(var(--u)*.5) calc(var(--u)*3) calc(var(--u)*3)}
+  .recgrid>.rc{flex:0 0 calc((100% - 2 * var(--rg)) / 3)}
+  @media (max-width:1100px){ .recgrid>.rc{flex-basis:calc((100% - var(--rg)) / 2)} }
+  .rc{position:relative;display:flex;flex-direction:column;min-width:0;text-decoration:none;color:var(--ink);container-type:inline-size;
+    background:var(--panel);border:1px solid var(--rule-2);isolation:isolate;
+    box-shadow:4px 4px 0 color-mix(in srgb,var(--ink-c) 50%,transparent);
+    transition:transform .14s ease,box-shadow .14s ease}
+  .rc:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 color-mix(in srgb,var(--ink-c) 65%,transparent)}
+  .rc:focus-visible{outline:2px solid var(--lume);outline-offset:3px}
+  .rc-body{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;
+    gap:clamp(10px,5cqi,22px);min-height:clamp(112px,42cqi,150px);padding:18px clamp(10px,4cqi,18px) 18px clamp(18px,7cqi,28px);overflow:hidden;
+    background:radial-gradient(130% 160% at 72% 50%,color-mix(in srgb,var(--ink-c) 24%,transparent),transparent 68%)}
+  /* the screen's lines, and the club's two colours down the edge */
+  .rc-body::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(180deg,color-mix(in srgb,var(--ink) 5%,transparent) 0 1px,transparent 1px 3px)}
+  .rc-edge{position:absolute;left:0;top:0;bottom:0;width:8px;
+    background:linear-gradient(180deg,var(--ink-c) 0 64%,var(--ink-c2) 64% 80%,var(--ink-c) 80%)}
+  .rc-av{position:relative;width:clamp(50px,20cqi,88px);aspect-ratio:1;border-radius:50%;overflow:hidden;
+    display:grid;place-items:center;background:var(--ink-c2);
+    box-shadow:0 0 0 3px var(--panel),0 0 0 5px var(--ink-c),4px 4px 0 5px color-mix(in srgb,var(--ink) 10%,transparent)}
+  .rc-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+  .rc-av.crest.has-img{background:#fff}
+  .rc-av.crest img{object-fit:contain;padding:16%}
+  .rc-av.has-img .rc-ini{visibility:hidden}
+  .rc-ini{font-family:var(--f-score);font-size:clamp(17px,7.5cqi,30px);line-height:1;color:var(--ink-on2);letter-spacing:.02em}
+  .rc-fig{display:flex;align-items:center;justify-content:center;gap:clamp(7px,3cqi,12px);min-width:0}
+  .rc-n{font-family:var(--f-score);font-size:clamp(34px,17cqi,76px);line-height:.82;color:var(--ink-t);
+    text-shadow:3px 3px 0 color-mix(in srgb,var(--ink-c2) 55%,transparent);white-space:nowrap}
+  .rc-n.long{font-size:clamp(30px,13cqi,64px)}
+  .rc-k{display:flex;flex-direction:column;gap:4px;padding-left:clamp(7px,3cqi,11px);border-left:2px solid var(--ink-c)}
+  .rc-stat{font-family:var(--f-micro);font-size:clamp(8px,3.2cqi,10px);line-height:1.15;letter-spacing:.1em;color:var(--ink);white-space:nowrap}
+  .rc-blocks{display:block;width:clamp(30px,13cqi,46px);height:6px;margin-top:3px;
+    background:repeating-linear-gradient(90deg,var(--ink-c) 0 6px,transparent 6px 8px)}
+  .rc-joint{position:absolute;right:8px;top:8px;z-index:2;padding:3px 6px;font-family:var(--f-micro);font-size:7.5px;
+    letter-spacing:.1em;background:#0a0a0a;color:#ffe14d}
+  .rc-foot{flex:1 1 auto;display:flex;align-items:center;gap:10px;padding:8px 12px 9px 20px;background:#0a0a0a;color:#fff;
+    border-top:2px solid var(--ink-c)}
+  .rc-who{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .rc-name{font-family:var(--f-ui);font-weight:800;font-size:13px;line-height:1.15;letter-spacing:.02em;text-transform:uppercase;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+  .rc-sub{font-size:11px;color:color-mix(in srgb,var(--ink-c) 40%,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rc-date{margin-left:auto;flex:none;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;color:#ffe14d}
+  @media (prefers-reduced-motion:reduce){ .rc{transition:none} .rc:hover{transform:none} }
   /* on a phone the switch takes a row of its own under the heading, two wide targets */
   @media (max-width:720px){
     .starrow-h.rec-h{flex-wrap:wrap;row-gap:8px}
     .rec-h .starrow-t{white-space:nowrap;flex:none}
     .rec-sw{order:3;margin-left:0;width:100%}
     .rec-b{flex:1 1 0;min-height:34px}
+    .recgrid{display:flex;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;scrollbar-width:none;
+      -webkit-overflow-scrolling:touch;gap:calc(var(--u)*2);padding:calc(var(--u)*.5) calc(var(--u)*2) calc(var(--u)*2.5)}
+    .recgrid::-webkit-scrollbar{display:none}
+    .recgrid>.rc{flex:0 0 min(82%,300px);scroll-snap-align:start}
+    .rc-body{min-height:118px;padding:16px 12px 16px 20px}
   }
 
   /* -------------------------------------------------------------------------
@@ -549,8 +593,8 @@
     #takepartSec .grid>.card{flex:0 0 max(230px, 33.333%);box-sizing:border-box;box-shadow:0 0 0 1px var(--rule);align-items:center;text-align:center}
   }
 </style>
-<link rel="stylesheet" href="kit/teletext.css?v=510">
-<link rel="stylesheet" href="kit/legibility.css?v=510">
+<link rel="stylesheet" href="kit/teletext.css?v=511">
+<link rel="stylesheet" href="kit/legibility.css?v=511">
 </head>
 <body data-haze>
 
@@ -860,43 +904,43 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=510" defer></script>
+<script src="config.js?v=511" defer></script>
 <!-- memberships: the league splash's paywall card, its "Become a member" card and
      a member's auth headers. Nothing is asked of the server on the platform hub. -->
-<script src="access.js?v=510" defer></script>
-<script src="follow.js?v=510" defer></script>
-<script src="teamcolour.js?v=510" defer></script>
-<script src="rt.js?v=510" defer></script>
+<script src="access.js?v=511" defer></script>
+<script src="follow.js?v=511" defer></script>
+<script src="teamcolour.js?v=511" defer></script>
+<script src="rt.js?v=511" defer></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=510" defer></script>
-<script src="bpm.js?v=510" defer></script>
-<script src="data.js?v=510" defer></script>
-<script src="merch.js?v=510" defer></script>
-<script src="upload.js?v=510" defer></script>
-<script src="newsblocks.js?v=510" defer></script>
-<script src="news.js?v=510" defer></script>
-<script src="toty.js?v=510" defer></script>
-<script src="igtile.js?v=510" defer></script>
-<script src="socials.js?v=510" defer></script>
-<script src="music.js?v=510" defer></script>
-<script src="splash.js?v=510" defer></script>
+<script src="season.js?v=511" defer></script>
+<script src="bpm.js?v=511" defer></script>
+<script src="data.js?v=511" defer></script>
+<script src="merch.js?v=511" defer></script>
+<script src="upload.js?v=511" defer></script>
+<script src="newsblocks.js?v=511" defer></script>
+<script src="news.js?v=511" defer></script>
+<script src="toty.js?v=511" defer></script>
+<script src="igtile.js?v=511" defer></script>
+<script src="socials.js?v=511" defer></script>
+<script src="music.js?v=511" defer></script>
+<script src="splash.js?v=511" defer></script>
 <!-- the clubs' letters for the fixture rows on a phone (home.js teamName) -->
-<script src="initials.js?v=510" defer></script>
-<script src="stars.js?v=510" defer></script>
+<script src="initials.js?v=511" defer></script>
+<script src="stars.js?v=511" defer></script>
 <!-- the season's single-game records, drawn with the stars' card -->
-<script src="records.js?v=510" defer></script>
+<script src="records.js?v=511" defer></script>
 <!-- the weekly fans' vote: the panel under the hero and the picks above the stars -->
-<script src="fanvote.js?v=510" defer></script>
+<script src="fanvote.js?v=511" defer></script>
 <!-- which clubs are in which competition, for the Clubs grid -->
-<script src="comps.js?v=510" defer></script>
-<script src="seasonbar.js?v=510" defer></script>
+<script src="comps.js?v=511" defer></script>
+<script src="seasonbar.js?v=511" defer></script>
 <!-- which games the games section reads and shows: this week, results, upcoming -->
-<script src="gameslist.js?v=510" defer></script>
+<script src="gameslist.js?v=511" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="haze.js?v=510" defer></script>
-<script src="home.js?v=510" defer></script>
-<script src="nav.js?v=510" defer></script>
-<script src="xscroll.js?v=510" defer></script>
+<script src="haze.js?v=511" defer></script>
+<script src="home.js?v=511" defer></script>
+<script src="nav.js?v=511" defer></script>
+<script src="xscroll.js?v=511" defer></script>
 </body>
 </html>
