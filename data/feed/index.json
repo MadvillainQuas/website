@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-27T00:53:08.799656+00:00",
+ "updated": "2026-09-27T01:25:59.950999+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -63,6 +63,13 @@
    "adapter": "euroleague",
    "games": 380,
    "updated": "2026-09-23T08:46:34.682726+00:00"
+  },
+  {
+   "code": "FEB1",
+   "label": "Primera FEB",
+   "adapter": "feb",
+   "games": 306,
+   "updated": "2026-09-27T01:25:59.937679+00:00"
   },
   {
    "code": "GREL",
