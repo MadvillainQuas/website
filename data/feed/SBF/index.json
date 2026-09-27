@@ -2,7 +2,7 @@
 "code": "SBF",
 "label": "Basketligan (Sweden)",
 "adapter": "fiba_livestats",
-"updated": "2026-09-27T00:28:23.351732+00:00",
+"updated": "2026-09-27T00:35:17.032494+00:00",
 "games": [
 {
 "id": "2851860",
@@ -10,7 +10,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-03-23T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851859",
@@ -18,7 +22,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2027-03-23T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851858",
@@ -26,7 +34,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-03-23T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851857",
@@ -34,7 +46,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-03-23T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851856",
@@ -42,7 +58,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-03-23T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851854",
@@ -50,7 +70,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-03-20T17:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851766",
@@ -58,7 +82,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-03-19T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851765",
@@ -66,7 +94,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2027-03-19T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851764",
@@ -74,7 +106,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-03-19T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851815",
@@ -82,7 +118,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2027-03-17T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851718",
@@ -90,7 +130,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-03-16T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851855",
@@ -98,7 +142,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2027-03-12T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851853",
@@ -106,7 +154,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-03-12T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851852",
@@ -114,7 +166,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-03-12T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851761",
@@ -122,7 +178,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2027-03-12T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851763",
@@ -130,7 +190,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-03-09T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851762",
@@ -146,7 +210,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2027-03-09T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851760",
@@ -154,7 +222,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-03-07T18:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851848",
@@ -162,7 +234,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-03-05T20:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851851",
@@ -170,7 +246,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-03-05T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851850",
@@ -178,7 +258,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2027-03-05T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851847",
@@ -186,7 +270,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2027-03-05T18:00:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851849",
@@ -194,7 +282,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-03-04T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851758",
@@ -202,7 +294,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-02-19T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851757",
@@ -210,7 +306,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2027-02-19T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851756",
@@ -218,7 +318,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-02-19T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851755",
@@ -226,7 +330,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-02-19T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851754",
@@ -234,7 +342,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2027-02-19T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851846",
@@ -242,7 +354,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2027-02-16T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851845",
@@ -250,7 +366,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2027-02-16T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851844",
@@ -258,7 +378,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2027-02-16T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851842",
@@ -266,7 +390,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2027-02-16T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851843",
@@ -274,7 +402,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-02-15T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851753",
@@ -282,7 +414,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-02-13T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851752",
@@ -290,7 +426,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-02-13T17:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851751",
@@ -298,7 +438,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-02-12T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851750",
@@ -306,7 +450,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-02-12T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851749",
@@ -314,7 +462,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-02-12T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851841",
@@ -330,7 +482,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-02-09T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851839",
@@ -338,7 +494,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-02-09T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851838",
@@ -346,7 +506,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-02-09T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851837",
@@ -354,7 +518,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-02-09T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851745",
@@ -362,7 +530,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-02-05T20:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851747",
@@ -370,7 +542,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-02-05T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851746",
@@ -378,7 +554,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2027-02-05T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851748",
@@ -386,7 +566,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-02-05T18:00:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851744",
@@ -394,7 +578,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-02-02T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851818",
@@ -402,7 +590,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-01-31T15:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851836",
@@ -410,7 +602,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2027-01-30T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851835",
@@ -418,7 +614,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-01-29T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851834",
@@ -426,7 +626,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2027-01-29T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851833",
@@ -434,7 +638,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-01-29T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851832",
@@ -442,7 +650,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-01-29T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851742",
@@ -450,7 +662,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-01-26T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851741",
@@ -458,7 +674,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2027-01-26T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851740",
@@ -466,7 +686,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-01-26T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851739",
@@ -474,7 +698,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-01-26T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851743",
@@ -482,7 +710,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-01-25T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851831",
@@ -490,7 +722,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-01-22T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851830",
@@ -498,7 +734,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-01-22T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851829",
@@ -506,7 +746,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2027-01-22T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851828",
@@ -514,7 +758,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2027-01-22T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851827",
@@ -522,7 +770,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-01-22T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851737",
@@ -530,7 +782,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-01-19T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851736",
@@ -538,7 +794,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-01-19T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851735",
@@ -546,7 +806,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-01-19T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851734",
@@ -554,7 +818,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-01-19T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851738",
@@ -562,7 +830,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2027-01-18T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851822",
@@ -570,7 +842,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-01-15T20:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851825",
@@ -578,7 +854,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2027-01-15T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851824",
@@ -586,7 +866,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2027-01-15T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851823",
@@ -594,7 +878,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2027-01-15T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851826",
@@ -602,7 +890,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-01-15T18:00:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851733",
@@ -610,7 +902,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2027-01-12T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851812",
@@ -618,7 +914,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-01-10T17:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851732",
@@ -626,7 +926,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2027-01-10T17:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851729",
@@ -634,7 +938,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2027-01-09T17:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851731",
@@ -642,7 +950,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2027-01-08T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851730",
@@ -650,7 +962,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2027-01-08T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851821",
@@ -658,7 +974,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2027-01-05T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851820",
@@ -674,7 +994,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2027-01-05T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851817",
@@ -682,7 +1006,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2027-01-05T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851728",
@@ -690,7 +1018,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-12-30T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851727",
@@ -698,7 +1030,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-12-30T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851726",
@@ -706,7 +1042,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-12-30T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851724",
@@ -714,7 +1054,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-12-30T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851725",
@@ -722,7 +1066,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-12-29T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851816",
@@ -730,7 +1078,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-12-27T20:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851814",
@@ -738,7 +1090,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-12-27T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851813",
@@ -746,7 +1102,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-12-27T18:00:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851723",
@@ -754,7 +1114,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-12-19T17:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851722",
@@ -762,7 +1126,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-12-18T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851721",
@@ -770,7 +1138,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-12-18T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851720",
@@ -778,7 +1150,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-12-18T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851719",
@@ -786,7 +1162,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-12-18T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851811",
@@ -794,7 +1174,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-12-15T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851809",
@@ -802,7 +1186,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-12-15T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851808",
@@ -810,7 +1198,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-12-15T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851807",
@@ -818,7 +1210,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-12-15T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851717",
@@ -826,7 +1222,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-12-12T17:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851810",
@@ -834,7 +1234,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-12-11T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851716",
@@ -842,7 +1246,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-12-11T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851715",
@@ -850,7 +1258,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-12-11T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851714",
@@ -858,7 +1270,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-12-11T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851806",
@@ -866,7 +1282,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-12-08T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851805",
@@ -874,7 +1294,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-12-08T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851804",
@@ -882,7 +1306,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-12-08T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851803",
@@ -890,7 +1318,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-12-08T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851802",
@@ -898,7 +1330,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-12-08T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851710",
@@ -906,7 +1342,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-12-05T17:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851713",
@@ -914,7 +1354,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-12-04T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851712",
@@ -922,7 +1366,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-12-04T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851711",
@@ -930,7 +1378,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-12-04T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851709",
@@ -938,7 +1390,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-12-04T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851699",
@@ -946,7 +1402,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-12-02T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851799",
@@ -954,7 +1414,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-11-22T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851798",
@@ -962,7 +1426,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-11-22T18:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851797",
@@ -970,7 +1438,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-11-21T18:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851800",
@@ -978,7 +1450,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-11-21T16:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851801",
@@ -986,7 +1462,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-11-20T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851708",
@@ -994,7 +1474,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-11-17T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851707",
@@ -1002,7 +1486,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-11-17T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851706",
@@ -1010,7 +1498,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-11-17T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851705",
@@ -1018,7 +1510,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-11-17T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851704",
@@ -1026,7 +1522,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-11-17T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851796",
@@ -1034,7 +1534,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-11-13T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851795",
@@ -1042,7 +1546,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-11-13T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851794",
@@ -1050,7 +1558,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-11-13T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851793",
@@ -1058,7 +1570,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-11-13T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851792",
@@ -1066,7 +1582,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-11-13T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851702",
@@ -1074,7 +1594,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-11-10T19:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851701",
@@ -1082,7 +1606,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-11-10T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851700",
@@ -1090,7 +1618,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-11-10T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851703",
@@ -1098,7 +1630,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-11-09T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851791",
@@ -1106,7 +1642,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-11-06T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851790",
@@ -1114,7 +1654,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-11-06T19:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851789",
@@ -1122,7 +1666,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-11-06T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851788",
@@ -1130,7 +1678,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-11-06T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851787",
@@ -1138,7 +1690,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-11-06T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851697",
@@ -1146,7 +1702,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-11-03T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851694",
@@ -1154,7 +1714,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-11-02T19:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851696",
@@ -1162,7 +1726,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-10-31T16:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851698",
@@ -1170,7 +1738,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-10-30T19:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851695",
@@ -1178,7 +1750,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-10-30T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851786",
@@ -1186,7 +1762,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-10-27T19:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851785",
@@ -1194,7 +1774,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-10-27T19:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851783",
@@ -1202,7 +1786,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-10-27T19:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851782",
@@ -1210,7 +1798,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-10-27T19:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851784",
@@ -1218,7 +1810,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-10-26T19:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851689",
@@ -1226,7 +1822,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-10-23T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851693",
@@ -1234,7 +1834,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-10-23T18:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851691",
@@ -1242,7 +1846,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-10-23T18:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851690",
@@ -1250,7 +1858,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-10-23T18:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851692",
@@ -1258,7 +1870,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-10-23T17:00:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851682",
@@ -1266,7 +1882,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-10-19T18:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851778",
@@ -1274,7 +1894,11 @@
 "away": "Umeå Basket",
 "status": "scheduled",
 "date": "2026-10-17T17:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851781",
@@ -1282,7 +1906,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-10-16T18:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851780",
@@ -1290,7 +1918,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-10-16T18:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851779",
@@ -1298,7 +1930,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-10-16T18:04:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851777",
@@ -1306,7 +1942,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-10-16T18:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851688",
@@ -1314,7 +1954,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-10-13T18:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851687",
@@ -1322,7 +1966,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-10-13T18:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851686",
@@ -1330,7 +1978,11 @@
 "away": "Uppsala Basket",
 "status": "scheduled",
 "date": "2026-10-13T18:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851685",
@@ -1338,7 +1990,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-10-13T18:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851684",
@@ -1346,7 +2002,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-10-13T18:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851772",
@@ -1354,7 +2014,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-10-09T19:04:00+00:00",
-"venue": "Boråshallen"
+"venue": "Boråshallen",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851776",
@@ -1362,7 +2026,11 @@
 "away": "Köping Stars Basketförening",
 "status": "scheduled",
 "date": "2026-10-09T18:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851774",
@@ -1370,7 +2038,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-10-09T18:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851773",
@@ -1378,7 +2050,11 @@
 "away": "Nässjö Basket",
 "status": "scheduled",
 "date": "2026-10-09T18:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851775",
@@ -1386,7 +2062,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-10-09T17:00:00+00:00",
-"venue": "Stadium Arena A"
+"venue": "Stadium Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851681",
@@ -1394,7 +2074,11 @@
 "away": "Jämtland Basket",
 "status": "scheduled",
 "date": "2026-10-03T17:04:00+00:00",
-"venue": "Täljehallen A"
+"venue": "Täljehallen A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851683",
@@ -1402,7 +2086,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-10-02T18:04:00+00:00",
-"venue": "Köpings Bad & Sport"
+"venue": "Köpings Bad & Sport",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851680",
@@ -1410,7 +2098,11 @@
 "away": "Högsbo Basket",
 "status": "scheduled",
 "date": "2026-10-02T18:04:00+00:00",
-"venue": "Fyrishov A, Uppsala"
+"venue": "Fyrishov A, Uppsala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851679",
@@ -1418,7 +2110,11 @@
 "away": "Sloga Uppsala",
 "status": "scheduled",
 "date": "2026-10-02T18:04:00+00:00",
-"venue": "Luleå Energi Arena A"
+"venue": "Luleå Energi Arena A",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851771",
@@ -1426,7 +2122,11 @@
 "away": "BC Luleå",
 "status": "scheduled",
 "date": "2026-09-29T18:04:00+00:00",
-"venue": "Östersunds Sporthall"
+"venue": "Östersunds Sporthall",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851769",
@@ -1434,7 +2134,11 @@
 "away": "Norrköping Dolphins",
 "status": "scheduled",
 "date": "2026-09-29T18:04:00+00:00",
-"venue": "Sporthallen, Nässjö"
+"venue": "Sporthallen, Nässjö",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851768",
@@ -1442,7 +2146,11 @@
 "away": "Södertälje BBK",
 "status": "scheduled",
 "date": "2026-09-29T18:04:00+00:00",
-"venue": "Umeå Energi Arena"
+"venue": "Umeå Energi Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851767",
@@ -1450,7 +2158,11 @@
 "away": "Borås Basket",
 "status": "scheduled",
 "date": "2026-09-29T18:04:00+00:00",
-"venue": "Gothia Arena 2"
+"venue": "Gothia Arena 2",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2851770",
@@ -1471,7 +2183,7 @@
 "hash": "eae923dd810b1f414aefde53ff337d8ea9ea0692",
 "venue": "Luleå Energi Arena A",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851675.json",
-"updated": "2026-09-27T00:23:38.816130+00:00"
+"updated": "2026-09-27T00:33:25.613837+00:00"
 },
 {
 "id": "2851678",
@@ -1484,7 +2196,7 @@
 "hash": "068eb072bb8b1aff2d3bbd90c485cfde32f38697",
 "venue": "Täljehallen A",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851678.json",
-"updated": "2026-09-27T00:27:08.051434+00:00"
+"updated": "2026-09-27T00:34:08.096427+00:00"
 },
 {
 "id": "2851676",
@@ -1497,7 +2209,7 @@
 "hash": "d3821d23f75f21dc11a7ea42b569fc3f7c521fe7",
 "venue": "Fyrishov A, Uppsala",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851676.json",
-"updated": "2026-09-27T00:24:47.744002+00:00"
+"updated": "2026-09-27T00:33:39.684264+00:00"
 },
 {
 "id": "2851674",
@@ -1510,7 +2222,7 @@
 "hash": "17ae6731e7c766cf3b019ccf088dcdde13f024c4",
 "venue": "Boråshallen",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851674.json",
-"updated": "2026-09-27T00:22:30.452293+00:00"
+"updated": "2026-09-27T00:33:10.321710+00:00"
 },
 {
 "id": "2851677",
@@ -1523,7 +2235,7 @@
 "hash": "d9f9e33967460e97040da4bb11773189623f0314",
 "venue": "Stadium Arena A",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851677.json",
-"updated": "2026-09-27T00:26:00.793780+00:00"
+"updated": "2026-09-27T00:33:54.291170+00:00"
 }
 ]
 }
