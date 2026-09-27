@@ -691,9 +691,11 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
     min_request_gap_s = GAP_S
     _last_req = 0.0
     _schedule_at: dict = {}             # league path -> (read at, rows)
-    _refused = False                    # a 403 has been reported this run
+    _refused = False                    # the site has answered 403 in this process
 
     def _get(self, url: str) -> Optional[str]:
+        if LnbBrAdapter._refused:
+            return None                     # refused once, refused again: a runner the site blocks is not asked twice
         for attempt in range(3):
             gap = time.time() - LnbBrAdapter._last_req
             if gap < GAP_S:
@@ -748,6 +750,9 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
         page = self._get(url)
         if page is None:
             print(f"     LNB {path}: the schedule could not be read ({url})")
+            # AN UNREADABLE SCHEDULE IS NOT ASKED FOR AGAIN AT ONCE: a live lane polls a due game every few seconds,
+            # and each fetch without a report would otherwise be one more request to a site that just said no
+            LnbBrAdapter._schedule_at[path] = (time.time(), rows or [])
             return rows or []
         rows = schedule_rows(page)
         LnbBrAdapter._schedule_at[path] = (time.time(), rows)

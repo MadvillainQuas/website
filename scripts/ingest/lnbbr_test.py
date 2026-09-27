@@ -399,6 +399,32 @@ b = N.fetch("27111", NCFG)
 ok("...then it is, and once the stats are there the game is read", b is not None and N.asked == [REPORT_URL]
    and "nobox" not in json.load(open(os.path.join(NROOT, "data", "feed", "NBB", "games.json"), encoding="utf-8"))["27111"], N.asked)
 
+print("\n-- a runner the site refuses (GitHub's: 403)")
+
+
+class Resp:
+    def __init__(self, code):
+        self.status_code, self.text, self.encoding = code, "", "utf-8"
+
+
+asked = []
+_real_get = L.requests.get
+L.requests.get = lambda url, **kw: (asked.append(url), Resp(403))[1]
+L.LnbBrAdapter._last_req = 0.0
+_gap = L.GAP_S
+L.GAP_S = 0
+try:
+    L.LnbBrAdapter._schedule_at, L.LnbBrAdapter._refused = {}, False
+    R = L.LnbBrAdapter()
+    RCFG = dict(CFG, repo_root=tempfile.mkdtemp(prefix="lnbbr_refused_"))
+    first = R.discover(SCHED_URL, RCFG)
+    again = [R.fetch("27111", RCFG) for _ in range(5)]
+finally:
+    L.requests.get, L.GAP_S = _real_get, _gap
+    L.LnbBrAdapter._refused = False
+ok("the schedule is asked for once, answered 403: no fixture, no game, and not one request more (a live lane's polls)",
+   first == [] and again == [None] * 5 and len(asked) == 1, asked)
+
 print("\n-- the config")
 src = [s for s in json.load(open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8"))["sources"] if s["adapter"] == "lnbbr"]
 ok("NBB and Liga Ouro, a regular season and a play-off source each; no LDB (it publishes no box scores)",
