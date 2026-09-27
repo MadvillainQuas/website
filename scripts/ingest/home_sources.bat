@@ -14,7 +14,11 @@ REM To stop it:
 REM     schtasks /Delete /TN "Epinoia home sources" /F
 REM
 REM Config (URL + service key) is the worker's own: %APPDATA%\epinoia\worker.json. Nothing is pasted into this file.
+REM
+REM Anything after the file's name is passed on to run_ingest.py. Once after an adapter change (the shot chart,
+REM 2026-09-27), read every game on the schedule again, the ones already stored included:
+REM     scripts\ingest\home_sources.bat --refresh
 
 REM the repository's root, so the adapters' caches (data\feed\NBB, data\feed\LOURO) sit where the workflow keeps its own
 cd /d "%~dp0..\.."
-python -u scripts\ingest\run_ingest.py --worker-config --config --source NBB,LOURO --feed-out ""
+python -u scripts\ingest\run_ingest.py --worker-config --config --source NBB,LOURO --feed-out "" %*

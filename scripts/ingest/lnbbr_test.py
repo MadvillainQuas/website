@@ -67,14 +67,14 @@ def row(rid, date, time_, home, hc, away, ac, link, score=("", ""), rnd=1, stage
     </tr>"""
 
 
-REPORT_URL = "https://lnb.com.br/noticias/nbb-caixa-2026-27-vasco-6-x-4-fortaleza/"
+REPORT_URL = "https://lnb.com.br/noticias/nbb-caixa-2026-27-vasco-8-x-4-fortaleza/"
 SCHEDULE = ("""<div class="large-12" onclick="if (!window.__cfRLUnblockHandlers) return false; BASKET.filterBySeason('106');">
 <input type="radio" id="checkbox-season-106" name="season[]" value="106" checked> <label for="checkbox-season-106">NBB 2026/2027</label></div>
 <div class="large-12" onclick="if (!window.__cfRLUnblockHandlers) return false; BASKET.filterBySeason('97');">
 <input type="radio" id="checkbox-season-97" name="season[]" value="97" > <label for="checkbox-season-97">NBB 2025/2026</label></div><table>"""
             + row("27110", "17/10/2026", "16:00", "Mogi Basquete", "MOG", "Corinthians", "COR",
                   "https://lnb.com.br/partidas/nbb-2026-2027-mogi-basquete-x-corinthians-17102026-1600/")
-            + row("27111", "18/10/2026", "20:00", "Vasco da Gama", "VAS", "Fortaleza Basquete Cearense", "FOR", REPORT_URL, ("6", "4"))
+            + row("27111", "18/10/2026", "20:00", "Vasco da Gama", "VAS", "Fortaleza Basquete Cearense", "FOR", REPORT_URL, ("8", "4"))
             + row("27500", "20/04/2027", "19:30", "Vasco da Gama", "VAS", "Corinthians", "COR",
                   "https://lnb.com.br/noticias/nbb-caixa-2026-27-vasco-80-x-70-corinthians/", ("80", "70"), 1, "QUARTAS")
             + "</table>")
@@ -88,7 +88,7 @@ ok("a game: its id, both clubs and their codes, 16:00 in Brasilia = 19:00 UTC", 
    and r["home_code"] == "MOG" and r["away_code"] == "COR" and r["tip"] == "2026-10-17T19:00:00Z", r)
 ok("...its crests, round and stage; no report yet", r["home_logo"].endswith("/MOG.png") and r["away_logo"].endswith("/COR.png")
    and r["round"] == 1 and r["stage"] == "1º TURNO" and not r["report"] and r["score"] is None, r)
-ok("a played game links its report and carries its score", rows["27111"]["report"] and rows["27111"]["score"] == (6, 4), rows["27111"])
+ok("a played game links its report and carries its score", rows["27111"]["report"] and rows["27111"]["score"] == (8, 4), rows["27111"])
 ok("the play-offs' stage is read", rows["27500"]["stage"] == "QUARTAS")
 
 
@@ -110,6 +110,22 @@ def box_row(shirt, name, mins, pts, reb, ast, p3, p2, ft, stl=0, blk=0, pf=0, fo
 def team_row(mins, pts, reb, ast, p3, p2, ft, stl, blk, pf, fo, tov):
     cells = ["Equipe", "1", mins, pts, reb, str(ast), p3, p2, ft, str(stl), str(blk), f"{pf}.00", f"{fo}.00", str(tov), "0", "0", "0"]
     return "<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>"
+
+
+def dot(idj, q, t, cls, top, left, clock):
+    return (f'<li idj="{idj}" idp="{q}" ide="{t}" class="{cls}" style="top: {top}%; left:{left}%;" time="{clock}" action-type="">'
+            '<img src="https://lnb.com.br/wp-content/themes/lnb-2016/images/x_azul-50x50.png" style="width: 36px;">\'</li>')
+
+
+def chart(left, dots, right):
+    """The #graphic tab: each club's players beside the court (as the play-by-play names them), the dots NEWEST first."""
+    who = lambda ps: "".join(f'<li idj="{i}"  avatar="https://lnb.com.br/a/{i}.png"><div class="number">#{n}</div>'
+                             f'<div class="name">{name}</div></li>' for i, n, name in ps)
+    return ('<div class="tabs-panel" id="graphic"><div class="quadra columns"><div class="large-2 columns">'
+            '<div class="players_block players_block_left"><ul><strong class="title">Titulares</strong>' + who(left) + '</ul></div></div>'
+            '<div class="large-8 columns"><div class="graphic_gym"><img src="https://lnb.com.br/quadra-lnb.jpg" alt="" /><ul>'
+            + "".join(dot(*d) for d in reversed(dots)) + '</ul></div></div><div class="large-2 columns">'
+            '<div class="players_block players_block_right"><ul><strong class="title">Titulares</strong>' + who(right) + '</ul></div></div></div></div>')
 
 
 HEAD = ["Nr.", "Jogador", "JO", "Min", "Pts", "RD+RO RT", "AS", "3P%", "2P%", "LL%", "BR", "TO", "FC", "FR", "ER", "EN", "+/-", "EF"]
@@ -149,28 +165,45 @@ PLAY = [
     (2, 1, "08:00", "6 x 4", "Substituição", "Sai Elias"),
     (2, 1, "08:00", "6 x 4", "Substituição", "Entra Magna"),
     (2, 2, "07:00", "6 x 4", "ALGO NOVO", "Dupree faz algo que ninguém escreveu."),
-    (2, 1, "00:00", "6 x 4", "FIM DE QUARTO", "Fim do segundo quarto."),
-    (2, 2, "00:00", "6 x 4", "FIM DE PARTIDA", "Fim de partida."),
+    (2, 1, "06:30", "6 x 4", "Tentativa para dois pontos", "G. Basílio erra tentativa para dois pontos."),
+    (2, 1, "06:28", "6 x 4", "REBOTE OFENSIVO", "G. Basílio pega rebote ofensivo."),
+    (2, 1, "06:28", "8 x 4", "+2 PONTOS", "G. Basílio acerta arremesso de dois pontos."),
+    (2, 1, "00:00", "8 x 4", "FIM DE QUARTO", "Fim do segundo quarto."),
+    (2, 2, "00:00", "8 x 4", "FIM DE PARTIDA", "Fim de partida."),
 ]
+DOTS = [
+    (101, 1, 1, "2pt correct", 30.0, 20.0, "09:40"),      # Pedro Nunes: 4.9 m from the rim, mid-range
+    (201, 1, 2, "3pt incorrect", 10.0, 70.0, "09:20"),    # Gohlke
+    (204, 1, 2, "3pt correct", 95.0, 88.0, "09:00"),      # Dupree, from the corner
+    (205, 1, 2, "ll correct", "", "", "08:40"),           # Popovic's free throws: no place
+    (205, 1, 2, "ll incorrect", "", "", "08:40"),
+    (106, 1, 1, "2pt correct", 52.1, 7.3, "03:00"),       # Elias's dunk, half a metre off the ring
+    (105, 2, 1, "2pt correct", 60.0, 80.0, "09:30"),      # Honorato: 4.2 m, mid-range
+    (206, 2, 2, "2pt incorrect", 45.0, 91.0, "09:10"),    # Jean Lucas (the box score's Jeanzinho): 1.1 m, at the rim
+    (103, 2, 1, "2pt incorrect", 42.0, 9.5, "06:30"),     # G. Basílio: 1.6 m, mid-range
+    (103, 2, 1, "2pt correct", 50, 6, "06:28"),           # ...and his tap-in on the ring itself, after his own rebound
+]
+CHART = chart([(101, 11, "Pedro Nunes"), (102, 9, "Ale"), (103, 10, "G. Basílio"), (104, 20, "Magna"), (105, 5, "Honorato"), (106, 7, "Elias")],
+              DOTS, [(201, 4, "Gohlke"), (202, 8, "Da Silva"), (203, 6, "Salsamendi"), (204, 11, "Dupree"), (205, 12, "Popovic"), (206, 0, "Jean Lucas")])
 REPORT = ("""<div class="score_header large-12 small-12 medium-12 columns">
 <div class="float-left text-right"><span class="show-for-large">Vasco da Gama</span><span class="hide-for-large">VAS</span>
-<img src="https://lnb.com.br/crest/VAS.png" alt="" /><strong id="home_score">6</strong></div><div class="float-left vs">x</div>
+<img src="https://lnb.com.br/crest/VAS.png" alt="" /><strong id="home_score">8</strong></div><div class="float-left vs">x</div>
 <div class="float-right text-left"><strong id="away_score">4</strong><img src="https://lnb.com.br/crest/FOR.png" alt="" />
 <span class="show-for-large">Fortaleza Basquete Cearense</span><span class="hide-for-large">FOR</span></div></div>
 <div class="score_for_quarter">
 <div class="quarter"><div class="numbers numbers_home" id="home_quarter_1"><strong>4</strong></div><div class="center"><div class="quarter_time">1ºQ</div></div>
 <div class="numbers numbers_away" id="away_quarter_1"><strong>4</strong></div></div>
-<div class="quarter"><div class="numbers numbers_home" id="home_quarter_2"><strong>2</strong></div><div class="center"><div class="quarter_time">2ºQ</div></div>
+<div class="quarter"><div class="numbers numbers_home" id="home_quarter_2"><strong>4</strong></div><div class="center"><div class="quarter_time">2ºQ</div></div>
 <div class="numbers numbers_away" id="away_quarter_2"><strong>0</strong></div></div></div>
 <p class="score_header_place">Ginásio de São Januário</p>"""
           + '<div id="team_home_stats"><table>' + THEAD + "<tbody>"
           + box_row(11, "Pedro Nunes", "20.0", "2/2 (100)", "0+0 0", 0, "0/0 (0)", "1/1 (100)", "0/0 (0)")
           + box_row(9, "Ale", "20.0", "0/0 (0)", "1+0 1", 1, "0/0 (0)", "0/0 (0)", "0/0 (0)")
-          + box_row(10, "G. Basílio", "20.0", "0/0 (0)", "0+0 0", 0, "0/0 (0)", "0/0 (0)", "0/0 (0)")
+          + box_row(10, "G. Basílio", "20.0", "2/2 (100)", "0+1 1", 0, "0/0 (0)", "1/2 (50)", "0/0 (0)")
           + box_row(20, "Magna", "18.0", "0/0 (0)", "0+0 0", 0, "0/0 (0)", "0/0 (0)", "0/0 (0)", stl=1, pf=1)
           + box_row(5, "Honorato", "15.0", "2/2 (100)", "1+0 1", 0, "0/0 (0)", "1/1 (100)", "0/0 (0)")
           + box_row(7, "Elias", "7.0", "2/2 (100)", "0+0 0", 0, "0/0 (0)", "1/1 (100)", "0/0 (0)")
-          + team_row("0.0", "6/6 (100)", "2+0 2", 1, "0/0 (0)", "3/3 (100)", "0/0 (0)", 1, 0, 1, 0, 0)
+          + team_row("0.0", "8/8 (100)", "2+1 3", 1, "0/0 (0)", "4/5 (80)", "0/0 (0)", 1, 0, 1, 0, 0)
           + "</tbody></table></div>"
           + '<div id="team_away_stats"><table>' + THEAD + "<tbody>"
           + box_row(4, "Gohlke", "20.0", "0/3 (0)", "0+0 0", 0, "0/1 (0)", "0/0 (0)", "0/0 (0)", tov=1)
@@ -181,7 +214,8 @@ REPORT = ("""<div class="score_header large-12 small-12 medium-12 columns">
           + box_row(0, "Jeanzinho", "10.0", "0/2 (0)", "0+0 0", 0, "0/0 (0)", "0/1 (0)", "0/0 (0)")
           + team_row("0.0", "4/9 (44)", "0+1 1", 0, "1/2 (50)", "0/1 (0)", "1/2 (50)", 0, 1, 0, 1, 3)
           + "</tbody></table></div>"
-          + "".join(ev(*p) for p in reversed(PLAY)))
+          + "".join(ev(*p) for p in reversed(PLAY))
+          + CHART)
 FIX = {"home": "Vasco da Gama", "away": "Fortaleza Basquete Cearense", "home_code": "VAS", "away_code": "FOR", "url": REPORT_URL,
        "tip": "2026-10-18T23:00:00Z"}
 
@@ -189,7 +223,7 @@ print("\n-- the report")
 raw = L.raw_from_report(REPORT, FIX)
 h, a = raw["tm"]["1"], raw["tm"]["2"]
 ok("both clubs, under the schedule's names and codes, with the score and quarters", h["name"] == "Vasco da Gama" and h["code"] == "VAS"
-   and a["code"] == "FOR" and h["score"] == 6 and a["score"] == 4 and (h["p1_score"], h["p2_score"], a["p1_score"], a["p2_score"]) == (4, 2, 4, 0))
+   and a["code"] == "FOR" and h["score"] == 8 and a["score"] == 4 and (h["p1_score"], h["p2_score"], a["p1_score"], a["p2_score"]) == (4, 4, 4, 0))
 ok("the hall", raw["lnbbr"]["venue"] == "Ginásio de São Januário")
 pn = h["pl"]["pedro-nunes-11"]
 ok("a box line: two-pointers made/attempted, minutes, points", pn["sTwoPointersMade"] == 1 and pn["sTwoPointersAttempted"] == 1
@@ -219,8 +253,8 @@ ok("turnover, steal, block, stepping out", ("turnover", "ballhandling", 2, "gohl
 foul = next(e for e in P if e["actionType"] == "foul")
 drawn = next(e for e in P if e["actionType"] == "foulon")
 ok("a drawn foul points at the foul it mirrors", drawn.get("previousAction") == foul["actionNumber"] and foul["pno"] == "magna-20", (drawn, foul["actionNumber"]))
-ok("the running score is on every event", P[-1]["s1"] == "6" and P[-1]["s2"] == "4" and all("s1" in e for e in P))
-ok("...and the play-by-play's points are the box score's", raw["lnbbr"]["pbp_points"] == {"1": 6, "2": 4}, raw["lnbbr"]["pbp_points"])
+ok("the running score is on every event", P[-1]["s1"] == "8" and P[-1]["s2"] == "4" and all("s1" in e for e in P))
+ok("...and the play-by-play's points are the box score's", raw["lnbbr"]["pbp_points"] == {"1": 8, "2": 4}, raw["lnbbr"]["pbp_points"])
 ok("a name the box score does not have ('Jean Lucas') is the box line its plays add up to (Jeanzinho's: one missed two)",
    raw["lnbbr"]["renamed"] == {"2:jean lucas": "jeanzinho-0"} and ("2pt", "", 2, "jeanzinho-0") in kinds, raw["lnbbr"]["renamed"])
 ok("a sentence it does not know is kept, not guessed", raw["lnbbr"]["unknown"] == ["ALGO NOVO|Dupree faz algo que ninguém escreveu."], raw["lnbbr"]["unknown"])
@@ -242,6 +276,61 @@ for e in P:
     if any(len(on[t]) != 5 for t in (1, 2)) and e["actionType"] != "substitution":
         offcourt.append(("count", e["period"], e["gt"]))
 ok("...so every play is by a player on court, and every club always has five", not offcourt, offcourt)
+
+print("\n-- the shot chart: where each shot was taken")
+ch_dots, ch_names = L.shot_chart(REPORT)
+ok("the dots are read oldest first, free throws without a place", [(d["q"], d["clock"], d["kind"], d["made"]) for d in ch_dots][:4]
+   == [(1, "09:40", "2pt", 1), (1, "09:20", "3pt", 0), (1, "09:00", "3pt", 1), (1, "08:40", "ll", 1)]
+   and ch_dots[3]["x"] is None and (ch_dots[0]["x"], ch_dots[0]["y"]) == (20.0, 30.0), ch_dots[:4])
+ok("...and the players beside the court, by the site's id, named as the play-by-play names them", ch_names[1]["103"] == "G. Basílio"
+   and ch_names[2]["206"] == "Jean Lucas" and len(ch_names[1]) == 6 and len(ch_names[2]) == 6, ch_names)
+ok("every shot of the play-by-play has its place", raw["lnbbr"]["shots"] == {"placed": 8, "unplaced": 0, "putbacks": 1}, raw["lnbbr"]["shots"])
+by_an = {e["actionNumber"]: e for e in P}
+hs_ = {s_["actionNumber"]: s_ for s_ in h["shot"]}
+pn_shot = next(e for e in P if e["actionType"] == "2pt" and e["pno"] == "pedro-nunes-11")
+ok("...on its club, joined to its action by number (the rim split looks a shot's place up by it)",
+   hs_[pn_shot["actionNumber"]]["x"] == 20.0 and hs_[pn_shot["actionNumber"]]["y"] == 30.0 and hs_[pn_shot["actionNumber"]]["pno"] == "pedro-nunes-11"
+   and len(h["shot"]) == 5 and len(a["shot"]) == 3 and all(by_an[s_["actionNumber"]]["tno"] == 1 for s_ in h["shot"]), h["shot"][:2])
+tap = next(e for e in P if e["actionType"] == "2pt" and e["success"] and e["pno"] == "g-basilio-10")
+ok("a shot on the ring itself right after its own club's offensive rebound is a putback",
+   tap["subType"] == "putback" and hs_[tap["actionNumber"]]["subType"] == "putback", tap)
+ok("...the miss before it is not, and the dunk stays a dunk", [e["subType"] for e in P if e["actionType"] == "2pt" and e["pno"] in ("g-basilio-10", "elias-7")]
+   == ["dunk", "", "putback"], [e["subType"] for e in P if e["actionType"] == "2pt" and e["pno"] in ("g-basilio-10", "elias-7")])
+from adapters.fiba_livestats import FibaLiveStatsAdapter  # noqa: E402
+zones = FibaLiveStatsAdapter._shots(h, a)
+ok("so the rim and mid-range split: Vasco 2 of 2 at the rim (the dunk, the tap), 2 of 3 mid-range; Fortaleza 0 of 1 at the rim, 1 of 2 threes",
+   zones == {"home": {"rim": {"att": 2, "made": 2}, "mid": {"att": 3, "made": 2}, "three": {"att": 0, "made": 0}},
+             "away": {"rim": {"att": 1, "made": 0}, "mid": {"att": 0, "made": 0}, "three": {"att": 2, "made": 1}}}, zones)
+from translate.fiba_events import translate as to_events  # noqa: E402
+stream = to_events(raw)["events"]
+loc_of = {e_["payload"]["ref"]: e_["payload"] for e_ in stream if e_["t"] == "loc"}
+twos = [e_ for e_ in stream if e_["t"] in ("p2_made", "p2_miss")]
+ok("...and the game stream places every two (a putback on the ring keeps its place and says so)", len(twos) == 6
+   and all(e_["seq"] in loc_of for e_ in twos) and any(e_["t"] == "stype" and e_["payload"]["v"] == "putback" for e_ in stream), len(twos))
+
+
+def sh(gt, at, sub, tno, ok_=0, pno="", q=3):
+    return {"period": q, "periodType": "REGULAR", "gt": gt, "actionType": at, "subType": sub, "tno": tno, "success": ok_, "pno": pno}
+
+
+PB = [sh("05:12", "2pt", "", 1), sh("05:12", "block", "", 2, pno="b"), sh("05:10", "2pt", "", 1, 1)]
+ok("a tap after its own club's missed shot is a putback too (the rebound not written), a block by the other club passed over",
+   L.is_putback(PB, 2), PB)
+ok("...but not the other club's rebound, not a play 6 s earlier, not after a steal",
+   not L.is_putback([sh("05:12", "rebound", "offensive", 2), sh("05:10", "2pt", "", 1, 1)], 1)
+   and not L.is_putback([sh("05:16", "rebound", "offensive", 1), sh("05:10", "2pt", "", 1, 1)], 1)
+   and not L.is_putback([sh("05:12", "steal", "", 1, pno="s"), sh("05:10", "2pt", "", 1, 1)], 1))
+SAME = [dict(sh("02:02", "2pt", "", 1, 0, "ana-4"), actionNumber=7), dict(sh("02:02", "2pt", "", 1, 0, "bia-5"), actionNumber=8)]
+DS = [{"idj": "5", "q": 3, "tno": 1, "kind": "2pt", "made": 0, "x": 9.0, "y": 50.0, "clock": "02:02"},
+      {"idj": "4", "q": 3, "tno": 1, "kind": "2pt", "made": 0, "x": 30.0, "y": 20.0, "clock": "02:02"}]
+got = L.place_shots(SAME, DS, lambda d: {"4": "ana-4", "5": "bia-5"}.get(d["idj"], ""))
+ok("two misses of one club in the same second: each has its own player's dot", got[7]["x"] == 30.0 and got[8]["x"] == 9.0, got)
+got = L.place_shots(SAME, DS, lambda d: "")
+ok("...and in order where the chart's players are not known", got[7]["x"] == 9.0 and got[8]["x"] == 30.0, got)
+OT = [dict(sh("02:00", "3pt", "", 2, 1, q=1), periodType="OVERTIME", actionNumber=1)]
+ok("an overtime's dots are the chart's fifth quarter", L.place_shots(OT, [{"idj": "", "q": 5, "tno": 2, "kind": "3pt", "made": 1, "x": 70.0,
+                                                                         "y": 10.0, "clock": "02:00"}], lambda d: "")[1]["x"] == 70.0)
+ok("a report without a chart places nothing", L.shot_chart("<html></html>") == ([], {1: {}, 2: {}}))
 
 print("\n-- fetching")
 

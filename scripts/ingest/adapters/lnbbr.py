@@ -28,11 +28,20 @@ between them (close_gaps).
 CHECKED against every Liga Ouro 2026 report and 78 NBB 2025-26 ones (113 with stats): every sentence translated, the
 play-by-play's points equal to the box score's for both clubs in every game, five starters, no lineup warnings.
 
-PLAYERS have no id anywhere on the site: a player is his display name and shirt within his club (pno "pedro-nunes-11").
-The play-by-play names him as the box score does, mostly: where it does not ("Gama" for the box score's "Juan"), the
-name is given the box line its own plays add up to (reconcile: 22 such names in the sample, from "Vitinho" = Vitor to
-Paulistano's two Gabriels, "Joaquim" = 14 and "Macedo" = 11). Clubs are keyed on the league's three-letter code, which
-follows a club through a rename ("Paulistano" / "Paulistano/CORPe" are both CAP).
+THE SHOT CHART (the report's #graphic tab) places every shot on the court, in FIBA's own chart frame, and is what tells a
+shot at the rim from a mid-range one (the box score's zones, the stints and the game stream all measure it from the ring).
+Each dot is its play-by-play shot's by quarter, clock, club, two or three, and made or missed (shot_chart, place_shots):
+all 15,043 shots of the 113 games are placed, none left over - 4,222 twos at the rim (61.7%), 4,407 mid-range (37.9%).
+A shot the scorers put on the ring itself, right after its club's offensive rebound or missed shot, is a putback
+(is_putback: 635, and 3 dunks there stay dunks).
+
+PLAYERS have no id in the box score or the play-by-play: a player is his display name and shirt within his club (pno
+"pedro-nunes-11"). The play-by-play names him as the box score does, mostly: where it does not ("Gama" for the box
+score's "Juan"), the name is given the box line its own plays add up to (reconcile: 22 such names in the sample, from
+"Vitinho" = Vitor to Paulistano's two Gabriels, "Joaquim" = 14 and "Macedo" = 11). The shot chart does carry the site's
+player id (idj, the same in every game), beside the play-by-play's names; here it only tells two shots of one second
+apart. Clubs are keyed on the league's three-letter code, which follows a club through a rename ("Paulistano" /
+"Paulistano/CORPe" are both CAP).
 
 GITHUB'S RUNNERS ARE REFUSED (403, 2026-09-27: the first run read no fixture at all), as lnb.fr refuses them for the
 French leagues. The two sources are read from the processing PC instead: scripts/ingest/home_sources.bat (a normal
@@ -515,6 +524,24 @@ def raw_from_report(page: str, fixture: Optional[dict] = None, now: Optional[dat
     for ev in events:
         ev.pop("_paired", None)
 
+    # ---- the shot chart: each shot's place on the court, which is what tells a shot at the rim from a mid-range one
+    dots, chart_names = shot_chart(page)
+    idj_pno = {idj: pno_of(t, n) for t in (1, 2) for idj, n in chart_names[t].items()}
+    placed = place_shots(events, dots, lambda d: idj_pno.get(d["idj"], ""))
+    shots: Dict[int, List[dict]] = {1: [], 2: []}
+    putbacks = 0
+    for i, ev in enumerate(events):
+        d = placed.get(ev["actionNumber"])
+        if d is None:
+            continue
+        if ev["actionType"] == "2pt" and not ev["subType"] and (d["x"], d["y"]) in RIM_SPOT and is_putback(events, i):
+            ev["subType"] = "putback"
+            putbacks += 1
+        shots[ev["tno"]].append({"r": int(ev["success"]), "x": d["x"], "y": d["y"], "actionType": ev["actionType"],
+                                 "subType": ev["subType"], "actionNumber": ev["actionNumber"], "pno": ev["pno"],
+                                 "per": ev["period"], "perType": ev["periodType"]})
+    n_shots = sum(1 for ev in events if ev["actionType"] in ("2pt", "3pt"))
+
     # ---- the clubs
     tm = {}
     for t in (1, 2):
@@ -535,7 +562,8 @@ def raw_from_report(page: str, fixture: Optional[dict] = None, now: Optional[dat
         quarters = qh if t == 1 else qa
         tot = _fiba(boxes[t][1]) if boxes[t][1] else None
         tt = S.team(name, code, short_name=abbrs[t - 1] if len(abbrs) >= t else "", score=home_score if t == 1 else away_score,
-                    quarters=quarters[:4], players=players, logo=logos[t - 1] if len(logos) >= t else None, totals=tot)
+                    quarters=quarters[:4], players=players, shots=shots[t], logo=logos[t - 1] if len(logos) >= t else None,
+                    totals=tot)
         for k, v in enumerate(quarters[4:], start=5):
             tt[f"p{k}_score"] = v
         tt["tot_sBenchPoints"] = bench
@@ -566,6 +594,7 @@ def raw_from_report(page: str, fixture: Optional[dict] = None, now: Optional[dat
             "lnbbr": {"venue": _text(venue.group(1)) if venue else None, "finished": finished,
                       "starters": {str(t): starters[t] for t in (1, 2)}, "unknown": sorted(set(unknown)),
                       "renamed": {f"{t}:{a}": p for (t, a), p in sorted(alias.items())},
+                      "shots": {"placed": len(placed), "unplaced": n_shots - len(placed), "putbacks": putbacks},
                       "pbp_points": {str(t): sum({"3pt": 3, "2pt": 2}.get(ev["actionType"], 1) for ev in events
                                                  if ev.get("scoring") and ev["tno"] == t) for t in (1, 2)}}}
 
@@ -672,6 +701,95 @@ def close_gaps(events: List[dict], starters: Dict[int, List[str]]) -> List[dict]
                 j += 1
         i += 1
     return out
+
+
+# ============================================================================ the shot chart
+_DOT = re.compile(r'<li\s+idj="(\d*)"\s+idp="(\d+)"\s+ide="(\d)"\s+class="([^"]*)"\s+'
+                  r'style="top:\s*([\d.]*)%;\s*left:\s*([\d.]*)%;"\s+time="([^"]*)"')
+_CHART_PLAYER = re.compile(r'<li\s+idj="(\d+)"[^>]*>\s*<div class="number">#?\d*</div>\s*<div class="name">([^<]*)</div>')
+#: where the scorers' quick button puts a shot: on the ring itself (the chart's own spot, to the hundredth)
+RIM_SPOT = {(6.0, 50.0), (94.0, 50.0)}
+PUTBACK_S = 5
+#: plays that ride on a shot or stop the clock, passed over looking for what came before a putback
+_BESIDE = {"substitution", "assist", "block", "timeout"}
+
+
+def shot_chart(page: str) -> tuple:
+    """The report's shot chart (the #graphic tab, "GRÁFICO DE ARREMESSO") -> ([dot], {club: {idj: name}}), the dots
+    OLDEST first. A dot: {idj, q, tno, kind ("2pt" | "3pt" | "ll"), made, x, y, clock}; q is the quarter (5+ overtime),
+    the clock counts down as the play-by-play's, x and y are the dot's left and top as percentages of the court drawing -
+    which is FIBA's own chart frame (28 x 15 m, the rims at x 6 and 94, y 50): of 8,629 two-point attempts in 113 games
+    none is placed beyond 6.75 m of its rim, and 4 of 6,414 threes are inside 6.6 m. A free throw ("ll") has no place.
+    The players beside the court are named as the play-by-play names them ("Gama", "JV Martins"), each with the site's
+    player id (idj), the same in every game."""
+    page = page or ""
+    g = page.find('class="graphic_gym"')
+    if g < 0:
+        return [], {1: {}, 2: {}}
+    end = page.find("</ul>", g)
+    end = end if end > 0 else len(page)
+    dots = []
+    for idj, idp, ide, cls, top, left, clock in _DOT.findall(page[g:end]):
+        c = cls.split()
+        dots.append({"idj": idj, "q": int(idp), "tno": int(ide), "kind": c[0] if c else "", "made": int("correct" in c),
+                     "x": float(left) if left else None, "y": float(top) if top else None, "clock": clock})
+    dots.reverse()                                          # the page is newest first
+    li, ri = page.rfind("players_block_left", 0, g), page.find("players_block_right", end)
+    ri_end = page.find("</ul>", ri) if ri >= 0 else -1
+    blocks = {1: page[li:g] if li >= 0 else "", 2: page[ri:ri_end if ri_end > 0 else ri + 20000] if ri >= 0 else ""}
+    return dots, {t: {idj: _html.unescape(n).strip() for idj, n in _CHART_PLAYER.findall(blocks[t])} for t in (1, 2)}
+
+
+def place_shots(events: List[dict], dots: List[dict], dot_pno) -> Dict[int, dict]:
+    """Each shot of the play-by-play and its dot -> {actionNumber: dot}. A dot is its shot's by quarter, clock, club, two
+    or three, and made or missed: in the 113 games each of 15,043 shots has exactly one, and none is left over. Where two
+    shots share all five (a miss and a tap in the same second) the dot of the shot's own player is taken first
+    (dot_pno(dot) -> pno, or ''), then the rest in order."""
+    pool: Dict[tuple, List[dict]] = {}
+    for d in dots:
+        if d["kind"] in ("2pt", "3pt") and d["x"] is not None and d["y"] is not None:
+            pool.setdefault((d["q"], _secs(d["clock"]), d["tno"], d["kind"], d["made"]), []).append(d)
+    shots: Dict[tuple, List[dict]] = {}
+    for ev in events:
+        if ev["actionType"] in ("2pt", "3pt"):
+            q = ev["period"] + (4 if ev["periodType"] == "OVERTIME" else 0)
+            shots.setdefault((q, _secs(ev["gt"]), ev["tno"], ev["actionType"], int(ev["success"])), []).append(ev)
+    out: Dict[int, dict] = {}
+    for key, evs in shots.items():
+        free = list(pool.get(key) or [])
+        for ev in evs:
+            d = next((d for d in free if ev["pno"] and dot_pno(d) == ev["pno"]), None)
+            if d is not None:
+                out[ev["actionNumber"]] = d
+                free.remove(d)
+        for ev in evs:
+            if ev["actionNumber"] not in out and free:
+                out[ev["actionNumber"]] = free.pop(0)
+    return out
+
+
+def is_putback(events: List[dict], i: int) -> bool:
+    """THE RING ITSELF IS A BUTTON, NOT A PLACE A THUMB LANDED. The scorers' tool puts a tap-in exactly on the rim
+    (x 6 or 94, y 50 to the hundredth: 639 shots in 113 games, 5.7 a game, where no other spot is used three times in a
+    game), and 622 of the 639 follow the shooter's own club's offensive rebound, 613 of them in the same second. Such a
+    shot is a putback when the play before it - substitutions, assists, blocks and timeouts passed over - is its own
+    club's offensive rebound or its own missed shot (a tip with no rebound written), in the same quarter and at most
+    PUTBACK_S s earlier: 638 of the 639, 3 of them dunks that keep their label. It is labelled so because the place alone
+    would not be believed: a spot used three times or more in a game is how a quick-tap default looks
+    (translate/fiba_events.py), and a shot there keeps its place only with a label that says the rim."""
+    ev = events[i]
+    j = i - 1
+    while j >= 0 and events[j]["actionType"] in _BESIDE:
+        j -= 1
+    if j < 0:
+        return False
+    pv = events[j]
+    if (pv["tno"], pv["period"], pv["periodType"]) != (ev["tno"], ev["period"], ev["periodType"]):
+        return False
+    if not 0 <= _secs(pv["gt"]) - _secs(ev["gt"]) <= PUTBACK_S:
+        return False
+    return ((pv["actionType"], pv["subType"]) == ("rebound", "offensive")
+            or (pv["actionType"] in ("2pt", "3pt") and not pv.get("success")))
 
 
 def _split(name: str) -> tuple:
@@ -810,6 +928,9 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
                  if raw["lnbbr"]["pbp_points"][t] != raw["tm"][t]["score"]]
         if short:
             print(f"     LNB {gid}: the play-by-play's points are not the box score's: {'; '.join(short)}")
+        sh = raw["lnbbr"]["shots"]
+        if sh["unplaced"]:
+            print(f"     LNB {gid}: {sh['unplaced']} of {sh['placed'] + sh['unplaced']} shots have no place on the shot chart")
         b = self.bundle_from_raw(raw, gid, config)
         b.tipoff_at = ent.get("tip") or config.get("_tipoff_at")
         if raw["lnbbr"]["venue"]:

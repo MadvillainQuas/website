@@ -878,7 +878,7 @@ link cached re-reads it at most every 30 minutes. Links are kept in `data/feed/<
 
 ### game_recipe
 
-The report (`/noticias/<slug>/`): the score and quarters, the hall (`p.score_header_place`), and two tabs.
+The report (`/noticias/<slug>/`): the score and quarters, the hall (`p.score_header_place`), and three tabs.
 
 - `#stats`: a box score per club (`team_home_stats` / `team_away_stats`): shirt, display name, games, minutes
   (decimal), points ("20/35 (57)": the first number), rebounds "D+O T", assists, 3P / 2P / FT "made/attempted (pct)",
@@ -890,8 +890,29 @@ The report (`/noticias/<slug>/`): the score and quarters, the hall (`p.score_hea
   throws, rebounds, assists, steals, blocks, fouls committed and drawn, turnovers and violations, timeouts, both sides of
   each substitution). A sentence it does not know is kept on `raw.lnbbr.unknown` and printed ("not translated"), never
   guessed.
-- Players have no id anywhere on the site: a player is his display name and shirt within his club (`pno`
+- `#graphic` ("GRÁFICO DE ARREMESSO"): the shot chart, NEWEST FIRST, one `<li>` per shot in `div.graphic_gym`:
+  `idj` (the site's player id), `idp` (the quarter, 5+ overtime), `ide` (1 home, 2 away), class `2pt` / `3pt` / `ll`
+  (free throw, no place) and `correct` / `incorrect`, `style="top: T%; left: L%"` and `time` (the clock). Left and top
+  are FIBA's own chart frame (28 x 15 m, rims at x 6 and 94, y 50): of 8,629 twos in the 113 games none is beyond
+  6.75 m of its rim, and 4 of 6,414 threes are inside 6.6 m. The club's players stand beside the court
+  (`players_block_left` = home, `players_block_right` = away), named as the play-by-play names them.
+- **The shot chart is what splits the rim from mid-range.** Each dot is joined to its play-by-play shot by quarter,
+  clock, club, two or three, and made or missed (where two shots share all five, by player, then in order): all 15,043
+  shots of the 113 games placed, none left over. They go on `tm[side].shot` with the shot's `actionNumber`, so the
+  box score's zones, the stints and the game stream all measure the shot from the ring: 4,222 twos at the rim (61.7%),
+  4,407 mid-range (37.9%). A report whose shots cannot all be placed says so in the log ("N of M shots have no place
+  on the shot chart"); counts are on `raw.lnbbr.shots`.
+- **A shot on the ring itself is a putback.** The scorers' quick button puts a tap-in exactly on the rim (x 6 or 94,
+  y 50: 639 shots, 5.7 a game, where no other spot is used three times in a game), and 622 of them follow their own club's
+  offensive rebound, 613 in the same second. Such a two is labelled `putback` when the play before it (substitutions,
+  assists, blocks and timeouts passed over) is its club's offensive rebound or missed shot, in the same quarter, at
+  most 5 s earlier: 635, with 3 dunks there left as dunks. Without the label the game stream would not believe the
+  spot: one place used three times or more in a game is how a quick-tap default looks (`translate/fiba_events.py`),
+  and it keeps a shot there only with a label that says the rim.
+- Players have no id in the box score or the play-by-play: a player is his display name and shirt within his club (`pno`
   `pedro-nunes-11`; a club can have two players of one display name - Paulistano 2025-26, Gabriel 14 and Gabriel 11).
+  The shot chart's `idj` is the site's player id (one name per id across the sample); it is used only to tell two
+  shots of one second apart.
 - **The play-by-play does not always name a player as the box score does**: it uses the scorers' name ("Gama",
   "JV Martins", "Sbardelotti"), the box score the site's ("Juan", "Martins", "Thiago") - IVV/CETAF in most Liga Ouro
   games, 22 names in the sample. A name the box score does not have is given the box line of its club that its own
