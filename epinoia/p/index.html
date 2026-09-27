@@ -50,6 +50,23 @@
   .idmeta .sub a:hover{color:var(--lume)}
   .idmeta .sub .sub-div{width:1px;height:11px;background:var(--rule-2);margin:0 -1px;flex:none}
   .pos-chip{border:1px solid var(--rule-2);border-radius:999px;padding:3px 9px}
+  /* VITALS (player.js paintVitals): born, age, height, weight -- a label over each number,
+     a hairline between them, the site-wide units switch at the end */
+  .vitals{display:flex;flex-wrap:wrap;align-items:center;row-gap:10px;margin-top:12px}
+  .vitals[hidden]{display:none}
+  .vit{display:flex;flex-direction:column;gap:4px;padding:1px 18px;
+    border-left:1px solid var(--rule-2)}
+  .vit:first-child{padding-left:0;border-left:0}
+  .vit .vk{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .vit .vv{font-family:var(--f-score);font-size:22px;line-height:1;color:var(--ink);white-space:nowrap}
+  .vit .vv small{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-3);margin-left:4px}
+  .vitals .vit-units{margin-left:18px}
+  @media (max-width:520px){
+    .vit{padding:1px 12px} .vit .vv{font-size:19px}
+    .vitals .vit-units{margin-left:12px}
+  }
   .pos-chip.est-pos{border-style:dashed;cursor:help}      /* estimated, not listed: the dashed edge says so */
 
   .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:1px;
@@ -149,6 +166,9 @@
     box-shadow:0 -1px 0 var(--team-b)}
   body.themed .idmeta .sub a{color:var(--team-a-ink)}
   body.themed .idmeta .sub a:hover{color:var(--ink)}
+  body.themed .vit .vv{color:var(--ink)}
+  body.themed .vit{border-left-color:color-mix(in oklch,var(--team-b) 45%,transparent)}
+  body.themed .vit:first-child{border-left:0}
   body.themed .pos-chip{border-color:color-mix(in oklch,var(--team-b) 60%,transparent);color:var(--team-b-ink)}
   body.themed .tile.hi .v,body.themed .sec-h .idx{color:var(--team-a-ink)}
   body.themed .ep-tab.on{background:var(--team-a);color:var(--team-on-a)}
@@ -197,6 +217,7 @@
     <div class="idmeta">
       <h1 id="name">—</h1>
       <div class="sub" id="sub"></div>
+      <div class="vitals" id="vitals" hidden></div>
     </div>
   </div>
 
@@ -294,6 +315,7 @@
 <script src="video.js?v=505" defer></script>
 <script src="../sitpanel.js?v=505" defer></script>
 <script src="../consistency.js?v=505" defer></script>
+<script src="../units.js?v=505" defer></script>
 <script src="../ages.js?v=505" defer></script>
 <script src="../cards.js?v=505" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box

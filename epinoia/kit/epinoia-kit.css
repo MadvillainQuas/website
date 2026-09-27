@@ -712,3 +712,28 @@ body.league-themed .hero h1{ background-image:linear-gradient(100deg,var(--leagu
 .league-trim{ display:none }
 body.league-themed .league-trim{ display:block; height:3px;
   background:linear-gradient(90deg,var(--league-a) 0 72%,var(--league-b) 72% 88%,var(--league-a) 88%) }
+
+/* ---------- UNITS SWITCH (units.js toggle) ----------------------------------
+   Two small buttons, cm·kg and ft·lb, the chosen one lit. One choice for the
+   whole site: the profile, the roster and the stats tables all follow it. */
+.ep-units{display:inline-flex;align-items:stretch;border:1px solid var(--rule-2);border-radius:999px;
+  overflow:hidden;vertical-align:middle;flex:none}
+.ep-units button{font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;
+  padding:6px 10px 5px;border:0;background:transparent;color:var(--ink-3);cursor:pointer;white-space:nowrap;
+  transition:color .12s,background .12s}
+.ep-units button+button{border-left:1px solid var(--rule-2)}
+.ep-units button:hover{color:var(--ink)}
+.ep-units button.on{background:var(--team-a,var(--lume));color:var(--team-on-a,var(--on-accent))}
+.ep-units button:focus-visible{outline:2px solid var(--lume);outline-offset:-2px}
+:root[data-theme="light"] .ep-units{background:#ffffff}
+
+/* ---------- COLUMN RULES IN THE STATS TABLES ---------------------------------
+   A hairline between every column, lighter than the row lines, so a number can
+   be followed straight down a long table without counting cells. The first
+   column (a rank or a crest) stays open. */
+:root{ --col-rule:color-mix(in oklch,var(--rule) 70%,transparent) }
+.ep-tbl th+th, .ep-tbl td+td,
+.sc-table th+th, .sc-table td+td,
+.sp-tbl th+th, .sp-tbl td+td,
+.sp-ztbl th+th, .sp-ztbl td+td{ border-left:1px solid var(--col-rule) }
+.ep-tbl th:nth-child(2), .ep-tbl td:nth-child(2){ border-left:0 }

@@ -149,23 +149,55 @@ function paintIdentity(pl, entry, team) {
     $('#teamLink').style.display = 'none';
   }
   if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
-  if (pl.birth_year) sub.appendChild(el('span', 'born', 'born ' + pl.birth_year));
-  /* HIS AGE, from the database's own function (0184): the date of birth is never sent to a browser. Its place is held so the height
-     and weight stay after it when it arrives; a server without it, or a player with only a year, shows nothing there. */
-  const ageEl = el('span', 'born'); ageEl.hidden = true; sub.appendChild(ageEl);
-  if (window.EpinoiaAges && pl.id) {
+  paintVitals(pl);
+  $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
+}
+
+/* ---------------------------------------------------------------- vitals ---
+   BORN, AGE, HEIGHT AND WEIGHT, as a row of their own under the club line: a small label over
+   each number, a hairline between them, and the units switch at the end. Height and weight are
+   shown in whichever units the reader chose (units.js) - one set, not both - and redrawn when
+   that changes, here or anywhere else on the site. Only what is known is shown; a player with
+   none of the four has no row at all. HIS AGE comes from the database's own function (0184):
+   the date of birth is never sent to a browser, and a server without it shows no age. */
+let vitalsAge = null, vitalsPl = null, vitalsHooked = false, vitalsAsked = null;
+function paintVitals(pl) {
+  const host = $('#vitals');
+  if (!host) return;
+  const U = window.EpinoiaUnits;
+  if (vitalsPl && vitalsPl.id !== pl.id) vitalsAge = null;
+  vitalsPl = pl;
+  const draw = () => {
+    const pl = vitalsPl;
+    host.textContent = '';
+    const item = (k, v, unit) => {
+      const d = el('div', 'vit');
+      d.appendChild(el('span', 'vk', k));
+      const vv = el('span', 'vv', v);
+      vv.setAttribute('translate', 'no');
+      if (unit) vv.appendChild(el('small', null, unit));
+      d.appendChild(vv);
+      host.appendChild(d);
+    };
+    if (pl.birth_year) item('born', String(pl.birth_year));
+    if (vitalsAge != null) item('age', String(vitalsAge));
+    const split = s => { const m = /^(\S+) (\S+)$/.exec(s || ''); return m ? [m[1], m[2]] : [s, '']; };
+    const ht = U ? U.height(pl.height_cm) : (pl.height_cm ? pl.height_cm + ' cm' : '');
+    const wt = U ? U.weight(pl.weight_kg) : (pl.weight_kg ? pl.weight_kg + ' kg' : '');
+    if (ht) item('height', ...split(ht));
+    if (wt) item('weight', ...split(wt));
+    const any = host.childNodes.length > 0;
+    if (any && U && (pl.height_cm || pl.weight_kg)) host.appendChild(U.toggle({ className: 'vit-units' }));
+    host.hidden = !any;
+  };
+  draw();
+  if (U && !vitalsHooked) { vitalsHooked = true; U.onChange(() => paintVitals(vitalsPl)); }
+  if (window.EpinoiaAges && pl.id && vitalsAsked !== pl.id) {
+    vitalsAsked = pl.id;
     window.EpinoiaAges.load(CFG, [pl.id]).then(m => {
-      if (m[pl.id] != null) { ageEl.textContent = 'age ' + m[pl.id]; ageEl.hidden = false; }
+      if (m[pl.id] != null && vitalsPl && vitalsPl.id === pl.id) { vitalsAge = m[pl.id]; draw(); }
     }).catch(() => { /* no age */ });
   }
-  /* HEIGHT AND WEIGHT, as the roster shows them: centimetres with feet and inches, kilograms. Only what is known. */
-  if (pl.height_cm) {
-    const inches = Math.round(pl.height_cm / 2.54);
-    const h = el('span', 'born', pl.height_cm + ' cm · ' + Math.floor(inches / 12) + "'" + (inches % 12) + '"');
-    h.setAttribute('translate', 'no'); sub.appendChild(h);
-  }
-  if (pl.weight_kg) { const w = el('span', 'born', pl.weight_kg + ' kg'); w.setAttribute('translate', 'no'); sub.appendChild(w); }
-  $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
 }
 
 /* --------------------------------------------------------------- released ---
@@ -392,8 +424,9 @@ function paintEstPos(mine, field) {
   chip.title = 'Estimated position: worked out from his rebounds, assists, blocks, steals and fouls as a share of his team\u2019s, ' +
     'corrected by the position the club lists. It is the group "adjust for position" ranks him in.';
   const listed = sub.querySelector('.pos-chip');
-  const born = sub.querySelector('.born');
-  if (listed) listed.after(chip); else if (born) sub.insertBefore(chip, born); else sub.appendChild(chip);
+  /* after the listed position, else after the club and league - never after a button appended since */
+  const after = listed || sub.querySelector('.sub-league') || sub.firstElementChild;
+  if (after) after.after(chip); else sub.appendChild(chip);
 }
 
 /* 3PT CONSISTENCY (consistency.js): worked out here, for this player alone, from his game log once it has been read -

@@ -158,6 +158,16 @@ table.ft.lu-fold td.c1{ overflow:hidden; text-overflow:ellipsis; white-space:now
   color:var(--ink-3) }
 table.ft th.c1, table.ft td.c1{ box-shadow:inset -1px 0 0 var(--rule-2,color-mix(in oklch,var(--lume) 35%,transparent)) }
 table.ft thead th.c0, table.ft thead th.c1{ background:var(--panel) }
+/* A HAIRLINE BETWEEN EVERY STAT COLUMN, lighter than the rule after the name, so a number can
+   be followed straight down a long table. Drawn as an inset shadow rather than a border: the
+   column widths are declared to the pixel (fulltable.js), and a border would add to them. The
+   heat map's shading sits under it, so the line stays on a coloured cell. */
+table.ft tbody td:not(.stick)+td:not(.stick),
+table.ft tfoot td:not(.stick)+td:not(.stick){
+  box-shadow:inset 1px 0 0 var(--col-rule,color-mix(in oklch,var(--lume) 14%,transparent)) }
+table.ft thead th:not(.stick)+th:not(.stick){
+  box-shadow:inset 0 -1px 0 var(--rule-2,color-mix(in oklch,var(--lume) 44%,transparent)),
+             inset 1px 0 0 var(--col-rule,color-mix(in oklch,var(--lume) 14%,transparent)) }
 
 table.ft tbody td{
   padding:0 8px; height:31px; text-align:right; white-space:nowrap;
@@ -489,3 +499,7 @@ table.ft tbody tr.picked td.stick{ background:color-mix(in oklch,var(--lume) 16%
 .wk-bad .wk-bar i{ background:var(--bad) }   .wk-bad .wk-p{ color:var(--bad) }
 .wk-style .wk-bar i{ background:color-mix(in oklch,var(--ink) 26%,transparent) }
 .wk-key{ font-family:var(--f-micro); font-size:8px; letter-spacing:.06em; color:var(--ink-3); line-height:1.7; padding:10px 0 0 }
+
+/* the site-wide units switch (units.js) beside the CSV button: the bar's own sizes */
+.ft-bar .ep-units button{ font-size:9px; padding:8px 11px 7px }
+@media (max-width:640px){ .ft-bar .ep-units button{ min-height:40px; font-size:10px; padding:0 11px } }

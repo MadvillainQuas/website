@@ -657,9 +657,28 @@ function render(opts) {
   };
   const BIO_COLS = BIO ? [
     { k: 'bio_age', l: 'AGE', g: ['bio'], fmt: r => f0(r.bio_age), t: 'age today' },
-    { k: 'bio_ht',  l: 'HT',  g: ['bio'], fmt: r => f0(r.bio_ht),  t: 'height, cm' },
-    { k: 'bio_wt',  l: 'WT',  g: ['bio'], fmt: r => f0(r.bio_wt),  t: 'weight, kg' }
+    { k: 'bio_ht',  l: 'HT',  g: ['bio'], fmt: r => bioUnit(r.bio_ht, 'height'), t: 'height, cm' },
+    { k: 'bio_wt',  l: 'WT',  g: ['bio'], fmt: r => bioUnit(r.bio_wt, 'weight'), t: 'weight, kg' }
   ] : [];
+  /* HT AND WT IN THE READER'S UNITS (units.js): centimetres and kilograms, or feet-and-inches and pounds - one set, the same
+     choice as the profile and the roster. The number without its unit, which the column's title carries; the sort still reads
+     the centimetres and kilograms behind it, which order the rows the same either way. */
+  const UN = () => root.EpinoiaUnits || null;
+  function bioUnit(v, kind) {
+    const U = UN();
+    if (v == null) return '—';
+    if (!U) return f0(v);
+    return (kind === 'height' ? U.height(v) : U.weight(v)).replace(/ (cm|kg|lb)$/, '') || '—';
+  }
+  function bioTitles() {
+    const U = UN();
+    if (!U) return;
+    BIO_COLS.forEach(c => {
+      if (c.k === 'bio_ht') c.t = 'height, ' + U.heightUnit();
+      if (c.k === 'bio_wt') c.t = 'weight, ' + U.weightUnit();
+    });
+  }
+  bioTitles();
   let rows = prep(opts.rows);
   /* every row set the table is handed goes through here, the first and each setRows */
   function prep(list) {
@@ -1236,6 +1255,13 @@ function render(opts) {
   csv.type = 'button';
   csv.addEventListener('click', exportCsv);
   more.appendChild(csv);
+
+  /* THE UNITS SWITCH, beside the CSV, on a table with HT and WT: the choice is site-wide, so pressing it here (or on any other
+     page, in any tab) redraws this table's heights and weights */
+  if (BIO && UN()) {
+    more.appendChild(UN().toggle({ className: 'ft-units' }));
+    UN().onChange(() => { bioTitles(); if (host.__ftWrap === wrap) draw(); });
+  }
 
   const count = el('span', 'ft-count ft-tally');
   bar.appendChild(count);

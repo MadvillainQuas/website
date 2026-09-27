@@ -203,3 +203,13 @@ table.adv .gp-pc, .ffval .gp-pc, .tsacell .gp-pc{ display:none }
 /* the modern box's stat line in the figure face is wider than the pixel face it replaced: it may run past its
    104px card (centred under the player, whose neighbours are far enough away) rather than lose its assists to an ellipsis */
 #view .mv-p .mv-line{ max-width:none; overflow:visible; text-overflow:clip; letter-spacing:0 }
+
+/* COLUMN RULES. A hairline between every column of the game's stats tables, lighter than the
+   group dividers boxscore.css already draws (shooting | rebounds | playmaking | fouls | +/-),
+   so a number can be followed straight down without counting cells. The group lines keep
+   their weight: their selectors are more specific than these. The rank column stays open. */
+table.bx th+th, table.bx td+td{ border-left:1px solid color-mix(in srgb,var(--side,var(--lume)) 7%,transparent) }
+table.bx th:nth-child(2), table.bx td:nth-child(2){ border-left:0 }
+table.adv th+th, table.adv td+td{ border-left:1px solid rgba(170,255,215,.06) }
+.ev-mx td+td, .ev-mx th+td, .ev-mx th+th{ border-left:1px solid color-mix(in srgb,var(--border-subtle) 70%,transparent) }
+.cx-table th+th, .cx-table td+td{ border-left:1px solid var(--border-subtle) }

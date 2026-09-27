@@ -881,6 +881,31 @@ const feetInches = cm => {
   return Math.floor(total / 12) + "'" + String(total % 12) + '"';
 };
 
+/* ONE SET OF UNITS, THE READER'S (units.js): centimetres and kilograms, or feet, inches and pounds -
+   the same choice the profile and the stats tables follow. The database, and the boxes a manager
+   types into, stay in centimetres and kilograms. Without units.js, the old metric-with-imperial. */
+const UNITS = () => window.EpinoiaUnits || null;
+function measText(m, val) {
+  const U = UNITS();
+  if (m.text) return [String(val), ''];
+  if (!U) return [val + m.unit, m.imperial ? feetInches(val) : ''];
+  const s = m.unit === 'kg' ? U.weight(val) : U.height(val);
+  return [s.replace(/ (cm|kg|lb)$/, '$1'), ''];
+}
+function fillMeas(td, m, val) {
+  td.textContent = '';
+  if (val == null || val === '') { td.appendChild(el('span', 'meas-none', '–')); return; }
+  const [main, alt] = measText(m, val);
+  const s = el('span', null, main); s.setAttribute('translate', 'no'); td.appendChild(s);
+  if (alt) td.appendChild(el('span', 'meas-alt', alt));
+}
+const measTitle = m => {
+  const U = UNITS();
+  if (m.text || !U) return '';
+  return (m.k === 'height_cm' ? 'height' : m.k === 'weight_kg' ? 'weight' : 'wingspan') + ', ' +
+    (m.unit === 'kg' ? U.weightUnit() : U.heightUnit());
+};
+
 /* THE SQUAD'S AVERAGES, under the roster: average age, height and weight, each over the players who have that number, with how many
    that was when it is not everyone (a squad half of whom have no listed weight has an average of the other half, and says so). */
 function squadAverages(players, ages) {
@@ -892,8 +917,10 @@ function squadAverages(players, ages) {
   tr.appendChild(el('td', ''));
   const of = (n) => (S && n < S.players ? n + ' of ' + S.players : '');
   tr.appendChild(S && S.age != null ? cell('meas', S.age.toFixed(1), of(S.ageN)) : el('td', 'meas meas-none', '–'));
-  tr.appendChild(S && S.height != null ? cell('meas', Math.round(S.height) + 'cm', feetInches(S.height) + (of(S.heightN) ? ' · ' + of(S.heightN) : '')) : el('td', 'meas meas-none', '–'));
-  tr.appendChild(S && S.weight != null ? cell('meas', Math.round(S.weight) + 'kg', of(S.weightN)) : el('td', 'meas meas-none', '–'));
+  const [htMain, htAlt] = S && S.height != null ? measText(MEASURES[0], Math.round(S.height)) : ['', ''];
+  const [wtMain] = S && S.weight != null ? measText(MEASURES[1], Math.round(S.weight)) : [''];
+  tr.appendChild(S && S.height != null ? cell('meas', htMain, [htAlt, of(S.heightN)].filter(Boolean).join(' · ')) : el('td', 'meas meas-none', '–'));
+  tr.appendChild(S && S.weight != null ? cell('meas', wtMain, of(S.weightN)) : el('td', 'meas meas-none', '–'));
   tr.appendChild(el('td', '')); tr.appendChild(el('td', ''));
   tf.appendChild(tr);
   return tf;
@@ -1124,6 +1151,8 @@ async function roster(team) {
   MEASURES.forEach(m => {
     const th = el('th', null, m.l);
     th.style.width = m.w + 'px';
+    if (!m.text) th.dataset.mk = m.k;
+    th.title = measTitle(m);
     hr.appendChild(th);
   });
   thead.appendChild(hr); t.appendChild(thead);
@@ -1188,14 +1217,9 @@ async function roster(team) {
       const val = p[m.k];
 
       if (!canEdit) {
-        /* read-only: show it, with the imperial equivalent where it helps */
-        if (val == null || val === '') td.appendChild(el('span', 'meas-none', '–'));
-        else if (m.imperial) {
-          td.appendChild(el('span', null, val + m.unit));
-          td.appendChild(el('span', 'meas-alt', feetInches(val)));
-        } else {
-          td.appendChild(el('span', null, m.text ? String(val) : val + m.unit));
-        }
+        /* read-only: show it in the reader's units, kept to repaint when those change */
+        fillMeas(td, m, val);
+        if (!m.text) { td.dataset.mk = m.k; td.dataset.mv = val == null ? '' : String(val); }
         tr.appendChild(td);
         return;
       }
@@ -1240,8 +1264,26 @@ async function roster(team) {
     tb.appendChild(tr);
   });
   t.appendChild(tb);
-  t.appendChild(squadAverages(rows.map(r => r.players).filter(Boolean), AGES));
+  const squad = rows.map(r => r.players).filter(Boolean);
+  t.appendChild(squadAverages(squad, AGES));
   wrap.appendChild(t); host.appendChild(wrap);
+
+  /* THE UNITS SWITCH, in the roster's heading: pressing it repaints the heights, weights and the
+     squad's averages in place (and every other page's, since the choice is site-wide) */
+  const U = UNITS();
+  const slot = $('#rosterUnits');
+  if (U && slot && !slot.firstChild) slot.appendChild(U.toggle());
+  if (U && !t.__unitsHooked) {
+    t.__unitsHooked = true;
+    U.onChange(() => {
+      if (!t.isConnected) return;
+      const byK = Object.fromEntries(MEASURES.map(m => [m.k, m]));
+      t.querySelectorAll('td[data-mk]').forEach(td => fillMeas(td, byK[td.dataset.mk], td.dataset.mv === '' ? null : +td.dataset.mv));
+      t.querySelectorAll('th[data-mk]').forEach(th => { th.title = measTitle(byK[th.dataset.mk]); });
+      const old = t.querySelector('tfoot');
+      if (old) old.replaceWith(squadAverages(squad, AGES));
+    });
+  }
 
   if (canEdit) {
     host.appendChild(el('div', 'empty',
