@@ -75,6 +75,16 @@
 .bc.vol .bc-track{height:6px}
 .bc.none{opacity:.75}
 
+/* 3PT consistency: computed for this player alone, so no percentile; a running-percentage line stands in the gap */
+.bc.calc .bc-v{font-size:22px}
+.bc{grid-template-columns:minmax(0,1fr)}                 /* a long label or footer wraps inside the card, it does not push the card wider */
+.bc-l{min-width:0;overflow-wrap:anywhere}
+.bc-v{flex:none}
+.bc.calc .bc-d span{white-space:normal}
+.bc-spark{display:block;width:100%;height:28px;overflow:visible}
+.bc-spark-base{stroke:var(--ink-3);stroke-width:.6;stroke-dasharray:2 2;opacity:.7}
+.bc-spark-line{fill:none;stroke:var(--team-a-ink,var(--lume));stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+
 /* the delta: a triangle for above or below, the size of the gap, and the average it is measured from */
 .bc-d{display:flex;align-items:center;flex-wrap:wrap;gap:3px 7px;font-family:var(--f-micro);font-size:8px;letter-spacing:.05em;
   text-transform:uppercase;color:var(--ink-3);line-height:1.5}

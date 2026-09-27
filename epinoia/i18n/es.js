@@ -1468,7 +1468,14 @@
       'RIM ATT / 100': 'Int. aro / 100',
       'MID ATT / 100': 'Int. media / 100',
       '3P ATT / 100': 'Int. T3 / 100',
-      'FT ATT / 100': 'Int. TL / 100'
+      'FT ATT / 100': 'Int. TL / 100',
+      'TEAM SPACING': 'ESPACIADO DEL EQUIPO',
+      '3PT CONSISTENCY': 'CONSISTENCIA EN T3',
+      'very steady': 'muy regular',
+      'steady': 'regular',
+      'variable': 'variable',
+      'streaky': 'irregular',
+      'reading his games': 'leyendo sus partidos'
     },
 
     ctx: {
@@ -1930,6 +1937,7 @@
       [/^avg (\d+)(?:st|nd|rd|th)$/, 'prom. $1.º'],
       [/^([+-][\d.]+) (above|below) league avg$/, m => m[1] + (m[2] === 'above' ? ' por encima' : ' por debajo') + ' de la media de la liga'],
       [/^lg avg ([+-]?[\d.]+)$/, 'media liga $1'],
+      [/^needs (\d+) games and (\d+) threes attempted \(has (\d+) and (\d+)\)$/, 'necesita $1 partidos y $2 triples intentados (tiene $3 y $4)'],
       [/^showing the last (\d+)$/, 'mostrando las últimas $1'],
       [/^With (.+) on the floor, against with (them|none of them) on\.$/, m => 'Con ' + m[1].split(' and ').join(' y ') + ' en pista, frente a ' + (m[2] === 'them' ? 'sin él' : 'sin ninguno de ellos') + '.'],
       [/^(.+) \(([^()]+)\)$/, (m, T, Q) => { const b = Q(m[1]); return b == null ? null : b + ' (' + T(m[2]) + ')'; }],

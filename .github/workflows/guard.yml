@@ -556,6 +556,11 @@ jobs:
         # shooting distances grouped, impact with every on/off four factor and BPM/OBPM/DBPM/VORP; the players' table stays out
         run: node supabase/tests/collapsible-cards.test.mjs
 
+      - name: Team spacing and 3PT consistency on the player profile
+        # team spacing: teammates' three-point points per 100 possessions while he plays (season.js); 3PT consistency:
+        # accuracy and volume recalculated after every game, computed for one player when his profile opens (consistency.js)
+        run: node supabase/tests/consistency.test.mjs
+
       - name: robots.txt is at the root, slow, and polite
         # crawlers read /robots.txt at the domain root only; the old file under /epinoia/ was never read
         run: node supabase/tests/robots.test.mjs

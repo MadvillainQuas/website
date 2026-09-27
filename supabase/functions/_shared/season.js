@@ -300,6 +300,8 @@ function players(pgs, tgs, meta) {
 
       A.den.teamPoss   += share * teamPoss;
       A.den.teamFgm    += share * TT.fgm;
+      A.den.team3a     += share * TT.fg3a;               // the team's threes while he played: TEAM SPACING (below)
+      A.den.team3m     += share * TT.fg3m;
       A.den.oppPoss    += share * oppPoss;
       A.den.oppFga2    += share * (OT.fga - OT.fg3a);
       A.den.orebChance += share * (TT.oreb + OT.dreb);
@@ -325,7 +327,7 @@ function blankPlayer(id) {
     ptsAst: 0, rimA: 0, rimM: 0, midA: 0, midM: 0, dq: 0, paint: 0, fast: 0, sc: 0, pot: 0,
     oc: { tFGA:0,tFGM:0,t3M:0,tFTA:0,tTOV:0,tOR:0,tDR:0,tPTS:0,
           oFGA:0,oFGM:0,o3M:0,oFTA:0,oTOV:0,oOR:0,oDR:0,oPTS:0 },
-    den: { teamPoss:0, teamFgm:0, oppPoss:0, oppFga2:0, orebChance:0, drebChance:0 },
+    den: { teamPoss:0, teamFgm:0, oppPoss:0, oppFga2:0, orebChance:0, drebChance:0, team3a:0, team3m:0 },
     teamAll: { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0, min:0 },
     oppAll:  { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0 },
     ev: null };                                  // the events splits, made on the first covered game
@@ -406,6 +408,16 @@ function finishPlayer(A, m) {
        and nothing at all on one */
     rim_apg: r1(A.rimA / g), mid_apg: r1(A.midA / g), p3_apg: r1(A.p3a / g),
     ft_apg:  r1(A.fta / g),
+    /* TEAM SPACING: how much the floor is stretched around him, as one number - the points his TEAMMATES' threes are
+       worth per 100 possessions while he is on the floor (3 x makes / possessions x 100). Volume and accuracy are both
+       in it (attempts per possession x the share that go in), so a team that shoots a lot of threes badly and one that
+       shoots few well are not mistaken for each other. HIS OWN threes are taken out: it is the spacing he is given,
+       not the spacing he makes. The team's threes are the game lines' (fg3a / fg3m) weighted by the share of the game
+       he was on the floor for, the same weighting the usage denominator uses. Under 20 possessions or 10 teammate
+       attempts it is noise and is left null. tm3_a100 and tm3_pct are its two halves, for the reader who wants them. */
+    team_spacing: r1(A.den.teamPoss >= 20 && (A.den.team3a - A.p3a) >= 10 ? 300 * (A.den.team3m - A.p3m) / A.den.teamPoss : null),
+    tm3_a100: r1(A.den.teamPoss >= 20 && (A.den.team3a - A.p3a) >= 10 ? 100 * (A.den.team3a - A.p3a) / A.den.teamPoss : null),
+    tm3_pct:  r1((A.den.team3a - A.p3a) >= 10 ? 100 * (A.den.team3m - A.p3m) / (A.den.team3a - A.p3a) : null),
     /* AND PER 100 POSSESSIONS: attempts per 100 of his team's possessions while he is on the floor (the on-court
        possessions the on/off block below is built from), so a player who plays 12 minutes and one who plays 36 are
        read at the same rate. Under 20 possessions on the floor it is noise, and is left null. */

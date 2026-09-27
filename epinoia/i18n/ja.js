@@ -1466,7 +1466,14 @@
       'RIM ATT / 100': 'ゴール下試投 / 100',
       'MID ATT / 100': 'ミドル試投 / 100',
       '3P ATT / 100': '3FGA / 100',
-      'FT ATT / 100': 'FTA / 100'
+      'FT ATT / 100': 'FTA / 100',
+      'TEAM SPACING': 'チームスペーシング',
+      '3PT CONSISTENCY': '3P安定度',
+      'very steady': '非常に安定',
+      'steady': '安定',
+      'variable': 'ばらつきあり',
+      'streaky': 'ムラあり',
+      'reading his games': '試合を読み込み中'
     },
 
     ctx: {
@@ -1930,6 +1937,7 @@
       [/^avg (\d+)(?:st|nd|rd|th)$/, '平均 $1'],
       [/^[+-]([\d.]+) (above|below) league avg$/, m => 'リーグ平均より ' + m[1] + (m[2] === 'above' ? ' 上' : ' 下')],
       [/^lg avg ([+-]?[\d.]+)$/, 'リーグ平均 $1'],
+      [/^needs (\d+) games and (\d+) threes attempted \(has (\d+) and (\d+)\)$/, '$1試合・$2本の3P試投が必要（現在$3試合・$4本）'],
       [/^showing the last (\d+)$/, '直近$1シーズンを表示'],
       [/^With (.+) on the floor, against with (them|none of them) on\.$/, m => m[1].split(' and ').join('・') + 'が出場中と、' + (m[2] === 'them' ? 'いないとき' : '誰も出場していないとき') + 'の比較。'],
       [/^(.+) \(([^()]+)\)$/, (m, T, Q) => { const b = Q(m[1]); return b == null ? null : b + '（' + T(m[2]) + '）'; }],

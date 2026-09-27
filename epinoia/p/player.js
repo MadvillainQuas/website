@@ -256,9 +256,9 @@ const BAR_SECTIONS = [
      ASSISTED% in scoring is the same question of his points: how much of what he scored
      came off somebody's pass, free throws included in the total. */
   { key: 'shooting', title: 'shooting', blocks: [
-    { title: 'at the rim',   rows: [['rim_pct','RIM%'], ['rim_a100','RIM ATT / 100'], ['ev_rim_astp','RIM ASSISTED%']] },
+    { title: 'at the rim',   rows: [['rim_pct','RIM%'], ['rim_a100','RIM ATT / 100'], ['ev_rim_astp','RIM ASSISTED%'], ['team_spacing','TEAM SPACING']] },
     { title: 'mid-range',    rows: [['mid_pct','MID%'], ['mid_a100','MID ATT / 100'], ['ev_mid_astp','MID ASSISTED%']] },
-    { title: 'three-pointers', rows: [['p3_pct','3P%'],  ['p3_a100','3P ATT / 100'],  ['ev_p3_astp','3P ASSISTED%']] },
+    { title: 'three-pointers', consistency: true, rows: [['p3_pct','3P%'],  ['p3_a100','3P ATT / 100'],  ['ev_p3_astp','3P ASSISTED%']] },
     { title: 'free throws',  rows: [['ft_pct','FT%'],   ['ft_a100','FT ATT / 100']] }
   ]},
   { key: 'playmaking', title: 'playmaking', blocks: [
@@ -300,7 +300,9 @@ const BAR_SIGNED = k => /^diff_/.test(k) || k === 'bpm' || k === 'obpm' || k ===
 const BAR_DP = k => (k === 'ast_to' || k === 'au') ? 2 : 1;
 const BAR_HINT = {
   contrib_pg: 'Total point contribution per game: the points he scored plus the points scored off his assists.',
-  vorp: 'Value over replacement player: box plus/minus turned into a season total, so minutes count as well as level.'
+  vorp: 'Value over replacement player: box plus/minus turned into a season total, so minutes count as well as level.',
+  team_spacing: 'How stretched the floor is around him: the points his teammates\u2019 threes are worth per 100 possessions while he is on the floor ' +
+    '(their three-point volume and accuracy in one number, his own threes left out). Higher means more room to work in.'
 };
 
 /* THE FIVE-BAND SCALE the table's heat map uses, in --good rather than --lume: this page wears the club's
@@ -379,7 +381,56 @@ function paintEstPos(mine, field) {
   if (listed) listed.after(chip); else if (born) sub.insertBefore(chip, born); else sub.appendChild(chip);
 }
 
+/* 3PT CONSISTENCY (consistency.js): worked out here, for this player alone, from his game log once it has been read -
+   never for the league, which is the saving. The log carries every competition he has played in, so it is cut to the ones
+   the bars are showing (SCOPE_IDS). Redrawn when the log arrives, and when the scope changes. */
+let LOG_ROWS = null, SCOPE_IDS = null, LAST_BARS = null;
+function consistencyCard() {
+  const K = window.EpinoiaConsistency, SE = window.EpinoiaSeason;
+  const card = el('div', 'bc calc');
+  card.appendChild(el('div', 'bc-l', '3PT CONSISTENCY'));
+  card.title = 'How steady a three-point shooter he is over the season: his accuracy and how often he shoots are worked out again after ' +
+    'every game, and the score is how little those running figures moved from where the season ended (100 = never). It measures steadiness, not quality.';
+  if (!K) return null;
+  if (!LOG_ROWS) { card.appendChild(el('div', 'bc-v', '\u2026')); card.appendChild(el('div', 'bc-d', 'reading his games')); return card; }
+  const r = K.fromLog(LOG_ROWS, SCOPE_IDS, SE && SE.POSS);
+  if (!r.ok) {
+    card.classList.add('none');
+    card.appendChild(el('div', 'bc-v', '\u2014'));
+    card.appendChild(el('div', 'bc-d', r.why));
+    return card;
+  }
+  card.style.setProperty('--bc-band', barBand(r.score));
+  card.textContent = '';
+  const v = el('div', 'bc-v', String(r.score)); v.appendChild(el('div', 'bp', r.label));
+  const head = el('div', 'bc-top'); head.append(el('div', 'bc-l', '3PT CONSISTENCY'), v);
+  card.appendChild(head);
+  const track = el('div', 'bc-track'), fill = el('i');
+  fill.style.width = Math.max(2, r.score) + '%'; fill.style.background = barBand(r.score);
+  track.appendChild(fill); card.appendChild(track);
+  /* his running 3P% after each game, against where the season ended */
+  const pts = r.curve.map((c, i) => [i, c]).filter(p => p[1] != null);
+  if (pts.length > 1) {
+    const lo = Math.min(...pts.map(p => p[1]), r.pct), hi = Math.max(...pts.map(p => p[1]), r.pct), span = Math.max(hi - lo, 4);
+    const X = i => (2 + 96 * i / (r.curve.length - 1)).toFixed(1), Y = c => (24 - 20 * (c - lo) / span).toFixed(1);
+    const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 100 28'); svg.setAttribute('class', 'bc-spark'); svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'his season three-point percentage after each game');
+    const base = document.createElementNS(NS, 'line');
+    [['x1', 2], ['x2', 98], ['y1', Y(r.pct)], ['y2', Y(r.pct)]].forEach(([k, val]) => base.setAttribute(k, val));
+    base.setAttribute('class', 'bc-spark-base');
+    const line = document.createElementNS(NS, 'polyline');
+    line.setAttribute('points', pts.map(p => X(p[0]) + ',' + Y(p[1])).join(' ')); line.setAttribute('class', 'bc-spark-line');
+    svg.append(base, line); card.appendChild(svg);
+  }
+  const d = el('div', 'bc-d level');
+  d.appendChild(el('span', null, r.games + ' games \u00b7 ' + r.att + ' 3PA \u00b7 ' + r.pct.toFixed(1) + '%' + (r.vol != null ? ' \u00b7 ' + r.vol.toFixed(1) + ' / 100' : '')));
+  card.appendChild(d);
+  return card;
+}
+
 function paintBars(mine, field) {
+  LAST_BARS = { mine, field };
   paintEstPos(mine, field);
   const host = $('#bars'); host.textContent = '';
   if (!mine || field.length < 3) {
@@ -429,9 +480,10 @@ function paintBars(mine, field) {
   host.appendChild(sw);
 
   const wrap = el('div', 'bars');
-  const cardsOf = rows => {
+  const cardsOf = (rows, extra) => {
     const g = el('div', 'bcs');
     rows.forEach(([k, label]) => g.appendChild(barCard(k, label, mine, ranks, pool)));
+    if (extra) { const c = extra(); if (c) g.appendChild(c); }
     return g;
   };
   /* what a section says about itself when it is folded: the average percentile of its bars */
@@ -451,7 +503,7 @@ function paintBars(mine, field) {
           /* a group inside the card, not folded: the distances of the shooting card, impact's on/off and BPM */
           const g = el('div', 'bsub');
           g.appendChild(el('div', 'bsub-h', blk.title));
-          g.appendChild(cardsOf(blk.rows));
+          g.appendChild(cardsOf(blk.rows, blk.consistency ? consistencyCard : null));
           b.appendChild(g);
         } else b.appendChild(cardsOf(blk.rows));
       });
@@ -920,7 +972,7 @@ async function loadCareerAccess(pl, lgRow) {
     const paintScope = async kind => {
       scopeKind = kind;
       const ids = compRows.filter(c => kind === 'all' || (c.kind || 'league') === kind).map(c => c.id);
-      mine = null; field = [];
+      mine = null; field = []; SCOPE_IDS = ids;
       try {
         if (ids.length) {
           const S = await D.season(ids);
@@ -1178,7 +1230,7 @@ function drawShotChart(shots, colour, games) {
 
     /* game log, with the opponent resolved from the game row */
     const gl = await api(`player_game_stats?player_uuid=eq.${pl.id}` +
-      `&select=game_id,team_idx,stats,games(tipoff_at,home_score,away_score,status,` +
+      `&select=game_id,team_idx,stats,games(tipoff_at,competition_id,home_score,away_score,status,` +
       `home:home_team_id(name,slug),away:away_team_id(name,slug))&limit=80`);
     const rows = gl.filter(r => r.games)
       .sort((a, b) => new Date(b.games.tipoff_at || 0) - new Date(a.games.tipoff_at || 0))
@@ -1195,6 +1247,8 @@ function drawShotChart(shots, colour, games) {
         });
       });
     paintLog(rows);
+    LOG_ROWS = rows;                                   // 3PT CONSISTENCY is worked out now, from the log just read
+    if (LAST_BARS) paintBars(LAST_BARS.mine, LAST_BARS.field);
   } catch (e) {
     fail('Could not load: ' + e.message);
   }
