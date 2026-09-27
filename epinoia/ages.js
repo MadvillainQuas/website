@@ -70,6 +70,34 @@ function summary(players, ages) {
    Returns {id: {h, w, a}} for players who have at least one of the three; never rejects. `store` is a localStorage-like object. */
 const KEY = 'epinoia.bio.v1';
 const TTL_MS = 30 * 60 * 1000;
+const PLAIN_BATCH = 40;              // an id=in.() URL, not a request body: kept short like every other chunked read in data.js
+
+/* height_cm, weight_kg and birth_year are ordinary PUBLIC columns (0033, 0002 - well before the 0171 sweep that locked the table
+   down column by column) and players_read (0049) already keeps an under-18's row out of an anonymous select entirely, so this needs
+   no function and no migration: it is what the table showed before player_bio() existed, and what it falls back to if that function
+   is not there yet. The age it gives is a YEAR'S worth, the same approximation team.js's staff list has always shown ("AGE, NOT DATE
+   OF BIRTH"), not the exact one player_bio() computes from a date of birth. */
+async function loadBioPlain(cfg, ids, fetchFn, now) {
+  const data = {}, answered = new Set();
+  const year = new Date(now == null ? Date.now() : now).getUTCFullYear();
+  for (let i = 0; i < ids.length; i += PLAIN_BATCH) {
+    const chunk = ids.slice(i, i + PLAIN_BATCH);
+    try {
+      const r = await fetchFn(cfg.supabaseUrl + '/rest/v1/players?id=in.(' + chunk.join(',') + ')&select=id,height_cm,weight_kg,birth_year',
+        { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
+      if (!r.ok) continue;                  // this chunk's ids stay unanswered (not just empty): asked again next visit, not cached
+      chunk.forEach(id => answered.add(id));
+      (await r.json() || []).forEach(x => {
+        if (!x || x.id == null) return;
+        const h = x.height_cm == null ? null : x.height_cm, w = x.weight_kg == null ? null : x.weight_kg;
+        const a = x.birth_year == null ? null : year - x.birth_year;
+        if (h != null || w != null || a != null) data[x.id] = [h, w, a];
+      });
+    } catch (_) { /* this chunk's ids stay unanswered */ }
+  }
+  return { data, answered };
+}
+
 async function loadBio(cfg, ids, fetchFn, store, now) {
   const out = {};
   const f = fetchFn || (typeof fetch === 'function' ? fetch : null);
@@ -84,8 +112,8 @@ async function loadBio(cfg, ids, fetchFn, store, now) {
     else if (c) out[id] = { h: c[0], w: c[1], a: c[2] };
   });
   if (!f || !cfg || !cfg.supabaseUrl || !want.length) return out;
-  let fresh = false;
-  for (let i = 0; i < want.length; i += BATCH) {
+  let fresh = false, rpcDead = false;
+  for (let i = 0; i < want.length && !rpcDead; i += BATCH) {
     const chunk = want.slice(i, i + BATCH);
     try {
       const r = await f(cfg.supabaseUrl + '/rest/v1/rpc/player_bio', {
@@ -93,7 +121,7 @@ async function loadBio(cfg, ids, fetchFn, store, now) {
         headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ p_ids: chunk })
       });
-      if (!r.ok) break;                     // before 0185 there is no such function: no columns' worth, and nothing is remembered
+      if (!r.ok) { rpcDead = true; break; }               // before 0185 there is no such function: the plain columns instead
       const got = new Map((await r.json() || []).filter(x => x && x.player_id != null).map(x => [x.player_id, x]));
       chunk.forEach(id => {
         const x = got.get(id);
@@ -101,7 +129,19 @@ async function loadBio(cfg, ids, fetchFn, store, now) {
         if (x) out[id] = { h: cache.m[id][0], w: cache.m[id][1], a: cache.m[id][2] };
       });
       fresh = true;
-    } catch (_) { break; }
+    } catch (_) { rpcDead = true; }
+  }
+  if (rpcDead) {
+    const remain = want.filter(id => cache.m[id] === undefined);
+    if (remain.length) {
+      const { data, answered } = await loadBioPlain(cfg, remain, f, t);
+      remain.forEach(id => {
+        if (!answered.has(id)) return;      // the plain read failed too: not cached, asked again next visit
+        cache.m[id] = data[id] || 0;
+        if (data[id]) out[id] = { h: data[id][0], w: data[id][1], a: data[id][2] };
+        fresh = true;
+      });
+    }
   }
   if (fresh && st) { try { st.setItem(KEY, JSON.stringify(cache)); } catch (_) { /* full or blocked: asked again next time */ } }
   return out;

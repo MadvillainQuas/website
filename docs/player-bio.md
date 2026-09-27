@@ -76,3 +76,8 @@ Every player stats table (a league's, the Statistics page, global scouting) has 
 preset, outside the column drawer and not sortable-away (they sort like any column; a blank sinks). They are `epinoia/fulltable.js`'s
 `BIO_COLS`, filled by `player_bio(ids)` (migration 0185): one call per 500 players, kept in the browser for half an hour
 (`epinoia/ages.js loadBio`). Before 0185 is pushed the columns show dashes. A career table (one person) and a team table have none.
+
+**Before 0185 is applied**, the table columns still work: `player_bio()` 404s once, and `epinoia/ages.js` falls back to a plain read of
+`players.height_cm/weight_kg/birth_year` (public columns since 0033/0002, and `players_read`, 0049, already keeps an under-18 out of
+that read entirely). Age is then last-birth-year-to-this-year, the same approximation `t/team.js`'s staff list has always shown; once
+0185 is live it is replaced by the exact, date-of-birth-driven age.

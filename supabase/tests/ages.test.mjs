@@ -56,8 +56,34 @@ console.log('\n-- loadBio (the stats tables’ AGE / HT / WT)');
   ok('batches of 500', c2.join() === '500,500,100', c2);
   const st2 = mem();
   const none = await A.loadBio(CFG, ['a'], async () => ({ ok: false, status: 404 }), st2, 5);
-  ok('a server without the function: nothing, no throw, and nothing remembered (so the next visit asks again)', Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v1') === null);
+  ok('the function AND the plain fallback both refused: nothing, no throw, and nothing remembered (so the next visit asks again)',
+     Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v1') === null);
   ok('a blocked store does not stop it', Object.keys(await A.loadBio(CFG, ['a'], f, { getItem() { throw new Error('no'); }, setItem() { throw new Error('no'); } }, 5)).length === 1);
+}
+
+console.log('\n-- loadBio falls back to the plain, already-public columns before 0185 is deployed');
+{
+  const mem = () => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = v; } }; };
+  const plainCalls = [];
+  const f = async (url) => {
+    if (url.includes('/rpc/player_bio')) return { ok: false, status: 404 };
+    plainCalls.push(url);
+    const ids = decodeURIComponent(url).match(/id=in\.\(([^)]*)\)/)[1].split(',');
+    const rows = { a: { id: 'a', height_cm: 198, weight_kg: 95, birth_year: 1996 }, b: { id: 'b', height_cm: null, weight_kg: null, birth_year: null }, c: { id: 'c', height_cm: 210, weight_kg: null, birth_year: null } };
+    return { ok: true, json: async () => ids.map(id => rows[id]).filter(Boolean) };
+  };
+  const st = mem();
+  const got = await A.loadBio(CFG, ['a', 'b', 'c', 'nowhere'], f, st, new Date('2026-06-15').getTime());
+  ok('the function is tried first, and refused (PGRST202/404) falls back to a plain read of players', plainCalls.length === 1 && plainCalls[0].includes('/rest/v1/players?id=in.'), plainCalls);
+  ok('height and weight come through exactly, and the age is this year minus the year on file (2026 − 1996)', got.a.h === 198 && got.a.w === 95 && got.a.a === 30, got);
+  ok('a player with none of the three, and one never returned at all, are simply absent', !('b' in got) && !('nowhere' in got), got);
+  ok('one with only a height has that and no age', got.c.h === 210 && got.c.a === null, got.c);
+  const again = await A.loadBio(CFG, ['a', 'd'], f, st, new Date('2026-06-15').getTime() + 60000);
+  ok('cached, like the function path: only the new id asks again', plainCalls.length === 2 && plainCalls[1].includes('(d)'), plainCalls);
+  ok('...and the cached one still answers', again.a.h === 198);
+  const st2 = mem();
+  const none = await A.loadBio(CFG, ['x'], async (u) => (u.includes('/rpc/') ? { ok: false, status: 404 } : { ok: false, status: 500 }), st2, 5);
+  ok('the plain read itself failing (not just an empty answer) is not cached either', Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v1') === null);
 }
 
 console.log('\n-- the words');
