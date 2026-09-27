@@ -160,6 +160,24 @@
   ],
   "t": 1790501096.947958
  },
+ "2026-09-27": {
+  "final": false,
+  "games": [
+   {
+    "away": "Bigbank/Kalev",
+    "date": "2026-09-27",
+    "fls": "2898859",
+    "gid": "2027212057",
+    "h_tid": "9890",
+    "home": "Viimsi",
+    "over": false,
+    "place": "Forus Spordikeskus Viimsi",
+    "time": "17:00:00",
+    "v_tid": "9891"
+   }
+  ],
+  "t": 1790501481.6243265
+ },
  "2026-09-28": {
   "final": false,
   "games": [
@@ -225,6 +243,24 @@
    }
   ],
   "t": 1790501276.7586231
+ },
+ "2026-10-01": {
+  "final": false,
+  "games": [
+   {
+    "away": "Latvijas Universitāte",
+    "date": "2026-10-01",
+    "fls": "2918501",
+    "gid": "2027212142",
+    "h_tid": "10028",
+    "home": "Rigas Ekselences Juniori",
+    "over": false,
+    "place": "Komandas Sporta Spelu Halle",
+    "time": "19:00:00",
+    "v_tid": "9903"
+   }
+  ],
+  "t": 1790501511.5009613
  },
  "2026-10-02": {
   "final": false,
