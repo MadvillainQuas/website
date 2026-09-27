@@ -182,6 +182,19 @@ ok("Dubai Basketball's home games are printed on the league's clock: 16:00 on 27
 tbc = [g for g in reg if g.extra.get("time_tbc")]
 ok("136 fixtures with a date and no time yet are held at noon UTC as TBC",
    len(tbc) == 136 and all(g.tipoff_at.endswith("T12:00:00Z") for g in tbc), len(tbc))
+
+class Pulled(Offline):
+    """The same calendar with round 1's opener taken off its date, as ABA did on 27 Sep 2026 ("TBA")."""
+    def _get(self, url, **kw):
+        r = super()._get(url, **kw)
+        if r is not None and "/calendar/" in url:
+            r = Reply(r.text.replace("Friday, 25.09.2026 18:00 CET", "TBA", 1))
+        return r
+pulled = {g.external_id: g for g in Pulled().discover("", {"league": 1, "season": "2026-27", "stage": "regular"})}
+ok("a game pulled from its date (TBA) stays on the schedule, undated and flagged, so its stored date is cleared",
+   "1-26-2" in pulled and pulled["1-26-2"].tipoff_at is None and pulled["1-26-2"].extra.get("date_tbc") is True
+   and len(pulled) == 180, pulled.get("1-26-2") and (pulled["1-26-2"].tipoff_at, pulled["1-26-2"].extra))
+ok("...and the rest keep their dates, unflagged", all(g.tipoff_at and not g.extra.get("date_tbc") for k, g in pulled.items() if k != "1-26-2"))
 ok("no play-offs published yet: the play-off row finds none",
    list(Offline().discover("", {"league": 1, "season": "2026-27", "stage": "playoffs"})) == [])
 for bad, cfg in (("an unknown stage", {"league": 1, "season": "2026-27", "stage": "finals"}),

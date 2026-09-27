@@ -257,7 +257,8 @@ def sched_entry(g: ScheduleGame, prev: dict | None) -> dict:
     e = dict(prev or {})
     e.update({"id": g.external_id, "home": g.home_name or e.get("home"), "away": g.away_name or e.get("away"),
               "status": e.get("status") if e.get("hash") else (g.status or "scheduled"),
-              "date": g.tipoff_at or e.get("date"), "venue": (g.extra or {}).get("venue") or e.get("venue")})
+              "date": None if (g.extra or {}).get("date_tbc") and not g.tipoff_at else (g.tipoff_at or e.get("date")),
+              "venue": (g.extra or {}).get("venue") or e.get("venue")})
     return e
 
 
@@ -804,6 +805,11 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict, pre: dict
         if cur and cur[0].get("status") in ("scheduled", None) and ((g.tipoff_at and not same_instant(cur[0].get("tipoff_at"), g.tipoff_at))
                                                                     or (ex.get("venue") and cur[0].get("venue") != ex.get("venue"))):
             sb.patch("games", f"id=eq.{game_id}", {k: v for k, v in row.items() if v})
+        # A FIXTURE TAKEN OFF ITS DATE (the adapter flags date_tbc: the schedule lists the game with no
+        # date, as ABA's "TBA"). The stored date is cleared, or the site shows it as due, then as
+        # being played, on a day it is not; an unplayed game only.
+        if cur and cur[0].get("status") in ("scheduled", None) and ex.get("date_tbc") and not g.tipoff_at and cur[0].get("tipoff_at"):
+            sb.patch("games", f"id=eq.{game_id}", {"tipoff_at": None})
         if conf and cur and cur[0].get("conference_game") != conf["conference_game"]:
             # a game the schedule has since re-labelled; a finished one moves two tables
             sb.patch("games", f"id=eq.{game_id}", conf)
@@ -2607,7 +2613,8 @@ def main() -> int:
                 ready, waiting = list(games), 0
             else:
                 unfinished = [g for g in games if not done(g)]
-                ready = [g for g in unfinished if worth_fetching(g.tipoff_at, now_utc)]
+                # a game with its date withdrawn has nothing to fetch until a date comes back
+                ready = [g for g in unfinished if worth_fetching(g.tipoff_at, now_utc) and not (g.extra or {}).get("date_tbc")]
                 waiting = len(unfinished) - len(ready)
             todo = ready[: args.max_games]
             print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch"

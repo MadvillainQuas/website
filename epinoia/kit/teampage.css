@@ -1,0 +1,79 @@
+/* ============================================================================
+   A CLUB'S PAGE: its results and fixtures, and its roster (t/team.js).
+
+   RESULTS & FIXTURES as the fixtures page draws a game: both clubs, home on the
+   left, in their colours washed in from each edge and down each side, crests in
+   white discs ringed in the club colour, the score (or the tip-off) on a black
+   block with the winner in yellow, this club's result on a W / L key under it,
+   each day on a teletext strip.
+
+   THE ROSTER as a squad sheet: the full width, each player a strip with the
+   club's colour down its edge, the shirt number on a black key in the teletext
+   yellow, the name in the page's heaviest weight, the measurements in the data
+   face, the squad average on a black band at the foot.
+   ============================================================================ */
+#games .tfday{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  background:#0a0a0a;color:#ffe14d;padding:8px calc(var(--u)*3) 7px;margin-top:calc(var(--u)*1.5)}
+#games .tfday.live{color:#ff4b4b}
+#games .tfx{--hc:var(--rule-2);--ac:var(--rule-2);position:relative;display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px 16px;align-items:center;
+  padding:14px calc(var(--u)*3) 12px;border-bottom:1px solid var(--rule);text-decoration:none;color:inherit;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--hc) 13%,transparent),transparent 40%,
+                             transparent 60%,color-mix(in srgb,var(--ac) 13%,transparent));
+  box-shadow:inset 6px 0 0 var(--hc),inset -6px 0 0 var(--ac)}
+#games a.tfx:hover{background:linear-gradient(90deg,color-mix(in srgb,var(--hc) 22%,transparent),transparent 45%,
+                             transparent 55%,color-mix(in srgb,var(--ac) 22%,transparent))}
+#games .tfs{display:flex;align-items:center;gap:12px;min-width:0}
+#games .tfs.a{flex-direction:row-reverse;text-align:right}
+#games .tfc{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#fff;overflow:hidden;
+  border:2px solid var(--ink-c,var(--rule-2));font-family:var(--f-score);font-size:12px;color:#0a0a0a}
+#games .tfc img{width:70%;height:70%;object-fit:contain}
+#games .tfx .tn{font-family:var(--f-ui);font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.01em;
+  color:var(--ink-t,var(--ink));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#games .tfx .tn.us{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+#games .tfx .ha{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:3px}
+#games .tfm{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:104px}
+#games .tfx .sc{font-family:var(--f-score);font-size:24px;line-height:1;background:#0a0a0a;color:#9aa39e;padding:6px 12px 4px;white-space:nowrap}
+#games .tfx .sc .w{color:#ffe14d} #games .tfx .sc .dash{color:#555;padding:0 5px}
+#games .tfx .sc.t{color:#fff;font-size:21px}
+#games .tfx .st{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;
+  border:1px solid var(--rule-2);background:var(--panel);color:var(--ink-2)}
+#games .tfx .st.live{color:var(--flare);border-color:var(--flare)}
+#games .tfx .res{font-family:var(--f-score);font-size:13px;line-height:1;min-width:22px;text-align:center;padding:4px 6px 3px;color:#fff}
+#games .tfx .res.w{background:var(--good,#1f9d55)} #games .tfx .res.l{background:var(--bad,#c62828)}
+#games .tfwhere{grid-column:1 / -1;text-align:center;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3)}
+#games .tfx.hasbell{padding-right:64px}
+#games .tfbell{position:absolute;top:50%;right:14px;transform:translateY(-50%)}
+@media (max-width:640px){
+  #games .tfx{gap:6px 8px;padding:12px calc(var(--u)*2) 10px}
+  #games .tfs, #games .tfs.a{flex-direction:column;text-align:center;gap:6px}
+  #games .tfc{width:36px;height:36px}
+  #games .tfx .tn{font-size:11.5px;white-space:normal;overflow-wrap:anywhere}
+  #games .tfx .ha{display:none}
+  #games .tfm{min-width:0}
+  #games .tfx .sc{font-size:19px;padding:5px 8px 3px}
+  #games .tfx.hasbell{padding-right:calc(var(--u)*2)}
+  #games .tfbell{top:4px;right:4px;transform:scale(.8)}
+}
+
+/* ---- the roster ---- */
+#roster .roster-wrap{width:100%}
+#roster table.ft.roster{width:100% !important;min-width:520px;border-collapse:separate;border-spacing:0 4px}
+#roster table.ft.roster.nopos th:nth-child(3), #roster table.ft.roster.nopos td:nth-child(3){display:none}
+#roster table.ft.roster tbody td{background:var(--panel);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding-top:9px;padding-bottom:9px;font-size:13.5px}
+#roster table.ft.roster tbody td.c0{width:58px;text-align:center;font-family:var(--f-score);font-size:17px;
+  background:#0a0a0a;color:#ffe14d;box-shadow:inset 6px 0 0 var(--team-a,var(--lume))}
+#roster table.ft.roster th.c1, #roster table.ft.roster td.c1{width:auto}
+#roster table.ft.roster th:nth-child(n+3), #roster table.ft.roster td:nth-child(n+3){width:104px;white-space:nowrap}
+#roster table.ft.roster th.c0, #roster table.ft.roster td.c0{width:58px}
+#roster table.ft.roster tbody td.c1{font-family:var(--f-ui);font-weight:800;font-size:14.5px;letter-spacing:.01em}
+#roster table.ft.roster tbody td.c1 a{color:var(--ink);text-decoration:none}
+#roster table.ft.roster tbody tr:hover td{background:color-mix(in srgb,var(--team-a,var(--lume)) 9%,var(--panel))}
+#roster table.ft.roster tbody tr:hover td.c0{background:var(--team-a,#0a0a0a);color:#fff}
+#roster table.ft.roster tbody tr:hover td.c1 a{text-decoration:underline;text-underline-offset:3px}
+#roster table.ft.roster tbody td.meas{font-family:var(--f-data);font-size:13px}
+#roster table.ft.roster tfoot td{background:#0a0a0a;color:#fff;border:0;padding-top:10px;padding-bottom:10px}
+#roster table.ft.roster tfoot td.avg-l{color:#ffe14d;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase}
+#roster table.ft.roster tfoot td.meas{font-family:var(--f-data);font-size:13px;font-weight:600}
+#roster table.ft.roster tfoot td .meas-alt{color:#9aa39e}
