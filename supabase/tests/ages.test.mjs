@@ -56,7 +56,7 @@ console.log('\n-- a squad’s averages');
 
 console.log('\n-- the pages');
 const player = rd('epinoia', 'p', 'player.js'), team = rd('epinoia', 't', 'team.js');
-ok('the player header asks for his age and adds it beside the year', /EpinoiaAges\.load\(CFG, \[pl\.id\]\)/.test(player) && /'age ' \+ m\[pl\.id\]/.test(player) && /'born ' \+ pl\.birth_year/.test(player));
+ok('the player header asks for his age, adds it beside the year, and shows height and weight', /EpinoiaAges\.load\(CFG, \[pl\.id\]\)/.test(player) && /'age ' \+ m\[pl\.id\]/.test(player) && /pl\.height_cm/.test(player) && /pl\.weight_kg \+ ' kg'/.test(player) && /'born ' \+ pl\.birth_year/.test(player));
 ok('the roster has an AGE column and a squad-average row', /\['#', 'PLAYER', 'POS', 'AGE'\]/.test(team) && /function squadAverages/.test(team) && /squadAverages\(rows\.map/.test(team));
 ok('both pages load ages.js', /ages\.js\?v=\d+/.test(rd('epinoia', 'p', 'index.html')) && /ages\.js\?v=\d+/.test(rd('epinoia', 't', 'index.html')));
 

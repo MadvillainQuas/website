@@ -150,13 +150,21 @@ function paintIdentity(pl, entry, team) {
   }
   if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
   if (pl.birth_year) sub.appendChild(el('span', 'born', 'born ' + pl.birth_year));
-  /* HIS AGE, from the database's own function (0184): the date of birth is never sent to a browser. Added when it arrives; a server
-     without it, or a player with only a year, keeps the line above as it was. */
+  /* HIS AGE, from the database's own function (0184): the date of birth is never sent to a browser. Its place is held so the height
+     and weight stay after it when it arrives; a server without it, or a player with only a year, shows nothing there. */
+  const ageEl = el('span', 'born'); ageEl.hidden = true; sub.appendChild(ageEl);
   if (window.EpinoiaAges && pl.id) {
     window.EpinoiaAges.load(CFG, [pl.id]).then(m => {
-      if (m[pl.id] != null) sub.appendChild(el('span', 'born', 'age ' + m[pl.id]));
+      if (m[pl.id] != null) { ageEl.textContent = 'age ' + m[pl.id]; ageEl.hidden = false; }
     }).catch(() => { /* no age */ });
   }
+  /* HEIGHT AND WEIGHT, as the roster shows them: centimetres with feet and inches, kilograms. Only what is known. */
+  if (pl.height_cm) {
+    const inches = Math.round(pl.height_cm / 2.54);
+    const h = el('span', 'born', pl.height_cm + ' cm · ' + Math.floor(inches / 12) + "'" + (inches % 12) + '"');
+    h.setAttribute('translate', 'no'); sub.appendChild(h);
+  }
+  if (pl.weight_kg) { const w = el('span', 'born', pl.weight_kg + ' kg'); w.setAttribute('translate', 'no'); sub.appendChild(w); }
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
 }
 
