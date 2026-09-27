@@ -643,11 +643,29 @@ function render(opts) {
   const CAT = (isTeam ? T : P).map(c =>
     (c.k === 'name' && opts.nameLabel) ? Object.assign({}, c, { l: opts.nameLabel }) : c);
   const presets = PRESETS[isTeam ? 'team' : 'player'];
+  /* AGE, HT AND WT sit beside the name in every preset of a player table, and are not in the column drawer (like the league column):
+     a scout reads a row by who he is and how big he is. Read from the database's player_bio() in batches (ages.js) once the rows are
+     on screen and filled in when they arrive; a career table (one person, the name column is a season) and a team table have none. */
+  const BIO = !isTeam && !opts.nameLabel && opts.bio !== false && !!(root.EpinoiaAges && root.EpinoiaAges.loadBio);
+  const bioMap = new Map();          // player id -> {h, w, a}, what the database answered
+  const bioAsked = new Set();        // ids already asked about this render
+  /* a merged row (global scouting) is leagueId:playerId, and the person is playerId */
+  const bioKey = r => String(r.playerId || r.id);
+  const applyBio = list => {
+    if (!BIO) return;
+    list.forEach(r => { const b = bioMap.get(bioKey(r)) || {}; r.bio_age = b.a == null ? null : b.a; r.bio_ht = b.h == null ? null : b.h; r.bio_wt = b.w == null ? null : b.w; });
+  };
+  const BIO_COLS = BIO ? [
+    { k: 'bio_age', l: 'AGE', g: ['bio'], fmt: r => f0(r.bio_age), t: 'age today' },
+    { k: 'bio_ht',  l: 'HT',  g: ['bio'], fmt: r => f0(r.bio_ht),  t: 'height, cm' },
+    { k: 'bio_wt',  l: 'WT',  g: ['bio'], fmt: r => f0(r.bio_wt),  t: 'weight, kg' }
+  ] : [];
   let rows = prep(opts.rows);
   /* every row set the table is handed goes through here, the first and each setRows */
   function prep(list) {
     const out = (list || []).map((r, i) => Object.assign({ __i: i }, r));
     derive(out);
+    applyBio(out);
     return out;
   }
   /* PER GAME OUTSIDE THE TOTALS VIEW. A season row carries totals; every column except the
@@ -811,12 +829,15 @@ function render(opts) {
   const LEAGUE_COL = opts.leagueColumn && !isTeam ? { k: 'leagueShort', l: 'LEAGUE', g: ['league'], text: true,
     fmt: r => r.leagueShort || r.leagueName || '', sort: r => r.leagueShort || r.leagueName || '',
     t: 'the league these numbers come from' } : null;
-  const colOf = k => CAT.find(x => x.k === k) || (LEAGUE_COL && k === LEAGUE_COL.k ? LEAGUE_COL : null);
+  const colOf = k => CAT.find(x => x.k === k) || (LEAGUE_COL && k === LEAGUE_COL.k ? LEAGUE_COL : null) || BIO_COLS.find(x => x.k === k) || null;
 
   const idCols = CAT.filter(c => c.g.includes('id'));
   const inPreset = c => preset === '*' ? !c.g.includes('id') : c.g.includes(preset);
   const visible = () => {
-    const out = idCols.concat(
+    /* rank and name, then AGE / HT / WT, then the rest of the identity columns (the club), then the preset */
+    const out = idCols.slice(0, 2).concat(
+      BIO_COLS,
+      idCols.slice(2),
       CAT.filter(c => !c.g.includes('id') && !absent(c.k) &&
                       ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
          .map((c, i) => [c, i])
@@ -1981,6 +2002,27 @@ function render(opts) {
     };
   }
 
+  /* the bio columns' numbers, for the rows now held: only ids not asked about yet, one pause so rows arriving in parts (global
+     scouting, a league at a time) share a call, and a redraw only if something came back and this table is still on the page */
+  let bioTimer = null;
+  function bioLoad() {
+    if (!BIO || bioTimer) return;
+    bioTimer = setTimeout(async () => {
+      bioTimer = null;
+      const ids = [...new Set(rows.map(bioKey))].filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) && !bioAsked.has(id));
+      if (!ids.length) return;
+      ids.forEach(id => bioAsked.add(id));
+      let got = {};
+      try { got = await root.EpinoiaAges.loadBio(root.EPINOIA_CONFIG, ids); } catch (_) { return; }
+      const n = Object.keys(got).length;
+      if (!n) return;
+      Object.keys(got).forEach(id => bioMap.set(id, got[id]));
+      applyBio(rows);
+      if (host.__ftWrap === wrap) draw();
+    }, 60);
+  }
+  bioLoad();
+
   return {
     redraw: draw,
     /* ROWS THAT ARRIVE IN PARTS (global scouting draws each league as it lands). Everything
@@ -1988,6 +2030,7 @@ function render(opts) {
        club lists, the lock -- while the sort, the filters, the picks and the rows shown stay. */
     setRows(next) {
       rows = prep(next);
+      bioLoad();
       posMap = null;
       qualRows = hasQualified(rows);
       if (qualBtn) qualBtn.hidden = !qualRows;

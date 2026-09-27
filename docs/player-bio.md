@@ -69,3 +69,10 @@ Until 0184 is pushed (`npx supabase@latest db push`) the job writes birth years 
 Write a reader in `bio_sources.py` yielding `{first, last | name, team, key?, height_cm?, weight_kg?, birth?, birth_year?, detail?}`,
 register it under the league slug, dry-run it against the live site (`--dry-run`), and check the matched count against the number of
 players on the site. A reader takes `players=` (the league's players) and `teams=` (its clubs with the feed's own club id) if it needs them.
+
+## The stats tables
+
+Every player stats table (a league's, the Statistics page, global scouting) has **AGE, HT, WT** right after the name, in every
+preset, outside the column drawer and not sortable-away (they sort like any column; a blank sinks). They are `epinoia/fulltable.js`'s
+`BIO_COLS`, filled by `player_bio(ids)` (migration 0185): one call per 500 players, kept in the browser for half an hour
+(`epinoia/ages.js loadBio`). Before 0185 is pushed the columns show dashes. A career table (one person) and a team table have none.

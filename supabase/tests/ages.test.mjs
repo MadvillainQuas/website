@@ -39,6 +39,27 @@ console.log('-- load');
   ok('a bad answer row is ignored', (await A.load(CFG, ['a'], async () => ({ ok: true, json: async () => [{ player_id: 'a', age: 'x' }, null, { player_id: 'b', age: 31 }] }))).b === 31);
 }
 
+console.log('\n-- loadBio (the stats tables’ AGE / HT / WT)');
+{
+  const mem = () => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = v; } }; };
+  const calls = [];
+  const f = async (url, o) => { const ids = JSON.parse(o.body).p_ids; calls.push({ url, ids }); return { ok: true, json: async () => ids.filter(i => i !== 'empty').map(i => ({ player_id: i, height_cm: 198, weight_kg: null, age: 27 })) }; };
+  const st = mem();
+  const got = await A.loadBio(CFG, ['a', 'b', 'empty'], f, st, 1000);
+  ok('one call to player_bio; the answers are {id: {h, w, a}}', calls.length === 1 && calls[0].url === 'https://x.test/rest/v1/rpc/player_bio' && got.a.h === 198 && got.a.w === null && got.a.a === 27 && !('empty' in got), { calls, got });
+  const again = await A.loadBio(CFG, ['a', 'b', 'empty', 'c'], f, st, 1000 + 60000);
+  ok('within half an hour only the new id is asked about; a player with nothing is remembered as nothing', calls.length === 2 && calls[1].ids.join() === 'c' && again.a.a === 27 && !('empty' in again), calls);
+  await A.loadBio(CFG, ['a'], f, st, 1000 + 31 * 60000);
+  ok('after half an hour it is asked again', calls.length === 3);
+  const many = Array.from({ length: 1100 }, (_, i) => 'p' + i), c2 = [];
+  await A.loadBio(CFG, many, async (u, o) => { c2.push(JSON.parse(o.body).p_ids.length); return { ok: true, json: async () => [] }; }, mem(), 5);
+  ok('batches of 500', c2.join() === '500,500,100', c2);
+  const st2 = mem();
+  const none = await A.loadBio(CFG, ['a'], async () => ({ ok: false, status: 404 }), st2, 5);
+  ok('a server without the function: nothing, no throw, and nothing remembered (so the next visit asks again)', Object.keys(none).length === 0 && st2.getItem('epinoia.bio.v1') === null);
+  ok('a blocked store does not stop it', Object.keys(await A.loadBio(CFG, ['a'], f, { getItem() { throw new Error('no'); }, setItem() { throw new Error('no'); } }, 5)).length === 1);
+}
+
 console.log('\n-- the words');
 ok('year and age', A.bornWords(1996, 30).join(' · ') === 'born 1996 · age 30');
 ok('a year alone stays a year', A.bornWords(1996, undefined).join() === 'born 1996');
@@ -59,6 +80,12 @@ const player = rd('epinoia', 'p', 'player.js'), team = rd('epinoia', 't', 'team.
 ok('the player header asks for his age, adds it beside the year, and shows height and weight', /EpinoiaAges\.load\(CFG, \[pl\.id\]\)/.test(player) && /'age ' \+ m\[pl\.id\]/.test(player) && /pl\.height_cm/.test(player) && /pl\.weight_kg \+ ' kg'/.test(player) && /'born ' \+ pl\.birth_year/.test(player));
 ok('the roster has an AGE column and a squad-average row', /\['#', 'PLAYER', 'POS', 'AGE'\]/.test(team) && /function squadAverages/.test(team) && /squadAverages\(rows\.map/.test(team));
 ok('both pages load ages.js', /ages\.js\?v=\d+/.test(rd('epinoia', 'p', 'index.html')) && /ages\.js\?v=\d+/.test(rd('epinoia', 't', 'index.html')));
+
+const FT = rd('epinoia', 'fulltable.js');
+ok('the player tables have AGE, HT and WT right after the name, not in the drawer, and none on a team or career table',
+   /k: 'bio_age'/.test(FT) && /idCols\.slice\(0, 2\)\.concat\(\s*BIO_COLS,/.test(FT) && /const BIO = !isTeam && !opts\.nameLabel/.test(FT));
+ok('the league, stats and scouting pages load ages.js before fulltable.js', ['l', 'scouting', 'stats'].every(d => {
+  const h = rd('epinoia', d, 'index.html'); return h.indexOf('../ages.js') > -1 && h.indexOf('../ages.js') < h.indexOf('../fulltable.js'); }));
 
 const walk = d => readdirSync(d).flatMap(n => { const f = path.join(d, n); return statSync(f).isDirectory() ? (n === 'vendor' || n === 'node_modules' ? [] : walk(f)) : [f]; });
 const named = walk(path.join(ROOT, 'epinoia')).filter(f => /\.(js|html)$/.test(f)).filter(f => /birth_date/.test(readFileSync(f, 'utf8')));

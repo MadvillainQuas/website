@@ -64,5 +64,48 @@ function summary(players, ages) {
   };
 }
 
-return { load, bornWords, summary, BATCH };
+/* AGE, HEIGHT AND WEIGHT FOR A TABLE'S WORTH OF PLAYERS - the stats tables' AGE / HT / WT columns. One call to player_bio() (0185) per
+   five hundred players, and what came back is kept in the browser for half an hour (a player who has nothing is kept as
+   nothing, so a table of thousands is not asked about again on every visit, yet a bio filled in meanwhile shows soon).
+   Returns {id: {h, w, a}} for players who have at least one of the three; never rejects. `store` is a localStorage-like object. */
+const KEY = 'epinoia.bio.v1';
+const TTL_MS = 30 * 60 * 1000;
+async function loadBio(cfg, ids, fetchFn, store, now) {
+  const out = {};
+  const f = fetchFn || (typeof fetch === 'function' ? fetch : null);
+  const t = now == null ? Date.now() : now;
+  let cache = { t, m: {} };
+  const st = store === undefined ? (typeof localStorage !== 'undefined' ? localStorage : null) : store;
+  try { const c = st && JSON.parse(st.getItem(KEY) || 'null'); if (c && c.m && t - c.t >= 0 && t - c.t < TTL_MS) cache = c; } catch (_) { /* no cache */ }
+  const want = [];
+  [...new Set((ids || []).filter(Boolean))].forEach(id => {
+    const c = cache.m[id];
+    if (c === undefined) want.push(id);
+    else if (c) out[id] = { h: c[0], w: c[1], a: c[2] };
+  });
+  if (!f || !cfg || !cfg.supabaseUrl || !want.length) return out;
+  let fresh = false;
+  for (let i = 0; i < want.length; i += BATCH) {
+    const chunk = want.slice(i, i + BATCH);
+    try {
+      const r = await f(cfg.supabaseUrl + '/rest/v1/rpc/player_bio', {
+        method: 'POST', cache: 'no-store',
+        headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ p_ids: chunk })
+      });
+      if (!r.ok) break;                     // before 0185 there is no such function: no columns' worth, and nothing is remembered
+      const got = new Map((await r.json() || []).filter(x => x && x.player_id != null).map(x => [x.player_id, x]));
+      chunk.forEach(id => {
+        const x = got.get(id);
+        cache.m[id] = x ? [x.height_cm == null ? null : x.height_cm, x.weight_kg == null ? null : x.weight_kg, x.age == null ? null : x.age] : 0;
+        if (x) out[id] = { h: cache.m[id][0], w: cache.m[id][1], a: cache.m[id][2] };
+      });
+      fresh = true;
+    } catch (_) { break; }
+  }
+  if (fresh && st) { try { st.setItem(KEY, JSON.stringify(cache)); } catch (_) { /* full or blocked: asked again next time */ } }
+  return out;
+}
+
+return { load, loadBio, bornWords, summary, BATCH };
 }));

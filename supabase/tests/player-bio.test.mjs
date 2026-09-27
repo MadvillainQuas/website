@@ -21,12 +21,13 @@ const db = new PGlite();
 await db.exec(`
   create role anon; create role authenticated; create role service_role;
   create table public.players (id uuid primary key default gen_random_uuid(), slug text, first_name text not null, last_name text default '',
-    birth_year int, is_minor boolean default false, public_consent boolean default false);
+    birth_year int, height_cm int, weight_kg int, is_minor boolean default false, public_consent boolean default false);
   create function public.player_withheld(p_minor boolean, p_consent boolean) returns boolean language sql immutable as $$ select coalesce(p_minor, false) and not coalesce(p_consent, false) $$;
   revoke all on public.players from anon, authenticated;
   grant select (id, slug, first_name, last_name, birth_year, is_minor) on public.players to anon, authenticated;
 `);
 await db.exec(mig('0184_player_bio.sql'));
+await db.exec(mig('0185_player_bio_rpc.sql'));
 
 const one = async (sql, args) => (await db.query(sql, args)).rows[0];
 const ins = async (first, date, year, extra = '') => (await one(`insert into public.players (first_name, birth_date, birth_year ${extra ? ', ' + extra.split('=')[0] : ''}) values ($1, $2, $3 ${extra ? ', ' + extra.split('=')[1] : ''}) returning *`, [first, date, year]));
@@ -69,6 +70,22 @@ const expected = new Date().getFullYear() - 1990 - ((new Date().getMonth() > 0 |
 ok('a player with a date has an age, and it is today’s', ages.length === 1 && ages[0].player_id === A.id && ages[0].age === expected, ages);
 ok('a withheld player has none, and neither has one with only a year', !ages.some(x => x.player_id === W.rows[0].id || x.player_id === N.id), ages);
 ok('no ids: nothing', (await db.query('select * from public.player_ages(null)')).rows.length === 0);
+
+console.log('\n-- player_bio: a page of players in one call');
+{
+  const B = await one("insert into public.players (first_name, birth_date, height_cm, weight_kg) values ('Bio', '1990-01-01', 198, 95) returning id");
+  const H = await one("insert into public.players (first_name, height_cm) values ('HeightOnly', 201) returning id");
+  const E = await one("insert into public.players (first_name) values ('Empty') returning id");
+  const M = await one("insert into public.players (first_name, birth_date, height_cm, is_minor, public_consent) values ('Kid', '1988-01-01', 190, true, false) returning id");
+  const rows = (await db.query('select * from public.player_bio($1::uuid[])', [[B.id, H.id, E.id, M.id]])).rows;
+  const by = id => rows.find(r => r.player_id === id);
+  ok('height, weight and the age worked out today, in one row', by(B.id) && by(B.id).height_cm === 198 && by(B.id).weight_kg === 95 && by(B.id).age === new Date().getFullYear() - 1990 - ((new Date().getMonth() > 0 || new Date().getDate() >= 1) ? 0 : 1), rows);
+  ok('a player with only a height has that and no age', by(H.id) && by(H.id).height_cm === 201 && by(H.id).age === null);
+  ok('a player with nothing is left out, and so is a withheld one', !by(E.id) && !by(M.id), rows);
+  ok('the answer has no date of birth in it', !rows.some(r => 'birth_date' in r || 'birth_year' in r));
+  ok('no ids: nothing', (await db.query('select * from public.player_bio(null)')).rows.length === 0);
+  ok('executable by the browser roles', (await one("select has_function_privilege('anon', 'public.player_bio(uuid[])', 'execute') a")).a === true);
+}
 
 console.log('\n-- who can read what');
 ok('the date is not granted to the browser roles', (await one("select has_column_privilege('anon', 'public.players', 'birth_date', 'select') a, has_column_privilege('authenticated', 'public.players', 'birth_date', 'select') b")).a === false

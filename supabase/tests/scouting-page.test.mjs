@@ -76,7 +76,7 @@ console.log('\nthe page');
   const deferred = [...body.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m => m[1].replace('?v=' + V, ''));
   eq('deferred scripts, in order', deferred,
      ['../config.js', '../access.js', '../season.js', '../bpm.js', '../data.js', '../global.js',
-      '../fulltable.js', '../compare.js', 'scouting.js', '../nav.js', '../xscroll.js']);
+      '../ages.js', '../fulltable.js', '../compare.js', 'scouting.js', '../nav.js', '../xscroll.js']);
   ok('every deferred script is stamped ?v=' + V, [...body.matchAll(/<script src="([^"]+)"/g)].every(m => m[1].endsWith('?v=' + V)));
 
   /* EVERY LOCAL FILE THE PAGE ASKS FOR IS IN THE REPO. appmode.js and home/ are Phase 1's (R2),
