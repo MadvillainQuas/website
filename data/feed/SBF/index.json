@@ -2,7 +2,7 @@
 "code": "SBF",
 "label": "Basketligan (Sweden)",
 "adapter": "fiba_livestats",
-"updated": "2026-09-27T00:35:17.032494+00:00",
+"updated": "2026-09-27T00:53:08.792035+00:00",
 "games": [
 {
 "id": "2851860",
@@ -2183,7 +2183,7 @@
 "hash": "eae923dd810b1f414aefde53ff337d8ea9ea0692",
 "venue": "Luleå Energi Arena A",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851675.json",
-"updated": "2026-09-27T00:33:25.613837+00:00"
+"updated": "2026-09-27T00:48:29.132378+00:00"
 },
 {
 "id": "2851678",
@@ -2196,7 +2196,7 @@
 "hash": "068eb072bb8b1aff2d3bbd90c485cfde32f38697",
 "venue": "Täljehallen A",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851678.json",
-"updated": "2026-09-27T00:34:08.096427+00:00"
+"updated": "2026-09-27T00:51:56.366974+00:00"
 },
 {
 "id": "2851676",
@@ -2209,7 +2209,7 @@
 "hash": "d3821d23f75f21dc11a7ea42b569fc3f7c521fe7",
 "venue": "Fyrishov A, Uppsala",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851676.json",
-"updated": "2026-09-27T00:33:39.684264+00:00"
+"updated": "2026-09-27T00:49:34.662327+00:00"
 },
 {
 "id": "2851674",
@@ -2222,7 +2222,7 @@
 "hash": "17ae6731e7c766cf3b019ccf088dcdde13f024c4",
 "venue": "Boråshallen",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851674.json",
-"updated": "2026-09-27T00:33:10.321710+00:00"
+"updated": "2026-09-27T00:47:26.487759+00:00"
 },
 {
 "id": "2851677",
@@ -2235,7 +2235,7 @@
 "hash": "d9f9e33967460e97040da4bb11773189623f0314",
 "venue": "Stadium Arena A",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2851677.json",
-"updated": "2026-09-27T00:33:54.291170+00:00"
+"updated": "2026-09-27T00:50:46.729350+00:00"
 }
 ]
 }
