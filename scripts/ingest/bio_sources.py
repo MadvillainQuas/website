@@ -16,7 +16,8 @@ What each source gives, found by looking, not assumed (2026-09-27):
   aba-league(-2, -u19)   each club's page on the league's site: a roster table (date, height; no weight)
   bbl                    the league site's players page: date, height, weight for every player, in one request
   proa / prob            each club's Kader page on the 2. Bundesliga site: date, height, weight
-  czech-nbl              each club's page: date (a bare year for some minors), height
+  czech-nbl, czech-zbl   each club's page on nbl.basketball / zbl.basketball: date (a bare year for some minors), height
+  czech-1-liga           the federation's cz.basketball: each club's squad tab, birth YEAR as printed and height (no date)
   liga-endesa            each player's page on acb.com (date, height; no weight): a request per player still missing something
   the six FEB leagues    each club's page on the federation site: date, height, weight where given
   b-league-*, w-league-* the leagues' own player pages, opened only for players already known by the league's player id
@@ -385,23 +386,77 @@ def twobbl(today: date | None = None, log: Callable = print, **_) -> Iterator[di
 
 
 # ------------------------------------------------------------------- Czech NBL ---
-def czech_nbl(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
-    site = "https://nbl.basketball"
-    slugs = sorted(set(re.findall(r'href="\s*(/tym/[^"\s]+)', get_text(site + "/") or "")))
-    log(f"     Czech NBL: {len(slugs)} clubs")
-    for sl in slugs:
-        page = get_text(site + sl) or ""
-        h1 = re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S)
-        club = _txt(h1.group(1)) if h1 else _title(sl.rsplit("/", 1)[-1])
-        for row in _rows(page):
-            cells = [_txt(c) for c in _cells(row)]
-            if len(cells) < 6 or not re.fullmatch(r"\d{1,2}", cells[0]) or not re.search(r"\d+ cm", " ".join(cells)):
+def czech_site(site: str, label: str) -> Callable[..., Iterator[dict]]:
+    """A league on the Czech federation's own system with a site of its own (nbl.basketball, zbl.basketball): each
+    club's page, linked from the home page, is a roster table with a date of birth (a bare year for some minors)
+    and a height."""
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        slugs = sorted(set(re.findall(r'href="\s*(/tym/[^"\s]+)', get_text(site + "/") or "")))
+        log(f"     {label}: {len(slugs)} clubs")
+        for sl in slugs:
+            try:
+                page = get_text(site + sl) or ""
+            except requests.RequestException as exc:            # one club's page timing out is not the league's
+                log(f"     {label} {sl}: {exc.__class__.__name__}, skipped")
                 continue
-            born = next((c for c in cells[2:] if re.fullmatch(r"\d{1,2}\.\s*\d{1,2}\.\s*\d{4}", c)), None)
-            year = next((c for c in cells[2:] if re.fullmatch(r"(19|20)\d{2}", c)), None)
-            height = next((re.match(r"(\d+)", c).group(1) for c in cells if re.fullmatch(r"\d{3} cm", c)), None)
-            yield {"name": cells[1], "team": club, "height_cm": height, "birth": born,
-                   "birth_year": int(year) if year and not born else None, "label": cells[1]}
+            h1 = re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S)
+            club = _txt(h1.group(1)) if h1 else _title(sl.rsplit("/", 1)[-1])
+            for row in _rows(page):
+                cells = [_txt(c) for c in _cells(row)]
+                if len(cells) < 6 or not re.fullmatch(r"\d{1,2}", cells[0]) or not re.search(r"\d+ cm", " ".join(cells)):
+                    continue
+                born = next((c for c in cells[2:] if re.fullmatch(r"\d{1,2}\.\s*\d{1,2}\.\s*\d{4}", c)), None)
+                year = next((c for c in cells[2:] if re.fullmatch(r"(19|20)\d{2}", c)), None)
+                height = next((re.match(r"(\d+)", c).group(1) for c in cells if re.fullmatch(r"\d{3} cm", c)), None)
+                yield {"name": cells[1], "team": club, "height_cm": height, "birth": born,
+                       "birth_year": int(year) if year and not born else None, "label": cells[1]}
+    return read
+
+
+czech_nbl = czech_site("https://nbl.basketball", "Czech NBL")
+
+
+def czech_federation(comp: str) -> Callable[..., Iterator[dict]]:
+    """A Czech league without a site of its own (1. liga mužů), on the federation's cz.basketball: the competition is
+    found by name on the season's competitions page, its clubs are the ones its parts' tables link, and each club's
+    page (tym/<id>?y=<season>) lists the squad with a birth YEAR as printed (no date anywhere) and a height where one
+    was entered."""
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        from adapters.fiba_site_schedule import CZ_COMPETITIONS, CZ_FED, _CZ_COMP_H2, _CZ_PART
+        y = _season_start(today)
+        page = get_text(CZ_COMPETITIONS.format(base=CZ_FED, year=y)) or ""
+        want = re.sub(r"\s+", " ", comp).strip().casefold()
+        heads = list(_CZ_COMP_H2.finditer(page))
+        parts = []
+        for k, h in enumerate(heads):
+            if re.sub(r"\s+", " ", _html.unescape(h.group(1))).strip().casefold() == want:
+                parts = _CZ_PART.findall(page[h.end():heads[k + 1].start() if k + 1 < len(heads) else None])
+                break
+        clubs: dict = {}
+        for cid, pid, _label in parts:
+            for tid, name in re.findall(r'href="/tym/(\d+)\?y=' + str(y) + r'"[^>]*>\s*([^<]+?)\s*<', get_text(f"{CZ_FED}/soutez/{cid}?p={pid}") or ""):
+                clubs.setdefault(tid, _html.unescape(name))
+        log(f"     {comp} {y}: {len(clubs)} clubs from {len(parts)} parts")
+        for tid, name in clubs.items():
+            try:
+                team = get_text(f"{CZ_FED}/tym/{tid}?y={y}") or ""
+            except requests.RequestException as exc:
+                log(f"     {comp} club {tid}: {exc.__class__.__name__}, skipped")
+                continue
+            i = team.find('id="tab-pane-one"')                       # the squad (soupiska) tab
+            j = team.find('id="tab-pane-', i + 10) if i >= 0 else -1
+            h1 = re.search(r"<h1[^>]*>(.*?)</h1>", team, re.S)
+            club = _txt(h1.group(1)) if h1 else name
+            for row in _rows(team[i:j if j > i else None] if i >= 0 else ""):
+                if "/hrac/" not in row:
+                    continue
+                cells = [_txt(c) for c in _cells(row)]
+                if len(cells) < 5:
+                    continue
+                year = cells[3] if re.fullmatch(r"(19|20)\d{2}", cells[3]) else None
+                yield {"name": cells[1], "team": club, "height_cm": cells[4] if re.fullmatch(r"\d{3}", cells[4]) else None,
+                       "birth_year": int(year) if year else None, "label": cells[1]}
+    return read
 
 
 # --------------------------------------------------------------- Liga Endesa (ACB) ---
@@ -1046,6 +1101,8 @@ READERS: dict = {
     "proa": twobbl,
     "prob": twobbl,
     "czech-nbl": czech_nbl,
+    "czech-zbl": czech_site("https://zbl.basketball", "Czech ŽBL"),
+    "czech-1-liga": czech_federation("1. liga mužů"),
     "liga-endesa": acb,
     "primera-feb": feb,
     "segunda-feb": feb,

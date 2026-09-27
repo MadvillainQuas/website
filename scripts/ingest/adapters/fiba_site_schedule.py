@@ -41,6 +41,18 @@ from .fiba_livestats import FIBA_DATA_URL, FibaLiveStatsAdapter, UA, ZoneInfo
 
 CZECH_BASE = "https://nbl.basketball"
 CZECH_SCHEDULE = CZECH_BASE + "/zapasy?y={year}&p1=0&c=0&d_od=&d_do=&k=0"
+# THE OTHER CZECH LEAGUES RUN ON THE SAME SYSTEM (the federation's, ČBF). A league with its own site
+# (ŽBL: zbl.basketball) has the identical /zapasy page, so it is NBL with another address
+# ("czech_base"). A league without one (1. liga mužů) lives on the federation's site, cz.basketball,
+# one page per PART of the competition (its two groups, later its play-off): "czech_competition" names
+# it as the site's competitions page does, and its id and parts are read off that page each season.
+CZ_FED = "https://cz.basketball"
+CZ_COMPETITIONS = "{base}/soutez?y={year}"
+# <h2 class="gamma">1. liga mužů</h2> ... <a href="/soutez/5404?p=10223" ...><div class="font-weight-bold mb-1">Skupina VÝCHOD</div>
+_CZ_COMP_H2 = re.compile(r'<h2 class="gamma">\s*([^<]+?)\s*</h2>')
+_CZ_PART = re.compile(r'href="/soutez/(\d+)\?p=(\d+)"[^>]*>\s*<div class="font-weight-bold mb-1">\s*([^<]+?)\s*</div>')
+# a first-phase group is "Skupina VÝCHOD"; a later placement group carries its places ("Skupina C 1.-6.")
+_CZ_GROUP = re.compile(r"skupina\s+([^\d]+?)\s*$", re.I)
 SLOVAK_BASE = "https://sbl.slovakbasket.sk"
 SLOVAK_LIST = (SLOVAK_BASE + "/sk/stats/match-list/{sid}/tipos-slovenska-basketbalova-liga"
                "?month={month}&listtype=grid&tournamentpartid=0&competitorid=0")
@@ -215,6 +227,39 @@ def _start_year(season: str) -> int:
     # to July - 2027 in March 2027, when the season being played started in 2026
     now = time.gmtime()
     return now.tm_year if now.tm_mon >= 8 else now.tm_year - 1
+
+
+def czech_rows(page: str, base: str, competition_page: bool = False) -> list[dict]:
+    """Every fixture row on a ČBF schedule page: an NBL-style /zapasy page, or the "Zápasy" tab of a
+    federation competition page (which also carries the part's name in its first cell and the hall
+    after the kick-off). A row names the fixture (/zapas/<id>), both clubs, the kick-off, and - once the
+    game is set up - its LiveStats webcast, which saves the hop to the game's own page."""
+    import html as _html
+    i = page.find('id="tab-pane-one"') if competition_page else -1
+    if i >= 0:                                              # a competition page: its fixtures tab only (the
+        j = page.find('id="tab-pane-two"', i)               # table and the records tabs link games too)
+        page = page[i:j if j > i else None]
+    out, seen = [], set()
+    for row in _CZ_ROW.findall(page):
+        m = _ZAPAS.search(row)
+        if not m or m.group(1) in seen:
+            continue
+        seen.add(m.group(1))
+        cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row, re.S)
+        text = lambda c: re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", c or ""))).strip()  # noqa: E731
+        names_ = [n.strip() for n in _CZ_TEAM.findall(row) if n.strip()]
+        when = _CZ_WHEN.search(row)
+        web = _WEBCAST.search(row) or _WEBCAST_ANY.search(row)
+        # the hall: a plain cell straight after the kick-off's (a competition page has one; NBL's page has the clubs there)
+        venue = None
+        dt = next((k for k, c in enumerate(re.findall(r"<td\b[^>]*>", row)) if _CZ_WHEN.search(c)), None)
+        if dt is not None and dt + 1 < len(cells) and "<" not in cells[dt + 1] and re.search(r"[^\W\d_]", cells[dt + 1]):
+            venue = text(cells[dt + 1]) or None
+        part = text(cells[0]) if cells and re.match(r"\s*(skupina|z[áa]kladn|nadstavb|play|baráž|final)", text(cells[0]), re.I) else None
+        out.append({"sid": m.group(1), "home": names_[0] if names_ else "", "away": names_[1] if len(names_) > 1 else "",
+                    "when": when.groups() if when else None, "crests": [base + u for u in _CZ_LOGO.findall(row)],
+                    "fiba_id": web.group(1) if web else None, "venue": venue, "part": part})
+    return out
 
 
 class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
@@ -774,51 +819,92 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         return b
 
     def _czech(self, config: dict) -> list[ScheduleGame]:
-        """nbl.basketball: one <tr> per fixture — id, both clubs and the kick-off, in one request.
+        """A ČBF league: nbl.basketball (or a site built the same way, "czech_base": zbl.basketball) prints one
+        <tr> per fixture - id, both clubs and the kick-off - in one request. A league on the federation's own
+        site ("czech_competition", on cz.basketball) is read one competition part at a time, the same rows.
 
         THE FIXTURE IS KEYED ON THE SITE'S OWN ID, not on the LiveStats id. The LiveStats id is
-        the one thing the schedule does NOT carry (it appears on the game's page, and for a
+        the one thing the schedule does NOT always carry (it appears once the game is set up, and for a
         fixture far out it does not exist yet), so keying on it meant two thirds of the season
         was invisible — 37 fixtures out of 132 — and a game that gained its id later would have
         arrived as a SECOND row beside the one already written. The site id is on every row from
         the moment a fixture exists and never changes, so it is the id; resolving it to a
-        LiveStats id is fetch()'s problem, once, and cached.
+        LiveStats id is fetch()'s problem, once, and cached. A row that already links its webcast
+        hands the id over here, so that game never needs the hop at all.
 
-        That also takes ~130 requests out of every discovery pass: nothing is hopped here at all."""
+        FIRST-PHASE GROUPS ("Skupina VÝCHOD", "Skupina ZÁPAD") name each fixture's group (home_group /
+        away_group), which a source with groups_from_feed ranks in separate tables; every later part
+        (placement groups, play-out, play-off) is read into the same competition, as NBL's are."""
         year = _start_year(config.get("season") or "")
-        html = self._page(CZECH_SCHEDULE.format(year=year))
+        base = (config.get("czech_base") or CZECH_BASE).rstrip("/")
+        comp = config.get("czech_competition")
+        pages = []
+        if comp:
+            for pid, label in self._czech_parts(base, comp, year):
+                try:
+                    pages.append((label, self._page(f"{base}/soutez/{pid}")))
+                except Exception as exc:
+                    print(f"     {comp}: part '{label}' could not be read ({exc})")
+        else:
+            pages.append((None, self._page(f"{base}/zapasy?y={year}&p1=0&c=0&d_od=&d_do=&k=0")))
         out, seen = [], set()
-        for row in _CZ_ROW.findall(html):
-            m = _ZAPAS.search(row)
-            if not m or m.group(1) in seen:
-                continue
-            sid = m.group(1)
-            seen.add(sid)
-            names_ = [n.strip() for n in _CZ_TEAM.findall(row) if n.strip()]
-            when = _CZ_WHEN.search(row)
-            crests = [CZECH_BASE + u for u in _CZ_LOGO.findall(row)]
-            out.append(ScheduleGame(
-                external_id=sid,
-                home_name=names_[0] if len(names_) > 0 else "",
-                away_name=names_[1] if len(names_) > 1 else "",
-                tipoff_at=_utc("Europe/Prague", *when.groups()) if when else None,
-                # no code: this site names no club code anywhere, and the clubs already written
-                # were keyed on the slug of their name (feedplatform's own fallback), so inventing
-                # one now would strand every fixture already filed against them.
-                extra={"home_logo": crests[0] if len(crests) > 0 else None,
-                       "away_logo": crests[1] if len(crests) > 1 else None}))
+        known, learnt = self._idmap(config), 0
+        for label, html in pages:
+            for r in czech_rows(html, base, competition_page=bool(comp)):
+                if r["sid"] in seen:
+                    continue
+                seen.add(r["sid"])
+                if r["fiba_id"] and known.get(r["sid"]) != r["fiba_id"]:
+                    known[r["sid"]] = r["fiba_id"]
+                    learnt += 1
+                grp = _CZ_GROUP.match(r["part"] or label or "") if comp else None
+                extra = {"home_logo": r["crests"][0] if len(r["crests"]) > 0 else None,
+                         "away_logo": r["crests"][1] if len(r["crests"]) > 1 else None}
+                if r["venue"]:
+                    extra["venue"] = r["venue"]
+                if grp:
+                    extra["home_group"] = extra["away_group"] = grp.group(1).strip().title()
+                out.append(ScheduleGame(
+                    external_id=r["sid"], home_name=r["home"], away_name=r["away"],
+                    tipoff_at=_utc("Europe/Prague", *r["when"]) if r["when"] else None,
+                    # no code: this site names no club code anywhere, and the clubs already written
+                    # were keyed on the slug of their name (feedplatform's own fallback), so inventing
+                    # one now would strand every fixture already filed against them.
+                    extra=extra))
+        if learnt:
+            self._save_idmap(config, known)
         return out
+
+    def _czech_parts(self, base: str, comp: str, year: int) -> list:
+        """[(competition id?p=part id, part name)] of one competition on the federation's site, for one season,
+        read off its competitions page (the ids are new every season)."""
+        try:
+            page = self._page(CZ_COMPETITIONS.format(base=base, year=year))
+        except Exception as exc:
+            print(f"     {comp}: the competitions page could not be read ({exc})")
+            return []
+        import html as _html
+        want = re.sub(r"\s+", " ", comp).strip().casefold()
+        heads = list(_CZ_COMP_H2.finditer(page))
+        for k, h in enumerate(heads):
+            if re.sub(r"\s+", " ", _html.unescape(h.group(1))).strip().casefold() != want:
+                continue
+            block = page[h.end():heads[k + 1].start() if k + 1 < len(heads) else None]
+            return [(f"{cid}?p={pid}", _html.unescape(label)) for cid, pid, label in _CZ_PART.findall(block)]
+        print(f"     no '{comp}' on {CZ_COMPETITIONS.format(base=base, year=year)}")
+        return []
 
     def _czech_match_id(self, sid: str, config: dict) -> Optional[str]:
         """The LiveStats id behind a Czech fixture id, learnt once and remembered.
 
         A game's LiveStats id never changes, so the map is written to data/feed/<CODE>/idmap.json
-        and a fixture costs this hop exactly once in its life."""
+        and a fixture costs this hop exactly once in its life (none, if its schedule row linked it)."""
         known = self._idmap(config)
         if known.get(sid):
             return known[sid]
+        base = (config.get("czech_base") or CZECH_BASE).rstrip("/")
         try:
-            page = self._page(f"{CZECH_BASE}/zapas/{sid}")
+            page = self._page(f"{base}/zapas/{sid}")
         except Exception:
             return None
         w = _WEBCAST.search(page) or _WEBCAST_ANY.search(page)

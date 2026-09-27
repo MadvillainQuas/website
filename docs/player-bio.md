@@ -64,6 +64,8 @@ python scripts/ingest/bio_sync.py --worker-config --no-stash             # neith
 | bbl | easycredit-bbl.de club pages (page data) | date, height, weight | 219 / 219 |
 | proa, prob | 2basketballbundesliga.de Kader pages | date, height, weight | 151 / 153, 175 / 175 |
 | czech-nbl | nbl.basketball club pages | date (bare year for some minors), height | 146 / 150 |
+| czech-zbl | zbl.basketball club pages (the same layout) | date (bare year for some minors), height | feed read: 10 clubs |
+| czech-1-liga | cz.basketball: the competition by name, each club's squad tab | birth YEAR as printed, height where entered (no date) | feed read: 21 clubs |
 | liga-endesa | acb.com player pages (page data), squads from plantilla | date, height | matched |
 | primera-feb (+ segunda-feb, liga-femenina-endesa, liga-femenina-2, liga-femenina-challenge, liga-u) | baloncestoenvivo.feb.es club pages | date, height, weight where given | 178 / 186 |
 | b-league-premier, b-league-one | bleague.jp player page, by the league's PlayerID | date, height, weight | matched |

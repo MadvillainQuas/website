@@ -634,3 +634,115 @@ Copenhagen time. The same path as SLB and WBBL: source `KBL`, adapter `fiba_live
 - `DBBF` is the men's LiveStats client, `DAM` the women's. Only `DAM` is in `epinoia/livestats-clients.json`, which
   serves `fiba_livestats` sources; a game fed through `fiba_site_schedule` (the men's, like Kosovo's) has no
   LiveStats link on its game page.
+
+## Czech Republic: ŽBL and 1. liga mužů (FIBA LiveStats via the federation's system)
+
+### host
+
+The Czech federation (ČBF) runs one system behind three addresses, and every game on it links a FIBA LiveStats
+webcast (client `CBFFE`, the same as NBL). So both leagues are Czech NBL again (`fiba_site_schedule`, site `czech`):
+only the list of fixtures differs.
+
+- **ŽBL** (Chance ŽBL, women): `zbl.basketball`, the identical `/zapasy?y=<start year>` page NBL has
+  (`czech_base: https://zbl.basketball`). 90 fixtures in 2026-27, crests through the site's own resizer.
+- **1. liga mužů** (men's second tier): no site of its own. It lives on the federation's `cz.basketball`, one page per
+  PART of the competition (`/soutez/<competition id>?p=<part id>`), found each season by name
+  (`czech_competition: 1. liga mužů`) on `cz.basketball/soutez?y=<start year>`. 2026-27: competition 5404, parts
+  10223 (Skupina VÝCHOD) and 10224 (Skupina ZÁPAD), 90 fixtures each, 20 clubs. Only the page's "Zápasy" tab
+  (`tab-pane-one`) is read: the table and records tabs link games too.
+- Page titles read "… | CZ.BASKETBALL" (a browser's translation turns that into "PART II. BASKETBALL").
+- `cz.basketball/zapasy` is NOT usable: it ignores the part filter (`p1[]=`) and returns every game in the country
+  (56 MB); its rows also lack the `data-sort` kick-off.
+
+### current_season
+
+`?y=2026` = 2026-27 on all three. The federation's competition and part ids are new every season, so they are read
+off the competitions page each pass, never stored.
+
+### schedule_recipe
+
+`adapters/fiba_site_schedule.py` `czech_rows()`: one `<tr>` per fixture with `/zapas/<site id>` (the fixture's key),
+both clubs in `<div>`s, the kick-off in `data-sort="YYYY-MM-DD-HH-MM"` (Prague time), and - once the game is set
+up - `fibalivestats.com/webcast/CBFFE/<LiveStats id>/`, which goes straight into `data/feed/<CODE>/idmap.json` (no hop
+to the game page). A 1. liga row also names its part in the first cell ("skupina VÝCHOD") and the hall straight
+after the kick-off; the two first-phase groups become each fixture's `home_group`/`away_group` ("Východ", "Západ";
+`groups_from_feed`), later parts (placement groups "Skupina C 1.-6.", play-out, play-off) go into the same
+competition untagged, as NBL's later parts do.
+
+### game_recipe
+
+`fibalivestats.dcd.shared.geniussports.com/data/<LiveStats id>/data.json`, unchanged (FibaLiveStatsAdapter); the
+bundle keeps the fixture's site id. A row without a webcast yet is looked up once on
+`<czech_base>/zapas/<site id>` and remembered.
+
+### logos
+
+ŽBL rows carry both crests (`/min.php?...file=http://cbf.cz/files/<id>.png` on zbl.basketball). 1. liga pages carry
+NONE (fixtures, standings and club pages checked), so its clubs start without crests or colours.
+
+### bio
+
+`bio_sources.czech_site()` reads ŽBL's club pages exactly as NBL's (date, height). `czech_federation("1. liga mužů")`
+reads each club's squad tab on `cz.basketball/tym/<id>?y=<year>`: birth YEAR as printed and height where entered
+(no date anywhere; a player page says "narození 2000 - 26 let").
+
+## Italy: Serie A2 and Serie B Nazionale (Lega Nazionale Pallacanestro) - NOT BUILT
+
+Looked at 2026-09-27 and left out on purpose: the public play-by-play cannot give lineups (see gotchas). Everything
+found is here so the next attempt starts from it.
+
+### host
+
+`www.legapallacanestro.com` (Drupal). **robots.txt: `Crawl-delay: 10`** - one request per 10 s on this host. The
+schedule and standings come from a JSON host with no robots.txt (404): `lnpstat.domino.it`.
+
+### current_season
+
+`Drupal.settings.wpCurrentYear` on any page: `x2627` = 2026-27.
+
+### schedule_recipe
+
+The calendar pages (`/serie/1/calendario` = A2, `/serie/4/calendario` = Serie B with two tabs, `?qt-campionato-selector=0|1`)
+render an empty table; their script fills it from JSON, one round at a time:
+
+    https://lnpstat.domino.it/getstatisticsfiles?task=schedule&year=x2627&league=<league>&round=<n>
+
+- Leagues: `ita2` (Serie A2, 20 clubs, 38 rounds), `ita3_a` and `ita3_b` (Serie B Nazionale groups A and B,
+  18 clubs, 34 rounds each). The round list and the current round are in `Drupal.settings.calendario.<league>`
+  (`round_options`, `curr_round`). `round=all` does not exist. The script also knows `ita2_a`/`ita2_b`,
+  `ita2_2ph_*` and `ita2_clock` (phases of other seasons' formats).
+- Each game: `gameid` ("ita2_403"), `teamid_home`/`teamid_away` (numeric), `teamname_*`, `score_*`, `round`,
+  `date` ("26/09/2026") and `time` ("20:00", Italian local), `arena`, `stream_url`, `game_status`
+  ("finished", "ready", ...).
+- Standings: `task=standings&year=x2627&league=<league>&round=ista`.
+- Crests: `static.legapallacanestro.com/sites/default/files/styles/255_x/public/team_logo/<teamid>.png`.
+
+### game_recipe
+
+No JSON for a game was found (`task=boxscore|tabellino|playbyplay|pbp|match|partita|game|stats|livestats|team`, with
+`round` = the game id or its number: all "file not found"). The game centre is server-rendered HTML:
+
+- `/wp/match/<gameid>/<league>/x2627` - box score. Per club, a names table (`Num` empty, `Q` = `*` for a starter,
+  the player linked `/giocatore/wp/<id>`, then "Squadra" and "Totali" rows) and a stats table of 23 columns:
+  Pun, Min (whole minutes), Falli C (committed), S (drawn), Tiri da 2 R/T/%, Tiri da 3 R/T/%, Tiri liberi R/T/%,
+  Rimbalzi O/D/T, Stop D (blocks)/S (received), Palle P (turnovers)/R (steals), Ass, Val Lega, OER.
+  The quarter table is headed "Ospite | Casa" but its FIRST column is the home club's.
+- `/play-by-play` - `<tr data-period="n">`: Minuto (elapsed game time, 0:00-40:00), the home club's event, the
+  score (home-away), the margin, the away club's event; "<player link>, <description>". Descriptions seen: Tiro
+  realizzato da 2 punti da fuori area / da 3 punti, Tiro sbagliato da fuori area / dall'area / da 3 punti, Tiro
+  libero segnato / sbagliato, Rimbalzo offensivo / difensivo (di squadra), Assist, Palla recuperata, Stoppata,
+  Fallo subito, Timeout, Cambio.
+- `/tabellino` - a text summary only.
+
+### gotchas
+
+- **The play-by-play cannot give lineups.** "Cambio" names ONE player and it is the player coming ON (of the
+  substitutions with any play by that player within 90 s, 27 of 30 had them after and 1 before); who went off
+  is never written. There are also NO committed fouls and NO turnovers in it (the box score has both). Building
+  it would mean inferring each substitution's player off from who keeps acting and checking the result against
+  the box score's minutes, keeping a game's lineups only when they agree.
+- Other leads checked: the live page's Genius SportingPulse widget (`widget.wh.sportingpulseinternational.com/widget/?OPJA9B6WM5WC7JWV52HAFSRKR5F7GC`)
+  serves an empty table; the Netcasting page embeds `lnpscoreboard.webpont.com/?nat=ita2`, a plain HTML
+  scoreboard; the live page links `organizer.statbasket.it/Matches/OffLineMatches` (the federation's stats system,
+  which timed out from here). None exposes game data.
+- Player pages `/giocatore/wp/<id>` are the obvious bio source when the league is built.

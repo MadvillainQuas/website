@@ -399,6 +399,66 @@
       "league_country": "CZ"
     },
     {
+      "code": "ZBL",
+      "label": "Czech ŽBL",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "czech-zbl",
+      "league_name": "Chance ŽBL",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "ZBL",
+        "site": "czech",
+        "czech_base": "https://zbl.basketball",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://zbl.basketball/zapasy"
+      ],
+      "league_country": "CZ"
+    },
+    {
+      "code": "CZ1L",
+      "label": "Czech 1. liga",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "czech-1-liga",
+      "league_name": "1. liga mužů",
+      "adapter_config": {
+        "code": "CZ1L",
+        "site": "czech",
+        "czech_base": "https://cz.basketball",
+        "czech_competition": "1. liga mužů",
+        "groups_from_feed": true,
+        "competition_format": "groups",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://cz.basketball/soutez#1-liga-muzu"
+      ],
+      "league_country": "CZ"
+    },
+    {
       "code": "SBA",
       "label": "Slovak SBL",
       "adapter": "fiba_site_schedule",
