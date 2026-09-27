@@ -1244,4 +1244,4 @@ NO_BIO = {
 NEEDS_TEAMS = {"primera-feb", "segunda-feb", "liga-femenina-endesa", "liga-femenina-2", "liga-femenina-challenge", "liga-u", "nkl",
                "nbb", "liga-ouro"}
 # Leagues whose site refuses a GitHub runner: the weekly workflow leaves them out, run them by hand from a home connection.
-HOME_ONLY = {"lnb-elite", "lnb-elite-2", "lnb-espoirs-elite", "lnb-espoirs-elite-2"}
+HOME_ONLY = {"lnb-elite", "lnb-elite-2", "lnb-espoirs-elite", "lnb-espoirs-elite-2", "nbb", "liga-ouro"}

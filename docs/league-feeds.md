@@ -810,6 +810,11 @@ stints and lineups are built as for any LiveStats league.
 - The server drops connections now and then (about half the requests in one probe): each request is tried three times.
 - No bio source: the portal's per-game stats (`/s2/stats/<gid>/<tid>/data.json`) and LiveStats carry none, and the
   two sites that might are disallowed (`bio_sources.NO_BIO`).
+- Crests: the portal names none. Each game's LiveStats data does (`tm.logoS`, Genius's image host), so every crest a
+  payload shows is kept in `data/feed/ESTLAT/crests.json` under the federation's club id, and the schedule hands it on
+  as `home_logo` / `away_logo` (run_ingest.sync_logos). A club that has not played yet has none (LiveStats answers 403
+  for a game that has not started). Before this, the crest a payload carried was dropped when its club had been met on
+  the schedule earlier in the same pass (feedplatform.Platform.take_crest now fills it on a cached club too).
 
 ## Italy (women): Serie A1 and Serie A2 Femminile (Lega Basket Femminile)
 
@@ -849,7 +854,12 @@ game when it is fetched, kept in `data/feed/<CODE>/games.json`, asked again at m
 
 `lnb.com.br`, the league's own WordPress site, server-rendered. No robots.txt (`/robots.txt` redirects to the 404 page);
 Cloudflare's Rocket Loader is on the pages but not its bot check - a plain GET answers. The Content-Type names no charset:
-the pages are UTF-8. Adapter `lnbbr` (`scripts/ingest/adapters/lnbbr.py`), one request every 3 s. Two sources per
+the pages are UTF-8.
+
+**It refuses GitHub's runners (403)**, as lnb.fr does: the first run from Actions (2026-09-27) read no fixture at all.
+NBB and Liga Ouro are read from the processing PC: `scripts/ingest/home_sources.bat` (a normal pass for the two
+sources, straight to Supabase; run by hand or daily from Task Scheduler), and the PC's live lane follows a game once
+its fixture is on the schedule. The adapter says so in the log when it meets the 403. Adapter `lnbbr` (`scripts/ingest/adapters/lnbbr.py`), one request every 3 s. Two sources per
 league (`stage` regular / playoffs), codes `NBB` and `LOURO`.
 
 ### current_season

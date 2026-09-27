@@ -47,6 +47,8 @@ Re-running it is safe. To add runners, run it again with a higher count.
 
 - **lnb.fr** refuses GitHub's runners (403), and may refuse this server too. The French
   leagues' live lane already runs on the processing PC (`scripts/ingest/live_lane.bat`).
+- **lnb.com.br** (Brazil's NBB and Liga Ouro) refuses them the same way. Those two sources are read
+  from the processing PC by `scripts/ingest/home_sources.bat`.
 - **YouTube** shows datacenter addresses a sign-in wall. The video worker runs on the PC.
 
 ## Removing it

@@ -34,6 +34,10 @@ name is given the box line its own plays add up to (reconcile: 22 such names in 
 Paulistano's two Gabriels, "Joaquim" = 14 and "Macedo" = 11). Clubs are keyed on the league's three-letter code, which
 follows a club through a rename ("Paulistano" / "Paulistano/CORPe" are both CAP).
 
+GITHUB'S RUNNERS ARE REFUSED (403, 2026-09-27: the first run read no fixture at all), as lnb.fr refuses them for the
+French leagues. The two sources are read from the processing PC instead: scripts/ingest/home_sources.bat (a normal
+pass for NBB and Liga Ouro, straight to Supabase), and the PC's live lane follows a game once it is on the schedule.
+
 LDB IS NOT HERE: its games (2025 and 2026, the final included) have a result and nothing else - the game page's tabs
 are empty and no report is ever published - so there is no box score to ingest.
 """
@@ -687,6 +691,7 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
     min_request_gap_s = GAP_S
     _last_req = 0.0
     _schedule_at: dict = {}             # league path -> (read at, rows)
+    _refused = False                    # a 403 has been reported this run
 
     def _get(self, url: str) -> Optional[str]:
         for attempt in range(3):
@@ -699,6 +704,11 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
             except requests.RequestException:
                 r = None
             if r is not None and r.status_code in (403, 404, 410):
+                if r.status_code == 403 and not LnbBrAdapter._refused:
+                    LnbBrAdapter._refused = True       # said once per run: every request after it is refused alike
+                    print("     LNB: lnb.com.br answered 403 Forbidden" + (
+                        " - it refuses GitHub's runners (as lnb.fr does); NBB and Liga Ouro are read from the processing"
+                        " PC: scripts/ingest/home_sources.bat" if os.environ.get("GITHUB_ACTIONS") else ""))
                 return None
             if r is not None and r.status_code == 200:
                 r.encoding = "utf-8"
@@ -737,6 +747,7 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
             url += f"?season%5B%5D={config['season_id']}"
         page = self._get(url)
         if page is None:
+            print(f"     LNB {path}: the schedule could not be read ({url})")
             return rows or []
         rows = schedule_rows(page)
         LnbBrAdapter._schedule_at[path] = (time.time(), rows)

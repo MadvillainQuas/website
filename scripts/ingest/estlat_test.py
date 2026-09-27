@@ -177,6 +177,27 @@ ok("the fetch asked the portal nothing (the cache had the game)", E.asked == [],
 seen.clear()
 ok("a game not set up on LiveStats yet is not fetched", E.fetch("2027212150", CFG) is None and "url" not in seen)
 
+print("\n-- the clubs' crests (the portal names none; LiveStats does)")
+CREST1 = "https://images.statsengine.playbyplay.api.geniussports.com/236c918c30b6838ac731486c7dfd712bS1.png"
+CREST2 = "https://images.statsengine.playbyplay.api.geniussports.com/4b84f5fbb68cbf54cfb365690d8e79d7S1.png"
+
+
+class CrestFake(FetchFake):
+    def _get_meta(self, url):
+        return {"tm": {"1": {"name": "TalTech", "code": "TAL", "logo": "", "logoT": {"url": CREST1.replace("S1", "T1")}, "logoS": {"url": CREST1}},
+                       "2": {"name": "Riga Zelli", "code": "ZEL", "logoS": {"url": CREST2}}}}, {"lm_ms": 1, "recv_ms": 2}
+
+
+C2 = CrestFake()
+C2.fetch("2027212001", CFG)
+crests = json.load(open(os.path.join(ROOT, "data", "feed", "ESTLAT", "crests.json"), encoding="utf-8"))
+ok("a game read keeps both clubs' crests under the federation's club ids (the larger one)", crests == {"9896": CREST1, "9898": CREST2}, crests)
+g = {x.external_id: x for x in Fake().discover("https://online.basket.ee/en", CFG)}["2027212001"]
+ok("...and the schedule hands them on, so a club has its crest from the fixture list onwards",
+   g.extra.get("home_logo") == CREST1 and g.extra.get("away_logo") == CREST2, g.extra)
+g2 = {x.external_id: x for x in Fake().discover("https://online.basket.ee/en", CFG)}["2027212150"]
+ok("...a club no game has shown yet has none (nothing guessed)", "home_logo" not in g2.extra and "away_logo" not in g2.extra, g2.extra)
+
 print("\n-- the config")
 src = [s for s in json.load(open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8"))["sources"]
        if (s.get("adapter_config") or {}).get("site") == "basketee"]

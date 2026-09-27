@@ -163,6 +163,20 @@ class Platform:
                 return v
         return None
 
+    def take_crest(self, r: dict | None, t: dict) -> None:
+        """A crest the club has not got yet (or the JSON blob an early worker wrote) -> the feed's URL. Only a blank
+        is filled: a crest the club has, from its own site or put there by hand, is left alone."""
+        if not r or self.dry or not self.sb:
+            return
+        lp = r.get("logo_path") or ""
+        url = self.logo_url(t)
+        if url and (not lp or lp.startswith("{")):
+            try:
+                self.sb.patch("teams", f"id=eq.{r['id']}", {"logo_path": url})
+                r["logo_path"] = url
+            except Exception:
+                pass
+
     def note_rivals(self, a, b) -> None:
         """Two names on the two sides of one fixture are two clubs - whatever their words share. The sponsor
         rule (names.same_club) reads "Sloga Uppsala" as "Uppsala Basket" wearing a sponsor; a schedule that has
@@ -188,6 +202,11 @@ class Platform:
         code = team_code(t)
         key = (league_id, code)
         if key in self.cache["team"]:
+            # A CREST THAT ARRIVES AFTER THE CLUB. A schedule with no crests on it (the Estonian-Latvian portal's)
+            # resolves both clubs of every fixture first, without one; the game's own payload, read later in the same
+            # pass, names this club again with its crest. Returned from the cache without a look, that crest was
+            # dropped every pass, and the league's clubs never had one.
+            self.take_crest(self.cache["team"][key], t)
             return self.cache["team"][key]
         r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&select=id,slug,name,aliases,logo_path")
         if r and not self.dry:
@@ -207,15 +226,7 @@ class Platform:
                     r["name"] = incoming
                 except Exception:
                     pass
-            # a crest the club has not got yet (or the JSON blob an early worker wrote) -> the feed's URL
-            lp = r.get("logo_path") or ""
-            url = self.logo_url(t)
-            if url and (not lp or lp.startswith("{")):
-                try:
-                    self.sb.patch("teams", f"id=eq.{r['id']}", {"logo_path": url})
-                    r["logo_path"] = url
-                except Exception:
-                    pass
+            self.take_crest(r, t)
         if not r:
             raw = (t.get("name") or "").strip()
             nm = raw.lower()

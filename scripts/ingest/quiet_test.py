@@ -390,6 +390,31 @@ ok("the pair is remembered whichever way round, in any case and accent",
 _ri = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
 ok("a schedule's fixtures are noted before any club is resolved", _ri.index("note_rivals(_g.home_name") < _ri.index("sync_logos(sb, src, games, run)"))
 
+print("-- a crest that arrives after the club (a schedule with none: the Estonian-Latvian portal)")
+
+
+class _CrestSB:
+    def __init__(self):
+        self.row = {"id": "t1", "slug": "taltech", "name": "TalTech/ALEXELA", "aliases": [], "logo_path": None}
+        self.patched = []
+
+    def select(self, table, query):
+        return [self.row] if table == "teams" and "external_ids->>fiba_livestats=eq.9896" in query else []
+
+    def patch(self, table, query, body):
+        self.patched.append((table, query, body))
+
+
+_csb = _CrestSB()
+_cp = FP.Platform(_csb, dry=False, log=lambda *a: None)
+_t1 = _cp.team("L1", {"name": "TalTech/ALEXELA", "code": "9896"})                       # the fixture: no crest
+_crest = "https://images.statsengine.playbyplay.api.geniussports.com/236c918c30b6838ac731486c7dfd712bS1.png"
+_t2 = _cp.team("L1", {"name": "TalTech", "code": "9896", "logo": "", "logoS": {"url": _crest}})   # the game's payload
+ok("the club is resolved once and cached; the payload's crest is written on the cached club",
+   _t1 is _t2 and _t2["logo_path"] == _crest and _csb.patched == [("teams", "id=eq.t1", {"logo_path": _crest})], _csb.patched)
+_cp.team("L1", {"name": "TalTech", "code": "9896", "logoS": {"url": "https://example.org/other.png"}})
+ok("...and a crest the club already has is never replaced", _t2["logo_path"] == _crest and len(_csb.patched) == 1, _csb.patched)
+
 print("-- two sources on one schedule page are both loaded")
 _cfg = json.loads(RI.CONFIG_PATH.read_text(encoding="utf-8"))
 _by_url: dict = {}

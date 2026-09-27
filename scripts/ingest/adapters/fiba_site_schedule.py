@@ -313,6 +313,18 @@ def _slug_of(row: str, i: int):
     return found[i] if len(found) > i else None
 
 
+def livestats_crest(t: dict) -> Optional[str]:
+    """A club's crest in a LiveStats payload's tm: logo / logoS / logoT (the largest first), an https URL only
+    (feedplatform.Platform.logo_url reads the same fields the same way)."""
+    for k in ("logo", "logoS", "logoT"):
+        v = t.get(k)
+        if isinstance(v, dict):
+            v = v.get("url")
+        if isinstance(v, str) and v.startswith("https://"):
+            return v
+    return None
+
+
 def _start_year(season: str) -> int:
     """"2026-27" -> 2026. The platform's season name is the one thing every source agrees on."""
     m = re.match(r"(\d{4})", str(season or ""))
@@ -1102,6 +1114,39 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         except OSError:
             pass
 
+    # THE CRESTS. The portal's day list names no crest, so a club first met on the schedule had none, and the crest
+    # in a game's LiveStats data (tm.logoS) never reached it (feedplatform.take_crest now takes it from the payload
+    # too). Every crest a payload shows is kept here under the federation's club id, and the schedule hands it on
+    # (home_logo / away_logo, run_ingest.sync_logos), so a club has its crest from the fixture list onwards.
+    @staticmethod
+    def _bee_crest_path(config: dict) -> Optional[str]:
+        p = FibaSiteScheduleAdapter._map_path(config)
+        return os.path.join(os.path.dirname(p), "crests.json") if p else None
+
+    def _bee_crests(self, config: dict) -> dict:
+        try:
+            with open(self._bee_crest_path(config), encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, TypeError, ValueError):
+            return {}
+
+    def _bee_keep_crests(self, config: dict, raw: dict, g: dict) -> None:
+        crests = self._bee_crests(config)
+        new = {}
+        for tno, tid in (("1", g.get("h_tid")), ("2", g.get("v_tid"))):
+            url = livestats_crest((raw.get("tm") or {}).get(tno) or {})
+            if tid and url and crests.get(str(tid)) != url:
+                new[str(tid)] = url
+        p = self._bee_crest_path(config)
+        if new and p:
+            crests.update(new)
+            try:
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, "w", encoding="utf-8") as f:
+                    json.dump(crests, f, ensure_ascii=False, indent=1, sort_keys=True)
+            except OSError:
+                pass
+
     def _bee(self, config: dict) -> list[ScheduleGame]:
         """The league's games on the dates the portal offers, and every game read before (from the day cache)."""
         from datetime import timedelta
@@ -1140,14 +1185,18 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                 if g["gid"] not in best or ent.get("t", 0) >= best[g["gid"]][0]:
                     best[g["gid"]] = (ent.get("t", 0), g)
         out = []
+        crests = self._bee_crests(config)
         for _, g in sorted(best.values(), key=lambda x: (x[1]["date"], x[1]["time"], x[1]["gid"])):
             dm = re.match(r"(\d{4})-(\d{2})-(\d{2})", g["date"])
             tm = re.match(r"(\d{1,2}):(\d{2})", g["time"])
+            extra = {"venue": g["place"], "home_code": g["h_tid"], "away_code": g["v_tid"]}
+            for side, tid in (("home", g["h_tid"]), ("away", g["v_tid"])):
+                if crests.get(str(tid)):
+                    extra[side + "_logo"] = crests[str(tid)]
             out.append(ScheduleGame(
                 external_id=g["gid"], home_name=g["home"], away_name=g["away"],
                 tipoff_at=_utc("Europe/Tallinn", *dm.groups(), *tm.groups()) if dm and tm else None,
-                status="final" if g["over"] else "scheduled",
-                extra={"venue": g["place"], "home_code": g["h_tid"], "away_code": g["v_tid"]}))
+                status="final" if g["over"] else "scheduled", extra=extra))
         return out
 
     def _bee_fetch(self, gid: str, config: dict):
@@ -1169,6 +1218,7 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=g["fls"]))
         if not raw or "tm" not in raw:
             return None
+        self._bee_keep_crests(config, raw, g)
         for tno, name, code in (("1", g["home"], g["h_tid"]), ("2", g["away"], g["v_tid"])):
             if isinstance(raw["tm"].get(tno), dict):
                 raw["tm"][tno]["name"] = name or raw["tm"][tno].get("name") or ""
