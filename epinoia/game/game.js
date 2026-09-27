@@ -381,6 +381,30 @@ function resolveClash(teams, home, away) {
 window.__epinoiaClash = { hexToHsl, coloursClash, resolveClash };
 
 /* ------------------------------------------------------------------ render --- */
+/* THE SHOT CHARTS TAB: both sides side by side on the shared chart (shotchart.js gameHTML) -- a team, a
+   quarter, two or three, makes or misses and a player to choose, and each shot's who and when on hover.
+   The chart keeps those choices across the live redraws of this tab. Every shot is drawn on the side of
+   the arc it was worth (snapToValue), as the scorer's own chart does, which stays the fallback. */
+function shotsTab(d) {
+  const SC = window.EpinoiaShotChart;
+  const S = window.S;
+  if (!SC || !SC.gameHTML || !S || !d || !d.locs) return B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1);
+  const all = (S.events || []).filter(e => /^p[23]_/.test(e.t));
+  const shots = [], names = {};
+  all.forEach(e => {
+    const l = d.locs[e.id];
+    if (!l) return;
+    const three = e.t[1] === '3';
+    const fix = B.snapToValue ? B.snapToValue(l.x, l.y, three) : { x: l.x, y: l.y, moved: false };
+    shots.push({ x: fix.x, y: fix.y, moved: !!fix.moved, made: /made$/.test(e.t), three,
+                 team: e.team, pid: e.pid, period: e.period, clock: e.clock });
+    if (e.pid != null && !names[e.pid]) names[e.pid] = B.pname(e.pid);
+  });
+  const sides = [0, 1].map(t => ({ name: B.tname(t), colour: B.safeColour(S.teams[t].color, '#93f2bf') }));
+  const located = shots.length === all.length ? '' : shots.length + ' of ' + all.length + ' shots have a place on the court';
+  return '<div class="glass scw-host">' + SC.gameHTML({ shots, sides, names, located }) + '</div>';
+}
+
 const BODIES = {
   /* Built from the same derive() every other tab reads, so the prose and the
      tables are two views of one replay rather than two sources that have to be
@@ -416,7 +440,7 @@ const BODIES = {
                 ? window.EpinoiaModernBox.render(d)
                 : B.qstripHTML(d) + B.matchDetailsHTML() + B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1)),
   pbp:     d => B.pbpHTML(d),
-  shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
+  shots:   d => shotsTab(d),
   adv:     d => B.advHTML(d),
   lineups: () => B.lineupsHTML(),
   /* GAMEVIS's Game Flow and Connections tabs, ported: both replay window.S themselves */

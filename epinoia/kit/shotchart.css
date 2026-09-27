@@ -1,0 +1,140 @@
+/* ============================================================================
+   THE SHOT CHART (shotchart.js renderZones / gameHTML) — a club's season, a
+   player's, and a box score's two sides.
+
+   Loaded by the club page, the player page and the game page. The game page
+   carries tokens.css rather than the whole kit, so everything here reads only
+   the kit's tokens (with fallbacks where a token might be missing).
+
+   THE ZONE SCALE IS DIVERGING: blue below a zone's own break-even, orange
+   above, a neutral grey within two points, three steps a side, each theme with
+   its own steps (a dark court is not the light one inverted). The marks, the
+   plates and the tooltip keep to ink and the teletext black, never the scale's
+   colours, so a number is always read in text colours.
+   ============================================================================ */
+.scw{
+  --sc-floor:#fbfdfc; --sc-ring:#ffffff; --sc-ink:#16231d;
+  --sc-bm3:#6a90dc; --sc-bm2:#a2bbea; --sc-bm1:#d2def5; --sc-b0:#e5e8e6;
+  --sc-bp1:#f8d8c2; --sc-bp2:#f1ac82; --sc-bp3:#e27a45;
+  --court-floor:var(--sc-floor);
+  display:block; padding:0 0 calc(var(--u,8px)*2);
+}
+:root:not([data-theme="light"]) .scw{
+  --sc-floor:#0b1812; --sc-ring:#0b1812; --sc-ink:#e6fff1;
+  --sc-bm3:#4671c4; --sc-bm2:#2f4b7c; --sc-bm1:#213247; --sc-b0:#282e2b;
+  --sc-bp1:#46312a; --sc-bp2:#7e4629; --sc-bp3:#c75e2d;
+}
+
+/* ---- the controls: one centred row of small segmented switches ---- */
+.scw-bar{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px 18px;
+  padding:4px calc(var(--u,8px)*2) calc(var(--u,8px)*2) }
+.scw-grp{ display:flex; align-items:center; gap:8px }
+.scw-sl{ font-family:var(--f-micro,monospace); font-size:8px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3) }
+.scw-seg{ display:inline-flex; border:1px solid var(--rule-2); border-radius:999px; overflow:hidden; background:var(--panel) }
+.scw-seg button{ position:relative; isolation:isolate; font-family:var(--f-micro,monospace); font-size:9px; line-height:1.2; letter-spacing:.06em;
+  text-transform:uppercase; padding:7px 11px 6px; min-height:30px; border:0; background:transparent; color:var(--ink-2); cursor:pointer; white-space:nowrap }
+.scw-seg button + button{ border-left:1px solid var(--rule-2) }
+.scw-seg button:hover{ color:var(--ink); background:color-mix(in oklch,var(--lume) 10%,transparent) }
+.scw-seg button.on{ background:var(--lume); color:var(--on-accent); cursor:default;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 4px rgba(0,0,0,.14) }
+.scw-seg button.on::after{ content:""; position:absolute; left:1px; right:1px; top:1px; height:50%; z-index:-1; pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,.06)) }
+.scw-seg button:focus-visible, .scw-sel:focus-visible{ outline:2px solid var(--lume); outline-offset:1px }
+.scw-sel{ font-family:var(--f-ui,sans-serif); font-size:12px; min-height:30px; max-width:220px; padding:4px 26px 4px 10px;
+  border:1px solid var(--rule-2); border-radius:999px; background:var(--panel); color:var(--ink) }
+@media (max-width:820px){
+  .scw-bar{ gap:10px 12px }
+  .scw-seg button{ min-height:36px; padding:9px 10px 8px }
+  .scw-sel{ min-height:36px; font-size:16px; max-width:100% }
+}
+
+/* ---- the court ---- */
+.scw-court{ position:relative; max-width:560px; margin:0 auto }
+.scw-svg{ display:block; width:100%; height:auto; border-radius:10px; overflow:hidden;
+  box-shadow:0 0 0 1px var(--rule-2), 0 1px 3px rgba(0,0,0,.06) }
+/* the zones: under the lines, tinted by band; one pointed at is outlined */
+.scw-svg .zt{ fill:transparent; stroke:none; outline:none; cursor:pointer }
+.scw-svg .zt.bm3{ fill:var(--sc-bm3) } .scw-svg .zt.bm2{ fill:var(--sc-bm2) } .scw-svg .zt.bm1{ fill:var(--sc-bm1) }
+.scw-svg .zt.b0{ fill:var(--sc-b0) }
+.scw-svg .zt.bp1{ fill:var(--sc-bp1) } .scw-svg .zt.bp2{ fill:var(--sc-bp2) } .scw-svg .zt.bp3{ fill:var(--sc-bp3) }
+.scw-svg .zt.lit, .scw-svg .zt:focus-visible{ stroke:var(--sc-ink); stroke-width:7; stroke-opacity:.9 }
+/* the marks: a made shot a dot ringed in the floor, a miss a cross */
+.scw-svg .mk .dot{ fill:var(--mk); stroke:var(--sc-ring); stroke-width:6 }
+.scw-svg .mk .cross{ fill:none; stroke:var(--mk); stroke-width:8; stroke-linecap:round; opacity:.62 }
+.scw-svg .mk .hit{ fill:transparent; cursor:pointer }
+.scw-svg .mk.lit .dot{ stroke:var(--sc-ink); stroke-width:8 }
+.scw-svg .mk.lit .cross{ opacity:1; stroke-width:11 }
+/* the numbers, on teletext plates */
+.scw-svg .pl{ pointer-events:none }
+.scw-svg .pl rect{ fill:#050706; fill-opacity:.86 }
+.scw-svg .pl .big{ fill:#ffffff; font-family:var(--f-score,monospace); font-size:48px; letter-spacing:.02em }
+.scw-svg .pl .sm{ fill:#c9d4cf; font-family:var(--f-data,monospace); font-size:23px; font-weight:600 }
+.scw-svg .pl.few rect{ fill:var(--sc-floor); fill-opacity:.9; stroke:var(--sc-ink); stroke-opacity:.35; stroke-width:2 }
+.scw-svg .pl.few .sm{ fill:var(--sc-ink); fill-opacity:.8 }
+.scw-empty{ position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); padding:8px 12px; background:#050706; color:#f2f6f4;
+  font-family:var(--f-micro,monospace); font-size:9px; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap }
+
+/* ---- the tooltip: a teletext panel, the value first ---- */
+.scw-tip{ position:absolute; z-index:6; pointer-events:none; min-width:130px; max-width:240px;
+  transform:translate(-50%, calc(-100% - 16px)); padding:8px 11px 9px; background:#050706; color:#f2f6f4;
+  border:1px solid #000; box-shadow:0 8px 24px rgba(0,0,0,.28); display:flex; flex-direction:column; gap:3px; text-align:left }
+.scw-tip.below{ transform:translate(-50%, 18px) }
+.scw-tip[hidden]{ display:none }
+.scw-tip .v{ font-family:var(--f-score,monospace); font-weight:400; font-size:22px; line-height:1; color:#ffffff; text-transform:uppercase; letter-spacing:.03em }
+.scw-tip .k{ font-family:var(--f-micro,monospace); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:#ffe44d }
+.scw-tip .d{ font-family:var(--f-ui,sans-serif); font-size:11.5px; line-height:1.35; color:#c9d4cf }
+
+/* ---- the key under the court ---- */
+.scw-legend{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px 16px;
+  padding:12px calc(var(--u,8px)*2) 2px; font-family:var(--f-micro,monospace); font-size:8.5px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-2) }
+.scw-legend .lg{ display:inline-flex; align-items:center; gap:6px }
+.scw-legend .lg svg{ width:14px; height:14px }
+.scw-legend .lg svg circle{ fill:var(--ink-2) }
+.scw-legend .lg svg path{ fill:none; stroke:var(--ink-2); stroke-width:2.4; stroke-linecap:round }
+.scw-legend .ramp{ gap:0 }
+.scw-legend .ramp i{ display:block; width:14px; height:10px }
+.scw-legend .ramp i + i{ margin-left:2px }
+.scw-legend .ramp .rl{ margin:0 7px }
+.scw-legend .bm3{ background:var(--sc-bm3) } .scw-legend .bm2{ background:var(--sc-bm2) } .scw-legend .bm1{ background:var(--sc-bm1) }
+.scw-legend .b0{ background:var(--sc-b0) }
+.scw-legend .bp1{ background:var(--sc-bp1) } .scw-legend .bp2{ background:var(--sc-bp2) } .scw-legend .bp3{ background:var(--sc-bp3) }
+.scw-legend .fewkey{ display:block; width:14px; height:10px; box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--sc-ink) 40%,transparent);
+  background:repeating-linear-gradient(45deg,color-mix(in oklch,var(--sc-ink) 22%,transparent) 0 2px,var(--sc-floor) 2px 5px) }
+.scw-legend .note{ color:var(--ink-3) }
+.scw-be{ text-align:center; padding:6px calc(var(--u,8px)*2) 0; font-family:var(--f-ui,sans-serif); font-size:11px; color:var(--ink-3) }
+.scw-none{ padding:calc(var(--u,8px)*3); text-align:center; font-family:var(--f-ui,sans-serif); font-size:12px; color:var(--ink-3) }
+
+/* ---- the tiles: percentage, makes of attempts, a bar with the break-even on it ---- */
+.scw-tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(104px,1fr)); gap:8px;
+  max-width:720px; margin:0 auto; padding:14px calc(var(--u,8px)*2) 0 }
+.scw-tile{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 8px 11px;
+  background:var(--panel); border:1px solid var(--rule); border-radius:6px;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 60%) }
+:root:not([data-theme="light"]) .scw-tile{ background-image:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0) 60%) }
+.scw-tile .t{ font-family:var(--f-micro,monospace); font-size:8px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-2) }
+.scw-tile b{ font-family:var(--f-score,monospace); font-weight:400; font-size:26px; line-height:1; color:var(--ink) }
+.scw-tile .n{ font-family:var(--f-data,monospace); font-size:10.5px; color:var(--ink-3) }
+.scw-tile .trk{ position:relative; display:block; width:100%; height:5px; margin-top:5px; border-radius:3px;
+  background:color-mix(in oklch,var(--ink) 10%,transparent) }
+.scw-tile .fl{ position:absolute; left:0; top:0; bottom:0; border-radius:3px; background:color-mix(in oklch,var(--sc-ink) 32%,transparent) }
+.scw-tile .fl.bm3{ background:var(--sc-bm3) } .scw-tile .fl.bm2{ background:var(--sc-bm2) } .scw-tile .fl.bm1{ background:var(--sc-bm1) }
+.scw-tile .fl.b0{ background:color-mix(in oklch,var(--sc-ink) 45%,transparent) }
+.scw-tile .fl.bp1{ background:var(--sc-bp1) } .scw-tile .fl.bp2{ background:var(--sc-bp2) } .scw-tile .fl.bp3{ background:var(--sc-bp3) }
+.scw-tile .be{ position:absolute; top:-3px; bottom:-3px; width:2px; margin-left:-1px; background:var(--sc-ink) }
+
+/* ---- a box score's two sides, side by side ---- */
+.scw-courts{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:0 4px }
+.scw-courts.one{ grid-template-columns:minmax(0,560px); justify-content:center }
+.scw-card{ min-width:0; padding:12px 12px 14px; border:1px solid var(--rule); border-radius:12px; background:var(--panel);
+  box-shadow:inset 0 3px 0 var(--side) }
+.scw-ch{ display:flex; align-items:center; gap:8px; margin:2px 2px 10px }
+.scw-ch .sw{ flex:none; width:12px; height:12px; border-radius:2px; background:var(--side) }
+.scw-ch b{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-family:var(--f-ui,sans-serif); font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:.03em; color:var(--ink) }
+.scw-ch .tot{ margin-left:auto; font-family:var(--f-data,monospace); font-size:11px; color:var(--ink-2); white-space:nowrap }
+.scw-card .scw-court{ max-width:none }
+.scw-card .scw-tiles{ padding:10px 0 0 }
+@media (max-width:760px){ .scw-courts{ grid-template-columns:minmax(0,1fr) } }
+
+@media (prefers-reduced-motion:reduce){ .scw *{ transition:none !important } }

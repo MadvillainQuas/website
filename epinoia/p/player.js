@@ -1100,11 +1100,12 @@ let SHOTS = [];
 document.addEventListener('change', e => {
   if (e.target && (e.target.id === 'scCell' || e.target.id === 'scMin')) drawShotChart();
 });
-let SHOT_COLOUR = null, SHOT_GAMES = 0;
-function drawShotChart(shots, colour, games) {
+let SHOT_COLOUR = null, SHOT_GAMES = 0, SHOT_GAMELIST = null;
+function drawShotChart(shots, colour, games, gameList) {
   if (shots) SHOTS = shots;
   if (colour) SHOT_COLOUR = colour;
   if (games) SHOT_GAMES = games;
+  if (gameList) SHOT_GAMELIST = gameList;
   const host = document.querySelector('#shotchart');
   if (!host || !window.EpinoiaShotChart) return;
   /* THE BOX SCORE'S CHART, over the season: every located shot as a dot or a cross in the
@@ -1112,7 +1113,7 @@ function drawShotChart(shots, colour, games) {
   /* without analytics: the same court and the same marks, no zones -- and a line saying
      what the zones would add */
   window.EpinoiaShotChart.renderZones({ host, shots: SHOTS, colour: SHOT_COLOUR || '#93f2bf', minAttempts: 3, games: SHOT_GAMES,
-    zones: !ANALYTICS_LOCKED });
+    gameList: SHOT_GAMELIST, zones: !ANALYTICS_LOCKED });
   if (ANALYTICS_LOCKED) {
     host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
       lines: ['Twelve zones, each tinted against its own break-even, with a zone-by-zone table.'] }));
@@ -1175,7 +1176,9 @@ function drawShotChart(shots, colour, games) {
             });
             /* games this player appeared in among those fetched: a game with an event of theirs */
             const played = new Set(evs.filter(e => String(e.pid) === String(pl.id)).map(e => e.gameId));
-            drawShotChart(shots, (team && team.colour) || null, played.size);
+            const SC = window.EpinoiaShotChart;
+            drawShotChart(shots, (team && team.colour) || null, played.size,
+              SC.gameListOf ? SC.gameListOf(gs.filter(g => played.has(g.id))) : null);
           } catch (e) { /* a chart is not worth breaking the page for */ }
 
           /* ---- on video ----

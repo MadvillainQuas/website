@@ -308,9 +308,26 @@ async function teamShots(team) {
       fetchEvents: async () => Object.values(byG), gameIds: gs.map(g => g.id), playerId: null, sideOf: id => sideOf[id]
     });
     /* the chart alone: the zone numbers live in the team statistics block, ranked in the league.
-       Without analytics, the marks without the zones, and a line saying what they would add. */
-    window.EpinoiaShotChart.renderZones({ host, shots, colour: team.colour || '#93f2bf', minAttempts: 5, games: gs.length, table: false,
-      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games'), zones: !ACCESS.locked });
+       Without analytics, the marks without the zones, and a line saying what they would add. The
+       games (for the "last 5 / 10" control and each shot's date) go with it, and the shooters'
+       names follow once they are read, for the player control (a second draw keeps the choices). */
+    const SC = window.EpinoiaShotChart;
+    const opts = { host, shots, colour: team.colour || '#93f2bf', minAttempts: 5, games: gs.length, table: false,
+      gameList: SC.gameListOf ? SC.gameListOf(gs) : null,
+      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games'), zones: !ACCESS.locked };
+    SC.renderZones(opts);
+    const pids = [...new Set(shots.map(s => s.pid).filter(Boolean))];
+    if (pids.length > 1 && window.EpinoiaData.playerMeta) {
+      window.EpinoiaData.playerMeta(pids).then(meta => {
+        const names = {};
+        pids.forEach(id => { const m = meta && meta[id]; if (m && m.name) names[id] = (m.jersey ? '#' + m.jersey + ' ' : '') + m.name; });
+        SC.renderZones(Object.assign(opts, { names }));
+        if (ACCESS.locked) {
+          host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
+            lines: ['Twelve zones, each tinted against its own break-even.'] }));
+        }
+      }).catch(() => { /* the chart without the player control */ });
+    }
     if (ACCESS.locked) {
       host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
         lines: ['Twelve zones, each tinted against its own break-even.'] }));

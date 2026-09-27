@@ -2421,8 +2421,9 @@
                         bar (HOME, a league's front page, the box score) gets one made, titled
                         from the document title.
        FASTEXT          four coloured keys at the foot of the page, a short way on from it.
-       THE INDEX        on HOME and a league's front page, the sections as entries under the hero,
-                        each a jump down the page; kept in step as sections appear. */
+       THE INDEX        on HOME, a league's front page, a club's and a player's, the sections as entries
+                        where they begin, each a jump down the page; kept in step as sections appear
+                        and as a profile's tabs change what is shown. */
   function ttPage() {
     const s = seg.replace(/index\.html$/, '');
     const q = k => qp.get(k) || '';
@@ -2569,8 +2570,14 @@
     return bar;
   }
   function ttIndex(frame, p) {
-    const hero = frame.querySelector(':scope > .hm-hero, :scope > .hero');
-    if (!hero) return;
+    /* where the sections begin: under the hero on HOME and a league's front page; on a club's page
+       just before its sections (#tbody, under the Profile / Video tabs); on a player's under the tabs,
+       or under the stat tiles when the page has no tabs to show */
+    let after = null, before = null;
+    if (p.kind === 'team') before = frame.querySelector(':scope > #tbody');
+    else if (p.kind === 'player') after = frame.querySelector(':scope > #ptabs') || frame.querySelector(':scope > #tiles');
+    if (!after && !before) after = frame.querySelector(':scope > .hm-hero, :scope > .hero');
+    if (!after && !before) return;
     const box = el('nav', 'tt-index');
     box.hidden = true;
     const head = el('p', 'tt-ix-h', 'On this page');
@@ -2578,7 +2585,7 @@
     box.setAttribute('aria-labelledby', 'tt-ix-h');
     const list = el('ol', 'tt-ix-l');
     box.append(head, list);
-    hero.after(box);
+    if (before) before.before(box); else after.after(box);
     /* a jump glides down the page (and lands at once for a reader who asked for less motion);
        the address takes the section's anchor, so it can be shared */
     list.addEventListener('click', e => {
@@ -2620,8 +2627,12 @@
         if (pend) return;
         pend = setTimeout(() => { pend = 0; paint(); }, 220);
       });
-      mo.observe(frame, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+      mo.observe(frame, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
       setTimeout(() => mo.disconnect(), 60000);
+      /* a profile's tabs (Profile / Video / Weekly report) show and hide its sections by a class on the body */
+      if (p.kind === 'team' || p.kind === 'player') {
+        new MutationObserver(() => { setTimeout(paint, 30); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
     }
   }
   function ttBuild() {
@@ -2633,7 +2644,7 @@
     ttState = { p, frame };
     try { ttLine(frame, p); } catch (_) { /* the page keeps its own bar */ }
     try { ttState.fast = ttFast(frame, p); } catch (_) { /* no keys */ }
-    if (p.kind === 'home' || p.kind === 'league') { try { ttIndex(frame, p); } catch (_) { /* no index */ } }
+    if (/^(home|league|team|player)$/.test(p.kind)) { try { ttIndex(frame, p); } catch (_) { /* no index */ } }
     dEl.classList.add('tt-on');
   }
   /* the league a page resolves late re-points the keys that name it */

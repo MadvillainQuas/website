@@ -391,9 +391,9 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
      lp > 0 && ev > lp && se > ev &&
      /<div class="sec" id="eventsSec">\s*<div class="sec-h"><span class="idx">02<\/span><h2>Events<\/h2><span class="note" id="eventsNote"><\/span><\/div>\s*<div id="events"><\/div>\s*<\/div>/.test(phtml));
   const idx = [...phtml.matchAll(/<span class="idx">([^<]+)<\/span><h2>([^<]+)<\/h2>/g)].map(m => m[1] + ' ' + m[2]);
-  ok('p/index.html: later sections renumbered', JSON.stringify(idx) === JSON.stringify(['01 League percentile', '02 Events', '03 Season', '04 Game log', '04b On video', '05 On the floor with']), idx.join(' / '));
-  ok('p/index.html: the 05 section closes as a div and the shot chart as a section',
-     /<div id="withpanel"><\/div>\s*<\/div>\s*<!--[^>]*-->\s*<section class="card">[\s\S]*?<div id="shotchart"><\/div>\s*<\/section>/.test(phtml));
+  ok('p/index.html: later sections renumbered', JSON.stringify(idx) === JSON.stringify(['01 League percentile', '02 Events', '03 Season', '04 Game log', '04b On video', '05 On the floor with', '06 Shot chart']), idx.join(' / '));
+  ok('p/index.html: the 05 section closes as a div and the shot chart is a section of its own after it',
+     /<div id="withpanel"><\/div>\s*<\/div>\s*<!--[^>]*-->\s*<div class="sec" id="shotsec">[\s\S]*?<div id="shotchart"><\/div>\s*<\/div>/.test(phtml));
 
   /* the call sits inside a try whose catch is its own, not boot's */
   const insideTry = (src, call) => {

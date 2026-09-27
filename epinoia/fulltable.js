@@ -310,7 +310,7 @@ const T = [
    shot diet be judged against what those shots usually return anywhere. */
 const ZONE_EFG = { rim: 66, paint: 43, mid: 41, c3: 58.5, ab3: 54 };
 const ZONE_KEYS = [['rim', 'RIM', 'z_rim'], ['paint', 'PAINT', 'z_rim'],
-                   ['base', 'BASE MID', 'z_mid'], ['wingm', 'WING MID', 'z_mid'], ['topm', 'TOP MID', 'z_mid'],
+                   ['base', 'BASE MID', 'z_mid'], ['topm', 'TOP MID', 'z_mid'],
                    ['c3', 'CORNER 3', 'z_three'], ['w3', 'WING 3', 'z_three'], ['t3', 'TOP 3', 'z_three'],
                    ['left', 'LEFT', 'z_cuts'], ['centre', 'CENTRE', 'z_cuts'], ['right', 'RIGHT', 'z_cuts'], ['atrim', 'RIM+PAINT', 'z_cuts'], ['jump', 'JUMP', 'z_cuts'],
                    ['mid', 'ALL MID', 'z_cuts'], ['three', 'ALL 3', 'z_cuts'], ['all', 'ALL', 'z_cuts']];

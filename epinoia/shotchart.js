@@ -70,7 +70,8 @@
         const fix = (B && B.snapToValue) ? B.snapToValue(+l.x, +l.y, three)
                                          : { x: +l.x, y: +l.y, moved: false };
         out.push({ x: fix.x, y: fix.y, moved: fix.moved,
-                   made: /_made$/.test(e.t), three, gameId: e.gameId != null ? e.gameId : gid, team: e.team, pid: e.pid });
+                   made: /_made$/.test(e.t), three, gameId: e.gameId != null ? e.gameId : gid, team: e.team, pid: e.pid,
+                   period: e.period != null ? +e.period : null, clock: e.clock != null ? +e.clock : null });
       });
     }
     return out;
@@ -162,8 +163,9 @@
   /* ---- the zones ------------------------------------------------------------
      THE BOX SCORE'S CHART, OVER MANY GAMES. The same court, the same dots and crosses in the
      club's colour, and on top of them the floor cut into the areas people talk about: the
-     restricted area, the rest of the paint, the two baselines, the two wings and the top on
-     the mid-range, the two corners, the two wings and the top beyond the arc. Every zone
+     restricted area, the rest of the paint, the two baselines and the top of the mid-range
+     (the whole band from the free-throw line out to the arc), the two corners, the two wings
+     and the top beyond the arc. Every zone
      carries its makes, attempts and percentage, tinted cold to hot against what a shot from
      THAT zone is worth -- a 40% mid-range zone and a 40% corner are not the same news.
 
@@ -174,9 +176,7 @@
     { k: 'paint', kind: 'paint', label: 'paint',          x: 750,  y: 480 },
     { k: 'bl',    kind: 'mid',   label: 'baseline',       x: 330,  y: 250 },
     { k: 'br',    kind: 'mid',   label: 'baseline',       x: 1170, y: 250 },
-    { k: 'wl',    kind: 'mid',   label: 'wing',           x: 360,  y: 690 },
-    { k: 'wr',    kind: 'mid',   label: 'wing',           x: 1140, y: 690 },
-    { k: 'tm',    kind: 'mid',   label: 'top',            x: 750,  y: 700 },
+    { k: 'tm',    kind: 'mid',   label: 'top mid',        x: 750,  y: 700 },
     { k: 'c3l',   kind: 'three', label: 'corner',         x: 48,   y: 200 },
     { k: 'c3r',   kind: 'three', label: 'corner',         x: 1452, y: 200 },
     { k: 'w3l',   kind: 'three', label: 'wing 3',         x: 200,  y: 960 },
@@ -197,16 +197,10 @@
     if (Math.hypot(dx, dy) <= RA + 25) return 'ra';
     if (x > RX - KH && x < RX + KH && y < KL) return 'paint';
     if (y < KL) return dx < 0 ? 'bl' : 'br';
-    if (ang < 26) return 'tm';
-    return dx < 0 ? 'wl' : 'wr';
-  }
-  /* cold to hot against the zone's own break-even: paint 58%, mid-range 40%, three 35% */
-  function heat(pct, kind, att, floor) {
-    if (att < floor) return { fill: 'rgba(150,180,170,.14)', stroke: 'rgba(150,180,170,.35)' };
-    const anchor = kind === 'paint' ? 58 : kind === 'three' ? 35 : 40;
-    const t = Math.max(0, Math.min(1, (pct - (anchor - 16)) / 32));
-    const r = Math.round(60 + t * 195), g = Math.round(200 - t * 80), b = Math.round(150 - t * 90);
-    return { fill: 'rgba(' + r + ',' + g + ',' + b + ',' + (0.22 + 0.5 * t).toFixed(2) + ')', stroke: 'rgba(' + r + ',' + g + ',' + b + ',.9)' };
+    /* ONE ZONE FROM THE FREE-THROW LINE OUT TO THE ARC. It was cut in three (a wing each side of a
+       top), and the two wings were slivers too thin to fill: over a season they stood empty and the
+       chart looked as if nobody tracked that part of the floor. */
+    return 'tm';
   }
   function zones(shots) {
     const C = dims();
@@ -222,9 +216,8 @@
   }
   /* THE ZONES AS SHAPES. Each is a closed path built from the court's own measurements --
      the key, the restricted area, the arc, the corner lines and the rays that split the
-     wings from the top -- so the shape a dot sits in is the shape it is counted in. They are
-     tinted and laid UNDER the court lines, which is what keeps the chart clean: no pills over
-     the shots, the floor itself carries the colour, and the numbers sit small in each area. */
+     wings from the top beyond the arc -- so the shape a dot sits in is the shape it is counted
+     in. They are tinted and laid UNDER the court lines; the numbers sit on plates above. */
   function zonePaths() {
     const C = dims();
     const RX = C.RIM_X || 750, RY = C.RIM_Y || 157.5, KH = C.KEY_HALF || 245, KL = C.KEY_LEN || 580;
@@ -232,10 +225,8 @@
     const W = C.W, H = C.H;
     const hw = y => Math.sqrt(Math.max(0, ARC * ARC - (y - RY) * (y - RY)));
     const xKL = RX - hw(KL), xKLr = RX + hw(KL), xC = RX - hw(CYb), xCr = RX + hw(CYb);
-    const r26 = 26 * Math.PI / 180, r32 = 32 * Math.PI / 180;
-    const a26 = [RX - ARC * Math.sin(r26), RY + ARC * Math.cos(r26)], a26r = [RX + ARC * Math.sin(r26), a26[1]];
+    const r32 = 32 * Math.PI / 180;
     const a32 = [RX - ARC * Math.sin(r32), RY + ARC * Math.cos(r32)], a32r = [RX + ARC * Math.sin(r32), a32[1]];
-    const k26 = RX - Math.tan(r26) * (KL - RY), k26r = RX + Math.tan(r26) * (KL - RY);
     const tEdge = RX / Math.sin(r32), yEdge = Math.min(H, RY + tEdge * Math.cos(r32));
     const f = v => (+v).toFixed(1);
     const A = (sweep, x, y) => ' A ' + ARC + ' ' + ARC + ' 0 0 ' + sweep + ' ' + f(x) + ' ' + f(y);
@@ -245,9 +236,7 @@
       paint: 'M ' + kl + ' 0 H ' + kr + ' V ' + KL + ' H ' + kl + ' Z M ' + f(RX - RA) + ' ' + f(RY) + ' A ' + RA + ' ' + RA + ' 0 1 0 ' + f(RX + RA) + ' ' + f(RY) + ' A ' + RA + ' ' + RA + ' 0 1 0 ' + f(RX - RA) + ' ' + f(RY) + ' Z',
       bl:    'M ' + CX + ' 0 H ' + kl + ' V ' + KL + ' H ' + f(xKL) + A(1, CX, CY) + ' Z',
       br:    'M ' + kr + ' 0 H ' + (W - CX) + ' V ' + CY + A(1, xKLr, KL) + ' H ' + kr + ' Z',
-      wl:    'M ' + f(xKL) + ' ' + KL + ' H ' + f(k26) + ' L ' + f(a26[0]) + ' ' + f(a26[1]) + A(1, xKL, KL) + ' Z',
-      wr:    'M ' + f(k26r) + ' ' + KL + ' H ' + f(xKLr) + A(1, a26r[0], a26r[1]) + ' Z',
-      tm:    'M ' + f(k26) + ' ' + KL + ' H ' + f(k26r) + ' L ' + f(a26r[0]) + ' ' + f(a26r[1]) + A(1, a26[0], a26[1]) + ' Z',
+      tm:    'M ' + f(xKL) + ' ' + KL + ' H ' + f(xKLr) + A(1, xKL, KL) + ' Z',
       c3l:   'M 0 0 H ' + CX + ' V ' + CY + A(0, xC, CYb) + ' H 0 Z',
       c3r:   'M ' + (W - CX) + ' 0 H ' + W + ' V ' + CYb + ' H ' + f(xCr) + A(0, W - CX, CY) + ' Z',
       w3l:   'M 0 ' + CYb + ' H ' + f(xC) + A(0, a32[0], a32[1]) + ' L 0 ' + f(yEdge) + ' Z',
@@ -262,24 +251,23 @@
      carries the share of attempts, attempts and makes and misses per game, FG% and eFG%.
      Games are the caller's count -- the chart cannot know how many games a player played
      without a shot -- and per-game columns are left out when it is not given. */
-  const ALL = ['ra', 'paint', 'bl', 'br', 'wl', 'wr', 'tm', 'c3l', 'c3r', 'w3l', 'w3r', 't3'];
+  const ALL = ['ra', 'paint', 'bl', 'br', 'tm', 'c3l', 'c3r', 'w3l', 'w3r', 't3'];
   const GROUPS = [
     { k: 'rim',   label: 'at the rim',        zones: ['ra'],           kind: 'paint' },
     { k: 'paint', label: 'paint (not rim)',   zones: ['paint'],        kind: 'paint' },
     { k: 'base',  label: 'baseline mid',      zones: ['bl', 'br'],     kind: 'mid' },
-    { k: 'wingm', label: 'wing mid',          zones: ['wl', 'wr'],     kind: 'mid' },
     { k: 'topm',  label: 'top mid',           zones: ['tm'],           kind: 'mid' },
     { k: 'c3',    label: 'corner 3',          zones: ['c3l', 'c3r'],   kind: 'three' },
     { k: 'w3',    label: 'wing 3',            zones: ['w3l', 'w3r'],   kind: 'three' },
     { k: 't3',    label: 'top 3',             zones: ['t3'],           kind: 'three' }
   ];
   const BIG = [
-    { k: 'left',   label: 'left side',                    zones: ['bl', 'wl', 'c3l', 'w3l'] },
+    { k: 'left',   label: 'left side',                    zones: ['bl', 'c3l', 'w3l'] },
     { k: 'centre', label: 'centre',                       zones: ['ra', 'paint', 'tm', 't3'] },
-    { k: 'right',  label: 'right side',                   zones: ['br', 'wr', 'c3r', 'w3r'] },
+    { k: 'right',  label: 'right side',                   zones: ['br', 'c3r', 'w3r'] },
     { k: 'atrim',  label: 'rim & paint',                  zones: ['ra', 'paint'] },
-    { k: 'jump',   label: 'jump shots (outside the paint)', zones: ['bl', 'br', 'wl', 'wr', 'tm', 'c3l', 'c3r', 'w3l', 'w3r', 't3'] },
-    { k: 'mid',    label: 'all mid-range',                zones: ['bl', 'br', 'wl', 'wr', 'tm'] },
+    { k: 'jump',   label: 'jump shots (outside the paint)', zones: ['bl', 'br', 'tm', 'c3l', 'c3r', 'w3l', 'w3r', 't3'] },
+    { k: 'mid',    label: 'all mid-range',                zones: ['bl', 'br', 'tm'] },
     { k: 'three',  label: 'all threes',                   zones: ['c3l', 'c3r', 'w3l', 'w3r', 't3'] },
     { k: 'all',    label: 'every shot',                   zones: ALL }
   ];
@@ -419,64 +407,389 @@
     if (TC && TC.ink) { const k = TC.ink(hex); if (k) return k; }
     return hex || '#93f2bf';
   }
-  /* ZONES: FALSE is the free chart (docs/memberships.md §6): the court and the makes and
-     misses, with no zone tints, labels, chips or table. The zone analysis is the paid part;
-     where a shot went is the box score's own chart over more games. Anything else -- the
-     option left out, or true -- draws exactly what this always drew. */
+  /* ======================================================== THE CHART, TO USE ===
+     One interactive chart for every place a shot is drawn over a court: a club's season, a player's,
+     and a box score's two sides. It is an HTML string plus one set of listeners on the document, so a
+     page that redraws its whole tab from a string on every live update (the game page) keeps the
+     reader's choices: the state lives here, keyed by the chart, not in the markup.
+
+       THE CONTROLS   what to show (the zones, the shots, or both), which games (the last five, ten,
+                      all), two or three, makes or misses, a quarter, a player, a side. The zones are
+                      always worked out from makes AND misses -- "makes only" hides the crosses, it
+                      does not turn every zone into 100%.
+       THE ZONES      tinted on a diverging scale against each zone's own break-even (paint 58%,
+                      mid-range 40%, three 35%): blue below, orange above, a neutral grey within two
+                      points of it, three steps a side. A zone with fewer attempts than the floor is
+                      left untinted, so "not enough to say" never looks like "average".
+       THE NUMBERS    on small black plates, so a shot can never sit on top of one.
+       THE MARKS      a made shot a filled dot with a ring of the floor round it, a miss a cross; in
+                      the club's colour, or in ink when the zones' colours are under them.
+       HOVER / TAP    a zone gives its percentage, makes of attempts, the gap to break-even and its
+                      share of the shots; a shot gives made or missed, two or three, who, when.
+       THE TILES      paint, mid-range, three, left side, right side: the percentage, makes of
+                      attempts, and a bar with the break-even marked on it.
+     ZONES: FALSE is the free chart (docs/memberships.md §6): the court, the marks and every filter,
+     but no zone tints, plates, tiles or table -- the zone analysis is the paid part. */
+  const ANCHOR = { paint: 58, mid: 40, three: 35 };
+  const ZNAME = { ra: 'at the rim', paint: 'paint', bl: 'left baseline', br: 'right baseline',
+                  tm: 'top mid', c3l: 'left corner 3', c3r: 'right corner 3', w3l: 'left wing 3', w3r: 'right wing 3', t3: 'top 3' };
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const hexOk = c => /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(c || ''));
+  const two = n => (n < 10 ? '0' : '') + n;
+  const clockTxt = ms => { if (ms == null || !isFinite(ms) || ms < 0 || ms > 3600000) return ''; const t = Math.ceil(ms / 1000); return Math.floor(t / 60) + ':' + two(t % 60); };
+  const perTxt = p => (!p ? '' : p <= 4 ? 'Q' + p : 'OT' + (p > 5 ? p - 4 : ''));
+  /* the band a zone's percentage falls in against its break-even: -3 .. 3, 0 within two points */
+  function band(pct, kind) {
+    const d = pct - ANCHOR[kind];
+    const a = Math.abs(d), n = a <= 2 ? 0 : a <= 6 ? 1 : a <= 12 ? 2 : 3;
+    return d < 0 ? -n : n;
+  }
+  const bandCls = b => (b === 0 ? 'b0' : b > 0 ? 'bp' + b : 'bm' + (-b));
+  const kindOfShot = sh => { const C = dims(); const k = zoneOf(sh.x * C.W, sh.y * C.H, !!sh.three); return (ZONES.find(zz => zz.k === k) || {}).kind; };
+
+  /* a game's date as a tooltip line: "Sat 27 Sep" (the reader's own words in another language) */
+  function whenOf(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const lang = (typeof document !== 'undefined' && document.documentElement && document.documentElement.lang) || 'en';
+    if (/^en\b/i.test(lang)) {
+      return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' ' + d.getDate() + ' ' +
+        ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()];
+    }
+    try { return d.toLocaleDateString(lang, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/,/g, ''); }
+    catch (_) { return d.toDateString().slice(0, 10); }
+  }
+  /* games as the chart wants them, newest first: [{id, when}] */
+  const gameListOf = gs => (gs || []).slice()
+    .sort((a, b) => String(b.tipoff_at || '').localeCompare(String(a.tipoff_at || '')))
+    .map(g => ({ id: g.id, when: whenOf(g.tipoff_at) }));
+
+  const REG = {};
+  let seq = 0;
+  function initState(o) {
+    let view = !o.zones ? 'shots' : (o.shots || []).length > 90 ? 'zones' : 'both';
+    if (o.zones) {
+      try { const v = localStorage.getItem('epinoia.sc.view'); if (/^(zones|both|shots)$/.test(v || '')) view = v; } catch (_) { /* the default */ }
+    }
+    return { view, res: 'all', type: 'all', per: 'all', last: 'all', pid: 'all', side: 'both' };
+  }
+
+  /* the shots the current choices leave: forMarks also applies makes / misses */
+  function pick(r, forMarks, side) {
+    const o = r.o, st = r.st;
+    const last = st.last !== 'all' && o.gameList ? new Set(o.gameList.slice(0, +st.last).map(g => g.id)) : null;
+    return (o.shots || []).filter(s =>
+      (side == null || +s.team === side) &&
+      (st.type === 'all' || (st.type === '3') === !!s.three) &&
+      (st.per === 'all' || (st.per === 'ot' ? s.period > 4 : +s.period === +st.per)) &&
+      (st.pid === 'all' || String(s.pid) === st.pid) &&
+      (!last || last.has(s.gameId)) &&
+      (!forMarks || st.res === 'all' || (st.res === 'made') === !!s.made));
+  }
+
+  function segHTML(key, cur, label, opts) {
+    return '<div class="scw-grp"><span class="scw-sl">' + esc(label) + '</span><div class="scw-seg" role="group" aria-label="' + esc(label) + '">' +
+      opts.map(([v, t]) => {
+        const on = String(cur) === String(v);
+        return '<button type="button" data-sca="' + key + '" data-v="' + esc(v) + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + esc(t) + '</button>';
+      }).join('') + '</div></div>';
+  }
+  function controlsHTML(r) {
+    const o = r.o, st = r.st, out = [];
+    if (o.zones) out.push(segHTML('view', st.view, 'view', [['zones', 'zones'], ['both', 'zones + shots'], ['shots', 'shots']]));
+    if (o.kind === 'game' && o.sides) out.push(segHTML('side', st.side, 'team', [['both', 'both']].concat(o.sides.map((sd, i) => [String(i), sd.short || sd.name]))));
+    const gl = o.gameList || [];
+    if (gl.length > 5) {
+      const opts = [['5', 'last 5']];
+      if (gl.length > 10) opts.push(['10', 'last 10']);
+      opts.push(['all', 'all ' + gl.length]);
+      out.push(segHTML('last', st.last, 'games', opts));
+    }
+    out.push(segHTML('type', st.type, 'shots', [['all', 'all'], ['2', '2pt'], ['3', '3pt']]));
+    if (st.view !== 'zones') out.push(segHTML('res', st.res, 'show', [['all', 'all'], ['made', 'makes'], ['miss', 'misses']]));
+    const pers = [...new Set((o.shots || []).map(s => s.period).filter(p => p != null && p > 0))].sort((a, b) => a - b);
+    if (pers.length > 1) {
+      const opts = [['all', 'all']].concat(pers.filter(p => p <= 4).map(p => [String(p), 'Q' + p]));
+      if (pers.some(p => p > 4)) opts.push(['ot', 'OT']);
+      out.push(segHTML('per', st.per, 'quarter', opts));
+    }
+    /* a player, where the chart holds more than one: grouped by side on a box score */
+    const names = o.names || {};
+    const pids = [...new Set((o.shots || []).map(s => s.pid).filter(p => p != null && names[p]))];
+    if (pids.length > 1) {
+      const opt = p => '<option value="' + esc(p) + '"' + (String(st.pid) === String(p) ? ' selected' : '') + '>' + esc(names[p]) + '</option>';
+      const byName = (a, b) => String(names[a]).localeCompare(String(names[b]));
+      let list;
+      if (o.kind === 'game' && o.sides) {
+        list = o.sides.map((sd, i) => {
+          const mine = pids.filter(p => (o.shots || []).some(s => String(s.pid) === String(p) && +s.team === i)).sort(byName);
+          return mine.length ? '<optgroup label="' + esc(sd.name) + '">' + mine.map(opt).join('') + '</optgroup>' : '';
+        }).join('');
+      } else list = pids.sort(byName).map(opt).join('');
+      out.push('<div class="scw-grp"><span class="scw-sl">player</span><select class="scw-sel" data-sca="pid" aria-label="player">' +
+        '<option value="all">every player</option>' + list + '</select></div>');
+    }
+    return '<div class="scw-bar">' + out.join('') + '</div>';
+  }
+
+  /* one court: the zone tints under the lines, the marks over them, the plates on top */
+  function courtHTML(r, shots, marks, colour, ci) {
+    const o = r.o, st = r.st, C = dims();
+    const B = (typeof window !== 'undefined') && window.EpinoiaBox;
+    const floor = o.minAttempts;
+    const showZ = o.zones && st.view !== 'shots';
+    const showM = st.view !== 'zones';
+    const z = zones(shots);
+    r.cur[ci] = { marks, zones: z, total: shots.length };
+    const paths = zonePaths();
+    /* a zone with too few attempts to rate, or none, is hatched faintly rather than left bare: measured, not missing */
+    const hid = 'scwh' + (++seq);
+    const hatch = '<defs><pattern id="' + hid + '" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+      '<line x1="0" y1="0" x2="0" y2="22" style="stroke:var(--sc-ink);stroke-opacity:.13;stroke-width:5"/></pattern></defs>';
+    const tints = showZ ? hatch + ZONES.map(zz => {
+      const v = z[zz.k];
+      const cls = v.att >= floor ? bandCls(band(v.pct, zz.kind)) : (v.att ? 'few' : 'none');
+      const say = ZNAME[zz.k] + ': ' + v.made + ' of ' + v.att + (v.att ? ', ' + Math.round(v.pct) + '%' : '');
+      return '<path class="zt ' + cls + '" d="' + paths[zz.k] + '" fill-rule="evenodd" data-z="' + zz.k + '" data-c="' + ci + '" tabindex="0" role="img" aria-label="' + esc(say) + '"' +
+        (v.att >= floor ? '' : ' style="fill:url(#' + hid + ')"') + '/>';
+    }).join('') : '';
+    const mk = showM ? marks.map((s, i) => {
+      const x = (s.x * C.W).toFixed(1), y = (s.y * C.H).toFixed(1), a = 15;
+      const shape = s.made
+        ? '<circle class="dot" cx="' + x + '" cy="' + y + '" r="18"/>'
+        : '<path class="cross" d="M ' + (x - a) + ' ' + (y - a) + ' L ' + (+x + a) + ' ' + (+y + a) + ' M ' + (x - a) + ' ' + (+y + a) + ' L ' + (+x + a) + ' ' + (y - a) + '"/>';
+      return '<g class="mk ' + (s.made ? 'in' : 'out') + '" data-s="' + i + '" data-c="' + ci + '">' + shape + '<circle class="hit" cx="' + x + '" cy="' + y + '" r="44"/></g>';
+    }).join('') : '';
+    const plates = showZ ? ZONES.map(zz => {
+      const v = z[zz.k];
+      const few = v.att < floor;
+      const big = few ? '' : Math.round(v.pct) + '%';
+      const small = v.made + '/' + v.att;
+      if (zz.k === 'c3l' || zz.k === 'c3r') {
+        const txt = (big ? big + ' ' : '') + small, w = txt.length * 16 + 26, h = 46;
+        return '<g class="pl' + (few ? ' few' : '') + '" transform="translate(' + zz.x + ' ' + zz.y + ') rotate(' + (zz.k === 'c3l' ? -90 : 90) + ')">' +
+          '<rect x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '" rx="8"/>' +
+          '<text class="sm" x="0" y="8" text-anchor="middle">' + txt + '</text></g>';
+      }
+      const w = Math.max(big.length * 26, small.length * 15) + 34, h = few ? 46 : 88;
+      return '<g class="pl' + (few ? ' few' : '') + '" transform="translate(' + zz.x + ' ' + zz.y + ')">' +
+        '<rect x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '" rx="10"/>' +
+        (big ? '<text class="big" x="0" y="6" text-anchor="middle">' + big + '</text><text class="sm" x="0" y="34" text-anchor="middle">' + small + '</text>'
+             : '<text class="sm" x="0" y="8" text-anchor="middle">' + small + '</text>') + '</g>';
+    }).join('') : '';
+    const court = (B && B.courtSVG) ? B.courtSVG(null) : '<svg viewBox="0 0 ' + C.W + ' ' + C.H + '"><rect x="0" y="0" width="' + C.W + '" height="' + C.H + '"/></svg>';
+    let svg = court.replace(/(<rect[^>]*\/>)/, '$1' + tints);
+    svg = svg.replace(/<\/svg>\s*$/, mk + plates + '</svg>');
+    /* the marks in ink over the tints (a club's orange would vanish into a hot zone), in the club's colour on the bare floor */
+    const mkc = showZ ? 'var(--sc-ink)' : (hexOk(colour) ? colour : 'var(--lume)');
+    svg = svg.replace('<svg ', '<svg class="scw-svg" role="img" aria-label="shot chart" style="--mk:' + mkc + '" ');
+    const empty = !shots.length ? '<div class="scw-empty">No shots match these choices.</div>' : '';
+    return '<div class="scw-court">' + svg + empty + '<div class="scw-tip" role="status" hidden></div></div>';
+  }
+
+  /* a tile takes the scale's colour only from five attempts: 3 of 4 is not "hot" */
+  function tileHTML(label, list, anchor) {
+    const m = list.filter(s => s.made).length, a = list.length;
+    const pct = a ? 100 * m / a : null;
+    const cls = pct != null && anchor != null && a >= 5 ? bandCls(band(pct, anchor)) : 'bn';
+    return '<div class="scw-tile"><span class="t">' + esc(label) + '</span><b>' + (pct == null ? '—' : Math.round(pct) + '%') + '</b>' +
+      '<span class="n">' + m + '/' + a + '</span>' +
+      '<i class="trk" aria-hidden="true"><i class="fl ' + cls + '" style="width:' + (pct == null ? 0 : pct.toFixed(1)) + '%"></i>' +
+      (anchor != null ? '<i class="be" style="left:' + ANCHOR[anchor] + '%" title="break-even ' + ANCHOR[anchor] + '%"></i>' : '') + '</i></div>';
+  }
+  function tilesHTML(shots, sides) {
+    const k = shots.map(sh => ({ sh, kind: kindOfShot(sh) }));
+    const of = kind => k.filter(x => x.kind === kind).map(x => x.sh);
+    return '<div class="scw-tiles">' +
+      tileHTML('paint', of('paint'), 'paint') + tileHTML('mid-range', of('mid'), 'mid') + tileHTML('three', of('three'), 'three') +
+      (sides ? tileHTML('left side', shots.filter(sh => sh.x < 0.4), null) + tileHTML('right side', shots.filter(sh => sh.x > 0.6), null) : '') +
+      '</div>';
+  }
+  function legendHTML(r, shown, madeN) {
+    const o = r.o, st = r.st, bits = [];
+    if (st.view !== 'zones') {
+      bits.push('<span class="lg"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6"/></svg>made</span>');
+      bits.push('<span class="lg"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5 L15 15 M5 15 L15 5"/></svg>missed</span>');
+    }
+    if (o.zones && st.view !== 'shots') {
+      bits.push('<span class="lg ramp"><span class="rl">below break-even</span><i class="bm3"></i><i class="bm2"></i><i class="bm1"></i><i class="b0"></i><i class="bp1"></i><i class="bp2"></i><i class="bp3"></i><span class="rl">above</span></span>');
+      bits.push('<span class="lg"><i class="fewkey"></i>fewer than ' + o.minAttempts + ' attempts</span>');
+    }
+    const note = shown + ' shot' + (shown === 1 ? '' : 's') + ' · ' + madeN + ' made' + (o.note && st.last === 'all' ? ' · ' + esc(o.note) : '') +
+      (st.last !== 'all' ? ' · last ' + st.last + ' games' : '');
+    return '<div class="scw-legend">' + bits.join('') + '<span class="lg note">' + note + '</span></div>' +
+      (o.zones && st.view !== 'shots' ? '<div class="scw-be">break-even: paint ' + ANCHOR.paint + '% · mid-range ' + ANCHOR.mid + '% · three ' + ANCHOR.three + '% · point at a zone or a shot for its numbers</div>'
+                                      : '<div class="scw-be">point at a shot for who took it and when</div>');
+  }
+
+  function innerHTML(r) {
+    const o = r.o, st = r.st;
+    r.cur = [];
+    if (!(o.shots || []).length) {
+      return '<div class="scw-none">No located shots yet — a shot is placed on the court in the scorer, and the ones taken without a location cannot be charted.</div>';
+    }
+    let body = '';
+    if (o.kind === 'game' && o.sides) {
+      const sides = st.side === 'both' ? [0, 1] : [+st.side];
+      /* a player picked on one side is that side's chart alone */
+      const pSide = st.pid !== 'all' ? (o.shots.find(s => String(s.pid) === st.pid) || {}).team : null;
+      const show = pSide != null ? [+pSide] : sides;
+      body = '<div class="scw-courts' + (show.length === 1 ? ' one' : '') + '">' + show.map(i => {
+        const sd = o.sides[i] || {};
+        const all = pick(r, false, i), marks = pick(r, true, i);
+        const m = all.filter(s => s.made).length;
+        return '<div class="scw-card" style="--side:' + (hexOk(sd.colour) ? sd.colour : 'var(--lume)') + '">' +
+          '<div class="scw-ch"><span class="sw"></span><b>' + esc(sd.name) + '</b><span class="tot">' + m + '/' + all.length + (all.length ? ' · ' + Math.round(100 * m / all.length) + '%' : '') + '</span></div>' +
+          courtHTML(r, all, marks, sd.colour, i) + tilesHTML(all, false) + '</div>';
+      }).join('') + '</div>';
+      const shownAll = show.reduce((n, i) => n + pick(r, false, i).length, 0);
+      const madeAll = show.reduce((n, i) => n + pick(r, false, i).filter(s => s.made).length, 0);
+      return controlsHTML(r) + body + legendHTML(r, shownAll, madeAll) +
+        (o.located ? '<div class="scw-be">' + esc(o.located) + '</div>' : '');
+    }
+    const all = pick(r, false), marks = pick(r, true);
+    const madeN = all.filter(s => s.made).length;
+    body = courtHTML(r, all, marks, o.colour, 0) + legendHTML(r, all.length, madeN) + (o.zones && all.length ? tilesHTML(all, true) : '');
+    let games = o.games || 0;
+    if (st.last !== 'all' && o.gameList) games = Math.min(+st.last, o.gameList.length);
+    const table = o.zones && o.table !== false && all.length ? zoneTableHTML(zoneRows(all, games)) : '';
+    return controlsHTML(r) + body + table;
+  }
+
+  function repaint(id, focusKey, focusVal) {
+    const r = REG[id];
+    if (!r || typeof document === 'undefined') return;
+    const w = document.querySelector('.scw[data-scw="' + id + '"]');
+    if (!w) return;
+    w.innerHTML = innerHTML(r);
+    if (focusKey) {
+      const b = w.querySelector('[data-sca="' + focusKey + '"]' + (focusVal != null ? '[data-v="' + focusVal + '"]' : ''));
+      if (b && b.focus) b.focus({ preventScroll: true });
+    }
+  }
+
+  /* ---- the tooltip ---- */
+  function tipFor(el) {
+    const w = el.closest('.scw'); const r = w && REG[w.dataset.scw];
+    if (!r) return null;
+    const cur = r.cur[+el.dataset.c || 0];
+    if (!cur) return null;
+    if (el.dataset.z) {
+      const v = cur.zones[el.dataset.z]; if (!v) return null;
+      const zz = ZONES.find(x => x.k === el.dataset.z);
+      const few = v.att < r.o.minAttempts;
+      const d = v.att ? Math.round(v.pct - ANCHOR[zz.kind]) : null;
+      return { v: v.att ? Math.round(v.pct) + '%' : '—', k: ZNAME[zz.k],
+               d: [v.made + ' of ' + v.att, v.att ? 'break-even ' + ANCHOR[zz.kind] + '%' + (few ? '' : ' · ' + (d > 0 ? '+' : '') + d) : null,
+                   cur.total ? Math.round(100 * v.att / cur.total) + '% of these shots' : null, few && v.att ? 'too few attempts to rate' : null].filter(Boolean) };
+    }
+    const s = cur.marks[+el.dataset.s]; if (!s) return null;
+    const who = (r.o.names || {})[s.pid];
+    const g = r.o.gameList ? r.o.gameList.find(x => x.id === s.gameId) : null;
+    const when = [perTxt(s.period), clockTxt(s.clock)].filter(Boolean).join(' ');
+    return { v: (s.made ? 'made' : 'missed') + ' ' + (s.three ? '3pt' : '2pt'), k: who || '',
+             d: [[when, g && g.when].filter(Boolean).join(' · '), s.moved ? 'placed on the side of the arc it was worth' : null].filter(Boolean) };
+  }
+  function showTip(el, x, y) {
+    const court = el.closest('.scw-court'); const tip = court && court.querySelector('.scw-tip');
+    const t = tip && tipFor(el);
+    if (!t) return;
+    tip.textContent = '';
+    const add = (tag, cls, txt) => { const n = document.createElement(tag); n.className = cls; n.textContent = txt; tip.appendChild(n); };
+    add('b', 'v', t.v);
+    if (t.k) add('span', 'k', t.k);
+    t.d.forEach(line => add('span', 'd', line));
+    const box = court.getBoundingClientRect();
+    let px = x, py = y;
+    if (px == null) { const b = el.getBoundingClientRect(); px = b.left + b.width / 2; py = b.top + b.height / 2; }
+    /* the page's zoom scales the box but not the pointer: work in the box's own pixels */
+    const zx = court.offsetWidth ? box.width / court.offsetWidth : 1;
+    const lx = (px - box.left) / zx, ly = (py - box.top) / zx;
+    tip.hidden = false;
+    tip.style.left = Math.max(70, Math.min(court.offsetWidth - 70, lx)) + 'px';
+    tip.style.top = ly + 'px';
+    tip.classList.toggle('below', ly < 90);
+    const w = el.closest('.scw');
+    w.querySelectorAll('.lit').forEach(n => n.classList.remove('lit'));
+    el.classList.add('lit');
+  }
+  function hideTips() {
+    document.querySelectorAll('.scw-tip:not([hidden])').forEach(t => { t.hidden = true; });
+    document.querySelectorAll('.scw .lit').forEach(n => n.classList.remove('lit'));
+  }
+
+  let bound = false;
+  function bind() {
+    if (bound || typeof document === 'undefined' || !document.addEventListener) return;
+    bound = true;
+    const act = (el, v) => {
+      const w = el.closest('.scw'); const r = w && REG[w.dataset.scw];
+      if (!r) return;
+      const key = el.dataset.sca;
+      r.st[key] = v;
+      if (key === 'view') { try { localStorage.setItem('epinoia.sc.view', v); } catch (_) { /* this page only */ } }
+      if (key === 'side' && v !== 'both' && r.st.pid !== 'all') {
+        const s = r.o.shots.find(x => String(x.pid) === r.st.pid);
+        if (s && String(s.team) !== v) r.st.pid = 'all';
+      }
+      repaint(w.dataset.scw, key, el.tagName === 'BUTTON' ? v : null);
+    };
+    document.addEventListener('click', e => {
+      const b = e.target && e.target.closest ? e.target.closest('.scw button[data-sca]') : null;
+      if (b) { act(b, b.dataset.v); return; }
+      const m = e.target && e.target.closest ? e.target.closest('.scw [data-s], .scw [data-z]') : null;
+      if (m) showTip(m, e.clientX, e.clientY); else hideTips();
+    });
+    document.addEventListener('change', e => {
+      const s = e.target && e.target.closest ? e.target.closest('.scw select[data-sca]') : null;
+      if (s) act(s, s.value);
+    });
+    document.addEventListener('pointermove', e => {
+      if (e.pointerType === 'touch') return;
+      const m = e.target && e.target.closest ? e.target.closest('.scw [data-s], .scw [data-z]') : null;
+      if (m) showTip(m, e.clientX, e.clientY);
+      else if (document.querySelector('.scw-tip:not([hidden])')) hideTips();
+    }, { passive: true });
+    document.addEventListener('focusin', e => {
+      const m = e.target && e.target.closest ? e.target.closest('.scw [data-z]') : null;
+      if (m) showTip(m); else hideTips();
+    });
+  }
+
+  /* A CLUB'S OR A PLAYER'S SEASON. o: host, shots, colour, zones (false: the free chart), minAttempts,
+     games (a count, for the table's per-game columns), gameList ([{id, when}] newest first, for the games
+     control and the tooltip's date), names ({pid: label}, for the player control), table, note. A second
+     call on the same host keeps the reader's choices. */
   function renderZones(o) {
     const host = typeof o.host === 'string' ? document.querySelector(o.host) : o.host;
     if (!host) return;
-    const C = dims();
-    const B = (typeof window !== 'undefined') && window.EpinoiaBox;
-    const floor = o.minAttempts == null ? 3 : o.minAttempts;
-    const shots = o.shots || [];
-    const col = markColour(o.colour);
-    const dotsOnly = o.zones === false;
-    const z = zones(shots);
-    const dots = shots.map(sh => {
-      const x = sh.x * C.W, y = sh.y * C.H, a = 14;
-      return sh.made
-        ? '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="17" fill="' + col + '" opacity=".8"/>'
-        : '<g stroke="' + col + '" stroke-width="8" stroke-linecap="round" opacity=".5">' +
-          '<line x1="' + (x - a).toFixed(1) + '" y1="' + (y - a).toFixed(1) + '" x2="' + (x + a).toFixed(1) + '" y2="' + (y + a).toFixed(1) + '"/>' +
-          '<line x1="' + (x - a).toFixed(1) + '" y1="' + (y + a).toFixed(1) + '" x2="' + (x + a).toFixed(1) + '" y2="' + (y - a).toFixed(1) + '"/></g>';
-    }).join('');
-    const paths = zonePaths();
-    const fills = dotsOnly ? '' : ZONES.map(zz => {
-      const v = z[zz.k]; const h = heat(v.pct, zz.kind, v.att, floor);
-      return '<path d="' + paths[zz.k] + '" fill="' + h.fill + '" fill-rule="evenodd" stroke="' + h.stroke + '" stroke-width="3" stroke-opacity=".35">' +
-        '<title data-i18n-ctx="zone">' + zz.label + ': ' + v.made + ' of ' + v.att + (v.att ? ' \u00b7 ' + v.pct.toFixed(0) + '%' : '') + '</title></path>';
-    }).join('');
-    const labels = dotsOnly ? '' : ZONES.map(zz => {
-      const v = z[zz.k];
-      const txt = v.att ? (v.made + '/' + v.att) : '\u2014';
-      const pct = v.att ? v.pct.toFixed(0) + '%' : '';
-      const vertical = zz.k === 'c3l' || zz.k === 'c3r';
-      const tf = vertical ? ' transform="rotate(' + (zz.k === 'c3l' ? -90 : 90) + ' ' + zz.x + ' ' + zz.y + ')"' : '';
-      return '<g class="sc-zone" opacity="' + (v.att ? 1 : .5) + '"' + tf + '>' +
-        '<text data-i18n-ctx="zone" x="' + zz.x + '" y="' + (zz.y - 18) + '" text-anchor="middle" font-size="22" letter-spacing="2" fill="var(--ink-2, #cfe)" font-family="var(--f-micro, monospace)" stroke="var(--panel, #0a1a13)" stroke-width="5" paint-order="stroke" stroke-linejoin="round">' + zz.label.toUpperCase() + '</text>' +
-        '<text x="' + zz.x + '" y="' + (zz.y + 16) + '" text-anchor="middle" font-size="34" font-weight="700" fill="var(--ink, #e6fff1)" font-family="var(--f-data, monospace)" stroke="var(--panel, #0a1a13)" stroke-width="6" paint-order="stroke" stroke-linejoin="round">' + txt + (pct ? ' \u00b7 ' + pct : '') + '</text></g>';
-    }).join('');
-    const court = (B && B.courtSVG) ? B.courtSVG(null, { plain: true }) : '<svg viewBox="0 0 ' + C.W + ' ' + C.H + '"></svg>';
-    /* the tints go straight after the court's background rectangle, beneath every line */
-    let svg = court.replace(/(<rect[^>]*\/>)/, '$1' + fills);
-    svg = svg.replace(/<\/svg>\s*$/, dots + labels + '</svg>');
-    const made = shots.filter(x => x.made).length;
-    const chip = (name, pred) => { const a = shots.filter(pred); const m = a.filter(x => x.made).length;
-      return '<span class="sc-chip">' + name + '<b>' + m + '/' + a.length + (a.length ? ' \u00b7 ' + Math.round(100 * m / a.length) + '%' : '') + '</b></span>'; };
-    const kindOf = sh => { const k = zoneOf(sh.x * C.W, sh.y * C.H, !!sh.three); return (ZONES.find(zz => zz.k === k) || {}).kind; };
-    const chips = '<div class="sc-chips">' +
-      chip('paint', sh => kindOf(sh) === 'paint') + chip('mid-range', sh => kindOf(sh) === 'mid') + chip('three', sh => !!sh.three) +
-      chip('left side', sh => sh.x < 0.4) + chip('right side', sh => sh.x > 0.6) + '</div>';
-    host.innerHTML = '<div class="sc-wrap">' + svg + '</div>' +
-      '<div class="sc-note">' + (shots.length
-        ? '\u25cf made \u00b7 \u2715 missed \u00b7 ' + shots.length + ' located shot' + (shots.length === 1 ? '' : 's') + ', ' + made + ' made' + (o.note ? ' \u00b7 ' + o.note : '') +
-          (dotsOnly ? '' : ' \u00b7 zones tinted against their own break-even (paint 58%, mid-range 40%, three 35%); fewer than ' + floor + ' attempts stays grey')
-        : 'No located shots yet \u2014 a shot is placed on the court in the scorer, and the ones taken without a location cannot be charted.') + '</div>' +
-      (shots.length && !dotsOnly ? chips : '') +
-      (shots.length && !dotsOnly && o.table !== false ? zoneTableHTML(zoneRows(shots, o.games)) : '');
-    return { zones: z, attempts: shots.length };
+    const opts = Object.assign({ kind: 'profile', minAttempts: o.minAttempts == null ? 3 : o.minAttempts, zones: o.zones !== false }, o);
+    opts.zones = o.zones !== false;
+    opts.minAttempts = o.minAttempts == null ? 3 : o.minAttempts;
+    opts.colour = markColour(o.colour);
+    let id = host.dataset && host.dataset.scwId;
+    if (!id || !REG[id]) { id = 'c' + (++seq); if (host.dataset) host.dataset.scwId = id; REG[id] = { st: initState(opts) }; }
+    REG[id].o = opts;
+    if (!opts.zones) REG[id].st.view = 'shots';
+    bind();
+    host.innerHTML = '<div class="scw" data-scw="' + id + '">' + innerHTML(REG[id]) + '</div>';
+    return { zones: zones(o.shots || []), attempts: (o.shots || []).length };
   }
 
-  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, attachZoneStats, reboundsOf, rebRow, markColour, ZONES, GROUPS, BIG };
+  /* A BOX SCORE'S TWO SIDES, as a string for a page that draws its tabs from strings: the state is kept
+     under one key per page, so a live update (which redraws the tab) keeps the reader's choices.
+     o: shots (x, y, made, three, team 0/1, pid, period, clock), sides ([{name, short, colour}] x 2),
+     names ({pid: label}), located (a line on how many shots have a place). */
+  function gameHTML(o) {
+    const opts = Object.assign({ kind: 'game', zones: false, minAttempts: 3 }, o);
+    opts.sides = (o.sides || []).map(sd => Object.assign({}, sd, { colour: markColour(sd.colour) }));
+    if (!REG.game) REG.game = { st: initState(opts) };
+    REG.game.o = opts;
+    REG.game.st.view = 'shots';
+    bind();
+    return '<div class="scw scw-game" data-scw="game">' + innerHTML(REG.game) + '</div>';
+  }
+
+  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, gameHTML, gameListOf, whenOf, band, attachZoneStats, reboundsOf, rebRow, markColour, ZONES, GROUPS, BIG, ANCHOR };
 }));

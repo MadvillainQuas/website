@@ -173,6 +173,12 @@ html.tt-on .wrap > .top > .wm{ display:none }
 .tt-ix-l li:nth-child(7n+7) a{ --k:var(--tt-white) }
 .tt-ix-l a:hover, .tt-ix-l a:focus-visible{ background:var(--k); color:var(--tt-scr); outline:0 }
 .tt-ix-l a:hover .n, .tt-ix-l a:focus-visible .n{ background:var(--tt-scr); box-shadow:none }
+/* with a mouse the rows can sit closer: a club's page runs to ten sections and wraps to three lines */
+@media (pointer:fine) and (min-width:721px){
+  .tt-index{ padding-top:10px; padding-bottom:6px }
+  .tt-ix-l{ margin-top:4px }
+  .tt-ix-l a{ min-height:30px }
+}
 @media (max-width:720px){
   .tt-index{ flex-direction:row; align-items:stretch; min-height:44px; padding:0 0 0 calc(var(--u)*2) }
   .tt-ix-h{ padding-right:12px; border-right:1px solid rgba(255,255,255,.16) }
@@ -187,7 +193,7 @@ html.tt-on .wrap > .top > .wm{ display:none }
   .tt-ix-l a .n{ width:8px; height:8px }
 }
 /* a jump lands the title below the top of the window, not under the edge */
-html.tt-on .sec, html.tt-on section{ scroll-margin-top:12px }
+html.tt-on .sec, html.tt-on section, html.tt-on .ep-hdr{ scroll-margin-top:12px }
 
 /* ============================================================================
    4. SECTION TITLES. The plain accent bar under every centred title (.sec-h,
