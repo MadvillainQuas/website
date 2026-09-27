@@ -1634,7 +1634,10 @@ def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> lis
             print(f"(database sources unavailable: {exc})")
     out = list(rows.values())
     if only:
-        out = [r for r in out if r.get("label") == only or r.get("code") == only]
+        # one label/code, or several separated by commas (a workflow dispatch takes one string); the
+        # whole string is still tried first, for a label that has a comma of its own
+        wanted = {only.strip()} | {x.strip() for x in only.split(",") if x.strip()}
+        out = [r for r in out if r.get("label") in wanted or r.get("code") in wanted]
     # A CALENDAR-YEAR LEAGUE (NBL1: March to August) is not a 2026-27 season - read by the August
     # cut-over, its finals would land in the next season from its ladder. Such a source says
     # "season_calendar" and plays in the season named for the year (season_auto: the year it is,
@@ -2387,7 +2390,7 @@ def backfill_finish(q: "Supabase | None", job: dict, state: str, sources_run: in
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", help="label/code of one source")
+    ap.add_argument("--source", help="label/code of one source, or several separated by commas (NBB,LOURO)")
     ap.add_argument("--dry-run", action="store_true", help="discover + fetch, write nothing")
     ap.add_argument("--config", action="store_true", help="(kept for compatibility) config sources are always read; with Supabase keys the database sources are merged in too")
     ap.add_argument("--max-games", type=int, default=400)

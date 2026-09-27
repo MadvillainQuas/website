@@ -3162,7 +3162,8 @@
         "stage": "regular",
         "archive_raw": true,
         "store_pbp": false,
-        "auto_create": true
+        "auto_create": true,
+        "season_calendar": true
       },
       "scheduleUrls": [
         "https://lnb.com.br/liga-ouro/tabela-de-jogos/"
@@ -3192,7 +3193,8 @@
         "stage": "playoffs",
         "archive_raw": true,
         "store_pbp": false,
-        "auto_create": true
+        "auto_create": true,
+        "season_calendar": true
       },
       "scheduleUrls": [
         "https://lnb.com.br/liga-ouro/tabela-de-jogos/#playoffs"

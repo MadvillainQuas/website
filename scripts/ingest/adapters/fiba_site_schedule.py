@@ -1106,6 +1106,11 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         """The league's games on the dates the portal offers, and every game read before (from the day cache)."""
         from datetime import timedelta
         label = config.get("basketee_league") or ""
+        want_year, now_year = _start_year(config.get("season") or ""), _start_year("")
+        if want_year != now_year:          # a backfill: the portal shows the last two weeks, never another season
+            print(f"     {label}: the portal only shows the current season ({now_year}/{now_year + 1}); "
+                  f"{want_year}/{want_year + 1} cannot be read from it")
+            return []
         menu = self._bee_menu()
         chid = next((cid for name, cid in menu["chids"].items() if name.casefold() == label.casefold()),
                     str(config.get("basketee_chid") or ""))

@@ -462,7 +462,9 @@ class Platform:
             # EVERY form the normaliser folded away, so the native spelling stays searchable:
             # "Dončić" and the scoreboard's "L. DONCIC" both still find Luka Doncic.
             aliases = name_and_aliases(p)[2]
-            r = self.insert("players", {"slug": f"{team['slug']}-{slugify(first + ' ' + last)}", "first_name": first or "?", "last_name": last,
+            # A PLAYER KNOWN BY ONE NAME (Brazil's "Magna", "Jeanzinho") has no first name: it is left blank, which every
+            # page joins and trims ("Magna"), where the old "?" printed as "? Magna"
+            r = self.insert("players", {"slug": f"{team['slug']}-{slugify(first + ' ' + last)}", "first_name": first, "last_name": last,
                                         "is_minor": False, "external_ids": {"fiba_livestats": ext}, "aliases": aliases}, "slug")
         self.cache["player"][key] = r
         if r:

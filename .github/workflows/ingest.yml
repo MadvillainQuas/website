@@ -186,6 +186,8 @@ jobs:
           [ -f data/latest.json ] && git add data/latest.json
           ls -d data/data_* >/dev/null 2>&1 && git add -A data/data_*
           git diff --cached --quiet && echo "nothing new" || git commit -m "feed: ingest $(date -u +%Y-%m-%dT%H:%MZ)"
-          # somebody may have pushed while we ran — replay our feed commit on top of theirs
-          git pull --rebase --autostash origin main || true
+          # somebody may have pushed while we ran — replay our feed commit on top of theirs, on the branch
+          # this run was dispatched on (main for every scheduled run; a feature branch for a one-off run of
+          # its own new sources, which must never be rebased onto main here)
+          git pull --rebase --autostash origin "$GITHUB_REF_NAME" || true
           git push

@@ -84,7 +84,7 @@ class Fake(FibaSiteScheduleAdapter):
 
 ROOT = tempfile.mkdtemp(prefix="estlat_test_")
 CFG = {"site": "basketee", "code": "ESTLAT", "basketee_league": "Estonian-Latvian Basketball League", "basketee_chid": "999",
-       "season": "2026-27", "repo_root": ROOT}
+       "repo_root": ROOT}                     # no season: the current one, as the live config
 
 print("-- the portal's menu")
 m = F.basketee_menu(MENU)
@@ -141,6 +141,11 @@ json.dump(cache, open(os.path.join(ROOT, "data", "feed", "ESTLAT", "days.json"),
 D = Fake(moved)
 gm = [x for x in D.discover("https://online.basket.ee/en", CFG) if x.external_id == "2027212142"]
 ok("it is there once, on its new day", len(gm) == 1 and gm[0].tipoff_at.startswith("2026-10-03"), [x.tipoff_at for x in gm])
+
+print("\n-- a backfill of an older season (the console's season_backfills)")
+G = Fake()
+ok("is refused: the portal shows the last two weeks, and they are this season's", G.discover("https://online.basket.ee/en", dict(CFG, season="2019-20")) == []
+   and G.asked == [], G.asked)
 
 print("\n-- one game, from LiveStats")
 seen = {}

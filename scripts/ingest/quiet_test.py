@@ -403,6 +403,11 @@ ok("the config has sources that share a schedule page (else this proves nothing)
 ok("every one of them is loaded, not only the last on its page (Basketligan men + women, the four on BBE)",
    all(c in _loaded for codes in _shared.values() for c in codes), sorted(c for codes in _shared.values() for c in codes if c not in _loaded))
 ok("--source picks the first of them", [r["code"] for r in RI.load_sources(None, True, "SBF")] == ["SBF"])
+_several = sorted((r["code"], (r.get("adapter_config") or {}).get("stage")) for r in RI.load_sources(None, True, "NBB, LOURO"))
+ok("--source takes several, separated by commas (a workflow dispatch takes one string): every source of each code",
+   _several == [("LOURO", "playoffs"), ("LOURO", "regular"), ("NBB", "playoffs"), ("NBB", "regular")], _several)
+ok("...and a calendar-year league (Liga Ouro 2026, February to June) plays in the season named for the year",
+   {(r.get("adapter_config") or {}).get("season") for r in RI.load_sources(None, True, "LOURO")} == {str(__import__("datetime").date.today().year)})
 
 print("-- a game the feed calls final that the platform never closed is found, and written again")
 
