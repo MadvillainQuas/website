@@ -1186,8 +1186,10 @@ async function roster(team) {
   };
   const yearNow = new Date().getFullYear();
 
-  const wrap = el('div', 'ft-wrap');
-  const t = el('table', 'ft');
+  const wrap = el('div', 'ft-wrap roster-wrap');
+  /* no position anywhere in the squad and nobody here to type one: the column is left out (CSS, so
+     every row and the average keep the same cells) */
+  const t = el('table', 'ft roster' + (!canEdit && !rows.some(r => r.position) ? ' nopos' : ''));
   const thead = el('thead'), hr = el('tr');
   ['#', 'PLAYER', 'POS'].concat(plan.age ? ['AGE'] : plan.born ? ['BORN'] : [])
     .forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));
@@ -1372,7 +1374,7 @@ let TG = { comp: '', show: 'all', rows: [] };
 async function games(team) {
   const gs = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` + inSeason() +
     `&select=id,tipoff_at,status,home_score,away_score,home_team_id,venue,competition_id,competitions(id,name,kind),` +
-    `home:home_team_id(name,slug,short_name,colour,logo_path),away:away_team_id(name,slug,short_name,colour,logo_path)&order=tipoff_at.desc`);
+    `home:home_team_id(name,slug,short_name,colour,colour_2,logo_path),away:away_team_id(name,slug,short_name,colour,colour_2,logo_path)&order=tipoff_at.desc`);
   const host = $('#games'); host.textContent = '';
   /* A MEMBERS-ONLY LEAGUE keeps its upcoming fixtures public while it says so (§2) -- a league
      that wants people through the door must say when the doors open -- and the database
@@ -1433,28 +1435,71 @@ function paintGames(team) {
   }
   if (!list.length) { host.appendChild(el('div', 'empty', 'Nothing matches that.')); return; }
 
+  /* EACH GAME AS THE FIXTURES PAGE DRAWS IT: both clubs, home on the left, in their colours, crests in
+     ringed white discs, the score (or the tip-off) on a black block with the winner in yellow, and this
+     club's result on a W / L key under it; each day on a teletext strip. The whole row opens the game. */
+  const TC = window.EpinoiaTeamColour;
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const side = (t, k) => {
+    const tm = t || {};
+    const sd = el('div', 'tfs ' + k);
+    if (TC && TC.card) TC.card(sd, tm.colour || '#93f2bf', tm.colour_2);
+    const code = (tm.short_name || tm.name || '?').slice(0, 3).toUpperCase();
+    const disc = el('span', 'tfc', code);
+    const url = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(tm.logo_path) : null;
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url; img.alt = ''; img.loading = 'lazy';
+      /* a crest that will not load leaves the club's letters behind, not an empty disc */
+      img.addEventListener('error', () => { disc.textContent = code; });
+      disc.textContent = ''; disc.appendChild(img);
+    }
+    const nm = el('div');
+    nm.append(el('div', 'tn' + (tm.slug === team.slug ? ' us' : ''), tm.name || '—'), el('div', 'ha', k === 'h' ? 'Home' : 'Away'));
+    sd.append(disc, nm);
+    return sd;
+  };
+  let lastDay = null;
   list.forEach(g => {
     const home = g.home_team_id === team.id;
-    const opp = home ? (g.away || {}) : (g.home || {});
     const us = home ? g.home_score : g.away_score;
     const them = home ? g.away_score : g.home_score;
-    const final = done(g.status);
-
-    const row = el('div', 'fx');
+    const final = done(g.status), live = g.status === 'live';
     const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
-    row.appendChild(el('div', 'd', when ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'TBC'));
-    const o = el('div', 'o');
-    if (window.epinoiaCrest) o.appendChild(window.epinoiaCrest(opp, { cls: 'fxcrest' }));
-    o.appendChild(el('span', null, (home ? 'v ' : '@ ') + (opp.name || '\u2014')));
-    if (g.competitions && g.competitions.name && comps.size > 1) o.appendChild(el('small', 'comp', g.competitions.name));
-    row.appendChild(o);
-    row.appendChild(el('div', 's', final ? `${us}\u2013${them}` : (g.status === 'live' ? 'LIVE' : '')));
-    const res = final ? (us > them ? 'W' : 'L') : (g.status === 'live' ? 'LIVE' : (g.venue || 'SCHEDULED'));
-    { const rd = el('div', 'r ' + (final ? (us > them ? 'w' : 'ls') : ''), res); rd.setAttribute('data-i18n-ctx', 'res'); row.appendChild(rd); }
-    if (window.EpinoiaFollow && !final) row.appendChild(window.EpinoiaFollow.bell('game', g.id));
-    else row.appendChild(el('span'));
-    row.style.cursor = 'pointer';
-    row.addEventListener('click', () => location.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase');
+    const dk = live ? 'live' : (when ? when.toDateString() : 'tbc');
+    if (dk !== lastDay) {
+      lastDay = dk;
+      host.appendChild(el('div', 'tfday' + (live ? ' live' : ''), live ? 'Live now'
+        : when ? DAYS[when.getDay()] + ' ' + when.getDate() + ' ' + MONTHS[when.getMonth()] + ' ' + when.getFullYear() : 'Date to be confirmed'));
+    }
+    const row = el('a', 'tfx' + (live ? ' live' : ''));
+    row.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
+    const H = g.home || {}, A = g.away || {};
+    if (H.colour) row.style.setProperty('--hc', H.colour);
+    if (A.colour) row.style.setProperty('--ac', A.colour);
+
+    const mid = el('div', 'tfm');
+    if (final || live) {
+      const sc = el('div', 'sc');
+      sc.append(el('span', final && g.home_score > g.away_score ? 'w' : '', String(g.home_score ?? 0)), el('span', 'dash', '–'),
+                el('span', final && g.away_score > g.home_score ? 'w' : '', String(g.away_score ?? 0)));
+      mid.appendChild(sc);
+      if (final) {
+        const res = el('div', 'res ' + (us > them ? 'w' : 'l'), us > them ? 'W' : 'L');
+        res.setAttribute('data-i18n-ctx', 'res');
+        mid.appendChild(res);
+      } else mid.appendChild(el('div', 'st live', 'LIVE'));
+    } else {
+      mid.append(el('div', 'sc t', when ? String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0') : 'TBC'),
+                 el('div', 'st', 'preview'));
+    }
+    row.append(side(H, 'h'), mid, side(A, 'a'));
+    const bits = [];
+    if (g.venue) bits.push(g.venue);
+    if (g.competitions && g.competitions.name && comps.size > 1) bits.push(g.competitions.name);
+    if (bits.length) row.appendChild(el('div', 'tfwhere', bits.join('  ·  ')));
+    if (window.EpinoiaFollow && !final) { row.classList.add('hasbell'); row.appendChild(window.EpinoiaFollow.bell('game', g.id, { cls: 'tfbell' })); }
     host.appendChild(row);
   });
 }
