@@ -875,3 +875,126 @@ body.league-themed .ep-nav .tt-keys{ display:none }       /* the league's own tr
   .ep-tabbar a.on .tx{ color:var(--nav-ink,var(--ink)) }
 }
 @media (prefers-reduced-motion:reduce){ .ep-nav .tt-keys{ transition:none } }
+
+/* ============================================================================
+   THE RAIL AS A TELETEXT SCREEN (2026-09-27). The rail and the phone's bar are a
+   teletext page in the reader's own theme: the rail's ground (the page's panel, or a
+   league's own "Sidebar" colour from Appearance) with the screen's lines over it,
+   pixel type, and each page keyed to one of teletext's colours in the Fastext order
+   the page index uses; the page you are on is lit in its key, inverse video, as a
+   selected teletext row is.
+
+   IN THE THEME. Dark: the bright teletext keys. Light: the same keys deepened
+   (--kd) so a glyph or a label reads on the pale ground; the lit row keeps the
+   bright block, which is legible on either.
+
+   IN THE LEAGUE'S COLOURWAY (body.league-themed, teamcolour.js league()): the ground
+   takes a wash of the league's primary, the keys become its two colours (text-safe
+   inks for the glyphs), the lit row is a block of the primary with its own text colour,
+   and every accent (labels, rules, keys in the foot, the hover edge) follows.
+   ============================================================================ */
+html .ep-nav{
+  --line:color-mix(in srgb,var(--nav-ink,var(--ink)) 14%,transparent);
+  --kb:#3ff0ff; --kd:#0a7f93; --kink:#050706;          /* a row's key: the block, the glyph on a pale ground, text on the block */
+  --acc:#ffe44d; --acc-d:#8a6a00; --acc-ink:#050706;    /* the rail's own accent (yellow), deepened for a pale ground */
+  --head:#3ff0ff; --head-d:#0a7f93;
+  background:repeating-linear-gradient(180deg,color-mix(in srgb,var(--nav-ink,var(--ink)) 4%,transparent) 0 1px,transparent 1px 3px),
+             var(--nav-bg,var(--panel));
+  border-right:0; box-shadow:inset -1px 0 0 var(--line),2px 0 0 color-mix(in srgb,var(--nav-ink,var(--ink)) 22%,transparent);
+}
+/* the keys, in the Fastext order, over the rows of every list of pages (and the phone's tabs) */
+html .ep-nav .pages > .item:nth-of-type(7n+1), html .ep-nav .ep-tabbar > a:nth-child(7n+1){ --kb:#ff4b4b; --kd:#c41f1f }
+html .ep-nav .pages > .item:nth-of-type(7n+2), html .ep-nav .ep-tabbar > a:nth-child(7n+2){ --kb:#35ff78; --kd:#0b8a3e }
+html .ep-nav .pages > .item:nth-of-type(7n+3), html .ep-nav .ep-tabbar > a:nth-child(7n+3){ --kb:#ffe44d; --kd:#8a6a00 }
+html .ep-nav .pages > .item:nth-of-type(7n+4), html .ep-nav .ep-tabbar > a:nth-child(7n+4){ --kb:#3ff0ff; --kd:#0a7f93 }
+html .ep-nav .pages > .item:nth-of-type(7n+5), html .ep-nav .ep-tabbar > a:nth-child(7n+5){ --kb:#ff5cf2; --kd:#a8189c }
+html .ep-nav .pages > .item:nth-of-type(7n+6), html .ep-nav .ep-tabbar > a:nth-child(7n+6){ --kb:#7b92ff; --kd:#2f49d6; --kink:#fff }
+html .ep-nav .pages > .item:nth-of-type(7n+7), html .ep-nav .ep-tabbar > a:nth-child(7n+7){ --kb:var(--nav-ink,var(--ink)); --kd:var(--nav-ink,var(--ink)); --kink:var(--nav-bg,var(--panel)) }
+html .ep-nav .ep-nav-foot .item{ --kb:var(--nav-ink,var(--ink)); --kd:var(--nav-ink,var(--ink)) }
+/* the glyph colour for the theme: bright on dark, deepened on light */
+html .ep-nav{ --kg:var(--kb) }
+html[data-theme="light"] .ep-nav .item, html[data-theme="light"] .ep-nav .ep-tabbar > a{ --kg:var(--kd) }
+html[data-theme="light"] .ep-nav{ --acc-t:var(--acc-d); --head-t:var(--head-d) }
+html:not([data-theme="light"]) .ep-nav{ --acc-t:var(--acc); --head-t:var(--head) }
+
+/* ---- in the league's colourway ---- */
+html body.league-themed .ep-nav{
+  --acc:var(--league-a); --acc-ink:var(--league-on-a,#fff); --acc-t:var(--league-a-ink,var(--league-a));
+  --head-t:var(--league-b-ink,var(--league-a-ink));
+  --line:color-mix(in srgb,var(--league-a) 30%,transparent);
+  background:repeating-linear-gradient(180deg,color-mix(in srgb,var(--nav-ink,var(--ink)) 4%,transparent) 0 1px,transparent 1px 3px),
+             linear-gradient(180deg,color-mix(in srgb,var(--league-a) 12%,var(--nav-bg,var(--panel))),
+                                    color-mix(in srgb,var(--league-a) 5%,var(--nav-bg,var(--panel))));
+  box-shadow:inset -1px 0 0 var(--line),2px 0 0 color-mix(in srgb,var(--league-a) 60%,transparent);
+}
+html body.league-themed .ep-nav .pages > .item, html body.league-themed .ep-nav .ep-tabbar > a{
+  --kb:var(--league-a); --kink:var(--league-on-a,#fff); --kg:var(--league-a-ink,var(--league-a)) }
+html body.league-themed .ep-nav .pages > .item:nth-of-type(even), html body.league-themed .ep-nav .ep-tabbar > a:nth-child(even){
+  --kg:var(--league-b-ink,var(--league-a-ink)) }
+
+/* rows: pixel type, the glyph in the row's key; a hover is a band with the key down its edge */
+html .ep-nav a.item, html .ep-nav button.item{ color:color-mix(in srgb,var(--nav-ink,var(--ink)) 84%,transparent); border-left:0; box-shadow:none }
+html .ep-nav .ic{ color:var(--kg); opacity:1 }
+html .ep-nav a.item:hover, html .ep-nav button.item:hover{ color:var(--nav-ink,var(--ink));
+  background:color-mix(in srgb,var(--nav-ink,var(--ink)) 7%,transparent); box-shadow:inset 3px 0 0 var(--kg) }
+/* the page you are on: inverse video in its key */
+html .ep-nav a.item.on, html body.league-themed .ep-nav a.item.on, html .ep-nav.drawer-open a.item.on,
+html body.league-themed .ep-nav.drawer-open a.item.on{
+  background:var(--kb); color:var(--kink); border-left-color:transparent; border-top-color:transparent; box-shadow:none }
+html .ep-nav a.item.on .ic, html .ep-nav a.item.on .tx{ color:var(--kink) }
+html .ep-nav a.item.on::after{ content:"\25C0"; margin-left:auto; padding-left:6px; font-size:8px; line-height:1; color:var(--kink) }
+/* a league in the list: its row lit in the accent */
+html .ep-nav .lrow.on, html body.league-themed .ep-nav .lrow.on{ background:var(--acc); color:var(--acc-ink); border-left-color:transparent }
+html .ep-nav .lrow.on .marq > span, html .ep-nav .lrow.on .wtag{ color:var(--acc-ink) }
+
+/* headings: the page titles in the heading colour, the group labels in the accent, over rules of separated blocks */
+html .ep-nav .ptitle{ color:var(--head-t); border-bottom-color:var(--line) }
+html .ep-nav .ptitle:hover, html .ep-nav .ptitle.on{ color:var(--acc-t) }
+html .ep-nav .grouplbl{ color:var(--acc-t); opacity:1 }
+html .ep-nav .sep{ height:2px; background:repeating-linear-gradient(90deg,var(--line) 0 4px,transparent 4px 6px) }
+html .ep-nav .ep-nav-foot, html body.league-themed .ep-nav .ep-nav-foot{ border-top:0;
+  background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--nav-ink,var(--ink)) 26%,transparent) 0 4px,transparent 4px 6px) top/100% 2px no-repeat }
+html body.league-themed .ep-nav .ep-nav-foot{
+  background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--league-a) 70%,transparent) 0 4px,transparent 4px 6px) top/100% 2px no-repeat }
+/* the drilled-in heading: the league or club */
+html .ep-nav .phead, html body.league-themed .ep-nav .phead{ background:transparent; border-bottom:0; padding-bottom:12px;
+  box-shadow:inset 0 -2px 0 var(--line) }
+html .ep-nav .phead .lname .marq > span{ color:var(--nav-ink,var(--ink)) }
+html body.league-themed .ep-nav .phead .lname .marq > span{ color:var(--acc-t) }
+html .ep-nav button.back{ color:var(--nav-ink,var(--ink)); border:1px solid var(--line); border-radius:0; background:transparent }
+html .ep-nav button.back:hover{ color:var(--acc-ink); background:var(--acc); border-color:var(--acc) }
+html .ep-nav .teams .trow .ep-crest{ background:#fff }
+/* the foot: the search key, the language keys and the home key as bordered teletext keys, lit in the accent when on */
+html .ep-nav .ep-sr-key{ border-color:var(--line); border-radius:0; color:var(--nav-ink,var(--ink)) }
+html .ep-nav .ep-sr-field{ border-radius:0; background:color-mix(in srgb,var(--nav-ink,var(--ink)) 7%,transparent); border-left-color:var(--acc) }
+html .ep-nav .lang-row button.lang{ color:color-mix(in srgb,var(--nav-ink,var(--ink)) 80%,transparent);
+  border-color:color-mix(in srgb,var(--nav-ink,var(--ink)) 24%,transparent); border-radius:0; background:transparent }
+html .ep-nav .lang-row button.lang:hover{ color:var(--nav-ink,var(--ink)); border-color:var(--acc) }
+html .ep-nav .lang-row button.lang.on{ color:var(--acc-ink); background:var(--acc); border-color:var(--acc) }
+html .ep-nav a.home-btn{ color:var(--nav-ink,var(--ink)); border-color:color-mix(in srgb,var(--nav-ink,var(--ink)) 28%,transparent);
+  border-radius:0; background:transparent }
+html .ep-nav a.home-btn .ic{ color:inherit }
+html .ep-nav a.home-btn:hover, html .ep-nav a.home-btn:focus-visible, html .ep-nav a.home-btn.on{ color:var(--acc-ink); background:var(--acc); border-color:var(--acc) }
+html .ep-nav a:focus-visible, html .ep-nav button:focus-visible{ outline:2px solid var(--acc-t); outline-offset:-2px }
+
+/* ---- the phone: the bar and the sheet are the same screen ---- */
+@media (max-width:820px){
+  html .ep-nav{ border-top:0; box-shadow:0 -2px 0 color-mix(in srgb,var(--nav-ink,var(--ink)) 22%,transparent) }
+  html body.league-themed .ep-nav{ box-shadow:0 -2px 0 var(--league-a) }
+  html .ep-tabbar a{ color:color-mix(in srgb,var(--nav-ink,var(--ink)) 84%,transparent); border-top:0 }
+  html .ep-tabbar a .ic{ color:var(--kg) }
+  /* the tab you are on, lit in its key (the glossy pill goes: this is the screen's own selection) */
+  html .ep-tabbar a.on, html body.league-themed .ep-tabbar a.on{ background:var(--kb); color:var(--kink) }
+  html .ep-tabbar a.on .ic, html body.league-themed .ep-tabbar a.on .ic{ background:none; box-shadow:none; color:var(--kink) }
+  html .ep-tabbar a.on .tx{ color:var(--kink) }
+  html .ep-tabbar a:active{ background:color-mix(in srgb,var(--nav-ink,var(--ink)) 10%,transparent) }
+  html .ep-nav button.navtoggle{ background:var(--nav-bg,var(--panel)); color:var(--nav-ink,var(--ink));
+    border-left:2px solid var(--line); box-shadow:none }
+  html .ep-nav button.navtoggle .ic{ color:var(--acc-t) }
+  html .ep-nav.drawer-open{ border-radius:0; border-top:0;
+    box-shadow:0 -4px 0 color-mix(in srgb,var(--nav-ink,var(--ink)) 30%,transparent),0 -14px 34px rgba(0,0,0,.35) }
+  html body.league-themed .ep-nav.drawer-open{ box-shadow:0 -4px 0 var(--league-a),0 -14px 34px rgba(0,0,0,.35) }
+  html .ep-nav.drawer-open::before{ background:color-mix(in srgb,var(--nav-ink,var(--ink)) 30%,transparent); border-radius:0 }
+  html .ep-nav.drawer-open button.navtoggle{ color:var(--acc-ink); background:var(--acc); border-top:0; border-left:0 }
+  html .ep-nav.drawer-open button.navtoggle .ic{ color:var(--acc-ink) }
+}
