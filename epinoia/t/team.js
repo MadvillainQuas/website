@@ -881,6 +881,24 @@ const feetInches = cm => {
   return Math.floor(total / 12) + "'" + String(total % 12) + '"';
 };
 
+/* THE SQUAD'S AVERAGES, under the roster: average age, height and weight, each over the players who have that number, with how many
+   that was when it is not everyone (a squad half of whom have no listed weight has an average of the other half, and says so). */
+function squadAverages(players, ages) {
+  const S = window.EpinoiaAges ? window.EpinoiaAges.summary(players, ages) : null;
+  const tf = el('tfoot'), tr = el('tr');
+  const cell = (cls, text, note) => { const td = el('td', cls, text); if (note) td.appendChild(el('span', 'meas-alt', note)); return td; };
+  tr.appendChild(el('td', 'stick c0', ''));
+  tr.appendChild(el('td', 'stick c1 avg-l', 'squad average'));
+  tr.appendChild(el('td', ''));
+  const of = (n) => (S && n < S.players ? n + ' of ' + S.players : '');
+  tr.appendChild(S && S.age != null ? cell('meas', S.age.toFixed(1), of(S.ageN)) : el('td', 'meas meas-none', '–'));
+  tr.appendChild(S && S.height != null ? cell('meas', Math.round(S.height) + 'cm', feetInches(S.height) + (of(S.heightN) ? ' · ' + of(S.heightN) : '')) : el('td', 'meas meas-none', '–'));
+  tr.appendChild(S && S.weight != null ? cell('meas', Math.round(S.weight) + 'kg', of(S.weightN)) : el('td', 'meas meas-none', '–'));
+  tr.appendChild(el('td', '')); tr.appendChild(el('td', ''));
+  tf.appendChild(tr);
+  return tf;
+}
+
 /* ------------------------------------------------------------------ staff ---
    The bench, above the squad — head coach first, then whatever order a
    programme would print.
@@ -1066,6 +1084,9 @@ async function roster(team) {
     `&select=jersey,position,players(id,first_name,last_name,slug,is_minor,` +
     `height_cm,weight_kg,wingspan_cm,previous_club)&order=jersey`);
   const host = $('#roster'); host.textContent = '';
+  /* Ages, from the database's age function (0184): the date of birth itself is never sent to a browser. A server without it gives none. */
+  const AGES = window.EpinoiaAges
+    ? await window.EpinoiaAges.load(CFG, rows.map(r => r.players && r.players.id)).catch(() => ({})) : {};
 
   /* May this viewer edit? The database is asked, not assumed — and a viewer
      who is not signed in never even makes the request. */
@@ -1099,7 +1120,7 @@ async function roster(team) {
   const wrap = el('div', 'ft-wrap');
   const t = el('table', 'ft');
   const thead = el('thead'), hr = el('tr');
-  ['#', 'PLAYER', 'POS'].forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));
+  ['#', 'PLAYER', 'POS', 'AGE'].forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));
   MEASURES.forEach(m => {
     const th = el('th', null, m.l);
     th.style.width = m.w + 'px';
@@ -1160,6 +1181,7 @@ async function roster(team) {
       td.appendChild(inp);
       tr.appendChild(td);
     }
+    tr.appendChild(el('td', 'meas' + (AGES[p.id] == null ? ' meas-none' : ''), AGES[p.id] == null ? '–' : String(AGES[p.id])));
 
     MEASURES.forEach(m => {
       const td = el('td', 'meas');
@@ -1217,7 +1239,9 @@ async function roster(team) {
 
     tb.appendChild(tr);
   });
-  t.appendChild(tb); wrap.appendChild(t); host.appendChild(wrap);
+  t.appendChild(tb);
+  t.appendChild(squadAverages(rows.map(r => r.players).filter(Boolean), AGES));
+  wrap.appendChild(t); host.appendChild(wrap);
 
   if (canEdit) {
     host.appendChild(el('div', 'empty',

@@ -150,6 +150,13 @@ function paintIdentity(pl, entry, team) {
   }
   if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
   if (pl.birth_year) sub.appendChild(el('span', 'born', 'born ' + pl.birth_year));
+  /* HIS AGE, from the database's own function (0184): the date of birth is never sent to a browser. Added when it arrives; a server
+     without it, or a player with only a year, keeps the line above as it was. */
+  if (window.EpinoiaAges && pl.id) {
+    window.EpinoiaAges.load(CFG, [pl.id]).then(m => {
+      if (m[pl.id] != null) sub.appendChild(el('span', 'born', 'age ' + m[pl.id]));
+    }).catch(() => { /* no age */ });
+  }
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
 }
 

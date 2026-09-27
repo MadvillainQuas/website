@@ -570,6 +570,15 @@ jobs:
           node supabase/tests/player-merge.test.mjs
           python scripts/ingest/player_merge_test.py
 
+      - name: Player bio from the feeds (height, weight, secret date of birth)
+        # 0184 on a real Postgres: an adult's date is kept and his year follows it, a minor's date is never kept, the date is not
+        # granted to the browser, player_ages() gives ages only; and the ingest side fills blanks only and never sends a minor's date
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/player-bio.test.mjs
+          python scripts/ingest/bio_test.py
+          node supabase/tests/ages.test.mjs
+
       - name: Team spacing and 3PT consistency on the player profile
         # team spacing: teammates' three-point points per 100 possessions while he plays (season.js); 3PT consistency:
         # accuracy and volume recalculated after every game, computed for one player when his profile opens (consistency.js)

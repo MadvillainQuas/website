@@ -91,6 +91,12 @@ for (const f of files.filter(f => sweep && f > sweep)) {
   const sql = rd(MIG, f);
   const added = [...sql.matchAll(/alter table (?:public\.)?players\s+add column (?:if not exists )?([a-z_0-9]+)/gi)].map(m => m[1]);
   for (const col of added) {
+    /* a column can be secret ON PURPOSE: the file says so with "-- SECRET-COLUMN: <name>", and then no migration may grant it */
+    if (new RegExp('--\\s*SECRET-COLUMN:\\s*' + col + '\\b', 'i').test(sql)) {
+      const leaked = files.filter(g => g >= f).filter(g => new RegExp('grant select \\([^)]*\\b' + col + '\\b[^)]*\\) on (?:table )?public\\.players', 'i').test(rd(MIG, g)));
+      ok(f + ' keeps the players column ' + col + ' secret: declared, and never granted', leaked.length === 0, leaked);
+      continue;
+    }
     const granted = new RegExp('grant select \\([^)]*\\b' + col + '\\b[^)]*\\) on (?:table )?public\\.players to anon, authenticated', 'i').test(sql);
     ok(f + ' grants the new players column ' + col + ' by name', granted,
        'players has no table-wide SELECT since 0171: add  grant select (' + col + ') on public.players to anon, authenticated;');

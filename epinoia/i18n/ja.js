@@ -1473,7 +1473,8 @@
       'steady': '安定',
       'variable': 'ばらつきあり',
       'streaky': 'ムラあり',
-      'reading his games': '試合を読み込み中'
+      'reading his games': '試合を読み込み中',
+      'squad average': 'チーム平均'
     },
 
     ctx: {
@@ -1678,7 +1679,8 @@
         'RT': 'TR',
         'AS': 'AS',
         'BS': 'BS',
-        'ST': 'ST'
+        'ST': 'ST',
+        'AGE': '年齢'
       },
       /* a standings row (a PA beside it), as Japanese standings write it */
       standings: {
@@ -1928,6 +1930,7 @@
       [/^The team overall is ([+−-]?[\d.]+|—) net\. This selection is ([+−-]?[\d.]+|—), (?:(the same)|([+−-]?[\d.]+) better|([+−-]?[\d.]+) worse)\.$/, m => 'チーム全体のNETRTGは' + m[1] + '。この組み合わせは' + m[2] + '（' + (m[3] ? '同じ' : m[4] ? m[4] + '良い' : m[5] + '悪い') + '）。'],
       [/^(\d+) stints? with (?:(that player)|all (\d+) on the floor together)$/, m => (m[2] ? 'その選手の出場' : m[3] + '人の同時出場') + ' ' + m[1] + 'スティント'],
       [/^born (\d{4})$/, '$1年生まれ'],
+      [/^age (\d+)$/, '$1歳'],
       [/^Released from (.+)$/, '$1を退団済'],
       [/^Mark as released from (.+)$/, '$1を退団済みにする'],
       [/^Could not do that: (.+)$/, (m, T) => 'できませんでした: ' + T(m[1])],

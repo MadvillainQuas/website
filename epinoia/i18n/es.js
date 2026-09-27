@@ -1475,7 +1475,8 @@
       'steady': 'regular',
       'variable': 'variable',
       'streaky': 'irregular',
-      'reading his games': 'leyendo sus partidos'
+      'reading his games': 'leyendo sus partidos',
+      'squad average': 'Media del equipo'
     },
 
     ctx: {
@@ -1680,7 +1681,8 @@
         'RT': 'RT',
         'AS': 'As',
         'BS': 'Tap',
-        'ST': 'Rec'
+        'ST': 'Rec',
+        'AGE': 'Edad'
       },
       /* a standings row (a PA beside it), as Spanish standings write it (PJ PG PP PF PC PT) */
       standings: {
@@ -1928,6 +1930,7 @@
       [/^The team overall is ([+−-]?[\d.]+|—) net\. This selection is ([+−-]?[\d.]+|—), (?:(the same)|([+−-]?[\d.]+) better|([+−-]?[\d.]+) worse)\.$/, m => 'El equipo en conjunto tiene un net de ' + m[1] + '. Esta selección, ' + m[2] + ' (' + (m[3] ? 'lo mismo' : m[4] ? m[4] + ' mejor' : m[5] + ' peor') + ').'],
       [/^(\d+) stints? with (?:(that player)|all (\d+) on the floor together)$/, m => m[1] + (m[1] === '1' ? ' tramo' : ' tramos') + (m[2] ? ' con ese jugador' : ' con los ' + m[3] + ' en pista a la vez')],
       [/^born (\d{4})$/, 'Nacido en $1'],
+      [/^age (\d+)$/, '$1 años'],
       [/^Released from (.+)$/, 'Desvinculado de $1'],
       [/^Mark as released from (.+)$/, 'Marcar como desvinculado de $1'],
       [/^Could not do that: (.+)$/, (m, T) => 'No se pudo hacer: ' + T(m[1])],

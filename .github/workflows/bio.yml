@@ -1,0 +1,47 @@
+name: Player bio (height, weight, age from the leagues' own feeds)
+
+# Fills players' height, weight and date of birth from what each league publishes (scripts/ingest/bio_sources.py:
+# EuroLeague / EuroCup, Basketligaen, BNXT League so far), matched to the players the game feeds already made. Blanks
+# only, never a hand-typed value; an adult's full date goes to a column no browser can read (the site shows his age and
+# birth year), an under-18's is never kept. The rules are at the top of scripts/ingest/bio.py.
+#
+# Weekly, Wednesday 06:20 UTC: the ingest's discovery passes are Monday + Thursday, so this never lands on one. A pass
+# writes only what is new, so after the first it is a handful of requests. Run it by hand after adding a league reader.
+on:
+  schedule:
+    - cron: "20 6 * * 3"
+  workflow_dispatch:
+    inputs:
+      league:
+        description: "Only this league slug (optional)"
+        required: false
+      dry_run:
+        description: "Read, match and print; write nothing"
+        type: boolean
+        default: false
+
+concurrency:
+  group: player-bio
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bio:
+    # RUNS_ON: see ingest.yml
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r scripts/requirements.txt
+      - name: Sync bio
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/ingest/bio_sync.py \
+            ${{ github.event.inputs.league && format('--league "{0}"', github.event.inputs.league) || '' }} \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
