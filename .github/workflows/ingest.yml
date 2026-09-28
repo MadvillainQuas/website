@@ -58,6 +58,12 @@ on:
         description: "Run the live lane now (polls live/due games every 10 s, waits for tip-offs, chains itself)"
         type: boolean
         default: false
+      reset_league:
+        description: "START A LEAGUE AGAIN: its slug (e.g. cibacopa). Deletes its games and players, keeps clubs, crests, venues; then re-reads it"
+        required: false
+      reset_confirm:
+        description: "Type the same slug again to confirm the reset"
+        required: false
 
 # The live lane is a long-lived pass (up to ~5.5 h: polls in-progress games every 30 s, naps until
 # the next tip-off, and re-dispatches itself while games are live or due - GitHub's cron is
@@ -127,6 +133,28 @@ jobs:
           SCRAPER_DIR: ${{ github.workspace }}/scraper
           PYTHONPATH: ${{ github.workspace }}/scraper
         run: python scripts/ingest/run_ingest.py --config --catch-up --feed-out "" || echo "catch-up failed - the live lane still runs"
+      # scripts/ingest/reset_league.py: only when asked by name, twice. The backup of every deleted row is kept as a
+      # run artifact (not committed: it holds player records), for 30 days.
+      - name: Reset a league (on request)
+        id: reset
+        if: ${{ github.event.inputs.reset_league != '' && github.event.inputs.reset_league == github.event.inputs.reset_confirm }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          # the re-read covers this league's sources only (a --refresh of every league would be a day's work), and a
+          # league with no source in the config is not reset at all: nothing could read it back
+          codes=$(python -c "import json,sys;print(','.join(sorted({s['code'] for s in json.load(open('config/ingest-sources.json'))['sources'] if s.get('league_slug')==sys.argv[1]})))" "${{ github.event.inputs.reset_league }}")
+          if [ -z "$codes" ]; then echo "no source in config/ingest-sources.json has league_slug ${{ github.event.inputs.reset_league }} - not reset"; exit 1; fi
+          python scripts/ingest/reset_league.py --league "${{ github.event.inputs.reset_league }}" --apply
+          echo "codes=$codes" >> "$GITHUB_OUTPUT"
+      - name: Keep the reset's backup
+        if: ${{ github.event.inputs.reset_league != '' && github.event.inputs.reset_league == github.event.inputs.reset_confirm }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reset-${{ github.event.inputs.reset_league }}
+          path: data/reset/
+          retention-days: 30
       - name: Run ingest
         id: run
         # the nightly slot rebuilds the dataset and nothing else
@@ -144,8 +172,8 @@ jobs:
           EPINOIA_STAMPS: ${{ vars.EPINOIA_STAMPS }}       # step 3 memory stamps: "shadow" = print only, "off" = poll stamps; unset = on (needs the observer)
         run: |
           python scripts/ingest/run_ingest.py --config \
-            ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ ((github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && '--live-only --live-loop 19800 --live-every 10 --feed-out ""' || '' }}
+            ${{ (github.event.inputs.source || steps.reset.outputs.codes) && format('--source "{0}"', github.event.inputs.source || steps.reset.outputs.codes) || '' }} \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ (github.event.inputs.refresh == 'true' || (github.event.inputs.reset_league != '' && github.event.inputs.reset_league == github.event.inputs.reset_confirm)) && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ ((github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true') && '--live-only --live-loop 19800 --live-every 10 --feed-out ""' || '' }}
       # The worker says chain=true when a game is live or a tip-off is near: the live lane starts
       # (or continues) its next pass straight away instead of waiting for a cron slot.
       - name: Start the next live-lane pass
