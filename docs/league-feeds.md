@@ -945,3 +945,98 @@ The report (`/noticias/<slug>/`): the score and quarters, the hall (`p.score_hea
   name, shirt and height; the athlete's own page has the date of birth and weight, but about half of them are the site's
   "not found" page. A club page does not name its three-letter code, so it is matched to the athletes page's club filter
   (`?equipe=BCE`) by crest.
+
+## Albania and Azerbaijan (Genius hosted schedules)
+
+Added 2026-09-27. Test `scripts/ingest/albania_test.py`. Both federations keep their schedules on Genius's
+hosted pages and score on FIBA LiveStats, so both are `fiba_livestats` sources (box, play-by-play, shots,
+stints from data.json). Neither has published 2026-27 yet: the sources name their competitions
+(`competitions_include`) and skip the pass ("no 2026-27 competition published yet") until the client lists one
+with this season's year. The discovery pass (Mon and Thu) checks again every time, so the season is picked up
+the week it appears, with nothing to change.
+
+### Albania - FSHB (fshb.basketball), client ALBS
+
+- The federation's WordPress pages only embed the widget; the data is `hosted.dcd.shared.geniussports.com/ALBS/en/...`.
+- Sources `ALBM` (Kampionati Kombëtar Meshkuj, KKM; "Superliga M" until 2022-23) and `ALBW` (Kampionati Kombëtar
+  Femra, KKF), each a regular and a play-off row. Slugs `kkm-albania`, `kkf-albania`, country AL. Europe/Tirane.
+- **The schedule is paged by day** and ignores `roundNumber=-1`: a competition's page shows one match day and a
+  calendar of the others (`SelectedDates['2026-04-15']=1;`), per match type - `?matchType=REGULAR` (the season),
+  `?matchType=FINALS` (the play-offs); the bare page shows whichever came last. `adapter_config.date_paged` reads
+  each type's calendar and each day (`?matchType=&dateFilter=`), ~70 pages a season on the discovery pass, and the
+  match type is the stage. A day that cannot be read files nothing that pass. KKM 2025-26: 132 + 13 games.
+- The tenant also runs the cups (Kupa, Superkupa), the second tier (Kategoria I-rë) and youth leagues; excluded.
+  One 2024-25 men's competition is named just "2024-25" and is not picked (it is last season anyway).
+- Liga Unike (Albanian + Kosovan clubs) is on ligaunike.com with no LiveStats; not built.
+
+### Azerbaijan - ABF (aze.basketball), client ABS
+
+- The federation's "ABL - Statistika" link goes to `hosted.dcd.shared.geniussports.com/ABS/`. abl.az is not the
+  league (a redirect to an unrelated site); basketball.az is a 2021 copy of the federation site.
+- Source `AZABL`, slug `azerbaijan-basketball-league`, country AZ, Asia/Baku (UTC+4, no summer time). The ordinary
+  `roundNumber=-1` whole-season page works (ABL 2025-26: 145 games).
+- The season is one competition ("ABL 2025-2026"; plain "ABL" for 2022 and 2023); the play-offs are phases of it
+  (A GROUP / B GROUP, PLAY-IN, PLAY-OFF 1/4, PLAY OFF 1/2, Final), split with `playoff_phases` as CIBACOPA is.
+- The tenant also runs the Azerbaijan Cup, AQL, TGBL and an amateur league; excluded.
+- aze.basketball's own 26/27 tab lists three round-1 games (30 Sep - 3 Oct 2026) with no times and no Genius ids;
+  the hosted page has no 2026-27 competition yet, which is what the source waits for.
+
+## Switzerland: SB League, SB League Women, NLB Men, NLB Women (swiss.basketball / Basketplan)
+
+Added 2026-09-27. Test `scripts/ingest/swiss_test.py`. Adapter `fiba_site_schedule`, site `swiss`; the games are
+FIBA LiveStats (client SUI). Sources `CHSBL`, `CHSBLW`, `CHNLB`, `CHNLBW`, each a regular and a play-off row;
+slugs `sb-league`, `sb-league-women`, `nlb-men`, `nlb-women`; country CH; Europe/Zurich.
+
+- The schedule pages (`/national-competitions/<sbl|nlb>/<men|women>/schedule`) are shells drawn in the browser
+  from Basketplan, the federation's match database, which the site proxies as XML under `/basketplan/`.
+  swiss.basketball's robots.txt disallows nothing; basketplan.ch's disallows everything, so the proxy is read.
+
+      <league>/schedule                         window.seasons = {'2026-2027': 31, ...}   the season id
+      /basketplan/findAllLeagueHoldings.do?leagueId=&federationId=12&seasonId=          the season's phases
+      /basketplan/showLeagueSchedule.do?leagueId=&leagueHoldingId=&daysBack=2500&daysFuture=2250&totalGames=1000
+                                                                                        every game of a phase
+      /app-basketball/schedule?widget=N         JSON: the LiveStats id of each game weeks ahead (2 SBL men, 3 SBL
+                                                women, 10 NLB men; none for NLB women), ~2 days back to ~8 weeks on
+
+- Basketplan league ids: 1 SBL men, 6 SBL women, 2 NLB men, 7 NLB women. Phase `PLAYOFF` is the play-offs,
+  anything else (PRELIMINARY_ROUND) the regular season.
+- **The ?gid= a row links to is Basketplan's game id, not LiveStats'** (data/367239 is a 403). A fixture is keyed on
+  it (`BP367239`) from the day the schedule exists. The LiveStats id is the row's `liveStatsLink` (from about game
+  day) or the widget's `match_id` (weeks ahead); fetch tries the widget's first, keeps an id only when the feed
+  names the fixture's two clubs, and remembers it in `data/feed/<CODE>/idmap.json`.
+- **Basketplan can give the wrong id**: on 2026-09-27 Lions de Genève v BBC Nyon (men) carried 2909496, a women's
+  game; the widget had 2909438. The club check is what keeps the wrong one out.
+- NLB Women had no LiveStats links at all on 2026-09-27: its fixtures are listed, and a game is fetched only once
+  one appears.
+- Clubs are named and coded from the schedule on both paths (fixture and game), so one club is one row.
+- The site also runs the Swiss Cup, SBL Cup and SuperCup (Basketplan leagues 165/166, 1053/1064, 1044/1045); not built.
+- Basketplan's game overview carries officials' licence numbers and contact details; it is never read.
+
+## Korea: KBL (kbl.or.kr)
+
+Added 2026-09-27. Test `scripts/ingest/kbl_test.py`. Adapter `kbl` (`adapters/kbl.py`), a translation into the
+FIBA shape as the B.LEAGUE's is. Source `KRKBL` (the Danish women's league already has `KBL`): a regular-season
+row, a play-off row and a pre-season row (Open Match Day, a friendly); slug `kbl`, country KR.
+
+- kbl.or.kr is a single-page app over `api.kbl.or.kr`, which wants `Channel: WEB` and `TeamCode: XX` and nothing else.
+
+      /match/list?fromDate=YYYY0801&toDate=YYYY+10731&tcodeList=all   the season, one request
+      /match/<gmkey>   /player-stat   /team-record   /text-cast?quarterList=Q1,...,X4
+
+- `S49G14N1` = season code 49 (2026-27; the first division's are odd, the D-League's even), game code 14, game 1.
+  Game codes: 01 regular season, 03 play-offs, 04 championship final, 14 Open Match Day (pre-season), 07 EASL,
+  10 All-Star, 13 the old KBL Cup. The season is read off each game's `seasonName1`.
+- Times are KST (+09:00, no summer time). 2026-27: Open Match Day 24-27 Sep, regular season 3 Oct - 11 Apr (270 games).
+- Clubs in English from a table keyed on the logo class (`kcc`, `pega` ...), which is also the club's code; the
+  API's own English names are shouted and run sponsors together. Crests `www.kbl.or.kr/assets/img/logo/logo-<class>.svg`.
+- Names: every player comes in Hangul (`pname`) and in the league's Latin spelling (`ename`), family name first for
+  a Korean ("KIM KYUNG WON" -> Kyung-won Kim), given name first for an import (`playerFlag` 1/2). The Hangul is
+  kept as the native name (an alias). An `ename` of initials ("KIM S C") or none is spelt from the Hangul by rule
+  (`names.korean_name`: Revised Romanization, family names as passports write them).
+- The play-by-play names a player by club + Korean name (no id) and carries no running score. Each period opens
+  with ten `101` rows without `c` before `001`: the first period's are the starters' announcement (dropped; the box
+  has `startFlag`), later periods' pair with the mass `102` after the previous `009` and are kept. The mass
+  substitution after the LAST period's end is dropped, or the game would end with nobody on court.
+- No shot chart: `match-chart.shootLog` gives pixels on an unspecified court drawing.
+- Bio: each player's profile on the league's statistics service (kbl-api.sports2i.com, Referer kbl.or.kr),
+  by pcode: date of birth and height, no weight.

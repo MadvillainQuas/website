@@ -305,5 +305,14 @@ eq("a single word longer than the limit still gets cut -- there is no whole word
 eq("empty stays empty", names.short_form(""), "")
 eq("collapses whitespace first", names.short_form("  BC   Komarno  "), "BC Komarno")
 
+print("\n-- korean_name(): Hangul spelt by the Revised Romanization, family names as passports write them")
+eq("family name by custom, given name hyphenated", names.korean_name("최승욱"), ("Seung-uk", "Choi"))
+eq("Lee, not I", names.korean_name("이정현"), ("Jeong-hyeon", "Lee"))
+eq("a one-syllable given name", names.korean_name("허웅"), ("Ung", "Heo"))
+eq("a two-syllable family name", names.korean_name("남궁민수"), ("Min-su", "Namgoong"))
+eq("a spaced foreign name, spelt back word by word", names.korean_name("아셈 마레이"), ("Asem", "Marei"))
+eq("not Hangul: untouched", names.korean_name("Ricardo Ratliffe"), ("", "Ricardo Ratliffe"))
+eq("syllable by syllable, no sound change", names.hangul_romaji("정준원"), "jeongjunwon")
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

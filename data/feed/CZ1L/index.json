@@ -2,7 +2,7 @@
 "code": "CZ1L",
 "label": "Czech 1. liga",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-27T10:58:22.694699+00:00",
+"updated": "2026-09-28T07:42:04.338548+00:00",
 "games": [
 {
 "id": "535563",
@@ -10,7 +10,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535555",
@@ -18,7 +22,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535547",
@@ -26,7 +34,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535539",
@@ -34,7 +46,11 @@
 "away": "BC Nový Jičín",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535535",
@@ -42,7 +58,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535436",
@@ -50,7 +70,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "SH Královka"
+"venue": "SH Královka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535428",
@@ -58,7 +82,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535420",
@@ -66,7 +94,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535412",
@@ -74,7 +106,11 @@
 "away": "BK Wolves Radotín",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535408",
@@ -82,7 +118,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2027-01-29T18:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535386",
@@ -90,7 +130,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2027-01-24T17:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535378",
@@ -98,7 +142,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2027-01-24T16:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535521",
@@ -106,7 +154,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2027-01-24T16:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535370",
@@ -114,7 +166,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2027-01-24T16:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535497",
@@ -122,7 +178,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2027-01-22T19:00:00Z",
-"venue": "Hala BK Pardubice, V Ráji 311"
+"venue": "Hala BK Pardubice, V Ráji 311",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535580",
@@ -130,7 +190,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2027-01-22T18:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535513",
@@ -138,7 +202,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2027-01-22T18:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535505",
@@ -146,7 +214,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2027-01-21T23:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535453",
@@ -154,7 +226,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2027-01-21T23:00:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535394",
@@ -162,7 +238,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2027-01-21T23:00:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535545",
@@ -170,7 +250,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2027-01-17T17:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535526",
@@ -178,7 +262,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2027-01-17T15:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535529",
@@ -186,7 +274,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2027-01-15T19:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535418",
@@ -194,7 +286,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2027-01-15T18:30:00Z",
-"venue": "SH Královka"
+"venue": "SH Královka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535410",
@@ -202,7 +298,11 @@
 "away": "BK Wolves Radotín",
 "status": "scheduled",
 "date": "2027-01-15T18:30:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535561",
@@ -210,7 +310,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2027-01-15T18:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535537",
@@ -218,7 +322,11 @@
 "away": "BC Nový Jičín",
 "status": "scheduled",
 "date": "2027-01-14T23:00:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535434",
@@ -226,7 +334,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2027-01-14T23:00:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535402",
@@ -234,7 +346,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2027-01-14T23:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535399",
@@ -242,7 +358,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2027-01-14T23:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535368",
@@ -250,7 +370,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2027-01-10T17:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535442",
@@ -258,7 +382,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2027-01-10T16:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535503",
@@ -266,7 +394,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2027-01-10T16:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535452",
@@ -274,7 +406,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2027-01-10T16:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535579",
@@ -282,7 +418,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2027-01-08T19:00:00Z",
-"venue": "Hala BK Pardubice, V Ráji 311"
+"venue": "Hala BK Pardubice, V Ráji 311",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535511",
@@ -290,7 +430,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2027-01-08T18:30:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535495",
@@ -298,7 +442,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2027-01-08T18:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535569",
@@ -306,7 +454,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2027-01-07T23:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535384",
@@ -314,7 +466,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2027-01-07T23:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535376",
@@ -322,7 +478,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2027-01-07T23:00:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535527",
@@ -330,7 +490,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2026-12-20T17:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535424",
@@ -338,7 +502,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2026-12-20T16:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535517",
@@ -346,7 +514,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2026-12-20T15:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535551",
@@ -354,7 +526,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2026-12-18T19:00:00Z",
-"venue": "Hala BK Pardubice, V Ráji 311"
+"venue": "Hala BK Pardubice, V Ráji 311",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535400",
@@ -362,7 +538,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2026-12-18T18:30:00Z",
-"venue": "SH Královka"
+"venue": "SH Královka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535392",
@@ -370,7 +550,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2026-12-18T18:30:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535543",
@@ -378,7 +562,11 @@
 "away": "BC Nový Jičín",
 "status": "scheduled",
 "date": "2026-12-18T18:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535519",
@@ -386,7 +574,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2026-12-17T23:00:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535416",
@@ -394,7 +586,11 @@
 "away": "BK Wolves Radotín",
 "status": "scheduled",
 "date": "2026-12-17T23:00:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535390",
@@ -402,7 +598,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2026-12-17T23:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535432",
@@ -410,7 +610,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2026-12-13T17:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535451",
@@ -418,7 +622,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2026-12-13T16:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535567",
@@ -426,7 +634,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2026-12-13T16:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535501",
@@ -434,7 +646,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2026-12-11T19:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535493",
@@ -442,7 +658,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2026-12-11T18:30:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535559",
@@ -450,7 +670,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2026-12-11T18:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535578",
@@ -458,7 +682,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2026-12-10T23:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535440",
@@ -466,7 +694,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2026-12-10T23:00:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535374",
@@ -474,7 +706,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2026-12-10T23:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535366",
@@ -482,7 +718,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2026-12-10T23:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535509",
@@ -490,7 +730,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2026-12-06T17:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535414",
@@ -498,7 +742,11 @@
 "away": "BK Wolves Radotín",
 "status": "scheduled",
 "date": "2026-12-06T16:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535406",
@@ -506,7 +754,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2026-12-06T16:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535508",
@@ -514,7 +766,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2026-12-06T15:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535533",
@@ -522,7 +778,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2026-12-04T19:00:00Z",
-"venue": "Hala BK Pardubice, V Ráji 311"
+"venue": "Hala BK Pardubice, V Ráji 311",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535382",
@@ -530,7 +790,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2026-12-04T18:30:00Z",
-"venue": "SH Královka"
+"venue": "SH Královka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535525",
@@ -538,7 +802,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2026-12-04T18:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535541",
@@ -546,7 +814,11 @@
 "away": "BC Nový Jičín",
 "status": "scheduled",
 "date": "2026-12-03T23:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535398",
@@ -554,7 +826,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2026-12-03T23:00:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535381",
@@ -562,7 +838,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2026-12-03T23:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535565",
@@ -570,7 +850,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2026-11-27T19:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535557",
@@ -578,7 +862,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2026-11-27T18:30:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535364",
@@ -586,7 +874,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2026-11-27T18:30:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535577",
@@ -594,7 +886,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2026-11-27T18:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535549",
@@ -602,7 +898,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2026-11-27T18:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535491",
@@ -610,7 +910,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2026-11-26T23:00:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535450",
@@ -618,7 +922,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2026-11-26T23:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535438",
@@ -626,7 +934,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2026-11-26T23:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535430",
@@ -634,7 +946,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2026-11-26T23:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535422",
@@ -642,7 +958,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2026-11-26T23:00:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535404",
@@ -650,7 +970,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2026-11-22T17:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535396",
@@ -658,7 +982,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2026-11-22T16:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535388",
@@ -666,7 +994,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2026-11-22T16:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535499",
@@ -674,7 +1006,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2026-11-22T15:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535515",
@@ -682,7 +1018,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2026-11-20T19:00:00Z",
-"venue": "Hala BK Pardubice, V Ráji 311"
+"venue": "Hala BK Pardubice, V Ráji 311",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535531",
@@ -690,7 +1030,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2026-11-20T18:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535507",
@@ -698,7 +1042,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2026-11-20T18:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535523",
@@ -706,7 +1054,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2026-11-19T23:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535380",
@@ -714,7 +1066,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2026-11-19T23:00:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535372",
@@ -722,7 +1078,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2026-11-19T23:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535395",
@@ -730,7 +1090,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2026-11-15T17:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535387",
@@ -738,7 +1102,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2026-11-15T16:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535576",
@@ -746,7 +1114,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2026-11-15T16:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535379",
@@ -754,7 +1126,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2026-11-15T16:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535506",
@@ -762,7 +1138,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2026-11-13T19:00:00Z",
-"venue": "Hala BK Pardubice, V Ráji 311"
+"venue": "Hala BK Pardubice, V Ráji 311",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535522",
@@ -770,7 +1150,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2026-11-13T18:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535498",
@@ -778,7 +1162,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2026-11-13T18:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535514",
@@ -786,7 +1174,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2026-11-12T23:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535449",
@@ -794,7 +1186,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2026-11-12T23:00:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535371",
@@ -802,7 +1198,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2026-11-12T23:00:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535554",
@@ -810,7 +1210,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2026-11-08T17:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535571",
@@ -818,7 +1222,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2026-11-08T15:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535538",
@@ -826,7 +1234,11 @@
 "away": "BC Nový Jičín",
 "status": "scheduled",
 "date": "2026-11-06T19:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535530",
@@ -834,7 +1246,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2026-11-06T18:30:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535427",
@@ -842,7 +1258,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2026-11-06T18:30:00Z",
-"venue": "SH Královka"
+"venue": "SH Královka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535419",
@@ -850,7 +1270,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2026-11-06T18:30:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535546",
@@ -858,7 +1282,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2026-11-05T23:00:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535444",
@@ -866,7 +1294,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2026-11-05T23:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535411",
@@ -874,7 +1306,11 @@
 "away": "BK Wolves Radotín",
 "status": "scheduled",
 "date": "2026-11-05T23:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535403",
@@ -882,7 +1318,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2026-11-05T23:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535377",
@@ -890,7 +1330,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2026-11-01T17:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535369",
@@ -898,7 +1342,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2026-11-01T16:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535512",
@@ -906,7 +1354,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2026-11-01T16:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535443",
@@ -914,7 +1366,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2026-11-01T16:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535575",
@@ -922,7 +1378,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2026-10-31T23:00:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535570",
@@ -930,7 +1390,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2026-10-31T23:00:00Z",
-"venue": "Hala BK Pardubice, V Ráji 311"
+"venue": "Hala BK Pardubice, V Ráji 311",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535504",
@@ -938,7 +1402,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2026-10-31T23:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535496",
@@ -946,7 +1414,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2026-10-31T23:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535448",
@@ -954,7 +1426,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2026-10-31T23:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535385",
@@ -962,7 +1438,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2026-10-31T23:00:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535562",
@@ -970,7 +1450,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2026-10-25T15:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535536",
@@ -978,7 +1462,11 @@
 "away": "BC Nový Jičín",
 "status": "scheduled",
 "date": "2026-10-23T18:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535520",
@@ -986,7 +1474,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2026-10-23T18:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535425",
@@ -994,7 +1486,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2026-10-23T17:30:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535409",
@@ -1002,7 +1498,11 @@
 "away": "BK Wolves Radotín",
 "status": "scheduled",
 "date": "2026-10-23T17:30:00Z",
-"venue": "SH Královka"
+"venue": "SH Královka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535401",
@@ -1010,7 +1510,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2026-10-23T17:30:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535552",
@@ -1018,7 +1522,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2026-10-23T17:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535528",
@@ -1026,7 +1534,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2026-10-22T22:00:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535435",
@@ -1034,7 +1546,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2026-10-22T22:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535393",
@@ -1042,7 +1558,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2026-10-22T22:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535441",
@@ -1050,7 +1570,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2026-10-18T16:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535433",
@@ -1058,7 +1582,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2026-10-18T15:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535494",
@@ -1066,7 +1594,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2026-10-18T15:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535574",
@@ -1074,7 +1606,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2026-10-16T18:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535502",
@@ -1082,7 +1618,11 @@
 "away": "MS Academy Ostrava",
 "status": "scheduled",
 "date": "2026-10-16T17:30:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535367",
@@ -1090,7 +1630,11 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2026-10-16T17:30:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535568",
@@ -1098,7 +1642,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2026-10-16T17:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535560",
@@ -1106,7 +1654,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2026-10-15T22:00:00Z",
-"venue": "Městská SH Zelené"
+"venue": "Městská SH Zelené",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535447",
@@ -1114,7 +1666,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2026-10-15T22:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535375",
@@ -1122,7 +1678,11 @@
 "away": "Sokol Pražský",
 "status": "scheduled",
 "date": "2026-10-15T22:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535518",
@@ -1130,7 +1690,11 @@
 "away": "BK Opava B",
 "status": "scheduled",
 "date": "2026-10-11T16:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535415",
@@ -1138,7 +1702,11 @@
 "away": "BK Wolves Radotín",
 "status": "scheduled",
 "date": "2026-10-11T15:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535553",
@@ -1146,7 +1714,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2026-10-11T14:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535542",
@@ -1154,7 +1726,11 @@
 "away": "BC Nový Jičín",
 "status": "scheduled",
 "date": "2026-10-09T18:00:00Z",
-"venue": "Sportovní hala Přelouč"
+"venue": "Sportovní hala Přelouč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535407",
@@ -1162,7 +1738,11 @@
 "away": "BA LYNX Liberecko",
 "status": "scheduled",
 "date": "2026-10-09T17:30:00Z",
-"venue": "Sportovní hala Jeneč"
+"venue": "Sportovní hala Jeneč",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535391",
@@ -1170,7 +1750,11 @@
 "away": "Válečníci Děčín",
 "status": "scheduled",
 "date": "2026-10-09T17:30:00Z",
-"venue": "SH Královka"
+"venue": "SH Královka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535383",
@@ -1178,7 +1762,11 @@
 "away": "Slavoj BK Litoměřice",
 "status": "scheduled",
 "date": "2026-10-09T17:30:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535534",
@@ -1186,7 +1774,11 @@
 "away": "BK NAPOS Vysoká n. L.",
 "status": "scheduled",
 "date": "2026-10-09T17:00:00Z",
-"venue": "SH Gymnázia Olomouc"
+"venue": "SH Gymnázia Olomouc",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535510",
@@ -1194,7 +1786,11 @@
 "away": "SK Žabovřesky",
 "status": "scheduled",
 "date": "2026-10-08T22:00:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535426",
@@ -1202,7 +1798,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2026-10-08T22:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535431",
@@ -1210,7 +1810,11 @@
 "away": "GBA Lions Jindřichův Hradec",
 "status": "scheduled",
 "date": "2026-10-04T16:00:00Z",
-"venue": "Sportovní hala Kort"
+"venue": "Sportovní hala Kort",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535423",
@@ -1218,7 +1822,11 @@
 "away": "Basketbal Polabí",
 "status": "scheduled",
 "date": "2026-10-04T16:00:00Z",
-"venue": "Sportovní hala Černošice"
+"venue": "Sportovní hala Černošice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535558",
@@ -1226,7 +1834,11 @@
 "away": "BK VIVIDBOOKS Pardubice",
 "status": "scheduled",
 "date": "2026-10-04T15:00:00Z",
-"venue": "hala Sokol Hradec Králové"
+"venue": "hala Sokol Hradec Králové",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535550",
@@ -1234,7 +1846,11 @@
 "away": "SKB FASTAV Zlín",
 "status": "scheduled",
 "date": "2026-10-04T14:00:00Z",
-"venue": "SH Krytý bazén"
+"venue": "SH Krytý bazén",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535492",
@@ -1242,7 +1858,11 @@
 "away": "Tuři Svitavy",
 "status": "scheduled",
 "date": "2026-10-02T18:00:00Z",
-"venue": "SH Rosnička Brno"
+"venue": "SH Rosnička Brno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535439",
@@ -1250,7 +1870,11 @@
 "away": "Slavia Praha Tygři",
 "status": "scheduled",
 "date": "2026-10-02T18:00:00Z",
-"venue": "ARMEX ENERGY Sportcentrum"
+"venue": "ARMEX ENERGY Sportcentrum",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535566",
@@ -1258,7 +1882,11 @@
 "away": "Basketbal Olomouc",
 "status": "scheduled",
 "date": "2026-10-02T17:30:00Z",
-"venue": "Víceúčelová hala Opava"
+"venue": "Víceúčelová hala Opava",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535446",
@@ -1266,7 +1894,11 @@
 "away": "USK Praha B",
 "status": "scheduled",
 "date": "2026-10-02T17:30:00Z",
-"venue": "Sokol pražský"
+"venue": "Sokol pražský",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535573",
@@ -1274,7 +1906,11 @@
 "away": "BASKET Brno U23",
 "status": "scheduled",
 "date": "2026-10-02T17:15:00Z",
-"venue": "MS aréna"
+"venue": "MS aréna",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535365",
@@ -1282,52 +1918,76 @@
 "away": "CZ.ACADEMY",
 "status": "scheduled",
 "date": "2026-10-02T17:00:00Z",
-"venue": "Hala 6. ZŠ"
+"venue": "Hala 6. ZŠ",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "535500",
 "home": "Tuři Svitavy",
 "away": "MS Academy Ostrava",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-27T16:00:00Z",
-"venue": "SH Na Střelnici"
+"venue": "SH Na Střelnici",
+"homeScore": 101,
+"awayScore": 79,
+"hash": "4e4fa584170134424066a27f0a637a84d57bab1c",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/535500.json"
 },
 {
 "id": "535405",
 "home": "Basketbal Polabí",
 "away": "BA LYNX Liberecko",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-27T15:30:00Z",
-"venue": "MSH Ostende"
+"venue": "MSH Ostende",
+"homeScore": 88,
+"awayScore": 72,
+"hash": "56f84398bca2cc3f6c875892b2fb174449b62b69",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/535405.json"
 },
 {
 "id": "535417",
 "home": "USK Praha B",
 "away": "BK Wolves Radotín",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-27T15:00:00Z",
-"venue": "SH Folimanka"
+"venue": "SH Folimanka",
+"homeScore": 81,
+"awayScore": 63,
+"hash": "790695db34ac0730b8dee338bd02095aca0a8c93",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/535417.json"
 },
 {
 "id": "535397",
 "home": "GBA Lions Jindřichův Hradec",
 "away": "Válečníci Děčín",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-27T15:00:00Z",
-"venue": "Městská sportovní hala"
+"venue": "Městská sportovní hala",
+"homeScore": 64,
+"awayScore": 68,
+"hash": "491fe72f5bd564dfa61d0e8447912010c59e13f8",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/535397.json"
 },
 {
 "id": "535544",
 "home": "BASKET Brno U23",
 "away": "BC Nový Jičín",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-27T14:00:00Z",
-"venue": "Hala míč. sportů Kampus"
+"venue": "Hala míč. sportů Kampus",
+"homeScore": 69,
+"awayScore": 97,
+"hash": "62148c908480a0cf9c73bfef97ad4626b1d03c3f",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/535544.json"
 },
 {
 "id": "535524",
 "home": "BK VIVIDBOOKS Pardubice",
-"away": "BK Opava \"B\"",
+"away": "BK Opava B",
 "homeScore": 76,
 "awayScore": 67,
 "status": "final",
@@ -1348,7 +2008,7 @@
 "hash": "f17510502a9392e3bed584af0725676bcfdd05f4",
 "venue": "Sportovní hala Jeneč",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/535389.json",
-"updated": "2026-09-27T10:58:19.274387+00:00"
+"updated": "2026-09-28T07:41:56.421237+00:00"
 },
 {
 "id": "535373",
@@ -1378,7 +2038,7 @@
 },
 {
 "id": "535532",
-"home": "SKB Fastav Zlín",
+"home": "SKB FASTAV Zlín",
 "away": "BK NAPOS Vysoká n. L.",
 "homeScore": 71,
 "awayScore": 59,
@@ -1392,7 +2052,7 @@
 {
 "id": "535572",
 "home": "Tuři Svitavy",
-"away": "BASKET Brno ",
+"away": "BASKET Brno U23",
 "homeScore": 93,
 "awayScore": 89,
 "status": "final",
@@ -1443,8 +2103,8 @@
 },
 {
 "id": "535548",
-"home": "BK Opava \"B\"",
-"away": "STRABAG Zlín",
+"home": "BK Opava B",
+"away": "SKB FASTAV Zlín",
 "homeScore": 55,
 "awayScore": 67,
 "status": "final",
@@ -1457,7 +2117,7 @@
 {
 "id": "535437",
 "home": "Sokol Pražský",
-"away": "Slavia Tygři Praha",
+"away": "Slavia Praha Tygři",
 "homeScore": 88,
 "awayScore": 76,
 "status": "final",
@@ -1469,7 +2129,7 @@
 },
 {
 "id": "535413",
-"home": "BA LYNX Liberec",
+"home": "BA LYNX Liberecko",
 "away": "BK Wolves Radotín",
 "homeScore": 81,
 "awayScore": 77,

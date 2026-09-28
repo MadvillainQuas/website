@@ -44,3 +44,6 @@ android/.gradle/
 android/**/build/
 android/local.properties
 google-services.json
+
+# reset_league.py backups hold player records: never committed
+data/reset/

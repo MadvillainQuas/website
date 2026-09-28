@@ -440,7 +440,7 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
         # A season that is ONE competition, play-offs included (CIBACOPA), comes as two sources - the
         # regular season and the play-offs - split by phase in FibaLiveStatsAdapter.stage_games. The
         # play-off source's games are a competition of their own, named for the season's.
-        playoff_stage = bool(ac.get("playoff_phases")) and str(ac.get("stage") or "").lower().startswith("playoff")
+        playoff_stage = bool(ac.get("playoff_phases") or ac.get("date_paged")) and str(ac.get("stage") or "").lower().startswith("playoff")
         named = [(c, f"{c['name']} Playoffs" if playoff_stage else c["name"],
                   "playoff" if playoff_stage else kind_of(c["name"], ac.get("competition_kinds"))) for c in picked]
         print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{label} [{kind}]" for _, label, kind in named))
@@ -1018,8 +1018,14 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         if cur and cur[0].get("status") == "final" and will_translate:
             # marked final without a scored log (an earlier run inserted it closed) → reopen it
             n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
-            if not n_ev:
+            if not n_ev or REFRESH["on"]:
+                # A --refresh REOPENS a finished game as well: a final game's log is closed (the insert trigger refuses
+                # events), so a corrected translation - the players re-resolved by identity.py after the slot-cache
+                # fault - could never replace the wrong one, and finalise-game refuses a game that is already final.
+                # Reopened, the log is rewritten from the first play that differs and finalise-game rebuilds the box.
                 sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores, **extra})
+                if n_ev:
+                    print("    = reopened for the refresh")
             elif extra:
                 sb.patch("games", f"id=eq.{game_id}", extra)
         elif cur and cur[0].get("status") == "final":
@@ -2313,22 +2319,34 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # worst thing this feature could do — last season's table filled with this
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
+REFRESH = {"on": False}             # set from --refresh in main(): reopen final games to rewrite them
+
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
-                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel"}
+                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl"}
 
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 
 
-def beat() -> None:
+def beat(pct: float | None = None, step: str | None = None) -> None:
     """Keep a claimed backfill's lease alive. 0135 re-queues a row whose worker has not been heard
     from for 90 minutes — that is what stops a killed runner blocking its league's season for ever —
     and a season is several hundred games, so the pass has to say it is still there. Throttled to
     once a minute, and a no-op for every other kind of pass, so the call in the game loop is free."""
     b = _BEAT
-    if not b or time.time() - b["at"] < 60:
+    # WITH PROGRESS (0187): how far along the season is, for the console's bar - written at most every 8 s,
+    # and it keeps the lease alive as well. A database without 0187 falls back to the plain heartbeat.
+    every = 8 if pct is not None else 60
+    if not b or time.time() - b["at"] < every:
         return
     b["at"] = time.time()
     try:
+        if pct is not None and b.get("progress", True):
+            try:
+                b["q"].rpc("progress_season_backfill", {"p_id": b["id"], "p_step": step or "",
+                                                        "p_detail": {"pct": round(max(0.0, min(100.0, pct)), 1)}})
+                return
+            except Exception:
+                b["progress"] = False          # not on the server yet: heartbeats only from here on
         b["q"].rpc("heartbeat_season_backfill", {"p_id": b["id"]})
     except Exception:
         pass            # a missed heartbeat is not worth failing a season over; the lease is 90 min
@@ -2449,6 +2467,7 @@ def main() -> int:
     # forward here without noticing until --help was actually run (2026-09-18).
     ap.add_argument("--worker-config", action="store_true", help=r"take SUPABASE_URL / SUPABASE_SERVICE_KEY from %%APPDATA%%\epinoia\worker.json, same as team_colours.py / sync_clubs.py, for a one-off local run with nothing pasted into a shell")
     args = ap.parse_args()
+    REFRESH["on"] = bool(args.refresh)
     if args.backfill and args.live_only:
         print("--backfill and --live-only are different lanes: an old season has no live games")
         return 2
@@ -2521,7 +2540,7 @@ def main() -> int:
         if not sources:
             print("   no outstanding games")
             return 0
-    for src in sources:
+    for src_i, src in enumerate(sources):
         adapter = get_adapter(src["adapter"])
         run = {"source_id": src.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0}
         run_id = None
@@ -2679,8 +2698,12 @@ def main() -> int:
             if fixtures:
                 print(f"   {len(fixtures)} fixture(s) checked, {wrote} changed on the schedule")
             live_set = []
-            for g in todo:
+            for g_i, g in enumerate(todo):
                 t_obs = time.time()
+                # a backfill's bar: each source an equal share, each game read a step through it
+                beat(100.0 * (src_i + g_i / max(1, len(todo))) / max(1, len(sources)),
+                     f"{src.get('label') or src.get('code')}: game {g_i + 1} of {len(todo)}"
+                     + (f" (source {src_i + 1} of {len(sources)})" if len(sources) > 1 else ""))
                 try:
                     b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                 except Exception as exc:                                 # one bad game never stops the league

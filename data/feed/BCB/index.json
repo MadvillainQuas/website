@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-23T08:40:41.796452+00:00",
+"updated": "2026-09-28T07:40:50.701888+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2192,97 +2192,98 @@
 "id": "2886993",
 "home": "Oaklands Wolves",
 "away": "Birmingham Rockets",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-27T16:00:00+00:00",
 "venue": "Oaklands College Sportszone",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 65,
+"awayScore": 83,
+"hash": "04a6b47dde342e50c0872a77229d79104591a399",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886993.json"
 },
 {
 "id": "2887015",
 "home": "London Cavaliers",
 "away": "Portsmouth Force",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-27T15:30:00+00:00",
 "venue": "Uxbridge College",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 91,
+"awayScore": 63,
+"hash": "04dc32dec070b6148500b4144cfd97ca7b71ddd9",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887015.json"
 },
 {
 "id": "2887004",
 "home": "Plymouth Raiders",
 "away": "Bristol Hurricanes",
-"status": "scheduled",
+"homeScore": 58,
+"awayScore": 84,
+"status": "live",
 "date": "2026-09-27T13:00:00+00:00",
+"hash": "a13925b441cf473273a4ba0e2c2f65d74b7b5549",
 "venue": "Plymouth Life Centre",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887004.json",
+"updated": "2026-09-28T07:40:38.458341+00:00"
 },
 {
 "id": "2887023",
 "home": "Derby Trailblazers",
 "away": "Newcastle Knights",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-26T18:30:00+00:00",
 "venue": "University of Derby Sports Centre",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 71,
+"awayScore": 87,
+"hash": "8a5c0d0d847c994a02b2a872628b014de92c81a1",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887023.json"
 },
 {
 "id": "2886992",
 "home": "Hemel Storm",
 "away": "Milton Keynes Breakers",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-26T18:00:00+00:00",
 "venue": "Hemel Hempstead Leisure Centre",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 99,
+"awayScore": 93,
+"hash": "425a3afa2490910454dbed73b4399fb579e494ca",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886992.json"
 },
 {
 "id": "2887013",
 "home": "Essex Rebels",
 "away": "Reading Rockets",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-26T17:30:00+00:00",
 "venue": "Essex Sports Arena",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 76,
+"awayScore": 88,
+"hash": "478de50946a85885f9e89b1a375286828de33b8e",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887013.json"
 },
 {
 "id": "2887003",
 "home": "Bristol Flyers II",
 "away": "Cardiff Met Archers",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-26T17:30:00+00:00",
 "venue": "SGS College WISE Campus",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 80,
+"awayScore": 82,
+"hash": "79bdd35ca1675dc5539684f72b4257b9c892a5e9",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887003.json"
 },
 {
 "id": "2887022",
 "home": "Signs Express Falkirk Fury",
 "away": "Nottingham Hoods",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-26T13:00:00+00:00",
 "venue": "Grangemouth Sports Complex",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 85,
+"awayScore": 118,
+"hash": "95899af24706d6ae1cb593276c9b72ee627895e3",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887022.json"
 },
 {
 "id": "2886991",
@@ -2306,7 +2307,7 @@
 "venue": "Nechells Wellbeing Centre",
 "homeScore": 92,
 "awayScore": 93,
-"hash": "aed207c9ef11ef8989964dd4924f794fdcd12c91",
+"hash": "3fb1bf5800ec02734a3b24ecaf1015048e888ccf",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886990.json"
 },
 {
@@ -2572,10 +2573,10 @@
 "status": "final",
 "date": "2026-09-12T13:00:00+00:00",
 "venue": "Grangemouth Sports Complex",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 91,
+"awayScore": 81,
+"hash": "65efcba20b931e31e8877afc1bbc8c3b176f03c3",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887017.json"
 },
 {
 "id": "2886985",

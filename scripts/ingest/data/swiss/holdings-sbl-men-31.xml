@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<basketplan version="2.0" remarks="Data Securtiy changes. If you lack some data please contact contact@orcasys.ch">
+<editLeagueHoldingForm>
+  <editLeagueHoldingForm seasonId="31" leagueId="1" federationId="12"/>
+</editLeagueHoldingForm>
+<leagueHoldingList>
+  <ArrayList>
+    <LeagueHoldingRSS from="2026-09-24" id="11321" leagueId="1" leagueName="SB League" name="Preliminary phase" numberOfPromotionPlaces="0" numberOfRelegationPlaces="0" phaseId="PRELIMINARY_ROUND" phaseName="Phase préliminaire" to="2027-06-30">
+      <games/>
+      <matchdays/>
+      <teams/>
+    </LeagueHoldingRSS>
+  </ArrayList>
+</leagueHoldingList>
+</basketplan>

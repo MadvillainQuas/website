@@ -63,11 +63,24 @@ function liveSeason(now) {
   return m >= 8 ? y + '-' + String(y + 1).slice(2) : (y - 1) + '-' + String(y).slice(2);
 }
 
-function pastSeasons(now) {
-  const start = parseInt(liveSeason(now).slice(0, 4), 10);
+function pastSeasons(now, calendar) {
   const out = [];
+  /* A CALENDAR-YEAR LEAGUE (CIBACOPA, Liga Ouro, NBL1) names a season by its year ("2026"); the year being
+     played is the ordinary pass's, so the list starts at last year. 0187's guard accepts this form. */
+  if (calendar) {
+    const y = (now || new Date()).getUTCFullYear();
+    for (let i = 1; i <= BACK; i++) out.push(String(y - i));
+    return out;
+  }
+  const start = parseInt(liveSeason(now).slice(0, 4), 10);
   for (let i = 1; i <= BACK; i++) out.push((start - i) + '-' + String(start - i + 1).slice(2));
   return out;
+}
+
+/* a league whose seasons are all named as a single year runs on the calendar year */
+function isCalendar(seasons) {
+  const names = (seasons || []).map(s => String(s.name || s));
+  return names.length > 0 && names.every(n => /^\d{4}$/.test(n));
 }
 
 /* What each state means to the person who pressed the button — never the word
@@ -84,7 +97,7 @@ let current = null;          // the mounted panel, so admin.js can ask for a red
 function mount(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  current = { host: host, opts: opts, timer: null };
+  current = { host: host, opts: opts, stop: null };
   draw(current);
   return current;
 }
@@ -93,11 +106,24 @@ function mount(opts) {
    chips change the league underneath it. */
 function refresh() { if (current) draw(current); }
 
+/* admin.js calls this THE INSTANT a league click reassigns `league`, before it awaits anything.
+   Redrawing the panel only happens later, inside loadLeague()'s async season fetch — and until
+   0187's fix this left the "ask for this season" button wired to the PREVIOUS league for that
+   whole await: a click landing in the gap queued a season against the wrong league, silently.
+   Blanking the panel here removes the button itself, so there is no instant at which it can be
+   pressed for a league it no longer reflects. */
+function clear() {
+  if (!current) return;
+  if (current.stop) { current.stop(); current.stop = null; }
+  current.host.textContent = '';
+  current.host.appendChild(el('div', 'empty', 'Switching league\u2026'));
+}
+
 function draw(panel) {
   const opts = panel.opts;
   const host = panel.host;
   const league = typeof opts.league === 'function' ? opts.league() : opts.league;
-  if (panel.timer) { clearInterval(panel.timer); panel.timer = null; }
+  if (panel.stop) { panel.stop(); panel.stop = null; }
   host.textContent = '';
   if (!league) return;
 
@@ -113,17 +139,18 @@ function draw(panel) {
     'Ask for a season before this one to be read in from the same source this ' +
     'league already uses — the games, box scores, tables and player records ' +
     'as they were. THIS IS A REQUEST, NOT AN IMPORT: the button writes it down, ' +
-    'and the ingest worker picks it up on its next run. A full season is a few ' +
+    'and the ingest worker picks it up within ten minutes, with a bar here showing how far it has got. A full season is a few ' +
     'hundred games fetched one at a time, so give it an hour or two before ' +
     'worrying, and do not ask twice — the request stays on this list until it ' +
     'is finished.'));
 
-  const known = new Set(((typeof opts.seasons === 'function' ? opts.seasons() : opts.seasons) || [])
-    .map(s => s.name));
+  const seasonRows = (typeof opts.seasons === 'function' ? opts.seasons() : opts.seasons) || [];
+  const known = new Set(seasonRows.map(s => s.name));
+  const calendar = isCalendar(seasonRows);
   const row = el('div', 'row');
   const pick = el('select', 'ep-input');
   pick.style.flex = '0 0 auto';
-  pastSeasons().forEach(name => {
+  pastSeasons(undefined, calendar).forEach(name => {
     const o = document.createElement('option');
     o.value = name;
     /* "already here" is not a reason not to ask — a season may hold six games
@@ -136,8 +163,8 @@ function draw(panel) {
   row.append(pick, go);
   host.appendChild(row);
   host.appendChild(el('div', 'ep-micro',
-    'The season being played (' + liveSeason() + ') is not on this list: it is already read every ' +
-    'half hour by the live feed.'));
+    'The season being played (' + (calendar ? String(new Date().getUTCFullYear()) : liveSeason()) +
+    ') is not on this list: it is already read by the live feed.'));
 
   const list = el('div', 'list');
   host.appendChild(list);
@@ -148,32 +175,40 @@ function draw(panel) {
     const { error } = await opts.sb.rpc('queue_season_backfill',
       { p_league: lid, p_season: name });
     go.disabled = false;
-    if (error) return opts.say(error.message, 'err');
-    opts.say(name + ' is queued — the worker fills it in on its next run.', 'ok');
-    load();
+    /* the league's name goes on the front of a refusal: "already queued" on its own does not say
+       for whom, and this panel can be looking at a different league by the time the answer comes back */
+    if (error) return opts.say(league.name + ': ' + error.message, 'err');
+    opts.say(name + ' is queued. The worker takes it within ten minutes; the bar below follows it.', 'ok');
+    restart();
   });
 
+  /* WITH THE WORKER'S OWN PROGRESS (0187): step and detail.pct, drawn by jobbar.js - the same bar as a league
+     reset. A database without 0187 has neither column; the list is then read without them, and a request shows
+     its words alone, as before. */
+  let busy = false, cols = 'id,season,state,step,detail,requested_at,claimed_at,finished_at,sources_run,games_seen,games_written,error';
   async function load() {
-    const { data, error } = await opts.sb.from('season_backfills')
-      .select('id,season,state,requested_at,claimed_at,finished_at,sources_run,games_seen,games_written,error')
-      .eq('league_id', lid)
-      .order('requested_at', { ascending: false })
-      .limit(12);
+    let { data, error } = await opts.sb.from('season_backfills').select(cols)
+      .eq('league_id', lid).order('requested_at', { ascending: false }).limit(12);
+    if (error && /step|detail/.test(error.message || '')) {
+      cols = 'id,season,state,requested_at,claimed_at,finished_at,sources_run,games_seen,games_written,error';
+      ({ data, error } = await opts.sb.from('season_backfills').select(cols)
+        .eq('league_id', lid).order('requested_at', { ascending: false }).limit(12));
+    }
     list.textContent = '';
-    if (error) { list.appendChild(el('div', 'empty', error.message)); return; }
+    if (error) { busy = false; list.appendChild(el('div', 'empty', error.message)); return; }
     const rows = data || [];
     if (!rows.length) {
       list.appendChild(el('div', 'empty', 'Nothing has been asked for yet.'));
     }
     rows.forEach(r => list.appendChild(card(r)));
 
-    /* A LIVE REQUEST IS THE ONLY REASON TO KEEP A TIMER. Polling a finished
-       list for ever would have every open console asking a question with the
-       same answer until the tab is closed. */
-    if (panel.timer) { clearInterval(panel.timer); panel.timer = null; }
-    if (rows.some(r => r.state === 'queued' || r.state === 'running')) {
-      panel.timer = setInterval(load, 20000);
-    }
+    /* A LIVE REQUEST IS THE ONLY REASON TO KEEP POLLING. Polling a finished list for ever would have every open
+       console asking a question with the same answer until the tab is closed. */
+    busy = rows.some(r => r.state === 'queued' || r.state === 'running');
+  }
+  function restart() {
+    if (panel.stop) panel.stop();
+    panel.stop = window.EpinoiaJobBar ? window.EpinoiaJobBar.poll(load, () => busy) : (load(), null);
   }
 
   function card(r) {
@@ -195,6 +230,10 @@ function draw(panel) {
        can act on: the message names the source that has no such season, or the
        adapter that cannot read one. */
     if (r.error) left.appendChild(el('div', 'mt', r.error));
+    if (window.EpinoiaJobBar && r.state !== 'done') {
+      left.appendChild(window.EpinoiaJobBar.draw(r, { queued: 'Waiting for the worker - it looks every 10 minutes.',
+                                                      failed: 'Stopped - the reason is above.' }));
+    }
     item.appendChild(left);
 
     const sp = el('div', 'sp');
@@ -209,7 +248,7 @@ function draw(panel) {
         const { error } = await opts.sb.from('season_backfills').delete().eq('id', r.id);
         if (error) { x.disabled = false; return opts.say(error.message, 'err'); }
         opts.say('Request withdrawn.', 'ok');
-        load();
+        restart();
       });
       sp.appendChild(x);
     }
@@ -217,8 +256,8 @@ function draw(panel) {
     return item;
   }
 
-  load();
+  restart();
 }
 
-return { mount: mount, refresh: refresh, liveSeason: liveSeason, pastSeasons: pastSeasons };
+return { mount: mount, refresh: refresh, clear: clear, liveSeason: liveSeason, pastSeasons: pastSeasons, isCalendar: isCalendar };
 }));

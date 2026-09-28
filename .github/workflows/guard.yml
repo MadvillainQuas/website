@@ -688,6 +688,26 @@ jobs:
         # not guessed), the starters, and the changes made between quarters (never logged) restated at each quarter's start
         run: python scripts/ingest/lnbbr_test.py
 
+      - name: Starting a league again (reset_league.py)
+        # the console's progress bar (phase shares, throttled writes) and polite deletes (halved on a timeout, never regrown)
+        run: python scripts/ingest/reset_league_test.py
+
+      - name: Who a box-score line belongs to (identity.py)
+        # canonical names and the tiers of evidence; a slot that changes hands between two games of one process
+        run: python scripts/ingest/identity_test.py
+
+      - name: Albania and Azerbaijan on Genius hosted schedules
+        # ALBS is paged by day (date_paged: each match type's calendar, each day); the new sources' competition regexes
+        run: python scripts/ingest/albania_test.py
+
+      - name: Swiss Basketball (SB League, NLB) from Basketplan
+        # fiba_site_schedule site "swiss": Basketplan ids as keys, the LiveStats id kept only when the feed names the fixture's clubs
+        run: python scripts/ingest/swiss_test.py
+
+      - name: KBL (Korea) from kbl.or.kr's API
+        # adapters/kbl.py: the league's English names (Hangul by rule where it has none), the play-by-play's announcements
+        run: python scripts/ingest/kbl_test.py
+
       - name: Basketligaen and Kvinde Basketligaen on FIBA LiveStats
         # men: fiba_site_schedule site "basketligaen" (the site's JSON API names every game's LiveStats id, kept once,
         # the site's club codes over the operator's); women: the Genius-hosted schedule on tenant DAM
