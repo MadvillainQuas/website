@@ -1,6 +1,27 @@
 {
- "updated": "2026-09-27T14:00:02.320041+00:00",
+ "updated": "2026-09-28T06:54:26.323266+00:00",
  "competitions": [
+  {
+   "code": "ABA",
+   "label": "ABA League",
+   "adapter": "aba",
+   "games": 170,
+   "updated": "2026-09-28T06:54:14.398301+00:00"
+  },
+  {
+   "code": "ABA2",
+   "label": "ABA League 2",
+   "adapter": "aba",
+   "games": 43,
+   "updated": "2026-09-28T06:54:23.797304+00:00"
+  },
+  {
+   "code": "ABAU19",
+   "label": "ABA U19 League",
+   "adapter": "aba",
+   "games": 0,
+   "updated": "2026-09-28T06:54:26.305297+00:00"
+  },
   {
    "code": "ACB",
    "label": "Liga Endesa",
