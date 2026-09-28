@@ -1018,8 +1018,14 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         if cur and cur[0].get("status") == "final" and will_translate:
             # marked final without a scored log (an earlier run inserted it closed) → reopen it
             n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
-            if not n_ev:
+            if not n_ev or REFRESH["on"]:
+                # A --refresh REOPENS a finished game as well: a final game's log is closed (the insert trigger refuses
+                # events), so a corrected translation - the players re-resolved by identity.py after the slot-cache
+                # fault - could never replace the wrong one, and finalise-game refuses a game that is already final.
+                # Reopened, the log is rewritten from the first play that differs and finalise-game rebuilds the box.
                 sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores, **extra})
+                if n_ev:
+                    print("    = reopened for the refresh")
             elif extra:
                 sb.patch("games", f"id=eq.{game_id}", extra)
         elif cur and cur[0].get("status") == "final":
@@ -2286,6 +2292,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # worst thing this feature could do — last season's table filled with this
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
+REFRESH = {"on": False}             # set from --refresh in main(): reopen final games to rewrite them
+
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
                          "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl"}
 
@@ -2422,6 +2430,7 @@ def main() -> int:
     # forward here without noticing until --help was actually run (2026-09-18).
     ap.add_argument("--worker-config", action="store_true", help=r"take SUPABASE_URL / SUPABASE_SERVICE_KEY from %%APPDATA%%\epinoia\worker.json, same as team_colours.py / sync_clubs.py, for a one-off local run with nothing pasted into a shell")
     args = ap.parse_args()
+    REFRESH["on"] = bool(args.refresh)
     if args.backfill and args.live_only:
         print("--backfill and --live-only are different lanes: an old season has no live games")
         return 2

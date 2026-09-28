@@ -25,6 +25,10 @@ import names
 from matching import normalize as normalize_name
 from placeholders import is_placeholder_team
 
+import identity
+from identity import compatible as same_person_name, shirt as _shirt
+
+
 
 def slugify(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
@@ -365,7 +369,7 @@ class Platform:
             memo[team["id"]] = lg[0]["league_id"] if lg else None
         return memo[team["id"]]
 
-    def by_feed_key(self, team: dict, ext: str, last: str = "") -> dict | None:
+    def by_feed_key(self, team: dict, ext: str, last: str = "", first: str = "", shirt: str = "") -> dict | None:
         """The player a "<teamcode>:<pno>" key was given to, IN THIS LEAGUE. The key is only a club code
         and a slot, and codes repeat across leagues (LON is London Lions men and women, OAK is Oaklands
         Wolves in BCB and SLB Women), so a player holding it counts only when they are on this club's
@@ -398,89 +402,107 @@ class Platform:
         if not rows:
             return None
         if last:
-            want_last = normalize_name(last)
-            rows = [r for r in rows if normalize_name(r.get("last_name")) == want_last]
+            # THE WHOLE NAME, NOT THE SURNAME ALONE: two Martinezes on one club share a surname, and a slot that
+            # passed from one to the other kept the first one's stamp. Compatible (see same_person_name) rather
+            # than equal, because the same feed spells one player "Reyna" and "Reyna Martinez" in different games.
+            rows = [r for r in rows if same_person_name(first, last, r.get("first_name"), r.get("last_name"))]
             if not rows:
                 return None
         ids = ",".join(r["id"] for r in rows)
-        on = self.sb.select("roster_entries", f"player_id=in.({ids})&select=player_id,team_id,teams!inner(league_id)")
+        on = self.sb.select("roster_entries", f"player_id=in.({ids})&select=player_id,team_id,jersey,teams!inner(league_id)")
         lid = self.league_of(team)
         for want in (lambda e: e.get("team_id") == team["id"], lambda e: (e.get("teams") or {}).get("league_id") == lid):
-            hit = next((e["player_id"] for e in on if want(e)), None)
-            if hit:
-                return next(r for r in rows if r["id"] == hit)
+            hits = list(dict.fromkeys(e["player_id"] for e in on if want(e)))
+            if len(hits) > 1 and shirt:
+                # more than one compatible player holds this stamp: the shirt the feed gives settles it, or nothing does
+                by_shirt = list(dict.fromkeys(e["player_id"] for e in on if want(e) and _shirt(e.get("jersey")) == _shirt(shirt)))
+                hits = by_shirt
+            if len(hits) == 1:
+                return next(r for r in rows if r["id"] == hits[0])
+            if len(hits) > 1:
+                return None                 # two people fit and nothing tells them apart: the matcher decides
         return None
 
-    def player(self, team: dict, team_code: str, pno: str, p: dict, avoid: set | None = None) -> dict | None:
-        """`avoid` = players already given a slot in THIS payload. A person cannot be two of the ten
-        on court, so a stale feed key or a matcher that reaches for someone already spoken for is
-        wrong by construction, and this slot goes on to the next rule (and, in the end, to a new
-        player) rather than becoming a second line for the same person."""
-        ext = f"{team_code}:{pno}"
-        key = (team["id"], ext)
-        if key in self.cache["player"]:
-            return self.cache["player"][key]
-        first, last = full_name(p)
-        r = self.by_feed_key(team, ext, last)
-        if r and avoid and r["id"] in avoid:
-            self.log(f"  ! {first} {last}: feed key {ext} points at {r.get('first_name')} {r.get('last_name')}, already on this sheet — ignoring it")
-            r = None
-        if not r and self.sb:
-            # THE SHARED MATCHER (matching.py = epinoia/match.js): the club's roster first, then anyone in
-            # the league with that surname, scored on surname / forename / nickname / club / shirt number.
-            # Only a clear winner is taken; an ambiguous pair is left to become (or stay) two players.
-            from matching import match_player
-            cands, seen = [], set()
-            rows = self.sb.select("roster_entries", f"team_id=eq.{team['id']}&select=player_id,jersey,position,players(id,slug,first_name,last_name,aliases)")
-            seen |= set(avoid or ())        # already on this sheet: not a candidate for a second slot
+    def candidates(self, team: dict, lines: list) -> list:
+        """Everyone a club's lines could be: the club's roster, and anyone in the league whose surname starts with
+        a line's surname's first word (a player who moved clubs). Rows carry the roster shirt and the club name."""
+        cands, seen = [], set()
+        if not self.sb or str(team.get("id", "")).startswith("dry-"):
+            return cands
+        for row in self.sb.select("roster_entries", f"team_id=eq.{team['id']}&select=player_id,jersey,position,players(id,slug,first_name,last_name,aliases)"):
+            pl = row.get("players") or {}
+            if pl.get("id") and pl["id"] not in seen:
+                seen.add(pl["id"])
+                cands.append({**pl, "number": row.get("jersey"), "position": row.get("position"), "team": team.get("name")})
+        lid = self.league_of(team)
+        stems = sorted({(identity.words(identity.canonical_name(p)["last"]) or [""])[0] for _, p in lines} - {""})
+        for stem in stems:
+            try:
+                rows = self.sb.select("roster_entries", f"teams.league_id=eq.{lid}&players.last_name=ilike.{quote(stem[:12], safe='')}*"
+                                      "&select=player_id,jersey,position,teams!inner(name,league_id),players!inner(id,slug,first_name,last_name,aliases)")
+            except Exception:
+                rows = []
             for row in rows:
                 pl = row.get("players") or {}
                 if pl.get("id") and pl["id"] not in seen:
                     seen.add(pl["id"])
-                    cands.append({**pl, "number": row.get("jersey"), "position": row.get("position"), "team": team.get("name")})
-            try:
-                lg = self.sb.select("teams", f"id=eq.{team['id']}&select=league_id")
-                lid = lg[0]["league_id"] if lg else None
-                if lid and last:
-                    for row in self.sb.select("roster_entries", f"teams.league_id=eq.{lid}&players.last_name=ilike.*{last[:12]}*&select=player_id,jersey,position,teams!inner(name,league_id),players!inner(id,slug,first_name,last_name,aliases)"):
-                        pl = row.get("players") or {}
-                        if pl.get("id") and pl["id"] not in seen:
-                            seen.add(pl["id"])
-                            cands.append({**pl, "number": row.get("jersey"), "position": row.get("position"), "team": (row.get("teams") or {}).get("name")})
-            except Exception:
-                pass
-            res = match_player({"name": {"first": first, "last": last}, "team": team.get("name"),
-                                "number": p.get("shirtNumber"), "position": p.get("playingPosition")}, cands)
-            if res["status"] == "match":
-                r = res["match"]
-                self.log(f"  = {first} {last} -> {r.get('first_name')} {r.get('last_name')} ({', '.join(res['best']['reasons'])})")
-                if not self.dry:
-                    # MERGE, DON'T REPLACE. external_ids is a small dict of NAMED feeds (the module
-                    # docstring: "external_ids.fiba_livestats == tm.code", implying other keys can sit
-                    # alongside it) -- patching the whole column to {"fiba_livestats": ext} clobbers
-                    # any other key already on the row, and on a shared/merged canonical id (see the
-                    # initial-only-unconfirmed fix above) it also meant two different real people's
-                    # feed keys were overwriting each other on every poll rather than either being
-                    # kept. `cands` was selected without external_ids, so it is re-read here rather
-                    # than trusted from the match.
+                    cands.append({**pl, "number": row.get("jersey"), "position": row.get("position"), "team": (row.get("teams") or {}).get("name")})
+        return cands
+
+    def team_players(self, team: dict, team_code: str, pl: dict) -> dict:
+        """{pno: player row} for every line of one club in one payload, decided TOGETHER by identity.assign: the
+        tiers of evidence (canonical name, name + shirt, the only compatible name on the club, name + shirt at
+        another club, name score), strongest placed first, the stored slot stamp only a tie-breaker inside a tier.
+
+        THE CACHE REMEMBERS PEOPLE, NOT SLOTS. It was keyed (club, "<code>:<pno>") for the life of the process and
+        answered without looking at the name, so a pass over many games handed every later game's slot 15 to
+        whoever held it in the first game read: the whole CIBACOPA 2026 season (Justin Moss's 27 points v Frayles,
+        22 Mar 2026, filed under Keith Higgins, who was not in the game). Now a club's whole sheet - every slot,
+        canonical name and shirt - is the key, so the polls of one game hit it and a different game never does."""
+        lines = [(str(pno), p) for pno, p in (pl or {}).items()]
+        sheet = tuple(sorted((slot, identity.canonical_name(p)["key"], _shirt(p.get("shirtNumber"))) for slot, p in lines))
+        ck = (team["id"], sheet)
+        if ck in self.cache["player"]:
+            return self.cache["player"][ck]
+        cands = self.candidates(team, lines)
+        stamps = {}
+        for slot, p in lines:
+            hit = self.by_feed_key(team, f"{team_code}:{slot}")
+            if hit:
+                stamps[slot] = hit["id"]
+        decided = identity.assign(lines, cands, team.get("name") or "", stamps)
+        out: dict = {}
+        for slot, p in lines:
+            res, ext = decided[slot], f"{team_code}:{slot}"
+            cn = identity.canonical_name(p)
+            r = res["player"] if res["status"] == "match" else None
+            if r:
+                self.log(f"  = {cn['first']} {cn['last']} -> {r.get('first_name')} {r.get('last_name')} "
+                         f"(tier {res['tier']}: {', '.join(res['reasons'])})")
+                if not self.dry and self.sb and stamps.get(slot) != r["id"]:
+                    # MERGE, DON'T REPLACE: external_ids is a dict of named feeds; only this feed's stamp moves
                     cur = self.sb.select("players", f"id=eq.{r['id']}&select=external_ids")
                     merged = dict((cur[0].get("external_ids") or {}) if cur else {})
                     merged["fiba_livestats"] = ext
                     self.sb.patch("players", f"id=eq.{r['id']}", {"external_ids": merged})
             elif res["status"] == "ambiguous":
-                self.log(f"  ? {first} {last}: ambiguous between " + " / ".join(f"{x['candidate'].get('first_name')} {x['candidate'].get('last_name')}" for x in res["ranked"][:2]))
-        if not r and self.auto_create:
-            # EVERY form the normaliser folded away, so the native spelling stays searchable:
-            # "Dončić" and the scoreboard's "L. DONCIC" both still find Luka Doncic.
-            aliases = name_and_aliases(p)[2]
-            # A PLAYER KNOWN BY ONE NAME (Brazil's "Magna", "Jeanzinho") has no first name: it is left blank, which every
-            # page joins and trims ("Magna"), where the old "?" printed as "? Magna"
-            r = self.insert("players", {"slug": f"{team['slug']}-{slugify(first + ' ' + last)}", "first_name": first, "last_name": last,
-                                        "is_minor": False, "external_ids": {"fiba_livestats": ext}, "aliases": aliases}, "slug")
-        self.cache["player"][key] = r
-        if r:
-            self.photo(r, p)
-        return r
+                self.log(f"  ? {cn['first']} {cn['last']} ({ext}): {', '.join(res['reasons'])} - "
+                         + " / ".join(f"{c.get('first_name')} {c.get('last_name')}" for _, c in res["ranked"][:3]) + " - left unmatched")
+            elif self.auto_create:
+                # a NEW person, filed under the canonical (fullest compatible) spelling, every other form an alias.
+                # A slug already taken by someone else on the club is a different person of the same name: numbered.
+                slug = f"{team['slug']}-{slugify(cn['first'] + ' ' + cn['last'])}"
+                taken_slug = self.one("players", f"slug=eq.{slug}&select=id") if (self.sb and not self.dry) else None
+                if taken_slug:
+                    slug = f"{slug}-{_shirt(p.get('shirtNumber')) or slot}"
+                r = self.insert("players", {"slug": slug, "first_name": cn["first"], "last_name": cn["last"], "is_minor": False,
+                                            "external_ids": {"fiba_livestats": ext}, "aliases": cn["aliases"][:6]}, "slug")
+                self.log(f"  + {cn['first']} {cn['last']} (new)")
+            if r:
+                self.photo(r, p)
+                out[slot] = r
+        self.cache["player"][ck] = out
+        return out
 
     # ------------------------------------------------------------------ photographs
     # FIBA LiveStats carries a head shot for many players -- the picture the box score's
@@ -572,8 +594,9 @@ class Platform:
                         "competition_teams", {"competition_id": comp["id"], "team_id": team["id"], **fields}, "competition_id,team_id")
                     seen.add(ck)
             tcode = team_code(t)
+            decided = self.team_players(team, tcode, t.get("pl") or {})
             for pno, p in (t.get("pl") or {}).items():
-                pl = self.player(team, tcode, str(pno), p, avoid=set(taken))
+                pl = decided.get(str(pno))
                 if not pl:
                     continue
                 if pl["id"] in taken:
