@@ -19,6 +19,10 @@ desktop.ini
 supabase/.temp/
 supabase/.branches/
 
+# guard.yml's PGlite steps run `npm i --no-save @electric-sql/pglite` locally too —
+# never committed, always reinstalled
+node_modules/
+
 # Claude Code session state
 .claude/
 
