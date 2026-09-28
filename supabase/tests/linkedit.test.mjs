@@ -409,7 +409,7 @@ console.log('-- merging two profiles');
   await until(() => q1.c.calls.some(x => x[0] === 'platform_player_merge_preview'));
   ok('...which asks first about THAT profile, and does not link it', q1.c.calls.some(x => x[0] === 'platform_player_merge_preview' && x[1].p_other === 'p3') && !q1.c.calls.some(x => x[0] === 'platform_link_apply'), q1.c.calls.map(x => x[0]));
 
-  /* a club's panel has the same merge, worded for a club (0187) - "London Lions" merging "London Lions Senior Men I" */
+  /* a club's panel has the same merge, worded for a club (0188) - "London Lions" merging "London Lions Senior Men I" */
   const t = mounted();
   t.toggle.fire('click');
   const trows = t.host.cls('le-mem');
@@ -434,8 +434,8 @@ console.log('-- merging two profiles');
      && E.mergeLines({ counts: { competitions: 1, games: 1, followers: 2 } }, 'team').join() === '1 competition entry,1 game,2 followers' && E.mergeLines({}, 'player').length === 0
      && /^Merged: 1 game now belongs to this profile/.test(E.mergedWords({ games: 1 }, 'player')) && /^Merged: 1 game now belongs to this club/.test(E.mergedWords({ games: 1 }, 'team'))
      && /everything now belongs to this profile/.test(E.mergedWords({}, 'player')) && /everything now belongs to this club/.test(E.mergedWords({}, 'team')));
-  ok('a server without 0183 says which migration, without 0187 which other one', /migration 0183/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_player_merge in the schema cache' }))
-     && /migration 0187/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_team_merge in the schema cache' }))
+  ok('a server without 0183 says which migration, without 0188 which other one', /migration 0183/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_player_merge in the schema cache' }))
+     && /migration 0188/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_team_merge in the schema cache' }))
      && /migration 0178/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_link_apply in the schema cache' })));
 }
 

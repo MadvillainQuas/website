@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0187: MERGE TWO ROWS OF ONE CLUB (platform administrators only), and let the suggestion query
+-- 0188: MERGE TWO ROWS OF ONE CLUB (platform administrators only), and let the suggestion query
 --       that feeds the links console FIND the pair this exists for.
 --
 -- 0178 LINKS clubs that are the same club and reads them together -- and that is right for the

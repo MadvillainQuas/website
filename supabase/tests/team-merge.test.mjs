@@ -1,4 +1,4 @@
-// 0187: merging two rows of one club (platform_team_merge_preview / platform_team_merge), and the
+// 0188: merging two rows of one club (platform_team_merge_preview / platform_team_merge), and the
 // "Senior Men (I)" suggestion key (link_team_key), on a real Postgres (PGlite; skipped with a note
 // when it is not installed - PGLITE_DIR=<its folder> or `npm i --no-save @electric-sql/pglite`).
 // The migration is loaded on the minimum schema it reads, one table per foreign key it moves, so
@@ -71,7 +71,7 @@ await db.exec(`
   create table public.fan_prefs (user_id uuid primary key default gen_random_uuid(), fav_team_ids uuid[] not null default '{}');
   create table public.fanvote_candidates (round_id uuid, kind text, subject_id uuid, team_id uuid, rank int default 1, primary key (round_id, kind, subject_id));
 `);
-await db.exec(mig('0187_team_merge.sql'));
+await db.exec(mig('0188_team_merge.sql'));
 
 const q = async (sql, params) => (await db.query(sql, params)).rows;
 const one = async (sql, params) => (await q(sql, params))[0];

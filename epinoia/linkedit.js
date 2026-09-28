@@ -26,7 +26,7 @@
 
    AND A MERGE, for the day a link is not enough: one person under two profiles that both rank in the same table, so he is in it twice
    (players, migration 0183) - or one club under two rows, a feed with no code of its own having spelled it two ways, so it is in the
-   table of clubs twice (teams, migration 0187: NBL Division One's "London Elite" / "London Elite Senior Men I", reported 2026-09-27).
+   table of clubs twice (teams, migration 0188: NBL Division One's "London Elite" / "London Elite Senior Men I", reported 2026-09-27).
    "merge into this page" on a linked profile or club, or "merge" on a search result, first ASKS the database what it would do
    (platform_player_merge_preview / platform_team_merge_preview: how many games, plays, roster entries, photos and followers would
    move, and what stops it - for players, the two played in the same game, or one is in a game not yet finished; for clubs, the two
@@ -87,7 +87,7 @@ function errorWords(e) {
   const msg = (e && (e.message || String(e))) || 'Something went wrong.';
   if ((e && e.code === '42501') || /permission denied|administrators only/i.test(msg)) return 'Refused: only platform administrators can edit links.';
   if ((e && e.code === 'PGRST202') || /schema cache/i.test(msg)) {
-    if (/team_merge/i.test(msg)) return 'Merging clubs is not on the server yet: migration 0187 has not been applied.';
+    if (/team_merge/i.test(msg)) return 'Merging clubs is not on the server yet: migration 0188 has not been applied.';
     if (/merge/i.test(msg)) return 'Merging is not on the server yet: migration 0183 has not been applied.';
     return 'Links are not on the server yet: migration 0178 has not been applied.';
   }

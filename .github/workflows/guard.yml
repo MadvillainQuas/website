@@ -577,7 +577,7 @@ jobs:
           node supabase/tests/player-merge.test.mjs
           python scripts/ingest/player_merge_test.py
 
-      - name: Merging two clubs into one (0187)
+      - name: Merging two clubs into one (0188)
         # a mirror of 0183 for teams: "London Elite" and "London Elite Senior Men I" (NBL Division
         # One) end up as two rows because a feed with no club code falls back to slugifying its
         # name, and one club can be spelled two ways across the schedule and the live payload.

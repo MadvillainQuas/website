@@ -213,7 +213,7 @@ class Platform:
             self.take_crest(self.cache["team"][key], t)
             return self.cache["team"][key]
         cols = "select=id,slug,name,aliases,logo_path"
-        # A MERGED CLUB KEEPS THE FEED CODES OF BOTH (0187, mirroring 0183 for players): the survivor's own under
+        # A MERGED CLUB KEEPS THE FEED CODES OF BOTH (0188, mirroring 0183 for players): the survivor's own under
         # external_ids.fiba_livestats and the merged-away row's under external_ids.also, so a feed that still sends
         # the old code -- or team_code()'s own slug-of-the-old-name fallback, for a feed with no code at all -- finds
         # this row rather than making the duplicate again. If the server does not understand the combined filter

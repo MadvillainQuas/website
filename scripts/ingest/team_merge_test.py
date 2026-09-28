@@ -1,12 +1,12 @@
-"""A merged club keeps the feed codes of both (0187, mirroring 0183 for players), offline:
+"""A merged club keeps the feed codes of both (0188, mirroring 0183 for players), offline:
 
     python scripts/ingest/team_merge_test.py
 
-platform_team_merge (0187) keeps the survivor's own code under external_ids.fiba_livestats and the merged-away row's under
+platform_team_merge (0188) keeps the survivor's own code under external_ids.fiba_livestats and the merged-away row's under
 external_ids.also. team_code() (feedplatform.py) is the only thing a feed's own code can be missing from -- a league whose
 game payload carries no club code at all falls to slugifying the club's name, which the schedule and the live payload can
 spell differently for one club (NBL Division One's "London Elite" / "London Elite Senior Men I": see names.py's club_core
-and 0187's own docstring), each giving a different slug. So the ingest has to look for both the survivor's code AND
+and 0188's own docstring), each giving a different slug. So the ingest has to look for both the survivor's code AND
 whatever the merged-away row's was, or the next fetch of the old spelling makes the duplicate all over again. What this
 holds Platform.team() to:
   * the lookup asks for a club whose fiba_livestats code OR whose also list holds this fixture's code, quoted and encoded;
