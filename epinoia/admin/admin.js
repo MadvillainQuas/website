@@ -121,6 +121,10 @@ async function render() {
   show('#ws', admin.length > 0);
   if (!admin.length) return;
 
+  /* ?l= (a league's slug or id): arriving from that league's own page, e.g. its season picker's "fill in an older
+     season", opens the console on that league rather than the first one in the list */
+  const wantL = new URLSearchParams(location.search).get('l');
+  if (wantL && !league) league = admin.find(l => l.slug === wantL || l.id === wantL) || null;
   if (!league || !admin.some(l => l.id === league.id)) league = admin[0];
   renderLeaguePick(admin);
   /* The season and the competitions are read through functions rather than
@@ -155,8 +159,8 @@ async function render() {
      competitions and the fixture list have loaded and moved everything down the
      page, so by now it is pointing somewhere else entirely. Done once, after
      the load, and only for the one anchor that is linked to from outside. */
-  if (location.hash === '#fixtures') {
-    const sec = document.getElementById('fixtures');
+  if (location.hash === '#fixtures' || location.hash === '#backfill') {
+    const sec = document.getElementById(location.hash === '#backfill' ? 'backfillPanel' : 'fixtures');
     if (sec) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 }

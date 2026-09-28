@@ -176,7 +176,7 @@ function wire() {
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
-                     analytics: loadAnalytics, links: loadLinks };
+                     analytics: loadAnalytics, links: loadLinks, maint: loadReset };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1236,6 +1236,15 @@ function loadArenas() {
   const A = window.EpinoiaArenasUI;
   if (!A) return say('arenas-ui.js did not load, so arenas cannot be edited. Reload the page.', 'err');
   A.mount({ host: '#arenasHost', sb, say, oops, me: me && me.id });
+}
+
+/* ------------------------------------------------------------ league reset --- */
+/* "Start a league again" (migration 0187): reset-ui.js draws the queue and each request's progress, which the
+   worker writes to the database - so the bar is right whenever the tab is opened. */
+function loadReset() {
+  const R = window.EpinoiaResetUI;
+  if (!R) return say('reset-ui.js did not load, so a league cannot be started again from here. Reload the page.', 'err');
+  R.mount({ host: '#resetHost', sb, say, oops });
 }
 
 /* ----------------------------------------------------------------- links --- */

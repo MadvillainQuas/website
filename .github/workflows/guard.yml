@@ -667,6 +667,10 @@ jobs:
         # not guessed), the starters, and the changes made between quarters (never logged) restated at each quarter's start
         run: python scripts/ingest/lnbbr_test.py
 
+      - name: Starting a league again (reset_league.py)
+        # the console's progress bar (phase shares, throttled writes) and polite deletes (halved on a timeout, never regrown)
+        run: python scripts/ingest/reset_league_test.py
+
       - name: Who a box-score line belongs to (identity.py)
         # canonical names and the tiers of evidence; a slot that changes hands between two games of one process
         run: python scripts/ingest/identity_test.py

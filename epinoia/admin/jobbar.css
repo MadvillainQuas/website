@@ -1,0 +1,12 @@
+/* the console's progress bar (jobbar.js): a reset of a league, a backfill of a season */
+.jb{margin:8px 0 2px}
+.jb-bar{position:relative;height:18px;background:color-mix(in oklch,var(--ink) 8%,transparent);border:1px solid var(--rule-2);overflow:hidden}
+.jb-fill{position:absolute;inset:0 auto 0 0;background:var(--lume);transition:width .8s ease}
+.jb-running .jb-fill{background:repeating-linear-gradient(45deg,var(--aqua) 0 10px,color-mix(in oklch,var(--aqua) 70%,#fff) 10px 20px);
+  background-size:28px 28px;animation:jb-move 1.2s linear infinite}
+.jb-failed .jb-fill{background:var(--flare)}
+@keyframes jb-move{to{background-position:28px 0}}
+@media (prefers-reduced-motion:reduce){.jb-running .jb-fill{animation:none}}
+.jb-pct{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--f-micro);font-size:9px;color:var(--ink)}
+.jb-done .jb-pct{color:#fff}
+.jb-step{font-family:var(--f-micro);font-size:9px;color:var(--ink-2);margin-top:5px;line-height:1.6}

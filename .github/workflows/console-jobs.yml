@@ -1,0 +1,66 @@
+name: Console jobs (league resets and season backfills)
+
+# The two long jobs an administrator asks for from a console, and nothing else:
+#   "Start a league again"     platform console -> league_resets (0187) -> scripts/ingest/reset_league.py --claim
+#   "Fill in an older season"  league console   -> season_backfills (0135) -> run_ingest.py --backfill
+# This looks every ten minutes; with nothing queued it is two requests and done. Each job writes its step and a
+# percentage as it goes (0187), which is the bar both consoles draw (epinoia/admin/jobbar.js). Until this workflow
+# existed nothing ever claimed a backfill: the button queued a request that sat there for good.
+on:
+  schedule:
+    - cron: "7-57/10 * * * *"
+  workflow_dispatch: {}
+
+# one reset at a time, and a second tick waits rather than cancelling the one running
+concurrency:
+  group: console-jobs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: browser-actions/setup-chrome@v1
+      - run: dpkg -s libcairo2 > /dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2)
+      - run: pip install -r scripts/requirements.txt
+      - name: Checkout scraper pipeline
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SCRAPER_REPO }}
+          ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
+          path: scraper
+      - name: Install scraper requirements
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        run: pip install -r scraper/requirements.txt || true
+      - name: Take a queued reset, if any
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: python scripts/ingest/reset_league.py --claim
+      - name: Take a queued season backfill, if any
+        if: ${{ always() }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        # --feed-out "": the database is where a backfilled season lives; this job commits nothing
+        run: python scripts/ingest/run_ingest.py --config --backfill --max-games 2000 --feed-out ""
+      # the backup of every row a reset deleted: a run artifact for 30 days, never committed (it holds player records)
+      - name: Keep the backup
+        if: ${{ always() && hashFiles('data/reset/*.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: league-reset-backup-${{ github.run_id }}
+          path: data/reset/
+          retention-days: 30

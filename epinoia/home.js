@@ -1055,6 +1055,73 @@ async function seasonBar() {
   const head = $('#leaguesHead');
   if (head) head.textContent = season.name + ' season';
   window.EpinoiaSeasonBar.mount({ host, wrap: $('#seasonBar'), seasons: SEASONS, season });
+  seasonPicker(season).catch(() => { /* the chips below still choose */ });
+}
+
+/* ------------------------------------------------------- the season picker ---
+   WHICH SEASON, UNDER THE LEAGUE'S NAME. The chips sit three sections down the page; a reader who wants last
+   season should not have to know they are there. A dropdown in the hero's action row, beside the follow bell:
+   the seasons with games, newest first, the one being shown selected; choosing one opens the page on it (?s=),
+   exactly as a chip does.
+
+   AND THE WAY TO GET AN OLDER ONE. For the league's own administrators the list also shows the seasons already
+   asked for through "fill in an older season" (0135) - queued or being read, not yet choosable - and ends with
+   "Fill in an older season...", which opens their console on this league's backfill panel. A visitor never sees
+   either, and costs nothing extra: the admin question is asked only of a signed-in reader. With a single season it
+   is still drawn: it says which season the page is showing, and it is where the next one will appear. */
+async function seasonPicker(season) {
+  const host = $('#leagueActs');
+  if (!host || !LEAGUE || !LEAGUE.id || host.querySelector('.lg-season')) return;
+  let admin = false, asked = [];
+  try {
+    const A = window.EpinoiaAccess;
+    const s = A && typeof A.sessionReady === 'function' ? await A.sessionReady() : null;
+    if (s && s.token) {
+      const h = { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json',
+                  Authorization: 'Bearer ' + s.token };
+      const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/whoami`, { method: 'POST', cache: 'no-store', headers: h, body: '{}' });
+      const who = r.ok ? await r.json() : null;
+      admin = !!(who && (who.is_platform_admin || (who.leagues || []).some(l => l.id === LEAGUE.id)));
+      if (admin) {
+        const q = await fetch(`${CFG.supabaseUrl}/rest/v1/season_backfills?league_id=eq.${LEAGUE.id}` +
+          '&state=in.(queued,running)&select=season,state', { headers: h, cache: 'no-store' });
+        asked = q.ok ? await q.json() : [];
+      }
+    }
+  } catch (_) { /* a visitor's picker */ }
+  const have = new Set(SEASONS.map(x => x.name));
+  asked = asked.filter(b => !have.has(b.season));
+  if (!SEASONS.length && !admin) return;
+
+  const wrap = el('label', 'lg-season');
+  wrap.appendChild(el('span', 'lg-season-k', 'season'));
+  const sel = document.createElement('select');
+  sel.className = 'ep-input lg-season-sel';
+  sel.setAttribute('aria-label', 'season');
+  SEASONS.forEach(sn => {
+    const o = el('option', '', sn.name + (SEASON_CURRENT && sn.id === SEASON_CURRENT.id ? '  (current)' : ''));
+    o.value = window.EpinoiaSeasonBar.href(sn);
+    if (season && sn.id === season.id) o.selected = true;
+    sel.appendChild(o);
+  });
+  if (asked.length) {
+    const g = document.createElement('optgroup');
+    g.label = 'being filled in';
+    asked.sort((a, b) => String(b.season).localeCompare(String(a.season))).forEach(b => {
+      const o = el('option', '', b.season + (b.state === 'running' ? '  - reading now' : '  - queued'));
+      o.disabled = true;
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  }
+  if (admin) {
+    const o = el('option', '', 'Fill in an older season\u2026');
+    o.value = 'admin/?l=' + encodeURIComponent(LEAGUE.slug) + '#backfill';
+    sel.appendChild(o);
+  }
+  sel.addEventListener('change', () => { if (sel.value) location.href = sel.value; });
+  wrap.appendChild(sel);
+  host.insertBefore(wrap, host.firstChild);
 }
 
 /* ------------------------------------------------------------ the splash ---
