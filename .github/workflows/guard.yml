@@ -577,6 +577,20 @@ jobs:
           node supabase/tests/player-merge.test.mjs
           python scripts/ingest/player_merge_test.py
 
+      - name: Merging two clubs into one (0187)
+        # a mirror of 0183 for teams: "London Elite" and "London Elite Senior Men I" (NBL Division
+        # One) end up as two rows because a feed with no club code falls back to slugifying its
+        # name, and one club can be spelled two ways across the schedule and the live payload.
+        # On a real Postgres: everything that named the merged-away club moves (competitions,
+        # games, rosters, standings, staff, sanctions, groups, followers...), refused where it
+        # would be a mistake (different leagues, having played each other, an unfinished game
+        # between them, not an administrator); the ingest still finds it by its old feed code, and
+        # link_team_key() stops treating "Senior Men (I)" as a second, different club
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/team-merge.test.mjs
+          python scripts/ingest/team_merge_test.py
+
       - name: Player bio from the feeds (height, weight, secret date of birth)
         # 0184 on a real Postgres: an adult's date is kept and his year follows it, a minor's date is never kept, the date is not
         # granted to the browser, player_ages() gives ages only; and the ingest side fills blanks only and never sends a minor's date

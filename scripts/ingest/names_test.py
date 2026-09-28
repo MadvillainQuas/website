@@ -152,6 +152,24 @@ ok("...nor an academy the senior club",
    not names.same_club("Oaklands Wolves Academy", "Oaklands Wolves"))
 ok("nothing matches nothing", not names.same_club("", "Manresa"))
 
+print("\n-- 'Senior Men (I)' names nobody, in a competition where every club wears it")
+# NBL Division One and BCB's own game payloads carry no feed code, so a club is matched by name --
+# and the payload's own team object gives Genius's full name, "London Elite Senior Men I", against
+# the schedule's plain "London Elite". "MEN" alone reads as a marker (a women's side is a different
+# club), so this came back as two clubs, one crest between them (reported 2026-09-27: Barnet
+# Bulldogs / Barnet Bulldogs Senior Mens on the club list, London Elite / London Elite Senior Men I
+# on the fixtures).
+ok("a club's own senior side is itself, 'I' included", names.same_club("London Elite", "London Elite Senior Men I"))
+ok("...the trailing 's' the payload sometimes carries", names.same_club("Barnet Bulldogs", "Barnet Bulldogs Senior Mens"))
+ok("...no numeral at all", names.same_club("Barnet Bulldogs", "Barnet Bulldogs Senior Men"))
+ok("...and the women's side of a women's competition, the same way", names.same_club("Worcester Wolves", "Worcester Wolves Senior Women"))
+ok("but 'II' still marks a genuine second team (London Lions' senior side plays in the BBL, its "
+   "reserves in NBL Division One as Senior Men II)",
+   not names.same_club("London Lions", "London Lions Senior Men II"))
+ok("...'III' the same", not names.same_club("Oaklands Wolves", "Oaklands Wolves Senior Men III"))
+ok("'Women' alone, with no 'Senior' in front, is unaffected -- the marker above still holds",
+   not names.same_club("London Lions Women", "London Lions"))
+
 print("\n-- a kanji club name is not punctuation")
 # latinise() does not romanise CJK script, so a kanji name used to reach club_core()'s tokenizer
 # untouched and lose every kanji character to it (re.split on [^0-9a-z]+ treats non-ASCII as pure
@@ -179,7 +197,8 @@ class FakeSB:
     def select(self, table, q):
         if table != "teams":
             return []
-        if "external_ids->>fiba_livestats=eq." in q or "slug=eq." in q:
+        # the primary code lookup (0187: also checks external_ids.also, "or=(...)" and all) - a genuine miss either way
+        if "external_ids->>fiba_livestats=eq." in q or "external_ids->>fiba_livestats.eq." in q or "slug=eq." in q:
             return []
         return self.rows
 
