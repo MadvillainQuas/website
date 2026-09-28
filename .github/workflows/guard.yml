@@ -463,6 +463,13 @@ jobs:
           pip install requests
           python scripts/ingest/run_ingest_test.py
 
+      - name: A live game whose feed never says so is closed on the clock's word
+        # BCB's Plymouth Raiders v Bristol Hurricanes, NBL Division One's London Elite v Greenwich
+        # Titans, Czech 1. liga's Slavia Tygři Praha v Slavoj BK Litoměřice (2026-09-26/27): each
+        # sat LIVE - Q4 / End Q4 for good because the scorer never sent the pbp's own closing
+        # action. Pure function, no network.
+        run: python scripts/ingest/feed_abandoned_test.py
+
       - name: A game that names no arena is played at its home club's (0174)
         # on a real Postgres (PGlite): the trigger on games, the clubs and venues triggers, the
         # fill of what exists, the doubtful-pin rule and that a named venue is never overwritten

@@ -78,7 +78,7 @@ LIVE_ADAPTERS = {name for name, cls in REGISTRY.items() if issubclass(cls, FibaL
 CDN_ADAPTERS = {"fiba_livestats"}
 from feedplatform import Platform, season_name_for, team_code  # noqa: E402
 import groups  # noqa: E402
-from fetchwindow import worth_fetching  # noqa: E402
+from fetchwindow import seconds_until_tip, worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -1986,6 +1986,33 @@ def unsettled_finals(sb: "Supabase", src: dict, now: datetime | None = None) -> 
     return {str(r["external_id"]) for r in rows}
 
 
+def feed_abandoned(raw: dict, tipoff_at, now: datetime | None = None) -> bool:
+    """Is this a game LiveStats itself will never call final?
+
+    _status() (fiba_livestats.py) is right to read the feed literally: "final" means the pbp carries
+    the explicit closing action, because period and clock alone cannot tell "end of Q4, OT coming"
+    from the real end. But the closing action is the SCORER'S, sent by hand from their console, and
+    three of them never sent it (2026-09-26/27: BCB's Plymouth Raiders 58-84 Bristol Hurricanes, NBL
+    Division One's London Elite 79-63 Greenwich Titans, Czech 1. liga's Slavia Tygři Praha 96-80
+    Slavoj BK Litoměřice) - each still read 'live' on a fetch made hours later, byte-for-byte the
+    payload before, the clock at the last period's 0:00 and not one action added. Re-fetching such a
+    game changes nothing, because nothing upstream has: the feed was already telling the truth about
+    itself, just not the whole truth about the game.
+
+    So a game is taken as finished on the clock's own word once nobody could still be playing it: the
+    last period shown is over (0:00, period 4 or an overtime) AND its tip-off was long enough ago
+    (LIVE_STALE, the live lane's own cut-off for giving up on it - no real game runs that many hours
+    past tip-off with plays still to come). Both conditions together is what makes this safe: the
+    clock alone is reached at every quarter break, and the tip-off alone says nothing about whether
+    the game is still being played somewhere in it."""
+    if _clock_ms(raw.get("clock")) != 0:
+        return False
+    if (raw.get("periodType") or "").upper() != "OVERTIME" and int(raw.get("period") or 0) < 4:
+        return False
+    secs = seconds_until_tip(tipoff_at, now)
+    return secs is not None and -secs >= LIVE_STALE
+
+
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
     """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
     if not claim_live_lane():
@@ -2667,6 +2694,10 @@ def main() -> int:
                 if prev and prev.get("hash") == b.payload_hash and b.status != "live" and not args.refresh \
                         and str(g.external_id) not in stuck:
                     continue
+                if b.status == "live" and feed_abandoned(b.raw or {}, g.tipoff_at or (prev or {}).get("date")):
+                    print(f"    ~ {b.home_name} v {b.away_name}: the feed never sent its own close, and nobody could "
+                          "still be playing it - closed on the clock's word")
+                    b.status = "final"
                 if args.dry_run:
                     print(f"    [dry] {b.home_name} vs {b.away_name} ({b.status}) stints={len(b.stints)} box={len(b.box.get('home', []))}+{len(b.box.get('away', []))}"
                           + (f" lm={b.feed_lm_ms} recv-lm={(b.feed_recv_ms - b.feed_lm_ms) / 1000:.1f}s" if b.feed_lm_ms and b.feed_recv_ms else " lm=none"))
