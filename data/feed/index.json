@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-28T06:54:26.323266+00:00",
+ "updated": "2026-09-28T07:42:04.358980+00:00",
  "competitions": [
   {
    "code": "ABA",
@@ -41,7 +41,7 @@
    "label": "British Championship Basketball",
    "adapter": "fiba_livestats",
    "games": 222,
-   "updated": "2026-09-23T08:40:41.796452+00:00"
+   "updated": "2026-09-28T07:40:50.701888+00:00"
   },
   {
    "code": "BGNBL",
@@ -104,7 +104,7 @@
    "label": "Czech 1. liga",
    "adapter": "fiba_site_schedule",
    "games": 180,
-   "updated": "2026-09-27T10:58:22.694699+00:00"
+   "updated": "2026-09-28T07:42:04.338548+00:00"
   },
   {
    "code": "EC",
@@ -238,6 +238,13 @@
    "adapter": "lnbbr",
    "games": 0,
    "updated": "2026-09-27T11:09:16.284636+00:00"
+  },
+  {
+   "code": "NBLD1",
+   "label": "NBL Division One",
+   "adapter": "fiba_livestats",
+   "games": 264,
+   "updated": "2026-09-28T07:41:36.474596+00:00"
   },
   {
    "code": "PL1LM",
