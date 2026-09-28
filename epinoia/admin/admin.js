@@ -201,6 +201,11 @@ function renderLeaguePick(admin) {
     b.type = 'button';
     b.addEventListener('click', async () => {
       league = l; season = null; comp = null;
+      /* Blank the backfill panel BEFORE anything async runs. loadLeague() (below) awaits a
+         seasons fetch before it redraws that panel for the new league, and a click landing in
+         that gap used to queue a season against the league just left rather than the one now
+         shown (0187: the "already queued" error for a league the console no longer displayed). */
+      if (window.EpinoiaBackfill) window.EpinoiaBackfill.clear();
       renderLeaguePick(admin); await loadLeague();
     });
     host.appendChild(b);

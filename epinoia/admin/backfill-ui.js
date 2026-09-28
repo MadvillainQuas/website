@@ -106,6 +106,19 @@ function mount(opts) {
    chips change the league underneath it. */
 function refresh() { if (current) draw(current); }
 
+/* admin.js calls this THE INSTANT a league click reassigns `league`, before it awaits anything.
+   Redrawing the panel only happens later, inside loadLeague()'s async season fetch — and until
+   0187's fix this left the "ask for this season" button wired to the PREVIOUS league for that
+   whole await: a click landing in the gap queued a season against the wrong league, silently.
+   Blanking the panel here removes the button itself, so there is no instant at which it can be
+   pressed for a league it no longer reflects. */
+function clear() {
+  if (!current) return;
+  if (current.stop) { current.stop(); current.stop = null; }
+  current.host.textContent = '';
+  current.host.appendChild(el('div', 'empty', 'Switching league\u2026'));
+}
+
 function draw(panel) {
   const opts = panel.opts;
   const host = panel.host;
@@ -162,7 +175,9 @@ function draw(panel) {
     const { error } = await opts.sb.rpc('queue_season_backfill',
       { p_league: lid, p_season: name });
     go.disabled = false;
-    if (error) return opts.say(error.message, 'err');
+    /* the league's name goes on the front of a refusal: "already queued" on its own does not say
+       for whom, and this panel can be looking at a different league by the time the answer comes back */
+    if (error) return opts.say(league.name + ': ' + error.message, 'err');
     opts.say(name + ' is queued. The worker takes it within ten minutes; the bar below follows it.', 'ok');
     restart();
   });
@@ -244,5 +259,5 @@ function draw(panel) {
   restart();
 }
 
-return { mount: mount, refresh: refresh, liveSeason: liveSeason, pastSeasons: pastSeasons, isCalendar: isCalendar };
+return { mount: mount, refresh: refresh, clear: clear, liveSeason: liveSeason, pastSeasons: pastSeasons, isCalendar: isCalendar };
 }));
