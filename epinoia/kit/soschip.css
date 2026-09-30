@@ -1,0 +1,22 @@
+/* the strength-of-schedule chip in the League percentile heading (p/sos-chip.js): a word, a five-step meter and where the club ranks.
+   Harder = warmer. Tapping it opens one plain sentence on what the number means. */
+.soschip{appearance:none;display:inline-flex;flex-direction:column;align-items:stretch;align-self:center;gap:3px;width:min(230px,100%);padding:5px 8px 4px;
+  font-family:var(--f-micro);letter-spacing:.08em;line-height:1.3;color:var(--ink);text-align:left;cursor:pointer;
+  border:1px solid var(--sc,var(--rule-2));border-radius:3px;background:color-mix(in oklch,var(--sc,var(--rule-2)) 14%,transparent)}
+.soschip:focus-visible{outline:2px solid var(--sc,var(--lume));outline-offset:2px}
+.soschip .sc-top{display:flex;justify-content:space-between;gap:8px;font-size:9px;text-transform:uppercase}
+.soschip .sc-k{color:var(--ink-3)}
+.soschip .sc-w{color:var(--ink);font-weight:700}
+.soschip .sc-meter{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;height:6px}
+.soschip .sc-meter i{background:var(--rule-2);opacity:.55;border-radius:1px}
+.soschip .sc-meter i:nth-child(1){background:var(--good)}
+.soschip .sc-meter i:nth-child(2){background:color-mix(in oklch,var(--good) 65%,var(--amber))}
+.soschip .sc-meter i:nth-child(3){background:var(--amber)}
+.soschip .sc-meter i:nth-child(4){background:color-mix(in oklch,var(--flare) 55%,var(--amber))}
+.soschip .sc-meter i:nth-child(5){background:var(--flare)}
+.soschip .sc-meter i.on{opacity:1;outline:1.5px solid var(--ink);outline-offset:1px}
+.soschip .sc-sub{display:flex;justify-content:space-between;gap:6px;font-size:8px;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.soschip .sc-sub span:nth-child(2){color:var(--ink-2);overflow:hidden;text-overflow:ellipsis}
+.soschip-more{align-self:center;max-width:min(360px,calc(100% - 24px));margin:6px auto 0;padding:8px 10px;border:1px solid var(--rule-2);border-radius:6px;
+  background:var(--panel-2);font-size:12px;line-height:1.45;color:var(--ink-2);text-align:left}
+.soschip-more[hidden]{display:none}

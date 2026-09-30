@@ -113,6 +113,45 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important
 .ft-teaser:empty{display:none}
 .ft-teaser{margin:0 0 calc(var(--u)*1.5)}
 
+/* ---------- THE MEMBERSHIP LOCK (epinoia/memlock.js; the one general rule) ----------
+   Anything a membership pays for, when gating is on and the viewer lacks it, carries
+   .mem-lock: a stop sign for a pointer (red octagon, white bar; `not-allowed` if the
+   image is refused), dimmed but still legible and focusable. The popup is one shared
+   .mem-tip. Nothing here exists while gating is off: the class is only ever added by
+   memlock.js on a known "no". */
+.mem-lock, .mem-lock *{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M10.5 2h11L30 10.5v11L21.5 30h-11L2 21.5v-11z' fill='%23d61f26' stroke='%23fff' stroke-width='2' stroke-linejoin='round'/%3E%3Crect x='8' y='13.5' width='16' height='5' rx='1' fill='%23fff'/%3E%3C/svg%3E") 16 16, not-allowed}
+.mem-lock{opacity:.7; position:relative}
+.mem-lock:hover, .mem-lock:focus-visible{opacity:1}
+.mem-lock:focus-visible{outline:2px solid var(--lume); outline-offset:2px}
+.mem-tip{
+  position:fixed; z-index:2147483000; box-sizing:border-box; max-width:min(260px,calc(100vw - 16px));
+  display:flex; flex-direction:column; gap:6px; padding:10px 12px;
+  background:var(--panel, #12121a); color:var(--ink, #fff);
+  border:1px solid var(--rule-2, #555); border-left:3px solid #d61f26;
+  box-shadow:0 6px 24px rgba(0,0,0,.35); font-family:var(--f-micro, monospace); text-transform:uppercase;
+}
+.mem-tip[hidden]{display:none}
+.mem-tip-t{font-weight:400; font-size:10px; letter-spacing:.08em; line-height:1.4}
+.mem-tip-go{
+  font-size:9.5px; letter-spacing:.06em; color:var(--lume, #0ff); text-decoration:underline;
+  text-underline-offset:3px; text-transform:none; font-family:var(--f-ui, sans-serif); font-weight:700; font-size:12px;
+  cursor:pointer;
+}
+.mem-tip-go:hover{color:var(--ink, #fff)}
+.mem-tip-go:focus-visible{outline:2px solid var(--lume); outline-offset:2px}
+/* a locked table or section: dummy rows under blur, the notice on top */
+.mem-ph{position:relative; overflow:hidden; border:1px solid var(--rule-2); background:var(--panel); min-height:120px; opacity:1}
+.mem-ph-rows{display:flex; flex-direction:column; gap:6px; padding:12px; filter:blur(3px); opacity:.55; user-select:none; pointer-events:none}
+.mem-ph-row{display:grid; grid-template-columns:2fr repeat(5,1fr); gap:10px}
+.mem-ph-row i{display:block; height:14px; background:var(--rule-2)}
+.mem-ph-row:nth-child(odd) i{background:var(--rule)}
+.mem-ph-note{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  text-align:center; padding:12px; background:color-mix(in oklch,var(--panel) 35%,transparent);
+}
+.mem-ph-note b{font-family:var(--f-micro); font-weight:400; font-size:11px; letter-spacing:.1em; color:var(--ink)}
+.mem-ph-note a{font-family:var(--f-ui); font-weight:700; font-size:13px; color:var(--lume); text-underline-offset:3px; cursor:pointer}
+
 @media (max-width:560px){
   .ep-lock{padding:calc(var(--u)*1.5)}
   .ep-paywall{margin:16px; padding:16px}

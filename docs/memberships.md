@@ -29,7 +29,7 @@ compares against these and nothing else.
 
 | key | unlocks |
 |---|---|
-| `analytics` | the advanced analytics: the **events** splits (second chance, transition, off turnovers, after timeout, assisted/unassisted) on every screen; the **zone** analytics (tinted twelve-zone shot charts, zone tables, zone and expected-eFG columns); the **game flow**, **connections** and **events** tabs of every box score; the **full WOWY** screen (non-members get a preview) |
+| `analytics` | the advanced analytics: the **events** splits (second chance, transition, off turnovers, after timeout, assisted/unassisted) on every screen; the **zone** analytics (tinted twelve-zone shot charts, zone tables, zone and expected-eFG columns); the **game flow**, **connections** and **events** tabs of every box score; the **on the floor with** split (lineups and the WOWY combinations are free) |
 | `league` | a **members-only league** at all: its results, box scores, live games, statistics, standings, awards, news and video |
 
 **Plans** bundle features at a price. A plan is either
@@ -396,7 +396,6 @@ EpinoiaAccess.CATALOGUE       // what counts as premium — the ONE place to mov
   .columns                    // ['pred_efg','efg_sh','efg_vs','morey']
   .presets                    // the full-table preset ids that are wholly premium
   .barKeys(key)               // player-profile bar keys that are premium
-  .wowyPreviewMax             // 1
 await EpinoiaAccess.load({ leagueId, leagueSlug })   // either one; a slug is resolved to its id
                               // with a public leagues read. Idempotent per league; resolves
                               // the state; never throws; gives up after 4 s (fail open)
@@ -416,8 +415,8 @@ EpinoiaAccess.onChange(fn)            // state changed (load, sign-in, sign-out)
 Shared components take a flag rather than reading access themselves, so a page
 decides once and passes it down:
 
-- `EpinoiaWowy.render({ …, preview: true })` — combinations capped at
-  `CATALOGUE.wowyPreviewMax` subjects, with a compact teaser line beneath.
+- `EpinoiaWowy.render` takes no access flag: lineups, combinations and the lineup table are free for
+  everyone (they sit beside the shot chart on the club and player pages).
 - `EpinoiaWithUI.render({ …, locked: true })` — a compact teaser in place of the
   teammate comparison.
 - `EpinoiaShotChart.renderZones({ …, zones: false })` — the court and the makes
@@ -597,3 +596,20 @@ right.
 - The player page waits for the access answer before its first league read; its career
   table loads access for every league the player appears in. A game or player with no
   league follows the platform's analytics default through `load({})`.
+
+## 9. The membership lock (`epinoia/memlock.js`, `.mem-lock` in `kit/access.css`)
+
+The one general rule for "a control or section that membership pays for". What is gated is
+listed in ONE place, `EpinoiaAccess.CATALOGUE.locks` (today `events` and `csv`, both riding on
+`analyticsOk()`); `EpinoiaAccess.featureLocked(key, league)` answers it. Master switch and
+failure semantics are unchanged: memberships off, or no answer, means nothing is locked.
+
+- `EpinoiaMemLock.locked(key, league)`, `.apply(el, key, {league, leagueSlug})`, `.lock(el, {what, passive})`,
+  `.set(el, bool)`, `.guard(key, league, fn)`, `.placeholder({what, rows})`.
+- A locked control stays visible, gets `.mem-lock` (stop-sign cursor, `not-allowed` fallback),
+  `aria-disabled` and an explanatory `aria-label`; click, Enter and Space do nothing but open the
+  popup **ACCESS IS MEMBERSHIP-ONLY** / *Become a member* (hover, focus, tap; Esc closes).
+- `passive: true` keeps the control's own action (a locked events preset still opens its teaser).
+- Locked events sections (profile, team) draw `placeholder()` (blurred rows plus the notice) above the teaser.
+- Preview without switching memberships on: `localStorage.epinoia_access_sim = 'locked'` (existing flag).
+- Tests: `node supabase/tests/memlock.test.mjs`.

@@ -1265,6 +1265,9 @@ NO_BIO = {
     "sb-league-women": "as sb-league (the same federation database)",
     "nlb-men": "as sb-league (the same federation database)",
     "nlb-women": "as sb-league (the same federation database)",
+    "cebl": "the league's own API (api.data.cebl.ca, where its schedule comes from) answers the players list with one empty "
+            "record for every season asked (2024 to 2026, tried 30 Sep 2026), its team rows carry no roster, and the "
+            "LiveStats data carries no bio",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

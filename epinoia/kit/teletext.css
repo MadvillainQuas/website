@@ -372,6 +372,25 @@ body.themed .hero::after, body.themed .idband::after, body.league-themed .hero::
 :root .ep-tbl thead th.sorted, :root[data-theme="light"] .ep-tbl thead th.sorted{ background:var(--tt-yellow); color:var(--tt-scr) }
 /* the phone's pinned header strip (a separate table) is the same row */
 :root .ft-head table.ft thead th{ background:var(--tt-scr) }
+/* THE BAND: a 3px block of the page's accent along the top of every header cell (the club's or
+   the league's colour where the page is themed), pixel labels a hair further apart, and the
+   sorted column lit yellow with a small arrow that says which way. */
+:root table.ft thead th, :root[data-theme="light"] table.ft thead th{
+  background-image:linear-gradient(var(--tt-m1),var(--tt-m1)); background-size:100% 3px;
+  background-repeat:no-repeat; background-position:0 0; padding-top:13px; letter-spacing:.08em }
+:root table.ft thead th.stick, :root[data-theme="light"] table.ft thead th.stick, :root table.ft thead th.c0, :root table.ft thead th.c1,
+:root[data-theme="light"] table.ft thead th.c0, :root[data-theme="light"] table.ft thead th.c1{
+  background-image:linear-gradient(var(--tt-m1),var(--tt-m1)); background-size:100% 3px;
+  background-repeat:no-repeat; background-position:0 0 }
+:root table.ft thead th.sorted, :root[data-theme="light"] table.ft thead th.sorted{ background-image:none }
+:root table.ft thead th.sorted::after{
+  content:''; display:inline-block; width:7px; height:5px; margin-left:5px; vertical-align:1px; background:currentColor }
+:root table.ft thead th.sorted.desc::after{ clip-path:polygon(0 0,100% 0,50% 100%) }
+:root table.ft thead th.sorted.asc::after{ clip-path:polygon(50% 0,100% 100%,0 100%) }
+:root table.ft thead th:not(.sorted):hover::after{
+  content:''; display:inline-block; width:7px; height:5px; margin-left:5px; vertical-align:1px; background:currentColor;
+  opacity:.5; clip-path:polygon(0 0,100% 0,50% 100%) }
+:root table.ft thead th.c1 .fold{ color:var(--tt-cyan) }
 .ep-tbl th+th{ border-left-color:rgba(255,255,255,.1) }
 
 /* ============================================================================

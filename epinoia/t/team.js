@@ -743,8 +743,32 @@ async function record(team) {
 let teamScopeKind = 'all';
 const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
 
+/* THE POPUP (statpop.js) for a club statistic: every club in the scoped competitions, with names and crests read
+   once from the league's teams (D.teamMeta) only when the popup wants them */
+let TEAM_META = null;
+function teamStatBind(node, k, label, S, mine, team, opts) {
+  const SP = window.EpinoiaStatPop;
+  if (!SP || !S || !S.teams || S.teams.length < 3 || !node) return;
+  const o = opts || {};
+  SP.bind(node, () => ({
+    key: k, label, kind: 'team', subjectId: mine.id, rows: S.teams, value: o.value || k,
+    signed: k === 'diffpg' || k === 'net', dp: k === 'ast_to' ? 2 : 1, y: k === 'pace' ? 'gp' : 'pace',
+    meta: async ids => {
+      const D = window.EpinoiaData, lid = (team.leagues || {}).id;
+      if (!TEAM_META && D && D.teamMeta && lid) { try { TEAM_META = await D.teamMeta(lid); } catch (_) { TEAM_META = {}; } }
+      const out = {};
+      ids.forEach(i => { const m = (TEAM_META || {})[i]; if (m) out[i] = { name: m.name, teamShort: m.teamShort, colour: m.colour, logo: m.logo }; });
+      return out;
+    }
+  }));
+}
+
 async function teamStats(team, kind) {
   const host = $('#teamstats'); host.textContent = '';
+  try {   // the '?' in the section heading: what every statistic below means (statpop.js)
+    const th = host.previousElementSibling;
+    if (th && th.classList.contains('ep-hdr') && window.EpinoiaStatPop) window.EpinoiaStatPop.helpButton(th, 'team');
+  } catch (_) { /* a convenience */ }
   if (ACCESS.paywall) return;          // the card stands in for this section
   const D = window.EpinoiaData;
   if (kind) teamScopeKind = kind;
@@ -802,6 +826,7 @@ async function teamStats(team, kind) {
      ['rebounding', 'OREB%', mine.ff_oreb, mine.dff_oreb, false],
      ['free throws', 'FTr', mine.ff_ftr, mine.dff_ftr, false]]
       .forEach(([label, unit, off, def, lowGood]) => {
+        const fk = { shooting: 'efg', turnovers: 'tov', rebounding: 'oreb', 'free throws': 'ftr' }[label];
         const fc = el('div', 'ffcard');
         fc.appendChild(el('div', 'ffl', label + ' · ' + unit));
         const pair = el('div', 'ffpair');
@@ -819,6 +844,7 @@ async function teamStats(team, kind) {
         if (edge != null && Math.abs(edge) >= 0.05) {
           (edge > 0 ? o : d).classList.add(edge > 0 ? 'win' : 'lose');
         }
+        if (fk) { teamStatBind(o, 'ff_' + fk, label + ' \u00b7 own', S, mine, team); teamStatBind(d, 'dff_' + fk, label + ' \u00b7 allowed', S, mine, team); }
         pair.append(o, d); fc.appendChild(pair);
         grid.appendChild(fc);
       });
@@ -828,19 +854,21 @@ async function teamStats(team, kind) {
   const pg = v => (v == null || !isFinite(v)) ? null : v / (mine.gp || 1);
   card('line', 'season line', () => {
     const tiles = el('div', 'tiles');
-    [['ppg', n1(mine.ppg), true], ['opp ppg', n1(mine.papg), false],
-     ['diff', mine.diffpg == null ? '—' : (mine.diffpg > 0 ? '+' : '') + n1(mine.diffpg), true],
-     ['ortg', n1(mine.ortg), true], ['drtg', n1(mine.drtg), false],
-     ['net', mine.net == null ? '—' : (mine.net > 0 ? '+' : '') + n1(mine.net), true],
-     ['pace', n1(mine.pace), false], ['ts%', n1(mine.ts), false],
-     ['ast/to', mine.ast_to == null ? '—' : Number(mine.ast_to).toFixed(2), false],
-     ['reb / g', n1(pg(mine.reb)), false], ['ast / g', n1(pg(mine.ast)), false], ['stl / g', n1(pg(mine.stl)), false],
-     ['blk / g', n1(pg(mine.blk)), false], ['paint / g', n1(pg(mine.paint)), false], ['fast / g', n1(pg(mine.fast)), false],
-     ['2nd chance / g', n1(pg(mine.second_chance)), false], ['off turnovers / g', n1(pg(mine.pts_off_to)), false],
-     ['bench / g', n1(pg(mine.bench)), false]]
-      .forEach(([l, v, hi]) => {
+    /* [label, shown, highlighted, popup key, total the per-game key is worked from] */
+    [['ppg', n1(mine.ppg), true, 'ppg'], ['opp ppg', n1(mine.papg), false, 'papg'],
+     ['diff', mine.diffpg == null ? '—' : (mine.diffpg > 0 ? '+' : '') + n1(mine.diffpg), true, 'diffpg'],
+     ['ortg', n1(mine.ortg), true, 'ortg'], ['drtg', n1(mine.drtg), false, 'drtg'],
+     ['net', mine.net == null ? '—' : (mine.net > 0 ? '+' : '') + n1(mine.net), true, 'net'],
+     ['pace', n1(mine.pace), false, 'pace'], ['ts%', n1(mine.ts), false, 'ts'],
+     ['ast/to', mine.ast_to == null ? '—' : Number(mine.ast_to).toFixed(2), false, 'ast_to'],
+     ['reb / g', n1(pg(mine.reb)), false, 'reb_pg', 'reb'], ['ast / g', n1(pg(mine.ast)), false, 'ast_pg', 'ast'], ['stl / g', n1(pg(mine.stl)), false, 'stl_pg', 'stl'],
+     ['blk / g', n1(pg(mine.blk)), false, 'blk_pg', 'blk'], ['paint / g', n1(pg(mine.paint)), false, 'paint_pg', 'paint'], ['fast / g', n1(pg(mine.fast)), false, 'fast_pg', 'fast'],
+     ['2nd chance / g', n1(pg(mine.second_chance)), false, 'second_chance_pg', 'second_chance'], ['off turnovers / g', n1(pg(mine.pts_off_to)), false, 'pts_off_to_pg', 'pts_off_to'],
+     ['bench / g', n1(pg(mine.bench)), false, 'bench_pg', 'bench']]
+      .forEach(([l, v, hi, k, tot]) => {
         const d = el('div', 'tile' + (hi ? ' hi' : ''));
         d.append(el('div', 'v', v == null ? '—' : v), el('div', 'l', l));
+        if (v != null && v !== '—') teamStatBind(d, k, l, S, mine, team, tot ? { value: r => (r.gp && r[tot] != null ? Number(r[tot]) / r.gp : null) } : null);
         tiles.appendChild(d);
       });
     return tiles;
@@ -878,6 +906,7 @@ async function teamStats(team, kind) {
       if (ACCESS.locked) {
         evHost.innerHTML = accessTeaser({ title: 'Events, at both ends',
           lines: ['Second chances, transition, points off turnovers, after-timeout sets and the half court — what the club made of each, and what opponents made of the same.'] });
+        { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
       } else if (window.EpinoiaSitPanel) {
         window.EpinoiaSitPanel.render({
           host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',
@@ -993,6 +1022,7 @@ async function lineupPanels(team) {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
       `&status=eq.final&select=id,home_team_id,away_team_id` + inSeason());
     if (!gs.length) {
+      $('#lulist').textContent = '';
       ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
         $(sel).appendChild(el('div', 'empty',
           'No finalised games yet — lineups appear once one is played.')));
@@ -1001,6 +1031,7 @@ async function lineupPanels(team) {
     const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
     const st = await D.stints(gs.map(g => g.id), team.id, byGame);
     if (!st.length) {
+      $('#lulist').textContent = '';
       ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
         $(sel).appendChild(el('div', 'empty', 'No lineup data yet.')));
       return;
@@ -1038,12 +1069,12 @@ async function lineupPanels(team) {
     }
     drawWowy();
 
-    /* the combination matrix, seeded with the two most-used players. Without analytics it
-       is the preview: wowy.js caps the subjects and adds its own teaser line. */
-    window.EpinoiaWowy.render(Object.assign({
+    /* the combination matrix, seeded with the two most-used players. Lineups are free for everyone
+       (docs/memberships.md), so it is never capped or teased. */
+    window.EpinoiaWowy.render({
       host: '#wowy', stints: st, meta, max: 4,
       preselect: order.slice(0, 2)
-    }, ACCESS.locked ? { preview: true, leagueSlug: ACCESS.slug } : {}));
+    });
 
     window.EpinoiaLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
     window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: st, meta });
@@ -1054,7 +1085,8 @@ async function lineupPanels(team) {
     console.warn('[lineups]', e);
     ['#wowy', '#lufilter', '#lulist'].forEach(sel => {
       const h = $(sel);
-      if (h && !h.children.length) {
+      if (h && (!h.children.length || h.querySelector('.lu-empty'))) {
+        if (sel === '#lulist') h.textContent = '';
         h.appendChild(el('div', 'empty', 'Could not load lineup data: ' + (e.message || e)));
       }
     });

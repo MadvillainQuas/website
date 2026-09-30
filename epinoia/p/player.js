@@ -97,7 +97,7 @@ function paintIdentity(pl, entry, team) {
   /* follow the player: his line after every game */
   if (window.EpinoiaFollow && pl.id) {
     const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });
-    fb.classList.add('lbl'); $('#name').insertAdjacentElement('afterend', fb);
+    fb.classList.add('lbl'); const act = $('#idactions'); if (act) act.appendChild(fb); else $('#name').insertAdjacentElement('afterend', fb);
   }
 
   const colour = (team && team.colour) || '#93f2bf';
@@ -155,6 +155,7 @@ function paintIdentity(pl, entry, team) {
     sub.appendChild(el('span', null, 'Free agent'));
     $('#teamLink').style.display = 'none';
   }
+  sub.appendChild(el('span', 'sub-break'));      // the club and league on one line, the chips (position, estimated position) on the next
   if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
   paintVitals(pl);
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
@@ -258,19 +259,35 @@ async function offerRelease(pl, team) {
   sub.appendChild(b);
 }
 
-function paintTiles(s) {
+/* THE POPUP (statpop.js): the players he is ranked among for a statistic, honouring "adjust for position" */
+function statPool(mine, field) {
+  const SE = window.EpinoiaSeason;
+  if (!barsByPos || !SE || !SE.positionGroups || !mine) return field;
+  const pm = SE.positionGroups(field), g = pm.get(mine.id);
+  return g ? field.filter(r => pm.get(r.id) === g) : field;
+}
+function statBind(node, k, label, mine, rows) {
+  const SP = window.EpinoiaStatPop;
+  if (!SP || !mine || !rows || rows.length < 3) return;
+  SP.bind(node, () => ({ key: k, label, kind: 'player', subjectId: mine.id, rows, value: k, low: BAR_LOW.indexOf(k) !== -1,
+    signed: BAR_SIGNED(k), dp: BAR_DP(k) }));
+}
+
+function paintTiles(s, field) {
   const host = $('#tiles'); host.textContent = '';
   if (!s) {
     host.appendChild(el('div', 'empty', 'No finalised games yet.'));
     return;
   }
-  [['games', s.gp, false], ['pts', n1(s.ppg), true], ['reb', n1(s.rpg), true],
-   ['ast', n1(s.apg), true], ['mins', n1(s.mpg), false],
-   ['ts%', n1(s.ts), false], ['usg%', n1(s.usg), false],
-   ['on-off', s.diff_net == null ? '—' : (s.diff_net > 0 ? '+' : '') + n1(s.diff_net), true]]
-    .forEach(([l, v, hi]) => {
+  const rows = field && field.length ? statPool(s, field) : null;
+  [['games', s.gp, false, null], ['pts', n1(s.ppg), true, 'ppg'], ['reb', n1(s.rpg), true, 'rpg'],
+   ['ast', n1(s.apg), true, 'apg'], ['mins', n1(s.mpg), false, 'mpg'],
+   ['ts%', n1(s.ts), false, 'ts'], ['usg%', n1(s.usg), false, 'usg'],
+   ['on-off', s.diff_net == null ? '—' : (s.diff_net > 0 ? '+' : '') + n1(s.diff_net), true, 'diff_net']]
+    .forEach(([l, v, hi, k]) => {
       const d = el('div', 'tile' + (hi ? ' hi' : ''));
       d.append(el('div', 'v', v), el('div', 'l', l));
+      if (k) statBind(d, k, l, s, rows);
       host.appendChild(d);
     });
 }
@@ -319,10 +336,13 @@ const BAR_SECTIONS = [
     { rows: [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],['tov_pct','TURNOVER%']] }
   ]},
   { key: 'rebounding', title: 'rebounding', blocks: [
-    { rows: [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']] }
+    { rows: [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%'],
+             ['orb_tm_pct','ORB% ON TEAM MISSES'],['orb_self_pct','ORB% ON OWN MISSES']] }
   ]},
   { key: 'defence', title: 'defence', blocks: [
-    { rows: [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['pf30','FOULS CONCEDED / 30']] }
+    { rows: [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['pf30','FOULS CONCEDED / 30']] },
+    /* bigsOnly: drawn only for a player whose estimated position group is C or F (paintBars) */
+    { title: 'rim protection', bigsOnly: true, rows: [['def_rim_fg_pm','DEF RIM FG% \u00B1'],['def_rim_vol_pm','DEF RIM VOL \u00B1']] }
   ]},
   /* IMPACT: on/off as differentials -- how much better the team is in each with him on -- and the box
      plus/minus family. The four factors are shown in full, offence and defence, each end its own fold. */
@@ -348,15 +368,21 @@ const BAR_GROUPS = BAR_SECTIONS.map(s => [s.title, s.blocks.flatMap(b => b.rows)
    is the good direction; opponent turnovers going UP is (so diff_vs_tov is not here). Fouls conceded: fewer is better. */
 const BAR_LOW = ['tov_pct', 'diff_drtg', 'diff_tov', 'pf30',
                  'diff_vs_efg', 'diff_vs_oreb', 'diff_vs_ftr',
-                 'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp'];
+                 'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp',
+                 'def_rim_fg_pm', 'def_rim_vol_pm'];
 /* a differential (or a plus/minus) carries its sign: +12.5 is a claim, 12.5 is a number */
-const BAR_SIGNED = k => /^diff_/.test(k) || k === 'bpm' || k === 'obpm' || k === 'dbpm';
+const BAR_SIGNED = k => /^diff_/.test(k) || k === 'bpm' || k === 'obpm' || k === 'dbpm' ||
+  k === 'def_rim_fg_pm' || k === 'def_rim_vol_pm';
 const BAR_DP = k => (k === 'ast_to' || k === 'au') ? 2 : 1;
 const BAR_HINT = {
   contrib_pg: 'Total point contribution per game: the points he scored plus the points scored off his assists.',
   vorp: 'Value over replacement player: box plus/minus turned into a season total, so minutes count as well as level.',
   pf30: 'Personal fouls he commits per 30 minutes on the floor. Fewer is better, so the top percentile fouls least. ' +
     'Left blank under 20 minutes played.',
+  orb_tm_pct: 'Of the field-goal misses by his teammates while he is on the floor that ended in a rebound, the share he grabbed himself as an offensive rebound.',
+  orb_self_pct: 'Of his own missed field goals that ended in a rebound (either side, team rebounds included), the share he got back himself as an offensive rebound.',
+  def_rim_fg_pm: 'Opponents\u2019 field-goal percentage at the rim with him on the floor minus with him off it. Lower (negative) is better.',
+  def_rim_vol_pm: 'Opponents\u2019 rim attempts per 100 of their possessions with him on the floor minus with him off it. Lower (negative) is better.',
   team_spacing: 'How stretched the floor is around him: the points his teammates\u2019 threes are worth per 100 possessions while he is on the floor ' +
     '(their three-point volume and accuracy in one number, his own threes left out). Higher means more room to work in.'
 };
@@ -390,6 +416,7 @@ function barCard(k, label, mine, ranks, pool) {
   if (v == null) card.classList.add('none');
   if (BAR_HINT[k]) card.title = BAR_HINT[k];
   card.style.setProperty('--bc-band', barBand(p));
+  if (v != null) statBind(card, k, label, mine, pool);
 
   const top = el('div', 'bc-top');
   top.appendChild(el('div', 'bc-l', label));
@@ -434,7 +461,7 @@ function paintEstPos(mine, field) {
     'corrected by the position the club lists. It is the group "adjust for position" ranks him in.';
   const listed = sub.querySelector('.pos-chip');
   /* after the listed position, else after the club and league - never after a button appended since */
-  const after = listed || sub.querySelector('.sub-league') || sub.firstElementChild;
+  const after = listed || sub.querySelector('.sub-break') || sub.querySelector('.sub-league') || sub.firstElementChild;
   if (after) after.after(chip); else sub.appendChild(chip);
 }
 
@@ -489,6 +516,11 @@ function consistencyCard() {
 function paintBars(mine, field) {
   LAST_BARS = { mine, field };
   paintEstPos(mine, field);
+  /* the '?' in the section heading (statpop.js): the explainer for every main statistic below */
+  try {
+    const sh = $('#bars') && $('#bars').closest('.sec') && $('#bars').closest('.sec').querySelector('.sec-h');
+    if (window.EpinoiaStatPop && sh) window.EpinoiaStatPop.helpButton(sh, 'player');
+  } catch (_) { /* the help is a convenience */ }
   const host = $('#bars'); host.textContent = '';
   if (!mine || field.length < 3) {
     host.appendChild(el('div', 'empty',
@@ -502,10 +534,14 @@ function paintBars(mine, field) {
   const CAT = ANALYTICS_LOCKED && window.EpinoiaAccess ? window.EpinoiaAccess.CATALOGUE : null;
   const premiumBar = k => !!CAT && (typeof CAT.barKeys === 'function' ? !!CAT.barKeys(k)
     : Array.isArray(CAT.barKeys) && CAT.barKeys.indexOf(k) !== -1);
+  /* bigsOnly blocks (rim protection) are drawn only for an estimated centre or forward */
+  const bigGroup = SE.positionGroups ? SE.positionGroups(field).get(mine.id) : null;
+  const isBig = bigGroup === 'C' || bigGroup === 'F';
   const sections = BAR_SECTIONS.map(s => ({
     key: s.key, title: s.title,
     held: s.blocks.some(b => b.rows.some(r => premiumBar(r[0]))),
-    blocks: s.blocks.map(b => Object.assign({}, b, { rows: b.rows.filter(r => !premiumBar(r[0])) })).filter(b => b.rows.length)
+    blocks: s.blocks.filter(b => !b.bigsOnly || isBig)
+      .map(b => Object.assign({}, b, { rows: b.rows.filter(r => !premiumBar(r[0])) })).filter(b => b.rows.length)
   }));
   const keys = sections.flatMap(s => s.blocks.flatMap(b => b.rows.map(r => r[0])));
   const posMap = barsByPos && SE.positionGroups ? SE.positionGroups(field) : null;
@@ -1038,16 +1074,18 @@ async function loadCareerAccess(pl, lgRow) {
     const paintScope = async kind => {
       scopeKind = kind;
       const ids = compRows.filter(c => kind === 'all' || (c.kind || 'league') === kind).map(c => c.id);
-      mine = null; field = []; SCOPE_IDS = ids;
+      mine = null; field = []; SCOPE_IDS = ids; let sosGames = null;
       try {
         if (ids.length) {
           const S = await D.season(ids, { rows: false, trim: true });
+          sosGames = S.games;
           field = S.players;
           mine = field.find(r => r.id === pl.id) || null;
         }
       } catch (e) { console.warn('[season]', e); }
-      paintTiles(mine);
+      paintTiles(mine, field);
       paintBars(mine, field);
+      if (window.EpinoiaSosChip) window.EpinoiaSosChip.paint(null, { games: sosGames, teamId: team && team.id });
       /* ---- events ----
          The season's situations (second chance, transition, off turnovers,
          after timeout, half court) and assisted baskets, read from the same
@@ -1060,6 +1098,7 @@ async function loadCareerAccess(pl, lgRow) {
         if (evHost && ANALYTICS_LOCKED) {
           evHost.innerHTML = accessTeaser({ title: 'Events',
             lines: ['Second chances, transition, points off turnovers, after-timeout sets, the half court and assisted baskets, ranked against the league.'] });
+          { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS_LEAGUE.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
         } else if (evHost && window.EpinoiaSitPanel) {
           window.EpinoiaSitPanel.render({ host: evHost, kind: 'player', row: mine, field, name: fullName });
           const en = $('#eventsNote');
@@ -1154,6 +1193,7 @@ function drawShotChart(shots, colour, games, gameList) {
         if (!gs.length) {
           $('#withpanel').appendChild(el('div', 'empty',
             'No finalised games yet — this fills in once one is played.'));
+          const lh = $('#lulist'); if (lh) { lh.textContent = ''; lh.appendChild(el('div', 'empty', 'No lineup data yet.')); }
         } else {
           const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
           const [st, evs] = await Promise.all([
@@ -1189,6 +1229,22 @@ function drawShotChart(shots, colour, games, gameList) {
             drawShotChart(shots, (team && team.colour) || null, played.size,
               SC.gameListOf ? SC.gameListOf(gs.filter(g => played.has(g.id))) : null);
           } catch (e) { /* a chart is not worth breaking the page for */ }
+
+          /* ---- the lineups he played in, beside the shot chart ----
+             Free for everyone. The club's stints are already in hand; keep the ones he was on the
+             floor for, and rank them against each other (t/lineupui.js). */
+          try {
+            const mine = st.filter(s4 => (s4.player_ids || []).indexOf(pl.id) !== -1);
+            const ids = [...new Set(mine.flatMap(r => r.player_ids || []))];
+            const lm = ids.length ? await D.playerMeta(ids) : {};
+            if (window.EpinoiaLineupUI) {
+              window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: mine, meta: lm });
+              $('#luNote').textContent = gs.length >= RECENT_GAMES ? 'last ' + RECENT_GAMES + ' games' : '';
+            }
+          } catch (e) {
+            console.warn('[lineups]', e);
+            const h = $('#lulist'); if (h) { h.textContent = ''; h.appendChild(el('div', 'empty', 'Could not load lineup data.')); }
+          }
 
           /* ---- on video ----
              The whole log for every game the club played is already in hand,

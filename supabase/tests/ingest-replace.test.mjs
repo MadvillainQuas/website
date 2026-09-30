@@ -320,10 +320,17 @@ console.log('\nthe live lane stamps by when the feed changed');
      (lk.match(/observe_due\(/g) || []).length >= 2);
   ok('...unless EPINOIA_OBSERVER=0, the kill switch', /os\.environ\.get\("EPINOIA_OBSERVER", ""\) != "0"/.test(lk));
   ok('the loop builds its bundle from the observer\'s snapshot', /bundle_from_raw\(snap\.raw/.test(lk));
-  ok('...and the network fetch is reachable only in the kill-switch branch',
-     (lk.match(/\.fetch\(/g) || []).length === 1 &&
-     lk.indexOf('# KILL SWITCH') > 0 && lk.indexOf('# KILL SWITCH') < lk.indexOf('.fetch(') &&
-     lk.indexOf('.fetch(') < lk.indexOf('snap = observer.take(xid)'));
+  /* ONE OTHER READ, AND NOT A POLL: the stall rule's (STALLED_S, 0189) read afresh of a live game that has shown no
+     new play for half an hour - once per stall, cache-busted (_fresh), from inside quiet() - which the observer's
+     conditional GETs cannot do: they would keep answering 304 for the same stale copy */
+  const fetchAt = [...lk.matchAll(/\.fetch\(/g)].map(m => m.index);
+  const quietAt = lk.indexOf('def quiet('), movedAt = lk.indexOf('def moved(');
+  const inQuiet = i => i > quietAt && i < movedAt;
+  const poll = fetchAt.filter(i => !inQuiet(i));
+  ok('...and the network fetch is reachable only in the kill-switch branch (and the stall rule\'s one read afresh)',
+     fetchAt.length === 2 && poll.length === 1 && quietAt > 0 && inQuiet(lk.indexOf('_fresh=True')) &&
+     lk.indexOf('# KILL SWITCH') > 0 && lk.indexOf('# KILL SWITCH') < poll[0] &&
+     poll[0] < lk.indexOf('snap = observer.take(xid)'), fetchAt.length + ' fetches');
   ok('the observer\'s stamp keeps the configured error plus the poll\'s own duration',
      /observed = \(snap\.stamp_ms, int\(\(fast_every if is_armed else every\) \* 1000\) \+ snap\.fetch_ms\)/.test(lk));
   ok('a version already in the database (a pass handover) is not written again',

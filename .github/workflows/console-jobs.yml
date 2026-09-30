@@ -39,7 +39,14 @@ jobs:
           path: scraper
       - name: Install scraper requirements
         if: ${{ vars.SCRAPER_REPO != '' }}
-        run: pip install -r scraper/requirements.txt || true
+        run: |
+          # As ingest.yml: win10toast/pypiwin32 are Windows-only and pypiwin32's setup.py has
+          # Python-2 print syntax, which pip intermittently tries to source-build on this Linux
+          # runner and fails on ("SyntaxError: Missing parentheses in call to 'print'", seen twice
+          # on this workflow, 2026-09-28/29). The bare `|| true` this had before let the step pass
+          # either way, but left the parser libraries half-installed on the runs that hit it.
+          grep -viE "win10toast|pywin32" scraper/requirements.txt > "$RUNNER_TEMP/req.txt" || true
+          pip install -r "$RUNNER_TEMP/req.txt" || pip install selenium beautifulsoup4 requests pandas numpy scikit-learn tqdm
       - name: Take a queued reset, if any
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

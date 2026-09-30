@@ -1,0 +1,305 @@
+/* ============================================================================
+   THE TELETEXT PANELS (2026-09-30): the two panels that unroll out of a rule on a page, drawn as
+   screens of the broadcast layer (kit/teletext.css) instead of blocks of flat colour.
+
+     WHO'S YOUR FAVOURITE?   HOME's onboarding (home/favourites.js, home/favourites.css: .fav*)
+     MAKE YOUR VOICE HEARD   a league's fans' vote (fanvote.js, kit/fanvote.css: .fv*), and its winners
+                             (.fvw*) and the weekly winners page (.fvh*, votes/)
+
+   Presentation only. Every class, attribute and behaviour is the ones those files already draw; this sheet
+   restyles them and adds nothing to the markup. It is loaded AFTER favourites.css / fanvote.css and BEFORE
+   kit/legibility.css, which stays last.
+
+   THE IDEA. A panel is a teletext SCREEN: black in either theme (the tube does not follow the ground), a
+   Fastext bar of four colours along its top edge, HUD corner brackets, scanlines, a page label in a yellow
+   block, the title in white pixel letters with a teletext-blue-cyan split, a mosaic trim under it, keys
+   at the foot. The colour a page is wearing (the league's) washes the screen and lights its brackets and
+   buttons; HOME's, having none, uses the platform's lume and aqua. The cards on it stay paper tiles
+   (the kit's club plates), so a club's or a league's own colour is what shows on them.
+
+   Pixel-face letter-spacing here never goes past .2em (kit/legibility.css). Focus is a yellow outline, drawn
+   on black, so it reads in both themes.
+   ============================================================================ */
+
+/* ---- 0. the screen's own values -------------------------------------------------------------------------- */
+.fav-anchor, .fav, .fv{
+  --tp-scr:var(--tt-scr,#050706);
+  --tp-scr-2:var(--tt-scr-2,#101614);
+  --tp-fg:var(--tt-white,#f2f6f4);
+  --tp-dim:rgba(242,246,244,.72);
+  --tp-edge:rgba(242,246,244,.2);
+  --tp-red:var(--tt-red,#ff4b4b); --tp-green:var(--tt-green,#35ff78); --tp-yellow:var(--tt-yellow,#ffe44d);
+  --tp-cyan:var(--tt-cyan,#3ff0ff);
+  /* the accent the brackets, keys and blocks are lit in */
+  --tp-acc:#93f2bf; --tp-acc-2:#8ff5ff; --tp-acc-3:#ffd166;
+  --tp-key:linear-gradient(100deg,#93f2bf,#8ff5ff);
+  --tp-fast:linear-gradient(90deg,var(--tp-red) 0 25%,var(--tp-green) 25% 50%,var(--tp-yellow) 50% 75%,var(--tp-cyan) 75%);
+}
+/* a league's vote wears the league's colours: lifted toward white so a near-black club or league still shows on black */
+.fv{
+  --tp-acc:color-mix(in srgb,var(--fv-a) 50%,#93f2bf);
+  --tp-acc-2:color-mix(in srgb,var(--fv-b) 50%,#8ff5ff);
+  --tp-acc-3:color-mix(in srgb,var(--fv-a) 30%,var(--tt-yellow,#ffe44d));
+  --tp-key:linear-gradient(100deg,var(--tp-acc),var(--tp-acc-2));
+  --fv-on:var(--tp-fg);
+}
+/* the three teletext blocks of a title's mosaic (kit/teletext.css 4) */
+.fav-body, .fv-body{ --tp-m1:var(--tp-acc); --tp-m2:var(--tp-acc-2); --tp-m3:var(--tp-acc-3) }
+
+/* ---- 1. the handle: the rule under the fixtures / the hero, as a row of blocks ------------------------------------------ */
+.fav-rule::before{
+  height:4px; background:var(--tp-fast);
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 22px,transparent 22px 25px);
+          mask:repeating-linear-gradient(90deg,#000 0 22px,transparent 22px 25px) }
+.fav-rule:hover::before, .fav-rule:focus-visible::before{ transform:scaleY(1.75) }
+.fv-rule::before{
+  height:4px; background:linear-gradient(90deg,var(--fv-a,var(--league-a,currentColor)) 0 72%,var(--fv-b,var(--league-b,currentColor)) 72%);
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 10px,transparent 10px 12px);
+          mask:repeating-linear-gradient(90deg,#000 0 10px,transparent 10px 12px) }
+.fv-rule:hover::before, .fv-rule:focus-visible::before{ transform:scaleY(1.75) }
+.fav-rule-tab, .fv-rule-tab{
+  background:var(--tt-scr,#050706); color:var(--tt-yellow,#ffe44d); padding:6px 12px 5px;
+  font:400 9px/1.2 var(--f-micro); letter-spacing:.08em;
+  box-shadow:0 0 0 1px rgba(255,255,255,.22),0 6px 16px rgba(0,0,0,.3) }
+.fav-rule-tab::before, .fv-rule-tab::before{ content:""; display:inline-block; width:8px; height:8px; margin-right:8px;
+  background:var(--tt-red,#ff4b4b); vertical-align:-1px }
+.fav-rule:focus-visible, .fv-rule:focus-visible{ outline:3px solid var(--tt-yellow,#ffe44d); outline-offset:-3px }
+
+/* ---- 2. the screen ------------------------------------------------------------------------------------------ */
+.fav-body, .fv-body{
+  background-color:var(--tp-scr); color:var(--tp-fg);
+  /* Fastext along the top (four blocks, gaps between), a run of small blocks along the foot, and the colour on the screen */
+  background-image:
+    linear-gradient(var(--tp-red),var(--tp-red)),
+    linear-gradient(var(--tp-green),var(--tp-green)),
+    linear-gradient(var(--tp-yellow),var(--tp-yellow)),
+    linear-gradient(var(--tp-cyan),var(--tp-cyan)),
+    repeating-linear-gradient(90deg,var(--tp-acc) 0 10px,transparent 10px 14px),
+    radial-gradient(110% 90% at 12% 0%,color-mix(in srgb,var(--tp-acc) 18%,transparent),transparent 62%),
+    radial-gradient(90% 80% at 100% 100%,color-mix(in srgb,var(--tp-acc-2) 12%,transparent),transparent 65%);
+  background-repeat:no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat;
+  background-size:calc(25% - 4px) 5px,calc(25% - 4px) 5px,calc(25% - 4px) 5px,calc(25% - 4px) 5px,100% 3px,100% 100%,100% 100%;
+  background-position:0 0,calc(100%/3) 0,calc(200%/3) 0,100% 0,0 100%,0 0,0 0;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 -26px 30px -20px rgba(0,0,0,.45);
+  padding-top:calc(var(--u)*3.5);
+}
+/* the tube's scanlines, where the halftone was */
+.fav-body::after, .fv-body::after{
+  inset:0; opacity:1; transform:none; background-size:auto;
+  background-image:repeating-linear-gradient(180deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px) }
+/* HUD corner brackets, drawn in gradients as kit/teletext.css 8 does around a photo */
+.fav-body::before, .fv-body::before{
+  content:""; position:absolute; inset:14px 10px 12px; z-index:2; pointer-events:none;
+  background:
+    linear-gradient(var(--tp-acc),var(--tp-acc)) 0 0/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 0 0/2px 16px no-repeat,
+    linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 0/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 0/2px 16px no-repeat,
+    linear-gradient(var(--tp-acc),var(--tp-acc)) 0 100%/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 0 100%/2px 16px no-repeat,
+    linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 100%/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 100%/2px 16px no-repeat;
+  opacity:.9 }
+/* the light along the seam as it opens is the platform's / league's accent */
+.fav::before, .fv::before{ background:linear-gradient(90deg,transparent,var(--tp-acc) 45%,var(--tp-acc) 55%,transparent) }
+
+/* ---- 3. heading: page label, title, mosaic, question --------------------------------------------------------------- */
+/* "STEP 1 OF 2 · LEAGUES" and the week are teletext's page label: a small block of yellow / cyan on the black */
+.fav-step{
+  display:inline-block; margin:0 auto 12px; padding:4px 9px 3px; background:var(--tp-yellow); color:#050706;
+  font:400 9px/1.2 var(--f-micro); letter-spacing:.08em; text-transform:uppercase }
+.fav-step:empty{ display:none }
+.fv-week{ display:block; width:fit-content; max-width:100%; margin:12px 0 0; padding:4px 9px 3px; opacity:1;
+  background:var(--tp-cyan); color:#050706; font:400 9px/1.3 var(--f-micro); letter-spacing:.08em; text-transform:uppercase }
+.fav-title, .fv-title{
+  color:var(--tp-fg);
+  text-shadow:2px 0 color-mix(in srgb,var(--tp-red) 55%,transparent),-2px 0 color-mix(in srgb,var(--tp-cyan) 55%,transparent),
+              0 0 22px color-mix(in srgb,var(--tp-acc) 34%,transparent) }
+/* the mosaic under a title (the page's three colours, cut into separated blocks) */
+.fav-title::after, .fv-title::after{
+  content:""; display:block; width:66px; height:12px; margin:14px auto 0;
+  background:linear-gradient(90deg,var(--tp-m1) 0 36%,var(--tp-m2) 36% 68%,var(--tp-m3) 68%);
+  -webkit-mask:var(--tt-mosaic) center/66px 12px no-repeat; mask:var(--tt-mosaic) center/66px 12px no-repeat;
+  text-shadow:none }
+.fv-title::after{ margin-left:0 }
+.fav-title, .fav-title::after, .fv-title::after{ animation:none }
+.fav-sub, .fv-q{ color:var(--tp-fg) }
+.fav-sub{ margin-top:14px }
+.fav-crumb-name{ color:var(--tp-fg) }
+.fav-crumb-n{ color:var(--tp-cyan) }
+.fav-hint, .fv-how, .fv-hint{ color:var(--tp-dim) }
+.fv-how{ opacity:1; color:var(--tp-cyan) }
+.fav-hint b{ color:var(--tp-yellow) }
+.fav-hint.shake, .fv-hint.shake{ color:var(--tp-yellow) }
+.fav-empty{ color:var(--tp-dim) }
+.fav-said-k, .fv-said-k{ color:var(--tp-cyan); opacity:1 }
+.fav-said-v, .fv-said-v{ color:var(--tp-fg) }
+.fav-how{ color:var(--tp-dim) }
+
+/* ---- 4. keys: close, back, the strip's two arrows ------------------------------------------------------------------- */
+.fav-x, .fv-x, .fav-nav, .fv-nav, .fav-back{
+  border-radius:0; background:var(--tp-scr); color:var(--tp-fg);
+  border:2px solid var(--tp-acc); box-shadow:0 0 14px color-mix(in srgb,var(--tp-acc) 30%,transparent);
+  transition:background .12s ease,color .12s ease,transform .15s ease,opacity .15s ease }
+.fav-x, .fv-x{ width:44px; height:44px; top:16px; right:14px; font-size:24px }
+.fav-nav, .fv-nav, .fav-back{ width:40px; height:40px; padding:0 0 2px; font-size:24px }
+.fav-x:hover, .fv-x:hover{ transform:none; background:var(--tp-acc); color:#050706 }
+.fav-nav:not(:disabled):hover, .fv-nav:not(:disabled):hover, .fav-back:hover{ transform:none; background:var(--tp-acc); color:#050706 }
+.fav-nav:disabled, .fv-nav:disabled{ opacity:.3; box-shadow:none; border-color:var(--tp-edge) }
+:is(.fav,.fv) :is(button,a):focus-visible, .fav-rail button:focus-visible{
+  outline:3px solid var(--tp-yellow); outline-offset:3px }
+.fav-x:focus-visible, .fv-x:focus-visible, .fav-nav:focus-visible, .fv-nav:focus-visible, .fav-back:focus-visible{ outline-offset:2px }
+
+/* ---- 5. buttons: primary is the glossy brand key, secondary is a keyline ----------------------------------------------- */
+.fav-go, .fv-go, .fvw-vote:not(.done){
+  position:relative; isolation:isolate; overflow:hidden; border:0; border-radius:0; min-height:46px;
+  font:400 11px/1.1 var(--f-micro); letter-spacing:.1em; text-transform:uppercase;
+  background:var(--y2k-gloss,linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 50%)),var(--tp-key);
+  color:#04100b; box-shadow:0 0 0 1px rgba(255,255,255,.28),0 0 18px color-mix(in srgb,var(--tp-acc) 34%,transparent);
+  transition:transform .15s ease,filter .15s ease,box-shadow .15s ease }
+.fav-go:not(:disabled):hover, .fv-go:not(:disabled):hover, .fvw-vote:not(.done):hover{ transform:translateY(-2px); filter:brightness(1.08) }
+.fv-go:disabled{ opacity:1; filter:none; cursor:not-allowed; background:var(--tp-scr-2); color:var(--tp-dim);
+  box-shadow:inset 0 0 0 2px var(--tp-edge) }
+.fav-skip, .fav-alt, .fv-skip, .fv-change, .fav-retry, .fvw-vote.done{
+  border-radius:0; min-height:46px; background:transparent; color:var(--tp-fg);
+  font:400 11px/1.1 var(--f-micro); letter-spacing:.1em; text-transform:uppercase;
+  box-shadow:inset 0 0 0 2px var(--tp-acc); transition:background .12s ease,color .12s ease,transform .15s ease }
+.fav-skip:hover, .fav-alt:hover, .fv-skip:hover, .fv-change:hover, .fav-retry:hover{ transform:none; background:var(--tp-acc); color:#050706 }
+.fav-go:focus-visible, .fav-skip:focus-visible, .fav-alt:focus-visible, .fv-go:focus-visible, .fv-skip:focus-visible, .fv-change:focus-visible{
+  outline-offset:3px }
+
+/* ---- 6. the cards ---------------------------------------------------------------------------------------------- */
+.fav-card, .fv-card{
+  box-shadow:0 0 0 1px rgba(255,255,255,.2),0 8px 20px rgba(0,0,0,.45);
+  transition:box-shadow .15s ease,transform .18s cubic-bezier(.2,.8,.3,1),opacity .2s ease,filter .2s ease }
+.fav-card:hover{ transform:translateY(-3px); box-shadow:0 0 0 2px var(--tp-acc),0 12px 24px rgba(0,0,0,.5) }
+.fv-card:hover{ transform:translateY(-3px); box-shadow:0 0 0 2px var(--tp-acc),0 12px 24px rgba(0,0,0,.5) }
+/* PICKED: a green teletext ring and a green square tick, whatever colour the plate is */
+.fav-card.on{ box-shadow:0 0 0 3px var(--tp-green),0 0 22px color-mix(in srgb,var(--tp-green) 42%,transparent),0 10px 22px rgba(0,0,0,.45) }
+.fav-tick{ border-radius:0; background:var(--tp-green); color:#050706; box-shadow:0 0 0 2px #050706 }
+/* a card's place in the vote: a yellow block with the number */
+.fv-card.picked::after{ border-radius:0; background:var(--tp-yellow); color:#050706; box-shadow:0 0 0 2px #050706;
+  width:26px; height:26px; font:400 12px/1 var(--f-score) }
+.fv-card.picked{ opacity:.5; filter:grayscale(.55) }
+.fav-strip, .fv-deck{ padding-top:14px }
+/* the strip's paper tile for a country's flag keeps a hard block shadow, as the club plates do */
+.fav-tile{ border-radius:0 }
+
+/* ---- 7. the podium: teletext boxes ------------------------------------------------------------------------------- */
+.fv-slot{
+  border:2px dashed color-mix(in srgb,var(--tp-acc) 70%,transparent); border-radius:0;
+  background:color-mix(in srgb,var(--tp-acc) 7%,var(--tp-scr));
+  background-image:repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px) }
+.fv-slot.filled{ border-style:solid; border-color:var(--tp-acc); background-color:color-mix(in srgb,var(--tp-acc) 14%,var(--tp-scr));
+  box-shadow:0 0 16px color-mix(in srgb,var(--tp-acc) 26%,transparent) }
+.fv-slot.over{ border-color:var(--tp-yellow); background-color:color-mix(in srgb,var(--tp-yellow) 16%,var(--tp-scr)) }
+.fv-place{ color:var(--tp-yellow); font-size:20px }
+.fv-podium.one .fv-place{ color:var(--tp-yellow) }
+.fv-hold:empty::before{ border:1px dashed color-mix(in srgb,var(--tp-acc) 45%,transparent) }
+.fv-ghost{ box-shadow:0 0 0 2px var(--tp-acc,#93f2bf),0 22px 44px rgba(0,0,0,.45) }
+
+/* ---- 8. the done screen --------------------------------------------------------------------------------------- */
+.fav-stamp, .fv-stamp{ color:var(--tp-green); border-color:var(--tp-green); border-radius:0; border-width:3px;
+  text-shadow:0 0 18px color-mix(in srgb,var(--tp-green) 50%,transparent);
+  box-shadow:0 0 22px color-mix(in srgb,var(--tp-green) 24%,transparent),inset 0 0 14px color-mix(in srgb,var(--tp-green) 16%,transparent) }
+
+/* ---- 9. the foot: "remind me later" and "don't show this again" are Fastext keys ------------------------------------------- */
+.fav-links, .fv-foot{
+  border-top:0; padding-top:calc(var(--u)*1.25);
+  background:repeating-linear-gradient(90deg,var(--tp-edge) 0 4px,transparent 4px 6px) top/100% 2px no-repeat }
+.fv-acts .fv-foot{ background:none }
+.fav-later, .fav-never, .fv-later, .fv-never{
+  display:inline-flex; align-items:center; gap:9px; min-height:40px; padding:6px 10px 5px; text-decoration:none; opacity:1;
+  color:var(--tp-fg); font:400 9px/1.25 var(--f-micro); letter-spacing:.07em; text-transform:uppercase;
+  transition:background .12s ease,color .12s ease }
+.fav-later::before, .fav-never::before, .fv-later::before, .fv-never::before{
+  content:""; flex:none; width:10px; height:10px; background:var(--k,var(--tp-red)); box-shadow:0 0 10px color-mix(in srgb,var(--k,var(--tp-red)) 60%,transparent) }
+.fav-never::before, .fv-never::before{ --k:var(--tp-cyan) }
+.fav-later:hover, .fav-never:hover, .fv-later:hover, .fv-never:hover{ background:var(--k,var(--tp-red)); color:#050706 }
+.fav-later:hover::before, .fav-never:hover::before, .fv-later:hover::before, .fv-never:hover::before{ background:#050706; box-shadow:none }
+.fav-never, .fv-never{ --k:var(--tp-cyan) }
+.fav-later, .fv-later{ --k:var(--tp-red) }
+.fav-later:focus-visible, .fav-never:focus-visible, .fv-later:focus-visible, .fv-never:focus-visible{ outline:3px solid var(--tp-yellow); outline-offset:2px }
+
+/* ---- 10. the winners, in the page's own ground -------------------------------------------------------------------- */
+.fvw-sec{
+  --fv-key:color-mix(in srgb,var(--fv-a) 30%,var(--lume));
+  --tp-key:linear-gradient(100deg,#93f2bf,#8ff5ff); --tp-acc:var(--fv-key) }
+.fvw-rays{ background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--fv-key) 30%,transparent) 0 7deg,transparent 7deg 18deg) }
+.fvw-laurel ellipse{ fill:var(--fv-key); stroke:color-mix(in srgb,#000 25%,var(--fv-key)) }
+/* HUD brackets around each winner's card, as kit/teletext.css puts them around a photo */
+.fvw-card::after{
+  content:""; position:absolute; inset:-9px; z-index:4; pointer-events:none; --h:var(--tt-m1,var(--lume));
+  background:
+    linear-gradient(var(--h),var(--h)) 0 0/14px 2px no-repeat, linear-gradient(var(--h),var(--h)) 0 0/2px 14px no-repeat,
+    linear-gradient(var(--h),var(--h)) 100% 0/14px 2px no-repeat, linear-gradient(var(--h),var(--h)) 100% 0/2px 14px no-repeat,
+    linear-gradient(var(--h),var(--h)) 0 100%/14px 2px no-repeat, linear-gradient(var(--h),var(--h)) 0 100%/2px 14px no-repeat,
+    linear-gradient(var(--h),var(--h)) 100% 100%/14px 2px no-repeat, linear-gradient(var(--h),var(--h)) 100% 100%/2px 14px no-repeat }
+/* the ribbon is a teletext label: black, yellow letters, a block of the league's colour at its head */
+.fvw-ribbon{
+  clip-path:none; background:var(--tt-scr,#050706); color:var(--tt-yellow,#ffe44d); padding:8px 16px 7px 14px;
+  font:400 9px/1.2 var(--f-micro); letter-spacing:.08em;
+  box-shadow:inset 6px 0 0 var(--fv-key),0 0 0 1px rgba(255,255,255,.2),0 8px 16px rgba(0,0,0,.28); padding-left:20px }
+.fvw-meta{ color:var(--ink-2) }
+.fvw-all{
+  display:inline-flex; align-items:center; min-height:44px; padding:0 4px; color:var(--ink); font:400 10px/1.2 var(--f-micro);
+  letter-spacing:.07em; text-decoration:underline; text-decoration-color:var(--lume); text-decoration-thickness:2px; text-underline-offset:5px }
+.fvw-all:hover{ text-decoration-color:var(--ink) }
+.fvw-all:focus-visible, .fvw-vote:focus-visible{ outline:3px solid var(--lume); outline-offset:3px }
+.fvw-vote{ border-radius:0; min-height:46px; padding:13px 20px 12px; font:400 11px/1.1 var(--f-micro); letter-spacing:.1em }
+.fvw-vote.done{ color:var(--ink); box-shadow:inset 0 0 0 2px var(--rule-2) }
+.fvw-vote.done:hover{ background:var(--lume); color:var(--on-accent); box-shadow:none }
+
+/* ---- 11. the weekly winners page ---------------------------------------------------------------------------------- */
+.vt-lede{
+  font-family:var(--f-ui) !important; font-size:13px !important; line-height:1.6 !important; letter-spacing:.005em !important;
+  color:var(--ink-2) !important; text-transform:none !important; max-width:none;
+  position:relative; padding-left:calc(var(--u)*3 + 14px) }
+.vt-lede::before{ content:""; position:absolute; left:calc(var(--u)*3); top:calc(var(--u)*1.75); bottom:calc(var(--u)*1.75); width:6px;
+  background:var(--tp-fast,var(--lume)) }
+.vt-count{
+  padding:4px 9px 3px; background:var(--tt-scr,#050706); color:var(--tt-yellow,#ffe44d); letter-spacing:.06em }
+.fvh-week{ position:relative; transition:background .15s ease }
+.fvh-week::before{ content:""; position:absolute; left:0; top:12px; bottom:12px; width:4px; background:var(--k,var(--tt-red,#ff4b4b)) }
+.fvh-week:nth-child(4n+2){ --k:var(--tt-green,#35ff78) }
+.fvh-week:nth-child(4n+3){ --k:var(--tt-yellow,#ffe44d) }
+.fvh-week:nth-child(4n+4){ --k:var(--tt-cyan,#3ff0ff) }
+.fvh-week:hover{ background:color-mix(in oklch,var(--lume) 5%,transparent) }
+.fvh-when{ color:var(--ink-2) }
+.fvh-when b{ font-family:var(--f-score); font-size:20px; letter-spacing:.03em; font-weight:400; margin-bottom:4px }
+.fvh-pick .club{ box-shadow:0 0 0 1px var(--rule) }
+.fvh-pick:hover .fvh-n{ text-decoration:underline; text-decoration-color:var(--lume); text-underline-offset:3px }
+.fvh-pick:focus-visible{ outline:3px solid var(--lume); outline-offset:4px }
+/* the small labels are teletext page keys: black, in the label colour */
+.fvh-k{
+  display:inline-block; width:fit-content; margin-bottom:4px; padding:3px 7px 2px; background:var(--tt-scr,#050706); color:var(--tt-cyan,#3ff0ff);
+  font:400 8px/1.2 var(--f-micro); letter-spacing:.08em }
+.fvh-lead{ align-items:center; gap:10px }
+.fvh-lead .fvh-k{ margin:0; color:var(--tt-yellow,#ffe44d) }
+.fvh-chip{
+  display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:6px 10px 5px; border:0; color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--rule-2),inset 3px 0 0 var(--fv-a,var(--lume)) ; padding-left:13px;
+  background:color-mix(in oklch,var(--lume) 4%,transparent) }
+.fvh-chip b{ color:var(--ink); font-family:var(--f-score); font-weight:400; font-size:13px; letter-spacing:.03em }
+.fvh-s{ color:var(--ink-2) }
+
+/* ---- 12. a phone: a sheet, with thumb-sized keys ------------------------------------------------------------------------ */
+@media (max-width:620px){
+  .fav-body, .fv-body{ padding:calc(var(--u)*4) calc(var(--u)*2.25) calc(var(--u)*2.25) }
+  /* the grab bar of a sheet, in blocks */
+  .fav-head::before, .fv-head::before{
+    content:""; display:block; width:44px; height:4px; margin:-14px auto 12px;
+    background:repeating-linear-gradient(90deg,var(--tp-edge) 0 8px,transparent 8px 10px) }
+  .fv-head::before{ margin-left:0 }
+  .fav-x, .fv-x{ top:14px; right:10px; width:44px; height:44px; font-size:22px }
+  .fav-nav, .fv-nav, .fav-back{ width:40px; height:40px }
+  .fav-go, .fav-skip, .fav-alt, .fv-go, .fv-skip, .fv-change{ min-height:50px }
+  .fav-links, .fv-foot{ justify-content:space-between; flex-wrap:nowrap; gap:4px }
+  .fav-later, .fav-never, .fv-later, .fv-never{ min-height:44px; padding:6px 4px 5px; gap:7px; font-size:8px; letter-spacing:.04em }
+  .fvh-week::before{ top:8px; bottom:8px }
+  .vt-lede{ padding-left:calc(var(--u)*2 + 14px) }
+  .vt-lede::before{ left:calc(var(--u)*2) }
+  .fvh-when b{ font-size:18px }
+}
+@media (max-width:420px){ .fav-title{ font-size:clamp(24px,8.2vw,34px) } }
+
+@media (prefers-reduced-motion:reduce){
+  .fav-go, .fv-go, .fvw-vote, .fav-x, .fv-x, .fav-nav, .fv-nav, .fav-back{ transition:none }
+  .fav-card:hover, .fv-card:hover{ transform:none }
+}

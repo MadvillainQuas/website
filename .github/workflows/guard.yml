@@ -613,6 +613,11 @@ jobs:
         # shooting distances grouped, impact with every on/off four factor and BPM/OBPM/DBPM/VORP; the players' table stays out
         run: node supabase/tests/collapsible-cards.test.mjs
 
+      - name: Stat explainers and the stat popup - every percentile bar explained, labels never overlap
+        # statinfo.js has an entry for every key in player.js BAR_SECTIONS (and its lower-is-better flag matches BAR_LOW);
+        # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart
+        run: node supabase/tests/statpop.test.mjs
+
       - name: The lazy SDK loader finds the SDK beside config.js
         # on a page in a folder (the player page) "vendor/supabase.js" relative to the document is nothing, so a signed-in platform
         # administrator never got a client there and was never offered the edit-links panel
@@ -1329,6 +1334,7 @@ jobs:
           node supabase/tests/situations-store.test.mjs
           node supabase/tests/sitstats.test.mjs
           node supabase/tests/sitpanel.test.mjs
+          node supabase/tests/reb-linked.test.mjs
 
       - name: The Android app's configuration agrees with itself
         # the package name in assetlinks.json, the build file and the manifest; version.json;

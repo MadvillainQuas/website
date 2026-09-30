@@ -506,6 +506,94 @@ table.ft tbody tr.picked td.stick{ background:color-mix(in oklch,var(--lume) 16%
 .wk-save .ep-btn[disabled]{ opacity:.6; cursor:progress }
 @media (max-width:640px){ .wk-save .ep-btn{ min-height:40px } }
 
+
+/* ============================================================================
+   TELETEXT UPGRADE (2026-09-30) — presentation only; every rule hangs off the classes
+   fulltable.js already draws (plus .heat, .asc / .desc, --club and .edge-r, added there).
+   The header band itself is in kit/teletext.css section 10, which owns the header colours.
+
+     * ZEBRA that reads as bands of one ink, and a HOVER in the row's own club colour with a
+       block of it on the left edge (--club, set per row from the team's colour)
+     * HEAT CELLS as rounded chips inside the cell rather than a wash over all of it: the
+       rank still reads at a glance, and a column of them reads as a column of lozenges
+     * the STICKY NAME COLUMN carries a soft shadow so a panned table shows what is under it
+     * PRESETS and COLUMN CHIPS as teletext colour blocks; the bar's buttons squared off
+     * PHONE: a fade on the right edge while there is more table to pan to
+   Light and dark both come from the tokens; only two rules need a light branch, because
+   the light theme pins the sticky cells to solid white above.
+   ============================================================================ */
+table.ft tbody td{ border-bottom-color:color-mix(in oklch,var(--ink) 8%,transparent) }
+table.ft tbody tr:nth-child(even) td{ background:color-mix(in oklch,var(--ink) 3.2%,transparent) }
+table.ft tbody tr:nth-child(even) td.stick{ background:color-mix(in oklch,var(--ink) 3.2%,var(--ground)) }
+table.ft tbody tr{ --club:var(--lume) }
+table.ft tbody tr:hover td{ background:color-mix(in oklch,var(--club) 15%,transparent) }
+table.ft tbody tr:hover td.stick{ background:color-mix(in oklch,var(--club) 15%,var(--ground)) }
+table.ft tbody tr:hover td.c0{ box-shadow:inset 3px 0 0 var(--club) }
+:root[data-theme="light"] table.ft tbody tr:hover td.stick{ background:color-mix(in oklch,var(--club) 13%,#ffffff) }
+:root[data-theme="light"] table.ft tbody tr:nth-child(even) td.stick{ background:color-mix(in oklch,var(--ink) 3.5%,#ffffff) }
+
+/* the rank is furniture: dim, so the eye goes to the name and then the figures */
+table.ft tbody td.c0{ color:var(--ink-3); font-size:10.5px }
+
+/* the sticky name column: the rule after it plus a shadow that only shows when something has
+   slid under it */
+table.ft th.c1, table.ft td.c1{
+  box-shadow:inset -1px 0 0 var(--rule-2,color-mix(in oklch,var(--lume) 35%,transparent)), 6px 0 8px -6px rgba(0,0,0,.45) }
+:root[data-theme="light"] table.ft th.c1, :root[data-theme="light"] table.ft td.c1{
+  box-shadow:inset -1px 0 0 var(--rule-2), 6px 0 8px -6px rgba(13,31,23,.22) }
+
+/* heat: a lozenge in the cell. --heat is the same colour heatStyle() has always chosen. */
+table.ft td.heat{ position:relative; isolation:isolate }
+table.ft td.heat::before{
+  content:''; position:absolute; z-index:-1; inset:5px 2px; border-radius:999px; background:var(--heat) }
+@media (max-width:820px){ .ft-host table.ft td.heat::before{ inset:6px 1px } }
+
+/* the player cell: the crest a touch larger and softly framed, the name in Archivo weight */
+.ft-crest{ width:22px; height:22px; border-radius:3px; box-shadow:0 0 0 1px color-mix(in oklch,var(--ink) 18%,transparent) }
+.ft-crest.has-img{ border-radius:3px }
+.ft-name{ gap:9px }
+.ft-name a:hover{ text-decoration:underline; text-underline-offset:3px }
+
+/* ---- presets: colour blocks, not outlines ---- */
+.ft-pills{ gap:6px; padding:12px 16px }
+.ft-pill{
+  border:0; border-radius:0; padding:8px 13px; letter-spacing:.06em;
+  background:color-mix(in oklch,var(--ink) 6%,var(--panel));
+  box-shadow:inset 0 -2px 0 var(--rule); color:var(--ink-2);
+}
+.ft-pill:hover{ color:var(--ink); box-shadow:inset 0 -2px 0 var(--aqua) }
+.ft-pill.on{
+  background:var(--lume); color:var(--on-accent); font-weight:400;
+  box-shadow:inset 0 -3px 0 var(--amber);
+}
+.ft-pill:focus-visible, .ft-col:focus-visible, .ft-bar .ft-btn:focus-visible{ outline:2px solid var(--lume); outline-offset:2px }
+.ft-pill.locked{ box-shadow:inset 0 -2px 0 var(--rule); background:transparent; border:1px dashed var(--rule-2) }
+:root[data-theme="light"] .ft-pill{ background:color-mix(in oklch,var(--ink) 5%,#ffffff); border:0; box-shadow:inset 0 -2px 0 var(--rule) }
+:root[data-theme="light"] .ft-pill.on{ background:var(--lume); box-shadow:inset 0 -3px 0 var(--amber); color:#ffffff }
+:root[data-theme="light"] .ft-pill.locked{ background:transparent; border:1px dashed var(--rule-2) }
+
+/* ---- the column drawer and quick filters: chips, lit blocks when on ---- */
+.ft-col{ border-radius:0; padding:6px 9px; border-color:var(--rule); color:var(--ink-2) }
+.ft-col:hover{ border-color:var(--rule-2) }
+.ft-col.on{ box-shadow:inset 0 -2px 0 var(--amber) }
+
+/* ---- the bar: squared, pixel-labelled, one lit edge ---- */
+.ft-bar{ background:var(--panel); border-bottom-color:var(--rule-2) }
+.ft-bar .ft-btn, .ft-bar .ep-btn{ border-radius:0 }
+.ft-bar .grow{ border-radius:0 }
+.ft-bar .grow:focus{ outline:2px solid var(--lume); outline-offset:0 }
+.ft-tally{ color:var(--ink-2) }
+
+/* ---- the phone: a fade on the right edge while there is more table to pan to ---- */
+@media (max-width:820px){
+  .ft-host .ft-wrap.edge-r, .ft-host .ft-head.edge-r{
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);
+            mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);
+  }
+  .ft-pills{ padding:10px 40px 10px 12px }
+}
+@media (prefers-reduced-motion:reduce){ .ft-pill, .ft-grip::after{ transition:none } }
+
 /* the site-wide units switch (units.js) beside the CSV button: the bar's own sizes */
 .ft-bar .ep-units button{ font-size:9px; padding:8px 11px 7px }
 @media (max-width:640px){ .ft-bar .ep-units button{ min-height:40px; font-size:10px; padding:0 11px } }

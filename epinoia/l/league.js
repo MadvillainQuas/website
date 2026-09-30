@@ -356,9 +356,11 @@ async function renderStandingsInto(pane, competition) {
     : `rank,gp,w,l,pts_for,pts_against,diff,league_points,deducted_points,streak,group_name,teams(${teamCols})`;
   const rows = await api(
     `standings?competition_id=eq.${competition.id}` +
-    `&select=${cols}` +
+    `&select=${cols},team_id` +
     `&order=group_name.asc,rank.asc`);
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return; }
+  /* the ELO column (sos.js's rating), once per render; a league without one draws the table as it was */
+  ELO_NOW = await loadElo();
 
   /* A CONFERENCE LEAGUE (0144) is read the college way: a table per
      conference, the division inside it, and two records per club. */
@@ -381,10 +383,10 @@ async function renderStandingsInto(pane, competition) {
 
 function groupTable(rows) {
   const wrap = el('div', 'ep-tw');
-  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '620px';
+  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '680px';
   const thead = el('thead'); const hr = el('tr');
-  ['#', 'TEAM', 'GP', 'W', 'L', 'PF', 'PA', 'DIFF', 'PTS', 'STREAK']
-    .forEach(h => hr.appendChild(el('th', null, h)));
+  ['#', 'TEAM', 'GP', 'W', 'L', 'PF', 'PA', 'DIFF', 'PTS', 'STREAK', 'ELO']
+    .forEach(h => hr.appendChild(h === 'ELO' ? eloHead() : el('th', null, h)));
   thead.appendChild(hr); t.appendChild(thead);
 
   const tb = el('tbody');
@@ -407,6 +409,7 @@ function groupTable(rows) {
     }
     tr.appendChild(pts);
     tr.appendChild(streakCell(r.streak));
+    tr.appendChild(eloCell(r.team_id));
     tb.appendChild(tr);
   });
   t.appendChild(tb); wrap.appendChild(t);
@@ -438,6 +441,41 @@ function diffCell(diff) {
   const d = el('td', null, (diff > 0 ? '+' : '') + diff);
   d.style.color = diff > 0 ? 'var(--good)' : (diff < 0 ? 'var(--bad)' : '');
   return d;
+}
+
+/* THE ELO COLUMN: sos.js's rating for every club, worked from the league's finalised games in scope
+   (every phase of the season, as the Strength of Schedule tab reads by default), 1500 the average.
+   One bounded read of the games' scores (the rating needs only the scores and the order of play),
+   kept for the page's life per scope. Null when there is nothing to show: the column is then drawn
+   empty rather than the table failing. */
+let ELO_NOW = null, ELO_CACHE = null;
+async function loadElo() {
+  const X = window.EpinoiaSOS;
+  if (!X || !X.eloRatings) return null;
+  const ids = scopeIds();
+  if (!ids.length) return null;
+  const key = ids.slice().sort().join(',');
+  try {
+    if (!ELO_CACHE || ELO_CACHE.key !== key) {
+      const games = await api(`games?competition_id=in.(${ids.join(',')})&status=in.(final,finalising)` +
+        `&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`);
+      const m = new Map();
+      X.eloRatings(games).forEach((r, id) => m.set(id, r.elo));
+      ELO_CACHE = { key, map: m };
+    }
+    return ELO_CACHE.map;
+  } catch (e) { console.warn('[elo]', e); return null; }
+}
+function eloHead() {
+  const th = el('th', 'elo', 'ELO');
+  th.title = 'ELO rating, updated after every game. 1500 is average.';
+  return th;
+}
+function eloCell(teamId) {
+  const v = ELO_NOW && teamId ? ELO_NOW.get(teamId) : null;
+  const td = el('td', 'elo', v == null ? '\u2014' : String(Math.round(v)));
+  td.title = 'ELO rating, updated after every game. 1500 is average.';
+  return td;
 }
 
 /* THE STREAK AS BLOCKS: one small square per game of the run, ticked green for a win, crossed red for
@@ -516,15 +554,15 @@ function recordCells(tr, w, l, gp, ST, strong) {
 
 function conferenceTable(rows, ST) {
   const wrap = el('div', 'ep-tw');
-  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '640px';
+  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '700px';
   const thead = el('thead');
   const top = el('tr');
-  [['', 2], ['CONFERENCE', 2], ['OVERALL', 2], ['', 4]].forEach(([h, n]) => {
+  [['', 2], ['CONFERENCE', 2], ['OVERALL', 2], ['', 5]].forEach(([h, n]) => {
     const th = el('th', 'spanhead', h); th.colSpan = n; top.appendChild(th);
   });
   const hr = el('tr');
-  ['#', 'TEAM', 'W-L', 'PCT', 'W-L', 'PCT', 'PF', 'PA', 'DIFF', 'STREAK']
-    .forEach(h => hr.appendChild(el('th', null, h)));
+  ['#', 'TEAM', 'W-L', 'PCT', 'W-L', 'PCT', 'PF', 'PA', 'DIFF', 'STREAK', 'ELO']
+    .forEach(h => hr.appendChild(h === 'ELO' ? eloHead() : el('th', null, h)));
   thead.append(top, hr); t.appendChild(thead);
 
   const tb = el('tbody');
@@ -539,6 +577,7 @@ function conferenceTable(rows, ST) {
     tr.appendChild(el('td', null, r.pts_against));
     tr.appendChild(diffCell(r.diff));
     tr.appendChild(streakCell(r.streak));
+    tr.appendChild(eloCell(r.team_id));
     tb.appendChild(tr);
   });
   t.appendChild(tb); wrap.appendChild(t);
@@ -547,10 +586,10 @@ function conferenceTable(rows, ST) {
 
 function overallTable(rows, ST) {
   const wrap = el('div', 'ep-tw');
-  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '680px';
+  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '740px';
   const thead = el('thead'); const hr = el('tr');
-  ['#', 'TEAM', 'CONF.', 'W-L', 'PCT', 'CONF. W-L', 'PF', 'PA', 'DIFF', 'STREAK']
-    .forEach(h => hr.appendChild(el('th', null, h)));
+  ['#', 'TEAM', 'CONF.', 'W-L', 'PCT', 'CONF. W-L', 'PF', 'PA', 'DIFF', 'STREAK', 'ELO']
+    .forEach(h => hr.appendChild(h === 'ELO' ? eloHead() : el('th', null, h)));
   thead.appendChild(hr); t.appendChild(thead);
 
   const tb = el('tbody');
@@ -566,6 +605,7 @@ function overallTable(rows, ST) {
     tr.appendChild(el('td', null, r.pts_against));
     tr.appendChild(diffCell(r.diff));
     tr.appendChild(streakCell(r.streak));
+    tr.appendChild(eloCell(r.team_id));
     tb.appendChild(tr);
   });
   t.appendChild(tb); wrap.appendChild(t);

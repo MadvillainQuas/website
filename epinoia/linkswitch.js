@@ -207,7 +207,7 @@ async function paintTeam(team, o) {
   const barSlot = host.appendChild(el('div', 'ls-slot'));
   const editSlot = host.appendChild(el('div', 'ls-edit'));
   let attached = false;
-  const attach = () => { if (!attached && o.sub && o.sub.parentNode) { o.sub.parentNode.appendChild(host); attached = true; } };
+  const attach = () => { if (!attached && o.sub && o.sub.parentNode) { (o.sub.parentNode.querySelector('.idactions') || o.sub.parentNode).appendChild(host); attached = true; } };
   function drawBar(l) {
     barSlot.textContent = '';
     const sw = teamSwitcher(l, team.id);
@@ -263,7 +263,7 @@ function paintPlayer(pl, linked, o) {
   const host = el('div', 'ls-row-host');
   const editSlot = host.appendChild(el('div', 'ls-edit'));
   let attached = false;
-  const attach = () => { if (!attached && o.sub && o.sub.parentNode) { o.sub.parentNode.appendChild(host); attached = true; } };
+  const attach = () => { if (!attached && o.sub && o.sub.parentNode) { (o.sub.parentNode.querySelector('.idactions') || o.sub.parentNode).appendChild(host); attached = true; } };
   adminEditor(pl, { kind: 'player', host: editSlot, linked, attach,
     redraw: async () => { const l = await call('linked_players', { p_player: pl.id }); draw(l); return l; } })
     .catch(() => { /* the page as it was */ });

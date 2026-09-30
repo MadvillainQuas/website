@@ -1,0 +1,42 @@
+name: Backfill stored player stats (rebounds, rim defence)
+
+# Manual only. Replays every finalised game's stored log with epinoia/engine.js and merges the
+# rebound-linked counters (rbTm, rbTmO, rbSf, rbSfO) and oc.oRimA / oc.oRimM into
+# player_game_stats.stats. Nothing else on a row is changed. See scripts/backfill_player_reb.mjs.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Count what would change, write nothing"
+        type: boolean
+        default: true
+      game_id:
+        description: "Only this game id (optional)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-stats
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Replay and merge
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          GAME_ID: ${{ github.event.inputs.game_id }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry); fi
+          if [ -n "$GAME_ID" ]; then args+=("$GAME_ID"); fi
+          node scripts/backfill_player_reb.mjs "${args[@]}"

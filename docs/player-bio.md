@@ -106,6 +106,7 @@ added to the ingest with neither.
 
 * **kosovo-superliga**: basketbolli.com lists players by name and licence number only; no player page, no bio in the LiveStats data.
 * **sb-league, sb-league-women, nlb-men, nlb-women**: swiss.basketball draws everything from Basketplan, whose player data is not published for reading (basketplan.ch disallows every path in robots.txt); no bio in the LiveStats data.
+* **cebl**: the league's own API (api.data.cebl.ca, the schedule's source) answers its players list with one empty record for every season asked (2024 to 2026, tried 30 Sep 2026), and its team rows carry no roster; no bio in the LiveStats data.
 * **Ages are never used**: HBBC, Basketball England, DAM, Slovak player pages and NKL print an age; a year from an age is right only to
   within a year, so it is not written.
 * **No weight anywhere**: LNB, Poland (plk.pl, the federation site, Puls Basketu), Basketball England, DAM, WBBL.

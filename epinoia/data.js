@@ -311,7 +311,8 @@ async function all(path, page = 1000) {
    again - and a second visit reads it from this browser. */
 const PLAYER_STAT_KEYS = Object.freeze(['min', 'pts', 'p2m', 'p2a', 'p3m', 'p3a', 'ftm', 'fta',
   'or', 'dr', 'ast', 'stl', 'blk', 'to', 'pf', 'fd', 'pm', 'ptsAst',
-  'rimA', 'rimM', 'midA', 'midM', 'paint', 'fast', 'sc', 'pot', 'dq', 'oc', 'sit']);
+  'rimA', 'rimM', 'midA', 'midM', 'paint', 'fast', 'sc', 'pot', 'dq', 'oc', 'sit',
+  'rbTm', 'rbTmO', 'rbSf', 'rbSfO']);
 const TRIM_SELECT = 'game_id,player_uuid,player_id,team_idx,' +
   PLAYER_STAT_KEYS.map(k => k + ':stats->' + k).join(',');
 

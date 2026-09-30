@@ -35,6 +35,7 @@ import os
 import re
 import sys
 import time
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -142,7 +143,17 @@ class Supabase:
 
     def rpc(self, fn: str, body: dict | None = None):
         r = self.s.post(f"{self.url}/rest/v1/rpc/{fn}", headers=self.h, json=body or {}, timeout=30)
-        self._ok(r); return r.json()
+        self._ok(r)
+        # A `returns void` function (heartbeat_season_backfill, progress_season_backfill,
+        # finish_season_backfill, recompute_standings...) gets back an EMPTY body from PostgREST, not
+        # "null" - and .json() on empty content raises JSONDecodeError, not a clean falsy value. That
+        # turned every finish_season_backfill call into a crash (caught deep in backfill_finish and
+        # logged as "could not close the backfill row"), so a backfill's row NEVER reached done/failed
+        # and just relied on the 90-minute lease to re-queue and repeat the same failure forever
+        # (first hit 2026-09-29: an ABA League backfill, whose adapter cannot take a season, bounced
+        # every cron pass instead of being marked failed once). Empty body -> None, as reset_league.py's
+        # DB.rpc() already does it.
+        return r.json() if r.text else None
 
     def select(self, table: str, query: str):
         r = self._again(lambda: self.s.get(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=30))
@@ -544,6 +555,39 @@ def default_competition_id(plat, src: dict, league_id: str, ac: dict) -> str | N
         return None
 
 
+def borrow_crests(sb: Supabase, league_id: str, run: dict) -> None:
+    """A CLUB THE SCHEDULE GIVES NO CREST FOR wears the one the same club has in another league. A federation's
+    schedule page carries a badge for most of its clubs and not all (the BBE hosted site: 14 of 18 in the EABL and
+    WEABL, the four left out being clubs that do have one in the NBL D1 or the other league), and the same club
+    under the same name is the same club. Only a BLANK is filled, only from an identically named club, and by the most
+    used of those crests; a club nobody has a crest for stays blank rather than guessed."""
+    plat = run.get("_platform")
+    if getattr(plat, "dry", False):
+        return
+    try:
+        mine = [t for t in sb.select_all("teams", f"league_id=eq.{league_id}&select=id,name,logo_path")
+                if not (t.get("logo_path") or "").strip()]
+        if not mine:
+            return
+        names_ = sorted({t["name"] for t in mine if t.get("name")})
+        got = 0
+        for nm in names_:
+            q = urllib.parse.quote(nm, safe="")
+            rows = sb.select("teams", f"name=eq.{q}&logo_path=not.is.null&select=logo_path")
+            urls = [r["logo_path"] for r in rows if r.get("logo_path") and not r["logo_path"].startswith("{")]
+            if not urls:
+                continue
+            # the same badge is stored as a different file per league and season: the most used one wins
+            url = max(sorted(set(urls)), key=urls.count)
+            for t in (t for t in mine if t.get("name") == nm):
+                sb.patch("teams", f"id=eq.{t['id']}", {"logo_path": url})
+                got += 1
+        if got:
+            print(f"   {got} club crest(s) borrowed from the same club in another league")
+    except Exception as e:
+        print(f"   (crest borrow skipped: {e})")
+
+
 def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
     """Every club on the schedule gets its crest from the schedule page itself (both sides of every
     fixture carry one), so a club's logo is on the site before its first game is fetched."""
@@ -579,6 +623,7 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
                 continue
     if n:
         print(f"   {n} club crest(s) taken from the schedule")
+    borrow_crests(sb, league_id, run)
     # THE FANS' DIARY IS NOT KEPT FROM HERE ANY MORE. This called notify_fixtures and the notify
     # function once per SOURCE on every discovery pass (~90 times a pass, every half hour), each one
     # a scan of every fixture for the reminder windows. pg_cron's epinoia-notify-tick has done that

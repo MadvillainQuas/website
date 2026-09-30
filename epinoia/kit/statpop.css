@@ -1,0 +1,101 @@
+/* ============================================================================
+   STAT POPUP (epinoia/statpop.js) and the '?' help panel: a ceefax-flavoured sheet. On a phone it is a bottom
+   sheet, from 700px a centred panel. Loaded BEFORE legibility.css. Pixel-face tracking stays <= .2em.
+   ============================================================================ */
+html.stp-lock{overflow:hidden}
+.stp-hit{cursor:pointer}
+.stp-hit:hover{box-shadow:0 0 0 1px var(--rule-2) inset}
+.stp-hit:focus-visible{outline:2px solid var(--team-a-ink,var(--lume));outline-offset:2px}
+
+.stp-back{position:fixed;inset:0;z-index:2000;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(2,8,5,.72);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.stp{position:relative;box-sizing:border-box;width:100%;max-width:640px;max-height:92vh;max-height:92dvh;overflow:auto;overscroll-behavior:contain;
+  padding:14px 16px calc(18px + env(safe-area-inset-bottom));background:var(--panel);color:var(--ink);
+  border:1px solid var(--rule-2);border-bottom:0;border-radius:16px 16px 0 0;
+  border-top:3px solid var(--team-a,var(--lume));font-family:var(--f-ui)}
+@media (min-width:700px){
+  .stp-back{align-items:center}
+  .stp{border-radius:14px;border-bottom:1px solid var(--rule-2);padding-bottom:18px}
+}
+.stp-head{display:flex;align-items:flex-start;gap:10px;margin:0 0 8px}
+.stp-title{flex:1;margin:0;font-family:var(--f-micro);font-weight:400;font-size:13px;line-height:1.35;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--team-a-ink,var(--lume))}
+.stp-x{appearance:none;flex:none;width:36px;height:36px;margin:-6px -6px 0 0;border:1px solid var(--rule-2);border-radius:8px;
+  background:transparent;color:var(--ink);font:400 22px/1 var(--f-ui);cursor:pointer}
+.stp-x:hover{background:var(--panel-2)}
+.stp-x:focus-visible{outline:2px solid var(--team-a-ink,var(--lume));outline-offset:2px}
+
+.stp-explain{margin:0 0 12px;padding:10px 12px;border-left:3px solid var(--team-a,var(--lume));background:var(--panel-2);border-radius:0 8px 8px 0}
+.stp-what{margin:0 0 8px;font-size:14px;line-height:1.45;font-weight:600}
+.stp-dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12.5px;line-height:1.45}
+.stp-dl dt{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
+.stp-dl dd{margin:0;color:var(--ink-2)}
+@media (max-width:420px){.stp-dl{grid-template-columns:1fr}.stp-dl dt{padding-top:6px}}
+
+.stp-facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.stp-fact{flex:1 1 76px;min-width:0;padding:8px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--panel-2)}
+.stp-fact b{display:block;font-family:var(--f-score);font-weight:400;font-size:22px;line-height:1.1;color:var(--ink)}
+.stp-fact b i{font-style:normal;font-size:13px;color:var(--ink-3)}
+.stp-fact span{display:block;margin-top:2px;font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.stp-main b{color:var(--team-a-ink,var(--lume))}
+
+.stp-chart{position:relative;width:100%;min-height:200px;border:1px solid var(--rule);border-radius:8px;background:var(--ground);touch-action:manipulation;outline:0}
+.stp-svg{display:block;max-width:100%;font-family:var(--f-ui)}
+.stp-grid{stroke:var(--rule);stroke-width:1;opacity:.6}
+.stp-axis{stroke:var(--rule-2);stroke-width:1}
+.stp-tick{fill:var(--ink-3);font-size:10px;font-family:var(--f-data)}
+.stp-axt{fill:var(--ink-2);font-size:10px;font-family:var(--f-micro);letter-spacing:.08em;text-transform:uppercase}
+.stp-better{fill:var(--good);font-size:10px;font-family:var(--f-micro);letter-spacing:.08em;text-transform:uppercase}
+.stp-avg{stroke:var(--amber);stroke-width:1.2;stroke-dasharray:4 3}
+.stp-avgl{fill:var(--amber);font-size:10px;font-family:var(--f-micro);letter-spacing:.06em}
+.stp-dots{fill:none;stroke:var(--ink-3);stroke-width:5;stroke-linecap:round;opacity:.42}
+.stp-mk-bg{fill:var(--team-a,var(--lume))}
+.stp-mk-in{fill:#fff;stroke:rgba(0,0,0,.7);stroke-width:2.2px;paint-order:stroke;font-size:8px;font-weight:800;font-family:var(--f-ui)}
+.stp-mk-wh{fill:#fff}
+.stp-mk-ring{fill:none;stroke:var(--ink);stroke-width:1.2}
+.stp-mk.subj .stp-mk-ring{stroke:var(--amber);stroke-width:2.4}
+.stp-lab{fill:var(--ink);font-size:10.5px;font-weight:700;paint-order:stroke;stroke:var(--ground);stroke-width:3px;stroke-linejoin:round}
+.stp-lab.subj{fill:var(--amber)}
+.stp-hover{fill:none;stroke:var(--team-a-ink,var(--lume));stroke-width:2;pointer-events:none}
+.stp-tip{position:absolute;z-index:2;pointer-events:none;max-width:70%;padding:6px 9px;border:1px solid var(--rule-2);border-radius:6px;
+  background:var(--panel);font-size:11.5px;line-height:1.4;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.stp-tip[hidden]{display:none}
+.stp-tip b{display:block;font-weight:800}
+.stp-tip span{display:block;color:var(--ink-2)}
+.stp-tip span b{display:inline;color:var(--ink)}
+.stp-empty{padding:28px 14px;text-align:center;font-size:13px;color:var(--ink-2)}
+.stp-note{margin:8px 0 0;font-size:11px;line-height:1.45;color:var(--ink-3)}
+
+/* ---- the '?' help button and its panel ---- */
+.stp-q{appearance:none;flex:none;margin-left:auto;align-self:center;width:26px;height:26px;padding:0;border:1px solid var(--rule-2);border-radius:50%;
+  background:transparent;color:var(--team-a-ink,var(--lume));font:400 12px/1 var(--f-micro);cursor:pointer}
+.sec-h .note~.stp-q{margin-left:0}
+.stp-q:hover,.stp-q[aria-expanded="true"]{background:var(--panel-2);border-color:var(--team-a-ink,var(--lume))}
+.stp-q:focus-visible{outline:2px solid var(--team-a-ink,var(--lume));outline-offset:2px}
+/* the one-line hint under the heading: small, quiet, one line */
+.stp-hint{margin:-4px 0 10px;padding:0 12px;text-align:center;font:400 9px/1.3 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.stp-q[aria-pressed="true"]{background:var(--team-a,var(--lume));border-color:var(--team-a,var(--lume));color:var(--bg,#fff)}
+
+/* EXPLAIN MODE: a small card slides open at the top of each statistic (statpop.js exNode). It is part of the statistic's own
+   box, so the box grows and the rows below make way: grid-template-rows animates 0fr -> 1fr, which needs no measured height */
+.stp-ex{display:grid;grid-template-rows:0fr;opacity:0;margin:0;transition:grid-template-rows .3s cubic-bezier(.2,.8,.2,1),opacity .25s ease,margin .3s ease;cursor:default}
+.stp-ex.open{grid-template-rows:1fr;opacity:1;margin:0 0 8px}
+.stp-ex-in{overflow:hidden;min-height:0}
+.stp-ex-card{padding:8px 10px;border:1px solid var(--rule-2);border-left:3px solid var(--team-a,var(--lume));border-radius:6px;
+  background:color-mix(in oklch,var(--team-a,var(--lume)) 9%,var(--panel-2));font-size:11.5px;line-height:1.4;color:var(--ink-2);
+  transform:translateY(8px);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.stp-ex.open .stp-ex-card{transform:none}
+.stp-ex-card b{display:block;margin:0 0 2px;font-weight:800;font-size:12px;color:var(--ink)}
+.stp-ex-card b i{font-style:normal;font:400 8.5px/1 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-left:6px}
+.stp-ex-card span{display:block}
+.stp-ex-card em{display:block;margin-top:3px;font-style:normal;color:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){.stp-ex,.stp-ex-card{transition:none}}
+
+/* the club page's headings are centred: the '?' sits in the top right corner instead of pushing the title left */
+.ep-hdr:has(>.stp-q){position:relative}
+.ep-hdr>.stp-q{position:absolute;right:12px;top:12px;margin:0}
+
+/* THE ? SITS IN THE TOP RIGHT CORNER of the heading it explains, whatever the teletext layer does to that heading's
+   layout (it stacks and centres it, which left the button hanging under the title) */
+.sec-h:has(>.stp-q){position:relative}
+.sec-h:has(>.stp-q)>.stp-q{position:absolute;right:12px;top:12px;margin:0}

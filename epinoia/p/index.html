@@ -15,20 +15,21 @@
 <title>Player · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=539"></script>
-<script src="../i18n.js?v=539" data-i18n-packs="report"></script>
-<script src="../glyphs.js?v=539" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=539">
-<link rel="stylesheet" href="../kit/sectitle.css?v=539">
-<link rel="stylesheet" href="../kit/linkswitch.css?v=539">
-<link rel="stylesheet" href="../kit/table.css?v=539">
-<link rel="stylesheet" href="../video.css?v=539">
-<link rel="stylesheet" href="../kit/nav.css?v=539">
-<link rel="stylesheet" href="../kit/sitpanel.css?v=539">
-<link rel="stylesheet" href="../kit/cards.css?v=539">
-<link rel="stylesheet" href="../kit/access.css?v=539">
+<script src="../appmode.js?v=540"></script>
+<script src="../i18n.js?v=540" data-i18n-packs="report"></script>
+<script src="../glyphs.js?v=540" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=540">
+<link rel="stylesheet" href="../kit/sectitle.css?v=540">
+<link rel="stylesheet" href="../kit/linkswitch.css?v=540">
+<link rel="stylesheet" href="../kit/table.css?v=540">
+<link rel="stylesheet" href="../kit/lineups.css?v=540">
+<link rel="stylesheet" href="../video.css?v=540">
+<link rel="stylesheet" href="../kit/nav.css?v=540">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=540">
+<link rel="stylesheet" href="../kit/cards.css?v=540">
+<link rel="stylesheet" href="../kit/access.css?v=540">
 <!-- the club's "released" button (offerRelease), styled with the injury report it feeds -->
-<link rel="stylesheet" href="../kit/wire.css?v=539">
+<link rel="stylesheet" href="../kit/wire.css?v=540">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -203,9 +204,12 @@
   table.shot td.shot-team{font-weight:600;font-size:13px;color:var(--ink);
     white-space:normal;min-width:6em}
 </style>
-<link rel="stylesheet" href="../kit/shotchart.css?v=539">
-<link rel="stylesheet" href="../kit/teletext.css?v=539">
-<link rel="stylesheet" href="../kit/legibility.css?v=539">
+<link rel="stylesheet" href="../kit/shotchart.css?v=540">
+<link rel="stylesheet" href="../kit/soschip.css?v=540">
+<link rel="stylesheet" href="../kit/teletext.css?v=540">
+<link rel="stylesheet" href="../kit/playerhero.css?v=540">
+<link rel="stylesheet" href="../kit/statpop.css?v=540">
+<link rel="stylesheet" href="../kit/legibility.css?v=540">
 </head>
 <body>
 <div class="ep-frame">
@@ -220,6 +224,7 @@
       <h1 id="name">—</h1>
       <div class="sub" id="sub"></div>
       <div class="vitals" id="vitals" hidden></div>
+      <div class="idactions" id="idactions"></div>
     </div>
   </div>
 
@@ -286,8 +291,13 @@
 
   <!-- the season's shooting on the box score's court, zone by zone (shotchart.js) -->
   <div class="sec" id="shotsec">
-    <div class="sec-h"><span class="idx">06</span><h2>Shot chart</h2></div>
-    <div id="shotchart"></div>
+    <div class="sec-h"><span class="idx">06</span><h2>Shot chart &amp; lineups</h2>
+      <span class="note" id="luNote"></span></div>
+    <!-- the lineups this player played in, to the right of the chart (stacked under it on a phone) -->
+    <div class="lu-pair">
+      <div class="lu-a"><div class="lu-ph">Shot chart</div><div id="shotchart"></div></div>
+      <div class="lu-b"><div class="lu-ph">Lineups he played in</div><div id="lulist"><div class="lu-empty">Loading lineups…</div></div></div>
+    </div>
   </div>
 
   <div class="foot">
@@ -296,37 +306,43 @@
     <span>Epinoia Network</span>
   </div>
 </div>
-<script src="../config.js?v=539" defer></script>
-<script src="../access.js?v=539" defer></script>
-<script src="../follow.js?v=539" defer></script>
-<script src="../teamcolour.js?v=539" defer></script>
-<script src="../bpm.js?v=539" defer></script>
-<script src="../season.js?v=539" defer></script>
-<script src="../data.js?v=539" defer></script>
-<script src="../boxscore.js?v=539" defer></script>
-<script src="../shotchart.js?v=539" defer></script>
-<script src="../upload.js?v=539" defer></script>
-<script src="../lineups.js?v=539" defer></script>
-<script src="../wowy.js?v=539" defer></script>
-<script src="../withstats.js?v=539" defer></script>
-<script src="withui.js?v=539" defer></script>
-<script src="../fulltable.js?v=539" defer></script>
-<script src="../video.js?v=539" defer></script>
-<script src="video.js?v=539" defer></script>
-<script src="../sitpanel.js?v=539" defer></script>
-<script src="../consistency.js?v=539" defer></script>
-<script src="../units.js?v=539" defer></script>
-<script src="../ages.js?v=539" defer></script>
-<script src="../cards.js?v=539" defer></script>
+<script src="../config.js?v=540" defer></script>
+<script src="../access.js?v=540" defer></script>
+<script src="../follow.js?v=540" defer></script>
+<script src="../teamcolour.js?v=540" defer></script>
+<script src="../bpm.js?v=540" defer></script>
+<script src="../season.js?v=540" defer></script>
+<script src="../data.js?v=540" defer></script>
+<script src="../boxscore.js?v=540" defer></script>
+<script src="../shotchart.js?v=540" defer></script>
+<script src="../upload.js?v=540" defer></script>
+<script src="../lineups.js?v=540" defer></script>
+<script src="../t/lineupui.js?v=540" defer></script>
+<script src="../wowy.js?v=540" defer></script>
+<script src="../withstats.js?v=540" defer></script>
+<script src="withui.js?v=540" defer></script>
+<script src="../memlock.js?v=540" defer></script>
+<script src="../fulltable.js?v=540" defer></script>
+<script src="../video.js?v=540" defer></script>
+<script src="video.js?v=540" defer></script>
+<script src="../sitpanel.js?v=540" defer></script>
+<script src="../consistency.js?v=540" defer></script>
+<script src="../units.js?v=540" defer></script>
+<script src="../ages.js?v=540" defer></script>
+<script src="../cards.js?v=540" defer></script>
+<script src="../statinfo.js?v=540" defer></script>
+<script src="../statpop.js?v=540" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box
      score reads, needed here by the weekly report's ledger -->
-<script src="../gamepct-data.js?v=539" defer></script>
-<script src="../gamepct.js?v=539" defer></script>
-<script src="../reportcard.js?v=539" defer></script>
-<script src="../weekly.js?v=539" defer></script>
-<script src="../linkswitch.js?v=539" defer></script>
-<script src="player.js?v=539" defer></script>
-<script src="../nav.js?v=539" defer></script>
-<script src="../xscroll.js?v=539" defer></script>
+<script src="../gamepct-data.js?v=540" defer></script>
+<script src="../gamepct.js?v=540" defer></script>
+<script src="../reportcard.js?v=540" defer></script>
+<script src="../weekly.js?v=540" defer></script>
+<script src="../sos.js?v=540" defer></script>
+<script src="sos-chip.js?v=540" defer></script>
+<script src="../linkswitch.js?v=540" defer></script>
+<script src="player.js?v=540" defer></script>
+<script src="../nav.js?v=540" defer></script>
+<script src="../xscroll.js?v=540" defer></script>
 </body>
 </html>
