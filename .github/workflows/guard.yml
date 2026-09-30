@@ -628,6 +628,12 @@ jobs:
         # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart
         run: node supabase/tests/statpop.test.mjs
 
+      - name: The chart lab - value transforms, regression, the address round trip, edited text, columns and their lock, names, export geometry
+        # chartlab.js: z-scores and percentiles agree with the tables' (lower is better turns them round), the ?cl= link round trips
+        # and caps and cleans what people type, the picker offers the tables' own columns and locks the events and zone ones
+        # through access.js, labels never overlap, and every export size lays out inside its canvas
+        run: node supabase/tests/chartlab.test.mjs
+
       - name: The lazy SDK loader finds the SDK beside config.js
         # on a page in a folder (the player page) "vendor/supabase.js" relative to the document is nothing, so a signed-in platform
         # administrator never got a client there and was never offered the edit-links panel
