@@ -124,25 +124,13 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
   const { data: heldRows } = await admin.from('snapshots').select('key,token,built_at,file:data->>file').like('key', 'season:%');
   const held = new Map((heldRows || []).map((r: any) => [r.key, r]));
 
-  /* WHAT PAGES ASK FOR: every competition on its own (a league page scoped to one), and each
-     league's newest season whole when it has more than one competition (global scouting, and a
-     league page's "all competitions"), keyed by the sorted ids as data.js looks it up. The
-     merged ones first: they serve the most readers. */
-  const singles: string[] = [];
-  const merged: string[][] = [];
-  const newestSeen = new Set<string>();
-  for (const s of seasons || []) {
-    const ids = (s.competitions || []).map((c: any) => c.id).filter(Boolean).sort();
-    ids.forEach((id: string) => singles.push(id));
-    if (!newestSeen.has(s.league_id)) {
-      newestSeen.add(s.league_id);
-      if (ids.length > 1) merged.push(ids);
-    }
-  }
+  /* WHAT PAGES ASK FOR (data.js seasonUnits, which tools/build-seasons.mjs reads the same way):
+     every competition on its own, and each league's newest season whole when it has more than
+     one competition, keyed by the sorted ids; the merged ones first */
+  const units: string[] = D.seasonUnits(seasons || []);
 
   /* the tokens, eight at a time: 94-byte answers, read as a signed-out visitor */
   const tokens = new Map<string, string | null>();
-  const units = [...merged.map(ids => ids.join(',')), ...singles];
   for (let i = 0; i < units.length; i += 8) {
     const part = units.slice(i, i + 8);
     const got = await Promise.all(part.map(u =>
@@ -150,7 +138,7 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
     part.forEach((u, k) => tokens.set(u, got[k]));
   }
 
-  let built = 0, current = 0, removed = 0, left = 0;
+  let built = 0, current = 0, removed = 0, left = 0, big = 0;
   for (const unit of units) {
     const key = 'season:' + unit;
     const tok = tokens.get(unit);
@@ -165,6 +153,10 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
       }
       continue;
     }
+    /* A BIG COMPETITION (data.js BIG_GAMES finished games) is built in GitHub Actions by
+       tools/build-seasons.mjs, a batch of games at a time: this function's two seconds of CPU
+       cannot sum one, and pages read the latest file meanwhile */
+    if (D.gamesIn(tok) > D.BIG_GAMES) { big++; continue; }
     const h: any = held.get(key);
     /* current: the file this token would be named, in this layout (snapFile carries both) */
     if (h && h.file === 'season/' + unit + '/' + snapFile(tok) && h.token === tok &&
@@ -196,7 +188,7 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
     await removeFiles(admin, unit, name);     // the versions before this one
     built++;
   }
-  return { built, current, removed, left };
+  return { built, current, removed, left, big };
 }
 
 /* A FINISHED GAME'S EVENT LOG IS A FILE (0156): snapshots/events/<game id>.json, one stable path

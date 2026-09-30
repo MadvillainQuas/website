@@ -209,6 +209,11 @@ table.ft td.neg{ color:var(--bad,var(--flare)) }
   color:var(--ink-3,color-mix(in oklch,var(--ink) 50%,transparent));
   font-family:var(--f-micro,ui-monospace,monospace); font-size:10px; line-height:2;
 }
+/* a big competition's numbers, from the last hourly build (stats.js) */
+.ft-asof{
+  padding:6px 2px 10px; color:var(--ink-3,color-mix(in oklch,var(--ink) 50%,transparent));
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:10px; letter-spacing:.04em;
+}
 
 /* the phone's sticky header strip (fulltable.js): empty and out of the way above the breakpoint */
 .ft-head{ display:none }

@@ -463,6 +463,13 @@ jobs:
           pip install requests
           python scripts/ingest/run_ingest_test.py
 
+      - name: A big league's payloads stay out of git (repo_feed false)
+        # run_ingest.repo_feed_of: a source that says "repo_feed": false (top level or adapter_config)
+        # writes no payloads or index to data/feed; every other source writes it as before
+        run: |
+          pip install requests
+          python scripts/ingest/repo_feed_test.py
+
       - name: A live game whose feed never says so is closed on the clock's word
         # BCB's Plymouth Raiders v Bristol Hurricanes, NBL Division One's London Elite v Greenwich
         # Titans, Czech 1. liga's Slavia Tygři Praha v Slavoj BK Litoměřice (2026-09-26/27): each
@@ -1318,6 +1325,14 @@ jobs:
         # takes HOME's podiums from it only for the same anchor, a signed-out reader, and
         # leagues the reader can see
         run: node supabase/tests/snapshots.test.mjs
+
+      - name: A big competition (NCAA, Tercera FEB) is summed a batch at a time and never read whole in a browser
+        # season.js addPlayers/addTeams: a season a batch of games at a time is the season read
+        # whole, bit for bit; data.js past BIG_GAMES finished games hands a page the latest built
+        # file (or `building`), refuses the rows, and refuses a builder not allowed big ones;
+        # tools/build-seasons.mjs builds only those, reading signed out and writing the file the
+        # snapshots function would have, which leaves them alone (big-seasons.yml, hourly)
+        run: node supabase/tests/big-seasons.test.mjs
 
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the

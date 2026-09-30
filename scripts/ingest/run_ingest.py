@@ -251,6 +251,20 @@ class RepoFeed:
         (self.root / "index.json").write_text(json.dumps({"updated": now_iso(), "competitions": comps}, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+def repo_feed_of(src: dict, feed: "RepoFeed | None") -> "RepoFeed | None":
+    """THE REPO FEED IS FOR THE LEAGUES THAT FIT IN IT. A game's raw payload is 370 KB on average
+    (257 of them were 93 MB of data/feed in September 2026); an NCAA Division I season is about 5,800
+    games, 2 GB, and Tercera FEB thousands more, which no git repository should carry, let alone commit
+    every hour. "repo_feed": false on a source (at its top level in config/ingest-sources.json, or in its
+    adapter_config, which a schedule_sources row carries) keeps its payloads and its index out of data/feed:
+    Supabase stays the authority for what is already done (external_games), and every payload is still
+    stored in the `feed` bucket, as every source's is. docs/large-leagues.md."""
+    if feed is None:
+        return None
+    flag = src.get("repo_feed", (src.get("adapter_config") or {}).get("repo_feed"))
+    return None if flag is False else feed
+
+
 def entry_for(b: GameBundle, prev: dict | None, raw_ref: str | None, sched: ScheduleGame | None = None) -> dict:
     tip = (sched.tipoff_at if sched else None) or b.tipoff_at or (prev or {}).get("date")
     return {
@@ -2760,6 +2774,7 @@ def main() -> int:
             return 0
     for src_i, src in enumerate(sources):
         adapter = get_adapter(src["adapter"])
+        sfeed = repo_feed_of(src, feed)          # None for a source kept out of git (repo_feed: false)
         run = {"source_id": src.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0}
         run_id = None
         if sb and src.get("id"):
@@ -2794,7 +2809,7 @@ def main() -> int:
                 try:
                     rows_ = (sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final&select=external_id,external_status,tipoff_at,home_name,away_name")
                              if sb else [dict(external_id=k, external_status=v.get("status"), tipoff_at=v.get("date"), home_name=v.get("home"), away_name=v.get("away"))
-                                         for k, v in (feed.known(src["code"]) if feed else {}).items() if v.get("status") != "final"])
+                                         for k, v in (sfeed.known(src["code"]) if sfeed else {}).items() if v.get("status") != "final"])
                 except Exception as exc:
                     print(f"   (live lookup failed: {exc})"); rows_ = []
                 for r in rows_:
@@ -2845,7 +2860,7 @@ def main() -> int:
             # What we already have. When Supabase is configured IT is the authority for "already
             # done" (a game only in the repo index still needs its Supabase rows + storage copy);
             # the repo index is merged in afterwards so index.json keeps every game it knew.
-            known_repo = feed.known(src["code"]) if feed else {}
+            known_repo = sfeed.known(src["code"]) if sfeed else {}
             known_db = {}
             stored: dict = {}       # external_id -> the row as stored, for the fixture pass below
             if sb:
@@ -2952,8 +2967,8 @@ def main() -> int:
                     except Exception as exc:
                         print(f"    (supabase feed write failed: {exc})")
                 entry = entry_for(b, prev, raw_ref, g)
-                if feed:
-                    feed.write_game(src["code"], b)
+                if sfeed:
+                    sfeed.write_game(src["code"], b)
                 entries[g.external_id] = entry
                 if sb:
                     try:
@@ -3017,8 +3032,8 @@ def main() -> int:
                             sb.rpc(fn, {"p_competition": cid})
                         except Exception:
                             pass
-                if feed and not args.live_only and not args.catch_up:
-                    feed.update_index(src, {k: v for k, v in entries.items() if v.get("hash") or v.get("date")})
+                if sfeed and not args.live_only and not args.catch_up:
+                    sfeed.update_index(src, {k: v for k, v in entries.items() if v.get("hash") or v.get("date")})
                 if sb:
                     try:
                         write_supabase_competition(sb, src, len([v for v in entries.values() if v.get("hash")]))

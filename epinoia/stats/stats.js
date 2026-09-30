@@ -130,10 +130,24 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
                   onScope: s => { scope = s; draw(); }, onConf: g => { conf = g; draw(); } });
         keep = X.keeper(M, scopeIds(), conf);
       }
+      /* A BIG COMPETITION (data.js BIG_GAMES) is summed hourly off the page: until the first
+         build it says so, and after that it says how old the numbers it shows are */
+      if (S.building) {
+        board.appendChild(el('div', 'ft-empty',
+          'This competition is big enough that its statistics are built on the server, hourly — the first build is on its way.'));
+        return;
+      }
       if (!S.players.length) {
         board.appendChild(el('div', 'ft-empty',
           'No statistics for that selection yet — these fill in as games are finalised.'));
         return;
+      }
+      /* (put in once the table is drawn: its renderer empties the host it is given) */
+      let asOf = null;
+      if (S.stale && S.stale.builtAt) {
+        const at = new Date(S.stale.builtAt);
+        if (isFinite(at)) asOf = el('div', 'ft-asof', 'As of ' +
+          at.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) + ' — rebuilt hourly, the newest games follow.');
       }
       /* a player's numbers are filed under the club he played for (the games) */
       const rows = S.players.filter(p => keep((S.teamOfPlayer && S.teamOfPlayer.get(p.id)) || p.teamId));
@@ -161,10 +175,11 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
         /* RAPM on request: it needs every stint of the scope, which means reading the
            logs of every game in it, so it is not paid for by somebody who only wanted
            points per game. The table's button calls this and puts the answer on the rows. */
-        rapm: window.EpinoiaRAPM
+        rapm: window.EpinoiaRAPM && S.games.length <= (D.BIG_GAMES || Infinity)      // a big competition's every log is not a button
           ? (onProgress => window.EpinoiaRAPM.season(D, S.games.map(g => g.id), onProgress))
           : null
       });
+      if (asOf) board.insertBefore(asOf, board.firstChild);
     }
 
     await draw();

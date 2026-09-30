@@ -573,6 +573,7 @@ function untrim(r) {
 async function season(competitionId, opts) {
   const trim = !!(opts && opts.trim);
   const keepRows = !(opts && opts.rows === false);
+  const allowBig = !!(opts && opts.allowBig);
   const list = (Array.isArray(competitionId) ? competitionId : [competitionId]).filter(Boolean);
   if (!list.length) return { games: [], players: [], teams: [], byId: {} };
   const scope = list.length === 1
@@ -602,56 +603,145 @@ async function season(competitionId, opts) {
       const snap = await seasonSnapshot(list.slice().sort().join(','), token);
       if (snap) { seasonCachePut(ckey, token, snap); return snap; }
     }
+    /* A BIG COMPETITION IS NEVER READ WHOLE HERE: the latest file built for it, or nothing yet
+       (see BIG_GAMES). Known from the token's count, before the games are even listed. */
+    if (!allowBig && gamesIn(token) > BIG_GAMES) return tooBig(list, opts, gamesIn(token));
   }
 
   const games = await all(`games?${scope}` +
     `&status=in.(final,finalising)&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`);
   if (!games.length) return { games: [], players: [], teams: [], byId: {} };
+  /* the same guard for a read that had no token to go on (a caller that keeps the rows, or a
+     count the server declined): the line from the latest file, and the rows never */
+  if (!allowBig && games.length > BIG_GAMES) {
+    if (keepRows) throw new Error('this competition is too big to read whole in a browser (' + games.length + ' games)');
+    return tooBig(list, opts, games.length);
+  }
 
   const ids = games.map(g => g.id);
   /* chunked so the `in.()` filter cannot outgrow a URL on a long season */
   const chunks = [];
-  for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
-
-  /* the player rows and the team rows together: neither needs the other to be
-     asked for, and waiting for the first before sending the second was a whole
-     round trip on every season (statsForGames below already asks for both at once) */
-  const [pgsParts, tgsParts] = await Promise.all([
-    Promise.all(chunks.map(c => trim
-      ? all(`player_game_stats?game_id=in.(${c.join(',')})&select=${TRIM_SELECT}`)
-          .then(rows => rows.map(untrim))
-      : all(`player_game_stats?game_id=in.(${c.join(',')})` +
-          `&select=game_id,player_uuid,player_id,team_idx,stats`))),
-    Promise.all(chunks.map(c =>
-      all(`team_game_stats?game_id=in.(${c.join(',')})&select=game_id,team_idx,stats`)))
-  ]);
-
-  const pgs = pgsParts.flat(), tgs = tgsParts.flat();
+  /* opts.batch, fewer games a batch, is for tests: a different batch asks the database different
+     questions, it may answer a game's rows in another order, and a float sum (a minutes total) can
+     then round 0.1 the other way. Pages and the builder both ask forty at a time. */
+  const per = Math.max(1, Math.min(40, (opts && +opts.batch) || 40));
+  for (let i = 0; i < ids.length; i += per) chunks.push(ids.slice(i, i + per));
   const byId = {};
   games.forEach(g => { byId[g.id] = g; });
 
+  /* A BATCH AT A TIME. Each batch of forty games - its player rows and its team rows, asked for
+     together - is added to the running sums as it comes, in order (season.js addPlayers /
+     addTeams), and let go unless the caller keeps the rows. The sums are the season a single
+     read of every row would give, to the last bit (the batches are added in the order the rows
+     would have been: measured on LNBP, a read-ahead of one batch or of four gives the one-pass
+     read's season exactly), and what is held is a batch, not the season: a page asks for every
+     batch at once, as before, and the builder of a big competition (tools/build-seasons.mjs) a
+     few at a time, `window` of them, so 140,000 rows are never in memory together. */
   const S = root.EpinoiaSeason;
-  const players = S.players(pgs, tgs);
-  const teamRows = S.teams(tgs, byId);
-
+  const accP = new Map(), accT = new Map();
   /* Which club each player belongs to, taken from the games they actually
      played — a season row has no side of its own, because a side is a property
      of a game. Last one wins, so a player who transferred is attributed to
      where they finished, which is what a season table shows. */
   const teamOfPlayer = new Map();
-  pgs.forEach(r => {
-    const g = byId[r.game_id];
-    const pid = r.player_uuid || r.player_id;
-    if (!g || !pid) return;
-    teamOfPlayer.set(pid, r.team_idx === 0 ? g.home_team_id : g.away_team_id);
-  });
+  const keptP = [], keptT = [];
+  const readBatch = c => Promise.all([
+    trim
+      ? all(`player_game_stats?game_id=in.(${c.join(',')})&select=${TRIM_SELECT}`).then(rows => rows.map(untrim))
+      : all(`player_game_stats?game_id=in.(${c.join(',')})` +
+          `&select=game_id,player_uuid,player_id,team_idx,stats`),
+    all(`team_game_stats?game_id=in.(${c.join(',')})&select=game_id,team_idx,stats`)
+  ]);
+  const ahead = Math.max(1, (opts && +opts.window) || chunks.length);
+  const pending = [];
+  let next = 0;
+  const launch = () => {
+    while (next < chunks.length && pending.length < ahead) {
+      const p = readBatch(chunks[next++]);
+      p.catch(() => { /* answered where it is awaited, in its turn */ });
+      pending.push(p);
+    }
+  };
+  launch();
+  while (pending.length) {
+    const [pgs, tgs] = await pending.shift();
+    launch();
+    S.addPlayers(accP, pgs, tgs);
+    S.addTeams(accT, tgs, byId);
+    pgs.forEach(r => {
+      const g = byId[r.game_id];
+      const pid = r.player_uuid || r.player_id;
+      if (!g || !pid) return;
+      teamOfPlayer.set(pid, r.team_idx === 0 ? g.home_team_id : g.away_team_id);
+    });
+    if (keepRows) { pgs.forEach(r => keptP.push(r)); tgs.forEach(r => keptT.push(r)); }
+  }
 
+  const players = S.finishPlayers(accP);
+  const teamRows = S.finishTeams(accT);
   S.attachBPM(players, teamRows, teamOfPlayer);
 
   const out = { games, byId, players, teams: teamRows, teamOfPlayer };
-  if (keepRows) { out.pgs = pgs; out.tgs = tgs; }
+  if (keepRows) { out.pgs = keptP; out.tgs = keptT; }
   else if (ckey) seasonCachePut(ckey, token, out);
   return out;
+}
+
+/* ------------------------------------------------------- the season files ---
+   WHICH SEASONS HAVE A FILE: every competition on its own (a league page scoped to one), and
+   each league's newest season whole when it has more than one competition (global scouting,
+   and a league page's "all competitions"), keyed by the sorted ids as season() looks it up;
+   the merged ones first, since they serve the most readers. `seasons` newest first, each with
+   its competitions. The snapshots function and tools/build-seasons.mjs both ask this. */
+function seasonUnits(seasons) {
+  const singles = [], merged = [], newestSeen = new Set();
+  (seasons || []).forEach(s => {
+    const ids = (s.competitions || []).map(c => c && c.id).filter(Boolean).sort();
+    ids.forEach(id => singles.push(id));
+    if (!newestSeen.has(s.league_id)) {
+      newestSeen.add(s.league_id);
+      if (ids.length > 1) merged.push(ids.join(','));
+    }
+  });
+  return merged.concat(singles);
+}
+
+/* ------------------------------------------------------ a big competition ---
+   BIG_GAMES FINISHED GAMES AND A COMPETITION IS NOT SUMMED IN A BROWSER, NOR BY THE SNAPSHOTS
+   FUNCTION. The biggest on the platform in September 2026 had 240; an NCAA Division I season
+   is about 5,800 games and 140,000 player rows (112 MB trimmed), which no phone reads and
+   which the function's two seconds of CPU cannot sum. Such a competition is built by
+   tools/build-seasons.mjs in GitHub Actions (big-seasons.yml, hourly), a batch at a time, into
+   the same file every page already reads; the function leaves it alone.
+
+   And a page takes the LATEST file built for it, when the current one is not there yet,
+   rather than the rows: a season an hour behind at worst, never a 112 MB read. `stale` says
+   when that file was built; `building` says there is none yet (the first build after a big
+   league is added). Neither is kept in this browser, so the current file is read as soon as
+   it exists. */
+const BIG_GAMES = 800;
+/* the count half of a token ("5812@2026-...") */
+function gamesIn(token) { const n = parseInt(String(token || ''), 10); return isFinite(n) ? n : 0; }
+/* a builder (snapshot: false) that meets one is refused outright: handing it the latest file would
+   have it save an older season under the newer token */
+function tooBig(list, opts, n) {
+  if (opts && opts.snapshot === false) return Promise.reject(new Error('too big for this builder (' + n + ' games): tools/build-seasons.mjs builds it'));
+  return bigSeason(list);
+}
+async function bigSeason(list) {
+  const key = 'season:' + list.slice().sort().join(',');
+  try {
+    const rows = await get(`snapshots?key=eq.${encodeURIComponent(key)}&select=token,built_at,file:data->>file`);
+    const r = rows && rows[0];
+    if (r && r.file) {
+      const res = await fetch(`${CFG().supabaseUrl}/storage/v1/object/public/snapshots/${String(r.file).split('/').map(encodeURIComponent).join('/')}`);
+      if (res.ok) {
+        const j = await res.json();
+        if (j && j.data) return Object.assign(unpackSeason(j.data), { stale: { token: r.token, builtAt: r.built_at } });
+      }
+    }
+  } catch (_) { /* nothing built yet, or a blip: the same answer */ }
+  return { games: [], players: [], teams: [], byId: {}, teamOfPlayer: new Map(), building: true };
 }
 
 /* --------------------------------------------------- the games' team lines ---
@@ -959,5 +1049,5 @@ function pickSeason(seasons, ref) {
 
 return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, playerMeta, teamMeta,
          releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile,
-         pack, unpack, packMap, unpackMap, packSeason, unpackSeason };
+         pack, unpack, packMap, unpackMap, packSeason, unpackSeason, BIG_GAMES, gamesIn, seasonUnits };
 }));

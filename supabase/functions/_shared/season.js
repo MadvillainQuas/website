@@ -234,6 +234,20 @@ function teamLine(stats) {
    tgs   team_game_stats rows:   {game_id, team_idx, stats}
    meta  optional {playerId -> {name, jersey, teamName, ...}}                  */
 function players(pgs, tgs, meta) {
+  return finishPlayers(addPlayers(new Map(), pgs, tgs), meta);
+}
+
+/* A SEASON A BATCH OF GAMES AT A TIME. players() is these two: addPlayers sums a batch of
+   games' rows into `acc` (a Map, id -> the running sums), and finishPlayers turns the sums
+   into season lines. Every number players() keeps is a sum over the rows, so a season added
+   up a batch at a time - each batch's player rows with ITS OWN games' team lines - is the
+   season read whole, to the last bit when the batches come in the order the rows would have:
+   a competition too big to hold in memory at once (NCAA: 140,000 player rows a season) is
+   summed forty games at a time (data.js season, stream). */
+function finishPlayers(acc, meta) {
+  return [...acc.values()].map(A => finishPlayer(A, meta && meta[A.id]));
+}
+function addPlayers(acc, pgs, tgs) {
   /* index the team lines so a player-game can reach its own team and the
      opponent it actually faced, which the rate denominators need */
   const teamsBy = new Map();
@@ -241,8 +255,6 @@ function players(pgs, tgs, meta) {
     if (!teamsBy.has(r.game_id)) teamsBy.set(r.game_id, {});
     teamsBy.get(r.game_id)[r.team_idx] = teamLine(r.stats);
   });
-
-  const acc = new Map();
 
   (pgs || []).forEach(row => {
     const id = row.player_uuid || row.player_id;
@@ -335,7 +347,7 @@ function players(pgs, tgs, meta) {
     }
   });
 
-  return [...acc.values()].map(A => finishPlayer(A, meta && meta[A.id]));
+  return acc;
 }
 
 function blankPlayer(id) {
@@ -545,7 +557,16 @@ function finishPlayer(A, m) {
 
 /* --------------------------------------------------------------- teams ------ */
 function teams(tgs, gamesById) {
-  const acc = new Map();
+  return finishTeams(addTeams(new Map(), tgs, gamesById));
+}
+function finishTeams(acc) {
+  return [...acc.values()].map(finishTeam);
+}
+/* a batch of games' team rows into `acc` (id -> the running sums). The opponents' pass reads the
+   other side of each game from the same batch, which a batch of whole games always holds, and adds
+   to each club's opponent sums in the order its games came, as the one pass over a season did */
+function addTeams(acc, tgs, gamesById) {
+  const opp = new Map();                           // this batch's opponent keys, club by club
 
   (tgs || []).forEach(row => {
     const g = (gamesById && gamesById[row.game_id]) || null;
@@ -576,15 +597,16 @@ function teams(tgs, gamesById) {
 
     /* the opponent's line in the same game is what makes the defensive four
        factors possible: a defence is only describable relative to what it faced */
-    A.opp.push(row.game_id + ':' + (1 - row.team_idx));
+    if (!opp.has(A)) opp.set(A, []);
+    opp.get(A).push(row.game_id + ':' + (1 - row.team_idx));
   });
 
   /* second pass for opponent aggregates */
   const byGameSide = new Map();
   (tgs || []).forEach(r => byGameSide.set(r.game_id + ':' + r.team_idx, teamLine(r.stats)));
 
-  acc.forEach(A => {
-    A.oppAgg = A.opp.reduce((o, key) => {
+  opp.forEach((keys, A) => {
+    A.oppAgg = keys.reduce((o, key) => {
       const T = byGameSide.get(key);
       if (!T) return o;
       ['pts','fgm','fga','fg3m','fg3a','ftm','fta','oreb','dreb','ast','stl','blk','tov','possessions']
@@ -596,17 +618,17 @@ function teams(tgs, gamesById) {
         addSit(E.n, T.sit);
       }
       return o;
-    }, { pts:0,fgm:0,fga:0,fg3m:0,fg3a:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,tov:0,possessions:0 });
+    }, A.oppAgg || { pts:0,fgm:0,fga:0,fg3m:0,fg3a:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,tov:0,possessions:0 });
   });
 
-  return [...acc.values()].map(finishTeam);
+  return acc;
 }
 
 function blankTeam(id) {
   return { id, gp:0, pts:0, fgm:0, fga:0, fg3m:0, fg3a:0, ftm:0, fta:0,
     oreb:0, dreb:0, ast:0, stl:0, blk:0, tov:0, paint:0, fast:0, sc:0, pot:0,
     bench:0, fouls:0, minutes:0, possessions:0, rimA:0, rimM:0, midA:0, midM:0,
-    for:0, against:0, opp:[], oppAgg:null, ev:null, evd:null };
+    for:0, against:0, oppAgg:null, ev:null, evd:null };
 }
 
 function finishTeam(A) {
@@ -833,7 +855,7 @@ function attachBPM(playerRows, teamRows, teamOfPlayer) {
   return playerRows;
 }
 
-return { players, teams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS,
+return { players, teams, addPlayers, finishPlayers, addTeams, finishTeams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS,
          positionValue, positionGroup, positionGroups, positionLabel, POS_GROUPS };
 }));
 

@@ -1,0 +1,56 @@
+name: Big seasons (the competitions too big for the snapshots function)
+
+# Every competition with more than epinoia/data.js BIG_GAMES finished games (800: an NCAA or a
+# Tercera FEB season, not any league on the platform in 2026) is summed here, a batch of forty
+# games at a time, into the same season file every page reads. The snapshots function leaves such
+# a competition alone (it has two seconds of CPU a call; an NCAA season is 140,000 player rows),
+# and a page reads the latest file built for it meanwhile, never its rows. See
+# tools/build-seasons.mjs and docs/large-leagues.md.
+#
+# Hourly, so a big league's statistics are at most an hour behind its box scores. With no big
+# competition on the platform a run reads a token per season (about a hundred 94-byte answers)
+# and stops.
+on:
+  schedule:
+    - cron: "25 * * * *"
+  workflow_dispatch:
+    inputs:
+      unit:
+        description: "Only this unit: a competition id, or a league season's ids sorted and comma-joined (optional)"
+        required: false
+      dry_run:
+        description: "Say what would be built, write nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: big-seasons
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 50
+    steps:
+      # the page's own modules and the builder, not the repository's archived feeds
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            epinoia
+            tools
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Build the big seasons
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          UNIT: ${{ github.event.inputs.unit }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ -n "$UNIT" ]; then args+=(--unit "$UNIT"); fi
+          node tools/build-seasons.mjs "${args[@]}"

@@ -831,7 +831,7 @@ async function renderLeaders() {
     rows,
     playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
     /* the same on-request RAPM as the season statistics page: every stint in the scope */
-    rapm: window.EpinoiaRAPM
+    rapm: window.EpinoiaRAPM && S.games.length <= (EpinoiaData.BIG_GAMES || Infinity)   // a big competition's every log is not a button
       ? (onProgress => window.EpinoiaRAPM.season(EpinoiaData, S.games.map(g => g.id), onProgress))
       : null
   });
