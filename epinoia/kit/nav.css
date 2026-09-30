@@ -637,6 +637,17 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
   .ep-nav.drawer-open .acct{ flex-direction:column }
 }
 
+/* ---- phones: the page's scroll mark (nav.js scrollMark): a slim track on the right edge, above the bottom bar, with a
+   thumb where the reader is, so a page that goes on below the screen says so. It takes no touches. ---- */
+.ep-scrollmark{display:none}
+@media (max-width:820px){
+  .ep-scrollmark.on{display:block;position:fixed;z-index:60;right:2px;width:5px;pointer-events:none;border-radius:5px;
+    top:calc(env(safe-area-inset-top,0px) + 10px);bottom:calc(66px + env(safe-area-inset-bottom,0px));
+    background:color-mix(in oklch,var(--ink) 20%,transparent)}
+  .ep-scrollmark span{display:block;width:100%;border-radius:4px;background:var(--lume);box-shadow:0 0 0 1px color-mix(in oklch,var(--ground,#000) 40%,transparent)}
+  body.league-themed .ep-scrollmark span{background:var(--league-a,var(--lume))}
+}
+
 /* ---- phones: the tab bar (nav.js paintTabbar) ---- */
 .ep-tabbar{ display:none }
 @media (max-width:820px){

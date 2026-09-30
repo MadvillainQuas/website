@@ -615,6 +615,8 @@ function mountPartners(o) {
           const { error: e } = await sb.rpc('set_official_partner', { p_kind: r.kind, p_id: r.id, p_on: want });
           sw.disabled = false;
           if (e) { sw.checked = !want; return say(errText(e), 'err'); }
+          /* this browser's copy of the list (feedrank.js, kept ten minutes) goes, so the pill shows here at once */
+          try { localStorage.removeItem('epinoia_feed_partners'); } catch (_) { /* nothing kept */ }
           say(want ? r.name + ' is an official partner.' : r.name + ' is no longer an official partner.', 'ok');
           draw();
         });

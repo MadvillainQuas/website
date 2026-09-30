@@ -74,7 +74,7 @@ const W = Object.freeze({
   OFF_KEY: 'epinoia_feed_v1_off',      // '1' when the reader has switched personalisation off (kept through a reset)
   SESSION_KEY: 'epinoia_feed_s',       // sessionStorage: the seconds counted per league in this tab
   PARTNERS_KEY: 'epinoia_feed_partners', LEAGUES_KEY: 'epinoia_feed_leagues',   // public lists, cached
-  PARTNERS_TTL_MS: HOUR, LEAGUES_TTL_MS: 12 * HOUR, ABSENT_TTL_MS: 30 * 60e3,
+  PARTNERS_TTL_MS: 10 * 60e3, LEAGUES_TTL_MS: 12 * HOUR, ABSENT_TTL_MS: 30 * 60e3,
   SIG_KEY: 'epinoia_feed_sig', SIG_TTL_MS: 30 * 60e3, SIG_MAX: 200,       // sessionStorage: what a tab was told of match reports' games
 
   /* time */
@@ -699,7 +699,7 @@ function createNet(o) {
         try { const l = await call('rpc', 'rpc/official_partners', {}); writeCache(W.PARTNERS_KEY, Array.isArray(l) ? l : []); return partnerSet(l); }
         catch (e) {
           /* a database without 0201 answers 404: none, and not asked again for a while (every page would ask) */
-          if (e && e.status === 404) writeCache(W.PARTNERS_KEY, [], W.PARTNERS_TTL_MS - W.ABSENT_TTL_MS);
+          if (e && e.status === 404) writeCache(W.PARTNERS_KEY, [], Math.max(0, W.PARTNERS_TTL_MS - W.ABSENT_TTL_MS));
           return new Set();
         }
       });

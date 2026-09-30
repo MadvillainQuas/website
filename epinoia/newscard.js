@@ -462,7 +462,8 @@ function hero(o) {
   inner.appendChild(mark(b, 'pc-disc'));
   const txt = el('div', 'pc-hero-txt');
   if (x.kicker) txt.appendChild(el('div', 'pc-hero-kick', x.kicker));
-  if (x.partner) txt.appendChild(partnerPill('in-hero'));
+  /* an official partner's head wears it in full: the gold ring and band (kit/newscard.css .pc-hero-partner) and the pill */
+  if (x.partner) { h.classList.add('pc-hero-partner'); txt.appendChild(partnerPill('in-hero')); }
   txt.appendChild(el('h1', 'pc-hero-name', x.name || ''));
   if (x.tagline) txt.appendChild(el('p', 'pc-hero-tag', x.tagline));
   const acts = el('div', 'pc-hero-acts');
@@ -499,7 +500,7 @@ function masthead(o) {
   if (b.href) { who.href = b.href; who.title = 'More from ' + (b.name || 'them'); }
   who.append(mark({ name: b.name, logo: https(b.logo) }, 'pc-logo'), el('span', null, b.name || ''));
   top.appendChild(who);
-  if (x.partner) top.appendChild(partnerPill('in-mast'));
+  if (x.partner) { h.classList.add('pc-hero-partner'); top.appendChild(partnerPill('in-mast')); }
   if (x.bell) top.appendChild(x.bell);
   inner.appendChild(top);
   if (x.kind) inner.appendChild(el('div', 'pc-mast-kind', x.kind));
@@ -515,8 +516,10 @@ function masthead(o) {
    here. list: [{ name, logo, colour, href, note, partner (true: the official-partner pill) }] */
 function brands(list) {
   const row = el('div', 'pc-brands');
-  (list || []).forEach(x => {
-    const a = el('a', 'pc-brand');
+  /* the official partners first, in their gold (the order is otherwise the caller's) */
+  const all = (list || []).map((x, i) => ({ x, i })).sort((a, b) => (b.x.partner ? 1 : 0) - (a.x.partner ? 1 : 0) || a.i - b.i).map(y => y.x);
+  all.forEach(x => {
+    const a = el('a', 'pc-brand' + (x.partner ? ' pc-brand-partner' : ''));
     if (x.href) a.href = x.href;
     a.style.setProperty('--bc', hex(x.colour) || tint(x.name));
     const words = el('span', 'pc-brand-w');

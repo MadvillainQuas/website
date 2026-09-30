@@ -2888,6 +2888,39 @@
     if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', () => sizeDeck(false));
   }
 
+  /* THE PAGE'S SCROLL MARK ON A PHONE (2026-09-30). A phone hides its scrollbar until the page is moved, so nothing says a
+     page goes on below the screen. A slim track down the right edge, between the top and the bottom bar, with a thumb
+     where the reader is: shown whenever the page is longer than the screen, never over the open menu, and never in the
+     way (it takes no touches and is not read out). */
+  (function scrollMark() {
+    if (!window.matchMedia || !document.body) return;
+    const mq = window.matchMedia('(max-width:820px)');
+    const bar = el('div', 'ep-scrollmark');
+    bar.setAttribute('aria-hidden', 'true');
+    const thumb = bar.appendChild(el('span'));
+    document.body.appendChild(bar);
+    let raf = 0;
+    const draw = () => {
+      raf = 0;
+      const se = document.scrollingElement || document.documentElement;
+      const vh = window.innerHeight, sh = se.scrollHeight;
+      const on = mq.matches && !document.body.classList.contains('nav-drawer-open') && sh > vh + 40;
+      bar.classList.toggle('on', on);
+      if (!on) return;
+      const track = bar.clientHeight;
+      const h = Math.max(28, track * vh / sh);
+      const y = (track - h) * Math.min(1, Math.max(0, se.scrollTop / Math.max(1, sh - vh)));
+      thumb.style.height = h + 'px';
+      thumb.style.transform = 'translateY(' + y + 'px)';
+    };
+    const ask = () => { if (!raf) raf = requestAnimationFrame(draw); };
+    window.addEventListener('scroll', ask, { passive: true });
+    window.addEventListener('resize', ask);
+    if (window.ResizeObserver) new ResizeObserver(ask).observe(document.body);
+    if (window.MutationObserver) new MutationObserver(ask).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    ask();
+  })();
+
   /* The assignment pages already make repoints the rail and drills it in, with
      no page edit. This is how a page that resolved its league from the network
      rather than from ?l= ends up on the right view. */
