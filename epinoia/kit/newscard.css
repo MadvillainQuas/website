@@ -8,12 +8,12 @@
 .pc-grid{display:grid;gap:calc(var(--u,4px)*3);grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
 @media (min-width:1000px){
   .pc-grid{grid-template-columns:repeat(6,1fr)}
-  .pc-grid > .pc{grid-column:span 2}
+  .pc-grid > .pc{grid-column:span 2;min-width:0}   /* a grid item may shrink below its longest line, or the lead's words push the row past the window */
   /* THE LEAD, as a front page leads: the whole width, the picture and the words side by side */
   .pc-grid > .pc.pc-lead{grid-column:1 / -1}
   .pc-grid > .pc-lead .pc-main{flex-direction:row}
   .pc-grid > .pc-lead .pc-plate{flex:0 0 58%;aspect-ratio:16/9}
-  .pc-grid > .pc-lead .pc-body{flex:1 1 auto;justify-content:center;padding:26px 30px 20px 33px;gap:12px}
+  .pc-grid > .pc-lead .pc-body{flex:1 1 0;min-width:0;justify-content:center;padding:26px 30px 20px 33px;gap:12px}
   .pc-grid > .pc-lead .pc-title{font-size:clamp(22px,2.3vw,32px);-webkit-line-clamp:4}
   .pc-grid > .pc-lead .pc-sum{font-size:15.5px;-webkit-line-clamp:5}
 }

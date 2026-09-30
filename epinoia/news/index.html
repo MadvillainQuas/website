@@ -48,6 +48,11 @@
 <link rel="stylesheet" href="../kit/newscard.css?v=552">
 <link rel="stylesheet" href="../kit/access.css?v=552">
 <style>
+  /* THE SITE'S SCALE. mode.js marks any page opened without ?l= as the platform splash, and the kit turns the 150% zoom
+     off for the splash (epinoia-kit.css 2b), which left the all-leagues news archive at 100% beside every other page.
+     The archive is an ordinary page: the same two steps as the kit, one notch more specific than its opt-out. */
+  @media (min-width:1000px){ html.m-splash body{zoom:1.25} }
+  @media (min-width:1200px){ html.m-splash body{zoom:1.5} }
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
