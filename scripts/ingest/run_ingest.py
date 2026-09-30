@@ -142,7 +142,17 @@ class Supabase:
 
     def rpc(self, fn: str, body: dict | None = None):
         r = self.s.post(f"{self.url}/rest/v1/rpc/{fn}", headers=self.h, json=body or {}, timeout=30)
-        self._ok(r); return r.json()
+        self._ok(r)
+        # A `returns void` function (heartbeat_season_backfill, progress_season_backfill,
+        # finish_season_backfill, recompute_standings...) gets back an EMPTY body from PostgREST, not
+        # "null" - and .json() on empty content raises JSONDecodeError, not a clean falsy value. That
+        # turned every finish_season_backfill call into a crash (caught deep in backfill_finish and
+        # logged as "could not close the backfill row"), so a backfill's row NEVER reached done/failed
+        # and just relied on the 90-minute lease to re-queue and repeat the same failure forever
+        # (first hit 2026-09-29: an ABA League backfill, whose adapter cannot take a season, bounced
+        # every cron pass instead of being marked failed once). Empty body -> None, as reset_league.py's
+        # DB.rpc() already does it.
+        return r.json() if r.text else None
 
     def select(self, table: str, query: str):
         r = self._again(lambda: self.s.get(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=30))

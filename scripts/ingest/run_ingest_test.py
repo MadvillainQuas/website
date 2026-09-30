@@ -224,5 +224,39 @@ ok("the season id and the game id are looked up once per run", 'pf["season"]' in
 src_fp = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedplatform.py"), encoding="utf-8").read()
 ok("a club is entered in a competition once per process, not on every poll", '"comp_team"' in src_fp and "if ck not in seen" in src_fp)
 
+print("\n-- Supabase.rpc() and a `returns void` function's empty body (2026-09-29: a backfill's row never")
+print("   reached done/failed and bounced every 90-minute lease re-queue forever, e.g. ABA League 2025-26)")
+
+
+class _Resp:
+    def __init__(self, text, status=200):
+        self.text, self.status_code = text, status
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        import json as _json
+        return _json.loads(self.text)
+
+
+class _VoidSession:
+    """What PostgREST actually sends back for `returns void`: 200/204, EMPTY body - not "null"."""
+    def post(self, url, headers=None, json=None, timeout=None):
+        return _Resp("")
+
+
+class _RowSession:
+    def post(self, url, headers=None, json=None, timeout=None):
+        return _Resp('{"id": "x"}')
+
+
+void_sb = RI.Supabase("https://x.example", "k", session=_VoidSession())
+ok("a void RPC (finish_season_backfill, progress_season_backfill, heartbeat_season_backfill, "
+   "progress_league_reset...) returns None rather than raising on the empty body",
+   void_sb.rpc("finish_season_backfill", {"p_id": "x", "p_state": "failed"}) is None)
+row_sb = RI.Supabase("https://x.example", "k", session=_RowSession())
+ok("an RPC that actually returns a row still comes back as that row", row_sb.rpc("claim_season_backfill", {}) == {"id": "x"})
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
