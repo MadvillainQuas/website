@@ -1493,6 +1493,12 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/close-stuck-games.test.mjs
 
+      - name: The WOWY / lineups page - colour scale, reliability, pair buckets, column picker, gate, address
+        # epinoia/wowylogic.js over lineups.js, pure: percentile colours turned round where lower is better, small samples
+        # labelled with thresholds the reader moves, the four pair buckets adding up to the team, units of a size, the column
+        # picker's caps by width, the preview gate following wowyPreviewMax, the address round trip, and the page's contracts
+        run: node supabase/tests/wowy-page.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

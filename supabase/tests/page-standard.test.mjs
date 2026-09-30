@@ -27,7 +27,7 @@ const PREDATE = new Set(`admin/index.html admin/platform/index.html android/inde
   fixtures/index.html game/index.html games/index.html go/index.html go/nearby/index.html go/photos/index.html
   go/stamps/index.html home/index.html index.html injuries/index.html invite/index.html ios/index.html join/index.html
   l/index.html learn/index.html me/index.html news/index.html p/index.html privacy/index.html prophesy/index.html
-  score/index.html scouting/index.html signin/index.html stats/index.html stats/wowy/index.html t/index.html
+  score/index.html scouting/index.html signin/index.html stats/index.html t/index.html
   video/index.html votes/index.html winning/index.html`.split(/\s+/).filter(Boolean));
 
 function pages(dir, rel = '') {
