@@ -190,5 +190,56 @@ ok('the old address still resolves', await (async () => {
 })());
 ok('an audit row was written', (await q(`select 1 from public.audit_log where action = 'team_merge'`)).length === 1);
 
+// ---- 0192: the pairs merged by the migration, and a fixture ahead no longer blocks a merge ----------------------
+console.log('\n-- 0192: every "X" / "X Senior Men (I)" pair in one league, merged');
+{
+  await seed();
+  const T = n => '00000000-0000-0000-0000-0000000019' + String(n).padStart(2, '0');
+  await q(`insert into public.teams (id, league_id, slug, name, short_name, colour, colour_source, logo_path, aliases, external_ids) values
+    ($1, $7, 'barnet-bulldogs', 'Barnet Bulldogs', '', '#93f2bf', 'default', null, '{}', '{}'),
+    ($2, $7, 'barnet-bulldogs-senior-mens', 'Barnet Bulldogs Senior Mens', '', '#93f2bf', 'default', null, '{}', '{}'),
+    ($3, $7, 'tees-valley-mohawks-senior-men-i', 'Tees Valley Mohawks Senior Men I', '', '#93f2bf', 'default', null, '{}', '{}'),
+    ($4, $7, 'london-lions-senior-men-ii', 'London Lions Senior Men II', '', '#93f2bf', 'default', null, '{}', '{}'),
+    ($5, $8, 'worcester-wolves', 'Worcester Wolves', '', '#93f2bf', 'default', null, '{}', '{}'),
+    ($6, $7, 'worcester-wolves-senior-women-i', 'Worcester Wolves Senior Women I', '', '#93f2bf', 'default', null, '{}', '{}')`,
+    [T(1), T(2), T(3), T(4), T(5), T(6), LG1, LG2]);
+  // a fixture still to play on the twin that is merged away: it must move, not block
+  await q(`insert into public.games (id, competition_id, status, home_team_id, away_team_id) values ($1, $2, 'scheduled', $3, $4)`,
+          [T(90), C1, T(2), RIVAL]);
+  await db.exec(mig('0192_merge_senior_twins.sql'));
+  const names = (await q(`select id, name, aliases from public.teams order by name`));
+  const byId = id => names.find(t => t.id === id);
+  ok('the twin in the same league was merged into the plain-named row', !byId(T(2)) && !!byId(T(1)),
+     names.map(t => t.name).join(' | '));
+  ok('...and the fixture it still had to play moved with it', (await one(`select home_team_id from public.games where id = $1`, [T(90)])).home_team_id === T(1));
+  ok('...its name kept as an alias', byId(T(1)).aliases.includes('Barnet Bulldogs Senior Mens'));
+  ok('the London Elite pair from the seed was merged too', !byId(OTHER) && !!byId(KEEP));
+  ok('a club with no plain twin keeps its row and takes the plain name, the full one an alias',
+     byId(T(3)).name === 'Tees Valley Mohawks' && byId(T(3)).aliases.includes('Tees Valley Mohawks Senior Men I'));
+  ok('a club\'s "II" side is another squad: untouched', byId(T(4)).name === 'London Lions Senior Men II');
+  ok('two leagues are never merged: the women\'s side is only renamed in its own league',
+     !!byId(T(5)) && byId(T(6)).name === 'Worcester Wolves');
+  ok('the merges are on the record, by nobody (the platform itself)',
+     (await q(`select 1 from public.team_merges where old_id = $1 and merged_by is null`, [T(2)])).length === 1);
+}
+console.log('\n-- 0192: the administrators\' door');
+{
+  await seed();
+  await q(`insert into public.games (id, competition_id, status, home_team_id, away_team_id) values
+           ('00000000-0000-0000-0000-000000001991', $1, 'scheduled', $2, $3)`, [C1, OTHER, RIVAL]);
+  await asAdmin(false); await db.exec(`select set_config('test.uid', '', false)`);
+  let refused = false;
+  try { await q(`select public.platform_team_merge($1, $2)`, [KEEP, OTHER]); } catch (e) { refused = true; }
+  ok('platform_team_merge still refuses anybody but an administrator', refused);
+  await asAdmin(true);
+  const r = await one(`select public.platform_team_merge($1, $2) r`, [KEEP, OTHER]);
+  ok('a club with a fixture still to play can be merged now', r.r && r.r.kept === KEEP, JSON.stringify(r.r));
+  ok('...and its merged_by is the administrator', (await one(`select merged_by from public.team_merges where old_id = $1`, [OTHER])).merged_by === '11111111-1111-1111-1111-111111111111');
+  let direct = false;
+  try { await db.exec(`set role authenticated; select public.team_merge_run('${KEEP}', '${RIVAL}', null);`); } catch (e) { direct = true; }
+  await db.exec('reset role');
+  ok('team_merge_run cannot be called by a signed-in user directly', direct);
+}
+
 if (fail) { console.log(`\n${fail} failed, ${pass} passed`); process.exit(1); }
 console.log(`\nteam merge: ${pass} passed - two rows of one club become one, and 'Senior Men (I)' is not mistaken for a second team`);
