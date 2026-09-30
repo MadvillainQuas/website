@@ -54,8 +54,8 @@ def stuck_games(sb, now: datetime, ids=None, min_age: int = REPAIR_MIN_AGE) -> l
     is exactly what let a game from October sit here."""
     rows = sb.select_all("games", f"status=in.(live,finalising)&tipoff_at=lt.{_zulu(now - timedelta(seconds=min_age))}"
                                   "&select=id,status,tipoff_at,home_score,away_score,period,competition_id,stalled_since&order=tipoff_at,id")
-    if ids:
-        want = {str(x).strip() for x in ids if str(x).strip()}
+    want = {str(x).strip() for x in (ids or []) if str(x).strip()}     # "".split(",") is [""]: no ids asked for is not one empty id
+    if want:
         keep_ext: set = set()
         if rows:
             for i in range(0, len(rows), 60):

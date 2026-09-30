@@ -122,6 +122,7 @@ ok("every game live 4 h+ after tip-off, whatever its age: 1, 2, 3, 4 and 7; not 
    [x["id"] for x in found] == ["g1", "g2", "g3", "g4", "g7"], [x["id"] for x in found])
 ok("state is the running score, period and clock", (found[3]["home"], found[3]["away"], found[3]["period"], found[3]["clock_ms"]) == (68, 83, 4, 35000), found[3])
 ok("...age in seconds, feed rows attached", round(found[4]["age_s"]) == 5 * 3600 and found[0]["ext"][0]["competition_code"] == "SLBW")
+ok("no --ids given (the empty string split on commas) means every stuck game, not none", len(S.stuck_games(fk, NOW, [""])) == len(S.stuck_games(fk, NOW)) and len(S.stuck_games(fk, NOW, [" ", ""])) == len(S.stuck_games(fk, NOW)) > 0)
 ok("--ids takes a game id or an external id", [x["id"] for x in S.stuck_games(fk, NOW, ["g3", "x4"])] == ["g3", "g4"])
 grouped = S.by_source(found)
 ok("grouped by (adapter, code) for the catch-up's loop", set(grouped) == {("fiba_livestats", "SLBW"), ("fiba_site_schedule", "CZ1L"), ("fiba_livestats", "NBLD1"),
