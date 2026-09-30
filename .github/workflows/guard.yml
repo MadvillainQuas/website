@@ -1432,6 +1432,14 @@ jobs:
         # bar); the keystore decoded only to the runner's temp directory and never committed
         run: node supabase/tests/android-config.test.mjs
 
+      - name: Games stuck live are closed - the rule (Python and SQL agree), the repair pass, the hourly backstop, the void guard
+        # stuck.py + 0199 close_stuck_games: final when the feed said so or the clock/lead settles it, else void; never written back
+        # to live; the same-code clubs of the Czech feed keep their own rosters; the HOME strip never shows a game past its cap as live
+        run: |
+          python scripts/ingest/stuck_test.py
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/close-stuck-games.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

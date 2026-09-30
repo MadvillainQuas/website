@@ -81,6 +81,7 @@ from feedplatform import Platform, season_name_for, team_code  # noqa: E402
 import groups  # noqa: E402
 from fetchwindow import seconds_until_tip, worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
+import stuck as stuckmod  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "config" / "ingest-sources.json"
@@ -1074,7 +1075,13 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 extra["competition_id"] = comp["id"]
                 run.setdefault("_recompute", set()).update({dflt, comp["id"]})
                 print(f"    -> filed under {src['competition_label']}")
-        if cur and cur[0].get("status") == "final" and will_translate:
+        if cur and cur[0].get("status") == "void":
+            # A VOIDED GAME STAYS VOID (an administrator's, or stuck.close_stuck / 0199's: a game whose feed stopped
+            # with no result to stand on). Written as live again by the next read of a feed that still says so, it
+            # was on the front page for days all over again; only set_game_status reinstates it.
+            if extra:
+                sb.patch("games", f"id=eq.{game_id}", extra)
+        elif cur and cur[0].get("status") == "final" and will_translate:
             # marked final without a scored log (an earlier run inserted it closed) → reopen it
             n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
             if not n_ev or REFRESH["on"]:
@@ -1300,8 +1307,8 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     if missing:
         print(f"    ! {len(missing)} players without a platform id: {sorted(missing)[:6]}…")
     g = sb.select("games", f"id=eq.{game_id}&select=status")
-    if g and g[0].get("status") == "final":
-        return                                              # a finalised log is closed (insert trigger refuses)
+    if g and g[0].get("status") in ("final", "void"):
+        return                                              # a finalised log is closed (insert trigger refuses); a voided game stays so
     # A GAME IS NOT LIVE BECAUSE SOMEBODY OPENED THE SCORING APP.
     #
     # This said 'live' the moment the feed published, which for LiveStats is when the
@@ -2688,6 +2695,8 @@ def main() -> int:
     ap.add_argument("--refresh", action="store_true", help="re-process every game on the schedule even if already final (backfill stints / re-run translation)")
     ap.add_argument("--live-only", action="store_true", help="skip discovery; re-check only games live or due to tip (the frequent pass)")
     ap.add_argument("--catch-up", action="store_true", help="skip discovery; fetch once each game that tipped off more than 4 h ago (within a week) and is still not final - what a game looks like when it was played while the PC was off")
+    ap.add_argument("--repair-stalled", action="store_true", help="skip discovery; every game still live/finalising more than 4 h after tip-off (any age, any source) is read again and finalised through the normal path, and one still open past 6 h is closed on its last state (stuck.py, 0199): final if the fourth period or later was over or decided, else void. Prints a table per game")
+    ap.add_argument("--strict", action="store_true", help="with --repair-stalled: exit 1 if any such game is still live afterwards (the repair workflow)")
     ap.add_argument("--live-loop", type=int, default=0, help="after the pass, keep re-polling live games every --live-every seconds for this many seconds")
     ap.add_argument("--live-every", type=int, default=30)
     ap.add_argument("--broadcast-every", type=int, default=2, help="seconds between reads of a game armed for broadcast (games.broadcast_until)")
@@ -2721,7 +2730,7 @@ def main() -> int:
             return 2
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
-    sb = Supabase(url, key) if (url and key and not args.dry_run and not args.no_supabase) else None
+    sb = Supabase(url, key) if (url and key and (not args.dry_run or args.repair_stalled) and not args.no_supabase) else None   # a dry repair still READS the database
     feed = RepoFeed(Path(args.feed_out)) if (args.feed_out and not args.dry_run) else None
     if sb is None:
         print("Supabase: off" + ("" if args.no_supabase or args.dry_run else " (SUPABASE_URL / SUPABASE_SERVICE_KEY missing)") + " - repo feed only")
@@ -2762,7 +2771,24 @@ def main() -> int:
     # something outstanding. It runs every two hours on the PC and has nothing to do almost every
     # time - and each of ~90 sources used to cost a run row, a read and two stamps regardless.
     outstanding = None
-    if args.catch_up and not args.ids and sb:
+    repair: dict | None = None                 # --repair-stalled: {"games": [...], "ext": {(adapter, code): {external ids}}}
+    if args.repair_stalled:
+        if sb is None:
+            print("--repair-stalled needs SUPABASE_URL and SUPABASE_SERVICE_KEY"); return 2
+        try:
+            stuck_list = stuckmod.stuck_games(sb, datetime.now(timezone.utc), [x for x in (args.ids or "").split(",")])
+        except Exception as exc:
+            print(f"   (stuck-games lookup failed: {exc})")
+            return 1
+        print(f"{len(stuck_list)} game(s) live or finalising more than {stuckmod.REPAIR_MIN_AGE // 3600} h after tip-off")
+        outstanding = stuckmod.by_source(stuck_list)
+        repair = {"games": stuck_list, "ext": {k: {str(e["external_id"]) for e in v} for k, v in outstanding.items()}}
+        args.catch_up, args.ids = True, None          # the catch-up's loop, on this list, everything forced through
+        sources = [s for s in sources if outstanding.get((s["adapter"], s["code"]))]
+        for k in outstanding:
+            if not any((s["adapter"], s["code"]) == k for s in sources):
+                print(f"   no source is configured for {k[0]} / {k[1]} - its games can only be closed on their last state")
+    elif args.catch_up and not args.ids and sb:
         try:
             outstanding = outstanding_by_source(sb, sources, datetime.now(timezone.utc))
         except Exception as exc:
@@ -2875,7 +2901,9 @@ def main() -> int:
                     print(f"   (external_games unavailable: {exc})")
             known = known_db if sb else known_repo
             # games the feed has finished that the platform has not: fetched again and written through, not skipped
-            stuck = unsettled_finals(sb, src) if sb and not args.dry_run else set()
+            stuck = unsettled_finals(sb, src) if sb and not args.dry_run and not repair else set()
+            if repair:
+                stuck = set(repair["ext"].get((src["adapter"], src["code"]), set()))       # every one of them, written through
             if stuck:
                 print(f"   {len(stuck)} game(s) final on the feed but not closed here - writing them again: {', '.join(sorted(stuck))}")
             # A GAME THAT HAS NOT TIPPED OFF HAS NOTHING TO FETCH. The feed answers
@@ -3056,6 +3084,8 @@ def main() -> int:
                 tot["error"] = err
             beat()
             print(f"   done in {time.time() - t0:.1f}s - seen {run['games_seen']}, fetched {run['games_fetched']}, written {run['games_written']}")
+    if repair is not None:
+        return repair_report(sb, repair["games"], args.dry_run, args.strict, exit_code)
     # crests read above -> colours, once for the whole pass (see colour_sweep)
     if sb and not args.dry_run and not args.ids and not args.catch_up:
         colour_sweep(sb)
@@ -3077,6 +3107,49 @@ def main() -> int:
                 print(f"{len(due)} live/due game(s)" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") + " - asking the workflow to start the live lane")
         except Exception as exc:
             print(f"(live-lane check failed: {exc})")
+    return exit_code
+
+
+def repair_report(sb: "Supabase", games: list[dict], dry: bool, strict: bool, exit_code: int = 0) -> int:
+    """The end of a --repair-stalled pass: close what the re-read could not finish, print one line per game
+    (what it was, what it is now, how), and with --strict fail loudly if anything is still live."""
+    now = datetime.now(timezone.utc)
+    if not games:
+        print("nothing stuck")
+        return exit_code
+    try:
+        closed = {c["id"]: c for c in stuckmod.close_stuck(sb, games, now, dry=dry)}
+    except Exception as exc:
+        print(f"!! closing the games still open failed: {exc}")
+        closed, exit_code = {}, 1
+    ids = [g["id"] for g in games]
+    after: dict = {}
+    for i in range(0, len(ids), 60):
+        for r in sb.select("games", f"id=in.({','.join(ids[i:i + 60])})&select=id,status,home_score,away_score"):
+            after[r["id"]] = r
+    rows, open_ = [], []
+    for g in games:
+        a, c = after.get(g["id"]) or {}, closed.get(g["id"])
+        ext = g["ext"][0] if g["ext"] else {}
+        name = f"{ext.get('home_name') or g['id'][:8]} v {ext.get('away_name') or ''}".strip() + f" ({(g.get('tipoff_at') or '')[:10]})"
+        now_st = a.get("status") or "?"
+        if dry and c:
+            how = f"[dry] would be {c['verdict']}: {c['reason']}"
+        elif c:
+            how = f"closed {c['verdict']}: {c['reason']}"
+        elif now_st == "final":
+            how = f"finalised through the feed, {a.get('home_score')}-{a.get('away_score')}"
+        elif now_st in ("live", "finalising"):
+            how = "STILL OPEN - inside the " + f"{stuckmod.REPAIR_HARD_CAP // 3600} h cap" if (g.get("age_s") or 0) < stuckmod.REPAIR_HARD_CAP else "STILL OPEN"
+        else:
+            how = now_st
+        if now_st in ("live", "finalising") and not (dry and c) and (g.get("age_s") or 0) >= stuckmod.REPAIR_HARD_CAP:
+            open_.append(name)          # inside the cap it may just be a long game in overtime: not a failure
+        rows.append({"game": name, "was": g["status"], "now": now_st, "how": how})
+    print("\nstuck games:\n" + stuckmod.table(rows))
+    if open_ and strict and not dry:
+        print(f"\n!! {len(open_)} game(s) still live after the repair: " + "; ".join(open_))
+        return 1
     return exit_code
 
 

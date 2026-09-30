@@ -1,0 +1,62 @@
+name: Repair stalled games (live for hours after tip-off)
+
+# Run by hand (Actions -> Repair stalled games -> Run workflow) to clear every game that is still live or
+# finalising more than 4 h after its tip-off, in every league, of any age. For each one it reads the feed again and
+# finalises it through the normal path (scores, box score, standings, news report); a game still open 6 h after
+# tip-off is closed on its last state (final if the fourth period or later was over or decided, else void).
+# It prints one line per game (what it was, what it is now, how) and FAILS if any game is still live after
+# the repair. The live lane does the same, quietly, at the head of every pass (ingest.yml: "Repair games stuck
+# live"), and pg_cron runs supabase/migrations/0199's close_stuck_games hourly as the backstop, so this is for
+# clearing a backlog on demand. Safe to run twice.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report what would happen; write nothing"
+        type: boolean
+        default: false
+      ids:
+        description: "Only these games: game uuids or external ids, comma-separated (optional)"
+        required: false
+
+concurrency:
+  group: repair-stalled
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: browser-actions/setup-chrome@v1      # some adapters read SPA pages through headless Chrome
+      - run: dpkg -s libcairo2 > /dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2)
+      - run: pip install -r scripts/requirements.txt
+      - name: Checkout scraper pipeline
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SCRAPER_REPO }}
+          ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
+          path: scraper
+      - name: Install scraper requirements
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        run: |
+          grep -viE "win10toast|pywin32" scraper/requirements.txt > "$RUNNER_TEMP/req.txt" || true
+          pip install -r "$RUNNER_TEMP/req.txt" || pip install selenium beautifulsoup4 requests pandas numpy scikit-learn tqdm
+      - name: Repair
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: |
+          python scripts/ingest/run_ingest.py --config --repair-stalled --strict --feed-out "" \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }} \
+            ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}

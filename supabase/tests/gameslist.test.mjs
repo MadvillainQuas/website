@@ -226,5 +226,21 @@ console.log('\na stalled game');
      /\/\^400\\b\/\.test/.test(home) && /Q\.live\.replace\(GL\.NOT_STALLED, ''\)/.test(home));
 }
 
+/* ---- a game 'live' for longer than any game runs (26-30 Sep 2026: four sat on HOME for days) ---- */
+console.log('\na game live for eight hours after tip-off');
+{
+  const now = Date.parse('2026-09-30T12:00:00Z');
+  const q = G.queries('week', now, '');
+  ok('the live read is bounded to the last eight hours of tip-offs', q.live.includes('&tipoff_at=gte.' + encodeURIComponent('2026-09-30T04:00:00.000Z')), q.live);
+  ok('...and still asks only for games not flagged stalled', q.live.includes('&status=eq.live&stalled_since=is.null'), q.live);
+  const rows = [
+    { id: 'now', status: 'live', tipoff_at: '2026-09-30T10:30:00Z', stalled_since: null },
+    { id: 'oak', status: 'live', tipoff_at: '2025-10-18T16:00:00Z', stalled_since: null },   // Oaklands: no flag, a year old
+    { id: 'cz', status: 'live', tipoff_at: '2026-09-25T17:30:00Z', stalled_since: null }
+  ];
+  const v = G.pick(rows, 'week', now, {});
+  ok('a game live on paper for days is not shown as live, flagged or not', v.live === 1 && v.shown.map(g => g.id).join() === 'now', JSON.stringify(v.shown.map(g => g.id)));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
