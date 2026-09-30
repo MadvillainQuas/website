@@ -44,139 +44,9 @@
 <link rel="stylesheet" href="../../kit/table.css?v=555">
 <link rel="stylesheet" href="../../kit/access.css?v=555">
 <link rel="stylesheet" href="../../kit/nav.css?v=555">
-<style>
-  a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
-  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule);flex-wrap:wrap}
-  .wm{font-family:var(--f-score);font-size:19px;
-    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
-    padding:3px 11px 1px;text-transform:uppercase}
-  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
-  .hero h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,58px);line-height:.88;margin:0;
-    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);letter-spacing:.06em;
-    line-height:2;max-width:76ch;margin:calc(var(--u)*2) 0 0}
-
-  .ep-hdr{display:flex;align-items:baseline;gap:12px}
-  .hnote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto;
-    padding-right:calc(var(--u)*3)}
-
-  .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);
-    font-family:var(--f-micro);font-size:11px;line-height:1.9}
-  .lu-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .lu-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
-    line-height:1.9;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
-  .lu-lead{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
-    line-height:1.9;margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*2);max-width:74ch}
-  .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-    padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
-    letter-spacing:0.06em;text-transform:uppercase}
-
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
-    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
-  .tile{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*1.5);text-align:center}
-  .tile .v{font-family:var(--f-score);font-size:24px;line-height:1;color:var(--ink)}
-  .tile .l{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
-    letter-spacing:0.08em;text-transform:uppercase;margin-top:6px}
-  .tile.hi .v{color:var(--lume)}
-
-  /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
-  .wb{display:inline-block;min-width:34px;text-align:center;padding:3px 7px 2px;
-    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.06em}
-  .wb.on{background:var(--lume);color:var(--on-accent);font-weight:700}
-  .wb.off{background:transparent;color:var(--ink-3);border:1px solid var(--rule-2)}
-  table.ft td.stick.c0w,table.ft th.stick.c0w{position:sticky;left:0;z-index:2;
-    background:var(--ground);text-align:center}
-  table.ft thead th.stick.c0w{z-index:4;background:#0c1f16}
-  table.ft th:not(.stick),table.ft td:not(.stick){text-align:right}
-  table.ft td .wb{margin:0 auto}
-  table.ft tbody tr.thin td{opacity:.45}
-  table.ft tbody tr.none td{opacity:.3}
-  table.ft td.novalue{text-align:left;font-family:var(--f-micro);font-size:8.5px;
-    color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
-
-  /* team picker: a scrolling rail rather than a select, so every team in the
-     league is one click away and the current one is visibly current */
-  #seasonPick .ep-chip{text-decoration:none}
-  .teamrail{display:flex;gap:7px;overflow-x:auto;padding:calc(var(--u)*2) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule);scrollbar-width:thin}
-  .teamrail button{flex:none}
-  .teamrail .swatch{display:inline-block;width:8px;height:8px;border-radius:50%;
-    margin-right:6px;vertical-align:middle}
-
-  /* the subject of the individual split is chosen separately from his mates,
-     because they are different roles and one chip list cannot say which is which */
-  .subjbar{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .subjbar .ep-chip.on{outline:1px solid var(--aqua)}
-  /* the comparison table has no rank column, so its sticky label column
-     belongs at the left edge rather than at c1's usual 36px offset */
-  table.ft.with-tbl th.c1,table.ft.with-tbl td.c1{left:0;text-align:left}
-
-  /* ---- WHO: the team and the player, as dropdowns (wowy.js pickSelect) ---- */
-  .wpick{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:calc(var(--u)*2.5) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule)}
-  .wpick > div{display:contents}
-  .fsel{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1 1 220px;max-width:360px;--sc:var(--ink)}
-  .fsel .fl{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
-  .fsel .fbox{position:relative;display:block}
-  .fsel .fbox::after{content:"";position:absolute;right:13px;top:50%;margin-top:-3px;pointer-events:none;
-    border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--ink)}
-  .fsel select{appearance:none;-webkit-appearance:none;width:100%;min-height:44px;padding:0 34px 0 16px;
-    font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink);cursor:pointer;
-    background:var(--panel);border:1px solid var(--rule-2);border-radius:0;
-    box-shadow:inset 6px 0 0 var(--sc),3px 3px 0 color-mix(in srgb,var(--sc) 35%,transparent)}
-  .fsel select:hover{background:color-mix(in srgb,var(--sc) 7%,var(--panel))}
-  .fsel select:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
-  .wnote{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
-    margin-left:auto;padding-bottom:14px}
-  /* the three questions, as a key */
-  .wsteps{list-style:none;margin:0;padding:calc(var(--u)*2) calc(var(--u)*3);display:grid;
-    grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border-bottom:1px solid var(--rule)}
-  .wsteps li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--panel);
-    border:1px solid var(--rule-2);box-shadow:inset 4px 0 0 var(--team-a,var(--lume))}
-  .wsteps b{font-family:var(--f-score);font-size:20px;line-height:1;color:var(--ink)}
-  .wsteps span{font-size:12px;line-height:1.45;color:var(--ink-2)}
-  .wsteps em{display:block;font-style:normal;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
-    text-transform:uppercase;color:var(--ink);margin-bottom:3px}
-  @media (max-width:720px){ .wsteps{grid-template-columns:1fr} .fsel{max-width:none} .wnote{margin-left:0;padding-bottom:0} }
-  .wlead{margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*2);font-size:13px;line-height:1.55;color:var(--ink-2);max-width:74ch}
-  .lu-lead{font-family:var(--f-ui);font-size:13px;letter-spacing:0;line-height:1.55;color:var(--ink-2)}
-
-  /* ---- ON / OFF: the team with the player, without them, and the swing between ---- */
-  .oo{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:stretch;
-    padding:calc(var(--u)*1) calc(var(--u)*3) calc(var(--u)*3)}
-  .oo-card{padding:16px 18px;border:1px solid var(--rule-2);background:var(--panel);position:relative}
-  .oo-card.on{background:linear-gradient(135deg,color-mix(in srgb,var(--team-a) 18%,transparent),transparent 70%),var(--panel);
-    box-shadow:inset 6px 0 0 var(--team-a)}
-  .oo-card.off{box-shadow:inset 6px 0 0 var(--rule-2)}
-  .oo-k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
-  .oo-v{font-family:var(--f-score);font-size:clamp(34px,5vw,54px);line-height:1;margin:8px 0 4px;color:var(--ink)}
-  .oo-v.pos{color:var(--good)} .oo-v.neg{color:var(--bad)}
-  .oo-s{font-size:12px;color:var(--ink-3)}
-  .oo-row{display:flex;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid var(--rule)}
-  .oo-row div{display:flex;flex-direction:column;gap:2px}
-  .oo-row b{font-family:var(--f-score);font-size:17px;font-weight:400;color:var(--ink)}
-  .oo-row i{font-style:normal;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
-  .oo-swing{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0 6px;text-align:center}
-  .oo-swing .n{font-family:var(--f-score);font-size:clamp(24px,3.4vw,34px);line-height:1;padding:8px 12px 6px;background:#0a0a0a;color:#ffe14d}
-  .oo-swing .k{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);max-width:110px;line-height:1.5}
-  @media (max-width:720px){ .oo{grid-template-columns:1fr} .oo-swing{flex-direction:row;padding:4px 0} }
-
-  /* ---- LINEUPS: the rows read in words first; ON in the team's colour, OFF recedes ---- */
-  table.ft td.wdesc,table.ft th.wdesc{text-align:left !important;font-family:var(--f-ui);font-weight:700;font-size:12px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
-  table.ft th.wdesc{font-family:var(--f-micro);font-weight:400;font-size:8px}
-  table.ft td.wbc{text-align:center !important}
-  .wb.on{background:var(--team-a,var(--lume));color:#fff;text-shadow:0 0 2px rgba(0,0,0,.4)}
-  .lu-chips .ep-chip.on{box-shadow:inset 0 -3px 0 var(--team-a,var(--lume))}
-
-  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
-    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
-  footer.foot a{color:var(--ink-3);text-decoration:none}
-  footer.foot a:hover{color:var(--lume)}
-</style>
+<link rel="stylesheet" href="../../kit/page.css?v=555">
+<link rel="stylesheet" href="../../kit/wowy.css?v=555">
+<link rel="stylesheet" href="../../kit/sectitle.css?v=555">
 <link rel="stylesheet" href="../../kit/teletext.css?v=555">
 <link rel="stylesheet" href="../../kit/legibility.css?v=555">
 <!-- seo:ld -->
@@ -185,46 +55,68 @@
 <!-- /seo:ld -->
 </head>
 <body>
-<div class="ep-frame">
+<div class="ep-frame" data-std>
   <div class="topbar">
     <a href="../../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
     <span id="ctx" class="ep-micro"></span>
   </div>
 
-  <div class="hero">
+  <header class="hero pg-head">
+    <p class="pg-kick" id="kick"><a href="../../">Epinoia</a></p>
     <h1>WOWY / Lineups</h1>
-    <p>How a team plays with and without its players, and every lineup of up to five of them,
-      from the play-by-play of every game.</p>
-  </div>
+    <p class="pg-sub">How a team plays with and without each player, and every unit of up to five, from the play-by-play of every game.</p>
+  </header>
 
-  <!-- a members-only league this viewer may not see: the paywall card, in place
-       of everything below it (wowy.js, docs/memberships.md) -->
+  <!-- a members-only league this viewer may not see: the paywall card, in place of everything below it (wowy.js, docs/memberships.md) -->
   <div id="accessWall" class="hide"></div>
 
   <div id="wowyBody">
-  <!-- WHICH SEASON (wowy.js, drawn by seasonbar.js): hidden until the league has more than one season with games. -->
-  <div id="seasonRow" style="display:none;padding:calc(var(--u)*2) calc(var(--u)*3) 0">
-    <span style="font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-right:8px">season</span><span id="seasonPick" style="display:inline-flex;gap:7px;flex-wrap:wrap"></span>
-  </div>
-  <!-- WHO: the team, then the player sections 01 and 02 are about (wowy.js pick) -->
-  <div class="wpick" id="wpick"><div id="teamrail"></div><div id="subjbar"></div>
-    <span id="subjNote" class="wnote"></span></div>
-  <!-- the three questions, in the order a reader asks them -->
-  <ol class="wsteps">
-    <li><b>01</b><span><em>With teammates</em>what the player does with the teammates you pick on the floor</span></li>
-    <li><b>02</b><span><em>On / off</em>how the team plays with the player on the floor, and without them</span></li>
-    <li><b>03</b><span><em>Lineups</em>every way up to five players shared the floor</span></li>
-  </ol>
+  <section class="sec" id="who" aria-labelledby="whoH">
+    <div class="sec-h"><h2 id="whoH">Team and view</h2>
+      <p class="note">Pick a club, then how you want to read its floor time</p></div>
+    <div class="sec-b">
+      <!-- WHICH SEASON (seasonbar.js): hidden until the league has more than one season with games -->
+      <div id="seasonRow" class="wseason" style="display:none"><span class="wl">Season</span><span id="seasonPick"></span></div>
+      <div class="wctl" id="wctl"></div>
+      <p id="wnotes" class="wnote wcenter" role="status" aria-live="polite"></p>
+    </div>
+  </section>
 
-  <div class="ep-hdr"><span class="idx">01</span><h2>With teammates</h2></div>
-  <div id="withpanel"></div>
+  <section class="sec hide" id="overview" aria-labelledby="overviewH">
+    <div class="sec-h"><h2 id="overviewH">Overview</h2>
+      <p class="note">The team's rating, its starters and who carries the minutes</p></div>
+    <div class="sec-b" id="vOverview"></div>
+  </section>
 
-  <div class="ep-hdr"><span class="idx">02</span><h2>On / off</h2></div>
-  <div id="onoff"></div>
+  <section class="sec hide" id="lineups" aria-labelledby="lineupsH">
+    <div class="sec-h"><h2 id="lineupsH">Lineups</h2>
+      <p class="note">Every unit that shared the floor, coloured against the league</p></div>
+    <div class="sec-b" id="vLineups"></div>
+  </section>
 
-  <div class="ep-hdr"><span class="idx">03</span><h2>Lineups</h2>
-    <span id="comboNote" class="hnote"></span></div>
-  <div id="wowy"></div>
+  <section class="sec hide" id="onoff" aria-labelledby="onoffH">
+    <div class="sec-h"><h2 id="onoffH">On / off</h2>
+      <p class="note">The team with a player on the floor, and without him</p></div>
+    <div class="sec-b" id="vOnoff"></div>
+  </section>
+
+  <section class="sec hide" id="with" aria-labelledby="withH">
+    <div class="sec-h"><h2 id="withH">On the floor with</h2>
+      <p class="note">One player's own box, split by who was beside him</p></div>
+    <div class="sec-b" id="vWith"></div>
+  </section>
+
+  <section class="sec hide" id="pair" aria-labelledby="pairH">
+    <div class="sec-h"><h2 id="pairH">Pairs and combinations</h2>
+      <p class="note">Two players, four ways they shared the floor</p></div>
+    <div class="sec-b" id="vPair"></div>
+  </section>
+
+  <section class="sec hide" id="build" aria-labelledby="buildH">
+    <div class="sec-h"><h2 id="buildH">Lineup builder</h2>
+      <p class="note">Choose up to five players and read that unit</p></div>
+    <div class="sec-b" id="vBuild"></div>
+  </section>
   </div>
 
   <footer class="foot">
@@ -234,21 +126,22 @@
   </footer>
 </div>
 <script src="../../config.js?v=555" defer></script>
-<!-- memberships: the full WOWY is the members'; a preview and the paywall card
-     come from here. Straight after config.js, before data.js reads anything. -->
+<!-- memberships: the full WOWY is the members'; a preview and the paywall card come from here. Straight after config.js, before data.js reads anything. -->
 <script src="../../access.js?v=555" defer></script>
+<script src="../../teamcolour.js?v=555" defer></script>
 <script src="../../bpm.js?v=555" defer></script>
 <script src="../../season.js?v=555" defer></script>
 <script src="../../seasonbar.js?v=555" defer></script>
 <script src="../../data.js?v=555" defer></script>
 <script src="../../lineups.js?v=555" defer></script>
 <script src="../../withstats.js?v=555" defer></script>
-<script src="../../wowy.js?v=555" defer></script>
 <script src="../../p/withui.js?v=555" defer></script>
+<script src="../../wowylogic.js?v=555" defer></script>
+<script src="wowyui.js?v=555" defer></script>
 <script src="wowy.js?v=555" defer></script>
 <script src="../../feedrank.js?v=555" defer></script>
 <script src="../../interest.js?v=555" defer></script>
-<script src="../../nav.js?v=555" defer></script>
 <script src="../../xscroll.js?v=555" defer></script>
+<script src="../../nav.js?v=555" defer></script>
 </body>
 </html>

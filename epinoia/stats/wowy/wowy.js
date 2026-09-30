@@ -1,55 +1,49 @@
 'use strict';
 /* ============================================================================
-   THE WOWY SUBPAGE — the full-width version, with a team picker.
+   THE WOWY / LINEUPS PAGE — the controller. Parts are drawn by wowyui.js, the rules and the address by
+   wowylogic.js, the numbers by lineups.js (and withstats.js for a player's own box). This file fetches, keeps
+   the state, and decides what shows.
 
-   The team profile carries WOWY as one section among a dozen, so it is capped
-   and compressed to stay in proportion. Here it is the whole page, which buys
-   two things worth having: five players in the matrix instead of four, and a
-   team picker, so the natural next question — "and how does the OTHER team's
-   rotation work" — is one click rather than a fresh navigation.
+   Five views of one team's floor time, chosen in the address (?v=), each a section of the page:
+     overview   the team's rating against the league, the starting five, the rotation
+     lineups    every unit of 2-5 players, coloured against the league's units, filtered, sortable, expandable
+     onoff      one player: the team with him on and off, his best and worst partners, his own box with them
+     pair       two players, four ways they shared the floor, and the on/off grid of up to five
+     build      choose up to five players, read that unit
 
-   Three panels, narrowest question first:
+   WHAT IS FETCHED, AND WHEN. The chosen team's games and stints first (as the page always did), so it paints
+   quickly. The rest of the league's stints follow in the background: they are the reference every colour is
+   measured against ("better than 80% of the league's fives"), and the All teams view. Until they arrive the
+   colours are measured against the team's own units and the key says so. A player's own box, split by
+   teammate, needs the event log, so it is fetched only when the On / off view is open (and never for a preview).
 
-     ON THE FLOOR WITH   one player's OWN box, split by who was beside him.
-                         Derived by replaying the event log, because no table
-                         stores an individual box broken down by teammate.
-     ON / OFF            the team with that player on, against without him.
-     COMBINATIONS        every ON/OFF arrangement of up to five players.
-
-   The first is the one index_9's profile answers and the one people actually
-   want: a team net rating tells you a pairing worked, but not whether the
-   player shot more, passed more, or simply stood in a better place.
+   MEMBERSHIPS (docs/memberships.md, access.js): unchanged in what they decide. A viewer who may not see the
+   league gets the paywall card; a non-member gets a PREVIEW, capped by CATALOGUE.wowyPreviewMax players,
+   which wowylogic.gate() turns into what each view keeps: On / off and the overview stay open, the lineups list
+   is the five best fives, and the pair, combinations and builder show what one player can plus the teaser.
    ============================================================================ */
 
-const D = window.EpinoiaData;
+const D = window.EpinoiaData, W = window.EpinoiaWowyLogic, UI = window.EpinoiaWowyUI, L = window.EpinoiaLineups;
 const qp = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s);
-const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
-  if (x != null) n.textContent = x; return n; };
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 
-let league = null, teams = [], loadToken = 0, current = null, seasonComps = null;
-
-/* ---------------------------------------------------------------- memberships ---
-   docs/memberships.md. This screen is the full WOWY, which is the members'; a
-   non-member gets a PREVIEW rather than a closed door, because the parts that are
-   already free elsewhere (the team rail, the subject chips and the on/off tiles,
-   which both profiles show) are the best argument for the rest:
-
-     01 On the floor with   a teaser in place of the individual split
-     02 On / off            unchanged
-     03 Combinations        capped at CATALOGUE.wowyPreviewMax players (wowy.js)
-
-   Analytics fail open: `preview` is true only once access.js has loaded and said
-   no. A members-only league the viewer may not see (a KNOWN answer) gets the
-   paywall card instead of the page. Without access.js nothing here changes. */
+let league = null, leagueRow = null, teams = [], teamsById = {}, seasonComps = null, compIds = [], seasonName = '';
 let preview = false, walled = false;
+let state = W.decodeState(location.search);
+let team = null;                                   // the chosen team (never null once booted; the All view keeps the last one)
+const TD = new Map();                              // team id -> { games, stints, roster, preview }
+const META = {}, PHOTOS = {};
+let LG = null, LGp = null;                         // the league's stints: { byTeam: Map(teamId -> stints), games: Map }
+let loadToken = 0, rowsMax = 25, matrixPick = [], events = null;
+const unitCache = new Map(), scaleCache = new Map();
 
+/* ------------------------------------------------------------- memberships --- */
 function accessState() {
   const A = window.EpinoiaAccess;
   if (!A || !league || typeof A.get !== 'function') return { A: null, st: {} };
   return { A, st: A.get(league.id) || {} };
 }
-
 function showWall() {
   const A = window.EpinoiaAccess;
   if (!A || typeof A.paywallHTML !== 'function') return false;
@@ -60,232 +54,378 @@ function showWall() {
   w.classList.remove('hide');
   return true;
 }
-
-function withTeaser() {
-  const A = window.EpinoiaAccess;
-  $('#withpanel').innerHTML = A.teaserHTML({
-    leagueSlug: league && league.slug,
-    title: 'On the floor with is for members',
-    lines: [
-      'One player’s own box score split by who shared the floor with him: his shooting, his creation and his mistakes, with any teammates you choose against without them.',
-      'The full combinations table: every on/off arrangement of up to five players, with ratings and the four factors at both ends.'
-    ]
-  });
-}
-
-/* A sign-in or sign-out while the page is open. Only a KNOWN change of answer is
-   acted on, so the state briefly reloading behind a sign-in costs nothing. */
 function onAccessChange() {
   const { A, st } = accessState();
   if (!A || !st.known) return;
   const nowWalled = typeof A.canView === 'function' && !A.canView(league.id);
   if (nowWalled !== walled) { location.reload(); return; }
   const nowPreview = typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id);
-  if (nowPreview !== preview) {
-    preview = nowPreview;
-    if (current) select(current);           // a member now: panel 01 needs the event log it skipped
-  }
+  if (nowPreview !== preview) { preview = nowPreview; events = null; TD.forEach(d => { d.preview = preview; }); render(); }
 }
+const previewMax = () => { const A = window.EpinoiaAccess; return (A && A.CATALOGUE && A.CATALOGUE.wowyPreviewMax) || 1; };
+const gate = () => W.gate(preview, previewMax());
 
-/* a labelled dropdown, edged in a colour (the fixtures page's control) */
-function pickSelect(label, opts, value, onChange, colour) {
-  const f = el('label', 'fsel');
-  if (colour) f.style.setProperty('--sc', colour);
-  const s = el('select');
-  opts.forEach(([v, t]) => { const op = el('option', null, t); op.value = v; if (v === value) op.selected = true; s.appendChild(op); });
-  s.addEventListener('change', () => onChange(s.value, f));
-  f.append(el('span', 'fl', label), el('span', 'fbox'));
-  f.lastChild.appendChild(s);
-  return f;
-}
-
-/* ON / OFF, as two cards and the swing between them: the team's net rating with the player on the
-   floor and off it, the ratings and minutes under each, and the difference in the middle */
-function onOffPanel(host, stints, playerId, name) {
-  const L = window.EpinoiaLineups;
-  const h = $(host);
-  h.textContent = '';
-  if (!L || !stints || !stints.length || !playerId) return;
-  const oo = L.onOff(stints, playerId);
-  const f1 = v => (v == null || !isFinite(v) ? '—' : (+v).toFixed(1));
-  const sg = v => (v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(1));
-  const cls = v => (v == null || !isFinite(v) ? '' : v > 0 ? ' pos' : v < 0 ? ' neg' : '');
-  const card = (k, side, sub) => {
-    const c = el('div', 'oo-card ' + k);
-    c.append(el('div', 'oo-k', k === 'on' ? name + ' on the floor' : name + ' off the floor'),
-             el('div', 'oo-v' + cls(side.net), sg(side.net)),
-             el('div', 'oo-s', sub));
-    const row = el('div', 'oo-row');
-    [['off. rating', f1(side.ortg)], ['def. rating', f1(side.drtg)], ['minutes', f1(side.mins)]].forEach(([l, v]) => {
-      const d = el('div'); d.append(el('b', null, v), el('i', null, l)); row.appendChild(d);
-    });
-    c.appendChild(row);
-    return c;
-  };
-  const wrap = el('div', 'oo');
-  const sw = el('div', 'oo-swing');
-  sw.append(el('div', 'k', 'swing'), el('div', 'n', sg(oo.diff.net)), el('div', 'k', 'on minus off'));
-  wrap.append(card('on', oo.on, 'team net rating per 100 possessions'), sw,
-              card('off', oo.off, 'team net rating per 100 possessions'));
-  h.appendChild(wrap);
-}
-
-function note(host, msg) {
-  const h = $(host);
-  h.textContent = '';
-  h.appendChild(el('div', 'empty', msg));
-}
-
-/* Everything the three panels need for one team, fetched once.
-   Kept out of the render path so switching teams is a single await and the
-   panels cannot half-update. */
-async function fetchTeam(team) {
-  const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-    (seasonComps && seasonComps.length ? `&competition_id=in.(${seasonComps.join(',')})` : '') +
-    `&status=eq.final&select=id,home_team_id,away_team_id,starters`);
-  if (!gs.length) return { games: [] };
-
-  const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
-  /* THE EVENT LOG FEEDS PANEL 01 ONLY — EpinoiaWith.index below, read by
-     EpinoiaWithUI. The on/off tiles, the matrix and the roster all come from the
-     stints. A preview teases panel 01, so it skips the heaviest read on the page
-     (a season of events for every game this team played). */
-  const wantEvents = !preview;
-  const [st, evs] = await Promise.all([
-    D.stints(gs.map(g => g.id), team.id, byGame),
-    wantEvents ? D.events(gs.map(g => g.id)) : Promise.resolve([])
-  ]);
-
-  /* the on-court five is rebuilt by walking each game's log forward from its
-     frozen starters, so every stat event knows the context it happened in */
-  const recs = !wantEvents ? [] : window.EpinoiaWith.index(gs.map(g => ({
-    starters: g.starters,
-    events: evs.filter(e => e.gameId === g.id)
-  })));
-
-  /* the roster is whoever actually took the floor, most-used first — the order
-     someone scans for a name, and it puts the rotation at the top for free */
-  const mins = new Map();
-  st.forEach(s => (s.player_ids || []).forEach(id =>
-    mins.set(id, (mins.get(id) || 0) + ((s.stats && s.stats.dur) || 0))));
-  const roster = [...mins.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
-  const meta = await D.playerMeta(roster);
-
-  return { games: gs, stints: st, recs, roster, meta, preview: !wantEvents };
-}
-
-function paint(team, d) {
-  document.documentElement.style.setProperty('--team-a', team.colour || '#93f2bf');
-  $('#ctx').textContent = (league ? league.name + ' · ' : '') + team.name;
-  document.title = team.name + ' · WOWY / Lineups · Epinoia';
-
-  if (!d.games.length || !d.stints.length) {
-    $('#subjbar').textContent = '';
-    $('#subjNote').textContent = '';
-    $('#comboNote').textContent = '';
-    const msg = !d.games.length
-      ? 'No finalised games for this team yet — WOWY fills in once one is played.'
-      : 'No lineup data for this team yet.';
-    note('#withpanel', msg); note('#onoff', msg); note('#wowy', msg);
-    return;
-  }
-
-  $('#subjNote').textContent = d.games.length + ' games · ' + d.stints.length +
-    ' stints · ' + d.roster.length + ' players';
-  /* d.preview, not the module flag: it is what THIS data was fetched for, so a
-     set without the event log is never drawn as the full page */
-  const A = window.EpinoiaAccess;
-  const cap = d.preview ? ((A && A.CATALOGUE && A.CATALOGUE.wowyPreviewMax) || 1) : 5;
-  $('#comboNote').textContent = d.preview
-    ? 'preview · ' + cap + (cap === 1 ? ' player' : ' players') + ' · members get up to 5'
-    : 'up to 5 players · 2⁵ arrangements';
-  if (d.preview) withTeaser();
-
-  /* --- the subject picker ---------------------------------------------------
-     The individual split needs one player as its subject and any number as his
-     mates. Those are different roles, so they get different controls: a single
-     rail here, a multi-select inside the panel. */
-  let subject = d.roster[0];
-  const bar = $('#subjbar');
-  bar.textContent = '';
-  const nameOf = id => ((d.meta[id] || {}).name || 'Player');
-  bar.appendChild(pickSelect('Player', d.roster.map(id => {
-    const m = d.meta[id] || {};
-    return [id, (m.jersey ? '#' + m.jersey + ' ' : '') + (m.name || 'Player')];
-  }), subject, v => { if (v && v !== subject) { subject = v; drawSubject(); } }, team.colour));
-
-  function drawSubject() {
-    /* teammates are whoever actually shared a stint with him — a roster listing
-       would offer players he never played beside, which reads as a bug */
-    const mates = new Set();
-    d.stints.forEach(s => {
-      const ids = s.player_ids || [];
-      if (ids.indexOf(subject) === -1) return;
-      ids.forEach(id => { if (id !== subject) mates.add(id); });
-    });
-    /* in a preview panel 01 keeps its teaser; the subject still drives panel 02 */
-    if (!d.preview) {
-      window.EpinoiaWithUI.render({
-        host: '#withpanel', recs: d.recs, stints: d.stints,
-        playerId: subject, meta: d.meta, teammates: [...mates]
-      });
-    }
-    onOffPanel('#onoff', d.stints, subject, nameOf(subject));
-
-  }
-  drawSubject();
-
-  window.EpinoiaWowy.render({
-    host: '#wowy', stints: d.stints, meta: d.meta,
-    max: 5, preselect: d.roster.slice(0, 2),
-    preview: d.preview, leagueSlug: league && league.slug
-  });
-}
-
-async function select(team) {
-  const token = ++loadToken;
-  current = team;
-  const ts = $('#teamrail select');
-  if (ts) { ts.value = team.id; ts.closest('.fsel').style.setProperty('--sc', team.colour || 'var(--ink)'); }
-  /* the URL carries the team, so a chosen view is linkable and survives a
-     reload — the page is meant to be sent to someone */
-  const u = new URL(location.href);
-  u.searchParams.set('t', team.slug);
-  history.replaceState(null, '', u);
-
-  $('#subjNote').textContent = 'Loading…';
-  note('#withpanel', 'Loading…'); $('#onoff').textContent = ''; $('#wowy').textContent = '';
-
+/* -------------------------------------------------------------- the address --- */
+function writeAddress() {
   try {
-    const d = await fetchTeam(team);
-    if (token !== loadToken) return;   // a later click already won
-    paint(team, d);
+    const s = Object.assign({}, state);
+    history.replaceState(null, '', location.pathname + W.encodeState(s, location.search));
+  } catch (_) { /* the page is still right */ }
+}
+const qs = patch => W.encodeState(Object.assign({}, state, patch || {}), location.search);
+
+/* ---------------------------------------------------------------- the width --- */
+const host = () => $('#wowyBody');
+const kind = () => W.sizeKind((host() && host().clientWidth) || 800);
+const colKey = (view, k) => 'epinoia.wowy.cols.' + view + '.' + k;
+function colsFor(view) {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(colKey(view, kind())) || 'null'); } catch (_) { /* the default */ }
+  if (view === 'matrix' && !saved) saved = ['mins', 'poss', 'net', 'ortg', 'drtg', 'efg', 'tov', 'oreb', 'ftr', 'defg'];
+  return W.pickColumns(saved, kind());
+}
+function setCols(view, keys) {
+  try { if (keys) localStorage.setItem(colKey(view, kind()), JSON.stringify(keys)); else localStorage.removeItem(colKey(view, kind())); } catch (_) { /* per-viewer convenience only */ }
+}
+
+/* -------------------------------------------------------------------- data --- */
+function decorate(t) {
+  const logo = window.epinoiaLogoUrl && (t.logo_path ? window.epinoiaLogoUrl(t.logo_path, 64) : null);
+  return { id: t.id, name: t.name, short: t.short_name || '', slug: t.slug, colour: t.colour, logo_path: t.logo_path, logoUrl: logo || null };
+}
+async function metaFor(ids) {
+  const need = ids.filter(id => id != null && !META[id]);
+  if (need.length) { const m = await D.playerMeta(need); Object.assign(META, m); need.forEach(id => { if (!META[id]) META[id] = { name: 'Player' }; }); }
+}
+async function photosFor(ids) {
+  const need = ids.filter(id => id != null && !(id in PHOTOS) && /^[0-9a-f-]{36}$/i.test(String(id)));
+  if (!need.length) return;
+  need.forEach(id => { PHOTOS[id] = null; });
+  const cfg = window.EPINOIA_CONFIG || {};
+  for (let i = 0; i < need.length; i += 40) {
+    try {
+      const c = need.slice(i, i + 40);
+      const rows = await D.get('players?id=in.(' + c.join(',') + ')&select=id,photo_url,media:photo_media_id(storage_path)') || [];
+      rows.forEach(p => {
+        const path = p.media && p.media.storage_path;
+        const stored = path ? (cfg.supabaseUrl || '') + '/storage/v1/object/public/media-public/' + path.split('/').map(encodeURIComponent).join('/') : null;
+        const url = stored || p.photo_url || null;
+        if (url && /^https:\/\//i.test(url)) PHOTOS[p.id] = url;
+      });
+    } catch (_) { /* initials all round */ }
+  }
+  UI.hydrate(ctx, document);
+}
+
+function rosterOf(stints) {
+  const mins = new Map();
+  stints.forEach(s => (s.player_ids || []).forEach(id => mins.set(id, (mins.get(id) || 0) + ((s.stats && s.stats.dur) || 0))));
+  return [...mins.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
+}
+
+async function fetchTeam(t) {
+  if (TD.has(t.id) && TD.get(t.id).preview === preview) return TD.get(t.id);
+  let out;
+  if (LG && LG.byTeam.has(t.id)) {
+    const games = [...LG.games.values()].filter(g => g.home_team_id === t.id || g.away_team_id === t.id);
+    const stints = LG.byTeam.get(t.id);
+    out = { games, stints, roster: rosterOf(stints), preview };
+  } else {
+    const gs = await D.all('games?or=(home_team_id.eq.' + t.id + ',away_team_id.eq.' + t.id + ')' +
+      (seasonComps && seasonComps.length ? '&competition_id=in.(' + seasonComps.join(',') + ')' : '') +
+      '&status=eq.final&select=id,home_team_id,away_team_id,starters');
+    if (!gs.length) out = { games: [], stints: [], roster: [], preview };
+    else {
+      const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
+      const st = await D.stints(gs.map(g => g.id), t.id, byGame);
+      out = { games: gs, stints: st, roster: rosterOf(st), preview };
+    }
+  }
+  await metaFor(out.roster);
+  TD.set(t.id, out);
+  return out;
+}
+
+/* the rest of the league, in the background: the reference for every colour, and the All teams view */
+function ensureLeague() {
+  if (LGp) return LGp;
+  LGp = (async () => {
+    if (!compIds.length) return null;
+    const gs = await D.all('games?competition_id=in.(' + compIds.join(',') + ')&status=eq.final&select=id,home_team_id,away_team_id,starters');
+    const games = new Map(); gs.forEach(g => games.set(g.id, g));
+    const raw = await D.stints(gs.map(g => g.id));
+    const byTeam = new Map();
+    raw.forEach(r => {
+      const g = games.get(r.game_id); if (!g) return;
+      const tid = r.team_idx === 0 ? g.home_team_id : g.away_team_id;
+      if (!byTeam.has(tid)) byTeam.set(tid, []);
+      byTeam.get(tid).push(r);
+    });
+    LG = { byTeam, games };
+    unitCache.clear(); scaleCache.clear();
+    return LG;
+  })().catch(e => { console.warn('[wowy] league', e); LGp = null; return null; });
+  return LGp;
+}
+
+async function ensureEvents(t) {
+  const d = TD.get(t.id);
+  if (!d || preview || !d.games.length) return null;
+  if (events && events.teamId === t.id) return events;
+  const evs = await D.events(d.games.map(g => g.id));
+  const recs = window.EpinoiaWith.index(d.games.map(g => ({ starters: g.starters, events: evs.filter(e => e.gameId === g.id) })));
+  events = { teamId: t.id, recs };
+  return events;
+}
+
+/* ------------------------------------------------------------------ the ctx --- */
+function stintsOfTeam(id) {
+  if (LG && LG.byTeam.has(id)) return LG.byTeam.get(id);
+  const d = TD.get(id); return d ? d.stints : [];
+}
+function unitsForTeam(id, size) {
+  const k = id + ':' + size;
+  if (!unitCache.has(k)) unitCache.set(k, L.sized(stintsOfTeam(id), size, 0).map(u => Object.assign(u, { teamId: id })));
+  return unitCache.get(k);
+}
+function unitsFor(size) {
+  if (state.t === 'all' && LG) {
+    const k = 'all:' + size;
+    if (!unitCache.has(k)) { let all = []; LG.byTeam.forEach((_, id) => { all = all.concat(unitsForTeam(id, size)); }); unitCache.set(k, all); }
+    return unitCache.get(k);
+  }
+  return unitsForTeam(team.id, size);
+}
+function referenceUnits(size) {
+  if (LG) { let all = []; LG.byTeam.forEach((_, id) => { all = all.concat(unitsForTeam(id, size)); }); return { units: all, source: 'league' }; }
+  return { units: unitsForTeam(team.id, size), source: 'team' };
+}
+function scalesFor(size) {
+  const k = size + ':' + (LG ? 'L' : 'T') + ':' + state.mm + ':' + state.mp + ':' + (LG ? '' : team.id);
+  if (!scaleCache.has(k)) {
+    const ref = referenceUnits(size);
+    const thr = { minMinutes: state.mm, minPoss: state.mp };
+    const sc = W.referenceScales(ref.units, null, thr);
+    const n = ref.units.filter(u => W.reliability(u, thr) === 'ok').length;
+    scaleCache.set(k, { sc, n, source: ref.source });
+  }
+  return scaleCache.get(k).sc;
+}
+const WORD = { 1: 'single-player', 2: 'two-man', 3: 'three-man', 4: 'four-man', 5: 'five-man' };
+function scaleNote(size) {
+  scalesFor(size);
+  const k = size + ':' + (LG ? 'L' : 'T') + ':' + state.mm + ':' + state.mp + ':' + (LG ? '' : team.id);
+  const e = scaleCache.get(k);
+  return (e.source === 'league' ? 'the league’s ' : 'this team’s ') + e.n + ' ' + WORD[size] + ' unit' + (e.n === 1 ? '' : 's') + ' with at least ' + state.mm + ' minutes and ' + state.mp + ' possessions' +
+    (e.source === 'team' ? ' (the rest of the league is still loading)' : '');
+}
+function teamScales() {
+  if (!LG || LG.byTeam.size < 4) return {};
+  const k = 'teams';
+  if (!scaleCache.has(k)) {
+    const lines = [...LG.byTeam.values()].map(s => L.filter(s, [])).filter(l => l.mins >= state.mm * 3);
+    const sc = {}; ['net', 'ortg', 'drtg', 'pace', 'mins', 'poss'].forEach(key => { sc[key] = W.scaleOf(lines.map(l => l[key])); });
+    scaleCache.set(k, sc);
+  }
+  return scaleCache.get(k);
+}
+function playerScales() {
+  const key = 'players:' + (LG ? 'L' : 'T') + state.mm + (LG ? '' : team.id);
+  if (!scaleCache.has(key)) {
+    const floor = Math.max(state.mm * 3, 30);
+    let list = [];
+    if (LG) LG.byTeam.forEach(s => { list = list.concat(W.playerSplits(s, floor)); });
+    else list = W.playerSplits(team ? stintsOfTeam(team.id) : [], floor);
+    scaleCache.set(key, { onNet: W.scaleOf(list.map(x => x.on.net)), offNet: W.scaleOf(list.map(x => x.off.net)), swing: W.scaleOf(list.map(x => x.diff.net)), n: list.length, source: LG ? 'league' : 'team' });
+  }
+  return scaleCache.get(key);
+}
+
+const ctx = {
+  get state() { return state; }, get gate() { return gate(); }, get team() { return team; },
+  get teamStints() { return team ? stintsOfTeam(team.id) : []; },
+  get games() { const d = team && TD.get(team.id); return d ? d.games : []; },
+  get thr() { return { minMinutes: state.mm, minPoss: state.mp }; },
+  get rowsMax() { return rowsMax; }, set rowsMax(v) { rowsMax = v; },
+  get matrixPick() { return matrixPick; }, set matrixPick(v) { matrixPick = v; },
+  meta: META, photos: PHOTOS, league: null, teamsById,
+  kind, cols: colsFor, setCols, qs,
+  rosterIds: () => (team && TD.get(team.id) ? TD.get(team.id).roster : []),
+  stintsOfTeam, unitsFor, scalesFor, scaleNote, teamScales, playerScales,
+  go(patch) { go(patch); },
+  redraw() { render(); },
+  link(patch) { copyLink(patch); }
+};
+
+/* ------------------------------------------------------------------- actions --- */
+function say(msg) { const n = $('#wnotes'); if (n) n.textContent = msg || ''; }
+async function copyLink(patch) {
+  const u = location.origin + location.pathname + W.encodeState(Object.assign({}, state, patch || {}), location.search);
+  try { await navigator.clipboard.writeText(u); say('Link copied: it opens this exact view.'); }
+  catch (_) { say(u); }
+  setTimeout(() => say(''), 5000);
+}
+function go(patch) {
+  const before = JSON.stringify([state.t, state.v]);
+  Object.assign(state, patch);
+  if ('mm' in patch || 'mp' in patch) scaleCache.clear();
+  if ('sz' in patch || 'inc' in patch || 'exc' in patch || 'sort' in patch || 'best' in patch || 't' in patch || 'v' in patch) rowsMax = 25;
+  if (JSON.stringify([state.t, state.v]) !== before) { applyTeam(); return; }
+  render();
+}
+
+async function applyTeam() {
+  /* the All teams view is for the lineups list only; the others are about one club */
+  if (state.t === 'all' && state.v !== 'lineups') state.t = team ? team.slug : (teams[0] && teams[0].slug);
+  if (state.t !== 'all') {
+    const t = teams.find(x => x.slug === state.t) || team || teams[0];
+    if (t) { state.t = t.slug; if (!team || team.id !== t.id) { team = t; } }
+  } else if (!LG) { await ensureLeague(); }
+  const token = ++loadToken;
+  say('Loading…');
+  try {
+    await fetchTeam(team);
+    if (token !== loadToken) return;
+    if (state.t === 'all' && !LG) { say('The league is still loading…'); }
+    else say('');
   } catch (e) {
     if (token !== loadToken) return;
-    console.warn('[wowy]', e);
-    $('#subjNote').textContent = '';
-    const msg = 'Could not load: ' + (e.message || e);
-    note('#withpanel', msg); note('#onoff', msg); note('#wowy', msg);
+    console.warn('[wowy]', e); say('Could not load: ' + (e.message || e)); return;
   }
+  render();
+  if (!LG && compIds.length) ensureLeague().then(() => { if (token === loadToken) { unitCache.clear(); render(); } });
 }
 
+/* ----------------------------------------------------------------- the render --- */
+const VIEW_SECTIONS = { overview: ['overview'], lineups: ['lineups'], onoff: ['onoff', 'with'], pair: ['pair'], build: ['build'] };
+const VIEW_NAMES = [['overview', 'Overview'], ['lineups', 'Lineups'], ['onoff', 'On / off'], ['pair', 'Pairs'], ['build', 'Builder']];
+
+function drawControls() {
+  const c = $('#wctl');
+  c.textContent = '';
+  const f = el('label', 'fsel');
+  f.style.setProperty('--sc', team ? (team.colour || 'var(--ink)') : 'var(--ink)');
+  const s = el('select');
+  const opts = teams.map(t => [t.slug, t.name]);
+  if (state.v === 'lineups') opts.unshift(['all', 'All teams (whole league)']);
+  opts.forEach(([v, t]) => { const o = el('option', null, t); o.value = v; if (v === state.t) o.selected = true; s.appendChild(o); });
+  s.addEventListener('change', () => go({ t: s.value, inc: [], exc: [], p: '', a: '', b: '', u: [] }));
+  f.appendChild(el('span', 'fl', 'Team'));
+  const box = el('span', 'fbox'); box.appendChild(s); f.appendChild(box);
+  c.appendChild(f);
+  c.appendChild(UI.seg(VIEW_NAMES.map(([v, t]) => [v, t]), state.v, v => go({ v }), 'View'));
+  const d = TD.get(team && team.id);
+  if (d && state.t !== 'all') c.appendChild(el('span', 'wnote wsum', d.games.length + ' games · ' + d.stints.length + ' stints · ' + d.roster.length + ' players'));
+}
+
+let rendering = 0;
+function render() {
+  if (walled || !team) return;
+  const my = ++rendering;
+  const d = TD.get(team.id);
+  const isAll = state.t === 'all';
+  document.documentElement.style.setProperty('--team-a', (team.colour || '#93f2bf'));
+  $('#ctx').textContent = (league ? league.name + ' · ' : '') + (isAll ? 'All teams' : team.name);
+  document.title = (isAll ? 'All teams' : team.name) + ' · WOWY / Lineups · Epinoia';
+  drawControls();
+  const show = VIEW_SECTIONS[state.v] || VIEW_SECTIONS.overview;
+  ['overview', 'lineups', 'onoff', 'with', 'pair', 'build'].forEach(id => $('#' + id).classList.toggle('hide', show.indexOf(id) === -1));
+  writeAddress();
+  if (!d || (!isAll && (!d.games.length || !d.stints.length))) {
+    const msg = !d || !d.games.length ? 'No finalised games for this team yet: WOWY fills in once one is played.' : 'No lineup data for this team yet: it fills in as games are finalised.';
+    ['vOverview', 'vLineups', 'vOnoff', 'vPair', 'vBuild'].forEach(id => { const n = $('#' + id); n.textContent = ''; n.appendChild(el('div', 'pg-empty', msg)); });
+    $('#with').classList.add('hide');
+    return;
+  }
+  try {
+    const t0 = performance.now();
+    if (state.v === 'overview') UI.overviewView(ctx, $('#vOverview'));
+    else if (state.v === 'lineups') {
+      if (isAll && !LG) { const n = $('#vLineups'); n.textContent = ''; n.appendChild(el('div', 'pg-empty', 'Loading every team’s stints…')); ensureLeague().then(() => { unitCache.clear(); render(); }); return; }
+      UI.lineupsView(ctx, $('#vLineups'));
+    } else if (state.v === 'onoff') {
+      const pid = UI.onOffView(ctx, $('#vOnoff'));
+      drawWith(pid);
+    } else if (state.v === 'pair') UI.pairView(ctx, $('#vPair'));
+    else if (state.v === 'build') UI.buildView(ctx, $('#vBuild'));
+    window.__wowyRenderMs = Math.round(performance.now() - t0);
+  } catch (e) { console.error('[wowy] render', e); }
+  if (my !== rendering) return;
+  fillMissing();
+}
+
+/* circles of players this page has not met yet (the All teams list), and every photo: fetched after the paint */
+let fillBusy = false;
+async function fillMissing() {
+  const ids = [...new Set([...document.querySelectorAll('.wc[data-pid]')].map(n => n.dataset.pid))];
+  const noMeta = ids.filter(id => !META[id]);
+  if (noMeta.length && !fillBusy) {
+    fillBusy = true;
+    try { await metaFor(noMeta); } finally { fillBusy = false; }
+    render();
+    return;
+  }
+  photosFor(ids);
+}
+
+/* his own box, split by teammates: members only, and only when the On / off view is open */
+async function drawWith(pid) {
+  const hostEl = $('#vWith');
+  if (!pid) { $('#with').classList.add('hide'); return; }
+  if (preview) {
+    hostEl.textContent = '';
+    hostEl.innerHTML = window.EpinoiaAccess && window.EpinoiaAccess.teaserHTML ? window.EpinoiaAccess.teaserHTML({
+      leagueSlug: league && league.slug, title: 'On the floor with is for members',
+      lines: ['One player’s own box score split by who shared the floor with him: his shooting, his creation and his mistakes, with any teammates you choose against without them.']
+    }) : '';
+    return;
+  }
+  hostEl.textContent = ''; hostEl.appendChild(el('div', 'pg-empty', 'Loading his box score with each teammate…'));
+  const t = team;
+  try {
+    const ev = await ensureEvents(t);
+    if (t !== team || state.v !== 'onoff') return;
+    const d = TD.get(t.id);
+    const mates = new Set();
+    d.stints.forEach(s => { const ids = s.player_ids || []; if (ids.indexOf(pid) !== -1) ids.forEach(id => { if (id !== pid) mates.add(id); }); });
+    hostEl.textContent = '';
+    window.EpinoiaWithUI.render({ host: hostEl, recs: ev.recs, stints: d.stints, playerId: pid, meta: META, teammates: [...mates] });
+  } catch (e) { console.warn('[wowy] with', e); hostEl.textContent = ''; hostEl.appendChild(el('div', 'pg-empty', 'Could not load: ' + (e.message || e))); }
+}
+
+/* the width changes what a table can hold (a phone, a narrow column, a wide one): draw again when the class changes */
+let lastKind = null;
+function watchWidth() {
+  const h = host();
+  if (!h || typeof ResizeObserver !== 'function') return;
+  new ResizeObserver(() => { const k = kind(); if (lastKind && k !== lastKind && team && !walled) render(); lastKind = k; }).observe(h);
+  lastKind = kind();
+}
+
+/* ----------------------------------------------------------------------- boot --- */
 (async function boot() {
   try {
-    /* WHICH SEASON (seasonbar.js): the games every panel reads are the chosen season's. With one
-       season on offer nothing is filtered, as before. The chips are links, so a pick reloads. */
     const SB = window.EpinoiaSeasonBar;
-    const ctx = SB ? await SB.context(D.get, qp.get('l') || 'demo-league', qp.get('s'))
-                   : await D.context(qp.get('l') || 'demo-league', qp.get('c'));
-    league = ctx.league;
-    if (SB && ctx.seasons.length > 1 && ctx.season) {
-      seasonComps = (ctx.season.comps || []).map(c => c.id);
-      SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: ctx.seasons, season: ctx.season });
+    const c = SB ? await SB.context(D.get, qp.get('l') || 'demo-league', qp.get('s'))
+                 : await D.context(qp.get('l') || 'demo-league', qp.get('c'));
+    league = c.league; ctx.league = league;
+    if (SB && c.seasons.length > 1 && c.season) {
+      seasonComps = (c.season.comps || []).map(x => x.id);
+      SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: c.seasons, season: c.season });
     }
+    compIds = seasonComps || (c.comps || []).map(x => x.id);
+    seasonName = (c.season && c.season.name) || '';
     window.__CS_LEAGUE_SLUG = league.slug;
 
-    /* Awaited, unlike the analytics on a box score: whether panel 01 fetches a
-       season of events at all depends on the answer, and access.js gives up after
-       four seconds and fails open, so the wait is bounded. */
+    /* the league's colours and its place in the head, as every page of the standard */
+    try {
+      const rows = await D.get('leagues?slug=eq.' + encodeURIComponent(league.slug) + '&select=*&limit=1');
+      leagueRow = (rows && rows[0]) || league;
+      if (window.EpinoiaTeamColour && window.EpinoiaTeamColour.league) window.EpinoiaTeamColour.league(leagueRow, { keepAccent: !!(leagueRow.theme && leagueRow.theme.accent) });
+    } catch (_) { /* the kit's colours */ }
+    const kick = $('#kick'); kick.textContent = '';
+    const a = el('a', null, league.name); a.href = '../../?l=' + encodeURIComponent(league.slug); kick.appendChild(a);
+
     const A = window.EpinoiaAccess;
     if (A && typeof A.load === 'function') {
       try { await A.load({ leagueId: league.id, leagueSlug: league.slug }); } catch (_) { /* fail open */ }
@@ -298,23 +438,17 @@ async function select(team) {
       if (typeof A.onChange === 'function') A.onChange(onAccessChange);
     }
 
-    teams = await D.all(`teams?league_id=eq.${league.id}` +
-      `&select=id,name,short_name,slug,colour&order=name`);
-    if (!teams.length) {
-      note('#withpanel', 'This league has no teams yet.');
-      return;
-    }
-
-    const wanted = qp.get('t');
-    const first = teams.find(t => t.slug === wanted) || teams[0];
-    const railHost = $('#teamrail');
-    railHost.appendChild(pickSelect('Team', teams.map(t => [t.id, t.name]), first.id, v => {
-      const t = teams.find(x => x.id === v);
-      if (t) select(t);
-    }, first.colour));
-    await select(first);
+    const rows = await D.all('teams?league_id=eq.' + league.id + '&select=id,name,short_name,slug,colour,logo_path&order=name');
+    teams = rows.map(decorate); teams.forEach(t => { teamsById[t.id] = t; });
+    if (!teams.length) { $('#who').querySelector('.sec-b').appendChild(el('div', 'pg-empty', 'This league has no teams yet.')); return; }
+    /* the address may name a team the league has not got: the first one stands in */
+    if (state.t !== 'all') { team = teams.find(t => t.slug === state.t) || teams[0]; state.t = team.slug; }
+    else team = teams[0];
+    matrixPick = [];
+    watchWidth();
+    await applyTeam();
   } catch (e) {
     console.warn('[wowy]', e);
-    note('#withpanel', 'Could not load: ' + (e.message || e));
+    say('Could not load: ' + (e.message || e));
   }
 })();

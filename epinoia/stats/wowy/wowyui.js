@@ -136,6 +136,11 @@ function unitsTable(ctx, o) {
   const keys = o.keys;
   const maxes = {};
   keys.forEach(k => { if (W.col(k).heat === 'seq') maxes[k] = rows.reduce((m, u) => Math.max(m, isNum(u[k]) ? u[k] : 0), 0); });
+  /* on a narrow column the headers are gone (the rows are cards), so the order is chosen here instead */
+  const ss = el('select', 'wsortsel'); ss.setAttribute('aria-label', 'Sort by');
+  keys.forEach(k => { const op = el('option', null, 'Sort: ' + W.col(k).name); op.value = k; if (k === o.sort) op.selected = true; ss.appendChild(op); });
+  ss.addEventListener('change', () => o.onSort && o.onSort(ss.value, true));
+  if (o.onSort) host.appendChild(ss);
   const wrap = el('div', 'ft-wrap wu-wrap');
   const t = el('table', 'ft wu');
   const hr = el('tr');
@@ -399,7 +404,7 @@ function lineupsView(ctx, host) {
   host.appendChild(unitsTable(ctx, {
     units: listUnits, keys: ctx.cols('lineups'), sort: G.preview ? 'net' : S.sort, dir: G.preview ? 'desc' : S.dir, scales,
     scaleNote: ctx.scaleNote(size), thr: ctx.thr, max: cap, showTeam: ctx.state.t === 'all',
-    onSort: k => ctx.go({ sort: k, dir: S.sort === k && S.dir === 'desc' ? 'asc' : 'desc', best: '' }),
+    onSort: (k, pick) => ctx.go({ sort: k, dir: pick ? 'desc' : (S.sort === k && S.dir === 'desc' ? 'asc' : 'desc'), best: '' }),
     more: () => { ctx.rowsMax += 25; ctx.redraw(); },
     expand: (u, team) => unitDetail(ctx, u, team, scales),
     empty: 'No ' + size + '-man unit has played yet under those filters.'
