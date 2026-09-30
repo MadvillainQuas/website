@@ -347,6 +347,25 @@ console.log('\nwhat leaves the device: nothing about the reader');
   store.setEnabled(true);
   const still = await FR.rankRows(pool, { store, net: dead, now: NOW, country: 'AU' });
   ok('with every call failing (offline, or a database without 0197 / 0198): the ranking still works, with no partners and the reports at their tier', still.ranked === true && still.rows.length === 3 && still.partners.size === 0);
+  /* a database without the migrations: asked once, then left alone for a while (every page would otherwise ask) */
+  {
+    const l = mem(), ss = mem(); let n404 = 0;
+    const f404 = async () => { n404++; return { ok: false, status: 404, json: async () => ({}) }; };
+    const cfg = { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'a' };
+    const one = FR.createNet({ fetch: f404, config: cfg, local: l, session: ss, now: () => NOW });
+    await one.partners(); await one.significance(pool); await one.significance([report({ h: 1 })]);
+    const two = FR.createNet({ fetch: f404, config: cfg, local: l, session: ss, now: () => NOW + 60 * 1000 });
+    await two.partners();
+    ok('a database without official_partners() or news_report_significance(): each asked once, and the partners not again on the next page for half an hour', n404 === 2 && (await two.partners()).size === 0, n404);
+    await FR.createNet({ fetch: f404, config: cfg, local: l, session: ss, now: () => NOW + 31 * 60 * 1000 }).partners();
+    ok('...and asked again after that', n404 === 3, n404);
+    const l2 = mem(), s2 = mem(); let asked = 0;
+    const fOk = async (url, init) => { asked++; const ids = JSON.parse(init.body).p_article_ids; return { ok: true, status: 200, json: async () => ids.map(id => ({ article_id: id, game_id: 'g', points: 20, reasons: ['x'] })) }; };
+    const rp2 = report({ h: 2 });
+    await FR.createNet({ fetch: fOk, config: cfg, local: l2, session: s2, now: () => NOW }).significance([rp2]);
+    const again = await FR.createNet({ fetch: fOk, config: cfg, local: l2, session: s2, now: () => NOW + 1000 }).significance([rp2]);
+    ok('what a tab was told about a match report\'s game is kept for the tab: the next page does not ask again', asked === 1 && again[rp2.id] && again[rp2.id].points === 20, [asked, again]);
+  }
   const noApi = FR.createNet({ fetch: undefined, config: {}, local: null, now: () => NOW });
   ok('with no configuration at all it answers empty, never throws', (await noApi.partners()).size === 0 && (await noApi.significance(pool)) && Object.keys(await noApi.significance(pool)).length === 0);
 }

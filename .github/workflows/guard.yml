@@ -1387,7 +1387,10 @@ jobs:
         # game's significance), variety (two in a row, two partners in six), the country from a time zone or a
         # language, dwell with an injected clock, storage that is blocked, personalisation off = newest first
         # and nothing recorded, and every request the ranking makes carrying nothing about the reader
-        run: node supabase/tests/feedrank.test.mjs
+        # (and the console's Official partner switches: they confirm, call set_official_partner, and put a refused switch back)
+        run: |
+          node supabase/tests/feedrank.test.mjs
+          node supabase/tests/partners-ui.test.mjs
 
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the

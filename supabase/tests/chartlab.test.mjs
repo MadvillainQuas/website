@@ -413,5 +413,8 @@ console.log('-- export geometry: sizes, layout, wrapping, file names');
   ok('file names are plain ascii: league, season, title', C.exportFileName('NBL', '2026-27', 'Points per game vs TS% – Élan!', 'png') === 'nbl-2026-27-points-per-game-vs-ts-elan.png' && C.exportFileName('', '', '', 'svg') === 'chart.svg' && C.exportFileName('a', 'b', 'x'.repeat(300), 'png').length < 100);
 }
 
+/* the text boxes debounce their typing, each with its own timer: one shared timer let a quick edit in the next box cancel the last */
+ok('each text box keeps its own typing timer', (() => { const m = /const field = \(label, k, auto, cap\) => \{\s*let t;/.test(src); return m; })());
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

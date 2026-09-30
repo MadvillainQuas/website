@@ -186,6 +186,8 @@ async function one(league) {
   }
 
   document.title = a.title + ' · ' + league.name;
+  /* an article of the league opened: read, and a little for the league (this device only: feedrank.js) */
+  if (FR) { try { FR.opened({ kind: 'league', league_slug: league.slug, slug: a.slug || SLUG, leagues: [{ slug: league.slug, name: league.name }] }); } catch (_) { /* nothing */ } }
   /* a filed match report is the report writer's prose: in another language the report pack's
      sentence templates translate its headline, standfirst and body (nothing else is tagged) */
   const generated = a.author_name === 'Epinoia match report';

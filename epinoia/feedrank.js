@@ -56,7 +56,8 @@ const W = Object.freeze({
   OFF_KEY: 'epinoia_feed_v1_off',      // '1' when the reader has switched personalisation off (kept through a reset)
   SESSION_KEY: 'epinoia_feed_s',       // sessionStorage: the seconds counted per league in this tab
   PARTNERS_KEY: 'epinoia_feed_partners', LEAGUES_KEY: 'epinoia_feed_leagues',   // public lists, cached
-  PARTNERS_TTL_MS: HOUR, LEAGUES_TTL_MS: 12 * HOUR,
+  PARTNERS_TTL_MS: HOUR, LEAGUES_TTL_MS: 12 * HOUR, ABSENT_TTL_MS: 30 * 60e3,
+  SIG_KEY: 'epinoia_feed_sig', SIG_TTL_MS: 30 * 60e3, SIG_MAX: 200,       // sessionStorage: what a tab was told of match reports' games
 
   /* time */
   RECENCY_HALF_LIFE_H: 18,             // a story loses half its freshness every 18 hours...
@@ -578,8 +579,10 @@ function createNet(o) {
   const local = opts.local === undefined ? usable(root.localStorage) : opts.local;
   const now = opts.now || (() => Date.now());
   const memo = {};
-  const readCache = (key, ttl) => { try { const v = JSON.parse(local.getItem(key) || 'null'); if (v && now() - v.t < ttl) return v.d; } catch (_) { /* none */ } return null; };
-  const writeCache = (key, d) => { try { if (local) local.setItem(key, JSON.stringify({ t: now(), d })); } catch (_) { /* none */ } };
+  const sessArea = opts.session === undefined ? usable(root.sessionStorage) : opts.session;
+  const readCache = (key, ttl, area) => { try { const v = JSON.parse((area || local).getItem(key) || 'null'); if (v && now() - v.t < ttl) return v.d; } catch (_) { /* none */ } return null; };
+  /* `aged`: written as if it were already that old, so a short-lived answer (a database that does not have the function yet) is asked again soon */
+  const writeCache = (key, d, aged, area) => { try { const a = area || local; if (a) a.setItem(key, JSON.stringify({ t: now() - (aged || 0), d })); } catch (_) { /* none */ } };
   const headers = () => ({ apikey: cfg().supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' });
   async function call(kind, path, body) {
     const f = fetcher(), c = cfg();
@@ -587,11 +590,14 @@ function createNet(o) {
     const r = await f(c.supabaseUrl + '/rest/v1/' + path, kind === 'rpc'
       ? { method: 'POST', cache: 'no-store', headers: headers(), body: JSON.stringify(body || {}) }
       : { cache: 'no-store', headers: headers() });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) { const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
     return r.json();
   }
   const once = (k, fn) => memo[k] || (memo[k] = fn());
   const sigCache = {};
+  /* what a tab has been told about match reports' games is kept for the tab (it rarely changes, and HOME and News ask the same) */
+  (() => { const kept = readCache(W.SIG_KEY, W.SIG_TTL_MS, sessArea); if (kept && typeof kept === 'object') Object.keys(kept).forEach(k => { sigCache[k] = kept[k]; }); })();
+  let sigAbsent = false;
   return {
     /* the official partners, once per page and remembered for an hour: a Set of keys */
     partners() {
@@ -599,7 +605,11 @@ function createNet(o) {
         const c = readCache(W.PARTNERS_KEY, W.PARTNERS_TTL_MS);
         if (c) return partnerSet(c);
         try { const l = await call('rpc', 'rpc/official_partners', {}); writeCache(W.PARTNERS_KEY, Array.isArray(l) ? l : []); return partnerSet(l); }
-        catch (_) { return new Set(); }
+        catch (e) {
+          /* a database without 0197 answers 404: none, and not asked again for a while (every page would ask) */
+          if (e && e.status === 404) writeCache(W.PARTNERS_KEY, [], W.PARTNERS_TTL_MS - W.ABSENT_TTL_MS);
+          return new Set();
+        }
       });
     },
     /* { country: { slug: 'GB+IE' }, idToSlug: { uuid: slug } }, once and remembered for half a day */
@@ -621,10 +631,14 @@ function createNet(o) {
       if (ids.length) {
         const ask = ids.slice(0, 60);
         ask.forEach(id => { sigCache[id] = null; });
-        try {
-          const got = await call('rpc', 'rpc/news_report_significance', { p_article_ids: ask });
-          (Array.isArray(got) ? got : []).forEach(g => { if (g && g.article_id) sigCache[g.article_id] = { points: num(g.points), reasons: Array.isArray(g.reasons) ? g.reasons : [] }; });
-        } catch (_) { /* the reports stand at their tier */ }
+        if (!sigAbsent) {
+          try {
+            const got = await call('rpc', 'rpc/news_report_significance', { p_article_ids: ask });
+            (Array.isArray(got) ? got : []).forEach(g => { if (g && g.article_id) sigCache[g.article_id] = { points: num(g.points), reasons: Array.isArray(g.reasons) ? g.reasons : [] }; });
+            const keep = {}; Object.keys(sigCache).slice(-W.SIG_MAX).forEach(k => { keep[k] = sigCache[k]; });
+            writeCache(W.SIG_KEY, keep, 0, sessArea);
+          } catch (e) { if (e && e.status === 404) sigAbsent = true; /* the reports stand at their tier */ }
+        }
       }
       const out = {};
       Object.keys(sigCache).forEach(k => { if (sigCache[k]) out[k] = sigCache[k]; });

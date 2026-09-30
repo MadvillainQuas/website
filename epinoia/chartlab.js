@@ -2333,8 +2333,8 @@ async function mountAsync(opts) {
   function renderTextPanel() {
     const p = panelText; p.textContent = '';
     const A_ = autoTexts();
-    let t;
     const field = (label, k, auto, cap) => {
+      let t; /* one timer per box: a quick edit in the next box must not cancel this one */
       const inp = h('input', { class: 'ep-input cl-tf', type: 'text', maxlength: String(cap), value: state.tx[k] || '', placeholder: auto || '(none)', 'aria-label': label });
       inp.addEventListener('input', () => { const v = sanitizeText(inp.value, cap); clearTimeout(t); t = setTimeout(() => change(s => { if (v) s.tx[k] = v; else delete s.tx[k]; }, 'charts'), 160); });
       return h('label', { class: 'cl-tfr' }, [h('span', { class: 'cl-fl', text: label }), inp]);
