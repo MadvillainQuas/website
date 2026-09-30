@@ -97,9 +97,18 @@ const byType = t => list.filter(x => x.type === t).length;
 ok('every post has a kind', list.length > 0 && list.every(x => ['results', 'stars', 'table', 'ahead', 'roundup'].includes(x.type)), [...new Set(list.map(x => x.type))].join());
 ok('two competitions: a roundup and a week ahead for each that has them, a table for the league (a cup has none), a result and a star for every final',
    byType('roundup') === 2 && byType('ahead') === 1 + 0 + 1 - 0 && byType('table') === 1 && byType('results') === 5, ['roundup', 'ahead', 'table', 'results', 'stars'].map(t => t + ':' + byType(t)).join(' '));
-ok('...the stars: a player of the game for each of the five, and a player of the week besides (there were several games)', byType('stars') === 6
+ok('...the stars: a player of the game for each of the five, a player of the week, and the stars of the week (there were several games)', byType('stars') === 7
    && list.filter(x => x.type === 'stars').some(x => x.model.label === 'Player of the week'));
 const best = list.filter(x => x.type === 'stars' && x.model.label !== 'Player of the week').sort((a, b) => b.model.gameScore - a.model.gameScore)[0];
+ok('the stars of the week are a card of their own under Stars: five players, ranked, one per player', (() => { const w = list.find(x => x.model.kind === 'weekstars'); return w && w.type === 'stars' && w.group === 'week' && w.model.rows.length === 5
+   && new Set(w.model.rows.map(r => r.name + r.team.name)).size === 5 && w.model.rows.every((r, i) => i === 0 || r.gameScore <= w.model.rows[i - 1].gameScore); })());
+ok('...built for the builder by game score, by points, or by pick (in the order given); earlier weeks too', (() => {
+  const g = by => GX.builderModel(now0, { tpl: 'weekstars', by }, 'portrait', null);
+  const pts = g('pts').model.rows.map(r => r.stats.pts), pool = g('gs').pool;
+  const pick = GX.builderModel(now0, { tpl: 'weekstars', by: 'pick', picks: [pool[3].key, pool[0].key] }, 'portrait', null).model;
+  return pts.every((v, i) => i === 0 || v <= pts[i - 1]) && pool.length > 5 && pick.rows.map(r => r.name).join() === pool[3].name + ',' + pool[0].name
+    && GX.builderModel(now0, { tpl: 'weekstars', by: 'pick', picks: [] }, 'portrait', null).model === null && GX.builderModel(last, { tpl: 'weekstars' }, 'portrait', null).model !== undefined;
+})());
 ok('...the player of the week is the best of the players of the game', list.find(x => x.model.label === 'Player of the week').model.player.name === best.model.player.name
    && /player-of-the-week-/.test(list.find(x => x.model.label === 'Player of the week').model.key));
 ok('...and says so in its words', /^Player of the week: /.test(SC.caption(list.find(x => x.model.label === 'Player of the week').model)));
@@ -107,7 +116,7 @@ const c = GX.counts(list);
 ok('the chips: "All" and the count of everything first, then each kind that has any, in a set order', c[0].id === 'all' && c[0].n === list.length
    && c.slice(1).map(x => x.id).join() === 'results,stars,table,ahead,roundup' && c.slice(1).reduce((a, x) => a + x.n, 0) === list.length, JSON.stringify(c.map(x => x.id + ':' + x.n)));
 ok('a kind with nothing is not offered', !GX.counts(list.filter(x => x.type !== 'table')).some(x => x.id === 'table') && GX.counts([]).length === 1 && GX.counts([])[0].n === 0);
-ok('a filter keeps exactly one kind, "all" and nothing keep everything', GX.filterBy(list, 'stars').length === 6 && GX.filterBy(list, 'stars').every(x => x.type === 'stars')
+ok('a filter keeps exactly one kind, "all" and nothing keep everything', GX.filterBy(list, 'stars').length === 7 && GX.filterBy(list, 'stars').every(x => x.type === 'stars')
    && GX.filterBy(list, 'all').length === list.length && GX.filterBy(list, '').length === list.length && GX.filterBy(list, 'nope').length === 0);
 ok('...the counts on the chips are what the filters return', c.slice(1).every(x => GX.filterBy(list, x.id).length === x.n));
 ok('a single game: no player of the week (there is nothing to pick between)', GX.items(GX.scope(now0, 'c2'), 'portrait', null).filter(x => x.model.label === 'Player of the week').length === 1

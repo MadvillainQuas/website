@@ -174,6 +174,21 @@ async function readExtras(sb, comps) {
   return out;
 }
 
+/* every player line of the week's finals, ready for socialcard.js's weekstars() to rank */
+function starEntries(data, team) {
+  const out = [];
+  data.finals.forEach(g => {
+    (data.players.get(g.id) || []).forEach(p => {
+      const mine = p.team_idx === 0 ? 0 : 1;
+      const name = (p.stats.adv && p.stats.adv.name) || '';
+      out.push({ key: g.id + ':' + mine + ':' + name, stats: p.stats, name, gameId: g.id,
+        team: team(mine ? g.away_team_id : g.home_team_id), opp: team(mine ? g.home_team_id : g.away_team_id),
+        teamScore: mine ? g.away_score : g.home_score, oppScore: mine ? g.home_score : g.away_score });
+    });
+  });
+  return out;
+}
+
 function items(data, size, crestOf) {
   const SC = root.EpinoiaSocialCard;
   const { L, team } = frame(data, crestOf);
@@ -222,6 +237,11 @@ function items(data, size, crestOf) {
       if (w) out.push({ group: 'week', title: 'Player of the week · ' + w.player.name, model: w });
     }
   }
+  /* the stars of the week: a card of its own (five, ranked), when there were two games or more and three players to rank */
+  if (data.finals.length > 1) {
+    const w = SC.weekstars({ entries: starEntries(data, team), league: L, comp: data.comps.length > 1 ? 'All competitions' : (data.comps[0] || {}).name || L.name, range });
+    if (w.rows.length >= 3) out.push({ group: 'week', title: 'Stars of the week', model: w });
+  }
   return out0;
 }
 
@@ -234,6 +254,17 @@ function items(data, size, crestOf) {
 function builderModel(data, sel, size, crestOf) {
   const SC = root.EpinoiaSocialCard, { L, team } = frame(data, crestOf);
   const s = sel || {}, tpl = s.tpl || 'result';
+  if (tpl === 'weekstars') {
+    const entries = starEntries(data, team);
+    const comp = data.comps.length > 1 ? 'All competitions' : (data.comps[0] || {}).name || L.name;
+    const model = SC.weekstars({ entries, league: L, comp, range: rangeLabel(data.since, data.now), by: s.by, picks: s.picks });
+    /* the week's players to pick from, best first (a player once, his best game) */
+    const cands = SC.weekstars({ entries, league: L, by: 'gs' });
+    const all = entries.slice().sort((a, b) => SC.gameScore(b.stats) - SC.gameScore(a.stats)), seen = new Set(), pool = [];
+    all.forEach(e => { const k = e.name + '|' + e.team.name; if (!seen.has(k)) { seen.add(k); pool.push({ key: e.key, name: e.name, team: e.team.name, pts: e.stats.pts }); } });
+    void cands;
+    return { model: model.rows.length ? model : null, pool: pool.slice(0, 20), reason: s.by === 'pick' ? 'Pick up to five players from the week.' : 'No player lines in this week.' };
+  }
   const compOf = id => data.comps.find(c => c.id === id) || {};
   const nameOf = c => (data.comps.length > 1 ? c.name : (c.name || L.name));
   if (tpl === 'result' || tpl === 'star') {
@@ -270,7 +301,7 @@ const TYPES = [
   { id: 'results', label: 'Game results' }, { id: 'stars', label: 'Stars' }, { id: 'table', label: 'Table' },
   { id: 'ahead', label: 'Week ahead' }, { id: 'roundup', label: 'Results roundup' }
 ];
-const TYPE_OF = { result: 'results', performer: 'stars', table: 'table', fixtures: 'ahead', week: 'roundup' };
+const TYPE_OF = { result: 'results', performer: 'stars', weekstars: 'stars', table: 'table', fixtures: 'ahead', week: 'roundup' };
 /* [{ id, label, n }] for the chips: "all" first, then every type that has anything (a type with none is not offered) */
 function counts(list) {
   const rows = [{ id: 'all', label: 'All', n: list.length }];

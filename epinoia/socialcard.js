@@ -71,6 +71,7 @@ const TEAM_STAT_DEFS = { fgp: ['FG%'], p3p: ['3P%'], ftp: ['FT%'], efg: ['EFG%']
 /* what a results row (and a fixture's) can say besides its clubs and score */
 const ROW_EXTRAS = ['time', 'venue', 'quarters', 'record', 'elo'];
 const LOGO_POS = ['both', 'heading', 'footer', 'none'];
+const LAYOUTS = ['list', 'hero', 'five'];
 const BOOL_MODS = ['crests', 'quarters', 'leaders', 'venue', 'days', 'venues', 'handle'];
 
 /* The modules as the drawing reads them: only what is known, in range, and not the default's own words. Anything
@@ -84,6 +85,7 @@ function cleanModules(m) {
   if (THEME_KEYS.includes(m.theme)) o.theme = m.theme;
   if (/^#[0-9a-f]{6}$/i.test(m.accent || '')) o.accent = m.accent;
   if (LOGO_POS.includes(m.logoPos) && m.logoPos !== 'both') o.logoPos = m.logoPos;
+  if (LAYOUTS.includes(m.layout) && m.layout !== 'list') o.layout = m.layout;
   const zone = validZone(m.zone);
   if (zone) o.zone = zone;
   if (m.zoneLabel === 'always' || m.zoneLabel === 'never') o.zoneLabel = m.zoneLabel;
@@ -308,6 +310,35 @@ function week(o, size) {
     comp: o.comp || '', range: o.range || '', rows: p, page: i + 1, pages: pp.length, tz }));
 }
 
+/* THE STARS OF THE WEEK: the week's best performances, ranked. `o.entries` are one per player line of the week:
+   { key, stats (a player_game_stats stats blob, with adv.name / adv.num), team, opp (club rows), teamScore, oppScore, gameId }.
+   `by` is how they are ranked: 'gs' game score (efficiency, the default), 'pts' points, or 'pick' - `o.picks`, a list of
+   entry keys, in the order the person gave them. A player who played twice is his best game only. Ties go to the higher
+   game score, then more points, then the name, so the same week always ranks the same way. Five at most. */
+const STAR_BY = ['gs', 'pts', 'pick'];
+function weekstars(o) {
+  const by = STAR_BY.includes(o.by) ? o.by : 'gs';
+  const metric = e => (by === 'pts' ? n0(e.stats.pts) : gameScore(e.stats));
+  const nameOf = e => (e.stats.adv && e.stats.adv.name) || e.name || '';
+  const cmp = (a, b) => metric(b) - metric(a) || gameScore(b.stats) - gameScore(a.stats) || n0(b.stats.pts) - n0(a.stats.pts) || nameOf(a).localeCompare(nameOf(b));
+  const best = new Map();
+  (o.entries || []).filter(e => e && e.stats).forEach(e => {
+    const k = nameOf(e) + '|' + (e.team && e.team.name);
+    if (!best.has(k) || cmp(e, best.get(k)) < 0) best.set(k, e);
+  });
+  let list = [...best.values()];
+  if (by === 'pick') {
+    const at = new Map((o.picks || []).map((k, i) => [k, i]));
+    list = list.filter(e => at.has(e.key)).sort((a, b) => at.get(a.key) - at.get(b.key));
+  } else list.sort(cmp);
+  const rows = list.slice(0, 5).map((e, i) => ({
+    rank: i + 1, name: nameOf(e), num: e.stats.adv && e.stats.adv.num != null ? String(e.stats.adv.num) : '',
+    team: side(e.team, e.teamScore), opp: side(e.opp, e.oppScore), won: n0(e.teamScore) > n0(e.oppScore),
+    stats: statsOf(e.stats), gameScore: Math.round(gameScore(e.stats) * 10) / 10, gameId: e.gameId || null, key: e.key || ''
+  }));
+  return { kind: 'weekstars', key: 'stars-of-the-week', league: o.league || {}, comp: o.comp || '', range: o.range || '', rows, by, tz: leagueZone(o.league) };
+}
+
 /* THE TABLE: standings rows in rank order, one set of graphics per group */
 function table(o, size) {
   const groups = new Map();
@@ -378,6 +409,7 @@ function rowsOf(m, mods) {
   return Object.assign({}, m, { rows: m.rows.slice(0, mods.rows) });
 }
 
+const MOD_CAPTION_KEYS = mods => (mods && mods.statKeys ? mods.statKeys.slice(0, 4) : ['pts', 'reb', 'ast']);
 /* ------------------------------------------------------------ captions ----- */
 function tags(league) {
   const t = String(league && league.name || '').replace(/[^\p{L}\p{N}]+/gu, '');
@@ -406,6 +438,13 @@ function caption(m0, mods0) {
       s.pts + ' points, ' + s.reb + ' rebounds, ' + s.ast + ' assists on ' + s.fg + ' shooting' +
       (s.pm ? ', ' + (s.pm > 0 ? '+' : '') + s.pm + ' on the floor' : '') + ', in ' + (m.won ? 'the ' + m.team.score + '–' + m.opp.score + ' win over '
         : 'the ' + m.team.score + '–' + m.opp.score + ' game against ') + m.opp.name + '.', '', tags(L)].join('\n');
+  }
+  if (m.kind === 'weekstars') {
+    const keys = MOD_CAPTION_KEYS(mods);
+    const said = r => keys.map(k => r.stats[k] + ' ' + STAT_DEFS[k][1].toLowerCase()).join(', ');
+    return ['Stars of the week' + (m.comp ? ' in the ' + m.comp : '') + ':', '',
+      m.rows.map(r => r.rank + '. ' + r.name + ' (' + r.team.name + '): ' + said(r) + ' vs ' + r.opp.name + ' (' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ')').join('\n'),
+      '', tags(L)].join('\n');
   }
   if (m.kind === 'week') {
     return ['The week\'s results' + (m.comp ? ' in the ' + m.comp : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : ''), '',
@@ -904,6 +943,123 @@ function drawWeek(ctx, m, th, S, M) {
   ];
 }
 
+/* STARS OF THE WEEK. Three layouts of one idea - the best of the week, the first the biggest:
+     list   #1 a tall card with his three big numbers, the rest in tiers beneath (each a row: rank, disc, name, game, line)
+     hero   #1 alone, large, with two runners-up under him
+     five   a starting five: two on the top row, three below, cards of equal weight
+   Each player is a disc in his club's colour (initials, or the shirt number is never guessed) with the club's crest on its
+   edge; names are fitted and cut, and the room a shape has is shared out by the rows it holds. */
+function starDisc(ctx, th, r, cx, cy, rad, accent) {
+  const u = U();
+  const col = u.rgb(r.team.colour) ? r.team.colour : accent;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+  ctx.fillStyle = u.accentOn(col, th); ctx.globalAlpha = 0.22; ctx.fill();
+  ctx.globalAlpha = 1; ctx.lineWidth = Math.max(3, rad * 0.06); ctx.strokeStyle = u.accentOn(col, th); ctx.stroke();
+  ctx.restore();
+  u.font(ctx, rad * 0.78, u.F.score);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = th.ink;
+  ctx.fillText(u.initials(r.name), cx, cy + rad * 0.27);
+  ctx.textAlign = 'left';
+  crest(ctx, th, r.team, cx + rad * 0.72, cy + rad * 0.72, Math.max(14, rad * 0.36));
+}
+function starLine(r, keys) { return keys.map(k => r.stats[k] + ' ' + STAT_DEFS[k][1]).join(' · '); }
+
+function drawWeekStars(ctx, m, th, S, M, accent) {
+  const u = U(), W = S.w;
+  const rows = m.rows, n = rows.length;
+  const layout = MOD.layout || 'list';
+  const keys = MOD.statKeys ? MOD.statKeys.slice(0, 4) : ['pts', 'reb', 'ast'];
+  const big = (MOD.statKeys ? MOD.statKeys : ['pts', 'reb', 'ast']).slice(0, 3);
+  const title = titleBlock(ctx, th, S, M, 'Stars of the week', [m.comp, m.range].filter(Boolean).join(' · '));
+  if (!n) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No player lines this week.', M, y + 40); } }];
+  const avail = S.h - S.top - S.bottom - 76 - 100 - title.h - 12 * 3;
+  const gameLine = r => (r.team.name + '  ·  ' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ' v ' + r.opp.name);
+  const numeral = (r, x, y, size, al) => {           // the rank, big and faint
+    ctx.save(); u.font(ctx, size, u.F.score); ctx.globalAlpha = th.fringe ? 0.16 : 0.12; ctx.fillStyle = accent; ctx.textAlign = al || 'left';
+    ctx.fillText(String(r.rank), x, y); ctx.restore();
+  };
+  /* the lead card: name across the top, disc left, the three big numbers under */
+  const lead = (r, h) => ({ h, draw: y => {
+    ctx.fillStyle = th.panel; u.roundRect(ctx, M, y, W - 2 * M, h, 18); ctx.fill();
+    ctx.fillStyle = accent; ctx.fillRect(M, y + 14, 8, h - 28);
+    numeral(r, W - M - 20, y + h - 18, h * 0.8, 'right');
+    const rad = Math.min(54, h * 0.2), cx = M + 40 + rad, cy = y + 30 + rad, head = 30 + 2 * rad + 8;
+    starDisc(ctx, th, r, cx, cy, rad, accent);
+    const tx = cx + rad + 26, tw = W - M - tx - 24;
+    u.font(ctx, 18, u.F.micro); ctx.fillStyle = accent; ctx.fillText('STAR OF THE WEEK', tx, y + 34);
+    const nb = u.nameBlock(ctx, r.name.toUpperCase(), tw, 64, 34, u.F.score);
+    nb.lines.forEach((l, i) => u.display(ctx, th, l, tx, y + 34 + nb.size * (0.95 + i * 0.9), th.ink, 2));
+    const after = y + 34 + nb.size * (0.95 + (nb.lines.length - 1) * 0.9);
+    u.font(ctx, 22, u.F.ui, 600); ctx.fillStyle = th.ink2;
+    ctx.fillText(u.ellipsis(ctx, gameLine(r), tw), tx, Math.min(after + 34, y + head));
+    const cw = (W - 2 * M - 48) / big.length, by0 = y + h - 22, nsize = Math.max(34, Math.min(96, (h - head - 44) * 0.95));
+    big.forEach((k, i) => {
+      const cx2 = M + 24 + cw * (i + 0.5);
+      ctx.textAlign = 'center';
+      u.fit(ctx, String(r.stats[k]), cw - 30, nsize, 30, u.F.score);
+      u.display(ctx, th, String(r.stats[k]), cx2, by0 - 30, i === 0 ? accent : th.ink, i === 0 ? 2 : 0);
+      u.font(ctx, 17, u.F.micro); ctx.fillStyle = th.ink3;
+      ctx.fillText(STAT_DEFS[k][0].slice(0, 12), cx2, by0);
+    });
+    ctx.textAlign = 'left';
+  } });
+  /* a tiered row: rank, disc, name, the game, and the line at the right */
+  const rowFor = (r, h, tier) => ({ h, draw: y => {
+    ctx.fillStyle = tier ? th.panel : 'rgba(0,0,0,0)';
+    if (tier) { u.roundRect(ctx, M, y, W - 2 * M, h - 6, 14); ctx.fill(); }
+    numeral(r, M + 14, y + h * 0.78, h * 0.9);
+    const rad = Math.min(38, (h - 6) * 0.36), cx = M + 100 + rad, cy = y + (h - 6) / 2;
+    starDisc(ctx, th, r, cx, cy, rad, accent);
+    const tx = cx + rad + 24, right = W - M - 22;
+    u.font(ctx, Math.min(22, h * 0.2), u.F.data, 600);
+    const line = u.ellipsis(ctx, starLine(r, keys), (right - tx) * 0.55);
+    const lw = ctx.measureText(line).width;
+    ctx.fillStyle = accent; ctx.textAlign = 'right'; ctx.fillText(line, right, cy + 8); ctx.textAlign = 'left';
+    const nw = right - tx - lw - 16;
+    u.fit(ctx, r.name, nw, Math.min(32, h * 0.3), 20, u.F.ui, 700);
+    ctx.fillStyle = th.ink; ctx.fillText(u.ellipsis(ctx, r.name, nw), tx, cy - 4);
+    u.font(ctx, Math.max(15, Math.min(19, h * 0.17)), u.F.ui, 500); ctx.fillStyle = th.ink3;
+    ctx.fillText(u.ellipsis(ctx, gameLine(r), right - tx), tx, cy + Math.min(30, h * 0.26));
+    stripe(ctx, th, r.team.colour, M, y + 8, h - 22, 5);
+  } });
+  if (layout === 'five') {
+    const top = rows.slice(0, 2), bot = rows.slice(2, 5);
+    const rowH = Math.min(300, (avail - 12) / 2);
+    const cardRow = (list, h) => ({ h, draw: y => {
+      const gap = 16, cw = (W - 2 * M - gap * (list.length - 1)) / list.length;
+      list.forEach((r, i) => {
+        const x = M + i * (cw + gap), cx = x + cw / 2;
+        ctx.fillStyle = th.panel; u.roundRect(ctx, x, y, cw, h, 16); ctx.fill();
+        ctx.fillStyle = i === 0 && r.rank === 1 ? accent : u.accentOn(r.team.colour || accent, th); ctx.fillRect(x + 14, y, cw - 28, 5);
+        numeral(r, x + cw - 14, y + h * 0.42, h * 0.42, 'right');
+        const rad = Math.min(52, h * 0.19);
+        starDisc(ctx, th, r, cx, y + 20 + rad, rad, accent);
+        u.fit(ctx, r.name, cw - 24, Math.min(28, h * 0.1), 17, u.F.ui, 800);
+        ctx.textAlign = 'center'; ctx.fillStyle = th.ink;
+        ctx.fillText(u.ellipsis(ctx, r.name, cw - 24), cx, y + 20 + 2 * rad + 40);
+        u.font(ctx, 17, u.F.ui, 500); ctx.fillStyle = th.ink3;
+        ctx.fillText(u.ellipsis(ctx, r.team.name, cw - 24), cx, y + 20 + 2 * rad + 66);
+        u.font(ctx, Math.min(26, h * 0.095), u.F.data, 700); ctx.fillStyle = i === 0 && r.rank === 1 ? accent : th.ink;
+        ctx.fillText(u.ellipsis(ctx, starLine(r, keys.slice(0, list.length > 2 ? 2 : 3)), cw - 20), cx, y + h - 22);
+        ctx.textAlign = 'left';
+      });
+    } });
+    return [title, cardRow(top, rowH)].concat(bot.length ? [cardRow(bot, rowH)] : []);
+  }
+  const rest = rows.slice(1);
+  if (layout === 'hero') {
+    const heroH = Math.min(420, Math.max(260, (avail - rest.slice(0, 2).length * 120) * 0.95));
+    const rH = Math.min(130, Math.max(84, (avail - heroH - 24) / Math.max(1, Math.min(2, rest.length))));
+    return [title, lead(rows[0], heroH)].concat(rest.slice(0, 2).map(r => rowFor(r, rH, true)));
+  }
+  /* list: the lead card takes about a third, the rest share the remainder, each tier a little smaller */
+  const leadH = Math.max(250, Math.min(310, avail * (n > 1 ? 0.3 : 0.6)));
+  const rH = n > 1 ? Math.max(76, Math.min(122, (avail - leadH - 12 * (n - 1)) / (n - 1))) : 0;
+  return [title, lead(rows[0], leadH)].concat(rest.map((r, i) => rowFor(r, Math.max(76, rH - i * 4), true)));
+}
+
 function drawTable(ctx, m, th, S, M, accent) {
   const u = U(), W = S.w;
   const n = m.rows.length;
@@ -987,7 +1143,7 @@ function drawFixtures(ctx, m, th, S, M, accent) {
   ];
 }
 
-const TAGS = { result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
+const TAGS = { weekstars: 'STARS', result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
 
 function draw(ctx, m0, opts) {
   const o = opts || {};
@@ -1023,6 +1179,7 @@ function drawIn(ctx, m, o, u, themes) {
   const body = m.kind === 'result' ? drawResult(ctx, m, th, S, M, accent)
     : m.kind === 'performer' ? drawPerformer(ctx, m, th, S, M, accent)
     : m.kind === 'week' ? drawWeek(ctx, m, th, S, M)
+    : m.kind === 'weekstars' ? drawWeekStars(ctx, m, th, S, M, accent)
     : m.kind === 'table' ? drawTable(ctx, m, th, S, M, accent)
     : drawFixtures(ctx, m, th, S, M, accent);
   /* ROOM FOR EVERYTHING: the blocks and the least gap between them must fit the space the heading and the footer
@@ -1068,7 +1225,7 @@ function teamsOf(m) {
   const out = [];
   if (m.home) out.push(m.home, m.away);
   if (m.team) out.push(m.team, m.opp);
-  (m.rows || []).forEach(r => { if (r.home) out.push(r.home, r.away); if (r.team) out.push(r.team); });
+  (m.rows || []).forEach(r => { if (r.home) out.push(r.home, r.away); if (r.team) out.push(r.team); if (r.opp) out.push(r.opp); });
   return out.filter(Boolean);
 }
 async function withCrests(m) {
@@ -1162,6 +1319,6 @@ function zip(files, when) {
   return out;
 }
 
-return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, result, performer, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
+return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, result, performer, weekstars, LAYOUTS, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
          gameScore, statLine, local, dayLabel, dateLabel, timeLabel, slug };
 }));

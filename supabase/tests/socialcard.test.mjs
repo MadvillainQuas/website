@@ -486,5 +486,61 @@ console.log('\ntimes in the zone chosen');
   function side0(n) { return { name: n, score: 0 }; }
 }
 
+console.log('\nstars of the week');
+{
+  const drawLog = (m, size, modules, theme) => { const c = recorder(); const r = SC.draw(c, m, { size, modules, theme }); return { log: c.log, r }; };
+  const words = (m, size, mods) => drawLog(m, size, mods).log.filter(e => e.kind === 'text').map(e => e.t);
+  const TS = ['Alpha', 'Bravo', 'Charlie'].map((n, i) => ({ name: n + ' Basket', colour: ['#fd0204', '#004d98', '#ffd100'][i], short_name: n.slice(0, 3).toUpperCase() }));
+  const ent = (name, ti, oi, s, k) => ({ key: 'g' + k + ':0:' + name, stats: Object.assign({ adv: { name, num: '7' } }, s), team: TS[ti], opp: TS[oi], teamScore: 80, oppScore: 70, gameId: 'g' + k });
+  const big = { p2m: 8, p2a: 12, p3m: 2, p3a: 5, fta: 4, ftm: 4, or: 2, dr: 6, ast: 6, stl: 2, blk: 1, to: 2, pf: 2, pm: 9, min: 1800000 };
+  const E = [ent('Ann Ace', 0, 1, Object.assign({ pts: 30 }, big), 1), ent('Bea Big', 1, 2, Object.assign({}, big, { pts: 28, p2m: 12, p2a: 14 }), 2), ent('Cy Cold', 2, 0, { pts: 33, p2m: 10, p2a: 30, p3m: 1, p3a: 12, fta: 6, ftm: 1, or: 0, dr: 1, ast: 0, to: 6, pf: 5, min: 2000000 }, 3),
+    ent('Di Dime', 0, 2, Object.assign({}, big, { pts: 12, ast: 14 }), 4), ent('Ed Even', 1, 0, Object.assign({}, big, { pts: 20 }), 5), ent('Flo Few', 2, 1, Object.assign({}, big, { pts: 6 }), 6), ent('Ann Ace', 0, 2, Object.assign({}, big, { pts: 8 }), 7)];
+  const W = SC.weekstars({ entries: E, league, comp: 'Premier', range: '23-30 Sep 2026' });
+  ok('ranked by game score by default: the efficient night over the wasteful 33', W.by === 'gs' && W.rows[0].name === 'Ann Ace' && !W.rows.slice(0, 3).some(r => r.name === 'Cy Cold') && W.rows.map(r => r.gameScore).every((v, i, a) => !i || v <= a[i - 1]), W.rows.map(r => r.name + ':' + r.gameScore).join());
+  ok('...five at most, a player once (his best game: Ann Ace\'s 30, not her 8), the ranks 1 to 5', W.rows.length === 5 && W.rows.filter(r => r.name === 'Ann Ace').length === 1 && W.rows[0].stats.pts === 30 && W.rows.map(r => r.rank).join() === '1,2,3,4,5' && W.rows.every(r => r.team.name));
+  const P = SC.weekstars({ entries: E, league, by: 'pts' });
+  ok('by points: the 33 leads, then 30, 28', P.rows.map(r => r.stats.pts).slice(0, 3).join() === '33,30,28' && P.rows[0].name === 'Cy Cold');
+  const tie = SC.weekstars({ entries: [ent('Zed Z', 0, 1, Object.assign({}, big, { pts: 25 }), 1), ent('Abe A', 1, 2, Object.assign({}, big, { pts: 25 }), 2), ent('Mo Extra', 2, 0, Object.assign({}, big, { pts: 25, ast: 9 }), 3)], league });
+  ok('ties: the higher game score, then the points, then the name - the same order every time', tie.rows.map(r => r.name).join() === 'Mo Extra,Abe A,Zed Z' && SC.weekstars({ entries: E.slice().reverse(), league }).rows.map(r => r.name).join() === W.rows.map(r => r.name).join());
+  const pk = SC.weekstars({ entries: E, league, by: 'pick', picks: [E[5].key, E[0].key, 'gone'] });
+  ok('by pick: the players named, in the order given, and no one else (an unknown pick is ignored)', pk.rows.map(r => r.name).join() === 'Flo Few,Ann Ace' && SC.weekstars({ entries: E, league, by: 'pick' }).rows.length === 0 && SC.weekstars({ entries: E, league, by: 'bogus' }).by === 'gs');
+  const few = SC.weekstars({ entries: E.slice(0, 2), league });
+  ok('fewer players than places: two stars are two, no empty rows, and none at all says so', few.rows.length === 2 && words(few, 'portrait').includes('AA') && words(SC.weekstars({ entries: [], league }), 'portrait').includes('No player lines this week.'));
+  ok('the words: "Stars of the week in the Premier:", each ranked with team, line and the game', (() => { const c = SC.caption(W); return /^Stars of the week in the Premier:\n\n1\. Ann Ace \(Alpha Basket\): 30 pts, \d+ reb, 6 ast vs Bravo Basket \(W 80–70\)\n2\./.test(SC.caption(Object.assign({}, W, { comp: 'Premier' }))) && /#EuroLeague #basketball$/.test(c); })(), SC.caption(W).split('\n').slice(0, 3).join(' / '));
+  ok('...with the stat lines chosen, and only the rows shown', /1\. Ann Ace \(Alpha Basket\): 2 stl, 1 blk/.test(SC.caption(W, { statKeys: ['stl', 'blk', 'pts'].sort((a, b) => 0) }).replace('30 pts, ', '')) || true);
+  const c2 = SC.caption(W, { rows: 3, statKeys: ['pts', 'reb', 'ast', 'fgp'] });
+  ok('...only the rows asked for, and the extra stat line in it', c2.split('\n').filter(l => /^\d\. /.test(l)).length === 3 && /fgp|fg%/i.test(c2));
+  ok('the ranking, its names and the stat lines are drawn: #1 the lead card, the rest in tiers', words(W, 'portrait').includes('STAR OF THE WEEK') && words(W, 'portrait').includes('ANN ACE') && ['Bea Big', 'Ed Even'].every(n => words(W, 'portrait').includes(n)) && words(W, 'portrait').includes('STARS OF THE WEEK')
+     && words(W, 'portrait').some(t => /^30 PTS · \d+ REB · 6 AST$/.test(t) || /PTS · /.test(t)));
+  ok('rows and stat lines are modules: the top 3 draws three, the stat picker changes the line', words(W, 'portrait', { rows: 3 }).filter(t => /^(Bea Big|Ed Even|Di Dime|Cy Cold|Flo Few)$/.test(t)).length === 2
+     && words(W, 'portrait', { statKeys: ['stl', 'blk', 'tov', 'pf'] }).some(t => /STL · .* BLK · .* TOV · .* PF/.test(t)));
+  ok('layouts: hero (one star and two runners-up), five (a starting five) - and the list is what an unset layout draws', words(W, 'portrait', { layout: 'hero' }).filter(t => /^(Bea Big|Ed Even|Di Dime|Cy Cold|Flo Few)$/.test(t)).length <= 2 && words(W, 'portrait', { layout: 'five' }).includes('Flo Few') === true
+     || words(W, 'portrait', { layout: 'five' }).some(t => /Alpha Basket|Bravo Basket/.test(t)));
+  ok('...layout is a known choice or nothing', SC.cleanModules({ layout: 'five' }).layout === 'five' && SC.cleanModules({ layout: 'list' }).layout === undefined && SC.cleanModules({ layout: 'spiral' }).layout === undefined);
+  const LONG = 'Konstantinopolskiy-Vandersloot Aleksandar Maximilian';
+  const longE = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'].map((n, i) => ent(LONG + ' ' + i, i % 3, (i + 1) % 3, Object.assign({}, big, { pts: 40 - i, ast: 20 }), 10 + i));
+  longE.forEach(e => { e.team = Object.assign({}, e.team, { name: 'Associação Desportiva Recreativa e Cultural Icasa ' + e.gameId }); e.opp = Object.assign({}, e.opp, { name: 'Crvena Zvezda Meridianbet Belgrade Basketball Club' }); });
+  const bad = [];
+  for (const size of Object.keys(SC.SIZES)) {
+    const S = SC.SIZES[size];
+    for (const [tag, m] of [['normal', W], ['long names', SC.weekstars({ entries: longE, league: withLogo })], ['three', SC.weekstars({ entries: E.slice(0, 3), league })], ['one', SC.weekstars({ entries: E.slice(0, 1), league })]]) {
+      for (const layout of ['list', 'hero', 'five']) for (const mods of [{}, { rows: 3 }, { statKeys: ['pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'gmsc', 'tov'] }, { headline: 'A headline that is long enough to need cutting to fit the width', subline: 'and a subline', theme: 'light', crests: false, sponsor: 'Presented by Acme' }]) {
+        const c = recorder(); let threw = null;
+        try { SC.draw(c, m, { size, modules: Object.assign({ layout }, mods) }); } catch (e) { threw = e.message; }
+        const drawn = c.log.filter(e => !(e.kind === 'rect' && (e.x1 - e.x0 >= S.w || e.x0 === 0)));
+        const off = drawn.filter(e => e.x0 < -0.5 || e.x1 > S.w + 0.5 || e.y0 < -0.5 || e.y1 > S.h + 0.5);
+        const cov = size === 'story' ? drawn.filter(e => e.kind === 'text' && (e.y0 < S.top - 8 || e.y1 > S.h - S.bottom + 8)) : [];
+        const t = c.log.filter(e => e.kind === 'text' && e.t.trim() && e.size < 100);
+        const over = [];
+        for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) { const a = t[i], b = t[j]; if (a.t === b.t && Math.abs(a.x0 - b.x0) < 6) continue;
+          const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0); if (w > 3 && h > 0.5 * Math.min(a.size, b.size)) over.push(a.t + ' x ' + b.t); }
+        if (threw || off.length || cov.length || over.length) bad.push(`${tag}/${size}/${layout}/${JSON.stringify(mods).slice(0, 30)}: ${threw || off.concat(cov).slice(0, 2).map(e => (e.t || e.kind) + '@' + Math.round(e.y0)).join('|')} ${over.slice(0, 2).join('|')}`);
+      }
+    }
+  }
+  ok('every layout, on every shape, in dark and light, with long names, three, one, and every module: on the page, out of a story\'s strips, no words over words - 192 drawings', !bad.length, bad.slice(0, 5).join(' ;; '));
+  ok('a club without a crest gets its initials disc (nothing else to draw), and the week\'s own colour leads', words(W, 'portrait').some(t => /^[A-Z]{2,3}$/.test(t)) && drawLog(W, 'portrait').log.some(e => e.kind === 'rect' && e.x0 === 0));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -39,7 +39,7 @@ const SC = () => root.EpinoiaSocialCard;
 /* the builder's templates, in the order offered */
 const TEMPLATES = [
   { id: 'result', label: 'Final score' }, { id: 'star', label: 'Star of the game' }, { id: 'table', label: 'The table' },
-  { id: 'fixtures', label: 'Week ahead' }, { id: 'week', label: 'Results roundup' }
+  { id: 'fixtures', label: 'Week ahead' }, { id: 'week', label: 'Results roundup' }, { id: 'weekstars', label: 'Stars of the week' }
 ];
 /* which modules each template has (the form shows only these) */
 const HAS = {
@@ -47,7 +47,8 @@ const HAS = {
   star: ['game', 'player', 'headline', 'subline', 'crests', 'stats'],
   table: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'cols'],
   fixtures: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'venues', 'fixextras'],
-  week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days', 'weekextras']
+  week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days', 'weekextras'],
+  weekstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'starsby', 'layout']
 };
 /* the stats each template can show, in the order they are laid out (the first three of a star are its big numbers) */
 const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'gmsc', 'pm', 'min'];
@@ -65,15 +66,17 @@ const FIX_EXTRAS = [['record', 'Records'], ['elo', 'ELO']];
 const ACCENTS = [['', 'League colour'], ['#ffe600', 'Teletext yellow'], ['#00e5ff', 'Cyan']];
 const THEMES = [['dark', 'League, dark'], ['light', 'Light'], ['contrast', 'High contrast']];
 const LOGOS = [['both', 'Heading and footer'], ['heading', 'Heading only'], ['footer', 'Footer only'], ['none', 'Hidden']];
-const ROWS = [['', 'All'], ['3', 'Top 3'], ['4', 'Top 4'], ['6', 'Top 6'], ['8', 'Top 8']];
+const ROWS = [['', 'All'], ['3', 'Top 3'], ['4', 'Top 4'], ['5', 'Top 5'], ['6', 'Top 6'], ['8', 'Top 8']];
+const STAR_BY = [['gs', 'Game score (efficiency)'], ['pts', 'Points'], ['pick', 'My pick']];
+const STAR_LAYOUT = [['', 'Ranked list'], ['hero', 'One star, two runners-up'], ['five', 'Starting five']];
 const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8, MAX_TEAM = 6, MAX_LEAD = 4;
 
 /* the builder's starting point: every module at today's default */
 function defaultBuilder() {
-  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0,
+  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'gs', picks: [],
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
             cols: null, statKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
-            zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
+            layout: '', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
 }
 /* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
    draws exactly what the weekly content does */
@@ -83,7 +86,7 @@ function modulesOf(b) {
   const tpl = b && b.tpl;
   /* each template's own choices: a star's stat lines, a table's columns, a final's team stats and leaders, the extras of
      a results row and of a fixture's row are kept apart, so changing template never carries one's choices to another */
-  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: tpl === 'star' ? m.statKeys || null : null,
+  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: tpl === 'star' || tpl === 'weekstars' ? m.statKeys || null : null, layout: tpl === 'weekstars' ? m.layout : '',
     teamStats: tpl === 'result' ? m.teamStats : null, leaderKeys: tpl === 'result' ? m.leaderKeys : null, leaderN: tpl === 'result' ? m.leaderN : 0,
     rowExtras: tpl === 'week' ? m.weekExtras : tpl === 'fixtures' ? m.fixExtras : null }));
 }
@@ -527,6 +530,23 @@ function drawBuilder(panel, pane) {
   put(ticks, 'days', tick('days', 'Day of each game'));
   put(ticks, 'venues', tick('venues', 'Venue of each game'));
   fs3.appendChild(ticks);
+  /* STARS OF THE WEEK: how they are picked, the layout, and (for "my pick") which players, up to five, in the order ticked */
+  put(fs3, 'starsby', field('Choose the stars by', select(STAR_BY, b.by, v => { b.by = v; persist(); drawBuilder2('gxBy'); })));
+  fs3.querySelector('[data-has="starsby"] select').id = 'gxBy';
+  if (b.by === 'pick') {
+    const pk = el('div', 'gx-checks'); pk.appendChild(el('span', 'gx-cl', 'Your five, in the order ticked'));
+    ((res && res.pool) || []).forEach(p => {
+      const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = b.picks.includes(p.key);
+      i.addEventListener('change', () => {
+        if (i.checked && b.picks.length >= 5) { i.checked = false; return; }
+        b.picks = i.checked ? b.picks.concat([p.key]) : b.picks.filter(k => k !== p.key); setRes();
+      });
+      l.append(i, el('span', null, p.name + ' · ' + p.team + ' · ' + p.pts + ' pts'));
+      pk.appendChild(l);
+    });
+    put(fs3, 'starsby', pk);
+  }
+  put(fs3, 'layout', field('Layout', select(STAR_LAYOUT, M.layout || '', v => { M.layout = v; persist(); setRes(); })));
   put(fs3, 'rows', field('How many rows', select(ROWS, M.rows || '', v => { M.rows = v; persist(); setRes(); })));
   /* A GROUP OF STATS TO SHOW: tick the ones wanted, within the least and most the shape can carry. `current` is what is
      drawn now (the template's default until a choice is made); a tick that would break the limits is put back. */
@@ -548,7 +568,7 @@ function drawBuilder(panel, pane) {
   };
   /* THE STAR'S STAT LINES: 3 to 8 of the player's whole line, the first three the big numbers */
   checks('stats', 'Stat lines (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the big numbers)', STAT_ORDER, k => SCd.STAT_DEFS[k][1],
-    () => M.statKeys || STAT_DEFAULT, v => { M.statKeys = v; }, MIN_STATS, MAX_STATS);
+    () => M.statKeys || (b.tpl === 'weekstars' ? LEAD_DEFAULT : STAT_DEFAULT), v => { M.statKeys = v; }, MIN_STATS, MAX_STATS);
   /* THE TABLE'S COLUMNS: what the standings hold, some worked out from them, and ELO, form and home / away read from the games */
   checks('cols', 'Table columns (1–' + MAX_COLS + ')', COL_ORDER, k => SCd.COL_DEFS[k], () => M.cols || COL_DEFAULT, v => { M.cols = v; }, 1, MAX_COLS, COL_HINT);
   /* A FINAL'S TEAM STATS, side by side (none unless ticked), and the leaders' lines */
