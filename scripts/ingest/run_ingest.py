@@ -1870,20 +1870,45 @@ def outstanding_rows(sb: "Supabase", src: dict, now: datetime) -> list[dict]:
     stopped looking), less than OUTSTANDING_MAX_AGE ago (so a postponed game is not chased for
     ever), and are still not final in the database. A game with no tip-off time is skipped: with
     nothing to date it by, there is no telling a missed game from one not yet played."""
-    return _outstanding(sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}"
-                                                    f"&{_outstanding_where(now)}&select=external_id,external_status,tipoff_at,home_name,away_name"), now)
+    q = f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}"
+    rows = sb.select("external_games", f"{q}&{_outstanding_where(now)}&select={_OUTSTANDING_COLS}")
+    try:
+        rows += sb.select("external_games", f"{q}&{_unsettled_where(now)}&select={_OUTSTANDING_COLS},games!inner(status)")
+    except Exception:
+        pass
+    return _outstanding(rows, now)
+
+
+_OUTSTANDING_COLS = "external_id,external_status,tipoff_at,home_name,away_name"
+
+
+def _window(now: datetime) -> str:
+    # the window in the query: the rest of a season's fixtures never leave the database
+    return (f"tipoff_at=gt.{_zulu(now - timedelta(seconds=OUTSTANDING_MAX_AGE))}"
+            f"&tipoff_at=lte.{_zulu(now - timedelta(seconds=LIVE_AFTER_TIP))}")
 
 
 def _outstanding_where(now: datetime) -> str:
-    # the window in the query: the rest of a season's fixtures never leave the database
-    return (f"external_status=neq.final&tipoff_at=gt.{_zulu(now - timedelta(seconds=OUTSTANDING_MAX_AGE))}"
-            f"&tipoff_at=lte.{_zulu(now - timedelta(seconds=LIVE_AFTER_TIP))}")
+    return f"external_status=neq.final&{_window(now)}"
+
+
+def _unsettled_where(now: datetime) -> str:
+    # FINAL ON THE FEED, NOT CLOSED HERE (unsettled_finals, for the catch-up). finalise-game refusing a game - a roster
+    # the ingest got wrong, since put right (Czech 1. liga's Slavia v Litomerice, 25 Sep 2026: both sides' players
+    # mapped to the same ten people) - left the feed row final and the game LIVE, and the catch-up only ever asked
+    # about feed rows that were not final. Only a discovery pass, twice a week, ever wrote such a game again.
+    return f"external_status=eq.final&games.status=neq.final&{_window(now)}"
 
 
 def outstanding_by_source(sb: "Supabase", sources: list[dict], now: datetime) -> dict:
     """outstanding_rows for every source at once, keyed (adapter, code) - so a catch-up pass with
     nothing to do costs one or two reads instead of a read, a run row and two stamps per source."""
-    got = external_rows(sb, sources, _outstanding_where(now), "external_id,external_status,tipoff_at,home_name,away_name")
+    got = external_rows(sb, sources, _outstanding_where(now), _OUTSTANDING_COLS)
+    try:
+        for k, v in external_rows(sb, sources, _unsettled_where(now), _OUTSTANDING_COLS + ",games!inner(status)").items():
+            got.setdefault(k, []).extend(v)
+    except Exception as exc:
+        print(f"   (unsettled finals lookup failed: {exc})")
     return {k: _outstanding(v, now) for k, v in got.items()}
 
 

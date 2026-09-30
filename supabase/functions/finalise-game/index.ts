@@ -317,8 +317,15 @@ Deno.serve(async (req) => {
     if (Math.abs(mins - expected) > 1) warnings.push(`${game.teams[t].name}: ${mins.toFixed(1)} player-minutes, expected ${expected}`);
     game.teams[t].players.forEach((p: any) => {
       const s = d.stats[p.id];
+      /* A FED GAME'S SHEET IS THE LEAGUE'S, AND NOBODY HERE CAN CORRECT IT. Blocking is right for a
+         game scored on this platform: the statistician is there to fix the substitution. For the
+         ingest worker it only ever kept a played game LIVE for good (SLBW's Oaklands Wolves 118-50
+         Cardiff Met Archers, 18 Oct 2025, refused for "Lily Parkin has 5 fouls and is still on
+         court" on every retry, the translator's own fouled-out fix-up notwithstanding). Every
+         basket, rebound and foul is still the feed's; only her minutes after the fifth are the
+         scorer's error, so the game is published and the warning kept. */
       if (s && (s.pf > 5 || (s.pf === 5 && d.onCourt[t].includes(p.id))))
-        blocking.push(`${p.name} has ${s.pf} fouls and is still on court`);
+        (isWorker ? warnings : blocking).push(`${p.name} has ${s.pf} fouls and is still on court`);
     });
   });
   if (blocking.length) return json({ error: 'sanity gate failed', blocking, warnings }, 422);

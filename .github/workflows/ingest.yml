@@ -122,10 +122,20 @@ jobs:
           pip install -r "$RUNNER_TEMP/req.txt" || pip install selenium beautifulsoup4 requests pandas numpy scikit-learn tqdm
       # A GAME PLAYED WHILE NO LANE WAS WATCHING (the PC off, the chain broken, a cron slot dropped)
       # used to be picked up by the next half-hourly discovery pass. Discovery is twice a week now,
-      # so the hourly floor asks the one question itself: anything that tipped off 4 h - 7 days ago
+      # so the catch-up asks the one question itself: anything that tipped off 4 h - 7 days ago
       # and is still not final? One or two reads when the answer is no, which is nearly always.
+      #
+      # EVERY LIVE-LANE PASS ASKS IT, NOT ONLY THE HOURLY SLOT. The hourly cron is in the live lane's
+      # concurrency group, so while the chain holds the lane (a pass lasts up to 5.5 h and dispatches the
+      # next) the hourly run waits, and the next cron slot's run replaces it: of 40 scheduled runs from
+      # 26 to 30 Sep 2026, 14 were cancelled that way. The chain itself always runs, so the question
+      # goes at the head of each of its passes.
       - name: Catch up games played while no lane was watching
-        if: ${{ github.event.schedule == '2 * * * *' }}
+        if: ${{ (github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true' }}
+        # bounded: the live loop after it is 330 of the job's 350 minutes, and a pass cut off by the job
+        # timeout never dispatches the next one
+        timeout-minutes: 12
+        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

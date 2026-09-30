@@ -254,6 +254,39 @@ same = all(sorted(r["external_id"] for r in old_outstanding_rows(FakeSB({"extern
 ok("catch-up finds the same outstanding games for every source", same)
 ok("...in %d requests for %d sources" % (n_new, len(sources)), n_new <= 4, n_new)
 
+
+class _UnsettledSB(FakeSB):
+    """external_games rows that are final on the feed while the game they point at is not: the answer PostgREST gives
+    for "games.status=neq.final" with games!inner(status) in the select, which FakeSB cannot evaluate itself."""
+    def __init__(self, tables, open_games):
+        super().__init__(tables)
+        self.open = open_games
+
+    def select(self, table, query):
+        if "games.status=neq.final" in query:
+            q = query.replace("&games.status=neq.final", "").replace(",games!inner(status)", "")
+            return [dict(r, games={"status": "live"}) for r in super().select(table, q) if r.get("game_id") in self.open]
+        return super().select(table, query)
+
+
+tip = (now - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+urows = [{"adapter": "fiba_site_schedule", "competition_code": "CZ1L", "external_id": "535389", "external_status": "final",
+          "tipoff_at": tip, "home_name": "Slavia", "away_name": "Litomerice", "game_id": "g-refused"},
+         {"adapter": "fiba_site_schedule", "competition_code": "CZ1L", "external_id": "535390", "external_status": "final",
+          "tipoff_at": tip, "home_name": "A", "away_name": "B", "game_id": "g-closed"},
+         {"adapter": "fiba_site_schedule", "competition_code": "CZ1L", "external_id": "535391", "external_status": "live",
+          "tipoff_at": tip, "home_name": "C", "away_name": "D", "game_id": "g-live"},
+         {"adapter": "fiba_site_schedule", "competition_code": "CZ1L", "external_id": "400001", "external_status": "final",
+          "tipoff_at": (now - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ"), "home_name": "E", "away_name": "F", "game_id": "g-old"}]
+usb = _UnsettledSB({"external_games": urows}, {"g-refused", "g-live", "g-old"})
+cz = [{"adapter": "fiba_site_schedule", "code": "CZ1L", "label": "CZ1L"}]
+got = sorted(r["external_id"] for r in RI.outstanding_by_source(usb, cz, now).get(("fiba_site_schedule", "CZ1L"), []))
+ok("catch-up also takes a game the feed calls final but the platform never closed (finalise refused it)", "535389" in got, got)
+ok("...alongside the one still live on the feed", "535391" in got, got)
+ok("...but not a game closed on both sides, nor one older than the week", "535390" not in got and "400001" not in got, got)
+got1 = sorted(r["external_id"] for r in RI.outstanding_rows(usb, cz[0], now))
+ok("the one-source read agrees", got1 == got, (got1, got))
+
 # ------------------------------------------------------------------ write_fixture: a peek, not a rewrite
 print("-- a fixture the schedule has not changed costs no request at all")
 
