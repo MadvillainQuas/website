@@ -2505,7 +2505,10 @@
                    [/^votes\//, 'votes'], [/^video\//, 'video'], [/^game\//, 'game'], [/^p\//, 'player'], [/^t\//, 'team'],
                    [/^scouting\//, 'scouting'], [/^me\//, 'me']];
     const hit = KINDS.find(k => k[0].test(s));
-    return hit ? { kind: hit[1] } : null;
+    if (hit) return { kind: hit[1] };
+    /* A PAGE BUILT TO THE PAGE STANDARD (docs/page-standard.md) says so on its frame (data-std): it gets the line,
+       the quick keys (its league's when it is about one) and ON THIS PAGE with each section's SKIP, as HOME does */
+    return document.querySelector('.ep-frame[data-std]') ? { kind: 'std' } : null;
   }
   /* The keys: [label, path, needs the league]. A page about one league leads with that league's
      places; without a league in hand it falls back to the platform's four. */
@@ -2525,7 +2528,7 @@
     player:   [['club', '#club'], ['league', '', 1], ['statistics', 'stats/', 1], ['scouting', 'scouting/']],
     game:     [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['home', 'home/']]
   };
-  ['news', 'article', 'votes', 'video'].forEach(k => { TT_KEYS[k] = [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1]]; });
+  ['news', 'article', 'votes', 'video', 'std'].forEach(k => { TT_KEYS[k] = [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1]]; });
 
   let ttState = null;
   function ttOn() {
@@ -2750,7 +2753,7 @@
     ttState = { p, frame };
     try { ttLine(frame, p); } catch (_) { /* the page keeps its own bar */ }
     try { ttState.fast = ttFast(frame, p); } catch (_) { /* no keys */ }
-    if (/^(home|league|team|player)$/.test(p.kind)) { try { ttIndex(frame, p); } catch (_) { /* no index */ } }
+    if (/^(home|league|team|player|std)$/.test(p.kind)) { try { ttIndex(frame, p); } catch (_) { /* no index */ } }
     dEl.classList.add('tt-on');
   }
   /* the league a page resolves late re-points the keys that name it */

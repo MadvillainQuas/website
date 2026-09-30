@@ -19,32 +19,42 @@
 <meta name="description" content="A league's community on Epinoia: find one of its games near you, its fans' stamps and photographs, who has travelled furthest, and its Discord servers.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=546"></script>
-<script src="../i18n.js?v=546" data-i18n-packs="go game report"></script>
-<script src="../glyphs.js?v=546" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=546">
-<link rel="stylesheet" href="../kit/nav.css?v=546">
-<link rel="stylesheet" href="../kit/newscard.css?v=546">
-<link rel="stylesheet" href="../go/go.css?v=546">
-<link rel="stylesheet" href="../go/nearby/nearby.css?v=546">
-<link rel="stylesheet" href="../go/stampcard.css?v=546">
-<link rel="stylesheet" href="../kit/community.css?v=546">
-<link rel="stylesheet" href="../kit/teletext.css?v=546">
-<link rel="stylesheet" href="../kit/legibility.css?v=546">
+<script src="../appmode.js?v=547"></script>
+<script src="../i18n.js?v=547" data-i18n-packs="go game report"></script>
+<script src="../glyphs.js?v=547" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=547">
+<link rel="stylesheet" href="../kit/nav.css?v=547">
+<link rel="stylesheet" href="../kit/newscard.css?v=547">
+<link rel="stylesheet" href="../go/go.css?v=547">
+<link rel="stylesheet" href="../go/nearby/nearby.css?v=547">
+<link rel="stylesheet" href="../go/stampcard.css?v=547">
+<link rel="stylesheet" href="../kit/page.css?v=547">
+<link rel="stylesheet" href="../kit/community.css?v=547">
+<link rel="stylesheet" href="../kit/sectitle.css?v=547">
+<link rel="stylesheet" href="../kit/teletext.css?v=547">
+<link rel="stylesheet" href="../kit/legibility.css?v=547">
 </head>
 <body>
-<div class="ep-frame go cm" id="community">
-  <div class="cm-top">
-    <a href="../home/" class="plain"><span class="cm-wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <a href="../" id="back" class="ep-micro plain">← league</a>
+<!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and
+     no number; data-std has nav.js add the teletext line, the quick keys, ON THIS PAGE and each section's SKIP. -->
+<div class="ep-frame cm" id="community" data-std>
+  <div class="topbar">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span id="ctx" class="ep-micro"></span>
   </div>
-  <div id="cmHead"></div>
 
-  <main class="go-main">
-    <!-- FIND A GAME: EPINOIA GO's own (go/nearby/nearby.js), this league's games only (data-scope="league") -->
-    <section class="gb" id="cmFind" aria-labelledby="nbGamesH">
-      <div class="gb-hdr"><span class="gb-idx">01</span><h2 class="gb-title" id="nbGamesH">Find a game</h2>
-        <p class="gb-sub" id="nbSub">Nearest first, with the distance, the day and the time.</p></div>
+  <header class="hero pg-head" id="cmHead">
+    <p class="pg-kick" id="cmKick"></p>
+    <h1>Community</h1>
+    <p class="pg-sub" id="cmSub">Where a league’s fans meet: its games near you, its fans’ stamps and photographs, who has travelled furthest, and where they talk.</p>
+  </header>
+
+  <!-- FIND A GAME: EPINOIA GO's own module (go/nearby/nearby.js), this league's games only (data-scope="league") -->
+  <section class="sec" id="find" aria-labelledby="findH">
+    <div class="sec-h"><h2 id="findH">Find a game</h2>
+      <p class="note">The league’s games nearest you, or nearest anywhere you are headed</p></div>
+    <div class="sec-b cm-find">
+      <p class="cm-hint" id="nbSub">Nearest first, with the distance, the day and the time.</p>
       <div class="nb-where" id="nbWhere">
         <div class="nb-here" id="nbHere" role="status" aria-live="polite"></div>
         <div class="nb-actions">
@@ -61,45 +71,44 @@
       <div class="nb-count" id="nbCount" role="status" aria-live="polite"></div>
       <div class="go-strip nb-strip hide" id="nbStrip" data-scope="league"></div>
       <div class="nb-detail hide" id="nbDetail" aria-live="polite"></div>
-      <p class="cm-note">At the game? <a href="../go/">Stamp the arena on EPINOIΛ GO →</a></p>
-    </section>
+      <p class="pg-more"><a href="../go/">At the game? Stamp the arena on EPINOIΛ GO →</a></p>
+    </div>
+  </section>
 
-    <!-- TALK: the Discord servers the league attached (0197) -->
-    <section class="gb hide" id="cmTalk" aria-labelledby="cmTalkH">
-      <div class="gb-hdr"><span class="gb-idx">02</span><h2 class="gb-title" id="cmTalkH">Talk</h2>
-        <p class="gb-sub" id="cmTalkSub">Where the league’s fans talk, on Discord: who is online, the channels, and the way in.</p></div>
-      <div id="cmServers"></div>
-    </section>
+  <!-- TALK: the Discord servers the league attached (0197); away while it has none -->
+  <section class="sec hide" id="talk" aria-labelledby="talkH">
+    <div class="sec-h"><h2 id="talkH">Talk</h2>
+      <p class="note" id="talkSub">The league’s Discord server: who is online, and the way in</p></div>
+    <div class="sec-b" id="cmServers"></div>
+  </section>
 
-    <!-- IN THE STANDS: EPINOIA GO's feed, the league's games (go_feed, 0177) -->
-    <section class="gb hide" id="cmStands" aria-labelledby="cmStandsH">
-      <div class="gb-hdr"><span class="gb-idx">03</span><h2 class="gb-title" id="cmStandsH">In the stands</h2>
-        <div class="gb-side"><a id="cmWall" class="cm-more" href="../go/photos/">every photograph →</a></div>
-        <p class="gb-sub">The games the league’s fans went to, stamped on EPINOIΛ GO, and the photographs they took there.</p></div>
-      <div class="cm-feed" id="cmFeed"></div>
-    </section>
+  <!-- IN THE STANDS: EPINOIA GO's feed, the league's games (go_feed, 0177) -->
+  <section class="sec hide" id="stands" aria-labelledby="standsH">
+    <div class="sec-h"><h2 id="standsH">In the stands</h2>
+      <p class="note">Stamps and photographs from the league’s games, on EPINOIΛ GO</p>
+      <a class="showall" id="cmWall" href="../go/photos/">every photograph →</a></div>
+    <div class="sec-b" id="cmFeed"></div>
+  </section>
 
-    <!-- FURTHEST TRAVELLED: the league's GO board by distance (go_leaderboard, 0166) -->
-    <section class="gb hide" id="cmBoard" aria-labelledby="cmBoardH">
-      <div class="gb-hdr"><span class="gb-idx">04</span><h2 class="gb-title" id="cmBoardH">Furthest travelled</h2>
-        <p class="gb-sub">The fans who have covered the most ground between the league’s arenas, stamp by stamp.</p></div>
-      <div id="cmBoardList"></div>
-    </section>
-
-    <footer class="go-foot">Epinoia Network</footer>
-  </main>
+  <!-- FURTHEST TRAVELLED: the league's GO board by distance (go_leaderboard, 0166) -->
+  <section class="sec hide" id="travelled" aria-labelledby="travelledH">
+    <div class="sec-h"><h2 id="travelledH">Furthest travelled</h2>
+      <p class="note">The most ground covered between the league’s arenas, stamp by stamp</p></div>
+    <div class="sec-b narrow" id="cmBoardList"></div>
+  </section>
 </div>
-<script src="../config.js?v=546" defer></script>
-<script src="../access.js?v=546" defer></script>
-<script src="../season.js?v=546" defer></script>
-<script src="../bpm.js?v=546" defer></script>
-<script src="../data.js?v=546" defer></script>
-<script src="../game/preview.js?v=546" defer></script>
-<script src="../go/logo.js?v=546" defer></script>
-<script src="../newscard.js?v=546" defer></script>
-<script src="../go/stampcard.js?v=546" defer></script>
-<script src="community-page.js?v=546" defer></script>
-<script src="../go/nearby/nearby.js?v=546" defer></script>
-<script src="../nav.js?v=546" defer></script>
+<script src="../config.js?v=547" defer></script>
+<script src="../access.js?v=547" defer></script>
+<script src="../season.js?v=547" defer></script>
+<script src="../bpm.js?v=547" defer></script>
+<script src="../data.js?v=547" defer></script>
+<script src="../game/preview.js?v=547" defer></script>
+<script src="../go/logo.js?v=547" defer></script>
+<script src="../teamcolour.js?v=547" defer></script>
+<script src="../newscard.js?v=547" defer></script>
+<script src="../go/stampcard.js?v=547" defer></script>
+<script src="community-page.js?v=547" defer></script>
+<script src="../go/nearby/nearby.js?v=547" defer></script>
+<script src="../nav.js?v=547" defer></script>
 </body>
 </html>

@@ -1361,7 +1361,13 @@ jobs:
         # league's creators section and the rail's rows are wired
         run: node supabase/tests/newscard.test.mjs
 
-      - name: Fans' pages and league forums (0197)
+      - name: The page standard - every new page is built to it (docs/page-standard.md)
+        # a data-std page: the centred head, sections with a title and a subtitle and never a number, the standard's
+        # sheets in their order and none of their rules copied, nav.js's index and SKIP; and every index.html that is
+        # not on the list of the pages that came before the standard (2026-09-30) is built to it
+        run: node supabase/tests/page-standard.test.mjs
+
+      - name: Fans' pages and league Community pages (0197)
         # on a real Postgres (PGlite): a fan's page only when public on GO (18 or over), what their social accounts
         # offer, saving only the keys sent (the word list, https pictures, allow-listed links, a club they may see),
         # Discord from the linked identity only, a league's Discord set by its administrators; and the pages' wiring

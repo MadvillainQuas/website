@@ -2,7 +2,9 @@
 /* ============================================================================
    A LEAGUE'S COMMUNITY — community/?l=<slug>[&s=<server>].
 
-   Where a league's fans meet, in the league's colours, in four parts:
+   Built to the page standard (docs/page-standard.md): the centred head in the league's colours (teamcolour.js,
+   as the league's front page), then one section per part, each with its title and subtitle and no number;
+   nav.js adds ON THIS PAGE and each section's SKIP. Where a league's fans meet, in four parts:
      FIND A GAME         EPINOIA GO's own Find a game (go/nearby/nearby.js), for this league's games only:
                          the nearest first, by the fan's location or passport mode, each arena on the map with
                          the game's preview. It is GO's module itself, not a copy: the page marks its strip
@@ -49,39 +51,39 @@
   }
   const photoUrl = p => CFG.supabaseUrl + '/storage/v1/object/public/go-public/' + String(p).split('/').map(encodeURIComponent).join('/');
 
-  /* the numbers on the parts that are shown: 01, 02… with no gap where one is away */
-  function renumber() {
-    let i = 0;
-    document.querySelectorAll('main .gb').forEach(s => {
-      if (s.classList.contains('hide')) return;
-      const idx = s.querySelector('.gb-idx');
-      if (idx) idx.textContent = String(++i).padStart(2, '0');
-    });
-  }
-  const show = id => { const s = $(id); if (s) s.classList.remove('hide'); renumber(); };
+  /* a part that has something to show comes in; one that has nothing stays away (the index follows, nav.js) */
+  const show = id => { const s = $(id); if (s) s.classList.remove('hide'); };
+  const emptyBox = text => { const d = el('div', 'pg-empty'); d.appendChild(el('p', null, text)); return d; };
 
   (async function boot() {
-    const head = $('#cmHead');
-    const back = $('#back');
-    const empty = t => { head.textContent = ''; const d = el('div', 'pc-empty', t); d.style.margin = '16px'; head.appendChild(d); };
-    if (!WANT) { $('#cmFind').classList.add('hide'); return empty('No league asked for: a league’s community is community/?l= its name.'); }
+    const kick = $('#cmKick'), sub = $('#cmSub');
+    const away = text => { $('#find').classList.add('hide'); sub.textContent = text; };
+    if (!WANT) return away('No league asked for: a league’s community is community/?l= its name.');
     let L = null;
-    try { L = ((await rest('leagues?slug=eq.' + encodeURIComponent(WANT) + '&select=id,slug,name,colour_a,logo_path&limit=1')) || [])[0] || null; }
+    /* the whole row, as the league's front page reads it: its colours (0122) and its own theme */
+    try { L = ((await rest('leagues?slug=eq.' + encodeURIComponent(WANT) + '&select=*&limit=1')) || [])[0] || null; }
     catch (_) { L = null; }
-    back.href = '../?l=' + encodeURIComponent(WANT);
-    if (!L) { $('#cmFind').classList.add('hide'); return empty('No league called “' + WANT + '” is on Epinoia.'); }
+    if (!L) return away('No league called “' + WANT + '” is on Epinoia.');
     window.__CS_LEAGUE_SLUG = L.slug;
-    back.textContent = '← ' + L.name;
     document.title = 'Community · ' + L.name + ' · Epinoia';
-    const colour = hex(L.colour_a) || K.tint(L.name);
-    document.getElementById('community').style.setProperty('--bc', colour);
-    const crest = L.logo_path && typeof window.epinoiaLogoUrl === 'function' ? window.epinoiaLogoUrl(L.logo_path, 128) : null;
-    head.textContent = '';
-    head.appendChild(K.hero({ name: L.name, logo: crest, colour, kicker: 'Community',
-      tagline: 'Where ' + L.name + '’s fans meet: find one of its games near you, stamp the arena on EPINOIΛ GO, see who has travelled furthest, and talk it over.' }));
+    /* THE LEAGUE'S OWN COLOURS, as on its front page: the title's gradient, the accent, the rail */
+    if (window.EpinoiaTeamColour && window.EpinoiaTeamColour.league) {
+      try { window.EpinoiaTeamColour.league(L, { keepAccent: !!(L.theme && L.theme.accent) }); } catch (_) { /* the kit's colours */ }
+    }
+    document.getElementById('community').style.setProperty('--bc', hex(L.colour_a) || K.tint(L.name));
+    /* the head: the league it belongs to (to its front page), the page's name, what it is for */
+    const a = el('a');
+    a.href = '../?l=' + encodeURIComponent(L.slug);
+    if (L.logo_path && typeof window.epinoiaLogoUrl === 'function') {
+      const img = el('img'); img.src = window.epinoiaLogoUrl(L.logo_path, 64); img.alt = ''; img.width = 28; img.height = 28;
+      a.appendChild(img);
+    }
+    a.appendChild(data('span', null, L.name));
+    kick.textContent = '';
+    kick.appendChild(a);
+    sub.textContent = 'Where ' + L.name + '’s fans meet: its games near you, the stamps and photographs from its arenas, who has travelled furthest, and where they talk.';
     $('#cmWall').href = '../go/photos/?l=' + encodeURIComponent(L.id);
     await Promise.all([talk(L).catch(() => {}), stands(L).catch(() => {}), board(L).catch(() => {})]);
-    renumber();
   })();
 
   /* ---------------------------------------------------------------- talk --- */
@@ -105,7 +107,7 @@
     const servers = ((D && D.servers) || []).filter(s => hasWidget(s) || INVITE.test(String(s.invite || '')));
     if (!servers.length) return;
     const host = $('#cmServers');
-    if (servers.length > 1) $('#cmTalkSub').textContent = servers.length + ' Discord servers where the league’s fans talk: the league’s own and the fans’, the way into each, and who is online.';
+    if (servers.length > 1) $('#talkSub').textContent = servers.length + ' Discord servers: who is online, and the way into each';
     const wrap = el('div', 'fo-wrap');
     host.appendChild(wrap);
 
@@ -136,7 +138,7 @@
         if (c.pick) { c.pick.textContent = id === s.id ? 'Showing' : 'Show here'; c.pick.disabled = id === s.id; }
       });
       if (remember) {
-        try { history.replaceState(null, '', '?l=' + encodeURIComponent(L.slug) + '&s=' + encodeURIComponent(s.id) + '#cmTalk'); } catch (_) { /* file:// */ }
+        try { history.replaceState(null, '', '?l=' + encodeURIComponent(L.slug) + '&s=' + encodeURIComponent(s.id) + '#talk'); } catch (_) { /* file:// */ }
       }
     }
 
@@ -193,8 +195,8 @@
     });
     wrap.appendChild(list);
     showServer(open, false);
-    show('#cmTalk');
-    if (Q.get('s') || location.hash === '#cmTalk') $('#cmTalk').scrollIntoView({ block: 'start' });
+    show('#talk');
+    if (Q.get('s') || location.hash === '#talk') $('#talk').scrollIntoView({ block: 'start' });
   }
 
   /* ------------------------------------------------------------ in the stands --- */
@@ -206,14 +208,15 @@
     host.textContent = '';
     rows = Array.isArray(rows) ? rows : [];
     if (!rows.length) {
-      const d = el('div', 'cm-empty');
-      d.appendChild(el('p', null, 'No stamps from ' + L.name + '’s games yet. Be the first: find a game above, go, and stamp the arena on EPINOIΛ GO.'));
-      host.appendChild(d);
+      host.appendChild(emptyBox('No stamps from ' + L.name + '’s games yet. Be the first: find a game above, go, and stamp the arena on EPINOIΛ GO.'));
       $('#cmWall').classList.add('hide');
-      show('#cmStands');
+      show('#stands');
       return;
     }
-    const strip = el('div', 'cm-strip');
+    /* a row that slides when it is longer than the page, and sits in the middle when it is not */
+    const view = el('div', 'cm-strip');
+    const strip = el('div', 'cm-strip-in');
+    view.appendChild(strip);
     rows.forEach(row => {
       if (row.kind === 'photo' && row.thumb_path) {
         const a = el('a', 'cm-photo');
@@ -230,8 +233,8 @@
         strip.appendChild(SC.build(row, { href: row.game_id ? '../game/?g=' + encodeURIComponent(row.game_id) + '&mode=supabase' : '../go/', cls: 'cm-stamp' }));
       }
     });
-    host.appendChild(strip);
-    show('#cmStands');
+    host.appendChild(view);
+    show('#stands');
   }
 
   /* ------------------------------------------------------ furthest travelled --- */
@@ -243,8 +246,8 @@
     host.textContent = '';
     rows = (Array.isArray(rows) ? rows : []).filter(r => Number(r.km) > 0);
     if (!rows.length) {
-      host.appendChild(el('div', 'cm-empty', 'Nobody on this board yet: stamp two of ' + L.name + '’s arenas on EPINOIΛ GO and the distance between them counts.'));
-      show('#cmBoard');
+      host.appendChild(emptyBox('Nobody on this board yet: stamp two of ' + L.name + '’s arenas on EPINOIΛ GO and the distance between them counts.'));
+      show('#travelled');
       return;
     }
     const list = el('ol', 'cm-board');
@@ -262,6 +265,6 @@
       list.appendChild(li);
     });
     host.appendChild(list);
-    show('#cmBoard');
+    show('#travelled');
   }
 })();
