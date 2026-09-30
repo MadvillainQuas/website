@@ -15,11 +15,13 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
 <title>Your profile · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<script src="../appmode.js?v=543"></script>
-<script src="../i18n.js?v=543" data-i18n-packs="account"></script>
-<script src="../glyphs.js?v=543" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=543">
-<link rel="stylesheet" href="../kit/nav.css?v=543">
+<script src="../appmode.js?v=544"></script>
+<script src="../i18n.js?v=544" data-i18n-packs="account"></script>
+<script src="../glyphs.js?v=544" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=544">
+<link rel="stylesheet" href="../kit/newscard.css?v=544">
+<link rel="stylesheet" href="../kit/fan.css?v=544">
+<link rel="stylesheet" href="../kit/nav.css?v=544">
 <style>
   .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
@@ -148,8 +150,8 @@
   /* the rail, as the learn page and the league page draw it */
   .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
 </style>
-<link rel="stylesheet" href="../kit/teletext.css?v=543">
-<link rel="stylesheet" href="../kit/legibility.css?v=543">
+<link rel="stylesheet" href="../kit/teletext.css?v=544">
+<link rel="stylesheet" href="../kit/legibility.css?v=544">
 </head>
 <body>
 <div class="ep-frame">
@@ -193,6 +195,14 @@
       </div>
       <div class="uname-msg" id="unameMsg" role="status" aria-live="polite"></div>
       <div class="uname-rules" id="unameRules">3&ndash;20 letters, digits and underscores, starting with a letter. You can change it once a month.</div>
+    </section>
+
+    <!-- Your page (0197): the public profile at fan/?u=<username>, shown while the fan is public on EPINOIA GO.
+         fanprofile.js fills it (from the social accounts they signed in with, at a press); before the migration is
+         applied the RPC is missing and the section stays hidden. #fanprofile in the address brings it into view. -->
+    <section class="sec hide" id="fanprofile" aria-labelledby="fpH">
+      <div class="ep-hdr"><span class="idx">02</span><h2 id="fpH">Your page</h2></div>
+      <div id="fpHost"></div>
     </section>
 
     <!-- Membership (my_access, 0117). me.js fills it; before the migration is
@@ -312,10 +322,13 @@
     </div>
   </div>
 </div>
-<script src="../config.js?v=543" defer></script>
-<script src="../vendor/supabase.js?v=543" defer></script>
-<script src="../push.js?v=543" defer></script>
-<script src="me.js?v=543" defer></script>
-<script src="../nav.js?v=543" defer></script>
+<script src="../config.js?v=544" defer></script>
+<script src="../vendor/supabase.js?v=544" defer></script>
+<script src="../push.js?v=544" defer></script>
+<!-- your page (0197): the editor of the public profile, and the head as it will look -->
+<script src="../newscard.js?v=544" defer></script>
+<script src="fanprofile.js?v=544" defer></script>
+<script src="me.js?v=544" defer></script>
+<script src="../nav.js?v=544" defer></script>
 </body>
 </html>

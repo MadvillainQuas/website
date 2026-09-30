@@ -1361,6 +1361,15 @@ jobs:
         # league's creators section and the rail's rows are wired
         run: node supabase/tests/newscard.test.mjs
 
+      - name: Fans' pages and league forums (0197)
+        # on a real Postgres (PGlite): a fan's page only when public on GO (18 or over), what their social accounts
+        # offer, saving only the keys sent (the word list, https pictures, allow-listed links, a club they may see),
+        # Discord from the linked identity only, a league's Discord set by its administrators; and the pages' wiring
+        # (the forum frames discord.com only, the rail's probe, the editor, the Discord sign-in, the console)
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/fan-profiles.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the

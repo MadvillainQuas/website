@@ -1,0 +1,78 @@
+/* ============================================================================
+   A FAN'S PAGE (epinoia/fan/, fan-page.js): the head is the post card's (kit/newscard.css hero) in the fan's
+   colour; under it their club, the EPINOIΛ GO passport, their stamps and photographs, and what they follow.
+   ============================================================================ */
+.fn-wait{margin:calc(var(--u,4px)*4)}
+.fn-head .pc-disc{border-radius:50%}
+.fn-wrap{padding:0 calc(var(--u,4px)*3) calc(var(--u,4px)*7);max-width:1180px}
+
+/* their club */
+.fn-club{display:inline-flex;align-items:center;gap:14px;margin-top:calc(var(--u,4px)*5);padding:12px 18px 12px 12px;
+  text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
+  box-shadow:inset 4px 0 0 var(--cc,var(--bc))}
+.fn-club:hover{border-color:var(--cc,var(--bc))}
+.fn-club .fn-crest{width:44px;height:44px;font-size:13px}
+.fn-club-w{display:flex;flex-direction:column;gap:2px}
+.fn-club-w b{font-family:var(--f-ui);font-weight:800;font-size:17px}
+.fn-k{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.fn-sub{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3)}
+
+/* the passport's numbers */
+/* a wrapping row, each cell ruled on its right and foot: a short last row stretches to the edge rather than leaving a hole */
+.fn-nums{display:flex;flex-wrap:wrap;border-top:1px solid var(--rule);border-left:1px solid var(--rule)}
+.fn-num{flex:1 1 120px;display:flex;flex-direction:column;gap:4px;padding:16px 18px;background:var(--panel);border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.fn-num b{font-family:var(--f-score);font-size:clamp(24px,3.4vw,36px);line-height:1;color:color-mix(in oklch,var(--bc) 60%,var(--ink))}
+.fn-num b small{font-size:.5em;margin-left:.2em;letter-spacing:.02em}
+.fn-num span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* stamps and photographs */
+.fn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:calc(var(--u,4px)*3)}
+.fn-photo{position:relative;display:block;aspect-ratio:1;overflow:hidden;background:var(--panel);border:1px solid var(--rule)}
+.fn-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.fn-photo:hover img{transform:scale(1.03)}
+.fn-photo-cap{position:absolute;left:0;right:0;bottom:0;padding:18px 10px 8px;font-family:var(--f-micro);font-size:8px;letter-spacing:.06em;
+  color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.7));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* what they follow */
+.fn-chips{display:flex;flex-wrap:wrap;gap:8px}
+.fn-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;text-decoration:none;color:var(--ink);
+  font-family:var(--f-ui);font-size:13px;font-weight:700;background:var(--panel);border:1px solid var(--rule);box-shadow:inset 3px 0 0 var(--cc,var(--rule))}
+.fn-chip:hover{border-color:var(--cc,var(--ink-3))}
+.fn-chip .fn-crest{width:24px;height:24px;font-size:8px}
+
+@media (max-width:640px){
+  .fn-wrap{padding:0 16px 24px}
+  .fn-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .fn-grid .fn-stamp{grid-column:1/-1}                      /* a stamp card needs the row; photographs go two by two */
+}
+
+/* ---- YOUR PAGE, on /me/ (me/fanprofile.js): the form beside the head as it will look ---- */
+.fp-state{margin:0 calc(var(--u,4px)*3) calc(var(--u,4px)*3);font-family:var(--f-ui);font-size:14px;line-height:1.5;color:var(--ink-2)}
+.fp-state a{color:var(--lume)}
+.fp-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:calc(var(--u,4px)*5);align-items:start;
+  padding:0 calc(var(--u,4px)*3) calc(var(--u,4px)*3)}
+.fp-form{display:flex;flex-direction:column;gap:14px;min-width:0}
+.fp-side{position:sticky;top:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.fp-prev{border:1px solid var(--rule)}
+.fp-prev .pc-hero-in{padding:22px 18px}
+.fp-prev .pc-hero .pc-disc{width:72px}
+.fp-prev .pc-hero-name{font-size:clamp(22px,3vw,34px)}
+.fp-field{display:flex;flex-direction:column;gap:6px}
+.fp-field .ep-input{max-width:none;width:100%}
+.fp-label{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.fp-hint{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.03em;line-height:1.7;color:var(--ink-3)}
+.fp-ta{resize:vertical;min-height:64px;font-family:var(--f-ui);line-height:1.5}
+.fp-inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--f-ui);font-size:13px;color:var(--ink-2)}
+.fp-colour{width:48px;height:34px;padding:0;border:1px solid var(--rule);background:none}
+.fp-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+.fp-from{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;background:var(--panel);border:1px dashed var(--rule)}
+.fp-discord{display:flex;flex-direction:column;gap:8px}
+.fp-davatar{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.fp-msg{min-height:18px;font-family:var(--f-micro);font-size:9.5px;color:var(--ink-2)}
+.fp-msg.ok{color:var(--lume)}
+.fp-msg.bad{color:var(--flare,#e0564a)}
+@media (max-width:900px){
+  .fp-grid{grid-template-columns:1fr;padding:0 16px 16px}
+  .fp-side{position:static;order:-1}
+  .fp-links{grid-template-columns:1fr}
+}

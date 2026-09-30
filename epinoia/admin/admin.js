@@ -988,6 +988,8 @@ function mountGovernance() {
                                cfg: window.EPINOIA_CONFIG });
   /* CREATORS AND THE LEAGUE'S OWN NEWS SITES (0194). Guarded like the newest panels. */
   if (window.EpinoiaCreatorsUI) window.EpinoiaCreatorsUI.mount({ host: '#creatorsPanel', sb, league: () => league, say, base: '../' });
+  /* THE LEAGUE'S FORUM (0197): its Discord server. */
+  if (window.EpinoiaCreatorsUI && window.EpinoiaCreatorsUI.mountForum) window.EpinoiaCreatorsUI.mountForum({ host: '#forumPanel', sb, league: () => league, say, base: '../' });
   window.EpinoiaAppearance.mount({ host: '#appearancePanel', sb, league, say });
   window.EpinoiaEmbedsUI.mount({ host: '#embedsPanel', sb, league,
                                  teams: byIdObj(), say });

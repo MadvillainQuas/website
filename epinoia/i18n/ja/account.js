@@ -12,6 +12,13 @@
 
   I.register('ja', {
     phrases: {
+      /* the fan's page editor (me/fanprofile.js, 0197) */
+      'Your page': 'あなたのページ',
+      'From your accounts': 'アカウントから',
+      'How your page starts': 'ページの冒頭',
+      'Save your page': 'ページを保存',
+      'Link Discord': 'Discordを連携',
+      'Your accounts, on your page': 'ページに載せるアカウント',
       /* ---- your profile (me/) ---- */
       'Loading your membership': 'メンバーシップを読み込み中',
       'with your email to see your membership, follow clubs and players, and choose how Epinoia keeps you posted.': 'すると、メンバーシップの確認、クラブや選手のフォロー、Epinoiaからのお知らせの受け取り方の設定ができます（メールアドレスでログインできます）。',

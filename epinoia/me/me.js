@@ -1048,6 +1048,15 @@ async function paintUsername() {
   /* not awaited: the membership read never holds up (or breaks) the rest */
   paintMembership().catch(() => { $('#memberSec').classList.add('hide'); renumberSections(); });
   paintUsername().catch(() => { /* hidden, as before 0163 */ });
+  /* YOUR PAGE (0197): the public profile's editor; hidden before the migration */
+  if (window.EpinoiaFanProfileEditor) {
+    window.EpinoiaFanProfileEditor.mount({ host: '#fpHost', sec: '#fanprofile', sb, after: renumberSections })
+      .then(() => {
+        if (location.hash !== '#fanprofile') return;
+        try { $('#fanprofile').scrollIntoView({ block: 'start' }); } catch (_) { /* old browser */ }
+      })
+      .catch(() => { /* hidden, as before 0197 */ });
+  }
 
   const { data } = await sb.from('fan_prefs').select('*').maybeSingle();
   prefs = data || { theme: 'light', colour: '#93f2bf', fav_team_ids: [], fav_player_ids: [], notify_inapp: true, notify_email: false,
