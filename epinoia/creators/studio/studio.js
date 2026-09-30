@@ -8,11 +8,12 @@
 
      PIECES      every piece: drafts, published, hidden by the league; edit, look,
                  delete
-     WRITE       one piece. An ARTICLE is written here, in the league's news format
-                 (newsblocks.js: the same walk from the page to blocks, the same
-                 cleaning in the database); a VIDEO, a PODCAST episode, a SOCIAL post
-                 or a LINK is its address on the platform it lives on, with a caption,
-                 and is shown as it will be (newscard.js: the card, and the embed)
+     WRITE       one piece, at the writing desk (editor.js, 0200): an ARTICLE is
+                 written here, in the league's news format and a pull quote and an
+                 embed more (newsblocks.js); a VIDEO, a PODCAST episode, a SOCIAL post
+                 or a LINK is its address on the platform it lives on, with a caption.
+                 Draft, publish now or schedule; tags, search fields, revisions,
+                 autosave. ?o=<outlet>&new=<kind> opens a new one, &edit=<id> one
      PAGE        the outlet's name, line, bio, logo, colour and platforms, with its
                  head drawn as it will look (owner only)
      PEOPLE      who owns and writes for it, by email (owner only)
@@ -28,9 +29,6 @@
   const $ = s => document.querySelector(s);
   const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
   const BASE = '../../';
-  const KINDS = [['article', 'Article', 'written here'], ['video', 'Video', 'YouTube, TikTok, Twitch…'],
-                 ['podcast', 'Podcast', 'Spotify, Apple Podcasts, SoundCloud…'], ['social', 'Social post', 'Instagram, X, TikTok, Threads…'],
-                 ['link', 'Link', 'anything else of yours']];
   const PLATFORMS = [['website', 'Website'], ['youtube', 'YouTube'], ['podcast', 'Podcast'], ['spotify', 'Spotify'],
     ['apple_podcasts', 'Apple Podcasts'], ['substack', 'Substack'], ['x', 'X'], ['instagram', 'Instagram'], ['tiktok', 'TikTok'],
     ['twitch', 'Twitch'], ['threads', 'Threads'], ['bluesky', 'Bluesky'], ['facebook', 'Facebook'], ['discord', 'Discord'],
@@ -69,6 +67,8 @@
       return;
     }
     user = session.user;
+    /* anything scheduled whose time has come goes out first (0200; before it, nothing to do) */
+    try { await sb.rpc('creator_publish_due'); } catch (_) { /* fine */ }
     const { data: mine, error } = await sb.rpc('my_creator_outlets');
     if (error) { main.appendChild(el('div', 'pc-empty', 'The studio could not be opened: ' + errText(error))); return; }
     if (!(mine || []).length) {
@@ -77,6 +77,8 @@
         'ask yours to use ' + (user.email || 'the address you sign in with') + '.'));
       return;
     }
+    /* the outlets this account writes for: track.js never counts their own people reading their own pieces (0200) */
+    try { localStorage.setItem('epinoia_my_outlets', JSON.stringify(mine.map(m => m.league_slug + '/' + m.slug))); } catch (_) { /* fine */ }
     const want = new URLSearchParams(location.search).get('o');
     outletId = (mine.find(m => m.outlet_id === want) || mine[0]).outlet_id;
     if (mine.length > 1) {
@@ -107,6 +109,20 @@
     body.textContent = '';
     if (error) { body.appendChild(el('div', 'pc-empty', 'This outlet could not be opened: ' + errText(error))); return; }
     S = data;
+    /* the hub's ?new=<kind> and ?edit=<piece>: straight to the writing desk, once */
+    const Q = new URLSearchParams(location.search);
+    const edit = Q.get('edit'), fresh = Q.get('new');
+    if (edit || fresh) {
+      try { history.replaceState(null, '', '?o=' + encodeURIComponent(outletId)); } catch (_) { /* fine */ }
+      const piece = edit ? (S.posts || []).find(x => x.id === edit) : null;
+      /* the hub's "write about it": a new article with the storyline's headline */
+      const t = (Q.get('title') || '').slice(0, 160);
+      if (piece || fresh) {
+        tab = 'write';
+        draw(piece || { kind: ['video', 'podcast', 'social', 'link'].includes(fresh) ? fresh : 'article', __new: true, __title: t });
+        return;
+      }
+    }
     draw();
   }
 
@@ -130,7 +146,7 @@
     else if (!lg.enabled) body.appendChild(el('div', 'st-warn', lg.name + ' has creators switched off: nothing can be written or published until the league switches them on.'));
 
     const tabs = el('div', 'pc-tabs st-tabs');
-    const T = [['pieces', 'Pieces'], ['write', editing ? 'Edit' : 'Write']].concat(runs ? [['page', 'Page'], ['people', 'People']] : []);
+    const T = [['pieces', 'Pieces'], ['write', editing && !editing.__new ? 'Edit' : 'Write']].concat(runs ? [['page', 'Page'], ['people', 'People']] : []);
     T.forEach(([k, label]) => {
       const b = el('button', 'pc-tab', label);
       b.type = 'button';
@@ -166,8 +182,10 @@
       row.appendChild(el('span', 'st-kind', K0.glyph + ' ' + K0.word));
       const t = el('div', 'st-row-t');
       t.appendChild(el('b', null, p.title));
-      const state = p.hidden ? 'hidden by the league' : p.status === 'published' ? 'published ' + K.ago(p.published_at) : 'draft';
-      t.appendChild(el('span', 'st-state' + (p.hidden ? ' bad' : p.status === 'published' ? ' ok' : ''), state));
+      const state = p.hidden ? 'hidden by the league' : p.status === 'published' ? 'published ' + K.ago(p.published_at)
+        : p.status === 'scheduled' ? 'scheduled for ' + new Date(p.published_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : 'draft';
+      t.appendChild(el('span', 'st-state' + (p.hidden ? ' bad' : p.status === 'published' ? ' ok' : p.status === 'scheduled' ? ' soon' : ''), state));
       row.appendChild(t);
       const acts = el('div', 'st-acts');
       const ed = el('button', 'ep-btn mini', 'edit'); ed.type = 'button';
@@ -193,129 +211,23 @@
   }
 
   /* ---------------------------------------------------------------- write --- */
+  /* THE WRITING DESK (editor.js). After a save the piece is opened again as the database now has it. */
   function editor(pane, p) {
-    const grid = el('div', 'st-ed');
-    const form = el('div', 'st-form');
-    const side = el('div', 'st-side');
-    grid.append(form, side);
-    pane.appendChild(grid);
-
-    const kind = el('select', 'ep-input');
-    KINDS.forEach(([k, label, hint]) => { const o = el('option', null, label + ' — ' + hint); o.value = k; kind.appendChild(o); });
-    kind.value = p ? p.kind : 'article';
-    const title = input(p && p.title, 'Headline', 160);
-    const stand = el('textarea', 'ep-input st-ta');
-    stand.maxLength = 300; stand.rows = 3; stand.value = (p && p.standfirst) || '';
-    const link = input(p && p.external_url, 'https://…', 500);
-    const cover = input(p && p.cover_url, 'https://… (optional)', 500);
-    const status = el('select', 'ep-input');
-    [['draft', 'Draft — only you and your writers see it'], ['published', 'Published — on the league’s pages, and followers are told']]
-      .forEach(([v, t]) => { const o = el('option', null, t); o.value = v; status.appendChild(o); });
-    status.value = p ? p.status : 'draft';
-
-    const fKind = field('Kind', kind);
-    const fTitle = field('Headline', title);
-    const fStand = field('Standfirst', stand);
-    const fLink = field('Its address', link);
-    const fCover = field('Cover picture', cover, 'an https address of a picture you host; a video’s own thumbnail is used when there is none');
-    form.append(fKind, fTitle, fStand, fLink, fCover);
-
-    /* the article's body: the league editor's toolbar and walk (admin/news-ui.js), pictures as https addresses */
-    const bodyWrap = el('div', 'st-bodywrap');
-    const bar = el('div', 'news-bar');
-    const ed = el('div', 'news-body st-article');
-    ed.contentEditable = 'true'; ed.spellcheck = true;
-    ed.setAttribute('role', 'textbox'); ed.setAttribute('aria-multiline', 'true'); ed.setAttribute('aria-label', 'the article');
-    const exec = (c, v) => { ed.focus(); try { document.execCommand(c, false, v); } catch (_) { /* old browser */ } };
-    const cmd = (label, fn, t) => { const b = el('button', 'ep-btn mini', label); b.type = 'button'; if (t) b.title = t;
-      b.addEventListener('mousedown', e => { e.preventDefault(); fn(); }); return b; };
-    bar.append(cmd('B', () => exec('bold'), 'bold'), cmd('I', () => exec('italic'), 'italic'),
-      cmd('H2', () => exec('formatBlock', 'H2'), 'heading'), cmd('H3', () => exec('formatBlock', 'H3'), 'sub-heading'),
-      cmd('¶', () => exec('formatBlock', 'P'), 'paragraph'), cmd('“ ”', () => exec('formatBlock', 'BLOCKQUOTE'), 'quotation'),
-      cmd('• list', () => exec('insertUnorderedList')), cmd('1. list', () => exec('insertOrderedList')),
-      cmd('link', () => {
-        const u = prompt('Address to link to (https://…)');
-        if (!u) return;
-        if (!/^https?:\/\//i.test(u)) return say('A link starts with https://.', 'bad');
-        exec('createLink', u);
-      }),
-      cmd('picture', () => {
-        const u = prompt('The picture’s address (https://…): a picture you host');
-        if (!u) return;
-        if (!https(u)) return say('A picture is an https address.', 'bad');
-        const fig = document.createElement('figure');
-        fig.dataset.image = u.trim();
-        const img = document.createElement('img'); img.src = u.trim(); img.alt = ''; img.dataset.path = u.trim();
-        const cap = document.createElement('figcaption'); cap.textContent = 'Caption';
-        fig.append(img, cap);
-        ed.appendChild(fig);
-        ed.appendChild(document.createElement('p'));
-      }, 'a picture, by its https address'),
-      cmd('— rule', () => exec('insertHorizontalRule')), cmd('clear', () => exec('removeFormat')));
-    if (p && Array.isArray(p.body) && p.body.length) ed.appendChild(B.toDom(p.body, { url: u => u, editable: true }));
-    else ed.appendChild(document.createElement('p'));
-    ed.addEventListener('paste', e => {
-      e.preventDefault();
-      document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
-    });
-    bodyWrap.append(el('span', 'st-label', 'The article'), bar, ed);
-    form.appendChild(bodyWrap);
-    form.appendChild(field('Status', status));
-
-    const save = el('button', 'ep-btn pri', p ? 'Save' : 'Save the piece'); save.type = 'button';
-    const cancel = el('button', 'ep-btn', 'Back to the pieces'); cancel.type = 'button';
-    cancel.addEventListener('click', () => { tab = 'pieces'; draw(); });
-    const row = el('div', 'st-row-btns');
-    row.append(save, cancel);
-    form.appendChild(row);
-
-    /* the preview: the card as it will be, and the embed */
-    side.appendChild(el('span', 'st-label', 'How it will look'));
-    const prev = el('div', 'st-prev');
-    side.appendChild(prev);
-
-    function shape() {
-      const k = kind.value;
-      const art = k === 'article';
-      fStand.querySelector('.st-label').textContent = art ? 'Standfirst — one or two lines for the card' : 'Caption';
-      fLink.querySelector('.st-label').textContent = art ? 'Also on your site (optional)' : 'Its address on ' + (k === 'video' ? 'the video platform' : k === 'podcast' ? 'the podcast platform' : k === 'social' ? 'the social platform' : 'the web');
-      bodyWrap.hidden = !art;
-      paint();
-    }
-    function paint() {
-      prev.textContent = '';
-      const o = S.outlet;
-      const e = kind.value !== 'article' ? K.embedOf(link.value.trim(), location.hostname) : null;
-      const item = {
-        kind: kind.value, title: title.value || 'Your headline', summary: stand.value,
-        image: (https(cover.value) ? cover.value.trim() : null) || (e && e.thumb) || null, when: new Date().toISOString(),
-        href: '#', platform: e ? e.label : (https(link.value) ? K.host(link.value) : null), embedUrl: e ? link.value.trim() : null,
-        brand: { name: o.name, logo: o.logo_url, colour: o.colour, href: '#' }
-      };
-      prev.appendChild(K.card(item, { now: Date.now(), embed: !!e, host: location.hostname }));
-      if (kind.value !== 'article' && link.value.trim() && !e) {
-        prev.appendChild(el('p', 'st-hint', https(link.value) ? 'Not a platform Epinoia plays in place: it shows as a link card.' : 'An address starts with https://.'));
-      }
-    }
-    kind.addEventListener('change', shape);
-    [title, stand, link, cover].forEach(i => i.addEventListener('input', paint));
-    shape();
-
-    save.addEventListener('click', async () => {
-      save.disabled = true;
-      say('Saving…');
-      const { data, error } = await sb.rpc('upsert_creator_post', {
-        p_id: p ? p.id : null, p_outlet: outletId, p_kind: kind.value, p_title: title.value, p_standfirst: stand.value,
-        p_body: kind.value === 'article' ? B.fromDom(ed) : [], p_cover_url: cover.value.trim() || null,
-        p_external_url: link.value.trim() || null, p_status: status.value, p_slug: p ? p.slug : null
-      });
-      save.disabled = false;
-      if (error) return say(errText(error), 'bad');
-      await load();
-      const again = (S.posts || []).find(x => x.id === data);
-      tab = 'write';
-      draw(again || null);
-      say(status.value === 'published' ? 'Published: it is on the league’s pages, and followers have been told.' : 'Saved as a draft.', 'ok');
+    const E = window.EpinoiaCreatorEditor;
+    if (!E) { pane.appendChild(el('div', 'pc-empty', 'The editor did not load: reload the page.')); return; }
+    E.mount(pane, {
+      sb, S, outletId, piece: p && !p.__new ? p : null, say,
+      kind: p && p.__new ? p.kind : null, title: p && p.__new ? p.__title : null,
+      onSaved: async (id, st) => {
+        await load();
+        const again = (S.posts || []).find(x => x.id === id);
+        tab = 'write';
+        draw(again || null);
+        say(st === 'published' ? 'Published: it is on the league’s pages, and followers have been told.'
+          : st === 'scheduled' ? 'Scheduled: it goes out at the time you chose, and followers are told then.'
+          : 'Saved as a draft.', 'ok');
+      },
+      onBack: () => { tab = 'pieces'; draw(); }
     });
   }
 

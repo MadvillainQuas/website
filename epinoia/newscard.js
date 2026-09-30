@@ -202,6 +202,7 @@ function fromFeed(r, base, media, crest) {
   if (r.kind === 'creator') {
     const e = embedOf(r.url);
     return { kind: KIND[r.piece_kind] ? r.piece_kind : 'article', title: r.title, summary: r.summary,
+             piece: r.id || null, outlet: r.league_slug && r.outlet_slug ? r.league_slug + '/' + r.outlet_slug : null,
              image: https(r.image_url) || (e && e.thumb) || null, when: r.published_at, author: r.author,
              href: b + 'creators/?l=' + encodeURIComponent(r.league_slug) + '&o=' + encodeURIComponent(r.outlet_slug) + '&p=' + encodeURIComponent(r.slug),
              platform: e ? e.label : (web(r.url) ? host(r.url) : null), league: tags.length ? null : r.league_name, tags,
@@ -274,6 +275,29 @@ function mark(brand, cls) {
 
 /* THE CARD. opts: { lead, now, embed (show a creator's video / post / podcast in the card itself),
    showLeague (false: no league in the kicker), hideTag (a league's slug: the page is that league's, so no tag for it) } */
+/* A CREATOR'S PIECE ON SCREEN (0200, the creator hub's numbers): its card counts as seen once half of it is in view,
+   once a page (track.js piece). Only a card that says which piece it is (item.piece) is watched. */
+let seenObs = null;
+/* track.js arrives after the page's own scripts (nav.js loads it): a moment's patience, then nothing */
+function toTrack(ev, tries) {
+  const T = typeof window !== 'undefined' ? window.EpinoiaTrack : null;
+  if (T && typeof T.piece === 'function') { T.piece(ev); return; }
+  if ((tries || 0) < 4) setTimeout(() => toTrack(ev, (tries || 0) + 1), 1500);
+}
+function watchSeen(art, it) {
+  if (!it.piece || typeof IntersectionObserver !== 'function' || !(typeof window !== 'undefined' && window.EPINOIA_CONFIG && window.EPINOIA_CONFIG.analytics)) return;
+  if (!seenObs) {
+    seenObs = new IntersectionObserver(list => list.forEach(en => {
+      if (!en.isIntersecting) return;
+      seenObs.unobserve(en.target);
+      const d = en.target.__piece;
+      if (d) toTrack({ post: d.post, kind: 'seen', outlet: d.outlet });
+    }), { threshold: 0.5 });
+  }
+  art.__piece = { post: it.piece, outlet: it.outlet || null };
+  seenObs.observe(art);
+}
+
 function card(item, opts) {
   const o = opts || {};
   const it = item || {};
@@ -351,6 +375,7 @@ function card(item, opts) {
     foot.appendChild(go);
   }
   art.appendChild(foot);
+  watchSeen(art, it);
   return art;
 }
 
@@ -448,5 +473,5 @@ function grid(items, opts) {
   return g;
 }
 
-return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND };
+return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, toTrack };
 }));

@@ -70,6 +70,12 @@ async function read(sb, league, comps, now) {
     const so = await sb.rpc('league_socials_admin', { p_league: league.id });
     const row = Array.isArray(so && so.data) ? so.data[0] : so && so.data;
     handle = handleOf(row && row.instagram);
+    /* anybody but the league's administrators (the creator hub): the league's public accounts */
+    if (!handle) {
+      const pub = await sb.rpc('league_socials_public', { p_league: league.id });
+      const r2 = Array.isArray(pub && pub.data) ? pub.data[0] : pub && pub.data;
+      handle = handleOf(r2 && r2.instagram);
+    }
   } catch (_) { /* no handle: the footer names the league */ }
   /* the league's own colours and logo: the graphics are the league's, not the platform's */
   out.league = { id: L.id, name: L.name || league.name, slug: L.slug || league.slug, timezone: L.timezone || 'UTC',

@@ -20,10 +20,11 @@ Both appear on the platform's **News** page, in **HOME's FEED**, on each league'
 | `creators/?l=<league>` | The league's creators as tiles, and their latest pieces. |
 | `creators/?l=&o=<outlet>` | An outlet's page: head, platforms, bell, bio. Its videos, episodes and posts play in their cards. |
 | `creators/?l=&o=&p=<piece>` | One piece in the outlet's colourway. An article, or the video / episode / post itself with its caption. |
-| `creators/studio/` | Where an outlet's people write. |
+| `creators/studio/` | Where an outlet's people write (the editor: `docs/creator-hub.md`). |
+| `creators/hub/` | The creator hub (0200): a creator's numbers and writing desk; a league's storylines, graphics and icons for anybody. See `docs/creator-hub.md`. |
 | HOME, **Feed** | The six newest cards, under My followed. **Followed** shows what the reader follows (leagues, clubs' leagues, publishers, creators). **Newest** shows everything. The choice is remembered. |
 | A league's front page, **Creators** | The three latest pieces and a row of the outlets. Absent while creators are off or nothing is published. |
-| The rail | **News** on the platform panel. **Creators** on a league with some (probed). **Creator studio** in the hub for an outlet's people. |
+| The rail | **News** on the platform panel. **Creators** on a league with some (probed). **Creator studio** in the hub for an outlet's people, and **creator hub** for everybody. |
 
 ## The post card (`epinoia/newscard.js`, `kit/newscard.css`)
 
@@ -99,7 +100,7 @@ A long feed (a podcast with years of episodes) is cut after its last whole episo
   - an **article**, written in the league's news format (the same editor walk and the same cleaning);
   - or a **video, podcast, social post or link**: its address, with a caption.
 - **Embeds.** YouTube, TikTok, Instagram, X, Threads, Spotify, SoundCloud, Apple Podcasts and Twitch play in place. Each is built from the platform's own embed address in a sandboxed frame. Any other address is a link card.
-- **Pictures are https links.** An outlet has no uploads; photographs on the platform go through the approval queue.
+- **Pictures.** Since 0200 the editor uploads an outlet's own pictures into the public `creator-media` bucket, in the outlet's folder. They are resized in the browser and their EXIF is dropped. An https address still works. Photographs of the platform's players and clubs still go through the approval queue.
 - **The league keeps the last word.** It can suspend an outlet or hide a piece. Either one leaves every public page at once.
 
 ## Follows and notifications
@@ -120,7 +121,8 @@ A long feed (a podcast with years of episodes) is cut after its last whole episo
 ## Tests
 
 - `supabase/tests/creators.test.mjs`: 0194, 0195 and 0198 on PGlite.
+- `supabase/tests/creator-hub.test.mjs`: the creator hub and 0200 (`docs/creator-hub.md`).
 - `scripts/news/fetch_feeds_test.py`: the reader, and finding the feed behind a link.
 - `supabase/tests/newscard.test.mjs`: the card and the pages' wiring.
 
-All three run in `guard.yml`.
+All four run in `guard.yml`.

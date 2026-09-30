@@ -247,5 +247,63 @@ console.log('\nthe search box (0180)');
   ok('...the page views are their own switch', B.calls.length === 2 && /analytics_track$/.test(B.calls[1].url), B.calls.map(x => x.url));
 }
 
+/* A CREATOR'S PIECE (0200: the creator hub's numbers) - its id and the page it happened on, nothing about the reader */
+console.log('\na creator\'s piece, seen, opened and followed out (0200)');
+{
+  const P = '7f3a9c1e-5b2d-4e8f-9a6b-3c1d2e4f5a6b', Q = '0b9e8d7c-6a5f-4e3d-8c2b-1a0f9e8d7c6b';
+  let B = browser({ path: '/epinoia/news/' });
+  T.piece({ post: P, kind: 'seen', outlet: 'nbl/hoops' });
+  T.piece({ post: P, kind: 'seen', outlet: 'nbl/hoops' });
+  T.piece({ post: Q, kind: 'seen', outlet: 'nbl/hoops' });
+  ok('a card on screen is counted once a page, however often it scrolls by', X.pieceQueue.length === 2, X.pieceQueue);
+  ok('...with the page it was seen on, and no other site', X.pieceQueue[0].source === 'news' && X.pieceQueue[0].ref === null, X.pieceQueue[0]);
+  await T.flushPieces(false);
+  const c = B.calls[0];
+  ok('one request, to creator_track', B.calls.length === 1 && /\/rest\/v1\/rpc\/creator_track$/.test(c.url), B.calls.map(x => x.url));
+  ok('it carries exactly the session token, the device and the events',
+     JSON.stringify(Object.keys(c.body).sort()) === JSON.stringify(['p_device', 'p_events', 'p_session']), Object.keys(c.body));
+  ok('...each event exactly its piece, its kind and where',
+     JSON.stringify(Object.keys(c.body.p_events[0]).sort()) === JSON.stringify(['kind', 'post', 'ref', 'source']), c.body.p_events[0]);
+  ok('...with the public key only, and nothing that identifies the reader',
+     c.init.headers.apikey === 'sb_publishable_test' && !('Authorization' in c.init.headers) && !/Secret Device|u-123|fan@example/.test(JSON.stringify(c.body)));
+
+  B = browser({ path: '/epinoia/creators/', referrer: 'https://www.reddit.com/r/nbl/comments/abc/secret_words' });
+  T.piece({ post: P, kind: 'open', outlet: 'nbl/hoops' });
+  ok('an opening from another site keeps its host only', X.pieceQueue[0].ref === 'reddit.com' && X.pieceQueue[0].source === null, X.pieceQueue[0]);
+  B = browser({ path: '/epinoia/creators/', referrer: 'https://prophesyscouting.co.uk/epinoia/news/?l=nbl' });
+  T.piece({ post: P, kind: 'open', outlet: 'nbl/hoops' });
+  ok('...from a page of this site, that page (news)', X.pieceQueue[0].source === 'news' && X.pieceQueue[0].ref === null, X.pieceQueue[0]);
+  B = browser({ path: '/epinoia/creators/', referrer: 'https://prophesyscouting.co.uk/epinoia/admin/platform/' });
+  T.piece({ post: P, kind: 'open', outlet: 'nbl/hoops' });
+  ok('...and from a staff tool, nowhere', X.pieceQueue[0].source === null && X.pieceQueue[0].ref === null, X.pieceQueue[0]);
+
+  B = browser({ path: '/epinoia/creators/' });
+  T.piece({ post: P, kind: 'out', outlet: 'nbl/hoops' });
+  await tick(5);
+  ok('a link followed goes at once, kept alive for the page leaving', B.calls.length === 1 && B.calls[0].init.keepalive === true && B.calls[0].body.p_events[0].kind === 'out', B.calls.map(x => x.init.keepalive));
+
+  const ls = mem(); ls.setItem(T.MINE_KEY, JSON.stringify(['nbl/hoops']));
+  B = browser({ ls, path: '/epinoia/news/' });
+  T.piece({ post: P, kind: 'seen', outlet: 'nbl/hoops' });
+  T.piece({ post: Q, kind: 'seen', outlet: 'nbl/other' });
+  ok('an outlet\'s own people reading their own pieces are never counted (another outlet\'s still are)',
+     X.pieceQueue.length === 1 && X.pieceQueue[0].post === Q, X.pieceQueue);
+  B = browser();
+  T.piece({ post: 'not-a-piece', kind: 'seen' }); T.piece({ post: P, kind: 'liked' });
+  ok('only a piece\'s id, and only seen, open or out', X.pieceQueue.length === 0, X.pieceQueue);
+  for (const [what, o] of [['config.js has analytics off', { analytics: false }], ['Global Privacy Control', { nav: { globalPrivacyControl: true } }], ['Do Not Track', { nav: { doNotTrack: '1' } }]]) {
+    B = browser(o);
+    T.piece({ post: P, kind: 'out', outlet: 'nbl/hoops' });
+    await tick(5);
+    ok('nothing is counted when ' + what, B.calls.length === 0 && X.pieceQueue.length === 0);
+  }
+  B = browser({ status: 404 });
+  T.piece({ post: P, kind: 'out' }); await tick(5);
+  T.piece({ post: Q, kind: 'out' }); await tick(5);
+  ok('a refused call (0200 not applied) stops the pieces, and only those', B.calls.length === 1);
+  T.boot(); await T.flush(false);
+  ok('...a page view still goes', B.calls.length === 2 && /analytics_track$/.test(B.calls[1].url), B.calls.map(x => x.url));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -829,6 +829,9 @@
       return a;
     };
     flist.appendChild(mk('', '☆', 'profile', root + 'me/'));
+    /* THE CREATOR HUB (0200): a creator's numbers and writing desk, and for anybody a league's storylines, graphics
+       and icons */
+    flist.appendChild(mk('', '✎', 'creator hub', root + 'creators/hub/'));
 
     const hd = el('div', 'gtitle', 'your follows');
     flist.appendChild(hd);
@@ -882,6 +885,8 @@
       flist.insertBefore(box, hd);
     }
     const cs = ((await studios) || []).filter(o => o && o.outlet_id);
+    /* the outlets this account writes for: track.js never counts their own people reading their own pieces (0200) */
+    try { localStorage.setItem('epinoia_my_outlets', JSON.stringify(cs.map(o => o.league_slug + '/' + o.slug))); } catch (_) { /* fine */ }
     if (cs.length) {
       const box = document.createDocumentFragment();
       box.appendChild(el('div', 'gtitle', 'creator studio'));
@@ -2730,6 +2735,8 @@
         if (!b) {
           b = el('button', 'tt-skip');
           b.type = 'button';
+          /* its own words' context (i18n/<code>.js ctx.skip): the scorer's "skip" is another thing */
+          b.setAttribute('data-i18n-ctx', 'skip');
           b.appendChild(el('span', 't', 'Skip'));
           x.hd.appendChild(b);
         }

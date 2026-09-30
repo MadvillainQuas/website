@@ -1386,6 +1386,16 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/suggestions.test.mjs
 
+      - name: The creator hub - the numbers, the writing desk, storylines, graphics and icons (0200)
+        # the pages first (the editor's words, permalink, tags and typed shortcuts; storylines.js on a season; the icon
+        # set; the hub on the page standard, in the rail, and counting a piece where it is shown; its words in Spanish
+        # and Japanese); then on a real Postgres (PGlite): tags and the search fields, scheduled pieces and their
+        # publishing, revisions, the article's new blocks, creator_track and creator_stats, the creator-media bucket,
+        # and who may call what
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/creator-hub.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the
