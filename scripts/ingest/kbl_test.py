@@ -64,6 +64,8 @@ class Offline(K.KblAdapter):
             return load("team-record_S49G14N1.json")
         if "/text-cast" in path:
             return load("text-cast_S49G14N1.json")
+        if path.endswith("/match-chart"):
+            return load("match-chart_S49G14N1.json")
         return load("match_S49G14N1.json")
 
 
@@ -134,6 +136,38 @@ ok("nobody substituted after the final buzzer", not any(e["actionType"] == "subs
                                                                                     and x.get("subType") == "end") for e in ev))
 ok("the game ends", ev and ev[-1]["actionType"] == "game" and ev[-1]["subType"] == "end")
 ok("final", b and b.status == "final", b and b.status)
+
+print("\n-- the shot chart (match-chart shootLog, calibrated)")
+import math  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "translate"))
+from translate.fiba_events import translate as _tr  # noqa: E402
+shots = [s for t in ("1", "2") for s in (b.raw["tm"][t].get("shot") or [])]
+fga = [e for e in b.raw["pbp"] if e["actionType"] in ("2pt", "3pt")]
+ok("every attempt placed (all 53 player-quarters pair up)", len(shots) == len(fga) == 161, (len(shots), len(fga)))
+ok("each place on the play it belongs to, its result the play's",
+   all(any(e["actionNumber"] == s["actionNumber"] and e["actionType"] == s["actionType"] and int(e.get("success", 0)) == s["r"]
+           for e in fga) for s in shots))
+ok("a two is no longer called a jump shot: the cast never said so", not any(e.get("subType") == "jumpshot" for e in fga if e["actionType"] == "2pt"))
+tr = _tr(b.raw)
+locs = {e["payload"]["ref"]: (e["payload"]["x"], e["payload"]["y"]) for e in tr["events"] if e["t"] == "loc"}
+def from_rim(xy):
+    return math.hypot((xy[0] - 0.5) * 15, xy[1] * 14 - 1.575)
+kinds = {e["seq"]: e["t"] for e in tr["events"] if e["t"] in ("p2_made", "p2_miss", "p3_made", "p3_miss")}
+dunks = [e["actionNumber"] for e in fga if e.get("subType") == "dunk"]
+twos = [r for r, t in kinds.items() if t.startswith("p2") and r in locs]
+threes = [r for r, t in kinds.items() if t.startswith("p3") and r in locs]
+rim = sum(1 for r in twos if from_rim(locs[r]) <= 1.25)
+ok("every place reaches the event log", len(locs) == 161, len(locs))
+ok("the three dunks are at the rim", len(dunks) == 3)
+ok("twos inside the line, threes outside it (a marker's 0.4 m allowed)",
+   all(from_rim(locs[r]) <= 7.15 for r in twos) and all(from_rim(locs[r]) >= 6.2 for r in threes),
+   (max(from_rim(locs[r]) for r in twos), min(from_rim(locs[r]) for r in threes)))
+ok("a pro league's share of twos at the rim (%d of %d)" % (rim, len(twos)), 0.25 <= rim / len(twos) <= 0.55)
+ok("a player-quarter that does not pair up gets no places, never guessed ones",
+   K.pair_shots([(1, "2", 1), (2, "3", 0)], [{"x": 640, "y": 203, "o": "O", "d": "1"}]) is None
+   and K.pair_shots([(1, "3", 1)], [{"x": 640, "y": 203, "o": "O", "d": "1"}]) is None)
+ok("a game whose chart cannot be read still translates, without places",
+   len(K.KblAdapter.translate(*[a._json(p) for p in ()] or [{}, {}, [], {}, []], None)["tm"]["1"].get("shot") or []) == 0)
 ok("the lineups replay (stints built)", b and len(b.stints or []) > 10, b and len(b.stints or []))
 
 a = Offline()

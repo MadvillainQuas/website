@@ -38,8 +38,18 @@ box keys that player on. Two things decide whether the lineups come out right:
   * m:s is time REMAINING, which is FIBA's own gt.
 There is no running score in the events; the box score's quarter lines give the result.
 
-NO SHOT CHART. match-chart's shootLog places a shot in pixels on the site's court drawing without
-saying which drawing, so no coordinate here can be trusted to be a percentage of anything.
+THE SHOT CHART, CALIBRATED. /match/<gmkey>/match-chart's shootLog places each player's attempts in pixels on
+the site's full-court drawing ({q, x, y, o: O made / X missed, d: "1" the right basket, "2" the left}) with no
+time on them, and not always in the order they were taken. The drawing is not labelled, so its frame was
+measured from the data: four games, 533 attempts, each matched to its text-cast attempt (below), every dunk
+within 0.6 m of the fitted rim, and FIBA's line (6.75 m, 6.60 m in the corners) putting 516 of 517 twos and
+threes on their own side of it - 39% of two-point attempts inside the restricted area, a pro league's share.
+  * a log entry is paired with a text-cast attempt of the same player, quarter and result (made/missed) whose
+    kind agrees with the entry's place (two or three), in order; within 0.4 m of the line either kind will do,
+    because that is where a marker's error lives. A player-quarter whose attempts cannot all be paired gets no
+    places at all rather than guessed ones;
+  * the text cast names no shot but a dunk: a two is neither a lay-up nor a jump shot until its place says
+    which, so it carries no shot type (a "jump shot" label read as "not at the rim" wherever a place was missing).
 """
 from __future__ import annotations
 
@@ -93,7 +103,7 @@ ACTIONS = {
     "003": ("timeout", None, None),
     "101": ("substitution", "in", None),
     "102": ("substitution", "out", None),
-    "201": ("2pt", "jumpshot", 1), "202": ("2pt", "jumpshot", 0),
+    "201": ("2pt", None, 1), "202": ("2pt", None, 0),              # the cast does not say what kind of two
     "203": ("freethrow", None, 1), "204": ("freethrow", None, 0),
     "205": ("3pt", "jumpshot", 1), "206": ("3pt", "jumpshot", 0),
     "207": ("2pt", "dunk", 1), "208": ("2pt", "dunk", 0),
@@ -112,6 +122,60 @@ TEAM_EVENTS = ("218", "223")
 #: `f` on a foul: what kind it was
 FOUL_KIND = {"TCF": "technical", "FRF": "unsportsmanlike", "FTF": "disqualifying", "PCF": "disqualifying",
              "EBF": "unsportsmanlike", "PNF": "personal"}
+
+# the site's court drawing, measured (see the module docstring): pixels per metre along and across the court,
+# the two baskets' pixel x and their shared y
+CHART = {"sx": 21.6, "sy": 22.6, "right": 650, "left": 64, "y": 203}
+FG_CODES = {"201": ("2", 1), "202": ("2", 0), "205": ("3", 1), "206": ("3", 0), "207": ("2", 1), "208": ("2", 0)}
+
+
+def chart_place(entry: dict) -> Optional[tuple[float, float, float, str]]:
+    """A shootLog entry -> (FIBA full-court x %, y %, metres from the rim, "2" or "3" by the line), or None."""
+    try:
+        x, y = float(entry.get("x")), float(entry.get("y"))
+    except (TypeError, ValueError):
+        return None
+    right = str(entry.get("d")) == "1"
+    deep = ((CHART["right"] - x) if right else (x - CHART["left"])) / CHART["sx"]      # metres out from the rim
+    side = (y - CHART["y"]) / CHART["sy"]                                               # metres across, down the drawing
+    r = (deep ** 2 + side ** 2) ** 0.5
+    corner = abs(side) >= 6.6 and deep + 1.575 <= 2.99
+    kind = "3" if (corner or r > 6.75) else "2"
+    fx = (94.375 - deep / 28 * 100) if right else (5.625 + deep / 28 * 100)
+    fy = 50 + side / 15 * 100
+    return round(min(100.0, max(0.0, fx)), 2), round(min(100.0, max(0.0, fy)), 2), r, kind
+
+
+def line_margin(entry: dict) -> float:
+    """How far (m) a place is from the three-point line - where a marker's error decides nothing."""
+    pl = chart_place(entry)
+    if pl is None:
+        return 0.0
+    _, _, r, _ = pl
+    right = str(entry.get("d")) == "1"
+    deep = ((CHART["right"] - float(entry["x"])) if right else (float(entry["x"]) - CHART["left"])) / CHART["sx"]
+    side = (float(entry["y"]) - CHART["y"]) / CHART["sy"]
+    return min(abs(r - 6.75), abs(abs(side) - 6.6) if deep + 1.575 <= 2.99 else 99.0)
+
+
+def pair_shots(attempts: list, entries: list, band: float = 0.4) -> Optional[list]:
+    """[(actionNumber, "2"/"3", made)] and one player-quarter's shootLog entries -> [(actionNumber, entry)], or
+    None when they do not pair up completely (a place is never guessed)."""
+    if len(attempts) != len(entries):
+        return None
+    used, out = set(), []
+    for n, kind, made in attempts:
+        for j, e in enumerate(entries):
+            if j in used or (str(e.get("o")).upper() == "O") != bool(made):
+                continue
+            pl = chart_place(e)
+            if pl is None:
+                continue
+            if pl[3] == kind or line_margin(e) <= band:
+                used.add(j); out.append((n, e)); break
+        else:
+            return None
+    return out
 
 
 def season_year(config: dict) -> int:
@@ -277,13 +341,17 @@ class KblAdapter(FibaLiveStatsAdapter):
                    if isinstance(r, dict)}
         quarters = ",".join([f"Q{i}" for i in range(1, 5)] + [f"X{i}" for i in range(1, 5)])
         plays = self._json(f"/match/{key}/text-cast?quarterList={quarters}") or []
-        raw = self.translate(game, head.get("teamrecords") or {}, box, teamrec, plays)
+        try:
+            chart = self._json(f"/match/{key}/match-chart") or {}
+        except Exception:
+            chart = {}                                     # a game without its chart is a game without places
+        raw = self.translate(game, head.get("teamrecords") or {}, box, teamrec, plays, chart)
         b = self.bundle_from_raw(raw, key, config)
         b.tipoff_at = tipoff(game.get("gameDate"), game.get("gameStart")) or tip
         return b
 
     @staticmethod
-    def translate(game: dict, teamrecords: dict, box: list, teamrec: dict, plays: list) -> dict:
+    def translate(game: dict, teamrecords: dict, box: list, teamrec: dict, plays: list, chart: Optional[dict] = None) -> dict:
         """The KBL's four payloads -> the FIBA data.json shape (fibashape)."""
         side_of = {str(game.get("tcodeH")): 1, str(game.get("tcodeA")): 2}
         players = {1: {}, 2: {}}
@@ -336,7 +404,38 @@ class KblAdapter(FibaLiveStatsAdapter):
 
         played = S.num(game.get("isEnded")) == 1
         raw = S.game(tm[0], tm[1], played=played, pbp=KblAdapter.events(plays, side_of, by_name, played))
+        KblAdapter.shots(raw, plays, chart or {}, side_of)
         return raw
+
+    @staticmethod
+    def shots(raw: dict, plays: list, chart: dict, side_of: dict) -> int:
+        """The shot chart onto the FIBA shape's tm[].shot, keyed by the play it belongs to (see the docstring).
+        Returns how many shots were placed."""
+        attempts = {}
+        for e in sorted([e for e in plays or [] if isinstance(e, dict)], key=lambda e: S.num(e.get("n"))):
+            a = str(e.get("a") or "").zfill(3)
+            if a in FG_CODES:
+                kind, made = FG_CODES[a]
+                attempts.setdefault((str(e.get("t") or ""), str(e.get("p") or "").strip(), str(e.get("q") or "")), []) \
+                    .append((int(S.num(e.get("n"))), kind, made))
+        logs = {}
+        for pl in (chart or {}).get("shootLog") or []:
+            for lg in pl.get("logs") or []:
+                logs.setdefault((str(pl.get("tcode") or ""), str(pl.get("pname") or "").strip(), str(lg.get("q") or "")), []).append(lg)
+        by_n = {int(ev["actionNumber"]): ev for ev in raw.get("pbp") or [] if ev.get("actionType") in ("2pt", "3pt")}
+        placed = 0
+        for key, att in attempts.items():
+            pairs = pair_shots(att, logs.get(key, []))
+            for n, entry in pairs or []:
+                ev, pl = by_n.get(n), chart_place(entry)
+                tno = side_of.get(key[0])
+                if not ev or not pl or not tno:
+                    continue
+                raw["tm"][str(tno)].setdefault("shot", []).append({
+                    "actionNumber": n, "x": pl[0], "y": pl[1], "r": 1 if str(entry.get("o")).upper() == "O" else 0,
+                    "pno": ev.get("pno"), "tno": tno, "per": ev.get("period"), "actionType": ev.get("actionType")})
+                placed += 1
+        return placed
 
     @staticmethod
     def events(plays: list, side_of: dict, by_name: dict, played: bool) -> list:
