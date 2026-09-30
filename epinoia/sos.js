@@ -507,6 +507,29 @@ function gameLines(S) {
   return out;
 }
 
+/* THE RATINGS THAT NEED ONLY THE SCORES: a season's games rows (id, both clubs, both scores, tip-off)
+   into one entry per club: { elo, sosElo, games }. The ELO and the opponents' average ELO are worked from
+   the score and the order of play alone, so this is the very number the SOS tab shows for them, without
+   reading a single box score (the lines carry the score and zeros; the adjusted ratings are not used). */
+function scoreLines(rows) {
+  const out = [];
+  (rows || []).forEach(g => {
+    const h = g && g.home_team_id, a = g && g.away_team_id;
+    const hs = g && g.home_score, as = g && g.away_score;
+    if (!h || !a || h === a || hs == null || as == null || !isFinite(+hs) || !isFinite(+as)) return;
+    const ts = g.tipoff_at ? Date.parse(g.tipoff_at) : NaN;
+    const z = pts => ({ pts, fgm: 0, fga: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0, oreb: 0, dreb: 0, tov: 0, poss: 0 });
+    out.push({ gameId: g.id, ts: isFinite(ts) ? ts : null, date: isFinite(ts) ? ymd(ts) : '',
+               teams: [h, a], data: { [h]: z(+hs), [a]: z(+as) } });
+  });
+  return out;
+}
+function eloRatings(rows) {
+  const m = new Map();
+  compute(scoreLines(rows), {}).rows.forEach(r => m.set(r.key != null ? r.key : r.name, r));
+  return m;
+}
+
 /* HOW OFTEN A PAIR OF CLUBS MEETS, from the fixture list (played and to come): the
    commonest count across the pairs that meet at all, so a cup tie or a playoff series
    on top of the league's own schedule does not move it. null when there is no list. */
@@ -858,6 +881,6 @@ function render(o) {
   draw();
 }
 
-return { compute, gameLines, meetingsFrom, render, percentile, visible, STATE,
+return { compute, gameLines, scoreLines, eloRatings, meetingsFrom, render, percentile, visible, STATE,
          ITERATIONS, REGRESSION_FACTOR, POINTS_PER_PCT, EMPIRICAL_WEIGHTS };
 }));

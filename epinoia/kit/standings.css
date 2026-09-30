@@ -49,3 +49,6 @@
   .stk.w i::after{left:3.5px;top:1px;width:3px;height:6px}
   .stk.l i::before,.stk.l i::after{left:4.5px;top:1.5px;height:8px}
 }
+/* the ELO rating beside the streak (sos.js; 1500 is average); the table scrolls sideways on a phone like every other column */
+.ep-tbl.stand th.elo,.ep-tbl.stand td.elo{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ep-tbl.stand td.elo{font-family:var(--f-score);font-size:15px;color:var(--ink-2)}

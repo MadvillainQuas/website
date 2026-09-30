@@ -153,6 +153,8 @@ const P = [
   { k:'stl_pct',  l:'STL%',  g:['defense','advanced'], fmt:r=>f1(r.stl_pct), heat:1, ord:{advanced:8} },
   { k:'blk_pct',  l:'BLK%',  g:['defense','advanced'], fmt:r=>f1(r.blk_pct), heat:1, ord:{advanced:9} },
   { k:'oreb_pct', l:'OREB%', g:['rebounding','advanced'], fmt:r=>f1(r.oreb_pct), heat:1, ord:{advanced:3} },
+  { k:'orb_tm_pct',   l:'ORB% TM MISS',  g:['rebounding'], fmt:r=>f1(r.orb_tm_pct),   heat:1 },
+  { k:'orb_self_pct', l:'ORB% OWN MISS', g:['rebounding'], fmt:r=>f1(r.orb_self_pct), heat:1 },
   { k:'dreb_pct', l:'DREB%', g:['rebounding','defense','advanced'], fmt:r=>f1(r.dreb_pct), heat:1, ord:{advanced:4} },
   { k:'trb_pct',  l:'TRB%',  g:['rebounding','advanced'], fmt:r=>f1(r.trb_pct), heat:1, ord:{advanced:5} },
   /* the rebounding on/off: the team's share with him on against off, both ends */
@@ -197,6 +199,8 @@ const P = [
   { k:'diff_vs_tov',  l:'OPP TOV% ±',  g:['onoff'], fmt:r=>sgn(r.diff_vs_tov),  heat:1, signed:1 },
   { k:'diff_vs_oreb', l:'OPP OREB% ±', g:['onoff','rebounding'], fmt:r=>sgn(r.diff_vs_oreb), heat:1, signed:1, low:1 },
   { k:'diff_vs_ftr',  l:'OPP FTr ±',   g:['onoff'], fmt:r=>sgn(r.diff_vs_ftr),  heat:1, signed:1, low:1 },
+  { k:'def_rim_fg_pm',  l:'DEF RIM FG% ±',  g:['onoff','defense'], fmt:r=>sgn(r.def_rim_fg_pm),  heat:1, signed:1, low:1 },
+  { k:'def_rim_vol_pm', l:'DEF RIM VOL ±', g:['onoff','defense'], fmt:r=>sgn(r.def_rim_vol_pm), heat:1, signed:1, low:1 },
 
   /* what the opponent managed while he was on the floor */
   /* The defensive side is in the on/off group too, not only in "opponent".

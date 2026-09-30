@@ -95,11 +95,13 @@ function inGameOrder(evs) {
 
 /* ---------- accumulator factories ---------- */
 const mkOC  = () => ({ tFGA:0,tFGM:0,t3M:0,tFTA:0,tTOV:0,tOR:0,tDR:0,tPTS:0,
-                       oFGA:0,oFGM:0,o3M:0,oFTA:0,oTOV:0,oOR:0,oDR:0,oPTS:0 });
+                       oFGA:0,oFGM:0,o3M:0,oFTA:0,oTOV:0,oOR:0,oDR:0,oPTS:0,
+                       oRimA:0,oRimM:0 });
 const mkBox = () => ({ fga:0,fgm:0,f3m:0,fta:0,tov:0,or:0,dr:0,pts:0 });
 const mkP   = () => ({ pts:0,p2m:0,p2a:0,p3m:0,p3a:0,ftm:0,fta:0,or:0,dr:0,ast:0,stl:0,blk:0,
                        to:0,pf:0,fd:0,pm:0,min:0,t:0,u:0,dq:false,
-                       ptsAst:0,rimA:0,rimM:0,midA:0,midM:0, paint:0,fast:0,sc:0,pot:0, oc:mkOC() });
+                       ptsAst:0,rimA:0,rimM:0,midA:0,midM:0, paint:0,fast:0,sc:0,pot:0,
+                       rbTm:0,rbTmO:0,rbSf:0,rbSfO:0, oc:mkOC() });
 const mkT   = () => ({ pts:0,teamRebO:0,teamRebD:0,teamTo:0,toTot:0,foulTot:0,foulsP:{},
                        paint:0,fast:0,sc:0,pot:0,bench:0,lead:0,
                        tos:{h1:0,h2:0,last2:0,ot:{}} });
@@ -319,20 +321,45 @@ function deriveGame(game) {
     if (lead > d.team[ev.team].lead) d.team[ev.team].lead = lead;
   };
 
+  /* LINKED EVENTS: a rebound is the result of the miss before it. Same rule as situations.js
+     reboundOutcomes(): the first rebound after a missed field goal, before any other FG / FT /
+     turnover / period event. rbTm / rbTmO: rebound-resolved misses by teammates while he was on
+     the floor, and how many he took off the offensive glass. rbSf / rbSfO: the same for his own. */
+  let pendMiss = null;   // { pid, team, ids: shooter-side on-court ids at the miss }
+  const oRim = ev => {
+    if (!isRim(ev)) return;
+    d.onCourt[1 - ev.team].forEach(id => { if (d.stats[id]) {
+      d.stats[id].oc.oRimA++; if (ev.t === 'p2_made') d.stats[id].oc.oRimM++; } });
+  };
+  const missOf = ev => { pendMiss = { pid: ev.pid || null, team: ev.team, ids: [...d.onCourt[ev.team]] }; };
+  const resolveMiss = ev => {
+    const m = pendMiss; pendMiss = null;
+    if (!m) return;
+    m.ids.forEach(id => { if (!d.stats[id]) return; if (id === m.pid) d.stats[id].rbSf++; else d.stats[id].rbTm++; });
+    if (ev.pid && ev.off && ev.team === m.team && d.stats[ev.pid]) {
+      if (ev.pid === m.pid) d.stats[ev.pid].rbSfO++;
+      else if (m.ids.includes(ev.pid)) d.stats[ev.pid].rbTmO++;
+    }
+  };
+
   events.forEach(ev => {
     const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1));
+
+    if (ev.t === 'reb') resolveMiss(ev);
+    else if (ev.t in { p2_made:1, p3_made:1, p2_miss:1, p3_miss:1, ft_made:1, ft_miss:1, to:1 } ||
+             /^(period_|end_|game_)/.test(ev.t)) pendMiss = null;
 
     switch (ev.t) {
       case 'ft_miss': if (st(ev)) st(ev).fta++; ocAdd(ev.team, 'FTA'); break;
       case 'ft_made': if (st(ev)) { st(ev).fta++; st(ev).ftm++; }
         ocAdd(ev.team, 'FTA'); ocAdd(ev.team, 'PTS', 1); scorePts(ev, 1); break;
       case 'p2_miss': if (st(ev)) { st(ev).p2a++; if (isRim(ev)) st(ev).rimA++; else st(ev).midA++; }
-        ocAdd(ev.team, 'FGA'); break;
+        ocAdd(ev.team, 'FGA'); oRim(ev); missOf(ev); break;
       case 'p2_made': if (st(ev)) { st(ev).p2a++; st(ev).p2m++;
           if (isRim(ev)) { st(ev).rimA++; st(ev).rimM++; } else { st(ev).midA++; st(ev).midM++; } }
-        ocAdd(ev.team, 'FGA'); ocAdd(ev.team, 'FGM'); ocAdd(ev.team, 'PTS', 2);
+        ocAdd(ev.team, 'FGA'); ocAdd(ev.team, 'FGM'); ocAdd(ev.team, 'PTS', 2); oRim(ev);
         lastMade[ev.team] = 2; scorePts(ev, 2); break;
-      case 'p3_miss': if (st(ev)) st(ev).p3a++; ocAdd(ev.team, 'FGA'); break;
+      case 'p3_miss': if (st(ev)) st(ev).p3a++; ocAdd(ev.team, 'FGA'); missOf(ev); break;
       case 'p3_made': if (st(ev)) { st(ev).p3a++; st(ev).p3m++; }
         ocAdd(ev.team, 'FGA'); ocAdd(ev.team, 'FGM'); ocAdd(ev.team, '3M'); ocAdd(ev.team, 'PTS', 3);
         lastMade[ev.team] = 3; scorePts(ev, 3); break;

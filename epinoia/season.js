@@ -276,6 +276,18 @@ function players(pgs, tgs, meta) {
 
     /* on-court context — every field is a count, so it sums */
     const oc = s.oc || {};
+    /* THE LINKED-EVENT STATS: games stored before they existed carry no such field, and a
+       missing field is not a zero. Each family counts only the games that have it. */
+    if (typeof s.rbTm === 'number' && typeof s.rbSf === 'number') {
+      const R = A.rb;
+      R.tm += s.rbTm; R.tmO += num(s.rbTmO); R.sf += s.rbSf; R.sfO += num(s.rbSfO); R.n += 1;
+    }
+    const rimCov = typeof oc.oRimA === 'number';
+    if (rimCov) {
+      const R = A.rc;
+      R.rimA += oc.oRimA; R.rimM += num(oc.oRimM);
+      R.oFGA += num(oc.oFGA); R.oFTA += num(oc.oFTA); R.oTOV += num(oc.oTOV); R.oOR += num(oc.oOR);
+    }
     ['tFGA','tFGM','t3M','tFTA','tTOV','tOR','tDR','tPTS',
      'oFGA','oFGM','o3M','oFTA','oTOV','oOR','oDR','oPTS']
       .forEach(k => { A.oc[k] += num(oc[k]); });
@@ -314,6 +326,11 @@ function players(pgs, tgs, meta) {
       A.oppAll.pts += OT.pts; A.oppAll.fga += OT.fga; A.oppAll.fgm += OT.fgm;
       A.oppAll.fg3m += OT.fg3m; A.oppAll.fta += OT.fta; A.oppAll.tov += OT.tov;
       A.oppAll.oreb += OT.oreb; A.oppAll.dreb += OT.dreb;
+      if (rimCov) {
+        const R = A.rc;
+        R.aRimA += OT.rimA; R.aRimM += OT.rimM;
+        R.aFGA += OT.fga; R.aFTA += OT.fta; R.aTOV += OT.tov; R.aOR += OT.oreb;
+      }
     }
   });
 
@@ -329,6 +346,9 @@ function blankPlayer(id) {
     den: { teamPoss:0, teamFgm:0, oppPoss:0, oppFga2:0, orebChance:0, drebChance:0, team3a:0, team3m:0 },
     teamAll: { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0, min:0 },
     oppAll:  { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0 },
+    rb:  { tm:0, tmO:0, sf:0, sfO:0, n:0 },      // rebound-linked counts, over games that carry them
+    rc:  { rimA:0, rimM:0, oFGA:0, oFTA:0, oTOV:0, oOR:0,            // opponent rim shots + possessions, ON, covered games
+           aRimA:0, aRimM:0, aFGA:0, aFTA:0, aTOV:0, aOR:0 },        // the same for the opponents' whole games
     ev: null };                                  // the events splits, made on the first covered game
 }
 
@@ -365,9 +385,31 @@ function finishPlayer(A, m) {
   const onNet  = (onOrtg  != null && onDrtg  != null) ? onOrtg  - onDrtg  : null;
   const offNet = (offOrtg != null && offDrtg != null) ? offOrtg - offDrtg : null;
 
+  /* ORB% ON TEAM MISSES / ON OWN MISSES: of the rebound-resolved misses, the share he took off the offensive
+     glass himself. Under 10 resolved misses it is noise, and is left null (as is a player with no covered game). */
+  const RB = A.rb;
+  const orbTm = RB.n && RB.tm >= 10 ? pct(RB.tmO, RB.tm) : null;
+  const orbSf = RB.n && RB.sf >= 10 ? pct(RB.sfO, RB.sf) : null;
+  /* DEF RIM: opponents' rim FG% and rim attempts per 100 opponent possessions, on minus off, over the games that
+     carry the on-court rim count. Under 15 opponent rim attempts on either side is noise, and is left null. */
+  const RC = A.rc;
+  const rimOffA = RC.aRimA - RC.rimA, rimOffM = RC.aRimM - RC.rimM;
+  const rimOnPoss  = POSS(RC.oFGA, RC.oFTA, RC.oTOV, RC.oOR);
+  const rimOffPoss = POSS(RC.aFGA - RC.oFGA, RC.aFTA - RC.oFTA, RC.aTOV - RC.oTOV, RC.aOR - RC.oOR);
+  const rimOk = RC.rimA >= 15 && rimOffA >= 15;
+  const rimFgOn = rimOk ? pct(RC.rimM, RC.rimA) : null, rimFgOff = rimOk ? pct(rimOffM, rimOffA) : null;
+  const rimVolOn  = rimOk && rimOnPoss > 0  ? 100 * RC.rimA / rimOnPoss   : null;
+  const rimVolOff = rimOk && rimOffPoss > 0 ? 100 * rimOffA / rimOffPoss : null;
+
   const out = {
     id: A.id,
     gp: A.gp, dq: A.dq,
+    orb_tm_pct: r1(orbTm), orb_self_pct: r1(orbSf),
+    def_rim_fg_on: r1(rimFgOn), def_rim_fg_off: r1(rimFgOff),
+    def_rim_fg_pm: r1(rimFgOn != null && rimFgOff != null ? rimFgOn - rimFgOff : null),
+    def_rim_vol_on: r1(rimVolOn), def_rim_vol_off: r1(rimVolOff),
+    def_rim_vol_pm: r1(rimVolOn != null && rimVolOff != null ? rimVolOn - rimVolOff : null),
+    def_rim_a_on: rimOk ? RC.rimA : null, def_rim_a_off: rimOk ? rimOffA : null,
 
     /* ---- totals ---- */
     min: r1(A.min), pts: A.pts, reb, oreb: A.oreb, dreb: A.dreb,

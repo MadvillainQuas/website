@@ -312,10 +312,13 @@ const BAR_SECTIONS = [
     { rows: [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],['tov_pct','TURNOVER%']] }
   ]},
   { key: 'rebounding', title: 'rebounding', blocks: [
-    { rows: [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']] }
+    { rows: [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%'],
+             ['orb_tm_pct','ORB% ON TEAM MISSES'],['orb_self_pct','ORB% ON OWN MISSES']] }
   ]},
   { key: 'defence', title: 'defence', blocks: [
-    { rows: [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['pf30','FOULS CONCEDED / 30']] }
+    { rows: [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['pf30','FOULS CONCEDED / 30']] },
+    /* bigsOnly: drawn only for a player whose estimated position group is C or F (paintBars) */
+    { title: 'rim protection', bigsOnly: true, rows: [['def_rim_fg_pm','DEF RIM FG% \u00B1'],['def_rim_vol_pm','DEF RIM VOL \u00B1']] }
   ]},
   /* IMPACT: on/off as differentials -- how much better the team is in each with him on -- and the box
      plus/minus family. The four factors are shown in full, offence and defence, each end its own fold. */
@@ -341,15 +344,21 @@ const BAR_GROUPS = BAR_SECTIONS.map(s => [s.title, s.blocks.flatMap(b => b.rows)
    is the good direction; opponent turnovers going UP is (so diff_vs_tov is not here). Fouls conceded: fewer is better. */
 const BAR_LOW = ['tov_pct', 'diff_drtg', 'diff_tov', 'pf30',
                  'diff_vs_efg', 'diff_vs_oreb', 'diff_vs_ftr',
-                 'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp'];
+                 'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp',
+                 'def_rim_fg_pm', 'def_rim_vol_pm'];
 /* a differential (or a plus/minus) carries its sign: +12.5 is a claim, 12.5 is a number */
-const BAR_SIGNED = k => /^diff_/.test(k) || k === 'bpm' || k === 'obpm' || k === 'dbpm';
+const BAR_SIGNED = k => /^diff_/.test(k) || k === 'bpm' || k === 'obpm' || k === 'dbpm' ||
+  k === 'def_rim_fg_pm' || k === 'def_rim_vol_pm';
 const BAR_DP = k => (k === 'ast_to' || k === 'au') ? 2 : 1;
 const BAR_HINT = {
   contrib_pg: 'Total point contribution per game: the points he scored plus the points scored off his assists.',
   vorp: 'Value over replacement player: box plus/minus turned into a season total, so minutes count as well as level.',
   pf30: 'Personal fouls he commits per 30 minutes on the floor. Fewer is better, so the top percentile fouls least. ' +
     'Left blank under 20 minutes played.',
+  orb_tm_pct: 'Of the field-goal misses by his teammates while he is on the floor that ended in a rebound, the share he grabbed himself as an offensive rebound.',
+  orb_self_pct: 'Of his own missed field goals that ended in a rebound (either side, team rebounds included), the share he got back himself as an offensive rebound.',
+  def_rim_fg_pm: 'Opponents\u2019 field-goal percentage at the rim with him on the floor minus with him off it. Lower (negative) is better.',
+  def_rim_vol_pm: 'Opponents\u2019 rim attempts per 100 of their possessions with him on the floor minus with him off it. Lower (negative) is better.',
   team_spacing: 'How stretched the floor is around him: the points his teammates\u2019 threes are worth per 100 possessions while he is on the floor ' +
     '(their three-point volume and accuracy in one number, his own threes left out). Higher means more room to work in.'
 };
@@ -495,10 +504,14 @@ function paintBars(mine, field) {
   const CAT = ANALYTICS_LOCKED && window.EpinoiaAccess ? window.EpinoiaAccess.CATALOGUE : null;
   const premiumBar = k => !!CAT && (typeof CAT.barKeys === 'function' ? !!CAT.barKeys(k)
     : Array.isArray(CAT.barKeys) && CAT.barKeys.indexOf(k) !== -1);
+  /* bigsOnly blocks (rim protection) are drawn only for an estimated centre or forward */
+  const bigGroup = SE.positionGroups ? SE.positionGroups(field).get(mine.id) : null;
+  const isBig = bigGroup === 'C' || bigGroup === 'F';
   const sections = BAR_SECTIONS.map(s => ({
     key: s.key, title: s.title,
     held: s.blocks.some(b => b.rows.some(r => premiumBar(r[0]))),
-    blocks: s.blocks.map(b => Object.assign({}, b, { rows: b.rows.filter(r => !premiumBar(r[0])) })).filter(b => b.rows.length)
+    blocks: s.blocks.filter(b => !b.bigsOnly || isBig)
+      .map(b => Object.assign({}, b, { rows: b.rows.filter(r => !premiumBar(r[0])) })).filter(b => b.rows.length)
   }));
   const keys = sections.flatMap(s => s.blocks.flatMap(b => b.rows.map(r => r[0])));
   const posMap = barsByPos && SE.positionGroups ? SE.positionGroups(field) : null;
@@ -1031,16 +1044,18 @@ async function loadCareerAccess(pl, lgRow) {
     const paintScope = async kind => {
       scopeKind = kind;
       const ids = compRows.filter(c => kind === 'all' || (c.kind || 'league') === kind).map(c => c.id);
-      mine = null; field = []; SCOPE_IDS = ids;
+      mine = null; field = []; SCOPE_IDS = ids; let sosGames = null;
       try {
         if (ids.length) {
           const S = await D.season(ids);
+          sosGames = S.games;
           field = S.players;
           mine = field.find(r => r.id === pl.id) || null;
         }
       } catch (e) { console.warn('[season]', e); }
       paintTiles(mine);
       paintBars(mine, field);
+      if (window.EpinoiaSosChip) window.EpinoiaSosChip.paint(null, { games: sosGames, teamId: team && team.id });
       /* ---- events ----
          The season's situations (second chance, transition, off turnovers,
          after timeout, half court) and assisted baskets, read from the same
