@@ -181,12 +181,18 @@ def apply(path, row) -> str:
     with open(f, encoding="utf-8") as fh:
         s = fh.read()
     head, sep, rest = s.partition("</head>")
-    head = re.sub(re.escape(START) + r".*?" + re.escape(END) + r"\s*", "", head, flags=re.S)
+    mark = "\x00SEO\x00"
+    if START in head:                                  # a second run: the block is replaced where it stands
+        head = re.sub(re.escape(START) + r".*?" + re.escape(END) + r"\s*", lambda _m: mark, head, count=1, flags=re.S)
+    else:
+        head, n = re.subn(r"<title>.*?</title>\s*", lambda _m: mark, head, count=1, flags=re.S)
+        if n != 1:
+            raise SystemExit(f"apply-page-heads: {path or 'index'}: no <title>")
     for pat in STRIP:
         head = re.sub(pat, "", head, flags=re.S)
-    head, n = re.subn(r"<title>.*?</title>\s*", lambda _m: block(path, row), head, count=1, flags=re.S)
-    if n != 1 or not sep:
-        raise SystemExit(f"apply-page-heads: {path or 'index'}: no <title> or no </head>")
+    if not sep or mark not in head:
+        raise SystemExit(f"apply-page-heads: {path or 'index'}: no </head>")
+    head = head.replace(mark, block(path, row), 1)
     new = head + sep + rest
     if new != s:
         with open(f, "w", encoding="utf-8", newline="\n") as fh:
