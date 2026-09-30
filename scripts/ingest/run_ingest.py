@@ -559,8 +559,8 @@ def borrow_crests(sb: Supabase, league_id: str, run: dict) -> None:
     """A CLUB THE SCHEDULE GIVES NO CREST FOR wears the one the same club has in another league. A federation's
     schedule page carries a badge for most of its clubs and not all (the BBE hosted site: 14 of 18 in the EABL and
     WEABL, the four left out being clubs that do have one in the NBL D1 or the other league), and the same club
-    under the same name is the same club. Only a BLANK is filled, only from an identically named club, and only when
-    those other rows agree on one crest; a club nobody has a crest for stays blank rather than guessed."""
+    under the same name is the same club. Only a BLANK is filled, only from an identically named club, and by the most
+    used of those crests; a club nobody has a crest for stays blank rather than guessed."""
     plat = run.get("_platform")
     if getattr(plat, "dry", False):
         return
@@ -574,10 +574,11 @@ def borrow_crests(sb: Supabase, league_id: str, run: dict) -> None:
         for nm in names_:
             q = urllib.parse.quote(nm, safe="")
             rows = sb.select("teams", f"name=eq.{q}&logo_path=not.is.null&select=logo_path")
-            urls = {r["logo_path"] for r in rows if r.get("logo_path") and not r["logo_path"].startswith("{")}
-            if len(urls) != 1:
+            urls = [r["logo_path"] for r in rows if r.get("logo_path") and not r["logo_path"].startswith("{")]
+            if not urls:
                 continue
-            url = urls.pop()
+            # the same badge is stored as a different file per league and season: the most used one wins
+            url = max(sorted(set(urls)), key=urls.count)
             for t in (t for t in mine if t.get("name") == nm):
                 sb.patch("teams", f"id=eq.{t['id']}", {"logo_path": url})
                 got += 1
