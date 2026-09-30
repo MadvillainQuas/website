@@ -600,7 +600,7 @@
                 'news: every league, the publishers that cover them and the leagues’ creators, newest first'));
 
   /* and on, into the leagues. A row rather than a bare chevron, because this is
-     the journey the rail exists for. */
+     the journey the rail exists for; it sits second, straight under home (below). */
   const leaguesRow = el('a', 'item');
   leaguesRow.href = root + 'home/#leagues';
   leaguesRow.append(el('span', 'ic', '◉'), el('span', 'tx', 'leagues'),
@@ -617,7 +617,9 @@
     e.preventDefault();
     setView(country === null ? 'country' : 'root', true);
   });
-  hlist.appendChild(leaguesRow);
+  /* RIGHT UNDER HOME, on the rail and in the phone's opened bar alike (Louie, 2026-09-30): the leagues are the way
+     into everything else, so they come first after the platform's front page, never under the platform's pages */
+  hlist.insertBefore(leaguesRow, hlist.children[1] || null);
 
   /* EPINOIA GO (epinoia/go/, docs/epinoia-go.md 6.3), under the leagues. Set in its own letters -
      EPINOIΛ in the logotype, GO in a Y2K face of its own (--f-go, epinoia-kit.css) - because it is

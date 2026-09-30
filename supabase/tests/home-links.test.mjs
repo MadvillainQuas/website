@@ -229,11 +229,11 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
   ok('the rail starts with a home panel', !!r.homeTitle);
   ok('...headed with the logotype, linking HOME',
      r.homeTitle.href === '../home/' && r.homeTitle.cls.has('epinoia-mark'), r.homeTitle && r.homeTitle.href);
-  eq('...holding home, global fixtures, global scouting, the waiver wire, what wins, the news, the leagues, then EPINOIA GO',
-     r.homeRows.map(x => x.tx), ['home', 'fixtures', 'scouting', 'injury report', 'what wins', 'news', 'leagues', 'EPINOIΛGO']);
-  eq('...pointing at HOME, global fixtures, global scouting, the wire, what wins, the News page, the leagues on HOME and EPINOIA GO',
+  eq('...holding home, the leagues straight under it (2026-09-30), global fixtures, global scouting, the waiver wire, what wins, the news, then EPINOIA GO',
+     r.homeRows.map(x => x.tx), ['home', 'leagues', 'fixtures', 'scouting', 'injury report', 'what wins', 'news', 'EPINOIΛGO']);
+  eq('...pointing at HOME, the leagues on HOME, global fixtures, global scouting, the wire, what wins, the News page and EPINOIA GO',
      r.homeRows.map(x => x.href),
-     ['../home/', '../games/', '../scouting/', '../injuries/', '../winning/', '../news/', '../home/#leagues', '../go/']);
+     ['../home/', '../home/#leagues', '../games/', '../scouting/', '../injuries/', '../winning/', '../news/', '../go/']);
   eq('...with the home row lit on HOME', r.homeRows.filter(x => x.on).map(x => x.tx), ['home']);
   ok('the foot no longer carries a scouting row',
      !r.foot.all().some(n => n.tagName === 'A' && /\/scouting\//.test(n.href || '')));
@@ -251,7 +251,7 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
   const r = rail('/epinoia/stats/wowy/?l=bcb');
   eq('two folders down, the rows in the home panel climb with it',
      r.homeRows.map(x => x.href),
-     ['../../home/', '../../games/', '../../scouting/', '../../injuries/', '../../winning/', '../../news/', '../../home/#leagues', '../../go/']);
+     ['../../home/', '../../home/#leagues', '../../games/', '../../scouting/', '../../injuries/', '../../winning/', '../../news/', '../../go/']);
 }
 {
   const r = rail('/epinoia/home/?l=bcb');
