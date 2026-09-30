@@ -552,8 +552,18 @@ jobs:
         # epinoia/socialcard.js + admin/socialgfx-ui.js: the posts are the week's own (quarters, leaders by game score, the
         # league's time zone, even pages), everything on the page in square / portrait / story and clear of what a story
         # covers, the league's logo and the clubs' crests and colours drawn, crests on a disc of the right tone, the ZIP
-        # read back by Python, and the console reading eleven numbers of a player line rather than the blob
+        # read back by Python, and the console reading eleven numbers of a player line rather than the blob; and the
+        # builder's modules (headline, crests, quarters, stat lines, table rows and columns, colourways, logo, footer,
+        # partner line): all default = the same picture, each one toggles, nothing overflows or overlaps in any shape
         run: node supabase/tests/socialcard.test.mjs
+
+      - name: The Graphics tab - the week's posts by kind, the week picker, the builder's subject and options
+        # epinoia/admin/graphics-ui.js over socialgfx-ui.js: posts sorted by kind with counts and a filter that keeps exactly
+        # one, a player of the week only when there were several games, this week / last week / earlier weeks (an earlier
+        # week has finals and stars, no table and no week ahead), one competition's view, the builder's game / player /
+        # competition / page, its options as socialcard.js modules (an untouched builder is none), stat lines and columns
+        # within their limits, and the per-league memory surviving garbage and a missing localStorage
+        run: node supabase/tests/graphics-tab.test.mjs
 
       - name: The front office - a projected depth chart and the GM's view, read against the club's own league
         # epinoia/t/depth.js: projected minutes (last five 60 / 40), positions from the box score by minutes, the listing and

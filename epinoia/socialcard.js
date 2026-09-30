@@ -22,6 +22,13 @@
      caption(model)           the words to post it with: what happened, who, and the league's tags
      zip(files)               several graphics as one download (stored, not compressed: a PNG already is)
 
+   MODULES (opts.modules, or model.modules): the optional pieces of a graphic, for the console's builder. Every
+   one defaults to today's exact output - a graphic drawn with no modules is byte-for-byte the one drawn before
+   they existed - and each is one thing a person can turn on, off or reword: headline, subline, crests,
+   quarters, leaders, venue, days, venues, rows, cols, statKeys, theme, accent, logoPos, handle, footerText,
+   sponsor. See cleanModules() for the shapes. The block-stack below is unchanged (fixed heights, the room left
+   shared), so every combination stays on the page in all three shapes.
+
    NOTHING IS POSTED FROM HERE. The graphics are ready for a person to check and post; putting them on the
    league's account for it needs Instagram's publishing permission, which a reading token (the Socials
    panel's) does not carry.
@@ -37,6 +44,48 @@ const SIZES = {
   portrait: { w: 1080, h: 1350, top: 72, bottom: 72, label: 'portrait 4:5' },
   story:    { w: 1080, h: 1920, top: 250, bottom: 330, label: 'story 9:16' }
 };
+
+/* a third colourway beside the kit's two: white on black with a yellow edge, for a post that has to read at a glance */
+const EXTRA_THEMES = {
+  contrast: {
+    ground: '#000000', panel: '#121212', panel2: '#1c1c1c', ink: '#ffffff', ink2: '#ffffff', ink3: 'rgba(255,255,255,.86)',
+    rule: 'rgba(255,255,255,.4)', rule2: 'rgba(255,255,255,.7)', lume: '#ffe600', good: '#4dff91', bad: '#ff6b6b', mid: '#ffe600',
+    style: 'rgba(255,255,255,.6)', track: 'rgba(255,255,255,.14)', fringe: false
+  }
+};
+const THEME_KEYS = ['dark', 'light', 'contrast'];
+const STAT_DEFS = {   // key: [big label, small label]
+  pts: ['POINTS', 'PTS'], reb: ['REBOUNDS', 'REB'], ast: ['ASSISTS', 'AST'], stl: ['STEALS', 'STL'], blk: ['BLOCKS', 'BLK'],
+  fg: ['FIELD GOALS', 'FG'], p3: ['THREES', '3PT'], ft: ['FREE THROWS', 'FT'], fgp: ['FG%', 'FG%'], p3p: ['3P%', '3P%'],
+  pm: ['PLUS/MINUS', '+/-'], min: ['MINUTES', 'MIN']
+};
+const COL_DEFS = { gp: 'GP', w: 'W', l: 'L', pct: 'PCT', pts: 'PTS', diff: 'DIFF', pf: 'PF', pa: 'PA', streak: 'STK' };
+const LOGO_POS = ['both', 'heading', 'footer', 'none'];
+const BOOL_MODS = ['crests', 'quarters', 'leaders', 'venue', 'days', 'venues', 'handle'];
+
+/* The modules as the drawing reads them: only what is known, in range, and not the default's own words. Anything
+   else is dropped, so a stale saved setting or a hand-built object can never break a graphic. */
+function cleanModules(m) {
+  const o = {};
+  if (!m || typeof m !== 'object') return o;
+  const text = (k, max) => { const v = typeof m[k] === 'string' ? m[k].replace(/\s+/g, ' ').trim().slice(0, max) : ''; if (v) o[k] = v; };
+  text('headline', 60); text('subline', 100); text('footerText', 60); text('sponsor', 80);
+  BOOL_MODS.forEach(k => { if (m[k] === false) o[k] = false; });
+  if (THEME_KEYS.includes(m.theme)) o.theme = m.theme;
+  if (/^#[0-9a-f]{6}$/i.test(m.accent || '')) o.accent = m.accent;
+  if (LOGO_POS.includes(m.logoPos) && m.logoPos !== 'both') o.logoPos = m.logoPos;
+  const rows = parseInt(m.rows, 10);
+  if (rows > 0) o.rows = Math.min(rows, 40);
+  if (Array.isArray(m.cols)) { const c = Object.keys(COL_DEFS).filter(k => m.cols.includes(k)); if (c.length) o.cols = c; }
+  if (Array.isArray(m.statKeys)) {
+    const k = [...new Set(m.statKeys.filter(x => STAT_DEFS[x]))].slice(0, 8);
+    if (k.length >= 3) o.statKeys = k;
+  }
+  return o;
+}
+/* the modules of the graphic being drawn; draw() sets them, and every helper below reads them */
+let MOD = {};
+const on = k => MOD[k] !== false;
 
 const U = () => root.EpinoiaReportCard && root.EpinoiaReportCard.util;
 const TH = () => root.EpinoiaReportCard && root.EpinoiaReportCard.THEMES;
@@ -77,6 +126,7 @@ function statLine(s, max) {
   return bits.slice(0, max || 3).map(b => b[0] + ' ' + b[1]).join(' · ');
 }
 const made = (m, a) => n0(m) + '/' + n0(a);
+const pct = (m, a) => (n0(a) > 0 ? Math.round(100 * n0(m) / n0(a)) + '%' : '—');
 
 /* ------------------------------------------------------------- models ------ */
 /* every model carries the league's name, colour and handle, and a `key` that names the file */
@@ -116,19 +166,22 @@ function performer(o) {
   const hs = n0(g.home_score), as = n0(g.away_score);
   const win = hs === as ? null : (hs > as ? 0 : 1);
   const rows = (o.players || []).filter(p => p.stats && (win == null || p.team_idx === win));
-  if (!rows.length) return null;
-  const best = rows.slice().sort((a, b) => gameScore(b.stats) - gameScore(a.stats))[0];
+  /* `o.pick` names one player line (the console's builder: any player of the game, not only its best) */
+  const picked = o.pick && (o.players || []).includes(o.pick) && o.pick.stats ? o.pick : null;
+  if (!rows.length && !picked) return null;
+  const best = picked || rows.slice().sort((a, b) => gameScore(b.stats) - gameScore(a.stats))[0];
   const s = best.stats, adv = s.adv || {};
   const mine = best.team_idx === 0 ? o.home : o.away, theirs = best.team_idx === 0 ? o.away : o.home;
   const my = best.team_idx === 0 ? hs : as, their = best.team_idx === 0 ? as : hs;
   const t = local(g.tipoff_at, o.league && o.league.timezone);
   const name = adv.name || best.name || '';
   return {
-    kind: 'performer', key: 'player-of-the-game-' + slug(name), league: o.league || {}, comp: o.comp || '', date: dateLabel(t),
+    kind: 'performer', key: (o.label ? slug(o.label) : 'player-of-the-game') + '-' + slug(name), label: o.label || '', league: o.league || {}, comp: o.comp || '', date: dateLabel(t),
     player: { name, num: adv.num != null ? String(adv.num) : '' },
     team: side(mine, my), opp: side(theirs, their), won: my > their,
     stats: { pts: n0(s.pts), reb: n0(s.or) + n0(s.dr), ast: n0(s.ast), stl: n0(s.stl), blk: n0(s.blk),
              fg: made(n0(s.p2m) + n0(s.p3m), n0(s.p2a) + n0(s.p3a)), p3: made(s.p3m, s.p3a), ft: made(s.ftm, s.fta),
+             fgp: pct(n0(s.p2m) + n0(s.p3m), n0(s.p2a) + n0(s.p3a)), p3p: pct(s.p3m, s.p3a),
              pm: n0(s.pm), min: Math.round(n0(s.min) / 60000) },
     gameScore: Math.round(gameScore(s) * 10) / 10, gameId: g.id || null
   };
@@ -165,7 +218,9 @@ function table(o, size) {
     const k = r.group_name || '';
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push({ rank: n0(r.rank), team: side(r.team, 0), gp: n0(r.gp), w: n0(r.w), l: n0(r.l),
-                         pts: r.league_points != null ? n0(r.league_points) : null, diff: n0(r.diff), streak: r.streak || '' });
+                         pts: r.league_points != null ? n0(r.league_points) : null, diff: n0(r.diff), streak: r.streak || '',
+                         pf: r.pts_for != null ? n0(r.pts_for) : null, pa: r.pts_against != null ? n0(r.pts_against) : null,
+                         pct: n0(r.w) + n0(r.l) > 0 ? n0(r.w) / (n0(r.w) + n0(r.l)) : null });
   });
   const out = [];
   groups.forEach((rows, group) => {
@@ -189,13 +244,20 @@ function fixtures(o, size) {
     comp: o.comp || '', range: o.range || '', rows: p, page: i + 1, pages: pp.length, tz: tz || 'UTC' }));
 }
 
+/* the rows a list graphic shows: all of them, or the first `rows` when the module says so */
+function rowsOf(m, mods) {
+  if (!m || !m.rows || !mods || !(mods.rows > 0) || mods.rows >= m.rows.length) return m;
+  return Object.assign({}, m, { rows: m.rows.slice(0, mods.rows) });
+}
+
 /* ------------------------------------------------------------ captions ----- */
 function tags(league) {
   const t = String(league && league.name || '').replace(/[^\p{L}\p{N}]+/gu, '');
   return (t ? '#' + t + ' ' : '') + '#basketball';
 }
-function caption(m) {
-  if (!m) return '';
+function caption(m0, mods) {
+  if (!m0) return '';
+  const m = rowsOf(m0, cleanModules(Object.assign({}, m0.modules, mods)));
   const L = m.league || {};
   if (m.kind === 'result') {
     const w = m.home.score >= m.away.score ? m.home : m.away, l = w === m.home ? m.away : m.home;
@@ -210,7 +272,7 @@ function caption(m) {
   }
   if (m.kind === 'performer') {
     const s = m.stats;
-    return ['Player of the game: ' + m.player.name + ' (' + m.team.name + ')', '',
+    return [(m.label || 'Player of the game') + ': ' + m.player.name + ' (' + m.team.name + ')', '',
       s.pts + ' points, ' + s.reb + ' rebounds, ' + s.ast + ' assists on ' + s.fg + ' shooting' +
       (s.pm ? ', ' + (s.pm > 0 ? '+' : '') + s.pm + ' on the floor' : '') + ', in ' + (m.won ? 'the ' + m.team.score + '–' + m.opp.score + ' win over '
         : 'the ' + m.team.score + '–' + m.opp.score + ' game against ') + m.opp.name + '.', '', tags(L)].join('\n');
@@ -240,13 +302,14 @@ function crest(ctx, th, team, cx, cy, r) {
   const col = u.rgb(team.colour) ? team.colour : th.lume;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = team.crest ? u.crestGround(team.crest, th) : col;
+  const pic = on('crests') ? team.crest : null;
+  ctx.fillStyle = pic ? u.crestGround(pic, th) : col;
   ctx.fill();
   ctx.lineWidth = Math.max(2, r * 0.05); ctx.strokeStyle = u.accentOn(col, th); ctx.stroke();
-  if (team.crest && team.crest.width) {
-    const iw = team.crest.naturalWidth || team.crest.width, ih = team.crest.naturalHeight || team.crest.height;
+  if (pic && pic.width) {
+    const iw = pic.naturalWidth || pic.width, ih = pic.naturalHeight || pic.height;
     const s = Math.min(1.36 * r / iw, 1.36 * r / ih);
-    ctx.drawImage(team.crest, cx - iw * s / 2, cy - ih * s / 2, iw * s, ih * s);
+    ctx.drawImage(pic, cx - iw * s / 2, cy - ih * s / 2, iw * s, ih * s);
   } else {
     u.font(ctx, r * 0.8, u.F.score);
     ctx.textAlign = 'center';
@@ -335,20 +398,22 @@ function contrastInk(css, th) {
 }
 
 function footer(ctx, th, M, W, y, league) {
+  const custom = MOD.footerText || '';
   const u = U();
   ctx.fillStyle = th.rule;
   ctx.fillRect(M, y, W - 2 * M, 2);
   u.font(ctx, 34, u.F.mark);
   ctx.fillStyle = th.ink;
   ctx.fillText('EPINOIΛ', M, y + 54);
-  const handle = league && league.handle ? '@' + String(league.handle).replace(/^@/, '') : '';
+  const handle = !on('handle') ? '' : league && league.handle ? '@' + String(league.handle).replace(/^@/, '') : '';
   u.font(ctx, 22, u.F.micro);
   ctx.fillStyle = th.ink3;
   ctx.textAlign = 'right';
-  const words = u.ellipsis(ctx, (handle || String(league && league.name || '')).toUpperCase(), W - 2 * M - 330);
+  const said = custom || (on('handle') ? (handle || String(league && league.name || '')) : '');
+  const words = u.ellipsis(ctx, said.toUpperCase(), W - 2 * M - 330);
   ctx.fillText(words, W - M, y + 50);
   ctx.textAlign = 'left';
-  if (league && league.logo) logo(ctx, league.logo, W - M - ctx.measureText(words).width - 16 - 44, y + 20, 44, 44);
+  if (league && league.logo && (MOD.logoPos === 'footer' || !MOD.logoPos)) logo(ctx, league.logo, W - M - ctx.measureText(words).width - 16 - 44, y + 20, 44, 44);
   return 70;
 }
 
@@ -368,7 +433,7 @@ function drawResult(ctx, m, th, S, M, accent) {
   const u = U(), W = S.w;
   const tall = S.h >= 1300;
   const r = tall ? 122 : 104;
-  const hasTop = m.top && (m.top.home || m.top.away);
+  const hasTop = on('leaders') && m.top && (m.top.home || m.top.away);
   const hw = m.home.score > m.away.score, aw = m.away.score > m.home.score;
   /* A STORY IS READ DOWNWARDS: each club a row of its own, crest, name and score, the winner's lit */
   const stacked = S.h >= 1900 && {
@@ -415,8 +480,8 @@ function drawResult(ctx, m, th, S, M, accent) {
       ctx.fillStyle = accent;
       ctx.fillRect(mid - 9, cy - 3, 18, 6);
     } }];
-  if (m.periods.length) {
-    blocks.push({ h: 150, draw: y => {
+  if (m.periods.length && on('quarters')) {
+    blocks.push({ h: 150, drop: 1, name: 'the quarter scores', draw: y => {
       const cols = m.periods.length + 1;
       const x0 = M + 200, cw = (W - 2 * M - 200) / cols;
       ctx.fillStyle = th.panel;
@@ -445,7 +510,7 @@ function drawResult(ctx, m, th, S, M, accent) {
     } });
   }
   if (hasTop) {
-    blocks.push({ h: 104, draw: y => {
+    blocks.push({ h: 104, drop: 2, name: 'each side\'s leader', draw: y => {
       const colW = (W - 2 * M - 24) / 2;
       [[m.top.home, M, m.home], [m.top.away, M + colW + 24, m.away]].forEach(([t, x, team]) => {
         if (!t) return;
@@ -463,14 +528,32 @@ function drawResult(ctx, m, th, S, M, accent) {
       });
     } });
   }
-  return blocks;
+  return (MOD.headline ? [Object.assign(titleBlock(ctx, th, S, M, '', ''), { drop: 3, name: 'the headline' })] : []).concat(blocks,
+    !MOD.headline && MOD.subline ? [noteBlock(ctx, th, W, M, MOD.subline)] : []);
+}
+
+/* a line of the person's own words under a graphic that has no title of its own (a final, a player of the game) */
+function noteBlock(ctx, th, W, M, text) {
+  const u = U();
+  return { h: 48, drop: 4, name: 'the subline', draw: y => {
+    u.font(ctx, 30, u.F.ui, 600);
+    ctx.fillStyle = th.ink2;
+    ctx.fillText(u.ellipsis(ctx, text, W - 2 * M), M, y + 34);
+  } };
 }
 
 function drawPerformer(ctx, m, th, S, M, accent) {
   const u = U(), W = S.w;
   const tall = S.h >= 1300;
   const s = m.stats;
-  return [
+  /* the stat lines: the three big numbers and the strip beneath are the default; `statKeys` picks its own, the
+     first three big and the rest (up to five) in the strip */
+  const keys = MOD.statKeys;
+  const val = k => (k === 'pm' ? (s.pm > 0 ? '+' : '') + s.pm : String(s[k] == null ? '—' : s[k]));
+  const big = keys ? keys.slice(0, 3).map(k => [val(k), STAT_DEFS[k][0]]) : [[String(s.pts), 'POINTS'], [String(s.reb), 'REBOUNDS'], [String(s.ast), 'ASSISTS']];
+  const cells = keys ? keys.slice(3).map(k => [STAT_DEFS[k][1], val(k)])
+    : [['FG', s.fg], ['3PT', s.p3], ['FT', s.ft], ['+/-', (s.pm > 0 ? '+' : '') + s.pm], ['MIN', String(s.min)]];
+  const blocks = [
     { h: tall ? 250 : 200, draw: y => {
       /* the shirt number, huge and faint, behind the name */
       if (m.player.num) {
@@ -484,7 +567,7 @@ function drawPerformer(ctx, m, th, S, M, accent) {
       }
       u.font(ctx, 24, u.F.micro);
       ctx.fillStyle = accent;
-      ctx.fillText('PLAYER OF THE GAME', M, y + 24);
+      ctx.fillText(u.ellipsis(ctx, (MOD.headline || m.label || 'PLAYER OF THE GAME').toUpperCase(), W - 2 * M), M, y + 24);
       const nb = u.nameBlock(ctx, m.player.name.toUpperCase(), W - 2 * M, tall ? 124 : 104, 60, u.F.score);
       nb.lines.forEach((l, i) => u.display(ctx, th, l, M, y + 40 + nb.size * (0.82 + i * 0.92), th.ink, 2));
       const after = y + 40 + nb.size * (0.9 + (nb.lines.length - 1) * 0.92) + 16;
@@ -494,29 +577,29 @@ function drawPerformer(ctx, m, th, S, M, accent) {
       ctx.fillText(u.ellipsis(ctx, m.team.name + (m.player.num ? '  #' + m.player.num : ''), W - 2 * M - 70), M + 66, after + 32);
     } },
     { h: tall ? 250 : 210, draw: y => {
-      const big = [[s.pts, 'POINTS'], [s.reb, 'REBOUNDS'], [s.ast, 'ASSISTS']];
       const cw = (W - 2 * M) / 3;
       big.forEach(([v, l], i) => {
         const cx = M + cw * i + cw / 2;
         ctx.textAlign = 'center';
-        u.font(ctx, tall ? 200 : 170, u.F.score);
-        u.display(ctx, th, String(v), cx, y + (tall ? 180 : 150), i === 0 ? accent : th.ink, i === 0 ? 2 : 0);
+        const px = tall ? 200 : 170;
+        if (keys) u.fit(ctx, v, cw - 36, px, 60, u.F.score); else u.font(ctx, px, u.F.score);
+        u.display(ctx, th, v, cx, y + (tall ? 180 : 150), i === 0 ? accent : th.ink, i === 0 ? 2 : 0);
         u.font(ctx, 22, u.F.micro);
         ctx.fillStyle = th.ink3;
-        ctx.fillText(l, cx, y + (tall ? 230 : 196));
+        ctx.fillText(u.ellipsis(ctx, l, cw - 20), cx, y + (tall ? 230 : 196));
         if (i) { ctx.fillStyle = th.rule; ctx.fillRect(M + cw * i, y + 30, 2, (tall ? 190 : 160)); }
       });
       ctx.textAlign = 'left';
-    } },
-    { h: 96, draw: y => {
-      const cells = [['FG', s.fg], ['3PT', s.p3], ['FT', s.ft], ['+/-', (s.pm > 0 ? '+' : '') + s.pm], ['MIN', String(s.min)]];
+    } }
+  ];
+  if (cells.length) blocks.push({ h: 96, draw: y => {
       const cw = (W - 2 * M) / cells.length;
       ctx.fillStyle = th.panel;
       u.roundRect(ctx, M, y, W - 2 * M, 96, 14); ctx.fill();
       cells.forEach(([l, v], i) => {
         const cx = M + cw * (i + 0.5);
         ctx.textAlign = 'center';
-        u.font(ctx, 34, u.F.data, 600);
+        if (keys) u.fit(ctx, v, cw - 16, 34, 20, u.F.data, 600); else u.font(ctx, 34, u.F.data, 600);
         ctx.fillStyle = th.ink;
         ctx.fillText(v, cx, y + 50);
         u.font(ctx, 17, u.F.micro);
@@ -524,15 +607,16 @@ function drawPerformer(ctx, m, th, S, M, accent) {
         ctx.fillText(l, cx, y + 80);
       });
       ctx.textAlign = 'left';
-    } },
-    { h: 64, draw: y => {
+    } });
+  blocks.push({ h: 64, draw: y => {
       const line = (m.won ? 'W ' : m.team.score === m.opp.score ? 'D ' : 'L ') + m.team.score + '–' + m.opp.score + '  v  ' + m.opp.name;
       crest(ctx, th, m.opp, M + 30, y + 32, 30);
       u.font(ctx, 30, u.F.ui, 600);
       ctx.fillStyle = th.ink2;
       ctx.fillText(u.ellipsis(ctx, line, W - 2 * M - 80), M + 76, y + 42);
-    } }
-  ];
+    } });
+  if (MOD.subline) blocks.push(noteBlock(ctx, th, W, M, MOD.subline));
+  return blocks;
 }
 
 const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -555,11 +639,12 @@ function rowsBlock(ctx, th, S, M, n, rowH, drawRow) {
   } };
 }
 
-function titleBlock(ctx, th, S, M, title, sub) {
+function titleBlock(ctx, th, S, M, title0, sub0) {
   const u = U(), W = S.w;
+  const title = MOD.headline || title0, sub = MOD.subline || sub0;
   return { h: sub ? 128 : 96, draw: y => {
     const size = u.fit(ctx, title.toUpperCase(), W - 2 * M, 92, 50, u.F.score);
-    u.display(ctx, th, title.toUpperCase(), M, y + size * 0.82, th.ink, 2);
+    u.display(ctx, th, u.ellipsis(ctx, title.toUpperCase(), W - 2 * M), M, y + size * 0.82, th.ink, 2);
     if (sub) {
       u.font(ctx, 26, u.F.ui, 500);
       ctx.fillStyle = th.ink3;
@@ -602,7 +687,7 @@ function drawWeek(ctx, m, th, S, M) {
       ctx.fillText(String(r.away.score), mid + 14, cy + 16);
       ctx.fillStyle = th.rule2;
       ctx.fillRect(mid - 4, cy - 2, 8, 4);
-      if (r.day && h >= 96) {
+      if (r.day && h >= 96 && on('days')) {
         u.font(ctx, 15, u.F.micro);
         ctx.fillStyle = th.ink3;
         ctx.textAlign = 'center';
@@ -618,8 +703,9 @@ function drawTable(ctx, m, th, S, M, accent) {
   const n = m.rows.length;
   /* the rows share what the heading, the title, the column names and the footer leave */
   const rowH = fitRows(S, n, 128 + 34, 44, S.h >= 1900 ? 76 : 66, 4);
-  const cols = [['GP', 'gp'], ['W', 'w'], ['L', 'l']].concat(m.showPts ? [['PTS', 'pts']] : []).concat([['DIFF', 'diff']]);
-  const cw = 92, x0 = W - M - cols.length * cw;
+  const cols = MOD.cols ? MOD.cols.map(k => [COL_DEFS[k], k])
+    : [['GP', 'gp'], ['W', 'w'], ['L', 'l']].concat(m.showPts ? [['PTS', 'pts']] : []).concat([['DIFF', 'diff']]);
+  const cw = cols.length > 5 ? 76 : 92, x0 = W - M - cols.length * cw;
   return [
     titleBlock(ctx, th, S, M, m.group || 'The table', [m.comp, m.asOf ? 'after ' + m.asOf : ''].filter(Boolean).join(' · ')),
     { h: 34, draw: y => {
@@ -644,7 +730,9 @@ function drawTable(ctx, m, th, S, M, accent) {
       u.font(ctx, Math.min(28, h * 0.46), u.F.data, 500);
       ctx.textAlign = 'center';
       cols.forEach(([, k], ci) => {
-        const v = k === 'diff' ? (r.diff > 0 ? '+' : '') + r.diff : r[k] == null ? '—' : String(r[k]);
+        u.font(ctx, Math.min(cols.length > 5 ? 24 : 28, h * 0.46), u.F.data, 500);
+        const v = k === 'diff' ? (r.diff > 0 ? '+' : '') + r.diff : k === 'pct' ? (r.pct == null ? '—' : r.pct >= 1 ? '1.000' : r.pct.toFixed(3).replace(/^0/, ''))
+          : r[k] == null || r[k] === '' ? '—' : String(r[k]);
         ctx.fillStyle = k === 'w' ? th.ink : k === 'diff' ? (r.diff > 0 ? th.good : r.diff < 0 ? th.bad : th.ink3) : th.ink2;
         ctx.fillText(v, x0 + cw * (ci + 0.5), cy + h * 0.16);
       });
@@ -669,7 +757,7 @@ function drawFixtures(ctx, m, th, S, M, accent) {
       ctx.fillStyle = th.ink;
       ctx.fillText(r.time, M + 18, y + h - 16);
       const tx = M + 250, tw = W - M - tx - 20;
-      const venue = r.venue && h >= 104;
+      const venue = r.venue && h >= 104 && on('venues');
       const l1 = cy - (venue ? 22 : 10), l2 = l1 + 38;
       stripe(ctx, th, r.home.colour, W - M - 6, y + 8, (h - 16) / 2);
       stripe(ctx, th, r.away.colour, W - M - 6, y + 8 + (h - 16) / 2, (h - 16) / 2);
@@ -691,18 +779,23 @@ function drawFixtures(ctx, m, th, S, M, accent) {
 
 const TAGS = { result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
 
-function draw(ctx, m, opts) {
+function draw(ctx, m0, opts) {
   const o = opts || {};
   const u = U(), themes = TH();
   if (!u || !themes) throw new Error('socialcard.js needs reportcard.js loaded first');
+  MOD = cleanModules(Object.assign({}, m0.modules, o.modules));
+  try { return drawIn(ctx, rowsOf(m0, MOD), o, u, themes); } finally { MOD = {}; }
+}
+
+function drawIn(ctx, m, o, u, themes) {
   const S = SIZES[o.size] || SIZES.portrait;
-  const th = themes[o.theme] || themes.dark;
+  const th = themes[MOD.theme || o.theme] || EXTRA_THEMES[MOD.theme || o.theme] || themes.dark;
   const W = S.w, H = S.h, M = 64;
   const L = m.league || {};
   const leagueCol = u.rgb(L.colour) ? L.colour : '#93f2bf';
   /* the player of the game is his club's post: its colour leads - the first of its two that can be seen on this
      ground (a black kit's white, say); a club with neither falls back to the league's */
-  const colour = m.kind === 'performer' && m.team ? visible([m.team.colour, m.team.colour2], th) || leagueCol : leagueCol;
+  const colour = MOD.accent || (m.kind === 'performer' && m.team ? visible([m.team.colour, m.team.colour2], th) || leagueCol : leagueCol);
   const accent = u.accentOn(colour, th);
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
@@ -715,21 +808,45 @@ function draw(ctx, m, opts) {
   const when = m.kind === 'result' || m.kind === 'performer' ? m.date : m.kind === 'table' ? (m.asOf || '') : (m.range || '');
   const what = [m.comp || L.name || '', m.pages > 1 ? m.page + '/' + m.pages : ''].filter(Boolean).join(' · ');
   const top = S.top, bottom = H - S.bottom;
-  heading(ctx, th, M, W, top, TAGS[m.kind] || '', what, when, accent, L.logo);
+  heading(ctx, th, M, W, top, TAGS[m.kind] || '', what, when, accent, !MOD.logoPos || MOD.logoPos === 'heading' ? L.logo : null);
   const body = m.kind === 'result' ? drawResult(ctx, m, th, S, M, accent)
     : m.kind === 'performer' ? drawPerformer(ctx, m, th, S, M, accent)
     : m.kind === 'week' ? drawWeek(ctx, m, th, S, M)
     : m.kind === 'table' ? drawTable(ctx, m, th, S, M, accent)
     : drawFixtures(ctx, m, th, S, M, accent);
+  /* ROOM FOR EVERYTHING: the blocks and the least gap between them must fit the space the heading and the footer
+     leave. A default graphic always does. When the person's own additions (a headline block, a subline) would
+     not, the least important go first - the subline, the headline, then a final's leaders and quarter scores -
+     and the graphic says which (`dropped`) rather than run over the footer. */
+  const room = (bottom - 70 - 30) - (top + 40 + 36), dropped = [];
+  const need = () => body.reduce((a, b) => a + b.h, 0) + 12 * Math.max(0, body.length - 1);
+  while (need() > room) {
+    const worst = body.reduce((w, b) => (b.drop && (!w || b.drop > w.drop) ? b : w), null);
+    if (!worst) break;
+    body.splice(body.indexOf(worst), 1);
+    dropped.push(worst.name);
+  }
   const at = stack(body, top + 40 + 36, bottom - 70 - 30, S.h >= 1900 ? 90 : 60);
   body.forEach((b, i) => b.draw(at[i]));
-  if (m.kind === 'result' && m.venue) {
+  /* the line above the footer: a final's venue on the left, the partner's line (or on its own, all the way across) */
+  const slot = bottom - 70 - 14;
+  const venue = m.kind === 'result' && m.venue && on('venue') ? m.venue.toUpperCase() : '';
+  if (venue || MOD.sponsor) {
     u.font(ctx, 20, u.F.micro);
-    ctx.fillStyle = th.ink3;
-    ctx.fillText(u.ellipsis(ctx, m.venue.toUpperCase(), W - 2 * M), M, bottom - 70 - 14);
+    const both = venue && MOD.sponsor, full = W - 2 * M;
+    if (venue) {
+      ctx.fillStyle = th.ink3;
+      ctx.fillText(u.ellipsis(ctx, venue, both ? full * 0.5 - 12 : full), M, slot);
+    }
+    if (MOD.sponsor) {
+      ctx.fillStyle = accent;
+      ctx.textAlign = both ? 'right' : 'left';
+      ctx.fillText(u.ellipsis(ctx, MOD.sponsor.toUpperCase(), both ? full * 0.5 - 12 : full), both ? W - M : M, slot);
+      ctx.textAlign = 'left';
+    }
   }
   footer(ctx, th, M, W, bottom - 70, L);
-  return { size: o.size || 'portrait', blocks: body.length, at };
+  return { size: o.size || 'portrait', blocks: body.length, at, dropped };
 }
 
 /* ---------------------------------------------------------------- assets --- */
@@ -753,7 +870,7 @@ async function withCrests(m) {
 }
 
 async function canvas(m, opts) {
-  const o = Object.assign({ size: 'portrait', theme: 'dark', scale: 1 }, opts || {});
+  const o = Object.assign({ size: 'portrait', theme: 'dark', scale: 1 }, opts || {});   // opts.modules rides through to draw()
   const u = U();
   await u.fontsReady();
   const S = SIZES[o.size] || SIZES.portrait;
@@ -833,6 +950,6 @@ function zip(files, when) {
   return out;
 }
 
-return { SIZES, PER, result, performer, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
+return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, result, performer, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
          gameScore, statLine, local, dayLabel, dateLabel, timeLabel, slug };
 }));

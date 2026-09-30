@@ -1,0 +1,572 @@
+'use strict';
+/* ============================================================================
+   THE GRAPHICS TAB - the league's posts for its socials, made for it, and a builder for the ones nobody could
+   have guessed.
+
+   For the league in the dropdown above the tabs:
+
+     WEEKLY CONTENT   everything the week has earned (socialgfx-ui.js reads and lays it out; socialcard.js
+                      draws it), sorted by TYPE with a count on each: game results, stars (the players of the
+                      game and the player of the week), the table, the week ahead and the results roundup.
+                      Pick the week (this week, last week, further back), the competition when there are several,
+                      and the shape (square, portrait, story). One download each, or the lot as a ZIP, each with
+                      the words to post it with.
+
+     BUILD YOUR OWN   pick a template (a final, a star, the table, the week ahead, the week's results), the game
+                      or the competition it is about, then switch its MODULES on and off and reword them:
+                      headline, subline, crests, quarter scores, leaders, venue, which stat lines, how many table
+                      rows and which columns, the colours, the logo, the footer's handle or words, a partner's
+                      line. The preview redraws as you go; download it or copy its words.
+
+   Nothing is posted from here and nothing is stored on the server: every graphic is drawn in this browser from
+   the rows read. The builder's last settings are kept per league in this browser's localStorage, nothing more.
+
+   Loaded with the console but read only when the Graphics tab is first opened (wstabs.js says so): most visits
+   never look at it.
+   ============================================================================ */
+(function (root, factory) {
+  const api = factory(root);
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.EpinoiaGraphicsUI = api;
+}(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
+
+const el = (t, c, x) => { const n = root.document.createElement(t); if (c) n.className = c;
+  if (x != null) n.textContent = x; return n; };
+const GX = () => root.EpinoiaSocialGfx;
+const SC = () => root.EpinoiaSocialCard;
+
+/* ------------------------------------------------------------ pure parts --- */
+/* the builder's templates, in the order offered */
+const TEMPLATES = [
+  { id: 'result', label: 'Final score' }, { id: 'star', label: 'Star of the game' }, { id: 'table', label: 'The table' },
+  { id: 'fixtures', label: 'Week ahead' }, { id: 'week', label: 'Results roundup' }
+];
+/* which modules each template has (the form shows only these) */
+const HAS = {
+  result: ['game', 'headline', 'subline', 'crests', 'quarters', 'leaders', 'venue'],
+  star: ['game', 'player', 'headline', 'subline', 'crests', 'stats'],
+  table: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'cols'],
+  fixtures: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'venues'],
+  week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days']
+};
+const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'pm', 'min'];
+const STAT_DEFAULT = ['pts', 'reb', 'ast', 'fg', 'p3', 'ft', 'pm', 'min'];
+const COL_ORDER = ['gp', 'w', 'l', 'pct', 'pts', 'diff', 'pf', 'pa', 'streak'];
+const COL_DEFAULT = ['gp', 'w', 'l', 'diff'];
+const ACCENTS = [['', 'League colour'], ['#ffe600', 'Teletext yellow'], ['#00e5ff', 'Cyan']];
+const THEMES = [['dark', 'League, dark'], ['light', 'Light'], ['contrast', 'High contrast']];
+const LOGOS = [['both', 'Heading and footer'], ['heading', 'Heading only'], ['footer', 'Footer only'], ['none', 'Hidden']];
+const ROWS = [['', 'All'], ['3', 'Top 3'], ['4', 'Top 4'], ['6', 'Top 6'], ['8', 'Top 8']];
+const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8;
+
+/* the builder's starting point: every module at today's default */
+function defaultBuilder() {
+  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0,
+    mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
+            cols: null, statKeys: null, theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
+}
+/* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
+   draws exactly what the weekly content does */
+function modulesOf(b) {
+  const m = Object.assign({}, b && b.mods);
+  if (m.theme === 'dark') delete m.theme;
+  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: m.cols || null, statKeys: m.statKeys || null }));
+}
+/* one more key on or off in an ordered list, keeping it in its own order and within `min`..`max` (a refused change
+   returns the list as it was, so the box the person ticked can be put back) */
+function toggleKey(list, key, order, min, max) {
+  const has = list.includes(key);
+  if (has && list.length <= min) return list.slice();
+  if (!has && list.length >= max) return list.slice();
+  const next = has ? list.filter(k => k !== key) : list.concat([key]);
+  return order.filter(k => next.includes(k));
+}
+/* the words for a game in a dropdown: "Tue 29 Sep · Paris 79–92 Virtus" */
+function gameLabel(g, teamName, tz) {
+  const t = SC().local(g.tipoff_at, tz);
+  return (t ? SC().dayLabel(t) + ' · ' : '') + teamName(g.home_team_id) + ' ' + (g.home_score == null ? '' : g.home_score) + '–' +
+    (g.away_score == null ? '' : g.away_score) + ' ' + teamName(g.away_team_id);
+}
+/* the builder's memory, per league */
+const memKey = leagueId => 'epinoia.gfx.builder.' + leagueId;
+function loadBuilder(leagueId, storage) {
+  const b = defaultBuilder();
+  try {
+    const raw = JSON.parse((storage || root.localStorage).getItem(memKey(leagueId)) || 'null');
+    if (raw && typeof raw === 'object') {
+      if (TEMPLATES.some(t => t.id === raw.tpl)) b.tpl = raw.tpl;
+      if (raw.mods && typeof raw.mods === 'object') {
+        Object.keys(b.mods).forEach(k => {
+          const v = raw.mods[k], d0 = b.mods[k];
+          if (d0 === null ? (v === null || Array.isArray(v)) : typeof v === typeof d0) b.mods[k] = v;
+        });
+      }
+    }
+  } catch (_) { /* nothing remembered, or storage is not here: the defaults */ }
+  return b;
+}
+function saveBuilder(leagueId, b, storage) {
+  try { (storage || root.localStorage).setItem(memKey(leagueId), JSON.stringify({ tpl: b.tpl, mods: b.mods })); } catch (_) { /* private window */ }
+}
+
+/* ------------------------------------------------------------------ view --- */
+let current = null;
+const crestOf = t => (t && t.logo_path && typeof root.epinoiaLogoUrl === 'function' ? root.epinoiaLogoUrl(t.logo_path, 256) : null);
+
+function tabIsOpen() {
+  return !!(root.EpinoiaTabs && root.EpinoiaTabs.current() === 'graphics');
+}
+
+function mount(o) {
+  const host = typeof o.host === 'string' ? root.document.querySelector(o.host) : o.host;
+  if (!host) return null;
+  if (host.__gxStop) host.__gxStop();                   // a league switch re-mounts: the old panel's watcher goes
+  const league = typeof o.league === 'function' ? o.league() : o.league;
+  const panel = { host, o, size: 'portrait', off: 0, compId: 'all', type: 'all', sub: 'weekly', data: null, busy: false, started: false,
+                  builder: league ? loadBuilder(league.id) : defaultBuilder(), seq: 0 };
+  current = panel;
+  host.textContent = '';
+  host.appendChild(el('p', 'empty',
+    'Made for you from the league\'s week: every finished game, the table and the week ahead, sorted by kind. Or build your own ' +
+    'from a template and switch its parts on and off. Nothing is posted from here, and nothing is stored on the server: a game ' +
+    'corrected in the console is a corrected graphic the next time it is read.'));
+  panel.body = el('div', 'gx');
+  host.appendChild(panel.body);
+  const start = () => { if (!panel.started) { panel.started = true; load(panel); } };
+  const onTab = e => { if (e.detail && e.detail.id === 'graphics') start(); };
+  root.document.addEventListener('epinoia-tab', onTab);
+  host.__gxStop = () => root.document.removeEventListener('epinoia-tab', onTab);
+  if (tabIsOpen()) start();
+  else panel.body.appendChild(el('div', 'empty', 'Opens when the Graphics tab does.'));
+  return panel;
+}
+
+/* a season switch: read again for the new one - but only a panel already read; one nobody has opened yet reads the
+   season on screen when its tab is first opened */
+function refresh() {
+  if (!current || !current.started) return;
+  load(current);
+}
+
+async function load(panel) {
+  const o = panel.o, mine = ++panel.seq;
+  const league = typeof o.league === 'function' ? o.league() : o.league;
+  const comps = (typeof o.comps === 'function' ? o.comps() : o.comps) || [];
+  if (!league) return;
+  panel.leagueId = league.id;
+  panel.busy = true;
+  panel.body.textContent = '';
+  panel.body.appendChild(el('div', 'empty', 'Reading the week…'));
+  let data;
+  try {
+    data = await GX().read(o.sb, league, comps, undefined, panel.off);
+  } catch (e) {
+    if (mine !== panel.seq) return;
+    panel.body.textContent = '';
+    panel.body.appendChild(el('div', 'empty', 'The week could not be read: ' + (e && e.message || e)));
+    panel.busy = false;
+    return;
+  }
+  if (mine !== panel.seq) return;                        // a newer read (another week, another league) has taken over
+  panel.data = data;
+  panel.busy = false;
+  if (panel.compId !== 'all' && !comps.some(c => c.id === panel.compId)) panel.compId = 'all';
+  draw(panel);
+}
+
+/* ---- small controls ---- */
+function chip(label, on, click) {
+  const b = el('button', 'ep-chip' + (on ? ' on' : ''), label);
+  b.type = 'button';
+  b.setAttribute('aria-pressed', String(!!on));
+  b.addEventListener('click', click);
+  return b;
+}
+function field(label, control, extra) {
+  const l = el('label', 'f' + (extra ? ' ' + extra : ''));
+  l.appendChild(el('span', null, label));
+  l.appendChild(control);
+  return l;
+}
+function select(opts, value, change) {
+  const s = el('select', 'ep-input');
+  opts.forEach(([v, t]) => { const o = el('option', null, t); o.value = v; s.appendChild(o); });
+  s.value = value == null ? '' : String(value);
+  s.addEventListener('change', () => change(s.value));
+  return s;
+}
+function tabList(items, on, pick, label) {
+  const bar = el('div', 'ep-tabs gx-sub');
+  bar.setAttribute('role', 'tablist');
+  bar.setAttribute('aria-label', label);
+  items.forEach(([id, text]) => {
+    const b = el('button', 'ep-tab' + (id === on ? ' on' : ''), text);
+    b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(id === on)); b.tabIndex = id === on ? 0 : -1;
+    b.addEventListener('click', () => pick(id));
+    b.addEventListener('keydown', e => {
+      const i = items.findIndex(x => x[0] === id);
+      const to = e.key === 'ArrowRight' ? (i + 1) % items.length : e.key === 'ArrowLeft' ? (i + items.length - 1) % items.length : -1;
+      if (to < 0) return;
+      e.preventDefault(); pick(items[to][0], true);
+    });
+    bar.appendChild(b);
+  });
+  return bar;
+}
+
+/* the data as the competition filter sees it */
+const viewOf = panel => GX().scope(panel.data, panel.compId);
+
+function draw(panel, keepFocus) {
+  const SCd = SC();
+  const body = panel.body;
+  body.textContent = '';
+  const note = root.document.getElementById('gfxNote');
+  const season = typeof panel.o.season === 'function' ? panel.o.season() : null;
+  if (note) note.textContent = season ? 'season ' + season.name : '';
+  if (!SCd || !root.EpinoiaReportCard) { body.appendChild(el('div', 'empty', 'The graphics could not be loaded.')); return; }
+  const d = panel.data;
+  if (!d.comps.length) {
+    const p = el('div', 'empty', 'This league has no competition to make graphics from yet. Add a season and a competition in ');
+    const a = el('a', null, 'Settings'); a.href = '#settings'; a.setAttribute('data-tab-link', 'settings'); a.style.color = 'var(--lume)';
+    p.appendChild(a); p.appendChild(root.document.createTextNode('.'));
+    body.appendChild(p);
+    return;
+  }
+
+  /* --- the week, the competition and the shape: what both halves are about --- */
+  const ctx = el('div', 'gx-ctx');
+  const wk = el('div', 'gx-week');
+  const prev = el('button', 'ep-btn mini', '◀'); prev.type = 'button'; prev.setAttribute('aria-label', 'an earlier week');
+  const next = el('button', 'ep-btn mini', '▶'); next.type = 'button'; next.setAttribute('aria-label', 'a later week');
+  next.disabled = panel.off >= 0;
+  prev.addEventListener('click', () => { panel.off = GX().stepWeek(panel.off, -1); load(panel); });
+  next.addEventListener('click', () => { panel.off = GX().stepWeek(panel.off, 1); load(panel); });
+  const span = GX().rangeLabel(d.since, panel.off < 0 ? d.until : d.now);
+  const lbl = el('div', 'gx-weeklbl');
+  lbl.appendChild(el('b', null, GX().weekLabel(panel.off)));
+  lbl.appendChild(el('span', null, span));
+  lbl.setAttribute('aria-live', 'polite');
+  wk.append(prev, lbl, next);
+  ctx.appendChild(wk);
+  if (d.comps.length > 1) {
+    ctx.appendChild(field('Competition', select([['all', 'All competitions']].concat(d.comps.map(c => [c.id, c.name])), panel.compId,
+      v => { panel.compId = v; panel.builder.compId = v === 'all' ? '' : v; panel.builder.page = 0; draw(panel); }), 'gx-comp'));
+  }
+  const shape = el('div', 'gx-shape');
+  shape.setAttribute('role', 'group'); shape.setAttribute('aria-label', 'Shape');
+  Object.keys(SCd.SIZES).forEach(k => shape.appendChild(chip(SCd.SIZES[k].label, k === panel.size, () => { panel.size = k; draw(panel); })));
+  ctx.appendChild(shape);
+  const again = el('button', 'ep-btn mini', 'read again'); again.type = 'button';
+  again.addEventListener('click', () => load(panel));
+  ctx.appendChild(again);
+  body.appendChild(ctx);
+
+  body.appendChild(tabList([['weekly', 'Weekly content'], ['build', 'Build your own']], panel.sub, (id, focus) => {
+    panel.sub = id; draw(panel);
+    if (focus) { const b = body.querySelector('.gx-sub .ep-tab.on'); if (b) b.focus(); }
+  }, 'Graphics'));
+  if (panel.off < 0) body.appendChild(el('p', 'empty gx-note', 'An earlier week: its results and stars. The table is only kept as it stands today, and the week ahead is over.'));
+  const pane = el('div', 'gx-pane');
+  body.appendChild(pane);
+  if (panel.sub === 'build') drawBuilder(panel, pane); else drawWeekly(panel, pane);
+  if (keepFocus) { const b = body.querySelector('.gx-sub .ep-tab.on'); if (b) b.focus(); }
+}
+
+/* ------------------------------------------------------- weekly content --- */
+function drawWeekly(panel, pane) {
+  const all = GX().items(viewOf(panel), panel.size, crestOf);
+  const cnt = GX().counts(all);
+  if (!cnt.some(c => c.id === panel.type)) panel.type = 'all';
+  const list = GX().filterBy(all, panel.type);
+  const bar = el('div', 'row gx-filters');
+  bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Kind of graphic');
+  cnt.forEach(c => {
+    const b = chip(c.label + ' ', c.id === panel.type, () => { panel.type = c.id; draw(panel); });
+    b.appendChild(el('span', 'gx-n', String(c.n)));
+    bar.appendChild(b);
+  });
+  pane.appendChild(bar);
+  const acts = el('div', 'row gx-acts');
+  const zip = el('button', 'ep-btn mini', 'download ' + list.length + ' as a ZIP');
+  zip.type = 'button'; zip.disabled = !list.length;
+  zip.addEventListener('click', () => downloadAll(panel, list, zip));
+  acts.appendChild(zip);
+  pane.appendChild(acts);
+  if (!all.length) {
+    pane.appendChild(el('div', 'empty', panel.off < 0 ? 'No game finished in the competitions chosen in this week.'
+      : 'Nothing to post yet: no game has finished in the last seven days, and there is no table or week ahead in the competitions of the season chosen.'));
+    return;
+  }
+  const groups = panel.type === 'all' ? [['week', 'The week'], ['games', 'Each game']] : [[null, (cnt.find(c => c.id === panel.type) || {}).label]];
+  groups.forEach(([g, label]) => {
+    const mine = g ? list.filter(x => x.group === g) : list;
+    if (!mine.length) return;
+    pane.appendChild(el('div', 'fmt-h', label));
+    const grid = el('div', 'gx-grid');
+    mine.forEach(it => grid.appendChild(card(panel, it)));
+    pane.appendChild(grid);
+  });
+}
+
+/* a thumbnail is drawn when it comes into view: a busy week is forty graphics */
+function lazyPaint(thumb, paint) {
+  if (typeof root.IntersectionObserver === 'function') {
+    const io = new root.IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); paint(); } }, { rootMargin: '300px' });
+    io.observe(thumb);
+  } else paint();
+}
+
+function actions(getModel, opts) {
+  const SCd = SC();
+  const acts = el('div', 'gx-acts');
+  const dl = el('button', 'ep-btn mini', 'download PNG');
+  dl.type = 'button';
+  dl.addEventListener('click', async () => {
+    dl.disabled = true; dl.textContent = 'drawing…';
+    try { const m = getModel(); save(await SCd.png(m, opts()), SCd.filename(m, opts().size)); dl.textContent = 'download PNG'; }
+    catch (e) { dl.textContent = 'could not draw it'; setTimeout(() => { dl.textContent = 'download PNG'; }, 4000); }
+    dl.disabled = false;
+  });
+  const cp = el('button', 'ep-btn mini', 'copy caption');
+  cp.type = 'button';
+  acts.append(dl, cp);
+  return { acts, dl, cp };
+}
+
+function card(panel, it) {
+  const SCd = SC();
+  const box = el('div', 'gx-card');
+  const thumb = el('div', 'gx-thumb');
+  thumb.style.aspectRatio = SCd.SIZES[panel.size].w + ' / ' + SCd.SIZES[panel.size].h;
+  box.appendChild(thumb);
+  box.appendChild(el('div', 'nm', it.title));
+  const { acts, cp } = actions(() => it.model, () => ({ size: panel.size, scale: 1 }));
+  box.appendChild(acts);
+  const words = SCd.caption(it.model);
+  const ta = el('textarea', 'ep-input gx-cap');
+  ta.value = words; ta.readOnly = true; ta.rows = 4;
+  ta.setAttribute('aria-label', 'Caption for ' + it.title);
+  cp.addEventListener('click', () => copy(words, ta, cp));
+  box.appendChild(ta);
+  lazyPaint(thumb, async () => {
+    try {
+      const c = await SCd.canvas(it.model, { size: panel.size, scale: 0.25 });
+      c.className = 'gx-img';
+      thumb.appendChild(c);
+    } catch (_) { thumb.appendChild(el('div', 'empty', 'could not draw')); }
+  });
+  return box;
+}
+
+async function copy(words, ta, btn) {
+  const label = btn.textContent;
+  try { await root.navigator.clipboard.writeText(words); btn.textContent = 'copied'; }
+  catch (_) { ta.select(); btn.textContent = 'select and copy below'; }
+  setTimeout(() => { btn.textContent = label; }, 2500);
+}
+
+function save(blob, name) {
+  const url = root.URL.createObjectURL(blob);
+  const a = root.document.createElement('a');
+  a.href = url; a.download = name;
+  root.document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => root.URL.revokeObjectURL(url), 30000);
+}
+
+async function downloadAll(panel, list, btn) {
+  const SCd = SC();
+  const label = btn.textContent;
+  btn.disabled = true;
+  try {
+    const files = [];
+    const seen = new Set();
+    for (let i = 0; i < list.length; i++) {
+      btn.textContent = 'drawing ' + (i + 1) + ' of ' + list.length + '…';
+      const it = list[i];
+      let name = String(i + 1).padStart(2, '0') + '-' + SCd.filename(it.model, panel.size);
+      while (seen.has(name)) name = name.replace(/\.png$/, '-b.png');
+      seen.add(name);
+      const blob = await SCd.png(it.model, { size: panel.size, scale: 1 });
+      files.push({ name, bytes: new Uint8Array(await blob.arrayBuffer()) });
+      files.push({ name: name.replace(/\.png$/, '.txt'), bytes: new TextEncoder().encode(SCd.caption(it.model) + '\n') });
+    }
+    const L = panel.data.league;
+    const day = new Date().toISOString().slice(0, 10);
+    const kind = panel.type === 'all' ? 'socials' : panel.type;
+    save(new Blob([SCd.zip(files)], { type: 'application/zip' }), SCd.slug(L.slug || L.name) + '-' + kind + '-' + panel.size + '-' + day + '.zip');
+    btn.textContent = label;
+  } catch (e) {
+    btn.textContent = 'could not make the ZIP';
+    setTimeout(() => { btn.textContent = label; }, 4000);
+  }
+  btn.disabled = false;
+}
+
+/* --------------------------------------------------------- the builder ---- */
+function drawBuilder(panel, pane) {
+  const SCd = SC();
+  const b = panel.builder, d = viewOf(panel), M = b.mods;
+  if (b.compId && !d.comps.some(c => c.id === b.compId)) b.compId = '';
+  const persist = () => saveBuilder(panel.leagueId, b);
+  const wrap = el('div', 'gx-build');
+  const form = el('div', 'gx-form');
+  const prev = el('div', 'gx-prev');
+  wrap.append(form, prev);
+  pane.appendChild(wrap);
+
+  let res = null, seq = 0, timer = null;
+  const compute = () => { res = GX().builderModel(d, b, panel.size, crestOf); return res; };
+  compute();
+
+  const setRes = () => { compute(); paint(); };
+  /* every control is tagged with the templates it belongs to; the others are hidden, not removed */
+  const put = (host, keys, node) => { node.dataset.has = keys; host.appendChild(node); return node; };
+  const show = () => form.querySelectorAll('[data-has]').forEach(n => { n.hidden = !HAS[b.tpl].includes(n.dataset.has); });
+  const text = (key, label, max, ph) => {
+    const i = el('input', 'ep-input'); i.type = 'text'; i.maxLength = max; i.value = M[key] || ''; i.placeholder = ph || '';
+    i.addEventListener('input', () => { M[key] = i.value; persist(); schedule(); });
+    return field(label, i);
+  };
+  const tick = (key, label) => {
+    const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = M[key] !== false;
+    i.addEventListener('change', () => { M[key] = i.checked; persist(); schedule(); });
+    l.append(i, el('span', null, label));
+    return l;
+  };
+  const schedule = () => { root.clearTimeout(timer); timer = root.setTimeout(setRes, 90); };
+  /* a change of template, game or competition rebuilds the form (its choices differ); the control keeps focus */
+  const drawBuilder2 = focus => { pane.textContent = ''; drawBuilder(panel, pane); const f = focus && pane.querySelector('#' + focus); if (f) f.focus(); };
+
+  /* --- 1. what it is about --- */
+  const fs1 = el('fieldset', 'gx-fs'); fs1.appendChild(el('legend', null, 'What it is about'));
+  const tp = select(TEMPLATES.map(t => [t.id, t.label]), b.tpl, v => { b.tpl = v; b.page = 0; persist(); drawBuilder2('gxTpl'); });
+  tp.id = 'gxTpl';
+  fs1.appendChild(field('Template', tp));
+  const games = d.finals.slice().reverse();
+  const tname = id => (d.teams.get(id) || {}).name || '?';
+  const gsel = select(games.map(g => [g.id, gameLabel(g, tname, d.league.timezone)]), (res && res.game && res.game.id) || '',
+    v => { b.gameId = v; b.player = null; persist(); drawBuilder2('gxGame'); });
+  gsel.id = 'gxGame';
+  put(fs1, 'game', field('Game', gsel));
+  if (!games.length) gsel.disabled = true;
+  const players = (res && res.players) || [];
+  const psel = select([['', 'Player of the game']].concat(players.map((p, i) => [String(i), ((p.stats.adv && p.stats.adv.name) || 'Player') + ' · ' + p.stats.pts + ' pts'])),
+    b.player == null ? '' : String(b.player), v => { b.player = v === '' ? null : +v; persist(); setRes(); });
+  put(fs1, 'player', field('Player', psel));
+  if (d.comps.length > 1) {
+    const cs = select(d.comps.map(c => [c.id, c.name]), (res && res.comp && res.comp.id) || (d.comps[0] || {}).id, v => { b.compId = v; b.page = 0; persist(); drawBuilder2('gxComp'); });
+    cs.id = 'gxComp';
+    put(fs1, 'comp', field('Competition', cs));
+  }
+  const pg = select(Array.from({ length: Math.max(1, (res && res.pages) || 1) }, (_, i) => [String(i), 'Page ' + (i + 1) + ' of ' + Math.max(1, res.pages || 1)]), b.page || 0,
+    v => { b.page = +v; setRes(); });
+  const pgf = put(fs1, 'page', field('Page', pg));
+  if (!res || !(res.pages > 1)) pgf.classList.add('gx-off');
+  form.appendChild(fs1);
+
+  /* --- 2. words --- */
+  const fs2 = el('fieldset', 'gx-fs'); fs2.appendChild(el('legend', null, 'Words'));
+  put(fs2, 'headline', text('headline', 'Headline', 60, 'the template\'s own'));
+  put(fs2, 'subline', text('subline', 'Subline', 100, 'the template\'s own'));
+  form.appendChild(fs2);
+
+  /* --- 3. parts --- */
+  const fs3 = el('fieldset', 'gx-fs'); fs3.appendChild(el('legend', null, 'Parts'));
+  const ticks = el('div', 'gx-ticks');
+  put(ticks, 'crests', tick('crests', 'Club crests'));
+  put(ticks, 'quarters', tick('quarters', 'Quarter scores'));
+  put(ticks, 'leaders', tick('leaders', 'Each side\'s leader'));
+  put(ticks, 'venue', tick('venue', 'Venue'));
+  put(ticks, 'days', tick('days', 'Day of each game'));
+  put(ticks, 'venues', tick('venues', 'Venue of each game'));
+  fs3.appendChild(ticks);
+  put(fs3, 'rows', field('How many rows', select(ROWS, M.rows || '', v => { M.rows = v; persist(); setRes(); })));
+  /* the star's stat lines: 3 to 8, the first three the big numbers */
+  const statBox = el('div', 'gx-checks'); statBox.appendChild(el('span', 'gx-cl', 'Stat lines (3–8; the first three are the big numbers)'));
+  const keys = () => M.statKeys || STAT_DEFAULT;
+  const statInputs = {};
+  STAT_ORDER.forEach(k => {
+    const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = keys().includes(k); statInputs[k] = i;
+    i.addEventListener('change', () => {
+      const next = toggleKey(keys(), k, STAT_ORDER, MIN_STATS, MAX_STATS);
+      M.statKeys = next; STAT_ORDER.forEach(x => { statInputs[x].checked = next.includes(x); }); persist(); schedule();
+    });
+    l.append(i, el('span', null, SCd.STAT_DEFS[k][1]));
+    statBox.appendChild(l);
+  });
+  put(fs3, 'stats', statBox);
+  const colBox = el('div', 'gx-checks'); colBox.appendChild(el('span', 'gx-cl', 'Table columns (1–' + MAX_COLS + ')'));
+  const cols = () => M.cols || COL_DEFAULT;
+  const colInputs = {};
+  COL_ORDER.forEach(k => {
+    const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = cols().includes(k); colInputs[k] = i;
+    i.addEventListener('change', () => {
+      const next = toggleKey(cols(), k, COL_ORDER, 1, MAX_COLS);
+      M.cols = next; COL_ORDER.forEach(x => { colInputs[x].checked = next.includes(x); }); persist(); schedule();
+    });
+    l.append(i, el('span', null, SCd.COL_DEFS[k]));
+    colBox.appendChild(l);
+  });
+  put(fs3, 'cols', colBox);
+  form.appendChild(fs3);
+
+  /* --- 4. look --- */
+  const fs4 = el('fieldset', 'gx-fs'); fs4.appendChild(el('legend', null, 'Look'));
+  fs4.appendChild(field('Colours', select(THEMES, M.theme, v => { M.theme = v; persist(); setRes(); })));
+  fs4.appendChild(field('Accent', select(ACCENTS, M.accent, v => { M.accent = v; persist(); setRes(); })));
+  fs4.appendChild(field('League logo', select(LOGOS, M.logoPos, v => { M.logoPos = v; persist(); setRes(); })));
+  form.appendChild(fs4);
+
+  /* --- 5. footer --- */
+  const fs5 = el('fieldset', 'gx-fs'); fs5.appendChild(el('legend', null, 'Footer'));
+  fs5.appendChild(tick('handle', 'Instagram handle (or league name)'));
+  fs5.appendChild(text('footerText', 'Footer text instead', 60, 'e.g. @yourleague · yourleague.com'));
+  fs5.appendChild(text('sponsor', 'Partner line', 80, 'e.g. Presented by Acme Sports'));
+  form.appendChild(fs5);
+
+  const reset = el('button', 'ep-btn mini', 'reset to the defaults'); reset.type = 'button';
+  reset.addEventListener('click', () => { const keep = b.tpl; Object.assign(b, defaultBuilder(), { tpl: keep }); persist(); drawBuilder2('gxTpl'); });
+  form.appendChild(reset);
+  show();
+
+  /* --- the preview --- */
+  const stage = el('div', 'gx-stage');
+  stage.style.aspectRatio = SCd.SIZES[panel.size].w + ' / ' + SCd.SIZES[panel.size].h;
+  const status = el('div', 'gx-status');
+  status.setAttribute('role', 'status');
+  prev.append(stage, status);
+  const { acts, dl, cp } = actions(() => res.model, () => ({ size: panel.size, scale: 1, modules: modulesOf(b) }));
+  prev.appendChild(acts);
+  const ta = el('textarea', 'ep-input gx-cap'); ta.readOnly = true; ta.rows = 6; ta.setAttribute('aria-label', 'Caption');
+  prev.appendChild(ta);
+  cp.addEventListener('click', () => copy(ta.value, ta, cp));
+
+  async function paint() {
+    const mine = ++seq;
+    show();
+    if (!res.model) {
+      stage.textContent = '';
+      status.textContent = res.reason || 'Nothing to draw.';
+      ta.value = ''; dl.disabled = true; cp.disabled = true;
+      return;
+    }
+    dl.disabled = false; cp.disabled = false;
+    status.textContent = '';
+    ta.value = SCd.caption(res.model, modulesOf(b));
+    try {
+      const c = await SCd.canvas(res.model, { size: panel.size, scale: 0.5, modules: modulesOf(b) });
+      if (mine !== seq) return;                          // a newer change has already redrawn it
+      c.className = 'gx-canvas'; c.setAttribute('role', 'img');
+      c.setAttribute('aria-label', 'Preview of the graphic');
+      stage.textContent = ''; stage.appendChild(c);
+    } catch (e) {
+      if (mine === seq) status.textContent = 'The preview could not be drawn: ' + (e && e.message || e);
+    }
+  }
+  paint();
+}
+
+return { mount, refresh, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, defaultBuilder, modulesOf, toggleKey, gameLabel,
+         loadBuilder, saveBuilder, memKey };
+}));

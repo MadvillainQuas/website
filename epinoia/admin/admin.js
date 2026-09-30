@@ -125,6 +125,7 @@ async function render() {
      season", opens the console on that league rather than the first one in the list */
   const wantL = new URLSearchParams(location.search).get('l');
   if (wantL && !league) league = admin.find(l => l.slug === wantL || l.id === wantL) || null;
+  if (!league && !wantL) league = admin.find(l => l.id === rememberedLeague()) || null;
   if (!league || !admin.some(l => l.id === league.id)) league = admin[0];
   renderLeaguePick(admin);
   /* The season and the competitions are read through functions rather than
@@ -161,6 +162,7 @@ async function render() {
      the load, and only for the one anchor that is linked to from outside. */
   if (location.hash === '#fixtures' || location.hash === '#backfill') {
     const sec = document.getElementById(location.hash === '#backfill' ? 'backfillPanel' : 'fixtures');
+    if (window.EpinoiaTabs) window.EpinoiaTabs.show('settings', { quiet: true });      // the sections live under Settings
     if (sec) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 }
@@ -194,13 +196,38 @@ function renderAccess() {
   });
 }
 
+/* The last league the console was on, so forty leagues are not walked through to get back to it. Only a
+   convenience: ?l= wins, and a league the account no longer holds is ignored. */
+const LAST_LEAGUE = 'epinoia.admin.league';
+const rememberLeague = id => { try { localStorage.setItem(LAST_LEAGUE, id); } catch (_) { /* private window */ } };
+const rememberedLeague = () => { try { return localStorage.getItem(LAST_LEAGUE); } catch (_) { return null; } };
+
+/* THE LEAGUE PICKER is a dropdown: a platform admin holds every league on the platform, and a button apiece
+   was a wall of them. Alphabetical by name (the rows carry no country or gender to group by); when the account
+   holds some leagues itself and is offered the rest as a platform admin, "your leagues" come first, apart. */
 function renderLeaguePick(admin) {
-  const host = $('#lgPick'); host.textContent = '';
-  admin.forEach(l => {
-    const b = el('button', 'ep-chip' + (league && l.id === league.id ? ' on' : ''), l.name);
-    b.type = 'button';
-    b.addEventListener('click', async () => {
+  const host = $('#lgPick');
+  let sel = host.querySelector('select');
+  if (!sel) {
+    host.textContent = '';
+    sel = el('select', 'ep-input lg-sel');
+    sel.id = 'lgSel';
+    sel.setAttribute('aria-describedby', 'lgNote');
+    const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' });
+    const opt = l => { const o = el('option', null, l.name); o.value = l.id; return o; };
+    const mine = admin.filter(l => l.via === 'membership'), rest = admin.filter(l => l.via !== 'membership');
+    if (mine.length && rest.length) {
+      [['Your leagues', mine], ['All other leagues, as platform admin', rest]].forEach(([label, rows]) => {
+        const g = el('optgroup'); g.label = label;
+        rows.slice().sort(byName).forEach(l => g.appendChild(opt(l)));
+        sel.appendChild(g);
+      });
+    } else admin.slice().sort(byName).forEach(l => sel.appendChild(opt(l)));
+    sel.addEventListener('change', async () => {
+      const l = admin.find(x => x.id === sel.value);
+      if (!l || (league && l.id === league.id)) return;
       league = l; season = null; comp = null;
+      rememberLeague(l.id);
       /* Blank the backfill panel BEFORE anything async runs. loadLeague() (below) awaits a
          seasons fetch before it redraws that panel for the new league, and a click landing in
          that gap used to queue a season against the league just left rather than the one now
@@ -208,12 +235,15 @@ function renderLeaguePick(admin) {
       if (window.EpinoiaBackfill) window.EpinoiaBackfill.clear();
       renderLeaguePick(admin); await loadLeague();
     });
-    host.appendChild(b);
-  });
-  const view = el('a', 'ep-chip', 'view public page ↗');
+    host.appendChild(sel);
+    const view = el('a', 'ep-chip lg-view', 'view public page ↗');
+    view.id = 'lgView';
+    view.target = '_blank'; view.rel = 'noopener';
+    host.appendChild(view);
+  }
+  sel.value = league.id;
+  const view = $('#lgView');
   view.href = '../l/?l=' + encodeURIComponent(league.slug);
-  view.target = '_blank'; view.rel = 'noopener';
-  host.appendChild(view);
   /* whoami() marks how a league is held (migration 0050). A platform admin
      is offered every league on the platform, and being told that beats
      wondering why forty of them are listed. */
@@ -436,7 +466,7 @@ async function loadComps() {
   }
   if (!comp || !comps.some(c => c.id === comp.id)) comp = comps[0] || null;
   renderCompPick();
-  if (window.EpinoiaSocialGfx) window.EpinoiaSocialGfx.refresh();      // the new season's posts
+  if (window.EpinoiaGraphicsUI) window.EpinoiaGraphicsUI.refresh();      // the new season's posts
   await loadFixtures();
   await loadMembers();
   await loadMediaQueue();
@@ -615,6 +645,7 @@ function fillTeamSelects(entered) {
     a.addEventListener('click', (e) => {
       e.preventDefault();
       const el2 = document.querySelector(href);
+      if (window.EpinoiaTabs) window.EpinoiaTabs.show('settings');                // a section, not the Graphics tab
       if (el2) el2.scrollIntoView({ block: 'start', behavior: 'smooth' });
     });
     note.appendChild(a);
@@ -977,10 +1008,10 @@ function mountGovernance() {
   mountedFor = league.id;
   window.EpinoiaSocialsUI.mount({ host: '#socialsPanel', sb, league, say,
                                   cfg: window.EPINOIA_CONFIG });
-  /* GRAPHICS FOR SOCIALS: every post the week has earned, drawn from the season on screen (a getter: the
-     season and its competitions change under it). Guarded like the newest panels. */
-  if (window.EpinoiaSocialGfx) window.EpinoiaSocialGfx.mount({ host: '#socialGfxPanel', sb, league: () => league,
-                                                              comps: () => comps, say });
+  /* THE GRAPHICS TAB: every post the week has earned, by type, and a builder, drawn from the season on screen
+     (getters: the league, the season and its competitions change under it). Guarded like the newest panels. */
+  if (window.EpinoiaGraphicsUI) window.EpinoiaGraphicsUI.mount({ host: '#graphicsPanel', sb, league: () => league,
+                                                                 season: () => season, comps: () => comps, say });
   /* the weekly fans' vote (0150): read-only tallies. Guarded like the newest
      panels, so a script that did not load cannot take the block down with it. */
   if (window.EpinoiaFanVoteUI) window.EpinoiaFanVoteUI.mount({ host: '#fanvotePanel', sb, league, say });

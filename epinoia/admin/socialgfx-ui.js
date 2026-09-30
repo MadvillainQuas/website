@@ -1,22 +1,27 @@
 'use strict';
 /* ============================================================================
-   GRAPHICS FOR SOCIALS — the console's side of socialcard.js: every post the league's week has earned, ready.
+   GRAPHICS FOR SOCIALS - the DATA side: what the league's week has earned, ready for socialcard.js to draw.
+   (The Graphics tab, admin/graphics-ui.js, is the screen over it.)
 
-   Nobody asks for these. The panel reads the season it is looking at and lays out what there is to post:
+   Nobody asks for these. It reads the season the console is looking at and lays out what there is to post:
 
-     THE WEEK      the week's results, the table after it, and the week coming up (each competition's own)
-     EACH GAME     a final score and a player of the game for every game finished in the last seven days
+     THE WEEK      the week's results, the table after it, and the week coming up (each competition's own),
+                   and a player of the week when there were several games
+     EACH GAME     a final score and a player of the game for every game finished in the week
 
-   in the shape chosen above them (square, portrait or story), each with the words to post it with. One
-   download each, or all of them in one ZIP. Every graphic is drawn in this browser from the rows below, so a
-   game corrected in the console is a corrected graphic the next time the panel is opened; nothing is stored.
+   in the shape chosen (square, portrait or story), each with the words to post it with, and each tagged with a
+   content TYPE (results / stars / table / ahead / roundup) so the tab can filter and count them. Every graphic
+   is drawn in this browser from the rows read here, so a game corrected in the console is a corrected graphic
+   the next time it is read; nothing is stored.
 
-   WHAT IT READS, and only that: the season's competitions (admin.js), their games in the fortnight around
-   today, the clubs in them, the finished games' quarter scores (team_game_stats.stats->perQ) and eleven
-   numbers of each player line (never the whole stats blob: a round of games would be megabytes), the
-   standings, and the league's Instagram handle for the footer.
+   THE WEEK is the seven days to now (offset 0: with the seven days ahead for the fixtures), or, for a week
+   picked from the past (offset -1, -2, ...), the seven days ending that many weeks ago: its finals and their
+   players. The table is only ever today's (standings are not kept by week), so an earlier week has none.
 
-   Loaded on first sight of the panel, not with the console: most visits never scroll to it.
+   WHAT IT READS, and only that: the season's competitions (admin.js), their games in the window, the clubs in
+   them, the finished games' quarter scores (team_game_stats.stats->perQ) and eleven numbers of each player line
+   (never the whole stats blob: a round of games would be megabytes), the standings, and the league's Instagram
+   handle for the footer.
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -57,12 +62,13 @@ function rangeLabel(a, b) {
 /* ---------------------------------------------------------------- reading --- */
 /* Everything the graphics need, in five reads (and one more per thousand games). Pure of the DOM: the test
    drives it with a stub client. */
-async function read(sb, league, comps, now) {
-  const t = now || new Date();
-  const since = new Date(t.getTime() - 7 * DAY), until = new Date(t.getTime() + 7 * DAY);
+async function read(sb, league, comps, now, offset) {
+  const off = Math.min(0, Math.round(+offset || 0));            // weeks back from now: 0 is this week, -1 last week
+  const t = new Date((now || new Date()).getTime() + off * 7 * DAY);
+  const since = new Date(t.getTime() - 7 * DAY), until = off < 0 ? t : new Date(t.getTime() + 7 * DAY);
   const ids = comps.map(c => c.id);
   const out = { league: null, comps, finals: [], upcoming: [], teams: new Map(), perQ: new Map(), players: new Map(), standings: [],
-                since, until, now: t };
+                since, until, now: t, offset: off };
   const lg = await sb.from('leagues').select('id,name,slug,timezone,colour_a,colour_b,logo_path').eq('id', league.id).maybeSingle();
   const L = lg && lg.data || league;
   let handle = '';
@@ -84,9 +90,11 @@ async function read(sb, league, comps, now) {
     if (g.status === 'final' && new Date(g.tipoff_at) <= t) out.finals.push(g);
     else if ((g.status === 'scheduled' || !g.status) && new Date(g.tipoff_at) > t) out.upcoming.push(g);
   });
-  const st = await sb.from('standings').select('competition_id,team_id,rank,gp,w,l,league_points,diff,streak,group_name')
-    .in('competition_id', ids);
-  out.standings = (st && st.data) || [];
+  if (off === 0) {
+    const st = await sb.from('standings').select('competition_id,team_id,rank,gp,w,l,league_points,diff,streak,group_name,pts_for,pts_against')
+      .in('competition_id', ids);
+    out.standings = (st && st.data) || [];
+  }
   const teamIds = [...new Set(out.finals.concat(out.upcoming).flatMap(g => [g.home_team_id, g.away_team_id])
     .concat(out.standings.map(s => s.team_id)).filter(Boolean))];
   for (let i = 0; i < teamIds.length; i += 200) {
@@ -114,14 +122,21 @@ async function read(sb, league, comps, now) {
 
 /* ---------------------------------------------------------------- the list --- */
 /* What there is to post, for one shape: [{ group, title, model }] */
-function items(data, size, crestOf) {
-  const SC = root.EpinoiaSocialCard;
+/* the league (with its logo's address) and a club by id (with its crest's), as socialcard.js's models take them */
+function frame(data, crestOf) {
   const L = Object.assign({}, data.league, { logoUrl: crestOf && data.league.logoPath ? crestOf({ logo_path: data.league.logoPath }) : null });
   const team = id => {
     const t = data.teams.get(id) || { name: '?' };
     return Object.assign({}, t, { crestUrl: crestOf ? crestOf(t) : null });
   };
-  const out = [];
+  return { L, team };
+}
+
+function items(data, size, crestOf) {
+  const SC = root.EpinoiaSocialCard;
+  const { L, team } = frame(data, crestOf);
+  const out0 = [];
+  const out = { push(x) { x.type = TYPE_OF[x.model.kind]; out0.push(x); } };
   const range = rangeLabel(data.since, data.now), ahead = rangeLabel(data.now, data.until);
   const asOf = rangeLabel(data.now, data.now).replace(/^\d+–/, '');
   data.comps.forEach(c => {
@@ -153,186 +168,85 @@ function items(data, size, crestOf) {
     const p = SC.performer(base);
     if (p) out.push({ group: 'games', title: 'Player of the game · ' + p.player.name, model: p });
   });
-  return out;
-}
-
-/* ------------------------------------------------------------------ view --- */
-let current = null;
-
-function mount(o) {
-  const host = typeof o.host === 'string' ? root.document.querySelector(o.host) : o.host;
-  if (!host) return null;
-  if (host.__sgStop) host.__sgStop();                 // a league switch re-mounts: the old panel's watcher goes
-  const panel = { host, o, size: 'portrait', data: null, busy: false, started: false };
-  current = panel;
-  host.textContent = '';
-  host.appendChild(el('div', 'fmt-h', 'Graphics for socials'));
-  host.appendChild(el('p', 'empty',
-    'Made for you from every game finished in the last seven days, the table and the week ahead — nothing to design. ' +
-    'Pick the shape, check each one, download it and post it with the words beneath. Nothing is posted from here, ' +
-    'and nothing is stored: a game corrected in the console is a corrected graphic when this panel is opened again.'));
-  const body = el('div', 'sg');
-  host.appendChild(body);
-  const start = () => { if (!panel.data && !panel.busy) { panel.started = true; load(panel, body); } };
-  if (typeof root.IntersectionObserver === 'function') {
-    const io = new root.IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); } }, { rootMargin: '400px' });
-    io.observe(host);
-    host.__sgStop = () => io.disconnect();
-  } else start();
-  return panel;
-}
-
-/* a season switch: read again for the new one - but only a panel already read; one nobody has scrolled to yet
-   reads the season on screen when it is first seen */
-function refresh() {
-  if (!current || !current.started) return;
-  current.data = null;
-  const body = current.host.querySelector('.sg');
-  if (body) load(current, body);
-}
-
-async function load(panel, body) {
-  const o = panel.o;
-  const league = typeof o.league === 'function' ? o.league() : o.league;
-  const comps = (typeof o.comps === 'function' ? o.comps() : o.comps) || [];
-  if (!league) return;
-  panel.busy = true;
-  body.textContent = '';
-  body.appendChild(el('div', 'empty', 'Reading the week…'));
-  try {
-    panel.data = await read(o.sb, league, comps);
-    panel.leagueId = league.id;
-  } catch (e) {
-    body.textContent = '';
-    body.appendChild(el('div', 'empty', 'The week could not be read: ' + (e && e.message || e)));
-    panel.busy = false;
-    return;
-  }
-  panel.busy = false;
-  draw(panel, body);
-}
-
-const crestOf = t => (t && t.logo_path && typeof root.epinoiaLogoUrl === 'function' ? root.epinoiaLogoUrl(t.logo_path, 256) : null);
-
-function draw(panel, body) {
-  const SC = root.EpinoiaSocialCard;
-  body.textContent = '';
-  if (!SC || !root.EpinoiaReportCard) { body.appendChild(el('div', 'empty', 'The graphics could not be loaded.')); return; }
-  const list = items(panel.data, panel.size, crestOf);
-  const bar = el('div', 'row sg-bar');
-  Object.keys(SC.SIZES).forEach(k => {
-    const b = el('button', 'ep-chip' + (k === panel.size ? ' on' : ''), SC.SIZES[k].label);
-    b.type = 'button';
-    b.setAttribute('aria-pressed', String(k === panel.size));
-    b.addEventListener('click', () => { panel.size = k; draw(panel, body); });
-    bar.appendChild(b);
-  });
-  const all = el('button', 'ep-btn mini', 'download all (' + list.length + ') as a ZIP');
-  all.type = 'button';
-  all.disabled = !list.length;
-  all.addEventListener('click', () => downloadAll(panel, list, all));
-  bar.appendChild(all);
-  const again = el('button', 'ep-btn mini', 'read again');
-  again.type = 'button';
-  again.addEventListener('click', () => load(panel, body));
-  bar.appendChild(again);
-  body.appendChild(bar);
-  if (!list.length) {
-    body.appendChild(el('div', 'empty', 'Nothing to post yet: no game has finished in the last seven days, and there is no table or week ahead ' +
-      'in the competitions of the season chosen above.'));
-    return;
-  }
-  [['week', 'The week'], ['games', 'Each game']].forEach(([g, label]) => {
-    const mine = list.filter(x => x.group === g);
-    if (!mine.length) return;
-    body.appendChild(el('div', 'fmt-h', label));
-    const grid = el('div', 'sg-grid');
-    mine.forEach(it => grid.appendChild(card(panel, it)));
-    body.appendChild(grid);
-  });
-}
-
-function card(panel, it) {
-  const SC = root.EpinoiaSocialCard;
-  const box = el('div', 'sg-card');
-  const thumb = el('div', 'sg-thumb');
-  thumb.style.aspectRatio = SC.SIZES[panel.size].w + ' / ' + SC.SIZES[panel.size].h;
-  box.appendChild(thumb);
-  box.appendChild(el('div', 'nm', it.title));
-  const acts = el('div', 'sg-acts');
-  const dl = el('button', 'ep-btn mini', 'download');
-  dl.type = 'button';
-  dl.addEventListener('click', async () => {
-    dl.disabled = true; dl.textContent = 'drawing…';
-    try { save(await SC.png(it.model, { size: panel.size, scale: 1 }), SC.filename(it.model, panel.size)); dl.textContent = 'download'; }
-    catch (e) { dl.textContent = 'could not draw it'; setTimeout(() => { dl.textContent = 'download'; }, 4000); }
-    dl.disabled = false;
-  });
-  const cp = el('button', 'ep-btn mini', 'copy caption');
-  cp.type = 'button';
-  const words = SC.caption(it.model);
-  cp.addEventListener('click', async () => {
-    try { await root.navigator.clipboard.writeText(words); cp.textContent = 'copied'; }
-    catch (_) { ta.select(); cp.textContent = 'select and copy below'; }
-    setTimeout(() => { cp.textContent = 'copy caption'; }, 2500);
-  });
-  acts.append(dl, cp);
-  box.appendChild(acts);
-  const ta = el('textarea', 'ep-input sg-cap');
-  ta.value = words;
-  ta.readOnly = true;
-  ta.rows = 4;
-  box.appendChild(ta);
-  /* the thumbnail is drawn when the card comes into view: a busy week is forty graphics */
-  const paint = async () => {
-    try {
-      const c = await SC.canvas(it.model, { size: panel.size, scale: 0.25 });
-      c.className = 'sg-img';
-      thumb.appendChild(c);
-    } catch (_) { thumb.appendChild(el('div', 'empty', 'could not draw')); }
-  };
-  if (typeof root.IntersectionObserver === 'function') {
-    const io = new root.IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); paint(); } }, { rootMargin: '300px' });
-    io.observe(thumb);
-  } else paint();
-  return box;
-}
-
-function save(blob, name) {
-  const url = root.URL.createObjectURL(blob);
-  const a = root.document.createElement('a');
-  a.href = url; a.download = name;
-  root.document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => root.URL.revokeObjectURL(url), 30000);
-}
-
-async function downloadAll(panel, list, btn) {
-  const SC = root.EpinoiaSocialCard;
-  const label = btn.textContent;
-  btn.disabled = true;
-  try {
-    const files = [];
-    const seen = new Set();
-    for (let i = 0; i < list.length; i++) {
-      btn.textContent = 'drawing ' + (i + 1) + ' of ' + list.length + '…';
-      const it = list[i];
-      let name = String(i + 1).padStart(2, '0') + '-' + SC.filename(it.model, panel.size);
-      while (seen.has(name)) name = name.replace(/\.png$/, '-b.png');
-      seen.add(name);
-      const blob = await SC.png(it.model, { size: panel.size, scale: 1 });
-      files.push({ name, bytes: new Uint8Array(await blob.arrayBuffer()) });
-      files.push({ name: name.replace(/\.png$/, '.txt'), bytes: new TextEncoder().encode(SC.caption(it.model) + '\n') });
+  /* the player of the week: the best game score of the week's players of the game, when there was more than a game */
+  const stars = out0.filter(x => x.model.kind === 'performer');
+  if (stars.length > 1) {
+    const best = stars.slice().sort((a, b) => b.model.gameScore - a.model.gameScore)[0].model;
+    const g = data.finals.find(x => x.id === best.gameId);
+    if (g) {
+      const c = data.comps.find(x => x.id === g.competition_id) || {};
+      const w = SC.performer({ game: g, home: team(g.home_team_id), away: team(g.away_team_id), players: data.players.get(g.id) || [],
+                               league: L, comp: data.comps.length > 1 ? c.name : (c.name || L.name), label: 'Player of the week' });
+      if (w) out.push({ group: 'week', title: 'Player of the week · ' + w.player.name, model: w });
     }
-    const L = panel.data.league;
-    const day = new Date().toISOString().slice(0, 10);
-    save(new Blob([SC.zip(files)], { type: 'application/zip' }), SC.slug(L.slug || L.name) + '-socials-' + panel.size + '-' + day + '.zip');
-    btn.textContent = label;
-  } catch (e) {
-    btn.textContent = 'could not make the ZIP';
-    setTimeout(() => { btn.textContent = label; }, 4000);
   }
-  btn.disabled = false;
+  return out0;
 }
 
-return { mount, refresh, read, items, playerRow, handleOf, rangeLabel, PLAYER_COLS };
+/* ------------------------------------------------------------- the builder --- */
+/* ONE graphic on the builder's terms. sel: { tpl: result | star | table | fixtures | week, gameId, player (an index
+   into `players`, or null for the player of the game), compId, page }. Returns { model, reason, ... }: `model` is
+   null, with the reason, when the week has nothing for it. A result or a star is about one finished game (the newest
+   when none is named) and `players` is that game's lines, best first; the lists are one competition's, cut into
+   `pages` graphics for the shape. */
+function builderModel(data, sel, size, crestOf) {
+  const SC = root.EpinoiaSocialCard, { L, team } = frame(data, crestOf);
+  const s = sel || {}, tpl = s.tpl || 'result';
+  const compOf = id => data.comps.find(c => c.id === id) || {};
+  const nameOf = c => (data.comps.length > 1 ? c.name : (c.name || L.name));
+  if (tpl === 'result' || tpl === 'star') {
+    const g = data.finals.find(x => x.id === s.gameId) || data.finals[data.finals.length - 1];
+    if (!g) return { model: null, reason: 'No game has finished in this week.' };
+    const players = (data.players.get(g.id) || []).slice().sort((a, b) => SC.gameScore(b.stats) - SC.gameScore(a.stats));
+    const base = { game: g, home: team(g.home_team_id), away: team(g.away_team_id), players, perQ: data.perQ.get(g.id), league: L,
+                   comp: nameOf(compOf(g.competition_id)) };
+    if (tpl === 'result') return { model: SC.result(base), game: g, players, reason: '' };
+    const pick = s.player != null && players[s.player] ? players[s.player] : null;
+    const m = SC.performer(pick ? Object.assign({}, base, { pick }) : base);
+    return { model: m, game: g, players, reason: m ? '' : 'This game has no player lines to build a star from.' };
+  }
+  const c = data.comps.find(x => x.id === s.compId) || data.comps[0];
+  if (!c) return { model: null, reason: 'This league has no competition in the season on screen.' };
+  const comp = nameOf(c), range = rangeLabel(data.since, data.now), ahead = rangeLabel(data.now, data.until);
+  const asOf = rangeLabel(data.now, data.now).replace(/^\d+–/, '');
+  const games = list => list.filter(g => g.competition_id === c.id).map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id) }));
+  const models0 = tpl === 'week' ? SC.week({ games: games(data.finals), league: L, comp, range }, size)
+    : tpl === 'fixtures' ? SC.fixtures({ games: games(data.upcoming), league: L, comp, range: ahead }, size)
+    : SC.table({ standings: data.standings.filter(x => x.competition_id === c.id).map(x => Object.assign({}, x, { team: team(x.team_id) })), league: L, comp, asOf }, size);
+  const models = models0.filter(m => m.rows.length);          // a list with no rows is an empty page, not a graphic
+  const page = Math.max(0, Math.min(models.length - 1, +s.page || 0));
+  const none = tpl === 'week' ? 'No game finished in this competition in this week.' : tpl === 'fixtures'
+    ? 'Nothing is scheduled in this competition in the week ahead.' : (data.offset < 0 ? 'The table is only kept as it stands today, so an earlier week has none.' : 'This competition has no table yet.');
+  return { model: models[page] || null, pages: models.length, page, comp: c, reason: models.length ? '' : none };
+}
+
+/* ------------------------------------------------------- types and filters --- */
+/* The kinds of post, as the Graphics tab sorts them. `stars` is the players of the game and the player of the week. */
+const TYPES = [
+  { id: 'results', label: 'Game results' }, { id: 'stars', label: 'Stars' }, { id: 'table', label: 'Table' },
+  { id: 'ahead', label: 'Week ahead' }, { id: 'roundup', label: 'Results roundup' }
+];
+const TYPE_OF = { result: 'results', performer: 'stars', table: 'table', fixtures: 'ahead', week: 'roundup' };
+/* [{ id, label, n }] for the chips: "all" first, then every type that has anything (a type with none is not offered) */
+function counts(list) {
+  const rows = [{ id: 'all', label: 'All', n: list.length }];
+  TYPES.forEach(t => { const n = list.filter(x => x.type === t.id).length; if (n) rows.push({ id: t.id, label: t.label, n }); });
+  return rows;
+}
+function filterBy(list, type) { return !type || type === 'all' ? list : list.filter(x => x.type === type); }
+/* the data as one competition sees it (id '' or 'all': every one) */
+function scope(data, compId) {
+  if (!compId || compId === 'all') return data;
+  const only = a => a.filter(x => x.competition_id === compId);
+  return Object.assign({}, data, { comps: data.comps.filter(c => c.id === compId), finals: only(data.finals), upcoming: only(data.upcoming),
+    standings: only(data.standings) });
+}
+/* the week picker's words: "This week", "Last week", "2 weeks ago", and the days it covers */
+function weekLabel(offset) {
+  const o = Math.min(0, Math.round(+offset || 0));
+  return o === 0 ? 'This week' : o === -1 ? 'Last week' : Math.abs(o) + ' weeks ago';
+}
+const stepWeek = (offset, dir) => Math.max(-52, Math.min(0, (Math.round(+offset || 0)) + dir));
+
+return { read, items, builderModel, frame, playerRow, handleOf, rangeLabel, PLAYER_COLS, TYPES, TYPE_OF, counts, filterBy, scope, weekLabel, stepWeek };
 }));

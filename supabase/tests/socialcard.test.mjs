@@ -249,5 +249,141 @@ console.log('\nthe console');
      && list.find(x => x.model.kind === 'result').model.home.crestUrl === 'https://cdn/x.png');
 }
 
+console.log('\nthe modules (the builder\'s options)');
+{
+  const cropped = e => e.kind === 'text' || e.kind === 'image' || e.kind === 'rect';
+  const drawLog = (m, size, modules, theme) => { const c = recorder(); SC.draw(c, m, { size, modules, theme }); return c.log; };
+  const key = log => JSON.stringify(log.map(e => [e.kind, e.t, Math.round(e.x0), Math.round(e.y0), Math.round(e.x1), Math.round(e.y1), e.fill, e.size]));
+  const words = log => log.filter(e => e.kind === 'text').map(e => e.t);
+  const same = SC.cleanModules({ crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, handle: true, logoPos: 'both',
+    accent: '', headline: '', subline: '', footerText: '', sponsor: '', rows: 0, cols: [], statKeys: [] });
+  ok('a module left at its default is not a module: cleanModules keeps nothing of them', Object.keys(same).length === 0 && SC.cleanModules({ theme: 'dark' }).theme === 'dark', JSON.stringify(same));
+  const fx7 = SC.fixtures({ games: games.slice(0, 7).map(g => Object.assign({ venue: 'Palais des Sports de Paris-Est' }, g)), league: withLogo }, 'portrait')[0];
+  let identical = true, why = '';
+  for (const [kind, m] of Object.entries(Object.assign({}, posts, { fixtures: fx7 }))) {
+    for (const size of Object.keys(SC.SIZES)) {
+      const base = key(drawLog(m, size));
+      if (base !== key(drawLog(m, size, {})) || base !== key(drawLog(m, size, same)) || base !== key(drawLog(Object.assign({}, m, { modules: {} }), size))) { identical = false; why = kind + '/' + size; }
+    }
+  }
+  ok('every template on every shape: no modules, empty modules and all-default modules draw the identical picture', identical, why);
+  ok('the drawing leaves no module behind for the next graphic', key(drawLog(posts.table, 'portrait', { headline: 'X', theme: 'light' })) !== key(drawLog(posts.table, 'portrait'))
+     && key(drawLog(posts.table, 'portrait')) === key(drawLog(posts.table, 'portrait', {})));
+
+  const crested = t => Object.assign({}, t, { crest: img(128, 128, 'crest') });
+  const withCrests = m => Object.assign({}, m, m.rows ? { rows: m.rows.map(r => Object.assign({}, r, r.home ? { home: crested(r.home), away: crested(r.away) } : { team: crested(r.team) })) }
+    : m.home ? { home: crested(m.home), away: crested(m.away) } : { team: crested(m.team), opp: crested(m.opp) });
+  const crests = (m, mod) => drawLog(withCrests(m), 'portrait', mod).filter(e => e.kind === 'image' && e.img.tag === 'crest').length;
+  ok('crests off: no crest image on a final, a player of the game, the results or the table (the initials disc stands in)',
+     ['result', 'performer', 'week', 'table'].every(k => crests(posts[k], {}) > 0 && crests(posts[k], { crests: false }) === 0));
+  ok('...and the initials are drawn instead', words(drawLog(withCrests(posts.week), 'portrait', { crests: false })).some(t => /^C\d+$/.test(t)));
+  ok('quarters off: no line score', words(drawLog(posts.result, 'portrait')).includes('Q1') && !words(drawLog(posts.result, 'portrait', { quarters: false })).includes('Q1'));
+  ok('leaders off: no "LED BY"', words(drawLog(posts.result, 'portrait')).includes('LED BY') && !words(drawLog(posts.result, 'portrait', { leaders: false })).includes('LED BY'));
+  ok('venue off: no venue line on a final', words(drawLog(posts.result, 'portrait')).includes('ADIDAS ARENA') && !words(drawLog(posts.result, 'portrait', { venue: false })).includes('ADIDAS ARENA'));
+  ok('days off: no day under a result (a story\'s rows are tall enough to carry it)', words(drawLog(posts.week, 'story')).some(t => /^(MON|TUE|WED|THU|FRI|SAT|SUN) \d/.test(t))
+     && !words(drawLog(posts.week, 'story', { days: false })).some(t => /^(MON|TUE|WED|THU|FRI|SAT|SUN) \d/.test(t)));
+  ok('venues off: no venue under a fixture', words(drawLog(fx7, 'portrait')).includes('Palais des Sports de Paris-Est') && !words(drawLog(fx7, 'portrait', { venues: false })).some(t => /Palais/.test(t)));
+  ok('a headline and a subline: the graphic\'s own words replaced (a list), or added (a final, a player of the game)',
+     words(drawLog(posts.table, 'portrait', { headline: 'Top of the pile', subline: 'Round 4' })).includes('TOP OF THE PILE') && words(drawLog(posts.table, 'portrait', { headline: 'Top', subline: 'Round 4' })).includes('Round 4')
+     && !words(drawLog(posts.table, 'portrait', { headline: 'Top' })).includes('THE TABLE')
+     && words(drawLog(posts.result, 'portrait', { headline: 'Derby night', subline: 'What a game' })).includes('DERBY NIGHT')
+     && words(drawLog(posts.performer, 'portrait', { headline: 'Man of the match', subline: 'Again' })).includes('MAN OF THE MATCH')
+     && !words(drawLog(posts.performer, 'portrait', { headline: 'Man of the match' })).includes('PLAYER OF THE GAME')
+     && words(drawLog(posts.performer, 'portrait', { subline: 'Again' })).includes('Again'));
+  const stat = mods => words(drawLog(posts.performer, 'portrait', mods));
+  ok('the star\'s stat lines: three to eight, the first three big and the rest in the strip', stat({ statKeys: ['pts', 'stl', 'blk'] }).includes('STEALS') && !stat({ statKeys: ['pts', 'stl', 'blk'] }).includes('FT')
+     && stat({ statKeys: ['pts', 'reb', 'ast', 'fgp', 'p3p'] }).includes('FG%') && stat({ statKeys: ['pts', 'reb', 'ast', 'fgp', 'p3p'] }).includes('63%') && !stat({ statKeys: ['pts', 'reb', 'ast', 'fgp'] }).includes('MIN'));
+  ok('...fewer than three is not a choice: the default stands', key(drawLog(posts.performer, 'portrait', { statKeys: ['pts', 'reb'] })) === key(drawLog(posts.performer, 'portrait')));
+  const names = (mods, size) => words(drawLog(SC.table({ standings, league: withLogo }, size || 'portrait')[0], size || 'portrait', mods)).filter(t => /^Club \d+$/.test(t));
+  ok('table rows: the top 4, 6, 8, or all', [4, 6, 8].every(n => names({ rows: n }).length === n) && names({}).length === 18 && names({ rows: 99 }).length === 18);
+  const heads = mods => words(drawLog(SC.table({ standings: standings.map(s => Object.assign({}, s, { pts_for: 900, pts_against: 850 })), league }, 'portrait')[0], 'portrait', mods));
+  ok('table columns: the ones chosen, in the table\'s order, and no more than are asked for', ['GP', 'W', 'L', 'DIFF'].every(c => heads({}).includes(c)) && heads({ cols: ['pa', 'w', 'pf'] }).filter(t => /^(GP|W|L|PF|PA|DIFF|PCT|STK|PTS)$/.test(t)).join() === 'W,PF,PA'
+     && heads({ cols: ['pct'] }).includes('PCT') && !heads({ cols: ['pct'] }).includes('DIFF'));
+  ok('...the win rate and the points for and against are the club\'s own', heads({ cols: ['pct', 'pf', 'pa'] }).includes('.750') && heads({ cols: ['pf'] }).includes('900'), heads({ cols: ['pct'] }).slice(-12).join());
+  const ground0 = log => log.find(e => e.kind === 'rect').fill;
+  ok('colour: the kit\'s light, and a high-contrast black and yellow', ground0(drawLog(posts.table, 'portrait', { theme: 'light' })) === RC.THEMES.light.ground
+     && ground0(drawLog(posts.table, 'portrait', { theme: 'contrast' })) === '#000000' && ground0(drawLog(posts.table, 'portrait')) === RC.THEMES.dark.ground
+     && ground0(drawLog(posts.table, 'portrait', { theme: 'nonsense' })) === RC.THEMES.dark.ground);
+  ok('...a theme in opts is the modules\' when they say nothing, theirs when they do', ground0(drawLog(posts.table, 'portrait', {}, 'light')) === RC.THEMES.light.ground
+     && ground0(drawLog(posts.table, 'portrait', { theme: 'contrast' }, 'light')) === '#000000');
+  const edge = log => log.find(e => e.kind === 'rect' && e.x0 === 0 && e.x1 === 10).fill;
+  ok('accent: the edge and the tag in the colour chosen, not the league\'s', edge(drawLog(posts.table, 'portrait', { accent: '#ffe600' })) === RC.accentOn('#ffe600', RC.THEMES.dark)
+     && edge(drawLog(posts.table, 'portrait')) === RC.accentOn('#ff6600', RC.THEMES.dark) && edge(drawLog(posts.table, 'portrait', { accent: 'javascript:1' })) === edge(drawLog(posts.table, 'portrait')));
+  const logos = mods => drawLog(posts.table, 'portrait', mods).filter(e => e.kind === 'image' && e.img.tag === 'league');
+  ok('logo position: both, heading only (top), footer only (bottom), or none', logos({}).length === 2 && logos({ logoPos: 'heading' }).length === 1 && logos({ logoPos: 'heading' })[0].y0 < 200
+     && logos({ logoPos: 'footer' }).length === 1 && logos({ logoPos: 'footer' })[0].y0 > 1000 && logos({ logoPos: 'none' }).length === 0);
+  ok('footer: the handle, the league\'s name when there is none, off, or the person\'s own words', words(drawLog(posts.table, 'portrait')).includes('@EUROLEAGUE')
+     && !words(drawLog(posts.table, 'portrait', { handle: false })).some(t => /EUROLEAGUE/.test(t) && t !== 'EUROLEAGUE') && words(drawLog(posts.table, 'portrait', { handle: false })).filter(t => /EUROLEAGUE/.test(t)).length === 1
+     && words(drawLog(posts.table, 'portrait', { footerText: '@paris.hoops · paris.example' })).includes('@PARIS.HOOPS · PARIS.EXAMPLE')
+     && words(drawLog(posts.table, 'portrait', { handle: false, footerText: 'Hello' })).includes('HELLO'));
+  const sp = drawLog(posts.result, 'portrait', { sponsor: 'Presented by Acme Sports' });
+  const spT = sp.find(e => e.kind === 'text' && e.t === 'PRESENTED BY ACME SPORTS'), ven = sp.find(e => e.kind === 'text' && e.t === 'ADIDAS ARENA'), foot = sp.find(e => e.kind === 'text' && e.t === 'EPINOIΛ');
+  ok('a partner\'s line sits above the footer, on the venue\'s line and clear of it (right of it); alone, from the left edge', spT && ven && foot && spT.y1 <= foot.y0 + 1 && ven.x1 <= spT.x0 && Math.abs(ven.y0 - spT.y0) < 1
+     && drawLog(posts.table, 'portrait', { sponsor: 'Acme' }).find(e => e.t === 'ACME').x0 === 64, [spT && spT.y1, ven && ven.x1, spT && spT.x0].join());
+  /* no real shape is short of room for a final with a headline and a subline; a squat one made for the test is */
+  SC.SIZES.squat = { w: 1080, h: 940, top: 64, bottom: 64, label: 'squat' };
+  const sq = mods => SC.draw(recorder(), posts.result, { size: 'squat', modules: mods }).dropped.join();
+  ok('too much for a shape: the least important go first (subline, headline, leaders, quarters), never running over the footer; a default final is never cut',
+     sq({}) === '' && sq({ subline: 'B' }) === 'the subline' && sq({ headline: 'A' }) === 'the headline' && sq({ headline: 'A', subline: 'B' }) === 'the headline');
+  delete SC.SIZES.squat;
+  ok('...and every real shape holds a final with a headline and a subline', Object.keys(SC.SIZES).every(z => SC.draw(recorder(), posts.result, { size: z, modules: { headline: 'A', subline: 'B' } }).dropped.length === 0));
+  ok('caption: a table cut to four rows lists four, and a star can be the player of the week', SC.caption(posts.table, { rows: 4 }).split('\n').filter(l => /^\d+\. /.test(l)).length === 4
+     && /^Player of the week: /.test(SC.caption(SC.performer({ game, home: paris, away: virtus, players, league, label: 'Player of the week' }))));
+  ok('a star can be any player of the game, not only the best', SC.performer({ game, home: paris, away: virtus, players, league, pick: players[0] }).player.name === 'Nadir Hifi'
+     && SC.performer({ game, home: paris, away: virtus, players, league, pick: { stats: {} } }).player.name === 'Tornike Shengelia');
+  ok('modules from a saved setting are cleaned: unknown keys, wrong types and hostile text are dropped or capped', (() => {
+    const c = SC.cleanModules({ headline: 'x'.repeat(500), rows: '5', cols: ['w', 'bogus'], statKeys: ['pts', 'nope', 'reb', 'ast'], theme: 'neon', crests: 'no', evil: 1, accent: 'red', logoPos: 'sideways', sponsor: '  a\n b ' });
+    return c.headline.length === 60 && c.rows === 5 && c.cols.join() === 'w' && c.statKeys.join() === 'pts,reb,ast' && !c.theme && !c.crests && !c.evil && !c.accent && !c.logoPos && c.sponsor === 'a b';
+  })());
+
+  /* NOTHING MAY OVERFLOW OR OVERLAP: the worst case of every module, on every shape and colourway, long names, eight rows, no crests */
+  const LONG = 'Associação Desportiva Recreativa e Cultural Icasa Meridianbet Belgrade Basketball Club';
+  const big = Object.assign({}, league, { name: 'The Very Long Named National Basketball Championship League', handle: 'a_handle_that_is_really_quite_long_indeed_for_instagram', logo: img(300, 120, 'league') });
+  const lt = i => ({ name: LONG + ' ' + i, colour: '#ffffff', colour_2: '#000000' });
+  const LT = Array.from({ length: 8 }, (_, i) => lt(i));
+  const lstand = LT.map((t, i) => ({ rank: i + 1, team: t, gp: 30, w: 30 - i, l: i, league_points: 60 - i, diff: 300 - 50 * i, pts_for: 2900, pts_against: 2600, streak: 'W12' }));
+  const lgames = LT.map((t, i) => ({ tipoff_at: '2026-09-25T17:30:00Z', home: t, away: LT[7 - i], home_score: 120 + i, away_score: 118, venue: 'Palais Omnisports de Paris-Bercy Arena and Congress Centre' }));
+  const lplayers = [line(0, 'Aleksandar Konstantinopolskiy-Vandersloot', '99', { pts: 61, p2m: 20, p2a: 21, p3m: 6, p3a: 7, fta: 15, ftm: 15, or: 12, dr: 20, ast: 15, stl: 8, blk: 9, pm: -31, min: 2400000 }),
+    line(1, 'B', '1', { pts: 2 })];
+  const lres = Object.assign(SC.result({ game: { id: 'x', tipoff_at: '2026-09-25T17:30:00Z', venue: 'Palais Omnisports de Paris-Bercy Arena and Congress Centre', home_score: 121, away_score: 118 },
+    home: LT[0], away: LT[1], perQ: [{ 1: 30, 2: 30, 3: 30, 4: 20, 5: 11 }, { 1: 30, 2: 30, 3: 30, 4: 20, 5: 8 }], players: lplayers, league: big, comp: big.name }), {});
+  const everything = { headline: 'A headline that goes on and on and on past any sensible width for a graphic', subline: 'A subline that is just as long as the headline and keeps on going and going, and going, yes',
+    sponsor: 'Presented by the Very Long Named Partner of the Very Long Named League', footerText: 'A footer text that is far too long to fit beside the mark and logo at all', theme: 'contrast', accent: '#00e5ff',
+    rows: 8, cols: ['gp', 'w', 'l', 'pct', 'diff', 'pf', 'pa', 'streak', 'pts'], statKeys: ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'pm', 'min'] };
+  const sets = { result: lres, performer: SC.performer({ game: { id: 'x', tipoff_at: '2026-09-25T17:30:00Z', home_score: 121, away_score: 118 }, home: LT[0], away: LT[1], players: lplayers, league: big, comp: big.name }),
+    week: null, table: null, fixtures: null };
+  const bad = [];
+  for (const size of Object.keys(SC.SIZES)) {
+    const S = SC.SIZES[size];
+    const lists = { week: SC.week({ games: lgames, league: big, comp: big.name, range: '23–30 Sep 2026' }, size)[0], table: SC.table({ standings: lstand, league: big, comp: big.name }, size)[0],
+      fixtures: SC.fixtures({ games: lgames, league: big, comp: big.name, range: '23–30 Sep 2026' }, size)[0] };
+    for (const [kind, m] of Object.entries(Object.assign({}, sets, lists))) {
+      for (const [label, mods] of [['default', {}], ['everything', everything], ['no crests, no extras', { crests: false, quarters: false, leaders: false, venue: false, days: false, venues: false, logoPos: 'none', handle: false }],
+                                   ['light + sponsor', { theme: 'light', sponsor: 'Presented by Acme' }], ['3 stats', { statKeys: ['fgp', 'p3p', 'min'] }], ['4 rows', { rows: 4 }]]) {
+        for (const theme of ['dark', 'light']) {
+          const c = recorder();
+          let threw = null;
+          try { SC.draw(c, m, { size, modules: mods, theme }); } catch (e) { threw = e.message; }
+          const drawn = c.log.filter(e => !(e.kind === 'rect' && (e.x1 - e.x0 >= S.w || e.x0 === 0)));
+          const off = drawn.filter(e => e.x0 < -0.5 || e.x1 > S.w + 0.5 || e.y0 < -0.5 || e.y1 > S.h + 0.5);
+          const covered = size === 'story' ? drawn.filter(e => e.kind === 'text' && (e.y0 < S.top - 8 || e.y1 > S.h - S.bottom + 8)) : [];
+          /* text over text: two words whose boxes cross, other than a fringe's twin (same words, a hair apart) */
+          const t = c.log.filter(e => e.kind === 'text' && e.t.trim() && e.size < 300);   // not the shirt number's watermark behind the name
+          const over = [];
+          for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) {
+            const a = t[i], b2 = t[j];
+            if (a.t === b2.t && Math.abs(a.x0 - b2.x0) < 6) continue;
+            const w = Math.min(a.x1, b2.x1) - Math.max(a.x0, b2.x0), h = Math.min(a.y1, b2.y1) - Math.max(a.y0, b2.y0);
+            if (w > 3 && h > 0.5 * Math.min(a.size, b2.size)) over.push(a.t + ' x ' + b2.t);
+          }
+          if (threw || off.length || covered.length || over.length) bad.push(`${kind}/${size}/${label}/${theme}: ${threw || off.concat(covered).slice(0, 2).map(e => (e.t || e.kind) + '@' + Math.round(e.y0)).join('|') + (over.length ? ' overlap ' + over.slice(0, 2).join('|') : '')}`);
+        }
+      }
+    }
+  }
+  ok('worst case (long names, eight rows, every text module full, no crests, both colourways): everything on the page, out of the story\'s covered strips, no words over words - ' + 5 * 3 * 6 * 2 + ' drawings',
+     !bad.length, bad.slice(0, 6).join(' ;; '));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
