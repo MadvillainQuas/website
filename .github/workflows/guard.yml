@@ -565,6 +565,13 @@ jobs:
         # within their limits, and the per-league memory surviving garbage and a missing localStorage
         run: node supabase/tests/graphics-tab.test.mjs
 
+      - name: The Graphics tab's stat catalogue, the month's stars and the leaders - the site's own columns, ranked and drawn
+        # epinoia/admin/statcat.js reads fulltable.js's PLAYER_COLS / TEAM_COLS (identity, HIDDEN_COLS and the access.js locks
+        # left out, an administrator offered the locked ones unless the lock flag is on), season.js works the numbers for a game,
+        # a week, a month or a season; ranking with ties, thresholds and lower-is-better; the calendar month in Sydney / Honolulu /
+        # UTC; the month's stars and the leaders boards; every shape at 1-6 boards, long names, both colourways
+        run: node supabase/tests/stat-catalogue.test.mjs
+
       - name: The front office - a projected depth chart and the GM's view, read against the club's own league
         # epinoia/t/depth.js: projected minutes (last five 60 / 40), positions from the box score by minutes, the listing and
         # height, starters small to big and the bench beside the starter it plays like, the missing and released out; the

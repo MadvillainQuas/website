@@ -187,6 +187,14 @@ const need = (tpl, mods) => UI.needsExtras({ tpl, mods });
 ok('ELO, form and home / away are read from the games only when a table asks for a column of them (or a row for ELO)', need('table', { cols: ['w', 'elo'] }) && need('table', { cols: ['l5'] }) && need('table', { cols: ['home'] }) && !need('table', { cols: ['w', 'pf'] }) && !need('table', { cols: null })
    && need('week', { weekExtras: ['elo'] }) && !need('week', { weekExtras: ['venue'] }) && need('fixtures', { fixExtras: ['record', 'elo'] }) && !need('fixtures', { fixExtras: ['record'] }) && !need('result', { cols: ['elo'], weekExtras: ['elo'] }) && !need('star', { cols: ['elo'] }));
 
+ok('the site\'s own columns a graphic asks for, and when the season\'s lines are needed: a star\'s c: stat lines, a table\'s c: columns, a final\'s c: team stats, the leaders (the site\'s five unless chosen), the month\'s stars always', (() => {
+  const b = (tpl, mods) => ({ tpl, mods });
+  return UI.needKeys(b('star', { statKeys: ['pts', 'c:ts', 'c:usg'] })).join() === 'c:ts,c:usg' && UI.needKeys(b('table', { cols: ['w', 'c:ortg'] })).join() === 'c:ortg' && UI.needKeys(b('result', { teamStats: ['c:ff_efg'], leaderKeys: ['c:ppg'] })).join() === 'c:ff_efg,c:ppg'
+    && UI.needKeys(b('leaders', {})).join() === UI.LEAD_CAT_DEFAULT.join() && UI.needKeys(b('monthstars', {})).join() === UI.MONTH_DEFAULT.join() && UI.needKeys(b('star', { statKeys: ['pts'] })).length === 0
+    && UI.needsLines(b('leaders', {})) && UI.needsLines(b('monthstars', {})) && !UI.needsLines(b('star', { statKeys: ['pts', 'reb', 'ast'] })) && UI.needsLines(b('star', { statKeys: ['c:ts'] })) && UI.CATOPTS.premium === true;
+})());
+ok('the two new templates are in the builder, each with its own controls', UI.TEMPLATES.some(t => t.id === 'monthstars') && UI.TEMPLATES.some(t => t.id === 'leaders') && UI.HAS.leaders.includes('leadcats') && UI.HAS.monthstars.includes('monthpick') && UI.HAS.monthstars.includes('mingames'));
+
 console.log('\nELO and form, read from the games');
 {
   const ex = await GX.readExtras(sb, comps);

@@ -39,7 +39,8 @@ const SC = () => root.EpinoiaSocialCard;
 /* the builder's templates, in the order offered */
 const TEMPLATES = [
   { id: 'result', label: 'Final score' }, { id: 'star', label: 'Star of the game' }, { id: 'table', label: 'The table' },
-  { id: 'fixtures', label: 'Week ahead' }, { id: 'week', label: 'Results roundup' }, { id: 'weekstars', label: 'Stars of the week' }
+  { id: 'fixtures', label: 'Week ahead' }, { id: 'week', label: 'Results roundup' }, { id: 'weekstars', label: 'Stars of the week' },
+  { id: 'monthstars', label: 'Stars of the month' }, { id: 'leaders', label: 'Stats leaders' }
 ];
 /* which modules each template has (the form shows only these) */
 const HAS = {
@@ -48,8 +49,17 @@ const HAS = {
   table: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'cols'],
   fixtures: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'venues', 'fixextras'],
   week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days', 'weekextras'],
-  weekstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'starsby', 'layout']
+  weekstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'starsby', 'layout'],
+  monthstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'monthpick', 'monthby', 'mingames', 'layout'],
+  leaders: ['headline', 'subline', 'crests', 'rows', 'leadscope', 'leadsubject', 'leadcats', 'mingames']
 };
+/* the site's own columns (statcat.js) are offered wherever a stat is picked; the console's administrator may have the locked ones */
+const CATOPTS = { premium: true, locked: false };
+const LEAD_CAT_DEFAULT = ['c:ppg', 'c:rpg', 'c:apg', 'c:spg', 'c:bpg'], MONTH_DEFAULT = ['c:ppg', 'c:rpg', 'c:apg'];
+const MAX_LEAD_CATS = 6, TEAM_LEAD_DEFAULT = ['c:ppg', 'c:papg', 'c:diffpg'];
+const MIN_GAMES = [['', 'Automatic (two fifths of the most played)'], ['1', '1 game'], ['2', '2 games'], ['3', '3 games'], ['5', '5 games'], ['8', '8 games'], ['10', '10 games']];
+const LEAD_SCOPES = [['season', 'The season'], ['month', 'The month'], ['week', 'The week']];
+const MONTH_BY = [['gs', 'Average game score (efficiency)'], ['pts', 'Points a game'], ['stat', 'Any stat of the site\'s'], ['pick', 'My pick']];
 /* the stats each template can show, in the order they are laid out (the first three of a star are its big numbers) */
 const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'gmsc', 'pm', 'min'];
 const STAT_DEFAULT = ['pts', 'reb', 'ast', 'fg', 'p3', 'ft', 'pm', 'min'];
@@ -73,10 +83,10 @@ const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8, MAX_TEAM = 6, MAX_LEAD = 4;
 
 /* the builder's starting point: every module at today's default */
 function defaultBuilder() {
-  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'gs', picks: [],
+  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'gs', picks: [], monthOff: 0,
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
             cols: null, statKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
-            layout: '', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
+            layout: '', leadCats: null, leadScope: 'season', leadSubject: 'players', minGames: '', rankStat: 'c:ppg', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
 }
 /* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
    draws exactly what the weekly content does */
@@ -86,10 +96,19 @@ function modulesOf(b) {
   const tpl = b && b.tpl;
   /* each template's own choices: a star's stat lines, a table's columns, a final's team stats and leaders, the extras of
      a results row and of a fixture's row are kept apart, so changing template never carries one's choices to another */
-  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: tpl === 'star' || tpl === 'weekstars' ? m.statKeys || null : null, layout: tpl === 'weekstars' ? m.layout : '',
+  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: tpl === 'star' || tpl === 'weekstars' || tpl === 'monthstars' ? m.statKeys || null : null, layout: tpl === 'weekstars' || tpl === 'monthstars' ? m.layout : '',
     teamStats: tpl === 'result' ? m.teamStats : null, leaderKeys: tpl === 'result' ? m.leaderKeys : null, leaderN: tpl === 'result' ? m.leaderN : 0,
     rowExtras: tpl === 'week' ? m.weekExtras : tpl === 'fixtures' ? m.fixExtras : null }));
 }
+/* the site's columns ("c:...") a builder graphic asks for, and whether it needs the season's lines read to work them out */
+const catOf = list => (Array.isArray(list) ? list : []).filter(k => /^c:/.test(k));
+function needKeys(b) {
+  const m = (b && b.mods) || {};
+  const ks = b.tpl === 'star' || b.tpl === 'weekstars' ? catOf(m.statKeys) : b.tpl === 'monthstars' ? catOf(m.statKeys).concat(m.statKeys ? [] : MONTH_DEFAULT) : b.tpl === 'table' ? catOf(m.cols)
+    : b.tpl === 'result' ? catOf(m.teamStats).concat(catOf(m.leaderKeys)) : b.tpl === 'leaders' ? catOf(m.leadCats || LEAD_CAT_DEFAULT) : [];
+  return [...new Set(ks)];
+}
+const needsLines = b => b.tpl === 'monthstars' || b.tpl === 'leaders' || needKeys(b).length > 0;
 /* does this graphic need what the games say beyond the table (ELO, form, home and away)? Then the tab reads it first. */
 function needsExtras(b) {
   const m = (b && b.mods) || {};
@@ -186,7 +205,7 @@ function mount(o) {
    season on screen when its tab is first opened */
 function refresh() {
   if (!current || !current.started) return;
-  current.extras = null;                                  // another season: its games, its ratings
+  current.extras = null; current.lines = null;             // another season: its games, its ratings, its lines
   load(current);
 }
 
@@ -322,8 +341,35 @@ function draw(panel, keepFocus) {
 }
 
 /* ------------------------------------------------------- weekly content --- */
+/* The season's lines (every finished game's full stats, the newest 800 games), read once when something needs them: the site's own
+   numbers for a star, the month's stars, the leaders. */
+function ensureLines(panel) {
+  if (panel.lines) return Promise.resolve(panel.lines);
+  if (!panel.linesP) panel.linesP = GX().readLines(panel.o.sb, panel.data.comps).then(l => { panel.lines = l; return l; }, e => { panel.linesP = null; throw e; });
+  return panel.linesP;
+}
+/* the month and the season's leaders as cards of Weekly content (Stars, Leaders), once the lines are here */
+function extraItems(panel) {
+  if (!panel.lines) return [];
+  const SCd = SC(), d = viewOf(panel);
+  d.lines = panel.lines;
+  const zone = clockOf(panel).zone || SCd.leagueZone(d.league);
+  const bounds = GX().monthBounds(new Date(), 0, zone);
+  const out = [];
+  const ms = GX().builderModel(d, { tpl: 'monthstars', lines: panel.lines, bounds, by: 'gs', opts: CATOPTS }, panel.size, crestOf);
+  if (ms.model && ms.games >= 3) out.push({ group: 'week', type: 'stars', title: 'Stars of the month · ' + bounds.label, model: ms.model });
+  const season = typeof panel.o.season === 'function' ? panel.o.season() : null;
+  const ld = GX().builderModel(d, { tpl: 'leaders', lines: panel.lines, scope: 'season', seasonName: season ? season.name : 'Season', opts: CATOPTS }, panel.size, crestOf);
+  if (ld.model) out.push({ group: 'week', type: 'leaders', title: 'Season leaders', model: ld.model });
+  return out;
+}
+
 function drawWeekly(panel, pane) {
-  const all = GX().items(viewOf(panel), panel.size, crestOf);
+  const all = GX().items(viewOf(panel), panel.size, crestOf).concat(extraItems(panel));
+  if (!panel.lines && !panel.linesFailed && panel.data.comps.length) {
+    pane.appendChild(el('p', 'empty gx-note', 'Reading the season for the month\'s stars and the leaders…'));
+    ensureLines(panel).then(() => { if (current === panel && panel.sub === 'weekly') draw(panel); }, e => { panel.linesFailed = true; if (current === panel && panel.sub === 'weekly') draw(panel); });
+  } else if (panel.linesFailed) pane.appendChild(el('p', 'empty gx-note', 'The month\'s stars and the leaders could not be read.'));
   const cnt = GX().counts(all);
   if (!cnt.some(c => c.id === panel.type)) panel.type = 'all';
   const list = GX().filterBy(all, panel.type);
@@ -455,6 +501,7 @@ async function downloadAll(panel, list, btn) {
 function drawBuilder(panel, pane) {
   const SCd = SC();
   const b = panel.builder, d = viewOf(panel), M = b.mods;
+  if (panel.lines) d.lines = panel.lines;
   if (b.compId && !d.comps.some(c => c.id === b.compId)) b.compId = '';
   const persist = () => saveBuilder(panel.leagueId, b);
   const mods = () => Object.assign({}, modulesOf(b), clockOf(panel));      // the options and the clock chosen above
@@ -465,7 +512,13 @@ function drawBuilder(panel, pane) {
   pane.appendChild(wrap);
 
   let res = null, seq = 0, timer = null;
-  const compute = () => { res = GX().builderModel(d, b, panel.size, crestOf); return res; };
+  const bounds = () => GX().monthBounds(new Date(), b.monthOff || 0, clockOf(panel).zone || SCd.leagueZone(d.league));
+  const season = typeof panel.o.season === 'function' ? panel.o.season() : null;
+  /* the subject and the site's own columns the graphic asks for (the lines are read when something needs them) */
+  const selOf = () => Object.assign({}, b, { lines: d.lines, need: needKeys(b), opts: CATOPTS, bounds: bounds(), by: b.tpl === 'monthstars' ? ({ gs: 'gs', pts: 'pts', stat: 'stat', pick: 'pick' }[b.by] || 'gs') : b.by,
+    stat: M.rankStat, minGames: +M.minGames || 0, keys: b.tpl === 'leaders' ? (M.leadCats || (M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT)) : (catOf(M.statKeys).length ? catOf(M.statKeys) : MONTH_DEFAULT), scope: M.leadScope, subject: M.leadSubject,
+    rows: +M.rows || 0, seasonName: season ? season.name : 'Season' });
+  const compute = () => { res = GX().builderModel(d, selOf(), panel.size, crestOf); return res; };
   compute();
 
   const setRes = () => { compute(); paint(); };
@@ -567,7 +620,7 @@ function drawBuilder(panel, pane) {
     return put(fs3, has, box);
   };
   /* THE STAR'S STAT LINES: 3 to 8 of the player's whole line, the first three the big numbers */
-  checks('stats', 'Stat lines (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the big numbers)', STAT_ORDER, k => SCd.STAT_DEFS[k][1],
+  if (b.tpl !== 'monthstars') checks('stats', 'Stat lines (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the big numbers)', STAT_ORDER, k => SCd.STAT_DEFS[k][1],
     () => M.statKeys || (b.tpl === 'weekstars' ? LEAD_DEFAULT : STAT_DEFAULT), v => { M.statKeys = v; }, MIN_STATS, MAX_STATS);
   /* THE TABLE'S COLUMNS: what the standings hold, some worked out from them, and ELO, form and home / away read from the games */
   checks('cols', 'Table columns (1–' + MAX_COLS + ')', COL_ORDER, k => SCd.COL_DEFS[k], () => M.cols || COL_DEFAULT, v => { M.cols = v; }, 1, MAX_COLS, COL_HINT);
@@ -578,6 +631,73 @@ function drawBuilder(panel, pane) {
   /* WHAT A ROW SAYS BESIDES ITS CLUBS AND SCORE */
   checks('weekextras', 'Also on each result', WEEK_EXTRAS.map(x => x[0]), k => WEEK_EXTRAS.find(x => x[0] === k)[1], () => M.weekExtras, v => { M.weekExtras = v; }, 0, WEEK_EXTRAS.length);
   checks('fixextras', 'Also on each fixture', FIX_EXTRAS.map(x => x[0]), k => FIX_EXTRAS.find(x => x[0] === k)[1], () => M.fixExtras, v => { M.fixExtras = v; }, 0, FIX_EXTRAS.length);
+  /* THE SITE'S OWN STATS beside each built-in picker: every column of the site's statistics tables (statcat.js), by group, with a
+     search box. A tick that would go past the graphic's limit is refused, so nothing can overflow. */
+  const X = root.EpinoiaStatCat;
+  const catBox = (has, title, kind, current, set, min, max, only) => {
+    if (!X || !X.catalogue) return null;
+    const box = el('details', 'gx-cat');
+    box.appendChild(el('summary', null, title));
+    let list = X.catalogue(kind, CATOPTS);
+    if (d.lines) { const r = X.rowsOf(d.lines, null); list = X.available(list, kind === 'team' ? r.teams : r.players); }
+    if (only) list = list.filter(only);
+    const q = el('input', 'ep-input'); q.type = 'search'; q.placeholder = 'search the site\'s stats (ts, rebound, usage…)'; q.setAttribute('aria-label', 'Search stats');
+    const body = el('div', 'gx-catbody');
+    const paintList = () => {
+      body.textContent = '';
+      X.grouped(X.search(list, q.value)).forEach(g => {
+        const gh = el('div', 'gx-cl', g.label); body.appendChild(gh);
+        const row = el('div', 'gx-checks');
+        g.cols.forEach(c => {
+          const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = current().includes(c.id);
+          const info = X.explain(c); l.title = (info ? info.title + ': ' + info.what + ' ' : c.title + '. ') + (X.isLow(c) ? '(Lower is better.)' : '');
+          i.addEventListener('change', () => {
+            const cur = current(), next = toggleKey(cur, c.id, cur.concat([c.id]), min, max);
+            i.checked = next.includes(c.id); set(next); persist(); schedule();
+          });
+          l.append(i, el('span', null, c.label)); row.appendChild(l);
+        });
+        body.appendChild(row);
+      });
+      if (!body.firstChild) body.appendChild(el('div', 'gx-cl', 'Nothing matches.'));
+    };
+    q.addEventListener('input', paintList); paintList();
+    box.append(q, body);
+    return put(fs3, has, box);
+  };
+  const withCat = (list, def) => (list || def);
+  catBox('stats', b.tpl === 'monthstars' ? 'Month stat lines (any of the site\'s; ' + MIN_STATS + '–' + MAX_STATS + ')' : 'More stat lines: the site\'s own (counts toward the ' + MAX_STATS + ')', 'player',
+    () => (b.tpl === 'monthstars' ? withCat(M.statKeys, MONTH_DEFAULT) : withCat(M.statKeys, b.tpl === 'weekstars' ? LEAD_DEFAULT : STAT_DEFAULT)), v => { M.statKeys = v; }, MIN_STATS, MAX_STATS);
+  catBox('cols', 'More table columns: the site\'s own club stats (counts toward the ' + MAX_COLS + ')', 'team', () => M.cols || COL_DEFAULT, v => { M.cols = v; }, 1, MAX_COLS);
+  catBox('teamstats', 'More team stats: the site\'s own club stats (counts toward the ' + MAX_TEAM + ')', 'team', () => M.teamStats, v => { M.teamStats = v; }, 0, MAX_TEAM);
+  catBox('leadstats', 'More leader stats: the site\'s own (counts toward the ' + MAX_LEAD + ')', 'player', () => M.leaderKeys || LEAD_DEFAULT, v => { M.leaderKeys = v; }, 1, MAX_LEAD);
+  /* THE MONTH: which one, how its stars are ranked, and how many games a player needs */
+  const months = Array.from({ length: 13 }, (_, i) => [String(-i), GX().monthBounds(new Date(), -i, clockOf(panel).zone || SCd.leagueZone(d.league)).label]);
+  put(fs3, 'monthpick', field('Month', select(months, String(b.monthOff || 0), v => { b.monthOff = +v; setRes(); })));
+  put(fs3, 'monthby', field('Rank the stars by', select(MONTH_BY, b.by === 'pts' || b.by === 'stat' || b.by === 'pick' ? b.by : 'gs', v => { b.by = v; persist(); drawBuilder2('gxMonthBy'); })));
+  fs3.querySelector('[data-has="monthby"] select').id = 'gxMonthBy';
+  if (b.tpl === 'monthstars' && b.by === 'stat' && X) {
+    const rs = el('select', 'ep-input'); rs.id = 'gxRankStat';
+    X.grouped(X.catalogue('player', CATOPTS)).forEach(g => { const og = el('optgroup'); og.label = g.label; g.cols.forEach(c => { const o = el('option', null, c.title.length > 34 ? c.label : c.title + (X.isLow(c) ? ' (lower is better)' : '')); o.value = c.id; og.appendChild(o); }); rs.appendChild(og); });
+    rs.value = M.rankStat; rs.addEventListener('change', () => { M.rankStat = rs.value; persist(); setRes(); });
+    put(fs3, 'monthby', field('The stat', rs));
+  }
+  if (b.tpl === 'monthstars' && b.by === 'pick') {
+    const pk = el('div', 'gx-checks'); pk.appendChild(el('span', 'gx-cl', 'Your five, in the order ticked'));
+    ((res && res.pool) || []).forEach(p => {
+      const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = b.picks.includes(p.key);
+      i.addEventListener('change', () => { if (i.checked && b.picks.length >= 5) { i.checked = false; return; } b.picks = i.checked ? b.picks.concat([p.key]) : b.picks.filter(k => k !== p.key); setRes(); });
+      l.append(i, el('span', null, p.name + ' · ' + p.team)); pk.appendChild(l);
+    });
+    put(fs3, 'monthby', pk);
+  }
+  put(fs3, 'mingames', field('Games needed to qualify', select(MIN_GAMES, M.minGames || '', v => { M.minGames = v; persist(); setRes(); })));
+  /* THE LEADERS: scope, players or clubs, and the categories (any of the site's columns, up to six) */
+  put(fs3, 'leadscope', field('Over', select(LEAD_SCOPES, M.leadScope, v => { M.leadScope = v; persist(); setRes(); })));
+  put(fs3, 'leadsubject', field('Leaders among', select([['players', 'Players'], ['teams', 'Clubs']], M.leadSubject, v => { M.leadSubject = v; M.leadCats = null; persist(); drawBuilder2('gxLeadSubj'); })));
+  fs3.querySelector('[data-has="leadsubject"] select').id = 'gxLeadSubj';
+  catBox('leadcats', 'Categories (1–' + MAX_LEAD_CATS + '; one is a top ten, several a panel)', M.leadSubject === 'teams' ? 'team' : 'player', () => M.leadCats || (M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT),
+    v => { M.leadCats = v; }, 1, MAX_LEAD_CATS);
   form.appendChild(fs3);
 
   /* --- 4. look --- */
@@ -615,6 +735,14 @@ function drawBuilder(panel, pane) {
   async function paint() {
     const mine = ++seq;
     show();
+    /* the season's lines, when the graphic needs the site's own numbers, the month or the leaders */
+    if (needsLines(b) && !d.lines) {
+      status.textContent = 'Reading the season\'s games for the site\'s own numbers…';
+      try { d.lines = await ensureLines(panel); } catch (e) { status.textContent = 'Could not read the season\'s games: ' + (e && e.message || e); return; }
+      if (mine !== seq) return;
+      compute();
+      if (b.tpl === 'monthstars' || b.tpl === 'leaders') { drawBuilder2(); return; }        // the pickers list only what these games have numbers for
+    }
     /* ELO, form and the home / away records are read from the games the first time a graphic asks for them */
     if (needsExtras(b) && !d.extras) {
       status.textContent = 'Reading ratings and form from the games…';
@@ -647,6 +775,6 @@ function drawBuilder(panel, pane) {
   paint();
 }
 
-return { mount, refresh, TZ_MODES, zoneFor, loadTz, saveTz, tzKey, deviceZone, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
+return { mount, refresh, needKeys, needsLines, CATOPTS, LEAD_CAT_DEFAULT, MONTH_DEFAULT, TZ_MODES, zoneFor, loadTz, saveTz, tzKey, deviceZone, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
          loadBuilder, saveBuilder, memKey };
 }));

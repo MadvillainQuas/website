@@ -245,6 +245,171 @@ function items(data, size, crestOf) {
   return out0;
 }
 
+/* ---------------------------------------------- the season's lines, and the site's own numbers --- */
+/* Every finished game of the competitions (the newest `cap`), with each player's and each side's full stats blob, so the
+   site's own engine (season.js, through statcat.js) can work out any column of the catalogue for one game, a week, a month or
+   the season. Read with the console's own session (a private league too), forty games to a request. Games first, oldest first;
+   `truncated` says the season had more than `cap` finished games and the oldest are not here. */
+async function readLines(sb, comps, o) {
+  const cap = (o && o.cap) || 800;
+  const out = { games: [], pgs: [], tgs: [], teams: new Map(), truncated: false, cap };
+  const ids = (comps || []).map(c => c.id);
+  if (!ids.length) { out.teamName = () => ''; return out; }
+  const g = await sb.from('games').select('id,competition_id,tipoff_at,status,home_score,away_score,home_team_id,away_team_id')
+    .in('competition_id', ids).in('status', ['final', 'finalising']).order('tipoff_at', { ascending: false }).range(0, cap);
+  if (g && g.error) throw g.error;
+  let games = (g && g.data) || [];
+  if (games.length > cap) { out.truncated = true; games = games.slice(0, cap); }
+  out.games = games.slice().reverse();
+  const tids = [...new Set(out.games.flatMap(x => [x.home_team_id, x.away_team_id]).filter(Boolean))];
+  for (let i = 0; i < tids.length; i += 200) {
+    const tm = await sb.from('teams').select('id,name,short_name,colour,colour_2,logo_path').in('id', tids.slice(i, i + 200));
+    ((tm && tm.data) || []).forEach(x => out.teams.set(x.id, x));
+  }
+  out.teamName = id => (out.teams.get(id) || {}).name || '';
+  const chunks = [];
+  for (let i = 0; i < out.games.length; i += 40) chunks.push(out.games.slice(i, i + 40).map(x => x.id));
+  for (let i = 0; i < chunks.length; i += 4) {
+    const parts = await Promise.all(chunks.slice(i, i + 4).map(c => Promise.all([
+      sb.from('player_game_stats').select('game_id,player_uuid,player_id,team_idx,stats').in('game_id', c),
+      sb.from('team_game_stats').select('game_id,team_idx,stats').in('game_id', c)])));
+    parts.forEach(([p, t]) => {
+      if (p && p.error) throw p.error;
+      ((p && p.data) || []).forEach(r => out.pgs.push(r));
+      ((t && t.data) || []).forEach(r => out.tgs.push(r));
+    });
+  }
+  return out;
+}
+
+/* THE MONTH, in a zone: the calendar month `offset` months back from now's (0 this month, at most twelve back), from its first
+   midnight to the next, both worked in `zone` (the league's own, or the clock the person chose) - so a game late on the 31st in UTC
+   is the 1st, and the next month's, in Sydney. { start, end, label, y, m } with start / end as instants. */
+const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function zoneOffsetMs(t, zone) {
+  const p = root.EpinoiaSocialCard.local(new Date(t).toISOString(), zone);
+  return Date.UTC(p.y, p.mo, p.d, +p.hh, +p.mm) - Math.floor(t / 60000) * 60000;
+}
+function zonedMidnight(y, m, d, zone) {
+  const guess = Date.UTC(y, m, d), t1 = guess - zoneOffsetMs(guess, zone);
+  return guess - zoneOffsetMs(t1, zone);
+}
+function monthBounds(now, offset, zone) {
+  const z = root.EpinoiaSocialCard.validZone(zone) || 'UTC';
+  const off = Math.max(-12, Math.min(0, Math.round(+offset || 0)));
+  const p = root.EpinoiaSocialCard.local((now || new Date()).toISOString(), z);
+  const idx = p.y * 12 + p.mo + off, y = Math.floor(idx / 12), m = ((idx % 12) + 12) % 12;
+  const ny = m === 11 ? y + 1 : y, nm = (m + 1) % 12;
+  return { start: new Date(zonedMidnight(y, m, 1, z)), end: new Date(zonedMidnight(ny, nm, 1, z)), label: MONTHS_LONG[m] + ' ' + y, y, m, zone: z, offset: off };
+}
+const stepMonth = (offset, dir) => Math.max(-12, Math.min(0, (Math.round(+offset || 0)) + dir));
+/* the ids of the finished games in [start, end) */
+function gameSet(lines, start, end) {
+  const a = start ? +start : -Infinity, b = end ? +end : Infinity;
+  return new Set(lines.games.filter(g => { const t = +new Date(g.tipoff_at); return t >= a && t < b; }).map(g => g.id));
+}
+
+/* what the catalogue keys of a model say, as `cat` for socialcard.js: { 'c:ppg': { l: 'PPG', low: false } } */
+function catLabels(byId, keys) {
+  const cat = {};
+  (keys || []).forEach(k => { const c = byId.get(k); if (c) cat[k] = { l: c.label, low: root.EpinoiaStatCat.isLow(c) }; });
+  return cat;
+}
+
+/* Put the site's own numbers on a model, for the catalogue keys asked (a star's stat lines, a table's columns, a final's team stats,
+   a leader's lines): each worked from the game's or the season's lines by season.js, printed as the site prints it. */
+function decorate(model, lines, keys, opts) {
+  const X = root.EpinoiaStatCat, ks = (keys || []).filter(k => /^c:/.test(k));
+  if (!model || !ks.length || !lines || !X) return model;
+  const pl = X.byId('player', opts), tm = X.byId('team', opts);
+  const cat = Object.assign({}, model.cat);
+  const fill = (obj, row, map) => ks.forEach(k => { const c = map.get(k); if (c && row) { obj[k] = X.text(c, row); cat[k] = { l: c.label, low: X.isLow(c) }; } });
+  if (model.kind === 'performer') fill(model.stats, X.gameRow(lines, model.gameId, model.player.name, model.idx), pl);
+  if (model.kind === 'weekstars') model.rows.forEach(r => { const m = /^(.*?):(\d):/.exec(r.key || ''); if (m && !r.sub) fill(r.stats, X.gameRow(lines, r.gameId, r.name, +m[2]), pl); });
+  if (model.kind === 'result' && model.teamStats && model.gameId) {
+    const g = lines.games.find(x => x.id === model.gameId), rows = X.rowsOf(lines, new Set([model.gameId])).teams;
+    if (g) [['home', g.home_team_id], ['away', g.away_team_id]].forEach(([side, id]) => {
+      const row = rows.find(t => t.id === id);
+      ks.forEach(k => { const c = tm.get(k); if (c && row) { model.teamStats[side][k] = { v: X.text(c, row), n: X.value(c, row) == null ? -1 : X.value(c, row) }; cat[k] = { l: c.label, low: X.isLow(c) }; } });
+    });
+  }
+  model.cat = cat;
+  return model;
+}
+/* the season's numbers on a table's standings rows (one row a club, worked over `only`, the games of the season shown) */
+function decorateStandings(standings, lines, keys, opts, only) {
+  const X = root.EpinoiaStatCat, ks = (keys || []).filter(k => /^c:/.test(k));
+  if (!ks.length || !lines) return { standings, cat: {} };
+  const tm = X.byId('team', opts), rows = X.rowsOf(lines, only || null).teams, cat = {};
+  const out = standings.map(s => { const row = rows.find(t => t.id === s.team_id), x = Object.assign({}, s);
+    ks.forEach(k => { const c = tm.get(k); if (c) { x[k] = row ? X.text(c, row) : '—'; cat[k] = { l: c.label, low: X.isLow(c) }; } }); return x; });
+  return { standings: out, cat };
+}
+
+/* The month's stars. Each player's month worked out by the site's engine over the month's games; ranked by average game score
+   (the default), by points a game, by one column of the catalogue (`stat`), or by the person's pick; `minGames` keeps out a
+   player who played too little to be a star (0 or 'auto': two fifths of the most anyone played, at least one). Each is shown with the
+   catalogue keys asked (per game unless another is chosen) and his best game under his name. Returns the model. */
+function monthStars(data, lines, sel, crestOf) {
+  const SC = root.EpinoiaSocialCard, X = root.EpinoiaStatCat, { L, team } = frame(data, crestOf);
+  const b = sel.bounds, only = gameSet(lines, b.start, b.end);
+  const empty = { model: null, reason: 'No game finished in ' + b.label + '.', games: only.size, pool: [] };
+  if (!only.size) return empty;
+  const pl = X.byId('player', sel.opts), rows = X.rowsOf(lines, only).players;
+  const gsOf = new Map(), best = new Map();
+  lines.pgs.forEach(r => {
+    if (!only.has(r.game_id)) return;
+    const id = r.player_uuid || r.player_id, s = r.stats || {};
+    if (!id || !(+s.min > 0)) return;
+    const gs = SC.gameScore({ pts: s.pts, p2m: s.p2m, p2a: s.p2a, p3m: s.p3m, p3a: s.p3a, fta: s.fta, ftm: s.ftm, or: s.or, dr: s.dr, stl: s.stl, ast: s.ast, blk: s.blk, pf: s.pf, to: s.to });
+    const a = gsOf.get(id) || { sum: 0, n: 0 }; a.sum += gs; a.n++; gsOf.set(id, a);
+    if (!best.has(id) || gs > best.get(id).gs) best.set(id, { gs, r, s });
+  });
+  const most = rows.reduce((a, r) => Math.max(a, r.gp || 0), 0);
+  const min = sel.minGames > 0 ? +sel.minGames : Math.max(1, Math.ceil(most * 0.4));
+  const keys = sel.keys && sel.keys.length ? sel.keys : ['c:ppg', 'c:rpg', 'c:apg'];
+  const by = sel.by || 'gs', rankCol = pl.get(sel.stat || 'c:ppg') || pl.get('c:ppg');
+  const eligible = rows.filter(r => (r.gp || 0) >= min);
+  const teamOf = r => team(r.teamId);
+  const entries = eligible.map(r => {
+    const bst = best.get(r.id), g = bst && lines.games.find(x => x.id === bst.r.game_id);
+    const oppId = g ? (bst.r.team_idx === 0 ? g.away_team_id : g.home_team_id) : null;
+    const out = {}; keys.forEach(k => { const c = pl.get(k); if (c) out[k] = X.text(c, r); });
+    const score = by === 'stat' ? X.value(rankCol, r) : by === 'pts' ? (r.ppg == null ? null : r.ppg) : (gsOf.get(r.id) ? gsOf.get(r.id).sum / gsOf.get(r.id).n : null);
+    return { key: r.id, name: r.name || '', stats: { adv: { name: r.name || '', num: r.jersey } }, out, score, low: by === 'stat' && X.isLow(rankCol),
+      team: teamOf(r), sub: 'GP ' + r.gp + (bst ? ' · best ' + bst.s.pts + ' pts v ' + ((data.teams.get(oppId) || lines.teams.get(oppId) || {}).name || '?') : '') };
+  }).filter(e => e.score != null);
+  const pool = entries.slice().sort((a, c) => c.score - a.score).slice(0, 30).map(e => ({ key: e.key, name: e.name, team: e.team.name, pts: '' }));
+  const use = by === 'pick' ? 'pick' : 'score';
+  const lowSort = by === 'stat' && X.isLow(rankCol);
+  const model = SC.weekstars({ entries, league: L, comp: sel.compLabel || '', range: b.label, by: use, picks: sel.picks, low: lowSort, period: 'month',
+    cat: catLabels(pl, keys) });
+  return { model: model.rows.length ? model : null, reason: by === 'pick' ? 'Pick up to five players from the month.' : 'No player played ' + min + ' games or more in ' + b.label + '.', games: only.size, pool, min };
+}
+
+/* THE LEADERS: the site's league leaders in the categories chosen (any column of the catalogue), players or clubs, over a week, a
+   month or the season (`only`: the game ids, or null for every game read). Each board is the top of the column with the site's own
+   formatting and direction (lowest first for a lower-is-better column), ties sharing a rank; players under `minGames` are out
+   (0 or 'auto': two fifths of the most anyone played). */
+function leadersModel(data, lines, sel, crestOf) {
+  const SC = root.EpinoiaSocialCard, X = root.EpinoiaStatCat, { L, team } = frame(data, crestOf);
+  const teams = sel.subject === 'teams', kind = teams ? 'team' : 'player';
+  const only = sel.only || null;
+  const rowsAll = X.rowsOf(lines, only), rows = teams ? rowsAll.teams : rowsAll.players;
+  const cats = X.byId(kind, sel.opts);
+  const keys = (sel.keys && sel.keys.length ? sel.keys : ['c:ppg', 'c:rpg', 'c:apg', 'c:spg', 'c:bpg']).filter(k => cats.has(k)).slice(0, 6);
+  const most = rows.reduce((a, r) => Math.max(a, r.gp || 0), 0);
+  const min = teams ? 0 : (sel.minGames > 0 ? +sel.minGames : Math.max(1, Math.ceil(most * 0.4)));
+  const per = sel.rows > 0 ? sel.rows : (keys.length === 1 ? 10 : 5);
+  const boards = keys.map(k => {
+    const c = cats.get(k), ranked = X.rank(rows, c, { minGames: min });
+    return { key: k, label: c.title && c.title.length <= 26 ? c.title : c.label, low: X.isLow(c),
+      rows: ranked.slice(0, Math.max(per, 10)).map(x => ({ rank: x.rank, tie: x.tie, name: x.row.name || '', team: teams ? team(x.row.id) : team(x.row.teamId), value: X.text(c, x.row) })) };
+  }).filter(b => b.rows.length);
+  return { model: boards.length ? SC.leaders({ boards, league: L, comp: sel.compLabel || '', range: sel.range || '', title: sel.title || 'Leaders', subject: teams ? 'teams' : 'players',
+    cat: catLabels(cats, keys) }) : null, reason: 'No games in this scope have these stats yet.', min, games: rowsAll.players.length };
+}
+
 /* ------------------------------------------------------------- the builder --- */
 /* ONE graphic on the builder's terms. sel: { tpl: result | star | table | fixtures | week, gameId, player (an index
    into `players`, or null for the player of the game), compId, page }. Returns { model, reason, ... }: `model` is
@@ -252,8 +417,34 @@ function items(data, size, crestOf) {
    when none is named) and `players` is that game's lines, best first; the lists are one competition's, cut into
    `pages` graphics for the shape. */
 function builderModel(data, sel, size, crestOf) {
-  const SC = root.EpinoiaSocialCard, { L, team } = frame(data, crestOf);
+  const r = builderModel0(data, sel, size, crestOf), s = sel || {}, lines = s.lines || data.lines || null;
+  /* the site's own numbers for the catalogue keys the modules ask for (a star's lines, a table's columns, a final's team stats) */
+  if (r.model && lines && s.need && s.need.length) {
+    decorate(r.model, lines, s.need, s.opts);
+    if (r.model.kind === 'table') {
+      const X = root.EpinoiaStatCat, tm = X.byId('team', s.opts), tr = X.rowsOf(lines, null).teams, cat = Object.assign({}, r.model.cat);
+      r.model.rows.forEach(row => { const t = tr.find(x => x.id === row.tid); s.need.forEach(k => { const c = tm.get(k); if (c) { row[k] = t ? X.text(c, t) : '—'; cat[k] = { l: c.label, low: X.isLow(c) }; } }); });
+      r.model.cat = cat;
+    }
+  }
+  return r;
+}
+function builderModel0(data, sel, size, crestOf) {
+  const SC = root.EpinoiaSocialCard;
   const s = sel || {}, tpl = s.tpl || 'result';
+  const lines = s.lines || data.lines || null;
+  if (lines && lines.teams) lines.teams.forEach((t, id) => { if (!data.teams.has(id)) data.teams.set(id, t); });
+  const { L, team } = frame(data, crestOf);
+  if (tpl === 'monthstars' || tpl === 'leaders') {
+    if (!lines) return { model: null, reason: 'Reading the season\'s games…', needsLines: true };
+    const compLabel = data.comps.length > 1 ? 'All competitions' : (data.comps[0] || {}).name || L.name;
+    if (tpl === 'monthstars') return monthStars(data, lines, Object.assign({}, s, { compLabel }), crestOf);
+    const scope = s.scope || 'season';
+    const only = scope === 'week' ? new Set(data.finals.map(g => g.id)) : scope === 'month' ? gameSet(lines, s.bounds && s.bounds.start, s.bounds && s.bounds.end) : null;
+    const range = scope === 'week' ? rangeLabel(data.since, data.now) : scope === 'month' ? (s.bounds && s.bounds.label) || '' : (s.seasonName || 'Season');
+    const title = scope === 'week' ? 'Leaders of the week' : scope === 'month' ? (s.bounds ? MONTHS_LONG[s.bounds.m] : 'Month') + ' leaders' : 'Season leaders';
+    return leadersModel(data, lines, Object.assign({}, s, { compLabel, only, range, title }), crestOf);
+  }
   if (tpl === 'weekstars') {
     const entries = starEntries(data, team);
     const comp = data.comps.length > 1 ? 'All competitions' : (data.comps[0] || {}).name || L.name;
@@ -299,9 +490,9 @@ function builderModel(data, sel, size, crestOf) {
 /* The kinds of post, as the Graphics tab sorts them. `stars` is the players of the game and the player of the week. */
 const TYPES = [
   { id: 'results', label: 'Game results' }, { id: 'stars', label: 'Stars' }, { id: 'table', label: 'Table' },
-  { id: 'ahead', label: 'Week ahead' }, { id: 'roundup', label: 'Results roundup' }
+  { id: 'ahead', label: 'Week ahead' }, { id: 'roundup', label: 'Results roundup' }, { id: 'leaders', label: 'Leaders' }
 ];
-const TYPE_OF = { result: 'results', performer: 'stars', weekstars: 'stars', table: 'table', fixtures: 'ahead', week: 'roundup' };
+const TYPE_OF = { result: 'results', performer: 'stars', weekstars: 'stars', leaders: 'leaders', table: 'table', fixtures: 'ahead', week: 'roundup' };
 /* [{ id, label, n }] for the chips: "all" first, then every type that has anything (a type with none is not offered) */
 function counts(list) {
   const rows = [{ id: 'all', label: 'All', n: list.length }];
@@ -323,5 +514,5 @@ function weekLabel(offset) {
 }
 const stepWeek = (offset, dir) => Math.max(-52, Math.min(0, (Math.round(+offset || 0)) + dir));
 
-return { read, readExtras, items, builderModel, frame, playerRow, handleOf, rangeLabel, PLAYER_COLS, TYPES, TYPE_OF, counts, filterBy, scope, weekLabel, stepWeek };
+return { read, readExtras, readLines, monthBounds, stepMonth, gameSet, decorate, decorateStandings, monthStars, leadersModel, catLabels, items, builderModel, frame, playerRow, handleOf, rangeLabel, PLAYER_COLS, TYPES, TYPE_OF, counts, filterBy, scope, weekLabel, stepWeek };
 }));

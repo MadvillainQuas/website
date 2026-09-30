@@ -77,3 +77,10 @@
 .gx-tz{flex:1 1 230px;max-width:340px}
 .gx-comp{flex:1 1 200px}
 .gx-ctx .ep-input{width:100%;max-width:none}
+
+/* the site's own stats picker: a folded list with a search box, grouped */
+.gx-cat{border:1px dashed var(--rule-2);border-radius:8px;padding:6px 10px;min-width:0}
+.gx-cat>summary{cursor:pointer;font-family:var(--f-micro);font-size:9.5px;color:var(--lume);line-height:1.8;padding:4px 0}
+.gx-cat .ep-input{width:100%;max-width:none;margin:6px 0}
+.gx-catbody{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px 2px 6px}
+.gx-catbody .gx-checks{gap:4px 12px}

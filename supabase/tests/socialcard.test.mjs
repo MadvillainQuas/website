@@ -367,7 +367,7 @@ console.log('\nthe modules (the builder\'s options)');
   const tm = SC.table({ standings: tstand, league }, 'portrait')[0];
   const th2 = mods => words(drawLog(tm, 'portrait', mods));
   ok('table columns worked from the standings: average margin, points scored and allowed a game, win rate', th2({ cols: ['avg', 'ppg', 'papg'] }).join(' ').includes('+5.0') && th2({ cols: ['avg', 'ppg', 'papg'] }).includes('90.0') && th2({ cols: ['avg', 'ppg', 'papg'] }).includes('85.0')
-     && th2({ cols: ['avg', 'ppg', 'papg'] }).includes('OPP') && th2({ cols: ['avg'] }).includes('-3.0') && th2({ cols: ['pct'] }).includes('.800'));
+     && th2({ cols: ['avg', 'ppg', 'papg'] }).includes('OPP') && th2({ cols: ['avg'] }).includes('\u22123.0') && th2({ cols: ['pct'] }).includes('.800'));
   ok('table columns read from the games: form, home and away records, and the ELO rating (rounded)', ['4-1', '3-2', '5-0', '1612', '1562', '1512'].every(v => th2({ cols: ['l5', 'home', 'away', 'elo'] }).includes(v)) && th2({ cols: ['l5', 'home', 'away', 'elo'] }).includes('ELO')
      && th2({ cols: ['elo'] }).includes('1612') && th2({ cols: ['streak'] }).includes('W3'));
   ok('...a club with no rating reads a dash, and six columns is the most', SC.table({ standings: [{ rank: 1, team: { name: 'X' }, gp: 1, w: 1, l: 0 }], league }, 'portrait')[0].rows[0].elo === null && words(drawLog(SC.table({ standings: [{ rank: 1, team: { name: 'X' }, gp: 1, w: 1, l: 0 }], league }, 'portrait')[0], 'portrait', { cols: ['elo'] })).includes('—')

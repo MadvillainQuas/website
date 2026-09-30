@@ -121,6 +121,13 @@ let MOD = {};
 let ZNOTE = null;                 // the zone to name on the graphic being drawn, or null (see zoneNote)
 const on = k => MOD[k] !== false;
 
+/* THE FACE OF SMALL NUMERALS: the page's own Archivo, semi-bold. Its figures are tabular (every digit the same width, so a column
+   lines up on its last digit when right-aligned) and lining, and it is a face made for reading small; the pixel faces are for
+   titles and the big numbers, not for a table's cells. fontsReady() (reportcard.js) loads it before anything is drawn. */
+const NUMF = "'Archivo', system-ui, sans-serif";
+/* a minus is a minus: U+2212 in front of a figure, not the hyphen that a formatter leaves there */
+const mn = t => String(t == null ? '' : t).replace(/(^|[\s(·])-(?=[\d.])/g, '$1\u2212');
+
 const U = () => root.EpinoiaReportCard && root.EpinoiaReportCard.util;
 const TH = () => root.EpinoiaReportCard && root.EpinoiaReportCard.THEMES;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -279,7 +286,7 @@ function performer(o) {
   const tz = leagueZone(o.league), t = local(g.tipoff_at, tz);
   const name = adv.name || best.name || '';
   return {
-    iso: g.tipoff_at || '', tz,
+    iso: g.tipoff_at || '', tz, idx: best.team_idx,
     kind: 'performer', key: (o.label ? slug(o.label) : 'player-of-the-game') + '-' + slug(name), label: o.label || '', league: o.league || {}, comp: o.comp || '', date: dateLabel(t),
     player: { name, num: adv.num != null ? String(adv.num) : '' },
     team: side(mine, my), opp: side(theirs, their), won: my > their,
@@ -359,14 +366,14 @@ function table(o, size) {
   (o.standings || []).slice().sort((a, b) => n0(a.rank) - n0(b.rank)).forEach(r => {
     const k = r.group_name || '';
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push({ rank: n0(r.rank), team: side(r.team, 0), gp: n0(r.gp), w: n0(r.w), l: n0(r.l),
+    groups.get(k).push(Object.assign(Object.keys(r).filter(catKey).reduce((a, c) => { a[c] = r[c]; return a; }, {}), { tid: r.team_id, rank: n0(r.rank), team: side(r.team, 0), gp: n0(r.gp), w: n0(r.w), l: n0(r.l),
                          pts: r.league_points != null ? n0(r.league_points) : null, diff: n0(r.diff), streak: r.streak || '',
                          pf: r.pts_for != null ? n0(r.pts_for) : null, pa: r.pts_against != null ? n0(r.pts_against) : null,
                          pct: n0(r.w) + n0(r.l) > 0 ? n0(r.w) / (n0(r.w) + n0(r.l)) : null,
                          ppg: r.pts_for != null && n0(r.gp) > 0 ? n0(r.pts_for) / n0(r.gp) : null,
                          papg: r.pts_against != null && n0(r.gp) > 0 ? n0(r.pts_against) / n0(r.gp) : null,
                          avg: n0(r.gp) > 0 ? n0(r.diff) / n0(r.gp) : null,
-                         l5: r.l5 || '', home: r.home || '', away: r.away || '', elo: r.elo != null && !isNaN(r.elo) ? Math.round(r.elo) : null });
+                         l5: r.l5 || '', home: r.home || '', away: r.away || '', elo: r.elo != null && !isNaN(r.elo) ? Math.round(r.elo) : null }));
   });
   const out = [];
   groups.forEach((rows, group) => {
@@ -423,7 +430,9 @@ function rowsOf(m, mods) {
   return Object.assign({}, m, { rows: m.rows.slice(0, mods.rows) });
 }
 
-const MOD_CAPTION_KEYS = mods => (mods && mods.statKeys ? mods.statKeys.slice(0, 4) : ['pts', 'reb', 'ast']);
+/* the stat lines a stars graphic shows unless told: points, rebounds, assists - or, for a month's, the per-game keys it came with */
+const starKeys = (m, mods) => (mods && mods.statKeys ? mods.statKeys : (m.rows && m.rows[0] && Object.keys(m.rows[0].stats).some(catKey) ? Object.keys(m.rows[0].stats).filter(catKey) : ['pts', 'reb', 'ast']));
+const MOD_CAPTION_KEYS = (mods, m) => starKeys(m || {}, mods).slice(0, 4);
 /* THE LEADERS BOARD: `boards` = [{ key, label, low, rows: [{ rank, tie, name, team (a club row), value (the text) }] }] - the site's
    league leaders in the categories chosen, players or clubs. `title` is what the caption and the graphic call it ("Season leaders"). */
 function leaders(o) {
@@ -468,7 +477,7 @@ function caption(m0, mods0) {
       '', tags(L)].join('\n');
   }
   if (m.kind === 'weekstars') {
-    const keys = MOD_CAPTION_KEYS(mods);
+    const keys = MOD_CAPTION_KEYS(mods, m);
     const said = r => keys.map(k => r.stats[k] + ' ' + sl(k).toLowerCase()).join(', ');
     return ['Stars of the ' + (m.period === 'month' ? 'month' : 'week') + (m.comp ? ' in the ' + m.comp : '') + (m.range && m.period === 'month' ? ' (' + m.range + ')' : '') + ':', '',
       m.rows.map(r => r.rank + '. ' + r.name + ' (' + r.team.name + '): ' + said(r) + (r.sub ? ' - ' + r.sub : ' vs ' + r.opp.name + ' (' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ')')).join('\n'),
@@ -693,13 +702,13 @@ function drawResult(ctx, m, th, S, M, accent) {
         ctx.fillStyle = th.ink;
         ctx.fillText(u.ellipsis(ctx, t.short && t.short.length <= 4 ? t.short.toUpperCase() : t.name, 170), M + 22, y + ty);
         ctx.textAlign = 'center';
-        u.font(ctx, 28, u.F.data, 500);
+        u.font(ctx, 28, NUMF, 600);
         m.periods.forEach((p, i) => {
           const mine = p[k], theirs = p[k === 'home' ? 'away' : 'home'];
           ctx.fillStyle = mine > theirs ? th.ink : th.ink3;
           ctx.fillText(String(mine), x0 + cw * (i + 0.5), y + ty);
         });
-        u.font(ctx, 30, u.F.data, 700);
+        u.font(ctx, 30, NUMF, 600);
         ctx.fillStyle = t.score >= (k === 'home' ? m.away.score : m.home.score) ? accent : th.ink2;
         ctx.fillText(String(t.score), x0 + cw * (cols - 0.5), y + ty);
       });
@@ -707,7 +716,7 @@ function drawResult(ctx, m, th, S, M, accent) {
     } });
   }
   const lk = MOD.leaderKeys, ln = MOD.leaderN || 1;
-  const said = (st, keys) => keys.map(k => st[k] + ' ' + sl(k)).join(' · ');
+  const said = (st, keys) => keys.map(k => mn(st[k]) + ' ' + sl(k)).join(' · ');
   if (hasTop && ln > 1 && m.scorers) {
     /* the top scorers, two or three a side, each with the stat lines chosen (points, rebounds, assists unless said) */
     blocks.push({ h: 40 + ln * 44, drop: 2, name: 'each side\'s top scorers', draw: y => {
@@ -720,7 +729,7 @@ function drawResult(ctx, m, th, S, M, accent) {
         ctx.fillText('TOP SCORERS', x + 20, y + 26);
         (list || []).slice(0, ln).forEach((p, i) => {
           const by = y + 40 + i * 44 + 30;
-          u.font(ctx, 20, u.F.data, 500);
+          u.font(ctx, 20, NUMF, 600);
           const line = u.ellipsis(ctx, said(p.stats, keys), Math.min(colW - 24 - 130, (colW - 24) * 0.62));
           const lw = ctx.measureText(line).width;
           ctx.fillStyle = th.ink2;
@@ -746,7 +755,7 @@ function drawResult(ctx, m, th, S, M, accent) {
         u.font(ctx, 30, u.F.ui, 700);
         ctx.fillStyle = th.ink;
         ctx.fillText(u.ellipsis(ctx, t.name, colW - 24), x + 20, y + 62);
-        u.font(ctx, 22, u.F.data, 500);
+        u.font(ctx, 22, NUMF, 600);
         ctx.fillStyle = th.ink2;
         ctx.fillText(u.ellipsis(ctx, lk && t.stats ? said(t.stats, lk) : t.line, colW - 24), x + 20, y + 94);
       });
@@ -777,7 +786,7 @@ function drawResult(ctx, m, th, S, M, accent) {
         ctx.textAlign = 'center';
         ctx.fillText(tl(k), W / 2, by - 6);
         [[a, M + 28, 'left', hb > 0], [b, W - M - 28, 'right', hb < 0]].forEach(([v, x, al, best]) => {
-          u.fit(ctx, v.v, 190, 30, 20, u.F.data, 600);
+          u.fit(ctx, v.v, 190, 30, 20, NUMF, 600);
           ctx.textAlign = al;
           ctx.fillStyle = best ? accent : th.ink;
           ctx.fillText(v.v, x, by);
@@ -810,7 +819,7 @@ function drawPerformer(ctx, m, th, S, M, accent) {
   /* the stat lines: the three big numbers and the strip beneath are the default; `statKeys` picks its own, the
      first three big and the rest (up to five) in the strip */
   const keys = MOD.statKeys;
-  const val = k => (k === 'pm' ? (s.pm > 0 ? '+' : '') + s.pm : String(s[k] == null ? '—' : s[k]));
+  const val = k => mn(k === 'pm' ? (s.pm > 0 ? '+' : '') + s.pm : String(s[k] == null ? '—' : s[k]));
   const big = keys ? keys.slice(0, 3).map(k => [val(k), sl(k, true)]) : [[String(s.pts), 'POINTS'], [String(s.reb), 'REBOUNDS'], [String(s.ast), 'ASSISTS']];
   const cells = keys ? keys.slice(3).map(k => [sl(k), val(k)])
     : [['FG', s.fg], ['3PT', s.p3], ['FT', s.ft], ['+/-', (s.pm > 0 ? '+' : '') + s.pm], ['MIN', String(s.min)]];
@@ -860,7 +869,7 @@ function drawPerformer(ctx, m, th, S, M, accent) {
       cells.forEach(([l, v], i) => {
         const cx = M + cw * (i + 0.5);
         ctx.textAlign = 'center';
-        if (keys) u.fit(ctx, v, cw - 16, 34, 20, u.F.data, 600); else u.font(ctx, 34, u.F.data, 600);
+        if (keys) u.fit(ctx, v, cw - 16, 34, 20, NUMF, 600); else u.font(ctx, 34, NUMF, 600);
         ctx.fillStyle = th.ink;
         ctx.fillText(v, cx, y + 50);
         u.font(ctx, 17, u.F.micro);
@@ -948,7 +957,7 @@ function drawWeek(ctx, m, th, S, M) {
       nm(r.home, M + inset, hw, 'left');
       nm(r.away, W - M - inset, aw, 'right');
       ctx.textAlign = 'right';
-      u.font(ctx, 46, u.F.score);
+      u.font(ctx, 44, NUMF, 700);
       ctx.fillStyle = hw ? th.ink : th.ink3;
       ctx.fillText(String(r.home.score), mid - 14, cy + 16);
       ctx.textAlign = 'left';
@@ -992,14 +1001,14 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
   ctx.textAlign = 'left';
   crest(ctx, th, r.team, cx + rad * 0.72, cy + rad * 0.72, Math.max(14, rad * 0.36));
 }
-function starLine(r, keys) { return keys.map(k => r.stats[k] + ' ' + sl(k)).join(' · '); }
+function starLine(r, keys) { return keys.map(k => mn(r.stats[k]) + ' ' + sl(k)).join(' · '); }
 
 function drawWeekStars(ctx, m, th, S, M, accent) {
   const u = U(), W = S.w;
   const rows = m.rows, n = rows.length;
   const layout = MOD.layout || 'list';
-  const keys = MOD.statKeys ? MOD.statKeys.slice(0, 4) : ['pts', 'reb', 'ast'];
-  const big = (MOD.statKeys ? MOD.statKeys : ['pts', 'reb', 'ast']).slice(0, 3);
+  const keys = starKeys(m, MOD).slice(0, 4);
+  const big = starKeys(m, MOD).slice(0, 3);
   const monthly = m.period === 'month';
   const title = titleBlock(ctx, th, S, M, monthly ? 'Stars of the month' : 'Stars of the week', [m.comp, m.range].filter(Boolean).join(' · '));
   if (!n) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No player lines this week.', M, y + 40); } }];
@@ -1042,7 +1051,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
     const rad = Math.min(38, (h - 6) * 0.36), cx = M + 100 + rad, cy = y + (h - 6) / 2;
     starDisc(ctx, th, r, cx, cy, rad, accent);
     const tx = cx + rad + 24, right = W - M - 22;
-    u.font(ctx, Math.min(22, h * 0.2), u.F.data, 600);
+    u.font(ctx, Math.min(22, h * 0.2), NUMF, 600);
     const line = u.ellipsis(ctx, starLine(r, keys), (right - tx) * 0.55);
     const lw = ctx.measureText(line).width;
     ctx.fillStyle = accent; ctx.textAlign = 'right'; ctx.fillText(line, right, cy + 8); ctx.textAlign = 'left';
@@ -1070,7 +1079,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
         ctx.fillText(u.ellipsis(ctx, r.name, cw - 24), cx, y + 20 + 2 * rad + 40);
         u.font(ctx, 17, u.F.ui, 500); ctx.fillStyle = th.ink3;
         ctx.fillText(u.ellipsis(ctx, r.team.name, cw - 24), cx, y + 20 + 2 * rad + 66);
-        u.font(ctx, Math.min(26, h * 0.095), u.F.data, 700); ctx.fillStyle = i === 0 && r.rank === 1 ? accent : th.ink;
+        u.font(ctx, Math.min(26, h * 0.095), NUMF, 600); ctx.fillStyle = i === 0 && r.rank === 1 ? accent : th.ink;
         ctx.fillText(u.ellipsis(ctx, starLine(r, keys.slice(0, list.length > 2 ? 2 : 3)), cw - 20), cx, y + h - 22);
         ctx.textAlign = 'left';
       });
@@ -1099,15 +1108,15 @@ function drawLeaders(ctx, m, th, S, M, accent) {
   const rowLine = (b, r, x, y, w, h, first, big) => {
     const cy = y + h / 2;
     ctx.fillStyle = th.panel; if (first) { u.roundRect(ctx, x, y, w, h - 4, 10); ctx.fill(); ctx.fillStyle = accent; ctx.fillRect(x, y + 6, 5, h - 16); }
-    u.font(ctx, Math.min(big ? 30 : 22, h * 0.5), u.F.score);
+    u.font(ctx, Math.min(big ? 30 : 22, h * 0.5), NUMF, 700);
     ctx.fillStyle = first ? accent : th.ink3; ctx.textAlign = 'center';
     const rk = (r.tie ? 'T' : '') + r.rank;
     ctx.fillText(rk, x + (big ? 42 : 30), cy + h * 0.16); ctx.textAlign = 'left';
     const cr = Math.min(big ? 22 : 16, h * 0.34), cx = x + (big ? 96 : 72);
     crest(ctx, th, r.team, cx, cy, cr);
     const vs = Math.min(big ? 34 : 24, h * 0.55);
-    u.font(ctx, vs, u.F.data, 700);
-    const val = u.ellipsis(ctx, r.value, w * 0.34), vw = ctx.measureText(val).width;
+    u.font(ctx, vs, NUMF, 600);
+    const val = u.ellipsis(ctx, mn(r.value), w * 0.34), vw = ctx.measureText(val).width;
     ctx.fillStyle = first ? accent : th.ink; ctx.textAlign = 'right'; ctx.fillText(val, x + w - 14, cy + vs * 0.35); ctx.textAlign = 'left';
     const nx = cx + cr + 14, nw = x + w - 14 - vw - 14 - nx;
     u.fit(ctx, r.name, nw, Math.min(big ? 32 : 24, h * 0.5), 15, u.F.ui, first ? 800 : 600);
@@ -1151,14 +1160,14 @@ function drawTable(ctx, m, th, S, M, accent) {
     { h: 34, draw: y => {
       u.font(ctx, 18, u.F.micro);
       ctx.fillStyle = th.ink3;
-      ctx.textAlign = 'center';
-      cols.forEach(([l], i) => ctx.fillText(l, x0 + cw * (i + 0.5), y + 24));
+      ctx.textAlign = 'right';
+      cols.forEach(([l], i) => ctx.fillText(l, x0 + cw * (i + 1) - 12, y + 24));
       ctx.textAlign = 'left';
     } },
     rowsBlock(ctx, th, S, M, n, rowH, (i, y, h) => {
       const r = m.rows[i], cy = y + h / 2;
       stripe(ctx, th, r.team.colour, M, y + 6, h - 12, 5);
-      u.font(ctx, Math.min(34, h * 0.6), u.F.score);
+      u.font(ctx, Math.min(30, h * 0.55), NUMF, 700);
       ctx.fillStyle = r.rank <= 1 ? accent : th.ink3;
       ctx.textAlign = 'center';
       ctx.fillText(String(r.rank), M + 34, cy + h * 0.2);
@@ -1167,17 +1176,17 @@ function drawTable(ctx, m, th, S, M, accent) {
       u.font(ctx, Math.min(28, h * 0.48), u.F.ui, 700);
       ctx.fillStyle = th.ink;
       ctx.fillText(u.ellipsis(ctx, r.team.name, x0 - M - 140), M + 132, cy + h * 0.17);
-      u.font(ctx, Math.min(28, h * 0.46), u.F.data, 500);
-      ctx.textAlign = 'center';
+      u.font(ctx, Math.min(28, h * 0.46), NUMF, 600);
+      ctx.textAlign = 'right';
       cols.forEach(([, k], ci) => {
-        u.font(ctx, Math.min(cols.length > 5 ? 24 : 28, h * 0.46), u.F.data, 500);
+        u.font(ctx, Math.min(cols.length > 5 ? 24 : 28, h * 0.46), NUMF, 600);
         const one = x => (x == null ? '—' : x.toFixed(1));
         const v = k === 'diff' ? (r.diff > 0 ? '+' : '') + r.diff : k === 'avg' ? (r.avg == null ? '—' : (r.avg > 0 ? '+' : '') + one(r.avg))
           : k === 'pct' ? (r.pct == null ? '—' : r.pct >= 1 ? '1.000' : r.pct.toFixed(3).replace(/^0/, ''))
           : k === 'ppg' || k === 'papg' ? one(r[k]) : r[k] == null || r[k] === '' ? '—' : String(r[k]);
         const signed = k === 'diff' ? r.diff : k === 'avg' ? r.avg : null;
         ctx.fillStyle = k === 'w' ? th.ink : signed != null ? (signed > 0 ? th.good : signed < 0 ? th.bad : th.ink3) : th.ink2;
-        ctx.fillText(v, x0 + cw * (ci + 0.5), cy + h * 0.16);
+        ctx.fillText(mn(v), x0 + cw * (ci + 1) - 12, cy + h * 0.16);     // right-aligned: a column of figures lines up on its last digit
       });
       ctx.textAlign = 'left';
     })
@@ -1196,7 +1205,7 @@ function drawFixtures(ctx, m, th, S, M, accent) {
       u.font(ctx, 17, u.F.micro);
       ctx.fillStyle = newDay ? accent : th.ink3;
       ctx.fillText(r.day.toUpperCase(), M + 18, y + 26);
-      u.font(ctx, 40, u.F.score);
+      u.font(ctx, 38, NUMF, 700);
       ctx.fillStyle = th.ink;
       ctx.fillText(r.time, M + 18, y + h - 16);
       const tx = M + 250, tw = W - M - tx - 20;
