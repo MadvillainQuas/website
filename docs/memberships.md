@@ -29,7 +29,7 @@ compares against these and nothing else.
 
 | key | unlocks |
 |---|---|
-| `analytics` | the advanced analytics: the **events** splits (second chance, transition, off turnovers, after timeout, assisted/unassisted) on every screen; the **zone** analytics (tinted twelve-zone shot charts, zone tables, zone and expected-eFG columns); the **game flow**, **connections** and **events** tabs of every box score; the **on the floor with** split (lineups and the WOWY combinations are free) |
+| `analytics` | the advanced analytics: the **events** splits (second chance, transition, off turnovers, after timeout, assisted/unassisted) on every screen; the **zone** analytics (tinted twelve-zone shot charts, zone tables, zone and expected-eFG columns); the **game flow**, **connections** and **events** tabs of every box score (the box score's **lineups** tab is free: it sits beside the shot charts, outside the "advanced stats" group); the **full WOWY** screen (non-members get a preview) |
 | `league` | a **members-only league** at all: its results, box scores, live games, statistics, standings, awards, news and video |
 
 **Plans** bundle features at a price. A plan is either
@@ -396,6 +396,7 @@ EpinoiaAccess.CATALOGUE       // what counts as premium — the ONE place to mov
   .columns                    // ['pred_efg','efg_sh','efg_vs','morey']
   .presets                    // the full-table preset ids that are wholly premium
   .barKeys(key)               // player-profile bar keys that are premium
+  .wowyPreviewMax             // 1
 await EpinoiaAccess.load({ leagueId, leagueSlug })   // either one; a slug is resolved to its id
                               // with a public leagues read. Idempotent per league; resolves
                               // the state; never throws; gives up after 4 s (fail open)
@@ -415,8 +416,8 @@ EpinoiaAccess.onChange(fn)            // state changed (load, sign-in, sign-out)
 Shared components take a flag rather than reading access themselves, so a page
 decides once and passes it down:
 
-- `EpinoiaWowy.render` takes no access flag: lineups, combinations and the lineup table are free for
-  everyone (they sit beside the shot chart on the club and player pages).
+- `EpinoiaWowy.render({ …, preview: true })` — combinations capped at
+  `CATALOGUE.wowyPreviewMax` subjects, with a compact teaser line beneath.
 - `EpinoiaWithUI.render({ …, locked: true })` — a compact teaser in place of the
   teammate comparison.
 - `EpinoiaShotChart.renderZones({ …, zones: false })` — the court and the makes

@@ -108,6 +108,46 @@ def roster_snapshot(raw: dict, pid_for: Callable[[int, str], str]) -> tuple[dict
     return {"teams": teams}, starters
 
 
+def infer_starters(pbp: list, starters: list, snap: dict, known: set, pid_for, report: dict) -> None:
+    """A SIDE WHOSE FEED FLAGS FEWER THAN FIVE STARTERS gets the rest from the play-by-play itself.
+
+    A live feed sets each player's `starter` flag only as the game goes on, and a side can have one flagged (or
+    none) for the first minutes. Everything downstream replays from those five: who is on the floor, who has
+    minutes, who is shown as "did not play" (a Brisbane v Sydney game showed one Bullet on the floor and every
+    other one dnp, though they had scored). Whoever acts before he has ever come on as a substitute, or is taken
+    off before he has come on, was on the floor from the start. Flagged starters are kept and never removed; a side
+    already at five is not touched; the result never exceeds five."""
+    NOT_PLAY = ("substitution", "timeout", "period", "game", "clock")
+    for team in (0, 1):
+        if len(starters[team]) >= 5:
+            continue
+        seen_in, found = set(), []
+        for ev in pbp:
+            at = str(ev.get("actionType") or "").lower()
+            if at in NOT_PLAY and at != "substitution":
+                continue
+            if team_idx(ev) != team:
+                continue
+            pno = ev.get("pno")
+            if pno in (None, 0, "0", ""):
+                continue
+            pid = pid_for(team, str(pno))
+            if pid not in known:
+                continue
+            if at == "substitution":
+                sub = str(ev.get("subType") or "").lower()
+                if sub == "in":
+                    seen_in.add(pid)
+                elif sub == "out" and pid not in seen_in and pid not in found:
+                    found.append(pid)
+            elif pid not in seen_in and pid not in found:
+                found.append(pid)
+        added = [p for p in found if p not in starters[team]][: 5 - len(starters[team])]
+        if added:
+            starters[team].extend(added)
+            report["warnings"].append(f"starters inferred for side {team + 1}: {len(added)} added from the play-by-play")
+
+
 def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> dict:
     tm = raw.get("tm") or {}
     snap, starters = roster_snapshot(raw, pid_for)
@@ -141,6 +181,7 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
     events: list[dict] = []
     report = {"unmatched": 0, "warnings": [], "dropped": {}}
     seq_of_action: dict[int, int] = {}
+    infer_starters(pbp, starters, snap, known, pid_for, report)
     on_court = [set(starters[0]), set(starters[1])]
     pf = {}
     last_period = 1

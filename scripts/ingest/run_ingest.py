@@ -1805,7 +1805,7 @@ def _looks_finished(raw: dict) -> bool:
     return period >= 4 and clock in ("00:00", "0:00", "00:00:00") and s1 != s2
 
 
-# A FEED THAT STOPS IN THE MIDDLE OF A GAME (supabase/migrations/0189_stalled_games.sql). Half an hour
+# A FEED THAT STOPS IN THE MIDDLE OF A GAME (supabase/migrations/0196_stalled_games.sql). Half an hour
 # with no new play is longer than any break in a game; the lane then reads the game again from scratch
 # and writes it through whatever the stored hash says (a write that died half way leaves the database
 # behind a feed that has moved on, and every poll after it reads "nothing new"), and if another ten
@@ -1836,8 +1836,8 @@ def stall_note(raw: dict, since: datetime, refreshed: datetime | None = None) ->
 
 
 def flag_stalled(sb: "Supabase", src: dict, xid: str, game_id, note: str, since: datetime) -> None:
-    """Flag one game (0189). The flag keeps the FIRST time the feed stopped; a database without
-    0189 still gets the reason on external_games, which the console already reads."""
+    """Flag one game (0196). The flag keeps the FIRST time the feed stopped; a database without
+    0196 still gets the reason on external_games, which the console already reads."""
     try:
         sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{xid}", {"error": note[:500]})
     except Exception:
@@ -1846,7 +1846,7 @@ def flag_stalled(sb: "Supabase", src: dict, xid: str, game_id, note: str, since:
         try:
             sb.patch("games", f"id=eq.{game_id}&status=eq.live&stalled_since=is.null", {"stalled_since": since.isoformat()})
         except Exception as exc:
-            print(f"    (stalled flag not stored - migration 0189 applied? {str(exc)[:120]})")
+            print(f"    (stalled flag not stored - migration 0196 applied? {str(exc)[:120]})")
 
 
 def last_play_at(sb: "Supabase", game_id) -> datetime | None:

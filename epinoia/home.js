@@ -300,7 +300,7 @@ async function games() {
     if (gamesComp) scope = '&competition_id=eq.' + encodeURIComponent(gamesComp);
     const Q = GL.queries(gamesShow, now, scope);
     const none = { rows: [], total: null };
-    /* a database without 0189 answers the stalled filter with a 400: ask again without it */
+    /* a database without 0196 answers the stalled filter with a 400: ask again without it */
     const liveRead = apiPage('games?select=' + GAMES_SELECT + Q.live).catch(e =>
       /^400\b/.test(String(e && e.message)) ? apiPage('games?select=' + GAMES_SELECT + Q.live.replace(GL.NOT_STALLED, ''))
                                              : Promise.reject(e));
@@ -1950,7 +1950,7 @@ function renumber() {
        of the body is exactly the late decision that made the splash flash the
        league page first. The title is still set here because a document can
        only have one <title> and this branch is where the answer is known. */
-    document.title = 'Epinoia';
+    /* the title is the one in <head> (written for a search result); it is not reset here */
     const mode = document.querySelector('#spMode');
     if (mode) mode.textContent = 'transport: ' +
       (window.epinoiaMode ? window.epinoiaMode() : 'local');

@@ -485,7 +485,7 @@ function mount(host, ctx) {
   }
 
   /* ---- opening and closing ---- */
-  function open() {
+  function open(preset) {
     if (S.opened) { input.focus(); return; }
     S.opened = true;
     S.sheet = !!(ctx.phone && ctx.phone());
@@ -508,6 +508,8 @@ function mount(host, ctx) {
     S.recent = store ? readRecent(store) : [];
     render();
     input.focus();
+    /* a link that carries the words (/epinoia/?q=name, the address the site's search-box markup names) opens the box with them typed */
+    if (typeof preset === 'string' && preset.trim()) { input.value = preset.trim().slice(0, 80); run(); }
   }
 
   function close(quiet) {

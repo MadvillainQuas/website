@@ -118,7 +118,8 @@ function context() {
   const q = new URLSearchParams(String(loc.search || ''));
   const l = String(q.get('l') || '').toLowerCase();
   const t = String(q.get('t') || '').toLowerCase();
-  const gm = String(q.get('g') || '');
+  const em = g('document') && g('document').querySelector ? g('document').querySelector('meta[name="epinoia-entity"]') : null;
+  const gm = String(q.get('g') || (em && /\/game\//.test(String(loc.pathname || '')) && em.content) || '');
   return {
     league: SLUG.test(l) ? l : null,
     team: SLUG.test(t) ? t : null,

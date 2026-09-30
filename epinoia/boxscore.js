@@ -669,7 +669,8 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       (rated?' · shaded cells: the rate’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)':'')+'</div></div>';
 }
 
-/* the rates a group on the floor is read by, from its summed boxes (a five, or a pair or trio inside one) */
+function lineupAgg(d,t){ return lineupCombos(d,t,5); }
+
 function lineupRates(l){
   const o=l.off, D=l.def, dv=(a,b)=>b?a/b:0;
   const poss = 0.96*(o.fga+o.tov+0.44*o.fta-o.or), dposs = 0.96*(D.fga+D.tov+0.44*D.fta-D.or);
@@ -683,11 +684,6 @@ function lineupRates(l){
   return l;
 }
 
-function lineupAgg(d,t){ return lineupCombos(d,t,5); }
-
-/* EVERY GROUP OF `size` WHO SHARED THE FLOOR, and what happened while they did: each five's stints summed
-   over the groups inside it (a five holds ten pairs and ten trios), so a pair's minutes are every minute the
-   two were on together, whoever the other three were. size 5 is the fives themselves. */
 function lineupCombos(d,t,size){
   size = Math.max(1, Math.min(5, size|0 || 5));
   const agg = {};
@@ -1091,21 +1087,32 @@ function luNames(t, ids){
 function lineupsHTML(){
   const d = derive();
   const gv = (v,good,bad,lower)=>{ if(lower) return v<=good?'good':(v>=bad?'bad':''); return v>=good?'good':(v<=bad?'bad':''); };
-  const bg = net=>{ const c=Math.max(-30,Math.min(30,net)), i=Math.abs(c)/30*0.18;
-    return c>=0?'rgba(99,255,160,'+i+')':'rgba(255,95,107,'+i+')'; };
+  const HEAT_MIN = 120000;                       // a five must have played two minutes to be ranked
+  const lists = [0,1].map(t=>lineupAgg(d,t).filter(l=>l.dur>=30000 || l.pf||l.pa).slice(0,15));
+  const pool = lists.reduce((a,l)=>a.concat(l),[]).filter(l=>l.dur>=HEAT_MIN);
+  /* 1 = a smaller number is the better one */
+  const LOWER = {tovp:1,drtg:1,oefg:1,oreba:1,oftr:1};
+  const heat = (k,l)=>{
+    if(pool.length<4 || l.dur<HEAT_MIN) return '';
+    const v=l[k]; let lo=0,eq=0;
+    pool.forEach(x=>{ if(x[k]<v) lo++; else if(x[k]===v) eq++; });
+    let p=(lo+eq/2)/pool.length; if(LOWER[k]) p=1-p;
+    return 'h'+(1+Math.min(4,Math.floor(p*5)));
+  };
   const teamHTML = t => {
-    const list = lineupAgg(d,t).filter(l=>l.dur>=30000 || l.pf||l.pa).slice(0,15);
+    const list = lists[t];
     const rows = list.map(l=>{
-      return '<tr style="background:'+bg(l.net)+'"><td style="text-align:left"><div class="lunums">'+luNames(t,l.ids)+'</div></td>'+
+      const c = (k,good,bad,lower,extra)=>{ const h=heat(k,l); return ' class="'+((extra?extra+' ':'')+(h||gv(l[k],good,bad,lower))).trim()+'"'; };
+      return '<tr'+(l.dur<HEAT_MIN?' class="thinlu"':'')+'><td style="text-align:left"><div class="lunums">'+luNames(t,l.ids)+'</div></td>'+
         '<td>'+fmtMin(l.dur)+'</td><td>'+l.poss.toFixed(1)+'</td><td>'+l.pf+'-'+l.pa+'</td>'+
-        '<td class="blk-o '+gv(l.ortg,110,95)+'">'+l.ortg.toFixed(1)+'</td><td class="'+gv(l.efg,52,45)+'">'+l.efg.toFixed(1)+'</td>'+
-        '<td class="'+gv(l.tovp,12,18,true)+'">'+l.tovp.toFixed(1)+'</td><td class="'+gv(l.orebp,30,20)+'">'+l.orebp.toFixed(1)+'</td>'+
-        '<td class="'+gv(l.ftr,30,15)+'">'+l.ftr.toFixed(0)+'</td>'+
-        '<td class="blk-d '+gv(l.drtg,100,115,true)+'">'+l.drtg.toFixed(1)+'</td><td class="'+gv(l.oefg,45,52,true)+'">'+l.oefg.toFixed(1)+'</td>'+
-        '<td class="'+gv(l.tovf,18,12)+'">'+l.tovf.toFixed(1)+'</td><td class="'+gv(l.oreba,20,30,true)+'">'+l.oreba.toFixed(1)+'</td>'+
-        '<td class="'+gv(l.oftr,15,30,true)+'">'+l.oftr.toFixed(0)+'</td>'+
-        '<td class="blk-n"><span class="netpill '+(l.net>=0?'pos':'neg')+'">'+(l.net>0?'+':'')+l.net.toFixed(1)+'</span></td>'+
-        '<td class="'+(l.pm>0?'pos':(l.pm<0?'neg':''))+'">'+(l.pm>0?'+':'')+l.pm+'</td></tr>';
+        '<td'+c('ortg',110,95,false,'blk-o')+'>'+l.ortg.toFixed(1)+'</td><td'+c('efg',52,45)+'>'+l.efg.toFixed(1)+'</td>'+
+        '<td'+c('tovp',12,18,true)+'>'+l.tovp.toFixed(1)+'</td><td'+c('orebp',30,20)+'>'+l.orebp.toFixed(1)+'</td>'+
+        '<td'+c('ftr',30,15)+'>'+l.ftr.toFixed(0)+'</td>'+
+        '<td'+c('drtg',100,115,true,'blk-d')+'>'+l.drtg.toFixed(1)+'</td><td'+c('oefg',45,52,true)+'>'+l.oefg.toFixed(1)+'</td>'+
+        '<td'+c('tovf',18,12)+'>'+l.tovf.toFixed(1)+'</td><td'+c('oreba',20,30,true)+'>'+l.oreba.toFixed(1)+'</td>'+
+        '<td'+c('oftr',15,30,true)+'>'+l.oftr.toFixed(0)+'</td>'+
+        '<td'+c('net',0,0,false,'blk-n')+'><span class="netpill '+(l.net>=0?'pos':'neg')+'">'+(l.net>0?'+':'')+l.net.toFixed(1)+'</span></td>'+
+        '<td'+c('pm',1,-1)+'>'+(l.pm>0?'+':'')+l.pm+'</td></tr>';
     }).join('') || '<tr><td colspan="16" style="text-align:left;color:var(--faint)">no lineup data yet</td></tr>';
     return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
       '<table class="bx lu" style="min-width:980px"><tr><th style="text-align:left">lineup</th><th>min</th><th>poss</th><th>pts</th>'+
@@ -1114,8 +1121,10 @@ function lineupsHTML(){
       '<th class="blk-n">net</th><th>+/-</th></tr>'+
       rows+'</table></div></div>';
   };
-  return teamHTML(0)+teamHTML(1)+
-    '<div class="setup-note" style="padding:4px 0 10px">row tint = net rating · sorted by minutes · thresholds: ortg 110/95 · efg 52/45 · tov 12/18 · orb 30/20 · ft rate 30/15 · drtg 100/115 · opp efg 45/52 · tov frc 18/12 · orb alwd 20/30 · opp ftr 15/30</div>';
+  const key = '<div class="setup-note lu-key" style="padding:4px 0 10px"><span><i style="background:rgba(255,95,107,.4)"></i>worst of the fives</span>'+
+    '<span><i style="background:rgba(255,196,84,.3)"></i>middle</span><span><i style="background:rgba(99,255,160,.4)"></i>best</span>'+
+    '<span>each stat is ranked against every other five in this game, both teams; lower is the better end for tov%, drtg, opp efg, orb alwd and opp ftr · fives under 2 min are faded and not ranked · sorted by minutes</span></div>';
+  return key+teamHTML(0)+teamHTML(1);
 }
 
 /* Not lifted from the scorer: PMAP is a mutable pid -> {team, player} lookup

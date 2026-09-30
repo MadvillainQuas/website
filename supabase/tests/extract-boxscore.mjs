@@ -38,7 +38,7 @@ const WANTED = [
   'OFFICIAL_ROLES', 'matchDetailsHTML',      // officials, hall, attendance
   'FOUL_MARK', 'foulMarksByPlayer', 'scoresheetHTML', 'scoresheetDoc', 'printScoresheet',
   // calculators
-  'teamTotals', 'teamAdv', 'playerAdv', 'gpRate', 'playerAdvTable', 'lineupAgg',
+  'teamTotals', 'teamAdv', 'playerAdv', 'gpRate', 'playerAdvTable', 'lineupAgg', 'lineupRates', 'lineupCombos',
   // HTML builders
   'periodPill', 'scoreHeadHTML', 'qstripHTML', 'teamChipsHTML', 'bxTeamHTML', 'pbpHTML',
   'shotChartHTML', 'sitCompute', 'assistCard', 'outcomeCard', 'advHTML', 'luNames', 'lineupsHTML'

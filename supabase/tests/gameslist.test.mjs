@@ -209,7 +209,7 @@ console.log('\nthe page');
   ok('a finalising game is asked for as a result', /status=in\.\(final,finalising\)/.test(read('epinoia', 'gameslist.js')));
 }
 
-/* ---- a game whose feed has stopped (0189) -------------------------------------------------- */
+/* ---- a game whose feed has stopped (0196) -------------------------------------------------- */
 console.log('\na stalled game');
 {
   const now = Date.parse('2026-09-30T12:00:00Z');
@@ -222,7 +222,7 @@ console.log('\na stalled game');
   const v = G.pick(rows, 'week', now, {});
   ok('a stalled game handed to pick() is not shown as live', v.live === 1 && v.shown.map(g => g.id).join() === 'a', JSON.stringify(v.shown.map(g => g.id)));
   const home = read('epinoia', 'home.js');
-  ok('home.js asks again without the filter when the database answers 400 (no 0189 yet)',
+  ok('home.js asks again without the filter when the database answers 400 (no 0196 yet)',
      /\/\^400\\b\/\.test/.test(home) && /Q\.live\.replace\(GL\.NOT_STALLED, ''\)/.test(home));
 }
 

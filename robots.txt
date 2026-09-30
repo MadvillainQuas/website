@@ -74,4 +74,41 @@ User-agent: DataForSeoBot
 User-agent: serpstatbot
 Disallow: /
 
+# --- AI-training and bulk data crawlers: this site's numbers are compiled by hand and by licence, and are not
+#     for training sets or resale. These name themselves honestly and honour this file; the ones that do not
+#     have to be stopped at the edge (docs/search-appearance.md, "Scrapers").
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: OAI-SearchBot
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: CCBot
+User-agent: Google-Extended
+User-agent: GoogleOther
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Bytespider
+User-agent: Amazonbot
+User-agent: Applebot-Extended
+User-agent: meta-externalagent
+User-agent: FacebookBot
+User-agent: cohere-ai
+User-agent: Diffbot
+User-agent: ImagesiftBot
+User-agent: Omgilibot
+User-agent: Timpibot
+User-agent: YouBot
+User-agent: Scrapy
+User-agent: python-requests
+User-agent: HTTrack
+User-agent: WebCopier
+User-agent: SiteSnagger
+Disallow: /
+
+# --- Claude, when it is fetching a page because the site's owner asked it to (not training): allowed.
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+Allow: /
+
+# an index (written on every deploy by tools/build-seo.py): sitemap-static.xml, sitemap-entities.xml, sitemap-games.xml
 Sitemap: https://prophesyscouting.co.uk/epinoia/sitemap.xml

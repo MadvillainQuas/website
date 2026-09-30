@@ -71,6 +71,30 @@ W-L/PCT, PF, PA, DIFF, STREAK) or **Overall** (the whole league ranked by the co
 The standings embed draws a table per group (`?g=<name>` for one). Both ask for the conference
 columns only on a `conferences` competition, so nothing changes for any other league.
 
+## Box score: the DYNAMIC TABLES tab
+
+`epinoia/game/dyntable.js` (+ `dyntable.css`) adds a tab after LINEUPS on every public box score. It shows the
+league table as it would stand if the games being played right now ended on their current score, with each
+club's movement against the official table (green up / red down / dash, places), the live game that moves it
+(score, period and clock, linked to that game's box score), and the two clubs of the viewed game lit. It is not
+membership-gated and is not in the "advanced stats" group.
+
+- **No second standings engine.** The official table is the database's own `standings` rows (finished games only,
+  sanctions applied, `recompute_standings`). Live games are laid over them and the rows are ranked with the same
+  keys as 0144: league points, point difference, points for; a `conferences` competition ranks inside
+  (group, division) by conference win %, conference wins, overall win % first, and a live game counts as a
+  conference game per `games.conference_game`, else when both clubs share a group.
+  `leagues.rules.tiebreak` (head-to-head) is declared but not applied by the database, so it is not applied here.
+- **A level score is not a result.** A game level right now is listed as "level: projected as a tie" and changes
+  nothing (no win, loss, points or game played) until one side leads.
+- **Which competition.** The game's own. A pure `knockout` has no table (the tab says so); a group stage or a
+  conference league is split as the league page splits it (`epinoia/standings.js`).
+- **Live.** The viewed game's score comes from the page's own frames. The other live games: one query
+  (`games?competition_id=eq.<id>&status=eq.live` with `game_state(period,clock_ms,...)` embedded) every 15 s
+  while the tab is on screen and the document visible, 60 s when nothing is live, doubling to 2 min after
+  errors, stopped when the tab or the document is hidden. The table is read once per page load.
+- Test: `supabase/tests/dyntable.test.mjs` (the pure `project()` and the tab's place in `game.js`).
+
 ## Deploying (order matters)
 
 1. `npx supabase@latest db push` — applies 0144. Its self-tests run first against temporary

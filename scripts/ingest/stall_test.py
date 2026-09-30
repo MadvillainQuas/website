@@ -1,4 +1,4 @@
-"""A live game whose feed stops: read again, then flagged, and cleared when it moves (0189), offline:
+"""A live game whose feed stops: read again, then flagged, and cleared when it moves (0196), offline:
 
     python scripts/ingest/stall_test.py
 
@@ -71,7 +71,7 @@ ok("the flag goes on the game, only if it is live and not flagged already (the f
    gm and gm[0][1] == "id=eq.g1&status=eq.live&stalled_since=is.null" and gm[0][2]["stalled_since"].startswith("2026-09-26T14:12"), gm)
 sb2 = SB(fail_games=True)
 RI.flag_stalled(sb2, src, "2907953", "g1", note, since)
-ok("a database without 0189 still gets the reason", len(sb2.patches) == 1 and sb2.patches[0][0] == "external_games", sb2.patches)
+ok("a database without 0196 still gets the reason", len(sb2.patches) == 1 and sb2.patches[0][0] == "external_games", sb2.patches)
 
 print("\n-- clearing")
 sb = SB()

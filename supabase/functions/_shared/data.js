@@ -571,6 +571,40 @@ function untrim(r) {
    an explicit `rows: false` drops them. Nothing about the numbers changes:
    players(), teams() and attachBPM have already run over exactly the same rows
    either way. */
+/* THE EVENTS SPLITS ARE A MEMBERS' TABLE (0190). `sit`, the situations line of every player and team box-score row
+   (second chances, transition, off turnovers, after timeouts, half court, assisted baskets), is no longer in the
+   stats jsonb that anybody can read: the database files it in game_sit_lines, whose read policy is "may you read this
+   game" AND "may you use analytics in this game's league". It is asked for here with the reader's own session
+   (api() sends it), so a member, a league whose analytics are free, and everybody while memberships are switched off get
+   the lines and the page is exactly what it was; a reader the database says no to gets none, and every ev_ figure is
+   then honestly "no coverage" rather than a lock drawn over a number the API already gave away. A database from before
+   0190 has no such table: the read fails, and a row keeps whatever `sit` it still carries. A `sit` already on a row (not
+   moved yet) is never overwritten. */
+async function sitLines(chunks) {
+  try {
+    const parts = await Promise.all(chunks.map(c =>
+      all(`game_sit_lines?game_id=in.(${c.join(',')})&select=game_id,kind,team_idx,player_id,sit`)));
+    return parts.flat();
+  } catch (_) { return []; }
+}
+function attachSit(pgs, tgs, lines) {
+  if (!lines || !lines.length) return;
+  const p = new Map(), t = new Map();
+  lines.forEach(l => {
+    if (!l || !l.sit) return;
+    if (l.kind === 'p') p.set(l.game_id + '|' + l.player_id, l.sit);
+    else t.set(l.game_id + '|' + l.team_idx, l.sit);
+  });
+  (pgs || []).forEach(r => {
+    const x = r && r.stats && !r.stats.sit ? p.get(r.game_id + '|' + r.player_id) : null;
+    if (x) r.stats.sit = x;
+  });
+  (tgs || []).forEach(r => {
+    const x = r && r.stats && !r.stats.sit ? t.get(r.game_id + '|' + r.team_idx) : null;
+    if (x) r.stats.sit = x;
+  });
+}
+
 async function season(competitionId, opts) {
   const trim = !!(opts && opts.trim);
   const keepRows = !(opts && opts.rows === false);
@@ -646,13 +680,16 @@ async function season(competitionId, opts) {
      where they finished, which is what a season table shows. */
   const teamOfPlayer = new Map();
   const keptP = [], keptT = [];
+  /* each batch's events splits with it (0190: a members' table, read with the reader's own session; none for a reader
+     the database says no to, and none from a database before 0190), put on its rows before they are summed */
   const readBatch = c => Promise.all([
     trim
       ? all(`player_game_stats?game_id=in.(${c.join(',')})&select=${TRIM_SELECT}`).then(rows => rows.map(untrim))
       : all(`player_game_stats?game_id=in.(${c.join(',')})` +
           `&select=game_id,player_uuid,player_id,team_idx,stats`),
-    all(`team_game_stats?game_id=in.(${c.join(',')})&select=game_id,team_idx,stats`)
-  ]);
+    all(`team_game_stats?game_id=in.(${c.join(',')})&select=game_id,team_idx,stats`),
+    sitLines([c])
+  ]).then(([pgs, tgs, lines]) => { attachSit(pgs, tgs, lines); return [pgs, tgs]; });
   const ahead = Math.max(1, (opts && +opts.window) || chunks.length);
   const pending = [];
   let next = 0;
@@ -794,6 +831,7 @@ async function statsForGames(games) {
       `&select=game_id,team_idx,stats`)))
   ]);
   const pgs = pgsParts.flat(), tgs = tgsParts.flat();
+  attachSit(pgs, tgs, await sitLines(chunks));
   const byId = {};
   games.forEach(g => { byId[g.id] = g; });
 
@@ -1049,7 +1087,7 @@ function pickSeason(seasons, ref) {
 }
 
 return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, playerMeta, teamMeta,
-         releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile,
+         releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile, attachSit, sitLines,
          pack, unpack, packMap, unpackMap, packSeason, unpackSeason, BIG_GAMES, gamesIn, seasonUnits };
 }));
 

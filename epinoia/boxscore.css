@@ -706,6 +706,15 @@ table.lu th.blk-o,table.lu td.blk-o{border-left:2px solid rgba(143,245,255,.35);
 table.lu th.blk-d,table.lu td.blk-d{border-left:2px solid rgba(255,179,239,.35);}
 table.lu th.blk-n,table.lu td.blk-n{border-left:2px solid rgba(255,217,138,.35);}
 td.good{color:var(--green);} td.bad{color:var(--red);}
+/* THE LINEUPS' HEAT: each stat cell is tinted by where that five ranks against the other fives in the game
+   (both teams pooled), five bands, greener = better. Lineups under two minutes are not ranked. */
+table.lu td.h1{background:rgba(255,95,107,.26);} table.lu td.h2{background:rgba(255,95,107,.11);}
+table.lu td.h3{background:rgba(255,196,84,.10);}
+table.lu td.h4{background:rgba(99,255,160,.11);} table.lu td.h5{background:rgba(99,255,160,.28);}
+table.lu td.h1,table.lu td.h5{font-weight:600;}
+table.lu tr.thinlu td{opacity:.62;}
+.lu-key{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;}
+.lu-key i{display:inline-block;width:22px;height:9px;border-radius:2px;vertical-align:middle;margin-right:6px;}
 /* pbp */
 .pbplist{display:flex;flex-direction:column;gap:2px;padding-bottom:30px;}
 .pbprow{display:flex;gap:10px;align-items:baseline;padding:8px 10px;border-radius:10px;font-size:12px;}

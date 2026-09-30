@@ -32,7 +32,8 @@ function plan(rows, cfg, gameId, root) {
 async function boot() {
   const host = document.getElementById('goFans');
   const cfg = window.EPINOIA_CONFIG;
-  const gameId = new URLSearchParams(location.search).get('g') || '';
+  const em = document.querySelector('meta[name="epinoia-entity"]');      // a static copy of the game page names its game there
+  const gameId = new URLSearchParams(location.search).get('g') || (em && em.content) || '';
   if (!host || !cfg || !UUID.test(gameId)) return;
   let rows = null;
   try {

@@ -50,7 +50,7 @@ const DONE = st => st === 'final' || st === 'finalising';
 const at = g => new Date(g.tipoff_at || 0).getTime();
 const stamp = ms => encodeURIComponent(new Date(ms).toISOString());
 const DONE_Q = '&status=in.(final,finalising)';
-/* A GAME WHOSE FEED HAS STOPPED IS NOT LIVE (0189 games.stalled_since): the ingest reads a live game again
+/* A GAME WHOSE FEED HAS STOPPED IS NOT LIVE (0196 games.stalled_since): the ingest reads a live game again
    after half an hour with no new play, and flags it when that brings nothing either. It stays out of LIVE
    until a play arrives. home.js drops this filter for a database that does not have the column yet. */
 const NOT_STALLED = '&stalled_since=is.null';

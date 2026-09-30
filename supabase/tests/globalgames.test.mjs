@@ -555,7 +555,8 @@ section('pages');
        host.children.length === 1 && /No games in the next few days/.test(host.children[0].textContent), JSON.stringify(host.children));
   }
 
-  const games = rd('epinoia', 'games', 'index.html');
+  const games = rd('epinoia', 'games', 'index.html').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\s*/g, ''); // JSON-LD (search-engine data, not code) is not a script for this rule
+
   const head = games.slice(0, games.indexOf('</head>'));
   ok('games/ loads ../appmode.js first in <head>', head.indexOf('<script') > 0 && head.slice(head.indexOf('<script')).startsWith('<script src="../appmode.js?v='));
   ok('games/ links the manifest and a strict CSP', head.includes('/epinoia/manifest.webmanifest') && /script-src 'self'/.test(head));

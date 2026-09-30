@@ -465,10 +465,10 @@ async function loadOverview() {
   await stalledGames(att);
 }
 
-/* LIVE GAMES WHOSE FEED HAS STOPPED (0189 games.stalled_since). The ingest read each one again after half an
+/* LIVE GAMES WHOSE FEED HAS STOPPED (0196 games.stalled_since). The ingest read each one again after half an
    hour with no new play, got nothing new, and took it off the front page's LIVE list; each now needs a person:
    the result entered, the game voided, or the feed re-pointed. The ingest's own reason is on the game's
-   external row. A database without 0189 answers with an error, and there is simply no list. */
+   external row. A database without 0196 answers with an error, and there is simply no list. */
 async function stalledGames(att) {
   const { data, error } = await sb.from('games')
     .select('id,tipoff_at,stalled_since,home_score,away_score,home:home_team_id(name),away:away_team_id(name)')

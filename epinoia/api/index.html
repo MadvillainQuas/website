@@ -12,22 +12,36 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>API · Epinoia</title>
-<meta name="description" content="The public Epinoia API: leagues, teams, players, fixtures and stats as data.">
+<!-- seo:head -->
+<title>Request an Epinoia API: Basketball Data as JSON | Epinoia</title>
+<meta name="description" content="Request access to the Epinoia JSON API: a league&#x27;s table, fixtures, season statistics, box scores, bracket and awards as JSON. Granted by request, league by league.">
+<meta name="epinoia-page" content="API">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
 <link rel="canonical" href="https://prophesyscouting.co.uk/epinoia/api/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Epinoia">
-<meta property="og:title" content="API · Epinoia">
-<meta property="og:description" content="The public Epinoia API: leagues, teams, players, fixtures and stats as data.">
+<meta property="og:title" content="Request an Epinoia API: Basketball Data as JSON | Epinoia">
+<meta property="og:description" content="Request access to the Epinoia JSON API: a league&#x27;s table, fixtures, season statistics, box scores, bracket and awards as JSON. Granted by request, league by league.">
 <meta property="og:url" content="https://prophesyscouting.co.uk/epinoia/api/">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="EPINOIΛ: live basketball scores, fixtures, standings and advanced stats">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Prophesy_Scout">
+<meta name="twitter:title" content="Request an Epinoia API: Basketball Data as JSON | Epinoia">
+<meta name="twitter:description" content="Request access to the Epinoia JSON API: a league&#x27;s table, fixtures, season statistics, box scores, bracket and awards as JSON. Granted by request, league by league.">
+<meta name="twitter:image" content="https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png">
+<meta name="twitter:image:alt" content="EPINOIΛ: live basketball scores, fixtures, standings and advanced stats">
+<!-- /seo:head -->
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=542"></script>
-<script src="../i18n.js?v=542" data-i18n-packs="info"></script>
-<script src="../glyphs.js?v=542" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=542">
-<link rel="stylesheet" href="../kit/nav.css?v=542">
+<script src="../appmode.js?v=543"></script>
+<script src="../i18n.js?v=543" data-i18n-packs="info"></script>
+<script src="../glyphs.js?v=543" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=543">
+<link rel="stylesheet" href="../kit/nav.css?v=543">
 <style>
   a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -64,43 +78,64 @@
   footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
     font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
   footer.foot a{color:var(--ink-3);text-decoration:none}
+  a.req{display:inline-block;font-size:12px;letter-spacing:.12em;padding:13px 24px;text-decoration:none}
 </style>
-<link rel="stylesheet" href="../kit/legibility.css?v=542">
+<link rel="stylesheet" href="../kit/legibility.css?v=543">
+<!-- seo:ld -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Request an Epinoia API: Basketball Data as JSON | Epinoia","description":"Request access to the Epinoia JSON API: a league's table, fixtures, season statistics, box scores, bracket and awards as JSON. Granted by request, league by league.","url":"https://prophesyscouting.co.uk/epinoia/api/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Epinoia","item":"https://prophesyscouting.co.uk/epinoia/home/"},{"@type":"ListItem","position":2,"name":"API"}]}</script>
+<!-- /seo:ld -->
 </head>
 <body>
 <div class="ep-frame" data-i18n-ctx="api">
   <div class="topbar">
     <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <span class="ep-micro">JSON API · version 1</span>
+    <span class="ep-micro">JSON API · version 1 · by request</span>
   </div>
 
   <div class="hero">
-    <h1>The API</h1>
+    <h1>Request an API</h1>
     <p>
       Every league's table, fixtures, season statistics, box scores, bracket and
-      awards, as JSON. All of it is public already — these are the same numbers
-      the pages show anyone who visits. The key is not a gate; it is an identity,
-      so a league can see who is pulling what and stop one runaway script without
-      taking the API down for everybody else.
+      awards can be made available as JSON. Access is <strong>by request</strong>:
+      we look at who is asking and what they want to build, and grant it league by
+      league. There are no open or self-service keys. This page explains what
+      you would get and how it works; the request itself is one short message.
     </p>
+    <p><a class="ep-btn pri req" href="../contact/?topic=api">REQUEST AN API</a></p>
   </div>
 
   <div class="sec">
-    <h2>Getting a key</h2>
+    <h2>How access works</h2>
     <p>
-      A league administrator issues keys from the admin console. A key belongs to
-      one league and reads only that league. It is shown once, at the moment it
-      is created — only a hash is stored, so it cannot be looked up afterwards by
-      anyone, including us. Lost keys are revoked and replaced, not recovered.
+      <strong>1. You ask.</strong> Use the request form: who you are, what you
+      would build (a site, an app, a study, a club or media feed), which leagues
+      you need, and about how often you would call it.
     </p>
-    <p>Send it as a header, which is the form that will not end up in a server log or a referrer:</p>
-    <pre>curl -H "X-API-Key: epk_your_key_here" \
-  https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/api/v1/leagues</pre>
-    <p><code>?key=</code> works too, for a browser address bar or a spreadsheet that cannot set headers.</p>
+    <p>
+      <strong>2. We decide.</strong> Requests are read by a person and granted
+      case by case, with the league's agreement where the league is not ours to
+      give. Not every request is approved, and access can be withdrawn.
+    </p>
+    <p>
+      <strong>3. You are issued a key.</strong> A key belongs to one league and reads only
+      that league. It is shown once, when it is created: only a hash is stored, so
+      it cannot be looked up afterwards by anyone, including us. A lost key is
+      revoked and replaced, not recovered. The key is an identity rather than a
+      gate, so a league can see who is pulling what and stop one runaway script
+      without taking the API down for everybody else.
+    </p>
+    <p><a class="ep-btn pri req" href="../contact/?topic=api">REQUEST AN API</a></p>
   </div>
-
   <div class="sec">
-    <h2>Endpoints</h2>
+    <h2>What a call looks like once you have access</h2>
+    <p>Send the key as a header, which is the form that will not end up in a server log or a referrer:</p>
+<pre>curl -H "X-API-Key: YOUR_KEY" \
+  https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/api/v1/leagues</pre>
+    <p><code>?key=</code> works too, for a browser address bar or a spreadsheet that cannot set headers. The key above is a placeholder: keys are only issued to approved requests.</p>
+  </div>
+  <div class="sec">
+    <h2>What the API serves</h2>
     <div class="tw">
       <table class="ep">
         <tr><th>Path</th><th>What it returns</th></tr>
@@ -171,16 +206,16 @@
   </div>
 
   <div class="sec">
-    <h2>Scraper keys — being sent games instead of asking for them</h2>
+    <h2>Delivery feeds — being sent games instead of asking for them</h2>
     <p>
       Everything above is a pull. If you republish results — RealGM,
       Eurobasket, a club site — you probably do not want to poll a fixture list
-      at 2am on the off-chance. Ask the league for a <strong>scraper key</strong>
-      and we post each game to you the moment it is finalised, in the shape your
-      importer already reads.
+      at 2am on the off-chance. In your request, ask for a <strong>delivery feed</strong>
+      (a scraper key) and, if it is approved, we post each game to you the moment it is finalised,
+      in the shape your importer already reads.
     </p>
     <p>
-      A league administrator sets this up per partner and chooses:
+      Each partner's feed is set up individually, with these choices:
       <strong>format</strong> (JSON, CSV or XML), <strong>which sections</strong>
       to include (the fixture, team totals, the box score, the table, and
       optionally full play-by-play), how <strong>names</strong> are written
@@ -249,6 +284,6 @@ if not hmac.compare_digest(expected, request.headers["X-Epinoia-Signature"]):
     <span>Epinoia Network · API v1</span>
   </footer>
 </div>
-<script src="../nav.js?v=542" defer></script>
+<script src="../nav.js?v=543" defer></script>
 </body>
 </html>

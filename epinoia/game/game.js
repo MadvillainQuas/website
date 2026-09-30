@@ -21,7 +21,10 @@
 const E = window.EpinoiaEngine, B = window.EpinoiaBox, L = window.EpinoiaLive;
 const CFG = window.EPINOIA_CONFIG;
 const qp = new URLSearchParams(location.search);
-const gameId = qp.get('g') || '';
+/* THE GAME ID: ?g= (every link the site itself makes), else <meta name="epinoia-entity"> - the static copies
+   /epinoia/game/<id>.html that tools/build-seo.py writes carry it there, so a search result opens the same page */
+const ENTITY_META = document.querySelector('meta[name="epinoia-entity"]');
+const gameId = qp.get('g') || (ENTITY_META && ENTITY_META.content) || '';
 const mode = qp.get('mode') === 'supabase' ? 'supabase'
            : qp.get('mode') === 'local' ? 'local'
            : (window.epinoiaMode ? epinoiaMode() : 'local');
@@ -444,6 +447,9 @@ const BODIES = {
   adv:     d => B.advHTML(d),
   /* 5-, 3- and 2-man groups, filtered and sorted in place (lineups.js); the old table if that has not loaded */
   lineups: d => window.EpinoiaLineups ? window.EpinoiaLineups.render(d) : B.lineupsHTML(),
+  /* the league table as the games being played right now would leave it (dyntable.js) */
+  dyn:     d => window.EpinoiaDynTable ? window.EpinoiaDynTable.render(window.S, d)
+                : '<div class="msg">The dynamic tables could not be loaded.</div>',
   /* GAMEVIS's Game Flow and Connections tabs, ported: both replay window.S themselves */
   flow:        () => window.EpinoiaGameFlow ? window.EpinoiaGameFlow.render(window.S)
                      : '<div class="msg">The game flow charts could not be loaded.</div>',
@@ -635,7 +641,7 @@ function bindBoxSwitch(el) {
    and then GAMEVIS's two, game flow and connections, which the scorer's final
    screen does not carry (flow.js, connections.js), and events (events.js) */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
-              ['adv', 'full stats'], ['lineups', 'lineups'],
+              ['lineups', 'lineups'], ['dyn', 'dynamic tables'], ['adv', 'full stats'],
               ['flow', 'game flow'], ['connections', 'connections'], ['events', 'play-type + reb'],
               ['shotclock', 'shot clock analysis']];
 
@@ -677,11 +683,12 @@ new MutationObserver(recs => {
   }
 }).observe(document.body, { childList: true, characterData: true, subtree: true });
 
-/* THE ADVANCED STATS ARE ONE SECTION OF THE STRIP. Full stats through the shot clock analysis sit inside a
+/* LINEUPS IS AN EVERYDAY TAB, next to the shot charts and free for everyone: it is not part of the advanced section.
+   THE ADVANCED STATS ARE ONE SECTION OF THE STRIP. Full stats through the shot clock analysis sit inside a
    silver frame labelled "advanced stats", so the everyday tabs (report, box score, play-by-play, shot charts)
    read as the game and the rest as the deeper cut. The frame wraps whichever of them this game offers, in
    their own order; the buttons inside are the same buttons, so everything that finds them still does. */
-const ADV_TABS = ['adv', 'lineups', 'flow', 'connections', 'events', 'shotclock'];
+const ADV_TABS = ['adv', 'flow', 'connections', 'events', 'shotclock'];
 function tabStripHTML(tabs) {
   const btn = t => '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + B.esc(t[1]) + '</button>';
   let out = '', open = false;
@@ -775,7 +782,7 @@ let drawnLocked = false;            // the analytics lock the body was last draw
 function gatedTabs() {
   const A = window.EpinoiaAccess;
   const t = A && A.CATALOGUE && A.CATALOGUE.gameTabs;
-  /* THE WHOLE ADVANCED STATS SECTION is the members' (full stats and lineups included), whatever the
+  /* THE WHOLE ADVANCED STATS SECTION is the members' (full stats included; lineups are not part of it), whatever the
      catalogue lists: the strip draws it as one section, so it locks as one */
   return [...new Set((Array.isArray(t) ? t : GATED_TABS_DEFAULT).concat(ADV_TABS))];
 }
@@ -847,7 +854,6 @@ function lockedTabHTML() {
     title: 'Advanced stats are for members',
     lines: [
       'Full stats: the four factors, shooting by zone and every advanced rate, player by player.',
-      'Lineups: every five that played, with their minutes, points and net rating.',
       'Game flow: every scoring run and momentum swing, the margin minute by minute, both rotations, expected points added and points per possession as the game went.',
       'Connections: who assisted whom, how often each pair connected and the points and threes every pairing produced.',
       'Events: what second chances, fast breaks, turnovers and timeouts turned into, with the shots, zones and players behind each.',
@@ -2329,13 +2335,14 @@ function renderHead(d) {
   d = d || window.derive();
   const el = $('#csHead');
   if (el) { el.innerHTML = B.scoreHeadHTML(d); dressHead(el, d); decorateTeams(el); flashScore(el, d); }
-  document.title = d.score[0] + '–' + d.score[1] + ' ' +
+  /* a static copy keeps the title it was written with (a search result and a browser tab agree) */
+  if (!ENTITY_META || qp.get('g')) document.title = d.score[0] + '–' + d.score[1] + ' ' +
       S.teams[0].name + ' v ' + S.teams[1].name + ' · Epinoia';
 
   /* Link previews and structured data. Cheap enough to redo here, and it has
      to be redone rather than set once: a game that finalises while somebody is
      watching should stop describing itself as in progress. */
-  if (window.EpinoiaSEO && S.meta) {
+  if (window.EpinoiaSEO && S.meta && (!ENTITY_META || qp.get('g'))) {
     const m = S.meta;
     window.EpinoiaSEO.game({
       game: { status: S.status, tipoff_at: m.tipoff_at,
@@ -2378,6 +2385,7 @@ function renderBody(d) {
     if (fTab === 'connections' && window.EpinoiaConnections) window.EpinoiaConnections.mounted(el);
     if (fTab === 'events' && window.EpinoiaEvents) window.EpinoiaEvents.mounted(el);
     if (fTab === 'lineups' && window.EpinoiaLineups) window.EpinoiaLineups.mounted(el);
+    if (fTab === 'dyn' && window.EpinoiaDynTable) window.EpinoiaDynTable.mounted(el);
     if (fTab === 'box') {
       bindBoxSwitch(el);
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); if (window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el); setTimeout(squadPhotos, 0); }
@@ -3460,7 +3468,7 @@ async function renderPreview() {
 
   txt($('#ctx'), (S.competition || 'Fixture') + ' · ' +
       (home.name || S.teams[0].name) + ' v ' + (away.name || S.teams[1].name));
-  document.title = (home.name || 'home') + ' v ' + (away.name || 'away') +
+  if (!ENTITY_META || qp.get('g')) document.title = (home.name || 'home') + ' v ' + (away.name || 'away') +
       ' · preview · Epinoia';
 
   /* The two consoles that belong on a fixture that has not started: whoever

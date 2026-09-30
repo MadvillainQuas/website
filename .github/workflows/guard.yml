@@ -477,7 +477,7 @@ jobs:
         # action. Pure function, no network.
         run: python scripts/ingest/feed_abandoned_test.py
 
-      - name: A live game whose feed stops is read again, then taken off LIVE and flagged (0189)
+      - name: A live game whose feed stops is read again, then taken off LIVE and flagged (0196)
         # NBL Division One's Liverpool v Tees Valley stopped at Q1 7:15 and Kosovo's Vellaznimi v Sigal
         # Prishtina at Q4 0:35 (26/27 Sep 2026), both LIVE on the front page for days: half an hour
         # without a new play, a fresh read, ten minutes more, then the flag; the first new play clears it
@@ -520,6 +520,9 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/entity-links.test.mjs
           node supabase/tests/links-ui.test.mjs
+          # 0190: the events splits are a members' table the database gates (a real Postgres), and data.js puts them back
+          node supabase/tests/premium-sit.test.mjs
+          node supabase/tests/sit-attach.test.mjs
 
       - name: The pixel faces stay readable - legibility.css last on every page, ink and accents in both themes
         # kit/legibility.css is linked after every other stylesheet on every kit page; the secondary ink is near full strength

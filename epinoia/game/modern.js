@@ -509,9 +509,15 @@
     refit(el);
   }
 
-  let bound = false;
+  /* BOUND PER BODY, NOT ONCE PER PAGE. The page redraws its body element when the game changes shape (the half-time tab
+     arriving, a tab switch that rebuilds the shell), and a listener left on the old element answers nothing on the new one:
+     at half-time a player's card would not open. The listeners on the body go on every body that appears; the ones on the
+     document, which outlive any body, go on once. */
+  const boundHosts = new WeakSet();
+  let boundDoc = false;
   function bind(host) {
-    if (bound) return; bound = true;
+    if (boundHosts.has(host)) return;
+    boundHosts.add(host);
     const coarse = window.matchMedia('(pointer: coarse)').matches;
     const target = ev => ev.target.closest && ev.target.closest('.mv-p[data-pid]');
     host.addEventListener('click', ev => {
@@ -540,6 +546,17 @@
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); p.click(); }
       if (ev.key === 'Escape') hidePop();
     });
+    /* the popover shows a live line, so refresh it when the body redraws underneath it */
+    host.addEventListener('mv:redrawn', () => {
+      const el = document.getElementById('mvPop');
+      if (!el || el.hidden || !pinned) return;
+      const a = document.querySelector('.mv-p[data-pid="' + pinned + '"]');
+      if (!a) { hidePop(); return; }
+      a.classList.add('pinned');
+      el.innerHTML = popHTML(pinned); place(el, a);
+    });
+    if (boundDoc) return;                      // everything below is on the document or the window: once
+    boundDoc = true;
     document.addEventListener('click', ev => {
       const el = document.getElementById('mvPop');
       if (!el || el.hidden) return;
@@ -553,15 +570,6 @@
       if (!el || el.hidden) return;
       const a = document.querySelector('.mv-p[data-pid="' + el.dataset.pid + '"]');
       if (a) place(el, a); else hidePop();
-    });
-    /* the popover shows a live line, so refresh it when the body redraws underneath it */
-    host.addEventListener('mv:redrawn', () => {
-      const el = document.getElementById('mvPop');
-      if (!el || el.hidden || !pinned) return;
-      const a = document.querySelector('.mv-p[data-pid="' + pinned + '"]');
-      if (!a) { hidePop(); return; }
-      a.classList.add('pinned');
-      el.innerHTML = popHTML(pinned); place(el, a);
     });
   }
 
