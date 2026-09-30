@@ -167,8 +167,12 @@ async function chooseSeason(team, lg) {
        has actually loaded: a crest that 404s must leave a badge behind rather
        than an empty square where the club should be. */
     const badge = $('#badge');
-    if (!themed) badge.style.background = colour;
-    badge.textContent = team.short_name || (team.name || '?').slice(0, 2).toUpperCase();
+    /* its ground is the stylesheet's (kit/clubhero.css): a white disc for a crest, the club's colour for its letters -
+       the code HOME's cards give it (initials.js), never a whole short name that cannot fit */
+    const IN = window.EpinoiaInitials;
+    let letters = '';
+    try { letters = (IN && IN.candidates && IN.candidates(team)[0]) || ''; } catch (_) { letters = ''; }
+    badge.textContent = letters || (team.name || '?').slice(0, 3).toUpperCase();
     const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path) : null;
     if (crestUrl) {
       const crest = document.createElement('img');
@@ -196,7 +200,7 @@ async function chooseSeason(team, lg) {
       }
     }
     $('#tname').textContent = team.name;
-    if (!themed) $('#tname').style.color = colour;
+    /* a club without colours of its own keeps the page's ink: the site's mint is too pale for a name on the light theme */
     /* follow the club: results and fixtures in the bell, email or a push if asked */
     const acts = el('div', 'hero-acts');
     if (window.EpinoiaFollow) {
@@ -738,7 +742,9 @@ async function record(team) {
        ['diff', (s.diff > 0 ? '+' : '') + s.diff], ['streak', s.streak || '—']]
     : [['record', '0-0'], ['played', 0]];
   cells.forEach(([l, v]) => {
-    const d = el('div'); d.append(el('div', 'v', v), el('div', 'l', l)); wrap.appendChild(d);
+    /* data-k: the scoreboard lays the rank out on its own (kit/clubhero.css) */
+    const d = el('div'); d.dataset.k = l.replace(/\s+/g, '-');
+    d.append(el('div', 'v', v), el('div', 'l', l)); wrap.appendChild(d);
   });
 }
 
