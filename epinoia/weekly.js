@@ -280,7 +280,7 @@ function prose(subject, led, games, record) {
   const styles = led.rows.filter(r => r.style && r.pct != null);
   if (styles.length) {
     out.push('For shape rather than score: ' + styles.map(r => r.label + ' was ' +
-      Math.round(r.pct) + 'th percentile').join(', ') + '. Neither answer is the right one; ' +
+      ordinal(Math.round(r.pct)) + ' percentile').join(', ') + '. Neither answer is the right one; ' +
       'it is worth knowing which one you chose.');
   }
   if (n === 1) {
@@ -291,6 +291,11 @@ function prose(subject, led, games, record) {
 }
 
 const cap = s => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
+/* 63 -> 63rd, 11 -> 11th, 22 -> 22nd */
+function ordinal(n) {
+  const t = n % 100;
+  return n + (t >= 11 && t <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] || 'th'));
+}
 
 /* ------------------------------------------------------------- assembling --- */
 
@@ -350,8 +355,82 @@ async function playerWeek(api, playerId, opts) {
   const O = teamRates(sum(oppT, TEAM_COUNTS), sum(mineT, TEAM_COUNTS));
   const V = playerRates(P, T, O);
   const led = ledger('player', PLAYER_MEASURES, { a: V, x: P, T, O, TT: T, OT: O }, V, o.league);
-  return { games, led, totals: V, minutes: P.min,
+  return { games, led, totals: V, counts: P, minutes: P.min,
            prose: prose(o.name || 'This player', led, games, null) };
+}
+
+/* ------------------------------------------------------------- the sheet --- */
+/* THE REPORT AS reportcard.js DRAWS IT: the same ledger rows and the same keep / work lists, plus the
+   week's headline numbers. Built from the report this tab already holds, so the saved page can never
+   say something the tab does not. `who` is the page's identity: kind, name, sub-line, colour, crest. */
+const DECIMALS = { ppp: 2, astTo: 2 };
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function valueText(key, v) {
+  if (v == null || !isFinite(v)) return '—';
+  const d = DECIMALS[key] != null ? DECIMALS[key] : 1;
+  return (+v).toFixed(d);
+}
+
+const dayText = d => d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+
+/* '23–30 Sep 2026', '28 Aug – 4 Sep 2026', '29 Dec 2025 – 4 Jan 2026' */
+function rangeText(days, now) {
+  const b = now || new Date(), a = new Date(b.getTime() - (days || 7) * 86400000);
+  const D = x => x.getUTCDate(), Mo = x => MONTHS[x.getUTCMonth()], Y = x => x.getUTCFullYear();
+  if (Y(a) !== Y(b)) return D(a) + ' ' + Mo(a) + ' ' + Y(a) + ' – ' + D(b) + ' ' + Mo(b) + ' ' + Y(b);
+  if (Mo(a) !== Mo(b)) return D(a) + ' ' + Mo(a) + ' – ' + D(b) + ' ' + Mo(b) + ' ' + Y(b);
+  return D(a) + '–' + D(b) + ' ' + Mo(b) + ' ' + Y(b);
+}
+
+function cardModel(rep, who) {
+  const w = who || {};
+  const r = rep || {};
+  const n = (r.games || []).length;
+  const kind = w.kind === 'player' ? 'player' : 'team';
+  const per = v => (n ? v / n : 0);
+  const one = v => (Math.round((v || 0) * 10) / 10).toFixed(1);
+  const signed = v => (v > 0 ? '+' : '') + v;
+  const tone = v => (v > 0 ? 'good' : v < 0 ? 'bad' : '');
+  let tiles;
+  if (kind === 'team') {
+    const T = r.totals || {}, O = r.opponent || {};
+    const net = Math.round(((T.ortg || 0) - (T.drtg || 0)) * 10) / 10;
+    tiles = [
+      { label: 'games', value: String(n) },
+      { label: 'record', value: r.record || '—' },
+      { label: 'pts / g', value: one(per(T.pts)) },
+      { label: 'opp / g', value: one(per(O.pts)) },
+      { label: 'net rtg', value: signed(net.toFixed(1)), tone: tone(net) },
+      { label: 'pace', value: one(per(T.possessions)) }
+    ];
+  } else {
+    const C = r.counts || {};
+    const pm = Math.round(C.pm || 0);
+    tiles = [
+      { label: 'games', value: String(n) },
+      { label: 'min / g', value: one(per((C.min || 0) / 60000)) },
+      { label: 'pts / g', value: one(per(C.pts)) },
+      { label: 'reb / g', value: one(per((C.or || 0) + (C.dr || 0))) },
+      { label: 'ast / g', value: one(per(C.ast)) },
+      { label: '+/-', value: signed(pm), tone: tone(pm) }
+    ];
+  }
+  const led = r.led;
+  const range = rangeText(w.days || 7, w.now);
+  return {
+    kind, name: w.name || (kind === 'player' ? 'This player' : 'This team'), sub: w.sub || '',
+    range, games: n, record: r.record || null, colour: w.colour || null, crestUrl: w.crest || null,
+    monogram: w.monogram || null,
+    tiles: n ? tiles : [],
+    rows: led ? led.rows.map(x => ({ short: x.short, label: x.label, value: x.value, text: valueText(x.key, x.value),
+                                     pct: x.pct, style: x.style })) : [],
+    good: led ? led.good.map(x => ({ label: x.label, pct: x.pct })) : [],
+    bad: led ? led.bad.map(x => ({ label: x.label, pct: x.pct })) : [],
+    prose: (r.prose || []).filter(p => !/^(KEEP DOING|WORK ON):/.test(p)),
+    url: w.url || '', generated: w.generated || dayText(w.now || new Date()),
+    title: 'Weekly report — ' + (w.name || '') + ', ' + range
+  };
 }
 
 /* ------------------------------------------------------------------ view --- */
@@ -364,11 +443,16 @@ const esc = v => String(v == null ? '' : v)
 function render(rep, opts) {
   const o = opts || {};
   const led = rep.led;
+  const save = o.saveable && rep.games && rep.games.length
+    ? '<div class="wk-save" role="group" aria-label="save this report"><span class="wk-save-k">save the week as</span>' +
+      '<button type="button" class="ep-btn mini" data-wk-save="png" title="a 1080 × 1350 image, for a chat or a post">image</button>' +
+      '<button type="button" class="ep-btn mini" data-wk-save="pdf" title="one A4 page, in print colours">PDF</button></div>'
+    : '';
   const head = '<div class="wk-head"><div class="wk-k">weekly report</div>' +
     '<div class="wk-sub">' + esc(o.window || 'the last seven days') +
     (rep.games && rep.games.length ? ' · ' + rep.games.length +
       (rep.games.length === 1 ? ' game' : ' games') : '') +
-    (rep.record ? ' · ' + esc(rep.record) : '') + '</div></div>';
+    (rep.record ? ' · ' + esc(rep.record) : '') + '</div>' + save + '</div>';
   const paras = (rep.prose || []).map(p => {
     const m = /^(KEEP DOING|WORK ON):\s*/.exec(p);
     if (!m) return '<p>' + esc(p) + '</p>';
@@ -392,6 +476,29 @@ function render(rep, opts) {
   }
   /* data-i18n-ctx="report": the report pack's templates translate these sentences */
   return '<div class="wk">' + head + '<div class="wk-prose" data-i18n-ctx="report">' + paras + '</div>' + table + '</div>';
+}
+
+/* the two buttons: each draws the page the tab shows and hands it over as a file. A second press while one is
+   drawing does nothing; a failure says so on the button and leaves the tab as it was. */
+function wireSave(panel, rep, o, RC) {
+  panel.querySelectorAll('[data-wk-save]').forEach(b => {
+    const label = b.textContent;
+    b.addEventListener('click', async () => {
+      if (b.disabled) return;
+      b.disabled = true;
+      b.textContent = 'drawing…';
+      try {
+        const who = Object.assign({ days: o.days || 7, url: root.location ? root.location.href : '' }, o.card());
+        await RC.save(cardModel(rep, who), b.getAttribute('data-wk-save'));
+        b.textContent = label;
+      } catch (e) {
+        b.textContent = 'could not draw it';
+        if (typeof console !== 'undefined') console.warn('[weekly save]', e);
+        setTimeout(() => { b.textContent = label; }, 4000);
+      }
+      b.disabled = false;
+    });
+  });
 }
 
 /* ------------------------------------------------------------------ mount --- */
@@ -420,7 +527,9 @@ function mount(o) {
     panel.innerHTML = '<div class="wk"><div class="wk-prose"><p>Reading the week…</p></div></div>';
     try {
       const rep = await o.load();
-      panel.innerHTML = render(rep, { window: o.window });
+      const RC = root.EpinoiaReportCard;
+      panel.innerHTML = render(rep, { window: o.window, saveable: !!(RC && o.card) });
+      if (RC && o.card) wireSave(panel, rep, o, RC);
     } catch (e) {
       loaded = false;
       panel.innerHTML = '<div class="wk"><div class="wk-prose" data-i18n-ctx="report"><p>The week could not be read ' +
@@ -438,6 +547,6 @@ function mount(o) {
   return { show };
 }
 
-return { render, mount, teamWeek, playerWeek, teamRates, playerRates, ledger, prose, phrase,
+return { render, mount, teamWeek, playerWeek, teamRates, playerRates, ledger, prose, phrase, cardModel, rangeText,
          TEAM_MEASURES, PLAYER_MEASURES, TEAM_COUNTS, PLAYER_COUNTS, sum };
 }));

@@ -71,12 +71,17 @@ function fail(msg) {
    player's last seven days: what to keep doing, what to work on, and the measures underneath as
    the evidence for both. Mounted whether or not there is footage, so the tab bar appears for
    every player rather than only the filmed ones. */
-function weeklyTab(pl, name) {
+function weeklyTab(pl, name, team) {
   const W = window.EpinoiaWeekly;
   if (!W || !W.mount || !pl || !pl.id) return;
+  const lg = (team && team.leagues) || {};
   W.mount({
-    tabs: '#ptabs', panel: '#weeklysec', window: 'the last seven days',
-    load: () => W.playerWeek(api, pl.id, { name: name, league: ACCESS_LEAGUE.slug, days: 7 })
+    tabs: '#ptabs', panel: '#weeklysec', window: 'the last seven days', days: 7,
+    load: () => W.playerWeek(api, pl.id, { name: name, league: ACCESS_LEAGUE.slug, days: 7 }),
+    /* the saved page's identity (reportcard.js): the player, his club and league, the club's colour and crest */
+    card: () => ({ kind: 'player', name: name, sub: [team && team.name, lg.name].filter(Boolean).join(' · '),
+                   colour: team && team.colour,
+                   crest: team && team.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path, 256) : null })
   });
 }
 
@@ -86,7 +91,7 @@ function paintIdentity(pl, entry, team) {
   $('#name').textContent = name;
   /* the copy tools/build-seo.py wrote for him already has his title (team and league in it); keep that one */
   if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = name + ' · Epinoia';
-  weeklyTab(pl, name);
+  weeklyTab(pl, name, team);
   /* follow the player: his line after every game */
   if (window.EpinoiaFollow && pl.id) {
     const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });
@@ -938,7 +943,7 @@ async function loadCareerAccess(pl, lgRow) {
     }
 
     const re = await api(`roster_entries?player_id=eq.${pl.id}` +
-      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,leagues(id,slug,name))&order=created_at.desc&limit=1`);
+      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name))&order=created_at.desc&limit=1`);
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);

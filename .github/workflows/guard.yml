@@ -532,6 +532,12 @@ jobs:
         # browser's answers, a missing calculator leaves only its own field out, and the report the server files has the sections
         run: node supabase/tests/tabbridge.test.mjs
 
+      - name: The weekly report as a page - an image and a PDF drawn from the tab's own report
+        # epinoia/reportcard.js over weekly.js cardModel: the sheet's rows, lists and numbers are the report's, every word
+        # and bar lands on the page (A4 and 1080 x 1350, a team's sixteen measures and a player's twelve, a sixty-letter
+        # name on two lines), the club's colour reads at 4.5:1, and the PDF's xref, image and UTF-16 title are exact
+        run: node supabase/tests/reportcard.test.mjs
+
       - name: The lineups tab - fives, trios and pairs, filtered and sorted in place
         # epinoia/game/lineups.js over boxscore.js lineupCombos on a real game: the fives are the old tab's, a pair is
         # every stretch the two shared (ten to a five, so ten times the fives' minutes and points), the filters and

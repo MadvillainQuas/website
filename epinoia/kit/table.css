@@ -499,6 +499,12 @@ table.ft tbody tr.picked td.stick{ background:color-mix(in oklch,var(--lume) 16%
 .wk-bad .wk-bar i{ background:var(--bad) }   .wk-bad .wk-p{ color:var(--bad) }
 .wk-style .wk-bar i{ background:color-mix(in oklch,var(--ink) 26%,transparent) }
 .wk-key{ font-family:var(--f-micro); font-size:8px; letter-spacing:.06em; color:var(--ink-3); line-height:1.7; padding:10px 0 0 }
+/* save the week (reportcard.js): an image for a chat or a post, a PDF for the staff's pack */
+.wk-save{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px }
+.wk-save-k{ font-family:var(--f-micro); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin-right:2px }
+.wk-save .ep-btn{ padding:8px 14px; font-size:10px }
+.wk-save .ep-btn[disabled]{ opacity:.6; cursor:progress }
+@media (max-width:640px){ .wk-save .ep-btn{ min-height:40px } }
 
 /* the site-wide units switch (units.js) beside the CSV button: the bar's own sizes */
 .ft-bar .ep-units button{ font-size:9px; padding:8px 11px 7px }

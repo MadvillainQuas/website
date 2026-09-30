@@ -475,9 +475,14 @@ async function videoPanel(team) {
 function weeklyTab(team) {
   const W = window.EpinoiaWeekly;
   if (!W || !W.mount) return;
+  const lg = team.leagues || {};
   W.mount({
-    tabs: '#ttabs', panel: '#weeklysec', window: 'the last seven days',
-    load: () => W.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 })
+    tabs: '#ttabs', panel: '#weeklysec', window: 'the last seven days', days: 7,
+    load: () => W.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }),
+    /* the saved page's identity (reportcard.js): the club, its league, its colour and its crest */
+    card: () => ({ kind: 'team', name: team.name, sub: lg.name || '', colour: team.colour,
+                   crest: window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path, 256) : null,
+                   monogram: team.short_name && team.short_name.length <= 4 ? team.short_name : null })
   });
 }
 
