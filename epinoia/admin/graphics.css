@@ -1,0 +1,86 @@
+/* ============================================================================
+   THE CONSOLE'S LEAGUE BAR, ITS TABS AND THE GRAPHICS TAB (admin/index.html, wstabs.js, graphics-ui.js).
+   Uses the console's own tokens (kit/epinoia-kit.css), so both themes follow. kit/legibility.css stays the last
+   stylesheet on the page; nothing here sets a pixel face's letter-spacing above .2em.
+   ============================================================================ */
+
+/* ---- the league dropdown, above the tabs ---- */
+.lgbar{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:calc(var(--u)*2) calc(var(--u)*3);
+  border-bottom:1px solid var(--rule)}
+.lgbar-l{font-family:var(--f-micro);font-size:10px;color:var(--lume);letter-spacing:.08em;text-transform:uppercase}
+.lgbar-pick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1 1 320px;min-width:0}
+.lgbar .lg-sel{flex:1 1 260px;width:100%;max-width:440px;min-width:0;min-height:40px;font-family:var(--f-ui);font-weight:700;font-size:14px}
+.lgbar .lg-view{white-space:nowrap;text-decoration:none}
+.lgbar .note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto;text-align:right;min-width:0;overflow-wrap:anywhere}
+
+/* ---- the tabs ---- */
+.wstabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3) 0;border-bottom:1px solid var(--rule)}
+.wstabs{display:flex;border-bottom:0;max-width:100%}
+.wstabs .ep-tab{flex:1 1 0;min-height:42px;font-size:11px}
+@media (min-width:640px){ .wstabs{display:inline-flex} .wstabs .ep-tab{flex:0 0 auto;min-width:130px} }
+#tabSettings[hidden],#tabGraphics[hidden]{display:none !important}
+.ep-tab:focus-visible,.ep-chip:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+
+/* ---- graphics: the week, the competition, the shape ---- */
+.gx{min-width:0}
+.gx-ctx{display:flex;align-items:flex-end;gap:12px 16px;flex-wrap:wrap;margin:6px 0 16px}
+.gx-week{display:flex;align-items:center;gap:8px}
+.gx-week .ep-btn{min-height:38px;min-width:38px}
+.gx-weeklbl{display:flex;flex-direction:column;gap:2px;min-width:132px;text-align:center}
+.gx-weeklbl b{font-family:var(--f-ui);font-weight:800;font-size:13.5px;text-transform:uppercase}
+.gx-weeklbl span{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+.gx-comp{flex:0 1 240px}
+.gx-shape{display:flex;gap:7px;flex-wrap:wrap}
+.gx-sub{display:flex;max-width:100%;margin:2px 0 12px}
+.gx-sub .ep-tab{flex:1 1 auto}
+.gx-note{padding:0 0 10px;margin:0}
+.gx-pane{min-width:0}
+
+/* ---- weekly content ---- */
+.gx-filters{gap:7px;margin:4px 0 10px}
+.gx-filters .ep-chip{display:inline-flex;align-items:center;gap:7px}
+.gx-n{font-family:var(--f-data);font-size:10px;padding:1px 6px;border:1px solid var(--rule-2);border-radius:9px;color:var(--ink)}
+.gx-filters .ep-chip.on .gx-n{border-color:currentColor;color:inherit}
+.gx-acts{display:flex;gap:6px;flex-wrap:wrap}
+.gx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin:8px 0 18px}
+.gx-card{border:1px solid var(--rule);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.gx-thumb{width:100%;background:var(--panel-2);border-radius:6px;overflow:hidden}
+.gx-img{display:block;width:100%;height:auto}
+.gx-card .nm{font-family:var(--f-ui);font-weight:700;font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+.gx-cap{width:100%;font-size:11px;line-height:1.45;resize:vertical;min-height:62px;max-width:none}
+
+/* ---- the builder ---- */
+.gx-build{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+@media (min-width:900px){ .gx-build{grid-template-columns:minmax(0,1fr) minmax(0,420px)} .gx-prev{position:sticky;top:12px} }
+.gx-form{display:flex;flex-direction:column;gap:12px;min-width:0}
+.gx-fs{border:1px solid var(--rule);border-radius:8px;margin:0;padding:10px 12px 12px;min-width:0;display:flex;flex-direction:column;gap:9px}
+.gx-fs legend{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.08em;color:var(--lume);text-transform:uppercase;padding:0 6px}
+.gx-fs label.f{flex:0 0 auto}
+.gx-fs .ep-input{max-width:none}
+.gx-ticks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 12px}
+.gx-checks{display:flex;flex-wrap:wrap;gap:8px 12px}
+.gx-cl{flex:1 0 100%;font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.6}
+.gx .sw{min-height:28px}
+.gx .sw input{width:18px;height:18px;margin:0;accent-color:var(--lume)}
+.gx [hidden]{display:none !important}
+.gx-off{opacity:.55}
+.gx-prev{display:flex;flex-direction:column;gap:10px;min-width:0}
+.gx-stage{width:100%;max-width:440px;background:var(--panel-2);border:1px solid var(--rule);border-radius:6px;overflow:hidden;margin:0 auto}
+.gx-canvas{display:block;width:100%;height:auto}
+.gx-status{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:1.8;min-height:1em}
+.gx-prev .gx-acts{justify-content:center}
+@media (max-width:640px){
+  .lgbar .note{margin-left:0;text-align:left;flex:1 0 100%}
+  .gx-weeklbl{min-width:110px}
+  .gx-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+}
+.gx-tz{flex:1 1 230px;max-width:340px}
+.gx-comp{flex:1 1 200px}
+.gx-ctx .ep-input{width:100%;max-width:none}
+
+/* the site's own stats picker: a folded list with a search box, grouped */
+.gx-cat{border:1px dashed var(--rule-2);border-radius:8px;padding:6px 10px;min-width:0}
+.gx-cat>summary{cursor:pointer;font-family:var(--f-micro);font-size:9.5px;color:var(--lume);line-height:1.8;padding:4px 0}
+.gx-cat .ep-input{width:100%;max-width:none;margin:6px 0}
+.gx-catbody{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px 2px 6px}
+.gx-catbody .gx-checks{gap:4px 12px}

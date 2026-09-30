@@ -54,13 +54,17 @@ const DONE_Q = '&status=in.(final,finalising)';
    after half an hour with no new play, and flags it when that brings nothing either. It stays out of LIVE
    until a play arrives. home.js drops this filter for a database that does not have the column yet. */
 const NOT_STALLED = '&stalled_since=is.null';
+/* AND A GAME 'LIVE' EIGHT HOURS AFTER TIP-OFF IS NOT LIVE, flagged or not (the four that sat on HOME for days, 26-30 Sep 2026:
+   two had no flag - a feed the scorer never closed, a finalise-game refusal). Until the ingest's repair closes it, it is
+   left out of LIVE; globalgames.js holds the same cap for HOME's cards. */
+const LIVE_CAP = 8 * HOUR;
 
 /* THE READS, as the query text that follows `games?select=…`. `scope` is the caller's own
    filter (the league's competitions, or one of them) and goes on the end of every read. */
 function queries(view, now, scope) {
   scope = scope || '';
   const week = view === 'week';
-  const q = { live: '&status=eq.live' + NOT_STALLED + '&order=tipoff_at.asc&limit=50' + scope };
+  const q = { live: '&status=eq.live' + NOT_STALLED + '&tipoff_at=gte.' + stamp(now - LIVE_CAP) + '&order=tipoff_at.asc&limit=50' + scope };
   if (view !== 'upcoming') {
     /* no upper bound on the week: a finalised game dated AHEAD (a mis-dated fixture) sorts first
        and rides at the end of the page instead of vanishing -- see `odd` in pick() */
@@ -99,7 +103,7 @@ function pick(rows, view, now, totals) {
   rows = (rows || []).filter(g => g && !seen.has(g.id) && seen.add(g.id));
 
   const weekAgo = now - WEEK;
-  const live = rows.filter(g => g.status === 'live' && !g.stalled_since);
+  const live = rows.filter(g => g.status === 'live' && !g.stalled_since && !(at(g) && now - at(g) > LIVE_CAP));
   const done = rows.filter(g => DONE(g.status));
   /* both ends matter: without the upper bound a finalised game dated in the future counts as
      played this week */

@@ -13,7 +13,9 @@
                     (mountSources): on the league's news page, and every reader's News
 
    The platform console mounts mountSources with no league: the sources every reader
-   sees, the sites that cover everything (Eurohoops, BasketNews…).
+   sees, the sites that cover everything (Eurohoops, BasketNews…). It also mounts
+   mountPartners (0201): every source and every outlet with an "Official partner" switch,
+   which only the platform can flip (set_official_partner).
 
    The database decides every one of these (set_league_creators, create_creator_outlet,
    set_creator_outlet_status, hide_creator_post, add_news_source …); what it refuses is
@@ -525,5 +527,70 @@ function mountSources(o) {
   draw();
 }
 
-return { mount, mountSources, mountForum, lookUpInvite, inviteCode, recogniseLink };
+/* ------------------------------------------------------------ official partners ---- */
+/* THE PLATFORM CHOOSES (0201 set_official_partner): every news source and every creator outlet, in every league, each
+   with a switch. An official partner wears a small gold pill on its cards and pages, and the feed lifts its unread stories
+   for about a week. Only a platform administrator can change it: the database refuses anybody else, in its own words. */
+function mountPartners(o) {
+  const host = typeof o.host === 'string' ? document.querySelector(o.host) : o.host;
+  if (!host) return;
+  const sb = o.sb, say = o.say || (() => {});
+  host.textContent = '';
+  const box = el('div');
+  host.appendChild(box);
+
+  async function draw() {
+    const { data, error } = await sb.rpc('official_partners_admin');
+    box.textContent = '';
+    box.appendChild(h('Official partners'));
+    if (error) {
+      box.appendChild(el('p', 'empty', /does not exist|schema cache/i.test(errText(error))
+        ? 'Official partners arrive with migration 0201: it has not been applied to this database yet.'
+        : 'Could not read the official partners: ' + errText(error)));
+      return;
+    }
+    box.appendChild(el('p', 'empty',
+      'An official partner wears a small gold “Official partner” pill on its cards, its page and its stories, and the feed lifts ' +
+      'its stories a reader has not opened yet, for about a week. Only the platform can name one: a league can add a source ' +
+      'or open an outlet, but not call it a partner. A source that is off or an outlet that is suspended shows nothing, ' +
+      'partner or not.'));
+    const groups = [['News sources', 'source'], ['Creator outlets', 'outlet']];
+    groups.forEach(([title, kind]) => {
+      const list = (data || []).filter(r => r.kind === kind);
+      box.appendChild(h(title + ' (' + list.filter(r => r.official_partner).length + ' of ' + list.length + ' are official partners)'));
+      if (!list.length) box.appendChild(el('p', 'empty', kind === 'source' ? 'No news sources yet.' : 'No creator outlets yet.'));
+      list.forEach(r => {
+        const line = el('div', 'op-row');
+        line.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--rule)';
+        const sw = el('input'); sw.type = 'checkbox'; sw.className = 'sw'; sw.checked = !!r.official_partner;
+        sw.setAttribute('role', 'switch'); sw.setAttribute('aria-label', 'Official partner: ' + r.name);
+        const lab = el('label', 'sw-row');
+        lab.style.cssText = 'display:flex;gap:8px;align-items:center;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;flex:none;min-width:150px';
+        lab.append(sw, el('span', null, 'Official partner'));
+        const name = el('b', null, r.name);
+        const where = kind === 'outlet' ? (r.league_name ? r.league_name + ' · ' : '') : (r.league_name ? r.league_name + '’s own · ' : 'every reader’s · ');
+        const meta = el('span', 'empty', where + (r.showing ? (kind === 'source' ? 'on' : 'active') : (kind === 'source' ? 'OFF: not shown' : 'SUSPENDED: not shown')));
+        meta.style.cssText = 'flex:1 1 220px;margin:0';
+        sw.addEventListener('change', async () => {
+          const want = sw.checked;
+          const ask = want
+            ? 'Name ' + r.name + ' an official partner? Its cards and pages get the gold pill, and its unread stories are lifted in every reader’s feed for about a week.'
+            : 'Stop ' + r.name + ' being an official partner? The pill and the lift go.';
+          if (!confirm(ask)) { sw.checked = !want; return; }
+          sw.disabled = true;
+          const { error: e } = await sb.rpc('set_official_partner', { p_kind: r.kind, p_id: r.id, p_on: want });
+          sw.disabled = false;
+          if (e) { sw.checked = !want; return say(errText(e), 'err'); }
+          say(want ? r.name + ' is an official partner.' : r.name + ' is no longer an official partner.', 'ok');
+          draw();
+        });
+        line.append(lab, name, meta);
+        box.appendChild(line);
+      });
+    });
+  }
+  draw();
+}
+
+return { mount, mountSources, mountForum, lookUpInvite, inviteCode, recogniseLink, mountPartners };
 }));

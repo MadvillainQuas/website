@@ -1682,10 +1682,17 @@ async function creators() {
   if (!(rows || []).length) return;
   const slug = encodeURIComponent(LEAGUE.slug);
   const outletHref = o => 'creators/?l=' + slug + '&o=' + encodeURIComponent(o);
+  /* the official partners' pill, and a piece pressed being "opened" (feedrank.js, this device only): looked up after the
+     reads, when every deferred script has run; none of it is needed for the section */
+  const FR = window.EpinoiaFeedRank || null;
+  let partners = new Set();
+  try { if (FR) partners = await FR.partners(); } catch (_) { /* no pill */ }
+  const pkey = o => 'outlet:' + LEAGUE.slug + '/' + o;
+  const onOpen = it => { try { if (FR && it && it.row) FR.opened(it.row); } catch (_) { /* never in the reader's way */ } };
   host.textContent = '';
   if ((outlets || []).length > 1) {
     host.appendChild(K.brands(outlets.slice(0, 8).map(o => ({ name: o.name, logo: o.logo_url, colour: o.colour, href: outletHref(o.slug),
-      note: Number(o.pieces || 0) + (Number(o.pieces) === 1 ? ' piece' : ' pieces') }))));
+      note: Number(o.pieces || 0) + (Number(o.pieces) === 1 ? ' piece' : ' pieces'), partner: partners.has(pkey(o.slug)) }))));
   }
   host.appendChild(K.grid(rows.map(x => {
     const e = K.embedOf(x.external_url, location.hostname);
@@ -1694,9 +1701,12 @@ async function creators() {
       image: (x.cover_url && /^https:\/\//.test(x.cover_url) ? x.cover_url : null) || (e && e.thumb) || null,
       when: x.published_at, author: x.author_name, href: outletHref(x.outlet_slug) + '&p=' + encodeURIComponent(x.slug),
       platform: e ? e.label : null,
-      brand: { name: x.outlet_name, logo: x.outlet_logo, colour: x.outlet_colour, href: outletHref(x.outlet_slug) }
+      brand: { name: x.outlet_name, logo: x.outlet_logo, colour: x.outlet_colour, href: outletHref(x.outlet_slug) },
+      id: x.id, pkey: pkey(x.outlet_slug),
+      row: { id: x.id, kind: 'creator', league_slug: LEAGUE.slug, outlet_slug: x.outlet_slug, slug: x.slug, source_name: x.outlet_name,
+             leagues: [{ slug: LEAGUE.slug, name: LEAGUE.name }] }
     };
-  }), { lead: false, now: Date.now(), showLeague: false }));
+  }), { lead: false, now: Date.now(), showLeague: false, partners, onOpen }));
   const note = $('#creatorsNote');
   if (note) {
     note.textContent = '';

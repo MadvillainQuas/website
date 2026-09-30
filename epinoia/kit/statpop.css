@@ -99,3 +99,4 @@ html.stp-lock{overflow:hidden}
    layout (it stacks and centres it, which left the button hanging under the title) */
 .sec-h:has(>.stp-q){position:relative}
 .sec-h:has(>.stp-q)>.stp-q{position:absolute;right:12px;top:12px;margin:0}
+.stp-mk{cursor:pointer}

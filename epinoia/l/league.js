@@ -127,7 +127,7 @@ function watchAccess() {
 function renderPanes() {
   if (PAYWALLED) return document.body.classList.contains('fixtures-public') ? renderFixtures() : Promise.resolve();
   return Promise.all([renderTable(), renderFixtures(), leadersShown ? renderLeaders() : null,
-                      teamsShown ? renderTeamStats() : null, renderExtras(), sosShown ? renderSOS() : null]);
+                      teamsShown ? renderTeamStats() : null, chartsShown ? renderCharts() : null, renderExtras(), sosShown ? renderSOS() : null]);
 }
 
 async function boot() {
@@ -276,6 +276,7 @@ function renderPhasePicker() {
     renderTable(); renderFixtures(); renderExtras();
     if (leadersShown) renderLeaders();
     if (teamsShown) renderTeamStats();
+    if (chartsShown) renderCharts();
     if (sosShown) renderSOS();
   })));
 }
@@ -876,13 +877,45 @@ async function renderTeamStats() {
   });
 }
 
+/* ----------------------------------------------------------- charts --- */
+/* The chart lab (epinoia/chartlab.js): scatter graphs of the season's statistics, players or teams, any two
+   columns of the tables on the axes. It reads the same season line as Leaders and Team Stats (loadLines) under
+   the same "covering" control, and is drawn the first time the tab is opened. A club's shot-zone columns need
+   the event log of every game (attachZoneStats), so that read is made only when a chart asks for one of them,
+   and never for a viewer whose membership has no analytics. The chart itself is kept in ?cl= so it can be linked. */
+let chartSeq = 0;
+async function renderCharts() {
+  const pane = $('#pane-charts');
+  if (!pane) return;
+  const seq = ++chartSeq;
+  pane.textContent = '';
+  const bar = el('div', 'scopehost'); pane.appendChild(bar);
+  const board = el('div', 'boardhost'); pane.appendChild(board);
+  let S, keep;
+  try { [S, keep] = await Promise.all([loadLines(), scopePicker(bar, renderCharts)]); }
+  catch (e) { if (seq === chartSeq) pane.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
+  if (seq !== chartSeq) return;
+  const Lab = window.EpinoiaChartLab;
+  if (!Lab) { board.appendChild(el('div', 'empty', 'The chart lab could not be loaded.')); return; }
+  if (!S.players.length && !S.teams.length) {
+    board.appendChild(el('div', 'empty', 'No statistics yet \u2014 these fill in as games are finalised in the scorer.'));
+    return;
+  }
+  Lab.mount({
+    host: board, D: window.EpinoiaData, league, season, S, keep,
+    leagueId: league.id, leagueSlug: league.slug,
+    prepare: () => (!ANALYTICS_LOCKED && window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats
+      ? window.EpinoiaShotChart.attachZoneStats(S, window.EpinoiaData) : null)
+  }).catch(e => { if (seq === chartSeq) board.appendChild(el('div', 'empty', 'Could not draw the chart: ' + e.message)); });
+}
+
 /* ------------------------------------------------- strength of schedule --- */
 /* index_9's Strength of Schedule tab (epinoia/sos.js) over the same season read and the same
    "covering" control as the team statistics: both sides of every finalised game, which is
    what that table is built from. Drawn the first time the tab is opened; after that it
    follows the season, the phase and the scope like every other pane. */
 let sosShown = false, booted = false, sosSeq = 0;
-let leadersShown = false, teamsShown = false;   // drawn the first time their tab is opened (renderPanes)
+let leadersShown = false, teamsShown = false, chartsShown = false;   // drawn the first time their tab is opened (renderPanes)
 
 async function renderSOS() {
   const pane = $('#pane-sos');
@@ -958,6 +991,7 @@ function showTab(name) {
   if (name === 'sos' && !sosShown) { sosShown = true; if (booted && !PAYWALLED) renderSOS(); }
   if (name === 'leaders' && !leadersShown) { leadersShown = true; if (booted && !PAYWALLED) renderLeaders(); }
   if (name === 'teams' && !teamsShown) { teamsShown = true; if (booted && !PAYWALLED) renderTeamStats(); }
+  if (name === 'charts' && !chartsShown) { chartsShown = true; if (booted && !PAYWALLED) renderCharts(); }
   return true;
 }
 

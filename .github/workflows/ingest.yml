@@ -143,6 +143,25 @@ jobs:
           SCRAPER_DIR: ${{ github.workspace }}/scraper
           PYTHONPATH: ${{ github.workspace }}/scraper
         run: python scripts/ingest/run_ingest.py --config --catch-up --feed-out "" || echo "catch-up failed - the live lane still runs"
+      # NOTHING SITS LIVE FOR DAYS. Every live-lane pass (so the hourly floor too) reads again, and finalises through the
+      # normal path, any game still live or finalising more than 4 h after its tip-off - of ANY age, in any league; the
+      # catch-up above only looks at games under a week old whose feed row is not final, which is how Oaklands Wolves
+      # v Cardiff Met (tip-off Oct 2025, the feed final, finalise-game refusing it) and three more sat on the front page
+      # from 26 to 30 Sep 2026. One still open 6 h after tip-off is closed on its last state (final if the fourth
+      # period or later was over or decided, else void): scripts/ingest/stuck.py, and supabase/migrations/0203 for the
+      # same rule run by pg_cron. Idempotent, and nearly always one read that finds nothing. Repair by hand, with a
+      # table and a failing exit code: .github/workflows/repair-stalled.yml.
+      - name: Repair games stuck live
+        if: ${{ (github.event.schedule != '' && github.event.schedule != '40 5 * * 1,4' && github.event.schedule != '15 3 * * *') || github.event.inputs.live == 'true' }}
+        timeout-minutes: 12
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: python scripts/ingest/run_ingest.py --config --repair-stalled --feed-out "" || echo "repair failed - the live lane still runs"
       # scripts/ingest/reset_league.py: only when asked by name, twice. The backup of every deleted row is kept as a
       # run artifact (not committed: it holds player records), for 30 days.
       - name: Reset a league (on request)

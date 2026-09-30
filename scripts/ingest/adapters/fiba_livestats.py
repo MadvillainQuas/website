@@ -88,6 +88,28 @@ def shot_dist_to_nearest_rim(x, y) -> float:
     return best
 
 
+def distinct_team_codes(raw: dict) -> bool:
+    """Two clubs on one game with the same code are given no code at all (feedplatform.team_code then
+    falls back to each club's own name).
+
+    THE CZECH FEDERATION'S SYSTEM SENDS THE HOME CLUB'S CODE FOR BOTH SIDES (Slavia Tygri Praha v
+    Slavoj BK Litomerice, 25 Sep 2026: code 'SLA' on team 1 and on team 2). Everything downstream keys
+    on "<code>:<pno>": the away club was resolved as the home one, its players' slots overwrote the
+    home players' in the map, and the game's roster snapshot named the same ten people on both
+    sides - finalise-game refused it ("X and Y are the same player on the team sheet") on every
+    retry, so a finished game sat LIVE for five days. Blank codes are never a collision. Returns
+    True when it changed the payload."""
+    tm = (raw or {}).get("tm") or {}
+    a, b = tm.get("1"), tm.get("2")
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        return False
+    ca, cb = str(a.get("code") or "").strip(), str(b.get("code") or "").strip()
+    if ca and ca.lower() == cb.lower():
+        a["code"] = b["code"] = ""
+        return True
+    return False
+
+
 class FibaLiveStatsAdapter(BaseAdapter):
     name = "fiba_livestats"
     min_request_gap_s = 0.3
@@ -421,6 +443,7 @@ class FibaLiveStatsAdapter(BaseAdapter):
 
     def bundle_from_raw(self, raw: dict, external_id: str, config: dict | None = None) -> GameBundle:
         config = config or {}
+        distinct_team_codes(raw)
         payload_hash = hashlib.sha1(json.dumps(raw, sort_keys=True).encode()).hexdigest()
         tm = raw["tm"]
         home, away = tm.get("1", {}), tm.get("2", {})

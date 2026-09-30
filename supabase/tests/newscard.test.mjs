@@ -36,6 +36,7 @@ class El {
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); }
   get nextSibling() { const p = this.parentNode; if (!p) return null; return p.children[p.children.indexOf(this) + 1] || null; }
   get firstChild() { return this.children[0] || null; }
+  get childNodes() { return this.children; }
   set textContent(v) { this.children = []; this._text = String(v); }
   get textContent() { return this._text + this.children.map(c => c.textContent).join(''); }
   set innerHTML(v) { throw new Error('innerHTML used: ' + v); }
@@ -132,6 +133,61 @@ const g = K.grid([out, out, out], {});
 ok('a grid leads with its first card, unless told not to', g.children[0].classList.contains('pc-lead') && !g.children[1].classList.contains('pc-lead') &&
    !K.grid([out, out], { lead: false }).children[0].classList.contains('pc-lead'));
 
+console.log('\nthe official-partner pill (0201)');
+const FRk = require(path.join(root, 'epinoia', 'feedrank.js'));
+ok('a feed row keeps its id and itself, and the key the publisher / outlet is known by (the same one feedrank.js and official_partners() use)',
+   out.id === 'x' && out.row && out.row.kind === 'outlet' && out.pkey === 'source:eurohoops' && cr.pkey === 'outlet:kbl/hoops-tape' && lg.pkey === null &&
+   out.pkey === FRk.pkeyOf(out.row) && cr.pkey === FRk.pkeyOf(cr.row) && lg.pkey === FRk.pkeyOf(lg.row));
+const partnerSet = new Set(['source:eurohoops', 'outlet:kbl/hoops-tape']);
+const pcard = K.card(out, { now: Date.parse('2026-09-30T12:00:00Z'), partners: partnerSet });
+const pill = pcard.find('pc-partner');
+ok('a publisher\'s story from an official partner wears the pill, named "Official partner" (the words are its text; the capitals are CSS)',
+   pill && pill.textContent === 'Official partner' && pcard.classList.contains('pc-partnered'), pill && pill.className);
+ok('...on the plate, away from the headline, and a label only: not a link, not inside the headline\'s link, and the card still has its ONE link to the piece',
+   pill.parentNode.classList.contains('pc-plate') && pill.tagName === 'SPAN' && !pcard.find('pc-link').all().includes(pill) &&
+   pcard.all().filter(n => n.tagName === 'A' && n.classList.contains('pc-link')).length === 1 && !pcard.find('pc-title').all().includes(pill));
+ok('...with a picture or without one (the plate is the brand\'s print then): the pill is on both',
+   K.card(Object.assign({}, out, { image: 'https://e.example/p.jpg' }), { partners: partnerSet }).find('pc-partner') && K.card(Object.assign({}, out, { image: null }), { partners: partnerSet }).find('pc-partner'));
+ok('a card that is not a partner\'s, and a card given no partners, has none', !K.card(Object.assign({}, out, { pkey: 'source:basketnews' }), { partners: partnerSet }).find('pc-partner') && !K.card(out, {}).find('pc-partner') && !K.card(lg, { partners: partnerSet }).find('pc-partner'));
+ok('a creator\'s piece from a partner outlet wears it too (the key carries its league: the same outlet slug in another league is not the partner)',
+   K.card(cr, { partners: partnerSet }).find('pc-partner') && !K.card(Object.assign({}, cr, { pkey: 'outlet:nbl/hoops-tape' }), { partners: partnerSet }).find('pc-partner'));
+ok('a card with no plate (a creator\'s post played in the card) carries it in its kicker', (() => {
+  const c2 = K.card(Object.assign({}, cr, { embedUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }), { embed: true, partners: partnerSet });
+  const p2 = c2.find('pc-partner'); return p2 && p2.parentNode.classList.contains('pc-kick'); })());
+ok('an item may say it is a partner itself (item.partner)', K.card(Object.assign({}, out, { pkey: null, partner: true }), {}).find('pc-partner'));
+const hero = K.hero({ name: 'Eurohoops', kicker: 'Publisher', partner: true, links: [] });
+const mast = K.masthead({ brand: { name: 'Eurohoops' }, title: 'A story', partner: true });
+ok('the publisher\'s page head and the story page\'s head carry it, and only when asked', hero.find('pc-partner') && mast.find('pc-partner') && mast.find('pc-mast-top').all().includes(mast.find('pc-partner')) &&
+   !K.hero({ name: 'X' }).find('pc-partner') && !K.masthead({ brand: { name: 'X' }, title: 'T' }).find('pc-partner'));
+ok('the row of publishers marks a partner', K.brands([{ name: 'Eurohoops', partner: true }, { name: 'Other' }]).all().filter(n => n.classList.contains('pc-partner')).length === 1);
+{
+  const css = read('epinoia', 'kit', 'newscard.css');
+  const rule = /\.pc-partner\{([^}]*)\}/.exec(css);
+  const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+  const hexOf = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const bg = /background:(#[0-9a-f]{6})/i.exec(rule && rule[1]), fg = /(?:^|[;\s])color:(#[0-9a-f]{6})/i.exec(rule && rule[1]);
+  const ratio = bg && fg ? (Math.max(lum(hexOf(bg[1])), lum(hexOf(fg[1]))) + .05) / (Math.min(lum(hexOf(bg[1])), lum(hexOf(fg[1]))) + .05) : 0;
+  ok('the pill is gold with black type in BOTH themes (fixed colours, not the page\'s ink), at 7:1 or better, in the pixel micro face at most .2em tracked',
+     rule && /var\(--f-micro\)/.test(rule[1]) && ratio >= 7 && !/var\(--ink/.test(rule[1]) && !/:root\[data-theme/.test(css.slice(css.indexOf('.pc-partner'), css.indexOf('.pc-partner') + 400)) &&
+     (/letter-spacing:([\d.]+)em/.exec(rule[1]) || [0, 0])[1] <= 0.2, [rule && rule[1], ratio]);
+  ok('...it sits on the plate, under the headline link\'s cover (z-index below it) and takes no press', /\.pc-plate > \.pc-partner\{[^}]*z-index:3/.test(css) && /\.pc-link::after\{[^}]*z-index:4/.test(css) && /pointer-events:none/.test(rule[1]));
+}
+
+console.log('\n"Why am I seeing this?" and "opened"');
+const wc = K.card(Object.assign({}, out, { why: 'Because you read a lot about NBL' }), {});
+ok('a ranked card says why, on a line of its own that is no link (the ? mark, the words)', wc.find('pc-why') && wc.find('pc-why').textContent === '?Because you read a lot about NBL' &&
+   wc.find('pc-why').getAttribute('aria-label') === 'Why am I seeing this? Because you read a lot about NBL' && wc.find('pc-why').title === 'Why am I seeing this?' && wc.find('pc-why').tagName === 'DIV');
+ok('...an unranked card, and a card asked not to, say nothing', !K.card(out, {}).find('pc-why') && !K.card(Object.assign({}, out, { why: 'x' }), { why: false }).find('pc-why'));
+{
+  const seen = [];
+  const oc = K.card(out, { onOpen: it => seen.push(it.id) });
+  const link = oc.find('pc-link'), go = oc.find('pc-go');
+  ['click', 'auxclick'].forEach(t => { link.listeners[t][0](); go.listeners[t][0](); });
+  ok('pressing the headline or the way to the piece (a click, or a middle click) tells the page which item was opened', seen.length === 4 && seen.every(x => x === 'x'), seen);
+  ok('...a card given no onOpen listens to nothing, and a throwing one never gets in the reader\'s way',
+     !K.card(out, {}).find('pc-link').listeners.click && (() => { const bad = K.card(out, { onOpen: () => { throw new Error('x'); } }); try { bad.find('pc-link').listeners.click[0](); return true; } catch (_) { return false; } })());
+}
+
 console.log('\nthe pages');
 const hostsIn = html => { const m = /frame-src ([^;"]+)/.exec(html); return m ? m[1].trim().split(/\s+/) : []; };
 for (const page of [['epinoia', 'creators', 'index.html'], ['epinoia', 'creators', 'studio', 'index.html'], ['epinoia', 'news', 'index.html']]) {
@@ -164,6 +220,36 @@ ok('HOME: the FEED under MY FOLLOWED, its switch in its heading, its script afte
    home.indexOf('id="feed"') > home.indexOf('id="followed"') && home.indexOf('id="feed"') < home.indexOf('id="stars"') &&
    /data-feed="followed"/.test(home) && /data-feed="newest"/.test(home) && home.indexOf('newscard.js?v=') < home.indexOf('feed-home.js?v='));
 ok('...mounted by front.js as the feed section', /feed: 'homeFeed'/.test(read('epinoia', 'home', 'front.js')) && /H\.register\('feed'/.test(read('epinoia', 'home', 'feed-home.js')));
+ok('HOME: For you first (the new default), then Followed and Newest, and feedrank.js before the feed\'s script',
+   home.indexOf('data-feed="foryou"') > 0 && home.indexOf('data-feed="foryou"') < home.indexOf('data-feed="followed"') && home.indexOf('feedrank.js?v=') > home.indexOf('newscard.js?v=') && home.indexOf('feedrank.js?v=') < home.indexOf('feed-home.js?v='));
+const npage = read('epinoia', 'news', 'news-page.js'), hfeed = read('epinoia', 'home', 'feed-home.js');
+ok('DEFAULT IS FOR YOU on both: the News page and HOME open on For you when nothing was chosen, and the remembered choice lives under NEW keys so an old remembered Newest cannot stick',
+   /\|\| 'you'/.test(npage) && /const ORDER_KEY = 'epinoia\.news\.order2'/.test(npage) && /let mode = stored\(\) \|\| 'foryou'/.test(hfeed) && /const KEY = 'epinoia\.home\.feed2'/.test(hfeed) &&
+   !/'epinoia\.news\.order'/.test(npage) && !/'epinoia\.home\.feed'/.test(hfeed));
+ok('an explicit choice is still remembered (the buttons write the key), in a try/catch', /localStorage\.setItem\(ORDER_KEY/.test(npage) && /localStorage\.setItem\(KEY/.test(hfeed));
+{
+  /* the language chip: only on a story in a language other than the site's */
+  const FRm = require(path.join(root, 'epinoia', 'feedrank.js'));
+  global.window = { EpinoiaFeedRank: FRm }; globalThis.EpinoiaI18n = { lang: 'en' };
+  const es = K.fromFeed({ kind: 'outlet', id: 'x1', title: 'Hola', url: 'https://www.gigantes.com/a', source_slug: 'gigantes', source_name: 'Gigantes', leagues: [] }, '../');
+  const en = K.fromFeed({ kind: 'outlet', id: 'x2', title: 'Hi', url: 'https://www.eurohoops.net/a', source_slug: 'eurohoops', source_name: 'Eurohoops', leagues: [] }, '../');
+  const lg = K.fromFeed({ kind: 'league', id: 'x3', title: 'L', league_slug: 'nbl', league_name: 'NBL', slug: 'a', leagues: [] }, '../');
+  ok('a Spanish story for an English site carries lang es; an English one and a league\'s own article carry none', es.lang === 'es' && !en.lang && !lg.lang, [es.lang, en.lang, lg.lang]);
+  globalThis.EpinoiaI18n.lang = 'es';
+  const es2 = K.fromFeed({ kind: 'outlet', id: 'x1', title: 'Hola', url: 'https://www.gigantes.com/a', source_slug: 'gigantes', leagues: [] }, '../');
+  ok('...and on the Spanish site the Spanish story is the reader\'s own: no tag', !es2.lang);
+  delete global.window; delete globalThis.EpinoiaI18n;
+}
+ok('the News page and the creators\' pages load feedrank.js BEFORE their own script (they read it at the top), interest.js after it',
+   [['news', 'news-page.js'], ['creators', 'creators-page.js']].every(([d, js]) => { const h = read('epinoia', d, 'index.html'); return h.indexOf('feedrank.js?v=') > h.indexOf('newscard.js?v=') && h.indexOf('feedrank.js?v=') < h.indexOf('src="' + js) && h.indexOf('interest.js?v=') > h.indexOf('feedrank.js?v='); }));
+ok('every league page that counts dwell loads feedrank.js then interest.js, deferred and version-stamped like its neighbours; HOME does not (the platform is nobody\'s league)',
+   ['index.html', 'l/index.html', 't/index.html', 'p/index.html', 'game/index.html', 'stats/index.html', 'stats/wowy/index.html', 'fixtures/index.html', 'news/index.html', 'creators/index.html'].every(f => {
+     const h = read('epinoia', ...f.split('/')); const i = h.indexOf('interest.js?v='); return i > 0 && /<script src="[.\/]*interest\.js\?v=\d+" defer><\/script>/.test(h) && h.indexOf('feedrank.js?v=') > 0 && h.indexOf('feedrank.js?v=') < i && i < h.indexOf('nav.js?v='); }) &&
+   !/interest\.js/.test(home) && !/interest\.js/.test(read('epinoia', 'games', 'index.html')));
+ok('interest.js is small and sends nothing: no fetch, no XHR, no beacon, no eval', (() => { const j = read('epinoia', 'interest.js'); return j.split('\n').length < 30 && !/fetch\(|XMLHttpRequest|sendBeacon|eval\(|new Function|document\.cookie/.test(j.replace(/\/\*[\s\S]*?\*\//g, '')); })());
+ok('feedrank.js reaches out only for the public lists: partners, the leagues\' countries, a report\'s points, the publishers\' languages (and never with a token)', (() => {
+  const j = read('epinoia', 'feedrank.js').replace(/\/\*[\s\S]*?\*\//g, ''); const paths = [...j.matchAll(/call\('(?:rpc|get)', '([^']+)'/g)].map(m => m[1]);
+  return paths.sort().join() === ['leagues?select=id,slug,country&order=slug', 'rpc/news_report_significance', 'rpc/news_source_languages', 'rpc/official_partners'].sort().join() && !/Authorization|authHeaders|sendBeacon|document\.cookie/.test(j); })());
 const splash = read('epinoia', 'index.html');
 ok('a league\'s front page carries its creators under its news, hidden until there are some',
    /id="creatorsSec"/.test(splash) && /class="sec hide" id="creatorsSec"/.test(splash) && splash.indexOf('id="creatorsSec"') > splash.indexOf('id="newsSec"') &&

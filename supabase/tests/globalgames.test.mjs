@@ -740,5 +740,16 @@ section('/epinoia/games/: nearest first, only the week\'s leagues, a Show more o
      /if \(rows\.has\(g\.id\)\) \{ rows\.delete\(g\.id\); return true; \}/.test(gjs2) && /id="gmLive"/.test(ghtml));
 }
 
+section('a game live for eight hours after tip-off is not a live card (26-30 Sep 2026: four sat on HOME for days)');
+{
+  const stuck = [game('oak', L.slbw, -340 * D, 'live'), game('cz', L.bcb, -5 * D, 'live'), game('kos', L.slbm, -3 * D, 'live')];
+  const fine = game('now', L.bcb, -90 * 60e3, 'live'), late = game('ot', L.bcb, -3.5 * H, 'live');
+  const got = G.pickDaily(stuck.concat([fine, late]), [], [], NOW, 8);
+  ok('only the games being played are live cards', ids(got).join() === 'ot,now', ids(got).join());
+  ok('overdue() says which', stuck.every(g => G.overdue(g, NOW)) && !G.overdue(fine, NOW) && !G.overdue(game('s', L.bcb, -9 * H, 'scheduled'), NOW));
+  ok('a game the ingest flagged stalled is not a live card either', G.pickDaily([Object.assign({}, fine, { stalled_since: at(-H) })], [], [], NOW, 8).length === 0);
+  ok('the live read is bounded to the last eight hours of tip-offs', /status=eq\.live&tipoff_at=gte\./.test(rd('epinoia', 'globalgames.js')));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -43,7 +43,7 @@ function placeLabels(points, opts) {
     const p = points[i];
     if (!p.must && others >= max) continue;
     let done = null;
-    for (const d of [gap, gap + 10, gap + 22]) {
+    for (const d of [gap, gap + 5, gap + 12]) {
       const o = p.r + d;
       const cand = [
         ['r', p.x + o, p.y - p.h / 2], ['l', p.x - o - p.w, p.y - p.h / 2],
@@ -218,7 +218,30 @@ function open(o) {
   };
 
   /* ---- the chart ---- */
-  let lastLayout = null, tipId = null;
+  let lastLayout = null, tipId = null, lastMarks = [];
+  /* THE LABEL'S REAL WIDTH. It was a guess of 6.4px a character, and the text was always drawn from the box's left edge: a
+     label placed to the LEFT of its marker (its box ending next to it) therefore started far to the left of where the
+     text actually ended, so a name could sit half a centimetre from its own circle and look like it belonged to the
+     neighbour. The width is measured in the chart's own font, and text is anchored to the side of the box that touches
+     the marker. */
+  const probe = document.createElementNS(NS, 'svg');
+  probe.setAttribute('class', 'stp-svg stp-probe');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;visibility:hidden;overflow:hidden';
+  const probeText = document.createElementNS(NS, 'text');
+  probeText.setAttribute('class', 'stp-lab');
+  probe.appendChild(probeText);
+  box.appendChild(probe);
+  const widths = new Map();
+  const textW = str => {
+    if (widths.has(str)) return widths.get(str);
+    probeText.textContent = str;
+    let w = 0;
+    try { w = probeText.getComputedTextLength(); } catch (_) { w = 0; }
+    if (!(w > 0)) w = str.length * 6.4;
+    widths.set(str, w);
+    return w;
+  };
   function draw() {
     if (current !== st) return;
     const W = Math.max(260, Math.floor(chartHost.clientWidth || 320));
@@ -275,7 +298,7 @@ function open(o) {
     const sizeOf = p => p === subject ? 24 : 18;
     const items = labelled.map(p => {
       const nm = shortName(nameOf(p)) || '';
-      return { id: p.id, x: p.px, y: p.py, r: sizeOf(p) / 2 + 1, w: Math.ceil(nm.length * 6.4 + 6), h: 14, must: p === subject, name: nm, p };
+      return { id: p.id, x: p.px, y: p.py, r: sizeOf(p) / 2 + 1, w: Math.ceil(textW(nm) + 4), h: 14, must: p === subject, name: nm, p };
     });
     /* an unnamed row gets its crest and no label until its name arrives; only named ones compete for label space */
     const named = items.filter(i => i.name && (i.must || !needsMeta(i.p)));
@@ -299,7 +322,12 @@ function open(o) {
       }
       marks += '<circle class="stp-mk-ring" r="' + r + '"/></g>';
       const q = placedIds.get(i.id);
-      if (q) labels += '<text class="stp-lab' + (isS ? ' subj' : '') + '" x="' + (q.box.x + 1).toFixed(1) + '" y="' + (q.box.y + 11).toFixed(1) + '">' + esc(i.name) + '</text>';
+      if (q) {
+        const left = /l/.test(q.side), mid = q.side === 't' || q.side === 'b';
+        const tx = mid ? q.box.x + q.box.w / 2 : left ? q.box.x + q.box.w - 2 : q.box.x + 2;
+        labels += '<text class="stp-lab' + (isS ? ' subj' : '') + '" x="' + tx.toFixed(1) + '" y="' + (q.box.y + 11).toFixed(1) +
+          '" text-anchor="' + (mid ? 'middle' : left ? 'end' : 'start') + '">' + esc(i.name) + '</text>';
+      }
     });
     s += '<defs>' + defs + '</defs>' + marks + labels + '<circle class="stp-hover" r="7" hidden/></svg>';
 
@@ -308,6 +336,7 @@ function open(o) {
     chartHost.insertAdjacentHTML('afterbegin', s);
     chartHost.appendChild(keep);
     lastLayout = { W, H, drawn: placed.length };
+    lastMarks = drawn.map(i => ({ p: i.p, x: i.x, y: i.y, r: sizeOf(i.p) / 2 }));
     if (tipId != null) showTip(pts.find(p => p.id === tipId), true);
 
     /* a crest that will not load falls back to the initials underneath it */
@@ -326,6 +355,13 @@ function open(o) {
     const svg = chartHost.querySelector('svg');
     if (!svg) return null;
     const b = svg.getBoundingClientRect(), x = ev.clientX - b.left, y = ev.clientY - b.top;
+    /* a marker (crest) under the pointer is the one meant, whatever plain dots lie beneath or beside it */
+    let mk = null, md = Infinity;
+    for (let i = 0; i < lastMarks.length; i++) {
+      const m = lastMarks[i], dx = m.x - x, dy = m.y - y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d <= m.r + 3 && d < md) { md = d; mk = m.p; }
+    }
+    if (mk) return mk;
     let best = null, bd = 18 * 18;
     for (let i = 0; i < pts.length; i++) {
       const dx = pts[i].px - x, dy = pts[i].py - y, d = dx * dx + dy * dy;

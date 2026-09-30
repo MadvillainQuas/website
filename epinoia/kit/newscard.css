@@ -8,12 +8,12 @@
 .pc-grid{display:grid;gap:calc(var(--u,4px)*3);grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
 @media (min-width:1000px){
   .pc-grid{grid-template-columns:repeat(6,1fr)}
-  .pc-grid > .pc{grid-column:span 2}
+  .pc-grid > .pc{grid-column:span 2;min-width:0}   /* a grid item may shrink below its longest line, or the lead's words push the row past the window */
   /* THE LEAD, as a front page leads: the whole width, the picture and the words side by side */
   .pc-grid > .pc.pc-lead{grid-column:1 / -1}
   .pc-grid > .pc-lead .pc-main{flex-direction:row}
   .pc-grid > .pc-lead .pc-plate{flex:0 0 58%;aspect-ratio:16/9}
-  .pc-grid > .pc-lead .pc-body{flex:1 1 auto;justify-content:center;padding:26px 30px 20px 33px;gap:12px}
+  .pc-grid > .pc-lead .pc-body{flex:1 1 0;min-width:0;justify-content:center;padding:26px 30px 20px 33px;gap:12px}
   .pc-grid > .pc-lead .pc-title{font-size:clamp(22px,2.3vw,32px);-webkit-line-clamp:4}
   .pc-grid > .pc-lead .pc-sum{font-size:15.5px;-webkit-line-clamp:5}
 }
@@ -227,6 +227,65 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
 /* ---- a league's front page: its creators (home.js creators), inside the page's own padding ---- */
 .cr-front{padding:0 calc(var(--u,4px)*3) calc(var(--u,4px)*3);display:flex;flex-direction:column;gap:calc(var(--u,4px)*3)}
 @media (max-width:640px){ .cr-front{padding:0 16px 16px} }
+
+/* ---- THE OFFICIAL-PARTNER PILL (newscard.js partnerPill): a small teletext block - gold, the pixel micro face, black on
+   gold in both themes (it never takes the page's ink). It is a label, not a link: on a card it sits on the plate
+   (bottom left, clear of the badge and the kind, and below the headline link's cover), in the kicker of a card that has no
+   plate, and in the head of a publisher's page and of a story. ---- */
+.pc-partner{display:inline-flex;align-items:center;gap:5px;flex:none;max-width:100%;padding:4px 7px 3px 6px;
+  font-family:var(--f-micro);font-size:8px;line-height:1;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
+  color:#160f00;background:#ffc21a;border:1px solid #160f00;box-shadow:2px 2px 0 rgba(0,0,0,.55);pointer-events:none}
+.pc-partner::before{content:"";flex:none;width:5px;height:5px;background:currentColor}
+.pc-plate > .pc-partner{position:absolute;left:10px;bottom:10px;z-index:3}
+.pc-noimg .pc-plate > .pc-partner{left:26px}
+.pc-partner.in-kick{margin-left:6px;box-shadow:none}
+.pc-partner.in-hero{align-self:flex-start}
+.cr-tile-top > .pc-partner.in-tile{position:absolute;left:10px;bottom:10px;z-index:3}
+.pc-partner.in-brand{align-self:flex-start;margin:3px 0 1px;padding:2px 5px 2px 4px;font-size:7px;box-shadow:none}
+.pc-partner.in-mast{min-height:36px;padding:0 10px 0 9px;font-size:8.5px}
+.pc-partnered{border-color:color-mix(in oklch,#ffc21a 55%,var(--rule))}
+.pc-partnered:hover{border-color:#ffc21a}
+
+/* ---- "WHY AM I SEEING THIS?" under a ranked feed's card (newscard.js whyLine) ---- */
+.pc-why{position:relative;z-index:5;display:flex;align-items:flex-start;gap:6px;margin-top:2px;
+  font-family:var(--f-ui);font-size:11.5px;line-height:1.35;color:var(--ink-3)}
+.pc-why i{flex:none;display:inline-grid;place-items:center;width:14px;height:14px;margin-top:1px;border:1px solid currentColor;border-radius:50%;
+  font:normal 700 9px/1 var(--f-ui)}
+
+/* the language chip in a card's kicker: 'ES' on a story not in the reader's language */
+.pc-lang,.pc-kick .pc-lang{display:inline-flex;align-items:center;flex:none;margin-left:6px;padding:1px 5px;background:none;font-family:var(--f-micro);font-size:8px;font-weight:700;
+  letter-spacing:.1em;line-height:1.4;color:var(--ink-2);border:1px solid var(--rule-2,var(--rule));border-radius:3px;cursor:help}
+
+/* ---- PERSONALISE (feedrank.js control): the button in a feed's heading and the panel under it ---- */
+.pc-pers-btn{appearance:none;cursor:pointer;flex:none;min-height:30px;padding:0 12px;font-family:var(--f-micro);font-size:9px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);background:transparent;border:1px solid var(--rule-2,var(--rule));border-radius:999px}
+.pc-pers-btn:hover,.pc-pers-btn[aria-expanded="true"]{color:var(--ink);border-color:var(--ink-3)}
+.pc-pers-btn:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.pc-pers{margin:0 0 calc(var(--u,4px)*3)}
+.pc-pers[hidden]{display:none}
+.pc-pers-body{max-width:560px;padding:14px 16px;background:var(--panel);border:1px solid var(--rule-2,var(--rule));border-left:4px solid var(--lume);
+  display:flex;flex-direction:column;gap:10px}
+.pc-pers-row{display:flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink)}
+.pc-pers-row input{width:18px;height:18px;margin:0;accent-color:var(--lume);cursor:pointer}
+.pc-pers-note{margin:0;font-family:var(--f-ui);font-size:13px;line-height:1.5;color:var(--ink-2)}
+.pc-pers-langs{display:flex;flex-wrap:wrap;gap:6px}
+.pc-pers-langs[hidden]{display:none}
+.pc-pers-lang{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid var(--rule-2,var(--rule));border-radius:4px;
+  font-family:var(--f-ui);font-size:12px;color:var(--ink-2)}
+.pc-pers-lang b{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;color:var(--ink)}
+.pc-pers-langx{appearance:none;cursor:pointer;min-height:26px;padding:0 8px;font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-2);background:transparent;border:1px solid var(--rule-2,var(--rule))}
+.pc-pers-langx:hover{color:var(--flare,var(--ink));border-color:var(--flare,var(--ink-3))}
+.pc-pers-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.pc-pers-reset{appearance:none;cursor:pointer;min-height:34px;padding:0 12px;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink);background:transparent;border:1px solid var(--rule-2,var(--rule))}
+.pc-pers-reset:hover{border-color:var(--flare,var(--ink-3));color:var(--flare,var(--ink))}
+.pc-pers-reset:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.pc-pers-more{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--lume)}
+.hm .sec-h .pc-pers-btn{align-self:center;margin-left:6px}
+@media (max-width:820px){ .hm .sec-h .pc-pers-btn{order:3;margin-left:0;min-height:40px;padding:0 16px} }
+.nw-tools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin-bottom:calc(var(--u,4px)*3)}
+.nw-tools .pc-tabs{margin:0}
 
 /* the light page: the badge stays dark (it sits on a photograph); the rest follows the kit */
 :root[data-theme="light"] .pc{background:#fff}

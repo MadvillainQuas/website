@@ -552,8 +552,25 @@ jobs:
         # epinoia/socialcard.js + admin/socialgfx-ui.js: the posts are the week's own (quarters, leaders by game score, the
         # league's time zone, even pages), everything on the page in square / portrait / story and clear of what a story
         # covers, the league's logo and the clubs' crests and colours drawn, crests on a disc of the right tone, the ZIP
-        # read back by Python, and the console reading eleven numbers of a player line rather than the blob
+        # read back by Python, and the console reading eleven numbers of a player line rather than the blob; and the
+        # builder's modules (headline, crests, quarters, stat lines, table rows and columns, colourways, logo, footer,
+        # partner line): all default = the same picture, each one toggles, nothing overflows or overlaps in any shape
         run: node supabase/tests/socialcard.test.mjs
+
+      - name: The Graphics tab - the week's posts by kind, the week picker, the builder's subject and options
+        # epinoia/admin/graphics-ui.js over socialgfx-ui.js: posts sorted by kind with counts and a filter that keeps exactly
+        # one, a player of the week only when there were several games, this week / last week / earlier weeks (an earlier
+        # week has finals and stars, no table and no week ahead), one competition's view, the builder's game / player /
+        # competition / page, its options as socialcard.js modules (an untouched builder is none), stat lines and columns
+        # within their limits, and the per-league memory surviving garbage and a missing localStorage
+        run: node supabase/tests/graphics-tab.test.mjs
+
+      - name: The Graphics tab's stat catalogue, the month's stars and the leaders - the site's own columns, ranked and drawn
+        # epinoia/admin/statcat.js reads fulltable.js's PLAYER_COLS / TEAM_COLS (identity, HIDDEN_COLS and the access.js locks
+        # left out, an administrator offered the locked ones unless the lock flag is on), season.js works the numbers for a game,
+        # a week, a month or a season; ranking with ties, thresholds and lower-is-better; the calendar month in Sydney / Honolulu /
+        # UTC; the month's stars and the leaders boards; every shape at 1-6 boards, long names, both colourways
+        run: node supabase/tests/stat-catalogue.test.mjs
 
       - name: The front office - a projected depth chart and the GM's view, read against the club's own league
         # epinoia/t/depth.js: projected minutes (last five 60 / 40), positions from the box score by minutes, the listing and
@@ -627,6 +644,12 @@ jobs:
         # statinfo.js has an entry for every key in player.js BAR_SECTIONS (and its lower-is-better flag matches BAR_LOW);
         # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart
         run: node supabase/tests/statpop.test.mjs
+
+      - name: The chart lab - value transforms, regression, the address round trip, edited text, columns and their lock, names, export geometry
+        # chartlab.js: z-scores and percentiles agree with the tables' (lower is better turns them round), the ?cl= link round trips
+        # and caps and cleans what people type, the picker offers the tables' own columns and locks the events and zone ones
+        # through access.js, labels never overlap, and every export size lays out inside its canvas
+        run: node supabase/tests/chartlab.test.mjs
 
       - name: The lazy SDK loader finds the SDK beside config.js
         # on a page in a folder (the player page) "vendor/supabase.js" relative to the document is nothing, so a signed-in platform
@@ -1396,6 +1419,32 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/creator-hub.test.mjs
 
+      - name: Official partners (0201) and how much a game matters (0202) - on a real Postgres
+        # PGlite: only a platform administrator names an official partner or stops (a league's administrator,
+        # an outlet's owner, a fan and a signed-out caller are refused), a source or an outlet, audit-logged;
+        # official_partners() lists only what is on and shown, an outlet with its league (its slug is unique
+        # only there); game_significance() gives a final game its points and reasons - the table (1st v 2nd,
+        # top three, an upset, not before three games or across groups), the players (a triple-double, 30 / 40 /
+        # 50 points, a 20-20, a season high; a withheld minor is never named), the stage (cup / playoff final,
+        # semi, quarter, other ties), overtime and close margins - capped, most valuable reason first, a league
+        # the caller may not see answering nothing, at most 60 games a call
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/official-partners.test.mjs
+          node supabase/tests/game-significance.test.mjs
+          node supabase/tests/news-languages.test.mjs
+
+      - name: The ranked feed - scoring, what is learned on the device, nothing about the reader sent
+        # epinoia/feedrank.js: the recency curve and the decay, the caps, the official-partner boost (unread
+        # only, a week, then fading), the tiers (publisher = creator > league > match report, lifted by a
+        # game's significance), variety (two in a row, two partners in six), the country from a time zone or a
+        # language, dwell with an injected clock, storage that is blocked, personalisation off = newest first
+        # and nothing recorded, and every request the ranking makes carrying nothing about the reader
+        # (and the console's Official partner switches: they confirm, call set_official_partner, and put a refused switch back)
+        run: |
+          node supabase/tests/feedrank.test.mjs
+          node supabase/tests/partners-ui.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the
@@ -1418,6 +1467,14 @@ jobs:
         # every fingerprint in keytool form (a lowercase paste would leave the app with a URL
         # bar); the keystore decoded only to the runner's temp directory and never committed
         run: node supabase/tests/android-config.test.mjs
+
+      - name: Games stuck live are closed - the rule (Python and SQL agree), the repair pass, the hourly backstop, the void guard
+        # stuck.py + 0203 close_stuck_games: final when the feed said so or the clock/lead settles it, else void; never written back
+        # to live; the same-code clubs of the Czech feed keep their own rosters; the HOME strip never shows a game past its cap as live
+        run: |
+          python scripts/ingest/stuck_test.py
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/close-stuck-games.test.mjs
 
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer

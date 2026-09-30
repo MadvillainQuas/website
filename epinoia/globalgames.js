@@ -41,6 +41,10 @@ const HOUR = 3600 * 1000, DAY = 24 * HOUR;
 /* A scheduled game stays listed until two hours after its tip-off: a game that
    tipped late, or whose scorer has not pressed start, is still tonight's game. */
 const STALE_MS = 2 * HOUR;
+/* A GAME 'LIVE' FOR THIS LONG AFTER ITS TIP-OFF IS NOT LIVE. No basketball game runs eight hours; a row that says so is one
+   whose feed stopped or whose closing was refused (four sat on HOME for days, 26-30 Sep 2026). Until the ingest's repair
+   (run_ingest --repair-stalled, 0203) closes it, it is left off the live cards - it is not a game anybody is watching. */
+const LIVE_CAP_MS = 8 * HOUR;
 /* how far ahead a league's next game still earns it a card of its own on HOME */
 const LEAGUE_WINDOW_MS = 14 * DAY;
 /* a fixture and a result this close to the same distance from now are a tie */
@@ -111,7 +115,8 @@ function leagues() {
 
 /* Every live game. Rarely more than a handful anywhere on the platform. */
 function live() {
-  return request('games?select=' + SEL + '&status=eq.live&order=tipoff_at.asc,id.asc&limit=40', false);
+  return request('games?select=' + SEL + '&status=eq.live&tipoff_at=gte.' + encodeURIComponent(iso(Date.now() - LIVE_CAP_MS)) +
+    '&order=tipoff_at.asc,id.asc&limit=40', false);
 }
 
 /* Scheduled games from fromISO onwards, soonest first. */
@@ -276,12 +281,18 @@ function isFollowed(g, f) {
    Shown live first, then by tip-off, and inside each of those the followed ones before the others. nextByLeague
    is a Map, a plain object or an array of games; a null entry is a league with nothing coming. `followed` is
    { leagues, teams } (see followSets). */
+/* live on paper, but tipped off more than LIVE_CAP_MS ago (see above) */
+function overdue(g, now) {
+  const tip = t(g);
+  return !!(g && g.status === 'live' && tip && ms(now) - tip > LIVE_CAP_MS);
+}
+
 function pickDaily(liveRows, upRows, nextByLeague, now, n, followed) {
   const N = n == null ? 8 : n;
   const at = ms(now);
   const fol = followSets(followed);
   const mine = g => isFollowed(g, fol);
-  const lives = dedupe(liveRows).filter(g => g.status === 'live')
+  const lives = dedupe(liveRows).filter(g => g.status === 'live' && !overdue(g, at) && !g.stalled_since)
     .sort((a, b) => (mine(b) - mine(a)) || (t(a) - t(b)));
   const liveIds = new Set(lives.map(g => g.id));
   const ups = dedupe(upRows).filter(g => !liveIds.has(g.id) && g.status !== 'final' && g.status !== 'live')
@@ -784,7 +795,7 @@ function card(g, opts) {
 }
 
 return {
-  SEL, STALE_MS, LEAGUE_WINDOW_MS,
+  SEL, STALE_MS, LIVE_CAP_MS, overdue, LEAGUE_WINDOW_MS,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
   pickDaily, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
   card, wireBadges, dayLabel, timeLabel, clockText, tickClocks, esc
