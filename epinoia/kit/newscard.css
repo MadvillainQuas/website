@@ -243,8 +243,20 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
 .cr-tile-top > .pc-partner.in-tile{position:absolute;left:10px;bottom:10px;z-index:3}
 .pc-partner.in-brand{align-self:flex-start;margin:3px 0 1px;padding:2px 5px 2px 4px;font-size:7px;box-shadow:none}
 .pc-partner.in-mast{min-height:36px;padding:0 10px 0 9px;font-size:8.5px}
-.pc-partnered{border-color:color-mix(in oklch,#ffc21a 55%,var(--rule))}
-.pc-partnered:hover{border-color:#ffc21a}
+/* AN OFFICIAL PARTNER STANDS ABOVE THE REST (2026-09-30): its card framed in gold with a glow, its pill larger; its page's
+   head and its stories' heads with a gold ring on its mark and a gold band along the foot; first in a row of brands,
+   with a gold ring. The same gold as the pill, in both themes. */
+.pc-partnered{border-color:#ffc21a;box-shadow:0 0 0 2px #ffc21a,0 12px 30px -10px rgba(255,194,26,.6)}
+.pc-partnered:hover{border-color:#ffc21a;box-shadow:0 0 0 3px #ffc21a,0 16px 36px -10px rgba(255,194,26,.75)}
+.pc-plate > .pc-partner{padding:6px 10px 5px 8px;font-size:9.5px;box-shadow:3px 3px 0 rgba(0,0,0,.6)}
+.pc-plate > .pc-partner::before{width:6px;height:6px}
+.pc-partnered .pc-kick > b{box-shadow:inset 0 -3px 0 #ffc21a}
+.pc-hero-partner{position:relative;box-shadow:inset 0 -6px 0 #ffc21a}
+.pc-hero-partner .pc-disc,.pc-hero-partner .pc-mast-brand .pc-logo{box-shadow:0 0 0 4px #ffc21a,0 0 0 6px #160f00,0 0 26px rgba(255,194,26,.65)}
+.pc-partner.in-hero{padding:8px 14px 7px 11px;font-size:11px;letter-spacing:.14em;box-shadow:3px 3px 0 rgba(0,0,0,.6);margin-bottom:6px}
+.pc-partner.in-hero::before{width:8px;height:8px}
+.pc-brand-partner{outline:2px solid #ffc21a;outline-offset:-2px;background:color-mix(in oklch,#ffc21a 12%,transparent)}
+.pc-brand-partner .pc-logo{box-shadow:0 0 0 3px #ffc21a}
 
 /* ---- "WHY AM I SEEING THIS?" under a ranked feed's card (newscard.js whyLine) ---- */
 .pc-why{position:relative;z-index:5;display:flex;align-items:flex-start;gap:6px;margin-top:2px;
