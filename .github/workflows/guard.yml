@@ -507,6 +507,9 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/entity-links.test.mjs
           node supabase/tests/links-ui.test.mjs
+          # 0190: the events splits are a members' table the database gates (a real Postgres), and data.js puts them back
+          node supabase/tests/premium-sit.test.mjs
+          node supabase/tests/sit-attach.test.mjs
 
       - name: The pixel faces stay readable - legibility.css last on every page, ink and accents in both themes
         # kit/legibility.css is linked after every other stylesheet on every kit page; the secondary ink is near full strength

@@ -1,0 +1,29 @@
+name: Move the events splits into the members' table
+
+# After migration 0190 is applied: files every `sit` line that already exists into game_sit_lines (which the database gates)
+# and takes it out of the open stats jsonb, in bounded batches. New writes are handled by a trigger, so this is needed once.
+# Safe to run again; it stops when nothing is left. See docs/data-protection.md.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premium-move
+  cancel-in-progress: false
+
+jobs:
+  move:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests
+      - name: Move
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/ingest/premium_move.py --batch 2000 --max-minutes 45
