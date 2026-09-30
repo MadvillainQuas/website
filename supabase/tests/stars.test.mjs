@@ -138,6 +138,19 @@ console.log('\nleague page parity (BCB, captured ' + FX.captured_at + ')');
   const html = host.children.map(c => c.outerHTML);
   ok('the same number of blocks (head, podium, top ten) as before', html.length === OUT.html.length,
      html.length + ' vs ' + OUT.html.length);
+  /* THE CARD'S PARTS (kit/starcard.css styles each): the disc, the medal, the tagged BPM, the chips, the crest */
+  const pod = html[1] || '', small = html[2] || '';
+  ok('a card carries the player disc with initials', /class="star-disc"><span class="star-ini">[A-Z?]{1,2}<\/span>/.test(pod));
+  ok('...the rank as a medal (gold, silver, bronze for 1, 2, 3)', /star-rank r1/.test(pod) && /star-rank r2/.test(pod) && /star-rank r3/.test(pod) && !/star-rank r4/.test(small));
+  ok('...the BPM as a tagged figure', /class="club-band star-hero"><b>[+-]?\d+\.\d<\/b><i>BPM<\/i>/.test(pod));
+  ok('...the line as P / R / A chips', /class="st"><b>[\d.]+<\/b><i>P<\/i>/.test(pod) && /<i>R<\/i>/.test(pod) && /<i>A<\/i>/.test(pod));
+  ok('...the crest at the foot (in the plate on the small cards), with its code when it has no picture',
+     /star-crest in-foot/.test(pod) && /star-crest in-plate/.test(pod) && !/star-crest in-foot/.test(small) && /class="star-code"/.test(pod));
+  ok('...and the link still says who, for whom and how well', /aria-label="[^"]+, [+-]?\d+\.\d BPM, rank 1"/.test(pod));
+  { const css = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'starcard.css'), 'utf8');
+    const ls = [...css.matchAll(/letter-spacing:\s*(-?[\d.]+)em/g)].map(m => +m[1]);
+    ok('starcard.css keeps every letter-spacing to .2em or less', ls.length > 0 && ls.every(v => v <= 0.2));
+    ok('...respects reduced motion and shows a focus ring', /prefers-reduced-motion:reduce/.test(css) && /\.star:focus-visible\{[^}]*outline/.test(css)); }
   OUT.html.forEach((h, i) => ok('block ' + (i + 1) + ' markup is identical', html[i] === h,
     'got  ' + String(html[i]).slice(0, 240) + '\n          want ' + h.slice(0, 240)));
 

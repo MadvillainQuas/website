@@ -1,33 +1,146 @@
 /* ============================================================================
-   THE STAR CARD, FINISHED (stars.js card(), league page and HOME): the same
-   screenprint plate with the rank as its mark and BPM on its band, set in a
-   card of its own. The club's colour runs down the name panel's edge and casts
-   the card's offset shadow; the name gets its full width (two lines if it needs
-   them) instead of fighting the stat line for one; the line itself sits on a
-   black teletext strip under the club. Markup unchanged: the league page's
-   podium is still held to its capture by supabase/tests/stars.test.mjs.
+   THE STAR CARD (stars.js card(): HOME's rows and the league page's podium).
+
+   A screenprint plate in the CLUB'S colour (flood and halftone, as the club cards): on it the
+   player's disc (photo, else initials on the club colour, ringed in white), the rank as a medal
+   (gold, silver, bronze, then teletext black) and the headline BPM as a tagged figure on a white
+   strip, so the one number that puts him on the podium never sits on a halftone. Under the plate:
+   the name, the club and league, the stat line as P / R / A / GP chips in tabular figures, and the
+   club's crest at the bottom right (inside the plate on the small cards, where the foot has no
+   room). The club's colour runs down the foot's edge and casts the card's offset shadow.
+
+   EVERY TEXT sits on the panel (name, club, chips, the BPM strip), the black teletext chip or a
+   solid medal: none is set on the tinted plate, so contrast does not depend on the club's colour.
+   Sizes inside the plate are container units (cqw), so one layout serves a 330px podium card, a
+   128px phone rail card and a 108px small card.
+
+   Markup is held by supabase/tests/stars.test.mjs (fixtures/stars-bcb.json).
    ============================================================================ */
-.stargrid .star{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--rule-2);
+.stargrid .star{position:relative;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--rule-2);
   box-shadow:4px 4px 0 color-mix(in srgb,var(--ink-c) 45%,transparent);
   transition:transform .14s ease,box-shadow .14s ease}
-.stargrid .star:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 color-mix(in srgb,var(--ink-c) 62%,transparent)}
-.stargrid .star .club-plate{border:0;border-bottom:3px solid #0a0a0a}
+.stargrid .star:hover,.stargrid .star:focus-visible{transform:translate(-2px,-2px);
+  box-shadow:6px 6px 0 color-mix(in srgb,var(--ink-c) 62%,transparent)}
+.stargrid .star:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){
+  .stargrid .star,.stargrid .star .club-plate{transition:none}
+  .stargrid .star:hover,.stargrid .star:focus-visible{transform:none}
+}
+
+/* ---- the plate ---------------------------------------------------------------------------- */
+.stargrid .star .club-plate{container-type:inline-size;display:block;border:0;border-bottom:3px solid #0a0a0a}
 .stargrid .star:hover .club-plate{transform:none}
-.stargrid .star .star-foot{flex:1 1 auto;display:flex;flex-direction:column;align-items:stretch;gap:7px;
-  padding:10px 12px 12px 16px;margin:0;box-shadow:inset 5px 0 0 var(--ink-c)}
-.stargrid .star .star-who{gap:3px}
-.stargrid .star .star-name{font-size:14.5px;line-height:1.15;white-space:normal;overflow:visible;text-overflow:clip;
-  overflow-wrap:anywhere;color:var(--ink)}
-.stargrid .star:hover .star-name{color:var(--ink)}
-.stargrid .star .star-team{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stargrid .star .club-ed{margin:0;align-self:flex-start;max-width:100%;padding:4px 8px 3px;background:#0a0a0a;color:#ffe14d;
-  font-size:9px;letter-spacing:.12em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* ranks four to ten, smaller: the shadow and the edge stay, the strip goes (as it always did) */
+.stargrid .star .club-flood{opacity:.3}
+.stargrid .star .club-tone{opacity:.42}
+
+/* the player's disc: the initials on the club's colour, a photo over them when there is one */
+.stargrid .star .star-disc{position:absolute;left:50%;top:9cqw;width:46cqw;aspect-ratio:1;transform:translateX(-50%);
+  border-radius:50%;overflow:hidden;display:grid;place-items:center;
+  background:var(--ink-c);border:max(2px,1.4cqw) solid #fff;
+  box-shadow:max(2px,1.4cqw) max(2px,1.4cqw) 0 #0a0a0a}
+.stargrid .star .star-ini{font-family:var(--f-ui);font-weight:800;font-size:15cqw;letter-spacing:.02em;line-height:1;
+  color:var(--ink-on,#0a0a0a)}
+.stargrid .star .star-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+
+/* the rank, a medal at the plate's top left */
+.stargrid .star .star-rank{position:absolute;left:5cqw;top:5cqw;z-index:2;width:max(20px,10.5cqw);height:auto;aspect-ratio:1;
+  display:grid;place-items:center;border-radius:50%;
+  background:#0a0a0a;color:#ffe14d;border:2px solid #0a0a0a;
+  box-shadow:2px 2px 0 rgba(10,10,10,.55)}
+.stargrid .star .star-rank .club-mono{font-size:max(13px,6.4cqw);line-height:1;letter-spacing:0;color:inherit;
+  transform:translateY(1px);text-shadow:none}
+.stargrid .star .star-rank.r1{background:#f7c22b;color:#2a1d00;border-color:#fff0b3}
+.stargrid .star .star-rank.r2{background:#dfe3e8;color:#1b2026;border-color:#fff}
+.stargrid .star .star-rank.r3{background:#d9893f;color:#2b1503;border-color:#ffd9b0}
+
+/* the headline figure: a white strip flush left along the plate's foot, the number and what it is */
+.stargrid .star .star-hero{position:absolute;left:0;bottom:0;right:auto;top:auto;height:auto;transform:none;opacity:1;
+  display:flex;align-items:baseline;gap:1.6cqw;padding:1.6cqw 3.2cqw 1.6cqw 4cqw;overflow:visible;
+  background:var(--panel);box-shadow:inset 0 3px 0 var(--ink-c);border-top-right-radius:0;z-index:2}
+.stargrid .star .star-hero b{font-family:var(--f-ui);font-weight:800;font-size:max(12px,8.4cqw);line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:var(--ink);padding-top:.25em}
+.stargrid .star .star-hero i{font-family:var(--f-micro);font-style:normal;font-weight:400;font-size:max(7.5px,3.6cqw);
+  letter-spacing:.12em;color:var(--ink);padding-top:.25em}
+
+/* ---- the foot ------------------------------------------------------------------------------- */
+.stargrid .star .star-foot{flex:1 1 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:"who who" "chips crest";align-content:start;column-gap:8px;row-gap:8px;
+  align-items:stretch;padding:11px 12px 12px 16px;margin:0;box-shadow:inset 5px 0 0 var(--ink-c)}
+.stargrid .star .star-who{grid-area:who;gap:3px;min-width:0}
+.stargrid .star .star-name{font-size:17px;line-height:1.12;white-space:normal;overflow:hidden;text-overflow:ellipsis;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  overflow-wrap:break-word;hyphens:manual;color:var(--ink);letter-spacing:.01em}
+.stargrid .star:hover .star-name,.stargrid .star:focus-visible .star-name{color:var(--ink);text-decoration:underline;
+  text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:var(--ink-c)}
+.stargrid .star .star-team{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* the line: P / R / A (and games) as chips, figures tabular, labels tiny */
+.stargrid .star .club-ed{grid-area:chips;margin:0;align-self:end;max-width:100%;min-width:0;background:none;padding:0;
+  display:flex;flex-wrap:wrap;gap:4px;overflow:visible;white-space:normal}
+.stargrid .star .club-ed .st{display:inline-flex;align-items:baseline;gap:3px;padding:4px 7px 3px;background:#0a0a0a;color:#ffe14d;
+  font-variant-numeric:tabular-nums}
+.stargrid .star .club-ed .st b{font-family:var(--f-ui);font-weight:700;font-size:12.5px;line-height:1}
+.stargrid .star .club-ed .st i{font-family:var(--f-micro);font-style:normal;font-size:7.5px;letter-spacing:.1em;color:#ffe14d}
+.stargrid .star .club-ed .st.gp{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule-2)}
+.stargrid .star .club-ed .st.gp i{color:var(--ink)}
+
+/* the crest: on white in a ringed disc, or the club's code on its colour when it has none */
+.stargrid .star .star-crest.in-foot{grid-area:crest;align-self:end;justify-self:end;position:relative}
+.stargrid .star .star-crest{display:grid;place-items:center;
+  width:52px;height:52px;border-radius:50%;background:#fff;border:2px solid #0a0a0a;
+  box-shadow:3px 3px 0 var(--ink-c);overflow:hidden}
+.stargrid .star .star-crest .star-code{font-family:var(--f-score);font-size:19px;line-height:1;letter-spacing:0;
+  color:var(--ink-on,#0a0a0a);position:absolute;inset:0;display:grid;place-items:center;background:var(--ink-c)}
+.stargrid .star .star-crest .star-logo{position:relative;z-index:1;width:76%;height:76%;object-fit:contain;background:#fff;
+  border-radius:50%;visibility:hidden}
+.stargrid .star .star-crest.has-img .star-logo{visibility:visible}
+.stargrid .star .star-crest.has-img{background:#fff}
+.stargrid .star .star-crest.has-img .star-code{visibility:hidden}
+@media (prefers-reduced-motion:no-preference){
+  .stargrid .star:hover .star-crest{transform:rotate(-6deg) scale(1.05)}
+  .stargrid .star .star-crest{transition:transform .18s cubic-bezier(.2,.8,.3,1)}
+}
+
+/* ---- ranks four to ten, smaller: crest inside the plate, no foot chips but the three figures ---- */
 .stargrid.starmore .star{box-shadow:3px 3px 0 color-mix(in srgb,var(--ink-c) 40%,transparent)}
-.stargrid.starmore .star .star-foot{padding:7px 8px 8px 11px;gap:4px;box-shadow:inset 3px 0 0 var(--ink-c)}
-.stargrid.starmore .star .star-name{font-size:10.5px}
+.stargrid.starmore .star .club-plate{aspect-ratio:1}
+.stargrid .star.small .star-crest.in-plate{display:grid}
+.stargrid.starmore .star .star-disc{top:13cqw;width:48cqw}
+.stargrid.starmore .star .star-ini{font-size:16cqw}
+.stargrid.starmore .star .star-rank{width:max(20px,17cqw);left:4cqw;top:4cqw}
+.stargrid.starmore .star .star-rank .club-mono{font-size:max(12px,9cqw)}
+.stargrid.starmore .star .star-hero{padding:1.4cqw 3cqw 1.4cqw 3.5cqw}
+.stargrid.starmore .star .star-hero b{font-size:max(11px,11cqw)}
+.stargrid.starmore .star .star-hero i{font-size:max(7px,6cqw);letter-spacing:.06em}
+.stargrid .star .star-crest.in-plate{display:none;position:absolute;right:4cqw;bottom:19cqw;width:24cqw;height:24cqw;min-width:26px;min-height:26px;
+  box-shadow:2px 2px 0 var(--ink-c);z-index:3}
+.stargrid .star .star-crest.in-plate .star-code{font-size:max(10px,9cqw)}
+.stargrid.starmore .star .star-foot{display:flex;flex-direction:column;align-items:stretch;padding:7px 8px 8px 11px;gap:4px;
+  box-shadow:inset 3px 0 0 var(--ink-c)}
+.stargrid.starmore .star .star-name{font-size:11.5px;letter-spacing:0}
+.stargrid.starmore .star .club-ed .st{padding:3px 5px 2px}
+.stargrid.starmore .star .club-ed .st b{font-size:10px}
+.stargrid.starmore .star .club-ed .st i{font-size:6.5px}
+.stargrid.starmore .star .club-ed .st.gp{display:none}
+.stargrid.starmore .star .club-ed{display:flex}
+
+/* ---- phones: the rail card is 128-136px wide ------------------------------------------------ */
 @media (max-width:720px){
-  .stargrid .star .star-foot{padding:8px 8px 9px 11px;gap:5px}
-  .stargrid .star .star-name{font-size:11px}
-  .stargrid .star .club-ed{font-size:7.5px;padding:3px 6px 2px;letter-spacing:.06em}
+  .stargrid .star .club-plate{aspect-ratio:1}
+  .stargrid .star .star-disc{top:12cqw;width:48cqw}
+  .stargrid .star .star-ini{font-size:16cqw}
+  .stargrid .star .star-rank{width:max(20px,17cqw);left:4cqw;top:4cqw}
+  .stargrid .star .star-rank .club-mono{font-size:max(12px,9cqw)}
+  .stargrid .star .star-hero{padding:1.4cqw 3cqw 1.4cqw 3.5cqw}
+  .stargrid .star .star-hero b{font-size:max(11px,11cqw)}
+  .stargrid .star .star-hero i{font-size:max(7px,6cqw);letter-spacing:.06em}
+  .stargrid .star .star-foot{display:flex;flex-direction:column;align-items:stretch;padding:8px 8px 9px 11px;gap:5px}
+  .stargrid .star .star-name{font-size:12.5px;line-height:1.12}
+  .stargrid .star .club-ed{display:flex}
+  .stargrid .star .club-ed .st{padding:3px 5px 2px}
+  .stargrid .star .club-ed .st b{font-size:10.5px}
+  .stargrid .star .club-ed .st i{font-size:6.5px}
+  .stargrid .star .club-ed .st.gp{display:none}
+  .stargrid .star .star-crest.in-foot{display:none}
+  .stargrid .star .star-crest.in-plate{display:grid}
 }
