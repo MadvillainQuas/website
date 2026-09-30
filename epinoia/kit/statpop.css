@@ -76,21 +76,20 @@ html.stp-lock{overflow:hidden}
 .stp-hint{margin:-4px 0 10px;padding:0 12px;text-align:center;font:400 9px/1.3 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
 .stp-q[aria-pressed="true"]{background:var(--team-a,var(--lume));border-color:var(--team-a,var(--lume));color:var(--bg,#fff)}
 
-/* EXPLAIN MODE: the statistics say they can be asked, and the bubble that answers sits above the one being asked about */
-.stp-explaining .stp-hit{cursor:help;outline:1px dashed var(--team-a-ink,var(--lume));outline-offset:-3px}
-.stp-bubble{position:fixed;z-index:60;width:max-content;padding:9px 12px;border:1px solid var(--rule-2);border-radius:10px;background:var(--panel);
-  box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:12px;line-height:1.4;color:var(--ink-2);pointer-events:none}
-.stp-bubble.stp-touch{pointer-events:auto}
-.stp-bubble[hidden]{display:none}
-.stp-bubble b{display:block;margin:0 0 3px;font-weight:800;font-size:12.5px;color:var(--ink)}
-.stp-bubble b i{font-style:normal;font-weight:400;font:400 9px/1 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-left:6px}
-.stp-bubble span{display:block}
-.stp-bubble em{display:block;margin-top:4px;font-style:normal;color:var(--ink-3)}
-.stp-bubble::after{content:"";position:absolute;left:var(--arrow,50%);bottom:-6px;width:10px;height:10px;margin-left:-5px;background:var(--panel);
-  border-right:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);transform:rotate(45deg)}
-.stp-bubble.stp-below::after{bottom:auto;top:-6px;border:0;border-left:1px solid var(--rule-2);border-top:1px solid var(--rule-2)}
-.stp-bubble-go{appearance:none;display:block;margin:8px 0 0;padding:7px 10px;border:1px solid var(--rule-2);border-radius:6px;background:transparent;color:var(--team-a-ink,var(--lume));
-  font:400 10px/1 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+/* EXPLAIN MODE: a small card slides open at the top of each statistic (statpop.js exNode). It is part of the statistic's own
+   box, so the box grows and the rows below make way: grid-template-rows animates 0fr -> 1fr, which needs no measured height */
+.stp-ex{display:grid;grid-template-rows:0fr;opacity:0;margin:0;transition:grid-template-rows .3s cubic-bezier(.2,.8,.2,1),opacity .25s ease,margin .3s ease;cursor:default}
+.stp-ex.open{grid-template-rows:1fr;opacity:1;margin:0 0 8px}
+.stp-ex-in{overflow:hidden;min-height:0}
+.stp-ex-card{padding:8px 10px;border:1px solid var(--rule-2);border-left:3px solid var(--team-a,var(--lume));border-radius:6px;
+  background:color-mix(in oklch,var(--team-a,var(--lume)) 9%,var(--panel-2));font-size:11.5px;line-height:1.4;color:var(--ink-2);
+  transform:translateY(8px);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.stp-ex.open .stp-ex-card{transform:none}
+.stp-ex-card b{display:block;margin:0 0 2px;font-weight:800;font-size:12px;color:var(--ink)}
+.stp-ex-card b i{font-style:normal;font:400 8.5px/1 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-left:6px}
+.stp-ex-card span{display:block}
+.stp-ex-card em{display:block;margin-top:3px;font-style:normal;color:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){.stp-ex,.stp-ex-card{transition:none}}
 
 /* the club page's headings are centred: the '?' sits in the top right corner instead of pushing the title left */
 .ep-hdr:has(>.stp-q){position:relative}

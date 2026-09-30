@@ -90,7 +90,7 @@ function paintIdentity(pl, entry, team) {
   /* follow the player: his line after every game */
   if (window.EpinoiaFollow && pl.id) {
     const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });
-    fb.classList.add('lbl'); $('#name').insertAdjacentElement('afterend', fb);
+    fb.classList.add('lbl'); const act = $('#idactions'); if (act) act.appendChild(fb); else $('#name').insertAdjacentElement('afterend', fb);
   }
 
   const colour = (team && team.colour) || '#93f2bf';
@@ -148,6 +148,7 @@ function paintIdentity(pl, entry, team) {
     sub.appendChild(el('span', null, 'Free agent'));
     $('#teamLink').style.display = 'none';
   }
+  sub.appendChild(el('span', 'sub-break'));      // the club and league on one line, the chips (position, estimated position) on the next
   if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
   paintVitals(pl);
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
@@ -453,7 +454,7 @@ function paintEstPos(mine, field) {
     'corrected by the position the club lists. It is the group "adjust for position" ranks him in.';
   const listed = sub.querySelector('.pos-chip');
   /* after the listed position, else after the club and league - never after a button appended since */
-  const after = listed || sub.querySelector('.sub-league') || sub.firstElementChild;
+  const after = listed || sub.querySelector('.sub-break') || sub.querySelector('.sub-league') || sub.firstElementChild;
   if (after) after.after(chip); else sub.appendChild(chip);
 }
 

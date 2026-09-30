@@ -367,89 +367,77 @@ function open(o) {
   return st;
 }
 
-/* ---- EXPLAIN MODE: the '?' turns every statistic into something that explains itself on hover or tap ----
-   One shared bubble, drawn ABOVE the statistic it is about (below it when there is no room), the width of a phone card
-   at most, clamped inside the viewport so it never runs off the page. The bubble is the short version: what it
-   measures and how to read it. On a phone a tap in this mode shows the bubble (with a button to the chart); with a mouse
-   the bubble follows the pointer's hover and a click still opens the chart. */
-let explain = false, lastPointer = 'mouse', tipEl = null, tipFor = null;
+/* ---- EXPLAIN MODE: the '?' slides a small explainer card open at the top of every statistic ----
+   Not a hover: pressing the '?' opens them all, and pressing it again (or Esc) slides them shut. Each card is part of the
+   statistic's own box, so the box grows to make room (the rows below move down) rather than something floating over the
+   page; cards built later (a folded section opened afterwards) arrive already open. The card is the short version: what it
+   measures and how to read it; tapping the statistic still opens the league chart. Hero tiles are left alone (they are
+   labelled already and too small to carry a card). */
+let explain = false;
+const bound = new Set();               // every statistic box that can be explained, so the '?' can reach them all
 
-function tipNode() {
-  if (tipEl) return tipEl;
-  tipEl = document.createElement('div');
-  tipEl.className = 'stp-bubble'; tipEl.hidden = true; tipEl.setAttribute('role', 'tooltip');
-  document.body.appendChild(tipEl);
-  return tipEl;
-}
-function hideTip() { if (tipEl) { tipEl.hidden = true; tipEl.classList.remove('stp-touch'); } tipFor = null; }
-
-function showTip(node, opts, touch) {
+function exNode(node, opts) {
   const SI = root.EpinoiaStatInfo;
-  const i = SI && SI.info(opts.key, opts.kind);
-  if (!i) return false;
-  const t = tipNode();
-  t.innerHTML = '<b>' + esc(i.title) + (i.low ? ' <i>lower is better</i>' : '') + '</b><span>' + esc(i.what) + '</span><em>' + esc(i.read) + '</em>' +
-    (touch ? '<button type="button" class="stp-bubble-go">see league chart</button>' : '');
-  t.classList.toggle('stp-touch', !!touch);
-  t.hidden = false; tipFor = node;
-  const go = t.querySelector('.stp-bubble-go');
-  if (go) go.addEventListener('click', ev => { ev.stopPropagation(); hideTip(); opts.trigger = node; open(opts); });
-  place(node, t);
-  return true;
+  const i = SI && opts && SI.info(opts.key, opts.kind);
+  if (!i) return null;
+  const ex = document.createElement('div');
+  ex.className = 'stp-ex';
+  ex.innerHTML = '<div class="stp-ex-in"><div class="stp-ex-card"><b>' + esc(i.title) + (i.low ? ' <i>lower is better</i>' : '') +
+    '</b><span>' + esc(i.what) + '</span><em>' + esc(i.read) + '</em></div></div>';
+  return ex;
 }
-function place(node, t) {
-  const r = node.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
-  t.style.maxWidth = Math.min(300, vw - 24) + 'px';
-  const w = t.offsetWidth, h = t.offsetHeight;
-  let left = r.left + r.width / 2 - w / 2;
-  left = Math.max(12, Math.min(left, vw - w - 12));
-  let top = r.top - h - 10, below = false;
-  if (top < 8) { top = Math.min(r.bottom + 10, vh - h - 8); below = true; }
-  t.style.left = left + 'px'; t.style.top = top + 'px';
-  t.classList.toggle('stp-below', below);
-  t.style.setProperty('--arrow', Math.max(14, Math.min(w - 14, r.left + r.width / 2 - left)) + 'px');
+function openEx(node, getOpts, instant) {
+  if (node.classList.contains('tile') || node.querySelector(':scope > .stp-ex')) return;
+  const ex = exNode(node, getOpts());
+  if (!ex) return;
+  node.insertBefore(ex, node.firstChild);
+  node.classList.add('stp-has-ex');
+  if (instant) { ex.classList.add('open'); return; }
+  void ex.offsetHeight;                                           // the closed state must be painted before it opens
+  requestAnimationFrame(() => ex.classList.add('open'));
 }
-
+function closeEx(node) {
+  const ex = node.querySelector(':scope > .stp-ex');
+  if (!ex) return;
+  ex.classList.remove('open');
+  let gone = false;
+  const done = () => { if (gone) return; gone = true; ex.remove(); if (!node.querySelector(':scope > .stp-ex')) node.classList.remove('stp-has-ex'); };
+  ex.addEventListener('transitionend', done, { once: true });
+  setTimeout(done, 450);
+}
 function setExplain(on) {
   explain = !!on;
   document.body.classList.toggle('stp-explaining', explain);
   document.querySelectorAll('.stp-q').forEach(b => { b.setAttribute('aria-pressed', explain ? 'true' : 'false'); });
-  if (!explain) hideTip();
+  bound.forEach(n => {
+    if (!n.isConnected) { bound.delete(n); return; }
+    if (explain) openEx(n, n._stpOpts, false); else closeEx(n);
+  });
 }
 if (typeof document !== 'undefined' && document.addEventListener) {
-  document.addEventListener('pointerdown', ev => {
-    lastPointer = ev.pointerType || 'mouse';
-    if (tipEl && !tipEl.hidden && !ev.target.closest('.stp-bubble') && !(tipFor && tipFor.contains(ev.target))) hideTip();
-  }, true);
-  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && (explain || (tipEl && !tipEl.hidden))) { if (tipEl && !tipEl.hidden) hideTip(); else setExplain(false); } });
-  window.addEventListener('scroll', () => { if (tipEl && !tipEl.hidden) hideTip(); }, { passive: true });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && explain && !document.querySelector('.stp-dialog,[role=dialog]')) setExplain(false); });
 }
 
 /* makes any element a button that opens the popup: role, tabindex, Enter/Space, and not when the click
-   landed on a link or a button inside it. In explain mode a hover (mouse) or a tap (touch) explains it first. */
+   landed on a link or a button inside it. While explaining, it also carries its explainer card. */
 function bind(node, getOpts) {
   node.classList.add('stp-hit');
   node.setAttribute('role', 'button');
   node.tabIndex = 0;
   node.setAttribute('aria-haspopup', 'dialog');
+  node._stpOpts = getOpts;
+  bound.add(node);
   const go = () => { const opts = getOpts(); if (opts) { opts.trigger = node; open(opts); } };
   node.addEventListener('click', ev => {
     const inner = ev.target.closest && ev.target.closest('a,button,input,select,textarea,summary');
     if (inner && inner !== node) return;
-    if (explain && lastPointer !== 'mouse') { const o = getOpts(); if (o && showTip(node, o, true)) return; }
-    hideTip(); go();
+    go();
   });
-  node.addEventListener('mouseenter', () => {
-    if (!explain || lastPointer !== 'mouse') return;
-    const o = getOpts(); if (o) showTip(node, o, false);
-  });
-  node.addEventListener('mouseleave', () => { if (tipFor === node && tipEl && !tipEl.classList.contains('stp-touch')) hideTip(); });
-  node.addEventListener('focus', () => { if (explain && lastPointer === 'mouse') { const o = getOpts(); if (o) showTip(node, o, false); } });
-  node.addEventListener('blur', () => { if (tipFor === node && tipEl && !tipEl.classList.contains('stp-touch')) hideTip(); });
   node.addEventListener('keydown', ev => {
     if (ev.target !== node) return;
-    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); hideTip(); go(); }
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); }
   });
+  if (explain) openEx(node, getOpts, true);
 }
 
 /* THE '?' BUTTON in a section heading: turns explain mode on and off (see above), and a one-line hint under the heading says
@@ -461,7 +449,7 @@ function helpButton(heading, kind) {
   const btn = document.createElement('button');
   btn.type = 'button'; btn.className = 'stp-q'; btn.textContent = '?';
   btn.setAttribute('aria-pressed', explain ? 'true' : 'false');
-  btn.setAttribute('aria-label', 'Explain the statistics: hover or tap one for what it means');
+  btn.setAttribute('aria-label', 'Explain the statistics: opens a short explanation above each one');
   btn.title = 'Explain the statistics';
   btn.addEventListener('click', () => setExplain(!explain));
   heading.appendChild(btn);
