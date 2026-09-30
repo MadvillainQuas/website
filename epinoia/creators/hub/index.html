@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<meta name="robots" content="noindex">
+<!-- THE CREATOR HUB (0200), from "your hub" on the rail. A creator's numbers (creator_stats: their pieces seen, opened
+     and followed out, counted anonymously) and writing desk; for anybody, the storylines of a league (its table,
+     leaders, highs, form and fixtures, read from the site's own public data), its week as graphics to post
+     (socialcard.js), and an icon set (icons.js). Nothing is framed. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:">
+<title>Creator hub · Epinoia</title>
+<meta name="description" content="Epinoia's creator hub: how your work does on the site, your writing desk, a league's storylines, graphics to post and a basketball icon set.">
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
+<script src="../../appmode.js?v=555"></script>
+<script src="../../i18n.js?v=555"></script>
+<script src="../../glyphs.js?v=555" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=555">
+<link rel="stylesheet" href="../../kit/nav.css?v=555">
+<link rel="stylesheet" href="../../kit/newscard.css?v=555">
+<link rel="stylesheet" href="../../kit/page.css?v=555">
+<link rel="stylesheet" href="../../kit/creatorhub.css?v=555">
+<link rel="stylesheet" href="../../kit/sectitle.css?v=555">
+<link rel="stylesheet" href="../../kit/teletext.css?v=555">
+<link rel="stylesheet" href="../../kit/legibility.css?v=555">
+</head>
+<body>
+<!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and
+     no number; data-std has nav.js add the teletext line, the quick keys, ON THIS PAGE and each section's SKIP. -->
+<div class="ep-frame ch" id="hub" data-std data-i18n-ctx="creatorhub">
+  <div class="topbar">
+    <a href="../../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span id="ctx" class="ep-micro">creator hub</span>
+  </div>
+
+  <header class="hero pg-head">
+    <p class="pg-kick"><a href="../../me/">Your hub</a></p>
+    <h1>Creator hub</h1>
+    <p class="pg-sub">How your work does here, your writing desk, the stories in each league, and graphics and icons for your own work.</p>
+    <div class="pg-acts" id="chActs"></div>
+  </header>
+
+  <!-- YOUR NUMBERS: creator_stats (0200), for the outlets this account writes for -->
+  <section class="sec" id="numbers" aria-labelledby="numH">
+    <div class="sec-h"><h2 id="numH">Your numbers</h2>
+      <p class="note">How readers found, opened and followed your work here</p>
+      <div class="pg-row" id="numPick"></div></div>
+    <div class="sec-b" id="numBody"><div class="pg-empty">Loading…</div></div>
+  </section>
+
+  <!-- THE WRITING DESK: the outlet's drafts, scheduled pieces and latest, to the studio's editor -->
+  <section class="sec hide" id="desk" aria-labelledby="deskH">
+    <div class="sec-h"><h2 id="deskH">Writing desk</h2>
+      <p class="note">Your drafts, what is scheduled and what went out last</p>
+      <div class="pg-row" id="deskNew"></div></div>
+    <div class="sec-b" id="deskBody"></div>
+  </section>
+
+  <!-- STORYLINES: storylines.js, from the league's public numbers; the league chosen here serves the graphics too -->
+  <section class="sec" id="stories" aria-labelledby="stH">
+    <div class="sec-h"><h2 id="stH">Storylines</h2>
+      <p class="note">Key numbers from a league, ready to build a piece around</p>
+      <div class="pg-row ch-league"><label class="ch-lab" for="chLeague">League</label>
+        <select id="chLeague" class="ep-input"></select></div></div>
+    <div class="sec-b" id="stBody"><div class="pg-empty">Choose a league.</div></div>
+  </section>
+
+  <!-- GRAPHICS: the league's week drawn by socialcard.js, and backgrounds in its colours -->
+  <section class="sec" id="graphics" aria-labelledby="gfxH">
+    <div class="sec-h"><h2 id="gfxH">Graphics</h2>
+      <p class="note">The league’s week as images to post, in Instagram’s sizes</p>
+      <div class="pg-seg" role="group" aria-label="Size" id="gfxSize"></div></div>
+    <div class="sec-b" id="gfxBody"><div class="pg-empty">Choose a league above.</div></div>
+  </section>
+
+  <!-- ICONS: icons.js -->
+  <section class="sec" id="icons" aria-labelledby="icH">
+    <div class="sec-h"><h2 id="icH">Icons</h2>
+      <p class="note">Basketball icons in any colour, as SVG or PNG</p>
+      <div class="pg-row" id="icPick"></div></div>
+    <div class="sec-b" id="icBody"></div>
+  </section>
+</div>
+
+<script src="../../config.js?v=555" defer></script>
+<script src="../../vendor/supabase.js?v=555" defer></script>
+<script src="../../teamcolour.js?v=555" defer></script>
+<script src="../../data.js?v=555" defer></script>
+<script src="../../records.js?v=555" defer></script>
+<script src="../../reportcard.js?v=555" defer></script>
+<script src="../../socialcard.js?v=555" defer></script>
+<script src="../../admin/socialgfx-ui.js?v=555" defer></script>
+<script src="../../icons.js?v=555" defer></script>
+<script src="../../storylines.js?v=555" defer></script>
+<script src="hub.js?v=555" defer></script>
+<script src="../../nav.js?v=555" defer></script>
+</body>
+</html>

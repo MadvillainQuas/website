@@ -341,17 +341,18 @@ $('#send').addEventListener('click', () => sendLink());
 
    So the enabled providers are read from /auth/v1/settings first, and a button
    that would lead nowhere is simply not offered. */
-async function googleAvailable() {
+/* the providers switched on, read once for every button that asks */
+let providersRead = null;
+function providers() {
   const c = window.EPINOIA_CONFIG;
-  if (!c || !c.supabaseUrl) return false;
-  try {
-    const r = await fetch(c.supabaseUrl + '/auth/v1/settings',
-      { cache: 'no-store', headers: { apikey: c.supabaseAnonKey } });
-    if (!r.ok) return false;
-    const j = await r.json();
-    return !!(j && j.external && j.external.google);
-  } catch (_) { return false; }
+  if (!c || !c.supabaseUrl) return Promise.resolve({});
+  if (!providersRead) {
+    providersRead = fetch(c.supabaseUrl + '/auth/v1/settings', { cache: 'no-store', headers: { apikey: c.supabaseAnonKey } })
+      .then(r => (r.ok ? r.json() : null)).then(j => (j && j.external) || {}).catch(() => ({}));
+  }
+  return providersRead;
 }
+async function googleAvailable() { return !!(await providers()).google; }
 
 /* THE IPHONE APP HAS NO GOOGLE BUTTON. Google refuses to sign anybody in inside an app's own web
    view (403 disallowed_useragent), and the App Store asks an app that offers a social sign-in to
@@ -397,6 +398,28 @@ function googleInIOSApp() {
       }
     });
     /* reaching here means the navigation did not happen */
+    btn.disabled = false;
+    if (error) say(error.message, 'err');
+  });
+})();
+
+/* ---------------------------------------------------------------- discord ---
+   The same as Google (0197): offered only when the provider is switched on, and never in the iPhone app, for the
+   same reason as Google's button. A fan who comes in by Discord has a name and a picture from it for their page. */
+(async function setUpDiscord() {
+  const btn = $('#discord');
+  if (!btn) return;
+  if (googleInIOSApp() || !(await providers()).discord) { btn.hidden = true; return; }
+  btn.hidden = false;
+  const or = document.querySelector('.or');
+  if (or) or.hidden = false;
+  btn.addEventListener('click', async () => {
+    if (!sb) return say('No Supabase key in config.js — signing in needs one.', 'err');
+    btn.disabled = true;
+    say('');
+    const next = safeNext();
+    const redirect = location.origin + location.pathname + (next ? '?next=' + encodeURIComponent(next) : '');
+    const { error } = await sb.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo: redirect, scopes: 'identify email' } });
     btn.disabled = false;
     if (error) say(error.message, 'err');
   });

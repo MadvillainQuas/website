@@ -1,0 +1,80 @@
+/* ============================================================================
+   THE PAGE STANDARD (docs/page-standard.md): the look HOME and a league's front page have, as one sheet a new
+   page loads instead of copying rules into its own <style>.
+
+     <div class="ep-frame" data-std>                       the frame; data-std has nav.js add the teletext line,
+                                                           the quick keys, ON THIS PAGE and each section's SKIP
+       <header class="hero pg-head">                       the head, centred:
+         <p class="pg-kick">Liga Endesa</p>                  what the page belongs to (optional)
+         <h1>Community</h1>                                  the page's name, in the title face
+         <p class="pg-sub">Where the fans meet…</p>          one line of what the page is for
+       </header>
+       <section class="sec" id="find">                     each part of the page:
+         <div class="sec-h"><h2>Find a game</h2>             its title, centred, no number
+           <p class="note">The league's games nearest you</p>  and its subtitle, always
+           [a switch, an "all … →" link]                     on the line under them
+         </div>
+         <div class="sec-b">…</div>                          its content
+       </section>
+
+   Loaded with kit/sectitle.css (the centred title, its bar, the number never shown) and kit/teletext.css (the
+   mosaic under the title, the index, SKIP), in that order: this sheet is the base those two finish.
+   ============================================================================ */
+
+/* ---- the line at the top: nav.js makes it the teletext line; this is how it looks before (or without) that ---- */
+.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+.topbar a.plain{color:inherit;text-decoration:none}
+.topbar .wm{font-family:var(--f-score);font-size:13px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+  padding:3px 9px 1px;text-transform:uppercase}
+
+/* ---- the head: centred, the page's name in the title face ---- */
+.pg-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;
+  padding:calc(var(--u)*6) calc(var(--u)*3) calc(var(--u)*5);border-bottom:1px solid var(--rule)}
+.pg-head h1{margin:0;font-family:var(--f-score);font-weight:400;font-size:clamp(40px,8vw,84px);line-height:.9;letter-spacing:.02em;
+  text-transform:uppercase;overflow-wrap:anywhere;
+  background-image:linear-gradient(100deg,var(--lume),var(--aqua));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+body.league-themed .pg-head h1{background-image:linear-gradient(100deg,var(--league-a-ink),var(--league-b-ink))}
+.pg-kick{display:inline-flex;align-items:center;gap:10px;margin:0;font-family:var(--f-micro);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-2)}
+.pg-kick .ep-crest,.pg-kick img{width:28px;height:28px;flex:none}
+.pg-kick a{color:inherit;text-decoration:none}
+.pg-kick a:hover{text-decoration:underline;text-underline-offset:3px}
+.pg-sub{margin:0;max-width:62ch;font-family:var(--f-ui);font-size:16px;line-height:1.55;color:var(--ink-2)}
+.pg-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:6px}
+.pg-acts:empty{display:none}
+
+/* ---- the sections: the base sectitle.css centres ---- */
+.sec{border-bottom:1px solid var(--rule)}
+.sec-h{display:flex;align-items:baseline;gap:12px;padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*2)}
+.sec-h h2{font-family:var(--f-ui);font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.05em;margin:0}
+/* THE SUBTITLE: every section has one, under its title - what the section holds, in a few words */
+.sec-h .note{margin:0;font-family:var(--f-micro);font-size:9.5px;line-height:1.7;letter-spacing:.06em;color:var(--ink-3);max-width:70ch}
+.sec-h .showall{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--lume);text-decoration:none;white-space:nowrap}
+.sec-h .showall:hover{text-decoration:underline}
+/* a two- or three-way switch under the title (HOME's Upcoming | Results, the same look) */
+.pg-seg{display:inline-flex;border:1px solid var(--rule-2,var(--rule));border-radius:999px;overflow:hidden;flex:none}
+.pg-seg button{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2,var(--ink-3));
+  background:none;border:0;margin:0;padding:8px 13px;min-height:30px;cursor:pointer;transition:background .15s ease,color .15s ease}
+.pg-seg button + button{border-left:1px solid var(--rule-2,var(--rule))}
+.pg-seg button:hover,.pg-seg button:focus-visible{color:var(--ink);background:color-mix(in oklch,var(--lume) 12%,transparent)}
+.pg-seg button[aria-pressed="true"]{background:var(--lume);color:var(--ground);cursor:default}
+
+/* ---- a section's content: the frame's own margins, centred where it is not a full-width grid ---- */
+.sec-b{padding:0 calc(var(--u)*3) calc(var(--u)*5)}
+.sec-b.narrow{max-width:760px;margin-left:auto;margin-right:auto}
+.pg-row{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.pg-more{display:flex;justify-content:center;margin-top:calc(var(--u)*3)}
+.pg-more a{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--lume);text-decoration:none}
+.pg-more a:hover{text-decoration:underline;text-underline-offset:3px}
+/* nothing to show yet: said in the middle, in a dashed box, never an empty space */
+.pg-empty{margin:0 auto;max-width:640px;padding:calc(var(--u)*4) calc(var(--u)*3);text-align:center;border:1px dashed var(--rule-2,var(--rule));
+  font-family:var(--f-ui);font-size:14.5px;line-height:1.6;color:var(--ink-2)}
+.pg-empty p{margin:0}
+.pg-empty a{color:var(--lume);font-weight:700}
+
+@media (max-width:720px){
+  .pg-head{padding:calc(var(--u)*5) calc(var(--u)*2) calc(var(--u)*4)}
+  .pg-sub{font-size:15px}
+  .sec-b{padding:0 calc(var(--u)*2) calc(var(--u)*4)}
+  .pg-seg button{min-height:40px;padding:0 16px}
+}

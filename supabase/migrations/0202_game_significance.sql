@@ -1,4 +1,4 @@
--- 0198: HOW MUCH A GAME MATTERS - the points the feed gives a match report.
+-- 0202: HOW MUCH A GAME MATTERS - the points the feed gives a match report.
 --
 -- finalise-game files a report for every game it closes ("Epinoia match report", news_articles.game_id, 0105). Most of
 -- them are ordinary results, and the News feed (epinoia/feedrank.js) ranks them BELOW a publisher's story or a

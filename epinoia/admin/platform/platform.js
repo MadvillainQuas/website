@@ -1287,7 +1287,7 @@ function loadNewsSources() {
   const C = window.EpinoiaCreatorsUI;
   if (!C) return say('creators-ui.js did not load, so the news sources cannot be edited. Reload the page.', 'err');
   C.mountSources({ host: '#newsSourcesHost', sb, say, league: null, base: '../../' });
-  /* ...and which of them (and of the creator outlets) are official partners: the platform's to choose (0197) */
+  /* ...and which of them (and of the creator outlets) are official partners: the platform's to choose (0201) */
   if (typeof C.mountPartners === 'function') C.mountPartners({ host: '#officialPartnersHost', sb, say });
 }
 
@@ -1421,6 +1421,9 @@ async function loadModeration() {
   if (!media || !media.length) {
     host.appendChild(el('div', 'empty', 'Nothing waiting. Every uploaded photograph has been dealt with.'));
   } else {
+    /* a picture a fan suggested (0199) is marked, with what they said about it */
+    const SU = window.EpinoiaSuggestionsUI;
+    const fanNotes = SU && media.some(m => SU.isSuggested(m.storage_path)) ? await SU.photoNotes(sb, null) : null;
     media.forEach(m => {
       const row = el('div', 'row');
       row.style.borderBottom = '1px solid var(--rule)';
@@ -1430,6 +1433,7 @@ async function loadModeration() {
       t.appendChild(el('div', 'mt', m.owner_type + ' · ' + (m.uploader || '—') +
         ' · ' + fmtWhen(m.created_at) +
         (m.bytes ? ' · ' + Math.round(m.bytes / 1024) + ' KB' : '')));
+      if (fanNotes && SU.isSuggested(m.storage_path)) t.appendChild(SU.fanLine(fanNotes.get(String(m.id))));
       const sp = el('span'); sp.style.marginLeft = 'auto';
       const ok = el('button', 'ep-btn mini pri', 'approve'); ok.type = 'button';
       ok.addEventListener('click', async () => {
@@ -1491,6 +1495,9 @@ async function loadModeration() {
       host.appendChild(row);
     });
   }
+
+  /* SUGGESTED EDITS (0199): every league's, and those about something in no league */
+  if (window.EpinoiaSuggestionsUI) window.EpinoiaSuggestionsUI.mount({ host: '#suggestHost', sb, league: null, say, base: '../../' });
 
   /* EPINOIA GO's fans' photographs (0167): their own queue, below the clubs' */
   if (window.EpinoiaGoPhotosUI) window.EpinoiaGoPhotosUI.mount({ host: '#goPhotoQueue', sb, say, oops });

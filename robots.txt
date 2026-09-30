@@ -25,6 +25,8 @@ Disallow: /epinoia/me/
 Disallow: /epinoia/signin/
 Disallow: /epinoia/join/
 Disallow: /epinoia/go/
+# a fan's page (0197): public by the fan's choice, for the people they share it with, not for search
+Disallow: /epinoia/fan/
 Disallow: /epinoia/devfeed.html
 # An invitation to a private league carries its token in the address. The page is noindex as well, but
 # a crawler that never fetches it cannot put the token in a log, a referrer or an index.

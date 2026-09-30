@@ -1076,7 +1076,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 run.setdefault("_recompute", set()).update({dflt, comp["id"]})
                 print(f"    -> filed under {src['competition_label']}")
         if cur and cur[0].get("status") == "void":
-            # A VOIDED GAME STAYS VOID (an administrator's, or stuck.close_stuck / 0199's: a game whose feed stopped
+            # A VOIDED GAME STAYS VOID (an administrator's, or stuck.close_stuck / 0203's: a game whose feed stopped
             # with no result to stand on). Written as live again by the next read of a feed that still says so, it
             # was on the front page for days all over again; only set_game_status reinstates it.
             if extra:
@@ -2695,7 +2695,7 @@ def main() -> int:
     ap.add_argument("--refresh", action="store_true", help="re-process every game on the schedule even if already final (backfill stints / re-run translation)")
     ap.add_argument("--live-only", action="store_true", help="skip discovery; re-check only games live or due to tip (the frequent pass)")
     ap.add_argument("--catch-up", action="store_true", help="skip discovery; fetch once each game that tipped off more than 4 h ago (within a week) and is still not final - what a game looks like when it was played while the PC was off")
-    ap.add_argument("--repair-stalled", action="store_true", help="skip discovery; every game still live/finalising more than 4 h after tip-off (any age, any source) is read again and finalised through the normal path, and one still open past 6 h is closed on its last state (stuck.py, 0199): final if the fourth period or later was over or decided, else void. Prints a table per game")
+    ap.add_argument("--repair-stalled", action="store_true", help="skip discovery; every game still live/finalising more than 4 h after tip-off (any age, any source) is read again and finalised through the normal path, and one still open past 6 h is closed on its last state (stuck.py, 0203): final if the fourth period or later was over or decided, else void. Prints a table per game")
     ap.add_argument("--strict", action="store_true", help="with --repair-stalled: exit 1 if any such game is still live afterwards (the repair workflow)")
     ap.add_argument("--live-loop", type=int, default=0, help="after the pass, keep re-polling live games every --live-every seconds for this many seconds")
     ap.add_argument("--live-every", type=int, default=30)

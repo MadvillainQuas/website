@@ -226,6 +226,68 @@ function search(o) {
   })).then(r => { if (!r || !r.ok) searchStopped = true; return r && r.ok ? 1 : 0; }, () => 0);
 }
 
+/* A CREATOR'S PIECE (migration 0200: the creator hub's numbers). { post, kind, outlet }:
+     seen   its card was on screen (once a page);
+     open   its own page was opened here - from which page of the site, or which other site (host only);
+     out    its link was followed, to where it lives.
+   The piece's id and the page it happened on, nothing about the reader: the same per-tab token and the same opt-outs as
+   a visit, its own function and its own switch (before 0200 is applied a refusal stops these alone). Never counted: an
+   outlet's own people on their own piece - nav.js keeps the outlets the account writes for ('league/outlet', MINE_KEY),
+   and `outlet` says whose the piece is. */
+const MINE_KEY = 'epinoia_my_outlets';
+const pieceQueue = [], seenOnce = new Set();
+let pieceTimer = null, pieceStopped = false, pieceHooked = false;
+function mine(outlet) {
+  if (!outlet) return false;
+  try { const m = JSON.parse(get(store('localStorage'), MINE_KEY) || '[]'); return Array.isArray(m) && m.indexOf(outlet) >= 0; }
+  catch (_) { return false; }
+}
+/* where an opening came from: a page of this site (its key), or another site's host */
+function openedFrom() {
+  const doc = g('document');
+  const loc = g('location') || {};
+  try {
+    const u = new URL(String((doc && doc.referrer) || ''));
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    const self = String(loc.hostname || '').toLowerCase().replace(/^www\./, '');
+    if (host === self) { const k = pageKey(u.pathname); return { source: k && !STAFF.test(k) ? k : null, ref: null }; }
+    return { source: null, ref: /^[a-z0-9.-]{1,100}$/.test(host) ? host : null };
+  } catch (_) { return { source: null, ref: null }; }
+}
+function piece(o) {
+  if (pieceStopped || stopped || !enabled()) return;
+  const post = String((o && o.post) || '').toLowerCase();
+  const kind = o && ['seen', 'open', 'out'].indexOf(o.kind) >= 0 ? o.kind : null;
+  if (!UUID.test(post) || !kind || mine(o.outlet)) return;
+  if (kind === 'seen') { if (seenOnce.has(post)) return; seenOnce.add(post); }
+  const here = pageKey((g('location') || {}).pathname);
+  const at = kind === 'open' ? openedFrom() : { source: here && !STAFF.test(here) ? here : null, ref: null };
+  pieceQueue.push({ post, kind, source: at.source, ref: at.ref });
+  if (!pieceHooked) {
+    pieceHooked = true;
+    const doc = g('document'), w = g('addEventListener');
+    if (doc && doc.addEventListener) doc.addEventListener('visibilitychange', () => { if (doc.visibilityState === 'hidden') flushPieces(true); });
+    if (typeof w === 'function') w.call(root, 'pagehide', () => flushPieces(true));
+  }
+  /* a link followed may be the page leaving: at once, and kept alive */
+  if (kind === 'out' || pieceQueue.length >= 50) { flushPieces(kind === 'out'); return; }
+  if (!pieceTimer) pieceTimer = g('setTimeout').call(root, () => { pieceTimer = null; flushPieces(false); }, 3000);
+}
+function flushPieces(leaving) {
+  if (pieceTimer) { g('clearTimeout').call(root, pieceTimer); pieceTimer = null; }
+  if (pieceStopped || !pieceQueue.length) return Promise.resolve(0);
+  if (!enabled()) { pieceQueue.length = 0; return Promise.resolve(0); }
+  const events = pieceQueue.splice(0, 50);
+  const cfg = g('EPINOIA_CONFIG') || {};
+  const f = g('fetch');
+  if (typeof f !== 'function') return Promise.resolve(0);
+  return Promise.resolve(f.call(root, cfg.supabaseUrl + '/rest/v1/rpc/creator_track', {
+    method: 'POST', keepalive: !!leaving,
+    headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_session: sessionToken(), p_device: device(), p_events: events })
+  })).then(r => { if (!r || !r.ok) pieceStopped = true; return events.length; }, () => 0);
+}
+
 /* A tab is recorded by its KEY, which is the same in every language: data-tab (the box
    score, the league page), data-p, data-key. A tab that has no key is not recorded. */
 function onClick(e) {
@@ -265,10 +327,12 @@ function setCounting(on) {
 function counting() { return !optedOut(); }
 
 return {
-  boot, flush, setCounting, counting, search,
+  boot, flush, setCounting, counting, search, piece, flushPieces, MINE_KEY,
   _test: {
-    env(e) { ENV = e || null; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null; },
-    pageKey, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, automated, staffSignedIn, onClick, queue
+    env(e) { ENV = e || null; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null;
+             pieceQueue.length = 0; seenOnce.clear(); pieceStopped = false; pieceTimer = null; pieceHooked = false; },
+    pageKey, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, automated, staffSignedIn, onClick, queue,
+    pieceQueue, openedFrom, mine
   }
 };
 }));

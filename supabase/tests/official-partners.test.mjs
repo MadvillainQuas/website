@@ -1,6 +1,6 @@
-// 0197: OFFICIAL PARTNERS, on a real Postgres (PGlite; skipped with a note when it is not installed -
+// 0201: OFFICIAL PARTNERS, on a real Postgres (PGlite; skipped with a note when it is not installed -
 // PGLITE_DIR=<its folder> or `npm i --no-save @electric-sql/pglite`). 0194 (the news sources, the creator outlets,
-// creators_shown) is loaded first on the stand-ins creators.test.mjs uses; 0197 on top. What is held here:
+// creators_shown) is loaded first on the stand-ins creators.test.mjs uses; 0201 on top. What is held here:
 //   * only a platform administrator can name a partner or stop: a league's administrator, an outlet's owner and a
 //     fan are refused, and so is a signed-out caller; anon cannot even execute it
 //   * a news source and a creator outlet, both; anything else is refused; an unknown id is refused
@@ -68,7 +68,7 @@ const as = uid => db.exec(`select set_config('test.uid', '${uid || ''}', false)`
 const fails = async fn => { try { await fn(); return null; } catch (e) { return e.message || String(e); } };
 
 await db.exec(mig('0194_creators.sql'));
-await db.exec(mig('0197_official_partners.sql'));
+await db.exec(mig('0201_official_partners.sql'));
 await db.exec(`grant usage on schema public to anon, authenticated; grant usage on schema auth to anon, authenticated;`);
 
 const [kbl] = await q(`insert into leagues (slug, name) values ('kbl', 'KBL') returning id`);

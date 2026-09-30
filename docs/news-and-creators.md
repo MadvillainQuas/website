@@ -1,9 +1,11 @@
 # News, publishers and creators
 
-Migrations **0194** (the schema) and **0195** (the sources to start with). What the site carries besides a league's own news:
+Migrations **0194** (the schema), **0195** (the sources to start with) and **0198** (adding by link). What the site carries besides a league's own news:
 
 - **Publishers.** A news site read by its feed: Eurohoops, BasketNews, a federation's site.
-- **Creators.** An independent podcast, channel or writer that a league gives a page of its own.
+- **Creators.** Two kinds:
+  - a YouTube channel, a podcast or a Bluesky account read by its feed, added by its link (0198);
+  - an independent podcast, channel or writer that a league gives an outlet of its own, where they publish by hand.
 
 Both appear on the platform's **News** page, in **HOME's FEED**, on each league's news page and on the league's front page. Readers can follow either one.
 
@@ -18,10 +20,11 @@ Both appear on the platform's **News** page, in **HOME's FEED**, on each league'
 | `creators/?l=<league>` | The league's creators as tiles, and their latest pieces. |
 | `creators/?l=&o=<outlet>` | An outlet's page: head, platforms, bell, bio. Its videos, episodes and posts play in their cards. |
 | `creators/?l=&o=&p=<piece>` | One piece in the outlet's colourway. An article, or the video / episode / post itself with its caption. |
-| `creators/studio/` | Where an outlet's people write. |
+| `creators/studio/` | Where an outlet's people write (the editor: `docs/creator-hub.md`). |
+| `creators/hub/` | The creator hub (0200): a creator's numbers and writing desk; a league's storylines, graphics and icons for anybody. See `docs/creator-hub.md`. |
 | HOME, **Feed** | Six cards, under My followed. **For you** (the default) is the ranked feed below; **Followed** shows what the reader follows (leagues, clubs' leagues, publishers, creators), newest first; **Newest** shows everything, newest first. The choice is remembered under `epinoia.home.feed2` (a new key: everyone starts on For you again, and an explicit choice after that sticks). **Personalise** sits beside them. |
 | A league's front page, **Creators** | The three latest pieces and a row of the outlets. Absent while creators are off or nothing is published. |
-| The rail | **News** on the platform panel. **Creators** on a league with some (probed). **Creator studio** in the hub for an outlet's people. |
+| The rail | **News** on the platform panel. **Creators** on a league with some (probed). **Creator studio** in the hub for an outlet's people, and **creator hub** for everybody. |
 
 ## The post card (`epinoia/newscard.js`, `kit/newscard.css`)
 
@@ -31,7 +34,35 @@ The headline is the card's one link, and it covers the card. The league tags and
 
 A logo ending `#fill` fills its square, and is drawn to the edge of the disc. The fetcher decides this: see `fills_square`.
 
-## Official partners (0197)
+## Adding a publisher or a creator by its link (0198)
+
+In the platform console's **News** tab, or a league console's **Creators & news sources**, paste one link. The console says what the link is before anything is sent, and suggests publisher or creator. You can change that, add a name, and press **Add**.
+
+At its next read (within half an hour), the reader finds the feed behind the link. From then on every new post arrives, and its followers are told.
+
+| Paste | What is read |
+| --- | --- |
+| A feed (RSS, Atom, JSON Feed) | itself |
+| A website | the feed it names in its page, or one in the usual places (`/feed`, `/rss`, `/feed.xml`…) |
+| A YouTube channel (`/@handle`, `/channel/UC…`) or playlist | YouTube's own feed of its videos, with the channel's name and picture |
+| An Apple Podcasts show | the show's own feed, from Apple's public lookup, with its artwork |
+| Substack, Medium, Bluesky, Mastodon | each one's public feed; Bluesky and Mastodon with the account's name and picture |
+
+Until the first read, the source keeps a stand-in name (`@handle`, or the site's name) and shows as waiting. The first read replaces the name with the feed's own. A link where no feed is found says so, and is tried again every six hours. A link whose feed is already a source is switched off, with the reason.
+
+**Instagram, TikTok, X, Threads and Facebook cannot be added this way.** None of them publishes a feed that can be read without the account owner's permission, and the site never scrapes them. The console and the database refuse them, and say what to do instead:
+- add the same creator's YouTube channel, podcast, website, Substack or Bluesky;
+- or embed single posts in a creator's outlet on a league.
+
+Reading those accounts automatically would need each owner to connect their account through the platform's own API. That means a Meta developer app (Instagram, Threads, Facebook) or a TikTok developer app, each with the platform's app review.
+
+**Spotify** shows no public feed of a show either. Most podcasts are on Apple Podcasts too: paste that link, or the podcast's own feed.
+
+**On the site.** A creator's posts come out of the feeds as `channel`, under **Creators** rather than **Publishers**, and the News page has a row of the creators. A post opens on its story page here (`news/?i=`), where a video, an episode or a post plays in place, with the way to it on its platform. A source can be switched between publisher and creator at any time.
+
+A long feed (a podcast with years of episodes) is cut after its last whole episode within 3 MB. The newest come first, and only the newest 40 are kept anyway.
+
+## Official partners (0201)
 
 The platform can name a news source or a creator outlet an **official partner**. Only a platform administrator can; a league can add a source or open an outlet but not call it a partner.
 
@@ -70,7 +101,7 @@ The partner boost is in full for a week from publication, then fades to nothing 
 
 **The tiers** (`TIER`): a publisher's story = a creator's piece (1.0) > a league's own article (0.8) > the site's own **match report** (0.35). A match report is the article `finalise-game` files for each game, signed `Epinoia match report` (its slug is `report-` and the first 8 hex digits of the game's id). Its base is lifted by what the game is worth:
 
-**What a game is worth** (`game_significance(game ids)`, `news_report_significance(article ids)`, 0198; up to 60 games a call, only for leagues the caller may see; a withheld player is never named):
+**What a game is worth** (`game_significance(game ids)`, `news_report_significance(article ids)`, 0202; up to 60 games a call, only for leagues the caller may see; a withheld player is never named):
 
 | | points | reason |
 | --- | --- | --- |
@@ -79,9 +110,9 @@ The partner boost is in full for a week from publication, then fades to nothing 
 | Stage | 50 / 30 / 18 / 8 | a cup or playoff final / semi-final / quarter-final / any other tie (or a playoff game with no tie) |
 | Extras | 14 or 8 / 6 | double overtime or overtime / decided by 1 to 3 points |
 
-The groups are capped (table 30, players 45, stage 50, extras 30) and the game at 100. The reasons are short strings, the most valuable first (`Cup final`, `Top-of-the-table clash: 1st v 2nd`, `34-point game: <name>`). A plain report is under a publisher's story; a cup final, or the top two meeting with a big night, can outrank an ordinary story; a very fresh report for a league the reader follows or has spent time on can surface. These are weights, not a filter: the weights in `feedrank.js` can be tuned without a migration, the points in `0198`.
+The groups are capped (table 30, players 45, stage 50, extras 30) and the game at 100. The reasons are short strings, the most valuable first (`Cup final`, `Top-of-the-table clash: 1st v 2nd`, `34-point game: <name>`). A plain report is under a publisher's story; a cup final, or the top two meeting with a big night, can outrank an ordinary story; a very fresh report for a league the reader follows or has spent time on can surface. These are weights, not a filter: the weights in `feedrank.js` can be tuned without a migration, the points in `0202`.
 
-**Language (0200).** A story in a language the reader does not read is multiplied by `LANG_PENALTY` (0.3): it sinks, it does not go, and a much fresher one can still beat a stale story. The score becomes `base * recency * personal * imp * langFactor + follow + boost`, with `langFactor = 0.3 + 0.7 * relief` for a foreign story and 1 otherwise. What counts as read:
+**Language (0204).** A story in a language the reader does not read is multiplied by `LANG_PENALTY` (0.3): it sinks, it does not go, and a much fresher one can still beat a stale story. The score becomes `base * recency * personal * imp * langFactor + follow + boost`, with `langFactor = 0.3 + 0.7 * relief` for a foreign story and 1 otherwise. What counts as read:
 - **Read from the start:** the site's language (the EN / 日本語 / ES switch: `EpinoiaI18n.lang`, else `epinoia_lang`, else `<html lang>`) and every entry of `navigator.languages`. A reader on the English site with `es` in their browser is never penalised for Spanish.
 - **Engagement (`relief`, graded):** each *new* story or piece opened gives its language `OPEN_LANG_PTS` (3) and each publisher's page visited `VISIT_LANG_PTS` (2) in the profile (`g`, halving every 30 days like the rest); the language is `sat(points, LANG_SCALE = 12)` unlocked: one accidental open is ~22% (the factor stays under 0.5), five or six a habit (~75%), a dozen nearly all. Opening the same story twice counts once.
 - **Leagues:** a story from a league the reader follows, or one in their followed feed, has `LANG_FOLLOW_RELIEF` (0.85) of the penalty lifted; a league they have points for lifts it by `LANG_LEAGUE_RELIEF` (0.7) x its 0..1 share. A Spanish-league fan reading in English still sees ACB's news.
@@ -89,7 +120,7 @@ The groups are capped (table 30, players 45, stage 50, extras 30) and the game a
 - **Never held back:** a league's own article and a match report (the site's, in the site's language), a source or outlet with no language on record, a reader whose languages are unknown, and everything when *Show every language* is on.
 - **The chip:** a story in a language other than the site's carries a small `ES` chip in its kicker (`pc-lang`, `newscard.js langChip`) with the language's name as its title, and `lang=` on its headline. It shows in every view (For you, Newest, Following).
 
-*Where a publisher's language comes from.* `news_sources.language` and `creator_outlets.language` (0200: lower-case ISO 639-1 or NULL; the seeded sources are back-filled) through `news_source_languages()`, a small public function the page calls once and keeps half a day. `news_feed` and `news_feed_mine` are unchanged (no `lang` column: adding one means dropping and re-creating both), the page joins by `source_slug` (and an outlet's league and slug). **0200 need not be applied for the feature to work**: without it (404, offline) `feedrank.js` uses `SOURCE_LANG`, the map of the sources 0195 seeded (a test holds it equal to the migration); a source added later has no language until 0200 is applied and an administrator sets it (`update news_sources set language = 'de' where slug = ...`), and is never held back meanwhile. A row that carries its own `lang` wins over its publisher's.
+*Where a publisher's language comes from.* `news_sources.language` and `creator_outlets.language` (0204: lower-case ISO 639-1 or NULL; the seeded sources are back-filled) through `news_source_languages()`, a small public function the page calls once and keeps half a day. `news_feed` and `news_feed_mine` are unchanged (no `lang` column: adding one means dropping and re-creating both), the page joins by `source_slug` (and an outlet's league and slug). **0204 need not be applied for the feature to work**: without it (404, offline) `feedrank.js` uses `SOURCE_LANG`, the map of the sources 0195 seeded (a test holds it equal to the migration); a source added later has no language until 0204 is applied and an administrator sets it (`update news_sources set language = 'de' where slug = ...`), and is never held back meanwhile. A row that carries its own `lang` wins over its publisher's.
 
 **Variety.** Never more than two in a row from one source, and no more than two boosted partner items in the first six.
 
@@ -158,7 +189,7 @@ A publisher's articles arrive every half hour. An administrator who does not wan
   - an **article**, written in the league's news format (the same editor walk and the same cleaning);
   - or a **video, podcast, social post or link**: its address, with a caption.
 - **Embeds.** YouTube, TikTok, Instagram, X, Threads, Spotify, SoundCloud, Apple Podcasts and Twitch play in place. Each is built from the platform's own embed address in a sandboxed frame. Any other address is a link card.
-- **Pictures are https links.** An outlet has no uploads; photographs on the platform go through the approval queue.
+- **Pictures.** Since 0200 the editor uploads an outlet's own pictures into the public `creator-media` bucket, in the outlet's folder. They are resized in the browser and their EXIF is dropped. An https address still works. Photographs of the platform's players and clubs still go through the approval queue.
 - **The league keeps the last word.** It can suspend an outlet or hide a piece. Either one leaves every public page at once.
 
 ## Follows and notifications
@@ -178,13 +209,14 @@ A publisher's articles arrive every half hour. An administrator who does not wan
 
 ## Tests
 
-- `supabase/tests/creators.test.mjs`: 0194 and 0195 on PGlite.
-- `scripts/news/fetch_feeds_test.py`: the reader.
+- `supabase/tests/creators.test.mjs`: 0194, 0195 and 0198 on PGlite.
+- `supabase/tests/creator-hub.test.mjs`: the creator hub and 0200 (`docs/creator-hub.md`).
+- `scripts/news/fetch_feeds_test.py`: the reader, and finding the feed behind a link.
 - `supabase/tests/newscard.test.mjs`: the card, the pill, the "why" line and the pages' wiring.
-- `supabase/tests/official-partners.test.mjs`: 0197 on PGlite (who may name a partner, what the list carries).
-- `supabase/tests/game-significance.test.mjs`: 0198 on PGlite (the points and the reasons for a game).
+- `supabase/tests/official-partners.test.mjs`: 0201 on PGlite (who may name a partner, what the list carries).
+- `supabase/tests/game-significance.test.mjs`: 0202 on PGlite (the points and the reasons for a game).
 - `supabase/tests/feedrank.test.mjs`: the ranking, the learning, the storage, and that nothing about the reader is sent.
-- `supabase/tests/news-languages.test.mjs`: 0200 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
+- `supabase/tests/news-languages.test.mjs`: 0204 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
 - `supabase/tests/partners-ui.test.mjs`: the console's Official partner switches.
 - `supabase/tests/news-refresh.test.mjs`: the `news-refresh` function on a fake database and network: the parser held to the Python's fixtures, the address guard, who may call, the rate limits, the audit rows, idempotence.
 - `supabase/tests/news-refresh-ui.test.mjs`: the **Load now** button: its words, the console's rows, who is shown it, the function missing.

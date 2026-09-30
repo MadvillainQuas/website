@@ -1,6 +1,6 @@
-// 0200: THE LANGUAGE OF A NEWS SOURCE, on a real Postgres (PGlite; skipped with a note when it is not installed -
+// 0204: THE LANGUAGE OF A NEWS SOURCE, on a real Postgres (PGlite; skipped with a note when it is not installed -
 // PGLITE_DIR=<its folder> or `npm i --no-save @electric-sql/pglite`). 0194 and 0195 (the sources) first, on the stand-ins
-// creators.test.mjs uses; 0200 on top. What is held here:
+// creators.test.mjs uses; 0204 on top. What is held here:
 //   * the column on news_sources and creator_outlets, checked (a lower-case code or NULL), and the sources 0195 seeded get theirs
 //   * news_source_languages() is open to a signed-out reader, and carries ONLY sources that are on and in a league the reader may
 //     see, and outlets that are active and shown, each with the slug the feed's row keys it by; a source with no language is not listed
@@ -67,7 +67,7 @@ const fails = async fn => { try { await fn(); return null; } catch (e) { return 
 await db.exec(mig('0194_creators.sql'));
 await db.exec(mig('0195_news_sources.sql'));
 const before = (await q(`select count(*)::int as n from news_sources`))[0].n;
-await db.exec(mig('0200_news_languages.sql'));
+await db.exec(mig('0204_news_languages.sql'));
 await db.exec(`grant usage on schema public to anon, authenticated; grant usage on schema auth to anon, authenticated;`);
 
 const lang = async slug => (await q(`select language from news_sources where slug = $1`, [slug]))[0].language;
@@ -78,7 +78,7 @@ ok('...every seeded source has one', (await q(`select count(*)::int as n from ne
   const { createRequire } = await import('node:module');
   const FR = createRequire(import.meta.url)(path.join(here, '..', '..', 'epinoia', 'feedrank.js'));
   const rows = await q(`select slug, language from news_sources`);
-  ok('feedrank.js\'s SOURCE_LANG (the map used until 0200 is applied) says what the migration says, for every seeded source',
+  ok('feedrank.js\'s SOURCE_LANG (the map used until 0204 is applied) says what the migration says, for every seeded source',
      rows.length === Object.keys(FR.SOURCE_LANG).length && rows.every(r => FR.SOURCE_LANG[r.slug] === r.language), rows.filter(r => FR.SOURCE_LANG[r.slug] !== r.language));
 }
 ok('a language must be a lower-case code: "ES", "spanish" and "" are refused; NULL is fine',
@@ -120,10 +120,10 @@ ok('the list is executable by anon and signed-in readers, and the tables stay cl
 console.log('\nthe feed is untouched, and the migration re-runs');
 const cols = async f => (await q(`select pg_get_function_result(p.oid) as r from pg_proc p where p.proname = $1`, [f]))[0].r;
 ok('news_feed and news_feed_mine keep their columns (no lang added: the page joins the publishers\' languages itself)', !/\blang\b/.test(await cols('news_feed')) && !/\blang\b/.test(await cols('news_feed_mine')));
-await db.exec(mig('0200_news_languages.sql'));
-ok('running 0200 again changes nothing', (await q(`select count(*)::int as n from news_sources where language is not null`))[0].n >= before);
+await db.exec(mig('0204_news_languages.sql'));
+ok('running 0204 again changes nothing', (await q(`select count(*)::int as n from news_sources where language is not null`))[0].n >= before);
 await q(`update news_sources set language = 'ca' where slug = 'solobasket'`);
-await db.exec(mig('0200_news_languages.sql'));
+await db.exec(mig('0204_news_languages.sql'));
 ok('an administrator\'s choice survives a re-run', await lang('solobasket') === 'ca');
 
 console.log(`\n${pass} passed, ${fail} failed`);

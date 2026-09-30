@@ -27,6 +27,16 @@
     "published_at": "2026-09-30T11:59:59+00:00"
    },
    {
+    "guid": "https://hoops.example/news/10",
+    "url": "https://hoops.example/news/10",
+    "title": "dropped: no headline",
+    "summary": "dropped: no headline",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T11:59:59+00:00"
+   },
+   {
     "guid": "g-6",
     "url": "https://hoops.example/up/6",
     "title": "Day only, day first",

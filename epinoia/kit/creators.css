@@ -101,3 +101,16 @@
   .st-kind{width:auto}
   .st-row{flex-wrap:wrap}
 }
+
+/* 0200: a creator's pull quote, embedded video or post, and tags, in the piece */
+.cr-body blockquote.pullquote{margin:calc(var(--u,4px)*6) auto;padding:calc(var(--u,4px)*4) calc(var(--u,4px)*3);max-width:34em;border:0;
+  border-top:2px solid var(--bc,var(--lume));border-bottom:2px solid var(--bc,var(--lume));text-align:center;
+  font:italic 700 clamp(20px,2.6vw,26px)/1.35 var(--f-ui);color:var(--ink)}
+.cr-body blockquote.pullquote cite{display:block;margin-top:12px;font:400 8.5px/1.4 var(--f-micro);font-style:normal;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3)}
+.cr-body blockquote.pullquote cite:not(:empty)::before{content:'— '}
+.cr-body figure.art-embed{margin:calc(var(--u,4px)*5) 0}
+.cr-body figure.art-embed figcaption{margin-top:8px;font:400 13px/1.5 var(--f-ui);color:var(--ink-3)}
+.cr-body .art-embed-link{word-break:break-all}
+.cr-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:calc(var(--u,4px)*4)}
+.cr-tag{padding:3px 10px;border:1px solid var(--rule-2);border-radius:999px;font:400 12.5px/1.3 var(--f-ui);color:var(--ink-2)}

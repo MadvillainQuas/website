@@ -325,7 +325,7 @@ function item(title, link, guid, date, summaryHtml, contentHtml, author, tags, i
   else if (contentHtml) imgs = imgs.concat(textOf(contentHtml)[1]);
   words = words.replace(WP_TAIL, '').trim();
   const url = webUrl(link, base);
-  const ttl = clip(textOf(title)[0], 300);
+  const ttl = clip(textOf(title)[0], 300) || clip(words, 140);      // an untitled post (Bluesky, Mastodon): its first words, as fetch_feeds.py
   if (!url || !ttl) return null;
   let image = null;
   for (const x of images.concat(imgs)) { const u = httpsOnly(x, base); if (u) { image = u; break; } }
@@ -389,7 +389,8 @@ export function parseFeed(body, base, now) {
       kids(it, 'media:thumbnail').forEach(m => imgs.push(m.attrs.url));
       kids(it, 'itunes:image').forEach(m => imgs.push(m.attrs.href));
       const guid = t_(kid(it, 'guid')) || it.attrs['rdf:about'] || '';
-      const x = item(t_(kid(it, T('title'))), t_(kid(it, T('link'))), guid,
+      const audio = (kids(it, 'enclosure').find(enc => (enc.attrs.type || '').startsWith('audio/')) || { attrs: {} }).attrs.url || null;   // a podcast episode with no page: its audio
+      const x = item(t_(kid(it, T('title'))), rss ? (t_(kid(it, 'link')) || audio) : t_(kid(it, T('link'))), guid,
         t_(kid(it, 'pubDate')) || t_(kid(it, 'dc:date')),
         t_(kid(it, T('description'))), t_(kid(it, 'content:encoded')),
         t_(kid(it, 'dc:creator')) || t_(kid(it, 'author')),

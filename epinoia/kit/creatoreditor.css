@@ -1,0 +1,138 @@
+/* ============================================================================
+   THE WRITING DESK (creators/studio/editor.js, 0200): the top bar, the page and its toolbar, the settings panels,
+   and the dialogs. Every colour is the kit's token.
+   ============================================================================ */
+.ce{display:flex;flex-direction:column;gap:calc(var(--u)*2);min-width:0;container-type:inline-size;container-name:ce}
+
+/* the top bar stays in reach */
+.ce-top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 12px;background:var(--ground);border:1px solid var(--rule);box-shadow:0 6px 16px -12px color-mix(in oklch,var(--ink) 40%,transparent)}
+.ce-state{font:400 8.5px/1.5 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.ce-state.ce-dirty{color:var(--amber)}
+.ce-sp{flex:1 1 auto}
+.ce-go{min-width:92px}
+
+/* ONE COLUMN, the settings behind their button, until the editor itself has room for both side by side (a
+   container query: the site's zoom and the rail decide the room, not the screen) */
+.ce-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:calc(var(--u)*3);align-items:start}
+.ce-side{order:-1}
+.ce:not(.ce-sideopen) .ce-side{display:none}
+.ce-setbtn[aria-expanded="true"]{background:color-mix(in oklch,var(--lume) 22%,transparent);border-color:var(--lume)}
+@container ce (min-width: 840px){
+  .ce-grid{grid-template-columns:minmax(0,1fr) minmax(260px,300px)}
+  .ce-side{order:0}
+  .ce:not(.ce-sideopen) .ce-side{display:flex}
+  .ce-setbtn{display:none}
+}
+.ce-main{display:flex;flex-direction:column;gap:calc(var(--u)*2);min-width:0}
+
+.ce-offer{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:1px solid var(--amber);
+  background:color-mix(in oklch,var(--amber) 10%,var(--panel));font:400 13px/1.5 var(--f-ui);color:var(--ink)}
+.ce-offer[hidden]{display:none}
+
+.ce-kinds{display:flex;flex-wrap:wrap;gap:6px}
+.ce-kinds .ep-btn[aria-pressed="true"]{background:var(--lume);border-color:var(--lume);color:var(--on-accent)}
+
+.ce-title{width:100%;box-sizing:border-box;resize:none;overflow:hidden;border:0;border-bottom:1px dashed var(--rule-2);
+  background:transparent;color:var(--ink);font:800 clamp(24px,3.2vw,34px)/1.2 var(--f-ui);padding:6px 2px 10px}
+.ce-title:focus{outline:none;border-bottom-color:var(--lume)}
+.ce-title::placeholder{color:var(--ink-3)}
+
+.ce-linkwrap{display:flex;flex-direction:column;gap:6px}
+.ce-linkwrap.ce-art{order:9}
+.ce-bodywrap{display:flex;flex-direction:column;gap:8px}
+.ce-bodywrap[hidden]{display:none}
+
+/* the toolbar, under the top bar while the text scrolls */
+.ce-bar{position:sticky;top:58px;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:6px;
+  background:var(--panel);border:1px solid var(--rule)}
+.ce-block{width:auto;min-width:0;max-width:170px;padding:4px 6px;font-size:12.5px}
+.ce-tool{min-width:32px}
+.ce-tool[aria-pressed="true"]{background:color-mix(in oklch,var(--lume) 22%,transparent);border-color:var(--lume)}
+.ce-b{font-weight:800}
+.ce-i{font-style:italic}
+.ce-tsep{width:1px;align-self:stretch;margin:2px 4px;background:var(--rule)}
+
+.ce-body{min-height:380px;padding:18px 20px;border:1px solid var(--rule);background:var(--ground);font-size:16px;line-height:1.7}
+.ce-body:focus{border-color:var(--rule-2)}
+.ce-body[data-empty="1"]::before{content:attr(data-placeholder);position:absolute;color:var(--ink-3);pointer-events:none}
+.ce-body{position:relative}
+.ce-body figcaption:empty::before,.ce-body cite:empty::before{content:attr(data-placeholder);color:var(--ink-3)}
+/* a pull quote, as it will stand out in the piece */
+.ce-body blockquote.pullquote{margin:calc(var(--u)*3) auto;padding:calc(var(--u)*2) calc(var(--u)*3);max-width:34em;border:0;
+  border-top:2px solid var(--lume);border-bottom:2px solid var(--lume);text-align:center;font-size:20px;font-weight:700;font-style:italic}
+.ce-body blockquote.pullquote p{margin:0}
+.ce-body blockquote.pullquote cite{display:block;margin-top:8px;font:400 9px/1.4 var(--f-micro);font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.ce-body figure[data-image] img{max-width:100%;height:auto;display:block}
+.ce-count{font:400 8.5px/1.6 var(--f-micro);letter-spacing:.06em;color:var(--ink-3)}
+
+/* an embed, in the editor: what will play, not the player */
+.ce-body figure.art-embed{margin:calc(var(--u)*2) 0;padding:0;border:0}
+.ce-embed{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:12px 14px;border:1px dashed var(--rule-2);background:var(--panel);user-select:none}
+.ce-embed-k{font:400 8.5px/1.4 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--lume)}
+.ce-embed-u{flex:1 1 200px;min-width:0;font:400 12.5px/1.4 var(--f-ui);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ce-body figure.art-embed figcaption{margin-top:6px;font:400 13px/1.5 var(--f-ui);color:var(--ink-3)}
+
+/* the settings panels */
+.ce-side{display:flex;flex-direction:column;gap:8px;min-width:0}
+@container ce (min-width: 840px){ .ce-side{position:sticky;top:62px;max-height:calc(100vh - 80px);overflow:auto} }
+.ce-panel{border:1px solid var(--rule);background:var(--panel)}
+.ce-panel>summary{cursor:pointer;padding:10px 12px;font:400 8.5px/1.4 var(--f-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);list-style:none}
+.ce-panel>summary::-webkit-details-marker{display:none}
+.ce-panel>summary::after{content:'+';float:right;color:var(--ink-3)}
+.ce-panel[open]>summary::after{content:'−'}
+.ce-pbody{display:flex;flex-direction:column;gap:8px;padding:0 12px 12px}
+.ce-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ce-field .ep-input{width:100%;max-width:none;box-sizing:border-box}
+.ce-lab{font:400 7.5px/1.4 var(--f-micro);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.ce-hint{margin:0;font:400 12px/1.5 var(--f-ui);color:var(--ink-3)}
+.ce-hint.bad{color:var(--flare)}
+.ce-n{text-align:right;font-size:11px}
+.ce-ta{resize:vertical;min-height:60px;font-family:var(--f-ui);line-height:1.5}
+.ce-row{display:flex;flex-wrap:wrap;gap:6px}
+.ce-radios{display:flex;flex-direction:column;gap:8px}
+.ce-radio{display:flex;align-items:flex-start;gap:8px;cursor:pointer}
+.ce-radio input{margin-top:3px;accent-color:var(--lume)}
+.ce-radio span{display:flex;flex-direction:column;gap:2px;font:400 13px/1.4 var(--f-ui);color:var(--ink)}
+.ce-when[hidden]{display:none}
+.ce-snote:empty{display:none}
+.ce-url{word-break:break-all}
+.ce-cover img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--rule)}
+.ce-cover-none{display:grid;place-items:center;min-height:64px;padding:10px;border:1px dashed var(--rule-2);font:400 12px/1.4 var(--f-ui);color:var(--ink-3)}
+.ce-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ce-chips:empty{display:none}
+.ce-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 10px;border:1px solid var(--rule-2);border-radius:999px;
+  font:400 12.5px/1.2 var(--f-ui);color:var(--ink)}
+.ce-chip-x{min-width:0;padding:0 6px;border:0;background:none;color:var(--ink-3);font-size:14px;line-height:1;cursor:pointer}
+.ce-chip-x:hover{color:var(--flare)}
+.ce-serp{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--rule);background:var(--ground)}
+.ce-serp-url{font:400 11.5px/1.4 var(--f-ui);color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ce-serp-t{font:500 16px/1.3 var(--f-ui);color:var(--aqua)}
+.ce-serp-d{font:400 12.5px/1.45 var(--f-ui);color:var(--ink-2)}
+.ce-cardprev .pc{max-width:100%}
+.ce-outline{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px}
+.ce-o3{padding-left:14px}
+.ce-olink{display:block;width:100%;padding:3px 0;border:0;background:none;color:var(--ink-2);text-align:left;font:400 13px/1.4 var(--f-ui);cursor:pointer}
+.ce-olink:hover{color:var(--lume)}
+.ce-revs{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.ce-revs li{display:flex;align-items:center;gap:6px}
+.ce-rev-t{display:flex;flex-direction:column;gap:1px;flex:1 1 auto;min-width:0;font:400 13px/1.3 var(--f-ui);color:var(--ink)}
+
+/* the dialogs */
+dialog.ce-dlg{border:1px solid var(--rule-2);background:var(--ground);color:var(--ink);padding:0;width:min(480px,92vw);max-height:88vh}
+dialog.ce-dlg::backdrop{background:color-mix(in oklch,var(--ground) 78%,transparent)}
+.ce-dform{display:flex;flex-direction:column;gap:10px;padding:calc(var(--u)*3)}
+.ce-dtitle{font:400 22px/1 var(--f-score);text-transform:uppercase;color:var(--lume)}
+.ce-dnote:empty{display:none}
+.ce-dacts{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+dialog.ce-prev{width:min(880px,94vw);max-height:92vh;overflow:auto}
+.ce-prevbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+  background:var(--panel);border-bottom:1px solid var(--rule)}
+.ce-prevbody{padding:calc(var(--u)*3)}
+.ce-prev-h{margin:0 0 calc(var(--u)*2);font:800 clamp(24px,3vw,34px)/1.2 var(--f-ui);color:var(--ink)}
+.ce-prevtags{display:flex;flex-wrap:wrap;gap:6px;margin-top:calc(var(--u)*2)}
+
+@media (max-width:560px){
+  .ce-top .ce-state{flex-basis:100%;order:9}
+  .ce-body{padding:14px 12px}
+}

@@ -17,6 +17,13 @@
 
   I.register('es', {
     phrases: {
+      /* the fan's page editor (me/fanprofile.js, 0197) */
+      'Your page': 'Tu página',
+      'From your accounts': 'Desde tus cuentas',
+      'How your page starts': 'Así empieza tu página',
+      'Save your page': 'Guardar tu página',
+      'Link Discord': 'Vincular Discord',
+      'Your accounts, on your page': 'Tus cuentas, en tu página',
       /* ---- your profile (me/) ---- */
       'Loading your membership': 'Cargando tu suscripción',
       'with your email to see your membership, follow clubs and players, and choose how Epinoia keeps you posted.': 'con tu correo para ver tu suscripción, seguir clubes y jugadores y elegir cómo te mantiene informado Epinoia.',

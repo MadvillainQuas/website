@@ -6,6 +6,19 @@
   if (!I) return;
   I.register('es', {
     phrases: {
+      /* a league's Community page (community/) */
+      'Talk': 'Charla',
+      'In the stands': 'En la grada',
+      'Furthest travelled': 'Los que más han viajado',
+      'At the game?': '¿Estás en el partido?',
+      /* a fan's page (fan/, 0197) */
+      'Their club': 'Su club',
+      'EPINOIΛ GO passport': 'Pasaporte EPINOIΛ GO',
+      'Games been to': 'Partidos vividos',
+      'every photograph →': 'todas las fotos →',
+      'Follows': 'Sigue',
+      'on the board': 'en la clasificación',
+      'photographs': 'fotos',
       'EPINOIA GO opens soon.': 'EPINOIA GO abre pronto.',
       'find the game I’m at': 'buscar el partido en el que estoy',
       'Your stamps': 'Tus sellos',

@@ -745,7 +745,8 @@ body.league-themed .league-trim{ display:block; height:3px;
 .ep-units[hidden]{display:none}
 
 /* ---------- chromatic aberration: the split a handled card gives ----------------------------------------
-   Static fringes live with the things they fringe (card.css, fxc.css, sectitle.css); this is the moment's
+   Static fringes live with the cards they fringe (card.css, fxc.css, the preview card in table.css) and never on the
+   page's own text; this is the moment's
    jolt when a card is hovered, shared so every card splits the same way. Never under reduced motion. */
 @keyframes ca-split{
   0%  {translate:0 0}

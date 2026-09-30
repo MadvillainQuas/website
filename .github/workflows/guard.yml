@@ -1401,7 +1401,42 @@ jobs:
         # league's creators section and the rail's rows are wired
         run: node supabase/tests/newscard.test.mjs
 
-      - name: Official partners (0197) and how much a game matters (0198) - on a real Postgres
+      - name: The page standard - every new page is built to it (docs/page-standard.md)
+        # a data-std page: the centred head, sections with a title and a subtitle and never a number, the standard's
+        # sheets in their order and none of their rules copied, nav.js's index and SKIP; and every index.html that is
+        # not on the list of the pages that came before the standard (2026-09-30) is built to it
+        run: node supabase/tests/page-standard.test.mjs
+
+      - name: Fans' pages and league Community pages (0197)
+        # on a real Postgres (PGlite): a fan's page only when public on GO (18 or over), what their social accounts
+        # offer, saving only the keys sent (the word list, https pictures, allow-listed links, a club they may see),
+        # Discord from the linked identity only, a league's Discord set by its administrators; and the pages' wiring
+        # (the forum frames discord.com only, the rail's probe, the editor, the Discord sign-in, the console)
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/fan-profiles.test.mjs
+
+      - name: Suggested edits - fans suggest, the league's and the platform's moderators decide (0199)
+        # the pages first (suggest.js's feet-and-inches and Google Maps pins, the fields, positions and reasons the
+        # database has, the player's, the club's and the arena's hooks, never a player under 18, both consoles'
+        # queues, the words in Spanish and Japanese); then on a real Postgres (PGlite): the checks a value passes,
+        # where a suggestion goes and who sees it, accepting (with a correction) and rejecting with the fan told,
+        # fans saying the same as one, a fan's photograph through Photographs, the limits, and who may call what
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/suggestions.test.mjs
+
+      - name: The creator hub - the numbers, the writing desk, storylines, graphics and icons (0200)
+        # the pages first (the editor's words, permalink, tags and typed shortcuts; storylines.js on a season; the icon
+        # set; the hub on the page standard, in the rail, and counting a piece where it is shown; its words in Spanish
+        # and Japanese); then on a real Postgres (PGlite): tags and the search fields, scheduled pieces and their
+        # publishing, revisions, the article's new blocks, creator_track and creator_stats, the creator-media bucket,
+        # and who may call what
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/creator-hub.test.mjs
+
+      - name: Official partners (0201) and how much a game matters (0202) - on a real Postgres
         # PGlite: only a platform administrator names an official partner or stops (a league's administrator,
         # an outlet's owner, a fan and a signed-out caller are refused), a source or an outlet, audit-logged;
         # official_partners() lists only what is on and shown, an outlet with its league (its slug is unique
@@ -1451,7 +1486,7 @@ jobs:
         run: node supabase/tests/android-config.test.mjs
 
       - name: Games stuck live are closed - the rule (Python and SQL agree), the repair pass, the hourly backstop, the void guard
-        # stuck.py + 0199 close_stuck_games: final when the feed said so or the clock/lead settles it, else void; never written back
+        # stuck.py + 0203 close_stuck_games: final when the feed said so or the clock/lead settles it, else void; never written back
         # to live; the same-code clubs of the Czech feed keep their own rosters; the HOME strip never shows a game past its cap as live
         run: |
           python scripts/ingest/stuck_test.py

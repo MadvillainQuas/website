@@ -43,7 +43,7 @@ const HOUR = 3600 * 1000, DAY = 24 * HOUR;
 const STALE_MS = 2 * HOUR;
 /* A GAME 'LIVE' FOR THIS LONG AFTER ITS TIP-OFF IS NOT LIVE. No basketball game runs eight hours; a row that says so is one
    whose feed stopped or whose closing was refused (four sat on HOME for days, 26-30 Sep 2026). Until the ingest's repair
-   (run_ingest --repair-stalled, 0199) closes it, it is left off the live cards - it is not a game anybody is watching. */
+   (run_ingest --repair-stalled, 0203) closes it, it is left off the live cards - it is not a game anybody is watching. */
 const LIVE_CAP_MS = 8 * HOUR;
 /* how far ahead a league's next game still earns it a card of its own on HOME */
 const LEAGUE_WINDOW_MS = 14 * DAY;

@@ -241,6 +241,8 @@ html.go-pop-sheet .ep-bell{visibility:hidden}          /* the bell floats over e
 .lb-row.r2 .lb-rank{background:linear-gradient(135deg,#f1f4f7,#a8b3bd);color:#26303a}
 .lb-row.r3 .lb-rank{background:linear-gradient(135deg,#f3c79d,#b0703d);color:#3a1e08}
 .lb-who{font-family:var(--f-ui);font-weight:700;font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a.lb-who{text-decoration:none}
+a.lb-who:hover{text-decoration:underline;text-underline-offset:3px}
 .lb-n{text-align:right;font-family:var(--f-data);font-size:13px;color:var(--ink-3)}
 .lb-n small{display:block;font-family:var(--f-micro);font-size:7.5px;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3);margin-top:2px}
 .lb-n.sorted{color:var(--lume);font-size:15px;font-weight:700}

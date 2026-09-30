@@ -177,7 +177,7 @@ console.log('-- the console: a button on every source, "Load all" on the platfor
   await buttons(plat, 'Load now')[0].click();
   const rowText = plat.textContent;
   ok('pressing one calls news-refresh for THAT source (the slug only), and says what came, on its row', invoked.length === 1 && invoked[0][0] === 'news-refresh' && JSON.stringify(invoked[0][1]) === '{"body":{"source":"eurohoops"}}' && rowText.includes('+7 new · 12 total · 1.2 s'), invoked);
-  ok('...and the row\'s own line now says it was read, with the new count', /read .* · 12 stories · https:\/\/e\.example\/feed/.test(rowText) && !/failing: ECONNRESET.*eurohoops/.test(rowText), rowText.slice(0, 500));
+  ok('...and the row\'s own line now says it was read, with the new count', /read .* · 12 posts · https:\/\/e\.example\/feed/.test(rowText) && !/failing: ECONNRESET.*eurohoops/.test(rowText), rowText.slice(0, 500));
   reply = async () => ({ data: null, error: { context: { status: 502, json: async () => ({ ok: false, code: 'unreachable', detail: 'the site answered HTTP 503', last_error: 'feed unreachable: the site answered HTTP 503' }) } } });
   await buttons(plat, 'Load now')[1].click();
   ok('a failure is readable on the row, and its line shows the failing feed', plat.textContent.includes('feed unreachable: the site answered HTTP 503') && /failing: feed unreachable/.test(plat.textContent));

@@ -13,6 +13,12 @@
                      what makes a paste from Word safe: the markup never
                      survives the walk, so there is nothing to sanitise later.
 
+     fromDom(root, { extended: true })   the creators' editor (0200) also
+                     keeps a PULL QUOTE (blockquote.pullquote, its <cite> the
+                     speaker), an EMBED (figure[data-embed]) and a picture's
+                     DESCRIPTION (alt). League news never asks for them, and
+                     its database cleaner (clean_news_body) would drop them.
+
      toDom(blocks)   build real elements with createElement and textContent.
                      Nothing is ever parsed as HTML, which is why the CI guard
                      forbidding user text in innerHTML keeps holding and why
@@ -51,9 +57,10 @@ const DROP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'IFRAME', 'OBJE
   'TEXTAREA', 'OPTION', 'LINK', 'META', 'BASE', 'TITLE', 'HEAD']);
 
 /* ------------------------------------------------------------- DOM → blocks --- */
-function fromDom(root) {
+function fromDom(root, opts) {
   const out = [];
   if (!root) return out;
+  const ext = !!(opts && opts.extended);
 
   [...root.childNodes].forEach(node => {
     if (node.nodeType === 3) {
@@ -71,13 +78,30 @@ function fromDom(root) {
 
     if (tag === 'HR') { out.push({ type: 'rule' }); return; }
 
+    /* the creators' own: a pull quote and its speaker, and an embedded video, episode or post */
+    if (ext && tag === 'BLOCKQUOTE' && node.classList && node.classList.contains('pullquote')) {
+      const who = node.querySelector('cite');
+      const words = node.cloneNode(true);
+      words.querySelectorAll('cite').forEach(c => c.remove());
+      const spans = spansOf(words);
+      if (spans.length) out.push({ type: 'pullquote', spans, cite: who ? who.textContent.trim().slice(0, 120) : '' });
+      return;
+    }
+    if (ext && (tag === 'FIGURE' || tag === 'DIV') && node.dataset && node.dataset.embed) {
+      const url = safeHref(node.dataset.embed);
+      const cap = node.querySelector('figcaption');
+      if (url && /^https:\/\//i.test(url)) out.push({ type: 'embed', url, caption: cap ? cap.textContent.trim().slice(0, 200) : '' });
+      return;
+    }
+
     if (tag === 'FIGURE' || (tag === 'DIV' && node.dataset && node.dataset.image)) {
       const img = node.querySelector('img');
       const path = (node.dataset && node.dataset.image) || (img && img.dataset && img.dataset.path);
       if (path) {
         const cap = node.querySelector('figcaption');
-        out.push({ type: 'image', path,
-                   caption: cap ? cap.textContent.trim().slice(0, 200) : '' });
+        const b = { type: 'image', path, caption: cap ? cap.textContent.trim().slice(0, 200) : '' };
+        if (ext) b.alt = String((img && img.getAttribute('alt')) || '').trim().slice(0, 200);
+        out.push(b);
       }
       return;
     }
@@ -156,7 +180,8 @@ function spansOf(node) {
 }
 
 /* ------------------------------------------------------------- blocks → DOM --- */
-/* opts: { url(path) -> absolute address for an image, editable: bool } */
+/* opts: { url(path) -> absolute address for an image, editable: bool,
+           embed(url, block) -> the node that plays an embed (newscard.js's), or null for a plain link } */
 function toDom(blocks, opts) {
   const o = opts || {};
   const frag = document.createDocumentFragment();
@@ -186,7 +211,7 @@ function toDom(blocks, opts) {
         if (o.editable) fig.dataset.image = b.path;
         const img = document.createElement('img');
         img.src = o.url ? o.url(b.path) : b.path;
-        img.alt = b.caption || '';
+        img.alt = b.alt || b.caption || '';
         img.loading = 'lazy';
         img.dataset.path = b.path;
         fig.appendChild(img);
@@ -201,6 +226,42 @@ function toDom(blocks, opts) {
       case 'rule':
         frag.appendChild(document.createElement('hr'));
         break;
+      case 'pullquote': {
+        const q = document.createElement('blockquote');
+        q.className = 'pullquote';
+        spansToDom(b.spans, q);
+        if (b.cite || o.editable) {
+          const c = document.createElement('cite');
+          c.textContent = b.cite || '';
+          q.appendChild(c);
+        }
+        frag.appendChild(q);
+        break;
+      }
+      case 'embed': {
+        const url = safeHref(b.url);
+        if (!url) break;
+        const fig = document.createElement('figure');
+        fig.className = 'art-embed';
+        fig.dataset.embed = url;
+        const player = typeof o.embed === 'function' ? o.embed(url, b) : null;
+        if (player) fig.appendChild(player);
+        else {
+          const a = document.createElement('a');
+          a.href = url; a.rel = 'noopener noreferrer'; a.target = '_blank';
+          a.className = 'art-embed-link';
+          a.textContent = url;
+          fig.appendChild(a);
+        }
+        if (b.caption || o.editable) {
+          const cap = document.createElement('figcaption');
+          cap.textContent = b.caption || '';
+          fig.appendChild(cap);
+        }
+        if (o.editable) fig.contentEditable = 'false';
+        frag.appendChild(fig);
+        break;
+      }
     }
   });
   return frag;
@@ -237,7 +298,7 @@ function excerpt(blocks, max) {
   let out = '';
   (blocks || []).forEach(b => {
     if (out.length >= cap) return;
-    if (b.type === 'p' || b.type === 'quote') {
+    if (b.type === 'p' || b.type === 'quote' || b.type === 'pullquote') {
       out += (out ? ' ' : '') + (b.spans || []).map(s => s.t).join('');
     }
   });

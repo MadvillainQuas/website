@@ -83,6 +83,9 @@ ok("Edmonton Stingers v Winnipeg Sea Bears: 9 May 2026 19:30 UTC at the Edmonton
    (g.home_name, g.away_name, g.tipoff_at, g.extra.get("venue")))
 ok("clubs coded by the league's team id, crests from the league", g.extra["home_code"] == "CEBL18" and g.extra["away_code"] == "CEBL24"
    and g.extra["home_logo"].startswith("https://") and g.extra["away_logo"].startswith("https://"))
+ok("...and each named by the abbreviation the league's feed prints, so a club's short name is never its key",
+   (g.extra["home_short"], g.extra["away_short"]) == ("EDM", "WPG")
+   and all(x.extra["home_short"] and x.extra["away_short"] for x in games), (g.extra.get("home_short"), g.extra.get("away_short")))
 ok("ten clubs", len({x.home_name for x in games} | {x.away_name for x in games}) == 10)
 finals = Offline().discover("https://www.cebl.ca/games#finals", dict(CFG, stage="playoffs"))
 ok("the finals: 7 games, the two cancelled if-necessary games left out", len(finals) == 7

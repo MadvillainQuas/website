@@ -1,4 +1,4 @@
--- 0197: OFFICIAL PARTNERS - a news source or a creator outlet the platform has chosen to stand behind.
+-- 0201: OFFICIAL PARTNERS - a news source or a creator outlet the platform has chosen to stand behind.
 --
 -- The News page, HOME's feed and the outlet's own pages mark an official partner with a small gold pill, and the
 -- feed's ranking (epinoia/feedrank.js) floats a partner's UNREAD story to the top for about a week. Both are
@@ -21,9 +21,9 @@
 alter table public.news_sources add column if not exists official_partner boolean not null default false;
 alter table public.creator_outlets add column if not exists official_partner boolean not null default false;
 comment on column public.news_sources.official_partner is
-  '0197: chosen by a platform administrator (set_official_partner): the card wears the pill and the feed boosts its unread stories.';
+  '0201: chosen by a platform administrator (set_official_partner): the card wears the pill and the feed boosts its unread stories.';
 comment on column public.creator_outlets.official_partner is
-  '0197: chosen by a platform administrator (set_official_partner): the card wears the pill and the feed boosts its unread pieces.';
+  '0201: chosen by a platform administrator (set_official_partner): the card wears the pill and the feed boosts its unread pieces.';
 
 /* THE LIST EVERY PAGE ASKS FOR: only what is shown at all - a source that is on, an outlet that is active, and (for a
    league's own) a league the reader may see; an outlet also only where creators are shown. */

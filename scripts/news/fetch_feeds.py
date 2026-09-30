@@ -45,6 +45,7 @@ from html.parser import HTMLParser
 
 UA = "EpinoiaNews/1.0 (+https://prophesyscouting.co.uk/epinoia/news/)"
 MAX_BYTES = 3 * 1024 * 1024
+HARD_BYTES = 40 * 1024 * 1024  # a feed longer than MAX_BYTES (a podcast's years of episodes) is read to here, then cut
 TIMEOUT_S = 20
 GAP_S = 0.5
 PER_READ = 40                  # the newest this many items of a feed are kept each read
@@ -192,7 +193,7 @@ def _item(title, link, guid, date, summary_html, content_html, author, tags, ima
         imgs = imgs + text_of(content_html)[1]
     words = WP_TAIL.sub("", words).strip()
     url = web_url(link, base)
-    ttl = clip(text_of(title)[0], 300)
+    ttl = clip(text_of(title)[0], 300) or clip(words, 140)      # an untitled post (Bluesky, Mastodon): its first words
     if not url or not ttl:
         return None
     image = next((u for u in (https_only(x, base) for x in images + imgs) if u), None)
@@ -254,8 +255,9 @@ def parse_feed(body: bytes, base: str, now: datetime | None = None) -> tuple[dic
             imgs += [m.get("url") for m in it.findall("media:thumbnail", NS)]
             imgs += [m.get("href") for m in it.findall("itunes:image", NS)]
             guid = _t(it.find("guid")) or it.get("{%s}about" % NS["rdf"]) or ""
+            audio = next((enc.get("url") for enc in it.findall("enclosure") if (enc.get("type") or "").startswith("audio/")), None)
             x = _item(_t(it.find("title")) if tag == "rss" else _t(it.find("rss1:title", NS)),
-                      _t(it.find("link")) if tag == "rss" else _t(it.find("rss1:link", NS)), guid,
+                      (_t(it.find("link")) or audio) if tag == "rss" else _t(it.find("rss1:link", NS)), guid,
                       _t(it.find("pubDate")) or _t(it.find("dc:date", NS)),
                       _t(it.find("description")) if tag == "rss" else _t(it.find("rss1:description", NS)),
                       _t(it.find("content:encoded", NS)),
@@ -761,17 +763,223 @@ def find_logo(site_url: str, fetch, feed_image: str | None = None, log=lambda *_
 
 
 # --------------------------------------------------------------------------------------------- the web ---
-def http_page(url: str) -> tuple[int, bytes, dict]:
-    """(status, body, headers) for a page or a picture, at most LOGO_BYTES"""
+# ---------------------------------------------------------------------------------- a link, to its feed ---
+# A SOURCE ADDED BY ITS LINK (migration 0198) keeps that link in resolve_from until this finds the feed behind it:
+#   a feed                              itself
+#   a YouTube channel or playlist       YouTube's own feed for it (a channel's page names it; /channel/UC… needs no read)
+#   an Apple Podcasts show              the show's feed, from Apple's public lookup
+#   Bluesky, Substack, Medium           each one's public feed, by its address
+#   any other page (Mastodon included)  the feed its page names (<link rel="alternate">), or the usual places
+# Instagram, TikTok, X, Threads, Facebook and Spotify publish no feed anyone may read without the account
+# owner's permission; the database refuses them before they get here, and so does this.
+RESOLVE_BYTES = 5 * 1024 * 1024            # a YouTube channel's page is 2-3 MB
+RESOLVE_RETRY = timedelta(hours=6)         # a link where no feed was found is tried again after this
+YT_FEED = "https://www.youtube.com/feeds/videos.xml"
+FEED_TYPES = ("application/rss+xml", "application/atom+xml", "application/feed+json", "application/rdf+xml")
+COMMON_PATHS = ("/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/index.xml", "/feed/")
+NO_FEED = ((r"^https?://([a-z0-9-]+\.)?instagram\.com(/|$)", "Instagram"), (r"^https?://([a-z0-9-]+\.)?tiktok\.com(/|$)", "TikTok"),
+           (r"^https?://([a-z0-9-]+\.)?(x|twitter)\.com(/|$)", "X"), (r"^https?://([a-z0-9-]+\.)?threads\.(net|com)(/|$)", "Threads"),
+           (r"^https?://([a-z0-9-]+\.)?(facebook|fb)\.com(/|$)", "Facebook"), (r"^https?://open\.spotify\.com(/|$)", "Spotify"))
+
+
+class NoFeed(LookupError):
+    """there is no feed to be had at this link"""
+
+
+class _AllTags(HTMLParser):
+    """every <link> and <meta> of a page, wherever it is (YouTube writes its feed link and its og: tags into the body)"""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links: list[dict] = []
+        self.metas: dict[str, str] = {}
+        self.title = ""
+        self._in_title = False
+
+    def handle_starttag(self, tag, attrs):
+        a = {k.lower(): (v or "") for k, v in attrs}
+        if tag == "link":
+            self.links.append(a)
+        elif tag == "meta":
+            key = (a.get("property") or a.get("name") or a.get("itemprop") or "").lower()
+            if key and key not in self.metas:
+                self.metas[key] = a.get("content", "")
+        elif tag == "title" and not self.title:
+            self._in_title = True
+
+    def handle_data(self, data):
+        if self._in_title:
+            self.title += data
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self._in_title = False
+
+
+def _host(url: str) -> str:
+    return re.sub(r"^(www\.|m\.)", "", (urllib.parse.urlsplit(url).hostname or "").lower())
+
+
+def _is_feed(body: bytes) -> bool:
+    head = body.lstrip()[:600].lower()
+    return head.startswith(b"{") and b'"items"' in body[:20000] or bool(re.search(rb"<(rss|feed|rdf:rdf)[\s>]", head))
+
+
+def _podcast(body: bytes) -> bool:
+    """a feed of episodes: iTunes' tags, or audio enclosures"""
+    return b"itunes.apple.com/dtds/podcast" in body[:4000] or bool(re.search(rb"<enclosure[^>]+type=\"audio/", body[:200000]))
+
+
+def _avatar(url: str | None) -> str | None:
+    """a profile's picture as a logo that fills its disc (newscard.js: #fill)"""
+    u = https_only(url, "https://x/") if url else None
+    if not u:
+        return None
+    u = re.sub(r"=s\d{2,4}-", "=s240-", u)          # a YouTube avatar at the size a disc needs
+    return u + "#fill"
+
+
+def direct_feed(url: str) -> tuple[str, str] | None:
+    """(feed, platform) for the links whose feed follows from the address alone"""
+    x = urllib.parse.urlsplit(url)
+    host = _host(url)
+    parts = [p for p in x.path.split("/") if p]
+    if host in ("youtube.com", "music.youtube.com"):
+        if len(parts) >= 2 and parts[0] == "channel" and re.fullmatch(r"UC[A-Za-z0-9_-]{22}", parts[1]):
+            return YT_FEED + "?channel_id=" + parts[1], "youtube"
+        lst = urllib.parse.parse_qs(x.query).get("list", [""])[0]
+        if parts[:1] == ["playlist"] and re.fullmatch(r"[A-Za-z0-9_-]{10,64}", lst):
+            return YT_FEED + "?playlist_id=" + lst, "youtube"
+        return None
+    if host == "bsky.app" and len(parts) >= 2 and parts[0] == "profile" and re.fullmatch(r"[A-Za-z0-9_.:-]{3,80}", parts[1]):
+        return "https://bsky.app/profile/%s/rss" % parts[1], "bluesky"
+    if host.endswith(".substack.com"):
+        return "https://%s/feed" % host, "substack"
+    if host == "medium.com" and parts:
+        return "https://medium.com/feed/" + parts[0], "medium"
+    if host.endswith(".medium.com"):
+        return "https://%s/feed" % host, "medium"
+    return None
+
+
+def resolve(url: str, look, fetch) -> dict:
+    """{feed_url, site_url, platform, name, logo} for a link somebody pasted. look(url) -> (status, body, headers) for
+    a page (up to RESOLVE_BYTES); fetch(url) the same for a feed. Raises NoFeed when there is none to be had."""
+    url = (url or "").strip()
+    for pat, name in NO_FEED:
+        if re.match(pat, url, re.I):
+            raise NoFeed("%s publishes no feed that can be read without the account owner's permission" % name)
+    host = _host(url)
+    out = {"site_url": url, "name": None, "logo": None}
+
+    def check(feed: str) -> bool:
+        try:
+            status, body, _ = fetch(feed)
+            if status >= 400 or not _is_feed(body):
+                return False
+            meta, _items = parse_feed(body, feed)
+        except Exception:
+            return False
+        out["name"] = out["name"] or text_of(meta.get("title") or "")[0] or None
+        out["podcast"] = _podcast(body)
+        return True
+
+    # APPLE PODCASTS: the show's feed, from Apple's public lookup
+    m = re.search(r"/id(\d{5,12})(?:[/?#]|$)", url) if host == "podcasts.apple.com" else None
+    if m:
+        status, body, _ = look("https://itunes.apple.com/lookup?id=%s&entity=podcast" % m.group(1))
+        res = (json.loads(body.decode("utf-8", "replace")) or {}).get("results") or []
+        feed = next((r.get("feedUrl") for r in res if isinstance(r, dict) and r.get("feedUrl")), None)
+        if not feed or not check(feed):
+            raise NoFeed("Apple lists no public feed for this show")
+        r0 = next(r for r in res if r.get("feedUrl") == feed)
+        return dict(out, feed_url=feed, platform="podcast", name=r0.get("collectionName") or out["name"],
+                    logo=_avatar(r0.get("artworkUrl600") or r0.get("artworkUrl100")))
+
+    # THE ADDRESS ALONE: a YouTube channel or playlist by its id, Bluesky, Substack, Medium
+    d = direct_feed(url)
+    if d and check(d[0]):
+        feed, platform = d
+        if platform == "bluesky":
+            handle = feed.split("/profile/")[1].split("/")[0]
+            try:
+                _, body, _ = look("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + urllib.parse.quote(handle))
+                prof = json.loads(body.decode("utf-8", "replace")) or {}
+                out["name"] = prof.get("displayName") or ("@" + (prof.get("handle") or handle))
+                out["logo"] = _avatar(prof.get("avatar"))
+            except Exception:
+                out["name"] = out["name"] or "@" + handle
+        return dict(out, feed_url=feed, platform=platform)
+
+    # A PAGE: a feed itself, or the feed it names, or one in the usual places
+    status, body, headers = look(url)
+    if status >= 400:
+        raise NoFeed("the link answered %d" % status)
+    if _is_feed(body) and check(url):
+        return dict(out, feed_url=url, site_url=url, platform="podcast" if out.get("podcast") else "feed")
+    tags = _AllTags()
+    try:
+        tags.feed(body.decode("utf-8", "replace"))
+    except Exception:
+        pass
+    mt = tags.metas
+    name = (mt.get("og:site_name") if host != "youtube.com" else None) or mt.get("og:title") or text_of(tags.title)[0] or None
+    alts = []
+    for a in tags.links:
+        rels = (a.get("rel") or "").lower().split()
+        if "alternate" in rels and (a.get("type") or "").lower() in FEED_TYPES and a.get("href"):
+            if re.search(r"comment", (a.get("title") or "") + a["href"], re.I):
+                continue                                   # a site's comments feed is not its stories
+            u = web_url(a["href"], url)
+            if u and u not in alts:
+                alts.append(u)
+    for feed in alts[:3]:
+        if check(feed):
+            platform = ("youtube" if host == "youtube.com" else "podcast" if out.get("podcast")
+                        else "mastodon" if re.search(r"/@[^/]+\.rss$", feed) else "substack" if "substack" in feed else "website")
+            logo = _avatar(mt.get("og:image")) if platform in ("youtube", "mastodon") else None
+            return dict(out, feed_url=feed, platform=platform, name=(name if platform != "website" else None) or out["name"] or name,
+                        logo=logo)
+    if host == "youtube.com":
+        cid = re.search(rb'"(?:externalId|channelId)":"(UC[A-Za-z0-9_-]{22})"', body)
+        if cid and check(YT_FEED + "?channel_id=" + cid.group(1).decode()):
+            return dict(out, feed_url=YT_FEED + "?channel_id=" + cid.group(1).decode(), platform="youtube",
+                        name=mt.get("og:title") or out["name"], logo=_avatar(mt.get("og:image")))
+        raise NoFeed("YouTube shows no channel at this link")
+    origin = "%s://%s" % (urllib.parse.urlsplit(url).scheme, urllib.parse.urlsplit(url).netloc)
+    for path in COMMON_PATHS:
+        if check(origin + path):
+            return dict(out, feed_url=origin + path, platform="podcast" if out.get("podcast") else "website")
+    raise NoFeed("no feed found at this address")
+
+
+def http_page(url: str, limit: int = LOGO_BYTES) -> tuple[int, bytes, dict]:
+    """(status, body, headers) for a page or a picture, at most `limit` bytes (LOGO_BYTES)"""
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "text/html,image/*,application/manifest+json,*/*;q=0.5",
                                                "Accept-Encoding": "gzip"})
     with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
-        raw = r.read(LOGO_BYTES + 1)
-        if len(raw) > LOGO_BYTES:
-            raise ValueError("larger than %d MB" % (LOGO_BYTES // 1048576))
+        raw = r.read(limit + 1)
+        if len(raw) > limit:
+            raise ValueError("larger than %d MB" % (limit // 1048576))
         if (r.headers.get("Content-Encoding") or "").lower() == "gzip":
             raw = gzip.decompress(raw)
         return r.status, raw, {k.lower(): v for k, v in r.headers.items()}
+
+
+def trim_feed(raw: bytes) -> bytes | None:
+    """the start of a feed too long to keep whole, cut after its last complete item and closed again - a feed lists its
+    newest first, and only the newest PER_READ are kept anyway. None when it cannot be (a JSON Feed, no whole item)."""
+    head = raw[:4000]
+    if b"<rdf:RDF" in head:
+        end, close = b"</item>", b"</rdf:RDF>"
+    elif re.search(rb"<rss[\s>]", head):
+        end, close = b"</item>", b"</channel></rss>"
+    elif re.search(rb"<feed[\s>]", head):
+        end, close = b"</entry>", b"</feed>"
+    else:
+        return None
+    i = raw.rfind(end)
+    return raw[: i + len(end)] + close if i > 0 else None
 
 
 def http_get(url: str, etag: str | None = None, modified: str | None = None) -> tuple[int, bytes, dict]:
@@ -785,11 +993,16 @@ def http_get(url: str, etag: str | None = None, modified: str | None = None) -> 
     req = urllib.request.Request(url, headers=h)
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
-            raw = r.read(MAX_BYTES + 1)
-            if len(raw) > MAX_BYTES:
-                raise ValueError("larger than %d MB" % (MAX_BYTES // 1048576))
+            raw = r.read(HARD_BYTES + 1)
+            if len(raw) > HARD_BYTES:
+                raise ValueError("larger than %d MB" % (HARD_BYTES // 1048576))
             if (r.headers.get("Content-Encoding") or "").lower() == "gzip":
                 raw = gzip.decompress(raw)
+            if len(raw) > MAX_BYTES:
+                cut = trim_feed(raw[:MAX_BYTES])
+                if cut is None:
+                    raise ValueError("larger than %d MB" % (MAX_BYTES // 1048576))
+                raw = cut
             return r.status, raw, {k.lower(): v for k, v in r.headers.items()}
     except urllib.error.HTTPError as e:
         if e.code == 304:
@@ -813,10 +1026,21 @@ class Supabase:
             return json.loads(txt), {k.lower(): v for k, v in r.headers.items()}
 
     def sources(self, only: str | None = None) -> list[dict]:
-        q = "news_sources?enabled=eq.true&select=id,name,feed_url,site_url,logo_url,logo_checked_at,etag,last_modified&order=name"
-        if only:
-            q += "&id=eq." + urllib.parse.quote(only)
-        return self._req("GET", q)[0] or []
+        base = "news_sources?enabled=eq.true&order=name&select=id,name,feed_url,site_url,logo_url,logo_checked_at,etag,last_modified"
+        tail = "&id=eq." + urllib.parse.quote(only) if only else ""
+        try:                                    # 0198's columns: a source added by its link, still to be found
+            return self._req("GET", base + ",league_id,kind,platform,resolve_from,name_auto,last_error,last_fetched_at" + tail)[0] or []
+        except urllib.error.HTTPError as e:
+            if e.code != 400:
+                raise
+            return self._req("GET", base + tail)[0] or []          # before 0198 is applied
+
+    def feed_taken(self, feed_url: str, league_id: str | None, but: str) -> str | None:
+        """the name of another source with this feed where this one is (the same league, or every reader's)"""
+        q = "news_sources?select=name&feed_url=eq.%s&id=neq.%s&league_id=%s&limit=1" % (
+            urllib.parse.quote(feed_url, safe=""), but, ("eq." + league_id) if league_id else "is.null")
+        rows = self._req("GET", q)[0] or []
+        return rows[0]["name"] if rows else None
 
     def leagues(self) -> list[dict]:
         return self._req("GET", "leagues?select=id,name,slug")[0] or []
@@ -857,9 +1081,10 @@ def _when_iso(v: str | None) -> datetime | None:
 
 
 def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=print, now=None, sleep=time.sleep,
-        page=http_page) -> dict:
+        page=http_page, look=None) -> dict:
     now_f = now or (lambda: datetime.now(timezone.utc))
-    done = {"read": 0, "unchanged": 0, "failed": 0, "items": 0, "tagged": 0, "logos": 0}
+    look = look or (lambda u: page(u, RESOLVE_BYTES))
+    done = {"read": 0, "unchanged": 0, "failed": 0, "items": 0, "tagged": 0, "logos": 0, "found": 0}
     try:
         matcher = LeagueMatcher(db.leagues(), db.teams())
     except Exception as e:                                     # no leagues to hand: the stories go in untagged
@@ -871,8 +1096,41 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
         t = now_f()
         mark = {"last_fetched_at": t.isoformat()}
         meta = {}
+        found = None
+        if s.get("resolve_from"):
+            # ADDED BY ITS LINK (0198): find the feed first, then read it as any other. A link where nothing was found
+            # is tried again after RESOLVE_RETRY, not every half hour.
+            tried = _when_iso(s.get("last_fetched_at"))
+            if s.get("last_error") and tried and t - tried < RESOLVE_RETRY:
+                log("  . %s: its link is tried again later (%s)" % (s["name"], s["last_error"]))
+                continue
+            try:
+                found = resolve(s["resolve_from"], look, lambda u: get(u, None, None))
+                other = None if dry_run else db.feed_taken(found["feed_url"], s.get("league_id"), s["id"])
+                if other:
+                    raise NoFeed("the same feed as %s, which is a source here already" % other)
+            except Exception as e:
+                done["failed"] += 1
+                mark["last_error"] = clip(("%s" % e) if isinstance(e, NoFeed) else "%s: %s" % (type(e).__name__, e), 300)
+                if isinstance(e, NoFeed) and "source here already" in str(e):
+                    mark.update({"enabled": False, "resolve_from": None})
+                log("  ! %s: %s" % (s["name"], mark["last_error"]))
+                if not dry_run:
+                    try:
+                        db.mark(s["id"], mark)
+                    except Exception as e2:
+                        log("  ! %s: could not record the read: %s" % (s["name"], e2))
+                continue
+            s["feed_url"] = found["feed_url"]
+            mark.update({"feed_url": found["feed_url"], "site_url": found.get("site_url") or s.get("site_url"),
+                         "resolve_from": None, "platform": found.get("platform"), "etag": None, "last_modified": None})
+            if found.get("logo") and not s.get("logo_url"):
+                s["logo_url"] = mark["logo_url"] = found["logo"]
+                mark["logo_checked_at"] = t.isoformat()
+            done["found"] += 1
+            log("  ~ %s: %s feed %s" % (s["name"], found.get("platform"), found["feed_url"]))
         try:
-            status, body, headers = get(s["feed_url"], s.get("etag"), s.get("last_modified"))
+            status, body, headers = get(s["feed_url"], None if found else s.get("etag"), None if found else s.get("last_modified"))
             if status == 304:
                 done["unchanged"] += 1
                 mark.update({"last_ok_at": t.isoformat(), "last_error": None})
@@ -887,6 +1145,11 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
                     db.prune(s["id"], t - timedelta(days=KEEP_DAYS))
                 mark.update({"last_ok_at": t.isoformat(), "last_error": None,
                              "etag": headers.get("etag"), "last_modified": headers.get("last-modified")})
+                if s.get("name_auto"):              # a stand-in name gives way to the source's own
+                    real = clip(text_of((found or {}).get("name") or meta.get("title") or "")[0], 80)
+                    if real:
+                        mark.update({"name": real, "name_auto": False})
+                        s["name"] = real
                 done["read"] += 1
                 done["items"] += len(rows)
                 log("  + %s: %d items%s" % (s["name"], len(rows), (", newest " + rows[0]["title"][:60]) if rows else ""))
@@ -916,7 +1179,7 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
             except Exception as e:
                 log("  ! %s: could not record the read: %s" % (s["name"], e))
     log("news sources: %(read)d read, %(unchanged)d unchanged, %(failed)d failed, %(items)d items (%(tagged)d about a league), "
-        "%(logos)d logos found" % done)
+        "%(logos)d logos found, %(found)d links turned into feeds" % done)
     return done
 
 

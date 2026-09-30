@@ -345,6 +345,11 @@
        and something of theirs published (creators_probe), and not before */
     { href: 'creators/',   ic: '✎', tx: 'creators',   lg: true, key: 'creators', probe: 'creators',
       match: /\/epinoia\/creators\/(?!studio)/ },
+    /* THE LEAGUE'S COMMUNITY: EPINOIA GO's Find a game for the league's own games, its fans' stamps and photographs,
+       who has travelled furthest to its arenas, and the Discord servers it attached (0197). Every league has one:
+       Find a game is there whenever it has games. */
+    { href: 'community/',  ic: '☷', tx: 'community',  lg: true, key: 'community',
+      match: /\/epinoia\/community\// },
     /* EVERY WEEK'S FANS' PICKS (epinoia/votes/, migration 0150). Probed like the video
        hub: a league appears here once its first weekly vote has opened, and not
        before, so no league is offered an empty page. */
@@ -595,7 +600,7 @@
                 'news: every league, the publishers that cover them and the leagues’ creators, newest first'));
 
   /* and on, into the leagues. A row rather than a bare chevron, because this is
-     the journey the rail exists for. */
+     the journey the rail exists for; it sits second, straight under home (below). */
   const leaguesRow = el('a', 'item');
   leaguesRow.href = root + 'home/#leagues';
   leaguesRow.append(el('span', 'ic', '◉'), el('span', 'tx', 'leagues'),
@@ -612,7 +617,9 @@
     e.preventDefault();
     setView(country === null ? 'country' : 'root', true);
   });
-  hlist.appendChild(leaguesRow);
+  /* RIGHT UNDER HOME, on the rail and in the phone's opened bar alike (Louie, 2026-09-30): the leagues are the way
+     into everything else, so they come first after the platform's front page, never under the platform's pages */
+  hlist.insertBefore(leaguesRow, hlist.children[1] || null);
 
   /* EPINOIA GO (epinoia/go/, docs/epinoia-go.md 6.3), under the leagues. Set in its own letters -
      EPINOIΛ in the logotype, GO in a Y2K face of its own (--f-go, epinoia-kit.css) - because it is
@@ -822,6 +829,9 @@
       return a;
     };
     flist.appendChild(mk('', '☆', 'profile', root + 'me/'));
+    /* THE CREATOR HUB (0200): a creator's numbers and writing desk, and for anybody a league's storylines, graphics
+       and icons */
+    flist.appendChild(mk('', '✎', 'creator hub', root + 'creators/hub/'));
 
     const hd = el('div', 'gtitle', 'your follows');
     flist.appendChild(hd);
@@ -875,6 +885,8 @@
       flist.insertBefore(box, hd);
     }
     const cs = ((await studios) || []).filter(o => o && o.outlet_id);
+    /* the outlets this account writes for: track.js never counts their own people reading their own pieces (0200) */
+    try { localStorage.setItem('epinoia_my_outlets', JSON.stringify(cs.map(o => o.league_slug + '/' + o.slug))); } catch (_) { /* fine */ }
     if (cs.length) {
       const box = document.createDocumentFragment();
       box.appendChild(el('div', 'gtitle', 'creator studio'));
@@ -1576,21 +1588,40 @@
     { key: 'nearby',  ic: '⌖', tx: 'find',    href: 'go/nearby/', on: () => /\/epinoia\/go\/nearby\//.test(here) },
     { key: 'profile', ic: '☆', tx: 'profile', href: 'me/',        on: () => false }
   ];
+  /* THE SEARCH, ALWAYS ON THE BAR (Louie, 2026-09-30): right after the first key (home, the league, GO's home) on
+     every page, so a phone never has to open the menu to search. The same search as the rail's row (openSearch: the
+     sheet over the page, the keyboard up); only its icon on a narrow phone, where the bar's labels need the room. */
+  function searchTab() {
+    const a = el('a', 'tab tab-search');
+    a.href = '#search';
+    a.dataset.tab = 'search';
+    a.setAttribute('role', 'button');
+    a.setAttribute('aria-label', 'Search teams, players and leagues');
+    a.append(el('span', 'ic', '⌕'), el('span', 'tx', 'search'));
+    ['pointerenter', 'touchstart', 'focus'].forEach(t => a.addEventListener(t, loadSearch, { once: true, passive: true }));
+    a.addEventListener('click', e => { e.preventDefault(); openSearch(); });
+    return a;
+  }
   function paintPlatformTabs() {
-    (onGo ? GO_TABS : PLATFORM_TABS).forEach(t => {
+    (onGo ? GO_TABS : PLATFORM_TABS).forEach((t, i) => {
       const a = el('a', 'tab');
       a.href = root + t.href;
       a.dataset.tab = t.key;
       a.append(el('span', 'ic', t.ic), el('span', 'tx', t.tx));
       if (t.on()) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
       tabbar.appendChild(a);
+      if (i === 0) tabbar.appendChild(searchTab());
     });
     nav.classList.add('has-tabbar');
   }
   function paintTabbar() {
     tabbar.textContent = '';
     tabbar.classList.remove('fit');
-    if (!lg) { paintPlatformTabs(); return; }
+    /* with the search key the bars take their labels' own widths (.fit), so none is cut short; a league's bar - seven
+       keys and the menu - is the crowded one, and slims its search and menu keys to their icons on a narrow phone */
+    nav.classList.toggle('tabs-crowded', !!lg);
+    if (!lg) { tabbar.classList.add('fit'); paintPlatformTabs(); return; }
+    tabbar.classList.add('fit');
     TABS.forEach(t => {
       const spec = t.href !== undefined ? t : PAGES.find(p => p.key === t.key);
       if (!spec) return;
@@ -1612,6 +1643,7 @@
         });
       }
       tabbar.appendChild(a);
+      if (t.key === 'home') tabbar.appendChild(searchTab());
     });
     nav.classList.add('has-tabbar');
   }
@@ -2500,7 +2532,10 @@
                    [/^votes\//, 'votes'], [/^video\//, 'video'], [/^game\//, 'game'], [/^p\//, 'player'], [/^t\//, 'team'],
                    [/^scouting\//, 'scouting'], [/^me\//, 'me']];
     const hit = KINDS.find(k => k[0].test(s));
-    return hit ? { kind: hit[1] } : null;
+    if (hit) return { kind: hit[1] };
+    /* A PAGE BUILT TO THE PAGE STANDARD (docs/page-standard.md) says so on its frame (data-std): it gets the line,
+       the quick keys (its league's when it is about one) and ON THIS PAGE with each section's SKIP, as HOME does */
+    return document.querySelector('.ep-frame[data-std]') ? { kind: 'std' } : null;
   }
   /* The keys: [label, path, needs the league]. A page about one league leads with that league's
      places; without a league in hand it falls back to the platform's four. */
@@ -2520,7 +2555,7 @@
     player:   [['club', '#club'], ['league', '', 1], ['statistics', 'stats/', 1], ['scouting', 'scouting/']],
     game:     [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['home', 'home/']]
   };
-  ['news', 'article', 'votes', 'video'].forEach(k => { TT_KEYS[k] = [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1]]; });
+  ['news', 'article', 'votes', 'video', 'std'].forEach(k => { TT_KEYS[k] = [['league', '', 1], ['fixtures', 'fixtures/', 1], ['table', 'l/', 1], ['statistics', 'stats/', 1]]; });
 
   let ttState = null;
   function ttOn() {
@@ -2700,6 +2735,8 @@
         if (!b) {
           b = el('button', 'tt-skip');
           b.type = 'button';
+          /* its own words' context (i18n/<code>.js ctx.skip): the scorer's "skip" is another thing */
+          b.setAttribute('data-i18n-ctx', 'skip');
           b.appendChild(el('span', 't', 'Skip'));
           x.hd.appendChild(b);
         }
@@ -2745,7 +2782,7 @@
     ttState = { p, frame };
     try { ttLine(frame, p); } catch (_) { /* the page keeps its own bar */ }
     try { ttState.fast = ttFast(frame, p); } catch (_) { /* no keys */ }
-    if (/^(home|league|team|player)$/.test(p.kind)) { try { ttIndex(frame, p); } catch (_) { /* no index */ } }
+    if (/^(home|league|team|player|std)$/.test(p.kind)) { try { ttIndex(frame, p); } catch (_) { /* no index */ } }
     dEl.classList.add('tt-on');
   }
   /* the league a page resolves late re-points the keys that name it */

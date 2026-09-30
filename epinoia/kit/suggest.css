@@ -1,0 +1,129 @@
+/* ============================================================================
+   SUGGEST AN EDIT (suggest.js, 0199): the dashed outline and the chip on a detail a fan may suggest a
+   correction to, the page's "suggest an edit" button, and the dialog. Every colour is the kit's token, so
+   the light theme and a club's colours follow on their own.
+   ============================================================================ */
+
+/* the detail, while a mouse is over it */
+.sg-rel{position:relative}
+.sg-on:hover{outline:1px dashed color-mix(in oklch,var(--lume) 60%,transparent);outline-offset:4px}
+.sg-chip{position:absolute;top:-13px;right:-10px;z-index:6;display:inline-flex;align-items:center;gap:5px;
+  margin:0;padding:4px 8px;border:1px solid var(--lume);border-radius:2px;background:var(--ground);color:var(--lume);
+  font:400 8px/1 var(--f-micro);letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;cursor:pointer;
+  text-shadow:none;box-shadow:0 2px 10px color-mix(in oklch,var(--ground) 70%,transparent);
+  /* inside a title painted with a gradient (the kit's h1: background-clip:text and a transparent fill), the
+     chip would inherit the transparent fill and show as an empty box */
+  -webkit-text-fill-color:currentColor;-webkit-background-clip:border-box;background-clip:border-box;
+  filter:none;animation:none;font-style:normal}
+.sg-chip:hover,.sg-chip:focus-visible{background:var(--lume);color:var(--on-accent);outline:none}
+.sg-inset > .sg-chip{top:auto;bottom:6px;right:6px}
+.sg-top > .sg-chip{top:6px;bottom:auto}
+.sg-icon > .sg-chip{bottom:3px;right:3px;padding:3px 5px}
+.sg-icon > .sg-chip .sg-chip-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sg-chip-i{font:700 12px/1 var(--f-ui);letter-spacing:0}
+
+/* THE PAGE'S BUTTON, beside the follow bell and in its shape: a pill, the pencil and the words */
+.ep-btn.sg-btn{display:inline-flex;align-items:center;gap:6px;height:30px;box-sizing:border-box;margin:0;padding:0 11px 0 9px;
+  border:1px solid var(--rule-2);border-radius:15px;background:transparent;color:var(--ink-2);box-shadow:none;
+  font:400 8px/1 var(--f-micro);letter-spacing:0.07em;text-transform:uppercase;cursor:pointer}
+.ep-btn.sg-btn:hover,.ep-btn.sg-btn:focus-visible{border-color:var(--lume);color:var(--lume)}
+.ep-btn.sg-btn .sg-chip-i{font:700 13px/1 var(--f-ui);letter-spacing:0}
+/* on a card that asks (a club with no staff, the staff grid's last card) it is the card's own quiet link */
+.staffcard.add .ep-btn.sg-btn,.sg-ask .ep-btn.sg-btn{height:auto;padding:6px 11px 6px 9px}
+
+/* the dialog */
+dialog.sg-dlg{border:1px solid var(--rule-2);background:var(--ground);color:var(--ink);padding:0;
+  width:min(520px,92vw);max-height:88vh}
+dialog.sg-dlg::backdrop{background:color-mix(in oklch,var(--ground) 78%,transparent)}
+.sg-form{display:flex;flex-direction:column;gap:calc(var(--u)*2);padding:calc(var(--u)*3);max-height:88vh;
+  overflow-y:auto;box-sizing:border-box}
+.sg-head{display:grid;gap:7px}
+.sg-kick{font:400 8px/1.4 var(--f-micro);letter-spacing:0.11em;text-transform:uppercase;color:var(--lume)}
+.sg-title{font:400 clamp(20px,4vw,28px)/1 var(--f-score);text-transform:uppercase;color:var(--ink)}
+.sg-sub{margin:0;font:400 12.5px/1.6 var(--f-ui);color:var(--ink-3);max-width:56ch}
+.sg-main,.sg-fields,.sg-more{display:grid;gap:calc(var(--u)*1.5)}
+.sg-more{padding-top:calc(var(--u)*1.5);border-top:1px solid var(--rule)}
+.sg-field{display:block;min-width:0}
+.sg-lab{display:block;margin-bottom:5px;font:400 7.5px/1.4 var(--f-micro);letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--ink-3)}
+.sg-in{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--rule-2);border-radius:2px;
+  background:var(--panel-2);color:var(--ink);font:400 14px/1.4 var(--f-ui)}
+textarea.sg-in{resize:vertical;line-height:1.55}
+.sg-in:focus{outline:none;border-color:var(--lume)}
+select.sg-in{appearance:auto}
+.sg-file{padding:7px 8px;font-size:13px}
+
+/* "height · Now 206 cm": what the detail is, and what it says now */
+.sg-now{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 9px}
+.sg-now .sg-lab{margin:0;color:var(--lume)}
+.sg-now-k{font:400 7.5px/1.4 var(--f-micro);letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
+.sg-now-v{font:600 14px/1.3 var(--f-ui);color:var(--ink)}
+
+/* a measure: the inputs side by side, then the units switch */
+.sg-measure{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.sg-units{display:inline-flex;justify-self:start;border:1px solid var(--rule-2);border-radius:2px;overflow:hidden}
+.sg-units button{margin:0;padding:5px 10px;border:0;background:transparent;color:var(--ink-3);cursor:pointer;
+  font:400 8px/1 var(--f-micro);letter-spacing:0.07em;text-transform:uppercase}
+.sg-units button + button{border-left:1px solid var(--rule-2)}
+.sg-units button[aria-pressed="true"]{background:var(--lume);color:var(--on-accent)}
+
+.sg-hint{margin:0;font:400 12px/1.6 var(--f-ui);color:var(--ink-3)}
+.sg-preview{display:flex;justify-content:center;padding:10px;border:1px dashed var(--rule-2);background:var(--panel)}
+.sg-preview img{max-width:180px;max-height:180px;object-fit:cover;display:block}
+.sg-preview.crest img{object-fit:contain}
+
+.sg-status{margin:0;min-height:1.4em;font:400 9px/1.8 var(--f-micro);color:var(--ink-3)}
+.sg-status.err{color:var(--flare)}
+.sg-done{margin:0;font:400 24px/1 var(--f-score);text-transform:uppercase;color:var(--lume)}
+.sg-acts{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-end}
+
+@media (max-width:480px){
+  .sg-form{padding:calc(var(--u)*2)}
+  .sg-acts .ep-btn{flex:1 1 auto;justify-content:center;text-align:center}
+}
+
+/* a line that asks, where a page has nothing to list (the club with no staff on file) */
+.sg-ask{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*3);
+  font:400 12.5px/1.6 var(--f-ui);color:var(--ink-3)}
+
+/* ---------------------------------------------------------------------------------------------------------
+   THE MODERATORS' QUEUE (admin/suggestions-ui.js), in a league's console and the platform's: one card per
+   suggestion - who or what it is about, the detail, now -> suggested, the fan's note, and accept / reject.
+   --------------------------------------------------------------------------------------------------------- */
+.sgq-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:10px}
+.sgq-n{font:400 9px/1.6 var(--f-micro);letter-spacing:0.06em;text-transform:uppercase;color:var(--lume)}
+.sgq-ph{font:400 9px/1.6 var(--f-micro);color:var(--ink-3)}
+.sgq-top .ep-btn{margin-left:auto}
+.sgq-list{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.sgq{display:grid;gap:7px;padding:12px 14px;background:var(--ground)}
+.sgq-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.sgq-subj{font:700 14px/1.3 var(--f-ui);color:var(--ink)}
+a.sgq-subj{text-decoration:none}
+a.sgq-subj:hover{color:var(--lume);text-decoration:underline}
+.sgq-f{font:400 8px/1.4 var(--f-micro);letter-spacing:0.08em;text-transform:uppercase;color:var(--lume)}
+.sgq-lg{margin-left:auto;padding:2px 6px;border:1px solid var(--rule-2);font:400 8px/1.4 var(--f-micro);color:var(--ink-3)}
+.sgq-ch{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font:600 15px/1.35 var(--f-ui)}
+.sgq-from{color:var(--ink-3);text-decoration:line-through;text-decoration-color:color-mix(in oklch,var(--flare) 70%,transparent)}
+.sgq-from.none{text-decoration:none;font:400 8px/1.4 var(--f-micro);letter-spacing:0.06em;text-transform:uppercase}
+.sgq-arrow{color:var(--ink-3);font-weight:400}
+.sgq-to{color:var(--ink)}
+.sgq-k{font:400 8px/1.4 var(--f-micro);letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
+.sgq-note{margin:0;font:italic 400 12.5px/1.55 var(--f-ui);color:var(--ink-2);max-width:70ch;overflow-wrap:anywhere}
+.sgq-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font:400 8.5px/1.6 var(--f-micro);color:var(--ink-3)}
+.sgq-meta a{color:var(--ink-3)}
+.sgq-meta a:hover{color:var(--lume)}
+.sgq-agree{color:var(--amber)}
+.sgq-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.sgq-acts .ep-input{min-width:0}
+.sgq-val{flex:0 1 220px}
+.sgq-why{flex:1 1 280px}
+
+/* a picture in Photographs that a fan suggested */
+.sgq-fan{display:flex;flex-wrap:wrap;gap:3px 9px;margin-top:3px}
+.sgq-fan-k{color:var(--amber);text-transform:uppercase;letter-spacing:0.06em}
+.sgq-fan-note{font-style:italic;overflow-wrap:anywhere}
+@media (max-width:560px){
+  .sgq-val,.sgq-why{flex:1 1 100%}
+  .sgq-acts .ep-btn{flex:1 1 0;justify-content:center}
+  .sgq-lg{margin-left:0}
+}

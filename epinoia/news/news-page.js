@@ -115,7 +115,7 @@ const cardOf = r => K.fromFeed(r, '../', imgUrl, crestUrl);
 const KINDS = [
   { k: 'all',      label: 'Everything',   kinds: null },
   { k: 'press',    label: 'Publishers',   kinds: ['outlet'] },
-  { k: 'creators', label: 'Creators',     kinds: ['creator'] },
+  { k: 'creators', label: 'Creators',     kinds: ['creator', 'channel'] },      /* an outlet's pieces and the creators' channels (0198) */
   { k: 'leagues',  label: 'League news',  kinds: ['league'] },
   { k: 'mine',     label: 'Following',    mine: true }
 ];
@@ -638,20 +638,28 @@ async function everything() {
   }
 
   /* the publishers, each to its page here */
+
+  /* the publishers, and the creators' channels (0198), each to its page here */
   try {
     const list = await rpc('news_sources_public', { p_league: null }) || [];
     publishersBar(list);
     await partnersReady;
-    if (list.length) {
-      pubs.append(el('div', 'nw-h', 'The publishers'),
-        K.brands(list.map(x => ({ name: x.name, logo: x.logo_url, colour: x.colour, href: '?s=' + encodeURIComponent(x.slug),
-                                  note: x.last_at ? K.ago(x.last_at) : '', partner: PARTNERS.has('source:' + x.slug) }))));
-    }
+    const row = x => ({ name: x.name, logo: x.logo_url, colour: x.colour, href: '?s=' + encodeURIComponent(x.slug),
+                        note: x.last_at ? K.ago(x.last_at) : '', partner: PARTNERS.has('source:' + x.slug) });
+    const press = list.filter(x => x.kind !== 'creator'), makers = list.filter(x => x.kind === 'creator');
+    if (press.length) pubs.append(el('div', 'nw-h', 'The publishers'), K.brands(press.map(row)));
+    if (makers.length) pubs.append(el('div', 'nw-h', 'The creators'), K.brands(makers.map(row)));
   } catch (_) { /* the feed stands without the row */ }
 }
 
 /* ------------------------------------------------------- news/?s=<slug> --- */
 function sourceItem(src) {
+  /* a creator's channel (0198): each post as the News page shows it, to its story page here, where it plays */
+  if (src.kind === 'creator') {
+    return x => K.fromFeed({ kind: 'channel', id: x.id, title: x.title, summary: x.summary, image_url: x.image_url, url: x.url,
+      published_at: x.published_at, author: x.author, leagues: x.leagues, piece_kind: src.platform, source_name: src.name,
+      source_logo: src.logo_url, source_colour: src.colour, source_url: src.site_url, source_slug: src.slug }, '../', imgUrl, crestUrl);
+  }
   return x => ({
     kind: 'story', title: x.title, summary: x.summary, image: x.image_url, when: x.published_at, author: x.author,
     href: x.url, external: true, siteHost: K.host(x.url), tags: K.tagsOf(x.leagues, '../', crestUrl),
@@ -661,6 +669,8 @@ function sourceItem(src) {
     row: { id: x.id, kind: 'outlet', source_slug: src.slug, source_name: src.name, leagues: x.leagues }
   });
 }
+/* a creator's platform, by name */
+const PLATFORM = { youtube: 'YouTube', podcast: 'their podcast', bluesky: 'Bluesky', mastodon: 'Mastodon', substack: 'Substack', medium: 'Medium' };
 
 async function publisher(slug) {
   platformHead();
@@ -689,12 +699,14 @@ async function publisher(slug) {
   const F = window.EpinoiaFollow;
   const bell = F && src.id ? F.bell('source', src.id, { label: 'Follow', labelOn: 'Following', name: src.name, cls: 'lbl big' }) : null;
   const siteHost = K.host(src.site_url);
+  const maker = src.kind === 'creator', on = PLATFORM[src.platform] || siteHost || 'their site';
   $('#brand').appendChild(K.hero({
     partner: PARTNERS.has('source:' + src.slug),
     name: src.name, logo: src.logo_url, colour: src.colour,
-    kicker: 'Publisher' + (src.league ? ' · ' + src.league.name : '') + ' · on Epinoia',
-    tagline: 'Their stories as they publish them: the headline and the opening lines here, the story on ' + (siteHost || 'their site') + '.',
-    links: [{ href: src.site_url, text: 'Visit ' + (siteHost || 'their site') + ' ↗', external: true, primary: true }],
+    kicker: (maker ? 'Creator' : 'Publisher') + (src.league ? ' · ' + src.league.name : '') + ' · on Epinoia',
+    tagline: maker ? 'Their posts as they publish them on ' + on + ': each one plays here, where it can.'
+                   : 'Their stories as they publish them: the headline and the opening lines here, the story on ' + (siteHost || 'their site') + '.',
+    links: [{ href: src.site_url, text: (maker ? 'On ' + on : 'Visit ' + (siteHost || 'their site')) + ' ↗', external: true, primary: true }],
     bell
   }));
   if (src.league) {
@@ -710,9 +722,9 @@ async function publisher(slug) {
   /* the first page came with the publisher; the feed asks for the rest */
   let firstRows = src.items || [];
   const feed = cardFeed({
-    moreText: 'Older stories',
+    moreText: maker ? 'Older posts' : 'Older stories',
     toItem: sourceItem(src),
-    empty: () => el('div', 'pc-empty', 'Nothing from ' + src.name + ' yet: their stories arrive here as they publish them.'),
+    empty: () => el('div', 'pc-empty', 'Nothing from ' + src.name + ' yet: their ' + (maker ? 'posts' : 'stories') + ' arrive here as they publish them.'),
     fetchPage: (before, n) => {
       if (!before && firstRows) { const r = firstRows; firstRows = null; return Promise.resolve(r); }
       return rpc('news_source_public', { p_slug: slug, p_before: before, p_limit: n }).then(j => (j && j.items) || []);
@@ -768,10 +780,14 @@ async function story(id) {
   const F = window.EpinoiaFollow;
   const bell = F && src.id ? F.bell('source', src.id, { label: 'Follow', labelOn: 'Following', name: src.name, cls: 'lbl' }) : null;
   const when = it.published_at ? new Date(it.published_at) : null;
+  /* A CREATOR'S POST (0198) plays here when its platform lets a page play it: a video, an episode, a post */
+  const maker = src.kind === 'creator';
+  const play = maker ? K.embedOf(it.url) : null;
+  const card = maker ? K.fromFeed({ kind: 'channel', id: it.id, url: it.url, title: it.title, piece_kind: src.platform, source_name: src.name }, '../') : null;
   host.appendChild(K.masthead({
     partner: !!src.slug && PARTNERS.has('source:' + src.slug),
     brand: { name: src.name, logo: src.logo_url, colour, href: src.slug ? '?s=' + encodeURIComponent(src.slug) : null },
-    kind: 'Story',
+    kind: maker ? ((K.KIND[card.kind] || K.KIND.article).word) : 'Story',
     title: it.title,
     meta: [when && !isNaN(when) ? N.when(it.published_at) : '', it.author ? 'by ' + it.author : '', siteHost],
     tags: K.tagsOf(it.leagues, '../', crestUrl),
@@ -781,7 +797,11 @@ async function story(id) {
 
   const wrap = el('div', 'pc-read');
   wrap.style.setProperty('--bc', colour);
-  if (it.image_url) {
+  if (play) {
+    const fig = el('figure', 'pc-read-fig pc-read-play');
+    fig.appendChild(K.embedNode(play, it.title));
+    wrap.appendChild(fig);
+  } else if (it.image_url) {
     const fig = el('figure', 'pc-read-fig');
     const img = el('img');
     img.src = it.image_url; img.alt = ''; img.decoding = 'async';
@@ -793,9 +813,13 @@ async function story(id) {
   if (it.summary) wrap.appendChild(el('p', 'pc-read-sum', it.summary));
 
   const go = el('div', 'pc-read-go');
-  const read = el('a', 'pc-btn', 'Read the full story on ' + (siteHost || 'their site') + ' ↗');
+  const where = play ? play.label : (siteHost || 'their site');
+  const read = el('a', 'pc-btn', maker ? (card.kind === 'video' ? 'Watch' : card.kind === 'podcast' ? 'Listen' : 'Open it') + ' on ' + where + ' ↗'
+                                         : 'Read the full story on ' + where + ' ↗');
   read.href = it.url; read.target = '_blank'; read.rel = 'noopener noreferrer';
-  go.append(read, el('span', 'pc-read-note', 'The story is ' + (src.name || 'the publisher') + '’s: Epinoia carries its headline and opening lines, and the way to it.'));
+  go.append(read, el('span', 'pc-read-note', maker
+    ? 'The post is ' + (src.name || 'the creator') + '’s' + (play ? ', played from ' + play.label : '') + ': Epinoia carries it, and the way to them.'
+    : 'The story is ' + (src.name || 'the publisher') + '’s: Epinoia carries its headline and opening lines, and the way to it.'));
   wrap.appendChild(go);
   host.appendChild(wrap);
 
@@ -809,7 +833,7 @@ async function story(id) {
         sec.style.setProperty('--bc', colour);
         const h = el('div', 'pc-sec-h');
         h.appendChild(el('span', null, 'More from ' + src.name));
-        const all = el('a', null, 'all their stories →');
+        const all = el('a', null, maker ? 'all their posts →' : 'all their stories →');
         all.href = '?s=' + encodeURIComponent(src.slug);
         h.appendChild(all);
         sec.append(h, K.grid(rows.map(sourceItem(src)), { lead: false, now: Date.now(), partners: PARTNERS, onOpen }));
@@ -829,7 +853,7 @@ async function press(league) {
     moreText: 'Older stories',
     showLeague: false,
     hideTag: league.slug,
-    fetchPage: (before, n) => rpc('news_feed', { p_league: league.id, p_before: before, p_limit: n, p_kinds: ['outlet', 'creator'] }),
+    fetchPage: (before, n) => rpc('news_feed', { p_league: league.id, p_before: before, p_limit: n, p_kinds: ['outlet', 'creator', 'channel'] }),
     onRows: (rows, first) => { if (first && rows.length) sec.classList.remove('hide'); }
   });
   const h = el('div', 'pc-sec-h');

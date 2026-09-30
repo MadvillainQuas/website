@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0200: THE LANGUAGE OF A NEWS SOURCE, for the ranked feed (epinoia/feedrank.js)
+-- 0204: THE LANGUAGE OF A NEWS SOURCE, for the ranked feed (epinoia/feedrank.js)
 --
 -- The News page and HOME's "For you" put down a story in a language the reader does not read (a Spanish story to a reader
 -- whose site is in English, who has never opened a Spanish site). To know that, the feed must know each publisher's
@@ -31,9 +31,9 @@ alter table public.creator_outlets drop constraint if exists creator_outlets_lan
 alter table public.creator_outlets add constraint creator_outlets_language_ck check (language is null or language ~ '^[a-z]{2,3}$');
 
 comment on column public.news_sources.language is
-  '0200: the language its stories are written in (ISO 639-1, lower case). NULL: not said, and the ranked feed never holds its stories back for language.';
+  '0204: the language its stories are written in (ISO 639-1, lower case). NULL: not said, and the ranked feed never holds its stories back for language.';
 comment on column public.creator_outlets.language is
-  '0200: the language its pieces are written in (ISO 639-1). NULL: the league''s own, and never held back for language.';
+  '0204: the language its pieces are written in (ISO 639-1). NULL: the league''s own, and never held back for language.';
 
 -- the sources 0195 seeded, by what each publishes in
 update public.news_sources s set language = x.language

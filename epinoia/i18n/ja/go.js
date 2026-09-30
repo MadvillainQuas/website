@@ -6,6 +6,19 @@
   if (!I) return;
   I.register('ja', {
     phrases: {
+      /* a league's Community page (community/) */
+      'Talk': 'トーク',
+      'In the stands': 'スタンドから',
+      'Furthest travelled': '最長移動距離',
+      'At the game?': '試合会場にいますか？',
+      /* a fan's page (fan/, 0197) */
+      'Their club': '応援クラブ',
+      'EPINOIΛ GO passport': 'EPINOIΛ GO パスポート',
+      'Games been to': '観戦した試合',
+      'every photograph →': 'すべての写真 →',
+      'Follows': 'フォロー中',
+      'on the board': 'ランキング',
+      'photographs': '写真',
       'EPINOIA GO opens soon.': 'EPINOIA GOはまもなく始まります。',
       'find the game I’m at': '今いる試合を探す',
       'Your stamps': 'あなたのスタンプ',

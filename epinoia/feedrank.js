@@ -36,7 +36,7 @@
    The partner boost is full for a week from publication and gone two days after. Then the order is made to
    vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
 
-   LANGUAGE. A publisher's language comes from news_source_languages() (0200; until it is applied, from SOURCE_LANG, the
+   LANGUAGE. A publisher's language comes from news_source_languages() (0204; until it is applied, from SOURCE_LANG, the
    sources 0195 seeded). A story in a language the reader does not read is multiplied by LANG_PENALTY (0.3) - it sinks,
    it does not go - except as the reader shows they read it:
      * the site's language and the browser's languages are read outright (factor 1)
@@ -52,7 +52,7 @@
      * 'Show every language' (Personalise) switches it all off. The relief is on the reader's device like the rest.
    MATCH REPORTS ("Epinoia match report": finalise-game's own, one per game) are the low tier: an ordinary result is
    not news the way a publisher's story is. What a GAME is worth (a cup final, the top two meeting, a 40-point
-   night: game_significance, 0198) lifts its report's base by up to REPORT_SIG_GAIN, so an exceptional one can outrank
+   night: game_significance, 0202) lifts its report's base by up to REPORT_SIG_GAIN, so an exceptional one can outrank
    an ordinary story. They are weights, not a filter.
 
    Pure functions (rank, scoreOf, recency, decay, detectCountry, the profile updates, dwellTracker) are exported for
@@ -304,7 +304,7 @@ function langCode(v) {
   const c = m[1].toLowerCase();
   return c === 'jp' ? 'ja' : c === 'gr' ? 'el' : c;
 }
-/* what 0195 seeded, by source slug: used until 0200's news_source_languages() is there (and for a source it does not list) */
+/* what 0195 seeded, by source slug: used until 0204's news_source_languages() is there (and for a source it does not list) */
 const SOURCE_LANG = Object.freeze({
   basketnews: 'en', eurohoops: 'en', sportando: 'en', talkbasket: 'en', 'basketnews-lt': 'lt', 'eurohoops-gr': 'el', gigantes: 'es',
   solobasket: 'es', pianetabasket: 'it', bebasket: 'fr', basketfaul: 'tr', 'basket-dergisi': 'tr', basketballking: 'ja', 'basket-count': 'ja',
@@ -698,13 +698,13 @@ function createNet(o) {
         if (c) return partnerSet(c);
         try { const l = await call('rpc', 'rpc/official_partners', {}); writeCache(W.PARTNERS_KEY, Array.isArray(l) ? l : []); return partnerSet(l); }
         catch (e) {
-          /* a database without 0197 answers 404: none, and not asked again for a while (every page would ask) */
+          /* a database without 0201 answers 404: none, and not asked again for a while (every page would ask) */
           if (e && e.status === 404) writeCache(W.PARTNERS_KEY, [], W.PARTNERS_TTL_MS - W.ABSENT_TTL_MS);
           return new Set();
         }
       });
     },
-    /* the publishers' languages { 'source:slug': 'es', 'outlet:league/slug': 'es' }, once, kept half a day; a database without 0200 answers 404:
+    /* the publishers' languages { 'source:slug': 'es', 'outlet:league/slug': 'es' }, once, kept half a day; a database without 0204 answers 404:
        the map of what 0195 seeded (SOURCE_LANG) stands. Never throws. */
     languages() {
       return once('languages', async () => {

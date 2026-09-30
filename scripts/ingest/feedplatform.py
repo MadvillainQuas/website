@@ -347,8 +347,12 @@ class Platform:
             # ...NOR AN ID. The Greek federation keys a club by an upper-case GUID
             # ("72C1B0A4-..."), which passed both tests above and put "72C" on the strip
             # (reported 2026-09-24): an abbreviation is short and has no dash.
+            # ...NOR A KEY MADE OF AN ID. The CEBL keys a club by the league's own team id ("CEBL24"), which passed
+            # every test above and put CEBL24 in the leaders tables for Winnipeg (reported 2026-09-30): letters and
+            # then two digits or more is a key, not an abbreviation anybody prints.
             sn_code = code if (re.search(r"[A-Za-z]", code) and code != code.lower()
-                               and len(code) <= 8 and "-" not in code) else nice
+                               and len(code) <= 8 and "-" not in code
+                               and not re.fullmatch(r"[A-Za-z]{2,}\d{2,}", code)) else nice
             r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, base), "name": nice,
                                       "short_name": names.short_form(names.team_name(t.get("shortName") or "") or sn_code), "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},

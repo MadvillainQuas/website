@@ -148,7 +148,7 @@ jobs:
       # catch-up above only looks at games under a week old whose feed row is not final, which is how Oaklands Wolves
       # v Cardiff Met (tip-off Oct 2025, the feed final, finalise-game refusing it) and three more sat on the front page
       # from 26 to 30 Sep 2026. One still open 6 h after tip-off is closed on its last state (final if the fourth
-      # period or later was over or decided, else void): scripts/ingest/stuck.py, and supabase/migrations/0199 for the
+      # period or later was over or decided, else void): scripts/ingest/stuck.py, and supabase/migrations/0203 for the
       # same rule run by pg_cron. Idempotent, and nearly always one read that finds nothing. Repair by hand, with a
       # table and a failing exit code: .github/workflows/repair-stalled.yml.
       - name: Repair games stuck live

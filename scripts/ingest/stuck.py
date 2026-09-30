@@ -1,6 +1,6 @@
 """Games still 'live' (or 'finalising') long after they could have been played: find them, and close what
 the feed cannot finish. Used by run_ingest.py --repair-stalled; mirrored in SQL by
-supabase/migrations/0199_close_stuck_games.sql (close_stuck_games), which pg_cron runs hourly with a 24 h
+supabase/migrations/0203_close_stuck_games.sql (close_stuck_games), which pg_cron runs hourly with a 24 h
 cap as the backstop when no runner does.
 
 WHY THIS EXISTS. Four games sat LIVE on the front page for days (26-30 Sep 2026) because every fix so far
@@ -36,7 +36,7 @@ def _tip(v):
 
 def verdict(period: int, clock_ms: int, home: int, away: int, feed_status: str | None) -> tuple[str, str]:
     """('final' | 'void', reason) for a game that is over as far as anybody can tell. Same rule as
-    close_stuck_games in 0199 - change one, change both (stuck_test.py and close-stuck-games.test.mjs)."""
+    close_stuck_games in 0203 - change one, change both (stuck_test.py and close-stuck-games.test.mjs)."""
     period, clock_ms, home, away = int(period or 0), int(clock_ms or 0), int(home or 0), int(away or 0)
     lead = abs(home - away)
     left = f"{clock_ms // 60000:02d}:{clock_ms // 1000 % 60:02d}"
@@ -96,7 +96,7 @@ def by_source(games: list[dict]) -> dict:
 
 def close_stuck(sb, games: list[dict], now: datetime, hard_cap: int = REPAIR_HARD_CAP, dry: bool = False) -> list[dict]:
     """Close, on its last state, every game of `games` that is still live or finalising past the hard cap.
-    The database function (0199) when it is there, the same rule from here when it is not (a migration that
+    The database function (0203) when it is there, the same rule from here when it is not (a migration that
     has not been applied yet must not stop the repair). Returns [{id, was, verdict, reason, home, away}]."""
     ids = [g["id"] for g in games if g.get("age_s") is not None and g["age_s"] >= hard_cap]
     if not ids:
@@ -112,7 +112,7 @@ def close_stuck(sb, games: list[dict], now: datetime, hard_cap: int = REPAIR_HAR
             if isinstance(got, list):
                 return [{"id": r["game_id"], "was": r["was"], "verdict": r["verdict"], "reason": r["reason"],
                          "home": r["home_score"], "away": r["away_score"]} for r in got]
-        except Exception as exc:                                     # 0199 not applied yet, or the call failed
+        except Exception as exc:                                     # 0203 not applied yet, or the call failed
             print(f"   (close_stuck_games unavailable - {str(exc)[:160]} - closing from here)")
     out, comps = [], set()
     for g in todo:

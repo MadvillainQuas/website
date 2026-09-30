@@ -84,6 +84,7 @@ function pieceItem(league, x, outlet) {
   const e = K.embedOf(x.external_url, location.hostname);
   return {
     kind: K.KIND[x.kind] ? x.kind : 'article', title: x.title, summary: x.standfirst,
+    piece: x.id || null, outlet: league.slug + '/' + o.slug,
     image: (x.cover_url && /^https:\/\//.test(x.cover_url) ? x.cover_url : null) || (e && e.thumb) || null,
     when: x.published_at, author: x.author_name,
     href: pieceHref(league, o.slug, x.slug),
@@ -323,7 +324,14 @@ async function piece(league) {
   const K0 = K.KIND[x.kind] || K.KIND.article;
   const e = x.kind !== 'article' ? K.embedOf(x.external_url, location.hostname) : null;
   const cover = x.cover_url && /^https:\/\//.test(x.cover_url) ? x.cover_url : null;
-  document.title = x.title + ' · ' + (o.name || league.name);
+  /* the title and the description the creator wrote for search engines and link previews (0200) */
+  document.title = (x.seo_title || x.title) + ' · ' + (o.name || league.name);
+  const desc = x.seo_description || x.standfirst;
+  if (desc) {
+    let m = document.querySelector('meta[name="description"]');
+    if (!m) { m = document.createElement('meta'); m.name = 'description'; document.head.appendChild(m); }
+    m.content = desc;
+  }
   await partnersReady;
   /* a piece opened here (from a notification, a card, a link): it is read, its outlet gains (this device only) */
   if (FR && o.slug) { try { FR.opened({ kind: 'creator', league_slug: league.slug, outlet_slug: o.slug, slug: x.slug, source_name: o.name,
@@ -366,9 +374,26 @@ async function piece(league) {
       if (x.standfirst) body.appendChild(el('p', 'art-stand', x.standfirst));
       /* a picture in it is an https address (0194 clean_creator_body); anything else is not drawn */
       if (B && Array.isArray(x.body)) {
-        body.appendChild(B.toDom(x.body.filter(b => b && (b.type !== 'image' || /^https:\/\/[^\s<>"]+$/i.test(b.path || ''))), { url: u => u }));
+        body.appendChild(B.toDom(x.body.filter(b => b && (b.type !== 'image' || /^https:\/\/[^\s<>"]+$/i.test(b.path || ''))), {
+          url: u => u,
+          /* an embedded video, episode or post plays where it was published, from the platforms newscard.js knows */
+          embed: u => {
+            const e2 = K.embedOf(u, location.hostname);
+            if (!e2) return null;
+            const box = el('div', 'cr-embed cr-embed-' + e2.shape);
+            box.appendChild(K.embedNode(e2, x.title));
+            return box;
+          }
+        }));
       }
       wrap.appendChild(body);
+      /* its tags (0200) */
+      if (Array.isArray(x.tags) && x.tags.length) {
+        const tr = el('div', 'cr-tags');
+        tr.setAttribute('aria-label', 'tags');
+        x.tags.forEach(t => { const c = el('span', 'cr-tag', t); c.setAttribute('translate', 'no'); tr.appendChild(c); });
+        wrap.appendChild(tr);
+      }
     } else {
       if (x.standfirst) wrap.appendChild(el('p', 'pc-read-sum', x.standfirst));
     }
@@ -382,6 +407,17 @@ async function piece(league) {
   }
   wrap.appendChild(el('p', 'pc-read-note cr-own', o.name + ' is an independent creator on ' + league.name + '’s pages: the piece is theirs, not the league’s.'));
   main.appendChild(wrap);
+
+  /* THE CREATOR HUB'S NUMBERS (0200, track.js): the piece opened here, and each link out of it followed */
+  if (x.id && K.toTrack) {
+    const who = league.slug + '/' + o.slug;
+    K.toTrack({ post: x.id, kind: 'open', outlet: who });
+    wrap.addEventListener('click', ev => {
+      const a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+      if (!a || !/^https?:/i.test(a.href) || a.host === location.host) return;
+      K.toTrack({ post: x.id, kind: 'out', outlet: who });
+    });
+  }
 
   /* more from them */
   try {

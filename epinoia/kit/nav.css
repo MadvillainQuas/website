@@ -663,8 +663,25 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
   .ep-tabbar a.two-line .tx{ white-space:normal; text-overflow:clip; text-align:center;
     line-height:1.25; overflow:visible; width:min-content }
   .ep-tabbar.fit a{ flex:1 1 auto }
+  /* THE SEARCH KEY, after the first (nav.js searchTab): its glyph larger and in full ink, so it is found at a glance */
+  .ep-tabbar a.tab-search{ flex:0 0 auto; padding-left:6px; padding-right:6px; color:var(--nav-ink,var(--ink)) }
+  .ep-tabbar a.tab-search .ic{ font-size:19px; font-weight:700 }
   .ep-tabbar a:active{ background:color-mix(in oklch,var(--lume) 10%,transparent) }
   body.nav-drawer-open{ overflow:hidden }
+}
+/* A LEAGUE'S BAR ON A NARROW PHONE (nav.js .tabs-crowded): seven keys and the menu in the width of a hand. Every
+   label stays whole: the search and the menu keys as their icons (their names are still read out), the icon pills a
+   little slimmer, and under 370px the letters a little closer. */
+@media (max-width:414px){
+  .ep-nav.tabs-crowded:not(.drawer-open) button.navtoggle{ padding-left:10px; padding-right:10px }
+  .ep-nav.tabs-crowded:not(.drawer-open) button.navtoggle .tx{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+  .ep-nav.tabs-crowded .ep-tabbar a .ic{ min-width:28px }
+  .ep-nav.tabs-crowded .ep-tabbar a.tab-search{ padding-left:2px; padding-right:2px }
+  .ep-nav.tabs-crowded .ep-tabbar a.tab-search .ic{ min-width:24px }
+  .ep-nav.tabs-crowded .ep-tabbar a.tab-search .tx{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+}
+@media (max-width:370px){
+  .ep-nav.tabs-crowded .ep-tabbar a .tx{ letter-spacing:.02em }
 }
 
 /* ---- the Android app's banners (nav.js showAndroidApp, showUpdate) ----

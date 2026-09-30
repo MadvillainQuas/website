@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0199: A GAME THAT IS STILL 'LIVE' LONG AFTER IT COULD HAVE BEEN PLAYED IS CLOSED (close_stuck_games)
+-- 0203: A GAME THAT IS STILL 'LIVE' LONG AFTER IT COULD HAVE BEEN PLAYED IS CLOSED (close_stuck_games)
 --
 -- Four games sat on the front page as LIVE for days (26-30 Sep 2026): a game whose feed the scorer
 -- never closed (Vellaznimi v Sigal Prishtina, Q4 0:35), one whose feed stopped in the first quarter
@@ -103,7 +103,7 @@ begin
       begin
         perform public.recompute_standings(g.cid);
       exception when others then
-        raise warning '0199: standings of % not rebuilt: %', g.cid, sqlerrm;
+        raise warning '0203: standings of % not rebuilt: %', g.cid, sqlerrm;
       end;
     end loop;
   end if;
@@ -116,7 +116,7 @@ grant execute on function public.close_stuck_games(numeric, uuid[], boolean) to 
 comment on function public.close_stuck_games(numeric, uuid[], boolean) is
   'Closes every game still live (or finalising) more than p_hard_hours after its tip-off: FINAL on its last score when '
   'the fourth period or later was over or decided, or the feed had called it final; otherwise VOID. p_dry only reports. '
-  'Returns one row per game it looked at. See 0199.';
+  'Returns one row per game it looked at. See 0203.';
 
 -- the schedule: hourly, at minute 17 (pg_cron came with 0121)
 do $$
@@ -126,8 +126,8 @@ begin
     execute 'select cron.unschedule(j.jobid) from cron.job j where j.jobname = $1' using 'epinoia-close-stuck-games'::text;
     execute 'select cron.schedule($1, $2, $3)' into v_job
       using 'epinoia-close-stuck-games'::text, '17 * * * *'::text, 'select * from public.close_stuck_games(24)'::text;
-    raise notice '0199: pg_cron job epinoia-close-stuck-games (job %) closes games live more than 24 h after tip-off, hourly', v_job;
+    raise notice '0203: pg_cron job epinoia-close-stuck-games (job %) closes games live more than 24 h after tip-off, hourly', v_job;
   else
-    raise warning '0199: pg_cron is not installed here, so nothing closes stuck games on a timer; run_ingest.py --repair-stalled still does';
+    raise warning '0203: pg_cron is not installed here, so nothing closes stuck games on a timer; run_ingest.py --repair-stalled still does';
   end if;
 end $$;

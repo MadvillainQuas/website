@@ -99,6 +99,7 @@ function paintIdentity(pl, entry, team) {
     const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });
     fb.classList.add('lbl'); const act = $('#idactions'); if (act) act.appendChild(fb); else $('#name').insertAdjacentElement('afterend', fb);
   }
+  suggestable(pl, entry, name);
 
   const colour = (team && team.colour) || '#93f2bf';
   document.documentElement.style.setProperty('--team-a', colour);
@@ -156,7 +157,10 @@ function paintIdentity(pl, entry, team) {
     $('#teamLink').style.display = 'none';
   }
   sub.appendChild(el('span', 'sub-break'));      // the club and league on one line, the chips (position, estimated position) on the next
-  if (entry && entry.position) { const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc); }
+  if (entry && entry.position) {
+    const pc = el('span', 'pos-chip', entry.position); pc.setAttribute('data-i18n-ctx', 'pos'); sub.appendChild(pc);
+    suggestOn(pc, 'position');
+  }
   paintVitals(pl);
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
 }
@@ -186,14 +190,15 @@ function paintVitals(pl) {
       if (unit) vv.appendChild(el('small', null, unit));
       d.appendChild(vv);
       host.appendChild(d);
+      return d;
     };
     if (pl.birth_year) item('born', String(pl.birth_year));
     if (vitalsAge != null) item('age', String(vitalsAge));
     const split = s => { const m = /^(\S+) (\S+)$/.exec(s || ''); return m ? [m[1], m[2]] : [s, '']; };
     const ht = U ? U.height(pl.height_cm) : (pl.height_cm ? pl.height_cm + ' cm' : '');
     const wt = U ? U.weight(pl.weight_kg) : (pl.weight_kg ? pl.weight_kg + ' kg' : '');
-    if (ht) item('height', ...split(ht));
-    if (wt) item('weight', ...split(wt));
+    if (ht) suggestOn(item('height', ...split(ht)), 'height_cm');
+    if (wt) suggestOn(item('weight', ...split(wt)), 'weight_kg');
     const any = host.childNodes.length > 0;
     if (any && U && (pl.height_cm || pl.weight_kg)) host.appendChild(U.toggle({ className: 'vit-units' }));
     host.hidden = !any;
@@ -206,6 +211,32 @@ function paintVitals(pl) {
       if (m[pl.id] != null && vitalsPl && vitalsPl.id === pl.id) { vitalsAge = m[pl.id]; draw(); }
     }).catch(() => { /* no age */ });
   }
+}
+
+/* ------------------------------------------------------------ suggestions ---
+   A FAN MAY SUGGEST A CORRECTION to what only the club, the league or the platform may change (suggest.js,
+   0199). Hovering the name, the photograph, the height, the weight or the position offers it; the button
+   beside the follow bell reaches every one of them, the wingspan and the previous club too, which the page
+   does not show. Never for a player under 18: their details are the league's alone. */
+let suggestFor = null;
+const SUGGEST_FIELDS = ['name', 'photo', 'height_cm', 'weight_kg', 'wingspan_cm', 'position', 'previous_club'];
+function suggestChoice(field) {
+  const s = suggestFor, pl = s.pl;
+  return { type: 'player', id: pl.id, field, subject: s.name,
+           current: field === 'name' ? { first: pl.first_name, last: pl.last_name }
+                  : field === 'position' ? (s.entry && s.entry.position) || null : pl[field] };
+}
+function suggestOn(node, field, opts) {
+  if (node && suggestFor && window.EpinoiaSuggest) window.EpinoiaSuggest.attach(node, suggestChoice(field), opts);
+}
+function suggestable(pl, entry, name) {
+  const S = window.EpinoiaSuggest;
+  suggestFor = S && pl && pl.id && !pl.is_minor ? { pl, entry, name } : null;
+  if (!suggestFor) return;
+  suggestOn($('#name'), 'name');
+  suggestOn($('#photo'), 'photo', { at: 'inset' });
+  const act = $('#idactions');
+  if (act && !act.querySelector('.sg-btn')) act.appendChild(S.button(() => SUGGEST_FIELDS.map(suggestChoice), { title: name, cls: 'mini' }));
 }
 
 /* --------------------------------------------------------------- released ---

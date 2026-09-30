@@ -172,6 +172,9 @@ function embedNode(e, title) {
 }
 
 /* ------------------------------------------------------------------------------------------------ items --- */
+/* a creator's channel's platform, as its card names it (0198 news_sources.platform) */
+const PLATFORM = { youtube: 'YouTube', podcast: 'Podcast', bluesky: 'Bluesky', mastodon: 'Mastodon', substack: 'Substack', medium: 'Medium' };
+
 const KIND = {
   story:   { glyph: '▤', word: 'Story',   cta: 'Read' },
   article: { glyph: '✎', word: 'Article', cta: 'Read' },
@@ -217,12 +220,26 @@ function fromFeedRow(r, base, media, crest) {
   if (r.kind === 'creator') {
     const e = embedOf(r.url);
     return { kind: KIND[r.piece_kind] ? r.piece_kind : 'article', title: r.title, summary: r.summary,
+             piece: r.id || null, outlet: r.league_slug && r.outlet_slug ? r.league_slug + '/' + r.outlet_slug : null,
              image: https(r.image_url) || (e && e.thumb) || null, when: r.published_at, author: r.author,
              href: b + 'creators/?l=' + encodeURIComponent(r.league_slug) + '&o=' + encodeURIComponent(r.outlet_slug) + '&p=' + encodeURIComponent(r.slug),
              platform: e ? e.label : (web(r.url) ? host(r.url) : null), league: tags.length ? null : r.league_name, tags,
              embedUrl: web(r.url),
              brand: { name: r.source_name, logo: https(r.source_logo), colour: hex(r.source_colour),
                       href: b + 'creators/?l=' + encodeURIComponent(r.league_slug) + '&o=' + encodeURIComponent(r.outlet_slug) } };
+  }
+  if (r.kind === 'channel') {
+    /* A CREATOR'S CHANNEL (0198): a YouTube channel, a podcast, a Bluesky account read by its feed. Its post opens on
+       its story page here (news/?i=), where a video or an episode plays; the channel's page is the brand's link. */
+    const e = embedOf(r.url);
+    const kind = e ? (['spotify', 'soundcloud', 'apple'].includes(e.provider) ? 'podcast'
+                      : ['youtube', 'tiktok', 'twitch'].includes(e.provider) ? 'video' : 'social')
+                   : r.piece_kind === 'podcast' ? 'podcast' : ['bluesky', 'mastodon'].includes(r.piece_kind) ? 'social' : 'article';
+    return { kind, title: r.title, summary: r.summary, image: https(r.image_url) || (e && e.thumb) || null, when: r.published_at, author: r.author,
+             href: b + 'news/?i=' + encodeURIComponent(r.id), platform: e ? e.label : (PLATFORM[r.piece_kind] || null), tags,
+             embedUrl: e ? web(r.url) : null,
+             brand: { name: r.source_name, logo: https(r.source_logo), colour: hex(r.source_colour),
+                      href: r.source_slug ? b + 'news/?s=' + encodeURIComponent(r.source_slug) : null, site: web(r.source_url) } };
   }
   const img = r.image_url ? (/^https:\/\//.test(r.image_url) ? r.image_url : m(r.image_url)) : null;
   const logo = r.source_logo ? (/^https:\/\//.test(r.source_logo) ? r.source_logo : lg(r.source_logo)) : null;
@@ -306,6 +323,29 @@ function whyLine(why) {
    partners (a Set of the official partners' keys: the item's pkey in it wears the pill), onOpen(item) (called when the
    headline or the way to the piece is pressed: the feed's "read"), why (false: no "Why am I seeing this?" line even
    when the item has one) } */
+/* A CREATOR'S PIECE ON SCREEN (0200, the creator hub's numbers): its card counts as seen once half of it is in view,
+   once a page (track.js piece). Only a card that says which piece it is (item.piece) is watched. */
+let seenObs = null;
+/* track.js arrives after the page's own scripts (nav.js loads it): a moment's patience, then nothing */
+function toTrack(ev, tries) {
+  const T = typeof window !== 'undefined' ? window.EpinoiaTrack : null;
+  if (T && typeof T.piece === 'function') { T.piece(ev); return; }
+  if ((tries || 0) < 4) setTimeout(() => toTrack(ev, (tries || 0) + 1), 1500);
+}
+function watchSeen(art, it) {
+  if (!it.piece || typeof IntersectionObserver !== 'function' || !(typeof window !== 'undefined' && window.EPINOIA_CONFIG && window.EPINOIA_CONFIG.analytics)) return;
+  if (!seenObs) {
+    seenObs = new IntersectionObserver(list => list.forEach(en => {
+      if (!en.isIntersecting) return;
+      seenObs.unobserve(en.target);
+      const d = en.target.__piece;
+      if (d) toTrack({ post: d.post, kind: 'seen', outlet: d.outlet });
+    }), { threshold: 0.5 });
+  }
+  art.__piece = { post: it.piece, outlet: it.outlet || null };
+  seenObs.observe(art);
+}
+
 function card(item, opts) {
   const o = opts || {};
   const it = item || {};
@@ -395,6 +435,7 @@ function card(item, opts) {
     foot.appendChild(go);
   }
   art.appendChild(foot);
+  watchSeen(art, it);
   return art;
 }
 
@@ -495,5 +536,5 @@ function grid(items, opts) {
   return g;
 }
 
-return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, partnerPill, whyLine, langChip };
+return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, toTrack, partnerPill, whyLine, langChip };
 }));

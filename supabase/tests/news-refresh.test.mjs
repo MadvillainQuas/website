@@ -56,7 +56,9 @@ console.log('-- RSS 2.0');
   ok('...the first <img> of the text when the item names none (og-style fallback), made absolute; media:group and itunes:image too',
     items.find(x => x.guid === 'g-4').image_url === 'https://hoops.example/img/lead.webp' && items.find(x => x.guid === 'g-5').image_url === 'https://cdn.hoops.example/group.jpg' && items.find(x => x.guid === 'g-6').image_url === 'https://cdn.hoops.example/it.jpg');
   ok('two items with one link are one story (the newest kept)', items.filter(x => x.url.includes('news/2')).length === 1 && items.find(x => x.url.includes('news/2')).title === 'Second story');
-  ok('an item with no link, or no headline, is left out', !items.some(x => x.guid === 'g-9') && !items.some(x => x.url.endsWith('/news/10')));
+  ok('an item with no link is left out', !items.some(x => x.guid === 'g-9'));
+  ok('an item with no headline takes its first words as one (an untitled Bluesky or Mastodon post), as fetch_feeds.py does', (items.find(x => x.url.endsWith('/news/10')) || {}).title === 'dropped: no headline');
+  ok('a podcast episode with no page link takes its audio file as the link', (() => { const [, its] = feed('<rss version="2.0"><channel><title>Pod</title><item><title>Ep 1</title><guid>e1</guid><enclosure url="https://cdn.example/ep1.mp3" type="audio/mpeg"/></item></channel></rss>'); return its.length === 1 && its[0].url === 'https://cdn.example/ep1.mp3'; })());
   ok('a date that is not a date, or is in the future, is the read\'s; a date of numbers is read', items.find(x => x.guid === 'g-3').published_at === '2026-09-30T12:00:00+00:00' && items.find(x => x.guid === 'g-4').published_at === '2026-09-30T11:59:59+00:00' && items.find(x => x.guid === 'g-5').published_at === '2026-09-15T22:15:00+00:00');
   ok('stories dated at one moment are a second apart, in the feed\'s order', items.find(x => x.guid === 'g-7').published_at === '2026-09-20T12:00:00+00:00' && items.find(x => x.guid === 'g-8').published_at === '2026-09-20T11:59:59+00:00');
   ok('newest first', items.every((x, i) => !i || items[i - 1].published_at >= x.published_at));
@@ -292,7 +294,7 @@ console.log('-- what is stored');
   const w = world();
   w.bodies['https://feed.example/eurohoops'] = RSS;
   const r = await w.send('tok-plat', { source: 'eurohoops' });
-  ok('a real fixture feed is loaded whole (nine stories of it), each once, with a picture where it has one', r.j.ok && r.j.added === 9 && w.items.filter(i => i.image_url).length >= 5, r.j);
+  ok('a real fixture feed is loaded whole (ten stories of it), each once, with a picture where it has one', r.j.ok && r.j.added === 10 && w.items.filter(i => i.image_url).length >= 5, r.j);
 }
 
 console.log('-- when a feed will not load');

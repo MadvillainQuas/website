@@ -3,7 +3,7 @@
     python scripts/ingest/stuck_test.py
 
 Four games sat LIVE on the front page from 26 to 30 Sep 2026 and every earlier fix covered only games from
-then on. What holds now (stuck.py, run_ingest.repair_report, 0199's SQL twin):
+then on. What holds now (stuck.py, run_ingest.repair_report, 0203's SQL twin):
   * a game live or finalising more than 4 h after tip-off is found at ANY age (Oaklands: tip-off Oct 2025);
   * one still open at 6 h is closed on its last state: FINAL when the fourth period or later was over or
     decided or the feed said final, VOID otherwise - and its feed row is closed with the reason, so no lane
@@ -133,7 +133,7 @@ print("\n-- closing what the re-read could not finish")
 fk = world(rpc_ok=False)
 found = S.stuck_games(fk, NOW)
 done = {c["id"]: c for c in S.close_stuck(fk, found, NOW)}
-ok("no 0199 yet: the same rule from here - 1, 2, 4 final, 3 void; the game 5 h in (7) is left to its feed", {k: c["verdict"] for k, c in done.items()} == {"g1": "final", "g2": "final", "g3": "void", "g4": "final"}, done)
+ok("no 0203 yet: the same rule from here - 1, 2, 4 final, 3 void; the game 5 h in (7) is left to its feed", {k: c["verdict"] for k, c in done.items()} == {"g1": "final", "g2": "final", "g3": "void", "g4": "final"}, done)
 gm = {g["id"]: g for g in fk.games}
 ok("games written: status, score, finalised_at; void keeps no score", gm["g1"]["status"] == "final" and gm["g1"]["home_score"] == 118 and gm["g1"]["finalised_at"] and gm["g3"]["status"] == "void")
 em = {e["game_id"]: e for e in fk.ext}
@@ -145,7 +145,7 @@ ok("idempotent: a second pass finds nothing to close", S.close_stuck(fk, S.stuck
 fk = world()
 fk.rpc = lambda fn, body=None: fk.rpcs.append((fn, body)) or [dict(game_id="g1", was="live", verdict="final", reason="r", home_score=118, away_score=50)]
 got = S.close_stuck(fk, S.stuck_games(fk, NOW), NOW)
-ok("with 0199 applied the database function does it (ids and the 6 h cap passed)", got[0]["verdict"] == "final" and fk.rpcs[0][0] == "close_stuck_games"
+ok("with 0203 applied the database function does it (ids and the 6 h cap passed)", got[0]["verdict"] == "final" and fk.rpcs[0][0] == "close_stuck_games"
    and fk.rpcs[0][1]["p_hard_hours"] == 6.0 and set(fk.rpcs[0][1]["p_ids"]) == {"g1", "g2", "g3", "g4"}, fk.rpcs)
 fk = world(rpc_ok=False)
 ok("a dry run changes nothing", S.close_stuck(fk, S.stuck_games(fk, NOW), NOW, dry=True) and not fk.patches and not fk.inserts)

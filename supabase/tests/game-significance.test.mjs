@@ -1,4 +1,4 @@
-// 0198: HOW MUCH A GAME MATTERS, on a real Postgres (PGlite; skipped with a note when it is not installed -
+// 0202: HOW MUCH A GAME MATTERS, on a real Postgres (PGlite; skipped with a note when it is not installed -
 // PGLITE_DIR=<its folder> or `npm i --no-save @electric-sql/pglite`), on the minimum schema the function reads
 // (leagues.rules, seasons, competitions.kind, games, standings, bracket_ties, player_game_stats, players,
 // news_articles.game_id) and league_visible stubbed to a switch. What is held here:
@@ -24,7 +24,7 @@ catch { console.log('SKIP  @electric-sql/pglite is not installed'); process.exit
 
 let pass = 0, fail = 0;
 const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + what); } else { fail++; console.log('  FAIL  ' + what + (saw === undefined ? '' : '  -- saw ' + JSON.stringify(saw).slice(0, 500))); } };
-const mig = readFileSync(path.join(here, '..', 'migrations', '0198_game_significance.sql'), 'utf8');
+const mig = readFileSync(path.join(here, '..', 'migrations', '0202_game_significance.sql'), 'utf8');
 const m49 = readFileSync(path.join(here, '..', 'migrations', '0049_club_profile.sql'), 'utf8');
 const withheld = m49.slice(m49.indexOf('create or replace function public.player_withheld('), m49.indexOf('$$;', m49.indexOf('create or replace function public.player_withheld(')) + 3);
 

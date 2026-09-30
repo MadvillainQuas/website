@@ -1,4 +1,4 @@
-// 0199 - a game still 'live' long after it could have been played is closed, on a REAL Postgres (PGlite), no network.
+// 0203 - a game still 'live' long after it could have been played is closed, on a REAL Postgres (PGlite), no network.
 //
 //   node supabase/tests/close-stuck-games.test.mjs
 //
@@ -38,7 +38,7 @@ await db.exec(`
   create table public.rebuilt (competition_id uuid);
   create function public.recompute_standings(p uuid) returns void language sql as $$ insert into public.rebuilt values (p) $$;
 `);
-await db.exec(mig('0199_close_stuck_games.sql'));
+await db.exec(mig('0203_close_stuck_games.sql'));
 
 const q = async (sql, params) => (await db.query(sql, params)).rows;
 const C1 = (await q(`insert into competitions default values returning id`))[0].id;

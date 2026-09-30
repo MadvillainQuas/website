@@ -372,6 +372,66 @@ console.log('\nset_fan_prefs is 0161\'s and more');
      ['fav_source_ids', 'fav_outlet_ids', 'want_news'].every(k => after.has(k)), lost);
 }
 
+console.log('\nadding a publisher or a creator by its link (0198)');
+await db.exec(mig('0198_news_by_link.sql'));
+await as(FAN);
+ok('a fan cannot add one', /cannot add/.test(await fails(() => q(`select public.add_news_link(null, 'https://www.youtube.com/@Hoops', 'creator')`)) || ''));
+await as(PLAT);
+ok('Instagram, TikTok, X, Threads, Facebook and Spotify are refused with the reason, before anything is stored',
+   /Instagram publishes no feed/.test(await fails(() => q(`select public.add_news_link(null, 'https://www.instagram.com/hoopsfan/', 'creator')`)) || '') &&
+   /TikTok publishes no feed/.test(await fails(() => q(`select public.add_news_link(null, 'https://www.tiktok.com/@hoopsfan', 'creator')`)) || '') &&
+   /X publishes no feed/.test(await fails(() => q(`select public.add_news_link(null, 'https://x.com/hoopsfan', 'creator')`)) || '') &&
+   /Threads publishes/.test(await fails(() => q(`select public.add_news_link(null, 'https://www.threads.net/@hoopsfan', 'creator')`)) || '') &&
+   /Facebook publishes/.test(await fails(() => q(`select public.add_news_link(null, 'https://m.facebook.com/hoopsfan', 'creator')`)) || '') &&
+   /Spotify publishes/.test(await fails(() => q(`select public.add_news_link(null, 'https://open.spotify.com/show/abc', 'creator')`)) || '') &&
+   (await q(`select count(*)::int as n from news_sources where resolve_from is not null`))[0].n === 0);
+ok('...and a link is a whole https address, a source a publisher or a creator',
+   /whole link/.test(await fails(() => q(`select public.add_news_link(null, 'youtube.com/@Hoops', 'creator')`)) || '') &&
+   /publisher or a creator/.test(await fails(() => q(`select public.add_news_link(null, 'https://www.youtube.com/@Hoops', 'channel')`)) || ''));
+const yt = (await q(`select public.add_news_link(null, 'https://www.youtube.com/@HoopsChannel', 'creator') as j`))[0].j;
+const bs = (await q(`select public.add_news_link(null, 'https://bsky.app/profile/hoops.example', 'creator') as j`))[0].j;
+const site = (await q(`select public.add_news_link(null, 'https://www.basketnews.example/', 'publisher', 'Basket News') as j`))[0].j;
+ok('any other link is taken, with a stand-in name until the first read (a handle, or the site\'s name)',
+   yt.name === '@HoopsChannel' && bs.name === '@hoops.example' && site.name === 'Basket News' &&
+   (await q(`select name_auto, resolve_from, feed_url, kind from news_sources where id = $1`, [yt.id]))[0].name_auto === true &&
+   (await q(`select name_auto from news_sources where id = $1`, [site.id]))[0].name_auto === false, [yt, bs, site]);
+ok('...the same link twice is refused', /already/.test(await fails(() => q(`select public.add_news_link(null, 'https://www.youtube.com/@HoopsChannel', 'creator')`)) || ''));
+const adm = await q(`select * from public.news_sources_admin(null)`);
+ok('the console lists it as waiting for its first read, a creator', (() => { const r = adm.find(x => x.id === yt.id);
+   return r && r.kind === 'creator' && r.resolve_from === 'https://www.youtube.com/@HoopsChannel' && r.platform === null; })(), adm);
+/* what the reader writes once it has found the feed */
+await q(`update news_sources set feed_url = 'https://www.youtube.com/feeds/videos.xml?channel_id=UCabcdefghijklmnopqrstuv', resolve_from = null,
+         platform = 'youtube', name = 'Hoops Channel', name_auto = false where id = $1`, [yt.id]);
+await q(`insert into news_items (source_id, guid, url, title, summary, image_url, published_at) values
+  ($1, 'yt:video:abc', 'https://www.youtube.com/watch?v=abcdefghijk', 'Game 3 breakdown', 'Every possession of the fourth quarter',
+   'https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg', '2026-09-30T12:00:00Z')`, [yt.id]);
+await as('');
+const top = (await q(`select * from public.news_feed(null, null, 30)`)).find(r => r.title === 'Game 3 breakdown') || {};
+ok('its posts come out of the News page as a creator\'s channel, with the platform', top.kind === 'channel' && top.piece_kind === 'youtube' &&
+   top.title === 'Game 3 breakdown' && top.source_name === 'Hoops Channel', top);
+ok('...under "Creators", not "Publishers"', !(await q(`select * from public.news_feed(null, null, 30, array['outlet'])`)).some(r => r.id === top.id) &&
+   (await q(`select * from public.news_feed(null, null, 30, array['channel'])`)).map(r => r.title).join() === 'Game 3 breakdown');
+ok('...its page and each story say it is a creator\'s, on YouTube',
+   (await q(`select public.news_source_public($1) as j`, [ (await q(`select slug from news_sources where id = $1`, [yt.id]))[0].slug ]))[0].j.kind === 'creator' &&
+   (await q(`select public.news_item_public($1) as j`, [top.id]))[0].j.source.platform === 'youtube' &&
+   (await q(`select kind, platform from public.news_sources_public(null) where id = $1`, [yt.id]))[0].kind === 'creator');
+await as(FAN);
+await q(`insert into fan_prefs (user_id, fav_source_ids) values ($1, array[$2::uuid])
+         on conflict (user_id) do update set fav_source_ids = array[$2::uuid], fav_league_ids = '{}', fav_team_ids = '{}', fav_outlet_ids = '{}'`, [FAN, yt.id]);
+ok('a fan following it gets its posts in their own feed, as a creator\'s', (await q(`select kind, title from public.news_feed_mine(null, 30)`))
+   .some(r => r.kind === 'channel' && r.title === 'Game 3 breakdown'));
+ok('...and a fan cannot turn it into a publisher', /cannot change/.test(await fails(() => q(`select public.set_news_source_kind($1, 'publisher')`, [yt.id])) || ''));
+await as(PLAT);
+await q(`select public.set_news_source_kind($1, 'publisher')`, [yt.id]);
+await as('');
+ok('the console can call a source a publisher instead: its posts move to "Publishers"',
+   (await q(`select kind from public.news_feed(null, null, 30) where id = $1`, [top.id]))[0].kind === 'outlet');
+await as(PLAT);
+await q(`select public.set_news_source_kind($1, 'creator')`, [yt.id]);
+ok('only the console may add by link or change the kind', !(await q(`select has_function_privilege('anon', 'public.add_news_link(uuid, text, text, text)', 'execute') as ok`))[0].ok &&
+   !(await q(`select has_function_privilege('anon', 'public.set_news_source_kind(uuid, text)', 'execute') as ok`))[0].ok &&
+   (await q(`select has_function_privilege('anon', 'public.news_feed(uuid, timestamptz, integer, text[])', 'execute') as ok`))[0].ok);
+
 console.log('\nwho may touch what');
 const priv = async (role, fn) => (await q(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`))[0].ok;
 ok('the signed-out may read (the public reads) and may not write', await priv('anon', 'public.creators_public(uuid, int, int)') && await priv('anon', 'public.news_feed(uuid, timestamptz, int, text[])') &&

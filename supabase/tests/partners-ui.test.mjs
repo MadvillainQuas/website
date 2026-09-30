@@ -1,7 +1,7 @@
-// The platform console's "Official partner" switches (epinoia/admin/creators-ui.js mountPartners, 0197): every news
+// The platform console's "Official partner" switches (epinoia/admin/creators-ui.js mountPartners, 0201): every news
 // source and every creator outlet is listed with its state; a switch asks first, calls set_official_partner with the
 // kind and the id, says what happened and draws again; a refusal (the database's own words) puts the switch back; a
-// database without 0197 says so instead of failing.
+// database without 0201 says so instead of failing.
 //   node supabase/tests/partners-ui.test.mjs
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -97,7 +97,7 @@ console.log('\nthe switch');
 console.log('\nno migration, no access');
 {
   const t = await make(async () => ({ data: null, error: { message: 'Could not find the function public.official_partners_admin in the schema cache' } }));
-  ok('a database without 0197 says so, and draws no switches', /0197: it has not been applied/.test(t.host.textContent) && switches(t.host).length === 0);
+  ok('a database without 0201 says so, and draws no switches', /0201: it has not been applied/.test(t.host.textContent) && switches(t.host).length === 0);
   const t2 = await make(async () => ({ data: null, error: { message: 'only a platform administrator can see the official partners' } }));
   ok('anyone else is told what the database told them', /only a platform administrator can see the official partners/.test(t2.host.textContent));
 }

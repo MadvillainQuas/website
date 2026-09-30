@@ -99,6 +99,19 @@ const lg = K.fromFeed({ kind: 'league', title: 'Round two', summary: '', image_u
   source_logo: 'leagues/kbl.png', league_slug: 'kbl', league_name: 'KBL', slug: 'round-two', leagues: [] }, '', p => 'https://media.example/' + p);
 ok('the league\'s own article: to its page here, its stored picture made an address', lg.href === 'news/?l=kbl&a=round-two' && lg.image === 'https://media.example/news/x.jpg' && lg.tags.length === 0);
 
+const chYt = K.fromFeed({ kind: 'channel', id: 'c1', title: 'Game 3 breakdown', summary: 'The fourth quarter.', image_url: null,
+  url: 'https://www.youtube.com/watch?v=abcdefghijk', published_at: '2026-09-30T10:00:00Z', source_name: 'Hoops Channel',
+  source_logo: 'https://yt3.googleusercontent.com/a=s240-c#fill', source_colour: '#cc0000', source_url: 'https://www.youtube.com/@HoopsChannel',
+  source_slug: 'hoops-channel', piece_kind: 'youtube', leagues: [] }, '../');
+ok('a creator\'s channel post (0198): a video, to its story page here where it plays, the channel\'s page its brand\'s link',
+   chYt.kind === 'video' && chYt.href === '../news/?i=c1' && !chYt.external && chYt.embedUrl === 'https://www.youtube.com/watch?v=abcdefghijk' &&
+   chYt.platform === 'YouTube' && chYt.image === 'https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg' && chYt.brand.href === '../news/?s=hoops-channel' &&
+   chYt.brand.logo.endsWith('#fill'), chYt);
+const chPod = K.fromFeed({ kind: 'channel', id: 'c2', title: 'Episode 12', url: 'https://pod.example/12', piece_kind: 'podcast', source_name: 'The Hoops Pod' }, '');
+const chSky = K.fromFeed({ kind: 'channel', id: 'c3', title: 'Tip-off in ten', url: 'https://bsky.app/profile/h/post/1', piece_kind: 'bluesky', source_name: 'Hoops' }, '');
+ok('...an episode a podcast, a Bluesky post a post, each on its own page here', chPod.kind === 'podcast' && chPod.platform === 'Podcast' &&
+   chPod.embedUrl === null && chSky.kind === 'social' && chSky.platform === 'Bluesky' && chSky.href === 'news/?i=c3');
+
 console.log('\nthe card');
 const card = K.card(out, { now: Date.parse('2026-09-30T12:00:00Z') });
 const links = card.all().filter(n => n.tagName === 'A');
@@ -120,7 +133,7 @@ const g = K.grid([out, out, out], {});
 ok('a grid leads with its first card, unless told not to', g.children[0].classList.contains('pc-lead') && !g.children[1].classList.contains('pc-lead') &&
    !K.grid([out, out], { lead: false }).children[0].classList.contains('pc-lead'));
 
-console.log('\nthe official-partner pill (0197)');
+console.log('\nthe official-partner pill (0201)');
 const FRk = require(path.join(root, 'epinoia', 'feedrank.js'));
 ok('a feed row keeps its id and itself, and the key the publisher / outlet is known by (the same one feedrank.js and official_partners() use)',
    out.id === 'x' && out.row && out.row.kind === 'outlet' && out.pkey === 'source:eurohoops' && cr.pkey === 'outlet:kbl/hoops-tape' && lg.pkey === null &&
@@ -177,14 +190,31 @@ ok('...an unranked card, and a card asked not to, say nothing', !K.card(out, {})
 
 console.log('\nthe pages');
 const hostsIn = html => { const m = /frame-src ([^;"]+)/.exec(html); return m ? m[1].trim().split(/\s+/) : []; };
-for (const page of [['epinoia', 'creators', 'index.html'], ['epinoia', 'creators', 'studio', 'index.html']]) {
+for (const page of [['epinoia', 'creators', 'index.html'], ['epinoia', 'creators', 'studio', 'index.html'], ['epinoia', 'news', 'index.html']]) {
   const h = hostsIn(read(...page));
   ok(page.slice(1).join('/') + ' frames exactly the platforms newscard.js builds frames for', h.length === K.EMBED_HOSTS.length && K.EMBED_HOSTS.every(x => h.includes(x)), h);
 }
 const newsHtml = read('epinoia', 'news', 'index.html');
-ok('the News page loads the card and the bell before its own script, and frames nothing',
+ok('the News page loads the card and the bell before its own script (it frames a creator\'s post on its story page, 0198)',
    newsHtml.indexOf('newscard.js?v=') > 0 && newsHtml.indexOf('newscard.js?v=') < newsHtml.indexOf('src="news-page.js') &&
-   newsHtml.indexOf('follow.js?v=') < newsHtml.indexOf('src="news-page.js') && !/frame-src/.test(newsHtml));
+   newsHtml.indexOf('follow.js?v=') < newsHtml.indexOf('src="news-page.js'));
+const newsJs = read('epinoia', 'news', 'news-page.js');
+ok('the News page: "Creators" is the outlets\' pieces and the creators\' channels; a league\'s page carries both; creators get a row of their own',
+   /k: 'creators', label: 'Creators',\s+kinds: \['creator', 'channel'\]/.test(newsJs) && /k: 'press',\s+label: 'Publishers',\s+kinds: \['outlet'\]/.test(newsJs) &&
+   /p_kinds: \['outlet', 'creator', 'channel'\]/.test(newsJs) && /'The creators'/.test(newsJs) && /x\.kind === 'creator'/.test(newsJs));
+ok('...a creator\'s post plays on its story page, and their page says they are a creator',
+   /const play = maker \? K\.embedOf\(it\.url\) : null;/.test(newsJs) && /K\.embedNode\(play, it\.title\)/.test(newsJs) && /\(maker \? 'Creator' : 'Publisher'\)/.test(newsJs));
+const CU = require(path.join(root, 'epinoia', 'admin', 'creators-ui.js'));
+const rl = u => CU.recogniseLink(u) || {};
+ok('the console knows a link before it is sent: YouTube, a podcast, Bluesky, Substack, Medium and Mastodon are creators, a site or a feed a publisher',
+   rl('https://www.youtube.com/@NBA').kind === 'creator' && rl('https://podcasts.apple.com/us/podcast/x/id1384802639').platform === 'podcast' &&
+   rl('https://bsky.app/profile/nba.com').platform === 'bluesky' && rl('https://hoops.substack.com').platform === 'substack' &&
+   rl('https://medium.com/@coach').platform === 'medium' && rl('https://mastodon.social/@hoops').platform === 'mastodon' &&
+   rl('https://www.eurohoops.net/en/feed/').platform === 'feed' && rl('https://www.eurohoops.net/').kind === 'publisher');
+ok('...and says why Instagram, TikTok, X, Threads, Facebook and Spotify cannot be read, and what to do instead',
+   ['https://www.instagram.com/nba/', 'https://www.tiktok.com/@nba', 'https://x.com/nba', 'https://www.threads.net/@nba', 'https://www.facebook.com/nba',
+    'https://open.spotify.com/show/x'].every(u => rl(u).refused && /feed/.test(rl(u).why)) && /YouTube channel, podcast/.test(rl('https://www.instagram.com/nba/').why) &&
+   rl('youtube.com/@x').error && CU.recogniseLink('') === null);
 const home = read('epinoia', 'home', 'index.html');
 ok('HOME: the FEED under MY FOLLOWED, its switch in its heading, its script after the card\'s',
    home.indexOf('id="feed"') > home.indexOf('id="followed"') && home.indexOf('id="feed"') < home.indexOf('id="stars"') &&

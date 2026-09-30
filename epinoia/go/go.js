@@ -1337,7 +1337,9 @@ async function loadBoard() {
   rows.forEach(x => {
     const row = list.appendChild(el('div', 'lb-row' + (x.me ? ' me' : '') + (x.rank <= 3 ? ' r' + x.rank : '')));
     row.appendChild(data('span', 'lb-rank', String(x.rank)));
-    row.appendChild(data('span', 'lb-who', '@' + x.username));
+    // everyone on a board is public and 18 or over, so everyone on it has a fan's page (0197)
+    const who = row.appendChild(data('a', 'lb-who', '@' + x.username));
+    who.href = '../fan/?u=' + encodeURIComponent(x.username);
     cols.forEach(([k]) => row.appendChild(data('span', 'lb-n' + (k === S.board.by ? ' sorted' : ''),
       k === 'km' ? kmText(Number(x.km)) : String(x[k] == null ? '—' : x[k]))));
   });

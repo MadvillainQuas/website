@@ -1,0 +1,77 @@
+/* ============================================================================
+   A LEAGUE'S COMMUNITY (community/?l=, community-page.js), on the page standard (kit/page.css, kit/sectitle.css,
+   docs/page-standard.md): what is this page's own - EPINOIA GO's Find a game set in the middle, the stands' strip,
+   the board and the Discord servers (fo-). --bc is the league's colour.
+   ============================================================================ */
+.cm{--bc:var(--lume)}
+
+/* ---- find a game: GO's module (go/nearby/), its controls in the middle like everything else on the page ---- */
+.cm-find{display:flex;flex-direction:column;align-items:center;text-align:center}
+.cm-hint{margin:0 0 14px;font-family:var(--f-ui);font-size:14px;color:var(--ink-2)}
+.cm .nb-where{width:100%;max-width:760px;justify-items:center}
+.cm .nb-actions,.cm .nb-when,.cm .nb-count{justify-content:center}
+.cm .nb-places{width:100%;max-width:520px;text-align:left}
+.cm .nb-strip,.cm .nb-detail{width:100%;text-align:left}
+
+/* ---- in the stands: stamps and photographs, a row that slides when it is longer than the page and sits in the
+   middle when it is not (the inner row is as wide as its cards; auto margins centre it only while it fits) ---- */
+.cm-strip{overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.cm-strip-in{display:flex;gap:14px;width:max-content;margin:0 auto}
+.cm-strip-in > *{flex:0 0 clamp(220px,26vw,280px);scroll-snap-align:start}
+.cm-photo{position:relative;display:block;aspect-ratio:1;overflow:hidden;background:var(--panel);border:1px solid var(--rule)}
+.cm-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.cm-photo:hover img{transform:scale(1.03)}
+.cm-photo-cap{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:2px;padding:22px 10px 8px;
+  background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;font-family:var(--f-ui);font-size:12.5px}
+.cm-photo-cap b{font-size:13px}
+
+/* ---- furthest travelled ---- */
+.cm-board{list-style:none;margin:0 auto;padding:0;display:grid;gap:8px;max-width:760px}
+.cm-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:14px;
+  padding:12px 16px;background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--rule)}
+.cm-row.r1{border-left-color:#e7b416}.cm-row.r2{border-left-color:#aab2bd}.cm-row.r3{border-left-color:#c07a3f}
+.cm-row.me{box-shadow:inset 0 0 0 2px color-mix(in oklch,var(--bc) 70%,transparent)}
+.cm-rank{grid-row:span 2;font-family:var(--f-score);font-size:26px;line-height:1;color:color-mix(in oklch,var(--bc) 65%,var(--ink))}
+.cm-who{font-family:var(--f-ui);font-weight:800;font-size:16px;color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-who:hover{text-decoration:underline;text-underline-offset:3px}
+.cm-km{grid-row:span 2;text-align:right;font-family:var(--f-score);font-size:24px;line-height:1;color:var(--ink)}
+.cm-km small{font-size:.5em;margin-left:.15em}
+.cm-sub{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- talk: the league's Discord servers (0197) ---- */
+.fo-wrap{display:flex;flex-wrap:wrap;justify-content:center;gap:calc(var(--u)*5);align-items:flex-start;max-width:1000px;margin:0 auto}
+.fo-wcol{flex:1 1 320px;max-width:480px;display:flex;flex-direction:column;gap:10px}
+.fo-widget{height:560px;border:1px solid var(--rule);background:#2b2d31}
+.fo-widget iframe{display:block;width:100%;height:100%;border:0}
+.fo-note{margin:0;font-family:var(--f-ui);font-size:12.5px;line-height:1.55;color:var(--ink-3)}
+.fo-list{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.fo-srv{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--rule)}
+.fo-srv.official{border-left-color:#5865F2}
+.fo-srv.on{box-shadow:inset 0 0 0 2px #5865F2}
+.fo-ic{flex:0 0 48px;width:48px;height:48px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#5865F2;color:#fff;
+  font-family:var(--f-score);font-size:18px}
+.fo-ic img{width:100%;height:100%;object-fit:cover;display:block}
+.fo-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px}
+.fo-whose{display:flex;gap:6px;flex-wrap:wrap}
+.fo-badge{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px 2px;border:1px solid var(--rule);
+  color:var(--ink-3);text-decoration:none}
+.fo-badge.official{background:#5865F2;border-color:#5865F2;color:#fff}
+.fo-badge.club{border-color:var(--cc,var(--rule));color:var(--ink)}
+.fo-name{margin:2px 0 0;font-family:var(--f-ui);font-weight:800;font-size:17px;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
+.fo-line{margin:0;font-family:var(--f-ui);font-size:14px;line-height:1.5;color:var(--ink-2)}
+.fo-count{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3);min-height:1em}
+.fo-count:empty{display:none}
+.fo-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.fo-join,.fo-pick{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;text-decoration:none;cursor:pointer;
+  font-family:var(--f-micro);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
+.fo-join{color:#fff;background:#5865F2;border:1px solid #5865F2}
+.fo-join:hover{background:#4752c4}
+.fo-pick{color:var(--ink);background:transparent;border:1px solid var(--rule)}
+.fo-pick:disabled{cursor:default;color:var(--ink-3)}
+
+@media (max-width:760px){
+  .fo-wcol{max-width:none} .fo-widget{height:480px}
+  .cm-strip-in > *{flex-basis:min(78vw,260px)}
+  .cm-row{grid-template-columns:34px minmax(0,1fr) auto;padding:10px 12px}
+  .cm-rank{font-size:20px} .cm-km{font-size:20px}
+}

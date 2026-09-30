@@ -390,7 +390,7 @@ console.log('\nlanguage: a story in a language the reader does not read sinks, l
   ok('a corrupt profile (g is a string, g entries are junk) loads as empty language points', (() => { const o = FR.sane({ v: 1, g: 'x' }); const o2 = FR.sane({ v: 1, g: { es: 'junk', en: [3, NOW] } }); return Object.keys(o.g).length === 0 && !o2.g.es && !!o2.g.en; })());
 }
 
-console.log('\nlanguage: the publishers\' languages come from news_source_languages() (0200), and the map stands without it');
+console.log('\nlanguage: the publishers\' languages come from news_source_languages() (0204), and the map stands without it');
 {
   const mem = () => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; };
   const cfg = { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'a' };
@@ -406,7 +406,7 @@ console.log('\nlanguage: the publishers\' languages come from news_source_langua
   ok('the next page an hour later reads it from this browser', asked === before, [asked, before]);
   const gone = FR.createNet({ fetch: async () => ({ ok: false, status: 404, json: async () => ({}) }), config: cfg, local: mem(), now: () => NOW });
   const em = await gone.languages();
-  ok('a database without 0200 (404): empty, no throw, and the seeded map still says gigantes is Spanish', Object.keys(em).length === 0 && FR.langOf(story({ source_slug: 'gigantes' })) === 'es');
+  ok('a database without 0204 (404): empty, no throw, and the seeded map still says gigantes is Spanish', Object.keys(em).length === 0 && FR.langOf(story({ source_slug: 'gigantes' })) === 'es');
   const dead = FR.createNet({ fetch: async () => { throw new Error('offline'); }, config: cfg, local: null, now: () => NOW });
   ok('offline: empty, no throw', Object.keys(await dead.languages()).length === 0);
   ok('every source 0195 seeded has a language in the map', ['basketnews','eurohoops','gigantes','solobasket','pianetabasket','bebasket','basketfaul','basketballking','b-league','2bbl','pzkosz','feb-primera','u-sports'].every(k => FR.SOURCE_LANG[k]));
@@ -459,7 +459,7 @@ console.log('\nwhat leaves the device: nothing about the reader');
   const dead = FR.createNet({ fetch: async () => { throw new Error('offline'); }, config: { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'a' }, local: null, now: () => NOW });
   store.setEnabled(true);
   const still = await FR.rankRows(pool, { store, net: dead, now: NOW, country: 'AU' });
-  ok('with every call failing (offline, or a database without 0197 / 0198): the ranking still works, with no partners and the reports at their tier', still.ranked === true && still.rows.length === 3 && still.partners.size === 0);
+  ok('with every call failing (offline, or a database without 0201 / 0202): the ranking still works, with no partners and the reports at their tier', still.ranked === true && still.rows.length === 3 && still.partners.size === 0);
   /* a database without the migrations: asked once, then left alone for a while (every page would otherwise ask) */
   {
     const l = mem(), ss = mem(); let n404 = 0;

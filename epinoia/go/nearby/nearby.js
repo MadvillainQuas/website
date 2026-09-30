@@ -235,6 +235,17 @@ const GAME_SELECT = 'id,tipoff_at,status,venue,venue_address,venue_id,home_team_
   'home:home_team_id(name,short_name,slug,colour,logo_path,home_venue_id),' +
   'away:away_team_id(name,short_name,slug,colour,logo_path),' +
   'competitions(name,season_id,seasons(leagues(id,name,slug,timezone)))';
+/* ONE LEAGUE'S GAMES: a league's Community page (community/?l=) carries this same Find a game, for its own games
+   only. The page says so on the strip (data-scope="league"); the league is the one in its address. */
+const GAME_SELECT_LEAGUE = GAME_SELECT.replace('competitions(name,season_id,seasons(leagues(',
+  'competitions!inner(name,season_id,seasons!inner(leagues!inner(');
+function scopedLeague() {
+  if (typeof document === 'undefined') return '';
+  const strip = document.getElementById('nbStrip');
+  if (!strip || strip.dataset.scope !== 'league') return '';
+  const slug = new URLSearchParams(location.search).get('l') || '';
+  return /^[a-z0-9][a-z0-9-]{0,80}$/i.test(slug) ? slug : '';
+}
 
 async function loadVenues() {
   const rows = await window.EpinoiaData.all('venues?select=id,name,city,country,address,lat,lng,place_id,pin_note&lat=not.is.null&order=id');
@@ -251,7 +262,9 @@ async function loadGames(hours) {
   drawCount();
   try {
     const from = new Date(Date.now() - LATE_MS).toISOString(), to = new Date(Date.now() + hours * 3600000).toISOString();
-    const rows = await window.EpinoiaData.all('games?select=' + GAME_SELECT +
+    const league = scopedLeague();
+    const rows = await window.EpinoiaData.all('games?select=' + (league ? GAME_SELECT_LEAGUE : GAME_SELECT) +
+      (league ? '&competitions.seasons.leagues.slug=eq.' + encodeURIComponent(league) : '') +
       '&status=in.(scheduled,live)&tipoff_at=gte.' + encodeURIComponent(from) + '&tipoff_at=lt.' + encodeURIComponent(to) +
       '&order=tipoff_at.asc,id.asc');
     S.games = rows.map(g => shape(g, S.venues));
@@ -698,5 +711,5 @@ async function boot() {
 }
 
 return { boot, metres, distanceText, whenOf, shape, nearest, placesOf, findPlaces, formOf, mapSrc, directionsHref, mapHref,
-         windowOf, fold, WINDOWS, DEFAULT_WINDOW, SHOWN, LATE_MS, GEO, KEYS };
+         windowOf, fold, WINDOWS, DEFAULT_WINDOW, SHOWN, LATE_MS, GEO, KEYS, GAME_SELECT, GAME_SELECT_LEAGUE };
 }));

@@ -311,6 +311,12 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       mode, and what the map is (en/ja/es). Words: 41 in the `go` pack plus the rail's and the bar's, ja and es.
       Chromium: 16 checks (granted location, a card, the map, the preview, windows, passport, the phone, no
       location), ja and es harvested (only names and Spanish dates left); `go-page.test.mjs`: 128.
+- [x] **7.13b One league's Find a game** (2026-09-30) - each league's **Community** page (`community/?l=`) carries this
+      same module for that league's games only. The page marks its strip `data-scope="league"`, and `nearby.js` then reads
+      the games through `competitions!inner(seasons!inner(leagues!inner(...)))` filtered by the slug in the address. It is
+      still one `EpinoiaData.all` read, and the location is still never sent. Beside it: GO's feed of the league's games
+      (`go_feed` with `p_league`) and the league's board by distance (`go_leaderboard`, `km`). docs/fan-profiles.md has
+      the page.
 - [x] **7.14 Look without an account; STAMP THIS VENUE on a club's page; UPCOMING | RESULTS on HOME** (Louie,
       2026-09-25) - three changes.
       (a) **GO can be looked at signed out.** The first-visit wall for a visitor ("Please enter a username. Sign in
