@@ -684,8 +684,8 @@ function scopeIds() {
 /* THE SEASON LINE ALONE, for Leaders and Team Stats: trimmed and without the rows, so it is
    the one data.js keeps between visits and the one the snapshots function builds (0152) --
    one small read when it is current, instead of the season's box scores. Strength of
-   schedule needs the team game rows (sos.js reads .tgs) and keeps loadSeason's full read; a
-   full read already in hand serves the line too. */
+   schedule needs each game's two team lines as well (sos.js reads .tgs): loadSeason below
+   puts them beside this line, read lean, and that serves the line too. */
 let LINES = null;
 async function loadLines() {
   const ids = scopeIds();
@@ -704,18 +704,15 @@ async function loadLines() {
   return S;
 }
 
+/* THE SEASON WITH ITS GAMES' TEAM LINES, for strength of schedule: the summed lines as every other pane has them
+   (loadLines: the snapshot or this browser's copy) and each game's two team lines by JSON path (EpinoiaData.teamGames).
+   It used to be the whole season, every player row with it, for the sake of the team rows. */
 async function loadSeason() {
   const ids = scopeIds();
   const key = ids.slice().sort().join(',');
   if (SEASON && SEASON.__comp === key) return SEASON;
-  SEASON = await window.EpinoiaData.season(ids);
-  SEASON.__comp = key;
-  const [pmeta, tmeta] = await Promise.all([
-    window.EpinoiaData.playerMeta(SEASON.players.map(p => p.id)),
-    window.EpinoiaData.teamMeta(league.id)
-  ]);
-  SEASON.players.forEach(p => Object.assign(p, pmeta[p.id] || { name: 'Player' }));
-  SEASON.teams.forEach(t => Object.assign(t, tmeta[t.id] || { name: 'Team' }));
+  const [lines, lean] = await Promise.all([loadLines(), window.EpinoiaData.teamGames(ids)]);
+  SEASON = Object.assign({}, lines, { games: lean.games, tgs: lean.tgs, __comp: key });
   return SEASON;
 }
 

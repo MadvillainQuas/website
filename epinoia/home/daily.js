@@ -45,13 +45,14 @@
 
   /* THE FORTY UPCOMING GAMES CHANGE WHEN ONE TIPS OFF, not every thirty seconds: a
      game going live is the live read's business. So they are kept between ticks
-     and read again once the first of them has tipped, or after two minutes (a
-     fixture the ingest has just added, or one moved). */
+     and read again once one of them has tipped off since they were read, or after
+     two minutes (a fixture the ingest has just added, or one moved). */
   const UP_MS = 2 * 60 * 1000;
   let upHeld = null;
   function upcoming(G, now) {
-    const first = upHeld && upHeld.rows[0];
-    const tipped = first && Date.parse(first.tipoff_at || '') <= now;
+    /* since the read, not before it: the list starts two hours back, so its first game has often tipped off already,
+       and a new read would bring the same list back */
+    const tipped = upHeld && upHeld.rows.some(g => { const t = Date.parse(g.tipoff_at || ''); return t > upHeld.at && t <= now; });
     if (upHeld && !tipped && now - upHeld.at < UP_MS) return Promise.resolve(upHeld.rows);
     const from = new Date(now - G.STALE_MS).toISOString();
     return G.upcoming(from, 40).then(rows => { upHeld = { at: now, rows }; return rows; });

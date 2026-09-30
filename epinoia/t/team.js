@@ -768,7 +768,7 @@ async function teamStats(team, kind) {
       host.appendChild(strip);
     }
     const scoped = comps.filter(c => teamScopeKind === 'all' || (c.kind || 'league') === teamScopeKind).map(c => c.id);
-    if (scoped.length) S = await D.season(scoped);
+    if (scoped.length) S = await D.season(scoped, { rows: false, trim: true });
   } catch (e) {
     host.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return;
   }

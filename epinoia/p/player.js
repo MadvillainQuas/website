@@ -655,7 +655,7 @@ async function paintCareer(pl, current, team) {
   const rows = [];
   for (const cid of shown) {
     try {
-      const S = await D.season(cid);
+      const S = await D.season(cid, { rows: false, trim: true });
       const row = S.players.find(r => r.id === pl.id) || S.players.find(r => ids.indexOf(r.id) >= 0);
       if (!row) continue;
       const c = compById.get(cid) || {};
@@ -1041,7 +1041,7 @@ async function loadCareerAccess(pl, lgRow) {
       mine = null; field = []; SCOPE_IDS = ids;
       try {
         if (ids.length) {
-          const S = await D.season(ids);
+          const S = await D.season(ids, { rows: false, trim: true });
           field = S.players;
           mine = field.find(r => r.id === pl.id) || null;
         }

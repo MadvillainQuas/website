@@ -9,7 +9,10 @@
    from the database (then kept for the next visit); the rows read and summed
    exactly as before when there is no such file (not built yet, or built from
    an older token), and never for the snapshots function itself (snapshot:false).
-   A season merged across competitions is looked up by its sorted ids.
+   A season merged across competitions is looked up by its sorted ids. A file
+   is packed (data.js packSeason: the rows as columns), and the layout before it
+   (v2, rows) is still read under its own name while the function is not yet
+   deployed again; the packing gives back exactly the rows it was given.
 
    stars.js global(): HOME's podiums from the 'stars_global' row when it was
    built from the same anchor, every league on it is one the reader can see, and
@@ -69,28 +72,117 @@ globalThis.fetch = async (url) => {
 const reset = () => { calls.length = 0; LS.clear(); SS.clear(); files = {}; };
 const asked = re => calls.filter(u => re.test(u));
 
+/* ------------------------------------------------------- the packed layout --- */
+console.log('\ndata.js packSeason: the rows as columns, and exactly the rows back');
+{
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const wire = x => JSON.parse(JSON.stringify(x));
+  const rows = [{ a: 1, b: 'x', c: null, d: [1, 2], e: { f: 1 } }, { a: 2, c: 3 }, { a: 3, b: undefined, c: 0, d: [], e: null }];
+  const p = D.pack(rows);
+  ok('the names once, the values in their order', same(p.k, ['a', 'b', 'c', 'd', 'e']) && same(p.v[0], [1, 'x', null, [1, 2], { f: 1 }]), p);
+  const back = D.unpack(wire(p));
+  ok('back as the same rows: a null stays a null, a key a row did not have (or held undefined) stays missing, and the key order holds',
+     same(back, wire(rows)) && !('b' in back[1]) && !('b' in back[2]) && back[0].c === null && same(Object.keys(back[1]), ['a', 'c']), back);
+  ok('rows whose keys come in different orders are not packed, and stay rows', Array.isArray(D.pack([{ a: 1, b: 2 }, { b: 3, a: 4 }])));
+  ok('no rows: nothing, both ways; rows already rows pass through', same(D.unpack(D.pack([])), []) && D.unpack(rows) === rows && same(D.unpack(null), []));
+  const m = { 'id-1': { name: 'A', n: 1 }, 'id-2': { name: 'B' } };
+  ok('an object of rows by id the same way, and the one from before as it is', same(D.unpackMap(wire(D.packMap(m))), m) && D.unpackMap(m) === m);
+
+  /* A SEASON THROUGH THE REAL MATHS: four clubs, six games, some with the events splits and some without,
+     on-court blocks, and a player on every sheet who never got on the floor (no BPM: the keys are missing) */
+  const S = globalThis.EpinoiaSeason;
+  let seed = 11;
+  const rnd = n => { seed = (seed * 1103515245 + 12345) % 2147483648; return Math.floor(seed / 2147483648 * n); };
+  const games = [], pgs = [], tgs = [], teamOfPlayer = new Map(), meta = {};
+  const clubs = ['ta', 'tb', 'tc', 'td'];
+  const pairs = [['ta', 'tb'], ['tc', 'td'], ['ta', 'tc'], ['tb', 'td'], ['ta', 'td'], ['tb', 'tc']];
+  const sitOf = () => ({ v: 1, all: Array.from({ length: 13 }, () => rnd(9)), second: [rnd(5), rnd(3), rnd(4)], transition: [rnd(6), rnd(3), rnd(5)],
+                         ast: [rnd(4), rnd(8), rnd(2)], unast: [rnd(3), rnd(6)], ftAst: rnd(2) });
+  pairs.forEach(([h, a], gi) => {
+    const id = 'g' + gi, covered = gi % 2 === 0;
+    games.push({ id, home_team_id: h, away_team_id: a, home_score: 70 + rnd(30), away_score: 70 + rnd(30), tipoff_at: '2026-09-0' + (gi + 1) + 'T18:00:00Z' });
+    [h, a].forEach((club, side) => {
+      const adv = { pts: 70 + rnd(30), fgm: 25 + rnd(10), fga: 60 + rnd(15), fg3m: 7 + rnd(6), fg3a: 20 + rnd(10), ftm: 10 + rnd(8), fta: 15 + rnd(8),
+                    oreb: 8 + rnd(6), dreb: 22 + rnd(8), ast: 12 + rnd(10), stl: 5 + rnd(5), blk: 2 + rnd(4), tov: 10 + rnd(8), minutes: 200,
+                    possessions: 70 + rnd(8), rimA: 20 + rnd(8), rimM: 12 + rnd(5), midA: 10 + rnd(6), midM: 4 + rnd(4) };
+      tgs.push({ game_id: id, team_idx: side, stats: { adv, paint: 30 + rnd(10), fast: rnd(15), sc: rnd(12), pot: rnd(15), bench: rnd(30), foulTot: 15 + rnd(8),
+                                                        sit: covered ? sitOf() : undefined } });
+      for (let k = 0; k < 9; k++) {
+        const pid = club + '-p' + k, min = k === 8 ? 0 : (8 + rnd(28)) * 60000;
+        teamOfPlayer.set(pid, club);
+        meta[pid] = { name: 'Player ' + pid, jersey: String(k), teamId: club, teamLogo: null };
+        pgs.push({ game_id: id, player_uuid: pid, team_idx: side, stats: {
+          min, pts: rnd(25), p2m: rnd(6), p2a: 6 + rnd(6), p3m: rnd(4), p3a: 3 + rnd(5), ftm: rnd(5), fta: 5 + rnd(3), or: rnd(4), dr: rnd(8),
+          ast: rnd(8), stl: rnd(3), blk: rnd(3), to: rnd(4), pf: rnd(5), fd: rnd(5), pm: rnd(20) - 10, rimA: rnd(5), rimM: rnd(3), midA: rnd(4), midM: rnd(2),
+          oc: { tFGA: 40 + rnd(10), tFGM: 18 + rnd(6), t3M: 4 + rnd(4), tFTA: 8 + rnd(6), tTOV: 6 + rnd(4), tOR: 4 + rnd(4), tDR: 14 + rnd(6), tPTS: 50 + rnd(20),
+                oFGA: 40 + rnd(10), oFGM: 17 + rnd(6), o3M: 4 + rnd(4), oFTA: 8 + rnd(6), oTOV: 6 + rnd(4), oOR: 4 + rnd(4), oDR: 14 + rnd(6), oPTS: 48 + rnd(20) },
+          sit: covered && k < 6 ? sitOf() : undefined } });
+      }
+    });
+  });
+  const byId = {}; games.forEach(g => { byId[g.id] = g; });
+  const players = S.players(pgs, tgs), teams = S.teams(tgs, byId);
+  S.attachBPM(players, teams, teamOfPlayer);
+  const season = { games, players, teams, teamOfPlayer, meta };
+  const rowsFile = JSON.stringify({ games, players, teams, teamOfPlayer: [...teamOfPlayer], meta });
+  const packedFile = JSON.stringify(D.packSeason(season));
+  const again = D.unpackSeason(JSON.parse(packedFile));
+  const benchman = players.find(x => x.id === 'ta-p8');
+  ok('a generated season (' + players.length + ' players of ' + Object.keys(players[0]).length + ' numbers, ' + teams.length + ' clubs) comes back exactly: every value and every key in its order',
+     same(again.players, wire(players)) && same(again.teams, wire(teams)) && same(again.games, games) && same(again.meta, meta) &&
+     same([...again.teamOfPlayer], [...teamOfPlayer]) && again.byId.g3 === again.games[3]);
+  ok('...the man who never played has no BPM before, and none after (missing, not null)', benchman && !('bpm' in benchman) &&
+     !('bpm' in again.players.find(x => x.id === 'ta-p8')) && 'bpm' in again.players.find(x => x.id === 'ta-p0'));
+  ok('...in under half the room (' + Math.round(packedFile.length / 1024) + ' KB against ' + Math.round(rowsFile.length / 1024) + ' KB)', packedFile.length < 0.5 * rowsFile.length);
+}
+
 /* ---------------------------------------------------------------- seasons --- */
 console.log('\ndata.js season(): the file named by the current token, the rows when there is none');
 const SNAP = { games: [{ id: 'g1', home_team_id: 't1', away_team_id: 't2', home_score: 80, away_score: 70, tipoff_at: '2026-09-01T18:00:00Z' }],
                players: [{ id: 'p1', gp: 1, pts: 20 }], teams: [{ id: 't1', gp: 1 }], teamOfPlayer: [['p1', 't1']] };
 const T1 = '1@2026-09-02T00:00:00+00:00';
-const F1 = 'v2-1-2026-09-02T00-00-00-00-00.json';   // layout 2, then the token (data.js snapFile, which the function calls)
+const F1 = 'v3-1-2026-09-02T00-00-00-00-00.json';   // layout 3, then the token (data.js snapFile, which the function calls)
+const F2 = 'v2-1-2026-09-02T00-00-00-00-00.json';   // the layout before: rows, not columns
+const PACKED = D.packSeason(SNAP);
 const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test(rest)
   ? { body: [{ id: 'g1', finalised_at: fin }], total: 1 }
   : { body: [], total: 0 });                // the season's games: none, so a fallback read ends at once
 {
   reset();
   routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
-  files['season/c1/' + F1] = { token: T1, data: SNAP };
+  files['season/c1/' + F1] = { token: T1, data: PACKED };
   const s = await D.season('c1', { trim: true, rows: false });
-  ok('the file named by the current token is the season', s.players.length === 1 && s.players[0].id === 'p1' && s.games[0].id === 'g1');
+  ok('the file named by the current token is the season, unpacked', s.players.length === 1 && s.players[0].id === 'p1' && s.players[0].pts === 20 &&
+     s.teams[0].id === 't1' && s.games[0].id === 'g1', s.players);
   ok('...rebuilt whole: byId and teamOfPlayer as a Map', s.byId.g1 && s.teamOfPlayer instanceof Map && s.teamOfPlayer.get('p1') === 't1');
   ok('...two requests, the token from the database and the file from the CDN, and no box scores',
-     calls.length === 2 && asked(/\/storage\/v1\/object\/public\/snapshots\/season\/c1\/v2-1-2026-09-02T00-00-00-00-00\.json$/).length === 1 &&
+     calls.length === 2 && asked(/\/storage\/v1\/object\/public\/snapshots\/season\/c1\/v3-1-2026-09-02T00-00-00-00-00\.json$/).length === 1 &&
      !asked(/player_game_stats|team_game_stats/).length, calls);
   calls.length = 0;
   const again = await D.season('c1', { trim: true, rows: false });
-  ok('kept for the next visit: one request, the token', calls.length === 1 && again.players[0].id === 'p1', calls);
+  ok('kept for the next visit: one request, the token', calls.length === 1 && again.players[0].id === 'p1' && again.players[0].pts === 20, calls);
+  const kept = JSON.parse(LS.getItem('epinoia_season_v2:c1'));
+  ok('...kept packed, as columns', kept && kept.data && Array.isArray(kept.data.players.k) && kept.data.players.v[0][kept.data.players.k.indexOf('pts')] === 20,
+     kept && kept.data && kept.data.players);
+}
+{
+  reset();
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
+  files['season/c1/' + F2] = { token: T1, data: SNAP };              // written by the function as deployed before
+  const s = await D.season('c1', { trim: true, rows: false });
+  ok('the layout before, while the function is not deployed again: its v2 file is read after the v3 name is not there',
+     s.players[0].id === 'p1' && s.players[0].pts === 20 && calls.length === 3 && asked(/\/v3-1-/).length === 1 && asked(/\/v2-1-/).length === 1 &&
+     !asked(/player_game_stats/).length, calls);
+  reset();
+  routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
+  LS.setItem('epinoia_season_v1:c9', JSON.stringify({ tok: 'x', at: Date.now(), data: SNAP }));
+  LS.setItem('someone_else', '1');
+  LS.setItem('epinoia_season_view', 'screenshot');                    // the player page's own setting, not a copy
+  files['season/c1/' + F1] = { token: T1, data: PACKED };
+  await D.season('c1', { trim: true, rows: false });
+  ok('the copies an older layout kept are thrown away on the first write, and nothing else is',
+     LS.getItem('epinoia_season_v1:c9') === null && LS.getItem('someone_else') === '1' && LS.getItem('epinoia_season_view') === 'screenshot' &&
+     !!LS.getItem('epinoia_season_v2:c1'));
 }
 {
   reset();
@@ -110,12 +202,12 @@ const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test
 {
   reset();
   routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
-  files['season/c1/' + F1] = { token: T1, data: SNAP };
+  files['season/c1/' + F1] = { token: T1, data: PACKED };
   await D.season('c1', { trim: true, rows: false, snapshot: false });
   ok('snapshot:false (the function building it) never reads a file', !asked(/storage\/v1/).length, calls);
   reset();
   routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
-  files['season/c1,c2/' + F1] = { token: T1, data: SNAP };
+  files['season/c1,c2/' + F1] = { token: T1, data: PACKED };
   const m = await D.season(['c2', 'c1'], { trim: true, rows: false });
   ok('a season merged across competitions has its own file, under the sorted ids',
      asked(/snapshots\/season\/c1,c2\//).length === 1 && m.players[0].id === 'p1' && !asked(/player_game_stats/).length, calls);

@@ -184,5 +184,20 @@ console.log('\n-- unaffected: a page never told a league at all stays on "every 
      rows === LEAGUES.length, rows);
 }
 
+console.log('\n-- the first draw of every league costs no logos: each is fetched only when its panel is on screen');
+/* THAT FIRST DRAW, "every league on the platform", was 65 logos (0.96 MB, measured 30 Sep) asked for on a
+   box score whose rail showed one of them, and on a phone whose rail is folded away. A lazy image that is
+   built but not shown is never asked for. */
+{
+  const withLogos = LEAGUES.map(l => Object.assign({}, l, { logo_path: 'league/' + l.id + '/logo.webp' }));
+  const r = rail('/epinoia/game/?g=81c0e6c5-5701-47fb-a36a-5639e612db6b', {
+    fetchImpl: async () => ({ ok: true, json: async () => withLogos })
+  });
+  await tick(); await tick(); await tick();
+  const imgs = r.nav ? r.nav.all().filter(n => n.tagName === 'IMG' && /league\/\d\/logo\.webp/.test(String(n.src))) : [];
+  ok('every league\'s logo in the rail is lazy (' + imgs.length + ' built)', imgs.length >= LEAGUES.length && imgs.every(i => i.loading === 'lazy'),
+     imgs.map(i => i.loading).join());
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

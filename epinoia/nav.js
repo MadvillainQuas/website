@@ -424,7 +424,12 @@
     const cfg = window.EPINOIA_CONFIG;
     if (l.logo_path && cfg && cfg.supabaseUrl) {
       const img = document.createElement('img');
-      /* at the size the rail draws it (0158): the uploads are 400-512 px, the plate ~30 */
+      /* at the size the rail draws it (0158): the uploads are 400-512 px, the plate ~30.
+         LAZY: fetched when its panel is on screen. The rail builds every league's row, and
+         drew them all once before it knew the page's country: measured 30 Sep, 65 logos and
+         0.96 MB on a box score whose rail showed one, and the whole list on a phone whose
+         rail is folded away. Built but not shown, a lazy image is never asked for. */
+      img.loading = 'lazy';
       img.src = (window.epinoiaLogoUrl && window.epinoiaLogoUrl(l.logo_path, 64)) ||
                 cfg.supabaseUrl + '/storage/v1/object/public/media-public/' + l.logo_path;
       img.alt = '';

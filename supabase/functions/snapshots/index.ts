@@ -180,8 +180,11 @@ async function buildSeasons(admin: any, D: any, started: number, maxBuilds: numb
     /* the names, jerseys and clubs of everybody on it, as the page's playerMeta() reads them
        signed out, so a page that has the season has its names too (data.js seedMeta) */
     const meta = await D.playerMeta((s.players || []).map((p: any) => p.id).filter(Boolean));
-    const data = { games: s.games || [], players: s.players || [], teams: s.teams || [],
-                   teamOfPlayer: Array.from((s.teamOfPlayer || new Map()).entries()), meta };
+    /* PACKED (data.js packSeason, the layout snapFile names): the rows as columns, every name once
+       instead of once a player - LNBP's 1.9 MB of JSON is 0.52 MB, 319 KB gzipped is 143 KB - and
+       unpackSeason gives back exactly the rows it was given */
+    const data = D.packSeason({ games: s.games || [], players: s.players || [], teams: s.teams || [],
+                                teamOfPlayer: s.teamOfPlayer || new Map(), meta });
     const name = snapFile(tok);
     const file = 'season/' + unit + '/' + name;
     const { error: fileErr } = await admin.storage.from(BUCKET).upload(file, JSON.stringify({ token: tok, data }),

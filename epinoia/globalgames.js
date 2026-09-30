@@ -136,16 +136,25 @@ function recent(beforeISO, offset, limit) {
 
    Resolves to a Map (league id -> game) of every league with something coming,
    or to null where the view is not there yet (the migration not pushed), and
-   nextFor then asks league by league, as it always did. */
+   nextFor then asks league by league, as it always did.
+
+   STALE ONLY BY A TIP-OFF SINCE THE READ. The view keeps a scheduled game as its
+   league's next for two hours after its tip-off, so a game that had already tipped
+   off when it was read comes back from a new read unchanged. Counting it anyway had
+   every caller read both requests again for as long as that game sat there - HOME
+   asks once per league, and measured on 30 Sep that was 69 reads of the view and
+   as many of the games behind it on one visit, where one of each does. And the
+   callers that find it stale together share one new read: they all test the same
+   held answer, so the first starts the read and the others take it. */
 const NEXT_ALL_MS = 5 * 60 * 1000;
 let nextAllP = null, nextAllAt = 0, nextAllMissing = false;
 function nextAll(opts) {
   const fresh = opts && opts.fresh;
   if (nextAllMissing) return Promise.resolve(null);
-  const held = nextAllP;
-  if (held && !fresh && Date.now() - nextAllAt < NEXT_ALL_MS) {
-    const stillAhead = held.then(m => !m || Array.from(m.values()).every(g => t(g) > Date.now()), () => false);
-    return stillAhead.then(ok => (ok ? held : readNextAll()));
+  const held = nextAllP, readAt = nextAllAt;
+  if (held && !fresh && Date.now() - readAt < NEXT_ALL_MS) {
+    const stillAhead = held.then(m => !m || Array.from(m.values()).every(g => t(g) <= readAt || t(g) > Date.now()), () => false);
+    return stillAhead.then(ok => (ok ? held : (nextAllP && nextAllP !== held ? nextAllP : readNextAll())));
   }
   return readNextAll();
 }

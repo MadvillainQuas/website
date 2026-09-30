@@ -187,8 +187,13 @@ function selectRows(rows, select) {
   return rows.map(r => {
     const o = {};
     parts.forEach(p => {
-      const m = /^(\w+):(\w+)->(\w+)$/.exec(p);
-      if (m) { const v = r[m[2]] ? r[m[2]][m[3]] : undefined; o[m[1]] = v === undefined ? null : v; }
+      /* a path of any depth: "a_pts:stats->adv->pts" reads stats.adv.pts */
+      const m = /^(\w+):(\w+)((?:->\w+)+)$/.exec(p);
+      if (m) {
+        let v = r[m[2]];
+        m[3].split('->').filter(Boolean).forEach(k => { v = v == null ? undefined : v[k]; });
+        o[m[1]] = v === undefined ? null : v;
+      }
       else o[p] = r[p];
     });
     return o;
@@ -249,7 +254,7 @@ function server(opts) {
     }
     if (table === 'team_game_stats') {
       const ids = inList(q, 'game_id');
-      return page(visibleWorld.flatMap(w => w.tgs).filter(r => ids.includes(r.game_id)));
+      return page(selectRows(visibleWorld.flatMap(w => w.tgs).filter(r => ids.includes(r.game_id)), select));
     }
     if (table === 'teams') return page(WORLD.flatMap(w => w.teams).filter(t => t.league_id === eqOf(q, 'league_id')));
     if (table === 'players') { const ids = inList(q, 'id'); return page(PLAYERS.filter(p => ids.includes(p.id))); }
@@ -266,7 +271,7 @@ function fresh(opts) {
      for the wrong reason. */
   for (let i = LS.length - 1; i >= 0; i--) {
     const k = LS.key(i);
-    if (k && k.indexOf('epinoia_season_v1:') === 0) LS.removeItem(k);
+    if (k && k.indexOf('epinoia_season_v2:') === 0) LS.removeItem(k);
   }
   net.calls = []; net.accessBodies = []; net.fail = new Set();
   const f = server(opts);
@@ -333,6 +338,38 @@ console.log('\nthe trimmed read: every key players() reads, and nothing lost');
   eq('players() over rebuilt rows equals players() over whole rows', canon(Season.players(slim, W1.tgs)), canon(Season.players(W1.pgs, W1.tgs)));
 }
 
+console.log('\nteamGames: the games and their two team lines by JSON path, for strength of schedule');
+{
+  fresh();
+  const lean = await D.teamGames(['c-bcb']);
+  const tcalls = net.calls.filter(c => c.url.includes('team_game_stats'));
+  ok('each number asked for by its path, never the whole stats blob, and no player rows at all',
+     tcalls.length > 0 && tcalls.every(c => /a_pts:stats->adv->pts/.test(decodeURIComponent(c.url)) && !/(select=|,)stats(,|&|$)/.test(decodeURIComponent(c.url))) &&
+     !net.calls.some(c => c.url.includes('player_game_stats')));
+  const src = fs.readFileSync(path.join(ROOT, 'epinoia', 'season.js'), 'utf8');
+  const body = src.slice(src.indexOf('function teamLine(stats)'), src.indexOf('function players(pgs, tgs, meta)'));
+  const advRead = [...new Set([...body.matchAll(/\ba\.(\w+)/g)].map(m => m[1]))];
+  /* adv is the block the a_ paths reach into; sit is the splits */
+  const topRead = [...new Set([...body.matchAll(/stats && stats\.(\w+)/g)].map(m => m[1]))].filter(k => k !== 'sit' && k !== 'adv');
+  const missing = advRead.filter(k => !D.TEAM_LINE_SELECT.includes('a_' + k + ':stats->adv->' + k))
+    .concat(topRead.filter(k => !D.TEAM_LINE_SELECT.includes('t_' + k + ':stats->' + k)));
+  ok('the select carries every number teamLine reads (' + advRead.length + ' under adv, ' + topRead.length + ' on top; not the splits, which the schedule never reads)',
+     advRead.length > 15 && topRead.length > 5 && missing.length === 0, 'missing ' + missing.join(', '));
+  const key = r => r.game_id + '/' + r.team_idx;
+  const bare = l => { const o = Object.assign({}, l); delete o.sit; return o; };
+  const lines = rows => rows.slice().sort((a, b) => key(a).localeCompare(key(b))).map(r => bare(Season.teamLine(r.stats)));
+  eq('each rebuilt row reads through teamLine exactly as the whole row does (bar the splits)', lines(lean.tgs), lines(W1.tgs));
+  const SOS = require(path.join(ROOT, 'epinoia', 'sos.js'));
+  const whole = await D.season(['c-bcb'], { trim: false });
+  const byGame = x => x.slice().sort((a, b) => a.gameId.localeCompare(b.gameId));
+  ok('strength of schedule over them: the same games, with the same lines, as over the whole season',
+     SOS.gameLines(lean).length === 3 && JSON.stringify(byGame(SOS.gameLines(lean))) === JSON.stringify(byGame(SOS.gameLines(whole))));
+  const league = fs.readFileSync(path.join(ROOT, 'epinoia', 'l', 'league.js'), 'utf8');
+  const ls = league.slice(league.indexOf('async function loadSeason()'), league.indexOf('/* AND WHICH CONFERENCE.'));
+  ok('the league page\'s strength of schedule reads the line it already has and these, never the season\'s rows',
+     /loadLines\(\)/.test(ls) && /EpinoiaData\.teamGames\(ids\)/.test(ls) && !/EpinoiaData\.season\(/.test(ls));
+}
+
 console.log('\ndata.js season({trim}) and playerMeta against the fake server');
 {
   fresh();
@@ -354,7 +391,7 @@ console.log('\ndata.js season({rows:false}): the line without the rows, and kept
 {
   /* the stub mirrors the DOM API (length + key(i)), which is what data.js itself walks */
   const seasonKeys = () => Array.from({ length: LS.length }, (_, i) => LS.key(i))
-    .filter(k => k && k.startsWith('epinoia_season_v1:'));
+    .filter(k => k && k.startsWith('epinoia_season_v2:'));
   const clearSeasonCache = () => seasonKeys().forEach(k => LS.removeItem(k));
 
   fresh(); clearSeasonCache();
@@ -407,27 +444,27 @@ console.log('\ndata.js season({rows:false}): the line without the rows, and kept
     const realSet = LS.setItem;
     let budget = 0;                       // 0 = refuse everything, then allow after eviction
     LS.setItem = function (k, v) {
-      if (String(k).startsWith('epinoia_season_v1:') && budget <= 0) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
-      if (String(k).startsWith('epinoia_season_v1:')) budget--;
+      if (String(k).startsWith('epinoia_season_v2:') && budget <= 0) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
+      if (String(k).startsWith('epinoia_season_v2:')) budget--;
       return realSet.call(LS, k, v);
     };
-    realSet.call(LS, 'epinoia_season_v1:old-a', JSON.stringify({ tok: 'x', at: 1000, data: {} }));
-    realSet.call(LS, 'epinoia_season_v1:old-b', JSON.stringify({ tok: 'x', at: 9000, data: {} }));
+    realSet.call(LS, 'epinoia_season_v2:old-a', JSON.stringify({ tok: 'x', at: 1000, data: {} }));
+    realSet.call(LS, 'epinoia_season_v2:old-b', JSON.stringify({ tok: 'x', at: 9000, data: {} }));
     budget = 1;                           // room appears once ONE old season is dropped
     let refusals = 0;
     LS.setItem = function (k, v) {
-      if (String(k).startsWith('epinoia_season_v1:') && k !== 'epinoia_season_v1:old-a' && k !== 'epinoia_season_v1:old-b') {
-        if (!LS.getItem('epinoia_season_v1:old-a')) return realSet.call(LS, k, v);   // the oldest went: it fits
+      if (String(k).startsWith('epinoia_season_v2:') && k !== 'epinoia_season_v2:old-a' && k !== 'epinoia_season_v2:old-b') {
+        if (!LS.getItem('epinoia_season_v2:old-a')) return realSet.call(LS, k, v);   // the oldest went: it fits
         refusals++; const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e;
       }
       return realSet.call(LS, k, v);
     };
     await D.season(['c-bcb'], { trim: true, rows: false });
     LS.setItem = realSet;
-    ok('the season read longest ago is the one dropped', !LS.getItem('epinoia_season_v1:old-a'));
-    ok('...and a newer one is kept', !!LS.getItem('epinoia_season_v1:old-b'));
+    ok('the season read longest ago is the one dropped', !LS.getItem('epinoia_season_v2:old-a'));
+    ok('...and a newer one is kept', !!LS.getItem('epinoia_season_v2:old-b'));
     ok('...and this season is stored once room is made',
-       !!LS.getItem('epinoia_season_v1:c-bcb') && refusals > 0, 'refusals=' + refusals);
+       !!LS.getItem('epinoia_season_v2:c-bcb') && refusals > 0, 'refusals=' + refusals);
     clearSeasonCache();
   }
 

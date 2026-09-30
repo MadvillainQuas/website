@@ -120,7 +120,7 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     async function draw() {
       const my = ++drawing;
       board.textContent = '';
-      const [S, M] = await Promise.all([D.season(scopeIds()), factsFor()]);
+      const [S, M] = await Promise.all([D.season(scopeIds(), { rows: false, trim: true }), factsFor()]);
       /* a newer choice is already drawing */
       if (my !== drawing) return;
       let keep = () => true;

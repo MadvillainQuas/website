@@ -196,7 +196,7 @@ const stat = Object.prototype.hasOwnProperty.call(STATS, qp.get('stat') || '') ?
       $('#more').href = new URL('../../stats/?l=' + encodeURIComponent(league.slug),
                                 location.href).href;
 
-      const S = await D.season(comp.id);
+      const S = await D.season(comp.id, { rows: false, trim: true });
       if (!S.players.length) return fail('No statistics yet');
       const meta = await D.playerMeta(S.players.map(p => p.id));
       S.players.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));

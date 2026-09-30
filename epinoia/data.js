@@ -303,7 +303,12 @@ async function all(path, page = 1000) {
    players() coerces a missing count to 0 and tests `dq`, `oc` and `sit` for
    presence. supabase/tests/global.test.mjs holds this list to every `s.<key>`
    players() reads, and checks the rows come out identical with and without `adv`.
-   The Statistics page does not use it: it reads the whole row, as it always has. */
+   EVERY PAGE THAT ONLY NEEDS THE SUMMED SEASON NOW ASKS FOR IT THIS WAY (rows: false,
+   trim: true): the Statistics page, the team and player pages, the game page's
+   positions and the table embed. Measured 30 Sep on ORLEN Basket Liga 2025-26 (275
+   games, 6,179 player rows): the whole rows are 9.9 MB (2.0 MB gzipped), these 4.7 MB
+   (0.67 MB), and the server's snapshot of the summed season, when it is current, less
+   again - and a second visit reads it from this browser. */
 const PLAYER_STAT_KEYS = Object.freeze(['min', 'pts', 'p2m', 'p2a', 'p3m', 'p3a', 'ftm', 'fta',
   'or', 'dr', 'ast', 'stl', 'blk', 'to', 'pf', 'fd', 'pm', 'ptsAst',
   'rimA', 'rimM', 'midA', 'midM', 'paint', 'fast', 'sc', 'pot', 'dq', 'oc', 'sit']);
@@ -337,9 +342,90 @@ const TRIM_SELECT = 'game_id,player_uuid,player_id,team_idx,' +
    localStorage, not session: the point is the visit AFTER this one. It is
    wrapped in try/catch throughout (private mode, a full quota) and a write that
    fails clears this file's own keys and gives up — a page that cannot cache is
-   only as slow as it was before caching existed. */
-const SEASON_CACHE_V = 'epinoia_season_v1:';
+   only as slow as it was before caching existed.
+
+   v2 IS THE PACKED LAYOUT (packSeason below): a copy is kept as columns, a quarter
+   of the room the rows took, so four times as many seasons fit in the browser's
+   five megabytes. A new key, not the old one reread, so a page still open from
+   before never meets a layout it cannot read; the v1 copies are thrown away on the
+   first write (they would otherwise hold the room the new ones need). */
+const SEASON_CACHE_V = 'epinoia_season_v2:';
 const SEASON_CACHE_MS = 6 * 60 * 60 * 1000;
+
+/* ------------------------------------------------- a season as columns ---
+   ROWS AS COLUMNS. A season line is ~345 numbers a player under the same ~345 names,
+   and as rows every name is written out again for every player: LNBP's file (268
+   players, 14 clubs) was 1.9 MB of JSON, 319 KB gzipped, most of it names. As columns
+   - the names once, then each row's values in that order - the same season is about
+   0.55 MB and 150 KB, parsed faster and kept in a quarter of the room.
+
+   EXACT BOTH WAYS: every value, the order of every row's keys, and a key a row does
+   not have (a player under the minutes BPM needs has no bpm at all, which is not a
+   null) comes back missing: `x` lists, row by row, the columns it lacks. Rows whose
+   keys come in different orders are not packed at all, and stay rows.
+     pack([{a:1,b:2},{a:3}])  ->  { k: ['a','b'], v: [[1,2],[3,null]], x: { 1: [1] } }
+   A key holding undefined is left out, as JSON.stringify leaves it out of a row. */
+function pack(rows) {
+  if (!Array.isArray(rows)) return rows;
+  const k = [], at = new Map();
+  const has = (r, n) => Object.prototype.hasOwnProperty.call(r, n) && r[n] !== undefined;
+  rows.forEach(r => Object.keys(r).forEach(n => { if (has(r, n) && !at.has(n)) { at.set(n, k.length); k.push(n); } }));
+  const x = {};
+  for (let i = 0; i < rows.length; i++) {
+    let last = -1;
+    for (const n of Object.keys(rows[i])) {
+      if (!has(rows[i], n)) continue;
+      const j = at.get(n);
+      if (j < last) return rows;                   // another order: kept as rows
+      last = j;
+    }
+  }
+  const v = rows.map((r, i) => k.map((n, j) => {
+    if (has(r, n)) return r[n];
+    (x[i] = x[i] || []).push(j);
+    return null;
+  }));
+  return { k, v, x };
+}
+/* either layout back into rows: an array is rows already (a file or a copy from before) */
+function unpack(p) {
+  if (!p) return [];
+  if (Array.isArray(p)) return p;
+  const k = p.k || [], x = p.x || {};
+  return (p.v || []).map((vals, i) => {
+    const r = {}, skip = x[i] ? new Set(x[i]) : null;
+    for (let j = 0; j < k.length; j++) if (!skip || !skip.has(j)) r[k[j]] = vals[j];
+    return r;
+  });
+}
+/* an object of rows by id (the names, playerMeta) the same way: the ids, then the rows as columns */
+function packMap(m) {
+  if (!m || typeof m !== 'object') return m;
+  const ids = Object.keys(m);
+  const c = pack(ids.map(id => m[id]));
+  return Array.isArray(c) ? m : { i: ids, c };
+}
+function unpackMap(p) {
+  if (!p || typeof p !== 'object' || !Array.isArray(p.i) || !p.c || !Array.isArray(p.c.k)) return p || null;
+  const rows = unpack(p.c), out = {};
+  p.i.forEach((id, n) => { out[id] = rows[n]; });
+  return out;
+}
+/* A SEASON AS A FILE OR A COPY HOLDS IT - the snapshots function writes its files with this, and this
+   browser keeps its copies with it - and back again from either layout into what season() returns */
+function packSeason(d) {
+  return { games: d.games || [], players: pack(d.players || []), teams: pack(d.teams || []),
+           teamOfPlayer: d.teamOfPlayer instanceof Map ? [...d.teamOfPlayer] : (d.teamOfPlayer || []),
+           meta: d.meta ? packMap(d.meta) : undefined };
+}
+function unpackSeason(d) {
+  const games = d.games || [], byId = {};
+  games.forEach(g => { byId[g.id] = g; });
+  const meta = unpackMap(d.meta);
+  seedMeta(meta);
+  return { games, byId, players: unpack(d.players), teams: unpack(d.teams),
+           teamOfPlayer: new Map(d.teamOfPlayer || []), meta: meta || null };
+}
 
 async function seasonToken(scope) {
   try {
@@ -361,24 +447,26 @@ function seasonCacheGet(key, token) {
     const j = JSON.parse(s);
     if (!j || j.tok !== token) return null;
     if (typeof j.at !== 'number' || Date.now() - j.at > SEASON_CACHE_MS || Date.now() < j.at) return null;
-    const d = j.data || {};
-    const byId = {};
-    (d.games || []).forEach(g => { byId[g.id] = g; });
-    seedMeta(d.meta);
-    return { games: d.games || [], byId, players: d.players || [], teams: d.teams || [],
-             teamOfPlayer: new Map(d.teamOfPlayer || []), meta: d.meta || null };
+    return unpackSeason(j.data || {});
   } catch (_) { return null; }
 }
 
 function seasonCachePut(key, token, out) {
   if (!token) return;
-  const body = JSON.stringify({ tok: token, at: Date.now(), data: {
-    games: out.games, players: out.players, teams: out.teams,
-    teamOfPlayer: [...(out.teamOfPlayer || new Map())],
-    meta: out.meta || undefined
-  } });
+  const body = JSON.stringify({ tok: token, at: Date.now(), data: packSeason(out) });
   const ls = root && root.localStorage;
   if (!ls) return;
+  /* the copies an older layout kept (epinoia_season_v1: and before): nothing reads them now, and a page
+     still open from before may write one yet, so they are looked for at every write (a few dozen keys) */
+  try {
+    const old = [];
+    for (let i = 0; i < ls.length; i++) {
+      const k = ls.key(i);
+      /* the version and its colon, exactly: 'epinoia_season_view' is the player page's own setting */
+      if (k && /^epinoia_season_v\d+:/.test(k) && k.indexOf(SEASON_CACHE_V) !== 0) old.push(k);
+    }
+    old.forEach(k => ls.removeItem(k));
+  } catch (_) { /* a browser that will not say: left as they are */ }
   try { ls.setItem(key, body); return; } catch (_) { /* full: make room below */ }
 
   /* FULL. Make room by dropping the seasons READ LONGEST AGO, not all of them: a platform
@@ -421,22 +509,23 @@ function seasonCachePut(key, token, out) {
    name, for everybody at once. The snapshots function names its files with this very function
    (its shared copy of this file), so the two cannot disagree.
      154@2026-09-23T23:05:29.983+00:00  ->  v2-154-2026-09-23T23-05-29-983-00-00.json */
-const SEASON_FILE_V = 2;       // 2: `meta`, every player's playerMeta() (seedMeta below)
-function snapFile(token) { return 'v' + SEASON_FILE_V + '-' + String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json'; }
+const SEASON_FILE_V = 3;       // 2: `meta`, every player's playerMeta() (seedMeta below); 3: packed (packSeason)
+function snapFile(token, v) { return 'v' + (v || SEASON_FILE_V) + '-' + String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json'; }
+/* THE LAYOUT BEFORE, WHILE THE NEW ONE IS NOT THERE: the function writes its files in the layout of the copy
+   of this file it was deployed with, so until it is deployed again the files are still v2, and a v2 file is
+   still the season (unpackSeason reads both). Asked only when the v3 name is not there. */
 async function seasonSnapshot(ids, token) {
-  try {
-    const c = CFG();
-    const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/season/${ids}/${snapFile(token)}`);
-    if (!r.ok) return null;
-    const j = await r.json();
-    if (!j || j.token !== token || !j.data) return null;
-    const d = j.data;
-    const byId = {};
-    (d.games || []).forEach(g => { byId[g.id] = g; });
-    seedMeta(d.meta);
-    return { games: d.games || [], byId, players: d.players || [], teams: d.teams || [],
-             teamOfPlayer: new Map(d.teamOfPlayer || []), meta: d.meta || null };
-  } catch (_) { return null; }
+  const c = CFG();
+  for (const v of [SEASON_FILE_V, 2]) {
+    try {
+      const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/season/${ids}/${snapFile(token, v)}`);
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (!j || j.token !== token || !j.data) continue;
+      return unpackSeason(j.data);
+    } catch (_) { /* the older name, then the long way */ }
+  }
+  return null;
 }
 
 /* THE NAMES RIDE WITH THE SEASON. A season file also carries playerMeta() for every player on
@@ -562,6 +651,36 @@ async function season(competitionId, opts) {
   if (keepRows) { out.pgs = pgs; out.tgs = tgs; }
   else if (ckey) seasonCachePut(ckey, token, out);
   return out;
+}
+
+/* --------------------------------------------------- the games' team lines ---
+   THE GAMES AND THEIR TWO TEAM LINES, NOTHING ELSE. Strength of schedule (sos.js
+   gameLines) reads each finished game's two sides through EpinoiaSeason.teamLine,
+   which reads a dozen numbers of a team row. Its page used to read the whole season
+   for them - every player row with it, ten times the size - so this asks for the
+   games and those numbers by JSON path, and puts each row's `stats` back together in
+   the shape teamLine reads (an `adv` block and the top-level counts). */
+const TEAM_LINE_ADV = Object.freeze(['pts', 'fgm', 'fga', 'fg3m', 'fg3a', 'ftm', 'fta', 'oreb', 'dreb', 'ast', 'stl', 'blk',
+  'tov', 'minutes', 'possessions', 'rimA', 'rimM', 'midA', 'midM']);
+const TEAM_LINE_TOP = Object.freeze(['pts', 'toTot', 'paint', 'fast', 'sc', 'pot', 'bench', 'foulTot']);
+const TEAM_LINE_SELECT = 'game_id,team_idx,' + TEAM_LINE_ADV.map(k => 'a_' + k + ':stats->adv->' + k).join(',') + ',' +
+  TEAM_LINE_TOP.map(k => 't_' + k + ':stats->' + k).join(',');
+function untrimTeam(r) {
+  const adv = {}, stats = { adv };
+  TEAM_LINE_ADV.forEach(k => { const v = r['a_' + k]; if (v != null) adv[k] = v; });
+  TEAM_LINE_TOP.forEach(k => { const v = r['t_' + k]; if (v != null) stats[k] = v; });
+  return { game_id: r.game_id, team_idx: r.team_idx, stats };
+}
+async function teamGames(competitionId) {
+  const list = (Array.isArray(competitionId) ? competitionId : [competitionId]).filter(Boolean);
+  if (!list.length) return { games: [], tgs: [] };
+  const scope = list.length === 1 ? `competition_id=eq.${list[0]}` : `competition_id=in.(${list.join(',')})`;
+  const games = await all(`games?${scope}` +
+    `&status=in.(final,finalising)&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`);
+  const ids = games.map(g => g.id), chunks = [];
+  for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
+  const parts = await Promise.all(chunks.map(c => all(`team_game_stats?game_id=in.(${c.join(',')})&select=${TEAM_LINE_SELECT}`)));
+  return { games, tgs: parts.flat().map(untrimTeam) };
 }
 
 /* ------------------------------------------------------ a window of games ---
@@ -837,6 +956,7 @@ function pickSeason(seasons, ref) {
          seasons[0];
 }
 
-return { get, all, season, statsForGames, stints, events, gameLog, playerMeta, teamMeta,
-         releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile };
+return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, playerMeta, teamMeta,
+         releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile,
+         pack, unpack, packMap, unpackMap, packSeason, unpackSeason };
 }));

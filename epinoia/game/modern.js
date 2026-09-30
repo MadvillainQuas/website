@@ -677,7 +677,7 @@
     if (!D || !D.season || !cid) return Promise.resolve(false);
     seasonLoading = (async () => {
       try {
-        const r = await D.season(cid);
+        const r = await D.season(cid, { rows: false, trim: true });
         const map = {};
         (r.players || []).forEach(p => { if (p.bpm_pos != null) map[p.id] = { pos: p.bpm_pos, min: p.min || 0 }; });
         seasonPos = map;

@@ -342,6 +342,9 @@ section('every league\'s next game in two reads (0152 league_next_games)');
      and one read fetches those games in full. */
   const seen = [];
   let answer = () => [];
+  /* the page's clock, moved by the test: a game tips off when the test says so */
+  let clock = NOW;
+  class Clock extends Date { constructor(...a) { if (a.length) super(...a); else super(clock); } static now() { return clock; } }
   const sandbox = {
     EPINOIA_CONFIG: { supabaseUrl: 'https://ref.supabase.co', supabaseAnonKey: 'anon' },
     fetch: async (url, o) => {
@@ -349,7 +352,7 @@ section('every league\'s next game in two reads (0152 league_next_games)');
       const body = answer(url);
       return { ok: true, status: 200, json: async () => body, headers: { get: () => null } };
     },
-    setTimeout, clearTimeout, Date, Promise, JSON, Math, Map, Set, encodeURIComponent, isFinite, parseInt, String, Array, Object
+    setTimeout, clearTimeout, Date: Clock, Promise, JSON, Math, Map, Set, encodeURIComponent, isFinite, parseInt, String, Array, Object
   };
   sandbox.globalThis = sandbox; sandbox.self = sandbox;
   vm.createContext(sandbox);
@@ -371,13 +374,27 @@ section('every league\'s next game in two reads (0152 league_next_games)');
   ok('...and a league with nothing coming is null, not asked for', c === null && seen.length === 0);
   await W.nextAll();
   ok('kept between calls', seen.length === 0);
-  games = [game('nb', L.bcb, -400 * D), game('ns', L.slbm, 401 * D)];
+  /* a scheduled game stays its league's next for two hours after its tip-off (the view's own rule), so one read
+     after it had tipped off is the answer a new read would give */
+  games = [game('nb', L.bcb, -30 * 60 * 1000), game('ns', L.slbm, 401 * D)];
   await W.nextAll({ fresh: true });
   seen.length = 0;
-  games = [game('nb2', L.bcb, 402 * D), game('ns', L.slbm, 401 * D)];
-  heads[0].game_id = 'nb2';
-  const again = await W.nextFor('l-bcb');
-  ok('read again once one of its games has tipped off', seen.length === 2 && again.id === 'nb2', seen.length);
+  const herd = await Promise.all(Array.from({ length: 69 }, () => W.nextFor('l-bcb')));
+  ok('a game that had tipped off when it was read is no reason to read again: 69 leagues asking, no request',
+     seen.length === 0 && herd.every(g => g.id === 'nb'), seen.length);
+  /* a game that tips off AFTER the read: its league's next game may be somebody else now */
+  games = [game('nb', L.bcb, -30 * 60 * 1000), game('ns', L.slbm, 60 * 1000)];
+  await W.nextAll({ fresh: true });
+  seen.length = 0;
+  clock = NOW + 2 * 60 * 1000;
+  games = [game('nb', L.bcb, -30 * 60 * 1000), game('ns2', L.slbm, 402 * D)];
+  heads[1].game_id = 'ns2';
+  const again = await Promise.all(Array.from({ length: 69 }, (_, i) => W.nextFor(i % 2 ? 'l-slbm' : 'l-bcb')));
+  ok('read again once one of its games has tipped off since: once, however many ask at the same moment',
+     seen.length === 2 && again.filter((g, i) => i % 2).every(g => g.id === 'ns2'), seen.length);
+  seen.length = 0;
+  await W.nextFor('l-slbm');
+  ok('...and that new read is kept', seen.length === 0);
 }
 
 /* ------------------------------------------------------------------------- */
