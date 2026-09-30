@@ -158,6 +158,17 @@ function mountSources(o) {
   host.textContent = '';
   const box = el('div');
   host.appendChild(box);
+  const NR = () => globalThis.EpinoiaNewsRefresh || null;
+
+  /* "LOAD ALL" (platform console only): every publisher on, read now by the news-refresh function; one control that lives
+     through every redraw, so what it said stays under it while the list is drawn again with the new counts */
+  let allCtl = null;
+  function loadAll() {
+    if (allCtl || !NR() || lg()) return allCtl;
+    allCtl = NR().control({ label: 'Load all now', title: 'Read every publisher’s feed now instead of waiting for the half-hourly read',
+      run: () => NR().call({ sb, all: true }), onDone: () => draw() });
+    return allCtl;
+  }
 
   async function draw() {
     const league = lg();
@@ -177,6 +188,11 @@ function mountSources(o) {
         'on the league’s news page and in every reader’s News. A logo is found on the site when you give none.'
       : 'The sites every reader sees in News: each story also lands on the news page of every league it is about ' +
         '(its league tags). Read every half hour; a logo is found on the site when you give none.'));
+    /* the button that does not wait for the half hour (needs the news-refresh function; it says so when it is not there) */
+    if (NR() && !league) {
+      const ctl = loadAll();
+      if (ctl && (data || []).length) box.appendChild(row(ctl.box));
+    }
     (data || []).forEach(s => {
       const line = el('div');
       line.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--rule)';
@@ -184,10 +200,23 @@ function mountSources(o) {
       logo.style.cssText = 'width:26px;height:26px;flex:none;display:grid;place-items:center;overflow:hidden;background:#fff;border:1px solid var(--rule)';
       if (s.logo_url) { const i = el('img'); i.src = s.logo_url; i.alt = ''; i.style.cssText = 'width:90%;height:90%;object-fit:contain'; logo.appendChild(i); }
       const name = el('b', null, s.name);
-      const state = !s.enabled ? 'off' : s.last_error ? 'failing: ' + s.last_error : s.last_ok_at ? 'read ' + when(s.last_ok_at) : 'not read yet';
-      const meta = el('span', 'empty', state + ' · ' + (s.item_count || 0) + ' stories · ' + s.feed_url);
+      const stateOf = x => !x.enabled ? 'off' : x.last_error ? 'failing: ' + x.last_error : x.last_ok_at ? 'read ' + when(x.last_ok_at) : 'not read yet';
+      const meta = el('span', 'empty', stateOf(s) + ' · ' + (s.item_count || 0) + ' stories · ' + s.feed_url);
       meta.style.cssText = 'flex:1 1 300px;margin:0;overflow-wrap:anywhere' + (s.last_error && s.enabled ? ';color:var(--flare)' : '');
       const page = el('a', 'ep-btn mini', 'page'); page.href = (o.base || '../') + 'news/?s=' + encodeURIComponent(s.slug);
+      /* LOAD NOW: this source's feed read at once. What it says stays on the row; the counts above it are brought up to date. */
+      const load = NR() ? NR().control({
+        label: 'Load now', title: s.enabled ? 'Read ' + s.name + '’s feed now instead of waiting for the half-hourly read' : 'Switch it on first',
+        run: () => NR().call({ sb, source: s.slug }),
+        onEnd: out => {
+          s.last_fetched_at = new Date().toISOString();
+          if (out.ok) { s.last_ok_at = s.last_fetched_at; s.last_error = null; s.item_count = out.total; }
+          else if (out.raw && out.raw.last_error) s.last_error = out.raw.last_error;
+          meta.textContent = stateOf(s) + ' · ' + (s.item_count || 0) + ' stories · ' + s.feed_url;
+          meta.style.color = s.last_error && s.enabled ? 'var(--flare)' : '';
+        }
+      }) : null;
+      if (load && !s.enabled) load.button.disabled = true;
       const onoff = btn(s.enabled ? 'switch off' : 'switch on');
       onoff.addEventListener('click', async () => {
         const { error: e } = await sb.rpc('update_news_source', { p_id: s.id, p_name: s.name, p_site_url: s.site_url, p_feed_url: s.feed_url,
@@ -206,7 +235,9 @@ function mountSources(o) {
         say(s.name + ' is removed.', 'ok');
         draw();
       });
-      line.append(logo, name, meta, page, onoff, edit, del);
+      line.append(logo, name, meta, page);
+      if (load) line.appendChild(load.box);
+      line.append(onoff, edit, del);
       box.appendChild(line);
     });
 

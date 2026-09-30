@@ -314,5 +314,49 @@ dry = FakeDb([{"id": "s1", "name": "Hoops", "feed_url": "https://hoops.example/f
 F.run(dry, get=get, dry_run=True, log=lambda m: None, now=lambda: NOW, sleep=lambda s: None, page=page)
 ok("a dry run reads and writes nothing", dry.rows == [] and dry.marks == {} and dry.pruned == [])
 
+# ---- THE SHARED FIXTURES (scripts/news/fixtures/parity/): what the Python reader makes of each feed is what the "Load now"
+# button's parser (supabase/functions/_shared/newsfeed.js, held to the same expected.json by supabase/tests/news-refresh.test.mjs)
+# must make of it. `python scripts/news/fetch_feeds_test.py --write-parity` rewrites expected.json from THIS reader: run it
+# only when the rule was changed here on purpose, and change the JavaScript in the same commit.
+import json  # noqa: E402
+
+PARITY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "parity")
+PARITY_FEEDS = ["rss2.xml", "atom.xml", "rdf.xml", "jsonfeed.json", "huge.xml", "page.html"]
+PARITY_DATES = ["Wed, 30 Sep 2026 10:00:00 +0100", "Wed, 30 Sep 2026 10:00:00 GMT", "30 Sep 2026 10:00:00 GMT", "Tue, 29 Sep 26 10:00 EST",
+                "Wed, 30 Sep 2026 10:00:00 -0000", "Wed, 30 Sep 2026 10:00:00", "2026-09-30T08:15:00-07:00", "2026-09-30T09:00:00Z",
+                "2026-09-25T18:00:00.123Z", "2026-09-20", "2026-09-20 10:30:00", "9/15/2026 10:15:00 PM", "9/15/2026 12:05 AM",
+                "15.09.2026", "30.09.2026", "9/30/2026", "13/9/2026 08:00", "31/13/2026", "2026-02-30", "Someday soon", "", "Fri, 01 Jan 2027 00:00:00 GMT",
+                "Wed, 30 Sep 2026 12:04:00 GMT", "Wed, 30 Sep 2026 12:06:00 GMT", "2026-09-30T14:00:00+02:00", "Mon, 3 Aug 2026 7:05:09 +0530"]
+
+
+def parity_of(name):
+    body = open(os.path.join(PARITY, name), "rb").read()
+    try:
+        meta, items = F.parse_feed(body, "https://hoops.example/en/", NOW)
+    except ValueError:
+        return {"error": "not a feed"}
+    return {"meta": meta, "items": items}
+
+
+def parity_all():
+    out = {n: parity_of(n) for n in PARITY_FEEDS}
+    out["dates"] = [(lambda d: d.isoformat() if d else None)(F.when(v, NOW)) for v in PARITY_DATES]
+    out["dates_in"] = PARITY_DATES
+    return json.loads(json.dumps(out, ensure_ascii=False))
+
+
+if "--write-parity" in sys.argv:
+    with open(os.path.join(PARITY, "expected.json"), "w", encoding="utf-8") as fh:
+        json.dump(parity_all(), fh, ensure_ascii=False, indent=1)
+        fh.write("\n")
+    print("wrote expected.json")
+else:
+    want = json.load(open(os.path.join(PARITY, "expected.json"), encoding="utf-8"))
+    got = parity_all()
+    for k in got:
+        ok("the shared fixture " + k + " reads as expected.json says", got[k] == want.get(k), (got[k], want.get(k)) if got[k] != want.get(k) else None)
+    ok("a feed of sixty stories is cut to the newest forty, each once", len(got["huge.xml"]["items"]) == F.PER_READ)
+    ok("an HTML page is not a feed", got["page.html"] == {"error": "not a feed"})
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

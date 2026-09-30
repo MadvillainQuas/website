@@ -1,0 +1,3 @@
+<?xml version="1.0"?>
+<!DOCTYPE rss [ <!ENTITY a "aaaaaaaaaa"> <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;"> ]>
+<rss version="2.0"><channel><title>x</title><item><title>Entity &b; stays a name</title><link>https://dtd.example/1</link><guid>1</guid><pubDate>Mon, 28 Sep 2026 10:00:00 GMT</pubDate></item></channel></rss>

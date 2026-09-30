@@ -1,0 +1,687 @@
+{
+ "rss2.xml": {
+  "meta": {
+   "title": "Hoops Site",
+   "home": "https://hoops.example/en/",
+   "image": "https://hoops.example/logo.png"
+  },
+  "items": [
+   {
+    "guid": "g-3",
+    "url": "https://hoops.example/news/3",
+    "title": "Bad date, future date",
+    "summary": "No usable date: dated by the read.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T12:00:00+00:00"
+   },
+   {
+    "guid": "g-4",
+    "url": "https://hoops.example/news/4",
+    "title": "Far future",
+    "summary": "From the full text, since the summary is empty.",
+    "image_url": "https://hoops.example/img/lead.webp",
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T11:59:59+00:00"
+   },
+   {
+    "guid": "g-6",
+    "url": "https://hoops.example/up/6",
+    "title": "Day only, day first",
+    "summary": "Dated today: dated by the read.",
+    "image_url": "https://cdn.hoops.example/it.jpg",
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T11:59:58+00:00"
+   },
+   {
+    "guid": "https://hoops.example/?p=1",
+    "url": "https://hoops.example/news/1",
+    "title": "Big & bold: a ‘signing’",
+    "summary": "Opening lines with an and a “quote”. Second para.",
+    "image_url": "https://cdn.hoops.example/one.jpg",
+    "author": "Ana Pérez",
+    "tags": [
+     "EuroLeague",
+     "Transfers &"
+    ],
+    "published_at": "2026-09-30T09:00:00+00:00"
+   },
+   {
+    "guid": "https://hoops.example/news/2?utm=1&x=2",
+    "url": "https://hoops.example/news/2?utm=1&x=2",
+    "title": "Second story",
+    "summary": "Plain text summary, escaped markup & more.",
+    "image_url": "https://cdn.hoops.example/two.png",
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-29T23:30:00+00:00"
+   },
+   {
+    "guid": "g-7",
+    "url": "https://hoops.example/news/7",
+    "title": "Same date A",
+    "summary": "a",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-20T12:00:00+00:00"
+   },
+   {
+    "guid": "g-8",
+    "url": "https://hoops.example/news/8",
+    "title": "Same date B",
+    "summary": "b",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-20T11:59:59+00:00"
+   },
+   {
+    "guid": "g-11",
+    "url": "https://hoops.example/news/11",
+    "title": "An",
+    "summary": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat…",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-19T09:00:00+00:00"
+   },
+   {
+    "guid": "g-5",
+    "url": "https://hoops.example/en/news/5",
+    "title": "Numeric date, month first",
+    "summary": "Relative link with no leading slash.",
+    "image_url": "https://cdn.hoops.example/group.jpg",
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-15T22:15:00+00:00"
+   }
+  ]
+ },
+ "atom.xml": {
+  "meta": {
+   "title": "British Championship Basketball",
+   "home": "https://bcb.example/blogs/news",
+   "image": "https://bcb.example/icon.png"
+  },
+  "items": [
+   {
+    "guid": "tag:bcb.example,2026:1",
+    "url": "https://bcb.example/blogs/news/one",
+    "title": "Finals & fixtures",
+    "summary": "The season starts on Friday.",
+    "image_url": "https://cdn.bcb.example/thumb.jpg",
+    "author": "Sam, Kim",
+    "tags": [
+     "BCB",
+     "Fixtures"
+    ],
+    "published_at": "2026-09-30T12:00:00+00:00"
+   },
+   {
+    "guid": "tag:bcb.example,2026:4",
+    "url": "https://bcb.example/blogs/news/four",
+    "title": "No date at all",
+    "summary": "Group description",
+    "image_url": "https://cdn.bcb.example/g.jpg",
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T11:59:59+00:00"
+   },
+   {
+    "guid": "tag:bcb.example,2026:2",
+    "url": "https://bcb.example/blogs/news/two",
+    "title": "An xhtml title",
+    "summary": "Body from xhtml content.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-25T18:00:00.123000+00:00"
+   }
+  ]
+ },
+ "rdf.xml": {
+  "meta": {
+   "title": "",
+   "home": null,
+   "image": null
+  },
+  "items": [
+   {
+    "guid": "https://old.example/a",
+    "url": "https://old.example/a",
+    "title": "RDF story",
+    "summary": "Old-style feed.",
+    "image_url": null,
+    "author": null,
+    "tags": [
+     "News"
+    ],
+    "published_at": "2026-09-28T08:00:00+00:00"
+   },
+   {
+    "guid": "https://old.example/b",
+    "url": "https://old.example/b",
+    "title": "Second RDF story",
+    "summary": "",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-27T00:00:00+00:00"
+   }
+  ]
+ },
+ "jsonfeed.json": {
+  "meta": {
+   "title": "JSON Hoops",
+   "home": "https://json.example/",
+   "image": "https://json.example/i.png"
+  },
+  "items": [
+   {
+    "guid": "https://json.example/4",
+    "url": "https://json.example/4",
+    "title": "No id",
+    "summary": "The url is the guid.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T12:00:00+00:00"
+   },
+   {
+    "guid": "1",
+    "url": "https://json.example/1",
+    "title": "First & best",
+    "summary": "Body",
+    "image_url": "https://json.example/lead.jpg",
+    "author": "Lee, Mo",
+    "tags": [
+     "a",
+     "b"
+    ],
+    "published_at": "2026-09-30T06:00:00+00:00"
+   },
+   {
+    "guid": "2",
+    "url": "https://elsewhere.example/2",
+    "title": "External",
+    "summary": "Text <not> markup & more",
+    "image_url": null,
+    "author": "Solo",
+    "tags": [],
+    "published_at": "2026-09-29T05:00:00+00:00"
+   }
+  ]
+ },
+ "huge.xml": {
+  "meta": {
+   "title": "Big",
+   "home": "https://big.example/",
+   "image": null
+  },
+  "items": [
+   {
+    "guid": "big-1",
+    "url": "https://big.example/1",
+    "title": "Story 01",
+    "summary": "Story number 1.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T01:00:00+00:00"
+   },
+   {
+    "guid": "big-0",
+    "url": "https://big.example/0",
+    "title": "Story 00",
+    "summary": "Story number 0.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-30T00:00:00+00:00"
+   },
+   {
+    "guid": "big-3",
+    "url": "https://big.example/3",
+    "title": "Story 03",
+    "summary": "Story number 3.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-29T03:00:00+00:00"
+   },
+   {
+    "guid": "big-2",
+    "url": "https://big.example/2",
+    "title": "Story 02",
+    "summary": "Story number 2.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-29T02:00:00+00:00"
+   },
+   {
+    "guid": "big-5",
+    "url": "https://big.example/5",
+    "title": "Story 05",
+    "summary": "Story number 5.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-28T05:00:00+00:00"
+   },
+   {
+    "guid": "big-4",
+    "url": "https://big.example/4",
+    "title": "Story 04",
+    "summary": "Story number 4.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-28T04:00:00+00:00"
+   },
+   {
+    "guid": "big-7",
+    "url": "https://big.example/7",
+    "title": "Story 07",
+    "summary": "Story number 7.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-27T07:00:00+00:00"
+   },
+   {
+    "guid": "big-6",
+    "url": "https://big.example/6",
+    "title": "Story 06",
+    "summary": "Story number 6.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-27T06:00:00+00:00"
+   },
+   {
+    "guid": "big-9",
+    "url": "https://big.example/9",
+    "title": "Story 09",
+    "summary": "Story number 9.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-26T09:00:00+00:00"
+   },
+   {
+    "guid": "big-8",
+    "url": "https://big.example/8",
+    "title": "Story 08",
+    "summary": "Story number 8.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-26T08:00:00+00:00"
+   },
+   {
+    "guid": "big-11",
+    "url": "https://big.example/11",
+    "title": "Story 11",
+    "summary": "Story number 11.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-25T11:00:00+00:00"
+   },
+   {
+    "guid": "big-10",
+    "url": "https://big.example/10",
+    "title": "Story 10",
+    "summary": "Story number 10.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-25T10:00:00+00:00"
+   },
+   {
+    "guid": "big-13",
+    "url": "https://big.example/13",
+    "title": "Story 13",
+    "summary": "Story number 13.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-24T13:00:00+00:00"
+   },
+   {
+    "guid": "big-12",
+    "url": "https://big.example/12",
+    "title": "Story 12",
+    "summary": "Story number 12.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-24T12:00:00+00:00"
+   },
+   {
+    "guid": "big-15",
+    "url": "https://big.example/15",
+    "title": "Story 15",
+    "summary": "Story number 15.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-23T15:00:00+00:00"
+   },
+   {
+    "guid": "big-14",
+    "url": "https://big.example/14",
+    "title": "Story 14",
+    "summary": "Story number 14.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-23T14:00:00+00:00"
+   },
+   {
+    "guid": "big-17",
+    "url": "https://big.example/17",
+    "title": "Story 17",
+    "summary": "Story number 17.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-22T17:00:00+00:00"
+   },
+   {
+    "guid": "big-16",
+    "url": "https://big.example/16",
+    "title": "Story 16",
+    "summary": "Story number 16.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-22T16:00:00+00:00"
+   },
+   {
+    "guid": "big-19",
+    "url": "https://big.example/19",
+    "title": "Story 19",
+    "summary": "Story number 19.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-21T19:00:00+00:00"
+   },
+   {
+    "guid": "big-18",
+    "url": "https://big.example/18",
+    "title": "Story 18",
+    "summary": "Story number 18.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-21T18:00:00+00:00"
+   },
+   {
+    "guid": "big-21",
+    "url": "https://big.example/21",
+    "title": "Story 21",
+    "summary": "Story number 21.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-20T21:00:00+00:00"
+   },
+   {
+    "guid": "big-20",
+    "url": "https://big.example/20",
+    "title": "Story 20",
+    "summary": "Story number 20.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-20T20:00:00+00:00"
+   },
+   {
+    "guid": "big-23",
+    "url": "https://big.example/23",
+    "title": "Story 23",
+    "summary": "Story number 23.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-19T23:00:00+00:00"
+   },
+   {
+    "guid": "big-22",
+    "url": "https://big.example/22",
+    "title": "Story 22",
+    "summary": "Story number 22.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-19T22:00:00+00:00"
+   },
+   {
+    "guid": "big-25",
+    "url": "https://big.example/25",
+    "title": "Story 25",
+    "summary": "Story number 25.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-18T01:00:00+00:00"
+   },
+   {
+    "guid": "big-24",
+    "url": "https://big.example/24",
+    "title": "Story 24",
+    "summary": "Story number 24.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-18T00:00:00+00:00"
+   },
+   {
+    "guid": "big-27",
+    "url": "https://big.example/27",
+    "title": "Story 27",
+    "summary": "Story number 27.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-17T03:00:00+00:00"
+   },
+   {
+    "guid": "big-26",
+    "url": "https://big.example/26",
+    "title": "Story 26",
+    "summary": "Story number 26.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-17T02:00:00+00:00"
+   },
+   {
+    "guid": "big-29",
+    "url": "https://big.example/29",
+    "title": "Story 29",
+    "summary": "Story number 29.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-16T05:00:00+00:00"
+   },
+   {
+    "guid": "big-28",
+    "url": "https://big.example/28",
+    "title": "Story 28",
+    "summary": "Story number 28.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-16T04:00:00+00:00"
+   },
+   {
+    "guid": "big-31",
+    "url": "https://big.example/31",
+    "title": "Story 31",
+    "summary": "Story number 31.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-15T07:00:00+00:00"
+   },
+   {
+    "guid": "big-30",
+    "url": "https://big.example/30",
+    "title": "Story 30",
+    "summary": "Story number 30.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-15T06:00:00+00:00"
+   },
+   {
+    "guid": "big-33",
+    "url": "https://big.example/33",
+    "title": "Story 33",
+    "summary": "Story number 33.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-14T09:00:00+00:00"
+   },
+   {
+    "guid": "big-32",
+    "url": "https://big.example/32",
+    "title": "Story 32",
+    "summary": "Story number 32.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-14T08:00:00+00:00"
+   },
+   {
+    "guid": "big-35",
+    "url": "https://big.example/35",
+    "title": "Story 35",
+    "summary": "Story number 35.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-13T11:00:00+00:00"
+   },
+   {
+    "guid": "big-34",
+    "url": "https://big.example/34",
+    "title": "Story 34",
+    "summary": "Story number 34.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-13T10:00:00+00:00"
+   },
+   {
+    "guid": "big-37",
+    "url": "https://big.example/37",
+    "title": "Story 37",
+    "summary": "Story number 37.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-12T13:00:00+00:00"
+   },
+   {
+    "guid": "big-36",
+    "url": "https://big.example/36",
+    "title": "Story 36",
+    "summary": "Story number 36.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-12T12:00:00+00:00"
+   },
+   {
+    "guid": "big-39",
+    "url": "https://big.example/39",
+    "title": "Story 39",
+    "summary": "Story number 39.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-11T15:00:00+00:00"
+   },
+   {
+    "guid": "big-38",
+    "url": "https://big.example/38",
+    "title": "Story 38",
+    "summary": "Story number 38.",
+    "image_url": null,
+    "author": null,
+    "tags": [],
+    "published_at": "2026-09-11T14:00:00+00:00"
+   }
+  ]
+ },
+ "page.html": {
+  "error": "not a feed"
+ },
+ "dates": [
+  "2026-09-30T09:00:00+00:00",
+  "2026-09-30T10:00:00+00:00",
+  "2026-09-30T10:00:00+00:00",
+  "2026-09-29T15:00:00+00:00",
+  "2026-09-30T10:00:00+00:00",
+  "2026-09-30T10:00:00+00:00",
+  "2026-09-30T12:00:00+00:00",
+  "2026-09-30T09:00:00+00:00",
+  "2026-09-25T18:00:00.123000+00:00",
+  "2026-09-20T00:00:00+00:00",
+  "2026-09-20T10:30:00+00:00",
+  "2026-09-15T22:15:00+00:00",
+  "2026-09-15T00:05:00+00:00",
+  "2026-09-15T12:00:00+00:00",
+  "2026-09-30T12:00:00+00:00",
+  "2026-09-30T12:00:00+00:00",
+  "2026-09-13T08:00:00+00:00",
+  null,
+  null,
+  null,
+  null,
+  "2026-09-30T12:00:00+00:00",
+  "2026-09-30T12:04:00+00:00",
+  "2026-09-30T12:00:00+00:00",
+  "2026-09-30T12:00:00+00:00",
+  "2026-08-03T01:35:09+00:00"
+ ],
+ "dates_in": [
+  "Wed, 30 Sep 2026 10:00:00 +0100",
+  "Wed, 30 Sep 2026 10:00:00 GMT",
+  "30 Sep 2026 10:00:00 GMT",
+  "Tue, 29 Sep 26 10:00 EST",
+  "Wed, 30 Sep 2026 10:00:00 -0000",
+  "Wed, 30 Sep 2026 10:00:00",
+  "2026-09-30T08:15:00-07:00",
+  "2026-09-30T09:00:00Z",
+  "2026-09-25T18:00:00.123Z",
+  "2026-09-20",
+  "2026-09-20 10:30:00",
+  "9/15/2026 10:15:00 PM",
+  "9/15/2026 12:05 AM",
+  "15.09.2026",
+  "30.09.2026",
+  "9/30/2026",
+  "13/9/2026 08:00",
+  "31/13/2026",
+  "2026-02-30",
+  "Someday soon",
+  "",
+  "Fri, 01 Jan 2027 00:00:00 GMT",
+  "Wed, 30 Sep 2026 12:04:00 GMT",
+  "Wed, 30 Sep 2026 12:06:00 GMT",
+  "2026-09-30T14:00:00+02:00",
+  "Mon, 3 Aug 2026 7:05:09 +0530"
+ ]
+}

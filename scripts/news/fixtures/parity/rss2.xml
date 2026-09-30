@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:media="http://search.yahoo.com/mrss/" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>Hoops Site</title><link>https://hoops.example/en/</link>
+<atom:link href="https://hoops.example/feed" rel="self" type="application/rss+xml"/>
+<image><url>https://hoops.example/logo.png</url></image>
+<item>
+  <title>Big &amp; bold: a &#8216;signing&#8217;</title>
+  <link>/news/1</link>
+  <guid isPermaLink="false">https://hoops.example/?p=1</guid>
+  <pubDate>Wed, 30 Sep 2026 10:00:00 +0100</pubDate>
+  <dc:creator><![CDATA[Ana P&eacute;rez]]></dc:creator>
+  <category>EuroLeague</category><category><![CDATA[Transfers & <deals>]]></category>
+  <description><![CDATA[<p>Opening <b>lines</b> with an <img src="//cdn.hoops.example/inline.jpg"> and a &ldquo;quote&rdquo;.</p><script>alert(1)</script><style>p{}</style><p>Second para.</p>The post Big &amp; bold appeared first on Hoops Site.]]></description>
+  <media:content url="https://cdn.hoops.example/one.jpg" medium="image" width="800"/>
+</item>
+<item>
+  <title><![CDATA[Second story]]></title>
+  <link>https://hoops.example/news/2?utm=1&amp;x=2</link>
+  <pubDate>Tue, 29 Sep 2026 23:30:00 GMT</pubDate>
+  <description>Plain text summary, &lt;em&gt;escaped&lt;/em&gt; markup &amp;amp; more.</description>
+  <enclosure url="https://cdn.hoops.example/two.png" type="image/png" length="1"/>
+  <media:thumbnail url="http://cdn.hoops.example/insecure.jpg"/>
+</item>
+<item>
+  <title>Same link as the second</title>
+  <link>https://hoops.example/news/2?utm=1&amp;x=2</link>
+  <pubDate>Mon, 28 Sep 2026 08:00:00 GMT</pubDate>
+  <description>Different guid (the link), same address: kept, being a different guid? No: the guid is the link, so it is the second story's.</description>
+</item>
+<item>
+  <title>Bad date, future date</title>
+  <link>https://hoops.example/news/3</link>
+  <guid>g-3</guid>
+  <pubDate>Someday soon</pubDate>
+  <description>No usable date: dated by the read.</description>
+</item>
+<item>
+  <title>Far future</title>
+  <link>https://hoops.example/news/4</link>
+  <guid>g-4</guid>
+  <pubDate>Fri, 01 Jan 2027 00:00:00 GMT</pubDate>
+  <content:encoded><![CDATA[<div><img src="/img/lead.webp" alt="x"><p>From the full text, since the summary is empty.</p></div>]]></content:encoded>
+</item>
+<item>
+  <title>Numeric date, month first</title>
+  <link>news/5</link>
+  <guid>g-5</guid>
+  <pubDate>9/15/2026 10:15:00 PM</pubDate>
+  <description>Relative link with no leading slash.</description>
+  <media:group><media:content url="https://cdn.hoops.example/group.jpg" type="image/jpeg"/></media:group>
+</item>
+<item>
+  <title>Day only, day first</title>
+  <link>../up/6</link>
+  <guid>g-6</guid>
+  <pubDate>30.09.2026</pubDate>
+  <itunes:image href="https://cdn.hoops.example/it.jpg"/>
+  <description>Dated today: dated by the read.</description>
+</item>
+<item>
+  <title>Same date A</title><link>https://hoops.example/news/7</link><guid>g-7</guid><pubDate>Sun, 20 Sep 2026 12:00:00 GMT</pubDate><description>a</description>
+</item>
+<item>
+  <title>Same date B</title><link>https://hoops.example/news/8</link><guid>g-8</guid><pubDate>Sun, 20 Sep 2026 12:00:00 GMT</pubDate><description>b</description>
+</item>
+<item>
+  <title>No link at all</title><guid>g-9</guid><description>dropped</description>
+</item>
+<item>
+  <title>   </title><link>https://hoops.example/news/10</link><description>dropped: no headline</description>
+</item>
+<item>
+  <title>An <b>HTML</b> title with a very long summary</title><link>https://hoops.example/news/11</link><guid>g-11</guid><pubDate>Sat, 19 Sep 2026 09:00:00 GMT</pubDate>
+  <description>Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum.</description>
+</item>
+</channel>
+</rss>

@@ -1,0 +1,7 @@
+{"version":"https://jsonfeed.org/version/1.1","title":"JSON Hoops","home_page_url":"https://json.example/","icon":"https://json.example/i.png",
+ "items":[
+  {"id":"1","url":"https://json.example/1","title":"First &amp; best","content_html":"<p>Body <img src='https://json.example/a.jpg'></p>","date_published":"2026-09-30T06:00:00Z","authors":[{"name":"Lee"},{"name":"Mo"}],"tags":["a","b"],"image":"https://json.example/lead.jpg"},
+  {"id":"2","external_url":"https://elsewhere.example/2","title":"External","content_text":"Text <not> markup & more","date_modified":"2026-09-29T06:00:00+01:00","author":{"name":"Solo"}},
+  {"id":"3","title":"No url","summary":"dropped"},
+  {"url":"https://json.example/4","title":"No id","summary":"The url is the guid.","date_published":"garbage"}
+ ]}

@@ -1377,6 +1377,23 @@ jobs:
         # square, and a run's bookkeeping (304s, failures, dry runs)
         run: python scripts/news/fetch_feeds_test.py
 
+      - name: Load articles now - the news-refresh function, the parser held to the Python's, the button
+        # supabase/functions/news-refresh on a fake database and a fake network: the JavaScript parser makes what
+        # scripts/news/fetch_feeds.py makes of the same feeds (scripts/news/fixtures/parity/expected.json, written
+        # by the Python, checked by the Python step above and here), RSS / Atom / RDF / JSON Feed, CDATA, bad dates,
+        # relative and duplicate links, a huge feed cut to forty, HTML that is not a feed, a DOCTYPE that never
+        # grows; the address guard (private ranges, odd spellings of 127.0.0.1, http, ports, redirects to any of
+        # them, a name that resolves privately, 2 MB, 10 s, the address never the request's); who may call (anonymous
+        # and readers refused, a league's administrator only their own league's sources, a platform administrator
+        # any and all), the rate limits (a source a minute, a caller ten a minute), the audit rows, idempotence;
+        # and the button: its words, the console's rows, who is shown it, the function missing. CORS is checked
+        # for every caller of every function, this one's included.
+        run: |
+          python scripts/news/fetch_feeds_test.py
+          node supabase/tests/news-refresh.test.mjs
+          node supabase/tests/news-refresh-ui.test.mjs
+          node supabase/tests/cors.test.mjs
+
       - name: The post card, and the pages that carry it
         # epinoia/newscard.js: the embeds a creator's link becomes (and only those), the first lines, a
         # feed row as a card with its league tags, one link to the piece and never one inside another;
