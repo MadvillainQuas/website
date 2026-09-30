@@ -248,6 +248,12 @@ DBL_API = DBL_SITE + "/api/sports-v2"
 #                          stats_url_en -> fibalivestats.dcd.shared.geniussports.com/u/CEBL/<LiveStats id>/
 CEBL_API = "https://api.data.cebl.ca"
 CEBL_KEY = "800chyzv2hvur3z0ogh39cve2zok0c"
+# THE CLUBS' OWN ABBREVIATIONS, by the league's team id: the codes the league's LiveStats feed prints (read from the
+# 2026 season's games). The schedule API names a club and its id but no abbreviation, and a club's short_name is set
+# once, when its first fixture creates it -- so without these the id key ("CEBL24") was the short name, and the
+# leaders tables read CEBL24 for Winnipeg (reported 2026-09-30). A club not listed here (a new one) is given its own
+# name, cut to fit, until it is added.
+CEBL_ABBR = {14: "NRL", 16: "VAN", 17: "CGY", 18: "EDM", 19: "BHB", 20: "OTT", 21: "MTL", 22: "SSS", 24: "WPG", 56: "SSK"}
 
 
 def _fold(s) -> str:
@@ -854,6 +860,7 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                 tipoff_at=g.get("start_time_utc"), status=status,
                 extra={"home_code": f"CEBL{g.get('home_team_id')}" if g.get("home_team_id") is not None else None,
                        "away_code": f"CEBL{g.get('away_team_id')}" if g.get("away_team_id") is not None else None,
+                       "home_short": CEBL_ABBR.get(g.get("home_team_id")), "away_short": CEBL_ABBR.get(g.get("away_team_id")),
                        "home_logo": g.get("home_team_logo_url"), "away_logo": g.get("away_team_logo_url"),
                        "venue": g.get("venue_name"), "stage": stage}))
         print(f"     CEBL {stage}: {len(out)} games ({sum(1 for x in out if x.status == 'final')} final)"

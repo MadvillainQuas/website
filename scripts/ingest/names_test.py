@@ -278,6 +278,21 @@ got = p.team("L", {"name": "Patrioti Levice", "code": "699064"})
 eq("...and the club's name it falls back to is cut at a WORD boundary, not mid-word",
    (got or {}).get("short_name"), "Patrioti")
 
+# The CEBL keys a club by the league's own team id ("CEBL24"): a key, not an abbreviation, and it read CEBL24 in the
+# leaders tables for Winnipeg (reported 2026-09-30). The adapter now gives each club its printed code as well.
+p = platform()
+got = p.team("L", {"name": "Scarborough Shooting Stars", "code": "CEBL22"})
+eq("a code made of an id (letters, then digits) never becomes the short name",
+   (got or {}).get("short_name"), "Scarborough")
+p = platform()
+got = p.team("L", {"name": "Winnipeg Sea Bears", "code": "CEBL24", "shortName": "WPG"})
+eq("...and the league's own abbreviation, when the schedule gives one, is the short name",
+   (got or {}).get("short_name"), "WPG")
+p = platform()
+got = p.team("L", {"name": "Riga", "code": "U18"})
+eq("...while one letter and a number is still a printed code",
+   (got or {}).get("short_name"), "U18")
+
 print("\n-- team_name(): a shouted club is a name again, a written one is left alone")
 eq("Spanish particles stay lower case", names.team_name("ABEJAS DE LEON"), "Abejas de Leon")
 eq("...and so does 'del'", names.team_name("DIABLOS ROJOS DEL MEXICO"), "Diablos Rojos del Mexico")
