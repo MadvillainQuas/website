@@ -739,6 +739,17 @@ jobs:
         # clubs coded by the league's team id on fixture and feed alike, and a real game reconciled
         run: python scripts/ingest/cebl_test.py
 
+      - name: Every league backfill-able - an older season asked for from the console
+        # run_ingest.backfill_sources: every configured adapter reads a season or says why not (NO_PAST), the season
+        # pinned with season_auto dropped (NBL1's first_season gate), the wrong form of season skipped with its reason;
+        # ABA's season number, Finland's national series before 2025-26, Brazil's schedule filter, the NBL's year
+        run: python scripts/ingest/backfill_test.py
+
+      - name: The console's older-season list - a season offered the way the league names them
+        # epinoia/admin/backfill-ui.js: calendar-year leagues by the year, split seasons by the two, and a league with no
+        # season yet (NBL1, CEBL before its import) offered both
+        run: node supabase/tests/backfill-ui.test.mjs
+
       - name: BNXT League (Belgium + the Netherlands) from the league's own API
         # bnxt.py: end-year seasons, one request per phase, Supercups never read as the league's, the
         # national play-offs apart, a purged game not fetched, and the play-by-play translator on the

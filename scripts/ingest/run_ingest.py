@@ -2462,10 +2462,26 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # worst thing this feature could do — last season's table filled with this
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
+#
+# EVERY LEAGUE WITH A READABLE PAST IS ON IT (checked 30 Sep 2026, each against a
+# season it had not read before): ABA's /calendar/<season>/, Finland's TorneoPal
+# (the national series' "2024-2025" before the top series had a competition of
+# its own), Brazil's schedule filter ("NBB 2024/2025", "Liga Ouro 2025") and the
+# NBL's season list. What is NOT, and why:
+#   bbl      the BBL's schedule API answers 401 to any script and its site shows
+#            the season being played only - there is no past to read;
+#   the pipeline bridges above, which may pin their own year.
+# And inside an adapter on the list, a season its source no longer holds is said
+# so and read as nothing: BNXT's film (purged after a season), Kosovo's site (the
+# season being played only), Finland before 2024-25 (off the stats feed).
 REFRESH = {"on": False}             # set from --refresh in main(): reopen final games to rewrite them
 
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
-                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl"}
+                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl",
+                         "aba", "basketfi", "lnbbr", "nbl"}
+#: adapters that cannot read a past season at all, and why - said on the console's request, not only in a log
+NO_PAST = {"bbl": "the BBL's schedule is its site's season being played, and its API refuses scripts"}
+_SPLIT_SEASON = re.compile(r"\d{4}\s*[-/]\s*\d{2,4}")
 
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 
@@ -2551,15 +2567,28 @@ def backfill_sources(job: dict, sources: list[dict]) -> list[dict]:
                                 out - an old season must never delay the current one."""
     lid, slug = job.get("league_id"), job.get("league_slug")
     out = []
+    job["skipped"] = []                 # why each of the league's sources was left out, for the row's error
     for s in sources:
         if not ((lid and s.get("league_id") == lid) or (slug and s.get("league_slug") == slug)):
             continue
         if s["adapter"] not in SEASON_AWARE_ADAPTERS:
             print(f"   {s.get('code')}: the {s['adapter']} adapter does not read a season - skipped rather than "
                   f"risk filing this season's games under {job['season']}")
+            job["skipped"].append(f"{s.get('code')}: " + NO_PAST.get(s["adapter"], f"its {s['adapter']} source cannot read an older season"))
             continue
-        out.append({**s, "adapter_config": dict(s.get("adapter_config") or {}, season=job["season"]),
-                    "competition_id": None, "id": None})
+        ac = dict(s.get("adapter_config") or {})
+        # A CALENDAR-YEAR LEAGUE IS ASKED FOR BY ITS YEAR, and a split-season one by its two: NBL's reader takes
+        # "2025" as 2025-26, so a year filed against the wrong kind of league would be the next season's games
+        split = bool(_SPLIT_SEASON.fullmatch(str(job["season"]).strip()))
+        if split == bool(ac.get("season_calendar")):
+            form = "a calendar year, e.g. 2025" if ac.get("season_calendar") else "two years, e.g. 2024-25"
+            print(f"   {s.get('code')}: {job['season']} is not how this league names a season ({form}) - skipped")
+            job["skipped"].append(f"{s.get('code')} names its seasons as {form}, not {job['season']}")
+            continue
+        # season_auto says the year was run_ingest's own guess (load_sources, for a calendar league). A backfill's
+        # season is asked for: kept, a first_season gate (NBL1's) no longer holds it back
+        ac.pop("season_auto", None)
+        out.append({**s, "adapter_config": dict(ac, season=job["season"]), "competition_id": None, "id": None})
     print(f"   {len(out)} source(s) pinned to {job['season']}: " + (", ".join(s.get("code") or "?" for s in out) or "none"))
     return out
 
@@ -2652,7 +2681,8 @@ def main() -> int:
         sources = backfill_sources(job, sources)
         if not sources:
             backfill_finish(queue, job, "failed", 0, 0, 0,
-                            "no season-aware source is configured for this league")
+                            "; ".join(dict.fromkeys(job.get("skipped") or []))
+                            or "no season-aware source is configured for this league")
             return 1
     if not args.ids:
         sources = expand_competition_sources(sources)

@@ -9,9 +9,13 @@ Mexico, so the game side is inherited unchanged.
 
     GET koripallo-api.torneopal.net/taso/rest/getMatches?competition_id=huki2627&category_id=4
         -> one league's season: every fixture, played or not. competition_id is the season's top
-           series ("huki" + the two years); a category is one league (4 Korisliiga, 1 Naisten
-           Korisliiga, 2 Miesten I divisioona A, 29461 Miesten I divisioona B). The API answers only
-           the site's own Origin, with the site's own Accept "key" (from its bundle).
+           series ("huki" + the two years; before 2025-26 the national series, "2024-2025"); a
+           category is one league (4 Korisliiga, 1 Naisten Korisliiga, 2 Miesten I divisioona A,
+           29461 Miesten I divisioona B). The API answers only the site's own Origin, with the
+           site's own Accept "key" (from its bundle).
+
+OLDER SEASONS (a console backfill): 2024-25 reads like any other. 2023-24 and before are on TorneoPal
+but not on the stats feed any more (feed_holds), so they are said so and read as nothing.
     GET embed-api.eui.connect.sportradar.com/v1/embed/322/fixtures?state=<{"l","s","z"}>
         -> the same season in the EUI's words: club codes (KTP, SEA) and each fixture's status
     GET .../322/fixture_detail?state=...&fixtureId=...   (LnbAdapter.fetch)
@@ -79,12 +83,26 @@ LIVE_STATUS = {"IN_PROGRESS", "INPROGRESS", "LIVE", "STARTED", "HALFTIME", "BREA
 LINK_WINDOW_DAYS = 21
 
 
+#: The first season the top series has a TorneoPal competition of its own (huki2526).
+HUKI_FROM = 2025
+
+
 def competition_id(config: dict) -> str:
-    """TorneoPal's id for a season's top series: "huki" + the two years (2026-27 -> huki2627)."""
+    """TorneoPal's id for a season's top series: "huki" + the two years (2026-27 -> huki2627). Before 2025-26 the
+    four leagues were categories of the national series, whose id is the season itself ("2024-2025"); the
+    categories kept their numbers (4, 1, 2, 29461), so one config row reads every season (checked on
+    getCompetitions?current=0 and getCategories, 30 Sep 2026)."""
     if config.get("torneopal_competition"):
         return str(config["torneopal_competition"])
     y = _season_year(config)
-    return f"huki{y % 100:02d}{(y + 1) % 100:02d}"
+    return f"huki{y % 100:02d}{(y + 1) % 100:02d}" if y >= HUKI_FROM else f"{y}-{y + 1}"
+
+
+def feed_holds(season: str) -> bool:
+    """Does Sportradar's EUI still serve a season: its ids are UUIDs from 2024-25 on. 2023-24's (36328, 36798 ...)
+    are the numbers of the system before, and its fixtures list comes back empty - TorneoPal still links every
+    game to it, so without this a backfill would file 2023-24 as a season of games that can never be read."""
+    return bool(re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", str(season or "").strip()))
 
 
 def stage_of(m: dict) -> str:
@@ -271,6 +289,10 @@ class BasketFiAdapter(LnbAdapter):
             print(f"     basketfi {comp}/{cat}: no fixtures published")
             return []
         season = self._season_id(comp, cat, matches)
+        if season and not feed_holds(season):
+            print(f"     basketfi {comp}/{cat}: the stats feed no longer serves this season (EUI season {season}, "
+                  "from before 2024-25) - nothing to read")
+            return []
         listing = self._listing(season) if season else {}
         links = self.link(matches, listing)
         by_fixture = self.__dict__.setdefault("_by_fixture", {})

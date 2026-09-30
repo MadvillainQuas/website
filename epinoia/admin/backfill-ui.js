@@ -77,10 +77,12 @@ function pastSeasons(now, calendar) {
   return out;
 }
 
-/* a league whose seasons are all named as a single year runs on the calendar year */
+/* a league whose seasons are all named as a single year runs on the calendar year; null when it has no season
+   on the platform yet (NBL1 before its first, CEBL before its import) and so cannot say which it is */
 function isCalendar(seasons) {
   const names = (seasons || []).map(s => String(s.name || s));
-  return names.length > 0 && names.every(n => /^\d{4}$/.test(n));
+  if (!names.length) return null;
+  return names.every(n => /^\d{4}$/.test(n));
 }
 
 /* What each state means to the person who pressed the button — never the word
@@ -150,20 +152,33 @@ function draw(panel) {
   const row = el('div', 'row');
   const pick = el('select', 'ep-input');
   pick.style.flex = '0 0 auto';
-  pastSeasons(undefined, calendar).forEach(name => {
+  const add = (into, name) => {
     const o = document.createElement('option');
     o.value = name;
     /* "already here" is not a reason not to ask — a season may hold six games
        of forty — but it changes what the answer will look like, so it is said. */
     o.textContent = name + (known.has(name) ? ' · already on the platform' : '');
-    pick.appendChild(o);
-  });
+    into.appendChild(o);
+  };
+  /* A LEAGUE WITH NO SEASON YET is offered both ways of naming one: the worker reads a season only in the form its
+     source names seasons, and says so on the request if it was asked the other way. */
+  if (calendar === null) {
+    [['a season across two years', false], ['a calendar year (a league played inside one year)', true]].forEach(([label, cal]) => {
+      const g = document.createElement('optgroup');
+      g.label = label;
+      pastSeasons(undefined, cal).forEach(name => add(g, name));
+      pick.appendChild(g);
+    });
+  } else {
+    pastSeasons(undefined, calendar).forEach(name => add(pick, name));
+  }
   const go = el('button', 'ep-btn pri', 'ask for this season');
   go.type = 'button';
   row.append(pick, go);
   host.appendChild(row);
   host.appendChild(el('div', 'ep-micro',
-    'The season being played (' + (calendar ? String(new Date().getUTCFullYear()) : liveSeason()) +
+    'The season being played (' + (calendar === null ? liveSeason() + ' or ' + new Date().getUTCFullYear()
+      : calendar ? String(new Date().getUTCFullYear()) : liveSeason()) +
     ') is not on this list: it is already read by the live feed.'));
 
   const list = el('div', 'list');

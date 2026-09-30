@@ -8,7 +8,10 @@ Cloudflare's Rocket Loader but not its bot check - a plain GET answers.
         a season's whole schedule, one <tr> per game: data-real-id (the league's game id), date and time (Brasilia),
         both clubs (name, crest, three-letter code), the round, the stage ("1º TURNO" ... "OITAVAS", "FINAL") and one
         link: /partidas/<slug>/ until the game's report is published, then /noticias/<slug>/. The season shown is the
-        current one (the filter's checked radio); `season_id` in adapter_config picks another.
+        current one (the filter's checked radio); `season_id` in adapter_config picks another, and so does a season
+        asked for by name (a console backfill: "2024-25" is the filter's "NBB 2024/2025", "2025" Liga Ouro's "Liga
+        Ouro 2025") - one that is not on the filter (Liga Ouro held none from 2020 to 2024) is said so and read as
+        nothing, never as the season on show.
     /noticias/<slug>/   the game's report: the score and quarters, the hall, and two tabs - #stats (a box score per
         club) and #movethemove (the play-by-play, NEWEST FIRST, clock counting down). About one report in twelve is an
         article with no stats at all and no link to any (Liga Ouro 2026 game 26825; 9 of 78 NBB 2025-26 games sampled,
@@ -132,6 +135,23 @@ def schedule_rows(page: str) -> List[dict]:
 def season_menu(page: str) -> List[tuple]:
     """[(season id, label, checked)] off the schedule's season filter."""
     return [(sid, _html.unescape(label).strip(), bool(chk)) for sid, chk, label in _SEASON.findall(page or "")]
+
+
+def season_wanted(menu: List[tuple], token) -> Optional[str]:
+    """The filter's id for a season the platform names "2024-25" (NBB: "NBB 2024/2025") or "2025" (Liga Ouro, a
+    calendar year: "Liga Ouro 2025"); None when the site has no such season. A split season never matches a
+    single-year label, nor a year a split one: the two leagues' seasons are not each other's."""
+    m = re.fullmatch(r"(\d{4})(?:\s*[-/]\s*(\d{2}|\d{4}))?", str(token or "").strip())
+    if not m:
+        return None
+    y = int(m.group(1))
+    if m.group(2) and int(m.group(2)) % 100 != (y + 1) % 100:
+        return None
+    for sid, label, _ in menu:
+        years = [int(x) for x in re.findall(r"\b(\d{4})\b", label)]
+        if (years == [y, y + 1]) if m.group(2) else (years == [y]):
+            return sid
+    return None
 
 
 # ============================================================================ one game
@@ -808,7 +828,8 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
     name = "lnbbr"
     min_request_gap_s = GAP_S
     _last_req = 0.0
-    _schedule_at: dict = {}             # league path -> (read at, rows)
+    _schedule_at: dict = {}             # league path (or "path?season id", an older season) -> (read at, rows)
+    _season_ids: dict = {}              # (league path, season asked for) -> the filter's id ("" = none)
     _refused = False                    # the site has answered 403 in this process
 
     def _get(self, url: str) -> Optional[str]:
@@ -857,23 +878,51 @@ class LnbBrAdapter(FibaLiveStatsAdapter):
         except OSError:
             pass
 
+    def _season_id(self, path: str, config: dict) -> tuple:
+        """(the filter's id to read, why nothing can be read). A season asked for by name - a backfill; never the
+        year run_ingest writes onto a calendar league by itself (season_auto) - is looked up on the filter once
+        per process; everything else reads the season on show, as it always has."""
+        if config.get("season_id"):
+            return str(config["season_id"]), None
+        token = str(config.get("season") or "").strip()
+        if not token or config.get("season_auto"):
+            return "", None
+        memo = LnbBrAdapter._season_ids
+        if (path, token) not in memo:
+            page = self._get(f"{SITE}/{path}/tabela-de-jogos/")
+            if page is None:
+                return "", f"the schedule could not be read to find {token}"
+            menu = season_menu(page)
+            sid = season_wanted(menu, token)
+            memo[("on_show", path)] = next((x for x, _, c in menu if c), "")
+            if sid and sid == memo[("on_show", path)]:
+                LnbBrAdapter._schedule_at[path] = (time.time(), schedule_rows(page))   # the page just read is it
+            memo[(path, token)] = sid or ""
+        sid = memo[(path, token)]
+        return (sid, None) if sid else ("", f"the site has no {token} season (its filter holds no such label)")
+
     def _rows(self, config: dict, fresh: bool = True) -> List[dict]:
         path = (config.get("league_path") or "nbb").strip("/")
-        at, rows = LnbBrAdapter._schedule_at.get(path, (0.0, None))
+        sid, missing = self._season_id(path, config)
+        if missing:
+            print(f"     LNB {path}: {missing}")
+            return []
+        key = path if not sid or sid == LnbBrAdapter._season_ids.get(("on_show", path)) else f"{path}?{sid}"
+        at, rows = LnbBrAdapter._schedule_at.get(key, (0.0, None))
         if rows is not None and (not fresh or time.time() - at < SCHEDULE_TTL_S):
             return rows
         url = f"{SITE}/{path}/tabela-de-jogos/"
-        if config.get("season_id"):
-            url += f"?season%5B%5D={config['season_id']}"
+        if sid:
+            url += f"?season%5B%5D={sid}"
         page = self._get(url)
         if page is None:
             print(f"     LNB {path}: the schedule could not be read ({url})")
             # AN UNREADABLE SCHEDULE IS NOT ASKED FOR AGAIN AT ONCE: a live lane polls a due game every few seconds,
             # and each fetch without a report would otherwise be one more request to a site that just said no
-            LnbBrAdapter._schedule_at[path] = (time.time(), rows or [])
+            LnbBrAdapter._schedule_at[key] = (time.time(), rows or [])
             return rows or []
         rows = schedule_rows(page)
-        LnbBrAdapter._schedule_at[path] = (time.time(), rows)
+        LnbBrAdapter._schedule_at[key] = (time.time(), rows)
         return rows
 
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
