@@ -377,6 +377,15 @@ begin
   return n;
 end $$;
 
+/* A PIECE'S BODY: the league's news format, cleaned exactly as the league's news is (0051 clean_news_body), and a
+   picture in it is an https address - an outlet has no uploads (see IMAGES ARE LINKS, above) - or it is dropped. */
+create or replace function public.clean_creator_body(p_body jsonb)
+returns jsonb language sql stable as $$
+  select coalesce(jsonb_agg(b order by n), '[]'::jsonb)
+    from jsonb_array_elements(public.clean_news_body(p_body)) with ordinality as x(b, n)
+   where b->>'type' <> 'image' or (b->>'path' ~* '^https://[^\s<>"]+$');
+$$;
+
 /* WRITE A PIECE. The body is cleaned exactly as the league's news is (clean_news_body); links and covers are
    https; a published piece keeps the moment it was first published. Only while the league has creators on
    and the outlet is active. */
@@ -434,7 +443,7 @@ begin
     insert into creator_posts (outlet_id, league_id, slug, kind, title, standfirst, body, cover_url, external_url, status,
                                published_at, author_id, author_name)
     values (p_outlet, o.league_id, v_slug, coalesce(p_kind, 'article'), btrim(p_title), left(btrim(coalesce(p_standfirst, '')), 300),
-            public.clean_news_body(p_body), cov, ext, coalesce(p_status, 'draft'),
+            public.clean_creator_body(p_body), cov, ext, coalesce(p_status, 'draft'),
             case when p_status = 'published' then now() end, auth.uid(), coalesce(v_name, ''))
     returning id into v_id;
     if p_status = 'published' then perform public.notify_creator_piece(v_id); end if;
@@ -442,7 +451,7 @@ begin
     select published_at into was_pub from creator_posts where id = p_id;
     update creator_posts
        set slug = v_slug, kind = coalesce(p_kind, 'article'), title = btrim(p_title),
-           standfirst = left(btrim(coalesce(p_standfirst, '')), 300), body = public.clean_news_body(p_body),
+           standfirst = left(btrim(coalesce(p_standfirst, '')), 300), body = public.clean_creator_body(p_body),
            cover_url = cov, external_url = ext, status = coalesce(p_status, 'draft'),
            published_at = case when p_status = 'published' then coalesce(was_pub, now()) else was_pub end,
            updated_at = now()
@@ -475,6 +484,17 @@ returns boolean language sql stable security definer set search_path = public as
   select coalesce((select l.creators_enabled from leagues l where l.id = p_league), false) and public.league_visible(p_league);
 $$;
 
+/* THE RAIL'S QUESTION (nav.js probeQuery): does this league show creators, with something published? One row, or
+   none; by slug, which is what the rail has. */
+create or replace function public.creators_probe(p_slug text)
+returns table (yes int) language sql stable security definer set search_path = public as $$
+  select 1 from leagues l
+   where l.slug = p_slug and public.creators_shown(l.id)
+     and exists (select 1 from creator_posts p join creator_outlets o on o.id = p.outlet_id
+                  where p.league_id = l.id and p.status = 'published' and not p.hidden and o.status = 'active')
+  limit 1;
+$$;
+
 /* THE FRONT PAGE'S SECTION: the league's most recent pieces, every outlet together, newest first. */
 create or replace function public.creators_public(p_league uuid, p_limit int default 6, p_offset int default 0)
 returns table (id uuid, slug text, kind text, title text, standfirst text, cover_url text, external_url text,
@@ -493,9 +513,9 @@ $$;
 
 /* THE LEAGUE'S OUTLETS: every active one with something published, most recently active first. */
 create or replace function public.creator_outlets_public(p_league uuid)
-returns table (slug text, name text, tagline text, logo_url text, colour text, links jsonb, pieces bigint, last_at timestamptz)
+returns table (id uuid, slug text, name text, tagline text, logo_url text, colour text, links jsonb, pieces bigint, last_at timestamptz)
 language sql stable security definer set search_path = public as $$
-  select o.slug, o.name, o.tagline, o.logo_url, o.colour, o.links, count(p.id), max(p.published_at)
+  select o.id, o.slug, o.name, o.tagline, o.logo_url, o.colour, o.links, count(p.id), max(p.published_at)
     from creator_outlets o
     join creator_posts p on p.outlet_id = o.id and p.status = 'published' and not p.hidden
    where o.league_id = p_league and o.status = 'active' and public.creators_shown(p_league)
@@ -507,7 +527,7 @@ $$;
 create or replace function public.creator_outlet_public(p_league uuid, p_slug text)
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
-      'slug', o.slug, 'name', o.name, 'tagline', o.tagline, 'bio', o.bio, 'logo_url', o.logo_url, 'colour', o.colour,
+      'id', o.id, 'slug', o.slug, 'name', o.name, 'tagline', o.tagline, 'bio', o.bio, 'logo_url', o.logo_url, 'colour', o.colour,
       'links', o.links,
       'posts', coalesce((select jsonb_agg(x order by x->>'published_at' desc) from (
           select jsonb_build_object('slug', p.slug, 'kind', p.kind, 'title', p.title, 'standfirst', p.standfirst,
@@ -526,9 +546,10 @@ returns jsonb language sql stable security definer set search_path = public as $
       'slug', p.slug, 'kind', p.kind, 'title', p.title, 'standfirst', p.standfirst, 'body', p.body,
       'cover_url', p.cover_url, 'external_url', p.external_url, 'published_at', p.published_at,
       'updated_at', p.updated_at, 'author_name', p.author_name,
-      'outlet', jsonb_build_object('slug', o.slug, 'name', o.name, 'tagline', o.tagline, 'logo_url', o.logo_url,
-                                   'colour', o.colour, 'links', o.links))
-    from creator_posts p join creator_outlets o on o.id = p.outlet_id
+      'outlet', jsonb_build_object('id', o.id, 'slug', o.slug, 'name', o.name, 'tagline', o.tagline, 'logo_url', o.logo_url,
+                                   'colour', o.colour, 'links', o.links),
+      'league', jsonb_build_object('slug', l.slug, 'name', l.name, 'colour', l.colour_a, 'logo', l.logo_path))
+    from creator_posts p join creator_outlets o on o.id = p.outlet_id join leagues l on l.id = o.league_id
    where o.league_id = p_league and o.slug = p_outlet and p.slug = p_slug
      and p.status = 'published' and not p.hidden and o.status = 'active' and public.creators_shown(p_league);
 $$;
@@ -541,7 +562,8 @@ create table if not exists public.news_sources (
   name            text not null,
   site_url        text not null,                                        -- the source's own home page
   feed_url        text not null,                                        -- RSS, Atom or JSON Feed
-  logo_url        text,
+  logo_url        text,                                                 -- set by hand, or found on the site (below)
+  logo_checked_at timestamptz,                                          -- when the fetcher last looked for one
   colour          text,
   enabled         boolean not null default true,
   etag            text,
@@ -583,7 +605,7 @@ create index if not exists news_items_pub on public.news_items (published_at des
 /* THE LEAGUES A STORY IS ABOUT, worked out by the fetcher from its categories, headline and excerpt against every
    league's name and its clubs' names (scripts/news/fetch_feeds.py LeagueMatcher). A story from a site that covers
    everything (Eurohoops) lands on each league's own news page by it; a league's own source is that league's
-   anyway. */
+   anyway, and a story of its about another league (the B.LEAGUE's feed on a B2 club) is that league's too. */
 alter table public.news_items add column if not exists league_ids uuid[] not null default '{}';
 create index if not exists news_items_leagues on public.news_items using gin (league_ids);
 create index if not exists news_items_source_pub on public.news_items (source_id, published_at desc);
@@ -661,8 +683,10 @@ begin
   end if;
   if lg is not null and lg !~* '^https://[^\s<>"]+$' then raise exception 'a logo is an https address' using errcode = '22023'; end if;
   if cl is not null and cl !~ '^#[0-9a-fA-F]{6}$' then raise exception 'a colour is #rrggbb' using errcode = '22023'; end if;
+  /* a logo cleared, or a new home site: the fetcher looks for the logo again on its next read */
   update news_sources
      set name = nm, site_url = su, logo_url = lg, colour = cl, enabled = coalesce(p_enabled, enabled),
+         logo_checked_at = case when lg is null and (logo_url is not null or site_url <> su) then null else logo_checked_at end,
          feed_url = fu, etag = case when feed_url = fu then etag end, last_modified = case when feed_url = fu then last_modified end
    where id = p_id;
 end $$;
@@ -751,9 +775,8 @@ language sql stable security definer set search_path = public as $$
        from news_items i join news_sources s on s.id = i.source_id left join leagues l on l.id = s.league_id
             left join leagues t on t.id = i.league_ids[1], lim
       where s.enabled and i.published_at < lim.before and (p_kinds is null or 'outlet' = any (p_kinds))
-        and (case when p_league is null then (s.league_id is null or public.league_visible(s.league_id))
-                  else (s.league_id = p_league or (s.league_id is null and p_league = any (i.league_ids)))
-                       and public.league_visible(p_league) end)
+        and (s.league_id is null or public.league_visible(s.league_id))
+        and (p_league is null or ((s.league_id = p_league or p_league = any (i.league_ids)) and public.league_visible(p_league)))
       order by i.published_at desc limit (select n from lim))
   ) x
   order by 7 desc, 2
@@ -799,7 +822,7 @@ language sql stable security definer set search_path = public as $$
        from news_items i join news_sources s on s.id = i.source_id left join leagues l on l.id = s.league_id
             left join leagues t on t.id = i.league_ids[1], me, lim
       where s.enabled and i.published_at < lim.before
-        and (s.id = any (me.sources) or s.league_id = any (me.leagues) or (s.league_id is null and i.league_ids && me.leagues))
+        and (s.id = any (me.sources) or s.league_id = any (me.leagues) or i.league_ids && me.leagues)
         and (s.league_id is null or public.league_visible(s.league_id))
       order by i.published_at desc limit (select n from lim))
   ) x
@@ -848,11 +871,10 @@ language sql stable security definer set search_path = public as $$
          (select max(i.published_at) from news_items i where i.source_id = s.id)
     from news_sources s left join leagues l on l.id = s.league_id
    where s.enabled and exists (select 1 from news_items i where i.source_id = s.id)
-     and (case when p_league is null then (s.league_id is null or public.league_visible(s.league_id))
-               else (s.league_id = p_league
-                     or (s.league_id is null and exists (select 1 from news_items i
-                                                          where i.source_id = s.id and p_league = any (i.league_ids))))
-                    and public.league_visible(p_league) end)
+     and (s.league_id is null or public.league_visible(s.league_id))
+     and (p_league is null or ((s.league_id = p_league
+                                or exists (select 1 from news_items i where i.source_id = s.id and p_league = any (i.league_ids)))
+                               and public.league_visible(p_league)))
    order by 10 desc nulls last, s.name;
 $$;
 
@@ -1050,6 +1072,7 @@ grant execute on function public.remove_creator_member(uuid, text) to authentica
 grant execute on function public.upsert_creator_post(uuid, uuid, text, text, text, jsonb, text, text, text, text) to authenticated;
 grant execute on function public.delete_creator_post(uuid) to authenticated;
 grant execute on function public.creators_shown(uuid) to anon, authenticated;
+grant execute on function public.creators_probe(text) to anon, authenticated;
 grant execute on function public.creators_public(uuid, int, int) to anon, authenticated;
 grant execute on function public.creator_outlets_public(uuid) to anon, authenticated;
 grant execute on function public.creator_outlet_public(uuid, text) to anon, authenticated;
@@ -1073,4 +1096,5 @@ grant execute on function public.news_sources_public(uuid) to anon, authenticate
 revoke all on function public.notify_creator_piece(uuid) from public, anon, authenticated;
 revoke all on function public.notify_news_items() from public, anon, authenticated;
 revoke all on function public.news_items_keep_time() from public, anon, authenticated;
+revoke all on function public.clean_creator_body(jsonb) from public, anon, authenticated;
 revoke all on function public.news_item_leagues(uuid[], uuid) from public, anon, authenticated;

@@ -133,8 +133,15 @@ def web_url(url: str | None, base: str) -> str | None:
     return u if re.match(r"^https?://", u, re.I) and len(u) <= 1000 and not re.search(r"[\s<>\"]", u) else None
 
 
+# a date written as numbers: 9/30/2026, 30.09.2026, 9/30/2026 10:15:00 AM (FEB's feeds write the first)
+NUMERIC_DATE = re.compile(r"^(\d{1,2})[/.](\d{1,2})[/.](\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?)?$")
+
+
 def when(value: str | None, now: datetime) -> datetime | None:
-    """RFC 822 (RSS), ISO 8601 (Atom, JSON Feed, dc:date); a date more than five minutes ahead is now"""
+    """RFC 822 (RSS), ISO 8601 (Atom, JSON Feed, dc:date), or a date in numbers (month first unless the first number
+    cannot be a month); a date more than five minutes ahead is now. A day with no time: now when it is today (the
+    story is as new as the read that found it), else that day's noon (UTC: the middle of the day anywhere near
+    Europe, so the second-apart ordering below never carries it into the day before)."""
     if not value:
         return None
     v = value.strip()
@@ -143,6 +150,19 @@ def when(value: str | None, now: datetime) -> datetime | None:
         d = parsedate_to_datetime(v)
     except Exception:
         d = None
+    if d is None:
+        m = NUMERIC_DATE.match(v)
+        if m:
+            a, b, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            mon, day = (b, a) if a > 12 else (a, b)
+            try:
+                if m.group(4) is None:
+                    day_d = datetime(y, mon, day, 12, tzinfo=timezone.utc)
+                    return now if day_d.date() == now.date() else day_d
+                hh = int(m.group(4)) % 12 + (12 if (m.group(7) or "").lower() == "pm" else 0) if m.group(7) else int(m.group(4))
+                d = datetime(y, mon, day, hh, int(m.group(5)), int(m.group(6) or 0), tzinfo=timezone.utc)
+            except ValueError:
+                return None
     if d is None:
         try:
             d = datetime.fromisoformat(v.replace("Z", "+00:00"))
@@ -228,7 +248,8 @@ def parse_feed(body: bytes, base: str, now: datetime | None = None) -> tuple[dic
                 if (enc.get("type") or "").startswith("image/") or re.search(r"\.(jpe?g|png|webp|gif)(\?|$)", enc.get("url") or "", re.I):
                     imgs.append(enc.get("url"))
             for m in it.findall("media:content", NS) + it.findall("media:group/media:content", NS):
-                if (m.get("medium") == "image") or (m.get("type") or "").startswith("image/"):
+                if (m.get("medium") == "image") or (m.get("type") or "").startswith("image/") or \
+                        (not m.get("medium") and not m.get("type") and re.search(r"\.(jpe?g|png|webp|gif)(\?|$)", m.get("url") or "", re.I)):
                     imgs.append(m.get("url"))
             imgs += [m.get("url") for m in it.findall("media:thumbnail", NS)]
             imgs += [m.get("href") for m in it.findall("itunes:image", NS)]
@@ -291,6 +312,15 @@ def _newest(items: list[dict], now: datetime) -> list[dict]:
     database keeps the first reading's time (news_items_keep_time), so it does not climb the page every read."""
     for k, x in enumerate(i for i in items if not i["published_at"]):
         x["published_at"] = (now - timedelta(seconds=k)).isoformat()
+    # AND NEVER TWO AT ONE MOMENT: stories dated only by the day, or all "now", are set a second apart in the feed's
+    # order, so the page's "older" (strictly before the last one shown) never steps over one
+    taken: dict[str, int] = {}
+    for x in items:
+        t = x["published_at"]
+        k = taken.get(t, 0)
+        taken[t] = k + 1
+        if k:
+            x["published_at"] = (datetime.fromisoformat(t) - timedelta(seconds=k)).isoformat()
     seen, out = set(), []
     for x in sorted(items, key=lambda i: i["published_at"], reverse=True):
         if x["guid"] in seen:
@@ -319,7 +349,42 @@ class LeagueMatcher:
     however often it is named (a city's name is a club's name as often as not, and a club plays in more than one
     league: Dubai in a EuroLeague round-up is not ABA League news); a club and its league are, two clubs of one
     league are, and a category naming the league is. A club in two leagues (the EuroLeague and its own) counts for both. Names too
-    common to mean one league ('super league', 'basketball league') never count on their own."""
+    common to mean one league ('super league', 'basketball league') never count on their own.
+
+    THE SAME CLUB IN ANOTHER LEAGUE is not always news of that league. A youth or academy league (Liga U, the ABA
+    U19 League, the Espoirs, the EABL) is played by the senior clubs' own names, so a club counts for it only in a
+    story that names the league; and a women's league shares its club names with the men's, so a club counts for it
+    only in a story that says it is about women's basketball. A league is also known by its other names (ALIASES:
+    the EuroLeague is the Euroliga in Spain, Liga Endesa the ACB), which count as its name."""
+    ALIASES = {
+        "euroleague": ["euroliga", "eurolega", "euroleague basketball"],
+        "eurocup": ["eurocopa", "7days eurocup", "bkt eurocup"],
+        "liga-endesa": ["liga acb", "endesa league"],
+        "lega-basket-serie-a": ["legabasket", "lega basket", "serie a basket"],
+        "bbl": ["basketball bundesliga"],
+        "lnb-elite": ["betclic elite"],
+        "greek-elite-league": ["stoiximan gbl", "greek basket league", "basket league greece", "a1 ethniki"],
+        "aba-league": ["aba liga", "adriatic league", "admiralbet aba league"],
+        "lkl": ["betsafe lkl"],
+        "orlen-basket-liga": ["energa basket liga", "polska liga koszykowki"],
+        "b-league-premier": ["b league", "b1 league"],
+        "kbl": ["korean basketball league"],
+        "nbl": ["nbl australia"],
+        "estonian-latvian-basketball-league": ["latvian estonian basketball league"],
+        "liga-femenina-endesa": ["lf endesa", "liga femenina"],
+        "slovak-sbl": ["slovenska basketbalova liga"],
+        "lnbp": ["liga nacional de baloncesto profesional"],
+        "nbb": ["novo basquete brasil"],
+    }
+    # letters that are one league's alone in basketball writing, so they count in a headline as its name does (a
+    # short name in general counts only as a whole category: 'BBL' is Germany's and Britain's, 'NBL' half the world's)
+    ACRONYMS = {"liga-endesa": ["acb"], "lega-basket-serie-a": ["lba"], "greek-elite-league": ["gbl"],
+                "orlen-basket-liga": ["plk"], "lkl": ["lkl"], "bnxt-league": ["bnxt"], "estonian-latvian-basketball-league": ["lelb"]}
+    JUNIOR = re.compile(r"(^| )(u ?\d{2}|u(?! sports)|espoirs|academy|junior|juniors|youth|juvenil|next gen)( |$)")
+    WOMEN_LEAGUE = re.compile(r"(^| )(women|womens|woman|femenina|femminile|feminine|kobiet|naisten|kvinde|damen|frauen|w league|wnbl|weabl|"
+                              r"lf|zbl)( |$)")
+    WOMEN_WORDS = re.compile(r" (women|womens|woman|female|ladies|femenina|femenino|femminile|feminine|feminin|kobiet|koszykarki|naisten|"
+                             r"kvinde|kvinder|damen|frauen|damer|wnba|wnbl|zbl|zeny|zen|moterys|moteru|lf endesa|liga femenina) ")
     GENERIC = {"league", "liga", "lega", "ligue", "basketball", "basket", "super league", "premier league", "basketball league",
                "national basketball league", "first division", "second division", "division 1", "division one", "serie a",
                "serie a2", "a league", "b league", "pro a", "pro b", "cup", "playoffs", "women", "men", "national league",
@@ -328,13 +393,19 @@ class LeagueMatcher:
 
     def __init__(self, leagues: list[dict], teams: list[dict]):
         self.phrases: list[tuple[str, str, str]] = []       # (folded phrase, league id, 'league' | 'short' | 'club')
+        self.junior: set[str] = set()                       # leagues a club alone never names (see above)
+        self.women: set[str] = set()
         seen = set()
 
         def add(text, lid, kind):
             f = fold(text).strip()
             if not f or f in self.GENERIC or (lid, f, kind) in seen:
                 return
-            if kind == "league" and len(f) < 5:
+            if kind == "acronym":
+                if not (2 < len(f) <= 6 and " " not in f):
+                    return
+                kind = "league"
+            elif kind == "league" and len(f) < 5:
                 kind = "short"
             if kind == "short" and not (2 < len(f) <= 6 and " " not in f):
                 return
@@ -350,6 +421,15 @@ class LeagueMatcher:
             add(l.get("name"), lid, "league")
             slug = str(l.get("slug") or "")
             add(slug.replace("-", " "), lid, "league" if "-" in slug else "short")
+            for a in self.ALIASES.get(slug, []):
+                add(a, lid, "league")
+            for a in self.ACRONYMS.get(slug, []):
+                add(a, lid, "acronym")
+            who = fold(l.get("name")) + " " + fold(slug.replace("-", " "))
+            if self.JUNIOR.search(who.strip()):
+                self.junior.add(lid)
+            if self.WOMEN_LEAGUE.search(who.strip()):
+                self.women.add(lid)
         for t in teams or []:
             lid = str(t.get("league_id") or "")
             if not lid:
@@ -371,6 +451,7 @@ class LeagueMatcher:
         G = [fold(t) for t in (tags or [])]
         score: dict[str, float] = {}
         clubs: dict[str, set] = {}
+        womens = bool(self.WOMEN_WORDS.search(" " + T + " " + S + " " + " ".join(G) + " "))
         for f, lid, kind in self.phrases:
             needle = " " + f + " "
             if kind == "short":
@@ -384,6 +465,8 @@ class LeagueMatcher:
             if kind == "league":
                 score[lid] = score.get(lid, 0) + (3 if in_tag else 0) + (3 if in_title else 0) + (2 if in_sum else 0)
             else:
+                if lid in self.junior or (lid in self.women and not womens):
+                    continue                                         # the senior men's club, most likely: see above
                 named = clubs.setdefault(lid, set())
                 club = f.split()[0]
                 if club in named:                                    # "Olympiacos" and "Olympiacos Piraeus": one club
@@ -394,7 +477,303 @@ class LeagueMatcher:
         return [k for _, k in top[:3]]
 
 
+# ------------------------------------------------------------------------------------------- the logo ---
+# A PUBLISHER'S OWN MARK, found on its own site once and kept (news_sources.logo_url): the icon it gives phones
+# (apple-touch-icon, the web app manifest's icons, Windows' tile), then its other icons, then the feed's own
+# picture - each one read to see it is a picture at all and how big it really is. The card draws it on a disc up to
+# 132 px across, so a 16 px favicon is no logo: under LOGO_MIN it is left, and the card prints the initials in the
+# publisher's colour instead. Tried again a week later when nothing was found (logo_checked_at).
+LOGO_MIN = 64
+LOGO_EVERY = timedelta(days=7)
+LOGO_BYTES = 2 * 1024 * 1024
+
+
+class _HeadTags(HTMLParser):
+    """the <link> and <meta> tags before <body>: where a page names its icons and its manifest"""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links: list[dict] = []
+        self.metas: list[dict] = []
+        self.done = False
+
+    def handle_starttag(self, tag, attrs):
+        if self.done:
+            return
+        a = {k.lower(): (v or "") for k, v in attrs}
+        if tag == "link":
+            self.links.append(a)
+        elif tag == "meta":
+            self.metas.append(a)
+        elif tag == "body":
+            self.done = True
+
+
+def _declared(sizes: str | None, url: str) -> int:
+    """the largest size a tag or a file name declares: sizes="180x180 32x32", ...-192x192.png; 0 when none"""
+    best = 0
+    for w, h in re.findall(r"(\d{2,4})\s*[xX×]\s*(\d{2,4})", (sizes or "") + " " + (url or "")):
+        best = max(best, min(int(w), int(h)))
+    return best
+
+
+def logo_candidates(page: str, page_url: str, feed_image: str | None = None) -> tuple[list[tuple[int, str]], str | None]:
+    """([(rank, https url)] best first, the manifest's address) from a home page's head. The rank is the size the
+    page claims, with the phone icons (drawn for exactly this: a square mark on its own) ahead of any size the same."""
+    p = _HeadTags()
+    try:
+        p.feed(page[:400000])
+    except Exception:
+        pass
+    out: list[tuple[int, str]] = []
+    manifest = None
+    for a in p.links:
+        rel = " " + a.get("rel", "").lower() + " "
+        href = a.get("href", "").strip()
+        if not href or href.startswith("data:"):
+            continue
+        u = https_only(href, page_url)
+        if " manifest " in rel:
+            manifest = urllib.parse.urljoin(page_url, href)
+            continue
+        if not u or " mask-icon " in rel:                        # Safari's one-colour stencil: no logo
+            continue
+        size = _declared(a.get("sizes"), u)
+        svg = a.get("type", "").lower() == "image/svg+xml" or re.search(r"\.svg(\?|$)", u, re.I)
+        if " apple-touch-icon " in rel or " apple-touch-icon-precomposed " in rel:
+            out.append(((size or 180) + 2000, u))
+        elif " icon " in rel:
+            if svg or (a.get("sizes", "").lower() == "any"):
+                out.append((1512, u))                           # drawn, so any size: after the phone icons
+            elif re.search(r"\.ico(\?|$)", u, re.I):
+                out.append((size or 32, u))
+            else:
+                out.append(((size or 32) + 500, u))
+    for a in p.metas:
+        if a.get("name", "").lower() == "msapplication-tileimage":
+            u = https_only(a.get("content", ""), page_url)
+            if u:
+                out.append((_declared(None, u) or 144, u))
+    if feed_image:
+        u = https_only(feed_image, page_url)
+        if u:
+            out.append((_declared(None, u) or 100, u))
+    seen, uniq = set(), []
+    for r, u in sorted(out, key=lambda x: -x[0]):
+        if u not in seen:
+            seen.add(u)
+            uniq.append((r, u))
+    return uniq, manifest
+
+
+def manifest_icons(body: bytes, manifest_url: str) -> list[tuple[int, str]]:
+    """a web app manifest's icons, [(rank, https url)]: the plain ones ahead of the maskable (which are padded)"""
+    try:
+        j = json.loads(body.decode("utf-8", "replace"))
+    except Exception:
+        return []
+    out = []
+    for ic in (j.get("icons") or []) if isinstance(j, dict) else []:
+        if not isinstance(ic, dict):
+            continue
+        u = https_only(ic.get("src"), manifest_url)
+        if not u:
+            continue
+        size = _declared(ic.get("sizes"), u) or (512 if "svg" in str(ic.get("type", "")) else 0)
+        plain = "any" in str(ic.get("purpose") or "any").split()
+        out.append((size + (2000 if plain else 1000), u))
+    return sorted(out, key=lambda x: -x[0])
+
+
+def image_size(body: bytes, ctype: str) -> int | None:
+    """the smaller side of a picture, read from its header: PNG, GIF, ICO (its largest), JPEG, WebP; an SVG is
+    any size (999); None when this is not a picture at all"""
+    d = image_dims(body, ctype)
+    return min(d) if d else None
+
+
+def image_dims(body: bytes, ctype: str = "") -> tuple[int, int] | None:
+    """(width, height) from a picture's header, as image_size reads it; an SVG is (999, 999)"""
+    b = body or b""
+    if b[:8] == b"\x89PNG\r\n\x1a\n" and len(b) >= 24:
+        return int.from_bytes(b[16:20], "big"), int.from_bytes(b[20:24], "big")
+    if b[:6] in (b"GIF87a", b"GIF89a") and len(b) >= 10:
+        return int.from_bytes(b[6:8], "little"), int.from_bytes(b[8:10], "little")
+    if b[:4] == b"\x00\x00\x01\x00" and len(b) >= 6:                  # ICO: a directory of images
+        n, best = int.from_bytes(b[4:6], "little"), 0
+        for i in range(min(n, 32)):
+            e = 6 + 16 * i
+            if len(b) < e + 16:
+                break
+            w, h = b[e] or 256, b[e + 1] or 256
+            best = max(best, min(w, h))
+        return (best, best) if best else None
+    if b[:3] == b"\xff\xd8\xff":                                         # JPEG: the first frame header
+        i = 2
+        while i + 9 < len(b):
+            if b[i] != 0xFF:
+                i += 1
+                continue
+            m = b[i + 1]
+            if m in (0xC0, 0xC1, 0xC2, 0xC3):
+                return int.from_bytes(b[i + 7:i + 9], "big"), int.from_bytes(b[i + 5:i + 7], "big")
+            i += 2 + int.from_bytes(b[i + 2:i + 4], "big")
+        return None
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP" and len(b) >= 30:
+        if b[12:16] == b"VP8X":
+            return int.from_bytes(b[24:27], "little") + 1, int.from_bytes(b[27:30], "little") + 1
+        if b[12:16] == b"VP8 ":
+            return int.from_bytes(b[26:28], "little") & 0x3FFF, int.from_bytes(b[28:30], "little") & 0x3FFF
+        if b[12:16] == b"VP8L" and len(b) >= 25:
+            v = int.from_bytes(b[21:25], "little")
+            return (v & 0x3FFF) + 1, ((v >> 14) & 0x3FFF) + 1
+        return None
+    head = b[:512].lstrip().lower()
+    if "svg" in (ctype or "").lower() or head.startswith(b"<svg") or (head.startswith(b"<?xml") and b"<svg" in b[:2048].lower()):
+        return 999, 999
+    return None
+
+
+def _unfilter(raw: bytes, w: int, h: int, bpp: int) -> list[bytearray] | None:
+    """a PNG's decompressed scanlines, their filters undone"""
+    stride = w * bpp
+    if len(raw) < h * (stride + 1):
+        return None
+    rows, prev = [], bytearray(stride)
+    for y in range(h):
+        f = raw[y * (stride + 1)]
+        cur = bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        if f == 1:
+            for i in range(bpp, stride):
+                cur[i] = (cur[i] + cur[i - bpp]) & 255
+        elif f == 2:
+            for i in range(stride):
+                cur[i] = (cur[i] + prev[i]) & 255
+        elif f == 3:
+            for i in range(stride):
+                cur[i] = (cur[i] + ((cur[i - bpp] if i >= bpp else 0) + prev[i]) // 2) & 255
+        elif f == 4:
+            for i in range(stride):
+                a = cur[i - bpp] if i >= bpp else 0
+                b = prev[i]
+                c = prev[i - bpp] if i >= bpp else 0
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                cur[i] = (cur[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        elif f != 0:
+            return None
+        rows.append(cur)
+        prev = cur
+    return rows
+
+
+def fills_square(body: bytes) -> bool:
+    """a SQUARE picture with nothing see-through in its corners - a phone icon, a square badge on its own ground - so
+    the card can draw it to the edge of its disc; a logo with a clear ground, or a wordmark, stays on the white disc. A JPEG has no clear
+    ground; a PNG is read (8-bit, not interlaced; anything else is said not to fill, which only costs a margin)."""
+    b = body or b""
+    d = image_dims(b)
+    if not d or abs(d[0] - d[1]) > 0.08 * max(d):
+        return False                                                  # a wordmark, not a square: it keeps its margin
+    if b[:3] == b"\xff\xd8\xff":
+        return True
+    if b[:8] != b"\x89PNG\r\n\x1a\n":
+        return False
+    import zlib
+    pos, w, h, depth, ctype, lace, trns, idat = 8, 0, 0, 0, 0, 0, None, []
+    while pos + 8 <= len(b):
+        ln = int.from_bytes(b[pos:pos + 4], "big")
+        typ, data = b[pos + 4:pos + 8], b[pos + 8:pos + 8 + ln]
+        pos += 12 + ln
+        if typ == b"IHDR":
+            w, h, depth, ctype, lace = int.from_bytes(data[0:4], "big"), int.from_bytes(data[4:8], "big"), data[8], data[9], data[12]
+        elif typ == b"tRNS":
+            trns = data
+        elif typ == b"IDAT":
+            idat.append(data)
+        elif typ == b"IEND":
+            break
+    if ctype in (0, 2) and trns is None:
+        return True                                                   # no transparency at all
+    if depth != 8 or lace or not w or not h or w * h > 1100 * 1100 or ctype not in (3, 4, 6):
+        return False
+    bpp = {3: 1, 4: 2, 6: 4}[ctype]
+    try:
+        rows = _unfilter(zlib.decompress(b"".join(idat)), w, h, bpp)
+    except Exception:
+        return False
+    if not rows:
+        return False
+    def alpha(x, y):
+        px = rows[y][x * bpp:(x + 1) * bpp]
+        if ctype == 3:
+            return trns[px[0]] if trns is not None and px[0] < len(trns) else 255
+        return px[-1]
+    inset = max(0, min(w, h) // 25)                                  # a hair in from the very corner (a rounded icon)
+    return all(alpha(x, y) >= 250 for x in (inset, w - 1 - inset) for y in (inset, h - 1 - inset))
+
+
+def find_logo(site_url: str, fetch, feed_image: str | None = None, log=lambda *_: None) -> str | None:
+    """the publisher's logo, an https address of a picture at least LOGO_MIN across, or None; ending #fill when it
+    fills its square (fills_square), which the card reads to draw it to the edge of its disc. fetch(url) ->
+    (status, body, headers), as http_page."""
+    home = web_url(site_url, site_url)
+    if not home:
+        return None
+    cands: list[tuple[int, str]] = []
+    manifest = None
+    try:
+        st, body, h = fetch(home)
+        if st == 200:
+            cands, manifest = logo_candidates(body.decode("utf-8", "replace"), home, feed_image)
+    except Exception as e:
+        log("    (the home page could not be read for its logo: %s)" % e)
+        if feed_image and https_only(feed_image, home):
+            cands = [(_declared(None, feed_image) or 100, https_only(feed_image, home))]
+    if manifest:
+        try:
+            st, body, h = fetch(manifest)
+            if st == 200:
+                cands = sorted(cands + manifest_icons(body, manifest), key=lambda x: -x[0])
+        except Exception:
+            pass
+    root = urllib.parse.urljoin(home, "/apple-touch-icon.png")
+    if root.startswith("https://") and not any(u == root for _, u in cands):
+        cands.append((1900, root))                                  # the address phones ask for when a page names none
+        cands.sort(key=lambda x: -x[0])
+    best = None
+    for _, u in cands[:6]:
+        try:
+            st, body, h = fetch(u)
+        except Exception:
+            continue
+        if st != 200:
+            continue
+        size = image_size(body, h.get("content-type", ""))
+        if size is None:
+            continue                                                # an error page, not a picture
+        if size >= LOGO_MIN:
+            return u + ("#fill" if fills_square(body) else "")
+        if best is None or size > best[0]:
+            best = (size, u)
+    if best:
+        log("    (the largest mark on the site is %d px: too small to be the logo)" % best[0])
+    return None
+
+
 # --------------------------------------------------------------------------------------------- the web ---
+def http_page(url: str) -> tuple[int, bytes, dict]:
+    """(status, body, headers) for a page or a picture, at most LOGO_BYTES"""
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "text/html,image/*,application/manifest+json,*/*;q=0.5",
+                                               "Accept-Encoding": "gzip"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
+        raw = r.read(LOGO_BYTES + 1)
+        if len(raw) > LOGO_BYTES:
+            raise ValueError("larger than %d MB" % (LOGO_BYTES // 1048576))
+        if (r.headers.get("Content-Encoding") or "").lower() == "gzip":
+            raw = gzip.decompress(raw)
+        return r.status, raw, {k.lower(): v for k, v in r.headers.items()}
+
+
 def http_get(url: str, etag: str | None = None, modified: str | None = None) -> tuple[int, bytes, dict]:
     """(status, body, headers) - 304 with an empty body when nothing has changed"""
     h = {"User-Agent": UA, "Accept": "application/rss+xml, application/atom+xml, application/feed+json, application/xml;q=0.9, */*;q=0.5",
@@ -434,7 +813,7 @@ class Supabase:
             return json.loads(txt), {k.lower(): v for k, v in r.headers.items()}
 
     def sources(self, only: str | None = None) -> list[dict]:
-        q = "news_sources?enabled=eq.true&select=id,name,feed_url,site_url,logo_url,etag,last_modified&order=name"
+        q = "news_sources?enabled=eq.true&select=id,name,feed_url,site_url,logo_url,logo_checked_at,etag,last_modified&order=name"
         if only:
             q += "&id=eq." + urllib.parse.quote(only)
         return self._req("GET", q)[0] or []
@@ -470,9 +849,17 @@ class Supabase:
 
 
 # ------------------------------------------------------------------------------------------------ a run ---
-def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=print, now=None, sleep=time.sleep) -> dict:
+def _when_iso(v: str | None) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00")) if v else None
+    except ValueError:
+        return None
+
+
+def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=print, now=None, sleep=time.sleep,
+        page=http_page) -> dict:
     now_f = now or (lambda: datetime.now(timezone.utc))
-    done = {"read": 0, "unchanged": 0, "failed": 0, "items": 0, "tagged": 0}
+    done = {"read": 0, "unchanged": 0, "failed": 0, "items": 0, "tagged": 0, "logos": 0}
     try:
         matcher = LeagueMatcher(db.leagues(), db.teams())
     except Exception as e:                                     # no leagues to hand: the stories go in untagged
@@ -483,6 +870,7 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
             sleep(GAP_S)
         t = now_f()
         mark = {"last_fetched_at": t.isoformat()}
+        meta = {}
         try:
             status, body, headers = get(s["feed_url"], s.get("etag"), s.get("last_modified"))
             if status == 304:
@@ -499,8 +887,6 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
                     db.prune(s["id"], t - timedelta(days=KEEP_DAYS))
                 mark.update({"last_ok_at": t.isoformat(), "last_error": None,
                              "etag": headers.get("etag"), "last_modified": headers.get("last-modified")})
-                if not s.get("logo_url") and meta.get("image"):
-                    mark["logo_url"] = meta["image"]           # the feed's own picture, until somebody sets one
                 done["read"] += 1
                 done["items"] += len(rows)
                 log("  + %s: %d items%s" % (s["name"], len(rows), (", newest " + rows[0]["title"][:60]) if rows else ""))
@@ -510,12 +896,27 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
             done["failed"] += 1
             mark["last_error"] = clip(("%s: %s" % (type(e).__name__, e)), 300)
             log("  ! %s: %s" % (s["name"], mark["last_error"]))
+        # ITS LOGO, found on its own site when it has none: once, then again a week later if nothing was found.
+        # A logo somebody set is never touched.
+        checked = _when_iso(s.get("logo_checked_at"))
+        if not s.get("logo_url") and (checked is None or t - checked >= LOGO_EVERY):
+            try:
+                logo = find_logo(s.get("site_url") or s["feed_url"], page, meta.get("image"), log)
+            except Exception as e:
+                logo = None
+                log("    (no logo: %s)" % e)
+            mark["logo_checked_at"] = t.isoformat()
+            if logo:
+                mark["logo_url"] = logo
+                done["logos"] += 1
+                log("    logo: %s" % logo)
         if not dry_run:
             try:
                 db.mark(s["id"], mark)
             except Exception as e:
                 log("  ! %s: could not record the read: %s" % (s["name"], e))
-    log("news sources: %(read)d read, %(unchanged)d unchanged, %(failed)d failed, %(items)d items (%(tagged)d about a league)" % done)
+    log("news sources: %(read)d read, %(unchanged)d unchanged, %(failed)d failed, %(items)d items (%(tagged)d about a league), "
+        "%(logos)d logos found" % done)
     return done
 
 

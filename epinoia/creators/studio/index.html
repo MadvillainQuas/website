@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<meta name="robots" content="noindex">
+<!-- THE CREATOR STUDIO (migration 0194): an outlet's own people write here. Signed in; every call is refused by
+     the database to anybody who is not the outlet's owner or writer (or the league's administrators). The frames
+     are the preview of a video, an episode or a post, from the platforms newscard.js knows. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.youtube-nocookie.com https://www.tiktok.com https://www.instagram.com https://platform.twitter.com https://www.threads.net https://open.spotify.com https://w.soundcloud.com https://embed.podcasts.apple.com https://player.twitch.tv">
+<title>Creator studio · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<script src="../../appmode.js?v=542"></script>
+<script src="../../i18n.js?v=542"></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=542">
+<link rel="stylesheet" href="../../kit/nav.css?v=542">
+<link rel="stylesheet" href="../../kit/news.css?v=542">
+<link rel="stylesheet" href="../../kit/newscard.css?v=542">
+<link rel="stylesheet" href="../../kit/creators.css?v=542">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:13px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+    padding:3px 9px 1px;text-transform:uppercase}
+</style>
+<link rel="stylesheet" href="../../kit/teletext.css?v=542">
+<link rel="stylesheet" href="../../kit/legibility.css?v=542">
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">creator studio</span>
+  </div>
+  <main id="studio" class="st-wrap">
+    <div class="pc-empty">Loading&#8230;</div>
+  </main>
+</div>
+<script src="../../config.js?v=542" defer></script>
+<script src="../../vendor/supabase.js?v=542" defer></script>
+<script src="../../newsblocks.js?v=542" defer></script>
+<script src="../../newscard.js?v=542" defer></script>
+<script src="studio.js?v=542" defer></script>
+<script src="../../nav.js?v=542" defer></script>
+</body>
+</html>

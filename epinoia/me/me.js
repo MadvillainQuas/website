@@ -49,6 +49,8 @@ function collect() {
     want_fanvote: $('#wFanvote').checked,
     /* HOME's "Who's your favourite?" prompt (0161); ignored by a database without it */
     want_favourites: $('#wFavourites').checked,
+    /* the publishers and creators a fan follows (0194); ignored by a database without it */
+    want_news: $('#wNews').checked,
     /* the reminder clock (0144); omitted rather than sent empty when Intl has nothing to say */
     ...(tz ? { time_zone: tz } : {})
   };
@@ -1064,8 +1066,10 @@ async function paintUsername() {
   $('#wFanvote').checked = prefs.want_fanvote !== false;
   /* HOME's favourites prompt (0161): on unless this account said "don't show this again" */
   $('#wFavourites').checked = prefs.want_favourites !== false;
+  /* the publishers and creators followed (0194): on unless switched off */
+  $('#wNews').checked = prefs.want_news !== false;
   paintFixtureSubs();
-  ['#nInapp', '#nEmail', '#wResults', '#wPlayers', '#wFixtures', '#wAnn',
+  ['#nInapp', '#nEmail', '#wResults', '#wPlayers', '#wFixtures', '#wAnn', '#wNews',
    '#wFix2d', '#wFix2h', '#wLineups', '#wPlayerGames', '#wHalftime'].forEach(s => { $(s).onchange = () => { paintFixtureSubs(); save(); }; });
   /* Turning the fans' vote back on also clears this browser's own "don't show this
      again" (fanvote.js keeps one for when nobody is signed in), so it comes back here

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- PUBLIC. A league's independent creators (migration 0194): ?l= the league's creators, &o= one outlet's page,
+     &p= one piece. The frames are the platforms a creator's video, episode or post is played from, and only
+     those (newscard.js EMBED_HOSTS): a piece stores its link, and the frame is built from the platform's own
+     embed address, never from markup. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.youtube-nocookie.com https://www.tiktok.com https://www.instagram.com https://platform.twitter.com https://www.threads.net https://open.spotify.com https://w.soundcloud.com https://embed.podcasts.apple.com https://player.twitch.tv">
+<title>Creators · Epinoia</title>
+<meta name="description" content="Independent podcasts, channels and writers around the leagues on Epinoia.">
+<link rel="canonical" href="https://prophesyscouting.co.uk/epinoia/creators/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Epinoia">
+<meta property="og:title" content="Creators · Epinoia">
+<meta property="og:description" content="Independent podcasts, channels and writers around the leagues on Epinoia.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
+<script src="../appmode.js?v=542"></script>
+<script src="../i18n.js?v=542"></script>
+<script src="../glyphs.js?v=542" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=542">
+<link rel="stylesheet" href="../kit/nav.css?v=542">
+<link rel="stylesheet" href="../kit/news.css?v=542">
+<link rel="stylesheet" href="../kit/newscard.css?v=542">
+<link rel="stylesheet" href="../kit/creators.css?v=542">
+<link rel="stylesheet" href="../kit/access.css?v=542">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:13px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+    padding:3px 9px 1px;text-transform:uppercase}
+  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+  footer.foot a{color:var(--ink-3);text-decoration:none}
+</style>
+<link rel="stylesheet" href="../kit/teletext.css?v=542">
+<link rel="stylesheet" href="../kit/legibility.css?v=542">
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <a href="../news/" id="back" class="ep-micro plain">← news</a>
+  </div>
+
+  <!-- a members-only league this viewer may not see: the paywall card (creators-page.js) -->
+  <div id="accessWall" class="hide"></div>
+
+  <main id="main">
+    <div class="pc-empty cr-loading">Loading&#8230;</div>
+  </main>
+
+  <footer class="foot">
+    <a href="../home/">← Epinoia</a>
+    <a href="../news/">News</a>
+    <a href="#" id="footLeague" class="hide">League</a>
+    <span>Epinoia Network</span>
+  </footer>
+</div>
+
+<script src="../config.js?v=542" defer></script>
+<script src="../access.js?v=542" defer></script>
+<script src="../newsblocks.js?v=542" defer></script>
+<script src="../news.js?v=542" defer></script>
+<script src="../newscard.js?v=542" defer></script>
+<!-- the bell on an outlet's page and a piece (fav_outlet_ids) -->
+<script src="../follow.js?v=542" defer></script>
+<script src="creators-page.js?v=542" defer></script>
+<script src="../nav.js?v=542" defer></script>
+</body>
+</html>

@@ -54,6 +54,8 @@
   box-shadow:0 0 0 3px color-mix(in oklch,var(--bc) 60%,#fff),0 10px 24px rgba(0,0,0,.35)}
 .pc-disc img{width:72%;height:72%;object-fit:contain;display:block}
 .pc-disc.mono{background:color-mix(in oklch,var(--bc) 85%,#000)}
+/* a mark that fills its square (newscard.js mark): to the edge */
+.pc-disc.fill img,.pc-logo.fill img,.pc-tag-m.fill img{width:100%;height:100%;object-fit:cover}
 .pc-disc.mono span{font-family:var(--f-score);font-size:clamp(26px,3.4vw,46px);color:#fff;line-height:1;letter-spacing:.02em}
 .pc-lead .pc-disc{width:clamp(80px,26%,150px)}
 
@@ -218,6 +220,10 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
   font-family:var(--f-micro);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
 .pc-sec-h a{color:var(--lume);text-decoration:none;font-size:9px}
 .pc-sec-h a:hover{text-decoration:underline}
+
+/* ---- a league's front page: its creators (home.js creators), inside the page's own padding ---- */
+.cr-front{padding:0 calc(var(--u,4px)*3) calc(var(--u,4px)*3);display:flex;flex-direction:column;gap:calc(var(--u,4px)*3)}
+@media (max-width:640px){ .cr-front{padding:0 16px 16px} }
 
 /* the light page: the badge stays dark (it sits on a photograph); the rest follows the kit */
 :root[data-theme="light"] .pc{background:#fff}

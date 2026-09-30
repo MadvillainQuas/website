@@ -208,7 +208,7 @@ function fromFeed(r, base, media, crest) {
   }
   const img = r.image_url ? (/^https:\/\//.test(r.image_url) ? r.image_url : m(r.image_url)) : null;
   const logo = r.source_logo ? (/^https:\/\//.test(r.source_logo) ? r.source_logo : lg(r.source_logo)) : null;
-  return { kind: 'league', title: r.title, summary: r.summary, image: https(img), when: r.published_at, author: r.author,
+  return { kind: 'league', title: r.title, summary: r.summary, image: https(img), when: r.published_at, author: r.author, tags,
            href: b + 'news/?l=' + encodeURIComponent(r.league_slug) + '&a=' + encodeURIComponent(r.slug),
            brand: { name: r.league_name || r.source_name, logo: https(logo), colour: hex(r.source_colour),
                     href: b + '?l=' + encodeURIComponent(r.league_slug) } };
@@ -239,12 +239,15 @@ function tagRow(tags) {
   return row;
 }
 
-/* the brand's mark: its logo, or its initials on its colour when there is none or it will not load */
+/* the brand's mark: its logo, or its initials on its colour when there is none or it will not load. A logo that
+   fills its square (the fetcher found no clear ground in its corners and said so with #fill, fetch_feeds.py
+   fills_square) is drawn to the edge of its disc or tile; any other sits on white with a margin. */
 function mark(brand, cls) {
   const b = brand || {};
   const box = el('span', cls);
-  const mono = () => { box.textContent = ''; box.classList.add('mono'); box.appendChild(el('span', null, initials(b.name))); };
+  const mono = () => { box.textContent = ''; box.classList.remove('fill'); box.classList.add('mono'); box.appendChild(el('span', null, initials(b.name))); };
   if (b.logo) {
+    if (/#fill$/i.test(b.logo)) box.classList.add('fill');
     const img = document.createElement('img');
     img.src = b.logo; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
     img.addEventListener('error', mono);

@@ -341,6 +341,10 @@
       match: /\/epinoia\/injuries\// },
     { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
       match: /\/epinoia\/news\// },
+    /* THE LEAGUE'S CREATORS (0194): probed like the video hub - a league shows the row once it has creators on
+       and something of theirs published (creators_probe), and not before */
+    { href: 'creators/',   ic: '✎', tx: 'creators',   lg: true, key: 'creators', probe: 'creators',
+      match: /\/epinoia\/creators\/(?!studio)/ },
     /* EVERY WEEK'S FANS' PICKS (epinoia/votes/, migration 0150). Probed like the video
        hub: a league appears here once its first weekly vote has opened, and not
        before, so no league is offered an empty page. */
@@ -586,7 +590,9 @@
     platformRow('✚', 'injury report', 'injuries/', /\/epinoia\/injuries\/$/,
                 'the waiver wire: who is missing, in every league, by club'),
     platformRow('∿', 'what wins', 'winning/', /\/epinoia\/winning\//,
-                'what wins: the numbers that go with winning, measured on every finished game'));
+                'what wins: the numbers that go with winning, measured on every finished game'),
+    platformRow('❑', 'news', 'news/', /\/epinoia\/news\/$/,
+                'news: every league, the publishers that cover them and the leagues’ creators, newest first'));
 
   /* and on, into the leagues. A row rather than a bare chevron, because this is
      the journey the rail exists for. */
@@ -848,6 +854,10 @@
     catch (_) { holding2.textContent = 'unavailable'; return; }
     followsDrawn = true;                          // the answer arrived; keep it
 
+    /* THE CREATOR STUDIO (0194 my_creator_outlets): a row per outlet the account owns or writes for */
+    const studios = fetch(cfg.supabaseUrl + '/rest/v1/rpc/my_creator_outlets', {
+      method: 'POST', cache: 'no-store', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: '{}'
+    }).then(r => (r.ok ? r.json() : [])).catch(() => []);
     const fo = ((await offices) || []).filter(o => o && o.slug && o.members_ok);
     if (fo.length) {
       const box = document.createDocumentFragment();
@@ -860,6 +870,19 @@
           ? window.epinoiaCrest({ name: o.name, short_name: o.short_name, colour: o.colour, logo_path: o.logo_path }, { cls: 'ep-crest ic' })
           : el('span', 'ic', '◈');
         a.append(badge, marquee(o.name), el('span', 'lgo', '◈'));
+        box.appendChild(a);
+      });
+      flist.insertBefore(box, hd);
+    }
+    const cs = ((await studios) || []).filter(o => o && o.outlet_id);
+    if (cs.length) {
+      const box = document.createDocumentFragment();
+      box.appendChild(el('div', 'gtitle', 'creator studio'));
+      cs.forEach(o => {
+        const a = el('a', 'item trow forow');
+        a.href = root + 'creators/studio/?o=' + encodeURIComponent(o.outlet_id);
+        a.title = 'the creator studio · ' + o.name + ' (' + o.league_name + ')';
+        a.append(el('span', 'ic', '✎'), marquee(o.name), el('span', 'lgo', '✎'));
         box.appendChild(a);
       });
       flist.insertBefore(box, hd);
@@ -2240,6 +2263,8 @@
       return 'fanvote_rounds?select=id,leagues!inner(slug)&leagues.slug=eq.' +
         encodeURIComponent(slug) + '&limit=1';
     }
+    /* the league's creators (0194): the tables are the functions', so the function answers - a row, or none */
+    if (kind === 'creators') return 'rpc/creators_probe?p_slug=' + encodeURIComponent(slug);
     if (kind !== 'video') return null;
     /* every embedded table named IN THE SELECT, which is what makes the !inner
        filters below legal: PostgREST answers 400 (PGRST108) for a filter on a

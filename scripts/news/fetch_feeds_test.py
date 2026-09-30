@@ -80,6 +80,21 @@ second = next(x for x in items if x["title"] == "Second")
 ok("an http picture is passed over for the https one in the text", second["image_url"] == "https://img.example/2.jpg", second["image_url"])
 fut = next(x for x in items if x["title"] == "Future")
 ok("a date in the future is now", fut["published_at"] == NOW.isoformat(), fut["published_at"])
+ok("a date in numbers: month first (9/30/2026, FEB's), day first when it must be (30.09.2026), a day alone at its noon, with a time and AM/PM",
+   F.when("9/29/2026", NOW).isoformat() == "2026-09-29T12:00:00+00:00" and F.when("28.09.2026", NOW).isoformat() == "2026-09-28T12:00:00+00:00" and
+   F.when("9/29/2026 3:05:00 PM", NOW).isoformat() == "2026-09-29T15:05:00+00:00" and F.when("13/13/2026", NOW) is None,
+   [str(F.when(x, NOW)) for x in ("9/29/2026", "28.09.2026", "9/29/2026 3:05:00 PM", "13/13/2026")])
+ok("...and a day with no time that is today is as new as the read that found it", F.when(NOW.strftime("%-m/%-d/%Y"), NOW) == NOW)
+FEB = b"""<?xml version="1.0" encoding="utf-8"?><rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>FEB</title><link>https://www.feb.es</link>
+<item><title>Uno</title><link>https://www.feb.es/2026/9/29/a/1.aspx</link><description>Primera.</description><pubDate>9/29/2026</pubDate>
+<media:content format="XL" url="https://www.feb.es/Imagenes/1_1.jpg" /><media:content format="S" url="https://www.feb.es/Imagenes/1_4.jpg" /></item>
+<item><title>Dos</title><link>https://www.feb.es/2026/9/29/a/2.aspx</link><description>Segunda.</description><pubDate>9/29/2026</pubDate></item>
+<item><title>Tres</title><link>https://www.feb.es/2026/9/28/a/3.aspx</link><description>Tercera.</description><pubDate>9/28/2026</pubDate></item></channel></rss>"""
+_, feb = F.parse_feed(FEB, "https://www.feb.es/Servicios/RSS.ASPX?c=5", NOW)
+ok("a feed dated by the day (FEB): in its order, a second apart within a day, and its picture from media:content by the file's name",
+   [x["title"] for x in feb] == ["Uno", "Dos", "Tres"] and len({x["published_at"] for x in feb}) == 3 and
+   feb[0]["published_at"].startswith("2026-09-29T12:00:00") and feb[1]["published_at"].startswith("2026-09-29T11:59:59") and
+   feb[0]["image_url"] == "https://www.feb.es/Imagenes/1_1.jpg", [(x["title"], x["published_at"], x["image_url"]) for x in feb])
 UNDATED = b"""<?xml version="1.0"?><rss version="2.0"><channel><title>No dates</title><link>https://nd.example</link>
 <item><title>Top of the feed</title><link>https://nd.example/3</link></item>
 <item><title>Middle</title><link>https://nd.example/2</link></item>
@@ -136,6 +151,25 @@ ok("a short name counts only as a whole category", M.match("The ACB's new rules"
 ok("a name too common to mean one league never counts on its own", M.match("Super League round-up", "", ["National Basketball League"]) == [],
    M.match("Super League round-up", "", ["National Basketball League"]))
 ok("nothing about any league: none", M.match("Motor racing results", "Nothing here.", ["F1"]) == [])
+LG2 = [{"id": "EL", "name": "EuroLeague", "slug": "euroleague"}, {"id": "ES", "name": "Liga Endesa", "slug": "liga-endesa"},
+       {"id": "LU", "name": "Liga U", "slug": "liga-u"}, {"id": "LF", "name": "Liga Femenina Endesa", "slug": "liga-femenina-endesa"},
+       {"id": "US", "name": "U SPORTS", "slug": "u-sports"}, {"id": "ZB", "name": "Chance ŽBL", "slug": "czech-zbl"}]
+TM2 = [{"league_id": l, "name": n, "short_name": None} for l, n in
+       [("EL", "Real Madrid"), ("EL", "FC Barcelona"), ("ES", "Real Madrid"), ("ES", "FC Barcelona"), ("ES", "Valencia Basket"),
+        ("LU", "Real Madrid"), ("LU", "FC Barcelona"), ("LF", "Valencia Basket"), ("LF", "Perfumerias Avenida"),
+        ("US", "Carleton Ravens"), ("US", "Ottawa Gee-Gees")]]
+M2 = F.LeagueMatcher(LG2, TM2)
+ok("a league by its other names (the Euroliga), and a youth league never by its clubs alone (Real Madrid's U-team is not the story)",
+   sorted(M2.match("Qué ha pasado en la Euroliga: Real Madrid y Barcelona caen fuera de casa", "", [])) == ["EL", "ES"],
+   M2.match("Qué ha pasado en la Euroliga: Real Madrid y Barcelona caen fuera de casa", "", []))
+ok("a women's league by its clubs only when the story says it is women's basketball; the men's league otherwise",
+   M2.match("Valencia Basket y Real Madrid, duelo en la cumbre", "", []) == ["ES"] and
+   M2.match("Liga Femenina: Valencia Basket y Perfumerías Avenida, duelo en la cumbre", "", []) == ["LF"] and
+   M2.match("Valencia Basket beat Perfumerias Avenida in the women's final", "", []) == ["LF"],
+   [M2.match("Valencia Basket y Real Madrid, duelo en la cumbre", "", []), M2.match("Liga Femenina: Valencia Basket y Perfumerías Avenida, duelo en la cumbre", "", [])])
+ok("letters that are one league's alone count in a headline (the ACB); 'U SPORTS' is no youth league; ŽBL is a women's league",
+   M2.match("La ACB aprueba el nuevo calendario", "", []) == ["ES"] and M2.match("Carleton Ravens beat Ottawa Gee-Gees", "", []) == ["US"] and
+   "ZB" in M2.women and "LU" in M2.junior and "US" not in M2.junior, [M2.match("La ACB aprueba el nuevo calendario", "", []), sorted(M2.women), sorted(M2.junior)])
 
 
 class FakeDb:
@@ -164,6 +198,89 @@ class FakeDb:
         self.marks[sid] = fields
 
 
+print("\na publisher's logo")
+def png(w, h):
+    return b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + w.to_bytes(4, "big") + h.to_bytes(4, "big") + b"\x08\x06\x00\x00\x00" + b"\x00" * 20
+def ico(*sizes):
+    d = b"\x00\x00\x01\x00" + len(sizes).to_bytes(2, "little")
+    return d + b"".join(bytes([sz % 256, sz % 256, 0, 0]) + b"\x00" * 12 for sz in sizes)
+JPG = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00" + b"\xff\xc0\x00\x11\x08" + (300).to_bytes(2, "big") + (400).to_bytes(2, "big") + b"\x03" + b"\x00" * 12
+ok("a picture's real size is read from its header: PNG, ICO (its largest), JPEG, GIF, SVG",
+   F.image_size(png(180, 180), "image/png") == 180 and F.image_size(ico(16, 32, 48), "image/x-icon") == 48 and
+   F.image_size(JPG, "image/jpeg") == 300 and F.image_size(b"GIF89a" + (120).to_bytes(2, "little") + (90).to_bytes(2, "little"), "image/gif") == 90 and
+   F.image_size(b"<svg xmlns='http://www.w3.org/2000/svg'/>", "image/svg+xml") == 999 and F.image_size(ico(0), "") == 256,
+   [F.image_size(png(180, 180), ""), F.image_size(ico(16, 32, 48), ""), F.image_size(JPG, "")])
+ok("...and an error page is no picture", F.image_size(b"<!doctype html><html>not found</html>", "text/html") is None)
+HOME = """<!doctype html><html><head><title>Hoops</title>
+<link rel="icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/fav-32.png">
+<link rel="mask-icon" href="/safari.svg" color="#000"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" href="http://hoops.example/insecure.png" sizes="512x512"><link rel="manifest" href="/site.webmanifest">
+<meta name="msapplication-TileImage" content="/mstile-144x144.png"></head><body><link rel="icon" href="/late.png"></body></html>"""
+cands, man = F.logo_candidates(HOME, "https://hoops.example/")
+ok("the page's marks, best first: the phone icon, then Windows' tile, then the sized icon; never the one-colour stencil, "
+   "an http address, or anything after <body>",
+   [u for _, u in cands] == ["https://hoops.example/apple-touch-icon.png", "https://hoops.example/fav-32.png",
+                             "https://hoops.example/mstile-144x144.png", "https://hoops.example/favicon.ico"] and
+   man == "https://hoops.example/site.webmanifest", cands)
+MANIFEST = b'{"icons":[{"src":"/m-512.png","sizes":"512x512","purpose":"maskable"},{"src":"/a-192.png","sizes":"192x192"}]}'
+ok("the manifest's icons: the plain ones ahead of the padded (maskable) ones",
+   [u for _, u in F.manifest_icons(MANIFEST, "https://hoops.example/site.webmanifest")] == ["https://hoops.example/a-192.png", "https://hoops.example/m-512.png"])
+PAGES = {"https://hoops.example": (200, HOME.encode(), {}),
+         "https://hoops.example/site.webmanifest": (200, MANIFEST, {}),
+         "https://hoops.example/a-192.png": (404, b"", {}),
+         "https://hoops.example/apple-touch-icon.png": (200, png(180, 180), {"content-type": "image/png"}),
+         "https://small.example": (200, b'<html><head><link rel="icon" href="/f.ico"></head></html>', {}),
+         "https://small.example/f.ico": (200, ico(16, 32), {"content-type": "image/x-icon"}),
+         "https://errors.example": (200, b'<html><head><link rel="apple-touch-icon" href="/gone.png"></head></html>', {}),
+         "https://errors.example/gone.png": (200, b"<html>soft 404</html>", {"content-type": "text/html"})}
+pages_asked = []
+def page(url):
+    pages_asked.append(url)
+    if url in PAGES:
+        return PAGES[url]
+    return 404, b"", {}
+ok("the logo: the best mark that is really there and really a picture (a manifest icon that is gone is passed over)",
+   F.find_logo("https://hoops.example", page) == "https://hoops.example/apple-touch-icon.png", pages_asked)
+ok("...a site with only a favicon has no logo (the card prints the initials in its colour)", F.find_logo("https://small.example", page) is None)
+ok("...nor one whose icon is an error page", F.find_logo("https://errors.example", page) is None)
+ok("...and where the page names none, the address phones ask for anyway",
+   F.find_logo("https://quiet.example", lambda u: (200, png(152, 152), {}) if u == "https://quiet.example/apple-touch-icon.png" else (200, b"<html></html>", {}))
+   == "https://quiet.example/apple-touch-icon.png")
+
+import struct, zlib
+def real_png(w, h, clear_corners, filt=0):
+    """an RGBA PNG, its corners see-through or not, its rows under one filter (0 none, 1 sub, 2 up, 4 paeth)"""
+    rows, prev = [], bytes(w * 4)
+    raw = b""
+    for y in range(h):
+        px = bytearray()
+        for x in range(w):
+            corner = (x < 10 or x >= w - 10) and (y < 10 or y >= h - 10)
+            px += bytes([(x * 7) % 256, (y * 5) % 256, 90, 0 if (corner and clear_corners) else 255])
+        out = bytearray(px)
+        for i in range(len(px)):
+            a = px[i - 4] if i >= 4 else 0
+            b, c = prev[i], (prev[i - 4] if i >= 4 else 0)
+            if filt == 1: out[i] = (px[i] - a) & 255
+            elif filt == 2: out[i] = (px[i] - b) & 255
+            elif filt == 4:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                out[i] = (px[i] - (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        raw += bytes([filt]) + bytes(out)
+        prev = bytes(px)
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)) +
+            chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+ok("A MARK THAT FILLS ITS SQUARE is drawn to the edge of the disc: nothing see-through in its corners, whatever the row filters",
+   all(F.fills_square(real_png(80, 80, False, f)) for f in (0, 1, 2, 4)))
+ok("...a logo on a clear ground is not (it stays on the white disc)", not any(F.fills_square(real_png(80, 80, True, f)) for f in (0, 1, 2, 4)))
+SQJPG = JPG.replace((300).to_bytes(2, "big") + (400).to_bytes(2, "big"), (400).to_bytes(2, "big") + (400).to_bytes(2, "big"))
+ok("...a square JPEG has no clear ground; a wordmark (not square) keeps its margin; a picture that cannot be read is said not to fill",
+   F.fills_square(SQJPG) and not F.fills_square(JPG) and not F.fills_square(real_png(120, 60, False)) and not F.fills_square(png(180, 180)))
+ok("...and the logo says so, for the card", F.find_logo("https://full.example", lambda u: (200, real_png(96, 96, False), {}) if u.endswith(".png") else (200, b"<html></html>", {}))
+   == "https://full.example/apple-touch-icon.png#fill")
+
 print("\na run")
 asked = []
 def get(url, etag=None, modified=None):
@@ -173,24 +290,28 @@ def get(url, etag=None, modified=None):
     if url.endswith("/broken"):
         raise OSError("connection reset")
     return 200, RSS, {"etag": 'W/"new"', "last-modified": "Wed, 30 Sep 2026 10:00:00 GMT"}
-db = FakeDb([{"id": "s1", "name": "Hoops", "feed_url": "https://hoops.example/feed", "etag": 'W/"old"', "last_modified": "x"},
-             {"id": "s2", "name": "Broken", "feed_url": "https://b.example/broken"},
+db = FakeDb([{"id": "s1", "name": "Hoops", "feed_url": "https://hoops.example/feed", "site_url": "https://hoops.example", "etag": 'W/"old"', "last_modified": "x"},
+             {"id": "s2", "name": "Broken", "feed_url": "https://b.example/broken", "logo_checked_at": (NOW - F.timedelta(days=2)).isoformat()},
              {"id": "s3", "name": "Same", "feed_url": "https://s.example/same", "logo_url": "https://s.example/l.png", "etag": 'W/"s"'}])
 logs = []
-r = F.run(db, get=get, log=logs.append, now=lambda: NOW, sleep=lambda s: None)
+pages_asked.clear()
+r = F.run(db, get=get, log=logs.append, now=lambda: NOW, sleep=lambda s: None, page=page)
 ok("every source asked once, with its last ETag and Last-Modified", asked[0] == ("https://hoops.example/feed", 'W/"old"', "x") and len(asked) == 3, asked)
 ok("its items written with their source, and old ones pruned", len(db.rows) == 3 and all(x["source_id"] == "s1" for x in db.rows) and db.pruned == ["s1"])
 ok("...each with the leagues it is about (the fixture's first story names the EuroLeague in a category)",
    next(x for x in db.rows if x["guid"] == "https://hoops.example/?p=1")["league_ids"] == ["EL"] and
    next(x for x in db.rows if x["title"] == "Second")["league_ids"] == [], [x["league_ids"] for x in db.rows])
-ok("...the read recorded: ok, the new ETag, the count, and the feed's own picture while it has none",
+ok("...the read recorded: ok, the new ETag, the count, and the logo found on its own site while it has none",
    db.marks["s1"]["last_error"] is None and db.marks["s1"]["etag"] == 'W/"new"' and db.marks["s1"]["item_count"] == 3 and
-   db.marks["s1"]["logo_url"] == "https://hoops.example/logo.png", db.marks["s1"])
+   db.marks["s1"]["logo_url"] == "https://hoops.example/apple-touch-icon.png" and db.marks["s1"]["logo_checked_at"] == NOW.isoformat(), db.marks["s1"])
+ok("...a logo looked for two days ago and not found is not looked for again until the week is out; one somebody set, never",
+   "logo_checked_at" not in db.marks["s2"] and "logo_checked_at" not in db.marks["s3"] and
+   not any("//b.example" in u or "//s.example" in u for u in pages_asked), pages_asked)
 ok("a source that fails has its error recorded, and the next is still read",
    "connection reset" in db.marks["s2"]["last_error"] and "last_ok_at" not in db.marks["s2"] and db.marks["s3"]["last_error"] is None, db.marks["s2"])
-ok("a 304 is an ok read that writes nothing", "logo_url" not in db.marks["s3"] and r == {"read": 1, "unchanged": 1, "failed": 1, "items": 3, "tagged": 1}, r)
+ok("a 304 is an ok read that writes nothing", "logo_url" not in db.marks["s3"] and r == {"read": 1, "unchanged": 1, "failed": 1, "items": 3, "tagged": 1, "logos": 1}, r)
 dry = FakeDb([{"id": "s1", "name": "Hoops", "feed_url": "https://hoops.example/feed"}])
-F.run(dry, get=get, dry_run=True, log=lambda m: None, now=lambda: NOW, sleep=lambda s: None)
+F.run(dry, get=get, dry_run=True, log=lambda m: None, now=lambda: NOW, sleep=lambda s: None, page=page)
 ok("a dry run reads and writes nothing", dry.rows == [] and dry.marks == {} and dry.pruned == [])
 
 print(f"\n{PASS} passed, {FAIL} failed")

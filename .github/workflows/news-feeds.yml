@@ -1,0 +1,53 @@
+name: News feeds (the publishers' and the leagues' own news sites)
+
+# Every news source on (news_sources, migrations 0194 and 0195) read by its RSS / Atom / JSON feed:
+# the headline, the opening lines, the picture and the link of each new story, into news_items,
+# each tagged with the leagues it is about, for the News page, HOME's feed and each league's news
+# page. A conditional GET, so a feed with nothing new costs a 304. A source with no logo has one
+# found on its own site. See scripts/news/fetch_feeds.py and docs/news-and-creators.md.
+#
+# Every half hour. A story is on the site within half an hour of its publisher's feed carrying it,
+# and the followers of that publisher are told (notify_news_items, then the minute tick's notify).
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Only this source's id (optional)"
+        required: false
+      dry_run:
+        description: "Read the feeds, write nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: news-feeds
+  cancel-in-progress: false
+
+jobs:
+  read:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      # the reader alone: the standard library is all it needs
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/news
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Read the news sources
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SOURCE: ${{ github.event.inputs.source }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=""
+          if [ -n "$SOURCE" ]; then args="$args --source $SOURCE"; fi
+          if [ "$DRY_RUN" = "true" ]; then args="$args --dry-run"; fi
+          python scripts/news/fetch_feeds.py $args

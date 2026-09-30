@@ -1,0 +1,103 @@
+/* ============================================================================
+   A LEAGUE'S CREATORS (epinoia/creators/, creators-page.js): the outlets as tiles in
+   their own colours, an outlet's about, a piece's video or post played in place.
+   The cards and the heads are the post card's (kit/newscard.css).
+   ============================================================================ */
+.cr-wrap{padding:0 calc(var(--u,4px)*3) calc(var(--u,4px)*6)}
+.cr-h{margin-top:calc(var(--u,4px)*6)}
+.cr-loading{margin:calc(var(--u,4px)*4)}
+
+/* ---- the outlets ---- */
+.cr-tiles{display:grid;gap:calc(var(--u,4px)*3);grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.cr-tile{position:relative;display:flex;flex-direction:column;min-width:0;background:var(--panel);border:1px solid var(--rule);
+  transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s ease,box-shadow .18s ease}
+.cr-tile:hover{transform:translate(-2px,-2px);border-color:var(--bc);box-shadow:4px 4px 0 color-mix(in oklch,var(--bc) 55%,transparent)}
+.cr-tile-top{position:relative;display:grid;place-items:center;height:128px;overflow:hidden;isolation:isolate}
+.cr-tile-top .pc-disc{width:84px}
+.cr-tile-body{display:flex;flex-direction:column;gap:6px;padding:12px 14px 10px 17px;box-shadow:inset 4px 0 0 var(--bc);flex:1 1 auto}
+.cr-tile-name{font-family:var(--f-ui);font-weight:800;font-size:16px;line-height:1.2;color:var(--ink);text-decoration:none}
+.cr-tile-name:hover{color:color-mix(in oklch,var(--bc) 45%,var(--ink))}
+.cr-tile-tag{margin:0;font-family:var(--f-ui);font-size:13px;line-height:1.45;color:var(--ink-2);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cr-tile-meta{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.cr-tile-foot{padding:8px 14px 11px 17px;border-top:1px dashed var(--rule)}
+
+/* ---- an outlet's platforms ---- */
+.cr-plats{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.cr-plat{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;font-family:var(--f-micro);font-size:7.5px;
+  letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);border:1px solid var(--rule);
+  background:color-mix(in oklch,var(--bc,var(--lume)) 8%,var(--panel))}
+.cr-plat:hover{color:var(--ink);border-color:var(--bc,var(--lume))}
+.cr-plats.big{gap:8px}
+.cr-plats.big .cr-plat{min-height:32px;padding:0 13px;font-size:8.5px}
+
+/* ---- an outlet's about ---- */
+.cr-about{max-width:760px;margin:calc(var(--u,4px)*5) 0 0;padding:calc(var(--u,4px)*4) calc(var(--u,4px)*4);
+  background:var(--panel);border:1px solid var(--rule);box-shadow:inset 4px 0 0 var(--bc)}
+.cr-bio{margin:0 0 calc(var(--u,4px)*3);font-family:var(--f-ui);font-size:15px;line-height:1.7;color:var(--ink-2);max-width:66ch}
+.cr-about-h{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+
+/* ---- a piece: its video, episode or post, played in place ---- */
+.cr-embed{position:relative;z-index:1;margin:calc(clamp(90px,11vw,150px)*-1 + 26px) auto 0;max-width:880px;background:#000;
+  border:1px solid color-mix(in oklch,var(--bc) 55%,var(--rule));box-shadow:10px 10px 0 color-mix(in oklch,var(--bc) 50%,transparent)}
+.cr-embed .pc-embed{border-top:0}
+.cr-embed-tall{max-width:360px}
+.cr-embed-post{max-width:560px;background:#fff}
+.cr-embed-audio{max-width:720px;background:transparent}
+.cr-piece .art-body{text-align:left;margin:calc(var(--u,4px)*6) auto 0;padding-left:0;padding-right:0}
+.cr-own{margin:calc(var(--u,4px)*3) auto 0}
+@media (max-width:640px){
+  .cr-wrap{padding:0 16px 24px}
+  .cr-embed{box-shadow:6px 6px 0 color-mix(in oklch,var(--bc) 50%,transparent)}
+  .cr-about{padding:16px}
+}
+
+/* ---- THE STUDIO (creators/studio/studio.js): the outlet's head, the tabs, the pieces, the editor beside its preview ---- */
+.st-wrap{padding:calc(var(--u,4px)*4) calc(var(--u,4px)*3) calc(var(--u,4px)*8);max-width:1240px}
+.st-outlets{margin-bottom:calc(var(--u,4px)*3)}
+.st-head{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--rule);box-shadow:inset 4px 0 0 var(--bc)}
+.st-head .st-mark{width:40px;height:40px}
+.st-head-w{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto}
+.st-head-w b{font-family:var(--f-ui);font-weight:800;font-size:17px;color:var(--ink)}
+.st-head-w span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.st-warn{margin-top:10px;padding:10px 14px;border:1px solid var(--flare,#e0564a);color:var(--ink);font-family:var(--f-ui);font-size:13.5px;line-height:1.5;
+  background:color-mix(in oklch,var(--flare,#e0564a) 10%,var(--panel))}
+.st-tabs{margin:calc(var(--u,4px)*4) 0 calc(var(--u,4px)*2)}
+.st-msg{min-height:20px;font-family:var(--f-micro);font-size:9.5px;letter-spacing:.04em;color:var(--ink-2);margin-bottom:8px}
+.st-msg.ok{color:var(--lume)}
+.st-msg.bad{color:var(--flare,#e0564a)}
+.st-list{display:flex;flex-direction:column;border:1px solid var(--rule);background:var(--panel)}
+.st-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--rule)}
+.st-row:first-child{border-top:0}
+.st-kind{flex:none;width:92px;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.st-row-t{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto;font-family:var(--f-ui);font-size:14px;color:var(--ink)}
+.st-row-t b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-state{font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.st-state.ok{color:var(--lume)}
+.st-state.bad{color:var(--flare,#e0564a)}
+.st-acts{display:flex;gap:6px;flex:none}
+.st-ed{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:calc(var(--u,4px)*5);align-items:start}
+.st-form{display:flex;flex-direction:column;gap:14px;min-width:0}
+.st-side{position:sticky;top:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.st-prev .pc{max-width:460px}
+.st-field{display:flex;flex-direction:column;gap:6px}
+.st-field .ep-input{max-width:none;width:100%}
+.st-label{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.st-hint{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.03em;line-height:1.7;color:var(--ink-3)}
+.st-ta{resize:vertical;min-height:70px;font-family:var(--f-ui);line-height:1.5}
+.st-bodywrap{display:flex;flex-direction:column;gap:6px}
+.st-bodywrap[hidden]{display:none}
+.st-article{min-height:260px}
+.st-row-btns{display:flex;gap:8px;flex-wrap:wrap}
+.st-inline{display:flex;align-items:center;gap:10px;font-family:var(--f-ui);font-size:13px;color:var(--ink-2)}
+.st-colour{width:48px;height:34px;padding:0;border:1px solid var(--rule);background:none}
+.st-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+.st-add{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.st-add .ep-input{flex:1 1 220px}
+@media (max-width:900px){
+  .st-ed{grid-template-columns:1fr}
+  .st-side{position:static;order:-1}
+  .st-links{grid-template-columns:1fr}
+  .st-kind{width:auto}
+  .st-row{flex-wrap:wrap}
+}

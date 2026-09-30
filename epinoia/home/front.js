@@ -6,7 +6,8 @@
    their own files (daily.js, stars-home.js, leagues.js), each registering one
    async function at load:
 
-     EpinoiaHome.register('fixtures' | 'stars' | 'leagues', async function (ctx) { … })
+     EpinoiaHome.register('fixtures' | 'followed' | 'feed' | 'stars' | 'records' | 'leagues' | 'privateLeagues',
+                          async function (ctx) { … })
 
    ctx = { host, base, now, fadeIn }
      host    the section's mount element (#homeDaily, #homeStars, #homeLeagues)
@@ -36,12 +37,13 @@
 const NOW = new Date();
 const BASE = '../';
 const MOUNTS = {
-  fixtures: 'homeDaily', followed: 'homeFollowed', stars: 'homeStars', records: 'homeRecords',
+  fixtures: 'homeDaily', followed: 'homeFollowed', feed: 'homeFeed', stars: 'homeStars', records: 'homeRecords',
   leagues: 'homeLeagues', privateLeagues: 'homePrivateLeagues'
 };
 const QUIET = {
   fixtures: 'Fixtures could not be loaded just now.',
   followed: 'What you follow could not be loaded just now.',
+  feed: 'The feed could not be loaded just now.',
   stars: 'The best performers could not be loaded just now.',
   records: 'The records could not be loaded just now.',
   leagues: 'The leagues could not be loaded just now.',
@@ -332,12 +334,15 @@ function boot() {
      whole page, so the second to ask gets it for nothing */
   const followed = fixtures.then(() => run('followed'));
   firstRuns.followed = followed;
+  /* THE FEED (feed-home.js): one small read, after the fixtures a reader came for */
+  const feed = fixtures.then(() => run('feed'));
+  firstRuns.feed = feed;
   const priv = run('privateLeagues');
   const stars = fixtures.then(() => run('stars'));
   /* the global records read every league's season: after the podiums, which are heavier still */
   const records = stars.then(() => run('records'));
   firstRuns.stars = stars; firstRuns.records = records;
-  Promise.all([fixtures, followed, leagues, stars, records, priv])
+  Promise.all([fixtures, followed, feed, leagues, stars, records, priv])
     .then(renumber, renumber)
     .then(reScroll, reScroll);
 }

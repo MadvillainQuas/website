@@ -1664,6 +1664,50 @@ async function news() {
   } catch (_) { /* news is not load-bearing for the rest of the page */ }
 }
 
+/* THE LEAGUE'S CREATORS (0194), under its own news: their three most recent pieces on the post card, each to its
+   page, and a row of the outlets, each to theirs. Absent while the league has creators off or nothing is published:
+   the public reads answer nothing then, and the section stays hidden. (Its switch is the creators switch itself, in
+   the console's Creators panel, rather than one more under Appearance.) */
+async function creators() {
+  const sec = $('#creatorsSec'), host = $('#creators');
+  const K = window.EpinoiaNewsCard;
+  if (!LEAGUE || !sec || !host || !K) return;
+  let rows = [], outlets = [];
+  try {
+    [rows, outlets] = await Promise.all([
+      rpc('creators_public', { p_league: LEAGUE.id, p_limit: 3, p_offset: 0 }),
+      rpc('creator_outlets_public', { p_league: LEAGUE.id })
+    ]);
+  } catch (_) { return; }                        // a database without 0194, or creators off: no section
+  if (!(rows || []).length) return;
+  const slug = encodeURIComponent(LEAGUE.slug);
+  const outletHref = o => 'creators/?l=' + slug + '&o=' + encodeURIComponent(o);
+  host.textContent = '';
+  if ((outlets || []).length > 1) {
+    host.appendChild(K.brands(outlets.slice(0, 8).map(o => ({ name: o.name, logo: o.logo_url, colour: o.colour, href: outletHref(o.slug),
+      note: Number(o.pieces || 0) + (Number(o.pieces) === 1 ? ' piece' : ' pieces') }))));
+  }
+  host.appendChild(K.grid(rows.map(x => {
+    const e = K.embedOf(x.external_url, location.hostname);
+    return {
+      kind: K.KIND[x.kind] ? x.kind : 'article', title: x.title, summary: x.standfirst,
+      image: (x.cover_url && /^https:\/\//.test(x.cover_url) ? x.cover_url : null) || (e && e.thumb) || null,
+      when: x.published_at, author: x.author_name, href: outletHref(x.outlet_slug) + '&p=' + encodeURIComponent(x.slug),
+      platform: e ? e.label : null,
+      brand: { name: x.outlet_name, logo: x.outlet_logo, colour: x.outlet_colour, href: outletHref(x.outlet_slug) }
+    };
+  }), { lead: false, now: Date.now(), showLeague: false }));
+  const note = $('#creatorsNote');
+  if (note) {
+    note.textContent = '';
+    const a = document.createElement('a');
+    a.href = 'creators/?l=' + slug;
+    a.textContent = 'every creator →';
+    note.appendChild(a);
+  }
+  sec.classList.remove('hide');
+}
+
 async function socials() {
   if (!LEAGUE || !window.EpinoiaSocials) return;
   try {
@@ -1867,6 +1911,7 @@ function renumber() {
       wall.walled ? null : stars().catch(() => null),
       wall.walled ? null : records(clubsP).catch(() => null),
       wall.walled ? null : news().catch(() => null),
+      wall.walled ? null : creators().catch(() => null),
       wall.walled ? null : teamOfTheYear().catch(() => null),
       socialsP
     ]);

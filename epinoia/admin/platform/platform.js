@@ -176,7 +176,7 @@ function wire() {
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
-                     analytics: loadAnalytics, links: loadLinks, maint: loadReset };
+                     analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1279,6 +1279,14 @@ function loadLinks() {
   const L = window.EpinoiaLinksUI;
   if (!L) return say('links-ui.js did not load, so links cannot be edited. Reload the page.', 'err');
   L.mount({ host: '#linksHost', sb, say, oops });
+}
+
+/* ------------------------------------------------------------------ news --- */
+/* The news sites every reader sees (migration 0194): creators-ui.js draws the list, the switches and the form. */
+function loadNewsSources() {
+  const C = window.EpinoiaCreatorsUI;
+  if (!C) return say('creators-ui.js did not load, so the news sources cannot be edited. Reload the page.', 'err');
+  C.mountSources({ host: '#newsSourcesHost', sb, say, league: null, base: '../../' });
 }
 
 /* ------------------------------------------------------------- analytics --- */

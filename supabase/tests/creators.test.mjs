@@ -106,12 +106,20 @@ ok('the last owner stays', /at least one owner/.test(await fails(() => q(`select
 await as(WRITER);
 ok('a writer cannot change the page or its people', /owner/.test(await fails(() => q(`select public.update_creator_outlet($1, 'P', '', '', null, null, '{}')`, [outlet])) || '') &&
    /owner/.test(await fails(() => q(`select public.add_creator_member($1, 'x@y.z')`, [outlet])) || ''));
-const body = [{ type: 'p', spans: [{ t: 'Hello ' }, { t: 'there', b: true, onclick: 'x' }, { t: 'link', href: 'javascript:alert(1)' }] }, { type: 'script', src: 'x' }];
+const body = [{ type: 'p', spans: [{ t: 'Hello ' }, { t: 'there', b: true, onclick: 'x' }, { t: 'link', href: 'javascript:alert(1)' }] }, { type: 'script', src: 'x' },
+              { type: 'image', path: 'team/x/news-1.jpg', caption: 'an upload path: an outlet has none' }, { type: 'image', path: 'javascript:alert(1)' }];
 const [{ id: post1 }] = await q(`select public.upsert_creator_post(null, $1, 'article', 'Game 3 preview', 'What to watch', $2::jsonb, 'https://pod.example/cover.jpg', null, 'published') as id`,
   [outlet, JSON.stringify(body)]);
 const [p1] = await q(`select body, published_at, author_name, slug from creator_posts where id = $1`, [post1]);
-ok('a writer publishes; the body cleaned as the league\'s news is (no unknown block, key or javascript: link)',
+ok('a writer publishes; the body cleaned as the league\'s news is (no unknown block, key or javascript: link), and a picture only an https address',
    canon(p1.body) === canon([{ type: 'p', spans: [{ t: 'Hello ' }, { t: 'there', b: true }, { t: 'link' }] }]) && p1.published_at && p1.slug === 'game-3-preview', p1.body);
+{
+  const [{ id: pi }] = await q(`select public.upsert_creator_post(null, $1, 'article', 'With a picture', '', $2::jsonb, null, null, 'draft') as id`,
+    [outlet, JSON.stringify([{ type: 'image', path: 'https://pod.example/court.jpg', caption: 'The court' }, { type: 'p', spans: [{ t: 'After' }] }])]);
+  const [pb] = await q(`select body from creator_posts where id = $1`, [pi]);
+  ok('...a picture at an https address stays, with its caption, in its place', canon(pb.body) === canon([{ type: 'image', path: 'https://pod.example/court.jpg', caption: 'The court' }, { type: 'p', spans: [{ t: 'After' }] }]), pb.body);
+  await q(`select public.delete_creator_post($1)`, [pi]);
+}
 ok('...a video, a podcast or a social post needs its address, and every address is https',
    /needs its address/.test(await fails(() => q(`select public.upsert_creator_post(null, $1, 'social', 'Clip', '', '[]', null, null, 'published')`, [outlet])) || '') &&
    /https/.test(await fails(() => q(`select public.upsert_creator_post(null, $1, 'video', 'Clip', '', '[]', null, 'http://youtube.com/watch?v=x', 'published')`, [outlet])) || ''));
@@ -128,10 +136,15 @@ await as('');
 let pub = await q(`select * from public.creators_public($1, 6, 0)`, [lg.id]);
 ok('the league\'s pieces, newest first, with the outlet', pub.length === 2 && pub[0].title === 'The dunk' && pub[0].outlet_name === 'The Hoops Pod' && pub[0].outlet_colour === '#ff6600', pub.map(r => r.title));
 const page = (await q(`select public.creator_outlet_public($1, 'the-hoops-pod') as j`, [lg.id]))[0].j;
-ok('the outlet\'s page: its links and its pieces', page && page.links.youtube && page.posts.length === 2);
+ok('the outlet\'s page: its links and its pieces, and its id for the follow bell', page && page.links.youtube && page.posts.length === 2 && page.id === outlet);
 const one = (await q(`select public.creator_post_public($1, 'the-hoops-pod', 'game-3-preview') as j`, [lg.id]))[0].j;
-ok('one piece, with its body', one && one.title === 'Game 3 preview' && Array.isArray(one.body) && one.outlet.name === 'The Hoops Pod');
+ok('one piece, with its body, its outlet (and its id) and its league', one && one.title === 'Game 3 preview' && Array.isArray(one.body) &&
+   one.outlet.name === 'The Hoops Pod' && one.outlet.id === outlet && one.league.slug === 'el');
+ok('the directory names each outlet\'s id too', (await q(`select id from public.creator_outlets_public($1)`, [lg.id]))[0].id === outlet);
 ok('an outlet with nothing published is not listed', (await q(`select slug from public.creator_outlets_public($1)`, [lg.id])).map(r => r.slug).join() === 'the-hoops-pod');
+ok('the rail\'s question: a row for a league with creators on and something published, none for one without',
+   (await q(`select * from public.creators_probe('el')`)).length === 1 && (await q(`select * from public.creators_probe('priv')`)).length === 0 &&
+   (await q(`select * from public.creators_probe('nope')`)).length === 0);
 await as(ADMIN);
 await q(`select public.hide_creator_post($1, true)`, [post2]);
 await as('');
@@ -190,7 +203,13 @@ ok('paged: the next two before the last one shown', paged.map(r => r.title).join
 const league = await q(`select * from public.news_feed($1, null, 30)`, [lg.id]);
 ok('a league\'s own page: its news, its creators and its own sources, not every reader\'s', league.map(r => r.title).join() === 'Local story,Official news,Game 3 preview', league.map(r => r.title));
 await as(PLAT);
+/* THE LOGO: the fetcher found one and said when it looked; clearing it (or moving the site) has it look again */
+await q(`update news_sources set logo_url = 'https://www.eurohoops.net/apple-touch-icon.png', logo_checked_at = now() where id = $1`, [gsrc]);
+await q(`select public.update_news_source($1, 'Eurohoops', 'https://www.eurohoops.net', 'https://www.eurohoops.net/en/feed/', 'https://www.eurohoops.net/apple-touch-icon.png', null, true)`, [gsrc]);
+ok('an edit that keeps the logo keeps when it was found', (await q(`select logo_checked_at from news_sources where id = $1`, [gsrc]))[0].logo_checked_at !== null);
 await q(`select public.update_news_source($1, 'Eurohoops', 'https://www.eurohoops.net', 'https://www.eurohoops.net/en/feed/', null, null, false)`, [gsrc]);
+ok('...clearing the logo has the fetcher look for it again on its next read',
+   (await q(`select logo_url, logo_checked_at from news_sources where id = $1`, [gsrc]))[0].logo_checked_at === null);
 await as('');
 ok('a disabled source leaves the page', !(await q(`select * from public.news_feed(null, null, 30)`)).some(r => r.source_name === 'Eurohoops'));
 
@@ -295,6 +314,14 @@ console.log('\nfollowing a publisher or an outlet, and what it brings');
      pubs.some(r => r.slug === 'eurohoops' && r.items === 7) && !pubs.some(r => r.items === 0), pubs);
   ok('...and a league\'s: its own sources and the ones with a story about it',
      (await q(`select slug from public.news_sources_public($1)`, [ll.id])).map(r => r.slug).join() === 'eurohoops');
+  /* A LEAGUE'S OWN SOURCE, a story of which is about another league: that league's page carries it too */
+  const [{ id: own }] = await q(`insert into news_sources (league_id, slug, name, site_url, feed_url) values ($1, 'el-own', 'EL own', 'https://el.example', 'https://el.example/feed') returning id`, [lg.id]);
+  await q(`insert into news_items (source_id, guid, url, title, published_at, league_ids) values ($1, 'x1', 'https://el.example/1', 'An EL story about ACB', now() - interval '1 hour', array[$2::uuid])`, [own, ll.id]);
+  ok('a league\'s own source\'s story about another league is on that league\'s page too, and on its own',
+     (await q(`select title from public.news_feed($1, null, 60)`, [ll.id])).some(r => r.title === 'An EL story about ACB') &&
+     (await q(`select title from public.news_feed($1, null, 60)`, [lg.id])).some(r => r.title === 'An EL story about ACB'));
+  ok('...tagged with both leagues, its own first', (await q(`select leagues from public.news_feed(null, null, 60) where title = 'An EL story about ACB'`))[0].leagues.map(l => l.slug).join() === 'el,acb');
+  await q(`delete from news_sources where id = $1`, [own]);
 
   /* HOME's FEED, "Followed": what the reader follows, and nothing else */
   await as(FAN);
@@ -312,6 +339,37 @@ console.log('\nfollowing a publisher or an outlet, and what it brings');
   await as('');
   ok('...signed out: closed (the signed-out may not call it)',
      !(await q(`select has_function_privilege('anon', 'public.news_feed_mine(timestamptz, int)', 'execute') as ok`))[0].ok);
+}
+
+console.log('\nthe sources to start with (0195)');
+{
+  await as('');
+  await q(`insert into leagues (slug, name) values ('nbl', 'NBL') on conflict do nothing`);
+  const before = (await q(`select count(*)::int as n from news_sources`))[0].n;
+  await db.exec(mig('0195_news_sources.sql'));
+  const seeded = await q(`select s.slug, s.league_id, l.slug as league, s.logo_url, s.logo_checked_at, s.site_url, s.feed_url, s.colour
+                            from news_sources s left join leagues l on l.id = s.league_id`);
+  const by = Object.fromEntries(seeded.map(r => [r.slug, r]));
+  ok('the news sites and the leagues\' own are added; one already there (Eurohoops, by its slug) is left as it was',
+     seeded.length - before === 29 && by.basketnews && by['b-league'] && by.eurohoops.feed_url === 'https://www.eurohoops.net/en/feed/' && by.eurohoops.site_url === 'https://www.eurohoops.net',
+     seeded.length - before);
+  ok('...a league\'s own feed belongs to that league when it is on Epinoia, and is every reader\'s when it is not',
+     by['nbl-australia'].league === 'nbl' && by['b-league'].league_id === null && by.basketnews.league_id === null);
+  ok('...each with its logo (said to be looked for already) and every address and colour as the table requires',
+     by.basketnews.logo_url && by.basketnews.logo_checked_at && by['u-sports'].logo_url === null && by['u-sports'].logo_checked_at === null &&
+     seeded.every(r => /^https?:\/\//.test(r.site_url) && /^https?:\/\//.test(r.feed_url) && (!r.logo_url || /^https:\/\//.test(r.logo_url)) && (!r.colour || /^#[0-9a-f]{6}$/i.test(r.colour))));
+  await db.exec(mig('0195_news_sources.sql'));
+  ok('...and running it again adds nothing', (await q(`select count(*)::int as n from news_sources`))[0].n === seeded.length);
+}
+
+console.log('\nset_fan_prefs is 0161\'s and more');
+{
+  const keysOf = sql => { const i = sql.indexOf('create or replace function public.set_fan_prefs'); const j = sql.indexOf('$$;', sql.indexOf('$$', i) + 2);
+    const body = sql.slice(i, j); return new Set([...body.matchAll(/p \? '(\w+)'|p->>?'(\w+)'/g)].map(m => m[1] || m[2])); };
+  const before = keysOf(mig('0161_favourites_prompt.sql')), after = keysOf(mig('0194_creators.sql'));
+  const lost = [...before].filter(k => !after.has(k));
+  ok('every key 0161\'s set_fan_prefs took, 0194\'s still takes (and the three new ones)', before.size > 15 && lost.length === 0 &&
+     ['fav_source_ids', 'fav_outlet_ids', 'want_news'].every(k => after.has(k)), lost);
 }
 
 console.log('\nwho may touch what');

@@ -1334,6 +1334,30 @@ jobs:
         # snapshots function would have, which leaves them alone (big-seasons.yml, hourly)
         run: node supabase/tests/big-seasons.test.mjs
 
+      - name: News, publishers and creators - the schema, the feeds, the follows, the sources to start with
+        # on a real Postgres (PGlite), 0194 and 0195: a league's creators (outlets, people by email, pieces
+        # cleaned as the league's news, https pictures only), the league's switch and moderation, the news
+        # sources and their stories (tagged with their leagues, never moved up by a re-read), the News page's
+        # feed and the reader's own, publisher and story pages, follows through set_fan_prefs, the notices
+        # they bring, the rail's probe, who may call what; and the seeded sources, re-runnable
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/creators.test.mjs
+
+      - name: The news reader - every feed format, the league tags, the publisher's logo
+        # scripts/news/fetch_feeds.py on fixtures: RSS 2.0 / RDF / Atom / JSON Feed, dates in every form
+        # (FEB's 9/30/2026), https-only pictures, the league matcher (names, other names, clubs - never a
+        # youth or a women's league by a club alone), the logo found on a site and whether it fills its
+        # square, and a run's bookkeeping (304s, failures, dry runs)
+        run: python scripts/news/fetch_feeds_test.py
+
+      - name: The post card, and the pages that carry it
+        # epinoia/newscard.js: the embeds a creator's link becomes (and only those), the first lines, a
+        # feed row as a card with its league tags, one link to the piece and never one inside another;
+        # each page that frames an embed allows exactly those platforms; the News page, HOME's FEED, a
+        # league's creators section and the rail's rows are wired
+        run: node supabase/tests/newscard.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the
