@@ -148,5 +148,29 @@ ok('the body and the mount are wired, and the page loads the module after the st
   assert.ok(html.lastIndexOf('<link rel="stylesheet"') === html.indexOf('<link rel="stylesheet" href="../kit/legibility.css'));
 });
 
+console.log('\nthe points scheme is read off the official rows (a loss worth 0 included)');
+{
+  const row = (id, w, l, lp, ded) => ({ team_id: id, gp: w + l, w, l, league_points: lp, deducted_points: ded || 0, diff: 0, pts_for: 0, pts_against: 0 });
+  const two1 = [row('A', 3, 1, 7), row('B', 2, 2, 6), row('C', 1, 3, 5), row('D', 0, 4, 4)];
+  const two0 = [row('A', 3, 1, 6), row('B', 2, 2, 4), row('C', 1, 3, 2), row('D', 0, 4, 0)];
+  let s = D.inferScheme(two1, { win_points: 2, loss_points: 0 });
+  ok('rows built 2/1 under a rule now saying 2/0: the rows win (no phantom moves before the recompute)', () => assert.ok(s.win === 2 && s.loss === 1));
+  s = D.inferScheme(two0, { win_points: 2, loss_points: 1 });
+  ok('rows built 2/0 under a rule still saying 2/1: 2/0', () => assert.ok(s.win === 2 && s.loss === 0));
+  s = D.inferScheme(two0, { win_points: 2, loss_points: 0 });
+  ok('rows and rules agree on a loss worth 0: 2/0 (zero is a value, not a missing one)', () => assert.ok(s.win === 2 && s.loss === 0));
+  s = D.inferScheme(two0, {});
+  ok('no rules at all: read from the rows', () => assert.ok(s.win === 2 && s.loss === 0));
+  s = D.inferScheme([row('A', 1, 0, 2)], { win_points: 2, loss_points: 0 });
+  ok('too few rows played to tell: the rules', () => assert.ok(s.win === 2 && s.loss === 0));
+  s = D.inferScheme([row('A', 3, 1, 5, 2), row('B', 2, 2, 4), row('C', 1, 3, 2), row('D', 0, 4, 0)], { win_points: 2, loss_points: 0 });
+  ok('a points deduction is added back before fitting', () => assert.ok(s.win === 2 && s.loss === 0));
+  const live = [{ id: 'g', home_team_id: 'D', away_team_id: 'A', home_score: 90, away_score: 80 }];
+  const P = D.project(two0, live, { winPoints: 2, lossPoints: 0 });
+  const rowOf = id => P.rows.find(x => x.team_id === id);
+  ok('projection under 2/0: the live winner gains 2 and the live loser gains nothing', () => assert.ok(rowOf('D').pts === 2 && rowOf('A').pts === 6));
+}
+
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

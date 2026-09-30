@@ -43,6 +43,29 @@ const esc = s => String(s == null ? '' : s)
 const num = v => (Number.isFinite(+v) && v !== null && v !== '' ? +v : 0);
 const isNum = v => v !== null && v !== undefined && v !== '' && Number.isFinite(+v);
 
+/* THE POINTS SCHEME THE OFFICIAL TABLE WAS BUILT WITH. The projection adds a live game's points on top of the official
+   rows, so it must add them the way those rows were made: a win and a loss worth the same as they were when the database
+   last recomputed this table. The league's rules say what they ARE now; the rows say what they WERE, and the two differ for
+   as long as a rule that has just been changed (a loss now worth 0) has not yet been recomputed into the stored table -
+   using the new rule on old rows would move clubs that no game moved. So the scheme is read off the rows: the common
+   ones and the rules' own are tried, and the one that explains the most rows wins (the rules' own on a tie, and whenever
+   too few rows have played to tell). A deducted-points column is added back first, so a sanction does not spoil the fit.
+   Zero is a value: a loss worth 0 is a scheme, not a missing one. */
+function inferScheme(rows, rules) {
+  const r = rules || {};
+  const want = { win: isNum(r.win_points) ? +r.win_points : 2, loss: isNum(r.loss_points) ? +r.loss_points : 1 };
+  const played = (rows || []).filter(x => x && isNum(x.gp) && +x.gp > 0 && isNum(x.w) && isNum(x.l) && isNum(x.league_points));
+  if (played.length < 3) return want;
+  const cands = [want, { win: 2, loss: 1 }, { win: 2, loss: 0 }, { win: 3, loss: 0 }, { win: 3, loss: 1 }, { win: 1, loss: 0 }, { win: 1, loss: 1 }];
+  let best = want, bestN = -1;
+  cands.forEach(c => {
+    let n = 0;
+    played.forEach(x => { if (+x.league_points + (isNum(x.deducted_points) ? +x.deducted_points : 0) === +x.w * c.win + +x.l * c.loss) n++; });
+    if (n > bestN) { best = c; bestN = n; }         // `>`: the rules' own scheme is first, so it wins every tie
+  });
+  return bestN * 2 >= played.length ? best : want;
+}
+
 /* ---------------------------------------------------------------- pure --- */
 
 /* 'Q3', 'OT1'; 'H2' where the league plays halves */
@@ -351,7 +374,8 @@ function render(S, d) {
   const ST = win() && win().EpinoiaStandings;
   const games = liveGames(d);
   const r = st.rules || {};
-  const P = project(st.rows, games, { winPoints: r.win_points, lossPoints: r.loss_points, conferences: conferences() });
+  const sch = inferScheme(st.rows, r);
+  const P = project(st.rows, games, { winPoints: sch.win, lossPoints: sch.loss, conferences: conferences() });
   const anyLive = games.length > 0;
   const showNow = st.mode === 'now' && anyLive;
   const others = games.filter(g => !g.mine).length;
@@ -452,5 +476,5 @@ function mounted(el) {
   if (st.table === 'ready' && Date.now() - st.liveAt > POLL_MS) schedule(true); else schedule();
 }
 
-return { project, rank, hasTable, periodLabel, clockLabel, render, mounted, TAB: ['dyn', 'dynamic tables'], _state: st };
+return { project, rank, inferScheme, hasTable, periodLabel, clockLabel, render, mounted, TAB: ['dyn', 'dynamic tables'], _state: st };
 }));
