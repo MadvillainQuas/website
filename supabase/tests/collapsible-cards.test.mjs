@@ -147,7 +147,7 @@ console.log('\nthe estimated position, where position sits');
   ok('the identity band gets an "EST POS:" chip, from the same positionGroups the adjust-for-position switch ranks with',
      /'EST POS: ' \+ EST_POS\[g\]/.test(pjs) && /SE\.positionGroups\(field\)\.get\(mine\.id\)/.test(pjs) && /const posMap = barsByPos && SE\.positionGroups \? SE\.positionGroups\(field\)/.test(pjs));
   ok('...drawn whether or not the switch is on, and again whenever the season is redrawn', /function paintBars\(mine, field\) \{\s*LAST_BARS = \{ mine, field \};\s*paintEstPos\(mine, field\);/.test(pjs));
-  ok('...beside the listed position when the club gave one, after the club and league when not', /const after = listed \|\| sub\.querySelector\('\.sub-league'\)/.test(pjs) && /after\.after\(chip\)/.test(pjs));
+  ok('...beside the listed position when the club gave one, after the club and league when not', /const after = listed \|\| sub\.querySelector\('\.sub-break'\) \|\| sub\.querySelector\('\.sub-league'\)/.test(pjs) && /after\.after\(chip\)/.test(pjs));
   ok('...guard, wing or big, the three groups season.js cuts', JSON.stringify(Season.POS_GROUPS.map(g => g[0])) === '["G","F","C"]' && /G: 'guard', F: 'wing', C: 'big'/.test(pjs));
   const rows = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => ({ id, bpm_pos: 1 + i, position: '' }));
   const groups = Season.positionGroups(rows);
