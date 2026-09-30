@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-30T08:26:41.493683+00:00",
+ "updated": "2026-09-30T08:34:51.599838+00:00",
  "competitions": [
   {
    "code": "ABA",
@@ -111,7 +111,7 @@
    "label": "Elite Academy Basketball League",
    "adapter": "fiba_livestats",
    "games": 90,
-   "updated": "2026-09-30T08:26:16.920226+00:00"
+   "updated": "2026-09-30T08:34:21.052991+00:00"
   },
   {
    "code": "EC",
@@ -293,7 +293,7 @@
    "label": "Women's Elite Academy Basketball League",
    "adapter": "fiba_livestats",
    "games": 92,
-   "updated": "2026-09-30T08:26:41.480799+00:00"
+   "updated": "2026-09-30T08:34:51.580750+00:00"
   },
   {
    "code": "WJBL",
