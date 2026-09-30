@@ -138,6 +138,46 @@ function filterPanel(opts) {
 }
 
 /* ------------------------------------------------------------------ list --- */
+/* THE HEAT SCALE. Every stat column is ranked across the lineups on show, the way the season tables
+   rank a column (fulltable.js heatStyle): five bands of green to red about a neutral middle, in
+   --good / --amber / --flare (never --lume, which is the club's colour). Direction-aware: `low`
+   columns rank in reverse, so a green cell is always the better number. A unit under the minimum
+   minutes is not ranked and not coloured at all -- it is dimmed, because thin samples make the
+   loudest numbers. The band is a class (kit/lineups.css) so both themes set their own tint. */
+const LU_COLS = [
+  /* k        head         low    fmt */
+  ['net',    'NET',        false, sgn, 'net'],     // first: the gauge to read before the rest
+  ['pm',     '+/-',        false, v => (v == null ? '—' : (v > 0 ? '+' : '') + v), 'net'],
+  ['ortg',   'ORTG',       false, f1],
+  ['drtg',   'DRTG',       true,  f1],
+  ['efg',    'eFG%',       false, f1],
+  ['tov',    'TOV%',       true,  f1],
+  ['oreb',   'OREB%',      false, f1],
+  ['ftr',    'FTr',        false, f1],
+  ['defg',   'OPP eFG%',   true,  f1],
+  ['dtov',   'OPP TOV%',   false, f1],
+  ['doreb',  'OPP OREB%',  true,  f1]
+];
+
+/* a row's percentile (0-100) in its column: the share of the pool it beats, ties counting half.
+   Needs three or more to compare; null otherwise. */
+function percentile(v, pool, low) {
+  if (v == null || pool.length < 3) return null;
+  let worse = 0, tie = 0;
+  pool.forEach(x => { if (x === v) tie++; else if (low ? x > v : x < v) worse++; });
+  return ((worse + tie / 2 - 0.5) / (pool.length - 1)) * 100;
+}
+function band(p) {
+  if (p == null) return '';
+  if (p >= 90) return 'g3';
+  if (p >= 75) return 'g2';
+  if (p >= 60) return 'g1';
+  if (p >= 40) return '';
+  if (p >= 25) return 'a1';
+  if (p >= 10) return 'r1';
+  return 'r2';
+}
+
 function listPanel(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
@@ -150,18 +190,20 @@ function listPanel(opts) {
     return;
   }
 
-  let floor = 2;
+  let floor = opts.floor != null ? opts.floor : 2;
   const bar = el('div', 'wowy-bar');
   const inp = el('input', 'ep-input');
   inp.type = 'number'; inp.min = '0'; inp.step = '0.5'; inp.value = String(floor);
   inp.style.width = '72px';
+  inp.setAttribute('aria-label', 'dim lineups under this many minutes');
   const note = el('span', 'wl');
-  bar.append(el('span', 'wl', 'minimum minutes'), inp, note);
+  bar.append(el('span', 'wl', 'dim under (minutes)'), inp, note);
   host.appendChild(bar);
 
-  const wrap = el('div', 'ft-wrap');
-  wrap.style.maxHeight = '420px';       // scrollable: a team has dozens of units
+  const wrap = el('div', 'ft-wrap lu-wrap');
   host.appendChild(wrap);
+  const legend = el('div', 'lu-legend');
+  host.appendChild(legend);
 
   function names(ids) {
     return ids.map(id => {
@@ -173,25 +215,40 @@ function listPanel(opts) {
     }).join(' · ');
   }
 
+  function drawLegend(ranked) {
+    legend.textContent = '';
+    const sw = el('span', 'lu-sw');
+    ['r2', 'r1', 'a1', '', 'g1', 'g2', 'g3'].forEach(b => sw.appendChild(el('i', 'lu-h' + (b ? ' ' + b : ''))));
+    legend.append(sw, el('span', null,
+      'greener = better than the other lineups, redder = worse. Ranked across the ' + ranked +
+      ' lineups shown; for TOV%, DRTG and what opponents shot, lower is the green end. ' +
+      'NET and +/- are the ones to read first. Faded rows played under ' + floor + ' min and are not coloured.'));
+  }
+
   function draw() {
-    const rows = L.all(stints, floor);
-    note.textContent = rows.length + (rows.length === 1 ? ' lineup' : ' lineups');
+    const rows = L.all(stints, 0);
+    const solid = rows.filter(l => l.mins >= floor);
+    note.textContent = rows.length + (rows.length === 1 ? ' lineup' : ' lineups') +
+      (solid.length < rows.length ? ' · ' + solid.length + ' ranked' : '');
     wrap.textContent = '';
     if (!rows.length) {
-      wrap.appendChild(el('div', 'ft-empty', 'No unit played that long — lower the floor.'));
+      wrap.appendChild(el('div', 'ft-empty', 'No lineup data yet.'));
+      legend.textContent = '';
       return;
     }
-    const t = el('table', 'ft');
+    /* the pool each column is ranked in: the lineups that played enough, no others */
+    const pools = {};
+    LU_COLS.forEach(([k]) => { pools[k] = solid.map(l => l[k]).filter(v => v != null); });
+
+    const t = el('table', 'ft lu-t');
     const thead = el('thead'), hr = el('tr');
-    [['', 'stick c0', 34], ['LINEUP', 'stick c1', 250], ['MIN', '', 58], ['POSS', '', 58],
-     ['ORTG', '', 62], ['DRTG', '', 62], ['NET', '', 66], ['eFG%', '', 60],
-     ['TOV%', '', 60], ['OREB%', '', 64], ['FTr', '', 56],
-     ['OPP eFG%', '', 72], ['OPP TOV%', '', 72], ['OPP OREB%', '', 78]]
-      .forEach(([h, c, w]) => {
-        const th = el('th', c, h);
-        if (!c) th.style.width = w + 'px';
-        hr.appendChild(th);
-      });
+    const heads = [['', 'stick c0', 34], ['LINEUP', 'stick c1', 250], ['MIN', '', 52], ['POSS', '', 52]]
+      .concat(LU_COLS.map(c => [c[1], c[4] === 'net' ? 'lu-net-h' : '', c[4] === 'net' ? 66 : 62]));
+    heads.forEach(([h, c, w]) => {
+      const th = el('th', c, h);
+      if (!c || c === 'lu-net-h') th.style.width = w + 'px';
+      hr.appendChild(th);
+    });
     /* THE NAME COLUMN FOLDS ON A TAP, and says so.
 
        Five surnames is the widest thing here by a distance and on a phone it
@@ -216,28 +273,32 @@ function listPanel(opts) {
 
     const tb = el('tbody');
     rows.forEach((l, i) => {
-      const tr = el('tr');
+      const thin = l.mins < floor;
+      const tr = el('tr', thin ? 'lu-thin' : '');
       tr.appendChild(el('td', 'stick c0', String(i + 1)));
       const nd = el('td', 'stick c1');
       const c = el('div', 'ft-name');
       c.appendChild(el('span', null, names(l.ids)));
       nd.appendChild(c); nd.title = names(l.ids);
       tr.appendChild(nd);
-      [f1(l.mins), f1(l.poss), f1(l.ortg), f1(l.drtg)].forEach(v =>
-        tr.appendChild(el('td', null, v)));
-      const net = el('td', 'lead', sgn(l.net));
-      /* a level unit is left uncoloured, with no class at all:
-         classList.add('') throws, and one throw here empties the whole list */
-      if (l.net > 0) net.classList.add('pos');
-      else if (l.net < 0) net.classList.add('neg');
-      tr.appendChild(net);
-      [f1(l.efg), f1(l.tov), f1(l.oreb), f1(l.ftr),
-       f1(l.defg), f1(l.dtov), f1(l.doreb)].forEach(v =>
-        tr.appendChild(el('td', null, v)));
+      tr.appendChild(el('td', null, f1(l.mins)));
+      tr.appendChild(el('td', null, f1(l.poss)));
+      LU_COLS.forEach(([k, , low, fmt, kind]) => {
+        const td = el('td', kind === 'net' ? 'lu-net' : '', fmt(l[k]));
+        /* the band is a class; a level or unranked unit gets no class at all (classList.add('')
+           throws, and one throw here empties the whole list) */
+        const b = thin ? '' : band(percentile(l[k], pools[k], low));
+        if (b) td.classList.add('lu-h', b);
+        if (kind === 'net' && l[k] > 0) td.classList.add('pos');
+        else if (kind === 'net' && l[k] < 0) td.classList.add('neg');
+        td.setAttribute('data-k', k);
+        tr.appendChild(td);
+      });
       tb.appendChild(tr);
     });
     t.appendChild(tb);
     wrap.appendChild(t);
+    drawLegend(solid.length);
   }
 
   inp.addEventListener('input', () => {
@@ -248,5 +309,5 @@ function listPanel(opts) {
   draw();
 }
 
-return { filterPanel, listPanel, statBlock };
+return { filterPanel, listPanel, statBlock, percentile, band };
 }));

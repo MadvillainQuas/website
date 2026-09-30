@@ -127,7 +127,7 @@ const FEATURES = Object.freeze({
       'Second chances, transition, points off turnovers, after timeouts, and assisted against unassisted baskets, on every screen',
       'Shot charts by zone, with zone tables and the shooting each shot diet should return',
       'The game flow, connections and events tabs of every box score',
-      'The full with-or-without screen, every combination of players (everyone gets a preview)'
+      'The on-the-floor-with split: one player\u2019s own box score by who shared the floor (lineups themselves are free)'
     ])
   }),
   league: Object.freeze({
@@ -157,14 +157,30 @@ const CATALOGUE = Object.freeze({
   presets: Object.freeze(['ev_second', 'ev_transition', 'ev_offTo', 'ev_ato', 'ev_half', 'ev_assist',
                           'z_rim', 'z_mid', 'z_three', 'z_cuts', 'z_rate']),
   contextColumns: Object.freeze(['gp']),
-  barKeys: key => /^ev_/.test(String(key == null ? '' : key)),
-  wowyPreviewMax: 1
+  /* THE MEMBERSHIP LOCKS, one line per lockable feature (epinoia/memlock.js draws them).
+     `gate` names the entitlement that opens it; both ride on the analytics one today, so
+     they open and close with analyticsOk() -- master switch off = nothing locked, and an
+     unanswerable check fails open. To sell one on its own later, give it its own gate here
+     and teach featureLocked() the new name; no page changes. */
+  locks: Object.freeze({
+    events: Object.freeze({ gate: 'analytics', label: 'Events stats' }),   // ev_* splits, the Events section, team events
+    csv:    Object.freeze({ gate: 'analytics', label: 'CSV download' })    // every table's csv button
+  }),
+  barKeys: key => /^ev_/.test(String(key == null ? '' : key))
 });
 
 function isPremiumColumn(key) {
   const k = String(key == null ? '' : key);
   if (!k) return false;
   return CATALOGUE.columnPrefixes.some(p => k.indexOf(p) === 0) || CATALOGUE.columns.indexOf(k) !== -1;
+}
+
+/* Is this lockable feature (CATALOGUE.locks) locked for this viewer? Unknown keys are free. */
+function featureLocked(key, league) {
+  const L = CATALOGUE.locks[String(key)];
+  if (!L) return false;
+  if (L.gate === 'analytics') return !analyticsOk(league);
+  return false;
 }
 
 /* -------------------------------------------------------------- plumbing --- */
@@ -1087,7 +1103,7 @@ if (BROWSER) {
 
 return {
   FEATURES, CATALOGUE,
-  load, loadMany, get, analyticsOk, canView, isPremiumColumn,
+  load, loadMany, get, analyticsOk, canView, isPremiumColumn, featureLocked,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,
   /* for supabase/tests/access.test.mjs only: a fake network, a shorter deadline,

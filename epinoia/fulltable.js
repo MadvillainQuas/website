@@ -420,6 +420,13 @@ function evColumns(CAT, team) {
 evColumns(P, false);
 evColumns(T, true);
 
+/* COLUMNS SWITCHED OFF IN THE PLAYER TABLE (2026-09-30: TOTAL S%, PPR, PPS and the on-court ORTG / DRTG, all of them only
+   in the advanced view). Taken out of P itself, so they are gone from the table, the column drawer, the CSV, the filters,
+   the compare screen and the scouting page in one move. The definitions stay at the top of P: to bring one back, delete
+   its key from this set. The player profile's percentile bars are built elsewhere and do not read these columns. */
+const HIDDEN_COLS = new Set(['total_s', 'ppr', 'pps', 'on_ortg', 'on_drtg']);
+for (let i = P.length - 1; i >= 0; i--) if (HIDDEN_COLS.has(P[i].k)) P.splice(i, 1);
+
 /* presets: the first is the default, and is deliberately the beginner's view */
 const EV_PRESETS = EV_SITS.map(([s, label]) => ['ev_' + s, 'events · ' + label]).concat([['ev_assist', 'events · assisted']]);
 const PRESETS = {
@@ -1276,6 +1283,13 @@ function render(opts) {
   csv.type = 'button';
   csv.addEventListener('click', exportCsv);
   more.appendChild(csv);
+  /* THE CSV IS A MEMBERSHIP FEATURE (access.js CATALOGUE.locks.csv, drawn by memlock.js): visible either way, and while
+     locked it does nothing but say so. Re-decided on every access change (relock, below). exportCsv checks it too, so
+     no other caller can get around the button. */
+  const lockCsv = () => { const M = window.EpinoiaMemLock; if (!M) return; const o = { what: 'CSV download', leagueSlug: opts.leagueSlug, league: opts.leagueId };
+    /* a page over several leagues (scouting) decides for itself: any locked league locks the download */
+    if (OWN_LOCK) M.set(csv, isLocked(), o); else M.apply(csv, 'csv', o); };
+  lockCsv();
 
   /* THE UNITS SWITCH, beside the CSV, on a table with HT and WT: the choice is site-wide, so pressing it here (or on any other
      page, in any tab) redraws this table's heights and weights */
@@ -1331,7 +1345,9 @@ function render(opts) {
       const shut = presetLocked(key);
       const b = el('button', 'ft-pill' + (key === preset ? ' on' : '') + (shut ? ' locked' : ''), label);
       b.type = 'button'; b.dataset.g = key;
-      if (shut) { b.appendChild(lockMark()); b.title = label + ' — part of Epinoia analytics'; }
+      if (shut) { b.appendChild(lockMark()); b.title = label + ' — part of Epinoia analytics';
+        /* the stop-sign cursor and the popup, but the press still opens the teaser (passive) */
+        const M = window.EpinoiaMemLock; if (M && M.lock) { b.removeAttribute('title'); M.lock(b, { what: label + ' (events)', passive: true, leagueSlug: opts.leagueSlug }); } }
       b.addEventListener('click', () => {
         if (presetLocked(key)) { showTeaser(key, label); return; }
         hideTeaser();
@@ -1393,7 +1409,15 @@ function render(opts) {
   host.appendChild(head);
   host.appendChild(wrap);
   wrap.__ftMirror = head; head.__ftMirror = wrap;
-  const syncHead = () => { if (head.scrollLeft !== wrap.scrollLeft) head.scrollLeft = wrap.scrollLeft; };
+  /* EDGE HINTS (kit/table.css, phone only): .edge-r while there is more table to the right, .edge-l once it has been panned.
+     A class flip, only when the answer changes, so a pan costs no style work. */
+  let edgeR = null, edgeL = null;
+  const paintEdges = () => {
+    const l = wrap.scrollLeft > 4, r = wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 4;
+    if (l !== edgeL) { edgeL = l; wrap.classList.toggle('edge-l', l); }
+    if (r !== edgeR) { edgeR = r; wrap.classList.toggle('edge-r', r); head.classList.toggle('edge-r', r); }
+  };
+  const syncHead = () => { if (head.scrollLeft !== wrap.scrollLeft) head.scrollLeft = wrap.scrollLeft; paintEdges(); };
   wrap.addEventListener('scroll', syncHead, { passive: true });
   /* the sweep catches this too, on its next pass; wiring it here as well means
      the first touch after a render does not depend on that pass having run */
@@ -1801,6 +1825,8 @@ function render(opts) {
 
   function rowEl(r, idx, cols, ranks) {
     const tr = el('tr');
+    /* the club's own colour, for the row's hover tint and its left edge (kit/table.css) */
+    { const cc = r.colour || r.teamColour; if (cc && /^#?[0-9a-z(),.% -]+$/i.test(cc)) tr.style.setProperty('--club', cc); }
     cols.forEach((c, i) => {
       const td = el('td', i < 2 ? 'stick c' + i : '');
       if (c.k === 'name') {
@@ -1831,7 +1857,8 @@ function render(opts) {
         if (c.lead) td.classList.add('lead');
         if (heat && c.heat) {
           const p = (ranks.get(c.k) || new Map()).get(r.id);
-          if (p != null) td.style.cssText = heatStyle(p);
+          /* the shade goes to --heat, and kit/table.css draws it as a rounded chip inside the cell */
+          if (p != null) { const hs = heatStyle(p); if (hs) { td.classList.add('heat'); td.style.cssText = hs.replace('background:', '--heat:'); } }
         }
         if (c.signed && !heat) {
           const n = r[c.k];
@@ -1953,7 +1980,8 @@ function render(opts) {
 
     const thead = el('thead'), hr = el('tr');
     cols.forEach((c, i) => {
-      const th = el('th', (c.k === sortKey ? 'sorted ' : '') + (i < 2 ? 'stick c' + i : ''), c.l);
+      const th = el('th', (c.k === sortKey ? 'sorted ' + (sortDir > 0 ? 'asc ' : 'desc ') : '') + (i < 2 ? 'stick c' + i : ''), c.l);
+      if (c.k === sortKey) th.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending');
       /* Width is set on the header only; the table is fixed-layout, so the
          column follows. Without this a long header like "OPP OREB%" or a wide
          cell like "192-440" stretched its column and squeezed every other one,
@@ -2000,6 +2028,7 @@ function render(opts) {
     paintMore(all);
     /* a filter or a preset on a phone keeps the reader where they were sideways */
     if (phone) { wrap.scrollLeft = keepX; head.scrollLeft = wrap.scrollLeft; }
+    paintEdges();
   }
 
   /* CROSSING THE BREAKPOINT REDRAWS (followWidth, above render): one listener for every table */
@@ -2007,6 +2036,7 @@ function render(opts) {
   followWidth(host, wrap, () => { draw(); revealPill(); });
 
   function exportCsv() {
+    { const M = typeof window !== 'undefined' ? window.EpinoiaMemLock : null; if (M && (OWN_LOCK ? isLocked() : M.locked('csv', opts.leagueId))) return; }
     const cols = visible(), v = view();
     const esc = x => `"${String(x ?? '').replace(/"/g, '""')}"`;
     const body = [cols.map(c => esc(c.l)).join(',')]
@@ -2033,7 +2063,7 @@ function render(opts) {
     const was = preset, nf = filters.length;
     if (presetLocked(preset)) { preset = presets[0][0]; extra.clear(); removed.clear(); }
     filters = filters.filter(f => !absent(f.k));
-    hideTeaser(); drawPills(); drawDrawer();
+    hideTeaser(); drawPills(); drawDrawer(); lockCsv();
     if (filt && !filt.hidden) drawFilters();
     /* the lock took the preset or a filter away: a page keeping the state in its URL must hear
        it, or a reload restores the view the table no longer shows */
@@ -2101,5 +2131,5 @@ function render(opts) {
   };
 }
 
-return { render, PLAYER_COLS: P, TEAM_COLS: T, PRESETS, heatStyle, PHONE_MQ };
+return { render, PLAYER_COLS: P, TEAM_COLS: T, HIDDEN_COLS, PRESETS, heatStyle, PHONE_MQ };
 }));

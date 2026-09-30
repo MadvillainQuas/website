@@ -1091,6 +1091,7 @@ async function loadCareerAccess(pl, lgRow) {
         if (evHost && ANALYTICS_LOCKED) {
           evHost.innerHTML = accessTeaser({ title: 'Events',
             lines: ['Second chances, transition, points off turnovers, after-timeout sets, the half court and assisted baskets, ranked against the league.'] });
+          { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS_LEAGUE.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
         } else if (evHost && window.EpinoiaSitPanel) {
           window.EpinoiaSitPanel.render({ host: evHost, kind: 'player', row: mine, field, name: fullName });
           const en = $('#eventsNote');
@@ -1185,6 +1186,7 @@ function drawShotChart(shots, colour, games, gameList) {
         if (!gs.length) {
           $('#withpanel').appendChild(el('div', 'empty',
             'No finalised games yet — this fills in once one is played.'));
+          const lh = $('#lulist'); if (lh) { lh.textContent = ''; lh.appendChild(el('div', 'empty', 'No lineup data yet.')); }
         } else {
           const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
           const [st, evs] = await Promise.all([
@@ -1220,6 +1222,22 @@ function drawShotChart(shots, colour, games, gameList) {
             drawShotChart(shots, (team && team.colour) || null, played.size,
               SC.gameListOf ? SC.gameListOf(gs.filter(g => played.has(g.id))) : null);
           } catch (e) { /* a chart is not worth breaking the page for */ }
+
+          /* ---- the lineups he played in, beside the shot chart ----
+             Free for everyone. The club's stints are already in hand; keep the ones he was on the
+             floor for, and rank them against each other (t/lineupui.js). */
+          try {
+            const mine = st.filter(s4 => (s4.player_ids || []).indexOf(pl.id) !== -1);
+            const ids = [...new Set(mine.flatMap(r => r.player_ids || []))];
+            const lm = ids.length ? await D.playerMeta(ids) : {};
+            if (window.EpinoiaLineupUI) {
+              window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: mine, meta: lm });
+              $('#luNote').textContent = gs.length >= RECENT_GAMES ? 'last ' + RECENT_GAMES + ' games' : '';
+            }
+          } catch (e) {
+            console.warn('[lineups]', e);
+            const h = $('#lulist'); if (h) { h.textContent = ''; h.appendChild(el('div', 'empty', 'Could not load lineup data.')); }
+          }
 
           /* ---- on video ----
              The whole log for every game the club played is already in hand,

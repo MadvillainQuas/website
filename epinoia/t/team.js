@@ -667,6 +667,7 @@ async function teamStats(team, kind) {
       if (ACCESS.locked) {
         evHost.innerHTML = accessTeaser({ title: 'Events, at both ends',
           lines: ['Second chances, transition, points off turnovers, after-timeout sets and the half court — what the club made of each, and what opponents made of the same.'] });
+        { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
       } else if (window.EpinoiaSitPanel) {
         window.EpinoiaSitPanel.render({
           host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',
@@ -782,6 +783,7 @@ async function lineupPanels(team) {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
       `&status=eq.final&select=id,home_team_id,away_team_id` + inSeason());
     if (!gs.length) {
+      $('#lulist').textContent = '';
       ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
         $(sel).appendChild(el('div', 'empty',
           'No finalised games yet — lineups appear once one is played.')));
@@ -790,6 +792,7 @@ async function lineupPanels(team) {
     const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
     const st = await D.stints(gs.map(g => g.id), team.id, byGame);
     if (!st.length) {
+      $('#lulist').textContent = '';
       ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
         $(sel).appendChild(el('div', 'empty', 'No lineup data yet.')));
       return;
@@ -827,12 +830,12 @@ async function lineupPanels(team) {
     }
     drawWowy();
 
-    /* the combination matrix, seeded with the two most-used players. Without analytics it
-       is the preview: wowy.js caps the subjects and adds its own teaser line. */
-    window.EpinoiaWowy.render(Object.assign({
+    /* the combination matrix, seeded with the two most-used players. Lineups are free for everyone
+       (docs/memberships.md), so it is never capped or teased. */
+    window.EpinoiaWowy.render({
       host: '#wowy', stints: st, meta, max: 4,
       preselect: order.slice(0, 2)
-    }, ACCESS.locked ? { preview: true, leagueSlug: ACCESS.slug } : {}));
+    });
 
     window.EpinoiaLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
     window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: st, meta });
@@ -843,7 +846,8 @@ async function lineupPanels(team) {
     console.warn('[lineups]', e);
     ['#wowy', '#lufilter', '#lulist'].forEach(sel => {
       const h = $(sel);
-      if (h && !h.children.length) {
+      if (h && (!h.children.length || h.querySelector('.lu-empty'))) {
+        if (sel === '#lulist') h.textContent = '';
         h.appendChild(el('div', 'empty', 'Could not load lineup data: ' + (e.message || e)));
       }
     });

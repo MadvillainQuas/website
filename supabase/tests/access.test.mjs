@@ -351,7 +351,7 @@ console.log('\npremium columns against fulltable.js');
   ok('barKeys: the player bars\' events keys only', A.CATALOGUE.barKeys('ev_ast_pts_sh') && A.CATALOGUE.barKeys('ev_rim_astp') && !A.CATALOGUE.barKeys('rim_pct') && !A.CATALOGUE.barKeys(undefined));
   eq('gameTabs', A.CATALOGUE.gameTabs, ['flow', 'connections', 'events', 'shotclock']);
   eq('columnPrefixes', A.CATALOGUE.columnPrefixes, ['ev_', 'evd_', 'z_']);
-  ok('wowyPreviewMax is 1', A.CATALOGUE.wowyPreviewMax === 1);
+  ok('lineups are free: no wowyPreviewMax cap in the catalogue', !('wowyPreviewMax' in A.CATALOGUE));
 }
 
 console.log('\nCATALOGUE.presets is exactly the wholly-premium presets');

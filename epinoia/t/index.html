@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="../kit/epinoia-kit.css?v=533">
 <link rel="stylesheet" href="../kit/linkswitch.css?v=533">
 <link rel="stylesheet" href="../kit/table.css?v=533">
+<link rel="stylesheet" href="../kit/lineups.css?v=533">
 <link rel="stylesheet" href="../kit/nav.css?v=533">
 <link rel="stylesheet" href="../video.css?v=533">
 <link rel="stylesheet" href="../kit/card.css?v=533">
@@ -421,8 +422,13 @@
   <div class="ep-hdr pw-hide"><span class="idx">01</span><h2>Team statistics</h2></div>
   <div id="teamstats" class="pw-hide"></div>
 
-  <div class="ep-hdr pw-hide"><span class="idx">01b</span><h2>Shot chart</h2></div>
-  <div id="teamshots" class="ep-card pw-hide" style="padding:14px 12px"></div>
+  <div class="ep-hdr pw-hide"><span class="idx">01b</span><h2>Shot chart &amp; lineups</h2>
+    <span class="note" id="luNote"></span></div>
+  <!-- the lineups sit to the right of the chart (stacked under it on a phone) -->
+  <div class="lu-pair pw-hide">
+    <div class="lu-a"><div id="teamshots" class="ep-card" style="padding:14px 12px"></div></div>
+    <div class="lu-b ep-card" style="padding:14px 12px"><div class="lu-ph">Every lineup</div><div id="lulist"><div class="lu-empty">Loading lineups…</div></div></div>
+  </div>
 
   <!-- the club's possessions, and its opponents', by how long they ran before they ended
        (shotclock.js / shotclock-view.js), from the same logs as the shot chart -->
@@ -460,8 +466,6 @@
   </p>
   <div id="lufilter" class="pw-hide"></div>
 
-  <div class="ep-hdr pw-hide"><span class="idx">07</span><h2>Every lineup</h2></div>
-  <div id="lulist" class="pw-hide"></div>
   </div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap">
@@ -484,6 +488,7 @@
 <script src="../lineups.js?v=533" defer></script>
 <script src="../wowy.js?v=533" defer></script>
 <script src="lineupui.js?v=533" defer></script>
+<script src="../memlock.js?v=533" defer></script>
 <script src="../fulltable.js?v=533" defer></script>
 <script src="../igtile.js?v=533" defer></script>
 <script src="../video.js?v=533" defer></script>

@@ -37,7 +37,7 @@ let league = null, teams = [], loadToken = 0, current = null, seasonComps = null
 
      01 On the floor with   a teaser in place of the individual split
      02 On / off            unchanged
-     03 Combinations        capped at CATALOGUE.wowyPreviewMax players (wowy.js)
+     03 Combinations        free for everyone, up to five players (wowy.js)
 
    Analytics fail open: `preview` is true only once access.js has loaded and said
    no. A members-only league the viewer may not see (a KNOWN answer) gets the
@@ -194,11 +194,7 @@ function paint(team, d) {
     ' stints · ' + d.roster.length + ' players';
   /* d.preview, not the module flag: it is what THIS data was fetched for, so a
      set without the event log is never drawn as the full page */
-  const A = window.EpinoiaAccess;
-  const cap = d.preview ? ((A && A.CATALOGUE && A.CATALOGUE.wowyPreviewMax) || 1) : 5;
-  $('#comboNote').textContent = d.preview
-    ? 'preview · ' + cap + (cap === 1 ? ' player' : ' players') + ' · members get up to 5'
-    : 'up to 5 players · 2⁵ arrangements';
+  $('#comboNote').textContent = 'up to 5 players · 2⁵ arrangements';
   if (d.preview) withTeaser();
 
   /* --- the subject picker ---------------------------------------------------
@@ -237,8 +233,7 @@ function paint(team, d) {
 
   window.EpinoiaWowy.render({
     host: '#wowy', stints: d.stints, meta: d.meta,
-    max: 5, preselect: d.roster.slice(0, 2),
-    preview: d.preview, leagueSlug: league && league.slug
+    max: 5, preselect: d.roster.slice(0, 2)
   });
 }
 

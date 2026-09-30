@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="../kit/sectitle.css?v=533">
 <link rel="stylesheet" href="../kit/linkswitch.css?v=533">
 <link rel="stylesheet" href="../kit/table.css?v=533">
+<link rel="stylesheet" href="../kit/lineups.css?v=533">
 <link rel="stylesheet" href="../video.css?v=533">
 <link rel="stylesheet" href="../kit/nav.css?v=533">
 <link rel="stylesheet" href="../kit/sitpanel.css?v=533">
@@ -290,8 +291,13 @@
 
   <!-- the season's shooting on the box score's court, zone by zone (shotchart.js) -->
   <div class="sec" id="shotsec">
-    <div class="sec-h"><span class="idx">06</span><h2>Shot chart</h2></div>
-    <div id="shotchart"></div>
+    <div class="sec-h"><span class="idx">06</span><h2>Shot chart &amp; lineups</h2>
+      <span class="note" id="luNote"></span></div>
+    <!-- the lineups this player played in, to the right of the chart (stacked under it on a phone) -->
+    <div class="lu-pair">
+      <div class="lu-a"><div class="lu-ph">Shot chart</div><div id="shotchart"></div></div>
+      <div class="lu-b"><div class="lu-ph">Lineups he played in</div><div id="lulist"><div class="lu-empty">Loading lineups…</div></div></div>
+    </div>
   </div>
 
   <div class="foot">
@@ -311,9 +317,11 @@
 <script src="../shotchart.js?v=533" defer></script>
 <script src="../upload.js?v=533" defer></script>
 <script src="../lineups.js?v=533" defer></script>
+<script src="../t/lineupui.js?v=533" defer></script>
 <script src="../wowy.js?v=533" defer></script>
 <script src="../withstats.js?v=533" defer></script>
 <script src="withui.js?v=533" defer></script>
+<script src="../memlock.js?v=533" defer></script>
 <script src="../fulltable.js?v=533" defer></script>
 <script src="../video.js?v=533" defer></script>
 <script src="video.js?v=533" defer></script>
