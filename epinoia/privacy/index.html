@@ -410,6 +410,34 @@
     </div>
   </section>
 
+  <!-- YOUR FEED (epinoia/feedrank.js, epinoia/interest.js): what "For you" learns, and where. Kept ONLY in the browser.
+       Keep it in step with both files, and with docs/news-and-creators.md. -->
+  <section class="sec" id="feedSec" aria-labelledby="feedH">
+    <div class="ep-hdr"><span class="idx">10</span><h2 id="feedH">Your feed</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">What it does</div>
+        <div class="a">The feeds on HOME and on the News page can put the posts in an order made for you, &ldquo;For you&rdquo;, instead of only the newest first. Fresh posts come first; then the leagues you spend time on, the publishers and creators you read, the leagues where you are, and what you follow. Posts from Epinoia&rsquo;s official partners you have not opened yet are given a lift for about a week.</div>
+        <div class="q">What it learns</div>
+        <div class="a">Which leagues&rsquo; pages you spend time on (only while the page is open and you are using it, and at most fifteen minutes a league in a visit), which stories, publishers and creators you open or follow, and your country, guessed from your device&rsquo;s time zone and language. It does not ask for your location and never looks up your IP address.</div>
+        <div class="q">Where it is kept</div>
+        <div class="a"><b>Only in this browser</b>, in its local storage, under the name <code>epinoia_feed_v1</code>. It is never sent to Epinoia or to anyone else: not the points, not what you opened, not your country. We cannot see it. It is not tied to your account, does not follow you to another browser or device, and is gone when you clear this site&rsquo;s data.</div>
+        <div class="q">What is asked of us</div>
+        <div class="a">To work out your order the page asks for the newest posts, the list of official partners and each league&rsquo;s country. Those are the same for everyone, and say nothing about you. The ordering itself happens on your device.</div>
+        <div class="q">How long</div>
+        <div class="a">What it learned fades, halving every 30 days. The list of what you opened is forgotten after 60 days.</div>
+        <div class="q">Turning it off</div>
+        <div class="a">Switch it off below, or under Personalise on HOME and on the News page. The feed is then simply the newest first, and nothing more is recorded. What was learned before is left as it is until you reset it.</div>
+        <div class="q">Starting again</div>
+        <div class="a">&ldquo;Reset what the site has learned&rdquo; deletes it from this browser. What you follow belongs to your account and is not touched.</div>
+      </div>
+      <label class="count-me"><input type="checkbox" id="feedSwitch" role="switch" checked> Personalise my feed in this browser</label>
+      <p class="fine" id="feedWhy"></p>
+      <div class="act"><button class="ep-btn" id="feedReset" type="button">Reset what the site has learned</button></div>
+      <p class="fine" id="feedDone" aria-live="polite"></p>
+    </div>
+  </section>
+
   <footer class="foot">
     <a href="../home/">&larr; Epinoia</a>
     <a href="../me/">Your profile</a>
@@ -419,6 +447,7 @@
 </div>
 <script src="../config.js?v=544" defer></script>
 <script src="../access.js?v=544" defer></script>
+<script src="../feedrank.js?v=544" defer></script>
 <script src="privacy.js?v=544" defer></script>
 <script src="../go/logo.js?v=544" defer></script>
 <script src="../nav.js?v=544" defer></script>

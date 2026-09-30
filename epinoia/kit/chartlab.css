@@ -22,7 +22,7 @@
 .cl-brand{font-family:var(--f-micro);font-size:11px;letter-spacing:.08em;color:var(--cl-yel);padding-right:4px}
 .cl-keys,.cl-seg{display:inline-flex;flex-wrap:nowrap;background:var(--cl-scr);border:1px solid rgba(255,255,255,.16)}
 .cl-key{appearance:none;font-family:var(--f-micro);font-size:9.5px;line-height:1.1;letter-spacing:.06em;text-transform:uppercase;
-  min-height:30px;padding:0 10px;margin:0;border:0;background:transparent;color:var(--cl-cyan);cursor:pointer;white-space:nowrap}
+  min-height:30px;padding:0 8px;margin:0;border:0;background:transparent;color:var(--cl-cyan);cursor:pointer;white-space:nowrap}
 .cl-keys .cl-key + .cl-key,.cl-seg .cl-key + .cl-key{box-shadow:inset 1px 0 0 rgba(255,255,255,.14)}
 .cl-strip > .cl-key,.cl-axkeys > .cl-key,.cl-panel-f > .cl-key,.cl-head > .cl-key{border:1px solid rgba(255,255,255,.16)}
 .cl-key:hover:not(:disabled){color:var(--cl-white)}
@@ -31,15 +31,18 @@
 .cl-key:focus-visible,.cl-pick:focus-visible,.cl-zbtn:focus-visible{outline:2px solid var(--cl-yel);outline-offset:1px}
 .cl-key.more{display:block;margin:10px auto 0;padding:0 18px}
 .cl-toast{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--cl-yel);padding-left:4px}
-.cl-preset{flex:1 1 200px;max-width:320px;min-width:0;font-size:12px;padding:5px 8px;min-height:30px;background:var(--cl-scr);color:var(--cl-cyan);border-color:rgba(255,255,255,.2)}
-.cl-hint{margin:8px 2px 10px;font-family:var(--f-ui);font-size:11.5px;line-height:1.45;color:var(--ink-3)}
+.cl .cl-preset{flex:1 1 200px;max-width:320px;min-width:0;font-size:12px;padding:5px 8px;min-height:30px;background:var(--cl-scr);color:var(--cl-cyan);border-color:rgba(255,255,255,.2)}
+.cl-sech{flex:1 1 100%;margin:0 0 -2px;padding:5px 10px;background:var(--cl-scr);color:var(--cl-yel);font-family:var(--f-micro);font-size:9px;letter-spacing:.08em}
+.cl-hint{margin:14px 2px 0;font-family:var(--f-ui);font-size:11.5px;line-height:1.45;color:var(--ink-3)}
 
 /* ---- search, chips, options ---- */
 .cl-pophost{position:relative}
+.cl-find{margin-top:10px}
+.cl-strip{margin-top:10px}
 .cl-findrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .cl-searchbox{position:relative;flex:1 1 240px;min-width:0}
-.cl-q{width:100%;max-width:none;font-size:13px;min-height:38px}
-.cl-teamsel{flex:0 1 200px;min-width:0;max-width:240px;font-size:12px;min-height:38px;padding:5px 8px}
+.cl .cl-q{width:100%;max-width:none;font-size:13px;min-height:38px}
+.cl .cl-teamsel{flex:0 1 200px;min-width:0;max-width:240px;font-size:12px;min-height:38px;padding:5px 8px}
 .cl-results{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:30;max-height:290px;overflow:auto;background:var(--panel);
   border:1px solid var(--rule-2);box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .cl-res{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;font-size:13px;line-height:1.3;border-bottom:1px solid var(--rule)}
@@ -56,11 +59,11 @@
 .cl-chip-x{width:30px;font-size:16px;line-height:1;border-left:1px solid color-mix(in oklch,var(--c) 40%,transparent)}
 .cl-chip-b:hover,.cl-chip-x:hover{background:color-mix(in oklch,var(--c) 26%,transparent)}
 .cl-chip-b:focus-visible,.cl-chip-x:focus-visible{outline:2px solid var(--lume);outline-offset:-2px}
-.cl-opts{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-top:12px}
+.cl-opts{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-top:14px}
 .cl-f{display:flex;flex-direction:column;gap:3px;min-width:0}
 .cl-fl{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
-.cl-sel{font-size:12px;min-height:34px;padding:5px 8px;max-width:180px}
-.cl-num{width:84px;font-size:12px;min-height:34px;padding:5px 8px}
+.cl .cl-sel{font-size:12px;min-height:34px;padding:5px 8px;max-width:180px}
+.cl .cl-num{width:84px;font-size:12px;min-height:34px;padding:5px 8px}
 .cl-f.num{flex:none}
 .cl-opts .cl-seg .cl-key{min-height:32px}
 .cl-opts .cl-pick{border:1px solid var(--rule-2);min-height:34px}
@@ -69,11 +72,11 @@
 .cl-pick{appearance:none;display:inline-flex;align-items:center;gap:8px;min-height:30px;max-width:100%;padding:0 10px;margin:0;cursor:pointer;
   background:var(--cl-scr);color:var(--cl-cyan);border:1px solid rgba(255,255,255,.22);font-family:var(--f-micro);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
 .cl-pick:hover,.cl-pick[aria-expanded="true"]{color:var(--cl-white);border-color:var(--cl-yel)}
-.cl-pick-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl-pick-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--f-ui);font-weight:800;font-size:11.5px;letter-spacing:.02em;text-transform:none}
 .cl-caret{flex:none;font-size:10px;color:var(--cl-yel)}
 .cl-pop{position:absolute;left:0;right:0;z-index:40;max-width:540px;background:var(--panel);color:var(--ink);border:1px solid var(--rule-2);
   border-top:3px solid var(--cl-yel);box-shadow:0 12px 30px rgba(0,0,0,.4)}
-.cl-pop-q{display:block;width:calc(100% - 16px);max-width:none;margin:8px;font-size:13px}
+.cl .cl-pop-q{display:block;width:calc(100% - 16px);max-width:none;margin:8px;font-size:13px}
 .cl-pop-list{max-height:min(52vh,420px);overflow:auto;overscroll-behavior:contain;padding-bottom:4px}
 .cl-pop-none{padding:14px;font-size:12.5px;color:var(--ink-3);text-align:center}
 .cl-grp-h{position:sticky;top:0;z-index:1;padding:5px 10px;background:var(--cl-scr);color:var(--cl-cyan);font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase}
@@ -89,20 +92,21 @@
 .cl-opt.none .n{color:var(--ink-2);font-weight:600}
 
 /* ---- the chart cards ---- */
+.cl-busy{margin:6px 2px;padding:6px 10px;border-left:3px solid var(--lume);background:var(--panel);font-size:12px;color:var(--ink-2)}
 .cl-titles{margin:14px 2px 8px}
 .cl-t{margin:0;font-family:var(--f-score);font-weight:400;font-size:22px;line-height:1.15;letter-spacing:.02em;color:var(--ink);cursor:text;overflow-wrap:anywhere}
 .cl-s{margin:4px 0 0;font-size:12.5px;line-height:1.45;color:var(--ink-2);cursor:text}
 .cl-t:hover,.cl-s:hover,.cl-fo:hover{text-decoration:underline dotted;text-underline-offset:4px}
 .cl-t:focus-visible,.cl-s:focus-visible,.cl-fo:focus-visible{outline:2px solid var(--lume);outline-offset:3px}
-.cl-edit-in{width:100%;max-width:none;font-size:14px;min-height:38px}
+.cl .cl-edit-in{width:100%;max-width:none;font-size:14px;min-height:38px}
 .cl-charts{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .cl-charts.side{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cl-card{min-width:0;border:1px solid var(--rule-2);background:var(--ground)}
-.cl-axes{gap:6px 10px}
+.cl-axes{gap:6px 10px;z-index:20}
 .cl-badge{font-family:var(--f-micro);font-size:11px;letter-spacing:.08em;color:var(--cl-yel);min-width:1.4em}
 .cl-ax{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%}
 .cl-axl{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;color:var(--cl-white)}
-.cl-mode{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;min-height:30px;padding:0 6px;width:auto;max-width:96px;
+.cl .cl-mode{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;min-height:30px;padding:0 6px;width:auto;max-width:96px;
   background:var(--cl-scr);color:var(--cl-cyan);border:1px solid rgba(255,255,255,.22);border-radius:0}
 .cl-mode-fixed{font-family:var(--f-micro);font-size:9.5px;color:var(--cl-yel);border:1px solid rgba(255,255,255,.22);padding:8px 8px 7px}
 .cl-axkeys{display:inline-flex;flex-wrap:wrap;gap:6px;margin-left:auto}
@@ -130,13 +134,13 @@
 .cl-zbtn.wide{font-size:8.5px;letter-spacing:.06em;display:none}
 .cl-zoom.zoomed .cl-zbtn.wide{display:inline-block}
 .cl-zbtn:hover{color:var(--cl-white)}
-.cl-edit{position:absolute;z-index:8;max-width:none;font-size:13px;min-height:32px;padding:4px 8px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.cl .cl-edit{position:absolute;z-index:8;max-width:none;font-size:13px;min-height:32px;padding:4px 8px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
 
 /* ---- under the charts ---- */
 .cl-foot{margin:8px 0 0}
 .cl-fo{margin:0 2px 4px;font-size:11.5px;line-height:1.45;color:var(--ink-3);cursor:text;font-style:italic}
 .cl-fo.custom{font-style:normal;color:var(--ink-2)}
-.cl-names-note{margin:0 2px 6px;font-size:11.5px;color:var(--ink-3)}
+.cl-names-note{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .cl-credit{display:flex;align-items:center;gap:10px;margin-top:6px;padding:6px 10px;background:var(--cl-scr);color:var(--cl-cyan);font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;text-transform:uppercase}
 .cl-chip-wm{padding:3px 8px 2px;background:linear-gradient(100deg,#93f2bf,#8ff5ff);color:#04100b;font-size:9.5px}
 .cl-credit-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -148,12 +152,12 @@
 .cl-panel-h span{font-size:11.5px;color:var(--ink-3);line-height:1.4}
 .cl-tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 12px;margin-bottom:8px}
 .cl-tfr{display:flex;flex-direction:column;gap:3px;min-width:0}
-.cl-tf{max-width:none;font-size:12.5px;min-height:34px;padding:5px 9px}
+.cl .cl-tf{max-width:none;font-size:12.5px;min-height:34px;padding:5px 9px}
 .cl-tsub{margin:10px 0 6px;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
 .cl-lab-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 12px}
 .cl-lab-row{display:flex;flex-direction:column;gap:2px;min-width:0}
 .cl-lab-n{font-size:11px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cl-lab-in{max-width:none;font-size:12.5px;min-height:32px;padding:4px 9px}
+.cl .cl-lab-in{max-width:none;font-size:12.5px;min-height:32px;padding:4px 9px}
 .cl-panel-f{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding:8px;background:var(--cl-scr)}
 .cl-check{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--cl-white)}
 .cl-check input{width:18px;height:18px;accent-color:var(--cl-yel)}
@@ -189,22 +193,22 @@
   .cl-strip > .cl-key{padding:0 4px}
   .cl-strip .cl-toast{grid-column:1 / -1}
   .cl-head{gap:6px}
-  .cl-preset{flex:1 1 100%;max-width:none;font-size:16px;min-height:42px}
-  .cl-q,.cl-teamsel,.cl-sel,.cl-num,.cl-tf,.cl-lab-in,.cl-pop-q,.cl-edit,.cl-edit-in{font-size:16px;min-height:44px}
-  .cl-teamsel{flex:1 1 100%;max-width:none}
+  .cl .cl-preset{flex:1 1 100%;max-width:none;font-size:16px;min-height:42px}
+  .cl .cl-q,.cl .cl-teamsel,.cl .cl-sel,.cl .cl-num,.cl .cl-tf,.cl .cl-lab-in,.cl .cl-pop-q,.cl .cl-edit,.cl .cl-edit-in{font-size:16px;min-height:44px}
+  .cl .cl-teamsel{flex:1 1 100%;max-width:none}
   .cl-opts{gap:10px 12px}
   .cl-opts > .cl-f{flex:1 1 calc(50% - 8px)}
   .cl-opts > .cl-f.wide{flex:1 1 100%}
   .cl-opts .cl-seg{display:flex;width:100%}
   .cl-opts .cl-seg .cl-key{flex:1 1 0;padding:0 2px;min-height:40px}
-  .cl-sel{max-width:none}
-  .cl-num{width:100%}
+  .cl .cl-sel{max-width:none}
+  .cl .cl-num{width:100%}
   .cl-opts .cl-pick{width:100%;min-height:44px}
   .cl-axes{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}
   .cl-axes .cl-badge{grid-row:1 / span 3}
   .cl-ax{width:100%}
   .cl-ax .cl-pick{flex:1 1 auto;min-height:40px}
-  .cl-mode{min-height:40px;font-size:16px;font-family:var(--f-ui)}
+  .cl .cl-mode{min-height:40px;font-size:16px;font-family:var(--f-ui)}
   .cl-axkeys{grid-column:1 / -1;margin-left:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
   .cl-axkeys > .cl-key{padding:0 2px;font-size:9px}
   .cl-pop{left:0;right:0;max-width:none}
@@ -214,7 +218,7 @@
   .cl-zbtn{min-width:34px;min-height:34px}
   .cl-tgrid,.cl-lab-list{grid-template-columns:minmax(0,1fr)}
   .cl-xrow{gap:10px}
-  .cl-xg{width:100%}.cl-xg .cl-seg{display:flex}.cl-xg .cl-seg .cl-key{flex:1 1 0;padding:0 2px}
+  .cl-xg{width:100%}.cl-xg .cl-seg{display:flex;flex-wrap:wrap}.cl-xg .cl-seg .cl-key{flex:1 1 calc(50% - 2px);padding:0 4px}
   .cl-panel-f > .cl-key{flex:1 1 auto}
 }
 @media (prefers-reduced-motion:reduce){.cl *{transition:none !important;animation:none !important}}

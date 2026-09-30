@@ -116,6 +116,19 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     const board = el('div', 'boardhost');
     host.append(bar, board);
 
+    /* TABLE OR CHARTS (#charts in the address): the same season, scope and conference either way */
+    let view = location.hash === '#charts' ? 'charts' : 'table';
+    const viewBtns = [...document.querySelectorAll('#viewRow .ep-tab')];
+    const paintView = () => viewBtns.forEach(b => { const on = b.dataset.v === view; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    paintView();
+    viewBtns.forEach(b => b.addEventListener('click', () => {
+      if (view === b.dataset.v) return;
+      view = b.dataset.v; paintView();
+      const u = new URL(location.href); u.hash = view === 'charts' ? 'charts' : '';
+      history.replaceState(null, '', u.toString().replace(/#$/, ''));
+      draw();
+    }));
+
     let drawing = 0;
     async function draw() {
       const my = ++drawing;
@@ -148,6 +161,17 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
         const at = new Date(S.stale.builtAt);
         if (isFinite(at)) asOf = el('div', 'ft-asof', 'As of ' +
           at.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) + ' — rebuilt hourly, the newest games follow.');
+      }
+      /* THE CHART LAB (chartlab.js): scatter graphs of the season's columns, drawn from the same read. It filters to the
+         conference itself (keep) and asks for the names it needs. A club's shot zones would need every game's event log,
+         which this page does not load, so those columns are not offered here (they are on the league page's Charts tab). */
+      if (view === 'charts') {
+        const Lab = window.EpinoiaChartLab;
+        if (!Lab) { board.appendChild(el('div', 'ft-empty', 'The chart lab could not be loaded.')); return; }
+        await Lab.mount({ host: board, D, league, season, S, keep: id => keep(id), leagueId: league.id, leagueSlug: league.slug });
+        if (my !== drawing) return;
+        if (asOf) board.insertBefore(asOf, board.firstChild);
+        return;
       }
       /* a player's numbers are filed under the club he played for (the games) */
       const rows = S.players.filter(p => keep((S.teamOfPlayer && S.teamOfPlayer.get(p.id)) || p.teamId));

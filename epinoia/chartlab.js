@@ -297,6 +297,20 @@ function matchEntities(list, query, limit) {
 const CONTEXT_KEYS = ['gp', 'mpg', 'ev_gp'];
 const SKIP_KEYS = new Set(['rank', 'name', 'teamName', 'rapm', 'orapm', 'drapm', 'ev_gp']);
 const PAIR_NAMES = { fgm_pg: 'FG made / G', p3m_pg: '3P made / G', ftm_pg: 'FT made / G', fgm: 'FG made', p3m: '3P made', ftm: 'FT made' };
+/* plain names for the statistics statinfo.js has no entry for, so an axis says "Turnovers per game" and not "TOPG" */
+const LONG = { gp: 'Games played', orpg: 'Offensive rebounds per game', drpg: 'Defensive rebounds per game', spg: 'Steals per game', bpg: 'Blocks per game',
+  topg: 'Turnovers per game', pfpg: 'Fouls per game', min: 'Minutes played', pts: 'Points', reb: 'Rebounds', oreb: 'Offensive rebounds', dreb: 'Defensive rebounds',
+  ast: 'Assists', stl: 'Steals', blk: 'Blocks', tov: 'Turnovers', pf: 'Fouls', fouls: 'Fouls', fd: 'Fouls drawn', ptsAst: 'Points from assists', paint: 'Points in the paint',
+  fast: 'Fast-break points', sc: 'Second-chance points', second_chance: 'Second-chance points', pot: 'Points off turnovers', pts_off_to: 'Points off turnovers', bench: 'Bench points',
+  fg_pct: 'Field goal %', p2_pct: '2-point %', p3_acc: '3-point %', rim_apg: 'Rim attempts per game', mid_apg: 'Mid-range attempts per game', p3_apg: '3-point attempts per game',
+  rim_rate: 'Share of shots at the rim', mid_rate: 'Share of shots from mid-range', p3_rate: 'Share of shots from three', ptsAst_pg: 'Points from assists per game',
+  sc_pg: 'Second-chance points per game', second_pg: 'Second-chance points per game', pot_pg: 'Points off turnovers per game', ppp: 'Points per possession', pts75: 'Points per 75 possessions',
+  poss: 'Possessions per game', poss_pg: 'Possessions per game', diff_pace: 'Pace, on minus off', pm: 'Plus/minus (season total)', vs_efg: 'Opponent eFG% while on the floor',
+  vs_tov: 'Opponent TOV% while on the floor', vs_oreb: 'Opponent OREB% while on the floor', vs_ftr: 'Opponent FTr while on the floor', fga_pg: 'Field goal attempts per game',
+  p3a_pg: '3-point attempts per game', fta_pg: 'Free throw attempts per game', fga: 'Field goal attempts', p3a: '3-point attempts', fta: 'Free throw attempts',
+  fgm_pg: 'Field goals made per game', p3m_pg: '3-pointers made per game', ftm_pg: 'Free throws made per game', fgm: 'Field goals made', p3m: '3-pointers made', ftm: 'Free throws made',
+  pred_efg: 'Expected eFG% from the shot diet', efg_sh: 'eFG% on located shots', efg_vs: 'eFG% above expected', morey: 'Shots at the rim or from three (%)',
+  rim_share: 'Share of shots at the rim', mid_share: 'Share of shots from mid-range', p3_share: 'Share of shots from three' };
 /* numbers a table shows only as a made-attempted pair, or not at all, that are worth a chart: attempts */
 const EXTRA_COLS = {
   player: [
@@ -378,7 +392,7 @@ function buildCatalogue(kind, cols, presets, rows, info, opts) {
     let t = c.t || '';
     t = t.replace('made-attempted', 'made');
     const inf = info ? info(c.k) : null;
-    list.push({ k: c.k, label: PAIR_NAMES[c.k] || c.l, t, long: (inf && inf.title) || '', g: primary, groups: context ? ['context'] : groups,
+    list.push({ k: c.k, label: PAIR_NAMES[c.k] || c.l, t, long: (inf && inf.title) || LONG[c.k] || '', g: primary, groups: context ? ['context'] : groups,
       low: !!c.low, signed: !!c.signed, dp: dpOf(c, get, derived), get, zones, n });
   });
   /* a label two columns share ('eFG%' in the four factors and in the shot chart) says which group it is in */
@@ -386,7 +400,8 @@ function buildCatalogue(kind, cols, presets, rows, info, opts) {
   list.forEach(c => { seen[c.label] = (seen[c.label] || 0) + 1; });
   list.forEach(c => {
     c.name = seen[c.label] > 1 ? c.label + ' · ' + (labels[c.g] || c.g) : c.label;
-    if (c.t && /^[A-Z]/.test(c.t) && c.t.indexOf(':') > 0) c.name = c.t.replace(/^([^:]+): (.*)$/, (m, a, b) => a + ' · ' + b);   // events: "Second chance: points per game"
+    c.hint = c.long && c.long !== c.name ? c.long : c.t;
+    if (c.t && /^[A-Z]/.test(c.t) && c.t.indexOf(':') > 0) { c.name = c.t.replace(/^([^:]+): (.*)$/, (m, a, b) => a + ' · ' + b); c.hint = ''; }   // events: "Second chance: points per game"
     c.title = c.long || c.name;
   });
   const gorder = ['context'].concat(order);
@@ -532,7 +547,7 @@ function axisRange(values, mode, log) {
   let lo = Infinity, hi = -Infinity;
   for (let i = 0; i < values.length; i++) { const v = values[i]; if (isNum(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }
   if (!isFinite(lo)) return mode === 'r' ? [0, 100] : [0, 1];
-  if (mode === 'r') return [0, 100];
+  if (mode === 'r') return [-4, 104];
   if (log) { lo = Math.max(lo, 1e-9); if (hi <= lo) hi = lo * 2; const a = Math.log10(lo), b = Math.log10(hi), p = (b - a) * 0.06; return [Math.pow(10, a - p), Math.pow(10, b + p)]; }
   if (mode === 'd' || mode === 'p' || mode === 'z') { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
   if (hi === lo) { lo -= 1; hi += 1; }
@@ -749,10 +764,10 @@ const NS = 'http://www.w3.org/2000/svg';
 const FONT = { ui: "Archivo, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", micro: "Silkscreen, ui-monospace, Menlo, monospace", data: "MartianMono, ui-monospace, Menlo, monospace" };
 /* the two grounds, as tokens.css has them, and the three chart colours validated on each (dataviz palette slots 1-3) */
 const THEMES = {
-  dark: { name: 'dark', ground: '#04100b', panel: '#0a1a13', ink: '#e6fff1', ink2: 'rgba(230,255,241,.94)', ink3: 'rgba(230,255,241,.84)',
+  dark: { name: 'dark', dark: true, ground: '#04100b', panel: '#0a1a13', ink: '#e6fff1', ink2: 'rgba(230,255,241,.94)', ink3: 'rgba(230,255,241,.84)',
     rule: 'rgba(147,242,191,.20)', rule2: 'rgba(147,242,191,.44)', amber: '#ffd166', good: '#63ffa0', lume: '#93f2bf',
     s1: '#3987e5', s2: '#d95926', s3: '#199e70', tt: '#050706', ttInk: '#3ff0ff', ttHi: '#ffe44d' },
-  light: { name: 'light', ground: '#f3faf6', panel: '#ffffff', ink: '#0d1f17', ink2: 'rgba(13,31,23,.95)', ink3: 'rgba(13,31,23,.86)',
+  light: { name: 'light', dark: false, ground: '#f3faf6', panel: '#ffffff', ink: '#0d1f17', ink2: 'rgba(13,31,23,.95)', ink3: 'rgba(13,31,23,.86)',
     rule: 'rgba(13,31,23,.2)', rule2: 'rgba(13,31,23,.4)', amber: '#714a03', good: '#0a6d43', lume: '#08603f',
     s1: '#2a78d6', s2: '#eb6834', s3: '#1baf7a', tt: '#050706', ttInk: '#3ff0ff', ttHi: '#ffe44d' }
 };
@@ -805,8 +820,9 @@ const surname = n => { const p = String(n || '').trim().split(/\s+/); return p.l
 function labelText(ent, kind, names, overrides) {
   const o = overrides && overrides[ent.id];
   if (o) return o;
-  if (kind === 'team') return names === 'a' && ent.short ? ent.short : shortName(ent.name, 18);
-  return names === 'a' ? shortName(surname(ent.name), 14) : shortName(ent.name, 15);
+  if (kind === 'team') { const nm = String(ent.name || ''); return nm.length <= (names === 'a' ? 12 : 18) ? nm : (ent.short && ent.short.length <= 5 ? ent.short : shortName(nm, 18)); }
+  if (names === 'a') { const sn = surname(ent.name); return sn.length > 14 ? sn.slice(0, 13) + '…' : sn; }
+  return shortName(ent.name, 15);
 }
 
 /* The quadrant a chart calls good: both statistics on their better side. 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right. */
@@ -846,8 +862,8 @@ function buildChart(cfg) {
   const { W, H, theme: T, data: D } = cfg;
   const fs = cfg.fs || 1, uid = cfg.uid || 'c';
   const g = S('g', { 'data-chart': uid });
-  const tk = 10 * fs, ttl = 10 * fs, small = 8.5 * fs;
-  const mData = measureFn(tk, FONT.data, 400), mLab = measureFn(10.5 * fs, FONT.ui, 700), mMic = measureFn(ttl, FONT.micro, 400), mLeg = measureFn(10 * fs, FONT.ui, 600);
+  const tk = 10 * fs, small = 8.5 * fs;
+  const mData = measureFn(tk, FONT.data, 400), mLab = measureFn(10.5 * fs, FONT.ui, 700), mMic = measureFn(10.5 * fs, FONT.ui, 700), mLeg = measureFn(10 * fs, FONT.ui, 600);
   const pts = D.pts, n = pts.length;
   const hi = cfg.hi || new Set(), pinned = cfg.must || new Set();
   const ovl2 = D.overlay;
@@ -873,10 +889,10 @@ function buildChart(cfg) {
 
   /* ---- the legend rows (drawn at the top) decide the top margin ---- */
   const legend = legendItems(cfg, D);
-  const lRows = layoutLegend(legend, W - 16 * fs, mLeg, 10 * fs, 18 * fs);
+  const lRows = layoutLegend(legend, W - 16 * fs - (cfg.zoomSpace || 0), mLeg, 10 * fs, 18 * fs);
   const legendH = lRows.length ? lRows.length * 15 * fs + 4 * fs : 0;
   const capOn = !!(cfg.texts && cfg.texts.lg);
-  const capLines = capOn ? wrapLines(cfg.texts.lg, W - 20 * fs, measureFn(9.5 * fs, FONT.ui, 500), 2) : [];
+  const capLines = capOn ? wrapLines(cfg.texts.lg, W - 20 * fs - (cfg.zoomSpace || 0), measureFn(9.5 * fs, FONT.ui, 500), 3) : [];
   const capH = capLines.length ? capLines.length * 12.5 * fs + 2 * fs : 0;
   const m = { l: Math.round(maxYW + 30 * fs), r: Math.round(14 * fs), t: Math.round(8 * fs + legendH + capH), b: Math.round(48 * fs) };
   const x0 = m.l, x1 = W - m.r, y0 = m.t, y1 = H - m.b;
@@ -999,8 +1015,8 @@ function buildChart(cfg) {
       e.d.push(ser ? dia(px, py, r) : circ(px, py, r));
     });
   });
-  const ring = n <= 250;
-  const dots = S('g', { 'clip-path': 'url(#' + clipId + ')', class: 'cl-dots', opacity: dimOn ? 0.24 : null }); g.appendChild(dots);
+  const ring = n <= 80;
+  const dots = S('g', { 'clip-path': 'url(#' + clipId + ')', class: 'cl-dots', opacity: dimOn ? (T.dark ? 0.4 : 0.28) : null }); g.appendChild(dots);
   paths.forEach(e => dots.appendChild(S('path', { d: e.d.join(''), fill: e.col, 'fill-opacity': n > 250 ? 0.66 : 0.92, stroke: ring ? T.ground : null, 'stroke-width': ring ? 1.6 : null })));
 
   /* ---- highlighted entities: coloured discs with initials, or the club's crest ---- */
@@ -1038,7 +1054,10 @@ function buildChart(cfg) {
   const labelled = [];
   let hiddenLabels = 0, wanted = 0;
   if (cfg.names !== 'n' && n) {
-    const list = labelOrder(cfg, D, hits.filter(h => h.inside && !h.ser), { x0, y0, pw, ph });
+    const ordered = labelOrder(cfg, D, hits.filter(h => h.inside && !h.ser), { x0, y0, pw, ph });
+    /* a chart this size holds a couple of hundred names at most: the placer is offered that many, the rest are counted as left out */
+    const cap = cfg.names === 'a' ? clamp(Math.round(pw * ph / 320), 60, 320) : ordered.length;
+    const list = ordered.slice(0, cap), tooMany = ordered.length - list.length;
     const items = [];
     list.forEach(rec => {
       const txt = labelText(rec.p.e, cfg.kind, cfg.names, cfg.labels);
@@ -1046,9 +1065,28 @@ function buildChart(cfg) {
       const w = Math.ceil(mLab(txt) + 6 * fs), h = Math.round(14.5 * fs);
       items.push({ id: rec.id, x: rec.px - x0, y: rec.py - y0, r: (rec.hi ? R : rec.r) + 1, w, h, must: pinned.has(rec.id), text: txt, rec });
     });
-    wanted = items.length;
+    wanted = items.length + tooMany;
+    /* the average lines' own words and the quadrant captions are kept clear: each is offered to the placer as a row of small
+       fixed markers, which no label may cover */
+    const mSm = measureFn(small, FONT.micro, 400), mCap = measureFn(9.5 * fs, FONT.ui, 700), keepOut = [];
+    const box = (x, y, w, hh) => keepOut.push({ x, y, w: w + 4, h: hh });
+    if (cfg.qd && okMid) {
+      if (inX) box(mx + 4 - x0, 9 * fs - small, mSm(midLabel(D, 'x', xMid)), small + 3);
+      if (inY) { const w = mSm(midLabel(D, 'y', yMidSrc)); box(pw - 3 - w, my - 4 - y0 - small, w, small + 3); }
+    }
+    if (cfg.qc && okMid) {
+      const qs = quadrantTexts(D, cfg.texts);
+      [0, 1, 2, 3].forEach(i => {
+        const w = Math.min(mCap(qs[i]) + qs[i].length * fs * 0.2, pw * 0.46), yb = i < 2 ? 21 * fs : ph - 7 * fs;
+        box(i % 2 ? pw - 6 - w : 6, yb - 9.5 * fs, w, 9.5 * fs + 3);
+      });
+    }
+    keepOut.forEach((k, ki) => {
+      const cnt = Math.max(1, Math.ceil(k.w / Math.max(6, k.h)));
+      for (let j = 0; j < cnt; j++) items.push({ id: '~k' + ki + '-' + j, x: k.x + (j + 0.5) * k.w / cnt, y: k.y + k.h / 2, r: k.h / 2 + 1, w: 0, h: 0, must: true, text: '', keep: true });
+    });
     const max = cfg.names === 'a' ? Infinity : clamp(Math.round(pw * ph / 21000), 3, 16);
-    const out = placeNames(items, { width: pw, height: ph, gap: 3, max }, cfg.placer);
+    const out = placeNames(items, { width: pw, height: ph, gap: 3, max }, cfg.placer).filter(o => o.id.charAt(0) !== '~');
     const byItem = new Map(items.map(i => [i.id, i]));
     const lg = S('g', { class: 'cl-labels', 'clip-path': 'url(#' + clipId + ')' }); g.appendChild(lg);
     out.forEach(o => {
@@ -1059,7 +1097,8 @@ function buildChart(cfg) {
       lg.appendChild(t);
       labelled.push({ id: o.id, x: x0 + b.x, y: y0 + b.y, w: b.w, h: b.h, text: it.text });
     });
-    hiddenLabels = items.length - out.length;
+    hiddenLabels = wanted - out.length;
+    if (cfg.names === 'a' && hiddenLabels > 0) g.appendChild(S('text', { x: x0, y: H - 6 * fs, fill: T.ink3, 'font-size': 9.5 * fs, 'font-family': FONT.ui, 'font-weight': 600 }, out.length + ' of ' + wanted + ' names shown · ' + hiddenLabels + ' left out where they would overlap'));
   }
 
   /* ---- axis titles, arrows, corner captions ---- */
@@ -1067,9 +1106,9 @@ function buildChart(cfg) {
   const xTitle = T_.ax || axisTitleText(D.cx, D.xm);
   const yTitle = T_.ay || axisTitleText(D.cy, D.ym);
   const fit = (s, maxW, m) => { const l = wrapLines(s, maxW, m, 1); return l.length ? l[0] : ''; };
-  g.appendChild(S('text', ed({ x: num1(x0 + pw / 2), y: H - 20 * fs, 'text-anchor': 'middle', fill: T.ink2, 'font-size': ttl, 'font-family': FONT.micro, 'letter-spacing': '0.06em' }, 'x'), fit(xTitle, pw * 0.72, mMic)));
+  g.appendChild(S('text', ed({ x: num1(x0 + pw / 2), y: H - 20 * fs, 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'x'), fit(xTitle, pw * 0.72, mMic)));
   const yLabel = D.overlay ? (T_.ay || D.cy.title + ' & ' + D.cy2.title + ': z-scores') : yTitle;
-  g.appendChild(S('text', ed({ transform: 'translate(' + num1(11 * fs) + ' ' + num1(y0 + ph / 2) + ') rotate(-90)', 'text-anchor': 'middle', fill: T.ink2, 'font-size': ttl, 'font-family': FONT.micro, 'letter-spacing': '0.06em' }, 'y'), fit(yLabel, ph * 0.8, mMic)));
+  g.appendChild(S('text', ed({ transform: 'translate(' + num1(11 * fs) + ' ' + num1(y0 + ph / 2) + ') rotate(-90)', 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'y'), fit(yLabel, Math.max(50, ph - 2 * (measureFn(small, FONT.micro, 400)('better') + 18 * fs)), mMic)));
   {
     /* the direction that is better, in words and an arrow: at the foot of X, up the side of Y (both turned round for a
        lower-is-better statistic; z-scores and percentiles are already turned, so their arrows always point up and right) */
@@ -1091,7 +1130,7 @@ function buildChart(cfg) {
   }
   if (cfg.qc && okMid) {
     const qs = quadrantTexts(D, cfg.texts);
-    const cap = (i, x, y, anchor) => g.appendChild(S('text', ed({ x: num1(x), y: num1(y), 'text-anchor': anchor, fill: T.ink3, 'font-size': small, 'font-family': FONT.micro, 'letter-spacing': '0.04em', opacity: 0.95 }, 'q' + i), fit(qs[i], pw * 0.46, measureFn(small, FONT.micro, 400))));
+    const cap = (i, x, y, anchor) => g.appendChild(S('text', ed({ x: num1(x), y: num1(y), 'text-anchor': anchor, fill: T.ink3, 'font-size': 9.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.02em' }, 'q' + i), fit(qs[i], pw * 0.46, measureFn(9.5 * fs, FONT.ui, 700))));
     cap(0, x0 + 6, y0 + 13 * fs + 8 * fs, 'start'); cap(1, x0 + pw - 6, y0 + 13 * fs + 8 * fs, 'end');
     cap(2, x0 + 6, y0 + ph - 7 * fs, 'start'); cap(3, x0 + pw - 6, y0 + ph - 7 * fs, 'end');
   }
@@ -1158,14 +1197,12 @@ function labelOrder(cfg, D, recs, plot) {
   const add = r => { if (r && !seen.has(r.id)) { seen.add(r.id); uniq.push(r); } };
   first.forEach(add); second.forEach(add);
   if (cfg.names === 'a') {
-    const pts = rest, iso = new Map();
-    const lim = pts.length > 700 ? 0 : 1;
-    pts.forEach((a, i) => {
-      let best = Infinity;
-      if (lim) for (let j = 0; j < pts.length; j++) { if (j === i) continue; const dx = a.px - pts[j].px, dy = a.py - pts[j].py, d = dx * dx + dy * dy; if (d < best) best = d; }
-      iso.set(a.id, best);
-    });
-    pts.slice().sort((a, b) => (iso.get(b.id) - iso.get(a.id)) || (b.p.x + b.p.y - a.p.x - a.p.y)).forEach(add);
+    /* the most isolated points first (a crowd gives way to the lone points): crowding is counted in 16px cells, so it costs one pass */
+    const cell = r => Math.floor(r.px / 16) + ',' + Math.floor(r.py / 16), cnt = new Map();
+    rest.forEach(r => { const k = cell(r); cnt.set(k, (cnt.get(k) || 0) + 1); });
+    const crowd = r => { const cx = Math.floor(r.px / 16), cy = Math.floor(r.py / 16); let c = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) c += cnt.get((cx + i) + ',' + (cy + j)) || 0; return c; };
+    const score = new Map(rest.map(r => [r.id, crowd(r)]));
+    rest.slice().sort((a, b) => (score.get(a.id) - score.get(b.id)) || (b.p.x + b.p.y - a.p.x - a.p.y)).forEach(add);
     return uniq;
   }
   if (!rest.length) return uniq;
@@ -1336,6 +1373,9 @@ function h(tag, props, kids) {
 }
 const inPage = n => (typeof n.isConnected === 'boolean' ? n.isConnected : document.contains(n));
 let CURRENT = null;
+/* what the last chart on this page held, so a change of season or scope (the page draws the pane again) keeps the reader's chart
+   even inside the moment before the address has caught up */
+let LAST = null;
 
 /* The rows of a season as chart entities: name, club (where he played), colours, crest, position group. The page's own
    read is used as it is; names and clubs are asked for here only when the rows carry none. */
@@ -1418,7 +1458,7 @@ async function mountAsync(opts) {
   const kindOf = () => (state.ent === 't' ? 'team' : 'player');
 
   /* ---- state: the address's ?cl= (a shared link), else what this page held last, else the defaults ---- */
-  const initial = opts.state || (opts.url === false ? null : readQuery(location.search));
+  const initial = opts.state || (LAST && LAST.league === opts.leagueId ? LAST.state : null) || (opts.url === false ? null : readQuery(location.search));
   let state = initial ? sanitizeState(initial) : defaultState(E.player.list.length ? 'p' : 't');
   if (state.ent === 'p' && !E.player.list.length) state = defaultState('t');
   if (state.ent === 't' && !E.team.list.length) state = defaultState('p');
@@ -1428,7 +1468,6 @@ async function mountAsync(opts) {
   let pending = null;                          // a read the chosen statistics wait for
   let dead = false;
 
-  const player = () => E.player, teamE = () => E.team;
   const entOf = () => E[kindOf()];
   const byId = () => { const e = entOf(); return e._by || (e._by = new Map(e.list.map(x => [x.id, x]))); };
   const maxGp = () => Math.max(1, ...entOf().list.map(e => e.row.gp || 0));
@@ -1455,7 +1494,8 @@ async function mountAsync(opts) {
   const grid = h('div', { class: 'cl-charts' });
   const foot = h('div', { class: 'cl-foot' });
   const tableBox = h('div', { class: 'cl-tablebox', hidden: true });
-  wrap.append(live, head, hint, find, optsRow, strip, panelText, panelExport, titles, grid, foot, tableBox);
+  const busy = h('p', { class: 'cl-busy', role: 'status', hidden: true, text: 'Reading every shot of the season for the shot-zone statistics\u2026 the chart fills in when it is done.' });
+  wrap.append(live, head, find, strip, titles, busy, grid, foot, panelText, panelExport, optsRow, tableBox, hint);
   const ui = { text: false, export: false, tip: null, edit: null, textDirty: 0 };
   const say = msg => { live.textContent = ''; setTimeout(() => { live.textContent = msg; }, 30); };
   let toastT = 0;
@@ -1464,6 +1504,7 @@ async function mountAsync(opts) {
   /* ---------------------------------------------------------------- state changes --- */
   let urlT = 0;
   const syncUrl = () => {
+    LAST = { league: opts.leagueId, state: JSON.parse(JSON.stringify(state)) };
     if (opts.url === false) return;
     clearTimeout(urlT);
     urlT = setTimeout(() => {
@@ -1476,7 +1517,10 @@ async function mountAsync(opts) {
   const shareUrl = () => location.origin + location.pathname + withQuery(location.search, state, false) + location.hash;
   /* change, then draw what the change touches: 'all' the controls and the charts, 'charts' the charts alone, 'none' */
   let rafAll = 0;
+  let keepFocus = null;
   const change = (mut, what) => {
+    const ae = document.activeElement;
+    if (ae && ae !== document.body && wrap.contains(ae) && ae.getAttribute && ae.getAttribute('data-fk')) keepFocus = ae.getAttribute('data-fk');
     mut(state);
     state = fitState(state, catOf(state.ent), ctx);
     syncUrl();
@@ -1491,8 +1535,10 @@ async function mountAsync(opts) {
     const need = needKeys().filter(needsZones);
     if (!need.length || pending === 'done') return;
     if (pending) return pending;
+    busy.hidden = false;
     pending = (async () => {
       try { await opts.prepare(need); } catch (_) { /* the columns stay empty */ }
+      busy.hidden = true;
       const tm = new Map(rawTeams.map(t => [t.id, t]));
       E.team.list.forEach(e => { const r0 = tm.get(e.id); if (r0) e.row = deriveRow('team', Object.assign({}, e.row, r0)); });
       pending = 'done';
@@ -1531,7 +1577,7 @@ async function mountAsync(opts) {
       g.items.forEach(c => {
         const locked = columnState(c.k, ctx) === 'locked';
         const b = h('button', { type: 'button', class: 'cl-opt' + (locked ? ' locked' : ''), role: 'option', 'data-k': c.k, 'aria-disabled': locked ? 'true' : null, tabindex: '-1' },
-          [h('span', { class: 'n', text: c.name }), h('span', { class: 't', text: c.long && c.long !== c.name ? c.long : (c.t || '') }), c.low ? h('span', { class: 'lo', text: 'lower is better', title: 'lower is better' }) : null]);
+          [h('span', { class: 'n', text: c.name }), h('span', { class: 't', text: c.hint || '' }), c.low ? h('span', { class: 'lo', text: 'lower is better', title: 'lower is better' }) : null]);
         b._hay = fold([c.name, c.label, c.long, c.t, c.k, g.label].concat(c.groups.map(x => (TB.PRESETS[kind].find(p => p[0] === x) || [0, x])[1])).join(' '));
         b._c = c;
         items.set(c.k, b);
@@ -1603,14 +1649,14 @@ async function mountAsync(opts) {
   };
 
   /* ---------------------------------------------------------------- the head: entity, presets, reset --- */
-  const modeSel = (val, onchange, label) => {
-    const s = h('select', { class: 'cl-mode ep-input', 'aria-label': label });
+  const modeSel = (val, onchange, label, fk) => {
+    const s = h('select', { class: 'cl-mode ep-input', 'aria-label': label, 'data-fk': fk });
     MODES.forEach(m => s.appendChild(h('option', { value: m[0], text: m[1], title: m[2] })));
     s.value = val; s.addEventListener('change', () => onchange(s.value));
     return s;
   };
   const key = (text, o) => {
-    const b = h('button', Object.assign({ type: 'button', class: 'cl-key' + (o && o.on ? ' on' : '') }, o && o.attrs), text);
+    const b = h('button', Object.assign({ type: 'button', class: 'cl-key' + (o && o.on ? ' on' : ''), 'data-fk': (o && o.fk) || text }, o && o.attrs), text);
     if (o && o.on != null) b.setAttribute('aria-pressed', o.on ? 'true' : 'false');
     if (o && o.title) b.title = o.title;
     if (o && o.click) b.addEventListener('click', o.click);
@@ -1621,7 +1667,7 @@ async function mountAsync(opts) {
     head.textContent = '';
     const cs = catOf(state.ent);
     const presets = presetsFor(state.ent, cs, ctx);
-    const ps = h('select', { class: 'cl-preset ep-input', 'aria-label': 'Preset charts' });
+    const ps = h('select', { class: 'cl-preset ep-input', 'aria-label': 'Preset charts', 'data-fk': 'preset' });
     ps.appendChild(h('option', { value: '', text: 'Presets…' }));
     presets.forEach(p => ps.appendChild(h('option', { value: p.id, text: p.label })));
     const cur = matchPreset(state, presets);
@@ -1698,22 +1744,22 @@ async function mountAsync(opts) {
     /* the option under the arrow keys is lit on the chart before it is chosen */
     previewHover();
   }
-  const previewHover = () => { const it = sr.items[sr.active]; setHover(it && !it.isClub ? it.id : null, -1); };
+  const previewHover = () => { const it = sr.items[sr.active]; if (it && !it.isClub) setHover(it.id, -2); else if (hover.src === -2) setHover(null, -1); };
   function choose(i) {
     const it = sr.items[i];
     if (!it) return;
     if (it.isClub) hlTeam(it.id, true); else pin(it.id, true);
-    searchInput.value = ''; sr = { items: [], active: -1 }; renderResults(); setHover(null, -1);
+    searchInput.value = ''; sr = { items: [], active: -1 }; renderResults(); if (hover.src === -2) setHover(null, -1);
     say((it.name || '') + ' highlighted');
   }
   searchInput.addEventListener('input', search);
   searchInput.addEventListener('focus', () => { if (searchInput.value) search(); });
-  searchInput.addEventListener('blur', () => setTimeout(() => { sr.items = []; renderResults(); setHover(null, -1); }, 150));
+  searchInput.addEventListener('blur', () => setTimeout(() => { sr.items = []; renderResults(); if (hover.src === -2) setHover(null, -1); }, 150));
   searchInput.addEventListener('keydown', ev => {
     if (ev.key === 'ArrowDown') { ev.preventDefault(); if (sr.items.length) { sr.active = (sr.active + 1) % sr.items.length; renderResults(); previewHover(); } }
     else if (ev.key === 'ArrowUp') { ev.preventDefault(); if (sr.items.length) { sr.active = (sr.active - 1 + sr.items.length) % sr.items.length; renderResults(); previewHover(); } }
     else if (ev.key === 'Enter') { ev.preventDefault(); choose(Math.max(0, sr.active)); }
-    else if (ev.key === 'Escape') { searchInput.value = ''; sr = { items: [], active: -1 }; renderResults(); setHover(null, -1); }
+    else if (ev.key === 'Escape') { searchInput.value = ''; sr = { items: [], active: -1 }; renderResults(); if (hover.src === -2) setHover(null, -1); }
   });
   results.addEventListener('pointerdown', ev => { const o = ev.target.closest('.cl-res'); if (o) { ev.preventDefault(); choose(+o.getAttribute('data-i')); } });
   teamSel.addEventListener('change', () => { const v = teamSel.value; teamSel.value = ''; if (v) hlTeam(v, true); });
@@ -1751,36 +1797,37 @@ async function mountAsync(opts) {
   }
 
   /* ---------------------------------------------------------------- options row --- */
-  const pickBtn = (cur, cat, onclick, label) => {
+  const pickBtn = (cur, cat, onclick, label, fk) => {
     const c = cur && cat.byKey.get(cur);
-    return h('button', { type: 'button', class: 'cl-pick', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', title: label || 'Choose a statistic', onclick }, [
+    return h('button', { type: 'button', class: 'cl-pick', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', title: label || 'Choose a statistic', 'data-fk': fk, onclick }, [
       h('span', { class: 'cl-pick-t', text: c ? c.name : (cur ? cur : 'none') }), h('span', { class: 'cl-caret', text: '▾', 'aria-hidden': 'true' })]);
   };
   function labelled(text, control, cls) { return h('label', { class: 'cl-f ' + (cls || '') }, [h('span', { class: 'cl-fl', text }), control]); }
   function renderOpts() {
     optsRow.textContent = '';
     const cs = catOf(state.ent);
-    const colSel = h('select', { class: 'ep-input cl-sel', 'aria-label': 'Colour by' });
+    const colSel = h('select', { class: 'ep-input cl-sel', 'aria-label': 'Colour by', 'data-fk': 'colour' });
     [['c', 'club'], ['p', 'position group'], ['n', 'none']].forEach(o => colSel.appendChild(h('option', { value: o[0], text: o[1], disabled: o[0] === 'p' && state.ent === 't' })));
     colSel.value = state.ent === 't' && state.co === 'p' ? 'c' : state.co;
     colSel.addEventListener('change', () => change(s => { s.co = colSel.value; }, 'charts'));
     const names = h('div', { class: 'cl-seg', role: 'group', 'aria-label': 'Names on the chart' }, [['s', 'SMART', 'the extremes, the highlighted and their neighbours, never crowded'], ['a', 'ALL', 'every point named; where names would overlap some are left out, and the chart says how many'], ['n', 'NONE', 'no names; hover or tap a point']]
-      .map(o => key(o[1], { on: state.nm === o[0], title: o[2], click: () => change(s => { s.nm = o[0]; }, 'all') })));
-    const sizeBtn = pickBtn(state.sz, cs, ev => showPicker({ anchor: ev.currentTarget, current: state.sz, allowNone: true, onPick: k => change(s => { s.sz = k; }, 'all') }), 'Size the dots by a third statistic');
-    const gp = h('input', { class: 'ep-input cl-num', type: 'number', min: '0', max: '999', inputmode: 'numeric', placeholder: 'auto ' + autoGp(), 'aria-label': 'Minimum games played', value: state.gp == null ? '' : String(state.gp) });
+      .map(o => key(o[1], { fk: 'names:' + o[0], on: state.nm === o[0], title: o[2], click: () => change(s => { s.nm = o[0]; }, 'all') })));
+    const sizeBtn = pickBtn(state.sz, cs, ev => showPicker({ anchor: ev.currentTarget, current: state.sz, allowNone: true, onPick: k => change(s => { s.sz = k; }, 'all') }), 'Size the dots by a third statistic', 'size');
+    const gp = h('input', { class: 'ep-input cl-num', type: 'number', min: '0', max: '999', inputmode: 'numeric', placeholder: 'auto ' + autoGp(), 'aria-label': 'Minimum games played', 'data-fk': 'gp', value: state.gp == null ? '' : String(state.gp) });
     gp.addEventListener('change', () => change(s => { const v = parseInt(gp.value, 10); s.gp = isFinite(v) ? clamp(v, 0, 999) : null; }, 'all'));
-    const mn = h('input', { class: 'ep-input cl-num', type: 'number', min: '0', max: '99999', inputmode: 'numeric', placeholder: '0', 'aria-label': 'Minimum minutes played', value: state.mn ? String(state.mn) : '' });
+    const mn = h('input', { class: 'ep-input cl-num', type: 'number', min: '0', max: '99999', inputmode: 'numeric', placeholder: '0', 'aria-label': 'Minimum minutes played', 'data-fk': 'mn', value: state.mn ? String(state.mn) : '' });
     mn.addEventListener('change', () => change(s => { s.mn = clamp(parseInt(mn.value, 10) || 0, 0, 99999); }, 'all'));
-    const pos = h('select', { class: 'ep-input cl-sel', 'aria-label': 'Position group' });
+    const pos = h('select', { class: 'ep-input cl-sel', 'aria-label': 'Position group', 'data-fk': 'pos' });
     pos.appendChild(h('option', { value: '', text: 'every position' }));
     ((root.EpinoiaSeason && root.EpinoiaSeason.POS_GROUPS) || [['G', 'guards'], ['F', 'wings'], ['C', 'bigs']]).forEach(g => pos.appendChild(h('option', { value: g[0], text: g[1] })));
     pos.value = state.ps; pos.addEventListener('change', () => change(s => { s.ps = pos.value; }, 'all'));
     const vals = h('div', { class: 'cl-seg', role: 'group', 'aria-label': 'Read every axis as' }, MODES.map(m => {
       const axes = [state.a, state.b].filter(Boolean);
       const on = axes.every(a => a.xm === m[0] && (a.y2 ? true : a.ym === m[0]));
-      return key(m[1], { on, title: m[2], click: () => change(s => { [s.a, s.b].filter(Boolean).forEach(a => { a.xm = m[0]; a.ym = m[0]; if (m[0] !== 'a') { a.xl = 0; a.yl = 0; } }); }, 'all') });
+      return key(m[1], { fk: 'values:' + m[0], on, title: m[2], click: () => change(s => { [s.a, s.b].filter(Boolean).forEach(a => { a.xm = m[0]; a.ym = m[0]; if (m[0] !== 'a') { a.xl = 0; a.yl = 0; } }); }, 'all') });
     }));
-    optsRow.append(
+    [
+      h('div', { class: 'cl-sech', text: 'OPTIONS' }),
       labelled('values', vals, 'wide'),
       labelled('names', names),
       labelled('colour', colSel),
@@ -1788,7 +1835,7 @@ async function mountAsync(opts) {
       labelled('min games', gp, 'num'),
       state.ent === 'p' ? labelled('min minutes', mn, 'num') : null,
       state.ent === 'p' ? labelled('position', pos) : null
-    );
+    ].filter(Boolean).forEach(n => optsRow.appendChild(n));
   }
   function renderStrip() {
     strip.textContent = '';
@@ -1797,7 +1844,7 @@ async function mountAsync(opts) {
       key('LINES', { on: !!state.qd, title: 'lines through the league averages (the origin in delta and z modes)', click: () => change(s => { s.qd = s.qd ? 0 : 1; }, 'all') }),
       key('QUADRANTS', { on: !!state.qc, title: 'name the four quarters and tint the one where both are better', click: () => change(s => { s.qc = s.qc ? 0 : 1; }, 'all') }),
       key('TREND', { on: !!state.tr, title: 'least-squares trend line with r', click: () => change(s => { s.tr = s.tr ? 0 : 1; }, 'all') }),
-      key(dual ? 'DUAL ✓' : 'DUAL', { on: dual, title: 'a second chart, linked to the first: the same players are lit in both', click: toggleDual }),
+      key('DUAL', { on: dual, title: 'a second chart, linked to the first: the same players are lit in both', click: toggleDual }),
       key('TABLE', { on: !!state.tb, title: 'the plotted rows as a sortable table', click: () => change(s => { s.tb = s.tb ? 0 : 1; }, 'all') }),
       key('TEXT', { on: ui.text, title: 'edit the title, the axis titles, captions and labels', click: () => { ui.text = !ui.text; if (ui.text) ui.export = false; renderPanels(); renderStrip(); } }),
       key('EXPORT', { on: ui.export, title: 'save the chart as a PNG or SVG, or copy it', click: () => { ui.export = !ui.export; if (ui.export) ui.text = false; renderPanels(); renderStrip(); if (ui.export) schedulePreview(); } }),
@@ -1857,7 +1904,7 @@ async function mountAsync(opts) {
     let size = null;
     if (sc) { const f = sizeScale(D.pts.map(p => sc.get(p.e.row))); size = { get: p => f(sc.get(p.e.row)), label: sc.label }; }
     return { W: o.W, H: o.H, fs: o.fs, theme: o.theme, uid: 'cl' + ci + (o.uid || ''), data: D, kind: kindOf(), co: state.co === 'p' && state.ent === 't' ? 'c' : state.co, size,
-      names: state.nm, qd: state.qd, qc: state.qc, trend: state.tr, hi: hiSet(), must: pinSet(), view: o.view || {}, texts, labels: state.lb, crest: o.crest, editable: !!o.editable };
+      names: state.nm, qd: state.qd, qc: state.qc, trend: state.tr, hi: hiSet(), must: pinSet(), view: o.view || {}, texts, labels: state.lb, crest: o.crest, editable: !!o.editable, zoomSpace: o.zoomSpace || 0 };
   }
   const logoUrl = e => {
     if (!e || !e.logo) return null;
@@ -1885,22 +1932,22 @@ async function mountAsync(opts) {
     const ch = ci ? state.b : state.a, cs = catOf(state.ent), two = !!state.b;
     const axes = h('div', { class: 'cl-axes cl-pophost' });
     const grp = (lab, slot, extra) => {
-      const btn = pickBtn(ch[slot], cs, ev => showPicker({ anchor: ev.currentTarget, current: ch[slot], onPick: k => setAxis(ci, slot, k) }), 'Choose the ' + lab + ' statistic');
+      const btn = pickBtn(ch[slot], cs, ev => showPicker({ anchor: ev.currentTarget, current: ch[slot], onPick: k => setAxis(ci, slot, k) }), 'Choose the ' + lab + ' statistic', 'pick:' + ci + ':' + slot);
       return h('div', { class: 'cl-ax' }, [h('span', { class: 'cl-axl', text: lab }), btn].concat(extra || []));
     };
     const overlay = !!ch.y2;
     const yMode = overlay ? h('span', { class: 'cl-mode-fixed', text: 'Z', title: 'in an overlay both Y statistics are z-scores' })
-      : modeSel(ch.ym, m => setMode(ci, 'y', m), 'How ' + cardLabel(ci) + ' reads Y');
+      : modeSel(ch.ym, m => setMode(ci, 'y', m), 'How ' + cardLabel(ci) + ' reads Y', 'mode:' + ci + ':y');
     const yG = grp('Y', 'y', [yMode]);
     const y2G = overlay ? grp('Y2', 'y2', []) : null;
-    const xG = grp('X', 'x', [modeSel(ch.xm, m => setMode(ci, 'x', m), 'How ' + cardLabel(ci) + ' reads X')]);
+    const xG = grp('X', 'x', [modeSel(ch.xm, m => setMode(ci, 'x', m), 'How ' + cardLabel(ci) + ' reads X', 'mode:' + ci + ':x')]);
     const logOk = (ax) => ch[ax + 'm'] === 'a' && !(ax === 'y' && overlay);
     const keys = h('div', { class: 'cl-axkeys' }, [
-      key('SWAP', { title: 'swap X and Y', disabled: overlay, click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; [a.x, a.y] = [a.y, a.x]; [a.xm, a.ym] = [a.ym, a.xm]; [a.xl, a.yl] = [a.yl, a.xl]; }, 'all'); } }),
-      key('OVERLAY', { on: overlay, title: 'two Y statistics against one X, both as z-scores on one shared scale (never a dual axis)',
+      key('SWAP', { fk: 'c' + ci + ':swap', title: 'swap X and Y', disabled: overlay, click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; [a.x, a.y] = [a.y, a.x]; [a.xm, a.ym] = [a.ym, a.xm]; [a.xl, a.yl] = [a.yl, a.xl]; }, 'all'); } }),
+      key('OVERLAY', { fk: 'c' + ci + ':overlay', on: overlay, title: 'two Y statistics against one X, both as z-scores on one shared scale (never a dual axis)',
         click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; if (a.y2) a.y2 = ''; else { a.y2 = defaultY2(a, cs); if (a.y2) a.ym = 'z'; } }, 'all'); } }),
-      key('LOG X', { on: !!ch.xl, title: logOk('x') ? 'logarithmic X axis' : 'log needs the plain values (ABS)', disabled: !logOk('x'), click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; a.xl = a.xl ? 0 : 1; }, 'all'); } }),
-      key('LOG Y', { on: !!ch.yl, title: logOk('y') ? 'logarithmic Y axis' : 'log needs the plain values (ABS)', disabled: !logOk('y'), click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; a.yl = a.yl ? 0 : 1; }, 'all'); } })
+      key('LOG X', { fk: 'c' + ci + ':logx', on: !!ch.xl, title: logOk('x') ? 'logarithmic X axis' : 'log needs the plain values (ABS)', disabled: !logOk('x'), click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; a.xl = a.xl ? 0 : 1; }, 'all'); } }),
+      key('LOG Y', { fk: 'c' + ci + ':logy', on: !!ch.yl, title: logOk('y') ? 'logarithmic Y axis' : 'log needs the plain values (ABS)', disabled: !logOk('y'), click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; a.yl = a.yl ? 0 : 1; }, 'all'); } })
     ]);
     [h('span', { class: 'cl-badge', text: two ? (ci ? 'B' : 'A') : 'AXES' }), yG, y2G, xG, keys].filter(Boolean).forEach(n => axes.appendChild(n));
     const svgHost = h('div', { class: 'cl-svghost' });
@@ -1926,7 +1973,7 @@ async function mountAsync(opts) {
   }
   let side = false;
   function layoutSide() {
-    side = !!state.b && wrap.clientWidth >= 780;
+    side = !!state.b && wrap.clientWidth >= 640;
     grid.classList.toggle('dual', !!state.b); grid.classList.toggle('side', side);
   }
 
@@ -1956,9 +2003,9 @@ async function mountAsync(opts) {
     if (!c || !charts[ci] || !inPage(c.plot)) return;
     const W = Math.floor(c.plot.clientWidth);
     if (W < 120) return;
-    const H = Math.round(clamp(W * 0.74, 300, 470));
+    const H = Math.round(W < 500 ? clamp(W * 0.95, 300, 420) : clamp(W * 0.74, 300, 470));
     theme = pageTheme(wrap);
-    const cfg = cfgFor(ci, { W, H, fs: 1, theme, crest: logoUrl, editable: true, view: views[ci] });
+    const cfg = cfgFor(ci, { W, H, fs: 1, theme, crest: logoUrl, editable: true, view: views[ci], zoomSpace: 62 });
     if (interacting && cfg.names === 'a' && charts[ci].pts.length > 250) cfg.names = 'n';
     const built = buildChart(cfg);
     const svg = S('svg', { class: 'cl-svg', width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, role: 'img',
@@ -2020,7 +2067,8 @@ async function mountAsync(opts) {
     if (id && src >= 0 && rec) showTip(src, rec, false);
     if (!id) cards.forEach((c, ci) => { if (!sticky || sticky.ci !== ci) hideTip(ci); });
   }
-  function hideTip(ci) { const c = cards[ci]; if (c) c.tip.hidden = true; }
+  /* a tip a finger opened stays until it is put away (another tap, PIN, Esc); only `force` closes it */
+  function hideTip(ci, force) { const c = cards[ci]; if (!c || (!force && sticky && sticky.ci === ci)) return; c.tip.hidden = true; }
   function rankLine(rawVals, v, col) {
     const r = rankOf(rawVals, v, col.low);
     if (!r) return '';
@@ -2033,10 +2081,10 @@ async function mountAsync(opts) {
     tip.textContent = '';
     const row = (lab, col, mode, val, raw, all) => {
       const line = h('div', { class: 'cl-tr' });
-      line.append(h('span', { class: 'cl-tk', text: lab }),
+      [h('span', { class: 'cl-tk', text: lab }),
         h('b', { class: 'cl-tv', text: fmtMode(val, mode, col.dp, col.signed) + (mode === 'a' ? '' : ' ') }),
-        mode === 'a' ? null : h('span', { class: 'cl-tw', text: '(' + fmtMode(raw, 'a', col.dp, col.signed) + ')' }),
-        h('span', { class: 'cl-tr2', text: rankLine(all, raw, col) }));
+        mode === 'a' ? h('span') : h('span', { class: 'cl-tw', text: '(' + fmtMode(raw, 'a', col.dp, col.signed) + ')' }),
+        h('span', { class: 'cl-tr2', text: rankLine(all, raw, col) })].forEach(n => line.appendChild(n));
       return line;
     };
     tip.append(h('b', { class: 'cl-tn' }, [h('i', { class: 'cl-dot', style: 'background:' + (safeColour(e.colour) || 'var(--ink-3)') }), e.name]));
@@ -2048,15 +2096,16 @@ async function mountAsync(opts) {
     if (sc) tip.appendChild(h('div', { class: 'cl-tr' }, [h('span', { class: 'cl-tk', text: sc.label + ' (size)' }), h('b', { class: 'cl-tv', text: fmtMode(sc.get(e.row), 'a', sc.dp, sc.signed) })]));
     if (stickyOn) {
       const pinned = state.pin.indexOf(e.id) >= 0;
-      tip.appendChild(h('button', { type: 'button', class: 'cl-tpin', text: pinned ? 'UNPIN' : 'PIN', onclick: () => { pin(e.id); hideTip(ci); sticky = null; } }));
+      tip.appendChild(h('button', { type: 'button', class: 'cl-tpin', text: pinned ? 'UNPIN' : 'PIN', onclick: () => { sticky = null; hideTip(ci, true); pin(e.id); } }));
       tip.classList.add('sticky');
-    } else tip.classList.remove('sticky');
+    } else { tip.classList.remove('sticky'); if (sticky && sticky.ci === ci) sticky = null; }
     tip.hidden = false;
     const w = tip.offsetWidth, hh = tip.offsetHeight;
     const left = clamp(rec.px - w / 2, 4, Math.max(4, c.W - w - 4));
-    const above = rec.py - hh - (rec.r + 8);
+    const above = rec.py - hh - (rec.r + 8), below = rec.py + rec.r + 10, room = c.H - hh - 4;
+    /* over the point if it fits, else under it, else pinned inside the chart's edge */
     tip.style.left = Math.round(left) + 'px';
-    tip.style.top = Math.round(above < 4 ? rec.py + rec.r + 10 : above) + 'px';
+    tip.style.top = Math.round(above >= 4 ? above : below <= room ? below : clamp(above, 4, Math.max(4, room))) + 'px';
   }
   function announce(ci, rec) {
     const D = charts[ci], p = rec.p;
@@ -2171,7 +2220,7 @@ async function mountAsync(opts) {
       const ed = d.target.closest && d.target.closest('[data-edit]');
       if (ed) { beginEdit(ci, ed); return; }
       const r = nearest(ci, ev);
-      if (!r) { sticky = null; hideTip(ci); return; }
+      if (!r) { sticky = null; hideTip(ci, true); return; }
       if (ev.pointerType === 'mouse') { pin(r.id); say(byId().get(r.id).name + (state.pin.indexOf(r.id) >= 0 ? ' highlighted' : ' no longer highlighted')); }
       else { sticky = { ci, id: r.id }; setHover(r.id, ci, null); showTip(ci, r, true); }
     });
@@ -2188,7 +2237,7 @@ async function mountAsync(opts) {
       const dirs = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
       if (dirs[ev.key]) { ev.preventDefault(); moveCursor(ci, dirs[ev.key]); }
       else if ((ev.key === 'Enter' || ev.key === ' ') && cursor && cursor.ci === ci) { ev.preventDefault(); pin(cursor.id); }
-      else if (ev.key === 'Escape') { cursor = null; setHover(null, -1); paintCursor(); }
+      else if (ev.key === 'Escape') { cursor = null; sticky = null; cards.forEach((c, i) => hideTip(i, true)); setHover(null, -1); paintCursor(); }
       else if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); zoomBy(ci, 1.5); }
       else if (ev.key === '-' || ev.key === '_') { ev.preventDefault(); zoomBy(ci, 1 / 1.5); }
       else if (ev.key === '0') { views[ci] = {}; drawChart(ci); }
@@ -2325,14 +2374,13 @@ async function mountAsync(opts) {
     if (!state.tb) return;
     tableBox.textContent = '';
     const cols = [{ k: 'name', l: state.ent === 't' ? 'Team' : 'Player' }];
-    if (state.ent === 'p') cols.push({ k: 'club', l: 'Team' });
     charts.forEach((D, ci) => {
       const pf = state.b ? (ci ? 'B ' : 'A ') : '';
       cols.push({ k: 'x' + ci, l: pf + D.cx.label + (D.xm === 'a' ? '' : ' (' + MODES.find(m => m[0] === D.xm)[1] + ')'), ci, ax: 'x' });
       cols.push({ k: 'y' + ci, l: pf + D.cy.label + ((D.overlay ? 'z' : D.ym) === 'a' ? '' : ' (' + MODES.find(m => m[0] === (D.overlay ? 'z' : D.ym))[1] + ')'), ci, ax: 'y' });
       if (D.overlay) cols.push({ k: 'w' + ci, l: pf + D.cy2.label + ' (Z)', ci, ax: 'w' });
     });
-    const D0 = charts[0];
+    if (state.ent === 'p') cols.push({ k: 'club', l: 'Team' });
     const ids = new Set();
     charts.forEach(D => D.pts.forEach(p => ids.add(p.e.id)));
     const maps = charts.map(D => new Map(D.pts.map(p => [p.e.id, p])));
@@ -2479,6 +2527,12 @@ async function mountAsync(opts) {
     renderHead(); renderFind(); renderOpts(); renderStrip(); renderPanels();
     buildCards(); renderFoot();
     drawCharts();
+    /* the controls are drawn again after a change: the one the reader was on gets the focus back, so the keyboard keeps its place */
+    if (keepFocus) {
+      const fk = keepFocus; keepFocus = null;
+      const n = [...wrap.querySelectorAll('[data-fk]')].find(x => x.getAttribute('data-fk') === fk);
+      if (n && !n.disabled) { try { n.focus({ preventScroll: true }); } catch (_) { /* gone */ } }
+    }
   }
   refresh();
 
@@ -2508,7 +2562,7 @@ async function mountAsync(opts) {
   }
   const handle = {
     getState: () => JSON.parse(JSON.stringify(state)),
-    setState(s) { state = fitState(sanitizeState(s), catOf(sanitizeState(s).ent), ctx); views = [{}, {}]; refresh(); },
+    setState(s) { state = fitState(sanitizeState(s), catOf(sanitizeState(s).ent), ctx); views = [{}, {}]; syncUrl(); refresh(); },
     redraw: drawCharts,
     destroy() {
       dead = true;
@@ -2528,7 +2582,7 @@ async function mountAsync(opts) {
 }
 
 return {
-  mount, MODES, TEXT_CAPS, TEXT_KEYS, EXPORT_SIZES, PRESET_DEFS, THEMES,
+  mount, current: () => CURRENT, MODES, TEXT_CAPS, TEXT_KEYS, EXPORT_SIZES, PRESET_DEFS, THEMES,
   transformValues, rankOf, regress, sanitizeText, defaultState, sanitizeState, compactState, encodeState, decodeState, withQuery, readQuery,
   matchEntities, fold, buildCatalogue, columnState, groupState, usableKey, fitState, presetsFor, presetState, matchPreset,
   computeChart, deriveRow, needsZones, niceTicks, logTicks, axisRange, tickDp, fmtMode, sizeScale, markColour, inkOn, parseHex, contrast,

@@ -366,6 +366,39 @@
     paint();
   })();
 
+  /* ------------------------------------------------------------ your feed --- */
+  /* The switch and the reset for feedrank.js: what "For you" learns is kept only in this browser's localStorage and is
+     never sent anywhere. The switch is the same one HOME's and the News page's Personalise has (feedrank.js keeps it under
+     epinoia_feed_v1_off); off, nothing is recorded and the feed is the newest first. */
+  (function feedSwitch() {
+    const box = $('#feedSwitch'), why = $('#feedWhy'), reset = $('#feedReset'), done = $('#feedDone');
+    if (!box || !why || !reset) return;
+    const OFF = 'epinoia_feed_v1_off', PROFILE = 'epinoia_feed_v1', SESSION = 'epinoia_feed_s';
+    const FR = window.EpinoiaFeedRank;
+    const isOn = () => {
+      if (FR && FR.enabled) return FR.enabled();
+      try { return localStorage.getItem(OFF) !== '1'; } catch (_) { return true; }
+    };
+    const paint = () => {
+      box.checked = isOn();
+      why.textContent = box.checked
+        ? 'On: the feed learns from what you read, in this browser only.'
+        : 'Off: the feed is the newest first and nothing is recorded in this browser.';
+    };
+    box.addEventListener('change', () => {
+      if (FR && FR.store) FR.store().setEnabled(box.checked);
+      else { try { if (box.checked) localStorage.removeItem(OFF); else localStorage.setItem(OFF, '1'); } catch (_) { /* nothing stored */ } }
+      done.textContent = '';
+      paint();
+    });
+    reset.addEventListener('click', () => {
+      if (FR && FR.store) FR.store().reset();
+      else { try { localStorage.removeItem(PROFILE); sessionStorage.removeItem(SESSION); } catch (_) { /* nothing stored */ } }
+      done.textContent = 'Forgotten: what the feed had learned is deleted from this browser. What you follow is untouched.';
+    });
+    paint();
+  })();
+
   /* ------------------------------------------------------------- start --- */
   async function start() {
     session = await sessNow();

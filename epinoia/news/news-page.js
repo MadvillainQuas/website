@@ -29,6 +29,14 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
   if (x != null) n.textContent = x; return n; };
 
 const K = window.EpinoiaNewsCard;
+/* THE RANKED FEED (feedrank.js): the order a reader's device makes, the official partners, "opened". All of it optional:
+   without the script every page here is what it was. */
+const FR = window.EpinoiaFeedRank || null;
+let PARTNERS = new Set();
+/* the official partners (official_partners(), once per page, cached): the pill on a card and on a head, the boost in the order */
+const partnersReady = FR ? FR.partners().then(s => { PARTNERS = s; return s; }, () => PARTNERS) : Promise.resolve(PARTNERS);
+/* a card pressed: the story is read, and its publisher's page a little nearer (kept on this device only) */
+const onOpen = it => { try { if (FR && it && it.row) FR.opened(it.row); } catch (_) { /* never in the reader's way */ } };
 const Q = new URLSearchParams(location.search);
 const WANT = Q.get('l') || '';
 const SLUG = Q.get('a') || '';
@@ -344,7 +352,12 @@ async function rpcMine(fn, args) {
 
 /* A FEED OF CARDS, a page at a time. fetchPage(before, n) -> rows, newest first; toItem(row) -> a card's item;
    each "more" asks for what is older than the last card. A switch that starts the feed again (reset) makes any
-   answer still on its way for the old one arrive to nothing. Returns { reset, box }. */
+   answer still on its way for the old one arrive to nothing. Returns { reset, box }.
+
+   RANKED (o.pooled() true, o.rank(rows) -> rows in the reader's order, each with a `why`): the feed asks for a POOL of the
+   newest rows at a time (POOL, the RPCs' own ceiling), ranks it and deals it out a page at a time; when the pool is used up it
+   asks for the next one, older, and ranks that. The order is the reader's; the database is asked exactly as before. */
+const POOL = 60;
 function cardFeed(opts) {
   const o = opts || {};
   const box = el('div', 'nw-feed');
@@ -355,12 +368,34 @@ function cardFeed(opts) {
   more.appendChild(btn);
   box.append(grid, more);
   let gen = 0, before = null, seen = new Set(), g = null, fetchPage = o.fetchPage;
+  let queue = [], dry = false, pooled = false;
+  const cardOpts = () => ({ now: Date.now(), showLeague: o.showLeague, hideTag: o.hideTag, partners: PARTNERS, onOpen });
+  const itemOf = r => { const it = (o.toItem || cardOf)(r); if (pooled && r.why) it.why = r.why; return it; };
   async function page(first) {
     const mine = gen;
     const n = first ? FIRST : MORE;
     btn.disabled = true;
-    let rows = null;
-    try { rows = await fetchPage(before, n); }
+    let rows = null, shown = null;
+    try {
+      if (pooled) {
+        /* deal from the ranked queue; refill it from the next pool while it runs short */
+        rows = [];
+        while (queue.length < n && !dry) {
+          const got = await fetchPage(before, POOL);
+          if (mine !== gen) return;
+          if (got === null) { rows = null; break; }
+          const fresh = (got || []).filter(r => r && r.id && !seen.has(r.id));
+          fresh.forEach(r => seen.add(r.id));
+          if (got.length) before = got[got.length - 1].published_at;
+          if (got.length < POOL) dry = true;
+          queue = queue.concat(await o.rank(fresh));
+          if (mine !== gen) return;
+        }
+        if (rows !== null) { shown = queue.splice(0, n); rows = shown; }
+      } else {
+        rows = await fetchPage(before, n);
+      }
+    }
     catch (e) {
       if (mine !== gen) return;
       if (first) { grid.textContent = ''; grid.appendChild(el('div', 'pc-empty', 'Could not load the news: ' + e.message)); }
@@ -375,9 +410,10 @@ function cardFeed(opts) {
       more.classList.add('hide');
       return;
     }
-    const fresh = (rows || []).filter(r => r && r.id && !seen.has(r.id));
-    fresh.forEach(r => seen.add(r.id));
-    const items = fresh.map(o.toItem || cardOf);
+    let fresh;
+    if (pooled) fresh = rows;                              // already de-duplicated, already in order
+    else { fresh = (rows || []).filter(r => r && r.id && !seen.has(r.id)); fresh.forEach(r => seen.add(r.id)); }
+    const items = fresh.map(itemOf);
     if (first) {
       grid.textContent = '';
       if (!items.length) {
@@ -386,24 +422,26 @@ function cardFeed(opts) {
         if (o.onEmpty) o.onEmpty();
         return;
       }
-      g = K.grid(items, { now: Date.now(), showLeague: o.showLeague, hideTag: o.hideTag });
+      g = K.grid(items, cardOpts());
       grid.appendChild(g);
     } else {
-      items.forEach(it => g.appendChild(K.card(it, { now: Date.now(), showLeague: o.showLeague, hideTag: o.hideTag })));
+      items.forEach(it => g.appendChild(K.card(it, cardOpts())));
     }
-    if (rows.length) before = rows[rows.length - 1].published_at;
-    more.classList.toggle('hide', rows.length < n);
-    if (o.onRows) o.onRows(rows, first);
+    if (!pooled && rows.length) before = rows[rows.length - 1].published_at;
+    more.classList.toggle('hide', pooled ? (queue.length === 0 && dry) : rows.length < n);
+    if (pooled && FR) { try { FR.shown(items.map(x => x.id)); } catch (_) { /* nothing */ } }
+    if (o.onRows) o.onRows(fresh, first);
   }
   btn.addEventListener('click', () => page(false));
   function reset(fp) {
     gen++;
     if (fp) fetchPage = fp;
-    before = null; seen = new Set(); g = null;
+    before = null; seen = new Set(); g = null; queue = []; dry = false;
+    pooled = !!(o.rank && o.pooled && o.pooled());
     grid.textContent = '';
     grid.appendChild(el('div', 'pc-empty', 'Loading…'));
     more.classList.add('hide');
-    return page(true);
+    return partnersReady.then(() => page(true));
   }
   return { box, reset };
 }
@@ -419,11 +457,16 @@ function platformHead() {
   foot.href = '../home/';
 }
 
+/* the order of the platform's news: the reader's own (For you) or the newest first; remembered in this browser */
+const ORDER_KEY = 'epinoia.news.order';
+const ORDERS = [{ k: 'you', label: 'For you' }, { k: 'new', label: 'Newest' }];
+function storedOrder() { try { const v = localStorage.getItem(ORDER_KEY); return v === 'you' || v === 'new' ? v : null; } catch (_) { return null; } }
+
 async function everything() {
   document.title = 'News · Epinoia';
   platformHead();
   $('#head').textContent = 'News';
-  $('#leagueName').textContent = 'Every league, every publisher, every creator: the newest first';
+  $('#leagueName').textContent = 'Every league, every publisher, every creator: for you, or the newest first';
 
   const host = $('#list');
   host.textContent = '';
@@ -431,8 +474,19 @@ async function everything() {
   const tabs = el('div', 'pc-tabs nw-tabs');
   tabs.setAttribute('role', 'group');
   tabs.setAttribute('aria-label', 'what to show');
+  let cur = KINDS.find(t => t.k === Q.get('k')) || KINDS[0];
+  let order = (ORDERS.find(x => x.k === Q.get('o')) || {}).k || storedOrder() || 'you';
+  /* the stories in the reader's own feed, for the follow bonus (signed in: the same call as "Following") */
+  let mineIds = null;
+  const followedIds = async rows => {
+    if (cur.mine) return rows.map(r => r.id);
+    if (!mineIds) mineIds = rpcMine('news_feed_mine', { p_limit: POOL }).then(r => (r || []).map(x => x.id)).catch(() => []);
+    return mineIds;
+  };
   const feed = cardFeed({
     moreText: 'Older stories',
+    pooled: () => order === 'you' && !!FR,
+    rank: async rows => (await FR.rankRows(rows, { followedIds: await followedIds(rows) })).rows,
     signedOut: () => {
       const d = el('div', 'pc-empty');
       d.append('What you follow — leagues, clubs, publishers and creators — in one feed. ');
@@ -445,9 +499,40 @@ async function everything() {
       ? 'Nothing from what you follow yet. Follow a league, a club, a publisher or a creator (the bell on their page), and their news arrives here.'
       : 'Nothing here yet.')
   });
-  host.append(tabs, pubs, feed.box);
 
-  let cur = KINDS.find(t => t.k === Q.get('k')) || KINDS[0];
+  /* what to show (kinds) on the left; on the right the order (For you / Newest) and Personalise */
+  const tools = el('div', 'nw-tools');
+  const right = el('div', 'nw-tools-r');
+  right.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:8px';
+  const orderTabs = el('div', 'pc-tabs nw-order');
+  orderTabs.setAttribute('role', 'group');
+  orderTabs.setAttribute('aria-label', 'order');
+  let ctl = null, paintOrder = () => {};
+  try { ctl = FR && typeof FR.control === 'function' ? FR.control({ base: '../', onChange: () => load() }) : null; } catch (_) { ctl = null; }
+  if (FR) {
+    const obuttons = ORDERS.map(x => {
+      const b = el('button', 'pc-tab', x.label);
+      b.type = 'button';
+      b.dataset.o = x.k;
+      b.addEventListener('click', () => {
+        if (order === x.k) return;
+        order = x.k;
+        try { localStorage.setItem(ORDER_KEY, x.k); } catch (_) { /* this visit only */ }
+        load();
+      });
+      orderTabs.appendChild(b);
+      return b;
+    });
+    right.appendChild(orderTabs);
+    if (ctl) right.appendChild(ctl.button);
+    paintOrder = () => obuttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.o === order)));
+  }
+  tools.append(tabs, right);
+  const notice = el('div', 'hm-feed-note nw-note');
+  host.append(tools);
+  if (ctl) host.append(ctl.panel);
+  host.append(notice, pubs, feed.box);
+
   const buttons = KINDS.map(t => {
     const b = el('button', 'pc-tab', t.label);
     b.type = 'button';
@@ -456,24 +541,34 @@ async function everything() {
     tabs.appendChild(b);
     return b;
   });
-  function choose(t) {
-    cur = t;
-    buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === t.k)));
-    /* the switch is in the address, so a reload or a shared link opens on it */
-    try { history.replaceState(null, '', t.k === 'all' ? location.pathname : '?k=' + t.k); } catch (_) { /* a sandboxed page */ }
-    feed.reset(t.mine
-      ? (before, n) => rpcMine('news_feed_mine', { p_before: before, p_limit: n })
-      : (before, n) => rpc('news_feed', { p_league: null, p_before: before, p_limit: n, p_kinds: t.kinds }));
+  function url() {
+    const q = [];
+    if (cur.k !== 'all') q.push('k=' + cur.k);
+    if (FR && order === 'new') q.push('o=new');
+    return location.pathname + (q.length ? '?' + q.join('&') : '');
   }
-  choose(cur);
+  /* (re)draw the feed for the kind and the order chosen */
+  function load() {
+    buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === cur.k)));
+    paintOrder();
+    /* the switches are in the address, so a reload or a shared link opens on them */
+    try { history.replaceState(null, '', url()); } catch (_) { /* a sandboxed page */ }
+    notice.textContent = FR && order === 'you' && !FR.enabled() ? 'Personalisation is off, so this is the newest first. Switch it on under Personalise.' : '';
+    feed.reset(cur.mine
+      ? (before, n) => rpcMine('news_feed_mine', { p_before: before, p_limit: n })
+      : (before, n) => rpc('news_feed', { p_league: null, p_before: before, p_limit: n, p_kinds: cur.kinds }));
+  }
+  function choose(t) { cur = t; load(); }
+  load();
 
   /* the publishers, each to its page here */
   try {
     const list = await rpc('news_sources_public', { p_league: null }) || [];
+    await partnersReady;
     if (list.length) {
       pubs.append(el('div', 'nw-h', 'The publishers'),
         K.brands(list.map(x => ({ name: x.name, logo: x.logo_url, colour: x.colour, href: '?s=' + encodeURIComponent(x.slug),
-                                  note: x.last_at ? K.ago(x.last_at) : '' }))));
+                                  note: x.last_at ? K.ago(x.last_at) : '', partner: PARTNERS.has('source:' + x.slug) }))));
     }
   } catch (_) { /* the feed stands without the row */ }
 }
@@ -483,7 +578,10 @@ function sourceItem(src) {
   return x => ({
     kind: 'story', title: x.title, summary: x.summary, image: x.image_url, when: x.published_at, author: x.author,
     href: x.url, external: true, siteHost: K.host(x.url), tags: K.tagsOf(x.leagues, '../', crestUrl),
-    brand: { name: src.name, logo: src.logo_url, colour: src.colour }
+    brand: { name: src.name, logo: src.logo_url, colour: src.colour },
+    /* what "opened" reads, and the key the pill is looked up by (a publisher's stories all carry the publisher's own) */
+    id: x.id, pkey: 'source:' + src.slug,
+    row: { id: x.id, kind: 'outlet', source_slug: src.slug, source_name: src.name, leagues: x.leagues }
   });
 }
 
@@ -502,10 +600,20 @@ async function publisher(slug) {
   }
   document.title = src.name + ' · News · Epinoia';
   document.querySelector('.hero').classList.add('hide');
+  await partnersReady;
+  /* a publisher's page visited, and a publisher followed here: a reason to like it (on this device only) */
+  if (FR) {
+    try { FR.visited('source:' + src.slug); } catch (_) { /* nothing */ }
+    window.addEventListener('epinoia:follows', e => {
+      const d = e && e.detail;
+      if (d && d.on && d.kind === 'source') { try { FR.store().followed({ key: 'source:' + src.slug }); } catch (_) { /* nothing */ } }
+    });
+  }
   const F = window.EpinoiaFollow;
   const bell = F && src.id ? F.bell('source', src.id, { label: 'Follow', labelOn: 'Following', name: src.name, cls: 'lbl big' }) : null;
   const siteHost = K.host(src.site_url);
   $('#brand').appendChild(K.hero({
+    partner: PARTNERS.has('source:' + src.slug),
     name: src.name, logo: src.logo_url, colour: src.colour,
     kicker: 'Publisher' + (src.league ? ' · ' + src.league.name : '') + ' · on Epinoia',
     tagline: 'Their stories as they publish them: the headline and the opening lines here, the story on ' + (siteHost || 'their site') + '.',
@@ -572,10 +680,14 @@ async function story(id) {
   back.textContent = '← ' + (src.name || 'all news');
   back.href = src.slug ? '?s=' + encodeURIComponent(src.slug) : './';
 
+  await partnersReady;
+  /* a story opened here (from a notification, or a link): it is read, and its publisher gains (this device only) */
+  if (FR && src.slug) { try { FR.opened({ id: it.id, kind: 'outlet', source_slug: src.slug, source_name: src.name, leagues: it.leagues }); } catch (_) { /* nothing */ } }
   const F = window.EpinoiaFollow;
   const bell = F && src.id ? F.bell('source', src.id, { label: 'Follow', labelOn: 'Following', name: src.name, cls: 'lbl' }) : null;
   const when = it.published_at ? new Date(it.published_at) : null;
   host.appendChild(K.masthead({
+    partner: !!src.slug && PARTNERS.has('source:' + src.slug),
     brand: { name: src.name, logo: src.logo_url, colour, href: src.slug ? '?s=' + encodeURIComponent(src.slug) : null },
     kind: 'Story',
     title: it.title,
@@ -618,7 +730,7 @@ async function story(id) {
         const all = el('a', null, 'all their stories →');
         all.href = '?s=' + encodeURIComponent(src.slug);
         h.appendChild(all);
-        sec.append(h, K.grid(rows.map(sourceItem(src)), { lead: false, now: Date.now() }));
+        sec.append(h, K.grid(rows.map(sourceItem(src)), { lead: false, now: Date.now(), partners: PARTNERS, onOpen }));
         host.appendChild(sec);
       }
     } catch (_) { /* the story stands on its own */ }

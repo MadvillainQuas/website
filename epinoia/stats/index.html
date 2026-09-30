@@ -103,6 +103,7 @@
     body{padding-top:env(safe-area-inset-top,0px)}
   }
 </style>
+<link rel="stylesheet" href="../kit/chartlab.css?v=544">
 <link rel="stylesheet" href="../kit/teletext.css?v=544">
 <link rel="stylesheet" href="../kit/legibility.css?v=544">
 <!-- seo:ld -->
@@ -128,6 +129,15 @@
   <div class="ctl" id="seasonRow" style="display:none">
     <span class="scopelab">season</span><span id="seasonPick"></span>
   </div>
+  <!-- THE SAME SEASON AS A TABLE OR AS CHARTS (stats.js): the chart lab (chartlab.js) draws scatter graphs of any two
+       of the table's columns, players or teams, under the same season and "covering" choices. #charts in the address. -->
+  <div class="ctl" id="viewRow">
+    <span class="scopelab">view</span>
+    <div class="ep-tabs" role="tablist" aria-label="Season statistics as a table or as charts">
+      <button type="button" class="ep-tab on" data-v="table" role="tab" aria-selected="true">Table</button>
+      <button type="button" class="ep-tab" data-v="charts" role="tab" aria-selected="false">Charts</button>
+    </div>
+  </div>
   <!-- search, min-games, stat-group pills, column toggles and CSV all come
        from the shared table component, so they behave identically here and on
        the leaders board. -->
@@ -144,10 +154,15 @@
 <script src="../ages.js?v=544" defer></script>
 <script src="../memlock.js?v=544" defer></script>
 <script src="../fulltable.js?v=544" defer></script>
+<script src="../statinfo.js?v=544" defer></script>
+<script src="../statpop.js?v=544" defer></script>
+<script src="../chartlab.js?v=544" defer></script>
 <script src="../compare.js?v=544" defer></script>
 <script src="../rapm.js?v=544" defer></script>
 <script src="../scopebar.js?v=544" defer></script>
 <script src="stats.js?v=544" defer></script>
+<script src="../feedrank.js?v=544" defer></script>
+<script src="../interest.js?v=544" defer></script>
 <script src="../nav.js?v=544" defer></script>
 <script src="../xscroll.js?v=544" defer></script>
 </body>

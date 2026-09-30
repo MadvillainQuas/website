@@ -118,14 +118,16 @@
   </section>
 
   <!-- the feed --------------------------------------------------------------
-       The newest six posts on the platform, on the post card: the leagues' news, their creators'
-       pieces, the publishers' stories (feed-home.js). Followed or Newest; shut until it has some. -->
+       Six posts, on the post card: the leagues' news, their creators' pieces, the publishers' stories
+       (feed-home.js). For you (ranked on this device: feedrank.js), Followed or Newest, and Personalise
+       beside them; shut until it has some. -->
   <section class="sec" id="feed" aria-labelledby="hmFeedH" hidden>
     <div class="sec-h"><span class="idx">03</span><h2 id="hmFeedH">Feed</h2>
-      <!-- FOLLOWED (what the reader follows) or NEWEST (everything): feed-home.js -->
-      <div class="hm-seg" id="feedSeg" role="group" aria-label="Followed or newest">
+      <!-- FOR YOU (ranked here, on this device), FOLLOWED (what the reader follows) or NEWEST (everything): feed-home.js -->
+      <div class="hm-seg" id="feedSeg" role="group" aria-label="For you, followed or newest">
+        <button type="button" data-feed="foryou" aria-pressed="true">For you</button>
         <button type="button" data-feed="followed" aria-pressed="false">Followed</button>
-        <button type="button" data-feed="newest" aria-pressed="true">Newest</button>
+        <button type="button" data-feed="newest" aria-pressed="false">Newest</button>
       </div>
       <a class="showall" id="feedAll" href="../news/">all news →</a></div>
     <div class="hm-mount" id="homeFeed" aria-busy="true"></div>
@@ -230,6 +232,7 @@
 <script src="daily.js?v=544" defer></script>
 <script src="followed-home.js?v=544" defer></script>
 <script src="../newscard.js?v=544" defer></script>
+<script src="../feedrank.js?v=544" defer></script>
 <script src="feed-home.js?v=544" defer></script>
 <script src="stars-home.js?v=544" defer></script>
 <script src="records-home.js?v=544" defer></script>

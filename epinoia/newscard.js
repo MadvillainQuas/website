@@ -186,6 +186,16 @@ const KIND = {
    stored path to its public address (upload.js); logo: the same for a league's crest (config.js epinoiaLogoUrl,
    which knows the crest store), media when not given. */
 function fromFeed(r, base, media, crest) {
+  const it = fromFeedRow(r, base, media, crest);
+  /* the row itself stays with the card (the feed's ranking and "opened" read it), and the key the publisher or outlet
+     is known by in official_partners(): 'source:<slug>', 'outlet:<league>/<slug>' (feedrank.js pkeyOf is the same rule) */
+  it.id = r.id;
+  it.row = r;
+  it.pkey = r.kind === 'outlet' && r.source_slug ? 'source:' + r.source_slug
+          : r.kind === 'creator' && r.outlet_slug && r.league_slug ? 'outlet:' + r.league_slug + '/' + r.outlet_slug : null;
+  return it;
+}
+function fromFeedRow(r, base, media, crest) {
   const b = base || '';
   const m = typeof media === 'function' ? media : (p => p);
   const lg = typeof crest === 'function' ? crest : m;
@@ -256,16 +266,40 @@ function mark(brand, cls) {
   return box;
 }
 
+/* THE OFFICIAL-PARTNER PILL: a small gold teletext block, the pixel micro face, black on gold whatever the theme, and
+   its name "Official partner" (the words are the text; the capitals are CSS). It is a label, never a link: on a card it
+   sits on the plate, away from the headline, and under the headline link's cover. */
+function partnerPill(cls) {
+  const s = el('span', 'pc-partner' + (cls ? ' ' + cls : ''), 'Official partner');
+  s.title = 'Official partner: chosen by Epinoia';
+  return s;
+}
+/* "Why am I seeing this?": the ranked feed's reason for a card, as a line at its foot */
+function whyLine(why) {
+  const d = el('div', 'pc-why');
+  d.title = 'Why am I seeing this?';
+  d.append(el('i', null, '?'), el('span', null, why));
+  d.setAttribute('aria-label', 'Why am I seeing this? ' + why);
+  return d;
+}
+
 /* THE CARD. opts: { lead, now, embed (show a creator's video / post / podcast in the card itself),
-   showLeague (false: no league in the kicker), hideTag (a league's slug: the page is that league's, so no tag for it) } */
+   showLeague (false: no league in the kicker), hideTag (a league's slug: the page is that league's, so no tag for it),
+   partners (a Set of the official partners' keys: the item's pkey in it wears the pill), onOpen(item) (called when the
+   headline or the way to the piece is pressed: the feed's "read"), why (false: no "Why am I seeing this?" line even
+   when the item has one) } */
 function card(item, opts) {
   const o = opts || {};
   const it = item || {};
   const b = it.brand || {};
   const K = KIND[it.kind] || KIND.story;
   const colour = b.colour || tint(b.name);
+  /* the two ways to the piece tell the page it was opened (a press, a keyboard Enter, a middle click): the feed's "read" */
+  const opened = a => { if (typeof o.onOpen === 'function') ['click', 'auxclick'].forEach(t => a.addEventListener(t, () => { try { o.onOpen(it); } catch (_) { /* never in the reader's way */ } })); };
   const art = el('article', 'pc pc-' + (it.kind || 'story') + (o.lead ? ' pc-lead' : '') + (it.image ? '' : ' pc-noimg'));
   art.style.setProperty('--bc', colour);
+  const partner = it.partner === true || !!(it.pkey && o.partners && typeof o.partners.has === 'function' && o.partners.has(it.pkey));
+  if (partner) art.classList.add('pc-partnered');
 
   const main = el('div', 'pc-main');
 
@@ -290,6 +324,7 @@ function card(item, opts) {
     plate.appendChild(badge);
     plate.appendChild(el('span', 'pc-kind', K.glyph + ' ' + (it.platform && it.kind !== 'story' && it.kind !== 'article' ? it.platform : K.word)));
     plate.appendChild(el('span', 'pc-grain'));
+    if (partner) plate.appendChild(partnerPill());
     main.appendChild(plate);
   }
 
@@ -299,6 +334,8 @@ function card(item, opts) {
   const when = ago(it.when, o.now);
   if (when) kick.append(el('span', null, when));
   if (it.league && o.showLeague !== false) kick.append(el('span', 'pc-lg', it.league));
+  /* a card with no plate (a creator's post played in the card) carries the pill in its kicker */
+  if (partner && e) kick.append(partnerPill('in-kick'));
   body.appendChild(kick);
   const h = el('h3', 'pc-title');
   if (it.href) {
@@ -307,6 +344,7 @@ function card(item, opts) {
     a.href = it.href;
     if (it.external) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
     if (b.name) a.title = b.name + (it.external ? ' — on ' + (it.siteHost || 'their site') : '');
+    opened(a);
     h.appendChild(a);
   } else h.textContent = it.title || '';
   body.appendChild(h);
@@ -314,6 +352,7 @@ function card(item, opts) {
   if (sum && sum !== it.title) body.appendChild(el('p', 'pc-sum', sum));
   const tags = (it.tags || []).filter(t => t.slug !== o.hideTag);
   if (tags.length) body.appendChild(tagRow(tags));
+  if (it.why && o.why !== false) body.appendChild(whyLine(it.why));
   main.appendChild(body);
   art.appendChild(main);
   if (e) art.insertBefore(embedNode(e, it.title), main.nextSibling);
@@ -332,6 +371,7 @@ function card(item, opts) {
                                          : (it.platform && it.kind !== 'article' ? K.cta + ' · ' + it.platform : K.cta) + ' →');
     go.href = it.href;
     if (it.external) { go.target = '_blank'; go.rel = 'noopener noreferrer'; }
+    opened(go);
     foot.appendChild(go);
   }
   art.appendChild(foot);
@@ -346,8 +386,8 @@ function field(b) {
 }
 
 /* A BRAND'S HEAD, at the top of its page here (a publisher's, a creator's): its print across the width, its mark
-   on the disc, its name, what it is, and the ways to it. o: { name, logo, colour, kicker, tagline,
-   links: [{ href, text, external, primary }], bell (an element: follow.js's bell) } */
+   on the disc, its name, what it is, and the ways to it. o: { name, logo, colour, kicker, tagline, partner (true: the
+   official-partner pill), links: [{ href, text, external, primary }], bell (an element: follow.js's bell) } */
 function hero(o) {
   const x = o || {};
   const b = { name: x.name, logo: https(x.logo) };
@@ -361,6 +401,7 @@ function hero(o) {
   inner.appendChild(mark(b, 'pc-disc'));
   const txt = el('div', 'pc-hero-txt');
   if (x.kicker) txt.appendChild(el('div', 'pc-hero-kick', x.kicker));
+  if (x.partner) txt.appendChild(partnerPill('in-hero'));
   txt.appendChild(el('h1', 'pc-hero-name', x.name || ''));
   if (x.tagline) txt.appendChild(el('p', 'pc-hero-tag', x.tagline));
   const acts = el('div', 'pc-hero-acts');
@@ -381,8 +422,8 @@ function hero(o) {
 
 /* A PIECE'S HEAD, in its brand's colourway: the print across the width, the brand's mark and name (its page here)
    with the bell, what kind of piece, the headline centred, when and by whom, and its league tags.
-   o: { brand: { name, logo, colour, href }, kind, title, meta: [text], tags (tagsOf), bell, figure (true: the picture
-   under it is laid over its foot) } */
+   o: { brand: { name, logo, colour, href }, kind, title, meta: [text], tags (tagsOf), bell, partner (true: the official-partner pill),
+   figure (true: the picture under it is laid over its foot) } */
 function masthead(o) {
   const x = o || {};
   const b = x.brand || {};
@@ -397,6 +438,7 @@ function masthead(o) {
   if (b.href) { who.href = b.href; who.title = 'More from ' + (b.name || 'them'); }
   who.append(mark({ name: b.name, logo: https(b.logo) }, 'pc-logo'), el('span', null, b.name || ''));
   top.appendChild(who);
+  if (x.partner) top.appendChild(partnerPill('in-mast'));
   if (x.bell) top.appendChild(x.bell);
   inner.appendChild(top);
   if (x.kind) inner.appendChild(el('div', 'pc-mast-kind', x.kind));
@@ -409,7 +451,7 @@ function masthead(o) {
 }
 
 /* A ROW OF BRANDS - the publishers on the News page, a league's creators - each its mark and name, opening its page
-   here. list: [{ name, logo, colour, href, note }] */
+   here. list: [{ name, logo, colour, href, note, partner (true: the official-partner pill) }] */
 function brands(list) {
   const row = el('div', 'pc-brands');
   (list || []).forEach(x => {
@@ -418,6 +460,7 @@ function brands(list) {
     a.style.setProperty('--bc', hex(x.colour) || tint(x.name));
     const words = el('span', 'pc-brand-w');
     words.appendChild(el('span', 'pc-brand-n', x.name || ''));
+    if (x.partner) words.appendChild(partnerPill('in-brand'));
     if (x.note) words.appendChild(el('span', 'pc-brand-x', x.note));
     a.append(mark({ name: x.name, logo: https(x.logo) }, 'pc-logo'), words);
     row.appendChild(a);
@@ -432,5 +475,5 @@ function grid(items, opts) {
   return g;
 }
 
-return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND };
+return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, partnerPill, whyLine };
 }));

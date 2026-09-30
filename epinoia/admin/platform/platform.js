@@ -1287,6 +1287,8 @@ function loadNewsSources() {
   const C = window.EpinoiaCreatorsUI;
   if (!C) return say('creators-ui.js did not load, so the news sources cannot be edited. Reload the page.', 'err');
   C.mountSources({ host: '#newsSourcesHost', sb, say, league: null, base: '../../' });
+  /* ...and which of them (and of the creator outlets) are official partners: the platform's to choose (0197) */
+  if (typeof C.mountPartners === 'function') C.mountPartners({ host: '#officialPartnersHost', sb, say });
 }
 
 /* ------------------------------------------------------------- analytics --- */

@@ -23,6 +23,12 @@ const CFG = window.EPINOIA_CONFIG;
 const K = window.EpinoiaNewsCard;
 const B = window.EpinoiaNewsBlocks;
 const N = window.EpinoiaNews;
+/* THE RANKED FEED (feedrank.js), as on the News page: the official partners' pill, what is opened and visited (kept on this
+   device only). All optional: without the script this page is what it was. */
+const FR = window.EpinoiaFeedRank || null;
+let PARTNERS = new Set();
+const partnersReady = FR ? FR.partners().then(s => { PARTNERS = s; return s; }, () => PARTNERS) : Promise.resolve(PARTNERS);
+const onOpen = it => { try { if (FR && it && it.row) FR.opened(it.row); } catch (_) { /* never in the reader's way */ } };
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
@@ -83,7 +89,11 @@ function pieceItem(league, x, outlet) {
     href: pieceHref(league, o.slug, x.slug),
     platform: e ? e.label : (x.external_url ? K.host(x.external_url) : null),
     embedUrl: x.kind !== 'article' ? (x.external_url || null) : null,
-    brand: { name: o.name, logo: o.logo_url, colour: o.colour, href: outlet ? null : outletHref(league, o.slug) }
+    brand: { name: o.name, logo: o.logo_url, colour: o.colour, href: outlet ? null : outletHref(league, o.slug) },
+    /* what "opened" reads, and the key the pill is looked up by */
+    id: x.id, pkey: 'outlet:' + league.slug + '/' + o.slug,
+    row: { id: x.id, kind: 'creator', league_slug: league.slug, outlet_slug: o.slug, slug: x.slug, source_name: o.name,
+           leagues: [{ slug: league.slug, name: league.name }] }
   };
 }
 
@@ -158,6 +168,7 @@ async function directory(league) {
     return;
   }
   main.textContent = '';
+  await partnersReady;
   main.appendChild(K.hero({
     name: 'Creators', logo: crestUrl(league.logo_path), colour: league.colour_a,
     kicker: league.name + ' · independent voices',
@@ -181,7 +192,7 @@ async function directory(league) {
   allNews.href = '../news/?l=' + encodeURIComponent(league.slug);
   h.appendChild(allNews);
   wrap.appendChild(h);
-  const grid = K.grid((first || []).map(x => pieceItem(league, x)), { now: Date.now(), showLeague: false });
+  const grid = K.grid((first || []).map(x => pieceItem(league, x)), { now: Date.now(), showLeague: false, partners: PARTNERS, onOpen });
   wrap.appendChild(grid);
   const total = Number((first && first[0] && first[0].total) || 0);
   if (total > PAGE) {
@@ -195,7 +206,7 @@ async function directory(league) {
       btn.disabled = true;
       try {
         const rows = await rpc('creators_public', { p_league: league.id, p_limit: PAGE, p_offset: offset }) || [];
-        rows.forEach(x => grid.appendChild(K.card(pieceItem(league, x), { now: Date.now(), showLeague: false })));
+        rows.forEach(x => grid.appendChild(K.card(pieceItem(league, x), { now: Date.now(), showLeague: false, partners: PARTNERS, onOpen })));
         offset += rows.length;
         if (offset >= total || !rows.length) more.remove();
       } catch (_) { /* the button stays for another go */ }
@@ -212,6 +223,7 @@ function tile(league, o) {
   top.href = outletHref(league, o.slug);
   top.setAttribute('aria-label', o.name);
   top.append(el('span', 'pc-flood'), el('span', 'pc-tone'), K.mark({ name: o.name, logo: o.logo_url }, 'pc-disc'));
+  if (PARTNERS.has('outlet:' + league.slug + '/' + o.slug)) top.appendChild(K.partnerPill('in-tile'));
   t.appendChild(top);
   const body = el('div', 'cr-tile-body');
   const name = el('a', 'cr-tile-name', o.name);
@@ -254,9 +266,20 @@ async function outlet(league) {
     return;
   }
   document.title = o.name + ' · ' + league.name;
+  await partnersReady;
+  const okey = 'outlet:' + league.slug + '/' + o.slug;
+  /* an outlet's page visited, and an outlet followed here: a reason to like it (on this device only) */
+  if (FR) {
+    try { FR.visited(okey); } catch (_) { /* nothing */ }
+    window.addEventListener('epinoia:follows', e => {
+      const d = e && e.detail;
+      if (d && d.on && d.kind === 'outlet') { try { FR.store().followed({ key: okey }); } catch (_) { /* nothing */ } }
+    });
+  }
   const L = o.links || {};
   const first = PLATFORMS.find(([k]) => typeof L[k] === 'string' && /^https:\/\//i.test(L[k]));
   main.appendChild(K.hero({
+    partner: PARTNERS.has(okey),
     name: o.name, logo: o.logo_url, colour: o.colour,
     kicker: 'Creator · ' + league.name,
     tagline: o.tagline || '',
@@ -280,7 +303,7 @@ async function outlet(league) {
   wrap.appendChild(h);
   if (posts.length) {
     /* a video, an episode or a post plays in its card here: this is their page */
-    wrap.appendChild(K.grid(posts.map(x => pieceItem(league, x, o)), { now: Date.now(), embed: true, host: location.hostname, showLeague: false }));
+    wrap.appendChild(K.grid(posts.map(x => pieceItem(league, x, o)), { now: Date.now(), embed: true, host: location.hostname, showLeague: false, partners: PARTNERS, onOpen }));
   }
 }
 
@@ -301,8 +324,13 @@ async function piece(league) {
   const e = x.kind !== 'article' ? K.embedOf(x.external_url, location.hostname) : null;
   const cover = x.cover_url && /^https:\/\//.test(x.cover_url) ? x.cover_url : null;
   document.title = x.title + ' · ' + (o.name || league.name);
+  await partnersReady;
+  /* a piece opened here (from a notification, a card, a link): it is read, its outlet gains (this device only) */
+  if (FR && o.slug) { try { FR.opened({ kind: 'creator', league_slug: league.slug, outlet_slug: o.slug, slug: x.slug, source_name: o.name,
+                                       leagues: [{ slug: league.slug, name: league.name }] }); } catch (_) { /* nothing */ } }
 
   main.appendChild(K.masthead({
+    partner: !!o.slug && PARTNERS.has('outlet:' + league.slug + '/' + o.slug),
     brand: { name: o.name, logo: o.logo_url, colour, href: outletHref(league, o.slug) },
     kind: e ? K0.word + ' · ' + e.label : K0.word,
     title: x.title,
@@ -367,7 +395,7 @@ async function piece(league) {
       const all = el('a', null, 'their page →');
       all.href = outletHref(league, o.slug);
       h.appendChild(all);
-      sec.append(h, K.grid(rows.map(p => pieceItem(league, p, page)), { lead: false, now: Date.now(), showLeague: false }));
+      sec.append(h, K.grid(rows.map(p => pieceItem(league, p, page)), { lead: false, now: Date.now(), showLeague: false, partners: PARTNERS, onOpen }));
       main.appendChild(sec);
     }
   } catch (_) { /* the piece stands on its own */ }
