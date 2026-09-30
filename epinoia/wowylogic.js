@@ -20,8 +20,9 @@
      gate         what a non-member's preview keeps (access.js CATALOGUE.wowyPreviewMax decides the players)
      state        the page's view as an address (?v=&sz=&a=&b=...) and back
 
-   Nothing here invents a number. A stat the stint boxes cannot give (3P%, assists, steals, blocks, shot zones,
-   the opponent's strength) is not in COLS at all.
+   Nothing here invents a number. A stat the stint boxes cannot give (3P%, shot zones, assisted makes, the clock,
+   transition, where rebounds came from, who the opponent had on) is marked src 'ev': it is read from the
+   play-by-play by lineupevents.js, for members, and shows '—' with the reason wherever the log cannot say.
    ============================================================================ */
 (function (root, factory) {
   const api = factory(typeof require === 'function' && typeof module === 'object' ? (function () { try { return require('./lineups.js'); } catch (_) { return null; } })() : null, root);
@@ -32,57 +33,84 @@
 const L = () => nodeLineups || (root && root.EpinoiaLineups) || null;
 
 /* --------------------------------------------------------------- columns ---
-   dir: +1 higher is better for the team, -1 lower is better, 0 is a style rather than a quality (pace) or a
-   sample size. fmt: 'n1' one decimal, 'n0' whole, 'sg' signed one decimal, 'pm' signed whole. */
+   dir: +1 higher is better for the team, -1 lower is better, 0 is a style rather than a quality (pace, how often
+   a unit runs, where its shots come from) or a sample size. fmt: 'n1' one decimal, 'n2' two, 'n0' whole, 'sg'
+   signed one decimal, 'pm' signed whole. src: 'st' the stint boxes can give it (and the league's units colour it),
+   'ev' only the play-by-play can (members only, and read after the first paint). `why` is what a '—' means.
+
+   THE CATEGORIES are the page's own, in its order. A category lists its keys; a key belongs to one category in a
+   table (its `group`), and a card may show it again where it also reads naturally (eFG% under shooting). */
 const GROUPS = [
-  ['sample', 'Sample'], ['rating', 'Ratings'], ['ours', 'Our four factors'], ['theirs', 'Their four factors'],
-  ['shoot', 'Shooting'], ['board', 'Boards and turnovers']
+  ['basic', 'Basic'], ['four', 'Four factors'], ['helio', 'Heliocentrism'],
+  ['shoot', 'Shooting'], ['play', 'Play type'], ['rebo', 'Rebound origins']
 ];
+const GROUP_KEYS = {
+  basic: ['mins', 'poss', 'pm', 'net', 'ortg', 'drtg', 'pace40', 'sclock'],
+  four: ['efg', 'tov', 'oreb', 'ftr', 'defg', 'dtov', 'drb', 'dftr'],
+  helio: ['helio'],
+  shoot: ['ts', 'efg', 'rimfg', 'rim100', 'rimast', 'midfg', 'mid100', 'midast', 'p3', 'p3a100', 'p3ast'],
+  play: ['trfreq', 'trppp', 'hcfreq', 'hcppp'],
+  rebo: ['drbR', 'drbM', 'drb3', 'orbR', 'orbM', 'orb3']
+};
+const NOZONE = 'The play-by-play gives no shot locations or shot types for enough of these twos to tell the rim from mid-range';
 const COLS = [
-  { key: 'mins',  label: 'MIN',      name: 'Minutes',                  group: 'sample', dir: 0, fmt: 'n1', heat: 'seq' },
-  { key: 'poss',  label: 'POSS',     name: 'Possessions',              group: 'sample', dir: 0, fmt: 'n1', heat: 'seq' },
-  { key: 'stints',label: 'STINTS',   name: 'Stints',                   group: 'sample', dir: 0, fmt: 'n0', heat: 'seq' },
-  { key: 'pm',    label: '+/-',      name: 'Plus-minus (points)',      group: 'sample', dir: 1, fmt: 'pm' },
-  { key: 'pf',    label: 'PF',       name: 'Points for',               group: 'sample', dir: 0, fmt: 'n0' },
-  { key: 'pa',    label: 'PA',       name: 'Points against',           group: 'sample', dir: 0, fmt: 'n0' },
+  { key: 'mins',  label: 'MIN',      name: 'Minutes',                         group: 'basic', dir: 0,  fmt: 'n1', heat: 'seq', src: 'st' },
+  { key: 'poss',  label: 'POSS',     name: 'Possessions (estimated, 0.96 × (FGA + TOV + 0.44 FTA − OREB))', group: 'basic', dir: 0, fmt: 'n1', heat: 'seq', src: 'st' },
+  { key: 'pm',    label: '+/-',      name: 'Plus-minus (points)',             group: 'basic', dir: 1,  fmt: 'pm', src: 'st' },
+  { key: 'net',   label: 'NET',      name: 'Net rating per 100 possessions',  group: 'basic', dir: 1,  fmt: 'sg', src: 'st' },
+  { key: 'ortg',  label: 'ORTG',     name: 'Offensive rating per 100',        group: 'basic', dir: 1,  fmt: 'n1', src: 'st' },
+  { key: 'drtg',  label: 'DRTG',     name: 'Defensive rating per 100',        group: 'basic', dir: -1, fmt: 'n1', src: 'st' },
+  { key: 'pace40',label: 'PACE',     name: 'Pace: possessions per 40 minutes', group: 'basic', dir: 0, fmt: 'n1', src: 'st' },
+  { key: 'sclock',label: 'AVG SHOT CLOCK', name: 'Average seconds used per possession (the box score’s shot clock tab: from winning the ball to the last action)', group: 'basic', dir: 0, fmt: 'n1', src: 'ev', unit: 's',
+    why: 'No possession of this unit could be timed' },
 
-  { key: 'net',   label: 'NET',      name: 'Net rating per 100',       group: 'rating', dir: 1,  fmt: 'sg' },
-  { key: 'ortg',  label: 'ORTG',     name: 'Offensive rating per 100', group: 'rating', dir: 1,  fmt: 'n1' },
-  { key: 'drtg',  label: 'DRTG',     name: 'Defensive rating per 100', group: 'rating', dir: -1, fmt: 'n1' },
-  { key: 'pace',  label: 'PACE',     name: 'Possessions per 48',       group: 'rating', dir: 0,  fmt: 'n1' },
+  { key: 'efg',   label: 'eFG%',     name: 'Effective FG%',                   group: 'four', dir: 1,  fmt: 'n1', src: 'st' },
+  { key: 'tov',   label: 'TOV%',     name: 'Turnover %',                      group: 'four', dir: -1, fmt: 'n1', src: 'st' },
+  { key: 'oreb',  label: 'ORB%',     name: 'Offensive rebound %',             group: 'four', dir: 1,  fmt: 'n1', src: 'st' },
+  { key: 'ftr',   label: 'FT RATE',  name: 'Free-throw rate (FTA per 100 FGA)', group: 'four', dir: 1, fmt: 'n1', src: 'st' },
+  { key: 'defg',  label: 'OPP eFG%', name: 'Opponent effective FG%',          group: 'four', dir: -1, fmt: 'n1', src: 'st' },
+  { key: 'dtov',  label: 'OPP TOV%', name: 'Opponent turnover %',             group: 'four', dir: 1,  fmt: 'n1', src: 'st' },
+  { key: 'drb',   label: 'DRB%',     name: 'Defensive rebound % (the opponent’s ORB% turned round)', group: 'four', dir: 1, fmt: 'n1', src: 'st' },
+  { key: 'dftr',  label: 'OPP FT RATE', name: 'Opponent free-throw rate',     group: 'four', dir: -1, fmt: 'n1', src: 'st' },
 
-  { key: 'efg',   label: 'eFG%',     name: 'Effective FG%',            group: 'ours', dir: 1,  fmt: 'n1' },
-  { key: 'tov',   label: 'TOV%',     name: 'Turnover %',               group: 'ours', dir: -1, fmt: 'n1' },
-  { key: 'oreb',  label: 'OREB%',    name: 'Offensive rebound %',      group: 'ours', dir: 1,  fmt: 'n1' },
-  { key: 'ftr',   label: 'FTr',      name: 'Free-throw rate',          group: 'ours', dir: 1,  fmt: 'n1' },
+  { key: 'helio', label: 'HELIO',    name: 'Heliocentrism: how much of the offence runs through one man (0 shared evenly, 100 one man uses every play)', group: 'helio', dir: 0, fmt: 'n1', src: 'ev',
+    why: 'Fewer than 10 plays used by the unit’s players' },
 
-  { key: 'defg',  label: 'OPP eFG%', name: 'Opponent eFG%',            group: 'theirs', dir: -1, fmt: 'n1' },
-  { key: 'dtov',  label: 'OPP TOV%', name: 'Opponent turnover %',      group: 'theirs', dir: 1,  fmt: 'n1' },
-  { key: 'doreb', label: 'OPP OREB%',name: 'Opponent offensive reb %', group: 'theirs', dir: -1, fmt: 'n1' },
-  { key: 'dftr',  label: 'OPP FTr',  name: 'Opponent free-throw rate', group: 'theirs', dir: -1, fmt: 'n1' },
+  { key: 'ts',    label: 'TS%',      name: 'True shooting %',                 group: 'shoot', dir: 1, fmt: 'n1', src: 'st' },
+  { key: 'rimfg', label: 'RIM FG%',  name: 'Field-goal % at the rim',         group: 'shoot', dir: 1, fmt: 'n1', src: 'ev', why: 'No shots at the rim', zone: 1 },
+  { key: 'rim100',label: 'RIM ATT/100', name: 'Rim attempts per 100 possessions', group: 'shoot', dir: 0, fmt: 'n1', src: 'ev', why: 'No possessions', zone: 1 },
+  { key: 'rimast',label: '%RIM AST', name: 'Share of rim makes that were assisted', group: 'shoot', dir: 0, fmt: 'n1', src: 'ev', why: 'No rim makes', zone: 1 },
+  { key: 'midfg', label: 'MID FG%',  name: 'Field-goal % from mid-range',     group: 'shoot', dir: 1, fmt: 'n1', src: 'ev', why: 'No mid-range shots', zone: 1 },
+  { key: 'mid100',label: 'MID ATT/100', name: 'Mid-range attempts per 100 possessions', group: 'shoot', dir: 0, fmt: 'n1', src: 'ev', why: 'No possessions', zone: 1 },
+  { key: 'midast',label: '%MID AST', name: 'Share of mid-range makes that were assisted', group: 'shoot', dir: 0, fmt: 'n1', src: 'ev', why: 'No mid-range makes', zone: 1 },
+  { key: 'p3',    label: '3PT%',     name: 'Three-point %',                   group: 'shoot', dir: 1, fmt: 'n1', src: 'ev', why: 'No three-point attempts' },
+  { key: 'p3a100',label: '3PT ATT/100', name: 'Three-point attempts per 100 possessions', group: 'shoot', dir: 0, fmt: 'n1', src: 'ev', why: 'No possessions' },
+  { key: 'p3ast', label: '%3PT AST', name: 'Share of made threes that were assisted', group: 'shoot', dir: 0, fmt: 'n1', src: 'ev', why: 'No made threes' },
 
-  { key: 'ts',    label: 'TS%',      name: 'True shooting %',          group: 'shoot', dir: 1,  fmt: 'n1' },
-  { key: 'fgp',   label: 'FG%',      name: 'Field-goal %',             group: 'shoot', dir: 1,  fmt: 'n1' },
-  { key: 'tpm',   label: '3PM/100',  name: 'Threes made per 100',      group: 'shoot', dir: 1,  fmt: 'n1' },
-  { key: 'dts',   label: 'OPP TS%',  name: 'Opponent true shooting %', group: 'shoot', dir: -1, fmt: 'n1' },
-  { key: 'dfgp',  label: 'OPP FG%',  name: 'Opponent field-goal %',    group: 'shoot', dir: -1, fmt: 'n1' },
-  { key: 'dtpm',  label: 'OPP 3PM/100', name: 'Opponent threes per 100', group: 'shoot', dir: -1, fmt: 'n1' },
+  { key: 'trfreq',label: 'TRANS FREQ%', name: 'Transition: share of possessions whose first action came within 8 s of a defensive rebound or a steal (or was tagged transition)', group: 'play', dir: 0, fmt: 'n1', src: 'ev', why: 'No counted possessions' },
+  { key: 'trppp', label: 'TRANS PPP', name: 'Points per transition possession', group: 'play', dir: 1, fmt: 'n2', src: 'ev', why: 'No transition possessions' },
+  { key: 'hcfreq',label: 'HC FREQ%', name: 'Half court: share of possessions that were not transition', group: 'play', dir: 0, fmt: 'n1', src: 'ev', why: 'No counted possessions' },
+  { key: 'hcppp', label: 'HC PPP',   name: 'Points per half-court possession', group: 'play', dir: 1, fmt: 'n2', src: 'ev', why: 'No half-court possessions' },
 
-  { key: 'drb',   label: 'DREB%',    name: 'Defensive rebound %',      group: 'board', dir: 1,  fmt: 'n1' },
-  { key: 'tovr',  label: 'TOV/100',  name: 'Turnovers per 100',        group: 'board', dir: -1, fmt: 'n1' },
-  { key: 'dtovr', label: 'FORCED/100', name: 'Turnovers forced per 100', group: 'board', dir: 1, fmt: 'n1' },
-  { key: 'ptsf',  label: 'PTS/100',  name: 'Points scored per 100',    group: 'board', dir: 1,  fmt: 'n1' }
+  { key: 'drbR',  label: 'DRB OPP RIM%', name: 'Share of the unit’s defensive rebounds that came off opponents’ missed rim shots', group: 'rebo', dir: 0, fmt: 'n1', src: 'ev', why: 'No defensive rebounds off missed field goals', zone: 2 },
+  { key: 'drbM',  label: 'DRB OPP MID%', name: 'Share of the unit’s defensive rebounds that came off opponents’ missed mid-range shots', group: 'rebo', dir: 0, fmt: 'n1', src: 'ev', why: 'No defensive rebounds off missed field goals', zone: 2 },
+  { key: 'drb3',  label: 'DRB OPP 3PT%', name: 'Share of the unit’s defensive rebounds that came off opponents’ missed threes', group: 'rebo', dir: 0, fmt: 'n1', src: 'ev', why: 'No defensive rebounds off missed field goals' },
+  { key: 'orbR',  label: 'ORB SELF RIM%', name: 'Share of the unit’s offensive rebounds that came off its own missed rim shots', group: 'rebo', dir: 0, fmt: 'n1', src: 'ev', why: 'No offensive rebounds off missed field goals', zone: 1 },
+  { key: 'orbM',  label: 'ORB SELF MID%', name: 'Share of the unit’s offensive rebounds that came off its own missed mid-range shots', group: 'rebo', dir: 0, fmt: 'n1', src: 'ev', why: 'No offensive rebounds off missed field goals', zone: 1 },
+  { key: 'orb3',  label: 'ORB SELF 3PT%', name: 'Share of the unit’s offensive rebounds that came off its own missed threes', group: 'rebo', dir: 0, fmt: 'n1', src: 'ev', why: 'No offensive rebounds off missed field goals' }
 ];
 const BY_KEY = Object.create(null); COLS.forEach(c => { BY_KEY[c.key] = c; });
 const col = k => BY_KEY[k] || null;
 
 /* what a five's row shows before the reader chooses: more on a wide screen, the essentials on a phone */
+/* The table scrolls inside its own wrapper (the first column stays put), so every stat can be a column; a phone
+   starts with the basic ones and the picker adds the rest by category. */
 const DEFAULT_COLS = {
-  wide:  ['mins', 'poss', 'net', 'ortg', 'drtg', 'pace', 'efg', 'tov', 'oreb', 'ftr', 'defg', 'dtov'],
-  mid:   ['mins', 'poss', 'net', 'ortg', 'drtg', 'pace', 'efg', 'tov'],
-  phone: ['mins', 'net', 'ortg', 'drtg']
+  wide:  COLS.map(c => c.key),
+  mid:   COLS.map(c => c.key),
+  phone: ['mins', 'poss', 'pm', 'net', 'ortg', 'drtg', 'pace40', 'sclock']
 };
-const MAX_COLS = { wide: 14, mid: 9, phone: 6 };
+const MAX_COLS = { wide: COLS.length, mid: COLS.length, phone: COLS.length };
 /* the width class of the space the table has: a phone (or a narrow column beside the rail), a middling one, a wide one.
    Pure, so the page and the tests agree on the cut-offs. `kind` may also be a boolean (true = phone). */
 const sizeKind = w => (w < 520 ? 'phone' : w < 900 ? 'mid' : 'wide');
@@ -96,7 +124,27 @@ function fmt(k, v) {
   if (f === 'sg') return (v > 0 ? '+' : '') + v.toFixed(1);
   if (f === 'pm') return (v > 0 ? '+' : '') + Math.round(v);
   if (f === 'n0') return String(Math.round(v));
+  if (f === 'n2') return v.toFixed(2);
   return v.toFixed(1);
+}
+/* a delta as the page writes it: signed, in the stat's own precision */
+function fmtDelta(k, d) {
+  const c = typeof k === 'string' ? col(k) : k;
+  if (!isNum(d)) return '—';
+  const f = c ? c.fmt : 'n1';
+  const v = f === 'n0' || f === 'pm' ? String(Math.round(d)) : f === 'n2' ? d.toFixed(2) : d.toFixed(1);
+  return (d > 0 ? '+' : d < 0 ? '' : '±') + v;
+}
+/* ON/OFF DELTA of one stat: this slice's value minus the value of the team's minutes outside it (for a player,
+   on minus off). `good` is the delta turned by the stat's direction (positive is good for the team; null for a
+   style stat, which is shown in a neutral colour), `arrow` which way the number moved. */
+function delta(k, on, off) {
+  const c = col(k);
+  const a = on ? on[k] : null, b = off ? off[k] : null;
+  if (!isNum(a) || !isNum(b)) return { d: null, good: null, arrow: '' };
+  const scale = c && c.fmt === 'n2' ? 100 : 10;
+  const d = Math.round((a - b) * scale) / scale;
+  return { d, good: c && c.dir ? d * c.dir : null, arrow: d > 0 ? '▲' : d < 0 ? '▼' : '' };
 }
 
 /* ---------------------------------------------------------------- scale ---
@@ -285,8 +333,8 @@ function splitRows(on, off, keys) {
   return (keys || COLS.map(c => c.key)).map(k => {
     const c = col(k);
     const a = on ? on[k] : null, b = off ? off[k] : null;
-    const d = isNum(a) && isNum(b) ? Math.round((a - b) * 10) / 10 : null;
-    return { key: k, col: c, on: a, off: b, delta: d, good: d == null || !c || !c.dir ? null : d * c.dir };
+    const x = delta(k, on, off);
+    return { key: k, col: c, on: a, off: b, delta: x.d, good: x.good };
   });
 }
 
@@ -345,19 +393,35 @@ function startingFive(games, teamId) {
    pair, the builder, the combinations, the sized units) shows what one player can, and a teaser. */
 function gate(preview, max) {
   const m = Math.max(1, max | 0 || 1);
-  if (!preview) return { preview: false, players: 5, rows: Infinity, sizes: [2, 3, 4, 5], pair: true, builder: true, export: true, matrixMax: 5 };
-  return { preview: true, players: m, rows: 5, sizes: [5], pair: m >= 2, builder: m >= 5, export: true, matrixMax: m };
+  /* events: the play-by-play numbers (access.js CATALOGUE.locks.events): the event columns, the vs-starters split
+     and its tab. A preview never reads the log at all. */
+  if (!preview) return { preview: false, players: 5, rows: Infinity, sizes: [2, 3, 4, 5], pair: true, builder: true, export: true, matrixMax: 5, events: true };
+  return { preview: true, players: m, rows: 5, sizes: [5], pair: m >= 2, builder: m >= 5, export: true, matrixMax: m, events: false };
 }
 
 /* -------------------------------------------------------- the address ---- */
-const VIEWS = ['overview', 'lineups', 'onoff', 'pair', 'build'];
-const DEFAULT_STATE = { v: 'overview', t: '', sz: 5, sort: 'mins', dir: 'desc', best: '', p: '', a: '', b: '', u: [], inc: [], exc: [], mm: DEFAULT_THR.minMinutes, mp: DEFAULT_THR.minPoss };
+/* the tabs, in the page's order: pair is the two-player four-bucket view, wowy the combinations of up to five,
+   vs the split by who the other side had on */
+const VIEWS = ['overview', 'lineups', 'onoff', 'pair', 'wowy', 'vs', 'build'];
+/* WHO THEY FACED: all minutes, or only those against the opponent's starting five of that game (all five on),
+   a mixed five (three or four of its starters) or its bench (two or fewer). lineupevents.js bucketOf. */
+const FACED = [
+  ['all', 'All', 'Every minute'],
+  ['start', 'vs starters', 'Only minutes against all five of the opponent’s starters for that game'],
+  ['mixed', 'vs mixed', 'Only minutes against three or four of the opponent’s starters'],
+  ['bench', 'vs bench', 'Only minutes against two or fewer of the opponent’s starters']
+];
+const FACED_KEYS = FACED.map(f => f[0]);
+const LAYOUTS = ['cards', 'table'];
+const DMODES = ['both', 'values', 'deltas'];
+const DEFAULT_STATE = { v: 'overview', t: '', sz: 5, sort: 'mins', dir: 'desc', best: '', p: '', a: '', b: '', u: [], inc: [], exc: [], mm: DEFAULT_THR.minMinutes, mp: DEFAULT_THR.minPoss,
+  vs: 'all', lay: 'cards', dm: 'both', w: [] };
 const ID = /^[A-Za-z0-9:_-]{1,64}$/;
 const ids = s => String(s || '').split(',').filter(x => ID.test(x)).slice(0, 5);
 
 function decodeState(search) {
   const q = new URLSearchParams(String(search || '').replace(/^\?/, ''));
-  const s = Object.assign({}, DEFAULT_STATE, { u: [], inc: [], exc: [] });
+  const s = Object.assign({}, DEFAULT_STATE, { u: [], inc: [], exc: [], w: [] });
   const v = q.get('v'); if (VIEWS.indexOf(v) !== -1) s.v = v;
   s.t = (q.get('t') || '').slice(0, 80);
   const sz = parseInt(q.get('sz'), 10); if (sz >= 2 && sz <= 5) s.sz = sz;
@@ -365,7 +429,10 @@ function decodeState(search) {
   if (q.get('dir') === 'asc') s.dir = 'asc';
   const be = q.get('best'); if (be === 'best' || be === 'worst') s.best = be;
   ['p', 'a', 'b'].forEach(k => { const x = q.get(k); if (x && ID.test(x)) s[k] = x; });
-  s.u = ids(q.get('u')); s.inc = ids(q.get('inc')); s.exc = ids(q.get('exc'));
+  s.u = ids(q.get('u')); s.inc = ids(q.get('inc')); s.exc = ids(q.get('exc')); s.w = ids(q.get('w'));
+  const vs = q.get('vs'); if (FACED_KEYS.indexOf(vs) !== -1) s.vs = vs;
+  const lay = q.get('lay'); if (LAYOUTS.indexOf(lay) !== -1) s.lay = lay;
+  const dm = q.get('dm'); if (DMODES.indexOf(dm) !== -1) s.dm = dm;
   const t = normThr(q.get('mm'), q.get('mp')); s.mm = q.get('mm') == null ? DEFAULT_THR.minMinutes : t.minMinutes; s.mp = q.get('mp') == null ? DEFAULT_THR.minPoss : t.minPoss;
   return s;
 }
@@ -374,7 +441,7 @@ function decodeState(search) {
    page's (l, s, c) are kept from `base`. */
 function encodeState(state, base) {
   const q = new URLSearchParams(String(base || '').replace(/^\?/, ''));
-  ['v', 't', 'sz', 'sort', 'dir', 'best', 'p', 'a', 'b', 'u', 'inc', 'exc', 'mm', 'mp'].forEach(k => q.delete(k));
+  ['v', 't', 'sz', 'sort', 'dir', 'best', 'p', 'a', 'b', 'u', 'inc', 'exc', 'mm', 'mp', 'vs', 'lay', 'dm', 'w'].forEach(k => q.delete(k));
   const s = Object.assign({}, DEFAULT_STATE, state || {});
   if (s.v !== DEFAULT_STATE.v) q.set('v', s.v);
   if (s.t) q.set('t', s.t);
@@ -383,7 +450,8 @@ function encodeState(state, base) {
   if (s.dir !== DEFAULT_STATE.dir) q.set('dir', s.dir);
   if (s.best) q.set('best', s.best);
   ['p', 'a', 'b'].forEach(k => { if (s[k]) q.set(k, s[k]); });
-  ['u', 'inc', 'exc'].forEach(k => { if (s[k] && s[k].length) q.set(k, s[k].join(',')); });
+  ['u', 'inc', 'exc', 'w'].forEach(k => { if (s[k] && s[k].length) q.set(k, s[k].join(',')); });
+  ['vs', 'lay', 'dm'].forEach(k => { if (s[k] && s[k] !== DEFAULT_STATE[k]) q.set(k, s[k]); });
   if (s.mm !== DEFAULT_THR.minMinutes) q.set('mm', String(s.mm));
   if (s.mp !== DEFAULT_THR.minPoss) q.set('mp', String(s.mp));
   const out = q.toString();
@@ -423,7 +491,7 @@ function surname(name) {
   return w[w.length - 1] || '?';
 }
 
-return { COLS, GROUPS, col, fmt, DEFAULT_COLS, MAX_COLS, sizeKind, DEFAULT_THR, VIEWS, DEFAULT_STATE,
+return { COLS, GROUPS, GROUP_KEYS, NOZONE, FACED, FACED_KEYS, LAYOUTS, DMODES, col, fmt, fmtDelta, delta, DEFAULT_COLS, MAX_COLS, sizeKind, DEFAULT_THR, VIEWS, DEFAULT_STATE,
   scaleOf, percentile, zscore, tone, band, tint, seqShare, referenceScales,
   reliability, normThr, limits, kindOf, playerSplits, pickColumns, toggleColumn, searchColumns, sortRows, filterUnits,
   pairBuckets, partners, splitRows, unitVsRest, build, startingFive, gate,

@@ -166,6 +166,7 @@ function deriveGame(game) {
   const period  = game.period  != null ? game.period  : 1;
   const clockMs = game.clockMs != null ? game.clockMs : PLEN(period);
   const events  = inGameOrder(game.events || []);
+  const observe = typeof game.observe === 'function' ? game.observe : null;
 
   const d = {
     stats: {}, team: [mkT(), mkT()], score: [0, 0], perQ: [{}, {}], pbp: [],
@@ -454,6 +455,12 @@ function deriveGame(game) {
     const line = pbpLine(ev, ev.id, tags, stypes, nm);
     if (line) d.pbp.push({ period: ev.period, clock: ev.clock, team: ev.team, txt: line,
                            s: [d.score[0], d.score[1]], id: ev.id });
+
+    /* AN OBSERVER, OPTIONAL AND READ-ONLY: told of every event once the replay has applied it, with
+       both fives as they now stand (d.onCourt) and the game time it happened at. Nothing here reads
+       what it returns, so no number above can change. The WOWY page's event layer (lineupevents.js)
+       uses it to hand each play to the two fives on the floor, with the stints' own boundaries. */
+    if (observe) observe(ev, d, cum);
   });
 
   for (const pid in lastIn) { if (d.stats[pid]) d.stats[pid].min += Math.max(0, nowCum - lastIn[pid]); }
