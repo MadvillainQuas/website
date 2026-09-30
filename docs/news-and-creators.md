@@ -161,6 +161,27 @@ The groups are capped (table 30, players 45, stage 50, extras 30) and the game a
   - Left out: FEB's all-competitions feed, and the sites that refused a reader that day (the EuroLeague's among them).
   - U SPORTS is in, and quiet until its season starts in November.
 
+## Load articles now (the `news-refresh` function)
+
+A publisher's articles arrive every half hour. An administrator who does not want to wait presses **Load now**: that source's feed is read at once and its stories are on the site a second later, with what came in said under the button (`+7 new · 12 total · 1.2 s`).
+
+- **Where the button is.**
+  - Platform console, **News** tab: a **Load now** on every source, and **Load all now** above them (platform administrators).
+  - A league console, **Creators & news sources**: a **Load now** on each of the league's own sources.
+  - The public **News** page: on a publisher's page (`news/?s=<slug>`), and under the **Publishers** switch (**Load all publishers now** for a platform administrator, **Load my publishers now** for a league's administrators). Nobody else is shown it, and the page asks the database (`is_platform_admin()`, `can_manage_news_sources(league)`, the console's own checks) before drawing it. After a load the list is drawn again with the new stories.
+- **Who may.** A platform administrator: any source, or all. A league's administrator: a source that is their league's own (`news_sources.league_id`); a platform source (league null) is the platform's alone. Anonymous callers and readers who administer nothing get 403, and a slug that does not exist answers them the same as one that does.
+- **How it is done, and why.** `supabase/functions/news-refresh` (Deno), wired in `index.ts`, decided in `_shared/newsrefresh.js`, parsed by `_shared/newsfeed.js`. A browser cannot hold the service key, and a GitHub token to start `news-feeds.yml` would be no safer (nor would the stories appear for minutes). The function runs where the service key already is, checks the caller's own JWT against the database's own rules, reads **only the `feed_url` stored for that source** (the request names a source by slug and no more), and writes with the service role. It needs no migration: it uses the tables and functions of 0194 and the existing `audit_log`.
+- **What it reads.** https only, the ordinary port, no password in the address, a public host (private IPv4 and IPv6 ranges, the odd spellings of 127.0.0.1, `localhost`, `.local`, `.internal` and single-label names are refused; a name that resolves to a private address is refused when the runtime can resolve names, or always when `NEWS_REFRESH_DNS_STRICT=1`). Redirects are followed by hand, at most three, each hop checked again. 10 s in all, 2 MB at the most.
+- **What it writes.** The same stories the half-hourly reader would (`newsfeed.js` is held to `fetch_feeds.py` by `scripts/news/fixtures/parity/`: the Python writes `expected.json`, both must read it identically: RSS 2.0, Atom, RDF, JSON Feed, the 40-item cap, dedupe by guid, the excerpt, the picture, the date rules), by `(source_id, guid)`: new ones inserted, changed ones corrected, unchanged ones not touched, so pressing twice adds nothing. Stories older than 120 days are not loaded. It sets the source's `last_fetched_at`, `last_ok_at`, `last_error` and `item_count`.
+  - **League tags are not matched here.** The matcher (`LeagueMatcher`) is Python-only. A story loaded by hand shows on its publisher's page and in News straight away, but on a league's own news page only after the next half-hourly read, which tags it. So that read fetches the feed afresh rather than taking a 304, the function clears the source's ETag and Last-Modified when it added anything.
+  - Followers are notified as they would be for any new story (`notify_news_items`).
+- **How often.** A source once in 60 s, whoever asks; a caller ten requests in 60 s. Counted in `audit_log`; an in-process claim closes the gap between two requests arriving together.
+- **The audit log.** `news_refresh_call` (one per request that got past the limits: actor, source or `all`) and `news_refresh` (one per source read: actor, source id, ok, code, added, updated, total, took_ms).
+- **The answer.** `200 { ok, slug, name, added, updated, total, fetched, last_error, took_ms }`, or `{ ok: false, code, error, retry_after? }` with `auth` 401, `forbidden` 403, `no_source` 404, `bad_request` 400, `off` 409 (a source that is switched off), `rate` and `rate_caller` 429, `blocked` 422, `unreachable`, `not_feed`, `too_big` 502, `server` 500. `{ all: true }` answers `{ ok, all, sources, read, failed, waiting, skipped, added, total, took_ms, results: [...] }`, four sources at a time, none started after 100 s.
+- **When it is not deployed.** The gateway answers 404 (or the browser gets no answer): the button says **needs the news-refresh function deployed** and nothing else changes. The page never breaks.
+- **Deploy.** `npx supabase functions deploy news-refresh` (default `verify_jwt`, so the gateway checks the JWT too; nothing to add to `config.toml`). No secrets to set: it uses the project's own `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`. No migration.
+- **Changing the reader.** Change `fetch_feeds.py` and `_shared/newsfeed.js` together, run `python scripts/news/fetch_feeds_test.py --write-parity` only when the change is meant, and check `node supabase/tests/news-refresh.test.mjs`.
+
 ## Creators
 
 - **Opening an outlet.** The league switches creators on and opens an outlet, naming its owner by email. The email can be given before that person has ever signed in.
@@ -197,5 +218,7 @@ The groups are capped (table 30, players 45, stage 50, extras 30) and the game a
 - `supabase/tests/feedrank.test.mjs`: the ranking, the learning, the storage, and that nothing about the reader is sent.
 - `supabase/tests/news-languages.test.mjs`: 0204 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
 - `supabase/tests/partners-ui.test.mjs`: the console's Official partner switches.
+- `supabase/tests/news-refresh.test.mjs`: the `news-refresh` function on a fake database and network: the parser held to the Python's fixtures, the address guard, who may call, the rate limits, the audit rows, idempotence.
+- `supabase/tests/news-refresh-ui.test.mjs`: the **Load now** button: its words, the console's rows, who is shown it, the function missing.
 
 All of them run in `guard.yml`.

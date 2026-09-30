@@ -1,0 +1,19 @@
+/* "Load now" - the news-refresh button and its status line (epinoia/newsrefresh.js). The button is the kit's .ep-btn; the
+   status under or beside it is a sentence, so it is set in the readable face, not the pixel one. */
+.nr{display:inline-flex;align-items:center;gap:8px 10px;flex-wrap:wrap;min-width:0;max-width:100%}
+.nr-btn{white-space:nowrap}
+.nr-status{font-family:var(--f-ui);font-size:12px;line-height:1.4;letter-spacing:.01em;color:var(--ink-2);min-width:0;overflow-wrap:anywhere}
+.nr-status:empty{display:none}
+.nr-status.ok{color:var(--good)}
+.nr-status.err{color:var(--bad)}
+.nr-status.wait{color:var(--amber)}
+.nr-status.busy{color:var(--ink-2)}
+.nr-spin{display:inline-block;width:10px;height:10px;border:2px solid var(--rule-2);border-top-color:var(--lume);border-radius:50%;
+  vertical-align:-1px;animation:nr-turn .8s linear infinite}
+@keyframes nr-turn{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.nr-spin{animation:none;border-top-color:var(--rule-2);border-right-color:var(--lume)}}
+/* the bar above a feed on the News page: the button for the publishers this reader may load, and what it says */
+.nr-bar{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin:0 0 calc(var(--u,8px)*2);padding:8px 0;border-bottom:1px dashed var(--rule)}
+.nr-bar .nr-note{font-family:var(--f-ui);font-size:12px;color:var(--ink-3);flex:1 1 200px;min-width:0}
+@media (max-width:820px){ .nr-btn{min-height:40px} .nr{width:100%} }
+.nr-btn:disabled{opacity:.6;cursor:progress}

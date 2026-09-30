@@ -382,6 +382,17 @@ function mountSources(o) {
   host.textContent = '';
   const box = el('div');
   host.appendChild(box);
+  const NR = () => globalThis.EpinoiaNewsRefresh || null;
+
+  /* "LOAD ALL" (platform console only): every publisher on, read now by the news-refresh function; one control that lives
+     through every redraw, so what it said stays under it while the list is drawn again with the new counts */
+  let allCtl = null;
+  function loadAll() {
+    if (allCtl || !NR() || lg()) return allCtl;
+    allCtl = NR().control({ label: 'Load all now', title: 'Read every publisher’s feed now instead of waiting for the half-hourly read',
+      run: () => NR().call({ sb, all: true }), onDone: () => draw() });
+    return allCtl;
+  }
 
   async function draw() {
     const league = lg();
@@ -440,6 +451,12 @@ function mountSources(o) {
     box.appendChild(row(link, kind, nm, add));
     box.appendChild(said);
 
+    /* the button that does not wait for the half hour (needs the news-refresh function; it says so when it is not there) */
+    if (NR() && !league) {
+      const ctl = loadAll();
+      if (ctl && (data || []).length) box.appendChild(row(ctl.box));
+    }
+
     /* ---- the list ---- */
     (data || []).forEach(s => {
       const line = el('div');
@@ -450,10 +467,11 @@ function mountSources(o) {
       const name = el('b', null, s.name);
       const isCreator = s.kind === 'creator';
       const what = (isCreator ? 'CREATOR' : 'PUBLISHER') + (s.platform ? ' · ' + (PLATFORM_NAMES[s.platform] || s.platform) : '');
-      const state = s.resolve_from
-        ? (s.last_error ? 'no feed found yet: ' + s.last_error : 'waiting for its first read, when the feed behind the link is found')
-        : !s.enabled ? 'off' : s.last_error ? 'failing: ' + s.last_error : s.last_ok_at ? 'read ' + when(s.last_ok_at) : 'not read yet';
-      const meta = el('span', 'empty', what + ' · ' + state + ' · ' + (s.item_count || 0) + ' posts · ' + (s.resolve_from || s.feed_url));
+      const stateOf = x => x.resolve_from
+        ? (x.last_error ? 'no feed found yet: ' + x.last_error : 'waiting for its first read, when the feed behind the link is found')
+        : !x.enabled ? 'off' : x.last_error ? 'failing: ' + x.last_error : x.last_ok_at ? 'read ' + when(x.last_ok_at) : 'not read yet';
+      const metaText = x => what + ' · ' + stateOf(x) + ' · ' + (x.item_count || 0) + ' posts · ' + (x.resolve_from || x.feed_url);
+      const meta = el('span', 'empty', metaText(s));
       meta.style.cssText = 'flex:1 1 300px;margin:0;overflow-wrap:anywhere' + (s.last_error && s.enabled ? ';color:var(--flare)' : '');
       const page = el('a', 'ep-btn mini', 'page'); page.href = (o.base || '../') + 'news/?s=' + encodeURIComponent(s.slug);
       const flip = btn(isCreator ? 'a publisher' : 'a creator');
@@ -464,6 +482,20 @@ function mountSources(o) {
         say(s.name + ' is ' + (isCreator ? 'a publisher' : 'a creator') + ' now.', 'ok');
         draw();
       });
+      /* LOAD NOW: this source's feed read at once. What it says stays on the row; the counts above it are brought up to date.
+         A link still waiting for its feed to be found (resolve_from) has no feed to read yet. */
+      const load = NR() ? NR().control({
+        label: 'Load now', title: s.resolve_from ? 'Its feed is found at the next half-hourly read' : s.enabled ? 'Read ' + s.name + '’s feed now instead of waiting for the half-hourly read' : 'Switch it on first',
+        run: () => NR().call({ sb, source: s.slug }),
+        onEnd: out => {
+          s.last_fetched_at = new Date().toISOString();
+          if (out.ok) { s.last_ok_at = s.last_fetched_at; s.last_error = null; s.item_count = out.total; }
+          else if (out.raw && out.raw.last_error) s.last_error = out.raw.last_error;
+          meta.textContent = metaText(s);
+          meta.style.color = s.last_error && s.enabled ? 'var(--flare)' : '';
+        }
+      }) : null;
+      if (load && (!s.enabled || s.resolve_from)) load.button.disabled = true;
       const onoff = btn(s.enabled ? 'switch off' : 'switch on');
       onoff.addEventListener('click', async () => {
         const { error: e } = await sb.rpc('update_news_source', { p_id: s.id, p_name: s.name, p_site_url: s.site_url, p_feed_url: s.feed_url,
@@ -483,7 +515,9 @@ function mountSources(o) {
         draw();
       });
       if (s.kind === undefined) flip.hidden = true;                 // before 0198: every source is a publisher
-      line.append(logo, name, meta, page, flip, onoff, edit, del);
+      line.append(logo, name, meta, page, flip);
+      if (load) line.appendChild(load.box);
+      line.append(onoff, edit, del);
       box.appendChild(line);
     });
 

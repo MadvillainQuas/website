@@ -359,6 +359,46 @@ async function rpcMine(fn, args) {
 }
 
 
+/* "LOAD NOW" (newsrefresh.js, the news-refresh function): shown ONLY to a signed-in administrator who may use it: a platform
+   administrator for any publisher, a league's administrators for their league's own. Asked of the database (the same two
+   functions the console asks), never guessed; a reader who is signed out, or who may not, is asked nothing and sees
+   nothing. The function checks all of it again; this only decides whether to draw a button. */
+const NR = window.EpinoiaNewsRefresh || null;
+let nrAccess = null;
+function nrWho() {
+  if (!NR) return null;
+  if (!nrAccess) {
+    nrAccess = NR.access({
+      rpc: rpcMine,
+      leagueIdOf: async slug => { const r = await api('leagues?slug=eq.' + encodeURIComponent(slug) + '&select=id&limit=1'); return r && r[0] ? r[0].id : null; }
+    });
+  }
+  return nrAccess;
+}
+async function nrToken() {
+  const A = window.EpinoiaAccess;
+  try { const s = A && typeof A.sessionReady === 'function' ? await A.sessionReady() : null; return s && s.token ? s.token : null; } catch (_) { return null; }
+}
+/* the reach of the call for this reader: { cfg, token } or null when signed out */
+async function nrOpts() { const t = await nrToken(); return t ? { cfg: CFG, token: t } : null; }
+/* a "Load now" control for one publisher, or null (nobody but its administrators gets one) */
+async function loadControl(src, leagueSlug, onDone) {
+  const who = nrWho();
+  if (!who || !(await nrToken())) return null;
+  if (!(await who.can(leagueSlug || null))) return null;
+  return NR.control({
+    label: 'Load articles now', title: 'Read ' + src.name + '’s feed now instead of waiting for the half-hourly read',
+    run: async () => { const o = await nrOpts(); return o ? NR.call(Object.assign(o, { source: src.slug })) : NR.normalise(401, { code: 'auth' }); },
+    onDone
+  });
+}
+/* the bar over a feed: what the button is for, in a line an administrator reads once */
+function loadBar(ctl, note) {
+  const bar = el('div', 'nr-bar');
+  bar.append(ctl.box, el('span', 'nr-note', note));
+  return bar;
+}
+
 /* A FEED OF CARDS, a page at a time. fetchPage(before, n) -> rows, newest first; toItem(row) -> a card's item;
    each "more" asks for what is older than the last card. A switch that starts the feed again (reset) makes any
    answer still on its way for the old one arrive to nothing. Returns { reset, box }.
@@ -537,7 +577,8 @@ async function everything() {
   const notice = el('div', 'hm-feed-note nw-note');
   host.append(tools);
   if (ctl) host.append(ctl.panel);
-  host.append(notice, pubs, feed.box);
+  const loadHost = el('div', 'hide');
+  host.append(notice, pubs, loadHost, feed.box);
 
   const buttons = KINDS.map(t => {
     const b = el('button', 'pc-tab', t.label);
@@ -560,6 +601,7 @@ async function everything() {
     /* the switches are in the address, so a reload or a shared link opens on them */
     try { history.replaceState(null, '', url()); } catch (_) { /* a sandboxed page */ }
     notice.textContent = FR && order === 'you' && !FR.enabled() ? 'Personalisation is off, so this is the newest first. Switch it on under Personalise.' : '';
+    loadHost.classList.toggle('hide', cur.k !== 'press' || !loadHost.firstChild);
     feed.reset(cur.mine
       ? (before, n) => rpcMine('news_feed_mine', { p_before: before, p_limit: n })
       : (before, n) => rpc('news_feed', { p_league: null, p_before: before, p_limit: n, p_kinds: cur.kinds }), quiet);
@@ -567,9 +609,40 @@ async function everything() {
   function choose(t) { cur = t; load(); }
   load();
 
+  /* THE PUBLISHERS FILTER's button, for the administrators who may use it: a platform administrator loads every publisher, a
+     league's administrator the publishers of their league. Drawn only under the Publishers switch. */
+  async function publishersBar(list) {
+    try {
+      const who = nrWho();
+      if (!who || !(await nrToken())) return;
+      const platform = await who.platform();
+      let mine = list;
+      if (!platform) {
+        const may = await Promise.all(list.map(x => who.can(x.league_slug || null)));
+        mine = list.filter((x, i) => may[i]);
+      }
+      if (!mine.length) return;
+      const ctl = NR.control({
+        label: platform ? 'Load all publishers now' : 'Load my publishers now',
+        title: 'Read the feeds now instead of waiting for the half-hourly read',
+        run: async () => {
+          const o = await nrOpts();
+          if (!o) return NR.normalise(401, { code: 'auth' });
+          return platform ? NR.call(Object.assign(o, { all: true })) : NR.callMany(o, mine.map(x => x.slug));
+        },
+        onDone: () => load(true)
+      });
+      loadHost.appendChild(loadBar(ctl, 'Only administrators see this: it reads ' + (platform ? 'every publisher’s feed' : 'the feeds of your publishers') + ' now, instead of waiting for the half-hourly read.'));
+      loadHost.classList.toggle('hide', cur.k !== 'press');
+    } catch (_) { /* the page stands without it */ }
+  }
+
+  /* the publishers, each to its page here */
+
   /* the publishers, and the creators' channels (0198), each to its page here */
   try {
     const list = await rpc('news_sources_public', { p_league: null }) || [];
+    publishersBar(list);
     await partnersReady;
     const row = x => ({ name: x.name, logo: x.logo_url, colour: x.colour, href: '?s=' + encodeURIComponent(x.slug),
                         note: x.last_at ? K.ago(x.last_at) : '', partner: PARTNERS.has('source:' + x.slug) });
@@ -657,7 +730,12 @@ async function publisher(slug) {
       return rpc('news_source_public', { p_slug: slug, p_before: before, p_limit: n }).then(j => (j && j.items) || []);
     }
   });
-  host.appendChild(feed.box);
+  /* an administrator who may load this publisher's articles now sees the button, and the list is drawn again with what came */
+  const barHost = el('div');
+  host.append(barHost, feed.box);
+  loadControl(src, src.league && src.league.slug, () => feed.reset()).then(ctl => {
+    if (ctl) barHost.appendChild(loadBar(ctl, 'Only administrators see this: it reads ' + src.name + '’s feed now, instead of waiting for the half-hourly read.'));
+  }, () => { /* the page stands without it */ });
   feed.reset();
 }
 
