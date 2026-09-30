@@ -26,7 +26,7 @@ const ok = (name, cond, extra = '') => { cond ? pass++ : fail++; console.log(`  
 const sandbox = { console, module: undefined, setTimeout, clearTimeout, Intl, TextEncoder, document: { createElement: () => ({}) }, navigator: {}, matchMedia: () => ({ matches: false }) };
 sandbox.self = sandbox; sandbox.globalThis = sandbox; sandbox.window = sandbox;
 const ctx = vm.createContext(sandbox);
-for (const f of ['epinoia/reportcard.js', 'epinoia/socialcard.js', 'epinoia/season.js', 'epinoia/statinfo.js', 'epinoia/fulltable.js', 'epinoia/admin/statcat.js', 'epinoia/admin/socialgfx-ui.js']) {
+for (const f of ['epinoia/reportcard.js', 'epinoia/socialcard.js', 'epinoia/bpm.js', 'epinoia/season.js', 'epinoia/statinfo.js', 'epinoia/fulltable.js', 'epinoia/admin/statcat.js', 'epinoia/admin/socialgfx-ui.js']) {
   vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 }
 const SC = sandbox.EpinoiaSocialCard, GX = sandbox.EpinoiaSocialGfx, X = sandbox.EpinoiaStatCat, TAB = sandbox.EpinoiaTable, RC = sandbox.EpinoiaReportCard;
@@ -90,6 +90,12 @@ console.log('\nthe numbers, from the site\'s engine');
   ok('a club\'s row for a game or a season, with the four factors', all.teams.length === 3 && all.teams.every(t => t.name) && X.value(X.byId('team').get('c:ff_efg'), all.teams[0]) != null);
   const avail = X.available(X.catalogue('player'), all.players);
   ok('what has no numbers here is not offered (a column that is a dash all down)', avail.length > 40 && avail.length <= X.catalogue('player').length);
+  /* BPM, OBPM, DBPM and VORP come from bpm.js (season.js attachBPM); the console page must load it, or the four read a dash and the picker drops them */
+  const page = fs.readFileSync(path.join(ROOT, 'epinoia/admin/index.html'), 'utf8');
+  ok('the console loads bpm.js, before season.js', /bpm\.js\?v=\d+"[^>]*>\s*<\/script>\s*<script src="\.\.\/season\.js/.test(page));
+  const got = ['bpm', 'obpm', 'dbpm', 'vorp'].map(k => { const c = X.byId('player').get('c:' + k); return { k, c: !!c, n: c ? all.players.filter(r => X.value(c, r) != null).length : 0 }; });
+  ok('BPM, OBPM, DBPM and VORP are in the catalogue and have numbers with bpm.js loaded', got.every(g => g.c && g.n > 0), JSON.stringify(got));
+  ok('...and are offered in the picker', ['bpm', 'obpm', 'dbpm', 'vorp'].every(k => avail.some(c => c.id === 'c:' + k)));
 }
 
 console.log('\nranking');
