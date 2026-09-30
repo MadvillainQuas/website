@@ -596,3 +596,20 @@ right.
 - The player page waits for the access answer before its first league read; its career
   table loads access for every league the player appears in. A game or player with no
   league follows the platform's analytics default through `load({})`.
+
+## 9. The membership lock (`epinoia/memlock.js`, `.mem-lock` in `kit/access.css`)
+
+The one general rule for "a control or section that membership pays for". What is gated is
+listed in ONE place, `EpinoiaAccess.CATALOGUE.locks` (today `events` and `csv`, both riding on
+`analyticsOk()`); `EpinoiaAccess.featureLocked(key, league)` answers it. Master switch and
+failure semantics are unchanged: memberships off, or no answer, means nothing is locked.
+
+- `EpinoiaMemLock.locked(key, league)`, `.apply(el, key, {league, leagueSlug})`, `.lock(el, {what, passive})`,
+  `.set(el, bool)`, `.guard(key, league, fn)`, `.placeholder({what, rows})`.
+- A locked control stays visible, gets `.mem-lock` (stop-sign cursor, `not-allowed` fallback),
+  `aria-disabled` and an explanatory `aria-label`; click, Enter and Space do nothing but open the
+  popup **ACCESS IS MEMBERSHIP-ONLY** / *Become a member* (hover, focus, tap; Esc closes).
+- `passive: true` keeps the control's own action (a locked events preset still opens its teaser).
+- Locked events sections (profile, team) draw `placeholder()` (blurred rows plus the notice) above the teaser.
+- Preview without switching memberships on: `localStorage.epinoia_access_sim = 'locked'` (existing flag).
+- Tests: `node supabase/tests/memlock.test.mjs`.

@@ -1826,7 +1826,7 @@ function render(opts) {
   function rowEl(r, idx, cols, ranks) {
     const tr = el('tr');
     /* the club's own colour, for the row's hover tint and its left edge (kit/table.css) */
-    { const cc = r.colour || r.teamColour; if (cc && /^#?[0-9a-z(),.% -]+$/i.test(cc)) tr.style.setProperty('--club', cc); }
+    { const cc = r.colour || r.teamColour; if (cc && tr.style.setProperty && /^#?[0-9a-z(),.% -]+$/i.test(cc)) tr.style.setProperty('--club', cc); }
     cols.forEach((c, i) => {
       const td = el('td', i < 2 ? 'stick c' + i : '');
       if (c.k === 'name') {
