@@ -82,6 +82,21 @@ function finish(acc, label) {
     doreb: r1(pct(d.or, d.or + o.dr)),
     dftr:  r1(pct(d.fta, d.fga)),
 
+    /* the rest of what a five's boxes can say (the stint box has no 3PA, FTM, assists, steals or blocks, so there
+       is no 3P% and no AST% here, and none is invented): pace is possessions per 48 minutes */
+    pace:  r1(acc.dur > 0 ? op / (acc.dur / 60000) * 48 : null),
+    ts:    r1(pct(o.pts, 2 * (o.fga + 0.44 * o.fta))),
+    dts:   r1(pct(d.pts, 2 * (d.fga + 0.44 * d.fta))),
+    fgp:   r1(pct(o.fgm, o.fga)),
+    dfgp:  r1(pct(d.fgm, d.fga)),
+    drb:   r1(pct(o.dr, o.dr + d.or)),
+    ddrb:  r1(pct(d.dr, d.dr + o.or)),
+    tpm:   r1(op ? o.f3m / op * 100 : null),
+    dtpm:  r1(dp ? d.f3m / dp * 100 : null),
+    tovr:  r1(op ? o.tov / op * 100 : null),
+    dtovr: r1(dp ? d.tov / dp * 100 : null),
+    ptsf:  r1(op ? o.pts / op * 100 : null),
+
     _off: o, _def: d
   };
 }
@@ -236,5 +251,33 @@ function pairs(stints, playerId, minMinutes) {
     .sort((a, b) => (b.swing ?? -Infinity) - (a.swing ?? -Infinity));
 }
 
-return { filter, all, wowy, onOff, pairs, combo, matrix, finish, blank, add, poss };
+/* ------------------------------------------------------- units of a size ----
+   Every group of `size` players who shared the floor, summed over the stints they were in (a five holds ten pairs,
+   ten trios and five fours, so a pair's minutes are every minute the two were on together, whoever the other three
+   were). size 5 is the fives themselves. Rates come from the summed boxes as everywhere else in this file. */
+function sized(stints, size, minMinutes) {
+  const k = Math.max(1, Math.min(5, size | 0 || 5));
+  const by = new Map();
+  const pick = (ids, from, acc, out) => {
+    if (acc.length === k) { out.push(acc.slice()); return; }
+    for (let i = from; i < ids.length; i++) { acc.push(ids[i]); pick(ids, i + 1, acc, out); acc.pop(); }
+  };
+  (stints || []).forEach(st => {
+    const ids = (st.player_ids || []).slice().sort();
+    if (ids.length < k) return;
+    const groups = [];
+    if (k >= ids.length) groups.push(ids); else pick(ids, 0, [], groups);
+    groups.forEach(g => {
+      const key = g.join(',');
+      let v = by.get(key);
+      if (!v) { v = { ids: g, acc: blank() }; by.set(key, v); }
+      add(v.acc, st);
+    });
+  });
+  const floor = minMinutes || 0;
+  return [...by.values()].map(v => Object.assign(finish(v.acc), { ids: v.ids }))
+    .filter(l => l.mins >= floor).sort((a, b) => b.mins - a.mins);
+}
+
+return { filter, all, sized, wowy, onOff, pairs, combo, matrix, finish, blank, add, poss };
 }));
