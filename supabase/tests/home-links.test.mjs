@@ -179,9 +179,11 @@ function rail(url, o = {}) {
   if (o.after) o.after(ctx);
   const nav = body.children.find(n => n.cls.has('ep-nav')) || null;
   const tabbar = nav && byClass(nav, 'ep-tabbar')[0];
-  const tabs = tabbar ? tabbar.children.map(a => ({
+  /* the bar's places; the search key (always the second, nav.js searchTab) is looked at on its own */
+  const tabs = tabbar ? tabbar.children.filter(a => !a.cls.has('tab-search')).map(a => ({
     href: a.href, tx: (byClass(a, 'tx')[0] || {}).textContent, on: a.cls.has('on')
   })) : [];
+  const searchAt = tabbar ? tabbar.children.findIndex(a => a.cls.has('tab-search')) : -1;
   const foot = nav && byClass(nav, 'ep-nav-foot')[0];
   const ptitles = nav ? byClass(nav, 'ptitle') : [];
   /* the country panel's heading, wherever it sits inside that panel — it is in
@@ -195,7 +197,7 @@ function rail(url, o = {}) {
         .map(a => ({ href: a.href, tx: (byClass(a, 'tx')[0] || {}).textContent, on: a.cls.has('on') }))
     : [];
   const cname = nav ? byClass(nav, 'lname').find(a => a.parent && a.parent.parent && a.parent.parent.cls.has('rootpanel')) : null;
-  return { ctx, nav, tabs, foot, heading, homeTitle, homeRows, cname, hasTabbar: !!(nav && nav.cls.has('has-tabbar')) };
+  return { ctx, nav, tabs, searchAt, foot, heading, homeTitle, homeRows, cname, hasTabbar: !!(nav && nav.cls.has('has-tabbar')) };
 }
 
 const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
@@ -207,6 +209,7 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
   eq('HOME: ...pointing at home, games, scouting, HOME\'s leagues and the profile',
      r.tabs.map(t => t.href), ['../home/', '../games/', '../scouting/', '../home/#leagues', '../me/']);
   eq('HOME: only the home tab is lit', r.tabs.filter(t => t.on).map(t => t.tx), ['home']);
+  eq('HOME: the search is always on the bar, right after home', r.searchAt, 1);
   ok('HOME: the bar is drawn rather than removed (has-tabbar)', r.hasTabbar);
   ok('HOME: the country panel heading reads HOME', r.heading && r.heading.textContent === 'HOME', r.heading && r.heading.textContent);
   ok('HOME: ...links to HOME', r.heading && r.heading.href === '../home/', r.heading && r.heading.href);
@@ -279,6 +282,7 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
   eq('a league page keeps its own tabs, the first now called "league"', r.tabs.map(t => t.tx),
      ['league', 'fixtures', 'Table / Team\xa0Stats', 'teams', 'statistics', 'news']);
   eq('...the league tab opens the league front page', r.tabs[0].href, '../?l=bcb');
+  eq('...and the search right after it', r.searchAt, 1);
   eq('...statistics lit', r.tabs.filter(t => t.on).map(t => t.tx), ['statistics']);
   const first = homeBtn(r);
   ok('a league page: the foot\'s HOME button links home', first && first.href === '../home/');

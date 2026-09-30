@@ -1526,6 +1526,7 @@
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
         'home': 'トップ',
+        'search': '検索',
         'fixtures': '日程',
         'statistics': 'スタッツ',
         'WOWY / Lineups': 'WOWY',

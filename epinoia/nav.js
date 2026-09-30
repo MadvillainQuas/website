@@ -1581,21 +1581,40 @@
     { key: 'nearby',  ic: '⌖', tx: 'find',    href: 'go/nearby/', on: () => /\/epinoia\/go\/nearby\//.test(here) },
     { key: 'profile', ic: '☆', tx: 'profile', href: 'me/',        on: () => false }
   ];
+  /* THE SEARCH, ALWAYS ON THE BAR (Louie, 2026-09-30): right after the first key (home, the league, GO's home) on
+     every page, so a phone never has to open the menu to search. The same search as the rail's row (openSearch: the
+     sheet over the page, the keyboard up); only its icon on a narrow phone, where the bar's labels need the room. */
+  function searchTab() {
+    const a = el('a', 'tab tab-search');
+    a.href = '#search';
+    a.dataset.tab = 'search';
+    a.setAttribute('role', 'button');
+    a.setAttribute('aria-label', 'Search teams, players and leagues');
+    a.append(el('span', 'ic', '⌕'), el('span', 'tx', 'search'));
+    ['pointerenter', 'touchstart', 'focus'].forEach(t => a.addEventListener(t, loadSearch, { once: true, passive: true }));
+    a.addEventListener('click', e => { e.preventDefault(); openSearch(); });
+    return a;
+  }
   function paintPlatformTabs() {
-    (onGo ? GO_TABS : PLATFORM_TABS).forEach(t => {
+    (onGo ? GO_TABS : PLATFORM_TABS).forEach((t, i) => {
       const a = el('a', 'tab');
       a.href = root + t.href;
       a.dataset.tab = t.key;
       a.append(el('span', 'ic', t.ic), el('span', 'tx', t.tx));
       if (t.on()) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
       tabbar.appendChild(a);
+      if (i === 0) tabbar.appendChild(searchTab());
     });
     nav.classList.add('has-tabbar');
   }
   function paintTabbar() {
     tabbar.textContent = '';
     tabbar.classList.remove('fit');
-    if (!lg) { paintPlatformTabs(); return; }
+    /* with the search key the bars take their labels' own widths (.fit), so none is cut short; a league's bar - seven
+       keys and the menu - is the crowded one, and slims its search and menu keys to their icons on a narrow phone */
+    nav.classList.toggle('tabs-crowded', !!lg);
+    if (!lg) { tabbar.classList.add('fit'); paintPlatformTabs(); return; }
+    tabbar.classList.add('fit');
     TABS.forEach(t => {
       const spec = t.href !== undefined ? t : PAGES.find(p => p.key === t.key);
       if (!spec) return;
@@ -1617,6 +1636,7 @@
         });
       }
       tabbar.appendChild(a);
+      if (t.key === 'home') tabbar.appendChild(searchTab());
     });
     nav.classList.add('has-tabbar');
   }

@@ -1528,6 +1528,7 @@
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
         'home': 'Inicio',
+        'search': 'buscar',
         'fixtures': 'Calendario',
         'statistics': 'Estad.',
         'WOWY / Lineups': 'WOWY',
