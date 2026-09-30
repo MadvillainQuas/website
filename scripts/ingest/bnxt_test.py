@@ -276,5 +276,29 @@ finally:
     B.requests.get = real_get
     B.BnxtAdapter._token = old
 
+print("\n-- a kind of shot named only when it goes in")
+_box = BOX
+_pl = next((p for t in (_box if isinstance(_box, list) else []) for p in ((t or {}).get("players") or [])), None)
+
+
+def _film(sub_made, sub_miss):
+    base = {"period": 1, "minute": 1, "second": 0, "is_home": True, "player": {"id": ((_pl or {}).get("player") or {}).get("id")}}
+    return [dict(base, order=1, event_code=1000, event_subcode=sub_made), dict(base, order=2, event_code=1001, event_subcode=sub_miss)]
+
+
+if _pl:
+    raw = B.raw_from_bnxt(BOX, _film(2, None), finished=False)
+    twos = [x for x in (raw or {}).get("pbp", []) if x.get("actionType") == "2pt"]
+    ok("a made lay-up and an unnamed miss: neither keeps a kind (rim vs mid-range unknown, not a perfect rim)",
+       len(twos) == 2 and all(not x.get("subType") for x in twos), [(x.get("success"), x.get("subType")) for x in twos])
+    raw = B.raw_from_bnxt(BOX, _film(2, 2), finished=False)
+    twos = [x for x in (raw or {}).get("pbp", []) if x.get("actionType") == "2pt"]
+    ok("...both named: both keep it", [x.get("subType") for x in twos] == ["layup", "layup"], [x.get("subType") for x in twos])
+    raw = B.raw_from_bnxt(BOX, _film(9, 9), finished=False)
+    ok("...a subcode nobody has decoded names no kind, never an invented jump shot",
+       all(not x.get("subType") for x in (raw or {}).get("pbp", []) if x.get("actionType") == "2pt"))
+else:
+    ok("the captured box names a player to build plays for", False)
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

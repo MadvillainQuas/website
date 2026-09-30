@@ -320,7 +320,9 @@ def classify(r: dict) -> Tuple[Optional[str], str, Optional[int], List[str], Opt
     if m:
         made = 1 if m.group(3) == "○" else 0
         at = "3pt" if m.group(1) == "3" else "2pt"
-        quals = ["pointsinthepaint"] if at == "2pt" and made and m.group(2) == "インサイド" else []
+        # a shot IN the paint is in the paint made or missed: tagged on made ones only, every inside miss would
+        # read as mid-range and the league's shooting at the rim would come out perfect
+        quals = ["pointsinthepaint"] if at == "2pt" and m.group(2) == "インサイド" else []
         return at, SHOT_KIND.get(a2, ""), made, quals, None
     m = FREE_THROW.match(a1)
     if m:

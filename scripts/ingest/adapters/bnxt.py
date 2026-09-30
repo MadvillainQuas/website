@@ -55,7 +55,7 @@ FETCH_LEAD_S = 30 * 60
 CUP = re.compile(r"super\s*cup|\bcup\b", re.I)
 REGULAR = re.compile(r"regular", re.I)
 FINISHED = {"finished", "complete", "closed", "played", "confirmed"}
-SHOT2 = {1: "jumpshot", 2: "layup", 5: "tipin"}
+SHOT2 = {1: "jumpshot", 2: "layup", 5: "tipin"}      # a two's subcode; any other names no kind of shot
 
 
 def _start_year(season) -> int:
@@ -179,7 +179,7 @@ def raw_from_bnxt(box: list, film: list, finished: bool, meta: Optional[dict] = 
             else:
                 if made:
                     score[tno - 1] += 2
-                ev(e, tno, pid, "2pt", SHOT2.get(sub, "jumpshot"), made)
+                ev(e, tno, pid, "2pt", SHOT2.get(sub, ""), made)
         elif code in (1002, 1003):
             ev(e, tno, pid, "rebound", "defensive" if code == 1002 else "offensive", quals=[] if pid else ["team"])
         elif code == 1004 and pid:
@@ -205,6 +205,17 @@ def raw_from_bnxt(box: list, film: list, finished: bool, meta: Optional[dict] = 
             continue                             # team/period markers: periods are written below
         else:
             unknown.append(f"{code}/{sub}")      # never guessed: reported, and left out
+
+    # A KIND OF SHOT NAMED ONLY WHEN IT GOES IN IS A BIAS, NOT A FACT. The scraper's decoding (July 2026) names
+    # a made two by subcode (jump shot, lay-up, tip-in) and says only "else 2pt" of a missed one. Were the misses
+    # unnamed, every missed lay-up would read as mid-range and the lay-ups as never missed: the league's shooting
+    # at the rim perfect, its mid-range cold. So when a game's missed twos name no kind at all while its made ones
+    # do, no two keeps a kind, and the game says so.
+    twos = [x for x in chrono if x["actionType"] == "2pt"]
+    if any(x["subType"] for x in twos if x["success"]) and not any(x["subType"] for x in twos if not x["success"]):
+        for x in twos:
+            x["subType"] = ""
+        print(f"     BNXT: the missed twos name no kind of shot, so no two keeps one (rim vs mid-range unknown for this game)")
 
     # free throws: 1of2, 2of2 ... by shooter and clock
     trips: Dict[tuple, List[dict]] = {}

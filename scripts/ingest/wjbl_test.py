@@ -155,6 +155,9 @@ for r, want in cases:
     at, sub, succ, quals, unk = W.classify(r)
     ok(f"{r['action1']} / {r['action2'] or '-'} / {r['action3'] or '-'} -> {want}",
        (at, sub, succ, quals) == want and unk is None, (at, sub, succ, quals, unk))
+got = W.classify(row("2Pシュート インサイドペイント ×"))
+ok("a missed shot inside the paint is in the paint too (a miss read as mid-range made the rim perfect)",
+   got[0] == "2pt" and got[2] == 0 and got[3] == ["pointsinthepaint"], got)
 got = W.classify(row("アンスポーツマンライク・ファウル"))
 ok("a foul word it has not seen is still a foul, of the kind its words say, and is reported",
    got[:2] == ("foul", "unsportsmanlike") and got[4] == "foul:アンスポーツマンライク・ファウル", got)
