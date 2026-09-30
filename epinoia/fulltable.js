@@ -56,6 +56,8 @@ const EV_GROUPS = EV_SITS.map(([s]) => 'ev_' + s).concat('ev_assist');
    heat   include in the percentile heat map (identity columns must not be)
    t      a longer name for the header's hover title and the column drawer, where a
           short label alone is ambiguous (every events preset has its own PTS/G)   */
+/* the presets GP and MPG ride in: every one a player table has */
+const CONTEXT_G = ['basic','totals','shooting','playmaking','defense','rebounding','onoff','vs','advanced','misc'].concat(EV_GROUPS);
 const P = [
   /* THE FIRST COLUMN COUNTS THE TABLE AS IT IS SORTED, the way the team table's
      already does: sort by rebounds and the leading rebounder is 1. It used to hold
@@ -67,10 +69,12 @@ const P = [
   { k:'rank', l:'#', g:['id'], fmt:(r, i) => i + 1, sort:r=>r.__i },
   { k:'name',   l:'PLAYER', g:['id'], fmt:r=>r.name, text:true },
   { k:'teamName', l:'TEAM', g:['id'], fmt:r=>r.teamName||'', text:true },
-  { k:'gp',  l:'GP',  g:['basic','totals','shooting','playmaking','defense','rebounding','onoff','vs','advanced','misc'].concat(EV_GROUPS), fmt:r=>f0(r.gp), ord:{advanced:0} },
+  { k:'gp',  l:'GP',  g:CONTEXT_G, fmt:r=>f0(r.gp), ord:{advanced:0} },
+  /* MINUTES PER GAME BESIDE GAMES PLAYED, IN EVERY PRESET: the two together say how much of a season a
+     row is, which every other number on it depends on. Free in all of them (access.js contextColumns). */
+  { k:'mpg',  l:'MPG',  g:CONTEXT_G, fmt:r=>f1(r.mpg),  heat:1, ord:{advanced:0.5} },
 
   /* per game — the default view */
-  { k:'mpg',  l:'MPG',  g:['basic'], fmt:r=>f1(r.mpg),  heat:1 },
   { k:'ppg',  l:'PPG',  g:['basic'], fmt:r=>f1(r.ppg),  heat:1, lead:1 },
   { k:'rpg',  l:'RPG',  g:['basic','rebounding'], fmt:r=>f1(r.rpg),  heat:1 },
   { k:'orpg', l:'ORPG', g:['rebounding'], fmt:r=>f1(r.orpg), heat:1 },
@@ -817,8 +821,8 @@ function render(opts) {
   const absent = k => premium(k) || (!!opts.noRapm && RAPM_KEYS.has(k)) ||
     BIO_COLS.some(c => c.k === k && !bioShown[c.show]);          // a bio column this table has nothing for: never the sort either
   /* A PRESET IS LOCKED when the catalogue names it, or when every column it would show is
-     premium. The context columns (GP) do not count: GP rides in almost every preset, the
-     events and zone ones included, and one free GP column would otherwise keep a wholly
+     premium. The context columns (GP, MPG) do not count: they ride in every preset, the
+     events and zone ones included, and one free column of them would otherwise keep a wholly
      premium view "open" on a table of games played. "everything" is never locked -- it only
      loses columns. */
   const presetLocked = key => {
@@ -826,7 +830,7 @@ function render(opts) {
     const A = ACC(), C = A && A.CATALOGUE;
     /* the catalogue's list is the memberships' own lock; a page's own rule is read column by column */
     if (!OWN_LOCK && C && Array.isArray(C.presets) && C.presets.indexOf(key) !== -1) return true;
-    const context = C && Array.isArray(C.contextColumns) ? C.contextColumns : ['gp'];
+    const context = C && Array.isArray(C.contextColumns) ? C.contextColumns : ['gp', 'mpg'];
     const cols = CAT.filter(c => c.g.includes(key) && !c.g.includes('id') && context.indexOf(c.k) === -1);
     return cols.length > 0 && cols.every(c => premium(c.k));
   };

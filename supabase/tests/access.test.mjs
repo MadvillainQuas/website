@@ -368,8 +368,8 @@ console.log('\nCATALOGUE.presets is exactly the wholly-premium presets');
   eq('computed from fulltable.js', [...A.CATALOGUE.presets].sort(), computed);
   const ids = new Set(Table.PRESETS.player.concat(Table.PRESETS.team).map(p => p[0]));
   ok('every listed id is a real preset', A.CATALOGUE.presets.every(id => ids.has(id)));
-  ok('gp is the only free column riding in them', A.CATALOGUE.presets.every(id =>
-    Table.PLAYER_COLS.concat(Table.TEAM_COLS).filter(c => c.g.includes(id) && !A.isPremiumColumn(c.k)).every(c => c.k === 'gp')));
+  ok('the context columns (gp, mpg) are the only free ones riding in them', A.CATALOGUE.presets.every(id =>
+    Table.PLAYER_COLS.concat(Table.TEAM_COLS).filter(c => c.g.includes(id) && !A.isPremiumColumn(c.k)).every(c => context.has(c.k))));
   ok('the everything preset is not locked', !A.CATALOGUE.presets.includes('*'));
   ok('the catalogue cannot be edited by a page', Object.isFrozen(A.CATALOGUE) && Object.isFrozen(A.CATALOGUE.presets));
 }

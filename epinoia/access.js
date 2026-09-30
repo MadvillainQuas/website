@@ -146,9 +146,9 @@ const FEATURES = Object.freeze({
 
    presets is the full-table preset ids whose columns are wholly premium, read
    off fulltable.js: the six events presets and the five zone presets. "Wholly"
-   ignores the id columns and the context columns — gp rides along with every
-   preset so a reader can see how many games a row covers, and it is free
-   everywhere else. The test (access.test.mjs) recomputes this list from
+   ignores the id columns and the context columns — gp and mpg ride along with
+   every preset so a reader can see how much of a season a row covers, and they
+   are free everywhere. The test (access.test.mjs) recomputes this list from
    fulltable.js, so it cannot drift silently. */
 const CATALOGUE = Object.freeze({
   gameTabs: Object.freeze(['flow', 'connections', 'events', 'shotclock']),
@@ -156,7 +156,7 @@ const CATALOGUE = Object.freeze({
   columns: Object.freeze(['pred_efg', 'efg_sh', 'efg_vs', 'morey']),
   presets: Object.freeze(['ev_second', 'ev_transition', 'ev_offTo', 'ev_ato', 'ev_half', 'ev_assist',
                           'z_rim', 'z_mid', 'z_three', 'z_cuts', 'z_rate']),
-  contextColumns: Object.freeze(['gp']),
+  contextColumns: Object.freeze(['gp', 'mpg']),
   barKeys: key => /^ev_/.test(String(key == null ? '' : key)),
   wowyPreviewMax: 1
 });

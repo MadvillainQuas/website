@@ -318,8 +318,9 @@ console.log('\nthe table presets');
       const printed = [];
       [...rows, ...nullRows[kind]].forEach((r, i) => cols.forEach(c => { const s = String(c.fmt(r, i)); if (BAD.test(s)) printed.push(c.k + '=' + s); }));
       ok(kind + ' ' + g + ': no NaN, undefined or Infinity, covered or not', printed.length === 0, printed.slice(0, 6).join());
-      const dashed = nullRows[kind].every(r => cols.filter(c => c.k !== 'gp' && c.k !== 'ev_gp').every(c => c.fmt(r, 0) === '—'));
-      ok(kind + ' ' + g + ': an uncovered row is all dashes', dashed);
+      // gp, mpg (the season's context, beside GP in every preset) and ev_gp are counts a row has whatever its splits
+      const dashed = nullRows[kind].every(r => cols.filter(c => !['gp', 'mpg', 'ev_gp'].includes(c.k)).every(c => c.fmt(r, 0) === '—'));
+      ok(kind + ' ' + g + ': an uncovered row is all dashes (but for GP, MPG and EV GP)', dashed);
     }
   }
   const T = Table.TEAM_COLS, Pl = Table.PLAYER_COLS;
