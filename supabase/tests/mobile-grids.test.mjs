@@ -146,6 +146,15 @@ ok('and the desktop grids fill the row: three podium cards and seven more share 
   const st = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'sectitle.css'), 'utf8');
   ok('section titles are centred, in the title face, and the numbers are hidden', /body \.sec-h h2\{[^}]*font-family:var\(--f-score\)/.test(st) && /body \.sec-h h2\{[^}]*text-align:center/.test(st) && /body \.sec-h \.idx\{ display:none \}/.test(st));
   ok('...what shared the line (the switch, "all fixtures", a note) is centred under the title, not pushed to the edge', /\.showall[^{]*\{ margin-left:0; margin-right:0/.test(st) && /body \.sec-h \.note\{[^}]*flex:0 0 100%/.test(st));
+  /* THE LENS FRINGE IS THE CARDS', never the page's own text (2026-09-30): no text-shadow or filter drawing it in the
+     sheets every page's text is set by; the cards keep theirs */
+  const sheet = f => readFileSync(path.join(ROOT, 'epinoia', 'kit', f), 'utf8');
+  const fringed = css => (css.match(/[^{}]*\{[^}]*var\(--ca-[xrb]/g) || []).map(r => r.trim().split('{')[0].trim());
+  ok('no text on the page carries the chromatic fringe: section titles, the kit, the teletext layer, the page standard',
+     /body \.sec-h h2\{[^}]*text-shadow:none/.test(st) && !fringed(st).length && !fringed(sheet('teletext.css')).length && !fringed(sheet('page.css')).length &&
+     fringed(sheet('epinoia-kit.css')).every(sel => /^\s*(\d+%|0%|100%)/.test(sel)), [fringed(st), fringed(sheet('epinoia-kit.css'))]);
+  ok('...the cards keep theirs: a club\'s card, the fixture card, the preview card', fringed(sheet('card.css')).length >= 2 && fringed(sheet('fxc.css')).length >= 2 &&
+     fringed(sheet('table.css')).some(sel => /\.pv-code/.test(sel)));
   const links = f => readFileSync(path.join(ROOT, 'epinoia', ...f), 'utf8').includes('kit/sectitle.css?v=');
   ok('HOME, a league\'s front page and a player\'s page link it', links(['home', 'index.html']) && links(['index.html']) && links(['p', 'index.html']));
 }
