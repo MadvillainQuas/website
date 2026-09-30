@@ -5,23 +5,23 @@
 .idband .photo img{object-position:50% 18%}
 .idband .photo .ini{font-size:clamp(46px,7vw,84px)}
 .idband .photo .num{font-size:clamp(18px,2.4vw,26px);padding:4px 11px 1px;border-top-right-radius:8px}
-.idmeta{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0}
+.idmeta{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0;max-width:720px}
 .idmeta h1{font-size:clamp(28px,3.6vw,44px);line-height:1;letter-spacing:-.02em;overflow-wrap:anywhere}
 
 /* the club line, then the chips on their own line under it */
 .idmeta .sub{margin:0;gap:8px 12px;font-size:11px;letter-spacing:.09em;align-items:center}
 .idmeta .sub .sub-break{flex-basis:100%;height:0;margin:0}
 .idmeta .sub .pos-chip{font-size:9px;padding:4px 10px}
-.idmeta .sub .wr-rel{margin-left:auto}
+.idmeta .sub .wr-rel{margin-left:0}
 
 /* born / age / height / weight as one spec panel: four cells with hairlines, the units switch on the end */
-.idmeta .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));align-items:stretch;gap:0;margin:0;padding:0;
+.idmeta .vitals{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;width:fit-content;margin:0;padding:0;
   border:1px solid var(--rule-2);border-radius:10px;overflow:hidden;background:color-mix(in oklch,var(--panel) 70%,transparent);max-width:100%}
-.idmeta .vit{padding:10px clamp(12px,1.5vw,20px) 9px;gap:6px;border-left:1px solid var(--rule-2)}
+.idmeta .vit{flex:0 0 auto;min-width:88px;padding:10px clamp(14px,1.6vw,22px) 9px;gap:6px;border-left:1px solid var(--rule-2)}
 .idmeta .vit:first-child{padding-left:clamp(12px,1.5vw,20px);border-left:0}
 .idmeta .vit .vk{font-size:8.5px}
 .idmeta .vit .vv{font-size:clamp(20px,2.2vw,28px)}
-.idmeta .vitals .vit-units{grid-column:1 / -1;justify-self:center;margin:2px 0 10px}
+.idmeta .vitals .vit-units{flex:0 0 auto;align-self:center;margin:0 clamp(12px,1.6vw,20px)}
 
 /* the actions: follow, and (for those who can) edit links, side by side */
 .idactions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;min-height:0}
@@ -38,6 +38,9 @@
   .idmeta .sub{grid-column:2;grid-row:2;align-self:start;font-size:10px}
   .idmeta .sub .wr-rel{margin-left:0}
   .idmeta .vitals{grid-column:1 / -1;grid-row:3;width:100%}
+  .idmeta .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));width:100%}
+  .idmeta .vit{min-width:0}
+  .idmeta .vitals .vit-units{grid-column:1 / -1;justify-self:center;margin:2px 0 10px}
   .idmeta .vit{padding:9px 8px 8px;align-items:center;text-align:center}
   .idmeta .vit .vv{font-size:19px}
   .idactions{grid-column:1 / -1;grid-row:4}
