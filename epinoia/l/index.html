@@ -140,7 +140,7 @@
   /* the covering and conference buttons (scopebar.js) line up with the table's own bar under
      them; the Strength of Schedule pane carries its own gutter */
   .pane > .scopehost{padding-top:calc(var(--u)*1.5)}
-  #pane-leaders > .scopehost, #pane-teams > .scopehost{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
+  #pane-leaders > .scopehost, #pane-teams > .scopehost, #pane-charts > .scopehost{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
   .pane > .scopehost:empty{display:none}
   /* a points deduction, printed beside the total it has already been taken off */
   .dock{color:var(--flare);font-size:9px;margin-left:4px;vertical-align:super}
@@ -164,6 +164,7 @@
   body.league-themed #seasonName{color:var(--league-b-ink)}
   :root[data-theme="light"] body.league-themed #leagueName{text-shadow:none}
 </style>
+<link rel="stylesheet" href="../kit/chartlab.css?v=544">
 <link rel="stylesheet" href="../kit/teletext.css?v=544">
 <link rel="stylesheet" href="../kit/legibility.css?v=544">
 </head>
@@ -194,6 +195,7 @@
       <button class="ep-tab" data-p="fixtures" role="tab">Fixtures</button>
       <button class="ep-tab" data-p="leaders" role="tab">Leaders</button>
       <button class="ep-tab" data-p="teams" role="tab">Team Stats</button>
+      <button class="ep-tab" data-p="charts" role="tab">Charts</button>
       <button class="ep-tab" data-p="sos" role="tab">Strength of Schedule</button>
       <button class="ep-tab" data-p="cup" role="tab">Cup</button>
     </div>
@@ -211,6 +213,8 @@
   <div class="pane" id="pane-fixtures"></div>
   <div class="pane" id="pane-leaders"></div>
   <div class="pane" id="pane-teams"></div>
+  <!-- the chart lab (chartlab.js): scatter graphs of the season's statistics, drawn the first time it is opened -->
+  <div class="pane" id="pane-charts"></div>
   <!-- index_9's Strength of Schedule tab (sos.js), drawn the first time it is opened -->
   <div class="pane" id="pane-sos"></div>
   <div class="pane" id="pane-cup">
@@ -242,6 +246,9 @@
 <script src="../standings.js?v=544" defer></script>
 <script src="../scopebar.js?v=544" defer></script>
 <script src="../sos.js?v=544" defer></script>
+<script src="../statinfo.js?v=544" defer></script>
+<script src="../statpop.js?v=544" defer></script>
+<script src="../chartlab.js?v=544" defer></script>
 <script src="league.js?v=544" defer></script>
 <script src="../nav.js?v=544" defer></script>
 <script src="../xscroll.js?v=544" defer></script>
