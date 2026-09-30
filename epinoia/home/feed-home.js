@@ -97,7 +97,7 @@
     const box = el('div', 'hm-feed');
     /* PERSONALISE: the button beside the switch, its panel above the cards; a change draws the feed again */
     let ctl = null;
-    try { ctl = FR && typeof FR.control === 'function' ? FR.control({ base, onChange: () => draw(mode).catch(() => {}) }) : null; } catch (_) { ctl = null; }
+    try { ctl = FR && typeof FR.control === 'function' ? FR.control({ base, onChange: () => draw(mode, true).catch(() => {}) }) : null; } catch (_) { ctl = null; }
     if (ctl && seg) seg.after(ctl.button);
     /* a press on a card: the story is read (the feed's "opened") */
     const onOpen = it => { try { if (FR) FR.opened(it.row); } catch (_) { /* never in the reader's way */ } };
@@ -111,7 +111,8 @@
     }
 
     let gen = 0;
-    async function draw(want) {
+    /* quiet: drawn again because Personalise changed something - not a new sight of the cards, so none is counted */
+    async function draw(want, quiet) {
       const mine = ++gen;
       mode = want;
       buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === want)));
@@ -159,7 +160,7 @@
       box.appendChild(K.grid(shown.map(r => Object.assign(K.fromFeed(r, base, media, crest), { why: ranked ? r.why : '' })),
         { lead: false, now: Date.now(), partners, onOpen }));
       fadeIn(box);
-      if (ranked && FR) FR.shown(shown.map(r => r.id));
+      if (ranked && FR && !quiet) FR.shown(shown.map(r => r.id));
     }
 
     host.textContent = '';

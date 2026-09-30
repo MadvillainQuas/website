@@ -1367,6 +1367,28 @@ jobs:
         # league's creators section and the rail's rows are wired
         run: node supabase/tests/newscard.test.mjs
 
+      - name: Official partners (0197) and how much a game matters (0198) - on a real Postgres
+        # PGlite: only a platform administrator names an official partner or stops (a league's administrator,
+        # an outlet's owner, a fan and a signed-out caller are refused), a source or an outlet, audit-logged;
+        # official_partners() lists only what is on and shown, an outlet with its league (its slug is unique
+        # only there); game_significance() gives a final game its points and reasons - the table (1st v 2nd,
+        # top three, an upset, not before three games or across groups), the players (a triple-double, 30 / 40 /
+        # 50 points, a 20-20, a season high; a withheld minor is never named), the stage (cup / playoff final,
+        # semi, quarter, other ties), overtime and close margins - capped, most valuable reason first, a league
+        # the caller may not see answering nothing, at most 60 games a call
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/official-partners.test.mjs
+          node supabase/tests/game-significance.test.mjs
+
+      - name: The ranked feed - scoring, what is learned on the device, nothing about the reader sent
+        # epinoia/feedrank.js: the recency curve and the decay, the caps, the official-partner boost (unread
+        # only, a week, then fading), the tiers (publisher = creator > league > match report, lifted by a
+        # game's significance), variety (two in a row, two partners in six), the country from a time zone or a
+        # language, dwell with an injected clock, storage that is blocked, personalisation off = newest first
+        # and nothing recorded, and every request the ranking makes carrying nothing about the reader
+        run: node supabase/tests/feedrank.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the

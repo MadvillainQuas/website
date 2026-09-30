@@ -120,6 +120,11 @@ const KINDS = [
   { k: 'mine',     label: 'Following',    mine: true }
 ];
 
+/* the order of the platform's news: the reader's own (For you) or the newest first; remembered in this browser */
+const ORDER_KEY = 'epinoia.news.order';
+const ORDERS = [{ k: 'you', label: 'For you' }, { k: 'new', label: 'Newest' }];
+function storedOrder() { try { const v = localStorage.getItem(ORDER_KEY); return v === 'you' || v === 'new' ? v : null; } catch (_) { return null; } }
+
 (async function boot() {
   if (ITEM) return story(ITEM);
   if (SRC) return publisher(SRC);
@@ -368,7 +373,7 @@ function cardFeed(opts) {
   more.appendChild(btn);
   box.append(grid, more);
   let gen = 0, before = null, seen = new Set(), g = null, fetchPage = o.fetchPage;
-  let queue = [], dry = false, pooled = false;
+  let queue = [], dry = false, pooled = false, quiet = false;
   const cardOpts = () => ({ now: Date.now(), showLeague: o.showLeague, hideTag: o.hideTag, partners: PARTNERS, onOpen });
   const itemOf = r => { const it = (o.toItem || cardOf)(r); if (pooled && r.why) it.why = r.why; return it; };
   async function page(first) {
@@ -429,12 +434,14 @@ function cardFeed(opts) {
     }
     if (!pooled && rows.length) before = rows[rows.length - 1].published_at;
     more.classList.toggle('hide', pooled ? (queue.length === 0 && dry) : rows.length < n);
-    if (pooled && FR) { try { FR.shown(items.map(x => x.id)); } catch (_) { /* nothing */ } }
+    if (pooled && FR && !quiet) { try { FR.shown(items.map(x => x.id)); } catch (_) { /* nothing */ } }
     if (o.onRows) o.onRows(fresh, first);
   }
   btn.addEventListener('click', () => page(false));
-  function reset(fp) {
+  /* quiet: started again because Personalise changed something, not a new sight of the cards: none is counted */
+  function reset(fp, q) {
     gen++;
+    quiet = !!q;
     if (fp) fetchPage = fp;
     before = null; seen = new Set(); g = null; queue = []; dry = false;
     pooled = !!(o.rank && o.pooled && o.pooled());
@@ -456,11 +463,6 @@ function platformHead() {
   foot.textContent = 'Home';
   foot.href = '../home/';
 }
-
-/* the order of the platform's news: the reader's own (For you) or the newest first; remembered in this browser */
-const ORDER_KEY = 'epinoia.news.order';
-const ORDERS = [{ k: 'you', label: 'For you' }, { k: 'new', label: 'Newest' }];
-function storedOrder() { try { const v = localStorage.getItem(ORDER_KEY); return v === 'you' || v === 'new' ? v : null; } catch (_) { return null; } }
 
 async function everything() {
   document.title = 'News · Epinoia';
@@ -508,7 +510,7 @@ async function everything() {
   orderTabs.setAttribute('role', 'group');
   orderTabs.setAttribute('aria-label', 'order');
   let ctl = null, paintOrder = () => {};
-  try { ctl = FR && typeof FR.control === 'function' ? FR.control({ base: '../', onChange: () => load() }) : null; } catch (_) { ctl = null; }
+  try { ctl = FR && typeof FR.control === 'function' ? FR.control({ base: '../', onChange: () => load(true) }) : null; } catch (_) { ctl = null; }
   if (FR) {
     const obuttons = ORDERS.map(x => {
       const b = el('button', 'pc-tab', x.label);
@@ -548,7 +550,7 @@ async function everything() {
     return location.pathname + (q.length ? '?' + q.join('&') : '');
   }
   /* (re)draw the feed for the kind and the order chosen */
-  function load() {
+  function load(quiet) {
     buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === cur.k)));
     paintOrder();
     /* the switches are in the address, so a reload or a shared link opens on them */
@@ -556,7 +558,7 @@ async function everything() {
     notice.textContent = FR && order === 'you' && !FR.enabled() ? 'Personalisation is off, so this is the newest first. Switch it on under Personalise.' : '';
     feed.reset(cur.mine
       ? (before, n) => rpcMine('news_feed_mine', { p_before: before, p_limit: n })
-      : (before, n) => rpc('news_feed', { p_league: null, p_before: before, p_limit: n, p_kinds: cur.kinds }));
+      : (before, n) => rpc('news_feed', { p_league: null, p_before: before, p_limit: n, p_kinds: cur.kinds }), quiet);
   }
   function choose(t) { cur = t; load(); }
   load();
