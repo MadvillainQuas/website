@@ -137,7 +137,7 @@ async function chooseSeason(team, lg) {
   if (!want) return oops('No team specified.');
   try {
     const key = isUuid ? 'id' : 'slug';
-    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug,country)&limit=1`);
+    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug,country,logo_path,colour_a)&limit=1`);
     if (!ts.length) return oops('Team not found.');
     const team = ts[0];
     const colour = team.colour || '#93f2bf';
@@ -480,9 +480,11 @@ function weeklyTab(team) {
     tabs: '#ttabs', panel: '#weeklysec', window: 'the last seven days', days: 7,
     load: () => W.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }),
     /* the saved page's identity (reportcard.js): the club, its league, its colour and its crest */
-    card: () => ({ kind: 'team', name: team.name, sub: lg.name || '', colour: team.colour,
+    card: () => ({ kind: 'team', name: team.name, sub: lg.name || '', colour: team.colour, colour2: team.colour_2,
                    crest: window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path, 256) : null,
-                   monogram: team.short_name && team.short_name.length <= 4 ? team.short_name : null })
+                   monogram: team.short_name && team.short_name.length <= 4 ? team.short_name : null,
+                   leagueCrest: lg.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(lg.logo_path, 256) : null,
+                   leagueColour: lg.colour_a || null })
   });
 }
 

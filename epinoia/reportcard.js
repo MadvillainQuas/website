@@ -123,16 +123,17 @@ function fit(ctx, text, width, max, min, fam, weight) {
 
 /* THE NAME: one line as large as fits; a name too long for one line even at `min` goes onto two (a club called
    Associação Desportiva Recreativa e Cultural Icasa is not rare), and only a name too long for two is cut short */
-function nameBlock(ctx, text, width, max, min) {
-  const one = fit(ctx, text, width, max, min, F.score);
+function nameBlock(ctx, text, width, max, min, fam) {
+  const face = fam || F.score;
+  const one = fit(ctx, text, width, max, min, face);
   if (ctx.measureText(text).width <= width) return { size: one, lines: [text] };
   for (let s = Math.round(max * 0.7); s >= Math.round(min * 0.6); s -= 2) {
-    font(ctx, s, F.score);
+    font(ctx, s, face);
     const lines = wrap(ctx, text, width);
     if (lines.length <= 2 && lines.every(l => ctx.measureText(l).width <= width && !/…$/.test(l))) return { size: s, lines };
   }
   const s = Math.round(min * 0.6);
-  font(ctx, s, F.score);
+  font(ctx, s, face);
   const lines = wrap(ctx, text, width);
   return { size: s, lines: lines.length <= 2 ? lines : [lines[0], ellipsis(ctx, lines.slice(1).join(' '), width)] };
 }
@@ -219,8 +220,19 @@ function draw(ctx, model, opts) {
   glow.addColorStop(1, rgba(m.colour || '#93f2bf', 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
+  if (rgb(m.leagueColour)) {                            // the league's colour, rising from the opposite corner
+    const lg = ctx.createRadialGradient(W * 0.05, H * 1.02, 0, W * 0.05, H * 1.02, W * 0.75);
+    lg.addColorStop(0, rgba(m.leagueColour, th.fringe ? 0.14 : 0.07));
+    lg.addColorStop(1, rgba(m.leagueColour, 0));
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, 0, W, H);
+  }
   ctx.fillStyle = accent;
   ctx.fillRect(0, 0, Math.round(10 * k), H);           // the club's edge, the length of the page
+  if (rgb(m.colour2)) {                                 // and its second colour at the foot of it
+    ctx.fillStyle = accentOn(m.colour2, th);
+    ctx.fillRect(0, H * 0.7, Math.round(10 * k), H * 0.3);
+  }
 
   let y = M;
 
@@ -241,16 +253,24 @@ function draw(ctx, model, opts) {
   const nameTop = y;
   nb.lines.forEach((l, i) => display(ctx, th, l, M, y + nb.size * (0.8 + i * 0.92), th.ink, 1.6 * k));
   y += nb.size * (0.86 + (nb.lines.length - 1) * 0.92) + 16 * k;
+  /* the league's logo before the sub-line that names it */
+  let lx = M;
+  if (m.leagueCrest && m.leagueCrest.width) {
+    const lh = 34 * k, iw = m.leagueCrest.naturalWidth || m.leagueCrest.width, ih = m.leagueCrest.naturalHeight || m.leagueCrest.height;
+    const s2 = Math.min(lh / ih, 110 * k / iw);
+    ctx.drawImage(m.leagueCrest, M, y + 22 * k - 26 * k + (lh - ih * s2) / 2 - 2 * k, iw * s2, ih * s2);
+    lx = M + iw * s2 + 12 * k;
+  }
   font(ctx, 25 * k, F.ui, 500);
   ctx.fillStyle = th.ink2;
-  ctx.fillText(ellipsis(ctx, m.sub || '', nameW), M, y + 22 * k);
+  ctx.fillText(ellipsis(ctx, m.sub || '', nameW - (lx - M)), lx, y + 22 * k);
   y += 22 * k + 12 * k;
 
   /* the crest in a disc of the club's colour, or the club's initials on it */
   const cx = W - M - disc / 2, cy = nameTop + disc / 2 - 6 * k;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, disc / 2, 0, Math.PI * 2);
-  ctx.fillStyle = m.crest ? th.panel : (rgb(m.colour) ? m.colour : th.lume);
+  ctx.fillStyle = m.crest ? crestGround(m.crest, th) : (rgb(m.colour) ? m.colour : th.lume);
   ctx.fill();
   ctx.lineWidth = 3 * k; ctx.strokeStyle = accent; ctx.stroke();
   if (m.crest && m.crest.width) {
@@ -468,12 +488,38 @@ async function readableCrest(url) {
   if (!img) return null;
   try {
     const c = root.document.createElement('canvas');
-    c.width = c.height = 4;
+    c.width = c.height = 24;
     const x = c.getContext('2d');
-    x.drawImage(img, 0, 0, 4, 4);
-    x.getImageData(0, 0, 1, 1);
+    x.drawImage(img, 0, 0, 24, 24);
+    img.__tone = crestTone(x.getImageData(0, 0, 24, 24).data);
     return img;
   } catch (_) { return null; }
+}
+
+/* WHAT A CREST IS DRAWN ON. Most crests are made for white paper and vanish on the screen's green-black (ASVEL's
+   black shield); a few are white marks made for dark shirts and vanish on white. So a crest is read once: the
+   mean lightness of its opaque pixels. A dark crest ('dark') goes on a light disc, a light one ('light') on the
+   dark disc, and a crest that fills its square (its own ground, 'solid') on either. */
+function crestTone(px, side) {
+  const S = side || 24, EDGE = 4 * S - 4;
+  let n = 0, sum = 0, edge = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] < 128) continue;
+    sum += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+    n++;
+    const p = i / 4, x = p % S, y = (p - x) / S;
+    if (x === 0 || y === 0 || x === S - 1 || y === S - 1) edge++;
+  }
+  if (!n) return 'dark';
+  if (edge / EDGE > 0.85 && n > S * S * 0.9) return 'solid';
+  return sum / n > 0.62 ? 'light' : 'dark';
+}
+
+/* the disc a crest sits on, for its tone: a light one under a dark crest, the page's panel under a light one */
+function crestGround(img, th) {
+  const tone = img && img.__tone;
+  if (tone === 'light') return th.fringe ? th.panel2 : '#1c2b24';
+  return th.fringe ? '#f2f6f4' : '#ffffff';
 }
 
 async function canvas(model, opts) {
@@ -481,7 +527,10 @@ async function canvas(model, opts) {
   const fmt = FORMATS[o.format] || FORMATS.a4;
   await fontsReady();
   const m = Object.assign({}, model);
-  if (m.crestUrl && !m.crest) m.crest = await readableCrest(m.crestUrl);
+  const [crest, leagueCrest] = await Promise.all([m.crestUrl && !m.crest ? readableCrest(m.crestUrl) : null,
+    m.leagueCrestUrl && !m.leagueCrest ? readableCrest(m.leagueCrestUrl) : null]);
+  if (crest) m.crest = crest;
+  if (leagueCrest) m.leagueCrest = leagueCrest;
   const c = root.document.createElement('canvas');
   c.width = Math.round(fmt.w * o.scale);
   c.height = Math.round(fmt.h * o.scale);
@@ -588,6 +637,11 @@ async function save(model, kind, opts) {
   return blob;
 }
 
+/* the drawing kit, for the other pages drawn in this house style (socialcard.js): one set of faces, colours and
+   measuring rules, so a post and a report sheet from the same league look like they came from the same place */
+const util = { F, font, fit, nameBlock, wrap, ellipsis, display, roundRect, rgb, rgba, lum, accentOn, contrast, initials, ordinal,
+               fontsReady, loadImage, readableCrest, crestTone, crestGround, blobOf };
+
 return { draw, canvas, png, pdf, save, pdfFromJpeg, filename, wrap, fit, ordinal, initials, accentOn, contrast,
-         FORMATS, THEMES };
+         FORMATS, THEMES, util };
 }));

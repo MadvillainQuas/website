@@ -538,6 +538,13 @@ jobs:
         # name on two lines), the club's colour reads at 4.5:1, and the PDF's xref, image and UTF-16 title are exact
         run: node supabase/tests/reportcard.test.mjs
 
+      - name: Graphics for socials - every final, player of the game, results, table and week ahead, in Instagram's shapes
+        # epinoia/socialcard.js + admin/socialgfx-ui.js: the posts are the week's own (quarters, leaders by game score, the
+        # league's time zone, even pages), everything on the page in square / portrait / story and clear of what a story
+        # covers, the league's logo and the clubs' crests and colours drawn, crests on a disc of the right tone, the ZIP
+        # read back by Python, and the console reading eleven numbers of a player line rather than the blob
+        run: node supabase/tests/socialcard.test.mjs
+
       - name: The lineups tab - fives, trios and pairs, filtered and sorted in place
         # epinoia/game/lineups.js over boxscore.js lineupCombos on a real game: the fives are the old tab's, a pair is
         # every stretch the two shared (ten to a five, so ten times the fives' minutes and points), the filters and

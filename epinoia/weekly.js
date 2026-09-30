@@ -420,8 +420,8 @@ function cardModel(rep, who) {
   const range = rangeText(w.days || 7, w.now);
   return {
     kind, name: w.name || (kind === 'player' ? 'This player' : 'This team'), sub: w.sub || '',
-    range, games: n, record: r.record || null, colour: w.colour || null, crestUrl: w.crest || null,
-    monogram: w.monogram || null,
+    range, games: n, record: r.record || null, colour: w.colour || null, colour2: w.colour2 || null, crestUrl: w.crest || null,
+    monogram: w.monogram || null, leagueCrestUrl: w.leagueCrest || null, leagueColour: w.leagueColour || null,
     tiles: n ? tiles : [],
     rows: led ? led.rows.map(x => ({ short: x.short, label: x.label, value: x.value, text: valueText(x.key, x.value),
                                      pct: x.pct, style: x.style })) : [],

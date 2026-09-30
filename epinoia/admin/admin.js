@@ -436,6 +436,7 @@ async function loadComps() {
   }
   if (!comp || !comps.some(c => c.id === comp.id)) comp = comps[0] || null;
   renderCompPick();
+  if (window.EpinoiaSocialGfx) window.EpinoiaSocialGfx.refresh();      // the new season's posts
   await loadFixtures();
   await loadMembers();
   await loadMediaQueue();
@@ -976,6 +977,10 @@ function mountGovernance() {
   mountedFor = league.id;
   window.EpinoiaSocialsUI.mount({ host: '#socialsPanel', sb, league, say,
                                   cfg: window.EPINOIA_CONFIG });
+  /* GRAPHICS FOR SOCIALS: every post the week has earned, drawn from the season on screen (a getter: the
+     season and its competitions change under it). Guarded like the newest panels. */
+  if (window.EpinoiaSocialGfx) window.EpinoiaSocialGfx.mount({ host: '#socialGfxPanel', sb, league: () => league,
+                                                              comps: () => comps, say });
   /* the weekly fans' vote (0150): read-only tallies. Guarded like the newest
      panels, so a script that did not load cannot take the block down with it. */
   if (window.EpinoiaFanVoteUI) window.EpinoiaFanVoteUI.mount({ host: '#fanvotePanel', sb, league, say });

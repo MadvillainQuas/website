@@ -80,8 +80,10 @@ function weeklyTab(pl, name, team) {
     load: () => W.playerWeek(api, pl.id, { name: name, league: ACCESS_LEAGUE.slug, days: 7 }),
     /* the saved page's identity (reportcard.js): the player, his club and league, the club's colour and crest */
     card: () => ({ kind: 'player', name: name, sub: [team && team.name, lg.name].filter(Boolean).join(' · '),
-                   colour: team && team.colour,
-                   crest: team && team.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path, 256) : null })
+                   colour: team && team.colour, colour2: team && team.colour_2,
+                   crest: team && team.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path, 256) : null,
+                   leagueCrest: lg.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(lg.logo_path, 256) : null,
+                   leagueColour: lg.colour_a || null })
   });
 }
 
@@ -943,7 +945,7 @@ async function loadCareerAccess(pl, lgRow) {
     }
 
     const re = await api(`roster_entries?player_id=eq.${pl.id}` +
-      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name))&order=created_at.desc&limit=1`);
+      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a))&order=created_at.desc&limit=1`);
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
