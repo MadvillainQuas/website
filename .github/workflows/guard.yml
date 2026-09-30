@@ -470,6 +470,12 @@ jobs:
         # action. Pure function, no network.
         run: python scripts/ingest/feed_abandoned_test.py
 
+      - name: A live game whose feed stops is read again, then taken off LIVE and flagged (0189)
+        # NBL Division One's Liverpool v Tees Valley stopped at Q1 7:15 and Kosovo's Vellaznimi v Sigal
+        # Prishtina at Q4 0:35 (26/27 Sep 2026), both LIVE on the front page for days: half an hour
+        # without a new play, a fresh read, ten minutes more, then the flag; the first new play clears it
+        run: python scripts/ingest/stall_test.py
+
       - name: A game that names no arena is played at its home club's (0174)
         # on a real Postgres (PGlite): the trigger on games, the clubs and venues triggers, the
         # fill of what exists, the doubtful-pin rule and that a named venue is never overwritten

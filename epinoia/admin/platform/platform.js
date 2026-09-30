@@ -461,8 +461,33 @@ async function loadOverview() {
   if (o.platform_admins < 2) items.push(
     'There is only one platform administrator. If that account is lost there is ' +
     'no way back in through the site — grant a second one.');
-  if (!items.length) return;
   items.forEach(t => att.appendChild(el('div', 'note', t)));
+  await stalledGames(att);
+}
+
+/* LIVE GAMES WHOSE FEED HAS STOPPED (0189 games.stalled_since). The ingest read each one again after half an
+   hour with no new play, got nothing new, and took it off the front page's LIVE list; each now needs a person:
+   the result entered, the game voided, or the feed re-pointed. The ingest's own reason is on the game's
+   external row. A database without 0189 answers with an error, and there is simply no list. */
+async function stalledGames(att) {
+  const { data, error } = await sb.from('games')
+    .select('id,tipoff_at,stalled_since,home_score,away_score,home:home_team_id(name),away:away_team_id(name)')
+    .eq('status', 'live').not('stalled_since', 'is', null).order('stalled_since').limit(50);
+  if (error || !data || !data.length) return;
+  const why = new Map();
+  const { data: ext } = await sb.from('external_games').select('game_id,error').in('game_id', data.map(g => g.id));
+  (ext || []).forEach(x => { if (x.error) why.set(x.game_id, x.error); });
+  att.appendChild(el('div', 'note', data.length + ' live game' + (data.length === 1 ? '' : 's') +
+    ' whose feed has stopped — off the front page until a play arrives or somebody fixes it:'));
+  data.forEach(g => {
+    const row = el('div', 'note');
+    const a = el('a', null, (g.home && g.home.name || 'Home') + ' ' + (g.home_score ?? 0) + '–' + (g.away_score ?? 0) + ' ' +
+                            (g.away && g.away.name || 'Away'));
+    a.href = '../../game/?g=' + encodeURIComponent(g.id);
+    row.append(a, el('span', 'sub', ' · quiet since ' + new Date(g.stalled_since).toLocaleString() +
+                                     (why.has(g.id) ? ' · ' + why.get(g.id) : '')));
+    att.appendChild(row);
+  });
 }
 
 /* -------------------------------------------------------------- accounts --- */

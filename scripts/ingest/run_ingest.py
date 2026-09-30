@@ -1746,6 +1746,76 @@ def _looks_finished(raw: dict) -> bool:
     return period >= 4 and clock in ("00:00", "0:00", "00:00:00") and s1 != s2
 
 
+# A FEED THAT STOPS IN THE MIDDLE OF A GAME (supabase/migrations/0189_stalled_games.sql). Half an hour
+# with no new play is longer than any break in a game; the lane then reads the game again from scratch
+# and writes it through whatever the stored hash says (a write that died half way leaves the database
+# behind a feed that has moved on, and every poll after it reads "nothing new"), and if another ten
+# minutes bring nothing either, the game is flagged: out of the front page's LIVE list, into the
+# platform console's list of games to fix. The first new play clears it.
+STALLED_S = 30 * 60
+STALLED_GRACE_S = 10 * 60
+STALLED_TAG = "stalled:"          # the external_games.error prefix this owns (and alone clears)
+
+
+def stall_step(unchanged_s: float, refreshed_at: float | None, now_s: float, finished: bool = False) -> str | None:
+    """What the live lane does with a live game whose feed has brought nothing new for unchanged_s
+    seconds: None (keep polling), "refresh" (read it afresh and write it through) or "flag"."""
+    if finished or unchanged_s < STALLED_S:
+        return None
+    if refreshed_at is None:
+        return "refresh"
+    return "flag" if now_s - refreshed_at >= STALLED_GRACE_S else None
+
+
+def stall_note(raw: dict, since: datetime, refreshed: datetime | None = None) -> str:
+    """The reason written to external_games.error for the console: where the feed stopped and when."""
+    tm = (raw or {}).get("tm") or {}
+    where = f"P{raw.get('period') or '?'} {raw.get('clock') or '?'}, " \
+            f"{(tm.get('1') or {}).get('score', '?')}-{(tm.get('2') or {}).get('score', '?')}"
+    return (f"{STALLED_TAG} no new play since {since:%d %b %H:%M}Z ({where})"
+            + (f"; read again at {refreshed:%H:%M}Z, nothing new" if refreshed else "") + " - check the feed")
+
+
+def flag_stalled(sb: "Supabase", src: dict, xid: str, game_id, note: str, since: datetime) -> None:
+    """Flag one game (0189). The flag keeps the FIRST time the feed stopped; a database without
+    0189 still gets the reason on external_games, which the console already reads."""
+    try:
+        sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{xid}", {"error": note[:500]})
+    except Exception:
+        pass
+    if game_id:
+        try:
+            sb.patch("games", f"id=eq.{game_id}&status=eq.live&stalled_since=is.null", {"stalled_since": since.isoformat()})
+        except Exception as exc:
+            print(f"    (stalled flag not stored - migration 0189 applied? {str(exc)[:120]})")
+
+
+def last_play_at(sb: "Supabase", game_id) -> datetime | None:
+    """When the newest play of a game was written - the catch-up's answer to "since when", having
+    not watched the feed stop."""
+    if not game_id:
+        return None
+    try:
+        rows = sb.select("game_events", f"game_id=eq.{game_id}&select=created_at&order=created_at.desc&limit=1")
+        return datetime.fromisoformat(str(rows[0]["created_at"]).replace("Z", "+00:00")) if rows else None
+    except Exception:
+        return None
+
+
+def clear_stalled(sb: "Supabase", src: dict, xid: str, game_id) -> None:
+    """The feed moved again: the game is live after all. Only this rule's own note is cleared."""
+    try:
+        from urllib.parse import quote
+        sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{xid}&error=like.{quote(STALLED_TAG)}*", {"error": None})
+    except Exception:
+        pass
+    if game_id:
+        try:
+            sb.patch("games", f"id=eq.{game_id}&stalled_since=not.is.null", {"stalled_since": None})
+        except Exception:
+            pass
+
+
 def gh_output(**kv) -> None:
     """Hand values to the workflow step (GITHUB_OUTPUT) - no-op locally."""
     p = os.environ.get("GITHUB_OUTPUT")
@@ -1829,7 +1899,7 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
     # single next tip-off after that window. The rules below are unchanged; the database simply no
     # longer sends the rest of the season to be thrown away.
     lo, hi = _zulu(now - timedelta(seconds=LIVE_STALE)), _zulu(now + timedelta(seconds=LIVE_BEFORE_TIP))
-    cols = "external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash,game_id"
+    cols = "external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash,game_id,error"
     try:
         # (the instants are quoted: ':' is one of the characters PostgREST reserves inside or=())
         near = external_rows(sb, sources, f"external_status=neq.final&or=(external_status.eq.live,"
@@ -2072,6 +2142,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     hashes: dict[str, str] = {}
     finished: set[str] = set()
     unchanged_since: dict[str, float] = {}      # when each game's payload last changed (stale-final rule)
+    stall: dict[str, dict] = {}                 # a live game gone quiet: {"refreshed": when read afresh, "flagged": bool}
     last_lm: dict[str, int] = {}                # newest Last-Modified written per game (the inline path's older-copy rule)
     end = time.time() + max(60, args.live_loop); every = max(10, args.live_every)
     fast_every = max(1, min(10, int(getattr(args, "broadcast_every", 2) or 2)))
@@ -2142,6 +2213,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
             for s, r in due:
                 hashes.setdefault(str(r["external_id"]), r.get("payload_hash") or "")
+                if str(r.get("error") or "").startswith(STALLED_TAG):
+                    stall.setdefault(str(r["external_id"]), {"refreshed": None, "flagged": True})
                 runs[s["code"]]["games_seen"] = max(runs[s["code"]]["games_seen"], len([1 for s2, _ in due if s2 is s]))
                 # THE BROADCAST, FROM THE MOMENT THE GAME COMES DUE. Discovery used to link a stream
                 # days ahead because it ran every half hour; it runs twice a week now, so the lane -
@@ -2174,6 +2247,37 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 continue
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
+            force = False       # a stalled game read afresh is written through, whatever the stored hash says
+
+            def quiet(bb, quiet_s):
+                """The stall rule (STALLED_S) for a live game with nothing new: the bundle to write through
+                (read afresh), or None to move on - flagging the game once the fresh read changed nothing."""
+                st = stall.setdefault(xid, {"refreshed": None, "flagged": False})
+                step = stall_step(quiet_s, st["refreshed"], time.time(), bb.status != "live" or _looks_finished(bb.raw))
+                if step == "refresh":
+                    st["refreshed"] = time.time()
+                    print(f"    ? {bb.home_name} v {bb.away_name}: no new play for {int(quiet_s // 60)} min - reading it again from scratch")
+                    try:
+                        fresh = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at, _fresh=True))
+                    except Exception as exc:
+                        print(f"    ! {xid}: {exc}"); fresh = None
+                    return fresh or bb
+                if step == "flag" and not st["flagged"]:
+                    st["flagged"] = True
+                    since = datetime.fromtimestamp(time.time() - quiet_s, timezone.utc)
+                    note = stall_note(bb.raw, since, datetime.fromtimestamp(st["refreshed"], timezone.utc))
+                    print(f"    ! {bb.home_name} v {bb.away_name}: {note} - off the live list, flagged for fixing")
+                    flag_stalled(sb, src, xid, r.get("game_id"), note, since)
+                return None
+
+            def moved():
+                """New content: whatever the stall rule had decided about this game no longer holds."""
+                st = stall.pop(xid, None)
+                if st and (st["flagged"] or st["refreshed"]):
+                    print(f"    ~ {xid}: the feed moved again" + (" - flag cleared" if st["flagged"] else ""))
+                    if st["flagged"]:
+                        clear_stalled(sb, src, xid, r.get("game_id"))
+
             if not use_obs:   # the kill switch (EPINOIA_OBSERVER=0), and every source off the CDN
                 t_obs = time.time()
                 try:
@@ -2202,9 +2306,15 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                         print(f"    = {b.home_name} v {b.away_name}: unchanged {int((time.time() - first_seen) // 60)} min at the end of P{b.raw.get('period')} - treating as final")
                         b.status = "final"
                     else:
-                        continue
+                        fresh = quiet(b, time.time() - first_seen)
+                        if fresh is None:
+                            continue
+                        if fresh.payload_hash != hashes.get(xid):
+                            unchanged_since[xid] = time.time(); moved()
+                        b, force = fresh, True
                 else:
                     unchanged_since[xid] = time.time()
+                    moved()
                 # a play in this payload happened between the previous upload and this one: the
                 # stamp is when the CDN's copy was uploaded (Last-Modified + 999 ms), not when we
                 # happened to ask; the error is still the configured interval plus the fetch
@@ -2218,11 +2328,17 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                     # Nothing new since the last write - the same stale-final rule as the inline
                     # path, timed from when the observer last saw the content change.
                     b = last_bundle.get(xid)
-                    if not (b and b.status == "live" and time.time() * 1000 - snap.changed_at_ms >= STALE_FINAL_S * 1000
-                            and _looks_finished(b.raw)):
-                        continue
-                    print(f"    = {b.home_name} v {b.away_name}: unchanged {int((time.time() * 1000 - snap.changed_at_ms) // 60000)} min at the end of P{b.raw.get('period')} - treating as final")
-                    b.status = "final"
+                    if b and b.status == "live" and time.time() * 1000 - snap.changed_at_ms >= STALE_FINAL_S * 1000 \
+                            and _looks_finished(b.raw):
+                        print(f"    = {b.home_name} v {b.away_name}: unchanged {int((time.time() * 1000 - snap.changed_at_ms) // 60000)} min at the end of P{b.raw.get('period')} - treating as final")
+                        b.status = "final"
+                    else:
+                        fresh = quiet(b, time.time() - unchanged_since.setdefault(xid, time.time())) if b and b.status == "live" else None
+                        if fresh is None:
+                            continue
+                        if fresh.payload_hash != hashes.get(xid):
+                            unchanged_since[xid] = time.time(); moved()
+                        b, force = fresh, True
                 else:
                     try:
                         b = adapters[src["code"]].bundle_from_raw(snap.raw, xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
@@ -2234,11 +2350,13 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                     b.feed_lm_ms, b.feed_recv_ms = snap.lm_ms, snap.recv_ms
                     last_bundle[xid] = b
                     if hashes.get(xid) == b.payload_hash:      # pass handover: the DB already has this content
-                        written[xid] = snap.version; continue
+                        written[xid] = snap.version; unchanged_since.setdefault(xid, time.time()); continue
+                    unchanged_since[xid] = time.time()
+                    moved()
                 # the version's upload stamp; the error stays the CONFIGURED interval plus the
                 # poll's own duration, so the heartbeat's `fast` test reads exactly as before
                 observed = (snap.stamp_ms, int((fast_every if is_armed else every) * 1000) + snap.fetch_ms)
-            if version_in_db(sb, src, xid, b):
+            if not force and version_in_db(sb, src, xid, b):
                 # ANOTHER LANE GOT THERE FIRST. The GitHub lane and the PC's lane both poll a live
                 # game, and each wrote every new version it saw - the same 17-19 round trips twice
                 # (bbl/2007027.json: 426 uploads in two hours from five runners). One read decides.
@@ -2773,6 +2891,16 @@ def main() -> int:
                 if b.status == "live":
                     live_set.append(g)
                 print(f"    + {b.home_name} {entry['homeScore']}-{entry['awayScore']} {b.away_name} ({b.status}, {len(b.stints)} stints)")
+                # A GAME THAT STALLED WHILE NO LANE WAS WATCHING (the catch-up's own read is its second look):
+                # still live, not a play more than the last write had, and past the live window
+                if sb and not args.dry_run and b.status == "live" and prev and prev.get("hash") == b.payload_hash:
+                    secs = seconds_until_tip(g.tipoff_at or prev.get("date"))
+                    if secs is not None and -secs >= LIVE_AFTER_TIP:
+                        gid = (stored.get(str(g.external_id)) or {}).get("game_id")
+                        since = last_play_at(sb, gid) or datetime.now(timezone.utc)
+                        note = stall_note(b.raw, since, datetime.now(timezone.utc))
+                        print(f"    ! {b.home_name} v {b.away_name}: {note} - off the live list, flagged for fixing")
+                        flag_stalled(sb, src, g.external_id, gid, note, since)
             # LIVE LOOP: keep the in-progress games moving every --live-every seconds until the budget
             # runs out or every one of them has finished (then the next scheduled pass takes over)
             deadline = time.time() + max(0, args.live_loop)

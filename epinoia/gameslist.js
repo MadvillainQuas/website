@@ -50,13 +50,17 @@ const DONE = st => st === 'final' || st === 'finalising';
 const at = g => new Date(g.tipoff_at || 0).getTime();
 const stamp = ms => encodeURIComponent(new Date(ms).toISOString());
 const DONE_Q = '&status=in.(final,finalising)';
+/* A GAME WHOSE FEED HAS STOPPED IS NOT LIVE (0189 games.stalled_since): the ingest reads a live game again
+   after half an hour with no new play, and flags it when that brings nothing either. It stays out of LIVE
+   until a play arrives. home.js drops this filter for a database that does not have the column yet. */
+const NOT_STALLED = '&stalled_since=is.null';
 
 /* THE READS, as the query text that follows `games?select=…`. `scope` is the caller's own
    filter (the league's competitions, or one of them) and goes on the end of every read. */
 function queries(view, now, scope) {
   scope = scope || '';
   const week = view === 'week';
-  const q = { live: '&status=eq.live&order=tipoff_at.asc&limit=50' + scope };
+  const q = { live: '&status=eq.live' + NOT_STALLED + '&order=tipoff_at.asc&limit=50' + scope };
   if (view !== 'upcoming') {
     /* no upper bound on the week: a finalised game dated AHEAD (a mis-dated fixture) sorts first
        and rides at the end of the page instead of vanishing -- see `odd` in pick() */
@@ -95,7 +99,7 @@ function pick(rows, view, now, totals) {
   rows = (rows || []).filter(g => g && !seen.has(g.id) && seen.add(g.id));
 
   const weekAgo = now - WEEK;
-  const live = rows.filter(g => g.status === 'live');
+  const live = rows.filter(g => g.status === 'live' && !g.stalled_since);
   const done = rows.filter(g => DONE(g.status));
   /* both ends matter: without the upper bound a finalised game dated in the future counts as
      played this week */
@@ -143,5 +147,5 @@ function note(view, n) {
   return bits.join(' · ');
 }
 
-return { queries, after, pick, note, DONE, WEEK, GRACE, CAP_WEEK, CAP_LIST, RECENT_SLOTS };
+return { queries, after, pick, note, DONE, NOT_STALLED, WEEK, GRACE, CAP_WEEK, CAP_LIST, RECENT_SLOTS };
 }));

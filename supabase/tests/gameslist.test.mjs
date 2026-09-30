@@ -209,5 +209,22 @@ console.log('\nthe page');
   ok('a finalising game is asked for as a result', /status=in\.\(final,finalising\)/.test(read('epinoia', 'gameslist.js')));
 }
 
+/* ---- a game whose feed has stopped (0189) -------------------------------------------------- */
+console.log('\na stalled game');
+{
+  const now = Date.parse('2026-09-30T12:00:00Z');
+  const q = G.queries('week', now, '');
+  ok('the live read asks only for games not flagged stalled', q.live.includes('&status=eq.live&stalled_since=is.null'), q.live);
+  const rows = [
+    { id: 'a', status: 'live', tipoff_at: '2026-09-30T11:00:00Z', stalled_since: null },
+    { id: 'b', status: 'live', tipoff_at: '2026-09-30T10:00:00Z', stalled_since: '2026-09-30T10:40:00Z' }
+  ];
+  const v = G.pick(rows, 'week', now, {});
+  ok('a stalled game handed to pick() is not shown as live', v.live === 1 && v.shown.map(g => g.id).join() === 'a', JSON.stringify(v.shown.map(g => g.id)));
+  const home = read('epinoia', 'home.js');
+  ok('home.js asks again without the filter when the database answers 400 (no 0189 yet)',
+     /\/\^400\\b\/\.test/.test(home) && /Q\.live\.replace\(GL\.NOT_STALLED, ''\)/.test(home));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -300,8 +300,12 @@ async function games() {
     if (gamesComp) scope = '&competition_id=eq.' + encodeURIComponent(gamesComp);
     const Q = GL.queries(gamesShow, now, scope);
     const none = { rows: [], total: null };
+    /* a database without 0189 answers the stalled filter with a 400: ask again without it */
+    const liveRead = apiPage('games?select=' + GAMES_SELECT + Q.live).catch(e =>
+      /^400\b/.test(String(e && e.message)) ? apiPage('games?select=' + GAMES_SELECT + Q.live.replace(GL.NOT_STALLED, ''))
+                                             : Promise.reject(e));
     const [lv, dn, nx, tot] = await Promise.all([
-      apiPage('games?select=' + GAMES_SELECT + Q.live),
+      liveRead,
       Q.done ? apiPage('games?select=' + GAMES_SELECT + Q.done) : none,
       Q.next ? apiPage('games?select=' + GAMES_SELECT + Q.next) : none,
       gamesTotal(scope)

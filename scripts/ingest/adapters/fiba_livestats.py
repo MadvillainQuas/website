@@ -405,7 +405,12 @@ class FibaLiveStatsAdapter(BaseAdapter):
         return r.json(), meta
 
     def fetch(self, external_id: str, config: dict) -> Optional[GameBundle]:
-        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=external_id))
+        url = FIBA_DATA_URL.format(game_id=external_id)
+        if config.get("_fresh"):
+            # the live lane's second look at a game gone quiet (run_ingest.stall_step): past the
+            # 30 s CloudFront copy, in case an edge is what stopped moving
+            url += f"?_={int(time.time() * 1000)}"
+        raw, meta = self._get_meta(url)
         if not raw or "tm" not in raw:
             return None
         b = self.bundle_from_raw(raw, external_id, config)
