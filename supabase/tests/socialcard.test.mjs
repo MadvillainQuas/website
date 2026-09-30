@@ -336,20 +336,65 @@ console.log('\nthe modules (the builder\'s options)');
     return c.headline.length === 60 && c.rows === 5 && c.cols.join() === 'w' && c.statKeys.join() === 'pts,reb,ast' && !c.theme && !c.crests && !c.evil && !c.accent && !c.logoPos && c.sponsor === 'a b';
   })());
 
+  /* --- the stats each view can show --- */
+  const box = (idx, name, o) => line(idx, name, String(o.n), Object.assign({ pts: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, fta: 0, ftm: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, to: 0, pf: 0, pm: 0, min: 1200000 }, o));
+  const roster = [box(0, 'Home One', { n: 1, pts: 20, p2m: 6, p2a: 10, p3m: 2, p3a: 4, fta: 4, ftm: 2, or: 2, dr: 3, ast: 5, to: 3, pf: 2 }), box(0, 'Home Two', { n: 2, pts: 12, p2m: 4, p2a: 8, p3m: 0, p3a: 3, fta: 4, ftm: 4, or: 1, dr: 5, ast: 1, stl: 2, to: 1, pf: 4 }),
+    box(0, 'Home Three', { n: 3, pts: 6, p2m: 3, p2a: 4, or: 0, dr: 2, ast: 0, blk: 1, to: 2, pf: 1 }),
+    box(1, 'Away One', { n: 11, pts: 30, p2m: 9, p2a: 12, p3m: 3, p3a: 6, fta: 6, ftm: 3, or: 1, dr: 6, ast: 3, stl: 1, to: 5, pf: 3 }), box(1, 'Away Two', { n: 12, pts: 15, p2m: 5, p2a: 9, p3m: 1, p3a: 3, fta: 2, ftm: 2, or: 3, dr: 4, ast: 7, to: 2, pf: 2 }),
+    box(1, 'Away Three', { n: 13, pts: 4, p2m: 2, p2a: 5, or: 1, dr: 1, ast: 2, to: 0, pf: 5 })];
+  const fin = SC.result({ game: { id: 'q', tipoff_at: '2026-09-29T18:45:00Z', home_score: 38, away_score: 49, venue: 'Hall' }, home: paris, away: virtus, perQ, players: roster, league: withLogo, comp: 'EuroLeague' });
+  ok('a final carries each side\'s team stats (summed from its players) and its three top scorers', fin.teamStats.home.reb.v === '13' && fin.teamStats.away.reb.v === '16' && fin.teamStats.home.fg.v === '15/29' && fin.teamStats.away.fgp.v === '57%'
+     && fin.teamStats.home.tov.n === 6 && fin.scorers.away.map(p => p.name).join() === 'Away One,Away Two,Away Three' && fin.scorers.home[0].stats.pts === 20,
+     JSON.stringify([fin.teamStats.home.reb, fin.teamStats.away.fgp]));
+  ok('...and none without both sides\' players', SC.result({ game, home: paris, away: virtus, players: roster.slice(0, 3), league }).teamStats === null);
+  const fw = mods => words(drawLog(fin, 'portrait', mods));
+  ok('team stats: none by default, then the rows chosen, both sides\' figures, the labels', !fw({}).includes('TEAM STATS') && fw({ teamStats: ['reb', 'tov', 'fgp'] }).includes('TEAM STATS') && fw({ teamStats: ['reb', 'tov', 'fgp'] }).includes('REBOUNDS')
+     && fw({ teamStats: ['reb', 'tov', 'fgp'] }).includes('TURNOVERS') && ['13', '16', '57%', '6', '7'].every(v => fw({ teamStats: ['reb', 'tov', 'fgp'] }).includes(v)) && !fw({ teamStats: ['reb'] }).includes('TURNOVERS'));
+  const lit = (stat, sideIdx) => { const l = drawLog(fin, 'portrait', { teamStats: [stat] }); return l.filter(e => e.kind === 'text' && e.t.length && (sideIdx === 0 ? e.x0 < 200 : e.x0 > 700)); };
+  ok('...at most six (more are cut to the first six) and none at all is no block', SC.cleanModules({ teamStats: Object.keys(SC.TEAM_STAT_DEFS) }).teamStats.length === 6 && SC.cleanModules({ teamStats: [] }).teamStats === undefined && SC.cleanModules({ teamStats: ['nope'] }).teamStats === undefined);
+  ok('leaders: the two or three top scorers of each side, with the stat lines chosen', fw({ leaderN: 3 }).includes('TOP SCORERS') && fw({ leaderN: 3 }).includes('Away Three') && fw({ leaderN: 2 }).includes('Away Two') && !fw({ leaderN: 2 }).includes('Away Three')
+     && fw({ leaderN: 2, leaderKeys: ['pts', 'stl'] }).some(t => /30 PTS · 1 STL/.test(t)) && fw({ leaderKeys: ['pts', 'fgp'] }).some(t => /30 PTS · 67% FG%/.test(t)) && fw({}).includes('LED BY'));
+  ok('...leaders off still means none', !fw({ leaders: false, leaderN: 3 }).includes('TOP SCORERS'));
+  const trimmed = SC.draw(recorder(), fin, { size: 'square', modules: { teamStats: ['fgp', 'p3p', 'ftp', 'efg', 'fg', 'reb'], leaderN: 3 } });
+  ok('too many team stats for a square: the least important blocks go first, then the last rows are cut, and it says so (never over the footer)', trimmed.dropped.length > 0 && trimmed.dropped.some(t => /team stats/.test(t) || /leader|top scorers|quarter/.test(t)), trimmed.dropped.join(' | '));
+  ok('...and a portrait holds four team stats and the three scorers, a story those and a headline and subline besides, dropping nothing', SC.draw(recorder(), fin, { size: 'portrait', modules: { teamStats: ['fgp', 'p3p', 'ftp', 'reb'], leaderN: 3 } }).dropped.length === 0
+     && SC.draw(recorder(), fin, { size: 'story', modules: { teamStats: ['fgp', 'p3p', 'ftp', 'reb'], leaderN: 3, headline: 'X', subline: 'Y' } }).dropped.length === 0);
+  const star = SC.performer({ game, home: paris, away: virtus, players: roster, league, pick: roster[3] });
+  const sw = keys => words(drawLog(star, 'portrait', { statKeys: keys }));
+  ok('the star can show any of the player\'s whole line: offensive and defensive boards, turnovers, fouls, twos, effective shooting, game score', star.stats.oreb === 1 && star.stats.dreb === 6 && star.stats.tov === 5 && star.stats.pf === 3 && star.stats.p2 === '9/12' && star.stats.efg === '75%' && /^-?\d+(\.\d)?$/.test(star.stats.gmsc));
+  ok('...each drawn with its label and figure', ['OREB', 'DREB', 'TOV', 'PF', '2PT', 'EFG%', 'GMSC'].every(l => sw(['pts', 'reb', 'ast', 'oreb', 'dreb', 'tov']).concat(sw(['pts', 'reb', 'ast', 'pf', 'p2', 'efg', 'gmsc'])).includes(l)) && sw(['pts', 'reb', 'ast', 'tov']).includes('5') && sw(['pts', 'reb', 'ast', 'efg']).includes('75%'));
+  const tstand = ['A', 'B', 'C'].map((n, i) => ({ rank: i + 1, team: { name: 'Club ' + n, colour: '#fd0204' }, gp: 10, w: 8 - i, l: 2 + i, diff: 50 - 40 * i, pts_for: 900 - 10 * i, pts_against: 850 + 20 * i, streak: 'W' + (3 - i), l5: (4 - i) + '-' + (1 + i), home: '5-0', away: (3 - i) + '-' + (2 + i), elo: 1612.4 - 50 * i }));
+  const tm = SC.table({ standings: tstand, league }, 'portrait')[0];
+  const th2 = mods => words(drawLog(tm, 'portrait', mods));
+  ok('table columns worked from the standings: average margin, points scored and allowed a game, win rate', th2({ cols: ['avg', 'ppg', 'papg'] }).join(' ').includes('+5.0') && th2({ cols: ['avg', 'ppg', 'papg'] }).includes('90.0') && th2({ cols: ['avg', 'ppg', 'papg'] }).includes('85.0')
+     && th2({ cols: ['avg', 'ppg', 'papg'] }).includes('OPP') && th2({ cols: ['avg'] }).includes('-3.0') && th2({ cols: ['pct'] }).includes('.800'));
+  ok('table columns read from the games: form, home and away records, and the ELO rating (rounded)', ['4-1', '3-2', '5-0', '1612', '1562', '1512'].every(v => th2({ cols: ['l5', 'home', 'away', 'elo'] }).includes(v)) && th2({ cols: ['l5', 'home', 'away', 'elo'] }).includes('ELO')
+     && th2({ cols: ['elo'] }).includes('1612') && th2({ cols: ['streak'] }).includes('W3'));
+  ok('...a club with no rating reads a dash, and six columns is the most', SC.table({ standings: [{ rank: 1, team: { name: 'X' }, gp: 1, w: 1, l: 0 }], league }, 'portrait')[0].rows[0].elo === null && words(drawLog(SC.table({ standings: [{ rank: 1, team: { name: 'X' }, gp: 1, w: 1, l: 0 }], league }, 'portrait')[0], 'portrait', { cols: ['elo'] })).includes('—')
+     && SC.cleanModules({ cols: Object.keys(SC.COL_DEFS) }).cols.length === 6);
+  const wkg = SC.week({ games: games.slice(0, 4).map(g => Object.assign({}, g, { venue: 'Hall Nine', perQ: perQ, home: Object.assign({}, g.home, { record: '3-1', elo: 1533.2 }), away: Object.assign({}, g.away, { record: '1-3', elo: 1466.8 }) })), league }, 'story')[0];
+  const ww = mods => words(drawLog(wkg, 'story', mods));
+  ok('a result can say more: its tip-off, its venue, its quarters, both clubs\' records and ELO', ww({ rowExtras: ['time'] }).some(t => /19:30/.test(t)) && ww({ rowExtras: ['venue'] }).some(t => /HALL NINE/.test(t))
+     && ww({ rowExtras: ['quarters'] }).some(t => /18-15  22-29  23-23  16-25/.test(t)) && ww({ rowExtras: ['record'] }).some(t => /Club 1  ·  3-1/.test(t)) && ww({ rowExtras: ['elo'] }).some(t => /Club 1  ·  ELO 1533/.test(t)) && !ww({}).some(t => /HALL NINE|ELO 1533|3-1/.test(t)));
+  const fxm = SC.fixtures({ games: games.slice(0, 3).map(g => Object.assign({}, g, { home: Object.assign({}, g.home, { record: '3-1', elo: 1533 }) })), league }, 'portrait')[0];
+  ok('a fixture can say both clubs\' records and ELO', words(drawLog(fxm, 'portrait', { rowExtras: ['record', 'elo'] })).some(t => /3-1  ·  ELO 1533/.test(t)) && !words(drawLog(fxm, 'portrait', {})).some(t => /ELO/.test(t)));
+
   /* NOTHING MAY OVERFLOW OR OVERLAP: the worst case of every module, on every shape and colourway, long names, eight rows, no crests */
   const LONG = 'Associação Desportiva Recreativa e Cultural Icasa Meridianbet Belgrade Basketball Club';
   const big = Object.assign({}, league, { name: 'The Very Long Named National Basketball Championship League', handle: 'a_handle_that_is_really_quite_long_indeed_for_instagram', logo: img(300, 120, 'league') });
-  const lt = i => ({ name: LONG + ' ' + i, colour: '#ffffff', colour_2: '#000000' });
+  const lt = i => ({ name: LONG + ' ' + i, colour: '#ffffff', colour_2: '#000000', record: '30-' + i, elo: 1500 + i });
   const LT = Array.from({ length: 8 }, (_, i) => lt(i));
-  const lstand = LT.map((t, i) => ({ rank: i + 1, team: t, gp: 30, w: 30 - i, l: i, league_points: 60 - i, diff: 300 - 50 * i, pts_for: 2900, pts_against: 2600, streak: 'W12' }));
-  const lgames = LT.map((t, i) => ({ tipoff_at: '2026-09-25T17:30:00Z', home: t, away: LT[7 - i], home_score: 120 + i, away_score: 118, venue: 'Palais Omnisports de Paris-Bercy Arena and Congress Centre' }));
-  const lplayers = [line(0, 'Aleksandar Konstantinopolskiy-Vandersloot', '99', { pts: 61, p2m: 20, p2a: 21, p3m: 6, p3a: 7, fta: 15, ftm: 15, or: 12, dr: 20, ast: 15, stl: 8, blk: 9, pm: -31, min: 2400000 }),
+  const lstand = LT.map((t, i) => ({ rank: i + 1, team: t, gp: 30, w: 30 - i, l: i, league_points: 60 - i, diff: 300 - 50 * i, pts_for: 2900, pts_against: 2600, streak: 'W12', l5: '5-0', home: '15-0', away: '15-' + i, elo: 1500 + i }));
+  const lgames = LT.map((t, i) => ({ tipoff_at: '2026-09-25T17:30:00Z', home: t, away: LT[7 - i], home_score: 120 + i, away_score: 118, perQ: [{ 1: 30, 2: 30, 3: 30, 4: 30 }, { 1: 29, 2: 29, 3: 30, 4: 30 }], venue: 'Palais Omnisports de Paris-Bercy Arena and Congress Centre' }));
+  const lplayers = [line(0, 'Second Player With A Very Long Surname Indeed', '5', { pts: 30, p2m: 10, p2a: 12, p3m: 3, p3a: 4, fta: 4, ftm: 4, or: 5, dr: 5, ast: 5 }), line(0, 'Third', '6', { pts: 12 }), line(1, 'Away Two', '7', { pts: 22, ast: 9 }), line(1, 'Away Three Is Also Quite Long Named', '8', { pts: 9 }),
+    line(0, 'Aleksandar Konstantinopolskiy-Vandersloot', '99', { pts: 61, p2m: 20, p2a: 21, p3m: 6, p3a: 7, fta: 15, ftm: 15, or: 12, dr: 20, ast: 15, stl: 8, blk: 9, pm: -31, min: 2400000 }),
     line(1, 'B', '1', { pts: 2 })];
   const lres = Object.assign(SC.result({ game: { id: 'x', tipoff_at: '2026-09-25T17:30:00Z', venue: 'Palais Omnisports de Paris-Bercy Arena and Congress Centre', home_score: 121, away_score: 118 },
     home: LT[0], away: LT[1], perQ: [{ 1: 30, 2: 30, 3: 30, 4: 20, 5: 11 }, { 1: 30, 2: 30, 3: 30, 4: 20, 5: 8 }], players: lplayers, league: big, comp: big.name }), {});
   const everything = { headline: 'A headline that goes on and on and on past any sensible width for a graphic', subline: 'A subline that is just as long as the headline and keeps on going and going, and going, yes',
     sponsor: 'Presented by the Very Long Named Partner of the Very Long Named League', footerText: 'A footer text that is far too long to fit beside the mark and logo at all', theme: 'contrast', accent: '#00e5ff',
-    rows: 8, cols: ['gp', 'w', 'l', 'pct', 'diff', 'pf', 'pa', 'streak', 'pts'], statKeys: ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'pm', 'min'] };
+    rows: 8, cols: ['gp', 'w', 'l', 'pct', 'diff', 'pf', 'pa', 'streak', 'pts'], statKeys: ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'pm', 'min'],
+    teamStats: ['fgp', 'p3p', 'ftp', 'efg', 'reb', 'tov'], leaderN: 3, leaderKeys: ['pts', 'reb', 'ast', 'stl'], rowExtras: ['time', 'venue', 'quarters', 'record', 'elo'] };
   const sets = { result: lres, performer: SC.performer({ game: { id: 'x', tipoff_at: '2026-09-25T17:30:00Z', home_score: 121, away_score: 118 }, home: LT[0], away: LT[1], players: lplayers, league: big, comp: big.name }),
     week: null, table: null, fixtures: null };
   const bad = [];
@@ -359,7 +404,9 @@ console.log('\nthe modules (the builder\'s options)');
       fixtures: SC.fixtures({ games: lgames, league: big, comp: big.name, range: '23–30 Sep 2026' }, size)[0] };
     for (const [kind, m] of Object.entries(Object.assign({}, sets, lists))) {
       for (const [label, mods] of [['default', {}], ['everything', everything], ['no crests, no extras', { crests: false, quarters: false, leaders: false, venue: false, days: false, venues: false, logoPos: 'none', handle: false }],
-                                   ['light + sponsor', { theme: 'light', sponsor: 'Presented by Acme' }], ['3 stats', { statKeys: ['fgp', 'p3p', 'min'] }], ['4 rows', { rows: 4 }]]) {
+                                   ['light + sponsor', { theme: 'light', sponsor: 'Presented by Acme' }], ['3 stats', { statKeys: ['fgp', 'p3p', 'min'] }], ['4 rows', { rows: 4 }], ['new columns', { cols: ['elo', 'l5', 'home', 'away', 'avg', 'papg'] }],
+                                   ['team stats', { teamStats: ['fgp', 'p3p', 'ftp', 'efg', 'fg', 'reb'], leaderN: 3 }], ['row extras', { rowExtras: ['time', 'venue', 'quarters', 'record', 'elo'] }],
+                                   ['star: every kind of stat', { statKeys: ['oreb', 'dreb', 'tov', 'pf', 'p2', 'efg', 'gmsc', 'fg'] }]]) {
         for (const theme of ['dark', 'light']) {
           const c = recorder();
           let threw = null;
@@ -381,8 +428,62 @@ console.log('\nthe modules (the builder\'s options)');
       }
     }
   }
-  ok('worst case (long names, eight rows, every text module full, no crests, both colourways): everything on the page, out of the story\'s covered strips, no words over words - ' + 5 * 3 * 6 * 2 + ' drawings',
+  ok('worst case (long names, eight rows, every text module full, no crests, both colourways): everything on the page, out of the story\'s covered strips, no words over words - ' + 5 * 3 * 10 * 2 + ' drawings',
      !bad.length, bad.slice(0, 6).join(' ;; '));
+}
+
+console.log('\ntimes in the zone chosen');
+{
+  const utcLg = Object.assign({}, league, { timezone: 'UTC', logo: null });
+  const drawLog = (m, size, modules) => { const c = recorder(); SC.draw(c, m, { size, modules }); return c.log.filter(e => e.kind === 'text').map(e => e.t); };
+  const at = (iso, tz) => SC.local(iso, tz);
+  const TA = { name: 'Sydney Kings', colour: '#fd0204' }, TB = { name: 'Perth Wildcats', colour: '#ffd100' };
+  const fxs = isos => SC.fixtures({ games: isos.map(t => ({ tipoff_at: t, home: TA, away: TB })), league: utcLg }, 'portrait')[0];
+  const sat = fxs(['2026-09-26T23:30:00Z']);
+  ok('the league\'s own clock is the default, and prints no zone (the reader assumes it)', sat.rows[0].day === 'Sat 26 Sep' && sat.rows[0].time === '23:30' && sat.tz === 'UTC'
+     && !drawLog(sat, 'portrait').some(t => /UTC|AEST|times in/.test(t)));
+  const syd = drawLog(sat, 'portrait', { zone: 'Australia/Sydney' });
+  ok('23:30 UTC on Saturday is Sunday 09:30 in Sydney: the day label follows the zone, and the zone is named', syd.includes('SUN 27 SEP') && syd.includes('09:30') && !syd.includes('SAT 26 SEP')
+     && syd.some(t => /times in AEST \(UTC\+10\)/.test(t)), syd.filter(t => /SEP|:|times/.test(t)).join(' | '));
+  ok('...the model itself is unchanged by drawing it (the same graphic in two zones, one after the other)', drawLog(sat, 'portrait').includes('SAT 26 SEP') && sat.rows[0].time === '23:30');
+  ok('...and in the caption, the same time and the zone', /^Coming up \(times in AEST \(UTC\+10\)\)\n\nSun 27 Sep 09:30 AEST · Sydney Kings v Perth Wildcats/.test(SC.caption(sat, { zone: 'Australia/Sydney' })), SC.caption(sat, { zone: 'Australia/Sydney' }).split('\n').slice(0, 3).join(' / '));
+  ok('...UTC chosen for a league that plays in Paris: 19:30 in Paris is 17:30 UTC, named "UTC"', (() => {
+    const par = SC.fixtures({ games: [{ tipoff_at: '2026-09-23T17:30:00Z', home: TA, away: TB }], league }, 'portrait')[0];
+    return par.rows[0].time === '19:30' && drawLog(par, 'portrait', { zone: 'UTC' }).includes('17:30') && drawLog(par, 'portrait', { zone: 'UTC' }).some(t => /times in UTC$/.test(t)) && !drawLog(par, 'portrait').some(t => /times in/.test(t));
+  })());
+  ok('...the device\'s own zone when it is the league\'s own is not announced; a different one is', (() => {
+    const par = SC.fixtures({ games: [{ tipoff_at: '2026-09-23T17:30:00Z', home: TA, away: TB }], league }, 'portrait')[0];
+    return !drawLog(par, 'portrait', { zone: 'Europe/Paris' }).some(t => /times in/.test(t)) && drawLog(par, 'portrait', { zone: 'America/New_York' }).some(t => /times in EDT \(UTC-4\)/.test(t))
+      && drawLog(par, 'portrait', { zone: 'America/New_York' }).includes('13:30');
+  })());
+  ok('...always names it when asked, and never when told not to', drawLog(sat, 'portrait', { zoneLabel: 'always' }).some(t => /times in UTC$/.test(t)) && !drawLog(sat, 'portrait', { zone: 'Australia/Sydney', zoneLabel: 'never' }).some(t => /times in/.test(t))
+     && !/AEST/.test(SC.caption(sat, { zone: 'Australia/Sydney', zoneLabel: 'never' })));
+  const edge = fxs(['2026-10-03T15:30:00Z', '2026-10-03T16:30:00Z']);
+  const sy = SC.relabel(edge, { zone: 'Australia/Sydney' }).rows;
+  ok('daylight saving, Sydney (clocks forward at 02:00 on Sunday 4 October): 01:30 AEST, then 03:30 AEDT an hour later - never 02:30', sy[0].time === '01:30' && sy[1].time === '03:30' && sy[0].day === 'Sun 4 Oct' && sy[1].day === 'Sun 4 Oct'
+     && SC.zoneName('2026-10-03T15:30:00Z', 'Australia/Sydney').text === 'AEST (UTC+10)' && SC.zoneName('2026-10-03T16:30:00Z', 'Australia/Sydney').text === 'AEDT (UTC+11)');
+  ok('...a list that straddles the change names both', SC.zoneNote(edge, { zone: 'Australia/Sydney' }).short === 'AEST/AEDT' && drawLog(edge, 'portrait', { zone: 'Australia/Sydney' }).some(t => /times in AEST\/AEDT/.test(t))
+     && /Sun 4 Oct 01:30 AEST · /.test(SC.caption(edge, { zone: 'Australia/Sydney' })) && /Sun 4 Oct 03:30 AEDT · /.test(SC.caption(edge, { zone: 'Australia/Sydney' })), SC.zoneNote(edge, { zone: 'Australia/Sydney' }).short);
+  const eu = fxs(['2026-10-24T23:30:00Z', '2026-10-25T01:30:00Z']);
+  const pr = SC.relabel(eu, { zone: 'Europe/Paris' }).rows;
+  ok('daylight saving, Paris (clocks back at 03:00 on Sunday 25 October): 01:30 CEST, then 02:30 CET two hours of UTC later; the day is Sunday for both', pr[0].time === '01:30' && pr[1].time === '02:30' && pr[0].day === 'Sun 25 Oct' && pr[1].day === 'Sun 25 Oct'
+     && SC.zoneName(eu.rows[0].iso, 'Europe/Paris').abbr === 'CEST' && SC.zoneName(eu.rows[1].iso, 'Europe/Paris').abbr === 'CET');
+  ok('a half-hour zone: 17:30 UTC is 23:00 in Kolkata, "UTC+5:30"', SC.relabel(fxs(['2026-09-23T17:30:00Z']), { zone: 'Asia/Kolkata' }).rows[0].time === '23:00' && SC.zoneName('2026-09-23T17:30:00Z', 'Asia/Kolkata').offset === 'UTC+5:30'
+     && drawLog(fxs(['2026-09-23T17:30:00Z']), 'portrait', { zone: 'Asia/Kolkata' }).some(t => /times in UTC\+5:30$/.test(t)));
+  ok('a zone that does not exist is no zone: UTC for a league, the league\'s own for a module', SC.validZone('Mars/Olympus') === null && SC.leagueZone({ timezone: 'Mars/Olympus' }) === 'UTC' && SC.leagueZone({}) === 'UTC'
+     && SC.cleanModules({ zone: 'Mars/Olympus' }).zone === undefined && JSON.stringify(drawLog2(sat, 'Mars/Olympus').map(e => e.t)) === JSON.stringify(drawLog2(sat, undefined).map(e => e.t)));
+  function drawLog2(m, zone) { const c = recorder(); SC.draw(c, m, { size: 'portrait', modules: { zone } }); return c.log; }
+  ok('a league with no timezone plays in its country\'s: Australia\'s Sydney, France\'s Paris, and its own timezone wins over it', SC.leagueZone({ country: 'AU' }) === 'Australia/Sydney' && SC.leagueZone({ country: 'fr' }) === 'Europe/Paris'
+     && SC.leagueZone({ timezone: 'Australia/Perth', country: 'AU' }) === 'Australia/Perth' && SC.leagueZone({ country: 'ZZ' }) === 'UTC' && Object.values(SC.COUNTRY_ZONE).every(z => SC.validZone(z)));
+  ok('...and a model built for such a league is in that zone', SC.fixtures({ games: [{ tipoff_at: '2026-09-26T23:30:00Z', home: TA, away: TB }], league: { name: 'NBL', country: 'AU' } }, 'portrait')[0].rows[0].day === 'Sun 27 Sep');
+  const fin2 = SC.result({ game: { id: 'z', tipoff_at: '2026-09-26T23:30:00Z', home_score: 80, away_score: 70 }, home: TA, away: TB, players: [], league: utcLg });
+  ok('a final\'s date follows the zone too, and names it beside the date', fin2.date === 'Sat 26 Sep 2026' && drawLog(fin2, 'portrait', { zone: 'Australia/Sydney' }).includes('SUN 27 SEP 2026 · AEST') && drawLog(fin2, 'portrait').includes('SAT 26 SEP 2026'));
+  const wk2 = SC.week({ games: [{ tipoff_at: '2026-09-26T23:30:00Z', home: TA, away: TB, home_score: 80, away_score: 70 }], league: utcLg }, 'story')[0];
+  ok('the week\'s results: the day under each score follows the zone, named in the subline', drawLog(wk2, 'story', { zone: 'Australia/Sydney' }).includes('SUN 27 SEP') && drawLog(wk2, 'story', { zone: 'Australia/Sydney' }).some(t => /days in AEST/.test(t)) && drawLog(wk2, 'story').includes('SAT 26 SEP'));
+  ok('a subline of the person\'s own keeps the zone beside it', drawLog(sat, 'portrait', { zone: 'Australia/Sydney', subline: 'Round 5' }).some(t => /^Round 5 · times in AEST/.test(t)));
+  ok('a model built by hand with no instants is left as it is (no throw, no label)', (() => { const c = recorder(); SC.draw(c, { kind: 'fixtures', league: utcLg, rows: [{ day: 'Sat 1 Aug', time: '10:00', home: side0('A'), away: side0('B') }], tz: 'UTC' }, { size: 'portrait', modules: { zone: 'Asia/Tokyo' } });
+    return c.log.some(e => e.t === '10:00'); })());
+  function side0(n) { return { name: n, score: 0 }; }
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

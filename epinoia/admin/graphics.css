@@ -74,3 +74,6 @@
   .gx-weeklbl{min-width:110px}
   .gx-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 }
+.gx-tz{flex:1 1 230px;max-width:340px}
+.gx-comp{flex:1 1 200px}
+.gx-ctx .ep-input{width:100%;max-width:none}

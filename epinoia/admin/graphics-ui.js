@@ -73,7 +73,7 @@ function defaultBuilder() {
   return { tpl: 'result', gameId: '', player: null, compId: '', page: 0,
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
             cols: null, statKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
-            theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
+            zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
 }
 /* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
    draws exactly what the weekly content does */
@@ -107,6 +107,24 @@ function gameLabel(g, teamName, tz) {
   return (t ? SC().dayLabel(t) + ' · ' : '') + teamName(g.home_team_id) + ' ' + (g.home_score == null ? '' : g.home_score) + '–' +
     (g.away_score == null ? '' : g.away_score) + ' ' + teamName(g.away_team_id);
 }
+/* THE CLOCK. "Times shown in": the league's own (the default: its timezone, or its country's), the device's, or UTC. The
+   choice is kept per league, in this browser only. `zoneFor` turns it into the `zone` module (null: leave each graphic in
+   the league's own clock, which is what it was made in). */
+const TZ_MODES = [['league', 'League local time'], ['device', 'My device\'s time'], ['utc', 'UTC']];
+const tzKey = leagueId => 'epinoia.gfx.tz.' + leagueId;
+function deviceZone() {
+  try { return SC().validZone(new root.Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC'; } catch (_) { return 'UTC'; }
+}
+function zoneFor(mode, device) {
+  return mode === 'utc' ? 'UTC' : mode === 'device' ? (SC().validZone(device) || deviceZone()) : null;
+}
+function loadTz(leagueId, storage) {
+  try { const v = (storage || root.localStorage).getItem(tzKey(leagueId)); return TZ_MODES.some(m => m[0] === v) ? v : 'league'; } catch (_) { return 'league'; }
+}
+function saveTz(leagueId, mode, storage) {
+  try { (storage || root.localStorage).setItem(tzKey(leagueId), mode); } catch (_) { /* private window */ }
+}
+
 /* the builder's memory, per league */
 const memKey = leagueId => 'epinoia.gfx.builder.' + leagueId;
 function loadBuilder(leagueId, storage) {
@@ -143,7 +161,7 @@ function mount(o) {
   if (host.__gxStop) host.__gxStop();                   // a league switch re-mounts: the old panel's watcher goes
   const league = typeof o.league === 'function' ? o.league() : o.league;
   const panel = { host, o, size: 'portrait', off: 0, compId: 'all', type: 'all', sub: 'weekly', data: null, busy: false, started: false,
-                  builder: league ? loadBuilder(league.id) : defaultBuilder(), seq: 0 };
+                  builder: league ? loadBuilder(league.id) : defaultBuilder(), tz: league ? loadTz(league.id) : 'league', seq: 0 };
   current = panel;
   host.textContent = '';
   host.appendChild(el('p', 'empty',
@@ -238,6 +256,8 @@ function tabList(items, on, pick, label) {
 
 /* the data as the competition filter sees it */
 const viewOf = panel => GX().scope(panel.data, panel.compId);
+/* every graphic drawn for this panel is drawn in the clock chosen: the `zone` module (nothing at all when it is the league's own) */
+const clockOf = panel => { const z = zoneFor(panel.tz, panel.device || (panel.device = deviceZone())); return z ? { zone: z } : {}; };
 
 function draw(panel, keepFocus) {
   const SCd = SC();
@@ -275,6 +295,9 @@ function draw(panel, keepFocus) {
     ctx.appendChild(field('Competition', select([['all', 'All competitions']].concat(d.comps.map(c => [c.id, c.name])), panel.compId,
       v => { panel.compId = v; panel.builder.compId = v === 'all' ? '' : v; panel.builder.page = 0; draw(panel); }), 'gx-comp'));
   }
+  const lz = SCd.leagueZone(d.league);
+  ctx.appendChild(field('Times shown in', select([['league', 'League time (' + lz.replace(/_/g, ' ') + ')'], ['device', 'My device\'s time (' + (panel.device || (panel.device = deviceZone())).replace(/_/g, ' ') + ')'], ['utc', 'UTC']], panel.tz,
+    v => { panel.tz = v; saveTz(panel.leagueId, v); draw(panel); }), 'gx-tz'));
   const shape = el('div', 'gx-shape');
   shape.setAttribute('role', 'group'); shape.setAttribute('aria-label', 'Shape');
   Object.keys(SCd.SIZES).forEach(k => shape.appendChild(chip(SCd.SIZES[k].label, k === panel.size, () => { panel.size = k; draw(panel); })));
@@ -363,9 +386,9 @@ function card(panel, it) {
   thumb.style.aspectRatio = SCd.SIZES[panel.size].w + ' / ' + SCd.SIZES[panel.size].h;
   box.appendChild(thumb);
   box.appendChild(el('div', 'nm', it.title));
-  const { acts, cp } = actions(() => it.model, () => ({ size: panel.size, scale: 1 }));
+  const { acts, cp } = actions(() => it.model, () => ({ size: panel.size, scale: 1, modules: clockOf(panel) }));
   box.appendChild(acts);
-  const words = SCd.caption(it.model);
+  const words = SCd.caption(it.model, clockOf(panel));
   const ta = el('textarea', 'ep-input gx-cap');
   ta.value = words; ta.readOnly = true; ta.rows = 4;
   ta.setAttribute('aria-label', 'Caption for ' + it.title);
@@ -373,7 +396,7 @@ function card(panel, it) {
   box.appendChild(ta);
   lazyPaint(thumb, async () => {
     try {
-      const c = await SCd.canvas(it.model, { size: panel.size, scale: 0.25 });
+      const c = await SCd.canvas(it.model, { size: panel.size, scale: 0.25, modules: clockOf(panel) });
       c.className = 'gx-img';
       thumb.appendChild(c);
     } catch (_) { thumb.appendChild(el('div', 'empty', 'could not draw')); }
@@ -409,9 +432,9 @@ async function downloadAll(panel, list, btn) {
       let name = String(i + 1).padStart(2, '0') + '-' + SCd.filename(it.model, panel.size);
       while (seen.has(name)) name = name.replace(/\.png$/, '-b.png');
       seen.add(name);
-      const blob = await SCd.png(it.model, { size: panel.size, scale: 1 });
+      const blob = await SCd.png(it.model, { size: panel.size, scale: 1, modules: clockOf(panel) });
       files.push({ name, bytes: new Uint8Array(await blob.arrayBuffer()) });
-      files.push({ name: name.replace(/\.png$/, '.txt'), bytes: new TextEncoder().encode(SCd.caption(it.model) + '\n') });
+      files.push({ name: name.replace(/\.png$/, '.txt'), bytes: new TextEncoder().encode(SCd.caption(it.model, clockOf(panel)) + '\n') });
     }
     const L = panel.data.league;
     const day = new Date().toISOString().slice(0, 10);
@@ -431,6 +454,7 @@ function drawBuilder(panel, pane) {
   const b = panel.builder, d = viewOf(panel), M = b.mods;
   if (b.compId && !d.comps.some(c => c.id === b.compId)) b.compId = '';
   const persist = () => saveBuilder(panel.leagueId, b);
+  const mods = () => Object.assign({}, modulesOf(b), clockOf(panel));      // the options and the clock chosen above
   const wrap = el('div', 'gx-build');
   const form = el('div', 'gx-form');
   const prev = el('div', 'gx-prev');
@@ -540,6 +564,7 @@ function drawBuilder(panel, pane) {
   const fs4 = el('fieldset', 'gx-fs'); fs4.appendChild(el('legend', null, 'Look'));
   fs4.appendChild(field('Colours', select(THEMES, M.theme, v => { M.theme = v; persist(); setRes(); })));
   fs4.appendChild(field('Accent', select(ACCENTS, M.accent, v => { M.accent = v; persist(); setRes(); })));
+  fs4.appendChild(field('Name the time zone', select([['', 'Only when it is not the league\'s own'], ['always', 'Always'], ['never', 'Never']], M.zoneLabel || '', v => { M.zoneLabel = v; persist(); setRes(); })));
   fs4.appendChild(field('League logo', select(LOGOS, M.logoPos, v => { M.logoPos = v; persist(); setRes(); })));
   form.appendChild(fs4);
 
@@ -561,7 +586,7 @@ function drawBuilder(panel, pane) {
   const status = el('div', 'gx-status');
   status.setAttribute('role', 'status');
   prev.append(stage, status);
-  const { acts, dl, cp } = actions(() => res.model, () => ({ size: panel.size, scale: 1, modules: modulesOf(b) }));
+  const { acts, dl, cp } = actions(() => res.model, () => ({ size: panel.size, scale: 1, modules: mods() }));
   prev.appendChild(acts);
   const ta = el('textarea', 'ep-input gx-cap'); ta.readOnly = true; ta.rows = 6; ta.setAttribute('aria-label', 'Caption');
   prev.appendChild(ta);
@@ -587,9 +612,9 @@ function drawBuilder(panel, pane) {
     }
     dl.disabled = false; cp.disabled = false;
     status.textContent = '';
-    ta.value = SCd.caption(res.model, modulesOf(b));
+    ta.value = SCd.caption(res.model, mods());
     try {
-      const c = await SCd.canvas(res.model, { size: panel.size, scale: 0.5, modules: modulesOf(b) });
+      const c = await SCd.canvas(res.model, { size: panel.size, scale: 0.5, modules: mods() });
       if (mine !== seq) return;                          // a newer change has already redrawn it
       c.className = 'gx-canvas'; c.setAttribute('role', 'img');
       c.setAttribute('aria-label', 'Preview of the graphic');
@@ -602,6 +627,6 @@ function drawBuilder(panel, pane) {
   paint();
 }
 
-return { mount, refresh, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
+return { mount, refresh, TZ_MODES, zoneFor, loadTz, saveTz, tzKey, deviceZone, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
          loadBuilder, saveBuilder, memKey };
 }));

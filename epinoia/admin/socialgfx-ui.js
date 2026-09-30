@@ -69,7 +69,7 @@ async function read(sb, league, comps, now, offset) {
   const ids = comps.map(c => c.id);
   const out = { league: null, comps, finals: [], upcoming: [], teams: new Map(), perQ: new Map(), players: new Map(), standings: [],
                 since, until, now: t, offset: off };
-  const lg = await sb.from('leagues').select('id,name,slug,timezone,colour_a,colour_b,logo_path').eq('id', league.id).maybeSingle();
+  const lg = await sb.from('leagues').select('id,name,slug,timezone,country,colour_a,colour_b,logo_path').eq('id', league.id).maybeSingle();
   const L = lg && lg.data || league;
   let handle = '';
   try {
@@ -78,7 +78,7 @@ async function read(sb, league, comps, now, offset) {
     handle = handleOf(row && row.instagram);
   } catch (_) { /* no handle: the footer names the league */ }
   /* the league's own colours and logo: the graphics are the league's, not the platform's */
-  out.league = { id: L.id, name: L.name || league.name, slug: L.slug || league.slug, timezone: L.timezone || 'UTC',
+  out.league = { id: L.id, name: L.name || league.name, slug: L.slug || league.slug, timezone: L.timezone || null, country: L.country || null,
                  colour: L.colour_a || null, colour2: L.colour_b || null, logoPath: L.logo_path || null, handle };
   if (!ids.length) return out;
   const games = await sb.from('games')

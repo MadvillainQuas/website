@@ -54,10 +54,13 @@ const rowsFor = { player_game_stats: G.filter(g => g.status === 'final').flatMap
 const calls = [];
 function client(games) {
   const q = table => {
-    const b = { table, f: {}, select() { return b; }, eq() { return b; }, in(k, v) { b.f.in = v; return b; }, gte(k, v) { b.f.gte = v; return b; }, lt(k, v) { b.f.lt = v; return b; },
+    const b = { table, f: {}, select() { return b; }, eq() { return b; }, in(k, v) { b.f[k] = v; return b; }, range() { return b; }, gte(k, v) { b.f.gte = v; return b; }, lt(k, v) { b.f.lt = v; return b; },
       order() { return b; }, limit() { return b; },
       run() {
-        if (table === 'games') { calls.push({ gte: b.f.gte, lt: b.f.lt }); return { data: games.filter(g => g.tipoff_at >= b.f.gte && g.tipoff_at < b.f.lt) }; }
+        if (table === 'games') {
+          calls.push({ gte: b.f.gte, lt: b.f.lt });
+          return { data: games.filter(g => (b.f.gte === undefined || g.tipoff_at >= b.f.gte) && (b.f.lt === undefined || g.tipoff_at < b.f.lt) && (!b.f.status || b.f.status.includes(g.status))) };
+        }
         if (table === 'leagues') return { data: { id: 'L', name: 'Test League', slug: 'test', timezone: 'UTC', colour_a: '#ff6600' } };
         if (table === 'standings') { calls.push({ standings: true }); return { data: TEAMS.map((t, i) => ({ competition_id: 'c1', team_id: t.id, rank: i + 1, gp: 3, w: 3 - i, l: i, diff: 10 - 5 * i })) }; }
         if (table === 'teams') return { data: TEAMS };
@@ -68,6 +71,7 @@ function client(games) {
   };
   return { from: q, rpc: async () => ({ data: [{ instagram: '@testleague' }] }) };
 }
+const store = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, m }; };
 const sb = client(G);
 
 console.log('\nreading a week');
@@ -144,10 +148,17 @@ console.log('\nthe builder\'s options');
 const d0 = UI.defaultBuilder();
 ok('an untouched builder is no modules at all: it draws what the weekly content does', Object.keys(UI.modulesOf(d0)).length === 0, JSON.stringify(UI.modulesOf(d0)));
 const touched = UI.defaultBuilder();
-Object.assign(touched.mods, { headline: ' Derby  night ', crests: false, rows: '6', theme: 'light', accent: '#ffe600', logoPos: 'footer', statKeys: ['pts', 'reb', 'ast', 'stl'], cols: ['w', 'l'], sponsor: 'Acme' });
-const mm = UI.modulesOf(touched);
-ok('each option is a module, only what differs', mm.headline === 'Derby night' && mm.crests === false && mm.rows === 6 && mm.theme === 'light' && mm.accent === '#ffe600' && mm.logoPos === 'footer'
-   && mm.statKeys.join() === 'pts,reb,ast,stl' && mm.cols.join() === 'w,l' && mm.sponsor === 'Acme' && !('quarters' in mm) && !('handle' in mm), JSON.stringify(mm));
+Object.assign(touched.mods, { headline: ' Derby  night ', crests: false, rows: '6', theme: 'light', accent: '#ffe600', logoPos: 'footer', statKeys: ['pts', 'reb', 'ast', 'stl'], cols: ['w', 'l'], sponsor: 'Acme',
+  teamStats: ['reb', 'tov'], leaderKeys: ['pts', 'stl'], leaderN: '3', weekExtras: ['venue', 'elo'], fixExtras: ['record'], zoneLabel: 'always' });
+const as = tpl => UI.modulesOf(Object.assign({}, touched, { tpl }));
+const mm = as('table');
+ok('each option is a module, only what differs', mm.headline === 'Derby night' && mm.crests === false && mm.rows === 6 && mm.theme === 'light' && mm.accent === '#ffe600' && mm.logoPos === 'footer' && mm.zoneLabel === 'always'
+   && mm.cols.join() === 'w,l' && mm.sponsor === 'Acme' && !('quarters' in mm) && !('handle' in mm), JSON.stringify(mm));
+ok('...and each template takes only its own stats: the table its columns, the star its stat lines, the final its team stats and leaders, a results row and a fixture their own extras',
+   as('star').statKeys.join() === 'pts,reb,ast,stl' && !as('star').cols && !as('star').teamStats && !as('table').statKeys && !as('table').teamStats
+   && as('result').teamStats.join() === 'reb,tov' && as('result').leaderKeys.join() === 'pts,stl' && as('result').leaderN === 3 && !as('result').cols && !as('result').rowExtras
+   && as('week').rowExtras.join() === 'venue,elo' && as('fixtures').rowExtras.join() === 'record' && !as('week').statKeys && !as('table').rowExtras && !as('star').rowExtras);
+ok('...nothing chosen is nothing: an untouched result has no team stats, no leader lines, one leader a side', !('teamStats' in UI.modulesOf(UI.defaultBuilder())) && !('leaderN' in UI.modulesOf(UI.defaultBuilder())) && !('rowExtras' in UI.modulesOf(Object.assign(UI.defaultBuilder(), { tpl: 'week' }))));
 ok('...and the dark theme, the league colour and both logos are the default, so no module', !('theme' in UI.modulesOf(Object.assign(UI.defaultBuilder(), { mods: Object.assign(UI.defaultBuilder().mods, { theme: 'dark', accent: '', logoPos: 'both', rows: '' }) }))));
 ok('every template has a module list, and every template it names exists', UI.TEMPLATES.every(t => Array.isArray(UI.HAS[t.id]) && UI.HAS[t.id].includes('headline') && UI.HAS[t.id].includes('crests')) && Object.keys(UI.HAS).length === UI.TEMPLATES.length);
 ok('...a star has stat lines and no rows, a table has rows and columns and no quarters, a final has quarters', UI.HAS.star.includes('stats') && !UI.HAS.star.includes('rows') && UI.HAS.table.includes('cols')
@@ -161,8 +172,63 @@ ok('...never fewer than three, never more than eight (the list comes back as it 
 ok('columns: one to six, in the table\'s own order', UI.toggleKey(['gp', 'w', 'l', 'diff'], 'pf', UI.COL_ORDER, 1, 6).join() === 'gp,w,l,diff,pf' && UI.toggleKey(['w'], 'w', UI.COL_ORDER, 1, 6).join() === 'w'
    && UI.toggleKey(['gp', 'w', 'l', 'pct', 'diff', 'pf'], 'pa', UI.COL_ORDER, 1, 6).length === 6);
 
+ok('every stat the builder offers is one the drawing knows: star lines, table columns, team stats, leader lines, row extras', UI.STAT_ORDER.every(k => SC.STAT_DEFS[k]) && UI.COL_ORDER.every(k => SC.COL_DEFS[k]) && UI.TEAM_ORDER.every(k => SC.TEAM_STAT_DEFS[k])
+   && UI.LEAD_ORDER.every(k => SC.STAT_DEFS[k]) && Object.keys(SC.COL_DEFS).every(k => UI.COL_ORDER.includes(k)) && Object.keys(SC.STAT_DEFS).every(k => UI.STAT_ORDER.includes(k)) && Object.keys(SC.TEAM_STAT_DEFS).every(k => UI.TEAM_ORDER.includes(k)));
+const need = (tpl, mods) => UI.needsExtras({ tpl, mods });
+ok('ELO, form and home / away are read from the games only when a table asks for a column of them (or a row for ELO)', need('table', { cols: ['w', 'elo'] }) && need('table', { cols: ['l5'] }) && need('table', { cols: ['home'] }) && !need('table', { cols: ['w', 'pf'] }) && !need('table', { cols: null })
+   && need('week', { weekExtras: ['elo'] }) && !need('week', { weekExtras: ['venue'] }) && need('fixtures', { fixExtras: ['record', 'elo'] }) && !need('fixtures', { fixExtras: ['record'] }) && !need('result', { cols: ['elo'], weekExtras: ['elo'] }) && !need('star', { cols: ['elo'] }));
+
+console.log('\nELO and form, read from the games');
+{
+  const ex = await GX.readExtras(sb, comps);
+  /* the fake games: t1 beat t2 (g1), t4 beat t3 (g2 lost by the home side t3), t2 beat t3 (g3), t1 beat t4 (g4), t2 beat t4 (g5), then last week's g9 (t3 beat t1), g10 (t2 beat t3) */
+  const fin = G.filter(g => g.status === 'final').sort((a, b) => a.tipoff_at.localeCompare(b.tipoff_at));
+  ok('every finished game of the competitions is read, none that is live or to come', ex.games === fin.length, ex.games + ' of ' + fin.length);
+  const win = (team) => fin.filter(g => (g.home_team_id === team && g.home_score > g.away_score) || (g.away_team_id === team && g.away_score > g.home_score)).length;
+  ok('form: the last five games as wins-losses (a club with fewer has all it played)', TEAMS.every(t => { const played = fin.filter(g => g.home_team_id === t.id || g.away_team_id === t.id); const last = played.slice(-5);
+    const w = last.filter(g => (g.home_team_id === t.id) === (g.home_score > g.away_score)).length; return ex.l5.get(t.id) === w + '-' + (last.length - w); }), [...ex.l5].join(' '));
+  ok('home and away records: each club\'s wins and losses in its own hall and on the road', TEAMS.every(t => {
+    const h = fin.filter(g => g.home_team_id === t.id), a = fin.filter(g => g.away_team_id === t.id);
+    return (h.length === 0 || ex.home.get(t.id) === h.filter(g => g.home_score > g.away_score).length + '-' + h.filter(g => g.home_score < g.away_score).length)
+      && (a.length === 0 || ex.away.get(t.id) === a.filter(g => g.away_score > g.home_score).length + '-' + a.filter(g => g.away_score < g.home_score).length); }));
+  ok('no ELO without sos.js loaded: the column is a dash rather than the tab failing', ex.elo.size === 0);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'epinoia/sos.js'), 'utf8'), ctx, { filename: 'epinoia/sos.js' });
+  const ex2 = await GX.readExtras(sb, comps);
+  const rated = TEAMS.map(t => ex2.elo.get(t.id));
+  ok('with sos.js: a rating for each club that has played, 1500 the average - the winners above it, the losers below', rated.every(v => typeof v === 'number') && Math.abs(rated.reduce((a, v) => a + v, 0) / 4 - 1500) < 1
+     && ex2.elo.get('t2') > ex2.elo.get('t3'), rated.map(v => Math.round(v)).join());
+  ok('...the same rating the league page\'s table shows (sos.js eloRatings, from these games)', TEAMS.every(t => ex2.elo.get(t.id) === sandbox.EpinoiaSOS.eloRatings(fin).get(t.id).elo));
+  const dataX = Object.assign({}, now0, { extras: ex2 });
+  const tb = GX.builderModel(dataX, { tpl: 'table', compId: 'c1' }, 'portrait', null);
+  ok('the table\'s rows carry ELO, form and records: drawn as columns when asked', tb.model.rows.every(r => r.elo != null && r.l5 && (r.home || r.away)) && tb.model.rows[0].elo === Math.round(ex2.elo.get('t1')));
+  ok('...and without the extras the columns are empty, not wrong', GX.builderModel(now0, { tpl: 'table', compId: 'c1' }, 'portrait', null).model.rows.every(r => r.elo === null && r.l5 === ''));
+  const wkx = GX.builderModel(dataX, { tpl: 'week', compId: 'c1' }, 'portrait', null).model.rows[0];
+  ok('a results row has its records (from the standings) and its ELO', /^\d+-\d+$/.test(wkx.home.record) && wkx.home.elo != null && wkx.venue.length > 0 && wkx.time.length === 5);
+  const fxx = GX.builderModel(dataX, { tpl: 'fixtures', compId: 'c1' }, 'portrait', null).model.rows[0];
+  ok('...and a fixture\'s', /^\d+-\d+$/.test(fxx.home.record) && fxx.home.elo != null);
+  const err = await GX.readExtras({ from: () => { const b = { select: () => b, in: () => b, order: () => b, range: () => Promise.resolve({ error: new Error('denied') }) }; return b; } }, comps).then(() => 'read', e => e.message);
+  ok('a refused read says so (the tab shows it), never a silent empty column', err === 'denied', String(err));
+  ok('nothing to read for no competitions', (await GX.readExtras(sb, [])).games === 0);
+}
+
+console.log('\nthe clock');
+ok('three ways to show times: the league\'s own (the default: no module), the device\'s, UTC', UI.TZ_MODES.map(m => m[0]).join() === 'league,device,utc' && UI.zoneFor('league', 'Asia/Tokyo') === null && UI.zoneFor('utc', 'Asia/Tokyo') === 'UTC'
+   && UI.zoneFor('device', 'Australia/Sydney') === 'Australia/Sydney' && UI.zoneFor('device', 'Mars/Olympus') === UI.deviceZone() && SC.validZone(UI.deviceZone()) !== null);
+ok('...remembered per league, in this browser: another league starts on its own clock, garbage and a missing store are the league\'s', (() => {
+  const st = store(); UI.saveTz('L1', 'device', st); UI.saveTz('L2', 'utc', st); st.setItem(UI.tzKey('L3'), 'moon');
+  return UI.loadTz('L1', st) === 'device' && UI.loadTz('L2', st) === 'utc' && UI.loadTz('L9', st) === 'league' && UI.loadTz('L3', st) === 'league'
+    && UI.loadTz('L', { getItem() { throw new Error('denied'); } }) === 'league' && (UI.saveTz('L', 'utc', { setItem() { throw new Error('full'); } }), true);
+})());
+{
+  const utcLeague = { name: 'T', timezone: 'UTC' };
+  const g = { tipoff_at: '2026-09-26T23:30:00Z', home: { name: 'A' }, away: { name: 'B' } };
+  const m = SC.fixtures({ games: [g], league: utcLeague }, 'portrait')[0];
+  ok('the tab\'s clock reaches the graphic and its words: Saturday 23:30 UTC, drawn for a Sydney device, is Sunday 09:30 AEST', SC.caption(m, Object.assign({}, UI.modulesOf(UI.defaultBuilder()), { zone: UI.zoneFor('device', 'Australia/Sydney') }))
+     .includes('Sun 27 Sep 09:30 AEST') && SC.caption(m, {}).includes('Sat 26 Sep 23:30 · A v B'));
+  ok('...a builder option to always name the zone, or never, rides along', UI.modulesOf(Object.assign(UI.defaultBuilder(), { mods: Object.assign(UI.defaultBuilder().mods, { zoneLabel: 'never' }) })).zoneLabel === 'never' && !('zoneLabel' in UI.modulesOf(UI.defaultBuilder())));
+}
+
 console.log('\nthe builder\'s memory');
-const store = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, m }; };
 const st = store();
 const mine = UI.defaultBuilder();
 mine.tpl = 'table'; mine.mods.rows = '4'; mine.mods.headline = 'Top four'; mine.mods.cols = ['w', 'l']; mine.gameId = 'g1';

@@ -25,7 +25,7 @@
    MODULES (opts.modules, or model.modules): the optional pieces of a graphic, for the console's builder. Every
    one defaults to today's exact output - a graphic drawn with no modules is byte-for-byte the one drawn before
    they existed - and each is one thing a person can turn on, off or reword: headline, subline, crests,
-   quarters, leaders (leaderN, leaderKeys), teamStats, venue, days, venues, rowExtras, rows, cols (the table's
+   quarters, leaders (leaderN, leaderKeys), teamStats, zone / zoneLabel (the clock every day and time is read in), venue, days, venues, rowExtras, rows, cols (the table's
    stats, ELO among them), statKeys (the star's), theme, accent, logoPos, handle, footerText, sponsor. See
    cleanModules() for the shapes. The block-stack below is unchanged (fixed heights, the room left
    shared), so every combination stays on the page in all three shapes.
@@ -84,9 +84,12 @@ function cleanModules(m) {
   if (THEME_KEYS.includes(m.theme)) o.theme = m.theme;
   if (/^#[0-9a-f]{6}$/i.test(m.accent || '')) o.accent = m.accent;
   if (LOGO_POS.includes(m.logoPos) && m.logoPos !== 'both') o.logoPos = m.logoPos;
+  const zone = validZone(m.zone);
+  if (zone) o.zone = zone;
+  if (m.zoneLabel === 'always' || m.zoneLabel === 'never') o.zoneLabel = m.zoneLabel;
   const rows = parseInt(m.rows, 10);
   if (rows > 0) o.rows = Math.min(rows, 40);
-  if (Array.isArray(m.cols)) { const c = Object.keys(COL_DEFS).filter(k => m.cols.includes(k)); if (c.length) o.cols = c; }
+  if (Array.isArray(m.cols)) { const c = Object.keys(COL_DEFS).filter(k => m.cols.includes(k)).slice(0, 6); if (c.length) o.cols = c; }   // six: a phone reads no more
   const list = (k, defs, min, max) => {
     if (!Array.isArray(m[k])) return;
     const v = [...new Set(m[k].filter(x => (Array.isArray(defs) ? defs.includes(x) : defs[x])))].slice(0, max);
@@ -103,6 +106,7 @@ function cleanModules(m) {
 }
 /* the modules of the graphic being drawn; draw() sets them, and every helper below reads them */
 let MOD = {};
+let ZNOTE = null;                 // the zone to name on the graphic being drawn, or null (see zoneNote)
 const on = k => MOD[k] !== false;
 
 const U = () => root.EpinoiaReportCard && root.EpinoiaReportCard.util;
@@ -123,6 +127,45 @@ function local(iso, tz) {
   } catch (_) {
     return local(iso, 'UTC');
   }
+}
+/* A ZONE THE BROWSER KNOWS, or null. Every time on a graphic is shown in one: the league's own (its row's timezone, or
+   failing that its country's main one), the reader's device's, or UTC - see the `zone` module. */
+const zoneOk = {};
+function validZone(z) {
+  if (typeof z !== 'string' || !z) return null;
+  if (!(z in zoneOk)) {
+    try { new Intl.DateTimeFormat('en-GB', { timeZone: z }); zoneOk[z] = true; } catch (_) { zoneOk[z] = false; }
+  }
+  return zoneOk[z] ? z : null;
+}
+/* the main zone of a country, for a league row that names its country but not its zone (a country with several is
+   given its capital's or its league's usual one: a league that plays elsewhere sets its own timezone, and that wins) */
+const COUNTRY_ZONE = { GB: 'Europe/London', UK: 'Europe/London', IE: 'Europe/Dublin', FR: 'Europe/Paris', DE: 'Europe/Berlin', ES: 'Europe/Madrid', IT: 'Europe/Rome',
+  PT: 'Europe/Lisbon', NL: 'Europe/Amsterdam', BE: 'Europe/Brussels', CH: 'Europe/Zurich', AT: 'Europe/Vienna', PL: 'Europe/Warsaw', CZ: 'Europe/Prague', SK: 'Europe/Bratislava',
+  HU: 'Europe/Budapest', RO: 'Europe/Bucharest', BG: 'Europe/Sofia', GR: 'Europe/Athens', TR: 'Europe/Istanbul', SE: 'Europe/Stockholm', NO: 'Europe/Oslo', DK: 'Europe/Copenhagen',
+  FI: 'Europe/Helsinki', LT: 'Europe/Vilnius', LV: 'Europe/Riga', EE: 'Europe/Tallinn', RS: 'Europe/Belgrade', HR: 'Europe/Zagreb', SI: 'Europe/Ljubljana', BA: 'Europe/Sarajevo',
+  ME: 'Europe/Podgorica', MK: 'Europe/Skopje', UA: 'Europe/Kyiv', IL: 'Asia/Jerusalem', AU: 'Australia/Sydney', NZ: 'Pacific/Auckland', JP: 'Asia/Tokyo', KR: 'Asia/Seoul',
+  CN: 'Asia/Shanghai', TW: 'Asia/Taipei', PH: 'Asia/Manila', ID: 'Asia/Jakarta', TH: 'Asia/Bangkok', IN: 'Asia/Kolkata', AE: 'Asia/Dubai', SA: 'Asia/Riyadh', QA: 'Asia/Qatar',
+  EG: 'Africa/Cairo', ZA: 'Africa/Johannesburg', NG: 'Africa/Lagos', US: 'America/New_York', CA: 'America/Toronto', MX: 'America/Mexico_City', AR: 'America/Argentina/Buenos_Aires',
+  BR: 'America/Sao_Paulo', CL: 'America/Santiago', CO: 'America/Bogota', PR: 'America/Puerto_Rico' };
+/* the league's own zone: its timezone, else its country's, else UTC */
+function leagueZone(league) {
+  const l = league || {};
+  return validZone(l.timezone) || validZone(COUNTRY_ZONE[String(l.country || '').toUpperCase()]) || 'UTC';
+}
+/* "AEST", "CEST", "GMT" where the zone has a name, and always its offset from UTC ("UTC+10", "UTC+5:30", "UTC"), at this
+   instant (a zone changes its offset with the clock going forward and back) */
+function zoneName(iso, zone) {
+  const d = new Date(iso), z = validZone(zone) || 'UTC';
+  if (isNaN(d)) return { abbr: '', offset: '', text: '' };
+  const loc = /^Australia\//.test(z) ? 'en-AU' : z === 'Pacific/Auckland' ? 'en-NZ' : /^America\//.test(z) ? 'en-US' : 'en-GB';
+  const part = (l, style) => { try { return (new Intl.DateTimeFormat(l, { timeZone: z, timeZoneName: style }).formatToParts(d).find(p => p.type === 'timeZoneName') || {}).value || ''; } catch (_) { return ''; } };
+  const m = /GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(part('en-GB', 'longOffset'));
+  const zero = !m || (!+m[2] && (!m[3] || m[3] === '00'));
+  const offset = zero ? 'UTC' : 'UTC' + m[1] + (+m[2]) + (m[3] && m[3] !== '00' ? ':' + m[3] : '');
+  const short = part(loc, 'short');
+  const abbr = /^[A-Z]{2,5}$/.test(short) ? short : '';
+  return { abbr, offset, text: offset === 'UTC' ? abbr || 'UTC' : abbr ? abbr + ' (' + offset + ')' : offset };
 }
 const dayLabel = t => (t ? DAYS[t.wd] + ' ' + t.d + ' ' + MONTHS[t.mo] : '');
 const dateLabel = t => (t ? DAYS[t.wd] + ' ' + t.d + ' ' + MONTHS[t.mo] + ' ' + t.y : '');
@@ -199,9 +242,9 @@ function result(o) {
     const keys = [...new Set(Object.keys(home.perQ).concat(Object.keys(away.perQ)))].map(Number).filter(k => k > 0).sort((a, b) => a - b);
     keys.forEach(k => periods.push({ label: k <= 4 ? 'Q' + k : (k === 5 ? 'OT' : 'OT' + (k - 4)), home: n0(home.perQ[k]), away: n0(away.perQ[k]) }));
   }
-  const t = local(g.tipoff_at, o.league && o.league.timezone);
+  const tz = leagueZone(o.league), t = local(g.tipoff_at, tz);
   return {
-    kind: 'result', key: 'final-' + slug(home.name) + '-' + slug(away.name), league: o.league || {}, comp: o.comp || '',
+    iso: g.tipoff_at || '', tz, kind: 'result', key: 'final-' + slug(home.name) + '-' + slug(away.name), league: o.league || {}, comp: o.comp || '',
     date: dateLabel(t), venue: g.venue || '', home, away, periods: periods.length >= 4 ? periods : [],
     top: { home: lead(0), away: lead(1) }, scorers: { home: scorers(0), away: scorers(1) },
     teamStats: ts.home && ts.away ? ts : null, gameId: g.id || null
@@ -221,9 +264,10 @@ function performer(o) {
   const s = best.stats, adv = s.adv || {};
   const mine = best.team_idx === 0 ? o.home : o.away, theirs = best.team_idx === 0 ? o.away : o.home;
   const my = best.team_idx === 0 ? hs : as, their = best.team_idx === 0 ? as : hs;
-  const t = local(g.tipoff_at, o.league && o.league.timezone);
+  const tz = leagueZone(o.league), t = local(g.tipoff_at, tz);
   const name = adv.name || best.name || '';
   return {
+    iso: g.tipoff_at || '', tz,
     kind: 'performer', key: (o.label ? slug(o.label) : 'player-of-the-game') + '-' + slug(name), label: o.label || '', league: o.league || {}, comp: o.comp || '', date: dateLabel(t),
     player: { name, num: adv.num != null ? String(adv.num) : '' },
     team: side(mine, my), opp: side(theirs, their), won: my > their,
@@ -254,14 +298,14 @@ function quartersOf(perQ) {
 
 /* THE WEEK'S RESULTS: every final in the window, oldest first; `games` rows carry home / away teams already. */
 function week(o, size) {
-  const tz = o.league && o.league.timezone;
+  const tz = leagueZone(o.league);
   const rows = (o.games || []).slice().sort((a, b) => String(a.tipoff_at).localeCompare(String(b.tipoff_at))).map(g => ({
-    home: side(g.home, g.home_score), away: side(g.away, g.away_score), day: dayLabel(local(g.tipoff_at, tz)),
+    iso: g.tipoff_at || '', home: side(g.home, g.home_score), away: side(g.away, g.away_score), day: dayLabel(local(g.tipoff_at, tz)),
     time: timeLabel(local(g.tipoff_at, tz)), venue: g.venue || '', quarters: quartersOf(g.perQ)
   }));
   const pp = pages(rows, PER.week[size] || 8);
   return pp.map((p, i) => ({ kind: 'week', key: 'results' + (pp.length > 1 ? '-' + (i + 1) : ''), league: o.league || {},
-    comp: o.comp || '', range: o.range || '', rows: p, page: i + 1, pages: pp.length }));
+    comp: o.comp || '', range: o.range || '', rows: p, page: i + 1, pages: pp.length, tz }));
 }
 
 /* THE TABLE: standings rows in rank order, one set of graphics per group */
@@ -291,14 +335,41 @@ function table(o, size) {
 
 /* COMING UP: the next week's games by the league's own day, with the tip-off in the league's own time */
 function fixtures(o, size) {
-  const tz = o.league && o.league.timezone;
+  const tz = leagueZone(o.league);
   const rows = (o.games || []).slice().sort((a, b) => String(a.tipoff_at).localeCompare(String(b.tipoff_at))).map(g => {
     const t = local(g.tipoff_at, tz);
-    return { day: dayLabel(t), time: timeLabel(t), home: side(g.home, 0), away: side(g.away, 0), venue: g.venue || '' };
+    return { iso: g.tipoff_at || '', day: dayLabel(t), time: timeLabel(t), home: side(g.home, 0), away: side(g.away, 0), venue: g.venue || '' };
   });
   const pp = pages(rows, PER.fixtures[size] || 8);
   return pp.map((p, i) => ({ kind: 'fixtures', key: 'coming-up' + (pp.length > 1 ? '-' + (i + 1) : ''), league: o.league || {},
-    comp: o.comp || '', range: o.range || '', rows: p, page: i + 1, pages: pp.length, tz: tz || 'UTC' }));
+    comp: o.comp || '', range: o.range || '', rows: p, page: i + 1, pages: pp.length, tz }));
+}
+
+/* THE CLOCK OF A GRAPHIC: every day and time a model shows is worked from its instants (`iso`) in one zone - the `zone`
+   module's, else the league's own - so a game late on a Saturday in UTC is early on the Sunday in Sydney, on the day
+   label as well as the time. With no `zone` this returns the model as it was made. */
+function zoneOfModel(m, mods) { return validZone(mods && mods.zone) || m.tz || 'UTC'; }
+function relabel(m, mods) {
+  const z = zoneOfModel(m, mods);
+  if (z === (m.tz || 'UTC')) return m;
+  const at = iso => local(iso, z);
+  if (m.kind === 'result' || m.kind === 'performer') return m.iso ? Object.assign({}, m, { date: dateLabel(at(m.iso)) }) : m;
+  if (m.kind === 'week') return Object.assign({}, m, { rows: m.rows.map(r => (r.iso ? Object.assign({}, r, { day: dayLabel(at(r.iso)), time: timeLabel(at(r.iso)) }) : r)) });
+  if (m.kind === 'fixtures') return Object.assign({}, m, { rows: m.rows.map(r => (r.iso ? Object.assign({}, r, { day: dayLabel(at(r.iso)), time: timeLabel(at(r.iso)) }) : r)) });
+  return m;
+}
+/* the zone to name on the graphic, or '': by default only when it is not the league's own (which the reader assumes);
+   `zoneLabel` 'always' or 'never' overrides. Where the rows straddle a clock change, both names ("CET/CEST"). */
+function zoneNote(m, mods) {
+  const label = mods && mods.zoneLabel;
+  const z = zoneOfModel(m, mods);
+  if (label === 'never' || !(m.iso || (m.rows && m.rows.some(r => r.iso)))) return null;
+  if (label !== 'always' && z === (m.tz || 'UTC')) return null;
+  const isos = m.rows ? m.rows.map(r => r.iso).filter(Boolean) : [m.iso];
+  const names = [...new Set(isos.map(i => zoneName(i, z)))].filter(Boolean);
+  const texts = [...new Set(names.map(n => n.text))];
+  const abbrs = [...new Set(names.map(n => n.abbr || n.offset))];
+  return { zone: z, text: texts.length === 1 ? texts[0] : abbrs.join('/'), short: abbrs.join('/') };
 }
 
 /* the rows a list graphic shows: all of them, or the first `rows` when the module says so */
@@ -312,9 +383,11 @@ function tags(league) {
   const t = String(league && league.name || '').replace(/[^\p{L}\p{N}]+/gu, '');
   return (t ? '#' + t + ' ' : '') + '#basketball';
 }
-function caption(m0, mods) {
+function caption(m0, mods0) {
   if (!m0) return '';
-  const m = rowsOf(m0, cleanModules(Object.assign({}, m0.modules, mods)));
+  const mods = cleanModules(Object.assign({}, m0.modules, mods0));
+  const zn = zoneNote(m0, mods);
+  const m = relabel(rowsOf(m0, mods), mods);
   const L = m.league || {};
   if (m.kind === 'result') {
     const w = m.home.score >= m.away.score ? m.home : m.away, l = w === m.home ? m.away : m.home;
@@ -343,8 +416,8 @@ function caption(m0, mods) {
       m.rows.map(r => r.rank + '. ' + r.team.name + ' ' + r.w + '-' + r.l).join('\n'), '', tags(L)].join('\n');
   }
   if (m.kind === 'fixtures') {
-    return ['Coming up' + (m.comp ? ' in the ' + m.comp : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : ''), '',
-      m.rows.map(r => r.day + ' ' + r.time + ' · ' + r.home.name + ' v ' + r.away.name).join('\n'), '', tags(L)].join('\n');
+    return ['Coming up' + (m.comp ? ' in the ' + m.comp : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : '') + (zn ? ' (times in ' + zn.text + ')' : ''), '',
+      m.rows.map(r => r.day + ' ' + r.time + (zn ? ' ' + (zoneName(r.iso, zn.zone).abbr || zoneName(r.iso, zn.zone).offset) : '') + ' · ' + r.home.name + ' v ' + r.away.name).join('\n'), '', tags(L)].join('\n');
   }
   return '';
 }
@@ -760,9 +833,9 @@ function rowsBlock(ctx, th, S, M, n, rowH, drawRow) {
   } };
 }
 
-function titleBlock(ctx, th, S, M, title0, sub0) {
+function titleBlock(ctx, th, S, M, title0, sub0, zn) {
   const u = U(), W = S.w;
-  const title = MOD.headline || title0, sub = MOD.subline || sub0;
+  const title = MOD.headline || title0, sub = [MOD.subline || sub0, zn && ZNOTE ? zn + ' ' + ZNOTE.text : ''].filter(Boolean).join(' · ');
   return { h: sub ? 128 : 96, draw: y => {
     const size = u.fit(ctx, title.toUpperCase(), W - 2 * M, 92, 50, u.F.score);
     u.display(ctx, th, u.ellipsis(ctx, title.toUpperCase(), W - 2 * M), M, y + size * 0.82, th.ink, 2);
@@ -786,7 +859,7 @@ function drawWeek(ctx, m, th, S, M) {
   const n = m.rows.length;
   const rowH = fitRows(S, n, 128, 80, S.h >= 1900 ? 116 : 100, 3);
   return [
-    titleBlock(ctx, th, S, M, 'Results', [m.comp, m.range].filter(Boolean).join(' · ')),
+    titleBlock(ctx, th, S, M, 'Results', [m.comp, m.range].filter(Boolean).join(' · '), 'days in'),
     n ? rowsBlock(ctx, th, S, M, n, rowH, (i, y, h) => {
       const r = m.rows[i];
       const mid = W / 2, cy = y + h / 2;
@@ -882,7 +955,7 @@ function drawFixtures(ctx, m, th, S, M, accent) {
   const n = m.rows.length;
   const rowH = fitRows(S, n, 128, 96, S.h >= 1900 ? 140 : 124, 3);
   return [
-    titleBlock(ctx, th, S, M, 'Coming up', [m.comp, m.range].filter(Boolean).join(' · ')),
+    titleBlock(ctx, th, S, M, 'Coming up', [m.comp, m.range].filter(Boolean).join(' · '), 'times in'),
     n ? rowsBlock(ctx, th, S, M, n, rowH, (i, y, h) => {
       const r = m.rows[i], cy = y + h / 2;
       const newDay = i === 0 || m.rows[i - 1].day !== r.day;
@@ -921,7 +994,8 @@ function draw(ctx, m0, opts) {
   const u = U(), themes = TH();
   if (!u || !themes) throw new Error('socialcard.js needs reportcard.js loaded first');
   MOD = cleanModules(Object.assign({}, m0.modules, o.modules));
-  try { return drawIn(ctx, rowsOf(m0, MOD), o, u, themes); } finally { MOD = {}; }
+  ZNOTE = zoneNote(m0, MOD);
+  try { return drawIn(ctx, relabel(rowsOf(m0, MOD), MOD), o, u, themes); } finally { MOD = {}; ZNOTE = null; }
 }
 
 function drawIn(ctx, m, o, u, themes) {
@@ -942,7 +1016,7 @@ function drawIn(ctx, m, o, u, themes) {
       ? [{ colour: m.team.colour, x: 0.85, y: 0.08 }, { colour: m.team.colour2 || L.colour2, x: 0.05, y: 0.95, r: 0.6, a: 0.7 }]
       : [{ colour: leagueCol, x: 0.85, y: 0.05 }, { colour: L.colour2, x: 0.05, y: 0.98, r: 0.6, a: 0.7 }];
   ground(ctx, th, W, H, glows, colour, m.kind === 'performer' ? m.team.colour2 : L.colour2);
-  const when = m.kind === 'result' || m.kind === 'performer' ? m.date : m.kind === 'table' ? (m.asOf || '') : (m.range || '');
+  const when = m.kind === 'result' || m.kind === 'performer' ? m.date + (ZNOTE ? ' · ' + ZNOTE.short : '') : m.kind === 'table' ? (m.asOf || '') : (m.range || '');
   const what = [m.comp || L.name || '', m.pages > 1 ? m.page + '/' + m.pages : ''].filter(Boolean).join(' · ');
   const top = S.top, bottom = H - S.bottom;
   heading(ctx, th, M, W, top, TAGS[m.kind] || '', what, when, accent, !MOD.logoPos || MOD.logoPos === 'heading' ? L.logo : null);
@@ -1088,6 +1162,6 @@ function zip(files, when) {
   return out;
 }
 
-return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, TEAM_STAT_DEFS, ROW_EXTRAS, result, performer, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
+return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, result, performer, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
          gameScore, statLine, local, dayLabel, dateLabel, timeLabel, slug };
 }));
