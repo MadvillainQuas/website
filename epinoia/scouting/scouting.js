@@ -1,6 +1,13 @@
 'use strict';
 /* ============================================================================
-   GLOBAL SCOUTING — every league's current season in one table.
+   GLOBAL SCOUTING — the leagues a scout chooses, in one table.
+
+   SET UP FIRST (setup.js). The page opens on a set-up drawn from global.js
+   catalogue() alone (the leagues, what the viewer may see, their seasons): which
+   leagues, which seasons, men's or women's, and the players' ranges. Nothing
+   heavy is read until LOAD, and then only those leagues, CONCURRENCY at a time,
+   each season read going through data.js's own caches. ?go=1 in the address
+   (a shared link) loads at once.
 
    The Statistics page's table (fulltable.js) over the rows global.js merges
    from every league the viewer may see, with the cross-league options switched
@@ -248,7 +255,24 @@ function excludedText(excluded) {
   return n + ' members-only league' + (n === 1 ? '' : 's') + ' not included';
 }
 
-/* ------------------------------------------------------------------- boot --- */
+/* ---------------------------------------------------------- the progress ---
+   'loading 3 of 12 leagues…', then what came of it. Pure, for the test. */
+function loadingText(got, total, state) {
+  const t = Math.max(0, total | 0), g = Math.min(t, Math.max(0, got | 0));
+  const unit = t === 1 ? 'league' : 'leagues';
+  if (state === 'stopped') return 'Stopped: ' + g + ' of ' + t + ' ' + unit + ' loaded';
+  if (state === 'done') return t + ' ' + unit + ' loaded';
+  return 'Loading ' + g + ' of ' + t + ' ' + unit + '…';
+}
+
+/* how many leagues are read at once: enough to keep the line busy, few enough that the first
+   league lands quickly and a phone's connection is not asked for twelve season files at once */
+const CONCURRENCY = 4;
+
+/* ------------------------------------------------------------------- boot ---
+   THE PAGE OPENS ON THE SET-UP (setup.js), drawn from the light read alone, and loads
+   nothing heavy until LOAD — or at once, when the address says so (?go=1 with leagues, a
+   shared link, or an older link to one league's rows). */
 function boot() {
   const doc = root.document;
   const $ = s => doc.querySelector(s);
@@ -258,6 +282,8 @@ function boot() {
   if (!host) return;
 
   const G = root.EpinoiaGlobal, T = root.EpinoiaTable, A = root.EpinoiaAccess, C = root.EpinoiaCompare;
+  const SU = root.EpinoiaScoutSetup || null, Ages = root.EpinoiaAges || null;
+  const results = $('#results'), summary = $('#scSummary'), prog = $('#scProg');
 
   function stateBox(msg, retry) {
     host.textContent = '';
@@ -272,12 +298,68 @@ function boot() {
     host.appendChild(box);
   }
   if (!G || !T || !root.EpinoiaData) { stateBox('Could not load the scouting table. Check your connection.', true); return; }
+  const D = root.EpinoiaData;
+
+  /* ---- the set-up: the address first, then this browser's copy (per account) ---- */
+  const store = (() => { try { return root.localStorage || null; } catch (_) { return null; } })();
+  const cfg = root.EPINOIA_CONFIG || {};
+  const key = SU ? SU.storeKey(SU.userId(store, cfg.supabaseUrl)) : '';
+  const fromUrl = SU ? SU.readSetup(root.location.search) : { setup: null, go: false, has: false };
+  let current = null;                      // the set-up the table on screen was loaded with
+  let initial = null;
+  if (SU) {
+    const kept = SU.loadStored(store, key);
+    if (fromUrl.setup.leagues.length) initial = fromUrl.setup;
+    else {
+      initial = kept || SU.cleanSetup({});
+      /* an address with only the gender (?g=women, an older link) keeps it over this browser's */
+      const p = new URLSearchParams(root.location.search);
+      if (p.has('g')) initial = SU.cleanSetup(Object.assign({}, initial, { g: fromUrl.setup.g }));
+    }
+  }
+
+  /* THE LIGHT READ, AT ONCE: the leagues, what this viewer may see, their seasons */
+  const catP = typeof G.catalogue === 'function' ? G.catalogue() : Promise.resolve(null);
+  catP.catch(() => {});
+  /* the clubs per league, for the size estimate: one short read, after the catalogue */
+  const teamP = catP.then(() => (typeof D.all === 'function' ? D.all('teams?select=league_id') : []))
+    .then(ts => { const m = {}; (ts || []).forEach(t => { if (t && t.league_id) m[t.league_id] = (m[t.league_id] || 0) + 1; }); return m; })
+    .catch(() => ({}));
+  /* the leagues this reader follows, when signed in (fan_prefs: one small read) */
+  const F = root.EpinoiaFollow;
+  const followP = (F && typeof F.session === 'function' && F.session() && typeof F.load === 'function')
+    ? Promise.resolve(F.load()).then(p => (p && p.fav_league_ids) || []).catch(() => []) : Promise.resolve([]);
+
+  const writeUrl = q => {
+    try { root.history.replaceState(root.history.state, '', root.location.pathname + q + root.location.hash); }
+    catch (_) { /* a sandboxed frame: the page works, the address does not follow */ }
+  };
+  const ui = SU ? SU.mount({
+    initial, catalogue: catP, teamCount: teamP, follows: followP,
+    onChange: s => { SU.saveStored(store, key, s); },
+    onLoad: s => start(s)
+  }) : null;
+  const editBtn = $('#scEdit');
+  if (editBtn) editBtn.addEventListener('click', () => {
+    if (!ui) return;
+    ui.set(current || ui.get());
+    ui.open();
+    /* the address loses go=1 while the set-up is open: a reload now lands on the set-up */
+    if (current) writeUrl(SU.writeSetup(current, root.location.search, { go: false }));
+    const sec = $('#setup');
+    try { sec.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); } catch (_) { /* old engines */ }
+    const first = sec && sec.querySelector('#suWho button[aria-pressed="true"]');
+    if (first) try { first.focus({ preventScroll: true }); } catch (_) { /* focus is a nicety */ }
+  });
+  const reduced = () => { try { return root.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; } };
 
   /* ---- the status line ---- */
-  const arrived = [];                    // leagues in the order they landed
-  const byLeague = new Map();            // league id -> rows
-  let excluded = [], failed = [], done = false;
+  let arrived = [];                      // leagues in the order they landed
+  let byLeague = new Map();              // league id -> rows kept by the set-up
+  let rawCount = new Map();              // league id -> rows read, before the set-up's filters
+  let excluded = [], failed = [], done = false, total = 0, stopped = false;
   function paintStatus() {
+    if (!status) return;
     status.textContent = '';
     const line = el('div', 'sc-leagues');
     if (!arrived.length) line.textContent = progressText([], done);
@@ -297,7 +379,59 @@ function boot() {
     if (failed.length) status.appendChild(el('div', 'sc-warn',
       'Could not load ' + failed.map(f => f.name).join(', ') + ' — try again later'));
   }
-  paintStatus();
+  /* 'loading 3 of 12 leagues…', a bar, and a way out */
+  let cancel = null;
+  function paintProg() {
+    if (!prog) return;
+    const got = arrived.length + failed.length;
+    prog.textContent = '';
+    if (!total) { prog.hidden = true; return; }
+    prog.hidden = false;
+    const state = stopped ? 'stopped' : done ? 'done' : 'loading';
+    const bar = el('div', 'sc-bar');
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', String(total));
+    bar.setAttribute('aria-valuenow', String(got));
+    bar.setAttribute('aria-label', 'Leagues loaded');
+    const fill = el('i');
+    fill.style.width = Math.round(100 * got / total) + '%';
+    bar.appendChild(fill);
+    const txt = el('span', 'sc-prog-t', loadingText(got, total, state));
+    prog.append(bar, txt);
+    if (state === 'loading' && cancel) {
+      const b = el('button', 'ep-chip sc-cancel', 'cancel');
+      b.type = 'button';
+      b.addEventListener('click', cancel);
+      prog.appendChild(b);
+    }
+    prog.classList.toggle('done', state !== 'loading');
+  }
+
+  /* ---- the summary over the table: what was loaded, and the way back to the set-up ---- */
+  let cover = null;
+  function paintSummary(setup) {
+    if (!summary || !SU) return;
+    const parts = summary.querySelector('.sc-sum-parts') || summary;
+    parts.textContent = '';
+    const Un = root.EpinoiaUnits;
+    const imperial = Un && typeof Un.get === 'function' && Un.get() === 'imperial';
+    const n = arrived.length ? new Set(arrived.map(L => L.accessId || L.id)).size : (setup.leagues || []).length;
+    SU.summaryParts(setup, { leagues: n,
+      height: imperial ? v => Un.height(v) : null, weight: imperial ? v => Un.weight(v) : null
+    }).forEach(t => parts.appendChild(el('span', 'sc-sum-p', t)));
+    const cv = summary.querySelector('.sc-sum-cover');
+    if (cv) {
+      cv.textContent = '';
+      if (cover && cover.players) {
+        const bits = [];
+        if (setup.age) bits.push('age known for ' + cover.age + '%');
+        if (setup.ht) bits.push('height for ' + cover.ht + '%');
+        if (setup.wt) bits.push('weight for ' + cover.wt + '%');
+        if (bits.length) cv.textContent = bits.join(' · ') + ' of the players read' + (setup.unk ? '' : ': the rest are left out');
+      }
+    }
+  }
 
   /* ---- the lock, the page's own (global.js) ---- */
   /* Over EVERY included league, known before any row is read (global.js onAccess), not only the
@@ -308,7 +442,7 @@ function boot() {
   let included = null;                   // every league on this page, once onAccess has said
   const relock = () => {
     const list = included || arrived;
-    const states = list.map(L => (A && typeof A.get === 'function') ? A.get(L.id) : null).filter(Boolean);
+    const states = list.map(L => (A && typeof A.get === 'function') ? A.get(L.accessId || L.id) : null).filter(Boolean);
     lockSet = G.lockedColumns(states);
   };
   const locked = k => lockSet.has(k);
@@ -316,16 +450,23 @@ function boot() {
   /* ---- men's, women's, or all (0131) ----
      A recruiter working a women's roster does not want SLB Men and BCB in the
      same ranking. The leagues say which they are; a league that has not said
-     appears only under "all", because guessing from a name is how you end up
-     filing a women's league under men's.
+     appears only under "all" (or under either, when the set-up asked for those
+     too), because guessing from a name is how you end up filing a women's league
+     under men's.
 
      The row is only drawn when it would DO something: if every league on the
      page is one gender (or none has said), three buttons that all show the
-     same table is furniture. */
+     same table is furniture; and a set-up that chose a gender has chosen. */
   let who = readWho(root.location.search);
+  let setupNow = null;
   const genderOf = id => {
     const L = (included || arrived).find(x => x.id === id);
     return (L && L.gender) || '';
+  };
+  const passWho = L => {
+    if (!who) return true;
+    const g = L.gender || genderOf(L.id);
+    return g ? g === who : !!(setupNow && setupNow.gu && setupNow.g === who);
   };
   function paintWho() {
     const host2 = $('#who');
@@ -333,12 +474,13 @@ function boot() {
     const list = included || arrived || [];
     const kinds = new Set(list.map(L => L.gender).filter(Boolean));
     host2.textContent = '';
-    if (kinds.size < 2) { host2.hidden = true; return; }   // nothing to choose between
+    if (kinds.size < 2 || (setupNow && setupNow.g)) { host2.hidden = true; return; }   // nothing to choose between
     host2.hidden = false;
     [['', 'all'], ['men', 'men’s'], ['women', 'women’s']].forEach(([k, label]) => {
       if (k && !kinds.has(k)) return;
       const b = el('button', 'ep-chip' + (who === k ? ' on' : ''), label);
       b.type = 'button';
+      b.setAttribute('aria-pressed', String(who === k));
       b.addEventListener('click', () => {
         if (who === k) return;
         who = k;
@@ -359,7 +501,7 @@ function boot() {
   const allRows = () => {
     const out = [];
     arrived.forEach(L => {
-      if (who && (L.gender || genderOf(L.id)) !== who) return;
+      if (!passWho(L)) return;
       (byLeague.get(L.id) || []).forEach(r => out.push(r));
     });
     return out;
@@ -419,50 +561,132 @@ function boot() {
     } else tbl.setRows(rows);
   }
 
-  G.players({
-    onAccess(access, leagues, ex) {
-      included = (leagues || []).slice();
-      excluded = ex || [];
-      relock();
-      paintWho();
-      paintStatus();
-    },
-    onLeague(rows, L) {
-      byLeague.set(L.id, rows || []);
-      if (!arrived.some(x => x.id === L.id)) arrived.push(L);
-      relock();
-      paintStatus();
-      paintTable();
+  /* ---- LOAD: the chosen leagues only, a few at a time ---- */
+  let run = 0, ac = null;
+  const skeleton = () => { host.textContent = ''; const k = el('div', 'sc-skel'); k.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 8; i++) k.appendChild(el('i')); host.appendChild(k); };
+  async function start(setup) {
+    const my = ++run;
+    if (ac) { try { ac.abort(); } catch (_) { /* gone */ } }
+    ac = typeof root.AbortController === 'function' ? new root.AbortController() : null;
+    const signal = ac ? ac.signal : undefined;
+    setupNow = setup || null;
+    current = setup || null;
+    if (setupNow && setupNow.g) who = setupNow.g;
+    arrived = []; byLeague = new Map(); rawCount = new Map(); excluded = []; failed = []; done = false; stopped = false;
+    total = 0; included = null; lockSet = new Set(); cover = null;
+    const bio = {};
+    const year = new Date().getUTCFullYear();
+    const wantBio = !!(SU && setupNow && SU.needsBio(setupNow) && Ages && typeof Ages.loadBio === 'function');
+    const keep = rows => (SU && setupNow ? rows.filter(r => SU.rowPasses(r, bio[r.playerId != null ? r.playerId : r.id], setupNow, year)) : rows);
+    const pending = [];
+    if (tbl) { tbl = null; }
+    closePanel();
+    skeleton();
+    if (results) { results.classList.remove('hide'); results.classList.add('sc-in'); setTimeout(() => results.classList.remove('sc-in'), 900); }
+    if (ui) { ui.close(); ui.busy(true); }
+    if (SU && setupNow) {
+      SU.saveStored(store, key, setupNow);
+      writeUrl(SU.writeSetup(setupNow, root.location.search, { go: true }));
+      paintSummary(setupNow);
     }
-  }).then(res => {
-    done = true;
-    excluded = res.excluded || [];
-    failed = res.failed || [];
-    paintStatus();
-    /* every included league has been handed over through onLeague by now, so the table is
-       already whole; only an empty page is left to say so */
-    if (tbl) return followAccess(res);
-    if (!res.leagues.length && excluded.length) stateBox('Every league on the platform is members-only. Sign in as a member to scout them.');
-    else stateBox('No statistics yet — these fill in as games are finalised in each league.');
-    followAccess(res);
-  }).catch(e => {
-    if (e && e.name === 'AbortError') return;
-    done = true;
-    paintStatus();
-    if (tbl) return;                    // what arrived stays on screen
-    stateBox('Could not load the scouting table: ' + ((e && e.message) || 'network error'), true);
-  });
+    cancel = () => { if (ac) ac.abort(); stopped = true; paintProg(); };
+    paintStatus(); paintProg();
+    if (results && my > 1) { try { results.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); } catch (_) { /* old engines */ } }
+
+    let cat = null;
+    try { cat = await catP; } catch (_) { cat = null; }
+    if (my !== run) return;
+    const ids = SU && setupNow && cat ? SU.resolve(setupNow.leagues, (cat.leagues || []).concat(cat.all || [])).map(L => L.id)
+      : (setupNow ? setupNow.leagues : null);
+    const opts = {
+      signal, concurrency: CONCURRENCY,
+      onAccess(access, leagues, ex) {
+        if (my !== run) return;
+        included = (leagues || []).slice();
+        excluded = ex || [];
+        total = included.length;
+        relock();
+        paintWho();
+        paintStatus(); paintProg();
+      },
+      onLeague(rows, L) {
+        if (my !== run) return;
+        const land = () => {
+          if (my !== run) return;
+          rawCount.set(L.id, (rows || []).length);
+          byLeague.set(L.id, keep(rows || []));
+          if (!arrived.some(x => x.id === L.id)) arrived.push(L);
+          relock();
+          paintStatus(); paintProg();
+          paintTable();
+        };
+        if (wantBio && rows && rows.length) {
+          pending.push(Promise.resolve(Ages.loadBio(cfg, rows.map(r => r.playerId != null ? r.playerId : r.id)))
+            .then(b => { Object.assign(bio, b || {}); }, () => {}).then(land));
+        } else land();
+      }
+    };
+    if (cat) opts.catalogue = cat;
+    if (ids) opts.leagueIds = ids;
+    if (setupNow && setupNow.seasons && setupNow.seasons.length) opts.seasons = setupNow.seasons;
+    if (ids && !ids.length) {
+      if (ui) ui.busy(false);
+      total = 0; done = true; paintProg(); paintStatus();
+      stateBox('None of the leagues in this set-up is open to you. Edit the set-up to choose others.');
+      return;
+    }
+    G.players(opts).then(async res => {
+      await Promise.all(pending);
+      if (my !== run) return;
+      done = true;
+      excluded = res.excluded || [];
+      failed = res.failed || [];
+      if (!total) total = (res.leagues || []).length;
+      if (ui) ui.busy(false);
+      if (wantBio) {
+        cover = SU.coverage(res.rows || [], r => bio[r.playerId != null ? r.playerId : r.id]);
+      }
+      if (setupNow) paintSummary(setupNow);
+      paintStatus(); paintProg();
+      /* every included league has been handed over through onLeague by now, so the table is
+         already whole; only an empty page is left to say so */
+      if (tbl) return followAccess(res);
+      const read = [...rawCount.values()].reduce((a, b) => a + b, 0);
+      if (!res.leagues.length && excluded.length) stateBox('Every league on the platform is members-only. Sign in as a member to scout them.');
+      else if (read) stateBox('No player in these leagues fits the set-up. Widen a range or edit the set-up.');
+      else stateBox('No statistics yet — these fill in as games are finalised in each league.');
+      followAccess(res);
+    }).catch(e => {
+      if (my !== run) return;
+      if (ui) ui.busy(false);
+      if (e && e.name === 'AbortError') {
+        done = true; stopped = true;
+        paintStatus(); paintProg();
+        if (!tbl) stateBox('Stopped before any league arrived. Edit the set-up, or load it again.');
+        return;
+      }
+      done = true;
+      paintStatus(); paintProg();
+      if (tbl) return;                    // what arrived stays on screen
+      stateBox('Could not load the scouting table: ' + ((e && e.message) || 'network error'), true);
+    });
+  }
 
   /* ---- a sign-in, sign-out or late answer after the page is drawn ----
      Which leagues are on the page was decided at load, so a change to that reloads the page;
-     a change only to what is locked relocks the drawn table. */
+     a change only to what is locked relocks the drawn table. One listener for the page, over
+     whichever load is on screen. */
+  let watch = null;
   function followAccess(res) {
     if (!A || typeof A.onChange !== 'function' || typeof A.canView !== 'function') return;
-    const ids = res.leagues.map(L => L.id).concat(excluded.map(x => x.id));
+    const ids = res.leagues.map(L => L.accessId || L.id).concat(excluded.map(x => x.id));
     const sig = () => ids.filter(id => A.canView(id)).join(',');
-    const seen = sig();
+    const first = !watch;
+    watch = { ids, sig, seen: sig() };
+    if (!first) return;
     const check = () => {
-      if (sig() !== seen) { root.location.reload(); return; }
+      if (watch.sig() !== watch.seen) { root.location.reload(); return; }
       const before = [...lockSet].sort().join(',');
       relock();
       if (tbl && [...lockSet].sort().join(',') !== before) tbl.setRows(allRows());
@@ -470,13 +694,17 @@ function boot() {
     try {
       A.onChange(d => {
         if (d && d.reason === 'auth' && typeof A.loadMany === 'function') {
-          Promise.resolve().then(() => A.loadMany({ leagueIds: ids, force: true })).then(check, () => {});
+          Promise.resolve().then(() => A.loadMany({ leagueIds: watch.ids, force: true })).then(check, () => {});
         } else check();
       });
     } catch (_) { /* the page as drawn */ }
   }
+
+  /* ---- a link that says go, or a page with no set-up module: load now ---- */
+  if (!SU) start(null);
+  else if (fromUrl.go) start(initial);
 }
 
 return { boot, readState, writeState, encodeFilters, decodeFilters, tableOptions, compareInput,
-  compareStats, progressText, excludedText, DEFAULTS, PARAM, CORE_STATS, MAX_COMPARE_STATS, PAGE_SIZE };
+  compareStats, progressText, excludedText, loadingText, CONCURRENCY, DEFAULTS, PARAM, CORE_STATS, MAX_COMPARE_STATS, PAGE_SIZE };
 }));

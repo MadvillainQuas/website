@@ -1,0 +1,30 @@
+/* ============================================================================
+   PROFILE (epinoia/profile/, profile.js): the fan's own public page on EPINOIA - the username (0163), whether
+   the page at fan/?u=<username> shows (0197), and the editor of what it shows (me/fanprofile.js, whose own
+   look is kit/fan.css's .fp-*). The page standard's sheets (page.css, sectitle.css) give the head and the
+   sections; this is only what is this page's own.
+   ============================================================================ */
+
+/* ---- the username: the lead, the @ and its field, what the check says, the rules ---- */
+.pf-uname{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.uname-lead{margin:0;font-family:var(--f-ui);font-size:15px;line-height:1.55;color:var(--ink-2);max-width:60ch}
+.uname-row{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:460px}
+.uname-at{font-family:var(--f-data);font-size:15px;color:var(--ink-3)}
+.uname-row .ep-input{flex:1 1 auto;min-width:0;max-width:none;font-size:15px}
+.uname-row .ep-btn{min-height:42px;flex:none}
+/* the UI face, not the pixel one: that one has no lower case, and a username's case is the fan's */
+.uname-msg{font-family:var(--f-ui);font-size:13px;line-height:1.6;min-height:1.6em;color:var(--ink-3)}
+.uname-msg.ok{color:var(--lume)}
+.uname-msg.bad{color:var(--flare)}
+.uname-rules{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.04em;line-height:1.8;color:var(--ink-3);max-width:60ch}
+
+/* ---- your public page: the one line saying whether it shows, and the way to it ---- */
+.pf-state .fp-state{margin:0 auto;max-width:60ch;text-align:center;font-size:15px}
+.pf-state .fp-state a{font-weight:700}
+
+/* ---- the editor: fan.css pads its grid for /me/'s old rows; inside a section the section pads it ---- */
+.pf-edit{max-width:1180px;margin-left:auto;margin-right:auto}
+.pf-edit .fp-grid{padding:0;text-align:left}
+
+/* signed out: the dashed box, a little way down from the head */
+.pf-out{padding:calc(var(--u)*6) calc(var(--u)*3)}

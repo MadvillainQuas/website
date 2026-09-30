@@ -84,7 +84,7 @@
       'Older stories': '過去の記事',
       'news, publishers and creators': 'ニュース・メディア・クリエイター',
       'Publishers and creators you follow': 'フォロー中のメディアとクリエイター',
-      'your hub: your profile, the front offices you work in, and the clubs and leagues you follow': 'マイハブ：マイページ、所属クラブのフロントオフィス、フォロー中のクラブとリーグ',
+      'your hub: your profile, your personalisation, the front offices you work in, and the clubs and leagues you follow': 'マイハブ：マイページ、パーソナライズ、所属クラブのフロントオフィス、フォロー中のクラブとリーグ',
       'admin controls': '管理メニュー',
       'platform': 'プラットフォーム',
       'sign in': 'ログイン',
@@ -1346,7 +1346,7 @@
       'open the league’s front page': 'リーグのトップページを開く',
       'every league, by country, on HOME': 'トップで国別の全リーグを表示',
       'manage or sign out': '管理・ログアウト',
-      'Nothing yet. Follow a club or a player on your profile and their next result lands here.': 'まだありません。マイページでクラブや選手をフォローすると、次の結果がここに届きます。',
+      'Nothing yet. Follow a club or a player in your personalisation and their next result lands here.': 'まだありません。パーソナライズページでクラブや選手をフォローすると、次の結果がここに届きます。',
       'settings': '設定',
       'halftime': 'ハーフタイム',
       'announcement': 'お知らせ',
@@ -1529,7 +1529,8 @@
       'variable': 'ばらつきあり',
       'streaky': 'ムラあり',
       'reading his games': '試合を読み込み中',
-      'squad average': 'チーム平均'
+      'squad average': 'チーム平均',
+      'personalisation': 'パーソナライズ'
     },
 
     ctx: {
@@ -2067,7 +2068,7 @@
         'Add more': 'さらに追加',
         'Remind me later': 'あとで再表示',
         'Don’t show this again': '今後表示しない',
-        'Find them on your profile and in My followed.': 'マイページと「フォロー中」で確認できます。',
+        'Find them in your personalisation and in My followed.': 'パーソナライズページと「フォロー中」で確認できます。',
         'Loading the leagues…': 'リーグを読み込み中…',
         'Loading the clubs…': 'クラブを読み込み中…',
         'The clubs could not be loaded just now.': '現在、クラブを読み込めません。',

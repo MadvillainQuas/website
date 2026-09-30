@@ -84,7 +84,7 @@ needs Louie says so.
       Leaderboards will publish names through their own functions, so a name is never tied to an account
       id in public. PGlite: 24 checks. **Live once Louie runs `db push`.**
 - [x] **2.2 Asking for one** — on the profile page, first section: checked as it is typed, saved, every
-      refusal in words, ja/es. `/epinoia/me/#username` opens it, which is where EPINOIA GO will send a fan
+      refusal in words, ja/es. `/epinoia/profile/#username` opens it (PROFILE since 2026-09-30; the old `/epinoia/me/#username` forwards there), which is where EPINOIA GO will send a fan
       with no name (3.4). Driven in Chromium against the real Supabase SDK: 22 checks (en/ja/es).
 
 ## Phase 3 — Stamping

@@ -22,6 +22,7 @@ Disallow: /epinoia/broadcast/
 Disallow: /epinoia/clockcam/
 Disallow: /epinoia/edit/
 Disallow: /epinoia/me/
+Disallow: /epinoia/profile/
 Disallow: /epinoia/signin/
 Disallow: /epinoia/join/
 Disallow: /epinoia/go/

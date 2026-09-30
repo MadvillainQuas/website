@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   YOUR PAGE — the editor of a fan's public profile, on /me/ (migration 0197).
+   YOUR PAGE — the editor of a fan's public profile, on PROFILE (profile/; it was on /me/) (migration 0197).
 
    The page itself is fan/?u=<username>, and it is shown only while the fan is
    public on EPINOIA GO (a username, 18 or over, and the one tap on the GO page).
@@ -19,7 +19,10 @@
    The head of the page is drawn beside the form as it will look (newscard.js
    hero). The database checks everything again (set_fan_profile), and what it
    refuses is said in words.
-     window.EpinoiaFanProfileEditor.mount({ host, sec, sb, after })  -> Promise
+     window.EpinoiaFanProfileEditor.mount({ host, sec, sb, after, state, stateSec })  -> Promise
+   state/stateSec (optional): where the "is it shown" line goes, and the section to show with it, when the
+   page gives it a section of its own (PROFILE's "Your public page"); without them it heads the editor.
+   Mounting again (a username just chosen) draws everything afresh.
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
@@ -65,8 +68,12 @@ async function mount(o) {
     if (d) P.discord = d;
   }
 
+  const stateHost = o.state ? (typeof o.state === 'string' ? document.querySelector(o.state) : o.state) : null;
+  const stateSec = o.stateSec ? (typeof o.stateSec === 'string' ? document.querySelector(o.stateSec) : o.stateSec) : null;
   host.textContent = '';
+  if (stateHost) stateHost.textContent = '';
   if (sec) sec.classList.remove('hide');
+  if (stateSec) stateSec.classList.remove('hide');
   if (typeof o.after === 'function') o.after();
 
   /* ---- is it shown ---- */
@@ -84,7 +91,7 @@ async function mount(o) {
     a.href = '../go/stamps/';
     state.appendChild(a);
   }
-  host.appendChild(state);
+  (stateHost || host).appendChild(state);
 
   const grid = el('div', 'fp-grid');
   const form = el('div', 'fp-form');
@@ -144,7 +151,7 @@ async function mount(o) {
   } catch (_) { /* no clubs to offer */ }
   if (P.club_id && ![...club.options].some(x => x.value === P.club_id)) { const opt = el('option', null, 'your club'); opt.value = P.club_id; club.appendChild(opt); }
   club.value = P.club_id || '';
-  form.appendChild(field('Your club', club, 'from the clubs you follow (Your clubs, below)'));
+  form.appendChild(field('Your club', club, 'from the clubs you follow (Your clubs, in PERSONALISATION)'));
 
   const links = {};
   const lw = el('div', 'fp-links');

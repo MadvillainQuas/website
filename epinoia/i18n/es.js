@@ -106,7 +106,7 @@
       'platform administration': 'Administración de la plataforma',
       'every league, accounts, settings': 'Todas las ligas, cuentas y ajustes',
       'your profile, and the clubs and leagues you follow': 'Tu perfil y los clubes y ligas que sigues',
-      'your hub: your profile, the front offices you work in, and the clubs and leagues you follow': 'Tu espacio: tu perfil, las oficinas técnicas en las que trabajas y los clubes y ligas que sigues',
+      'your hub: your profile, your personalisation, the front offices you work in, and the clubs and leagues you follow': 'Tu espacio: tu perfil, tu personalización, las oficinas técnicas en las que trabajas y los clubes y ligas que sigues',
       'every league, today’s fixtures, the best players': 'Todas las ligas, los partidos de hoy, los mejores jugadores',
       'global fixtures: every league’s games on one page': 'Calendario global: los partidos de todas las ligas en una página',
       'global scouting: every league in one table': 'Scouting global: todas las ligas en una tabla',
@@ -1348,7 +1348,7 @@
       'open the league’s front page': 'abrir la portada de la liga',
       'every league, by country, on HOME': 'todas las ligas, por país, en Inicio',
       'manage or sign out': 'gestionar o cerrar sesión',
-      'Nothing yet. Follow a club or a player on your profile and their next result lands here.': 'Todavía nada. Sigue a un club o a un jugador desde tu perfil y su próximo resultado llegará aquí.',
+      'Nothing yet. Follow a club or a player in your personalisation and their next result lands here.': 'Todavía nada. Sigue a un club o a un jugador desde tu personalización y su próximo resultado llegará aquí.',
       'settings': 'Ajustes',
       'halftime': 'Descanso',
       'announcement': 'Aviso',
@@ -1531,7 +1531,8 @@
       'variable': 'variable',
       'streaky': 'irregular',
       'reading his games': 'leyendo sus partidos',
-      'squad average': 'Media del equipo'
+      'squad average': 'Media del equipo',
+      'personalisation': 'Personalización'
     },
 
     ctx: {
@@ -2068,7 +2069,7 @@
         'Add more': 'Añadir más',
         'Remind me later': 'Recordármelo más tarde',
         'Don’t show this again': 'No volver a mostrar',
-        'Find them on your profile and in My followed.': 'Los encontrarás en tu perfil y en «Siguiendo».',
+        'Find them in your personalisation and in My followed.': 'Los encontrarás en tu personalización y en «Siguiendo».',
         'Loading the leagues…': 'Cargando las ligas…',
         'Loading the clubs…': 'Cargando los clubes…',
         'The clubs could not be loaded just now.': 'Ahora mismo no se pudieron cargar los clubes.',

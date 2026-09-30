@@ -296,6 +296,9 @@
 
   const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
     if (x != null) n.textContent = x; return n; };
+  /* PERSONALISATION's cog: U+2699 with the text presentation selector (U+FE0E), so it is drawn as the rail's other
+     glyphs are and never as a colour emoji */
+  const COG = '\u2699\uFE0E';
   const reduced = () => window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -828,7 +831,11 @@
       a.title = tx;
       return a;
     };
-    flist.appendChild(mk('', '☆', 'profile', root + 'me/'));
+    /* PROFILE FIRST, THEN PERSONALISATION (Louie, 2026-09-30): "profile" is the fan's own public page now (profile/:
+       the username and the page at fan/?u=), and what was called the profile - the clubs, the colour, the
+       notifications, the membership - is PERSONALISATION, under the cog, at me/ */
+    flist.appendChild(mk('', '☆', 'profile', root + 'profile/'));
+    flist.appendChild(mk('', COG, 'personalisation', root + 'me/'));
     /* THE CREATOR HUB (0200): a creator's numbers and writing desk, and for anybody a league's storylines, graphics
        and icons */
     flist.appendChild(mk('', '✎', 'creator hub', root + 'creators/hub/'));
@@ -1160,14 +1167,15 @@
   meLink.append(el('span', 'ic', '☆'), el('span', 'tx', 'your hub'),
                 el('span', 'lgo', '›'));
   meLink.href = root + 'me/';
-  meLink.title = 'your hub: your profile, the front offices you work in, and the clubs and leagues you follow';
+  meLink.title = 'your hub: your profile, your personalisation, the front offices you work in, and the clubs and leagues you follow';
+  /* it moves the rail, in the phone's sheet too (so the sheet stays open on it, as "leagues ›" does): PROFILE and
+     PERSONALISATION are the panel's first rows, and a phone has no other way to reach PROFILE */
+  meLink.dataset.railMove = '1';
   meLink.hidden = true;
   meLink.addEventListener('click', (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey ||
         e.shiftKey || e.altKey) return;
-    /* in the phone sheet the row is the link it is: the sheet closes on any tap
-       inside it, so sliding the rail here would shut it with nothing opened */
-    if (nav.classList.contains('drawer-open')) return;
+    /* in the phone sheet too: the row is a railMove, so the sheet stays open on the panel */
     e.preventDefault();
     openFollows();
   });
@@ -1492,7 +1500,7 @@
       ra.onclick = async () => { await bellReadAll(sess); open(); refresh(); };
       ph.append(me, ra); panel.appendChild(ph);
       if (!rows.length) {
-        panel.appendChild(el('div', 'empty', 'Nothing yet. Follow a club or a player on your profile and their next result lands here.'));
+        panel.appendChild(el('div', 'empty', 'Nothing yet. Follow a club or a player in your personalisation and their next result lands here.'));
         return;
       }
       rows.forEach(x => {
@@ -1569,24 +1577,24 @@
   /* A PAGE WITH NO LEAGUE GETS THE PLATFORM'S FIVE PLACES. The bar used to be removed there,
      which left the sideways strip of country flags: the right thing for nobody, and on HOME,
      the page the app opens on, the first thing a phone showed. These are the places that are
-     about every league at once, plus your own page. "leagues" is HOME's own section, so on
+     about every league at once, plus your personalisation (me/: the cog). "leagues" is HOME's own section, so on
      HOME it is a jump down the page rather than a reload. */
   const PLATFORM_TABS = [
     { key: 'home',     ic: '⌂', tx: 'home',     href: 'home/',         on: () => atHome },
     { key: 'games',    ic: '▥', tx: 'games',    href: 'games/',        on: () => /\/epinoia\/games\//.test(here) },
     { key: 'scouting', ic: '▦', tx: 'scouting', href: 'scouting/',     on: () => /\/epinoia\/scouting\//.test(here) },
     { key: 'leagues',  ic: '◉', tx: 'leagues',  href: 'home/#leagues', on: () => false },
-    { key: 'profile',  ic: '☆', tx: 'profile',  href: 'me/',           on: () => /\/epinoia\/me\//.test(here) }
+    { key: 'personalisation', ic: COG, tx: 'personalisation', href: 'me/', on: () => /\/epinoia\/me\//.test(here) }
   ];
   /* EPINOIA GO'S PAGES GET GO'S PLACES (Louie, 2026-09-24): the GO page, THE FEED, the fan's stamps, and
-     their profile, where the username is. "home" here is GO's own - the platform's HOME is one step up in
+     their personalisation (me/: the cog; the username is on PROFILE, in the menu's "your hub"). "home" here is GO's own - the platform's HOME is one step up in
      the menu, and two tabs called home that open different pages would be one too many. */
   const GO_TABS = [
     { key: 'go',      ic: '◎', tx: 'home',    href: 'go/',        on: () => /\/epinoia\/go\/$/.test(here) },
     { key: 'feed',    ic: '▦', tx: 'feed',    href: 'go/photos/', on: () => /\/epinoia\/go\/photos\//.test(here) },
     { key: 'stamps',  ic: '▣', tx: 'stamps',  href: 'go/stamps/', on: () => /\/epinoia\/go\/stamps\//.test(here) },
     { key: 'nearby',  ic: '⌖', tx: 'find',    href: 'go/nearby/', on: () => /\/epinoia\/go\/nearby\//.test(here) },
-    { key: 'profile', ic: '☆', tx: 'profile', href: 'me/',        on: () => false }
+    { key: 'personalisation', ic: COG, tx: 'personalisation', href: 'me/', on: () => false }
   ];
   /* THE SEARCH, ALWAYS ON THE BAR (Louie, 2026-09-30): right after the first key (home, the league, GO's home) on
      every page, so a phone never has to open the menu to search. The same search as the rail's row (openSearch: the
@@ -1618,8 +1626,10 @@
     tabbar.textContent = '';
     tabbar.classList.remove('fit');
     /* with the search key the bars take their labels' own widths (.fit), so none is cut short; a league's bar - seven
-       keys and the menu - is the crowded one, and slims its search and menu keys to their icons on a narrow phone */
-    nav.classList.toggle('tabs-crowded', !!lg);
+       keys and the menu - is the crowded one, and slims its search and menu keys to their icons on a narrow phone.
+       SO IS THE PLATFORM'S since its last key is "personalisation" (Louie, 2026-09-30): the whole word, which fits
+       beside the others on a 360px phone only with the search and menu keys as their icons */
+    nav.classList.toggle('tabs-crowded', true);
     if (!lg) { tabbar.classList.add('fit'); paintPlatformTabs(); return; }
     tabbar.classList.add('fit');
     TABS.forEach(t => {

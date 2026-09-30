@@ -77,7 +77,7 @@
       'Turning off': 'オフにしています',
       'Turn off the others': 'ほかの登録をオフにする',
       'The others could not be turned off just now. Try again in a minute.': 'ほかの登録を今はオフにできませんでした。1分後にもう一度お試しください。',
-      'Done: those sign-ups are off, and this app keeps its own. If you open Epinoia in Samsung Internet again, its profile page offers to turn notifications off there for good.': '完了しました。それらの登録はオフになり、このアプリの登録はそのまま残ります。Samsung InternetでEpinoiaをもう一度開くと、そのマイページで通知を完全にオフにするよう案内されます。',
+      'Done: those sign-ups are off, and this app keeps its own. If you open Epinoia in Samsung Internet again, its personalisation page offers to turn notifications off there for good.': '完了しました。それらの登録はオフになり、このアプリの登録はそのまま残ります。Samsung InternetでEpinoiaをもう一度開くと、そのパーソナライズページで通知を完全にオフにするよう案内されます。',
       'Problem': '問題あり',
       'Checking': '確認中',
       'Waiting for the test to reach this phone': 'テスト通知がこの端末に届くのを待っています',
@@ -229,7 +229,7 @@
       'Everything that happened on court — box scores, play-by-play, season tables, club and player pages — is free in an open league. Membership adds the advanced analytics.': 'コート上で起きたこと（ボックススコア、テキスト速報、シーズンの順位表、クラブや選手のページ）は、公開リーグでは無料です。メンバーシップではアドバンスト分析が加わります。',
       'Good to know': '知っておきたいこと',
       'How do I cancel?': '解約するには？',
-      'From Your profile: under Membership, press Cancel membership. It is online, one step, and you can do it at any time.': 'マイページの「メンバーシップ」で「メンバーシップを解約」を押してください。オンラインで1ステップ、いつでも手続きできます。',
+      'From Personalisation: under Membership, press Cancel membership. It is online, one step, and you can do it at any time.': 'パーソナライズページの「メンバーシップ」で「メンバーシップを解約」を押してください。オンラインで1ステップ、いつでも手続きできます。',
       'What does it cost?': '料金は？',
       'The price on the plan, every month or every year, until you cancel. It includes any VAT. There is nothing else to pay.': 'プランに表示された料金を、解約するまで毎月または毎年お支払いいただきます。付加価値税（VAT）込みで、ほかにお支払いはありません。',
       'The 14 days': '14日間について',
@@ -338,7 +338,15 @@
       'is available.': 'は使用できます。',
       'Saving…': '保存中…',
       'Saved. Your username is': '保存しました。ユーザー名：',
-      'You can change it again on': '次に変更できる日：'
+      'You can change it again on': '次に変更できる日：',
+      'your settings': 'あなたの設定',
+      'Your username and your public page are now under': 'ユーザー名と公開ページは次の場所に移りました:',
+      'Your public page on EPINOIΛ: the name fans see, and the page they open from it.': 'EPINOIΛでのあなたの公開ページ。ファンに見える名前と、そこから開くページです。',
+      'The name fans see, and the address of your page': 'ファンに見える名前と、あなたのページのアドレス',
+      'Your public page': 'あなたの公開ページ',
+      'Whether fans can open your page, and the way to it': 'ファンがあなたのページを開けるかどうかと、その開き方',
+      'What your page shows, beside its head as it will look': 'ページに表示する内容と、実際に表示されるヘッダー',
+      'to choose your username and make your page.': 'して、ユーザー名を選び、あなたのページを作りましょう。'
     },
 
     ctx: {
@@ -440,8 +448,8 @@
       [/^Pay (\S+) a (month|year) and join$/, m => m[1] + '/' + per(m[2]) + 'を支払って入会'],
       [/^Free in (.+)$/, '$1で無料'],
       [/^Back to (.+)$/, '$1に戻る'],
-      [/^(.+?) is active(?: in (.+?))?\. You can manage it or cancel it at any time from Your profile\.$/,
-        (m, T) => T(m[1]) + (m[2] ? '（' + m[2] + '）' : '') + 'が有効になりました。マイページからいつでも管理・解約できます。'],
+      [/^(.+?) is active(?: in (.+?))?\. You can manage it or cancel it at any time from Personalisation\.$/,
+        (m, T) => T(m[1]) + (m[2] ? '（' + m[2] + '）' : '') + 'が有効になりました。パーソナライズページからいつでも管理・解約できます。'],
 
       /* invitations */
       [/^Epinoia could not be reached just now \((.+)\)\. Your connection may have dropped — try again in a moment\.$/,
