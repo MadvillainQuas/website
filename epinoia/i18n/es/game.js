@@ -44,6 +44,7 @@
     },
 
     phrases: {
+      'tov forced': 'Pér. forzadas',
       "score this game": "Anotar este partido",
       "continue scoring": "Seguir anotando",
       "broadcast this game": "Retransmitir este partido",

@@ -34,14 +34,20 @@ const stints = [
 
 console.log('COLS: one list, the engine\'s keys');
 const line = L.filter(stints, []);
-ok('every column key is a field of the engine\'s line', W.COLS.every(c => c.key in line), W.COLS.filter(c => !(c.key in line)).map(c => c.key));
+const LE = require(path.join(ROOT, 'epinoia/lineupevents.js'));
+const eline = LE.line(LE.sum(LE.fromStints(stints)));
+ok('every stint column is a field of the engine\'s line (pace per 40 is lineupevents\' own)', W.COLS.filter(c => c.src === 'st' && c.key !== 'pace40').every(c => c.key in line), W.COLS.filter(c => c.src === 'st' && !(c.key in line)).map(c => c.key));
+ok('every column, stint or play-by-play, is a field of lineupevents.line', W.COLS.every(c => c.key in eline), W.COLS.filter(c => !(c.key in eline)).map(c => c.key));
+ok('the stint columns read the same from a stint record as from lineups.js', ['mins', 'poss', 'pm', 'net', 'ortg', 'drtg', 'efg', 'tov', 'oreb', 'ftr', 'defg', 'dtov', 'drb', 'dftr', 'ts'].every(k => eline[k] === line[k]));
+ok('from stints alone every play-by-play column is empty, never invented', W.COLS.filter(c => c.src === 'ev').every(c => eline[c.key] == null));
 ok('keys are unique', new Set(W.COLS.map(c => c.key)).size === W.COLS.length);
-ok('lower-is-better stats point the right way: TOV%, DRTG, opp eFG%, opp OREB%, opp FTr',
-   ['tov', 'drtg', 'defg', 'doreb', 'dftr'].every(k => W.col(k).dir === -1) && ['net', 'ortg', 'efg', 'dtov', 'oreb'].every(k => W.col(k).dir === 1));
-ok('pace has no good end', W.col('pace').dir === 0);
-ok('no stat the stint boxes cannot give (3P%, assists, steals, blocks) is offered', !W.COLS.some(c => /3P%|AST|STL|BLK|STEAL|BLOCK|ASSIST/i.test(c.label + ' ' + c.name)));
+ok('lower-is-better stats point the right way: TOV%, DRTG, opp eFG%, opp FT rate; DRB% (the opponent\'s ORB% turned round) up',
+   ['tov', 'drtg', 'defg', 'dftr'].every(k => W.col(k).dir === -1) && ['net', 'ortg', 'efg', 'dtov', 'oreb', 'drb', 'rimfg', 'p3', 'trppp', 'hcppp'].every(k => W.col(k).dir === 1));
+ok('styles have no good end: pace, shot clock, heliocentrism, volumes, assisted shares, frequencies, rebound origins', ['pace40', 'sclock', 'helio', 'rim100', 'rimast', 'p3a100', 'trfreq', 'hcfreq', 'drbR', 'orb3'].every(k => W.col(k).dir === 0));
+ok('what the stint boxes cannot give (3P%, zones, assisted, clock, transition, rebound origins, heliocentrism) is marked play-by-play', ['p3', 'rimfg', 'rimast', 'p3ast', 'sclock', 'trfreq', 'trppp', 'hcppp', 'drbR', 'orb3', 'helio'].every(k => W.col(k).src === 'ev'));
+ok('the categories are the page\'s six, in order, and every column sits in one', W.GROUPS.map(g => g[0]).join() === 'basic,four,helio,shoot,play,rebo' && W.COLS.every(c => (W.GROUP_KEYS[c.group] || []).indexOf(c.key) !== -1));
 ok('TS% from points: pts / (2 (fga + .44 fta))', Math.abs(line.ts - 100 * line._off.pts / (2 * (line._off.fga + 0.44 * line._off.fta))) < 0.06, line.ts);
-ok('pace is possessions per 48', Math.abs(line.pace - Math.round(line.poss / line.mins * 48 * 10) / 10) < 0.11);
+ok('PACE is possessions per 40 minutes (not 48)', Math.abs(eline.pace40 - Math.round(eline.poss / eline.mins * 40 * 10) / 10) < 0.11 && W.col('pace40').label === 'PACE');
 
 console.log('\nscale and tone');
 const sc = W.scaleOf([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
@@ -103,28 +109,30 @@ const sfive = W.startingFive([{ home_team_id: 't', away_team_id: 'u', starters: 
 ok('starting five: the most common, from the side the team was on', sfive && sfive.games === 2 && sfive.ids.join('') === 'ABCDE', sfive);
 
 console.log('\ncolumn picker');
-ok('defaults by width: wide 12, mid 8, phone 4', W.pickColumns(null, 'wide').length === 12 && W.pickColumns(null, 'mid').length === 8 && W.pickColumns(null, 'phone').length === 4 && W.pickColumns(null, true).length === 4);
+ok('defaults by width: every stat on a wide or middling table (it scrolls inside), the basic eight on a phone', W.pickColumns(null, 'wide').length === W.COLS.length && W.pickColumns(null, 'mid').length === W.COLS.length && W.pickColumns(null, 'phone').join() === 'mins,poss,pm,net,ortg,drtg,pace40,sclock' && W.pickColumns(null, true).length === 8);
 ok('width classes: 400 phone, 700 mid, 1000 wide', W.sizeKind(400) === 'phone' && W.sizeKind(700) === 'mid' && W.sizeKind(1000) === 'wide');
-ok('a saved choice is capped, deduped, filtered to real keys, in catalogue order', (() => { const r = W.pickColumns(['ts', 'nope', 'net', 'net', 'mins', 'efg', 'tov', 'oreb', 'ftr', 'pace', 'drtg', 'ortg'], 'phone'); return r.length === 6 && r[0] === 'mins' && r.indexOf('nope') === -1; })());
-ok('toggle refuses to go over the cap and to empty the table', (() => { const full = W.pickColumns(W.COLS.map(c => c.key), 'phone'); const same = W.toggleColumn(full, 'ts', 'phone'); const one = W.toggleColumn(['net'], 'net', 'phone'); return same.length === 6 && one.join() === 'net'; })());
+ok('a saved choice is deduped, filtered to real keys, in catalogue order', (() => { const r = W.pickColumns(['ts', 'nope', 'net', 'net', 'mins', 'efg', 'tov', 'oreb', 'ftr', 'pace', 'drtg', 'ortg'], 'phone'); return r.length === 9 && r[0] === 'mins' && r.indexOf('nope') === -1 && r.indexOf('pace') === -1; })());
+ok('toggle never empties the table, and stops at the cap', (() => { const one = W.toggleColumn(['net'], 'net', 'phone'); const full = W.pickColumns(W.COLS.map(c => c.key), 'phone'); return one.join() === 'net' && full.length === W.limits('phone').max && W.toggleColumn(full, 'ts', 'phone').length === full.length - 1; })());
 ok('toggle adds and removes inside the cap', W.toggleColumn(['net'], 'ts', 'wide').join() === 'net,ts'.split(',').sort((a, b) => W.COLS.findIndex(c => c.key === a) - W.COLS.findIndex(c => c.key === b)).join() && W.toggleColumn(['net', 'ts'], 'ts', 'wide').join() === 'net');
 ok('search finds by label, name and group, and groups the result', W.searchColumns('turnover').some(g => g.cols.some(c => c.key === 'tov')) && W.searchColumns('').length === W.GROUPS.length && W.searchColumns('zzzz').length === 0);
 
 console.log('\nthe gate (membership preview)');
 const gm = W.gate(false, 1), gp = W.gate(true, 1), gp2 = W.gate(true, 2);
-ok('a member keeps everything', gm.players === 5 && gm.rows === Infinity && gm.sizes.length === 4 && gm.pair && gm.builder && gm.matrixMax === 5);
-ok('a non-member: five rows of fives, one player at a time, no pair, no builder', gp.rows === 5 && gp.sizes.join() === '5' && gp.matrixMax === 1 && !gp.pair && !gp.builder && gp.players === 1);
+ok('a member keeps everything, the play-by-play too', gm.players === 5 && gm.rows === Infinity && gm.sizes.length === 4 && gm.pair && gm.builder && gm.matrixMax === 5 && gm.events === true);
+ok('a non-member: five rows of fives, one player at a time, no pair, no builder, no play-by-play', gp.rows === 5 && gp.sizes.join() === '5' && gp.matrixMax === 1 && !gp.pair && !gp.builder && gp.players === 1 && gp.events === false);
 ok('the cap follows wowyPreviewMax: two players opens the pair, not the builder', gp2.pair && !gp2.builder && gp2.matrixMax === 2);
 const access = read('epinoia/access.js');
 ok('access.js still says wowyPreviewMax: 1 and the page reads it', /wowyPreviewMax:\s*1/.test(access) && /wowyPreviewMax/.test(read('epinoia/stats/wowy/wowy.js')));
 
 console.log('\nthe address');
-const rt = { v: 'pair', t: 'efes', sz: 3, sort: 'net', dir: 'asc', best: 'worst', p: 'P1', a: 'A1', b: 'B2', u: ['a', 'b', 'c'], inc: ['x'], exc: ['y', 'z'], mm: 4, mp: 9 };
+const rt = { v: 'pair', t: 'efes', sz: 3, sort: 'net', dir: 'asc', best: 'worst', p: 'P1', a: 'A1', b: 'B2', u: ['a', 'b', 'c'], inc: ['x'], exc: ['y', 'z'], mm: 4, mp: 9, vs: 'bench', lay: 'table', dm: 'deltas', w: ['a', 'd'] };
 const enc = W.encodeState(rt, '?l=nbl&s=2026-27');
 const dec = W.decodeState(enc);
 ok('round trip: every field survives and l and s are kept', JSON.stringify(dec) === JSON.stringify(Object.assign({}, W.DEFAULT_STATE, rt)) && /l=nbl/.test(enc) && /s=2026-27/.test(enc), [enc, dec]);
 ok('the default view writes nothing but the league', W.encodeState(W.DEFAULT_STATE, '?l=nbl') === '?l=nbl');
 ok('junk is ignored, not trusted: a bad view, size, sort and ids', (() => { const d = W.decodeState('?v=hack&sz=99&sort=__proto__&p=<script>&u=a,<b>,c&mm=abc'); return d.v === 'overview' && d.sz === 5 && d.sort === 'mins' && d.p === '' && d.u.join() === 'a,c' && d.mm === 10; })());
+ok('the new switches round-trip one by one and reject junk: vs, lay, dm, w', ['start', 'mixed', 'bench'].every(v => W.decodeState(W.encodeState({ vs: v })).vs === v) && W.decodeState('?vs=x&lay=grid&dm=z').vs === 'all' && W.decodeState('?lay=grid').lay === 'cards' && W.decodeState('?dm=z').dm === 'both' && W.decodeState('?w=a,b,<c>').w.join() === 'a,b' && W.encodeState({ vs: 'all', lay: 'cards', dm: 'both' }, '?l=x') === '?l=x');
+ok('the views: WOWY and vs starters are tabs of their own, beside pairs', ['overview', 'lineups', 'onoff', 'pair', 'wowy', 'vs', 'build'].every(v => W.decodeState('?v=' + v).v === v));
 ok('at most five ids in a list', W.decodeState('?u=a,b,c,d,e,f,g').u.length === 5);
 
 console.log('\nthe page keeps the site\'s contracts');
@@ -134,7 +142,7 @@ ok('legibility.css is the last stylesheet; page.css, wowy.css, sectitle.css, tel
 ok('no inline script (CSP), every script external with a stamp, nav.js last', !/<script(?![^>]*\bsrc=)(?![^>]*application\/ld\+json)[^>]*>[^<]/.test(html) && [...html.matchAll(/<script src="([^"]+)"/g)].every(m => /\?v=\d+$/.test(m[1])) && [...html.matchAll(/<script src="([^"?]+)/g)].pop()[1].endsWith('nav.js'));
 ok('the logic loads before the parts, the parts before the page', html.indexOf('src="../../wowylogic.js') < html.indexOf('src="wowyui.js') && html.indexOf('src="wowyui.js') < html.indexOf('src="wowy.js'));
 ok('access.js loads before data.js (the gate reads first)', html.indexOf('src="../../access.js') < html.indexOf('src="../../data.js'));
-const files = ['epinoia/wowylogic.js', 'epinoia/stats/wowy/wowyui.js', 'epinoia/stats/wowy/wowy.js', 'epinoia/kit/wowy.css'];
+const files = ['epinoia/wowylogic.js', 'epinoia/lineupevents.js', 'epinoia/stats/wowy/wowyui.js', 'epinoia/stats/wowy/wowy.js', 'epinoia/kit/wowy.css'];
 ok('no third-party fetch or host in the new files', files.every(f => !/https?:\/\/(?!hhvofgqqadtyvcjudhjx)/.test(read(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''))));
 ok('no export module: no canvas drawing, no download', files.every(f => !/toBlob|toDataURL|\.download\s*=|createElement\('canvas'\)/.test(read(f))) && !fs.existsSync(path.join(ROOT, 'epinoia/stats/wowy/wowyexport.js')));
 ok('pixel-font letter-spacing stays at or under .2em in the new stylesheet', [...read('epinoia/kit/wowy.css').matchAll(/letter-spacing:\s*([.\d]+)em/g)].every(m => parseFloat(m[1]) <= 0.2));

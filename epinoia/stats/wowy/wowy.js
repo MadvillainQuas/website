@@ -624,6 +624,9 @@ async function drawWith(pid) {
   hostEl.textContent = ''; hostEl.appendChild(el('div', 'pg-empty', 'Loading his box score with each teammate…'));
   const t = team;
   try {
+    /* the segments' read keeps each log it fetched: wait for it rather than read the same games twice */
+    const p = ensureEvents(t); if (p) await p;
+    if (t !== team || state.v !== 'onoff') return;
     const d = TD.get(t.id);
     const need = d.games.filter(g => !RAW.has(g.id)).map(g => g.id);
     if (need.length) {

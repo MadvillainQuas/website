@@ -37,6 +37,7 @@
     },
 
     phrases: {
+      'tov forced': '誘発TO',
       "score this game": "この試合を記録",
       "continue scoring": "記録を続ける",
       "broadcast this game": "この試合を配信",
