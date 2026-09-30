@@ -63,7 +63,6 @@
       'front office': 'oficina técnica',
       'what wins': 'lo que gana',
       'creator studio': 'estudio de creadores',
-      'forum': 'Foro',
       'Join on Discord ↗': 'Unirse en Discord ↗',
       'Join the server ↗': 'Unirse al servidor ↗',
       'Join ↗': 'Unirse ↗',

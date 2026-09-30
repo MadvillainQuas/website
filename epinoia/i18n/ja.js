@@ -61,7 +61,6 @@
       'front office': 'フロントオフィス',
       'what wins': '勝因分析',
       'creator studio': 'クリエイタースタジオ',
-      'forum': 'フォーラム',
       'Join on Discord ↗': 'Discordで参加 ↗',
       'Join the server ↗': 'サーバーに参加 ↗',
       'Join ↗': '参加 ↗',

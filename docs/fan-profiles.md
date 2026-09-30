@@ -1,9 +1,13 @@
-# Fans' pages and league forums
+# Fans' pages and league Community pages
 
 Migration **0197**. Two things:
 
 - **A fan's page.** A profile a fan sets up from their social accounts, with their EPINOIΛ GO stamps on it.
-- **A league's forum.** The Discord servers where the league's fans talk, on a page of their own. Any server can be attached: the league's own, a fans' community, a club's. Nothing creates a server.
+- **A league's Community page.** Where the league's fans meet:
+  - EPINOIA GO's Find a game, for the league's own games;
+  - the fans' stamps and photographs from its games;
+  - who has travelled furthest to its arenas;
+  - the Discord servers the league attached. Any server can be attached: the league's own, a fans' community, a club's. Nothing creates a server.
 
 ## Where things are
 
@@ -11,8 +15,8 @@ Migration **0197**. Two things:
 | --- | --- |
 | `fan/?u=<username>` | A fan's page, in the fan's own colour: their picture, name, line and accounts; their club; their GO passport (arenas, stamps, kilometres, their place on the board); their stamps and photographs; the leagues and clubs they follow. |
 | `me/#fanprofile` | **Your page** on the profile, where a fan edits theirs, with a live preview. |
-| `forum/?l=<league>` | The league's Discord servers, one card each: picture, name, whose it is (official, a club's, community), the league's line about it, members and online, and **Join**. A server with an id also shows Discord's own widget; **Show here** swaps it, and `&s=` keeps the choice. |
-| The rail | **forum** on a league with at least one server attached (probed, like creators). |
+| `community/?l=<league>` | The league's Community page, in the league's colours. **Find a game**: GO's own module (`go/nearby/nearby.js`), for the league's games only. **Talk**: the Discord servers, one card each (see below). **In the stands**: GO's feed of the league's games, stamps and photographs (`go_feed`). **Furthest travelled**: the league's GO board by distance (`go_leaderboard`), each fan to their page. A part with nothing to show (no servers) stays away, and the rest are renumbered. |
+| The rail | **community** on every league. Find a game is there whenever the league has games. |
 | A league console, **Forum** | Attach, edit, reorder and take off servers. Pasting an invitation fills in the rest. |
 | The GO leaderboard | Each name links to that fan's page. |
 
@@ -53,7 +57,7 @@ Migration **0197**. Two things:
 
 Until step 4, the Discord button stays hidden and the profile says Discord sign-in is not switched on yet.
 
-### A league's forum
+### A league's Discord servers (Community page, Talk)
 
 - **Any server, attached.** A league lists the servers where its fans talk: its own, a fans' community, a club's. It does not need to own them, and nothing here creates a server. Up to 12 a league, in the league's order (`league_discords`).
 - **Attaching one** (the console's **Forum** panel):

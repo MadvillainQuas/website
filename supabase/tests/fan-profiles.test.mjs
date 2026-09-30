@@ -10,7 +10,7 @@
 //   * the page: nobody unless public on GO (username, 18 or over, public); the stamps only if shown; follows only if
 //     shown and only public leagues; the GO numbers and the rank;
 //   * a league's Discord servers, any number up to 12 and any server: its administrators attach, change, order and
-//     take them off (each checked), the forum page and the rail read them;
+//     take them off (each checked), and the league's Community page reads them;
 //   * the table is closed, and who may call what.
 //
 //   node supabase/tests/fan-profiles.test.mjs
@@ -43,23 +43,36 @@ const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + w
   ok('...links a Discord account only by its number', /\/\^\[0-9\]\{15,22\}\$\/\.test\(String\(d\.id/.test(fanJs) && /discord\.com\/users\//.test(fanJs));
   ok('...and is translated with GO\'s words', /i18n\.js\?v=\d+" data-i18n-packs="go"/.test(fanHtml));
 
-  const foHtml = page('epinoia/forum/index.html'), foJs = page('epinoia/forum/forum-page.js');
-  ok('a league\'s forum frames discord.com and nothing else, and asks Discord for nothing but invitations',
-     (csp(foHtml).match(/frame-src[^;]*/) || [''])[0].trim() === 'frame-src https://discord.com' &&
-     /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co https:\/\/discord\.com(;|$)/.test(csp(foHtml)) &&
-     (foJs.match(/https:\/\/discord\.com\/[a-z0-9\/]*/g) || []).every(u => u === 'https://discord.com/api/v10/invites/' || u === 'https://discord.com/widget') &&
-     /credentials: 'omit'/.test(foJs), csp(foHtml));
-  ok('...a server\'s widget only for an id that is a number, sandboxed', /const hasWidget = s => ID\.test\(String\(s\.server_id/.test(foJs) &&
-     /frame\.src = 'https:\/\/discord\.com\/widget\?id=' \+ s\.server_id/.test(foJs) && /if \(!frame \|\| !s \|\| !hasWidget\(s\)\) return;/.test(foJs) &&
-     /setAttribute\('sandbox'/.test(foJs) && !/innerHTML|insertAdjacentHTML|document\.write/.test(foJs));
-  ok('...every server a card: Discord\'s own picture only, the way in opening a new tab, an expired invitation said so',
-     /rpc\/league_discord_public/.test(foJs) && /ICON\.test\(String\(s\.icon_url/.test(foJs) &&
-     /join\.target = '_blank'; join\.rel = 'noopener noreferrer'/.test(foJs) && /This invitation has expired\./.test(foJs));
-  ok('...loads the card and its own script', ['../config.js', '../newscard.js', 'forum-page.js', '../nav.js'].every(x => scripts(foHtml).includes(x)));
+  const cmHtml = page('epinoia/community/index.html'), cmJs = page('epinoia/community/community-page.js');
+  const nbJs = page('epinoia/go/nearby/nearby.js');
+  ok('a league\'s Community page frames Google\'s map (Find a game) and discord.com and nothing else, and asks Discord for nothing but invitations',
+     (csp(cmHtml).match(/frame-src[^;]*/) || [''])[0].trim() === 'frame-src https://www.google.com https://discord.com' &&
+     /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co https:\/\/discord\.com(;|$)/.test(csp(cmHtml)) &&
+     (cmJs.match(/https:\/\/discord\.com\/[a-z0-9\/]*/g) || []).every(u => u === 'https://discord.com/api/v10/invites/' || u === 'https://discord.com/widget') &&
+     /credentials: 'omit'/.test(cmJs), csp(cmHtml));
+  ok('...Find a game is EPINOIA GO\'s own module, for the league\'s games only: the page marks its strip, GO reads the league from the address',
+     /id="nbStrip" data-scope="league"/.test(cmHtml) && ['nbWhere', 'nbHere', 'nbLocate', 'nbPassport', 'nbPlaces', 'nbQuery', 'nbList', 'nbWhen', 'nbCount', 'nbDetail', 'nbSub']
+       .every(id => cmHtml.includes('id="' + id + '"')) &&
+     scripts(cmHtml).indexOf('../go/nearby/nearby.js') > scripts(cmHtml).indexOf('community-page.js') &&
+     /strip\.dataset\.scope !== 'league'/.test(nbJs) && /competitions!inner\(name,season_id,seasons!inner\(leagues!inner\(/.test(nbJs) &&
+     /'&competitions\.seasons\.leagues\.slug=eq\.' \+ encodeURIComponent\(league\)/.test(nbJs), scripts(cmHtml));
+  ok('...the stands are GO\'s feed and the board GO\'s leaderboard by distance, both for the league; each fan to their page',
+     /rpc\('go_feed', \{ p_league: L\.id/.test(cmJs) && /rpc\('go_leaderboard', \{ p_league: L\.id, p_by: 'km'/.test(cmJs) &&
+     /who\.href = '\.\.\/fan\/\?u=' \+ encodeURIComponent\(r\.username\)/.test(cmJs) && /SC\.build\(row/.test(cmJs));
+  ok('...the league\'s Discord servers: a widget only for an id that is a number, sandboxed; every server a card',
+     /const hasWidget = s => ID\.test\(String\(s\.server_id/.test(cmJs) &&
+     /frame\.src = 'https:\/\/discord\.com\/widget\?id=' \+ s\.server_id/.test(cmJs) && /if \(!frame \|\| !s \|\| !hasWidget\(s\)\) return;/.test(cmJs) &&
+     /setAttribute\('sandbox'/.test(cmJs) && /rpc\('league_discord_public'/.test(cmJs) && /ICON\.test\(String\(s\.icon_url/.test(cmJs) &&
+     /join\.target = '_blank'; join\.rel = 'noopener noreferrer'/.test(cmJs) && /This invitation has expired\./.test(cmJs) &&
+     !/innerHTML|insertAdjacentHTML|document\.write/.test(cmJs));
+  ok('...the page loads GO\'s parts before its own script and the card, and the go, game and report words',
+     ['../config.js', '../access.js', '../data.js', '../game/preview.js', '../newscard.js', '../go/stampcard.js', 'community-page.js', '../nav.js']
+       .every(x => scripts(cmHtml).includes(x)) && /data-i18n-packs="go game report"/.test(cmHtml) &&
+     ['../go/go.css', '../go/nearby/nearby.css', '../go/stampcard.css', '../kit/community.css'].every(x => cmHtml.includes(x + '?v=')));
 
   const nav = page('epinoia/nav.js');
-  ok('the rail: a forum row, probed by league_discord_probe', /href: 'forum\/',[^\n]*probe: 'forum'/.test(nav) &&
-     /kind === 'forum'\) return 'rpc\/league_discord_probe\?p_slug=' \+ encodeURIComponent\(slug\)/.test(nav));
+  ok('the rail: a community row on every league (Find a game is there whenever it has games); the forum row is gone',
+     /href: 'community\/',[^\n]*key: 'community'/.test(nav) && !/href: 'community\/',[^\n]*probe:/.test(nav) && !/'forum\/'|kind === 'forum'/.test(nav));
 
   const meHtml = page('epinoia/me/index.html'), meJs = page('epinoia/me/me.js'), fp = page('epinoia/me/fanprofile.js');
   const ms = scripts(meHtml);
@@ -75,7 +88,7 @@ const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + w
      /id="discord"/.test(si) && /provider: 'discord'/.test(sj) && /googleInIOSApp\(\) \|\| !\(await providers\(\)\)\.discord/.test(sj));
 
   const adm = page('epinoia/admin/index.html'), admJs = page('epinoia/admin/admin.js'), cu = page('epinoia/admin/creators-ui.js');
-  ok('the league console: a Forum panel that attaches, changes, orders and takes off servers', /id="forumPanel"/.test(adm) &&
+  ok('the league console: a Discord panel that attaches, changes, orders and takes off servers', /id="forumPanel"/.test(adm) &&
      /mountForum\(\{ host: '#forumPanel'/.test(admJs) && ['save_league_discord', 'move_league_discord', 'remove_league_discord',
      'league_discords_admin'].every(f => cu.includes("sb.rpc('" + f + "'")) && /mountSources, mountForum/.test(cu) &&
      /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co https:\/\/discord\.com"/.test(adm));
@@ -265,7 +278,7 @@ ok('...any server, the league\'s own or not: three attached, by invitation, by i
 ok('...the same server twice is refused', /already/.test(await fails(() => save(el.id, { server_id: SRV(1), name: 'again' })) || ''));
 await as('');
 let dp = (await q(`select public.league_discord_public('el') as j`))[0].j;
-ok('the forum page reads the league and its servers, in order, with the club\'s and the official mark',
+ok('the Community page reads the league and its servers, in order, with the club\'s and the official mark',
    dp && dp.name === 'EuroLeague' && dp.servers.length === 3 && dp.servers.map(x => x.name).join('|') === 'EuroLeague|r/Euroleague|Olympiacos fans' &&
    dp.servers[0].official === true && dp.servers[0].server_id === SRV(1) && dp.servers[1].server_id === null &&
    dp.servers[1].note === 'Fan-run: game threads every night' && dp.servers[0].note === null &&

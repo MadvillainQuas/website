@@ -1,0 +1,82 @@
+/* ============================================================================
+   A LEAGUE'S COMMUNITY (community/?l=, community-page.js): EPINOIA GO's parts on the league's page, in the league's
+   colour (--bc, set from the league). GO's own blocks (go.css .gb, nearby.css) carry the sections; this is the page's
+   top, the Discord servers (fo-), the stands' strip and the board (cm-).
+   ============================================================================ */
+.cm{--bc:var(--lume)}
+.cm a.plain{color:inherit;text-decoration:none}
+.cm-top{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.cm-wm{font-family:var(--f-score);font-size:13px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+  padding:3px 9px 1px;text-transform:uppercase}
+/* GO's section heads take the league's colour */
+.cm .gb-idx{color:color-mix(in oklch,var(--bc) 70%,var(--ink))}
+.cm .gb{border-top:3px solid color-mix(in oklch,var(--bc) 45%,transparent);margin-top:calc(var(--u)*3)}
+.cm .gb:first-of-type{border-top:0;margin-top:0}
+.cm-note{margin:14px 0 0;font-family:var(--f-ui);font-size:14px;color:var(--ink-2)}
+.cm-note a,.cm-more{color:color-mix(in oklch,var(--bc) 70%,var(--ink));font-weight:700;text-decoration:none}
+.cm-note a:hover,.cm-more:hover{text-decoration:underline;text-underline-offset:3px}
+.cm-more{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase}
+.cm-empty{padding:18px 20px;background:var(--panel);border:1px dashed var(--rule);font-family:var(--f-ui);font-size:14.5px;line-height:1.55;color:var(--ink-2);max-width:70ch}
+.cm-empty p{margin:0}
+
+/* ---- in the stands: stamps and photographs, a row that slides ---- */
+.cm-strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,280px);gap:14px;overflow-x:auto;padding:4px 2px 14px;
+  scroll-snap-type:x proximity;scrollbar-width:thin}
+.cm-strip > *{scroll-snap-align:start}
+.cm-photo{position:relative;display:block;aspect-ratio:1;overflow:hidden;background:var(--panel);border:1px solid var(--rule)}
+.cm-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.cm-photo:hover img{transform:scale(1.03)}
+.cm-photo-cap{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:2px;padding:22px 10px 8px;
+  background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;font-family:var(--f-ui);font-size:12.5px}
+.cm-photo-cap b{font-size:13px}
+
+/* ---- furthest travelled ---- */
+.cm-board{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-width:760px}
+.cm-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:14px;
+  padding:12px 16px;background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--rule)}
+.cm-row.r1{border-left-color:#e7b416}.cm-row.r2{border-left-color:#aab2bd}.cm-row.r3{border-left-color:#c07a3f}
+.cm-row.me{box-shadow:inset 0 0 0 2px color-mix(in oklch,var(--bc) 70%,transparent)}
+.cm-rank{grid-row:span 2;font-family:var(--f-score);font-size:26px;line-height:1;color:color-mix(in oklch,var(--bc) 65%,var(--ink))}
+.cm-who{font-family:var(--f-ui);font-weight:800;font-size:16px;color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-who:hover{text-decoration:underline;text-underline-offset:3px}
+.cm-km{grid-row:span 2;text-align:right;font-family:var(--f-score);font-size:24px;line-height:1;color:var(--ink)}
+.cm-km small{font-size:.5em;margin-left:.15em}
+.cm-sub{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- talk: the league's Discord servers (0197) ---- */
+.fo-wrap{display:flex;flex-wrap:wrap;gap:calc(var(--u)*5);align-items:flex-start}
+.fo-wcol{flex:1 1 320px;max-width:480px;display:flex;flex-direction:column;gap:10px}
+.fo-widget{height:560px;border:1px solid var(--rule);background:#2b2d31}
+.fo-widget iframe{display:block;width:100%;height:100%;border:0}
+.fo-note{margin:0;font-family:var(--f-ui);font-size:12.5px;line-height:1.55;color:var(--ink-3)}
+.fo-list{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.fo-srv{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--rule)}
+.fo-srv.official{border-left-color:#5865F2}
+.fo-srv.on{box-shadow:inset 0 0 0 2px #5865F2}
+.fo-ic{flex:0 0 48px;width:48px;height:48px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#5865F2;color:#fff;
+  font-family:var(--f-score);font-size:18px}
+.fo-ic img{width:100%;height:100%;object-fit:cover;display:block}
+.fo-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px}
+.fo-whose{display:flex;gap:6px;flex-wrap:wrap}
+.fo-badge{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px 2px;border:1px solid var(--rule);
+  color:var(--ink-3);text-decoration:none}
+.fo-badge.official{background:#5865F2;border-color:#5865F2;color:#fff}
+.fo-badge.club{border-color:var(--cc,var(--rule));color:var(--ink)}
+.fo-name{margin:2px 0 0;font-family:var(--f-ui);font-weight:800;font-size:17px;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
+.fo-line{margin:0;font-family:var(--f-ui);font-size:14px;line-height:1.5;color:var(--ink-2)}
+.fo-count{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3);min-height:1em}
+.fo-count:empty{display:none}
+.fo-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.fo-join,.fo-pick{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;text-decoration:none;cursor:pointer;
+  font-family:var(--f-micro);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
+.fo-join{color:#fff;background:#5865F2;border:1px solid #5865F2}
+.fo-join:hover{background:#4752c4}
+.fo-pick{color:var(--ink);background:transparent;border:1px solid var(--rule)}
+.fo-pick:disabled{cursor:default;color:var(--ink-3)}
+
+@media (max-width:760px){
+  .fo-wcol{max-width:none} .fo-widget{height:480px}
+  .cm-strip{grid-auto-columns:minmax(220px,78vw)}
+  .cm-row{grid-template-columns:34px minmax(0,1fr) auto;padding:10px 12px}
+  .cm-rank{font-size:20px} .cm-km{font-size:20px}
+}

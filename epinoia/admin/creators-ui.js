@@ -147,9 +147,8 @@ function mount(o) {
   mountSources({ host: src, sb, say, league: lg, base });
 }
 
-/* ------------------------------------------------------ the league's forum ---- */
-/* THE FORUM (0197): the Discord servers where the league's fans talk, on forum/?l= and a forum row on the rail
-   once there is one. ANY server, the league's own or not - a fans' community, a club's: nothing here makes one.
+/* ------------------------------------------------ the league's Discord servers ---- */
+/* THE LEAGUE'S DISCORD SERVERS (0197): where its fans talk, on the league's Community page (community/?l=). ANY server, the league's own or not - a fans' community, a club's: nothing here makes one.
    Paste a server's invitation and Discord's own public answer for it (no sign-in) fills in the server's id, name
    and picture. The live widget needs the id, and the server's owner to switch the widget on in Discord. */
 const DISCORD_INVITE = /^https:\/\/(discord\.gg|discord\.com\/invite)\/([A-Za-z0-9-]{2,40})\/?$/i;
@@ -195,13 +194,13 @@ function mountForum(o) {
     box.textContent = '';
     if (error) {
       box.appendChild(el('p', 'empty', /does not exist|schema cache/i.test(errText(error))
-        ? 'The forum arrives with migration 0197: it has not been applied to this database yet.'
-        : 'Could not read the forum: ' + errText(error)));
+        ? 'Discord servers arrive with migration 0197: it has not been applied to this database yet.'
+        : 'Could not read the Discord servers: ' + errText(error)));
       return;
     }
     if (league.id !== (lg() || {}).id) return;
     box.appendChild(el('p', 'empty',
-      'The Discord servers where ' + league.name + '’s fans talk, on the league’s forum page and its rail. Any server: the ' +
+      'The Discord servers where ' + league.name + '’s fans talk, on the league’s Community page. Any server: the ' +
       'league’s own, a fans’ community, a club’s. Nothing is created here; you attach servers that exist. Paste a server’s ' +
       'invitation and its name, picture and id are read from Discord. The live widget shows once the server’s owner turns it on in ' +
       'Discord (Server Settings, Widget, Enable Server Widget).'));
@@ -211,8 +210,8 @@ function mountForum(o) {
     box.appendChild(h(list.length ? 'Attach another server' : 'Attach a server'));
     box.appendChild(editor(league, null));
     if (list.length) {
-      const open = el('a', 'ep-btn mini', 'the forum page ↗');
-      open.href = base + 'forum/?l=' + encodeURIComponent(league.slug || '');
+      const open = el('a', 'ep-btn mini', 'the Community page ↗');
+      open.href = base + 'community/?l=' + encodeURIComponent(league.slug || '') + '#cmTalk';
       open.target = '_blank'; open.rel = 'noopener';
       box.appendChild(row(open));
     }
@@ -244,10 +243,10 @@ function mountForum(o) {
     up.addEventListener('click', move(-1));
     down.addEventListener('click', move(1));
     off.addEventListener('click', async () => {
-      if (!confirm('Take ' + x.name + ' off ' + league.name + '’s forum? The server itself is not touched.')) return;
+      if (!confirm('Take ' + x.name + ' off ' + league.name + '’s Community page? The server itself is not touched.')) return;
       const { error: e } = await sb.rpc('remove_league_discord', { p_id: x.id });
       if (e) return say(errText(e), 'err');
-      say(x.name + ' is off the forum.', 'ok');
+      say(x.name + ' is off the Community page.', 'ok');
       draw();
     });
     let open = null;
@@ -324,7 +323,7 @@ function mountForum(o) {
       const { error: e } = await sb.rpc('save_league_discord', { p_league: league.id, p });
       save.disabled = false;
       if (e) return say(errText(e), 'err');
-      say(x ? 'Saved.' : p.name + ' is on the league’s forum' + (p.server_id ? '.' : ' (no live widget without its server id).'), 'ok');
+      say(x ? 'Saved.' : p.name + ' is on the league’s Community page' + (p.server_id ? '.' : ' (no live widget without its server id).'), 'ok');
       draw();
     });
     f.append(row(inv, look), found, row(nm, sid), row(note), row(club, offL), row(save));

@@ -345,10 +345,11 @@
        and something of theirs published (creators_probe), and not before */
     { href: 'creators/',   ic: '✎', tx: 'creators',   lg: true, key: 'creators', probe: 'creators',
       match: /\/epinoia\/creators\/(?!studio)/ },
-    /* THE LEAGUE'S FORUM (0197): its Discord server, where the fans talk. Probed: a league shows the row once
-       its console has named a server or an invitation (league_discord_probe), and not before */
-    { href: 'forum/',      ic: '☷', tx: 'forum',      lg: true, key: 'forum', probe: 'forum',
-      match: /\/epinoia\/forum\// },
+    /* THE LEAGUE'S COMMUNITY: EPINOIA GO's Find a game for the league's own games, its fans' stamps and photographs,
+       who has travelled furthest to its arenas, and the Discord servers it attached (0197). Every league has one:
+       Find a game is there whenever it has games. */
+    { href: 'community/',  ic: '☷', tx: 'community',  lg: true, key: 'community',
+      match: /\/epinoia\/community\// },
     /* EVERY WEEK'S FANS' PICKS (epinoia/votes/, migration 0150). Probed like the video
        hub: a league appears here once its first weekly vote has opened, and not
        before, so no league is offered an empty page. */
@@ -2276,8 +2277,6 @@
     }
     /* the league's creators (0194): the tables are the functions', so the function answers - a row, or none */
     if (kind === 'creators') return 'rpc/creators_probe?p_slug=' + encodeURIComponent(slug);
-    /* the league's forum (0197): a Discord server or an invitation named in its console */
-    if (kind === 'forum') return 'rpc/league_discord_probe?p_slug=' + encodeURIComponent(slug);
     if (kind !== 'video') return null;
     /* every embedded table named IN THE SELECT, which is what makes the !inner
        filters below legal: PostgREST answers 400 (PGRST108) for a filter on a

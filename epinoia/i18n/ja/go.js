@@ -6,6 +6,11 @@
   if (!I) return;
   I.register('ja', {
     phrases: {
+      /* a league's Community page (community/) */
+      'Talk': 'トーク',
+      'In the stands': 'スタンドから',
+      'Furthest travelled': '最長移動距離',
+      'At the game?': '試合会場にいますか？',
       /* a fan's page (fan/, 0197) */
       'Their club': '応援クラブ',
       'EPINOIΛ GO passport': 'EPINOIΛ GO パスポート',
