@@ -545,6 +545,25 @@ jobs:
         # read back by Python, and the console reading eleven numbers of a player line rather than the blob
         run: node supabase/tests/socialcard.test.mjs
 
+      - name: The front office - a projected depth chart and the GM's view, read against the club's own league
+        # epinoia/t/depth.js: projected minutes (last five 60 / 40), positions from the box score by minutes, the listing and
+        # height, starters small to big and the bench beside the starter it plays like, the missing and released out; the
+        # GM's strengths / weaknesses by league quarter, three needs, styles as identity, the roster's shape and on/off
+        run: node supabase/tests/depth.test.mjs
+
+      - name: One position against the league - the radar, the field, the men and the verdict
+        # epinoia/t/position.js: a group's own sums (true shooting from its shots together), every club through the same
+        # chart, ranks and percentiles (turnovers the other way, players never against themselves), the words, the SVG
+        # and the sheet (opens as a dialog, Escape / backdrop / x close it, focus comes back)
+        run: node supabase/tests/position.test.mjs
+
+      - name: The front office in the hub - a club's officials share it, the hub lists it where a membership opens it (0193)
+        # grant / revoke / list only for is_team_manager, addresses folded and given once, my_front_offices by role or grant
+        # (role wins), members_ok from can_use_analytics, revoked gone at once, the table shut to all but the functions
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/front-office.test.mjs
+
       - name: The lineups tab - fives, trios and pairs, filtered and sorted in place
         # epinoia/game/lineups.js over boxscore.js lineupCombos on a real game: the fives are the old tab's, a pair is
         # every stretch the two shared (ten to a five, so ten times the fives' minutes and points), the filters and

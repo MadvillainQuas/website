@@ -327,7 +327,7 @@ ok('every place that groups a league uses the one rule',
    (nav.match(/groupKey\(/g) || []).length >= 5,
    'the counter, the list filter, the page-opens-its-own-group path and settleCountry');
 
-console.log('\n13. your profile is a rail, and the way back to a private league');
+console.log('\n13. your hub (it was "your profile") is a rail, and the way back to a private league');
 ok('the deck carries a sixth panel (and a seventh since, EPINOIA GO\'s layer)',
    /const followsPanel = el\('div', 'panel followspanel'\);/.test(nav) &&
    /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel\)/.test(nav));
@@ -337,11 +337,11 @@ ok('...and the CSS is a seventh, not a sixth',
    /data-view="go"\] \.deck\{ transform:translateX\(-85\.7143%\)/.test(navcss));
 ok('the panel is hidden from the tab order like every other',
    /followsPanel\.setAttribute\('aria-hidden', String\(v !== 'follows'\)\)/.test(nav));
-ok('"your profile" opens it, and is still a real link for a modified click',
+ok('"your hub" opens it, and is still a real link for a modified click',
    /openFollows\(\);/.test(nav) &&
    /e\.button !== 0 \|\| e\.metaKey \|\| e\.ctrlKey \|\|\s*\n?\s*e\.shiftKey \|\| e\.altKey\) return;/.test(nav));
 ok('...and says so with a chevron',
-   /meLink\.append\(el\('span', 'ic', '☆'\), el\('span', 'tx', 'your profile'\),\s*\n?\s*el\('span', 'lgo', '›'\)\)/.test(nav));
+   /meLink\.append\(el\('span', 'ic', '☆'\), el\('span', 'tx', 'your hub'\),\s*\n?\s*el\('span', 'lgo', '›'\)\)/.test(nav));
 ok('the list is clubs AND leagues, read as the account',
    /fan_prefs\?select=fav_league_ids,fav_team_ids/.test(nav) &&
    /leagues\?id=in\./.test(nav) && /teams\?id=in\./.test(nav));

@@ -733,11 +733,12 @@
   teamsPanel.append(thead, tlist);
 
   /* ------------------------------------------------------- your own panel ---
-     "Your profile" in the footer was a link straight to /me/. It is now a way
-     in to the two things that are yours: the profile itself, and everything you
-     follow — clubs and leagues together, in one list, because a follow is a
-     follow and a reader looking for "that league I joined" does not first
-     decide which kind of thing it was.
+     "YOUR HUB" (it was "Your profile", and a link straight to /me/). It is a way
+     in to what is yours: the profile itself, the FRONT OFFICE of every club you
+     work for (0193: a team role, or a club official's grant, and a membership
+     that opens it), and everything you follow — clubs and leagues together, in
+     one list, because a follow is a follow and a reader looking for "that
+     league I joined" does not first decide which kind of thing it was.
 
      IT IS THE ONLY ROUTE BACK TO A PRIVATE LEAGUE. A private league is not
      listed, not searchable and not on the front page, so without this the way
@@ -750,7 +751,7 @@
   fback.setAttribute('aria-label', 'Back');
   const fname = el('a', 'lname');
   fname.href = root + 'me/';
-  fname.append(marquee('Your profile'));
+  fname.append(marquee('Your hub'));
   fhead.append(fback, fname);
   const flist = el('div', 'pages');
   followsPanel.append(fhead, flist);
@@ -828,10 +829,34 @@
       return r.json();
     };
 
+    /* THE FRONT OFFICES (0193 my_front_offices): a button per club the account works for - by a team role in the
+       console or a grant from one of the club's officials - where its membership opens the club's analytics. Asked
+       beside the follows; an older database without the function simply has none. */
+    const offices = fetch(cfg.supabaseUrl + '/rest/v1/rpc/my_front_offices', {
+      method: 'POST', cache: 'no-store', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: '{}'
+    }).then(r => (r.ok ? r.json() : [])).catch(() => []);
+
     let prefs = null;
     try { prefs = (await get('fan_prefs?select=fav_league_ids,fav_team_ids&limit=1'))[0] || null; }
     catch (_) { holding2.textContent = 'unavailable'; return; }
     followsDrawn = true;                          // the answer arrived; keep it
+
+    const fo = ((await offices) || []).filter(o => o && o.slug && o.members_ok);
+    if (fo.length) {
+      const box = document.createDocumentFragment();
+      box.appendChild(el('div', 'gtitle', 'front office'));
+      fo.forEach(o => {
+        const a = el('a', 'item trow forow');
+        a.href = root + 't/?t=' + encodeURIComponent(o.slug) + '&tab=front-office';
+        a.title = 'the front office · ' + o.name + (o.via === 'grant' ? ' (shared with you by the club)' : '');
+        const badge = window.epinoiaCrest
+          ? window.epinoiaCrest({ name: o.name, short_name: o.short_name, colour: o.colour, logo_path: o.logo_path }, { cls: 'ep-crest ic' })
+          : el('span', 'ic', '◈');
+        a.append(badge, marquee(o.name), el('span', 'lgo', '◈'));
+        box.appendChild(a);
+      });
+      flist.insertBefore(box, hd);
+    }
 
     const lids = (prefs && prefs.fav_league_ids) || [];
     const tids = (prefs && prefs.fav_team_ids) || [];
@@ -1083,10 +1108,10 @@
      says so; a row that opens a rail with nothing announcing it is a row people
      click once, get taken somewhere unexpected, and stop trusting. */
   const meLink = el('a', 'item');
-  meLink.append(el('span', 'ic', '☆'), el('span', 'tx', 'your profile'),
+  meLink.append(el('span', 'ic', '☆'), el('span', 'tx', 'your hub'),
                 el('span', 'lgo', '›'));
   meLink.href = root + 'me/';
-  meLink.title = 'your profile, and the clubs and leagues you follow';
+  meLink.title = 'your hub: your profile, the front offices you work in, and the clubs and leagues you follow';
   meLink.hidden = true;
   meLink.addEventListener('click', (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey ||

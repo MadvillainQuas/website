@@ -244,6 +244,7 @@ async function chooseSeason(team, lg) {
     whenNear($('#lulist') || $('#wowy'), () => { lineupPanels(team).catch(() => {}); });
     await videoPanel(team);
     weeklyTab(team);
+    frontOfficeTab(team);
   } catch (e) { oops('Could not load: ' + e.message); }
 })();
 
@@ -411,6 +412,236 @@ async function teamRotations(team) {
   } catch (e) { host.appendChild(el('div', 'empty', 'The rotations could not be drawn.')); }
 }
 
+/* WHO MAY OPEN THE FRONT OFFICE. Today it is analytics like the rotations and the lineups: a league whose analytics
+   are for members shows everyone else the teaser. To sell it on its own, set membersOnly: a viewer then needs a plan
+   whose features include 'front_office' (access.js carries each plan's features; the tab asks for the league's). */
+const FRONT_OFFICE = { membersOnly: false, feature: 'front_office' };
+function frontOfficeOpen(team) {
+  if (ACCESS.paywall || ACCESS.locked) return false;
+  if (!FRONT_OFFICE.membersOnly) return true;
+  const A = window.EpinoiaAccess, lg = (team && team.leagues) || {};
+  const st = A && typeof A.get === 'function' ? A.get({ id: lg.id, slug: lg.slug }) : null;
+  return !!(st && Array.isArray(st.features) && st.features.indexOf(FRONT_OFFICE.feature) !== -1);
+}
+
+/* THE TAB, beside Profile, Video and the weekly report. The same pattern as the weekly report's (weekly.js mount):
+   the profile steps aside while it is open, the other tabs close it, and nothing is read until it is first opened.
+   ?tab=front-office opens it on arrival. */
+function frontOfficeTab(team) {
+  const tabs = $('#ttabs'), panel = $('#fosec');
+  if (!tabs || !panel || !window.EpinoiaDepth || ACCESS.paywall) return;
+  const btn = document.createElement('button');
+  btn.className = 'ep-tab'; btn.type = 'button'; btn.dataset.p = 'front-office';
+  btn.setAttribute('role', 'tab');
+  btn.textContent = 'Front office';
+  tabs.appendChild(btn);
+  tabs.style.display = '';
+  let loaded = false;
+  const show = on => {
+    document.body.classList.toggle('fotab', on);
+    panel.style.display = on ? '' : 'none';
+    if (!on || loaded) return;
+    loaded = true;
+    frontOffice(team).catch(() => { loaded = false; });
+  };
+  btn.onclick = () => { show(true); syncTabs(); };
+  tabs.querySelectorAll('.ep-tab').forEach(b => {
+    if (b === btn) return;
+    const prev = b.onclick;
+    b.onclick = e => { show(false); if (prev) prev.call(b, e); syncTabs(); };
+  });
+  if (new URLSearchParams(location.search).get('tab') === 'front-office') { show(true); syncTabs(); }
+  syncTabs();
+}
+
+/* SHARE THE FRONT OFFICE (0193). A club official - is_team_manager: its managers, its league's administrators - gives
+   the tab to an analyst, a scout or an assistant by their email address, before they have even signed in; it
+   appears in their hub the moment they do (with a membership that opens it). Nothing is drawn for anybody else. */
+async function frontOfficeShare(team) {
+  const host = $('#foshare');
+  const sb = window.epinoiaClient && window.epinoiaClient();
+  if (!host || !sb) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { data: mine } = await sb.rpc('is_team_manager', { p_team: team.id });
+    if (!mine) return;
+  } catch (_) { return; }
+  host.textContent = '';
+  const card = el('div', 'ep-card fo-share');
+  card.appendChild(el('div', 'fo-share-h', 'share the front office'));
+  card.appendChild(el('p', 'fo-share-p', 'Give this tab to someone who works for the club - an analyst, a scout, an assistant coach. ' +
+    'It appears in their hub under "front office" when they sign in with this address (and their membership opens it).'));
+  const row = el('div', 'fo-share-row');
+  const input = el('input', 'ep-input');
+  input.type = 'email'; input.placeholder = 'their email address'; input.autocomplete = 'off';
+  const add = el('button', 'ep-btn', 'give access'); add.type = 'button';
+  row.append(input, add);
+  const list = el('div', 'fo-share-list');
+  const msg = el('div', 'fo-share-msg');
+  card.append(row, msg, list);
+  host.appendChild(card);
+  const say = (t, bad) => { msg.textContent = t; msg.classList.toggle('bad', !!bad); };
+  const draw = async () => {
+    const { data, error } = await sb.rpc('front_office_grants_for', { p_team: team.id });
+    list.textContent = '';
+    if (error) { say('Who has it could not be read: ' + error.message, true); return; }
+    if (!(data || []).length) { list.appendChild(el('div', 'fo-share-none', 'Only the club\'s own officials have it so far.')); return; }
+    data.forEach(g => {
+      const r = el('div', 'fo-share-item');
+      r.append(el('span', 'fo-share-e', g.email));
+      const x = el('button', 'ep-btn mini', 'remove'); x.type = 'button';
+      x.addEventListener('click', async () => {
+        x.disabled = true;
+        const { error: e2 } = await sb.rpc('revoke_front_office', { p_team: team.id, p_email: g.email });
+        if (e2) { x.disabled = false; say(e2.message, true); return; }
+        say(g.email + ' no longer has the front office.');
+        draw();
+      });
+      r.append(x);
+      list.appendChild(r);
+    });
+  };
+  add.addEventListener('click', async () => {
+    const email = input.value.trim();
+    if (!email) return;
+    add.disabled = true;
+    const { error } = await sb.rpc('grant_front_office', { p_team: team.id, p_email: email });
+    add.disabled = false;
+    if (error) { say(error.message, true); return; }
+    input.value = '';
+    say(email + ' has the front office: it is in their hub when they sign in.');
+    draw();
+  });
+  draw();
+}
+
+/* ONE TAB LIT, THE ONE WHOSE SECTION IS SHOWING. Each tab (video, the weekly report, the front office) toggles its
+   own body class; read together they say which is open, so the highlight cannot disagree with the page - which it
+   did when three handlers each lit buttons by their own rule. */
+function syncTabs() {
+  const tabs = $('#ttabs');
+  if (!tabs) return;
+  const c = document.body.classList;
+  const open = c.contains('fotab') ? 'front-office' : c.contains('wktab') ? 'weekly' : c.contains('vtab') ? 'video' : 'profile';
+  tabs.querySelectorAll('.ep-tab').forEach(b => {
+    const on = b.dataset.p === open;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+}
+
+/* THE FRONT OFFICE: the projected depth chart and the GM's view (t/depth.js). Everything it reads is already
+   read for this page or cached: the club's last forty finals with their starters (seasonLogs), the league's season
+   line (D.season without rows: the snapshot or this browser's copy), the last ten games' player lines for the
+   minutes and who is missing now, the roster for positions and heights, the releases and the ages. */
+async function frontOffice(team) {
+  const hostD = $('#depth'), hostG = $('#gmview');
+  const X = window.EpinoiaDepth, D = window.EpinoiaData;
+  if (ACCESS.paywall || !hostD || !X || !D) return;
+  if (!frontOfficeOpen(team)) {
+    hostD.innerHTML = accessTeaser({ compact: true, title: 'The front office', lines: [
+      'Who starts, who backs up, and at which position, projected from the club\'s own games.',
+      'Every position charted against the same position at every club in the league.',
+      'Strengths, weaknesses and needs, read the way a general manager would.'] });
+    if (hostG) hostG.textContent = '';
+    return;
+  }
+  try {
+    const [{ gs, sideOf }, roster, rel] = await Promise.all([
+      seasonLogs(team),
+      api(`roster_entries?team_id=eq.${team.id}&active=eq.true&select=jersey,position,players(id,first_name,last_name,height_cm)`),
+      D.releases(team.id).catch(() => [])
+    ]);
+    const games = gs.slice().sort((a, b) => String(b.tipoff_at).localeCompare(String(a.tipoff_at)));
+    /* starts: the whole window, and the last five */
+    const starts = { season: new Map(), recent: new Map(), games: 0 };
+    games.forEach((g, i) => {
+      const five = Array.isArray(g.starters) && g.starters[sideOf[g.id]];
+      if (!Array.isArray(five) || !five.length) return;
+      if (i < 5) starts.games++;
+      five.forEach(id => {
+        starts.season.set(id, (starts.season.get(id) || 0) + 1);
+        if (i < 5) starts.recent.set(id, (starts.recent.get(id) || 0) + 1);
+      });
+    });
+    /* the last ten games' lines: minutes over the last five, and who is missing now */
+    const last10 = games.slice(0, 10);
+    const W = last10.length ? await D.statsForGames(last10) : { pgs: [] };
+    const five = new Set(games.slice(0, 5).map(g => g.id));
+    const agg = new Map();
+    (W.pgs || []).forEach(r => {
+      const pid = r.player_uuid || r.player_id, m = (r.stats && +r.stats.min || 0) / 60000;
+      if (!pid || !five.has(r.game_id) || (r.team_idx !== sideOf[r.game_id]) || m <= 0) return;
+      const a = agg.get(pid) || { min: 0, gp: 0 };
+      a.min += m; a.gp++; agg.set(pid, a);
+    });
+    const recent = new Map([...agg].map(([id, a]) => [id, { mpg: a.min / a.gp }]));
+    const I = window.EpinoiaInjuries;
+    const out = new Set();
+    if (I && I.report) {
+      const rep = I.report({ games: last10, pgs: W.pgs || [], released: rel });
+      (rep.byTeam.get(String(team.id)) || []).forEach(e => { if (!e.stale) out.add(e.playerId); });
+    }
+    const released = new Set((rel || []).map(r => r.player_id));
+    const people = roster.filter(r => r.players && r.players.id).map(r => ({
+      id: r.players.id, name: ((r.players.first_name || '') + ' ' + (r.players.last_name || '')).trim(), num: r.jersey,
+      position: r.position || '', height: r.players.height_cm }));
+
+    /* the league's season line: the club's own players, and every club for the ranks */
+    const played = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})&status=eq.final&select=competition_id` + inSeason());
+    const ids = [...new Set(played.map(g => g.competition_id).filter(Boolean))];
+    const comps = ids.length ? await D.all(`competitions?id=in.(${ids.join(',')})&select=id,kind`) : [];
+    const league = comps.filter(c => (c.kind || 'league') === 'league').map(c => c.id);
+    const S = await D.season(league.length ? league : ids, { rows: false });
+    const seasonRows = new Map((S.players || []).map(p => [p.id, p]));
+    const names = new Map(people.map(p => [p.id, p.name]));
+    const mine = (S.players || []).filter(p => S.teamOfPlayer && S.teamOfPlayer.get(p.id) === team.id)
+      .map(p => Object.assign({}, p, { name: names.get(p.id) || p.name || '' }));
+    const missingNames = mine.filter(p => !p.name).map(p => p.id);
+    if (missingNames.length && D.playerMeta) {
+      try { const meta = await D.playerMeta(missingNames); mine.forEach(p => { if (!p.name && meta[p.id]) p.name = meta[p.id].name; }); } catch (_) { /* unnamed */ }
+    }
+
+    const c = X.chart({ roster: people, season: seasonRows, recent, starts, out, released });
+    const link = p => '../p/?p=' + encodeURIComponent(p.id);
+    hostD.innerHTML = X.chartHTML(c, { link });
+    /* EACH POSITION OPENS ITS LEAGUE VIEW (position.js): every club put through the same chart, read the first time
+       a position is pressed and kept - the clubs' rosters for heights and listed positions, and their names and colours */
+    const PV = window.EpinoiaPosition;
+    let ctxP = null;
+    const leagueCtx = () => ctxP || (ctxP = (async () => {
+      const ids = (S.teams || []).map(t => t.id).filter(Boolean);
+      const [rosters, meta] = await Promise.all([
+        ids.length ? api(`roster_entries?team_id=in.(${ids.join(',')})&active=eq.true&select=team_id,position,players(id,height_cm)`) : [],
+        ids.length ? api(`teams?id=in.(${ids.join(',')})&select=id,name,short_name,colour,logo_path`) : []
+      ]);
+      return PV.context({ season: S, rosters, meta, own: { teamId: team.id, chart: c } });
+    })().catch(e => { ctxP = null; throw e; }));
+    if (PV) hostD.addEventListener('click', async e => {
+      const b = e.target.closest && e.target.closest('[data-slot]');
+      if (!b) return;
+      b.classList.add('dc-busy');
+      try {
+        const rep = PV.report(await leagueCtx(), team.id, b.getAttribute('data-slot'));
+        if (rep) { rep.club.name = team.name; rep.club.colour = readableColour(team); }
+        PV.open(PV.html(rep, { close: true, link }), b);
+      } catch (_) { PV.open('<div class="pv"><div class="empty">The league view could not be read just now.</div><button type="button" class="pv-x" data-pv-close aria-label="close">×</button></div>', b); }
+      b.classList.remove('dc-busy');
+    });
+    if (!hostG) return;
+    const ages = window.EpinoiaAges ? await window.EpinoiaAges.load(CFG, mine.map(p => p.id)).catch(() => ({})) : {};
+    const g = X.gm({ team, teams: S.teams || [], players: mine, ages: new Map(Object.entries(ages)),
+                     heights: new Map(people.filter(p => p.height).map(p => [p.id, +p.height])) });
+    hostG.innerHTML = X.gmHTML(g);
+    const note = $('#gmNote');
+    if (note && g.of) note.textContent = 'against the ' + g.of + ' clubs of the league';
+    frontOfficeShare(team).catch(() => { /* not an official, or an older database: nothing to share */ });
+  } catch (e) {
+    hostD.innerHTML = '<div class="empty">The depth chart could not be drawn.</div>';
+  }
+}
+
 /* ON VIDEO — every play the club made in every game that has footage the page can
    seek, under a Video tab beside the profile. The same panel as a player's profile
    (p/video.js) in team mode: the whole side of each game, each man named. */
@@ -456,6 +687,7 @@ async function videoPanel(team) {
     $('#videoNote').textContent = games.length + (games.length === 1 ? ' game with footage' : ' games with footage');
     const tabs = $('#ttabs');
     if (!tabs) return;
+    tabs.dataset.video = '1';                 // the Video tab is offered only now (index.html's rule hides it before)
     tabs.style.display = '';
     const showVideo = on => {
       document.body.classList.toggle('vtab', on);
