@@ -44,10 +44,20 @@ function summarise(games, teamId, SOS) {
   const rank = 1 + all.filter(r => r.sosElo > me.sosElo).length;      // 1 = hardest
   const pct = (all.filter(r => r.sosElo < me.sosElo).length / (n - 1)) * 100;
   const b = band(Math.min(100, pct));
-  return { rank, n, games: me.games, sos: Math.round(me.sosElo), pct, band: b,
-           text: 'SOS ' + Math.round(me.sosElo),
-           tip: b.word + ' ' + ordinal(rank) + ' of ' + n + ' — opponents average ELO ' +
-                Math.round(me.sosElo) + ' (avg 1500), over ' + me.games + ' games so far. Harder schedule = warmer colour.' };
+  const lo = Math.round(Math.min(...all.map(r => r.sosElo))), hi = Math.round(Math.max(...all.map(r => r.sosElo)));
+  const sos = Math.round(me.sosElo), gap = sos - 1500;
+  const rel = Math.abs(gap) < 8 ? 'about the same as an average team'
+    : (Math.abs(gap) < 25 ? 'slightly ' : Math.abs(gap) < 60 ? '' : 'far ') + (gap > 0 ? 'stronger' : 'weaker') + ' than an average team';
+  const seg = Math.max(0, Math.min(4, Math.floor(Math.min(99.9, pct) / 20)));        // which fifth of the league: 0 easiest .. 4 hardest
+  return { rank, n, games: me.games, sos, lo, hi, pct, seg, band: b,
+           text: 'SOS ' + sos,
+           word: b.word,
+           line: ordinal(rank) + ' hardest of ' + n,
+           tip: b.word + ' ' + ordinal(rank) + ' of ' + n + ' \u2014 opponents average ELO ' + sos + ' (avg 1500), over ' + me.games +
+                ' games so far. Harder schedule = warmer colour.',
+           more: 'Schedule strength so far: the opponents this club has faced averaged an ELO rating of ' + sos + '. ELO is a strength rating built from ' +
+                 'results: 1500 is an average team and higher is stronger, so that is ' + rel + '. The league runs from ' + lo + ' (easiest) to ' + hi +
+                 ' (hardest), over ' + me.games + ' games.' };
 }
 
 /* the chip lives in the heading, between the h2 and #barNote; repainted in place, removed when there is nothing to say */
@@ -59,19 +69,34 @@ function paint(host, ctx) {
   let chip = head.querySelector('.soschip');
   let s = null;
   try { s = summarise(ctx && ctx.games, ctx && ctx.teamId); } catch (_) { s = null; }
-  if (!s) { if (chip) chip.remove(); return; }
+  if (!s) { if (chip) { if (chip._more) chip._more.remove(); chip.remove(); } return; }
   if (!chip) {
-    chip = doc.createElement('span');
+    chip = doc.createElement('button');
+    chip.type = 'button';
     chip.className = 'soschip';
-    chip.tabIndex = 0;
     const note = head.querySelector('#barNote');
     if (note) head.insertBefore(chip, note); else head.appendChild(chip);
+    chip.addEventListener('click', () => {
+      const open = chip.getAttribute('aria-expanded') !== 'true';
+      chip.setAttribute('aria-expanded', open ? 'true' : 'false');
+      const m = chip._more; if (m) m.hidden = !open;
+    });
   }
-  chip.textContent = s.text;
+  const meter = [0, 1, 2, 3, 4].map(i => '<i' + (i === s.seg ? ' class="on"' : '') + '></i>').join('');
+  chip.innerHTML = '<span class="sc-top"><span class="sc-k">Schedule</span><span class="sc-w">' + s.word + '</span></span>' +
+    '<span class="sc-meter" aria-hidden="true">' + meter + '</span>' +
+    '<span class="sc-sub"><span>easy</span><span>' + s.line + '</span><span>hard</span></span>';
   chip.style.setProperty('--sc', s.band.colour);
   chip.title = s.tip;
-  chip.setAttribute('aria-label', s.tip);
+  chip.setAttribute('aria-label', s.tip + ' Tap for what it means.');
   chip.dataset.band = s.band.key;
+  if (!chip._more) {
+    chip._more = doc.createElement('div');
+    chip._more.className = 'soschip-more'; chip._more.hidden = true;
+    chip.after(chip._more);
+    chip.setAttribute('aria-expanded', 'false');
+  }
+  chip._more.textContent = s.more;
 }
 
 return { band, summarise, paint, ordinal, MIN_GAMES };

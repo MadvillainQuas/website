@@ -41,6 +41,7 @@ ok('summarise: rank 1 is the hardest schedule', () => {
   assert.equal(hardest.band.key, 'hardest'); assert.equal(r.find(x => x.rank === 4).band.key, 'easiest');
   assert.match(hardest.tip, /^Hardest 1st of 4 .*avg 1500/);
   assert.match(hardest.text, /^SOS \d+$/);
+  assert.match(hardest.line, /^1st hardest of 4$/); assert.ok(hardest.seg === 4 && hardest.more.includes("ELO"));
 });
 ok('summarise: hidden under 3 games or without data', () => {
   assert.equal(Chip.summarise(games.slice(0, 2), 'a', SOS), null);

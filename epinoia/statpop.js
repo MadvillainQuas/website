@@ -367,63 +367,109 @@ function open(o) {
   return st;
 }
 
+/* ---- EXPLAIN MODE: the '?' turns every statistic into something that explains itself on hover or tap ----
+   One shared bubble, drawn ABOVE the statistic it is about (below it when there is no room), the width of a phone card
+   at most, clamped inside the viewport so it never runs off the page. The bubble is the short version: what it
+   measures and how to read it. On a phone a tap in this mode shows the bubble (with a button to the chart); with a mouse
+   the bubble follows the pointer's hover and a click still opens the chart. */
+let explain = false, lastPointer = 'mouse', tipEl = null, tipFor = null;
+
+function tipNode() {
+  if (tipEl) return tipEl;
+  tipEl = document.createElement('div');
+  tipEl.className = 'stp-bubble'; tipEl.hidden = true; tipEl.setAttribute('role', 'tooltip');
+  document.body.appendChild(tipEl);
+  return tipEl;
+}
+function hideTip() { if (tipEl) { tipEl.hidden = true; tipEl.classList.remove('stp-touch'); } tipFor = null; }
+
+function showTip(node, opts, touch) {
+  const SI = root.EpinoiaStatInfo;
+  const i = SI && SI.info(opts.key, opts.kind);
+  if (!i) return false;
+  const t = tipNode();
+  t.innerHTML = '<b>' + esc(i.title) + (i.low ? ' <i>lower is better</i>' : '') + '</b><span>' + esc(i.what) + '</span><em>' + esc(i.read) + '</em>' +
+    (touch ? '<button type="button" class="stp-bubble-go">see league chart</button>' : '');
+  t.classList.toggle('stp-touch', !!touch);
+  t.hidden = false; tipFor = node;
+  const go = t.querySelector('.stp-bubble-go');
+  if (go) go.addEventListener('click', ev => { ev.stopPropagation(); hideTip(); opts.trigger = node; open(opts); });
+  place(node, t);
+  return true;
+}
+function place(node, t) {
+  const r = node.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  t.style.maxWidth = Math.min(300, vw - 24) + 'px';
+  const w = t.offsetWidth, h = t.offsetHeight;
+  let left = r.left + r.width / 2 - w / 2;
+  left = Math.max(12, Math.min(left, vw - w - 12));
+  let top = r.top - h - 10, below = false;
+  if (top < 8) { top = Math.min(r.bottom + 10, vh - h - 8); below = true; }
+  t.style.left = left + 'px'; t.style.top = top + 'px';
+  t.classList.toggle('stp-below', below);
+  t.style.setProperty('--arrow', Math.max(14, Math.min(w - 14, r.left + r.width / 2 - left)) + 'px');
+}
+
+function setExplain(on) {
+  explain = !!on;
+  document.body.classList.toggle('stp-explaining', explain);
+  document.querySelectorAll('.stp-q').forEach(b => { b.setAttribute('aria-pressed', explain ? 'true' : 'false'); });
+  if (!explain) hideTip();
+}
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('pointerdown', ev => {
+    lastPointer = ev.pointerType || 'mouse';
+    if (tipEl && !tipEl.hidden && !ev.target.closest('.stp-bubble') && !(tipFor && tipFor.contains(ev.target))) hideTip();
+  }, true);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && (explain || (tipEl && !tipEl.hidden))) { if (tipEl && !tipEl.hidden) hideTip(); else setExplain(false); } });
+  window.addEventListener('scroll', () => { if (tipEl && !tipEl.hidden) hideTip(); }, { passive: true });
+}
+
 /* makes any element a button that opens the popup: role, tabindex, Enter/Space, and not when the click
-   landed on a link or a button inside it */
+   landed on a link or a button inside it. In explain mode a hover (mouse) or a tap (touch) explains it first. */
 function bind(node, getOpts) {
   node.classList.add('stp-hit');
   node.setAttribute('role', 'button');
   node.tabIndex = 0;
   node.setAttribute('aria-haspopup', 'dialog');
   const go = () => { const opts = getOpts(); if (opts) { opts.trigger = node; open(opts); } };
-  node.addEventListener('click', ev => { if (ev.target.closest && ev.target.closest('a,button,input,select,textarea,summary') && ev.target.closest('a,button,input,select,textarea,summary') !== node) return; go(); });
+  node.addEventListener('click', ev => {
+    const inner = ev.target.closest && ev.target.closest('a,button,input,select,textarea,summary');
+    if (inner && inner !== node) return;
+    if (explain && lastPointer !== 'mouse') { const o = getOpts(); if (o && showTip(node, o, true)) return; }
+    hideTip(); go();
+  });
+  node.addEventListener('mouseenter', () => {
+    if (!explain || lastPointer !== 'mouse') return;
+    const o = getOpts(); if (o) showTip(node, o, false);
+  });
+  node.addEventListener('mouseleave', () => { if (tipFor === node && tipEl && !tipEl.classList.contains('stp-touch')) hideTip(); });
+  node.addEventListener('focus', () => { if (explain && lastPointer === 'mouse') { const o = getOpts(); if (o) showTip(node, o, false); } });
+  node.addEventListener('blur', () => { if (tipFor === node && tipEl && !tipEl.classList.contains('stp-touch')) hideTip(); });
   node.addEventListener('keydown', ev => {
     if (ev.target !== node) return;
-    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); }
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); hideTip(); go(); }
   });
 }
 
-/* THE '?' BUTTON in a section heading: toggles a panel right under the heading that lists every main statistic of the
-   section, grouped, from EpinoiaStatInfo. Remembers nothing. Idempotent: a heading gets one button. */
-function helpButton(heading, kind, groups) {
-  const SI = root.EpinoiaStatInfo;
-  if (!heading || !SI) return null;
+/* THE '?' BUTTON in a section heading: turns explain mode on and off (see above), and a one-line hint under the heading says
+   the statistics can be tapped. Idempotent: a heading gets one button and one hint. */
+function helpButton(heading, kind) {
+  if (!heading || !root.EpinoiaStatInfo) return null;
   const had = heading.querySelector('.stp-q');
   if (had) { heading.appendChild(had); return null; }        // already there: stay the LAST child, after anything added since
-  groups = groups || (kind === 'team' ? SI.teamGroups : SI.groups);
   const btn = document.createElement('button');
   btn.type = 'button'; btn.className = 'stp-q'; btn.textContent = '?';
-  btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-label', 'What do these statistics mean?');
-  btn.title = 'What do these statistics mean?';
-  const panel = document.createElement('div');
-  panel.className = 'stp-help'; panel.hidden = true;
-  panel.id = 'stp-help-' + Math.random().toString(36).slice(2, 7);
-  btn.setAttribute('aria-controls', panel.id);
-  let built = false;
-  const build = () => {
-    built = true;
-    let h = '<div class="stp-help-top"><p>What each statistic in this section means. Tap any bar or tile for the league chart.</p>' +
-      '<button type="button" class="stp-help-x">close</button></div>';
-    groups.forEach(g => {
-      const items = g.keys.map(k => [k, SI.info(k, kind)]).filter(x => x[1]);
-      if (!items.length) return;
-      h += '<h4>' + esc(g.title) + '</h4><ul>' + items.map(([k, i]) =>
-        '<li><b>' + esc(i.title) + '</b> — ' + esc(i.what) + ' <em>' + esc(i.read) + '</em></li>').join('') + '</ul>';
-    });
-    panel.innerHTML = h;
-    panel.querySelector('.stp-help-x').addEventListener('click', () => toggle(false));
-  };
-  const toggle = on => {
-    if (on == null) on = panel.hidden;
-    if (on && !built) build();
-    panel.hidden = !on;
-    btn.setAttribute('aria-expanded', on ? 'true' : 'false');
-    if (!on) btn.focus();
-  };
-  btn.addEventListener('click', () => toggle());
-  panel.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); toggle(false); } });
+  btn.setAttribute('aria-pressed', explain ? 'true' : 'false');
+  btn.setAttribute('aria-label', 'Explain the statistics: hover or tap one for what it means');
+  btn.title = 'Explain the statistics';
+  btn.addEventListener('click', () => setExplain(!explain));
   heading.appendChild(btn);
-  heading.after(panel);
-  return { btn, panel, toggle };
+  const hint = document.createElement('div');
+  hint.className = 'stp-hint';
+  hint.textContent = 'Tap a stat for its league chart · ? explains them';
+  heading.after(hint);
+  return { btn, hint, toggle: setExplain };
 }
 
 return { open, close, bind, helpButton, placeLabels, _nice: niceTicks };
