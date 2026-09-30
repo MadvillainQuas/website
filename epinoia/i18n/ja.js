@@ -59,6 +59,7 @@
       'your profile': 'マイページ',
       'your hub': 'マイハブ',
       'front office': 'フロントオフィス',
+      'what wins': '勝因分析',
       'your hub: your profile, the front offices you work in, and the clubs and leagues you follow': 'マイハブ：マイページ、所属クラブのフロントオフィス、フォロー中のクラブとリーグ',
       'admin controls': '管理メニュー',
       'platform': 'プラットフォーム',

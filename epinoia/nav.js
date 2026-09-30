@@ -579,7 +579,9 @@
     platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
                 'global scouting: every league in one table'),
     platformRow('✚', 'injury report', 'injuries/', /\/epinoia\/injuries\/$/,
-                'the waiver wire: who is missing, in every league, by club'));
+                'the waiver wire: who is missing, in every league, by club'),
+    platformRow('∿', 'what wins', 'winning/', /\/epinoia\/winning\//,
+                'what wins: the numbers that go with winning, measured on every finished game'));
 
   /* and on, into the leagues. A row rather than a bare chevron, because this is
      the journey the rail exists for. */

@@ -61,6 +61,7 @@
       'your profile': 'Tu perfil',
       'your hub': 'Tu espacio',
       'front office': 'oficina técnica',
+      'what wins': 'lo que gana',
       'admin controls': 'Administración',
       'platform': 'Plataforma',
       'sign in': 'Iniciar sesión',
