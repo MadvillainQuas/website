@@ -51,5 +51,6 @@
   /* An article was asked for, or it was not. Harmless on every page that is
      not the news archive, which is why one file answers both questions rather
      than each page carrying its own copy of this. */
-  root.classList.add(q.get('a') ? 'm-article' : 'm-list');
+  /* ...and on the news page, one publisher's story (?i=, where a notification lands) is one thing too */
+  root.classList.add(q.get('a') || (q.get('i') && /\/news\//.test(location.pathname)) ? 'm-article' : 'm-list');
 }());

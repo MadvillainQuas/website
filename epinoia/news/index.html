@@ -13,12 +13,12 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>News · Epinoia</title>
-<meta name="description" content="News from the leagues on Epinoia: results, performances and stories from the games.">
+<meta name="description" content="Basketball news from every league on Epinoia, the publishers that cover them and the leagues' own creators.">
 <link rel="canonical" href="https://prophesyscouting.co.uk/epinoia/news/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Epinoia">
 <meta property="og:title" content="News · Epinoia">
-<meta property="og:description" content="News from the leagues on Epinoia: results, performances and stories from the games.">
+<meta property="og:description" content="Basketball news from every league on Epinoia, the publishers that cover them and the leagues' own creators.">
 <meta property="og:url" content="https://prophesyscouting.co.uk/epinoia/news/">
 <meta name="twitter:card" content="summary">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="../kit/nav.css?v=541">
 <link rel="stylesheet" href="../kit/card.css?v=541">
 <link rel="stylesheet" href="../kit/news.css?v=541">
+<link rel="stylesheet" href="../kit/newscard.css?v=541">
 <link rel="stylesheet" href="../kit/access.css?v=541">
 <style>
   a.plain{color:inherit;text-decoration:none}
@@ -57,6 +58,15 @@
   footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
     font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
   footer.foot a{color:var(--ink-3);text-decoration:none}
+  /* the platform's news: the switches, the publishers, the cards (kit/newscard.css) */
+  .nw-tabs{margin-bottom:calc(var(--u)*3)}
+  .nw-pubs{margin-bottom:calc(var(--u)*4)}
+  .nw-pubs:empty{display:none}
+  .nw-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+    margin-bottom:calc(var(--u)*2)}
+  #press{padding-top:0}
+  #press .pc-sec-h{margin-top:calc(var(--u)*2)}
+  .m-article #press{display:none}
 </style>
 <link rel="stylesheet" href="../kit/teletext.css?v=541">
 <link rel="stylesheet" href="../kit/legibility.css?v=541">
@@ -72,6 +82,8 @@
     <h1 id="head">News</h1>
     <div class="lg" id="leagueName"></div>
   </div>
+  <!-- a publisher's page (?s=): its own head, in its colours, in place of the hero -->
+  <div id="brand"></div>
 
   <!-- one article, or the archive: mode.js decided which from ?a= before any
        of this was painted, so opening an article no longer shows the archive's
@@ -86,6 +98,8 @@
     <div class="empty">Loading&#8230;</div>
   </div>
   <div id="pager" class="pager hide"></div>
+  <!-- a league's page (?l=): what the publishers and its creators ran about it (news-page.js press) -->
+  <section id="press" class="wrap hide" aria-label="Around the league"></section>
 
   <footer class="foot">
     <a href="../home/">← Epinoia</a>
@@ -100,6 +114,9 @@
 <script src="../upload.js?v=541" defer></script>
 <script src="../newsblocks.js?v=541" defer></script>
 <script src="../news.js?v=541" defer></script>
+<script src="../newscard.js?v=541" defer></script>
+<!-- the bell on a publisher's page and a story (fav_source_ids) -->
+<script src="../follow.js?v=541" defer></script>
 <script src="news-page.js?v=541" defer></script>
 <script src="../nav.js?v=541" defer></script>
 </body>

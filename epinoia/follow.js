@@ -9,7 +9,11 @@
 
    Reads the stored session the way nav.js does (no SDK on public pages), loads the
    fan's row once, and keeps every bell on the page for the same thing in step.
-     window.EpinoiaFollow.bell('game' | 'team' | 'player' | 'league', id, { label, name })  -> element
+     window.EpinoiaFollow.bell('game' | 'team' | 'player' | 'league' | 'source' | 'outlet', id, { label, name })  -> element
+
+   A PUBLISHER OR A CREATOR IS FOLLOWED THE SAME WAY (0194): 'source' is a news site read by
+   its feed (fav_source_ids), 'outlet' a creator on a league's page (fav_outlet_ids). A
+   follow brings their new pieces to the bell, with the summary or the caption.
 
    A page that follows things without a bell (HOME's "Who's your favourite?", home/favourites.js) calls
      toggle(kind, id, name, { want: true | false, quiet: true })   set rather than flip; no push offer
@@ -29,9 +33,11 @@
 (function () {
   const C = () => window.EPINOIA_CONFIG || {};
   const KEY = { game: 'fav_game_ids', team: 'fav_team_ids', player: 'fav_player_ids',
-                league: 'fav_league_ids' };
+                league: 'fav_league_ids', source: 'fav_source_ids', outlet: 'fav_outlet_ids' };
   const WHAT = { game: 'this game', team: 'this club', player: 'this player',
-                 league: 'every game in this league' };
+                 league: 'every game in this league', source: 'this publisher', outlet: 'this creator' };
+  /* what a follow of each brings, for the bell's title */
+  const BRINGS = { source: 'new stories in your bell', outlet: 'new pieces in your bell' };
   let prefs = null, loading = null, sess = null;
   /* which follow lists this database actually has. A page asks before it mounts a bell for
      one the database has never heard of, because the write would be quietly ignored and the
@@ -84,13 +90,21 @@
        database that has not taken the migration yet would get a 400 and no bells at all,
        so the column is dropped and the read repeated; a league bell is simply off until
        the migration lands, and every other bell works as it always did. */
-    const BLANK = { fav_game_ids: [], fav_team_ids: [], fav_player_ids: [], fav_league_ids: [] };
-    const read = cols => fetch(C().supabaseUrl + '/rest/v1/fan_prefs?select=' + cols,
-      { cache: 'no-store', headers: headers() }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); });
-    loading = read('fav_game_ids,fav_team_ids,fav_player_ids,fav_league_ids')
-      .then(rows => { cols = ['fav_game_ids', 'fav_team_ids', 'fav_player_ids', 'fav_league_ids']; return rows; })
-      .catch(() => read('fav_game_ids,fav_team_ids,fav_player_ids')
-        .then(rows => { cols = ['fav_game_ids', 'fav_team_ids', 'fav_player_ids']; return rows; }))
+    const BLANK = { fav_game_ids: [], fav_team_ids: [], fav_player_ids: [], fav_league_ids: [],
+                    fav_source_ids: [], fav_outlet_ids: [] };
+    const read = want => fetch(C().supabaseUrl + '/rest/v1/fan_prefs?select=' + want.join(','),
+      { cache: 'no-store', headers: headers() }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(rows => ({ rows, cols: want.slice() }));
+    /* the same again for the publishers and creators (0194): newest columns first, each
+       fallback one migration older */
+    const TRIES = [
+      ['fav_game_ids', 'fav_team_ids', 'fav_player_ids', 'fav_league_ids', 'fav_source_ids', 'fav_outlet_ids'],
+      ['fav_game_ids', 'fav_team_ids', 'fav_player_ids', 'fav_league_ids'],
+      ['fav_game_ids', 'fav_team_ids', 'fav_player_ids'],
+    ];
+    const attempt = i => read(TRIES[i]).catch(e => (i + 1 < TRIES.length ? attempt(i + 1) : Promise.reject(e)));
+    loading = attempt(0)
+      .then(got => { cols = got.cols; return got.rows; })
       .then(rows => { prefs = Object.assign({}, BLANK, rows[0] || {}); return prefs; })
       .catch(() => { prefs = Object.assign({}, BLANK); return prefs; });
     return loading;
@@ -185,7 +199,7 @@
        arguing with its own colour; a caller that gives both words gets the right one. */
     const sp = b.dataset.labelOn ? b.querySelector('span') : null;
     if (sp) sp.textContent = on ? b.dataset.labelOn : (b.dataset.labelOff || sp.textContent);
-    b.title = session() ? ((on ? 'following ' : 'follow ') + WHAT[b.dataset.kind] + (on ? ' — tap to stop' : ' — results and fixtures in your bell'))
+    b.title = session() ? ((on ? 'following ' : 'follow ') + WHAT[b.dataset.kind] + (on ? ' — tap to stop' : ' — ' + (BRINGS[b.dataset.kind] || 'results and fixtures in your bell')))
                         : 'sign in to follow ' + WHAT[b.dataset.kind];
   }
   function paintAll(kind, id) {

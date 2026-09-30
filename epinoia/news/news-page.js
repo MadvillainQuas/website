@@ -7,6 +7,19 @@
    and a list of articles differ by one query and one renderer, and keeping
    them apart means keeping two copies of the header, the league lookup and
    the not-found handling in step.
+
+   AND THE PLATFORM'S NEWS (0194), in the same document:
+     news/                 every league, every publisher, every creator, newest
+                           first, on the post card (newscard.js), with a switch
+                           for each kind and one for what the reader follows
+     news/?s=<slug>        a publisher's page: its head in its colours, the way
+                           to its own site, a bell to follow it, its stories
+     news/?i=<id>          one story, where a notification lands: its headline
+                           and opening lines, and the way to read it on the
+                           publisher's own site
+     news/?l=<slug>        the league's own archive as before, and under it
+                           AROUND THE LEAGUE: the stories the publishers ran
+                           about it (their league tags) and its creators' pieces
    ============================================================================ */
 const CFG = window.EPINOIA_CONFIG;
 const N = window.EpinoiaNews;
@@ -15,10 +28,15 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
+const K = window.EpinoiaNewsCard;
 const Q = new URLSearchParams(location.search);
 const WANT = Q.get('l') || '';
 const SLUG = Q.get('a') || '';
+const SRC = Q.get('s') || '';
+const ITEM = Q.get('i') || '';
 const PAGE = 24;
+/* the post cards: a lead and two dozen under it, three to a row */
+const FIRST = 25, MORE = 24;
 
 /* A members-only league's news is refused to an anonymous caller (news_public and
    news_article check visibility inside), so a member's calls carry their token.
@@ -81,14 +99,23 @@ async function newsWall(league) {
 
 const imgUrl = p => /^https?:\/\//.test(p || '') ? p
   : (window.EpinoiaUpload ? window.EpinoiaUpload.publicUrl(CFG, p) : p);
+/* a league's crest: config.js knows where each is kept */
+const crestUrl = p => (typeof window.epinoiaLogoUrl === 'function' && window.epinoiaLogoUrl(p, 64)) || imgUrl(p);
+/* a row of news_feed as a post card's item */
+const cardOf = r => K.fromFeed(r, '../', imgUrl, crestUrl);
+/* the platform page's switches: each kind of news_feed, and the reader's own */
+const KINDS = [
+  { k: 'all',      label: 'Everything',   kinds: null },
+  { k: 'press',    label: 'Publishers',   kinds: ['outlet'] },
+  { k: 'creators', label: 'Creators',     kinds: ['creator'] },
+  { k: 'leagues',  label: 'League news',  kinds: ['league'] },
+  { k: 'mine',     label: 'Following',    mine: true }
+];
 
 (async function boot() {
-  if (!WANT) {
-    $('#list').textContent = '';
-    $('#list').appendChild(el('div', 'empty',
-      'No league asked for. Open the news from a league’s page.'));
-    return;
-  }
+  if (ITEM) return story(ITEM);
+  if (SRC) return publisher(SRC);
+  if (!WANT) return everything();
 
   let league = null;
   try {
@@ -116,7 +143,10 @@ const imgUrl = p => /^https?:\/\//.test(p || '') ? p
 
   if (await newsWall(league)) return;
   if (SLUG) await one(league);
-  else await all(league, 0);
+  else {
+    await all(league, 0);
+    press(league);
+  }
 })();
 
 /* ------------------------------------------------------------ one article --- */
@@ -287,4 +317,340 @@ async function all(league, offset) {
   } else {
     pager.classList.add('hide');
   }
+}
+
+/* ======================================================= THE PLATFORM'S NEWS ===
+   The post cards (newscard.js) over news_feed (0194): the league's articles, the
+   creators' pieces and the publishers' stories, newest first. */
+
+/* THE READER'S OWN FEED IS THEIRS: news_feed_mine is the signed-in reader's, so it goes with their token
+   (access.js refreshes one that has expired), or not at all. */
+async function rpcMine(fn, args) {
+  const A = window.EpinoiaAccess;
+  let s = null;
+  try { s = A && typeof A.sessionReady === 'function' ? await A.sessionReady() : null; } catch (_) { s = null; }
+  if (!s || !s.token) return null;
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, {
+    method: 'POST', cache: 'no-store',
+    headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + s.token,
+               'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(args || {})
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status));
+  return j;
+}
+
+
+/* A FEED OF CARDS, a page at a time. fetchPage(before, n) -> rows, newest first; toItem(row) -> a card's item;
+   each "more" asks for what is older than the last card. A switch that starts the feed again (reset) makes any
+   answer still on its way for the old one arrive to nothing. Returns { reset, box }. */
+function cardFeed(opts) {
+  const o = opts || {};
+  const box = el('div', 'nw-feed');
+  const grid = el('div');
+  const more = el('div', 'pc-more hide');
+  const btn = el('button', 'ep-btn', o.moreText || 'More');
+  btn.type = 'button';
+  more.appendChild(btn);
+  box.append(grid, more);
+  let gen = 0, before = null, seen = new Set(), g = null, fetchPage = o.fetchPage;
+  async function page(first) {
+    const mine = gen;
+    const n = first ? FIRST : MORE;
+    btn.disabled = true;
+    let rows = null;
+    try { rows = await fetchPage(before, n); }
+    catch (e) {
+      if (mine !== gen) return;
+      if (first) { grid.textContent = ''; grid.appendChild(el('div', 'pc-empty', 'Could not load the news: ' + e.message)); }
+      btn.disabled = false;
+      return;
+    }
+    if (mine !== gen) return;
+    btn.disabled = false;
+    if (rows === null) {                                   // the feed needs a reader and there is none
+      grid.textContent = '';
+      grid.appendChild(o.signedOut ? o.signedOut() : el('div', 'pc-empty', 'Sign in to see this.'));
+      more.classList.add('hide');
+      return;
+    }
+    const fresh = (rows || []).filter(r => r && r.id && !seen.has(r.id));
+    fresh.forEach(r => seen.add(r.id));
+    const items = fresh.map(o.toItem || cardOf);
+    if (first) {
+      grid.textContent = '';
+      if (!items.length) {
+        grid.appendChild(o.empty ? o.empty() : el('div', 'pc-empty', 'Nothing here yet.'));
+        more.classList.add('hide');
+        if (o.onEmpty) o.onEmpty();
+        return;
+      }
+      g = K.grid(items, { now: Date.now(), showLeague: o.showLeague, hideTag: o.hideTag });
+      grid.appendChild(g);
+    } else {
+      items.forEach(it => g.appendChild(K.card(it, { now: Date.now(), showLeague: o.showLeague, hideTag: o.hideTag })));
+    }
+    if (rows.length) before = rows[rows.length - 1].published_at;
+    more.classList.toggle('hide', rows.length < n);
+    if (o.onRows) o.onRows(rows, first);
+  }
+  btn.addEventListener('click', () => page(false));
+  function reset(fp) {
+    gen++;
+    if (fp) fetchPage = fp;
+    before = null; seen = new Set(); g = null;
+    grid.textContent = '';
+    grid.appendChild(el('div', 'pc-empty', 'Loading…'));
+    more.classList.add('hide');
+    return page(true);
+  }
+  return { box, reset };
+}
+
+/* ------------------------------------------------------------- news/ --- */
+
+function platformHead() {
+  const back = $('#backLeague');
+  back.textContent = '← home';
+  back.href = '../home/';
+  const foot = $('#footLeague');
+  foot.textContent = 'Home';
+  foot.href = '../home/';
+}
+
+async function everything() {
+  document.title = 'News · Epinoia';
+  platformHead();
+  $('#head').textContent = 'News';
+  $('#leagueName').textContent = 'Every league, every publisher, every creator: the newest first';
+
+  const host = $('#list');
+  host.textContent = '';
+  const pubs = el('div', 'nw-pubs');
+  const tabs = el('div', 'pc-tabs nw-tabs');
+  tabs.setAttribute('role', 'group');
+  tabs.setAttribute('aria-label', 'what to show');
+  const feed = cardFeed({
+    moreText: 'Older stories',
+    signedOut: () => {
+      const d = el('div', 'pc-empty');
+      d.append('What you follow — leagues, clubs, publishers and creators — in one feed. ');
+      const a = el('a', null, 'Sign in');
+      a.href = '../signin/?next=' + encodeURIComponent(location.pathname + '?k=mine');
+      d.append(a, ' to see it.');
+      return d;
+    },
+    empty: () => el('div', 'pc-empty', cur.mine
+      ? 'Nothing from what you follow yet. Follow a league, a club, a publisher or a creator (the bell on their page), and their news arrives here.'
+      : 'Nothing here yet.')
+  });
+  host.append(tabs, pubs, feed.box);
+
+  let cur = KINDS.find(t => t.k === Q.get('k')) || KINDS[0];
+  const buttons = KINDS.map(t => {
+    const b = el('button', 'pc-tab', t.label);
+    b.type = 'button';
+    b.dataset.k = t.k;
+    b.addEventListener('click', () => { if (cur !== t) choose(t); });
+    tabs.appendChild(b);
+    return b;
+  });
+  function choose(t) {
+    cur = t;
+    buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === t.k)));
+    /* the switch is in the address, so a reload or a shared link opens on it */
+    try { history.replaceState(null, '', t.k === 'all' ? location.pathname : '?k=' + t.k); } catch (_) { /* a sandboxed page */ }
+    feed.reset(t.mine
+      ? (before, n) => rpcMine('news_feed_mine', { p_before: before, p_limit: n })
+      : (before, n) => rpc('news_feed', { p_league: null, p_before: before, p_limit: n, p_kinds: t.kinds }));
+  }
+  choose(cur);
+
+  /* the publishers, each to its page here */
+  try {
+    const list = await rpc('news_sources_public', { p_league: null }) || [];
+    if (list.length) {
+      pubs.append(el('div', 'nw-h', 'The publishers'),
+        K.brands(list.map(x => ({ name: x.name, logo: x.logo_url, colour: x.colour, href: '?s=' + encodeURIComponent(x.slug),
+                                  note: x.last_at ? K.ago(x.last_at) : '' }))));
+    }
+  } catch (_) { /* the feed stands without the row */ }
+}
+
+/* ------------------------------------------------------- news/?s=<slug> --- */
+function sourceItem(src) {
+  return x => ({
+    kind: 'story', title: x.title, summary: x.summary, image: x.image_url, when: x.published_at, author: x.author,
+    href: x.url, external: true, siteHost: K.host(x.url), tags: K.tagsOf(x.leagues, '../', crestUrl),
+    brand: { name: src.name, logo: src.logo_url, colour: src.colour }
+  });
+}
+
+async function publisher(slug) {
+  platformHead();
+  let src = null;
+  try { src = await rpc('news_source_public', { p_slug: slug, p_limit: FIRST }); } catch (_) { /* below */ }
+  const host = $('#list');
+  host.textContent = '';
+  if (!src) {
+    $('#head').textContent = 'Not found';
+    $('#leagueName').textContent = '';
+    host.appendChild(el('div', 'pc-empty', 'No publisher called “' + slug + '” is on Epinoia.'));
+    host.appendChild(allNewsLink());
+    return;
+  }
+  document.title = src.name + ' · News · Epinoia';
+  document.querySelector('.hero').classList.add('hide');
+  const F = window.EpinoiaFollow;
+  const bell = F && src.id ? F.bell('source', src.id, { label: 'Follow', labelOn: 'Following', name: src.name, cls: 'lbl big' }) : null;
+  const siteHost = K.host(src.site_url);
+  $('#brand').appendChild(K.hero({
+    name: src.name, logo: src.logo_url, colour: src.colour,
+    kicker: 'Publisher' + (src.league ? ' · ' + src.league.name : '') + ' · on Epinoia',
+    tagline: 'Their stories as they publish them: the headline and the opening lines here, the story on ' + (siteHost || 'their site') + '.',
+    links: [{ href: src.site_url, text: 'Visit ' + (siteHost || 'their site') + ' ↗', external: true, primary: true }],
+    bell
+  }));
+  if (src.league) {
+    const b = $('#backLeague');
+    b.textContent = '← ' + src.league.name + ' news';
+    b.href = '?l=' + encodeURIComponent(src.league.slug);
+  } else {
+    const b = $('#backLeague');
+    b.textContent = '← all news';
+    b.href = './';
+  }
+
+  /* the first page came with the publisher; the feed asks for the rest */
+  let firstRows = src.items || [];
+  const feed = cardFeed({
+    moreText: 'Older stories',
+    toItem: sourceItem(src),
+    empty: () => el('div', 'pc-empty', 'Nothing from ' + src.name + ' yet: their stories arrive here as they publish them.'),
+    fetchPage: (before, n) => {
+      if (!before && firstRows) { const r = firstRows; firstRows = null; return Promise.resolve(r); }
+      return rpc('news_source_public', { p_slug: slug, p_before: before, p_limit: n }).then(j => (j && j.items) || []);
+    }
+  });
+  host.appendChild(feed.box);
+  feed.reset();
+}
+
+function allNewsLink() {
+  const b = el('div', 'pc-more');
+  const a = el('a', 'ep-chip', 'all news →');
+  a.href = './';
+  b.appendChild(a);
+  return b;
+}
+
+/* ------------------------------------------------------- news/?i=<id> ---
+   ONE STORY, IN ITS PUBLISHER'S COLOURWAY (newscard.js masthead): their print across the page, their mark and a
+   bell to follow them, the headline centred; the picture over the foot of the print; the opening lines and the way
+   to the story on their site, centred under it; and more of theirs. */
+async function story(id) {
+  platformHead();
+  let it = null;
+  try { it = await rpc('news_item_public', { p_id: id }); } catch (_) { /* below */ }
+  const host = $('#one');
+  host.textContent = '';
+  if (!it) {
+    $('#head').textContent = 'Not found';
+    $('#leagueName').textContent = '';
+    host.appendChild(el('div', 'empty', 'That story is not here any more: stories are kept for four months.'));
+    host.appendChild(allNewsLink());
+    return;
+  }
+  const src = it.source || {};
+  const colour = /^#[0-9a-f]{6}$/i.test(src.colour || '') ? src.colour : K.tint(src.name);
+  const siteHost = K.host(it.url);
+  document.title = it.title + ' · ' + (src.name || 'News');
+  /* the page's own head gives way to the publisher's */
+  document.querySelector('.hero').classList.add('hide');
+  const back = $('#backLeague');
+  back.textContent = '← ' + (src.name || 'all news');
+  back.href = src.slug ? '?s=' + encodeURIComponent(src.slug) : './';
+
+  const F = window.EpinoiaFollow;
+  const bell = F && src.id ? F.bell('source', src.id, { label: 'Follow', labelOn: 'Following', name: src.name, cls: 'lbl' }) : null;
+  const when = it.published_at ? new Date(it.published_at) : null;
+  host.appendChild(K.masthead({
+    brand: { name: src.name, logo: src.logo_url, colour, href: src.slug ? '?s=' + encodeURIComponent(src.slug) : null },
+    kind: 'Story',
+    title: it.title,
+    meta: [when && !isNaN(when) ? N.when(it.published_at) : '', it.author ? 'by ' + it.author : '', siteHost],
+    tags: K.tagsOf(it.leagues, '../', crestUrl),
+    bell,
+    figure: !!it.image_url
+  }));
+
+  const wrap = el('div', 'pc-read');
+  wrap.style.setProperty('--bc', colour);
+  if (it.image_url) {
+    const fig = el('figure', 'pc-read-fig');
+    const img = el('img');
+    img.src = it.image_url; img.alt = ''; img.decoding = 'async';
+    /* a picture that will not load: the print closes up behind it */
+    img.addEventListener('error', () => { fig.remove(); const m = host.querySelector('.pc-mast'); if (m) m.classList.remove('pc-has-fig'); });
+    fig.appendChild(img);
+    wrap.appendChild(fig);
+  }
+  if (it.summary) wrap.appendChild(el('p', 'pc-read-sum', it.summary));
+
+  const go = el('div', 'pc-read-go');
+  const read = el('a', 'pc-btn', 'Read the full story on ' + (siteHost || 'their site') + ' ↗');
+  read.href = it.url; read.target = '_blank'; read.rel = 'noopener noreferrer';
+  go.append(read, el('span', 'pc-read-note', 'The story is ' + (src.name || 'the publisher') + '’s: Epinoia carries its headline and opening lines, and the way to it.'));
+  wrap.appendChild(go);
+  host.appendChild(wrap);
+
+  /* more from them */
+  if (src.slug) {
+    try {
+      const more = await rpc('news_source_public', { p_slug: src.slug, p_limit: 7 });
+      const rows = ((more && more.items) || []).filter(x => x.id !== it.id).slice(0, 6);
+      if (rows.length) {
+        const sec = el('section', 'pc-more-from');
+        sec.style.setProperty('--bc', colour);
+        const h = el('div', 'pc-sec-h');
+        h.appendChild(el('span', null, 'More from ' + src.name));
+        const all = el('a', null, 'all their stories →');
+        all.href = '?s=' + encodeURIComponent(src.slug);
+        h.appendChild(all);
+        sec.append(h, K.grid(rows.map(sourceItem(src)), { lead: false, now: Date.now() }));
+        host.appendChild(sec);
+      }
+    } catch (_) { /* the story stands on its own */ }
+  }
+}
+
+/* ---------------------------------------------------- news/?l=, AROUND THE LEAGUE ---
+   What the publishers ran about this league (a league's own sources, and the stories the fetcher matched to it)
+   and what its creators published: under the league's own archive, hidden while there is none. */
+async function press(league) {
+  const sec = $('#press');
+  if (!sec) return;
+  const feed = cardFeed({
+    moreText: 'Older stories',
+    showLeague: false,
+    hideTag: league.slug,
+    fetchPage: (before, n) => rpc('news_feed', { p_league: league.id, p_before: before, p_limit: n, p_kinds: ['outlet', 'creator'] }),
+    onRows: (rows, first) => { if (first && rows.length) sec.classList.remove('hide'); }
+  });
+  const h = el('div', 'pc-sec-h');
+  h.appendChild(el('span', null, 'Around the league'));
+  const all = el('a', null, 'all news →');
+  all.href = './';
+  h.appendChild(all);
+  sec.textContent = '';
+  sec.append(h);
+  const pubs = el('div', 'nw-pubs');
+  sec.append(pubs, feed.box);
+  await feed.reset();
+  try {
+    const list = await rpc('news_sources_public', { p_league: league.id }) || [];
+    if (list.length) pubs.appendChild(K.brands(list.map(x => ({ name: x.name, logo: x.logo_url, colour: x.colour,
+      href: '?s=' + encodeURIComponent(x.slug), note: x.last_at ? K.ago(x.last_at) : '' }))));
+  } catch (_) { /* the stories stand without the row */ }
 }
