@@ -457,6 +457,7 @@
         'shot charts': 'ショットチャート',
         'full stats': '詳細スタッツ',
         'lineups': 'ラインナップ',
+        'dynamic tables': 'ライブ順位表',
         'game flow': 'スコアチャート',
         'connections': 'コンビネーション',
         'shot clock analysis': 'ショットクロック分析',

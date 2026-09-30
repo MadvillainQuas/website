@@ -40,7 +40,8 @@ const eq = (name, got, want) => {
   ok(name, g === w, 'got  ' + g + '\n          want ' + w);
 };
 
-const HTML = rd('epinoia', 'scouting', 'index.html');
+const HTML = rd('epinoia', 'scouting', 'index.html').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\s*/g, ''); // JSON-LD (search-engine data, not code) is not a script for this rule
+
 const JS = rd('epinoia', 'scouting', 'scouting.js');
 /* The page's own stamp (stamp-assets.py bumps every file together, and --check keeps them equal),
    so a stamp bump never breaks this test. */

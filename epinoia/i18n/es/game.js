@@ -464,6 +464,7 @@
         'shot charts': 'tiros',
         'full stats': 'avanzadas',
         'lineups': 'quintetos',
+        'dynamic tables': 'tablas en vivo',
         'game flow': 'evolución',
         'connections': 'conexiones',
         'shot clock analysis': 'reloj de posesión',

@@ -257,7 +257,8 @@ ok('config.js ships emailOtp: false until the template carries {{ .Token }}', /\
 /* ------------------------------------------------------------------ 3 --- */
 console.log('\n-- privacy');
 
-const HTML = rd('epinoia', 'privacy', 'index.html');
+const HTML = rd('epinoia', 'privacy', 'index.html').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\s*/g, ''); // JSON-LD (search-engine data, not code) is not a script for this rule
+
 const PJS = rd('epinoia', 'privacy', 'privacy.js');
 const sec = (/<section[^>]*id="androidSec"[\s\S]*?<\/section>/.exec(HTML) || [''])[0];
 const text = sec.replace(/<[^>]+>/g, ' ').replace(/&rsquo;/g, '\'').replace(/\s+/g, ' ');

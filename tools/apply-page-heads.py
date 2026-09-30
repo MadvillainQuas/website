@@ -33,6 +33,7 @@ SHARE = f"{ORIGIN}{BASE}/brand/epinoia-share-1200x630.png"
 SHARE_ALT = "EPINOIΛ: live basketball scores, fixtures, standings and advanced stats"
 ROBOTS = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
 START, END = "<!-- seo:head -->", "<!-- /seo:head -->"
+LD_START, LD_END = "<!-- seo:ld -->", "<!-- /seo:ld -->"     # the JSON-LD, last in the head (the pages' scripts keep their order)
 X = "https://x.com/Prophesy_Scout"
 
 # path (under epinoia/, '' = the front page) -> (title, description, short name, robots-open?, breadcrumb label, type)
@@ -166,9 +167,13 @@ def block(path, row) -> str:
               '<meta name="twitter:card" content="summary_large_image">', '<meta name="twitter:site" content="@Prophesy_Scout">',
               f'<meta name="twitter:title" content="{esc(title)}">', f'<meta name="twitter:description" content="{esc(desc)}">',
               f'<meta name="twitter:image" content="{SHARE}">', f'<meta name="twitter:image:alt" content="{esc(SHARE_ALT)}">']
-    lines += [f'<script type="application/ld+json">{ld(o)}</script>' for o in structured(path, title, desc, label, kind)]
     lines.append(END)
     return "\n".join(lines) + "\n"
+
+
+def ld_block(path, row) -> str:
+    title, desc, _short, _open, label, kind = row
+    return LD_START + "\n" + "".join(f'<script type="application/ld+json">{ld(o)}</script>\n' for o in structured(path, title, desc, label, kind)) + LD_END + "\n"
 
 
 STRIP = [r'<meta[^>]*\bname="(?:description|epinoia-page|robots)"[^>]*>\s*', r'<link[^>]*\brel="canonical"[^>]*>\s*',
@@ -182,6 +187,7 @@ def apply(path, row) -> str:
         s = fh.read()
     head, sep, rest = s.partition("</head>")
     mark = "\x00SEO\x00"
+    head = re.sub(re.escape(LD_START) + r".*?" + re.escape(LD_END) + r"\s*", "", head, flags=re.S)
     if START in head:                                  # a second run: the block is replaced where it stands
         head = re.sub(re.escape(START) + r".*?" + re.escape(END) + r"\s*", lambda _m: mark, head, count=1, flags=re.S)
     else:
@@ -192,7 +198,7 @@ def apply(path, row) -> str:
         head = re.sub(pat, "", head, flags=re.S)
     if not sep or mark not in head:
         raise SystemExit(f"apply-page-heads: {path or 'index'}: no </head>")
-    head = head.replace(mark, block(path, row), 1)
+    head = head.replace(mark, block(path, row), 1).rstrip("\n") + "\n" + ld_block(path, row)
     new = head + sep + rest
     if new != s:
         with open(f, "w", encoding="utf-8", newline="\n") as fh:

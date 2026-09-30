@@ -768,14 +768,14 @@ def game_head(m: Model, g: dict, tops: dict, dated: bool = False) -> dict | None
         d_ = best(cands)
         crumb = f"{hn} {hs}–{as_} {an}"
     elif status == "live":
-        title = fit_title(([f"{hn} v {an} – live box score, {short} | {SITE_NAME}"] if dated else [])
+        title = fit_title(([f"{hn} v {an} – live box score, {short} | {SITE_NAME}", f"{hn} v {an} – live, {short} | {SITE_NAME}", f"{hn} v {an}, {short} | {SITE_NAME}"] if dated else [])
                           + [f"{hn} v {an} – live score & box score | {ln} | {SITE_NAME}", f"{hn} v {an} – live box score | {SITE_NAME}",
                              f"{hn} v {an} | {SITE_NAME}"])
         d_ = best([f"{hn} v {an} in {ln}, live now{' at ' + vname if vname else ''}. Follow the box score, play-by-play and shot chart as it happens on {SITE_NAME}.",
                    f"{hn} v {an} in {ln}, live now. Box score and play-by-play on {SITE_NAME}."])
         crumb = f"{hn} v {an}"
     else:
-        title = fit_title(([f"{hn} v {an} – preview & lineups, {short} | {SITE_NAME}", f"{hn} v {an} – preview, {short} | {SITE_NAME}"] if dated else [])
+        title = fit_title(([f"{hn} v {an} – preview & lineups, {short} | {SITE_NAME}", f"{hn} v {an} – preview, {short} | {SITE_NAME}", f"{hn} v {an}, {short} | {SITE_NAME}"] if dated else [])
                           + [f"{hn} v {an} – preview & lineups | {ln} | {SITE_NAME}", f"{hn} v {an} – preview & lineups | {SITE_NAME}",
                              f"{hn} v {an} | {SITE_NAME}"])
         d_ = best([f"{hn} host {an} in {ln} on {when_s}{' at ' + vname if vname else ''}. Preview, lineups and the full box score on {SITE_NAME}.",

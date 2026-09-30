@@ -579,6 +579,7 @@ for path, rowh in H.PAGES.items():
     ok(f"{label}: title, description and canonical match the tool's table, one each", tt == rowh[0] and dd == rowh[1] and hd.count("<title>") == 1
        and hd.count('name="description"') == 1 and hd.count('rel="canonical"') == 1 and f'rel="canonical" href="{B.ORIGIN}/epinoia/{path}"' in hd, tt)
     ok(f"{label}: title <= 65 wide (front page <= 60), description 130-170", B.width(tt) <= (60 if not path else 65) and 130 <= len(dd) <= 170, (len(tt), len(dd)))
+    ok(f"{label}: the head is exactly what tools/apply-page-heads.py writes (run it again and nothing changes)", H.block(path, rowh) in pg and H.ld_block(path, rowh) in pg)
     ok(f"{label}: Open Graph (type, site_name, title, description, url, image with size and alt) and a large Twitter card",
        all(meta(pg, "property", k) for k in ("og:type", "og:site_name", "og:title", "og:description", "og:url", "og:image", "og:image:width", "og:image:height", "og:image:alt"))
        and meta(pg, "property", "og:image") == f"{B.ORIGIN}/epinoia/brand/epinoia-share-1200x630.png" and meta(pg, "name", "twitter:card") == "summary_large_image"

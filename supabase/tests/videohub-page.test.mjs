@@ -42,7 +42,8 @@ const eq = (name, got, want) => {
   ok(name, g === w, 'got  ' + g + '\n          want ' + w);
 };
 
-const HTML = rd('epinoia', 'video', 'index.html');
+const HTML = rd('epinoia', 'video', 'index.html').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\s*/g, ''); // JSON-LD (search-engine data, not code) is not a script for this rule
+
 const JS = rd('epinoia', 'video', 'videohub.js');
 const NAV = rd('epinoia', 'nav.js');
 /* the page's own stamp, so a stamp bump never breaks this test */

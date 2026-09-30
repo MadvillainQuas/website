@@ -446,6 +446,9 @@ const BODIES = {
   shots:   d => shotsTab(d),
   adv:     d => B.advHTML(d),
   lineups: () => B.lineupsHTML(),
+  /* the league table as the games being played right now would leave it (dyntable.js) */
+  dyn:     d => window.EpinoiaDynTable ? window.EpinoiaDynTable.render(window.S, d)
+                : '<div class="msg">The dynamic tables could not be loaded.</div>',
   /* GAMEVIS's Game Flow and Connections tabs, ported: both replay window.S themselves */
   flow:        () => window.EpinoiaGameFlow ? window.EpinoiaGameFlow.render(window.S)
                      : '<div class="msg">The game flow charts could not be loaded.</div>',
@@ -637,7 +640,7 @@ function bindBoxSwitch(el) {
    and then GAMEVIS's two, game flow and connections, which the scorer's final
    screen does not carry (flow.js, connections.js), and events (events.js) */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
-              ['lineups', 'lineups'], ['adv', 'full stats'],
+              ['lineups', 'lineups'], ['dyn', 'dynamic tables'], ['adv', 'full stats'],
               ['flow', 'game flow'], ['connections', 'connections'], ['events', 'play-type + reb'],
               ['shotclock', 'shot clock analysis']];
 
@@ -2380,6 +2383,7 @@ function renderBody(d) {
     if (fTab === 'flow' && window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el);
     if (fTab === 'connections' && window.EpinoiaConnections) window.EpinoiaConnections.mounted(el);
     if (fTab === 'events' && window.EpinoiaEvents) window.EpinoiaEvents.mounted(el);
+    if (fTab === 'dyn' && window.EpinoiaDynTable) window.EpinoiaDynTable.mounted(el);
     if (fTab === 'box') {
       bindBoxSwitch(el);
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); if (window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el); setTimeout(squadPhotos, 0); }
