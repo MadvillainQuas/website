@@ -17,7 +17,9 @@
                 (news_feed_mine, 0194), newest first
      Newest     everything on the platform, newest first (news_feed)
 
-   The choice is remembered in this browser. Nobody has chosen yet: For you. A
+   The choice is remembered in this browser (epinoia.home.feed2: a new key, so everyone starts on For you and keeps
+   what they then choose). Nobody has chosen yet: For you. For you also holds back stories in a language the reader does
+   not read, less as they engage with it (feedrank.js, LANGUAGE), and says 'ES' on a story in another language. A
    Followed with nothing in it, when it was not asked for, shows the newest instead
    and says so, rather than an empty section. Signed out, Followed leads to sign-in.
 
@@ -36,7 +38,7 @@
 
   const N = 6;
   const POOL = 60;                      // the candidates the ranking chooses from (the RPCs' own ceiling)
-  const KEY = 'epinoia.home.feed';
+  const KEY = 'epinoia.home.feed2';       // '...feed' held a choice made when Newest was an equal way in: everybody starts on For you again
 
   function el(tag, cls, text) {
     const n = document.createElement(tag);
@@ -128,7 +130,7 @@
         } else rows = await read('newest');
       } else {
         rows = await read(want);
-        if (FR) partners = await FR.partners();
+        if (FR) { partners = await FR.partners(); await FR.net().languages().catch(() => ({})); }
       }
       if (mine !== gen) return;
       box.textContent = '';

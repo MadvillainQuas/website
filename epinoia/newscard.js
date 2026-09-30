@@ -191,6 +191,14 @@ function fromFeed(r, base, media, crest) {
      is known by in official_partners(): 'source:<slug>', 'outlet:<league>/<slug>' (feedrank.js pkeyOf is the same rule) */
   it.id = r.id;
   it.row = r;
+  /* a story in a language other than the reader's site's wears its code (feedrank.js langOf: the row's own, else the publisher's;
+     a league's own article has none) */
+  try {
+    const FR = typeof window !== 'undefined' ? window.EpinoiaFeedRank : null;
+    const l = FR && typeof FR.langOf === 'function' ? FR.langOf(r) : '';
+    const site = FR && typeof FR.siteLang === 'function' ? FR.siteLang() : '';
+    if (l && l !== site) it.lang = l;
+  } catch (_) { /* no tag */ }
   it.pkey = r.kind === 'outlet' && r.source_slug ? 'source:' + r.source_slug
           : r.kind === 'creator' && r.outlet_slug && r.league_slug ? 'outlet:' + r.league_slug + '/' + r.outlet_slug : null;
   return it;
@@ -274,6 +282,16 @@ function partnerPill(cls) {
   s.title = 'Official partner: chosen by Epinoia';
   return s;
 }
+/* THE LANGUAGE CHIP: a small 'ES' on a story that is not in the reader's language; its title says which language, in the site's */
+function langChip(code) {
+  const c = String(code || '').toLowerCase();
+  const n = el('span', 'pc-lang', c.toUpperCase());
+  let name = '';
+  try { name = new Intl.DisplayNames([(typeof document !== 'undefined' && document.documentElement.lang) || 'en'], { type: 'language' }).of(c) || ''; } catch (_) { name = ''; }
+  n.title = name ? 'In ' + name : 'In another language';
+  n.setAttribute('aria-label', name ? 'in ' + name : 'in another language');
+  return n;
+}
 /* "Why am I seeing this?": the ranked feed's reason for a card, as a line at its foot */
 function whyLine(why) {
   const d = el('div', 'pc-why');
@@ -334,6 +352,7 @@ function card(item, opts) {
   const when = ago(it.when, o.now);
   if (when) kick.append(el('span', null, when));
   if (it.league && o.showLeague !== false) kick.append(el('span', 'pc-lg', it.league));
+  if (it.lang) kick.append(langChip(it.lang));
   /* a card with no plate (a creator's post played in the card) carries the pill in its kicker */
   if (partner && e) kick.append(partnerPill('in-kick'));
   body.appendChild(kick);
@@ -343,6 +362,7 @@ function card(item, opts) {
     const a = el('a', 'pc-link', it.title || '');
     a.href = it.href;
     if (it.external) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+    if (it.lang) a.lang = it.lang;
     if (b.name) a.title = b.name + (it.external ? ' — on ' + (it.siteHost || 'their site') : '');
     opened(a);
     h.appendChild(a);
@@ -475,5 +495,5 @@ function grid(items, opts) {
   return g;
 }
 
-return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, partnerPill, whyLine };
+return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, partnerPill, whyLine, langChip };
 }));

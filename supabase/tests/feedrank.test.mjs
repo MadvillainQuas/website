@@ -11,6 +11,7 @@
 //   * dwell, with an injected clock: only while visible and active, never idle, per-league session cap, flushed on hide
 //   * storage that is blocked, throws, or is missing: everything still works
 //   * personalisation off: the newest first, nothing recorded, the profile untouched; a reset clears the profile only
+//   * LANGUAGE: see the section 'language' below
 //   * what is fetched: the same for every reader - no read, no point, no country is ever in a request
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -309,6 +310,118 @@ console.log('\nthe store: storage that is missing, blocked, or broken');
   ok('the switch and the profile live under their own keys, so a reset cannot switch anything back on', (() => { const l = mem(); const s2 = make(l, mem()); s2.opened(story({ id: 'q1' })); s2.setEnabled(false); s2.reset(); return l.getItem(W.OFF_KEY) === '1' && l.getItem(W.KEY) === null; })());
 }
 
+console.log('\nlanguage: a story in a language the reader does not read sinks, less as they engage with it');
+{
+  const es = (o = {}) => story(Object.assign({ source_slug: 'gigantes', source_name: 'Gigantes del Basket', h: 2 }, o));   // Spanish, from 0195's map
+  const en = (o = {}) => story(Object.assign({ source_slug: 'eurohoops', h: 2 }, o));
+  const readEn = { readLangs: ['en'] };
+  ok('language codes: es-ES / zh_Hant / jp / rubbish', FR.langCode('es-ES') === 'es' && FR.langCode('zh_Hant') === 'zh' && FR.langCode('jp') === 'ja' && FR.langCode('') === '' && FR.langCode('123') === '');
+  ok('a row\'s language: its own, else its publisher\'s (the seeded map), else none; a league\'s own article and a match report have none',
+     FR.langOf(es()) === 'es' && FR.langOf(en()) === 'en' && FR.langOf(story({ lang: 'ja-JP', source_slug: 'x' })) === 'ja' && FR.langOf(story({ source_slug: 'unknown' })) === '' && FR.langOf(article()) === '' && FR.langOf(report()) === '' && FR.langOf(article({ lang: 'es' })) === '');
+  const a = S(es(), readEn), b = S(en(), readEn);
+  ok('an English reader with no engagement: a Spanish story is multiplied by LANG_PENALTY, an English one by 1', near(a.langFactor, W.LANG_PENALTY) && a.foreign && b.langFactor === 1 && !b.foreign, [a.langFactor, b.langFactor]);
+  ok('the penalty is the intended 0.25-0.35, and the Spanish story sinks below an equally fresh English one but stays in the list',
+     W.LANG_PENALTY >= 0.25 && W.LANG_PENALTY <= 0.35 && (() => { const r = R([es({ id: 'S' }), en({ id: 'E' })], readEn); return order(r).join() === 'E,S'; })());
+  ok('...yet a much fresher Spanish story can still beat a stale English one (a weight, not a filter)', order(R([es({ id: 'S', h: 0.5 }), en({ id: 'E', h: 40 })], readEn))[0] === 'S');
+  ok('the site language matches (a Spanish UI reader): the Spanish story is not held back and the English one is', (() => { const p = { readLangs: ['es'] }; return S(es(), p).langFactor === 1 && S(en(), p).langFactor === W.LANG_PENALTY; })());
+  ok('navigator.languages entries count as read: an English UI reader whose browser lists es is not penalised for Spanish',
+     FR.readerLangs({ languages: ['en-GB', 'es-ES'] }, 'en').join() === 'en,es' && S(es(), { readLangs: FR.readerLangs({ languages: ['en-GB', 'es-ES'] }, 'en') }).langFactor === 1);
+  ok('the site language comes first, no duplicates, junk ignored; nothing known: an empty list', FR.readerLangs({ languages: ['ja', 'en-US', 'en'] }, 'es').join() === 'es,ja,en' && FR.readerLangs({ languages: [] , language: ''}, '').length === 0);
+  ok('a reader whose languages are unknown (no list) is not penalised at all', S(es(), {}).langFactor === 1 && S(es(), { readLangs: [] }).langFactor === 1);
+  ok('a missing language on a row (an unknown publisher, a creator with none) is never held back', S(story({ source_slug: 'nobody' }), readEn).langFactor === 1 && S(piece(), readEn).langFactor === 1);
+  ok('a league\'s own article and a match report are never held back, whatever language a row claims', S(article({ lang: 'es' }), readEn).langFactor === 1 && S(report({ lang: 'ja' }), readEn).langFactor === 1);
+  ok('a creator\'s piece with a language of its own IS held back like a story', S(piece({ lang: 'ja' }), readEn).langFactor === W.LANG_PENALTY);
+
+  console.log('\nlanguage: a habit unlocks it, gradually');
+  const opened = n => { const st = state(); for (let i = 0; i < n; i++) FR.noteOpen(st, es({ id: 'open' + i }), NOW - 3600e3); return st; };
+  const at = n => S(es(), Object.assign({}, readEn, opened(n))).langFactor;
+  ok('opening a Spanish story gives Spanish points (OPEN_LANG_PTS) and a visit to a Spanish publisher VISIT_LANG_PTS; English opened gives English points',
+     near(opened(1).g.es[0], W.OPEN_LANG_PTS) && (() => { const st = state(); FR.noteVisit(st, 'source:gigantes', NOW); return near(st.g.es[0], W.VISIT_LANG_PTS); })() && !!(() => { const st = state(); FR.noteOpen(st, en({ id: 'q' }), NOW); return st.g.en; })());
+  ok('opening the SAME story twice is one reason, not two', (() => { const st = state(); const r = es({ id: 'same' }); FR.noteOpen(st, r, NOW); FR.noteOpen(st, r, NOW); return near(st.g.es[0], W.OPEN_LANG_PTS); })());
+  ok('a single accidental open: still mostly held back (the factor is under 0.5)', at(1) > W.LANG_PENALTY && at(1) < 0.5, at(1));
+  ok('a few opens lift it further, a habit (a dozen) almost all the way: monotonic and graded', at(3) > at(1) && at(6) > at(3) && at(12) > at(6) && at(12) > 0.85 && at(12) <= 1, [1, 3, 6, 12].map(at));
+  ok('with the habit a fresher Spanish story outranks an English one; without it, it does not', (() => { const P = Object.assign({}, readEn, opened(12)); const pool = [es({ id: 'S', h: 1 }), en({ id: 'E', h: 2 })]; return order(R(pool, P))[0] === 'S' && order(R(pool, readEn))[0] === 'E'; })());
+  ok('the habit fades: months later the language is held back again', (() => { const P = Object.assign({}, readEn, opened(12)); return S(es(), P, NOW + 300 * DAY).langFactor < S(es(), P).langFactor - 0.3; })());
+  ok('the language points are bounded in number of languages kept, and pruned like the rest', (() => { const st = state(); ['a1','b1','c1','d1','e1','f1','g1','h1','i1','j1','k1','l1','m1','n1'].forEach((c, i) => FR.addPoints(st.g, c, 5, NOW + i, W)); FR.prune(st, NOW + 100, W); return Object.keys(st.g).length === W.LANGS_MAX; })());
+  ok('an old profile with no language map loads clean (sane adds it)', (() => { const o = FR.sane({ v: 1, l: {}, p: {}, r: {}, i: {} }); return o.g && typeof o.g === 'object'; })());
+
+  console.log('\nlanguage: the leagues the reader follows or reads about');
+  const acb = es({ id: 'acb', league_slug: 'acb', league_name: 'ACB', leagues: [{ slug: 'acb', name: 'ACB' }] });
+  ok('a Spanish story from a league the reader FOLLOWS is relieved (LANG_FOLLOW_RELIEF), not held back at the full penalty',
+     (() => { const f = S(acb, Object.assign({ followedLeagues: ['acb'] }, readEn)).langFactor; return f > 0.85 && f > S(es({ id: 'other' }), readEn).langFactor + 0.4; })());
+  ok('...as is one in the reader\'s own followed feed (followedIds)', S(es({ id: 'mine' }), Object.assign({ followedIds: ['mine'] }, readEn)).langFactor > 0.85);
+  ok('many points for the league (its pages read, its stories opened, the reader\'s time) lift it too, in proportion',
+     (() => { const st = state(); FR.addPoints(st.l, 'acb', 40, NOW, W); const hi = S(acb, Object.assign({}, readEn, st)).langFactor; const st2 = state(); FR.addPoints(st2.l, 'acb', 4, NOW, W); const lo = S(acb, Object.assign({}, readEn, st2)).langFactor; return hi > lo && lo > W.LANG_PENALTY && hi > 0.6; })());
+  ok('...but a Spanish story about a league they never touched stays at the penalty', near(S(es({ id: 'zz', leagues: [{ slug: 'zzz', name: 'Z' }], league_slug: 'zzz' }), Object.assign({ followedLeagues: ['acb'] }, readEn)).langFactor, W.LANG_PENALTY));
+
+  console.log('\nlanguage: official partners');
+  const ph = es({ id: 'ph', source_slug: 'gigantes' });
+  const pp = Object.assign({ partners: new Set(['source:gigantes']) }, readEn);
+  ok('an unread partner story in another language is held back only mildly (LANG_PARTNER_FLOOR), and its boost is untouched',
+     S(ph, pp).langFactor >= W.LANG_PARTNER_FLOOR && S(ph, pp).boost > 0 && near(S(ph, pp).boost, W.PARTNER_BOOST) && S(ph, pp).langFactor > S(es({ id: 'np' }), readEn).langFactor);
+  ok('...so a fresh partner story in Spanish still tops the feed above English stories', order(R([en({ id: 'E1' }), en({ id: 'E2' }), ph], pp))[0] === 'ph');
+
+  console.log('\nlanguage: the switch, and off');
+  ok('"Show every language" (profile.langAll) turns the hold-back off', S(es(), Object.assign({ langAll: true }, readEn)).langFactor === 1 && order(R([es({ id: 'S', h: 1 }), en({ id: 'E', h: 1.2 })], { langAll: true, readLangs: ['en'] }))[0] === 'S');
+  ok('personalisation off: pure newest, no language logic at all', order(R([en({ id: 'E', h: 3 }), es({ id: 'S', h: 1 })], { off: true, readLangs: ['en'] })).join() === 'S,E');
+  ok('rank() carries the row\'s language for the chip', R([es({ id: 'S' }), article({ id: 'A' })], readEn).find(r => r.id === 'S').lang === 'es');
+  ok('the language factor is one multiplier: everything else in the score is unchanged for an English story', near(S(en(), readEn).score, S(en(), {}).score));
+  ok('the language constants are frozen with the rest', Object.isFrozen(W) && ['LANG_PENALTY', 'LANG_SCALE', 'OPEN_LANG_PTS', 'LANG_FOLLOW_RELIEF', 'LANG_PARTNER_FLOOR'].every(k => typeof W[k] === 'number'));
+
+  console.log('\nlanguage: the store (switch, inspector, reset), storage failures');
+  const mem = () => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; };
+  const st = FR.createStore({ local: mem(), session: mem(), now: () => NOW });
+  for (let i = 0; i < 6; i++) st.opened(es({ id: 'o' + i }));
+  const ls = st.langs();
+  ok('the store lists the learned languages with how far each is unlocked', ls.length === 1 && ls[0].lang === 'es' && ls[0].unlocked > 0.5 && ls[0].unlocked < 1, ls);
+  st.forgetLang('es');
+  ok('removing a language forgets only its points', st.langs().length === 0 && st.learned() > 0);
+  st.opened(es({ id: 'p1' })); st.setLangAll(true);
+  ok('"Show every language" is kept, and survives a reset (like the switch); the points do not', st.langAll() === true && (st.reset(), st.langAll() === true && st.langs().length === 0));
+  st.setLangAll(false);
+  ok('...and switches off again', st.langAll() === false);
+  st.setEnabled(false); st.opened(es({ id: 'off1' }));
+  ok('personalisation off: nothing about languages is recorded either', st.langs().length === 0);
+  const boom = { getItem() { throw new Error('no'); }, setItem() { throw new Error('no'); }, removeItem() { throw new Error('no'); } };
+  const bad = FR.createStore({ local: boom, session: boom, now: () => NOW });
+  ok('storage that throws: language calls still work in memory, nothing throws', (() => { try { bad.setLangAll(true); const a1 = bad.langAll(); bad.opened(es({ id: 'z' })); bad.forgetLang('es'); return a1 === true && Array.isArray(bad.langs()); } catch (e) { return String(e); } })());
+  const nostore = FR.createStore({ local: null, session: null, now: () => NOW });
+  ok('no storage at all: the same', (() => { try { nostore.opened(es({ id: 'z' })); return nostore.langs().length === 1 && nostore.langAll() === false; } catch (e) { return String(e); } })());
+  ok('a corrupt profile (g is a string, g entries are junk) loads as empty language points', (() => { const o = FR.sane({ v: 1, g: 'x' }); const o2 = FR.sane({ v: 1, g: { es: 'junk', en: [3, NOW] } }); return Object.keys(o.g).length === 0 && !o2.g.es && !!o2.g.en; })());
+}
+
+console.log('\nlanguage: the publishers\' languages come from news_source_languages() (0200), and the map stands without it');
+{
+  const mem = () => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; };
+  const cfg = { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'a' };
+  let asked = 0;
+  const f = async url => { asked++; return { ok: true, status: 200, json: async () => [{ kind: 'source', slug: 'newsite', league_slug: null, language: 'de' }, { kind: 'outlet', slug: 'pod', league_slug: 'kbl', language: 'es' }, { kind: 'source', slug: 'bad', language: '??' }] }; };
+  const n = FR.createNet({ fetch: f, config: cfg, local: mem(), now: () => NOW });
+  const m = await n.languages();
+  ok('a source and an outlet the database describes are keyed the way the feed keys them; a bad code is dropped', m['source:newsite'] === 'de' && m['outlet:kbl/pod'] === 'es' && !m['source:bad'], m);
+  ok('...they are used for a row whose publisher is not in the seeded map', FR.langOf(story({ source_slug: 'newsite' })) === 'de' && FR.langOf(piece({ outlet_slug: 'pod' }), m) === 'es');
+  ok('...and asked once (kept half a day)', (await n.languages()) === m && asked === 1, asked);
+  const l2 = mem(); await FR.createNet({ fetch: f, config: cfg, local: l2, now: () => NOW }).languages(); const before = asked;
+  await FR.createNet({ fetch: f, config: cfg, local: l2, now: () => NOW + 3600e3 }).languages();
+  ok('the next page an hour later reads it from this browser', asked === before, [asked, before]);
+  const gone = FR.createNet({ fetch: async () => ({ ok: false, status: 404, json: async () => ({}) }), config: cfg, local: mem(), now: () => NOW });
+  const em = await gone.languages();
+  ok('a database without 0200 (404): empty, no throw, and the seeded map still says gigantes is Spanish', Object.keys(em).length === 0 && FR.langOf(story({ source_slug: 'gigantes' })) === 'es');
+  const dead = FR.createNet({ fetch: async () => { throw new Error('offline'); }, config: cfg, local: null, now: () => NOW });
+  ok('offline: empty, no throw', Object.keys(await dead.languages()).length === 0);
+  ok('every source 0195 seeded has a language in the map', ['basketnews','eurohoops','gigantes','solobasket','pianetabasket','bebasket','basketfaul','basketballking','b-league','2bbl','pzkosz','feb-primera','u-sports'].every(k => FR.SOURCE_LANG[k]));
+  /* end to end through rankRows */
+  const store = FR.createStore({ local: mem(), session: mem(), now: () => NOW });
+  const net2 = FR.createNet({ fetch: async () => ({ ok: false, status: 404, json: async () => ({}) }), config: cfg, local: mem(), now: () => NOW });
+  const pool = [story({ id: 'E', source_slug: 'eurohoops', h: 2 }), story({ id: 'S', source_slug: 'gigantes', h: 1 })];
+  const en = await FR.rankRows(pool, { store, net: net2, now: NOW, country: 'US', readLangs: ['en'] });
+  const esr = await FR.rankRows(pool, { store, net: net2, now: NOW, country: 'US', readLangs: ['es', 'en'] });
+  store.setLangAll(true);
+  const all = await FR.rankRows(pool, { store, net: net2, now: NOW, country: 'US', readLangs: ['en'] });
+  ok('rankRows: an English reader sees the Spanish story sink (present, and after the English one); a reader with es in their languages does not; "Show every language" does not',
+     order(en.rows).join() === 'E,S' && order(esr.rows).join() === 'S,E' && order(all.rows).join() === 'S,E', [order(en.rows), order(esr.rows), order(all.rows)]);
+}
+
 console.log('\nwhat leaves the device: nothing about the reader');
 {
   const calls = [];
@@ -330,7 +443,7 @@ console.log('\nwhat leaves the device: nothing about the reader');
   const res = await FR.rankRows(pool, { store, net, now: NOW, country: 'AU', followedIds: ['read-1'] });
   const wire = calls.map(c => c.url + ' ' + c.body).join('\n');
   ok('ranking works end to end: the partners, the countries and the report\'s points come from the public calls', res.ranked === true && res.partners.has('source:eurohoops') && res.rows.length === 3 && res.rows.some(r => r.why === 'Cup final'), res.rows.map(r => r.why));
-  ok('what was asked: the partners, the leagues\' countries, the match reports\' points - and only those', calls.length === 3 && calls.every(c => /official_partners|leagues\?select=id,slug,country|news_report_significance/.test(c.url)), calls.map(c => c.url));
+  ok('what was asked: the partners, the leagues\' countries, the match reports\' points, the publishers\' languages - and only those', calls.length === 4 && calls.every(c => /official_partners|leagues\?select=id,slug,country|news_report_significance|news_source_languages/.test(c.url)), calls.map(c => c.url));
   ok('the points of a report are asked for by the ARTICLE ids in the candidate pool, which every reader has', calls.find(c => /significance/.test(c.url)).body === JSON.stringify({ p_article_ids: [rp.id] }));
   ok('nothing about the reader is in any request: not what they read, the leagues they like, the publishers they open, their country, their time on a page',
      !/read-1|nbl|kbl|eurohoops|hoops-pod|\bAU\b|dwell|profile|reads|followed/i.test(wire), wire);

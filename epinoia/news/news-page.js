@@ -34,7 +34,7 @@ const K = window.EpinoiaNewsCard;
 const FR = window.EpinoiaFeedRank || null;
 let PARTNERS = new Set();
 /* the official partners (official_partners(), once per page, cached): the pill on a card and on a head, the boost in the order */
-const partnersReady = FR ? FR.partners().then(s => { PARTNERS = s; return s; }, () => PARTNERS) : Promise.resolve(PARTNERS);
+const partnersReady = FR ? Promise.all([FR.partners(), FR.net().languages().catch(() => ({}))]).then(r => { PARTNERS = r[0]; return r[0]; }, () => PARTNERS) : Promise.resolve(PARTNERS);
 /* a card pressed: the story is read, and its publisher's page a little nearer (kept on this device only) */
 const onOpen = it => { try { if (FR && it && it.row) FR.opened(it.row); } catch (_) { /* never in the reader's way */ } };
 const Q = new URLSearchParams(location.search);
@@ -120,8 +120,10 @@ const KINDS = [
   { k: 'mine',     label: 'Following',    mine: true }
 ];
 
-/* the order of the platform's news: the reader's own (For you) or the newest first; remembered in this browser */
-const ORDER_KEY = 'epinoia.news.order';
+/* the order of the platform's news: the reader's own (For you) or the newest first; an explicit choice is remembered in this
+   browser. The key is '...order2': the older key held the choice of a time when Newest was the way in, so everybody starts on
+   For you again and stays where they then choose to be. */
+const ORDER_KEY = 'epinoia.news.order2';
 const ORDERS = [{ k: 'you', label: 'For you' }, { k: 'new', label: 'Newest' }];
 function storedOrder() { try { const v = localStorage.getItem(ORDER_KEY); return v === 'you' || v === 'new' ? v : null; } catch (_) { return null; } }
 

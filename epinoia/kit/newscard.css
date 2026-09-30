@@ -249,6 +249,10 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
 .pc-why i{flex:none;display:inline-grid;place-items:center;width:14px;height:14px;margin-top:1px;border:1px solid currentColor;border-radius:50%;
   font:normal 700 9px/1 var(--f-ui)}
 
+/* the language chip in a card's kicker: 'ES' on a story not in the reader's language */
+.pc-lang,.pc-kick .pc-lang{display:inline-flex;align-items:center;flex:none;margin-left:6px;padding:1px 5px;background:none;font-family:var(--f-micro);font-size:8px;font-weight:700;
+  letter-spacing:.1em;line-height:1.4;color:var(--ink-2);border:1px solid var(--rule-2,var(--rule));border-radius:3px;cursor:help}
+
 /* ---- PERSONALISE (feedrank.js control): the button in a feed's heading and the panel under it ---- */
 .pc-pers-btn{appearance:none;cursor:pointer;flex:none;min-height:30px;padding:0 12px;font-family:var(--f-micro);font-size:9px;
   letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);background:transparent;border:1px solid var(--rule-2,var(--rule));border-radius:999px}
@@ -261,6 +265,14 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
 .pc-pers-row{display:flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink)}
 .pc-pers-row input{width:18px;height:18px;margin:0;accent-color:var(--lume);cursor:pointer}
 .pc-pers-note{margin:0;font-family:var(--f-ui);font-size:13px;line-height:1.5;color:var(--ink-2)}
+.pc-pers-langs{display:flex;flex-wrap:wrap;gap:6px}
+.pc-pers-langs[hidden]{display:none}
+.pc-pers-lang{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid var(--rule-2,var(--rule));border-radius:4px;
+  font-family:var(--f-ui);font-size:12px;color:var(--ink-2)}
+.pc-pers-lang b{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;color:var(--ink)}
+.pc-pers-langx{appearance:none;cursor:pointer;min-height:26px;padding:0 8px;font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-2);background:transparent;border:1px solid var(--rule-2,var(--rule))}
+.pc-pers-langx:hover{color:var(--flare,var(--ink));border-color:var(--flare,var(--ink-3))}
 .pc-pers-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
 .pc-pers-reset{appearance:none;cursor:pointer;min-height:34px;padding:0 12px;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--ink);background:transparent;border:1px solid var(--rule-2,var(--rule))}

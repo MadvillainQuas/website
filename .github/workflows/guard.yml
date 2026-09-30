@@ -1397,6 +1397,7 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/official-partners.test.mjs
           node supabase/tests/game-significance.test.mjs
+          node supabase/tests/news-languages.test.mjs
 
       - name: The ranked feed - scoring, what is learned on the device, nothing about the reader sent
         # epinoia/feedrank.js: the recency curve and the decay, the caps, the official-partner boost (unread

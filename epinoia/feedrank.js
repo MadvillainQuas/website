@@ -19,6 +19,9 @@
                  publisher or outlet, and a little to the story's leagues.
      d  READS    the ids of what they opened (capped, forgotten after 60 days), and impressions (what was shown)
                  kept apart. Only an UNREAD official-partner story is boosted.
+     e  LANGUAGE the languages the reader reads: the site's language (EN / 日本語 / ES in the nav), the browser's
+                 languages (navigator.languages) - both count as read from the start - and any language whose
+                 publishers they open or visit, a little each time (see LANGUAGE below).
    Points halve every 30 days, so interests move.
 
    THE SCORE of a candidate, all of it in the constants below (W):
@@ -29,9 +32,24 @@
        score     =  base * recency * personal * (impressions: a little less when shown and never opened)
                     + FOLLOW_BONUS * sqrt(recency)      when it comes from something they follow
                     + PARTNER_BOOST * fade(age)         when it is an official partner's and UNREAD
+                    * language factor           when the story is in a language the reader does not read
    The partner boost is full for a week from publication and gone two days after. Then the order is made to
    vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
 
+   LANGUAGE. A publisher's language comes from news_source_languages() (0200; until it is applied, from SOURCE_LANG, the
+   sources 0195 seeded). A story in a language the reader does not read is multiplied by LANG_PENALTY (0.3) - it sinks,
+   it does not go - except as the reader shows they read it:
+     * the site's language and the browser's languages are read outright (factor 1)
+     * every story or piece opened, and every publisher's page visited, gives its language points; the language is
+       unlocked by sat(points, LANG_SCALE): ONE accidental open is ~22% of the way, a habit (five or six stories) ~ 3/4,
+       a dozen nearly all - graded, so a single click does not unlock a whole language but a habit does
+     * a story from a league the reader follows, or one from the publisher/creator they follow, is relieved to 85%; one
+       from a league they have many points for by LANG_LEAGUE_RELIEF x L (a Spanish-league fan reading in English still
+       sees ACB's Spanish news)
+     * an official partner's story is held back only mildly (factor at least 0.75), and its additive boost is untouched
+     * a league's own article and a match report are the site's, written in the site's language: never held back; a
+       source with no language on record (or a piece with none) is never held back either
+     * 'Show every language' (Personalise) switches it all off. The relief is on the reader's device like the rest.
    MATCH REPORTS ("Epinoia match report": finalise-game's own, one per game) are the low tier: an ordinary result is
    not news the way a publisher's story is. What a GAME is worth (a cup final, the top two meeting, a 40-point
    night: game_significance, 0198) lifts its report's base by up to REPORT_SIG_GAIN, so an exceptional one can outrank
@@ -89,6 +107,16 @@ const W = Object.freeze({
   PARTNER_BOOST: 3,                    // an official partner's unread story: larger than every personal multiplier's whole
   PARTNER_FULL_H: 168,                 // ...in full for a week from publication
   PARTNER_END_H: 216,                  // ...and fading until nothing is left, two days after
+  /* language: a story in a language the reader does not read is multiplied by LANG_PENALTY, less as they engage with it */
+  LANG_PENALTY: 0.3,                   // the factor for a language nobody has shown they read (0.25-0.35 is the intended range)
+  LANG_SCALE: 12,                      // language points at which the language is 63% unlocked (sat): 3 pts ~ 22%, 15 pts ~ 71%
+  OPEN_LANG_PTS: 3, VISIT_LANG_PTS: 2, // a story of that language opened / a publisher's page visited: one open is ~22% unlocked
+  LANG_FOLLOW_RELIEF: 0.85,            // a followed league's, publisher's or creator's story: this much of the penalty is lifted
+  LANG_LEAGUE_RELIEF: 0.7,             // a league the reader has points for lifts the penalty by this x its 0..1 share
+  LANG_PARTNER_FLOOR: 0.75,            // an official partner's story is never held back below this
+  LANGS_MAX: 12,
+  LANG_ALL_KEY: 'epinoia_feed_v1_langall',   // '1' when the reader asked to see every language (kept through a reset)
+  LANGS_KEY: 'epinoia_feed_langs', LANGS_TTL_MS: 12 * HOUR,   // the publishers' languages, cached
   IMPRESSION_SOFT_AT: 3, IMPRESSION_SOFT: 0.85, IMPRESSION_HARD_AT: 6, IMPRESSION_HARD: 0.7,   // shown, never opened
 
   /* variety */
@@ -268,6 +296,38 @@ function partnerSet(list) {
 }
 const asSet = v => (v instanceof Set ? v : new Set(Array.isArray(v) ? v : []));
 const dateOf = it => ts(it && (it.published_at || it.when));
+/* ================================================================================= language === */
+/* 'es-ES' -> 'es', 'zh_Hant' -> 'zh', 'jp' -> 'ja'; anything that is not a language code -> '' */
+function langCode(v) {
+  const m = /^([A-Za-z]{2,3})(?:[-_]|$)/.exec(String(v == null ? '' : v).trim());
+  if (!m) return '';
+  const c = m[1].toLowerCase();
+  return c === 'jp' ? 'ja' : c === 'gr' ? 'el' : c;
+}
+/* what 0195 seeded, by source slug: used until 0200's news_source_languages() is there (and for a source it does not list) */
+const SOURCE_LANG = Object.freeze({
+  basketnews: 'en', eurohoops: 'en', sportando: 'en', talkbasket: 'en', 'basketnews-lt': 'lt', 'eurohoops-gr': 'el', gigantes: 'es',
+  solobasket: 'es', pianetabasket: 'it', bebasket: 'fr', basketfaul: 'tr', 'basket-dergisi': 'tr', basketballking: 'ja', 'basket-count': 'ja',
+  'pick-and-roll': 'en', 'basketball-com-au': 'en', 'b-league': 'ja', 'nbl-australia': 'en', 'slb-men': 'en', 'slb-women': 'en', bcb: 'en',
+  '2bbl': 'de', 'basket-fi': 'fi', nkl: 'lt', pzkosz: 'pl', 'feb-liga-femenina': 'es', 'feb-liga-femenina-2': 'es', 'feb-primera': 'es',
+  'feb-segunda': 'es', 'u-sports': 'en'
+});
+const LANG_CACHE = {};   // { 'source:slug': 'es', 'outlet:league/slug': 'es' }: news_source_languages(), once fetched
+/* the language of a key ('source:gigantes'), or '' */
+function langOfKey(key, map) {
+  const k = String(key || '');
+  const m = map || LANG_CACHE;
+  if (m[k]) return langCode(m[k]);
+  return k.indexOf('source:') === 0 && SOURCE_LANG[k.slice(7)] ? SOURCE_LANG[k.slice(7)] : '';
+}
+/* THE LANGUAGE OF A FEED ROW, or '' when it has none that should count: a league's own article and a match report are the site's
+   (never held back for language); a row's own `lang` wins; otherwise the publisher's (or outlet's) */
+function langOf(it, map) {
+  if (!it || it.kind === 'league') return '';
+  const own = langCode(it.lang);
+  if (own) return own;
+  return langOfKey(pkeyOf(it), map);
+}
 const newestFirst = (a, b) => dateOf(b) - dateOf(a) || String(a.id || '').localeCompare(String(b.id || ''));
 
 /* whether the reader has opened it (and not so long ago that it is forgotten) */
@@ -316,8 +376,20 @@ function scoreOf(it, profile, now, w) {
   const partner = !!pkey && partnerSet(P.partners).has(pkey);
   const boost = partner && !read ? c.PARTNER_BOOST * partnerFade(age, c) : 0;
 
-  const score = base * rec * personal * imp + follow + boost;
-  return { score, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
+  /* the language: a story in one the reader does not read is held back, less as they engage with it */
+  const lang = langOf(it, P.langMap);
+  let langFactor = 1, langRelief = 1, foreign = false;
+  const mine = Array.isArray(P.readLangs) ? P.readLangs : null;     // unknown (no list): nothing is held back
+  if (lang && mine && mine.length && !P.langAll && mine.indexOf(lang) < 0) {
+    foreign = true;
+    const unlocked = sat(decay(P.g && P.g[lang], now, c), c.LANG_SCALE);
+    langRelief = Math.max(unlocked, followed ? c.LANG_FOLLOW_RELIEF : 0, c.LANG_LEAGUE_RELIEF * L);
+    langFactor = c.LANG_PENALTY + (1 - c.LANG_PENALTY) * Math.min(1, langRelief);
+    if (partner) langFactor = Math.max(langFactor, c.LANG_PARTNER_FLOOR);
+  }
+
+  const score = base * rec * personal * imp * langFactor + follow + boost;
+  return { score, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
            sigPoints, sigReasons: tier === 'report' && sig && Array.isArray(sig.reasons) ? sig.reasons : [], imp,
            terms: { league: c.W_LEAGUE * L, country: c.W_COUNTRY * C, pub: c.W_PUB * Pp } };
 }
@@ -379,16 +451,16 @@ function rank(items, profile, now, w) {
     out.push(x);
   }
   return out.map(x => Object.assign({}, x.it, {
-    why: whyOf(x.it, x.s, profile, c), score: x.s.score, tier: x.s.tier, partner: x.s.partner, boosted: x.s.boost > 0, read: x.s.read
+    why: whyOf(x.it, x.s, profile, c), score: x.s.score, lang: x.s.lang || x.it.lang || undefined, tier: x.s.tier, partner: x.s.partner, boosted: x.s.boost > 0, read: x.s.read
   }));
 }
 
 /* ==================================================================================== learning (pure) === */
-const emptyState = () => ({ v: 1, l: {}, p: {}, r: {}, i: {} });
+const emptyState = () => ({ v: 1, l: {}, p: {}, r: {}, i: {}, g: {} });
 function sane(v) {
   const o = emptyState();
   if (!v || typeof v !== 'object' || v.v !== 1) return o;
-  ['l', 'p', 'i'].forEach(k => { if (v[k] && typeof v[k] === 'object') Object.keys(v[k]).forEach(x => { const e = v[k][x]; if (Array.isArray(e) && isFinite(e[0]) && isFinite(e[1])) o[k][x] = [+e[0], +e[1]]; }); });
+  ['l', 'p', 'i', 'g'].forEach(k => { if (v[k] && typeof v[k] === 'object') Object.keys(v[k]).forEach(x => { const e = v[k][x]; if (Array.isArray(e) && isFinite(e[0]) && isFinite(e[1])) o[k][x] = [+e[0], +e[1]]; }); });
   if (v.r && typeof v.r === 'object') Object.keys(v.r).forEach(x => { if (isFinite(v.r[x])) o.r[x] = +v.r[x]; });
   return o;
 }
@@ -407,9 +479,11 @@ function prune(state, now, w) {
   };
   Object.keys(state.l).forEach(k => { if (decay(state.l[k], now, c) < c.PRUNE_BELOW) delete state.l[k]; });
   Object.keys(state.p).forEach(k => { if (decay(state.p[k], now, c) < c.PRUNE_BELOW) delete state.p[k]; });
+  if (!state.g) state.g = {};
+  Object.keys(state.g).forEach(k => { if (decay(state.g[k], now, c) < c.PRUNE_BELOW) delete state.g[k]; });
   Object.keys(state.r).forEach(k => { if (num(now) - state.r[k] > c.READS_TTL_DAYS * DAY) delete state.r[k]; });
   Object.keys(state.i).forEach(k => { if (num(now) - state.i[k][1] > c.IMPRESSIONS_TTL_DAYS * DAY) delete state.i[k]; });
-  cap(state.l, c.LEAGUES_MAX, e => e[1]); cap(state.p, c.PUBS_MAX, e => e[1]);
+  cap(state.l, c.LEAGUES_MAX, e => e[1]); cap(state.p, c.PUBS_MAX, e => e[1]); cap(state.g, c.LANGS_MAX, e => e[1]);
   cap(state.r, c.READS_MAX, t => t); cap(state.i, c.IMPRESSIONS_MAX, e => e[1]);
   return state;
 }
@@ -435,10 +509,17 @@ function noteOpen(state, row, now, w) {
   keys.forEach(k => { if (!state.r[k]) state.r[k] = now; });
   if (seen) return false;
   addPoints(state.p, pkeyOf(row), c.OPEN_PTS, now, c);
+  if (!state.g) state.g = {};
+  addPoints(state.g, langOf(row), c.OPEN_LANG_PTS, now, c);
   leaguesOf(row).slice(0, 4).forEach(l => addPoints(state.l, l.slug, c.OPEN_LEAGUE_PTS, now, c));
   return true;
 }
-const noteVisit = (state, key, now, w) => addPoints(state.p, key, (w || W).VISIT_PTS, now, w);
+function noteVisit(state, key, now, w) {
+  const c = w || W;
+  addPoints(state.p, key, c.VISIT_PTS, now, c);
+  if (!state.g) state.g = {};
+  addPoints(state.g, langOfKey(key), c.VISIT_LANG_PTS, now, c);
+}
 function noteFollow(state, o, now, w) {
   const c = w || W;
   if (o && o.key) addPoints(state.p, o.key, c.FOLLOW_PTS, now, c);
@@ -558,10 +639,21 @@ function createStore(o) {
     visited(key) { return record((st, t) => { noteVisit(st, key, t); }); },
     followed(o) { return record((st, t) => { noteFollow(st, o, t); }); },
     shown(ids) { return record((st, t) => { noteShown(st, ids, t); }); },
+    /* 'Show every language': no story is held back for its language. Kept through a reset, like the switch. */
+    langAll() { return rd(local, mem, W.LANG_ALL_KEY) === '1'; },
+    setLangAll(on) { if (on) wr(local, mem, W.LANG_ALL_KEY, '1'); else rm(local, mem, W.LANG_ALL_KEY); },
+    /* the languages learned from what was opened: [{ lang, points, unlocked (0..1) }], most first */
+    langs() {
+      const st = load(), t = now();
+      return Object.keys(st.g || {}).map(k => { const pts = decay(st.g[k], t, W); return { lang: k, points: pts, unlocked: sat(pts, W.LANG_SCALE) }; })
+        .filter(x => x.points > 0).sort((a, b) => b.points - a.points);
+    },
+    /* forget one language's points (allowed while personalisation is off: it is only forgetting) */
+    forgetLang(code) { try { const st = load(); if (st.g && st.g[code]) { delete st.g[code]; save(st); } return true; } catch (_) { return false; } },
     /* forget what was learned; the switch, and the follows (which are the reader's account's), stay */
     reset() { rm(local, mem, W.KEY); rm(sess, memSess, W.SESSION_KEY); cache = null; return true; },
     isRead(id) { return isRead(load(), id, now()); },
-    learned() { const st = load(); return Object.keys(st.l).length + Object.keys(st.p).length + Object.keys(st.r).length; },
+    learned() { const st = load(); return Object.keys(st.l).length + Object.keys(st.p).length + Object.keys(st.r).length + Object.keys(st.g || {}).length; },
     usingStorage: !!local
   };
 }
@@ -612,6 +704,26 @@ function createNet(o) {
         }
       });
     },
+    /* the publishers' languages { 'source:slug': 'es', 'outlet:league/slug': 'es' }, once, kept half a day; a database without 0200 answers 404:
+       the map of what 0195 seeded (SOURCE_LANG) stands. Never throws. */
+    languages() {
+      return once('languages', async () => {
+        let rows = readCache(W.LANGS_KEY, W.LANGS_TTL_MS);
+        if (!rows) {
+          try { rows = await call('rpc', 'rpc/news_source_languages', {}); writeCache(W.LANGS_KEY, Array.isArray(rows) ? rows : []); }
+          catch (e) { rows = []; if (e && e.status === 404) writeCache(W.LANGS_KEY, [], W.LANGS_TTL_MS - W.ABSENT_TTL_MS); }
+        }
+        const map = {};
+        (Array.isArray(rows) ? rows : []).forEach(r => {
+          const l = r && langCode(r.language);
+          if (!l || !r.slug) return;
+          if (r.kind === 'source') map['source:' + r.slug] = l;
+          else if (r.kind === 'outlet' && r.league_slug) map['outlet:' + r.league_slug + '/' + r.slug] = l;
+        });
+        Object.keys(map).forEach(k => { LANG_CACHE[k] = map[k]; });
+        return map;
+      });
+    },
     /* { country: { slug: 'GB+IE' }, idToSlug: { uuid: slug } }, once and remembered for half a day */
     leagueMap() {
       return once('leagues', async () => {
@@ -657,6 +769,24 @@ function country() {
   return detectCountry(tz, langs);
 }
 
+/* the site's language (the nav's EN / 日本語 / ES), from what i18n.js decided, else what it stored, else the page's */
+function siteLang() {
+  try { const I = root.EpinoiaI18n; if (I && I.lang) return langCode(I.lang); } catch (_) { /* next */ }
+  try { const v = root.localStorage && root.localStorage.getItem('epinoia_lang'); if (v) return langCode(v); } catch (_) { /* next */ }
+  try { const v = root.document && root.document.documentElement && root.document.documentElement.lang; if (v) return langCode(v); } catch (_) { /* none */ }
+  return '';
+}
+/* THE LANGUAGES THE READER READS, from the start: the site's, then the browser's (navigator.languages), no duplicates */
+function readerLangs(nav, site) {
+  const out = [];
+  const add = v => { const c = langCode(v); if (c && out.indexOf(c) < 0) out.push(c); };
+  add(site === undefined ? siteLang() : site);
+  let l = [];
+  try { const n = nav === undefined ? root.navigator : nav; l = (n && (n.languages && n.languages.length ? Array.prototype.slice.call(n.languages) : [n.language])) || []; } catch (_) { l = []; }
+  l.forEach(add);
+  return out;
+}
+
 /* THE RANKING OF A POOL OF ROWS, end to end: the profile from the device; the partners, the leagues' countries and the
    match reports' points from the public calls; the follows from follow.js (the reader's account, which the server already
    has). opts: { followedIds (the ids in the reader's own feed, news_feed_mine), now }. Personalisation off, or nothing
@@ -669,7 +799,7 @@ async function rankRows(rows, opts) {
   try { partners = await n.partners(); } catch (_) { /* none */ }
   if (!st.enabled()) return { rows: rank(rows, { off: true }, t), ranked: false, partners };
   try {
-    const [lm, sig] = await Promise.all([n.leagueMap(), n.significance(rows)]);
+    const [lm, sig, langMap] = await Promise.all([n.leagueMap(), n.significance(rows), n.languages().catch(() => ({}))]);
     let followedLeagues = [];
     try {
       const F = root.EpinoiaFollow;
@@ -677,7 +807,8 @@ async function rankRows(rows, opts) {
       followedLeagues = ((prefs && prefs.fav_league_ids) || []).map(id => lm.idToSlug[id]).filter(Boolean);
     } catch (_) { /* signed out or no follows */ }
     const P = Object.assign({}, st.profile(), { country: o.country !== undefined ? o.country : country(), leagueCountry: lm.country, partners, sig,
-      followedIds: o.followedIds || [], followedLeagues });
+      followedIds: o.followedIds || [], followedLeagues,
+      langMap, readLangs: o.readLangs || readerLangs(), langAll: st.langAll ? st.langAll() : false });
     return { rows: rank(rows, P, t), ranked: true, partners };
   } catch (_) {
     return { rows: rank(rows, { off: true }, t), ranked: false, partners };
@@ -740,23 +871,54 @@ function control(opts) {
   say.setAttribute('aria-live', 'polite');
   const explain = () => {
     say.textContent = sw.checked
-      ? 'The feed learns from the leagues you spend time on, the stories you open and where you are. It is kept only in this browser and is never sent to us.'
+      ? 'The feed learns from the leagues you spend time on, the stories you open, where you are and the languages you read. It is kept only in this browser and is never sent to us.'
       : 'Off: the feed is simply the newest first, and nothing is kept. What was learned before is left as it is.';
   };
   explain();
   sw.addEventListener('change', () => { st.setEnabled(sw.checked); explain(); if (o.onChange) o.onChange(); });
+  /* LANGUAGES: what counts as read, and the switch that lifts the hold-back */
+  const lrow = el('label', 'pc-pers-row');
+  const lsw = el('input'); lsw.type = 'checkbox'; lsw.setAttribute('role', 'switch'); lsw.checked = st.langAll ? st.langAll() : false;
+  lrow.append(lsw, el('span', null, 'Show every language'));
+  const lnote = el('p', 'pc-pers-note', 'Stories in a language you do not read sit lower in For you. Your site language, your browser\'s languages and any language you open often count as read.');
+  const langs = el('div', 'pc-pers-langs');
+  const name = c => { try { return new Intl.DisplayNames([siteLang() || 'en'], { type: 'language' }).of(c) || c.toUpperCase(); } catch (_) { return c.toUpperCase(); } };
+  const drawLangs = () => {
+    langs.textContent = '';
+    langs.hidden = lsw.checked;
+    if (lsw.checked) return;
+    const seen = new Set();
+    const chip = (code, how, drop) => {
+      const c = el('span', 'pc-pers-lang'); c.dataset.lang = code;
+      c.append(el('b', null, code.toUpperCase()), el('span', null, name(code) + ' \u00b7 ' + how));
+      if (drop) {
+        const b = el('button', 'pc-pers-langx', 'Remove'); b.type = 'button';
+        b.setAttribute('aria-label', 'Forget ' + name(code));
+        b.addEventListener('click', () => { st.forgetLang(code); drawLangs(); if (o.onChange) o.onChange(); });
+        c.appendChild(b);
+      }
+      langs.appendChild(c);
+    };
+    const site = siteLang();
+    if (site) { seen.add(site); chip(site, 'site language'); }
+    readerLangs(undefined, '').forEach(code => { if (!seen.has(code)) { seen.add(code); chip(code, 'browser language'); } });
+    (st.langs ? st.langs() : []).forEach(x => { if (!seen.has(x.lang) && x.unlocked >= 0.02) { seen.add(x.lang); chip(x.lang, 'you read it, ' + Math.round(x.unlocked * 100) + '%', true); } });
+  };
+  lsw.addEventListener('change', () => { st.setLangAll(lsw.checked); drawLangs(); if (o.onChange) o.onChange(); });
+  drawLangs();
   const reset = el('button', 'pc-pers-reset', 'Reset what the site has learned');
   reset.type = 'button';
   reset.addEventListener('click', () => {
     st.reset();
-    say.textContent = 'Forgotten: what was learned is deleted from this browser. What you follow is untouched.';
+    say.textContent = 'Forgotten: what was learned, the languages included, is deleted from this browser. What you follow is untouched.';
+    drawLangs();
     if (o.onChange) o.onChange();
   });
   const more = el('a', 'pc-pers-more', 'How this works');
   more.href = (o.base || '../') + 'privacy/#feedSec';
   const acts = el('div', 'pc-pers-acts');
   acts.append(reset, more);
-  box.append(row, say, acts);
+  box.append(row, say, lrow, lnote, langs, acts);
   panel.appendChild(box);
   const button = el('button', 'pc-pers-btn', 'Personalise');
   button.type = 'button';
@@ -766,7 +928,7 @@ function control(opts) {
     const open = panel.hidden;
     panel.hidden = !open;
     button.setAttribute('aria-expanded', String(open));
-    if (open) sw.checked = st.enabled();
+    if (open) { sw.checked = st.enabled(); lsw.checked = st.langAll ? st.langAll() : false; drawLangs(); }
   });
   return { button, panel };
 }
@@ -774,6 +936,7 @@ function control(opts) {
 return {
   W, HOUR, DAY,
   recency, decay, sat, partnerFade, scoreOf, whyOf, rank, rankRows,
+  langCode, langOf, langOfKey, siteLang, readerLangs, SOURCE_LANG, LANG_CACHE,
   detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS,
   tierOf, isReport, pkeyOf, sourceOf, leaguesOf, readKeys, partnerSet, isRead,
   emptyState, sane, addPoints, addDwell, noteOpen, noteVisit, noteFollow, noteShown, prune,

@@ -11,7 +11,7 @@ Both appear on the platform's **News** page, in **HOME's FEED**, on each league'
 
 | Page | What it is |
 | --- | --- |
-| `news/` | Everything on the post card, **For you** (ranked on the reader's device) or **Newest**. Switches for Everything, Publishers, Creators, League news and Following; the ranking applies within each. A row of the publishers, and **Personalise**. |
+| `news/` | Everything on the post card, **For you** (ranked on the reader's device, the default for everyone; an explicit choice is remembered under `epinoia.news.order2`) or **Newest**. Switches for Everything, Publishers, Creators, League news and Following; the ranking applies within each. A row of the publishers, and **Personalise**. |
 | `news/?s=<slug>` | A publisher's page: its head in its colours, the way to its site, a follow bell, its stories. |
 | `news/?i=<id>` | One story, where a notification lands. The publisher's colourway, the headline centred, the opening lines, and a button to read it on their site. |
 | `news/?l=<league>` | The league's own archive as before. Under it, **Around the league**: the publishers' stories about the league (its league tags) and its creators' pieces. |
@@ -19,7 +19,7 @@ Both appear on the platform's **News** page, in **HOME's FEED**, on each league'
 | `creators/?l=&o=<outlet>` | An outlet's page: head, platforms, bell, bio. Its videos, episodes and posts play in their cards. |
 | `creators/?l=&o=&p=<piece>` | One piece in the outlet's colourway. An article, or the video / episode / post itself with its caption. |
 | `creators/studio/` | Where an outlet's people write. |
-| HOME, **Feed** | Six cards, under My followed. **For you** (the default) is the ranked feed below; **Followed** shows what the reader follows (leagues, clubs' leagues, publishers, creators), newest first; **Newest** shows everything, newest first. The choice is remembered. **Personalise** sits beside them. |
+| HOME, **Feed** | Six cards, under My followed. **For you** (the default) is the ranked feed below; **Followed** shows what the reader follows (leagues, clubs' leagues, publishers, creators), newest first; **Newest** shows everything, newest first. The choice is remembered under `epinoia.home.feed2` (a new key: everyone starts on For you again, and an explicit choice after that sticks). **Personalise** sits beside them. |
 | A league's front page, **Creators** | The three latest pieces and a row of the outlets. Absent while creators are off or nothing is published. |
 | The rail | **News** on the platform panel. **Creators** on a league with some (probed). **Creator studio** in the hub for an outlet's people. |
 
@@ -81,11 +81,21 @@ The partner boost is in full for a week from publication, then fades to nothing 
 
 The groups are capped (table 30, players 45, stage 50, extras 30) and the game at 100. The reasons are short strings, the most valuable first (`Cup final`, `Top-of-the-table clash: 1st v 2nd`, `34-point game: <name>`). A plain report is under a publisher's story; a cup final, or the top two meeting with a big night, can outrank an ordinary story; a very fresh report for a league the reader follows or has spent time on can surface. These are weights, not a filter: the weights in `feedrank.js` can be tuned without a migration, the points in `0198`.
 
+**Language (0200).** A story in a language the reader does not read is multiplied by `LANG_PENALTY` (0.3): it sinks, it does not go, and a much fresher one can still beat a stale story. The score becomes `base * recency * personal * imp * langFactor + follow + boost`, with `langFactor = 0.3 + 0.7 * relief` for a foreign story and 1 otherwise. What counts as read:
+- **Read from the start:** the site's language (the EN / 日本語 / ES switch: `EpinoiaI18n.lang`, else `epinoia_lang`, else `<html lang>`) and every entry of `navigator.languages`. A reader on the English site with `es` in their browser is never penalised for Spanish.
+- **Engagement (`relief`, graded):** each *new* story or piece opened gives its language `OPEN_LANG_PTS` (3) and each publisher's page visited `VISIT_LANG_PTS` (2) in the profile (`g`, halving every 30 days like the rest); the language is `sat(points, LANG_SCALE = 12)` unlocked: one accidental open is ~22% (the factor stays under 0.5), five or six a habit (~75%), a dozen nearly all. Opening the same story twice counts once.
+- **Leagues:** a story from a league the reader follows, or one in their followed feed, has `LANG_FOLLOW_RELIEF` (0.85) of the penalty lifted; a league they have points for lifts it by `LANG_LEAGUE_RELIEF` (0.7) x its 0..1 share. A Spanish-league fan reading in English still sees ACB's news.
+- **Official partners:** held back only mildly (`LANG_PARTNER_FLOOR` 0.75); the additive boost is untouched.
+- **Never held back:** a league's own article and a match report (the site's, in the site's language), a source or outlet with no language on record, a reader whose languages are unknown, and everything when *Show every language* is on.
+- **The chip:** a story in a language other than the site's carries a small `ES` chip in its kicker (`pc-lang`, `newscard.js langChip`) with the language's name as its title, and `lang=` on its headline. It shows in every view (For you, Newest, Following).
+
+*Where a publisher's language comes from.* `news_sources.language` and `creator_outlets.language` (0200: lower-case ISO 639-1 or NULL; the seeded sources are back-filled) through `news_source_languages()`, a small public function the page calls once and keeps half a day. `news_feed` and `news_feed_mine` are unchanged (no `lang` column: adding one means dropping and re-creating both), the page joins by `source_slug` (and an outlet's league and slug). **0200 need not be applied for the feature to work**: without it (404, offline) `feedrank.js` uses `SOURCE_LANG`, the map of the sources 0195 seeded (a test holds it equal to the migration); a source added later has no language until 0200 is applied and an administrator sets it (`update news_sources set language = 'de' where slug = ...`), and is never held back meanwhile. A row that carries its own `lang` wins over its publisher's.
+
 **Variety.** Never more than two in a row from one source, and no more than two boosted partner items in the first six.
 
 **Why.** Each ranked card has a line saying why (*Official partner*, *Cup final*, *You follow NBL*, *Because you read a lot about NBL*, *Because you read Eurohoops*, *Popular where you are*, *From a publisher*...).
 
-**Personalise** (the button in the feed's heading on HOME and the News page, and the privacy page): a switch and *Reset what the site has learned*. Off means the feed is the newest first, nothing is recorded, and what was learned before is left as it is; the switch (`epinoia_feed_v1_off`) survives a reset. A reset deletes the profile; what the reader follows belongs to their account and is untouched. The privacy page says all of this in plain words.
+**Personalise** (the button in the feed's heading on HOME and the News page, and the privacy page): a switch, the **languages** (the ones counted as the reader's, with *Remove* on those learned from what they opened, and *Show every language*, kept through a reset like the switch: `epinoia_feed_v1_langall`), and *Reset what the site has learned* (which clears the language points too). Off means the feed is the newest first, nothing is recorded, and what was learned before is left as it is; the switch (`epinoia_feed_v1_off`) survives a reset. A reset deletes the profile; what the reader follows belongs to their account and is untouched. The privacy page says all of this in plain words.
 
 **With no storage** (a private window, blocked site data) everything still works, in memory for the page.
 
@@ -153,6 +163,7 @@ The groups are capped (table 30, players 45, stage 50, extras 30) and the game a
 - `supabase/tests/official-partners.test.mjs`: 0197 on PGlite (who may name a partner, what the list carries).
 - `supabase/tests/game-significance.test.mjs`: 0198 on PGlite (the points and the reasons for a game).
 - `supabase/tests/feedrank.test.mjs`: the ranking, the learning, the storage, and that nothing about the reader is sent.
+- `supabase/tests/news-languages.test.mjs`: 0200 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
 - `supabase/tests/partners-ui.test.mjs`: the console's Official partner switches.
 
 All of them run in `guard.yml`.

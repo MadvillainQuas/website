@@ -192,6 +192,24 @@ ok('HOME: the FEED under MY FOLLOWED, its switch in its heading, its script afte
 ok('...mounted by front.js as the feed section', /feed: 'homeFeed'/.test(read('epinoia', 'home', 'front.js')) && /H\.register\('feed'/.test(read('epinoia', 'home', 'feed-home.js')));
 ok('HOME: For you first (the new default), then Followed and Newest, and feedrank.js before the feed\'s script',
    home.indexOf('data-feed="foryou"') > 0 && home.indexOf('data-feed="foryou"') < home.indexOf('data-feed="followed"') && home.indexOf('feedrank.js?v=') > home.indexOf('newscard.js?v=') && home.indexOf('feedrank.js?v=') < home.indexOf('feed-home.js?v='));
+const npage = read('epinoia', 'news', 'news-page.js'), hfeed = read('epinoia', 'home', 'feed-home.js');
+ok('DEFAULT IS FOR YOU on both: the News page and HOME open on For you when nothing was chosen, and the remembered choice lives under NEW keys so an old remembered Newest cannot stick',
+   /\|\| 'you'/.test(npage) && /const ORDER_KEY = 'epinoia\.news\.order2'/.test(npage) && /let mode = stored\(\) \|\| 'foryou'/.test(hfeed) && /const KEY = 'epinoia\.home\.feed2'/.test(hfeed) &&
+   !/'epinoia\.news\.order'/.test(npage) && !/'epinoia\.home\.feed'/.test(hfeed));
+ok('an explicit choice is still remembered (the buttons write the key), in a try/catch', /localStorage\.setItem\(ORDER_KEY/.test(npage) && /localStorage\.setItem\(KEY/.test(hfeed));
+{
+  /* the language chip: only on a story in a language other than the site's */
+  const FRm = require(path.join(root, 'epinoia', 'feedrank.js'));
+  global.window = { EpinoiaFeedRank: FRm }; globalThis.EpinoiaI18n = { lang: 'en' };
+  const es = K.fromFeed({ kind: 'outlet', id: 'x1', title: 'Hola', url: 'https://www.gigantes.com/a', source_slug: 'gigantes', source_name: 'Gigantes', leagues: [] }, '../');
+  const en = K.fromFeed({ kind: 'outlet', id: 'x2', title: 'Hi', url: 'https://www.eurohoops.net/a', source_slug: 'eurohoops', source_name: 'Eurohoops', leagues: [] }, '../');
+  const lg = K.fromFeed({ kind: 'league', id: 'x3', title: 'L', league_slug: 'nbl', league_name: 'NBL', slug: 'a', leagues: [] }, '../');
+  ok('a Spanish story for an English site carries lang es; an English one and a league\'s own article carry none', es.lang === 'es' && !en.lang && !lg.lang, [es.lang, en.lang, lg.lang]);
+  globalThis.EpinoiaI18n.lang = 'es';
+  const es2 = K.fromFeed({ kind: 'outlet', id: 'x1', title: 'Hola', url: 'https://www.gigantes.com/a', source_slug: 'gigantes', leagues: [] }, '../');
+  ok('...and on the Spanish site the Spanish story is the reader\'s own: no tag', !es2.lang);
+  delete global.window; delete globalThis.EpinoiaI18n;
+}
 ok('the News page and the creators\' pages load feedrank.js BEFORE their own script (they read it at the top), interest.js after it',
    [['news', 'news-page.js'], ['creators', 'creators-page.js']].every(([d, js]) => { const h = read('epinoia', d, 'index.html'); return h.indexOf('feedrank.js?v=') > h.indexOf('newscard.js?v=') && h.indexOf('feedrank.js?v=') < h.indexOf('src="' + js) && h.indexOf('interest.js?v=') > h.indexOf('feedrank.js?v='); }));
 ok('every league page that counts dwell loads feedrank.js then interest.js, deferred and version-stamped like its neighbours; HOME does not (the platform is nobody\'s league)',
@@ -199,9 +217,9 @@ ok('every league page that counts dwell loads feedrank.js then interest.js, defe
      const h = read('epinoia', ...f.split('/')); const i = h.indexOf('interest.js?v='); return i > 0 && /<script src="[.\/]*interest\.js\?v=\d+" defer><\/script>/.test(h) && h.indexOf('feedrank.js?v=') > 0 && h.indexOf('feedrank.js?v=') < i && i < h.indexOf('nav.js?v='); }) &&
    !/interest\.js/.test(home) && !/interest\.js/.test(read('epinoia', 'games', 'index.html')));
 ok('interest.js is small and sends nothing: no fetch, no XHR, no beacon, no eval', (() => { const j = read('epinoia', 'interest.js'); return j.split('\n').length < 30 && !/fetch\(|XMLHttpRequest|sendBeacon|eval\(|new Function|document\.cookie/.test(j.replace(/\/\*[\s\S]*?\*\//g, '')); })());
-ok('feedrank.js reaches out only for the public lists: partners, the leagues\' countries, a report\'s points (and never with a token)', (() => {
+ok('feedrank.js reaches out only for the public lists: partners, the leagues\' countries, a report\'s points, the publishers\' languages (and never with a token)', (() => {
   const j = read('epinoia', 'feedrank.js').replace(/\/\*[\s\S]*?\*\//g, ''); const paths = [...j.matchAll(/call\('(?:rpc|get)', '([^']+)'/g)].map(m => m[1]);
-  return paths.sort().join() === ['leagues?select=id,slug,country&order=slug', 'rpc/news_report_significance', 'rpc/official_partners'].sort().join() && !/Authorization|authHeaders|sendBeacon|document\.cookie/.test(j); })());
+  return paths.sort().join() === ['leagues?select=id,slug,country&order=slug', 'rpc/news_report_significance', 'rpc/news_source_languages', 'rpc/official_partners'].sort().join() && !/Authorization|authHeaders|sendBeacon|document\.cookie/.test(j); })());
 const splash = read('epinoia', 'index.html');
 ok('a league\'s front page carries its creators under its news, hidden until there are some',
    /id="creatorsSec"/.test(splash) && /class="sec hide" id="creatorsSec"/.test(splash) && splash.indexOf('id="creatorsSec"') > splash.indexOf('id="newsSec"') &&
