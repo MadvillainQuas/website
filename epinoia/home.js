@@ -1901,7 +1901,7 @@ function renumber() {
        of the body is exactly the late decision that made the splash flash the
        league page first. The title is still set here because a document can
        only have one <title> and this branch is where the answer is known. */
-    document.title = 'Epinoia';
+    /* the title is the one in <head> (written for a search result); it is not reset here */
     const mode = document.querySelector('#spMode');
     if (mode) mode.textContent = 'transport: ' +
       (window.epinoiaMode ? window.epinoiaMode() : 'local');

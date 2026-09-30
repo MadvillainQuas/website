@@ -1029,7 +1029,7 @@
     }
     return searchLoading;
   }
-  async function openSearch() {
+  async function openSearch(preset) {
     const S = await loadSearch();
     if (!S) return;
     if (!searchApi) {
@@ -1044,10 +1044,17 @@
       });
     }
     searchBtn.setAttribute('aria-expanded', 'true');
-    searchApi.open();
+    searchApi.open(typeof preset === 'string' ? preset : undefined);
   }
   ['pointerenter', 'touchstart', 'focus'].forEach(t => searchBtn.addEventListener(t, loadSearch, { once: true, passive: true }));
-  searchBtn.addEventListener('click', openSearch);
+  searchBtn.addEventListener('click', () => openSearch());
+  /* /epinoia/home/?q=words opens the search with those words typed: the address the site's WebSite markup gives a
+     search engine as its search box (SearchAction, in epinoia/index.html), so it must really work. Only on HOME:
+     other pages (scouting) use ?q= for their own filter, and the splash at /epinoia/ has no rail. */
+  try {
+    const qs = new URLSearchParams(location.search).get('q');
+    if (qs && /\/epinoia\/home\/(index\.html)?$/.test(location.pathname)) setTimeout(() => openSearch(qs), 0);
+  } catch (_) { /* no query, no preset */ }
   document.addEventListener('keydown', e => {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.key !== '/') return;
     const t = e.target, tag = t && t.tagName;
@@ -2472,6 +2479,10 @@
   }
   /* what the page is, from its title when it has no context line: "B.LEAGUE ONE · Epinoia" */
   function ttTitle(kind) {
+    /* a page whose <title> is written for a search result ("Basketball Fixtures & Results - All Leagues | Epinoia")
+       says its short name here (<meta name="epinoia-page">), so the header line stays as it was */
+    const named = document.querySelector('meta[name="epinoia-page"]');
+    if (named && named.content) return named.content;
     const t = String(document.title || '').trim();
     const bare = /^epinoia\b/i.test(t) ? '' : t.replace(/\s*[·|—-]\s*epinoia\b.*$/i, '');
     if (bare) return bare;

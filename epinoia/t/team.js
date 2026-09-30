@@ -783,7 +783,6 @@ async function lineupPanels(team) {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
       `&status=eq.final&select=id,home_team_id,away_team_id` + inSeason());
     if (!gs.length) {
-      $('#lulist').textContent = '';
       ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
         $(sel).appendChild(el('div', 'empty',
           'No finalised games yet — lineups appear once one is played.')));
@@ -792,7 +791,6 @@ async function lineupPanels(team) {
     const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
     const st = await D.stints(gs.map(g => g.id), team.id, byGame);
     if (!st.length) {
-      $('#lulist').textContent = '';
       ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
         $(sel).appendChild(el('div', 'empty', 'No lineup data yet.')));
       return;
@@ -830,12 +828,12 @@ async function lineupPanels(team) {
     }
     drawWowy();
 
-    /* the combination matrix, seeded with the two most-used players. Lineups are free for everyone
-       (docs/memberships.md), so it is never capped or teased. */
-    window.EpinoiaWowy.render({
+    /* the combination matrix, seeded with the two most-used players. Without analytics it
+       is the preview: wowy.js caps the subjects and adds its own teaser line. */
+    window.EpinoiaWowy.render(Object.assign({
       host: '#wowy', stints: st, meta, max: 4,
       preselect: order.slice(0, 2)
-    });
+    }, ACCESS.locked ? { preview: true, leagueSlug: ACCESS.slug } : {}));
 
     window.EpinoiaLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
     window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: st, meta });
@@ -846,8 +844,7 @@ async function lineupPanels(team) {
     console.warn('[lineups]', e);
     ['#wowy', '#lufilter', '#lulist'].forEach(sel => {
       const h = $(sel);
-      if (h && (!h.children.length || h.querySelector('.lu-empty'))) {
-        if (sel === '#lulist') h.textContent = '';
+      if (h && !h.children.length) {
         h.appendChild(el('div', 'empty', 'Could not load lineup data: ' + (e.message || e)));
       }
     });

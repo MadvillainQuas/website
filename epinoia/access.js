@@ -127,7 +127,7 @@ const FEATURES = Object.freeze({
       'Second chances, transition, points off turnovers, after timeouts, and assisted against unassisted baskets, on every screen',
       'Shot charts by zone, with zone tables and the shooting each shot diet should return',
       'The game flow, connections and events tabs of every box score',
-      'The on-the-floor-with split: one player\u2019s own box score by who shared the floor (lineups themselves are free)'
+      'The full with-or-without screen, every combination of players (everyone gets a preview)'
     ])
   }),
   league: Object.freeze({
@@ -166,7 +166,8 @@ const CATALOGUE = Object.freeze({
     events: Object.freeze({ gate: 'analytics', label: 'Events stats' }),   // ev_* splits, the Events section, team events
     csv:    Object.freeze({ gate: 'analytics', label: 'CSV download' })    // every table's csv button
   }),
-  barKeys: key => /^ev_/.test(String(key == null ? '' : key))
+  barKeys: key => /^ev_/.test(String(key == null ? '' : key)),
+  wowyPreviewMax: 1
 });
 
 function isPremiumColumn(key) {
