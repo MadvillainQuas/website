@@ -197,6 +197,9 @@ class FakeDb:
     def mark(self, sid, fields):
         self.marks[sid] = fields
 
+    def feed_taken(self, feed, league, but):
+        return getattr(self, "taken", {}).get(feed)
+
 
 print("\na publisher's logo")
 def png(w, h):
@@ -309,10 +312,129 @@ ok("...a logo looked for two days ago and not found is not looked for again unti
    not any("//b.example" in u or "//s.example" in u for u in pages_asked), pages_asked)
 ok("a source that fails has its error recorded, and the next is still read",
    "connection reset" in db.marks["s2"]["last_error"] and "last_ok_at" not in db.marks["s2"] and db.marks["s3"]["last_error"] is None, db.marks["s2"])
-ok("a 304 is an ok read that writes nothing", "logo_url" not in db.marks["s3"] and r == {"read": 1, "unchanged": 1, "failed": 1, "items": 3, "tagged": 1, "logos": 1}, r)
+ok("a 304 is an ok read that writes nothing", "logo_url" not in db.marks["s3"] and r == {"read": 1, "unchanged": 1, "failed": 1, "items": 3, "tagged": 1, "logos": 1, "found": 0}, r)
 dry = FakeDb([{"id": "s1", "name": "Hoops", "feed_url": "https://hoops.example/feed"}])
 F.run(dry, get=get, dry_run=True, log=lambda m: None, now=lambda: NOW, sleep=lambda s: None, page=page)
 ok("a dry run reads and writes nothing", dry.rows == [] and dry.marks == {} and dry.pruned == [])
+
+
+print("\na link, to its feed (0198)")
+ok("the links whose feed follows from the address: a YouTube channel or playlist by id, Bluesky, Substack, Medium",
+   F.direct_feed("https://www.youtube.com/channel/UCWJ2lWNubArHWmf3FIHbfcQ") == ("https://www.youtube.com/feeds/videos.xml?channel_id=UCWJ2lWNubArHWmf3FIHbfcQ", "youtube") and
+   F.direct_feed("https://m.youtube.com/playlist?list=PLabcdefghijkl") == ("https://www.youtube.com/feeds/videos.xml?playlist_id=PLabcdefghijkl", "youtube") and
+   F.direct_feed("https://bsky.app/profile/nba.com") == ("https://bsky.app/profile/nba.com/rss", "bluesky") and
+   F.direct_feed("https://hoops.substack.com/p/some-post") == ("https://hoops.substack.com/feed", "substack") and
+   F.direct_feed("https://medium.com/@coach") == ("https://medium.com/feed/@coach", "medium") and
+   F.direct_feed("https://coach.medium.com/") == ("https://coach.medium.com/feed", "medium") and
+   F.direct_feed("https://www.youtube.com/@NBA") is None and F.direct_feed("https://www.eurohoops.net/") is None)
+YT_XML = b"""<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/"><title>Hoops Channel</title>
+<entry><id>yt:video:abcdefghijk</id><title>Game 3 breakdown</title><link rel="alternate" href="https://www.youtube.com/watch?v=abcdefghijk"/>
+<published>2026-09-30T10:00:00+00:00</published><media:group><media:thumbnail url="https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg"/>
+<media:description>Every possession of the fourth quarter</media:description></media:group></entry></feed>"""
+RSS2 = b"""<?xml version="1.0"?><rss version="2.0"><channel><title>Basket News</title><link>https://news.example/</link>
+<item><title>Trade done</title><link>https://news.example/a/1</link><pubDate>Wed, 30 Sep 2026 09:00:00 GMT</pubDate></item></channel></rss>"""
+POD = b"""<?xml version="1.0"?><rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>The Hoops Pod</title>
+<item><title>Episode 12</title><link>https://pod.example/12</link><enclosure url="https://pod.example/12.mp3" type="audio/mpeg" length="1"/></item></channel></rss>"""
+BSKY = b"""<?xml version="1.0"?><rss version="2.0"><channel><title>@hoops.example - Hoops</title><link>https://bsky.app/profile/hoops.example</link>
+<item><link>https://bsky.app/profile/hoops.example/post/3k</link><description>Tip-off in ten minutes. Full house tonight!</description>
+<pubDate>Wed, 30 Sep 2026 11:00:00 GMT</pubDate></item></channel></rss>"""
+YT_PAGE = (b"<!doctype html><html><head><title>NBA - YouTube</title><meta property='og:site_name' content='YouTube'></head><body>" + b"x" * 5000 +
+           b'<link rel="alternate" type="application/rss+xml" title="RSS" href="https://www.youtube.com/feeds/videos.xml?channel_id=UCWJ2lWNubArHWmf3FIHbfcQ">'
+           b'<meta property="og:title" content="Hoops Channel"><meta property="og:image" content="https://yt3.googleusercontent.com/abc=s900-c-k-c0x00ffffff-no-rj">'
+           b"</body></html>")
+SITE = (b"<html><head><meta property='og:site_name' content='Basket News'>"
+        b"<link rel='alternate' type='application/rss+xml' title='Comments Feed' href='/comments/feed'>"
+        b"<link rel='alternate' type='application/rss+xml' title='Basket News' href='/feed.xml'></head><body></body></html>")
+WEB = {
+    "https://www.youtube.com/@HoopsChannel": YT_PAGE,
+    "https://www.youtube.com/@Legacy": b"<html><body>" + b'{"externalId":"UCabcdefghijklmnopqrstuv"}' + b"</body></html>",
+    "https://itunes.apple.com/lookup?id=1384802639&entity=podcast": b'{"resultCount":1,"results":[{"collectionName":"The Hoops Pod","feedUrl":"https://pod.example/feed","artworkUrl600":"https://is1.mzstatic.com/a/600x600bb.jpg"}]}',
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=hoops.example": b'{"handle":"hoops.example","displayName":"Hoops","avatar":"https://cdn.bsky.app/img/avatar/plain/x/y@jpeg"}',
+    "https://news.example/": SITE,
+    "https://quiet.example/": b"<html><head><title>Quiet</title></head><body>no feed named here</body></html>",
+    "https://nothing.example/": b"<html><head><title>Nothing</title></head><body></body></html>",
+    "https://mastodon.example/@hoops": b"<html><head><meta property='og:title' content='Hoops (@hoops@mastodon.example)'><meta property='og:image' content='https://files.mastodon.example/a.png'>"
+                                        b"<link rel='alternate' type='application/rss+xml' href='https://mastodon.example/@hoops.rss'></head></html>",
+}
+FEEDS = {"https://www.youtube.com/feeds/videos.xml?channel_id=UCWJ2lWNubArHWmf3FIHbfcQ": YT_XML,
+         "https://www.youtube.com/feeds/videos.xml?channel_id=UCabcdefghijklmnopqrstuv": YT_XML,
+         "https://pod.example/feed": POD, "https://bsky.app/profile/hoops.example/rss": BSKY,
+         "https://news.example/feed.xml": RSS2, "https://news.example/comments/feed": RSS2, "https://quiet.example/rss": RSS2,
+         "https://direct.example/rss.xml": RSS2, "https://mastodon.example/@hoops.rss": BSKY}
+looked, fetched = [], []
+def look(u):
+    looked.append(u)
+    if u in WEB: return 200, WEB[u], {}
+    if u in FEEDS: return 200, FEEDS[u], {}
+    return 404, b"", {}
+def fetch(u):
+    fetched.append(u)
+    return (200, FEEDS[u], {}) if u in FEEDS else (404, b"", {})
+def res(u):
+    try:
+        return F.resolve(u, look, fetch)
+    except F.NoFeed as e:
+        return "NoFeed: %s" % e
+yt = res("https://www.youtube.com/@HoopsChannel")
+ok("a YouTube channel by its @handle: the feed its page names (in the body), its name and its picture",
+   yt["feed_url"] == "https://www.youtube.com/feeds/videos.xml?channel_id=UCWJ2lWNubArHWmf3FIHbfcQ" and yt["platform"] == "youtube" and
+   yt["name"] == "Hoops Channel" and yt["logo"] == "https://yt3.googleusercontent.com/abc=s240-c-k-c0x00ffffff-no-rj#fill", yt)
+ok("...or, where the page names no feed, the channel's id in it", res("https://www.youtube.com/@Legacy")["feed_url"].endswith("channel_id=UCabcdefghijklmnopqrstuv"))
+ap = res("https://podcasts.apple.com/us/podcast/the-hoops-pod/id1384802639")
+ok("an Apple Podcasts show: its feed from Apple's lookup, checked, with its name and artwork",
+   ap["feed_url"] == "https://pod.example/feed" and ap["platform"] == "podcast" and ap["name"] == "The Hoops Pod" and ap["logo"].endswith("600x600bb.jpg#fill"), ap)
+bs = res("https://bsky.app/profile/hoops.example")
+ok("a Bluesky account: its feed, its name and its picture from the public profile",
+   bs["feed_url"] == "https://bsky.app/profile/hoops.example/rss" and bs["platform"] == "bluesky" and bs["name"] == "Hoops" and bs["logo"].endswith("@jpeg#fill"), bs)
+nw = res("https://news.example/")
+ok("a website: the feed its head names (its comments feed passed over), under the site's own name",
+   nw["feed_url"] == "https://news.example/feed.xml" and nw["platform"] == "website" and nw["name"] == "Basket News", nw)
+ok("...one that names none: the usual places, tried in turn", res("https://quiet.example/")["feed_url"] == "https://quiet.example/rss")
+ok("a feed pasted as it is: itself; a podcast's feed: a podcast", res("https://direct.example/rss.xml")["platform"] == "feed" and
+   res("https://pod.example/feed")["platform"] == "podcast")
+ms = res("https://mastodon.example/@hoops")
+ok("a Mastodon account: the feed its page names, its picture", ms["feed_url"] == "https://mastodon.example/@hoops.rss" and ms["platform"] == "mastodon" and
+   ms["logo"] == "https://files.mastodon.example/a.png#fill", ms)
+looked.clear(); fetched.clear()
+ok("Instagram, TikTok and X are refused without a single request",
+   res("https://www.instagram.com/hoopsfan/").startswith("NoFeed: Instagram publishes no feed") and res("https://www.tiktok.com/@hoopsfan").startswith("NoFeed: TikTok") and
+   res("https://x.com/hoopsfan").startswith("NoFeed: X publishes") and not looked and not fetched)
+ok("a page with no feed anywhere is said so", res("https://nothing.example/") == "NoFeed: no feed found at this address")
+ok("an untitled post (Bluesky, Mastodon) takes its first words as its headline",
+   F.parse_feed(BSKY, "https://bsky.app/")[1][0]["title"] == "Tip-off in ten minutes. Full house tonight!")
+
+long_pod = POD.replace(b"</channel></rss>", b"") + b"".join(b"<item><title>Old %d</title><link>https://pod.example/%d</link></item>" % (i, i) for i in range(3000))
+cut = F.trim_feed(long_pod[:40000])
+ok("a feed too long to keep whole is cut after its last whole item and closed again; a JSON Feed is not",
+   cut is not None and cut.endswith(b"</item></channel></rss>") and len(F.parse_feed(cut, "https://pod.example/")[1]) == F.PER_READ and
+   F.trim_feed(b'{"items": [') is None and F.trim_feed(YT_XML[:300]) is None)
+
+print("\na source added by its link, read")
+def get2(u, etag=None, modified=None):
+    fetched.append(u)
+    return (200, FEEDS[u], {"etag": 'W/"1"'}) if u in FEEDS else (404, b"", {})
+db = FakeDb([{"id": "n1", "name": "@HoopsChannel", "feed_url": "https://www.youtube.com/@HoopsChannel", "site_url": "https://www.youtube.com/@HoopsChannel",
+              "resolve_from": "https://www.youtube.com/@HoopsChannel", "name_auto": True, "kind": "creator"}])
+r = F.run(db, get=get2, log=lambda m: None, now=lambda: NOW, sleep=lambda s: None, page=lambda u, *a: (404, b"", {}), look=look)
+m1 = db.marks["n1"]
+ok("found and read in the same run: the feed, the platform, the link let go, its posts written",
+   m1["feed_url"] == "https://www.youtube.com/feeds/videos.xml?channel_id=UCWJ2lWNubArHWmf3FIHbfcQ" and m1["platform"] == "youtube" and
+   m1["resolve_from"] is None and len(db.rows) == 1 and db.rows[0]["title"] == "Game 3 breakdown" and r["found"] == 1 and r["read"] == 1, m1)
+ok("...its stand-in name gives way to the channel's own, and its picture is the channel's", m1["name"] == "Hoops Channel" and m1["name_auto"] is False and
+   m1["logo_url"].endswith("#fill"), m1)
+db = FakeDb([{"id": "n2", "name": "news.example", "feed_url": "https://news.example/", "resolve_from": "https://news.example/", "name_auto": True}])
+db.taken = {"https://news.example/feed.xml": "Basket News"}
+F.run(db, get=get2, log=lambda m: None, now=lambda: NOW, sleep=lambda s: None, page=lambda u, *a: (404, b"", {}), look=look)
+ok("a link to a feed that is a source here already: switched off, and said so", db.marks["n2"]["enabled"] is False and
+   "same feed as Basket News" in db.marks["n2"]["last_error"] and db.rows == [], db.marks["n2"])
+db = FakeDb([{"id": "n3", "name": "nothing.example", "feed_url": "https://nothing.example/", "resolve_from": "https://nothing.example/"}])
+F.run(db, get=get2, log=lambda m: None, now=lambda: NOW, sleep=lambda s: None, page=lambda u, *a: (404, b"", {}), look=look)
+first = db.marks["n3"]
+db2 = FakeDb([dict(db.src[0], last_error=first["last_error"], last_fetched_at=first["last_fetched_at"])])
+looked.clear()
+F.run(db2, get=get2, log=lambda m: None, now=lambda: NOW + F.timedelta(hours=1), sleep=lambda s: None, page=lambda u, *a: (404, b"", {}), look=look)
+ok("a link with no feed: the reason recorded, and not tried again for six hours", first["last_error"] == "no feed found at this address" and
+   "enabled" not in first and db2.marks == {} and not looked, first)
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

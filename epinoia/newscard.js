@@ -172,6 +172,9 @@ function embedNode(e, title) {
 }
 
 /* ------------------------------------------------------------------------------------------------ items --- */
+/* a creator's channel's platform, as its card names it (0198 news_sources.platform) */
+const PLATFORM = { youtube: 'YouTube', podcast: 'Podcast', bluesky: 'Bluesky', mastodon: 'Mastodon', substack: 'Substack', medium: 'Medium' };
+
 const KIND = {
   story:   { glyph: '▤', word: 'Story',   cta: 'Read' },
   article: { glyph: '✎', word: 'Article', cta: 'Read' },
@@ -205,6 +208,19 @@ function fromFeed(r, base, media, crest) {
              embedUrl: web(r.url),
              brand: { name: r.source_name, logo: https(r.source_logo), colour: hex(r.source_colour),
                       href: b + 'creators/?l=' + encodeURIComponent(r.league_slug) + '&o=' + encodeURIComponent(r.outlet_slug) } };
+  }
+  if (r.kind === 'channel') {
+    /* A CREATOR'S CHANNEL (0198): a YouTube channel, a podcast, a Bluesky account read by its feed. Its post opens on
+       its story page here (news/?i=), where a video or an episode plays; the channel's page is the brand's link. */
+    const e = embedOf(r.url);
+    const kind = e ? (['spotify', 'soundcloud', 'apple'].includes(e.provider) ? 'podcast'
+                      : ['youtube', 'tiktok', 'twitch'].includes(e.provider) ? 'video' : 'social')
+                   : r.piece_kind === 'podcast' ? 'podcast' : ['bluesky', 'mastodon'].includes(r.piece_kind) ? 'social' : 'article';
+    return { kind, title: r.title, summary: r.summary, image: https(r.image_url) || (e && e.thumb) || null, when: r.published_at, author: r.author,
+             href: b + 'news/?i=' + encodeURIComponent(r.id), platform: e ? e.label : (PLATFORM[r.piece_kind] || null), tags,
+             embedUrl: e ? web(r.url) : null,
+             brand: { name: r.source_name, logo: https(r.source_logo), colour: hex(r.source_colour),
+                      href: r.source_slug ? b + 'news/?s=' + encodeURIComponent(r.source_slug) : null, site: web(r.source_url) } };
   }
   const img = r.image_url ? (/^https:\/\//.test(r.image_url) ? r.image_url : m(r.image_url)) : null;
   const logo = r.source_logo ? (/^https:\/\//.test(r.source_logo) ? r.source_logo : lg(r.source_logo)) : null;

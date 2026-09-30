@@ -1,9 +1,11 @@
 # News, publishers and creators
 
-Migrations **0194** (the schema) and **0195** (the sources to start with). What the site carries besides a league's own news:
+Migrations **0194** (the schema), **0195** (the sources to start with) and **0198** (adding by link). What the site carries besides a league's own news:
 
 - **Publishers.** A news site read by its feed: Eurohoops, BasketNews, a federation's site.
-- **Creators.** An independent podcast, channel or writer that a league gives a page of its own.
+- **Creators.** Two kinds:
+  - a YouTube channel, a podcast or a Bluesky account read by its feed, added by its link (0198);
+  - an independent podcast, channel or writer that a league gives an outlet of its own, where they publish by hand.
 
 Both appear on the platform's **News** page, in **HOME's FEED**, on each league's news page and on the league's front page. Readers can follow either one.
 
@@ -30,6 +32,34 @@ The card uses the brand's colour, and its logo on a disc when there is no pictur
 The headline is the card's one link, and it covers the card. The league tags and the foot (the publisher's or creator's page here) are links of their own that sit above it. A link is never nested inside another.
 
 A logo ending `#fill` fills its square, and is drawn to the edge of the disc. The fetcher decides this: see `fills_square`.
+
+## Adding a publisher or a creator by its link (0198)
+
+In the platform console's **News** tab, or a league console's **Creators & news sources**, paste one link. The console says what the link is before anything is sent, and suggests publisher or creator. You can change that, add a name, and press **Add**.
+
+At its next read (within half an hour), the reader finds the feed behind the link. From then on every new post arrives, and its followers are told.
+
+| Paste | What is read |
+| --- | --- |
+| A feed (RSS, Atom, JSON Feed) | itself |
+| A website | the feed it names in its page, or one in the usual places (`/feed`, `/rss`, `/feed.xml`…) |
+| A YouTube channel (`/@handle`, `/channel/UC…`) or playlist | YouTube's own feed of its videos, with the channel's name and picture |
+| An Apple Podcasts show | the show's own feed, from Apple's public lookup, with its artwork |
+| Substack, Medium, Bluesky, Mastodon | each one's public feed; Bluesky and Mastodon with the account's name and picture |
+
+Until the first read, the source keeps a stand-in name (`@handle`, or the site's name) and shows as waiting. The first read replaces the name with the feed's own. A link where no feed is found says so, and is tried again every six hours. A link whose feed is already a source is switched off, with the reason.
+
+**Instagram, TikTok, X, Threads and Facebook cannot be added this way.** None of them publishes a feed that can be read without the account owner's permission, and the site never scrapes them. The console and the database refuse them, and say what to do instead:
+- add the same creator's YouTube channel, podcast, website, Substack or Bluesky;
+- or embed single posts in a creator's outlet on a league.
+
+Reading those accounts automatically would need each owner to connect their account through the platform's own API. That means a Meta developer app (Instagram, Threads, Facebook) or a TikTok developer app, each with the platform's app review.
+
+**Spotify** shows no public feed of a show either. Most podcasts are on Apple Podcasts too: paste that link, or the podcast's own feed.
+
+**On the site.** A creator's posts come out of the feeds as `channel`, under **Creators** rather than **Publishers**, and the News page has a row of the creators. A post opens on its story page here (`news/?i=`), where a video, an episode or a post plays in place, with the way to it on its platform. A source can be switched between publisher and creator at any time.
+
+A long feed (a podcast with years of episodes) is cut after its last whole episode within 3 MB. The newest come first, and only the newest 40 are kept anyway.
 
 ## Publishers: the news sources
 
@@ -89,8 +119,8 @@ A logo ending `#fill` fills its square, and is drawn to the edge of the disc. Th
 
 ## Tests
 
-- `supabase/tests/creators.test.mjs`: 0194 and 0195 on PGlite.
-- `scripts/news/fetch_feeds_test.py`: the reader.
+- `supabase/tests/creators.test.mjs`: 0194, 0195 and 0198 on PGlite.
+- `scripts/news/fetch_feeds_test.py`: the reader, and finding the feed behind a link.
 - `supabase/tests/newscard.test.mjs`: the card and the pages' wiring.
 
 All three run in `guard.yml`.

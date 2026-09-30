@@ -205,6 +205,9 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
   border:1px solid color-mix(in oklch,var(--bc) 55%,var(--rule));background:color-mix(in oklch,var(--bc) 30%,var(--panel));
   box-shadow:10px 10px 0 color-mix(in oklch,var(--bc) 50%,transparent)}
 .pc-read-fig img{display:block;width:100%;max-height:min(60vh,540px);object-fit:cover}
+/* a creator's post, playing (0198): the embed sits where the picture would, on the page's own ground */
+.pc-read-fig.pc-read-play{background:var(--panel)}
+.pc-read-fig.pc-read-play .pc-embed{margin:0 auto}
 .pc-read-sum{margin:calc(var(--u,4px)*7) auto 0;max-width:58ch;font-family:var(--f-ui);font-weight:600;
   font-size:clamp(17px,1.9vw,21px);line-height:1.6;color:var(--ink);text-wrap:pretty}
 .pc-read-sum::before{content:"";display:block;width:46px;height:4px;margin:0 auto calc(var(--u,4px)*4);background:var(--bc)}

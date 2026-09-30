@@ -334,6 +334,45 @@ function mountForum(o) {
 }
 
 /* ------------------------------------------------------------- news sources ---- */
+/* WHAT A PASTED LINK IS (0198), said before it is sent: what the reader will look for behind it, and whether it
+   is a creator's or a publisher's to begin with. The platforms that publish no feed anyone may read without the
+   account owner's permission are said so, with what can be done instead; the database refuses them too. */
+const LINK_KINDS = [
+  { re: /^https?:\/\/(www\.|m\.|music\.)?youtube\.com\//i, platform: 'youtube', what: 'a YouTube channel: its new videos', kind: 'creator' },
+  { re: /^https?:\/\/podcasts\.apple\.com\/.*\/id\d{5,12}/i, platform: 'podcast', what: 'an Apple Podcasts show: its new episodes', kind: 'creator' },
+  { re: /^https?:\/\/bsky\.app\/profile\/[^/\s]+/i, platform: 'bluesky', what: 'a Bluesky account: its posts', kind: 'creator' },
+  { re: /^https?:\/\/[a-z0-9-]+\.substack\.com/i, platform: 'substack', what: 'a Substack: its posts', kind: 'creator' },
+  { re: /^https?:\/\/([a-z0-9-]+\.)?medium\.com\//i, platform: 'medium', what: 'a Medium writer: their stories', kind: 'creator' },
+  { re: /^https?:\/\/[^/\s]+\/@[A-Za-z0-9_.-]+\/?$/i, platform: 'mastodon', what: 'a Mastodon account (or one like it): its posts', kind: 'creator' },
+  { re: /(\/feed\/?|\/rss\/?|\.rss|\.xml|\/atom\/?|\/feed\.json)(\?[^\s]*)?$/i, platform: 'feed', what: 'a feed: its items', kind: 'publisher' }
+];
+const NO_FEED_LINKS = [
+  { re: /^https?:\/\/([a-z0-9-]+\.)?instagram\.com(\/|$)/i, name: 'Instagram', via: 'Meta' },
+  { re: /^https?:\/\/([a-z0-9-]+\.)?tiktok\.com(\/|$)/i, name: 'TikTok', via: 'TikTok' },
+  { re: /^https?:\/\/([a-z0-9-]+\.)?(x|twitter)\.com(\/|$)/i, name: 'X', via: 'X' },
+  { re: /^https?:\/\/([a-z0-9-]+\.)?threads\.(net|com)(\/|$)/i, name: 'Threads', via: 'Meta' },
+  { re: /^https?:\/\/([a-z0-9-]+\.)?(facebook|fb)\.com(\/|$)/i, name: 'Facebook', via: 'Meta' },
+  { re: /^https?:\/\/open\.spotify\.com(\/|$)/i, name: 'Spotify', via: 'Spotify' }
+];
+const PLATFORM_NAMES = { youtube: 'YouTube', podcast: 'podcast', bluesky: 'Bluesky', substack: 'Substack', medium: 'Medium',
+  mastodon: 'Mastodon', feed: 'feed', website: 'website' };
+function recogniseLink(url) {
+  const u = String(url || '').trim();
+  if (!u) return null;
+  if (!/^https?:\/\/[^\s<>"]+$/i.test(u)) return { error: 'Paste the whole link, starting https://' };
+  const no = NO_FEED_LINKS.find(x => x.re.test(u));
+  if (no) {
+    return { refused: no.name, why: no.name === 'Spotify'
+      ? 'Spotify shows no public feed of a show. Most podcasts are on Apple Podcasts too: paste that link, or the podcast’s own feed.'
+      : no.name + ' publishes no feed that can be read without the account owner’s permission, so its posts cannot arrive here on their own. ' +
+        'Instead: add the same creator’s YouTube channel, podcast, website, Substack or Bluesky; or embed single posts in a creator’s ' +
+        'outlet on a league. Reading ' + no.name + ' itself would need the account owner to connect it through ' + no.via + '’s own API.' };
+  }
+  const k = LINK_KINDS.find(x => x.re.test(u));
+  return k ? { platform: k.platform, what: k.what, kind: k.kind }
+           : { platform: 'website', what: 'a website: the feed it names, or one in the usual places', kind: 'publisher' };
+}
+
 function mountSources(o) {
   const host = typeof o.host === 'string' ? document.querySelector(o.host) : o.host;
   if (!host) return;
@@ -348,67 +387,123 @@ function mountSources(o) {
     const lid = league ? league.id : null;
     const { data, error } = await sb.rpc('news_sources_admin', { p_league: lid });
     box.textContent = '';
-    box.appendChild(h(league ? 'News sources' : 'News sources for every reader'));
+    box.appendChild(h(league ? 'Publishers & creators' : 'Publishers & creators for every reader'));
     if (error) {
       box.appendChild(el('p', 'empty', /does not exist|schema cache/i.test(errText(error))
         ? 'News sources arrive with migration 0194: it has not been applied to this database yet.'
         : 'Could not read the sources: ' + errText(error)));
       return;
     }
-    box.appendChild(el('p', 'empty', league
-      ? 'News sites of ' + league.name + '’s own — its federation, a local paper, a club’s site — by their RSS or Atom feed. ' +
-        'Read every half hour: the headline, the opening lines and the picture, each linking to the story on its own site, ' +
-        'on the league’s news page and in every reader’s News. A logo is found on the site when you give none.'
-      : 'The sites every reader sees in News: each story also lands on the news page of every league it is about ' +
-        '(its league tags). Read every half hour; a logo is found on the site when you give none.'));
+    box.appendChild(el('p', 'empty', (league
+      ? 'News sites and creators of ' + league.name + '’s own, on the league’s news page and in every reader’s News. '
+      : 'What every reader sees in News; each story also lands on the news page of every league it is about (its league tags). ') +
+      'Paste a link: a website, a feed, a YouTube channel, a podcast, a Substack, Medium, Bluesky or Mastodon account. The feed behind ' +
+      'it is found at the next read (every half hour) and every new post arrives from then on, with its followers told. A logo is found too.'));
+
+    /* ---- add by link ---- */
+    const link = input('paste a link: https://www.youtube.com/@…, a website, a podcast…', 500);
+    link.type = 'url';
+    link.style.width = 'min(100%, 520px)';
+    const kind = el('select', 'ep-input');
+    [['publisher', 'a publisher'], ['creator', 'a creator']].forEach(([v, t]) => { const op = el('option', null, t); op.value = v; kind.appendChild(op); });
+    const nm = input('its name (optional: read from it)', 80);
+    const add = btn('Add', 'pri');
+    const said = el('p', 'empty');
+    said.style.cssText = 'margin:2px 0 8px;min-height:1.4em';
+    let kindTouched = false;
+    kind.addEventListener('change', () => { kindTouched = true; });
+    const tell = () => {
+      const r = recogniseLink(link.value);
+      add.disabled = !!(r && (r.refused || r.error));
+      if (!r) { said.textContent = ''; return; }
+      if (r.error) { said.textContent = r.error; return; }
+      if (r.refused) { said.textContent = r.why; return; }
+      if (!kindTouched) kind.value = r.kind;
+      said.textContent = 'That is ' + r.what + '.';
+    };
+    link.addEventListener('input', tell);
+    add.addEventListener('click', async () => {
+      const r = recogniseLink(link.value);
+      if (!r || r.error || r.refused) return say((r && (r.error || r.why)) || 'Paste a link first.', 'err');
+      add.disabled = true;
+      const { data: d, error: e } = await sb.rpc('add_news_link', { p_league: lid, p_url: link.value.trim(), p_kind: kind.value,
+        p_name: nm.value.trim() || null });
+      add.disabled = false;
+      if (e) {
+        return say(/add_news_link|schema cache|does not exist/i.test(errText(e))
+          ? 'Adding by link arrives with migration 0198: it has not been applied to this database yet.' : errText(e), 'err');
+      }
+      say('Added ' + ((d && d.name) || 'it') + ': its feed is found at the next read (within half an hour), and its posts arrive from then on.', 'ok');
+      draw();
+    });
+    box.appendChild(row(link, kind, nm, add));
+    box.appendChild(said);
+
+    /* ---- the list ---- */
     (data || []).forEach(s => {
       const line = el('div');
       line.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--rule)';
       const logo = el('span');
       logo.style.cssText = 'width:26px;height:26px;flex:none;display:grid;place-items:center;overflow:hidden;background:#fff;border:1px solid var(--rule)';
-      if (s.logo_url) { const i = el('img'); i.src = s.logo_url; i.alt = ''; i.style.cssText = 'width:90%;height:90%;object-fit:contain'; logo.appendChild(i); }
+      if (s.logo_url) { const i = el('img'); i.src = s.logo_url.replace(/#fill$/, ''); i.alt = ''; i.style.cssText = 'width:90%;height:90%;object-fit:contain'; logo.appendChild(i); }
       const name = el('b', null, s.name);
-      const state = !s.enabled ? 'off' : s.last_error ? 'failing: ' + s.last_error : s.last_ok_at ? 'read ' + when(s.last_ok_at) : 'not read yet';
-      const meta = el('span', 'empty', state + ' · ' + (s.item_count || 0) + ' stories · ' + s.feed_url);
+      const isCreator = s.kind === 'creator';
+      const what = (isCreator ? 'CREATOR' : 'PUBLISHER') + (s.platform ? ' · ' + (PLATFORM_NAMES[s.platform] || s.platform) : '');
+      const state = s.resolve_from
+        ? (s.last_error ? 'no feed found yet: ' + s.last_error : 'waiting for its first read, when the feed behind the link is found')
+        : !s.enabled ? 'off' : s.last_error ? 'failing: ' + s.last_error : s.last_ok_at ? 'read ' + when(s.last_ok_at) : 'not read yet';
+      const meta = el('span', 'empty', what + ' · ' + state + ' · ' + (s.item_count || 0) + ' posts · ' + (s.resolve_from || s.feed_url));
       meta.style.cssText = 'flex:1 1 300px;margin:0;overflow-wrap:anywhere' + (s.last_error && s.enabled ? ';color:var(--flare)' : '');
       const page = el('a', 'ep-btn mini', 'page'); page.href = (o.base || '../') + 'news/?s=' + encodeURIComponent(s.slug);
+      const flip = btn(isCreator ? 'a publisher' : 'a creator');
+      flip.title = 'call it ' + (isCreator ? 'a publisher: its posts under Publishers' : 'a creator: its posts under Creators');
+      flip.addEventListener('click', async () => {
+        const { error: e } = await sb.rpc('set_news_source_kind', { p_id: s.id, p_kind: isCreator ? 'publisher' : 'creator' });
+        if (e) return say(errText(e), 'err');
+        say(s.name + ' is ' + (isCreator ? 'a publisher' : 'a creator') + ' now.', 'ok');
+        draw();
+      });
       const onoff = btn(s.enabled ? 'switch off' : 'switch on');
       onoff.addEventListener('click', async () => {
         const { error: e } = await sb.rpc('update_news_source', { p_id: s.id, p_name: s.name, p_site_url: s.site_url, p_feed_url: s.feed_url,
           p_logo_url: s.logo_url, p_colour: s.colour, p_enabled: !s.enabled });
         if (e) return say(errText(e), 'err');
-        say(s.enabled ? s.name + ' is off: its stories leave the pages.' : s.name + ' is on again.', 'ok');
+        say(s.enabled ? s.name + ' is off: its posts leave the pages.' : s.name + ' is on again.', 'ok');
         draw();
       });
       const edit = btn('edit');
       edit.addEventListener('click', () => { line.replaceWith(editor(s)); });
       const del = btn('remove');
       del.addEventListener('click', async () => {
-        if (!confirm('Remove ' + s.name + ' and every story of it on Epinoia?')) return;
+        if (!confirm('Remove ' + s.name + ' and every post of it on Epinoia?')) return;
         const { error: e } = await sb.rpc('delete_news_source', { p_id: s.id });
         if (e) return say(errText(e), 'err');
         say(s.name + ' is removed.', 'ok');
         draw();
       });
-      line.append(logo, name, meta, page, onoff, edit, del);
+      if (s.kind === undefined) flip.hidden = true;                 // before 0198: every source is a publisher
+      line.append(logo, name, meta, page, flip, onoff, edit, del);
       box.appendChild(line);
     });
 
-    /* add one */
-    const nm = input('name (Eurohoops)', 80), site = input('its site: https://…', 300), feed = input('its feed: https://…/feed/', 500);
-    const logo = input('logo: https://… (optional: found on the site)', 500), colour = input('#rrggbb (optional)', 7);
-    const add = btn('Add the source', 'pri');
-    add.addEventListener('click', async () => {
+    /* ---- the long way: a site and its feed, typed in ---- */
+    const more = el('details');
+    more.style.marginTop = '10px';
+    more.appendChild(el('summary', 'empty', 'or give a site and its feed yourself'));
+    const mnm = input('name (Eurohoops)', 80), site = input('its site: https://…', 300), feed = input('its feed: https://…/feed/', 500);
+    const mlogo = input('logo: https://… (optional: found on the site)', 500), colour = input('#rrggbb (optional)', 7);
+    const madd = btn('Add the source', 'pri');
+    madd.addEventListener('click', async () => {
       if (!webUrl(site.value) || !webUrl(feed.value)) return say('A source needs its site and its feed as web addresses.', 'err');
-      if (logo.value.trim() && !https(logo.value)) return say('A logo is an https address.', 'err');
-      const { error: e } = await sb.rpc('add_news_source', { p_league: lid, p_name: nm.value, p_site_url: site.value.trim(), p_feed_url: feed.value.trim(),
-        p_logo_url: logo.value.trim() || null, p_colour: colour.value.trim() || null });
+      if (mlogo.value.trim() && !https(mlogo.value)) return say('A logo is an https address.', 'err');
+      const { error: e } = await sb.rpc('add_news_source', { p_league: lid, p_name: mnm.value, p_site_url: site.value.trim(), p_feed_url: feed.value.trim(),
+        p_logo_url: mlogo.value.trim() || null, p_colour: colour.value.trim() || null });
       if (e) return say(errText(e), 'err');
-      say('Added: its stories arrive with the next read (within half an hour).', 'ok');
+      say('Added: its posts arrive with the next read (within half an hour).', 'ok');
       draw();
     });
-    box.appendChild(row(nm, site, feed));
-    box.appendChild(row(logo, colour, add));
+    more.append(row(mnm, site, feed), row(mlogo, colour, madd));
+    box.appendChild(more);
   }
 
   function editor(s) {
@@ -431,5 +526,5 @@ function mountSources(o) {
   draw();
 }
 
-return { mount, mountSources, mountForum, lookUpInvite, inviteCode };
+return { mount, mountSources, mountForum, lookUpInvite, inviteCode, recogniseLink };
 }));
