@@ -67,7 +67,7 @@
   background:#0a0a0a;color:#ffe14d;font-family:var(--f-score);font-size:calc(var(--sz)*.27);line-height:calc(var(--sz)*.32);text-align:center;border-radius:3px;
   box-shadow:0 0 0 1.5px var(--ground)}
 .wc-row{display:inline-flex;gap:10px;align-items:center;padding:4px 0 4px 4px}
-.wc-row-l{gap:16px}
+.wc-row-l{gap:16px;flex-wrap:wrap}
 
 /* a rail of circles to choose from */
 .wrail{display:flex;gap:6px 8px;flex-wrap:wrap;justify-content:center;margin:10px 0 14px}
@@ -260,5 +260,6 @@ table.wsg4{max-width:none}
   .wtile .v{font-size:24px}
   .wcard{padding:14px}
   .wrot-g{grid-template-columns:1fr}
+  .wc-row-l{gap:12px}.wc-row-l .wc-l{--sz:50px}
   .wslot{width:56px}.wslot .wc-l{--sz:52px}.wslot-e{width:52px;height:52px}
 }

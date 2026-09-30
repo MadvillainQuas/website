@@ -597,6 +597,12 @@ jobs:
         # beside Oliver's 40 / 25 / 20 / 15, per league above a minimum, the charts, and a read by JSON path, never the blob
         run: node supabase/tests/winning.test.mjs
 
+      - name: The WOWY / lineups page - colour scale, reliability, pair buckets, column picker, gate, address
+        # epinoia/wowylogic.js over lineups.js, pure: percentile colours turned round where lower is better, small samples
+        # labelled with thresholds the reader moves, the four pair buckets adding up to the team, units of a size, the column
+        # picker's caps by width, the preview gate following wowyPreviewMax, the address round trip, and the page's contracts
+        run: node supabase/tests/wowy-page.test.mjs
+
       - name: The lineups tab - fives, trios and pairs, filtered and sorted in place
         # epinoia/game/lineups.js over boxscore.js lineupCombos on a real game: the fives are the old tab's, a pair is
         # every stretch the two shared (ten to a five, so ten times the fives' minutes and points), the filters and

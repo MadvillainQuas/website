@@ -73,7 +73,7 @@ const COLS = [
   { key: 'dtovr', label: 'FORCED/100', name: 'Turnovers forced per 100', group: 'board', dir: 1, fmt: 'n1' },
   { key: 'ptsf',  label: 'PTS/100',  name: 'Points scored per 100',    group: 'board', dir: 1,  fmt: 'n1' }
 ];
-const BY_KEY = {}; COLS.forEach(c => { BY_KEY[c.key] = c; });
+const BY_KEY = Object.create(null); COLS.forEach(c => { BY_KEY[c.key] = c; });
 const col = k => BY_KEY[k] || null;
 
 /* what a five's row shows before the reader chooses: more on a wide screen, the essentials on a phone */

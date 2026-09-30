@@ -443,7 +443,7 @@ function overviewView(ctx, host) {
   const tscale = ctx.teamScales();
   [['net', 'NET RATING'], ['ortg', 'OFF RATING'], ['drtg', 'DEF RATING'], ['pace', 'PACE'], ['mins', 'MINUTES'], ['poss', 'POSSESSIONS']].forEach(([k, l]) => {
     const c = W.col(k); const t = el('div', 'wtile'); const v = el('div', 'v', W.fmt(k, base[k])); const tn = c.dir && tscale[k] ? W.tone(tscale[k], base[k], c.dir) : null;
-    const bg = W.tint(tn); if (bg) t.style.background = bg;
+    const bg = W.tint(tn); if (bg) t.style.backgroundImage = "linear-gradient(" + bg + "," + bg + ")";
     if (tn != null && W.band(tn) >= 5) t.dataset.a = '▲'; else if (tn != null && W.band(tn) <= 1) t.dataset.a = '▼';
     t.appendChild(v); t.appendChild(el('div', 'l', l));
     if (tn != null) t.appendChild(el('div', 's', Math.round(((tn + 1) / 2) * 100) + 'th pct of teams'));
@@ -537,7 +537,7 @@ function onOffView(ctx, host, withHost) {
     h.appendChild(ht); c.appendChild(h);
     const v = el('div', 'woo-v ' + (side.net > 0 ? 'pos' : side.net < 0 ? 'neg' : ''), W.fmt('net', side.net));
     const scl = k === 'on' ? sc.onNet : sc.offNet;
-    const tn = scl ? W.tone(scl, side.net, 1) : null; const bg = W.tint(tn); if (bg && r !== 'tiny') c.style.background = bg;
+    const tn = scl ? W.tone(scl, side.net, 1) : null; const bg = W.tint(tn); if (bg && r !== 'tiny') c.style.backgroundImage = "linear-gradient(" + bg + "," + bg + ")";
     c.appendChild(v); c.appendChild(el('div', 'woo-l', 'team net rating per 100 possessions'));
     const row = el('div', 'woo-r');
     [['ortg', 'ORTG'], ['drtg', 'DRTG'], ['pace', 'PACE'], ['mins', 'MIN'], ['poss', 'POSS']].forEach(([kk, l]) => { const d = el('div'); d.append(el('b', null, W.fmt(kk, side[kk])), el('i', null, l)); row.appendChild(d); });
@@ -652,7 +652,7 @@ function pairView(ctx, host) {
       const label = bk.key === 'both' ? 'Both on' : bk.key === 'neither' ? 'Neither on' : bk.key === 'aOnly' ? short(ctx, a) + ' without ' + short(ctx, b) : short(ctx, b) + ' without ' + short(ctx, a);
       c.appendChild(el('b', null, label));
       const net = el('div', 'wbucket-v ' + (bk.line.net > 0 ? 'pos' : bk.line.net < 0 ? 'neg' : ''), bk.line.stints ? W.fmt('net', bk.line.net) : '—');
-      const tn = bk.line.stints && scales.net ? W.tone(scales.net, bk.line.net, 1) : null; const bg = W.tint(tn); if (bg && rel !== 'tiny') c.style.background = bg;
+      const tn = bk.line.stints && scales.net ? W.tone(scales.net, bk.line.net, 1) : null; const bg = W.tint(tn); if (bg && rel !== 'tiny') c.style.backgroundImage = "linear-gradient(" + bg + "," + bg + ")";
       c.appendChild(net);
       c.appendChild(el('div', 'wsub', bk.line.stints ? W.fmt('mins', bk.line.mins) + ' min · ' + W.fmt('poss', bk.line.poss) + ' poss · ' + W.fmt('ortg', bk.line.ortg) + ' / ' + W.fmt('drtg', bk.line.drtg) : 'never happened'));
       const chip = bk.line.stints ? relChip(rel, ctx.thr) : null; if (chip) c.appendChild(chip);
@@ -766,7 +766,7 @@ function buildView(ctx, host) {
     const tiles = el('div', 'wtiles');
     ['net', 'ortg', 'drtg', 'pace', 'mins', 'poss'].forEach(k => {
       const c = W.col(k); const t = el('div', 'wtile'); t.appendChild(el('div', 'v', W.fmt(k, line[k]))); t.appendChild(el('div', 'l', c.label));
-      const tn = c.dir && rel !== 'tiny' && scales[k] ? W.tone(scales[k], line[k], c.dir) : null; const bg = W.tint(tn); if (bg) t.style.background = bg;
+      const tn = c.dir && rel !== 'tiny' && scales[k] ? W.tone(scales[k], line[k], c.dir) : null; const bg = W.tint(tn); if (bg) t.style.backgroundImage = "linear-gradient(" + bg + "," + bg + ")";
       if (tn != null && W.band(tn) >= 5) t.dataset.a = '▲'; else if (tn != null && W.band(tn) <= 1) t.dataset.a = '▼';
       tiles.appendChild(t);
     });
