@@ -213,6 +213,12 @@ async function chooseSeason(team, lg) {
        (docs/calendar.md). */
     const ics = CFG.supabaseUrl + '/functions/v1/ics/team/' + encodeURIComponent(team.slug || team.id) + '.ics';
     if (window.EpinoiaCalendar) window.EpinoiaCalendar.mount(acts, { url: ics, name: team.name });
+    /* SUGGEST AN EDIT (suggest.js, 0199): the crest on hover, and every detail of the page from the button */
+    SUGGEST.team = team;
+    if (window.EpinoiaSuggest) {
+      window.EpinoiaSuggest.attach(badge, crestChoice(), { at: 'icon' });
+      acts.appendChild(window.EpinoiaSuggest.button(suggestList, { title: team.name }));
+    }
     $('#tname').parentNode.appendChild(acts);
     const lg = team.leagues || {};
     if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
@@ -1137,6 +1143,7 @@ async function venue(team) {
   const out = await window.EpinoiaVenue.render({
     host: '#venue', team, api, cfg: CFG
   });
+  SUGGEST.venue = (out && out.suggest) || [];
   const note = $('#venueNote');
   if (note) note.textContent = (out && out.photo) ? '' : 'no photograph yet';
 }
@@ -1222,6 +1229,19 @@ function squadAverages(players, ages, plan) {
   return tf;
 }
 
+/* ------------------------------------------------------------ suggestions ---
+   A FAN MAY SUGGEST A CORRECTION to what only the club, the league or the platform may change (suggest.js,
+   0199): the crest, the coaching staff (a name, a role, someone who has left, someone missing) and the arena
+   (venue.js hands back its name, address, city and place on the map). Hovering one offers it; the button
+   beside the follow bell reaches all of them. The club's own managers edit the staff in place instead. */
+const SUGGEST = { team: null, staff: [], venue: [] };
+const crestChoice = () => ({ type: 'team', id: SUGGEST.team.id, field: 'photo', subject: SUGGEST.team.name, label: 'crest' });
+const addStaffChoice = () => ({ type: 'team', id: SUGGEST.team.id, field: 'staff_add', subject: SUGGEST.team.name });
+const staffChoices = s => ['staff_name', 'staff_role', 'staff_remove'].map(f => ({
+  type: 'staff', id: s.id, field: f, subject: s.name, current: f === 'staff_name' ? s.name : f === 'staff_role' ? s.role : null }));
+const suggestList = () => (SUGGEST.team
+  ? [crestChoice(), addStaffChoice()].concat(...SUGGEST.staff.map(staffChoices), SUGGEST.venue || []) : []);
+
 /* ------------------------------------------------------------------ staff ---
    The bench, above the squad — head coach first, then whatever order a
    programme would print.
@@ -1270,7 +1290,21 @@ async function staff(team, canEdit, sb) {
                   `&order=sort,role`);
   } catch (_) { rows = []; }
 
-  if (!rows.length && !canEdit) return;      // no staff on file, nothing to say
+  const S = window.EpinoiaSuggest && SUGGEST.team ? window.EpinoiaSuggest : null;
+  SUGGEST.staff = canEdit ? [] : rows.filter(s => s.id && s.name);
+  if (!rows.length && !canEdit) {
+    /* no staff on file: nothing to list, but a fan may know who coaches the club */
+    if (!S) return;
+    const head = el('div', 'staffhead');
+    head.appendChild(el('div', 'sh', 'Coaching & support staff'));
+    host.appendChild(head);
+    const ask = el('div', 'sg-ask');
+    ask.setAttribute('data-i18n-ctx', 'suggest');
+    ask.appendChild(el('span', null, 'No staff listed yet. Know who coaches this club?'));
+    ask.appendChild(S.button([addStaffChoice()], { label: 'suggest a coach', cls: 'mini', title: team.name }));
+    host.appendChild(ask);
+    return;
+  }
 
   const head = el('div', 'staffhead');
   head.appendChild(el('div', 'sh', 'Coaching & support staff'));
@@ -1291,6 +1325,7 @@ async function staff(team, canEdit, sb) {
       a.appendChild(el('span', null, 'years'));
       c.appendChild(a);
     }
+    if (S && s.id && s.name) S.attach(c, staffChoices(s), { at: 'top' });
     return c;
   };
 
@@ -1376,6 +1411,11 @@ async function staff(team, canEdit, sb) {
   };
 
   rows.forEach(s => grid.appendChild(canEdit ? editCard(s) : readOnlyCard(s)));
+  if (!canEdit && S) {
+    const add = el('div', 'staffcard add');
+    add.appendChild(S.button([addStaffChoice()], { label: 'suggest someone', title: team.name }));
+    grid.appendChild(add);
+  }
 
   if (canEdit) {
     /* the role suggestions, shared by every card */

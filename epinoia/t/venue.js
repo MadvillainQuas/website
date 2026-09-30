@@ -515,6 +515,7 @@ async function render(opts) {
 
   /* a recorded venue, else the one the club's home fixtures name most often */
   const name = team.home_venue || team.home_venue_auto || null, addr = team.home_venue_address;
+  let suggest = [];
   const wrap = el('div', 'vwrap');
   wrap.style.setProperty('--ink-c', team.colour || '#93f2bf');
 
@@ -547,7 +548,8 @@ async function render(opts) {
     }
 
     const head = el('div', 'vhead');
-    head.appendChild(el('div', 'vname', name || 'Home venue'));
+    const vnameEl = head.appendChild(el('div', 'vname', name || 'Home venue'));
+    let vaddrEl = null;
     if (!team.home_venue && team.home_venue_auto) {
       head.appendChild(el('div', 'vaddr', 'from the club\u2019s home fixtures' +
         (team.home_venue_auto_n > 1 ? ' (' + team.home_venue_auto_n + ' games)' : '') +
@@ -557,6 +559,7 @@ async function render(opts) {
       /* Each line of the address on its own line, as it would be written on an
          envelope. A comma-separated run is harder to read and harder to copy. */
       const a = el('div', 'vaddr');
+      vaddrEl = a;
       const parts = String(addr).split(',').map(x => x.trim()).filter(Boolean);
       parts.forEach((part, i) => {
         a.appendChild(document.createTextNode(part + (i < parts.length - 1 ? ',' : '')));
@@ -580,6 +583,19 @@ async function render(opts) {
       window.EpinoiaGoVenue.mount(head, { venueId: goVenue, venueName: name, base: '../' });
     }
     wrap.appendChild(head);
+    /* SUGGEST AN EDIT (suggest.js, 0199): the arena's name, address, city and place on the map, suggested
+       against the arena itself - so an accepted correction reaches every club that plays there and EPINOIA
+       GO's stamps - and handed back to team.js for the page's button. Only for an arena known as one. */
+    const S = typeof window !== 'undefined' ? window.EpinoiaSuggest : null;
+    if (S && goVenue) {
+      const v = A && A.main && A.main.id === goVenue ? A.main : null;
+      const arena = (v && v.name) || name || 'Home venue';
+      const ch = (field, current) => ({ type: 'venue', id: goVenue, field, subject: arena, current: current == null ? null : current });
+      suggest = [ch('venue_name', v ? v.name : name), ch('venue_address', v ? v.address : addr), ch('venue_city', v && v.city),
+                 ch('venue_pin', v && v.lat != null && v.lng != null ? Number(v.lat).toFixed(6) + ',' + Number(v.lng).toFixed(6) : null)];
+      S.attach(vnameEl, suggest[0]);
+      if (vaddrEl) S.attach(vaddrEl, suggest[1]);
+    }
 
     /* WHAT THE MAP IS ASKED FOR. The address when the club recorded one.
        Otherwise the venue's name — and, because "Sports Centre" alone lands
@@ -602,8 +618,9 @@ async function render(opts) {
       ? main.lat + ',' + main.lng : null;
     const query = pinned || [name, addr, hint].filter(Boolean).join(', ');
     const grid = el('div', 'vgrid');
-    grid.append(photoUrl ? photoPane(team, photoUrl) : stockPane(),
-                mapPane(team, query, pinned && main.place_id));
+    const map = mapPane(team, query, pinned && main.place_id);
+    grid.append(photoUrl ? photoPane(team, photoUrl) : stockPane(), map);
+    if (suggest.length) S.attach(map, suggest[3], { at: 'top' });
     wrap.appendChild(grid);
     const more = otherArenas(team);
     if (more) wrap.appendChild(more);
@@ -614,7 +631,7 @@ async function render(opts) {
   wrap.appendChild(await contactBlock(team, opts));
   await socialBlock(team, opts, wrap);
 
-  return { photo: wrap.dataset.photo === '1' };
+  return { photo: wrap.dataset.photo === '1', suggest };
 }
 
 return { render, stockPane, otherArenas };

@@ -16,12 +16,12 @@
 <title>Platform · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=550"></script>
-<script src="../../i18n.js?v=550" data-i18n-packs="admin platform"></script>
-<script src="../../glyphs.js?v=550" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=550">
-<link rel="stylesheet" href="../../kit/nav.css?v=550">
-<link rel="stylesheet" href="../jobbar.css?v=550">
+<script src="../../appmode.js?v=551"></script>
+<script src="../../i18n.js?v=551" data-i18n-packs="admin platform"></script>
+<script src="../../glyphs.js?v=551" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=551">
+<link rel="stylesheet" href="../../kit/nav.css?v=551">
+<link rel="stylesheet" href="../jobbar.css?v=551">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -308,7 +308,8 @@
   .gq-cap{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
   .gq-card .row{padding:0 10px 10px;margin:0}
 </style>
-<link rel="stylesheet" href="../../kit/legibility.css?v=550">
+<link rel="stylesheet" href="../../kit/suggest.css?v=551">
+<link rel="stylesheet" href="../../kit/legibility.css?v=551">
 </head>
 <body>
 <div class="ep-frame">
@@ -615,6 +616,14 @@
       </p>
       <div id="mediaList"></div>
 
+      <!-- 0199: corrections fans suggested, every league's (suggestions-ui.js) -->
+      <h3>Suggested edits</h3>
+      <p class="lead">
+        Corrections fans suggested to players, staff and arenas, in every league. Each league&rsquo;s
+        administrators see their own in their console; a suggestion about something in no league waits only here.
+      </p>
+      <div id="suggestHost"></div>
+
       <!-- EPINOIA GO's "Games been to" (0167), built by go-photos-ui.js -->
       <h3>Fans’ photographs (EPINOIA GO)</h3>
       <div id="goPhotoQueue"></div>
@@ -760,20 +769,21 @@
   </div>
 </div>
 
-<script src="../../config.js?v=550" defer></script>
-<script src="../../vendor/supabase.js?v=550" defer></script>
-<script src="../access-ui.js?v=550" defer></script>
-<script src="../creators-ui.js?v=550" defer></script>
-<script src="../../homearenas.js?v=550" defer></script>
-<script src="arenas-ui.js?v=550" defer></script>
-<script src="analytics-ui.js?v=550" defer></script>
-<script src="links-ui.js?v=550" defer></script>
-<script src="go-photos-ui.js?v=550" defer></script>
-<script src="../jobbar.js?v=550" defer></script>
-<script src="reset-ui.js?v=550" defer></script>
-<script src="../../upload.js?v=550" defer></script>
-<script src="platform.js?v=550" defer></script>
-<script src="../../go/logo.js?v=550" defer></script>
-<script src="../../nav.js?v=550" defer></script>
+<script src="../../config.js?v=551" defer></script>
+<script src="../../vendor/supabase.js?v=551" defer></script>
+<script src="../access-ui.js?v=551" defer></script>
+<script src="../creators-ui.js?v=551" defer></script>
+<script src="../../homearenas.js?v=551" defer></script>
+<script src="arenas-ui.js?v=551" defer></script>
+<script src="analytics-ui.js?v=551" defer></script>
+<script src="links-ui.js?v=551" defer></script>
+<script src="go-photos-ui.js?v=551" defer></script>
+<script src="../suggestions-ui.js?v=551" defer></script>
+<script src="../jobbar.js?v=551" defer></script>
+<script src="reset-ui.js?v=551" defer></script>
+<script src="../../upload.js?v=551" defer></script>
+<script src="platform.js?v=551" defer></script>
+<script src="../../go/logo.js?v=551" defer></script>
+<script src="../../nav.js?v=551" defer></script>
 </body>
 </html>

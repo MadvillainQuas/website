@@ -1376,6 +1376,16 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/fan-profiles.test.mjs
 
+      - name: Suggested edits - fans suggest, the league's and the platform's moderators decide (0199)
+        # the pages first (suggest.js's feet-and-inches and Google Maps pins, the fields, positions and reasons the
+        # database has, the player's, the club's and the arena's hooks, never a player under 18, both consoles'
+        # queues, the words in Spanish and Japanese); then on a real Postgres (PGlite): the checks a value passes,
+        # where a suggestion goes and who sees it, accepting (with a correction) and rejecting with the fan told,
+        # fans saying the same as one, a fan's photograph through Photographs, the limits, and who may call what
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/suggestions.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the

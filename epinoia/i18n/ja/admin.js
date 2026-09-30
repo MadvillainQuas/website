@@ -9,6 +9,15 @@
   if (!I) return;
   I.register('ja', {
     phrases: {
+      /* 0199: suggested edits (suggestions-ui.js), the section and its messages */
+      'Suggested edits': '修正の提案',
+      'corrections fans suggested to the league’s players, staff and arenas — accept, correct or reject': 'ファンが提案したリーグの選手・スタッフ・アリーナの修正。承認・修正・却下',
+      'Corrections fans suggested to players, staff and arenas, in every league. Each league’s administrators see their own in their console; a suggestion about something in no league waits only here.': 'すべてのリーグで、ファンが提案した選手・スタッフ・アリーナの修正です。各リーグの管理者は自分のコンソールで確認できます。どのリーグにも属さない項目の提案はここだけに表示されます。',
+      'That value does not pass the checks for this detail.': 'この値はこの項目のチェックを通りません。',
+      'This player is under 18: their details are the league’s alone.': 'この選手は18歳未満です。情報はリーグのみが管理します。',
+      'A picture is decided in Photographs.': '画像は「写真」で判断します。',
+      'That suggestion is no longer there.': 'その提案はもうありません。',
+      'That did not go through.': '処理できませんでした。',
       /* ---- the console: bar, sign-in, section headings ---- */
       'platform console': 'プラットフォーム管理画面',
       'Administration is by magic link — there is no password to lose. Enter the address your account uses and a one-time link arrives by email.': '管理画面にはメールで届くログインリンクで入ります。パスワードは不要です。アカウントのメールアドレスを入力すると、1回だけ使えるリンクがメールで届きます。',
@@ -776,6 +785,38 @@
     },
 
     ctx: {
+      /* 0199: the moderators' queue of suggested edits (suggestions-ui.js) */
+      suggestions: {
+        'accept': '承認',
+        'leaves the club': '退団',
+        'not set': '未設定',
+        'a fan': 'ファン',
+        'source ↗': '出典 ↗',
+        'a note to the fan (optional)': '提案者へのメモ（任意）',
+        'The value to put in: correct it first if needed': '登録する値（必要なら先に修正）',
+        'No suggestions are waiting. When a fan suggests a correction to a player, the staff or an arena, it waits here.': '待機中の提案はありません。ファンが選手・スタッフ・アリーナの修正を提案すると、ここに表示されます。',
+        'Nothing more waiting.': '他に待機中のものはありません。',
+        'Not on the server yet: migration 0199 needs pushing.': 'まだサーバーにありません。マイグレーション 0199 を適用してください。',
+        'The queue could not be read.': 'キューを読み込めませんでした。',
+        'suggested by a fan': 'ファンの提案',
+        'first name': '名',
+        'last name': '姓',
+        'height (cm)': '身長（cm）',
+        'weight (kg)': '体重（kg）',
+        'wingspan (cm)': 'ウイングスパン（cm）',
+        'position': 'ポジション',
+        'previous club': '前所属クラブ',
+        'photograph': '写真',
+        'a new member of staff': '新しいスタッフ',
+        'name': '名前',
+        'role': '役職',
+        'no longer with the club': '退団した',
+        'arena name': 'アリーナ名',
+        'address': '住所',
+        'city': '都市',
+        'place on the map': '地図上の位置',
+        'add': '追加'
+      },
       msg: {
         'revoked': '取り消しました',
         'removed': '削除しました',
@@ -844,10 +885,17 @@
     },
 
     units: {
+      'waiting': '{n}件待ち',
       'fixture': '{n}試合'
     },
 
     ctxPatterns: {
+      suggestions: [
+        [/^1 suggested picture waits in Photographs$/, '提案された画像1件が「写真」で待機中'],
+        [/^(\d+) suggested pictures wait in Photographs$/, '提案された画像$1件が「写真」で待機中'],
+        [/^\+1 other fan agrees$/, 'ほか1人のファンも同意'],
+        [/^\+(\d+) other fans agree$/, 'ほか$1人のファンも同意']
+      ],
       msg: [
         [/^Saved (.+)\.$/, '$1を保存しました。'],
         [/^Saved: (.+)\.$/, (m, T) => '保存しました: ' + T(m[1]) + '。'],

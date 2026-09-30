@@ -990,6 +990,8 @@ function mountGovernance() {
   if (window.EpinoiaCreatorsUI) window.EpinoiaCreatorsUI.mount({ host: '#creatorsPanel', sb, league: () => league, say, base: '../' });
   /* THE LEAGUE'S FORUM (0197): its Discord server. */
   if (window.EpinoiaCreatorsUI && window.EpinoiaCreatorsUI.mountForum) window.EpinoiaCreatorsUI.mountForum({ host: '#forumPanel', sb, league: () => league, say, base: '../' });
+  /* SUGGESTED EDITS (0199): corrections fans suggested to the league's players, staff and arenas */
+  if (window.EpinoiaSuggestionsUI) window.EpinoiaSuggestionsUI.mount({ host: '#suggestPanel', sb, league: () => league, say, base: '../' });
   window.EpinoiaAppearance.mount({ host: '#appearancePanel', sb, league, say });
   window.EpinoiaEmbedsUI.mount({ host: '#embedsPanel', sb, league,
                                  teams: byIdObj(), say });
@@ -1147,6 +1149,10 @@ async function loadMediaQueue() {
     return;
   }
 
+  /* a picture a fan suggested (0199) is marked, with what they said about it */
+  const SU = window.EpinoiaSuggestionsUI;
+  const fanNotes = SU && rows.some(m => SU.isSuggested(m.storage_path)) ? await SU.photoNotes(sb, league.id) : null;
+
   for (const m of rows) {
     const row = el('div', 'mq');
 
@@ -1170,6 +1176,7 @@ async function loadMediaQueue() {
                el('div', 'mt', m.owner_type + ' · uploaded ' +
                   new Date(m.created_at).toLocaleDateString('en-GB',
                     { day: '2-digit', month: 'short' })));
+    if (fanNotes && SU.isSuggested(m.storage_path)) who.appendChild(SU.fanLine(fanNotes.get(String(m.id))));
     row.appendChild(who);
 
     const ac = el('div', 'ac');

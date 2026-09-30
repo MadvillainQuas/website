@@ -9,6 +9,15 @@
   if (!I) return;
   I.register('es', {
     phrases: {
+      /* 0199: suggested edits (suggestions-ui.js), the section and its messages */
+      'Suggested edits': 'Cambios sugeridos',
+      'corrections fans suggested to the league’s players, staff and arenas — accept, correct or reject': 'correcciones que la afición sugiere sobre jugadores, cuerpo técnico y pabellones de la liga: acepta, corrige o rechaza',
+      'Corrections fans suggested to players, staff and arenas, in every league. Each league’s administrators see their own in their console; a suggestion about something in no league waits only here.': 'Correcciones que la afición sugiere sobre jugadores, cuerpo técnico y pabellones, en todas las ligas. Los administradores de cada liga ven las suyas en su consola; una sugerencia sobre algo que no está en ninguna liga solo espera aquí.',
+      'That value does not pass the checks for this detail.': 'Ese valor no supera las comprobaciones de este dato.',
+      'This player is under 18: their details are the league’s alone.': 'Tiene menos de 18 años: sus datos solo los gestiona la liga.',
+      'A picture is decided in Photographs.': 'Las imágenes se deciden en Fotografías.',
+      'That suggestion is no longer there.': 'Esa sugerencia ya no está.',
+      'That did not go through.': 'No se ha podido hacer.',
       /* ---- the console: bar, sign-in, section headings ---- */
       'platform console': 'Panel de la plataforma',
       'Administration is by magic link — there is no password to lose. Enter the address your account uses and a one-time link arrives by email.': 'La administración funciona con un enlace mágico: no hay contraseña que perder. Escribe la dirección de tu cuenta y recibirás por correo un enlace de un solo uso.',
@@ -776,6 +785,38 @@
     },
 
     ctx: {
+      /* 0199: the moderators' queue of suggested edits (suggestions-ui.js) */
+      suggestions: {
+        'accept': 'aceptar',
+        'leaves the club': 'deja el club',
+        'not set': 'sin dato',
+        'a fan': 'aficionado/a',
+        'source ↗': 'fuente ↗',
+        'a note to the fan (optional)': 'una nota para quien lo sugirió (opcional)',
+        'The value to put in: correct it first if needed': 'El valor que se guardará: corrígelo antes si hace falta',
+        'No suggestions are waiting. When a fan suggests a correction to a player, the staff or an arena, it waits here.': 'No hay sugerencias pendientes. Cuando alguien sugiera una corrección de un jugador, del cuerpo técnico o de un pabellón, esperará aquí.',
+        'Nothing more waiting.': 'No queda nada pendiente.',
+        'Not on the server yet: migration 0199 needs pushing.': 'Aún no está en el servidor: hay que subir la migración 0199.',
+        'The queue could not be read.': 'No se ha podido leer la cola.',
+        'suggested by a fan': 'sugerida por la afición',
+        'first name': 'nombre',
+        'last name': 'apellidos',
+        'height (cm)': 'altura (cm)',
+        'weight (kg)': 'peso (kg)',
+        'wingspan (cm)': 'envergadura (cm)',
+        'position': 'posición',
+        'previous club': 'club anterior',
+        'photograph': 'fotografía',
+        'a new member of staff': 'un nuevo miembro del cuerpo técnico',
+        'name': 'nombre',
+        'role': 'cargo',
+        'no longer with the club': 'ya no está en el club',
+        'arena name': 'nombre del pabellón',
+        'address': 'dirección',
+        'city': 'ciudad',
+        'place on the map': 'ubicación en el mapa',
+        'add': 'añadir'
+      },
       msg: {
         'revoked': 'Revocado',
         'removed': 'Quitado',
@@ -844,10 +885,17 @@
     },
 
     units: {
+      'waiting': '{n} en espera',
       'fixture': '{n} partido'
     },
 
     ctxPatterns: {
+      suggestions: [
+        [/^1 suggested picture waits in Photographs$/, '1 imagen sugerida espera en Fotografías'],
+        [/^(\d+) suggested pictures wait in Photographs$/, '$1 imágenes sugeridas esperan en Fotografías'],
+        [/^\+1 other fan agrees$/, 'otra persona más está de acuerdo'],
+        [/^\+(\d+) other fans agree$/, '$1 personas más están de acuerdo']
+      ],
       msg: [
         [/^Saved (.+)\.$/, 'Guardado: $1.'],
         [/^Saved: (.+)\.$/, (m, T) => 'Guardado: ' + T(m[1]) + '.'],
