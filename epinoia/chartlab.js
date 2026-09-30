@@ -1445,7 +1445,7 @@ async function mountAsync(opts) {
   wrap.textContent = '';
   const live = h('div', { class: 'cl-live', role: 'status', 'aria-live': 'polite' });
   const head = h('div', { class: 'cl-head' });
-  const hint = h('p', { class: 'cl-hint', text: 'Pick any two statistics · pin players in the search box · switch a value to compare with the league average · click a chart, then scroll to zoom, drag to pan' });
+  const hint = h('p', { class: 'cl-hint', text: 'Pick any two statistics · find and pin players, or click a dot · read values against the league average · click a chart, then scroll to zoom' });
   const find = h('div', { class: 'cl-find cl-pophost' });
   const optsRow = h('div', { class: 'cl-opts cl-pophost' });
   const strip = h('div', { class: 'cl-strip' });
@@ -1747,7 +1747,7 @@ async function mountAsync(opts) {
     };
     state.pin.filter(id => by.has(id)).forEach(id => { const e = by.get(id); chips.appendChild(mk(e.name, e.colour, () => pin(id, false), e.clubName || '', !inPool.has(id), id)); });
     if (state.ent === 'p') state.hl.forEach(id => { const c = E.player.clubs.find(x => x.id === id); if (c) chips.appendChild(mk(c.short || c.name, c.colour, () => hlTeam(id, false), 'every player of ' + c.name, false, null)); });
-    if (!chips.children.length) chips.appendChild(h('span', { class: 'cl-chips-none', text: state.ent === 't' ? 'No team pinned: everybody is the same weight.' : 'Nobody pinned: everybody is the same weight.' }));
+    chips.hidden = !chips.children.length;
   }
 
   /* ---------------------------------------------------------------- options row --- */
@@ -1902,7 +1902,7 @@ async function mountAsync(opts) {
       key('LOG X', { on: !!ch.xl, title: logOk('x') ? 'logarithmic X axis' : 'log needs the plain values (ABS)', disabled: !logOk('x'), click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; a.xl = a.xl ? 0 : 1; }, 'all'); } }),
       key('LOG Y', { on: !!ch.yl, title: logOk('y') ? 'logarithmic Y axis' : 'log needs the plain values (ABS)', disabled: !logOk('y'), click: () => { views[ci] = {}; change(s => { const a = ci ? s.b : s.a; a.yl = a.yl ? 0 : 1; }, 'all'); } })
     ]);
-    axes.append(h('span', { class: 'cl-badge', text: two ? (ci ? 'B' : 'A') : 'AXES' }), yG, y2G, xG, keys);
+    [h('span', { class: 'cl-badge', text: two ? (ci ? 'B' : 'A') : 'AXES' }), yG, y2G, xG, keys].filter(Boolean).forEach(n => axes.appendChild(n));
     const svgHost = h('div', { class: 'cl-svghost' });
     const tip = h('div', { class: 'cl-tip', hidden: true, role: 'tooltip' });
     const zoom = h('div', { class: 'cl-zoom' }, [
