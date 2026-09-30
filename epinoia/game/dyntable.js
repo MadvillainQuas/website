@@ -139,7 +139,7 @@ function project(rows, games, opts) {
 
   const official = rank((rows || []).map(rec), conf);
   const off = new Map(official.map(x => [x.team_id, x.pos]));
-  const before = new Map(official.map(x => [x.team_id, { pts: x.pts, w: x.w, l: x.l, diff: diffOf(x) }]));
+  const before = new Map(official.map(x => [x.team_id, { pts: x.pts, w: x.w, l: x.l, gp: x.gp, pf: x.pf, pa: x.pa, cw: x.cw, cl: x.cl, cgp: x.cgp, diff: diffOf(x) }]));
 
   const cur = (rows || []).map(rec);
   const by = new Map(cur.map(x => [x.team_id, x]));
@@ -329,13 +329,23 @@ function tableHTML(P, games, viewIds, colours, showNow, ST) {
   return groups.map(g => {
     const head = (g.group || g.division)
       ? '<caption>' + esc([g.group ? (ST ? ST.groupLabel(g.group, st.comp) : (/\s/.test(g.group) ? g.group : 'Group ' + g.group)) : '', g.division].filter(Boolean).join(' · ')) + '</caption>' : '';
+    const crest = r => {
+      const url = typeof window !== 'undefined' && window.epinoiaLogoUrl && r.logo ? window.epinoiaLogoUrl(r.logo) : null;
+      return '<span class="crest" style="background:' + esc(r.colour || 'var(--lume)') + '">' +
+        (url ? '<img src="' + esc(url) + '" alt="" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:inherit;background:#fff" onerror="this.remove()">' : esc(r.short || '')) + '</span>';
+    };
+    const pct = (w, gp) => (ST && ST.pct ? ST.pct(w, gp) : (gp ? (w / gp).toFixed(3).replace(/^0/, '') : '—'));
+    const rec = (w, l) => (ST && ST.record ? ST.record(w, l) : w + '-' + l);
     const body = g.rows.map(r => {
       const lit = viewIds.indexOf(r.team_id) !== -1;
+      const b0 = r.before;
       const pos = showNow ? r.pos : r.off;
       const mv = showNow ? r.move : 0;
-      const w = showNow ? r.w : r.before.w, l = showNow ? r.l : r.before.l;
-      const pts = showNow ? r.pts : r.before.pts;
-      const diff = showNow ? diffOf(r) : r.before.diff;
+      const gp = showNow ? r.gp : b0.gp, w = showNow ? r.w : b0.w, l = showNow ? r.l : b0.l;
+      const pf = showNow ? r.pf : b0.pf, pa = showNow ? r.pa : b0.pa;
+      const pts = showNow ? r.pts : b0.pts;
+      const diff = pf - pa;
+      const cw = showNow ? r.cw : b0.cw, cl = showNow ? r.cl : b0.cl, cgp = showNow ? r.cgp : b0.cgp;
       const mark = showNow ? r.touched.map(id => {
         const gm = byGame.get(id); if (!gm) return '';
         const own = gm.home_team_id === r.team_id;
@@ -345,18 +355,26 @@ function tableHTML(P, games, viewIds, colours, showNow, ST) {
           esc(liveStamp(gm) + (lvl ? ' - level: projected as a tie' : '')) + '"><span class="dt-dot" aria-hidden="true"></span>' +
           esc(my + '-' + their) + ' <span class="dt-mp">' + esc(liveStamp(gm)) + '</span></a>';
       }).join('') : '';
-      const winPct = conf ? (r.cgp ? (r.cw / r.cgp).toFixed(3).replace(/^0/, '').replace(/^1\.000$/, '1.000') : '—') : '';
-      return '<tr' + (lit ? ' class="lit" style="--tc:' + esc(colours[r.team_id] || r.colour || 'var(--lume)') + '"' : '') +
+      const dCol = diff > 0 ? 'var(--good)' : diff < 0 ? 'var(--bad)' : '';
+      const dock = r.dock ? '<span class="dock" title="' + r.dock + ' points deducted"> &minus;' + r.dock + '</span>' : '';
+      return '<tr' + (lit ? ' class="lit"' : '') + ' style="--tc:' + esc(colours[r.team_id] || r.colour || 'var(--rule-2)') + '"' +
         (r.touched.length && showNow ? ' data-live="1"' : '') + '>' +
-        '<td class="dt-r">' + pos + '</td>' +
-        '<td class="dt-m">' + (showNow ? moveHTML(mv) : '') + '</td>' +
-        '<td class="dt-n"><span class="dt-nm">' + esc(r.name) + '</span>' + (mark ? '<span class="dt-marks">' + mark + '</span>' : '') + '</td>' +
-        '<td>' + w + '-' + l + '</td>' +
-        (conf ? '<td class="dt-c">' + r.cw + '-' + r.cl + '</td><td>' + winPct + '</td>' : '<td class="dt-p">' + pts + '</td>') +
-        '<td class="dt-d">' + sign(diff) + '</td></tr>';
+        '<td class="rk">' + pos + (showNow ? moveHTML(mv) : '') + '</td>' +
+        '<td><div class="tname-cell">' + crest(r) + (r.slug ? '<a href="../t/?t=' + encodeURIComponent(r.slug) + '">' + esc(r.name) + '</a>' : '<span>' + esc(r.name) + '</span>') + '</div>' +
+          (mark ? '<span class="dt-marks">' + mark + '</span>' : '') + '</td>' +
+        (conf
+          ? '<td class="rec">' + rec(cw, cl) + '</td><td>' + pct(cw, cgp) + '</td><td class="rec">' + rec(w, l) + '</td><td>' + pct(w, gp) + '</td>'
+          : '<td>' + gp + '</td><td>' + w + '</td><td>' + l + '</td>') +
+        '<td>' + pf + '</td><td>' + pa + '</td>' +
+        '<td' + (dCol ? ' style="color:' + dCol + '"' : '') + '>' + sign(diff) + '</td>' +
+        (conf ? '' : '<td class="pts">' + pts + dock + '</td>') + '</tr>';
     }).join('');
-    return '<div class="dt-tw"><table class="dt-table">' + head + '<thead><tr><th class="dt-r">#</th><th class="dt-m"></th><th class="dt-n">Club</th><th>W-L</th>' +
-      (conf ? '<th class="dt-c">CONF</th><th>PCT</th>' : '<th class="dt-p">PTS</th>') + '<th class="dt-d">+/&minus;</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+    const heads = conf
+      ? ['#', 'TEAM', 'CONF W-L', 'CONF PCT', 'W-L', 'PCT', 'PF', 'PA', 'DIFF']
+      : ['#', 'TEAM', 'GP', 'W', 'L', 'PF', 'PA', 'DIFF', 'PTS'];
+    return '<div class="ep-tw dt-tw">' + (head ? '<div class="dt-cap">' + head.replace(/^<caption>|<\/caption>$/g, '') + '</div>' : '') +
+      '<table class="ep-tbl stand" style="min-width:' + (conf ? 700 : 640) + 'px"><thead><tr>' +
+      heads.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' + body + '</tbody></table></div>';
   }).join('') + (anyPlayed ? '' : '<p class="dt-note">No games have finished in this competition yet.</p>');
 }
 

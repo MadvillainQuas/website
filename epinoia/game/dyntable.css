@@ -35,25 +35,32 @@
 .dt-sw button.on{ color:var(--ink,inherit); background:color-mix(in srgb,var(--ink,#888) 16%,transparent) }
 .dt-sw button:focus-visible{ outline:2px solid var(--ink,currentColor); outline-offset:2px }
 
-/* the table */
+/* the table: the league table's own (kit/standings.css, l/league.js): black teletext header, a strip per club with its colour down
+   the rank's edge, the crest in a ringed disc, the points the heaviest figure. This file only adds what the game page's
+   stylesheets do not already give a table that is not on the league page. */
 .dt-tw{ min-width:0; overflow-x:auto }
-.dt-table{ width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums }
-.dt-table caption{ caption-side:top; text-align:left; padding:0 0 8px; font:400 10px/1 var(--f-micro,ui-monospace,monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2,inherit) }
-.dt-tw + .dt-tw{ margin-top:6px }
-.dt-table th{ font:400 9px/1 var(--f-micro,ui-monospace,monospace); letter-spacing:.1em; text-transform:uppercase; padding:6px 6px; text-align:right; color:var(--ink-2,inherit);
-  border-bottom:1px solid var(--rule-2,rgba(128,128,128,.3)) }
-.dt-table td{ white-space:nowrap; padding:7px 6px; text-align:right; font-family:var(--f-data,ui-monospace,monospace); font-size:13px; border-bottom:1px solid var(--rule-2,rgba(128,128,128,.18)); vertical-align:middle }
-.dt-table .dt-r{ width:30px; text-align:center; font-weight:700 }
-.dt-table .dt-m{ width:44px; text-align:left; padding-left:0; padding-right:0 }
-.dt-table th.dt-n, .dt-table td.dt-n{ white-space:normal; text-align:left; font-family:var(--f-ui,inherit); width:auto }
-.dt-nm{ font-size:13px; font-weight:600; display:block; overflow-wrap:anywhere }
-.dt-p{ font-weight:700 }
-.dt-table tr:not(.lit) td{ opacity:.9 }
-.dt-table tr.lit td{ font-weight:700; background:color-mix(in srgb,var(--tc) 14%,transparent); opacity:1 }
-.dt-table tr.lit td:first-child{ box-shadow:inset 5px 0 0 var(--tc) }
-.dt-table tr.lit .dt-nm{ color:var(--tc); text-transform:uppercase; letter-spacing:.02em }
+.dt-tw + .dt-tw{ margin-top:14px }
+.dt-cap{ font:400 10px/1 var(--f-micro,ui-monospace,monospace); letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2,inherit); padding:0 0 8px }
+.dt .ep-tbl{ width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums }
+.dt .ep-tbl thead th{ text-align:right; padding:11px 12px; white-space:nowrap }
+.dt .ep-tbl thead th:nth-child(2){ text-align:left }
+.dt .ep-tbl thead th:first-child{ text-align:center }
+.dt .ep-tbl.stand tbody td{ text-align:right; white-space:nowrap; font-family:var(--f-data,ui-monospace,monospace) }
+.dt .ep-tbl.stand tbody td:nth-child(2){ text-align:left; white-space:normal; font-family:var(--f-ui,inherit) }
+.dt .ep-tbl.stand tbody td.rk{ text-align:center; line-height:1.05; padding-left:14px; padding-right:8px }
+.dt .ep-tbl.stand tbody td.rec{ color:var(--ink-2) }
+.dt .tname-cell{ display:flex; align-items:center; min-width:0 }
+.dt .tname-cell a, .dt .tname-cell span:not(.crest){ overflow-wrap:anywhere }
+.dt .crest{ display:inline-flex; align-items:center; justify-content:center; flex:none; font-family:var(--f-micro,ui-monospace,monospace) }
+.dt .ep-tbl.stand tbody td .dock{ font-size:11px; color:var(--bad); margin-left:4px }
+/* the clubs of the game being watched */
+.dt .ep-tbl.stand tbody tr.lit td{ background:color-mix(in srgb,var(--tc) 14%,var(--panel)) }
+.dt .ep-tbl.stand tbody tr.lit td.pts{ background:color-mix(in srgb,var(--tc) 22%,var(--panel)) }
+.dt .ep-tbl.stand tbody tr.lit td:nth-child(2) a, .dt .ep-tbl.stand tbody tr.lit td:nth-child(2) span:not(.crest){ text-transform:uppercase; letter-spacing:.02em }
+.dt .ep-tbl.stand tbody tr[data-live] td.rk{ box-shadow:inset 6px 0 0 var(--tc,var(--rule-2)) }
 
 /* the movement */
+.dt .rk .dt-mv{ display:flex; justify-content:center; font-size:10px; margin-top:3px; gap:2px }
 .dt-mv{ display:inline-flex; align-items:center; gap:3px; font-family:var(--f-data,ui-monospace,monospace); font-size:12px; font-weight:700; white-space:nowrap }
 .dt-mv i{ font-style:normal; font-size:11px; line-height:1 }
 .dt-mv.up{ color:var(--dt-up) }
@@ -76,3 +83,5 @@
   .dt-table .dt-m{ width:38px }
   .dt-gp{ margin-left:0 }
 }
+.dt .tname-cell a{ color:var(--ink); text-decoration:none; font-weight:700 }
+.dt .tname-cell a:hover{ text-decoration:underline; text-underline-offset:3px }
