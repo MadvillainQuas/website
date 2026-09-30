@@ -4,7 +4,7 @@
    window.EpinoiaWowyUI. The numbers are lineups.js's, the rules are wowylogic.js's; this file only draws.
 
    A view function is handed a `ctx` by wowy.js (the page): the team, who everyone is, the scales to colour
-   against, the thresholds, the gate and the callbacks (go, link, export). Nothing here fetches.
+   against, the thresholds, the gate and the callbacks (go, link). Nothing here fetches.
 
      PLAYER CIRCLES   a photo if the site has one, else initials on the club's colour, the club's crest on its
                       edge, the shirt number; a green ring for on the floor, a red one for off it
@@ -421,7 +421,6 @@ function unitDetail(ctx, u, team, scales) {
   box.appendChild(head);
   box.appendChild(splitGrid(W.splitRows(vs.on, vs.off), { on: 'THIS UNIT', off: 'REST OF TEAM' }, { scales }));
   const acts = el('div', 'wdet-a');
-  acts.appendChild(btn('Download image', () => ctx.exportUnit({ ids: u.ids, line: u.mins != null ? u : vs.on, base: vs.off, team, kind: 'unit' }), 'pri'));
   acts.appendChild(btn('Copy link', () => ctx.link({ v: 'build', u: u.ids.slice(0, 5) })));
   acts.appendChild(btn('Open in builder', () => ctx.go({ v: 'build', u: u.ids.slice(0, 5) })));
   box.appendChild(acts);
@@ -461,7 +460,6 @@ function overviewView(ctx, host) {
       (line.stints ? ' · ' + W.fmt('mins', line.mins) + ' min together · net ' + W.fmt('net', line.net) : ' · no shared stints on record')));
     const acts = el('div', 'wdet-a');
     acts.appendChild(btn('Open in builder', () => ctx.go({ v: 'build', u: sf.ids })));
-    if (line.stints) acts.appendChild(btn('Download image', () => ctx.exportUnit({ ids: sf.ids, line, base: L.filter(ctx.teamStints, []), team, kind: 'start' })));
     card.appendChild(acts);
     cols.appendChild(card);
   }
@@ -680,7 +678,6 @@ function pairView(ctx, host) {
     const wr = el('div', 'wsg-wrap'); wr.appendChild(t); host.appendChild(wr);
     host.appendChild(notice('Coloured against the league’s two-man units (' + ctx.scaleNote(2) + '). "Only" means that player on and the other off.'));
     const acts = el('div', 'wdet-a');
-    acts.appendChild(btn('Download image', () => ctx.exportPair({ a, b, buckets, team: ctx.team }), 'pri'));
     acts.appendChild(btn('Copy link', () => ctx.link({ v: 'pair', a, b })));
     host.appendChild(acts);
   }
@@ -773,7 +770,6 @@ function buildView(ctx, host) {
     const vs = W.unitVsRest(ctx.teamStints, picked);
     host.appendChild(splitGrid(W.splitRows(vs.on, vs.off), { on: 'THIS UNIT', off: 'REST OF TEAM' }, { scales }));
     const acts = el('div', 'wdet-a');
-    acts.appendChild(btn('Download image', () => ctx.exportUnit({ ids: picked, line, base, team: ctx.team, kind: 'unit' }), 'pri'));
     acts.appendChild(btn('Copy link', () => ctx.link()));
     acts.appendChild(btn('Clear', () => ctx.go({ u: [] })));
     host.appendChild(acts);
