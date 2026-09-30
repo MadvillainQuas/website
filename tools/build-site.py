@@ -19,23 +19,29 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# THE WEBSITE IS EPINOIA. It used to carry the older Prophesy scouting tools as well (the root apps, /league, /transfermatrix,
+# /share) and the data and accounts they read (/data, /config, including config/users.json with sign-in hashes): all of that was
+# downloadable by anyone, which is the opposite of a licensed product. It is retired from the website (2026-09-30) and can never
+# be published again by accident: the folders and files below are on the never-publish list, and this script refuses to finish if
+# any of them turns up in what it is about to hand to Pages.
+#
 # folders published whole (minus the per-file exclusions below)
-PUBLIC_DIRS = ["epinoia", "share", ".well-known", "league", "transfermatrix", "data", "config"]
-# single files at the root
-PUBLIC_FILES = [
-    "CNAME", "robots.txt", "index.html", "admin.html", "allstats.html", "basketball-analyzer-profiles_9.html",
-    "gamevis.html", "GAMEVIS_with_ShotChart_v2_6.html", "index_9.html", "lineup.html", "pitch.html",
-    "player_stats_viewer_pro.html", "gate.js", "topnav.js", "stat-glossary.js", "sw.js",
-    "manifest.webmanifest", "logo.jpg",
-]
+PUBLIC_DIRS = ["epinoia", ".well-known"]
+# single files at the root: the domain name, the crawler rules, a root page that sends everybody to /epinoia/,
+# and a service worker that clears the old tools' caches out of browsers that installed it
+PUBLIC_FILES = ["CNAME", "robots.txt", "index.html", "sw.js", "logo.jpg"]
 # never published (checked again at the end): the repository's own top-level folders for
-# code, docs and app sources (epinoia/android/ and epinoia/ios/, the download pages, are
+# code, docs, data and app sources (epinoia/android/ and epinoia/ios/, the download pages, are
 # public: these names only count at the top), anything version-control or cache anywhere,
 # and the files below wherever they are
-TOP_NEVER = {".git", ".github", "supabase", "scripts", "tools", "docs", "android", "ios", "brand-source"}
+TOP_NEVER = {".git", ".github", "supabase", "scripts", "tools", "docs", "android", "ios", "brand-source",
+             "data", "config", "league", "transfermatrix", "share"}
+ROOT_NEVER = {"admin.html", "allstats.html", "basketball-analyzer-profiles_9.html", "gamevis.html",
+              "GAMEVIS_with_ShotChart_v2_6.html", "index_9.html", "lineup.html", "pitch.html",
+              "player_stats_viewer_pro.html", "gate.js", "topnav.js", "stat-glossary.js"}
 NESTED_NEVER = {".git", "node_modules", "__pycache__"}
 NEVER_PATHS = ("config/groups/",)
-NEVER_FILES = {"ingest-sources.json", "github-token.json", ".gitignore", ".nojekyll"}
+NEVER_FILES = {"ingest-sources.json", "github-token.json", "users.json", ".gitignore", ".nojekyll"}
 NEVER_SUFFIXES = (".md", ".py", ".pyc", ".mjs", ".ts", ".sql", ".jks", ".keystore", ".p8", ".pem", ".env")
 
 
@@ -43,6 +49,8 @@ def skipped(rel):
     rel = rel.replace("\\", "/")
     parts = rel.split("/")
     if parts[0] in TOP_NEVER or any(p in NESTED_NEVER for p in parts[:-1]):
+        return True
+    if len(parts) == 1 and parts[0] in ROOT_NEVER:
         return True
     if rel.startswith(NEVER_PATHS):
         return True

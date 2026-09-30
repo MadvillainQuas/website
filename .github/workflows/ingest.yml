@@ -181,19 +181,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run ingest.yml --ref "$GITHUB_REF_NAME" -f live=true || echo "dispatch failed (a pass is probably already queued)"
-      - name: Rebuild dataset from the archive (nightly / on request)
-        if: ${{ github.event.schedule == '15 3 * * *' || github.event.inputs.rebuild_dataset == 'true' }}
-        env:
-          SCRAPER_DIR: ${{ github.workspace }}/scraper
-          PYTHONPATH: ${{ github.workspace }}/scraper
-        run: |
-          # scrape-now.py reads the feed registry from ../website_repo/config/ next to its own
-          # folder, else from a public URL that stops answering once this repository is private.
-          # Point that path at this checkout.
-          ln -sfn . website_repo
-          for code in $(python -c "import json;print(' '.join(dict.fromkeys(s['code'] for s in json.load(open('config/ingest-sources.json'))['sources'] if s['adapter']=='fiba_livestats' and s['scheduleUrls'])))"); do
-            python scripts/ingest/build_dataset.py --source "$code" || echo "dataset build failed for $code"
-          done
       - name: Shrink newly copied crests (nightly / on request)
         # snapshots copies each club's crest at the size its own site serves it (up to 3 MB); pages draw
         # them at 32-128 px and no longer use Storage's resizing (Pro includes 100 a month). This makes
@@ -210,9 +197,9 @@ jobs:
         run: |
           git config user.name "league-ingest[bot]"
           git config user.email "league-ingest@users.noreply.github.com"
+          # the ingest's own state only. The older tools' datasets (data/data_*, data/latest.json) are no longer built
+          # or committed: the repository is public, and a dataset in it is a dataset anybody can download.
           git add -A data/feed
-          [ -f data/latest.json ] && git add data/latest.json
-          ls -d data/data_* >/dev/null 2>&1 && git add -A data/data_*
           git diff --cached --quiet && echo "nothing new" || git commit -m "feed: ingest $(date -u +%Y-%m-%dT%H:%MZ)"
           # somebody may have pushed while we ran — replay our feed commit on top of theirs, on the branch
           # this run was dispatched on (main for every scheduled run; a feature branch for a one-off run of
