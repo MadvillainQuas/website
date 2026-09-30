@@ -74,4 +74,5 @@ User-agent: DataForSeoBot
 User-agent: serpstatbot
 Disallow: /
 
+# an index (written on every deploy by tools/build-seo.py): sitemap-static.xml, sitemap-entities.xml, sitemap-games.xml
 Sitemap: https://prophesyscouting.co.uk/epinoia/sitemap.xml

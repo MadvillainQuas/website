@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  The public section's stable entry points.
+  The public section's stable entry points: the SOURCE of sitemap-static.xml.
 
-  The players', teams' and leagues' own addresses (p/<name>.html, t/<slug>.html,
-  l/<slug>.html) are NOT listed here: tools/build-seo.py writes them, and the
-  sitemap that is published (this file's entries plus those), on every deploy
-  from the public database. Per-game pages are still absent: they are
-  query-string pages served from one file, and listing addresses a crawler
-  cannot tell apart would be worse than listing none.
+  On every deploy tools/build-seo.py turns the sitemap into an INDEX (this address, /epinoia/sitemap.xml) of three
+  files: sitemap-static.xml (the entries below, with a <lastmod> from the data where the page changes with it),
+  sitemap-entities.xml (every league, club and player: p/<name>.html, t/<slug>.html, l/<slug>.html, and the
+  Japanese and Spanish copies with their hreflang alternates) and sitemap-games.xml (the box score pages of the
+  last and next 30 days: game/<id>.html). None of those is listed here. Until that runs (a local checkout) this
+  file is a valid sitemap of its own.
+
+  Only pages that may be indexed and are not disallowed in /robots.txt belong here (tools/build_seo_test.py checks).
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
