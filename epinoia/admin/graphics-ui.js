@@ -43,34 +43,54 @@ const TEMPLATES = [
 ];
 /* which modules each template has (the form shows only these) */
 const HAS = {
-  result: ['game', 'headline', 'subline', 'crests', 'quarters', 'leaders', 'venue'],
+  result: ['game', 'headline', 'subline', 'crests', 'quarters', 'leaders', 'leadstats', 'teamstats', 'venue'],
   star: ['game', 'player', 'headline', 'subline', 'crests', 'stats'],
   table: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'cols'],
-  fixtures: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'venues'],
-  week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days']
+  fixtures: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'venues', 'fixextras'],
+  week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days', 'weekextras']
 };
-const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'pm', 'min'];
+/* the stats each template can show, in the order they are laid out (the first three of a star are its big numbers) */
+const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'gmsc', 'pm', 'min'];
 const STAT_DEFAULT = ['pts', 'reb', 'ast', 'fg', 'p3', 'ft', 'pm', 'min'];
-const COL_ORDER = ['gp', 'w', 'l', 'pct', 'pts', 'diff', 'pf', 'pa', 'streak'];
+const COL_ORDER = ['gp', 'w', 'l', 'pct', 'pts', 'diff', 'avg', 'pf', 'pa', 'ppg', 'papg', 'streak', 'l5', 'home', 'away', 'elo'];
 const COL_DEFAULT = ['gp', 'w', 'l', 'diff'];
+const COL_READ = ['l5', 'home', 'away', 'elo'];            // read from the games, not the standings
+const COL_HINT = { pct: 'win rate', pts: 'league points', avg: 'average margin', ppg: 'points scored a game', papg: 'points allowed a game', l5: 'last five games',
+                   home: 'home record', away: 'away record', elo: 'ELO rating (1500 is average)', streak: 'current run' };
+const TEAM_ORDER = ['fgp', 'p3p', 'ftp', 'efg', 'fg', 'p3', 'ft', 'reb', 'oreb', 'ast', 'stl', 'blk', 'tov', 'pf'];
+const LEAD_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'p3p', 'pm'];
+const LEAD_DEFAULT = ['pts', 'reb', 'ast'];
+const WEEK_EXTRAS = [['time', 'Tip-off time'], ['venue', 'Venue'], ['quarters', 'Quarter scores'], ['record', 'Records'], ['elo', 'ELO']];
+const FIX_EXTRAS = [['record', 'Records'], ['elo', 'ELO']];
 const ACCENTS = [['', 'League colour'], ['#ffe600', 'Teletext yellow'], ['#00e5ff', 'Cyan']];
 const THEMES = [['dark', 'League, dark'], ['light', 'Light'], ['contrast', 'High contrast']];
 const LOGOS = [['both', 'Heading and footer'], ['heading', 'Heading only'], ['footer', 'Footer only'], ['none', 'Hidden']];
 const ROWS = [['', 'All'], ['3', 'Top 3'], ['4', 'Top 4'], ['6', 'Top 6'], ['8', 'Top 8']];
-const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8;
+const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8, MAX_TEAM = 6, MAX_LEAD = 4;
 
 /* the builder's starting point: every module at today's default */
 function defaultBuilder() {
   return { tpl: 'result', gameId: '', player: null, compId: '', page: 0,
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
-            cols: null, statKeys: null, theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
+            cols: null, statKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
+            theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
 }
 /* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
    draws exactly what the weekly content does */
 function modulesOf(b) {
   const m = Object.assign({}, b && b.mods);
   if (m.theme === 'dark') delete m.theme;
-  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: m.cols || null, statKeys: m.statKeys || null }));
+  const tpl = b && b.tpl;
+  /* each template's own choices: a star's stat lines, a table's columns, a final's team stats and leaders, the extras of
+     a results row and of a fixture's row are kept apart, so changing template never carries one's choices to another */
+  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: tpl === 'star' ? m.statKeys || null : null,
+    teamStats: tpl === 'result' ? m.teamStats : null, leaderKeys: tpl === 'result' ? m.leaderKeys : null, leaderN: tpl === 'result' ? m.leaderN : 0,
+    rowExtras: tpl === 'week' ? m.weekExtras : tpl === 'fixtures' ? m.fixExtras : null }));
+}
+/* does this graphic need what the games say beyond the table (ELO, form, home and away)? Then the tab reads it first. */
+function needsExtras(b) {
+  const m = (b && b.mods) || {};
+  return (b.tpl === 'table' && (m.cols || []).some(k => COL_READ.includes(k))) || ((b.tpl === 'week' ? m.weekExtras : b.tpl === 'fixtures' ? m.fixExtras : null) || []).includes('elo');
 }
 /* one more key on or off in an ordered list, keeping it in its own order and within `min`..`max` (a refused change
    returns the list as it was, so the box the person ticked can be put back) */
@@ -98,7 +118,7 @@ function loadBuilder(leagueId, storage) {
       if (raw.mods && typeof raw.mods === 'object') {
         Object.keys(b.mods).forEach(k => {
           const v = raw.mods[k], d0 = b.mods[k];
-          if (d0 === null ? (v === null || Array.isArray(v)) : typeof v === typeof d0) b.mods[k] = v;
+          if (Array.isArray(d0) ? Array.isArray(v) : d0 === null ? (v === null || Array.isArray(v)) : typeof v === typeof d0) b.mods[k] = v;
         });
       }
     }
@@ -145,6 +165,7 @@ function mount(o) {
    season on screen when its tab is first opened */
 function refresh() {
   if (!current || !current.started) return;
+  current.extras = null;                                  // another season: its games, its ratings
   load(current);
 }
 
@@ -168,6 +189,7 @@ async function load(panel) {
     return;
   }
   if (mine !== panel.seq) return;                        // a newer read (another week, another league) has taken over
+  if (panel.extras) data.extras = panel.extras;
   panel.data = data;
   panel.busy = false;
   if (panel.compId !== 'all' && !comps.some(c => c.id === panel.compId)) panel.compId = 'all';
@@ -482,33 +504,36 @@ function drawBuilder(panel, pane) {
   put(ticks, 'venues', tick('venues', 'Venue of each game'));
   fs3.appendChild(ticks);
   put(fs3, 'rows', field('How many rows', select(ROWS, M.rows || '', v => { M.rows = v; persist(); setRes(); })));
-  /* the star's stat lines: 3 to 8, the first three the big numbers */
-  const statBox = el('div', 'gx-checks'); statBox.appendChild(el('span', 'gx-cl', 'Stat lines (3–8; the first three are the big numbers)'));
-  const keys = () => M.statKeys || STAT_DEFAULT;
-  const statInputs = {};
-  STAT_ORDER.forEach(k => {
-    const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = keys().includes(k); statInputs[k] = i;
-    i.addEventListener('change', () => {
-      const next = toggleKey(keys(), k, STAT_ORDER, MIN_STATS, MAX_STATS);
-      M.statKeys = next; STAT_ORDER.forEach(x => { statInputs[x].checked = next.includes(x); }); persist(); schedule();
+  /* A GROUP OF STATS TO SHOW: tick the ones wanted, within the least and most the shape can carry. `current` is what is
+     drawn now (the template's default until a choice is made); a tick that would break the limits is put back. */
+  const checks = (has, title, order, labelOf, current, set, min, max, hint) => {
+    const box = el('div', 'gx-checks');
+    box.appendChild(el('span', 'gx-cl', title));
+    const inputs = {};
+    order.forEach(k => {
+      const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = current().includes(k); inputs[k] = i;
+      if (hint && hint[k]) l.title = hint[k];
+      i.addEventListener('change', () => {
+        const next = toggleKey(current(), k, order, min, max);
+        set(next); order.forEach(x => { inputs[x].checked = next.includes(x); }); persist(); schedule();
+      });
+      l.append(i, el('span', null, labelOf(k)));
+      box.appendChild(l);
     });
-    l.append(i, el('span', null, SCd.STAT_DEFS[k][1]));
-    statBox.appendChild(l);
-  });
-  put(fs3, 'stats', statBox);
-  const colBox = el('div', 'gx-checks'); colBox.appendChild(el('span', 'gx-cl', 'Table columns (1–' + MAX_COLS + ')'));
-  const cols = () => M.cols || COL_DEFAULT;
-  const colInputs = {};
-  COL_ORDER.forEach(k => {
-    const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = cols().includes(k); colInputs[k] = i;
-    i.addEventListener('change', () => {
-      const next = toggleKey(cols(), k, COL_ORDER, 1, MAX_COLS);
-      M.cols = next; COL_ORDER.forEach(x => { colInputs[x].checked = next.includes(x); }); persist(); schedule();
-    });
-    l.append(i, el('span', null, SCd.COL_DEFS[k]));
-    colBox.appendChild(l);
-  });
-  put(fs3, 'cols', colBox);
+    return put(fs3, has, box);
+  };
+  /* THE STAR'S STAT LINES: 3 to 8 of the player's whole line, the first three the big numbers */
+  checks('stats', 'Stat lines (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the big numbers)', STAT_ORDER, k => SCd.STAT_DEFS[k][1],
+    () => M.statKeys || STAT_DEFAULT, v => { M.statKeys = v; }, MIN_STATS, MAX_STATS);
+  /* THE TABLE'S COLUMNS: what the standings hold, some worked out from them, and ELO, form and home / away read from the games */
+  checks('cols', 'Table columns (1–' + MAX_COLS + ')', COL_ORDER, k => SCd.COL_DEFS[k], () => M.cols || COL_DEFAULT, v => { M.cols = v; }, 1, MAX_COLS, COL_HINT);
+  /* A FINAL'S TEAM STATS, side by side (none unless ticked), and the leaders' lines */
+  checks('teamstats', 'Team stats to show (up to ' + MAX_TEAM + ', none by default)', TEAM_ORDER, k => SCd.TEAM_STAT_DEFS[k][0], () => M.teamStats, v => { M.teamStats = v; }, 0, MAX_TEAM);
+  put(fs3, 'leadstats', field('Top scorers per side', select([['', 'The leader of each side'], ['2', 'Top 2 scorers'], ['3', 'Top 3 scorers']], M.leaderN || '', v => { M.leaderN = v; persist(); setRes(); })));
+  checks('leadstats', 'Stats beside each leader (1–' + MAX_LEAD + ')', LEAD_ORDER, k => SCd.STAT_DEFS[k][1], () => M.leaderKeys || LEAD_DEFAULT, v => { M.leaderKeys = v; }, 1, MAX_LEAD);
+  /* WHAT A ROW SAYS BESIDES ITS CLUBS AND SCORE */
+  checks('weekextras', 'Also on each result', WEEK_EXTRAS.map(x => x[0]), k => WEEK_EXTRAS.find(x => x[0] === k)[1], () => M.weekExtras, v => { M.weekExtras = v; }, 0, WEEK_EXTRAS.length);
+  checks('fixextras', 'Also on each fixture', FIX_EXTRAS.map(x => x[0]), k => FIX_EXTRAS.find(x => x[0] === k)[1], () => M.fixExtras, v => { M.fixExtras = v; }, 0, FIX_EXTRAS.length);
   form.appendChild(fs3);
 
   /* --- 4. look --- */
@@ -545,6 +570,15 @@ function drawBuilder(panel, pane) {
   async function paint() {
     const mine = ++seq;
     show();
+    /* ELO, form and the home / away records are read from the games the first time a graphic asks for them */
+    if (needsExtras(b) && !d.extras) {
+      status.textContent = 'Reading ratings and form from the games…';
+      try { panel.extras = panel.extras || await GX().readExtras(panel.o.sb, panel.data.comps); }
+      catch (e) { status.textContent = 'Could not read the games for ELO and form: ' + (e && e.message || e); return; }
+      panel.data.extras = panel.extras; d.extras = panel.extras;
+      if (mine !== seq) return;
+      compute();
+    }
     if (!res.model) {
       stage.textContent = '';
       status.textContent = res.reason || 'Nothing to draw.';
@@ -560,6 +594,7 @@ function drawBuilder(panel, pane) {
       c.className = 'gx-canvas'; c.setAttribute('role', 'img');
       c.setAttribute('aria-label', 'Preview of the graphic');
       stage.textContent = ''; stage.appendChild(c);
+      if (c.dropped && c.dropped.length) status.textContent = 'Not enough room in this shape, so it leaves out ' + c.dropped.join(', ') + '. Try a taller shape, or fewer parts.';
     } catch (e) {
       if (mine === seq) status.textContent = 'The preview could not be drawn: ' + (e && e.message || e);
     }
@@ -567,6 +602,6 @@ function drawBuilder(panel, pane) {
   paint();
 }
 
-return { mount, refresh, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, defaultBuilder, modulesOf, toggleKey, gameLabel,
+return { mount, refresh, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
          loadBuilder, saveBuilder, memKey };
 }));

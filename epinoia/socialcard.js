@@ -25,8 +25,9 @@
    MODULES (opts.modules, or model.modules): the optional pieces of a graphic, for the console's builder. Every
    one defaults to today's exact output - a graphic drawn with no modules is byte-for-byte the one drawn before
    they existed - and each is one thing a person can turn on, off or reword: headline, subline, crests,
-   quarters, leaders, venue, days, venues, rows, cols, statKeys, theme, accent, logoPos, handle, footerText,
-   sponsor. See cleanModules() for the shapes. The block-stack below is unchanged (fixed heights, the room left
+   quarters, leaders (leaderN, leaderKeys), teamStats, venue, days, venues, rowExtras, rows, cols (the table's
+   stats, ELO among them), statKeys (the star's), theme, accent, logoPos, handle, footerText, sponsor. See
+   cleanModules() for the shapes. The block-stack below is unchanged (fixed heights, the room left
    shared), so every combination stays on the page in all three shapes.
 
    NOTHING IS POSTED FROM HERE. The graphics are ready for a person to check and post; putting them on the
@@ -57,9 +58,18 @@ const THEME_KEYS = ['dark', 'light', 'contrast'];
 const STAT_DEFS = {   // key: [big label, small label]
   pts: ['POINTS', 'PTS'], reb: ['REBOUNDS', 'REB'], ast: ['ASSISTS', 'AST'], stl: ['STEALS', 'STL'], blk: ['BLOCKS', 'BLK'],
   fg: ['FIELD GOALS', 'FG'], p3: ['THREES', '3PT'], ft: ['FREE THROWS', 'FT'], fgp: ['FG%', 'FG%'], p3p: ['3P%', '3P%'],
-  pm: ['PLUS/MINUS', '+/-'], min: ['MINUTES', 'MIN']
+  pm: ['PLUS/MINUS', '+/-'], min: ['MINUTES', 'MIN'], oreb: ['OFF. REBOUNDS', 'OREB'], dreb: ['DEF. REBOUNDS', 'DREB'],
+  tov: ['TURNOVERS', 'TOV'], pf: ['FOULS', 'PF'], p2: ['TWO-POINTERS', '2PT'], efg: ['EFG%', 'EFG%'], gmsc: ['GAME SCORE', 'GMSC']
 };
-const COL_DEFS = { gp: 'GP', w: 'W', l: 'L', pct: 'PCT', pts: 'PTS', diff: 'DIFF', pf: 'PF', pa: 'PA', streak: 'STK' };
+/* the league table's columns: those the standings hold, some worked out from them, and the ones read from the games
+   (form, home and away records, the ELO rating: the console reads them when they are asked for) */
+const COL_DEFS = { gp: 'GP', w: 'W', l: 'L', pct: 'PCT', pts: 'PTS', diff: 'DIFF', avg: 'AVG', pf: 'PF', pa: 'PA', ppg: 'PPG', papg: 'OPP',
+                   streak: 'STK', l5: 'L5', home: 'HOME', away: 'AWAY', elo: 'ELO' };
+/* a final's team stats, side by side (worked from the players' lines): [label, lower is better] */
+const TEAM_STAT_DEFS = { fgp: ['FG%'], p3p: ['3P%'], ftp: ['FT%'], efg: ['EFG%'], fg: ['FG'], p3: ['3PT'], ft: ['FT'], reb: ['REBOUNDS'], oreb: ['OFF. REB'],
+                         ast: ['ASSISTS'], stl: ['STEALS'], blk: ['BLOCKS'], tov: ['TURNOVERS', true], pf: ['FOULS', true] };
+/* what a results row (and a fixture's) can say besides its clubs and score */
+const ROW_EXTRAS = ['time', 'venue', 'quarters', 'record', 'elo'];
 const LOGO_POS = ['both', 'heading', 'footer', 'none'];
 const BOOL_MODS = ['crests', 'quarters', 'leaders', 'venue', 'days', 'venues', 'handle'];
 
@@ -77,6 +87,14 @@ function cleanModules(m) {
   const rows = parseInt(m.rows, 10);
   if (rows > 0) o.rows = Math.min(rows, 40);
   if (Array.isArray(m.cols)) { const c = Object.keys(COL_DEFS).filter(k => m.cols.includes(k)); if (c.length) o.cols = c; }
+  const list = (k, defs, min, max) => {
+    if (!Array.isArray(m[k])) return;
+    const v = [...new Set(m[k].filter(x => (Array.isArray(defs) ? defs.includes(x) : defs[x])))].slice(0, max);
+    if (v.length >= min) o[k] = v;
+  };
+  list('teamStats', TEAM_STAT_DEFS, 1, 6); list('leaderKeys', STAT_DEFS, 1, 4); list('rowExtras', ROW_EXTRAS, 1, 5);
+  const ln = parseInt(m.leaderN, 10);
+  if (ln > 1) o.leaderN = Math.min(ln, 3);
   if (Array.isArray(m.statKeys)) {
     const k = [...new Set(m.statKeys.filter(x => STAT_DEFS[x]))].slice(0, 8);
     if (k.length >= 3) o.statKeys = k;
@@ -127,13 +145,37 @@ function statLine(s, max) {
 }
 const made = (m, a) => n0(m) + '/' + n0(a);
 const pct = (m, a) => (n0(a) > 0 ? Math.round(100 * n0(m) / n0(a)) + '%' : '—');
+/* one player line as the graphics say it: every number a stat line can name, counting stats as numbers and shooting as text */
+function statsOf(s) {
+  const fgm = n0(s.p2m) + n0(s.p3m), fga = n0(s.p2a) + n0(s.p3a);
+  return { pts: n0(s.pts), reb: n0(s.or) + n0(s.dr), ast: n0(s.ast), stl: n0(s.stl), blk: n0(s.blk),
+           fg: made(fgm, fga), p3: made(s.p3m, s.p3a), ft: made(s.ftm, s.fta), fgp: pct(fgm, fga), p3p: pct(s.p3m, s.p3a),
+           pm: n0(s.pm), min: Math.round(n0(s.min) / 60000), oreb: n0(s.or), dreb: n0(s.dr), tov: n0(s.to), pf: n0(s.pf),
+           p2: made(s.p2m, s.p2a), efg: fga > 0 ? Math.round(100 * (fgm + 0.5 * n0(s.p3m)) / fga) + '%' : '—',
+           gmsc: String(Math.round(gameScore(s) * 10) / 10) };
+}
+/* a side's totals for the game, summed from its players' lines: { key: { v: 'what is said', n: what is compared } } */
+function sideTotals(players, idx) {
+  const rows = (players || []).filter(p => p.team_idx === idx && p.stats);
+  if (!rows.length) return null;
+  const t = { pts: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, ftm: 0, fta: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, to: 0, pf: 0 };
+  rows.forEach(p => Object.keys(t).forEach(k => { t[k] += n0(p.stats[k]); }));
+  const fgm = t.p2m + t.p3m, fga = t.p2a + t.p3a;
+  const rate = (m, a) => (a > 0 ? Math.round(1000 * m / a) / 10 : null);
+  const put = (n, v) => ({ n, v: v != null ? v : String(n) });
+  const pc = (m, a) => { const r = rate(m, a); return put(r == null ? -1 : r, r == null ? '—' : Math.round(r) + '%'); };
+  return { fgp: pc(fgm, fga), p3p: pc(t.p3m, t.p3a), ftp: pc(t.ftm, t.fta), efg: pc(fgm + 0.5 * t.p3m, fga),
+           fg: put(fgm, made(fgm, fga)), p3: put(t.p3m, made(t.p3m, t.p3a)), ft: put(t.ftm, made(t.ftm, t.fta)),
+           reb: put(t.or + t.dr), oreb: put(t.or), ast: put(t.ast), stl: put(t.stl), blk: put(t.blk), tov: put(t.to), pf: put(t.pf) };
+}
 
 /* ------------------------------------------------------------- models ------ */
 /* every model carries the league's name, colour and handle, and a `key` that names the file */
 function side(team, score, perQ) {
   const t = team || {};
   return { name: t.name || '?', short: t.short_name || '', colour: t.colour || null, colour2: t.colour_2 || null,
-           crestUrl: t.crestUrl || null, score: n0(score), perQ: perQ || null };
+           crestUrl: t.crestUrl || null, score: n0(score), perQ: perQ || null,
+           record: t.record || '', elo: t.elo != null && !isNaN(t.elo) ? Math.round(t.elo) : null };
 }
 
 /* THE FINAL SCORE. `players` are player_game_stats rows ({ team_idx, stats }); the leading player of each side
@@ -145,8 +187,13 @@ function result(o) {
     const rows = (o.players || []).filter(p => p.team_idx === idx && p.stats);
     if (!rows.length) return null;
     const best = rows.slice().sort((a, b) => gameScore(b.stats) - gameScore(a.stats))[0];
-    return { name: best.stats.adv && best.stats.adv.name || best.name || '', line: statLine(best.stats, 3) };
+    return { name: best.stats.adv && best.stats.adv.name || best.name || '', line: statLine(best.stats, 3), stats: statsOf(best.stats) };
   };
+  /* each side's three top scorers, for a final that names more than one */
+  const scorers = idx => (o.players || []).filter(p => p.team_idx === idx && p.stats)
+    .sort((a, b) => n0(b.stats.pts) - n0(a.stats.pts) || gameScore(b.stats) - gameScore(a.stats)).slice(0, 3)
+    .map(p => ({ name: p.stats.adv && p.stats.adv.name || p.name || '', stats: statsOf(p.stats) }));
+  const ts = { home: sideTotals(o.players, 0), away: sideTotals(o.players, 1) };
   const periods = [];
   if (home.perQ && away.perQ) {
     const keys = [...new Set(Object.keys(home.perQ).concat(Object.keys(away.perQ)))].map(Number).filter(k => k > 0).sort((a, b) => a - b);
@@ -156,7 +203,8 @@ function result(o) {
   return {
     kind: 'result', key: 'final-' + slug(home.name) + '-' + slug(away.name), league: o.league || {}, comp: o.comp || '',
     date: dateLabel(t), venue: g.venue || '', home, away, periods: periods.length >= 4 ? periods : [],
-    top: { home: lead(0), away: lead(1) }, gameId: g.id || null
+    top: { home: lead(0), away: lead(1) }, scorers: { home: scorers(0), away: scorers(1) },
+    teamStats: ts.home && ts.away ? ts : null, gameId: g.id || null
   };
 }
 
@@ -179,10 +227,7 @@ function performer(o) {
     kind: 'performer', key: (o.label ? slug(o.label) : 'player-of-the-game') + '-' + slug(name), label: o.label || '', league: o.league || {}, comp: o.comp || '', date: dateLabel(t),
     player: { name, num: adv.num != null ? String(adv.num) : '' },
     team: side(mine, my), opp: side(theirs, their), won: my > their,
-    stats: { pts: n0(s.pts), reb: n0(s.or) + n0(s.dr), ast: n0(s.ast), stl: n0(s.stl), blk: n0(s.blk),
-             fg: made(n0(s.p2m) + n0(s.p3m), n0(s.p2a) + n0(s.p3a)), p3: made(s.p3m, s.p3a), ft: made(s.ftm, s.fta),
-             fgp: pct(n0(s.p2m) + n0(s.p3m), n0(s.p2a) + n0(s.p3a)), p3p: pct(s.p3m, s.p3a),
-             pm: n0(s.pm), min: Math.round(n0(s.min) / 60000) },
+    stats: statsOf(s),
     gameScore: Math.round(gameScore(s) * 10) / 10, gameId: g.id || null
   };
 }
@@ -200,11 +245,19 @@ function pages(rows, per) {
 const PER = { week: { square: 7, portrait: 9, story: 10 }, table: { square: 12, portrait: 18, story: 20 },
               fixtures: { square: 5, portrait: 7, story: 9 } };
 
+/* a game's quarters as a line: "18-15 22-29 23-23 16-25" (nothing unless both sides have all four) */
+function quartersOf(perQ) {
+  if (!perQ || !perQ[0] || !perQ[1]) return '';
+  const keys = [...new Set(Object.keys(perQ[0]).concat(Object.keys(perQ[1])))].map(Number).filter(k => k > 0).sort((a, b) => a - b);
+  return keys.length >= 4 ? keys.map(k => n0(perQ[0][k]) + '-' + n0(perQ[1][k])).join('  ') : '';
+}
+
 /* THE WEEK'S RESULTS: every final in the window, oldest first; `games` rows carry home / away teams already. */
 function week(o, size) {
   const tz = o.league && o.league.timezone;
   const rows = (o.games || []).slice().sort((a, b) => String(a.tipoff_at).localeCompare(String(b.tipoff_at))).map(g => ({
-    home: side(g.home, g.home_score), away: side(g.away, g.away_score), day: dayLabel(local(g.tipoff_at, tz))
+    home: side(g.home, g.home_score), away: side(g.away, g.away_score), day: dayLabel(local(g.tipoff_at, tz)),
+    time: timeLabel(local(g.tipoff_at, tz)), venue: g.venue || '', quarters: quartersOf(g.perQ)
   }));
   const pp = pages(rows, PER.week[size] || 8);
   return pp.map((p, i) => ({ kind: 'week', key: 'results' + (pp.length > 1 ? '-' + (i + 1) : ''), league: o.league || {},
@@ -220,7 +273,11 @@ function table(o, size) {
     groups.get(k).push({ rank: n0(r.rank), team: side(r.team, 0), gp: n0(r.gp), w: n0(r.w), l: n0(r.l),
                          pts: r.league_points != null ? n0(r.league_points) : null, diff: n0(r.diff), streak: r.streak || '',
                          pf: r.pts_for != null ? n0(r.pts_for) : null, pa: r.pts_against != null ? n0(r.pts_against) : null,
-                         pct: n0(r.w) + n0(r.l) > 0 ? n0(r.w) / (n0(r.w) + n0(r.l)) : null });
+                         pct: n0(r.w) + n0(r.l) > 0 ? n0(r.w) / (n0(r.w) + n0(r.l)) : null,
+                         ppg: r.pts_for != null && n0(r.gp) > 0 ? n0(r.pts_for) / n0(r.gp) : null,
+                         papg: r.pts_against != null && n0(r.gp) > 0 ? n0(r.pts_against) / n0(r.gp) : null,
+                         avg: n0(r.gp) > 0 ? n0(r.diff) / n0(r.gp) : null,
+                         l5: r.l5 || '', home: r.home || '', away: r.away || '', elo: r.elo != null && !isNaN(r.elo) ? Math.round(r.elo) : null });
   });
   const out = [];
   groups.forEach((rows, group) => {
@@ -509,7 +566,34 @@ function drawResult(ctx, m, th, S, M, accent) {
       ctx.textAlign = 'left';
     } });
   }
-  if (hasTop) {
+  const lk = MOD.leaderKeys, ln = MOD.leaderN || 1;
+  const said = (st, keys) => keys.map(k => st[k] + ' ' + STAT_DEFS[k][1]).join(' · ');
+  if (hasTop && ln > 1 && m.scorers) {
+    /* the top scorers, two or three a side, each with the stat lines chosen (points, rebounds, assists unless said) */
+    blocks.push({ h: 40 + ln * 44, drop: 2, name: 'each side\'s top scorers', draw: y => {
+      const colW = (W - 2 * M - 24) / 2, keys = lk || ['pts', 'reb', 'ast'];
+      [[m.scorers.home, M, m.home], [m.scorers.away, M + colW + 24, m.away]].forEach(([list, x, team]) => {
+        ctx.fillStyle = u.accentOn(team.colour, th);
+        ctx.fillRect(x, y + 6, 5, 40 + ln * 44 - 12);
+        u.font(ctx, 18, u.F.micro);
+        ctx.fillStyle = th.ink3;
+        ctx.fillText('TOP SCORERS', x + 20, y + 26);
+        (list || []).slice(0, ln).forEach((p, i) => {
+          const by = y + 40 + i * 44 + 30;
+          u.font(ctx, 20, u.F.data, 500);
+          const line = u.ellipsis(ctx, said(p.stats, keys), Math.min(colW - 24 - 130, (colW - 24) * 0.62));
+          const lw = ctx.measureText(line).width;
+          ctx.fillStyle = th.ink2;
+          ctx.textAlign = 'right';
+          ctx.fillText(line, x + colW - 6, by);
+          ctx.textAlign = 'left';
+          u.font(ctx, 26, u.F.ui, 700);
+          ctx.fillStyle = th.ink;
+          ctx.fillText(u.ellipsis(ctx, p.name, colW - 24 - lw - 14), x + 20, by);
+        });
+      });
+    } });
+  } else if (hasTop) {
     blocks.push({ h: 104, drop: 2, name: 'each side\'s leader', draw: y => {
       const colW = (W - 2 * M - 24) / 2;
       [[m.top.home, M, m.home], [m.top.away, M + colW + 24, m.away]].forEach(([t, x, team]) => {
@@ -524,9 +608,46 @@ function drawResult(ctx, m, th, S, M, accent) {
         ctx.fillText(u.ellipsis(ctx, t.name, colW - 24), x + 20, y + 62);
         u.font(ctx, 22, u.F.data, 500);
         ctx.fillStyle = th.ink2;
-        ctx.fillText(u.ellipsis(ctx, t.line, colW - 24), x + 20, y + 94);
+        ctx.fillText(u.ellipsis(ctx, lk && t.stats ? said(t.stats, lk) : t.line, colW - 24), x + 20, y + 94);
       });
     } });
+  }
+  /* the team stats, side by side, the better figure of each pair lit; when the shape has not room for all of them
+     the last are cut (trim), and when it has room for none the block goes */
+  if (MOD.teamStats && m.teamStats) {
+    const keys = MOD.teamStats.slice();
+    const blk = { h: 0, drop: 0, name: 'the team stats', draw: y => {
+      ctx.fillStyle = th.panel;
+      u.roundRect(ctx, M, y, W - 2 * M, blk.h, 14); ctx.fill();
+      u.font(ctx, 20, u.F.ui, 700);
+      ctx.fillStyle = th.ink2;
+      const nameW = (W - 2 * M) / 2 - 150;
+      ctx.fillText(u.ellipsis(ctx, m.home.short && m.home.short.length <= 4 ? m.home.short.toUpperCase() : m.home.name, nameW), M + 28, y + 30);
+      ctx.textAlign = 'right';
+      ctx.fillText(u.ellipsis(ctx, m.away.short && m.away.short.length <= 4 ? m.away.short.toUpperCase() : m.away.name, nameW), W - M - 28, y + 30);
+      ctx.textAlign = 'center';
+      u.font(ctx, 17, u.F.micro);
+      ctx.fillStyle = th.ink3;
+      ctx.fillText('TEAM STATS', W / 2, y + 28);
+      keys.forEach((k, i) => {
+        const by = y + 34 + i * 46 + 38, a = m.teamStats.home[k], b = m.teamStats.away[k];
+        const low = TEAM_STAT_DEFS[k][1], hb = a.n === b.n ? 0 : ((a.n > b.n) !== !!low ? 1 : -1);
+        u.font(ctx, 17, u.F.micro);
+        ctx.fillStyle = th.ink3;
+        ctx.textAlign = 'center';
+        ctx.fillText(TEAM_STAT_DEFS[k][0], W / 2, by - 6);
+        [[a, M + 28, 'left', hb > 0], [b, W - M - 28, 'right', hb < 0]].forEach(([v, x, al, best]) => {
+          u.fit(ctx, v.v, 190, 30, 20, u.F.data, 600);
+          ctx.textAlign = al;
+          ctx.fillStyle = best ? accent : th.ink;
+          ctx.fillText(v.v, x, by);
+        });
+        if (i < keys.length - 1) { ctx.fillStyle = th.rule; ctx.fillRect(M + 24, by + 10, W - 2 * M - 48, 1); }
+      });
+      ctx.textAlign = 'left';
+    }, trim: () => { if (keys.length > 1) { keys.pop(); blk.h = 34 + keys.length * 46 + 12; return 'cut'; } return 'gone'; } };
+    blk.h = 34 + keys.length * 46 + 12;
+    blocks.push(blk);
   }
   return (MOD.headline ? [Object.assign(titleBlock(ctx, th, S, M, '', ''), { drop: 3, name: 'the headline' })] : []).concat(blocks,
     !MOD.headline && MOD.subline ? [noteBlock(ctx, th, W, M, MOD.subline)] : []);
@@ -653,6 +774,13 @@ function titleBlock(ctx, th, S, M, title0, sub0) {
   } };
 }
 
+/* a club's name with its record and its ELO beside it, when the person asked for them */
+function nameWith(t) {
+  const ex = MOD.rowExtras || [];
+  const more = (ex.includes('record') && t.record ? [t.record] : []).concat(ex.includes('elo') && t.elo != null ? ['ELO ' + t.elo] : []);
+  return more.length ? t.name + '  ·  ' + more.join('  ·  ') : t.name;
+}
+
 function drawWeek(ctx, m, th, S, M) {
   const u = U(), W = S.w;
   const n = m.rows.length;
@@ -671,10 +799,11 @@ function drawWeek(ctx, m, th, S, M) {
       const nameW = mid - M - inset - 90;
       /* a long name is set smaller before it is cut: Crvena Zvezda Meridianbet is a club, not a typo */
       const nm = (t, x, won, align) => {
-        u.fit(ctx, t.name, nameW, 28, 20, u.F.ui, 700);
+        const said = nameWith(t);
+        u.fit(ctx, said, nameW, 28, 20, u.F.ui, 700);
         ctx.fillStyle = won ? th.ink : th.ink2;
         ctx.textAlign = align;
-        ctx.fillText(u.ellipsis(ctx, t.name, nameW), x, cy + 10);
+        ctx.fillText(u.ellipsis(ctx, said, nameW), x, cy + 10);
       };
       nm(r.home, M + inset, hw, 'left');
       nm(r.away, W - M - inset, aw, 'right');
@@ -687,11 +816,15 @@ function drawWeek(ctx, m, th, S, M) {
       ctx.fillText(String(r.away.score), mid + 14, cy + 16);
       ctx.fillStyle = th.rule2;
       ctx.fillRect(mid - 4, cy - 2, 8, 4);
-      if (r.day && h >= 96 && on('days')) {
+      /* under the score: the day, and whatever else was asked for (tip-off, venue, the quarters), one line */
+      const ex = MOD.rowExtras || [];
+      const bits = [r.day && on('days') ? r.day.toUpperCase() : ''].concat(ex.includes('time') ? [r.time] : [], ex.includes('venue') ? [String(r.venue || '').toUpperCase()] : [],
+        ex.includes('quarters') ? [r.quarters] : []).filter(Boolean);
+      if (bits.length && (h >= 96 || (ex.length && h >= 84))) {
         u.font(ctx, 15, u.F.micro);
         ctx.fillStyle = th.ink3;
         ctx.textAlign = 'center';
-        ctx.fillText(r.day.toUpperCase(), mid, y + h - 10);
+        ctx.fillText(u.ellipsis(ctx, bits.join('  ·  '), W - 2 * M - 2 * inset), mid, y + h - 10);
         ctx.textAlign = 'left';
       }
     }) : { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No finished games this week.', M, y + 40); } }
@@ -731,9 +864,12 @@ function drawTable(ctx, m, th, S, M, accent) {
       ctx.textAlign = 'center';
       cols.forEach(([, k], ci) => {
         u.font(ctx, Math.min(cols.length > 5 ? 24 : 28, h * 0.46), u.F.data, 500);
-        const v = k === 'diff' ? (r.diff > 0 ? '+' : '') + r.diff : k === 'pct' ? (r.pct == null ? '—' : r.pct >= 1 ? '1.000' : r.pct.toFixed(3).replace(/^0/, ''))
-          : r[k] == null || r[k] === '' ? '—' : String(r[k]);
-        ctx.fillStyle = k === 'w' ? th.ink : k === 'diff' ? (r.diff > 0 ? th.good : r.diff < 0 ? th.bad : th.ink3) : th.ink2;
+        const one = x => (x == null ? '—' : x.toFixed(1));
+        const v = k === 'diff' ? (r.diff > 0 ? '+' : '') + r.diff : k === 'avg' ? (r.avg == null ? '—' : (r.avg > 0 ? '+' : '') + one(r.avg))
+          : k === 'pct' ? (r.pct == null ? '—' : r.pct >= 1 ? '1.000' : r.pct.toFixed(3).replace(/^0/, ''))
+          : k === 'ppg' || k === 'papg' ? one(r[k]) : r[k] == null || r[k] === '' ? '—' : String(r[k]);
+        const signed = k === 'diff' ? r.diff : k === 'avg' ? r.avg : null;
+        ctx.fillStyle = k === 'w' ? th.ink : signed != null ? (signed > 0 ? th.good : signed < 0 ? th.bad : th.ink3) : th.ink2;
         ctx.fillText(v, x0 + cw * (ci + 0.5), cy + h * 0.16);
       });
       ctx.textAlign = 'left';
@@ -764,9 +900,10 @@ function drawFixtures(ctx, m, th, S, M, accent) {
       crest(ctx, th, r.home, M + 212, l1 - 9, 17);
       crest(ctx, th, r.away, M + 212, l2 - 9, 17);
       [[r.home, l1], [r.away, l2]].forEach(([t, ly]) => {
-        u.fit(ctx, t.name, tw, 28, 21, u.F.ui, 700);
+        const said = nameWith(t);
+        u.fit(ctx, said, tw, 28, 21, u.F.ui, 700);
         ctx.fillStyle = th.ink;
-        ctx.fillText(u.ellipsis(ctx, t.name, tw), tx, ly);
+        ctx.fillText(u.ellipsis(ctx, said, tw), tx, ly);
       });
       if (venue) {
         u.font(ctx, 19, u.F.ui, 400);
@@ -822,9 +959,10 @@ function drawIn(ctx, m, o, u, themes) {
   const need = () => body.reduce((a, b) => a + b.h, 0) + 12 * Math.max(0, body.length - 1);
   while (need() > room) {
     const worst = body.reduce((w, b) => (b.drop && (!w || b.drop > w.drop) ? b : w), null);
-    if (!worst) break;
-    body.splice(body.indexOf(worst), 1);
-    dropped.push(worst.name);
+    if (worst) { body.splice(body.indexOf(worst), 1); dropped.push(worst.name); continue; }
+    const cut = body.find(b => b.trim);                    // a block that can give up some of itself (the team stats' last rows)
+    if (!cut) break;
+    if (cut.trim() === 'gone') { body.splice(body.indexOf(cut), 1); dropped.push(cut.name); } else if (!dropped.includes('some of ' + cut.name)) dropped.push('some of ' + cut.name);
   }
   const at = stack(body, top + 40 + 36, bottom - 70 - 30, S.h >= 1900 ? 90 : 60);
   body.forEach((b, i) => b.draw(at[i]));
@@ -879,7 +1017,7 @@ async function canvas(m, opts) {
   c.height = Math.round(S.h * o.scale);
   const ctx = c.getContext('2d');
   ctx.scale(o.scale, o.scale);
-  draw(ctx, await withCrests(m), o);
+  c.dropped = draw(ctx, await withCrests(m), o).dropped;      // what a full shape left out (see drawIn)
   return c;
 }
 
@@ -950,6 +1088,6 @@ function zip(files, when) {
   return out;
 }
 
-return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, result, performer, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
+return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, TEAM_STAT_DEFS, ROW_EXTRAS, result, performer, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
          gameScore, statLine, local, dayLabel, dateLabel, timeLabel, slug };
 }));

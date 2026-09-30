@@ -125,11 +125,53 @@ async function read(sb, league, comps, now, offset) {
 /* the league (with its logo's address) and a club by id (with its crest's), as socialcard.js's models take them */
 function frame(data, crestOf) {
   const L = Object.assign({}, data.league, { logoUrl: crestOf && data.league.logoPath ? crestOf({ logo_path: data.league.logoPath }) : null });
+  /* a club's record (from the standings) and its ELO (data.extras, read when a graphic asks for it) ride on the club */
+  const rec = new Map();
+  (data.standings || []).forEach(x => { if (!rec.has(x.team_id)) rec.set(x.team_id, (x.w || 0) + '-' + (x.l || 0)); });
+  const ex = data.extras || null;
   const team = id => {
     const t = data.teams.get(id) || { name: '?' };
-    return Object.assign({}, t, { crestUrl: crestOf ? crestOf(t) : null });
+    return Object.assign({}, t, { crestUrl: crestOf ? crestOf(t) : null, record: rec.get(id) || '', elo: ex && ex.elo.has(id) ? ex.elo.get(id) : null });
   };
   return { L, team };
+}
+
+/* ------------------------------------------------- what the games say beyond the table --- */
+/* The table columns the standings do not hold - the ELO rating, the last five games, the home and away records - worked
+   from every finished game of the competitions (their scores only: one bounded read, a thousand at a time). ELO is
+   sos.js's own, the rating the league page's table shows (1500 the average). Read only when a graphic asks. */
+async function readExtras(sb, comps) {
+  const out = { elo: new Map(), l5: new Map(), home: new Map(), away: new Map(), games: 0 };
+  const ids = (comps || []).map(c => c.id);
+  if (!ids.length) return out;
+  const games = [];
+  for (let from = 0; from < 10000; from += 1000) {
+    const r = await sb.from('games').select('id,home_team_id,away_team_id,home_score,away_score,tipoff_at')
+      .in('competition_id', ids).in('status', ['final', 'finalising']).order('tipoff_at', { ascending: true }).range(from, from + 999);
+    if (r && r.error) throw r.error;
+    const rows = (r && r.data) || [];
+    rows.forEach(g => games.push(g));
+    if (rows.length < 1000) break;
+  }
+  out.games = games.length;
+  if (root.EpinoiaSOS && root.EpinoiaSOS.eloRatings && games.length) {
+    try { root.EpinoiaSOS.eloRatings(games).forEach((r, id) => out.elo.set(id, r.elo)); } catch (_) { /* no ELO: the column reads a dash */ }
+  }
+  const results = new Map(), homeRec = new Map(), awayRec = new Map();
+  const add = (m, id, won) => { const c = m.get(id) || [0, 0]; c[won ? 0 : 1]++; m.set(id, c); };
+  games.slice().sort((a, b) => String(a.tipoff_at).localeCompare(String(b.tipoff_at))).forEach(g => {
+    if (g.home_score == null || g.away_score == null || g.home_score === g.away_score) return;
+    const hw = g.home_score > g.away_score;
+    [[g.home_team_id, hw, homeRec], [g.away_team_id, !hw, awayRec]].forEach(([id, won, rm]) => {
+      if (!results.has(id)) results.set(id, []);
+      results.get(id).push(won);
+      add(rm, id, won);
+    });
+  });
+  results.forEach((r, id) => { const last = r.slice(-5); out.l5.set(id, last.filter(Boolean).length + '-' + last.filter(x => !x).length); });
+  homeRec.forEach((c, id) => out.home.set(id, c[0] + '-' + c[1]));
+  awayRec.forEach((c, id) => out.away.set(id, c[0] + '-' + c[1]));
+  return out;
 }
 
 function items(data, size, crestOf) {
@@ -145,7 +187,7 @@ function items(data, size, crestOf) {
     const stand = data.standings.filter(s => s.competition_id === c.id);
     const comp = data.comps.length > 1 ? c.name : (c.name || L.name);
     if (fin.length) {
-      SC.week({ games: fin.map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id) })), league: L, comp, range }, size)
+      SC.week({ games: fin.map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id), perQ: data.perQ.get(g.id) })), league: L, comp, range }, size)
         .forEach(m => out.push({ group: 'week', title: 'Results' + (m.pages > 1 ? ' ' + m.page + '/' + m.pages : '') + (data.comps.length > 1 ? ' · ' + c.name : ''), model: m }));
     }
     if (stand.length && (!c.kind || c.kind === 'league' || c.kind === 'group')) {
@@ -209,10 +251,12 @@ function builderModel(data, sel, size, crestOf) {
   if (!c) return { model: null, reason: 'This league has no competition in the season on screen.' };
   const comp = nameOf(c), range = rangeLabel(data.since, data.now), ahead = rangeLabel(data.now, data.until);
   const asOf = rangeLabel(data.now, data.now).replace(/^\d+–/, '');
-  const games = list => list.filter(g => g.competition_id === c.id).map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id) }));
+  const games = list => list.filter(g => g.competition_id === c.id).map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id), perQ: data.perQ.get(g.id) }));
+  const ex = data.extras || null;
+  const withExtras = x => Object.assign({}, x, { team: team(x.team_id) }, ex ? { elo: ex.elo.get(x.team_id), l5: ex.l5.get(x.team_id), home: ex.home.get(x.team_id), away: ex.away.get(x.team_id) } : {});
   const models0 = tpl === 'week' ? SC.week({ games: games(data.finals), league: L, comp, range }, size)
     : tpl === 'fixtures' ? SC.fixtures({ games: games(data.upcoming), league: L, comp, range: ahead }, size)
-    : SC.table({ standings: data.standings.filter(x => x.competition_id === c.id).map(x => Object.assign({}, x, { team: team(x.team_id) })), league: L, comp, asOf }, size);
+    : SC.table({ standings: data.standings.filter(x => x.competition_id === c.id).map(withExtras), league: L, comp, asOf }, size);
   const models = models0.filter(m => m.rows.length);          // a list with no rows is an empty page, not a graphic
   const page = Math.max(0, Math.min(models.length - 1, +s.page || 0));
   const none = tpl === 'week' ? 'No game finished in this competition in this week.' : tpl === 'fixtures'
@@ -248,5 +292,5 @@ function weekLabel(offset) {
 }
 const stepWeek = (offset, dir) => Math.max(-52, Math.min(0, (Math.round(+offset || 0)) + dir));
 
-return { read, items, builderModel, frame, playerRow, handleOf, rangeLabel, PLAYER_COLS, TYPES, TYPE_OF, counts, filterBy, scope, weekLabel, stepWeek };
+return { read, readExtras, items, builderModel, frame, playerRow, handleOf, rangeLabel, PLAYER_COLS, TYPES, TYPE_OF, counts, filterBy, scope, weekLabel, stepWeek };
 }));
