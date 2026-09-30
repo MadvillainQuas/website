@@ -507,12 +507,12 @@ function consistencyCard() {
 
 function paintBars(mine, field) {
   LAST_BARS = { mine, field };
+  paintEstPos(mine, field);
   /* the '?' in the section heading (statpop.js): the explainer for every main statistic below */
   try {
     const sh = $('#bars') && $('#bars').closest('.sec') && $('#bars').closest('.sec').querySelector('.sec-h');
     if (window.EpinoiaStatPop && sh) window.EpinoiaStatPop.helpButton(sh, 'player');
   } catch (_) { /* the help is a convenience */ }
-  paintEstPos(mine, field);
   const host = $('#bars'); host.textContent = '';
   if (!mine || field.length < 3) {
     host.appendChild(el('div', 'empty',

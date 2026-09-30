@@ -83,3 +83,12 @@ html.stp-lock{overflow:hidden}
 .stp-help li{font-size:12.5px;line-height:1.4;color:var(--ink-2)}
 .stp-help li b{color:var(--ink);font-weight:800}
 .stp-help li em{font-style:normal;color:var(--ink-3)}
+
+/* the club page's headings are centred: the '?' sits in the top right corner instead of pushing the title left */
+.ep-hdr:has(>.stp-q){position:relative}
+.ep-hdr>.stp-q{position:absolute;right:12px;top:12px;margin:0}
+
+/* THE ? SITS IN THE TOP RIGHT CORNER of the heading it explains, whatever the teletext layer does to that heading's
+   layout (it stacks and centres it, which left the button hanging under the title) */
+.sec-h:has(>.stp-q){position:relative}
+.sec-h:has(>.stp-q)>.stp-q{position:absolute;right:12px;top:12px;margin:0}
