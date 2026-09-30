@@ -101,7 +101,8 @@
 .fxc-crest{width:30px;height:30px;border-radius:3px;overflow:hidden;display:grid;place-items:center;
   font-family:var(--f-score);font-size:13px;line-height:1;color:#04100b;flex:none}
 .fxc-crest.has-img{background:#ffffff}
-.fxc-crest img{width:100%;height:100%;object-fit:contain;display:block}
+.fxc-crest img{width:100%;height:100%;object-fit:contain;display:block;
+  filter:drop-shadow(calc(-.7 * var(--ca-x,1.4px)) 0 0 var(--ca-r,transparent)) drop-shadow(calc(.7 * var(--ca-x,1.4px)) 0 0 var(--ca-b,transparent))}
 
 /* IT WRAPS RATHER THAN ELLIPSISING. Half a card is about 150px, which holds "Bristol Flyers"
    and cuts "Cardiff Met Archers" to "Cardiff Met Arch…" — a club reduced to a word and a half
@@ -119,7 +120,8 @@
 .fxc-mid{display:flex;align-items:center;justify-content:center;gap:4px;padding:0 2px;align-self:center}
 .fxc-v{font-family:var(--f-ui);font-style:italic;font-size:13px;color:var(--ink-3)}
 .fxc-sc{font-family:var(--f-score);font-size:24px;line-height:1;font-variant-numeric:tabular-nums;
-  color:var(--ink);min-width:1.6ch;text-align:center}
+  color:var(--ink);min-width:1.6ch;text-align:center;
+  text-shadow:calc(-1 * var(--ca-x,1.4px)) 0 var(--ca-r,transparent),var(--ca-x,1.4px) 0 var(--ca-b,transparent)}
 .fxc-dash{font-family:var(--f-score);font-size:18px;line-height:1;color:var(--ink-3)}
 .fxc-sc.win{color:var(--lume)}
 .fxc-sc.lose{color:var(--ink-3)}

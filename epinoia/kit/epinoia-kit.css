@@ -112,6 +112,9 @@
   --rule:rgba(147,242,191,.20); --rule-2:rgba(147,242,191,.44);
   /* neon */
   --lume:#93f2bf; --aqua:#8ff5ff; --amber:#ffd166; --flare:#ff5f6b; --violet:#b7a8ff;
+  /* CHROMATIC ABERRATION (card.css, fxc.css, sectitle.css): the riso cards' misregistration carried onto the
+     screen as a lens fringe - two of the kit's own inks pulled a little either side of display type and crests */
+  --ca-x:1.4px; --ca-r:color-mix(in srgb,var(--flare) 62%,transparent); --ca-b:color-mix(in srgb,var(--aqua) 62%,transparent);
   --team-a:var(--lume); --team-b:var(--aqua);
   --on-accent:#04100b;
   --good:#63ffa0; --bad:#ff5f6b;
@@ -136,6 +139,8 @@
   --ink:#0d1f17; --ink-2:rgba(13,31,23,.95); --ink-3:rgba(13,31,23,.86);
   --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);
   --lume:#08603f; --aqua:#075a73; --amber:#714a03; --flare:#a01b2a; --violet:#4a30b0;
+  /* on paper the fringe is a trace, not a glow: it must never cost the type its contrast */
+  --ca-x:1px; --ca-r:color-mix(in srgb,#e8175d 30%,transparent); --ca-b:color-mix(in srgb,#0096c7 30%,transparent);
   --good:#0a6d43; --bad:#b32433;
   --team-a:var(--lume); --team-b:var(--aqua);
   --on-accent:#ffffff;
@@ -738,3 +743,13 @@ body.league-themed .league-trim{ display:block; height:3px;
 .sp-ztbl th+th, .sp-ztbl td+td{ border-left:1px solid var(--col-rule) }
 .ep-tbl th:nth-child(2), .ep-tbl td:nth-child(2){ border-left:0 }
 .ep-units[hidden]{display:none}
+
+/* ---------- chromatic aberration: the split a handled card gives ----------------------------------------
+   Static fringes live with the things they fringe (card.css, fxc.css, sectitle.css); this is the moment's
+   jolt when a card is hovered, shared so every card splits the same way. Never under reduced motion. */
+@keyframes ca-split{
+  0%  {translate:0 0}
+  30% {translate:-1px 0;filter:drop-shadow(calc(-3.5 * var(--ca-x,1.4px)) 0 0 var(--ca-r)) drop-shadow(calc(3 * var(--ca-x,1.4px)) 1px 0 var(--ca-b))}
+  60% {translate:1px 0;filter:drop-shadow(calc(-2 * var(--ca-x,1.4px)) -1px 0 var(--ca-r)) drop-shadow(calc(2.5 * var(--ca-x,1.4px)) 0 0 var(--ca-b))}
+  100%{translate:0 0}
+}
