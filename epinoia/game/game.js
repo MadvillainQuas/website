@@ -442,7 +442,8 @@ const BODIES = {
   pbp:     d => B.pbpHTML(d),
   shots:   d => shotsTab(d),
   adv:     d => B.advHTML(d),
-  lineups: () => B.lineupsHTML(),
+  /* 5-, 3- and 2-man groups, filtered and sorted in place (lineups.js); the old table if that has not loaded */
+  lineups: d => window.EpinoiaLineups ? window.EpinoiaLineups.render(d) : B.lineupsHTML(),
   /* GAMEVIS's Game Flow and Connections tabs, ported: both replay window.S themselves */
   flow:        () => window.EpinoiaGameFlow ? window.EpinoiaGameFlow.render(window.S)
                      : '<div class="msg">The game flow charts could not be loaded.</div>',
@@ -2376,6 +2377,7 @@ function renderBody(d) {
     if (fTab === 'flow' && window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el);
     if (fTab === 'connections' && window.EpinoiaConnections) window.EpinoiaConnections.mounted(el);
     if (fTab === 'events' && window.EpinoiaEvents) window.EpinoiaEvents.mounted(el);
+    if (fTab === 'lineups' && window.EpinoiaLineups) window.EpinoiaLineups.mounted(el);
     if (fTab === 'box') {
       bindBoxSwitch(el);
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); if (window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el); setTimeout(squadPhotos, 0); }

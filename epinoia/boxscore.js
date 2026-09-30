@@ -669,25 +669,43 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       (rated?' · shaded cells: the rate’s percentile against '+esc(globalThis.EpinoiaGamePct.against(globalThis.EpinoiaGamePct.scaleOf(S.leagueSlug)))+' (green good, red poor; hover for the number)':'')+'</div></div>';
 }
 
-function lineupAgg(d,t){
+/* the rates a group on the floor is read by, from its summed boxes (a five, or a pair or trio inside one) */
+function lineupRates(l){
+  const o=l.off, D=l.def, dv=(a,b)=>b?a/b:0;
+  const poss = 0.96*(o.fga+o.tov+0.44*o.fta-o.or), dposs = 0.96*(D.fga+D.tov+0.44*D.fta-D.or);
+  l.poss = poss; l.dposs = dposs;
+  l.ortg = dv(o.pts,poss)*100; l.efg = dv(o.fgm+0.5*o.f3m,o.fga)*100;
+  l.tovp = dv(o.tov,o.fga+0.44*o.fta+o.tov)*100; l.orebp = dv(o.or,o.or+D.dr)*100;
+  l.ftr = dv(o.fta,o.fga)*100;
+  l.drtg = dv(D.pts,dposs)*100; l.oefg = dv(D.fgm+0.5*D.f3m,D.fga)*100;
+  l.tovf = dv(D.tov,D.fga+0.44*D.fta+D.tov)*100; l.oreba = dv(D.or,D.or+o.dr)*100; l.oftr = dv(D.fta,D.fga)*100;
+  l.net = l.ortg-l.drtg; l.pm = l.pf-l.pa;
+  return l;
+}
+
+function lineupAgg(d,t){ return lineupCombos(d,t,5); }
+
+/* EVERY GROUP OF `size` WHO SHARED THE FLOOR, and what happened while they did: each five's stints summed
+   over the groups inside it (a five holds ten pairs and ten trios), so a pair's minutes are every minute the
+   two were on together, whoever the other three were. size 5 is the fives themselves. */
+function lineupCombos(d,t,size){
+  size = Math.max(1, Math.min(5, size|0 || 5));
   const agg = {};
+  const pick = (ids, k, from, acc, out) => {
+    if(acc.length===k){ out.push(acc.slice()); return; }
+    for(let i=from;i<ids.length;i++){ acc.push(ids[i]); pick(ids,k,i+1,acc,out); acc.pop(); }
+  };
   d.lineups[t].forEach(l=>{
-    const k=l.ids.join(','); const a=agg[k]=agg[k]||{ids:l.ids,dur:0,pf:0,pa:0,off:mkBox(),def:mkBox()};
-    a.dur+=l.dur; a.pf+=l.pf; a.pa+=l.pa;
-    for(const kk in l.off){ a.off[kk]+=l.off[kk]; a.def[kk]+=l.def[kk]; }
+    const groups = [];
+    if(size>=l.ids.length) groups.push(l.ids);
+    else pick(l.ids.slice().sort(), size, 0, [], groups);
+    groups.forEach(g=>{
+      const k=g.join(','); const a=agg[k]=agg[k]||{ids:g,dur:0,pf:0,pa:0,off:mkBox(),def:mkBox()};
+      a.dur+=l.dur; a.pf+=l.pf; a.pa+=l.pa;
+      for(const kk in l.off){ a.off[kk]+=l.off[kk]; a.def[kk]+=l.def[kk]; }
+    });
   });
-  return Object.values(agg).sort((a,b)=>b.dur-a.dur).map(l=>{
-    const o=l.off, D=l.def, dv=(a,b)=>b?a/b:0;
-    const poss = 0.96*(o.fga+o.tov+0.44*o.fta-o.or), dposs = 0.96*(D.fga+D.tov+0.44*D.fta-D.or);
-    l.poss = poss; l.dposs = dposs;
-    l.ortg = dv(o.pts,poss)*100; l.efg = dv(o.fgm+0.5*o.f3m,o.fga)*100;
-    l.tovp = dv(o.tov,o.fga+0.44*o.fta+o.tov)*100; l.orebp = dv(o.or,o.or+D.dr)*100;
-    l.ftr = dv(o.fta,o.fga)*100;
-    l.drtg = dv(D.pts,dposs)*100; l.oefg = dv(D.fgm+0.5*D.f3m,D.fga)*100;
-    l.tovf = dv(D.tov,D.fga+0.44*D.fta+D.tov)*100; l.oreba = dv(D.or,D.or+o.dr)*100; l.oftr = dv(D.fta,D.fga)*100;
-    l.net = l.ortg-l.drtg; l.pm = l.pf-l.pa;
-    return l;
-  });
+  return Object.values(agg).sort((a,b)=>b.dur-a.dur).map(lineupRates);
 }
 
 function periodPill(S) {
@@ -1110,5 +1128,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, sitCompute, assistCard, outcomeCard, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, lineupRates, lineupCombos, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, sitCompute, assistCard, outcomeCard, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

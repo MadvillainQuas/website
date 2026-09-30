@@ -532,6 +532,12 @@ jobs:
         # browser's answers, a missing calculator leaves only its own field out, and the report the server files has the sections
         run: node supabase/tests/tabbridge.test.mjs
 
+      - name: The lineups tab - fives, trios and pairs, filtered and sorted in place
+        # epinoia/game/lineups.js over boxscore.js lineupCombos on a real game: the fives are the old tab's, a pair is
+        # every stretch the two shared (ten to a five, so ten times the fives' minutes and points), the filters and
+        # the sort do what they say, and the tab draws with its controls from nothing but S and the box score module
+        run: node supabase/tests/lineups.test.mjs
+
       - name: Cards on the game page - each chart and each player row a card, the points added are strength of schedule's
         # game/cards.js is the game page's dress for the box score and full stats; its weights are sos.js's and its renderers
         # hand their rows over only where it is loaded, so the scorer's own screens stay tables

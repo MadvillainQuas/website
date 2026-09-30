@@ -1,0 +1,46 @@
+/* ============================================================================
+   THE LINEUPS TAB (lineups.js): its controls, a table that fits a phone until the four factors are asked
+   for, a bar for each group's share of the game, and short stints dimmed. The table's own look (tint,
+   net pill, the ortg/drtg/net rules) is boxscore.css's table.lu, unchanged.
+   ============================================================================ */
+.lu2-ctl{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:4px 0 12px}
+.lu2-seg{display:inline-flex;border:1px solid var(--rule-2,rgba(147,242,191,.44));border-radius:8px;overflow:hidden}
+.lu2-seg button,.lu2-tog{font:600 11px/1 var(--f-micro,ui-monospace,monospace);letter-spacing:.06em;text-transform:uppercase;
+  background:transparent;color:var(--ink-2,inherit);border:0;padding:8px 10px;cursor:pointer;min-height:32px}
+.lu2-seg button+button{border-left:1px solid var(--rule,rgba(147,242,191,.2))}
+.lu2-seg button.on,.lu2-tog.on{background:var(--lume,#93f2bf);color:var(--on-accent,#04100b)}
+.lu2-tog{border:1px solid var(--rule-2,rgba(147,242,191,.44));border-radius:8px}
+.lu2-seg button:focus-visible,.lu2-tog:focus-visible,.lu2 th.lu2-s:focus-visible,.lu2-player:focus-visible{outline:2px solid var(--aqua,#8ff5ff);outline-offset:2px}
+
+.lu2-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.lu2-head h3{margin:0}
+.lu2-player{font:500 12px/1.2 var(--f-ui,system-ui,sans-serif);color:var(--ink,inherit);background:var(--panel-2,transparent);
+  border:1px solid var(--rule-2,rgba(147,242,191,.44));border-radius:8px;padding:6px 8px;max-width:100%}
+
+/* the compact table fits a phone; the four factors widen it and it scrolls */
+table.lu2{min-width:0;width:100%}
+table.lu2.lu2-detail{min-width:980px}
+table.lu2 th.lu2-s{cursor:pointer;user-select:none;white-space:nowrap}
+table.lu2 th.lu2-s.on{color:var(--lume,#93f2bf)}
+table.lu2 th.lu2-s.on.desc::after{content:' ▾'} table.lu2 th.lu2-s.on.asc::after{content:' ▴'}
+table.lu2 th.lu2-who,table.lu2 td.lu2-who{text-align:left;min-width:180px}
+table.lu2 td.lu2-who .lunums{gap:4px}
+table.lu2 td.lu2-who .luname{font-size:10px;padding:2px 6px}
+/* the group's share of the game, under its names */
+.lu2-bar{display:block;height:3px;margin-top:6px;border-radius:2px;background:var(--rule,rgba(147,242,191,.2));position:relative;overflow:hidden}
+.lu2-bar::before{content:'';position:absolute;inset:0 auto 0 0;width:var(--w,0);background:var(--aqua,#8ff5ff);opacity:.8}
+/* a short stint's rates are noise: dimmed, never hidden */
+table.lu2 tr.lu2-short{opacity:.55}
+table.lu2 td.lu2-none{text-align:left;color:var(--faint,var(--ink-3))}
+.lu2-note{padding:4px 0 10px}
+/* A PHONE: the names on a line of their own and the seven numbers under them, so the compact table fits the
+   screen with nothing scrolled out of sight (the four factors keep their scrolling table) */
+@media (max-width:560px){
+  .lu2-seg button,.lu2-tog{padding:8px}
+  table.lu2:not(.lu2-detail),table.lu2:not(.lu2-detail) tbody{display:block;width:100%}
+  table.lu2:not(.lu2-detail) tr{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:center}
+  table.lu2:not(.lu2-detail) th.lu2-who{display:none}
+  table.lu2:not(.lu2-detail) td.lu2-who{grid-column:1/-1;min-width:0;padding-bottom:2px;border:0}
+  table.lu2:not(.lu2-detail) th,table.lu2:not(.lu2-detail) td:not(.lu2-who){text-align:center;padding:6px 2px;font-size:11.5px;border-left:0}
+  table.lu2:not(.lu2-detail) .netpill{padding:2px 5px;font-size:10px}
+}
