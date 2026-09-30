@@ -34,6 +34,7 @@ const count = $('#count');
 body.addEventListener('input', () => { count.textContent = String(body.value.length); });
 
 const isPrivacy = () => $('#topic').value === 'privacy';
+const isApi = () => $('#topic').value === 'api';
 const londonDate = iso => iso
   ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'long', year: 'numeric' })
   : '';
@@ -42,14 +43,15 @@ function syncTopic() {
   const p = isPrivacy();
   $('#privacyBox').classList.toggle('hide', !p);
   $('#subjectRow').classList.toggle('hide', p);
-  $('#bodyLabel').textContent = p ? 'Details: what you are asking for, and anything that helps us find your data' : 'Message';
+  $('#bodyLabel').textContent = p ? 'Details: what you are asking for, and anything that helps us find your data'
+    : isApi() ? 'Your request: who you are, what you would build, which leagues, and about how often you would call it' : 'Message';
   const max = p ? 4000 : 5000;
   body.maxLength = max;
   $('#max').textContent = String(max);
   count.textContent = String(body.value.length);
 }
 $('#topic').addEventListener('change', syncTopic);
-if (new URLSearchParams(location.search).get('topic') === 'privacy') $('#topic').value = 'privacy';
+{ const tp = new URLSearchParams(location.search).get('topic'); if (tp === 'privacy' || tp === 'api') $('#topic').value = tp; }
 syncTopic();
 
 $('#form').addEventListener('submit', async (e) => {
@@ -58,7 +60,7 @@ $('#form').addEventListener('submit', async (e) => {
   const privacy = isPrivacy();
   const name = $('#name').value.trim();
   const email = $('#email').value.trim();
-  const subject = privacy ? '' : $('#subject').value.trim();
+  const subject = privacy ? '' : (isApi() ? 'API request' + ($('#subject').value.trim() ? ': ' + $('#subject').value.trim() : '') : $('#subject').value.trim());
   const text = body.value.trim();
 
   /* Say what is wrong and put the cursor there. A form that reports one
