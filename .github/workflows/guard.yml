@@ -597,6 +597,13 @@ jobs:
           node supabase/tests/team-merge.test.mjs
           python scripts/ingest/team_merge_test.py
 
+      - name: A backfill is not news (0191)
+        # finalising last season's games files no match report and alerts nobody; the final whistle still
+        # does both, and a game that already has its report keeps it (a correction rewrites it)
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/backfill-news.test.mjs
+
       - name: Player bio from the feeds (height, weight, secret date of birth)
         # 0184 on a real Postgres: an adult's date is kept and his year follows it, a minor's date is never kept, the date is not
         # granted to the browser, player_ages() gives ages only; and the ingest side fills blanks only and never sends a minor's date
