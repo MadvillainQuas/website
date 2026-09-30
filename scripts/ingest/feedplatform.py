@@ -212,7 +212,17 @@ class Platform:
             # dropped every pass, and the league's clubs never had one.
             self.take_crest(self.cache["team"][key], t)
             return self.cache["team"][key]
-        r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&select=id,slug,name,aliases,logo_path")
+        cols = "select=id,slug,name,aliases,logo_path"
+        # A MERGED CLUB KEEPS THE FEED CODES OF BOTH (0188, mirroring 0183 for players): the survivor's own under
+        # external_ids.fiba_livestats and the merged-away row's under external_ids.also, so a feed that still sends
+        # the old code -- or team_code()'s own slug-of-the-old-name fallback, for a feed with no code at all -- finds
+        # this row rather than making the duplicate again. If the server does not understand the combined filter
+        # the plain one is asked, exactly as before.
+        try:
+            r = self.one("teams", f"league_id=eq.{league_id}&or=(external_ids->>fiba_livestats.eq." + quote('"' + code + '"', safe="") +
+                        ",external_ids->also.cs." + quote(json.dumps([code]), safe="") + f")&{cols}")
+        except Exception:
+            r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&{cols}")
         if r and not self.dry:
             # THE NAME A SCHEDULE COULD NOT GIVE. A club first seen on a fixture list may be named
             # in its own script and abbreviated with it (bleague.jp prints "広島", the game payload

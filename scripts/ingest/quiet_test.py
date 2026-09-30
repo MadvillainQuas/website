@@ -399,7 +399,8 @@ class _CrestSB:
         self.patched = []
 
     def select(self, table, query):
-        return [self.row] if table == "teams" and "external_ids->>fiba_livestats=eq.9896" in query else []
+        # the primary code lookup (0187: also checks external_ids.also, "or=(...)" and all)
+        return [self.row] if table == "teams" and ("external_ids->>fiba_livestats=eq.9896" in query or "external_ids->>fiba_livestats.eq." in query) else []
 
     def patch(self, table, query, body):
         self.patched.append((table, query, body))

@@ -56,6 +56,8 @@ function client(state) {
     if (name === 'platform_link_remove') return { data: s.removed || { removed: true, left: 2 } };
     if (name === 'platform_player_merge_preview') return { data: s.preview || { keep: { name: 'Max Mackinnon', birth_year: null }, other: { name: 'M. Mackinnon', birth_year: null }, blockers: [], counts: { games: 12, events: 640, rosters: 2, awards: 0, photos: 1, followers: 3 } } };
     if (name === 'platform_player_merge') return { data: s.merged || { kept: args.p_keep, merged: args.p_other, games: 12, events: 640 } };
+    if (name === 'platform_team_merge_preview') return { data: s.preview || { keep: { name: 'London Lions' }, other: { name: 'London Lions Senior Men I' }, blockers: [], counts: { competitions: 1, games: 24, rosters: 12, photos: 1, followers: 5 } } };
+    if (name === 'platform_team_merge') return { data: s.merged || { kept: args.p_keep, merged: args.p_other, competitions: 1, games: 24 } };
     return { data: null };
   } } };
 }
@@ -93,7 +95,8 @@ console.log('-- the panel');
   ok('...each with its league, the women\'s side chipped, and its seasons', rows[2].cls('le-chip')[0].textContent === 'women' && /2026-27 · 2025-26/.test(rows[1].cls('le-sub')[0].textContent) && rows[1].cls('le-name')[0].textContent === 'EuroCup');
   ok('...each a link to that side\'s page', rows.map(r => r.cls('le-name')[0].href).join() === './?t=a,./?t=b,./?t=c', rows.map(r => r.cls('le-name')[0].href));
   ok('...and the group\'s name', m.host.cls('le-g')[0].textContent === 'London Lions');
-  ok('every row has an unlink button', rows.every(r => r.cls('le-x').length === 1));
+  ok('every row has an unlink button, and (this page\'s own aside) a merge button too',
+     rows.every(r => r.cls('le-x').length === (r.classList.contains('here') ? 1 : 2)), rows.map(r => r.cls('le-x').length));
   m.toggle.fire('click');
   ok('the button shuts it again', m.panel.hidden === true && m.toggle.attrs['aria-expanded'] === 'false');
   const alone = mounted({ linked: null });
@@ -406,14 +409,33 @@ console.log('-- merging two profiles');
   await until(() => q1.c.calls.some(x => x[0] === 'platform_player_merge_preview'));
   ok('...which asks first about THAT profile, and does not link it', q1.c.calls.some(x => x[0] === 'platform_player_merge_preview' && x[1].p_other === 'p3') && !q1.c.calls.some(x => x[0] === 'platform_link_apply'), q1.c.calls.map(x => x[0]));
 
-  /* a club's panel has none of this */
+  /* a club's panel has the same merge, worded for a club (0188) - "London Lions" merging "London Lions Senior Men I" */
   const t = mounted();
   t.toggle.fire('click');
-  ok('a club\u2019s panel has no merge', t.host.cls('le-merge').length === 0 && t.host.cls('le-merge-box')[0].hidden === true);
+  const trows = t.host.cls('le-mem');
+  ok('this page\u2019s own row has no merge button; the others do', trows[0].cls('le-merge').length === 0 && trows.slice(1).every(r => r.cls('le-merge').length === 1), trows.map(r => r.cls('le-merge').length));
+  trows[1].cls('le-merge')[0].fire('click');
+  await until(() => t.c.calls.some(x => x[0] === 'platform_team_merge_preview'));
+  await tick(15);   // until() can resolve on the same microtask turn the preview call itself queued; give startMerge's own continuation a turn to draw the box
+  ok('it asks the TEAM preview, not the player one', t.c.calls.some(x => x[0] === 'platform_team_merge_preview' && x[1].p_keep === 'a' && x[1].p_other === 'b')
+     && !t.c.calls.some(x => x[0] === 'platform_player_merge_preview'), t.c.calls.map(x => x[0]));
+  const tbox = t.host.cls('le-merge-box')[0];
+  ok('the box names both clubs, worded "club" not "profile" or "team"', tbox.hidden === false && /Merge London Lions Senior Men I into London Lions\?/.test(tbox.cls('le-merge-h')[0].textContent)
+     && /1 competition entry, 24 games, 12 roster entries, 1 photo, 5 followers/.test(tbox.cls('le-merge-p')[0].textContent)
+     && /deletes the other club and cannot be undone/.test(tbox.cls('le-merge-warn')[0].textContent), tbox.textContent);
+  tbox.cls('le-merge-go')[0].fire('click');
+  await until(() => t.c.calls.some(x => x[0] === 'platform_team_merge'));
+  await tick(15);
+  ok('merging a club moves the database call, says so with "club", and offers a reload (its own roster/fixtures may have grown)',
+     t.c.calls.some(x => x[0] === 'platform_team_merge' && x[1].p_keep === 'a' && x[1].p_other === 'b')
+     && /^Merged: 24 games now belong to this club/.test(t.msg.textContent) && t.host.cls('le-x').some(b => /reload/.test(b.textContent) && b.hidden === false), t.msg.textContent);
 
-  ok('the words', E.mergeLines({ counts: { games: 1, events: 0, followers: 2 } }).join() === '1 game with his stats,2 followers' && E.mergeLines({}).length === 0
-     && /^Merged: 1 game now belongs to this profile/.test(E.mergedWords({ games: 1 })) && /everything now belongs/.test(E.mergedWords({})));
-  ok('a server without 0183 says which migration', /migration 0183/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_player_merge in the schema cache' }))
+  ok('the words: a player\u2019s and a club\u2019s are worded differently', E.mergeLines({ counts: { games: 1, events: 0, followers: 2 } }, 'player').join() === '1 game with his stats,2 followers'
+     && E.mergeLines({ counts: { competitions: 1, games: 1, followers: 2 } }, 'team').join() === '1 competition entry,1 game,2 followers' && E.mergeLines({}, 'player').length === 0
+     && /^Merged: 1 game now belongs to this profile/.test(E.mergedWords({ games: 1 }, 'player')) && /^Merged: 1 game now belongs to this club/.test(E.mergedWords({ games: 1 }, 'team'))
+     && /everything now belongs to this profile/.test(E.mergedWords({}, 'player')) && /everything now belongs to this club/.test(E.mergedWords({}, 'team')));
+  ok('a server without 0183 says which migration, without 0188 which other one', /migration 0183/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_player_merge in the schema cache' }))
+     && /migration 0188/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_team_merge in the schema cache' }))
      && /migration 0178/.test(E.errorWords({ code: 'PGRST202', message: 'Could not find the function public.platform_link_apply in the schema cache' })));
 }
 

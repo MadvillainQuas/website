@@ -672,6 +672,21 @@ _CLUB_MARKERS = {"ii", "iii", "iv", "2", "3", "4", "b", "c", "w", "women", "wome
                  "ladies", "academy", "reserves", "development", "youth", "juniors", "junior",
                  "u18", "u19", "u20", "u21", "u23", "junioren", "jr"}
 
+# "SENIOR MEN (I)" NAMES NOBODY. In England's grassroots leagues (NBL Division One, British
+# Championship Basketball) a club's schedule entry is its plain name ("London Elite", "Barnet
+# Bulldogs"), but the live game payload's own team object -- the one place these feeds carry no
+# short code at all, so team() falls to matching by name -- gives the club's FULL Genius name,
+# "London Elite Senior Men I" / "Barnet Bulldogs Senior Men(s)": every club in a men's-only
+# competition wears it, so the "MEN" in _CLUB_MARKERS was reading it as the very kind of leftover
+# word same_club() exists to distrust, and two real clubs came out as four (reported 2026-09-27:
+# a Daily Fixtures card and a club list both carrying "Barnet Bulldogs" and "Barnet Bulldogs
+# Senior Mens" as separate clubs, one crest between them). "I" is Genius's own mark for the
+# club's FIRST senior side and is stripped with the phrase; "II"/"III" is not, because that marks
+# a genuine second team playing in the same competition as its own club's first (London Lions
+# Senior Men II, NBL Division One 2026-27, its first team elsewhere on the platform in the BBL) --
+# same_club() must still refuse that one.
+_SENIOR_SIDE = re.compile(r"\bsenior\s+(?:mens?|womens?)\b\s*(?:\bi\b)?")
+
 
 def club_core(name: str) -> frozenset:
     """The tokens that identify a club, with the words that identify nobody removed.
@@ -685,7 +700,7 @@ def club_core(name: str) -> frozenset:
     clubs (found 2026-09-18, on B.LEAGUE's own schedule). A contiguous run of kana/kanji is kept
     as ONE token instead (splitting per-character would make Tokyo and Kyoto share a token on
     one shared kanji, the same false-positive shape this function exists to prevent)."""
-    s = latinise(str(name or "")).lower()
+    s = _SENIOR_SIDE.sub(" ", latinise(str(name or "")).lower())
     toks = re.findall(r"[0-9a-z]+|[぀-ヿ㐀-鿿]+", s)
     return frozenset(t for t in toks if t and t not in _CLUB_NOISE)
 
