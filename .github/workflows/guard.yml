@@ -727,6 +727,12 @@ jobs:
         # the site's club codes over the operator's); women: the Genius-hosted schedule on tenant DAM
         run: python scripts/ingest/dbl_test.py
 
+      - name: CEBL (Canada) on FIBA LiveStats via the league's own API
+        # fiba_site_schedule site "cebl": api.data.cebl.ca's season (the calendar year) names every game's
+        # LiveStats match; the regular season and the finals apart, cancelled if-necessary games left out,
+        # clubs coded by the league's team id on fixture and feed alike, and a real game reconciled
+        run: python scripts/ingest/cebl_test.py
+
       - name: BNXT League (Belgium + the Netherlands) from the league's own API
         # bnxt.py: end-year seasons, one request per phase, Supercups never read as the league's, the
         # national play-offs apart, a purged game not fetched, and the play-by-play translator on the

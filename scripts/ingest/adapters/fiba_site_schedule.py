@@ -241,6 +241,14 @@ def kosovo_rows(page: str) -> list[dict]:
 DBL_SITE = "https://www.basketligaen.dk"
 DBL_API = DBL_SITE + "/api/sports-v2"
 
+# api.data.cebl.ca - THE CANADIAN ELITE BASKETBALL LEAGUE's own schedule, the JSON behind cebl.ca/games. The key
+# is the public one the site's own script sends (the scraper pipeline's cebl_scraper.py reads the same API).
+#   GET /games/<year>/     every game of a season: id, start_time_utc, status (COMPLETE, CANELLED [sic]),
+#                          competition (REGULAR, FINALS), both clubs (id, name, logo), scores, venue_name,
+#                          stats_url_en -> fibalivestats.dcd.shared.geniussports.com/u/CEBL/<LiveStats id>/
+CEBL_API = "https://api.data.cebl.ca"
+CEBL_KEY = "800chyzv2hvur3z0ogh39cve2zok0c"
+
 
 def _fold(s) -> str:
     """A club name as letters and digits only, accents dropped: the feed and the site agree on the club, not
@@ -515,6 +523,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._lbf_fetch(str(external_id), config)
         if site == "swiss":
             return self._swiss_fetch(str(external_id), config)
+        if site == "cebl":
+            return self._cebl_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -538,6 +548,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._lbf(config)
         if site == "swiss":
             return self._swiss(config)
+        if site == "cebl":
+            return self._cebl(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
 
@@ -777,6 +789,103 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             if hit:
                 t["code"] = hit.get("code") or t.get("code")
                 t["name"] = (hit.get("names") or {}).get("short") or t.get("name")
+        b = self.bundle_from_raw(raw, external_id, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    # ------------------------------------------------------------------ cebl.ca ---
+    # THE CEBL: a summer league (May to August), so a calendar-year season ("season_calendar" on its rows),
+    # scored on FIBA LiveStats. Every game on the league's own API names its LiveStats match, so a fixture is
+    # keyed on that id from its first listing to its final, and is fetched as any LiveStats game is. The
+    # regular season and the finals (competition FINALS) are two sources, like every league here with
+    # play-offs; a cancelled game is left out (it would sit as "scheduled" for good). The clubs are coded by
+    # the league's own team id ("CEBL18"), on the fixture and on the feed alike, so a club is one club
+    # whatever an operator types into a game's team code.
+    # THE ELAM ENDING: a CEBL fourth quarter ends on a target score, not the clock. Every basket is in the
+    # box score; the clock stands still through the Elam segment, so minutes and stints undercount it.
+    _cebl_cache: dict = {}           # year -> (fetched_at, games)
+
+    def _cebl_games(self, config: dict) -> list:
+        year = _start_year(config.get("season") or "")
+        at, games = FibaSiteScheduleAdapter._cebl_cache.get(year, (0.0, None))
+        if games is None or time.time() - at > 300:
+            gap = time.time() - getattr(self, "_last_page", 0)
+            if gap < self.min_request_gap_s:
+                time.sleep(self.min_request_gap_s - gap)
+            self._last_page = time.time()
+            r = requests.get(f"{CEBL_API}/games/{year}/", headers={"User-Agent": UA, "x-api-key": CEBL_KEY}, timeout=40)
+            r.raise_for_status()
+            games = r.json()
+            if isinstance(games, dict):
+                games = games.get("games") or games.get("data") or []
+            FibaSiteScheduleAdapter._cebl_cache[year] = (time.time(), games)
+        return games or []
+
+    @staticmethod
+    def _cebl_id(g: dict) -> Optional[str]:
+        m = re.search(r"/u/CEBL/(\d+)", str(g.get("stats_url_en") or g.get("stats_url_fr") or ""))
+        return m.group(1) if m else None
+
+    def _cebl(self, config: dict) -> list[ScheduleGame]:
+        stage = (config.get("stage") or "regular").strip().lower()
+        finals = stage.startswith("play") or stage.startswith("final")
+        try:
+            games = self._cebl_games(config)
+        except Exception as exc:
+            print(f"     CEBL: the league's schedule could not be read ({exc})")
+            return []
+        out, no_id = [], 0
+        for g in games:
+            comp = str(g.get("competition") or "").upper()
+            if comp not in (("FINALS", "PLAYOFFS", "PLAYOFF") if finals else ("REGULAR",)):
+                continue
+            st = str(g.get("status") or "").upper()
+            if st.startswith("CAN") or st == "POSTPONED":
+                continue
+            mid = self._cebl_id(g)
+            if not mid:
+                no_id += 1
+                continue
+            status = "final" if st == "COMPLETE" else ("live" if st in ("IN_PROGRESS", "INPROGRESS", "LIVE") else "scheduled")
+            out.append(ScheduleGame(
+                external_id=mid, home_name=g.get("home_team_name") or "", away_name=g.get("away_team_name") or "",
+                tipoff_at=g.get("start_time_utc"), status=status,
+                extra={"home_code": f"CEBL{g.get('home_team_id')}" if g.get("home_team_id") is not None else None,
+                       "away_code": f"CEBL{g.get('away_team_id')}" if g.get("away_team_id") is not None else None,
+                       "home_logo": g.get("home_team_logo_url"), "away_logo": g.get("away_team_logo_url"),
+                       "venue": g.get("venue_name"), "stage": stage}))
+        print(f"     CEBL {stage}: {len(out)} games ({sum(1 for x in out if x.status == 'final')} final)"
+              + (f", {no_id} without a LiveStats id yet" if no_id else ""))
+        return out
+
+    def _cebl_fetch(self, external_id: str, config: dict):
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=external_id)
+                                   + (f"?_={int(time.time() * 1000)}" if config.get("_fresh") else ""))
+        if not raw or "tm" not in raw:
+            return None                    # not scored yet (403 before the operator opens it)
+        try:
+            g = next((x for x in self._cebl_games(config) if self._cebl_id(x) == str(external_id)), None)
+        except Exception:
+            g = None
+        if g:
+            sides = {"home": (g.get("home_team_id"), g.get("home_team_name")), "away": (g.get("away_team_id"), g.get("away_team_name"))}
+            teams = {tno: raw["tm"].get(tno) for tno in ("1", "2") if isinstance(raw["tm"].get(tno), dict)}
+            # by name first (the feed's team 1 is the home side by LiveStats' convention, not by rule)
+            by_name = {}
+            for tno, t in teams.items():
+                keys = {_fold(t.get("name")), _fold(t.get("shortName"))} - {""}
+                for side, (_, nm) in sides.items():
+                    if _fold(nm) in keys:
+                        by_name[tno] = side
+            if len(set(by_name.values())) != len(teams):
+                by_name = {"1": "home", "2": "away"}
+            for tno, side in by_name.items():
+                tid, nm = sides[side]
+                if tno in teams and tid is not None:
+                    teams[tno]["code"] = f"CEBL{tid}"
+                    teams[tno]["name"] = nm or teams[tno].get("name")
         b = self.bundle_from_raw(raw, external_id, config)
         b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
         if config.get("_tipoff_at"):
