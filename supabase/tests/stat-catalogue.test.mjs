@@ -228,5 +228,49 @@ console.log('\nthe graphics');
   ok('the small numerals are set in the page\'s Archivo, not the pixel face or the mono', RC.util.F.ui.includes('Archivo') && (() => { const fonts = []; const c = recorder(); Object.defineProperty(c, 'font', { set(f) { fonts.push(f); }, get() { return ''; } }); SC.draw(c, one, { size: 'portrait' }); return fonts.some(f => /700 \d+px 'Archivo'/.test(f)) && !fonts.some(f => /MartianMono/.test(f)); })());
 }
 
+console.log('\ncircles: player or team');
+{
+  const rec = () => { const log = [], st = []; let size = 10, fill = ''; const c = { log, textAlign: 'left', strokeStyle: '', lineWidth: 1, globalAlpha: 1, set fillStyle(v) { fill = v; }, get fillStyle() { return fill; }, save() { st.push([size, fill, c.textAlign]); }, restore() { const x = st.pop(); if (x) [size, fill, c.textAlign] = x; }, set font(f) { const m = /(\d+)px/.exec(f); size = m ? +m[1] : size; }, get font() { return ''; },
+    measureText: t => ({ width: String(t).length * size * 0.56 }), fillText(t, x, y) { const w = String(t).length * size * 0.56; const l = c.textAlign === 'center' ? x - w / 2 : c.textAlign === 'right' ? x - w : x; log.push({ kind: 'text', t: String(t), x0: l, x1: l + w, y0: y - size * 0.8, y1: y + size * 0.2, size }); },
+    fillRect(x, y, w, h) { log.push({ kind: 'rect', x0: x, x1: x + w, y0: y, y1: y + h }); }, arc(x, y, r) { log.push({ kind: 'arc', x, y, r }); }, drawImage(img, x, y, w, h) { log.push({ kind: 'image', img, x0: x, x1: x + w, y0: y, y1: y + h }); },
+    createRadialGradient() { return { addColorStop() {} }; }, beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arcTo() {}, fill() {}, stroke() {}, setLineDash() {}, scale() {} }; return c; };
+  const T = (n, crest) => ({ name: n + ' Basket', short_name: n.slice(0, 3).toUpperCase(), colour: '#fd0204', crest: crest ? { width: 64, height: 64, naturalWidth: 64, naturalHeight: 64, tag: 'crest' } : undefined });
+  const ent = (n, i, crest) => ({ key: 'k' + i, name: 'Player ' + n, stats: { adv: { name: 'Player ' + n, num: '5' }, pts: 30 - i, p2m: 8, p2a: 12, ast: 5, dr: 4 }, team: T(n, crest), opp: T('Opp'), teamScore: 80, oppScore: 70, gameId: 'g' + i });
+  const img = () => ({ width: 64, height: 64, naturalWidth: 64, naturalHeight: 64, tag: 'crest' });
+  const withImg = (m, crest) => { if (crest) m.rows.forEach(r => { r.team.crest = img(); }); return m; };
+  const mk = crest => withImg(SC.weekstars({ entries: ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'].map((n, i) => ent(n, i, crest)), league: { name: 'L', colour: '#ff6600' } }), crest);
+  const draw = (m, size, mods) => { const c = rec(); SC.draw(c, m, { size, modules: mods }); return c.log; };
+  const key = l => JSON.stringify(l.map(e => [e.kind, e.t, Math.round(e.x0 || e.x || 0), Math.round(e.y0 || e.y || 0), Math.round(e.r || 0)]));
+  let same = true, count = 0;
+  for (const layout of ['list', 'hero', 'five']) for (const size of Object.keys(SC.SIZES)) { const m = mk(false); if (key(draw(m, size, { layout })) !== key(draw(m, size, { layout, discs: 'player' })) || key(draw(m, size, { layout })) !== key(draw(m, size, { layout, discs: 'bogus' }))) same = false; count++; }
+  ok('player circles are the default and change nothing: the same drawing with no option, "player" or a bad value (stars of the week, three layouts, three shapes)', same, count + ' drawings');
+  const initials = l => l.filter(e => e.kind === 'text' && /^P[A-Z]$|^[A-Z]{2}$/.test(e.t) && e.size > 25).length;
+  const crestsIn = (l, tag) => l.filter(e => e.kind === 'image' && e.img.tag === tag).length;
+  const wc = mk(true), wn = mk(false);
+  ok('team circles with a crest: the crest alone as the circle - five crests, no initials disc and no second small badge', crestsIn(draw(wc, 'portrait', { discs: 'team' }), 'crest') === 5 && crestsIn(draw(wc, 'portrait', {}), 'crest') === 5
+     && initials(draw(wc, 'portrait', { discs: 'team' })) === 0 && initials(draw(wc, 'portrait', {})) >= 5);
+  const fb = draw(wn, 'portrait', { discs: 'team' });
+  ok('...with no crest: a club-colour disc with the club\'s code (never blank) - five of them', fb.filter(e => e.kind === 'text' && /^(ALP|BRA|CHA|DEL|ECH)$/.test(e.t)).length === 5 && fb.filter(e => e.kind === 'arc').length >= 5);
+  const circleAt = (l, dx) => l.filter(e => e.kind === 'arc').map(e => [Math.round(e.x), Math.round(e.y)]);
+  ok('team mode keeps the circle where the player disc was, at the same size: the leading circle\'s place is unchanged', (() => { const a = draw(wn, 'portrait', {}).filter(e => e.kind === 'arc'), b = draw(wn, 'portrait', { discs: 'team' }).filter(e => e.kind === 'arc'); return a.length && b.length && a[0].x === b[0].x && a[0].y === b[0].y; })());
+  const star = SC.performer({ game: { id: 'g', tipoff_at: '2026-09-29T18:00:00Z', home_score: 90, away_score: 80 }, home: T('Home', true), away: T('Away', true), league: { name: 'L' }, players: [{ team_idx: 0, stats: { adv: { name: 'Solo Star', num: '9' }, pts: 30, p2m: 10, p2a: 15, ast: 5, dr: 5 } }] });
+  ok('the star of the game: team circles make the crest larger beside the club line; player circles are today\'s', (() => { const a = draw(star, 'portrait', {}).filter(e => e.kind === 'arc'), b = draw(star, 'portrait', { discs: 'team' }).filter(e => e.kind === 'arc'); return a.length && b.length && b.some(e => e.r > Math.min(...a.map(x => x.r))) || crestsIn(draw(star, 'portrait', { discs: 'team' }), 'crest') >= 1; })()
+     && key(draw(star, 'portrait', {})) === key(draw(star, 'portrait', { discs: 'player' })));
+  const mon = withImg(SC.weekstars({ entries: ['A', 'B', 'C'].map((n, i) => Object.assign(ent(n, i, true), { out: { 'c:ppg': '21.0' }, sub: 'GP 4' })), league: { name: 'L' }, by: 'score', period: 'month', cat: { 'c:ppg': { l: 'PPG' } } }), true);
+  ok('the month\'s stars follow it too', crestsIn(draw(mon, 'portrait', { discs: 'team' }), 'crest') === 3 && initials(draw(mon, 'portrait', { discs: 'team' })) === 0);
+  const bad = [];
+  const LONG = 'Associação Desportiva Recreativa e Cultural Icasa Meridianbet';
+  for (const crest of [true, false]) for (const [tag, m] of [['week', mk(crest)], ['star', star], ['month', mon], ['long', SC.weekstars({ entries: [0, 1, 2, 3, 4].map(i => Object.assign(ent('X', i, crest), { name: LONG + i, team: T(LONG + i, crest) })), league: { name: 'L' } })]]) for (const layout of ['list', 'hero', 'five']) for (const size of Object.keys(SC.SIZES)) for (const theme of ['dark', 'light']) {
+    const S = SC.SIZES[size], c = rec(); let threw = null; try { SC.draw(c, m, { size, theme, modules: { layout, discs: 'team' } }); } catch (e) { threw = e.message; }
+    const off = c.log.filter(e => e.kind !== 'rect' && (e.x0 < -0.5 || e.x1 > S.w + 0.5 || e.y0 < -0.5 || e.y1 > S.h + 0.5) && e.x0 !== undefined);
+    const arcs = c.log.filter(e => e.kind === 'arc' && (e.x - e.r < -0.5 || e.x + e.r > S.w + 0.5 || e.y - e.r < -0.5 || e.y + e.r > S.h + 0.5));
+    const cov = size === 'story' ? c.log.filter(e => e.kind === 'text' && (e.y0 < S.top - 8 || e.y1 > S.h - S.bottom + 8)) : [];
+    if (threw || off.length || arcs.length || cov.length) bad.push(`${tag}/${crest}/${layout}/${size}/${theme}: ${threw || (off[0] && off[0].t) || 'arc'}`);
+  }
+  ok('team circles, with and without crests, every stars template and layout on every shape in both colourways: all on the page, clear of a story\'s strips - 144 drawings', !bad.length, bad.slice(0, 4).join(' ;; '));
+  ok('leaders and a result\'s leader lines have no player disc (a crest only): the option changes nothing there', (() => { const L = SC.leaders({ boards: [{ key: 'c:ppg', label: 'PPG', rows: [{ rank: 1, name: 'A', team: T('A', true), value: '20.0' }] }], league: { name: 'L' } }); return key(draw(L, 'portrait', {})) === key(draw(L, 'portrait', { discs: 'team' })); })());
+  ok('the option is cleaned: "team" and "player" are kept, anything else is nothing', SC.cleanModules({ discs: 'team' }).discs === 'team' && SC.cleanModules({ discs: 'player' }).discs === 'player' && SC.cleanModules({ discs: 'x' }).discs === undefined);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

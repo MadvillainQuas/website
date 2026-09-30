@@ -195,6 +195,8 @@ ok('the site\'s own columns a graphic asks for, and when the season\'s lines are
 })());
 ok('the two new templates are in the builder, each with its own controls', UI.TEMPLATES.some(t => t.id === 'monthstars') && UI.TEMPLATES.some(t => t.id === 'leaders') && UI.HAS.leaders.includes('leadcats') && UI.HAS.monthstars.includes('monthpick') && UI.HAS.monthstars.includes('mingames'));
 
+ok('the circles choice is remembered per league (player unless "team"), survives garbage and a missing store, and is a builder option on every player-based template', (() => { const st = store(); UI.saveDiscs('L1', 'team', st); st.setItem(UI.discsKey('L3'), 'moon');
+  return UI.loadDiscs('L1', st) === 'team' && UI.loadDiscs('L2', st) === 'player' && UI.loadDiscs('L3', st) === 'player' && UI.loadDiscs('L', { getItem() { throw new Error('x'); } }) === 'player' && ['star', 'weekstars', 'monthstars'].every(t => UI.HAS[t].includes('discs')); })());
 console.log('\nELO and form, read from the games');
 {
   const ex = await GX.readExtras(sb, comps);

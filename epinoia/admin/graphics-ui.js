@@ -45,12 +45,12 @@ const TEMPLATES = [
 /* which modules each template has (the form shows only these) */
 const HAS = {
   result: ['game', 'headline', 'subline', 'crests', 'quarters', 'leaders', 'leadstats', 'teamstats', 'venue'],
-  star: ['game', 'player', 'headline', 'subline', 'crests', 'stats'],
+  star: ['game', 'player', 'headline', 'subline', 'crests', 'stats', 'discs'],
   table: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'cols'],
   fixtures: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'venues', 'fixextras'],
   week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days', 'weekextras'],
-  weekstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'starsby', 'layout'],
-  monthstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'monthpick', 'monthby', 'mingames', 'layout'],
+  weekstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'starsby', 'layout', 'discs'],
+  monthstars: ['headline', 'subline', 'crests', 'rows', 'stats', 'monthpick', 'monthby', 'mingames', 'layout', 'discs'],
   leaders: ['headline', 'subline', 'crests', 'rows', 'leadscope', 'leadsubject', 'leadcats', 'mingames']
 };
 /* the site's own columns (statcat.js) are offered wherever a stat is picked; the console's administrator may have the locked ones */
@@ -86,7 +86,7 @@ function defaultBuilder() {
   return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'gs', picks: [], monthOff: 0,
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
             cols: null, statKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
-            layout: '', leadCats: null, leadScope: 'season', leadSubject: 'players', minGames: '', rankStat: 'c:ppg', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
+            layout: '', discs: '', leadCats: null, leadScope: 'season', leadSubject: 'players', minGames: '', rankStat: 'c:ppg', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
 }
 /* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
    draws exactly what the weekly content does */
@@ -143,6 +143,9 @@ function zoneFor(mode, device) {
 function loadTz(leagueId, storage) {
   try { const v = (storage || root.localStorage).getItem(tzKey(leagueId)); return TZ_MODES.some(m => m[0] === v) ? v : 'league'; } catch (_) { return 'league'; }
 }
+const discsKey = id => 'epinoia.gfx.discs.' + id;
+function loadDiscs(id, storage) { try { return (storage || root.localStorage).getItem(discsKey(id)) === 'team' ? 'team' : 'player'; } catch (_) { return 'player'; } }
+function saveDiscs(id, v, storage) { try { (storage || root.localStorage).setItem(discsKey(id), v); } catch (_) { /* private window */ } }
 function saveTz(leagueId, mode, storage) {
   try { (storage || root.localStorage).setItem(tzKey(leagueId), mode); } catch (_) { /* private window */ }
 }
@@ -183,7 +186,7 @@ function mount(o) {
   if (host.__gxStop) host.__gxStop();                   // a league switch re-mounts: the old panel's watcher goes
   const league = typeof o.league === 'function' ? o.league() : o.league;
   const panel = { host, o, size: 'portrait', off: 0, compId: 'all', type: 'all', sub: 'weekly', data: null, busy: false, started: false,
-                  builder: league ? loadBuilder(league.id) : defaultBuilder(), tz: league ? loadTz(league.id) : 'league', seq: 0 };
+                  builder: league ? loadBuilder(league.id) : defaultBuilder(), tz: league ? loadTz(league.id) : 'league', discs: league ? loadDiscs(league.id) : 'player', seq: 0 };
   current = panel;
   host.textContent = '';
   host.appendChild(el('p', 'empty',
@@ -279,7 +282,7 @@ function tabList(items, on, pick, label) {
 /* the data as the competition filter sees it */
 const viewOf = panel => GX().scope(panel.data, panel.compId);
 /* every graphic drawn for this panel is drawn in the clock chosen: the `zone` module (nothing at all when it is the league's own) */
-const clockOf = panel => { const z = zoneFor(panel.tz, panel.device || (panel.device = deviceZone())); return z ? { zone: z } : {}; };
+const clockOf = panel => { const z = zoneFor(panel.tz, panel.device || (panel.device = deviceZone())); return Object.assign(z ? { zone: z } : {}, panel.discs === 'team' ? { discs: 'team' } : {}); };
 
 function draw(panel, keepFocus) {
   const SCd = SC();
@@ -320,6 +323,7 @@ function draw(panel, keepFocus) {
   const lz = SCd.leagueZone(d.league);
   ctx.appendChild(field('Times shown in', select([['league', 'League time (' + lz.replace(/_/g, ' ') + ')'], ['device', 'My device\'s time (' + (panel.device || (panel.device = deviceZone())).replace(/_/g, ' ') + ')'], ['utc', 'UTC']], panel.tz,
     v => { panel.tz = v; saveTz(panel.leagueId, v); draw(panel); }), 'gx-tz'));
+  ctx.appendChild(field('Circles', select([['player', 'Player circles'], ['team', 'Team crests']], panel.discs, v => { panel.discs = v; saveDiscs(panel.leagueId, v); draw(panel); }), 'gx-tz'));
   const shape = el('div', 'gx-shape');
   shape.setAttribute('role', 'group'); shape.setAttribute('aria-label', 'Shape');
   Object.keys(SCd.SIZES).forEach(k => shape.appendChild(chip(SCd.SIZES[k].label, k === panel.size, () => { panel.size = k; draw(panel); })));
@@ -504,7 +508,7 @@ function drawBuilder(panel, pane) {
   if (panel.lines) d.lines = panel.lines;
   if (b.compId && !d.comps.some(c => c.id === b.compId)) b.compId = '';
   const persist = () => saveBuilder(panel.leagueId, b);
-  const mods = () => Object.assign({}, modulesOf(b), clockOf(panel));      // the options and the clock chosen above
+  const mods = () => Object.assign({}, clockOf(panel), modulesOf(b));      // the options and the clock chosen above
   const wrap = el('div', 'gx-build');
   const form = el('div', 'gx-form');
   const prev = el('div', 'gx-prev');
@@ -599,6 +603,7 @@ function drawBuilder(panel, pane) {
     });
     put(fs3, 'starsby', pk);
   }
+  put(fs3, 'discs', field('Circles', select([['', 'Follow the setting above'], ['player', 'Player circles'], ['team', 'Team crests']], M.discs || '', v => { M.discs = v; persist(); setRes(); })));
   put(fs3, 'layout', field('Layout', select(STAR_LAYOUT, M.layout || '', v => { M.layout = v; persist(); setRes(); })));
   put(fs3, 'rows', field('How many rows', select(ROWS, M.rows || '', v => { M.rows = v; persist(); setRes(); })));
   /* A GROUP OF STATS TO SHOW: tick the ones wanted, within the least and most the shape can carry. `current` is what is
@@ -775,6 +780,6 @@ function drawBuilder(panel, pane) {
   paint();
 }
 
-return { mount, refresh, needKeys, needsLines, CATOPTS, LEAD_CAT_DEFAULT, MONTH_DEFAULT, TZ_MODES, zoneFor, loadTz, saveTz, tzKey, deviceZone, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
+return { mount, refresh, loadDiscs, saveDiscs, discsKey, needKeys, needsLines, CATOPTS, LEAD_CAT_DEFAULT, MONTH_DEFAULT, TZ_MODES, zoneFor, loadTz, saveTz, tzKey, deviceZone, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
          loadBuilder, saveBuilder, memKey };
 }));

@@ -96,6 +96,7 @@ function cleanModules(m) {
   if (/^#[0-9a-f]{6}$/i.test(m.accent || '')) o.accent = m.accent;
   if (LOGO_POS.includes(m.logoPos) && m.logoPos !== 'both') o.logoPos = m.logoPos;
   if (LAYOUTS.includes(m.layout) && m.layout !== 'list') o.layout = m.layout;
+  if (m.discs === 'team' || m.discs === 'player') o.discs = m.discs;                 // the circle of a player-based graphic: 'player' (a disc of his own, the club's crest on its edge; the default) or 'team' (the club's crest alone)
   const zone = validZone(m.zone);
   if (zone) o.zone = zone;
   if (m.zoneLabel === 'always' || m.zoneLabel === 'never') o.zoneLabel = m.zoneLabel;
@@ -841,10 +842,11 @@ function drawPerformer(ctx, m, th, S, M, accent) {
       const nb = u.nameBlock(ctx, m.player.name.toUpperCase(), W - 2 * M, tall ? 124 : 104, 60, u.F.score);
       nb.lines.forEach((l, i) => u.display(ctx, th, l, M, y + 40 + nb.size * (0.82 + i * 0.92), th.ink, 2));
       const after = y + 40 + nb.size * (0.9 + (nb.lines.length - 1) * 0.92) + 16;
-      crest(ctx, th, m.team, M + 26, after + 22, 26);
+      const big = MOD.discs === 'team';                                            // team circles: the crest larger, the line moved along
+      crest(ctx, th, m.team, M + (big ? 36 : 26), after + 22, big ? 36 : 26);
       u.font(ctx, 28, u.F.ui, 600);
       ctx.fillStyle = th.ink2;
-      ctx.fillText(u.ellipsis(ctx, m.team.name + (m.player.num ? '  #' + m.player.num : ''), W - 2 * M - 70), M + 66, after + 32);
+      ctx.fillText(u.ellipsis(ctx, m.team.name + (m.player.num ? '  #' + m.player.num : ''), W - 2 * M - (big ? 90 : 70)), M + (big ? 86 : 66), after + 32);
     } },
     { h: tall ? 250 : 210, draw: y => {
       const cw = (W - 2 * M) / 3;
@@ -988,6 +990,7 @@ function drawWeek(ctx, m, th, S, M) {
    edge; names are fitted and cut, and the room a shape has is shared out by the rows it holds. */
 function starDisc(ctx, th, r, cx, cy, rad, accent) {
   const u = U();
+  if (MOD.discs === 'team') { crest(ctx, th, r.team, cx, cy, rad); return; }     // the crest alone, at the disc's size and place (initials on the club colour when it has none)
   const col = u.rgb(r.team.colour) ? r.team.colour : accent;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
