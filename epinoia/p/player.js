@@ -251,19 +251,35 @@ async function offerRelease(pl, team) {
   sub.appendChild(b);
 }
 
-function paintTiles(s) {
+/* THE POPUP (statpop.js): the players he is ranked among for a statistic, honouring "adjust for position" */
+function statPool(mine, field) {
+  const SE = window.EpinoiaSeason;
+  if (!barsByPos || !SE || !SE.positionGroups || !mine) return field;
+  const pm = SE.positionGroups(field), g = pm.get(mine.id);
+  return g ? field.filter(r => pm.get(r.id) === g) : field;
+}
+function statBind(node, k, label, mine, rows) {
+  const SP = window.EpinoiaStatPop;
+  if (!SP || !mine || !rows || rows.length < 3) return;
+  SP.bind(node, () => ({ key: k, label, kind: 'player', subjectId: mine.id, rows, value: k, low: BAR_LOW.indexOf(k) !== -1,
+    signed: BAR_SIGNED(k), dp: BAR_DP(k) }));
+}
+
+function paintTiles(s, field) {
   const host = $('#tiles'); host.textContent = '';
   if (!s) {
     host.appendChild(el('div', 'empty', 'No finalised games yet.'));
     return;
   }
-  [['games', s.gp, false], ['pts', n1(s.ppg), true], ['reb', n1(s.rpg), true],
-   ['ast', n1(s.apg), true], ['mins', n1(s.mpg), false],
-   ['ts%', n1(s.ts), false], ['usg%', n1(s.usg), false],
-   ['on-off', s.diff_net == null ? '—' : (s.diff_net > 0 ? '+' : '') + n1(s.diff_net), true]]
-    .forEach(([l, v, hi]) => {
+  const rows = field && field.length ? statPool(s, field) : null;
+  [['games', s.gp, false, null], ['pts', n1(s.ppg), true, 'ppg'], ['reb', n1(s.rpg), true, 'rpg'],
+   ['ast', n1(s.apg), true, 'apg'], ['mins', n1(s.mpg), false, 'mpg'],
+   ['ts%', n1(s.ts), false, 'ts'], ['usg%', n1(s.usg), false, 'usg'],
+   ['on-off', s.diff_net == null ? '—' : (s.diff_net > 0 ? '+' : '') + n1(s.diff_net), true, 'diff_net']]
+    .forEach(([l, v, hi, k]) => {
       const d = el('div', 'tile' + (hi ? ' hi' : ''));
       d.append(el('div', 'v', v), el('div', 'l', l));
+      if (k) statBind(d, k, l, s, rows);
       host.appendChild(d);
     });
 }
@@ -392,6 +408,7 @@ function barCard(k, label, mine, ranks, pool) {
   if (v == null) card.classList.add('none');
   if (BAR_HINT[k]) card.title = BAR_HINT[k];
   card.style.setProperty('--bc-band', barBand(p));
+  if (v != null) statBind(card, k, label, mine, pool);
 
   const top = el('div', 'bc-top');
   top.appendChild(el('div', 'bc-l', label));
@@ -490,6 +507,11 @@ function consistencyCard() {
 
 function paintBars(mine, field) {
   LAST_BARS = { mine, field };
+  /* the '?' in the section heading (statpop.js): the explainer for every main statistic below */
+  try {
+    const sh = $('#bars') && $('#bars').closest('.sec') && $('#bars').closest('.sec').querySelector('.sec-h');
+    if (window.EpinoiaStatPop && sh) window.EpinoiaStatPop.helpButton(sh, 'player');
+  } catch (_) { /* the help is a convenience */ }
   paintEstPos(mine, field);
   const host = $('#bars'); host.textContent = '';
   if (!mine || field.length < 3) {
@@ -1053,7 +1075,7 @@ async function loadCareerAccess(pl, lgRow) {
           mine = field.find(r => r.id === pl.id) || null;
         }
       } catch (e) { console.warn('[season]', e); }
-      paintTiles(mine);
+      paintTiles(mine, field);
       paintBars(mine, field);
       if (window.EpinoiaSosChip) window.EpinoiaSosChip.paint(null, { games: sosGames, teamId: team && team.id });
       /* ---- events ----

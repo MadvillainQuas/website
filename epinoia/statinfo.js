@@ -109,6 +109,11 @@ const INFO = {
   diff_vs_oreb: e('Opp rebound% ±', 'How the opponents’ offensive-rebound rate changes with him on the floor.', 'opponent OREB% on − off', 'Lower is better: opponents get fewer second chances.', true),
   diff_vs_ftr: e('Opp FT rate ±', 'How often opponents get to the line with him on the floor compared with off.', 'opponent FTA ÷ FGA on − off', 'Lower is better: opponents earn fewer free throws.', true),
 
+  /* ---- profile tiles ---- */
+  rpg: e('Rebounds per game', 'The rebounds he collects in an average game.', 'rebounds \u00f7 games', 'More is better; it follows minutes and position as well as skill (see rebound %).'),
+  apg: e('Assists per game', 'The assists he records in an average game.', 'assists \u00f7 games', 'More is better; it follows minutes and role (see assist %).'),
+  mpg: e('Minutes per game', 'How long he plays in an average game.', 'minutes \u00f7 games', 'Neither good nor bad: it is the coach\u2019s trust and his role.'),
+
   /* ---- the club page ---- */
   papg: e('Points allowed per game', 'The points the club concedes in an average game.', 'points against ÷ games', 'Lower is better. Fast clubs concede more without being worse; see defensive rating.', true),
   diffpg: e('Point differential', 'The average winning (or losing) margin.', 'points for − points against, per game', 'Higher is better. +5 is a contender.'),

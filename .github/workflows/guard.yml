@@ -1254,6 +1254,7 @@ jobs:
           node supabase/tests/situations-store.test.mjs
           node supabase/tests/sitstats.test.mjs
           node supabase/tests/sitpanel.test.mjs
+          node supabase/tests/reb-linked.test.mjs
 
       - name: The Android app's configuration agrees with itself
         # the package name in assetlinks.json, the build file and the manifest; version.json;
