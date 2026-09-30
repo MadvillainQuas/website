@@ -74,6 +74,16 @@ const LOGO_POS = ['both', 'heading', 'footer', 'none'];
 const LAYOUTS = ['list', 'hero', 'five'];
 const BOOL_MODS = ['crests', 'quarters', 'leaders', 'venue', 'days', 'venues', 'handle'];
 
+/* THE SITE'S OWN STATS, by their catalogue key ("c:ppg", "c:ts_pct": admin/statcat.js). This file knows nothing of the catalogue:
+   a model that offers such a key carries its text where the built-in keys' text is (a player's `stats['c:ppg']`, a table row's
+   `row['c:ppg']`, a side's `teamStats.home['c:ppg']`), and its label and direction in `model.cat` = { 'c:ppg': { l: 'PPG', low } }. */
+const catKey = k => typeof k === 'string' && /^c:[A-Za-z0-9_]{1,40}$/.test(k);
+let CAT = {};
+const sl = (k, long) => (STAT_DEFS[k] ? STAT_DEFS[k][long ? 0 : 1] : String((CAT[k] && CAT[k].l) || String(k).slice(2)).toUpperCase());
+const tl = k => (TEAM_STAT_DEFS[k] ? TEAM_STAT_DEFS[k][0] : String((CAT[k] && CAT[k].l) || String(k).slice(2)).toUpperCase());
+const tlow = k => (TEAM_STAT_DEFS[k] ? !!TEAM_STAT_DEFS[k][1] : !!(CAT[k] && CAT[k].low));
+const cl = k => (COL_DEFS[k] || String((CAT[k] && CAT[k].l) || String(k).slice(2)).toUpperCase());
+
 /* The modules as the drawing reads them: only what is known, in range, and not the default's own words. Anything
    else is dropped, so a stale saved setting or a hand-built object can never break a graphic. */
 function cleanModules(m) {
@@ -91,17 +101,17 @@ function cleanModules(m) {
   if (m.zoneLabel === 'always' || m.zoneLabel === 'never') o.zoneLabel = m.zoneLabel;
   const rows = parseInt(m.rows, 10);
   if (rows > 0) o.rows = Math.min(rows, 40);
-  if (Array.isArray(m.cols)) { const c = Object.keys(COL_DEFS).filter(k => m.cols.includes(k)).slice(0, 6); if (c.length) o.cols = c; }   // six: a phone reads no more
+  if (Array.isArray(m.cols)) { const c = Object.keys(COL_DEFS).filter(k => m.cols.includes(k)).concat([...new Set(m.cols.filter(catKey))]).slice(0, 6); if (c.length) o.cols = c; }   // six: a phone reads no more
   const list = (k, defs, min, max) => {
     if (!Array.isArray(m[k])) return;
-    const v = [...new Set(m[k].filter(x => (Array.isArray(defs) ? defs.includes(x) : defs[x])))].slice(0, max);
+    const v = [...new Set(m[k].filter(x => (Array.isArray(defs) ? defs.includes(x) : defs[x] || catKey(x))))].slice(0, max);
     if (v.length >= min) o[k] = v;
   };
   list('teamStats', TEAM_STAT_DEFS, 1, 6); list('leaderKeys', STAT_DEFS, 1, 4); list('rowExtras', ROW_EXTRAS, 1, 5);
   const ln = parseInt(m.leaderN, 10);
   if (ln > 1) o.leaderN = Math.min(ln, 3);
   if (Array.isArray(m.statKeys)) {
-    const k = [...new Set(m.statKeys.filter(x => STAT_DEFS[x]))].slice(0, 8);
+    const k = [...new Set(m.statKeys.filter(x => STAT_DEFS[x] || catKey(x)))].slice(0, 8);
     if (k.length >= 3) o.statKeys = k;
   }
   return o;
@@ -315,10 +325,12 @@ function week(o, size) {
    `by` is how they are ranked: 'gs' game score (efficiency, the default), 'pts' points, or 'pick' - `o.picks`, a list of
    entry keys, in the order the person gave them. A player who played twice is his best game only. Ties go to the higher
    game score, then more points, then the name, so the same week always ranks the same way. Five at most. */
-const STAR_BY = ['gs', 'pts', 'pick'];
+const STAR_BY = ['gs', 'pts', 'pick', 'score'];
 function weekstars(o) {
   const by = STAR_BY.includes(o.by) ? o.by : 'gs';
-  const metric = e => (by === 'pts' ? n0(e.stats.pts) : gameScore(e.stats));
+  /* the month's stars come with a `score` of their own (any catalogue stat, `low` if lower is better) and `out`, the stats to
+     show, already worked out (per game over the month); `sub` is the line under the name in place of the game */
+  const metric = e => (by === 'score' ? n0(e.score) * (o.low ? -1 : 1) : by === 'pts' ? n0(e.stats.pts) : gameScore(e.stats));
   const nameOf = e => (e.stats.adv && e.stats.adv.name) || e.name || '';
   const cmp = (a, b) => metric(b) - metric(a) || gameScore(b.stats) - gameScore(a.stats) || n0(b.stats.pts) - n0(a.stats.pts) || nameOf(a).localeCompare(nameOf(b));
   const best = new Map();
@@ -332,11 +344,13 @@ function weekstars(o) {
     list = list.filter(e => at.has(e.key)).sort((a, b) => at.get(a.key) - at.get(b.key));
   } else list.sort(cmp);
   const rows = list.slice(0, 5).map((e, i) => ({
-    rank: i + 1, name: nameOf(e), num: e.stats.adv && e.stats.adv.num != null ? String(e.stats.adv.num) : '',
+    rank: i + 1, name: nameOf(e), num: e.stats.adv && e.stats.adv.num != null ? String(e.stats.adv.num) : '', sub: e.sub || '',
     team: side(e.team, e.teamScore), opp: side(e.opp, e.oppScore), won: n0(e.teamScore) > n0(e.oppScore),
-    stats: statsOf(e.stats), gameScore: Math.round(gameScore(e.stats) * 10) / 10, gameId: e.gameId || null, key: e.key || ''
+    stats: e.out || statsOf(e.stats), gameScore: Math.round(gameScore(e.stats) * 10) / 10, gameId: e.gameId || null, key: e.key || ''
   }));
-  return { kind: 'weekstars', key: 'stars-of-the-week', league: o.league || {}, comp: o.comp || '', range: o.range || '', rows, by, tz: leagueZone(o.league) };
+  const month = o.period === 'month';
+  return { kind: 'weekstars', period: month ? 'month' : 'week', key: month ? 'stars-of-the-month' : 'stars-of-the-week', league: o.league || {}, comp: o.comp || '', range: o.range || '',
+           rows, by, cat: o.cat || null, tz: leagueZone(o.league) };
 }
 
 /* THE TABLE: standings rows in rank order, one set of graphics per group */
@@ -410,6 +424,14 @@ function rowsOf(m, mods) {
 }
 
 const MOD_CAPTION_KEYS = mods => (mods && mods.statKeys ? mods.statKeys.slice(0, 4) : ['pts', 'reb', 'ast']);
+/* THE LEADERS BOARD: `boards` = [{ key, label, low, rows: [{ rank, tie, name, team (a club row), value (the text) }] }] - the site's
+   league leaders in the categories chosen, players or clubs. `title` is what the caption and the graphic call it ("Season leaders"). */
+function leaders(o) {
+  const boards = (o.boards || []).filter(b => b && b.rows && b.rows.length).map(b => ({ key: b.key, label: b.label || b.key, low: !!b.low,
+    rows: b.rows.map(r => ({ rank: n0(r.rank), tie: !!r.tie, name: r.name || '?', team: side(r.team, 0), value: String(r.value == null ? '—' : r.value), sub: r.sub || '' })) }));
+  return { kind: 'leaders', key: 'leaders-' + slug(o.title || 'leaders'), league: o.league || {}, comp: o.comp || '', range: o.range || '', title: o.title || 'Leaders',
+           subject: o.subject === 'teams' ? 'teams' : 'players', boards, cat: o.cat || null, tz: leagueZone(o.league) };
+}
 /* ------------------------------------------------------------ captions ----- */
 function tags(league) {
   const t = String(league && league.name || '').replace(/[^\p{L}\p{N}]+/gu, '');
@@ -420,6 +442,7 @@ function caption(m0, mods0) {
   const mods = cleanModules(Object.assign({}, m0.modules, mods0));
   const zn = zoneNote(m0, mods);
   const m = relabel(rowsOf(m0, mods), mods);
+  CAT = m0.cat || {};
   const L = m.league || {};
   if (m.kind === 'result') {
     const w = m.home.score >= m.away.score ? m.home : m.away, l = w === m.home ? m.away : m.home;
@@ -439,11 +462,16 @@ function caption(m0, mods0) {
       (s.pm ? ', ' + (s.pm > 0 ? '+' : '') + s.pm + ' on the floor' : '') + ', in ' + (m.won ? 'the ' + m.team.score + '–' + m.opp.score + ' win over '
         : 'the ' + m.team.score + '–' + m.opp.score + ' game against ') + m.opp.name + '.', '', tags(L)].join('\n');
   }
+  if (m.kind === 'leaders') {
+    const per = mods.rows > 0 ? mods.rows : (m.boards.length === 1 ? 10 : m.boards.length > 3 ? 3 : 5);
+    return [m.title + (m.comp ? ' in the ' + m.comp : '') + ':', '', m.boards.map(b => b.label + '\n' + b.rows.slice(0, per).map(r => (r.tie ? 'T-' : '') + r.rank + '. ' + r.name + (m.subject === 'teams' ? '' : ' (' + r.team.name + ')') + ' ' + r.value).join('\n')).join('\n\n'),
+      '', tags(L)].join('\n');
+  }
   if (m.kind === 'weekstars') {
     const keys = MOD_CAPTION_KEYS(mods);
-    const said = r => keys.map(k => r.stats[k] + ' ' + STAT_DEFS[k][1].toLowerCase()).join(', ');
-    return ['Stars of the week' + (m.comp ? ' in the ' + m.comp : '') + ':', '',
-      m.rows.map(r => r.rank + '. ' + r.name + ' (' + r.team.name + '): ' + said(r) + ' vs ' + r.opp.name + ' (' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ')').join('\n'),
+    const said = r => keys.map(k => r.stats[k] + ' ' + sl(k).toLowerCase()).join(', ');
+    return ['Stars of the ' + (m.period === 'month' ? 'month' : 'week') + (m.comp ? ' in the ' + m.comp : '') + (m.range && m.period === 'month' ? ' (' + m.range + ')' : '') + ':', '',
+      m.rows.map(r => r.rank + '. ' + r.name + ' (' + r.team.name + '): ' + said(r) + (r.sub ? ' - ' + r.sub : ' vs ' + r.opp.name + ' (' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ')')).join('\n'),
       '', tags(L)].join('\n');
   }
   if (m.kind === 'week') {
@@ -679,7 +707,7 @@ function drawResult(ctx, m, th, S, M, accent) {
     } });
   }
   const lk = MOD.leaderKeys, ln = MOD.leaderN || 1;
-  const said = (st, keys) => keys.map(k => st[k] + ' ' + STAT_DEFS[k][1]).join(' · ');
+  const said = (st, keys) => keys.map(k => st[k] + ' ' + sl(k)).join(' · ');
   if (hasTop && ln > 1 && m.scorers) {
     /* the top scorers, two or three a side, each with the stat lines chosen (points, rebounds, assists unless said) */
     blocks.push({ h: 40 + ln * 44, drop: 2, name: 'each side\'s top scorers', draw: y => {
@@ -743,11 +771,11 @@ function drawResult(ctx, m, th, S, M, accent) {
       ctx.fillText('TEAM STATS', W / 2, y + 28);
       keys.forEach((k, i) => {
         const by = y + 34 + i * 46 + 38, a = m.teamStats.home[k], b = m.teamStats.away[k];
-        const low = TEAM_STAT_DEFS[k][1], hb = a.n === b.n ? 0 : ((a.n > b.n) !== !!low ? 1 : -1);
+        const low = tlow(k), hb = a.n === b.n ? 0 : ((a.n > b.n) !== !!low ? 1 : -1);
         u.font(ctx, 17, u.F.micro);
         ctx.fillStyle = th.ink3;
         ctx.textAlign = 'center';
-        ctx.fillText(TEAM_STAT_DEFS[k][0], W / 2, by - 6);
+        ctx.fillText(tl(k), W / 2, by - 6);
         [[a, M + 28, 'left', hb > 0], [b, W - M - 28, 'right', hb < 0]].forEach(([v, x, al, best]) => {
           u.fit(ctx, v.v, 190, 30, 20, u.F.data, 600);
           ctx.textAlign = al;
@@ -783,8 +811,8 @@ function drawPerformer(ctx, m, th, S, M, accent) {
      first three big and the rest (up to five) in the strip */
   const keys = MOD.statKeys;
   const val = k => (k === 'pm' ? (s.pm > 0 ? '+' : '') + s.pm : String(s[k] == null ? '—' : s[k]));
-  const big = keys ? keys.slice(0, 3).map(k => [val(k), STAT_DEFS[k][0]]) : [[String(s.pts), 'POINTS'], [String(s.reb), 'REBOUNDS'], [String(s.ast), 'ASSISTS']];
-  const cells = keys ? keys.slice(3).map(k => [STAT_DEFS[k][1], val(k)])
+  const big = keys ? keys.slice(0, 3).map(k => [val(k), sl(k, true)]) : [[String(s.pts), 'POINTS'], [String(s.reb), 'REBOUNDS'], [String(s.ast), 'ASSISTS']];
+  const cells = keys ? keys.slice(3).map(k => [sl(k), val(k)])
     : [['FG', s.fg], ['3PT', s.p3], ['FT', s.ft], ['+/-', (s.pm > 0 ? '+' : '') + s.pm], ['MIN', String(s.min)]];
   const blocks = [
     { h: tall ? 250 : 200, draw: y => {
@@ -964,7 +992,7 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
   ctx.textAlign = 'left';
   crest(ctx, th, r.team, cx + rad * 0.72, cy + rad * 0.72, Math.max(14, rad * 0.36));
 }
-function starLine(r, keys) { return keys.map(k => r.stats[k] + ' ' + STAT_DEFS[k][1]).join(' · '); }
+function starLine(r, keys) { return keys.map(k => r.stats[k] + ' ' + sl(k)).join(' · '); }
 
 function drawWeekStars(ctx, m, th, S, M, accent) {
   const u = U(), W = S.w;
@@ -972,10 +1000,11 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
   const layout = MOD.layout || 'list';
   const keys = MOD.statKeys ? MOD.statKeys.slice(0, 4) : ['pts', 'reb', 'ast'];
   const big = (MOD.statKeys ? MOD.statKeys : ['pts', 'reb', 'ast']).slice(0, 3);
-  const title = titleBlock(ctx, th, S, M, 'Stars of the week', [m.comp, m.range].filter(Boolean).join(' · '));
+  const monthly = m.period === 'month';
+  const title = titleBlock(ctx, th, S, M, monthly ? 'Stars of the month' : 'Stars of the week', [m.comp, m.range].filter(Boolean).join(' · '));
   if (!n) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No player lines this week.', M, y + 40); } }];
   const avail = S.h - S.top - S.bottom - 76 - 100 - title.h - 12 * 3;
-  const gameLine = r => (r.team.name + '  ·  ' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ' v ' + r.opp.name);
+  const gameLine = r => r.sub ? r.team.name + '  ·  ' + r.sub : (r.team.name + '  ·  ' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ' v ' + r.opp.name);
   const numeral = (r, x, y, size, al) => {           // the rank, big and faint
     ctx.save(); u.font(ctx, size, u.F.score); ctx.globalAlpha = th.fringe ? 0.16 : 0.12; ctx.fillStyle = accent; ctx.textAlign = al || 'left';
     ctx.fillText(String(r.rank), x, y); ctx.restore();
@@ -988,7 +1017,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
     const rad = Math.min(54, h * 0.2), cx = M + 40 + rad, cy = y + 30 + rad, head = 30 + 2 * rad + 8;
     starDisc(ctx, th, r, cx, cy, rad, accent);
     const tx = cx + rad + 26, tw = W - M - tx - 24;
-    u.font(ctx, 18, u.F.micro); ctx.fillStyle = accent; ctx.fillText('STAR OF THE WEEK', tx, y + 34);
+    u.font(ctx, 18, u.F.micro); ctx.fillStyle = accent; ctx.fillText(monthly ? 'STAR OF THE MONTH' : 'STAR OF THE WEEK', tx, y + 34);
     const nb = u.nameBlock(ctx, r.name.toUpperCase(), tw, 64, 34, u.F.score);
     nb.lines.forEach((l, i) => u.display(ctx, th, l, tx, y + 34 + nb.size * (0.95 + i * 0.9), th.ink, 2));
     const after = y + 34 + nb.size * (0.95 + (nb.lines.length - 1) * 0.9);
@@ -1001,7 +1030,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
       u.fit(ctx, String(r.stats[k]), cw - 30, nsize, 30, u.F.score);
       u.display(ctx, th, String(r.stats[k]), cx2, by0 - 30, i === 0 ? accent : th.ink, i === 0 ? 2 : 0);
       u.font(ctx, 17, u.F.micro); ctx.fillStyle = th.ink3;
-      ctx.fillText(STAT_DEFS[k][0].slice(0, 12), cx2, by0);
+      ctx.fillText(sl(k, true).slice(0, 12), cx2, by0);
     });
     ctx.textAlign = 'left';
   } });
@@ -1060,12 +1089,61 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
   return [title, lead(rows[0], leadH)].concat(rest.map((r, i) => rowFor(r, Math.max(76, rH - i * 4), true)));
 }
 
+/* THE LEADERS: one category is a top-ten list, several are a panel of short lists. Each row a rank (T- for a tie), the club's crest, the name
+   and the figure, the leader's lit; every list is cut to what the panel's height holds at a size a phone reads. */
+function drawLeaders(ctx, m, th, S, M, accent) {
+  const u = U(), W = S.w, boards = m.boards, nb = boards.length;
+  const title = titleBlock(ctx, th, S, M, nb === 1 ? boards[0].label + ' leaders' : m.title, [m.comp, m.range].filter(Boolean).join(' · '));
+  if (!nb) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No leaders to show yet.', M, y + 40); } }];
+  const avail = S.h - S.top - S.bottom - 76 - 100 - title.h - 12 * 2;
+  const rowLine = (b, r, x, y, w, h, first, big) => {
+    const cy = y + h / 2;
+    ctx.fillStyle = th.panel; if (first) { u.roundRect(ctx, x, y, w, h - 4, 10); ctx.fill(); ctx.fillStyle = accent; ctx.fillRect(x, y + 6, 5, h - 16); }
+    u.font(ctx, Math.min(big ? 30 : 22, h * 0.5), u.F.score);
+    ctx.fillStyle = first ? accent : th.ink3; ctx.textAlign = 'center';
+    const rk = (r.tie ? 'T' : '') + r.rank;
+    ctx.fillText(rk, x + (big ? 42 : 30), cy + h * 0.16); ctx.textAlign = 'left';
+    const cr = Math.min(big ? 22 : 16, h * 0.34), cx = x + (big ? 96 : 72);
+    crest(ctx, th, r.team, cx, cy, cr);
+    const vs = Math.min(big ? 34 : 24, h * 0.55);
+    u.font(ctx, vs, u.F.data, 700);
+    const val = u.ellipsis(ctx, r.value, w * 0.34), vw = ctx.measureText(val).width;
+    ctx.fillStyle = first ? accent : th.ink; ctx.textAlign = 'right'; ctx.fillText(val, x + w - 14, cy + vs * 0.35); ctx.textAlign = 'left';
+    const nx = cx + cr + 14, nw = x + w - 14 - vw - 14 - nx;
+    u.fit(ctx, r.name, nw, Math.min(big ? 32 : 24, h * 0.5), 15, u.F.ui, first ? 800 : 600);
+    ctx.fillStyle = th.ink; ctx.fillText(u.ellipsis(ctx, r.name, nw), nx, cy - (r.sub || (m.subject !== 'teams' && big) ? 2 : -h * 0.1));
+    const sub = r.sub || (m.subject !== 'teams' && big ? r.team.name : '');
+    if (sub) { u.font(ctx, Math.max(15, Math.min(19, h * 0.28)), u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText(u.ellipsis(ctx, sub, nw), nx, cy + Math.min(24, h * 0.34)); }
+  };
+  if (nb === 1) {
+    const b = boards[0], n = Math.min(b.rows.length, MOD.rows || 10);
+    const rowH = Math.max(46, Math.min(S.h >= 1900 ? 110 : 92, Math.floor(avail / Math.max(n, 1))));
+    const k = Math.max(1, Math.min(n, Math.floor(avail / rowH)));
+    return [title, { h: k * rowH, draw: y => { for (let i = 0; i < k; i++) rowLine(b, b.rows[i], M, y + i * rowH, W - 2 * M, rowH, i === 0, true); } }];
+  }
+  const cols = nb === 2 || (nb === 3 && S.h >= 1900) ? 1 : 2, lines = Math.ceil(nb / cols), gap = 18;
+  const pw = (W - 2 * M - gap * (cols - 1)) / cols, ph = (avail - gap * (lines - 1)) / lines;
+  const want = MOD.rows || (nb > 3 ? 3 : 5), head = 46;
+  const rowH = Math.max(34, Math.min(58, (ph - head - 12) / want));
+  const k = Math.max(1, Math.min(want, Math.floor((ph - head - 12) / rowH)));
+  return [title, { h: lines * ph + (lines - 1) * gap, draw: y => {
+    boards.forEach((b, i) => {
+      const x = M + (i % cols) * (pw + gap), py = y + Math.floor(i / cols) * (ph + gap);
+      ctx.fillStyle = th.panel; u.roundRect(ctx, x, py, pw, ph, 16); ctx.fill();
+      ctx.fillStyle = accent; ctx.fillRect(x + 16, py, 44, 5);
+      u.font(ctx, 20, u.F.ui, 800); ctx.fillStyle = th.ink;
+      ctx.fillText(u.ellipsis(ctx, b.label.toUpperCase(), pw - 32), x + 18, py + 34);
+      b.rows.slice(0, k).forEach((r, j) => rowLine(b, r, x + 8, py + head + j * rowH, pw - 16, rowH, j === 0, false));
+    });
+  } }];
+}
+
 function drawTable(ctx, m, th, S, M, accent) {
   const u = U(), W = S.w;
   const n = m.rows.length;
   /* the rows share what the heading, the title, the column names and the footer leave */
   const rowH = fitRows(S, n, 128 + 34, 44, S.h >= 1900 ? 76 : 66, 4);
-  const cols = MOD.cols ? MOD.cols.map(k => [COL_DEFS[k], k])
+  const cols = MOD.cols ? MOD.cols.map(k => [cl(k), k])
     : [['GP', 'gp'], ['W', 'w'], ['L', 'l']].concat(m.showPts ? [['PTS', 'pts']] : []).concat([['DIFF', 'diff']]);
   const cw = cols.length > 5 ? 76 : 92, x0 = W - M - cols.length * cw;
   return [
@@ -1143,7 +1221,7 @@ function drawFixtures(ctx, m, th, S, M, accent) {
   ];
 }
 
-const TAGS = { weekstars: 'STARS', result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
+const TAGS = { leaders: 'LEADERS', weekstars: 'STARS', result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
 
 function draw(ctx, m0, opts) {
   const o = opts || {};
@@ -1151,7 +1229,8 @@ function draw(ctx, m0, opts) {
   if (!u || !themes) throw new Error('socialcard.js needs reportcard.js loaded first');
   MOD = cleanModules(Object.assign({}, m0.modules, o.modules));
   ZNOTE = zoneNote(m0, MOD);
-  try { return drawIn(ctx, relabel(rowsOf(m0, MOD), MOD), o, u, themes); } finally { MOD = {}; ZNOTE = null; }
+  CAT = m0.cat || {};
+  try { return drawIn(ctx, relabel(rowsOf(m0, MOD), MOD), o, u, themes); } finally { MOD = {}; ZNOTE = null; CAT = {}; }
 }
 
 function drawIn(ctx, m, o, u, themes) {
@@ -1180,6 +1259,7 @@ function drawIn(ctx, m, o, u, themes) {
     : m.kind === 'performer' ? drawPerformer(ctx, m, th, S, M, accent)
     : m.kind === 'week' ? drawWeek(ctx, m, th, S, M)
     : m.kind === 'weekstars' ? drawWeekStars(ctx, m, th, S, M, accent)
+    : m.kind === 'leaders' ? drawLeaders(ctx, m, th, S, M, accent)
     : m.kind === 'table' ? drawTable(ctx, m, th, S, M, accent)
     : drawFixtures(ctx, m, th, S, M, accent);
   /* ROOM FOR EVERYTHING: the blocks and the least gap between them must fit the space the heading and the footer
@@ -1226,6 +1306,7 @@ function teamsOf(m) {
   if (m.home) out.push(m.home, m.away);
   if (m.team) out.push(m.team, m.opp);
   (m.rows || []).forEach(r => { if (r.home) out.push(r.home, r.away); if (r.team) out.push(r.team); if (r.opp) out.push(r.opp); });
+  (m.boards || []).forEach(b => b.rows.forEach(r => { if (r.team) out.push(r.team); }));
   return out.filter(Boolean);
 }
 async function withCrests(m) {
@@ -1319,6 +1400,6 @@ function zip(files, when) {
   return out;
 }
 
-return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, result, performer, weekstars, LAYOUTS, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
+return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, catKey, leaders, result, performer, weekstars, LAYOUTS, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
          gameScore, statLine, local, dayLabel, dateLabel, timeLabel, slug };
 }));
