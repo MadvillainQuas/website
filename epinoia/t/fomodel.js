@@ -57,15 +57,18 @@ const SELF_V = (() => {
    object as EpinoiaWinModel.KEYMAP (ww-fomodel checks it). */
 const KEYMAP = Object.freeze({
   ff_efg: ['c_efg', 'off'], dff_efg: ['c_efg', 'def'], ff_tov: ['c_tovp', 'off'], dff_tov: ['c_tovp', 'def'],
-  ff_oreb: ['c_orebp', 'off'], dff_oreb: ['c_orebp', 'def'], ff_ftr: ['c_ftmr', 'off'], dff_ftr: ['c_ftmr', 'def'],
+  ff_oreb: ['c_orebp', 'off'], dff_oreb: ['c_orebp', 'def'], ff_ftr: ['c_ftr', 'off'], dff_ftr: ['c_ftr', 'def'],
   p3_pct: ['p3p', 'off'], ft_pct: ['ftp', 'off'], rim_pct: ['rimp', 'off']
 });
-const CORE = ['c_efg', 'c_tovp', 'c_orebp', 'c_ftmr'];
-const LEVERS = ['rimr', 'p3r', 'rimp', 'p3p', 'tr_freq', 'top_avg', 'live_share', 'ftr'];
+/* the four factors (A.3: free throws by ATTEMPT rate, FTA / FGA) and the levers beyond them (FT% now one of them). A file
+   built before A.3 values c_ftmr: coreOf reads the file's own four */
+const CORE = ['c_efg', 'c_tovp', 'c_orebp', 'c_ftr'];
+const LEVERS = ['rimr', 'p3r', 'rimp', 'p3p', 'tr_freq', 'top_avg', 'live_share', 'ftp'];
+const coreOf = fo => { const v = (fo && fo.value) || {}, ks = Object.keys(v).filter(k => v[k] && v[k].model === 'core4c'); return ks.length === 4 ? CORE.filter(k => ks.includes(k)).concat(ks.filter(k => !CORE.includes(k))) : CORE; };
 const LABEL = {
-  c_efg: 'Shooting (eFG%)', c_tovp: 'Turnovers (TOV%)', c_orebp: 'Offensive boards (OREB%)', c_ftmr: 'Free throws made per shot',
+  c_efg: 'Shooting (eFG%)', c_tovp: 'Turnovers (TOV%)', c_orebp: 'Offensive boards (OREB%)', c_ftr: 'Getting to the line (FTA/FGA)', c_ftmr: 'Free throws made per shot',
   rimr: 'Shots at the rim', p3r: '3PA rate', rimp: 'Finishing at the rim', p3p: 'Three-point %', tr_freq: 'Transition chances',
-  top_avg: 'Seconds per possession', live_share: 'Live-ball turnovers', ftr: 'FT rate', ftp: 'Free-throw %'
+  top_avg: 'Seconds per possession', live_share: 'Live-ball turnovers', ftr: 'FT attempt rate (FTA/FGA)', ftp: 'Free-throw %'
 };
 const END = { off: 'offence', def: 'defence' };
 /* the depth chart's NEED sentence for a factor and end: its MEASURES key through KEYMAP, else a sentence of its own */
@@ -77,15 +80,16 @@ const NEED_X = {
   'top_avg:off': 'patience: an organiser who works the half court', 'top_avg:def': 'a defence that makes opponents work the whole clock',
   'live_share:off': 'a secure ball-handler: an organiser who does not give it away', 'live_share:def': 'active hands - defenders who pressure the ball and jump passing lanes',
   'ftr:off': 'a driver who draws fouls', 'ftr:def': 'disciplined defenders who stay down and keep their hands off',
-  'rimp:def': 'a rim protector', 'p3p:def': 'length on the perimeter', 'c_ftmr:off': 'a driver who draws fouls'
+  'rimp:def': 'a rim protector', 'p3p:def': 'length on the perimeter', 'c_ftmr:off': 'a driver who draws fouls',
+  'ftp:off': 'a reliable free-throw shooter for the line'
 };
 /* the simulator's edits for a factor (§8.4), and the factor each dial is valued by in the margin model */
-const SIM_KEY = { c_efg: 'efg', c_tovp: 'tovp', c_orebp: 'orebp', ftr: 'ftr', p3r: 'p3r', top_avg: 'secs' };
+const SIM_KEY = { c_efg: 'efg', c_tovp: 'tovp', c_orebp: 'orebp', c_ftr: 'ftr', ftr: 'ftr', p3r: 'p3r', top_avg: 'secs' };
 const DIALS = [
   { key: 'efg', label: 'eFG%', min: -5, max: 5, step: 0.5, unit: 'pp', f: 'c_efg' },
   { key: 'tovp', label: 'TOV%', min: -4, max: 4, step: 0.5, unit: 'pp', f: 'c_tovp' },
   { key: 'orebp', label: 'OREB%', min: -8, max: 8, step: 1, unit: 'pp', f: 'c_orebp' },
-  { key: 'ftr', label: 'FT rate', min: -10, max: 10, step: 1, unit: 'pp', f: 'ftr' },
+  { key: 'ftr', label: 'FT attempt rate (FTA/FGA)', min: -10, max: 10, step: 1, unit: 'pp', f: 'c_ftr' },
   { key: 'p3r', label: '3PA rate', min: -10, max: 10, step: 1, unit: 'pp', f: 'p3r' },
   { key: 'secs', label: 'Seconds per possession', min: -3, max: 3, step: 0.5, unit: 's', f: 'top_avg' }
 ];
@@ -95,12 +99,29 @@ const SHARE_STATS = ['usg_share', 'ast_share', 'reb_share', 'tov_share', 'min_sh
 const P1_LABEL = { bpm: 'Minutes-weighted BPM', ts: 'True shooting', usg_share: 'Usage share', ast_share: 'Assist share', reb_share: 'Rebound share',
   stocks40: 'Steals + blocks per 40', tov_share: 'Turnover share', p3a_rate: '3PA rate', min_share: 'Share of minutes' };
 const SQUAD_LABEL = { rot_n: 'Rotation size', top5_share: 'Top five’s minutes', star_pts_share: 'Star’s share of points', usg_hhi: 'Usage concentration',
-  pos_entropy: 'Positional balance', shooters: 'Shooters in the rotation', handlers: 'Handlers in the rotation', protectors: 'Rim protectors',
+  pos_entropy: 'Positional balance', shooters: 'Shooters in the rotation', handlers: 'Ball handlers in the rotation', protectors: 'Rim protectors',
+  passers: 'Passers in the rotation', slashers: 'Rim pressure in the rotation', crashers: 'Offensive rebounders in the rotation', glass: 'Defensive rebounders in the rotation',
+  disruptors: 'Turnover generators in the rotation',
   bench_share: 'Bench minutes', depth_bpm: 'Depth (players 6-9)', talent: 'Talent (BPM)', continuity: 'Continuity', starter_stability: 'Starting five kept',
   availability: 'Availability', height_w: 'Height', age_w: 'Age' };
-const PART_LABEL = { expected: 'expected', quality: 'shot quality', making: 'shot-making', tovp: 'turnovers', orebp: 'boards', ftmr: 'free throws',
+/* A.3: the roles (EpinoiaWinModel ROLE_KEYS), what each is called, and how one is earned (the What wins page has the
+   league-season's cut values) */
+const ROLES = ['handler', 'passer', 'shooter', 'slasher', 'crasher', 'glass', 'protector', 'disruptor', 'big'];
+const ROLE_LABEL = { shooter: 'Shooters', handler: 'Ball handlers', passer: 'Passers', slasher: 'Rim pressure', crasher: 'Offensive rebounders', glass: 'Defensive rebounders',
+  protector: 'Rim protectors', disruptor: 'Turnover generators', big: 'Bigs', creator: 'Creators' };
+const ROLE_HOW = {
+  handler: 'AST%, unassisted points share and usage percentiles, weighted 45 / 30 / 25, at 0.70 or more',
+  passer: 'A/U (AST% ÷ USG%) in the top quarter, AST% at least the median',
+  shooter: '40 threes or more, 3PA rate in the top 40%, 3P% (shrunk) at least the median',
+  slasher: 'rim rate and FT attempt rate percentiles averaging 0.75 or more',
+  crasher: 'ORB% in the top quarter', glass: 'DRB% in the top quarter',
+  protector: 'BLK% in the top quarter and taller than average', disruptor: 'STL% in the top quarter', big: 'most minutes at centre'
+};
+const PART_LABEL = { expected: 'expected', quality: 'shot quality', making: 'shot-making', tovp: 'turnovers', orebp: 'boards', ftr: 'free throws', ftmr: 'free throws',
   other: 'other', garbage: 'garbage time' };
-const PARTS = ['quality', 'making', 'tovp', 'orebp', 'ftmr', 'other', 'garbage'];
+const PARTS = ['quality', 'making', 'tovp', 'orebp', 'ftr', 'other', 'garbage'];
+/* a defeat's part: the free-throw part is ftr (ftmr in a file built before A.3) */
+const partOf = (parts, k) => (parts ? (parts[k] != null ? parts[k] : k === 'ftr' ? parts.ftmr : undefined) : undefined);
 const SIM_GROUP = { shooting: 'shooting', mix: 'shot mix', turnovers: 'turnovers', boards: 'boards', ft: 'free throws', tempo: 'tempo' };
 const LENS = { explain: 'Explains', forecast: 'Forecasts', model: 'Model', elo: 'Elo' };
 const STAGES = ['check', 'update', 'download', 'sim', 'draw'];
@@ -189,13 +210,13 @@ function ledger(fo, teamId) {
              sure: c.lo > 0 || c.hi < 0 };
   };
   const core = [];
-  CORE.forEach(k => ['off', 'def'].forEach(end => { const r = row(k, end); if (r) core.push(r); }));
+  coreOf(fo).forEach(k => ['off', 'def'].forEach(end => { const r = row(k, end); if (r) core.push(r); }));
   const levers = [];
   LEVERS.forEach(k => ['off', 'def'].forEach(end => { const r = row(k, end); if (r) levers.push(r); }));
   const sum = core.reduce((a, r) => a + r.pts, 0);
   /* the same margin worked out the other way: Σ b (x_off − x_def), the league means cancelling */
   let expected = 0, used = 0;
-  CORE.forEach(k => { const v = fo.value[k], f = t.f && t.f[k]; if (v && f && isNum(v.b) && isNum(f.off) && isNum(f.def)) { expected += v.b * (f.off - f.def); used++; } });
+  coreOf(fo).forEach(k => { const v = fo.value[k], f = t.f && t.f[k]; if (v && f && isNum(v.b) && isNum(f.off) && isNum(f.def)) { expected += v.b * (f.off - f.def); used++; } });
   return { core, levers, sum, expected: used ? expected : null, sigma, wins30: wins30(sum, sigma), team: t };
 }
 /* the club's actual competitive margin a game, from its club file (the check beside the factor-expected one) */
@@ -231,7 +252,7 @@ function needs(fo, teamId, o) {
   const mus = o.mus || fixtureMus(fo, teamId, o.fixtures);
   const D = root.EpinoiaDepth, NEED = (D && D.NEED) || {};
   const out = [];
-  CORE.concat(LEVERS).forEach(k => ['off', 'def'].forEach(end => {
+  coreOf(fo).concat(LEVERS).forEach(k => ['off', 'def'].forEach(end => {
     const v = fo.value[k], f = t.f && t.f[k];
     if (!v || !f || !isNum(f[end]) || !isNum(v.b)) return;
     if (isNum(v.lo) && isNum(v.hi) && v.lo < 0 && v.hi > 0) return;      // b not distinguishable from 0: not a need
@@ -338,7 +359,7 @@ function view(o) {
   if (losses && losses.mean.length) charts.lossMean = { kind: 'bars', data: losses.mean.map(p => ({ id: p.k, label: PART_LABEL[p.k] || p.k, v: p.pts, lo: p.lo, hi: p.hi, dir: 1 })),
     o: { x: { label: 'points a loss' } }, label: 'The average loss, part by part' };
   if (losses) losses.list.forEach((g, i) => {
-    charts['loss' + i] = { kind: 'waterfall', data: { start: { label: 'expected', v: g.xm }, parts: PARTS.map(k => ({ k, label: PART_LABEL[k], v: g.parts[k] })), total: { label: 'result' } },
+    charts['loss' + i] = { kind: 'waterfall', data: { start: { label: 'expected', v: g.xm }, parts: PARTS.map(k => ({ k, label: PART_LABEL[k], v: partOf(g.parts, k) })), total: { label: 'result' } },
       o: { y: { label: 'points' } }, label: 'A loss, part by part' };
   });
 
@@ -416,8 +437,11 @@ function squadView(fo, club, nameOf) {
       cells: ss.map(s => bs.map(b => { const c = at(s, b); return c ? { v: c.net, lo: c.lo, hi: c.hi, hatch: c.poss < 200 } : null; })) };
   }
   const fives = club && Array.isArray(club.lineups) ? club.lineups.slice(0, 5).map(l => ({ names: (l.ids || []).map(nameOf).filter(Boolean), s: l.s, b: l.b, poss: l.poss, net: l.net, pred: l.pred })) : [];
-  if (!rows.length && !grid && !fives.length) return null;
-  return { rows, n: Q ? Q.n : null, power: Q ? Q.power : null, grid, fives, terms: LU ? LU.terms || [] : [] };
+  /* A.3: the club's players by role (its rotation first: the file lists them by minutes), named here, never in a file */
+  const pl = club && Array.isArray(club.players) ? club.players : [];
+  const roles = ROLES.map(k => ({ k, label: ROLE_LABEL[k], how: ROLE_HOW[k], names: pl.filter(p => (p.roles || []).includes(k)).map(p => nameOf(p.id)).filter(Boolean) })).filter(r => pl.length);
+  if (!rows.length && !grid && !fives.length && !roles.length) return null;
+  return { rows, n: Q ? Q.n : null, power: Q ? Q.power : null, grid, fives, roles, terms: LU ? LU.terms || [] : [] };
 }
 
 /* (6) THE LOSSES: exact parts (m = xm + Σ parts), the last ten, the mean over every loss with its interval */
@@ -426,7 +450,7 @@ function lossesView(fo, club) {
   const opp = id => { const t = teamOf(fo, id); return t ? (t.short || t.name) : ''; };
   const list = club.games.filter(g => isNum(g.m) && g.m < 0).sort((a, b) => String(b.d).localeCompare(String(a.d))).slice(0, 10)
     .map(g => ({ g: g.g, d: g.d, opp: g.opp, oppName: opp(g.opp), h: g.h, m: g.m, mc: g.mc, xm: g.xm, parts: Object.assign({}, g.parts), luck: g.luck,
-      total: (isNum(g.xm) ? g.xm : 0) + PARTS.reduce((a, k) => a + (isNum(g.parts && g.parts[k]) ? g.parts[k] : 0), 0), sim: !!(club.realised && club.realised[g.g]) }));
+      total: (isNum(g.xm) ? g.xm : 0) + PARTS.reduce((a, k) => a + (isNum(partOf(g.parts, k)) ? partOf(g.parts, k) : 0), 0), sim: !!(club.realised && club.realised[g.g]) }));
   const mean = ((club.losses && club.losses.mean) || []).filter(p => isNum(p.pts));
   const lose = mean.filter(p => p.k !== 'expected' && isNum(p.hi) && p.hi < 0).map(p => PART_LABEL[p.k] || p.k);
   return { n: club.losses ? club.losses.n : list.length, list, mean, lose };
@@ -542,6 +566,9 @@ H.squad = vm => {
       Q.rows.map(r => '<tr><th scope="row">' + esc(r.label) + '</th><td translate="no">' + esc(f2(r.v)) + '</td><td translate="no">' + esc(f2(r.p25) + '–' + f2(r.p75)) + '</td><td>' +
         esc(r.where) + '</td><td><span class="fm-ev" data-ev="' + esc(r.evidence) + '">' + esc(r.evidence) + '</span></td></tr>').join('') + '</tbody></table>');
   }
+  if (Q.roles && Q.roles.length) html += '<h4 class="fm-h4">' + esc('Roles in the squad') + '</h4>' + tw('<table class="fm-t"><thead><tr><th scope="col">role</th><th scope="col">players</th><th scope="col">how it is earned</th></tr></thead><tbody>' +
+    Q.roles.map(r => '<tr><th scope="row">' + esc(r.label) + '</th><td translate="no" class="fm-five">' + esc(r.names.join(', ') || '–') + '</td><td>' + esc(r.how) + '</td></tr>').join('') + '</tbody></table>') +
+    '<p class="fm-p fm-mute">' + esc('Each cut is a percentile within this league-season; What wins shows the values and how each role goes with winning') + '</p>';
   if (Q.grid) html += '<h4 class="fm-h4">' + esc('Shooters and bigs on the floor') + '</h4>' + slot('grid');
   if (Q.fives.length) html += '<h4 class="fm-h4">' + esc('The club’s most used fives') + '</h4>' + tw('<table class="fm-t"><thead><tr><th scope="col">five</th><th scope="col">shooters</th><th scope="col">bigs</th>' +
     '<th scope="col">possessions</th><th scope="col">net per 100</th><th scope="col">model</th></tr></thead><tbody>' + Q.fives.map(f => '<tr><td translate="no" class="fm-five">' + esc(f.names.join(', ') || '–') +

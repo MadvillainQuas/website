@@ -74,9 +74,9 @@ console.log('\nthe ledger (block 2)');
 const L = F.ledger(fo, TID);
 const T = fo.teams.find(t => t.id === TID);
 {
-  ok('the four factors at both ends', L && L.core.length === 8 && ['c_efg', 'c_tovp', 'c_orebp', 'c_ftmr'].every(k => L.core.filter(r => r.k === k).length === 2));
+  ok('the four factors at both ends', L && L.core.length === 8 && ['c_efg', 'c_tovp', 'c_orebp', 'c_ftr'].every(k => L.core.filter(r => r.k === k).length === 2));
   let byHand = 0;
-  ['c_efg', 'c_tovp', 'c_orebp', 'c_ftmr'].forEach(k => { byHand += fo.value[k].b * (T.f[k].off - T.f[k].def); });
+  ['c_efg', 'c_tovp', 'c_orebp', 'c_ftr'].forEach(k => { byHand += fo.value[k].b * (T.f[k].off - T.f[k].def); });
   ok('core contributions sum to the factor-expected margin Σ b(x_off − x_def) (1e-6)', near(L.sum, byHand) && near(L.expected, byHand), L.sum + ' vs ' + byHand);
   ok('...each b(x − μ) at offence and −b(x − μ) at defence', L.core.every(r => near(r.pts, (r.end === 'def' ? -1 : 1) * fo.value[r.k].b * (T.f[r.k][r.end] - fo.value[r.k].lg), 1e-9)));
   ok('...each interval holds its point', L.core.concat(L.levers).every(r => r.lo <= r.pts + 1e-12 && r.pts <= r.hi + 1e-12));
@@ -102,13 +102,13 @@ console.log('\nthe needs (block 3)');
   ok('no fixtures left: G games against an average side', none.length > 0 && none.every(n => n.perSeason && near(n.wins, fo.lg.G * (WS.normCdf(n.delta / fo.sigmaPred) - 0.5), 1e-9)));
   const key = N[0].key, simd = F.needs(fo, TID, { fixtures: FIXTURES, sim: { [key]: { dWin: 0.5, se: 0.01 } }, all: true });
   ok('a calibrated simulator\'s Δ win replaces the margin model for its factor', simd.find(n => n.key === key).src === 'sim' && near(simd.find(n => n.key === key).wins, 2.5, 1e-9) && simd[0].key === key);
-  ok('...the depth chart\'s NEED sentence where KEYMAP maps one', all.filter(n => ['c_efg:off', 'c_tovp:off', 'dff_ftr'].includes(n.key) || n.key === 'c_ftmr:def').every(n => n.need === X.NEED[n.key === 'c_ftmr:def' ? 'dff_ftr' : n.key === 'c_efg:off' ? 'ff_efg' : 'ff_tov']));
+  ok('...the depth chart\'s NEED sentence where KEYMAP maps one', all.filter(n => ['c_efg:off', 'c_tovp:off', 'dff_ftr'].includes(n.key) || n.key === 'c_ftr:def').every(n => n.need === X.NEED[n.key === 'c_ftr:def' ? 'dff_ftr' : n.key === 'c_efg:off' ? 'ff_efg' : 'ff_tov']));
 }
 
 /* ------------------------------------------------------------------ the losses --- */
 console.log('\nthe losses (block 6)');
 {
-  const parts = ['quality', 'making', 'tovp', 'orebp', 'ftmr', 'other', 'garbage'];
+  const parts = ['quality', 'making', 'tovp', 'orebp', 'ftr', 'other', 'garbage'];
   ok('every club game: m = xm + Σ parts (the file\'s four significant figures)', club.games.every(g => near(g.xm + parts.reduce((a, k) => a + g.parts[k], 0), g.m, 0.02)),
      club.games.map(g => (g.xm + parts.reduce((a, k) => a + g.parts[k], 0) - g.m).toFixed(3)).filter(x => Math.abs(+x) > 0.02).join(','));
   const vmv = F.view({ fo, club, team: { id: TID }, fixtures: FIXTURES });
