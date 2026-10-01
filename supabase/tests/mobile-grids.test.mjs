@@ -159,5 +159,18 @@ ok('and the desktop grids fill the row: three podium cards and seven more share 
   ok('HOME, a league\'s front page and a player\'s page link it', links(['home', 'index.html']) && links(['index.html']) && links(['p', 'index.html']));
 }
 
+/* ---- HOME's MY FOLLOWED: four games a row, four across or two and two ------------ */
+{
+  const kitHome = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'home.css'), 'utf8');
+  const fol = readFileSync(path.join(ROOT, 'epinoia', 'home', 'followed-home.js'), 'utf8');
+  ok('HOME\'s followed rows are four games each, the results and the fixtures', /const N = 4;/.test(fol) &&
+     /f\.finals\.slice\(0, N\)/.test(fol) && /f\.soon\.slice\(0, N\)/.test(fol));
+  ok('...four across wherever each card has 170px, measured on the dropdown (a container query), else two and two: never three and one',
+     /\.hmf-body\{container:hmf \/ inline-size\}/.test(kitHome) &&
+     /@media \(min-width:561px\)\{\s*\.hm \.hmf-body \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - var\(--u\) \* 1\.5\) \/ 2 - \.5px\)\}/.test(kitHome) &&
+     /@container hmf \(min-width:764px\)\{\s*\.hm \.hmf-body \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - 3 \* var\(--u\) \* 1\.5\) \/ 4 - \.5px\)\}/.test(kitHome) &&
+     kitHome.indexOf('@container hmf') > kitHome.indexOf('.hm .hmf-body .fxc-grid>.fxc{flex-basis:calc((100% - var(--u) * 1.5) / 2'));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -2769,6 +2769,9 @@
       try { to.focus({ preventScroll: true }); } catch (_) { /* the scroll is what matters */ }
     }, true);
     paint();
+    /* A PAGE'S OWN SWITCH between its sections (global scouting's Leagues / Imports, scouting/imports.js) says so with
+       this event, at any time: the watch below stops after a minute */
+    window.addEventListener('epinoia:sections', () => { setTimeout(paint, 30); });
     if (typeof MutationObserver === 'function') {
       let pend = 0;
       const mo = new MutationObserver(() => {

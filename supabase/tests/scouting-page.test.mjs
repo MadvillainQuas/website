@@ -78,7 +78,7 @@ console.log('\nthe page');
   eq('deferred scripts, in order', deferred,
      ['../config.js', '../access.js', '../season.js', '../bpm.js', '../data.js', '../global.js',
       '../units.js', '../ages.js', '../memlock.js', '../fulltable.js', '../compare.js', '../country.js', '../follow.js',
-      '../teamcolour.js', 'setup.js', 'scouting.js', '../xscroll.js', '../nav.js']);
+      '../teamcolour.js', 'setup.js', 'scouting.js', 'imports.js', '../xscroll.js', '../nav.js']);
   ok('every deferred script is stamped ?v=' + V, [...body.matchAll(/<script src="([^"]+)"/g)].every(m => m[1].endsWith('?v=' + V)));
 
   /* EVERY LOCAL FILE THE PAGE ASKS FOR IS IN THE REPO. appmode.js and home/ are Phase 1's (R2),

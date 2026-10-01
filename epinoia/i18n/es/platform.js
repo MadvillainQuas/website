@@ -50,6 +50,15 @@
       m => n(m[1], 'nombramiento hecho', 'nombramientos hechos') + ' a una dirección sin cuenta. Cada uno se aplica solo la primera vez que esa dirección se registra y se confirma. No hace falta nada más: están aquí para que los veas y puedas retirar alguno.'],
     [/^invited ((?:(?! · ).)+?) by (\S+@\S+)$/, 'invitado el $1 por $2'],
     [/^invited ((?:(?! · ).)+)$/, 'invitado el $1'],
+    /* 0210: the scouts */
+    [/^since ((?:(?! · ).)+)$/, 'desde el $1'],
+    [/^granted: (\S+@\S+) is a scout$/, 'concedido: $1 es ojeador'],
+    [/^invited: (\S+@\S+) is a scout from the moment they sign in with that address$/, 'invitado: $1 será ojeador en cuanto inicie sesión con esa dirección'],
+    [/^already a scout: (\S+@\S+)$/, 'ya es ojeador: $1'],
+    [/^(\S+@\S+) is no longer a scout\.$/, '$1 ya no es ojeador.'],
+    [/^(\S+@\S+) was not a scout\.$/, '$1 no era ojeador.'],
+    [/^(\S+@\S+) will no longer be a scout: the Imports tab goes at their next visit\.\n\nThe files they loaded stay in their own browser\.$/,
+      '$1 dejará de ser ojeador: la pestaña Importaciones desaparece en su próxima visita.\n\nLos archivos que cargó se quedan en su propio navegador.'],
 
     /* leagues, invite links, clubs */
     [/^Saved (.+?)\.?$/, (m, T) => 'Guardado: ' + T(m[1])],
@@ -329,6 +338,16 @@
       'Waiting on this address': 'Pendiente de esta dirección',
       'waiting': 'pendiente',
       'take back': 'Retirar',
+      /* 0210: the platform's scouts (global scouting's Imports tab) */
+      'scout — global scouting’s Imports tab': 'ojeador — la pestaña Importaciones de Scouting global',
+      'Scouts': 'Ojeadores',
+      'No scouts yet.': 'Aún no hay ojeadores.',
+      'A scout sees the Imports tab on global scouting: the files their scouting extension saves, as one table to sort and filter, read and kept in their own browser. Every platform admin is one already. Name one above, as “scout”.': 'Un ojeador ve la pestaña Importaciones de Scouting global: los archivos que guarda su extensión de scouting, en una tabla para ordenar y filtrar, leídos y guardados en su propio navegador. Todos los administradores de la plataforma ya lo son. Nombra uno arriba, como «ojeador».',
+      'has not signed in yet': 'aún no ha iniciado sesión',
+      'has an account': 'tiene cuenta',
+      'end': 'Quitar',
+      'no longer a scout: the Imports tab goes at their next visit': 'deja de ser ojeador: la pestaña Importaciones desaparece en su próxima visita',
+      'Scouts arrive with migration 0210: it has not been applied to this database yet.': 'Los ojeadores llegan con la migración 0210: aún no se ha aplicado a esta base de datos.',
       'This account exists, so an appointment still waiting means it was made to an address that has not confirmed itself yet — it applies the moment it does.': 'Esta cuenta existe, así que un nombramiento aún pendiente se hizo a una dirección que todavía no se ha confirmado: se aplica en cuanto lo haga.',
       'The account': 'La cuenta',
       'the whole platform': 'toda la plataforma',

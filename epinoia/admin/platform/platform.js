@@ -160,7 +160,7 @@ async function gate() {
     const tab = asked && [...document.querySelectorAll('.ep-tab')].find(t => t.dataset.p === asked);
     if (tab) { hashTabOpened = true; tab.click(); }
   }
-  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadPending()]);
+  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadPending(), loadScouts()]);
 }
 
 /* ------------------------------------------------------------------ tabs --- */
@@ -669,6 +669,12 @@ function roleToGrant(picked) {
 }
 
 async function grantTo(email, picked, scopeId) {
+  /* A SCOUT (0210) is not a membership either: platform_scouts, by address, for global scouting's Imports tab */
+  if (picked === 'scout') {
+    const out = await rpc('grant_scout', { p_email: email });
+    if (out) { say(out, /^invited/.test(out) ? 'warn' : 'ok'); loadScouts(); }
+    return !!out;
+  }
   if (picked === 'news_writer') {
     if (!scopeId) return say('Choose the league they write for.', 'err');
     const out = await rpc('grant_league_writer', { p_league: scopeId, p_email: email });
@@ -826,7 +832,7 @@ async function openAccount(userId) {
 /* Leagues or clubs, by name, for whichever kind of scope the role takes. */
 function fillScopeFor(picked, sel) {
   sel.textContent = '';
-  if (picked === 'platform_admin') {
+  if (picked === 'platform_admin' || picked === 'scout') {
     sel.appendChild(new Option('the whole platform', ''));
     sel.disabled = true;
     return;
@@ -886,6 +892,46 @@ async function loadPending() {
       if (out) { say(out, 'ok'); loadPending(); }
     });
     r.append(who, what, when, kill);
+    host.appendChild(r);
+  });
+}
+
+/* ---------------------------------------------------------------- scouts --- */
+/* THE PLATFORM'S SCOUTS (0210): who sees global scouting's Imports tab. Named in the grant form above as "scout"; each
+   here with whether the address has signed in yet, and a way to end it. Read without the console's error banner, so a
+   database without 0210 says so in one line instead. */
+async function loadScouts() {
+  const host = $('#scoutsList');
+  if (!host || !sb) return;
+  const { data, error } = await sb.rpc('scouts_list');
+  host.textContent = '';
+  if (error) {
+    host.appendChild(el('p', 'lead', /scouts_list|schema cache|does not exist/i.test(error.message || '')
+      ? 'Scouts arrive with migration 0210: it has not been applied to this database yet.'
+      : 'Could not read the scouts: ' + (error.message || String(error))));
+    return;
+  }
+  const rows = data || [];
+  host.appendChild(el('p', 'lead', 'A scout sees the Imports tab on global scouting: the files their scouting extension saves, ' +
+    'as one table to sort and filter, read and kept in their own browser. Every platform admin is one already. Name one above, as “scout”.'));
+  if (!rows.length) host.appendChild(el('p', 'mt', 'No scouts yet.'));
+  rows.forEach(x => {
+    const r = el('div', 'row');
+    r.style.cssText = 'align-items:center;gap:8px;margin-bottom:4px';
+    const who = el('span', 'grow', x.email);
+    who.style.overflowWrap = 'anywhere';
+    const what = el('span', 'mt', (x.has_account ? (x.last_sign_in_at ? 'last seen ' + fmtDate(x.last_sign_in_at) : 'has an account')
+      : 'has not signed in yet') + (x.note ? ' · ' + x.note : ''));
+    const when = el('span', 'mt', 'since ' + fmtDate(x.created_at));
+    when.style.marginLeft = 'auto';
+    const end = el('button', 'ep-btn mini danger', 'end'); end.type = 'button';
+    end.title = 'no longer a scout: the Imports tab goes at their next visit';
+    end.addEventListener('click', async () => {
+      if (!confirm(x.email + ' will no longer be a scout: the Imports tab goes at their next visit.\n\nThe files they loaded stay in their own browser.')) return;
+      const n = await rpc('revoke_scout', { p_email: x.email });
+      if (n != null) { say(n ? x.email + ' is no longer a scout.' : x.email + ' was not a scout.', 'ok'); loadScouts(); }
+    });
+    r.append(who, what, when, end);
     host.appendChild(r);
   });
 }

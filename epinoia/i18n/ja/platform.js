@@ -47,6 +47,15 @@
       'アカウントのないアドレスへの任命が$1件あります。それぞれ、そのアドレスが初めて登録して確認された時点で自動的に適用されます。ほかに必要な作業はありません。ここでは確認と取り消しができます。'],
     [/^invited ((?:(?! · ).)+?) by (\S+@\S+)$/, '$1に招待（$2）'],
     [/^invited ((?:(?! · ).)+)$/, '$1に招待'],
+    /* 0210: the scouts */
+    [/^since ((?:(?! · ).)+)$/, '$1から'],
+    [/^granted: (\S+@\S+) is a scout$/, '付与しました：$1 はスカウトです'],
+    [/^invited: (\S+@\S+) is a scout from the moment they sign in with that address$/, '招待しました：$1 はそのアドレスでサインインした時点からスカウトになります'],
+    [/^already a scout: (\S+@\S+)$/, 'すでにスカウトです：$1'],
+    [/^(\S+@\S+) is no longer a scout\.$/, '$1 はスカウトではなくなりました。'],
+    [/^(\S+@\S+) was not a scout\.$/, '$1 はスカウトではありませんでした。'],
+    [/^(\S+@\S+) will no longer be a scout: the Imports tab goes at their next visit\.\n\nThe files they loaded stay in their own browser\.$/,
+      '$1 はスカウトではなくなります。次回の訪問時に「インポート」タブが消えます。\n\n読み込んだファイルは本人のブラウザーに残ります。'],
 
     /* leagues, invite links, clubs */
     [/^Saved (.+?)\.?$/, (m, T) => '保存しました: ' + T(m[1])],
@@ -325,6 +334,16 @@
       'Waiting on this address': 'このアドレスで待機中',
       'waiting': '待機中',
       'take back': '招待を取り消す',
+      /* 0210: the platform's scouts (global scouting's Imports tab) */
+      'scout — global scouting’s Imports tab': 'スカウト — グローバルスカウティングの「インポート」タブ',
+      'Scouts': 'スカウト',
+      'No scouts yet.': 'スカウトはまだいません。',
+      'A scout sees the Imports tab on global scouting: the files their scouting extension saves, as one table to sort and filter, read and kept in their own browser. Every platform admin is one already. Name one above, as “scout”.': 'スカウトはグローバルスカウティングの「インポート」タブを使えます。スカウティング拡張機能が保存したファイルを、並べ替え・絞り込みできる1つの表にします。ファイルは本人のブラウザーで読み込まれ、そこに保存されます。プラットフォーム管理者は全員すでにスカウトです。上のフォームで「スカウト」として指名してください。',
+      'has not signed in yet': 'まだサインインしていません',
+      'has an account': 'アカウントあり',
+      'end': '外す',
+      'no longer a scout: the Imports tab goes at their next visit': 'スカウトから外します：次回の訪問時に「インポート」タブが消えます',
+      'Scouts arrive with migration 0210: it has not been applied to this database yet.': 'スカウト機能はマイグレーション0210で追加されます。このデータベースにはまだ適用されていません。',
       'This account exists, so an appointment still waiting means it was made to an address that has not confirmed itself yet — it applies the moment it does.': 'このアカウントは存在するため、待機中の任命は、まだ確認されていないアドレスに対して行われたものです。アドレスが確認された時点で適用されます。',
       'The account': 'アカウント',
       'the whole platform': 'プラットフォーム全体',
