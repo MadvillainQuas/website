@@ -50,8 +50,8 @@ console.log('\nwhat the foul window says it does');
 const foulLegend = src.slice(src.indexOf("} else if(p.kind==='foul'){"),
                              src.indexOf("} else if(p.kind==='foul'){") + 1400);
 
-ok('the exit that means "no free throws" is the green one, and is named',
-   /k\(DONEK\(\),'no free throws/.test(foulLegend));
+ok('the exit that means "no free throws" is the green one, and is named (whether free throws are due or not)',
+   /k\(DONEK\(\), p\.ftExp \? 'no free throws — keep the foul' : 'keep the foul — no free throws due','grn'\)/.test(foulLegend));
 ok('...and the cancel key says what it actually does',
    /k\(CANCK\(\),'delete the foul','x'\)/.test(foulLegend));
 ok('...and nothing still calls the delete "no free throws"',
@@ -183,9 +183,10 @@ ok('a disqualifying is two whatever the count',
 /* The header says something different and must keep saying it. */
 const header = src.slice(src.indexOf('function renderCols()'),
                          src.indexOf('function renderCols()') + 1800);
-ok('the header still calls it the bonus once four have been committed',
-   /fouls>=4\?' <span class="bonus">bonus<\/span>'/.test(header));
-ok('...and still warns on the third', /fouls===3\?' <span class="bonus">\+1\u2192bonus/.test(header));
+/* "bonus" read as the team that shoots; the header is the fouling team's, so it says "penalty" (2026-10-01) */
+ok('the header still calls it the penalty once four have been committed',
+   /fouls>=4\?' <span class="bonus">penalty<\/span>'/.test(header));
+ok('...and still warns on the third', /fouls===3\?' <span class="bonus">\+1\u2192penalty/.test(header));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

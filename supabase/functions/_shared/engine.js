@@ -26,6 +26,8 @@
 /* ---------- constants ---------- */
 const PLEN = p => (p <= 4 ? 600000 : 300000);          // 10-min quarters, 5-min OT
 const WIN_MS = 12000;                                   // live follow-up window
+/* foul kinds that, with no player named, are the bench's: they never count toward the team fouls */
+const BENCH_KINDS = new Set(['tech', 'unsport', 'disq']);
 const FOULNAMES = {
   personal: 'personal', shooting: 'shooting', floor: 'on-the-floor',
   offensive: 'offensive', tech: 'technical', unsport: 'unsportsmanlike',
@@ -150,7 +152,16 @@ function pbpLine(ev, i, tags, stypes, nm) {
     case 'to':      return who + ' — turnover' + (ev.pid ? '' : ' (team)') + (stypes && stypes[i] ? ' (' + stypes[i] + ')' : '');
     case 'foul':    return who + ' — ' + (FOULNAMES[ev.kind] || 'personal') + ' foul';
     case 'timeout': return nm.tname(ev.team) + ' — timeout';
-    case 'sub':     return nm.tname(ev.team) + ' — sub: ' + nm.pname(ev.in) + ' in, ' + nm.pname(ev.out) + ' out';
+    case 'sub':
+      if (ev.in == null || ev.in === '') return nm.tname(ev.team) + ' — ' + nm.pname(ev.out) + ' leaves the court, no substitute';
+      if (ev.out == null || ev.out === '') return nm.tname(ev.team) + ' — ' + nm.pname(ev.in) + ' comes on';
+      return nm.tname(ev.team) + ' — sub: ' + nm.pname(ev.in) + ' in, ' + nm.pname(ev.out) + ' out';
+    /* A MISSED SHOT ON WHICH THE SHOOTER WAS FOULED is not a field goal attempt (FIBA and NBA
+       statistics alike): the free throws are the attempt. The scorer records the shot as it happens
+       and, when the foul on the shooter follows in the same play, turns it into this - so nothing
+       counts it (no FGA, no miss, no rebound chance), and the play-by-play still says what happened. */
+    case 'p2_fouled': return who + ' — 2pt missed, fouled' + tagTxt(tags[i]);
+    case 'p3_fouled': return who + ' — 3pt missed, fouled' + tagTxt(tags[i]);
     case 'jump':    return 'held ball — alternating possession';
     case 'period_start': return '— ' + perName(ev.period) + ' —';
     case 'game_end':     return '— final —';
@@ -386,8 +397,11 @@ function deriveGame(game) {
         }
         if (ev.drawn && d.stats[ev.drawn]) d.stats[ev.drawn].fd++;
         d.team[ev.team].foulTot++;
-        /* FIBA team fouls: bench technicals excluded, player techs count, OT continues Q4 */
-        if (!(ev.kind === 'tech' && !ev.pid)) {
+        /* FIBA team fouls (Art. 41.1.1): a foul committed BY A PLAYER, of any kind, technicals included;
+           OT continues Q4. A foul on the bench - a coach's or a substitute's technical, unsportsmanlike or
+           disqualifying foul, recorded against the team with nobody on court named - is not one. A team
+           personal foul with no player named (the statistician did not see who) still is. */
+        if (ev.pid || !BENCH_KINDS.has(ev.kind)) {
           const m = d.team[ev.team].foulsP, key = ev.period > 4 ? 4 : ev.period;
           m[key] = (m[key] || 0) + 1;
         }
@@ -407,14 +421,19 @@ function deriveGame(game) {
         /* SOMEBODY SENT ON WHO IS ALREADY ON keeps the stint he is in. A change logged twice, or
            a correction restating one at a later clock, restarted his minutes at the repeat and
            lost everything since his real entry (seven SLB games in 160, up to ten minutes). */
-        const already = ev.in !== ev.out && d.onCourt[t].includes(ev.in);
-        if (lastIn[ev.out] != null && d.stats[ev.out]) {
+        const hasIn = ev.in != null && ev.in !== '', hasOut = ev.out != null && ev.out !== '';
+        const already = hasIn && ev.in !== ev.out && d.onCourt[t].includes(ev.in);
+        if (hasOut && lastIn[ev.out] != null && d.stats[ev.out]) {
           d.stats[ev.out].min += Math.max(0, cum - lastIn[ev.out]); delete lastIn[ev.out];
         }
-        if (!already) lastIn[ev.in] = cum;
+        /* A CHANGE WITH ONE SIDE EMPTY. A team with nobody left to send on plays short: the player
+           fouled out (or injured) leaves and nobody replaces him - {out, in:null}. And a team that
+           was short gets a player back - {out:null, in}. Neither is a substitution in the FIBA sense,
+           and both are what happened, so the five on court is what the log says it is. */
+        if (hasIn && !already) lastIn[ev.in] = cum;
         close(t, cum);
-        d.onCourt[t] = d.onCourt[t].filter(x => x !== ev.out);
-        if (!d.onCourt[t].includes(ev.in)) d.onCourt[t].push(ev.in);
+        if (hasOut) d.onCourt[t] = d.onCourt[t].filter(x => x !== ev.out);
+        if (hasIn && !d.onCourt[t].includes(ev.in)) d.onCourt[t].push(ev.in);
         cur[t] = { ids: [...d.onCourt[t]].sort(), start: cum, pf: 0, pa: 0, off: mkBox(), def: mkBox() };
         break;
       }

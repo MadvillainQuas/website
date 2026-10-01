@@ -208,7 +208,7 @@ ok('block says outward', /k\('hold \+ drag ◂ outward','defender — block/.tes
 ok('assist says hold, and which way', /k\('hold \+ drag ▸ middle','a teammate — assist/.test(src));
 ok('steal says hold, and which way', /k\('hold \+ drag ▸ middle','an opponent — steal/.test(src));
 ok('subbing in and out both name a direction',
-   /k\('hold \+ drag ▲ up','bench player — sub in'\)/.test(src) &&
+   /k\(IS_TOUCH \? 'tap a bench player' : 'hold \+ drag ▲ up','bench player — sub in'\)/.test(src) &&
    /k\('hold \+ drag ▼ down','a player on court — sub out'\)/.test(src));
 ok('the idle legend is no longer empty',
    !/default: return L;\s*\/\/ idle: no legend/.test(src),

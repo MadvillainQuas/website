@@ -14,7 +14,7 @@
 
    The platform console mounts mountSources with no league: the sources every reader
    sees, the sites that cover everything (Eurohoops, BasketNews…). Each creator there
-   carries the leagues it covers (0206, set_news_source_leagues): its posts show under
+   carries the leagues it covers (0207, set_news_source_leagues): its posts show under
    Content creators on each one's Community page. It also mounts mountPartners (0201):
    every source and every outlet with an "Official partner" switch, which only the
    platform can flip (set_official_partner).
@@ -471,7 +471,7 @@ function mountSources(o) {
 
     /* ---- the list ---- */
     if (!league && (data || []).some(s => s.kind === 'creator' && s.assigned_leagues === undefined)) {
-      box.appendChild(el('p', 'empty', 'Giving a creator the leagues it covers arrives with migration 0206: it has not been applied to this database yet.'));
+      box.appendChild(el('p', 'empty', 'Giving a creator the leagues it covers arrives with migration 0207: it has not been applied to this database yet.'));
     }
     (data || []).forEach(s => {
       const line = el('div');
@@ -557,7 +557,7 @@ function mountSources(o) {
     box.appendChild(more);
   }
 
-  /* WHICH LEAGUES A CREATOR COVERS (0206): a chip for each, its × to take it off, and the leagues it does not cover yet
+  /* WHICH LEAGUES A CREATOR COVERS (0207): a chip for each, its × to take it off, and the leagues it does not cover yet
      to add one. The whole list goes each time (set_news_source_leagues); the row is drawn again from what was kept. */
   function covers(s, leagues) {
     const r = el('div', 'cv-row');
@@ -569,7 +569,7 @@ function mountSources(o) {
       if (e) {
         paint();
         return say(/set_news_source_leagues|schema cache|does not exist/i.test(errText(e))
-          ? 'Giving a creator its leagues arrives with migration 0206: it has not been applied to this database yet.' : errText(e), 'err');
+          ? 'Giving a creator its leagues arrives with migration 0207: it has not been applied to this database yet.' : errText(e), 'err');
       }
       const kept = Array.isArray(d) ? d.map(String) : next.map(x => x.id);
       have = kept.map(id => next.find(x => x.id === id)).filter(Boolean);

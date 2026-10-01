@@ -1283,7 +1283,7 @@ function loadLinks() {
 
 /* ------------------------------------------------------------------ news --- */
 /* The news sites every reader sees (migration 0194): creators-ui.js draws the list, the switches and the form, and
-   each creator's leagues (0206) from the leagues this console already read. */
+   each creator's leagues (0207) from the leagues this console already read. */
 function loadNewsSources() {
   const C = window.EpinoiaCreatorsUI;
   if (!C) return say('creators-ui.js did not load, so the news sources cannot be edited. Reload the page.', 'err');

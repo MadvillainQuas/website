@@ -1,10 +1,10 @@
-// 0206: A LEAGUE'S CONTENT CREATORS. The platform assigns a creator to the leagues it covers (the console's "covers" row,
+// 0207: A LEAGUE'S CONTENT CREATORS. The platform assigns a creator to the leagues it covers (the console's "covers" row,
 // epinoia/admin/creators-ui.js), and a league's Community page (epinoia/community/) shows the newest from its creators
 // under Content creators, with its Discord servers under Forum. What is held here:
 //   * with no database: the page's two sections on the page standard; the page run on a stand-in document against a
 //     stand-in server - the Forum (an old #talk link landing on it), Content creators (nine cards, "Show more" while
 //     there are more, the league's own tag left off, the official partners' keys, nothing played on the page, the
-//     part away before 0206 and while there is nothing); the console's covers row (a chip per league, the leagues left
+//     part away before 0207 and while there is nothing); the console's covers row (a chip per league, the leagues left
 //     to add, the whole list sent, a refusal said in the database's words, only for a platform's creators); a creator's
 //     channel wearing its partner pill (newscard.js and feedrank.js, one rule); the words in Spanish and Japanese;
 //   * on a real Postgres (PGlite; skipped with a note when it is not installed): set_news_source_leagues for a platform
@@ -12,7 +12,7 @@
 //     news_sources_admin with them; league_creator_feed - an assigned creator's posts, the league's own creators', its
 //     outlets' pieces where it shows creators, and never a publisher, a source that is off, a hidden piece, a suspended
 //     outlet or a league the reader may not see; newest first, a page at a time; news_feed's own rows unchanged; who
-//     may call what; and 0206 run again changing nothing.
+//     may call what; and 0207 run again changing nothing.
 //
 //   node supabase/tests/league-creators.test.mjs
 import { readFileSync } from 'node:fs';
@@ -173,7 +173,7 @@ async function community(o) {
   const none = await community({ rows: [] });
   ok('nothing from its creators: the section stays away', !none.shown('creators') && !none.grid());
   const absent = await community({ rows: 'absent' });
-  ok('a server without 0206: the section stays away, and the page carries on', !absent.shown('creators') && absent.shown('stands') && absent.shown('travelled'));
+  ok('a server without 0207: the section stays away, and the page carries on', !absent.shown('creators') && absent.shown('stands') && absent.shown('travelled'));
 }
 {
   const servers = [{ id: 'd1', name: 'KBL Fans', invite: 'https://discord.gg/kblfans', server_id: '123456789012345678', official: true }];
@@ -269,7 +269,7 @@ async function consoleOf(o) {
   ok('given no leagues, the console reads them itself', t.calls.some(c => c[0] === 'from') && t.rowsOf().length === 2);
   const old = await consoleOf({ leagues: () => LG, handler: async (fn) => (fn === 'news_sources_admin'
     ? { data: sourceRows().map(r => { const x = { ...r }; delete x.assigned_leagues; return x; }), error: null } : { data: null, error: null }) });
-  ok('a database without 0206: no covers row, and one line saying why', old.rowsOf().length === 0 && /arrives with migration 0206/.test(old.host.textContent));
+  ok('a database without 0207: no covers row, and one line saying why', old.rowsOf().length === 0 && /arrives with migration 0207/.test(old.host.textContent));
   const lc = await consoleOf({ league: { id: 'l-kbl', name: 'KBL', slug: 'kbl' }, handler: async (fn) => (fn === 'news_sources_admin' ? { data: sourceRows(), error: null } : { data: null, error: null }) });
   ok('a league\'s console: no covers row (its creators are its own), and it says they show on its Community page',
      lc.rowsOf().length === 0 && /its creators also under Content creators on its Community page/.test(lc.host.textContent) && !lc.calls.some(c => c[0] === 'from'));
@@ -357,7 +357,7 @@ await db.exec(`grant usage on schema public to anon, authenticated; grant usage 
 const resultOf = async f => (await q(`select pg_get_function_result(p.oid) as r from pg_proc p where p.proname = $1`, [f]))[0].r;
 const feedBefore = await resultOf('news_feed');
 const feedSrcBefore = (await q(`select prosrc from pg_proc where proname = 'news_feed'`))[0].prosrc;
-await db.exec(mig('0206_league_creators.sql'));
+await db.exec(mig('0207_league_creators.sql'));
 
 await q(`insert into auth.users values ($1, 'admin@kbl.com'), ($2, 'fan@x.com'), ($3, 'plat@epinoia.com')`, [ADMIN, FAN, PLAT]);
 const [kbl] = await q(`insert into leagues (slug, name, colour_a) values ('kbl', 'KBL', '#112233') returning id`);
@@ -478,11 +478,11 @@ ok('signed in, the same', ids(await feed(kbl.id, null, 30, 'authenticated')) ===
 ok('the tables stay closed: the leagues a source is assigned to are read through the functions only',
    /permission denied/.test(await fails(() => q(`select assigned_leagues from news_sources`, [], 'anon')) || ''));
 
-console.log('\nwhat 0206 leaves alone, and running it again');
+console.log('\nwhat 0207 leaves alone, and running it again');
 ok('news_feed is not changed: its columns and its body as before', await resultOf('news_feed') === feedBefore &&
    (await q(`select prosrc from pg_proc where proname = 'news_feed'`))[0].prosrc === feedSrcBefore);
-await db.exec(mig('0206_league_creators.sql'));
-ok('running 0206 again changes nothing: every assignment kept', JSON.stringify((await q(`select assigned_leagues from news_sources where id = $1`, [tube]))[0].assigned_leagues) === JSON.stringify([kbl.id, nbl.id]) &&
+await db.exec(mig('0207_league_creators.sql'));
+ok('running 0207 again changes nothing: every assignment kept', JSON.stringify((await q(`select assigned_leagues from news_sources where id = $1`, [tube]))[0].assigned_leagues) === JSON.stringify([kbl.id, nbl.id]) &&
    ids(await feed(kbl.id)) === 'Piece p1,Story k1,Story t1,Story t2');
 ok('...and who may call what is as it was',
    /permission denied/.test(await fails(() => setLeagues(tube, [acb.id], 'anon')) || '') && (await feed(kbl.id, null, 30, 'anon')).length === 4);

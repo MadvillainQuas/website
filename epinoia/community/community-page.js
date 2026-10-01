@@ -15,11 +15,11 @@
                          league gave shows Discord's own widget, framed from discord.com; "show here" swaps it,
                          and &s= keeps the choice. Hidden while the league has none. (It was TALK, at #talk: an
                          old link to #talk, or the console's #cmTalk, still lands on it.)
-     CONTENT CREATORS    the newest from the league's content creators (0206 league_creator_feed): the creators the
+     CONTENT CREATORS    the newest from the league's content creators (0207 league_creator_feed): the creators the
                          platform assigned to the league in its console, and the league's own creator outlets
                          (0194) when it shows them. On the post card (newscard.js), as the feed shows them, nine
                          at a time with "show more", an official partner's with its pill. Hidden while there is
-                         nothing, and before 0206 is on the server.
+                         nothing, and before 0207 is on the server.
      IN THE STANDS       EPINOIA GO's feed for the league's games (go_feed, 0177): the fans' stamps as GO's stamp
                          cards and their photographs, newest first, and the way to every one on the wall.
      FURTHEST TRAVELLED  the league's GO board by distance (go_leaderboard, 0166): the fans who have covered the
@@ -208,7 +208,7 @@
   }
 
   /* -------------------------------------------------------- content creators --- */
-  /* THE LEAGUE'S CONTENT CREATORS (0206 league_creator_feed): the newest from the creators the platform assigned to the
+  /* THE LEAGUE'S CONTENT CREATORS (0207 league_creator_feed): the newest from the creators the platform assigned to the
      league, the league's own creators and its creator outlets, on the feed's post card (newscard.js), nine at a time.
      A card opens its story on Epinoia (news/?i=, creators/), where a video or an episode plays: nothing plays here, so
      the page frames nothing new. An official partner's card wears its pill (official_partners, 0201). */
@@ -231,7 +231,7 @@
     /* one more than a page, to know whether there is another */
     const read = before => rpc('league_creator_feed', { p_league: L.id, p_before: before, p_limit: PAGE + 1 });
     let rows;
-    try { rows = await read(null); } catch (_) { return; }      // before 0206: the part stays away
+    try { rows = await read(null); } catch (_) { return; }      // before 0207: the part stays away
     rows = Array.isArray(rows) ? rows : [];
     if (!rows.length) return;
     const partners = await partnerKeys();

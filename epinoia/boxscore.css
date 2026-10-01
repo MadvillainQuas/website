@@ -750,6 +750,33 @@ table.lu tr.thinlu td{opacity:.62;}
   box-shadow:0 0 24px rgba(140,255,200,.3);white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;
   transition:opacity .25s;pointer-events:none;}
 #toast.gone{opacity:0;}
+#toast.top{top:calc(env(safe-area-inset-top) + 12px) !important;bottom:auto !important;}
+.sbchips{display:flex;gap:inherit;width:100%;flex-wrap:wrap;}
+@media (min-width:900px){
+  /* the right end of the chip row is kept for +10s, ✕ and done while a window is open (placeDiscsWide) */
+  #subbar.sb-reserve .sbchips{padding-right:300px;box-sizing:border-box;}
+}
+@media (max-width:899px){
+  /* THE ROSTER STAYS WHERE THE THUMB LEFT IT. Two things moved it mid-play: the shot-type chips wrapping into a
+     second row, and the court for the location step drawn inside the bar, pushing the scoreboard and the roster
+     down 330px with the shooter's row under the discs. The chips scroll sideways in one row now, and the court
+     opens over the bench — the rows nobody reads while a shot is being placed. */
+  #subbar .sbchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  #subbar .sbchips::-webkit-scrollbar{display:none;}
+  #subbar .sbchips .sub{flex:1 0 auto;min-width:54px;}
+  #flowCourt{position:fixed;left:8px;right:8px;z-index:55;
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 84px);
+    background:rgba(3,20,14,.97);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.6);}
+}
+/* a toast is read, not glanced at: long ones wrap rather than lose their end to an ellipsis */
+#toast{white-space:normal;text-align:center;line-height:1.5;border-radius:16px;max-width:min(92vw,560px);}
+@media (max-width:899px){
+  /* above the legend and the two discs, which is where the "✓ done" it so often sat on top of lives */
+  #toast{bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 84px);}
+}
+/* a tablet has no keyboard either: no key caps on any touch screen */
+.ep-touch .kcap{display:none;}
+.hkey.hact{pointer-events:auto;cursor:pointer;}
 
 /* ==================================================================
    GAMEVIS design layer — tokens, type system, cards, tabs, bars, tables
@@ -1484,6 +1511,8 @@ html, body{ height:100dvh; }
     opacity:1;
   }
   #doneB .xin,#xCancel .xin{background:#04150e; font-size:22px; font-weight:500;}
+  /* the tick and DONE were the base rule's dark ink on this dark disc: an empty ring */
+  #doneB .xin{color:var(--lume, #93f2bf);}
   #xCancel{box-shadow:0 0 0 2px var(--flare, #ff5f6b), 0 6px 18px rgba(0,0,0,.55);}
   /* THEY WERE BEHIND THE LEGEND, AND THEN UNDER THE SYNC BAR.
 

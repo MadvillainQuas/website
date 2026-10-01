@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0206: A LEAGUE'S CONTENT CREATORS - the creators the platform assigns to a league, on its Community page
+-- 0207: A LEAGUE'S CONTENT CREATORS - the creators the platform assigns to a league, on its Community page
 --
 -- A creator added for every reader (a news source of kind 'creator' with no league of its own, 0198: a YouTube
 -- channel, a podcast, a Substack...) reached a league's pages only through the tags its posts earn by naming the
@@ -29,7 +29,7 @@
 
 alter table public.news_sources add column if not exists assigned_leagues uuid[] not null default '{}';
 comment on column public.news_sources.assigned_leagues is
-  '0206: the leagues the platform assigned this creator to (set_news_source_leagues): its posts show under Content creators on each one''s Community page.';
+  '0207: the leagues the platform assigned this creator to (set_news_source_leagues): its posts show under Content creators on each one''s Community page.';
 
 /* ASSIGN A CREATOR TO LEAGUES, or to none: the whole list each time, as the console holds it */
 create or replace function public.set_news_source_leagues(p_id uuid, p_leagues uuid[])
