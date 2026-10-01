@@ -111,7 +111,8 @@ const BLOCK_TITLE = { verdict: 'The verdict', ledger: 'Where the wins are', need
 const MSG = {
   none: 'The model needs 20 finished games in this league', layout: 'The model is being rebuilt; back within the hour',
   network: 'The model could not be reached just now', scope: 'This file cannot be asked for', members: 'Members’ analysis.',
-  league: 'This league’s analysis is not open to you', signin: 'Members’ analysis. Sign in to see it.'
+  league: 'This league’s analysis is not open to you', signin: 'Members’ analysis. Sign in to see it.',
+  unbuilt: 'The full model switches on once it has been built'
 };
 const rateMsg = s => 'Too many requests: try again in ' + Math.max(1, Math.ceil((s || 60) / 60)) + ' minutes';
 

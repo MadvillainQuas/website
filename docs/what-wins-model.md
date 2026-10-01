@@ -55,6 +55,11 @@ observational data. Positions are estimated (about 42% of active roster entries 
 ## 1. Invariants (WP6's ww-contract test checks those a file can show)
 - **I1** No browser reads `game_events`, `game_features`, `player_game_stats`, `lineup_stints` or `team_game_stats` for
   this feature; pages read files through `EpinoiaWinFile` plus public leagues, seasons and the club's fixtures.
+  *Transition:* until the builder has published the teaser, the What wins page's public part falls back to its
+  previous reading (`winning/boxpreview.js`, loaded only when the teaser index is missing, unreachable or of another
+  layout): the finished games and the 18 public box-score keys of `team_game_stats` (winning.js `SELECT`, 150 games a
+  request), cached six hours in memory and sessionStorage under the reader's `epinoia_ww:` key. Never events, feature
+  lines, player rows or lineups; once the teaser exists it is never loaded.
 - **I2** `game_features`: RLS on, no policies, no grants to anon or authenticated.
 - **I3** Bucket `analytics`: private, no `storage.objects` policy; files only through 120 s signed URLs issued by
   `analytics-file` after `analytics_check` (caller's token) and `analytics_take`.

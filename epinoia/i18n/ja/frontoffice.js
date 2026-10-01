@@ -146,6 +146,7 @@
       'The model needs 20 finished games in this league': 'モデルにはこのリーグで20試合の終了試合が必要',
       'The model is being rebuilt; back within the hour': 'モデルを再構築中。1時間以内に戻る',
       'The model could not be reached just now': '現在モデルにアクセスできない',
+      'The full model switches on once it has been built': '完全なモデルは作成され次第有効になる',
       'This file cannot be asked for': 'このファイルは要求できない',
       'This league’s analysis is not open to you': 'このリーグの分析はあなたに公開されていない',
       'Checking what has changed': '変更点を確認中',

@@ -9,6 +9,12 @@
    scores, lineups or feature lines. Nothing is kept in localStorage; the loader caches per user in sessionStorage,
    and the old page's localStorage copy (epinoia_winning_v1) is removed here too.
 
+   BEFORE THE FIRST BUILD (I1, transition): when no members' file comes AND the public teaser cannot be had (none,
+   network, layout), the public part falls back to the page's previous reading, the public box scores in the browser
+   (boxpreview.js, loaded only then): the short answer, the measures and the leagues are drawn from it exactly as from
+   the teaser, for the picked league. Once the teaser exists that file is never loaded and nothing more is read. The
+   members' sections then say the full model switches on once it has been built.
+
    NOT ENTITLED (signed out where sign-in is required, or not a member where memberships are on): the public
    box-score preview (the teaser) draws the short answer and the measures; every members' section keeps its title and
    shows the membership placeholder (or a sign-in link). #method is always public.
@@ -743,14 +749,36 @@ function boot() {
     ban.classList.toggle('hide', !stale);
     if (stale) ban.textContent = 'This model was built ' + new Date(built).toISOString().slice(0, 16).replace('T', ' ') + ' UTC; newer games have finished since';
     const asof = $('wwAsof'), F = ctx.W || ctx.teaser;
-    if (F) asof.textContent = 'Model ' + F.token + ' · built ' + String(F.built || '').slice(0, 16).replace('T', ' ') + ' UTC';
+    if (F && F.box) asof.textContent = 'Read from the public box scores; the full model switches on once it has been built';
+    else if (F) asof.textContent = 'Model ' + F.token + ' · built ' + String(F.built || '').slice(0, 16).replace('T', ' ') + ' UTC';
   }
 
   /* ---- reading a file ---- */
   const MSG = { layout: 'The model is being rebuilt; back within the hour', network: 'The model could not be reached just now', scope: 'This file cannot be asked for',
-    league: 'This league’s analysis is not open to you' };
+    league: 'This league’s analysis is not open to you', unbuilt: 'The full model switches on once it has been built' };
   const rateMsg = s => 'Too many requests: try again in ' + Math.max(1, Math.ceil((s || 60) / 60)) + ' minutes';
+  /* the box-score preview (boxpreview.js), loaded at this script's own ?v= the first time it is needed */
+  let boxLoad = null;
+  const userKey = () => { try { const A = root.EpinoiaAccess, s = A && typeof A.session === 'function' ? A.session() : null; return s && s.token ? String(s.userId || 'user') : 'anon'; } catch (_) { return 'anon'; } };
+  function loadBox() {
+    if (root.EpinoiaWinBox) return Promise.resolve(true);
+    if (!boxLoad) boxLoad = new Promise(res => { const s = doc.createElement('script'); s.src = 'boxpreview.js' + (myV ? '?v=' + myV : ''); s.onload = () => res(!!root.EpinoiaWinBox); s.onerror = () => { boxLoad = null; res(false); }; doc.head.appendChild(s); });
+    return boxLoad;
+  }
+  async function boxPreview() {
+    const T = root.EpinoiaWinning;
+    if (!T || !T.SELECT || !D() || !(await loadBox())) return null;
+    const line = $('wwLine');
+    try {
+      line.textContent = 'Reading the box scores…';
+      const rows = await root.EpinoiaWinBox.read(D(), T, { user: userKey(), onProgress: p => { line.textContent = 'Reading the box scores: ' + Math.round(100 * p) + '%'; } });
+      return root.EpinoiaWinBox.preview(T, rows, league ? league.slug : '');
+    } catch (e) { if (root.console) root.console.warn('[winning] box scores', e); return null; }
+  }
+  let loadSeq = 0;
   async function load(force) {
+    const seq = ++loadSeq;
+    ctx.gateNote = '';
     ctx.W = null; ctx.ans = null; ctx.fo = null; ctx.foState = 'idle'; ctx.club = null; ctx.clubState = 'idle'; ctx.teaser = null; ctx.reason = null; ctx.lockedNow = false; ctx.pooledFallback = false; ctx.fallbackWhy = ''; ctx.message = '';
     st.simResult = null; st.refit = null;
     $('wwCards').setAttribute('aria-busy', 'true');
@@ -774,19 +802,28 @@ function boot() {
         ans = await WF().get({ scope: 'wins' });
       }
     }
+    if (seq !== loadSeq) return;                                                   // a newer league or season asked meanwhile
     if (ans && ans.ok) { ctx.ans = ans; ctx.W = ans.data; }
     else {
       ctx.reason = ans ? ans.reason : 'members';
+      const gated = lockedNow || ['members', 'signin', 'jwt', 'league'].indexOf(ctx.reason) >= 0;
+      if (ctx.reason === 'jwt') ctx.reason = 'signin';
+      /* the public part: the teaser; until the builder has published one (none, network, layout), the box-score
+         preview the page drew before the model (boxpreview.js, loaded only then) */
+      const t = await WF().get({ scope: 'teaser' });
+      if (seq !== loadSeq) return;
+      if (t.ok) ctx.teaser = t.data;
+      else if (t.reason !== 'aborted') { ctx.teaser = await boxPreview(); if (seq !== loadSeq) return; }
+      /* nothing built yet (the function or the public index says none): said plainly, never "could not be reached" */
+      const unbuilt = ctx.reason === 'none' || (!t.ok && t.reason === 'none');
+      if (unbuilt && !gated) ctx.reason = 'none';
       if (ctx.reason === 'rate') ctx.message = rateMsg(ans.retryAfter);
-      else if (ctx.reason === 'none') ctx.message = 'The model has not been built yet: back within the hour';
+      else if (ctx.reason === 'none') ctx.message = MSG.unbuilt;
       else ctx.message = MSG[ctx.reason] || '';
-      if (lockedNow || ['members', 'signin', 'jwt', 'league'].indexOf(ctx.reason) >= 0) {
-        if (ctx.reason === 'jwt') ctx.reason = 'signin';
-        const t = await WF().get({ scope: 'teaser' });
-        if (t.ok) ctx.teaser = t.data;
+      if (gated) {
         ctx.gateNote = '<p class="ww-gate">' + (ctx.reason === 'signin' ? 'The full model is for signed-in readers: ' : 'The full model is for members: ') + '<a href="' +
           esc(ctx.reason === 'signin' ? signinHref() : ((A && A.joinHref) ? A.joinHref({ leagueSlug: league ? league.slug : undefined }) : '../join/')) + '">' + (ctx.reason === 'signin' ? 'sign in' : 'become a member') + '</a></p>';
-      }
+      } else if (ctx.teaser && ctx.message) ctx.gateNote = '<p class="ww-gate">' + esc(ctx.message) + '</p>';
     }
     if (ctx.W && st.k === '' && ctx.W.curves) st.k = Object.keys(ctx.W.curves)[0] || '';
     status();

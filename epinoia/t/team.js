@@ -763,7 +763,14 @@ async function winModelFiles(team) {
     `&select=id,home_team_id,away_team_id,tipoff_at` + inSeason() + `&order=tipoff_at.asc`).catch(() => []);
   /* the league's file and the club's at once: the club's ask needs nothing from the fo file, only that it is allowed,
      and a refusal of one is a refusal of both (the club's answer is then dropped) */
-  const [fo, club] = await Promise.all([WF.get(Object.assign({ scope: 'fo' }, unit)), WF.get(Object.assign({ scope: 'club', team: team.id }, unit))]);
+  const both = await Promise.all([WF.get(Object.assign({ scope: 'fo' }, unit)), WF.get(Object.assign({ scope: 'club', team: team.id }, unit))]);
+  const club = both[1];
+  let fo = both[0];
+  /* nothing built yet (the public teaser's index is not there either): said as that, never "could not be reached" */
+  if (!fo.ok && (fo.reason === 'network' || fo.reason === 'none')) {
+    const t = await WF.get({ scope: 'teaser' });
+    if (!t.ok && t.reason === 'none') fo = { ok: false, reason: 'unbuilt' };
+  }
   return { fo, club: fo.ok ? club : null, fixtures: await fixturesP };
 }
 function modelLocked(host, team) {

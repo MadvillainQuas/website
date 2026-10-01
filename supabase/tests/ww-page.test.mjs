@@ -522,7 +522,7 @@ console.log('\nrefused, preview and the states of §11');
   const pf = P.views.answer(ctxOf({ W: F && F.pooled, pooledFallback: true }));
   ok('under 20 games: the .pg-empty line and the pooled file\'s cards', /class="pg-empty"><p>Fewer than 20 finished games here yet: showing every league pooled<\/p>/.test(pf.html) && /class="ww-card"/.test(pf.html));
   ok('\'layout\', \'rate\' and \'none\' are said plainly', /The model is being rebuilt; back within the hour/.test(PAGE) && /'Too many requests: try again in ' \+ /.test(PAGE) &&
-     /The model has not been built yet: back within the hour/.test(PAGE));
+     /The full model switches on once it has been built/.test(PAGE));
   ok('a file over 48 h old with newer finals: a banner with its build time', /48 \* 3600e3/.test(PAGE) && /newer games have finished since/.test(PAGE));
   const e = P.views.answer(ctxOf({ message: 'Too many requests: try again in 30 minutes' }));
   ok('a refusal with nothing to show is a .pg-empty saying so', /pg-empty/.test(e.html) && /30 minutes/.test(e.html));
@@ -554,6 +554,80 @@ console.log('\nthe status line (A.2)');
     ok(code + ': every message of the bar translates', !miss.length, miss.join(' | '));
   }
 }
+
+
+/* ------------------------------------------------------------------ before the first build --- */
+/* the page booted on a stand-in document, with a stand-in loader and data.js: with no teaser it draws the short answer
+   and the measures from the public box scores (boxpreview.js), for the picked league; with a teaser it reads no box
+   score at all and never loads boxpreview.js */
+console.log('\nbefore the first build: the box-score preview');
+await (async () => {
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const LG = [{ id: 'L1', slug: 'north', name: 'North League', country: 'GB' }, { id: 'L2', slug: 'south', name: 'South League', country: 'GB' }];
+  const games = [], tgs = new Map();
+  for (let i = 0; i < 90; i++) {
+    const lg = LG[i < 60 ? 0 : 1], id = 'g' + i, edge = rnd() - 0.5;
+    const hs = 75 + Math.round(30 * edge + 10 * (rnd() - 0.5)), as = 75 + Math.round(10 * (rnd() - 0.5));
+    if (hs === as) continue;
+    games.push({ id, home_score: hs, away_score: as, competitions: { seasons: { name: '2026', leagues: lg } } });
+    const side = (idx, e) => { const r = { game_id: id, team_idx: idx }; WN.MEASURES.forEach(([k]) => { r[k] = 40 + 20 * rnd() + (k === 'efg' || k === 'ts' ? 25 * e : 0); }); return r; };
+    tgs.set(id, [side(0, edge), side(1, 0)]);
+  }
+  class El {
+    constructor(id) { this.id = id; this.textContent = ''; this.innerHTML = ''; this.attrs = {}; this.children = []; this.value = ''; this.disabled = false; this.src = '';
+      this.classList = { toggle() {}, add() {}, remove() {}, contains: () => false }; }
+    setAttribute(k, v) { this.attrs[k] = String(v); } getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; } removeAttribute(k) { delete this.attrs[k]; }
+    addEventListener() {} querySelectorAll() { return []; } querySelector() { return null; } appendChild(c) { this.children.push(c); return c; }
+    contains() { return false; } focus() {} scrollIntoView() {} closest() { return null; } replaceWith() {}
+  }
+  async function boot(search, teaser) {
+    const els = new Map(), head = new El('head'), reqs = [], asked = [];
+    const doc = { getElementById: id => { if (!els.has(id)) els.set(id, new El(id)); return els.get(id); }, createElement: t => new El(t), head, scripts: [], activeElement: null,
+      currentScript: { src: 'http://x/epinoia/winning/page.js?v=42' } };
+    const mem = new Map(), ss = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: k => mem.delete(k), key: i => [...mem.keys()][i], get length() { return mem.size; } };
+    const D = {
+      get: async u => { reqs.push(u); if (/^leagues\?select=/.test(u)) return LG.map(l => ({ id: l.id, slug: l.slug, name: l.name })); if (/^leagues\?slug=/.test(u)) return [LG.find(l => u.includes(l.slug))]; return []; },
+      all: async u => { reqs.push(u);
+        if (/^games\?status=eq\.final/.test(u)) return games;
+        if (/^team_game_stats\?game_id=in\.\(/.test(u)) return /\(([^)]*)\)/.exec(u)[1].split(',').flatMap(id => tgs.get(id) || []);
+        return []; } };
+    const WFk = { get: async o => { asked.push(o.scope); if (o.scope === 'teaser') return teaser ? { ok: true, data: teaser } : { ok: false, reason: 'none' }; return { ok: false, reason: 'network' }; } };
+    const sb = { console: { warn() {}, log() {} }, setTimeout, clearTimeout, URL, URLSearchParams, Promise, Date, Math, JSON, Map, Set, Object, Array, String, Number, isFinite,
+      document: doc, location: { search, href: 'http://x/epinoia/winning/' + search, pathname: '/epinoia/winning/' }, history: { replaceState() {} },
+      localStorage: { removeItem() {}, getItem: () => null }, sessionStorage: ss, EpinoiaData: D, EpinoiaWinFile: WFk, EpinoiaVizKit: {} };
+    sb.globalThis = sb; sb.self = sb;
+    vm.createContext(sb);
+    vm.runInContext(read(EP, 'winning.js'), sb, { filename: 'winning.js' });
+    /* boxpreview.js arrives as the script page.js appends to the head */
+    head.appendChild = c => { head.children.push(c); if (/boxpreview\.js/.test(c.src)) { vm.runInContext(read(EP, 'winning/boxpreview.js'), sb, { filename: 'boxpreview.js' }); setTimeout(() => c.onload && c.onload(), 0); } return c; };
+    vm.runInContext(PAGE, sb, { filename: 'page.js' });
+    for (let i = 0; i < 100 && !/preview of/.test(doc.getElementById('wwLine').textContent); i++) await new Promise(r => setTimeout(r, 5));
+    return { $: doc.getElementById, reqs, asked, head, mem };
+  }
+  {
+    const b = await boot('?l=north', null);
+    const box = b.reqs.filter(u => /^team_game_stats\?/.test(u));
+    ok('no teaser: the page loads boxpreview.js at its own ?v= and reads the finished games and their box scores', b.head.children.some(c => c.src === 'boxpreview.js?v=42') &&
+       b.reqs.some(u => /^games\?status=eq\.final&select=id,home_score,away_score,competitions\(seasons\(name,leagues\(id,name,slug,country\)\)\)$/.test(u)) && box.length >= 1, b.reqs.join(' | '));
+    ok('...150 games to a request, eighteen measures by their paths (winning.js SELECT), never the blob', box.every(u => u.endsWith('&select=' + WN.SELECT) && /\(([^)]*)\)/.exec(u)[1].split(',').length <= 150));
+    ok('...the teaser was asked first, and only then the box scores', b.asked.indexOf('teaser') >= 0);
+    const cards = b.$('wwCards').innerHTML, n = games.filter(g => g.competitions.seasons.leagues.slug === 'north').length;
+    ok('...the short answer is drawn from it, for the picked league (?l=)', /class="ww-card"/.test(cards) && /data-lens="preview"/.test(cards) && cards.includes('Across ' + n + ' games') &&
+       b.$('wwLine').textContent === 'Box-score preview of ' + n + ' games', b.$('wwLine').textContent + ' ' + cards.slice(0, 200));
+    ok('...the measures are drawn from it too', /data-chart="0"/.test(b.$('factorsB').innerHTML) && /data-lens="preview"/.test(b.$('factorsB').innerHTML));
+    ok('...and the full model is said to switch on once built, not "could not be reached"', cards.includes('The full model switches on once it has been built') && !cards.includes('could not be reached') &&
+       /full model switches on/.test(b.$('wwAsof').textContent));
+    ok('...the members\' sections keep their placeholders', /data-memlock/.test(b.$('valueB').innerHTML));
+    ok('...kept in sessionStorage under the reader\'s epinoia_ww: key, never localStorage', [...b.mem.keys()].some(k => k === 'epinoia_ww:anon:box:all:current:-'));
+  }
+  {
+    const T = { scope: 'teaser', w: 1, token: 't1', built: '2026-09-30T10:00:00Z', n: 50, homeWin: 0.55, ranked: [{ k: 'efg', label: 'effective field goal %', r: 0.5, winRate: 0.7 }, { k: 'ts', label: 'true shooting %', r: 0.45, winRate: 0.68 }], leagues: [] };
+    const b = await boot('', T);
+    ok('a teaser there: no box score is read and boxpreview.js is never loaded', !b.reqs.some(u => /team_game_stats|^games\?/.test(u)) && !b.head.children.some(c => /boxpreview/.test(c.src || '')), b.reqs.join(' | '));
+    ok('...and the short answer words the teaser', /data-lens="preview"/.test(b.$('wwCards').innerHTML) && b.$('wwLine').textContent === 'Box-score preview of 50 games');
+  }
+})();
 
 /* ------------------------------------------------------------------ real files, if given --- */
 if (process.env.WW_PAGE_FILES) drawFiles(path.resolve(process.env.WW_PAGE_FILES), path.basename(path.resolve(process.env.WW_PAGE_FILES)));

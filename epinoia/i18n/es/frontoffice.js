@@ -146,6 +146,7 @@
       'The model needs 20 finished games in this league': 'El modelo necesita 20 partidos terminados en esta liga',
       'The model is being rebuilt; back within the hour': 'El modelo se está reconstruyendo; vuelve en una hora',
       'The model could not be reached just now': 'No se ha podido acceder al modelo ahora mismo',
+      'The full model switches on once it has been built': 'El modelo completo se activa en cuanto se haya creado',
       'This file cannot be asked for': 'Este archivo no se puede pedir',
       'This league’s analysis is not open to you': 'El análisis de esta liga no está abierto para ti',
       'Checking what has changed': 'Comprobando qué ha cambiado',

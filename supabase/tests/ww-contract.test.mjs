@@ -151,6 +151,13 @@ const WW_FILES = ['epinoia/features.js', 'epinoia/winfile.js', 'epinoia/winstats
   const I1 = /\b(game_events|game_features|player_game_stats|lineup_stints|team_game_stats)\b/;
   const t1 = BROWSER.filter(f => I1.test(code(read(ROOT, f), f)));
   ok('I1: no page script of What wins or the win model names game_events, game_features, player_game_stats, lineup_stints or team_game_stats', !t1.length, t1.join(', '));
+  /* the one transition exception (I1): before the first build, the page's previous public box-score reading */
+  const BX = code(read(EP, 'winning/boxpreview.js'), 'epinoia/winning/boxpreview.js'), PG = code(read(EP, 'winning/page.js'), 'epinoia/winning/page.js');
+  const bxTables = [...BX.matchAll(/\b(game_events|game_features|player_game_stats|lineup_stints|team_game_stats)\b/g)].map(m => m[1]);
+  ok('I1 transition: boxpreview.js names only team_game_stats, selected by winning.js SELECT, and the finished games; no localStorage',
+     bxTables.length && bxTables.every(t => t === 'team_game_stats') && /&select=' \+ W\.SELECT/.test(BX) && /games\?status=eq\.final&select=id,home_score,away_score,competitions/.test(BX) && !/localStorage/.test(BX), bxTables.join());
+  ok('I1 transition: page.js loads it only when the teaser cannot be had', /if \(t\.ok\) ctx\.teaser = t\.data;\s*else if \(t\.reason !== 'aborted'\) \{ ctx\.teaser = await boxPreview\(\)/.test(PG) &&
+     (PG.match(/await boxPreview\(\)/g) || []).length === 1);
   const ls = BROWSER.filter(f => /localStorage\s*(\.\s*setItem|\[[^\]]+\]\s*=(?!=))/.test(code(read(ROOT, f), f)));
   ok('I7: none of them writes localStorage', !ls.length, ls.join(', '));
   ok('I7: winfile.js and the What wins page remove the legacy epinoia_winning_v1', /epinoia_winning_v1/.test(read(EP, 'winfile.js')) && /removeItem/.test(read(EP, 'winfile.js')) &&

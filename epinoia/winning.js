@@ -21,7 +21,8 @@
 
    Pure maths and SVG here. Since What wins 2 (docs/what-wins-model.md) the builder (tools/build-analytics.mjs) runs
    rows / analyse / byLeague on the public box-score keys to write the teaser, and the page (winning/page.js) words
-   that teaser with fromTeaser() + insights(); it no longer reads any rows itself.
+   that teaser with fromTeaser() + insights(); it no longer reads any rows itself, except before the first build, when
+   winning/boxpreview.js makes the old public box-score read (I1, transition).
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
