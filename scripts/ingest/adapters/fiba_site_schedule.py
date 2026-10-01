@@ -1563,12 +1563,16 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
 
     def _nkl_bundle(self, sid: str, raw: dict, meta: dict, fixture: dict, config: dict):
         """A LiveStats payload as this fixture's game: nkl.lt's club ids and names on its clubs (a club is one club
-        from the fixture list to the final box), keyed on nkl.lt's match id."""
+        from the fixture list to the final box), keyed on nkl.lt's match id, and the schedule's arena read back from
+        its mojibake. The arena goes on the bundle because nothing else will mend it: the live lane and the
+        catch-up write a game with no venue of their own, and the schedule pass never touches a game once it is
+        live or final - so a fixture first written as 'Jurbarko A.G.G. sporto salÄ—' would keep it for good."""
         for tno, side in (("1", "home"), ("2", "away")):
             if isinstance(raw["tm"].get(tno), dict):
                 raw["tm"][tno]["code"] = str(fixture.get(f"{side}_team_id") or raw["tm"][tno].get("code") or "")
                 raw["tm"][tno]["name"] = self._nkl_clean(fixture.get(f"{side}_name")) or raw["tm"][tno].get("name") or ""
         b = self.bundle_from_raw(raw, sid, config)
+        b.venue = self._nkl_clean(fixture.get("arena")) or None
         b.feed_lm_ms, b.feed_recv_ms = meta.get("lm_ms"), meta.get("recv_ms")
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
@@ -1622,7 +1626,7 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return None
         b = self.bundle_from_raw(raw, sid, config)
         b.translate = False
-        b.venue = parsed.get("venue")
+        b.venue = parsed.get("venue") or self._nkl_clean(fixture.get("arena")) or None
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b

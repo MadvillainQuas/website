@@ -292,6 +292,7 @@ ok("the same clubs, closed, the same score (65-95 on both): the feed is used, fo
    b and (b.translate, b.status, len(b.stints)))
 ok("...the match page never read, and the feed remembered for the game", page("125745") not in Offline.requests_made
    and a._idmap(cfg).get("125745") == OFF, (Offline.requests_made, a._idmap(cfg)))
+ok("...with the schedule's arena on the game (LiveStats names none)", b.venue == "Alytaus sporto ir rekreacijos centras", b.venue)
 a, cfg = fresh(schedule(result("125745", 65, 95)), feeds={"2899999": feed_as(*CLUBS)}, idmap={"125745": "2899999"})
 b = a.fetch("125745", cfg)
 ok("the feed its page sent us to while it was played comes first: 2899999, the offset never asked",
@@ -353,6 +354,13 @@ try:
        a.fetch("125747", dict(cfg, _live=True, _fresh=True)) is not None
        and len(Offline.requests_made) == n + 1 and Offline.requests_made[n].startswith(feed("2895457") + "?_="),
        Offline.requests_made[n:])
+
+    a, cfg = fresh(schedule(mangle), feeds={"2895457": LIVE}, redirects={"125747": WEBCAST})
+    clock.now = TIP + 60
+    b = a.fetch("125747", cfg)
+    ok("the arena, served as mojibake ('Jurbarko A.G.G. sporto salÄ—'), is on the game as Lithuanian: its first write "
+       "mends the fixture's, which the schedule pass never touches once the game is on",
+       b is not None and b.venue == "Jurbarko A.G.G. sporto salė", b and b.venue)
 
     a, cfg = fresh(feeds={"2895999": feed_as("Somebody Else", "Another Club", final=False)},
                    redirects={"125747": "http://www.fibalivestats.com/u/NKLNBL/2895999"})
