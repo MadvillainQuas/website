@@ -135,7 +135,8 @@ function writeState(state, search) {
   if (s.withinLeague === false) p.set(PARAM.withinLeague, '0');
   if (Number(s.page) > 1) p.set(PARAM.page, String(Math.floor(Number(s.page))));
   if (s.qualified === false) p.set(PARAM.qualified, '0');
-  const out = p.toString();
+  /* commas left as commas: the set-up's lists and the filter lines read the same either way */
+  const out = p.toString().replace(/%2C/g, ',');
   return out ? '?' + out : '';
 }
 
@@ -285,10 +286,16 @@ function boot() {
   const SU = root.EpinoiaScoutSetup || null, Ages = root.EpinoiaAges || null;
   const results = $('#results'), summary = $('#scSummary'), prog = $('#scProg');
 
-  function stateBox(msg, retry) {
+  function stateBox(msg, retry, act) {
     host.textContent = '';
     const box = el('div', 'sc-state');
     box.appendChild(el('div', '', msg));
+    if (act) {
+      const b = el('button', 'ep-btn pri', act.label);
+      b.type = 'button';
+      b.addEventListener('click', act.run);
+      box.appendChild(b);
+    }
     if (retry) {
       const b = el('button', 'ep-btn ft-btn', 'try again');
       b.type = 'button';
@@ -424,11 +431,15 @@ function boot() {
     if (cv) {
       cv.textContent = '';
       if (cover && cover.players) {
+        /* how much of what was read had each number, so an empty table is not a mystery */
         const bits = [];
-        if (setup.age) bits.push('age known for ' + cover.age + '%');
-        if (setup.ht) bits.push('height for ' + cover.ht + '%');
-        if (setup.wt) bits.push('weight for ' + cover.wt + '%');
-        if (bits.length) cv.textContent = bits.join(' · ') + ' of the players read' + (setup.unk ? '' : ': the rest are left out');
+        if (setup.age) bits.push('age known: ' + cover.age + '%');
+        if (setup.ht) bits.push('height known: ' + cover.ht + '%');
+        if (setup.wt) bits.push('weight known: ' + cover.wt + '%');
+        if (bits.length) {
+          cv.appendChild(el('span', '', bits.join(' · ')));
+          cv.appendChild(el('span', '', setup.unk ? ' (players with none are kept)' : ' (players with none are left out)'));
+        }
       }
     }
   }
@@ -590,7 +601,15 @@ function boot() {
       writeUrl(SU.writeSetup(setupNow, root.location.search, { go: true }));
       paintSummary(setupNow);
     }
-    cancel = () => { if (ac) ac.abort(); stopped = true; paintProg(); };
+    /* CANCEL settles the page at once: the reads already in flight finish in the background
+       but are handed over no more (global.js stops announcing on an aborted signal) */
+    const halt = () => {
+      done = true; stopped = true;
+      if (ui) ui.busy(false);
+      paintStatus(); paintProg();
+      if (!tbl) stateBox('Stopped before any players arrived. Edit the set-up, or load it again.');
+    };
+    cancel = () => { if (ac) ac.abort(); if (my === run) halt(); };
     paintStatus(); paintProg();
     if (results && my > 1) { try { results.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); } catch (_) { /* old engines */ } }
 
@@ -654,18 +673,20 @@ function boot() {
       if (tbl) return followAccess(res);
       const read = [...rawCount.values()].reduce((a, b) => a + b, 0);
       if (!res.leagues.length && excluded.length) stateBox('Every league on the platform is members-only. Sign in as a member to scout them.');
-      else if (read) stateBox('No player in these leagues fits the set-up. Widen a range or edit the set-up.');
+      else if (read) {
+        /* most often a range over a number these leagues hardly record (the summary says how
+           little): one press loads it again keeping those players */
+        const s0 = setupNow;
+        const widen = s0 && !s0.unk && (s0.age || s0.ht || s0.wt || (s0.pos && s0.pos.length))
+          ? { label: 'keep players with no data', run: () => { const s1 = Object.assign({}, s0, { unk: true }); if (ui) ui.set(s1); start(s1); } } : null;
+        stateBox('No player in these leagues fits the set-up. Widen a range or edit the set-up.', false, widen);
+      }
       else stateBox('No statistics yet — these fill in as games are finalised in each league.');
       followAccess(res);
     }).catch(e => {
       if (my !== run) return;
       if (ui) ui.busy(false);
-      if (e && e.name === 'AbortError') {
-        done = true; stopped = true;
-        paintStatus(); paintProg();
-        if (!tbl) stateBox('Stopped before any league arrived. Edit the set-up, or load it again.');
-        return;
-      }
+      if (e && e.name === 'AbortError') { halt(); return; }
       done = true;
       paintStatus(); paintProg();
       if (tbl) return;                    // what arrived stays on screen

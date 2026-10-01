@@ -515,6 +515,57 @@
       'rank him against players of his own position rather than the whole competition':
         'Compararlo con jugadores de su posición en vez de con toda la competición',
 
+      /* ---- scouting: the set-up (scouting/setup.js) ---- */
+      'Set up your scout: the leagues, seasons and players you want, then load them into one table, top 50 by the sorted stat, to filter and compare.': 'Prepara tu scouting: las ligas, temporadas y jugadores que quieras, y cárgalos en una sola tabla, los 50 mejores según la estadística ordenada, para filtrar y comparar.',
+      'Set up your scout': 'Prepara tu scouting',
+      'Choose what to load, then press LOAD: nothing is read before that': 'Elige qué cargar y pulsa CARGAR: antes no se lee nada',
+      'Seasons': 'Temporadas',
+      'also the leagues that have not said': 'también las ligas que no lo indican',
+      'Find a league or a country': 'Busca una liga o un país',
+      'find a league or country': 'busca una liga o un país',
+      'all shown': 'todas las mostradas',
+      'Each league’s newest season, unless you choose others.': 'La temporada más reciente de cada liga, salvo que elijas otras.',
+      'Each league’s newest season. Earlier seasons appear here where a league has them.': 'La temporada más reciente de cada liga. Las anteriores aparecen aquí cuando la liga las tiene.',
+      'Earlier seasons are read only where a league has them.': 'Las temporadas anteriores solo se leen en las ligas que las tienen.',
+      'current season': 'temporada actual',
+      'games, and': 'partidos, y',
+      'min a game': 'min por partido',
+      'Forwards': 'Aleros y alas-pívot',
+      'Centres': 'Pívots',
+      'youngest': 'edad mínima',
+      'oldest': 'edad máxima',
+      'shortest, cm': 'altura mínima, cm',
+      'tallest, cm': 'altura máxima, cm',
+      'lightest, kg': 'peso mínimo, kg',
+      'heaviest, kg': 'peso máximo, kg',
+      'at least this many games': 'al menos estos partidos',
+      'at least this many minutes a game': 'al menos estos minutos por partido',
+      'keep players with no age, height, weight or position on record': 'mantener a los jugadores sin edad, altura, peso o posición registrados',
+      'Every range is optional. Leagues record heights, weights and ages unevenly: how many players had each shows once they are loaded.': 'Todos los rangos son opcionales. Las ligas registran alturas, pesos y edades de forma desigual: al cargar verás cuántos jugadores tenían cada dato.',
+      'Reading the leagues…': 'Leyendo las ligas…',
+      'loading…': 'cargando…',
+      'Your scout': 'Tu scouting',
+      'The players you chose, top 50 by the sorted stat, to compare': 'Los jugadores elegidos, los 50 mejores según la estadística ordenada',
+      'edit set-up': 'editar ajustes',
+      'What was loaded': 'Lo que se ha cargado',
+      'Leagues loaded': 'Ligas cargadas',
+      'Choose at least one league to load.': 'Elige al menos una liga para cargar.',
+      'medium': 'medio',
+      'heavy': 'pesado',
+      'men’s and women’s': 'masculino y femenino',
+      'unknowns kept': 'sin datos incluidos',
+      'Men’s or women’s leagues': 'Ligas masculinas o femeninas',
+      'Seasons to load': 'Temporadas que cargar',
+      'No league matches that. Try another name or country.': 'Ninguna liga coincide. Prueba con otro nombre o país.',
+      'No league is open to you yet.': 'Aún no tienes ninguna liga disponible.',
+      'Could not read the leagues. Check your connection and reload.': 'No se pudieron leer las ligas. Comprueba tu conexión y recarga.',
+      'None of the leagues in this set-up is open to you. Edit the set-up to choose others.': 'Ninguna de las ligas de estos ajustes está disponible para ti. Edita los ajustes para elegir otras.',
+      'No player in these leagues fits the set-up. Widen a range or edit the set-up.': 'Ningún jugador de estas ligas encaja con los ajustes. Amplía un rango o edita los ajustes.',
+      'Stopped before any players arrived. Edit the set-up, or load it again.': 'Detenido antes de que llegara ninguna liga. Edita los ajustes o vuelve a cargar.',
+      '(players with none are kept)': '(se mantienen los jugadores sin el dato)',
+      '(players with none are left out)': '(se excluyen los jugadores sin el dato)',
+      'keep players with no data': 'mantener a los jugadores sin datos',
+
       /* ---- scouting, the injury report ---- */
       'nobody out': 'Sin bajas',
       'full squad': 'Plantilla completa',
@@ -1540,6 +1591,11 @@
       skip: {
         'Skip': 'Saltar'
       },
+      /* the scouting set-up (scouting/, data-i18n-ctx="scout"): the scorer's "load" and the platform's "Who" are other things */
+      scout: {
+        'Who': 'Quién',
+        'LOAD': 'CARGAR'
+      },
       /* THE CREATOR HUB (creators/hub/, 0200; data-i18n-ctx="creatorhub" on its frame): the page's own words.
          A context of its own: here "Weight" is a line's, "Light" a weight and "Home" the front page */
       creatorhub: {
@@ -2159,6 +2215,16 @@
     },
 
     patterns: [
+      [/^Loading (\d+) of (\d+) leagues?…$/, 'Cargando $1 de $2 ligas…'],
+      [/^Stopped: (\d+) of (\d+) leagues? loaded$/, 'Detenido: $1 de $2 ligas cargadas'],
+      [/^(\d+) leagues? loaded$/, (m) => m[1] + (m[1] === '1' ? ' liga cargada' : ' ligas cargadas')],
+      [/^~([\d,.]+) players$/, (m) => '~' + m[1].replace(/,/g, '.') + ' jugadores'],
+      [/^(\d+) seasons$/, '$1 temporadas'],
+      [/^my leagues \((\d+)\)$/, 'mis ligas ($1)'],
+      [/^(age|height|weight) known: (\d+)%$/, (m) => ({ age: 'edad', height: 'altura', weight: 'peso' })[m[1]] + ' conocida: ' + m[2] + '%'],
+      [/^(\d+)\+ games$/, '$1+ partidos'],
+      [/^All (\d+) of these will take a while to load\. Continue\?$/, 'Cargar las $1 llevará un rato. ¿Continuar?'],
+      [/^Choose every league in (.+)$/, (m, T) => 'Elegir todas las ligas de ' + T(m[1])],
       [/^Q([1-4])$/i, '$1C'],
       [/^Q([1-4]) (\d{1,2}:\d{2}(?:\.\d)?)$/i, '$1C $2'],
       [/^OT(\d?)$/i, 'PR$1'],

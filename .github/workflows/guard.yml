@@ -1356,6 +1356,10 @@ jobs:
           node supabase/tests/fulltable-global.test.mjs
           node supabase/tests/compare.test.mjs
           node supabase/tests/scouting-page.test.mjs
+          # the set-up: the address round trip and older links, the age/height/weight/position
+          # predicates (unknowns kept or left out), the gender filter on leagues, the size
+          # estimate, and players() reading only the chosen leagues and seasons, a few at a time
+          node supabase/tests/scouting-setup.test.mjs
 
       - name: Pages read a snapshot only when it is current (0152)
         # data.js season() takes a competition's season lines from the snapshots table when the

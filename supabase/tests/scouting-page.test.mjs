@@ -107,7 +107,7 @@ console.log('\nthe page');
   ok('the set-up is in the markup, before any script runs: its steps, its LOAD, and no table yet',
      /<section class="sec su-sec" id="setup"/.test(HTML) && /<form class="su" id="su"/.test(HTML) &&
      ['suWho', 'suGroups', 'suSeasonChips', 'suAgeMin', 'suHtMax', 'suWtMin', 'suGp', 'suMpg', 'suPos', 'suUnk', 'suLoad'].every(id => HTML.includes('id="' + id + '"')) &&
-     /<button type="submit" class="ep-btn pri su-load" id="suLoad" disabled>LOAD<\/button>/.test(HTML) &&
+     /<button type="submit" class="ep-btn pri su-load" id="suLoad"[^>]*disabled>LOAD<\/button>/.test(HTML) &&
      /<section class="sec sc-res hide" id="results"/.test(HTML));
   ok('every set-up box is labelled', [...HTML.matchAll(/<input\b[^>]*>/g)].every(m => {
      const i = HTML.indexOf(m[0]); const before = HTML.slice(Math.max(0, i - 200), i);

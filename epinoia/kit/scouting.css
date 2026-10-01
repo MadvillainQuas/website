@@ -102,7 +102,7 @@
 
 /* LOAD: the estimate beside the button, kept in reach at the foot of the screen */
 .su-go{position:sticky;bottom:calc(var(--ep-nav-h,0px) + 8px);z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
-  gap:10px 16px;padding:10px 14px;border:1px solid var(--lume);background:color-mix(in oklch,var(--panel) 94%,transparent);
+  gap:10px 16px;padding:10px 14px;border:1px solid var(--lume);background:var(--panel);
   box-shadow:0 -6px 18px color-mix(in oklch,var(--ground) 70%,transparent)}
 .su-size{margin:0;font-family:var(--f-ui);font-size:14px;color:var(--ink-2);text-align:center}
 .su-w{font-family:var(--f-micro);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border:1px solid currentColor}
@@ -186,7 +186,9 @@
   .su-groups{max-height:none;overflow:visible}
   .su-range .su-lab{flex-basis:100%}
   .su-range label{flex:1 1 70px}
-  .su-go{bottom:calc(var(--ep-nav-h, calc(58px + env(safe-area-inset-bottom,0px))) + 6px)}
+  .su-go{bottom:calc(var(--ep-nav-h, calc(58px + env(safe-area-inset-bottom,0px))) + 6px);padding:8px 10px;gap:6px 10px}
+  .su-size{flex:1 0 100%;font-size:13px}
+  .su-load{min-width:110px}
 }
 /* INSTALLED, the status bar is drawn over the page (black-translucent), so the page starts below it */
 @media (display-mode:standalone){
