@@ -231,6 +231,8 @@ a.plain{color:inherit;text-decoration:none}
 .hm .fx-more{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;padding:0 calc(var(--u)*2) calc(var(--u)*3)}
 .hm .fx-more .ep-btn{min-height:44px}
 .hm .fx-more .ep-btn[disabled]{opacity:.6;cursor:progress}
+/* a tab switch loading: the old tab's cards dim until the new ones land */
+#homeDaily[aria-busy="true"] > .fxc-rail, #homeDaily[aria-busy="true"] > .fxc-groups{opacity:.5;transition:opacity .2s ease}
 /* MORE THAN EIGHT ON A PHONE: the sideways strip opens into a grid two across (the compact card), so forty games are a
    page to scroll down, never a strip to swipe forty times */
 @media (max-width:720px){

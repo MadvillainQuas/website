@@ -149,7 +149,7 @@ function gameSegments(g) {
     d = E.deriveGame({ teams: [{ players: [] }, { players: [] }], starters: [st[0].slice(), st[1].slice()], events: evs,
                        period: Math.max(lastPeriod, num(g.period)), clockMs: 0, observe });
   } catch (e) { return fail('replay'); }
-  cur.dur = Math.max(0, E.cumEl(Math.max(lastPeriod, num(g.period)), 0) - cur.start);
+  cur.dur = Math.max(0, E.cumEl(Math.max(lastPeriod, num(g.period)), 0, d && d.format) - cur.start);
 
   /* possessions: each to the fives at its first action, with its points, its window and its clock */
   let poss = 0;

@@ -432,7 +432,9 @@ const BODIES = {
       return '<div class="msg">The half-time report could not be loaded.</div>';
     }
     const S = window.S;
-    const hS = Object.assign({}, S, { events: (S.events || []).filter(e => (e.period || 1) <= 2), period: 2 });
+    /* the half is two quarters, or the first of two halves (NCAA men) */
+    const F = E.formatOf(S), H = F.periods / 2;
+    const hS = Object.assign({}, S, { format: F, events: (S.events || []).filter(e => (e.period || 1) <= H), period: H });
     const hd = E.deriveGame(hS);
     const g = window.EpinoiaGameFacts.brief(hS, hd, B);
     return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g), reportLook());
@@ -731,13 +733,14 @@ function tabsFor(status) {
    after the first quarter would qualify), AND no play yet in the third. */
 function atHalf(S) {
   if (!S || S.status !== 'live' || S.phase === 'final') return false;
-  const P = B.PLEN, per = +S.period, clk = S.clockMs;
+  /* H: the period that ends the first half -- the second quarter, or the first of two halves */
+  const F = E.formatOf(S), H = F.periods / 2, P = p => E.PLEN(p, F), per = +S.period, clk = S.clockMs;
   if (clk == null || !isFinite(clk)) return false;
-  const onClock = (per === 2 && (clk <= 0 || clk >= P(2))) || (per === 3 && clk >= P(3));
+  const onClock = (per === H && (clk <= 0 || clk >= P(H))) || (per === H + 1 && clk >= P(H + 1));
   if (!onClock) return false;
   const ev = S.events || [];
-  const q2 = ev.some(e => e.period === 2 && e.clock != null && e.clock < P(2) && e.t !== 'period_start');
-  const q3 = ev.some(e => (e.period || 0) >= 3 && (e.clock == null ? P(e.period) : e.clock) < P(e.period) && e.t !== 'period_start');
+  const q2 = ev.some(e => e.period === H && e.clock != null && e.clock < P(H) && e.t !== 'period_start');
+  const q3 = ev.some(e => (e.period || 0) >= H + 1 && (e.clock == null ? P(e.period) : e.clock) < P(e.period) && e.t !== 'period_start');
   return q2 && !q3;
 }
 /* THE TAB COMES AND GOES ON ITS OWN. It opens by itself once, the moment the break is seen
@@ -2880,7 +2883,9 @@ function goLive() {
    itself had seen counts (seq <= its last_seq): a poll that caught the first play of a
    period before the state row written with it is the START of that period, not its end. */
 function settleClock(events, period, clockMs, lastSeq) {
-  const p = +period, full = B.PLEN(p);
+  /* the period's full length from this log's own format (quarters, or halves): window.S may
+     not be this game yet when the page first settles its clock */
+  const p = +period, full = E.PLEN(p, E.formatOf(events || []));
   let clk = (clockMs == null || !isFinite(+clockMs)) ? null : +clockMs;
   if (clk == null) {
     (events || []).forEach(e => {

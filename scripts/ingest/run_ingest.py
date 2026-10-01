@@ -51,7 +51,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from adapters import get_adapter, REGISTRY  # noqa: E402
 from adapters.base import GameBundle, ScheduleGame  # noqa: E402
 from adapters.fiba_livestats import FibaLiveStatsAdapter  # noqa: E402
-from translate.fiba_events import translate, game_rows, period_of  # noqa: E402
+from translate.fiba_events import translate, game_rows, period_of, fmt_of, PLEN, QUARTERS, HALVES  # noqa: E402
 
 # EVERY ADAPTER SHAPED LIKE FIBA LIVESTATS -- derived from the classes themselves, not typed out
 # by hand. fiba_site_schedule, euroleague, acb, lnb and bleague all subclass FibaLiveStatsAdapter
@@ -967,11 +967,12 @@ def _period_over(raw: dict, period: int) -> bool:
     ends, before any action of the next one exists). An adapter that rebuilds the payload from its
     own back end sets `period` from the log it built, so there it can never be ahead."""
     try:
+        fmt = fmt_of(raw)
         for a in raw.get("pbp") or []:
             if (str(a.get("actionType") or "").lower() == "period" and str(a.get("subType") or "").lower() == "end"
-                    and period_of(a) == period):
+                    and period_of(a, fmt) == period):
                 return True
-        return period_of(raw) > period
+        return period_of(raw, fmt) > period
     except (TypeError, ValueError):
         return False
 
@@ -1145,7 +1146,19 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     return True
 
 
-def _elapsed_ms(row: dict) -> int:
+def _rows_fmt(rows) -> tuple:
+    """The periods of a game_events batch: halves when a first or second period shows a clock above
+    10:00 (a half's period_start is stamped 20:00), else quarters (translate.fiba_events.fmt_of)."""
+    for r in rows or []:
+        try:
+            if int(r.get("period") or 1) <= 2 and int(r.get("clock") or 0) > 600_000:
+                return HALVES
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return QUARTERS
+
+
+def _elapsed_ms(row: dict, fmt: tuple = QUARTERS) -> int:
     """How much basketball had been played by this row, from its period and the clock left in it."""
     try:
         per = max(1, int(row.get("period") or 1))
@@ -1154,8 +1167,8 @@ def _elapsed_ms(row: dict) -> int:
         return 0
     played = 0
     for q in range(1, per):
-        played += 600_000 if q <= 4 else 300_000
-    full = 600_000 if per <= 4 else 300_000
+        played += PLEN(q, fmt)
+    full = PLEN(per, fmt)
     return played + max(0, full - min(full, clock))
 
 
@@ -1226,8 +1239,9 @@ def within_stamp(rows: list, stamp: dict | None) -> list:
     if not stamp or not rows:
         return []
     err = int(stamp.get("wall_err") or 0)
-    latest = max(_elapsed_ms(r) for r in rows)
-    return [r for r in rows if latest - _elapsed_ms(r) <= err + 3000]
+    fmt = _rows_fmt(rows)
+    latest = max(_elapsed_ms(r, fmt) for r in rows)
+    return [r for r in rows if latest - _elapsed_ms(r, fmt) <= err + 3000]
 
 
 def _same_row(e: dict, r: dict) -> bool:
@@ -1268,7 +1282,7 @@ def first_write_stamp(rows: list, stamp: dict | None, fresh_ms: int = 90_000) ->
     game that is otherwise timed to ten seconds."""
     if not stamp or not rows:
         return None
-    span = _elapsed_ms(rows[-1])
+    span = _elapsed_ms(rows[-1], _rows_fmt(rows))
     if span > fresh_ms:
         return None
     out = dict(stamp)
@@ -1799,17 +1813,18 @@ STALE_FINAL_S = 15 * 60        # a payload unchanged this long at the end of P4+
 
 
 def _looks_finished(raw: dict) -> bool:
-    """End of the fourth period or later, clock at 0:00, scores not level: nothing but a scorer's
-    'game end' tap is missing. Level scores mean overtime is coming, so never final."""
+    """End of the last regulation period or later (the fourth quarter; the second half, for a game in
+    halves), clock at 0:00, scores not level: nothing but a scorer's 'game end' tap is missing. Level
+    scores mean overtime is coming, so never final."""
     try:
-        period = int(raw.get("period") or 0)
+        period = period_of(raw, fmt_of(raw))
         clock = str(raw.get("clock") or "").strip()
         tm = raw.get("tm") or {}
         s1 = int((tm.get("1") or {}).get("score") or 0)
         s2 = int((tm.get("2") or {}).get("score") or 0)
     except (TypeError, ValueError):
         return False
-    return period >= 4 and clock in ("00:00", "0:00", "00:00:00") and s1 != s2
+    return period >= fmt_of(raw)[0] and clock in ("00:00", "0:00", "00:00:00") and s1 != s2
 
 
 # A FEED THAT STOPS IN THE MIDDLE OF A GAME (supabase/migrations/0196_stalled_games.sql). Half an hour
@@ -2174,7 +2189,7 @@ def feed_abandoned(raw: dict, tipoff_at, now: datetime | None = None) -> bool:
     the game is still being played somewhere in it."""
     if _clock_ms(raw.get("clock")) != 0:
         return False
-    if (raw.get("periodType") or "").upper() != "OVERTIME" and int(raw.get("period") or 0) < 4:
+    if (raw.get("periodType") or "").upper() != "OVERTIME" and int(raw.get("period") or 0) < fmt_of(raw)[0]:
         return False
     secs = seconds_until_tip(tipoff_at, now)
     return secs is not None and -secs >= LIVE_STALE

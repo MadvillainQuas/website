@@ -34,13 +34,17 @@ def _tip(v):
     return d if d is None or d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
-def verdict(period: int, clock_ms: int, home: int, away: int, feed_status: str | None) -> tuple[str, str]:
+def verdict(period: int, clock_ms: int, home: int, away: int, feed_status: str | None,
+            periods: int = 4) -> tuple[str, str]:
     """('final' | 'void', reason) for a game that is over as far as anybody can tell. Same rule as
-    close_stuck_games in 0203 - change one, change both (stuck_test.py and close-stuck-games.test.mjs)."""
+    close_stuck_games in 0203/0206 - change one, change both (stuck_test.py and close-stuck-games.test.mjs).
+    `periods` is the league's regulation periods (leagues.rules.periods): 4 quarters, or NCAA men's 2
+    halves, whose second half at 0:00 is the end of a game exactly as a fourth quarter's is."""
     period, clock_ms, home, away = int(period or 0), int(clock_ms or 0), int(home or 0), int(away or 0)
+    periods = int(periods or 4) if 1 <= int(periods or 4) <= 8 else 4
     lead = abs(home - away)
     left = f"{clock_ms // 60000:02d}:{clock_ms // 1000 % 60:02d}"
-    if home != away and period >= 4 and (clock_ms == 0 or lead > 3 * math.ceil(clock_ms / SWING_MS)):
+    if home != away and period >= periods and (clock_ms == 0 or lead > 3 * math.ceil(clock_ms / SWING_MS)):
         return "final", f"period {period}, {left} left, {home}-{away}: over or decided when the feed stopped"
     if home != away and feed_status == "final":
         return "final", f"the feed called it final ({home}-{away}); finalise-game never accepted it"
@@ -64,6 +68,7 @@ def stuck_games(sb, now: datetime, ids=None, min_age: int = REPAIR_MIN_AGE) -> l
                     if str(e["external_id"]) in want:
                         keep_ext.add(e["game_id"])
         rows = [r for r in rows if r["id"] in want or r["id"] in keep_ext]
+    periods = league_periods(sb, {r.get("competition_id") for r in rows if r.get("competition_id")})
     out = []
     for i in range(0, len(rows), 60):
         chunk = rows[i:i + 60]
@@ -80,7 +85,27 @@ def stuck_games(sb, now: datetime, ids=None, min_age: int = REPAIR_MIN_AGE) -> l
                         "home": s.get("score_home") if s.get("score_home") is not None else r.get("home_score"),
                         "away": s.get("score_away") if s.get("score_away") is not None else r.get("away_score"),
                         "period": s.get("period") if s.get("period") is not None else r.get("period"),
-                        "clock_ms": s.get("clock_ms"), "ext": ext.get(r["id"], []), "stalled": bool(r.get("stalled_since"))})
+                        "clock_ms": s.get("clock_ms"), "ext": ext.get(r["id"], []), "stalled": bool(r.get("stalled_since")),
+                        "periods": periods.get(r.get("competition_id"), 4)})
+    return out
+
+
+def league_periods(sb, comps) -> dict:
+    """{competition_id: regulation periods} from each league's rules (0001: rules.periods, 4 unless a league
+    says otherwise - NCAA men's leagues say 2). A read that fails says 4 for all, which is the rule as it was."""
+    comps = sorted(str(c) for c in comps if c)
+    out: dict = {}
+    for i in range(0, len(comps), 60):
+        try:
+            for c in sb.select("competitions", f"id=in.({','.join(comps[i:i + 60])})&select=id,seasons(leagues(rules))"):
+                rules = (((c.get("seasons") or {}).get("leagues") or {}).get("rules")) or {}
+                try:
+                    n = int(rules.get("periods") or 4)
+                except (TypeError, ValueError):
+                    n = 4
+                out[c["id"]] = n if 1 <= n <= 8 else 4
+        except Exception:
+            continue
     return out
 
 
@@ -117,7 +142,7 @@ def close_stuck(sb, games: list[dict], now: datetime, hard_cap: int = REPAIR_HAR
     out, comps = [], set()
     for g in todo:
         feed = next((e.get("external_status") for e in g["ext"]), None)
-        v, why = verdict(g.get("period"), g.get("clock_ms"), g.get("home"), g.get("away"), feed)
+        v, why = verdict(g.get("period"), g.get("clock_ms"), g.get("home"), g.get("away"), feed, g.get("periods") or 4)
         row = {"id": g["id"], "was": g["status"], "verdict": v, "reason": why, "home": int(g.get("home") or 0), "away": int(g.get("away") or 0)}
         out.append(row)
         if dry:

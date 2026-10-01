@@ -15,9 +15,9 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=562" data-no-ground></script>
-<script src="../i18n.js?v=562" data-i18n-packs="scorer"></script>
-<script src="../glyphs.js?v=562" defer></script>
+<script src="../appmode.js?v=563" data-no-ground></script>
+<script src="../i18n.js?v=563" data-i18n-packs="scorer"></script>
+<script src="../glyphs.js?v=563" defer></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -1923,7 +1923,24 @@ body:not(.cs-shut) > #csGate{ display:none !important; }
 <script>
 "use strict";
 /* ==================== core state ==================== */
-const PLEN = p => p <= 4 ? 600000 : 300000;
+/* QUARTERS OR HALVES (docs/ncaa-readiness.md). The game's own S.format when the page set one
+   (the league's rules), else read off the log as engine.js formatOf does: a first- or second-period
+   clock above 10:00 can only be a half. Remembered per log, because PLEN is asked on every event.
+   The scorer itself always plays quarters, so for it this is the old constant. */
+function gameFmt(){
+  const Q = gameFmt.Q || (gameFmt.Q = {periods:4, period_ms:600000, ot_ms:300000});
+  let G = null;
+  try { G = (typeof S !== 'undefined' && S) ? S : null; } catch (_) { G = null; }   // S itself is being built
+  if (!G) return Q;
+  if (G.format && +G.format.periods > 0 && +G.format.period_ms > 0) return G.format;
+  const ev = G.events || [], m = gameFmt.memo;
+  if (m && m.ev === ev && m.n === ev.length) return m.f;
+  let h = false;
+  for (let i = 0; i < ev.length; i++) { const e = ev[i]; if (e && (+e.period || 1) <= 2 && +e.clock > 600000) { h = true; break; } }
+  gameFmt.memo = {ev, n: ev.length, f: h ? {periods:2, period_ms:1200000, ot_ms:300000} : Q};
+  return gameFmt.memo.f;
+}
+const PLEN = p => { const f = gameFmt(); return p <= f.periods ? f.period_ms : f.ot_ms; };
 const WIN_MS = 12000;   // live follow-up window; frozen whenever the game clock is stopped
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2158,7 +2175,7 @@ function safeColour(v, fallback){
 }
 function tname(t){ return S.teams[t].name || (t? 'team two':'team one'); }
 function pname(pid){ const m = PMAP[pid]; if(!m) return 'team'; return (m.p.num!==''&&m.p.num!=null?('#'+m.p.num+' '):'')+m.p.name; }
-function perName(p){ return p<=4 ? 'q'+p : 'ot'+(p-4); }
+function perName(p){ const f = gameFmt(); return p<=f.periods ? (f.periods===2?'h':'q')+p : 'ot'+(p-f.periods); }
 function fmtClock(ms){ const s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 function fmtMin(ms){ const s=Math.round(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 function cumEl(p, clk){ let s=0; for(let q=1;q<p;q++) s+=PLEN(q); return s+(PLEN(p)-clk); }
@@ -5204,7 +5221,7 @@ function periodPill(S) {
      same full clock through the break after it (notify_halftime.sql 0124 documents both
      readings); the game page settles that reading to 0:00 before it gets here (settleClock,
      epinoia/game/game.js), because only the log can say which end of the period a full clock is. */
-  if (S.clockMs === 0 && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
+  if (S.clockMs === 0 && S.period >= 1 && S.period < gameFmt().periods) return 'end of ' + perName(S.period);
   return perName(S.period) + ' · ' + fmtClock(S.clockMs);
 }
 
@@ -5225,7 +5242,7 @@ function scoreHeadHTML(d){
     '<div class="bteam" data-team-slot="1" style="text-align:right">'+esc(tname(1))+'</div></div>';
 }
 function qstripHTML(d){
-  const maxP = Math.max(4, S.period);
+  const maxP = Math.max(gameFmt().periods, S.period);
   let head='<th></th>', r0='<td>'+esc(tname(0))+'</td>', r1='<td>'+esc(tname(1))+'</td>';
   for(let p=1;p<=maxP;p++){
     head+='<th>'+perName(p)+'</th>';
@@ -5576,7 +5593,7 @@ function foulMarksByPlayer(){
 
 function scoresheetHTML(d){
   const marks = foulMarksByPlayer();
-  const maxP  = Math.max(4, S.period);
+  const maxP  = Math.max(gameFmt().periods, S.period);
   const D0    = S.details || {};
   const off   = D0.officials || {};
   const won   = d.score[0] === d.score[1] ? null : (d.score[0] > d.score[1] ? 0 : 1);
@@ -5612,7 +5629,7 @@ function scoresheetHTML(d){
        fifth is the bonus, and seeing the row fill is the point of the row */
     const tfRow = [];
     for(let p = 1; p <= maxP; p++){
-      const n = (T.foulsP && T.foulsP[p > 4 ? 4 : p]) || 0;
+      const n = (T.foulsP && T.foulsP[p > gameFmt().periods ? gameFmt().periods : p]) || 0;
       const boxes = [1,2,3,4].map(i =>
         '<span class="fb' + (i <= n ? ' on' : '') + '">' + i + '</span>').join('');
       tfRow.push('<span class="tfp"><i>' + perName(p) + '</i>' + boxes +
@@ -7191,15 +7208,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=562">
-<link rel="stylesheet" href="../video.css?v=562">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=562">
-<script src="../config.js?v=562" defer></script>
-<script src="../vendor/supabase.js?v=562" defer></script>
-<script src="../live.js?v=562" defer></script>
-<script src="../video.js?v=562" defer></script>
-<script src="sync.js?v=562" defer></script>
-<script src="bootstrap.js?v=562" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=563">
+<link rel="stylesheet" href="../video.css?v=563">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=563">
+<script src="../config.js?v=563" defer></script>
+<script src="../vendor/supabase.js?v=563" defer></script>
+<script src="../live.js?v=563" defer></script>
+<script src="../video.js?v=563" defer></script>
+<script src="sync.js?v=563" defer></script>
+<script src="bootstrap.js?v=563" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it

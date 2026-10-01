@@ -77,7 +77,7 @@ ok('a final game always reads "final"', B.periodPill(sandbox.S) === 'final');
 const gameSrc = read('epinoia/game/game.js');
 const m = /function settleClock\(events, period, clockMs, lastSeq\) \{[\s\S]*?\n\}/.exec(gameSrc);
 ok('settleClock is where the game page says it is', !!m);
-const settleClock = m ? vm.runInContext('(B => (' + m[0] + '))', ctx)(B) : () => NaN;
+const settleClock = m ? vm.runInContext('((B, E) => (' + m[0] + '))', ctx)(B, E) : () => NaN;
 
 /* events in the page's shape: {id (= seq), t, period, clock} */
 let seq = 0;
@@ -136,6 +136,39 @@ const played = [ev('period_start', 1, 600000), Object.assign(ev('p2_made', 1, 51
 ok('at the break after the first quarter a starter who played it all has ten, not none',
    minsOf(played, 1, settle(played, 1, 600000, seq)) === 10, minsOf(played, 1, settle(played, 1, 600000, seq)));
 ok('...where the unsettled reset clock gave him none', minsOf(played, 1, 600000) === 0);
+
+/* NCAA MEN PLAY TWO 20-MINUTE HALVES (docs/ncaa-readiness.md). Nothing tells the box score so but the
+   log: a first-period clock above 10:00 can only be a half. The same rules, measured in halves. */
+console.log('\nhalves (NCAA men)');
+const half = [ev('period_start', 1, 1200000), Object.assign(ev('p2_made', 1, 1080000), { team: 0, pid: 'p01' })];
+ok('the engine reads a log that starts at 20:00 as halves', E.formatOf(half).periods === 2 && E.formatOf(q1).periods === 4);
+ok('two minutes into the first half a starter has two minutes',
+   minsOf(half, 1, settle(half, 1, 1080000, seq)) === 2, minsOf(half, 1, settle(half, 1, 1080000, seq)));
+ok('a full 20:00 clock after the half was played settles to its end (20 minutes each)',
+   settle(half, 1, 1200000, seq) === 0 && minsOf(half, 1, 0) === 20);
+Object.assign(sandbox.S, { events: half, format: undefined });
+ok('the pill names halves: h1, and 20:00 is the start', pill(1, 1200000) === 'h1 · 20:00', pill(1, 1200000));
+ok('the end of the first half is the end of h1', pill(1, 0) === 'end of h1', pill(1, 0));
+ok('the second half at 0:00 is not "the end of" anything (overtime may follow)', pill(2, 0) === 'h2 · 0:00', pill(2, 0));
+ok('overtime after halves is ot1, five minutes', pill(3, 300000) === 'ot1 · 5:00', pill(3, 300000));
+const full = { teams, starters, period: 3, clockMs: 0,
+  events: [...half, ev('period_start', 2, 1200000), ev('period_start', 3, 300000)] };
+const dd = E.deriveGame(full), ta = E.teamAdv(full, dd, 0);
+ok('a game in halves with one overtime is 45 minutes: 225 team minutes', Math.round(ta.minutes) === 225, ta.minutes);
+ok('...and its starters who never left played all 45', dd.stats.p01.min / 60000 === 45, dd.stats.p01.min / 60000);
+ok('team fouls carry from the second half into overtime, as the fourth quarter\'s do', (() => {
+  const g = { teams, starters, period: 3, clockMs: 100000, events: [...full.events,
+    Object.assign(ev('foul', 2, 500000), { team: 0, pid: 'p01', kind: 'personal' }),
+    Object.assign(ev('foul', 3, 200000), { team: 0, pid: 'p02', kind: 'personal' })] };
+  const d2 = E.deriveGame(g);
+  return E.teamFoulsNow(g, d2, 0) === 2 && d2.team[0].foulsP[2] === 2;
+})());
+ok('FIBA timeouts are not claimed for a game in halves', E.timeoutsLeft(full, dd, 0) === null);
+ok('a quarters game is untouched: its timeouts are still FIBA\'s', (() => {
+  const g = { teams, starters, period: 1, clockMs: 400000, events: early };
+  return E.timeoutsLeft(g, E.deriveGame(g), 0) === 2;
+})());
+Object.assign(sandbox.S, { events: [], format: undefined });
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

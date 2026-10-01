@@ -23,7 +23,40 @@
 'use strict';
 
 /* ---------- constants ---------- */
-const PLEN = p => (p <= 4 ? 600000 : 300000);          // 10-min quarters, 5-min OT
+/* ---------- periods ----------
+   FOUR TEN-MINUTE QUARTERS, OR TWO TWENTY-MINUTE HALVES, then five-minute overtimes either way.
+   FIBA and NCAA women play quarters; NCAA men play halves (docs/ncaa-readiness.md). Every clock
+   sum here (minutes, stints, the transition window, the game order) is cumEl, so the format is
+   one argument to it. Read in this order: the game's own `format`, the league's `rules`
+   (0001: periods, period_ms, ot_ms), else the log itself -- a clock above 10:00 in the first or
+   second period can only be a half (no quarter ever starts above 10:00; checked on the live
+   log on 2026-10-01: not one of 1.15 million events has one). Without any of them: quarters,
+   which is every game the platform held before NCAA. */
+const QUARTERS = Object.freeze({ periods: 4, period_ms: 600000, ot_ms: 300000 });
+const HALVES   = Object.freeze({ periods: 2, period_ms: 1200000, ot_ms: 300000 });
+function fmtFrom(o) {
+  if (!o || typeof o !== 'object') return null;
+  const n = +o.periods, ms = +o.period_ms;
+  if (!(n >= 1 && n <= 8 && ms >= 60000)) return null;
+  if (n === 4 && ms === 600000 && (+o.ot_ms || 300000) === 300000) return QUARTERS;
+  if (n === 2 && ms === 1200000 && (+o.ot_ms || 300000) === 300000) return HALVES;
+  return { periods: n, period_ms: ms, ot_ms: +o.ot_ms > 0 ? +o.ot_ms : 300000 };
+}
+function halvesIn(evs) {
+  if (!evs) return false;
+  for (let i = 0; i < evs.length; i++) {
+    const e = evs[i];
+    if (e && (+e.period || 1) <= 2 && +e.clock > 600000) return true;
+  }
+  return false;
+}
+/* formatOf(game | rules | event list): the periods a game is played in */
+function formatOf(x) {
+  if (!x) return QUARTERS;
+  if (Array.isArray(x)) return halvesIn(x) ? HALVES : QUARTERS;
+  return fmtFrom(x.format) || fmtFrom(x.rules) || fmtFrom(x) || (halvesIn(x.events) ? HALVES : QUARTERS);
+}
+const PLEN = (p, f) => { f = f || QUARTERS; return p <= f.periods ? f.period_ms : f.ot_ms; };
 const WIN_MS = 12000;                                   // live follow-up window
 const FOULNAMES = {
   personal: 'personal', shooting: 'shooting', floor: 'on-the-floor',
@@ -32,11 +65,12 @@ const FOULNAMES = {
 };
 
 /* ---------- formatting ---------- */
-const perName  = p => (p <= 4 ? 'q' + p : 'ot' + (p - 4));
+/* 'q3' / 'ot1'; 'h2' where the game is played in halves */
+const perName  = (p, f) => { f = f || QUARTERS; return p <= f.periods ? (f.periods === 2 ? 'h' : 'q') + p : 'ot' + (p - f.periods); };
 const fmtClock = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const fmtMin   = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 /* elapsed ms from tip to (period, clock) — the spine of every minutes calculation */
-function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); return s + (PLEN(p) - clk); }
+function cumEl(p, clk, f) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q, f); return s + (PLEN(p, f) - clk); }
 
 /* ---------------------------------------------------------------------------
    ONE ORDER, AND IT IS THE GAME'S.
@@ -75,13 +109,13 @@ function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); re
    index and never the id, which would reorder exactly those. An already
    ordered log is returned untouched, so the common case costs one pass and no
    allocation. */
-function inGameOrder(evs) {
+function inGameOrder(evs, f) {
   const n = evs.length;
   const keys = new Array(n);
   let ordered = true;
   for (let i = 0; i < n; i++) {
     const ev = evs[i];
-    keys[i] = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1));
+    keys[i] = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, f), f);
     if (i && keys[i] < keys[i - 1]) ordered = false;
   }
   if (ordered) return evs;
@@ -151,7 +185,7 @@ function pbpLine(ev, i, tags, stypes, nm) {
     case 'timeout': return nm.tname(ev.team) + ' — timeout';
     case 'sub':     return nm.tname(ev.team) + ' — sub: ' + nm.pname(ev.in) + ' in, ' + nm.pname(ev.out) + ' out';
     case 'jump':    return 'held ball — alternating possession';
-    case 'period_start': return '— ' + perName(ev.period) + ' —';
+    case 'period_start': return '— ' + perName(ev.period, nm.fmt) + ' —';
     case 'game_end':     return '— final —';
   }
   return null;
@@ -162,17 +196,19 @@ function pbpLine(ev, i, tags, stypes, nm) {
    Everything else in the platform is a projection of this function.
    ============================================================================ */
 function deriveGame(game) {
+  const F = formatOf(game);
   const nm = makeNamer(game);
+  nm.fmt = F;
   const period  = game.period  != null ? game.period  : 1;
-  const clockMs = game.clockMs != null ? game.clockMs : PLEN(period);
-  const events  = inGameOrder(game.events || []);
+  const clockMs = game.clockMs != null ? game.clockMs : PLEN(period, F);
+  const events  = inGameOrder(game.events || [], F);
   const observe = typeof game.observe === 'function' ? game.observe : null;
 
   const d = {
     stats: {}, team: [mkT(), mkT()], score: [0, 0], perQ: [{}, {}], pbp: [],
     poss: (game.tipWinner != null ? game.tipWinner : null),
     onCourt: [[...game.starters[0]], [...game.starters[1]]],
-    lineups: [[], []]
+    lineups: [[], []], format: F
   };
   let arw = (game.arrowInit != null) ? game.arrowInit : null;   // alternating-possession arrow
   const flag = { sc: [false, false], pot: [false, false] };     // live 2nd-chance / points-off-TO windows
@@ -203,7 +239,7 @@ function deriveGame(game) {
 
   game.teams.forEach(tm => tm.players.forEach(p => { d.stats[p.id] = mkP(); }));
   const lastIn = {}; game.starters.forEach(a => a.forEach(pid => { lastIn[pid] = 0; }));
-  const nowCum = cumEl(period, clockMs);
+  const nowCum = cumEl(period, clockMs, F);
 
   const cur = [
     { ids: [...d.onCourt[0]].sort(), start: 0, pf: 0, pa: 0, off: mkBox(), def: mkBox() },
@@ -313,7 +349,7 @@ function deriveGame(game) {
     /* tagged by hand, or inside the window a change of possession opened */
     const gotItAt = breakAt[ev.team];
     const quick = gotItAt != null &&
-      (cumEl(ev.period, ev.clock) - gotItAt) <= TRANSITION_MS;
+      (cumEl(ev.period, ev.clock, F) - gotItAt) <= TRANSITION_MS;
     if ((tg && tg.has('transition')) || quick) { d.team[ev.team].fast += v; if (sp) sp.fast += v; }
     if (flag.sc[ev.team])  { d.team[ev.team].sc  += v; if (sp) sp.sc  += v; }
     if (flag.pot[ev.team]) { d.team[ev.team].pot += v; if (sp) sp.pot += v; }
@@ -344,7 +380,7 @@ function deriveGame(game) {
   };
 
   events.forEach(ev => {
-    const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1));
+    const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, F), F);
 
     if (ev.t === 'reb') resolveMiss(ev);
     else if (ev.t in { p2_made:1, p3_made:1, p2_miss:1, p3_miss:1, ft_made:1, ft_miss:1, to:1 } ||
@@ -385,9 +421,10 @@ function deriveGame(game) {
         }
         if (ev.drawn && d.stats[ev.drawn]) d.stats[ev.drawn].fd++;
         d.team[ev.team].foulTot++;
-        /* FIBA team fouls: bench technicals excluded, player techs count, OT continues Q4 */
+        /* FIBA team fouls: bench technicals excluded, player techs count, OT continues Q4
+           (the second half, in halves: NCAA's fouls run per half and on into overtime) */
         if (!(ev.kind === 'tech' && !ev.pid)) {
-          const m = d.team[ev.team].foulsP, key = ev.period > 4 ? 4 : ev.period;
+          const m = d.team[ev.team].foulsP, key = ev.period > F.periods ? F.periods : ev.period;
           m[key] = (m[key] || 0) + 1;
         }
         break;
@@ -396,8 +433,9 @@ function deriveGame(game) {
       case 'jump':         if (arw != null) { d.poss = arw; arw = 1 - arw; } break;
       case 'timeout': {
         const T = d.team[ev.team].tos;
-        if (ev.period <= 2) T.h1++;
-        else if (ev.period <= 4) { T.h2++; if (ev.period === 4 && ev.clock <= 120000) T.last2++; }
+        const half = F.periods / 2;      // 2 of 4 quarters, 1 of 2 halves
+        if (ev.period <= half) T.h1++;
+        else if (ev.period <= F.periods) { T.h2++; if (ev.period === F.periods && ev.clock <= 120000) T.last2++; }
         else T.ot[ev.period] = (T.ot[ev.period] || 0) + 1;
         break;
       }
@@ -435,12 +473,12 @@ function deriveGame(game) {
         if (ev.off) flag.sc[ev.team] = true;
         else {
           flag.sc = [false, false]; flag.pot = [false, false];
-          breakAt[ev.team] = cumEl(ev.period, ev.clock);
+          breakAt[ev.team] = cumEl(ev.period, ev.clock, F);
         }
         break;
       case 'stl':
         d.poss = ev.team;
-        breakAt[ev.team] = cumEl(ev.period, ev.clock);
+        breakAt[ev.team] = cumEl(ev.period, ev.clock, F);
         break;
       case 'to':
         d.poss = 1 - ev.team;
@@ -476,8 +514,9 @@ function teamTotals(game, d, t) {
   const T = d.team[t];
   const P = game.teams[t].players.map(p => d.stats[p.id]);
   const s = k => P.reduce((a, x) => a + x[k], 0);
+  const F = (d && d.format) || formatOf(game);
   const period  = game.period  != null ? game.period  : 1;
-  const clockMs = game.clockMs != null ? game.clockMs : PLEN(period);
+  const clockMs = game.clockMs != null ? game.clockMs : PLEN(period, F);
   const o = {
     pts: T.pts, fgm: s('p2m') + s('p3m'), fga: s('p2a') + s('p3a'),
     fg3m: s('p3m'), fg3a: s('p3a'), fg2m: s('p2m'), fg2a: s('p2a'),
@@ -485,7 +524,7 @@ function teamTotals(game, d, t) {
     oreb: s('or') + T.teamRebO, dreb: s('dr') + T.teamRebD,
     ast: s('ast'), stl: s('stl'), blk: s('blk'), tov: T.toTot,
     rimA: s('rimA'), rimM: s('rimM'), midA: s('midA'), midM: s('midM'), ptsAst: s('ptsAst'),
-    minutes: cumEl(period, clockMs) / 60000 * 5
+    minutes: cumEl(period, clockMs, F) / 60000 * 5
   };
   o.possessions = 0.96 * (o.fga + o.tov + 0.44 * o.fta - o.oreb);
   o.tsa = o.fga + 0.44 * o.fta;
@@ -610,6 +649,9 @@ function lineupAgg(d, t) {
 /* ---------- FIBA state helpers ---------- */
 function timeoutsLeft(game, d, t) {
   const T = d.team[t].tos, period = game.period, clockMs = game.clockMs;
+  /* FIBA's allowance (2 / 3 / 1). A game in halves is played to other rules (NCAA: a count per
+     game, media timeouts besides), which no feed states: unknown, not a FIBA number */
+  if (((d && d.format) || formatOf(game)).periods !== 4) return null;
   if (period <= 2) return Math.max(0, 2 - T.h1);
   if (period <= 4) {
     let left = 3 - T.h2;
@@ -618,7 +660,10 @@ function timeoutsLeft(game, d, t) {
   }
   return Math.max(0, 1 - (T.ot[period] || 0));
 }
-const teamFoulsNow = (game, d, t) => d.team[t].foulsP[game.period > 4 ? 4 : game.period] || 0;
+const teamFoulsNow = (game, d, t) => {
+  const n = ((d && d.format) || formatOf(game)).periods;
+  return d.team[t].foulsP[game.period > n ? n : game.period] || 0;
+};
 
 /* ---------- convenience: everything a page needs in one call ---------- */
 function fullGame(game) {
@@ -631,7 +676,7 @@ function fullGame(game) {
 }
 
 return {
-  PLEN, WIN_MS, FOULNAMES,
+  PLEN, WIN_MS, FOULNAMES, QUARTERS, HALVES, formatOf,
   perName, fmtClock, fmtMin, cumEl,
   mkP, mkT, mkOC, mkBox,
   makeNamer, activeTags, pbpLine,

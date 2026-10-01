@@ -133,11 +133,16 @@
   /* ONE READ: the live games always (the LIVE tab's count), then what the tab shows. `cur` is the tab on screen when
      the read began (null before the first draw); the answer says which tab it drew for. `avail` is how many games
      the tab could show, read one past the shown ones, which is how SHOW MORE knows there is more. */
-  async function read(cur) {
+  /* SHOW MORE reads `quick`: the live games and the follows of the last read (seconds old, and the next tick reads them
+     again), so a press waits only for rows it does not hold yet */
+  let liveHeld = null;
+  async function read(cur, quick) {
     const G = window.EpinoiaGlobalGames;
     if (!G) throw new Error('globalgames.js has not loaded');
     const now = Date.now();
-    const [liveRaw, fol] = await Promise.all([G.live().catch(() => []), followed()]);
+    const [liveRaw, fol] = quick && liveHeld ? liveHeld
+      : await Promise.all([G.live().catch(() => []), followed()]);
+    liveHeld = [liveRaw, fol];
     const lives = G.pickLive(liveRaw, now, fol);
     const pick = G.dailyTab({ chosen, live: lives.length, current: cur });
     const tab = pick.tab;
@@ -276,7 +281,11 @@
       wipeIn(cards, o.reveal);
       growFrom(o.h0);
       const c = cards[o.reveal];
-      if (c && typeof c.focus === 'function') c.focus({ preventScroll: true });
+      if (c && typeof c.focus === 'function') {
+        c.focus({ preventScroll: true });
+        /* the new cards start where the button was, often the bottom of the screen: bring the first of them into view */
+        if (typeof c.scrollIntoView === 'function') c.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
+      }
     } else if (o.h0 != null) {
       growFrom(o.h0);
     } else if (act) {
@@ -334,8 +343,14 @@
     return bar;
   }
 
-  async function showMore(btn) {
-    if (busy || !lastData) return;
+  async function showMore(btn, tries) {
+    /* a press during a background refresh waits for it (then presses the button that refresh drew), never lost */
+    if (busy) {
+      if ((tries || 0) < 40) setTimeout(() => showMore(host.querySelector('[data-act="more"]') || btn, (tries || 0) + 1), 120);
+      return;
+    }
+    /* the cards on screen are another tab's while a switch is loading: their button is not this tab's */
+    if (!lastData || lastData.mode !== mode || !btn || btn.disabled && !tries) return;
     const m = mode, G = window.EpinoiaGlobalGames;
     const shown = lastData.rows.length;
     limit[m] = G.moreStep(shown, lastData.avail, STEP, CAP).next;
@@ -345,7 +360,7 @@
     clearTimeout(timer);
     const h0 = host.offsetHeight;
     try {
-      const d = await read(m);
+      const d = await read(m, true);
       if (mode === m && d.mode === m) { applyTab(d); draw(d, false, { force: true, reveal: Math.min(shown, d.rows.length), h0 }); }
     } catch (_) {
       limit[m] = shown;
@@ -486,6 +501,8 @@
     paintTabs(Math.max(0, liveCount));
     clearTimeout(timer);
     host.setAttribute('aria-busy', 'true');
+    /* the old tab's cards stay until the new ones land, dimmed, and their SHOW MORE / LESS do nothing meanwhile */
+    host.querySelectorAll('button[data-act]').forEach(b => { b.disabled = true; });
     try {
       const d = await read(fx);
       if (mode === fx) { applyTab(d); lastKey = null; draw(d, true); }

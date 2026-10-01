@@ -940,7 +940,11 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
   P.host.querySelector('[data-act="less"]').click();
   ok('SHOW LESS folds back to the eight, focus on SHOW MORE', P.cards().join() === first8 && doc.activeElement === P.host.querySelector('[data-act="more"]'));
 
-  P.seg.querySelector('button[data-fx="res"]').click(); await flush(); await flush();
+  const stale = P.host.querySelector('[data-act="more"]');
+  P.seg.querySelector('button[data-fx="res"]').click();
+  stale.click(); await flush(); await flush();
+  ok('a press on the old tab\'s SHOW MORE while the new tab loads does nothing (the new tab opens on its eight)',
+     P.sel() === 'res' && P.cards().length === 8 && stale.disabled === true, P.cards().length);
   ok('RESULTS: finals newest first, chosen for the visit, and SHOW MORE there too',
      P.sel() === 'res' && P.store.epinoia_home_fixtures === 'res' && P.cards()[0] === 'q00' && !!P.host.querySelector('[data-act="more"]'));
   for (let i = 0; i < 4; i++) { P.host.querySelector('[data-act="more"]').click(); await flush(); await flush(); }

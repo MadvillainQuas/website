@@ -14,7 +14,7 @@
 // ============================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 // the very same file the scorer and the public page run — one source of truth
-import { deriveGame, teamAdv, playerAdv, lineupAgg } from '../_shared/engine.js';
+import { deriveGame, teamAdv, playerAdv, lineupAgg, formatOf } from '../_shared/engine.js';
 // the partner feeds — built and posted by the same code the console tests with
 import { dispatchGame } from '../_shared/feeds.ts';
 // the MVP, decided by the same BPM the pages show
@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
     teams: snap.teams,
     starters: g.starters,
     events,
-    period: state?.period ?? g.period ?? 4,
+    period: state?.period ?? g.period ?? 4,     // the last period played; a game in halves has 2 (see the gate)
     clockMs: state?.clock_ms ?? 0,
     tipWinner: g.tip_winner,
     arrowInit: g.arrow_init
@@ -290,7 +290,11 @@ Deno.serve(async (req) => {
   const blocking: string[] = [];
   const warnings: string[] = [];
 
-  if (game.period < 4) blocking.push(`only ${game.period} periods played`);
+  /* REGULATION IS THE GAME'S OWN: four quarters, or NCAA men's two halves (engine formatOf: the
+     game's format, else read off its log - a first-period clock above 10:00 is a half). A game in
+     halves that "played only 2 periods" is a whole game. */
+  const fmt = d.format || formatOf(game);
+  if (game.period < fmt.periods) blocking.push(`only ${game.period} periods played`);
   if (game.clockMs > 0) warnings.push('clock is not at zero');
   if (d.score[0] === d.score[1]) blocking.push('scores are level — play overtime');
 
@@ -313,7 +317,8 @@ Deno.serve(async (req) => {
 
   [0, 1].forEach(t => {
     const mins = game.teams[t].players.reduce((a: number, p: any) => a + (d.stats[p.id]?.min ?? 0), 0) / 60000;
-    const expected = (game.period <= 4 ? game.period * 10 : 40 + (game.period - 4) * 5) * 5;
+    const expected = (game.period <= fmt.periods ? game.period * fmt.period_ms
+      : fmt.periods * fmt.period_ms + (game.period - fmt.periods) * fmt.ot_ms) / 60000 * 5;
     if (Math.abs(mins - expected) > 1) warnings.push(`${game.teams[t].name}: ${mins.toFixed(1)} player-minutes, expected ${expected}`);
     game.teams[t].players.forEach((p: any) => {
       const s = d.stats[p.id];
