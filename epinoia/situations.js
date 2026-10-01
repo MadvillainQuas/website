@@ -177,29 +177,22 @@ function reboundZones(events) {
   return out;
 }
 
-function compute(S) {
-  const teams = (S && S.teams) || [{}, {}];
-  const names = {};
-  teams.forEach(tm => ((tm && tm.players) || []).forEach(p => {
-    names[p.id] = p.name || (p.num != null && p.num !== '' ? '#' + p.num : '#?');
-  }));
-  const all = inGameOrder((S && S.events) || []);
-  const { tags, stypes, locs, zoneOf } = describe(all);
+const isAct = ev => (ev.t in FG || ev.t in FT || ev.t === 'to') && (ev.team === 0 || ev.team === 1);
 
-  const plays = all.filter(ev => ev && !DESCRIPTOR[ev.t]);
-  const rebOf = reboundOutcomes(plays);
-  const isAction = ev => (ev.t in FG || ev.t in FT || ev.t === 'to') && (ev.team === 0 || ev.team === 1);
-
-  /* ---- the engine's windows, stamped on every action ----
-     deriveGame scores a play BEFORE it updates the windows (its first switch,
-     then its second), so the stamp is taken first and the rules applied after,
-     line for line, including the assignments it makes without a guard. */
+/* ---- the engine's windows, stamped on every action ----
+   deriveGame scores a play BEFORE it updates the windows (its first switch,
+   then its second), so the stamp is taken first and the rules applied after,
+   line for line, including the assignments it makes without a guard.
+   plays: descriptors already left out, in game order; tags: describe()'s. A Map of action -> { second, offTo,
+   transition }. compute() reads it, and so does the WOWY page's event layer (lineupevents.js). */
+function stamps(plays, tags) {
   const flag = { sc: [false, false], pot: [false, false] };
   const breakAt = [null, null];
   const stamp = new Map();
+  const tg0 = tags || {};
   plays.forEach(ev => {
-    if (isAction(ev)) {
-      const tg = tags[ev.id];
+    if (isAct(ev)) {
+      const tg = tg0[ev.id];
       const quick = breakAt[ev.team] != null && (cumEl(ev.period, ev.clock) - breakAt[ev.team]) <= TRANSITION_MS;
       stamp.set(ev, { second: flag.sc[ev.team], offTo: flag.pot[ev.team], transition: !!((tg && tg.has('transition')) || quick) });
     }
@@ -218,6 +211,41 @@ function compute(S) {
         flag.sc = [false, false]; flag.pot = [false, false]; breakAt[0] = breakAt[1] = null; break;
     }
   });
+  return stamp;
+}
+
+/* ---- assisted and unassisted: connections.js's pairing ----
+   An assist belongs to the last made field goal, if it was the same side's;
+   either way that basket is spent. { assisted: Set of made shots, ftAssists: [side 0, side 1] } */
+function assistedShots(plays) {
+  const assisted = new Set();
+  const ftAssists = [0, 0];
+  let last = null;
+  plays.forEach(ev => {
+    if ((ev.t === 'p2_made' || ev.t === 'p3_made') && ev.pid) last = ev;
+    else if (ev.t === 'ast') {
+      if (ev.pid && last && last.team === ev.team) assisted.add(last);
+      else if (ev.team === 0 || ev.team === 1) ftAssists[ev.team]++;   // FIBA credits a pass that drew free throws
+      last = null;
+    }
+  });
+  return { assisted, ftAssists };
+}
+
+function compute(S) {
+  const teams = (S && S.teams) || [{}, {}];
+  const names = {};
+  teams.forEach(tm => ((tm && tm.players) || []).forEach(p => {
+    names[p.id] = p.name || (p.num != null && p.num !== '' ? '#' + p.num : '#?');
+  }));
+  const all = inGameOrder((S && S.events) || []);
+  const { tags, stypes, locs, zoneOf } = describe(all);
+
+  const plays = all.filter(ev => ev && !DESCRIPTOR[ev.t]);
+  const rebOf = reboundOutcomes(plays);
+  const isAction = ev => (ev.t in FG || ev.t in FT || ev.t === 'to') && (ev.team === 0 || ev.team === 1);
+
+  const stamp = stamps(plays, tags);
 
   /* ---- chances, and which one each action belongs to ----
      possessions.js names a chance by its first event. An action belongs to the
@@ -343,20 +371,8 @@ function compute(S) {
     return { sits, ato: atoPlays, assists: null, players: {} };
   });
 
-  /* ---- assisted and unassisted: connections.js's pairing ----
-     An assist belongs to the last made field goal, if it was the same side's;
-     either way that basket is spent. */
-  const assisted = new Set();
-  const ftAssists = [0, 0];
-  let last = null;
-  plays.forEach(ev => {
-    if ((ev.t === 'p2_made' || ev.t === 'p3_made') && ev.pid) last = ev;
-    else if (ev.t === 'ast') {
-      if (ev.pid && last && last.team === ev.team) assisted.add(last);
-      else if (ev.team === 0 || ev.team === 1) ftAssists[ev.team]++;   // FIBA credits a pass that drew free throws
-      last = null;
-    }
-  });
+  /* ---- assisted and unassisted: connections.js's pairing (assistedShots) ---- */
+  const { assisted, ftAssists } = assistedShots(plays);
   const pAssist = [{}, {}];                                  // pid -> { ast, unast } per side
   [0, 1].forEach(t => {
     const A = { ast: agroup(), unast: agroup() };
@@ -476,5 +492,5 @@ function toStored(C) {
   return out;
 }
 
-return { compute, toStored, finish, howEnded, surname, reboundZones, reboundOutcomes, KEYS, STAMPED, FIELDS, AFIELDS, VERSION, cumEl, inGameOrder };
+return { compute, toStored, finish, howEnded, surname, reboundZones, reboundOutcomes, describe, stamps, assistedShots, KEYS, STAMPED, FIELDS, AFIELDS, VERSION, cumEl, inGameOrder };
 }));

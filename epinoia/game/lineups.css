@@ -1,7 +1,9 @@
 /* ============================================================================
-   THE LINEUPS TAB (lineups.js): its controls, a table that fits a phone until the four factors are asked
-   for, a bar for each group's share of the game, and short stints dimmed. The table's own look (tint,
-   net pill, the ortg/drtg/net rules) is boxscore.css's table.lu, unchanged.
+   THE LINEUPS TAB (lineups.js): its controls, and a table read in four groups (basic, ratings, our four
+   factors, theirs) whose rows are cards, like the traditional box score's (cards.css .bxr), and whose every
+   figure is shaded on its own: green better for the club, red worse, a quiet club tint for a volume.
+   The table is its own (table.lu2), not boxscore.css's table.bx/table.lu: those number their columns by
+   position, which a table with a group band above its headers cannot use.
    ============================================================================ */
 .lu2-ctl{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:4px 0 12px}
 .lu2-seg{display:inline-flex;border:1px solid var(--rule-2,rgba(147,242,191,.44));border-radius:8px;overflow:hidden}
@@ -17,30 +19,136 @@
 .lu2-player{font:500 12px/1.2 var(--f-ui,system-ui,sans-serif);color:var(--ink,inherit);background:var(--panel-2,transparent);
   border:1px solid var(--rule-2,rgba(147,242,191,.44));border-radius:8px;padding:6px 8px;max-width:100%}
 
-/* the compact table fits a phone; the four factors widen it and it scrolls */
-table.lu2{min-width:0;width:100%}
-table.lu2.lu2-detail{min-width:980px}
-table.lu2 th.lu2-s{cursor:pointer;user-select:none;white-space:nowrap}
-table.lu2 th.lu2-s.on{color:var(--lume,#93f2bf)}
-table.lu2 th.lu2-s.on.desc::after{content:' ▾'} table.lu2 th.lu2-s.on.asc::after{content:' ▴'}
-table.lu2 th.lu2-who,table.lu2 td.lu2-who{text-align:left;min-width:180px}
-table.lu2 td.lu2-who .lunums{gap:4px}
-table.lu2 td.lu2-who .luname{font-size:10px;padding:2px 6px}
-/* the group's share of the game, under its names */
-.lu2-bar{display:block;height:3px;margin-top:6px;border-radius:2px;background:var(--rule,rgba(147,242,191,.2));position:relative;overflow:hidden}
-.lu2-bar::before{content:'';position:absolute;inset:0 auto 0 0;width:var(--w,0);background:var(--aqua,#8ff5ff);opacity:.8}
-/* a short stint's rates are noise: dimmed, never hidden */
-table.lu2 tr.lu2-short{opacity:.55}
-table.lu2 td.lu2-none{text-align:left;color:var(--faint,var(--ink-3))}
+/* ---------- the palette: an opaque row (the sticky names cell hides the figures scrolling under it) and its shades.
+   Every shade is mixed INTO the row colour, never laid over it, so the text on it is checked against a known colour:
+   ink on the deepest green/red is above 4.5:1 in both themes. ---------- */
+.lu2{
+  --lu-row:color-mix(in srgb,var(--text-primary,#e6fff1) 3%,var(--panel,#0a1a13));
+  --lu-odd:color-mix(in srgb,var(--text-primary,#e6fff1) 6%,var(--panel,#0a1a13));
+  --lu-hover:color-mix(in srgb,var(--text-primary,#e6fff1) 10%,var(--panel,#0a1a13));
+  --lu-g:var(--good,#63ffa0); --lu-b:var(--bad,#ff5f6b);
+  --lu-rule:color-mix(in srgb,var(--text-primary,#e6fff1) 16%,transparent);
+}
+.lu2-wrap{margin:0;padding:0 0 4px;scrollbar-width:thin}
+table.lu2{border-collapse:separate;border-spacing:0 4px;width:100%;min-width:560px;font-variant-numeric:tabular-nums lining-nums}
+table.lu2.lu2-detail{min-width:1040px}
+
+/* the group band: a tinted strip with an edge in the group's colour, ours in the club's, theirs in the opponent's */
+table.lu2 th{font-weight:400;padding:0;vertical-align:bottom;background:none;border:0}
+table.lu2 .g-basic{--gc:var(--text-secondary,#8fb8a5)}
+table.lu2 .g-rtg{--gc:var(--lume,#93f2bf)}
+table.lu2 .g-ff{--gc:var(--c,#93f2bf)}
+table.lu2 .g-opp{--gc:var(--oc,#8ff5ff)}
+table.lu2 th.lu2-g{padding:5px 8px 4px;text-align:center;border-top:2px solid var(--gc);
+  background:color-mix(in srgb,var(--gc) 11%,transparent)}
+table.lu2 th.lu2-g span{font:600 9px/1.2 var(--f-micro,var(--f-mono,monospace));letter-spacing:.14em;text-transform:uppercase;color:var(--gc)}
+table.lu2 th.lu2-g.g-basic span{color:var(--text-secondary,#8fb8a5)}
+table.lu2 th.lu2-g + th.lu2-g{border-left:1px solid var(--lu-rule)}
+table.lu2 th.lu2-g:last-child{border-radius:0 8px 0 0}
+table.lu2 tr.lu2-gh th.lu2-who + th.lu2-g{border-radius:8px 0 0 0}
+
+/* the column headers: sortable, right-aligned over the last digit, and allowed two lines ("tov / forced") */
+table.lu2 th.lu2-s{padding:6px 10px 5px 4px;text-align:right;cursor:pointer;user-select:none;min-width:48px;max-width:70px;
+  font:600 9px/1.15 var(--f-micro,var(--f-mono,monospace));letter-spacing:.07em;text-transform:uppercase;color:var(--text-secondary,#8fb8a5);
+  border-bottom:1px solid color-mix(in srgb,var(--gc) 45%,transparent);position:relative}
+table.lu2 th.lu2-s:hover{color:var(--text-primary)}
+table.lu2 th.lu2-s::after{content:'';position:absolute;right:1px;bottom:5px;font-size:8px}
+table.lu2 th.lu2-s:hover::after{content:'\2195';opacity:.5}
+table.lu2 th.lu2-s.on{color:var(--c,var(--lume));border-bottom:2px solid var(--c,var(--lume))}
+table.lu2 th.lu2-s.on.desc::after{content:'\25BE';opacity:1} table.lu2 th.lu2-s.on.asc::after{content:'\25B4';opacity:1}
+table.lu2 .gs{border-left:1px solid var(--lu-rule)}
+
+/* the sticky names column, header included */
+table.lu2 .lu2-who{position:sticky;left:0;z-index:2;text-align:left}
+table.lu2 th.lu2-who{z-index:3;background:var(--panel,#0a1a13);vertical-align:bottom;padding:0 10px 5px;border-radius:8px 0 0 0}
+table.lu2 th.lu2-who span{font:600 9px/1.2 var(--f-micro,var(--f-mono,monospace));letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+table.lu2.s5 .lu2-who{min-width:280px;width:280px}
+table.lu2.s3 .lu2-who{min-width:210px;width:210px}
+table.lu2.s2 .lu2-who{min-width:180px;width:180px}
+
+/* ---------- a row is a card ---------- */
+table.lu2 tr.lu2-r{--row:var(--lu-row)}
+table.lu2 tr.lu2-r.odd{--row:var(--lu-odd)}
+table.lu2 tbody tr.lu2-r:hover{--row:var(--lu-hover)}
+table.lu2 td{background:var(--row);padding:8px 10px 8px 4px;text-align:right;white-space:nowrap;vertical-align:middle;
+  font:600 12.5px/1.2 var(--f-ui,system-ui,sans-serif);font-variant-numeric:tabular-nums lining-nums;color:var(--text-bright,var(--text-primary));
+  border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle)}
+table.lu2 td:first-child{border-left:1px solid var(--border-subtle);border-radius:12px 0 0 12px}
+table.lu2 td:last-child{border-right:1px solid var(--border-subtle);border-radius:0 12px 12px 0}
+table.lu2 td i{font-style:normal;color:var(--text-muted);padding:0 1px}
+table.lu2 td.lu2-who{padding:7px 10px 6px 12px;white-space:normal;box-shadow:inset 3px 0 0 transparent}
+/* the net rating's signal, on the row's left edge */
+table.lu2 tr.eg1 td.lu2-who{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--lu-g) 40%,transparent)}
+table.lu2 tr.eg2 td.lu2-who{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--lu-g) 70%,transparent)}
+table.lu2 tr.eg3 td.lu2-who{box-shadow:inset 3px 0 0 var(--lu-g)}
+table.lu2 tr.eb1 td.lu2-who{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--lu-b) 40%,transparent)}
+table.lu2 tr.eb2 td.lu2-who{box-shadow:inset 3px 0 0 color-mix(in srgb,var(--lu-b) 70%,transparent)}
+table.lu2 tr.eb3 td.lu2-who{box-shadow:inset 3px 0 0 var(--lu-b)}
+
+/* the names: the number in the club's colour, the name in the box score's bold sans */
+.lu2-names{display:flex;flex-wrap:wrap;gap:1px 10px}
+.lu2-p{display:inline-flex;align-items:baseline;gap:4px;min-width:0;white-space:nowrap}
+.lu2-p i{font:600 10px/1 var(--f-data,var(--f-mono,monospace));color:var(--c,var(--lume));padding:0}
+.lu2-p b{font:700 12px/1.3 var(--f-ui,system-ui,sans-serif);color:var(--text-bright,var(--text-primary))}
+/* the group's share of the team's minutes */
+.lu2-share{display:flex;align-items:center;gap:6px;margin-top:5px}
+.lu2-bar{flex:1;height:3px;border-radius:2px;background:color-mix(in srgb,var(--text-primary) 10%,transparent);overflow:hidden;max-width:160px}
+.lu2-bar i{display:block;height:100%;border-radius:2px;background:var(--c,var(--aqua));padding:0}
+.lu2-share small{font:600 9px/1 var(--f-data,var(--f-mono,monospace));color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* ---------- the shades: each mixed into the row, deeper the further from the team's game number ---------- */
+table.lu2 td.hg1, .lu2-sw i.hg1{background:color-mix(in srgb,var(--lu-g) 12%,var(--row,var(--lu-row)))}
+table.lu2 td.hg2, .lu2-sw i.hg2{background:color-mix(in srgb,var(--lu-g) 23%,var(--row,var(--lu-row)))}
+table.lu2 td.hg3, .lu2-sw i.hg3{background:color-mix(in srgb,var(--lu-g) 35%,var(--row,var(--lu-row)))}
+table.lu2 td.hb1, .lu2-sw i.hb1{background:color-mix(in srgb,var(--lu-b) 12%,var(--row,var(--lu-row)))}
+table.lu2 td.hb2, .lu2-sw i.hb2{background:color-mix(in srgb,var(--lu-b) 23%,var(--row,var(--lu-row)))}
+table.lu2 td.hb3, .lu2-sw i.hb3{background:color-mix(in srgb,var(--lu-b) 35%,var(--row,var(--lu-row)))}
+/* a volume (min, pts, poss): the club's own colour, quietly */
+table.lu2 td.hv1, .lu2-sw i.hv1{background:color-mix(in srgb,var(--c,var(--aqua)) 5%,var(--row,var(--lu-row)))}
+table.lu2 td.hv2, .lu2-sw i.hv2{background:color-mix(in srgb,var(--c,var(--aqua)) 11%,var(--row,var(--lu-row)))}
+table.lu2 td.hv3, .lu2-sw i.hv3{background:color-mix(in srgb,var(--c,var(--aqua)) 18%,var(--row,var(--lu-row)))}
+
+/* NET keeps a pill, and the stronger one: solid at the far ends */
+.lu2-net{display:inline-block;min-width:46px;padding:3px 8px;border-radius:999px;text-align:right;font:700 11.5px/1.2 var(--f-ui,system-ui,sans-serif);
+  font-variant-numeric:tabular-nums;color:var(--text-bright,var(--text-primary));border:1px solid var(--border-subtle);background:transparent}
+.lu2-net.pos{border-color:color-mix(in srgb,var(--lu-g) 45%,transparent)}
+.lu2-net.neg{border-color:color-mix(in srgb,var(--lu-b) 45%,transparent)}
+.lu2-net.ng1{background:color-mix(in srgb,var(--lu-g) 20%,var(--row,var(--lu-row)))}
+.lu2-net.nb1{background:color-mix(in srgb,var(--lu-b) 20%,var(--row,var(--lu-row)))}
+.lu2-net.ng2,.lu2-net.ng3{background:var(--lu-g);border-color:var(--lu-g);color:var(--on-accent,#04100b)}
+.lu2-net.nb2,.lu2-net.nb3{background:var(--lu-b);border-color:var(--lu-b);color:var(--on-accent,#04100b)}
+
+/* a short stint: greyed like a DNP line, never shaded */
+table.lu2 tr.lu2-short td{color:var(--text-muted);font-weight:500}
+table.lu2 tr.lu2-short .lu2-p b{color:var(--text-secondary);font-weight:600}
+table.lu2 tr.lu2-short .lu2-net{border-style:dashed}
+
+/* the team's whole game: the reference every shade is measured from */
+table.lu2 tr.lu2-team{--row:color-mix(in srgb,var(--c,var(--lume)) 9%,var(--panel,#0a1a13))}
+table.lu2 tr.lu2-team td{font-weight:800;border-color:color-mix(in srgb,var(--c,var(--lume)) 40%,transparent)}
+table.lu2 tr.lu2-team td.lu2-who b{display:block;font:700 10px/1.2 var(--f-micro,var(--f-mono,monospace));letter-spacing:.1em;text-transform:uppercase;color:var(--c,var(--lume))}
+table.lu2 tr.lu2-team td.lu2-who small{display:block;margin-top:2px;font:500 10px/1.2 var(--f-ui,system-ui,sans-serif);color:var(--text-muted)}
+table.lu2 td.lu2-none{text-align:left;color:var(--text-muted);font-weight:500}
+
+/* the key under each table */
+.lu2-key{padding:6px 4px 2px;font:500 10.5px/1.5 var(--f-ui,system-ui,sans-serif);color:var(--text-secondary)}
+.lu2-sw{display:inline-flex;gap:2px;vertical-align:-1px;margin-right:6px}
+.lu2-sw i{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid var(--border-subtle)}
 .lu2-note{padding:4px 0 10px}
-/* A PHONE: the names on a line of their own and the seven numbers under them, so the compact table fits the
-   screen with nothing scrolled out of sight (the four factors keep their scrolling table) */
+
+/* A PHONE: the table scrolls inside its card with the names held at the left; a five or a trio loses its first
+   names (the numbers and surnames still say who), so the column stays narrow */
 @media (max-width:560px){
   .lu2-seg button,.lu2-tog{padding:8px}
-  table.lu2:not(.lu2-detail),table.lu2:not(.lu2-detail) tbody{display:block;width:100%}
-  table.lu2:not(.lu2-detail) tr{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:center}
-  table.lu2:not(.lu2-detail) th.lu2-who{display:none}
-  table.lu2:not(.lu2-detail) td.lu2-who{grid-column:1/-1;min-width:0;padding-bottom:2px;border:0}
-  table.lu2:not(.lu2-detail) th,table.lu2:not(.lu2-detail) td:not(.lu2-who){text-align:center;padding:6px 2px;font-size:11.5px;border-left:0}
-  table.lu2:not(.lu2-detail) .netpill{padding:2px 5px;font-size:10px}
+  table.lu2.s5 .lu2-who,table.lu2.s3 .lu2-who{min-width:132px;width:132px}
+  table.lu2.s2 .lu2-who{min-width:140px;width:140px}
+  table.lu2.s5 .lu2-fn,table.lu2.s3 .lu2-fn{display:none}
+  table.lu2 td.lu2-who{padding:6px 6px 5px 9px}
+  .lu2-names{gap:0 8px}
+  .lu2-p b{font-size:11.5px}
+  table.lu2 td{padding:7px 8px 7px 3px;font-size:12px}
+  table.lu2 th.lu2-s{min-width:42px;padding:5px 8px 4px 2px}
+  table.lu2{min-width:0}
+  table.lu2.lu2-detail{min-width:0}
+  .lu2-net{min-width:0;padding:2px 6px;font-size:11px}
 }

@@ -603,6 +603,13 @@ jobs:
         # picker's caps by width, the preview gate following wowyPreviewMax, the address round trip, and the page's contracts
         run: node supabase/tests/wowy-page.test.mjs
 
+      - name: The WOWY page's play-by-play layer - both fives per play, vs starters, the new stats, gating
+        # epinoia/lineupevents.js over the engine, possessions.js, situations.js and shotclock.js, on a synthetic game worked
+        # by hand: segments cut where the stints are, opponent-five buckets (a game without starters in none), zones,
+        # assisted shares, transition against half court, pace per 40, the shot clock, heliocentrism, rebound origins,
+        # deltas by direction, members-only reads, pairs and WOWY as separate tabs, the address
+        run: node supabase/tests/wowy-events.test.mjs
+
       - name: The lineups tab - fives, trios and pairs, filtered and sorted in place
         # epinoia/game/lineups.js over boxscore.js lineupCombos on a real game: the fives are the old tab's, a pair is
         # every stretch the two shared (ten to a five, so ten times the fives' minutes and points), the filters and
@@ -1512,6 +1519,13 @@ jobs:
         # labelled with thresholds the reader moves, the four pair buckets adding up to the team, units of a size, the column
         # picker's caps by width, the preview gate following wowyPreviewMax, the address round trip, and the page's contracts
         run: node supabase/tests/wowy-page.test.mjs
+
+      - name: The WOWY page's play-by-play layer - both fives per play, vs starters, the new stats, gating
+        # epinoia/lineupevents.js over the engine, possessions.js, situations.js and shotclock.js, on a synthetic game worked
+        # by hand: segments cut where the stints are, opponent-five buckets (a game without starters in none), zones,
+        # assisted shares, transition against half court, pace per 40, the shot clock, heliocentrism, rebound origins,
+        # deltas by direction, members-only reads, pairs and WOWY as separate tabs, the address
+        run: node supabase/tests/wowy-events.test.mjs
 
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer

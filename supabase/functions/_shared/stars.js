@@ -199,52 +199,112 @@ function teamFor(r, p) {
   return typeof T.get === 'function' ? T.get(tid) : T[tid];
 }
 
-/* One star card: rank as the mark, BPM across the band, name and club below. `small` is the
-   size ranks four to ten are drawn at under the podium. opts.base is the path from the page to
-   /epinoia/ ('' on the league page, '../' on HOME); opts.league adds the league to the club
-   line, 'Club · League'. */
+/* the text colour that reads on a disc of this colour: near-black or white, whichever is stronger */
+function onColour(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return '#0a0a0a';
+  const c = [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255)
+    .map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  return (L + 0.05) / 0.0535 >= 1.05 / (L + 0.05) ? '#0a0a0a' : '#ffffff';
+}
+
+/* a crest's address, through the site's own resolver (config.js); null when there is none */
+function crestSrc(path) {
+  const f = root.epinoiaLogoUrl;
+  if (!path || typeof f !== 'function') return null;
+  try { return f(path, 96) || null; } catch (_) { return null; }
+}
+
+/* a picture that may fail: on error it takes itself away, and whatever sits under it (the initials,
+   the club's code) is what is seen */
+function pic(cls, src) {
+  const im = el('img', cls);
+  im.alt = ''; im.decoding = 'async';
+  im.addEventListener('error', () => { if (im.parentNode) im.parentNode.removeChild(im); });
+  im.addEventListener('load', () => { if (im.parentNode) im.parentNode.classList.add('has-img'); });
+  im.src = src;
+  return im;
+}
+
+/* "Ben Baker" -> "BB"; one name -> its first two letters */
+function initials(name) {
+  const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return '?';
+  return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : w[0].slice(0, 2)).toUpperCase();
+}
+
+/* One star card: a plate in the club's colour holding the player's disc (photo, else initials), the
+   rank as a medal, and the headline BPM as a tagged figure; the name, the club and the line as chips
+   below; and the club's crest at the bottom right (in the plate on the small cards, where the foot has
+   no room for it). `small` is the size ranks four to ten are drawn at under the podium. opts.base is the
+   path from the page to /epinoia/ ('' on the league page, '../' on HOME); opts.league adds the league
+   to the club line, 'Club · League'. */
 function card(r, p, i, small, opts) {
       const o = opts || {};
       const league = o.league || null;
       const m = r.meta[p.id] || {};
       const team = teamFor(r, p) || {};
       const ink = team.colour || m.colour || '#93f2bf';
+      const name = m.name || 'Player';
+      const club = team.name || m.teamFull || '';
+      const bpm = (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1);
 
       const a = el('a', 'club star' + (small ? ' small' : ''));
       a.href = (o.base || '') + 'p/?p=' + encodeURIComponent(m.slug || '');
       paintCard(a, ink, team.colour_2);
-      a.setAttribute('aria-label', (m.name || 'Player') + ', ' + (team.name || '') +
-        (league ? ', ' + (league.name || league.slug || '') : ''));
+      a.style.setProperty('--ink-on', onColour(ink));
+      a.setAttribute('aria-label', name + ', ' + club + (league ? ', ' + (league.name || league.slug || '') : '') +
+        ', ' + bpm + ' BPM, rank ' + (i + 1));
 
       const plate = el('div', 'club-plate');
       plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
       ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
 
-      /* the rank is the mark, printed like the club monogram */
-      const mark = el('div', 'club-mark');
-      const rank = String(i + 1);
-      mark.append(el('span', 'club-mono ghost', rank), el('span', 'club-mono', rank));
+      /* the player: a photo where the site has one, else the initials on the club's colour */
+      const disc = el('div', 'star-disc');
+      disc.appendChild(el('span', 'star-ini', initials(name)));
+      const photo = m.photo_url && /^https:\/\//i.test(m.photo_url) ? m.photo_url : null;
+      if (photo) disc.appendChild(pic('star-photo', photo));
+      plate.appendChild(disc);
+
+      /* the rank, a medal: gold, silver, bronze, then the teletext black */
+      const mark = el('div', 'club-mark star-rank' + (i < 3 ? ' r' + (i + 1) : ''));
+      mark.appendChild(el('span', 'club-mono', String(i + 1)));
       plate.appendChild(mark);
 
-      /* BPM across the band, because it is why this player is on the podium */
-      const band = el('div', 'club-band');
-      band.appendChild(el('span', null,
-        (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1) + ' BPM'));
+      /* BPM, the reason this player is here, as a tagged figure */
+      const band = el('div', 'club-band star-hero');
+      band.append(el('b', null, bpm), el('i', null, 'BPM'));
       plate.appendChild(band);
       plate.appendChild(el('div', 'club-grain'));
 
+      /* the club's crest on white, or its code on the club's colour when it has no crest */
+      const crest = where => {
+        const c = el('span', 'star-crest ' + where);
+        c.setAttribute('aria-hidden', 'true');
+        c.appendChild(el('span', 'star-code', monogram(team.name ? team : { name: club, short_name: m.teamShort })));
+        const src = crestSrc(m.teamLogo || team.logo_path);
+        if (src) c.appendChild(pic('star-logo', src));
+        return c;
+      };
+      plate.appendChild(crest('in-plate'));
+
       const foot = el('div', 'club-foot star-foot');
       const who = el('div', 'star-who');
-      const club = team.name || m.teamFull || '';
-      who.append(el('span', 'star-name', m.name || 'Player'),
+      who.append(el('span', 'star-name', name),
                  el('span', 'star-team', league
                    ? (club ? club + ' · ' : '') + leagueShort(league)
                    : club));
       foot.appendChild(who);
-      foot.appendChild(el('span', 'club-ed',
-        (p.ppg != null ? p.ppg + 'p' : '') +
-        (p.rpg != null ? ' ' + p.rpg + 'r' : '') +
-        (p.apg != null ? ' ' + p.apg + 'a' : '')));
+      const chips = el('span', 'club-ed');
+      [['ppg', 'P'], ['rpg', 'R'], ['apg', 'A']].forEach(([k, l]) => {
+        if (p[k] == null) return;
+        const c = el('span', 'st'); c.append(el('b', null, String(p[k])), el('i', null, l)); chips.appendChild(c);
+      });
+      if (p.gp != null) { const c = el('span', 'st gp'); c.append(el('b', null, String(p.gp)), el('i', null, 'GP')); chips.appendChild(c); }
+      foot.appendChild(chips);
+      if (!small) foot.appendChild(crest('in-foot'));
 
       a.append(plate, foot);
       return a;
@@ -475,7 +535,7 @@ async function global(opts) {
   const [box, teamParts] = await Promise.all([
     boxScores(games.map(g => g.id)),
     Promise.all(chunk40(teamIds).map(c =>
-      D.all('teams?id=in.(' + c.join(',') + ')&select=id,name,short_name,slug,colour,colour_2')))
+      D.all('teams?id=in.(' + c.join(',') + ')&select=id,name,short_name,slug,colour,colour_2,logo_path')))
   ]);
   const teams = {};
   teamParts.flat().forEach(t => { teams[t.id] = t; });

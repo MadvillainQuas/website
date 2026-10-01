@@ -126,7 +126,10 @@ function compute(S) {
       gainedBy: c.secondChance ? 'oreb' : p.gainedBy,
       period: last.period, clock: last.clock, dur: timed ? timedSecs(gC, last.clock) : null,
       pts: 0, fga: 0, fgm: 0, p3a: 0, p3m: 0, fta: 0, ftm: 0, tov: 0,
-      reb: rebOf[c.index] || null, shots: []
+      reb: rebOf[c.index] || null, shots: [],
+      /* the seq of its first action: which play the chance began with (the WOWY page's event layer finds the
+         two fives on the floor by it). Additive: nothing above reads it. */
+      first: seqOf(x.acts[0])
     };
     x.acts.forEach(ev => {
       if (ev.t in FG) {
@@ -157,7 +160,7 @@ function compute(S) {
     const timed = p.gainPeriod === last.period && typeof p.gainClock === 'number' && typeof last.clock === 'number';
     possessions.push({ team: p.team, index: p.index, gainedBy: p.gainedBy, chances: mine.length,
                        pts: mine.reduce((n, r) => n + r.pts, 0),
-                       dur: timed ? timedSecs(p.gainClock, last.clock) : null });
+                       dur: timed ? timedSecs(p.gainClock, last.clock) : null, first: mine[0].first });
   });
 
   return { chances, possessions, ok: true };
