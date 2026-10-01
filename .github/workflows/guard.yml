@@ -483,6 +483,12 @@ jobs:
         # without a new play, a fresh read, ten minutes more, then the flag; the first new play clears it
         run: python scripts/ingest/stall_test.py
 
+      - name: NCAA D2/D3 - two 20-minute halves end to end, the thin adapter, lanes and shards (docs/ncaa-readiness.md)
+        # a synthetic game in halves with an overtime through to_fiba, the stints, the translator and the
+        # engine (2,700 s, 225 player-minutes a side, h1/h2/ot1); the scraper's captures are read only where
+        # the private scraper-pipeline checkout is present, so here that part says it was skipped
+        run: python scripts/ingest/ncaa_test.py
+
       - name: A game that names no arena is played at its home club's (0174)
         # on a real Postgres (PGlite): the trigger on games, the clubs and venues triggers, the
         # fill of what exists, the doubtful-pin rule and that a named venue is never overwritten
@@ -1537,6 +1543,13 @@ jobs:
           python scripts/ingest/stuck_test.py
           npm i --no-save @electric-sql/pglite
           node supabase/tests/close-stuck-games.test.mjs
+
+      - name: NCAA's two halves in the database (0206) - stuck games, the half-time notice and its lines, the indexes
+        # on a real Postgres (PGlite): a game in halves whose second half ended is final, not void; the half-time
+        # notice goes at the end of the FIRST half and never at full time; a quarters game exactly as before
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/ncaa-halves.test.mjs
 
       - name: The WOWY / lineups page - colour scale, reliability, pair buckets, column picker, gate, address
         # epinoia/wowylogic.js over lineups.js, pure: percentile colours turned round where lower is better, small samples

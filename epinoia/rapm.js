@@ -85,11 +85,13 @@
    Copied from engine.js rather than imported: this file is loaded on its own by
    pages that do not carry the engine, and a period length is not a thing two
    modules can disagree about without somebody noticing. */
-const PLEN = p => (p <= 4 ? 600000 : 300000);
-const cumEl = (p, clk) => {
+/* quarters, or NCAA men's two 20-minute halves (engine.js formatOf): read off the game's own log */
+const halvesIn = evs => !!evs && evs.some(e => e && (+e.period || 1) <= 2 && +e.clock > 600000);
+const PLEN = (p, h) => (h ? (p <= 2 ? 1200000 : 300000) : (p <= 4 ? 600000 : 300000));
+const cumEl = (p, clk, h) => {
   let s = 0;
-  for (let q = 1; q < Math.max(1, p || 1); q++) s += PLEN(q);
-  return s + (PLEN(p || 1) - Math.max(0, clk || 0));
+  for (let q = 1; q < Math.max(1, p || 1); q++) s += PLEN(q, h);
+  return s + (PLEN(p || 1, h) - Math.max(0, clk || 0));
 };
 
 const num = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
@@ -130,13 +132,13 @@ const DEFAULTS = {
 
 /* engine.js inGameOrder, same tiebreak: equal clocks keep arrival order, which
    is what holds a run of free throws in the order they were shot. */
-function inGameOrder(evs) {
+function inGameOrder(evs, h) {
   const n = evs.length;
   const keys = new Array(n);
   let ordered = true;
   for (let i = 0; i < n; i++) {
     const ev = evs[i];
-    keys[i] = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1));
+    keys[i] = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, h), h);
     if (i && keys[i] < keys[i - 1]) ordered = false;
   }
   if (ordered) return evs;
@@ -188,7 +190,8 @@ function stints(games) {
     const s0 = g.starters[0], s1 = g.starters[1];
     if (!Array.isArray(s0) || !Array.isArray(s1) || !s0.length || !s1.length) return;
 
-    const events = inGameOrder((g.events || []).slice());
+    const H = halvesIn(g.events);
+    const events = inGameOrder((g.events || []).slice(), H);
     const onCourt = [s0.slice(), s1.slice()];
     const gameId = g.id != null ? g.id : (events[0] && events[0].gameId) || null;
 
@@ -218,7 +221,7 @@ function stints(games) {
     };
 
     events.forEach(ev => {
-      const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1));
+      const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, H), H);
       if (cum > lastCum) lastCum = cum;
 
       if (ev.t === 'sub') {
@@ -245,7 +248,7 @@ function stints(games) {
     });
 
     const endCum = (g.period != null)
-      ? Math.max(lastCum, cumEl(g.period, g.clockMs != null ? g.clockMs : 0))
+      ? Math.max(lastCum, cumEl(g.period, g.clockMs != null ? g.clockMs : 0, H))
       : lastCum;
     close(endCum);
   });

@@ -32,7 +32,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 const TEAM = 'id,slug,name,short_name,colour,colour_2,logo_path';
-const LEAGUE = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,access_mode,access_fixtures_public';
+const LEAGUE = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,access_mode,access_fixtures_public,periods:rules->periods';
 const SEL = 'id,tipoff_at,status,home_score,away_score,venue,competition_id,' +
   'home:home_team_id(' + TEAM + '),away:away_team_id(' + TEAM + '),' +
   'competitions!inner(id,name,kind,seasons!inner(id,name,leagues!inner(' + LEAGUE + ')))';
@@ -352,6 +352,76 @@ function pickDaily(liveRows, upRows, nextByLeague, now, n, followed) {
   return lives.concat(rest);
 }
 
+/* ================================================ HOME's three tabs ===
+   LIVE | UPCOMING | RESULTS (home/daily.js). Each tab is one kind of game only, and SHOW MORE only ever ADDS cards at the
+   end: the first `first` cards are what the tab always showed, every card after them is the next by time, so a card a reader
+   has seen never moves when more are revealed under it. */
+
+/* LIVE: games in progress only - the same guard as pickDaily (not overdue, not stalled), followed first, then by tip-off */
+function pickLive(liveRows, now, followed) {
+  const at = ms(now), fol = followSets(followed), mine = g => isFollowed(g, fol);
+  return dedupe(liveRows).filter(g => g.status === 'live' && !overdue(g, at) && !g.stalled_since)
+    .sort((a, b) => (mine(b) - mine(a)) || (t(a) - t(b)));
+}
+
+/* UPCOMING: games not yet started. The first `first` are pickDaily's choice (each league's next game, what the reader
+   follows); the rest, up to n, the following games by tip-off. A game read as scheduled that has since gone live (the
+   upcoming read is kept between ticks) is the LIVE tab's, not this one's. */
+function pickUpcoming(liveRows, upRows, nextByLeague, now, first, n, followed) {
+  const liveIds = new Set(dedupe(liveRows).filter(g => g.status === 'live').map(g => g.id));
+  let nexts = [];
+  if (nextByLeague instanceof Map) nexts = Array.from(nextByLeague.values());
+  else if (Array.isArray(nextByLeague)) nexts = nextByLeague.slice();
+  else if (nextByLeague) nexts = Object.keys(nextByLeague).map(k => nextByLeague[k]);
+  const pool = dedupe([].concat(upRows || [], nexts.filter(Boolean)))
+    .filter(g => g.status === 'scheduled' && !liveIds.has(g.id));
+  const head = pickDaily([], pool, [], now, first, followed).slice(0, Math.min(first, n));
+  const inHead = new Set(head.map(g => g.id));
+  const tail = pool.filter(g => !inHead.has(g.id))
+    .sort((a, b) => t(a) - t(b) || (String(a.id) < String(b.id) ? -1 : 1));
+  return head.concat(tail).slice(0, n);
+}
+
+/* RESULTS: finals, newest first. The first `first` take no more than `per` from one league (a busy night in one league does
+   not push every other off the front door); the rest are simply the next newest. */
+function pickResults(rows, first, n, per) {
+  const fin = dedupe(rows).filter(g => g.status === 'final').sort((a, b) => t(b) - t(a) || (String(a.id) < String(b.id) ? 1 : -1));
+  const count = new Map(), head = [];
+  fin.forEach(g => {
+    if (head.length >= Math.min(first, n)) return;
+    const k = leagueId(g) == null ? '' : leagueId(g);
+    if ((count.get(k) || 0) >= (per || Infinity)) return;
+    count.set(k, (count.get(k) || 0) + 1);
+    head.push(g);
+  });
+  const inHead = new Set(head.map(g => g.id));
+  return head.concat(fin.filter(g => !inHead.has(g.id))).slice(0, n);
+}
+
+/* WHICH TAB. `chosen` is the reader's own pick this visit (sessionStorage), `current` the tab on screen (null before the
+   first draw), `live` how many games are live now. Before the first draw: LIVE when anything is live, else UPCOMING,
+   unless the reader picked one (a pick of LIVE with nothing live is UPCOMING). After it the tab never moves by itself -
+   a game tipping off while the reader is on UPCOMING only lights the LIVE tab - except that LIVE emptying while it is
+   shown falls back to UPCOMING, with `fell` set so the page can say why. */
+function dailyTab(o) {
+  const live = Math.max(0, (o && o.live) || 0), chosen = o && o.chosen, current = o && o.current;
+  const ok = v => v === 'live' || v === 'up' || v === 'res';
+  if (!ok(current)) {
+    const want = ok(chosen) ? chosen : (live ? 'live' : 'up');
+    return { tab: want === 'live' && !live ? 'up' : want, fell: false };
+  }
+  if (current === 'live' && !live) return { tab: 'up', fell: true };
+  return { tab: current, fell: false };
+}
+
+/* SHOW MORE in batches: from `shown` cards to the next batch, never past the cap or past what there is. `more` is whether
+   another press would add anything (there is more than is shown and the cap is not reached); at the cap the button
+   becomes the link to the full fixtures page. */
+function moreStep(shown, avail, step, cap) {
+  const next = Math.min(cap, shown + step);
+  return { next, more: avail > shown && shown < cap, atCap: shown >= cap };
+}
+
 /* THE GLOBAL PAGE'S GROUPS: one per league, ordered by its most imminent game
    (a live game is as imminent as it gets). Inside each, 'next' (anything not
    yet a result) soonest first, then 'results' newest first. */
@@ -596,21 +666,24 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
 
-function periodLabel(p) {
+/* n: the league's regulation periods (leagues.rules.periods): 4 quarters, or 2 halves (NCAA men) labelled H1/H2 */
+const periodsOf = g => { const l = leagueOf(g); const n = l ? +l.periods : NaN; return n === 2 ? 2 : 4; };
+function periodLabel(p, n) {
   if (!p) return '';
-  return p <= 4 ? 'Q' + p : p === 5 ? 'OT' : 'OT' + (p - 4);
+  n = n === 2 ? 2 : 4;
+  return p <= n ? (n === 2 ? 'H' : 'Q') + p : p === n + 1 ? 'OT' : 'OT' + (p - n);
 }
 /* THE GAME CLOCK, for the line under a live score. The scorer writes the clock about every ten seconds with the moment it wrote it
    (game_state.updated_at) and whether it is running, so a running clock is that reading less the time since, counted down again each
    second by the ticker below; a stopped one is read as it stands. Whole seconds, rounded up as a scoreboard does. Half-time says
    so; a period that has run out says "end of Q1". Empty when the state has no clock (a database or a game that has none). */
-function clockText(st, nowMs) {
+function clockText(st, nowMs, n) {
   if (!st || st.clock_ms == null || !isFinite(+st.clock_ms)) return '';
-  if (+st.break_ms > 0 && st.period === 2 && +st.clock_ms === 0) return 'Half-time';
+  if (+st.break_ms > 0 && st.period === (n === 2 ? 1 : 2) && +st.clock_ms === 0) return 'Half-time';
   let left = +st.clock_ms;
   const at = st.updated_at ? Date.parse(st.updated_at) : NaN;
   if (st.running && isFinite(at)) left -= Math.max(0, (nowMs == null ? Date.now() : nowMs) - at);
-  if (left <= 0) return st.period ? 'End ' + periodLabel(st.period) : '0:00';
+  if (left <= 0) return st.period ? 'End ' + periodLabel(st.period, n) : '0:00';
   const s = Math.ceil(left / 1000);
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
@@ -622,7 +695,7 @@ function tickClocks() {
   if (!els.length) { clearInterval(clockTimer); clockTimer = 0; return; }
   const now = Date.now();
   els.forEach(e => {
-    const t = clockText({ clock_ms: +e.getAttribute('data-ms'), running: true, updated_at: e.getAttribute('data-at'), period: +e.getAttribute('data-p') || null }, now);
+    const t = clockText({ clock_ms: +e.getAttribute('data-ms'), running: true, updated_at: e.getAttribute('data-at'), period: +e.getAttribute('data-p') || null }, now, +e.getAttribute('data-n') || 4);
     if (t && e.textContent !== t) e.textContent = t;
   });
 }
@@ -709,7 +782,7 @@ function card(g, opts) {
   const state = node('span', 'fxc-st');
   if (isLive) {
     state.appendChild(node('span', 'dot'));
-    state.appendChild(document.createTextNode('Live' + (st && st.period ? ' · ' + periodLabel(st.period) : '')));
+    state.appendChild(document.createTextNode('Live' + (st && st.period ? ' · ' + periodLabel(st.period, periodsOf(g)) : '')));
   } else if (isFinal) state.textContent = 'Final';
   else {
     /* the time rides on the state line only when the card is too narrow for its own column */
@@ -760,14 +833,14 @@ function card(g, opts) {
   body.appendChild(mid);
   body.appendChild(side(g.away, away, 'a', winA, winH));
   /* THE GAME CLOCK UNDER THE SCORE of a live game (fxc.css puts it in the middle column, under the two figures) */
-  const clk = isLive ? clockText(st, Date.now()) : '';
+  const clk = isLive ? clockText(st, Date.now(), periodsOf(g)) : '';
   if (clk) {
     body.className += ' has-clk';
     const c = node('span', 'fxc-clk' + (st.running ? ' run' : ''), clk);
     c.setAttribute('aria-label', 'game clock ' + clk);
     if (st.running) {
       c.setAttribute('data-run', '1'); c.setAttribute('data-ms', String(st.clock_ms));
-      c.setAttribute('data-at', st.updated_at || ''); c.setAttribute('data-p', String(st.period || ''));
+      c.setAttribute('data-at', st.updated_at || ''); c.setAttribute('data-p', String(st.period || '')); c.setAttribute('data-n', String(periodsOf(g)));
       startClocks();
     }
     body.appendChild(c);
@@ -797,7 +870,7 @@ function card(g, opts) {
 return {
   SEL, STALE_MS, LIVE_CAP_MS, overdue, LEAGUE_WINDOW_MS,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
-  pickDaily, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
+  pickDaily, pickLive, pickUpcoming, pickResults, dailyTab, moreStep, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
   card, wireBadges, dayLabel, timeLabel, clockText, tickClocks, esc
 };
 }));

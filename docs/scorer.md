@@ -69,7 +69,7 @@ So the numbers checked at the table were not always the numbers the league publi
 
 ## Not done yet
 
-- **Other formats.** Quarters are 10 minutes and overtime 5 everywhere (`PLEN`), in the scorer, the engine and the game page's flow charts. The foul-out limit is 5, and `finalise-game` expects 10-minute quarters. Leagues with 8- or 12-minute quarters, or 20-minute halves, need a per-game period length passed through all of them.
+- **Other formats.** The engine now handles other formats: quarters or halves, and other period lengths (`formatOf`, from the NCAA work). The scorer passes it the format it plays (`gameFmt`). What is missing is a way to choose one: the scorer still always plays 10-minute quarters unless a log in halves is loaded. Its timeout allowances, the last-two-minutes rules and the foul-out limit of 5 also still assume FIBA quarters. A league with 8- or 12-minute quarters needs a format chosen at setup (`S.format`), and those rules made to follow it.
 - **Coaches.** There is no coach on the sheet. So there are no C/B technicals against the coach by name, and no disqualification after two C or three in all.
 - **Fouls in an interval.** These count toward the period that just ended. FIBA counts them toward the next one.
 - **Late arrivals.** The roster is frozen at the tip, so a player can't be added once the game has started.

@@ -28,7 +28,21 @@
    defined at call time — the scorer's own state in the scorer, and the
    replayed game in the viewer. Declaring them here would shadow both. */
 
-const PLEN = p => p <= 4 ? 600000 : 300000;
+function gameFmt(){
+  const Q = gameFmt.Q || (gameFmt.Q = {periods:4, period_ms:600000, ot_ms:300000});
+  let G = null;
+  try { G = (typeof S !== 'undefined' && S) ? S : null; } catch (_) { G = null; }   // S itself is being built
+  if (!G) return Q;
+  if (G.format && +G.format.periods > 0 && +G.format.period_ms > 0) return G.format;
+  const ev = G.events || [], m = gameFmt.memo;
+  if (m && m.ev === ev && m.n === ev.length) return m.f;
+  let h = false;
+  for (let i = 0; i < ev.length; i++) { const e = ev[i]; if (e && (+e.period || 1) <= 2 && +e.clock > 600000) { h = true; break; } }
+  gameFmt.memo = {ev, n: ev.length, f: h ? {periods:2, period_ms:1200000, ot_ms:300000} : Q};
+  return gameFmt.memo.f;
+}
+
+const PLEN = p => { const f = gameFmt(); return p <= f.periods ? f.period_ms : f.ot_ms; };
 
 let PMAP = {};         // pid -> {team, p}
 
@@ -119,7 +133,7 @@ function safeColour(v, fallback){
   return COLOUR_OK.test(c) ? c : (fallback || 'var(--lume)');
 }
 
-function perName(p){ return p<=4 ? 'q'+p : 'ot'+(p-4); }
+function perName(p){ const f = gameFmt(); return p<=f.periods ? (f.periods===2?'h':'q')+p : 'ot'+(p-f.periods); }
 
 function fmtClock(ms){ const s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 
@@ -331,7 +345,7 @@ function foulMarksByPlayer(){
 
 function scoresheetHTML(d){
   const marks = foulMarksByPlayer();
-  const maxP  = Math.max(4, S.period);
+  const maxP  = Math.max(gameFmt().periods, S.period);
   const D0    = S.details || {};
   const off   = D0.officials || {};
   const won   = d.score[0] === d.score[1] ? null : (d.score[0] > d.score[1] ? 0 : 1);
@@ -372,7 +386,7 @@ function scoresheetHTML(d){
        fifth is the bonus, and seeing the row fill is the point of the row */
     const tfRow = [];
     for(let p = 1; p <= maxP; p++){
-      const n = (T.foulsP && T.foulsP[p > 4 ? 4 : p]) || 0;
+      const n = (T.foulsP && T.foulsP[p > gameFmt().periods ? gameFmt().periods : p]) || 0;
       const boxes = [1,2,3,4].map(i =>
         '<span class="fb' + (i <= n ? ' on' : '') + '">' + i + '</span>').join('');
       tfRow.push('<span class="tfp"><i>' + perName(p) + '</i>' + boxes +
@@ -723,7 +737,7 @@ function periodPill(S) {
      same full clock through the break after it (notify_halftime.sql 0124 documents both
      readings); the game page settles that reading to 0:00 before it gets here (settleClock,
      epinoia/game/game.js), because only the log can say which end of the period a full clock is. */
-  if (S.clockMs === 0 && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
+  if (S.clockMs === 0 && S.period >= 1 && S.period < gameFmt().periods) return 'end of ' + perName(S.period);
   return perName(S.period) + ' · ' + fmtClock(S.clockMs);
 }
 
@@ -745,7 +759,7 @@ function scoreHeadHTML(d){
 }
 
 function qstripHTML(d){
-  const maxP = Math.max(4, S.period);
+  const maxP = Math.max(gameFmt().periods, S.period);
   let head='<th></th>', r0='<td>'+esc(tname(0))+'</td>', r1='<td>'+esc(tname(1))+'</td>';
   for(let p=1;p<=maxP;p++){
     head+='<th>'+perName(p)+'</th>';
@@ -1148,5 +1162,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, lineupRates, lineupCombos, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, sitCompute, assistCard, outcomeCard, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { gameFmt, PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, lineupRates, lineupCombos, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, sitCompute, assistCard, outcomeCard, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

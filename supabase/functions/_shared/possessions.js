@@ -47,11 +47,14 @@
   else root.EpinoiaPossessions = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
-const PLEN = p => (p <= 4 ? 600000 : 300000);
-const cumEl = (period, clock) => {
+/* QUARTERS OR HALVES (engine.js formatOf, docs/ncaa-readiness.md): a first- or second-period clock
+   above 10:00 can only be one of NCAA men's two 20-minute halves; then 5-minute overtimes either way. */
+const halvesIn = evs => !!evs && evs.some(e => e && (+e.period || 1) <= 2 && +e.clock > 600000);
+const PLEN = (p, h) => (h ? (p <= 2 ? 1200000 : 300000) : (p <= 4 ? 600000 : 300000));
+const cumEl = (period, clock, h) => {
   let s = 0;
-  for (let q = 1; q < Math.max(1, period || 1); q++) s += PLEN(q);
-  return s + (PLEN(period || 1) - Math.max(0, clock || 0));
+  for (let q = 1; q < Math.max(1, period || 1); q++) s += PLEN(q, h);
+  return s + (PLEN(period || 1, h) - Math.max(0, clock || 0));
 };
 
 const SHOT_MADE = { p2_made: 2, p3_made: 3 };
@@ -103,6 +106,7 @@ const OUTCOME = {
 function enumerate(game) {
   const out = { possessions: [], chances: [] };
   if (!game || !Array.isArray(game.events)) return out;
+  const H = halvesIn(game.events);
 
   let poss = null;         // the open possession
   let chance = null;       // the open chance inside it
@@ -156,12 +160,12 @@ function enumerate(game) {
       ? { period: ev.period, clock: ev.clock, by: 'dreb' }
       : (handoff && handoff.period === period)
         ? { period: period, clock: handoff.clock, by: 'change' }
-        : { period: period, clock: PLEN(period), by: 'period' };
+        : { period: period, clock: PLEN(period, H), by: 'period' };
     poss = {
       index: out.possessions.length,
       team: team,
       period: period,
-      startClock: ev ? ev.clock : PLEN(1),
+      startClock: ev ? ev.clock : PLEN(1, H),
       startEventId: ev ? (ev.seq != null ? ev.seq : ev.id) : null,
       chances: [],
       points: 0,

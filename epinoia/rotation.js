@@ -23,16 +23,19 @@
   else root.EpinoiaRotation = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
-const PLEN = p => (p <= 4 ? 600000 : 300000);
+/* QUARTERS OR HALVES (engine.js formatOf, docs/ncaa-readiness.md): a first- or second-period clock
+   above 10:00 can only be one of NCAA men's two 20-minute halves; then 5-minute overtimes either way. */
+const halvesIn = evs => !!evs && evs.some(e => e && (+e.period || 1) <= 2 && +e.clock > 600000);
+const PLEN = (p, h) => (h ? (p <= 2 ? 1200000 : 300000) : (p <= 4 ? 600000 : 300000));
 const MIN = 60000;
-function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); return s + (PLEN(p) - clk); }
+function cumEl(p, clk, h) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q, h); return s + (PLEN(p, h) - clk); }
 /* engine.js's inGameOrder: by game time, ties in log order */
-function inGameOrder(evs) {
-  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1)) }));
+function inGameOrder(evs, h) {
+  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, h), h) }));
   keyed.sort((a, b) => (a.k - b.k) || (a.i - b.i));
   return keyed.map(x => x.ev);
 }
-const periodLabel = n => (n <= 4 ? 'Q' + n : 'OT' + (n - 4));
+const periodLabel = (n, h) => (h ? (n <= 2 ? 'H' + n : 'OT' + (n - 2)) : (n <= 4 ? 'Q' + n : 'OT' + (n - 4)));
 const PTS = { p2_made: 2, p3_made: 3, ft_made: 1 };
 
 /* the minutes a set of stretches covers, one share (0-1) per minute of the game */
@@ -49,12 +52,13 @@ function cellsOf(stretches, nMin) {
 
 /* ---------------------------------------------------------------- a game --- */
 function compute(S) {
-  const events = inGameOrder(((S && S.events) || []).filter(Boolean));
+  const raw = ((S && S.events) || []).filter(Boolean), H = halvesIn(raw);
+  const events = inGameOrder(raw, H);
   const seen = events.reduce((m, e) => Math.max(m, e.period || 1), 1);
-  const nP = Math.max(4, (S && S.period) || 1, seen);
+  const nP = Math.max(H ? 2 : 4, (S && S.period) || 1, seen);
   const periods = [];
   let at = 0;
-  for (let p = 1; p <= nP; p++) { periods.push({ n: p, label: periodLabel(p), from: at / MIN, to: (at + PLEN(p)) / MIN }); at += PLEN(p); }
+  for (let p = 1; p <= nP; p++) { periods.push({ n: p, label: periodLabel(p, H), from: at / MIN, to: (at + PLEN(p, H)) / MIN }); at += PLEN(p, H); }
   const length = at, nMin = Math.ceil(length / MIN);
 
   /* A finished game closes where the engine closes it: at the game's own period and clock,
@@ -62,10 +66,10 @@ function compute(S) {
      played closes at its latest play, not at the end of the period it is in -- the page loads
      a live game with the clock at zero, and every player on the floor would otherwise be
      drawn out to the buzzer. */
-  const last = events.reduce((m, e) => (e.clock != null ? Math.max(m, cumEl(e.period || 1, e.clock)) : m), 0);
+  const last = events.reduce((m, e) => (e.clock != null ? Math.max(m, cumEl(e.period || 1, e.clock, H)) : m), 0);
   const now = S && S.status === 'final'
-    ? Math.min(length, cumEl((S.period || nP), S.clockMs || 0))
-    : Math.min(length, Math.max(last, (S && S.clockMs) ? cumEl(S.period || 1, S.clockMs) : 0));
+    ? Math.min(length, cumEl((S.period || nP), S.clockMs || 0, H))
+    : Math.min(length, Math.max(last, (S && S.clockMs) ? cumEl(S.period || 1, S.clockMs, H) : 0));
 
   const stretches = {};
   const push = (pid, a, b) => { if (b > a) (stretches[pid] = stretches[pid] || []).push([a, b]); };
@@ -73,7 +77,7 @@ function compute(S) {
   ((S && S.starters) || [[], []]).forEach(a => (a || []).forEach(pid => { lastIn[pid] = 0; }));
   events.forEach(ev => {
     if (ev.t !== 'sub') return;
-    const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1));
+    const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, H), H);
     if (ev.out != null && lastIn[ev.out] != null) { push(ev.out, lastIn[ev.out], cum); delete lastIn[ev.out]; }
     /* a team playing short: a player leaves with nobody to replace him (in: null) */
     if (ev.in != null && lastIn[ev.in] == null) lastIn[ev.in] = cum;
@@ -100,10 +104,10 @@ function compute(S) {
     const v = PTS[ev.t];
     if (!v || (ev.team !== 0 && ev.team !== 1) || ev.clock == null) return;
     s[ev.team] += v;
-    margin.push([cumEl(ev.period || 1, ev.clock) / MIN, s[0] - s[1]]);
+    margin.push([cumEl(ev.period || 1, ev.clock, H) / MIN, s[0] - s[1]]);
   });
 
-  return { minutes: nMin, periods, now: now / MIN, teams, margin, score: s };
+  return { minutes: nMin, periods, now: now / MIN, teams, margin, score: s, halves: H };
 }
 
 /* -------------------------------------------------------------- a season ---
@@ -126,7 +130,9 @@ function season(games, name) {
   });
   const rows = Object.values(by).map(x => Object.assign(x, { cells: x.cells.map(v => (n ? v / n : 0)), dnp: false }))
     .sort((a, b) => b.ms - a.ms);
-  const periods = [1, 2, 3, 4].map(p => ({ n: p, label: periodLabel(p), from: (p - 1) * 10, to: p * 10 }));
+  /* a club that plays halves (NCAA men) is drawn in halves: 40 minutes either way */
+  const H = list.length > 0 && list.every(g => g.model.halves);
+  const periods = (H ? [1, 2] : [1, 2, 3, 4]).map(p => ({ n: p, label: periodLabel(p, H), from: (p - 1) * (H ? 20 : 10), to: p * (H ? 20 : 10) }));
   /* the club's margin at the end of each minute, averaged over its games */
   const at = (pts, m) => { let v = 0; for (const [x, y] of pts) { if (x <= m) v = y; else break; } return v; };
   const margin = [];

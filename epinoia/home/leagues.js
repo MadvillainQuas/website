@@ -12,8 +12,8 @@
      leagues   EpinoiaGlobalGames.leagues() (cached for the page, shared with
                the fixtures section), or its own query with the same columns
                when globalgames.js is not on the page
-     teams     teams?select=league_id, counted here: one small request for
-               every league rather than one count per league
+     teams     leagues?select=id,teams(count): one row a league, counted by the
+               database (a row per club would stop at PostgREST's 1,000)
      seasons   newest first; the first row per league is its current season
      next      each league's next fixture, EpinoiaGlobalGames.nextFor(id)
 
@@ -72,9 +72,13 @@
 
   /* club counts by league; a club with no league counts for nobody */
   async function clubCounts() {
-    const rows = await api('teams?select=league_id&league_id=not.is.null');
+    /* one row a league, counted by the database: a row per club stops at PostgREST's 1,000 (NCAA alone is ~1,460) */
+    const ls = await api('leagues?select=id,teams(count)');
     const m = new Map();
-    rows.forEach(r => { if (r.league_id) m.set(r.league_id, (m.get(r.league_id) || 0) + 1); });
+    (ls || []).forEach(l => {
+      const n = l && Array.isArray(l.teams) && l.teams[0] ? +l.teams[0].count : 0;
+      if (l && l.id && n) m.set(l.id, n);
+    });
     return m;
   }
 

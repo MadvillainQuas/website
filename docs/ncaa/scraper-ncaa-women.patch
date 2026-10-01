@@ -1,0 +1,55 @@
+--- a/validation/ncaa/ncaa_adapter.py	2026-10-01 01:29:37.845288018 +0000
++++ b/validation/ncaa/ncaa_adapter.py	2026-10-01 01:29:37.860856110 +0000
+@@ -44,4 +44,7 @@
+ HALF_SECS = 1200      # 20-minute halves
+ OT_SECS = 300         # 5-minute overtimes
++# Periods per sport: men (MBB) two 20-minute halves, women (WBB) four 10-minute
++# quarters; 5-minute overtimes either way. parse_ncaa_game(data, sport=...)
++PERIODS = {'MBB': (2, HALF_SECS), 'WBB': (4, 600)}
+ 
+ # zeroed box line for synthesized players (in PBP but omitted from the box)
+@@ -61,7 +64,7 @@
+ 
+ 
+-def fetch_ncaa_contests(division, date_mmddyyyy, season_year):
+-    """Completed contests for one division + date. division: 2 or 3."""
+-    d = gql('GetContests_web', {'sportCode': 'MBB', 'division': int(division),
++def fetch_ncaa_contests(division, date_mmddyyyy, season_year, sport='MBB'):
++    """Completed contests for one division + date. division: 2 or 3; sport MBB | WBB."""
++    d = gql('GetContests_web', {'sportCode': sport, 'division': int(division),
+                                 'seasonYear': int(season_year),
+                                 'contestDate': date_mmddyyyy, 'week': None})
+@@ -84,5 +87,5 @@
+ 
+ 
+-def _elapsed(period_number, clock):
++def _elapsed(period_number, clock, sport='MBB'):
+     """NCAA halves: P1 0-1200, P2 1200-2400, OT n (period 3+) 5 min each."""
+     try:
+@@ -92,8 +95,9 @@
+         remaining = 0
+     p = int(period_number or 1)
+-    if p <= 2:
+-        start, plen = (p - 1) * HALF_SECS, HALF_SECS
++    n, per = PERIODS.get(sport, PERIODS['MBB'])
++    if p <= n:
++        start, plen = (p - 1) * per, per
+     else:
+-        start, plen = 2 * HALF_SECS + (p - 3) * OT_SECS, OT_SECS
++        start, plen = n * per + (p - n - 1) * OT_SECS, OT_SECS
+     # events logged at exactly 0:00 belong INSIDE the period — clamp half a
+     # second before the boundary, else buzzer subs open a ZERO-second stint
+@@ -103,5 +107,5 @@
+ 
+ 
+-def parse_ncaa_game(data):
++def parse_ncaa_game(data, sport=None):
+     """Raw payloads -> teams, site box (by jersey), normalized action stream.
+ 
+@@ -318,5 +322,5 @@
+             first = (ev.get('firstName') or '').strip()
+             last = (ev.get('lastName') or '').strip()
+-            el = _elapsed(pnum, ev.get('clock'))
++            el = _elapsed(pnum, ev.get('clock'), sport or box_d.get('sportCode') or 'MBB')
+             low = ' '.join(desc.lower().split())
+ 

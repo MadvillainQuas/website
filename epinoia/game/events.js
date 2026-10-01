@@ -81,7 +81,12 @@ function computed(S) {
 const pct = v => (v == null ? '–' : Math.round(v * 100) + '%');
 const dec2 = v => (v == null ? '–' : v.toFixed(2));
 const clockText = ms => { if (ms == null) return ''; const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-const qText = p => (p <= 4 ? 'Q' + p : 'OT' + (p - 4));
+/* 'Q3', or 'H2' for a game in halves (NCAA men): the engine's own label, for the game on the page */
+const qText = p => {
+  const E = root.EpinoiaEngine, S = root.S;
+  if (E && E.formatOf && E.perName && S) return E.perName(p, E.formatOf(S)).toUpperCase();
+  return p <= 4 ? 'Q' + p : 'OT' + (p - 4);
+};
 const person = (pid, name) => UUID.test(pid || '')
   ? '<a class="ev-person" href="../p/?p=' + encodeURIComponent(pid) + '">' + esc(name) + '</a>'
   : '<span class="ev-person">' + esc(name) + '</span>';

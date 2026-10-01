@@ -132,7 +132,7 @@ function render() {
   mid.appendChild(sc);
   const clk = el('div', 'clk' + (live ? ' live' : ''));
   clk.textContent = final ? 'final'
-    : live ? E.perName(S ? S.period : 1).toUpperCase() + ' · ' +
+    : live ? E.perName(S ? S.period : 1, S ? E.formatOf(S) : undefined).toUpperCase() + ' · ' +
              E.fmtClock(sub && sub.state ? sub.clockMs() : (S ? S.clockMs : 0))
     : 'scheduled';
   mid.appendChild(clk);
@@ -142,12 +142,13 @@ function render() {
 
   if (d) {
     /* the quarter strip: the shape of the game in one line */
-    const maxP = Math.max(4, ...Object.keys(d.perQ[0]).map(Number),
+    const F = d.format || E.formatOf(S);      // quarters, or NCAA men's halves
+    const maxP = Math.max(F.periods, ...Object.keys(d.perQ[0]).map(Number),
                              ...Object.keys(d.perQ[1]).map(Number), 1);
     const qs = el('div', 'qs');
     for (let p = 1; p <= maxP; p++) {
       const c = el('div');
-      c.append(el('div', 'ql', E.perName(p).toUpperCase()),
+      c.append(el('div', 'ql', E.perName(p, F).toUpperCase()),
                el('div', 'qv', String(d.perQ[0][p] || 0)),
                el('div', 'qv', String(d.perQ[1][p] || 0)));
       qs.appendChild(c);

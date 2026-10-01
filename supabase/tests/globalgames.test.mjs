@@ -485,6 +485,12 @@ section('the card (a small DOM stub)');
      && W.clockText(S({ clock_ms: 0, period: 4 }), T0) === 'End Q4' && W.clockText(S({ clock_ms: 0, period: 5 }), T0) === 'End OT');
   ok('half-time says so', W.clockText(S({ period: 2, clock_ms: 0, break_ms: 600000 }), T0) === 'Half-time');
   ok('no clock in the state, no clock text', W.clockText(null, T0) === '' && W.clockText({ period: 2 }, T0) === '' && W.clockText({ clock_ms: null }, T0) === '');
+  ok('a halves league (NCAA men, rules.periods 2) reads H1/H2 and OT, and half-time falls after the first period',
+     W.clockText(S({ clock_ms: 0, period: 2 }), T0, 2) === 'End H2' && W.clockText(S({ clock_ms: 0, period: 3 }), T0, 2) === 'End OT'
+     && W.clockText(S({ clock_ms: 0, period: 4 }), T0, 2) === 'End OT2'
+     && W.clockText(S({ period: 1, clock_ms: 0, break_ms: 600000 }), T0, 2) === 'Half-time'
+     && W.clockText(S({ period: 2, clock_ms: 0, break_ms: 600000 }), T0, 2) !== 'Half-time');
+  ok('...and the leagues query carries periods (rules->periods)', /periods:rules->periods/.test(rd('epinoia', 'globalgames.js')));
   const lc = W.card(game('g4', L.slbm, -H, 'live', {}), { now: NOW, state: S({}) });
   ok('a live card carries the clock under the score, in its own element beside the middle column (the score line is unchanged)',
      find(lc, 'fxc-clk') && find(lc, 'fxc-clk').textContent === '4:15' && find(lc, 'fxc-body').className.includes('has-clk') && mid(lc) === '13–10', find(lc, 'fxc-clk') && find(lc, 'fxc-clk').textContent);
@@ -533,7 +539,8 @@ section('pages');
         STALE_MS: 7200000,
         leagues: async () => [], live: async () => [], nextFor: async () => null, liveState: async () => ({}),
         upcoming: async () => { if (fail) throw new Error('offline'); return []; },
-        pickDaily: () => []
+        pickDaily: () => [], pickLive: G.pickLive, pickUpcoming: G.pickUpcoming, pickResults: G.pickResults,
+        dailyTab: G.dailyTab, moreStep: G.moreStep
       },
       document: { visibilityState: 'visible', createElement: () => mk(),
         addEventListener: (t, f) => { (docListeners[t] = docListeners[t] || []).push(f); } },
@@ -623,7 +630,7 @@ section('daily fixtures: what the reader follows comes first');
   const dj = rd('epinoia', 'home', 'daily.js');
   ok('the home rail asks follow.js (never access.js), hands the lists to pickDaily, and re-orders when a follow is saved',
      /F\.load\(\)/.test(dj) && /fav_league_ids/.test(dj) && /fav_team_ids/.test(dj) && !/EpinoiaAccess/.test(dj)
-     && /G\.pickDaily\(live, up, nexts, now, N, fol\)/.test(dj) && /addEventListener\('epinoia:follows', \(\) => schedule\(0\)\)/.test(dj)
+     && /G\.pickUpcoming\(liveRaw, ups, nexts, now, N, limit\.up \+ 1, fol\)/.test(dj) && /G\.pickLive\(liveRaw, now, fol\)/.test(dj) && /addEventListener\('epinoia:follows', \(\) => schedule\(0\)\)/.test(dj)
      && /<script src="\.\.\/follow\.js\?v=\d+" defer><\/script>\s*<script src="front\.js/.test(rd('epinoia', 'home', 'index.html')));
 }
 
@@ -749,6 +756,234 @@ section('a game live for eight hours after tip-off is not a live card (26-30 Sep
   ok('overdue() says which', stuck.every(g => G.overdue(g, NOW)) && !G.overdue(fine, NOW) && !G.overdue(game('s', L.bcb, -9 * H, 'scheduled'), NOW));
   ok('a game the ingest flagged stalled is not a live card either', G.pickDaily([Object.assign({}, fine, { stalled_since: at(-H) })], [], [], NOW, 8).length === 0);
   ok('the live read is bounded to the last eight hours of tip-offs', /status=eq\.live&tipoff_at=gte\./.test(rd('epinoia', 'globalgames.js')));
+}
+
+/* ------------------------------------------------------------------------- */
+section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
+{
+  const live = (id, league, off, extra) => game(id, league, off, 'live', extra);
+  const fin = (id, league, off) => game(id, league, off, 'final');
+  /* ---- the split: each tab one kind of game ---- */
+  const lives = [live('l1', L.bcb, -30 * 60e3), live('l2', L.slbm, -90 * 60e3), live('stuck', L.bcb, -9 * H), live('stall', L.slbw, -20 * 60e3, { stalled_since: at(-5 * 60e3) })];
+  ok('pickLive: only games in progress, oldest tip-off first; the overdue (8 h) and the stalled are left off',
+     ids(G.pickLive(lives, NOW)).join() === 'l2,l1', ids(G.pickLive(lives, NOW)).join());
+  ok('pickLive: a followed league\'s live game leads', ids(G.pickLive(lives, NOW, { leagues: ['l-bcb'], teams: [] })).join() === 'l1,l2');
+  ok('pickLive: a scheduled or final row is never LIVE', G.pickLive([game('s', L.bcb, H), fin('f', L.bcb, -H)], NOW).length === 0);
+
+  const ups = [];
+  for (let i = 0; i < 30; i++) ups.push(game('u' + String(i).padStart(2, '0'), [L.bcb, L.slbm, L.slbw][i % 3 === 0 ? 0 : i % 7 === 0 ? 2 : 1], (i + 1) * H));
+  /* a game the upcoming read held as scheduled has since tipped off: the live read says so */
+  const wentLive = Object.assign({}, ups[0], { status: 'live' });
+  const up8 = G.pickUpcoming([wentLive], ups, [], NOW, 8, 8);
+  ok('pickUpcoming: no live game on UPCOMING, even one the held upcoming read still calls scheduled',
+     up8.length === 8 && !ids(up8).includes('u00') && up8.every(g => g.status === 'scheduled'), ids(up8).join());
+  ok('pickUpcoming: the first eight are pickDaily\'s (each league\'s next game within a fortnight first)',
+     ids(up8).join() === ids(G.pickDaily([], ups.slice(1), [], NOW, 8)).join());
+  const nextFar = game('far-w', L.slbw, 10 * D);
+  ok('pickUpcoming: a league\'s next game from nextAll beyond the forty still takes a card',
+     ids(G.pickUpcoming([], ups.slice(0, 3).map(g => Object.assign({}, g, { competitions: game('x', L.bcb, 0).competitions })), new Map([['l-slbw', nextFar]]), NOW, 8, 8)).includes('far-w'));
+  const up24 = G.pickUpcoming([], ups, [], NOW, 8, 24);
+  ok('SHOW MORE never moves a card: the first eight of 24 are the eight, the new ones come after them, by tip-off',
+     ids(up24.slice(0, 8)).join() === ids(G.pickUpcoming([], ups, [], NOW, 8, 8)).join()
+     && up24.slice(8).every((g, i, a) => i === 0 || Date.parse(g.tipoff_at) >= Date.parse(a[i - 1].tipoff_at))
+     && new Set(ids(up24)).size === 24, ids(up24).join());
+
+  const res = [];
+  for (let i = 0; i < 20; i++) res.push(fin('r' + String(i).padStart(2, '0'), i < 12 ? L.bcb : (i % 2 ? L.slbm : L.slbw), -(i + 1) * H));
+  const r8 = G.pickResults(res.concat([game('sched', L.bcb, -H / 2), live('lv', L.bcb, -H / 3)]), 8, 8, 3);
+  ok('pickResults: finals only, newest first within the league cap, no league more than three of the first eight',
+     r8.every(g => g.status === 'final') && ids(r8).filter(id => Number(id.slice(1)) < 12).length === 3 && r8.length === 8, ids(r8).join());
+  const r20 = G.pickResults(res, 8, 20, 3);
+  ok('pickResults: SHOW MORE keeps the eight and adds the next newest after them (no cap past the first eight)',
+     ids(r20.slice(0, 8)).join() === ids(G.pickResults(res, 8, 8, 3)).join() && r20.length === 20
+     && r20.slice(8).every((g, i, a) => i === 0 || Date.parse(g.tipoff_at) <= Date.parse(a[i - 1].tipoff_at)));
+
+  /* ---- which tab ---- */
+  const T = o => G.dailyTab(o);
+  ok('default: LIVE when anything is live, else UPCOMING', T({ live: 3 }).tab === 'live' && T({ live: 0 }).tab === 'up' && T({}).tab === 'up');
+  ok('the reader\'s pick of the visit wins on arrival (RESULTS with games live is RESULTS; UPCOMING is UPCOMING)',
+     T({ live: 2, chosen: 'res' }).tab === 'res' && T({ live: 2, chosen: 'up' }).tab === 'up');
+  ok('...but a pick of LIVE with nothing live opens UPCOMING, quietly (nothing fell: nothing was shown)',
+     T({ live: 0, chosen: 'live' }).tab === 'up' && T({ live: 0, chosen: 'live' }).fell === false);
+  ok('a game tipping off while the reader is on UPCOMING or RESULTS does not move them',
+     T({ live: 1, current: 'up' }).tab === 'up' && T({ live: 5, current: 'res', chosen: 'res' }).tab === 'res');
+  ok('LIVE emptying while it is shown falls back to UPCOMING, and says so',
+     T({ live: 0, current: 'live' }).tab === 'up' && T({ live: 0, current: 'live' }).fell === true && T({ live: 1, current: 'live' }).tab === 'live');
+  ok('a stored value that is not a tab is ignored', T({ live: 0, chosen: 'bogus' }).tab === 'up' && T({ live: 1, chosen: 'bogus' }).tab === 'live');
+
+  /* ---- the batches ---- */
+  const M = (a, b) => G.moreStep(a, b, 8, 40);
+  ok('moreStep: eight a press while there is more', M(8, 30).next === 16 && M(8, 30).more && M(16, 30).next === 24);
+  ok('moreStep: no SHOW MORE when the first eight are all there is', !M(8, 8).more && !M(5, 5).more);
+  ok('moreStep: never past the cap; at the cap the button is the link to the fixtures page',
+     M(32, 99).next === 40 && M(40, 99).more === false && M(40, 99).atCap && M(36, 99).next === 40);
+  ok('moreStep: data running out before the cap ends it too', M(24, 24).more === false && !M(24, 24).atCap);
+
+  /* ---- daily.js in a small stand-in DOM: the default tab, the fallback, the badge, SHOW MORE / LESS, the lazy page, motion ---- */
+  function matches(el, sel) {
+    return sel.split(',').some(one => {
+      const m = one.trim().match(/^([a-z]+)?((?:[.#][\w-]+|\[[^\]]+\])*)$/i);
+      if (!m) return false;
+      if (m[1] && el.tag !== m[1].toLowerCase()) return false;
+      return (m[2].match(/[.#][\w-]+|\[[^\]]+\]/g) || []).every(p => {
+        if (p[0] === '.') return (' ' + el.className + ' ').includes(' ' + p.slice(1) + ' ');
+        if (p[0] === '#') return el.id === p.slice(1);
+        const a = p.slice(1, -1).match(/^([\w-]+)(?:="([^"]*)")?$/);
+        const v = el.getAttribute(a[1]);
+        return a[2] == null ? v != null : v === a[2];
+      });
+    });
+  }
+  class El {
+    constructor(tag) { this.tag = tag; this.children = []; this.attrs = {}; this.className = ''; this.id = ''; this._text = '';
+      this.listeners = {}; this.hidden = false; this.anims = []; this.style = {}; this.parent = null; this.dataset = {}; this.tabIndex = 0; }
+    get classList() { const e = this; return {
+      add: c => { if (!(' ' + e.className + ' ').includes(' ' + c + ' ')) e.className = (e.className + ' ' + c).trim(); },
+      remove: c => { e.className = e.className.split(' ').filter(x => x && x !== c).join(' '); },
+      contains: c => (' ' + e.className + ' ').includes(' ' + c + ' ') }; }
+    set textContent(v) { this.children.forEach(c => { c.parent = null; }); this.children = []; this._text = String(v); }
+    get textContent() { return this._text + this.children.map(c => c.textContent).join(''); }
+    appendChild(c) { c.parent = this; this.children.push(c); return c; }
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'id') this.id = String(v); if (k.startsWith('data-')) this.dataset[k.slice(5)] = String(v); }
+    getAttribute(k) { if (k === 'id') return this.id || null; if (k === 'class') return this.className; if (k === 'hidden') return this.hidden ? '' : null;
+      return k in this.attrs ? this.attrs[k] : null; }
+    removeAttribute(k) { delete this.attrs[k]; }
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); }
+    click() { const ev = { target: this, preventDefault() {} }; for (let x = this; x; x = x.parent) (x.listeners.click || []).forEach(f => f(ev)); }
+    all() { return this.children.flatMap(c => [c].concat(c.all())); }
+    querySelectorAll(sel) { return this.all().filter(e => matches(e, sel)); }
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+    contains(e) { for (let x = e; x; x = x.parent) if (x === this) return true; return false; }
+    closest(sel) { for (let x = this; x; x = x.parent) if (matches(x, sel)) return x; return null; }
+    focus() { doc.activeElement = this; }
+    get offsetHeight() { return 100 * this.all().filter(e => matches(e, '.fxc')).length + 40; }
+    getBoundingClientRect() { return { top: 10 }; }
+    scrollIntoView() {}
+    animate(frames, opts) { const a = { frames, opts, finish() {} }; this.anims.push(a); anims.push(a); return a; }
+  }
+  let doc, anims;
+  function page(o) {
+    anims = [];
+    const timers = [];
+    const seg = new El('div'); seg.id = 'fxSeg';
+    const tab = (fx, id) => { const b = new El('button'); b.setAttribute('data-fx', fx); b.id = id; seg.appendChild(b); return b; };
+    const lb = tab('live', 'fxTabLive'); lb.hidden = true; const n = new El('b'); n.className = 'fx-n'; lb.appendChild(n);
+    tab('up', 'fxTabUp'); tab('res', 'fxTabRes');
+    const sayEl = new El('span'); sayEl.id = 'fxSay';
+    const section = new El('section');
+    const host = new El('div'); section.appendChild(host);
+    doc = { visibilityState: 'visible', activeElement: null, createElement: t => new El(t),
+      getElementById: id => (id === 'fxSeg' ? seg : id === 'fxSay' ? sayEl : null), addEventListener() {} };
+    const calls = { up: [], res: [] };
+    const store = Object.assign({}, o.session || {});
+    const box = {
+      EpinoiaHome: { register: (k, f) => { box.reg = f; }, fadeIn: e => e },
+      EpinoiaGlobalGames: Object.assign({}, G, {
+        STALE_MS: G.STALE_MS,
+        live: async () => o.live(),
+        upcoming: async (from, lim) => { calls.up.push(from); const all = o.ups.filter(g => g.tipoff_at >= from); return all.slice(0, lim); },
+        recent: async (before, off, lim) => { calls.res.push(off); return o.res.slice(off, off + lim); },
+        nextAll: async () => new Map(), liveState: async () => ({}),
+        card: g => { const a = new El('a'); a.className = 'fxc ' + (g.status === 'live' ? 'is-live' : 'is-upcoming'); a.setAttribute('href', '/g/' + g.id); a.gid = g.id; return a; }
+      }),
+      sessionStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
+      matchMedia: q => ({ matches: /reduce/.test(q) && !!o.reduce }),
+      document: doc,
+      setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout: () => {},
+      Date: { now: () => NOW, parse: Date.parse }, Math, Promise, Error, Map, Set, Array, Object, String, Number, JSON
+    };
+    box.Date = new Proxy(Date, { get: (t, k) => (k === 'now' ? () => NOW : t[k]) });
+    box.window = box;
+    vm.createContext(box);
+    vm.runInContext(rd('epinoia', 'home', 'daily.js'), box);
+    return { box, host, seg, lb, sayEl, calls, store, timers, start: () => box.reg({ host, base: '../' }),
+      tick: async () => { const t = timers.filter(x => x.ms >= 15000).pop(); timers.length = 0; await t.f(); },
+      sel: () => seg.querySelector('button[aria-selected="true"]').dataset.fx,
+      cards: () => host.querySelectorAll('.fxc').map(c => c.gid) };
+  }
+  const flush = () => new Promise(r => setTimeout(r, 0));
+  const someUps = [];
+  for (let i = 0; i < 60; i++) someUps.push(game('p' + String(i).padStart(2, '0'), [L.bcb, L.slbm, L.slbw][i % 3], (i + 1) * 30 * 60e3));
+  const someRes = [];
+  for (let i = 0; i < 60; i++) someRes.push(fin('q' + String(i).padStart(2, '0'), [L.bcb, L.slbm, L.slbw][i % 3], -(i + 1) * H));
+
+  let liveNow = [live('a1', L.bcb, -20 * 60e3), live('a2', L.slbm, -40 * 60e3)];
+  let P = page({ live: () => liveNow, ups: someUps, res: someRes });
+  await P.start();
+  ok('daily.js: with games live a visit opens on LIVE, its tab shown with the count, and only the live games on it',
+     P.sel() === 'live' && !P.lb.hidden && P.lb.querySelector('.fx-n').textContent === '2' && P.cards().join() === 'a2,a1', P.cards().join());
+  ok('...the LIVE tab has no SHOW MORE with 20 or fewer live (every live game is on it)', !P.host.querySelector('[data-act="more"]'));
+  {
+    /* ABOVE 20 LIVE: the first 20, then SHOW MORE adds 20 a press from what is already read; no ALL FIXTURES at the end */
+    const many = [];
+    for (let i = 0; i < 30; i++) many.push(live('m' + String(i).padStart(2, '0'), [L.bcb, L.slbm, L.slbw][i % 3], -(i + 1) * 60e3));
+    const Q = page({ live: () => many, ups: someUps, res: someRes });
+    await Q.start();
+    ok('daily.js: above 20 live, LIVE shows the first 20 and a SHOW MORE', Q.sel() === 'live' && Q.cards().length === 20 && !!Q.host.querySelector('[data-act="more"]'), Q.cards().length);
+    const liveReads = Q.calls.live ? Q.calls.live.length : null;
+    Q.host.querySelector('[data-act="more"]').click(); await flush(); await flush();
+    ok('...SHOW MORE brings in the rest (30), with SHOW LESS and no ALL FIXTURES link',
+       Q.cards().length === 30 && !!Q.host.querySelector('[data-act="less"]') && !Q.host.querySelector('[data-act="more"]') && !Q.host.querySelector('.fx-all'), Q.cards().length);
+    ok('...and it read nothing new to do it', liveReads === null || (Q.calls.live && Q.calls.live.length === liveReads));
+    Q.host.querySelector('[data-act="less"]').click();
+    ok('...SHOW LESS goes back to 20', Q.cards().length === 20, Q.cards().length);
+  }
+  liveNow = [];
+  await P.tick();
+  ok('daily.js: LIVE emptying while shown falls back to UPCOMING with a line saying why, and the LIVE tab goes',
+     P.sel() === 'up' && P.lb.hidden && !!P.host.querySelector('.fx-note') && P.cards().length === 8 && P.cards().every(id => id[0] === 'p'));
+  liveNow = [live('a3', L.slbw, -5 * 60e3)];
+  await P.tick();
+  ok('daily.js: a game going live while the reader is on UPCOMING lights the LIVE tab and its count, and leaves them on UPCOMING',
+     P.sel() === 'up' && !P.lb.hidden && P.lb.querySelector('.fx-n').textContent === '1' && P.cards().every(id => id[0] === 'p')
+     && /1 live/.test(P.sayEl.textContent) && !P.host.querySelector('.fx-note'));
+
+  liveNow = [];
+  P = page({ live: () => liveNow, ups: someUps, res: someRes });
+  await P.start();
+  ok('daily.js: nothing live opens on UPCOMING, the LIVE tab hidden, eight cards and a SHOW MORE that controls the list',
+     P.sel() === 'up' && P.lb.hidden && P.cards().length === 8 && P.host.querySelector('[data-act="more"]').getAttribute('aria-controls') === 'fxList'
+     && P.host.querySelector('[data-act="more"]').getAttribute('aria-expanded') === 'false');
+  const first8 = P.cards().join();
+  P.host.querySelector('[data-act="more"]').click(); await flush(); await flush();
+  ok('SHOW MORE: eight more, the first eight unmoved, the list open (a grid on a phone), SHOW LESS beside it, focus on the first new card',
+     P.cards().length === 16 && P.cards().slice(0, 8).join() === first8 && /is-open/.test(P.host.querySelector('#fxList').className)
+     && !!P.host.querySelector('[data-act="less"]') && doc.activeElement && doc.activeElement.gid === P.cards()[8]);
+  const wiped = anims.filter(a => a.frames[0].clipPath);
+  ok('...the new cards wipe in one after another (fade, rise, a top-down wipe, 50 ms apart) and the height follows',
+     wiped.length === 8 && wiped[1].opts.delay - wiped[0].opts.delay === 50 && anims.some(a => a.frames[0].height));
+  ok('...one read of the first page so far: the forty held cover sixteen', P.calls.up.length === 1);
+  for (let i = 0; i < 3; i++) { P.host.querySelector('[data-act="more"]').click(); await flush(); await flush(); }
+  ok('SHOW MORE to the cap: forty cards, then no SHOW MORE but the link to the fixtures page, and SHOW LESS',
+     P.cards().length === 40 && !P.host.querySelector('[data-act="more"]') && !!P.host.querySelector('a.fx-all') && !!P.host.querySelector('[data-act="less"]'));
+  ok('...the next page was read only when forty-one were needed, from the last tip-off held (a keyset)',
+     P.calls.up.length === 2 && P.calls.up[1] === someUps[39].tipoff_at, P.calls.up.join(' | '));
+  P.host.querySelector('[data-act="less"]').click();
+  ok('SHOW LESS folds back to the eight, focus on SHOW MORE', P.cards().join() === first8 && doc.activeElement === P.host.querySelector('[data-act="more"]'));
+
+  const stale = P.host.querySelector('[data-act="more"]');
+  P.seg.querySelector('button[data-fx="res"]').click();
+  stale.click(); await flush(); await flush();
+  ok('a press on the old tab\'s SHOW MORE while the new tab loads does nothing (the new tab opens on its eight)',
+     P.sel() === 'res' && P.cards().length === 8 && stale.disabled === true, P.cards().length);
+  ok('RESULTS: finals newest first, chosen for the visit, and SHOW MORE there too',
+     P.sel() === 'res' && P.store.epinoia_home_fixtures === 'res' && P.cards()[0] === 'q00' && !!P.host.querySelector('[data-act="more"]'));
+  for (let i = 0; i < 4; i++) { P.host.querySelector('[data-act="more"]').click(); await flush(); await flush(); }
+  ok('...forty results, the second forty read (same query, the next offset) only for the last press', P.cards().length === 40 && P.calls.res.join() === '0,40', P.calls.res.join());
+
+  liveNow = [live('a1', L.bcb, -20 * 60e3)];
+  P = page({ live: () => liveNow, ups: someUps, res: someRes, session: { epinoia_home_fixtures: 'res' }, reduce: true });
+  await P.start();
+  ok('the reader\'s pick of the visit wins over LIVE on arrival', P.sel() === 'res' && !P.lb.hidden);
+  P.host.querySelector('[data-act="more"]').click(); await flush(); await flush();
+  ok('reduced motion: SHOW MORE reveals at once, nothing animated', P.cards().length === 16 && anims.length === 0);
+  const css = rd('epinoia', 'kit', 'home.css');
+  ok('reduced motion in the stylesheet: the live dot does not pulse, the LIVE tab does not slide',
+     /@media \(prefers-reduced-motion:reduce\)\{\s*\.hm \.sec-h \.hm-seg \.fx-dot\{animation:none\}\s*\.hm \.sec-h \.hm-seg button\.is-new\{animation:none\}/.test(css));
+  const home = rd('epinoia', 'home', 'index.html');
+  ok('HOME\'s switch is a tablist: LIVE (hidden until something is live), UPCOMING, RESULTS, each a tab controlling the panel, and a polite announcer',
+     /<div class="hm-seg" id="fxSeg" role="tablist"/.test(home) && /data-fx="live"[^>]*hidden>/.test(home)
+     && (home.match(/role="tab" /g) || []).length === 3 && /id="homeDaily" role="tabpanel"/.test(home) && /id="fxSay" aria-live="polite"/.test(home));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

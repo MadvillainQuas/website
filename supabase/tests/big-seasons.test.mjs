@@ -244,6 +244,19 @@ console.log('\ntools/build-seasons.mjs');
   const tomorrow = await B.run({ url: 'https://abcref.supabase.co', serviceKey: 'service-secret', log: () => {}, now: () => Date.parse('2026-10-31T13:00:00Z') });
   ok('...and built again once it is a day old, token or no token (as the function does)', tomorrow.built.length === 1);
   ok('no keys: nothing done, and said so', (await B.run({ url: '', serviceKey: '', log: () => {} })).skipped === 'no keys');
+  /* NCAA (docs/ncaa-readiness.md): a floor between two builds, so a season whose token moves every hour is not read whole every hour */
+  W.counts = { 'comp-a': 901 }; fresh(); W.uploads.length = 0;
+  const floored = await B.run({ url: 'https://abcref.supabase.co', serviceKey: 'service-secret', log: () => {},
+                               now: () => Date.parse('2026-10-31T14:00:00Z'), minGapMs: 6 * 3600000 });
+  ok('with a six-hour floor, a token that moved an hour after the last build leaves the file standing, nothing read',
+     floored.current === 1 && !floored.built.length && !W.uploads.length && !calls.some(c => /player_game_stats/.test(c.url)), floored);
+  const later = await B.run({ url: 'https://abcref.supabase.co', serviceKey: 'service-secret', log: () => {},
+                             now: () => Date.parse('2026-10-31T20:00:00Z'), minGapMs: 6 * 3600000 });
+  ok('...and builds it once the floor has passed', later.built.length === 1);
+  W.counts = { 'comp-a': 902 }; fresh();
+  const nofloor = await B.run({ url: 'https://abcref.supabase.co', serviceKey: 'service-secret', log: () => {},
+                               now: () => Date.parse('2026-10-31T21:00:00Z') });
+  ok('without one (the rule as it was) a moved token is built at once', nofloor.built.length === 1);
 }
 
 console.log('\nthe snapshots function and the workflow');

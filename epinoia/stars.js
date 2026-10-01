@@ -375,6 +375,7 @@ function render(host, rows, opts) {
    moves the anchor and misses the cache, and a second visit inside ten minutes
    asks only for the anchor. The rows are stored plain (no Maps), which is why
    render and card read the team through teamFor. */
+const STARS_COMP_CAP = 250;          // finished games of one competition in the month window (see global())
 const CACHE_KEY = 'epinoia_stars_global:';
 const CACHE_MS = 10 * 60 * 1000;
 const LEAGUE_SEL = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,gender';
@@ -525,7 +526,15 @@ async function global(opts) {
     '&tipoff_at=gte.' + encodeURIComponent(from) + '&tipoff_at=lte.' + encodeURIComponent(anchor) +
     '&order=tipoff_at.desc,id.asc');
   const leagueOf = g => (g && g.competitions && g.competitions.seasons && g.competitions.seasons.leagues) || null;
-  const games = allGames.filter(g => leagueFits(leagueOf(g), filter));
+  /* A COMPETITION THE SIZE OF AN NCAA DIVISION IS NOT SUMMED HERE. Every box score of the month is read
+     and summed in the reader's browser (and by the snapshots function, about 0.6 s of its 2 s for every
+     league in September 2026). NCAA D2 and D3, men and women, finish ~4,300 games a month: at 7 KB of
+     trimmed box score a game (measured), ~30 MB of JSON and over two hundred requests a visit. A competition past STARS_COMP_CAP finished games in the window is left off
+     the podiums; its own pages read it from the season file built on a server (docs/large-leagues.md).
+     The busiest competition on the platform in 2026 played under 100 in a month, so nothing else moves. */
+  const perComp = {};
+  allGames.forEach(g => { perComp[g.competition_id] = (perComp[g.competition_id] || 0) + 1; });
+  const games = allGames.filter(g => leagueFits(leagueOf(g), filter) && perComp[g.competition_id] <= STARS_COMP_CAP);
 
   const out = { week: null, month: null, anchor };
   if (!games.length) { cachePut(key, out); return out; }

@@ -59,7 +59,7 @@ from typing import Callable, Optional
 # …/scripts/ingest, so `translate` resolves however this module was reached — the adapter imports
 # it after its own path setup, but bootstrap_league and build_dataset import the adapter directly.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from translate.fiba_events import PLEN, clock_ms, period_of, team_idx  # noqa: E402
+from translate.fiba_events import PLEN, QUARTERS, clock_ms, fmt_of, period_of, team_idx  # noqa: E402
 
 #: stints.csv's columns, in order, from bcb_scraper.StintCSVStreamer.FIELDNAMES. Anything the feed
 #: does not say stays 0 rather than absent, because index_9's engines sum columns blind.
@@ -136,24 +136,26 @@ def _possessions(fga, fgm, fta, oreb, opp_dreb, tov) -> float:
     return max(fga + 0.44 * fta - 1.07 * rate * max(fga - fgm, 0) + tov, 0.0)
 
 
-def _elapsed(ev: dict) -> float:
+def _elapsed(ev: dict, fmt: tuple = QUARTERS) -> float:
     """Seconds of basketball played when this event happened, counting from tip.
 
     gt is time REMAINING in the period (FIBA's convention) so this is the sum of the periods
     already finished plus what has run off this one; PLEN knows a quarter is 10 minutes and an
-    overtime 5. Periods, not quarters, because period_of has already folded OVERTIME into 5+."""
-    p = period_of(ev)
-    before = sum(PLEN(i) for i in range(1, p))
-    return (before + PLEN(p) - clock_ms(ev.get("gt"))) / 1000.0
+    overtime 5. Periods, not quarters, because period_of has already folded OVERTIME into 5+.
+    A game in halves (fmt, translate's HALVES) has two 20-minute periods and OT from 3."""
+    p = period_of(ev, fmt)
+    before = sum(PLEN(i, fmt) for i in range(1, p))
+    return (before + PLEN(p, fmt) - clock_ms(ev.get("gt"))) / 1000.0
 
 
-def _period_from_elapsed(t: float) -> int:
+def _period_from_elapsed(t: float, fmt: tuple = QUARTERS) -> int:
     """The period a timestamp falls in. Derived from the clock, never from the event's own
     `period`: a substitution flushed at a period boundary is stamped by whichever event triggered
     the flush, which is how a Q1 stint used to come out labelled Q2."""
-    if t < 2400:
-        return int(t // 600) + 1
-    return 5 + int((t - 2400) // 300)
+    n, per, ot = fmt[0], fmt[1] / 1000.0, fmt[2] / 1000.0
+    if t < n * per:
+        return int(t // per) + 1
+    return n + 1 + int((t - n * per) // ot)
 
 
 def ordered(raw: dict) -> list:
@@ -167,7 +169,8 @@ def ordered(raw: dict) -> list:
     pbp = [e for e in (raw.get("pbp") or []) if isinstance(e, dict)]
     if pbp and all(e.get("actionNumber") is not None for e in pbp):
         return sorted(pbp, key=lambda e: int(e["actionNumber"]))
-    if len(pbp) > 1 and _elapsed(pbp[0]) > _elapsed(pbp[-1]):
+    fmt = fmt_of(raw)
+    if len(pbp) > 1 and _elapsed(pbp[0], fmt) > _elapsed(pbp[-1], fmt):
         return list(reversed(pbp))
     return pbp
 
@@ -220,13 +223,13 @@ class _Stint:
 
     __slots__ = ("row", "start")
 
-    def __init__(self, game_id, game_date, teams, on_court, start):
+    def __init__(self, game_id, game_date, teams, on_court, start, fmt=QUARTERS):
         self.start = start
         self.row = {k: 0 for k in FIELDNAMES}
         self.row.update(game_id=game_id, game_date=game_date,
                         home_team=teams[0], away_team=teams[1],
                         home_lineup=sorted(on_court[0]), away_lineup=sorted(on_court[1]),
-                        start_time=start, period=_period_from_elapsed(start))
+                        start_time=start, period=_period_from_elapsed(start, fmt))
 
     def add(self, side: int, stat: str, value=1) -> None:
         key = ("home_" if side == 0 else "away_") + stat
@@ -243,6 +246,7 @@ class Builder:
     def __init__(self, raw: dict, game_id: str = "", game_date: str = "",
                  teams: tuple = ("home", "away"), name_of: Optional[Callable[[int, str], str]] = None):
         self.raw, self.game_id, self.game_date, self.teams = raw, str(game_id), game_date, teams
+        self.fmt = fmt_of(raw)               # quarters, or NCAA's halves
         self.name_of = name_of or (lambda side, pno: str(pno))
         self.events = ordered(raw)
         self.shots = {}                      # actionNumber -> shot marker, for the rim split
@@ -301,13 +305,13 @@ class Builder:
                 self.warnings.append(
                     f"{self.game_id}: {self.teams[side]} had {len(self.on_court[side])} on court "
                     f"at {at:.0f}s (expected 5)")
-        self.current = _Stint(self.game_id, self.game_date, self.teams, self.on_court, at)
+        self.current = _Stint(self.game_id, self.game_date, self.teams, self.on_court, at, self.fmt)
 
     def _end(self, at: float) -> None:
         r, st = self.current.row, self.current
         r["end_time"] = at
         r["duration"] = at - st.start
-        r["period"] = _period_from_elapsed(st.start)
+        r["period"] = _period_from_elapsed(st.start, self.fmt)
         if self.carry:                        # a micro-stint from before this one had a home
             for k in _ADDITIVE:
                 r[k] += self.carry.get(k, 0)
@@ -356,7 +360,7 @@ class Builder:
     # ------------------------------------------------------------------------- replay ---
     def run(self) -> "Builder":
         for ev in self.events:
-            at = _elapsed(ev)
+            at = _elapsed(ev, self.fmt)
             # Never let the clock walk backwards. A feed that back-dates a correction would
             # otherwise hand a stint a negative duration, and the seconds would stop summing to
             # the game — the one number that says this replay is complete.

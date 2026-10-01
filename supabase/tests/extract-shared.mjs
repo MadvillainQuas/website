@@ -52,7 +52,7 @@ const FILES = [
     src: join(repo, 'epinoia', 'engine.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'engine.js'),
     global: 'EpinoiaEngine',
-    names: ['PLEN', 'WIN_MS', 'FOULNAMES', 'perName', 'fmtClock', 'fmtMin', 'cumEl',
+    names: ['PLEN', 'WIN_MS', 'FOULNAMES', 'QUARTERS', 'HALVES', 'formatOf', 'perName', 'fmtClock', 'fmtMin', 'cumEl',
             'mkP', 'mkT', 'mkOC', 'mkBox', 'makeNamer', 'activeTags', 'pbpLine',
             'deriveGame', 'teamTotals', 'teamAdv', 'playerAdv', 'lineupAgg',
             'timeoutsLeft', 'teamFoulsNow', 'fullGame', 'VERSION']

@@ -1637,7 +1637,12 @@
       'streaky': 'irregular',
       'reading his games': 'leyendo sus partidos',
       'squad average': 'Media del equipo',
-      'personalisation': 'Personalización'
+      'personalisation': 'Personalización',
+      'Live, upcoming or results': 'En directo, próximos o resultados',
+      'Show less': 'Mostrar menos',
+      'Nothing is live just now, so here is what is next.': 'Ahora no hay partidos en directo; estos son los próximos.',
+      'Nothing is live just now.': 'Ahora no hay partidos en directo.',
+      'No games live': 'No hay partidos en directo'
     },
 
     ctx: {
@@ -2264,7 +2269,8 @@
       'result': '{n} resultado', 'results': '{n} resultados', 'upcoming': '{n} próximos',
       'lineup': '{n} quinteto', 'season': '{n} temporada', 'seasons': '{n} temporadas', 'readings': '{n} lecturas',
       'mpg': '{n} min/p', 'gp': '{n} PJ',
-      'country': '{n} país', 'countries': '{n} países', 'article': '{n} noticia'
+      'country': '{n} país', 'countries': '{n} países', 'article': '{n} noticia',
+      'live': '{n} en directo'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */

@@ -29,7 +29,7 @@ const CSS  = path.join(ROOT, 'epinoia', 'boxscore.css');
    a string or a number — nothing touches the DOM or the scorer's UI state. */
 const WANTED = [
   // primitives the renderers lean on
-  'PLEN', 'PMAP', 'ADV_GROUPS', 'advSort',   // advSort's line also declares advHidden
+  'gameFmt', 'PLEN', 'PMAP', 'ADV_GROUPS', 'advSort',   // advSort's line also declares advHidden
   'esc', 'COLOUR_OK', 'safeColour',
   'perName', 'fmtClock', 'fmtMin', 'tname', 'pname',
   'mkP', 'mkOC', 'mkBox', 'mkT', 'cumEl', 'activeTags',

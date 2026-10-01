@@ -62,12 +62,16 @@
 const Poss = () => root.EpinoiaPossessions ||
   (typeof require === 'function' ? require('./possessions.js') : null);
 
-const PLEN = p => (p <= 4 ? 600000 : 300000);
+/* QUARTERS OR HALVES (engine.js formatOf, docs/ncaa-readiness.md): a first- or second-period clock
+   above 10:00 can only be one of NCAA men's two 20-minute halves; then 5-minute overtimes either way. */
+const halvesIn = evs => !!evs && evs.some(e => e && (+e.period || 1) <= 2 && +e.clock > 600000);
+const PLEN = (p, h) => (h ? (p <= 2 ? 1200000 : 300000) : (p <= 4 ? 600000 : 300000));
 /* engine.js's cumEl, unguarded like it: a play with no clock compares as NaN there too */
-function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); return s + (PLEN(p) - clk); }
+function cumEl(p, clk, h) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q, h); return s + (PLEN(p, h) - clk); }
 /* engine.js's inGameOrder: by game time, ties in log order */
 function inGameOrder(evs) {
-  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1)) }));
+  const h = halvesIn(evs);
+  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, h), h) }));
   keyed.sort((a, b) => (a.k - b.k) || (a.i - b.i));
   return keyed.map(x => x.ev);
 }
@@ -191,10 +195,11 @@ function stamps(plays, tags) {
   const breakAt = [null, null];
   const stamp = new Map();
   const tg0 = tags || {};
+  const H = halvesIn(plays);          // the windows are measured in game time: quarters or halves
   plays.forEach(ev => {
     if (isAct(ev)) {
       const tg = tg0[ev.id];
-      const quick = breakAt[ev.team] != null && (cumEl(ev.period, ev.clock) - breakAt[ev.team]) <= TRANSITION_MS;
+      const quick = breakAt[ev.team] != null && (cumEl(ev.period, ev.clock, H) - breakAt[ev.team]) <= TRANSITION_MS;
       stamp.set(ev, { second: flag.sc[ev.team], offTo: flag.pot[ev.team], transition: !!((tg && tg.has('transition')) || quick) });
     }
     switch (ev.t) {
@@ -202,9 +207,9 @@ function stamps(plays, tags) {
         flag.sc[ev.team] = false; flag.pot[ev.team] = false; break;
       case 'reb':
         if (ev.off) flag.sc[ev.team] = true;
-        else { flag.sc = [false, false]; flag.pot = [false, false]; breakAt[ev.team] = cumEl(ev.period, ev.clock); }
+        else { flag.sc = [false, false]; flag.pot = [false, false]; breakAt[ev.team] = cumEl(ev.period, ev.clock, H); }
         break;
-      case 'stl': breakAt[ev.team] = cumEl(ev.period, ev.clock); break;
+      case 'stl': breakAt[ev.team] = cumEl(ev.period, ev.clock, H); break;
       case 'to':
         flag.sc[ev.team] = false; flag.pot[ev.team] = false;
         flag.sc[1 - ev.team] = false; flag.pot[1 - ev.team] = true; break;

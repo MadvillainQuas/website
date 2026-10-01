@@ -146,7 +146,9 @@ Deno.serve(async (req) => {
   // was still being played.
   const clock = String(payload.clock ?? '').trim();
   const period = Number(payload.period ?? 0);
-  const isFinal = period >= 4 && (clock === '00:00' || clock === '0:00' || clock === '');
+  // a payload in halves (NCAA men) says so in its own `format` (scripts/ingest/translate QUARTERS / HALVES)
+  const regulation = Number(payload.format?.periods) > 0 ? Number(payload.format.periods) : 4;
+  const isFinal = period >= regulation && (clock === '00:00' || clock === '0:00' || clock === '');
 
   const id = newId();
   const { error } = await admin.from('game_shares').insert({

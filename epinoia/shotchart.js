@@ -442,7 +442,11 @@
   const hexOk = c => /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(c || ''));
   const two = n => (n < 10 ? '0' : '') + n;
   const clockTxt = ms => { if (ms == null || !isFinite(ms) || ms < 0 || ms > 3600000) return ''; const t = Math.ceil(ms / 1000); return Math.floor(t / 60) + ':' + two(t % 60); };
-  const perTxt = p => (!p ? '' : p <= 4 ? 'Q' + p : 'OT' + (p > 5 ? p - 4 : ''));
+  /* quarters, or a game in halves (NCAA men): the shots' own clocks say, as engine.js formatOf does --
+     a first- or second-period clock above 10:00 can only be a half */
+  const halvesIn = shots => (shots || []).some(s => s && (+s.period || 1) <= 2 && +s.clock > 600000);
+  let PREG = 4;                                        // set by innerHTML for the chart being drawn
+  const perTxt = p => (!p ? '' : p <= PREG ? (PREG === 2 ? 'H' : 'Q') + p : 'OT' + (p > PREG + 1 ? p - PREG : ''));
   /* the band a zone's percentage falls in against its break-even: -3 .. 3, 0 within two points */
   function band(pct, kind) {
     const d = pct - ANCHOR[kind];
@@ -482,12 +486,12 @@
 
   /* the shots the current choices leave: forMarks also applies makes / misses */
   function pick(r, forMarks, side) {
-    const o = r.o, st = r.st;
+    const o = r.o, st = r.st, reg = halvesIn(o.shots) ? 2 : 4;
     const last = st.last !== 'all' && o.gameList ? new Set(o.gameList.slice(0, +st.last).map(g => g.id)) : null;
     return (o.shots || []).filter(s =>
       (side == null || +s.team === side) &&
       (st.type === 'all' || (st.type === '3') === !!s.three) &&
-      (st.per === 'all' || (st.per === 'ot' ? s.period > 4 : +s.period === +st.per)) &&
+      (st.per === 'all' || (st.per === 'ot' ? s.period > reg : +s.period === +st.per)) &&
       (st.pid === 'all' || String(s.pid) === st.pid) &&
       (!last || last.has(s.gameId)) &&
       (!forMarks || st.res === 'all' || (st.res === 'made') === !!s.made));
@@ -515,9 +519,9 @@
     if (st.view !== 'zones') out.push(segHTML('res', st.res, 'show', [['all', 'all'], ['made', 'makes'], ['miss', 'misses']]));
     const pers = [...new Set((o.shots || []).map(s => s.period).filter(p => p != null && p > 0))].sort((a, b) => a - b);
     if (pers.length > 1) {
-      const opts = [['all', 'all']].concat(pers.filter(p => p <= 4).map(p => [String(p), 'Q' + p]));
-      if (pers.some(p => p > 4)) opts.push(['ot', 'OT']);
-      out.push(segHTML('per', st.per, 'quarter', opts));
+      const opts = [['all', 'all']].concat(pers.filter(p => p <= PREG).map(p => [String(p), (PREG === 2 ? 'H' : 'Q') + p]));
+      if (pers.some(p => p > PREG)) opts.push(['ot', 'OT']);
+      out.push(segHTML('per', st.per, PREG === 2 ? 'half' : 'quarter', opts));
     }
     /* a player, where the chart holds more than one: grouped by side on a box score */
     const names = o.names || {};
@@ -630,6 +634,7 @@
 
   function innerHTML(r) {
     const o = r.o, st = r.st;
+    PREG = halvesIn(o.shots) ? 2 : 4;       // the labels of the chart being drawn
     r.cur = [];
     if (!(o.shots || []).length) {
       return '<div class="scw-none">No located shots yet — a shot is placed on the court in the scorer, and the ones taken without a location cannot be charted.</div>';

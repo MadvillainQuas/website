@@ -71,7 +71,7 @@ console.log('one engine');
   ok('the scorer loads engine.js before its own script (and so its offline copy holds it)', engineTag > 0 && engineTag < inline);
   const derive = lift(page, 'function derive(');
   ok('derive() is the engine\'s deriveGame on the scorer\'s state, the page\'s copy only the fallback',
-     /EpinoiaEngine/.test(derive) && /deriveGame\(\{teams:S\.teams, starters:S\.starters, events:S\.events/.test(derive) && /return deriveHere\(\)/.test(derive));
+     /EpinoiaEngine/.test(derive) && /deriveGame\(\{teams:S\.teams, starters:S\.starters, events:S\.events/.test(derive) && /format:gameFmt\(\)/.test(derive) && /return deriveHere\(\)/.test(derive));
 }
 
 console.log('\na missed shot the shooter was fouled on');

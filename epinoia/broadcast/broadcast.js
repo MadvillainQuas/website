@@ -186,18 +186,20 @@ function buildState() {
   const clockDriven = !!(sub && sub.state && sub.state.running) && !(sub.clockStale && sub.clockStale());
   let clockMs = smoothClock(sub ? sub.clockMs() : (S.clockMs || 0), clockDriven);
   const started = !!(sub && sub.state) || S.events.length > 0;
-  if (!started && !clockMs && E.PLEN) clockMs = E.PLEN(period);
+  if (!started && !clockMs && E.PLEN) clockMs = E.PLEN(period, E.formatOf(S));
 
   const teamOf = t => {
     const T = d ? d.team[t] : null;
-    const fouls = T && T.foulsP ? (T.foulsP[period > 4 ? 4 : period] || 0) : 0;
+    /* team fouls run per quarter (the fourth's into overtime), or per half for a game in halves */
+    const F = (d && d.format) || E.formatOf(S);
+    const fouls = T && T.foulsP ? (T.foulsP[period > F.periods ? F.periods : period] || 0) : 0;
     return {
       name:  (S.teams[t] || {}).name || '',
       short: shortOf(t),
       colour: colourOf(t),
       score: d ? d.score[t] : (t === 0 ? game.home_score : game.away_score) || 0,
       periodFouls: fouls,
-      bonus: fouls >= 5,
+      bonus: fouls >= (F.periods === 2 ? 7 : 5),     // FIBA's fifth foul; NCAA men's seventh (one-and-one)
       timeoutsLeft: (d && E.timeoutsLeft) ? E.timeoutsLeft(S, d, t) : null,
       logo: logoOf(t),
       /* EVERY player, not only the five on the floor. A "top scorers" graphic
@@ -244,7 +246,7 @@ function buildState() {
          Kept short — the bug's clock slot is sized for 10:00, and "FINAL"
          across it would crowd the possession arrows either side. FIN is what
          the shorthand on a paper scoresheet says. */
-      periodLabel: game.status === 'final' ? 'FINAL' : periodLabel(period),
+      periodLabel: game.status === 'final' ? 'FINAL' : periodLabel(period, E.formatOf(S)),
       ms: clockMs,
       display: game.status === 'final' ? 'FIN' : mmss(clockMs),
       final: game.status === 'final',
@@ -477,7 +479,7 @@ const compName = () => {
   const s = c.seasons || {}; const l = s.leagues || {};
   return [l.name, c.name].filter(Boolean).join(' · ') || null;
 };
-const periodLabel = p => (p <= 4 ? 'Q' + p : 'OT' + (p - 4));
+const periodLabel = (p, f) => (E.perName ? E.perName(p, f).toUpperCase() : (p <= 4 ? 'Q' + p : 'OT' + (p - 4)));
 
 /* BROADCAST CONVENTION, WHICH IS NOT THE APP'S. Under a minute a scoreboard
    shows tenths, because the last thirty seconds is the only time anybody reads

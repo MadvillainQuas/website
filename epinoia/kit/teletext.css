@@ -272,10 +272,10 @@ body.league-themed .ep-frame > .hero h1{
    the label (isolation + z-index:-1), so it never washes over the letters, and
    it sits over whatever colour the page gives the button — a club's, a league's.
    ============================================================================ */
-.ep-tab.on, .ep-btn.pri, .ep-follow.on:not(.corner), .hm-seg button[aria-pressed="true"], .ep-units button.on{ position:relative }
-.ep-tab.on, .ep-btn.pri, .ep-follow.on, .hm-seg button[aria-pressed="true"], .ep-units button.on{ isolation:isolate;
+.ep-tab.on, .ep-btn.pri, .ep-follow.on:not(.corner), .hm-seg button[aria-selected="true"], .ep-units button.on{ position:relative }
+.ep-tab.on, .ep-btn.pri, .ep-follow.on, .hm-seg button[aria-selected="true"], .ep-units button.on{ isolation:isolate;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 5px rgba(0,0,0,.16),0 1px 2px rgba(0,0,0,.14) }
-.ep-tab.on::after, .ep-btn.pri::after, .ep-follow.on::after, .hm-seg button[aria-pressed="true"]::after, .ep-units button.on::after{
+.ep-tab.on::after, .ep-btn.pri::after, .ep-follow.on::after, .hm-seg button[aria-selected="true"]::after, .ep-units button.on::after{
   content:""; position:absolute; left:1px; right:1px; top:1px; height:52%; z-index:-1; pointer-events:none;
   border-radius:inherit; background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.08)) }
 .ep-follow.lbl{ transition:box-shadow .15s ease,border-color .15s ease }

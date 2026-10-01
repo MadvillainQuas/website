@@ -87,8 +87,16 @@ class Platform:
         return self.sb.upsert(table, row, on_conflict)[0]
 
     # -- league / season / competition ------------------------------------------
+    #: leagues.rules as the database's default writes it (0189): a source row's league_rules is laid over it
+    DEFAULT_RULES = {"period_ms": 600000, "ot_ms": 300000, "periods": 4, "bonus_at": 5, "timeouts_h1": 2,
+                     "timeouts_h2": 3, "timeouts_ot": 1, "win_points": 2, "loss_points": 0,
+                     "tiebreak": ["points", "h2h", "h2h_diff", "diff", "scored"]}
+
     def league(self, code: str, name: str, slug: str | None = None, country: str | None = None,
-               gender: str | None = None) -> dict:
+               gender: str | None = None, rules: dict | None = None) -> dict:
+        """`rules` (a source row's league_rules) is written only when the league is CREATED: NCAA men's
+        {"periods": 2, "period_ms": 1200000} (docs/ncaa-readiness.md). An existing league's rules are the
+        console's, and are never touched here."""
         slug = slug or slugify(code)
         # a source row's league_gender (0131: the scouting page's men's / women's split). Only ever
         # FILLS a blank: the platform console's set_league_gender is the owner of a league's gender.
@@ -108,6 +116,8 @@ class Platform:
             return r
         self.log(f"  + league {slug} ({name})")
         row = {"slug": slug, "name": name, "public_live": True, "youth_protected": False}
+        if isinstance(rules, dict) and rules:
+            row["rules"] = {**self.DEFAULT_RULES, **rules}
         if country:
             row["country"] = country
         if gender:

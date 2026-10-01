@@ -7,7 +7,7 @@ Target (from epinoia/engine.js deriveGame, inventoried 2026-09-06):
     seq     1-based, replay order == play order (FIBA actionNumber ascending)
     team    0 = home (tm.1), 1 = away (tm.2)
     pid     roster_snapshot.teams[team].players[].id
-    period  1-4, OT = 5+
+    period  1-4, OT = 5+  (halves: 1-2, OT = 3+; see QUARTERS / HALVES)
     clock   ms REMAINING in the period (integer)
     t       period_start | game_end | jump | timeout | sub{in,out} |
             p2_made p2_miss p3_made p3_miss ft_made ft_miss |
@@ -27,7 +27,51 @@ from __future__ import annotations
 import math
 from typing import Callable, Optional
 
-PLEN = lambda p: 600000 if p <= 4 else 300000  # noqa: E731
+# THE PERIODS A GAME IS PLAYED IN: (regulation periods, their length, an overtime's length), all ms.
+# FIBA and NCAA women: four 10-minute quarters. NCAA men: two 20-minute halves (docs/ncaa-readiness.md).
+# A payload says which with a "format" dict ({"periods": 2, "period_ms": 1200000, "ot_ms": 300000}, the
+# same keys as leagues.rules); one that says nothing is read off its own clock (fmt_of), and failing
+# that is quarters - every feed the platform read before NCAA. epinoia/engine.js formatOf is the same rule.
+QUARTERS = (4, 600000, 300000)
+HALVES = (2, 1200000, 300000)
+
+
+def PLEN(p: int, fmt: tuple = QUARTERS) -> int:  # noqa: N802 (kept: every caller knows it by this name)
+    return fmt[1] if p <= fmt[0] else fmt[2]
+
+
+def fmt_from(o) -> Optional[tuple]:
+    """A format dict (leagues.rules' keys) as the tuple, or None when it does not say."""
+    if not isinstance(o, dict):
+        return None
+    try:
+        n, ms = int(o.get("periods") or 0), int(o.get("period_ms") or 0)
+        ot = int(o.get("ot_ms") or 300000)
+    except (TypeError, ValueError):
+        return None
+    if not (1 <= n <= 8 and ms >= 60000):
+        return None
+    t = (n, ms, ot if ot > 0 else 300000)
+    return QUARTERS if t == QUARTERS else HALVES if t == HALVES else t
+
+
+def fmt_of(raw: Optional[dict]) -> tuple:
+    """The game's periods: the payload's own "format", else halves when a REGULAR first or second
+    period shows a clock above 10:00 (no quarter ever does), else quarters."""
+    if not isinstance(raw, dict):
+        return QUARTERS
+    f = fmt_from(raw.get("format"))
+    if f:
+        return f
+    for ev in raw.get("pbp") or []:
+        if not isinstance(ev, dict) or str(ev.get("periodType", "")).upper() == "OVERTIME":
+            continue
+        try:
+            if int(ev.get("period") or 1) <= 2 and clock_ms(ev.get("gt")) > 600000:
+                return HALVES
+        except (TypeError, ValueError):
+            continue
+    return QUARTERS
 
 # FIBA subType -> the engine's shot-type vocabulary (RIM_TYPE / FAR_TYPE in engine.js)
 STYPE = {
@@ -76,10 +120,12 @@ def clock_ms(gt: str) -> int:
         return 0
 
 
-def period_of(ev: dict) -> int:
+def period_of(ev: dict, fmt: tuple = QUARTERS) -> int:
+    """The period, overtimes numbered on from regulation: OT1 is 5 after quarters, 3 after halves."""
     p = int(ev.get("period") or 1)
-    if str(ev.get("periodType", "")).upper() == "OVERTIME" and p <= 4:
-        p = 4 + p
+    n = fmt[0]
+    if str(ev.get("periodType", "")).upper() == "OVERTIME" and p <= n:
+        p = n + p
     return p
 
 
@@ -150,6 +196,7 @@ def infer_starters(pbp: list, starters: list, snap: dict, known: set, pid_for, r
 
 def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> dict:
     tm = raw.get("tm") or {}
+    fmt = fmt_of(raw)
     snap, starters = roster_snapshot(raw, pid_for)
     known = {p["id"] for t in snap["teams"] for p in t["players"]}
     shots_by_action = {}
@@ -262,7 +309,7 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
         sub = str(ev.get("subType") or "").lower()
         quals = {str(q).lower() for q in (ev.get("qualifier") or [])}
         team = team_idx(ev)
-        period = period_of(ev)
+        period = period_of(ev, fmt)
         clock = clock_ms(ev.get("gt"))
         an = int(ev["actionNumber"])
         cur_an = an
@@ -272,7 +319,7 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
             flush_subs()
 
         if at == "period" and sub == "start":
-            emit("period_start", None, None, period, PLEN(period))
+            emit("period_start", None, None, period, PLEN(period, fmt))
         elif at == "game" and sub == "end":
             emit("game_end", None, None, period, clock)
         elif at == "jumpball":
@@ -406,6 +453,7 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
     return {
         "roster_snapshot": snap, "starters": starters,
         "tip_winner": tip_winner, "arrow_init": arrow_init, "period": last_period,
+        "format": {"periods": fmt[0], "period_ms": fmt[1], "ot_ms": fmt[2]},
         "home_score": home_pts, "away_score": away_pts,
         "events": events, "report": report,
     }

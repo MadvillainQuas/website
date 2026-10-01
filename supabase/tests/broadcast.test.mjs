@@ -150,7 +150,7 @@ ok('...and exclude players who have not played',
 console.log('\na fixture that has not tipped is worth laying out');
 
 ok('the clock shows the period length before tip, not zero',
-   /if \(!started && !clockMs && E\.PLEN\) clockMs = E\.PLEN\(period\);/.test(layer),
+   /if \(!started && !clockMs && E\.PLEN\) clockMs = E\.PLEN\(period(, E\.formatOf\(S\))?\);/.test(layer),
    'somebody laying a scorebug out an hour early is exactly who sees this');
 ok('the game page offers priming from the fixture', /Prime for broadcast/.test(gameJs));
 ok('...behind a caret, not a second button',
