@@ -529,10 +529,10 @@ def build(raw: dict, team_rows: dict, names: Optional[dict] = None,
     # and warn "0 on court at 0s" on every poll until the first event arrived.
     #
     # NOR WITH NO PLAY AT ALL. A result published from a box score alone carries a log of nothing but
-    # markers - fibashape.game's closing "game end", a "period start" while it is being played (nkl.lt's
-    # match pages, 2026-27). With no starters flagged and no play to read, starting_five filled each
-    # side from the minutes column, and the game got a 40-minute, scoreless stint of five players who
-    # were never on court together - a lineup that never happened, in every lineup table.
+    # markers - fibashape.game's closing "game end" (nkl.lt's own box scores, 2026-27). With no starters
+    # flagged and no play to read, starting_five filled each side from the minutes column, and the game
+    # got a 40-minute, scoreless stint of five players who were never on court together - a lineup that
+    # never happened, in every lineup table.
     if not [e for e in (raw.get("pbp") or []) if isinstance(e, dict)
             and str(e.get("actionType") or "").lower() not in ("game", "period")]:
         return [], lineups_from_stints([])

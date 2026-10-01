@@ -820,27 +820,42 @@ stints and lineups are built as for any LiveStats league.
 
 ### host
 
-**nkl.lt**, the league's own WordPress site. `fiba_site_schedule`, site `nkl`; two source rows on one code (`NKL`),
-`stage` regular and playoffs. robots.txt allows every path and asks for `Crawl-delay: 10`, which every request keeps
-(`NKL_GAP_S`).
+**nkl.lt**, the league's own WordPress site, and FIBA LiveStats (client `NKLNBL`) for the games themselves.
+`fiba_site_schedule`, site `nkl`; two source rows on one code (`NKL`), `stage` regular and playoffs. robots.txt allows
+every path and asks for `Crawl-delay: 10`, which every request to nkl.lt keeps (`NKL_GAP_S`).
 
-The 2026-27 plan was FIBA LiveStats (client `BNW`): on 23 Sep the homepage's match strip linked 15 games to their
-webcasts, each the site's match id + 2769710. By the first game night the strip linked none (only LRT's TV stream),
-125745's webcast had stopped in the 2nd quarter at 15-16 while the game finished 83-108, and the offset named a
-Chilean game for 126051. The ingest only knew the LiveStats route, so no NKL game was ever written (1 Oct 2026: every
-game "scheduled", finished ones included). Since then the games come from nkl.lt itself.
+**nkl.lt never lists a game's LiveStats id.** On 23 Sep 2026 the homepage's match strip linked 15 games to their
+webcasts (each the site's match id + 2769710); by the first game night it linked none, the ingest found no id for any
+game, and the NKL showed nothing (1 Oct 2026: every game "scheduled", the finished ones included).
 
 ### schedule_recipe
 
 `https://nkl.lt/matches/?type=schedule` carries the whole season (both stages) as one inline array,
 `const allMatches = [...]`: `id` (the match id, the games' external id), `season`, `stage_type_id` (1 = regular),
 `date_label` + `time` (Vilnius), `arena`, `home_team_id`/`away_team_id` (the clubs' codes), names, crests (served
-over http, asked for over https), `home_score`/`away_score`, `is_result`, `is_running`. Read once per pass (cached
-five minutes).
+over http, asked for over https), `home_score`/`away_score`, `is_result`. `is_running` stays 0 while a game is played.
+Read once per pass (cached five minutes).
 
 ### game_recipe
 
-Each game's own page, `https://nkl.lt/matches/<id>/`, server-rendered (`nkl_match_page`):
+A game's own page, `https://nkl.lt/matches/<id>/`, is three different things (seen 2026-10-01):
+
+- **before tip-off**: a preview ("Artėjančios Rungtynės");
+- **while the game is being played**: a 302 to its webcast, `www.fibalivestats.com/u/NKLNBL/<LiveStats id>`
+  (125748 -> 2895458, which is the match id + 2769710; a fixture re-entered later is not);
+- **once the result is in**: nkl.lt's own box score.
+
+So from five minutes before tip-off the page is asked with its redirect NOT followed (`_nkl_match`), every minute for
+half an hour and every ten minutes after that until it answers with a webcast. The id is remembered in
+`data/feed/NKL/idmap.json`, and from then on the game is its LiveStats `data.json` under nkl.lt's club ids and names:
+play-by-play, live box, stints and shots, like any LiveStats league. The live lane (`_live` in the fetch config) never
+waits out the crawl delay for a page: its next pass asks.
+
+A finished game is the LiveStats feed when that **agrees** with the site's result: the same two clubs, the same final
+score, the game over (closed, or its clock run out at the end of the 4th or an overtime). The feed tried is the one
+its page sent us to, then the match id + the offset the remembered pairs share (else 2769710); the offset is never
+trusted without that agreement (for 126051 it names a Chilean game). With no feed that agrees, the game is the page's
+box score (`nkl_match_page` -> `nkl_payload`), published as a result (`translate` False: no event log, no stints):
 
 - the score under `.nkl-score-display`, the arena below it, the referees in the info bar;
 - `table.nkl-quarters-table`: each club's points per quarter (any overtime as further columns) and its abbreviation;
@@ -850,28 +865,22 @@ Each game's own page, `https://nkl.lt/matches/<id>/`, server-rendered (`nkl_matc
 - the **Statistika** tab: the team lines - shooting, rebounds with the offensive/defensive split, assists, steals,
   blocks, turnovers, fouls, points off turnovers, fast-break, second-chance and bench points.
 
-`nkl_payload` puts it in the FIBA shape (fibashape): nkl.lt's club ids and names, each player under his nkl.lt id, the
-team lines laid over the players' sums. The game is published as a result (`translate` False): there is no
-play-by-play, so no event log, no stints and no lineups. A game in progress (`is_running`) is read at most once a
-minute, and the live lane never waits out the crawl delay for it (it asks again on the next pass). A finished game
-takes the LiveStats feed instead only when nkl.lt itself links one (the homepage strip) AND it agrees with the site:
-the same two clubs, closed, the same final score. Nothing is guessed from an offset any more.
-
 ### gotchas
 
+- **A webcast can die mid-game.** 125745's stopped in the 2nd quarter at 15-16 while the game finished 83-108: live, the
+  game sits at the dead score (the stall rule takes it off the live list); once the site has the result, the feed
+  disagrees and the page's box score is published instead.
 - **The site's text is partly mojibake** since late September: arenas, players and referees are UTF-8 read as
   Windows-1252 (`Å\xa0akiÅ³ sporto centras` for Šakių sporto centras, `GuÅ¡Äikas` for Guščikas). `demojibake` reads
   them back word by word, and leaves text that was right to begin with exactly as it was.
-- **No player's offensive/defensive rebound split and no player fouls** on the page: a player's rebounds are a total,
-  his fouls 0. The team lines have both. Starters are not marked.
+- **A box score from the page has no player rebound split and no player fouls**: a player's rebounds are a total, his
+  fouls 0, starters unmarked. The team lines have both.
 - **Fixtures are rewritten, not moved.** In the first week nkl.lt re-entered a game under a new id (126051 for 125746)
   and entered and then deleted another (126055, "Alytaus Patriotai v Jurbarkas, 16:30 at Šakiai" - the real game is
   125747, the other way round, at 19:00 in Jurbarkas). The adapter's `withdrawn()` names the stored ids the season's
   array no longer lists (dated inside that season), and `run_ingest.retire_withdrawn` removes each one that was never
   fetched and whose game is still scheduled, scoreless and without a play (delete_fixture's own rule) - and nothing at
   all when a read seems to have lost more than a handful.
-- The homepage strip's markup changed in September (an `<a class=nkl-match-item>` per game, then a `<div>` holding the
-  links): `nkl_strip` reads both.
 
 ## Italy (women): Serie A1 and Serie A2 Femminile (Lega Basket Femminile)
 

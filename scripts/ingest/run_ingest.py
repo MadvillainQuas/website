@@ -2466,7 +2466,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                     st["refreshed"] = time.time()
                     print(f"    ? {bb.home_name} v {bb.away_name}: no new play for {int(quiet_s // 60)} min - reading it again from scratch")
                     try:
-                        fresh = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at, _fresh=True))
+                        fresh = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at, _fresh=True, _live=True))
                     except Exception as exc:
                         print(f"    ! {xid}: {exc}"); fresh = None
                     return fresh or bb
@@ -2489,7 +2489,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             if not use_obs:   # the kill switch (EPINOIA_OBSERVER=0), and every source off the CDN
                 t_obs = time.time()
                 try:
-                    b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
+                    b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at, _live=True))
                 except Exception as exc:
                     print(f"    ! {xid}: {exc}"); exit_code = 1; continue
                 if not b:
@@ -3188,7 +3188,7 @@ def main() -> int:
                 for g in live_set:
                     t_obs = time.time()
                     try:
-                        b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
+                        b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at, _live=True))
                     except Exception as exc:
                         print(f"    ! {g.external_id}: {exc}"); still.append(g); continue
                     if not b:

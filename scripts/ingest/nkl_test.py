@@ -2,24 +2,25 @@
 
     python scripts/ingest/nkl_test.py
 
-The NKL's games are read off nkl.lt. What this holds the adapter to:
-  * the schedule: the season read from nkl.lt's own inline array (306 games, 18 clubs x 34), keyed
-    on nkl.lt's match id, coded by nkl.lt's club ids, crested over https, tip-offs Vilnius -> UTC,
-    "regular" and "playoffs" kept apart by the league's stage type, and the site's mojibake
-    ('Å\\xa0akiÅ³ sporto centras') read back as Lithuanian;
-  * the game: its own match page's box score - score, quarters, both clubs' players under nkl.lt's
-    player ids, the Statistika tab's team lines - in the FIBA shape, published as a result (no
-    play-by-play to replay, so no event log and no made-up lineup); a LiveStats feed only when
-    nkl.lt itself links one AND it agrees with the site (the same clubs, final, the same score);
-  * a game in progress: read at most once a minute, and never held up for the crawl delay;
-  * the fixtures nkl.lt takes off its schedule: named by withdrawn(), and removed by
-    run_ingest.retire_withdrawn only while nothing has happened in them.
+The NKL plays on FIBA LiveStats, but nkl.lt never lists a game's LiveStats id: while a game is being played its own
+page (https://nkl.lt/matches/<id>/) answers 302 to the webcast, before that it is a preview, and once the result is
+in it is the site's own box score (seen 2026-10-01). What this holds the adapter to:
+  * the schedule: the season read from nkl.lt's own inline array (306 games, 18 clubs x 34), keyed on nkl.lt's
+    match id, coded by nkl.lt's club ids, crested over https, tip-offs Vilnius -> UTC, "regular" and "playoffs"
+    kept apart by the league's stage type, and the site's mojibake ('Å\\xa0akiÅ³') read back as Lithuanian;
+  * a game being played: its page asked from five minutes before tip-off (its redirect not followed), the webcast
+    it names used as the live feed under nkl.lt's club ids and names, remembered; never asked more than once a
+    minute, nor held up for the crawl delay;
+  * a finished game: the LiveStats feed only when it AGREES with the site's result (the same clubs, the same final
+    score, the game over), else the page's box score - score, quarters, both clubs' players under nkl.lt's player
+    ids, the Statistika tab's team lines - published as a result (no event log, no made-up lineup);
+  * the fixtures nkl.lt takes off its schedule: named by withdrawn(), and removed by run_ingest.retire_withdrawn
+    only while nothing has happened in them.
 
-Fixtures in scripts/ingest/data/nkl/: matches.html and home.html as served 2026-09-23 (the strip
-then linked 15 games to their webcasts); home-strip-2026-10-01.html and match-125745.html as served
-2026-10-01, trimmed to the parts read (the strip links no webcast any more; 125745 finished 83-108).
-feed-standin.json is a GENUINE FIBA LiveStats data.json from another league (EABL 2759719) with its
-two club names set to a fixture's: it exercises the agreement rule, not NKL statistics.
+Fixtures in scripts/ingest/data/nkl/: matches.html as served 2026-09-23, and match-125745.html as served 2026-10-01,
+trimmed to the match block (125745 finished 83-108; its webcast had stopped in the 2nd quarter at 15-16).
+feed-standin.json is a GENUINE FIBA LiveStats data.json from another league (EABL 2759719) with its two club names
+set to a fixture's: it exercises the redirect and the agreement rule, not NKL statistics.
 """
 import copy
 import json
@@ -27,12 +28,14 @@ import os
 import re
 import sys
 import tempfile
+import time as _time
 from collections import defaultdict
+from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from adapters import fiba_site_schedule as F  # noqa: E402
-from adapters.fiba_livestats import FibaLiveStatsAdapter  # noqa: E402
+from adapters.fiba_livestats import FIBA_DATA_URL, FibaLiveStatsAdapter  # noqa: E402
 import run_ingest as RI  # noqa: E402
 
 DATA = os.path.join(HERE, "data", "nkl")
@@ -56,27 +59,38 @@ def text(name):
 
 STANDIN = json.loads(text("feed-standin.json"))
 MATCHES = text("matches.html")
+MATCH = text("match-125745.html")
 ROWS = json.loads(F._NKL_ALL.search(MATCHES).group(1))
 MOJIBAKE = re.compile("[Â-Å]|â€")       # what UTF-8 read as Windows-1252 looks like
+PREVIEW = "<span class=nkl-badge-status>Artėjančios Rungtynės</span>"      # a match page before tip-off
+
+
+def feed(fid):
+    return FIBA_DATA_URL.format(game_id=fid)
+
+
+def page(sid):
+    return F.NKL_MATCH.format(id=sid)
 
 
 def schedule(change=None):
-    """matches.html with its array changed by `change(rows)` - a result, a game on, a fixture withdrawn."""
+    """matches.html with its array changed by `change(rows)` - a result entered, a fixture withdrawn."""
     rows = copy.deepcopy(ROWS)
     if change:
         rows = change(rows) or rows
     return F._NKL_ALL.sub(lambda m: "const allMatches = " + json.dumps(rows) + ";\n", MATCHES, count=1)
 
 
-def result(sid, home, away, running=False):
+def result(sid, home, away):
     def change(rows):
         for r in rows:
             if str(r["id"]) == str(sid):
-                r.update(home_score=home, away_score=away, is_result=0 if running else 1, is_running=1 if running else 0)
+                r.update(home_score=home, away_score=away, is_result=1)
     return change
 
 
-def feed_as(home, away, score=None, final=True):
+def feed_as(home, away, score=None, final=True, clock=None, period=None):
+    """The stand-in LiveStats payload under a fixture's club names: closed or not, at a score and a clock."""
     d = copy.deepcopy(STANDIN)
     d["tm"]["1"]["name"], d["tm"]["2"]["name"] = home, away
     for s in "12":
@@ -86,6 +100,8 @@ def feed_as(home, away, score=None, final=True):
         d["tm"]["1"]["score"], d["tm"]["2"]["score"] = score
     if not final:
         d["pbp"] = [e for e in d["pbp"] if not (e.get("actionType") == "game" and e.get("subType") == "end")]
+    if clock is not None:
+        d["clock"], d["period"] = clock, period
     return d
 
 
@@ -93,12 +109,22 @@ class Offline(F.FibaSiteScheduleAdapter):
     nkl_gap_s = 0.0
     requests_made: list = []
     pages: dict = {}
+    redirects: dict = {}
     feeds: dict = {}
 
     def _page(self, url):
         self.requests_made.append(url)
         if url in self.pages:
             return self.pages[url]
+        raise RuntimeError(url)
+
+    def _nkl_open(self, url):
+        self.requests_made.append(url)
+        m = re.search(r"/matches/(\d+)/", url)
+        if m and m.group(1) in self.redirects:
+            return 302, self.redirects[m.group(1)], ""
+        if url in self.pages:
+            return 200, "", self.pages[url]
         raise RuntimeError(url)
 
     def _get_meta(self, url):
@@ -108,19 +134,36 @@ class Offline(F.FibaSiteScheduleAdapter):
         return (copy.deepcopy(raw) if raw else None), {"lm_ms": None, "etag": None, "recv_ms": 0}
 
 
-def fresh(sched=None, home=None, match=None, feeds=None, root=None):
+def fresh(sched=None, feeds=None, redirects=None, idmap=None):
     Offline.requests_made = []
-    Offline.pages = {F.NKL_MATCHES: sched or MATCHES, F.NKL_SITE + "/": home if home is not None else text("home-strip-2026-10-01.html")}
-    if match is not None:
-        Offline.pages[F.NKL_MATCH.format(id="125745")] = match
+    Offline.pages = {F.NKL_MATCHES: sched or MATCHES, page("125745"): MATCH, page("125747"): PREVIEW}
+    Offline.redirects = dict(redirects or {})
     Offline.feeds = feeds or {}
+    Offline.nkl_gap_s = 0.0
     F.FibaSiteScheduleAdapter._nkl_cache = (0.0, [])
-    F.FibaSiteScheduleAdapter._nkl_strip_at = (0.0, None)
-    F.FibaSiteScheduleAdapter._nkl_read = {}
+    F.FibaSiteScheduleAdapter._nkl_asked = {}
     F.FibaSiteScheduleAdapter._nkl_last = 0.0
     FibaLiveStatsAdapter._pipeline = False
     FibaLiveStatsAdapter._pipeline_warned = True
-    return Offline(), {"code": "NKL", "site": "nkl", "season": "2026-27", "repo_root": root or tempfile.mkdtemp()}
+    a, cfg = Offline(), {"code": "NKL", "site": "nkl", "season": "2026-27", "repo_root": tempfile.mkdtemp()}
+    if idmap:
+        a._save_idmap(cfg, dict(idmap))
+    return a, cfg
+
+
+class Clock:
+    """The adapter's clock, set by the test: whether a game's page is asked yet depends on what time it is."""
+    def __init__(self, now):
+        self.now = now
+
+    def time(self):
+        return self.now
+
+    def sleep(self, s):
+        self.now += s
+
+    def gmtime(self, *a):
+        return _time.gmtime(*a)
 
 
 print("-- the site's mojibake")
@@ -173,39 +216,27 @@ ok("arenas served as mojibake are read as Lithuanian: Šakių sporto centras, KA
 ok("...and the venues are the same as on the day they were served properly",
    [g.extra["venue"] for g in reg2] == [g.extra["venue"] for g in reg])
 
-print("\n-- the homepage strip")
-old = F.nkl_strip(text("home.html"))
-ok("the 23 Sep strip (an <a class=nkl-match-item> per game): 15 games linked to their webcasts, 125745 -> 2895455",
-   len(old) == 15 and old.get("125745") == "2895455", old)
-strip = text("home-strip-2026-10-01.html")
-ok("the 1 Oct strip (a <div> per game): 15 games, none linked to a webcast",
-   strip.count("nkl-match-item") == 15 and F.nkl_strip(strip) == {}, F.nkl_strip(strip))
-item = strip.index("matches/125748/")
-linked = strip[:item] + "matches/125748/ ><a href=https://www.fibalivestats.com/u/BNW/2895999/ class=x>LS</a" + strip[item + len("matches/125748/"):]
-ok("...a webcast link added to one of its games is read, for that game alone",
-   F.nkl_strip(linked) == {"125748": "2895999"}, F.nkl_strip(linked))
-
 print("\n-- the match page (125745, 83-108)")
-page = F.nkl_match_page(text("match-125745.html"))
+mp = F.nkl_match_page(MATCH)
 ok("the score, the badge, the quarters and the clubs' abbreviations",
-   page["score"] == (83, 108) and page["status"] == "Rungtynės Baigėsi" and page["periods"] == ["Q1", "Q2", "Q3", "Q4"]
-   and page["quarters"] == ([16, 22, 19, 26], [32, 22, 28, 26]) and page["abbr"] == ("PAT", "ŽAL"),
-   {k: page[k] for k in ("score", "status", "periods", "quarters", "abbr")})
+   mp["score"] == (83, 108) and mp["status"] == "Rungtynės Baigėsi" and mp["periods"] == ["Q1", "Q2", "Q3", "Q4"]
+   and mp["quarters"] == ([16, 22, 19, 26], [32, 22, 28, 26]) and mp["abbr"] == ("PAT", "ŽAL"),
+   {k: mp[k] for k in ("score", "status", "periods", "quarters", "abbr")})
 ok("the arena and the referees, read back from the page's mojibake",
-   page["venue"] == "Alytaus sporto ir rekreacijos centras"
-   and page["referees"] == ["Milita Stalaučinskaitė", "Ernest Čepelevskij", "Simas Baranauskas"], (page["venue"], page["referees"]))
-home_box, away_box = page["teams"]
+   mp["venue"] == "Alytaus sporto ir rekreacijos centras"
+   and mp["referees"] == ["Milita Stalaučinskaitė", "Ernest Čepelevskij", "Simas Baranauskas"], (mp["venue"], mp["referees"]))
+home_box, away_box = mp["teams"]
 ok("both clubs' box scores: 12 + 12 players, home first", (home_box["name"], len(home_box["players"]), away_box["name"], len(away_box["players"]))
    == ("Alytaus Patriotai", 12, "Kauno Žalgiris-2", 12), (home_box["name"], away_box["name"]))
 ok("Karolis Guščikas: #10, 29:13, 17 pts, 7/11 (7/11 two, 0/0 three), 3/8 FT, 18 reb, 3 ast, eff 29, nkl.lt id 7053",
    home_box["players"][0] == {"id": "7053", "name": "Karolis Guščikas", "shirt": "10", "min": "29:13", "pts": 17, "fg": (7, 11),
                               "fg2": (7, 11), "fg3": (0, 0), "ft": (3, 8), "reb": 18, "ast": 3, "stl": 0, "tov": 0, "blk": 0, "eff": 29},
    home_box["players"][0])
-names = [p["name"] for t in page["teams"] for p in t["players"]]
+names = [p["name"] for t in mp["teams"] for p in t["players"]]
 ok("no player's name is left in mojibake (Šarūnas Valunta, Ignas Štombergas, Titas Lavrinovič)",
    not any(MOJIBAKE.search(n) for n in names) and {"Šarūnas Valunta", "Ignas Štombergas", "Titas Lavrinovič"} <= set(names), names)
-ok("each club's points add up to the score", [sum(p["pts"] for p in t["players"]) for t in page["teams"]] == [83, 108])
-hs, as_ = page["stats"]
+ok("each club's points add up to the score", [sum(p["pts"] for p in t["players"]) for t in mp["teams"]] == [83, 108])
+hs, as_ = mp["stats"]
 ok("the Statistika tab's team lines: 31/73 and 37/71, rebounds 39 (18 off, 21 def) and 35 (10, 25), fouls 27 and 20",
    (hs["sFieldGoalsMade"], hs["sFieldGoalsAttempted"], as_["sFieldGoalsMade"], as_["sFieldGoalsAttempted"],
     hs["sReboundsTotal"], hs["sReboundsOffensive"], hs["sReboundsDefensive"], as_["sReboundsTotal"], as_["sReboundsOffensive"],
@@ -215,10 +246,17 @@ ok("...and what only a team has: points off turnovers 12/29, fast break 12/30, s
    == [(12, 29), (12, 30), (14, 18), (36, 53)])
 blank = F.nkl_match_page("<html><body>nothing here</body></html>")
 ok("a page with none of it reads as nothing, without an error", blank["score"] is None and blank["teams"] == [] and blank["stats"] == ({}, {}))
+odd = {"teams": [{"name": "Kauno Žalgiris-2", "players": [{"id": "1", "name": "A B", "pts": 2}]},
+                 {"name": "Alytaus Patriotai", "players": [{"id": "2", "name": "C D", "pts": 3}]}],
+       "score": (2, 3), "quarters": ([2], [3]), "abbr": ("ŽAL", "PAT"), "stats": ({}, {})}
+fx = next(r for r in ROWS if r["id"] == 125745)
+ok("a page that draws the clubs the other way round from the fixture is refused (never filed under the wrong club)",
+   F.nkl_payload(odd, fx) is None)
+ok("a page with no box score for one of the clubs is not a result yet",
+   F.nkl_payload(dict(odd, teams=[odd["teams"][1], {"name": "Kauno Žalgiris-2", "players": []}]), fx) is None)
 
-print("\n-- fetch(): a finished game, from its page")
-MATCH = text("match-125745.html")
-a, cfg = fresh(schedule(result("125745", 83, 108)), match=MATCH)
+print("\n-- a finished game with no feed that agrees: its page's box score")
+a, cfg = fresh(schedule(result("125745", 83, 108)))
 b = a.fetch("125745", cfg)
 ok("125745 is fetched, keyed on the nkl.lt id, final", b is not None and b.external_id == "125745" and b.status == "final",
    b and (b.external_id, b.status))
@@ -238,63 +276,114 @@ ok("...a lead '0' off the minutes, as LiveStats writes them (03:09 -> 3:09)",
    next(r["sMinutes"] for r in b.box["home"] if r["player_id"] == "39726") == "3:09")
 ok("...and NO stints: nobody started, nobody was subbed - a lineup would be made up", b.stints == [] and not any(b.lineups.values()),
    (len(b.stints), b.lineups))
-ok("the requests: the schedule, the homepage strip (no webcast) and the match page - no LiveStats feed asked for",
-   Offline.requests_made == [F.NKL_MATCHES, F.NKL_SITE + "/", F.NKL_MATCH.format(id="125745")], Offline.requests_made)
+ok("the requests: the schedule, the one feed the offset names (none there), then the match page",
+   Offline.requests_made == [F.NKL_MATCHES, feed(125745 + F.NKL_OFFSET), page("125745")], Offline.requests_made)
 b2 = a.fetch("125745", cfg)
 ok("a second read of the same page is the same payload (an unchanged final is not written again)", b2.payload_hash == b.payload_hash)
 
-print("\n-- fetch(): a LiveStats feed nkl.lt links, used only when it agrees")
-home_linked = text("home.html")                                           # the 23 Sep strip: 125745 -> 2895455
-a, cfg = fresh(schedule(result("125745", 65, 95)), home=home_linked, match=MATCH,
-               feeds={"2895455": feed_as("Alytaus Patriotai", "Kauno Žalgiris-2")})
+print("\n-- a finished game whose LiveStats feed agrees with the site")
+OFF = str(125745 + F.NKL_OFFSET)                       # 2895455
+CLUBS = ("Alytaus Patriotai", "Kauno Žalgiris-2")
+a, cfg = fresh(schedule(result("125745", 65, 95)), feeds={OFF: feed_as(*CLUBS)})
 b = a.fetch("125745", cfg)
-ok("the same clubs, final, the same score (65-95 on both): the feed is used, for its play-by-play",
+ok("the same clubs, closed, the same score (65-95 on both): the feed is used, for its play-by-play",
    b is not None and b.translate is None and b.status == "final" and b.stints and len(b.box["home"]) == len(STANDIN["tm"]["1"]["pl"])
    and (b.raw["tm"]["1"]["code"], b.raw["tm"]["2"]["code"], b.home_name) == ("3386", "266", "Alytaus Patriotai"),
    b and (b.translate, b.status, len(b.stints)))
-ok("...without the match page ever being read", F.NKL_MATCH.format(id="125745") not in Offline.requests_made, Offline.requests_made)
-for label, score_on_site, feed in (
-        ("a webcast that stopped (the site says 83-108, the feed 65-95)", (83, 108), feed_as("Alytaus Patriotai", "Kauno Žalgiris-2")),
-        ("a webcast never closed (no game end in its log)", (65, 95), feed_as("Alytaus Patriotai", "Kauno Žalgiris-2", final=False)),
-        ("a webcast of two other clubs", (65, 95), feed_as("Somebody Else", "Another Club"))):
-    a, cfg = fresh(schedule(result("125745", *score_on_site)), home=home_linked, match=MATCH, feeds={"2895455": feed})
-    b = a.fetch("125745", cfg)
-    ok(f"{label}: passed over for nkl.lt's own box score", b is not None and b.translate is False
-       and (b.team["home"]["points"], b.team["away"]["points"]) == (83, 108) and F.NKL_MATCH.format(id="125745") in Offline.requests_made,
-       b and (b.translate, b.team["home"]["points"]))
-a, cfg = fresh(schedule(result("125745", 83, 108)), home=home_linked, match=MATCH)
-a.fetch("125745", cfg)
-Offline.requests_made.clear()
-ok("a fixture the strip does not link is never guessed at (the 23 Sep offset named a Chilean game): no feed asked for",
-   a._nkl_fiba_id("125770", cfg) is None and not any("/data/" in u for u in Offline.requests_made), Offline.requests_made)
-ok("...and the strip's links are remembered, so the next game costs no read of it",
-   a._nkl_fiba_id("125748", cfg) == "2895458" and Offline.requests_made == [], Offline.requests_made)
-
-print("\n-- fetch(): before, during, and off the schedule")
-a, cfg = fresh(match=MATCH)
-ok("a game not started has nothing to read: None, and only the schedule asked for",
-   a.fetch("125747", cfg) is None and Offline.requests_made == [F.NKL_MATCHES], Offline.requests_made)
-ok("a game nkl.lt no longer lists (126055, entered and deleted): None", a.fetch("126055", cfg) is None)
-a, cfg = fresh(schedule(result("125745", 40, 38, running=True)), match=MATCH)
+ok("...the match page never read, and the feed remembered for the game", page("125745") not in Offline.requests_made
+   and a._idmap(cfg).get("125745") == OFF, (Offline.requests_made, a._idmap(cfg)))
+a, cfg = fresh(schedule(result("125745", 65, 95)), feeds={"2899999": feed_as(*CLUBS)}, idmap={"125745": "2899999"})
 b = a.fetch("125745", cfg)
-ok("a game in progress reads its page and is live (the page's own score and box), still no event log",
-   b is not None and b.status == "live" and b.translate is False and b.stints == [], b and (b.status, b.translate))
-n = len(Offline.requests_made)
-ok("...and is not read again inside a minute", a.fetch("125745", cfg) is None and len(Offline.requests_made) == n, Offline.requests_made[n:])
-F.FibaSiteScheduleAdapter._nkl_read = {}
-Offline.nkl_gap_s = 3600.0
-F.FibaSiteScheduleAdapter._nkl_last = __import__("time").time()
-ok("...nor held up for the crawl delay: an answer of None, the next pass asks again",
-   a.fetch("125745", cfg) is None and len(Offline.requests_made) == n)
-Offline.nkl_gap_s = 0.0
-odd = {"teams": [{"name": "Kauno Žalgiris-2", "players": [{"id": "1", "name": "A B", "pts": 2}]},
-                 {"name": "Alytaus Patriotai", "players": [{"id": "2", "name": "C D", "pts": 3}]}],
-       "score": (2, 3), "quarters": ([2], [3]), "abbr": ("ŽAL", "PAT"), "stats": ({}, {})}
-fx = next(r for r in ROWS if r["id"] == 125745)
-ok("a page that draws the clubs the other way round from the fixture is refused (never filed under the wrong club)",
-   F.nkl_payload(odd, fx, True) is None)
-ok("a page with no box score for one of the clubs is not a result yet",
-   F.nkl_payload(dict(odd, teams=[odd["teams"][1], {"name": "Kauno Žalgiris-2", "players": []}]), fx, True) is None)
+ok("the feed its page sent us to while it was played comes first: 2899999, the offset never asked",
+   b is not None and b.translate is None and feed("2899999") in Offline.requests_made and feed(OFF) not in Offline.requests_made,
+   Offline.requests_made)
+a, cfg = fresh(schedule(result("125745", 65, 95)), feeds={OFF: feed_as(*CLUBS, final=False)})
+b = a.fetch("125745", cfg)
+ok("a scorer who never sent the close (clock run out in the 4th, the same score): still the feed, and final",
+   b is not None and b.translate is None and b.status == "final", b and (b.translate, b.status))
+a, cfg = fresh(schedule(result("125745", 65, 95)), feeds={"126745": feed_as(*CLUBS)},
+               idmap={"1": "1001", "2": "1002", "3": "1003"})
+b = a.fetch("125745", cfg)
+ok("the offset the remembered pairs share (three or more of them) is the one tried: 125745 + 1000",
+   b is not None and b.translate is None and feed("126745") in Offline.requests_made, Offline.requests_made)
+for label, site, fd in (
+        ("a webcast that stopped (the site says 83-108, the feed 65-95)", (83, 108), feed_as(*CLUBS)),
+        ("a webcast stopped in the 2nd quarter at the very score", (65, 95), feed_as(*CLUBS, final=False, clock="07:10", period=2)),
+        ("a feed of two other clubs (126051 + the offset: a Chilean game)", (65, 95), feed_as("Somebody Else", "Another Club"))):
+    a, cfg = fresh(schedule(result("125745", *site)), feeds={OFF: fd})
+    b = a.fetch("125745", cfg)
+    ok(f"{label}: passed over for nkl.lt's own box score, and not remembered", b is not None and b.translate is False
+       and (b.team["home"]["points"], b.team["away"]["points"]) == (83, 108) and page("125745") in Offline.requests_made
+       and "125745" not in a._idmap(cfg), b and (b.translate, b.team["home"]["points"], a._idmap(cfg)))
+a, cfg = fresh(schedule(result("125745", 83, 108)), redirects={"125745": "http://www.fibalivestats.com/u/NKLNBL/2895455"})
+ok("a result the site has entered while its page still sends the game to LiveStats: nothing yet, asked again later",
+   a.fetch("125745", cfg) is None)
+
+print("\n-- a game being played: its page sends it to LiveStats")
+TIP = datetime(2026, 10, 1, 16, 0, tzinfo=timezone.utc).timestamp()     # 125747, 19:00 in Vilnius
+WEBCAST = "http://www.fibalivestats.com/u/NKLNBL/2895457"
+LIVE = feed_as("Jurbarko Jurbarkas-Karys-Manvesta", "Alytaus Patriotai", final=False, clock="07:10", period=2)
+clock = Clock(TIP - 600)
+F.time = clock
+try:
+    a, cfg = fresh(feeds={"2895457": LIVE})
+    ok("ten minutes before tip-off: nothing to ask - the page is a preview - and only the schedule read",
+       a.fetch("125747", cfg) is None and Offline.requests_made == [F.NKL_MATCHES], Offline.requests_made)
+    clock.now = TIP - 120
+    ok("two minutes before: its page asked, still the preview (no redirect) - nothing yet",
+       a.fetch("125747", cfg) is None and Offline.requests_made.count(page("125747")) == 1, Offline.requests_made)
+    clock.now += 30
+    ok("...not asked again inside the minute", a.fetch("125747", cfg) is None and Offline.requests_made.count(page("125747")) == 1)
+    Offline.redirects = {"125747": WEBCAST}
+    clock.now += 31
+    b = a.fetch("125747", cfg)
+    ok("tip-off: the page answers 302 to u/NKLNBL/2895457, and that feed is the game - live, with its event log",
+       b is not None and b.external_id == "125747" and b.status == "live" and b.translate is None and b.stints,
+       b and (b.external_id, b.status, b.translate))
+    ok("...under nkl.lt's club ids and names (Jurbarkas 2250 at home, Alytus 3386 away)",
+       (b.raw["tm"]["1"]["code"], b.raw["tm"]["2"]["code"], b.home_name, b.away_name)
+       == ("2250", "3386", "Jurbarko Jurbarkas-Karys-Manvesta", "Alytaus Patriotai"), (b.raw["tm"]["1"]["code"], b.home_name))
+    ok("...and remembered", a._idmap(cfg).get("125747") == "2895457", a._idmap(cfg))
+    n = len(Offline.requests_made)
+    a.fetch("125747", cfg)
+    ok("every poll after that is the feed alone: no request to nkl.lt", Offline.requests_made[n:] == [feed("2895457")],
+       Offline.requests_made[n:])
+
+    a, cfg = fresh(feeds={"2895999": feed_as("Somebody Else", "Another Club", final=False)},
+                   redirects={"125747": "http://www.fibalivestats.com/u/NKLNBL/2895999"})
+    clock.now = TIP + 60
+    ok("a page that sends the game to a feed of two other clubs: not used", a.fetch("125747", cfg) is None)
+
+    a, cfg = fresh(feeds={"2895457": LIVE}, redirects={"125747": WEBCAST})
+    a._nkl_matches()
+    Offline.nkl_gap_s = 10.0
+    F.FibaSiteScheduleAdapter._nkl_last = clock.now     # another game's page has just been asked
+    n = len(Offline.requests_made)
+    ok("the live lane, the crawl delay not up: nothing asked, an answer of None, and the lane not held up",
+       a.fetch("125747", dict(cfg, _live=True)) is None and Offline.requests_made[n:] == []
+       and clock.now == F.FibaSiteScheduleAdapter._nkl_last)
+    clock.now += 10
+    ok("...its next pass, ten seconds on, asks", a.fetch("125747", dict(cfg, _live=True)) is not None)
+    a, cfg = fresh(feeds={"2895457": LIVE}, redirects={"125747": WEBCAST})
+    a._nkl_matches()
+    Offline.nkl_gap_s = 10.0
+    F.FibaSiteScheduleAdapter._nkl_last = t0 = clock.now
+    ok("a catch-up or discovery pass waits the crawl delay out (ten seconds), then asks",
+       a.fetch("125747", cfg) is not None and clock.now == t0 + 10, clock.now - t0)
+
+    a, cfg = fresh()
+    clock.now = TIP + 40 * 60
+    a.fetch("125747", cfg)
+    clock.now += 5 * 60
+    a.fetch("125747", cfg)
+    clock.now += 5 * 60 + 1
+    a.fetch("125747", cfg)
+    ok("forty minutes on and still no webcast: its page asked every ten minutes, not every minute",
+       Offline.requests_made.count(page("125747")) == 2, Offline.requests_made)
+    ok("a game nkl.lt no longer lists (126055, entered and deleted): None, its page never asked",
+       a.fetch("126055", cfg) is None and page("126055") not in Offline.requests_made)
+finally:
+    F.time = _time
 
 print("\n-- fixtures nkl.lt takes off its schedule")
 
@@ -374,7 +463,8 @@ ok("...but never one that was played, has a play recorded, a score, was voided, 
    RI.retire_withdrawn(sb, SRC, Says(["a", "b", "c", "d", "e", "f"]), st) == [] and sb.deletes == [], sb.deletes)
 sb = Sb([])
 ok("...a fixture whose game is already gone loses its feed row",
-   RI.retire_withdrawn(sb, SRC, Says(["x"]), dict(many, x=ext("x", None))) == ["x"] and sb.deletes == [("external_games", "adapter=eq.fiba_site_schedule&competition_code=eq.NKL&external_id=eq.x")])
+   RI.retire_withdrawn(sb, SRC, Says(["x"]), dict(many, x=ext("x", None))) == ["x"]
+   and sb.deletes == [("external_games", "adapter=eq.fiba_site_schedule&competition_code=eq.NKL&external_id=eq.x")])
 sb = Sb([{"id": f"g{i}", "status": "scheduled", "home_score": None, "away_score": None} for i in range(100)])
 ok("...a schedule that seems to have lost dozens of games is a page that did not load: nothing removed",
    RI.retire_withdrawn(sb, SRC, Says([str(i) for i in range(30)]), many) == [] and sb.deletes == [])

@@ -94,18 +94,22 @@ _SK_VENUE = re.compile(r'class="match-ticket-header">.*?<span>\s*([^<]+?)\s*</sp
 #   sezonas","stage_type_id":1,"round_no":1,"date_label":"2026-09-28","time":"18:15","arena":...,
 #   "home_team_id":3386,"home_name":"Alytaus Patriotai","home_logo":"http:\/\/nkl.lt\/...png", ...
 #   "home_score":83,"away_score":108,"is_result":1,"is_running":0, ...}, ...]
-# THE GAME IS READ OFF NKL.LT ITSELF. The 2026/27 plan was FIBA LiveStats: on 23 Sep the homepage's
-# match strip linked 15 games to webcasts (www.fibalivestats.com/u/BNW/<id>), each the site id +
-# 2769710. By the first game night the strip linked none (only LRT's TV stream), 125745's webcast
-# had stopped in the 2nd quarter at 15-16 while the game finished 83-108, and the offset named a
-# Chilean game for 126051 - so no NKL game was ever written, and the league showed nothing. Every
-# game's own page (https://nkl.lt/matches/<id>/) is server-rendered with what a result needs: the
-# score, the quarters, both clubs' box score (minutes, points, two/three/free throws, rebounds,
-# assists, steals, turnovers, blocks, efficiency) and the team statistics (offensive and defensive
-# rebounds, fouls, points off turnovers, fast-break, second-chance and bench points). There is no
-# play-by-play, and no player's offensive/defensive split or fouls: a box score, not a replay.
-# A LiveStats feed is still used when nkl.lt itself links one and it AGREES - the same two clubs,
-# final, the same score - because it carries the play-by-play the page does not.
+# THE GAMES ARE ON FIBA LIVESTATS, BUT NKL.LT NEVER LISTS THEIR IDS. On 23 Sep the homepage's match strip linked 15
+# games to their webcasts, each the site's match id + 2769710; by the first game night it linked none, the ingest
+# found no id for any game, and the NKL showed nothing - every game "scheduled", the finished ones included. What
+# nkl.lt does instead (seen 2026-10-01, 125748 in its 2nd quarter): WHILE A GAME IS BEING PLAYED, its own page
+# (https://nkl.lt/matches/<id>/) answers 302 to its webcast (www.fibalivestats.com/u/NKLNBL/2895458). Before tip-off
+# that page is a preview; once the result is entered it is the site's own box score; and the schedule's is_running
+# stays 0 throughout. So from five minutes before tip-off a game's page is asked - its redirect NOT followed - and
+# the id it names is the game's live feed (remembered in data/feed/NKL/idmap.json).
+# A FINISHED GAME is the LiveStats feed when that AGREES with the site's result - the same two clubs, the same final
+# score, the game over - and otherwise the site's own box score: 125745's webcast stopped in the 2nd quarter at 15-16
+# while the game finished 83-108. A finished game whose webcast nobody saw tries match id + NKL_OFFSET as well, held
+# to the same agreement (for 126051, re-entered after the season's webcasts were made, it names a Chilean game:
+# refused by its clubs). The box-score page carries what a result needs: the score, the quarters, both clubs' box
+# score (minutes, points, two/three/free throws, rebounds, assists, steals, turnovers, blocks, efficiency) and the
+# team statistics (offensive and defensive rebounds, fouls, points off turnovers, fast-break, second-chance and
+# bench points) - no play-by-play, no player's rebound split or fouls: a result, not a replay.
 # THE SITE'S TEXT IS PARTLY MOJIBAKE: arenas, players and referees are UTF-8 read as Windows-1252
 # ("Å\xa0akiÅ³ sporto centras" for "Šakių sporto centras"); demojibake() puts them back.
 # robots.txt asks every agent for "Crawl-delay: 10", which NKL_GAP_S keeps.
@@ -283,11 +287,8 @@ NKL_SITE = "https://nkl.lt"
 NKL_MATCHES = NKL_SITE + "/matches/?type=schedule"
 NKL_MATCH = NKL_SITE + "/matches/{id}/"
 NKL_GAP_S = 10.0                 # robots.txt: "Crawl-delay: 10", for every agent
-NKL_LIVE_EVERY_S = 60.0          # a game in progress: its page read at most once a minute
+NKL_OFFSET = 2769710             # LiveStats id - match id, for the 2026-27 fixtures entered before the season
 _NKL_ALL = re.compile(r"const allMatches\s*=\s*(\[.*?\]);\s*\n", re.S)
-# one game on the homepage strip: an <a class=nkl-match-item> until September 2026, a <div> holding the links since
-_NKL_ITEM = re.compile(r"class=[\"']?nkl-match-item\b")
-_NKL_MATCH_ID = re.compile(r"nkl\.lt/matches/(\d+)/")
 _NKL_WEBCAST = re.compile(r"livestats\.com/u/[A-Za-z]+/(\d+)", re.I)
 
 
@@ -344,20 +345,6 @@ def _nkl_label(s) -> str:
     import unicodedata
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
     return re.sub(r"\s+", " ", s).strip()
-
-
-def nkl_strip(page: str) -> dict:
-    """{nkl.lt match id: LiveStats id} for each game on the homepage strip that links its webcast. An item
-    runs from its own tag to the next item's (the old <a> carried the match link in the same tag)."""
-    page = page or ""
-    starts = [max(0, page.rfind("<", 0, m.start())) for m in _NKL_ITEM.finditer(page)]
-    out = {}
-    for i, a in enumerate(starts):
-        chunk = page[a: starts[i + 1] if i + 1 < len(starts) else a + 8000]
-        mid, web = _NKL_MATCH_ID.search(chunk), _NKL_WEBCAST.search(chunk)
-        if mid and web:
-            out[mid.group(1)] = web.group(1)
-    return out
 
 
 #: the Protokolas tab's columns (folded), as they stood in 2026-27; PR (fouls) and +/- are read if they appear
@@ -504,14 +491,13 @@ def _nkl_minutes(t) -> str:
     return f"{int(m.group(1))}:{int(m.group(2)):02d}" if m else "0:00"
 
 
-def nkl_payload(page: dict, fixture: dict, final: bool) -> Optional[dict]:
-    """A parsed match page (nkl_match_page) and its allMatches row -> the FIBA data.json shape (fibashape), so
-    everything downstream reads it as it reads any league: nkl.lt's club ids as the codes and its names on the
-    clubs, each player keyed on nkl.lt's own player id, and the team lines from the Statistika tab laid over
-    the players' sums - they hold what no player line does (team rebounds, the fouls, the offensive and
-    defensive split). The play-by-play is the end marker alone when `final`, and a period start while the game
-    is on, so the bundle reads final or live. None when the page holds no box score for both clubs, or draws
-    them the other way round from the fixture (never filed under the wrong club)."""
+def nkl_payload(page: dict, fixture: dict) -> Optional[dict]:
+    """A finished game's parsed match page (nkl_match_page) and its allMatches row -> the FIBA data.json shape
+    (fibashape), so everything downstream reads it as it reads any league: nkl.lt's club ids as the codes and its
+    names on the clubs, each player keyed on nkl.lt's own player id, and the team lines from the Statistika tab
+    laid over the players' sums - they hold what no player line does (team rebounds, the fouls, the offensive and
+    defensive split). The play-by-play is the closing marker alone: a result. None when the page holds no box
+    score for both clubs, or draws them the other way round from the fixture (never filed under the wrong club)."""
     from . import fibashape as S
     teams = page.get("teams") or []
     if len(teams) != 2 or not (teams[0]["players"] and teams[1]["players"]):
@@ -544,15 +530,10 @@ def nkl_payload(page: dict, fixture: dict, final: bool) -> Optional[dict]:
                             score=score, quarters=(page.get("quarters") or ([], []))[i][:4], players=pl, totals=tot,
                             logo=logo, short_name=(page.get("abbr") or ("", ""))[i]))
     q = page.get("quarters") or ([], [])
-    played = [n + 1 for n in range(max(len(q[0]), len(q[1]))) if (q[0][n:n + 1] or [0])[0] or (q[1][n:n + 1] or [0])[0]]
-    period = max(played or [1])
-    if final:
-        raw = S.game(sides[0], sides[1], played=True)
-        raw["clock"] = "00:00"
-    else:
-        raw = S.game(sides[0], sides[1], played=False, pbp=[{"actionType": "period", "subType": "start", "period": period}])
-    raw["period"] = period
-    raw["periodType"] = "OVERTIME" if period > 4 else "REGULAR"
+    raw = S.game(sides[0], sides[1], played=True)
+    raw["period"] = max(4, len(q[0]), len(q[1]))
+    raw["periodType"] = "OVERTIME" if raw["period"] > 4 else "REGULAR"
+    raw["clock"] = "00:00"
     return raw
 
 
@@ -1418,23 +1399,44 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
 
     # ------------------------------------------------------------------ nkl.lt ---
     _nkl_cache: tuple = (0.0, [])        # (fetched_at, allMatches) - shared: two sources, many fetches
-    _nkl_strip_at: tuple = (0.0, None)   # (read at, nkl_strip(homepage)) - the webcasts the site links
     _nkl_last = 0.0                      # the last request to nkl.lt, whichever source row made it
-    _nkl_read: dict = {}                 # match id -> when its page was last read (a game in progress)
+    _nkl_asked: dict = {}                # match id -> when its page was last asked for the game's webcast
     nkl_gap_s = NKL_GAP_S
-    nkl_live_every_s = NKL_LIVE_EVERY_S
 
-    def _nkl_get(self, url: str, wait: bool = True) -> Optional[str]:
-        """One request to nkl.lt, nkl_gap_s after the last one (robots.txt's Crawl-delay). wait=False - a game in
-        progress, polled by the live lane - answers None instead of holding the lane up for the rest of the gap:
-        the next pass, seconds later, asks again."""
+    def _nkl_turn(self, wait: bool) -> bool:
+        """nkl_gap_s since the last request to nkl.lt (robots.txt's Crawl-delay): waited out, or - wait False, a game
+        the live lane is polling - answered False, so the lane is never held up; its next pass asks again."""
         gap = time.time() - FibaSiteScheduleAdapter._nkl_last
         if gap < self.nkl_gap_s:
             if not wait:
-                return None
+                return False
             time.sleep(self.nkl_gap_s - gap)
         FibaSiteScheduleAdapter._nkl_last = time.time()
+        return True
+
+    def _nkl_get(self, url: str) -> str:
+        self._nkl_turn(True)
         return self._page(url)
+
+    def _nkl_open(self, url: str) -> tuple:
+        """(status, Location, text) of a GET on nkl.lt with redirects NOT followed: a game being played answers 302
+        to its LiveStats webcast, and the address is the answer wanted - not the webcast's own page."""
+        r = requests.get(url, headers={"User-Agent": UA}, timeout=40, allow_redirects=False)
+        if not 300 <= r.status_code < 400:
+            r.raise_for_status()
+        return r.status_code, r.headers.get("Location") or "", r.text
+
+    def _nkl_match(self, sid: str, wait: bool = True):
+        """A match page: ("page", html), or ("livestats", id) while the game is being played. None when it was not
+        asked (the crawl delay, with wait False) or sent anywhere but a webcast."""
+        if not self._nkl_turn(wait):
+            return None
+        FibaSiteScheduleAdapter._nkl_asked[sid] = time.time()
+        status, where, body = self._nkl_open(NKL_MATCH.format(id=sid))
+        if 300 <= status < 400:
+            m = _NKL_WEBCAST.search(where)
+            return ("livestats", m.group(1)) if m else None
+        return ("page", body)
 
     def _nkl_matches(self) -> list:
         at, cached = FibaSiteScheduleAdapter._nkl_cache
@@ -1509,24 +1511,37 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                 out.append(str(k))
         return sorted(out)
 
-    def _nkl_fiba_id(self, sid: str, config: dict) -> Optional[str]:
-        """The LiveStats webcast nkl.lt itself links to a match: remembered, else read off the homepage's match
-        strip (every link on it remembered, the strip read at most every five minutes). Never guessed: the
-        offset the first strip's 15 links shared named a Chilean game for 126051."""
+    @staticmethod
+    def _nkl_tip(r: dict) -> Optional[float]:
+        """A fixture's tip-off (Vilnius time on the schedule) as epoch seconds; None while its time is to be confirmed."""
+        d = re.match(r"(\d{4})-(\d{2})-(\d{2})", str(r.get("date_label") or ""))
+        t = re.match(r"(\d{1,2}):(\d{2})", str(r.get("time") or ""))
+        if not (d and t) or t.group(0) in ("0:00", "00:00"):
+            return None
+        iso = _utc("Europe/Vilnius", *d.groups(), *t.groups())
+        return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp() if iso else None
+
+    def _nkl_live_id(self, sid: str, fixture: dict, config: dict) -> Optional[str]:
+        """The LiveStats id of a game the site has no result for: remembered, else asked of its page - which answers
+        with the webcast only while the game is being played. Not before five minutes to tip-off (a preview page
+        until then); then every minute for half an hour, every ten minutes after that (a game whose page never goes
+        over to LiveStats is not asked about every minute all evening). The live lane (config _live) never waits
+        out the crawl delay for it - its next pass, seconds later, asks; a catch-up or a discovery pass does."""
         known = self._idmap(config)
         if known.get(sid):
             return known[sid]
-        at, found = FibaSiteScheduleAdapter._nkl_strip_at
-        if found is None or time.time() - at > 300:
-            try:
-                found = nkl_strip(self._nkl_get(NKL_SITE + "/") or "")
-            except Exception:
-                found = {}
-            FibaSiteScheduleAdapter._nkl_strip_at = (time.time(), found)
-        if found and any(known.get(k) != v for k, v in found.items()):
-            known.update(found)
-            self._save_idmap(config, known)
-        return known.get(sid)
+        now, tip = time.time(), self._nkl_tip(fixture)
+        if tip is not None and now < tip - 300:
+            return None
+        every = 60 if tip is None or now - tip < 1800 else 600
+        if now - FibaSiteScheduleAdapter._nkl_asked.get(sid, 0.0) < every:
+            return None
+        got = self._nkl_match(sid, wait=not config.get("_live"))
+        if not got or got[0] != "livestats":
+            return None
+        known[sid] = got[1]
+        self._save_idmap(config, known)
+        return got[1]
 
     @staticmethod
     def _nkl_same_clubs(raw: dict, fixture: dict) -> bool:
@@ -1546,58 +1561,62 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         except (TypeError, ValueError):
             return None
 
-    def _nkl_fiba_final(self, sid: str, fixture: dict, config: dict):
-        """A finished game from the LiveStats feed nkl.lt links to it - only when the feed AGREES with the site:
-        the same two clubs, closed, and the same final score. 125745's webcast stopped in the 2nd quarter at
-        15-16 while the game finished 83-108; a feed like that is passed over for nkl.lt's own box score."""
-        fid = self._nkl_fiba_id(sid, config)
-        if not fid:
-            return None
-        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
-        if not raw or "tm" not in raw:
-            return None
-        tm = raw["tm"]
-        feed = (self._nkl_score((tm.get("1") or {}).get("score")), self._nkl_score((tm.get("2") or {}).get("score")))
-        site = (self._nkl_score(fixture.get("home_score")), self._nkl_score(fixture.get("away_score")))
-        if not self._nkl_same_clubs(raw, fixture) or self._status(raw) != "final" or None in site or feed != site:
-            print(f"     NKL {sid}: LiveStats {fid} does not agree with nkl.lt "
-                  f"({'-'.join(str(x) for x in feed)} {self._status(raw)}, the site {'-'.join(str(x) for x in site)}) - the site's box score instead")
-            return None
+    def _nkl_bundle(self, sid: str, raw: dict, meta: dict, fixture: dict, config: dict):
+        """A LiveStats payload as this fixture's game: nkl.lt's club ids and names on its clubs (a club is one club
+        from the fixture list to the final box), keyed on nkl.lt's match id."""
         for tno, side in (("1", "home"), ("2", "away")):
-            if isinstance(tm.get(tno), dict):
-                tm[tno]["code"] = str(fixture.get(f"{side}_team_id") or tm[tno].get("code") or "")
-                tm[tno]["name"] = self._nkl_clean(fixture.get(f"{side}_name")) or tm[tno].get("name") or ""
+            if isinstance(raw["tm"].get(tno), dict):
+                raw["tm"][tno]["code"] = str(fixture.get(f"{side}_team_id") or raw["tm"][tno].get("code") or "")
+                raw["tm"][tno]["name"] = self._nkl_clean(fixture.get(f"{side}_name")) or raw["tm"][tno].get("name") or ""
         b = self.bundle_from_raw(raw, sid, config)
-        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        b.feed_lm_ms, b.feed_recv_ms = meta.get("lm_ms"), meta.get("recv_ms")
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b
 
-    def _nkl_fetch(self, sid: str, config: dict):
-        """A game as nkl.lt has it. Nothing before tip-off; while it is on and once it is over, its own page's box
-        score (nkl_match_page -> nkl_payload), published as a result (translate False: there is no play-by-play
-        to replay). A finished game takes the LiveStats feed nkl.lt links to it instead when that feed agrees
-        with the site, for the play-by-play the page does not have."""
-        fixture = next((r for r in self._nkl_matches() if str(r.get("id")) == sid), None)
-        if not fixture:
-            return None                  # not on nkl.lt's schedule (taken off it: see withdrawn)
-        final, running = bool(fixture.get("is_result")), bool(fixture.get("is_running"))
-        if not (final or running):
-            return None                  # not started: the page has no box score yet
-        if final:
-            b = self._nkl_fiba_final(sid, fixture, config)
-            if b is not None:
-                return b
-        elif time.time() - FibaSiteScheduleAdapter._nkl_read.get(sid, 0.0) < self.nkl_live_every_s:
-            return None                  # read under a minute ago
-        page = self._nkl_get(NKL_MATCH.format(id=sid), wait=final)
-        if page is None:
-            return None                  # the crawl delay is not up yet: the next pass asks again
-        FibaSiteScheduleAdapter._nkl_read[sid] = time.time()
+    def _nkl_fiba_final(self, sid: str, fixture: dict, config: dict):
+        """A finished game from LiveStats - only when a feed AGREES with the site's result: the same two clubs, the
+        same final score, and the game over (closed, or its clock run out at the end of the 4th quarter or an
+        overtime: a scorer who never sends the close does not cost the game its play-by-play). The feed tried is
+        the one its page sent us to while it was played, then match id + the offset (the most common among the
+        remembered pairs, else NKL_OFFSET); the one that agrees is remembered. None: the site's own box score."""
+        site = (self._nkl_score(fixture.get("home_score")), self._nkl_score(fixture.get("away_score")))
+        if None in site:
+            return None
+        known = self._idmap(config)
+        from collections import Counter
+        offsets = Counter(int(f) - int(k) for k, f in known.items() if str(k).isdigit() and str(f).isdigit())
+        offset = offsets.most_common(1)[0][0] if offsets and offsets.most_common(1)[0][1] >= 3 else NKL_OFFSET
+        tried = [known.get(sid), str(int(sid) + offset) if sid.isdigit() else None]
+        for fid in dict.fromkeys(f for f in tried if f):
+            raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
+            if not raw or "tm" not in raw:
+                continue
+            tm = raw["tm"]
+            feed = (self._nkl_score((tm.get("1") or {}).get("score")), self._nkl_score((tm.get("2") or {}).get("score")))
+            clock = re.match(r"\s*(\d+):(\d+)", str(raw.get("clock") or ""))
+            run_out = bool(clock) and int(clock.group(1)) == 0 and int(clock.group(2)) == 0 and \
+                (int(raw.get("period") or 0) >= 4 or str(raw.get("periodType") or "").upper() == "OVERTIME")
+            if not self._nkl_same_clubs(raw, fixture):
+                continue                 # somebody else's game (126051 + the offset: a Chilean one)
+            if feed != site or not (self._status(raw) == "final" or run_out):
+                print(f"     NKL {sid}: LiveStats {fid} stands at {feed[0]}-{feed[1]} ({self._status(raw)}), the site's "
+                      f"result is {site[0]}-{site[1]} - the site's own box score instead")
+                continue
+            if known.get(sid) != fid:
+                known[sid] = fid
+                self._save_idmap(config, known)
+            b = self._nkl_bundle(sid, raw, meta, fixture, config)
+            b.status = "final"
+            return b
+        return None
+
+    def _nkl_from_page(self, sid: str, fixture: dict, page: str, config: dict):
+        """A finished game from its nkl.lt page's box score, published as a result (translate False: no play-by-play
+        to replay)."""
         parsed = nkl_match_page(page)
-        fixture = dict(fixture, home_name=self._nkl_clean(fixture.get("home_name")),
-                       away_name=self._nkl_clean(fixture.get("away_name")))
-        raw = nkl_payload(parsed, fixture, final)
+        raw = nkl_payload(parsed, dict(fixture, home_name=self._nkl_clean(fixture.get("home_name")),
+                                       away_name=self._nkl_clean(fixture.get("away_name"))))
         if raw is None:
             print(f"     NKL {sid}: no box score on its page yet")
             return None
@@ -1607,6 +1626,30 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b
+
+    def _nkl_fetch(self, sid: str, config: dict):
+        """A game as nkl.lt runs it. While it is being played: the LiveStats feed its page sends us to. Once the site
+        has its result: that feed when it agrees with the result (_nkl_fiba_final), else the page's own box score.
+        Nothing before tip-off, and nothing for a game the schedule no longer lists (see withdrawn)."""
+        fixture = next((r for r in self._nkl_matches() if str(r.get("id")) == sid), None)
+        if not fixture:
+            return None
+        if fixture.get("is_result"):
+            b = self._nkl_fiba_final(sid, fixture, config)
+            if b is not None:
+                return b
+            got = self._nkl_match(sid, wait=True)
+            return self._nkl_from_page(sid, fixture, got[1], config) if got and got[0] == "page" else None
+        fid = self._nkl_live_id(sid, fixture, config)
+        if not fid:
+            return None
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
+        if not raw or "tm" not in raw:
+            return None                  # the webcast is not open yet (LiveStats answers 403 until it is)
+        if not self._nkl_same_clubs(raw, fixture):
+            print(f"     NKL {sid}: its page sends it to LiveStats {fid}, which names two other clubs - not used")
+            return None
+        return self._nkl_bundle(sid, raw, meta, fixture, config)
 
     # ------------------------------------------------------------ legabasketfemminile.it ---
     _lbf_last = 0.0
