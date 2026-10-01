@@ -1,0 +1,98 @@
+name: NCAA live lane (sharded)
+
+# NCAA DIVISION II AND III PUT SEVERAL HUNDRED GAMES ON THE FLOOR AT ONCE (docs/ncaa-readiness.md).
+# The league ingest's live lane (ingest.yml) reads and writes one game at a time - at most ~56 versions a
+# minute, measured on 30 Sep 2026 - so the NCAA sources ("live_lane": "ncaa" on their rows in
+# config/ingest-sources.json) are polled here instead, split by game across SHARDS runners:
+# run_ingest.py --live-only --lane ncaa --shard i/SHARDS. Each shard owns the games whose
+# crc32(external id) % SHARDS is i-1, so no two runners ever write the same game. The default lane
+# ignores every source that names a lane, so nothing is polled twice.
+#
+# OFF UNTIL THE NCAA SOURCES EXIST. Only a manual run starts it; the schedule below is commented out on
+# purpose (an empty lane every ten minutes would spend ~200 Actions minutes a day finding nothing).
+# At go-live: uncomment the schedule, set the repository variable NCAA_SHARDS (default 4) and read
+# docs/ncaa-readiness.md for the minutes budget (public repos: Actions minutes are free; private: not).
+on:
+  # schedule:
+  #   - cron: "*/10 15-23,0-5 * 11,12,1,2,3 *"   # US afternoons and evenings, Nov-Mar (UTC)
+  #   - cron: "7 * * 11,12,1,2,3 *"              # the hourly floor, as ingest.yml has
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners split the games (1-8)"
+        required: false
+        default: "4"
+      dry_run:
+        description: "Fetch, write nothing"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ncaa-live-lane
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write        # a pass may dispatch the next one
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+      list: ${{ steps.p.outputs.list }}
+    steps:
+      - id: p
+        run: |
+          n="${{ github.event.inputs.shards || vars.NCAA_SHARDS || '4' }}"
+          case "$n" in ''|*[!0-9]*) n=4;; esac
+          [ "$n" -lt 1 ] && n=1; [ "$n" -gt 8 ] && n=8
+          echo "shards=$n" >> "$GITHUB_OUTPUT"
+          echo "list=$(python3 -c "import json,sys;print(json.dumps(list(range(1,int(sys.argv[1])+1))))" "$n")" >> "$GITHUB_OUTPUT"
+
+  live:
+    needs: plan
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.list) }}
+    outputs:
+      chain: ${{ steps.run.outputs.chain }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r scripts/requirements.txt
+      # the NCAA parse is the scraper pipeline's (validation/ncaa/ncaa_adapter.py): private repo, deploy key
+      - name: Checkout scraper pipeline
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SCRAPER_REPO }}
+          ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
+          path: scraper
+      - name: Run the lane (shard ${{ matrix.shard }} of ${{ needs.plan.outputs.shards }})
+        id: run
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: |
+          python scripts/ingest/run_ingest.py --config --live-only --lane ncaa \
+            --shard "${{ matrix.shard }}/${{ needs.plan.outputs.shards }}" \
+            --live-loop 19800 --live-every 10 --feed-out "" \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+
+  # The next pass, once: a matrix job's output is whichever shard finished last, which is enough - the
+  # shards share one schedule, so any of them still holding a live or imminent game says chain=true.
+  next:
+    needs: [plan, live]
+    if: ${{ always() && needs.live.outputs.chain == 'true' && github.event.inputs.dry_run != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ingest-ncaa.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f shards="${{ needs.plan.outputs.shards }}" || echo "dispatch failed (a pass is probably already queued)"

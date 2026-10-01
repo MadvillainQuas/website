@@ -36,6 +36,7 @@ import re
 import sys
 import time
 import urllib.parse
+import zlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -320,7 +321,7 @@ def resolve_league(sb: Supabase, src: dict, run: dict) -> str | None:
         league_id = fc[0]["league_id"] if fc and fc[0].get("league_id") else None
         if not league_id:
             lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"),
-                             src.get("league_country"), src.get("league_gender"))
+                             src.get("league_country"), src.get("league_gender"), src.get("league_rules"))
             league_id = lg["id"]
             sb.upsert("feed_competitions", {"code": src["code"], "label": src.get("label", src["code"]), "adapter": src["adapter"], "league_id": league_id, "updated_at": now_iso()}, "code")
             print(f"    + league {src.get('league_slug') or src['code']} created for {src['code']}")
@@ -1051,7 +1052,10 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
         if game_id:
             pf["game"][gkey] = game_id
-    will_translate = src["adapter"] in TRANSLATABLE_ADAPTERS and ac.get("translate", True)
+    # b.translate is False only when the adapter itself has said this game's log cannot stand for it
+    # (adapters/ncaa.py: a final whose plays do not add up to the official score); then the result and the
+    # box are published as for a source that is never translated, and no wrong winner is replayed
+    will_translate = src["adapter"] in TRANSLATABLE_ADAPTERS and ac.get("translate", True) and b.translate is not False
     # a game we are about to translate stays 'live' until finalise-game closes it — 'final' means
     # "log closed" to the platform (insert trigger refuses events, finalise refuses a second pass)
     status = ("live" if will_translate else "final") if b.status == "final" else ("live" if b.status == "live" else "scheduled")
@@ -1136,14 +1140,49 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
             print(f"    (event translation failed: {exc})")
     # THE SEASON ROLL-UP, at most every REFRESH_EVERY_S while a game is on, and always when one has finished: it re-adds a
     # whole competition's team lines (170 ms a call, 6,600 a day) and a live game moves them by a few points at a time.
-    last = pf["refresh"].get(comp["id"])
-    if b.status == "final" or last is None or time.monotonic() - last >= REFRESH_EVERY_S:
+    #
+    # A BIG LEAGUE SAYS HOW OFTEN (adapter_config.season_refresh_s). The roll-up's cost grows with the
+    # competition: an NCAA division's season is ~5,000 games, and one evening ends ~400 of them, so "always
+    # when one has finished" would re-add 5,000 games 400 times. With the setting, a final only marks the
+    # competition as owed a roll-up, which is paid at most every season_refresh_s and once more when the
+    # lane's pass ends (flush_refresh). Without it - every league before NCAA - nothing changes.
+    if roll_up_due(pf, comp["id"], b.status, float(ac.get("season_refresh_s") or 0), time.monotonic()):
         try:
             sb.rpc("refresh_feed_team_season", {"p_competition": comp["id"]})
             pf["refresh"][comp["id"]] = time.monotonic()
+            pf.setdefault("owed", set()).discard(comp["id"])
         except Exception as exc:
             print(f"    (season roll-up skipped: {exc})")
     return True
+
+
+def roll_up_due(pf: dict, comp_id: str, status: str, gap_s: float, now_s: float) -> bool:
+    """Is the season roll-up of this competition due on this write? The rule as it always was (a final, a
+    first write, or REFRESH_EVERY_S since the last) unless the source sets a gap, which then binds finals
+    too and leaves the competition owed (pf["owed"]) until it is paid."""
+    last = pf["refresh"].get(comp_id)
+    if not gap_s:
+        return status == "final" or last is None or now_s - last >= REFRESH_EVERY_S
+    if status == "final":
+        pf.setdefault("owed", set()).add(comp_id)
+    return last is None or now_s - last >= gap_s
+
+
+def flush_refresh(sb: "Supabase", runs: dict) -> int:
+    """Pay every season roll-up still owed (roll_up_due) - at the end of a live-lane pass. Returns how many."""
+    n = 0
+    for run in runs.values():
+        pf = run.get("_pf") or {}
+        for cid in sorted(pf.get("owed") or ()):
+            try:
+                sb.rpc("refresh_feed_team_season", {"p_competition": cid})
+                pf["refresh"][cid] = time.monotonic()
+                n += 1
+            except Exception as exc:
+                print(f"    (season roll-up skipped: {exc})")
+        if pf.get("owed"):
+            pf["owed"].clear()
+    return n
 
 
 def _rows_fmt(rows) -> tuple:
@@ -2195,6 +2234,40 @@ def feed_abandoned(raw: dict, tipoff_at, now: datetime | None = None) -> bool:
     return secs is not None and -secs >= LIVE_STALE
 
 
+# ────────────────────────────────────────────────────────── lanes and shards (docs/ncaa-readiness.md)
+# ONE LIVE LANE CANNOT HOLD A COLLEGE EVENING. It reads and writes one game at a time: measured on 30 Sep
+# 2026 (run 36748323142, 26 games live at once), at most 56 versions written a minute, about a second each.
+# NCAA D2/D3 puts several hundred games on the floor at once, so its sources run in a lane of their own
+# ("live_lane": "ncaa" on the source row), split by game across as many runners as it needs
+# (--shard i/n: a game belongs to shard crc32(external id) % n). The lane every other league runs in is the
+# default one and takes exactly the sources it always took: those that name no lane.
+def lane_of(src: dict) -> str:
+    """The live lane a source row asks for ("" = the default lane every league used before lanes)."""
+    return str(src.get("live_lane") or (src.get("adapter_config") or {}).get("live_lane") or "").strip().lower()
+
+
+def lane_sources(sources: list[dict], lane: str | None) -> list[dict]:
+    """The sources one live lane polls: those naming `lane`, or (no lane given) those naming none."""
+    want = (lane or "").strip().lower()
+    return [s for s in sources if lane_of(s) == want]
+
+
+def parse_shard(text: str | None) -> tuple[int, int] | None:
+    """'2/4' -> (1, 4): the second of four shards. None / '' / '1/1' -> None (every game)."""
+    if not text:
+        return None
+    m = re.fullmatch(r"\s*(\d+)\s*/\s*(\d+)\s*", str(text))
+    if not m or not (1 <= int(m.group(1)) <= int(m.group(2))):
+        raise ValueError(f"--shard wants i/n with 1 <= i <= n, not {text!r}")
+    i, n = int(m.group(1)), int(m.group(2))
+    return None if n == 1 else (i - 1, n)
+
+
+def in_shard(external_id, shard: tuple[int, int] | None) -> bool:
+    """Is this game this shard's? Stable across runs and machines (crc32, not Python's salted hash)."""
+    return shard is None or zlib.crc32(str(external_id).encode()) % shard[1] == shard[0]
+
+
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
     """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
     if not claim_live_lane():
@@ -2218,6 +2291,9 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     if sb is None or not fiba:
         print("live lane: needs Supabase and a source that reads a LiveStats feed"); return 0, False
     adapters = {s["code"]: get_adapter(s["adapter"]) for s in fiba}
+    shard = parse_shard(getattr(args, "shard", None))
+    if shard:
+        print(f"live lane: shard {shard[0] + 1} of {shard[1]} - the games whose crc32(external id) % {shard[1]} is {shard[0]}")
     worker = os.environ.get("GITHUB_RUN_ID", "local")
     runs = {s["code"]: {"source_id": s.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0} for s in fiba}
     hashes: dict[str, str] = {}
@@ -2291,7 +2367,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 print(f"{now.strftime('%H:%M:%S')}Z broadcast heartbeat: {len(armed)} armed game(s)")
         if time.time() >= recheck:
             due, next_tip = live_due(sb, fiba, now)
-            due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
+            due = [(s, r) for s, r in due if str(r["external_id"]) not in finished and in_shard(r["external_id"], shard)]
             for s, r in due:
                 hashes.setdefault(str(r["external_id"]), r.get("payload_hash") or "")
                 if str(r.get("error") or "").startswith(STALLED_TAG):
@@ -2499,6 +2575,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         # gaps are over 25 s, the writes are starving the observer - ship 2b, then a thread.
         for xid in list(observer.st):
             print(observer_line(xid))
+    flush_refresh(sb, runs)
     # every source's "polled" stamp in ONE request (it was one PATCH per source, ~60 of them on every
     # quarter-hour probe of the PC's lane); a run row only where a game was actually fetched
     ids = sorted({str(s["id"]) for s in fiba if s.get("id")})
@@ -2515,7 +2592,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 pass
     now = datetime.now(timezone.utc)
     due, next_tip = live_due(sb, fiba, now)
-    due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
+    due = [(s, r) for s, r in due if str(r["external_id"]) not in finished and in_shard(r["external_id"], shard)]
     chain = bool(due) or (next_tip is not None and (next_tip - now).total_seconds() < CHAIN_AHEAD)
     wait = _live_wait_seconds(due, next_tip, now)
     print(f"live lane done: {len(due)} still live/due" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") +
@@ -2559,7 +2636,7 @@ REFRESH = {"on": False}             # set from --refresh in main(): reopen final
 
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
                          "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl",
-                         "aba", "basketfi", "lnbbr", "nbl"}
+                         "aba", "basketfi", "lnbbr", "nbl", "ncaa"}
 #: adapters that cannot read a past season at all, and why - said on the console's request, not only in a log
 NO_PAST = {"bbl": "the BBL's schedule is its site's season being played, and its API refuses scripts"}
 _SPLIT_SEASON = re.compile(r"\d{4}\s*[-/]\s*\d{2,4}")
@@ -2714,6 +2791,10 @@ def main() -> int:
     ap.add_argument("--strict", action="store_true", help="with --repair-stalled: exit 1 if any such game is still live afterwards (the repair workflow)")
     ap.add_argument("--live-loop", type=int, default=0, help="after the pass, keep re-polling live games every --live-every seconds for this many seconds")
     ap.add_argument("--live-every", type=int, default=30)
+    ap.add_argument("--lane", default=None, help="with --live-only: poll only the sources whose live_lane is this "
+                    "(e.g. ncaa); without it, only the sources that name no lane - every league's lane as it was")
+    ap.add_argument("--shard", default=None, help="with --live-only: i/n - poll only the games whose crc32(external id) %% n "
+                    "is i-1, so n runners split one lane's games between them (docs/ncaa-readiness.md)")
     ap.add_argument("--broadcast-every", type=int, default=2, help="seconds between reads of a game armed for broadcast (games.broadcast_until)")
     ap.add_argument("--backfill", action="store_true", help="claim the oldest queued season backfill (0135) and run this same pass over that league's sources with that season pinned")
     # %% not %: argparse's --help formatter runs this help text through %-substitution
@@ -2776,6 +2857,13 @@ def main() -> int:
         backfill_finish(queue, job, "failed", 0, 0, 0, f"the source publishes no {job['season']} competition")
         return 1
     if args.live_only and not args.ids:
+        try:
+            parse_shard(args.shard)
+        except ValueError as exc:
+            print(exc); return 2
+        sources = lane_sources(sources, args.lane)
+        if args.lane:
+            print(f"live lane '{args.lane}': {len(sources)} source(s)")
         rc, chain = live_keeper(sb, sources, args)
         gh_output(chain="true" if chain else "false")
         return rc

@@ -41,6 +41,12 @@ const BUCKET = 'snapshots';
 const SEASON_MAX_AGE_MS = 24 * 60 * 60 * 1000;   // as the function: a day, token or no token
 const WINDOW = 4;                                 // batches of forty games read ahead of the sums
 
+/* two files in the same layout (the v<n>- in front of the token): only then may an older build stand */
+function sameLayout(a, b) {
+  const v = f => (String(f || '').split('/').pop().match(/^v(\d+)-/) || [])[1] || '';
+  return v(a) !== '' && v(a) === v(b);
+}
+
 /* the page's own modules, as a browser loads them: globals first, then the files */
 function load(url) {
   globalThis.window = globalThis;
@@ -94,6 +100,14 @@ export async function run(opts) {
     const name = D.snapFile(tok), file = 'season/' + unit + '/' + name;
     const h = held.get(key);
     if (h && h.file === file && h.token === tok && now() - Date.parse(h.built_at) < SEASON_MAX_AGE_MS) { done.current++; continue; }
+    /* A FLOOR BETWEEN TWO BUILDS (o.minGapMs, --min-gap-hours, the BIG_SEASONS_MIN_GAP_H variable). Every build reads
+       the whole season again: an NCAA division is ~5,000 games at ~19 KB of box score, trimmed lines and splits each,
+       about 95 MB, and on a college evening its token moves every hour. Four divisions rebuilt hourly would read
+       ~9 GB a day out of the database, most of the plan's egress (docs/ncaa-readiness.md). With a floor, a file
+       younger than it stands even though its token moved; the pages say "As of" its build (data.js bigSeason).
+       Unset (0) is the rule as it was. A file in an older layout is always rebuilt. */
+    if (o.minGapMs > 0 && h && h.built_at && sameLayout(h.file, file)
+        && now() - Date.parse(h.built_at) < o.minGapMs) { done.current++; continue; }
     if (o.dryRun) { log(`would build ${unit}: ${n} games (${tok})`); done.built.push({ unit, games: n, dry: true }); continue; }
     try {
       const t0 = now();
@@ -148,7 +162,8 @@ export async function run(opts) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = k => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
   run({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY,
-        dryRun: process.argv.includes('--dry-run'), unit: arg('--unit') })
+        dryRun: process.argv.includes('--dry-run'), unit: arg('--unit'),
+        minGapMs: (+(arg('--min-gap-hours') || process.env.BIG_SEASONS_MIN_GAP_H || 0) || 0) * 3600000 })
     .then(r => { process.exit(r && r.failed && r.failed.length ? 1 : 0); })
     .catch(e => { console.error(e); process.exit(1); });
 }

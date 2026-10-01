@@ -516,14 +516,32 @@ function snapFile(token, v) { return 'v' + (v || SEASON_FILE_V) + '-' + String(t
 /* THE LAYOUT BEFORE, WHILE THE NEW ONE IS NOT THERE: the function writes its files in the layout of the copy
    of this file it was deployed with, so until it is deployed again the files are still v2, and a v2 file is
    still the season (unpackSeason reads both). Asked only when the v3 name is not there. */
+/* THE LAYOUT THAT ANSWERED LAST IS ASKED FIRST. Every file the function writes is in the layout of the
+   copy it was deployed with, so while it still writes v2 every season read cost a 400 for the v3 name
+   before the v2 one answered (seen on every league page and scouting's every league). The layout that
+   last answered is remembered for the session; the other is still tried when it does not. */
+const SNAP_V_KEY = 'epinoia_snapv';
+let snapV = null;
+function snapOrder() {
+  if (snapV == null) {
+    try { snapV = +(root.sessionStorage && root.sessionStorage.getItem(SNAP_V_KEY)) || 0; } catch (_) { snapV = 0; }
+  }
+  return snapV === 2 ? [2, SEASON_FILE_V] : [SEASON_FILE_V, 2];
+}
+function snapAnswered(v) {
+  if (snapV === v) return;
+  snapV = v;
+  try { root.sessionStorage && root.sessionStorage.setItem(SNAP_V_KEY, String(v)); } catch (_) { /* memory only */ }
+}
 async function seasonSnapshot(ids, token) {
   const c = CFG();
-  for (const v of [SEASON_FILE_V, 2]) {
+  for (const v of snapOrder()) {
     try {
       const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/season/${ids}/${snapFile(token, v)}`);
       if (!r.ok) continue;
       const j = await r.json();
       if (!j || j.token !== token || !j.data) continue;
+      snapAnswered(v);
       return unpackSeason(j.data);
     } catch (_) { /* the older name, then the long way */ }
   }

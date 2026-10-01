@@ -82,6 +82,9 @@ class GameBundle:
     feed_lm_ms: Optional[int] = None         # data.json Last-Modified, epoch ms (None: header absent)
     feed_recv_ms: Optional[int] = None       # when that response arrived, epoch ms
     venue: Optional[str] = None              # the arena, where only the game's own page names it (0162)
+    # False: publish this game's RESULT and box, not its event log (the adapter found the log does not add
+    # up to the official score - see adapters/ncaa.py). None, the default, leaves it to the source row.
+    translate: Optional[bool] = None
 
     def __post_init__(self):
         _clean(self)

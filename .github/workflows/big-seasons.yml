@@ -48,6 +48,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           UNIT: ${{ github.event.inputs.unit }}
+          # a floor in hours between two builds of one big season (tools/build-seasons.mjs --min-gap-hours);
+          # unset = every hour its token moves. docs/ncaa-readiness.md suggests 6 once NCAA is on.
+          BIG_SEASONS_MIN_GAP_H: ${{ vars.BIG_SEASONS_MIN_GAP_H }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           args=()

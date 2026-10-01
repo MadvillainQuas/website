@@ -329,8 +329,10 @@ function boot() {
   const catP = typeof G.catalogue === 'function' ? G.catalogue() : Promise.resolve(null);
   catP.catch(() => {});
   /* the clubs per league, for the size estimate: one short read, after the catalogue */
-  const teamP = catP.then(() => (typeof D.all === 'function' ? D.all('teams?select=league_id') : []))
-    .then(ts => { const m = {}; (ts || []).forEach(t => { if (t && t.league_id) m[t.league_id] = (m[t.league_id] || 0) + 1; }); return m; })
+  /* COUNTED BY THE DATABASE (PostgREST's embedded count): one row a league, not one a club - NCAA D2/D3
+     alone adds ~1,460 clubs, and every club's row was paged through to be counted here */
+  const teamP = catP.then(() => (typeof D.get === 'function' ? D.get('leagues?select=id,teams(count)') : []))
+    .then(ls => { const m = {}; (ls || []).forEach(l => { const n = l && Array.isArray(l.teams) && l.teams[0] ? +l.teams[0].count : 0; if (l && l.id && n) m[l.id] = n; }); return m; })
     .catch(() => ({}));
   /* the leagues this reader follows, when signed in (fan_prefs: one small read) */
   const F = root.EpinoiaFollow;

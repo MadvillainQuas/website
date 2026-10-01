@@ -219,7 +219,7 @@ ok("the four hot upserts (external_games, competition_teams, game_advanced, game
    all(('upsert_min(sb, "%s"' % t) in src_ri for t in ("external_games", "competition_teams", "game_advanced", "game_state")))
 ok("the games row is patched only when its status, score or place moved", "if not unchanged:" in src_ri and "home_score" in src_ri)
 ok("the season roll-up is throttled while a game is live and always runs for a final",
-   "REFRESH_EVERY_S" in src_ri and 'b.status == "final" or last is None' in src_ri)
+   "REFRESH_EVERY_S" in src_ri and 'status == "final" or last is None or now_s - last >= REFRESH_EVERY_S' in src_ri)
 ok("the season id and the game id are looked up once per run", 'pf["season"]' in src_ri and 'pf["game"]' in src_ri)
 src_fp = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedplatform.py"), encoding="utf-8").read()
 ok("a club is entered in a competition once per process, not on every poll", '"comp_team"' in src_fp and "if ck not in seen" in src_fp)
