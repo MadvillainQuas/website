@@ -152,6 +152,49 @@ const FILES = [
     names: ['compute', 'toStored', 'finish', 'howEnded', 'surname', 'reboundZones', 'reboundOutcomes', 'KEYS', 'STAMPED',
             'FIELDS', 'AFIELDS', 'VERSION', 'cumEl', 'inGameOrder']
   },
+  /* WHAT WINS 2's FEATURE LINE (docs/what-wins-model.md §3): finalise-game reduces every finished game to 108
+     counts a side with it, and scripts/backfill_features.mjs does the same for the games before it. One file, so a
+     backfilled line and a freshly finalised one cannot differ. It reads the engine, possessions.js, shotclock.js and
+     situations.js off globalThis when extract() is CALLED, so the function imports those first. */
+  {
+    src: join(repo, 'epinoia', 'features.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'features.js'),
+    global: 'EpinoiaFeatures',
+    names: ['FV', 'LAYOUT', 'INDEX', 'QBITS', 'FACTORS', 'PUBLIC_KEYS', 'CLUTCH_MS', 'CLUTCH_MARGIN', 'GARBAGE', 'BONUS', 'N',
+            'extract', 'toRows', 'fromRow', 'derive', 'seasonFactors', 'valid']
+  },
+  /* THE WHAT WINS MODEL, for analytics-file's RECALCULATE (§A.2): the function runs winmodel.update() on the few
+     new games since the last build, with the same statistics the builder and the page run. `optional`: written by
+     another work package, so until its browser copy exists the entry is skipped rather than failing the build. */
+  {
+    src: join(repo, 'epinoia', 'winstats.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'winstats.js'),
+    global: 'EpinoiaWinStats',
+    optional: true,
+    names: ['normCdf', 'normPdf', 'normInv', 'logit', 'expit', 'rng', 'normal', 'hash',
+            'chol', 'cholSolve', 'invSPD', 'gaussJordan', 'suff', 'addSuff', 'subSuff', 'pick', 'ridge', 'cvLambda',
+            'clusterCov', 'blockBootstrap', 'logistic', 'corrFromSuff', 'vif', 'condNumber', 'shapleyR2',
+            'dersimonianLaird', 'ebPosterior', 'wilson', 'fisherCI', 'fisherP', 'bh', 'welchCI', 'icc', 'pointBiserial',
+            'bins', 'quantile', 'nsBasis', 'gamLogit', 'calibration', 'valueScale', 'winsOver', 'oaxaca', 'golden',
+            'bisect', 'niceTicks']
+  },
+  {
+    src: join(repo, 'epinoia', 'winsim.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'winsim.js'),
+    global: 'EpinoiaWinSim',
+    optional: true,
+    names: ['RATES', 'K_PRIOR', 'profile', 'matchup', 'game', 'simulate', 'applyEdits', 'counterfactual', 'needed',
+            'shapley', 'season', 'calibrate', 'synth']
+  },
+  {
+    src: join(repo, 'epinoia', 'winmodel.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'winmodel.js'),
+    global: 'EpinoiaWinModel',
+    optional: true,
+    names: ['FILE_V', 'CODE_V', 'STORE_V', 'BUDGET', 'KEYMAP', 'normListed', 'groupsFor', 'roles', 'blocksOf',
+            'storeAdd', 'storeDrop', 'buildUnit', 'buildPool', 'buildTeaser', 'validate', 'pack', 'unpack', 'synthUnit',
+            'slotMinutes', 'update']
+  },
   /* THE STARS' RULE, for the weekly fans' vote (0150). The fanvote function puts the
      week's ten best players by BPM on the ballot, and "best" has to mean what the
      Stars podium on the same page means: the same window minimum and the same
@@ -200,6 +243,14 @@ const check = process.argv.includes('--check');
 let drifted = 0;
 
 for (const f of FILES) {
+  if (f.optional && !existsSync(f.src)) {
+    const rel = f.out.replace(repo, '').replace(/^[\\/]/, '');
+    if (existsSync(f.out) && check) {
+      drifted++;
+      console.error(`  DRIFTED  ${rel}\n           its browser copy is gone — delete it or restore epinoia/${f.src.split(/[\\/]/).pop()}`);
+    } else console.log(`  waiting  ${rel} (epinoia/${f.src.split(/[\\/]/).pop()} is not written yet)`);
+    continue;
+  }
   const want = build(f);
   const have = existsSync(f.out) ? readFileSync(f.out, 'utf8') : null;
   const rel = f.out.replace(repo, '').replace(/^[\\/]/, '');

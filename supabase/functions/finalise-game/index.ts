@@ -40,6 +40,10 @@ import { compute as computeSituations, toStored as storedSituations } from '../_
 import '../_shared/connections.js';
 import '../_shared/shotclock.js';
 import { tabInputs } from '../_shared/gamefacts.js';
+// WHAT WINS 2's FEATURE LINE (docs/what-wins-model.md §3-4): the game reduced once to 108 counts a side for the members'
+// model. It reads the engine, possessions.js, situations.js and shotclock.js off globalThis when it is called, which the
+// imports above have already put there.
+import { extract as extractFeatures, toRows as featureRows } from '../_shared/features.js';
 
 /* EVERY HEADER A BROWSER ACTUALLY SENDS HAS TO BE NAMED HERE.
 
@@ -202,6 +206,9 @@ Deno.serve(async (req) => {
     await admin.from('player_game_stats').delete().eq('game_id', gameId);
     await admin.from('team_game_stats').delete().eq('game_id', gameId);
     await admin.from('lineup_stints').delete().eq('game_id', gameId);
+    /* the What wins line goes with the box score: a re-finalise writes it again with a later finalised_at, so the
+       model builder reads the corrected game as a new one (an error here is not worth failing a reopen over) */
+    await admin.from('game_features').delete().eq('game_id', gameId);
     await admin.from('games').update({ status: 'live', finalised_at: null, finalised_by: null }).eq('id', gameId);
     await admin.from('audit_log').insert({ actor: user.id, action: 'reopen', subject: 'game', subject_id: gameId });
     /* The table counts final games only, so a reopened one has to leave it
@@ -360,6 +367,21 @@ Deno.serve(async (req) => {
     warnings.push('the events splits could not be worked out — run the situations backfill');
   }
 
+  /* --------------------------------------------- the What wins feature line ---
+     108 counts a side (epinoia/features.js) from what this function already holds: the replay, both teamAdv lines
+     and the situations. NEVER ALLOWED TO STOP A FINALISE, like the splits above: a throw writes no line, says so,
+     and leaves the game for scripts/backfill_features.mjs. FEATURES_OFF=1 (a function secret) turns it off without
+     a deploy, should the line ever misbehave. */
+  let FL: any = null;
+  if (Deno.env.get('FEATURES_OFF') !== '1') {
+    try {
+      FL = extractFeatures(game, { d, TA, C: SITC });
+    } catch (e) {
+      console.warn(`[finalise] feature line for ${gameId} failed:`, String(e));
+      warnings.push('the What wins feature line could not be worked out — run the features backfill');
+    }
+  }
+
   // ---------------------------------------------------------------- lock ---
   /* ONE FINALISE AT A TIME, AND THE LOCK SAYS WHOSE IT IS. This was a plain update to
      'finalising', so two calls for the same game - the GitHub lane and the PC's lane both see
@@ -413,12 +435,32 @@ Deno.serve(async (req) => {
     const failed = w.find(r => r.error);
     if (failed) throw new Error(failed.error!.message);
 
+    /* ONE MOMENT FOR THE GAME AND ITS LINE: games.finalised_at and the feature rows carry the same publishedAt, so
+       the model builder's watermark (finalised_at, game_id) sees a re-finalised game as new exactly once. Stored in
+       its own try/catch, outside the inserts above: a missing table or a failed upsert is a warning, never a reopen. */
+    const publishedAt = new Date().toISOString();
+    if (FL && g.competition_id) {
+      try {
+        const { data: comp, error: compErr } = await admin.from('competitions')
+          .select('season_id,seasons(league_id)').eq('id', g.competition_id).maybeSingle();
+        const seasonId = (comp as any)?.season_id, leagueId = (comp as any)?.seasons?.league_id;
+        if (compErr || !seasonId || !leagueId) throw new Error(compErr?.message || 'the competition has no season or league');
+        const { error: flErr } = await admin.from('game_features').upsert(
+          featureRows(gameId, FL, { league_id: leagueId, season_id: seasonId, competition_id: g.competition_id, finalised_at: publishedAt }),
+          { onConflict: 'game_id,team_idx' });
+        if (flErr) throw new Error(flErr.message);
+      } catch (e) {
+        console.warn(`[finalise] feature line for ${gameId} not stored:`, String(e));
+        warnings.push('the What wins feature line was not stored — run the features backfill');
+      }
+    }
+
     // --------------------------------------------------------- publish it ---
     await admin.from('games').update({
       status: 'final',
       home_score: d.score[0], away_score: d.score[1],
       period: game.period,
-      finalised_at: new Date().toISOString(), finalised_by: user.id
+      finalised_at: publishedAt, finalised_by: user.id
     }).eq('id', gameId);
 
     // Standings, bracket and awards, if the game belongs to a competition.

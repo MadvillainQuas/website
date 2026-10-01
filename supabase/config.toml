@@ -89,3 +89,12 @@ verify_jwt = false
 # the snapshots tables, and answers counts.
 [functions.snapshots]
 verify_jwt = false
+
+# analytics-file (migration 0209, docs/what-wins-model.md §10) hands out the What wins model's files. The site
+# calls it with the publishable key, which is not a JWT, and a signed-out visitor may be allowed a file while
+# memberships are switched off, so the gateway cannot be the thing that guards it. The function guards itself:
+# the database's analytics_check decides with the caller's own token, analytics_take limits each account and each
+# address, and a file leaves the private bucket only as a two-minute signed URL. RECALCULATE needs a signed-in
+# caller the same check allows, and runs at most once a league-season every ten minutes.
+[functions.analytics-file]
+verify_jwt = false
