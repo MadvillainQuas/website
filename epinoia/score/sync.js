@@ -71,11 +71,18 @@ const GAME_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
    leave (a real game started after it is publishable), and a tab that does not
    hold the game (bootstrap.js, the tab lock) is told so by the page. Both used to
    be possible on a real fixture's address and both published — a practice squad
-   onto a real fixture, a stale tab's score over the live one. */
+   onto a real fixture, a stale tab's score over the live one.
+
+   ONE TRAINING GAME DOES GO OUT, AS FAR AS THIS BROWSER: a scratch room (no uuid,
+   so no row anywhere) on the local transport, which is BroadcastChannel and
+   reaches this browser's other tabs and nothing else. That is the ?train=1 demo,
+   whose watch tab is how a newcomer sees what a viewer would. Every path here
+   that touches the database also needs a uuid, so none of them can run for it. */
+const inBrowserOnly = () => mode0 === 'local' && !GAME_UUID.test(gameId || '');
 function quiet() {
   if (halted) return true;
   try { if (root.epReadOnly) return true; } catch (_) {}
-  try { if (typeof S !== 'undefined' && S && S.training) return true; } catch (_) {}
+  try { if (typeof S !== 'undefined' && S && S.training && !inBrowserOnly()) return true; } catch (_) {}
   return false;
 }
 
@@ -261,8 +268,14 @@ async function loadScope() {
   } catch (_) { /* without it every listener falls back to reloading, as before */ }
 }
 
+/* ONLY A FIXTURE, ON THE LEAGUE'S TRANSPORT. A scratch room has no row for a
+   listener to re-read and no slugs to scope it, so it reached every strip on the
+   platform as an unscoped "reload" — the herd above, for a game nobody can see.
+   sb is set on a local page too (attach falls back to the page's client), which is
+   why the transport is asked as well as the id. */
 function announce(status) {
   if (!sb || halted || !gameId || status === announced) return;
+  if (mode0 !== 'supabase' || !GAME_UUID.test(gameId)) return;
   announced = status;
   loadScope();                       // fire and forget; the next one carries it
   try {

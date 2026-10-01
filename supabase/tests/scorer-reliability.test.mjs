@@ -179,9 +179,10 @@ console.log('\n4. the bar says what is true');
   const paint = (st, opts = {}) => {
     const said = [];
     const bar = { style: {} };
-    const f = new Function('window', 'say', 'bar', 'training', 'authOk', 'mode', 'shortId', body)(
+    const f = new Function('window', 'say', 'bar', 'training', 'authOk', 'mode', 'shortId', 'inBrowserOnly', body)(
       { EpinoiaSync: { status: () => st } }, (t, c) => said.push([t, c]), bar,
-      () => !!opts.training, opts.authOk === undefined ? true : opts.authOk, 'supabase', 'abc12345');
+      () => !!opts.training, opts.authOk === undefined ? true : opts.authOk, 'supabase', 'abc12345',
+      () => !!opts.inBrowser);
     f();
     return said[said.length - 1] || [];
   };
@@ -193,6 +194,9 @@ console.log('\n4. the bar says what is true');
   ok('a refusal: red, with its code', s[1] === '#ff5f6b' && /not saving · 42501/.test(s[0]), JSON.stringify(s));
   s = paint({ halted: false, failing: false, pending: 0 }, { training: true });
   ok('a training game says it is not published', /training · not published/.test(s[0]));
+  s = paint({ halted: false, failing: false, pending: 0 }, { training: true, inBrowser: true });
+  ok('...and the ?train=1 demo says how far it goes, calmly', s[0] === 'training · this browser only' && s[1] !== '#ff5f6b' && s[1] !== '#ffd166',
+     JSON.stringify(s));
   s = paint({ halted: false, failing: false, pending: 0 });
   ok('only then green', s[1] === '#93f2bf' && /^live · abc12345$/.test(s[0]), JSON.stringify(s));
   ok('the slow beat repaints from that, instead of guessing from the backlog',
@@ -312,6 +316,37 @@ console.log('\n6. finalise: one at a time, a lost answer read back, the digest s
      /if \(status === 'final'\) markFinal\(/.test(src) && /banner\('ep-closed'/.test(src));
 }
 
+/* ---- 6b. a read-only tab takes no taps -------------------------------------------- */
+console.log('\n6b. a read-only tab takes no taps');
+{
+  const toasts = [];
+  const make = ro => new Function('readOnly', 'window', 'let shieldSaid = 0;\n' + lift(src, 'function shieldInput(e)') + '\nreturn shieldInput;')(
+    ro, { toast: (m) => toasts.push(m) });
+  const evt = (type, inside) => {
+    const e = { type, cancelable: true, stopped: false, prevented: false,
+      target: { closest: sel => (inside && sel.indexOf(inside) >= 0 ? {} : null) },
+      stopPropagation() { this.stopped = true; }, preventDefault() { this.prevented = true; } };
+    return e;
+  };
+  const shield = make(true);
+  let e = evt('click');
+  shield(e);
+  ok('a tap on the scorer goes no further, and says why', e.stopped && e.prevented && /read-only/.test(toasts[0] || ''), JSON.stringify(toasts));
+  e = evt('keydown'); shield(e);
+  ok('...nor does a key (and the reason is not repeated at every tap)', e.stopped && e.prevented && toasts.length === 1);
+  e = evt('touchstart'); shield(e);
+  ok('a touch is stopped but keeps its default, so the page still scrolls', e.stopped && !e.prevented);
+  e = evt('click', '[id^="ep-"]'); shield(e);
+  ok('the banner, the bar and the escape hatch still work', !e.stopped && !e.prevented);
+  e = evt('click', '.modalwrap'); shield(e);
+  ok('...and a dialog that opened by itself can be answered', !e.stopped);
+  e = evt('click'); make(false)(e);
+  ok('a tab that holds the game is untouched', !e.stopped && !e.prevented);
+  ok('it is installed when the tab goes read-only, before the scorer\'s own listeners (capture, on the window)',
+     /SHIELDED\.forEach\(k => window\.addEventListener\(k, shieldInput, \{ capture: true, passive: false \}\)\);/.test(lift(src, 'function goReadOnly(why)')));
+  ok('the escape hatch carries an ep- id, so the shield lets it through', /bar\.id = 'ep-hatch';/.test(src));
+}
+
 /* ---- 7. wiring ------------------------------------------------------------------- */
 console.log('\n7. the parts that need a browser, checked at the source');
 {
@@ -320,7 +355,9 @@ console.log('\n7. the parts that need a browser, checked at the source');
     ok(fn + ' never runs for a training game, a read-only tab or another fixture\'s game',
        /if \(training\(\) \|\| readOnly \|\| otherFixture\(\)\) return;/.test(lift(src, 'async function ' + fn + '()')));
   }
-  ok('nothing attaches for a training game', /if \(training\(\)\) \{[^\n]*say\('training · not published'/.test(src));
+  ok('nothing attaches for a training game, except the demo, as far as this browser',
+     /if \(training\(\) && !inBrowserOnly\(\)\) \{[^\n]*say\('training · not published'/.test(src) &&
+     /const inBrowserOnly = \(\) => !isFixture && mode === 'local';/.test(src));
   ok('one tab per game: a Web Lock, taken if free, and read-only otherwise',
      /navigator\.locks\.request\(name, \{ ifAvailable: true \}/.test(src) && /window\.epReadOnly = true;/.test(src) &&
      /'epinoia-scorer:' \+ gameId/.test(src));

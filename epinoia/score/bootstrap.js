@@ -71,6 +71,12 @@
      squads back as its own. The page marks a game made by training mode with
      S.training; nothing in this file primes, claims, publishes or finalises one. */
   const training = () => (typeof S !== 'undefined' && S && !!S.training);
+  /* ...except as far as this browser. A scratch room on the local transport (the
+     ?train=1 demo) has no row anywhere, and its frames (BroadcastChannel) reach
+     this browser's other tabs and nothing else, so its watch tab can show a
+     newcomer what a viewer sees. Only the attach gate and the bar ask this:
+     nothing that writes to the league does, and sync.js asks the same. */
+  const inBrowserOnly = () => !isFixture && mode === 'local';
 
   /* The game in this tab belongs to a DIFFERENT fixture than the address — only
      reachable by an older build's resume, but publishing one fixture's log into
@@ -390,6 +396,33 @@
     say('read-only · open in another tab', '#ff5f6b');
     banner('ep-readonly', why || 'This game is open in another tab. This tab is read-only: nothing ' +
       'you do here is saved or published. Use the other tab, or close it and reload this one.');
+    SHIELDED.forEach(k => window.addEventListener(k, shieldInput, { capture: true, passive: false }));
+  }
+
+  /* A READ-ONLY TAB TAKES NO TAPS.
+
+     save() and the publisher ignore this tab, so nothing recorded in it is kept,
+     which is exactly why it must not seem to record anything. A statistician who
+     picked up the wrong tab could score a quarter into it, every tap answered as
+     if it counted, and lose all of it on the next reload. So a tap or a key on
+     the scorer goes no further (a capture listener on the window runs before every
+     one of the scorer's) and says why. Still usable: this file's own controls,
+     every one an ep- id (the banner, the bar, the escape hatch), and the scorer's
+     dialogs, which can only have opened by themselves in this tab. */
+  const SHIELDED = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'touchstart', 'touchend',
+                    'click', 'dblclick', 'contextmenu', 'dragstart', 'keydown', 'input', 'change', 'submit'];
+  let shieldSaid = 0;
+  function shieldInput(e) {
+    if (!readOnly) return;
+    const t = e.target;
+    if (t && t.closest && t.closest('[id^="ep-"], .modalwrap')) return;
+    e.stopPropagation();
+    /* a touch keeps its default, so the page still scrolls; its click is stopped */
+    if (e.cancelable && e.type !== 'touchstart' && e.type !== 'touchend') e.preventDefault();
+    if ((e.type === 'click' || e.type === 'keydown') && Date.now() - shieldSaid > 2500) {
+      shieldSaid = Date.now();
+      try { if (typeof window.toast === 'function') window.toast('read-only — this game is open in another tab', 2600); } catch (_) {}
+    }
   }
   (function oneTabPerGame() {
     if (!isFixture) return;                  // a scratch room is per tab already
@@ -1231,6 +1264,7 @@
     ].join(';');
 
     const bar = document.createElement('div');
+    bar.id = 'ep-hatch';
     bar.style.cssText = [
       'position:fixed', 'top:0', 'left:0', 'right:0',
       'transform:translateY(-100%)', 'transition:transform .2s var(--ease,ease)',
@@ -2302,7 +2336,7 @@
       btn.textContent = 'finalise to the league';
       btn.disabled = true;
       note(training()
-        ? 'This is a training game, so nothing is published from it.'
+        ? 'This is a training game, so nothing from it goes to the league.'
         : 'This is a practice game, so there is nothing to publish. Open a real ' +
           'fixture from the league admin page to score one that counts.');
     } else if (S && S.finalisedAt) {
@@ -2382,7 +2416,9 @@
        belongs to another fixture is never published into this one. Training is
        a state the page can leave — a real game started after it attaches — so
        the interval keeps running through it. */
-    if (training()) { if (!say.training) { say.training = true; say('training · not published', '#ffd166'); } return; }
+    /* aqua, not amber: a practice game being unpublished is the point of it, not a warning — amber here
+       painted the lip as a fault for every visitor to the demo */
+    if (training() && !inBrowserOnly()) { if (!say.training) { say.training = true; say('training · not published', '#8ff5ff'); } return; }
     say.training = false;
     if (readOnly) return;
     if (otherFixture()) { say('this game belongs to another fixture · not published', '#ff5f6b'); return; }
@@ -2551,7 +2587,7 @@
       const why = S0.haltReason || 'stopped';
       say('not publishing · ' + why, red); tone(red); return;
     }
-    if (training()) { say('training · not published', amber); tone(amber); return; }
+    if (training()) { say(inBrowserOnly() ? 'training · this browser only' : 'training · not published', '#8ff5ff'); tone(green); return; }
     if (authOk === false) return;                   // already saying the real problem
     if (S0.failing) {
       if (S0.failKind === 'network') {

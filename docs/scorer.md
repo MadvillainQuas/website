@@ -65,8 +65,8 @@ So the numbers checked at the table were not always the numbers the league publi
 - Every save records the time (`savedAt`). The game is also saved when the page is hidden or closed.
 - A game restored with its clock running says how long ago that was, and offers the time the board should show. The clock stays stopped until the statistician checks it.
 - A tab that is not the one scoring the game (`window.epReadOnly`, set by `bootstrap.js`) never writes.
-- A game built by the practice button is marked `training`. It is never claimed, published or finalised, and the practice button is not offered on a real fixture's page.
-- **One tab per game.** The first tab to open a fixture holds a lock on it (Web Locks; a localStorage heartbeat where those are missing). Any other tab is read-only: it publishes nothing, never saves, and says so. When the first tab closes, the other is told to reload. A reload keeps the lock.
+- A game built by the practice button is marked `training`. It is never claimed, published or finalised, and the practice button is not offered on a real fixture's page. The one exception is the `?train=1` demo: a scratch room on the in-browser transport, with no row anywhere. It goes as far as the same browser's other tabs, so its watch tab shows what a viewer would see. The bar says "training · this browser only".
+- **One tab per game.** The first tab to open a fixture holds a lock on it (Web Locks; a localStorage heartbeat where those are missing). Any other tab is read-only: it publishes nothing, never saves, and says so. It also takes no taps or keys: each one is stopped before the scorer sees it, and a toast says why. Only the banner, the bar and the way out still work. When the first tab closes, the other is told to reload. A reload keeps the lock.
 - **A takeover** (another device's log is loaded) first copies this phone's game to a backup key, `epinoia_v1:backup:<time>` (the newest only). The league's log is then put in game order, so a play added late is not replayed after the buzzer.
 - **Resuming** sends a saved game to its own fixture's address, never to a scratch room where it would be published nowhere. On a fixture's page, the picker shows a "resume this game" card when the phone holds that fixture's game.
 
@@ -81,6 +81,7 @@ So the numbers checked at the table were not always the numbers the league publi
   A final or void that this device did not cause is a banner that stays until it is dismissed. While a game is being finalised, the watchdog waits rather than stopping. On a phone's game screen the state is shown on the strip at the top, so the bar never covers a control.
 - **Signed in, but offline with an expired token**, is "could not ask", not "signed out". The scorer keeps scoring, unpublished, until the league can be reached.
 - **Who won the tip** and the arrow are written to the game's row once the tip is decided, and again if they change.
+- **Only a real fixture is announced** on the platform-wide "a game has started" channel, and only from the league's transport. A scratch room used to be announced too. It has no row to re-read and no slugs to scope it, so every live strip on the platform re-queried for a game none of them could show.
 - **Finalising**:
   - It runs one at a time, with a deadline.
   - It sends the log's digest (`logDigest`), so `finalise-game` can refuse a log the phone has since corrected.

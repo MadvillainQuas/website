@@ -396,6 +396,54 @@ console.log('\n7. finalise-game\'s copy of the digest is the same function');
      /const \{ gameId, reopen, competitionId, awards, expect \} = await req\.json\(\)/.test(ts));
 }
 
+/* ---- 8. the ?train=1 demo: this browser's other tabs, and nothing else ----------- */
+console.log('\n8. a training game in a scratch room reaches this browser\'s other tabs, and nothing else');
+{
+  /* the local transport's store, which a watch tab in the same browser reads */
+  const store = {};
+  const realLS = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, writable: true, value: {
+    getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } } });
+  const game = (training) => ({ phase: 'game', training, period: 1, clockMs: 500000, evSeq: 2,
+    teams: [{ name: 'h', players: [] }, { name: 'a', players: [] }], starters: [[], []],
+    events: [ev(1, 'period_start'), ev(2, 'p2_made', { team: 0, pid: 'a' })] });
+  const run = async (gameId, mode, training) => {
+    const db = fakeDb(), topics = [];
+    db.channel = topic => ({ send: async () => { topics.push(topic); return 'ok'; }, subscribe() { return this; }, on() { return this; } });
+    globalThis.S = game(training);
+    const { api, timers, restore } = freshSync();
+    api.attach({ gameId, mode, supabase: db });
+    restore();
+    await tick(400);
+    timers.filter(t => t.ms === 2000 || t.ms === 10000).forEach(t => t.fn());
+    await tick(400);
+    const st = api.status();
+    api.halt('test over');
+    return { st, db, topics };
+  };
+
+  const ROOM = 'scratch-demo1234';
+  let r = await run(ROOM, 'local', true);
+  const mirror = JSON.parse(store['eplive:' + ROOM] || 'null');
+  ok('the demo publishes, on the local transport', r.st.quiet === false && r.st.transport === 'local', JSON.stringify(r.st));
+  ok('...so its watch tab has the game', !!mirror && mirror.events.length === 2, JSON.stringify(mirror));
+  ok('...and the league hears nothing: no table touched, nothing announced', r.db.hooks.calls.length === 0 && r.topics.length === 0,
+     JSON.stringify([r.db.hooks.calls, r.topics]));
+
+  r = await run(GID, 'local', true);
+  ok('a training game on a fixture\'s address stays quiet, on any transport', r.st.quiet === true && r.db.hooks.calls.length === 0,
+     JSON.stringify([r.st, r.db.hooks.calls]));
+  r = await run('scratch-elsewhere', 'supabase', true);
+  ok('...and in a scratch room on the league\'s transport', r.st.quiet === true && r.topics.length === 0, JSON.stringify(r.st));
+
+  r = await run('scratch-real0001', 'local', false);
+  ok('a scratch room is never announced to the platform (no row to re-read, no slugs to scope it)', r.topics.length === 0, JSON.stringify(r.topics));
+  r = await run(GID, 'supabase', false);
+  ok('a fixture on the league\'s transport still is', r.topics.includes('epinoia:live'), JSON.stringify(r.topics));
+
+  if (realLS) Object.defineProperty(globalThis, 'localStorage', realLS); else delete globalThis.localStorage;
+}
+
 /* ---- the source agrees with itself ---------------------------------------------- */
 console.log('\n6. wiring');
 {
