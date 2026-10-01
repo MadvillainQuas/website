@@ -77,3 +77,27 @@
 #roster table.ft.roster tfoot td.avg-l{color:#ffe14d;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase}
 #roster table.ft.roster tfoot td.meas{font-family:var(--f-data);font-size:13px;font-weight:600}
 #roster table.ft.roster tfoot td .meas-alt{color:#9aa39e}
+
+/* ---------- THE LINEUPS (05-07): the WOWY / Lineups page's own views, for this club (t/teamwowy.js) ----------
+   kit/wowy.css draws them. The page standard's sheet (kit/page.css) is not loaded here, so the two of its rules
+   those views lean on, the switch (.pg-seg) and the empty box (.pg-empty), are given to the lineups alone: the
+   standard's .topbar and .sec would restyle this page, which came before it. */
+.tlu{padding:0 calc(var(--u)*3) calc(var(--u)*3);min-width:0}
+.tlu .pg-seg{display:inline-flex;border:1px solid var(--rule-2,var(--rule));border-radius:999px;overflow:hidden;flex:none}
+.tlu .pg-seg button{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2,var(--ink-3));
+  background:none;border:0;margin:0;padding:8px 13px;min-height:30px;cursor:pointer;transition:background .15s ease,color .15s ease}
+.tlu .pg-seg button + button{border-left:1px solid var(--rule-2,var(--rule))}
+.tlu .pg-seg button:hover,.tlu .pg-seg button:focus-visible{color:var(--ink);background:color-mix(in oklch,var(--lume) 12%,transparent)}
+.tlu .pg-seg button[aria-pressed="true"]{background:var(--lume);color:var(--ground);cursor:default}
+.tlu .pg-empty{margin:0 auto;max-width:640px;padding:calc(var(--u)*4) calc(var(--u)*3);text-align:center;border:1px dashed var(--rule-2,var(--rule));
+  font-family:var(--f-ui);font-size:14.5px;line-height:1.6;color:var(--ink-2)}
+/* under each: the line "Copy link" answers on, and the way to the rest on the WOWY page */
+.tlu-foot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px;margin-top:12px}
+.tlu-foot .tlu-say{margin:0;min-height:1.2em}
+.tlu-more{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--lume);text-decoration:none}
+.tlu-more:hover{text-decoration:underline;text-underline-offset:3px}
+body.themed .tlu-more{color:var(--team-a-ink)}
+@media (max-width:720px){
+  .tlu{padding:0 calc(var(--u)*2) calc(var(--u)*3)}
+  .tlu .pg-seg button{min-height:40px;padding:0 16px}
+}

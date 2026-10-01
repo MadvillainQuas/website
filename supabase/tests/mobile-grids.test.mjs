@@ -173,6 +173,17 @@ ok('and the desktop grids fill the row: three podium cards and seven more share 
      /@media \(min-width:561px\)\{\s*\.hm \.hmf-body \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - var\(--u\) \* 1\.5\) \/ 2 - \.5px\)\}/.test(kitHome) &&
      /@container hmf \(min-width:764px\)\{\s*\.hm \.hmf-body \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - 3 \* var\(--u\) \* 1\.5\) \/ 4 - \.5px\)\}/.test(kitHome) &&
      kitHome.indexOf('@container hmf') > kitHome.indexOf('.hm .hmf-body .fxc-grid>.fxc{flex-basis:calc((100% - var(--u) * 1.5) / 2'));
+
+  /* GLOBAL FIXTURES: four a row where each card has 170px, as HOME's followed rows, each grid measuring itself */
+  const fxc = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'fxc.css'), 'utf8');
+  const two = fxc.indexOf('.gm .fxc-grid>.fxc{flex-basis:calc((100% - var(--u) * 1.5) / 2 - .5px)}');
+  const three = fxc.indexOf('@container gmg (min-width:534px)'), four = fxc.indexOf('@container gmg (min-width:716px)');
+  ok('Global fixtures: each grid measures itself (the dropdowns indent it, the rail and the zoom change it)', /\.gm \.fxc-grid\{container:gmg \/ inline-size\}/.test(fxc));
+  ok('...four across wherever each card has 170px (716 = 4 x 170 + 3 gaps), three where three have, else two',
+     /@container gmg \(min-width:716px\)\{\s*\.gm \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - 3 \* var\(--u\) \* 1\.5\) \/ 4 - \.5px\)\}/.test(fxc) &&
+     /@container gmg \(min-width:534px\)\{\s*\.gm \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - 2 \* var\(--u\) \* 1\.5\) \/ 3 - \.5px\)\}/.test(fxc) &&
+     two > 0 && two < three && three < four);
+  ok('...after the 240px floor it replaces, which held a row to three up to about 1850px', four > fxc.indexOf('.gm .fxc-grid>.fxc{flex:0 0 max(240px'));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

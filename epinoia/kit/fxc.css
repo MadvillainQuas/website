@@ -219,6 +219,21 @@
   .hm .fxc-grid, .gm .fxc-grid{display:flex;flex-wrap:wrap;justify-content:center}
   .hm .fxc-grid>.fxc, .gm .fxc-grid>.fxc{flex:0 0 max(240px, calc((100% - 3 * var(--u) * 1.5) / 4))}
 }
+/* GLOBAL FIXTURES, FOUR A ROW (.gm): four across wherever each card has 170px (the width HOME's followed rows go four
+   across at: kit/home.css), three where three have it, two below. The 240px floor above held a row to three up to about
+   1850px wide and to two on a laptop. Each grid measures itself, in the kit's pixels, as the cards do: the country and
+   league dropdowns indent it, the rail beside it opens and closes, and the kit zooms the body on a wide screen.
+   716 = four cards of 170 and three gaps of 12; 534 = three and two. A phone keeps the two-across grid above. */
+.gm .fxc-grid{container:gmg / inline-size}
+@media (min-width:561px){
+  .gm .fxc-grid>.fxc{flex-basis:calc((100% - var(--u) * 1.5) / 2 - .5px)}
+}
+@container gmg (min-width:534px){
+  .gm .fxc-grid>.fxc{flex-basis:calc((100% - 2 * var(--u) * 1.5) / 3 - .5px)}
+}
+@container gmg (min-width:716px){
+  .gm .fxc-grid>.fxc{flex-basis:calc((100% - 3 * var(--u) * 1.5) / 4 - .5px)}
+}
 
 /* ------------------------------------------------------------ light theme --- */
 :root[data-theme="light"] .fxc{background:#ffffff;border-color:rgba(13,31,23,.18);

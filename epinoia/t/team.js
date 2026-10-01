@@ -110,7 +110,7 @@ function decideAccess(lg) {
 /* WHICH SEASON. The club's league may have more than one season with games (seasonbar.js); every
    read of the club's games below appends inSeason(), so the page is one season at a time. With one
    season on offer nothing is set and the page reads as it always did. */
-let SEASON_COMPS = null;
+let SEASON_COMPS = null, SEASON_NAME = '';
 const inSeason = () => (SEASON_COMPS && SEASON_COMPS.length ? '&competition_id=in.(' + SEASON_COMPS.join(',') + ')' : '');
 async function chooseSeason(team, lg) {
   const SB = window.EpinoiaSeasonBar;
@@ -129,6 +129,7 @@ async function chooseSeason(team, lg) {
       season = (cid && o.list.find(s => (s.comps || []).some(c => c.id === cid))) || o.list[0];
     }
     SEASON_COMPS = (season.comps || []).map(c => c.id);
+    SEASON_NAME = season.name || '';
     SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: o.list, season });
   } catch (_) { /* every season, as before */ }
 }
@@ -251,7 +252,7 @@ async function chooseSeason(team, lg) {
     whenNear($('#teamshots'), () => teamShots(team));
     whenNear($('#teamclock'), () => teamShotClock(team));
     whenNear($('#teamrot'), () => teamRotations(team));
-    whenNear($('#lulist') || $('#wowy'), () => { lineupPanels(team).catch(() => {}); });
+    whenNear($('#wowy') || $('#lulist'), () => { lineupPanels(team).catch(() => {}); });
     await videoPanel(team);
     weeklyTab(team);
     frontOfficeTab(team);
@@ -1138,79 +1139,46 @@ function reboundZones(host, S, mine) {
 }
 
 /* ------------------------------------------------------- lineups & WOWY --- */
-/* All three panels read the same stints, fetched once. */
+/* THE THREE LINEUP SECTIONS ARE THE WOWY PAGE'S OWN (t/teamwowy.js over stats/wowy/wowyui.js): With or without is
+   its combinations, the Lineup filter its builder, Every lineup its Lineups list (a table that sorts by any column,
+   coloured against the league's units, with the on/off delta of every stat). They read the same games and stints,
+   fetched once here, and the play-by-play the page has already read for the shot chart and the season line. */
 async function lineupPanels(team) {
-  const D = window.EpinoiaData;
+  const D = window.EpinoiaData, TW = window.EpinoiaTeamWowy;
   if (ACCESS.paywall) return;          // stints are behind the wall; the sections are hidden
+  const hosts = { wowy: $('#wowy'), build: $('#lufilter'), lineups: $('#lulist') };
+  const say = msg => Object.values(hosts).forEach(h => {
+    if (h && !h.children.length) h.appendChild(el('div', 'empty', msg));
+  });
   try {
+    if (!TW) throw new Error('the lineups script did not load');
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-      `&status=eq.final&select=id,home_team_id,away_team_id` + inSeason());
-    if (!gs.length) {
-      ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
-        $(sel).appendChild(el('div', 'empty',
-          'No finalised games yet — lineups appear once one is played.')));
-      return;
-    }
+      `&status=eq.final&select=${TW.GAME_SELECT}` + inSeason());
+    if (!gs.length) return say('No finalised games yet — lineups appear once one is played.');
     const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
     const st = await D.stints(gs.map(g => g.id), team.id, byGame);
-    if (!st.length) {
-      ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
-        $(sel).appendChild(el('div', 'empty', 'No lineup data yet.')));
-      return;
-    }
+    if (!st.length) return say('No lineup data yet.');
 
     const ids = [...new Set(st.flatMap(r => r.player_ids))];
     const meta = await D.playerMeta(ids);
     $('#wowyNote').textContent = st.length + ' stints · ' + ids.length + ' players';
-
-    /* the team WOWY needs a subject; default to the most-used player and let
-       the reader change it, because "the team without X" is a question about a
-       specific X rather than about the team */
-    const mins = new Map();
-    st.forEach(s2 => (s2.player_ids || []).forEach(id =>
-      mins.set(id, (mins.get(id) || 0) + ((s2.stats && s2.stats.dur) || 0))));
-    const order = [...mins.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
-    let subject = order[0];
-
-    const pick = $('#wowyPick');
-    order.forEach(id => {
-      const b = el('button', 'ep-chip' + (id === subject ? ' on' : ''),
-                   (meta[id] || {}).name || 'Player');
-      b.type = 'button';
-      b.addEventListener('click', () => {
-        subject = id;
-        pick.querySelectorAll('.ep-chip').forEach(c => c.classList.remove('on'));
-        b.classList.add('on');
-        drawWowy();
-      });
-      pick.appendChild(b);
+    const lg = team.leagues || {};
+    const A = window.EpinoiaAccess;
+    TW.mount({
+      team, league: { id: lg.id, slug: lg.slug || ACCESS.slug, name: lg.name },
+      games: gs, stints: st, meta, hosts,
+      /* without analytics: every five and the filter as ever, the members' parts locked (teamwowy.js gates) */
+      locked: ACCESS.locked,
+      previewMax: (A && A.CATALOGUE && A.CATALOGUE.wowyPreviewMax) || 1,
+      compIds: SEASON_COMPS, season: SEASON_NAME, base: '../',
+      readLogs: () => seasonLogs(team), segCache
     });
-
-    function drawWowy() {
-      window.EpinoiaWowy.onOffTiles('#onoff', st, subject);
-    }
-    drawWowy();
-
-    /* the combination matrix, seeded with the two most-used players. Without analytics it
-       is the preview: wowy.js caps the subjects and adds its own teaser line. */
-    window.EpinoiaWowy.render(Object.assign({
-      host: '#wowy', stints: st, meta, max: 4,
-      preselect: order.slice(0, 2)
-    }, ACCESS.locked ? { preview: true, leagueSlug: ACCESS.slug } : {}));
-
-    window.EpinoiaLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
-    window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: st, meta });
   } catch (e) {
     /* A silent catch left three empty sections with no explanation — which is
        exactly what a reader saw when the scripts failed to load. Say what
        happened, in the sections themselves. */
     console.warn('[lineups]', e);
-    ['#wowy', '#lufilter', '#lulist'].forEach(sel => {
-      const h = $(sel);
-      if (h && !h.children.length) {
-        h.appendChild(el('div', 'empty', 'Could not load lineup data: ' + (e.message || e)));
-      }
-    });
+    say('Could not load lineup data: ' + (e.message || e));
   }
 }
 

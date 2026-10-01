@@ -15,21 +15,21 @@
 <title>Team · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=578"></script>
-<script src="../i18n.js?v=578" data-i18n-packs="report go"></script>
-<script src="../glyphs.js?v=578" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=578">
-<link rel="stylesheet" href="../kit/linkswitch.css?v=578">
-<link rel="stylesheet" href="../kit/table.css?v=578">
-<link rel="stylesheet" href="../kit/nav.css?v=578">
-<link rel="stylesheet" href="../video.css?v=578">
-<link rel="stylesheet" href="../kit/card.css?v=578">
-<link rel="stylesheet" href="../kit/sitpanel.css?v=578">
-<link rel="stylesheet" href="../kit/cards.css?v=578">
-<link rel="stylesheet" href="../kit/shotclock.css?v=578">
-<link rel="stylesheet" href="../kit/rotation.css?v=578">
-<link rel="stylesheet" href="../kit/access.css?v=578">
-<link rel="stylesheet" href="../go/venuestamp.css?v=578">
+<script src="../appmode.js?v=579"></script>
+<script src="../i18n.js?v=579" data-i18n-packs="report go"></script>
+<script src="../glyphs.js?v=579" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=579">
+<link rel="stylesheet" href="../kit/linkswitch.css?v=579">
+<link rel="stylesheet" href="../kit/table.css?v=579">
+<link rel="stylesheet" href="../kit/nav.css?v=579">
+<link rel="stylesheet" href="../video.css?v=579">
+<link rel="stylesheet" href="../kit/card.css?v=579">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=579">
+<link rel="stylesheet" href="../kit/cards.css?v=579">
+<link rel="stylesheet" href="../kit/shotclock.css?v=579">
+<link rel="stylesheet" href="../kit/rotation.css?v=579">
+<link rel="stylesheet" href="../kit/access.css?v=579">
+<link rel="stylesheet" href="../go/venuestamp.css?v=579">
 <style>
   /* THE HEAD (the crest, the name, the league, the actions, the competitions and the standing) is laid out and dressed
      by kit/clubhero.css, after teletext.css. */
@@ -65,13 +65,6 @@
   .fx .w{color:var(--good)} .fx .ls{color:var(--bad)}
   .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:11px}
   a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
-    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
-  .tile{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*1.5);text-align:center}
-  .tile .v{font-family:var(--f-score);font-size:24px;line-height:1;color:var(--ink)}
-  .tile .l{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
-    letter-spacing:0.08em;text-transform:uppercase;margin-top:6px}
-  .tile.hi .v{color:var(--lume)}
   .ffhead{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:0.08em;
     text-transform:uppercase;padding:calc(var(--u)*2) calc(var(--u)*3) 0}
   .ffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
@@ -89,15 +82,8 @@
   .ffside.win .ffv{color:var(--lume)}
   .ffside .ffk{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);
     letter-spacing:0.07em;text-transform:uppercase;margin-top:5px}
-  .lu-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .lu-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
-    line-height:1.9;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
   .lu-lead{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
     line-height:1.9;margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*2);max-width:72ch}
-  .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-    padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
-    letter-spacing:0.06em;text-transform:uppercase}
   .hnote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto}
   .ep-hdr{display:flex;align-items:baseline;gap:12px}
   /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
@@ -334,7 +320,7 @@
   body.themed .ep-hdr .idx{color:var(--team-b-ink)}
   body.themed .ep-hdr h2{color:var(--ink)}
   body.themed .ep-tab.on{background:var(--team-a);color:var(--team-on-a)}
-  body.themed .tile.hi .v,body.themed .ffhead{color:var(--team-a-ink)}
+  body.themed .ffhead{color:var(--team-a-ink)}
   body.themed .fx .s{color:var(--team-a-ink)}
   body.themed a.plain:hover{color:var(--team-a-ink)}
   /* MEMBERS ONLY (team.js decideAccess): the card stands where the record and the statistics
@@ -344,15 +330,16 @@
   #paywall{padding:calc(var(--u)*3)}
   body.paywalled .rec, body.paywalled .pw-hide{display:none}
 </style>
-<link rel="stylesheet" href="../kit/shotchart.css?v=578">
-<link rel="stylesheet" href="../kit/teampage.css?v=578">
-<link rel="stylesheet" href="../kit/clubstats.css?v=578">
-<link rel="stylesheet" href="../kit/teletext.css?v=578">
-<link rel="stylesheet" href="../kit/clubhero.css?v=578">
-<link rel="stylesheet" href="../kit/statpop.css?v=578">
-<link rel="stylesheet" href="../kit/soschip.css?v=578">
-<link rel="stylesheet" href="../kit/suggest.css?v=578">
-<link rel="stylesheet" href="../kit/legibility.css?v=578">
+<link rel="stylesheet" href="../kit/shotchart.css?v=579">
+<link rel="stylesheet" href="../kit/teampage.css?v=579">
+<link rel="stylesheet" href="../kit/clubstats.css?v=579">
+<link rel="stylesheet" href="../kit/wowy.css?v=579">
+<link rel="stylesheet" href="../kit/teletext.css?v=579">
+<link rel="stylesheet" href="../kit/clubhero.css?v=579">
+<link rel="stylesheet" href="../kit/statpop.css?v=579">
+<link rel="stylesheet" href="../kit/soschip.css?v=579">
+<link rel="stylesheet" href="../kit/suggest.css?v=579">
+<link rel="stylesheet" href="../kit/legibility.css?v=579">
 </head>
 <body>
 <div class="ep-frame">
@@ -447,22 +434,22 @@
   <div class="ep-hdr"><span class="idx">04</span><h2>Results &amp; fixtures</h2></div>
   <div id="games"></div>
 
+  <!-- 05-07 are the WOWY / Lineups page's own views, for this club (teamwowy.js) -->
   <div class="ep-hdr pw-hide"><span class="idx">05</span><h2>With or without</h2>
     <span class="hnote" id="wowyNote"></span></div>
-  <div id="wowyPick" class="lu-chips pw-hide"></div>
-  <div id="onoff" class="pw-hide"></div>
-  <div id="wowy" class="pw-hide"></div>
+  <div id="wowy" class="tlu pw-hide"></div>
 
   <div class="ep-hdr pw-hide"><span class="idx">06</span><h2>Lineup filter</h2></div>
   <p class="lu-lead pw-hide">
-    Pick any players and see how the team does with all of them on the floor
-    together. Two or three pools every unit containing them, which is a sample
-    worth reading; five narrows it to that exact unit.
+    Pick up to five players and see how the team does with all of them on the
+    floor together, against the rest of its minutes. Two or three pools every
+    unit containing them, which is a sample worth reading; five narrows it to
+    that exact unit.
   </p>
-  <div id="lufilter" class="pw-hide"></div>
+  <div id="lufilter" class="tlu pw-hide"></div>
 
   <div class="ep-hdr pw-hide"><span class="idx">07</span><h2>Every lineup</h2></div>
-  <div id="lulist" class="pw-hide"></div>
+  <div id="lulist" class="tlu pw-hide"></div>
   </div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap">
@@ -470,71 +457,72 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../vendor/supabase.js?v=578" defer></script>
-<script src="../config.js?v=578" defer></script>
-<script src="../access.js?v=578" defer></script>
-<script src="../follow.js?v=578" defer></script>
-<script src="../linkswitch.js?v=578" defer></script>
-<script src="../units.js?v=578" defer></script>
-<script src="../ages.js?v=578" defer></script>
-<script src="../teamcolour.js?v=578" defer></script>
-<script src="../bpm.js?v=578" defer></script>
-<script src="../season.js?v=578" defer></script>
-<script src="../seasonbar.js?v=578" defer></script>
-<script src="../data.js?v=578" defer></script>
-<script src="../lineups.js?v=578" defer></script>
-<script src="../wowy.js?v=578" defer></script>
-<script src="lineupui.js?v=578" defer></script>
-<script src="../memlock.js?v=578" defer></script>
-<script src="../fulltable.js?v=578" defer></script>
-<script src="../igtile.js?v=578" defer></script>
-<script src="../video.js?v=578" defer></script>
-<script src="../p/video.js?v=578" defer></script>
-<script src="../homearenas.js?v=578" defer></script>
-<script src="../go/logo.js?v=578" defer></script>
-<script src="../go/venuestamp.js?v=578" defer></script>
-<script src="venue.js?v=578" defer></script>
+<script src="../vendor/supabase.js?v=579" defer></script>
+<script src="../config.js?v=579" defer></script>
+<script src="../access.js?v=579" defer></script>
+<script src="../follow.js?v=579" defer></script>
+<script src="../linkswitch.js?v=579" defer></script>
+<script src="../units.js?v=579" defer></script>
+<script src="../ages.js?v=579" defer></script>
+<script src="../teamcolour.js?v=579" defer></script>
+<script src="../bpm.js?v=579" defer></script>
+<script src="../season.js?v=579" defer></script>
+<script src="../seasonbar.js?v=579" defer></script>
+<script src="../data.js?v=579" defer></script>
+<script src="../lineups.js?v=579" defer></script>
+<script src="../memlock.js?v=579" defer></script>
+<script src="../fulltable.js?v=579" defer></script>
+<script src="../igtile.js?v=579" defer></script>
+<script src="../video.js?v=579" defer></script>
+<script src="../p/video.js?v=579" defer></script>
+<script src="../homearenas.js?v=579" defer></script>
+<script src="../go/logo.js?v=579" defer></script>
+<script src="../go/venuestamp.js?v=579" defer></script>
+<script src="venue.js?v=579" defer></script>
 <!-- the "add to calendar" panel: loaded before team.js, which mounts it -->
-<script src="../calendar.js?v=578" defer></script>
-<script src="../boxscore.js?v=578" defer></script>
-<script src="../shotchart.js?v=578" defer></script>
+<script src="../calendar.js?v=579" defer></script>
+<script src="../boxscore.js?v=579" defer></script>
+<script src="../shotchart.js?v=579" defer></script>
 <!-- the shot clock and rotation sections: possessions and chances (possessions.js), the
      events tab's ordering (situations.js), the calculators and their views -->
-<script src="../possessions.js?v=578" defer></script>
-<script src="../situations.js?v=578" defer></script>
-<script src="../shotclock.js?v=578" defer></script>
+<script src="../possessions.js?v=579" defer></script>
+<script src="../situations.js?v=579" defer></script>
+<script src="../shotclock.js?v=579" defer></script>
 <!-- the club's play-by-play as the WOWY page reads it (the season line's possession, heliocentrism and the ratings
      against the other side's starters and bench): the engine's replay, then the segments built on it -->
-<script src="../engine.js?v=578" defer></script>
-<script src="../lineupevents.js?v=578" defer></script>
-<script src="../shotclock-view.js?v=578" defer></script>
-<script src="../rotation.js?v=578" defer></script>
-<script src="../sitpanel.js?v=578" defer></script>
-<script src="../cards.js?v=578" defer></script>
-<script src="../statinfo.js?v=578" defer></script>
-<script src="../statpop.js?v=578" defer></script>
+<script src="../engine.js?v=579" defer></script>
+<script src="../lineupevents.js?v=579" defer></script>
+<script src="../wowylogic.js?v=579" defer></script>
+<script src="../stats/wowy/wowyui.js?v=579" defer></script>
+<script src="teamwowy.js?v=579" defer></script>
+<script src="../shotclock-view.js?v=579" defer></script>
+<script src="../rotation.js?v=579" defer></script>
+<script src="../sitpanel.js?v=579" defer></script>
+<script src="../cards.js?v=579" defer></script>
+<script src="../statinfo.js?v=579" defer></script>
+<script src="../statpop.js?v=579" defer></script>
 <!-- the club's ELO and its schedule beside "Team statistics": the ratings (sos.js) and the chips the player page wears -->
-<script src="../sos.js?v=578" defer></script>
-<script src="../p/sos-chip.js?v=578" defer></script>
+<script src="../sos.js?v=579" defer></script>
+<script src="../p/sos-chip.js?v=579" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box
      score reads, needed here by the weekly report's ledger -->
-<script src="../gamepct-data.js?v=578" defer></script>
-<script src="../gamepct.js?v=578" defer></script>
-<script src="../reportcard.js?v=578" defer></script>
-<script src="../weekly.js?v=578" defer></script>
-<script src="../injuries.js?v=578" defer></script>
-<script src="depth.js?v=578" defer></script>
-<script src="position.js?v=578" defer></script>
-<script src="../upload.js?v=578" defer></script>
-<script src="../suggest.js?v=578" defer></script>
+<script src="../gamepct-data.js?v=579" defer></script>
+<script src="../gamepct.js?v=579" defer></script>
+<script src="../reportcard.js?v=579" defer></script>
+<script src="../weekly.js?v=579" defer></script>
+<script src="../injuries.js?v=579" defer></script>
+<script src="depth.js?v=579" defer></script>
+<script src="position.js?v=579" defer></script>
+<script src="../upload.js?v=579" defer></script>
+<script src="../suggest.js?v=579" defer></script>
 <!-- the letters on the crest's disc when a club has no crest: the same as HOME's cards give it -->
-<script src="../initials.js?v=578" defer></script>
+<script src="../initials.js?v=579" defer></script>
 <!-- the season line of Team statistics: the ratings, then tempo, efficiency and distribution as one table -->
-<script src="seasonline.js?v=578" defer></script>
-<script src="team.js?v=578" defer></script>
-<script src="../feedrank.js?v=578" defer></script>
-<script src="../interest.js?v=578" defer></script>
-<script src="../nav.js?v=578" defer></script>
-<script src="../xscroll.js?v=578" defer></script>
+<script src="seasonline.js?v=579" defer></script>
+<script src="team.js?v=579" defer></script>
+<script src="../feedrank.js?v=579" defer></script>
+<script src="../interest.js?v=579" defer></script>
+<script src="../nav.js?v=579" defer></script>
+<script src="../xscroll.js?v=579" defer></script>
 </body>
 </html>

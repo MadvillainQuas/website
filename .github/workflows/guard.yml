@@ -623,6 +623,13 @@ jobs:
         # deltas by direction, members-only reads, pairs and WOWY as separate tabs, the address
         run: node supabase/tests/wowy-events.test.mjs
 
+      - name: The club page's lineups - the WOWY page's views for one club, sorted by any column
+        # epinoia/t/teamwowy.js over stats/wowy/wowyui.js: With or without, the Lineup filter and Every lineup are the WOWY
+        # page's combinations, builder and Lineups list; a header sorts (again for the other way) and draws the list only;
+        # every five and the filter for everyone, the play-by-play, the opponent split and units of 2-4 for members; the
+        # league's stints as the colours' reference; the builder and WOWY jumps; the links to the WOWY page; the wiring
+        run: node supabase/tests/team-lineups.test.mjs
+
       - name: The lineups tab - fives, trios and pairs, filtered and sorted in place
         # epinoia/game/lineups.js over boxscore.js lineupCombos on a real game: the fives are the old tab's, a pair is
         # every stretch the two shared (ten to a five, so ten times the fives' minutes and points), the filters and

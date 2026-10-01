@@ -54,7 +54,7 @@ function circle(ctx, o) {
   const n = el(asBtn ? 'button' : (o.link === false ? 'span' : 'a'), 'wc wc-' + (o.size || 'm') + (o.ring ? ' ring-' + o.ring : '') + (o.dim ? ' dim' : '') + (o.sel ? ' sel' : ''));
   n.dataset.pid = o.id;
   if (asBtn) n.type = 'button';
-  else if (n.tagName === 'A') n.href = '../../p/?p=' + encodeURIComponent(o.id);
+  else if (n.tagName === 'A') n.href = ctx.playerHref ? ctx.playerHref(o.id) : '../../p/?p=' + encodeURIComponent(o.id);   // a page elsewhere says where (the club page)
   n.style.setProperty('--wc', colour);
   n.style.setProperty('--wci', inkOn(colour));
   const ringTxt = o.ring === 'on' ? ' (on the floor)' : o.ring === 'off' ? ' (off the floor)' : '';

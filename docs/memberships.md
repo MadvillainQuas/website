@@ -416,8 +416,12 @@ EpinoiaAccess.onChange(fn)            // state changed (load, sign-in, sign-out)
 Shared components take a flag rather than reading access themselves, so a page
 decides once and passes it down:
 
-- `EpinoiaWowy.render({ …, preview: true })` — combinations capped at
-  `CATALOGUE.wowyPreviewMax` subjects, with a compact teaser line beneath.
+- `EpinoiaTeamWowy.mount({ …, locked: true })` (the club page's lineups,
+  `t/teamwowy.js`) — every five and the lineup filter as the club page always
+  showed them. The play-by-play columns, the split by the opponent's five and
+  units of two to four wear the lock. The combinations are capped at
+  `CATALOGUE.wowyPreviewMax` players, with the WOWY page's preview card. The
+  play-by-play is never read for a preview.
 - `EpinoiaWithUI.render({ …, locked: true })` — a compact teaser in place of the
   teammate comparison.
 - `EpinoiaShotChart.renderZones({ …, zones: false })` — the court and the makes

@@ -80,6 +80,41 @@ The club's colour is the ball ending up the club's. Beside the bar are the FG% a
 
 **The events.** The events card is the player page's events panel (`sitpanel.js`), dressed like the tables above inside the club's card.
 
+## The lineups: With or without, Lineup filter, Every lineup
+
+These three sections are the WOWY / Lineups page's own views, drawn by its code (`stats/wowy/wowyui.js`). So they look and behave like that page, and its upgrades reach them. `t/teamwowy.js` does for one club what `stats/wowy/wowy.js` does for that page: it keeps the state, sums the records and builds what the views read.
+
+| Section | The WOWY page's | What it is |
+| --- | --- | --- |
+| With or without | WOWY | Up to five players: every on/off arrangement of them, each its own line. |
+| Lineup filter | Builder | Up to five players: that unit, every stat, against the rest of the team. |
+| Every lineup | Lineups | Every unit of two to five players, as a table or as cards. |
+
+**Every lineup:**
+
+- **Sorting.** Pressing a header sorts by it, and pressing it again sorts the other way. The old list lit the header on hover, but it never sorted.
+- **Colour.** Every stat is coloured by where it ranks among the league's units of that size. The colour is direction-aware: a low turnover rate is green. While the league's stints load, the club's own units are the reference, and the key says which.
+- **Δ.** Each value's on/off delta: the unit minus the team's other minutes.
+- **Filters.** Most used, best or worst net; a with/without filter on the player circles; the sample thresholds.
+- **Layout.** The column picker (the WOWY page's own choice, shared with it) and cards or a table. A table where there is room; cards on a phone, where five names take half the width.
+- **The rows.** A row opens on its split against the rest of the team. "Open in builder" and "Open in WOWY" go to those sections of this page.
+
+**Against.** Every section has the WOWY page's switch: all minutes, or only those against the opponent's starters, a mixed five or its bench.
+
+**The play-by-play** is the page's own read (`seasonLogs`), the one the shot chart and the season line use. It is never read twice.
+
+**Who sees what** (`docs/memberships.md`):
+
+- The club page has always shown every five and the lineup filter to everyone, and still does.
+- What the WOWY page keeps for members stays members' here: the play-by-play columns, the opponent split, and units of two to four.
+- The combinations take one player at a time (`CATALOGUE.wowyPreviewMax`), with the WOWY page's preview card.
+
+**Kept on the device:** only what the reader changed: cards or table; values, deltas or both; the sample thresholds.
+
+**The links.** "Copy link" and the link under each section open the WOWY page on exactly what is shown: this club, this season, that view, the sort. On / off, Pairs and Vs starters are there.
+
+The page cannot load `kit/page.css`, because its `.topbar` and `.sec` would restyle this older page. So the two rules the views need from it, the switch and the empty box, are given to the lineups alone in `kit/teampage.css`.
+
 ## Phones
 
 Every table is its own container. Below 560–600 px of its own width, every row becomes a card: the figures sit with their names, and the bars run across the width. The ratings stay on one row.
@@ -102,3 +137,14 @@ The words are in Spanish and Japanese. The short ones have contexts of their own
 - the page's wiring.
 
 It runs in `guard.yml`, with `sos-chip.test.mjs`.
+
+`supabase/tests/team-lineups.test.mjs` checks the lineups:
+
+- the state a visit opens on, and who sees what;
+- which sections a change draws again;
+- the three sections mounted on made-up stints: the sort, the rest of the team, the league's reference;
+- the jumps to the builder and the combinations, and the links;
+- what is kept on the device;
+- the page's wiring.
+
+It runs in `guard.yml`, beside the WOWY page's own tests.
