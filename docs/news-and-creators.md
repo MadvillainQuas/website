@@ -34,6 +34,36 @@ The headline is the card's one link, and it covers the card. The league tags and
 
 A logo ending `#fill` fills its square, and is drawn to the edge of the disc. The fetcher decides this: see `fills_square`.
 
+## A match report's card and head (`epinoia/news.js`, `kit/news.css`)
+
+A league's own news (its front page's headlines and its news page) has a card of its own. A **match report** without a cover photograph shows the result, as a broadcast puts it up:
+
+- **The halves.** Each half is one club's colour, with the halftone over it, cut on a diagonal. A club still on the default colour takes the headline's tint.
+- **The stripe.** The cut is a stripe in the league's colour. Only the league's own colour counts (`colour_source` is `logo` or `manual`); with the platform's default, the stripe is the kit's own.
+- **The crests.** Each crest sits on a white disc ringed in its club's colour, with three letters under it (`codeOf`):
+  - the short name when that is a code already (CHE);
+  - otherwise the first word that names the club, past a prefix (KK, BC, CB) or a Le / La;
+  - two clubs with the same letters use their last words instead (London Lions v London City Royals: LIO v ROY).
+- **The score.** The score sits on a black slab, with FINAL above it on the league's colour, in black or white, whichever reads better. The losing figure is dimmed.
+- **The league.** Its logo sits on a white chip above the score, where no crest can run into it however narrow the card. Without a logo, or when it does not load, the chip shows its monogram on its colour. A card seen on its own says whose game it was.
+- **The edge.** The card's edge and shadow are the winner's colour. A colour too pale for a white card gives way to the other club's, then to the tint.
+- **The flag.** *Latest* or *Pinned* is a tab on the line under the picture, at the right. In a corner of the picture it ran into a crest on a narrow card. Any other card keeps its flag on its picture.
+- **The sizes.** The crests, the score and the chip are sized by the card's own width (`cqw`; the plate is the container `mtplate`), so a wide lead and a narrow card are each in proportion.
+
+**The row.** From 1000px to 1399px, the first two cards share the first row (three of six columns each). The lead used to take three columns and the next card two, which left one column empty. From 1400px all go three across. The pictures in a row are cut alike, so they line up.
+
+**The article's head.** The article page of a report without a cover opens with the same result, wide (`plate()`):
+
+- the clubs named in full, wrapping to two lines if they must, and their codes under 560px (`@container artslot`);
+- FINAL and the day above the score (the day goes under 420px), or LIVE if the game was opened again after the report was filed;
+- a link to the box score.
+
+Its height follows its width, from 190px to 380px. A fixed phone shape and desktop shape would be wrong at some widths, because the site zooms the page (1.25 from 1000px, 1.5 from 1200px).
+
+The head's place is kept while the game is read, so the words under it do not jump. The game's row now brings each club's short name, colours and crest.
+
+The front page and the news page hand the card their league's row (`league`). The news page reads `colour_source` and `logo_path` with it. Nothing new is asked of the database.
+
 ## Adding a publisher or a creator by its link (0198)
 
 In the platform console's **News** tab, or a league console's **Creators & news sources**, paste one link. The console says what the link is before anything is sent, and suggests publisher or creator. You can change that, add a name, and press **Add**.
@@ -256,6 +286,7 @@ A publisher's articles arrive every half hour. An administrator who does not wan
 - `supabase/tests/creator-hub.test.mjs`: the creator hub and 0200 (`docs/creator-hub.md`).
 - `scripts/news/fetch_feeds_test.py`: the reader, and finding the feed behind a link.
 - `supabase/tests/newscard.test.mjs`: the card, the pill, the "why" line and the pages' wiring.
+- `supabase/tests/match-plate.test.mjs`: a league's match report card and its article's head (the letters, the league's colour and logo, the score, the card's colour, the wiring).
 - `supabase/tests/official-partners.test.mjs`: 0201 on PGlite (who may name a partner, what the list carries).
 - `supabase/tests/game-significance.test.mjs`: 0202 on PGlite (the points and the reasons for a game).
 - `supabase/tests/feedrank.test.mjs`: the ranking, the learning, the storage, and that nothing about the reader is sent.

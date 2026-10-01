@@ -59,48 +59,154 @@ function tint(seedText) {
 
 const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? String(v) : null);
 
-/* A MATCH REPORT'S CARD IS THE TWO CLUBS. news_public brings the game with the article
-   (0104): the plate is cut on a diagonal, the home club's colour on the left and the away
-   club's on the right, each side printed as the club cards are -- a flood with the halftone
-   bitten into it -- with the crest and short name on each half and the score between them.
-   A club without a crest shows its initials; a club still on the default colour takes the
-   card's headline tint for its half, so the cut is always there. */
-function matchPlate(a, o, plate, ink) {
-  const TC = typeof window !== 'undefined' ? window.EpinoiaTeamColour : null;
+/* A MATCH REPORT'S CARD IS THE RESULT, AS A BROADCAST PUTS IT UP. news_public brings the game with
+   the article (0104), and the plate is drawn from it:
+
+     each half        one club's colour, deep, the print's halftone over it, the plate cut on a diagonal
+     the cut          a slash in the LEAGUE's colour (its own, from its logo or set by hand), edged in black
+     the crests       on white discs ringed in the club's colour, each with its code under it (CHE, LEI)
+     the score        on a black slab, FINAL over it on the league's colour; the losing figure dimmed
+     the league       its logo heading the score's column, on a white chip (its monogram on its colours
+                      without one): a card seen on its own - shared, or in a feed - says whose game it was
+
+   A club without a crest shows its initials; a club still on the default colour takes the card's
+   headline tint for its half, so the cut is always there. opts.league is the league's row (the
+   front page's and the news page's own); opts.full puts the clubs' names in full under the crests
+   (the article's own head, which has the room) instead of their codes. */
+const DEFAULT_MINT = '#93f2bf';
+const ownColour = c => { const h = hex(c); return h && h.toLowerCase() !== DEFAULT_MINT ? h : null; };
+/* how light a colour is, 0-1 (the WCAG weights): a near-white club colour is no card edge */
+function lum(c) {
+  const h = hex(c);
+  if (!h) return null;
+  const v = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => (x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)));
+  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+/* the words on a colour: black or white, whichever reads better on it (teamcolour.js on() makes the same choice) */
+const inkOn = c => { const L = lum(c); return L == null || (L + 0.05) / 0.053 >= 1.05 / (L + 0.05) ? '#0a0a0a' : '#ffffff'; };
+/* A CLUB'S THREE LETTERS, as a scoreboard prints them: its short name when that is one already (CHE), else
+   the first word that names it, past a club's prefix (KK Partizan, BC Wolves, CB Canarias) or a Le / La, cut
+   to three. pick 'last' takes the full name's last such word instead: the way two clubs whose first words are
+   the same are told apart (London Lions v London City Royals: LIO v ROY; matchPlate) */
+function codeOf(short, name, pick) {
+  const s = String(short || '').trim();
+  if (!pick && s && s.length <= 4 && !/\s/.test(s)) return s.toUpperCase();
+  const words = String((pick ? name || s : s || name) || '').trim().split(/\s+/)
+    .map(w => w.replace(/[^\p{L}\p{N}]/gu, '')).filter(Boolean);
+  const named = words.filter(w => w.length > 3 || (w.length === 3 && w !== w.toUpperCase()));
+  const pool = named.length ? named : words;
+  const w = pick === 'last' ? pool[pool.length - 1] : pool[0];
+  return w ? w.slice(0, 3).toUpperCase() : '';
+}
+/* the league's own colour, when it has one: from its logo or set by hand, never the platform's default */
+function leagueColour(lg) {
+  if (!lg) return null;
+  const mine = !lg.colour_source || lg.colour_source === 'logo' || lg.colour_source === 'manual';
+  return mine ? ownColour(lg.colour_a) : null;
+}
+function monogram(name) {
+  const words = String(name || '').trim().split(/\s+/).filter(w => /^[A-Za-z0-9]/.test(w));
+  return (words.length >= 2 ? words.slice(0, 3).map(w => w[0]).join('') : String(name || '?').slice(0, 3)).toUpperCase();
+}
+/* THE LEAGUE'S CHIP: its logo on white, or its monogram on its colour */
+function leagueChip(lg) {
+  if (!lg || !(lg.name || lg.logo_path)) return null;
   const logoUrl = typeof window !== 'undefined' ? window.epinoiaLogoUrl : null;
+  const chip = el('span', 'mt-league');
+  chip.title = lg.name || '';
+  const mono = () => {
+    chip.textContent = monogram(lg.name);
+    chip.classList.add('mono');
+    const c = leagueColour(lg);
+    if (c) { chip.style.setProperty('--lg', c); chip.style.setProperty('--lg-ink', inkOn(c)); }
+  };
+  const url = logoUrl && lg.logo_path ? logoUrl(lg.logo_path, 96) : null;
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url; img.alt = lg.name || ''; img.loading = 'lazy'; img.decoding = 'async';
+    img.addEventListener('error', () => { img.remove(); mono(); });
+    chip.appendChild(img);
+  } else mono();
+  return chip;
+}
+
+function matchPlate(a, o, plate, ink) {
+  const logoUrl = typeof window !== 'undefined' ? window.epinoiaLogoUrl : null;
+  const opts = o || {};
+  const scored = a.home_score != null && a.away_score != null;
+  const won = k => scored && (k === 'home' ? a.home_score > a.away_score : a.away_score > a.home_score);
+  const lost = k => scored && (k === 'home' ? a.home_score < a.away_score : a.away_score < a.home_score);
+  /* the two codes, and never the same two: a derby's clubs by their last words instead */
+  const codes = { home: codeOf(a.home_short, a.home_name), away: codeOf(a.away_short, a.away_name) };
+  if (codes.home && codes.home === codes.away) {
+    const h = codeOf(a.home_short, a.home_name, 'last'), w = codeOf(a.away_short, a.away_name, 'last');
+    if (h && w && h !== w) { codes.home = h; codes.away = w; }
+  }
   const side = (k) => {
-    const c = hex(a[k + '_colour']);
-    const colour = (c && c.toLowerCase() !== '#93f2bf') ? c : ink;
+    const colour = ownColour(a[k + '_colour']) || ink;
     const half = el('div', 'mt-half ' + k);
     half.style.setProperty('--c', colour);
     half.style.setProperty('--c2', hex(a[k + '_colour_2']) || colour);
-    const who = el('div', 'mt-club ' + k);
-    const url = logoUrl ? logoUrl(a[k + '_logo']) : null;
+    const who = el('div', 'mt-club ' + k + (won(k) ? ' win' : lost(k) ? ' lose' : ''));
+    who.style.setProperty('--c', colour);
+    const url = logoUrl ? logoUrl(a[k + '_logo'], 192) : null;
+    const code = codes[k];
     const mark = el('div', 'mt-crest');
     if (url) {
       const img = document.createElement('img');
       img.src = url; img.alt = ''; img.loading = 'lazy';
-      img.addEventListener('error', () => { img.remove(); mark.textContent = (a[k + '_short'] || '?').slice(0, 3); });
+      img.addEventListener('error', () => { img.remove(); mark.textContent = code || '?'; });
       mark.appendChild(img);
     } else {
-      mark.textContent = (a[k + '_short'] || a[k + '_name'] || '?').slice(0, 3);
+      mark.textContent = code || '?';
     }
-    const nm = el('div', 'mt-name', a[k + '_short'] || a[k + '_name'] || '');
-    nm.style.color = TC && TC.ink ? TC.ink(colour) : colour;
+    /* the code always; the name in full as well where the plate has the room for it (the article's head, which
+       shows one or the other by its own width: kit/news.css) */
+    const nm = el('div', 'mt-name');
+    if (opts.full) nm.append(el('span', 'full', a[k + '_name'] || a[k + '_short'] || code), el('span', 'code', code));
+    else nm.textContent = code;
+    nm.title = a[k + '_name'] || '';
     who.append(mark, nm);
     return [half, who];
   };
   const [hh, hw] = side('home'), [ah, aw] = side('away');
-  plate.append(hh, ah, el('div', 'mt-seam'));
+  const lg = leagueColour(opts.league);
+  if (lg) { plate.style.setProperty('--lg', lg); plate.style.setProperty('--lg-ink', inkOn(lg)); }
+  plate.classList.add('mt-plate');
+  plate.append(hh, ah, el('div', 'mt-shade'), el('div', 'mt-seam k'), el('div', 'mt-seam'));
+  /* the score's column: the league's chip over the board, where no crest can run into it however narrow the card */
   const mid = el('div', 'mt-mid');
-  if (a.home_score != null && a.away_score != null) {
-    mid.append(el('span', 'v', String(a.home_score)), el('span', 'd', '–'), el('span', 'v', String(a.away_score)));
+  const chip = leagueChip(opts.league);
+  if (chip) mid.appendChild(chip);
+  const board = el('div', 'mt-board');
+  if (scored) {
+    const st = el('span', 'mt-st' + (opts.live ? ' live' : ''), opts.live ? 'Live' : 'Final');
+    if (opts.when) st.appendChild(el('span', 'when', ' · ' + opts.when));
+    board.appendChild(st);
+    const sc = el('span', 'mt-sc');
+    sc.append(el('span', 'v' + (lost('home') ? ' lose' : ''), String(a.home_score)), el('span', 'd', '–'),
+              el('span', 'v' + (lost('away') ? ' lose' : ''), String(a.away_score)));
+    board.appendChild(sc);
   } else {
-    mid.appendChild(el('span', 'vs', 'v'));
+    board.appendChild(el('span', 'mt-sc vs', 'v'));
   }
+  mid.appendChild(board);
   const row = el('div', 'mt-row');
   row.append(hw, mid, aw);
   plate.appendChild(row);
+  /* the card's own colour (its edge, its shadow): the winner's, so the card is the story's colour, not a
+     headline's hash; a club colour too pale to edge a white card gives way to the other's, then the tint */
+  const cardInk = [won('away') ? 'away' : 'home', won('away') ? 'home' : 'away']
+    .map(k => ownColour(a[k + '_colour'])).find(c => c && lum(c) <= 0.7);
+  return cardInk || ink;
+}
+/* THE PLATE ON ITS OWN, for the article's head (news-page.js): a.home_* / a.away_* as news_public names them */
+function plate(a, opts) {
+  const p = el('div', 'club-plate art-plate');
+  const ink = matchPlate(a, Object.assign({ full: true }, opts || {}), p, tint(String(a.home_name || '') + String(a.away_name || '')));
+  p.style.setProperty('--ink-c', ink);
+  p.appendChild(el('div', 'club-grain'));
+  return p;
 }
 
 function card(a, opts) {
@@ -114,9 +220,11 @@ function card(a, opts) {
   link.setAttribute('aria-label', a.title);
 
   const plate = el('div', 'club-plate');
-  if (isMatch && !a.cover_path) matchPlate(a, o, plate, ink);
-  else plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
-  ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
+  if (isMatch && !a.cover_path) link.style.setProperty('--ink-c', matchPlate(a, o, plate, ink));
+  else {
+    plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
+    ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
+  }
 
   if (a.cover_path) {
     const img = el('img', 'news-cover-img');
@@ -141,8 +249,13 @@ function card(a, opts) {
      So the two are separated. Pinned says pinned. Latest is decided by the
      caller, which is the only place that knows the whole list — a card cannot
      see the article next to it. */
-  if (a.pinned) plate.appendChild(el('div', 'news-flag pin', 'Pinned'));
-  else if (opts && opts.latest) plate.appendChild(el('div', 'news-flag', 'Latest'));
+  let flag = null;
+  if (a.pinned) flag = el('div', 'news-flag pin', 'Pinned');
+  else if (opts && opts.latest) flag = el('div', 'news-flag', 'Latest');
+  /* a match report's plate is the result, edge to edge, and a corner flag ran into a crest on a narrow card
+     (and a pin's dark outline was lost on a dark club): its flag is a tab on the line under the plate instead */
+  const flagOnLine = isMatch && !a.cover_path;
+  if (flag && !flagOnLine) plate.appendChild(flag);
 
   plate.appendChild(el('div', 'club-grain'));
 
@@ -161,6 +274,7 @@ function card(a, opts) {
   over.appendChild(el('div', 'news-title', a.title));
   if (a.standfirst) over.appendChild(el('div', 'news-stand', a.standfirst));
   body.append(kick, over);
+  if (flag && flagOnLine) body.appendChild(flag);
 
   /* who wrote it, printed as it was filed (club-ed), and the call to read it (club-name, the band
      a club plate carries) now that the date rides in the kicker */
@@ -208,5 +322,5 @@ async function mountHeadlines(o) {
   return true;
 }
 
-return { mountHeadlines, card, tint, when };
+return { mountHeadlines, card, tint, when, plate, codeOf };
 }));

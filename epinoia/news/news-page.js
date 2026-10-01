@@ -134,8 +134,9 @@ function storedOrder() { try { const v = localStorage.getItem(ORDER_KEY); return
 
   let league = null;
   try {
+    /* the logo and its colours too: a match report wears them (news.js matchPlate) */
     const ls = await api('leagues?slug=eq.' + encodeURIComponent(WANT) +
-      '&select=id,slug,name,colour_a&limit=1');
+      '&select=id,slug,name,colour_a,colour_b,colour_source,logo_path&limit=1');
     league = ls[0] || null;
   } catch (_) { /* handled below */ }
 
@@ -200,6 +201,12 @@ async function one(league) {
     (a.published_at ? ' · ' + N.when(a.published_at) : '') +
     (a.author_name ? ' · by ' + a.author_name : '');
 
+  /* A MATCH REPORT'S HEAD IS ITS RESULT: the card's plate, wide - the league's logo in the corner, the clubs named in
+     full, the score with FINAL and the day over it - opening the box score. Its place is kept while the game is read
+     (a filed report always has one), so the words under it do not jump when it arrives. */
+  const hero = el('div', 'art-plate-slot' + (generated && !a.cover_path ? ' is-wait' : ''));
+  host.appendChild(hero);
+
   if (a.cover_path) {
     const fig = el('div', 'art-cover');
     const img = el('img');
@@ -224,13 +231,37 @@ async function one(league) {
   foot.appendChild(link);
   host.appendChild(foot);
 
+  const settle = () => { hero.classList.remove('is-wait'); };
   reportGame(league, a).then(g => {
+    settle();
     if (!g) return;
+    if (!a.cover_path && N.plate) { const h = heroOf(g, league, a); if (h) hero.appendChild(h); }
     gameSlot.appendChild(gameCard(g));
     const chip = el('a', 'ep-chip', 'the game →');
     chip.href = gameHref(g.id);
     foot.insertBefore(chip, link);
-  }, () => { /* a written piece, or no answer: the article stands on its own */ });
+  }, () => { settle(); /* a written piece, or no answer: the article stands on its own */ });
+}
+
+/* the report's result as the article's head: news.js's plate, from the game's own row */
+function heroOf(g, league, a) {
+  const one = v => (Array.isArray(v) ? v[0] : v) || {};
+  const h = one(g.home), w = one(g.away);
+  if (!h.name || !w.name) return null;
+  const scored = (g.status === 'final' || g.status === 'live') && g.home_score != null && g.away_score != null;
+  const row = { home_name: h.name, home_short: h.short_name, home_colour: h.colour, home_colour_2: h.colour_2, home_logo: h.logo_path,
+                away_name: w.name, away_short: w.short_name, away_colour: w.colour, away_colour_2: w.colour_2, away_logo: w.logo_path,
+                home_score: scored ? g.home_score : null, away_score: scored ? g.away_score : null };
+  /* the day as the cards' kicker prints it (27 Sep 2026) */
+  const when = new Date(g.tipoff_at || a.published_at || '');
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const day = isNaN(when.getTime()) ? '' : when.getDate() + ' ' + MON[when.getMonth()] + ' ' + when.getFullYear();
+  const link = el('a', 'art-plate-link');
+  link.href = gameHref(g.id);
+  link.setAttribute('aria-label', h.name + (scored ? ' ' + g.home_score + '–' + g.away_score + ' ' : ' v ') + w.name + ': the box score');
+  /* a game opened again after its report was filed (a correction) says LIVE over its score, not FINAL */
+  link.appendChild(N.plate(row, { league, live: g.status === 'live', when: g.status === 'final' ? day : '' }));
+  return link;
 }
 
 /* ------------------------------------------------------ a report's game ---
@@ -250,7 +281,8 @@ async function reportGame(league, a) {
   let g = null;
   try {
     const gs = await api('games?select=id,status,home_score,away_score,tipoff_at,' +
-      'home:home_team_id(name),away:away_team_id(name)&id=eq.' + encodeURIComponent(id) + '&limit=1');
+      'home:home_team_id(name,short_name,colour,colour_2,logo_path),away:away_team_id(name,short_name,colour,colour_2,logo_path)&id=eq.' +
+      encodeURIComponent(id) + '&limit=1');
     g = gs && gs[0];
   } catch (_) { /* the link still works without the line */ }
   return g || { id };
@@ -303,7 +335,7 @@ async function all(league, offset) {
   rows.slice()
       .sort((x, y) => new Date(y.published_at || 0) - new Date(x.published_at || 0))
       .forEach((a, i) => grid.appendChild(N.card(a, {
-        leagueSlug: league.slug, url: imgUrl, base: '../',
+        leagueSlug: league.slug, url: imgUrl, base: '../', league,
         /* first after the sort IS the newest here, since this list is ordered
            by date rather than by the pin */
         latest: i === 0

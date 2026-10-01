@@ -123,6 +123,9 @@ ok('the edition byline keeps the fix it was given first',
 /* ---- the desktop layout is untouched -------------------------------------- */
 ok('the desktop news layout still leads with one wide card',
    /@media \(min-width:1000px\)[\s\S]{0,220}first-child\{grid-column:span 3\}/.test(news));
+ok('...with the card beside it taking the rest of that row, not leaving a hole the width of a column',
+   /@media \(min-width:1000px\)\{[^@]*\.news-grid > \.news-card:nth-child\(2\)\{grid-column:span 3\}/.test(news) &&
+   /@media \(min-width:1400px\)\{[^@]*\.news-card:nth-child\(2\)\{grid-column:span 2\}/.test(news));
 ok('and the desktop grids fill the row: three podium cards and seven more share the width, the directory\'s columns stretch (nothing capped at 240px and packed left)',
    /@media \(min-width:1100px\)\{ \.stargrid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\} \}/.test(home)
    && /@media \(min-width:1100px\)\{ \.stargrid\.starmore\{grid-template-columns:repeat\(7,minmax\(0,1fr\)\)\} \}/.test(home)

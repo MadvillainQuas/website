@@ -20,9 +20,18 @@
   .news-grid{grid-template-columns:repeat(6,1fr)}
   .news-grid > .news-card{grid-column:span 2}
   .news-grid > .news-card:first-child{grid-column:span 3}
+  /* ...and the card beside it takes the rest of the row (three and two of six left a hole the width of one),
+     its picture cut as the lead's is, so the two prints line up */
+  .news-grid > .news-card:nth-child(2){grid-column:span 3}
+  .news-grid > .news-card:nth-child(2) .club-plate{aspect-ratio:16/9}
+  .news-grid > .news-card.match:nth-child(2) .club-plate{aspect-ratio:16/8}
 }
 @media (min-width:1400px){
-  .news-grid > .news-card:first-child{grid-column:span 2}
+  .news-grid > .news-card:first-child,
+  .news-grid > .news-card:nth-child(2){grid-column:span 2}
+  /* three across, the lead no wider than the rest: every picture cut alike, so the row's prints line up */
+  .news-grid > .news-card:nth-child(-n+2) .club-plate{aspect-ratio:16/10}
+  .news-grid > .news-card.match:nth-child(-n+2) .club-plate{aspect-ratio:16/8.5}
 }
 
 
@@ -31,52 +40,109 @@
 .news-card .club-plate{aspect-ratio:16/10; position:relative; overflow:hidden}
 .news-card:first-child .club-plate{aspect-ratio:16/9}
 
-/* ---------- the match card: crest against crest ---------- */
-/* The plate is cut on a diagonal; each half is one club's print -- the flood, the halftone --
-   and carries its crest and short name; the score sits on the cut. The headline keeps its
-   scrim along the bottom, as on every news card. */
-.news-card.match .mt-half{position:absolute;inset:0;z-index:0}
-.news-card.match .mt-half.home{
-  clip-path:polygon(0 0, 58% 0, 42% 100%, 0 100%);
+/* ---------- the match card: the result, as a broadcast puts it up ----------
+   (news.js matchPlate) Each club's half in its own colour, deep, with the print's halftone over it and
+   the light falling from the top; the cut between them a slash in the league's colour (--lg), edged in
+   black; the crests on white discs ringed in the club's colour, each club's code on a black tag under it;
+   the score on a black slab with FINAL over it on the league's colour, the losing figure dimmed; and the
+   league's logo on a white chip heading the score's column. The headline is on the panel under the plate.
+   THE PLATE MEASURES ITSELF (mtplate): the crests, the score and the chip are sized by the card's own width
+   (cqw), not the window's, so the wide lead and the narrow cards beside and under it are each in proportion. */
+.mt-plate{background:#0b0b0b;container:mtplate / inline-size}
+.mt-half{position:absolute;inset:0;z-index:0}
+.mt-half.home{clip-path:polygon(0 0, 57% 0, 43% 100%, 0 100%);
   background:
-    radial-gradient(circle,color-mix(in oklch,var(--c) 60%,transparent) 1.1px,transparent 1.4px) 0 0/7px 7px,
-    linear-gradient(160deg,color-mix(in oklch,var(--c) 46%,var(--panel)),color-mix(in oklch,var(--c) 22%,var(--panel)))}
-.news-card.match .mt-half.away{
-  clip-path:polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
+    radial-gradient(circle,rgba(255,255,255,.17) 1px,transparent 1.35px) 0 0/7px 7px,
+    linear-gradient(155deg,color-mix(in oklch,var(--c) 84%,#fff) 0%,var(--c) 42%,color-mix(in oklch,var(--c) 58%,#000) 100%)}
+.mt-half.away{clip-path:polygon(57% 0, 100% 0, 100% 100%, 43% 100%);
   background:
-    radial-gradient(circle,color-mix(in oklch,var(--c) 60%,transparent) 1.1px,transparent 1.4px) 3px 3px/7px 7px,
-    linear-gradient(200deg,color-mix(in oklch,var(--c) 46%,var(--panel)),color-mix(in oklch,var(--c) 22%,var(--panel)))}
-.news-card.match .mt-seam{position:absolute;inset:0;z-index:1;pointer-events:none;
-  clip-path:polygon(57.4% 0, 58.6% 0, 42.6% 100%, 41.4% 100%);background:rgba(255,255,255,.22)}
-.news-card.match .mt-row{position:absolute;left:0;right:0;top:4%;bottom:38%;z-index:2;
-  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 8%}
-.news-card.match .mt-club{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
-.news-card.match .mt-crest{width:clamp(44px,26%,72px);aspect-ratio:1;display:grid;place-items:center;
-  font-family:var(--f-score);font-size:22px;color:#fff;
-  filter:drop-shadow(0 2px 4px rgba(0,0,0,.55))}
-.news-card.match .mt-crest img{width:100%;height:100%;object-fit:contain;display:block}
-.news-card.match .mt-name{font-family:var(--f-micro);font-size:8px;letter-spacing:0.08em;text-transform:uppercase;
-  text-shadow:0 1px 2px rgba(0,0,0,.8);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.news-card.match .mt-mid{font-family:var(--f-score);font-size:clamp(26px,3vw,40px);line-height:1;color:#fff;
-  white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 14px rgba(0,0,0,.6);
-  background:color-mix(in oklch,var(--ground) 55%,transparent);padding:4px 10px 2px;border:1px solid rgba(255,255,255,.14)}
-.news-card.match .mt-mid .d{padding:0 5px;color:rgba(255,255,255,.45)}
-.news-card.match .mt-mid .vs{font-family:var(--f-micro);font-size:11px;letter-spacing:0.12em}
-.news-card.match .news-over{background:linear-gradient(to top,
-    color-mix(in oklch,var(--ground) 96%,transparent) 0%, color-mix(in oklch,var(--ground) 84%,transparent) 55%, rgba(4,16,11,0) 100%)}
-/* THE CLUBS GET THE UPPER HALF. The score and the two crests already say what happened;
-   the headline is held to two lines and the standfirst is left to the article, so the
-   scrim stops well short of the crests instead of swallowing them on a narrow column. */
-.news-card.match .club-plate{aspect-ratio:16/11}
+    radial-gradient(circle,rgba(255,255,255,.17) 1px,transparent 1.35px) 3px 3px/7px 7px,
+    linear-gradient(205deg,color-mix(in oklch,var(--c) 84%,#fff) 0%,var(--c) 42%,color-mix(in oklch,var(--c) 58%,#000) 100%)}
+/* the light: a glow at the top, the bottom falling into shadow, so the crests and the score stand off it */
+.mt-shade{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(120% 90% at 50% 12%,rgba(255,255,255,.16),transparent 58%),
+    linear-gradient(to top,rgba(0,0,0,.42),transparent 52%)}
+/* the cut: a black slash under one in the league's colour */
+.mt-seam{position:absolute;inset:0;z-index:2;pointer-events:none;
+  clip-path:polygon(56.2% 0, 57.8% 0, 43.8% 100%, 42.2% 100%);background:var(--lg,#ffffff)}
+.mt-seam.k{clip-path:polygon(55.6% 0, 58.4% 0, 44.4% 100%, 41.6% 100%);background:#0a0a0a}
+/* the clubs either side, the score's column between them; the corners are left to the flag */
+.mt-row{position:absolute;inset:0;z-index:3;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;padding:5% 4%}
+.mt-club{display:flex;flex-direction:column;align-items:center;gap:clamp(6px,2cqw,10px);min-width:0}
+.mt-crest{width:clamp(40px,15cqw,96px);max-width:100%;aspect-ratio:1;border-radius:50%;background:#fff;padding:11%;box-sizing:border-box;
+  display:grid;place-items:center;font-family:var(--f-score);font-size:clamp(12px,4cqw,22px);line-height:1;color:#0a0a0a;
+  box-shadow:0 0 0 3px #fff,0 0 0 6px color-mix(in oklch,var(--c,#0a0a0a) 82%,#000),0 10px 18px rgba(0,0,0,.34)}
+.mt-crest img{width:100%;height:100%;object-fit:contain;display:block}
+.mt-name{max-width:100%;padding:3px 7px 2px;background:#0a0a0a;color:#ffffff;
+  font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:2px 2px 0 rgba(0,0,0,.28)}
+.mt-club.lose .mt-crest{filter:saturate(.75)}
+/* the score's column: the league's chip, then the board */
+.mt-mid{display:flex;flex-direction:column;align-items:center;gap:clamp(5px,1.8cqw,10px);margin:0 4px;min-width:0}
+.mt-board{display:flex;flex-direction:column;align-items:stretch;background:#0a0a0a;color:#ffffff;
+  box-shadow:4px 4px 0 rgba(0,0,0,.3)}
+.mt-st{display:block;padding:4px 10px 3px;background:var(--lg,#ffe14d);color:var(--lg-ink,#0a0a0a);text-align:center;
+  font-family:var(--f-micro);font-size:8px;letter-spacing:.2em;text-transform:uppercase;white-space:nowrap}
+.mt-st.live{background:var(--tt-red,#ff4b4b);color:#0a0a0a}
+.mt-sc{display:flex;align-items:center;justify-content:center;padding:7px 12px 5px;
+  font-family:var(--f-score);font-size:clamp(20px,8cqw,44px);line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mt-sc .v.lose{color:#8c8c8c}
+.mt-sc .d{padding:0 6px;color:#5a5a5a}
+.mt-sc.vs{font-family:var(--f-micro);font-size:12px;letter-spacing:.14em;padding:10px 14px}
+/* the league, over the score: its logo on white, or its monogram on its colour */
+.mt-league{box-sizing:border-box;height:clamp(26px,10cqw,48px);min-width:clamp(26px,10cqw,48px);max-width:100%;
+  padding:clamp(3px,.9cqw,5px) clamp(5px,1.6cqw,9px);border-radius:6px;background:#ffffff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 2px rgba(0,0,0,.06),0 4px 10px rgba(0,0,0,.3)}
+.mt-league img{display:block;height:100%;width:auto;max-width:100%;object-fit:contain}
+.mt-league.mono{background:var(--lg,#0a0a0a);color:var(--lg-ink,#ffffff);font-family:var(--f-score);font-size:clamp(10px,3.4cqw,16px);letter-spacing:.06em;line-height:1}
+.news-card.match .club-grain{z-index:2;opacity:.1}
+/* a match report's flag: a tab on the line between the print and the words, at the right, clear of the
+   crests however narrow the card; a pin on the panel's own colour, so it reads over the print too */
+.news-card .news-cbody{position:relative}
+.news-cbody > .news-flag{top:-10px;right:12px;left:auto;z-index:4}
+.news-cbody > .news-flag.pin{background:var(--panel);color:var(--ink)}
+/* THE CLUBS GET THE PLATE. The score and the two crests say what happened; the headline is held to
+   three lines on its panel and the standfirst is left to the article. */
 .news-card.match .news-stand{display:none}
 .news-card.match .news-title{font-size:13.5px;display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden}
 .news-card.match:first-child .news-title{font-size:16px}
-.news-card.match:hover .news-title{color:#fff}
-@media (max-width:720px){
-  .news-card.match .mt-mid{font-size:22px;padding:3px 7px 1px}
-  .news-card.match .mt-crest{width:clamp(34px,28%,56px)}
-  .news-card.match .mt-name{font-size:6.5px}
+
+/* THE ARTICLE'S OWN HEAD (news-page.js): the same plate, wide, the clubs named in full and FINAL dated */
+.art-plate-slot{padding:0 calc(var(--u)*3) calc(var(--u)*3);container:artslot / inline-size}
+.art-plate-slot:empty{display:none}
+.art-plate-slot.is-wait{min-height:0}
+.art-plate-slot.is-wait::before{content:"";display:block;height:clamp(190px,34cqw,380px);background:
+  linear-gradient(110deg,color-mix(in oklch,var(--ink) 6%,var(--panel)) 30%,color-mix(in oklch,var(--ink) 12%,var(--panel)) 50%,color-mix(in oklch,var(--ink) 6%,var(--panel)) 70%);
+  border:1px solid var(--rule)}
+.art-plate-link{display:block;color:inherit;text-decoration:none;transition:transform .14s ease}
+.art-plate-link:hover{transform:translate(-2px,-2px)}
+.art-plate-link:focus-visible{outline:2px solid var(--lume);outline-offset:3px}
+/* its height follows its width (the slot's: cqw), from a phone's 190px to 380px: no step between a "phone" and a
+   "desktop" shape, which the site's zoom (1.25 from 1000px, 1.5 from 1200px) would put in the wrong places */
+.art-plate{display:block;width:100%;aspect-ratio:auto;height:clamp(190px,34cqw,380px);border:1px solid #0a0a0a;
+  box-shadow:6px 6px 0 color-mix(in srgb,var(--ink-c) 50%,transparent)}
+.art-plate .mt-crest{width:clamp(56px,11cqw,120px)}
+.art-plate .mt-name{font-size:10px;letter-spacing:.14em;padding:4px 10px 3px;line-height:1.35;
+  white-space:normal;text-align:center;text-wrap:balance;overflow-wrap:anywhere}
+.art-plate .mt-sc{font-size:clamp(34px,5.6cqw,64px);padding:9px 18px 7px}
+.art-plate .mt-st{font-size:9px;padding:5px 12px 4px}
+.art-plate .mt-league{height:clamp(36px,5cqw,60px);min-width:clamp(36px,5cqw,60px)}
+.art-plate .club-grain{z-index:2;opacity:.1}
+.art-plate .mt-name .code{display:none}
+/* NARROWER: the clubs by their codes (a name in full wraps to two lines above this); and on a phone FINAL
+   without the day, which the head above has */
+@container artslot (max-width:560px){
+  .art-plate .mt-name .full{display:none}
+  .art-plate .mt-name .code{display:inline}
+  .art-plate .mt-crest{width:clamp(48px,18cqw,84px)}
+  .art-plate .mt-sc{font-size:clamp(28px,9cqw,44px);padding:7px 12px 5px}
+  .art-plate .mt-league{height:clamp(30px,10cqw,42px);min-width:clamp(30px,10cqw,42px)}
+}
+@container artslot (max-width:420px){
+  .art-plate .mt-st .when{display:none}
 }
 
 /* the cover floods the plate, under the words and over the generated field */
@@ -213,6 +279,8 @@
 .news-card .club-plate{border:0;border-bottom:3px solid #0a0a0a}
 .news-card.match .club-plate{aspect-ratio:16/8.5}
 .news-card.match:first-child .club-plate{aspect-ratio:16/8}
+/* a match card's plate is the black of the print's slab, not the card's panel */
+.news-card .club-plate.mt-plate{border-bottom-color:#0a0a0a}
 .news-card .news-cbody{flex:1 1 auto;padding:12px 14px 6px;box-shadow:inset 5px 0 0 var(--ink-c)}
 .news-card .news-over{position:static;background:none;padding:0}
 .news-card.match .news-over{background:none}
@@ -225,16 +293,8 @@
 .news-card .club-foot{padding:6px 14px 10px 19px;margin:0}
 .news-card .club-ed{margin-left:0;font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
 .news-card .club-name{margin-left:auto;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);font-weight:400;flex:none}
-/* the match print: crests in white discs, the names as plates, the score on a teletext block */
-.news-card.match .mt-row{top:0;bottom:0;padding:0 7%}
-.news-card.match .mt-crest{width:clamp(40px,19%,70px);border-radius:50%;background:#fff;padding:9%;box-sizing:border-box;
-  box-shadow:0 0 0 3px color-mix(in srgb,var(--c,#fff) 70%,#fff),3px 3px 0 3px rgba(0,0,0,.18);filter:none;color:#0a0a0a;font-size:18px}
-.news-card.match .mt-half.home .mt-crest,.news-card.match .mt-club.home .mt-crest{--c:inherit}
-/* the crests name the clubs and the headline names them in full: the clipped short names go */
-.news-card.match .mt-name{display:none}
-.news-card.match .mt-mid{background:#0a0a0a;border:0;padding:6px 12px 4px;text-shadow:none;font-size:clamp(22px,2.3vw,34px);margin:0 6px}
+/* the match card's headline: up to three lines on its own panel */
 .news-card.match [class~=news-title]{-webkit-line-clamp:3}
-.news-card.match .mt-mid .d{color:#666}
 .news-flag{background:#ffe14d;color:#0a0a0a}
 
 /* ---------------------------------------------------------------------------

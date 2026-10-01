@@ -1470,6 +1470,14 @@ jobs:
         # league's creators section and the rail's rows are wired
         run: node supabase/tests/newscard.test.mjs
 
+      - name: A match report's card and its article's head - the result, with the league's logo
+        # epinoia/news.js matchPlate: the clubs' three letters (a club's prefix passed over, a derby told apart), the
+        # league's own colour and never the platform's default, its logo's chip (its monogram without one, or when the
+        # logo does not load), the losing figure dimmed, FINAL or LIVE over the score, the card's edge in the winner's
+        # colour, its flag a tab under the print; the article's head from the game's row; the front page and the news
+        # page hand the card their league
+        run: node supabase/tests/match-plate.test.mjs
+
       - name: The page standard - every new page is built to it (docs/page-standard.md)
         # a data-std page: the centred head, sections with a title and a subtitle and never a number, the standard's
         # sheets in their order and none of their rules copied, nav.js's index and SKIP; and every index.html that is
