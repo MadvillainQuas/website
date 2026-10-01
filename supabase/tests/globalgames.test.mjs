@@ -906,7 +906,22 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
   await P.start();
   ok('daily.js: with games live a visit opens on LIVE, its tab shown with the count, and only the live games on it',
      P.sel() === 'live' && !P.lb.hidden && P.lb.querySelector('.fx-n').textContent === '2' && P.cards().join() === 'a2,a1', P.cards().join());
-  ok('...the LIVE tab has no SHOW MORE (every live game is on it)', !P.host.querySelector('[data-act="more"]'));
+  ok('...the LIVE tab has no SHOW MORE with 20 or fewer live (every live game is on it)', !P.host.querySelector('[data-act="more"]'));
+  {
+    /* ABOVE 20 LIVE: the first 20, then SHOW MORE adds 20 a press from what is already read; no ALL FIXTURES at the end */
+    const many = [];
+    for (let i = 0; i < 30; i++) many.push(live('m' + String(i).padStart(2, '0'), [L.bcb, L.slbm, L.slbw][i % 3], -(i + 1) * 60e3));
+    const Q = page({ live: () => many, ups: someUps, res: someRes });
+    await Q.start();
+    ok('daily.js: above 20 live, LIVE shows the first 20 and a SHOW MORE', Q.sel() === 'live' && Q.cards().length === 20 && !!Q.host.querySelector('[data-act="more"]'), Q.cards().length);
+    const liveReads = Q.calls.live ? Q.calls.live.length : null;
+    Q.host.querySelector('[data-act="more"]').click(); await flush(); await flush();
+    ok('...SHOW MORE brings in the rest (30), with SHOW LESS and no ALL FIXTURES link',
+       Q.cards().length === 30 && !!Q.host.querySelector('[data-act="less"]') && !Q.host.querySelector('[data-act="more"]') && !Q.host.querySelector('.fx-all'), Q.cards().length);
+    ok('...and it read nothing new to do it', liveReads === null || (Q.calls.live && Q.calls.live.length === liveReads));
+    Q.host.querySelector('[data-act="less"]').click();
+    ok('...SHOW LESS goes back to 20', Q.cards().length === 20, Q.cards().length);
+  }
   liveNow = [];
   await P.tick();
   ok('daily.js: LIVE emptying while shown falls back to UPCOMING with a line saying why, and the LIVE tab goes',
