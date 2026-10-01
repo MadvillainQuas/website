@@ -571,6 +571,13 @@ jobs:
         # within their limits, and the per-league memory surviving garbage and a missing localStorage
         run: node supabase/tests/graphics-tab.test.mjs
 
+      - name: The league console's index - every section reachable, a dropdown with show more, an address that lands
+        # epinoia/admin/wsindex.js: every section of the Settings tab has an anchor (its own, its heading's, or one from its
+        # title) and no id is used twice; the open tab's showing sections in order; shut until asked, the first eight
+        # with the rest behind "show more", floating over the page and fitted to the screen; picking, Esc or a click
+        # elsewhere shuts it; an arrow on each heading back; admin.js lands any Settings anchor once the league has loaded
+        run: node supabase/tests/admin-index.test.mjs
+
       - name: The Graphics tab's stat catalogue, the month's stars and the leaders - the site's own columns, ranked and drawn
         # epinoia/admin/statcat.js reads fulltable.js's PLAYER_COLS / TEAM_COLS (identity, HIDDEN_COLS and the access.js locks
         # left out, an administrator offered the locked ones unless the lock flag is on), season.js works the numbers for a game,

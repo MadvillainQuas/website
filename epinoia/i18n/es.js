@@ -1655,6 +1655,8 @@
       'not enough minutes against the bench': 'pocos minutos frente al banquillo',
       'level with all his minutes': 'igual que en todos sus minutos',
       'the tick on each bar is all his minutes in the same games': 'la marca de cada barra son todos sus minutos en esos mismos partidos',
+      'Show fewer': 'Mostrar menos',
+      'Back to the index': 'Volver al índice',
       'against the bench: every other minute': 'frente al banquillo: el resto de minutos',
       'against the starters: the other side had 4+ of that game’s starting five on': 'frente a los titulares: el rival tenía en pista 4 o más de su quinteto inicial de ese partido',
       'reading his games against the starters…': 'leyendo sus partidos frente a los titulares…',
@@ -2498,6 +2500,9 @@
       [/^avg (\d+)(?:st|nd|rd|th)$/, 'prom. $1.º'],
       [/^([+-][\d.]+) (above|below) league avg$/, m => m[1] + (m[2] === 'above' ? ' por encima' : ' por debajo') + ' de la media de la liga'],
       [/^lg avg ([+-]?[\d.]+)$/, 'media liga $1'],
+      /* the league console's index (admin/wsindex.js) */
+      [/^Show more \((\d+)\)$/, 'Mostrar más ($1)'],
+      [/^(\d+) sections$/, '$1 secciones'],
       /* the league percentile against the starters or the bench (p/player.js vsCard, vsNote) */
       [/^([+-][\d.]+) vs all his minutes$/, '$1 respecto a todos sus minutos'],
       [/^all minutes ([+-]?[\d.]+)$/, 'todos sus minutos $1'],

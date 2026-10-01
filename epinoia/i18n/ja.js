@@ -1653,6 +1653,8 @@
       'not enough minutes against the bench': '対ベンチの出場時間が足りません',
       'level with all his minutes': '全出場時間と同じ',
       'the tick on each bar is all his minutes in the same games': '各バーの目盛りは同じ試合での全出場時間の値',
+      'Show fewer': '表示を減らす',
+      'Back to the index': '目次に戻る',
       'against the bench: every other minute': '対ベンチ: それ以外のすべての時間',
       'against the starters: the other side had 4+ of that game’s starting five on': '対スターター: 相手がその試合の先発5人のうち4人以上を出していた時間',
       'reading his games against the starters…': '対スターターの試合を読み込み中…',
@@ -2498,6 +2500,9 @@
       [/^avg (\d+)(?:st|nd|rd|th)$/, '平均 $1'],
       [/^[+-]([\d.]+) (above|below) league avg$/, m => 'リーグ平均より ' + m[1] + (m[2] === 'above' ? ' 上' : ' 下')],
       [/^lg avg ([+-]?[\d.]+)$/, 'リーグ平均 $1'],
+      /* the league console's index (admin/wsindex.js) */
+      [/^Show more \((\d+)\)$/, 'もっと見る（$1）'],
+      [/^(\d+) sections$/, '$1セクション'],
       /* the league percentile against the starters or the bench (p/player.js vsCard, vsNote) */
       [/^([+-][\d.]+) vs all his minutes$/, '全出場時間比 $1'],
       [/^all minutes ([+-]?[\d.]+)$/, '全出場時間 $1'],

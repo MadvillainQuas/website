@@ -16,14 +16,14 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=574"></script>
-<script src="../i18n.js?v=574" data-i18n-packs="admin platform"></script>
-<script src="../glyphs.js?v=574" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=574">
-<link rel="stylesheet" href="../kit/nav.css?v=574">
-<link rel="stylesheet" href="../kit/news.css?v=574">
-<link rel="stylesheet" href="jobbar.css?v=574">
-<link rel="stylesheet" href="graphics.css?v=574">
+<script src="../appmode.js?v=575"></script>
+<script src="../i18n.js?v=575" data-i18n-packs="admin platform"></script>
+<script src="../glyphs.js?v=575" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=575">
+<link rel="stylesheet" href="../kit/nav.css?v=575">
+<link rel="stylesheet" href="../kit/news.css?v=575">
+<link rel="stylesheet" href="jobbar.css?v=575">
+<link rel="stylesheet" href="graphics.css?v=575">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -328,9 +328,9 @@
   .ax-st.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 55%,transparent)}
   #paidAccessPanel .row > .mt{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
 </style>
-<link rel="stylesheet" href="../kit/suggest.css?v=574">
-<link rel="stylesheet" href="../kit/newsrefresh.css?v=574">
-<link rel="stylesheet" href="../kit/legibility.css?v=574">
+<link rel="stylesheet" href="../kit/suggest.css?v=575">
+<link rel="stylesheet" href="../kit/newsrefresh.css?v=575">
+<link rel="stylesheet" href="../kit/legibility.css?v=575">
 </head>
 <body>
 <div class="ep-frame">
@@ -390,9 +390,12 @@
       </div>
     </div>
 
+    <!-- THE INDEX: every section of the open tab, each a link straight to it (admin/wsindex.js) -->
+    <nav class="wsindex" id="wsIndex" aria-label="On this page" hidden></nav>
+
     <div id="tabSettings" role="tabpanel" aria-labelledby="tabBtnSettings">
 
-    <div class="sec">
+    <div class="sec" id="sec-league">
       <div class="sec-h"><span class="idx">02</span><h2>League</h2></div>
       <div class="body">
         <div class="fmt-h">Whose competition this is</div>
@@ -493,7 +496,7 @@
       </div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-announcements-and-messages">
       <div class="sec-h"><span class="idx">05b</span><h2>Announcements &amp; messages</h2>
         <span class="note" id="anNote">to the league's fans, or to its clubs' managers</span></div>
       <div class="body">
@@ -516,49 +519,49 @@
       </div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-format-and-knockout">
       <div class="sec-h"><span class="idx">06</span><h2>Format &amp; knockout</h2>
         <span class="note" id="fmtNote"></span></div>
       <div class="body"><div id="formatPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-discipline">
       <div class="sec-h"><span class="idx">06a</span><h2>Discipline</h2>
         <span class="note">points and wins docked</span></div>
       <div class="body"><div id="disciplinePanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-suspensions">
       <div class="sec-h"><span class="idx">06b</span><h2>Suspensions</h2>
         <span class="note">players unavailable</span></div>
       <div class="body"><div id="suspensionPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-the-record">
       <div class="sec-h"><span class="idx">06c</span><h2>The record</h2>
         <span class="note">clubs and players</span></div>
       <div class="body"><div id="recordsPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-awards">
       <div class="sec-h"><span class="idx">06d</span><h2>Awards</h2>
         <span class="note">chosen, not computed</span></div>
       <div class="body"><div id="awardsPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-team-of-the-year">
       <div class="sec-h"><span class="idx">06e</span><h2>Team of the Year</h2>
         <span class="note">public ballot + official votes</span></div>
       <div class="body"><div id="totyPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-fans-vote">
       <div class="sec-h"><span class="idx">06e2</span><h2>Fans&rsquo; vote</h2>
         <span class="note">every week&rsquo;s tally, and the season&rsquo;s</span></div>
       <div class="body"><div id="fanvotePanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-socials">
       <div class="sec-h"><span class="idx">06f</span><h2>Socials</h2>
         <span class="note">Instagram spotlight</span></div>
       <div class="body"><div id="socialsPanel"></div>
@@ -566,33 +569,33 @@
           have moved to the <a href="#graphics" data-tab-link="graphics" style="color:var(--lume)">Graphics tab</a>.</p></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-news">
       <div class="sec-h"><span class="idx">06g</span><h2>News</h2>
         <span class="note">writers and articles</span></div>
       <div class="body"><div id="newsPanel"></div></div>
     </div>
 
     <!-- 0194: the league's independent creators, and its own news sites (creators-ui.js) -->
-    <div class="sec">
+    <div class="sec" id="sec-creators-and-news-sources">
       <div class="sec-h"><span class="idx">06g2</span><h2>Creators &amp; news sources</h2>
         <span class="note">outlets, moderation, the league&rsquo;s own news sites</span></div>
       <div class="body"><div id="creatorsPanel"></div></div>
     </div>
 
     <!-- 0197: the league's Discord servers, on its Community page (creators-ui.js mountForum) -->
-    <div class="sec">
+    <div class="sec" id="sec-community-discord">
       <div class="sec-h"><span class="idx">06g3</span><h2>Community: Discord</h2>
         <span class="note">Discord servers for the league&rsquo;s fans &mdash; any server, attached by its invitation</span></div>
       <div class="body"><div id="forumPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-appearance">
       <div class="sec-h"><span class="idx">06h</span><h2>Appearance</h2>
         <span class="note">logo, league colours, country, sections, tabs</span></div>
       <div class="body"><div id="appearancePanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-embeds-and-websites">
       <div class="sec-h"><span class="idx">06i</span><h2>Embeds &amp; websites</h2>
         <span class="note">what a planted embed shows</span></div>
       <div class="body"><div id="embedsPanel"></div>
@@ -600,74 +603,74 @@
         <div id="notifyEmbedPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-memberships-and-access">
       <div class="sec-h"><span class="idx">06j</span><h2>Memberships &amp; access</h2>
         <span class="note">who can see the league, and what fans can buy</span></div>
       <div class="body"><div id="paidAccessPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-import-a-played-game">
       <div class="sec-h"><span class="idx">07</span><h2>Import a played game</h2>
         <span class="note" id="imNote"></span></div>
       <div class="body"><div id="importPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-connect-a-league-feed">
       <div class="sec-h"><span class="idx">07b</span><h2>Connect a league feed</h2>
         <span class="note">FIBA LiveStats · auto-update</span></div>
       <div class="body"><div id="feedPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-announce-results">
       <div class="sec-h"><span class="idx">08</span><h2>Announce results</h2>
         <span class="note">Discord or Slack</span></div>
       <div class="body"><div id="webhookPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-match-officials">
       <div class="sec-h"><span class="idx">09</span><h2>Match officials</h2>
         <span class="note">the people the scoring app offers on a fixture</span></div>
       <div class="body"><div id="officialsPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-broadcast-images">
       <div class="sec-h"><span class="idx">10</span><h2>Broadcast images</h2>
         <span class="note">cut-outs for the lineup graphics</span></div>
       <div class="body"><div id="bcastImgPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-streaming-destination">
       <div class="sec-h"><span class="idx">11</span><h2>Streaming destination</h2>
         <span class="note">where this league&rsquo;s broadcasts go</span></div>
       <div class="body"><div id="streamPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-export-the-season">
       <div class="sec-h"><span class="idx">12</span><h2>Export the season</h2>
         <span class="note">every stat, as CSV, in one archive</span></div>
       <div class="body"><div id="exportPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-api-keys">
       <div class="sec-h"><span class="idx">13</span><h2>API keys</h2>
         <span class="note"><a href="../api/" target="_blank" rel="noopener"
           style="color:var(--ink-3)">documentation ↗</a></span></div>
       <div class="body"><div id="keysPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-scraper-keys">
       <div class="sec-h"><span class="idx">14</span><h2>Scraper keys</h2>
         <span class="note">automatic feeds to RealGM, Eurobasket and the rest</span></div>
       <div class="body"><div id="feedsPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-merchandise">
       <div class="sec-h"><span class="idx">15</span><h2>Merchandise</h2>
         <span class="note">print files, built from each club’s own artwork</span></div>
       <div class="body"><div id="merchPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-photographs">
       <div class="sec-h">
         <span class="idx">16</span><h2>Photographs</h2>
         <span class="note" id="mqNote"></span>
@@ -684,13 +687,13 @@
     </div>
 
     <!-- 0199: corrections fans suggested to the league's players, staff and arenas (suggestions-ui.js) -->
-    <div class="sec">
+    <div class="sec" id="sec-suggested-edits">
       <div class="sec-h"><span class="idx">16b</span><h2>Suggested edits</h2>
         <span class="note">corrections fans suggested to the league&rsquo;s players, staff and arenas &mdash; accept, correct or reject</span></div>
       <div class="body"><div id="suggestPanel"></div></div>
     </div>
 
-    <div class="sec">
+    <div class="sec" id="sec-people">
       <div class="sec-h"><span class="idx">17</span><h2>People</h2>
         <span class="note">roles are granted by email address</span></div>
       <div class="body">
@@ -764,52 +767,53 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=574" defer></script>
-<script src="../upload.js?v=574" defer></script>
-<script src="../teamcolour.js?v=574" defer></script>
-<script src="../vendor/supabase.js?v=574" defer></script>
-<script src="../livestats.js?v=574" defer></script>
-<script src="import-ui.js?v=574" defer></script>
-<script src="feed-ui.js?v=574" defer></script>
-<script src="schedule.js?v=574" defer></script>
-<script src="fixtures-ui.js?v=574" defer></script>
-<script src="jobbar.js?v=574" defer></script>
-<script src="backfill-ui.js?v=574" defer></script>
-<script src="formats-ui.js?v=574" defer></script>
-<script src="stream-ui.js?v=574" defer></script>
-<script src="bcastimg-ui.js?v=574" defer></script>
-<script src="officials-ui.js?v=574" defer></script>
-<script src="export-ui.js?v=574" defer></script>
-<script src="keys-ui.js?v=574" defer></script>
-<script src="feeds-ui.js?v=574" defer></script>
-<script src="../artwork.js?v=574" defer></script>
-<script src="merch-ui.js?v=574" defer></script>
-<script src="webhook-ui.js?v=574" defer></script>
-<script src="governance-ui.js?v=574" defer></script>
-<script src="awards-ui.js?v=574" defer></script>
-<script src="socials-ui.js?v=574" defer></script>
-<script src="../reportcard.js?v=574" defer></script>
-<script src="../socialcard.js?v=574" defer></script>
-<script src="socialgfx-ui.js?v=574" defer></script>
-<script src="../sos.js?v=574" defer></script>
-<script src="../bpm.js?v=574" defer></script>
-<script src="../season.js?v=574" defer></script>
-<script src="../statinfo.js?v=574" defer></script>
-<script src="../fulltable.js?v=574" defer></script>
-<script src="statcat.js?v=574" defer></script>
-<script src="graphics-ui.js?v=574" defer></script>
-<script src="wstabs.js?v=574" defer></script>
-<script src="../fanvote.js?v=574" defer></script>
-<script src="fanvote-ui.js?v=574" defer></script>
-<script src="../newsblocks.js?v=574" defer></script>
-<script src="news-ui.js?v=574" defer></script>
-<script src="../newsrefresh.js?v=574" defer></script>
-<script src="creators-ui.js?v=574" defer></script>
-<script src="appearance-ui.js?v=574" defer></script>
-<script src="embeds-ui.js?v=574" defer></script>
-<script src="access-ui.js?v=574" defer></script>
-<script src="suggestions-ui.js?v=574" defer></script>
-<script src="admin.js?v=574" defer></script>
-<script src="../nav.js?v=574" defer></script>
+<script src="../config.js?v=575" defer></script>
+<script src="../upload.js?v=575" defer></script>
+<script src="../teamcolour.js?v=575" defer></script>
+<script src="../vendor/supabase.js?v=575" defer></script>
+<script src="../livestats.js?v=575" defer></script>
+<script src="import-ui.js?v=575" defer></script>
+<script src="feed-ui.js?v=575" defer></script>
+<script src="schedule.js?v=575" defer></script>
+<script src="fixtures-ui.js?v=575" defer></script>
+<script src="jobbar.js?v=575" defer></script>
+<script src="backfill-ui.js?v=575" defer></script>
+<script src="formats-ui.js?v=575" defer></script>
+<script src="stream-ui.js?v=575" defer></script>
+<script src="bcastimg-ui.js?v=575" defer></script>
+<script src="officials-ui.js?v=575" defer></script>
+<script src="export-ui.js?v=575" defer></script>
+<script src="keys-ui.js?v=575" defer></script>
+<script src="feeds-ui.js?v=575" defer></script>
+<script src="../artwork.js?v=575" defer></script>
+<script src="merch-ui.js?v=575" defer></script>
+<script src="webhook-ui.js?v=575" defer></script>
+<script src="governance-ui.js?v=575" defer></script>
+<script src="awards-ui.js?v=575" defer></script>
+<script src="socials-ui.js?v=575" defer></script>
+<script src="../reportcard.js?v=575" defer></script>
+<script src="../socialcard.js?v=575" defer></script>
+<script src="socialgfx-ui.js?v=575" defer></script>
+<script src="../sos.js?v=575" defer></script>
+<script src="../bpm.js?v=575" defer></script>
+<script src="../season.js?v=575" defer></script>
+<script src="../statinfo.js?v=575" defer></script>
+<script src="../fulltable.js?v=575" defer></script>
+<script src="statcat.js?v=575" defer></script>
+<script src="graphics-ui.js?v=575" defer></script>
+<script src="wstabs.js?v=575" defer></script>
+<script src="wsindex.js?v=575" defer></script>
+<script src="../fanvote.js?v=575" defer></script>
+<script src="fanvote-ui.js?v=575" defer></script>
+<script src="../newsblocks.js?v=575" defer></script>
+<script src="news-ui.js?v=575" defer></script>
+<script src="../newsrefresh.js?v=575" defer></script>
+<script src="creators-ui.js?v=575" defer></script>
+<script src="appearance-ui.js?v=575" defer></script>
+<script src="embeds-ui.js?v=575" defer></script>
+<script src="access-ui.js?v=575" defer></script>
+<script src="suggestions-ui.js?v=575" defer></script>
+<script src="admin.js?v=575" defer></script>
+<script src="../nav.js?v=575" defer></script>
 </body>
 </html>

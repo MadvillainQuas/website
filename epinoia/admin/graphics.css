@@ -18,6 +18,41 @@
 .wstabs{display:flex;border-bottom:0;max-width:100%}
 .wstabs .ep-tab{flex:1 1 0;min-height:42px;font-size:11px}
 @media (min-width:640px){ .wstabs{display:inline-flex} .wstabs .ep-tab{flex:0 0 auto;min-width:130px} }
+
+/* THE INDEX under the tabs (admin/wsindex.js): a small button that opens a dropdown over the page - the open
+   tab's first sections by number and title, the rest behind "show more" - and a small arrow on every indexed
+   heading back to it */
+.wsindex{padding:calc(var(--u)*1.5) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+.wsindex[hidden]{display:none}
+.wsix{position:relative;display:inline-block;max-width:100%}
+.wsix-h{display:inline-flex;align-items:center;gap:9px;min-height:34px;padding:0 13px;cursor:pointer;list-style:none;
+  border:1px solid var(--rule-2);border-radius:999px;background:var(--panel);user-select:none;
+  font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.wsix-h::-webkit-details-marker{display:none}
+.wsix-h::after{content:"\25BE";color:var(--lume);transition:transform .15s}
+.wsix[open] > .wsix-h::after{transform:rotate(180deg)}
+.wsix-h:hover, .wsix-h:focus-visible, .wsix[open] > .wsix-h{border-color:var(--lume);outline:0}
+.wsix-t{color:var(--ink-2)}
+.wsix-pop{position:absolute;z-index:40;left:0;top:calc(100% + 6px);width:min(600px,calc(100vw - 32px));
+  overflow:auto;padding:8px;border:1px solid var(--rule-2);border-radius:12px;
+  background:var(--panel);box-shadow:0 14px 34px rgba(0,0,0,.35)}
+.wsix-l{list-style:none;margin:0;padding:0;columns:2 13rem;column-gap:10px}
+.wsix-l li{break-inside:avoid}
+.wsix-l li[hidden]{display:none}
+.wsix-l a{display:flex;align-items:baseline;gap:9px;padding:6px 8px;border-radius:7px;text-decoration:none;
+  color:var(--ink);font-family:var(--f-ui);font-size:12.5px;line-height:1.35}
+.wsix-l a .i{flex:none;min-width:4.2em;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;color:var(--lume)}
+.wsix-l a:hover, .wsix-l a:focus-visible{background:color-mix(in oklch,var(--lume) 12%,transparent);outline:0}
+.wsix-more{display:block;width:100%;margin-top:6px;font-size:9px;padding:8px 11px}
+.wsix-more[hidden]{display:none}
+@media (max-width:640px){ .wsix-l{columns:1} .wsix-l a{min-height:36px;align-items:center} }
+/* the way back, on each indexed section's heading; anchors land with a little room above them */
+.sec-h .sec-top{flex:none;font-family:var(--f-micro);font-size:11px;line-height:1;color:var(--ink-3);text-decoration:none;
+  padding:2px 6px;border:1px solid var(--rule-2);border-radius:999px}
+.sec-h .note + .sec-top{margin-left:0}
+.sec-h > h2 + .sec-top{margin-left:auto}
+.sec-h .sec-top:hover, .sec-h .sec-top:focus-visible{color:var(--lume);border-color:var(--lume);outline:0}
+#ws .sec, #ws .sec-h{scroll-margin-top:10px}
 #tabSettings[hidden],#tabGraphics[hidden]{display:none !important}
 .ep-tab:focus-visible,.ep-chip:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
 
