@@ -1643,7 +1643,10 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         fid = self._nkl_live_id(sid, fixture, config)
         if not fid:
             return None
-        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
+        url = FIBA_DATA_URL.format(game_id=fid)
+        if config.get("_fresh"):
+            url += f"?_={int(time.time() * 1000)}"     # the stall rule's second look, past the CDN's copy (as fetch())
+        raw, meta = self._get_meta(url)
         if not raw or "tm" not in raw:
             return None                  # the webcast is not open yet (LiveStats answers 403 until it is)
         if not self._nkl_same_clubs(raw, fixture):

@@ -348,6 +348,11 @@ try:
     a.fetch("125747", cfg)
     ok("every poll after that is the feed alone: no request to nkl.lt", Offline.requests_made[n:] == [feed("2895457")],
        Offline.requests_made[n:])
+    n = len(Offline.requests_made)
+    ok("the stall rule's second look (_fresh) asks past the CDN's copy, as for any LiveStats game",
+       a.fetch("125747", dict(cfg, _live=True, _fresh=True)) is not None
+       and len(Offline.requests_made) == n + 1 and Offline.requests_made[n].startswith(feed("2895457") + "?_="),
+       Offline.requests_made[n:])
 
     a, cfg = fresh(feeds={"2895999": feed_as("Somebody Else", "Another Club", final=False)},
                    redirects={"125747": "http://www.fibalivestats.com/u/NKLNBL/2895999"})
