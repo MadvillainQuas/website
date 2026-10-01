@@ -164,7 +164,8 @@ const CATALOGUE = Object.freeze({
      and teach featureLocked() the new name; no page changes. */
   locks: Object.freeze({
     events: Object.freeze({ gate: 'analytics', label: 'Events stats' }),   // ev_* splits, the Events section, team events
-    csv:    Object.freeze({ gate: 'analytics', label: 'CSV download' })    // every table's csv button
+    csv:    Object.freeze({ gate: 'analytics', label: 'CSV download' }),   // every table's csv button
+    model:  Object.freeze({ gate: 'analytics', label: 'What wins model' }) // What wins and the Front office's win model (docs/what-wins-model.md §10.3)
   }),
   barKeys: key => /^ev_/.test(String(key == null ? '' : key)),
   wowyPreviewMax: 1

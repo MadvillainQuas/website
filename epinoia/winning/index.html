@@ -10,7 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
-<!-- PUBLIC. No gate.js, no topnav.js. -->
+<!-- PUBLIC page, members' analysis. No gate.js, no topnav.js. The analysis arrives as one file through
+     EpinoiaWinFile (winfile.js): the database decides who may have it, at request time. Signed out or not a member,
+     the page shows the public box-score preview and says how to get the rest. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>What wins · Epinoia</title>
@@ -24,88 +26,182 @@
 <meta name="description" content="Which numbers go with winning, measured on every finished game across every league: the four factors weighed, shooting, shot selection and where the points came from.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=579"></script>
-<script src="../i18n.js?v=579"></script>
-<script src="../glyphs.js?v=579" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=579">
-<link rel="stylesheet" href="../kit/nav.css?v=579">
-<style>
-  a.plain{color:inherit;text-decoration:none}
-  .ww{overflow-x:clip}
-  .ww-top{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
-  .ww-top .wm{background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding-top:3px;padding-bottom:1px;view-transition-name:ep-mark}
-  .ww .ep-hdr{flex-wrap:wrap;row-gap:4px}
-  .ww-count{margin-left:auto;font-family:var(--f-micro);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
-  .ww-lede{margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3);border-bottom:1px solid var(--rule);font-family:var(--f-ui);font-size:13.5px;line-height:1.65;color:var(--ink-2);max-width:78ch}
-  .ww-bar-f{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:calc(var(--u)*1.5) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
-  .ww-bar-f label{font-family:var(--f-micro);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
-  .ww-sec{padding:calc(var(--u)*2.5) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
-  .ww-sec h3{font-family:var(--f-score);font-weight:400;font-size:26px;text-transform:uppercase;margin:0 0 4px;letter-spacing:.02em}
-  .ww-sec .ww-sub{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3);margin:0 0 12px;max-width:78ch;line-height:1.55}
-  .ww-ins p{margin:0 0 10px;font-family:var(--f-ui);font-size:15px;line-height:1.62;color:var(--ink-2);max-width:78ch}
-  .ww-ins p:first-child{font-size:18px;font-weight:600;color:var(--ink);line-height:1.45}
-  .ww svg{display:block;width:100%;height:auto;max-width:900px}
-  .ww-lab{font-family:var(--f-ui);font-size:13px;fill:var(--ink-2)}
-  .ww-axis{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;fill:var(--ink-3);text-transform:uppercase}
-  .ww-key{font-family:var(--f-ui);font-size:12px;fill:var(--ink-2)}
-  .ww-zero, .ww-axisl{stroke:var(--rule-2);stroke-width:1.2}
-  .ww-bar{fill:var(--lume)} .ww-bar.ww-neg{fill:var(--flare)}
-  .ww-style .ww-bar{fill:color-mix(in oklch,var(--ink) 30%,transparent)}
-  .ww-pts .ww-bar{fill:var(--aqua)}
-  .ww-r{font-family:var(--f-data);font-size:12px;fill:var(--ink)}
-  .ww-wr{font-family:var(--f-score);font-size:18px;fill:var(--lume)}
-  .ww-f{stroke:none} .ww-f-efg{fill:var(--lume)} .ww-f-tovp{fill:var(--amber)} .ww-f-orebp{fill:var(--aqua)} .ww-f-ftr{fill:var(--violet)}
-  .ww-fv{font-family:var(--f-data);font-size:13px;font-weight:700;fill:#04100b}
-  .ww-dl{stroke:var(--rule-2);stroke-width:3;stroke-linecap:round}
-  .ww-win{fill:var(--lume);stroke:var(--panel);stroke-width:2} .ww-lose{fill:var(--flare);stroke:var(--panel);stroke-width:2}
-  .ww-dv{font-family:var(--f-data);font-size:11.5px;fill:var(--ink-3)}
-  .ww-pw{fill:color-mix(in oklch,var(--lume) 70%,transparent)} .ww-pl{fill:color-mix(in oklch,var(--flare) 60%,transparent)}
-  .ww-fit{stroke:var(--ink);stroke-width:2.5;stroke-dasharray:7 5}
-  .ww-tbl{width:100%;border-collapse:collapse;font-family:var(--f-ui);font-size:13px}
-  .ww-tbl th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule-2)}
-  .ww-tbl td{padding:8px;border-bottom:1px solid var(--rule)} .ww-tbl td.n{font-family:var(--f-data);text-align:right;white-space:nowrap}
-  .ww-tbl tr.on td{background:color-mix(in oklch,var(--lume) 10%,transparent)}
-  .ww-tblwrap{overflow-x:auto}
-  .ww-skel{display:grid;gap:8px;padding:calc(var(--u)*2) calc(var(--u)*3)}
-  .ww-skel i{display:block;height:54px;border:1px solid var(--rule);background:linear-gradient(100deg,var(--panel) 30%,var(--panel-2) 50%,var(--panel) 70%);
-    background-size:300% 100%;animation:ww-shimmer 1.4s ease-in-out infinite}
-  @keyframes ww-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
-  @media (prefers-reduced-motion:reduce){ .ww-skel i{animation:none} }
-  .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:10px;line-height:1.9}
-  @media (max-width:820px){
-    .ww-top, .ww-bar-f, .ww-sec{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
-    .ww .ep-hdr{padding:calc(var(--u)*1.5) calc(var(--u)*2)} .ww .ep-hdr h2{font-size:22px}
-    .ww-lede{padding:calc(var(--u)*1.25) calc(var(--u)*2)}
-    .ww-lab{font-size:15px}
-    .ep-frame{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-  }
-  @media (display-mode:standalone){ body{padding-top:env(safe-area-inset-top,0px)} }
-</style>
-<link rel="stylesheet" href="../kit/teletext.css?v=579">
-<link rel="stylesheet" href="../kit/legibility.css?v=579">
+<script src="../appmode.js?v=581"></script>
+<script src="../i18n.js?v=581" data-i18n-packs="analysis"></script>
+<script src="../glyphs.js?v=581" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=581">
+<link rel="stylesheet" href="../kit/nav.css?v=581">
+<link rel="stylesheet" href="../kit/access.css?v=581">
+<link rel="stylesheet" href="../kit/page.css?v=581">
+<link rel="stylesheet" href="../kit/vizkit.css?v=581">
+<link rel="stylesheet" href="../kit/winning.css?v=581">
+<link rel="stylesheet" href="../kit/sectitle.css?v=581">
+<link rel="stylesheet" href="../kit/teletext.css?v=581">
+<link rel="stylesheet" href="../kit/legibility.css?v=581">
 </head>
 <body>
-<div class="ep-frame ww">
-  <div class="ww-top">
+<!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and no
+     number; data-std has nav.js add the teletext line, the quick keys, ON THIS PAGE and each section's SKIP.
+     docs/what-wins-model.md §11 is this page: twelve sections, drawn by winning/page.js from one file. -->
+<div class="ep-frame ww" id="ww" data-std>
+  <div class="topbar">
     <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <span class="ep-micro">every league</span>
+    <span id="ctx" class="ep-micro"></span>
   </div>
-  <div class="ep-hdr"><span class="idx">01</span><h2 id="wwTitle">What wins</h2>
-    <span class="ww-count" id="wwCount" aria-live="polite"></span></div>
-  <p class="ww-lede">Every finished game on the platform, both sides' box scores set against each other: which numbers
-    go with winning, how often the side that won each one won the game, and how the four factors weigh against
-    Dean Oliver's famous 40 / 25 / 20 / 15. Measured, not assumed, and one league at a time if you like.</p>
-  <div class="ww-bar-f"><label for="wwLeague">league</label><select id="wwLeague" class="ep-input"><option value="">every league</option></select></div>
-  <div id="wwBody" aria-busy="true" aria-labelledby="wwTitle">
-    <div class="ww-skel" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-  </div>
-  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
+
+  <header class="hero pg-head">
+    <p class="pg-kick" id="wwKick">Every league</p>
+    <h1>What wins</h1>
+    <p class="pg-sub">Which parts of the game turn into wins, what each is worth, and what a squad needs to win more.</p>
+  </header>
+
+  <!-- THE SHORT ANSWER: the league and season, the model's status and RECALCULATE (A.2), and up to six cards -->
+  <section class="sec" id="answer" aria-labelledby="answerH">
+    <div class="sec-h"><h2 id="answerH">The short answer</h2>
+      <p class="note">What decided these games, in plain numbers</p></div>
+    <div class="sec-b">
+      <div class="pg-row ww-pick">
+        <label class="ww-field"><span class="ww-flab">League</span>
+          <select id="wwLeague" class="ep-input"><option value="">Every league</option></select></label>
+        <label class="ww-field"><span class="ww-flab">Season</span>
+          <select id="wwSeason" class="ep-input" disabled><option value="">Current</option></select></label>
+      </div>
+      <div class="ww-status" id="wwStatus">
+        <p class="ww-line" id="wwLine" aria-live="polite">Loading the model…</p>
+        <div class="pg-row ww-acts">
+          <button type="button" class="ep-btn ww-recalc" id="wwRecalc" disabled aria-describedby="wwLine">Recalculate</button>
+          <button type="button" class="ep-btn ww-cancel hide" id="wwCancel">Cancel</button>
+        </div>
+        <div class="ww-prog hide" id="wwProg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="wwProgL">
+          <ol class="ww-stages" id="wwStages">
+            <li data-stage="check">Checking</li>
+            <li data-stage="update">Updating the model</li>
+            <li data-stage="download">Downloading</li>
+            <li data-stage="sim">Re-simulating</li>
+            <li data-stage="draw">Drawing</li>
+          </ol>
+          <div class="ww-blocks" id="wwBlocks" aria-hidden="true"></div>
+          <p class="ww-progl" id="wwProgL" aria-live="polite"></p>
+        </div>
+        <p class="ww-msg hide" id="wwMsg" role="status" aria-live="polite"></p>
+      </div>
+      <p class="ww-banner hide" id="wwBanner" role="note"></p>
+      <div class="ww-cards" id="wwCards" aria-busy="true"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="value" aria-labelledby="valueH">
+    <div class="sec-h"><h2 id="valueH">What each factor is worth</h2>
+      <p class="note">Points of margin and wins for one step better, with a 95% range</p></div>
+    <div class="sec-b ww-body" id="valueB"></div>
+  </section>
+
+  <section class="sec" id="factors" aria-labelledby="factorsH">
+    <div class="sec-h"><h2 id="factorsH">Every measure</h2>
+      <p class="note">Each measure against the result, with how sure we can be</p></div>
+    <div class="sec-b ww-body" id="factorsB"></div>
+  </section>
+
+  <section class="sec" id="curves" aria-labelledby="curvesH">
+    <div class="sec-h"><h2 id="curvesH">Where the line is</h2>
+      <p class="note">The chance of winning across each gap, and the break-even point</p></div>
+    <div class="sec-b ww-body" id="curvesB"></div>
+  </section>
+
+  <section class="sec" id="tempo" aria-labelledby="tempoH">
+    <div class="sec-h"><h2 id="tempoH">Pace and possession</h2>
+      <p class="note">Whether playing fast or holding the ball changes who wins</p></div>
+    <div class="sec-b ww-body" id="tempoB"></div>
+  </section>
+
+  <section class="sec" id="positions" aria-labelledby="positionsH">
+    <div class="sec-h"><h2 id="positionsH">By position</h2>
+      <p class="note">What guards, wings and bigs add, and what winners get from each</p></div>
+    <div class="sec-b ww-body" id="positionsB"></div>
+  </section>
+
+  <section class="sec" id="squad" aria-labelledby="squadH">
+    <div class="sec-h"><h2 id="squadH">Building a squad</h2>
+      <p class="note">Roster shapes and lineup mixes that go with winning</p></div>
+    <div class="sec-b ww-body" id="squadB"></div>
+  </section>
+
+  <section class="sec" id="sim" aria-labelledby="simH">
+    <div class="sec-h"><h2 id="simH">Simulate a game</h2>
+      <p class="note">Pick two sides, move the dials, and see the odds change</p></div>
+    <div class="sec-b ww-body" id="simB"></div>
+  </section>
+
+  <section class="sec" id="losses" aria-labelledby="lossesH">
+    <div class="sec-h"><h2 id="lossesH">Why games are lost</h2>
+      <p class="note">Each defeat split into shooting, turnovers, boards and the rest</p></div>
+    <div class="sec-b ww-body" id="lossesB"></div>
+  </section>
+
+  <section class="sec" id="leagues" aria-labelledby="leaguesH">
+    <div class="sec-h"><h2 id="leaguesH">League by league</h2>
+      <p class="note">Each league’s answer, leaning on the rest where games are few</p></div>
+    <div class="sec-b ww-body" id="leaguesB"></div>
+  </section>
+
+  <section class="sec" id="model" aria-labelledby="modelH">
+    <div class="sec-h"><h2 id="modelH">How good is the model</h2>
+      <p class="note">Forecasts checked against games the model had not seen</p></div>
+    <div class="sec-b ww-body" id="modelB"></div>
+  </section>
+
+  <!-- HOW IT IS WORKED OUT: public, static; the data date and token are filled in when a file arrives -->
+  <section class="sec" id="method" aria-labelledby="methodH">
+    <div class="sec-h"><h2 id="methodH">How it is worked out</h2>
+      <p class="note">Definitions, sample sizes and what the numbers cannot say</p></div>
+    <div class="sec-b narrow ww-method">
+      <h3>Three lenses, never mixed</h3>
+      <dl class="ww-lenses">
+        <dt><span class="ww-chip" data-lens="explain">Explains</span></dt>
+        <dd>What decided the games already played. Each game’s differences between the two sides are set against its margin. This is accounting: it says where the points came from, not what to change.</dd>
+        <dt><span class="ww-chip" data-lens="forecast">Forecasts</span></dt>
+        <dd>What the numbers so far say about the next games. Season-to-date profiles, checked week by week against games the model had not seen, and shown only where they beat a simple rating.</dd>
+        <dt><span class="ww-chip" data-lens="model">Model</span></dt>
+        <dd>What if a team changed one thing. A possession-by-possession simulator calibrated on the league. It is a model’s answer, never proof of cause.</dd>
+      </dl>
+      <h3>The measures</h3>
+      <p>Every finished game is reduced once to a line of counts per side. The four factors are effective shooting (eFG%), turnovers per play (TOV%), offensive rebounds won (OREB%) and free throws (made per 100 field-goal attempts). Their competitive versions leave out garbage time: a side 20 or more ahead with under eight minutes left, or 13 ahead with under four.</p>
+      <p>A difference model has no intercept. Home court is a term of its own, worth a few points beyond the factors. One team-SD is how far apart a good and an average side usually are on a measure. Points become wins through the spread of results around a pre-game expectation, never through the much smaller spread the factors leave over.</p>
+      <h3>How sure we can be</h3>
+      <p>Every estimate carries a 95% range from a bootstrap that resamples whole weeks of games. A measure whose q-value is 0.05 or more is drawn grey: not distinguishable from noise. Small leagues lean on every league’s pooled answer, and the page says how far.</p>
+      <h3>Minimum samples</h3>
+      <ul class="ww-mins">
+        <li>A league’s own model: 20 finished games (below 200 it is shown shrunk toward the pool)</li>
+        <li>A bin on a curve: 30 games; a hard number: 50 games</li>
+        <li>A team-season: 8 games; a forecast test game: 3 earlier games for each side, and 60 test games before a forecast is shown</li>
+        <li>A lineup cell: faint under 200 possessions; squad evidence: low power under 50 team-seasons</li>
+      </ul>
+      <h3>What the numbers cannot say</h3>
+      <ul class="ww-caveats">
+        <li>Accounting is identity, not levers.</li>
+        <li>Leaders slow down, and trailing sides foul and shoot threes. Competitive time and the pace of the first three quarters reduce this, not remove it.</li>
+        <li>Talent confounds style and squad shape.</li>
+        <li>The simulator moves one rate with the others fixed.</li>
+        <li>Positions are estimated.</li>
+        <li>Leagues differ in level and gender; carrying an answer across them is an assumption.</li>
+        <li>A q-value is not causal evidence.</li>
+      </ul>
+      <p class="ww-asof" id="wwAsof">The data date and the model’s version appear here once a file has loaded.</p>
+    </div>
+  </section>
 </div>
-<script src="../config.js?v=579" defer></script>
-<script src="../access.js?v=579" defer></script>
-<script src="../data.js?v=579" defer></script>
-<script src="../winning.js?v=579" defer></script>
-<script src="page.js?v=579" defer></script>
-<script src="../nav.js?v=579" defer></script>
+<script src="../config.js?v=581" defer></script>
+<script src="../access.js?v=581" defer></script>
+<script src="../memlock.js?v=581" defer></script>
+<script src="../data.js?v=581" defer></script>
+<script src="../teamcolour.js?v=581" defer></script>
+<script src="../winning.js?v=581" defer></script>
+<script src="../winstats.js?v=581" defer></script>
+<script src="../winsim.js?v=581" defer></script>
+<script src="../winfile.js?v=581" defer></script>
+<script src="../vizkit.js?v=581" defer></script>
+<script src="../xscroll.js?v=581" defer></script>
+<script src="page.js?v=581" defer></script>
+<script src="../nav.js?v=581" defer></script>
 </body>
 </html>

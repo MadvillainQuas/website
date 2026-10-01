@@ -514,7 +514,7 @@ ok('...only the arena it is asked about is stamped, only where the arena is know
    && /EpinoiaGoVenue\.mount\(head, \{ venueId: goVenue/.test(venueJs));
 ok('the team page loads it: the logo, the card and its styles before venue.js, the go words with the report\'s',
    /<script src="\.\.\/go\/logo\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\/venuestamp\.js\?v=\d+" defer><\/script>\s*<script src="venue\.js\?v=\d+" defer>/.test(teamHtml)
-   && /href="\.\.\/go\/venuestamp\.css\?v=\d+"/.test(teamHtml) && /data-i18n-packs="report go"/.test(teamHtml));
+   && /href="\.\.\/go\/venuestamp\.css\?v=\d+"/.test(teamHtml) && /data-i18n-packs="report go(?: frontoffice)?"/.test(teamHtml));
 ok('...in GO\'s style: the night sky, the logo, the neon pill (as go.css .go-find), light and dark',
    /\.gv-btn\{[^}]*border:2px solid var\(--neon/.test(gvCss) && /\.gv-bg\{[^}]*stars-1200\.jpg/.test(gvCss)
    && /:root:not\(\[data-theme="light"\]\) \.gv-btn\{/.test(gvCss) && /el\('button', 'gv-btn', o\.label \|\| 'stamp this venue'\)/.test(gvJs));

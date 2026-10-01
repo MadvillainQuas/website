@@ -1,0 +1,65 @@
+name: Backfill the What wins feature line
+
+# After migration 0211 (game_features) is applied: works out the feature line (epinoia/features.js, 108 counts a side) for
+# every final game finalised before finalise-game wrote it, with the same file the function runs, and upserts the two rows
+# a game. Resumable: it stops taking games after max_minutes and a second run carries on, since the list of games without
+# their rows only shrinks. Run it as a dry run first. See scripts/backfill_features.mjs and docs/what-wins-model.md §4.2.
+# Done when `select count(*) from public.game_features_missing(1, 5000)` is 0 (bar the games it names as skipped).
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Work every line out and write nothing"
+        type: boolean
+        default: true
+      game_id:
+        description: "Only this game (optional)"
+        required: false
+      league:
+        description: "Only this league's games, by slug (optional)"
+        required: false
+      force:
+        description: "Rewrite lines that are already there"
+        type: boolean
+        default: false
+      max_minutes:
+        description: "Stop taking games after this many minutes"
+        required: false
+        default: "45"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-features
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 120
+    steps:
+      # the page's own calculators and the script, not the repository's archived feeds
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            epinoia
+            scripts
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Backfill
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          GAME_ID: ${{ github.event.inputs.game_id }}
+          LEAGUE: ${{ github.event.inputs.league }}
+          FORCE: ${{ github.event.inputs.force }}
+          MAX_MINUTES: ${{ github.event.inputs.max_minutes }}
+        run: |
+          args=(--lanes 4 --max-minutes "${MAX_MINUTES:-45}")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry); fi
+          if [ "$FORCE" = "true" ]; then args+=(--force); fi
+          if [ -n "$LEAGUE" ]; then args+=(--league "$LEAGUE"); fi
+          if [ -n "$GAME_ID" ]; then args+=("$GAME_ID"); fi
+          node scripts/backfill_features.mjs "${args[@]}"

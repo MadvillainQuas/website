@@ -118,5 +118,61 @@ ok('the view: a block for each thing there is to say (the best club has no weakn
    && ['strengths', 'identity', 'the roster'].every(t => gh.includes('>' + t + '<')) && !gh.includes('>weaknesses<'));
 ok('...a club read against too few: says so', /too few clubs/.test(X.gmHTML(X.gm({ team: { id: 't0' }, teams: [], players: [] }))));
 
+
+/* THE WIN MODEL (docs/what-wins-model.md §12, WP5): without a model every output above is byte for byte what it was
+   before the model existed (a hash of the chart and five GM readings, taken from the file before the change); with
+   one, the same measures are picked, ordered by |wins|, each carries its wins, and the needs follow that order */
+console.log('\nthe win model in the GM\'s view');
+{
+  const crypto = await import('node:crypto');
+  const P2 = (id, name, height, mpg, recent) => ({ p: { id, name, num: id.slice(1), height, position: '' }, s: { mpg, gp: 10, min: mpg * 10 }, r: recent == null ? null : { mpg: recent } });
+  const sq = [P2('p1','Point One',184,30,31),P2('p2','Guard Two',192,28,29),P2('p3','Wing Three',198,27,26),P2('p4','Four Big',204,26,27),P2('p5','Five Centre',211,25,24),P2('p6','Backup Point',185,18,20),
+    P2('p7','Backup Big',208,16,15),P2('p8','Sixth Wing',199,20,22),P2('p9','Stretch Four',205,12,11),P2('p10','Third Guard',190,9,10),P2('p11','Deep Bench',196,3,null),P2('p12','Hurt Star',200,29,0),
+    P2('p13','Let Go',195,10,10),P2('p14','Big Three',210,8,8)];
+  const st = { season: new Map([['p1',10],['p2',9],['p3',10],['p4',8],['p5',10],['p12',6]]), recent: new Map([['p1',5],['p2',5],['p3',4],['p4',5],['p5',5],['p8',1]]), games: 5 };
+  const cc = X.chart({ roster: sq.map(x => x.p), season: new Map(sq.map(x => [x.p.id, x.s])), recent: new Map(sq.filter(x => x.r).map(x => [x.p.id, x.r])), starts: st, out: new Set(['p12']), released: new Set(['p13']) });
+  const outs = [X.chartHTML(cc, { link: p => '/p/?p=' + p.id }), JSON.stringify(cc)];
+  for (const id of ['t0', 't3', 't5', 't8', 't11']) { const gg = X.gm({ team: { id }, teams: clubs, players: [] }); outs.push(JSON.stringify(gg), X.gmHTML(gg)); }
+  ok('without a model: the chart and the GM\'s view byte for byte as before the model', crypto.createHash('sha256').update(outs.join('\n')).digest('hex') === '4b9fb4ad539923ce1189527d182b7beb43067ba43a912192d9ed3770647e54ec');
+  ok('...and model: undefined or {} is no model', JSON.stringify(X.gm({ team: { id: 't0' }, teams: clubs, players: [], model: undefined })) === JSON.stringify(X.gm({ team: { id: 't0' }, teams: clubs, players: [] })));
+  const plain = X.gm({ team: { id: 't0' }, teams: clubs, players: [] });
+  const wins = { ff_efg: -0.2, ff_tov: -1.4, p3_pct: -0.9, ff_oreb: -0.05, dff_efg: 0.3 };
+  const mod = X.gm({ team: { id: 't0' }, teams: clubs, players: [], model: { wins } });
+  const keys = a => a.map(x => x.key).sort().join();
+  ok('a model keeps the selection (the same strengths and weaknesses)', keys(mod.strengths) === keys(plain.strengths) && keys(mod.weaknesses) === keys(plain.weaknesses));
+  const valued = mod.weaknesses.filter(x => x.wins != null);
+  ok('...reorders by |wins|, the ones it values first, the rest after in rank order', valued.every((x, i) => !i || Math.abs(valued[i - 1].wins) >= Math.abs(x.wins)) &&
+     mod.weaknesses.findIndex(x => x.wins == null) === -1 || mod.weaknesses.slice(mod.weaknesses.findIndex(x => x.wins == null)).every(x => x.wins == null),
+     mod.weaknesses.map(x => x.key + ':' + x.wins).join(' '));
+  ok('...entries gain wins (null where the model has none)', mod.weaknesses.concat(mod.strengths).every(x => 'wins' in x) && mod.weaknesses.some(x => x.wins === wins[x.key]));
+  const order = mod.weaknesses.map(x => x.key);
+  ok('...the needs follow the new order', mod.needs.map(n => n.key).every((k, i, a) => !i || order.indexOf(a[i - 1]) <= order.indexOf(k) || order.indexOf(k) < 0 || order.indexOf(a[i - 1]) < 0) && mod.needs.every(n => 'wins' in n));
+  ok('...a valued measure goes ahead of the unvalued (ff_efg before ortg, drtg, net); the needs by |wins| over every weakness (p3_pct, dff_efg, ff_efg)', order.join() === 'ff_efg,ortg,drtg,net' && mod.needs.map(n => n.key).join() === 'p3_pct,dff_efg,ff_efg', order.join() + ' / ' + mod.needs.map(n => n.key).join());
+  const t4 = X.gm({ team: { id: 't4' }, teams: clubs, players: [], model: { wins: { ff_tov: -0.2, dff_tov: -1.4 } } });
+  ok('...the larger |wins| first (dff_tov −1.4 before ff_tov −0.2; rank order had it second), the needs following', t4.weaknesses.map(x => x.key).join() === 'dff_tov,ff_tov' &&
+     t4.needs.map(n => n.key).join() === 'dff_tov,ff_tov' && X.gm({ team: { id: 't4' }, teams: clubs, players: [] }).weaknesses.map(x => x.key).join() === 'ff_tov,dff_tov');
+  const mh = X.gmHTML(mod);
+  ok('the view says what each valued entry is worth, and how it is ordered', /<em class="gm-w">worth −1\.4 wins per 30 games<\/em>/.test(mh) && /ordered by what each is worth in wins/.test(mh) && !/gm-w/.test(X.gmHTML(plain)));
+}
+
+/* THE DEPTH CHART BY THE FLOOR (A.1): the pos file's minutes at each position fill the chart */
+console.log('\nthe depth chart by the floor');
+{
+  const roster2 = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id, i) => ({ id, name: 'Player ' + id, num: String(i), height: 185 + 4 * i }));
+  const pos = { w: 1, games: 10, min: 400, players: [
+    { id: 'a', pos: 1.40, min: [200, 0, 0, 0, 0] }, { id: 'b', pos: 1.41, min: [60, 140, 0, 0, 0] }, { id: 'c', pos: 3, min: [0, 40, 160, 0, 0] },
+    { id: 'd', pos: 4, min: [0, 0, 40, 160, 0] }, { id: 'e', pos: 5, min: [0, 0, 0, 40, 200] }, { id: 'f', pos: 2.5, min: [0, 20, 0, 0, 0] } ] };
+  const base = { roster: roster2, season: new Map(roster2.map(p => [p.id, { mpg: 20, gp: 10, min: 200 }])), recent: new Map(), starts: { season: new Map(), recent: new Map(), games: 0 } };
+  const cs = X.slotChart(Object.assign({ pos }, base));
+  ok('each position led by the player with the most minutes at it (the 1.41 at the 2)', ['a', 'b', 'c', 'd', 'e'].every((id, i) => cs.slots[i].players[0].id === id));
+  ok('...a player at two positions stands at both, each with its share', cs.slots[0].players.some(p => p.id === 'b' && Math.abs(p.share - 60 / 260) < 1e-12) && cs.slots[1].players[0].id === 'b');
+  ok('...minutes a game at the position', Math.abs(cs.slots[0].players[0].perGame - 20) < 1e-12);
+  ok('...a player with no minutes in the file is a reserve; the missing are out', X.slotChart(Object.assign({ pos, out: new Set(['a']) }, base)).reserves.some(p => p.id === 'a' && p.role === 'out') && cs.reserves.some(p => p.id === 'g'));
+  ok('no stints: null (the page draws the blend)', X.slotChart(Object.assign({ pos: { players: [] } }, base)) === null && X.slotChart(base) === null);
+  const h = X.chartHTML(cs);
+  ok('drawn with share bars, five columns, and its source said', /dc-share/.test(h) && (h.match(/class="dc-col"/g) || []).length === 5 && /every five on the floor ranked point guard to centre/.test(h) && /20\.0 min a game · 77%/.test(h));
+  ok('...positionOf, projectedMinutes and chart are unchanged (the builder relies on positionOf)', X.positionOf({}, null) === 3 && X.projectedMinutes({ mpg: 20 }, { mpg: 30 }, false) === 26);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

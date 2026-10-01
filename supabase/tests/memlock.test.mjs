@@ -50,7 +50,8 @@ async function state(top, e) {
 const press = (el, ran) => { const a = el.fire('click', {}); el.fire('keydown', { key: 'Enter' }); el.fire('keydown', { key: ' ' }); return a; };
 
 console.log('\ncatalogue');
-ok('CATALOGUE.locks names events and csv', Object.keys(A.CATALOGUE.locks).sort().join() === 'csv,events');
+ok('CATALOGUE.locks names events, csv and the What wins model (docs/what-wins-model.md §10.3)', Object.keys(A.CATALOGUE.locks).sort().join() === 'csv,events,model' &&
+   A.CATALOGUE.locks.model.gate === 'analytics' && A.CATALOGUE.locks.model.label === 'What wins model');
 ok('unknown feature keys are never locked', A.featureLocked('nonsense', 'L1') === false && M.locked('nonsense', 'L1') === false);
 ok('the popup words are exact', M.tipText === 'ACCESS IS MEMBERSHIP-ONLY' && M.tipLink === 'Become a member');
 

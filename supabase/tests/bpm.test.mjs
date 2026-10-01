@@ -168,6 +168,13 @@ console.log('\na whole team');
   ok('VORP is positive for the best and lower for the worst',
      rows.some(r => r.vorp > 0), rows.map(r => r.id + ':' + r.vorp).join(' '));
 
+  /* bpmRaw: the box score's own BPM, before the team adjustment. Two teams with the same lines and different net
+     ratings get the same bpmRaw, and their bpm differ by exactly 1.2 x the net gap / 5 (What wins, R2S-2) */
+  const better = B.forTeam(Object.assign({}, team, { netRtg: 14 }), players, 105);
+  ok('bpmRaw does not move with the team\'s net rating; bpm moves by 1.2 x the gap / 5 for everyone',
+     rows.every((r, i) => isFinite(r.bpmRaw) && r.bpmRaw === better[i].bpmRaw && Math.abs((better[i].bpm - r.bpm) - 1.2 * 10 / 5) < 0.11),
+     rows.map((r, i) => r.bpmRaw + '/' + better[i].bpmRaw + ' ' + r.bpm + '->' + better[i].bpm).join('  '));
+
   const nobody = B.forTeam(team, [], 105);
   ok('an empty roster is empty, not a crash', nobody.length === 0);
 }

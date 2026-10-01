@@ -1,0 +1,123 @@
+/* ============================================================================
+   THE CHART KIT'S LOOK (epinoia/vizkit.js; docs/what-wins-model.md §13).
+
+   Colour is by class, so a reader switching theme needs no redraw for colour:
+     series      --vz-s1..3 = chartlab's validated slots (dark #3987e5 #d95926 #199e70; light #2a78d6 #eb6834 #1baf7a).
+                 The light s3 is 2.66:1 on the pale ground, so it is always labelled or tabled. G / F / C = s1 / s2 / s3.
+     good / bad  the kit's --good / --bad at an opacity (fill-opacity on the mark), always with ▲▼ or ± beside them.
+     sequential  s1 by opacity, five steps. Never the kit's neons as categories, never --lume for heat.
+   Figures in --f-data, labels in --f-micro tracked at .2em or less. Dark tokens on :root, light on
+   :root[data-theme="light"]; reduced motion and forced colours are honoured.
+   ============================================================================ */
+:root{
+  --vz-s1:#3987e5; --vz-s2:#d95926; --vz-s3:#199e70;
+  --vz-grid:rgba(147,242,191,.14); --vz-axisc:rgba(230,255,241,.84); --vz-neu:rgba(230,255,241,.55);
+  --vz-tipbg:#050706; --vz-tipink:#e6fff1; --vz-tiphi:#ffe44d;
+}
+:root[data-theme="light"]{
+  --vz-s1:#2a78d6; --vz-s2:#eb6834; --vz-s3:#1baf7a;
+  --vz-grid:rgba(13,31,23,.12); --vz-axisc:rgba(13,31,23,.86); --vz-neu:rgba(13,31,23,.5);
+  --vz-tipbg:#0d1f17; --vz-tipink:#f3faf6; --vz-tiphi:#ffe44d;
+}
+
+/* ---- the host: the plot, its tooltip, its focus ring, the table button and the twin ---- */
+.vz-host{position:relative;max-width:100%;touch-action:pan-y}
+.vz-plot{position:relative;outline:none;border-radius:2px}
+.vz-plot:focus-visible{box-shadow:0 0 0 2px var(--vz-s1)}
+.vz{display:block;width:100%;height:auto;overflow:visible}
+.vz text{font-family:var(--f-ui);fill:var(--ink-2)}
+.vz .vz-lab{font-size:12.5px;fill:var(--ink)}
+.vz .vz-tick{font-family:var(--f-data);font-size:10px;fill:var(--vz-axisc)}
+.vz .vz-axis{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;text-transform:uppercase;fill:var(--vz-axisc)}
+.vz .vz-key{font-size:11.5px;fill:var(--ink-2)}
+.vz .vz-val{font-family:var(--f-data);font-size:11px;fill:var(--ink)}
+.vz .vz-badge{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;fill:var(--ink-3)}
+.vz .vz-big{font-family:var(--f-score);font-size:22px;fill:var(--ink)}
+.vz .vz-ptitle{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;text-transform:uppercase;fill:var(--ink-2)}
+.vz .vz-segv{font-family:var(--f-data);font-size:11px;font-weight:700;fill:#fff}
+.vz .vz-cellv{font-family:var(--f-data);font-size:10.5px;fill:var(--ink)}
+.vz .vz-tag{font-size:10.5px;fill:var(--ink-2)}
+.vz .vz-mk{paint-order:stroke;stroke:var(--ground);stroke-width:3px;stroke-linejoin:round}
+.vz .vz-muted{fill:var(--vz-neu)}
+.vz-grid{stroke:var(--vz-grid);stroke-width:1}
+.vz-zero{stroke:var(--rule-2);stroke-width:1.4}
+.vz-ref{stroke:var(--rule-2);stroke-width:1;stroke-dasharray:3 4}
+.vz-whisk{stroke:var(--ink-2);stroke-width:1.6;fill:none}
+.vz-whisk.vz-muted{stroke:var(--vz-neu)}
+.vz-whisk.vz-onbar{stroke:var(--ground);stroke-width:2.2}
+.vz-dot{fill:var(--vz-s1);stroke:var(--ground);stroke-width:1.5}
+.vz-dot.vz-hollow{fill:var(--ground);stroke:var(--vz-s1);stroke-width:2.2}
+.vz-dot.vz-muted{fill:var(--vz-neu)}
+.vz-dot.vz-hollow.vz-muted{fill:var(--ground);stroke:var(--vz-neu)}
+.vz-ghost{opacity:.42}
+.vz-dot.vz-ghost{fill:var(--ink-3);stroke:none}
+.vz-whisk.vz-ghost{stroke:var(--ink-3);stroke-dasharray:2 2}
+.vz-bar{stroke:none}
+.vz-good{fill:var(--good)}
+.vz-bad{fill:var(--bad)}
+.vz-neu{fill:var(--vz-neu)}
+.vz-bar.vz-good,.vz-bar.vz-bad{fill-opacity:.78}
+.vz-bar.vz-muted{fill-opacity:.32}
+.vz-s1f{fill:var(--vz-s1)} .vz-s2f{fill:var(--vz-s2)} .vz-s3f{fill:var(--vz-s3)} .vz-neuf{fill:var(--vz-neu)}
+.vz-s1l{stroke:var(--vz-s1)} .vz-s2l{stroke:var(--vz-s2)} .vz-s3l{stroke:var(--vz-s3)} .vz-neul{stroke:var(--vz-neu)}
+/* a style measure (no better side): its own hue, never the grey of noise */
+.vz-style{fill:var(--vz-s1)}
+.vz-bar.vz-style{fill-opacity:.62}
+/* a hollow marker (the dumbbell's bottom quarter beside the league's grey) */
+.vz-pt.vz-ptho{fill:var(--ground);stroke:var(--vz-axisc);stroke-width:2}
+.vz-seg.vz-rest{fill-opacity:.45}
+.vz-curve{fill:none;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.vz-dash{stroke-dasharray:6 5}
+.vz-band{fill:var(--vz-s1);fill-opacity:.16;stroke:none}
+.vz-band.vz-s2b{fill:var(--vz-s2)} .vz-band.vz-s3b{fill:var(--vz-s3)}
+.vz-bin{fill:var(--ink);stroke:var(--ground)}
+.vz-xband{fill:var(--vz-s2);fill-opacity:.1}
+.vz-mark{stroke:var(--vz-s2);stroke-width:1.6;stroke-dasharray:4 3}
+.vz-hbar{fill-opacity:.85}
+.vz-pt{stroke:var(--ground);stroke-width:1.2}
+.vz-pt.vz-dim{fill-opacity:.22}
+.vz-pt.vz-on{stroke:var(--ink);stroke-width:2}
+.vz-seg{stroke:none}
+.vz-c0{fill:var(--vz-s1)} .vz-c1{fill:var(--vz-s2)} .vz-c2{fill:var(--vz-s3)} .vz-c3{fill:var(--vz-neu)}
+.vz-c4{fill:var(--vz-s1);fill-opacity:.55} .vz-c5{fill:var(--vz-s2);fill-opacity:.55}
+.vz-cell{stroke:none}
+.vz-cell.vz-nil{fill:none;stroke:var(--vz-grid);stroke-dasharray:2 3}
+.vz-seq{fill:var(--vz-s1)}
+.vz-hatchl{stroke:var(--ink-3);stroke-width:1.2;stroke-opacity:.55}
+.vz-dl{stroke:var(--rule-2);stroke-width:3;stroke-linecap:round}
+.vz-conn{stroke:var(--rule-2);stroke-width:1;stroke-dasharray:2 2}
+.vz-brush{fill:var(--vz-s1);fill-opacity:.12;stroke:var(--vz-s1);stroke-dasharray:3 3}
+
+.vz-tip{position:absolute;z-index:5;pointer-events:none;max-width:260px;padding:7px 9px 8px;background:var(--vz-tipbg);color:var(--vz-tipink);
+  border:1px solid var(--vz-tiphi);font-family:var(--f-ui);font-size:12px;line-height:1.4;display:flex;flex-direction:column;gap:2px;text-align:left}
+.vz-tip b{font-family:var(--f-micro);font-size:9px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--vz-tiphi)}
+.vz-tip .vz-tipv{font-family:var(--f-data);font-size:12.5px}
+.vz-tip .vz-tipd{font-size:11px;opacity:.9}
+.vz-tip[hidden],.vz-ring[hidden]{display:none}
+.vz-ring{position:absolute;width:18px;height:18px;border:2px solid var(--vz-tiphi);border-radius:50%;pointer-events:none;box-sizing:border-box}
+.vz-tbtn{display:block;margin:6px auto 0;background:none;border:1px solid var(--rule);color:var(--ink-2);font-family:var(--f-micro);font-size:8.5px;
+  letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;min-height:28px;cursor:pointer}
+.vz-tbtn:hover,.vz-tbtn:focus-visible{border-color:var(--rule-2);color:var(--ink)}
+.vz-twin{margin-top:8px;overflow-x:auto;max-width:100%}
+.vz-tt{border-collapse:collapse;margin:0 auto;font-family:var(--f-ui);font-size:12.5px;min-width:60%}
+.vz-tt caption{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:4px}
+.vz-tt th,.vz-tt td{padding:5px 8px;border-bottom:1px solid var(--rule);text-align:left}
+.vz-tt thead th{font-family:var(--f-micro);font-size:8.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.vz-tt td{font-family:var(--f-data);text-align:right;white-space:nowrap}
+
+@media (max-width:720px){
+  .vz .vz-lab{font-size:13px}
+  .vz-tbtn{min-height:40px;padding:0 14px}
+}
+@media (prefers-reduced-motion:reduce){
+  .vz *,.vz-tip,.vz-ring{transition:none !important;animation:none !important}
+}
+@media (forced-colors:active){
+  .vz text{fill:CanvasText}
+  .vz-dot,.vz-pt,.vz-bar,.vz-seg,.vz-cell,.vz-hbar,.vz-s1f,.vz-s2f,.vz-s3f{fill:CanvasText;stroke:Canvas;forced-color-adjust:none}
+  .vz-dot.vz-hollow,.vz-pt.vz-ptho{fill:Canvas;stroke:CanvasText}
+  .vz-curve,.vz-whisk,.vz-zero,.vz-ref,.vz-grid,.vz-mark,.vz-dl{stroke:CanvasText}
+  .vz-band,.vz-xband{fill:none}
+  .vz-tip{background:Canvas;color:CanvasText;border-color:Highlight}
+  .vz-ring{border-color:Highlight}
+}
