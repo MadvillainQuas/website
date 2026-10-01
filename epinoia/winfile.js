@@ -6,7 +6,7 @@
    function, the database decides with the reader's own session (analytics_check), and the answer is a URL that
    works for two minutes. The public preview (the teaser) is a public snapshot.
 
-     get({scope: 'wins'|'fo'|'club'|'pos'|'teaser', league?, season?, team?}, {onProgress?, signal?})
+     get({scope: 'wins'|'fo'|'club'|'pos'|'mix'|'teaser', league?, season?, team?}, {onProgress?, signal?})
         -> {ok: true, data, token, built, pending, ci_at, bytes, cached}
          | {ok: false, reason: 'signin'|'members'|'league'|'scope'|'none'|'rate'|'layout'|'jwt'|'network'|'aborted', retryAfter?}
      refresh({league, season, team?, scope?}, {onProgress?, signal?})   RECALCULATE: the function adds the new games
@@ -41,7 +41,8 @@ const PREFIX = 'epinoia_ww:';
 const LEGACY = 'epinoia_winning_v1';
 const REUSE_MS = 10 * 60 * 1000;
 const MAX_CACHE = 2 * 1024 * 1024;
-const SCOPES = ['wins', 'fo', 'club', 'pos', 'teaser'];
+/* mix (A.3): the lineup builder's fives and players, asked for only when its section comes near */
+const SCOPES = ['wins', 'fo', 'club', 'pos', 'mix', 'teaser'];
 
 let transport = null;
 const mem = new Map();

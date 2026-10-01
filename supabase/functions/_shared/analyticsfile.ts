@@ -3,7 +3,7 @@
 // index.ts wires supabase-js and Deno.serve around handle(), and supabase/tests/ww-function.test.mjs drives it in node
 // (--experimental-strip-types) with stand-in clients.
 //
-//   POST {scope: 'wins'|'fo'|'club'|'pos', league?, season?, team?, refresh?}   (≤ 1 KB) with apikey and, signed in,
+//   POST {scope: 'wins'|'fo'|'club'|'pos'|'mix', league?, season?, team?, refresh?}   (≤ 1 KB) with apikey and, signed in,
 //   Authorization: Bearer <JWT>
 //     200 {url (signed, 120 s), token, bytes, built_at, layout, expires_in: 120, n_games, pending, ci_at}
 //     400 bad_request · 401 signin | jwt · 403 members | league | scope · 404 none · 429 rate (+ Retry-After) · 405
@@ -24,7 +24,8 @@
 // Logs carry the scope, the league, signed or not and the bytes: never a token, a URL or an address.
 // ============================================================================
 
-export const FILE_SCOPES = ['wins', 'fo', 'club', 'pos'];
+/* mix (A.3, migration 0213): a league-season's lineup mixes file, gated as fo is */
+export const FILE_SCOPES = ['wins', 'fo', 'club', 'pos', 'mix'];
 export const FV = 1;                       // the feature layout the pending count is read at
 export const MAX_BODY = 1024;
 export const SIGNED_TTL = 120;
@@ -288,7 +289,8 @@ async function refreshUnit(deps: Deps, o: { league: string; season: string | nul
 
 const chunks = <T>(a: T[], n: number): T[][] => { const out: T[][] = []; for (let i = 0; i < a.length; i += n) out.push(a.slice(i, i + n)); return out; };
 const PGS_SELECT = 'game_id,team_idx,player_uuid,player_id,min:stats->min,pts:stats->pts,p2a:stats->p2a,p2m:stats->p2m,p3a:stats->p3a,' +
-  'p3m:stats->p3m,fta:stats->fta,ftm:stats->ftm,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,to:stats->to,pf:stats->pf';
+  'p3m:stats->p3m,fta:stats->fta,ftm:stats->ftm,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,to:stats->to,pf:stats->pf,' +
+  'rimA:stats->rimA,rimM:stats->rimM,midA:stats->midA,midM:stats->midM';
 const STINT_SELECT = 'game_id,team_idx,player_ids,dur:stats->dur,pf:stats->pf,pa:stats->pa,off:stats->off,def:stats->def';
 const GAME_SELECT = 'id,status,competition_id,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue_id,starters';
 
@@ -330,7 +332,8 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
   const rows: any[] = [];
   for (let from = 0; ; from += 1000) {
     /* not st: about 1 KB a row the model reads only for a game without lineup_stints (fetched below for those) */
-    const { data, error } = await admin.from('game_features').select('game_id,team_idx,f,q,finalised_at')
+    /* u: each scorer's unassisted makes (A.3), a few dozen bytes; never the whole st */
+    const { data, error } = await admin.from('game_features').select('game_id,team_idx,f,q,finalised_at,u:st->u')
       .eq('league_id', league).eq('season_id', season).eq('fv', fv).or(after)
       .order('finalised_at').order('game_id').order('team_idx').range(from, from + 999);
     if (error) throw new Error(error.message);
@@ -389,6 +392,8 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
 
   const builtAt = new Date(now()).toISOString();
   const res = await deps.update(store, { rows, games, pgs, stints }, { now: builtAt, league, season, withheld });
+  /* a store of an older layout (A.3: STORE_V 2) is rebuilt by the scheduled build, never patched here */
+  if (res && res.stale) return { refreshed: false, queued: true, reason: 'layout' };
   if (!res || !res.store) throw new Error('the model returned no store');
   if (late(0.85)) return { refreshed: false, queued: true, reason: 'budget' };
 
@@ -409,6 +414,7 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
     if (res.files.fo) out.push({ scope: 'fo', team: '', file: res.files.fo });
     addMany('club', res.files.club || res.files.clubs);
     addMany('pos', res.files.pos);
+    if (res.files.mix) out.push({ scope: 'mix', team: '', file: res.files.mix });
   } else if (res.file) {
     out.push({ scope: res.file.scope && FILE_SCOPES.includes(res.file.scope) ? res.file.scope : 'wins', team: '', file: res.file });
   }
@@ -462,9 +468,21 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
   await upload(storePath, storeText, true);
   indexRows.push({ ...storeRow, path: storePath, token, bytes: storeText.length, n_games: +nextStore.n || null, built_at: builtAt });
 
-  /* the index after the uploads, the deletes after the index: a reader never meets a row naming a missing file */
-  const { error: upErr } = await admin.from('analytics_files').upsert(indexRows, { onConflict: 'scope,league_key,season_key,team_key' });
+  /* the index after the uploads, the deletes after the index: a reader never meets a row naming a missing file. The mix
+     row goes on its own: before migration 0213 the scope CHECK refuses it, and that must not cost the unit its update */
+  const mixRows = indexRows.filter(r => r.scope === 'mix'), mainRows = indexRows.filter(r => r.scope !== 'mix');
+  const { error: upErr } = await admin.from('analytics_files').upsert(mainRows, { onConflict: 'scope,league_key,season_key,team_key' });
   if (upErr) throw new Error(upErr.message);
+  if (mixRows.length) {
+    const { error: mErr } = await admin.from('analytics_files').upsert(mixRows, { onConflict: 'scope,league_key,season_key,team_key' });
+    if (mErr) {
+      /* not indexed: the old mix file (if any) stays the indexed one, and the new upload is the one to remove */
+      console.warn('[analytics-file] the mix file was not indexed (migration 0213?)');
+      const prev = old.get('mix|'), j = jobs.find(x => x.o.scope === 'mix');
+      if (prev && prev.path) { const pp = String(prev.path).replace(/^analytics\//, ''); const at = stale.indexOf(pp); if (at >= 0) stale.splice(at, 1); }
+      if (j) stale.push(j.path);
+    }
+  }
   if (stale.length) { try { await admin.storage.from(BUCKET).remove(stale); } catch (_) { /* the next build sweeps */ } }
   return { refreshed: true, added: count, files: todo.length };
 }

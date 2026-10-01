@@ -43,7 +43,7 @@ const isNum = v => typeof v === 'number' && isFinite(v);
 const t0 = Date.now();
 
 ok('winmodel.js loads with the §14 names', ['normListed', 'groupsFor', 'roles', 'blocksOf', 'storeAdd', 'storeDrop', 'buildUnit', 'buildPool', 'buildTeaser',
-  'validate', 'pack', 'unpack', 'synthUnit', 'slotMinutes', 'update'].every(k => typeof M[k] === 'function') && M.FILE_V === 1 && M.CODE_V === 1 && M.STORE_V === 1 &&
+  'validate', 'pack', 'unpack', 'synthUnit', 'slotMinutes', 'update'].every(k => typeof M[k] === 'function') && M.FILE_V === 1 && M.CODE_V === 2 && M.STORE_V === 2 &&
   M.BUDGET.wins === 300000 && M.BUDGET.club === 25000 && M.BUDGET.teaser === 40000 && M.KEYMAP.ff_efg[0] === 'c_efg' && M.KEYMAP.dff_tov.join() === 'c_tovp,def');
 
 /* ------------------------------------------------------------------------------------------- people --- */
@@ -90,13 +90,25 @@ console.log('\npositions (§7.12, A.1)');
   ok('...it reads the feature row\'s compact stints and a Map of estimates', r.stints === 2 && r.min.get('g1')[0] === 1.5 && r.min.get('c')[4] === 1.5);
   r = M.slotMinutes([five(['g1', 'g2', 'w', 'f', 'c'], 60)], { g1: { pos: 2.2 }, g2: 1.44, w: 3, f: 4, c: 5 });
   ok('...dynamic: when a season estimate moves, the slots move with it', r.min.get('g2')[0] === 1 && r.min.get('g1')[1] === 1);
-  const rl = M.roles([{ id: 's', min: 900, fga: 300, fg3a: 200, fg3m: 85, ast_pct: 10, blk_pct: 1, usg: 30, hz: -1, group: 'G' },
-    { id: 'h', min: 900, fga: 300, fg3a: 20, fg3m: 5, ast_pct: 40, blk_pct: 0.5, usg: 18, hz: -1, group: 'G' },
-    { id: 'p', min: 900, fga: 200, fg3a: 0, fg3m: 0, ast_pct: 5, blk_pct: 9, usg: 15, hz: 1.2, group: 'C' },
-    { id: 'q', min: 900, fga: 250, fg3a: 60, fg3m: 15, ast_pct: 12, blk_pct: 2, usg: 20, hz: 0.2, group: 'F' },
-    { id: 'r', min: 900, fga: 260, fg3a: 90, fg3m: 25, ast_pct: 15, blk_pct: 1.5, usg: 22, hz: 0, group: 'F' }], { p3: 0.34 });
-  ok('roles: shooter, handler, protector + big, creator by §7.13 / §7.15\'s rules', rl.get('s').includes('shooter') && rl.get('s').includes('creator') &&
+  /* A.3's set: the ball handler a composite of AST%, unassisted points share and usage percentiles (45 / 30 / 25, at
+     0.70), the passer by A/U, rim pressure by rim rate and FT attempt rate, the rebounders, the turnover generator */
+  const rl = M.roles([{ id: 's', min: 900, fga: 300, fg3a: 200, fg3m: 85, ast_pct: 10, blk_pct: 1, usg: 30, ups: 30, au: 0.33, rimr: 10, ftr: 15, orb_pct: 1, drb_pct: 8, stl_pct: 1.5, hz: -1, group: 'G' },
+    { id: 'h', min: 900, fga: 300, fg3a: 20, fg3m: 5, ast_pct: 40, blk_pct: 0.5, usg: 24, ups: 25, au: 1.67, rimr: 30, ftr: 30, orb_pct: 2, drb_pct: 10, stl_pct: 3.5, hz: -1, group: 'G' },
+    { id: 'p', min: 900, fga: 200, fg3a: 0, fg3m: 0, ast_pct: 5, blk_pct: 9, usg: 15, ups: 5, au: 0.33, rimr: 70, ftr: 45, orb_pct: 12, drb_pct: 25, stl_pct: 1, hz: 1.2, group: 'C' },
+    { id: 'q', min: 900, fga: 250, fg3a: 60, fg3m: 15, ast_pct: 12, blk_pct: 2, usg: 20, ups: 15, au: 0.6, rimr: 55, ftr: 40, orb_pct: 6, drb_pct: 14, stl_pct: 2, hz: 0.2, group: 'F' },
+    { id: 'r', min: 900, fga: 260, fg3a: 90, fg3m: 25, ast_pct: 15, blk_pct: 1.5, usg: 22, ups: 18, au: 0.68, rimr: 20, ftr: 20, orb_pct: 4, drb_pct: 12, stl_pct: 2.2, hz: 0, group: 'F' },
+    { id: 'x', min: 80, fga: 30, fg3a: 0, fg3m: 0, ast_pct: 50, blk_pct: 0, usg: 40, ups: 40, au: 1.25, rimr: 80, ftr: 80, orb_pct: 20, drb_pct: 30, stl_pct: 6, hz: 0, group: 'G' }], { p3: 0.34, zones: true });
+  ok('roles: shooter, ball handler (the composite), protector + big, creator', rl.get('s').includes('shooter') && rl.get('s').includes('creator') &&
     rl.get('h').includes('handler') && rl.get('p').includes('protector') && rl.get('p').includes('big') && !rl.get('h').includes('shooter'));
+  ok('...a high-usage scorer who rarely passes is not a ball handler (score 0.63 < 0.70); a pass-first guard is', !rl.get('s').includes('handler') && rl.get('h').includes('handler'));
+  ok('...passer by A/U (top quarter) with AST% at the median or more; rim pressure; the rebounders; the turnover generator', rl.get('h').includes('passer') && !rl.get('p').includes('passer') &&
+    rl.get('p').includes('slasher') && rl.get('p').includes('crasher') && rl.get('p').includes('glass') && rl.get('h').includes('disruptor') && !rl.get('s').includes('slasher'));
+  ok('...a player under 100 minutes earns no tag from his rates, however big', rl.get('x').filter(t => t !== 'big').length === 0, rl.get('x').join());
+  ok('...and the cuts say how each tag is earned here', rl.cuts && rl.cuts.n === 5 && rl.cuts.handler.cut === 0.7 && rl.cuts.handler.ups === true && rl.cuts.slasher.zones === true && isNum(rl.cuts.passer.au));
+  const rz = M.roles([{ id: 'a', min: 900, fga: 200, ast_pct: 30, usg: 20, ftr: 60, rimr: null }, { id: 'b', min: 900, fga: 200, ast_pct: 10, usg: 25, ftr: 20, rimr: null },
+    { id: 'c', min: 900, fga: 200, ast_pct: 12, usg: 18, ftr: 25, rimr: null }, { id: 'd', min: 900, fga: 200, ast_pct: 14, usg: 19, ftr: 30, rimr: null }, { id: 'e', min: 900, fga: 200, ast_pct: 8, usg: 30, ftr: 35, rimr: null }], { p3: 0.34, zones: false });
+  ok('...without shot locations, rim pressure is the FT attempt rate alone (P80) and the handler score drops the missing share', rz.cuts.slasher.zones === false && rz.get('a').includes('slasher') &&
+    !rz.get('e').includes('slasher') && rz.cuts.handler.ups === false);
   const wk = (d, k) => ({ t: Date.UTC(2026, 9, d, 12 + k) });
   const bl = M.blocksOf([wk(5, 0), wk(5, 1), wk(6, 0), wk(12, 0), wk(13, 0), wk(13, 1), wk(14, 0), wk(14, 1), wk(15, 0), wk(16, 0), wk(19, 0), wk(20, 0),
     wk(20, 1), wk(21, 0), wk(21, 1), wk(22, 0), wk(23, 0), wk(24, 0), wk(26, 0), wk(27, 0)]);
@@ -181,9 +193,13 @@ const wA = rA.wins, truth = A.truth;
   ok('...and nothing directly: its direct effect\'s interval holds 0', !!tf && tf.direct.lo <= 0 && 0 <= tf.direct.hi);
   ok('...the extended model adds next to nothing (F test not significant at 1%)', wA.models.extended && wA.models.extended.p > 0.01 && wA.models.extended.addR2.v < 0.02,
     wA.models.extended && `+R² ${wA.models.extended.addR2.v.toFixed(4)}, p ${wA.models.extended.p.toFixed(3)}`);
-  const sh = wA.lineup && wA.lineup.terms.find(t => t.k === 'shooters');
-  ok('lineups: the planted shooter effect (+' + truth.shooter + ' net per 100 a shooter) comes back', !!sh && sh.lo <= truth.shooter && truth.shooter <= sh.hi && sh.lo > 0,
-    sh ? `${sh.b.toFixed(2)} (${sh.lo.toFixed(2)} to ${sh.hi.toFixed(2)})` : 'none');
+  /* the planted effect is a shooter's anywhere; the model's 'shooters' term is the slope at NO handler and no protector
+     (the two interactions carry the rest), so the estimand the page draws is the grid: one shooter more than the
+     reference five (2 shooters, 1 big, 1 handler, 1 protector). A.3's composite ball handler moves the handler counts
+     and with them that conditional term; the grid step is what §7.13 reports */
+  const sh = wA.lineup && wA.lineup.grid.find(c => c.s === 3 && c.b === '1');
+  ok('lineups: the planted shooter effect (+' + truth.shooter + ' net per 100 a shooter) comes back as the grid\'s step from the reference five', !!sh && sh.lo <= truth.shooter && truth.shooter <= sh.hi && sh.lo > 0,
+    sh ? `${sh.net.toFixed(2)} (${sh.lo.toFixed(2)} to ${sh.hi.toFixed(2)})` : 'none');
   const ref = wA.lineup.grid.find(c => c.s === 2 && c.b === '1');
   ok('...the grid is net per 100 against the reference five (2 shooters, 1 big)', ref.net === 0 && wA.lineup.grid.length === 15 && wA.lineup.grid.every(c => c.s + (c.b === '2+' ? 2 : +c.b) <= 5));
   {
@@ -224,8 +240,8 @@ const wA = rA.wins, truth = A.truth;
   /* causes: the identity in every club file */
   let worst = 0, games = 0;
   rA.clubs.forEach(c => c.games.forEach(gm => { games++; const s = gm.xm + Object.values(gm.parts).reduce((a, b) => a + b, 0); worst = Math.max(worst, Math.abs(gm.m - s)); }));
-  ok('Oaxaca: margin = expected + quality + making + tovp + orebp + ftmr + other + garbage, every game of every club (1e-9)', games === 2 * 264 && worst < 1e-9, games + ' games, worst ' + worst.toExponential(1));
-  ok('...the league\'s average loss carries the same parts with intervals', wA.losses.parts.map(p => p.k).join() === 'expected,quality,making,tovp,orebp,ftmr,other,garbage' && wA.losses.n === 264);
+  ok('Oaxaca: margin = expected + quality + making + tovp + orebp + ftr + other + garbage, every game of every club (1e-9)', games === 2 * 264 && worst < 1e-9, games + ' games, worst ' + worst.toExponential(1));
+  ok('...the league\'s average loss carries the same parts with intervals', wA.losses.parts.map(p => p.k).join() === 'expected,quality,making,tovp,orebp,ftr,other,garbage' && wA.losses.n === 264);
   ok('...club records: w + l = games, factor-expected and Pythagorean wins within the games', Array.from(rA.clubs.values()).every(c => c.record.w + c.record.l === c.games.length &&
     c.record.factorW >= 0 && c.record.factorW <= c.games.length && c.record.pythW >= 0 && c.record.pythW <= c.games.length));
   ok('...a club file holds only its own games, with the realised rates of its last ten defeats', Array.from(rA.clubs.entries()).every(([tid, c]) => c.team.id === tid &&
@@ -256,7 +272,7 @@ const wA = rA.wins, truth = A.truth;
   const maxClub = Math.max(...Array.from(rA.clubs.values()).map(bytes)), maxPos = Math.max(...Array.from(rA.pos.values()).map(bytes));
   ok('...within budget: wins 300 KB, fo 100 KB, club 25 KB, pos 6 KB', bytes(wA) <= 300000 && bytes(rA.fo) <= 100000 && maxClub <= 25000 && maxPos <= 6000,
     `wins ${bytes(wA)}, fo ${bytes(rA.fo)}, club ${maxClub}, pos ${maxPos}`);
-  ok('...the league file carries its blocks (n >= 8 each), keys h + the core four + the style set', wA.blocks && wA.blocks.keys.slice(0, 5).join() === 'h,c_efg,c_tovp,c_orebp,c_ftmr' &&
+  ok('...the league file carries its blocks (n >= 8 each), keys h + the core four + the style set', wA.blocks && wA.blocks.keys.slice(0, 5).join() === 'h,c_efg,c_tovp,c_orebp,c_ftr' &&
     wA.blocks.list.every(b => b.n >= 8 && b.xx.length === wA.blocks.keys.length * (wA.blocks.keys.length + 1) / 2));
   const sumB = W.sumSuff(wA.blocks.list.map(b => Object.assign({ p: wA.blocks.keys.length }, b, { xx: Float64Array.from(b.xx), xy: Float64Array.from(b.xy) })));
   const re = W.ridge(W.pick(sumB, [0, 1, 2, 3, 4]), { lambda: 0 });
@@ -400,11 +416,12 @@ console.log('\nRECALCULATE: update(store, delta) against a full build of the uni
   cmp(full.wins, up.files.wins, 'wins'); cmp(full.fo, up.files.fo, 'fo');
   full.clubs.forEach((c, k) => cmp(c, up.files.club[k], 'club'));
   full.pos.forEach((c, k) => cmp(c, up.files.pos[k], 'pos'));
+  cmp(full.mix, up.files.mix, 'mix');
   ok('every point estimate of every file equals the full build of the union (1e-9)', count > 20000 && worst <= 1e-9, `${count} numbers, worst ${worst.toExponential(2)} ${worst > 1e-9 ? where : ''}`);
   const cA = up.files.wins.models.core4c.coef[0], cR = r0.wins.models.core4c.coef[0];
   ok('...the intervals are the last full build\'s, flagged with its ci_at', up.files.wins.ci_at === '2026-09-30T00:00:00.000Z' && full.wins.ci_at === NOW &&
     cA.lo === cR.lo && cA.hi === cR.hi && up.files.wins.built === NOW);
-  ok('...files for wins, fo, every club and every pos', up.files.wins && up.files.fo && Object.keys(up.files.club).length === 10 && Object.keys(up.files.pos).length === 10);
+  ok('...files for wins, fo, every club, every pos and the lineup mixes', up.files.wins && up.files.fo && Object.keys(up.files.club).length === 10 && Object.keys(up.files.pos).length === 10 && !!up.files.mix);
   const packed = M.update(S0, { rows: raw.rows.filter(pick), games: raw.games.filter(x => late.has(x.id)), pgs: raw.pgs.filter(pick), stints: raw.stints.filter(pick) }, { now: NOW });
   ok('...packed (4 significant figures) they validate and fit their budgets', M.validate(packed.files.wins, 'wins').length === 0 && M.validate(packed.files.fo, 'fo').length === 0 &&
     Object.values(packed.files.club).every(c => M.validate(c, 'club').length === 0));
@@ -414,7 +431,7 @@ console.log('\nRECALCULATE: update(store, delta) against a full build of the uni
        update (VIF pruning, the coverage cut, the travel term), that model shows no interval rather than a neighbour's */
     const dl = { rows: raw.rows.filter(pick), games: raw.games.filter(x => late.has(x.id)), pgs: raw.pgs.filter(pick), stints: raw.stints.filter(pick) };
     ok('the carry records each model\'s column names', S0.carry.ci['model:core4c'].cols === ['h'].concat(M.CORE).join('|'), S0.carry.ci['model:core4c'].cols);
-    const ci = Object.assign({}, S0.carry.ci, { 'model:core4c': Object.assign({}, S0.carry.ci['model:core4c'], { cols: 'h|c_tovp|c_efg|c_orebp|c_ftmr' }) });
+    const ci = Object.assign({}, S0.carry.ci, { 'model:core4c': Object.assign({}, S0.carry.ci['model:core4c'], { cols: 'h|c_tovp|c_efg|c_orebp|c_ftr' }) });
     const moved = M.update(Object.assign({}, S0, { carry: Object.assign({}, S0.carry, { ci }) }), dl, { now: NOW, raw: true });
     const kept = M.update(S0, dl, { now: NOW, raw: true });
     ok('...an update whose columns moved shows no interval for that model; one whose columns held keeps the carried ones',
@@ -467,6 +484,73 @@ console.log('\nRECALCULATE: update(store, delta) against a full build of the uni
 }
 
 /* ------------------------------------------------------------------------------------------- simulator --- */
+/* ------------------------------------------------------------------------------------------- A.3 --- */
+console.log('\nA.3: free-throw attempt rate, the store\'s sidecars, roles, positions in depth, the lineup mixes');
+{
+  /* 1. the four factors' free-throw factor is the attempt rate */
+  const core = wA.models.core4c.coef.map(c => c.k);
+  ok('core4c is eFG%, TOV%, OREB% and the FT ATTEMPT rate (c_ftr = 100 FTA / FGA), never the made rate', core.join() === 'c_efg,c_tovp,c_orebp,c_ftr' && !core.includes('c_ftmr') && M.CORE.includes('c_ftr'));
+  ok('...the GM\'s ff_ftr / dff_ftr (FTA / FGA in depth.js) map to it', M.KEYMAP.ff_ftr.join() === 'c_ftr,off' && M.KEYMAP.dff_ftr.join() === 'c_ftr,def');
+  const g0 = M.decodeStore(A.store).games[0], dv = F.derive(g0.F[0], g0.F[1], g0.q[0], g0.q[1]), I = F.INDEX;
+  ok('...c_ftr is 100 × competitive FTA / FGA on a game, and its label says so', Math.abs(dv.c_ftr - 100 * g0.F[0][I.c_fta] / g0.F[0][I.c_fga]) < 1e-9 &&
+    /FTA\/FGA/.test(F.FACTORS.find(f => f.k === 'c_ftr').label) && /FTA\/FGA/.test(F.FACTORS.find(f => f.k === 'ftr').label) && F.FACTORS.some(f => f.k === 'ftp'));
+  const cf = wA.models.core4c.coef.find(c => c.k === 'c_ftr');
+  ok('...the planted FT-attempt effect comes back within 3 SE', cf && Math.abs(cf.b - truth.beta.c_ftr) < 3 * cf.se, cf && cf.b.toFixed(3) + ' vs ' + truth.beta.c_ftr);
+  ok('...its causes part is ftr (the club files and the average loss)', rA.clubs.values().next().value.games.every(g => 'ftr' in g.parts && !('ftmr' in g.parts)));
+  /* 2. the store's sidecars */
+  const Dd = M.decodeStore(A.store);
+  const xs = Dd.pgs.filter(r => isNum(r.rimA) && isNum(r.unFgm)), bx = Dd.stints.filter(r => r.box && r.box.every(isNum));
+  ok('store v2: the player lines carry zones and unassisted makes, the stints both ends\' box', A.store.v === 2 && xs.length === Dd.pgs.length && bx.length === Dd.stints.length && Dd.stints[0].box.length === 16);
+  const v1 = Object.assign({}, A.store, { v: 1, pgs: { players: A.store.pgs.players, rows: A.store.pgs.rows }, stints: { rows: A.store.stints.rows } });
+  const D1 = M.decodeStore(v1);
+  ok('...a v1 store still decodes (the new columns unknown)', D1.pgs.length === Dd.pgs.length && D1.pgs.every(r => isNaN(r.rimA) && isNaN(r.unFgm)) && D1.stints.every(r => r.box === null));
+  const st = M.update(v1, { rows: [], games: [], pgs: [], stints: [] }, { now: NOW });
+  ok('...and update() leaves it to the builder (stale): it never folds games into an older layout', st.stale === true && st.store === null);
+  const pf = Dd.pgs[0], src = A.raw.pgs.find(r => r.player_uuid === Dd.players[pf.p] && A.raw.games.find(g => g.id === Dd.games[pf.g].id));
+  ok('...a byte a count, 255 unknown: the sidecar rounds the counts it carries', isNum(pf.rimA) && Number.isInteger(pf.rimA) && Number.isInteger(pf.unFgm) && !!src);
+  /* 3. roles and winning */
+  const R = wA.roles;
+  ok('roles: eight analysed (shooters, ball handlers, passers, rim pressure, offensive and defensive rebounders, rim protectors, turnover generators)', R && R.list.map(l => l.k).join() === 'shooter,handler,passer,slasher,crasher,glass,protector,disruptor');
+  ok('...each with its club-season slope and r (intervals ordered) and its lineup term with the possessions at 0, 1, 2+', R.list.every(l => (l.b == null || (l.lo <= l.b + 1e-9 && l.b <= l.hi + 1e-9)) &&
+    (l.r == null || (l.rlo <= l.r && l.r <= l.rhi)) && ['strong', 'some', 'none'].includes(l.evidence) && (!l.lu || (l.lu.poss.length === 3 && l.lu.lo <= l.lu.b + 1e-9 && l.lu.b <= l.lu.hi + 1e-9))));
+  const totPoss = wA.lineup.poss;
+  ok('...every lineup possession is counted once in each role\'s 0 / 1 / 2+', R.list.filter(l => l.lu).every(l => Math.abs(l.lu.poss[0] + l.lu.poss[1] + l.lu.poss[2] - totPoss) < 1e-3 * totPoss));   /* the file's 4 significant figures */
+  ok('...small samples are said: under 30 club seasons the power is low', R.n === 12 && R.power === 'low');
+  const shR = R.list.find(l => l.k === 'shooter');
+  ok('...the planted shooter effect shows in the shooters\' lineup term (more shooters on the floor, a better net)', shR.lu && shR.lu.b > 0 && shR.lu.lo > 0, shR.lu && shR.lu.b.toFixed(2));
+  ok('...the squad features count the new roles in the rotation', ['passers', 'slashers', 'crashers', 'glass', 'disruptors'].every(k => k in rA.clubs.values().next().value.squad));
+  /* 4. positions in depth */
+  const PS = wA.positions.stats;
+  ok('by position in depth: G/F/C and the five slots × the players\' rates', PS && PS.groups.join() === 'G,F,C,1,2,3,4,5' && PS.stats.includes('ast_pct') && PS.stats.includes('una') && PS.cells.length >= 8 * 10);
+  ok('...each cell a typical value, a spread and r with net rating and with games won, intervals ordered', PS.cells.every(c => isNum(c.med) && c.p25 <= c.med + 1e-9 && c.med <= c.p75 + 1e-9 &&
+    (c.r == null || (c.lo <= c.r && c.r <= c.hi && c.r >= -1 && c.r <= 1)) && (c.rw == null || (c.rwlo <= c.rw && c.rw <= c.rwhi))));
+  const C = M._centred([{ unit: 'a', x: 1, y: 2 }, { unit: 'a', x: 3, y: 5 }, { unit: 'a', x: 5, y: 7 }, { unit: 'b', x: 10, y: 1 }, { unit: 'b', x: 12, y: 2 }, { unit: 'b', x: 14, y: 4 }], r => r.x, r => r.y);
+  ok('...the association is within league: x and y centred in each league-season, then pooled', C.units === 2 && C.xs.join() === '-2,0,2,-2,0,2' && C.ys.map(v => +v.toFixed(6)).join() === [-2.666667, 0.333333, 2.333333, -1.333333, -0.333333, 1.666667].join());
+  const cc = M._corrCI(C.xs, C.ys, C.units);
+  const c8 = M._corrCI([1, 2, 3, 4, 5, 6, 7, 8], [2, 1, 4, 3, 6, 5, 8, 9], 1), fz = W.fisherCI(c8.r, 8);
+  ok('...r with a Fisher interval on n less the leagues\' means (too few: none)', M._corrCI(C.xs.slice(0, 5), C.ys.slice(0, 5), 2) === null && cc && Math.abs(cc.lo - W.fisherCI(cc.r, 5)[0]) < 1e-12 &&
+    Math.abs(c8.lo - fz[0]) < 1e-12 && Math.abs(c8.b - c8.r * c8.sdy) < 1e-12);
+  /* 5. the lineup mixes file */
+  const mx = rA.mix;
+  ok('the mix file validates, its columns line up, it names no player', mx && M.validate(mx, 'mix').length === 0 && mx.rows.p.length === 5 * mx.rows.t.length && !/[0-9a-f]{8}-[0-9a-f]{4}-/.test(JSON.stringify(mx.players)));
+  /* a five's seconds and box are its stints' sums (the store's, by hand) */
+  const DS = M.decodeStore(A.store), pIdx = new Map(), byKey = new Map();
+  const keyOf = (tid, ids) => tid + ':' + ids.join(',');
+  /* the file's player index: (club, player) sorted, withheld out; rebuilt here from its own club column and order is not
+     needed: compare totals per club instead */
+  const secClub = new Map(), ptsClub = new Map();
+  DS.stints.forEach(s0 => { if (!s0.box || !s0.box.every(isNum)) return; const g = DS.games[s0.g], t = s0.side ? g.a : g.h; secClub.set(t, (secClub.get(t) || 0) + s0.dur); ptsClub.set(t, (ptsClub.get(t) || 0) + s0.box[4]); });
+  const fileSec = new Map(), filePts = new Map();
+  mx.rows.t.forEach((ti, i) => { const t = mx.teams[ti]; fileSec.set(t, (fileSec.get(t) || 0) + mx.rows.s[i]); filePts.set(t, (filePts.get(t) || 0) + mx.rows.o[8 * i + 4]); });
+  ok('...each club\'s fives add up to its stints: seconds (to the rounding of a five\'s) and points exactly', mx.teams.every(t => Math.abs((fileSec.get(t) || 0) - (secClub.get(t) || 0)) <= mx.rows.t.filter(x => mx.teams[x] === t).length && filePts.get(t) === ptsClub.get(t)));
+  void pIdx; void byKey; void keyOf;
+  ok('...under its budget, the trim null at this size; the players\' rates rounded and the tags as bits', JSON.stringify(mx).length < M.BUDGET.mix && mx.trim === null && mx.players.tag.every(b => Number.isInteger(b)) &&
+    mx.players.v.length === mx.stats.length);
+  const tiny = M.buildUnit(A, { now: NOW, B: 10, sim: false, budget: { mix: 40000 } }).mix;
+  ok('...over its budget, the fives with the fewest possessions go first and trim says how many and their share', tiny && tiny.trim && tiny.trim.fives > 0 && tiny.trim.poss > 0 && tiny.trim.poss < 0.5 &&
+    JSON.stringify(tiny).length <= 40000, tiny && JSON.stringify(tiny.trim));
+}
+
 console.log('\nthe simulator\'s calibration (§8.3) and the Front office file');
 {
   const U = M.synthUnit({ teams: 10, games: 150, seed: 3 });

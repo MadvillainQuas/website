@@ -1,7 +1,7 @@
 // ============================================================================
 // analytics-file — HANDS OUT ONE WHAT WINS FILE, IF THE DATABASE SAYS SO (docs/what-wins-model.md §10.1, A.2).
 //
-//   POST {scope: 'wins'|'fo'|'club'|'pos', league?, season?, team?, refresh?}
+//   POST {scope: 'wins'|'fo'|'club'|'pos'|'mix', league?, season?, team?, refresh?}
 //     -> {url (signed, 120 s), token, bytes, built_at, layout, expires_in, n_games, pending, ci_at}
 //
 // Deployed with --no-verify-jwt (supabase/config.toml): the site's publishable key is not a JWT, so the gateway

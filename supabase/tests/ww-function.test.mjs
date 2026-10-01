@@ -383,12 +383,39 @@ function refreshWorld(o = {}) {
      JSON.stringify(w.st.stintOrder) === '["game_id","team_idx","id"]', [w.updates[0] && w.updates[0].delta.stints.length, w.st.stintPages]);
 }
 {
+  /* A.3: a store of an older layout is never patched (update answers stale): the unit is queued for the builder */
+  const w = refreshWorld();
+  w.deps.update = async () => ({ store: null, files: {}, stale: true });
+  const r = await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps);
+  const b = await r.json();
+  ok('A.3: an older store (update stale) is queued for the scheduled build, nothing written', b.queued === true && b.refresh_reason === 'layout' && !w.calls.some(c => c.storage === 'upload'), JSON.stringify(b));
+}
+{
+  /* A.3: the lineup mixes file is written with the rest; its index row goes on its own, so a deployment without migration
+     0213 (the scope CHECK refuses 'mix') keeps the unit's update and drops only the new mix upload */
+  const run = async refuse => {
+    const w = refreshWorld();
+    const prev = w.deps.update;
+    w.deps.update = async (store, delta, opts) => { const r = await prev(store, delta, opts); r.files.mix = { w: 1, scope: 'mix', stats: [], roles: [], teams: [], players: { t: [], min: [], tag: [], v: [] }, rows: { t: [], p: [], s: [], o: [], d: [] } }; return r; };
+    const upserts = [];
+    const base = w.deps.admin.from;
+    w.deps.admin.from = t => { const q = base(t); if (t !== 'analytics_files') return q; const up = q.upsert; q.upsert = (rows, o2) => { upserts.push(rows.map(x => x.scope)); const p = up.call(q, rows, o2); return refuse && rows.some(x => x.scope === 'mix') ? Promise.resolve({ data: null, error: { message: 'violates check constraint' } }) : p; }; return q; };
+    const r = await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps);
+    return { b: await r.json(), w, upserts };
+  };
+  const ok1 = await run(false), no = await run(true);
+  ok('A.3: RECALCULATE uploads the mix file and indexes it apart from the others', ok1.b.refreshed === true && ok1.w.st.order.some(x => /^upload:mix\//.test(x)) && ok1.upserts.length === 2 &&
+     ok1.upserts[0].every(sc => sc !== 'mix') && ok1.upserts[1].join() === 'mix', JSON.stringify(ok1.upserts));
+  ok('...before migration 0213 the refused mix row costs nothing else: refreshed, and the new mix upload is removed', no.b.refreshed === true && (no.w.st.removed || []).some(x => /^mix\//.test(x)), JSON.stringify(no.b));
+}
+{
   /* PERF-8: the delta's lines are read without st; st is asked for only the games whose stints are missing or short */
   const w = refreshWorld();
   w.deps.stintGaps = (rows, stints) => ['g1'];
   await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps);
   const reads = w.calls.filter(c => c.table === 'game_features' && c.op === 'select' && !(c.selectOpts && c.selectOpts.head));
-  ok('the delta read leaves st out; a second read asks st for the stint gaps only', !/\bst\b/.test(reads[0].cols) && reads.some(c => /\bst\b/.test(c.cols) &&
+  /* A.3: the delta read names st's small part u (u:st->u, each scorer's unassisted makes), never st whole */
+  ok('the delta read leaves st out (only u:st->u, A.3); a second read asks st for the stint gaps only', !/(^|,)st(,|$)/.test(reads[0].cols) && /u:st->u/.test(reads[0].cols) && reads.some(c => /(^|,)st(,|$)/.test(c.cols) &&
      JSON.stringify(c.filters.find(f => f[0] === 'in')[2]) === '["g1"]'), reads.map(c => c.cols));
 }
 {

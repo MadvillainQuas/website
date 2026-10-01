@@ -17,7 +17,7 @@
    rotation's shape. Those come from this file's own walk of the log; the engine,
    possessions.js, situations.js and shotclock.js are read, never edited.
 
-     extract(game, {d, TA, C})   -> {fv, f: [Float64Array(108) x2], q: [bits x2], st: [stints x2]}
+     extract(game, {d, TA, C})   -> {fv, f: [Float64Array(108) x2], q: [bits x2], st: [{p, s, u} x2]}
      toRows(gameId, out, meta)   -> the two game_features rows (4 significant figures, NaN -> null)
      fromRow(row)                -> Float64Array(108), null -> NaN
      derive(own, opp, qO, qX)    -> {factor: value | null} for one game
@@ -407,6 +407,18 @@ function extract(game, pre) {
           rows.push([Math.round(l.dur / 100) / 10].concat(ix));
         });
         out.st[t] = { p: list, s: rows };
+        /* A.3: each scorer's unassisted makes, from situations.js's assist pairing (the same one fgm_ast / fgm_unast
+           count): {player id: [unassisted FGM, unassisted FG points, assisted FGM]}, players with a make only. Read by
+           the builder (select u:st->u) for the players' self-created shares; absent where situations did not run */
+        const PL = C && C.side && C.side[t] && C.side[t].players;
+        if (PL) {
+          const u = {};
+          Object.keys(PL).sort().forEach(pid => {
+            const x = PL[pid] || {}, un = x.unast || {}, as = x.ast || {};
+            if ((+un.fgm || 0) + (+as.fgm || 0) > 0) u[pid] = [+un.fgm || 0, +un.pts || 0, +as.fgm || 0];
+          });
+          out.st[t].u = u;
+        }
       } catch (_) { /* left NaN */ }
     });
   }
@@ -484,8 +496,8 @@ const FACTOR_LIST = [
   FX('ts', 'TS%', 'shooting', { pub: true, def: 'True shooting %: points / (2 × (FGA + 0.44 × FTA))', fn: o => R(o[I.pts], 2 * (o[I.fga] + 0.44 * o[I.fta]), 100) }),
   FX('tovp', 'TOV%', 'turnovers', { pub: true, dir: -1, def: 'Turnovers per 100 plays: TOV / (FGA + 0.44 × FTA + TOV)', fn: o => R(o[I.tov], o[I.fga] + 0.44 * o[I.fta] + o[I.tov], 100) }),
   FX('orebp', 'OREB%', 'boards', { pub: true, def: 'Offensive rebound %: OREB / (OREB + opponent DREB)', fn: (o, x) => R(o[I.oreb], o[I.oreb] + x[I.dreb], 100) }),
-  FX('ftr', 'FT rate', 'freethrows', { pub: true, def: 'Free-throw attempts per 100 field-goal attempts (FTA / FGA)', fn: o => R(o[I.fta], o[I.fga], 100) }),
-  FX('ftmr', 'FTM rate', 'freethrows', { pub: true, def: "Free throws made per 100 field-goal attempts (Oliver's FTM / FGA)", fn: o => R(o[I.ftm], o[I.fga], 100) }),
+  FX('ftr', 'FT attempt rate (FTA/FGA)', 'freethrows', { pub: true, def: 'Free-throw attempts per 100 field-goal attempts (FTA / FGA)', fn: o => R(o[I.fta], o[I.fga], 100) }),
+  FX('ftmr', 'FT made rate (FTM/FGA)', 'freethrows', { pub: true, def: "Free throws made per 100 field-goal attempts (Oliver's FTM / FGA)", fn: o => R(o[I.ftm], o[I.fga], 100) }),
   FX('ftp', 'FT%', 'freethrows', { pub: true, def: 'Free-throw %: FTM / FTA', fn: o => R(o[I.ftm], o[I.fta], 100) }),
   FX('p3r', '3PA rate', 'shooting', { pub: true, dir: 0, def: 'Share of field-goal attempts that are threes', fn: o => R(o[I.fg3a], o[I.fga], 100) }),
   FX('p3p', '3P%', 'shooting', { pub: true, def: 'Three-point %: 3PM / 3PA', fn: o => R(o[I.fg3m], o[I.fg3a], 100) }),
@@ -507,7 +519,10 @@ const FACTOR_LIST = [
   FX('c_efg', 'eFG% (competitive)', 'competitive', { def: 'eFG% with garbage-time possessions left out', fn: o => R(o[I.c_efgm], o[I.c_fga], 100) }),
   FX('c_tovp', 'TOV% (competitive)', 'competitive', { dir: -1, def: 'TOV% with garbage-time possessions left out', fn: o => R(o[I.c_tov], o[I.c_fga] + 0.44 * o[I.c_fta] + o[I.c_tov], 100) }),
   FX('c_orebp', 'OREB% (competitive)', 'competitive', { def: 'Share of own missed chances won back, garbage time out', fn: o => R(o[I.c_reb_off], o[I.c_reb_off] + o[I.c_reb_def], 100) }),
-  FX('c_ftmr', 'FTM rate (competitive)', 'competitive', { def: 'Free throws made per 100 FGA, garbage time out', fn: o => R(o[I.c_ftm], o[I.c_fga], 100) }),
+  /* the four factors' free-throw factor is the ATTEMPT rate (FTA / FGA): how often a side gets to the line. Whether it
+     makes them is FT% (ftp), a measure of its own; the made rate (FTM / FGA) stays as a measure, out of the models */
+  FX('c_ftr', 'FT attempt rate (FTA/FGA, competitive)', 'competitive', { def: 'Free-throw attempts per 100 field-goal attempts (FTA / FGA), garbage time out', fn: o => R(o[I.c_fta], o[I.c_fga], 100) }),
+  FX('c_ftmr', 'FT made rate (FTM/FGA, competitive)', 'competitive', { def: 'Free throws made per 100 FGA, garbage time out', fn: o => R(o[I.c_ftm], o[I.c_fga], 100) }),
   FX('c_margin', 'Competitive margin', 'competitive', { unit: 'pts', side: 'game', diff: false, score: true, def: 'Points minus points allowed with garbage time out', fn: (o, x) => V(o[I.c_pts] - x[I.c_pts]) }),
   FX('garbage_share', 'Garbage-time share', 'competitive', { score: true, unit: 'share', dir: 0, def: 'Share of possessions played in garbage time', fn: o => R(o[I.g_poss], o[I.poss]) }),
   // tempo
@@ -562,7 +577,7 @@ const FACTOR_LIST = [
   FX('cl_ppp', 'Clutch points per possession', 'clutch', { score: true, unit: 'pts', min: 4, def: 'Points per clutch possession', fn: o => R(o[I.cl_pts], o[I.cl_poss], 1, 4) }),
   FX('cl_tovp', 'Clutch TOV%', 'clutch', { dir: -1, def: 'Turnovers per 100 clutch possessions', fn: o => R(o[I.cl_tov], o[I.cl_poss], 100) }),
   FX('cl_efg', 'Clutch eFG%', 'clutch', { def: 'eFG% on clutch possessions', fn: o => R(o[I.cl_efgm], o[I.cl_fga], 100) }),
-  FX('cl_ftr', 'Clutch FT rate', 'clutch', { def: 'Free-throw attempts per 100 FGA on clutch possessions', fn: o => R(o[I.cl_fta], o[I.cl_fga], 100) }),
+  FX('cl_ftr', 'Clutch FT attempt rate (FTA/FGA)', 'clutch', { def: 'Free-throw attempts per 100 FGA on clutch possessions', fn: o => R(o[I.cl_fta], o[I.cl_fga], 100) }),
   FX('cl_net100', 'Clutch net rating', 'clutch', { unit: 'pts', score: true, def: 'Clutch points minus points allowed per 100 clutch possessions', fn: (o, x) => R(o[I.cl_pts] - x[I.cl_pts], (o[I.cl_poss] + x[I.cl_poss]) / 2, 100) }),
   // rotation
   FX('players_used', 'Players used', 'rotation', { unit: 'n', dir: 0, def: 'Players who got on the floor', fn: o => V(o[I.players_used]) }),
