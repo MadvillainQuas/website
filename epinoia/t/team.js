@@ -809,6 +809,12 @@ async function teamStats(team, kind) {
     host.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return;
   }
   const mine = S && S.teams.find(t => t.id === team.id);
+  try {   // the club's ELO and its schedule, beside the heading (p/sos-chip.js), over the same games as everything below
+    let th = host.previousElementSibling;          // statpop's hint line sits between the heading and the section
+    while (th && !th.classList.contains('ep-hdr')) th = th.previousElementSibling;
+    if (th && window.EpinoiaSosChip && window.EpinoiaSosChip.paintClub)
+      window.EpinoiaSosChip.paintClub(th, { games: mine ? S.games : null, teamId: team.id });
+  } catch (_) { /* a convenience */ }
   if (!mine) {
     host.appendChild(el('div', 'empty',
       'No team statistics yet — these fill in as games are finalised in the scorer.'));
@@ -820,6 +826,7 @@ async function teamStats(team, kind) {
      event of the competition (shot zones) or every situation (events): they are only built when opened.
      The players' table below is not one of them - it stays on the page. */
   const C = window.EpinoiaCards;
+  const metaP = D.playerMeta(S.players.map(p => p.id)).catch(() => ({}));
   const cards = el('div', 'xcs');
   host.appendChild(cards);
   const card = (key, title, body, note) => {
@@ -863,27 +870,23 @@ async function teamStats(team, kind) {
     return grid;
   }, 'own · allowed');
 
-  const pg = v => (v == null || !isFinite(v)) ? null : v / (mine.gp || 1);
+  /* THE SEASON LINE (t/seasonline.js): the three ratings on a row of their own, then tempo, efficiency and how the ball
+     and the minutes are shared, each against every club in the scope. The possession is timed from the club's own logs
+     (members only, as the shot clock analysis is); the bench's minutes need each game's starters and the players'
+     minutes, read once per scope. */
   card('line', 'season line', () => {
-    const tiles = el('div', 'tiles');
-    /* [label, shown, highlighted, popup key, total the per-game key is worked from] */
-    [['ppg', n1(mine.ppg), true, 'ppg'], ['opp ppg', n1(mine.papg), false, 'papg'],
-     ['diff', mine.diffpg == null ? '—' : (mine.diffpg > 0 ? '+' : '') + n1(mine.diffpg), true, 'diffpg'],
-     ['ortg', n1(mine.ortg), true, 'ortg'], ['drtg', n1(mine.drtg), false, 'drtg'],
-     ['net', mine.net == null ? '—' : (mine.net > 0 ? '+' : '') + n1(mine.net), true, 'net'],
-     ['pace', n1(mine.pace), false, 'pace'], ['ts%', n1(mine.ts), false, 'ts'],
-     ['ast/to', mine.ast_to == null ? '—' : Number(mine.ast_to).toFixed(2), false, 'ast_to'],
-     ['reb / g', n1(pg(mine.reb)), false, 'reb_pg', 'reb'], ['ast / g', n1(pg(mine.ast)), false, 'ast_pg', 'ast'], ['stl / g', n1(pg(mine.stl)), false, 'stl_pg', 'stl'],
-     ['blk / g', n1(pg(mine.blk)), false, 'blk_pg', 'blk'], ['paint / g', n1(pg(mine.paint)), false, 'paint_pg', 'paint'], ['fast / g', n1(pg(mine.fast)), false, 'fast_pg', 'fast'],
-     ['2nd chance / g', n1(pg(mine.second_chance)), false, 'second_chance_pg', 'second_chance'], ['off turnovers / g', n1(pg(mine.pts_off_to)), false, 'pts_off_to_pg', 'pts_off_to'],
-     ['bench / g', n1(pg(mine.bench)), false, 'bench_pg', 'bench']]
-      .forEach(([l, v, hi, k, tot]) => {
-        const d = el('div', 'tile' + (hi ? ' hi' : ''));
-        d.append(el('div', 'v', v == null ? '—' : v), el('div', 'l', l));
-        if (v != null && v !== '—') teamStatBind(d, k, l, S, mine, team, tot ? { value: r => (r.gp && r[tot] != null ? Number(r[tot]) / r.gp : null) } : null);
-        tiles.appendChild(d);
-      });
-    return tiles;
+    const box = el('div');
+    const SL = window.EpinoiaSeasonLine;
+    if (!SL) { box.appendChild(el('div', 'empty', 'The season line could not be drawn.')); return box; }
+    const scoped = new Set((S.games || []).map(g => g.id));
+    SL.render(box, {
+      S, mine,
+      bind: (node, d) => teamStatBind(node, d.k, d.l, S, mine, team),
+      club: { poss_time: ACCESS.locked ? Promise.resolve({ v: null, why: 'for members, with the shot clock analysis' }) : clubPossTime(team, scoped) },
+      bench: benchMinutes(S, team),
+      nameOf: id => metaP.then(m => (m && m[id] && m[id].name && m[id].name !== 'Player') ? m[id].name : null)
+    });
+    return box;
   }, mine.gp ? mine.gp + (mine.gp === 1 ? ' game' : ' games') : null);
 
   /* SHOT ZONES, RANKED IN THE LEAGUE. Every located shot of every side in the scoped
@@ -934,7 +937,7 @@ async function teamStats(team, kind) {
   });
 
   /* every player on the roster, ranked within their own team */
-  const meta = await D.playerMeta(S.players.map(p => p.id));
+  const meta = await metaP;
   S.players.forEach(p => Object.assign(p, meta[p.id] || {}));
   const squad = S.players.filter(p => p.teamId === team.id);
   if (squad.length) {
@@ -951,7 +954,61 @@ async function teamStats(team, kind) {
   }
 }
 
+/* THE AVERAGE POSSESSION, own and opponents', from the club's own logs (the shot clock's reading), over the games of
+   the scope the season line is showing */
+async function clubPossTime(team, scoped) {
+  const SCk = window.EpinoiaShotClock, SL = window.EpinoiaSeasonLine;
+  if (!SCk || !SL) return { v: null, why: 'not available on this page' };
+  const { gs, byG, sideOf } = await seasonLogs(team);
+  const games = gs.filter(g => scoped.has(g.id));
+  if (!games.length) return { v: null, why: 'no game log in this scope yet' };
+  const x = SL.possTime(games.map(g => ({ side: sideOf[g.id], events: byG[g.id] || [] })), SCk.compute);
+  return SL.possNote(x, x.games);
+}
+
+/* THE BENCH'S MINUTES for every club in the scope: each game's starters and every player's minutes (two small reads a
+   batch of forty games). A competition past 400 games reads the club's own games only, and is not ranked. Kept for the
+   page's life, so a scope read twice is read once. */
+const benchCache = new Map();
+function benchMinutes(S, team) {
+  const SL = window.EpinoiaSeasonLine, D = window.EpinoiaData;
+  const all = (S && S.games) || [];
+  const games = all.length > 400 ? all.filter(g => g.home_team_id === team.id || g.away_team_id === team.id) : all;
+  const ids = games.map(g => g.id).sort();
+  if (!ids.length || !SL || !D) return null;
+  const key = ids.join(',');
+  if (benchCache.has(key)) return benchCache.get(key);
+  const p = (async () => {
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
+    const parts = await Promise.all(chunks.map(c => Promise.all([
+      D.all(`games?id=in.(${c.join(',')})&select=id,home_team_id,away_team_id,starters`),
+      D.all(`player_game_stats?game_id=in.(${c.join(',')})&select=game_id,player_uuid,player_id,team_idx,min:stats->min`)
+    ])));
+    const lines = parts.flatMap(x => x[1]).map(r => ({ game_id: r.game_id, pid: r.player_uuid || r.player_id, team_idx: r.team_idx, min: r.min }));
+    return SL.bench(parts.flatMap(x => x[0]), lines);
+  })();
+  p.catch(() => benchCache.delete(key));
+  benchCache.set(key, p);
+  return p;
+}
+
 /* ------------------------------------------------------------- shot zones --- */
+/* THE CLUB'S RANK among the clubs of the scope, as a small chip (kit/clubstats.css): toned from red to green where more
+   is better (dir 1), plain where a number is a style (dir 0: how often a club shoots from somewhere is neither good nor
+   bad). Nothing under two ranked clubs, or when `few` says the sample is too thin to rank. */
+function rankChip(S, mine, k, dir, few) {
+  const SL = window.EpinoiaSeasonLine;
+  const P = SL && !few ? SL.place(S.teams, r => r[k], mine.id, dir) : null;
+  if (!P || P.n < 2) return '';
+  const b = dir ? SL.band(P.pct) : 0;
+  return '<span class="czt-rk' + (dir ? '' : ' style') + '"' + (b ? ' data-b="' + b + '"' : '') + ' title="' + SL.ordinal(P.rank) +
+    ' of ' + P.n + '">' + SL.ordinal(P.rank) + '</span>';
+}
+
+/* SHOT ZONES, RANKED IN THE LEAGUE. Every located shot of every side in the scoped competitions, cut into the chart's
+   zones: this club's share of its shots in each (a bar), its attempts per 100 possessions and per game, its makes and
+   its eFG%, each with its rank among the clubs. The larger cuts (sides, the paint, jump shots, every shot) below. */
 async function zoneStats(host, S, team) {
   const SC = window.EpinoiaShotChart, SE = window.EpinoiaSeason, D = window.EpinoiaData;
   if (!SC || !SE || !S || !S.games || !S.games.length) { host.appendChild(el('div', 'empty', 'No located shots yet.')); return; }
@@ -963,65 +1020,84 @@ async function zoneStats(host, S, team) {
   /* the rebounds off each zone's misses need no locations (they are the box score's zones), so they are drawn
      whether or not there are located shots to chart */
   if (!mine.z_located) { host.appendChild(el('div', 'empty', 'No located shots for this club yet.')); reboundZones(host, S, mine); return; }
-  const groups = SC.GROUPS.concat(SC.BIG);
-  const keys = [];
-  groups.forEach(g => ['share', 'att100', 'attG', 'madeG', 'efg'].forEach(m => keys.push('z_' + g.k + '_' + m)));
-  const ranks = SE.percentiles(S.teams, keys, []);
-  const pctOf = k => { const tb = ranks.get(k); return tb ? tb.get(team.id) : null; };
-  const heat = window.EpinoiaTable && window.EpinoiaTable.heatStyle ? window.EpinoiaTable.heatStyle : () => '';
   const f1 = v => v == null ? '\u2014' : (+v).toFixed(1);
-  const cell = (k, f) => { const p = pctOf(k); return '<td class="heat" style="' + heat(p) + '">' + (f || f1)(mine[k]) + (p == null ? '' : '<span class="pctl">' + Math.round(p) + '</span>') + '</td>'; };
-  const head = '<tr><th class="l">zone</th><th>% of shots</th><th>att / 100 poss</th><th>att / g</th><th>made / g</th><th>efg%</th></tr>';
-  const tr = g => '<tr' + (mine['z_' + g.k + '_att'] ? '' : ' class="none"') + '><td class="l">' + g.label + '</td>' +
-    cell('z_' + g.k + '_share') + cell('z_' + g.k + '_att100') + cell('z_' + g.k + '_attG') + cell('z_' + g.k + '_madeG') + cell('z_' + g.k + '_efg', v => v == null ? '\u2014' : (+v).toFixed(0)) + '</tr>';
-  const wrap = el('div');
-  wrap.innerHTML = '<div class="sc-tablewrap"><table class="sc-table">' +
-    '<thead>' + head + '</thead><tbody>' + SC.GROUPS.map(tr).join('') + '</tbody>' +
-    '<thead><tr><th class="l" colspan="6">the larger cuts</th></tr>' + head + '</thead><tbody>' + SC.BIG.map(tr).join('') + '</tbody></table></div>' +
-    '<div class="sc-note">every located shot in the competition' + (teamScopeKind !== 'all' ? ' (' + (KIND_LABEL[teamScopeKind] || teamScopeKind).toLowerCase() + ')' : '') +
-    ' \u00b7 the small number is the percentile among the ' + S.teams.length + ' teams (higher is more, or better) \u00b7 att / 100 = attempts per 100 of the club\u2019s own possessions \u00b7 the same numbers for every club are under \u201cshot zones\u201d in the league table\u2019s team statistics</div>';
+  const SW = { paint: 'rim', mid: 'mid', three: 'three' };
+  const lb = t => '<span class="czt-lb" data-i18n-ctx="col">' + t + '</span>';   // a column's name, for a row drawn as a card
+  const row = (g, max) => {
+    const k = m => 'z_' + g.k + '_' + m, none = !mine[k('att')];
+    const share = mine[k('share')];
+    const w = share == null || !(max > 0) ? 0 : Math.max(2, 100 * share / max);
+    const cell = (m, label, dir) => '<td>' + lb(label) + '<span class="czt-v">' + f1(mine[k(m)]) + '</span>' + (none ? '' : rankChip(S, mine, k(m), dir)) + '</td>';
+    return '<tr class="r' + (none ? ' none' : '') + '"><th class="l" scope="row">' + (g.kind ? '<i class="czt-sw z-' + SW[g.kind] + '"></i>' : '') + g.label + '</th>' +
+      '<td class="czt-share">' + lb('% of shots') + '<span class="czt-v">' + (share == null ? '\u2014' : f1(share) + '%') + '</span>' +
+        (none ? '' : rankChip(S, mine, k('share'), 0)) + '<span class="czt-bar"><i style="width:' + w.toFixed(1) + '%"></i></span></td>' +
+      cell('att100', 'att / 100 poss', 0) + cell('attG', 'att / g', 0) + cell('madeG', 'made / g', 1) + cell('efg', 'efg%', 1) + '</tr>';
+  };
+  const block = (title, groups) => {
+    const max = Math.max(0, ...groups.filter(g => g.k !== 'all').map(g => +mine['z_' + g.k + '_share'] || 0));
+    return '<tbody><tr class="czt-gh"><th colspan="6">' + title + '</th></tr>' + groups.map(g => row(g, max)).join('') + '</tbody>';
+  };
+  const wrap = el('div', 'czt-wrap');
+  wrap.setAttribute('data-i18n-ctx', 'zonetable');
+  wrap.innerHTML = '<table class="czt">' +
+    '<thead><tr><th class="l">zone</th><th>% of shots</th><th>att / 100 poss</th><th>att / g</th><th>made / g</th><th>efg%</th></tr></thead>' +
+    block('every zone', SC.GROUPS) + block('the larger cuts', SC.BIG) + '</table>' +
+    '<div class="czt-note">every located shot in the competition' + (teamScopeKind !== 'all' ? ' (' + (KIND_LABEL[teamScopeKind] || teamScopeKind).toLowerCase() + ')' : '') +
+    ' \u00b7 the chip is the club\u2019s rank among the ' + S.teams.length + ' clubs: green to red where more is better, plain where it is only a style' +
+    ' \u00b7 att / 100 = attempts per 100 of the club\u2019s own possessions \u00b7 the same numbers for every club are under \u201cshot zones\u201d in the league table\u2019s team statistics</div>';
   host.appendChild(wrap);
   reboundZones(host, S, mine);
 }
 
 /* WHAT BECAME OF EVERY SHOT ATTEMPT, by zone, for the club's own attempts and for the attempts taken against it
-   (Louie, 2026-09-25). Rim, mid-range and three by the box score's own zone rule, over every game in the scope: of
-   the attempts in a zone, the share that went in, the share missed and rebounded by the shooter's own side
-   (offensive), and by the other side (defensive) -- the four kinds add up to the attempts, the way FG% splits them
-   into made and missed. The rebounds are the first one after each miss, before anything else happens to the ball
-   (epinoia/situations.js reboundZones); a miss with none is a foul and free throws, a turnover, the end of a
-   period or a rebound the feed did not log. The club's own OREB% and DREB% carry a percentile among the teams. */
+   (Louie, 2026-09-25). Rim, mid-range and three by the box score's own zone rule, over every game in the scope: every
+   attempt went in, or was missed and rebounded by the shooter's side (offensive) or by the other side (defensive), or
+   had no rebound -- the four add up to the attempts, drawn as one bar per zone. The rebounds are the first one after
+   each miss, before anything else happens to the ball (epinoia/situations.js reboundZones); a miss with none is a foul
+   and free throws, a turnover, the end of a period or a rebound the feed did not log.
+   Beside the bar, the club's ORB% (its own misses) and DRB% (the opponents'), as the four factors count them: of the
+   misses somebody rebounded, the share it took (rb_<zone>_orb / _drb, the team table's defence + rebounding columns),
+   ranked among the clubs once there are ten rebounded misses to go on. */
 function reboundZones(host, S, mine) {
   if (!mine || !mine.rb_ready) return;
-  const SE = window.EpinoiaSeason;
-  const ZS = [['rim', 'at the rim'], ['mid', 'mid-range'], ['three', 'threes'], ['all', 'every shot']];
-  const keys = [];
-  ZS.forEach(([z]) => ['orp', 'drp'].forEach(m => keys.push('rb_' + z + '_' + m)));
-  const ranks = SE ? SE.percentiles(S.teams, keys, []) : new Map();
-  const pctOf = k => { const tb = ranks.get(k); return tb ? tb.get(mine.id) : null; };
-  const heat = window.EpinoiaTable && window.EpinoiaTable.heatStyle ? window.EpinoiaTable.heatStyle : () => '';
+  const ZS = [['rim', 'at the rim', 'rim'], ['mid', 'mid-range', 'mid'], ['three', 'threes', 'three'], ['all', 'every shot', '']];
+  const FEW = 10;                                            // a rate on fewer rebounded misses than this is not ranked
+  const lb = t => '<span class="czt-lb" data-i18n-ctx="col">' + t + '</span>';
   const pc = v => v == null ? '\u2014' : (+v).toFixed(1) + '%';
-  const share = (n, d) => (d ? pc(100 * n / d) : '\u2014');
-  const FEWA = 15;                                             // a rate on fewer attempts than this is not ranked
-  const plain = (n, d) => '<td>' + share(n, d) + '</td>';
-  const ranked = (k, n) => { const p = n < FEWA ? null : pctOf(k); return '<td class="heat" style="' + heat(p) + '">' + pc(mine[k]) + (p == null ? '' : '<span class="pctl">' + Math.round(p) + '</span>') + '</td>'; };
-  /* own: the club's attempts (its own offensive rebound is the good one, ranked); against: the attempts taken
-     against it (its own defensive rebound is the good one, ranked) */
-  const tr = ([z, label], end) => {
-    const own = end === 'own', g = f => mine['rb_' + z + '_' + (own ? '' : 'g') + f], a = g('a');
-    return '<tr' + (a ? '' : ' class="none"') + '><td class="l">' + label + '</td><td>' + a + '</td>' + plain(g('m'), a) +
-      (own ? ranked('rb_' + z + '_orp', a) + plain(g('d'), a) : plain(g('o'), a) + ranked('rb_' + z + '_drp', a)) +
-      '<td>' + share(a - g('m') - g('o') - g('d'), a) + '</td></tr>';
+  const part = (n, a, cls, label) => {
+    const w = a ? 100 * n / a : 0;
+    return w > 0 ? '<i class="' + cls + '" style="width:' + w.toFixed(2) + '%" title="' + label + ' ' + w.toFixed(1) + '%"></i>' : '';
   };
-  const head = (first, off, def) => '<tr><th class="l">' + first + '</th><th>attempts</th><th>made</th><th>' + off + '</th><th>' + def + '</th><th>no rebound</th></tr>';
-  const wrap = el('div');
-  wrap.innerHTML = '<div class="ffhead">what became of every shot attempt</div>' +
-    '<div class="sc-tablewrap"><table class="sc-table">' +
-      '<thead>' + head('the club\u2019s own attempts', 'own offensive rebound', 'other side\u2019s defensive rebound') + '</thead><tbody>' + ZS.map(z => tr(z, 'own')).join('') + '</tbody>' +
-      '<thead>' + head('attempts against the club', 'other side\u2019s offensive rebound', 'own defensive rebound') + '</thead><tbody>' + ZS.map(z => tr(z, 'against')).join('') + '</tbody></table></div>' +
-    '<div class="sc-note">every shot attempt in a zone went in, or was missed and rebounded by the shooter\u2019s side (offensive) or the other side (defensive), or had no rebound \u00b7 ' +
+  /* own: the club's attempts (made, its own offensive rebound, the other side's defensive rebound, none); against:
+     the attempts taken against it (made, the other side's offensive rebound, its own defensive rebound, none) */
+  const tr = ([z, label, sw], end) => {
+    const own = end === 'own', g = f => +mine['rb_' + z + '_' + (own ? '' : 'g') + f] || 0;
+    const a = g('a'), made = g('m'), o = g('o'), d = g('d'), none = Math.max(0, a - made - o - d);
+    const m = own ? 'orb' : 'drb', rk = 'rb_' + z + '_' + m;       // its own share of the rebounded misses, ranked
+    const reb = o + d;
+    return '<tr class="r' + (a ? '' : ' none') + (z === 'all' ? ' tot' : '') + '"><th class="l" scope="row">' + (sw ? '<i class="czt-sw z-' + sw + '"></i>' : '') + label + '</th>' +
+      '<td>' + lb('attempts') + '<span class="czt-v">' + a + '</span></td>' +
+      '<td class="cob-c">' + lb('what became of them') + '<span class="cob-bar ' + end + '">' +
+        part(made, a, 'm', 'made') + part(o, a, own ? 'ko' : 'lo', own ? 'own offensive rebound' : 'other side\u2019s offensive rebound') +
+        part(d, a, own ? 'ld' : 'kd', own ? 'other side\u2019s defensive rebound' : 'own defensive rebound') + part(none, a, 'n', 'no rebound') + '</span></td>' +
+      '<td>' + lb('fg%') + '<span class="czt-v">' + (a ? pc(100 * made / a) : '\u2014') + '</span></td>' +
+      '<td>' + lb(own ? 'orb%' : 'drb%') + '<span class="czt-v">' + pc(mine[rk]) + '</span>' + rankChip(S, mine, rk, 1, reb < FEW) + '</td></tr>';
+  };
+  const key = own => '<span class="cob-key">' +
+    '<span><i class="m"></i>made</span>' +
+    '<span><i class="' + (own ? 'ko' : 'lo') + '"></i>' + (own ? 'own offensive rebound' : 'other side\u2019s offensive rebound') + '</span>' +
+    '<span><i class="' + (own ? 'ld' : 'kd') + '"></i>' + (own ? 'other side\u2019s defensive rebound' : 'own defensive rebound') + '</span>' +
+    '<span><i class="n"></i>no rebound</span></span>';
+  const block = (end, title, rate) => '<tbody class="cob-g ' + end + '"><tr class="czt-gh"><th colspan="5">' + title + key(end === 'own') + '</th></tr>' +
+    '<tr class="czt-sh"><th class="l">zone</th><th>attempts</th><th class="cob-c">what became of them</th><th>fg%</th><th>' + rate + '</th></tr>' +
+    ZS.map(zz => tr(zz, end)).join('') + '</tbody>';
+  const wrap = el('div', 'czt-wrap cob');
+  wrap.setAttribute('data-i18n-ctx', 'zonetable');
+  wrap.innerHTML = '<div class="czt-h">what became of every shot attempt</div>' +
+    '<table class="czt cob-t">' + block('own', 'the club\u2019s own attempts', 'orb%') + block('against', 'attempts against the club', 'drb%') + '</table>' +
+    '<div class="czt-note">every shot attempt in a zone went in, or was missed and rebounded by the shooter\u2019s side (offensive) or the other side (defensive), or had no rebound \u00b7 ' +
     'the four add up to the attempts \u00b7 the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none \u00b7 ' +
-    'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked</div>';
+    'orb% and drb% are of the misses somebody rebounded, as the four factors count them \u00b7 the chip is the club\u2019s rank among the clubs, on ten rebounded misses or more</div>';
   host.appendChild(wrap);
 }
 

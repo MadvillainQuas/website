@@ -293,6 +293,14 @@
       'ratings': 'Ratings',
       'scoring types': 'Tipos de anotación',
       'zones: rim + paint': 'Zonas: aro + zona',
+      /* the team table's defence + rebounding view: rebounds by where the miss came from */
+      'defence + rebounding': 'Defensa + rebote',
+      'SELF RIM ORB%': 'ORB% PROPIO ARO',
+      'SELF MID ORB%': 'ORB% PROPIO MEDIA',
+      'SELF 3PT ORB%': 'ORB% PROPIO T3',
+      'OPP RIM DRB%': 'DRB% RIVAL ARO',
+      'OPP MID DRB%': 'DRB% RIVAL MEDIA',
+      'OPP 3PT DRB%': 'DRB% RIVAL T3',
       'zones: mid-range': 'Zonas: media distancia',
       'zones: threes': 'Zonas: triples',
       'zones: the cuts': 'Zonas: los cortes',
@@ -1450,6 +1458,37 @@
       'every shot attempt in a zone went in, or was missed and rebounded by the shooter’s side (offensive) or the other side (defensive), or had no rebound': 'cada tiro de una zona entró, o falló y lo rebotó el equipo del tirador (ofensivo) o el rival (defensivo), o no tuvo rebote',
       'the four add up to the attempts': 'las cuatro suman los tiros',
       'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': 'el número pequeño es el percentil entre los equipos, más alto es mejor, y una tasa con menos de 15 tiros no se clasifica',
+      /* the club page's team statistics: the season line, the zone tables and the club's ELO (t/seasonline.js, t/team.js,
+         p/sos-chip.js) */
+      'points per 100 possessions': 'puntos por cada 100 posesiones',
+      'points allowed per 100 possessions': 'puntos permitidos por cada 100 posesiones',
+      'ORTG minus DRTG': 'OER menos DER',
+      'vs avg': 'vs media',
+      'AVG POSSESSION': 'Posesión media',
+      'HELIOCENTRISM%': 'Heliocentrismo%',
+      'BENCH MINS%': 'Min. banquillo%',
+      'possessions per 40 minutes': 'posesiones por 40 minutos',
+      'seconds from winning the ball to the last action': 'segundos desde que se gana el balón hasta la última acción',
+      'points per possession': 'puntos por posesión',
+      'points per shot, free throws counted': 'puntos por tiro, contando los tiros libres',
+      'free throws made': 'tiros libres anotados',
+      'shots at the rim or from three': 'tiros cerca del aro o de tres',
+      'baskets that were assisted': 'canastas asistidas',
+      'possessions used by the busiest player': 'posesiones que usa el jugador con más uso',
+      'minutes played by those who did not start': 'minutos de los que no fueron titulares',
+      'timing every possession…': 'cronometrando cada posesión…',
+      'not recorded for this club': 'sin registro para este club',
+      'for members, with the shot clock analysis': 'para socios, con el análisis del reloj de posesión',
+      'no game log in this scope yet': 'aún no hay registro de partidos en este ámbito',
+      'not available on this page': 'no disponible en esta página',
+      'could not be timed': 'no se pudo cronometrar',
+      'no possession could be timed': 'no se pudo cronometrar ninguna posesión',
+      'not ranked: the other clubs’ logs are not read here': 'sin posición: aquí no se leen los registros de los demás clubes',
+      'The season line could not be drawn.': 'No se pudo dibujar la línea de temporada.',
+      'every zone': 'Todas las zonas',
+      'what became of them': 'qué pasó con ellos',
+      'orb% and drb% are of the misses somebody rebounded, as the four factors count them': 'el ORB% y el DRB% son de los fallos que alguien reboteó, como los cuentan los cuatro factores',
+      'the chip is the club’s rank among the clubs, on ten rebounded misses or more': 'la etiqueta es la posición del club entre los clubes, con diez fallos rebotados o más',
       'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': 'buscar partido: los partidos más cercanos a ti, o a cualquier lugar al que vayas (modo pasaporte)',
       'Also plays home games at': 'También juega en casa en',
       'Main home arena': 'Pabellón principal',
@@ -1517,6 +1556,39 @@
     },
 
     ctx: {
+      /* the club page's season line (t/seasonline.js; data-i18n-ctx="seasonline" on the card): the strips' ends and the groups */
+      seasonline: {
+        'tempo': 'Tempo de juego',
+        'worse': 'peor',
+        'better': 'mejor',
+        'level': 'en la media',
+        'efficiency': 'Eficiencia',
+        'distribution': 'Reparto',
+        'slower': 'más lento',
+        'faster': 'más rápido',
+        'fewer': 'menos',
+        'more': 'más',
+        'less': 'menos',
+        'shared': 'repartido',
+        'one player': 'un jugador'
+      },
+      /* the club page's shot zones and what became of every shot attempt (t/team.js; data-i18n-ctx="zonetable") */
+      zonetable: {
+        'made': 'anotado'
+      },
+      /* the schedule and ELO chips (p/sos-chip.js; data-i18n-ctx="soschip" on each chip and its sentence) */
+      soschip: {
+        'Schedule': 'Calendario',
+        'Hardest': 'Muy difícil',
+        'Hard': 'Difícil',
+        'Average': 'Media',
+        'Easy': 'Fácil',
+        'Easiest': 'Muy fácil',
+        'Elite': 'Élite',
+        'Strong': 'Fuerte',
+        'Weak': 'Débil',
+        'Weakest': 'Muy débil'
+      },
       /* a section's SKIP button (nav.js, a page of the standard and HOME) */
       skip: {
         'Skip': 'Saltar'
@@ -2140,6 +2212,21 @@
     },
 
     patterns: [
+      /* the club page's season line and chips */
+      [/^of (\d+)$/, 'de $1'],
+      [/^fastest of (\d+)$/, 'más rápido de $1'],
+      [/^highest of (\d+)$/, 'más alto de $1'],
+      [/^(\d+)(?:st|nd|rd|th) of (\d+)$/, '$1.º de $2'],
+      [/^(\d+)(?:st|nd|rd|th) hardest of (\d+)$/, '$1.º más difícil de $2'],
+      [/^spread like (\d+(?:[.,]\d+)?) equal users$/, 'repartido como $1 usuarios iguales'],
+      [/^over (\d+) games? with the starters on record$/, 'en $1 partidos con los titulares registrados'],
+      [/^over (\d+) games? of the club’s own logs$/, 'en $1 partidos de los registros del propio club'],
+      [/^the chip is the club’s rank among the (\d+) clubs: green to red where more is better, plain where it is only a style$/,
+        'la etiqueta es la posición del club entre los $1 clubes: de verde a rojo donde más es mejor, neutra donde solo es un estilo'],
+      [/^ELO is a strength rating built from results: every win takes points from the loser, more for an upset and a big margin\. 1500 is an average team, so (\d+) is (about an average team|(?:slightly |far )?(?:stronger|weaker) than an average team)\. The league runs from (\d+) to (\d+), over (\d+) games\.$/,
+        m => 'El ELO es una valoración de fuerza hecha con los resultados: cada victoria quita puntos al perdedor, más en una sorpresa y con mucha diferencia. 1500 es un equipo medio, así que ' + m[1] + ' es ' + ({ 'about an average team': 'como un equipo medio' }[m[2]] || ((/^slightly /.test(m[2]) ? 'algo ' : /^far /.test(m[2]) ? 'mucho ' : '') + (/stronger/.test(m[2]) ? 'más fuerte' : 'más débil') + ' que un equipo medio')) + '. La liga va de ' + m[3] + ' a ' + m[4] + ', en ' + m[5] + ' partidos.'],
+      [/^Schedule strength so far: the opponents this club has faced averaged an ELO rating of (\d+)\. ELO is a strength rating built from results: 1500 is an average team and higher is stronger, so that is (about the same as an average team|(?:slightly |far )?(?:stronger|weaker) than an average team)\. The league runs from (\d+) \(easiest\) to (\d+) \(hardest\), over (\d+) games\.$/,
+        m => 'Dificultad del calendario hasta ahora: los rivales de este club promedian un ELO de ' + m[1] + '. El ELO es una valoración de fuerza hecha con los resultados: 1500 es un equipo medio y más alto es más fuerte, así que es ' + ({ 'about the same as an average team': 'como un equipo medio' }[m[2]] || ((/^slightly /.test(m[2]) ? 'algo ' : /^far /.test(m[2]) ? 'mucho ' : '') + (/stronger/.test(m[2]) ? 'más fuerte' : 'más débil') + ' que un equipo medio')) + '. La liga va de ' + m[3] + ' (el más fácil) a ' + m[4] + ' (el más difícil), en ' + m[5] + ' partidos.'],
       [/^Q([1-4])$/i, '$1C'],
       [/^Q([1-4]) (\d{1,2}:\d{2}(?:\.\d)?)$/i, '$1C $2'],
       [/^OT(\d?)$/i, 'PR$1'],

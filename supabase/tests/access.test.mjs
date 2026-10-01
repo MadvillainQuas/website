@@ -335,7 +335,7 @@ console.log('\nsimulation');
 console.log('\npremium columns against fulltable.js');
 {
   const all = Table.PLAYER_COLS.concat(Table.TEAM_COLS);
-  const byRule = k => /^(ev_|evd_|z_)/.test(k) || ['pred_efg', 'efg_sh', 'efg_vs', 'morey'].includes(k);
+  const byRule = k => /^(ev_|evd_|z_|rb_)/.test(k) || ['pred_efg', 'efg_sh', 'efg_vs', 'morey'].includes(k);
   const wrong = all.filter(c => A.isPremiumColumn(c.k) !== byRule(c.k)).map(c => c.k);
   ok('every column key in both catalogues classified by the rule (' + all.length + ' columns)', wrong.length === 0, wrong.join());
   const evCount = all.filter(c => /^ev_|^evd_/.test(c.k)).length, zCount = all.filter(c => /^z_/.test(c.k)).length;
@@ -350,7 +350,7 @@ console.log('\npremium columns against fulltable.js');
   ok('CATALOGUE.columns all exist in the team table', A.CATALOGUE.columns.every(k => Table.TEAM_COLS.some(c => c.k === k)));
   ok('barKeys: the player bars\' events keys only', A.CATALOGUE.barKeys('ev_ast_pts_sh') && A.CATALOGUE.barKeys('ev_rim_astp') && !A.CATALOGUE.barKeys('rim_pct') && !A.CATALOGUE.barKeys(undefined));
   eq('gameTabs', A.CATALOGUE.gameTabs, ['flow', 'connections', 'events', 'shotclock']);
-  eq('columnPrefixes', A.CATALOGUE.columnPrefixes, ['ev_', 'evd_', 'z_']);
+  eq('columnPrefixes', A.CATALOGUE.columnPrefixes, ['ev_', 'evd_', 'z_', 'rb_']);
   ok('wowyPreviewMax is 1', A.CATALOGUE.wowyPreviewMax === 1);
 }
 

@@ -152,7 +152,7 @@ const FEATURES = Object.freeze({
    fulltable.js, so it cannot drift silently. */
 const CATALOGUE = Object.freeze({
   gameTabs: Object.freeze(['flow', 'connections', 'events', 'shotclock']),
-  columnPrefixes: Object.freeze(['ev_', 'evd_', 'z_']),
+  columnPrefixes: Object.freeze(['ev_', 'evd_', 'z_', 'rb_']),
   columns: Object.freeze(['pred_efg', 'efg_sh', 'efg_vs', 'morey']),
   presets: Object.freeze(['ev_second', 'ev_transition', 'ev_offTo', 'ev_ato', 'ev_half', 'ev_assist',
                           'z_rim', 'z_mid', 'z_three', 'z_cuts', 'z_rate']),

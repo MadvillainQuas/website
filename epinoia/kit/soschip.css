@@ -20,3 +20,16 @@
 .soschip-more{align-self:center;max-width:min(360px,calc(100% - 24px));margin:6px auto 0;padding:8px 10px;border:1px solid var(--rule-2);border-radius:6px;
   background:var(--panel-2);font-size:12px;line-height:1.45;color:var(--ink-2);text-align:left}
 .soschip-more[hidden]{display:none}
+
+/* THE CLUB PAGE (p/sos-chip.js paintClub): the club's own ELO beside its schedule, under the Team statistics title as
+   the player page's chip sits under its own. The ELO meter runs the other way: weak (warm) on the left, strong (green)
+   on the right. */
+.ep-hdr .soschips{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:8px}
+.ep-hdr .soschips .soschip{width:236px}
+.soschip .sc-w b{font-weight:400;font-family:var(--f-score);font-size:11px;letter-spacing:.02em;margin-left:3px}
+.soschip.is-elo .sc-meter i:nth-child(1){background:var(--flare)}
+.soschip.is-elo .sc-meter i:nth-child(2){background:color-mix(in oklch,var(--flare) 55%,var(--amber))}
+.soschip.is-elo .sc-meter i:nth-child(3){background:var(--amber)}
+.soschip.is-elo .sc-meter i:nth-child(4){background:color-mix(in oklch,var(--good) 65%,var(--amber))}
+.soschip.is-elo .sc-meter i:nth-child(5){background:var(--good)}
+@media (max-width:640px){ .ep-hdr .soschips{width:100%} .ep-hdr .soschips .soschip{flex:1 1 150px;width:auto;max-width:230px} }

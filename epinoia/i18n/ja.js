@@ -291,6 +291,14 @@
       'ratings': 'レーティング',
       'scoring types': '得点タイプ',
       'zones: rim + paint': 'ゾーン: ゴール下 + ペイント',
+      /* the team table's defence + rebounding view: rebounds by where the miss came from */
+      'defence + rebounding': 'ディフェンス + リバウンド',
+      'SELF RIM ORB%': '自チーム ゴール下 ORB%',
+      'SELF MID ORB%': '自チーム ミドル ORB%',
+      'SELF 3PT ORB%': '自チーム 3P ORB%',
+      'OPP RIM DRB%': '相手 ゴール下 DRB%',
+      'OPP MID DRB%': '相手 ミドル DRB%',
+      'OPP 3PT DRB%': '相手 3P DRB%',
       'zones: mid-range': 'ゾーン: ミドルレンジ',
       'zones: threes': 'ゾーン: 3P',
       'zones: the cuts': 'ゾーン: 区分',
@@ -1448,6 +1456,37 @@
       'every shot attempt in a zone went in, or was missed and rebounded by the shooter’s side (offensive) or the other side (defensive), or had no rebound': 'ゾーン内のシュート試投はすべて、決まった、または外れてシュートを打ったチームがリバウンドを取った（オフェンス）か相手が取った（ディフェンス）か、リバウンドなしのどれかです',
       'the four add up to the attempts': '4つを合わせると試投数になります',
       'the small number is the percentile among the teams, higher is better, and a rate on fewer than 15 attempts is not ranked': '小さい数字はチーム内のパーセンタイルです。高いほど良く、試投15本未満の割合は順位付けしません',
+      /* the club page's team statistics: the season line, the zone tables and the club's ELO (t/seasonline.js, t/team.js,
+         p/sos-chip.js) */
+      'points per 100 possessions': '100ポゼッションあたりの得点',
+      'points allowed per 100 possessions': '100ポゼッションあたりの失点',
+      'ORTG minus DRTG': 'ORTGからDRTGを引いた値',
+      'vs avg': '平均比',
+      'AVG POSSESSION': '平均ポゼッション',
+      'HELIOCENTRISM%': 'ヘリオセントリズム%',
+      'BENCH MINS%': 'ベンチ出場時間%',
+      'possessions per 40 minutes': '40分あたりのポゼッション',
+      'seconds from winning the ball to the last action': 'ボール獲得から最後のプレーまでの秒数',
+      'points per possession': 'ポゼッションあたりの得点',
+      'points per shot, free throws counted': 'フリースローも含めたシュートあたりの得点',
+      'free throws made': 'フリースローの成功',
+      'shots at the rim or from three': 'ゴール下か3Pからのシュート',
+      'baskets that were assisted': 'アシストされたフィールドゴール',
+      'possessions used by the busiest player': '最も多く使った選手が使ったポゼッション',
+      'minutes played by those who did not start': '先発以外の選手の出場時間',
+      'timing every possession…': 'すべてのポゼッションを計測中…',
+      'not recorded for this club': 'このクラブの記録はありません',
+      'for members, with the shot clock analysis': '会員向け(ショットクロック分析とともに)',
+      'no game log in this scope yet': 'この範囲の試合記録はまだありません',
+      'not available on this page': 'このページでは利用できません',
+      'could not be timed': '計測できませんでした',
+      'no possession could be timed': '計測できたポゼッションはありません',
+      'not ranked: the other clubs’ logs are not read here': '順位なし:他クラブの記録はここでは読み込みません',
+      'The season line could not be drawn.': 'シーズン成績を表示できませんでした。',
+      'every zone': 'すべてのゾーン',
+      'what became of them': 'その行方',
+      'orb% and drb% are of the misses somebody rebounded, as the four factors count them': 'ORB%とDRB%は、4ファクターと同じく、誰かがリバウンドしたミスに占める割合です',
+      'the chip is the club’s rank among the clubs, on ten rebounded misses or more': 'チップはクラブ間の順位です(リバウンドされたミスが10本以上の場合)',
       'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)': '試合を探す：近くの試合、または行き先に近い試合（パスポートモード）',
       'Also plays home games at': 'その他のホームアリーナ',
       'Main home arena': 'メインのホームアリーナ',
@@ -1515,6 +1554,39 @@
     },
 
     ctx: {
+      /* the club page's season line (t/seasonline.js; data-i18n-ctx="seasonline" on the card): the strips' ends and the groups */
+      seasonline: {
+        'tempo': 'テンポ',
+        'worse': '悪い',
+        'better': '良い',
+        'level': '平均並み',
+        'efficiency': '効率',
+        'distribution': '分配',
+        'slower': '遅い',
+        'faster': '速い',
+        'fewer': '少ない',
+        'more': '多い',
+        'less': '少ない',
+        'shared': '分散',
+        'one player': '一人に集中'
+      },
+      /* the club page's shot zones and what became of every shot attempt (t/team.js; data-i18n-ctx="zonetable") */
+      zonetable: {
+        'made': '成功'
+      },
+      /* the schedule and ELO chips (p/sos-chip.js; data-i18n-ctx="soschip" on each chip and its sentence) */
+      soschip: {
+        'Schedule': '日程',
+        'Hardest': '最も厳しい',
+        'Hard': '厳しい',
+        'Average': '平均',
+        'Easy': '易しい',
+        'Easiest': '最も易しい',
+        'Elite': 'エリート',
+        'Strong': '強い',
+        'Weak': '弱い',
+        'Weakest': '最も弱い'
+      },
       /* a section's SKIP button (nav.js, a page of the standard and HOME) */
       skip: {
         'Skip': 'スキップ'
@@ -2139,6 +2211,21 @@
     },
 
     patterns: [
+      /* the club page's season line and chips */
+      [/^of (\d+)$/, '($1中)'],
+      [/^fastest of (\d+)$/, '最速($1中)'],
+      [/^highest of (\d+)$/, '最高($1中)'],
+      [/^(\d+)(?:st|nd|rd|th) of (\d+)$/, '$1位($2中)'],
+      [/^(\d+)(?:st|nd|rd|th) hardest of (\d+)$/, '厳しさ$1位($2中)'],
+      [/^spread like (\d+(?:\.\d+)?) equal users$/, '均等な$1人に分散しているのと同じ'],
+      [/^over (\d+) games? with the starters on record$/, '先発が記録された$1試合'],
+      [/^over (\d+) games? of the club’s own logs$/, 'クラブ自身の$1試合の記録から'],
+      [/^the chip is the club’s rank among the (\d+) clubs: green to red where more is better, plain where it is only a style$/,
+        'チップは$1クラブ中の順位です。多いほど良い項目は緑から赤、スタイルにすぎない項目は無色'],
+      [/^ELO is a strength rating built from results: every win takes points from the loser, more for an upset and a big margin\. 1500 is an average team, so (\d+) is (about an average team|(?:slightly |far )?(?:stronger|weaker) than an average team)\. The league runs from (\d+) to (\d+), over (\d+) games\.$/,
+        m => 'ELOは結果から作る強さの指標です。勝つと敗者からポイントを得て、番狂わせや大差ほど多くなります。1500が平均的なチームなので、' + m[1] + 'は' + ({ 'about an average team': '平均的なチーム並み' }[m[2]] || ('平均的なチームより' + (/^slightly /.test(m[2]) ? 'やや' : /^far /.test(m[2]) ? 'かなり' : '') + (/stronger/.test(m[2]) ? '強い' : '弱い'))) + 'です。リーグは' + m[3] + 'から' + m[4] + 'まで(' + m[5] + '試合)。'],
+      [/^Schedule strength so far: the opponents this club has faced averaged an ELO rating of (\d+)\. ELO is a strength rating built from results: 1500 is an average team and higher is stronger, so that is (about the same as an average team|(?:slightly |far )?(?:stronger|weaker) than an average team)\. The league runs from (\d+) \(easiest\) to (\d+) \(hardest\), over (\d+) games\.$/,
+        m => 'これまでの日程の厳しさ:このクラブが対戦した相手のELOの平均は' + m[1] + 'です。ELOは結果から作る強さの指標で、1500が平均的なチーム、高いほど強いので、' + ({ 'about the same as an average team': '平均的なチーム並み' }[m[2]] || ('平均的なチームより' + (/^slightly /.test(m[2]) ? 'やや' : /^far /.test(m[2]) ? 'かなり' : '') + (/stronger/.test(m[2]) ? '強い' : '弱い'))) + 'です。リーグは' + m[3] + '(最も易しい)から' + m[4] + '(最も厳しい)まで(' + m[5] + '試合)。'],
       [/^Q([1-4])$/i, '$1Q'],
       [/^Q([1-4]) (\d{1,2}:\d{2}(?:\.\d)?)$/i, '$1Q $2'],
       [/^OT(\d?)$/i, 'OT$1'],

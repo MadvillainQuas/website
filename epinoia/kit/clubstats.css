@@ -1,0 +1,262 @@
+/* ============================================================================
+   THE CLUB PAGE'S TEAM STATISTICS, DRAWN AS TABLES (t/seasonline.js, t/team.js). Loaded after kit/cards.css, whose card
+   colours it wears: --xc-a / --xc-b are the club's two colours (the site's mint and aqua without them) and --xc-ink the
+   one that is safe as text. Good and bad stay --good and --bad whatever the club wears.
+
+   THE RATINGS  .csr        three tiles on one row: the number, its rank as a pill, the gap to the league's average and
+                            a strip with every club on it (the club's mark, the average a tick); better to the right
+   THE STRIP    .cs-strip   every club a dot on a line; .style has no good end and is one hue
+   THE PILL     .cs-rk      the rank, tinted by the band it falls in (data-b 1 worst .. 5 best); a style is outlined
+   THE TABLE    table.cst   groups (tbody) with a heading row each; the value, the strip, the rank, the gap. Under 560px of
+                            its OWN width (a container query: the rail eats the page) every row is a card
+   THE ZONES    table.czt   the shot zones and the shots' outcomes the same way, with the outcome bars (.cob)
+   ============================================================================ */
+
+.csl{--cs-good:var(--good);--cs-bad:var(--bad);padding-top:2px}
+
+/* ---- the ratings ---- */
+.csr{container:csr / inline-size;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 18px}
+.csr-t{position:relative;min-width:0;padding:14px 15px 11px;border-radius:12px;overflow:hidden;
+  border:1px solid color-mix(in oklch,var(--xc-a,var(--lume)) 30%,var(--rule));
+  background:linear-gradient(180deg,color-mix(in oklch,var(--xc-a,var(--lume)) 9%,var(--panel)),var(--panel))}
+.csr-t::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--xc-a,var(--lume)),var(--xc-b,var(--aqua)))}
+.csr-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.csr-l{font-family:var(--f-micro);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--xc-ink,var(--lume))}
+.csr-v{margin:10px 0 4px;font-family:var(--f-score);font-size:clamp(30px,3.6vw,46px);line-height:.95;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+.csr-s{min-height:2.6em;font-family:var(--f-ui);font-size:11.5px;line-height:1.35;color:var(--ink-3)}
+.csr-t .cs-strip{margin-top:10px}
+
+/* ---- the strip ---- */
+.cs-strip{position:relative;height:20px;margin:0}
+.cs-strip::before{content:"";position:absolute;left:0;right:0;top:50%;height:4px;margin-top:-2px;border-radius:2px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--cs-bad,var(--bad)) 45%,transparent),
+                                    color-mix(in srgb,var(--ink-3) 16%,transparent) 50%,
+                                    color-mix(in srgb,var(--cs-good,var(--good)) 45%,transparent))}
+.cs-strip.style::before{background:linear-gradient(90deg,color-mix(in oklch,var(--xc-b,var(--aqua)) 12%,transparent),
+                                                          color-mix(in oklch,var(--xc-b,var(--aqua)) 55%,transparent))}
+.cs-strip.flat::before{background:var(--rule)}
+.cs-strip i{position:absolute;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
+  background:var(--ink-3);opacity:.5}
+.cs-strip u{position:absolute;top:1px;bottom:1px;width:2px;margin-left:-1px;border-radius:1px;background:var(--ink-2);opacity:.75}
+.cs-strip b{position:absolute;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;z-index:1;
+  background:var(--xc-a,var(--lume));box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--xc-ink,var(--ink))}
+.cs-ends{display:flex;justify-content:space-between;gap:8px;margin-top:2px;font-family:var(--f-micro);font-size:7.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- the rank ---- */
+.cs-rk{--rk:var(--rule-2);display:inline-flex;align-items:baseline;gap:4px;padding:3px 8px 2px;border-radius:999px;white-space:nowrap;
+  font-family:var(--f-micro);font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);
+  border:1px solid var(--rk);background:color-mix(in srgb,var(--rk) 16%,transparent)}
+.cs-rk b{font-family:var(--f-score);font-weight:400;font-size:12px;letter-spacing:.01em;color:var(--ink)}
+.cs-rk[data-b="5"]{--rk:var(--good)}
+.cs-rk[data-b="4"]{--rk:color-mix(in srgb,var(--good) 60%,var(--rule-2))}
+.cs-rk[data-b="3"]{--rk:var(--rule-2)}
+.cs-rk[data-b="2"]{--rk:color-mix(in srgb,var(--bad) 60%,var(--rule-2))}
+.cs-rk[data-b="1"]{--rk:var(--bad)}
+.cs-rk.style{--rk:color-mix(in oklch,var(--xc-b,var(--aqua)) 70%,var(--rule-2));background:transparent}
+.cs-rk.none{background:transparent;border-color:var(--rule);color:var(--ink-3)}
+
+/* ---- the gap to the league's average ---- */
+.cs-gap{font-family:var(--f-micro);font-weight:400;font-size:10px;letter-spacing:.04em;color:var(--ink-2);white-space:nowrap}
+.cs-gap.good{color:var(--good)}
+.cs-gap.bad{color:var(--bad)}
+
+/* ---- the table ---- */
+.cst-wrap{container:cst / inline-size}
+table.cst{width:100%;border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+table.cst thead th{padding:0 12px 8px;text-align:right;white-space:nowrap;font-family:var(--f-micro);font-weight:400;font-size:8px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--rule-2)}
+table.cst thead th.l{text-align:left;padding-left:14px}
+table.cst thead th.lg{text-align:center}
+table.cst .cst-gh th{padding:18px 12px 7px 14px;text-align:left;font-family:var(--f-micro);font-weight:400;font-size:9.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--xc-ink-b,var(--aqua));border-bottom:1px solid var(--rule)}
+table.cst .cst-gh th::before{content:"";display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:2px;vertical-align:0;
+  background:var(--xc-b,var(--aqua))}
+table.cst tr.r > *{padding:11px 12px;border-bottom:1px solid color-mix(in oklch,var(--rule) 70%,transparent);vertical-align:middle}
+table.cst tr.r > th.l{padding-left:14px;text-align:left;font-weight:400;min-width:150px}
+table.cst tr.r:hover > *{background:color-mix(in oklch,var(--xc-a,var(--lume)) 5%,transparent)}
+table.cst tr.r > th.l{box-shadow:inset 3px 0 0 transparent}
+table.cst tr.r:hover > th.l{box-shadow:inset 3px 0 0 var(--xc-a,var(--lume))}
+.cst-l{display:block;font-family:var(--f-micro);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+.cst-sub{display:block;margin-top:4px;font-family:var(--f-ui);font-size:11.5px;line-height:1.35;color:var(--ink-3)}
+.cst-x{display:block;margin-top:3px;font-family:var(--f-ui);font-size:11.5px;line-height:1.35;color:var(--xc-ink,var(--ink-2))}
+.cst-x:empty{display:none}
+table.cst td.v{text-align:right;white-space:nowrap;font-family:var(--f-score);font-size:22px;line-height:1;color:var(--ink)}
+table.cst td.lg{width:36%;min-width:170px}
+table.cst td.rk{text-align:right;white-space:nowrap}
+table.cst td.gap{text-align:right;white-space:nowrap;font-family:var(--f-micro);font-size:10px;color:var(--ink-3)}
+table.cst td.cst-club{color:var(--ink-2)}
+.cst-wait{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+/* the possession: own against opponents, a bar split between them */
+.cst-vs{display:grid;grid-template-columns:auto minmax(80px,1fr) auto;align-items:center;gap:6px 12px}
+.cst-vs-own,.cst-vs-opp{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.cst-vs b{margin-left:5px;font-family:var(--f-score);font-weight:400;font-size:14px;letter-spacing:.01em;color:var(--ink)}
+.cst-vs-own b{color:var(--xc-ink,var(--ink))}
+.cst-vs-bar{position:relative;height:8px;border-radius:4px;overflow:hidden;background:color-mix(in srgb,var(--ink-3) 30%,transparent)}
+.cst-vs-bar::before{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--own,50%);background:var(--xc-a,var(--lume))}
+.cst-vs-bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--ground)}
+.cst-vs-n{grid-column:1 / -1;font-family:var(--f-ui);font-size:11px;color:var(--ink-3)}
+
+/* the explainer card, when the '?' opens it, sits in the row's first cell */
+table.cst tr.r > th.l > .stp-ex{max-width:340px}
+
+/* ---- a narrow table: every row a card ---- */
+@container cst (max-width:560px){
+  table.cst, table.cst tbody, table.cst tr, table.cst th, table.cst td{display:block}
+  table.cst thead{display:none}
+  table.cst .cst-gh th{padding:16px 2px 7px;border-bottom:0}
+  table.cst tr.r{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l v" "lg lg" "rk gap";
+    align-items:center;gap:6px 10px;margin:0 0 8px;padding:11px 12px 10px;border-radius:11px;
+    border:1px solid color-mix(in oklch,var(--xc-a,var(--lume)) 22%,var(--rule));background:var(--panel)}
+  table.cst tr.r > *{padding:0;border:0}
+  table.cst tr.r > th.l{grid-area:l;padding:0;min-width:0}
+  table.cst tr.r > td.v{grid-area:v}
+  table.cst tr.r > td.lg{grid-area:lg;width:auto;min-width:0;padding-top:2px}
+  table.cst tr.r > td.rk{grid-area:rk;text-align:left}
+  table.cst tr.r > td.gap{grid-area:gap}
+  table.cst tr.r > td.cst-club{grid-column:1 / -1}
+  table.cst tr.r:hover > *{background:none}
+}
+
+/* ---- narrow ratings: still one row, the words shorter ---- */
+@container csr (max-width:520px){
+  .csr-t{padding:12px 10px 9px}
+  .csr-v{font-size:clamp(22px,7.5cqi,34px)}
+  .csr-s .csr-d{display:none}
+  .csr-s{min-height:0}
+  .csr-h .cs-rk{padding:2px 6px 1px;font-size:7px}
+  .csr-h .cs-rk b{font-size:10.5px}
+}
+@media (max-width:560px){ .csr{gap:6px} }
+
+/* ============================================================================
+   THE SHOT ZONES AND WHAT BECAME OF EVERY SHOT ATTEMPT (t/team.js zoneStats, reboundZones)
+   ============================================================================ */
+.czt-wrap{container:czt / inline-size;margin:2px 0 0}
+.czt-wrap + .czt-wrap{margin-top:28px}
+.czt-h{margin:0 0 12px;font-family:var(--f-micro);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--xc-ink,var(--lume))}
+table.czt{width:100%;border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+table.czt thead th, table.czt .czt-sh th{padding:0 10px 8px;text-align:right;white-space:nowrap;font-family:var(--f-micro);font-weight:400;
+  font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--rule-2)}
+table.czt .czt-sh th{padding-top:10px}
+table.czt th.l{text-align:left;padding-left:12px}
+table.czt .czt-gh th{padding:18px 10px 8px 12px;text-align:left;font-family:var(--f-micro);font-weight:400;font-size:9.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--xc-ink-b,var(--aqua));border-bottom:1px solid var(--rule)}
+table.czt tbody:first-of-type .czt-gh th{padding-top:12px}
+table.czt .czt-gh th::before{content:"";display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:2px;vertical-align:0;
+  background:var(--xc-b,var(--aqua))}
+table.czt tr.r > *{padding:9px 10px;text-align:right;white-space:nowrap;vertical-align:middle;
+  border-bottom:1px solid color-mix(in oklch,var(--rule) 70%,transparent)}
+table.czt tr.r > th.l{padding-left:12px;text-align:left;white-space:normal;min-width:120px;max-width:210px;font-family:var(--f-micro);font-weight:400;
+  font-size:9.5px;line-height:1.5;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);box-shadow:inset 3px 0 0 transparent}
+table.czt tr.r:hover > *{background:color-mix(in oklch,var(--xc-a,var(--lume)) 5%,transparent)}
+table.czt tr.r:hover > th.l{box-shadow:inset 3px 0 0 var(--xc-a,var(--lume))}
+table.czt tr.r.none > *{opacity:.45}
+table.czt tr.r.tot > *{border-top:1px solid var(--rule-2)}
+table.czt tr.r.tot > th.l{font-weight:700}
+.czt-lb{display:none}
+.czt-v{font-family:var(--f-data,ui-monospace,monospace);font-size:13px;color:var(--ink)}
+.czt-sw{display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:2px;vertical-align:0}
+.czt-sw.z-rim{background:var(--xc-a,var(--lume))}
+.czt-sw.z-mid{background:color-mix(in srgb,var(--xc-a,var(--lume)) 62%,transparent)}
+.czt-sw.z-three{background:color-mix(in srgb,var(--xc-a,var(--lume)) 34%,transparent)}
+
+/* the rank chip (as .cs-rk, smaller), under its number */
+.czt-rk{--rk:var(--rule-2);display:block;width:max-content;min-width:30px;margin:4px 0 0 auto;padding:2px 6px 1px;border-radius:999px;text-align:center;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);
+  border:1px solid var(--rk);background:color-mix(in srgb,var(--rk) 18%,transparent)}
+.czt-rk[data-b="5"]{--rk:var(--good)}
+.czt-rk[data-b="4"]{--rk:color-mix(in srgb,var(--good) 60%,var(--rule-2))}
+.czt-rk[data-b="3"]{--rk:var(--rule-2)}
+.czt-rk[data-b="2"]{--rk:color-mix(in srgb,var(--bad) 60%,var(--rule-2))}
+.czt-rk[data-b="1"]{--rk:var(--bad)}
+.czt-rk.style{--rk:color-mix(in oklch,var(--xc-b,var(--aqua)) 65%,var(--rule-2));background:transparent;color:var(--ink-2)}
+
+/* the share of the club's shots: a bar under the number, against the zone it shoots from most */
+table.czt td.czt-share{min-width:130px}
+table.czt td.czt-share .czt-rk{display:inline-block;margin:0 0 0 7px;vertical-align:1px}
+.czt-bar{display:block;height:5px;margin:7px 0 0 auto;max-width:170px;border-radius:3px;overflow:hidden;
+  background:color-mix(in srgb,var(--ink-3) 14%,transparent)}
+.czt-bar i{display:block;height:100%;margin-left:auto;border-radius:3px;background:var(--xc-a,var(--lume))}
+
+/* what became of them: one bar, the four ends of the attempts. The club's colour is the ball ending up the club's;
+   grey is the other side's; the hatch is a miss nobody rebounded */
+table.czt td.cob-c{width:44%;min-width:200px;text-align:left}
+table.czt .czt-sh th.cob-c{text-align:left}
+.cob-bar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--panel);box-shadow:inset 0 0 0 1px var(--rule)}
+.cob-bar i{display:block;height:100%;flex:none}
+.cob-bar i + i{box-shadow:inset 1px 0 0 var(--panel)}
+.cob .m, .cob .kd{background:var(--xc-a,var(--lume))}
+.cob .ko{background:color-mix(in srgb,var(--xc-a,var(--lume)) 50%,transparent)}
+.cob .against .m, .cob .cob-g.against .cob-key .m{background:color-mix(in srgb,var(--ink-2) 72%,var(--panel))}
+.cob .ld, .cob .lo{background:color-mix(in srgb,var(--ink-3) 42%,var(--panel))}
+.cob .n{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--ink-3) 38%,transparent) 0 2px,transparent 2px 5px)}
+.cob-key{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3)}
+.cob-key span{display:inline-flex;align-items:center;gap:6px}
+.cob-key i{display:inline-block;width:12px;height:9px;border-radius:2px}
+.cob-key i.n{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink-3) 40%,transparent)}
+
+.czt-note{margin:12px 0 0;max-width:96ch;font-family:var(--f-ui);font-size:11.5px;line-height:1.5;color:var(--ink-3)}
+
+/* ---- a narrow table: every row a card, the figures three to a line with their names ---- */
+@container czt (max-width:600px){
+  table.czt, table.czt tbody, table.czt tr, table.czt th, table.czt td{display:block}
+  table.czt thead, table.czt .czt-sh{display:none}
+  table.czt .czt-gh th{padding:16px 2px 8px;border-bottom:0}
+  table.czt tr.r{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 10px;margin:0 0 8px;padding:11px 12px 12px;
+    border-radius:11px;border:1px solid color-mix(in oklch,var(--xc-a,var(--lume)) 22%,var(--rule));background:var(--panel)}
+  table.czt tr.r > *{padding:0;border:0;text-align:left;white-space:normal}
+  table.czt tr.r > th.l{grid-column:1 / -1;padding:0;box-shadow:none}
+  table.czt tr.r:hover > *{background:none}
+  table.czt tr.r.tot > *{border-top:0}
+  table.czt td.czt-share, table.czt td.cob-c{grid-column:1 / -1;min-width:0;width:auto}
+  table.czt:not(.cob-t) tr.r{grid-template-columns:repeat(4,minmax(0,1fr))}
+  table.cob-t td.cob-c{order:5}                  /* the numbers first, then the bar they add up to */
+  .czt-lb{display:block;margin:0 0 3px;font-family:var(--f-micro);font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .czt-bar{margin-left:0;max-width:none}
+  .czt-bar i{margin-left:0}
+  .czt-rk{margin:4px 0 0}
+  table.czt td.czt-share .czt-rk{margin:0 0 0 6px}
+}
+
+/* ============================================================================
+   THE EVENTS CARD (sitpanel.js, drawn inside the club page's events card): the same table dress. Scoped to .xc, so the
+   player page's own events section keeps its look.
+   ============================================================================ */
+.xc .sp-head{padding-top:2px}
+.xc .sp-scroll{border:1px solid color-mix(in oklch,var(--xc-a,var(--lume)) 22%,var(--rule));border-radius:12px;background:var(--panel)}
+/* the card is narrower than the page's own events section: the table takes its content's width, and still pans on a phone */
+.xc .sp-tbl.team{min-width:0}
+.xc .sp-tbl thead th{padding:11px 10px 9px;letter-spacing:.12em;border-bottom:1px solid var(--rule-2);
+  background:color-mix(in oklch,var(--xc-a,var(--lume)) 6%,var(--panel))}
+.xc .sp-tbl thead th:first-child{padding-left:14px}
+.xc .sp-tbl td, .xc .sp-tbl tbody th.sp-k{padding:10px 6px;border-bottom:1px solid color-mix(in oklch,var(--rule) 70%,transparent)}
+.xc .sp-tbl thead th{padding-left:6px;padding-right:6px}
+.xc .sp-tbl td:last-child, .xc .sp-tbl thead th:last-child{padding-right:12px}
+.xc .sp-diet{min-width:118px}
+.xc .sp-tbl tbody th.sp-k{padding-left:14px;box-shadow:inset 3px 0 0 transparent}
+.xc .sp-tbl tbody tr:last-child > *{border-bottom:0}
+.xc .sp-row:hover > th.sp-k{box-shadow:inset 3px 0 0 var(--xc-a,var(--lume))}
+.xc .sp-row.ref > *{background-color:color-mix(in oklch,var(--xc-a,var(--lume)) 7%,var(--panel))}
+.xc .sp-row.ref > th.sp-k{box-shadow:inset 3px 0 0 var(--xc-a,var(--lume))}
+.xc .sp-pct{min-width:26px;padding:2px 6px 1px;border-radius:999px}
+.xc .sp-bar{height:8px;gap:1px;border-radius:4px;overflow:hidden}
+.xc .sp-bar i{border-radius:0}
+.xc .sp-tbl tr.sp-detail > td{background:color-mix(in oklch,var(--xc-a,var(--lume)) 4%,var(--panel))}
+.xc .sp-tile{border-radius:9px}
+.xc .sp-ast{margin-top:22px;padding-top:0;border-top:0}
+.xc .sp-sub{margin:0 0 10px;font-size:10px;letter-spacing:.14em;color:var(--xc-ink,var(--lume))}
+.xc .sp-aline{margin:0 0 8px;padding:12px 14px;border:1px solid color-mix(in oklch,var(--xc-a,var(--lume)) 18%,var(--rule));
+  border-radius:11px;background:var(--panel)}
+.xc .sp-abar .sp-bar{height:12px}
+.xc .sp-ztbl{max-width:560px;border-collapse:separate;border-spacing:0;border:1px solid color-mix(in oklch,var(--xc-a,var(--lume)) 18%,var(--rule));
+  border-radius:12px;overflow:hidden;background:var(--panel)}
+.xc .sp-ztbl th, .xc .sp-ztbl td{padding:9px 12px}
+.xc .sp-ztbl thead th{background:color-mix(in oklch,var(--xc-a,var(--lume)) 6%,var(--panel))}
+.xc .sp-ztbl tbody tr:last-child > *{border-bottom:0}
+@media (max-width:999px){ .xc .sp-tbl .sp-k{background-color:var(--panel)} }
+/* the outcome table has room: its rank sits beside its rate */
+table.cob-t .czt-rk{display:inline-block;margin:0 0 0 8px;vertical-align:1px}
+@container czt (max-width:600px){ table.cob-t .czt-rk{margin:0 0 0 6px} }

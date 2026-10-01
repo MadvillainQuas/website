@@ -352,7 +352,11 @@
              orp: pct(own.o, own.a),           // its own offensive rebounds, per attempt of its own
              odp: pct(own.d, own.a),           // the other side's defensive rebounds off them
              drp: pct(against.d, against.a),   // its own defensive rebounds, per attempt against it
-             oop: pct(against.o, against.a) }; // the other side's offensive rebounds off them
+             oop: pct(against.o, against.a),   // the other side's offensive rebounds off them
+             /* ORB% AND DRB% BY ZONE, as the four factors count them: of the misses somebody rebounded, the share
+                this club took (a miss with no rebound, a foul's free throws or a turnover, is nobody's) */
+             orb: pct(own.o, own.o + own.d),
+             drb: pct(against.d, against.d + against.o) };
   }
 
   async function attachZoneStats(S, D) {
@@ -390,6 +394,7 @@
           const r = rebRow(rb, z);
           ['a', 'm', 'o', 'd'].forEach(f => { tm['rb_' + z + '_' + f] = r.own[f]; tm['rb_' + z + '_g' + f] = r.against[f]; });
           tm['rb_' + z + '_orp'] = r.orp; tm['rb_' + z + '_odp'] = r.odp; tm['rb_' + z + '_drp'] = r.drp; tm['rb_' + z + '_oop'] = r.oop;
+          tm['rb_' + z + '_orb'] = r.orb; tm['rb_' + z + '_drb'] = r.drb;
           tm['rb_' + z + '_fg'] = r.own.a ? 100 * r.own.m / r.own.a : null;
           tm['rb_' + z + '_gfg'] = r.against.a ? 100 * r.against.m / r.against.a : null;
         });
