@@ -171,7 +171,8 @@ console.log('\nthe Front office path (team.js, t/index.html)');
 const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
 {
   const fn = (src, name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = src.indexOf('{', i); for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(i, j + 1); };
-  const fo1 = fn(TEAMJS, 'frontOffice');
+  /* the Front office reads through depthInput (shared with the profile's depth chart) and floorMinutes (the club's lineups) */
+  const fo1 = fn(TEAMJS, 'frontOffice') + fn(TEAMJS, 'depthInput') + fn(TEAMJS, 'floorMinutes');
   ok('frontOffice() calls seasonGames, never seasonLogs and never D.events', /seasonGames\(team\)/.test(fo1) && !/seasonLogs\(/.test(fo1) && !/\.events\(/.test(fo1));
   ok('...nor do the win model\'s loaders', !/\.events\(|seasonLogs\(/.test(fn(TEAMJS, 'winModelFiles') + fn(TEAMJS, 'winModel')));
   const SEASONLOGS = `function seasonLogs(team) {
@@ -197,7 +198,7 @@ const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
      /status=in\.\(scheduled,live\)` \+\s*`&select=id,home_team_id,away_team_id,tipoff_at` \+ inSeason\(\)/.test(TEAMJS));
   ok('F3 mounted with the Worker, RECALCULATE refreshing the fo file', /FM\.mount\(host, FM\.view\(input\), \{ input, worker: FM\.makeWorker\(\)/.test(TEAMJS) && /WF\.refresh\(Object\.assign\(\{ scope: 'fo' \}, unit\)/.test(TEAMJS));
   ok('the [data-slot] handler is wired on #wmodel too', /hostM\.addEventListener\('click', onSlot\)/.test(TEAMJS) && /hostD\.addEventListener\('click', onSlot\)/.test(TEAMJS));
-  ok('depth.gm gets gmModel; the depth chart is filled from the pos file where it arrives', /model: fo && FM \? FM\.gmModel\(fo, team\.id\)/.test(TEAMJS) && /X\.slotChart\(Object\.assign\(\{ pos \}, chartIn\)\)/.test(TEAMJS));
+  ok('depth.gm gets gmModel; the depth chart is filled from the pos file where it arrives', /model: fo && FM \? FM\.gmModel\(fo, team\.id\)/.test(TEAMJS) && /X\.slotChart\(Object\.assign\(\{ pos, gameMin \}, chartIn\)\)/.test(TEAMJS));
   ok('team.js names none of I1\'s tables beside what it read before (no game_features, lineup_stints from the Front office)', !/game_features/.test(TEAMJS));
   const fosec = HTML.slice(HTML.indexOf('id="fosec"'), HTML.indexOf('id="foshare"'));
   ok('t/index.html: F3 in #fosec after the GM\'s view, its header and note as §12', fosec.indexOf('id="gmview"') < fosec.indexOf('<span class="idx">F3</span>') &&

@@ -189,7 +189,7 @@ grant execute on function public.analytics_issue_prune(int) to service_role;
 
 -- --------------------------------------------------------------------------- A.2: RECALCULATE
 create table if not exists public.analytics_refresh (
-  league_id uuid not null references public.leagues on delete cascade,
+  league_id uuid not null,  -- no foreign key: with one on each column the API reads this as a seasons-leagues link (0212)
   season_id uuid not null references public.seasons on delete cascade,
   started_at timestamptz,
   finished_at timestamptz,

@@ -86,6 +86,19 @@ await q(`insert into games (status, competition_id, home_team_id, away_team_id, 
 
 await db.exec(sql);
 ok('the migration loads on a fresh Postgres (' + MIG + ')', true);
+const UNLINK = readdirSync(path.join(here, '..', 'migrations')).find(f => /^\d{4}_analytics_refresh_unlink\.sql$/.test(f));
+await db.exec(readFileSync(path.join(here, '..', 'migrations', UNLINK), 'utf8').replace(/^notify .*$/m, ''));
+ok('...and the unlink after it (' + UNLINK + ')', true);
+
+console.log('\nno new route between tables for the API');
+// A table whose primary key is made of foreign keys to two tables is read by the API as a many-to-many link between them,
+// and every plain embed between those two (seasons(leagues(...)) on HOME's fixtures) then fails as ambiguous - PGRST201.
+const links = await q(`
+  select c.conrelid::regclass::text as tbl, count(distinct f.confrelid) as targets
+    from pg_constraint c join pg_constraint f on f.conrelid = c.conrelid and f.contype = 'f' and f.conkey <@ c.conkey
+   where c.contype = 'p' and c.connamespace = 'public'::regnamespace
+   group by c.conrelid having count(distinct f.confrelid) > 1`);
+ok('no What wins table is keyed on foreign keys to two tables (the API would read it as a link)', links.length === 0, links);
 
 console.log('\nshut tables, a private bucket');
 const priv_ = async (role, tbl, p) => (await one(`select has_table_privilege('${role}', '${tbl}', '${p}') as ok`)).ok;

@@ -166,12 +166,67 @@ console.log('\nthe depth chart by the floor');
   const cs = X.slotChart(Object.assign({ pos }, base));
   ok('each position led by the player with the most minutes at it (the 1.41 at the 2)', ['a', 'b', 'c', 'd', 'e'].every((id, i) => cs.slots[i].players[0].id === id));
   ok('...a player at two positions stands at both, each with its share', cs.slots[0].players.some(p => p.id === 'b' && Math.abs(p.share - 60 / 260) < 1e-12) && cs.slots[1].players[0].id === 'b');
-  ok('...minutes a game at the position', Math.abs(cs.slots[0].players[0].perGame - 20) < 1e-12);
+  ok('...minutes a game at the position: his share of a 40-minute game', Math.abs(cs.slots[0].players[0].perGame - Math.round(cs.slots[0].players[0].share * 400) / 10) < 1e-9);
+  ok('...every position adds up to the game (40, or the league\'s own length)', cs.slots.every(s => Math.abs(s.total - 40) < 1e-9) &&
+     X.slotChart(Object.assign({ pos, gameMin: 48 }, base)).slots.every(s => Math.abs(s.total - 48) < 1e-9));
   ok('...a player with no minutes in the file is a reserve; the missing are out', X.slotChart(Object.assign({ pos, out: new Set(['a']) }, base)).reserves.some(p => p.id === 'a' && p.role === 'out') && cs.reserves.some(p => p.id === 'g'));
   ok('no stints: null (the page draws the blend)', X.slotChart(Object.assign({ pos: { players: [] } }, base)) === null && X.slotChart(base) === null);
   const h = X.chartHTML(cs);
-  ok('drawn with share bars, five columns, and its source said', /dc-share/.test(h) && (h.match(/class="dc-col"/g) || []).length === 5 && /every five on the floor ranked point guard to centre/.test(h) && /20\.0 min a game · 77%/.test(h));
+  ok('drawn with share bars, five columns, and its source said', /dc-share/.test(h) && (h.match(/class="dc-col"/g) || []).length === 5 && /every five on the floor ranked point guard to centre/.test(h) && /30\.8 min a game · 77%/.test(h) && /40\.0 \/ 40 min/.test(h));
   ok('...positionOf, projectedMinutes and chart are unchanged (the builder relies on positionOf)', X.positionOf({}, null) === 3 && X.projectedMinutes({ mpg: 20 }, { mpg: 30 }, false) === 26);
+}
+
+
+console.log('\nthe depth chart that adds up (before the stints are built)');
+{
+  const mk = (id, pos, proj, st) => ({ id, name: id, num: id, pos, proj, out: false, recentStarts: st ? 4 : 0, role: 'rotation' });
+  const ps = [mk('pg1', 1.3, 23, 1), mk('pg2', 1.4, 10), mk('g2', 1.9, 21.9, 1), mk('w1', 2.8, 18.9, 1), mk('w2', 2.6, 19.3), mk('w3', 3.0, 18.1),
+              mk('f1', 3.9, 24.7, 1), mk('f2', 3.6, 16.8), mk('f3', 3.8, 16.4), mk('c1', 4.6, 19.2, 1), mk('c2', 4.4, 14.4)];
+  const hurt = Object.assign(mk('x', 2, 0), { out: true, role: 'out' });
+  const base = { slots: [{ players: ps }], reserves: [hurt], starters: ps.filter(p => p.recentStarts), games: 4, out: [hurt], total: 12 };
+  const c = X.splitChart(base, 40);
+  ok('every position adds up to exactly 40 minutes', c.slots.every(s => Math.abs(s.total - 40) < 1e-9 &&
+     Math.abs(s.players.reduce((a, p) => a + p.slotMin, 0) - 40) < 1e-9), c.slots.map(s => s.total).join(' '));
+  ok('...and the club to 200, each player\'s positions adding up to his own game', (() => {
+    const t = new Map(); c.slots.forEach(s => s.players.forEach(p => t.set(p.id, (t.get(p.id) || 0) + p.slotMin)));
+    return Math.abs([...t.values()].reduce((a, b) => a + b, 0) - 200) < 1e-9 && [...t.values()].every(v => v <= 40); })());
+  ok('...a player whose minutes cross a cut stands at both positions, the next one up', c.slots[0].players.some(p => p.id === 'g2') && c.slots[1].players.some(p => p.id === 'g2'));
+  ok('...the smallest leads the point guards, the biggest the centres', c.slots[0].players[0].id === 'pg1' && c.slots[4].players[0].id === 'c1');
+  ok('...the missing are not given minutes', c.reserves.some(p => p.id === 'x' && p.role === 'out') && c.slots.every(s => !s.players.some(p => p.id === 'x')));
+  ok('...a 48-minute league adds up to 48', X.splitChart(base, 48).slots.every(s => Math.abs(s.total - 48) < 1e-9));
+  ok('...nobody past the game: a short rotation is capped at 40 each', (() => {
+    const six = [mk('a', 1, 40), mk('b', 2, 40), mk('c', 3, 40), mk('d', 4, 40), mk('e', 5, 40), mk('f', 3, 30)];
+    const k = X.splitChart({ slots: [{ players: six }], reserves: [], starters: [], games: 4, out: [], total: 6 }, 40);
+    const t = new Map(); k.slots.forEach(s => s.players.forEach(p => t.set(p.id, (t.get(p.id) || 0) + p.slotMin)));
+    return [...t.values()].every(v => v <= 40) && k.slots.every(s => Math.abs(s.total - 40) < 1e-9); })());
+  ok('the game\'s length from the rules: 4 x 10 is 40, 4 x 12 is 48, nothing is 40', X.gameMinutes({ periods: 4, period_ms: 600000 }) === 40 &&
+     X.gameMinutes({ periods: 4, period_ms: 720000 }) === 48 && X.gameMinutes({}) === 40);
+  const h = X.chartHTML(c);
+  ok('drawn with each position\'s total and the rule said', (h.match(/40\.0 \/ 40 min/g) || []).length === 5 && /each position adds up to the 40-minute game/.test(h) && /of his 21\.\d/.test(h));
+}
+
+
+console.log('\nthe depth chart from the club\'s own lineups (no model file)');
+{
+  const val = { a: 1.4, b: 1.6, c: 3, d: 4, e: 5, f: 2.5, x: 1 };
+  const five = ids => ids;
+  const st = [
+    { game_id: 'g1', team_idx: 0, player_ids: five(['e', 'b', 'a', 'd', 'c']), dur: 600000 },   // a at the 1, b at the 2
+    { game_id: 'g1', team_idx: 0, player_ids: five(['e', 'b', 'f', 'd', 'c']), dur: 300000 },   // b at the 1, f at the 2
+    { game_id: 'g1', team_idx: 1, player_ids: five(['x', 'b', 'f', 'd', 'c']), dur: 900000 },   // the other side: not the club's
+    { game_id: 'g2', team_idx: 1, player_ids: five(['a', 'b', 'c', 'd', 'e']), dur: 600000 },   // the club was the away side in g2
+    { game_id: 'g2', team_idx: 1, player_ids: five(['a', 'b', 'c', 'd']), dur: 600000 }          // four known: left out
+  ];
+  const fp = X.floorPos(st, { g1: 0, g2: 1 }, id => val[id]);
+  const m = id => fp.players.find(p => p.id === id).min;
+  ok('each five ranked point guard to centre: the 1.4 at the 1, the 1.6 at the 2 while they share the floor',
+     m('a')[0] === 20 && m('b')[1] === 20 && m('b')[0] === 5 && m('f')[1] === 5, JSON.stringify(fp.players));
+  ok('...only the club\'s own side, only fives of five known players', !fp.players.some(p => p.id === 'x') && fp.games === 2 && Math.abs(fp.min - 25) < 1e-9);
+  const cs = X.slotChart(Object.assign({ pos: fp, gameMin: 40 }, { roster: ['a', 'b', 'c', 'd', 'e', 'f'].map(id => ({ id, name: id })), season: new Map(), recent: new Map() }));
+  ok('...and the chart drawn from it adds up to the game at every position', cs && cs.slots.every(s => Math.abs(s.total - 40) < 1e-9), cs && cs.slots.map(s => s.total).join(' '));
+  ok('no stints: null', X.floorPos([], {}, () => 1) === null);
+  const h = X.chartHTML(cs, { static: true });
+  ok('the profile\'s copy: positions are headings, not buttons, and no league-view hint', !/data-slot/.test(h) && !/dc-hint/.test(h) && /dc-hs/.test(h));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
