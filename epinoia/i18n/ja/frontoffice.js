@@ -261,7 +261,7 @@
       [/^Simulator check: expected ([−+\-]?[\d.,]+), at the game’s own rates ([−+\-]?[\d.,]+)$/, (m) => 'シミュレーター確認：期待値 ' + m[1] + '、その試合の実際の率で ' + m[2]],
       [/^([\d.,]+) min a game · (\d+)%$/, (m) => '1試合' + m[1] + '分 · ' + m[2] + '%'],
       [/^(\d+) min · (\d+)%$/, (m) => m[1] + '分 · ' + m[2] + '%'],
-      [/^each position filled from the minutes played at it this season(?: \((\d+) games?\))?: every five on the floor ranked point guard to centre by box-score position$/, (m) => '各ポジションは今季そのポジションでの出場時間から' + (m[1] ? '（' + m[1] + '試合）' : '') + '：コート上の5人をボックススコアのポジションでポイントガードからセンターまで順位付け'],
+      [/^each position filled from the minutes played at it this season, a (\d+)-minute game at each(?: \((\d+) games?\))?: every five on the floor ranked point guard to centre by box-score position$/, (m) => '各ポジションは今季そのポジションでの出場時間から（各' + m[1] + '分）' + (m[2] ? '（' + m[2] + '試合）' : '') + '：コート上の5人をボックススコアのポジションでポイントガードからセンターまで順位付け'],
       [/^every rank is among the (\d+) clubs of this competition, this season · a style is a choice, not a grade( · ordered by what each is worth in wins \(the win model, F3\))?$/, (m) => '順位はすべて今季この大会の' + m[1] + 'クラブ中 · スタイルは選択であり評価ではない' + (m[2] ? ' · 勝利数での価値順（勝利モデル、F3）' : '')],
       [/^(Guards|Wings|Bigs) · (.+)$/, (m, T) => ({ guards: 'ガード', wings: 'ウイング', bigs: 'ビッグマン', Guards: 'ガード', Wings: 'ウイング', Bigs: 'ビッグマン' })[m[1]] + ' · ' + T(m[2])],
       [/^(.+) · (offence|defence)$/, (m, T) => T(m[1]) + ' · ' + ({ offence: '攻撃', defence: '守備' })[m[2]]],

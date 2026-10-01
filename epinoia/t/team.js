@@ -146,7 +146,7 @@ async function chooseSeason(team, lg) {
   if (!want) return oops('No team specified.');
   try {
     const key = isUuid ? 'id' : 'slug';
-    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug,country,logo_path,colour_a)&limit=1`);
+    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug,country,logo_path,colour_a,periods:rules->periods,period_ms:rules->period_ms)&limit=1`);
     if (!ts.length) return oops('Team not found.');
     const team = ts[0];
     const colour = team.colour || '#93f2bf';
@@ -654,6 +654,10 @@ async function frontOffice(team) {
        his whole season would count at each (POS2-1) */
     const cLeague = c;
     const link = p => '../p/?p=' + encodeURIComponent(p.id);
+    /* WHAT IS DRAWN ADDS UP: every position one game long (the league's own length), a player's minutes split where
+       they cross from one position to the next */
+    const gameMin = X.gameMinutes ? X.gameMinutes(team.leagues || {}) : 40;
+    if (X.splitChart) c = X.splitChart(c, gameMin);
     hostD.innerHTML = X.chartHTML(c, { link });
     /* EACH POSITION OPENS ITS LEAGUE VIEW (position.js): every club put through the same chart, read the first time
        a position is pressed and kept - the clubs' rosters for heights and listed positions, and their names and colours */
@@ -687,7 +691,7 @@ async function frontOffice(team) {
     const fo = M && M.fo && M.fo.ok ? M.fo.data : null, club = M && M.club && M.club.ok ? M.club.data : null;
     const pos = (club && club.pos) || (fo && fo.pos && fo.pos[team.id]) || null;
     if (pos && X.slotChart) {
-      const cs = X.slotChart(Object.assign({ pos }, chartIn));
+      const cs = X.slotChart(Object.assign({ pos, gameMin }, chartIn));
       if (cs) {
         c = cs;
         hostD.innerHTML = X.chartHTML(c, { link });
