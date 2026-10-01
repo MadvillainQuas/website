@@ -84,17 +84,19 @@
   <div id="homeApp"></div>
 
   <!-- daily fixtures ------------------------------------------------------
-       Live games first, then each league's next game, then the rest by time
+       LIVE | UPCOMING | RESULTS, eight cards and SHOW MORE under them
        (daily.js). The skeleton holds the rail's height until the cards land. -->
   <section class="sec" id="fixtures" aria-labelledby="hmFixturesH">
     <div class="sec-h"><span class="idx">01</span><h2 id="hmFixturesH">Daily fixtures</h2>
-      <!-- UPCOMING (what was always here) or RESULTS (the most recent finals): daily.js -->
-      <div class="hm-seg" id="fxSeg" role="group" aria-label="Fixtures or results">
-        <button type="button" data-fx="up" aria-pressed="true">Upcoming</button>
-        <button type="button" data-fx="res" aria-pressed="false">Results</button>
+      <!-- LIVE (only while something is live, and then the tab a visit opens on), UPCOMING, RESULTS: daily.js -->
+      <div class="hm-seg" id="fxSeg" role="tablist" aria-label="Live, upcoming or results">
+        <button type="button" role="tab" id="fxTabLive" data-fx="live" aria-selected="false" aria-controls="homeDaily" tabindex="-1" hidden><i class="fx-dot" aria-hidden="true"></i>Live <b class="fx-n">0</b></button>
+        <button type="button" role="tab" id="fxTabUp" data-fx="up" aria-selected="true" aria-controls="homeDaily" tabindex="0">Upcoming</button>
+        <button type="button" role="tab" id="fxTabRes" data-fx="res" aria-selected="false" aria-controls="homeDaily" tabindex="-1">Results</button>
       </div>
+      <span class="fx-say" id="fxSay" aria-live="polite"></span>
       <a class="showall" href="../games/">all fixtures →</a></div>
-    <div class="hm-mount" id="homeDaily" aria-busy="true">
+    <div class="hm-mount" id="homeDaily" role="tabpanel" aria-labelledby="fxTabUp" aria-busy="true">
       <div class="hm-skel fx" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     </div>
   </section>

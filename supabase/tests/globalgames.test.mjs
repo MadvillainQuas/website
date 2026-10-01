@@ -533,7 +533,8 @@ section('pages');
         STALE_MS: 7200000,
         leagues: async () => [], live: async () => [], nextFor: async () => null, liveState: async () => ({}),
         upcoming: async () => { if (fail) throw new Error('offline'); return []; },
-        pickDaily: () => []
+        pickDaily: () => [], pickLive: G.pickLive, pickUpcoming: G.pickUpcoming, pickResults: G.pickResults,
+        dailyTab: G.dailyTab, moreStep: G.moreStep
       },
       document: { visibilityState: 'visible', createElement: () => mk(),
         addEventListener: (t, f) => { (docListeners[t] = docListeners[t] || []).push(f); } },
@@ -623,7 +624,7 @@ section('daily fixtures: what the reader follows comes first');
   const dj = rd('epinoia', 'home', 'daily.js');
   ok('the home rail asks follow.js (never access.js), hands the lists to pickDaily, and re-orders when a follow is saved',
      /F\.load\(\)/.test(dj) && /fav_league_ids/.test(dj) && /fav_team_ids/.test(dj) && !/EpinoiaAccess/.test(dj)
-     && /G\.pickDaily\(live, up, nexts, now, N, fol\)/.test(dj) && /addEventListener\('epinoia:follows', \(\) => schedule\(0\)\)/.test(dj)
+     && /G\.pickUpcoming\(liveRaw, ups, nexts, now, N, limit\.up \+ 1, fol\)/.test(dj) && /G\.pickLive\(liveRaw, now, fol\)/.test(dj) && /addEventListener\('epinoia:follows', \(\) => schedule\(0\)\)/.test(dj)
      && /<script src="\.\.\/follow\.js\?v=\d+" defer><\/script>\s*<script src="front\.js/.test(rd('epinoia', 'home', 'index.html')));
 }
 

@@ -1581,7 +1581,12 @@
       'streaky': 'ムラあり',
       'reading his games': '試合を読み込み中',
       'squad average': 'チーム平均',
-      'personalisation': 'パーソナライズ'
+      'personalisation': 'パーソナライズ',
+      'Live, upcoming or results': '試合中・今後の試合・結果',
+      'Show less': '表示を減らす',
+      'Nothing is live just now, so here is what is next.': '現在試合中の試合はありません。今後の試合を表示しています。',
+      'Nothing is live just now.': '現在試合中の試合はありません。',
+      'No games live': '試合中の試合はありません'
     },
 
     ctx: {
@@ -2171,7 +2176,8 @@
       'result': '{n}試合', 'results': '{n}試合', 'upcoming': '今後{n}試合',
       'lineup': '{n}ラインナップ', 'season': '{n}シーズン', 'seasons': '{n}シーズン', 'readings': '{n}回の読み取り',
       'mpg': '平均{n}分', 'gp': '{n}試合',
-      'country': '{n}か国', 'countries': '{n}か国', 'article': '{n}件の記事'
+      'country': '{n}か国', 'countries': '{n}か国', 'article': '{n}件の記事',
+      'live': '{n}試合が試合中'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */
