@@ -27,7 +27,8 @@ const INFO = {
     'More is better. It rewards minutes and role as well as skill, so read it beside usage and TS%.', false,
     { title: 'Points per game', what: 'The points the club scores in an average game.', read: 'More is better. Read it with pace: a fast club scores more without being better.' }),
   ts: e('True shooting %', 'How efficiently he scores, counting twos, threes and free throws together.', 'points ÷ (2 × (FGA + 0.44 × FTA))',
-    'Higher is better. Around 55% is a typical player; 60% and up is excellent.'),
+    'Higher is better. Around 55% is a typical player; 60% and up is excellent.',
+    false, { what: 'How efficiently the club scores, counting twos, threes and free throws together.', read: 'Higher is better. Around 55% is typical for a club.' }),
   efg: e('Effective FG %', 'Field-goal accuracy with a three counted as worth one and a half twos.', '(FGM + 0.5 × 3PM) ÷ FGA',
     'Higher is better. Around 50% is typical; free throws are left out (TS% includes them).'),
   usg: e('Usage', 'The share of his team’s possessions he ends with a shot, a free-throw trip or a turnover while he is on the floor.', '(his FGA + 0.44 × FTA + TOV) ÷ team possessions while on court',
@@ -58,7 +59,8 @@ const INFO = {
   p3_pct: e('3-point %', 'Accuracy from three.', '3PM ÷ 3PA', 'Higher is better; read it with volume. About 33–36% is typical, 40% is elite.'),
   p3_a100: e('3P attempts / 100', 'How often he shoots threes, per 100 possessions.', '3PA ÷ possessions on court × 100', 'A volume, not a quality: how much of his game is beyond the arc.'),
   ev_p3_astp: e('3P assisted %', 'Of his threes made, how many came off a pass.', 'assisted 3PM ÷ 3PM', 'Ranked the other way up: fewer assisted means he makes threes he creates himself.', true),
-  ft_pct: e('Free-throw %', 'Accuracy from the line.', 'FTM ÷ FTA', 'Higher is better. About 70–75% is typical; 85%+ is a very good shooter.'),
+  ft_pct: e('Free-throw %', 'Accuracy from the line.', 'FTM ÷ FTA', 'Higher is better. About 70–75% is typical; 85%+ is a very good shooter.',
+    false, { read: 'Higher is better. About 70–75% is typical for a club.' }),
   ft_a100: e('FT attempts / 100', 'How often he is at the line, per 100 possessions.', 'FTA ÷ possessions on court × 100', 'A volume: how often he draws fouls or is fouled.'),
 
   /* ---- playmaking ---- */
@@ -124,6 +126,13 @@ const INFO = {
   drtg: e('Defensive rating', 'Points allowed per 100 possessions.', 'opponent points ÷ opponent possessions × 100', 'Lower is better.', true),
   net: e('Net rating', 'Points scored minus points allowed per 100 possessions.', 'ORTG − DRTG', 'Higher is better. The best single number for a club’s strength.'),
   pace: e('Pace', 'How fast the club plays: possessions per 40 minutes, both sides averaged.', '(own + opponent possessions) ÷ 2 per 40 minutes', 'Neither good nor bad: it is a style.'),
+  /* the club page's season line (t/seasonline.js) */
+  poss_time: e('Average possession', 'How long the club keeps the ball: game-clock seconds from winning it to the possession’s last action, from its own game logs (the WOWY page’s shot clock).', 'timed seconds ÷ timed possessions', 'Neither good nor bad: a style. Shorter is quicker offence; the opponents’ figure beside it is how long the defence keeps them out.'),
+  ppp: e('Points per possession', 'Points scored per possession.', 'points ÷ possessions (ORTG ÷ 100)', 'Higher is better. About 1.00 to 1.10 is typical.'),
+  morey: e('MOREY%', 'The share of the club’s shots taken at the rim or from three, the two most efficient places to shoot from.', '(rim FGA + 3PA) ÷ FGA', 'A style: higher is a more modern shot diet. Only where a league’s box score splits the twos by zone.'),
+  vs_start: e('Against the starters', 'The club’s net rating against the other side’s starters, with its ORTG and DRTG beside it. By default (regular starters): the minutes the other side had 4+ of its regular starters on (players with N games started or more, set on the card), or 4+ of that game’s starting five. Basic: all five of that game’s starters on.', 'NET over those minutes (lineupevents.js)', 'Higher is better: how it holds up against the other side’s best players.'),
+  vs_bench: e('Against the bench', 'The club’s net rating against the other side’s bench. By default every minute that is not against the starters; basic: the minutes the other side had two of that game’s starters on, or fewer.', 'NET over those minutes (lineupevents.js)', 'Higher is better: whether it beats the second units.'),
+  bench_min_pct: e('Bench minutes %', 'The share of the club’s minutes played by those who did not start.', 'non-starters’ minutes ÷ all minutes, over the games with their starters on record', 'A style: high is a deep rotation, low leans on the starting five.'),
   reb_pg: e('Rebounds per game', 'Rebounds the club collects in an average game.', 'rebounds ÷ games', 'More is better, though it also follows how many misses there were.'),
   ast_pg: e('Assists per game', 'Assists the club records in an average game.', 'assists ÷ games', 'More is better: ball movement.'),
   stl_pg: e('Steals per game', 'Steals per game.', 'steals ÷ games', 'More is better.'),
@@ -140,11 +149,20 @@ const INFO = {
   dff_efg: e('Allowed eFG%', 'The effective FG% opponents shoot against the club.', 'opponent (FGM + 0.5 × 3PM) ÷ FGA', 'Lower is better.', true),
   dff_tov: e('Forced turnover%', 'How often opponents’ possessions end in a turnover.', 'opponent TOV ÷ (FGA + 0.44 × FTA + TOV)', 'Higher is better: the defence takes it away.'),
   dff_oreb: e('Allowed offensive rebound%', 'The share of opponents’ misses they rebound.', 'opponent OREB ÷ (OREB + own DREB)', 'Lower is better.', true),
-  dff_ftr: e('Allowed FT rate', 'How often opponents get to the line.', 'opponent FTA ÷ FGA', 'Lower is better.', true)
+  dff_ftr: e('Allowed FT rate', 'How often opponents get to the line.', 'opponent FTA ÷ FGA', 'Lower is better.', true),
+  /* rebounds by where the miss came from (the club page's "what became of every shot attempt", and the team table's
+     defence + rebounding): ORB% and DRB% as the four factors count them, of the misses somebody rebounded */
+  rb_rim_orb: e('ORB% on own misses at the rim', 'Of the club’s own misses at the rim that somebody rebounded, the share it got back.', 'own OREB after a miss at the rim ÷ (own OREB + opponents’ DREB) after one', 'Higher is better: more second chances.'),
+  rb_mid_orb: e('ORB% on own mid-range misses', 'Of the club’s own mid-range misses that somebody rebounded, the share it got back.', 'own OREB after a mid-range miss ÷ (own OREB + opponents’ DREB) after one', 'Higher is better: more second chances.'),
+  rb_three_orb: e('ORB% on own missed threes', 'Of the club’s own missed threes that somebody rebounded, the share it got back.', 'own OREB after a missed three ÷ (own OREB + opponents’ DREB) after one', 'Higher is better: more second chances.'),
+  rb_all_orb: e('ORB% on every own miss', 'Of all the club’s own misses that somebody rebounded, the share it got back.', 'own OREB after a miss ÷ (own OREB + opponents’ DREB) after one', 'Higher is better: more second chances.'),
+  rb_rim_drb: e('DRB% on opponents’ misses at the rim', 'Of the opponents’ misses at the rim that somebody rebounded, the share the club took.', 'own DREB after an opponent’s miss at the rim ÷ (own DREB + opponents’ OREB) after one', 'Higher is better: the possession ends.'),
+  rb_mid_drb: e('DRB% on opponents’ mid-range misses', 'Of the opponents’ mid-range misses that somebody rebounded, the share the club took.', 'own DREB after an opponent’s mid-range miss ÷ (own DREB + opponents’ OREB) after one', 'Higher is better: the possession ends.'),
+  rb_three_drb: e('DRB% on opponents’ missed threes', 'Of the opponents’ missed threes that somebody rebounded, the share the club took.', 'own DREB after an opponent’s missed three ÷ (own DREB + opponents’ OREB) after one', 'Higher is better: the possession ends.'),
+  rb_all_drb: e('DRB% on every opponents’ miss', 'Of all the opponents’ misses that somebody rebounded, the share the club took.', 'own DREB after an opponent’s miss ÷ (own DREB + opponents’ OREB) after one', 'Higher is better: the possession ends.')
 };
 
-const TEAM_KEYS = ['ppg', 'papg', 'diffpg', 'ortg', 'drtg', 'net', 'pace', 'ts', 'ast_to', 'reb_pg', 'ast_pg', 'stl_pg', 'blk_pg',
-  'paint_pg', 'fast_pg', 'second_chance_pg', 'pts_off_to_pg', 'bench_pg',
+const TEAM_KEYS = ['ortg', 'drtg', 'net', 'pace', 'poss_time', 'ppp', 'ts', 'ft_pct', 'morey', 'ast_pct', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench',
   'ff_efg', 'ff_tov', 'ff_oreb', 'ff_ftr', 'dff_efg', 'dff_tov', 'dff_oreb', 'dff_ftr'];
 
 /* the MAIN stats of each League percentile card: what the '?' panel lists */
@@ -157,9 +175,11 @@ const GROUPS = [
   { key: 'impact', title: 'impact', keys: ['diff_net', 'diff_ortg', 'diff_drtg', 'bpm', 'obpm', 'dbpm', 'vorp'] }
 ];
 const TEAM_GROUPS = [
-  { key: 'scoring', title: 'scoring', keys: ['ppg', 'papg', 'diffpg', 'ts', 'paint_pg', 'fast_pg', 'second_chance_pg', 'pts_off_to_pg', 'bench_pg'] },
-  { key: 'ratings', title: 'ratings', keys: ['ortg', 'drtg', 'net', 'pace'] },
-  { key: 'passing', title: 'passing & boards', keys: ['ast_to', 'ast_pg', 'reb_pg', 'stl_pg', 'blk_pg'] },
+  { key: 'ratings', title: 'ratings', keys: ['ortg', 'drtg', 'net'] },
+  { key: 'tempo', title: 'tempo', keys: ['pace', 'poss_time'] },
+  { key: 'efficiency', title: 'efficiency', keys: ['ppp', 'ts', 'ft_pct', 'morey'] },
+  { key: 'distribution', title: 'distribution', keys: ['ast_pct', 'helio', 'bench_min_pct'] },
+  { key: 'matchups', title: 'against starters & bench', keys: ['vs_start', 'vs_bench'] },
   { key: 'four factors', title: 'four factors', keys: ['ff_efg', 'ff_tov', 'ff_oreb', 'ff_ftr', 'dff_efg', 'dff_tov', 'dff_oreb', 'dff_ftr'] }
 ];
 

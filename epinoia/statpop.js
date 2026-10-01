@@ -422,22 +422,26 @@ function exNode(node, opts) {
     '</b><span>' + esc(i.what) + '</span><em>' + esc(i.read) + '</em></div></div>';
   return ex;
 }
+/* a table row carries its card in its first cell: a box of its own inside a <tr> is not a cell */
+const exHost = node => (node.tagName === 'TR' && node.cells && node.cells[0]) || node;
 function openEx(node, getOpts, instant) {
-  if (node.classList.contains('tile') || node.querySelector(':scope > .stp-ex')) return;
+  const host = exHost(node);
+  if (node.classList.contains('tile') || host.querySelector(':scope > .stp-ex')) return;
   const ex = exNode(node, getOpts());
   if (!ex) return;
-  node.insertBefore(ex, node.firstChild);
+  host.insertBefore(ex, host.firstChild);
   node.classList.add('stp-has-ex');
   if (instant) { ex.classList.add('open'); return; }
   void ex.offsetHeight;                                           // the closed state must be painted before it opens
   requestAnimationFrame(() => ex.classList.add('open'));
 }
 function closeEx(node) {
-  const ex = node.querySelector(':scope > .stp-ex');
+  const host = exHost(node);
+  const ex = host.querySelector(':scope > .stp-ex');
   if (!ex) return;
   ex.classList.remove('open');
   let gone = false;
-  const done = () => { if (gone) return; gone = true; ex.remove(); if (!node.querySelector(':scope > .stp-ex')) node.classList.remove('stp-has-ex'); };
+  const done = () => { if (gone) return; gone = true; ex.remove(); if (!host.querySelector(':scope > .stp-ex')) node.classList.remove('stp-has-ex'); };
   ex.addEventListener('transitionend', done, { once: true });
   setTimeout(done, 450);
 }

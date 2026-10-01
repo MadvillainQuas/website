@@ -164,7 +164,7 @@ ok('links to the league front page ../?l=', /base \+ '\?l=' \+ encodeURIComponen
 ok('colours only from logo or manual', /colour_source === 'logo' \|\| l\.colour_source === 'manual'/.test(js));
 ok('a failed logo falls back to the monogram by listener', /addEventListener\('error'/.test(js) && !/onerror/.test(js));
 ok('no innerHTML (names are text)', !/innerHTML/.test(js));
-ok('club counts from teams?select=league_id', /teams\?select=league_id/.test(js));
+ok('club counts from one row a league (leagues?select=id,teams(count)), never a row per club', /leagues\?select=id,teams\(count\)/.test(js) && !/teams\?select=league_id/.test(js));
 ok('next fixture from EpinoiaGlobalGames.nextFor', /G\.nextFor\(id\)/.test(js));
 ok('leagues.css has a light-theme rule', /:root\[data-theme="light"\]/.test(css));
 ok('leagues.css has a phone rule', /@media \(max-width:720px\)/.test(css));

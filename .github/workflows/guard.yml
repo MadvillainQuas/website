@@ -659,6 +659,14 @@ jobs:
         # shooting distances grouped, impact with every on/off four factor and BPM/OBPM/DBPM/VORP; the players' table stays out
         run: node supabase/tests/collapsible-cards.test.mjs
 
+      - name: The club page's team statistics - the season line, the ELO and schedule chips, ORB% and DRB% by zone
+        # t/seasonline.js: heliocentrism, the bench's minutes, the possession, MOREY% and the ranks worked out by hand, the
+        # card drawn with its late rows filling in; p/sos-chip.js: the club's ELO beside its schedule; shotchart.js: ORB%
+        # and DRB% by zone as the four factors count them; the team table's defence + rebounding columns; the page's wiring
+        run: |
+          node supabase/tests/seasonline.test.mjs
+          node supabase/tests/sos-chip.test.mjs
+
       - name: Stat explainers and the stat popup - every percentile bar explained, labels never overlap
         # statinfo.js has an entry for every key in player.js BAR_SECTIONS (and its lower-is-better flag matches BAR_LOW);
         # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart

@@ -404,9 +404,13 @@ function loadLeagues() {
 
 /* clubs in each league, counted here: one small request for every league */
 async function clubCounts() {
-  const rows = await pub('teams?select=league_id&league_id=not.is.null');
+  /* one row a league, counted by the database: a row per club stops at PostgREST's 1,000 */
+  const ls = await pub('leagues?select=id,teams(count)');
   const m = new Map();
-  rows.forEach(r => { if (r.league_id) m.set(r.league_id, (m.get(r.league_id) || 0) + 1); });
+  (ls || []).forEach(l => {
+    const n = l && Array.isArray(l.teams) && l.teams[0] ? +l.teams[0].count : 0;
+    if (l && l.id && n) m.set(l.id, n);
+  });
   return m;
 }
 

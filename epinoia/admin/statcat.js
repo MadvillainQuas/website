@@ -38,7 +38,7 @@ const GROUP_LABELS = {
   ev_half: 'Events: half court', ev_assist: 'Events: assisted', other: 'Other'
 };
 /* the locked columns, as access.js CATALOGUE names them (a test reads access.js and holds this to it) */
-const PREMIUM_PREFIXES = ['ev_', 'evd_', 'z_'], PREMIUM_COLUMNS = ['pred_efg', 'efg_sh', 'efg_vs', 'morey'];
+const PREMIUM_PREFIXES = ['ev_', 'evd_', 'z_', 'rb_'], PREMIUM_COLUMNS = ['pred_efg', 'efg_sh', 'efg_vs', 'morey'];
 const isPremium = k => PREMIUM_PREFIXES.some(p => String(k).indexOf(p) === 0) || PREMIUM_COLUMNS.includes(k);
 
 /* the catalogue: [{ id: 'c:ppg', k, label, title, group, groupLabel, low, signed, kind, premium, col }] in the site's order.

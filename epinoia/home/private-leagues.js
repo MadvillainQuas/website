@@ -66,9 +66,13 @@
     /* The three facts the public cards carry, asked as this reader so a private
        league's clubs, season and next game are not blank on its own card. */
     const [counts, seasons] = await Promise.all([
-      api('teams?select=league_id&league_id=not.is.null', tok).then(ts => {
+      /* one row a league, counted by the database (a row per club stops at PostgREST's 1,000) */
+      api('leagues?select=id,teams(count)', tok).then(ls => {
         const m = new Map();
-        ts.forEach(t => { if (t.league_id) m.set(t.league_id, (m.get(t.league_id) || 0) + 1); });
+        (ls || []).forEach(l => {
+          const n = l && Array.isArray(l.teams) && l.teams[0] ? +l.teams[0].count : 0;
+          if (l && l.id && n) m.set(l.id, n);
+        });
         return m;
       }).catch(() => null),
       api('seasons?select=league_id,name,starts_on&order=starts_on.desc.nullslast,name.desc', tok)

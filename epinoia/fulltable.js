@@ -242,6 +242,16 @@ const T = [
   { k:'dff_tov',  l:'OPP TOV%',  g:['four','defense'], fmt:r=>f1(r.dff_tov),  heat:1 },
   { k:'dff_oreb', l:'OPP OREB%', g:['four','defense'], fmt:r=>f1(r.dff_oreb), heat:1, low:1 },
   { k:'dff_ftr',  l:'OPP FTr',   g:['four','defense'], fmt:r=>f1(r.dff_ftr),  heat:1, low:1 },
+  /* REBOUNDS BY WHERE THE MISS CAME FROM (the club page's "what became of every shot attempt": shotchart.js
+     attachZoneStats, from the event logs, so members' columns like the zones): of the club's own misses at the
+     rim, from mid-range and from three, the share it rebounded itself; of its opponents' misses from each, the
+     share it rebounded. A long three comes off long and is a different rebound from a miss at the rim. */
+  { k:'rb_rim_orb',   l:'SELF RIM ORB%', g:['defense'], fmt:r=>f1(r.rb_rim_orb),   heat:1 },
+  { k:'rb_mid_orb',   l:'SELF MID ORB%', g:['defense'], fmt:r=>f1(r.rb_mid_orb),   heat:1 },
+  { k:'rb_three_orb', l:'SELF 3PT ORB%', g:['defense'], fmt:r=>f1(r.rb_three_orb), heat:1 },
+  { k:'rb_rim_drb',   l:'OPP RIM DRB%',  g:['defense'], fmt:r=>f1(r.rb_rim_drb),   heat:1 },
+  { k:'rb_mid_drb',   l:'OPP MID DRB%',  g:['defense'], fmt:r=>f1(r.rb_mid_drb),   heat:1 },
+  { k:'rb_three_drb', l:'OPP 3PT DRB%',  g:['defense'], fmt:r=>f1(r.rb_three_drb), heat:1 },
 
   { k:'ortg', l:'ORTG', g:['ratings'], fmt:r=>f1(r.ortg), heat:1, lead:1 },
   { k:'drtg', l:'DRTG', g:['ratings'], fmt:r=>f1(r.drtg), heat:1, low:1 },
@@ -454,7 +464,7 @@ const PRESETS = {
     ['ratings',  'ratings'],
     ['shooting', 'shooting'],
     ['scoring',  'scoring types'],
-    ['defense',  'defence'],
+    ['defense',  'defence + rebounding'],
     ['totals',   'totals'],
     ['z_rim',    'zones: rim + paint'],
     ['z_mid',    'zones: mid-range'],

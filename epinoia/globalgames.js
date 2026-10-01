@@ -32,7 +32,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 const TEAM = 'id,slug,name,short_name,colour,colour_2,logo_path';
-const LEAGUE = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,access_mode,access_fixtures_public';
+const LEAGUE = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,access_mode,access_fixtures_public,periods:rules->periods';
 const SEL = 'id,tipoff_at,status,home_score,away_score,venue,competition_id,' +
   'home:home_team_id(' + TEAM + '),away:away_team_id(' + TEAM + '),' +
   'competitions!inner(id,name,kind,seasons!inner(id,name,leagues!inner(' + LEAGUE + ')))';
@@ -666,21 +666,24 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
 
-function periodLabel(p) {
+/* n: the league's regulation periods (leagues.rules.periods): 4 quarters, or 2 halves (NCAA men) labelled H1/H2 */
+const periodsOf = g => { const l = leagueOf(g); const n = l ? +l.periods : NaN; return n === 2 ? 2 : 4; };
+function periodLabel(p, n) {
   if (!p) return '';
-  return p <= 4 ? 'Q' + p : p === 5 ? 'OT' : 'OT' + (p - 4);
+  n = n === 2 ? 2 : 4;
+  return p <= n ? (n === 2 ? 'H' : 'Q') + p : p === n + 1 ? 'OT' : 'OT' + (p - n);
 }
 /* THE GAME CLOCK, for the line under a live score. The scorer writes the clock about every ten seconds with the moment it wrote it
    (game_state.updated_at) and whether it is running, so a running clock is that reading less the time since, counted down again each
    second by the ticker below; a stopped one is read as it stands. Whole seconds, rounded up as a scoreboard does. Half-time says
    so; a period that has run out says "end of Q1". Empty when the state has no clock (a database or a game that has none). */
-function clockText(st, nowMs) {
+function clockText(st, nowMs, n) {
   if (!st || st.clock_ms == null || !isFinite(+st.clock_ms)) return '';
-  if (+st.break_ms > 0 && st.period === 2 && +st.clock_ms === 0) return 'Half-time';
+  if (+st.break_ms > 0 && st.period === (n === 2 ? 1 : 2) && +st.clock_ms === 0) return 'Half-time';
   let left = +st.clock_ms;
   const at = st.updated_at ? Date.parse(st.updated_at) : NaN;
   if (st.running && isFinite(at)) left -= Math.max(0, (nowMs == null ? Date.now() : nowMs) - at);
-  if (left <= 0) return st.period ? 'End ' + periodLabel(st.period) : '0:00';
+  if (left <= 0) return st.period ? 'End ' + periodLabel(st.period, n) : '0:00';
   const s = Math.ceil(left / 1000);
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
@@ -692,7 +695,7 @@ function tickClocks() {
   if (!els.length) { clearInterval(clockTimer); clockTimer = 0; return; }
   const now = Date.now();
   els.forEach(e => {
-    const t = clockText({ clock_ms: +e.getAttribute('data-ms'), running: true, updated_at: e.getAttribute('data-at'), period: +e.getAttribute('data-p') || null }, now);
+    const t = clockText({ clock_ms: +e.getAttribute('data-ms'), running: true, updated_at: e.getAttribute('data-at'), period: +e.getAttribute('data-p') || null }, now, +e.getAttribute('data-n') || 4);
     if (t && e.textContent !== t) e.textContent = t;
   });
 }
@@ -779,7 +782,7 @@ function card(g, opts) {
   const state = node('span', 'fxc-st');
   if (isLive) {
     state.appendChild(node('span', 'dot'));
-    state.appendChild(document.createTextNode('Live' + (st && st.period ? ' · ' + periodLabel(st.period) : '')));
+    state.appendChild(document.createTextNode('Live' + (st && st.period ? ' · ' + periodLabel(st.period, periodsOf(g)) : '')));
   } else if (isFinal) state.textContent = 'Final';
   else {
     /* the time rides on the state line only when the card is too narrow for its own column */
@@ -830,14 +833,14 @@ function card(g, opts) {
   body.appendChild(mid);
   body.appendChild(side(g.away, away, 'a', winA, winH));
   /* THE GAME CLOCK UNDER THE SCORE of a live game (fxc.css puts it in the middle column, under the two figures) */
-  const clk = isLive ? clockText(st, Date.now()) : '';
+  const clk = isLive ? clockText(st, Date.now(), periodsOf(g)) : '';
   if (clk) {
     body.className += ' has-clk';
     const c = node('span', 'fxc-clk' + (st.running ? ' run' : ''), clk);
     c.setAttribute('aria-label', 'game clock ' + clk);
     if (st.running) {
       c.setAttribute('data-run', '1'); c.setAttribute('data-ms', String(st.clock_ms));
-      c.setAttribute('data-at', st.updated_at || ''); c.setAttribute('data-p', String(st.period || ''));
+      c.setAttribute('data-at', st.updated_at || ''); c.setAttribute('data-p', String(st.period || '')); c.setAttribute('data-n', String(periodsOf(g)));
       startClocks();
     }
     body.appendChild(c);

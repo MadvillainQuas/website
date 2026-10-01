@@ -485,6 +485,12 @@ section('the card (a small DOM stub)');
      && W.clockText(S({ clock_ms: 0, period: 4 }), T0) === 'End Q4' && W.clockText(S({ clock_ms: 0, period: 5 }), T0) === 'End OT');
   ok('half-time says so', W.clockText(S({ period: 2, clock_ms: 0, break_ms: 600000 }), T0) === 'Half-time');
   ok('no clock in the state, no clock text', W.clockText(null, T0) === '' && W.clockText({ period: 2 }, T0) === '' && W.clockText({ clock_ms: null }, T0) === '');
+  ok('a halves league (NCAA men, rules.periods 2) reads H1/H2 and OT, and half-time falls after the first period',
+     W.clockText(S({ clock_ms: 0, period: 2 }), T0, 2) === 'End H2' && W.clockText(S({ clock_ms: 0, period: 3 }), T0, 2) === 'End OT'
+     && W.clockText(S({ clock_ms: 0, period: 4 }), T0, 2) === 'End OT2'
+     && W.clockText(S({ period: 1, clock_ms: 0, break_ms: 600000 }), T0, 2) === 'Half-time'
+     && W.clockText(S({ period: 2, clock_ms: 0, break_ms: 600000 }), T0, 2) !== 'Half-time');
+  ok('...and the leagues query carries periods (rules->periods)', /periods:rules->periods/.test(rd('epinoia', 'globalgames.js')));
   const lc = W.card(game('g4', L.slbm, -H, 'live', {}), { now: NOW, state: S({}) });
   ok('a live card carries the clock under the score, in its own element beside the middle column (the score line is unchanged)',
      find(lc, 'fxc-clk') && find(lc, 'fxc-clk').textContent === '4:15' && find(lc, 'fxc-body').className.includes('has-clk') && mid(lc) === '13–10', find(lc, 'fxc-clk') && find(lc, 'fxc-clk').textContent);

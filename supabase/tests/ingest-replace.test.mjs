@@ -101,7 +101,7 @@ ok('...and never over a stamp already carried',
 ok('the fresh stamp still only goes to rows past the old length',
    /for r in within_stamp\(rows\[len\(existing\):\], stamp\):/.test(src));
 ok('...and in both write paths only to rows one stamp can honestly cover',
-   /for r in within_stamp\(tail, stamp\):/.test(src) && /latest - _elapsed_ms\(r\) <= err \+ 3000/.test(src));
+   /for r in within_stamp\(tail, stamp\):/.test(src) && /latest - _elapsed_ms\(r(, fmt)?\) <= err \+ 3000/.test(src));
 ok('...which is why the carry has to work, and is said so',
    /A\s*\n?\s*# ratchet, not a blip\./.test(src) || /ratchet, not a blip/.test(src));
 
