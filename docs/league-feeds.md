@@ -816,6 +816,63 @@ stints and lineups are built as for any LiveStats league.
   for a game that has not started). Before this, the crest a payload carried was dropped when its club had been met on
   the schedule earlier in the same pass (feedplatform.Platform.take_crest now fills it on a cached club too).
 
+## Lithuania: NKL (nkl.lt)
+
+### host
+
+**nkl.lt**, the league's own WordPress site. `fiba_site_schedule`, site `nkl`; two source rows on one code (`NKL`),
+`stage` regular and playoffs. robots.txt allows every path and asks for `Crawl-delay: 10`, which every request keeps
+(`NKL_GAP_S`).
+
+The 2026-27 plan was FIBA LiveStats (client `BNW`): on 23 Sep the homepage's match strip linked 15 games to their
+webcasts, each the site's match id + 2769710. By the first game night the strip linked none (only LRT's TV stream),
+125745's webcast had stopped in the 2nd quarter at 15-16 while the game finished 83-108, and the offset named a
+Chilean game for 126051. The ingest only knew the LiveStats route, so no NKL game was ever written (1 Oct 2026: every
+game "scheduled", finished ones included). Since then the games come from nkl.lt itself.
+
+### schedule_recipe
+
+`https://nkl.lt/matches/?type=schedule` carries the whole season (both stages) as one inline array,
+`const allMatches = [...]`: `id` (the match id, the games' external id), `season`, `stage_type_id` (1 = regular),
+`date_label` + `time` (Vilnius), `arena`, `home_team_id`/`away_team_id` (the clubs' codes), names, crests (served
+over http, asked for over https), `home_score`/`away_score`, `is_result`, `is_running`. Read once per pass (cached
+five minutes).
+
+### game_recipe
+
+Each game's own page, `https://nkl.lt/matches/<id>/`, server-rendered (`nkl_match_page`):
+
+- the score under `.nkl-score-display`, the arena below it, the referees in the info bar;
+- `table.nkl-quarters-table`: each club's points per quarter (any overtime as further columns) and its abbreviation;
+- the **Protokolas** tab: one `table.nkl-protocol-table` per club, home first - shirt, the player (`/zaidejai/<id>/`,
+  the nkl.lt player id the player is keyed on), MIN, TŠK, MŽ, 2TŠK, 3TŠK, BM (made/attempted), AK (rebounds), RP, PK,
+  KL, BL, EF;
+- the **Statistika** tab: the team lines - shooting, rebounds with the offensive/defensive split, assists, steals,
+  blocks, turnovers, fouls, points off turnovers, fast-break, second-chance and bench points.
+
+`nkl_payload` puts it in the FIBA shape (fibashape): nkl.lt's club ids and names, each player under his nkl.lt id, the
+team lines laid over the players' sums. The game is published as a result (`translate` False): there is no
+play-by-play, so no event log, no stints and no lineups. A game in progress (`is_running`) is read at most once a
+minute, and the live lane never waits out the crawl delay for it (it asks again on the next pass). A finished game
+takes the LiveStats feed instead only when nkl.lt itself links one (the homepage strip) AND it agrees with the site:
+the same two clubs, closed, the same final score. Nothing is guessed from an offset any more.
+
+### gotchas
+
+- **The site's text is partly mojibake** since late September: arenas, players and referees are UTF-8 read as
+  Windows-1252 (`Å\xa0akiÅ³ sporto centras` for Šakių sporto centras, `GuÅ¡Äikas` for Guščikas). `demojibake` reads
+  them back word by word, and leaves text that was right to begin with exactly as it was.
+- **No player's offensive/defensive rebound split and no player fouls** on the page: a player's rebounds are a total,
+  his fouls 0. The team lines have both. Starters are not marked.
+- **Fixtures are rewritten, not moved.** In the first week nkl.lt re-entered a game under a new id (126051 for 125746)
+  and entered and then deleted another (126055, "Alytaus Patriotai v Jurbarkas, 16:30 at Šakiai" - the real game is
+  125747, the other way round, at 19:00 in Jurbarkas). The adapter's `withdrawn()` names the stored ids the season's
+  array no longer lists (dated inside that season), and `run_ingest.retire_withdrawn` removes each one that was never
+  fetched and whose game is still scheduled, scoreless and without a play (delete_fixture's own rule) - and nothing at
+  all when a read seems to have lost more than a handful.
+- The homepage strip's markup changed in September (an `<a class=nkl-match-item>` per game, then a `<div>` holding the
+  links): `nkl_strip` reads both.
+
 ## Italy (women): Serie A1 and Serie A2 Femminile (Lega Basket Femminile)
 
 ### host

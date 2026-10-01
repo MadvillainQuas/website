@@ -2185,6 +2185,57 @@ def release_orphans(sb: "Supabase", src: dict) -> int:
     return len(rows)
 
 
+def retire_withdrawn(sb: "Supabase", src: dict, adapter, stored: dict) -> list:
+    """Remove the fixtures a source has taken off its schedule, so a game that will not be played stops being shown.
+
+    nkl.lt rewrote two fixtures in the NKL's first week (2026-09-30 / 10-01): Kauno r. Omega-Tauras-LSU v Kėdainiai
+    moved to a new match id (126051 for 125746), and an "Alytaus Patriotai v Jurbarkas, 16:30 at Šakiai" was entered
+    and deleted (126055: the real game is 125747, the other way round, at 19:00 in Jurbarkas). Nothing removed what
+    the old ids had built, so the league showed Omega-Tauras v Kėdainiai twice and a fixture that did not exist.
+
+    The adapter says which stored ids its schedule no longer lists (adapter.withdrawn - only a source whose schedule
+    is the whole season in one read can know; every other adapter has no such method). A fixture goes only if it was
+    never fetched (no payload, still 'scheduled'), and its game is still scheduled, scoreless, and has no play
+    recorded - delete_fixture's own rule: a game that was played is voided, never deleted. And only when the read
+    names a handful: a schedule that seems to have lost dozens of games is a page that did not load properly, and
+    removes nothing. Returns the external ids removed."""
+    pick = getattr(adapter, "withdrawn", None)
+    if not pick or not stored:
+        return []
+    try:
+        gone = [str(x) for x in pick(dict(src.get("adapter_config") or {}, code=src.get("code")), stored)]
+    except Exception as exc:
+        print(f"   (withdrawn fixtures: {exc})")
+        return []
+    rows = [stored[x] for x in gone if x in stored and not stored[x].get("payload_hash")
+            and (stored[x].get("external_status") or "scheduled") == "scheduled"]
+    if not rows:
+        return []
+    if len(rows) > max(3, len(stored) // 20):
+        print(f"   {len(rows)} fixture(s) missing from the schedule - too many to be withdrawals; nothing removed")
+        return []
+    done = []
+    for r in rows:
+        xid, gid = str(r["external_id"]), r.get("game_id")
+        try:
+            if gid:
+                g = sb.select("games", f"id=eq.{gid}&select=status,home_score,away_score")
+                if g and (g[0].get("status") != "scheduled" or g[0].get("home_score") is not None
+                          or g[0].get("away_score") is not None
+                          or sb.select("game_events", f"game_id=eq.{gid}&select=seq&limit=1")):
+                    continue                     # something happened in it: an administrator's call, not ours
+                if g:
+                    sb.delete("games", f"id=eq.{gid}&status=eq.scheduled")
+            sb.delete("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_id=eq.{xid}")
+        except Exception as exc:
+            print(f"   (withdrawn fixture {xid}: {exc})")
+            continue
+        done.append(xid)
+        print(f"   - {r.get('home_name')} v {r.get('away_name')} ({str(r.get('tipoff_at') or '')[:16]}, {xid}): "
+              "no longer on the schedule - the fixture is removed")
+    return done
+
+
 def unsettled_finals(sb: "Supabase", src: dict, now: datetime | None = None) -> set:
     """external_ids of this source's games the FEED calls final but the platform never closed.
 
@@ -3002,6 +3053,12 @@ def main() -> int:
                                        "status": r.get("external_status"), "hash": r.get("payload_hash"), "raw_ref": r.get("raw_ref"), "date": r.get("game_date")}
                 except Exception as exc:
                     print(f"   (external_games unavailable: {exc})")
+            if sb and not args.dry_run and stored:
+                # fixtures the source has taken off its schedule (retire_withdrawn): gone from this pass as well
+                retired = set(retire_withdrawn(sb, src, adapter, stored))
+                for x in retired:
+                    stored.pop(x, None); known_db.pop(x, None); known_repo.pop(x, None)
+                games = [g for g in games if str(g.external_id) not in retired]
             known = known_db if sb else known_repo
             # games the feed has finished that the platform has not: fetched again and written through, not skipped
             stuck = unsettled_finals(sb, src) if sb and not args.dry_run and not repair else set()

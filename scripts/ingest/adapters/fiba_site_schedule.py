@@ -31,7 +31,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional
 
 import requests
@@ -88,17 +88,27 @@ _SK_WHEN = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})\s*o\s*(\d{1,2}):(\d{2})")
 _SK_VENUE = re.compile(r'class="match-ticket-header">.*?<span>\s*([^<]+?)\s*</span>', re.S)
 
 
-# --- nkl.lt (Lithuania's NKL, on FIBA LiveStats from 2026/27) -------------------------------
+# --- nkl.lt (Lithuania's NKL) ----------------------------------------------------------------
 # The schedule page carries the whole season as one inline array:
 #   const allMatches = [{"id":125745,"season":2026,"stage_id":2673,"stage_name":"Reguliarusis
 #   sezonas","stage_type_id":1,"round_no":1,"date_label":"2026-09-28","time":"18:15","arena":...,
 #   "home_team_id":3386,"home_name":"Alytaus Patriotai","home_logo":"http:\/\/nkl.lt\/...png", ...
-#   "is_result":0,"is_running":0, ...}, ...]
-# and the LiveStats id is NOT in it: the homepage's match strip links a window of games to their
-# webcast (www.fibalivestats.com/u/BNW/<id>, behind the TV icon), and on all 15 games of the first
-# strip read (2026-09-23) the LiveStats id was the site id + 2769710 - the season's webcasts were
-# created in the league's own order. So: the strip's links are cached as they appear, and the
-# offset they share is only ever TRIED, and kept once the feed itself names the fixture's clubs.
+#   "home_score":83,"away_score":108,"is_result":1,"is_running":0, ...}, ...]
+# THE GAME IS READ OFF NKL.LT ITSELF. The 2026/27 plan was FIBA LiveStats: on 23 Sep the homepage's
+# match strip linked 15 games to webcasts (www.fibalivestats.com/u/BNW/<id>), each the site id +
+# 2769710. By the first game night the strip linked none (only LRT's TV stream), 125745's webcast
+# had stopped in the 2nd quarter at 15-16 while the game finished 83-108, and the offset named a
+# Chilean game for 126051 - so no NKL game was ever written, and the league showed nothing. Every
+# game's own page (https://nkl.lt/matches/<id>/) is server-rendered with what a result needs: the
+# score, the quarters, both clubs' box score (minutes, points, two/three/free throws, rebounds,
+# assists, steals, turnovers, blocks, efficiency) and the team statistics (offensive and defensive
+# rebounds, fouls, points off turnovers, fast-break, second-chance and bench points). There is no
+# play-by-play, and no player's offensive/defensive split or fouls: a box score, not a replay.
+# A LiveStats feed is still used when nkl.lt itself links one and it AGREES - the same two clubs,
+# final, the same score - because it carries the play-by-play the page does not.
+# THE SITE'S TEXT IS PARTLY MOJIBAKE: arenas, players and referees are UTF-8 read as Windows-1252
+# ("Å\xa0akiÅ³ sporto centras" for "Šakių sporto centras"); demojibake() puts them back.
+# robots.txt asks every agent for "Crawl-delay: 10", which NKL_GAP_S keeps.
 # basketbolli.com (the Kosovo federation): the Superliga on FIBA LiveStats (client KOS). No robots.txt
 # (404), so nothing is disallowed. The league gets a NEW leagueId every season and the old season's
 # page is purged, so the current id is read off the site's own menu, never kept in a constant.
@@ -271,9 +281,13 @@ def _fold(s) -> str:
 PULS_API = "https://api.pulsbasketu.com/api/v1"
 NKL_SITE = "https://nkl.lt"
 NKL_MATCHES = NKL_SITE + "/matches/?type=schedule"
+NKL_MATCH = NKL_SITE + "/matches/{id}/"
+NKL_GAP_S = 10.0                 # robots.txt: "Crawl-delay: 10", for every agent
+NKL_LIVE_EVERY_S = 60.0          # a game in progress: its page read at most once a minute
 _NKL_ALL = re.compile(r"const allMatches\s*=\s*(\[.*?\]);\s*\n", re.S)
-_NKL_STRIP = re.compile(r"<a\s+href=[\"']?https?://nkl\.lt/matches/(\d+)/[\"']?\s+class=[\"']?nkl-match-item(.*?)"
-                        r"(?=<a\s+href=[\"']?https?://nkl\.lt/matches/|\Z)", re.S)
+# one game on the homepage strip: an <a class=nkl-match-item> until September 2026, a <div> holding the links since
+_NKL_ITEM = re.compile(r"class=[\"']?nkl-match-item\b")
+_NKL_MATCH_ID = re.compile(r"nkl\.lt/matches/(\d+)/")
 _NKL_WEBCAST = re.compile(r"livestats\.com/u/[A-Za-z]+/(\d+)", re.I)
 
 
@@ -281,6 +295,265 @@ def _name_tokens(name) -> set:
     import unicodedata
     s = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode().lower()
     return {t for t in re.split(r"[^a-z0-9]+", s) if len(t) >= 4}
+
+
+# ------------------------------------------------------------------------------- nkl.lt's pages
+# Plain functions of a page's text, so nkl_test.py holds them to saved pages with no network.
+def _moji_byte(c: str) -> int:
+    """One character of mojibake back to the byte it was read from: Windows-1252's, or for the five bytes
+    1252 leaves undefined (0x81 0x8D 0x8F 0x90 0x9D, which a lenient reader passes through as U+0081 ...)
+    the code point itself. Anything else was never a byte: ValueError."""
+    try:
+        b = c.encode("cp1252")
+    except UnicodeEncodeError:
+        if ord(c) < 256:
+            return ord(c)
+        raise ValueError(c)
+    return b[0]
+
+
+def demojibake(s):
+    """UTF-8 that was read as Windows-1252, put back: 'Å\xa0akiÅ³' -> 'Šakių', 'â€žÅ½algirisâ€œ' ->
+    '„Žalgiris“', 'GuÅ¡Äikas' -> 'Guščikas'. Word by word (no UTF-8 character contains a space), and a word
+    changes only when its bytes are valid UTF-8 - which a word that was right to begin with ('Žalgiris-2',
+    'Šarūnas', 'José') never is, so text that needs nothing comes back exactly as it went in."""
+    if not isinstance(s, str) or not re.search("[\u00c2-\u00f4]", s):
+        return s
+
+    def word(m):
+        w = m.group(0)
+        try:
+            return bytes(_moji_byte(c) for c in w).decode("utf-8")
+        except (ValueError, UnicodeError):
+            return w
+    return re.sub("[^ ]*[\u00c2-\u00f4][^ ]*", word, s)
+
+
+def _nkl_text(fragment) -> str:
+    """A piece of an nkl.lt page as a reader sees it: tags dropped, entities read, the mojibake undone, spaces
+    collapsed. The collapsing comes last: a no-break space is half of the mojibake for 'Š' (C5 A0)."""
+    import html as _html
+    t = _html.unescape(re.sub(r"<[^>]+>", " ", str(fragment or "")))
+    t = demojibake(re.sub(r"[ \t\r\n\f\v]+", " ", t))
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _nkl_label(s) -> str:
+    """A heading or label to compare by: no accents, lower case, single spaces ('Atsarginių žaidėjų taškai' ->
+    'atsarginiu zaideju taskai', '+/-' and '#' kept - unlike _fold, which keeps letters and digits only)."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def nkl_strip(page: str) -> dict:
+    """{nkl.lt match id: LiveStats id} for each game on the homepage strip that links its webcast. An item
+    runs from its own tag to the next item's (the old <a> carried the match link in the same tag)."""
+    page = page or ""
+    starts = [max(0, page.rfind("<", 0, m.start())) for m in _NKL_ITEM.finditer(page)]
+    out = {}
+    for i, a in enumerate(starts):
+        chunk = page[a: starts[i + 1] if i + 1 < len(starts) else a + 8000]
+        mid, web = _NKL_MATCH_ID.search(chunk), _NKL_WEBCAST.search(chunk)
+        if mid and web:
+            out[mid.group(1)] = web.group(1)
+    return out
+
+
+#: the Protokolas tab's columns (folded), as they stood in 2026-27; PR (fouls) and +/- are read if they appear
+_NKL_COLS = {"#": "shirt", "min": "min", "tsk": "pts", "mz": "fg", "2tsk": "fg2", "3tsk": "fg3", "bm": "ft",
+             "ak": "reb", "rp": "ast", "pk": "stl", "kl": "tov", "bl": "blk", "ef": "eff", "pr": "pf", "+/-": "pm"}
+#: the Statistika tab's team lines (folded label -> FIBA stat, or a made/attempted pair)
+_NKL_TEAM = {
+    "metimai is zaidimo": ("sFieldGoalsMade", "sFieldGoalsAttempted"),
+    "dvitaskiai metimai": ("sTwoPointersMade", "sTwoPointersAttempted"),
+    "tritaskiai metimai": ("sThreePointersMade", "sThreePointersAttempted"),
+    "baudu metimai": ("sFreeThrowsMade", "sFreeThrowsAttempted"),
+    "taskai": "sPoints",
+    "atkovoti kamuoliai": "sReboundsTotal",
+    "atkovoti kamuoliai gynyboje": "sReboundsDefensive",
+    "atkovoti kamuoliai puolime": "sReboundsOffensive",
+    "rezultatyvus perdavimai": "sAssists",
+    "perimti kamuoliai": "sSteals",
+    "blokai": "sBlocks",
+    "klaidos": "sTurnovers",
+    "prazangos": "sFoulsPersonal",
+    "taskai po klaidu": "sPointsFromTurnovers",
+    "taskai greitose atakose": "sPointsFastBreak",
+    "taskai antru bandymu": "sPointsSecondChance",
+    "atsarginiu zaideju taskai": "sBenchPoints",
+}
+
+
+def _ma(text):
+    """'7/11 63.6%' -> (7, 11); None when there is no made/attempted pair."""
+    m = re.search(r"(\d+)\s*/\s*(\d+)", text or "")
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def _int(text):
+    m = re.search(r"-?\d+", text or "")
+    return int(m.group(0)) if m else None
+
+
+def _nkl_section(page: str, name: str) -> str:
+    """One tab of a match page (id=section-<name>), up to the next tab."""
+    m = re.search(r"id=[\"']?section-" + name + r"\b", page or "")
+    if not m:
+        return ""
+    n = re.search(r"id=[\"']?section-[a-z]", page[m.end():])
+    return page[m.end(): m.end() + n.start()] if n else page[m.end():]
+
+
+def _nkl_put(sides: tuple, label: str, values: tuple, keep: bool = False) -> None:
+    key = _NKL_TEAM.get(label)
+    if not key:
+        return
+    for d, v in zip(sides, values):
+        if isinstance(key, tuple):
+            ma = _ma(v)
+            if ma and not (keep and key[0] in d):
+                d[key[0]], d[key[1]] = ma
+        else:
+            n = _int(v)
+            if n is not None and not (keep and key in d):
+                d[key] = n
+
+
+def nkl_match_page(page: str) -> dict:
+    """An nkl.lt match page (https://nkl.lt/matches/<id>/) as plain data, home first wherever the page has
+    two of something (as it draws them):
+        score     (83, 108), or None while the page shows none
+        status    the badge over the score ('Rungtynės Baigėsi' once it is over)
+        periods   the quarter table's headings ('Q1'..'Q4', then any overtime), and
+        quarters  each club's points in them: ([16, 22, 19, 26], [32, 22, 28, 26])
+        abbr      ('PAT', 'ŽAL')
+        teams     [{'name', 'players': [{'id', 'shirt', 'name', 'min', 'pts', 'fg': (m, a), 'fg2', 'fg3', 'ft',
+                  'reb', 'ast', 'stl', 'tov', 'blk', 'eff'}, ...]}, {...}] - the Protokolas tab
+        stats     ({FIBA stat: n}, {...}) - the Statistika tab's team lines
+        referees  ['Milita Stalaučinskaitė', ...]
+        venue     the arena under the score"""
+    page = page or ""
+    out = {"score": None, "status": "", "periods": [], "quarters": ([], []), "abbr": ("", ""),
+           "teams": [], "stats": ({}, {}), "referees": [], "venue": None}
+    m = re.search(r"class=[\"']?nkl-score-display[\"']?\s*>(.*?)</div>(.*?)</div>", page, re.S)
+    if m:
+        sc = re.search(r"(\d+)\s*:\s*(\d+)", m.group(1))
+        if sc:
+            out["score"] = (int(sc.group(1)), int(sc.group(2)))
+        arena = re.search(r"<a\b[^>]*>(.*?)</a>", m.group(2), re.S)
+        out["venue"] = (_nkl_text(arena.group(1)) or None) if arena else None
+    m = re.search(r"class=[\"']?nkl-badge-status[\"']?\s*>(.*?)</span>", page, re.S)
+    if m:
+        out["status"] = _nkl_text(m.group(1))
+    m = re.search(r">\s*Teis\w*jai\s*</span>\s*<span\b[^>]*>(.*?)</span>", page, re.S)
+    if m:
+        out["referees"] = [r for r in (x.strip() for x in _nkl_text(m.group(1)).split(",")) if r]
+    m = re.search(r"<table\b[^>]*nkl-quarters-table[^>]*>(.*?)</table>", page, re.S)
+    if m:
+        heads = [_nkl_text(h) for h in re.findall(r"<th\b[^>]*>(.*?)</th>", m.group(1), re.S)]
+        rows = []
+        for r in re.findall(r"<tr\b[^>]*>(.*?)</tr>", m.group(1).split("</thead>")[-1], re.S):
+            cells = re.findall(r"<td\b[^>]*>(.*?)</td>", r, re.S)
+            if cells:
+                rows.append((_nkl_text(cells[0]), [_int(_nkl_text(c)) or 0 for c in cells[1:]]))
+        if len(rows) == 2:
+            out["periods"] = [h for h in heads[1:] if h][:len(rows[0][1])]
+            out["quarters"] = (rows[0][1], rows[1][1])
+            out["abbr"] = (rows[0][0], rows[1][0])
+    for box in re.split(r"class=[\"']?nkl-card-box\b", _nkl_section(page, "protokolas"))[1:]:
+        title = re.search(r"class=[\"']?nkl-card-title[\"']?\s*>(.*?)</div>", box, re.S)
+        tab = re.search(r"<table\b[^>]*nkl-protocol-table[^>]*>(.*?)</table>", box, re.S)
+        if not tab:
+            continue
+        heads = [_nkl_label(_nkl_text(h)) for h in re.findall(r"<th\b[^>]*>(.*?)</th>", tab.group(1), re.S)]
+        players = []
+        for r in re.findall(r"<tr\b[^>]*>(.*?)</tr>", tab.group(1).split("</thead>")[-1], re.S):
+            cells = re.findall(r"<td\b[^>]*>(.*?)</td>", r, re.S)
+            link = re.search(r"nkl\.lt/zaidejai/(\d+)/?[\"']?[^>]*>(.*?)</a>", r, re.S)
+            if not link or len(cells) != len(heads):
+                continue                     # a line with no player on it (a team or totals line)
+            p = {"id": link.group(1), "name": _nkl_text(link.group(2))}
+            for h, c in zip(heads, cells):
+                k = _NKL_COLS.get(h)
+                if k in ("fg", "fg2", "fg3", "ft"):
+                    p[k] = _ma(_nkl_text(c)) or (0, 0)
+                elif k in ("min", "shirt"):
+                    p[k] = _nkl_text(c)
+                elif k:
+                    p[k] = _int(_nkl_text(c)) or 0
+            players.append(p)
+        out["teams"].append({"name": _nkl_text(title.group(1)) if title else "", "players": players})
+    sides: tuple = ({}, {})
+    stats = _nkl_section(page, "statistika")
+    for left, label, right in re.findall(r"nkl-compare-val-left[\"']?\s*>(.*?)</span>\s*<span\b[^>]*nkl-compare-label[\"']?\s*>"
+                                         r"(.*?)</span>\s*<span\b[^>]*nkl-compare-val-right[\"']?\s*>(.*?)</span>", stats, re.S):
+        _nkl_put(sides, _nkl_label(_nkl_text(label)), (_nkl_text(left), _nkl_text(right)))
+    for card in re.split(r"class=[\"']?nkl-bar-card\b", stats)[1:]:
+        label = re.search(r"nkl-bar-title[\"']?\s*>(.*?)</div>", card, re.S)
+        vals = re.findall(r"nkl-bar-fill[\"']?[^>]*>(.*?)</div>", card, re.S)
+        if label and len(vals) >= 2:
+            _nkl_put(sides, _nkl_label(_nkl_text(label.group(1))), (_nkl_text(vals[0]), _nkl_text(vals[1])), keep=True)
+    out["stats"] = sides
+    return out
+
+
+def _nkl_minutes(t) -> str:
+    """'03:09' -> '3:09', as LiveStats writes a player's minutes."""
+    m = re.match(r"\s*(\d+):(\d{1,2})", str(t or ""))
+    return f"{int(m.group(1))}:{int(m.group(2)):02d}" if m else "0:00"
+
+
+def nkl_payload(page: dict, fixture: dict, final: bool) -> Optional[dict]:
+    """A parsed match page (nkl_match_page) and its allMatches row -> the FIBA data.json shape (fibashape), so
+    everything downstream reads it as it reads any league: nkl.lt's club ids as the codes and its names on the
+    clubs, each player keyed on nkl.lt's own player id, and the team lines from the Statistika tab laid over
+    the players' sums - they hold what no player line does (team rebounds, the fouls, the offensive and
+    defensive split). The play-by-play is the end marker alone when `final`, and a period start while the game
+    is on, so the bundle reads final or live. None when the page holds no box score for both clubs, or draws
+    them the other way round from the fixture (never filed under the wrong club)."""
+    from . import fibashape as S
+    teams = page.get("teams") or []
+    if len(teams) != 2 or not (teams[0]["players"] and teams[1]["players"]):
+        return None
+    home_t, away_t = _name_tokens(fixture.get("home_name")), _name_tokens(fixture.get("away_name"))
+    a, b = _name_tokens(teams[0]["name"]), _name_tokens(teams[1]["name"])
+    if (a or b) and len(a & away_t) + len(b & home_t) > len(a & home_t) + len(b & away_t):
+        return None
+    sides = []
+    for i, side in enumerate(("home", "away")):
+        pl = {}
+        for p in teams[i]["players"]:
+            fg2, fg3, ft = p.get("fg2") or (0, 0), p.get("fg3") or (0, 0), p.get("ft") or (0, 0)
+            fg = p.get("fg") or (fg2[0] + fg3[0], fg2[1] + fg3[1])
+            mins = _nkl_minutes(p.get("min"))
+            row = S.player(name=p["name"], shirt=p.get("shirt") or "", minutes=mins, active=0 if mins == "0:00" else 1, stats={
+                "sPoints": p.get("pts", 0), "sFieldGoalsMade": fg[0], "sFieldGoalsAttempted": fg[1],
+                "sTwoPointersMade": fg2[0], "sTwoPointersAttempted": fg2[1],
+                "sThreePointersMade": fg3[0], "sThreePointersAttempted": fg3[1],
+                "sFreeThrowsMade": ft[0], "sFreeThrowsAttempted": ft[1], "sReboundsTotal": p.get("reb", 0),
+                "sAssists": p.get("ast", 0), "sSteals": p.get("stl", 0), "sTurnovers": p.get("tov", 0),
+                "sBlocks": p.get("blk", 0), "sFoulsPersonal": p.get("pf", 0), "sPlusMinusPoints": p.get("pm", 0)})
+            row["eff_1"] = p.get("eff", 0)
+            pl[str(p["id"])] = row
+        tot = S.totals_of(pl)
+        tot.update(page["stats"][i] if page.get("stats") else {})
+        score = page["score"][i] if page.get("score") else fixture.get(f"{side}_score")
+        logo = str(fixture.get(f"{side}_logo") or "").replace("http://", "https://", 1) or None
+        sides.append(S.team((fixture.get(f"{side}_name") or teams[i]["name"]).strip(), str(fixture.get(f"{side}_team_id") or ""),
+                            score=score, quarters=(page.get("quarters") or ([], []))[i][:4], players=pl, totals=tot,
+                            logo=logo, short_name=(page.get("abbr") or ("", ""))[i]))
+    q = page.get("quarters") or ([], [])
+    played = [n + 1 for n in range(max(len(q[0]), len(q[1]))) if (q[0][n:n + 1] or [0])[0] or (q[1][n:n + 1] or [0])[0]]
+    period = max(played or [1])
+    if final:
+        raw = S.game(sides[0], sides[1], played=True)
+        raw["clock"] = "00:00"
+    else:
+        raw = S.game(sides[0], sides[1], played=False, pbp=[{"actionType": "period", "subType": "start", "period": period}])
+    raw["period"] = period
+    raw["periodType"] = "OVERTIME" if period > 4 else "REGULAR"
+    return raw
 
 
 # online.basket.ee (the Estonian federation's live scores, BestIT's "basketis"): the ESTONIAN-LATVIAN league on FIBA
@@ -1145,19 +1418,39 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
 
     # ------------------------------------------------------------------ nkl.lt ---
     _nkl_cache: tuple = (0.0, [])        # (fetched_at, allMatches) - shared: two sources, many fetches
+    _nkl_strip_at: tuple = (0.0, None)   # (read at, nkl_strip(homepage)) - the webcasts the site links
+    _nkl_last = 0.0                      # the last request to nkl.lt, whichever source row made it
+    _nkl_read: dict = {}                 # match id -> when its page was last read (a game in progress)
+    nkl_gap_s = NKL_GAP_S
+    nkl_live_every_s = NKL_LIVE_EVERY_S
+
+    def _nkl_get(self, url: str, wait: bool = True) -> Optional[str]:
+        """One request to nkl.lt, nkl_gap_s after the last one (robots.txt's Crawl-delay). wait=False - a game in
+        progress, polled by the live lane - answers None instead of holding the lane up for the rest of the gap:
+        the next pass, seconds later, asks again."""
+        gap = time.time() - FibaSiteScheduleAdapter._nkl_last
+        if gap < self.nkl_gap_s:
+            if not wait:
+                return None
+            time.sleep(self.nkl_gap_s - gap)
+        FibaSiteScheduleAdapter._nkl_last = time.time()
+        return self._page(url)
 
     def _nkl_matches(self) -> list:
         at, cached = FibaSiteScheduleAdapter._nkl_cache
         if cached and time.time() - at < 300:
             return cached
-        m = _NKL_ALL.search(self._page(NKL_MATCHES))
+        m = _NKL_ALL.search(self._nkl_get(NKL_MATCHES) or "")
         rows = json.loads(m.group(1)) if m else []
         FibaSiteScheduleAdapter._nkl_cache = (time.time(), rows)
         return rows
 
+    @staticmethod
+    def _nkl_clean(s) -> str:
+        return re.sub(r"\s+", " ", demojibake(str(s or ""))).strip()
+
     def _nkl(self, config: dict) -> list[ScheduleGame]:
-        """nkl.lt: the season's every game from the schedule page's own array, keyed on the site's
-        match id (a fixture's LiveStats id is not known for most of the season - see _nkl_fiba_id).
+        """nkl.lt: the season's every game from the schedule page's own array, keyed on the site's match id.
         stage "regular" is stage_type_id 1, "playoffs" everything else."""
         stage = (config.get("stage") or "").strip().lower()
         year = _start_year(config.get("season") or "")
@@ -1178,56 +1471,62 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             extra = {"home_code": str(r.get("home_team_id") or "") or None,
                      "away_code": str(r.get("away_team_id") or "") or None,
                      "home_logo": logo(r.get("home_logo")), "away_logo": logo(r.get("away_logo")),
-                     "venue": (r.get("arena") or "").strip() or None,
+                     "venue": self._nkl_clean(r.get("arena")) or None,
                      "round": f"{r.get('stage_name') or ''} · {r.get('round_no') or ''}".strip(" ·"), "stage": st}
             if tbc:
                 extra["time_tbc"] = True
             out.append(ScheduleGame(
-                external_id=str(r["id"]), home_name=(r.get("home_name") or "").strip(),
-                away_name=(r.get("away_name") or "").strip(), tipoff_at=tip,
+                external_id=str(r["id"]), home_name=self._nkl_clean(r.get("home_name")),
+                away_name=self._nkl_clean(r.get("away_name")), tipoff_at=tip,
                 status="final" if r.get("is_result") else "live" if r.get("is_running") else "scheduled",
                 extra=extra))
         print(f"     NKL {year}/{year + 1} {stage or 'all stages'}: {len(out)} games "
               f"({sum(1 for g in out if g.status == 'final')} final)")
         return out
 
-    def _nkl_fiba_id(self, sid: str, fixture: Optional[dict], config: dict) -> Optional[str]:
-        """The LiveStats id behind an nkl.lt match id: remembered, else read off the homepage's
-        match strip, else the offset the known pairs share - tried, and kept only when the feed
-        itself names the fixture's two clubs."""
+    def withdrawn(self, config: dict, stored: dict) -> list:
+        """The fixtures among `stored` ({external id: its external_games row}) that the source's own schedule no
+        longer lists, for run_ingest.retire_withdrawn. Only a site whose schedule is the whole season in one
+        read can say a game is gone - nkl.lt's allMatches, both stages at once - and only for a fixture dated
+        inside that season (three days' grace each end), so last season's rows are never taken for this
+        season's withdrawals. Every other site answers []: its list is a window, and a game outside the window
+        has not gone anywhere."""
+        if (config.get("site") or "").lower() != "nkl":
+            return []
+        every = self._nkl_matches()
+        year = _start_year(config.get("season") or "")
+        days = sorted(str(r.get("date_label") or "")[:10] for r in every
+                      if int(r.get("season") or 0) == year and re.match(r"\d{4}-\d{2}-\d{2}$", str(r.get("date_label") or "")[:10]))
+        if not days:
+            return []                    # nothing read, nothing can be said to be gone
+        first = (datetime.strptime(days[0], "%Y-%m-%d") - timedelta(days=3)).strftime("%Y-%m-%d")
+        last = (datetime.strptime(days[-1], "%Y-%m-%d") + timedelta(days=3)).strftime("%Y-%m-%d")
+        listed = {str(r.get("id")) for r in every}
+        out = []
+        for k, r in (stored or {}).items():
+            day = str((r or {}).get("tipoff_at") or (r or {}).get("game_date") or "")[:10]
+            if str(k) not in listed and day and first <= day <= last:
+                out.append(str(k))
+        return sorted(out)
+
+    def _nkl_fiba_id(self, sid: str, config: dict) -> Optional[str]:
+        """The LiveStats webcast nkl.lt itself links to a match: remembered, else read off the homepage's match
+        strip (every link on it remembered, the strip read at most every five minutes). Never guessed: the
+        offset the first strip's 15 links shared named a Chilean game for 126051."""
         known = self._idmap(config)
         if known.get(sid):
             return known[sid]
-        try:
-            home = self._page(NKL_SITE + "/")
-        except Exception:
-            home = ""
-        found = {}
-        for m in _NKL_STRIP.finditer(home):
-            w = _NKL_WEBCAST.search(m.group(2)[:8000])
-            if w:
-                found[m.group(1)] = w.group(1)
-        if found:
+        at, found = FibaSiteScheduleAdapter._nkl_strip_at
+        if found is None or time.time() - at > 300:
+            try:
+                found = nkl_strip(self._nkl_get(NKL_SITE + "/") or "")
+            except Exception:
+                found = {}
+            FibaSiteScheduleAdapter._nkl_strip_at = (time.time(), found)
+        if found and any(known.get(k) != v for k, v in found.items()):
             known.update(found)
             self._save_idmap(config, known)
-        if known.get(sid):
-            return known[sid]
-        if not fixture:
-            return None
-        from collections import Counter
-        offsets = Counter(int(f) - int(s) for s, f in known.items() if str(s).isdigit() and str(f).isdigit())
-        if not offsets:
-            return None
-        offset, votes = offsets.most_common(1)[0]
-        if votes < 3:
-            return None
-        cand = str(int(sid) + offset)
-        raw, _ = self._get_meta(FIBA_DATA_URL.format(game_id=cand))
-        if not raw or not self._nkl_same_clubs(raw, fixture):
-            return None
-        known[sid] = cand
-        self._save_idmap(config, known)
-        return cand
+        return known.get(sid)
 
     @staticmethod
     def _nkl_same_clubs(raw: dict, fixture: dict) -> bool:
@@ -1240,23 +1539,71 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                 return False
         return True
 
-    def _nkl_fetch(self, sid: str, config: dict):
-        """The FIBA fetch for an nkl.lt fixture, with the league's own club ids and names put on the
-        payload - so a club is the same club from the fixture list to the final box."""
-        fixture = next((r for r in self._nkl_matches() if str(r.get("id")) == sid), None)
-        fid = self._nkl_fiba_id(sid, fixture, config)
+    @staticmethod
+    def _nkl_score(v) -> Optional[int]:
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return None
+
+    def _nkl_fiba_final(self, sid: str, fixture: dict, config: dict):
+        """A finished game from the LiveStats feed nkl.lt links to it - only when the feed AGREES with the site:
+        the same two clubs, closed, and the same final score. 125745's webcast stopped in the 2nd quarter at
+        15-16 while the game finished 83-108; a feed like that is passed over for nkl.lt's own box score."""
+        fid = self._nkl_fiba_id(sid, config)
         if not fid:
-            return None               # no webcast known for this fixture yet
+            return None
         raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
         if not raw or "tm" not in raw:
             return None
-        if fixture:
-            for tno, side in (("1", "home"), ("2", "away")):
-                if isinstance(raw["tm"].get(tno), dict):
-                    raw["tm"][tno]["code"] = str(fixture.get(f"{side}_team_id") or raw["tm"][tno].get("code") or "")
-                    raw["tm"][tno]["name"] = fixture.get(f"{side}_name") or raw["tm"][tno].get("name") or ""
+        tm = raw["tm"]
+        feed = (self._nkl_score((tm.get("1") or {}).get("score")), self._nkl_score((tm.get("2") or {}).get("score")))
+        site = (self._nkl_score(fixture.get("home_score")), self._nkl_score(fixture.get("away_score")))
+        if not self._nkl_same_clubs(raw, fixture) or self._status(raw) != "final" or None in site or feed != site:
+            print(f"     NKL {sid}: LiveStats {fid} does not agree with nkl.lt "
+                  f"({'-'.join(str(x) for x in feed)} {self._status(raw)}, the site {'-'.join(str(x) for x in site)}) - the site's box score instead")
+            return None
+        for tno, side in (("1", "home"), ("2", "away")):
+            if isinstance(tm.get(tno), dict):
+                tm[tno]["code"] = str(fixture.get(f"{side}_team_id") or tm[tno].get("code") or "")
+                tm[tno]["name"] = self._nkl_clean(fixture.get(f"{side}_name")) or tm[tno].get("name") or ""
         b = self.bundle_from_raw(raw, sid, config)
         b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    def _nkl_fetch(self, sid: str, config: dict):
+        """A game as nkl.lt has it. Nothing before tip-off; while it is on and once it is over, its own page's box
+        score (nkl_match_page -> nkl_payload), published as a result (translate False: there is no play-by-play
+        to replay). A finished game takes the LiveStats feed nkl.lt links to it instead when that feed agrees
+        with the site, for the play-by-play the page does not have."""
+        fixture = next((r for r in self._nkl_matches() if str(r.get("id")) == sid), None)
+        if not fixture:
+            return None                  # not on nkl.lt's schedule (taken off it: see withdrawn)
+        final, running = bool(fixture.get("is_result")), bool(fixture.get("is_running"))
+        if not (final or running):
+            return None                  # not started: the page has no box score yet
+        if final:
+            b = self._nkl_fiba_final(sid, fixture, config)
+            if b is not None:
+                return b
+        elif time.time() - FibaSiteScheduleAdapter._nkl_read.get(sid, 0.0) < self.nkl_live_every_s:
+            return None                  # read under a minute ago
+        page = self._nkl_get(NKL_MATCH.format(id=sid), wait=final)
+        if page is None:
+            return None                  # the crawl delay is not up yet: the next pass asks again
+        FibaSiteScheduleAdapter._nkl_read[sid] = time.time()
+        parsed = nkl_match_page(page)
+        fixture = dict(fixture, home_name=self._nkl_clean(fixture.get("home_name")),
+                       away_name=self._nkl_clean(fixture.get("away_name")))
+        raw = nkl_payload(parsed, fixture, final)
+        if raw is None:
+            print(f"     NKL {sid}: no box score on its page yet")
+            return None
+        b = self.bundle_from_raw(raw, sid, config)
+        b.translate = False
+        b.venue = parsed.get("venue")
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b

@@ -923,10 +923,11 @@ jobs:
         # attempt on the shot chart, and every box, score, 5v5 stint and event-log line reconciling
         run: python scripts/ingest/lkl_test.py
 
-      - name: NKL (Lithuania) on FIBA LiveStats, scheduled from nkl.lt
-        # the fiba_site_schedule "nkl" site: the season from nkl.lt's own array, the LiveStats id
-        # from the homepage strip or an offset the feed itself must confirm, and nkl.lt's club ids
-        # on the payload so a club is one club from fixture to final
+      - name: NKL (Lithuania) from nkl.lt
+        # the fiba_site_schedule "nkl" site: the season from nkl.lt's own array, each game from its
+        # own match page (score, quarters, both box scores, the team lines) published as a result,
+        # a LiveStats feed only when nkl.lt links one and it agrees, the site's mojibake read back,
+        # and the fixtures nkl.lt deletes removed while nothing has happened in them
         run: python scripts/ingest/nkl_test.py
 
       - name: CIBACOPA (Mexico) on FIBA LiveStats, one competition split by phase

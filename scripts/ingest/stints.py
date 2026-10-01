@@ -527,7 +527,14 @@ def build(raw: dict, team_rows: dict, names: Optional[dict] = None,
     # not tipped off (B.LEAGUE opens the box before the ball goes up): there is nothing to replay
     # and no starters to read, so the builder used to write a zero-length stint of empty lineups
     # and warn "0 on court at 0s" on every poll until the first event arrived.
-    if not [e for e in (raw.get("pbp") or []) if isinstance(e, dict)]:
+    #
+    # NOR WITH NO PLAY AT ALL. A result published from a box score alone carries a log of nothing but
+    # markers - fibashape.game's closing "game end", a "period start" while it is being played (nkl.lt's
+    # match pages, 2026-27). With no starters flagged and no play to read, starting_five filled each
+    # side from the minutes column, and the game got a 40-minute, scoreless stint of five players who
+    # were never on court together - a lineup that never happened, in every lineup table.
+    if not [e for e in (raw.get("pbp") or []) if isinstance(e, dict)
+            and str(e.get("actionType") or "").lower() not in ("game", "period")]:
         return [], lineups_from_stints([])
 
     b = Builder(raw, game_id=game_id, game_date=game_date, teams=teams, name_of=name_of).run()
