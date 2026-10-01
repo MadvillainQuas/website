@@ -69,6 +69,22 @@ ok('...the smallest starter is every club\'s point guard, the tallest its centre
    C.clubs.every(c => c.slots.PG.members[0].id.endsWith('p0') && c.slots.C.members[0].id.endsWith('p4')),
    C.clubs.map(c => c.slots.PG.members[0].id + '/' + c.slots.C.members[0].id).slice(0, 3).join(' '));
 
+/* POS2-1: a chart with a player at two or more slots (the slot chart) is never the club's in the league view: its groups
+   would add a player's whole season at each slot, against every other club's disjoint ones */
+{
+  const twice = JSON.parse(JSON.stringify(own));
+  const star = twice.slots[0].players[0];
+  twice.slots.forEach((sl, i) => { if (i > 0) sl.players.unshift(Object.assign({}, star)); });
+  const C2 = P.context({ season: S, rosters, meta, own: { teamId: 't11', chart: twice } });
+  const club = C2.byId.get('t11'), slotMin = Object.values(club.slots).reduce((a, sl) => a + sl.stats.min, 0);
+  const team = players.filter(p => teamOf.get(p.id) === 't11').reduce((a, p) => a + p.min, 0) / 10;
+  ok('a club chart listing a player at every slot is not used for the league view: the groups\' minutes add up to no more than the club\'s',
+     slotMin <= team + 1e-9 && Object.values(club.slots).filter(sl => sl.members.some(mm => mm.id === star.id)).length === 1, slotMin.toFixed(1) + ' of ' + team.toFixed(1));
+  const teamSrc = fs.readFileSync(path.join(ROOT, 'epinoia/t/team.js'), 'utf8');
+  ok('...and the team page hands it the chart() it drew, never the slot chart (no reset of the league view to the slot chart)',
+     /own: \{ teamId: team\.id, chart: cLeague \}/.test(teamSrc) && /const cLeague = c;/.test(teamSrc) && !/c = cs; ctxP = null;/.test(teamSrc));
+}
+
 const rep = P.report(C, 't11', 'PG');
 const m = k => rep.metrics.find(x => x.k === k);
 ok('the best club\'s point guards: 1st in scoring and playmaking of 12', m('pts').rank === 1 && m('ast').rank === 1 && m('pts').of === 12, m('pts').rank + ' ' + m('ast').rank);

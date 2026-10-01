@@ -91,7 +91,7 @@ function world(o = {}) {
   return { deps, calls, callers, logs, st };
 }
 const post = (body, headers = {}) => new Request('https://fn.test/functions/v1/analytics-file', {
-  method: 'POST', headers: Object.assign({ 'content-type': 'application/json', apikey: 'sb_publishable_x' }, headers),
+  method: 'POST', headers: Object.assign({ 'content-type': 'application/json', apikey: 'sb_publishable_x', 'x-forwarded-for': '198.51.100.250' }, headers),
   body: typeof body === 'string' ? body : JSON.stringify(body) });
 const json = async r => { try { return await r.clone().json(); } catch (_) { return null; } };
 
@@ -165,10 +165,28 @@ console.log('\nthe check, with the caller\'s token');
     subs.add(w3.calls.find(c => c.rpc === 'analytics_take').args.p_subject);
   }
   ok('20 requests rotating the client-written x-forwarded-for entry and the user agent count as ONE subject', subs.size === 1, subs.size);
-  const w4 = world();
-  await handle(post({ scope: 'wins', league: L }, { 'x-forwarded-for': '6.6.6.6, 198.51.100.7', 'cf-connecting-ip': '192.0.2.44' }), w4.deps);
-  ok('...a header the edge sets itself (cf-connecting-ip) is preferred to x-forwarded-for', w4.calls.find(c => c.rpc === 'analytics_take').args.p_subject ===
+  /* SEC2-2: exactly ONE header is read. A client rotating cf-connecting-ip and x-real-ip (headers this platform may not
+     set or overwrite) while the platform's x-forwarded-for entry stays fixed keeps one subject */
+  const subs2 = new Set();
+  for (let i = 0; i < 12; i++) {
+    const w4 = world();
+    await handle(post({ scope: 'wins', league: L }, { 'x-forwarded-for': '6.6.6.' + i + ', 198.51.100.7', 'cf-connecting-ip': '192.0.2.' + i, 'x-real-ip': '203.0.113.' + i }), w4.deps);
+    subs2.add(w4.calls.find(c => c.rpc === 'analytics_take').args.p_subject);
+  }
+  ok('...a client-sent cf-connecting-ip and x-real-ip, rotated on every request, mint no new bucket (one header is read: no list, no fallback)', subs2.size === 1 &&
+     subs2.has('ip:' + createHash('sha256').update(['198.51.100.7', '2026-10-01', 'pepper'].join('|')).digest('hex').slice(0, 32)), subs2.size);
+  const env5 = k => ({ ANALYTICS_SALT: 'pepper', ANALYTICS_IP_HEADER: 'cf-connecting-ip' })[k];
+  const w5 = world(); w5.deps.env = { get: env5 };
+  await handle(post({ scope: 'wins', league: L }, { 'x-forwarded-for': '6.6.6.6, 198.51.100.7', 'cf-connecting-ip': '192.0.2.44' }), w5.deps);
+  ok('...ANALYTICS_IP_HEADER names the one the deployed edge overwrites (cf-connecting-ip here)', w5.calls.find(c => c.rpc === 'analytics_take').args.p_subject ===
      'ip:' + createHash('sha256').update(['192.0.2.44', '2026-10-01', 'pepper'].join('|')).digest('hex').slice(0, 32));
+  const w6 = world(); w6.deps.env = { get: env5 };
+  const r6 = await handle(post({ scope: 'wins', league: L }, { 'x-forwarded-for': '6.6.6.6, 198.51.100.7', 'x-real-ip': '203.0.113.5' }), w6.deps);
+  ok('...and when that header is missing a signed-out request is asked to sign in: no other header trusted, no shared bucket, nothing counted',
+     r6.status === 401 && (await json(r6)).reason === 'signin' && !w6.calls.some(c => c.rpc === 'analytics_take') && w6.logs.some(x => x.reason === 'no_address'), r6.status);
+  const w7 = world();
+  const r7 = await handle(new Request('https://fn.test/functions/v1/analytics-file', { method: 'POST', headers: { 'content-type': 'application/json', apikey: 'k' }, body: JSON.stringify({ scope: 'wins', league: L }) }), w7.deps);
+  ok('...as with no address header at all', r7.status === 401 && !w7.calls.some(c => c.rpc === 'analytics_take'));
   const files = w.calls.find(c => c.table === 'analytics_files');
   ok('no season asked: the league\'s current file', files.filters.some(f => f[1] === 'is_current' && f[2] === true));
 }

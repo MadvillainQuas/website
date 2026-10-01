@@ -73,7 +73,7 @@ function mockDb(units, opts) {
     db.player_game_stats.push(...u.pgs.filter(r => has(r.game_id)));
     db.lineup_stints.push(...u.stints.filter(r => has(r.game_id)).map((r, i) => Object.assign({ id: u.league.slug + i }, r)));
     db.teams.push(...u.teams); db.roster_entries.push(...u.rosters); db.players.push(...u.players); db.bios.push(...u.bios); db.venues.push(...u.venues);
-    db.open.push(u.league.id);
+    if (!(opts.closed && opts.closed.has(u.league.id))) db.open.push(u.league.id);
   });
   const filterOf = sp => {
     const fs_ = [];
@@ -272,7 +272,9 @@ let inc;
 {
   const old = { wins: idxRow(mk, 'wins', U1.league.id).path, fo: idxRow(mk, 'fo', U1.league.id).path };
   mk.events.length = 0; mk.urls.length = 0;
-  inc = await run(mk, { now: at(2), poolGapHours: 0 });
+  /* simGrow 0: the simulator is calibrated afresh here as in the full build (carrying it while a unit grows by under 25%
+     is PERF2-5's deliberate shortcut between weekly full runs, held in ww-winmodel) */
+  inc = await run(mk, { now: at(2), poolGapHours: 0, simGrow: 0 });
   const w = idxRow(mk, 'wins', U1.league.id);
   ok('past the floor the unit is rebuilt from its store plus the 20 new games', !inc.failed.length && w.n_games === 120 && w.path !== old.wins && inc.built.some(b => b.scope === 'wins' && b.unit.startsWith(U1.league.id)),
     inc.failed.map(f => f.error).join('; ') + ' n ' + w.n_games + ' ' + JSON.stringify(inc.skipped));
@@ -335,6 +337,83 @@ console.log('\na re-finalised game, a queued RECALCULATE, a deleted league, a fi
     idxRow(mk, 'wins', U1.league.id).path === before && mk.bucket.has(before) && !mk.events.some(e => e.op === 'upload' && e.path.startsWith('wins/' + U1.league.id)),
     r3.failed.map(f => f.error.slice(0, 80)).join('; '));
   ok('...the store still takes the new line (read once)', JSON.parse(mk.bucket.get(idxRow(mk, 'store', U1.league.id).path).body).wm.at === at(6));
+}
+
+/* ------------------------------------------------------------------------------------------- a RECALCULATE's lease --- */
+console.log('\na RECALCULATE\'s lease (PERF2-4)');
+{
+  const ml = mockDb([U2]);
+  await run(ml, { now: at(0) });
+  /* a refresh running for 2 minutes holds due = true: the hourly build leaves it to finish */
+  ml.db.analytics_refresh.push({ league_id: U2.league.id, season_id: U2.season.id, due: true, status: 'running', started_at: at(1.9), finished_at: null });
+  const r1 = await run(ml, { now: at(2) });
+  ok('a live RECALCULATE lease (running, under 10 minutes old) is not built over by the scheduled run', !r1.built.some(b => b.scope === 'wins' && b.unit.startsWith(U2.league.id)) &&
+     ml.db.analytics_refresh[0].due === true, JSON.stringify(r1.built.map(b => b.scope)));
+  /* the isolate was killed (its finally never ran): eleven minutes on, the build takes the unit and clears the flag */
+  ml.db.analytics_refresh[0].started_at = at(2 - 11 / 60);
+  const r2 = await run(ml, { now: at(2) });
+  ok('...a dead one (no finish after 10 minutes) is built by the scheduled run and its flag cleared', r2.built.some(b => b.scope === 'wins' && b.unit.startsWith(U2.league.id)) &&
+     ml.db.analytics_refresh[0].due === false, JSON.stringify(r2.skipped));
+}
+
+/* ------------------------------------------------------------------------------------------- egress and time --- */
+console.log('\negress and the run\'s time (PERF2-3, PERF2-5)');
+{
+  /* league two's previous season (the same league, an earlier season) */
+  const L3 = M.synthUnit({ teams: 8, games: 64, seed: 18 }), U3 = unitRows(L3, 'synth-two');
+  U3.league = U2.league;
+  U3.season = Object.assign({}, U3.season, { league_id: U2.league.id, starts_on: '2025-09-01' });
+  U3.features.forEach(r => { r.league_id = U2.league.id; });
+  const me = mockDb([U3, U2]);
+  me.db.leagues = [U2.league];
+  await run(me, { now: at(0) });
+  const prevStore = 'store/' + U2.league.id + '/' + U3.season.id + '/';
+  /* the current season is built first, before its previous season has a store: the next build reads it */
+  me.urls.length = 0;
+  me.db.analytics_refresh.push({ league_id: U2.league.id, season_id: U2.season.id, due: true, status: 'queued' });
+  await run(me, { now: at(2) });
+  ok('a build reads its previous season\'s store once, and keeps its players by club with that store\'s token',
+     me.urls.some(x => x.startsWith('GET /storage/v1/object/analytics/' + prevStore)) &&
+     JSON.parse(me.bucket.get(me.db.analytics_files.find(x => x.scope === 'store' && x.season_key === U2.season.id).path).body).ctx.prevToken ===
+     me.db.analytics_files.find(x => x.scope === 'store' && x.season_key === U3.season.id).token);
+  me.urls.length = 0;
+  me.db.analytics_refresh[0].due = true;
+  const r2 = await run(me, { now: at(3) });
+  ok('...the next build of it does not download the previous season\'s whole store again', r2.built.some(b => b.scope === 'wins' && b.unit.startsWith(U2.league.id + ':' + U2.season.id)) &&
+     !me.urls.some(x => x.startsWith('GET /storage/v1/object/analytics/' + prevStore)), me.urls.filter(x => x.includes(prevStore)).join(' | '));
+  /* the weekly full run leaves the past season alone (its token and layout stand) */
+  me.urls.length = 0;
+  const rf = await run(me, { now: at(4), full: true });
+  ok('--full rebuilds the current season and the pooled file but not a past season whose token stands (--full-past does)',
+     rf.built.some(b => b.scope === 'wins' && b.unit.startsWith(U2.league.id + ':' + U2.season.id)) && !rf.built.some(b => b.unit && b.unit.startsWith(U2.league.id + ':' + U3.season.id)) &&
+     rf.built.some(b => b.unit === 'all:current'), JSON.stringify(rf.built.filter(b => b.scope === 'wins').map(b => b.unit)));
+  /* a run past its wall clock stops between units; the units stay due */
+  me.db.analytics_refresh[0].due = true;
+  const rt = await run(me, { now: at(5), budgetMin: 0 });
+  ok('a run past its budget (budgetMin) builds nothing more and leaves the due units for the next run', rt.built.length === 0 && rt.skipped.some(x => x.why === 'time'), JSON.stringify(rt.skipped));
+  const rb = await run(me, { now: at(6), bigGames: 10, maxBig: 0 });
+  ok('...and big units over maxBig wait an hour before their stores are read', rb.built.length === 0 && rb.skipped.some(x => x.why === 'big units a run'), JSON.stringify(rb.skipped));
+}
+
+/* ------------------------------------------------------------------------------------------- the public log --- */
+console.log('\nthe public Actions log and job summary (SEC2-1)');
+{
+  /* league two is members-only; a wins budget of 2,000 bytes fails both units */
+  const mp = mockDb([U1, U2], { closed: new Set([U2.league.id]) }), logs = [];
+  const r = await run(mp, { now: at(0), log: m => logs.push(String(m)), budget: { wins: 2000 } });
+  const tag2 = B.opaque(U2.league.id + ':' + U2.season.id);
+  const text = logs.join('\n') + '\n' + r.summary;
+  ok('a members-only league is never named in the log or the summary (an opaque hash instead); an open one is',
+     !text.includes('synth-two') && !text.includes(U2.league.id) && !text.includes(U2.season.id) && text.includes('synth-one') && text.includes(tag2),
+     logs.filter(l => l.includes('synth-two')).join(' | '));
+  const f2 = text.split('\n').filter(l => l.includes(tag2) && /FAILED/.test(l));
+  ok('...its failure is printed with no error text at all (an open league\'s keeps a clipped message)', r.failed.some(f => f.unit.startsWith(U2.league.id)) && f2.length >= 1 &&
+     f2.every(l => / failed$/.test(l)) && !/withheld/.test(text), f2.join(' | '));
+  const rep = mp.bucket.get('reports/last.json');
+  ok('...the whole report goes to the private bucket (reports/last.json) for the operator', !!rep && rep.body.includes('synth-two') && /budget/.test(rep.body));
+  const sm = B.summary({ built: [], current: 0, failed: [{ unit: 'L:S', label: B.opaque('L:S'), error: 'club t1: withheld player 1234abcd-0000-4000-a000-000000000000', pub: 'club: 1 problems' }],
+    accept: { 'L:S': { slug: 'secret-league', label: B.opaque('L:S'), open: false, n: 80, check4: { r2: 0.9 } } }, warnings: [] }, { units: 1, due: 1 });
+  ok('summary(): a withheld player\'s id and a closed league\'s slug never reach it', !sm.includes('withheld') && !sm.includes('1234abcd') && !sm.includes('secret-league') && sm.includes('1 members-only or private unit built'));
 }
 
 /* ------------------------------------------------------------------------------------------- the cache --- */

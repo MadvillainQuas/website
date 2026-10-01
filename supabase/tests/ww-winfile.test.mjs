@@ -49,6 +49,7 @@ function sandbox(o = {}) {
   const state = { session: o.session === undefined ? null : o.session, clock: Date.parse('2026-10-01T12:00:00Z') };
   const ls = storage(log, 'local'), ss = storage(log, 'session');
   if (o.legacy) ls._m.set('epinoia_winning_v1', '{"huge":true}');
+  if (o.ss) Object.entries(o.ss).forEach(([k, v]) => ss._m.set(k, v));
   class FakeDate extends Date { static now() { return state.clock; } }
   const ctx = {
     EPINOIA_CONFIG: { supabaseUrl: URL_, supabaseAnonKey: ANON },
@@ -254,6 +255,47 @@ console.log('\nRECALCULATE');
   const b3 = sandbox({ route: () => res(401, { reason: 'signin' }) });
   ok('signed out, RECALCULATE is \'signin\'', (await b3.W.refresh({ league: L })).reason === 'signin');
   ok('...and without a league it is not asked at all', (await b3.W.refresh({})).reason === 'scope');
+}
+
+console.log('\nleft over from another account, and one key a unit (SEC2-3, PERF2-1)');
+{
+  /* user A signed out on a page without this loader (the sign-in page, the app shell): his members-only file is still in
+     the tab's sessionStorage when the next page loads, signed out or as user B */
+  const entry = JSON.stringify({ token: '12@x', data: FILE(), at: Date.parse('2026-10-01T11:59:00Z') });
+  const keyA = 'epinoia_ww:user-A:wins:' + L + ':current:-';
+  const b = sandbox({ ss: { [keyA]: entry, 'other_key': 'kept' }, route: () => res(403, { reason: 'members' }) });
+  const out = await b.W.get({ scope: 'wins', league: L });
+  ok('a signed-out page load removes another account\'s epinoia_ww: keys on its first request (the answer was members)', out.reason === 'members' &&
+     !b.ss._m.has(keyA) && b.ss._m.get('other_key') === 'kept', Array.from(b.ss._m.keys()));
+  const keyB = 'epinoia_ww:user-B:fo:' + L + ':current:-';
+  const b2 = sandbox({ session: { token: 'eyJ.b.b', userId: 'user-B' }, ss: { [keyA]: entry, [keyB]: entry }, route: standard() });
+  await b2.W.get({ scope: 'wins', league: L, season: S });
+  ok('...signed in as B: A\'s keys go, B\'s own stay (swept after sessionReady, so an expired member keeps his)', !b2.ss._m.has(keyA) && b2.ss._m.has(keyB), Array.from(b2.ss._m.keys()));
+  const cfgSrc = readFileSync(path.join(ROOT, 'epinoia', 'config.js'), 'utf8');
+  const so = cfgSrc.slice(cfgSrc.indexOf('window.epinoiaSignOut'), cfgSrc.indexOf('window.epinoiaSignOut') + 2500);
+  ok('...and epinoiaSignOut (config.js), on any page, removes every epinoia_ww: key from sessionStorage', /sessionStorage\.removeItem/.test(so) && /'epinoia_ww:'/.test(so));
+}
+{
+  /* the page reads the current season (no season: ...:current:) and RECALCULATE names the season by its id */
+  const posts = [];
+  let next = { token: '12@2026-09-30T10:00:00Z', refresh_reason: 'recent', refreshed: false };
+  const file = tok => Object.assign(FILE(), { token: tok, season: { id: S, name: '2026' } });
+  const b = sandbox({ session: { token: 'eyJ.a.b', userId: 'u-1' }, route: (r) => {
+    if (r.init.method === 'POST') { const body = JSON.parse(r.init.body); posts.push(body); return res(200, META(body.refresh ? next : {})); }
+    return res(200, file(r.url.includes('T2') ? '15@x' : '12@x'));
+  } });
+  await b.W.get({ scope: 'wins', league: L });
+  const gets0 = b.reqs.filter(r => r.init.method === 'GET').length;
+  const noop = await b.W.refresh({ league: L, season: S });
+  ok('a RECALCULATE answered \'recent\' with the token the page holds downloads nothing (the current-season entry is found)', noop.ok && noop.cached === true &&
+     b.reqs.filter(r => r.init.method === 'GET').length === gets0, b.reqs.map(r => r.init.method).join());
+  next = { token: '15@2026-10-01T02:00:00Z', refreshed: true, url: 'https://proj.supabase.co/storage/v1/object/sign/analytics/wins/b.json?token=T2' };
+  const done = await b.W.refresh({ league: L, season: S });
+  const winsKeys = Array.from(b.ss._m.keys()).filter(k => k.includes(':wins:'));
+  ok('...a real one overwrites that entry: one copy of the unit in sessionStorage, not two', done.ok && done.token === '15@2026-10-01T02:00:00Z' && winsKeys.length === 1 &&
+     winsKeys[0].endsWith(':current:-'), winsKeys);
+  const again = await b.W.get({ scope: 'wins', league: L });
+  ok('...so the page\'s next load (within the ten minutes) shows the new model, from the cache', again.cached === true && again.token === '15@2026-10-01T02:00:00Z', again.token);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

@@ -285,6 +285,23 @@ const wA = rA.wins, truth = A.truth;
     wA.tempo.windows.e.v > wA.tempo.windows.l.v);
   ok('squad: n = club seasons, power \'low\' under 50, evidence words only with intervals', wA.squad && wA.squad.n === 12 && wA.squad.power === 'low' &&
     wA.squad.coef.every(c => c.evidence !== 'strong' || (c.lo > 0 || c.hi < 0)));
+  /* R2S-2: talent, depth and the slot BPM are the box BPM BEFORE bpm.js's team adjustment, which builds the club's own
+     net rating into every player (minutes-weighted, exactly 1.2 x net / 5): set against the clubs' results it would
+     explain the results with themselves */
+  {
+    const clubsA = Array.from(rA.clubs.values());
+    const wm = cl => { const ps = cl.players.filter(p => isNum(p.bpm)), w = ps.reduce((a, p) => a + p.min, 0); return w > 0 ? ps.reduce((a, p) => a + p.min * p.bpm, 0) / w : null; };
+    /* a club with a withheld player (I6) lists fewer players than its talent counts: those are left out of the check */
+    const off = clubsA.map(cl => Math.abs(cl.squad.talent - wm(cl)));
+    const exact = off.filter(d => d < 0.051).length;
+    ok('squad talent is the minutes-weighted box BPM before the team adjustment (the club file\'s players carry the same figure)',
+       clubsA.length === 12 && exact >= 12 - wh.size, off.map(d => d.toFixed(3)).join(' ') + ' (' + wh.size + ' withheld)');
+    const BP = globalThis.EpinoiaBPM, base = { pace: 70, offRtg: 105, avgPtsPerTSA: 1.05, per100: { trb: 40, stl: 8, pf: 20, ast: 22, blk: 4, total_threshold_pts: 30 } };
+    const line = { id: 'q', minutes: 300, pts: 150, tpm: 10, ast: 30, to: 20, orb: 10, drb: 40, stl: 10, blk: 5, pf: 25, fga: 110, fta: 40 };
+    const lo = BP.forTeam(Object.assign({ netRtg: -10 }, base), [line], 105)[0], hi = BP.forTeam(Object.assign({ netRtg: 10 }, base), [line], 105)[0];
+    ok('...which is why it is used: the same line on a -10 and a +10 club keeps its bpmRaw while its bpm moves 4.8', lo.bpmRaw === hi.bpmRaw && Math.abs(hi.bpm - lo.bpm - 4.8) < 0.11,
+       lo.bpmRaw + ' ' + hi.bpmRaw + ' ' + lo.bpm + ' ' + hi.bpm);
+  }
 }
 
 /* ------------------------------------------------------------------------------------------- pooled --- */
@@ -366,7 +383,7 @@ console.log('\nRECALCULATE: update(store, delta) against a full build of the uni
   const F1 = Object.assign({}, fresh, { ctx });
   const full = M.buildUnit(M.inputFromStore(F1), { now: NOW, B: 40, sim: false, raw: true, token: up.token });
   const SKIP = new Set(['lo', 'hi', 'se', 'seCheck', 'topLo', 'topHi', 'star', 'evidence', 'power', 'logitAgree', 'ci_at', 'built', 'sim', 'lens', 'platt', 'calibrated',
-    'kappaN', 'sigmaN', 'hca', 'tau', 'muOff', 'dTr', 'lead', 'fouling', 'checks', 'own', 'gamma', 'x50', 'x75', 'addR2', 'or']);
+    'kappaN', 'sigmaN', 'hca', 'tau', 'muOff', 'dTr', 'lead', 'tripOff', 'fouling', 'checks', 'ftrOk', 'own', 'gamma', 'x50', 'x75', 'addR2', 'or']);
   let worst = 0, where = '', count = 0;
   const cmp = (a, b, p) => {
     if (/\.pd\.[a-z_]+\[\d+\]\[[23]\]$/.test(p)) return;        // a partial-dependence row's interval ends
@@ -466,6 +483,16 @@ console.log('\nthe simulator\'s calibration (§8.3) and the Front office file');
     t.f.c_efg && isNum(t.f.c_efg.off) && r.fo.value.c_efg && isNum(r.fo.value.c_efg.p75.off) && r.fo.value.c_tovp.dir === -1);
   ok('...the slots (P1 values, P2 targets, P2f), the squad and the lineup grid', r.fo.slots && r.fo.slots.p1.length === 21 && r.fo.squad && r.fo.lineup && r.fo.lineup.grid.length === 15);
   ok('...and the carry (intervals + the calibration) for RECALCULATE', r.carry && r.carry.at === NOW && Object.keys(r.carry.ci).length > 20 && r.carry.sim && isNum(r.carry.sim.kappaN));
+  /* PERF2-5: the builder carries the calibration between weekly full runs while the unit grows by less than simReuse */
+  const t1 = Date.now();
+  const rr = M.buildUnit(U, { now: NOW, B: 30, carry: r.carry, simReuse: 0.25, simOpts: { fitN: 40, fitSims: 40, evalSims: 120 } });
+  const dt = Date.now() - t1;
+  ok('a full build with simReuse carries the last calibration (same unit size: no calibrate run, the same fo.lg)', r.carry.sim.v === 2 && r.carry.sim.nGames === 150 &&
+     JSON.stringify(rr.fo.lg) === JSON.stringify(r.fo.lg) && rr.carry.sim.nGames === 150, dt + ' ms');
+  const old = M.buildUnit(U, { now: NOW, B: 30, carry: Object.assign({}, r.carry, { sim: Object.assign({}, r.carry.sim, { v: undefined }) }), simReuse: 0.25, simOpts: { fitN: 40, fitSims: 40, evalSims: 120 } });
+  ok('...one fitted by an older calibrate (no version) is fitted again', old.carry.sim.v === 2 && JSON.stringify(old.fo.lg) === JSON.stringify(r.fo.lg));
+  const small = M.buildUnit(U, { now: NOW, B: 30, carry: Object.assign({}, r.carry, { sim: Object.assign({}, r.carry.sim, { nGames: 100 }) }), simReuse: 0.25, simOpts: { fitN: 40, fitSims: 40, evalSims: 120 } });
+  ok('...and so is one the unit has outgrown (100 games then, 150 now: over 25%)', small.carry.sim.nGames === 150);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed  (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');

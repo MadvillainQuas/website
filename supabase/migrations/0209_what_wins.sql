@@ -229,7 +229,9 @@ begin
     return jsonb_build_object('ok', false, 'state', 'recent', 'status', r.status,
       'retry_after', greatest(1, ceil(extract(epoch from (r.started_at + interval '10 minutes' - now())))::int));
   end if;
-  update public.analytics_refresh set started_at = now(), finished_at = null, status = 'running', by_subject = p_subject
+  -- the lease: `due` is set while it runs, so an isolate killed mid-update (the Edge CPU limit skips its `finally`) leaves
+  -- the unit flagged for the scheduled build, which waits out a live lease (10 minutes) and then takes it (PERF2-4)
+  update public.analytics_refresh set started_at = now(), finished_at = null, status = 'running', by_subject = p_subject, due = true
    where league_id = p_league and season_id = p_season;
   insert into public.analytics_issue_log (subject, scope, league_key) values (p_subject, 'refresh', p_league::text);
   return jsonb_build_object('ok', true);
@@ -238,13 +240,14 @@ revoke all on function public.analytics_refresh_take(text, uuid, uuid) from publ
 revoke all on function public.analytics_refresh_take(text, uuid, uuid) from anon, authenticated;
 grant execute on function public.analytics_refresh_take(text, uuid, uuid) to service_role;
 
--- How it ended: 'done', 'failed', or 'queued' (left for the next scheduled build, which clears `due`).
+-- How it ended: 'done', 'failed', or 'queued' (left for the next scheduled build, which clears `due`). Only 'done' clears
+-- the lease's `due`: the update holds every game finalised before it; a failure or a queue leaves it to the build.
 create or replace function public.analytics_refresh_done(p_league uuid, p_season uuid, p_status text)
 returns void language sql volatile security definer set search_path = public as $$
   update public.analytics_refresh
      set finished_at = now(),
          status = case when p_status in ('done', 'failed', 'queued') then p_status else 'failed' end,
-         due = due or p_status = 'queued'
+         due = p_status is distinct from 'done'
    where league_id = p_league and season_id = p_season $$;
 revoke all on function public.analytics_refresh_done(uuid, uuid, text) from public;
 revoke all on function public.analytics_refresh_done(uuid, uuid, text) from anon, authenticated;

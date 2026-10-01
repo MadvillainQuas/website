@@ -310,6 +310,15 @@ window.epinoiaSignOut = async function (sb) {
       .forEach(k => localStorage.removeItem(k));
   } catch (_) { /* storage unavailable is not a reason to fail a sign-out */ }
 
+  /* What wins keeps a member's files in this tab's sessionStorage under
+     epinoia_ww:<user>:… (winfile.js). A sign-out on a page that never loaded
+     winfile.js would otherwise leave them for whoever uses the tab next. */
+  try {
+    const gone = [];
+    for (let i = 0; i < sessionStorage.length; i++) { const k = sessionStorage.key(i); if (k && k.indexOf('epinoia_ww:') === 0) gone.push(k); }
+    gone.forEach(k => sessionStorage.removeItem(k));
+  } catch (_) { /* nothing kept, or storage blocked */ }
+
   /* Tell this tab. The browser's storage event only reaches OTHER tabs, so
      without this the rail in this one would wait for its next poll. */
   try { window.dispatchEvent(new Event('epinoia:auth')); } catch (_) {}

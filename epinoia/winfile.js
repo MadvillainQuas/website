@@ -22,7 +22,8 @@
 
    CACHED IN MEMORY AND sessionStorage, KEYED BY THE USER, NEVER IN localStorage (I7): epinoia_ww:<user|anon>:<scope>:
    <league|all>:<season|current>:<team|->. Reused without a request for ten minutes, then asked again and downloaded
-   only if the token moved. Another account signing in on this tab clears every epinoia_ww: key, and a download still
+   only if the token moved. Another account signing in on this tab clears every epinoia_ww: key (and the first request
+   of a page load sweeps every key that is not the current user's, whatever page the account changed on), a download still
    in flight when that happens is dropped, never written back (a generation that clear() moves on). The old page's
    localStorage copy (epinoia_winning_v1, up to 1.9 MB of somebody's analysis) is removed the first time this loads.
    A members' file is fetched with cache: 'no-store', so the browser's HTTP disk cache never keeps a copy that sign-out
@@ -45,7 +46,7 @@ const SCOPES = ['wins', 'fo', 'club', 'pos', 'teaser'];
 let transport = null;
 const mem = new Map();
 const inflight = new Map();
-let lastUser = null, subscribed = false;
+let lastUser = null, subscribed = false, swept = false;
 /* moved on by clear(): a request started before it may not write the cache or answer for the account that left */
 let gen = 0;
 
@@ -96,11 +97,27 @@ function clear() {
     gone.forEach(k => S.removeItem(k));
   } catch (_) { /* nothing to clear */ }
 }
-/* a different account on this tab: nothing of the last one's may be reused */
-function checkUser() {
+/* every epinoia_ww: key that is not `u`'s: what another account left in this tab (SEC2-3) */
+function sweep(u) {
+  const own = PREFIX + u + ':';
+  Array.from(mem.keys()).forEach(k => { if (k.indexOf(own) !== 0) mem.delete(k); });
+  const S = store();
+  if (!S) return;
+  try {
+    const gone = [];
+    for (let i = 0; i < S.length; i++) { const k = S.key(i); if (k && k.indexOf(PREFIX) === 0 && k.indexOf(own) !== 0) gone.push(k); }
+    gone.forEach(k => S.removeItem(k));
+  } catch (_) { /* nothing to sweep */ }
+}
+/* a different account on this tab: nothing of the last one's may be reused. lastUser is null on every page load, so a
+   sign-out or another sign-in on a page without this loader (the sign-in page, the app shell, admin, the rail) would
+   leave the last account's files in the tab: the first check after ready() (the session refreshed, so an expired but
+   refreshable member keeps his own) sweeps every key that is not the current user's (SEC2-3). */
+function checkUser(afterReady) {
   const u = userOf(sess());
   if (lastUser !== null && u !== lastUser) clear();
   lastUser = u;
+  if (afterReady && !swept) { swept = true; sweep(u); }
   if (!subscribed) {
     const A = access();
     if (A && typeof A.onChange === 'function') { subscribed = true; try { A.onChange(() => checkUser()); } catch (_) { subscribed = false; } }
@@ -113,6 +130,16 @@ function cached(o) {
   checkUser();
   const k = keyOf(o), e = mem.get(k) || readSS(k);
   return e ? answer(e, true) : null;
+}
+
+/* the cached entry for a unit, under its own key or, for a season asked by id, under the current-season key when that
+   entry is the same season: {k (the key to keep it under), hit} */
+function unitHit(o) {
+  const k = keyOf(o), h = mem.get(k) || readSS(k);
+  if (h || !o.season) return { k, hit: h || null };
+  const alt = keyOf(Object.assign({}, o, { season: undefined })), a = mem.get(alt) || readSS(alt);
+  const as = a && a.data && a.data.season;
+  return a && as && String(as.id != null ? as.id : as) === String(o.season) ? { k: alt, hit: a } : { k, hit: null };
 }
 
 /* ------------------------------------------------------------ the function --- */
@@ -225,7 +252,7 @@ async function get(o, opts) {
   o = o || {};
   if (SCOPES.indexOf(o.scope) < 0) return { ok: false, reason: 'scope' };
   await ready();
-  checkUser();
+  checkUser(true);
   const k = keyOf(o), g0 = gen;
   const hit = mem.get(k) || readSS(k);
   if (hit && Date.now() - hit.at < REUSE_MS && !(opts && opts.force)) { mem.set(k, hit); return answer(hit, true); }
@@ -247,15 +274,17 @@ async function refresh(o, opts) {
   o = Object.assign({ scope: 'wins' }, o || {});
   if (['wins', 'fo', 'club', 'pos'].indexOf(o.scope) < 0 || !o.league) return { ok: false, reason: 'scope' };
   await ready();
-  checkUser();
-  const k = keyOf(o), g0 = gen;
+  checkUser(true);
+  const g0 = gen;
   note(opts, 'check');
   note(opts, 'update');
   const meta = await ask(o, true, opts);
   if (!meta.ok) return meta;
   if (aborted(opts)) return { ok: false, reason: 'aborted' };
-  const hit = mem.get(k) || readSS(k);
-  const out = await settle(o, k, hit, meta, opts, g0);
+  /* the unit's ONE cached entry (PERF2-1): a page that read the current season (no season: ...:current:) and refreshes it
+     by its id finds and overwrites that entry, so a no-op answer downloads nothing and a reload shows the new model */
+  const u = unitHit(o);
+  const out = await settle(o, u.k, u.hit, meta, opts, g0);
   return out.ok ? Object.assign(out, { refreshed: !!meta.refreshed, queued: !!meta.queued, joined: !!meta.joined,
                                        refreshReason: meta.refresh_reason || null, retryAfter: isFinite(+meta.retry_after) && +meta.retry_after > 0 ? +meta.retry_after : null }) : out;
 }

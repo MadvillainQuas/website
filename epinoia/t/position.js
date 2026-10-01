@@ -86,7 +86,12 @@ function context(o) {
   byTeam.forEach((rows, teamId) => {
     if (!(gp.get(teamId) > 0)) return;
     let chart;
-    if (o.own && o.own.teamId === teamId) chart = o.own.chart;
+    /* the club being read keeps its own chart only while it is one like everybody else's: each player at one slot. A
+       chart that lists a player at two (the slot chart, depth.js slotChart) would count his whole season at each and
+       set the club's double-counted groups against the others' (POS2-1), so it is put through chart() too */
+    const ownChart = o.own && o.own.teamId === teamId ? o.own.chart : null;
+    const ids = ownChart ? ownChart.slots.flatMap(sl => sl.players.map(p => p.id)) : [];
+    if (ownChart && new Set(ids).size === ids.length) chart = ownChart;
     else {
       const season = new Map(rows.map(r => [r.id, r]));
       const roster = rows.filter(r => num(r.min) > 0).map(r => Object.assign({ id: r.id, name: r.name || '' }, bio.get(r.id) || {}));

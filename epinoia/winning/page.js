@@ -98,6 +98,10 @@ const ago = (iso, now) => {
 const chartSlot = (spec, list) => { list.push(spec); return '<div class="ww-chart" data-chart="' + (list.length - 1) + '"></div>'; };
 const locked = rows => ({ state: 'locked', html: '<div class="ww-lock" data-memlock="' + (rows || 5) + '"></div>', charts: [] });
 
+/* the Platt map the simulator's P(win) goes through: only a calibrated simulator's (§8.3), as the Front office does;
+   an uncalibrated one is experimental and shown raw */
+const simPlatt = fo => (fo && fo.sim && fo.sim.calibrated && fo.sim.platt) || null;
+
 /* ------------------------------------------------------------------ the status line (A.2) --- */
 /* {line, canRecalc, upToDate} from a file answer: "Model of N games · built 2 h ago · 12 new games since" */
 function statusLine(ans, W, o) {
@@ -138,8 +142,11 @@ function cards(W) {
   const C = W.models.core4c, n = W.n && W.n.games;
   const sh = (C.shares || []).find(s => s.k === 'c_efg'), ss = shareScale(C.shares);
   if (sh && isNum(sh.phi) && isNum(sh.lo) && isNum(sh.hi)) out.push({ lens: 'explain', n, text: 'Shooting decides ' + pc(ss * sh.phi) + '% of the margin here (' + pc(ss * sh.lo) + '–' + pc(ss * sh.hi) + ')' });
-  /* the best hard number on a measure that is not itself part of the score (a points lead "wins" every game) */
-  const hard = Object.keys(W.curves || {}).filter(k => !(W.meta && W.meta[k] && W.meta[k].score)).map(k => ({ k, h: W.curves[k].hard })).filter(x => x.h && x.h.n >= 50 && isNum(x.h.lo))
+  /* the best hard number on a measure that is not itself part of the score (a points lead "wins" every game), has a
+     better side (dir 0, a count like players used, says nothing about winning) and is told from noise (its interval
+     leaves out 50%); none qualifying, no card (UI2-1) */
+  const hard = Object.keys(W.curves || {}).filter(k => { const m = W.meta && W.meta[k]; return !(m && m.score) && !(m && m.dir === 0); })
+    .map(k => ({ k, h: W.curves[k].hard })).filter(x => x.h && x.h.n >= 50 && isNum(x.h.lo) && isNum(x.h.hi) && (x.h.lo > 0.5 || x.h.hi < 0.5))
     .sort((a, b) => Math.abs(b.h.p - 0.5) - Math.abs(a.h.p - 0.5))[0];
   if (hard) out.push({ lens: 'explain', n: hard.h.n, k: hard.k, text: 'Sides ahead by ' + hard.h.t + ' or more on ' + label(W, hard.k) + ' won ' + pc(hard.h.p) + '% (' + pc(hard.h.lo) + '–' + pc(hard.h.hi) + ') of ' + hard.h.n + ' games' });
   const g = W.tempo && W.tempo.sqrtN, pt = paceText(g);
@@ -317,7 +324,10 @@ const views = {
         o: { x: { label: 'possessions per 40 (first three quarters)' }, y: { label: 'won %', fmt: v => Math.round(v) + '%' }, brush: true, title: 'Team pace and winning', desc: 'Each team-season’s pace against its share of wins; drag to pick teams' } }, charts);
       html += '<p class="ww-note ww-brushed" aria-live="polite">' + (st.brushed && st.brushed.length ? esc('Picked: ' + T.teams.filter(t => st.brushed.indexOf(t.id) >= 0).map(t => t.name).join(', ')) : 'Drag across the chart to pick teams.') + '</p>';
     }
-    if (T.bins && T.bins.length) html += chartSlot({ kind: 'binnedCurve', label: 'Winning by team tempo', data: { bins: T.bins, raw: T.curve, adj: T.curveAdj },
+    /* a heading and a key: the solid curve is what happened, the dashed one holds net rating level, which is where the pace
+       effect shows once quality is counted (UI2-2) */
+    if (T.bins && T.bins.length) html += '<h3 class="ww-h3">Winning by team pace</h3><p class="ww-lead"><span class="ww-legend"><i class="ww-k-line"></i>observed' +
+      (T.curveAdj ? ' <i class="ww-k-line ww-k-dash"></i>with net rating held level' : '') + '</span></p>' + chartSlot({ kind: 'binnedCurve', label: 'Winning by team tempo', data: { bins: T.bins, raw: T.curve, adj: T.curveAdj },
       o: { x: { label: 'team pace, z within the league' }, title: 'Winning by team tempo', desc: 'Win share by fifth of team tempo; the dashed line holds net rating level' } }, charts);
     const g = T.sqrtN;
     if (g) {
@@ -808,7 +818,7 @@ function boot() {
     const S = Sim(), teams = fo.teams;
     const t1 = teams.some(t => t.id === st.t1) ? st.t1 : teams[0].id, t2 = teams.some(t => t.id === st.t2 && t.id !== t1) ? st.t2 : teams.find(t => t.id !== t1).id;
     const A = teams.find(t => t.id === t1), B = teams.find(t => t.id === t2);
-    const L = fo.lg, platt = fo.sim && fo.sim.platt;
+    const L = fo.lg, platt = simPlatt(fo);
     const edits = side => DIALS.map(d => ({ end: 'off', key: d.key, delta: (st.dials[side] || {})[d.key] || 0 })).filter(e => e.delta);
     const pa = S.applyEdits(A.prof, edits('A'), L), pb = S.applyEdits(B.prof, edits('B'), L);
     const M = S.matchup(pa, pb, L, { home: +st.venue, platt });
@@ -870,7 +880,7 @@ function boot() {
     stage('check', 0, 'Checking what has changed');
     let a;
     try {
-      a = await WF().refresh({ league: W.league.id, season: W.season ? W.season.id : undefined }, { signal: ab.signal, onProgress: p => {
+      a = await WF().refresh({ league: W.league.id, season: seasonId || undefined }, { signal: ab.signal, onProgress: p => {
         if (p.stage === 'update') stage('update', 0.3, 'Updating the model on the server');
         if (p.stage === 'download') stage('download', p.total ? p.loaded / p.total : 0.5, 'Downloading the new file' + (p.loaded ? ' (' + Math.round(p.loaded / 1024) + ' KB)' : ''));
       } });
@@ -1028,5 +1038,5 @@ function boot() {
   })();
 }
 
-return { views, cards, statusLine, boot, SECTIONS, MEMBER, DIALS, LEGACY, _ago: ago };
+return { views, cards, statusLine, boot, simPlatt, SECTIONS, MEMBER, DIALS, LEGACY, _ago: ago };
 }));

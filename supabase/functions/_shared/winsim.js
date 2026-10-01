@@ -150,7 +150,7 @@ function profile(input, lg) {
 }
 
 /* ------------------------------------------------------------ the matchup --- */
-const LDEF = { T: 2400, Tot: 300, kappaN: 1, sigmaN: 0, hca: 0, tau: 0, muOff: 0, dTr: 0, lead: 0, ft3: FT3, fouling: true };
+const LDEF = { T: 2400, Tot: 300, kappaN: 1, sigmaN: 0, hca: 0, tau: 0, muOff: 0, dTr: 0, lead: 0, tripOff: 0, ft3: FT3, fouling: true };
 function lcore(L) {
   const o = {};
   for (const k in LDEF) o[k] = L && L[k] != null ? L[k] : LDEF[k];
@@ -158,16 +158,19 @@ function lcore(L) {
 }
 const zonesOf = (L, mu) => !(L && L.zones === false) && isNum(mu.mixRim) && isNum(mu.mixMid) && isNum(mu.pRim) && isNum(mu.pMid);
 /* side a's offence against side b's defence: log5 on the logit scale, the home court (hs = +1 / -1 / 0) on the makes
-   (+) and the turnovers (-), the league make offset; the shot mix by log-ratios against threes; d = d_off d_def / d_lg */
+   (+) and the turnovers (-), the league make offset; the trip offset on both foul trips (tripOff: the feed's trips
+   already hold the late-game fouls, which the simulator's end-game fouling adds again, so calibrate takes them back
+   out; a feed without foul kinds has them split between shooting and bonus trips, so both carry it); the shot mix by
+   log-ratios against threes; d = d_off d_def / d_lg */
 function blendEnd(off, def, mu, L, hs, zones) {
-  const hca = (L && L.hca) || 0, muOff = (L && L.muOff) || 0, r = {};
+  const hca = (L && L.hca) || 0, muOff = (L && L.muOff) || 0, tripOff = (L && L.tripOff) || 0, r = {};
   const b = (k, shift) => {
     const a = off[k], d = def ? def[k] : NaN, m = mu[k];
     const base = isNum(d) && isNum(m) ? logit(a) + logit(d) - logit(m) : logit(a);
     return cp(expit(base + (shift || 0)));
   };
   r.tov = b('tov', -hs * hca);
-  r.live = b('live'); r.sfoul = b('sfoul'); r.bonus = b('bonus'); r.and1 = b('and1'); r.orb = b('orb'); r.tr = Mth.min(0.95, b('tr'));
+  r.live = b('live'); r.sfoul = b('sfoul', tripOff); r.bonus = b('bonus', tripOff); r.and1 = b('and1'); r.orb = b('orb'); r.tr = Mth.min(0.95, b('tr'));
   r.ft = cp(off.ft);
   for (const k of ['pRim', 'pMid', 'p3', 'p2']) r[k] = b(k, hs * hca + muOff);
   const lr = (k, ref) => Mth.log(off[k] / off[ref]) + (def && isNum(def[k]) ? Mth.log(def[k] / def[ref]) - Mth.log(mu[k] / mu[ref]) : 0);
@@ -656,7 +659,8 @@ function addTally(into, t) { for (const k of TALLY) into[k] = (into[k] || 0) + t
    half-court points per chance), muOff (points per possession within 0.3%), the home court (home win share), the spread
    of margins around their expectation (tau when the simulator is too tight, the score effect `lead` when it is too
    loose: one of the two is zero), fouling (kept unless it worsens the possessions of games decided by 8 or fewer),
-   kappaN once more.
+   with fouling on the trip offset (tripOff: the free throws a shot within 0.2 points of the feed's, since the feed's
+   trips already hold the late-game fouls the simulator adds) and muOff again, kappaN once more.
    THE VALIDATION IS OUT OF SAMPLE (rolling origin, like the Forecast): the games are put in time order (t, else the
    order given), the later 1 - holdFrom of them (0.6) are cut into `folds` (3) blocks, and each block is simulated with
    parameters fitted ONLY on the games played before its first game. The report (Brier, slope, the checks, the gate)
@@ -668,7 +672,8 @@ function addTally(into, t) { for (const k of TALLY) into[k] = (into[k] || 0) + t
    evalN (1500 above 2,000), folds (3), holdFrom (0.4), compare {forecast, elo} (Briers for the gate, used when the
    games do not carry their own pre-game pF / pE: then the gate scores those on the same held-out games), fitSpread /
    fitHca / fitMuOff / fitDTr (false to hold one).
-   Returns {hca, tau, kappaN, sigmaN, muOff, dTr, lead, fouling, platt, report}. */
+   Returns {hca, tau, kappaN, sigmaN, muOff, dTr, lead, fouling, tripOff, platt, report}; report.calibrated also asks
+   the held-out free throws a shot (ftr) to be within 1 point of the feed's. */
 function* calibrateSteps(games, L, o) {
   o = o || {};
   const W = WS(), seed = o.seed != null ? o.seed : 1;
@@ -691,7 +696,7 @@ function* calibrateSteps(games, L, o) {
   const Tof = g => g.T || Lc.T;
   const mk = (g, par) => matchup(g.A, g.B, Object.assign({}, Lc, par, { T: Tof(g) }), { home: g.home || 0 });
   const par0 = { kappaN: Lc.kappaN || 1, sigmaN: Lc.sigmaN || 0, hca: Lc.hca || 0, tau: Lc.tau || 0, muOff: Lc.muOff || 0, dTr: Lc.dTr || 0, lead: Lc.lead || 0,
-    fouling: Lc.fouling !== false };
+    tripOff: Lc.tripOff || 0, fouling: Lc.fouling !== false };
   /* the rolling origins: fold k simulates games [a, b) with parameters fitted on the games played before game a */
   const nF = Mth.max(0, o.folds != null ? o.folds : 3), from = clamp(o.holdFrom != null ? o.holdFrom : 0.4, 0.1, 0.9);
   const folds = [];
@@ -807,6 +812,18 @@ function* calibrateSteps(games, L, o) {
       par.fouling = !(off < on);
       if (par.fouling !== was) yield* fitMu(2);
     }
+    /* 6a. the free throws: the feed's trips already hold the late-game fouls, and end-game fouling adds a trip on every
+       fouled possession, so with fouling on the simulator shoots more free throws than the feed (2-3.5 a 100 FGA on
+       lnbp and CEBL) and muOff then pushes the makes down to keep the points. The trip offset (a logit shift on the
+       shooting and bonus trip rates; lnbp has no foul kinds, so its late fouls sit mostly in the shooting share)
+       takes them back out (FTA / FGA within 0.2), and the makes are fitted again. Without fouling it is 0: endInput
+       conserves the free throws. */
+    const ftrOf = t => (t.fga > 0 ? 100 * t.fta / t.fga : NaN);
+    if (par.fouling && withT.length && o.fitBonus !== false && tot.fga > 0) {
+      const obsFtr = ftrOf(tot);
+      par.tripOff = yield* secant('tripOff', rs => { const t = {}; rs.forEach(r => addTally(t, r.tally)); return ftrOf(t) - obsFtr; }, 0.2, -3, 1, 0.2, 5, withT);
+      yield* fitMu(2);
+    } else if (!par.fouling) par.tripOff = 0;
     /* 6b. possessions once more, now that fouling, the score effect and the rest are settled */
     if (has.length) {
       const sim = yield* P(par, has);
@@ -864,10 +881,14 @@ function* calibrateSteps(games, L, o) {
   const ins = held.games.length ? yield* evalOn(held.games, par, inSims, newAcc(), 0) : null;
   const n = held.ps.length;
   const cal = n ? W.calibration(held.ps, held.ys) : { brier: NaN, logloss: NaN, slope: NaN, intercept: NaN, ece: NaN, auc: NaN };
+  /* Platt scaling: only with as many held-out games as the gate asks (60), and with NO INTERCEPT. The held-out games are
+     all in the home side's view (A = home), so an intercept would carry the home court and be applied to whichever
+     side the reader picks as A; with a = 0 the map is symmetric, P(A beats B) + P(B beats A) stays 1 (equivalently:
+     the fit on both orientations of each game, (p, y) and (1 - p, 1 - y), whose intercept is 0). */
   let platt = null;
-  if (isNum(cal.slope) && (cal.slope < 0.9 || cal.slope > 1.1) && n >= 30) {
-    const lg = W.logistic(held.ps.map(p => [1, logit(clamp(p, 1e-4, 1 - 1e-4))]), held.ys, { maxIter: 50 });
-    if (lg.converged && !lg.separated) platt = { a: lg.b[0], b: lg.b[1] };
+  if (isNum(cal.slope) && (cal.slope < 0.9 || cal.slope > 1.1) && n >= 60) {
+    const lg = W.logistic(held.ps.map(p => [logit(clamp(p, 1e-4, 1 - 1e-4))]), held.ys, { maxIter: 50 });
+    if (lg.converged && !lg.separated && lg.b[0] > 0) platt = { a: 0, b: lg.b[0] };
   }
   const checks = n ? checksOf(held) : {};
   let inSample = null;
@@ -879,10 +900,13 @@ function* calibrateSteps(games, L, o) {
   const cmp = same.forecast != null || same.elo != null ? same : o.compare;
   const slopeOk = isNum(cal.slope) && cal.slope >= 0.85 && cal.slope <= 1.15;
   const brierOk = !cmp || !(isNum(cmp.forecast) || isNum(cmp.elo)) || cal.brier <= Mth.min(isNum(cmp.forecast) ? cmp.forecast : Infinity, isNum(cmp.elo) ? cmp.elo : Infinity) + 0.003;
-  const calibrated = n >= 60 && slopeOk && brierOk;
+  /* the held-out free throws a shot within a point of the feed's (R2S-3): every close game's P(win), the FT-rate dial
+     and needed() on it stand on that base */
+  const ftrOk = !(checks.ftr && isNum(checks.ftr.obs) && isNum(checks.ftr.sim)) || Mth.abs(checks.ftr.sim - checks.ftr.obs) <= 1;
+  const calibrated = n >= 60 && slopeOk && brierOk && ftrOk;
   return {
-    hca: par.hca, tau: par.tau, kappaN: par.kappaN, sigmaN: par.sigmaN, muOff: par.muOff, dTr: par.dTr, lead: par.lead, fouling: par.fouling, platt,
-    report: Object.assign({ nEval: n, nFit: S.length, sims: evalSims, calibrated, heldOut: true, folds: foldPars, checks, inSample, compare: cmp || null }, cal)
+    hca: par.hca, tau: par.tau, kappaN: par.kappaN, sigmaN: par.sigmaN, muOff: par.muOff, dTr: par.dTr, lead: par.lead, fouling: par.fouling, tripOff: par.tripOff, platt,
+    report: Object.assign({ nEval: n, nFit: S.length, sims: evalSims, calibrated, ftrOk, heldOut: true, folds: foldPars, checks, inSample, compare: cmp || null }, cal)
   };
 }
 const calibrate = (games, L, o) => run(calibrateSteps(games, L, o));

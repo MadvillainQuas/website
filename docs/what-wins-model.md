@@ -365,8 +365,11 @@ key; every calculation lives in `epinoia/winmodel.js`.
 - File name `v<FILE_V>-<token with each non-alphanumeric run as '-'>.json`; never rewritten.
 - Due: a new token, another FILE_V or FV in the indexed path, the current season's file older than 24 h, a past season's
   older than 30 days, or `--full`; but not while younger than the floor `ANALYTICS_MIN_GAP_H` (default 1; at least 6 above
-  `D.BIG_GAMES` = 800 games). Pooled: due when a current-season unit was rebuilt and it is older than
-  `ANALYTICS_POOL_GAP_H` (6), or on a layout change, or after 24 h. League fits use the latest pooled priors (§7.4).
+  `D.BIG_GAMES` = 800 games). Pooled: due when a current-season unit was rebuilt, it is older than
+  `ANALYTICS_POOL_GAP_H` (6) AND the current units hold at least 5% more games than it does (at least 20; PERF2-3: it
+  reads every current unit's whole store), or on a layout change, or after 24 h. League fits use the latest pooled
+  priors (§7.4). At most 2 units over BIG_GAMES are built a run (the rest wait an hour, before their stores are read),
+  and a run stops cleanly between units past 40 minutes (PERF2-5); what is left stays due.
 
 ### 6.2 The private store
 `analytics/store/<league>/<season>/s<STORE_V>-fv<FV>.json`; a local run mirrors it in the git-ignored `.cache/analytics/`
@@ -397,7 +400,11 @@ service key (`EPINOIA_CONFIG.supabaseAnonKey = key`, `globalThis.EpinoiaAccess =
 'Bearer ' + key})}`), the previous season likewise; rosters (`roster_entries?team_id=in.(…)&active=eq.true&select=
 team_id,position,players(id,height_cm)`); `rpc/player_bio` (500 ids); withheld (`players?select=id,is_minor,
 public_consent`); venues (`id,lat,lng`); teams (`id,name,short_name,colour,logo_path,home_venue_id`); fixtures to come
-(`status=in.(scheduled,live)`). A weekly full run (Sunday 03:40 UTC) rebuilds every store from nothing.
+(`status=in.(scheduled,live)`). The previous season's players by club are kept in the store's context with the token
+of the store they came from, so that store is read once a season, not every build (PERF2-3). A weekly full run (Sunday
+03:40 UTC) rebuilds every current store from nothing and calibrates every simulator afresh; a past season is left alone
+while its token and layout stand (`--full-past` includes them; they are rebuilt monthly anyway). Between full runs a
+unit's simulator calibration (most of a big unit's build) is carried until it has grown by 25% (PERF2-5).
 
 ### 6.4 One run
 0 `rpc/analytics_issue_prune`. 1 Discover seasons, leagues, the open set, the index and every token. 2 Refresh and save
@@ -406,8 +413,11 @@ download the priors. 4 Each due unit: `buildUnit` (seed = FNV(token), B = 400), 
 and the clubs whose games changed, upsert their index rows, then delete the objects the old rows named. 5 Teaser when the
 pooled file was rebuilt or the open set changed: upload `snapshots/whatwins/v1-<token>.json` (max-age 31536000), then
 `snapshots/whatwins/index.json` = `{file, token, built}` (x-upsert, max-age 600), then delete older teasers. 6 Purge objects
-of deleted leagues. 7 Job summary: units, sizes, warnings and §16's live acceptance numbers.
-Flags: `--dry-run`, `--unit <league>:<season>`, `--full`, `--min-gap-hours`, `--pool-gap-hours`, `--fixtures <dir>`
+of deleted leagues. 7 Job summary: units, sizes, warnings and §16's live acceptance numbers. THE LOG AND THE SUMMARY ARE
+PUBLIC (a public repository): an open league is named with its numbers, any other unit by an opaque hash of its ids, and a
+failure is a scope and a count, never validate()'s text; the whole report goes to the private bucket as
+`analytics/reports/last.json` (SEC2-1).
+Flags: `--dry-run`, `--unit <league>:<season>`, `--full`, `--full-past`, `--min-gap-hours`, `--pool-gap-hours`, `--fixtures <dir>`
 (offline: write the §9 sample files from `synthUnit` into `supabase/tests/fixtures/ww/`).
 `export async function run({url, serviceKey, fetch, dryRun, unit, full, minGapHours, poolGapHours, fixtures, log, now})`
 → `{built: [{scope, unit, bytes, games}], current, skipped, failed: [{unit, error}], summary}`.
@@ -557,11 +567,15 @@ non-linear check.
 - **P1** positional accounting: per team-game and group, ts, usg_share, ast_share, reb_share, stocks40, tov_share,
   p3a_rate; home − away (21 columns + h), ridge on y, block bootstrap; points per +1 team-SD per cell, ★ when the interval
   excludes 0 after BH.
-- **P2** what winners get: team-season group lines (minutes-weighted BPM, the seven stats, min_share); median of the top
+- **P2** what winners get: team-season group lines (minutes-weighted box BPM, the seven stats, min_share); median of the top
   quarter by net, of the league, of the bottom quarter; team bootstrap (B = 1000); under 8 teams, pooled z-targets. These
-  are the Front office's slot targets.
+  are the Front office's slot targets. **Every team-season BPM here, in P2f and in §7.14 is the box BPM BEFORE bpm.js's
+  team adjustment (`bpmRaw`):** the adjustment adds (1.2 net − Σ)/5 to every player, so the roster's minutes-weighted BPM
+  is 1.2 × the club's own net / 5 exactly, and set against the clubs' results it would explain the results with
+  themselves (r(talent, net) 0.99 with it, about 0.7 without). The lineups (§7.13) keep the adjusted BPM: the team
+  constant cancels in their within-team-game demeaning.
 - **P2f** slot forecast (units ≥ 200 games): at each ISO week start, season-to-date minutes-weighted BPM by group
-  (EpinoiaBPM.forLeague on earlier player and team totals); `y = α h + Σ_g θ_g ΔBPM_g`, ridge, bootstrap.
+  (EpinoiaBPM.forLeague on earlier player and team totals, its bpmRaw); `y = α h + Σ_g θ_g ΔBPM_g`, ridge, bootstrap.
 
 ### 7.13 Lineups (P3, the strongest squad evidence)
 Rows: lineup_stints, `y = 100(pf − pa)/poss`, weight poss ≥ 1. Composition from season rows (unit-relative): shooters
@@ -576,7 +590,7 @@ controlled.
 ### 7.14 Squad construction (team-season, underpowered and said so)
 Features (unit z, ≥ 8 games): rot_n (mpg ≥ 10), top5_share, star_pts_share, usg_hhi (season), pos_entropy (`−Σ m_g ln m_g /
 ln 3`), shooters/handlers/protectors in the rotation, height_w and age_w (only with > 50% of minutes covered),
-bench_share, depth_bpm (rotation players 6-9), talent (minutes-weighted BPM), continuity (minutes by last season's players
+bench_share, depth_bpm (rotation players 6-9), talent (minutes-weighted box BPM before the team adjustment), continuity (minutes by last season's players
 of the club; null without one), starter_stability (modal five's share of games), availability (1 − top-8 games missed /
 possible). Outcomes: net per 100 (shrunk by games) and win% minus Pythagorean. Pooled ridge with unit centring, raw and
 talent-adjusted, splines on usg_hhi and pos_entropy, team-season bootstrap (B = 1000). Evidence: strong (95% excludes 0
@@ -627,9 +641,12 @@ league's split of ft_trips.
 ### 8.3 Calibration and gate (builder, per unit, rolling-origin games; validated out of sample, B.5)
 Fit hca (home win share), τ (actual-vs-simulated margin SD), κ_N (mean possessions = observed pace_x), μ_off (league make
 offset: points per possession within 0.3%), δ_tr (transition − half-court points per chance); σ_N = residual SD of
-possessions on T/(d_A + d_B); fouling kept unless it worsens possessions in games decided by ≤ 8. Validation: Brier, log
+possessions on T/(d_A + d_B); fouling kept unless it worsens possessions in games decided by ≤ 8; with fouling on, the
+trip offset `tripOff` (a logit shift on the shooting and bonus trip rates) puts FTA/FGA back within 0.2 of the feed's, then
+μ_off again: the feed's trips already hold the late-game fouls that end-game fouling adds (R2S-3: lnbp and CEBL shot
+2-3.5 more free throws a 100 FGA without it, and μ_off pushed the makes down to pay for them). Validation: Brier, log
 loss, ECE, slope against the Forecast model, Elo, home-only; observed vs simulated pace, ortg, eFG%, TOV%, OREB%, FT rate,
-margin SD, share decided by ≤ 5, overtime rate. Platt `p' = expit(a + b logit p)` when the slope is outside [0.9, 1.1].
+margin SD, share decided by ≤ 5, overtime rate; the gate also asks the held-out FT rate within 1 point of the feed's. Platt `p' = expit(b logit p)` when the slope is outside [0.9, 1.1] and n ≥ 60, with no intercept (a = 0): the held-out games are all in the home side's view, so an intercept would carry the home court onto whichever side is A; applied only when the simulator is calibrated.
 `calibrated = nEval ≥ 60 ∧ Brier_sim ≤ min(Brier_forecast, Brier_elo) + 0.003 ∧ slope ∈ [0.85, 1.15]`; otherwise
 "experimental": relative differences only, and the Front office converts with the margin model. 1,000 sims per test game
 (units ≤ 2,000 games), else a 1,500-game sample at 400.
@@ -706,7 +723,8 @@ interface Wins extends Header {
 interface Fo extends Header {
   lg: { rates: Rates; T: number; Tot: number; kappaN: number; sigmaN: number; hca: number; tau: number; muOff: number; dTr: number;
         fouling: boolean; zones: boolean; G: number; homeEdge: number;
-        lead: number; ft3: number };          // as built (WP2): the score effect and the three-shot share of shooting trips
+        lead: number; ft3: number;            // as built (WP2): the score effect and the three-shot share of shooting trips
+        tripOff: number };                    // the trip offset (§8.3, R2S-3); 0 without fouling
   sim: { calibrated: boolean; platt: { a: number; b: number } | null; brier: number; slope: number };
   sigmaPred: number; predLive: boolean;
   value: Record<string, { b: number; lo: number; hi: number; model: 'core4c'|'shot'|'path'; dir: 1|0|-1; unit: string;
@@ -919,7 +937,7 @@ counterfactual(M, [{side, end, key, delta}], {n = 4000, seed}) -> {base, alt, dW
 needed(M, key, {side = 'A', end = 'off', target = 0.5, n = 3000, seed}) -> {value, delta, p, reached}
 shapley(Mexp, Mplayed, groups, {n = 1000, seed}) -> {phi, base, full}
 season(own, [{opp, home}], L, {n = 2000, seed, done, sigma?, mu?}) -> {mean, p10, p50, p90, dist}
-calibrate(games, L, {seed}) -> {hca, tau, kappaN, sigmaN, muOff, dTr, fouling, platt, report}
+calibrate(games, L, {seed}) -> {hca, tau, kappaN, sigmaN, muOff, dTr, fouling, tripOff, platt, report}
 synth({teams = 12, games = 132, seed}) -> {league, profiles, games}
 
 // epinoia/winmodel.js  window.EpinoiaWinModel
@@ -1304,7 +1322,9 @@ in a live browser.
 - Members' files: uploaded `no-store` / `max-age=0` and fetched with `cache: 'no-store'`; a sign-out mid-download drops the
   answer (a cache generation); every request waits for `sessionReady()`.
 **Performance**
-- RECALCULATE refuses (queued, 'size') a unit over 400 games or a 2.5 MB store before downloading it; pages its player-line
+- RECALCULATE refuses (queued, 'size') a unit over 250 games or a 1.6 MB store before downloading it (PERF2-4: update alone is
+  about 1.1 s wall and 1.7 s CPU cold at 275 real games, against the Edge 2 s CPU limit), and holds `due` as its lease while it
+  runs, so an isolate killed mid-update leaves the unit flagged for the scheduled build (which waits out a live lease); pages its player-line
   and stint reads past PostgREST's 1000 rows; reads `st` only for games whose stints are missing or short (`stintGaps`; the
   builder too); uploads wins, fo and the changed clubs' files only, six at a time, after a budget check that counts them.
 - The builder decodes a store once per unit for the club checks, and reads a unit's context once a run.

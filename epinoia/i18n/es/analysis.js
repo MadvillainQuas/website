@@ -135,6 +135,8 @@
       "Win share in bins with Wilson ranges, the fitted curve with its band, and the break-even points": "Porcentaje de victorias por tramos con rangos de Wilson, la curva ajustada con su banda y los puntos de equilibrio",
       "Pace is the same for both sides of a game, so it never enters a difference model.": "El ritmo es el mismo para los dos equipos de un partido, así que nunca entra en un modelo de diferencias.",
       "Team pace and winning": "Ritmo del equipo y victorias",
+      "Winning by team pace": "Victorias según el ritmo del equipo",
+      "with net rating held level": "con el rating neto igualado",
       "Team pace against winning": "Ritmo del equipo frente a ganar",
       "Each team-season’s pace against its share of wins; drag to pick teams": "El ritmo de cada equipo en la temporada frente a su porcentaje de victorias; arrastra para elegir equipos",
       "possessions per 40 (first three quarters)": "posesiones por 40 (tres primeros cuartos)",

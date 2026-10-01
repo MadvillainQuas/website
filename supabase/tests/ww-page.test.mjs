@@ -129,6 +129,8 @@ console.log('\npage.js: what it reads and keeps');
      inner.every(r => r === 'out.html' || (/^'/.test(r) && !/\+\s*(?!esc\()[a-zA-Z]/.test(r))), inner.join(' | '));
   ok('the address keeps l, s, lens, k, t1 and t2', ['l', 's', 'lens', 'k', 't1', 't2'].every(k => new RegExp("set\\('" + k + "'").test(code)));
   ok('the fo file is asked for only when #sim comes into view (or its button is pressed)', /IntersectionObserver/.test(code) && /simObs\.observe\(\$\('sim'\)\)/.test(code) && /scope: 'fo'/.test(code));
+  ok('RECALCULATE refreshes the unit under the season the page READ it with (no season: the current one), so the cache keeps one entry (PERF2-1)',
+     /WF\(\)\.refresh\(\{ league: W\.league\.id, season: seasonId \|\| undefined \}/.test(code) && /season: seasonId \|\| undefined \} : \{ scope: 'wins' \}/.test(code));
   ok('RECALCULATE: refresh() with the signal and onProgress; Cancel aborts', /WF\(\)\.refresh\(\{ league: W\.league\.id[^)]*\}, \{ signal: ab\.signal, onProgress:/.test(code) && /recalcAbort\.abort\(\)/.test(code));
 }
 console.log('\nthe status line and the bar (A.2), in the page');
@@ -287,6 +289,12 @@ function drawFiles(dir, tag) {
     const d = drawn[id] = draw(id, ctx);
     ok(tag + ' league file: #' + id + ' draws (' + d.out.charts.length + ' charts) with no problem', d.out.state === 'ok' && d.out.html.length > 40 && !d.problems.length, d.out.state + ' ' + d.problems.slice(0, 4).join(' | '));
   }
+  if (wins.tempo && wins.tempo.bins && wins.tempo.bins.length) {
+    const th = drawn.tempo.out.html, at = th.indexOf('Winning by team pace');
+    ok(tag + ': the team-pace curve has a heading and a key for its solid (observed) and dashed (net rating held level) lines (UI2-2)',
+       at >= 0 && /<i class="ww-k-line"><\/i>observed/.test(th) && (!wins.tempo.curveAdj || /ww-k-line ww-k-dash"><\/i>with net rating held level/.test(th)) &&
+       th.indexOf('data-chart', at) > at);
+  }
   const want = { value: 2, factors: 1, curves: 3, tempo: 1, positions: 1, squad: 1, sim: 0, losses: 2, leagues: wins.models.core4c.coef.some(c => c.own) ? 1 : 0, model: 1 };
   const short = Object.keys(want).filter(id => drawn[id].out.charts.length < want[id]);
   ok(tag + ': each member section has its charts (value ≥ 2, curves ≥ 3, losses ≥ 2 with the club …)', !short.length, short.join());
@@ -315,6 +323,19 @@ function drawFiles(dir, tag) {
   /* the cards (§11) */
   const cs = P.cards(wins);
   ok(tag + ': ≤ 6 cards, each with a lens and an interval', cs.length >= 3 && cs.length <= 6 && cs.every(c => ['explain', 'forecast', 'model'].includes(c.lens) && /\(|γ|indirect|does not change/.test(c.text)), cs.map(c => c.text).join(' | '));
+  /* UI2-1: the hard-number card only from a measure with a better side whose interval leaves out 50% */
+  {
+    const Wn = JSON.parse(JSON.stringify(wins));
+    Wn.meta = Object.assign({}, Wn.meta, { players_used: { label: 'Players used', dir: 0 }, dead100: { label: 'Dead balls per 100', dir: -1 } });
+    Wn.curves = { players_used: { hard: { t: 1, p: 0.5694, lo: 0.4544, hi: 0.6774, n: 72 } }, dead100: { hard: { t: 2, p: 0.509, lo: 0.379, hi: 0.639, n: 72 } } };
+    const none = P.cards(Wn).find(c => /^Sides ahead by/.test(c.text));
+    Wn.curves.ast_rate = { hard: { t: 5, p: 0.62, lo: 0.55, hi: 0.69, n: 120 } };
+    Wn.meta.ast_rate = { label: 'Assist rate', dir: 1 };
+    Wn.curves.players_used.hard = { t: 1, p: 0.8, lo: 0.7, hi: 0.9, n: 80 };
+    const one = P.cards(Wn).find(c => /^Sides ahead by/.test(c.text));
+    ok(tag + ': no hard-number card from noise (50% inside the interval) or from a measure with no better side (players used)', !none && !!one && one.k === 'ast_rate',
+       (none && none.text) + ' / ' + (one && one.text));
+  }
   for (const code of ['es', 'ja']) {
     const miss = cs.map(c => c.text).filter(s => tr(code, s) == null);
     ok(tag + ' ' + code + ': every card translates', !miss.length, miss.join(' | '));
@@ -354,9 +375,12 @@ function drawFiles(dir, tag) {
     let r = null, err = '';
     try {
       const pa = Sim.applyEdits(A.prof, [{ end: 'off', key: 'efg', delta: 2 }], fo.lg), pb = Sim.applyEdits(B.prof, [], fo.lg);
-      const M = Sim.matchup(pa, pb, fo.lg, { home: 1, platt: fo.sim && fo.sim.platt });
+      const M = Sim.matchup(pa, pb, fo.lg, { home: 1, platt: P.simPlatt(fo) });
       r = Sim.simulate(JSON.parse(JSON.stringify(M)), { n: 600, seed: 1 });
     } catch (e) { err = e.message; }
+    const pl = { a: 0.464, b: 0.11 };
+    ok(tag + ': the simulator\'s Platt map is used only when the builder calibrated it (an experimental one is shown raw)',
+       P.simPlatt({ sim: { calibrated: false, platt: pl } }) === null && P.simPlatt({ sim: { calibrated: true, platt: pl } }) === pl && P.simPlatt({}) === null);
     ok(tag + ': the fo file\'s profiles run through matchup and simulate (structured-clone safe)', !!r && r.pWin > 0 && r.pWin < 1 && r.hist.length > 3, err);
     const ctx = ctxOf({ W: wins, fo, foState: 'ok' });
     const key = [A.id, B.id, 1, JSON.stringify(ctx.st.dials)].join('|');

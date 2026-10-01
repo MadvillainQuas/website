@@ -168,6 +168,15 @@ const fitPx = (s, px) => cut(s, Math.max(6, Math.floor(px / 7.6)));
 /* a label translated, then cut to fit about `px` of width at ~6.6 px a character (the full label stays in the
    tooltip and the table twin) */
 const fit = (s, px) => cut(String(s == null ? '' : tr(s)), Math.max(4, Math.floor(px / 6.6)));
+/* a label whose last ' · ' part tells two rows apart ('Free throws made per shot · offence' / '· defence'): when it is too
+   long, the head is cut and the tail kept whole ('Free throws made p… · offence'), so the two never read the same (UI2-3) */
+const colsOf = t => [...t].reduce((a, c) => a + (WIDE.test(c) ? 2 : 1), 0);
+const fitTail = (s, px) => {
+  const t = String(s == null ? '' : tr(s)), m = Math.max(4, Math.floor(px / 6.6)), at = t.lastIndexOf(' · ');
+  if (at < 0 || colsOf(t) <= m) return cut(t, m);
+  const tail = t.slice(at), room = m - colsOf(tail);
+  return room >= 5 ? cut(t.slice(0, at), room) + tail : cut(t, m);
+};
 const glyph = (v, dir) => (!isNum(v) || v === 0 || !dir ? '' : (v * dir > 0 ? '▲' : '▼'));
 const goodBad = (v, dir) => (!dir || !isNum(v) || v === 0 ? 'vz-neu' : (v * dir > 0 ? 'vz-good' : 'vz-bad'));
 /* a bar's colour: better or worse (dir ±1); a style measure (dir 0, no better side) its own neutral hue, so it is never
@@ -291,8 +300,8 @@ function bars(rows, o) {
     const dir = r.dir == null ? (o.dir == null ? 1 : o.dir) : r.dir;
     const cls = r.cls ? r.cls + (r.muted ? ' vz-muted' : '') : barClass(r.v, dir, r.muted);
     const xv = sx(clamp(r.v, lo, hi));
-    if (nar) s += txt(a, y - 5, fit(r.label, W - 40) + (r.badge ? ' · ' + r.badge : ''), 'vz-lab' + (r.muted ? ' vz-muted' : ''));
-    else s += txt(labW, y + bh / 2 + 4, fit(r.label, labW - 8), 'vz-lab' + (r.muted ? ' vz-muted' : ''), 'end');
+    if (nar) s += txt(a, y - 5, fitTail(r.label, W - 40) + (r.badge ? ' · ' + r.badge : ''), 'vz-lab' + (r.muted ? ' vz-muted' : ''));
+    else s += txt(labW, y + bh / 2 + 4, fitTail(r.label, labW - 8), 'vz-lab' + (r.muted ? ' vz-muted' : ''), 'end');
     s += rect(Math.min(x0, xv), y, Math.max(1, Math.abs(xv - x0)), bh, 'vz-bar ' + cls);
     if (isNum(r.lo) && isNum(r.hi)) s += line(sx(clamp(r.lo, lo, hi)), y + bh / 2, sx(clamp(r.hi, lo, hi)), y + bh / 2, 'vz-whisk');
     const g = glyph(r.v, dir);

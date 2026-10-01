@@ -253,6 +253,45 @@ console.log('\ncalibration');
      c2.report.nEval === 45, JSON.stringify(c2.report.compare));
 }
 {
+  /* R2S-3: the feed's bonus trips already hold the late-game fouls, and end-game fouling adds a trip on each fouled
+     possession. Profiles measured from the games' own tallies (as the builder's are, from the feed) double count them
+     with fouling on; calibrate's trip offset takes them back out, and a FT rate more than a point off fails the gate */
+  const lg = Sim.synth({ teams: 10, games: 200, seed: 51, tau: 0.1, spread: 0.8, fouling: true });
+  const sumT = (acc, t) => { for (const k of Sim.TALLY) acc[k] = (acc[k] || 0) + (t[k] || 0); };
+  const own = lg.profiles.map(() => ({})), opp = lg.profiles.map(() => ({})), all = {};
+  lg.games.forEach(g => { sumT(own[g.a], g.tally[0]); sumT(opp[g.a], g.tally[1]); sumT(own[g.b], g.tally[1]); sumT(opp[g.b], g.tally[0]); sumT(all, g.tally[0]); sumT(all, g.tally[1]); });
+  const rates = Sim.ratesOf(Sim.endInput(all, all, { foulKinds: true }));
+  const prof = lg.profiles.map((_, t) => Sim.profile({ off: Sim.endInput(own[t], opp[t], { foulKinds: true }), def: Sim.endInput(opp[t], own[t], { foulKinds: true }), games: 40 }, { rates }));
+  const games = lg.games.map(g => Object.assign({}, g, { A: prof[g.a], B: prof[g.b] }));
+  const L = Object.assign({}, lg.league, { rates, hca: 0, tau: 0, lead: 0, dTr: 0, kappaN: 1, sigmaN: 0 });
+  const opt = { seed: 3, fitN: 200, fitSims: 40, evalSims: 80, fitSpread: false };
+  const on = Sim.calibrate(games, L, opt), off = Sim.calibrate(games, L, Object.assign({ fitBonus: false }, opt));
+  const gap = c => c.report.checks.ftr.sim - c.report.checks.ftr.obs;
+  ok('end-game fouling without the trip offset shoots too many free throws (the double count), and the gate says so',
+     off.fouling && gap(off) > 1.5 && off.report.ftrOk === false && !off.report.calibrated, 'FTA/FGA +' + gap(off).toFixed(2));
+  ok('...the trip offset takes the late-game trips back out of the trip rates: held-out FT rate within a point',
+     on.fouling && on.tripOff < -0.05 && Math.abs(gap(on)) <= 1 && on.report.ftrOk === true, 'tripOff ' + on.tripOff.toFixed(3) + ', FTA/FGA ' + gap(on).toFixed(2));
+  const M0 = Sim.matchup(prof[0], prof[1], L), M1 = Sim.matchup(prof[0], prof[1], Object.assign({}, L, { tripOff: on.tripOff }));
+  ok('...and matchup applies it to the foul trips only', M1.r[0].bonus < M0.r[0].bonus && M1.r[0].sfoul < M0.r[0].sfoul && M1.r[0].p3 === M0.r[0].p3 && M1.r[0].tov === M0.r[0].tov && M1.L.tripOff === on.tripOff);
+}
+{
+  /* Platt scaling (R2S-1): fitted only with the gate's 60 held-out games, and with no intercept: the held-out games are
+     all in the home side's view, so an intercept would carry the home court onto whichever side the reader picks as A */
+  const runP = G => {
+    const lg = Sim.synth({ teams: 10, games: G, seed: 41, tau: 0.5, kappaN: 1, sigmaN: 1, spread: 0.6 });
+    return Sim.calibrate(lg.games, Object.assign({}, lg.league, { tau: 0, lead: 0 }), { seed: 4, fitSims: 20, evalSims: 60, fitSpread: false, fitHca: false });
+  };
+  const c90 = runP(150), c57 = runP(95);
+  ok('Platt: a simulator too sure of itself (form noise held at 0) with 90 held-out games gets a map with no intercept',
+     c90.report.nEval === 90 && !!c90.platt && c90.platt.a === 0 && c90.platt.b > 0 && c90.platt.b < 1, JSON.stringify(c90.platt) + ' n ' + c90.report.nEval);
+  ok('...and none below the gate\'s 60 held-out games, whatever the slope', c57.report.nEval < 60 && c57.platt === null && !c57.report.calibrated,
+     JSON.stringify(c57.platt) + ' n ' + c57.report.nEval);
+  const sy = Sim.synth({ teams: 4, games: 8, seed: 2, spread: 1.5 }), A = sy.profiles;
+  const pAB = Sim.simulate(Sim.matchup(A[0], A[1], sy.league, { platt: c90.platt }), { n: 3000, seed: 1 }).pWin;
+  const pBA = Sim.simulate(Sim.matchup(A[1], A[0], sy.league, { platt: c90.platt }), { n: 3000, seed: 2 }).pWin;
+  ok('...so on a neutral court P(A beats B) + P(B beats A) stays near 1 through the map', Math.abs(pAB + pBA - 1) < 0.05, (pAB + pBA).toFixed(3));
+}
+{
   const tight = Sim.synth({ teams: 12, games: 400, seed: 8, hca: 0.06, tau: 0, lead: 0.12, spread: 1 });
   const cal = Sim.calibrate(tight.games, Object.assign({}, tight.league, { hca: 0, tau: 0, lead: 0, dTr: 0 }), { seed: 5, fitN: 400, fitSims: 50, evalSims: 60 });
   ok('calibrate recovers a planted score effect (lead 0.12) with no form noise', Math.abs(cal.lead - 0.12) < 0.05 && cal.tau === 0, cal.lead.toFixed(3));

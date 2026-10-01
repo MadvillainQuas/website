@@ -70,6 +70,9 @@ a.plain{color:inherit;text-decoration:none}
 .ww-k-noise{background:var(--vz-neu);opacity:.32}
 .ww-k-s1{background:var(--vz-s1)}
 .ww-k-s2{background:var(--vz-s2)}
+/* line swatches: the chart kit's solid first series and dashed second (a binned curve's observed and adjusted lines) */
+.ww-legend i.ww-k-line{width:18px;height:0;border-radius:0;border-top:2px solid var(--vz-s1)}
+.ww-legend i.ww-k-line.ww-k-dash{border-top:2px dashed var(--vz-s2)}
 .ww-note{margin:8px auto;max-width:72ch;font-family:var(--f-ui);font-size:13px;line-height:1.55;color:var(--ink-2)}
 .ww-hard{margin:10px auto 4px;max-width:60ch;font-family:var(--f-ui);font-size:17px;font-weight:600;line-height:1.4;color:var(--ink)}
 .ww-h3{margin:26px auto 4px;font-family:var(--f-ui);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink)}

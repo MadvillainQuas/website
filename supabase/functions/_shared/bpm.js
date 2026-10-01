@@ -249,6 +249,12 @@ function forTeam(team, players, leagueAvgOrtg) {
     return {
       id: r.id, minutes: r.minutes,
       bpm: round1(bpm), obpm: round1(obpm), dbpm: round1(bpm - obpm),
+      /* the box score's own BPM, BEFORE the team adjustment: the adjustment
+         puts the team's net rating into every player (the roster's mean is
+         1.2 x net / 5 exactly), so a team-season figure built from `bpm` and
+         set against the team's results explains the results with themselves.
+         What wins (winmodel.js) uses this one wherever it does that. */
+      bpmRaw: round1(r.adjRaw),
       /* VORP, which is what BPM is usually read through: value over a
          replacement player (−2.0) in the minutes actually played. */
       vorp: round1((bpm + 2.0) * r.posShare),

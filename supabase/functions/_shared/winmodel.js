@@ -52,6 +52,9 @@ const DEPTH = () => dep('EpinoiaDepth', './t/depth.js');
 const WINNING = () => dep('EpinoiaWinning', './winning.js');
 
 const FILE_V = 1, CODE_V = 1, STORE_V = 1;
+/* the simulator calibration's own version, carried in store.carry.sim: 2 = the trip offset, the FT-rate gate and the
+   intercept-free Platt map (R2S-1, R2S-3); a carried calibration of another version is fitted again */
+const SIMCAL_V = 2;
 /* raw bytes a file may take (§6.6); fo is 150 KB above 800 games */
 const BUDGET = Object.freeze({ teaser: 40000, wins: 300000, winsPool: 400000, fo: 100000, foBig: 150000, foBase: 60000, foPerClub: 450, club: 25000, pos: 6000 });
 const BIG_GAMES = 800;
@@ -681,6 +684,9 @@ function playerRows(X, before) {
         const p = rows.get(sp.id), r = out.get(sp.id);
         if (!p) return;
         p.bpm = r ? r.bpm : null; p.bpm_pos = r ? r.position : null;
+        /* the box BPM before bpm.js's team adjustment (which builds the club's own net rating into every player): every
+           team-season BPM figure that is set against the clubs' results uses it (R2S-2) */
+        p.bpmRaw = r && isNum(r.bpmRaw) ? r.bpmRaw : null;
         try {
           const p100 = B.per100(sp, B.estimatedPossessions(sp.minutes, t.pace || 70));
           const lv = t._listed.get(sp.id);
@@ -1713,14 +1719,15 @@ function positions(X) {
       return { g, stat: s, b, lo: nn(lo), hi: nn(hi), star: isNum(lo) && isNum(hi) && (lo > 0 || hi < 0) && q[c] != null && q[c] < 0.05 };
     });
   }
-  /* P2: the clubs' group lines; the top quarter by net, the league, the bottom quarter */
+  /* P2: the clubs' group lines; the top quarter by net, the league, the bottom quarter. Their BPM is the box BPM before
+     the team adjustment (p.bpmRaw): with it, the top quarter by net would lead on BPM by construction */
   const net = tid => { const t = X.tempoTeams && X.tempoTeams.get(tid); return t ? t.net : null; };
   const teamG = [];
   seasonCells.forEach((c, tid) => {
     const T = X.teams.get(tid), mins = sum(c.acc.map(a => a.min));
     const bpm = GROUPS3.map((g, k) => {
       let s = 0, w = 0;
-      P.rows.forEach(p => { if (p.team === tid && isNum(p.bpm) && p.min > 0) { const sh = P.shares.get(p.key)[k] * p.min; s += sh * p.bpm; w += sh; } });
+      P.rows.forEach(p => { if (p.team === tid && isNum(p.bpmRaw) && p.min > 0) { const sh = P.shares.get(p.key)[k] * p.min; s += sh * p.bpmRaw; w += sh; } });
       return w > 0 ? s / w : NaN;
     });
     teamG.push({ id: tid, net: net(tid), gp: T.gl.length, g: GROUPS3.map((g, k) => Object.assign({ bpm: bpm[k], min_share: mins > 0 ? c.acc[k].min / mins : NaN }, c.stats[k])) });
@@ -1759,7 +1766,8 @@ function positions(X) {
     }));
   }
   X.teamG = new Map(teamG.map(t => [t.id, t]));
-  /* P2f: at each ISO week start, season-to-date minutes-weighted BPM by group; y on h and the three differences */
+  /* P2f: at each ISO week start, season-to-date minutes-weighted box BPM (before the team adjustment, on the slot
+     targets' scale) by group; y on h and the three differences */
   let p2f = null;
   if (X.n >= MIN.p2f) {
     const weeks = Array.from(new Set(X.games.map(g => isoWeek(g.t)))).sort();
@@ -1772,10 +1780,10 @@ function positions(X) {
       const gb = new Map();
       pr.forEach(p => {
         const sh = P.shares.get(p.key);
-        if (!sh || !isNum(p.bpm) || !(p.min > 0)) return;
+        if (!sh || !isNum(p.bpmRaw) || !(p.min > 0)) return;
         if (!gb.has(p.team)) gb.set(p.team, [[0, 0], [0, 0], [0, 0]]);
         const a = gb.get(p.team);
-        sh.forEach((s, k) => { a[k][0] += s * p.min * p.bpm; a[k][1] += s * p.min; });
+        sh.forEach((s, k) => { a[k][0] += s * p.min * p.bpmRaw; a[k][1] += s * p.min; });
       });
       X.games.forEach((g, i) => {
         if (isoWeek(g.t) !== wk || !isNum(X.y[i])) return;
@@ -1898,8 +1906,8 @@ function squadFeatures(X) {
       height_w: hCov > 0.5 ? wmean(p => p.hz, p => isNum(p.hz)) : null,
       age_w: aCov > 0.5 ? wmean(p => p.age, p => isNum(p.age)) : null,
       bench_share: ssm.length ? 1 - meanOf(ssm) : (mins ? 1 - sum(byMin.slice(0, 5).map(p => p.min)) / mins : null),
-      depth_bpm: nn(meanOf(byMin.filter(p => p.gp > 0 && p.min / p.gp >= 10).slice(5, 9).map(p => p.bpm))),
-      talent: wmean(p => p.bpm, p => isNum(p.bpm)),
+      depth_bpm: nn(meanOf(byMin.filter(p => p.gp > 0 && p.min / p.gp >= 10).slice(5, 9).map(p => p.bpmRaw))),
+      talent: wmean(p => p.bpmRaw, p => isNum(p.bpmRaw)),
       continuity: prevSet ? sum(rs.filter(p => prevSet.has(p.id)).map(p => p.min)) / (mins || 1) : null,
       starter_stability: withStart ? modal / withStart : null,
       availability: top8.length ? 1 - sum(top8.map(p => Math.max(0, games - p.gp))) / (top8.length * games || 1) : null,
@@ -2077,7 +2085,13 @@ function simulator(X, opts) {
   const T = (regs.length ? median(regs) : 40) * 60;
   const Lbase = { rates: X.lgRates, T, Tot: 300, zones, ft3: 0.05, fouling: true };
   let cal = null;
-  if (X.mode === 'update') cal = X.carrySim || null;
+  /* opts.simReuse (the builder, between weekly full runs): the last full build's calibration is carried while the unit
+     has grown by less than that share since it was fitted (it is most of a big unit's build: PERF2-5); one fitted by an
+     older calibrate (no v) is fitted again */
+  const cs = X.carrySim;
+  const reuse = opts.simReuse != null && cs && cs.v === SIMCAL_V && isNum(cs.nGames) && cs.nGames > 0 && X.n >= cs.nGames && X.n <= cs.nGames * (1 + +opts.simReuse);
+  if (X.mode === 'update') cal = cs || null;
+  else if (reuse) { cal = cs; X.simReused = true; }
   else if (opts.sim !== false && X.fc && X.fc.preds.length >= 20) {
     const tally = (g, s) => {
       const f = g.F[s], q = g.q[s];
@@ -2100,14 +2114,16 @@ function simulator(X, opts) {
       const big = X.n > 2000 ? { evalN: 1500, evalSims: 400 } : { evalSims: opts.simN || 1000 };
       const r = S.calibrate(games, Lbase, Object.assign({ seed: seedOf(X, 'sim'), compare: { forecast: X.predictive.metrics.brier, elo: X.predictive.baselines.elo.brier } }, big, so));
       const rep = r.report || {};
-      cal = { hca: r.hca, tau: r.tau, kappaN: r.kappaN, sigmaN: r.sigmaN, muOff: r.muOff, dTr: r.dTr, lead: r.lead, fouling: r.fouling, platt: r.platt,
-        report: { calibrated: !!rep.calibrated, heldOut: !!rep.heldOut, brier: rep.brier, logloss: rep.logloss, slope: rep.slope, intercept: rep.intercept, ece: rep.ece, auc: rep.auc, nEval: rep.nEval, checks: rep.checks,
+      cal = { v: SIMCAL_V, nGames: X.n, hca: r.hca, tau: r.tau, kappaN: r.kappaN, sigmaN: r.sigmaN, muOff: r.muOff, dTr: r.dTr, lead: r.lead, fouling: r.fouling, tripOff: r.tripOff || 0, platt: r.platt,
+        report: { calibrated: !!rep.calibrated, ftrOk: rep.ftrOk !== false, heldOut: !!rep.heldOut, brier: rep.brier, logloss: rep.logloss, slope: rep.slope, intercept: rep.intercept, ece: rep.ece, auc: rep.auc, nEval: rep.nEval, checks: rep.checks,
           inSample: rep.inSample ? { brier: rep.inSample.brier, slope: rep.inSample.slope, checks: rep.inSample.checks } : null } };
+      const fc = rep.checks && rep.checks.ftr;
+      if (fc && isNum(fc.obs) && isNum(fc.sim) && Math.abs(fc.sim - fc.obs) > 1) (X.warnings || []).push('simulator free throws a shot off by ' + (fc.sim - fc.obs).toFixed(1) + ' (held out): not calibrated');
     } catch (e) { (X.warnings || []).push('simulator calibration failed: ' + String(e && e.message || e).slice(0, 120)); cal = null; }
   }
   X.simCal = cal;
-  const L = Object.assign({}, Lbase, cal ? { kappaN: cal.kappaN, sigmaN: cal.sigmaN, hca: cal.hca, tau: cal.tau, muOff: cal.muOff, dTr: cal.dTr, lead: cal.lead, fouling: cal.fouling }
-    : { kappaN: 1, sigmaN: 0, hca: 0, tau: 0, muOff: 0, dTr: 0, lead: 0 });
+  const L = Object.assign({}, Lbase, cal ? { kappaN: cal.kappaN, sigmaN: cal.sigmaN, hca: cal.hca, tau: cal.tau, muOff: cal.muOff, dTr: cal.dTr, lead: cal.lead, fouling: cal.fouling, tripOff: cal.tripOff || 0 }
+    : { kappaN: 1, sigmaN: 0, hca: 0, tau: 0, muOff: 0, dTr: 0, lead: 0, tripOff: 0 });
   return { L, cal };
 }
 
@@ -2331,7 +2347,8 @@ function posFile(X, tid) {
 /* ================================================================== buildUnit === */
 /* input: UnitInput {league, season, store, teams?, rosters?, bios?, withheld?, venues?, homeVenues?, scheduled?, open?, prevPlayers?}
    (anything left out is read from store.ctx). opts: {priors, seed, B = 400, simN = 1000, now, token, mode: 'full'|'update',
-   carry, sim (false: no calibration), simOpts}.
+   carry, sim (false: no calibration), simOpts, simReuse (a share: the carried calibration is used while the unit has
+   grown by less than it since that calibration; the builder between weekly full runs)}.
    -> {wins, fo, clubs: Map team -> club file, pos: Map team -> pos file, carry, warnings, accept, ms} (files packed) */
 function buildUnit(input, opts) {
   opts = opts || {};
@@ -2528,7 +2545,7 @@ function assemble(X, opts) {
   const posMap = new Map();
   X.teamIds.forEach(tid => { const p = posFile(X, tid); if (p) posMap.set(tid, p); });
   const fo = {
-    lg: { rates: L.rates, T: L.T, Tot: L.Tot, kappaN: L.kappaN, sigmaN: L.sigmaN, hca: L.hca, tau: L.tau, muOff: L.muOff, dTr: L.dTr, lead: L.lead, ft3: L.ft3,
+    lg: { rates: L.rates, T: L.T, Tot: L.Tot, kappaN: L.kappaN, sigmaN: L.sigmaN, hca: L.hca, tau: L.tau, muOff: L.muOff, dTr: L.dTr, lead: L.lead, tripOff: L.tripOff || 0, ft3: L.ft3,
       fouling: L.fouling !== false, zones: !!L.zones, G, homeEdge: nn(homeEdge) },
     sim: { calibrated: !!(cal && cal.report && cal.report.calibrated), platt: cal ? cal.platt || null : null, brier: cal && cal.report ? nn(cal.report.brier) : null, slope: cal && cal.report ? nn(cal.report.slope) : null },
     sigmaPred, predLive: !!X.fc.live, value, teams: teamsF,
@@ -2612,7 +2629,7 @@ function clubFile(X, tid, value, positionsR, pos) {
       return { ids: f.ids, s: f.c.sh, b: bigClass(f.c.bg), poss: f.poss, net: f.poss ? 100 * f.net / f.poss : null, pred };
     });
   const players = P.rows.filter(p => p.team === tid && p.min > 0 && !P.withheld.has(String(p.id))).sort((a, b) => (b.min - a.min) || byId(a.id, b.id))
-    .map(p => ({ id: p.id, g: p.group, v: p.v, min: p.min, bpm: nn(p.bpm), roles: p.roles }));
+    .map(p => ({ id: p.id, g: p.group, v: p.v, min: p.min, bpm: nn(p.bpmRaw), roles: p.roles }));
   return {
     team: { id: tid, name: T.name },
     record: { w: c.w, l: c.l, pythW: isNum(c.pyth) ? c.pyth * c.gp : null, factorW },

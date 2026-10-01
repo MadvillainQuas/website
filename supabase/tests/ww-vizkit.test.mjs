@@ -175,6 +175,18 @@ console.log('\nthe phone: labels above the bars');
   ok('narrow: the label above, starting at the bars', !lab(small.svg)[3] && /viewBox="0 0 360 /.test(small.svg));
 }
 
+console.log('\nlabels that differ only at the end (UI2-3)');
+{
+  const rows = [{ id: 'o', label: 'Free throws made per shot · offence', v: -0.48 }, { id: 'd', label: 'Free throws made per shot · defence', v: -0.72 },
+    { id: 'b', label: 'Offensive boards (OREB%) · offence', v: 0.3 }, { id: 'e', label: 'Offensive boards (OREB%) · defence', v: 0.2 }];
+  const labs = svg => [...svg.matchAll(/class="vz-lab"[^>]*>([^<]*)</g)].map(m => m[1]);
+  for (const W of [643, 400]) {
+    const t = labs(V.bars(rows, { W }).svg);
+    ok('bars at ' + W + ' px: a long label keeps its \' · offence\' / \' · defence\' tail whole, so no two rows read the same',
+       t.length === 4 && new Set(t).size === 4 && t[0].endsWith(' · offence') && t[1].endsWith(' · defence') && t[3].endsWith(' · defence'), t.join(' | '));
+  }
+}
+
 console.log('\ncolour');
 {
   const css = fs.readFileSync(path.join(ROOT, 'epinoia/kit/vizkit.css'), 'utf8');

@@ -16,7 +16,8 @@
 // match the builder's).
 //
 // Secrets: ANALYTICS_SALT (hashes a signed-out caller's address for the limit; never stored raw). Optional:
-// ANALYTICS_IP_HEADERS / ANALYTICS_XFF_HOPS (which header carries the address the edge saw), ANALYTICS_REFRESH_BUDGET_MS,
+// ANALYTICS_IP_HEADER / ANALYTICS_XFF_HOPS (the ONE header, and its entry from the right, that carries the address the
+// edge saw; default x-forwarded-for, last entry; a signed-out request without it is asked to sign in), ANALYTICS_REFRESH_BUDGET_MS,
 // ANALYTICS_REFRESH_MAX_GAMES, ANALYTICS_REFRESH_MAX_STORE_BYTES.
 // ============================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';

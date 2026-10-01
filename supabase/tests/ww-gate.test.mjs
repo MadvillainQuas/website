@@ -203,9 +203,12 @@ console.log('\nRECALCULATE (A.2)');
 const rtake = async subject => (await one(`select public.analytics_refresh_take($1, $2, $3) as r`, [subject, lg.id, s1.id])).r;
 r = await rtake('u:' + MEMBER);
 ok('the first press starts the unit\'s refresh', r.ok === true, r);
+ok('...and takes its lease: `due` is set while it runs, so an isolate killed mid-update leaves the unit flagged for the scheduled build (PERF2-4)',
+   (await one(`select due, status from analytics_refresh`)).due === true);
 r = await rtake('u:' + FAN);
 ok('a second press while it runs is told to join it', r.ok === false && r.state === 'running', r);
 await q(`select public.analytics_refresh_done($1, $2, 'done')`, [lg.id, s1.id]);
+ok('a refresh that finished (done) gives the lease back: due is cleared', (await one(`select due, status from analytics_refresh`)).due === false);
 r = await rtake('u:' + FAN);
 ok('once done, nobody refreshes the unit again for ten minutes (retry_after)', r.ok === false && r.state === 'recent' && r.retry_after > 0 && r.retry_after <= 600, r);
 await q(`update analytics_refresh set started_at = now() - interval '11 minutes'`);
@@ -219,6 +222,8 @@ ok('a subject with six refreshes this hour is refused with retry_after', r.ok ==
 ok('refreshes do not use up the file allowance (analytics_take counts files only)', (await take('u:busy', true)).used_hour === 1);
 await q(`update analytics_refresh set started_at = now() - interval '11 minutes', finished_at = null`);
 ok('a refresh that died without saying so is taken over after its ten minutes', (await rtake('u:' + MEMBER)).ok === true);
+await q(`select public.analytics_refresh_done($1, $2, 'failed')`, [lg.id, s1.id]);
+ok('...and one that failed leaves the unit due for the scheduled build', (await one(`select due, status from analytics_refresh`)).due === true);
 
 console.log('\nthe file itself');
 const raises = [...sql.matchAll(/\braise\b[^;]*;/gi)].map(m => m[0]);

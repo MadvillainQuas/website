@@ -29,12 +29,15 @@ export const FV = 1;                       // the feature layout the pending cou
 export const MAX_BODY = 1024;
 export const SIGNED_TTL = 120;
 export const REFRESH_CAP = 500;            // new games a refresh may add; above it, the scheduled build does it
-/* the unit a refresh may take on at all. update() re-sums the whole store (O(n): about 1 s of CPU at 275 games in node,
-   linear in n) and the store is read, parsed, re-encoded and written whole, so a unit past these is left to the
-   scheduled build ({queued: true, refresh_reason: 'size'}) BEFORE its store is downloaded. Overridable by
-   ANALYTICS_REFRESH_MAX_GAMES / ANALYTICS_REFRESH_MAX_STORE_BYTES once measured on the hosted runtime. */
-export const REFRESH_MAX_GAMES = 400;
-export const REFRESH_MAX_STORE_BYTES = 2_500_000;
+/* the unit a refresh may take on at all. update() re-sums the whole store (O(n)) and the store is read, parsed,
+   re-encoded and written whole: measured in node 22 on the real stores, update alone is about 1.1 s wall and 1.7 s of
+   process CPU cold at 256-275 games (positions and curves the largest steps), so 400 games would reach the Edge
+   runtime's 2 s CPU limit before the parse, validate() and the stringify (PERF2-4). Past these the unit is left to the
+   scheduled build ({queued: true, refresh_reason: 'size'}) BEFORE its store is downloaded. Raise them with
+   ANALYTICS_REFRESH_MAX_GAMES / ANALYTICS_REFRESH_MAX_STORE_BYTES only after measuring on the hosted runtime; a refresh
+   killed there anyway leaves its unit `due` (analytics_refresh_take's lease), never stuck 'running' without a flag. */
+export const REFRESH_MAX_GAMES = 250;
+export const REFRESH_MAX_STORE_BYTES = 1_600_000;
 export const UPLOAD_LANES = 6;             // uploads in flight at once
 export const UPLOAD_MS_EST = 300;          // a storage upload from the edge, for the budget check before the upload phase
 export const BUCKET = 'analytics';
@@ -66,18 +69,21 @@ const corsOf = (deps: Deps) => ({
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 });
 
-/* THE SIGNED-OUT CALLER'S ADDRESS, as the platform saw it, never what the client wrote: a header the edge sets itself
-   (cf-connecting-ip, then x-real-ip; ANALYTICS_IP_HEADERS, comma-separated, overrides the list), else the
-   x-forwarded-for entry ANALYTICS_XFF_HOPS (1) from the right: proxies APPEND, so the left end is whatever the client
-   sent and the right end is what the last trusted hop saw. The user agent is not part of it: rotating it would mint a
-   new bucket on every request. */
+/* THE SIGNED-OUT CALLER'S ADDRESS, as the platform saw it, never what the client wrote (SEC2-2). EXACTLY ONE header is
+   read, the one named by ANALYTICS_IP_HEADER (default x-forwarded-for), and in it the entry ANALYTICS_XFF_HOPS (1) from
+   the right: proxies APPEND, so the left end is whatever the client sent and the right end is what the last trusted hop
+   saw; a single-valued header the edge sets itself (cf-connecting-ip, x-real-ip) is its own right end. There is no list
+   and no fallback to another header: a header the platform does not set is one the client can write, and a fallback
+   would trust it whenever the configured one is absent. Set ANALYTICS_IP_HEADER after checking on the deployed function
+   which header the edge overwrites. No address at all answers '' and the caller is asked to sign in (handle()), never
+   put in a bucket every signed-out reader shares. The user agent is not part of it: rotating it would mint a new bucket
+   on every request. */
 export function clientAddress(req: Request, env: (k: string) => string | undefined): string {
-  const list = (env('ANALYTICS_IP_HEADERS') || 'cf-connecting-ip,x-real-ip').split(',').map(h => h.trim().toLowerCase()).filter(Boolean);
-  for (const h of list) { const v = (req.headers.get(h) || '').trim(); if (v) return v.split(',')[0].trim(); }
-  const xff = (req.headers.get('x-forwarded-for') || '').split(',').map(x => x.trim()).filter(Boolean);
-  if (!xff.length) return '';
+  const name = (env('ANALYTICS_IP_HEADER') || 'x-forwarded-for').trim().toLowerCase();
+  const list = (req.headers.get(name) || '').split(',').map(x => x.trim()).filter(Boolean);
+  if (!list.length) return '';
   const hops = Math.max(1, Math.floor(+(env('ANALYTICS_XFF_HOPS') || 1)) || 1);
-  return xff[Math.max(0, xff.length - hops)];
+  return list[Math.max(0, list.length - hops)];
 }
 
 /* the JWT's subject. PostgREST has just verified the token (analytics_check ran with it), so reading it is enough. */
@@ -154,6 +160,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (sub) subject = 'u:' + sub;
   else {
     const ip = clientAddress(req, k => envOf(deps, k));
+    /* no address the platform vouches for: sign in (never one bucket for every signed-out reader, never another header) */
+    if (!ip) { log({ scope, league: league || 'all', signed: false, reason: 'no_address' }); return reply(401, { reason: 'signin' }); }
     const day = new Date(now()).toISOString().slice(0, 10);
     subject = 'ip:' + String(await deps.sha256([ip, day, envOf(deps, 'ANALYTICS_SALT') || ''].join('|'))).slice(0, 32);
   }

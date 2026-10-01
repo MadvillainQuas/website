@@ -5,7 +5,9 @@
      SUPABASE_URL=… SUPABASE_SERVICE_KEY=… node tools/build-analytics.mjs
      … --dry-run                     read and build, write nothing, say what would be written
      … --unit <league>:<season>      one unit (ids)
-     … --full                        every store rebuilt from nothing, every unit and the pooled file built
+     … --full                        every store rebuilt from nothing, every current unit and the pooled file built
+                                     (a past season only when its token or layout moved; it is rebuilt monthly anyway)
+     … --full-past                   --full, past seasons included
      … --min-gap-hours 1 --pool-gap-hours 6
      node tools/build-analytics.mjs --fixtures supabase/tests/fixtures/ww         the §9 sample files, offline
      node tools/build-analytics.mjs --local --out <dir> [--leagues cebl,orlen-basket-liga] [--pool-leagues a,b,…]
@@ -30,6 +32,7 @@
    nothing.
    ============================================================================ */
 import { createRequire } from 'node:module';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -203,12 +206,19 @@ function cacheRead(dir, p) { try { return JSON.parse(fs.readFileSync(path.join(d
 function cacheWrite(dir, p, obj) { const f = path.join(dir, p); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(obj)); }
 
 /* =============================================================================================== run === */
-/* opts: {url, serviceKey, fetch, dryRun, unit, full, minGapHours, poolGapHours, fixtures, log, now, cacheDir, B, simOpts,
-   budget (smaller byte budgets, for the tests)}
+/* opts: {url, serviceKey, fetch, dryRun, unit, full, fullPast, minGapHours, poolGapHours, fixtures, log, now, cacheDir, B,
+   simOpts, budget (smaller byte budgets, for the tests), budgetMin (40: the run's wall clock, checked between units),
+   maxBig (2: units over BIG_GAMES, or bigGames, built a run), simGrow (0.25: a unit's simulator calibration is carried until its games
+   grow by this share; never on --full), poolGrow (0.05) / poolGrowGames (20): the new games that make the pooled file
+   due before its day is up}
    -> {built: [{scope, unit, bytes, games}], current, skipped, failed: [{unit, error}], summary, accept, writes, reads} */
 export async function run(opts) {
   const o = opts || {};
   const log = o.log || (m => console.log(m));
+  /* PERF2-5: the run stops cleanly between units past its wall clock (the job's timeout is 50 minutes); what is left
+     stays due (its token still differs) for the next hourly run */
+  const runStart = Date.now(), deadline = runStart + (o.budgetMin != null ? +o.budgetMin : 40) * 60000;
+  const bigN = o.bigGames != null ? +o.bigGames : BIG_GAMES;
   if (o.fixtures) return fixtures(o.fixtures, o);
   const url = String(o.url || '').replace(/\/+$/, '');
   if (!url || !o.serviceKey) { log('no SUPABASE_URL / SUPABASE_SERVICE_KEY: nothing to do'); return { built: [], current: 0, skipped: 'no keys', failed: [], summary: '' }; }
@@ -221,7 +231,12 @@ export async function run(opts) {
   const api = client(url, o.serviceKey, f, { reads });
   const minGap = (o.minGapHours != null ? +o.minGapHours : 1) * HOUR, poolGap = (o.poolGapHours != null ? +o.poolGapHours : 6) * HOUR;
   const cacheDir = o.cacheDir === false ? null : (o.cacheDir || path.join(ROOT, '.cache', 'analytics'));
-  const out = { built: [], current: 0, skipped: [], failed: [], summary: '', accept: {}, writes, reads, warnings: [] };
+  const out = { built: [], current: 0, skipped: [], failed: [], summary: '', accept: {}, writes, reads, warnings: [], privateWarnings: [] };
+  /* SEC2-1: this repository is public, and so are its Actions logs and job summaries. Only an open league (§10.1
+     analytics_open_leagues) is named there with its numbers; any other unit is an opaque hash of its ids, and no
+     validate() problem text (which can name a withheld player and his club) is ever printed: a scope and a count. The
+     whole report goes to the private bucket (reports/last.json, service role only) for the operator. */
+  const label = u => (u && u.open ? ((u.leagueRow ? u.leagueRow.slug : u.key) + ' ' + (u.seasonRow && u.seasonRow.name || '')).trim() : opaque(u ? u.key : ''));
   const write = async (what, fn) => { writes.push(what); if (o.dryRun) return null; return fn(); };
 
   /* 0. the issue log keeps 30 days */
@@ -237,8 +252,11 @@ export async function run(opts) {
   const index = (await api.rest('analytics_files?select=scope,league_key,season_key,team_key,league_id,season_id,team_id,is_current,path,token,layout,fv,bytes,n_games,built_at,ci_at')) || [];
   const idx = new Map(index.map(r => [r.scope + '|' + r.league_key + '|' + r.season_key + '|' + (r.team_key || ''), r]));
   let dueFlags = [];
-  try { dueFlags = (await api.rest('analytics_refresh?due=eq.true&select=league_id,season_id')) || []; } catch (_) { dueFlags = []; }
-  const flagged = new Set(dueFlags.map(r => r.league_id + '|' + r.season_id));
+  try { dueFlags = (await api.rest('analytics_refresh?due=eq.true&select=league_id,season_id,status,started_at,finished_at')) || []; } catch (_) { dueFlags = []; }
+  /* a RECALCULATE holds `due` as its lease while it runs (PERF2-4): a live one (running, started under 10 minutes ago) is
+     left to finish; one older than that died (the Edge CPU limit kills an isolate before its finally) and is built here */
+  const live = r => r.status === 'running' && !r.finished_at && r.started_at && nowMs - Date.parse(r.started_at) < 10 * 60 * 1000;
+  const flagged = new Set(dueFlags.filter(r => !live(r)).map(r => r.league_id + '|' + r.season_id));
   const units = [];
   for (const s of seasons) {
     if (!leagueBy.has(s.league_id)) continue;
@@ -258,13 +276,16 @@ export async function run(opts) {
   units.forEach(u => { const c = newest.get(u.league); if (!c || u.starts > c.starts || (u.starts === c.starts && u.season > c.season)) newest.set(u.league, u); });
   units.forEach(u => { u.current = newest.get(u.league) === u; });
   /* due (§6.1) */
-  const due = [];
+  let due = [];
   units.forEach(u => {
     const w = idx.get('wins|' + u.league + '|' + u.season + '|'), st = idx.get('store|' + u.league + '|' + u.season + '|');
     const age = w && w.built_at ? nowMs - Date.parse(w.built_at) : Infinity;
     const layoutChanged = !!w && (!sameLayout(w.path, M.FILE_V) || +w.fv !== FV);
     let why = null;
-    if (o.full) why = 'full';
+    /* the weekly full run leaves a past season alone while its token and layout stand: its files are deterministic
+       from them (it is still rebuilt monthly, and with --full-past) (PERF2-5) */
+    const pastSame = !u.current && !!w && w.token === u.token && !layoutChanged && !!st && st.token === u.token;
+    if (o.full && (o.fullPast || !pastSame)) why = 'full';
     else if (u.flagged) why = 'refresh queued';
     else if (!w && u.n >= M.MIN.own) why = 'new';
     else if (layoutChanged) why = 'layout';
@@ -272,17 +293,34 @@ export async function run(opts) {
     else if (u.current && age > DAY) why = 'a day old';
     else if (!u.current && age > 30 * DAY) why = 'a month old';
     else if (!st || st.token !== u.token) why = 'store';
-    const floor = u.n > BIG_GAMES ? Math.max(minGap, 6 * HOUR) : minGap;
+    const floor = u.n > bigN ? Math.max(minGap, 6 * HOUR) : minGap;
     if (why && !['full', 'refresh queued', 'layout', 'new'].includes(why) && w && age < floor && why !== 'store') { out.skipped.push({ unit: u.key, why: 'floor' }); why = null; }
     if (why) { u.why = why; due.push(u); } else out.current++;
   });
   due.sort((a, b) => (b.flagged - a.flagged) || (b.current - a.current) || a.key.localeCompare(b.key));
+  /* big units (each up to about 3 minutes at NCAA scale) come due together after a game night: at most maxBig a run,
+     the rest wait an hour (still due), before a byte of their stores is read (PERF2-5) */
+  {
+    const maxBig = o.maxBig != null ? +o.maxBig : 2;
+    let nBig = 0;
+    due = due.filter(u => {
+      if (u.n <= bigN) return true;
+      if (nBig < maxBig) { nBig++; return true; }
+      out.skipped.push({ unit: u.key, why: 'big units a run' });
+      return false;
+    });
+  }
   /* the pooled file: due when a current unit is rebuilt and it is older than the pool gap, on a layout change, after a day */
   const poolRow = idx.get('wins|all|current|');
   const poolAge = poolRow && poolRow.built_at ? nowMs - Date.parse(poolRow.built_at) : Infinity;
   const openHash = M.poolToken([], open).split('@o')[1];
+  /* PERF2-3: the pooled build reads EVERY current unit's whole store, so between its daily build it waits for the
+     current units to have grown by poolGrow (5%) of its games (at least poolGrowGames), not just for any rebuild */
+  const curGames = units.filter(u => u.current).reduce((a, u) => a + u.n, 0);
+  const grown = poolRow ? curGames - (+poolRow.n_games || 0) : Infinity;
+  const growNeed = Math.max(o.poolGrowGames != null ? +o.poolGrowGames : 20, (o.poolGrow != null ? +o.poolGrow : 0.05) * (poolRow ? +poolRow.n_games || 0 : 0));
   const poolDue = !!o.full || !poolRow || !sameLayout(poolRow.path, M.FILE_V) || poolAge > DAY ||
-    (due.some(u => u.current) && poolAge > poolGap) || String(poolRow.token || '').split('@o')[1] !== openHash;
+    (due.some(u => u.current) && poolAge > poolGap && grown >= growNeed) || String(poolRow.token || '').split('@o')[1] !== openHash;
 
   /* 2. the stores: of every due unit, and (for the pooled file) of every current unit */
   const stores = new Map();
@@ -311,7 +349,7 @@ export async function run(opts) {
       stores.set(u.key, next);
       deltas.set(u.key, delta);
     } catch (e) {
-      out.failed.push({ unit: u.key, error: 'store: ' + String(e && e.message || e) });
+      out.failed.push({ unit: u.key, label: label(u), error: 'store: ' + String(e && e.message || e), pub: 'store: ' + (u.open ? clip(e) : 'failed') });
     }
   }
 
@@ -319,7 +357,8 @@ export async function run(opts) {
   let priors = null, poolBuilt = false;
   const ctxRead = new Set();
   const priorsRow = idx.get('priors|all|current|');
-  if (poolDue && !o.unit) {
+  if (poolDue && !o.unit && Date.now() > deadline) out.skipped.push({ unit: 'all:current', why: 'time' });
+  else if (poolDue && !o.unit) {
     const cur = units.filter(u => u.current && stores.has(u.key));
     const inputs = [];
     for (const u of cur) {
@@ -334,7 +373,7 @@ export async function run(opts) {
         r.warnings.forEach(w => out.warnings.push('pooled: ' + w));
         if (r.wins) {
           const probs = M.validate(r.wins, 'wins', { open, openTeams: new Set(inputs.filter(i => open.has(i.league.id)).flatMap(i => (i.store.ctx.teams || []).map(t => t.id))) });
-          if (probs.length) throw new Error('the pooled file is not valid: ' + probs.slice(0, 3).join('; '));
+          if (probs.length) throw Object.assign(new Error('the pooled file is not valid: ' + probs.slice(0, 3).join('; ')), { pub: 'the pooled file is not valid (' + probs.length + ' problems)' });
           const wp = 'wins/all/current/' + fileName(M.FILE_V, token), text = JSON.stringify(r.wins);
           await write('upload ' + wp, () => api.upload(BUCKET, wp, text));
           await write('upload priors/v1.json', () => api.upload(BUCKET, 'priors/v1.json', JSON.stringify(r.priors), { maxAge: 60 }));
@@ -356,9 +395,9 @@ export async function run(opts) {
             const stale = (Array.isArray(old) ? old : []).map(x => x && x.name).filter(n => n && n !== 'index.json' && 'whatwins/' + n !== tf).map(n => 'whatwins/' + n);
             if (stale.length) await write('delete old teasers', () => api.remove(PUBLIC_BUCKET, stale));
             out.built.push({ scope: 'teaser', unit: 'all:current', bytes: JSON.stringify(teaser).length, games: teaser.n });
-          } else out.warnings.push('teaser not written: ' + tp.join('; '));
+          } else { out.warnings.push('teaser not written: ' + tp.length + ' problems'); out.privateWarnings.push('teaser not written: ' + tp.join('; ')); }
         }
-      } catch (e) { out.failed.push({ unit: 'all:current', error: String(e && e.message || e) }); }
+      } catch (e) { out.failed.push({ unit: 'all:current', label: 'pooled', error: String(e && e.message || e), pub: e && e.pub ? e.pub : 'the pooled build failed' }); }
     }
   }
   if (!priors && priorsRow) { try { priors = await api.download(BUCKET, stripBucket(priorsRow.path)); } catch (_) { priors = null; } }
@@ -367,12 +406,17 @@ export async function run(opts) {
   for (const u of due) {
     const st = stores.get(u.key);
     if (!st) continue;
+    if (Date.now() > deadline) { out.skipped.push({ unit: u.key, why: 'time' }); continue; }
     const sp = storePath(u.league, u.season, M);
     try {
       const delta = deltas.get(u.key);
       const prevSeason = seasons.filter(s => s.league_id === u.league && (s.starts_on || '') < u.starts).sort((a, b) => (b.starts_on || '').localeCompare(a.starts_on || ''))[0];
       let prev = null;
-      if (prevSeason) {
+      /* the previous season's players by club: kept in the store's context with the token of the store it came from, so
+         its whole store is read once a season, not on every build (PERF2-3) */
+      const prevRow = prevSeason ? idx.get('store|' + u.league + '|' + prevSeason.id + '|') : null, prevToken = prevRow ? String(prevRow.token || '') : '';
+      if (prevSeason && st.ctx && st.ctx.prev && prevToken && st.ctx.prevToken === prevToken) prev = st.ctx.prev;
+      else if (prevSeason) {
         let ps = cacheDir ? cacheRead(cacheDir, storePath(u.league, prevSeason.id, M)) : null;
         if (!ps) { try { ps = await api.download(BUCKET, storePath(u.league, prevSeason.id, M)); } catch (_) { ps = null; } }
         if (ps) { const D = M.decodeStore(ps), by = {}; D.pgs.forEach(r => { const g = D.games[r.g]; if (!g || !(r.min > 0)) return; const t = r.side ? g.a : g.h; (by[t] = by[t] || new Set()).add(D.players[r.p]); }); prev = {}; Object.keys(by).forEach(t => { prev[t] = Array.from(by[t]).sort(); }); }
@@ -380,6 +424,7 @@ export async function run(opts) {
       /* read once a run: a unit whose context step 3 has just read only takes this step's priors and previous season */
       if (ctxRead.has(u.key)) st.ctx = Object.assign({}, st.ctx, { priors: priors || null, prev: prev || null });
       else st.ctx = await readContext(api, M, u, st, { priors, prev });
+      if (prev && prevToken) st.ctx.prevToken = prevToken; else delete st.ctx.prevToken;
       if (st.n < M.MIN.own) {
         await write('upload ' + sp, async () => { await api.upload(BUCKET, sp, JSON.stringify(st), { maxAge: 60 }); if (cacheDir) cacheWrite(cacheDir, sp, st); });
         await write('index store ' + u.key, () => upsertIndex(api, [storeRow(u, sp, st, M, FV, nowIso, st.ci_at)]));
@@ -387,8 +432,11 @@ export async function run(opts) {
         continue;
       }
       const t0 = Date.now();
-      const r = M.buildUnit(M.inputFromStore(st), { token: u.token, now: nowIso, B: o.B || 400, priors, simOpts: o.simOpts, budget: o.budget });
-      r.warnings.forEach(w => out.warnings.push(u.leagueRow.slug + ': ' + w));
+      /* the simulator's calibration (most of a big unit's build) is carried from the last full build while the unit has
+         grown by less than simGrow; the weekly --full calibrates every unit afresh (PERF2-5) */
+      const simReuse = o.full ? null : (o.simGrow != null ? +o.simGrow : 0.25);
+      const r = M.buildUnit(M.inputFromStore(st), { token: u.token, now: nowIso, B: o.B || 400, priors, simOpts: o.simOpts, budget: o.budget, simReuse });
+      r.warnings.forEach(w => { out.warnings.push(label(u) + ': ' + w); out.privateWarnings.push(u.leagueRow.slug + ': ' + w); });
       const withheld = new Set(st.ctx.withheld || []);
       const files = [];
       if (r.wins) files.push({ scope: 'wins', team: '', file: r.wins });
@@ -406,7 +454,7 @@ export async function run(opts) {
       for (const x of files) {
         const clubGames = x.scope === 'club' ? (byTeam.get(x.team) || new Set()) : null;
         const probs = M.validate(x.file, x.scope, { games: clubGames, withheld, budget: o.budget });
-        if (probs.length) { out.failed.push({ unit: u.key, error: x.scope + (x.team ? ' ' + x.team : '') + ': ' + probs.slice(0, 3).join('; ') }); continue; }
+        if (probs.length) { out.failed.push({ unit: u.key, label: label(u), error: x.scope + (x.team ? ' ' + x.team : '') + ': ' + probs.slice(0, 3).join('; '), pub: x.scope + ': ' + probs.length + ' problems' }); continue; }
         const p = x.scope + '/' + u.league + '/' + u.season + '/' + (x.team ? x.team + '/' : '') + fileName(M.FILE_V, u.token), text = JSON.stringify(x.file);
         await write('upload ' + p, () => api.upload(BUCKET, p, text));
         const prevRow = idx.get(x.scope + '|' + u.league + '|' + u.season + '|' + x.team);
@@ -425,11 +473,12 @@ export async function run(opts) {
         { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ is_current: false }) }));
       if (stale.length) await write('delete ' + stale.length + ' old files of ' + u.key, () => api.remove(BUCKET, stale));
       if (u.flagged) await write('refresh flag ' + u.key, () => api.rest(`analytics_refresh?league_id=eq.${u.league}&season_id=eq.${u.season}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ due: false }) }));
-      out.accept[u.key] = Object.assign({ slug: u.leagueRow.slug, ms: Date.now() - t0 }, r.accept);
-      log(`built ${u.leagueRow.slug} ${u.seasonRow.name}: ${st.n} games, ${files.length} files, ${Math.round((Date.now() - t0) / 1000)} s (${u.why})`);
+      out.accept[u.key] = Object.assign({ slug: u.leagueRow.slug, label: label(u), open: !!u.open, ms: Date.now() - t0 }, r.accept);
+      log(`built ${label(u)}: ${st.n} games, ${files.length} files, ${Math.round((Date.now() - t0) / 1000)} s (${u.why})`);
     } catch (e) {
-      out.failed.push({ unit: u.key, error: String(e && e.message || e) });
-      log(`FAILED ${u.key}: ${e && e.message || e}`);
+      const pub = u.open ? clip(e) : 'failed';
+      out.failed.push({ unit: u.key, label: label(u), error: String(e && e.message || e), pub });
+      log(`FAILED ${label(u)}: ${pub}`);
       /* the refreshed store is kept even when its files fail: its lines are read once */
       try { await write('upload ' + sp, async () => { await api.upload(BUCKET, sp, JSON.stringify(st), { maxAge: 60 }); if (cacheDir) cacheWrite(cacheDir, sp, st); }); } catch (_) { /* next run */ }
     }
@@ -451,12 +500,19 @@ export async function run(opts) {
       for (const lk of Array.from(new Set(gone.map(r => r.league_key)))) await api.rest(`analytics_files?league_key=eq.${lk}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
     });
   }
-  /* 7. the job summary */
+  /* 7. the job summary (public: open units only) and the whole report (private bucket) */
   out.summary = summary(out, { poolBuilt, units: units.length, due: due.length, dry: !!o.dryRun });
   log(out.summary);
+  if (out.built.length || out.failed.length) {
+    const report = { at: nowIso, units: units.length, due: due.length, failed: out.failed.map(x => ({ unit: x.unit, error: x.error })), warnings: out.privateWarnings, accept: out.accept };
+    try { await write('upload reports/last.json', () => api.upload(BUCKET, 'reports/last.json', JSON.stringify(report), { maxAge: 60 })); } catch (_) { /* the next run */ }
+  }
   if (process.env.GITHUB_STEP_SUMMARY && !o.fetch) { try { fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.summary + '\n'); } catch (_) { /* not in Actions */ } }
   return out;
 }
+/* a unit that is not open, as the public log names it: a hash of its ids (SEC2-1) */
+export const opaque = key => 'unit ' + crypto.createHash('sha256').update(String(key)).digest('hex').slice(0, 10);
+const clip = e => String(e && e.message || e).replace(/withheld player [0-9a-f-]+/gi, 'withheld player').slice(0, 160);
 const storeRow = (u, sp, st, M, FV, built, ciAt) => ({ scope: 'store', league_key: u.league, season_key: u.season, team_key: '', league_id: u.league, season_id: u.season, team_id: null,
   is_current: !!u.current, path: sp, token: u.token, layout: M.STORE_V, fv: FV, bytes: JSON.stringify(st).length, n_games: st.n, built_at: built, ci_at: ciAt || null });
 const upsertIndex = (api, rows) => api.rest('analytics_files?on_conflict=scope,league_key,season_key,team_key', {
@@ -472,8 +528,12 @@ export function summary(out, o) {
   const by = {};
   out.built.forEach(b => { const k = String(b.scope).split('.')[0].replace(/-.*$/, ''); (by[k] = by[k] || []).push(b.bytes || 0); });
   if (Object.keys(by).length) L.push('Sizes: ' + Object.keys(by).sort().map(k => `${k} ${by[k].length} (max ${(Math.max(...by[k]) / 1024).toFixed(1)} KB)`).join(', '));
-  if (out.failed.length) { L.push(''); out.failed.forEach(x => L.push(`- FAILED ${x.unit}: ${x.error}`)); }
-  const acc = out.accept || {};
+  /* public: a failure is its unit's label (an open league's slug, else a hash) and a scope with a count, never the problem
+     text (SEC2-1); the local run's summary (no pub) keeps its errors */
+  if (out.failed.length) { L.push(''); out.failed.forEach(x => L.push(`- FAILED ${x.label || x.unit}: ${x.pub != null ? x.pub : x.error}`)); }
+  const accAll = out.accept || {}, acc = {}, closed = Object.keys(accAll).filter(k => accAll[k] && accAll[k].open === false);
+  Object.keys(accAll).forEach(k => { if (!(accAll[k] && accAll[k].open === false)) acc[k] = accAll[k]; });
+  if (closed.length) { L.push(''); L.push(`${closed.length} members-only or private unit${closed.length === 1 ? '' : 's'} built: ${closed.map(k => accAll[k].label || opaque(k)).sort().join(', ')} (their numbers are in the private report, reports/last.json)`); }
   if (Object.keys(acc).length) {
     L.push('');
     L.push('| unit | games | R² (4F, FT rate) | b efg / tovp / orebp / ftr | eFG share (Shapley / \|b\|·sd) | home win | Brier (home / Elo) | log loss | slope | live | sim Brier | sim slope | sim pace / ortg Δ | margin SD ratio | sim calibrated |');
@@ -481,7 +541,7 @@ export function summary(out, o) {
     Object.keys(acc).sort().forEach(k => {
       const a = acc[k] || {}, c = a.check4 || {}, s = a.sim || {}, ch = s.checks || {};
       const d = x => (ch[x] ? f(ch[x].sim - ch[x].obs, 2) : '–');
-      L.push(`| ${a.slug || k} | ${a.n || '–'} | ${f(c.r2)} | ${f(c.efg)} / ${f(c.tovp)} / ${f(c.orebp)} / ${f(c.ftr)} | ${f(a.efgShare, 1)}% / ${f(a.efgLegacy, 1)}% | ${f(a.homeWin)} | ${f(a.brier)} (${f(a.brierHome)} / ${f(a.brierElo)}) | ${f(a.logloss)} | ${f(a.slope, 2)} | ${a.live ? 'yes' : 'no'} | ${f(s.brier)} | ${f(s.slope, 2)} | ${d('pace')} / ${d('ortg')} | ${ch.marginSd ? f(ch.marginSd.sim / ch.marginSd.obs, 3) : '–'} | ${s.calibrated ? 'yes' : 'no'} |`);
+      L.push(`| ${a.label || a.slug || k} | ${a.n || '–'} | ${f(c.r2)} | ${f(c.efg)} / ${f(c.tovp)} / ${f(c.orebp)} / ${f(c.ftr)} | ${f(a.efgShare, 1)}% / ${f(a.efgLegacy, 1)}% | ${f(a.homeWin)} | ${f(a.brier)} (${f(a.brierHome)} / ${f(a.brierElo)}) | ${f(a.logloss)} | ${f(a.slope, 2)} | ${a.live ? 'yes' : 'no'} | ${f(s.brier)} | ${f(s.slope, 2)} | ${d('pace')} / ${d('ortg')} | ${ch.marginSd ? f(ch.marginSd.sim / ch.marginSd.obs, 3) : '–'} | ${s.calibrated ? 'yes' : 'no'} |`);
     });
     L.push('');
     L.push('Targets (§16): pooled R² in [0.93, 0.95], b near 1.157 / −1.130 / 0.398 / 0.094; eFG share [40, 55]; home win [0.55, 0.59]; Brier below home-only and within 0.002 of Elo; slope [0.85, 1.15]; simulator pace and ortg within 0.5, margin SD ratio [0.95, 1.05].');
@@ -648,7 +708,7 @@ export async function local(opts) {
 const storeBody = s => JSON.stringify(Object.assign({}, s, { ctx: null, carry: null, ci_at: null }));
 /* the largest relative difference between two builds' point estimates (intervals and the calibration are carried) */
 const CARRIED = new Set(['lo', 'hi', 'se', 'topLo', 'topHi', 'star', 'evidence', 'power', 'logitAgree', 'ci_at', 'built', 'sim', 'lens', 'platt', 'calibrated',
-  'kappaN', 'sigmaN', 'hca', 'tau', 'muOff', 'dTr', 'lead', 'fouling', 'checks', 'own', 'gamma', 'x50', 'x75', 'addR2', 'or']);
+  'kappaN', 'sigmaN', 'hca', 'tau', 'muOff', 'dTr', 'lead', 'tripOff', 'fouling', 'checks', 'ftrOk', 'own', 'gamma', 'x50', 'x75', 'addR2', 'or']);
 function maxDiff(pairs) {
   let d = 0, at = '';
   const cmp = (a, b, p) => {
@@ -668,11 +728,12 @@ function maxDiff(pairs) {
 
 /* =============================================================================================== cli === */
 export function parseArgs(argv) {
-  const a = { dryRun: false, full: false, unit: null, minGapHours: null, poolGapHours: null, fixtures: null, local: false, out: null, leagues: [], poolLeagues: [], B: null };
+  const a = { dryRun: false, full: false, fullPast: false, unit: null, minGapHours: null, poolGapHours: null, fixtures: null, local: false, out: null, leagues: [], poolLeagues: [], B: null };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i], nx = () => argv[++i];
     if (x === '--dry-run' || x === '--dry') a.dryRun = true;
     else if (x === '--full') a.full = true;
+    else if (x === '--full-past') { a.full = true; a.fullPast = true; }
     else if (x === '--unit') a.unit = nx();
     else if (x === '--min-gap-hours') a.minGapHours = +nx();
     else if (x === '--pool-gap-hours') a.poolGapHours = +nx();
@@ -690,7 +751,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const env = k => (process.env[k] != null && process.env[k] !== '' ? process.env[k] : null);
   const p = a.local
     ? local({ out: a.out || path.join(ROOT, '.cache', 'analytics-local'), leagues: a.leagues.length ? a.leagues : ['cebl', 'orlen-basket-liga'], poolLeagues: a.poolLeagues, B: a.B || undefined })
-    : run({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY, dryRun: a.dryRun, unit: a.unit, full: a.full, fixtures: a.fixtures,
+    : run({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY, dryRun: a.dryRun, unit: a.unit, full: a.full, fullPast: a.fullPast, fixtures: a.fixtures,
       minGapHours: a.minGapHours != null ? a.minGapHours : (env('ANALYTICS_MIN_GAP_H') != null ? +env('ANALYTICS_MIN_GAP_H') : 1),
       poolGapHours: a.poolGapHours != null ? a.poolGapHours : (env('ANALYTICS_POOL_GAP_H') != null ? +env('ANALYTICS_POOL_GAP_H') : 6), B: a.B || undefined });
   p.then(r => { process.exit(r && r.failed && r.failed.length ? 1 : 0); }).catch(e => { console.error(e); process.exit(1); });

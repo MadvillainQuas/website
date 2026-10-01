@@ -649,6 +649,10 @@ async function frontOffice(team) {
 
     const chartIn = { roster: people, season: seasonRows, recent, starts, out, released };
     let c = X.chart(chartIn);
+    /* the league view compares the club with every other club put through chart(), each player at ONE slot: the club
+       keeps its own chart() for that, never the slot chart below, where a player stands at two or three positions and
+       his whole season would count at each (POS2-1) */
+    const cLeague = c;
     const link = p => '../p/?p=' + encodeURIComponent(p.id);
     hostD.innerHTML = X.chartHTML(c, { link });
     /* EACH POSITION OPENS ITS LEAGUE VIEW (position.js): every club put through the same chart, read the first time
@@ -661,7 +665,7 @@ async function frontOffice(team) {
         ids.length ? api(`roster_entries?team_id=in.(${ids.join(',')})&active=eq.true&select=team_id,position,players(id,height_cm)`) : [],
         ids.length ? api(`teams?id=in.(${ids.join(',')})&select=id,name,short_name,colour,logo_path`) : []
       ]);
-      return PV.context({ season: S, rosters, meta, own: { teamId: team.id, chart: c } });
+      return PV.context({ season: S, rosters, meta, own: { teamId: team.id, chart: cLeague } });
     })().catch(e => { ctxP = null; throw e; }));
     /* the depth chart's positions and the win model's slot buttons (F3) open the same view */
     const onSlot = async e => {
@@ -685,7 +689,7 @@ async function frontOffice(team) {
     if (pos && X.slotChart) {
       const cs = X.slotChart(Object.assign({ pos }, chartIn));
       if (cs) {
-        c = cs; ctxP = null;
+        c = cs;
         hostD.innerHTML = X.chartHTML(c, { link });
         const note = $('#depthNote');
         if (note) note.textContent = 'filled from the minutes each player has played at each position';

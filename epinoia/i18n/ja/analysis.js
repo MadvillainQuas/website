@@ -135,6 +135,8 @@
       "Win share in bins with Wilson ranges, the fitted curve with its band, and the break-even points": "区間ごとの勝率（Wilson範囲）、当てはめ曲線とその帯、五分五分の点",
       "Pace is the same for both sides of a game, so it never enters a difference model.": "ペースは試合の両チームで同じなので、差のモデルには入りません。",
       "Team pace and winning": "チームのペースと勝利",
+      "Winning by team pace": "チームのペース別の勝率",
+      "with net rating held level": "ネットレーティングを揃えた場合",
       "Team pace against winning": "チームのペースと勝利の関係",
       "Each team-season’s pace against its share of wins; drag to pick teams": "各チームのシーズンのペースと勝率。ドラッグでチームを選択",
       "possessions per 40 (first three quarters)": "40分あたりポゼッション（第3Qまで）",
