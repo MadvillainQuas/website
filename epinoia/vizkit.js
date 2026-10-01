@@ -353,6 +353,18 @@ function binnedCurve(d, o) {
     hits.push({ id: k, x, y: T + 6, label: 'wins ' + lab + ' of games at', value: fx(ax, c.v) + (isNum(c.lo) ? ' (' + fx(ax, c.lo) + ' to ' + fx(ax, c.hi) + ')' : '') });
     trows.push([k, '', fx(ax, c.v), isNum(c.lo) ? fx(ax, c.lo) : '–', isNum(c.hi) ? fx(ax, c.hi) : '–', '']);
   });
+  /* d.mark = {x, p, lo?, hi?}: a reader's own point on the curve (What wins, "move the gap"), a line and a dot */
+  const mk = d.mark;
+  if (mk && isNum(mk.x) && isNum(mk.p) && mk.x >= lo && mk.x <= hi) {
+    const x = sx(mk.x), y = sy(clamp(mk.p, 0, 1));
+    if (isNum(mk.lo) && isNum(mk.hi)) s += line(x, sy(clamp(mk.lo, 0, 1)), x, sy(clamp(mk.hi, 0, 1)), 'vz-cursorw');
+    s += line(x, T, x, H - B, 'vz-cursor') + circ(x, y, 6, 'vz-cursord');
+    const right = x > (L + W - R) / 2;
+    /* the label beside the line, clear of the break-even labels along the top: near the floor when the dot is high,
+       under those labels when it is low (the curve is then low too) */
+    s += txt(x + (right ? -8 : 8), mk.p > 0.5 ? H - B - 10 : T + 48, Math.round(mk.p * 100) + '% at ' + fx(ax, mk.x), 'vz-key vz-mk', right ? 'end' : 'start');
+    hits.push({ id: 'mark', x, y, label: 'won at a gap of ' + fx(ax, mk.x), value: Math.round(mk.p * 100) + '%' + (isNum(mk.lo) ? ' (' + Math.round(mk.lo * 100) + '–' + Math.round(mk.hi * 100) + '%)' : '') });
+  }
   return { svg: frame('curve', o, W, H, s), table: { head: [ax.label || 'gap', 'games', 'won', '95% low', '95% high', 'mean margin'], rows: trows }, hits };
 }
 

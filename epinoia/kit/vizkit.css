@@ -73,6 +73,10 @@
 .vz-bin{fill:var(--ink);stroke:var(--ground)}
 .vz-xband{fill:var(--vz-s2);fill-opacity:.1}
 .vz-mark{stroke:var(--vz-s2);stroke-width:1.6;stroke-dasharray:4 3}
+/* a reader's own point on a curve (What wins: move the gap) */
+.vz-cursor{stroke:var(--vz-s3);stroke-width:2}
+.vz-cursorw{stroke:var(--vz-s3);stroke-width:5;stroke-linecap:round;stroke-opacity:.35}
+.vz-cursord{fill:var(--vz-s3);stroke:var(--vz-tipink);stroke-width:2}
 .vz-hbar{fill-opacity:.85}
 .vz-pt{stroke:var(--ground);stroke-width:1.2}
 .vz-pt.vz-dim{fill-opacity:.22}
@@ -116,7 +120,8 @@
   .vz text{fill:CanvasText}
   .vz-dot,.vz-pt,.vz-bar,.vz-seg,.vz-cell,.vz-hbar,.vz-s1f,.vz-s2f,.vz-s3f{fill:CanvasText;stroke:Canvas;forced-color-adjust:none}
   .vz-dot.vz-hollow,.vz-pt.vz-ptho{fill:Canvas;stroke:CanvasText}
-  .vz-curve,.vz-whisk,.vz-zero,.vz-ref,.vz-grid,.vz-mark,.vz-dl{stroke:CanvasText}
+  .vz-curve,.vz-whisk,.vz-zero,.vz-ref,.vz-grid,.vz-mark,.vz-dl,.vz-cursor,.vz-cursorw{stroke:CanvasText}
+  .vz-cursord{fill:Highlight}
   .vz-band,.vz-xband{fill:none}
   .vz-tip{background:Canvas;color:CanvasText;border-color:Highlight}
   .vz-ring{border-color:Highlight}

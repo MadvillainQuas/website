@@ -26,23 +26,23 @@
 <meta name="description" content="Which numbers go with winning, measured on every finished game across every league: the four factors weighed, shooting, shot selection and where the points came from.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=583"></script>
-<script src="../i18n.js?v=583" data-i18n-packs="analysis"></script>
-<script src="../glyphs.js?v=583" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=583">
-<link rel="stylesheet" href="../kit/nav.css?v=583">
-<link rel="stylesheet" href="../kit/access.css?v=583">
-<link rel="stylesheet" href="../kit/page.css?v=583">
-<link rel="stylesheet" href="../kit/vizkit.css?v=583">
-<link rel="stylesheet" href="../kit/winning.css?v=583">
-<link rel="stylesheet" href="../kit/sectitle.css?v=583">
-<link rel="stylesheet" href="../kit/teletext.css?v=583">
-<link rel="stylesheet" href="../kit/legibility.css?v=583">
+<script src="../appmode.js?v=585"></script>
+<script src="../i18n.js?v=585" data-i18n-packs="analysis"></script>
+<script src="../glyphs.js?v=585" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=585">
+<link rel="stylesheet" href="../kit/nav.css?v=585">
+<link rel="stylesheet" href="../kit/access.css?v=585">
+<link rel="stylesheet" href="../kit/page.css?v=585">
+<link rel="stylesheet" href="../kit/vizkit.css?v=585">
+<link rel="stylesheet" href="../kit/winning.css?v=585">
+<link rel="stylesheet" href="../kit/sectitle.css?v=585">
+<link rel="stylesheet" href="../kit/teletext.css?v=585">
+<link rel="stylesheet" href="../kit/legibility.css?v=585">
 </head>
 <body>
 <!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and no
      number; data-std has nav.js add the teletext line, the quick keys, ON THIS PAGE and each section's SKIP.
-     docs/what-wins-model.md §11 is this page: twelve sections, drawn by winning/page.js from one file. -->
+     docs/what-wins-model.md §11 is this page: thirteen sections (A.3 added Lineup mixes), drawn by winning/page.js from one file. -->
 <div class="ep-frame ww" id="ww" data-std>
   <div class="topbar">
     <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
@@ -126,6 +126,13 @@
     <div class="sec-b ww-body" id="squadB"></div>
   </section>
 
+  <!-- LINEUP MIXES (A.3): the reader's own conditions over every five; the file is asked for only when this section comes near -->
+  <section class="sec" id="mixes" aria-labelledby="mixesH">
+    <div class="sec-h"><h2 id="mixesH">Lineup mixes</h2>
+      <p class="note">Set your own lineup conditions and see how those fives did</p></div>
+    <div class="sec-b ww-body" id="mixesB"></div>
+  </section>
+
   <section class="sec" id="sim" aria-labelledby="simH">
     <div class="sec-h"><h2 id="simH">Simulate a game</h2>
       <p class="note">Pick two sides, move the dials, and see the odds change</p></div>
@@ -165,7 +172,7 @@
         <dd>What if a team changed one thing. A possession-by-possession simulator calibrated on the league. It is a model’s answer, never proof of cause.</dd>
       </dl>
       <h3>The measures</h3>
-      <p>Every finished game is reduced once to a line of counts per side. The four factors are effective shooting (eFG%), turnovers per play (TOV%), offensive rebounds won (OREB%) and free throws (made per 100 field-goal attempts). Their competitive versions leave out garbage time: a side 20 or more ahead with under eight minutes left, or 13 ahead with under four.</p>
+      <p>Every finished game is reduced once to a line of counts per side. The four factors are effective shooting (eFG%), turnovers per play (TOV%), offensive rebounds won (OREB%) and getting to the line: the free-throw attempt rate, free-throw attempts per 100 field-goal attempts (FTA/FGA). Whether the free throws go in is FT%, a measure of its own. Their competitive versions leave out garbage time: a side 20 or more ahead with under eight minutes left, or 13 ahead with under four.</p>
       <p>A difference model has no intercept. Home court is a term of its own, worth a few points beyond the factors. One team-SD is how far apart a good and an average side usually are on a measure. Points become wins through the spread of results around a pre-game expectation, never through the much smaller spread the factors leave over.</p>
       <h3>How sure we can be</h3>
       <p>Every estimate carries a 95% range from a bootstrap that resamples whole weeks of games. A measure whose q-value is 0.05 or more is drawn grey: not distinguishable from noise. Small leagues lean on every league’s pooled answer, and the page says how far.</p>
@@ -190,18 +197,19 @@
     </div>
   </section>
 </div>
-<script src="../config.js?v=583" defer></script>
-<script src="../access.js?v=583" defer></script>
-<script src="../memlock.js?v=583" defer></script>
-<script src="../data.js?v=583" defer></script>
-<script src="../teamcolour.js?v=583" defer></script>
-<script src="../winning.js?v=583" defer></script>
-<script src="../winstats.js?v=583" defer></script>
-<script src="../winsim.js?v=583" defer></script>
-<script src="../winfile.js?v=583" defer></script>
-<script src="../vizkit.js?v=583" defer></script>
-<script src="../xscroll.js?v=583" defer></script>
-<script src="page.js?v=583" defer></script>
-<script src="../nav.js?v=583" defer></script>
+<script src="../config.js?v=585" defer></script>
+<script src="../access.js?v=585" defer></script>
+<script src="../memlock.js?v=585" defer></script>
+<script src="../data.js?v=585" defer></script>
+<script src="../teamcolour.js?v=585" defer></script>
+<script src="../winning.js?v=585" defer></script>
+<script src="../winstats.js?v=585" defer></script>
+<script src="../winsim.js?v=585" defer></script>
+<script src="../winfile.js?v=585" defer></script>
+<script src="../vizkit.js?v=585" defer></script>
+<script src="../xscroll.js?v=585" defer></script>
+<script src="../winmix.js?v=585" defer></script>
+<script src="page.js?v=585" defer></script>
+<script src="../nav.js?v=585" defer></script>
 </body>
 </html>

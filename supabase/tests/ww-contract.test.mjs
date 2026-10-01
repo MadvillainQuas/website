@@ -59,7 +59,7 @@ const SOURCES = ['epinoia', 'supabase', 'tools', 'scripts', '.github', 'share'].
 
 /* ------------------------------------------------------------------ the files --- */
 console.log('\nevery model file passes EpinoiaWinModel.validate, and none names a player (I6)');
-const scopeOf = f => (/^wins/.test(f) ? 'wins' : /^fo/.test(f) ? 'fo' : /^club/.test(f) ? 'club' : /^teaser/.test(f) ? 'teaser' : /^pos/.test(f) ? 'pos' : null);
+const scopeOf = f => (/^wins/.test(f) ? 'wins' : /^fo/.test(f) ? 'fo' : /^club/.test(f) ? 'club' : /^teaser/.test(f) ? 'teaser' : /^pos/.test(f) ? 'pos' : /^mix/.test(f) ? 'mix' : null);
 const NAMEKEYS = /^(name|first_name|last_name|full_name|surname|given_name|family_name|display_name)$/;
 function namesIn(v, trail, out) {
   if (Array.isArray(v)) { v.forEach((x, i) => namesIn(x, trail, out)); return out; }
@@ -319,8 +319,9 @@ async function endToEnd(tag, set) {
   if (set.club) files.set(['club', LIG, SEA, tid].join('|'), set.club);
   const posFile = set.pos || (set.club && set.club.pos) || (set.fo && set.fo.pos && set.fo.pos[tid]);
   if (posFile) files.set(['pos', LIG, SEA, tid].join('|'), posFile);
+  if (set.mix) files.set(['mix', LIG, SEA, ''].join('|'), set.mix);
   const srv = server(files);
-  const pg = sandboxFor(['winstats.js', 'winsim.js', 'winfile.js', 'winning.js', 'vizkit.js', 'winning/page.js'], srv);
+  const pg = sandboxFor(['winstats.js', 'winsim.js', 'winfile.js', 'winning.js', 'vizkit.js', 'winmix.js', 'winning/page.js'], srv);
   const WF = pg.sb.EpinoiaWinFile, P = pg.sb.EpinoiaWinPage, VK = pg.sb.EpinoiaVizKit;
   const stages = [];
   const ans = await WF.get({ scope: 'wins', league: LIG, season: SEA }, { onProgress: e => stages.push(e.stage) });
@@ -336,6 +337,9 @@ async function endToEnd(tag, set) {
      JSON.stringify([pooled && pooled.reason, teaser && teaser.reason]));
   const fo = set.fo ? await WF.get({ scope: 'fo', league: LIG, season: SEA }) : null;
   const club = set.club ? await WF.get({ scope: 'club', league: LIG, season: SEA, team: tid }) : null;
+  /* A.3: the lineup mixes' file, as the page asks for it when #mixes comes near */
+  const mix = set.mix ? await WF.get({ scope: 'mix', league: LIG, season: SEA }) : null;
+  if (set.mix) ok(tag + ': the lineup mixes file comes through winfile.js (scope mix), whole, and decodes', mix.ok && JSON.stringify(mix.data) === JSON.stringify(set.mix) && !!pg.sb.EpinoiaWinMix.decode(mix.data));
   const st0 = () => ({ lens: 'explain', unit: 'pts', k: '', t1: '', t2: '', venue: 1, dials: { A: {}, B: {} }, picks: null, fview: 'bars', sortKey: 'r', sortDir: -1, posG: 'G', club: '', brushed: null, refit: null, simState: 'idle', simResult: null });
   const probs = [], counts = {};
   for (const id of P.SECTIONS.filter(s => P.views[s])) {
@@ -343,6 +347,7 @@ async function endToEnd(tag, set) {
     if (id === 'sim' && fo && fo.ok) { ctx.fo = fo.data; ctx.foState = 'ok'; }
     if (id === 'losses' && club && club.ok) { ctx.st.club = tid; ctx.club = club.data; ctx.clubState = 'ok'; }
     if (id === 'leagues' && pooled && pooled.ok) ctx.pooled = pooled.data;
+    if (id === 'mixes') { if (!(mix && mix.ok)) continue; ctx.mix = pg.sb.EpinoiaWinMix.decode(mix.data); ctx.mixState = 'ok'; }
     let v;
     try { v = P.views[id](ctx); } catch (e) { probs.push('#' + id + ' threw ' + e.message); continue; }
     counts[id] = v.charts.length;
@@ -399,9 +404,9 @@ async function endToEnd(tag, set) {
 const J = (...p) => { const f = path.join(...p); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null; };
 {
   const d = path.join(TESTS, 'fixtures', 'ww-page');
-  await endToEnd('real ORLEN files (builder --local)', { wins: J(d, 'wins.json'), pooled: J(d, 'wins-all.json'), fo: J(d, 'fo.json'), club: J(d, 'club.json'), teaser: J(d, 'teaser.json') });
+  await endToEnd('real ORLEN files (builder --local)', { wins: J(d, 'wins.json'), pooled: J(d, 'wins-all.json'), fo: J(d, 'fo.json'), club: J(d, 'club.json'), teaser: J(d, 'teaser.json'), mix: J(d, 'mix.json') });
   const e = path.join(TESTS, 'fixtures', 'ww');
-  await endToEnd('synthetic builder fixtures (--fixtures)', { wins: J(e, 'wins.sample.json'), pooled: J(e, 'wins-all.sample.json'), fo: J(e, 'fo.sample.json'), club: J(e, 'club.sample.json'), teaser: J(e, 'teaser.sample.json') });
+  await endToEnd('synthetic builder fixtures (--fixtures)', { wins: J(e, 'wins.sample.json'), pooled: J(e, 'wins-all.sample.json'), fo: J(e, 'fo.sample.json'), club: J(e, 'club.sample.json'), teaser: J(e, 'teaser.sample.json'), mix: J(e, 'mix.sample.json') });
 }
 if (process.env.WW_LOCAL_DIR) {
   const d = path.resolve(process.env.WW_LOCAL_DIR);
@@ -409,7 +414,7 @@ if (process.env.WW_LOCAL_DIR) {
   ok('WW_LOCAL_DIR: a builder --local folder with leagues (' + leagues.join(', ') + ')', leagues.length > 0);
   for (const lg of leagues) {
     await endToEnd('--local ' + lg, { wins: J(d, 'wins-' + lg + '.json'), pooled: J(d, 'wins-all.json'), fo: J(d, 'fo-' + lg + '.json'), club: J(d, 'club-' + lg + '.json'),
-      pos: J(d, 'pos-' + lg + '.json'), teaser: J(d, 'teaser.json') });
+      pos: J(d, 'pos-' + lg + '.json'), teaser: J(d, 'teaser.json'), mix: J(d, 'mix-' + lg + '.json') });
   }
 }
 
