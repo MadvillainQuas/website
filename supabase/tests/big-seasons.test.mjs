@@ -189,7 +189,7 @@ console.log('\npast BIG_GAMES: never the rows in a browser');
   const stale = await D.season('comp-a', { trim: true, rows: false });
   ok('once one is built: the latest file, saying which and when, and still no rows', stale.players.length === older.players.v.length &&
      stale.stale && stale.stale.builtAt === '2026-10-30T11:00:00Z' && stale.stale.token === '5790@earlier' && !calls.some(c => /player_game_stats/.test(c.url)));
-  ok('...not kept in this browser as the current token\'s season', (() => { try { return !localStorage.getItem('epinoia_season_v2:comp-a'); } catch (_) { return true; } })());
+  ok('...not kept in this browser as the current token\'s season', (() => { try { return !localStorage.getItem('epinoia_season_v3:' + globalThis.EpinoiaSeason.version() + ':comp-a'); } catch (_) { return true; } })());
   let err = null;
   try { await D.season('comp-a', { trim: true, rows: false, snapshot: false }); } catch (e) { err = e.message; }
   ok('a builder that is not allowed big ones is refused, not handed the older file to save under the newer token', /too big for this builder/.test(err || ''), err);

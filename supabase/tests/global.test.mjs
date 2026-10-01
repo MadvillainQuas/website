@@ -57,6 +57,8 @@ globalThis.EPINOIA_CONFIG = { supabaseUrl: 'https://abcref.supabase.co', supabas
 globalThis.EpinoiaBPM = require(path.join(ROOT, 'epinoia', 'bpm.js'));
 const Season = require(path.join(ROOT, 'epinoia', 'season.js'));
 globalThis.EpinoiaSeason = Season;
+/* this browser's copy of a season: the layout, then the version of the line (season.js version()) */
+const SP = 'epinoia_season_v3:' + Season.version() + ':';
 const D = require(path.join(ROOT, 'epinoia', 'data.js'));
 globalThis.EpinoiaData = D;
 const A = require(path.join(ROOT, 'epinoia', 'access.js'));
@@ -271,7 +273,7 @@ function fresh(opts) {
      for the wrong reason. */
   for (let i = LS.length - 1; i >= 0; i--) {
     const k = LS.key(i);
-    if (k && k.indexOf('epinoia_season_v2:') === 0) LS.removeItem(k);
+    if (k && k.indexOf('epinoia_season_v') === 0) LS.removeItem(k);
   }
   net.calls = []; net.accessBodies = []; net.fail = new Set();
   const f = server(opts);
@@ -391,7 +393,7 @@ console.log('\ndata.js season({rows:false}): the line without the rows, and kept
 {
   /* the stub mirrors the DOM API (length + key(i)), which is what data.js itself walks */
   const seasonKeys = () => Array.from({ length: LS.length }, (_, i) => LS.key(i))
-    .filter(k => k && k.startsWith('epinoia_season_v2:'));
+    .filter(k => k && k.startsWith(SP));
   const clearSeasonCache = () => seasonKeys().forEach(k => LS.removeItem(k));
 
   fresh(); clearSeasonCache();
@@ -444,27 +446,27 @@ console.log('\ndata.js season({rows:false}): the line without the rows, and kept
     const realSet = LS.setItem;
     let budget = 0;                       // 0 = refuse everything, then allow after eviction
     LS.setItem = function (k, v) {
-      if (String(k).startsWith('epinoia_season_v2:') && budget <= 0) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
-      if (String(k).startsWith('epinoia_season_v2:')) budget--;
+      if (String(k).startsWith(SP) && budget <= 0) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
+      if (String(k).startsWith(SP)) budget--;
       return realSet.call(LS, k, v);
     };
-    realSet.call(LS, 'epinoia_season_v2:old-a', JSON.stringify({ tok: 'x', at: 1000, data: {} }));
-    realSet.call(LS, 'epinoia_season_v2:old-b', JSON.stringify({ tok: 'x', at: 9000, data: {} }));
+    realSet.call(LS, SP + 'old-a', JSON.stringify({ tok: 'x', at: 1000, data: {} }));
+    realSet.call(LS, SP + 'old-b', JSON.stringify({ tok: 'x', at: 9000, data: {} }));
     budget = 1;                           // room appears once ONE old season is dropped
     let refusals = 0;
     LS.setItem = function (k, v) {
-      if (String(k).startsWith('epinoia_season_v2:') && k !== 'epinoia_season_v2:old-a' && k !== 'epinoia_season_v2:old-b') {
-        if (!LS.getItem('epinoia_season_v2:old-a')) return realSet.call(LS, k, v);   // the oldest went: it fits
+      if (String(k).startsWith(SP) && k !== SP + 'old-a' && k !== SP + 'old-b') {
+        if (!LS.getItem(SP + 'old-a')) return realSet.call(LS, k, v);   // the oldest went: it fits
         refusals++; const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e;
       }
       return realSet.call(LS, k, v);
     };
     await D.season(['c-bcb'], { trim: true, rows: false });
     LS.setItem = realSet;
-    ok('the season read longest ago is the one dropped', !LS.getItem('epinoia_season_v2:old-a'));
-    ok('...and a newer one is kept', !!LS.getItem('epinoia_season_v2:old-b'));
+    ok('the season read longest ago is the one dropped', !LS.getItem(SP + 'old-a'));
+    ok('...and a newer one is kept', !!LS.getItem(SP + 'old-b'));
     ok('...and this season is stored once room is made',
-       !!LS.getItem('epinoia_season_v2:c-bcb') && refusals > 0, 'refusals=' + refusals);
+       !!LS.getItem(SP + 'c-bcb') && refusals > 0, 'refusals=' + refusals);
     clearSeasonCache();
   }
 
