@@ -1546,6 +1546,11 @@
       'for members, with the play-by-play': 'para socios, con la jugada a jugada',
       'the play-by-play could not be read': 'no se pudo leer la jugada a jugada',
       'no game with its starters on record yet': 'aún no hay partidos con titulares registrados',
+      'VS starters: the other side has 4+ of its regular starters on, or 4+ of that game’s starting five': 'vs titulares: el rival tiene en pista 4+ de sus titulares habituales, o 4+ del quinteto inicial de ese partido',
+      'VS bench: every other minute': 'vs banquillo: el resto de minutos',
+      'VS starters: all five of that game’s starters on': 'vs titulares: los cinco titulares de ese partido en pista',
+      'VS bench: two of them or fewer': 'vs banquillo: dos de ellos o menos',
+      'the minutes the other side had 4+ of its regular starters on, or 4+ of that game’s starting five': 'los minutos en que el rival tenía en pista 4+ de sus titulares habituales, o 4+ del quinteto inicial de ese partido',
       'ORTG minus DRTG': 'OER menos DER',
       'vs avg': 'vs media',
       'AVG POSSESSION': 'Posesión media',
@@ -1638,6 +1643,11 @@
     ctx: {
       /* the club page's season line (t/seasonline.js; data-i18n-ctx="seasonline" on the card): the strips' ends and the groups */
       seasonline: {
+        'Regular starters': 'Titulares habituales',
+        'Basic': 'Básico',
+        'regular starter': 'titular habitual',
+        'games started': 'partidos de titular',
+        'every other minute': 'el resto de minutos',
         'tempo': 'Tempo de juego',
         'worse': 'peor',
         'better': 'mejor',
@@ -2298,6 +2308,8 @@
 
     patterns: [
       /* the club page's season line and chips */
+      [/^Nobody in the scope has started (\d+) games yet \(the most is (\d+)\), so only that game’s starting five counts for now\.$/,
+        'Nadie en este ámbito ha sido titular en $1 partidos todavía (el máximo es $2), así que por ahora solo cuenta el quinteto inicial de cada partido.'],
       [/^used (\d+(?:[.,]\d+)?)% of the plays$/, 'usó el $1% de las jugadas'],
       [/^usage (\d+(?:[.,]\d+)?)% while on$/, 'uso del $1% en pista'],
       [/^shared like (\d+(?:[.,]\d+)?) equal hands of 5$/, 'repartido como $1 manos iguales de 5'],

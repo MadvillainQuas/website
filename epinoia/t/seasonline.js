@@ -12,8 +12,15 @@
      EFFICIENCY    PPP (points per possession: ORTG / 100), TS%, FT% and MOREY% (the share of the club's shots taken
                    at the rim or from three: the box score's zones, and nothing where a league's feed has none)
      DISTRIBUTION  AST% (the club's baskets that were assisted), HELIOCENTRISM and BENCH MINS%
-     AGAINST STARTERS & BENCH   the club's ORTG, DRTG and NET in the minutes the other side had its starting five on,
-                   and in the minutes it had two of them or fewer (Louie, 2026-09-30: "see the other edits")
+     AGAINST STARTERS & BENCH   the club's ORTG, DRTG and NET against the other side's starters, and against its
+                   bench (Louie, 2026-09-30: "see the other edits"), split one of two ways (Louie, 2026-10-01):
+                     REGULAR STARTERS (the default, index_9's VS Starters tab): a regular starter is a player who
+                       started N games or more for his club in the scope (N 10 by default, as index_9 since its V6.2,
+                       and set on the card); against the starters is every minute the other side had 4+ of its
+                       regular starters on, or 4+ of that game's starting five; against the bench, every other minute
+                     BASIC: all five of that game's starters on; two of them or fewer (lineupevents.js bucketOf, as the
+                       WOWY page splits them; three or four is "mixed", in neither)
+                   The choice and N are kept in this browser.
 
    FROM THE PLAY-BY-PLAY, AS THE WOWY PAGE READS IT. Four rows need the club's own game logs: the average possession,
    heliocentrism and the two against-starters rows. They are the WOWY page's own numbers (lineupevents.js, from the
@@ -24,8 +31,7 @@
                        he played in, the Herfindahl index of the shares averaged over the fives by the plays they used,
                        on 0 (five equal hands) to 100 (one man uses every play); the top user and his share of the
                        plays beside it (lineupevents.js helio)
-     against starters  the minutes the opponent had all five of that game's starters on; against the bench, two or
-                       fewer of them (lineupevents.js bucketOf: three or four is "mixed", shown on the WOWY page)
+     against starters  as above: the records carry the opponent's five and how many of that game's starters it held
    The other clubs' logs are not read on this page, so these are not ranked. Members only, as the shot clock
    analysis and the WOWY page's play-by-play are.
 
@@ -88,20 +94,85 @@ function bench(games, lines) {
   return out;
 }
 
+/* WHO IS A REGULAR STARTER (index_9's VS Starters tab): a player who started `min` games or more for his club in the
+   games given. games: { home_team_id, away_team_id, starters: [homeIds, awayIds] }
+   regularStartsCount -> Map(club -> Map(player id -> games started)); regularStarters -> Map(club -> Set(player ids)) */
+function regularStartsCount(games) {
+  const count = new Map();
+  (games || []).forEach(g => {
+    if (!g || !Array.isArray(g.starters)) return;
+    [g.home_team_id, g.away_team_id].forEach((t, i) => {
+      const five = g.starters[i];
+      if (!t || !Array.isArray(five)) return;
+      let c = count.get(t);
+      if (!c) { c = new Map(); count.set(t, c); }
+      new Set(five.filter(Boolean)).forEach(p => c.set(p, (c.get(p) || 0) + 1));
+    });
+  });
+  return count;
+}
+function regularStarters(games, min) {
+  const count = regularStartsCount(games);
+  const out = new Map();
+  count.forEach((c, t) => out.set(t, new Set([...c].filter(([, n]) => n >= min).map(([p]) => p))));
+  return out;
+}
+
+/* the most games any one player started for his club in the games given */
+function mostStarts(games) {
+  let most = 0;
+  regularStartsCount(games).forEach(c => c.forEach(n => { if (n > most) most = n; }));
+  return most;
+}
+
+/* THE TWO WAYS TO SPLIT THE MINUTES. opt: { mode: 'regular' | 'basic', regular: regularStarters() }; a record's `oteam`
+   is the other side's club (team.js clubLogs), `oids` its five and `ost` how many of that game's starters it held
+   (lineupevents.js; its `opp` is the other side's box) */
+const SPLIT_DEFAULT = Object.freeze({ mode: 'regular', min: 10 });
+const MIN_STARTS = 1, MAX_STARTS = 40;
+function splitRecs(recs, LE, opt) {
+  const o = Object.assign({}, SPLIT_DEFAULT, opt);
+  if (o.mode === 'basic') return { start: LE.inBucket(recs, 'start'), bench: LE.inBucket(recs, 'bench') };
+  const reg = o.regular || new Map();
+  const regularOn = r => {
+    const set = reg.get(r.oteam);
+    if (!set || !set.size) return 0;
+    return (r.oids || []).reduce((n, p) => n + (set.has(p) ? 1 : 0), 0);
+  };
+  const start = [], bench = [];
+  (recs || []).forEach(r => ((r.ost != null && r.ost >= 4) || regularOn(r) >= 4 ? start : bench).push(r));
+  return { start, bench };
+}
+
 /* THE CLUB'S PLAY-BY-PLAY, summed the way the WOWY page sums it. recs: lineupevents.js records from the club's side
-   of each game (recordsOf), games: how many logs they came from, LE: lineupevents.js
+   of each game (recordsOf, each with `oteam`), games: how many logs they came from, LE: lineupevents.js, opt: the split
    -> { games, all, start, bench (LE.line()s: ortg drtg net mins poss sclock helio helioTop helioShare helioEff
         helioUsage ...), oppClock: the opponents' average possession, in seconds } or null without a record */
-function logSummary(recs, games, LE) {
+function logSummary(recs, games, LE, opt) {
   if (!LE || !recs || !recs.length) return null;
   const all = LE.sum(recs);
+  const sp = splitRecs(recs, LE, opt);
   return {
     games,
     all: LE.line(all),
-    start: LE.line(LE.sum(LE.inBucket(recs, 'start'))),
-    bench: LE.line(LE.sum(LE.inBucket(recs, 'bench'))),
+    start: LE.line(LE.sum(sp.start)),
+    bench: LE.line(LE.sum(sp.bench)),
     oppClock: all.eopp && all.eopp.scN > 0 ? all.eopp.scS / all.eopp.scN : null
   };
+}
+
+/* the reader's choice, kept in this browser (a convenience: without storage it is the default every time) */
+const STORE = 'epinoia_vs_starters';
+const clampMin = v => Math.max(MIN_STARTS, Math.min(MAX_STARTS, Math.round(+v) || SPLIT_DEFAULT.min));
+function loadSplit() {
+  try {
+    const v = JSON.parse(root.localStorage.getItem(STORE) || 'null');
+    if (v && (v.mode === 'regular' || v.mode === 'basic')) return { mode: v.mode, min: clampMin(v.min) };
+  } catch (_) { /* private mode, or nothing kept */ }
+  return { mode: SPLIT_DEFAULT.mode, min: SPLIT_DEFAULT.min };
+}
+function saveSplit(v) {
+  try { root.localStorage.setItem(STORE, JSON.stringify({ mode: v.mode, min: v.min })); } catch (_) { /* not kept */ }
 }
 
 /* the share of a club's shots at the rim or from three, when its league's box score splits the twos by zone */
@@ -178,8 +249,10 @@ const GROUPS = [
     { k: 'bench_min_pct', l: 'BENCH MINS%', sub: 'minutes played by those who did not start', dir: 0, ends: ['starters', 'bench'], most: 'highest', dp: 1, later: true }
   ] },
   { key: 'matchups', title: 'Against starters & bench', rows: [
-    { k: 'vs_start', l: 'VS STARTERS', sub: 'the minutes the other side had all five of its starters on', dir: 1, dp: 1, signed: true, log: 'trio', part: 'start' },
-    { k: 'vs_bench', l: 'VS BENCH', sub: 'the minutes it had two of its starters on, or fewer', dir: 1, dp: 1, signed: true, log: 'trio', part: 'bench' }
+    { k: 'vs_start', l: 'VS STARTERS', sub: 'the minutes the other side had all five of its starters on', dir: 1, dp: 1, signed: true, log: 'trio', part: 'start',
+      subRegular: 'the minutes the other side had 4+ of its regular starters on, or 4+ of that game’s starting five' },
+    { k: 'vs_bench', l: 'VS BENCH', sub: 'the minutes it had two of its starters on, or fewer', dir: 1, dp: 1, signed: true, log: 'trio', part: 'bench',
+      subRegular: 'every other minute' }
   ] }
 ];
 const KEYS = RATINGS.concat(...GROUPS.map(g => g.rows)).map(d => d.k);
@@ -329,10 +402,10 @@ function statRow(d, S, mine, o) {
   tr.dataset.k = d.k;
   const th = h('th', 'l');
   th.scope = 'row';
-  th.append(h('span', 'cst-l', d.l), h('span', 'cst-sub', d.sub));
+  th.append(h('span', 'cst-l', d.l), h('span', 'cst-sub', d.subRegular && o.split && o.split.mode === 'regular' ? d.subRegular : d.sub));
   if (d.log) {
     tr.appendChild(th);
-    const x = o.logs;
+    const x = o.logs === undefined || (d.log === 'trio' && o.waitStarters && o.split.mode === 'regular') ? undefined : o.summary();
     const c = x === undefined ? null : x && x.all ? logCell(d, x, o.nameOf) : { v: null, why: (x && x.why) || 'not recorded for this club' };
     const v = h('td', 'v' + (c && c.tone ? ' ' + c.tone : ''), x === undefined ? '…' : fmt(c.v, d));
     const n = h('td', 'cst-club');
@@ -360,8 +433,55 @@ function statRow(d, S, mine, o) {
   return tr;
 }
 
-/* host: the card's body. ctx: { S, mine, bind(node, def), logs: Promise<logSummary() | { why }>, bench: Promise<Map>
-   (bench()), nameOf(id): Promise<name> } */
+/* THE SPLIT'S OWN ROW, under the against-starters heading: regular starters or basic, and in the first how many games
+   started make one (index_9's control). Changing it re-splits the minutes already read; nothing is read again. */
+function splitControl(o, onChange) {
+  const tr = h('tr', 'cst-ctl');
+  const td = h('td');
+  td.colSpan = 5;
+  tr.appendChild(td);
+  const bar = h('div', 'cst-ctl-bar');
+  const seg = h('div', 'cst-seg ep-tabs');
+  seg.setAttribute('role', 'group');
+  seg.setAttribute('aria-label', 'How the starters are told from the bench');
+  [['regular', 'Regular starters'], ['basic', 'Basic']].forEach(([m, label]) => {
+    const b = h('button', 'cst-seg-b ep-tab' + (o.split.mode === m ? ' on' : ''), label);
+    b.type = 'button';
+    b.dataset.mode = m;
+    b.setAttribute('aria-pressed', o.split.mode === m ? 'true' : 'false');
+    b.addEventListener('click', () => { if (o.split.mode !== m) onChange({ mode: m, min: o.split.min }); });
+    seg.appendChild(b);
+  });
+  bar.appendChild(seg);
+  if (o.split.mode === 'regular') {
+    const st = h('div', 'cst-step');
+    const step = (sign, label) => {
+      const b = h('button', 'cst-step-b', sign > 0 ? '+' : '−');
+      b.type = 'button';
+      b.dataset.step = String(sign);
+      b.setAttribute('aria-label', label);
+      const next = o.split.min + sign;
+      if (next < MIN_STARTS || next > MAX_STARTS) b.disabled = true;
+      b.addEventListener('click', () => onChange({ mode: 'regular', min: clampMin(o.split.min + sign) }));
+      return b;
+    };
+    const v = h('b', 'cst-step-v', o.split.min + '+');
+    st.append(h('span', 'cst-step-l', 'regular starter'), step(-1, 'Fewer games started'), v, step(1, 'More games started'), h('span', 'cst-step-l', 'games started'));
+    bar.appendChild(st);
+  }
+  td.appendChild(bar);
+  td.appendChild(h('div', 'cst-ctl-n', o.split.mode === 'regular'
+    ? 'VS starters: the other side has 4+ of its regular starters on, or 4+ of that game’s starting five · VS bench: every other minute'
+    : 'VS starters: all five of that game’s starters on · VS bench: two of them or fewer'));
+  /* early in a season nobody has made N starts: say so, since only the game's own five can count then */
+  if (o.split.mode === 'regular' && o.starters && o.starters.length && mostStarts(o.starters) < o.split.min)
+    td.appendChild(h('div', 'cst-ctl-n warn', 'Nobody in the scope has started ' + o.split.min + ' games yet (the most is ' + mostStarts(o.starters) + '), so only that game’s starting five counts for now.'));
+  return tr;
+}
+
+/* host: the card's body. ctx: { S, mine, bind(node, def), LE (lineupevents.js), logs: Promise<{ recs, games } | { why }>
+   (the club's own play-by-play records, each with its `oteam`), starters: Promise<games with their starters> (every game of
+   the scope, for the regular starters), bench: Promise<Map> (bench()), nameOf(id): Promise<name> } */
 function render(host, ctx) {
   const S = ctx.S, mine = ctx.mine;
   prepare(S);
@@ -372,7 +492,20 @@ function render(host, ctx) {
   wrap.appendChild(rt);
 
   const bx = h('span', 'cst-x');
-  const o = { bind: ctx.bind, logs: undefined, nameOf: ctx.nameOf, pending: { bench_min_pct: !!ctx.bench }, extra: { bench_min_pct: bx } };
+  const o = { bind: ctx.bind, logs: undefined, nameOf: ctx.nameOf, pending: { bench_min_pct: !!ctx.bench }, extra: { bench_min_pct: bx },
+              split: loadSplit(), starters: null, waitStarters: !!ctx.starters };
+  /* the summary of the play-by-play under the split chosen, worked out once per choice */
+  let memo = null;
+  o.summary = () => {
+    const x = o.logs;
+    if (!x || !x.recs) return x;
+    const key = o.split.mode + ':' + o.split.min + ':' + (o.starters ? o.starters.length : 0);
+    if (memo && memo.key === key) return memo.v;
+    const regular = o.split.mode === 'regular' ? regularStarters(o.starters || [], o.split.min) : null;
+    const v = logSummary(x.recs, x.games, ctx.LE, { mode: o.split.mode, regular }) || { why: 'no game with its starters on record yet' };
+    memo = { key, v };
+    return v;
+  };
   const tw = h('div', 'cst-wrap');
   const table = h('table', 'cst');
   const thead = h('thead');
@@ -381,6 +514,7 @@ function render(host, ctx) {
   thead.appendChild(hr);
   table.appendChild(thead);
   const rows = {};
+  let ctl = null;
   GROUPS.forEach(G => {
     const tb = h('tbody', 'cst-g');
     tb.dataset.g = G.key;
@@ -389,6 +523,7 @@ function render(host, ctx) {
     c.colSpan = 5;
     gh.appendChild(c);
     tb.appendChild(gh);
+    if (G.key === 'matchups') { ctl = splitControl(o, choose); tb.appendChild(ctl); }
     G.rows.forEach(d => { const r = statRow(d, S, mine, o); rows[d.k] = r; tb.appendChild(r); });
     table.appendChild(tb);
   });
@@ -396,18 +531,38 @@ function render(host, ctx) {
   wrap.appendChild(tw);
   host.appendChild(wrap);
 
-  const redraw = k => {
+  function redraw(k) {
     const d = ROWS.find(x => x.k === k);
     if (!d || !rows[k] || !rows[k].parentNode) return;
     const nr = statRow(d, S, mine, o);
     rows[k].replaceWith(nr);
     rows[k] = nr;
-  };
+  }
+  function choose(v) {
+    o.split = { mode: v.mode === 'basic' ? 'basic' : 'regular', min: clampMin(v.min) };
+    saveSplit(o.split);
+    const nc = splitControl(o, choose);
+    if (ctl && ctl.parentNode) ctl.replaceWith(nc);
+    ctl = nc;
+    ['vs_start', 'vs_bench'].forEach(redraw);
+  }
   const logRows = ROWS.filter(d => d.log).map(d => d.k);
 
   /* the play-by-play: the possession, heliocentrism, against the starters and the bench */
   Promise.resolve(ctx.logs).then(x => { o.logs = x || null; logRows.forEach(redraw); })
     .catch(() => { o.logs = { why: 'the play-by-play could not be read' }; logRows.forEach(redraw); });
+  /* every game's starters in the scope: who the regular starters are */
+  if (ctx.starters) {
+    Promise.resolve(ctx.starters).then(g => { o.starters = Array.isArray(g) ? g : []; })
+      .catch(() => { o.starters = []; })
+      .then(() => {
+        o.waitStarters = false;
+        const nc = splitControl(o, choose);
+        if (ctl && ctl.parentNode) ctl.replaceWith(nc);
+        ctl = nc;
+        ['vs_start', 'vs_bench'].forEach(redraw);
+      });
+  }
   /* the bench, from every game's starters and minutes */
   if (ctx.bench) {
     Promise.resolve(ctx.bench).then(B => {
@@ -420,5 +575,6 @@ function render(host, ctx) {
   return wrap;
 }
 
-return { bench, logSummary, morey, place, band, ordinal, prepare, attachBench, render, RATINGS, GROUPS, KEYS };
+return { bench, regularStarters, splitRecs, logSummary, morey, place, band, ordinal, prepare, attachBench, render,
+         loadSplit, mostStarts, SPLIT_DEFAULT, MIN_STARTS, MAX_STARTS, RATINGS, GROUPS, KEYS };
 }));

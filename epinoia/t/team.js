@@ -784,7 +784,7 @@ async function teamStats(team, kind) {
   if (ACCESS.paywall) return;          // the card stands in for this section
   const D = window.EpinoiaData;
   if (kind) teamScopeKind = kind;
-  let S = null;
+  let S = null, scopeComps = [];
   try {
     /* WHICH COMPETITION. The club's finalised games name the competitions it plays
        in; the reader takes all of them or one kind (league, cup, trophy, playoffs). */
@@ -804,6 +804,7 @@ async function teamStats(team, kind) {
       host.appendChild(strip);
     }
     const scoped = comps.filter(c => teamScopeKind === 'all' || (c.kind || 'league') === teamScopeKind).map(c => c.id);
+    scopeComps = scoped;
     if (scoped.length) S = await D.season(scoped, { rows: false, trim: true });
   } catch (e) {
     host.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return;
@@ -881,9 +882,10 @@ async function teamStats(team, kind) {
     if (!SL) { box.appendChild(el('div', 'empty', 'The season line could not be drawn.')); return box; }
     const scoped = new Set((S.games || []).map(g => g.id));
     SL.render(box, {
-      S, mine,
+      S, mine, LE: window.EpinoiaLineupEvents,
       bind: (node, d) => teamStatBind(node, d.k, d.l, S, mine, team),
       logs: ACCESS.locked ? Promise.resolve({ why: 'for members, with the play-by-play' }) : clubLogs(team, scoped),
+      starters: ACCESS.locked ? null : scopeStarters(scopeComps),
       bench: benchMinutes(S, team),
       nameOf: id => metaP.then(m => (m && m[id] && m[id].name && m[id].name !== 'Player') ? m[id].name : null)
     });
@@ -956,14 +958,15 @@ async function teamStats(team, kind) {
 }
 
 /* THE CLUB'S PLAY-BY-PLAY, read the way the WOWY page reads it (lineupevents.js): every logged game of the scope
-   replayed into the stretches in which neither five changed, from the club's side, then summed (seasonline.js
-   logSummary): the possession, heliocentrism, and the ratings against the other side's starters and its bench. A game
+   replayed into the stretches in which neither five changed, as records from the club's side, each told which club
+   the other side was (for its regular starters). The season line sums them (seasonline.js logSummary): the possession,
+   heliocentrism, and the ratings against the other side's starters and its bench, split as the reader chooses. A game
    at a time, so the page stays responsive; each game's segments kept for the page's life, so a scope read again is
    only summed again. */
 const segCache = new Map();
 async function clubLogs(team, scoped) {
-  const LE = window.EpinoiaLineupEvents, SL = window.EpinoiaSeasonLine;
-  if (!LE || !SL) return { why: 'not available on this page' };
+  const LE = window.EpinoiaLineupEvents;
+  if (!LE) return { why: 'not available on this page' };
   const { gs, byG, sideOf } = await seasonLogs(team);
   const games = gs.filter(g => scoped.has(g.id));
   if (!games.length) return { why: 'no game log in this scope yet' };
@@ -978,9 +981,25 @@ async function clubLogs(team, scoped) {
     }
     if (!G.ok) continue;
     n++;
-    LE.recordsOf(G, sideOf[g.id]).forEach(r => recs.push(r));
+    const side = sideOf[g.id], oteam = side === 0 ? g.away_team_id : g.home_team_id;   // (a record's `opp` is that side's box)
+    LE.recordsOf(G, side).forEach(r => { r.oteam = oteam; recs.push(r); });
   }
-  return SL.logSummary(recs, n, LE) || { why: 'no game with its starters on record yet' };
+  return recs.length ? { recs, games: n } : { why: 'no game with its starters on record yet' };
+}
+
+/* EVERY GAME'S STARTERS IN THE SCOPE, for who counts as each club's regular starter (index_9: N games started or
+   more). One small read per scope's competitions (D.all pages it), kept for the page's life. */
+const startersCache = new Map();
+function scopeStarters(compIds) {
+  const D = window.EpinoiaData;
+  const ids = (compIds || []).slice().sort();
+  if (!ids.length || !D) return null;
+  const key = ids.join(',');
+  if (startersCache.has(key)) return startersCache.get(key);
+  const p = D.all(`games?competition_id=in.(${key})&status=eq.final&select=id,home_team_id,away_team_id,starters`);
+  p.catch(() => startersCache.delete(key));
+  startersCache.set(key, p);
+  return p;
 }
 
 /* THE BENCH'S MINUTES for every club in the scope: each game's starters and every player's minutes (two small reads a

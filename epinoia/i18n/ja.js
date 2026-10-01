@@ -1544,6 +1544,11 @@
       'for members, with the play-by-play': '会員向け(プレーバイプレーとともに)',
       'the play-by-play could not be read': 'プレーバイプレーを読み込めませんでした',
       'no game with its starters on record yet': '先発が記録された試合はまだありません',
+      'VS starters: the other side has 4+ of its regular starters on, or 4+ of that game’s starting five': '先発相手:相手がレギュラー先発を4人以上、またはその試合の先発5人のうち4人以上出している時間',
+      'VS bench: every other minute': '控え相手:それ以外の時間',
+      'VS starters: all five of that game’s starters on': '先発相手:その試合の先発5人全員が出ている時間',
+      'VS bench: two of them or fewer': '控え相手:そのうち2人以下',
+      'the minutes the other side had 4+ of its regular starters on, or 4+ of that game’s starting five': '相手がレギュラー先発を4人以上、またはその試合の先発5人のうち4人以上出していた時間',
       'ORTG minus DRTG': 'ORTGからDRTGを引いた値',
       'vs avg': '平均比',
       'AVG POSSESSION': '平均ポゼッション',
@@ -1636,6 +1641,11 @@
     ctx: {
       /* the club page's season line (t/seasonline.js; data-i18n-ctx="seasonline" on the card): the strips' ends and the groups */
       seasonline: {
+        'Regular starters': 'レギュラー先発',
+        'Basic': '基本',
+        'regular starter': 'レギュラー先発',
+        'games started': '先発試合以上',
+        'every other minute': 'それ以外の時間',
         'tempo': 'テンポ',
         'worse': '悪い',
         'better': '良い',
@@ -2297,6 +2307,8 @@
 
     patterns: [
       /* the club page's season line and chips */
+      [/^Nobody in the scope has started (\d+) games yet \(the most is (\d+)\), so only that game’s starting five counts for now\.$/,
+        'この範囲で$1試合以上先発した選手はまだいません(最多は$2試合)。今はその試合の先発5人だけが数えられます。'],
       [/^used (\d+(?:\.\d+)?)% of the plays$/, 'プレーの$1%を使用'],
       [/^usage (\d+(?:\.\d+)?)% while on$/, '出場中の使用率$1%'],
       [/^shared like (\d+(?:\.\d+)?) equal hands of 5$/, '5人中$1人に均等に分担しているのと同じ'],

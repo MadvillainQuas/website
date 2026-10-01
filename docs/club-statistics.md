@@ -36,8 +36,17 @@ Better is always to the right, so on the DRTG strip the lowest rating is on the 
 | Distribution | **AST%** | The share of the club's baskets that were assisted. |
 | | **HELIOCENTRISM** | How much of the offence runs through one player, from 0 (five equal hands) to 100 (one player uses every play). This is the WOWY page's measure. Each player's usage is shared out within every five he played in, and the Herfindahl index of the shares is averaged over the fives by the plays they used. The top user, his share of the plays and his usage are beside it. |
 | | **BENCH MINS%** | The share of the club's minutes played by those who did not start. It comes from each game's starters and the players' minutes. A side whose starters were never recorded is left out. |
-| Against starters & bench | **VS STARTERS** | The club's NET, with its ORTG and DRTG, in the minutes the other side had all five of its starters on. Beside it: the gap to the club's NET over every minute, and the sample. |
-| | **VS BENCH** | The same, in the minutes the other side had two of its starters on, or fewer. (Three or four is "mixed", on the WOWY page.) |
+| Against starters & bench | **VS STARTERS** | The club's NET, with its ORTG and DRTG, against the other side's starters (see the two splits below). Beside it: the gap to the club's NET over every minute, and the sample. |
+| | **VS BENCH** | The same, against the other side's bench. |
+
+**The two splits.** The reader picks one on the card; the choice and N are kept in this browser.
+
+| Split | VS STARTERS | VS BENCH |
+| --- | --- | --- |
+| **Regular starters** (the default, index_9's VS Starters tab) | The other side has 4+ of its regular starters on, or 4+ of that game's starting five. A regular starter is a player with N games started or more for his club in the scope: 10 by default (index_9's since its V6.2), from 1 to 40 with the − and + on the card. Early in a season nobody has N starts yet; the card says so, and only that game's starting five counts. | Every other minute. |
+| **Basic** | All five of that game's starters on. | Two of them or fewer. Three or four is "mixed", on the WOWY page only. |
+
+The starts come from every game's starters in the scope's competitions (one small read). Changing the split re-splits the minutes already read; nothing is read again.
 
 **From the play-by-play.** Four rows come from the club's own game logs, read the way the WOWY page reads them (`lineupevents.js`): the average possession, heliocentrism, VS STARTERS and VS BENCH. So these numbers are the WOWY page's own: one definition on the site.
 
@@ -84,7 +93,8 @@ The words are in Spanish and Japanese. The short ones have contexts of their own
 `supabase/tests/seasonline.test.mjs` checks:
 
 - the bench's minutes, MOREY% and the ranks, worked out by hand;
-- the play-by-play summed through the real `lineupevents.js`;
+- the play-by-play summed through the real `lineupevents.js`, split both ways, with regular starters at different N;
+- the split's control (basic and back, the games started, what this browser keeps);
 - the card drawn on a stand-in document, with its late rows filling in;
 - the ELO chip;
 - ORB% and DRB% by zone;
