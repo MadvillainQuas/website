@@ -682,7 +682,7 @@ function* calibrateSteps(games, L, o) {
       const g = list[i], M = mk(g, q);
       const r = run(simulateSteps(M, { n: sims || fitSims, seed: (seed + 7919 * i) >>> 0, tally: true, fouling: q.fouling }));
       out.push(r);
-      if (i % 20 === 19) yield Mth.min(0.99, (passes.n + (i + 1) / list.length) / TOTAL);
+      yield Mth.min(0.99, (passes.n + (i + 1) / list.length) / TOTAL);   // every game: a slice is never long
     }
     passes.n++;
     return out;
@@ -791,7 +791,7 @@ function* calibrateSteps(games, L, o) {
     simClose += r.close5; simOt += r.otRate;
     if (g.home === 1 || g.home === -1) simHome += g.home === 1 ? r.pRaw : 1 - r.pRaw;
     if (g.tally) { addTally(obsT, g.tally); const t = {}; TALLY.forEach(k => { t[k] = (r.tally[0][k] + r.tally[1][k]) / evalSims; }); for (const k in t) simT[k] = (simT[k] || 0) + t[k]; }
-    if (i % 25 === 24) yield Mth.min(0.99, (TOTAL - 2 + 2 * (i + 1) / evalSet.length) / TOTAL);
+    yield Mth.min(0.99, (TOTAL - 2 + 2 * (i + 1) / evalSet.length) / TOTAL);
   }
   const cal = W.calibration(ps, ys);
   let platt = null;

@@ -19,7 +19,9 @@
    The same for one league, or for all of them. The rates are each game's own (from its box score), never
    averaged across a season, and a measure a game does not carry is left out of that game's sums only.
 
-   Pure maths and SVG here; the page (winning/index.html) reads the rows and draws them.
+   Pure maths and SVG here. Since What wins 2 (docs/what-wins-model.md) the builder (tools/build-analytics.mjs) runs
+   rows / analyse / byLeague on the public box-score keys to write the teaser, and the page (winning/page.js) words
+   that teaser with fromTeaser() + insights(); it no longer reads any rows itself.
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -178,10 +180,18 @@ function insights(a) {
   if (top) out.push('Across ' + a.n.toLocaleString('en-GB') + ' games, ' + top.label + ' is the number most tied to winning: the side that won it won ' +
     pct0(top.winRate) + ' of the time (r = ' + top.r.toFixed(2) + ').');
   if (second) out.push('Next comes ' + second.label + ' (' + pct0(second.winRate) + ' of games, r = ' + second.r.toFixed(2) + ').');
+  /* SHOT SELECTION AGAINST SHOOTING. The claim that how well a side shoots matters far more than where it shoots from
+     is made only when the numbers carry it: |r| of eFG% at least twice the largest |r| of the shot-selection group
+     (docs/what-wins-model.md §11). Otherwise the strongest shot-selection measure is named for what it is. */
   const style = a.measures.filter(m => m.group === 'style' && m.r != null);
   if (style.length) {
-    const s = style.slice().sort((x, y) => Math.abs(x.r) - Math.abs(y.r))[0];
-    out.push('Shot selection on its own decides little: ' + s.label + ' went with the win in ' + pct0(s.winRate) + ' of games. How well a side shoots matters far more than where it shoots from.');
+    const s = style.slice().sort((x, y) => Math.abs(y.r) - Math.abs(x.r))[0];
+    const efg = a.measures.find(m => m.k === 'efg' && m.r != null);
+    if (efg && Math.abs(efg.r) >= 2 * Math.abs(s.r)) {
+      out.push('Shot selection on its own decides little: ' + s.label + ' went with the win in ' + pct0(s.winRate) + ' of games. How well a side shoots matters far more than where it shoots from.');
+    } else {
+      out.push('Shot selection counts here too: ' + s.label + ' went with the win in ' + pct0(s.winRate) + ' of games (r = ' + s.r.toFixed(2) + ').');
+    }
   }
   if (a.factors && a.factors.r2 != null) {
     const w = a.factors.weights.slice().sort((x, y) => y.share - x.share);
@@ -190,6 +200,29 @@ function insights(a) {
   }
   if (a.homeWin != null) out.push('The home side won ' + pct0(a.homeWin) + ' of these games.');
   return out;
+}
+
+/* ----------------------------------------------------------- the teaser ---- */
+/* THE PUBLIC PREVIEW (docs/what-wins-model.md §9 Teaser) in the shape analyse() returns, so insights() words it the
+   same way: {n, homeWin (%), measures, ranked, factors}. The builder writes the teaser from analyse() on the public
+   box-score keys; shares, rates and the home share may come as fractions (0-1) or per cents, and both are read. */
+const TEASER_KEY = { second: 'sc', offto: 'pot' };
+const asPct = v => (v == null || !isFinite(+v) ? null : Math.abs(+v) <= 1 ? 100 * +v : +v);
+function fromTeaser(t) {
+  if (!t || typeof t !== 'object') return { n: 0, homeWin: null, measures: [], ranked: [], factors: null };
+  const byK = new Map(MEASURES.map(m => [m[0], m]));
+  const measures = (Array.isArray(t.ranked) ? t.ranked : []).filter(m => m && m.k != null && isFinite(+m.r)).map(m => {
+    const def = byK.get(TEASER_KEY[m.k] || m.k);
+    return { k: TEASER_KEY[m.k] || m.k, label: m.label || (def ? def[2] : m.k), low: def ? def[3] : false, group: def ? def[4] : 'play',
+             n: t.n || 0, r: +m.r, winRate: asPct(m.winRate), decided: null, winners: null, losers: null };
+  });
+  const ranked = measures.slice().sort((a, b) => b.r - a.r);
+  let factors = null;
+  if (t.factors && Array.isArray(t.factors.shares)) {
+    factors = { n: t.n || 0, r2: t.factors.r2 != null ? +t.factors.r2 : null, home: t.factors.home != null ? +t.factors.home : null,
+      weights: t.factors.shares.map(s => { const def = byK.get(s.k); return { k: s.k, label: def ? def[2] : s.k, coef: null, share: asPct(s.share), oliver: asPct(s.oliver) != null ? asPct(s.oliver) : OLIVER[s.k] }; }) };
+  }
+  return { n: t.n || 0, homeWin: asPct(t.homeWin), measures, ranked, factors };
 }
 
 /* ----------------------------------------------------------- the charts ---- */
@@ -282,5 +315,5 @@ function scatterSVG(list, k, label) {
     '</svg>';
 }
 
-return { MEASURES, GROUPS, OLIVER, SELECT, rows, analyse, byLeague, insights, pearson, ols, barsSVG, factorsSVG, dumbbellSVG, scatterSVG };
+return { MEASURES, GROUPS, OLIVER, SELECT, rows, analyse, byLeague, insights, fromTeaser, pearson, ols, barsSVG, factorsSVG, dumbbellSVG, scatterSVG };
 }));
