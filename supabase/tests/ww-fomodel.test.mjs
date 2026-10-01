@@ -171,7 +171,8 @@ console.log('\nthe Front office path (team.js, t/index.html)');
 const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
 {
   const fn = (src, name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = src.indexOf('{', i); for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(i, j + 1); };
-  const fo1 = fn(TEAMJS, 'frontOffice');
+  /* the Front office reads through depthInput (shared with the profile's depth chart) and floorMinutes (the club's lineups) */
+  const fo1 = fn(TEAMJS, 'frontOffice') + fn(TEAMJS, 'depthInput') + fn(TEAMJS, 'floorMinutes');
   ok('frontOffice() calls seasonGames, never seasonLogs and never D.events', /seasonGames\(team\)/.test(fo1) && !/seasonLogs\(/.test(fo1) && !/\.events\(/.test(fo1));
   ok('...nor do the win model\'s loaders', !/\.events\(|seasonLogs\(/.test(fn(TEAMJS, 'winModelFiles') + fn(TEAMJS, 'winModel')));
   const SEASONLOGS = `function seasonLogs(team) {

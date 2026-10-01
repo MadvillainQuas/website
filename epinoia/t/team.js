@@ -257,6 +257,7 @@ async function chooseSeason(team, lg) {
     await Promise.all([venue(team), roster(team),
                        accessReady.then(() => { try { decideAccess(lg); } catch (_) { /* open */ }
                          return Promise.all([record(team), teamStats(team), games(team)]); })]);
+    whenNear($('#teamdepth'), () => profileDepth(team));
     whenNear($('#teamshots'), () => teamShots(team));
     whenNear($('#teamclock'), () => teamShotClock(team));
     whenNear($('#teamrot'), () => teamRotations(team));
@@ -569,29 +570,13 @@ function syncTabs() {
   });
 }
 
-/* THE FRONT OFFICE: the depth chart, the GM's view (t/depth.js) and the win model (t/fomodel.js). Everything it reads
-   is already read for this page or cached: the club's last forty finals with their starters (seasonGames: the games,
-   never their event logs), the league's season line (D.season without rows: the snapshot or this browser's copy), the
-   last ten games' player lines for the minutes and who is missing now, the roster for positions and heights, the
-   releases and the ages; and, for the win model, two members-only files through EpinoiaWinFile (the league's `fo`
-   file and the club's own) and the fixtures to come. The files carry the club's minutes at each position (A.1), so
-   the depth chart is filled from the floor where they arrive. */
-async function frontOffice(team) {
-  const hostD = $('#depth'), hostG = $('#gmview'), hostM = $('#wmodel');
-  const X = window.EpinoiaDepth, D = window.EpinoiaData;
-  if (ACCESS.paywall || !hostD || !X || !D) return;
-  if (!frontOfficeOpen(team)) {
-    hostD.innerHTML = accessTeaser({ compact: true, title: 'The front office', lines: [
-      'Who starts, who backs up, and at which position, projected from the club\'s own games.',
-      'Every position charted against the same position at every club in the league.',
-      'Strengths, weaknesses and needs, read the way a general manager would.'] });
-    if (hostG) hostG.textContent = '';
-    modelLocked(hostM, team);
-    return;
-  }
-  /* the win model's files, asked for at once beside everything else */
-  const modelP = winModelFiles(team).catch(() => null);
-  try {
+/* THE DEPTH CHART'S INPUTS, read once for the page: the club's last forty finals with their starters, the roster, the
+   releases, the last ten games' lines (recent minutes, who is missing now) and the league's season line. The profile's
+   depth chart and the Front office's both draw from it; neither waits for the win model. */
+let depthInP = null;
+function depthInput(team) {
+  const D = window.EpinoiaData;
+  return depthInP || (depthInP = (async () => {
     const [{ gs, sideOf }, roster, rel] = await Promise.all([
       seasonGames(team),
       api(`roster_entries?team_id=eq.${team.id}&active=eq.true&select=jersey,position,players(id,first_name,last_name,height_cm)`),
@@ -648,6 +633,72 @@ async function frontOffice(team) {
     }
 
     const chartIn = { roster: people, season: seasonRows, recent, starts, out, released };
+    return { chartIn, S, mine, people, names, gs, sideOf };
+  })().catch(e => { depthInP = null; throw e; }));
+}
+
+/* THE CLUB'S MINUTES AT EACH POSITION, FROM ITS OWN LINEUPS (no model file): every stint of its last forty finals
+   (lineup_stints: the five on the floor and how long; ids and seconds only), each five ranked point guard to centre
+   by the players' positions (depth.js floorPos). Kept for the page. */
+let floorP = null;
+function floorMinutes(team) {
+  return floorP || (floorP = (async () => {
+    const X = window.EpinoiaDepth, D = window.EpinoiaData;
+    const I = await depthInput(team);
+    const ids = I.gs.map(g => g.id);
+    const stints = [];
+    for (let i = 0; i < ids.length; i += 40) {
+      const part = await D.all(`lineup_stints?game_id=in.(${ids.slice(i, i + 40).join(',')})&select=game_id,team_idx,player_ids,dur:stats->dur&order=game_id,id`);
+      stints.push(...part);
+    }
+    const value = new Map();
+    I.people.forEach(p => value.set(p.id, X.positionOf(p, I.chartIn.season.get(p.id))));
+    return X.floorPos(stints, I.sideOf, id => value.has(id) ? value.get(id) : X.positionOf({}, I.chartIn.season.get(id)));
+  })().catch(e => { floorP = null; throw e; }));
+}
+
+/* THE PROFILE'S DEPTH CHART (under the team statistics): who plays where, from the club's own lineups, every position
+   one game long. Open to every reader the page is open to; the Front office's own view adds the league comparison. */
+async function profileDepth(team) {
+  const host = $('#teamdepth'), X = window.EpinoiaDepth;
+  if (!host || !X || ACCESS.paywall) return;
+  host.innerHTML = '<div class="empty">Working out the depth chart…</div>';
+  try {
+    const I = await depthInput(team);
+    const gameMin = X.gameMinutes ? X.gameMinutes(team.leagues || {}) : 40;
+    let c = null;
+    try { const pos = await floorMinutes(team); if (pos) c = X.slotChart(Object.assign({ pos, gameMin }, I.chartIn)); } catch (_) { /* no lineups: projected */ }
+    if (!c) c = X.splitChart(X.chart(I.chartIn), gameMin);
+    host.innerHTML = X.chartHTML(c, { link: p => '../p/?p=' + encodeURIComponent(p.id), static: true });
+    const note = $('#tdepthNote');
+    if (note) note.textContent = c.source === 'stints' ? 'from the club\'s own lineups: the minutes each player has played at each position' : 'projected from the club\'s own games';
+  } catch (_) { host.innerHTML = '<div class="empty">The depth chart could not be drawn just now.</div>'; }
+}
+
+/* THE FRONT OFFICE: the depth chart, the GM's view (t/depth.js) and the win model (t/fomodel.js). Everything it reads
+   is already read for this page or cached: the club's last forty finals with their starters (seasonGames: the games,
+   never their event logs), the league's season line (D.season without rows: the snapshot or this browser's copy), the
+   last ten games' player lines for the minutes and who is missing now, the roster for positions and heights, the
+   releases and the ages; and, for the win model, two members-only files through EpinoiaWinFile (the league's `fo`
+   file and the club's own) and the fixtures to come. The files carry the club's minutes at each position (A.1), so
+   the depth chart is filled from the floor where they arrive. */
+async function frontOffice(team) {
+  const hostD = $('#depth'), hostG = $('#gmview'), hostM = $('#wmodel');
+  const X = window.EpinoiaDepth, D = window.EpinoiaData;
+  if (ACCESS.paywall || !hostD || !X || !D) return;
+  if (!frontOfficeOpen(team)) {
+    hostD.innerHTML = accessTeaser({ compact: true, title: 'The front office', lines: [
+      'Who starts, who backs up, and at which position, projected from the club\'s own games.',
+      'Every position charted against the same position at every club in the league.',
+      'Strengths, weaknesses and needs, read the way a general manager would.'] });
+    if (hostG) hostG.textContent = '';
+    modelLocked(hostM, team);
+    return;
+  }
+  /* the win model's files, asked for at once beside everything else */
+  const modelP = winModelFiles(team).catch(() => null);
+  try {
+    const { chartIn, S, mine, people, names } = await depthInput(team);
     let c = X.chart(chartIn);
     /* the league view compares the club with every other club put through chart(), each player at ONE slot: the club
        keeps its own chart() for that, never the slot chart below, where a player stands at two or three positions and
@@ -685,12 +736,26 @@ async function frontOffice(team) {
     };
     if (PV) { hostD.addEventListener('click', onSlot); if (hostM) hostM.addEventListener('click', onSlot); }
 
-    /* THE WIN MODEL'S FILES: the minutes at each position fill the depth chart (A.1), the GM's view is ordered by
-       what each measure is worth, and F3 is drawn */
+    /* THE CLUB'S OWN LINEUPS fill the depth chart, whether or not the win model is built (the profile's copy reads the
+       same, once for the page) */
+    let byFloor = false;
+    try {
+      const fp = X.floorPos ? await floorMinutes(team) : null;
+      const cs = fp && X.slotChart(Object.assign({ pos: fp, gameMin }, chartIn));
+      if (cs) {
+        c = cs; byFloor = true;
+        hostD.innerHTML = X.chartHTML(c, { link });
+        const note = $('#depthNote');
+        if (note) note.textContent = 'from the club\'s own lineups: the minutes each player has played at each position';
+      }
+    } catch (_) { /* no lineups read: the projection stands, or the model's file below */ }
+
+    /* THE WIN MODEL'S FILES: the GM's view is ordered by what each measure is worth, and F3 is drawn; where the club's
+       lineups could not be read, the model's minutes at each position (A.1) fill the depth chart */
     const M = await modelP;
     const fo = M && M.fo && M.fo.ok ? M.fo.data : null, club = M && M.club && M.club.ok ? M.club.data : null;
     const pos = (club && club.pos) || (fo && fo.pos && fo.pos[team.id]) || null;
-    if (pos && X.slotChart) {
+    if (!byFloor && pos && X.slotChart) {
       const cs = X.slotChart(Object.assign({ pos, gameMin }, chartIn));
       if (cs) {
         c = cs;

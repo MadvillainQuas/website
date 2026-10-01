@@ -619,6 +619,7 @@ table.ft td.heat::before{
 .dc-h:focus-visible{ box-shadow:0 0 0 2px var(--team-a,var(--lume)) }
 .dc-go{ font-style:normal; font-size:13px; color:var(--team-a,var(--lume)); opacity:.55; transition:opacity .15s, transform .15s }
 .dc-h:hover .dc-go, .dc-h:focus-visible .dc-go{ opacity:1; transform:translate(1px,-1px) }
+.dc-h.dc-hs{ cursor:default } .dc-h.dc-hs:hover{ background:none }
 .dc-h.dc-busy{ animation:dc-pulse 1s ease-in-out infinite }
 @keyframes dc-pulse{ 50%{ background:color-mix(in oklch,var(--team-a,var(--lume)) 18%,transparent) } }
 .dc-hint{ font-family:var(--f-micro); font-size:8px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); margin:0 0 10px }

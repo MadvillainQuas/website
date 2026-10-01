@@ -189,6 +189,31 @@ function splitChart(base, L) {
   return Object.assign({}, base, { slots, reserves, source: 'split', gameMin: len });
 }
 
+/* THE MINUTES AT EACH POSITION FROM THE CLUB'S OWN LINEUPS, without the win model: every stint the club played
+   (lineup_stints rows {game_id, team_idx, player_ids, dur ms}), its five ranked point guard to centre by each player's
+   position (valueOf(id): positionOf, smallest first, ties by id) and its time added to each player's slot. Two guards on
+   1.4 and 1.6 who share the floor are the point guard and the shooting guard for those minutes, and each night's
+   lineups move a player as they move him. Returns the pos file's shape ({games, min, players: [{id, min: [5]}]}) for
+   slotChart, or null when no stint of the club has five known players. */
+function floorPos(stints, sideOf, valueOf) {
+  const val = new Map(), out = new Map(), games = new Set();
+  const v = id => { if (!val.has(id)) { const x = valueOf ? valueOf(id) : null; val.set(id, typeof x === 'number' && isFinite(x) ? x : 3); } return val.get(id); };
+  let total = 0;
+  (stints || []).forEach(st => {
+    if (!st || (sideOf && sideOf[st.game_id] != null && st.team_idx !== sideOf[st.game_id])) return;
+    const ids = (Array.isArray(st.player_ids) ? st.player_ids : []).filter(x => x != null && x !== '');
+    const sec = (num(st.dur) || 0) / 1000;
+    if (ids.length !== 5 || new Set(ids).size !== 5 || !(sec > 0)) return;
+    ids.slice().sort((a, b) => (v(a) - v(b)) || String(a).localeCompare(String(b))).forEach((id, k) => {
+      if (!out.has(id)) out.set(id, [0, 0, 0, 0, 0]);
+      out.get(id)[k] += sec / 60;
+    });
+    games.add(st.game_id); total += sec / 60;
+  });
+  if (!out.size) return null;
+  return { games: games.size, min: total, players: Array.from(out, ([id, m]) => ({ id, min: m })) };
+}
+
 /* THE DEPTH CHART BY THE FLOOR (addendum A.1). Where the builder has the club's stints, each position is filled from
    the minutes each player actually played there: every five on the floor ranked point guard to centre by the players'
    box-score positions (EpinoiaWinModel.slotMinutes), each stint's seconds added to each man's slot. o.pos is the `pos`
@@ -214,8 +239,11 @@ function slotChart(o) {
       .map(p => { const m = +at.get(String(p.id)).min[i]; return Object.assign({}, p, { role: starters.has(p.id) ? 'starter' : 'rotation', slotMin: m,
         share: totals[i] > 0 ? m / totals[i] : 0, perGame: games > 0 ? m / games : null }); })
       .sort((a, b) => (b.slotMin - a.slotMin) || String(a.name).localeCompare(String(b.name)));
-    /* a game at each position: his share of the minutes played there, of the regulation game - every player who stood
-       there, so the column adds up to the game (overtime and a short feed scale away) */
+    /* A GAME AT EACH POSITION, among the players he can call on: each one's share of the minutes those players have
+       played there, of the regulation game. The minutes of a player who is out or gone are shared out in the same
+       proportions, so the column adds up to the game (overtime and a short feed scale away too). */
+    const avail = here.reduce((a, p) => a + p.slotMin, 0);
+    here.forEach(p => { p.share = avail > 0 ? p.slotMin / avail : 0; });
     const shown = roundTo(here.map(p => p.share * len), here.length ? len : 0);
     const players = here.map((p, n) => Object.assign(p, { perGame: shown[n] })).filter(p => p.perGame > 0);
     players.forEach(p => placed.add(p.id));
@@ -372,26 +400,27 @@ function chartHTML(c, o) {
       : '<span class="dc-m">' + (p.proj ? p.proj.toFixed(1) + ' min' : '—') + (p.role === 'starter' && p.recentStarts ? ' · ' + p.recentStarts + '/' + Math.min(5, c.games) + ' starts' : '') + '</span>' +
         '<i class="dc-bar" style="--w:' + Math.min(100, p.proj / 40 * 100).toFixed(0) + '%"></i></div>');
   /* each position is a button: the league's view of that position (position.js) opens from it */
-  const cols = c.slots.map(s => '<div class="dc-col"><button type="button" class="dc-h" data-slot="' + s.key + '" aria-label="' + esc(s.label) +
-    's against the league"><b>' + s.key + '</b><span>' + esc(s.label) + '</span><i class="dc-go" aria-hidden="true">↗</i></button>' +
+  /* opt.static (the profile's copy): the positions are headings, not the league view's buttons */
+  const head = s => opt.static ? '<div class="dc-h dc-hs"><b>' + s.key + '</b><span>' + esc(s.label) + '</span></div>'
+    : '<button type="button" class="dc-h" data-slot="' + s.key + '" aria-label="' + esc(s.label) +
+      's against the league"><b>' + s.key + '</b><span>' + esc(s.label) + '</span><i class="dc-go" aria-hidden="true">↗</i></button>';
+  const hint = opt.static ? '' : '<div class="dc-hint">press a position for its league view: every club\'s group at it, charted</div>';
+  const cols = c.slots.map(s => '<div class="dc-col">' + head(s) +
     (s.players.length ? s.players.map(cell).join('') : '<div class="dc-p dc-empty">—</div>') +
     (typeof s.total === 'number' && s.players.length ? '<div class="dc-sum"><span>' + s.key + '</span><b>' + s.total.toFixed(1) + ' / ' + L + ' min</b></div>' : '') +
     '</div>').join('');
   const res = c.reserves.length ? '<div class="dc-res"><span class="dc-rk">also on the roster</span>' + c.reserves.map(p =>
     '<span class="dc-chip' + (p.out ? ' dc-out' : '') + '">' + (p.num != null && p.num !== '' ? '#' + esc(p.num) + ' ' : '') + esc(p.name) +
     (p.out ? ' · out' : p.proj ? ' · ' + p.proj.toFixed(1) + ' min' : '') + '</span>').join('') + '</div>' : '';
-  if (bySlot) return '<div class="dc-hint">press a position for its league view: every club\'s group at it, charted</div>' +
-    '<div class="dc">' + cols + '</div>' + res +
+  if (bySlot) return hint + '<div class="dc">' + cols + '</div>' + res +
     '<div class="dc-note">each position filled from the minutes played at it this season, a ' + L + '-minute game at each' + (c.posGames ? ' (' + c.posGames + (c.posGames === 1 ? ' game' : ' games') + ')' : '') +
     ': every five on the floor ranked point guard to centre by box-score position' +
     (c.out.length ? ' · out: ' + c.out.map(p => esc(p.name)).join(', ') + ' (no minutes in the club\'s latest games)' : '') + '</div>';
-  if (split) return '<div class="dc-hint">press a position for its league view: every club\'s group at it, charted</div>' +
-    '<div class="dc">' + cols + '</div>' + res +
+  if (split) return hint + '<div class="dc">' + cols + '</div>' + res +
     '<div class="dc-note">each position adds up to the ' + L + '-minute game: every player\'s projected minutes (the last ' + Math.min(5, c.games || 0) +
     ' games weighted 60 / 40 against the season, scaled to the club\'s ' + 5 * L + '), laid end to end from point guard to centre by where he plays and cut into five; a player whose minutes cross a cut plays at both' +
     (c.out.length ? ' · out: ' + c.out.map(p => esc(p.name)).join(', ') + ' (no minutes in the club\'s latest games)' : '') + '</div>';
-  return '<div class="dc-hint">press a position for its league view: every club\'s group at it, charted</div>' +
-    '<div class="dc">' + cols + '</div>' + res +
+  return hint + '<div class="dc">' + cols + '</div>' + res +
     '<div class="dc-note">projected from the last ' + Math.min(5, c.games || 0) + ' games\' starts and minutes (weighted 60 / 40 against the season)' +
     (c.out.length ? ' · out: ' + c.out.map(p => esc(p.name)).join(', ') + ' (no minutes in the club\'s latest games)' : '') +
     ' · positions from what each player does, corrected by the roster\'s listing</div>';
@@ -415,5 +444,5 @@ function gmHTML(g) {
     (g.model ? ' · ordered by what each is worth in wins (the win model, F3)' : '') + '</div>';
 }
 
-return { chart, slotChart, splitChart, gameMinutes, scaleTo, roundTo, gm, chartHTML, gmHTML, projectedMinutes, positionOf, rank, SLOTS, MEASURES, NEED };
+return { chart, slotChart, splitChart, floorPos, gameMinutes, scaleTo, roundTo, gm, chartHTML, gmHTML, projectedMinutes, positionOf, rank, SLOTS, MEASURES, NEED };
 }));
