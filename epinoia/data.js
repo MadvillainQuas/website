@@ -350,8 +350,16 @@ const TRIM_SELECT = 'game_id,player_uuid,player_id,team_idx,' +
    five megabytes. A new key, not the old one reread, so a page still open from
    before never meets a layout it cannot read; the v1 copies are thrown away on the
    first write (they would otherwise hold the room the new ones need). */
-const SEASON_CACHE_V = 'epinoia_season_v2:';
+const SEASON_CACHE_V = 'epinoia_season_v3:';
 const SEASON_CACHE_MS = 6 * 60 * 60 * 1000;
+/* v3: THE LINE'S VERSION IS IN THE KEY TOO (season.js version(): which code summed it). A copy summed
+   by other code - before a statistic existed, say - is a different key, so it is never read for this
+   one, and it is cleared at the next write like an older layout's. */
+function seasonVersion() {
+  const S = root.EpinoiaSeason;
+  try { return (S && typeof S.version === 'function') ? S.version() : 's0'; } catch (_) { return 's0'; }
+}
+const seasonCachePrefix = () => SEASON_CACHE_V + seasonVersion() + ':';
 
 /* ------------------------------------------------- a season as columns ---
    ROWS AS COLUMNS. A season line is ~345 numbers a player under the same ~345 names,
@@ -457,14 +465,16 @@ function seasonCachePut(key, token, out) {
   const body = JSON.stringify({ tok: token, at: Date.now(), data: packSeason(out) });
   const ls = root && root.localStorage;
   if (!ls) return;
-  /* the copies an older layout kept (epinoia_season_v1: and before): nothing reads them now, and a page
-     still open from before may write one yet, so they are looked for at every write (a few dozen keys) */
+  /* the copies an older layout kept (epinoia_season_v2: and before), and the ones other code summed: nothing
+     reads them now, and a page still open from before may write one yet, so they are looked for at every write
+     (a few dozen keys) */
+  const prefix = seasonCachePrefix();
   try {
     const old = [];
     for (let i = 0; i < ls.length; i++) {
       const k = ls.key(i);
       /* the version and its colon, exactly: 'epinoia_season_view' is the player page's own setting */
-      if (k && /^epinoia_season_v\d+:/.test(k) && k.indexOf(SEASON_CACHE_V) !== 0) old.push(k);
+      if (k && /^epinoia_season_v\d+:/.test(k) && k.indexOf(prefix) !== 0) old.push(k);
     }
     old.forEach(k => ls.removeItem(k));
   } catch (_) { /* a browser that will not say: left as they are */ }
@@ -479,7 +489,7 @@ function seasonCachePut(key, token, out) {
     const mine = [];
     for (let i = 0; i < ls.length; i++) {
       const k = ls.key(i);
-      if (!k || k.indexOf(SEASON_CACHE_V) !== 0 || k === key) continue;
+      if (!k || k.indexOf(prefix) !== 0 || k === key) continue;
       let at = 0;
       try { at = (JSON.parse(ls.getItem(k)) || {}).at || 0; } catch (__) { at = 0; }
       mine.push({ k, at });
@@ -511,40 +521,26 @@ function seasonCachePut(key, token, out) {
    (its shared copy of this file), so the two cannot disagree.
      154@2026-09-23T23:05:29.983+00:00  ->  v2-154-2026-09-23T23-05-29-983-00-00.json */
 const SEASON_FILE_V = 3;       // 2: `meta`, every player's playerMeta() (seedMeta below); 3: packed (packSeason)
-function snapFile(token, v) { return 'v' + (v || SEASON_FILE_V) + '-' + String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json'; }
-/* THE LAYOUT BEFORE, WHILE THE NEW ONE IS NOT THERE: the function writes its files in the layout of the copy
-   of this file it was deployed with, so until it is deployed again the files are still v2, and a v2 file is
-   still the season (unpackSeason reads both). Asked only when the v3 name is not there. */
-/* THE LAYOUT THAT ANSWERED LAST IS ASKED FIRST. Every file the function writes is in the layout of the
-   copy it was deployed with, so while it still writes v2 every season read cost a 400 for the v3 name
-   before the v2 one answered (seen on every league page and scouting's every league). The layout that
-   last answered is remembered for the session; the other is still tried when it does not. */
-const SNAP_V_KEY = 'epinoia_snapv';
-let snapV = null;
-function snapOrder() {
-  if (snapV == null) {
-    try { snapV = +(root.sessionStorage && root.sessionStorage.getItem(SNAP_V_KEY)) || 0; } catch (_) { snapV = 0; }
-  }
-  return snapV === 2 ? [2, SEASON_FILE_V] : [SEASON_FILE_V, 2];
-}
-function snapAnswered(v) {
-  if (snapV === v) return;
-  snapV = v;
-  try { root.sessionStorage && root.sessionStorage.setItem(SNAP_V_KEY, String(v)); } catch (_) { /* memory only */ }
+/* AND THE LINE IN THE NAME TOO (season.js version()): which code summed it. A file keeps its name for
+   as long as its token stands, so a file summed before a statistic existed was the season for every
+   reader until the next final - LNBP's, built by a function last deployed before the shot volumes, drew
+   a dash in every one of them on 1 October 2026. Now a file from other code is not found: the rows are
+   read and summed here instead, which is slower and right, until the function runs this file and builds
+   the file again (a new name is all it needs to see to do that).
+     v3-s1.19db1383-154-2026-09-23T23-05-29-983-00-00.json
+   The layout before (v2) is no longer asked for: everything in that layout was built by older code. */
+function snapFile(token, v) {
+  return 'v' + (v || SEASON_FILE_V) + '-' + seasonVersion() + '-' + String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json';
 }
 async function seasonSnapshot(ids, token) {
   const c = CFG();
-  for (const v of snapOrder()) {
-    try {
-      const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/season/${ids}/${snapFile(token, v)}`);
-      if (!r.ok) continue;
-      const j = await r.json();
-      if (!j || j.token !== token || !j.data) continue;
-      snapAnswered(v);
-      return unpackSeason(j.data);
-    } catch (_) { /* the older name, then the long way */ }
-  }
-  return null;
+  try {
+    const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/season/${ids}/${snapFile(token)}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j || j.token !== token || !j.data) return null;
+    return unpackSeason(j.data);
+  } catch (_) { return null; }       // the long way
 }
 
 /* THE NAMES RIDE WITH THE SEASON. A season file also carries playerMeta() for every player on
@@ -635,7 +631,7 @@ async function season(competitionId, opts) {
   /* THE SEASON A READER ALREADY HAS IS NOT WORTH SENDING AGAIN. Only for the callers that
      asked for the season line and not the rows (rows: false): the line is a few hundred
      small objects and keeps, the rows are megabytes and do not. See seasonToken(). */
-  const ckey = keepRows ? null : SEASON_CACHE_V + list.slice().sort().join(',');
+  const ckey = keepRows ? null : seasonCachePrefix() + list.slice().sort().join(',');
   let token = null;
   if (ckey) {
     token = await seasonToken(scope);

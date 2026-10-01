@@ -59,62 +59,410 @@
      that would have taken the whole bar down with it. A const used by code
      that runs on load belongs above that code. */
   const isFixture = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gameId);
+  const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
+
+  /* A TRAINING GAME IS NEVER PUBLISHED, WHATEVER ADDRESS IT IS ON.
+
+     The setup screen offered "training mode — auto rosters" on a real fixture's
+     page too, and everything here keys on the ADDRESS: two invented squads went
+     into that fixture's roster_snapshot the moment the fives were picked
+     (primeFixture), the fixture was claimed live, and the invented game was
+     published to it — and the next load of the real fixture read the invented
+     squads back as its own. The page marks a game made by training mode with
+     S.training; nothing in this file primes, claims, publishes or finalises one. */
+  const training = () => (typeof S !== 'undefined' && S && !!S.training);
+  /* ...except as far as this browser. A scratch room on the local transport (the
+     ?train=1 demo) has no row anywhere, and its frames (BroadcastChannel) reach
+     this browser's other tabs and nothing else, so its watch tab can show a
+     newcomer what a viewer sees. Only the attach gate and the bar ask this:
+     nothing that writes to the league does, and sync.js asks the same. */
+  const inBrowserOnly = () => !isFixture && mode === 'local';
+
+  /* The game in this tab belongs to a DIFFERENT fixture than the address — only
+     reachable by an older build's resume, but publishing one fixture's log into
+     another is the one mistake that cannot be undone from the table. */
+  const otherFixture = () => (typeof S !== 'undefined' && S && isUuid(S.fixtureId) && S.fixtureId !== gameId);
 
   const viewerUrl = new URL('../game/', location.href);
   viewerUrl.searchParams.set('g', gameId);
   viewerUrl.searchParams.set('mode', mode);
 
   /* ---------------------------------------------------------------- badge --- */
-  /* Deliberately unobtrusive and out of the way of every control: the scorer's
-     buttons reach the screen edges on mobile, and a mis-tap here costs a stat. */
+  /* THE BAR MUST NEVER SIT ON A CONTROL.
+
+     It was a strip pinned to the bottom-left corner at bottom:6px, which is
+     exactly where the scorer's sheet handle is: the left two-thirds of the one
+     control at the foot of the game screen. A thumb aimed at the handle's centre
+     landed on "copy", and "watch ↗" — a ten-pixel target — opened a new tab in
+     the middle of a game. On the starter picker it sat across START GAME.
+
+     So it is now a status pill and nothing else:
+
+       * ON THE GAME SCREEN it stands just above the handle, measured from the
+         handle itself, and its height is added to the room the screen already
+         reserves for the sheet (--ep-sheet-h, which #cols pads by) — so the
+         player rows stop above it rather than running underneath. While the
+         sheet is open it is hidden: the sheet is in the hand.
+       * EVERYWHERE ELSE it is a small pill in the bottom-right corner, clear of
+         the centred buttons those screens end with. On a phone it is the dot
+         alone; the words are one tap away, and a refusal also says itself as a
+         toast, because a red dot is easy to miss before a game.
+       * Nothing in it leaves the app on one tap. Watch, copy and hide are in a
+         panel the pill opens, each a full-size target, and the panel closes
+         itself. */
   const bar = document.createElement('div');
   bar.id = 'ep-livebar';
+  bar.setAttribute('role', 'button');
+  bar.setAttribute('aria-expanded', 'false');
+  bar.tabIndex = 0;
   bar.style.cssText = [
-    'position:fixed', 'left:6px', 'bottom:6px', 'z-index:2147483000',
-    'display:flex', 'align-items:center', 'gap:7px',
-    'padding:5px 8px', 'border-radius:7px',
-    'background:rgba(4,16,11,.86)', 'border:1px solid rgba(147,242,191,.30)',
+    'position:fixed', 'left:6px', 'bottom:calc(env(safe-area-inset-bottom) + 8px)',
+    'z-index:2147483000', 'box-sizing:border-box',
+    'display:flex', 'align-items:center', 'gap:8px',
+    'min-height:34px', 'padding:0 10px', 'border-radius:10px',
+    'background:rgba(4,16,11,.92)', 'border:1px solid rgba(147,242,191,.30)',
     'backdrop-filter:blur(6px)', '-webkit-backdrop-filter:blur(6px)',
     'font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace',
-    'letter-spacing:.06em', 'text-transform:uppercase',
-    'color:#e6fff1', 'user-select:none', 'max-width:min(92vw,320px)'
+    'letter-spacing:.06em', 'text-transform:uppercase', 'cursor:pointer',
+    'color:#e6fff1', 'user-select:none', '-webkit-tap-highlight-color:transparent',
+    'max-width:min(92vw,320px)'
   ].join(';');
 
   const dot = document.createElement('span');
-  dot.style.cssText = 'width:7px;height:7px;border-radius:50%;background:#ffd166;flex:none';
+  dot.style.cssText = 'width:9px;height:9px;border-radius:50%;background:#ffd166;flex:none';
   const label = document.createElement('span');
   label.textContent = 'connecting';
-  label.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  label.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0';
+  const more = document.createElement('span');
+  more.textContent = '⋯';
+  more.setAttribute('aria-hidden', 'true');
+  more.style.cssText = 'flex:none;font-size:14px;line-height:1;color:rgba(230,255,241,.6)';
+  bar.append(dot, label, more);
 
-  const watch = document.createElement('a');
+  /* the panel the pill opens: the whole status line, and the three actions */
+  const panel = document.createElement('div');
+  panel.id = 'ep-livebar-more';
+  panel.style.cssText = [
+    'position:fixed', 'left:6px', 'bottom:60px', 'z-index:2147483001', 'box-sizing:border-box',
+    'display:none', 'flex-direction:column', 'gap:6px', 'padding:10px',
+    'width:min(92vw,300px)', 'border-radius:12px',
+    'background:rgba(4,16,11,.97)', 'border:1px solid rgba(147,242,191,.35)',
+    'box-shadow:0 10px 30px rgba(0,0,0,.5)',
+    'font:600 11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
+    'letter-spacing:.05em', 'color:#e6fff1'
+  ].join(';');
+  const full = document.createElement('div');
+  full.style.cssText = 'text-transform:uppercase;padding:2px 2px 6px;word-break:break-word';
+  const action = (el, colour) => {
+    el.style.cssText = 'all:unset;box-sizing:border-box;display:flex;align-items:center;' +
+      'min-height:40px;padding:0 12px;border-radius:9px;cursor:pointer;white-space:nowrap;' +
+      'border:1px solid ' + colour + '55;color:' + colour + ';text-decoration:none;' +
+      'font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;' +
+      'text-transform:uppercase';
+    return el;
+  };
+
+  const watch = action(document.createElement('a'), '#8ff5ff');
   watch.href = viewerUrl.href;
   watch.target = '_blank';
   watch.rel = 'noopener';
-  watch.textContent = 'watch ↗';
-  watch.style.cssText = 'color:#8ff5ff;text-decoration:none;white-space:nowrap;flex:none';
+  watch.textContent = 'watch the public page ↗';
 
-  const copy = document.createElement('button');
+  const copy = action(document.createElement('button'), '#93f2bf');
   copy.type = 'button';
-  copy.textContent = 'copy';
-  copy.style.cssText = 'all:unset;cursor:pointer;color:#93f2bf;white-space:nowrap;flex:none';
+  copy.textContent = 'copy the watch link';
   copy.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(viewerUrl.href); copy.textContent = 'copied'; }
     catch (_) { copy.textContent = 'copy failed'; }
-    setTimeout(() => { copy.textContent = 'copy'; }, 1600);
+    setTimeout(() => { copy.textContent = 'copy the watch link'; }, 1600);
   });
 
-  const hide = document.createElement('button');
+  const hide = action(document.createElement('button'), 'rgba(230,255,241,.7)');
   hide.type = 'button';
-  hide.textContent = '×';
-  hide.title = 'hide';
-  hide.style.cssText = 'all:unset;cursor:pointer;color:rgba(230,255,241,.5);padding:0 2px;flex:none';
-  hide.addEventListener('click', () => bar.remove());
+  hide.textContent = 'hide this bar';
+  hide.addEventListener('click', () => { showPanel(false); bar.remove(); panel.remove(); placeBar(); });
 
-  bar.append(dot, label, watch, copy, hide);
-  const mount = () => document.body.appendChild(bar);
+  panel.append(full, watch, copy, hide);
+
+  let panelTimer = null, panelFrom = 'bar';
+  function showPanel(on) {
+    panel.style.display = on ? 'flex' : 'none';
+    bar.setAttribute('aria-expanded', on ? 'true' : 'false');
+    clearTimeout(panelTimer);
+    if (on) { placeBar(); panelTimer = setTimeout(() => showPanel(false), 10000); }
+  }
+  bar.addEventListener('click', e => {
+    e.stopPropagation();
+    panelFrom = 'bar';
+    showPanel(panel.style.display === 'none');
+  });
+  bar.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); panelFrom = 'bar'; showPanel(panel.style.display === 'none');
+    }
+  });
+  panel.addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => { if (panel.style.display !== 'none') showPanel(false); });
+
+  /* WHERE IT GOES, measured every time rather than assumed: screens change
+     under it, the sheet opens and closes, and a phone turns.
+
+     ON A PHONE'S GAME SCREEN IT DOES NOT FLOAT AT ALL. There is no free spot
+     there: the action rows fill the top, the legend's pills are buttons, the
+     ✕ and ✓ discs and the toasts stand just above the legend at either side, and
+     the handle runs the full width of the foot. Anywhere the pill went, it sat
+     on something a thumb needs mid-possession. So on that screen the state
+     moves to the strip at the very top — the lip that opens the escape bar,
+     which is already there and already nobody's control but this file's —
+     coloured by it, thicker and solid when something is wrong, and the words,
+     watch and copy are in the escape bar it opens. A desktop's game screen has
+     a free corner beside the top row; it is measured and used when it is there. */
+  let barSide = 'left';
+  function freeCorner() {
+    const top = document.getElementById('topbar');
+    if (!top) return null;
+    const r = top.getBoundingClientRect();
+    if (!r.width) return null;
+    if (window.innerWidth - r.right >= 50) return { side: 'right', top: Math.round(r.top + (r.height - 34) / 2) };
+    if (r.left >= 50) return { side: 'left', top: Math.round(r.top + (r.height - 34) / 2) };
+    return null;
+  }
+  function placeBar() {
+    const on = bar.isConnected;
+    const g = document.getElementById('game');
+    const onGame = !!(g && !g.classList.contains('hidden'));
+    const narrow = window.innerWidth < 600;
+
+    if (on) {
+      const corner = onGame ? freeCorner() : null;
+      const away = onGame && !corner;                      // the phone's game screen
+      bar.style.display = away ? 'none' : 'flex';
+      if (away && panelFrom !== 'hatch') showPanel(false);
+      /* the dot alone wherever the room is a corner; the words where it is not */
+      const compact = !!corner || (!onGame && narrow);
+      label.style.display = compact ? 'none' : '';
+      more.style.display = compact ? 'none' : '';
+      bar.style.padding = compact ? '0' : '0 10px';
+      bar.style.width = compact ? '34px' : '';
+      bar.style.justifyContent = compact ? 'center' : '';
+      bar.style.maxWidth = 'min(40vw,260px)';
+      if (corner) {
+        bar.style.top = corner.top + 'px'; bar.style.bottom = 'auto';
+        bar.style.left = corner.side === 'left' ? '8px' : 'auto';
+        bar.style.right = corner.side === 'right' ? '8px' : 'auto';
+        barSide = corner.side;
+      } else {
+        bar.style.top = 'auto';
+        bar.style.bottom = 'calc(env(safe-area-inset-bottom) + 8px)';
+        bar.style.left = 'auto'; bar.style.right = '8px';
+        barSide = 'right';
+      }
+      if (panel.style.display !== 'none' && panelFrom === 'bar') {
+        const r = bar.getBoundingClientRect();
+        if (corner) { panel.style.top = Math.round(r.bottom + 6) + 'px'; panel.style.bottom = 'auto'; }
+        else { panel.style.top = 'auto'; panel.style.bottom = Math.round(window.innerHeight - r.top + 6) + 'px'; }
+        panel.style.left = barSide === 'left' ? '8px' : 'auto';
+        panel.style.right = barSide === 'right' ? '8px' : 'auto';
+      }
+    }
+
+    /* --ep-sheet-h is the room the sheet's handle takes, which #cols pads its
+       bottom by. Set here since the bar was here first; the bar itself never
+       stands on the handle, so it is the handle alone. */
+    const sheet = document.getElementById('sheet');
+    const want = (sheet ? Math.min(sheet.offsetHeight || 40, 40) : 40) + 'px';
+    if (placeBar.last !== want) {
+      placeBar.last = want;
+      document.documentElement.style.setProperty('--ep-sheet-h', want);
+    }
+  }
+  window.__epPlaceBar = placeBar;
+
+  /* The panel opens from the pill, or — on a phone's game screen, where there
+     is no pill — from the status line in the escape bar, under the top edge. */
+  function openPanelFromHatch(anchor) {
+    panelFrom = 'hatch';
+    const r = anchor.getBoundingClientRect();
+    panel.style.top = Math.round(r.bottom + 8) + 'px'; panel.style.bottom = 'auto';
+    panel.style.left = '8px'; panel.style.right = 'auto';
+    showPanel(true);
+  }
+
+  const mount = () => {
+    document.body.appendChild(bar);
+    document.body.appendChild(panel);
+    placeBar();
+    setInterval(placeBar, 600);
+    window.addEventListener('resize', placeBar, { passive: true });
+    window.addEventListener('orientationchange', () => setTimeout(placeBar, 250));
+  };
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
-  function say(text, colour) { label.textContent = text; dot.style.background = colour; }
+  /* the escape bar's copy of the state, and the lip's colour — see the escape
+     hatch below, which builds both */
+  let hatchStatus = null;
+  function tintLip(colour) {
+    const lip = document.getElementById('ep-exitlip');
+    if (!lip) return;
+    const bad = colour === '#ff5f6b' || colour === '#ffd166';
+    lip.style.background = colour === '#93f2bf' || colour === '#8ff5ff'
+      ? 'linear-gradient(90deg,#93f2bf,#8ff5ff)' : colour;
+    lip.style.height = bad ? '6px' : '4px';
+    lip.dataset.state = bad ? 'bad' : 'ok';
+    if (!lip.matches(':hover')) lip.style.opacity = bad ? '1' : '.28';
+  }
+
+  let lastSaid = '';
+  function say(text, colour) {
+    label.textContent = text; full.textContent = text; dot.style.background = colour;
+    bar.title = text;
+    bar.setAttribute('aria-label', text);
+    if (hatchStatus) { hatchStatus.textContent = text + ' ⋯'; hatchStatus.style.color = colour; }
+    tintLip(colour);
+    say.colour = colour;
+    /* A refusal on a phone's pre-game screens would otherwise be a red dot in a
+       corner. Said once as a toast as well — the scorer's own, if it has one. */
+    if (colour === '#ff5f6b' && text !== lastSaid && window.innerWidth < 600) {
+      const g = document.getElementById('game');
+      if (!(g && !g.classList.contains('hidden')) && typeof window.toast === 'function') {
+        try { window.toast(text, 5000); } catch (_) {}
+      }
+    }
+    lastSaid = text;
+  }
+
+  /* A LOUD NOTICE, for the states a coloured dot is not enough for: publishing
+     has stopped and scoring on would put taps nowhere but this phone. Across the
+     top, above the scoring screen but below the takeover and refusal panels, and
+     it stays until it is dismissed — it is not a toast, because the point is
+     that it is still there when the statistician next looks up. */
+  function banner(id, text, tone) {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.setAttribute('role', 'alert');
+      el.style.cssText = [
+        'position:fixed', 'left:8px', 'right:8px', 'top:calc(env(safe-area-inset-top) + 8px)',
+        'z-index:2147483100', 'display:flex', 'gap:10px', 'align-items:flex-start',
+        'padding:12px 12px 12px 14px', 'border-radius:12px', 'max-width:640px', 'margin:0 auto',
+        'font:600 13px/1.45 ui-sans-serif,system-ui,sans-serif', 'color:#fff',
+        'box-shadow:0 10px 30px rgba(0,0,0,.5)'
+      ].join(';');
+      const t = document.createElement('div');
+      t.className = 'ep-banner-text';
+      t.style.cssText = 'flex:1;min-width:0';
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.textContent = '×';
+      x.setAttribute('aria-label', 'dismiss');
+      x.style.cssText = 'all:unset;cursor:pointer;flex:none;min-width:32px;min-height:32px;' +
+        'display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.8';
+      x.addEventListener('click', () => el.remove());
+      el.append(t, x);
+      const mountIt = () => document.body.appendChild(el);
+      if (document.body) mountIt(); else document.addEventListener('DOMContentLoaded', mountIt);
+    }
+    el.style.background = tone === 'amber' ? '#6b4b00' : '#7a0c16';
+    el.style.border = '1px solid ' + (tone === 'amber' ? '#ffd166' : '#ff5f6b');
+    el.querySelector('.ep-banner-text').textContent = text;
+    return el;
+  }
+
+  /* --------------------------------------------------- one tab per game ---
+     TWO TABS ON ONE GAME WRITE OVER EACH OTHER, AND NEITHER KNOWS.
+
+     Every tab saves the whole game to the same localStorage key, and every tab
+     that has attached publishes its own state. Open the fixture's link twice —
+     a second tap on the assignment email, a tab restored by the browser — carry
+     on in the new one, and the old one, hidden, keeps going: its clock ticks,
+     it saves its older game over the key every few seconds, and it writes its
+     score, period and clock over the live ones once a minute. A crash then
+     resumes the stale tab's game, and finalise reads the stale tab's period.
+
+     So the first tab to open a game holds a lock on it for as long as it is
+     open, and any other tab is read-only: it publishes nothing, the page's own
+     save() refuses (window.epReadOnly, honoured in index.html), and a banner
+     says which tab to use. When the holder closes, this tab is told it can take
+     over — by reloading, because its copy of the game is the old one. Where the
+     Web Locks API is missing, a heartbeat in localStorage does the same job
+     less exactly. */
+  let readOnly = false;
+  function goReadOnly(why) {
+    if (readOnly) return;
+    readOnly = true;
+    window.epReadOnly = true;
+    try { window.EpinoiaSync && window.EpinoiaSync.halt('open in another tab'); } catch (_) {}
+    say('read-only · open in another tab', '#ff5f6b');
+    banner('ep-readonly', why || 'This game is open in another tab. This tab is read-only: nothing ' +
+      'you do here is saved or published. Use the other tab, or close it and reload this one.');
+    SHIELDED.forEach(k => window.addEventListener(k, shieldInput, { capture: true, passive: false }));
+  }
+
+  /* A READ-ONLY TAB TAKES NO TAPS.
+
+     save() and the publisher ignore this tab, so nothing recorded in it is kept,
+     which is exactly why it must not seem to record anything. A statistician who
+     picked up the wrong tab could score a quarter into it, every tap answered as
+     if it counted, and lose all of it on the next reload. So a tap or a key on
+     the scorer goes no further (a capture listener on the window runs before every
+     one of the scorer's) and says why. Still usable: this file's own controls,
+     every one an ep- id (the banner, the bar, the escape hatch), and the scorer's
+     dialogs, which can only have opened by themselves in this tab. */
+  const SHIELDED = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'touchstart', 'touchend',
+                    'click', 'dblclick', 'contextmenu', 'dragstart', 'keydown', 'input', 'change', 'submit'];
+  let shieldSaid = 0;
+  function shieldInput(e) {
+    if (!readOnly) return;
+    const t = e.target;
+    if (t && t.closest && t.closest('[id^="ep-"], .modalwrap')) return;
+    e.stopPropagation();
+    /* a touch keeps its default, so the page still scrolls; its click is stopped */
+    if (e.cancelable && e.type !== 'touchstart' && e.type !== 'touchend') e.preventDefault();
+    if ((e.type === 'click' || e.type === 'keydown') && Date.now() - shieldSaid > 2500) {
+      shieldSaid = Date.now();
+      try { if (typeof window.toast === 'function') window.toast('read-only — this game is open in another tab', 2600); } catch (_) {}
+    }
+  }
+  (function oneTabPerGame() {
+    if (!isFixture) return;                  // a scratch room is per tab already
+    const name = 'epinoia-scorer:' + gameId;
+    try {
+      if (navigator.locks && navigator.locks.request) {
+        navigator.locks.request(name, { ifAvailable: true }, lock => {
+          if (lock) return new Promise(() => {});        // held until this tab goes
+          goReadOnly();
+          /* ...and wait for the holder to go, to say so */
+          navigator.locks.request(name, () => {
+            banner('ep-readonly', 'The other tab has closed. Reload this one to score here — ' +
+              'it will offer the game as the other tab left it.', 'amber');
+            return new Promise(() => {});
+          }).catch(() => {});
+          return undefined;
+        }).catch(() => {});
+        return;
+      }
+    } catch (_) { /* fall through to the heartbeat */ }
+    try {
+      const KEY = 'epinoia.tab:' + gameId;
+      const me = Math.random().toString(36).slice(2), since = Date.now();
+      const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) { return null; } };
+      const fresh = v => v && v.tab !== me && Date.now() - v.at < 12000;
+      if (fresh(read())) { goReadOnly(); return; }
+      const beat = () => { try { localStorage.setItem(KEY, JSON.stringify({ tab: me, at: Date.now(), since })); } catch (_) {} };
+      beat();
+      setInterval(() => { if (!readOnly) beat(); }, 4000);
+      /* two tabs that claimed in the same instant: the earlier claim keeps it */
+      window.addEventListener('storage', e => {
+        if (e.key !== KEY || readOnly) return;
+        const v = read();
+        if (fresh(v) && (v.since || 0) <= since) goReadOnly();
+      });
+      window.addEventListener('pagehide', () => {
+        try { const v = read(); if (v && v.tab === me) localStorage.removeItem(KEY); } catch (_) {}
+      });
+    } catch (_) { /* no storage at all: nothing to fight over */ }
+  }());
 
   /* ------------------------------------------------------- publishing state --- */
   /* Watching is public and always works: Realtime accepts an anonymous
@@ -151,8 +499,8 @@
         a.id = 'ep-signin';
         a.href = '../app/'; a.target = '_blank'; a.rel = 'noopener';
         a.textContent = 'sign in ↗';
-        a.style.cssText = 'color:#ffd166;text-decoration:underline;white-space:nowrap;flex:none';
-        bar.insertBefore(a, watch);
+        action(a, '#ffd166');
+        panel.insertBefore(a, watch);
       }
     }
     return authOk;
@@ -179,6 +527,7 @@
   async function claimFixture() {
     if (claimed || !isFixture) return;
     if (typeof S === 'undefined' || !S || S.phase !== 'game') return;
+    if (training() || readOnly || otherFixture()) return;   // see training(), above
     claimed = true;                                   // one attempt per load
 
     if (!(await checkPublishing())) { claimed = false; return; }
@@ -198,6 +547,7 @@
     };
     if (S.tipWinner != null) patch.tip_winner = S.tipWinner;
     if (S.arrowInit != null) patch.arrow_init = S.arrowInit;
+    const tipKey = S.tipWinner != null ? S.tipWinner + '/' + S.arrowInit : null;
 
     const { error } = await sb.from('games').update(patch).eq('id', gameId);
     if (error) {
@@ -206,8 +556,45 @@
       claimed = false;                                // let a retry happen
       return;
     }
+    if (tipKey) tipSent = tipKey;
     say('live · ' + shortId, '#93f2bf');
   }
+
+  /* ------------------------------------------------------- the tip, written ---
+     WHO WON THE TIP NEVER REACHED THE DATABASE.
+
+     claimFixture runs 400 ms after the game begins, and beginGame opens "who
+     controls the opening tip?" at the same moment — so the claim always went
+     out before the answer, without tip_winner or arrow_init, and one attempt
+     per load meant it never went again. Every scored game's row said nobody won
+     the tip. That is why a takeover could not restore the arrow (loadRecorded
+     reads the row), why the takeover device asked the opening-tip question
+     again on its first held ball and started the clock, and why the final box
+     score was replayed with no arrow at all.
+
+     So the two are written on their own, once the tip is decided, and again if
+     they change, until a write lands. */
+  let tipSent = null;
+  async function pushTip() {
+    if (!isFixture || !claimed || tipPushing) return;
+    if (typeof S === 'undefined' || !S || S.tipWinner == null) return;
+    if (training() || readOnly || otherFixture()) return;
+    if (window.EpinoiaSync && window.EpinoiaSync.halted) return;
+    const key = S.tipWinner + '/' + S.arrowInit;
+    if (key === tipSent) return;
+    const sb = window.epinoiaClient && epinoiaClient();
+    if (!sb) return;
+    tipPushing = true;
+    try {
+      const patch = { tip_winner: S.tipWinner };
+      if (S.arrowInit != null) patch.arrow_init = S.arrowInit;
+      const { error } = await sb.from('games').update(patch).eq('id', gameId);
+      if (error) console.warn('[tip]', error.message || error);   // tried again on the next beat
+      else tipSent = key;
+    } catch (_) { /* tried again on the next beat */ }
+    finally { tipPushing = false; }
+  }
+  let tipPushing = false;
 
   /* ------------------------------------------------------ priming, pre-tip ---
      THE FIVES EXIST TWENTY MINUTES BEFORE THEY ARE PUBLISHED, AND THAT IS THE
@@ -235,6 +622,7 @@
   async function primeFixture() {
     if (primed || claimed || !isFixture) return;
     if (typeof S === 'undefined' || !S || S.phase !== 'pregame') return;
+    if (training() || readOnly || otherFixture()) return;
     if (!S.starters || !S.starters[0] || !S.starters[0].length) return;
     primed = true;
 
@@ -269,6 +657,7 @@
      missed hook would silently un-prime a broadcast. */
   setInterval(() => {
     try { primeFixture(); } catch (e) { console.warn('[prime]', e); }
+    try { pushTip(); } catch (e) { console.warn('[tip]', e); }
   }, 2500);
 
   /* --------------------------------------------------------- the video ---
@@ -476,8 +865,9 @@
   let guarded = false;
 
   async function guardAgainstOverwrite() {
-    if (guarded || !isFixture || refused) return;
+    if (guarded || !isFixture || refused || readOnly) return;
     if (typeof S === 'undefined' || !S || S.phase === 'setup') return;
+    if (training()) return;                  // a practice game is compared with nothing
 
     const sb = window.epinoiaClient && epinoiaClient();
     if (!sb) return;
@@ -507,11 +897,19 @@
     guarded = true;
 
     const mine = (S.events || []).length;
-    if (count <= mine) return;               // nothing recorded that we lack
+    /* NOTHING RECORDED THAT WE LACK — so this device is the one scoring, and the
+       league's copy may now be brought into line with it BY CONTENT, not just
+       topped up (sync.js, reconcile). Armed here and not on attach, because
+       until this question is answered a row this device lacks might be somebody
+       else's. */
+    if (count <= mine) {
+      try { window.EpinoiaSync && window.EpinoiaSync.armReconcile(); } catch (_) {}
+      return;
+    }
 
     /* Stop first, ask second. Every moment this keeps publishing is a moment
        the live score on somebody's homepage is wrong. */
-    try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
+    try { window.EpinoiaSync && window.EpinoiaSync.halt('another device is scoring'); } catch (_) {}
     say('not publishing — another device is scoring', '#ffd166');
     offerTakeover(count, mine);
   }
@@ -535,13 +933,64 @@
       if (!data || data.length < 1000) break;
     }
 
-    S.events = rows.map(r => {
+    /* THE PHONE'S OWN COPY IS KEPT BEFORE IT IS REPLACED.
+
+       This used to overwrite the local log outright and save it. The guard that
+       offers it fires whenever the league holds more actions than the phone —
+       which a single device reaches by deleting plays during an outage and then
+       reloading — and on a takeover the phone may hold plays the league never
+       received. Either way the local log was the only copy of something. So the
+       stored game goes to a backup key first, the newest only, whichever of the
+       stored game and the one on screen holds more. */
+    try {
+      const ls = window.localStorage;
+      const KEY = window.EP_KEY || 'epinoia_v1';
+      if (ls) {
+        let best = null, bestN = -1;
+        const stored = ls.getItem(KEY);
+        if (stored) {
+          try { const p = JSON.parse(stored); bestN = ((p && p.events) || []).length; best = stored; } catch (_) {}
+        }
+        if ((S.events || []).length > bestN) best = JSON.stringify(S);
+        if (best) {
+          Object.keys(ls).filter(k => k.indexOf(KEY + ':backup:') === 0).forEach(k => ls.removeItem(k));
+          ls.setItem(KEY + ':backup:' + new Date().toISOString(), best);
+        }
+      }
+    } catch (e) { console.warn('[takeover] the local game could not be backed up', e); }
+
+    const pulled = rows.map(r => {
       const e = Object.assign({ t: r.t, id: r.seq, period: r.period, clock: r.clock },
                               r.payload || {});
       if (r.team != null) e.team = r.team;
       if (r.pid != null) e.pid = r.pid;
       return e;
     });
+    /* IN GAME ORDER, NOT SEQ ORDER. The league's copy is read by seq, and a play
+       added afterwards ("add a missed play", or one moved to its real clock) has
+       the highest seq and belongs somewhere in the middle. The scorer replays its
+       log in array order — engine.js sorts, this device's derive() does not — so
+       a substitution added late was replayed at the end, and the five this
+       device then showed on court was wrong for the rest of the game. Sorted
+       exactly as engine.js inGameOrder does: by time elapsed in the game, ties
+       kept in the order they came — in the game's own periods, quarters or
+       halves, read as engine.js formatOf and the page's gameFmt read them: the
+       game's S.format, else a first- or second-period clock above 10:00, which
+       only a half can have. */
+    const F = (S.format && +S.format.periods > 0 && +S.format.period_ms > 0) ? S.format
+      : pulled.some(e => (+e.period || 1) <= 2 && +e.clock > 600000)
+        ? { periods: 2, period_ms: 1200000, ot_ms: 300000 }
+        : { periods: 4, period_ms: 600000, ot_ms: 300000 };
+    const PL = p => (p <= F.periods ? F.period_ms : (F.ot_ms || 300000));
+    const cum = e => {
+      const p = e.period || 1;
+      let t = 0;
+      for (let q = 1; q < p; q++) t += PL(q);
+      return t + (PL(p) - (e.clock != null ? e.clock : PL(p)));
+    };
+    const keyed = pulled.map((e, i) => ({ e, i, k: cum(e) }));
+    keyed.sort((a, b) => (a.k - b.k) || (a.i - b.i));
+    S.events = keyed.map(x => x.e);
     S.redo = [];
     /* The next id must not reuse one already in the durable log, or the upsert
        would drop the new event as a duplicate — which is the very fault this
@@ -667,6 +1116,132 @@
     try { guardAgainstOverwrite(); } catch (e) { console.warn('[guard]', e); }
   }, 3000);
 
+  /* ------------------------------------------------- the saved game, back ---
+     ONE WAY BACK INTO A SAVED GAME, used by the escape bar and the card below.
+
+     Loading a saved game over a NAMED fixture is how one game's events end up
+     published into another, so a saved game that does not say it belongs to
+     THIS fixture is still refused. One that does say so is the statistician's
+     own game, and refusing it closed the only recovery route a crash leaves open
+     on a hall's dead wifi — loadRecorded pulls the league's copy, and the league
+     is exactly what is unreachable.
+
+     A REFUSAL NAMES THE WAY THAT WORKS. It used to say "open the scorer without
+     a fixture in the address", which resumed a league game in a scratch room:
+     published nowhere, finalisable nowhere, and — because attaching stamped the
+     scratch room's id over the fixture's — never resumable on its fixture again.
+     A game that says which fixture it is now offers that fixture's address. */
+  const afterResume = [], afterDiscard = [];
+  function resumeSaved(saved) {
+    if (!saved) return false;
+    if (isFixture && saved.fixtureId !== gameId) {
+      if (isUuid(saved.fixtureId)) {
+        if (confirm('That saved game belongs to a different fixture.\n\n' +
+                    'Open that fixture now and pick it up there?')) {
+          location.href = '?g=' + encodeURIComponent(saved.fixtureId) + '&mode=supabase';
+        }
+        return false;
+      }
+      alert(saved.fixtureId
+        ? 'That saved game belongs to a different fixture — a one-off game, not a ' +
+          'league fixture. Open the scorer without a fixture in the address to pick it up.'
+        : 'This page is open on a specific fixture, and the saved game does ' +
+          'not say which fixture it belongs to. Open the scorer without a ' +
+          'fixture in the address to pick it up.');
+      return false;
+    }
+    if (!isFixture && isUuid(saved.fixtureId)) {
+      const go = confirm('That saved game is a league fixture. Open it on its fixture, so ' +
+                         'it is published and can be finalised?\n\n' +
+                         'Cancel resumes it here instead, where nothing is published.');
+      if (go) { location.href = '?g=' + encodeURIComponent(saved.fixtureId) + '&mode=supabase'; return false; }
+    }
+    try { window.applySaved(saved); }
+    catch (e) { alert('That game could not be restored: ' + (e.message || e)); return false; }
+    afterResume.splice(0).forEach(f => { try { f(); } catch (_) {} });
+    return true;
+  }
+
+  /* ------------------------------------------- resume, where it can be seen ---
+     A RELOAD MID-GAME LANDED ON THE STARTING-FIVE PICKER, AND ITS BIG BUTTON
+     STARTED A NEW GAME.
+
+     On a fixture's address the page loads the fixture and goes straight to the
+     picker — which, after a crash, is the same fixture the phone is holding a
+     game of. The way back to that game was "resume" in the escape bar, behind a
+     press-and-hold on a four-pixel strip at the top of the screen; the way
+     forward was START GAME, in the middle of the screen, and it began a blank
+     game in place of the real one.
+
+     So when the phone holds a game in play for THIS fixture and the page has not
+     picked one up yet, both the setup screen and the picker open with a card
+     saying which game it is and a full-size button to carry on with it. The
+     picker redraws itself on every tap, so the card is put back whenever it is
+     drawn over. index.html separately asks before START GAME replaces a stored
+     game. */
+  (function resumeCard() {
+    if (!isFixture || TRAINING) return;
+    let saved = null;
+    const fits = v => !!(v && v.teams && v.fixtureId === gameId && v.phase && v.phase !== 'setup' &&
+                         (v.events || []).length);
+    const read = () => {
+      try { const v = window.migrateSaved(window.loadSaved()); return fits(v) ? v : null; }
+      catch (_) { return null; }
+    };
+    let card = null;
+    const build = () => {
+      const d = window.describeSaved ? window.describeSaved(saved) : null;
+      const el = document.createElement('div');
+      el.id = 'ep-resume-card';
+      el.className = 'glass';
+      el.style.cssText = 'padding:14px;display:flex;flex-direction:column;gap:10px;margin:4px 0 10px;' +
+        'border-color:rgba(147,242,191,.6)';
+      const h = document.createElement('div');
+      h.style.cssText = 'font-family:var(--f-head);font-size:13px;letter-spacing:.06em;' +
+        'text-transform:uppercase;color:var(--lume,#93f2bf)';
+      h.textContent = 'this phone has this game in progress';
+      const t = document.createElement('div');
+      t.style.cssText = 'font-family:var(--f-mono);font-size:11px;line-height:1.7;color:var(--txt,#e6fff1)';
+      t.textContent = d
+        ? d.names.join(' v ') + ' · ' + d.score[0] + '–' + d.score[1] + ' · ' +
+          (d.period > 4 ? 'OT' + (d.period - 4) : 'Q' + d.period) + ' · ' + d.events + ' actions recorded'
+        : 'a game recorded on this phone';
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'yes';
+      go.textContent = 'resume this game';
+      go.style.cssText = 'min-height:48px;font-size:14px';
+      go.addEventListener('click', () => { if (resumeSaved(saved)) hideCard(); });
+      const n = document.createElement('div');
+      n.style.cssText = 'font-family:var(--f-mono);font-size:10px;line-height:1.6;color:var(--dim,#9bb)';
+      n.textContent = 'Starting from the squads below begins a new game in its place.';
+      el.append(h, t, go, n);
+      return el;
+    };
+    const hideCard = () => { saved = null; if (card) card.remove(); card = null; };
+    afterResume.push(hideCard);
+    afterDiscard.push(hideCard);
+    const place = () => {
+      if (!saved) return;
+      if (typeof S !== 'undefined' && S && S.phase && S.phase !== 'setup') { hideCard(); return; }
+      const host = ['startersview', 'setup'].map(id => document.getElementById(id))
+        .find(el => el && !el.classList.contains('hidden'));
+      if (!host) { if (card) card.remove(); return; }
+      if (!card) card = build();
+      if (card.parentNode !== host || host.firstChild !== card) host.insertBefore(card, host.firstChild);
+    };
+    const begin = () => {
+      saved = read();
+      if (!saved) return;
+      place();
+      const sv = document.getElementById('startersview');
+      if (sv && window.MutationObserver) new MutationObserver(place).observe(sv, { childList: true });
+      const t = setInterval(() => { if (!saved) clearInterval(t); else place(); }, 800);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', begin);
+    else begin();
+  }());
+
   /* --------------------------------------------------------- escape hatch --- */
   /* The scorer gets a hover bar rather than the sidebar every other page has.
 
@@ -689,6 +1264,7 @@
     ].join(';');
 
     const bar = document.createElement('div');
+    bar.id = 'ep-hatch';
     bar.style.cssText = [
       'position:fixed', 'top:0', 'left:0', 'right:0',
       'transform:translateY(-100%)', 'transition:transform .2s var(--ease,ease)',
@@ -716,7 +1292,19 @@
       return a;
     };
 
+    /* THE PUBLISHING STATE, where a phone's game screen keeps it: the live pill
+       has no room there (see the badge, above), so its words are here, and a
+       tap on them opens watch and copy just under the top edge. */
+    hatchStatus = document.createElement('button');
+    hatchStatus.type = 'button';
+    hatchStatus.textContent = (label.textContent || 'connecting') + ' ⋯';
+    hatchStatus.style.cssText = 'all:unset;cursor:pointer;white-space:nowrap;flex:none;' +
+      'min-height:32px;display:inline-flex;align-items:center;padding:0 10px;border-radius:6px;' +
+      'border:1px solid rgba(147,242,191,.35);font:inherit;color:' + (say.colour || '#ffd166');
+    hatchStatus.addEventListener('click', e => { e.stopPropagation(); openPanelFromHatch(hatchStatus); });
+
     bar.append(
+      hatchStatus,
       link('← Epinoia', '../home/', '#93f2bf'),
       link('league', '../l/', '#8ff5ff'),
       link('box scores', '../games/', '#8ff5ff'),
@@ -762,25 +1350,8 @@
 
       const load = mk('resume', '#93f2bf');
       load.title = 'pick this game back up where it was left';
-      load.addEventListener('click', () => {
-        /* Loading a saved game over a NAMED fixture is how one game's events end
-           up published into another, so a saved game that does not say it
-           belongs to THIS fixture is still refused. One that does say so is the
-           statistician's own game, and refusing it closed the only recovery
-           route a crash leaves open on a hall's dead wifi — loadRecorded pulls
-           the league's copy, and the league is exactly what is unreachable. */
-        if (isFixture && saved.fixtureId !== gameId) {
-          alert(saved.fixtureId
-            ? 'That saved game belongs to a different fixture. Open the scorer ' +
-              'without a fixture in the address to pick it up.'
-            : 'This page is open on a specific fixture, and the saved game does ' +
-              'not say which fixture it belongs to. Open the scorer without a ' +
-              'fixture in the address to pick it up.');
-          return;
-        }
-        try { window.applySaved(saved); wrap.remove(); }
-        catch (e) { alert('That game could not be restored: ' + (e.message || e)); }
-      });
+      load.addEventListener('click', () => { if (resumeSaved(saved)) wrap.remove(); });
+      afterResume.push(() => wrap.remove());
 
       const drop = mk('discard', '#ff5f6b');
       drop.title = 'delete the saved game';
@@ -794,6 +1365,7 @@
         /* save() refuses to write a blank state over a stored game; there is no
            longer a stored game, so it must stop refusing. */
         try { window.epForgetSaved && window.epForgetSaved(); } catch (_) {}
+        afterDiscard.splice(0).forEach(f => { try { f(); } catch (_) {} });
         wrap.remove();
       });
 
@@ -878,7 +1450,7 @@
              would catch this within eight seconds, but this tab already knows
              — and pagehide fires a last flush on the way out, which is exactly
              the write that would put events back on the fixture just cancelled. */
-          try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
+          try { window.EpinoiaSync && window.EpinoiaSync.halt('cancelled'); } catch (_) {}
           say('cancelled · back on the listing', '#ff5f6b');
           /* The scorer keeps the whole game in localStorage under this key
              (see save() in score/index.html) and restores it on load, so
@@ -901,7 +1473,9 @@
     const show = v => {
       open = v;
       bar.style.transform = v ? 'translateY(0)' : 'translateY(-100%)';
-      lip.style.opacity = v ? '0' : '.28';
+      /* the lip carries the publishing state now (tintLip, above): solid when
+         something is wrong, faint when all is well */
+      lip.style.opacity = v ? '0' : (lip.dataset.state === 'bad' ? '1' : '.28');
     };
     lip.addEventListener('mouseenter', () => show(true));
     bar.addEventListener('mouseleave', () => show(false));
@@ -920,7 +1494,7 @@
        its overlay regardless. */
     try { injectSavedGame(); } catch (e) { console.warn('[saved]', e); }
 
-    const mountNav = () => { document.body.append(lip, bar); };
+    const mountNav = () => { document.body.append(lip, bar); if (say.colour) tintLip(say.colour); };
     if (document.body) mountNav(); else document.addEventListener('DOMContentLoaded', mountNav);
   })();
 
@@ -1401,11 +1975,9 @@
         /* The slide-up sheet also sits over the bottom of the columns — only
            its 40px handle when closed, but that handle still covers a player
            row. Measured rather than assumed, for the same reason. */
-        const sh = document.getElementById('sheet');
-        if (sh) {
-          const peek = Math.min(sh.offsetHeight || 40, 40);
-          document.documentElement.style.setProperty('--ep-sheet-h', peek + 'px');
-        }
+        /* placeBar() owns --ep-sheet-h now: the handle's height plus the live
+           bar's when the bar stands on it (see the badge, above). */
+        placeBar();
       };
       apply();
       if (window.ResizeObserver) new ResizeObserver(apply).observe(el);
@@ -1482,25 +2054,125 @@
     }, 20000);
   }
 
-  async function finaliseGame(btn, note) {
+  /* ------------------------------------------------- finalising, robustly ---
+     ONE FINALISE AT A TIME, AND AN ANSWER THAT SURVIVES THE SCREEN.
+
+     renderFinal() rebuilds #finalview wholesale, and the button and its note
+     used to be captured when it was pressed — so a finalise in flight wrote its
+     answer into elements that a tab switch had already thrown away, and the
+     fresh button beside them was enabled: a second press asked again while the
+     first was still working and was told "already being finalised", in red,
+     about a game that was finishing perfectly well. The state is kept here now,
+     and every new button is drawn from it.
+
+     A LOST ANSWER IS NOT A FAILURE. finalise-game marks the game final before it
+     rebuilds the season tables and writes the match report, so the request runs
+     long, and a hall's wifi dropping during it left "network error" on screen
+     over a game that was final — and a retry then said "refused: already final".
+     Whatever goes wrong, the game's status is read back before anything is said,
+     and if the league has it as final, that is what the statistician is told. */
+  let finaliseBusy = false, finalisedHere = false, finaliseNote = null;
+
+  function noteFinal(text, colour) {
+    finaliseNote = { text, colour: colour || 'var(--dim)' };
+    const m = document.getElementById('csFinaliseMsg');
+    if (m) { m.textContent = text; m.style.color = finaliseNote.colour; }
+  }
+
+  /* Confirmed final — by the finalise call, by reading the status back, or by
+     the watchdog. Recorded on the game so that a reload, a re-render or a second
+     look at the final screen all know it, and the final view redrawn if it is
+     the one on screen. */
+  function markFinal(why) {
+    if (typeof S === 'undefined' || !S) return;
+    if (!S.finalisedAt) {
+      S.finalisedAt = new Date().toISOString();
+      try { window.save && window.save(); } catch (_) {}
+    }
+    noteFinal('final — the box score is public' + (why ? ' (' + why + ')' : ''), '#93f2bf');
+    const fv = document.getElementById('finalview');
+    if (typeof window.renderFinal === 'function' && fv && !fv.classList.contains('hidden')) {
+      try { window.renderFinal(); } catch (_) {}
+    }
+  }
+
+  async function gameStatus(sb) {
+    try {
+      const { data, error } = await sb.from('games').select('status').eq('id', gameId).maybeSingle();
+      if (error) return null;
+      return data ? data.status : null;
+    } catch (_) { return null; }
+  }
+
+  /* The edge function, with a deadline: a request that never answers must not
+     leave the button disabled for the rest of the night. Long, because a
+     finalise legitimately rebuilds a season's tables and writes a report. */
+  async function callFinaliseFn(session, body, ms) {
     const CFG = window.EPINOIA_CONFIG;
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = ctl ? setTimeout(() => { try { ctl.abort(); } catch (_) {} }, ms || 90000) : null;
+    try {
+      /* NO apikey HEADER — see finaliseGame below. */
+      const r = await fetch(CFG.supabaseUrl + '/functions/v1/finalise-game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify(body),
+        signal: ctl ? ctl.signal : undefined
+      });
+      const j = await r.json().catch(() => ({}));
+      return { ok: r.ok, status: r.status, body: j };
+    } finally { if (t) clearTimeout(t); }
+  }
+
+  /* After an error or a refusal: is it final after all? 'finalising' means the
+     other request — or ours, whose answer was lost — is still working, so it is
+     asked again for a while before giving up. */
+  async function settleStatus(sb, waitMs) {
+    const until = Date.now() + (waitMs || 0);
+    for (;;) {
+      const st = await gameStatus(sb);
+      if (st === 'final') return 'final';
+      if (st !== 'finalising' || Date.now() > until) return st;
+      noteFinal('the league is still finalising — checking again…', '#ffd166');
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+
+  async function finaliseGame() {
+    if (finaliseBusy) { noteFinal('already finalising — wait for the answer', '#ffd166'); return; }
+    if (training()) { noteFinal('a training game is never published', '#ffd166'); return; }
+    if (readOnly) { noteFinal('this tab is read-only — finalise from the tab that has the game', '#ff5f6b'); return; }
+    finaliseBusy = true;
+    try { await finaliseInner(); }
+    finally {
+      finaliseBusy = false;
+      const b = document.getElementById('csFinalise');
+      if (b && !(S && S.finalisedAt)) b.disabled = false;
+    }
+  }
+
+  async function finaliseInner() {
     const sb = window.epinoiaClient && epinoiaClient();
-    if (!sb) { note('No Supabase client — cannot finalise.', '#ff5f6b'); return; }
+    if (!sb) { noteFinal('No Supabase client — cannot finalise.', '#ff5f6b'); return; }
 
     const { data: { session } } = await sb.auth.getSession();
     if (!session) {
-      note('Sign in first — open /epinoia/app/ in another tab, then try again.', '#ffd166');
+      noteFinal('Sign in first — open /epinoia/app/ in another tab, then try again.', '#ffd166');
       return;
     }
 
-    btn.disabled = true;
-    note('pushing the event log…', '#ffd166');
+    const b0 = document.getElementById('csFinalise');
+    if (b0) b0.disabled = true;
+    noteFinal('pushing the event log…', '#ffd166');
 
-    /* Push whatever the buffer still holds, then give the upserts a moment to
-       land. Finalising against a partial log would produce a box score that
+    /* Push whatever the buffer still holds and wait for the answer, then make the
+       league's copy agree with this one BY CONTENT (sync.js, reconcile) —
+       finalising against a partial or stale log would publish a box score that
        silently disagrees with what was scored. */
-    try { window.EpinoiaSync && window.EpinoiaSync.flush(); } catch (_) {}
-    await new Promise(r => setTimeout(r, 1200));
+    const Sy = window.EpinoiaSync;
+    try { if (Sy && Sy.settle) await Sy.settle(10000); else if (Sy) Sy.flush(); } catch (_) {}
+    try { if (Sy && Sy.reconcile) await Sy.reconcile({ force: true, wait: true }); } catch (_) {}
+    await new Promise(r => setTimeout(r, 400));
 
     /* Confirm the server actually has every event before asking it to close
        the game — the flush is fire-and-forget by design. */
@@ -1510,9 +2182,9 @@
       if (error) throw error;
       const local = (S.events || []).length;
       if (count == null || count < local) {
-        note(`server has ${count == null ? '?' : count} of ${local} events — retrying…`, '#ffd166');
-        try { window.EpinoiaSync && window.EpinoiaSync.flush(); } catch (_) {}
-        await new Promise(r => setTimeout(r, 2500));
+        noteFinal(`server has ${count == null ? '?' : count} of ${local} events — retrying…`, '#ffd166');
+        try { if (Sy && Sy.settle) await Sy.settle(4000); else if (Sy) Sy.flush(); } catch (_) {}
+        await new Promise(r => setTimeout(r, 1000));
 
         /* AND THEN CHECK AGAIN, AND REFUSE. This retried and carried on
            regardless, so a game whose log had not been saved went to the
@@ -1524,20 +2196,29 @@
           .select('seq', { count: 'exact', head: true }).eq('game_id', gameId);
         const now = again.count;
         if (now == null || now < local) {
-          btn.disabled = false;
-          note(`the league has ${now == null ? 'no' : now} of ${local} events — not finalising ` +
+          noteFinal(`the league has ${now == null ? 'no' : now} of ${local} events — not finalising ` +
                `an incomplete game. Keep this tab open; export the play-by-play if it persists.`,
                '#ff5f6b');
           return;
         }
       }
     } catch (e) {
-      btn.disabled = false;
-      note('could not verify the log: ' + (e.message || e), '#ff5f6b');
+      /* could not count: perhaps it is final already and the answer was lost */
+      if (await settleStatus(sb, 0) === 'final') { finalisedHere = true; markFinal(); return; }
+      noteFinal('could not verify the log: ' + (e.message || e), '#ff5f6b');
       return;
     }
 
-    note('finalising…', '#ffd166');
+    /* WHAT THE LEAGUE MUST FIND. The count above cannot see an edit, or an
+       undone basket replaced by another play; the digest can. finalise-game
+       computes the same digest from the rows it is about to publish and refuses
+       when they differ, so a box score is never published from a log this
+       device has since corrected. */
+    let expect = null;
+    try { expect = Sy && Sy.expectation ? Sy.expectation() : null; } catch (_) { expect = null; }
+
+    noteFinal('finalising…', '#ffd166');
+    let res = null;
     try {
       /* NO apikey HEADER. An edge function authenticates on the bearer token
          alone — the apikey header is a PostgREST convention that this endpoint
@@ -1551,39 +2232,85 @@
          The function now allows the header too, but this stays removed so the
          fix does not depend on a redeploy — and because it was never doing
          anything. */
-      const r = await fetch(CFG.supabaseUrl + '/functions/v1/finalise-game', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + session.access_token
-        },
-        body: JSON.stringify({ gameId })
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        btn.disabled = false;
-        /* The gate already sends back exactly what it objected to; this showed
-           only the headline, so "sanity gate failed" was all anybody ever saw
-           and there was nothing to act on. The reasons are the useful part —
-           "only 1 periods played", "scores are level" — and they name the real
-           problem far better than the headline does. */
-        const why = Array.isArray(j.blocking) && j.blocking.length
-          ? j.blocking.join(' · ') : (j.error || r.status);
-        note('refused: ' + why, '#ff5f6b');
-        return;
-      }
-      note('final — the box score is public', '#93f2bf');
-      btn.textContent = 'finalised ✓';
-      try { window.EpinoiaSync && window.EpinoiaSync.finalise(); } catch (_) {}
+      res = await callFinaliseFn(session, expect ? { gameId, expect } : { gameId }, 90000);
     } catch (e) {
-      btn.disabled = false;
-      note('network error: ' + (e.message || e), '#ff5f6b');
+      const st = await settleStatus(sb, 60000);
+      if (st === 'final') { finalisedHere = true; markFinal(); try { Sy && Sy.finalise(); } catch (_) {} return; }
+      noteFinal('network error: ' + (e.message || e) + ' — the game is not final; try again', '#ff5f6b');
+      return;
     }
+
+    if (!res.ok) {
+      /* Refused — or "already final", "already being finalised", a gateway
+         timeout: the status decides what actually happened. */
+      const st = await settleStatus(sb, res.status === 409 ? 60000 : 0);
+      if (st === 'final') { finalisedHere = true; markFinal(); try { Sy && Sy.finalise(); } catch (_) {} return; }
+      const j = res.body || {};
+      /* The gate already sends back exactly what it objected to; this showed
+         only the headline, so "sanity gate failed" was all anybody ever saw
+         and there was nothing to act on. The reasons are the useful part —
+         "only 1 periods played", "scores are level" — and they name the real
+         problem far better than the headline does. */
+      const why = Array.isArray(j.blocking) && j.blocking.length
+        ? j.blocking.join(' · ') : (j.error || res.status);
+      noteFinal('refused: ' + why, '#ff5f6b');
+      /* the league's copy differed: repair it now, so that trying again works */
+      if (j.code === 'log_mismatch') { try { Sy && Sy.reconcile({ force: true }); } catch (_) {} }
+      return;
+    }
+    finalisedHere = true;
+    markFinal();
+    try { Sy && Sy.finalise(); } catch (_) {}
   }
+
+  /* --------------------------------------------------------------- reopen ---
+     A FINAL GAME COULD NOT BE CORRECTED FROM THE TABLE.
+
+     The play-by-play stayed editable after finalising, the edits went nowhere
+     (the log of a final game takes no writes, and publishing had stopped), and
+     nothing said so. finalise-game has always been able to reopen a game for
+     whoever may score it; this is the page's way to ask — index.html puts the
+     button on the final screen — and then to publish again: the publisher is
+     restarted, and the league's copy is brought into line with this one by
+     content, so the corrections made since actually arrive. */
+  window.epReopenFixture = async function () {
+    if (!isFixture) return { ok: false, error: 'this is not a league fixture' };
+    if (training()) return { ok: false, error: 'a training game is never published' };
+    if (readOnly) return { ok: false, error: 'this tab is read-only — use the tab that has the game' };
+    const sb = window.epinoiaClient && epinoiaClient();
+    if (!sb) return { ok: false, error: 'no connection to the league' };
+    let session = null;
+    try { session = (await sb.auth.getSession()).data.session; } catch (_) {}
+    if (!session) return { ok: false, error: 'sign in first' };
+    let res;
+    try { res = await callFinaliseFn(session, { gameId, reopen: 1 }, 60000); }
+    catch (e) { res = { ok: false, status: 0, body: { error: String((e && e.message) || e) } }; }
+    if (!res.ok) {
+      /* "game is not final" is a reopen that already happened */
+      const st = await gameStatus(sb);
+      if (st !== 'live') return { ok: false, error: (res.body && res.body.error) || ('HTTP ' + res.status) };
+    }
+    try { if (S) { delete S.finalisedAt; window.save && window.save(); } } catch (_) {}
+    finalisedHere = false;
+    finaliseNote = null;
+    const closed = document.getElementById('ep-closed');
+    if (closed) closed.remove();
+    const Sy = window.EpinoiaSync;
+    try {
+      if (Sy && Sy.status && Sy.status().attached) {
+        Sy.restart();
+        await Sy.reconcile({ force: true, wait: true });
+      }
+      /* not attached yet: the attach timer picks the game up and arms the repair */
+    } catch (e) { console.warn('[reopen]', e); }
+    paintHealth();
+    return { ok: true, warnings: (res.body && res.body.warnings) || [] };
+  };
 
   /* renderFinal() rebuilds #finalview wholesale, so the button is re-injected
      after every render rather than added once. Wrapping the global is the same
-     approach sync.js takes with addEvent: the scorer's own code is untouched. */
+     approach sync.js takes with addEvent: the scorer's own code is untouched.
+     Each new button is drawn from the module's state, not from scratch. */
   function injectFinalise() {
     const host = document.getElementById('finalview');
     if (!host || host.querySelector('#csFinalise')) return;
@@ -1600,24 +2327,33 @@
     btn.type = 'button';
 
     const msg = document.createElement('div');
+    msg.id = 'csFinaliseMsg';
     msg.style.cssText = 'font-family:var(--f-mono);font-size:10px;line-height:1.7;text-align:center;' +
                         'color:var(--dim);padding:0 4px';
     const note = (t, c) => { msg.textContent = t; msg.style.color = c || 'var(--dim)'; };
 
-    if (!isFixture) {
+    if (!isFixture || training()) {
       btn.textContent = 'finalise to the league';
       btn.disabled = true;
-      note('This is a practice game, so there is nothing to publish. Open a real ' +
-           'fixture from the league admin page to score one that counts.');
+      note(training()
+        ? 'This is a training game, so nothing from it goes to the league.'
+        : 'This is a practice game, so there is nothing to publish. Open a real ' +
+          'fixture from the league admin page to score one that counts.');
+    } else if (S && S.finalisedAt) {
+      btn.textContent = 'finalised ✓';
+      btn.disabled = true;
+      note((finaliseNote && finaliseNote.text) || 'final — the box score is public', '#93f2bf');
     } else {
       btn.textContent = 'finalise to the league';
-      note('Publishes the box score, updates the table and the season statistics. ' +
-           'A finalised game stops accepting events.');
+      btn.disabled = finaliseBusy || readOnly;
+      if (finaliseNote) note(finaliseNote.text, finaliseNote.colour);
+      else note('Publishes the box score, updates the table and the season statistics. ' +
+                'A finalised game stops accepting events.');
       btn.onclick = () => {
+        if (finaliseBusy) return;
         if (typeof askConfirm === 'function') {
-          askConfirm('finalise this game? the log is closed afterwards',
-                     () => finaliseGame(btn, note));
-        } else finaliseGame(btn, note);
+          askConfirm('finalise this game? the log is closed afterwards', () => finaliseGame());
+        } else finaliseGame();
       };
     }
 
@@ -1675,6 +2411,17 @@
        is being kept on the phone and will publish the moment somebody answers;
        until then a phantom score from a device that may not be entitled to one is
        the worse of the two failures. The interval is left running on purpose. */
+    /* A training game is never published (see training(), above), a tab that
+       does not hold the game publishes nothing (oneTabPerGame), and a game that
+       belongs to another fixture is never published into this one. Training is
+       a state the page can leave — a real game started after it attaches — so
+       the interval keeps running through it. */
+    /* aqua, not amber: a practice game being unpublished is the point of it, not a warning — amber here
+       painted the lip as a fault for every visitor to the demo */
+    if (training() && !inBrowserOnly()) { if (!say.training) { say.training = true; say('training · not published', '#8ff5ff'); } return; }
+    say.training = false;
+    if (readOnly) return;
+    if (otherFixture()) { say('this game belongs to another fixture · not published', '#ff5f6b'); return; }
     if (unverified) return;
     clearInterval(timer);
 
@@ -1686,7 +2433,14 @@
        and the recovery route on the device was the one route the crash had
        already closed. A saved game with no fixtureId is still refused, which is
        every game recorded before today. */
-    try { if (S.fixtureId !== gameId) { S.fixtureId = gameId; window.save && window.save(); } }
+    /* ONLY A FIXTURE STAMPS, AND NEVER OVER ANOTHER FIXTURE. A scratch room used
+       to stamp its own id here too, so a league game resumed in one (which the
+       old refusal told people to do) lost the fixture it belonged to for good. */
+    try {
+      if (isFixture && !isUuid(S.fixtureId)) {
+        if (S.fixtureId !== gameId) { S.fixtureId = gameId; window.save && window.save(); }
+      }
+    }
     catch (_) { /* a game that cannot be stamped is scored anyway */ }
 
     if (!window.EpinoiaSync) { say('sync.js missing', '#ff5f6b'); return; }
@@ -1706,9 +2460,9 @@
        is not being recorded, which is worth stopping for. */
     let revokedWarned = false;
     const onRevoked = () => {
-      say('reverted by an admin · nothing is being saved', '#ff5f6b');
-      bar.style.borderColor = 'rgba(255,95,107,.7)';
-      bar.style.background = 'rgba(40,6,8,.94)';
+      paintHealth();
+      banner('ep-closed', 'This game was put back on the fixture list. Nothing scored from here ' +
+        'is published; the game is still on this phone.');
       if (revokedWarned) return;
       revokedWarned = true;
       try {
@@ -1731,9 +2485,13 @@
        up, it interrupts: at that point something is wrong that scoring on will
        not fix. */
     let writeWarned = false;
-    const onWriteFail = (err, count) => {
-      say('not saving · ' + (err && err.code ? err.code : 'write refused'), '#ff5f6b');
-      bar.style.borderColor = 'rgba(255,95,107,.7)';
+    const onWriteFail = (err, count, kind) => {
+      paintHealth();
+      /* No signal is not a refusal. The backlog holds the frames and sends them
+         in order when the hall's wifi comes back, and the bar says exactly that;
+         a modal telling the statistician the league is refusing the game would
+         be both false and in the way. */
+      if (kind === 'network') return;
       if (count < 5 || writeWarned) return;
       writeWarned = true;
       /* A REFUSAL THE STATISTICIAN CAN ACT ON.
@@ -1766,27 +2524,86 @@
       } catch (_) {}
     };
 
+    /* THE GAME WAS CLOSED, AND NOT BY THIS DEVICE. A final this device asked
+       for is the end of the job: recorded, quietly. Any other final or void —
+       0203's clean-up of a game it took for abandoned, an administrator, a second
+       device's finalise — means everything scored from here stays on this phone,
+       and that is said in a way that cannot be missed. */
+    const onClosed = status => {
+      if (status === 'final') markFinal('the league has it as final');
+      if (status === 'final' && (finaliseBusy || finalisedHere)) return;
+      const what = status === 'final' ? 'FINAL' : 'VOID';
+      banner('ep-closed', 'The league now has this game as ' + what + ', and it was not finalised from ' +
+        'this phone. Nothing scored from here is published. The game is still on this phone — ' +
+        'export the play-by-play from the final screen, or ask the league to reopen it.');
+      paintHealth();
+    };
+
+    /* The league's copy has rows this device never wrote: another device is
+       scoring this fixture. The same stop and the same choice as the takeover
+       guard, which asks the same question by count. */
+    const onForeign = (serverCount, mine) => {
+      try { window.EpinoiaSync.halt('another device is scoring'); } catch (_) {}
+      say('not publishing — another device is scoring', '#ffd166');
+      offerTakeover(serverCount, mine);
+    };
+
     try {
-      window.EpinoiaSync.attach({ gameId, mode, supabase: sb, onRevoked, onWriteFail });
-      say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
+      window.EpinoiaSync.attach({ gameId, mode, supabase: sb, onRevoked, onWriteFail, onClosed, onForeign });
+      paintHealth();
+      /* the guard may already have decided this device is the one scoring */
+      try { window.EpinoiaSync.reconcile(); } catch (_) {}
     } catch (e) {
       console.error('[bootstrap]', e);
       say('attach failed', '#ff5f6b');
     }
 
-    /* pending count is the honest health signal: if frames stop draining the
-       scorer keeps working but the viewer is behind, and that must be visible */
-    setInterval(() => {
-      const st = window.EpinoiaSync.status();
-      if (authOk === false) return;                 // already saying the real problem
-      if (st.pending > 12) {
-        /* a backlog that will not drain is a refused write, not a slow one */
-        say('live · not saved (' + st.pending + ' held)', '#ffd166');
-      } else {
-        say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
-      }
-    }, 3000);
+    /* The bar is repainted from what sync.js knows, on a slow beat as well as
+       on every failure: see paintHealth. */
+    setInterval(paintHealth, 3000);
   }, 500);
+
+  /* --------------------------------------------------------------- health ---
+     WHAT THE BAR SAYS IS WHAT IS TRUE, NOT WHAT IT WAS THREE SECONDS AGO.
+
+     The beat that repainted it said "live" whenever twelve or fewer frames were
+     held. So a halted publisher — another device scoring, the game closed, the
+     fixture reverted, this tab read-only — went back to green within three
+     seconds of saying so, and a refused write showed red only until the next
+     beat. Now, in order: stopped is red and says why; a training game says it is
+     not published; a failure stays a failure until a frame actually lands, and
+     no signal ("offline — will retry") reads differently from the database
+     saying no; only then the backlog, and only then green. */
+  function paintHealth() {
+    const S0 = window.EpinoiaSync && window.EpinoiaSync.status ? window.EpinoiaSync.status() : null;
+    if (!S0) return;
+    const red = '#ff5f6b', amber = '#ffd166', green = '#93f2bf';
+    const tone = c => {
+      bar.style.borderColor = c === green ? 'rgba(147,242,191,.30)'
+                            : c === amber ? 'rgba(255,209,102,.7)' : 'rgba(255,95,107,.7)';
+      bar.style.background = c === red ? 'rgba(40,6,8,.94)' : 'rgba(4,16,11,.92)';
+    };
+    if (S0.halted) {
+      const why = S0.haltReason || 'stopped';
+      say('not publishing · ' + why, red); tone(red); return;
+    }
+    if (training()) { say(inBrowserOnly() ? 'training · this browser only' : 'training · not published', '#8ff5ff'); tone(green); return; }
+    if (authOk === false) return;                   // already saying the real problem
+    if (S0.failing) {
+      if (S0.failKind === 'network') {
+        say('offline — will retry' + (S0.pending ? ' · ' + S0.pending + ' held' : ''), amber); tone(amber);
+      } else {
+        say('not saving · ' + (S0.failCode || 'write refused') +
+            (S0.pending ? ' · ' + S0.pending + ' held' : ''), red); tone(red);
+      }
+      return;
+    }
+    if (S0.pending > 12) {
+      /* a backlog that will not drain is a refused write, not a slow one */
+      say('live · not saved (' + S0.pending + ' held)', amber); tone(amber); return;
+    }
+    say((mode === 'local' ? 'local · ' : 'live · ') + shortId, green); tone(green);
+  }
 
   /* ------------------------------------------------------------- wire up --- */
   /* Both run after the scorer's own script has defined its globals — the
@@ -1861,7 +2678,7 @@
   function refuse(title, body) {
     /* Nothing of the scorer is left running underneath the notice: a paused
        app behind a panel is still an app, and its timers still publish. */
-    try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
+    try { window.EpinoiaSync && window.EpinoiaSync.halt('not yours to score'); } catch (_) {}
     /* the door stays shut (body.cs-shut), so this card covers a blank page rather than a
        working scorer; only the "checking" notice underneath it is replaced */
     try { const g = document.getElementById('csGate'); if (g) g.remove(); } catch (_) {}
@@ -1917,9 +2734,38 @@
   /* true / false / null, where null means the question could not be put. The
      three are genuinely different and collapsing them is what caused the fault
      described in gateScorer. */
+  /* SIGNED IN BUT UNABLE TO PROVE IT IS NOT SIGNED OUT.
+
+     An access token lasts an hour. Past that, getSession() refreshes it, and a
+     refresh needs the network — so on a hall's dead wifi a statistician who
+     signed in at six o'clock comes back from a reload at half seven with
+     getSession() answering "no session": the stored one is kept (supabase-js
+     removes it only when the server REFUSES the refresh) but not returned. That
+     answer was read as "signed out", which is a real no — the fixture was refused
+     outright, publishing halted for good, and the notice covered the saved game.
+     The same happened mid-game to a page still waiting to be verified, the
+     moment its token expired.
+
+     So a missing session is only "signed out" when nothing is stored either. A
+     stored session that could not be refreshed is "could not ask" — the third
+     answer — and the scorer runs, unpublished, until somebody can answer. */
+  function heldSession(sb) {
+    try {
+      const key = sb && sb.auth && sb.auth.storageKey;
+      const raw = key && window.localStorage ? window.localStorage.getItem(key) : null;
+      if (!raw) return false;
+      const v = JSON.parse(raw);
+      const ses = v && (v.currentSession || v);
+      return !!(ses && ses.refresh_token);
+    } catch (_) { return false; }
+  }
+  const retryable = e => !!e && (e.name === 'AuthRetryableFetchError' || e.status === 0 ||
+    /fetch|network|load failed|timed? ?out/i.test(String(e.message || '')));
+
   async function mayScoreThis(sb) {
     try {
-      const { data: { session } } = await sb.auth.getSession();
+      const { data: { session }, error: authErr } = await sb.auth.getSession();
+      if (!session && (heldSession(sb) || retryable(authErr))) return null;   // could not refresh
       if (!session) return false;                 // signed out is a real answer
       const { data, error } = await sb.rpc('may_score_game', { p_game: gameId });
       if (error) return null;
@@ -1998,6 +2844,16 @@
        loads one, so it needs the same standing the rail requires before it
        will even show the row. */
     if (await mayScoreSomething()) return true;
+    /* ...unless the question could not be put: a stored session whose token
+       could not be refreshed offline. The picker cannot load anything without
+       the network anyway, and the saved game in the bar must stay reachable. */
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session && heldSession(sb)) {
+        say('offline · not verified — scoring, not publishing', '#ffd166');
+        return true;
+      }
+    } catch (_) { /* fall through to the refusal */ }
     return refuse('Scoring is for assigned statisticians',
       'This account is not assigned to any fixture and does not administer a ' +
       'league, so there is nothing here for it to score. The practice game is ' +
@@ -2029,6 +2885,16 @@
     try { injectFixturePicker(); } catch (e) { console.warn('[picker]', e); }
     try { injectSquadPickers(); } catch (e) { console.warn('[squads]', e); }
     try { autoLoadFixture(); } catch (e) { console.warn('[fixture]', e); }
+
+    /* NO TRAINING MODE ON A REAL FIXTURE'S PAGE. It invented two squads on the
+       very address that publishes to the fixture (see training(), above). The
+       practice game has its own door, ?train=1, which publishes nothing. Typing
+       the squads by hand stays: a club with nobody registered still plays. */
+    if (isFixture) {
+      const hideTrain = () => { const t = document.getElementById('trainB'); if (t) t.style.display = 'none'; };
+      hideTrain();
+      setTimeout(hideTrain, 0);
+    }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

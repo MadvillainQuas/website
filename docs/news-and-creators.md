@@ -16,7 +16,7 @@ Both appear on the platform's **News** page, in **HOME's FEED**, on each league'
 | `news/` | Everything on the post card, **For you** (ranked on the reader's device, the default for everyone; an explicit choice is remembered under `epinoia.news.order2`) or **Newest**. Switches for Everything, Publishers, Creators, League news and Following; the ranking applies within each. A row of the publishers, and **Personalise**. |
 | `news/?s=<slug>` | A publisher's page: its head in its colours, the way to its site, a follow bell, its stories. |
 | `news/?i=<id>` | One story, where a notification lands. The publisher's colourway, the headline centred, the opening lines, and a button to read it on their site. |
-| `news/?l=<league>` | The league's own archive as before. Under it, **Around the league**: the publishers' stories about the league (its league tags) and its creators' pieces. |
+| `news/?l=<league>` | The league's own archive as before. Under it, **Around the league**: the publishers' stories about the league (its league tags), every story of the platform's sources the league picked (0209), and its creators' pieces. |
 | `creators/?l=<league>` | The league's creators as tiles, and their latest pieces. |
 | `creators/?l=&o=<outlet>` | An outlet's page: head, platforms, bell, bio. Its videos, episodes and posts play in their cards. |
 | `creators/?l=&o=&p=<piece>` | One piece in the outlet's colourway. An article, or the video / episode / post itself with its caption. |
@@ -33,6 +33,36 @@ The card uses the brand's colour, and its logo on a disc when there is no pictur
 The headline is the card's one link, and it covers the card. The league tags and the foot (the publisher's or creator's page here) are links of their own that sit above it. A link is never nested inside another.
 
 A logo ending `#fill` fills its square, and is drawn to the edge of the disc. The fetcher decides this: see `fills_square`.
+
+## A match report's card and head (`epinoia/news.js`, `kit/news.css`)
+
+A league's own news (its front page's headlines and its news page) has a card of its own. A **match report** without a cover photograph shows the result, as a broadcast puts it up:
+
+- **The halves.** Each half is one club's colour, with the halftone over it, cut on a diagonal. A club still on the default colour takes the headline's tint.
+- **The stripe.** The cut is a stripe in the league's colour. Only the league's own colour counts (`colour_source` is `logo` or `manual`); with the platform's default, the stripe is the kit's own.
+- **The crests.** Each crest sits on a white disc ringed in its club's colour, with three letters under it (`codeOf`):
+  - the short name when that is a code already (CHE);
+  - otherwise the first word that names the club, past a prefix (KK, BC, CB) or a Le / La;
+  - two clubs with the same letters use their last words instead (London Lions v London City Royals: LIO v ROY).
+- **The score.** The score sits on a black slab, with FINAL above it on the league's colour, in black or white, whichever reads better. The losing figure is dimmed.
+- **The league.** Its logo sits on a white chip above the score, where no crest can run into it however narrow the card. Without a logo, or when it does not load, the chip shows its monogram on its colour. A card seen on its own says whose game it was.
+- **The edge.** The card's edge and shadow are the winner's colour. A colour too pale for a white card gives way to the other club's, then to the tint.
+- **The flag.** *Latest* or *Pinned* is a tab on the line under the picture, at the right. In a corner of the picture it ran into a crest on a narrow card. Any other card keeps its flag on its picture.
+- **The sizes.** The crests, the score and the chip are sized by the card's own width (`cqw`; the plate is the container `mtplate`), so a wide lead and a narrow card are each in proportion.
+
+**The row.** From 1000px to 1399px, the first two cards share the first row (three of six columns each). The lead used to take three columns and the next card two, which left one column empty. From 1400px all go three across. The pictures in a row are cut alike, so they line up.
+
+**The article's head.** The article page of a report without a cover opens with the same result, wide (`plate()`):
+
+- the clubs named in full, wrapping to two lines if they must, and their codes under 560px (`@container artslot`);
+- FINAL and the day above the score (the day goes under 420px), or LIVE if the game was opened again after the report was filed;
+- a link to the box score.
+
+Its height follows its width, from 190px to 380px. A fixed phone shape and desktop shape would be wrong at some widths, because the site zooms the page (1.25 from 1000px, 1.5 from 1200px).
+
+The head's place is kept while the game is read, so the words under it do not jump. The game's row now brings each club's short name, colours and crest.
+
+The front page and the news page hand the card their league's row (`league`). The news page reads `colour_source` and `logo_path` with it. Nothing new is asked of the database.
 
 ## Adding a publisher or a creator by its link (0198)
 
@@ -69,7 +99,50 @@ The platform can name a news source or a creator outlet an **official partner**.
 - **The flag.** `news_sources.official_partner` and `creator_outlets.official_partner`, default false, set by `set_official_partner(kind, id, on)` (platform administrators only, audit-logged as `set_official_partner`). The tables stay closed (RLS on, no grant).
 - **The list.** `official_partners()` (open to everyone) returns `[{kind, slug}]` for sources that are on, and `[{kind, slug, league}]` for outlets that are active and shown (an outlet's slug is unique only within its league, so its league's slug is part of its key). The keys are `source:<slug>` and `outlet:<league>/<slug>`. Every page that shows a card asks once per page; the answer is cached for an hour.
 - **The console.** Platform console, **News** tab, **Official partners**: every source and every outlet with an *Official partner* switch. It asks before it changes anything (`official_partners_admin()`, platform administrators only, lists them).
+- **The card's key.** A card carries the key it is known by: `source:<slug>` for a publisher's story and for a creator's channel post (both are news sources), `outlet:<league>/<slug>` for an outlet's piece. `newscard.js` `fromFeed` and `feedrank.js` `pkeyOf` follow the same rule. Before 2026-10-01 a creator's channel post had no key, so it never wore the pill.
 - **The pill.** A small gold teletext block, *Official partner* (`.pc-partner`, `kit/newscard.css`), black on gold in both themes. On a card it sits on the plate at the bottom left, away from the headline and under the headline link's cover, so the card is still pressed anywhere; a card with no plate carries it in its kicker. It is also in the head of a publisher's page, a creator outlet's page and a story or piece, in the row of publishers, and on a creators' tile.
+
+## A league's content creators (0207)
+
+The platform says which leagues each creator covers. The league's Community page (`community/?l=`) then shows the newest from them, under **Content creators**.
+
+- **Assigning.** Platform console, **News** tab, **Publishers & creators for every reader**. Each source has a **COVERS** row: a chip for each league it covers (its × takes it off), and a list of the other leagues to add one. Since 0209 a publisher has one too, and a league's own console writes the same list for its own league (below).
+- **The database.**
+  - `news_sources.assigned_leagues` (`uuid[]`, empty by default).
+  - `set_news_source_leagues(id, leagues)` sends the whole list each time. Only a platform administrator can call it, and only for a source for every reader (a league's own source already belongs to its league). The leagues are kept once each, in the order given; a league that does not exist is dropped. It is audit-logged and returns what was kept.
+  - `news_sources_admin(league)` now carries `assigned_leagues`: `[{id, slug, name}]`.
+- **What the section shows** (`league_creator_feed(league, before, limit)`, open to everyone, in `news_feed`'s rows):
+  - the posts of the creators assigned to the league;
+  - the posts of the league's own creators (a source of kind *creator* that the league added itself);
+  - the pieces of the league's creator outlets, where the league shows its creators.
+
+  Never a publisher, assigned or not (switch it to a creator and it shows; the assignment is kept across the switch). Never a source that is off, a suspended outlet, a hidden piece or draft, or a league the reader may not see.
+- **The section.** The feed's post card, nine at a time, with **Show more** while there are more. The league's own tag is left off each card, and an official partner wears its pill. Nothing is played on the page: a card opens its story here (`news/?i=`, `creators/`), where a video or an episode plays. So the page's Content-Security-Policy is unchanged. The section stays away while there is nothing to show, and before 0207 is applied.
+- **Not changed by 0207.** `news_feed` and `news_feed_mine`. 0209 changes both: a source on the list reads on the league's news page as one of its own.
+
+## A league picks from the platform's list (0209)
+
+A league's administrators could only add sources of their own, by link. When the platform already read that feed, it was read twice, and every story of it showed twice in every reader's News. Now the league's console lists the platform's publishers and creators, and the league picks the ones it wants.
+
+- **Where.** League console, **Settings**, **Creators & news sources**, under the league's own sources: **From the platform's list**.
+  - The league's picks come first, each with **take off**.
+  - The rest sit behind a fold, eight at a time with **Show more**. They can be found by name or site, and narrowed to publishers or creators.
+  - A link pasted into the add box that the platform reads already (its site, its feed, or the link it was added by) is named, with a button to pick it instead.
+- **What a pick does.** The league goes into the source's `assigned_leagues`: the same list as the platform's COVERS row. Whoever put a league there, the source then reads on that league's pages as one of the league's own:
+  - every story of it under **Around the league** on the league's news page, not only the ones that name the league (`news_feed`);
+  - in the row of the league's sources there (`news_sources_public`);
+  - in the feed of everyone who follows the league (`news_feed_mine`);
+  - a creator's posts under **Content creators** on the Community page (`league_creator_feed`, as in 0207). Never a publisher's.
+
+  A story's league tags are not changed: a site that covers everything does not wear the badge of every league that picked it. Nothing new is fetched, and nobody new is notified (a source's notices go to its own followers).
+- **The database.**
+  - `news_sources_offered(league)` lists the platform's sources for a league's administrators (or the platform's). It has every source that is on, plus any the league picked that the platform has since switched off, so it can be taken off. Each row says whether the league has it (`picked`); those come first.
+  - `set_league_news_source(league, id, on)` adds or removes that one league, never another's.
+    - Only a source for every reader: a league's own source already belongs to its league.
+    - Not one the platform has switched off.
+    - Audit-logged when it changes. Returns whether the league has it now.
+  - `news_feed`, `news_feed_mine` and `news_sources_public` are 0198's, with one condition each, tagged `-- 0209`. Same signatures and grants.
+- **One list, two hands.** The platform's COVERS row sends the whole list, so a league it leaves out is off. A league can take off a source the platform gave it: the league's pages are the league's. The source itself stays the platform's, its feed read once and looked after there.
 
 ## The ranked feed (`epinoia/feedrank.js`)
 
@@ -213,11 +286,14 @@ A publisher's articles arrive every half hour. An administrator who does not wan
 - `supabase/tests/creator-hub.test.mjs`: the creator hub and 0200 (`docs/creator-hub.md`).
 - `scripts/news/fetch_feeds_test.py`: the reader, and finding the feed behind a link.
 - `supabase/tests/newscard.test.mjs`: the card, the pill, the "why" line and the pages' wiring.
+- `supabase/tests/match-plate.test.mjs`: a league's match report card and its article's head (the letters, the league's colour and logo, the score, the card's colour, the wiring).
 - `supabase/tests/official-partners.test.mjs`: 0201 on PGlite (who may name a partner, what the list carries).
 - `supabase/tests/game-significance.test.mjs`: 0202 on PGlite (the points and the reasons for a game).
 - `supabase/tests/feedrank.test.mjs`: the ranking, the learning, the storage, and that nothing about the reader is sent.
 - `supabase/tests/news-languages.test.mjs`: 0204 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
 - `supabase/tests/partners-ui.test.mjs`: the console's Official partner switches.
+- `supabase/tests/league-creators.test.mjs`: 0207 on PGlite (who may assign, what the Community page's section shows), the console's COVERS row, the section on a stand-in page, and a creator's channel wearing its pill.
+- `supabase/tests/league-picks.test.mjs`: 0209. On PGlite: who may pick for which league, and where a pick shows. On a stand-in page: the league console's list, and a pasted link the platform reads already. Also that 0209's three readers are 0198's but for the one condition.
 - `supabase/tests/news-refresh.test.mjs`: the `news-refresh` function on a fake database and network: the parser held to the Python's fixtures, the address guard, who may call, the rate limits, the audit rows, idempotence.
 - `supabase/tests/news-refresh-ui.test.mjs`: the **Load now** button: its words, the console's rows, who is shown it, the function missing.
 

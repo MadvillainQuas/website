@@ -1067,7 +1067,7 @@ No file belongs to two packages; WP6's `stamp-assets.py --bump` rewrites `?v=` e
 
 ### A.0 Migration number
 `main` already has `0207_league_creators.sql` and `0208_scorer_reliability.sql`. The What wins migration is the **next free
-number at build time** (today `0209_what_wins.sql`): every reference to `0207_what_wins.sql` in this spec means that file.
+number at build time** (today `0211_what_wins.sql`; main took 0209 and 0210 first): every reference to `0207_what_wins.sql` in this spec means that file.
 Check `git fetch origin main && git ls-tree --name-only origin/main supabase/migrations/ | tail -3` before naming it.
 
 ### A.1 Positions by the floor (user requirement, overrides §7.12's 40/40/20 cut where stints exist)
@@ -1136,7 +1136,7 @@ button with a loading bar":
 | Piece | File(s) |
 |---|---|
 | Feature line (FV 1) | `epinoia/features.js` (+ generated `supabase/functions/_shared/features.js`) |
-| Migration | `supabase/migrations/0209_what_wins.sql` (A.0: `main` has 0207_league_creators and 0208_scorer_reliability) |
+| Migration | `supabase/migrations/0211_what_wins.sql` (A.0: `main` has 0207-0210 (league_creators, scorer_reliability, league_picks_sources, scouts)) |
 | Writing the line | `supabase/functions/finalise-game/index.ts`, `scripts/backfill_features.mjs`, `.github/workflows/backfill-features.yml` |
 | Delivery | `supabase/functions/_shared/analyticsfile.ts` (pure `handle`), `supabase/functions/analytics-file/index.ts`, `epinoia/winfile.js` |
 | Statistics, simulator | `epinoia/winstats.js`, `epinoia/winsim.js`, `epinoia/winsim.worker.js` |
@@ -1280,7 +1280,7 @@ Feature line: 481 games in 9 leagues replayed with no score or half mismatch; fu
 
 ### B.3 What the owner has to do (runbook §17, as built)
 1. Finish the events-splits move (`premium_sit_remaining()` = 0); check and redeploy the snapshots function.
-2. `npx supabase db push` (0209_what_wins.sql).
+2. `npx supabase db push` (0211_what_wins.sql).
 3. `npx supabase functions deploy finalise-game`; `npx supabase functions deploy analytics-file --no-verify-jwt`; the function
    secret `ANALYTICS_SALT`. Optional: `ANALYTICS_REFRESH_BUDGET_MS` (default 20000), `ALLOWED_ORIGIN`.
 4. Actions → backfill-features: the dry run (the default), then a real run, until `game_features_missing(1)` is empty.

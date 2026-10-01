@@ -7,7 +7,8 @@
   I.register('es', {
     phrases: {
       /* a league's Community page (community/) */
-      'Talk': 'Charla',
+      'Forum': 'Foro',
+      'Content creators': 'Creadores de contenido',
       'In the stands': 'En la grada',
       'Furthest travelled': 'Los que más han viajado',
       'At the game?': '¿Estás en el partido?',

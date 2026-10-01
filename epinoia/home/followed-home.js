@@ -6,9 +6,14 @@
    global fixtures page uses (details.ep-acc, kit/epinoia-kit.css 10b), each
    opening on three rows:
 
-     Recent results   the last three, as fixture cards
-     Coming up        the next three, as fixture cards
+     Recent results   the last four, as fixture cards
+     Coming up        the next four, as fixture cards
      Best this week   the three best players in that league or club this week
+
+   FOUR GAMES A ROW, because the row is four cards wide on a desktop (kit/fxc.css
+   gives each card in HOME's .fxc-grid a quarter of the row): three left a
+   quarter of it empty. On a phone the grid is two across, so four is two even
+   rows where three left one card on its own.
 
    The summary carries the league's badge or the club's name and a link through
    to its page, so the row both opens and directs.
@@ -36,8 +41,8 @@
   const H = window.EpinoiaHome;
   if (!H) return;
 
-  const N = 3;
-  /* far enough back that a league playing once a week still has three results */
+  const N = 4;
+  /* far enough back that a league playing once a week still has four results */
   const RESULT_DAYS = 24;
   const DAY = 86400000;
 

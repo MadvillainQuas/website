@@ -32,14 +32,59 @@ let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '', sb 
     lastScorePub = '', scoreConfirmedLive = false, onRevoked = null;
 
 /* Publishing stops dead when this is set, and never restarts. See halt(). */
-let halted = false;
-let onWriteFail = null;
+let halted = false, haltReason = null;
+let onWriteFail = null, onClosed = null, onForeign = null;
 let writeFails = 0;
+
+/* WHAT THE LAST WRITE SAID, kept until a later one says otherwise.
+
+   The bar used to be repainted green every three seconds unless more than twelve
+   frames were held, so a refusal showed for at most three seconds and a halted
+   publisher showed "live" for ever. The state lives here, where the answers
+   arrive: a failure stays a failure until a frame actually lands. */
+let failing = false, failKind = null, failCode = null, failMsg = null;
+
+/* A refusal is the database answering; a network failure is nobody answering.
+   They need different words on the bar — "will retry" is true of one and a lie
+   about the other — and only a refusal is worth interrupting a game for.
+   PostgREST reports a transport failure as an error with no code and the fetch's
+   own message ("TypeError: Failed to fetch", "AbortError" from the deadline in
+   config.js, "Load failed" on Safari). */
+function isNetworkError(err) {
+  try { if (typeof navigator !== 'undefined' && navigator.onLine === false) return true; } catch (_) {}
+  if (!err) return false;
+  const code = String(err.code || '');
+  if (code && !/^(ECONN|ETIMEDOUT|ENOTFOUND)/.test(code)) return false;   // the database spoke
+  const msg = String(err.message || err) + ' ' + String(err.details || '');
+  return /failed to fetch|networkerror|network request failed|load failed|abort|timed? ?out|fetch/i.test(msg) ||
+         err.name === 'TypeError' || err.name === 'AbortError';
+}
 const timers = [];      // every interval this module owns, so halt() can end them all
 
 /* Only a real fixture has a row to patch — a scratch/training game has no
    uuid and nothing in the games table, so there is nothing to write. */
 const GAME_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/* NOTHING GOES OUT WHILE THIS GAME IS NOT THE PAGE'S TO PUBLISH, FOR NOW.
+
+   halt() is for good. These two are not: a training game is a state the page can
+   leave (a real game started after it is publishable), and a tab that does not
+   hold the game (bootstrap.js, the tab lock) is told so by the page. Both used to
+   be possible on a real fixture's address and both published — a practice squad
+   onto a real fixture, a stale tab's score over the live one.
+
+   ONE TRAINING GAME DOES GO OUT, AS FAR AS THIS BROWSER: a scratch room (no uuid,
+   so no row anywhere) on the local transport, which is BroadcastChannel and
+   reaches this browser's other tabs and nothing else. That is the ?train=1 demo,
+   whose watch tab is how a newcomer sees what a viewer would. Every path here
+   that touches the database also needs a uuid, so none of them can run for it. */
+const inBrowserOnly = () => mode0 === 'local' && !GAME_UUID.test(gameId || '');
+function quiet() {
+  if (halted) return true;
+  try { if (root.epReadOnly) return true; } catch (_) {}
+  try { if (typeof S !== 'undefined' && S && S.training && !inBrowserOnly()) return true; } catch (_) {}
+  return false;
+}
 
 /* the scorer's own state object, published so viewers can name players */
 function rosterOf(S) {
@@ -110,6 +155,7 @@ let snapPass = 0, healing = false;
    ============================================================================ */
 async function healDurable(S) {
   if (healing || halted || !pub || !sb || !gameId) return;
+  if (quiet()) return;
   const mine = (S.events || []).length;
   if (!mine) return;
   healing = true;
@@ -143,7 +189,7 @@ async function healDurable(S) {
    rest of the game, while the scorer's own screen corrected itself at once,
    which is exactly what made it invisible from the table. */
 function drain(S) {
-  if (!pub || halted) return;
+  if (!pub || quiet()) return;
   const d = root.EpinoiaLive.diffLog(sentIds, S.events || []);
   if (!d.added.length && !d.removed.length) return;
   pub.pushEvents(d.added.map(e => Object.assign({ seq: e.id }, e)), d.removed);
@@ -153,7 +199,7 @@ function drain(S) {
 /* the roster can change (a sub-in of a player added mid-game), so re-publish
    it only when it actually differs — cheap, and keeps late joiners correct */
 function maybeRoster(S) {
-  if (!pub || halted) return;
+  if (!pub || quiet()) return;
   const r = rosterOf(S);
   const sig = JSON.stringify(r);
   if (sig === lastPub) return;
@@ -222,8 +268,14 @@ async function loadScope() {
   } catch (_) { /* without it every listener falls back to reloading, as before */ }
 }
 
+/* ONLY A FIXTURE, ON THE LEAGUE'S TRANSPORT. A scratch room has no row for a
+   listener to re-read and no slugs to scope it, so it reached every strip on the
+   platform as an unscoped "reload" — the herd above, for a game nobody can see.
+   sb is set on a local page too (attach falls back to the page's client), which is
+   why the transport is asked as well as the id. */
 function announce(status) {
   if (!sb || halted || !gameId || status === announced) return;
+  if (mode0 !== 'supabase' || !GAME_UUID.test(gameId)) return;
   announced = status;
   loadScope();                       // fire and forget; the next one carries it
   try {
@@ -264,7 +316,7 @@ function announce(status) {
    is overwritten, and a caller who was matching rows a moment ago and now
    is not gets told about it through onRevoked, once, not on every tick. */
 function maybeScore(S) {
-  if (!sb || !gameId || halted || !GAME_UUID.test(gameId)) return;
+  if (!sb || !gameId || quiet() || !GAME_UUID.test(gameId)) return;
   const d = (typeof derive === 'function') ? derive() : null;
   if (!d) return;
   const sig = d.score[0] + '-' + d.score[1];
@@ -316,12 +368,29 @@ function watchStatus() {
       .then(({ data, error }) => {
         if (error) return;                 // a blip is not a verdict
         if (data && data.status === 'live') { armed = true; return; }
-        if (!armed) return;                // never been live: still pre-tip
+        /* FINALISING IS "WAIT", NOT "GONE". finalise-game takes the game to
+           'finalising' while it rebuilds the box score and only then to 'final'.
+           Treated as a revert, a poll that landed in that window — this
+           device's own finalise among them — stopped publishing for good and
+           told the statistician an administrator had put the game back on the
+           listing. If the finalise fails the game returns to live and nothing
+           here has stopped; if it succeeds the next poll sees final. */
+        if (data && data.status === 'finalising') return;
+        /* FINAL OR VOID IS NEVER A PRE-TIP STATE, so it does not wait for the
+           watchdog to be armed: a device that comes back from an outage to a game
+           the platform has since closed (0203's close_stuck_games, an
+           administrator, another device's finalise) must stop at once rather
+           than have every write refused one at a time. And it is no longer
+           silent. Stopping quietly was right only when THIS device had
+           finalised; when it had not, the statistician went on scoring into a
+           closed game under a green bar. bootstrap.js decides which it was. */
         if (data && (data.status === 'final' || data.status === 'void')) {
-          halt();                          // finalised elsewhere; stop, quietly
+          halt('the league has this game as ' + data.status);
+          if (typeof onClosed === 'function') { try { onClosed(data.status); } catch (_) {} }
           return;
         }
-        halt();
+        if (!armed) return;                // never been live: still pre-tip
+        halt(data ? 'put back on the listing' : 'the fixture is gone');
         if (typeof onRevoked === 'function') onRevoked();
       });
   }, 8000));
@@ -331,15 +400,195 @@ function watchStatus() {
    write to. Every interval this module owns is cleared and the publisher's own
    heartbeat is stopped, so nothing here touches the database again — the
    statistician's screen keeps working exactly as it did, because the scorer's
-   state is local and this only ever mirrored it outward. */
-function halt() {
+   state is local and this only ever mirrored it outward.
+
+   The reason is kept, because the bar has to say WHY nothing is being published:
+   "another device is scoring" and "the game is final" ask for different things
+   from the person holding the phone. */
+function halt(reason) {
   if (halted) return;
   halted = true;
+  haltReason = (typeof reason === 'string' && reason) ? reason : 'stopped';
   timers.forEach(t => clearInterval(t));
   timers.length = 0;
   try { if (pub && pub.stop) pub.stop(); } catch (_) {}
-  console.warn('[sync] halted — this game is no longer live; nothing further is being saved');
+  console.warn('[sync] halted (' + haltReason + ') — nothing further is being saved');
 }
+
+/* ============================================================================
+   MAKING THE LEAGUE'S COPY AGREE WITH THE PHONE, BY CONTENT.
+
+   A fresh attach has always assumed the server's log is a prefix of the phone's:
+   sentIds starts empty, the whole log goes out with ignoreDuplicates, and every
+   row the server already holds is kept as it is. That is true until a correction
+   is lost — an undo, a delete, an edit, queued in the in-memory backlog when the
+   tab died. Then the server keeps the undone basket and the scorer before the
+   edit, the count says nothing is wrong (an edit does not change a count, an undo
+   plus a new play does not either), and finalise publishes the box score the
+   statistician corrected an hour ago.
+
+   So on attach, once the takeover guard has decided this device is the one
+   scoring, the rows are read back and compared row by row in the canonical shape
+   live.js writes them in (durableRow / rowKey). A server row this device does not
+   have, or has differently, is retracted; this device's version is sent in its
+   place. One frame, through the ordinary ordered publisher, so it cannot overtake
+   or be overtaken by a tap.
+
+   A ROW THIS DEVICE NEVER WROTE IS NOT THIS DEVICE'S TO DELETE. Ids come from
+   S.evSeq, which only ever counts up and is saved with the game, so a server row
+   whose seq is past it was written by something else — another device scoring the
+   same fixture. That is the takeover guard's question, not a repair: nothing is
+   sent and onForeign is told. (Two devices whose ids overlap cannot be told apart
+   by this; that needs the writer lease in docs/outstanding.md #27.)
+   ============================================================================ */
+let reconciled = false, reconcileArmed = false, reconciling = null;
+
+async function readDurable() {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from('game_events')
+      .select('seq,t,team,pid,period,clock,payload')
+      .eq('game_id', gameId).order('seq').range(from, from + 999);
+    if (error) throw new Error(error.message || String(error));
+    rows.push(...(data || []));
+    if (!data || data.length < 1000) return rows;
+  }
+}
+
+function planReconcile(serverRows, localEvents, evSeq) {
+  const L = root.EpinoiaLive;
+  const mine = new Map();
+  (localEvents || []).forEach(e => {
+    const row = L.durableRow(Object.assign({ seq: e.id }, e));
+    mine.set(row.seq, { ev: e, key: L.rowKey(row) });
+  });
+  const theirs = new Map();
+  (serverRows || []).forEach(r => theirs.set(+r.seq, L.rowKey(r)));
+  const high = Math.max(evSeq || 0, ...[...mine.keys()].map(Number), 0);
+  const foreign = [...theirs.keys()].filter(q => q > high);
+  const removed = [], added = [];
+  theirs.forEach((key, q) => {
+    const m = mine.get(q);
+    if (q > high) return;                       // never ours to retract
+    if (!m || m.key !== key) removed.push(q);
+  });
+  mine.forEach((m, q) => {
+    if (theirs.get(q) !== m.key) added.push(Object.assign({ seq: m.ev.id }, m.ev));
+  });
+  return { removed, added, foreign };
+}
+
+/* force: run even before the guard has armed it (finalise and reopen ask for a
+   repair directly). wait: resolve only once the repair frame has been delivered
+   — or refused — so a caller can compare digests straight afterwards. */
+function reconcile(opts) {
+  const o = opts || {};
+  if (reconciling) return reconciling;
+  if (!pub || !sb || !gameId || !GAME_UUID.test(gameId)) return Promise.resolve({ ok: false, why: 'not publishing' });
+  if (quiet()) return Promise.resolve({ ok: false, why: 'not publishing' });
+  if (!o.force && !reconcileArmed) return Promise.resolve({ ok: false, why: 'not armed' });
+  reconciling = (async () => {
+    try {
+      const S0 = (typeof S !== 'undefined') ? S : null;
+      if (!S0) return { ok: false, why: 'no game' };
+      const rows = await readDurable();
+      const plan = planReconcile(rows, S0.events || [], S0.evSeq);
+      if (plan.foreign.length) {
+        if (typeof onForeign === 'function') {
+          try { onForeign(rows.length, (S0.events || []).length, plan.foreign.length); } catch (_) {}
+        }
+        return { ok: false, why: 'foreign', foreign: plan.foreign.length };
+      }
+      if (plan.removed.length || plan.added.length) {
+        console.warn('[sync] the league copy differs: retracting ' + plan.removed.length +
+                     ', sending ' + plan.added.length);
+        pub.pushEvents(plan.added, plan.removed);
+      }
+      if (o.wait) await pub.flushNow();
+      reconciled = true;
+      return { ok: true, removed: plan.removed.length, added: plan.added.length };
+    } catch (e) {
+      return { ok: false, why: String((e && e.message) || e) };
+    } finally {
+      reconciling = null;
+    }
+  })();
+  return reconciling;
+}
+
+/* The loops attach() starts, and restart() starts again after a reopen. */
+function startLoops() {
+  /* --- a clock adjustment or an edit does not go through addEvent, so poll
+         cheaply for divergence; this is a safety net, not the main path --- */
+  timers.push(setInterval(() => {
+    if (quiet()) return;
+    try {
+      drain(S);
+      maybeRoster(S);
+      maybeScore(S);
+    } catch (e) { /* never let sync break scoring */ }
+  }, 2000));
+
+  /* A full snapshot on a slow beat, so anyone watching has the whole game
+     whether or not they were watching when it happened — and whether or not
+     anything is being written to the database. This is the public viewer's
+     guarantee: no credentials, no table read, no luck about when they
+     opened the page. Ten seconds is chosen to be cheap: an 800-event game
+     is ~80 KB, and the delta frames in between keep the page live to the
+     quarter-second regardless. */
+  timers.push(setInterval(() => {
+    if (quiet()) return;
+    try {
+      if (!S || !S.events || !S.events.length) return;
+      pub.pushSnapshot(S.events.map(e => Object.assign({ seq: e.id }, e)),
+                       stateOf(S), rosterOf(S));
+      /* Once a minute, not every pass: see healDurable. A reconcile that could
+         not read the log (no signal at attach) is tried again on the same beat. */
+      if ((++snapPass % 6) === 0) healDurable(S);
+      if (snapPass % 6 === 0 && reconcileArmed && !reconciled) reconcile();
+    } catch (e) { /* never let sync break scoring */ }
+  }, 10000));
+
+  watchStatus();
+}
+
+function makePublisher(mode) {
+  return root.EpinoiaLive.publisher({
+    gameId, mode, supabase: sb,
+    stateProvider: () => stateOf(S),     // every frame carries the real clock
+    paused: quiet,
+    /* THE DURABLE LOG FAILING IS NOT A DETAIL TO LOG AND MOVE ON FROM.
+
+       A refused write used to be invisible: the broadcast still went out, so
+       the public box score looked perfect and kept updating, while the table
+       behind it took nothing. A full game was scored that way and the loss
+       was only discovered at the final whistle, when finalise refused to
+       close a game the server could not reproduce — by which point the only
+       copy of the game was in one browser tab.
+
+       So the scorer is told the first time it happens, and told again if it
+       is still failing a while later. The frame itself is retried from the
+       backlog regardless; this is about the statistician knowing. */
+    onError: (err) => {
+      writeFails++;
+      failing = true;
+      failKind = isNetworkError(err) ? 'network' : 'refused';
+      failCode = (err && err.code) || null;
+      failMsg = String((err && (err.message || err)) || '');
+      if (typeof onWriteFail === 'function') {
+        try { onWriteFail(err, writeFails, failKind); } catch (_) {}
+      }
+    },
+    /* ...and told when it is over. The count starts again, so five blips spread
+       over a game are not the "keeps failing" that interrupts somebody. */
+    onDelivered: () => {
+      writeFails = 0;
+      failing = false; failKind = null; failCode = null; failMsg = null;
+    }
+  });
+}
+
+let mode0 = 'local';
 
 const api = {
   attach(opts) {
@@ -357,33 +606,15 @@ const api = {
 
     gameId = opts.gameId;
     const mode = opts.mode || (root.epinoiaMode ? root.epinoiaMode() : 'local');
+    mode0 = mode;
     sb = opts.supabase || (root.epinoiaClient ? root.epinoiaClient() : null);
     onRevoked = opts.onRevoked || null;
+    onClosed = opts.onClosed || null;
+    onForeign = opts.onForeign || null;
 
     onWriteFail = opts.onWriteFail || null;
 
-    pub = root.EpinoiaLive.publisher({
-      gameId, mode, supabase: sb,
-      stateProvider: () => stateOf(S),     // every frame carries the real clock
-      /* THE DURABLE LOG FAILING IS NOT A DETAIL TO LOG AND MOVE ON FROM.
-
-         A refused write used to be invisible: the broadcast still went out, so
-         the public box score looked perfect and kept updating, while the table
-         behind it took nothing. A full game was scored that way and the loss
-         was only discovered at the final whistle, when finalise refused to
-         close a game the server could not reproduce — by which point the only
-         copy of the game was in one browser tab.
-
-         So the scorer is told the first time it happens, and told again if it
-         is still failing a while later. The frame itself is retried from the
-         backlog regardless; this is about the statistician knowing. */
-      onError: (err) => {
-        writeFails++;
-        if (typeof onWriteFail === 'function') {
-          try { onWriteFail(err, writeFails); } catch (_) {}
-        }
-      }
-    });
+    pub = makePublisher(mode);
 
     /* --- wrap addEvent: the single funnel every stat passes through --- */
     if (typeof root.addEvent === 'function') {
@@ -401,42 +632,13 @@ const api = {
       const inner = root[fn];
       root[fn] = function () {
         const r = inner.apply(this, arguments);
-        if (halted) return r;
+        if (quiet()) return r;
         try { pub.pushState(stateOf(S)); } catch (e) { console.warn('[sync]', e); }
         return r;
       };
     });
 
-    /* --- a clock adjustment or an edit does not go through addEvent, so poll
-           cheaply for divergence; this is a safety net, not the main path --- */
-    timers.push(setInterval(() => {
-      if (halted) return;
-      try {
-        drain(S);
-        maybeRoster(S);
-        maybeScore(S);
-      } catch (e) { /* never let sync break scoring */ }
-    }, 2000));
-
-    /* A full snapshot on a slow beat, so anyone watching has the whole game
-       whether or not they were watching when it happened — and whether or not
-       anything is being written to the database. This is the public viewer's
-       guarantee: no credentials, no table read, no luck about when they
-       opened the page. Ten seconds is chosen to be cheap: an 800-event game
-       is ~80 KB, and the delta frames in between keep the page live to the
-       quarter-second regardless. */
-    timers.push(setInterval(() => {
-      if (halted) return;
-      try {
-        if (!S || !S.events || !S.events.length) return;
-        pub.pushSnapshot(S.events.map(e => Object.assign({ seq: e.id }, e)),
-                         stateOf(S), rosterOf(S));
-        /* Once a minute, not every pass: see healDurable. */
-        if ((++snapPass % 6) === 0) healDurable(S);
-      } catch (e) { /* never let sync break scoring */ }
-    }, 10000));
-
-    watchStatus();
+    startLoops();
 
     maybeRoster(S);
     drain(S);
@@ -450,11 +652,21 @@ const api = {
      A halted tab has nothing legitimate left to flush — the game is not this
      tab's any more, and pagehide firing a last write into it is exactly the
      resurrection halt() exists to prevent. */
-  flush() { if (pub && !halted) pub.flushNow(); },
+  flush() { if (pub && !quiet()) pub.flushNow(); },
+
+  /* Everything queued, sent, and the answer awaited — or the time is up. True
+     when nothing is left held, which is what finalise needs to know before it
+     compares its digest with the league's. */
+  async settle(ms) {
+    if (!pub || quiet()) return false;
+    const done = pub.flushNow();
+    await Promise.race([done, new Promise(r => setTimeout(r, ms || 8000))]);
+    return pub.pending() === 0;
+  },
 
   /* mark the game final and push a last frame */
   finalise() {
-    if (!pub || halted) return;
+    if (!pub || quiet()) return;
     try {
       lastPub = '';                          // force a roster republish with status:final
       maybeRoster(S);
@@ -462,11 +674,57 @@ const api = {
     } catch (e) { console.warn('[sync]', e); }
   },
 
+  reconcile,
+  /* The takeover guard has decided this device is the one scoring the game, so a
+     repair may now retract rows from the league's copy. */
+  armReconcile() { reconcileArmed = true; return reconcile(); },
+
+  /* What finalise-game must find, in the shape it computes it: the count and the
+     digest of the log as this device holds it. */
+  expectation() {
+    const L = root.EpinoiaLive;
+    const evs = (typeof S !== 'undefined' && S && S.events) || [];
+    const d = L.logDigest(evs.map(e => L.durableRow(Object.assign({ seq: e.id }, e))));
+    const dv = (typeof derive === 'function') ? (function () { try { return derive(); } catch (_) { return null; } }()) : null;
+    return { events: d.events, digest: d.digest, score: dv ? dv.score.slice() : null };
+  },
+
+  /* PUBLISHING AGAIN, AFTER A REOPEN.
+
+     halt() is deliberately one-way within a game's life: nothing that stopped
+     publishing can be argued back into it by the network. A reopen is the one
+     exception, and it is an explicit act by somebody allowed to make it — the
+     league has turned a final game back into a live one. So a fresh publisher,
+     fresh loops, sentIds from nothing (the reconcile below brings the league's
+     copy into line rather than trusting it), and the watchdog armed again from
+     scratch. Not used for anything else. */
+  restart() {
+    if (!attached) return false;
+    timers.forEach(t => clearInterval(t));
+    timers.length = 0;
+    try { if (pub && pub.stop) pub.stop(); } catch (_) {}
+    halted = false; haltReason = null;
+    sentIds = []; lastPub = ''; lastScorePub = ''; scoreConfirmedLive = false;
+    announced = null; reconciled = false; reconcileArmed = true;
+    writeFails = 0; failing = false; failKind = null; failCode = null; failMsg = null;
+    pub = makePublisher(mode0);
+    startLoops();
+    maybeRoster(S);
+    drain(S);
+    maybeScore(S);
+    reconcile();
+    console.log('[sync] publishing again to game', gameId);
+    return true;
+  },
+
   /* the scorer's own escape hatch, and what the watchdog calls */
   halt,
   get halted() { return halted; },
 
-  status() { return { gameId, sent: sentIds.length, halted,
+  status() { return { gameId, sent: sentIds.length, halted, haltReason, attached,
+                      quiet: quiet(),
+                      failing, failKind, failCode, failMsg, writeFails,
+                      reconciled,
                       pending: pub ? pub.pending() : 0, transport: pub && pub.transport }; }
 };
 
@@ -474,6 +732,10 @@ if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => api.flush());
   window.addEventListener('beforeunload', () => api.flush());
 }
+
+/* For the tests: the comparison itself, with no network in front of it. */
+api._planReconcile = planReconcile;
+api._isNetworkError = isNetworkError;
 
 return api;
 }));

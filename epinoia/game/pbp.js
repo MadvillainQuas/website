@@ -159,6 +159,9 @@ function actionParts(ev, stype, tags) {
     case 'p3_made': return { lead: '3PT', verb: 'made', bits: st.concat(tg), pts: 3 };
     case 'p2_miss': return { lead: '2PT', verb: 'missed', bits: st.concat(tg) };
     case 'p3_miss': return { lead: '3PT', verb: 'missed', bits: st.concat(tg) };
+    /* a missed shot the shooter was fouled on: no attempt, but it happened (engine.js pbpLine) */
+    case 'p2_fouled': return { lead: '2PT', verb: 'missed', bits: ['fouled'].concat(st, tg) };
+    case 'p3_fouled': return { lead: '3PT', verb: 'missed', bits: ['fouled'].concat(st, tg) };
     case 'ft_made': return { lead: 'Free throw', verb: 'made', bits: [], pts: 1 };
     case 'ft_miss': return { lead: 'Free throw', verb: 'missed', bits: [] };
     case 'reb':     return { lead: ev.off ? 'Offensive rebound' : 'Defensive rebound', bits: ev.pid ? [] : ['team'] };
@@ -226,7 +229,7 @@ function face(ctx, pid, team, small) {
 }
 
 function whoHTML(ctx, ev) {
-  const pid = ev.t === 'sub' ? ev.in : ev.pid;
+  const pid = ev.t === 'sub' ? (ev.in || ev.out) : ev.pid;
   const who = pid && ctx.pm[pid];
   if (!who) return '<b class="pb-who" translate="no">' + esc((ctx.S.teams[ev.team] || {}).name || '') + '</b>';
   return '<a class="pb-who" translate="no" href="../p/?p=' + encodeURIComponent(pid) + '">' + esc(who.p.name) + '</a>';
@@ -240,7 +243,9 @@ function lineHTML(ctx, ev, role) {
     a.bits.map(b => '<span class="pb-bit">' + esc(b) + '</span>').join('');
   if (ev.t === 'sub') {
     const out = ev.out && ctx.pm[ev.out];
-    what = '<span class="pb-lead">in</span>' + (out ? ' <span class="pb-bit">for</span> <span class="pb-bit" translate="no">' + esc(out.p.name) + '</span>' : '');
+    /* a team that ran out of players: he goes off and nobody comes on (in: null) */
+    if (ev.in == null && out) what = '<span class="pb-lead">off</span> <span class="pb-bit">no substitute</span>';
+    else what = '<span class="pb-lead">in</span>' + (out ? ' <span class="pb-bit">for</span> <span class="pb-bit" translate="no">' + esc(out.p.name) + '</span>' : '');
   }
   if (ev.t === 'foul' && ev.drawn && ctx.pm[ev.drawn]) {
     what += ' <span class="pb-bit">on</span> <span class="pb-bit" translate="no">' + esc(ctx.pm[ev.drawn].p.name) + '</span>';
@@ -311,7 +316,7 @@ function cardHTML(ctx, g) {
   const loc = kind === 'slim' ? null : locOf(ctx, g);
   const a = actionParts(ev);
   const scored = a.pts && /made$/.test(ev.t);
-  const rows = '<div class="pb-row pb-first">' + face(ctx, ev.t === 'sub' ? ev.in : ev.pid, team, kind === 'slim') + lineHTML(ctx, ev) + '</div>' +
+  const rows = '<div class="pb-row pb-first">' + face(ctx, ev.t === 'sub' ? (ev.in || ev.out) : ev.pid, team, kind === 'slim') + lineHTML(ctx, ev) + '</div>' +
     g.extras.map(x => '<div class="pb-row pb-second">' + face(ctx, x.ev.pid, x.ev.team != null ? x.ev.team : team, true) +
       lineHTML(ctx, x.ev, x.role) + '</div>').join('');
   return '<div class="pb-card k-' + kind + (double ? ' double' : '') + (scored ? ' scored' : '') + '" data-key="' + esc(g.key) +

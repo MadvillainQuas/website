@@ -1,4 +1,4 @@
-// WHAT WINS 2 — THE GATE (migration 0209_what_wins.sql; docs/what-wins-model.md §5, §10, A.2) on a real Postgres
+// WHAT WINS 2 — THE GATE (migration 0211_what_wins.sql; docs/what-wins-model.md §5, §10, A.2) on a real Postgres
 // (PGlite; skipped with a note when it is not installed). The migration is loaded on stand-ins for what it calls, as
 // front-office.test.mjs does: auth.uid(), storage.buckets / storage.objects, platform_settings, the leagues chain, and
 // 0117's memberships_enabled / can_use_analytics / can_view_league / is_league_admin / access_analytics_configured,

@@ -190,6 +190,100 @@
   .su-size{flex:1 0 100%;font-size:13px}
   .su-load{min-width:110px}
 }
+/* ------------------------------------------------------------ IMPORTS (0210) ---
+   The switch under the head (drawn only for a scout), and the Imports section (scouting/imports.js): the
+   files, the filters, the table. The table is kit/table.css's table.ft; only what is new to it is here. */
+.sc-tabs{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+.sc-tabs[hidden]{display:none}
+/* Imports open: the leagues' sections step away, and leave ON THIS PAGE with them */
+.ep-frame.sc.sc-ix > #setup, .ep-frame.sc.sc-ix > #results{display:none}
+
+.ix{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.ix>*{min-width:0}
+.ix-say{margin:0 auto;max-width:900px;min-height:1.4em;padding:0 calc(var(--u)*3);text-align:center;
+  font-family:var(--f-ui);font-size:13px;color:var(--ink-3)}
+.ix-say.ok{color:var(--good)}
+.ix-say.err{color:var(--flare)}
+
+/* the drop zone: a dashed box, all of it the file picker */
+.ix-drop{position:relative;display:grid;gap:4px;justify-items:center;text-align:center;padding:calc(var(--u)*3) calc(var(--u)*2);
+  border:1px dashed var(--rule-2);background:color-mix(in oklch,var(--panel) 60%,transparent);cursor:pointer;
+  transition:border-color .12s,background .12s}
+.ix-drop:hover,.ix-drop.on,.ix-drop:focus-within{border-color:var(--lume);background:color-mix(in oklch,var(--lume) 8%,var(--panel))}
+.ix-file{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.ix-drop-t{font-family:var(--f-ui);font-weight:700;font-size:15px;color:var(--ink)}
+.ix-drop-s{max-width:62ch;font-family:var(--f-micro);font-size:9.5px;line-height:1.7;letter-spacing:.06em;color:var(--ink-3)}
+/* once there are files, the drop zone is one line: "+ add more files" */
+.ix-drop.small{padding:10px 14px;justify-self:center;min-width:min(100%,320px)}
+.ix-drop.small .ix-drop-t{font-size:13px;color:var(--lume)}
+.ix-drop.small .ix-drop-s{display:none}
+
+/* the files: a chip each, its × to take it out */
+.ix-files{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.ix-files:empty{display:none}
+.ix-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:3px 4px 3px 10px;border:1px solid var(--rule-2);
+  border-radius:999px;font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
+.ix-chip b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;color:var(--ink)}
+.ix-chip span{white-space:nowrap;font-family:var(--f-micro);font-size:9px;letter-spacing:.05em;color:var(--ink-3)}
+.ix-x{padding:2px 7px;border:0;border-radius:999px;background:none;color:var(--ink-3);font-size:16px;line-height:1;cursor:pointer}
+.ix-x:hover,.ix-x:focus-visible{color:var(--ink);background:color-mix(in oklch,var(--flare) 18%,transparent)}
+.ix-note{margin:0;text-align:center;font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3)}
+.ix-note:empty{display:none}
+.ix-empty[hidden]{display:none}
+
+/* the filters: kit/table.css's bar, centred, three bands of it */
+.ix-bar{justify-content:center;border:1px solid var(--rule);border-bottom:0}
+.ix-bar+.ix-bar{border-top:1px dashed var(--rule)}
+.ix-bar[hidden],.ix-tally[hidden],.ix-wrap[hidden]{display:none}
+.ix-bar .ix-q{flex:1 1 220px;max-width:340px}
+.ix-bar .ep-input{padding:7px 10px}
+.ix-bar .ft-num{width:70px}
+.ix-morefilters[disabled]{opacity:.7;cursor:default}
+.ix-pos{display:inline-flex;gap:4px}
+.ix-pos .ft-pill{padding:7px 11px}
+.ix-check{display:inline-flex;align-items:center;gap:7px;min-height:32px;font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.ix-check input{width:16px;height:16px;flex:none;accent-color:var(--lume)}
+.ix-to{color:var(--ink-3)}
+.ix-flines{display:contents}
+.ix-tally{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;padding:10px 12px;border:1px solid var(--rule);
+  background:color-mix(in oklch,var(--panel) 35%,transparent)}
+.ix-tally .ix-count{font-size:10px;color:var(--ink-2)}
+
+/* the table: table.ft, the word columns set left, a player's lines opened under his row */
+.ix-wrap{border:1px solid var(--rule);border-top:0}
+table.ft.ix-t th.ix-tx,table.ft.ix-t td.ix-tx{text-align:left}
+table.ft.ix-t td.ix-tx{font-family:var(--f-ui);font-size:12px;color:var(--ink-2)}
+.ix-name{gap:6px}
+.ix-open{flex:none;width:20px;height:20px;padding:0;border:1px solid var(--rule-2);border-radius:3px;background:transparent;
+  color:var(--ink-3);font-size:10px;line-height:1;cursor:pointer}
+.ix-open:hover,.ix-open:focus-visible,.ix-open[aria-expanded="true"]{color:var(--on-accent);background:var(--lume);border-color:var(--lume)}
+.ix-more{flex:none;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.04em;color:var(--ink-3)}
+.ix-ag{color:var(--ink-2);text-decoration:none}
+.ix-ag:hover{color:var(--lume);text-decoration:underline;text-underline-offset:3px}
+table.ft.ix-t tbody tr.ix-sub td{height:auto;padding:8px 10px 12px 46px;white-space:normal;text-align:left;
+  background:color-mix(in oklch,var(--lume) 5%,var(--ground))}
+.ix-lines{position:sticky;left:46px;display:grid;gap:8px;justify-items:start;max-width:calc(100vw - 80px)}
+table.ix-mini{border-collapse:collapse;font-family:var(--f-data,ui-monospace,monospace);font-size:11px;font-variant-numeric:tabular-nums}
+table.ix-mini th{padding:4px 8px;text-align:right;font-family:var(--f-micro);font-size:8px;font-weight:400;letter-spacing:.06em;
+  color:var(--ink-3);border-bottom:1px solid var(--rule-2)}
+table.ix-mini td{padding:4px 8px;text-align:right;color:var(--ink-2);border-bottom:1px solid var(--rule)}
+table.ix-mini .ix-tx{text-align:left}
+table.ix-mini tr.on td{font-weight:600;color:var(--ink)}
+.ix-links{margin:0;display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:var(--f-micro);font-size:9.5px;
+  letter-spacing:.06em;color:var(--ink-3)}
+.ix-links a{color:var(--lume);text-decoration:none;text-transform:uppercase}
+.ix-links a:hover{text-decoration:underline}
+
+@media (max-width:820px){
+  .sc-tabs{padding:0 12px 12px}
+  .ix{gap:8px}
+  .ix-bar{padding:10px}
+  .ix-bar .ix-q{flex-basis:100%;max-width:none}
+  .ix-range{flex-wrap:wrap}
+  table.ft.ix-t tbody tr.ix-sub td{padding-left:12px}
+  .ix-lines{left:12px;max-width:calc(100vw - 40px);overflow-x:auto}
+}
+
 /* INSTALLED, the status bar is drawn over the page (black-translucent), so the page starts below it */
 @media (display-mode:standalone){
   body{padding-top:env(safe-area-inset-top,0px)}

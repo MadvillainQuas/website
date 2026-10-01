@@ -78,8 +78,9 @@ function compute(S) {
   events.forEach(ev => {
     if (ev.t !== 'sub') return;
     const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, H), H);
-    if (lastIn[ev.out] != null) { push(ev.out, lastIn[ev.out], cum); delete lastIn[ev.out]; }
-    lastIn[ev.in] = cum;
+    if (ev.out != null && lastIn[ev.out] != null) { push(ev.out, lastIn[ev.out], cum); delete lastIn[ev.out]; }
+    /* a team playing short: a player leaves with nobody to replace him (in: null) */
+    if (ev.in != null && lastIn[ev.in] == null) lastIn[ev.in] = cum;
   });
   Object.keys(lastIn).forEach(pid => push(pid, lastIn[pid], now));
 

@@ -1657,7 +1657,7 @@ async function news() {
   try {
     await window.EpinoiaNews.mountHeadlines({
       sec: $('#newsSec'), host: $('#news'), note: $('#newsNote'),
-      leagueId: LEAGUE.id, leagueSlug: LEAGUE.slug, rpc, base: '',
+      leagueId: LEAGUE.id, leagueSlug: LEAGUE.slug, rpc, base: '', league: LEAGUE,
       url: p => /^https?:\/\//.test(p || '') ? p
         : (window.EpinoiaUpload ? window.EpinoiaUpload.publicUrl(CFG, p) : p)
     });

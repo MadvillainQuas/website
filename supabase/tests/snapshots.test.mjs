@@ -10,9 +10,11 @@
    exactly as before when there is no such file (not built yet, or built from
    an older token), and never for the snapshots function itself (snapshot:false).
    A season merged across competitions is looked up by its sorted ids. A file
-   is packed (data.js packSeason: the rows as columns), and the layout before it
-   (v2, rows) is still read under its own name while the function is not yet
-   deployed again; the packing gives back exactly the rows it was given.
+   is packed (data.js packSeason: the rows as columns), and its name carries the
+   version of the line that summed it (season.js version()): a file summed by other
+   code - the layout before (v2), or a function deployed before a statistic existed -
+   is never read, and the rows are summed instead. The packing gives back exactly the
+   rows it was given.
 
    stars.js global(): HOME's podiums from the 'stars_global' row when it was
    built from the same anchor, every league on it is one the reader can see, and
@@ -141,8 +143,12 @@ console.log('\ndata.js season(): the file named by the current token, the rows w
 const SNAP = { games: [{ id: 'g1', home_team_id: 't1', away_team_id: 't2', home_score: 80, away_score: 70, tipoff_at: '2026-09-01T18:00:00Z' }],
                players: [{ id: 'p1', gp: 1, pts: 20 }], teams: [{ id: 't1', gp: 1 }], teamOfPlayer: [['p1', 't1']] };
 const T1 = '1@2026-09-02T00:00:00+00:00';
-const F1 = 'v3-1-2026-09-02T00-00-00-00-00.json';   // layout 3, then the token (data.js snapFile, which the function calls)
-const F2 = 'v2-1-2026-09-02T00-00-00-00-00.json';   // the layout before: rows, not columns
+const VER = globalThis.EpinoiaSeason.version();     // which code sums the line (season.js)
+const F1 = 'v3-' + VER + '-1-2026-09-02T00-00-00-00-00.json';   // layout 3, the line's version, the token (data.js snapFile, which the function calls)
+const F2 = 'v2-1-2026-09-02T00-00-00-00-00.json';   // the layout before, written by a function deployed before
+const F0 = 'v3-1-2026-09-02T00-00-00-00-00.json';   // this layout, from code that put no version in the name
+const KEY = c => 'epinoia_season_v3:' + VER + ':' + c;   // this browser's copy
+ok('the file is named by layout, then the line\'s version, then the token', D.snapFile(T1) === F1 && /^s\d+\.[0-9a-f]{8}$/.test(VER), D.snapFile(T1));
 const PACKED = D.packSeason(SNAP);
 const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test(rest)
   ? { body: [{ id: 'g1', finalised_at: fin }], total: 1 }
@@ -156,12 +162,12 @@ const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test
      s.teams[0].id === 't1' && s.games[0].id === 'g1', s.players);
   ok('...rebuilt whole: byId and teamOfPlayer as a Map', s.byId.g1 && s.teamOfPlayer instanceof Map && s.teamOfPlayer.get('p1') === 't1');
   ok('...two requests, the token from the database and the file from the CDN, and no box scores',
-     calls.length === 2 && asked(/\/storage\/v1\/object\/public\/snapshots\/season\/c1\/v3-1-2026-09-02T00-00-00-00-00\.json$/).length === 1 &&
+     calls.length === 2 && asked(new RegExp('/storage/v1/object/public/snapshots/season/c1/' + F1.replace(/\./g, '\\.') + '$')).length === 1 &&
      !asked(/player_game_stats|team_game_stats/).length, calls);
   calls.length = 0;
   const again = await D.season('c1', { trim: true, rows: false });
   ok('kept for the next visit: one request, the token', calls.length === 1 && again.players[0].id === 'p1' && again.players[0].pts === 20, calls);
-  const kept = JSON.parse(LS.getItem('epinoia_season_v2:c1'));
+  const kept = JSON.parse(LS.getItem(KEY('c1')));
   ok('...kept packed, as columns', kept && kept.data && Array.isArray(kept.data.players.k) && kept.data.players.v[0][kept.data.players.k.indexOf('pts')] === 20,
      kept && kept.data && kept.data.players);
 }
@@ -169,20 +175,26 @@ const tokenRoute = (fin) => rest => (/finalised_at/.test(rest) && /limit=1/.test
   reset();
   routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
   files['season/c1/' + F2] = { token: T1, data: SNAP };              // written by the function as deployed before
+  files['season/c1/' + F0] = { token: T1, data: PACKED };            // ...and in this layout, by code that named no version
   const s = await D.season('c1', { trim: true, rows: false });
-  ok('the layout before, while the function is not deployed again: its v2 file is read after the v3 name is not there',
-     s.players[0].id === 'p1' && s.players[0].pts === 20 && calls.length === 3 && asked(/\/v3-1-/).length === 1 && asked(/\/v2-1-/).length === 1 &&
-     !asked(/player_game_stats/).length, calls);
+  ok('a file summed by other code is never the season: neither the layout before nor a name without this line\'s version is asked for, ' +
+     'and the season is summed from the rows instead',
+     !asked(/\/v2-1-/).length && !asked(new RegExp('/' + F0.replace(/\./g, '\\.') + '$')).length && asked(/select=id,home_team_id/).length === 1 &&
+     s.players.length === 0, calls);
   reset();
   routes = { games: tokenRoute('2026-09-02T00:00:00+00:00') };
   LS.setItem('epinoia_season_v1:c9', JSON.stringify({ tok: 'x', at: Date.now(), data: SNAP }));
+  LS.setItem('epinoia_season_v2:c8', JSON.stringify({ tok: 'x', at: Date.now(), data: SNAP }));
+  LS.setItem('epinoia_season_v3:s0.00000000:c7', JSON.stringify({ tok: 'x', at: Date.now(), data: SNAP }));   // other code's line
   LS.setItem('someone_else', '1');
   LS.setItem('epinoia_season_view', 'screenshot');                    // the player page's own setting, not a copy
   files['season/c1/' + F1] = { token: T1, data: PACKED };
   await D.season('c1', { trim: true, rows: false });
-  ok('the copies an older layout kept are thrown away on the first write, and nothing else is',
-     LS.getItem('epinoia_season_v1:c9') === null && LS.getItem('someone_else') === '1' && LS.getItem('epinoia_season_view') === 'screenshot' &&
-     !!LS.getItem('epinoia_season_v2:c1'));
+  ok('the copies an older layout or other code kept are thrown away on the first write, and nothing else is',
+     LS.getItem('epinoia_season_v1:c9') === null && LS.getItem('epinoia_season_v2:c8') === null &&
+     LS.getItem('epinoia_season_v3:s0.00000000:c7') === null &&
+     LS.getItem('someone_else') === '1' && LS.getItem('epinoia_season_view') === 'screenshot' &&
+     !!LS.getItem(KEY('c1')));
 }
 {
   reset();
@@ -287,6 +299,44 @@ const starsRoutes = (visible) => ({
   reset(); routes = starsRoutes(['L1']);
   await ST.global({ now: new Date('2026-09-08T00:00:00Z'), snapshot: false });
   ok('snapshot:false (the function building it) never reads one', !asked(/snapshots/).length, calls);
+}
+
+/* ---------------------------------------------------- the line's version --- */
+console.log('\nseason.js version(): which code summed a season, in every name it is kept under');
+{
+  const S = globalThis.EpinoiaSeason;
+  const { readFileSync } = await import('node:fs');
+  /* the same probe and hash as season.js, worked out here, so a constant cannot pass for it */
+  const probeP = S.finishPlayers(S.addPlayers(new Map(), [{ game_id: 'g', player_id: 'p', team_idx: 0, stats: { min: 60000 } }], []))[0];
+  const probeT = S.finishTeams(S.addTeams(new Map(), [{ game_id: 'g', team_idx: 0, stats: {} }],
+                                          { g: { id: 'g', home_team_id: 'h', away_team_id: 'a' } }))[0];
+  const fnv = t => { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 0x01000193) >>> 0;
+                     return ('0000000' + h.toString(16)).slice(-8); };
+  const keyed = (pk, tk) => 's' + S.MATHS + '.' + fnv('p:' + pk.slice().sort().join(',') + '|t:' + tk.slice().sort().join(','));
+  const pk = Object.keys(probeP), tk = Object.keys(probeT);
+  ok('it is the keys a player\'s and a club\'s line carry, and MATHS', S.version() === keyed(pk, tk) && S.version() === S.version(), S.version());
+  ok('...so a line without one of them - LNBP\'s file of 1 October, with no shot volumes - is another version',
+     keyed(pk.filter(k => !/_a100$|^team_spacing$/.test(k)), tk) !== S.version());
+  /* every statistic the player profile draws a bar for is in the version, so a file without one is never its season */
+  const prof = readFileSync(path.join(ROOT, 'epinoia', 'p', 'player.js'), 'utf8');
+  const sec = prof.slice(prof.indexOf('const BAR_SECTIONS = ['), prof.indexOf('const BAR_GROUPS'));
+  const drawn = [...sec.matchAll(/\['([a-z0-9_]+)','/g)].map(m => m[1]);
+  /* box plus/minus is put on by attachBPM, not by the line: a new key there is a MATHS bump (season.js says so). The simple
+     view's per-75 figures are worked out on the page (vsunits.js per75) from keys of the line: its totals and on_poss */
+  const fromBpm = new Set(['bpm', 'obpm', 'dbpm', 'vorp']);
+  const V = require(path.join(ROOT, 'epinoia', 'vsunits.js'));
+  const per75 = new Map(V.P75.map(([t, k]) => [k, t]));
+  const missing = drawn.filter(k => !fromBpm.has(k) && !(k in probeP) && !(per75.has(k) && per75.get(k) in probeP && 'on_poss' in probeP));
+  ok('every bar on the player profile (' + drawn.length + ') is a key of the line, worked out on the page from them, or box plus/minus',
+     drawn.length > 30 && !missing.length, missing);
+  ok('...the four shot volumes and TEAM SPACING among them',
+     ['rim_a100', 'mid_a100', 'p3_a100', 'ft_a100', 'team_spacing'].every(k => drawn.includes(k) && k in probeP));
+  /* whoever builds a file names it with this, and builds it again when the name is not the one it holds */
+  const fnSrc = readFileSync(path.join(ROOT, 'supabase', 'functions', 'snapshots', 'index.ts'), 'utf8');
+  const bsSrc = readFileSync(path.join(ROOT, 'tools', 'build-seasons.mjs'), 'utf8');
+  ok('the snapshots function and the big-season builder both name files with snapFile, and rebuild when the held name differs',
+     /h\.file === 'season\/' \+ unit \+ '\/' \+ snapFile\(tok\)/.test(fnSrc) && /const name = snapFile\(tok\);/.test(fnSrc) &&
+     /const name = D\.snapFile\(tok\), file = 'season\/' \+ unit \+ '\/' \+ name;/.test(bsSrc) && /h\.file === file/.test(bsSrc));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

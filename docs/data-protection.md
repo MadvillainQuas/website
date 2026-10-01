@@ -55,7 +55,7 @@ the site) used to sit in the box-score jsonb anyone could read; the membership l
 - **Known small gaps:** `scripts/backfill_situations.mjs` compares against `stats.sit`, which is now empty, so it rewrites
   every line (harmless, and the trigger files it); a rewrite that omits a player's `sit` no longer removes his old line.
 
-## What wins: the feature table and the members-only files (migration 0209, 2026-10-01)
+## What wins: the feature table and the members-only files (migration 0211, 2026-10-01)
 What wins and the Front office's win model (docs/what-wins-model.md) are the ready-made analysis, so they are protected
 where the box score is not. The rule is the site's own (`can_use_analytics`, 0117), asked by the database at request time.
 
@@ -130,7 +130,7 @@ the files hold none.
 **Runbook (docs/what-wins-model.md §17, in this order):**
 1. Finish the events-splits move above (`premium_sit_remaining()` = 0).
 2. Check and redeploy the `snapshots` function (it names neither `game_features` nor the bucket; ww-contract checks that).
-3. `npx supabase db push` (0209_what_wins.sql).
+3. `npx supabase db push` (0211_what_wins.sql).
 4. `npx supabase functions deploy finalise-game` and `npx supabase functions deploy analytics-file --no-verify-jwt`; set the
    function secret `ANALYTICS_SALT` (any long random string; changing it resets the signed-out counts); check which address
    header the deployed function receives (residual risk 4) and set `ANALYTICS_IP_HEADER` / `ANALYTICS_XFF_HOPS`.

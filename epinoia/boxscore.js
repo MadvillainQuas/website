@@ -377,6 +377,11 @@ function scoresheetHTML(d){
       return a;
     }, {pts:0,p2m:0,p2a:0,p3m:0,p3a:0,ftm:0,fta:0,or:0,dr:0,ast:0,to:0,stl:0,blk:0,pf:0,fd:0});
 
+    const tos = (S.events || []).filter(e => e.t === 'timeout' && e.team === t)
+      .map(e => perName(e.period || 1) + ' ' + fmtClock(e.clock));
+    const bench = (S.events || []).filter(e => e.t === 'foul' && e.team === t && !e.pid)
+      .map(e => (FOUL_MARK[e.kind] || 'P') + ' ' + perName(e.period || 1) + ' ' + fmtClock(e.clock) +
+                (e.by && PMAP[e.by] ? ' (' + esc(pname(e.by)) + ')' : ''));
     /* team fouls per period, drawn as the four boxes a scoresheet has — the
        fifth is the bonus, and seeing the row fill is the point of the row */
     const tfRow = [];
@@ -405,7 +410,13 @@ function scoresheetHTML(d){
         '<td class="fouls">' + tot.pf + '</td>' + cell(tot.fd) +
         '<td class="pts">' + d.score[t] + '</td></tr>' +
       '</tbody></table>' +
-      '<div class="tfoot"><div class="tfl"><span>team fouls</span>' + tfRow.join('') + '</div></div>' +
+      '<div class="tfoot"><div class="tfl"><span>team fouls</span>' + tfRow.join('') + '</div>' +
+      /* THE TIMEOUTS TAKEN AND THE BENCH'S FOULS, which the header above promised and the sheet did not carry:
+         when each timeout was called, and every foul charged to the bench (a coach's, a substitute's, a player's
+         who had fouled out), with who it was where the log knows */
+      '<div class="tfl"><span>timeouts</span>' + (tos.length ? tos.map(x => '<span class="tfp">' + x + '</span>').join('') : '<span class="tfp">none</span>') + '</div>' +
+      (bench.length ? '<div class="tfl"><span>bench fouls</span>' + bench.map(x => '<span class="tfp">' + x + '</span>').join('') + '</div>' : '') +
+      '</div>' +
       '</div>';
   };
 

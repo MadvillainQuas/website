@@ -101,6 +101,60 @@ const nothingYet = () => new Response(
   'phone and will still be here.</div></div></body>',
   { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
+/* HOW LONG A PAGE LOAD WAITS FOR THE NETWORK BEFORE THE PHONE'S COPY.
+
+   Network first, with no deadline, was right for a dead connection and wrong
+   for a bad one. A hall's access point that has the phone associated and no
+   working uplink does not fail a request, it holds it — and the statistician
+   who reloads because something looked wrong stared at a blank page until the
+   browser gave up, which can be a minute. Past this the copy on the phone is
+   served, and the network's answer, when it comes, still updates the cache for
+   next time. */
+const NAV_WAIT_MS = 3500;
+
+/* The ?v= stamp of a URL, or null. */
+const stampOf = u => { try { return new URL(u).searchParams.get('v'); } catch (_) { return null; } };
+
+/* KEEP ONE VERSION OF EACH FILE, AND ONLY THROW AN OLD ONE AWAY ONCE THE NEW ONE
+   IS HERE.
+
+   Every deploy's files stayed in the cache for ever, and the offline fallback
+   below answered with the FIRST match ignoring the stamp — which, the cache
+   being in insertion order, was the oldest copy on the phone, not the newest:
+   months-old scripts beside this week's page. So after a page load that worked,
+   the files the page declares are fetched into the cache, and for each of them
+   any copy under an older stamp is deleted — but only when the copy the page
+   wants is actually here, so a load that fails half way never leaves a file
+   with no copy at all. Files the page does not declare (a font a stylesheet
+   pulls in, a language pack) are left alone. */
+async function refresh(html) {
+  try {
+    const c = await caches.open(CACHE);
+    const want = declared(html);
+    await Promise.all(want.map(u => c.match(u).then(hit => hit || c.add(u)).catch(() => {})));
+    const byPath = new Map();
+    want.forEach(u => { const x = new URL(u); byPath.set(x.origin + x.pathname, u); });
+    const keys = await c.keys();
+    await Promise.all(keys.map(async req => {
+      const x = new URL(req.url);
+      const cur = byPath.get(x.origin + x.pathname);
+      if (!cur || req.url === cur || x.pathname === SHELL) return;
+      if (stampOf(req.url) === stampOf(cur)) return;
+      if (await c.match(cur)) await c.delete(req);
+    }));
+  } catch (_) { /* a tidy-up; never a reason to fail anything */ }
+}
+
+/* The newest copy of a file under any stamp: the last one put, since put()
+   moves an entry to the end. */
+async function newestCopy(req) {
+  try {
+    const c = await caches.open(CACHE);
+    const all = await c.matchAll(req, { ignoreSearch: true });
+    return all.length ? all[all.length - 1] : null;
+  } catch (_) { return null; }
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -113,11 +167,30 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
 
   if (req.mode === 'navigate') {
+    /* The network's answer, kept as the shell and used to tidy the cache —
+       whether it arrives before the deadline or after the phone's copy has
+       already been shown. */
+    const net = fetch(req).then(r => {
+      if (r && r.ok) {
+        /* both copies taken now, before the page can start reading the body */
+        const forShell = r.clone(), forTidy = r.clone();
+        e.waitUntil(caches.open(CACHE)
+          .then(c => c.put(SHELL, forShell))
+          .then(() => forTidy.text())
+          .then(refresh)
+          .catch(() => {}));
+      }
+      return r;
+    });
+    e.waitUntil(net.catch(() => {}));
     e.respondWith((async () => {
       try {
-        const r = await fetch(req);
-        if (r && r.ok) { const c = await caches.open(CACHE); c.put(SHELL, r.clone()); }
-        return r;
+        const slow = new Promise(res => setTimeout(() => res(null), NAV_WAIT_MS));
+        const first = await Promise.race([net, slow]);
+        if (first) return first;                       // the network answered in time
+        const copy = await caches.match(SHELL);       // ...it did not: the phone's copy
+        if (copy) return copy;
+        return await net;                              // nothing stored: wait for whatever comes
       } catch (_) {
         /* The real application, from the cache, which then loads the real game
            from localStorage. This is the whole point of the file. */
@@ -147,8 +220,9 @@ self.addEventListener('fetch', e => {
       /* A DEPLOY THIS PHONE NEVER SAW, AND NOW NO NETWORK. The page asks for
          bootstrap.js?v=318 and the cache holds ?v=317. Serving last week's copy
          of a script is not ideal; refusing to open a game that is already
-         half-recorded is very much worse. */
-      const older = await caches.match(req, { ignoreSearch: true });
+         half-recorded is very much worse. The NEWEST copy, though (ignoreSearch:
+         true, last match) — not whichever happened to be cached first. */
+      const older = await newestCopy(req);
       if (older) return older;
       throw err;
     }

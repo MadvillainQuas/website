@@ -15,9 +15,9 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=572" data-no-ground></script>
-<script src="../i18n.js?v=572" data-i18n-packs="scorer"></script>
-<script src="../glyphs.js?v=572" defer></script>
+<script src="../appmode.js?v=580" data-no-ground></script>
+<script src="../i18n.js?v=580" data-i18n-packs="scorer"></script>
+<script src="../glyphs.js?v=580" defer></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -766,6 +766,33 @@ table.lu tr.thinlu td{opacity:.62;}
   box-shadow:0 0 24px rgba(140,255,200,.3);white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;
   transition:opacity .25s;pointer-events:none;}
 #toast.gone{opacity:0;}
+#toast.top{top:calc(env(safe-area-inset-top) + 12px) !important;bottom:auto !important;}
+.sbchips{display:flex;gap:inherit;width:100%;flex-wrap:wrap;}
+@media (min-width:900px){
+  /* the right end of the chip row is kept for +10s, ✕ and done while a window is open (placeDiscsWide) */
+  #subbar.sb-reserve .sbchips{padding-right:300px;box-sizing:border-box;}
+}
+@media (max-width:899px){
+  /* THE ROSTER STAYS WHERE THE THUMB LEFT IT. Two things moved it mid-play: the shot-type chips wrapping into a
+     second row, and the court for the location step drawn inside the bar, pushing the scoreboard and the roster
+     down 330px with the shooter's row under the discs. The chips scroll sideways in one row now, and the court
+     opens over the bench — the rows nobody reads while a shot is being placed. */
+  #subbar .sbchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  #subbar .sbchips::-webkit-scrollbar{display:none;}
+  #subbar .sbchips .sub{flex:1 0 auto;min-width:54px;}
+  #flowCourt{position:fixed;left:8px;right:8px;z-index:55;
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 84px);
+    background:rgba(3,20,14,.97);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.6);}
+}
+/* a toast is read, not glanced at: long ones wrap rather than lose their end to an ellipsis */
+#toast{white-space:normal;text-align:center;line-height:1.5;border-radius:16px;max-width:min(92vw,560px);}
+@media (max-width:899px){
+  /* above the legend and the two discs, which is where the "✓ done" it so often sat on top of lives */
+  #toast{bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 84px);}
+}
+/* a tablet has no keyboard either: no key caps on any touch screen */
+.ep-touch .kcap{display:none;}
+.hkey.hact{pointer-events:auto;cursor:pointer;}
 
 /* ==================================================================
    GAMEVIS design layer — tokens, type system, cards, tabs, bars, tables
@@ -1500,6 +1527,8 @@ html, body{ height:100dvh; }
     opacity:1;
   }
   #doneB .xin,#xCancel .xin{background:#04150e; font-size:22px; font-weight:500;}
+  /* the tick and DONE were the base rule's dark ink on this dark disc: an empty ring */
+  #doneB .xin{color:var(--lume, #93f2bf);}
   #xCancel{box-shadow:0 0 0 2px var(--flare, #ff5f6b), 0 6px 18px rgba(0,0,0,.55);}
   /* THEY WERE BEHIND THE LEGEND, AND THEN UNDER THE SYNC BAR.
 
@@ -1920,6 +1949,11 @@ body:not(.cs-shut) > #csGate{ display:none !important; }
 </div>
 <div id="toast" class="gone"></div>
 
+<!-- THE ONE ENGINE (epinoia/engine.js): the scorer's box score, lineups and play-by-play are worked out by the same
+     function the public game page and finalise-game use, so the numbers the statistician checks at the table are the
+     numbers the league publishes. Loaded before the scorer's script, and declared here so the scorer's offline copy
+     (sw.js) holds it too. -->
+<script src="../engine.js?v=580"></script>
 <script>
 "use strict";
 /* ==================== core state ==================== */
@@ -2058,6 +2092,26 @@ function saveBanner(msg){
   document.getElementById('saveWarnText').textContent = msg;
 }
 
+/* A MISSED SHOT THE SHOOTER WAS FOULED ON IS NOT A FIELD GOAL ATTEMPT.
+
+   The scorer records the shot the moment it is missed, and only then hears the whistle. So the foul on the
+   shooter carries the shot it belongs to (foul.shot), and this keeps the two in step: while such a foul stands,
+   its shot is 'p2_fouled' / 'p3_fouled' — a type nothing counts (no attempt, no miss, no rebound chance, as
+   FIBA's statistics have it), which the play-by-play still prints. Delete or undo the foul, or make it a plain
+   personal foul, and the shot is a miss again. Done here, on the way to the store, so every route that changes
+   the log (undo, redo, the editor, ✕) keeps it true without each having to remember. */
+const SHOT_FOULS = ['shooting','unsport','disq'];
+function syncFouledShots(){
+  if(!S || !S.events) return;
+  const fouled = new Set();
+  S.events.forEach(e=>{ if(e.t==='foul' && e.shot!=null && SHOT_FOULS.includes(e.kind||'personal')) fouled.add(e.shot); });
+  S.events.forEach(e=>{
+    if(fouled.has(e.id)){ if(e.t==='p2_miss') e.t='p2_fouled'; else if(e.t==='p3_miss') e.t='p3_fouled'; }
+    else if(e.t==='p2_fouled') e.t='p2_miss';
+    else if(e.t==='p3_fouled') e.t='p3_miss';
+  });
+}
+
 function save(){
   if(savedInPlay && S && S.phase === 'setup'){
     /* Said once, to the console rather than the screen: the bar is already
@@ -2069,8 +2123,15 @@ function save(){
     }
     return;
   }
+  /* A tab that is not the one scoring this game (bootstrap.js holds the lock) never writes: its copy is the
+     older one, and the key is the only copy of the game there is. */
+  if(window.epReadOnly) return;
   /* Past setup, this page IS the game; the stored copy is its own. */
   if(S && S.phase && S.phase !== 'setup') savedInPlay = false;
+  syncFouledShots();
+  /* when this copy was written, on this device's clock: a game restored with its clock running is behind the
+     hall by however long ago that was, and only this says how long (see applySaved) */
+  if(S) S.savedAt = Date.now();
   let str = null;
   try{
     str = JSON.stringify(S);
@@ -2096,6 +2157,13 @@ function save(){
     }
   }
 }
+
+/* THE CLOCK IS WRITTEN EVERY FIVE SECONDS WHILE IT RUNS, and a phone that locks, a tab that is swapped away from
+   or a browser that is killed can take up to five of them with it. These are the moments a page gets before it
+   goes, so the last word is the clock as it stood. */
+function saveOnLeave(){ try{ if(S && S.phase && S.phase !== 'setup') save(); }catch(_){ } }
+window.addEventListener('pagehide', saveOnLeave);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') saveOnLeave(); });
 
 /* A scratch game leaves its live-transport key behind, and they accumulate in the
    same five megabytes the real game needs. Dropped on boot: anything belonging to
@@ -2182,6 +2250,8 @@ function cumEl(p, clk){ let s=0; for(let q=1;q<p;q++) s+=PLEN(q); return s+(PLEN
 
 let toastT=null;
 function toast(msg, ms){ const el=$('#toast'); el.textContent=msg; el.classList.remove('gone');
+  /* over a dialog it would sit on the dialog's buttons: up to the top while one is open */
+  el.classList.toggle('top', !!document.querySelector('.modalwrap:not(.hidden)'));
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.add('gone'), ms||2200); }
 
 /* ==================== event log ==================== */
@@ -2260,16 +2330,62 @@ function evLabel(ev){
   if(ev.t==='loc') return 'shot location';
   return (pbpLine(ev,ev.id,{},{})||ev.t).replace(/^— |—$/g,'').trim();
 }
+/* UNDOING THE START OF A PERIOD UNDOES THE PERIOD CHANGE.
+
+   undo() popped whatever was last, a period_start included, and left S.period and the clock where resume had
+   put them: the next quarter running with no start in the log. The arrow flips at every period start, so every
+   held ball after that went to the wrong team, here and on the public page. Undone now, it takes the game back
+   to the end of the period before (clock stopped at 0:00); redone, it starts that period again. The first
+   period's start is the game itself and is not undone. */
 function undo(){
   if(!S.events.length) return;
-  const ev = S.events.pop(); S.redo.push(ev);
+  const last = S.events[S.events.length-1];
+  if(last.t==='period_start'){
+    if((last.period||1) <= 1 || S.period !== last.period){ toast('the start of the game cannot be undone — edit the play-by-play instead'); return; }
+    S.events.pop(); S.redo.push(last);
+    S.period = last.period - 1; S.clockMs = 0; S.running = false;
+    ui.pending=null; ui.subOut=null; ui.armed=null; ui.foulType=null;
+    save(); renderAll(); toast('undone: start of '+perName(last.period)+' — back to the end of '+perName(S.period), 2600);
+    return;
+  }
+  if(last.t==='game_end') return;
+  /* UNDO TAKES BACK A PLAY, NOT A DESCRIPTION OF ONE. A shot with a type and a location was three undos —
+     "shot location", then "layup", then the shot — so a scorer pressing undo once for a wrong basket took the
+     marker off and left the points on the board. The descriptors of a play come off with it, and an offensive
+     foul's turnover takes its foul with it, since the two were recorded as one. Redo puts the group back. */
+  const DESC = ['tag','stype','loc'];
+  const group = [S.events.pop()];
+  if(DESC.includes(group[0].t)){
+    const ref = group[0].ref;
+    while(S.events.length){
+      const e = S.events[S.events.length-1];
+      if(DESC.includes(e.t) && e.ref===ref){ group.push(S.events.pop()); continue; }
+      if(e.id===ref && e.t!=='period_start' && e.t!=='game_end') group.push(S.events.pop());
+      break;
+    }
+  } else if(group[0].t==='to'){
+    const e = S.events[S.events.length-1];
+    if(e && e.t==='foul' && e.kind==='offensive' && e.pid===group[0].pid && e.period===group[0].period && e.clock===group[0].clock)
+      group.push(S.events.pop());
+  }
+  S.redo.push(group.length > 1 ? group : group[0]);
+  const head = group.find(e=>!DESC.includes(e.t)) || group[0];
   ui.pending=null; ui.subOut=null; ui.armed=null; ui.foulType=null;
-  save(); renderAll(); toast('undone: '+evLabel(ev), 2600);
+  const offFoul = group.some(e=>e.t==='foul') && group.some(e=>e.t==='to');
+  save(); renderAll(); toast('undone: '+(offFoul ? 'offensive foul and its turnover' : evLabel(head)+(group.length>1 ? ' (with its details)' : '')), 2600);
 }
 function redo(){
   if(!S.redo.length) return;
-  const ev = S.redo.pop(); S.events.push(ev);
-  save(); renderAll(); toast('redone: '+evLabel(ev), 2600);
+  const x = S.redo.pop();
+  const list = Array.isArray(x) ? x.slice().reverse() : [x];      // a group came off newest first
+  list.forEach(ev=>{
+    S.events.push(ev);
+    if(ev.t==='period_start' && (ev.period||1) === S.period+1){
+      endBreak(); S.period = ev.period; S.clockMs = PLEN(ev.period); S.running = false;
+    }
+  });
+  const head = list.find(e=>!['tag','stype','loc'].includes(e.t)) || list[0];
+  save(); renderAll(); toast('redone: '+evLabel(head), 2600);
 }
 
 /* ==================== derive stats from event log ==================== */
@@ -2286,7 +2402,31 @@ function activeTags(id){
   return s;
 }
 
+/* ONE SET OF NUMBERS.
+
+   This page carried its own copy of the replay, and the copy drifted from engine.js — the one the public box
+   score, the season tables and finalise-game all read. Fixes landed there and not here: a player sent on twice
+   kept his stint in the engine and lost it here, paint and fast-break points and the rim split were only worked
+   out there. So the statistician checked one set of numbers at the table and the league published another.
+
+   The engine decides now. The page's copy (deriveHere) stays only as the floor for a page whose engine.js failed
+   to load, so a missing file costs some accuracy rather than the whole scorer. */
+let deriveSaid = false;
 function derive(){
+  const E = window.EpinoiaEngine;
+  if(E && typeof E.deriveGame === 'function'){
+    try{
+      /* with the format this page plays (gameFmt: quarters, or halves read off the log), so the engine's
+         period lengths are the page's own */
+      return E.deriveGame({teams:S.teams, starters:S.starters, events:S.events, period:S.period,
+        clockMs:S.clockMs, tipWinner:S.tipWinner, arrowInit:S.arrowInit, format:gameFmt()});
+    }catch(err){
+      if(!deriveSaid){ deriveSaid = true; try{ console.error('[derive] engine.js failed; using the page copy', err); }catch(_){ } }
+    }
+  }
+  return deriveHere();
+}
+function deriveHere(){
   const d = {stats:{}, team:[mkT(),mkT()], score:[0,0], perQ:[{},{}], pbp:[],
     poss:(S.tipWinner!=null?S.tipWinner:null),
     onCourt:[[...S.starters[0]],[...S.starters[1]]], lineups:[[],[]]};
@@ -2369,9 +2509,9 @@ function derive(){
           if(ev.kind==='disq' || s.t+s.u>=2) s.dq=true; }
         if(ev.drawn && d.stats[ev.drawn]) d.stats[ev.drawn].fd++;
         d.team[ev.team].foulTot++;
-        // FIBA team fouls: coach/bench technicals excluded, player techs count;
-        // overtimes continue the 4th-quarter count
-        if(!(ev.kind==='tech' && !ev.pid)){
+        // FIBA team fouls: a player's foul of any kind; a bench technical, unsportsmanlike or
+        // disqualifying foul (no player named) is not one; overtimes continue the 4th-quarter count
+        if(ev.pid || !['tech','unsport','disq'].includes(ev.kind)){
           const m=d.team[ev.team].foulsP, key=ev.period>4?4:ev.period;
           m[key]=(m[key]||0)+1;
         }
@@ -2383,11 +2523,12 @@ function derive(){
         else if(ev.period<=4){ T.h2++; if(ev.period===4 && ev.clock<=120000) T.last2++; }
         else T.ot[ev.period]=(T.ot[ev.period]||0)+1; break; }
       case 'sub': { const t=ev.team;
-        if(lastIn[ev.out]!=null && d.stats[ev.out]){ d.stats[ev.out].min+=Math.max(0,cum-lastIn[ev.out]); delete lastIn[ev.out]; }
-        lastIn[ev.in]=cum;
+        // either side may be empty: a team playing short (in: null), or getting a player back (out: null)
+        if(ev.out!=null && lastIn[ev.out]!=null && d.stats[ev.out]){ d.stats[ev.out].min+=Math.max(0,cum-lastIn[ev.out]); delete lastIn[ev.out]; }
+        if(ev.in!=null && !(d.onCourt[t].includes(ev.in) && ev.in!==ev.out)) lastIn[ev.in]=cum;
         close(t,cum);
-        d.onCourt[t]=d.onCourt[t].filter(x=>x!==ev.out);
-        if(!d.onCourt[t].includes(ev.in)) d.onCourt[t].push(ev.in);
+        if(ev.out!=null) d.onCourt[t]=d.onCourt[t].filter(x=>x!==ev.out);
+        if(ev.in!=null && !d.onCourt[t].includes(ev.in)) d.onCourt[t].push(ev.in);
         cur[t]={ids:[...d.onCourt[t]].sort(),start:cum,pf:0,pa:0,off:mkBox(),def:mkBox()}; break; }
     }
     // possession heuristic + live second-chance / points-off-to windows
@@ -2446,7 +2587,12 @@ function pbpLine(ev,i,tags,stypes){
     case 'to': return who+' — turnover'+(ev.pid?'':' (team)')+(stypes&&stypes[i]?' ('+stypes[i]+')':'');
     case 'foul': return who+' — '+(FOULNAMES[ev.kind]||'personal')+' foul';
     case 'timeout': return tname(ev.team)+' — timeout';
-    case 'sub': return tname(ev.team)+' — sub: '+pname(ev.in)+' in, '+pname(ev.out)+' out';
+    case 'sub':
+      if(ev.in==null) return tname(ev.team)+' — '+pname(ev.out)+' leaves the court, no substitute';
+      if(ev.out==null) return tname(ev.team)+' — '+pname(ev.in)+' comes on';
+      return tname(ev.team)+' — sub: '+pname(ev.in)+' in, '+pname(ev.out)+' out';
+    case 'p2_fouled': return who+' — 2pt missed, fouled';
+    case 'p3_fouled': return who+' — 3pt missed, fouled';
     case 'jump': return 'held ball — alternating possession';
     case 'period_start': return '— '+perName(ev.period)+' —';
     case 'game_end': return '— final —';
@@ -2522,9 +2668,12 @@ function tick(){
     }
     // windows only count down while the game clock runs — at a dead ball (fouls, free throws,
     // timeouts) the statistician has as long as they need, as in livestats
-    if(ui.pending && (ui.pending.hold || !S.running)) ui.pending.expires = Math.max(ui.pending.expires, now+WIN_MS);
+    /* frozen at a dead ball — except a foul with no free throws due, which has nothing left to wait for: it
+       counts down and closes itself (✓ closes it sooner, ✕ still deletes it) */
+    const idleFoul = ui.pending && ui.pending.kind==='foul' && !ui.pending.ftExp && !ui.pending.hold;
+    if(ui.pending && !idleFoul && (ui.pending.hold || !S.running)) ui.pending.expires = Math.max(ui.pending.expires, now+WIN_MS);
     if(ui.subOut && !S.running) ui.subOut.expires = Math.max(ui.subOut.expires, now+WIN_MS);
-    if(ui.pending && now>ui.pending.expires) clearPending('window closed');
+    if(ui.pending && now>ui.pending.expires) clearPending(idleFoul ? 'foul recorded — no free throws' : 'window closed');
     if(ui.subOut && now>ui.subOut.expires){ ui.subOut=null; renderAll(); toast('sub cancelled'); }
     // deferred period-end score confirmation, once the live play has resolved
     if(ui.pendConfirm!=null && !ui.pending && !ui.subOut &&
@@ -2543,7 +2692,7 @@ function onPeriodEnd(){
   const d = derive();
   if(S.period>=4){
     if(d.score[0]===d.score[1]) toast('tied — resume starts overtime', 4000);
-    else toast('game over — end game from the menu', 4000);
+    else toast('full-time — end the game from the menu', 4000);
   } else if(S.period === 2){
     startBreak();
     toast('half-time — 15:00 interval · resume starts the 3rd whenever you are ready', 5000);
@@ -2562,12 +2711,16 @@ function showPeriodConfirm(p){
   const d = derive();
   const half = p===2;
   const over = p>=4 && d.score[0]!==d.score[1];
-  if(half || over){
-    askChoice((half?'half-time':'full-time')+' — '+d.score[0]+'–'+d.score[1]+' — check the play-by-play?',
+  if(over){
+    askChoice('full-time — '+d.score[0]+'–'+d.score[1]+'. end the game, or check the play-by-play first?',
+      'review & edit', 'end the game', c=>{ if(c===1) requestEndGame(); else openLog(); });
+  } else if(half){
+    askChoice('half-time — '+d.score[0]+'–'+d.score[1]+' — check the play-by-play?',
       'score correct', 'review & edit', c=>{ if(c===1) openLog(); });
   } else {
+    /* "no" opens the play-by-play, where a wrong score can actually be put right, as half- and full-time do */
     askConfirm('end of '+perName(p)+' — score '+d.score[0]+'–'+d.score[1]+' — correct?',
-      ()=>{}, ()=>openBox());
+      ()=>{}, ()=>openLog());
   }
 }
 function pauseClock(){ if(!S.running) return; S.running=false; save(); renderAll(); }
@@ -2587,6 +2740,52 @@ function resumeClock(){
 }
 
 /* ==================== pending helpers ==================== */
+/* WHO MAY COME ON: anybody not on court who has not fouled out or been disqualified (FIBA Art. 40/41: a player
+   with five fouls, or disqualified, takes no further part). */
+function eligible(pid){ const st = D && D.stats[pid]; return !(st && (st.dq || st.pf>=5)); }
+function foulKindOf(p){ const f = p && p.foulIdx!=null ? evById(p.foulIdx) : null; return f ? (f.kind||'personal') : null; }
+/* A REBOUND EXISTS ONLY WHERE THE BALL IS LIVE: after a missed field goal, or after the LAST free throw of a
+   personal or shooting foul's set. After the first of two the ball is dead; after a technical, unsportsmanlike or
+   disqualifying foul's free throws there is a throw-in, not a rebound. Offering one there is how rebounds that
+   never happened got into box scores. */
+function reboundLive(p){
+  if(!p || p.kind!=='miss') return false;
+  if(p.shot!=='ft') return true;
+  const k = foulKindOf(p);
+  if(k && ['tech','unsport','disq'].includes(k)) return false;
+  return p.ftExp==null || (p.ftCount||0) >= p.ftExp;
+}
+/* one answer, for the gestures, the pick chips and the typed commands alike: null when the follow-up may be
+   recorded in this window, else why not */
+function followUpWhyNot(act, p){
+  if(!p) return 'window closed';
+  if(act==='reb') return p.kind!=='miss' ? 'no rebound on a made shot' : (reboundLive(p) ? null : 'no rebound — the ball is dead after this free throw');
+  if(act==='ast') return p.kind!=='made' ? 'assist needs a made shot' : (p.shot==='ft' ? 'no assist on a free throw' : (p.assistDone ? 'assist already recorded' : null));
+  if(act==='blk') return p.kind!=='miss' ? 'block needs a missed shot' : (p.shot==='ft' ? 'no block on a free throw' : null);
+  if(act==='stl') return p.kind!=='to' ? 'steal needs a turnover' : null;
+  return null;
+}
+/* how many free throws a foul in a shot's window gives: the shot decides (an and-one 1, a missed 2 two, a missed
+   3 three) unless the kind does — a technical 1, an on-the-floor foul in the penalty 2 */
+function ftExpectFor(kind, p){
+  if(kind==='tech') return 1;
+  if(kind==='floor') return 2;
+  const s0 = evById((p.steps||[])[0]);
+  if(s0 && /_made$/.test(s0.t)) return 1;
+  if(s0 && /^p3/.test(s0.t)) return 3;
+  return 2;
+}
+/* WHO WAS FOULED. A foul from the shot window knows (the shooter); one entered with the foul button did not, so
+   fouls drawn counted only shooting fouls. The player who takes the free throws is the player fouled: the first
+   one taken says so, on a player's foul. Not a technical's: anybody may shoot those, and nobody was fouled. */
+function drawnBy(p, pid){
+  const f = p && p.foulIdx!=null ? evById(p.foulIdx) : null;
+  if(f && f.pid && !f.drawn && f.kind !== 'tech') f.drawn = pid;
+}
+/* a stat for somebody the app has on the bench usually means a substitution nobody recorded */
+function benchNote(team, pid){
+  if(pid && D && !onCourtHas(team,pid)) toast(pname(pid)+' is on the bench here — if they are playing, record the substitution', 3600);
+}
 function originAt(idx){
   // a window opened from inside another window inherits its origin time, so a whole
   // joined sequence (shot → and-one → fouler → free throws → rebound) shares one clock
@@ -2599,10 +2798,14 @@ function setPend(kind, shot, team, pid, idx){
   const ftCount = (shot==='ft' && ui.pending) ? (ui.pending.ftCount||0)+1 : (shot==='ft'?1:0);
   const ftExp = ui.pending ? ui.pending.ftExp : null;
   const hold = ui.pending ? ui.pending.hold : false;
+  /* THE WINDOW'S FOUL STAYS WITH IT. Rebuilt for every free throw without it, the window forgot its foul after
+     the first: the foul-type chips then changed nothing that was recorded, and a second tap on an opponent
+     recorded the same foul twice. */
+  const foulIdx = ui.pending ? ui.pending.foulIdx : null;
   // provisional step list for this window (✕ / esc pops the newest; enter / done confirms all)
   const steps = ui.pending && ui.pending.steps ? ui.pending.steps.slice() : [];
   if(!steps.includes(idx)) steps.push(idx);
-  ui.pending = {kind, shot, team, pid, anchorIdx:idx, expires:Date.now()+WIN_MS, at, ftCount, ftExp, hold, steps};
+  ui.pending = {kind, shot, team, pid, anchorIdx:idx, expires:Date.now()+WIN_MS, at, ftCount, ftExp, hold, steps, foulIdx};
   if(shot==='p2'||shot==='p3'){ ui.pending.flow = true; ui.pending.step = 0; }
   ui.foulType = null;
 }
@@ -2745,7 +2948,9 @@ function renderCols(){
     const idle = !ui.armed && !ui.pending && !ui.subOut;
     th.innerHTML = '<div class="tn" style="color:'+tcol+'">'+(D.poss===t?'<span class="possdot">◉</span>':'')+esc(tname(t))+'</div>'+
       '<div class="tsub">t/o '+dots+' · fouls '+fouls+
-      (fouls>=4?' <span class="bonus">bonus</span>':(fouls===3?' <span class="bonus">+1→bonus</span>':''))+
+      (fouls>=4?' <span class="bonus">penalty</span>':(fouls===3?' <span class="bonus">+1→penalty</span>':''))+
+      /* never anything but five, unless a team ran out of players — and then it should be plain to see */
+      (D.onCourt[t].length!==5?' <span class="bonus">· '+D.onCourt[t].length+' on court</span>':'')+
       (idle?' <span style="opacity:.55">· ⇅ subs</span>':'')+'</div>';
 
     const pl = $('.plist[data-team="'+t+'"]');
@@ -2764,9 +2969,9 @@ function renderCols(){
       if(pd && pd.kind==='foul' && t!==pd.team) cls+=' armable';
       if(pd && pd.ftArmed && t===pd.team) cls+=' armable';
       if(pd && pd.pick && pickAllowed(pd.pick,t,p.id)) cls+=' armable';
-      if(ui.subOut){ if(ui.subOut.pid===p.id) cls+=' suboutmark';
-        else if(ui.subOut.team===t && !isOn) cls+=' subtarget'; }
       const out = stp.dq || stp.pf>=5;
+      if(ui.subOut){ if(ui.subOut.pid===p.id) cls+=' suboutmark';
+        else if(ui.subOut.team===t && !isOn && !out) cls+=' subtarget'; }
       if(out) cls+=' fouledout';
       const pfBadge = out ? '<span class="ff">'+(stp.dq?'dq':'5f')+'</span>'
         : (stp.pf>0 ? '<span class="pfc'+(stp.pf>=4?' warn':'')+'">'+stp.pf+'f</span>' : '');
@@ -2783,7 +2988,35 @@ function renderX(){
   $('#delayB').classList.toggle('hidden', !(ui.pending||ui.subOut));
   $('#doneB').classList.toggle('hidden', !(ui.pending||ui.subOut));
   updateXRing();
+  placeDiscsWide();
 }
+/* ON A WIDE SCREEN THE THREE WINDOW CONTROLS SIT AT THE END OF THE CHIP ROW, in room kept for them.
+
+   They were fixed at a height that used to be just above the score panel. The sub-bar's step row and the
+   command bar pushed the panel down since, so +10s, ✕ and done landed on the floater, hook and fadeaway chips —
+   a click meant for "hook" could cancel the play. Measured from the row itself now, every render, and the row
+   keeps its right end clear while they are up. A phone places them by CSS (above the legend) and is untouched. */
+const WIDE = window.matchMedia ? window.matchMedia('(min-width:900px)') : null;
+function placeDiscsWide(){
+  const sb = $('#subbar'); if(!sb) return;
+  const on = !!(WIDE && WIDE.matches && (ui.armed || ui.pending || ui.subOut));
+  sb.classList.toggle('sb-reserve', on);
+  const ids = ['#delayB','#xCancel','#doneB'];
+  if(!on){ ids.forEach(id=>{ const n=$(id); if(n){ n.style.left=''; n.style.top=''; n.style.right=''; } }); return; }
+  const r = sb.getBoundingClientRect();
+  if(!r.width) return;
+  const rowTop = (sb.querySelector('.sbchips') || sb).getBoundingClientRect();
+  let x = r.right - 6;
+  const y = rowTop.top + rowTop.height/2;
+  ids.slice().reverse().forEach(id=>{
+    const n = $(id); if(!n || n.classList.contains('hidden')) return;
+    const w = n.offsetWidth || 44, h = n.offsetHeight || 44;
+    x -= w;
+    n.style.right = 'auto'; n.style.left = Math.round(x)+'px'; n.style.top = Math.round(y - h/2)+'px';
+    x -= 8;
+  });
+}
+window.addEventListener('resize', ()=>{ try{ placeDiscsWide(); }catch(_){ } });
 function removeEventKeep(id){
   // remove one event (+ its descriptors) without touching the live window
   S.events = S.events.filter(e=> e.id!==id && !((e.t==='tag'||e.t==='stype'||e.t==='loc') && e.ref===id));
@@ -2886,16 +3119,17 @@ const CANCK = () => IS_TOUCH ? '✕ back' : '✕ · esc';
 function helpSpec(){
   const p = ui.pending, L = [];
   const k = (key,txt,cls)=>L.push({key,txt,cls});
+  const PRESS = IS_TOUCH ? 'press & hold' : 'hold 1.5s';
   if(ui.subOut){
-    k('hold + drag ▲ up','bench player — sub in');
+    k(IS_TOUCH ? 'tap a bench player' : 'hold + drag ▲ up','bench player — sub in');
     k('✕','cancel the sub','x');
     return L;
   }
   if(p){
     if(p.ftArmed){
       k('tap player','ft missed','red');
-      k('hold player 1.5s','ft made','grn');
-      k('tap opponent','the fouler (type above)');
+      k(PRESS+' player','ft made','grn');
+      k('tap opponent','the fouler — foul type above');
       k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
       return L;
     }
@@ -2910,25 +3144,29 @@ function helpSpec(){
     }
     { const ht = helpTyped(p); if(ht && !p.ftArmed) k(ht[0], ht[1]); }
     if(p.kind==='miss'){
-      if(p.shot==='ft'){ k('tap shooter','next ft — missed','red'); k('hold shooter 1.5s','next ft — made','grn'); }
+      if(p.shot==='ft'){ k('tap shooter','next ft — missed','red'); k(PRESS+' shooter','next ft — made','grn'); }
       else k('tap ft above','shooting foul — free throws');
-      k('hold + drag ▸ middle','any player — rebound (or chip → tap)');
-      k('tap team name','team rebound');
+      if(reboundLive(p)){
+        k('hold + drag ▸ middle','any player — rebound (or chip → tap)');
+        k('tap team name','team rebound');
+      }
       if(p.shot!=='ft') k('hold + drag ◂ outward','defender — block (or chip → tap)');
-      if(p.shot==='ft') k('tap opponent','the fouler (type above)');
+      if(p.shot==='ft' && p.foulIdx==null) k('tap opponent','the fouler — foul type above');
       k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='made'){
-      if(!p.assistDone) k('hold + drag ▸ middle','a teammate — assist (or chip → tap)');
-      if(p.shot==='ft'){ k('tap shooter','next ft — missed','red'); k('hold shooter 1.5s','next ft — made','grn');
-        k('tap opponent','the fouler'); }
+      if(!followUpWhyNot('ast',p)) k('hold + drag ▸ middle','a teammate — assist (or chip → tap)');
+      if(p.shot==='ft'){ k('tap shooter','next ft — missed','red'); k(PRESS+' shooter','next ft — made','grn');
+        if(p.foulIdx==null) k('tap opponent','the fouler'); }
       else { k('tap ft above','and-one — free throws'); k('paint / transition','tag the basket'); }
       k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='to'){
       k('hold + drag ▸ middle','an opponent — steal (or chip → tap)');
       k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='foul'){
-      k('tap opponent','free throw — missed','red');
-      k(IS_TOUCH?'press opponent':'hold opponent 1.5s','free throw — made','grn');
+      if(p.ftExp){
+        k('tap opponent','free throw — missed','red');
+        k(IS_TOUCH?'press opponent':'hold opponent 1.5s','free throw — made','grn');
+      }
       /* THE EXIT THAT MEANS "NO FREE THROWS" IS THE GREEN ONE.
 
          This line read "✕ — no free throws", and ✕ on a foul window with nothing
@@ -2941,7 +3179,7 @@ function helpSpec(){
 
          The green disc is already on screen — renderX unhides it for any pending
          — so naming it costs nothing and is what the scorer wanted all along. */
-      k(DONEK(),'no free throws — keep the foul','grn');
+      k(DONEK(), p.ftExp ? 'no free throws — keep the foul' : 'keep the foul — no free throws due','grn');
       k(CANCK(),'delete the foul','x');
     }
     return L;
@@ -2982,7 +3220,12 @@ function renderHelp(){
   const el = $('#ctrlHelp');
   const L = helpSpec();
   el.classList.toggle('gone', !L.length);
-  const html = L.map(l=>'<div class="hline"><span class="hkey '+(l.cls||'')+'">'+l.key+'</span><span>'+l.txt+'</span></div>').join('');
+  /* THE PILLS THAT LOOK LIKE BUTTONS ARE BUTTONS. "✓ done" and "✕ back" are drawn as bright pills, and a scorer
+     who has just been told what to press presses the thing that says it — which did nothing. They do what the
+     discs do now. */
+  const act = l => l.key===DONEK() ? 'done' : ((l.key===CANCK() || l.key==='✕') ? 'cancel' : '');
+  const html = L.map(l=>{ const a = act(l);
+    return '<div class="hline"><span class="hkey '+(l.cls||'')+(a?' hact':'')+'"'+(a?' role="button" data-hact="'+a+'"':'')+'>'+l.key+'</span><span>'+l.txt+'</span></div>'; }).join('');
   el.innerHTML = html;
   // desktop: the same legend lives in the mid-panel (the bottom overlay is hidden there)
   const mh = $('#mpHelp');
@@ -3238,9 +3481,41 @@ function logRowsHTML(limit){
       (struct?'':'<span class="ldel" data-id="'+e.id+'">✕</span>')+'</div>';
   }).join('');
 }
+/* WHAT WAS RECORDED WITH A PLAY: the assist on a basket, the block and rebound on a miss, the steal on a
+   turnover — stamped at the play's own time, straight after it. Deleting the basket left its assist behind,
+   credited to a pass that led to nothing. */
+function followUpsOf(ev){
+  const want = (ev.t==='p2_made' || ev.t==='p3_made') ? ['ast'] : (/^p[23]_miss$/.test(ev.t) ? ['blk','reb'] : (ev.t==='to' ? ['stl'] : []));
+  const out = [];
+  if(!want.length) return out;
+  for(let i = S.events.indexOf(ev)+1; i < S.events.length; i++){
+    const e = S.events[i];
+    if(e.period!==ev.period || e.clock!==ev.clock) break;
+    if(['tag','stype','loc'].includes(e.t)) continue;
+    if(want.includes(e.t)) out.push(e); else break;
+  }
+  return out;
+}
 function confirmDelete(id){
+  if(finalisedHold()) return;
   const ev = evById(id); if(!ev) return;
-  askConfirm('delete: '+(pbpLine(ev,id,{},{})||ev.t)+' ?', ()=>deleteEvent(id));
+  const label = pbpLine(ev,id,{},{})||ev.t;
+  if(ev.t==='sub'){
+    /* a change the later ones build on: taking it out can leave somebody "on court" twice, or taken off while on the bench */
+    const prob = lineupProblem(S.events.filter(e=>e.id!==id));
+    askConfirm('delete: '+label+' ?'+(prob ? ' the changes after it would not fit — '+prob+'. add the substitution at the right time instead (+ in the play-by-play).' : ''),
+      ()=>deleteEvent(id));
+    return;
+  }
+  const fu = followUpsOf(ev);
+  askConfirm('delete: '+label+' ?', ()=>{
+    deleteEvent(id);
+    if(!fu.length) return;
+    askChoice((fu.map(e=>pbpLine(e,e.id,{},{})).join(' and '))+' — recorded with it. delete '+(fu.length>1?'those':'that')+' too?',
+      'keep '+(fu.length>1?'them':'it'), 'delete '+(fu.length>1?'them':'it'), c=>{
+        if(c===1){ fu.forEach(e=>{ S.events = S.events.filter(x=>x.id!==e.id); }); save(); renderAll(); toast('deleted with it'); }
+      });
+  });
 }
 function wireLogRows(root){
   root.querySelectorAll('.ldel').forEach(b=>b.addEventListener('click', e=>{
@@ -3551,7 +3826,7 @@ const EVTYPES = [
   ['ft_miss','ft miss'],['ft_made','ft made'],['p2_miss','2pt miss'],['p2_made','2pt made'],
   ['p3_miss','3pt miss'],['p3_made','3pt made'],['oreb','off reb'],['dreb','def reb'],
   ['ast','assist'],['stl','steal'],['blk','block'],['to','turnover'],['foul','foul'],
-  ['timeout','timeout'],['jump','jump ball']
+  ['timeout','timeout'],['jump','jump ball'],['sub','substitution']
 ];
 const EV_NEED_PID = ['ft_miss','ft_made','p2_miss','p2_made','p3_miss','p3_made','ast','stl','blk'];
 const EV_TEAM_OK  = ['oreb','dreb','to','foul'];   // may be team-attributed (no player)
@@ -3559,33 +3834,74 @@ const EV_NO_ACTOR = ['timeout','jump'];
 let EM = null;
 function typeKeyOf(ev){
   if(ev.t==='reb') return ev.off?'oreb':'dreb';
+  if(ev.t==='sub') return 'sub';
   return EVTYPES.some(x=>x[0]===ev.t) ? ev.t : null;
 }
 function typeToFields(k, kind){
   if(k==='oreb') return {t:'reb', off:true};
   if(k==='dreb') return {t:'reb', off:false};
   if(k==='foul') return {t:'foul', kind:kind||'personal'};
+  if(k==='sub') return {t:'sub'};
   return {t:k};
 }
-function insertPos(cum){
+/* WHO WAS ON COURT AT A MOMENT, from the starters and every change before it — in the log's own order, ties broken
+   as insertPos breaks them, leaving out the change being edited. The editor offers subs from this, and checks one
+   against it, because a change can only take off somebody who was on and bring on somebody who was not. */
+function onCourtAt(t, period, clock, excludeId, events){
+  const cum = cumEl(period, clock);
+  let on = [...S.starters[t]];
+  for(const e of (events || S.events)){
+    if(e.id===excludeId) continue;
+    const ec = cumEl(e.period||1, e.clock!=null?e.clock:PLEN(e.period||1));
+    if(ec > cum || (ec === cum && (e.period||1) > period)) break;
+    if(e.t==='sub' && e.team===t){
+      if(e.out!=null) on = on.filter(x=>x!==e.out);
+      if(e.in!=null && !on.includes(e.in)) on.push(e.in);
+    }
+  }
+  return on;
+}
+/* The first change in a log that does not fit the players it finds on court — somebody taken off who was not on,
+   or sent on who already was. Deleting or moving one change can break a later one; this is how that gets said
+   rather than discovered as six players on court an hour later. */
+function lineupProblem(events){
+  const on = [[...S.starters[0]], [...S.starters[1]]];
+  for(const e of (events || S.events)){
+    if(e.t!=='sub' || (e.team!==0 && e.team!==1)) continue;
+    const a = on[e.team];
+    if(e.out!=null && !a.includes(e.out))
+      return perName(e.period)+' '+fmtClock(e.clock)+': '+pname(e.out)+' is taken off but is not on court then';
+    if(e.in!=null && a.includes(e.in) && e.in!==e.out)
+      return perName(e.period)+' '+fmtClock(e.clock)+': '+pname(e.in)+' is sent on but is already on court';
+    if(e.out!=null) on[e.team] = a.filter(x=>x!==e.out);
+    if(e.in!=null && !on[e.team].includes(e.in)) on[e.team].push(e.in);
+  }
+  return null;
+}
+/* Where an action at (period, clock) belongs in the log. The end of one period and the start of the next are the
+   same moment of game time, so a tie is broken by the period: an action added at Q1 0:00 goes before Q2's start
+   rather than after it, where it would be read as the second quarter's (and flip the arrow's order). */
+function insertPos(cum, period){
   for(let i=0;i<S.events.length;i++){
     const e = S.events[i];
-    if(cumEl(e.period||1, e.clock!=null?e.clock:PLEN(e.period||1)) > cum) return i;
+    const ec = cumEl(e.period||1, e.clock!=null?e.clock:PLEN(e.period||1));
+    if(ec > cum || (ec === cum && period != null && (e.period||1) > period)) return i;
   }
   return S.events.length;
 }
 function openEvEditor(id){
   const ev = evById(id); if(!ev) return;
-  if(ev.t==='sub'){ toast('subs can’t be edited — swipe to delete, redo on court'); return; }
   const tk = typeKeyOf(ev); if(!tk) return;
   EM = {mode:'edit', id, type:tk, team:ev.team!=null?ev.team:0, pid:ev.pid||null,
+    out:ev.t==='sub'?(ev.out||null):null, in:ev.t==='sub'?(ev.in||null):null,
     kind:ev.kind||'personal', period:ev.period||1,
-    min:Math.floor((ev.clock||0)/60000), sec:Math.floor((ev.clock||0)/1000)%60};
+    /* as the log prints it (fmtClock rounds up): 9:59.4 shows as 10:00 and must open as 10:00 */
+    min:Math.floor(Math.ceil((ev.clock||0)/1000)/60), sec:Math.ceil((ev.clock||0)/1000)%60};
   renderEvModal();
 }
 function openEvAdd(){
-  EM = {mode:'add', id:null, type:'p2_made', team:0, pid:null, kind:'personal',
-    period:S.period, min:Math.floor(S.clockMs/60000), sec:Math.floor(S.clockMs/1000)%60};
+  EM = {mode:'add', id:null, type:'p2_made', team:0, pid:null, out:null, in:null, kind:'personal',
+    period:S.period, min:Math.floor(Math.ceil(S.clockMs/1000)/60), sec:Math.ceil(S.clockMs/1000)%60};
   renderEvModal();
 }
 function renderEvModal(){
@@ -3600,7 +3916,20 @@ function renderEvModal(){
   if(EM.type!=='jump')
     html += '<div class="evsec">team</div><div class="evteam">'+[0,1].map(t=>
       '<button class="'+(EM.team===t?'on':'')+'" data-k="team" data-v="'+t+'">'+esc(tname(t))+'</button>').join('')+'</div>';
-  if(!noActor){
+  if(EM.type==='sub'){
+    /* the time first, because who can go off depends on when */
+    const on = onCourtAt(EM.team, EM.period, Math.min(PLEN(EM.period), (EM.min*60+EM.sec)*1000), EM.mode==='edit'?EM.id:null);
+    const pl = S.teams[EM.team].players;
+    const pchip = (p,k,sel) => '<span class="stchip'+(sel?' on':'')+'" data-k="'+k+'" data-v="'+p.id+'">'+
+      esc(p.num!==''?('#'+p.num+' '):'')+esc(p.name)+'</span>';
+    html += '<div class="evsec">goes off — on court at that time</div><div class="evchips">'+
+      pl.filter(p=>on.includes(p.id)).map(p=>pchip(p,'out',EM.out===p.id)).join('')+
+      '<span class="stchip'+(EM.out==null?' on':'')+'" data-k="out" data-v="">nobody</span></div>'+
+      '<div class="evsec">comes on</div><div class="evchips">'+
+      pl.filter(p=>!on.includes(p.id) || p.id===EM.in).map(p=>pchip(p,'in',EM.in===p.id)).join('')+
+      '<span class="stchip'+(EM.in==null?' on':'')+'" data-k="in" data-v="">nobody</span></div>'+
+      '<div class="detnote">set the time first: the players on court are the ones at that moment</div>';
+  } else if(!noActor){
     html += '<div class="evsec">player</div><div class="evchips">'+
       (teamOk?'<span class="stchip'+(EM.pid==null?' on':'')+'" data-k="pid" data-v="">team</span>':'')+
       S.teams[EM.team].players.map(p=>
@@ -3640,6 +3969,10 @@ function renderEvModal(){
     '<button class="yes" data-k="save">save</button></div>';
   $('#evBody').innerHTML = html;
   $('#evModal').classList.remove('hidden');
+  if(EM.type==='sub'){
+    ['#evMin','#evSec'].forEach(sel=>{ const inp=$(sel); if(inp) inp.onchange = ()=>{
+      EM.min = +($('#evMin').value)||0; EM.sec = Math.min(59,+($('#evSec').value)||0); renderEvModal(); }; });
+  }
   $('#evBody').onclick = e=>{
     const el = e.target.closest('[data-k]'); if(!el) return;
     const k = el.dataset.k, v = el.dataset.v;
@@ -3647,8 +3980,10 @@ function renderEvModal(){
     EM.sec = +($('#evSec')?$('#evSec').value:EM.sec)||0;
     if(k==='type'){ EM.type=v; if(EV_NEED_PID.includes(v)&&EM.pid==null){} renderEvModal(); }
     else if(k==='kind'){ EM.kind=v; renderEvModal(); }
-    else if(k==='team'){ if(EM.team!==+v){ EM.team=+v; EM.pid=null; } renderEvModal(); }
+    else if(k==='team'){ if(EM.team!==+v){ EM.team=+v; EM.pid=null; EM.out=null; EM.in=null; } renderEvModal(); }
     else if(k==='pid'){ EM.pid = v===''?null:v; renderEvModal(); }
+    else if(k==='out'){ EM.out = v===''?null:v; renderEvModal(); }
+    else if(k==='in'){ EM.in = v===''?null:v; renderEvModal(); }
     else if(k==='pm'){ EM.period=Math.max(1,EM.period-1); renderEvModal(); }
     else if(k==='pp'){ EM.period=Math.min(8,EM.period+1); renderEvModal(); }
     else if(k==='cancel'){ EM=null; $('#evModal').classList.add('hidden'); }
@@ -3657,6 +3992,7 @@ function renderEvModal(){
   };
 }
 function saveEvModal(){
+  if(finalisedHold()) return;
   EM.min = +($('#evMin').value)||0; EM.sec = Math.min(59,+($('#evSec').value)||0);
   /* Blank means "leave it to the neighbours", which is a different instruction
      from zero — zero is the very start of the stream. */
@@ -3667,9 +4003,17 @@ function saveEvModal(){
   if(EV_NEED_PID.includes(EM.type) && !EM.pid){ toast('pick a player'); return; }
   const clock = Math.min(PLEN(EM.period), (EM.min*60+EM.sec)*1000);
   const base = typeToFields(EM.type, EM.kind);
+  if(EM.type==='sub'){
+    if(EM.out==null && EM.in==null){ toast('pick who goes off and who comes on'); return; }
+    if(EM.out!=null && EM.out===EM.in){ toast('the same player cannot go off and come on'); return; }
+    const on = onCourtAt(EM.team, EM.period, clock, EM.mode==='edit'?EM.id:null);
+    if(EM.out!=null && !on.includes(EM.out)){ toast(pname(EM.out)+' is not on court at '+perName(EM.period)+' '+fmtClock(clock)); return; }
+    if(EM.in!=null && on.includes(EM.in)){ toast(pname(EM.in)+' is already on court at '+perName(EM.period)+' '+fmtClock(clock)); return; }
+    base.out = EM.out; base.in = EM.in;
+  }
   const noActor = EV_NO_ACTOR.includes(EM.type);
   const team = EM.type==='jump' ? null : EM.team;
-  const pid = noActor ? null : EM.pid;
+  const pid = (noActor || EM.type==='sub') ? null : EM.pid;
   if(EM.mode==='add'){
     S.evSeq = (S.evSeq||0)+1;
     const ev = Object.assign({id:S.evSeq, team, pid, period:EM.period, clock}, base);
@@ -3679,12 +4023,15 @@ function saveEvModal(){
        recording is the exception — that IS a statement about when it
        happened, and it is a better one than an interpolation. */
     if(vWall != null) ev.wall = vWall;
-    S.events.splice(insertPos(cumEl(EM.period, clock)), 0, ev);
+    S.events.splice(insertPos(cumEl(EM.period, clock), EM.period), 0, ev);
   } else {
     const ev = evById(EM.id); if(!ev) return;
-    const moved = ev.period!==EM.period || ev.clock!==clock;
+    /* compared as the box showed it — to the second. Saving an action whose time nobody touched used to move it
+       by the rounding (10:00 → 9:59) and throw away its video stamp. */
+    const moved = ev.period!==EM.period || Math.ceil((ev.clock||0)/1000) !== Math.ceil(clock/1000);
     delete ev.off; delete ev.kind;
-    Object.assign(ev, {team, pid, period:EM.period, clock}, base);
+    if(EM.type!=='sub'){ delete ev.out; delete ev.in; }
+    Object.assign(ev, {team, pid, period:EM.period, clock: moved ? clock : ev.clock}, base);
     if(moved){
       /* THE TAP TIME IS NO LONGER TRUE OF THIS PLAY.
 
@@ -3699,16 +4046,19 @@ function saveEvModal(){
          and a far better one than the moment the correction was typed. */
       delete ev.wall;
       S.events.splice(S.events.indexOf(ev), 1);
-      S.events.splice(insertPos(cumEl(EM.period, clock)), 0, ev);
+      S.events.splice(insertPos(cumEl(EM.period, clock), EM.period), 0, ev);
     }
     /* Applied after the move, so an operator who corrects both the game clock
        and the video position in one pass keeps the position. Without this the
        move would throw away the value they had just typed. */
     if(vWall != null) ev.wall = vWall;
   }
+  const wasSub = EM.type==='sub';
   S.redo = []; EM = null;
   $('#evModal').classList.add('hidden');
-  save(); renderAll(); toast('saved');
+  save(); renderAll();
+  const prob = wasSub ? lineupProblem() : null;
+  toast(prob ? 'saved — but check the changes after it: '+prob : 'saved', prob ? 6000 : 2200);
 }
 
 /* ---- the video clock, per action ---------------------------------------
@@ -3762,23 +4112,26 @@ function renderSubbar(){
   const spec = subbarSpec();
   window.__sbspec = spec;
   const p = ui.pending;
-  const flow = p && p.flow ? p : null;
+  /* once free throws are on, the bar counts them rather than showing the shot's type / location steps */
+  const flow = p && p.flow && !p.ftArmed && p.shot!=='ft' ? p : null;
   let html = '';
   if(flow){
     const steps = flowSteps(flow);
     html += '<div class="stepbar">'+steps.map((s,i)=>
       '<span class="stepdot'+(i===flow.step?' on':(i<flow.step?' done':''))+'">'+s+'</span>').join('')+'</div>';
-  } else if(p && p.shot==='ft' && p.ftExp){
+  } else if(p && (p.shot==='ft' || p.ftArmed || p.kind==='foul') && p.ftExp){
     html += '<div class="stepbar">'+Array.from({length:Math.max(p.ftExp,p.ftCount)},(_,i)=>
       '<span class="stepdot'+(i<p.ftCount?' done':(i===p.ftCount?' on':''))+'">ft '+(i+1)+'</span>').join('')+
       (p.hold?'<span class="stepdot on">on hold</span>':'')+'</div>';
   }
-  html += spec.map((b,i)=>
+  /* the chips in one row of their own (.sbchips), which a phone scrolls sideways rather than wrapping into a
+     second: a row appearing under the thumb mid-play moved the whole roster down a row */
+  html += '<div class="sbchips">'+spec.map((b,i)=>
     '<button class="sub'+(b.on?' on':'')+(b.warny?' warny':'')+(b.step?' step':'')+(b.dim?' stepdim':'')+
     '" data-i="'+i+'"'+(b.dis?' disabled':'')+'>'+
     (b.key?'<span class="kcap">'+b.key+'</span>':'')+
     (b.ic?'<span class="ic'+(b.bob?' bob':'')+'">'+b.ic+'</span>':'')+b.label+
-    (b.cap?'<span class="cap">'+b.cap+'</span>':'')+'</button>').join('');
+    (b.cap?'<span class="cap">'+b.cap+'</span>':'')+'</button>').join('')+'</div>';
   if(flow && flowSteps(flow)[flow.step]==='location' && (!document.getElementById('midpanel') ||
      getComputedStyle(document.getElementById('midpanel')).display==='none')){
     const loc = D.locs ? D.locs[flow.anchorIdx] : null;
@@ -3801,6 +4154,7 @@ function pickChip(act,label,key){
 }
 function pickAllowed(act,team,pid){
   const p = ui.pending; if(!p || !pid) return false;
+  if(followUpWhyNot(act,p)) return false;
   if(act==='reb') return true;
   if(act==='blk' || act==='stl') return team!==p.team;
   if(act==='ast') return team===p.team && pid!==p.pid;
@@ -3852,11 +4206,15 @@ function subbarSpec(){
       const list = SHOTTYPES.map((v,i)=>({label:v, step:true, on:cur===v, key:String(i+1),
         fn:()=>{ addEvent({t:'stype', ref:p.anchorIdx, v}); flowAdvance(); }}));
       list.push({label:'skip', ic:'›', step:true, dim:true, key:'s', fn:flowAdvance});
-      return list;
+      /* the type and the place are optional; the rebound or the assist is the play — reachable from here, so the
+         chip route is not two skips long */
+      list.push(p.kind==='made' ? (!p.assistDone ? pickChip('ast','assist → tap','a') : null) : pickChip('reb','rebound → tap','r'));
+      return list.filter(Boolean);
     }
     if(step==='location'){
       return [{label:'skip location', ic:'›', step:true, dim:true, key:'s', fn:flowAdvance},
-              sbPause(), sbResume()];
+              p.kind==='made' ? (!p.assistDone ? pickChip('ast','assist → tap','a') : null) : pickChip('reb','rebound → tap','r'),
+              sbPause(), sbResume()].filter(Boolean);
     }
     // outcome step: made -> assist/tags + finish, miss -> rebound/block + finish
     // pick chips arm a "tap a player" mode as a no-drag alternative to the gestures
@@ -3880,7 +4238,11 @@ function subbarSpec(){
   if(p && p.kind==='to'){
     // livestats turnover types, tagged onto the turnover event
     const cur = D.stypes ? D.stypes[p.anchorIdx] : null;
-    const tt = (v,key) => ({label:v, step:true, on:cur===v, key, fn:()=>{ addEvent({t:'stype', ref:p.anchorIdx, v}); resetPend(); }});
+    const DEAD = ['travel','24s','out of bounds','double dribble'];
+    const tt = (v,key) => ({label:v, step:true, on:cur===v, key, fn:()=>{
+      /* a violation is a whistle: the clock stops with it, as it does for a foul */
+      if(DEAD.includes(v) && cur!==v && S.running){ S.running = false; toast('clock stopped — '+v); }
+      addEvent({t:'stype', ref:p.anchorIdx, v}); resetPend(); }});
     return [pickChip('stl','steal → tap','s'),
       tt('bad pass','1'), tt('travel','2'), tt('24s','3'), tt('out of bounds','4'), tt('double dribble','5'), tt('other','6')];
   }
@@ -3895,10 +4257,14 @@ function subbarSpec(){
     const chip = (k,key) => ({label:FOULNAMES[k], on:cur===k, key, fn:()=>{
       if(fev){ fev.kind=k; save(); }
       else ui.foulType=k;
+      p.ftExp = ftExpectFor(k, p);
       resetPend(); renderAll();
+      if(fev) foulAlert(fev.pid);
     }});
     const list = [chip('shooting','1'), chip('tech','2'), chip('unsport','3'), chip('disq','4')];
-    if(teamFoulsNow(D,opp)>=3) list.push(chip('floor','5'));
+    /* on the floor in the penalty: the fifth team foul onward. Before the foul is in the count that is four
+       already committed; once it is recorded, five. */
+    if(teamFoulsNow(D,opp) >= (fev ? 5 : 4)) list.push(chip('floor','5'));
     list.push({label:p.hold?'release':'hold', ic:p.hold?'▶':'❚❚', step:true, on:!!p.hold, key:'h', fn:toggleHold});
     return list;
   }
@@ -3908,7 +4274,10 @@ function subbarSpec(){
     const chip = (k,key) => ({label:FOULNAMES[k], on:cur===k, key, fn:()=>{
       if(!fev) return;
       fev.kind = fev.kind===k ? (p.pid?'personal':'tech') : k;
+      const k2 = fev.kind;
+      p.ftExp = k2==='tech' ? 1 : ((k2==='unsport' || k2==='disq') ? 2 : (teamFoulsNow(D,p.team)>=5 ? 2 : 0));
       save(); resetPend(); renderAll();
+      foulAlert(fev.pid);
     }});
     return [chip('tech','1'), chip('unsport','2'), chip('disq','3')];
   }
@@ -3924,6 +4293,7 @@ function jumpTap(){
   // held ball on a contested rebound: settle the miss window by the arrow
   if(ui.pending && ui.pending.kind==='miss' && S.tipWinner!=null){
     const at = anchorAt(); ui.pending = null;
+    S.running = false;                       // a held ball is a dead ball: the clock stops on the whistle
     addEvent(Object.assign({t:'jump'}, at));
     toast('held ball — possession '+tname(derive().poss!=null?derive().poss:0));
     return;
@@ -3941,12 +4311,18 @@ function jumpTap(){
       toast('possession '+tname(w)+' — arrow to '+tname(1-w)+' — clock running', 3600);
     });
   } else {
+    S.running = false;
     addEvent({t:'jump'});
-    toast('held ball — possession '+tname(derive().poss!=null?derive().poss:0));
+    toast('held ball — possession '+tname(derive().poss!=null?derive().poss:0)+' · clock stopped');
   }
 }
 function sbPause(){ return {label:'pause', ic:'❙❙', key:'space', dis:!S.running, fn:pauseClock}; }
-function sbResume(){ return {label:'resume', ic:'▶', key:'space', dis:S.running, fn:resumeClock}; }
+function sbResume(){
+  /* at 0:00 this starts the next period (or overtime) — said on the button, so at half-time it does not read as
+     "resume the interval" */
+  const next = !S.running && S.clockMs===0 && !(S.period>=gameFmt().periods && D && D.score[0]!==D.score[1]);
+  return {label: next ? 'start '+perName(S.period+1) : 'resume', ic:'▶', key:'space', dis:S.running, fn:resumeClock};
+}
 function sbAdjust(){ return {label:'adjust', cap:'hold + drag', ic:'⇅', key:'a', bob:true, scrub:true,
   fn:()=>{ if(Date.now()-(window.__scrubbedAt||0)<450) return; openAdjust(); }}; }
 function sbTimeout(){ return {label:'timeout', ic:'t', key:'o', on:ui.armed==='timeout',
@@ -4023,10 +4399,10 @@ function gestureOptions(team,pid){
   const inw = team===0?'right':'left', outw = team===0?'left':'right';
   if(p){
     if(p.kind==='miss'){
-      o.push({dir:inw, label:'rebound', act:'reb'});
+      if(reboundLive(p)) o.push({dir:inw, label:'rebound', act:'reb'});
       if(team!==p.team && p.shot!=='ft') o.push({dir:outw, label:'block', act:'blk'});
     } else if(p.kind==='made'){
-      if(team===p.team && pid!==p.pid && !p.assistDone) o.push({dir:inw, label:'assist', act:'ast'});
+      if(team===p.team && pid!==p.pid && !followUpWhyNot('ast',p)) o.push({dir:inw, label:'assist', act:'ast'});
     } else if(p.kind==='to'){
       if(team!==p.team) o.push({dir:inw, label:'steal', act:'stl'});
     }
@@ -4034,7 +4410,7 @@ function gestureOptions(team,pid){
   }
   if(!ui.armed){
     if(ui.subOut){
-      if(ui.subOut.team===team && !onCourtHas(team,pid)) o.push({dir:'up', label:'sub in', act:'subin'});
+      if(ui.subOut.team===team && !onCourtHas(team,pid) && eligible(pid)) o.push({dir:'up', label:'sub in', act:'subin'});
     } else if(onCourtHas(team,pid)) o.push({dir:'down', label:'sub out', act:'subout'});
   }
   return o;
@@ -4127,10 +4503,19 @@ function onGMove(e){
   else if(G.dy<-80) fired = opts.find(o=>o.dir==='up');
   if(fired){ G.done=true; endGesture(); fireOption(fired,G.team,G.pid); }
 }
+/* THE CLICK A TOUCH LEAVES BEHIND.
+
+   A tap on a row records on pointerup, and the re-render it causes can move the layout (the sub-bar grows a row
+   of chips): the click the browser sends a moment later for the same touch then lands on whatever is now under
+   the finger. On the first row that is the team header, which in a miss window records a team rebound — so
+   every miss by the top player of either column came out as a team rebound and closed the play. A header click
+   this soon after a row gesture is that ghost, not a tap. */
+let rowGestureAt = 0;
 function onGUp(){
   if(SCROLLG){ SCROLLG = null; return; }
   if(SC){ endScrub(); return; }
   if(!G) return;
+  rowGestureAt = Date.now();
   if(G.done){ G=null; return; }
   const dist = Math.hypot(G.dx,G.dy);
   endGesture();
@@ -4169,13 +4554,16 @@ function fireOption(o,team,pid){
   const at = anchorAt();
   switch(o.act){
     case 'reb': ui.pending=null; addEvent(Object.assign({t:'reb',team,pid,off:team===p.team},at));
-      toast((team===p.team?'offensive':'defensive')+' rebound'); break;
-    case 'blk': addEvent(Object.assign({t:'blk',team,pid},at)); resetPend(); toast('block'); break;
-    case 'ast': p.assistDone=true; addEvent(Object.assign({t:'ast',team,pid},at)); resetPend(); toast('assist'); break;
-    case 'stl': ui.pending=null; addEvent(Object.assign({t:'stl',team,pid},at)); toast('steal'); break;
+      toast((team===p.team?'offensive':'defensive')+' rebound'); benchNote(team,pid); break;
+    case 'blk': addEvent(Object.assign({t:'blk',team,pid},at)); resetPend(); toast('block'); benchNote(team,pid); break;
+    case 'ast': p.assistDone=true; addEvent(Object.assign({t:'ast',team,pid},at)); resetPend(); toast('assist'); benchNote(team,pid); break;
+    case 'stl': ui.pending=null; addEvent(Object.assign({t:'stl',team,pid},at)); toast('steal'); benchNote(team,pid); break;
     case 'subout': ui.subOut={team,pid,expires:Date.now()+WIN_MS};
-      renderAll(); toast(S.running ? 'clock is running — fiba subs happen at dead balls · drag a bench player up' : 'drag a bench player up to sub in', 3200); break;
-    case 'subin': { const out=ui.subOut.pid; ui.subOut=null;
+      renderAll(); toast((S.running ? 'clock is running — fiba subs happen at dead balls · ' : '')+
+        (IS_TOUCH ? 'tap the player coming on' : 'drag a bench player up to sub in'), 3200); break;
+    case 'subin': {
+      if(!eligible(pid)){ toast(pname(pid)+' has fouled out — they cannot come back on', 3200); break; }
+      const out=ui.subOut.pid; ui.subOut=null;
       addEvent({t:'sub',team,out,in:pid}); toast('substitution'); break; }
   }
 }
@@ -4230,7 +4618,11 @@ function tap(team,pid){
         if(p.foulIdx==null){
           const kind = ui.foulType || 'shooting';
           S.running = false;
-          p.foulIdx = addEvent(Object.assign({t:'foul',team,pid,kind,drawn:p.pid||null}, anchorAt()));
+          const fe = {t:'foul',team,pid,kind,drawn:p.pid||null};
+          /* the shot this foul was on — a missed one stops being an attempt while the foul stands (syncFouledShots) */
+          const s0 = evById((p.steps||[])[0]);
+          if(s0 && /^p[23]_miss$/.test(s0.t) && s0.team===p.team) fe.shot = s0.id;
+          p.foulIdx = addEvent(Object.assign(fe, anchorAt()));
           p.shot = 'ft';
           resetPend(); vibrate(10);
           toast(FOULNAMES[kind]+' foul — '+pname(pid));
@@ -4247,6 +4639,7 @@ function tap(team,pid){
     }
     if(p.kind==='foul'){
       if(team!==p.team && pid){
+        drawnBy(p, pid);
         const i = addEvent(Object.assign({t:'ft_miss',team,pid}, anchorAt()));
         setPend('miss','ft',team,pid,i);
         renderAll(); ftProgress();
@@ -4256,6 +4649,7 @@ function tap(team,pid){
     return; // 'to' pending: only steal drag or X
   }
   if(!ui.armed) return;
+  if(ui.armed!=='pf' && ui.armed!=='timeout') benchNote(team,pid);
   switch(ui.armed){
     case 'ft': { const i=addEvent({t:'ft_miss',team,pid}); setPend('miss','ft',team,pid,i); break; }
     case 'p2': { const i=addEvent({t:'p2_miss',team,pid}); setPend('miss','p2',team,pid,i); break; }
@@ -4264,6 +4658,18 @@ function tap(team,pid){
       ui.pending={kind:'to',team,pid,anchorIdx:i,expires:Date.now()+WIN_MS,at:originAt(i),steps:[i]}; break; }
     case 'pf': { S.running=false;
       const kind = ui.foulType||'personal';
+      /* A PLAYER WHO HAS FOULED OUT IS BENCH PERSONNEL (FIBA Art. 36): a technical by him is the bench's,
+         charged to the coach, and is no foul of his or the team's. Recorded so — on the team, with who it was. */
+      const stp = D && D.stats[pid];
+      if(!onCourtHas(team,pid) && stp && (stp.dq || stp.pf>=5)){
+        const bk = (kind==='unsport' || kind==='disq') ? kind : 'tech';
+        ui.armed = null; ui.foulType = null;
+        const bi = addEvent({t:'foul',team,pid:null,kind:bk,by:pid});
+        ui.pending = {kind:'foul',team,pid:null,anchorIdx:bi,foulIdx:bi,expires:Date.now()+WIN_MS,at:originAt(bi),ftExp:bk==='tech'?1:2,steps:[bi]};
+        toast(pname(pid)+' has fouled out — recorded as a bench '+FOULNAMES[bk]+' foul, the coach\'s', 4200);
+        renderAll(); return;
+      }
+      benchNote(team,pid);
       const i=addEvent({t:'foul',team,pid,kind});
       if(kind==='offensive'){
         // FIBA: an offensive foul is also a turnover, and never yields free throws
@@ -4292,7 +4698,9 @@ function tap(team,pid){
          been committed. The two legitimately differ by one. */
       ui.pending={kind:'foul',team,pid,anchorIdx:i,foulIdx:i,expires:Date.now()+WIN_MS,at:originAt(i),steps:[i],
         ftExp: kind==='tech'?1:(kind==='unsport'||kind==='disq'?2:(teamFoulsNow(D,team)>=5?2:0))};
-      ui.foulType=null; foulAlert(pid); break; }
+      ui.foulType=null;
+      if(ui.pending.ftExp) toast((kind==='personal' ? 'penalty — ' : '')+ui.pending.ftExp+' free throw'+(ui.pending.ftExp>1?'s':'')+' for '+tname(1-team), 2600);
+      foulAlert(pid); break; }
     case 'timeout': return;
   }
   ui.armed = null;
@@ -4301,12 +4709,14 @@ function tap(team,pid){
 
 function holdMade(team,pid){
   vibrate([14,40,14]);
+  if(!ui.pending && ui.armed) benchNote(team,pid);
   // stamp the make at the moment the hold began, not when it completed
   const at = (G && G.clock0!=null) ? {period:G.period0, clock:G.clock0} : {};
   const p = ui.pending;
   if(p){
     // inside a window: joined events share the window's origin time
     if(p.kind==='foul' && team!==p.team && pid){
+      drawnBy(p, pid);
       const i = addEvent(Object.assign({t:'ft_made',team,pid}, anchorAt()));
       setPend('made','ft',team,pid,i); renderAll(); ftProgress(); return;
     }
@@ -4333,32 +4743,66 @@ function openSubPanel(t){
   renderSubPanel();
   $('#evModal').classList.remove('hidden');
 }
+/* THE PANEL ALSO HANDLES A TEAM THAT RUNS OUT OF PLAYERS.
+
+   It insisted on as many in as out, so a team with nobody left on the bench could never take off a player who
+   had fouled out: he stayed "on court", collected minutes and plus-minus, and the league refuses to finalise a
+   game with a fouled-out player on the floor. Now a player may go off with nobody coming on — but only when there
+   is genuinely nobody left to send on — and a team that is short can bring a player back. Fouled-out and
+   disqualified players are shown, and cannot be chosen to come on. */
+function subPanelState(){
+  const t = SUBP.team, onc = D.onCourt[t];
+  const bench = S.teams[t].players.filter(p=>!onc.includes(p.id));
+  const after = onc.length - SUBP.outs.size + SUBP.ins.size;
+  const free = bench.filter(p=>eligible(p.id) && !SUBP.ins.has(p.id)).length;   // could still come on
+  const changes = SUBP.outs.size + SUBP.ins.size;
+  let why = null;
+  if(!changes) why = 'choose who goes off and who comes on';
+  else if(after > 5) why = 'that would put '+after+' on court';
+  else if(after < 5 && free > 0) why = 'bring on as many as go off — '+free+' on the bench can still play';
+  return {after, free, ok: !why, why};
+}
 function renderSubPanel(){
   const t = SUBP.team, onc = D.onCourt[t];
   const on = S.teams[t].players.filter(p=>onc.includes(p.id));
   const bench = S.teams[t].players.filter(p=>!onc.includes(p.id));
-  const chip = (p,sel,cls) => '<span class="stchip'+(sel?' on':'')+' '+cls+'" data-pid="'+p.id+'">'+
-    '<span style="font-family:var(--f-mono);opacity:.7;margin-right:5px">'+esc(p.num)+'</span>'+esc(p.name)+
-    (D.stats[p.id].pf>=5||D.stats[p.id].dq?' <span style="color:var(--red)">·out</span>':'')+'</span>';
-  const ok = SUBP.outs.size>0 && SUBP.outs.size===SUBP.ins.size;
+  const chip = (p,sel,cls) => {
+    const out = D.stats[p.id] && (D.stats[p.id].pf>=5 || D.stats[p.id].dq);
+    const locked = out && cls==='si';
+    return '<span class="stchip'+(sel?' on':'')+' '+cls+(locked?' locked':'')+'" data-pid="'+p.id+'"'+(locked?' style="opacity:.45"':'')+'>'+
+      '<span style="font-family:var(--f-mono);opacity:.7;margin-right:5px">'+esc(p.num)+'</span>'+esc(p.name)+
+      (out?' <span style="color:var(--red)">·'+(D.stats[p.id].dq?'dq':'out')+'</span>':'')+'</span>';
+  };
+  const st = subPanelState();
+  const label = SUBP.outs.size===SUBP.ins.size
+    ? 'confirm '+SUBP.outs.size+' out · '+SUBP.ins.size+' in'
+    : 'confirm '+SUBP.outs.size+' out · '+SUBP.ins.size+' in — '+st.after+' on court';
   $('#evBody').innerHTML =
     '<div class="mtitle">substitutions — '+esc(tname(t))+(S.running?'<br><span style="color:var(--amber);font-size:10px">clock is running — subs happen at dead balls</span>':'')+'</div>'+
     '<div class="evsec">on court — tap to send out</div><div class="evchips">'+on.map(p=>chip(p,SUBP.outs.has(p.id),'so')).join('')+'</div>'+
-    '<div class="evsec">bench — tap to bring in</div><div class="evchips">'+bench.map(p=>chip(p,SUBP.ins.has(p.id),'si')).join('')+'</div>'+
+    '<div class="evsec">bench — tap to bring in</div><div class="evchips">'+(bench.length ? bench.map(p=>chip(p,SUBP.ins.has(p.id),'si')).join('') : '<span class="setup-note">nobody on the bench</span>')+'</div>'+
+    (st.ok && st.after<5 ? '<div class="setup-note" style="padding:6px 0 0;color:var(--amber)">nobody left to bring on — '+esc(tname(t))+' plays with '+st.after+'</div>' : '')+
     '<div class="mbtns"><button data-k="cancel">cancel</button>'+
-    '<button class="yes" data-k="go" style="'+(ok?'':'opacity:.4')+'">confirm '+SUBP.outs.size+' out · '+SUBP.ins.size+' in</button></div>';
+    '<button class="yes" data-k="go" style="'+(st.ok?'':'opacity:.4')+'">'+label+'</button></div>';
   $('#evBody').onclick = e=>{
     const c = e.target.closest('.stchip[data-pid]');
-    if(c){ const id=c.dataset.pid; const set = c.classList.contains('so')?SUBP.outs:SUBP.ins;
+    if(c){
+      const id=c.dataset.pid;
+      if(c.classList.contains('locked')){ toast(pname(id)+' has fouled out — they cannot come back on'); return; }
+      const set = c.classList.contains('so')?SUBP.outs:SUBP.ins;
       set.has(id)?set.delete(id):set.add(id); renderSubPanel(); return; }
     const b = e.target.closest('[data-k]'); if(!b) return;
     if(b.dataset.k==='cancel'){ SUBP=null; $('#evModal').classList.add('hidden'); return; }
     if(b.dataset.k==='go'){
-      if(!(SUBP.outs.size>0 && SUBP.outs.size===SUBP.ins.size)){ toast('match the outs and ins'); return; }
+      const v = subPanelState();
+      if(!v.ok){ toast(v.why); return; }
       const outs=[...SUBP.outs], ins=[...SUBP.ins], team=SUBP.team;
       SUBP=null; $('#evModal').classList.add('hidden');
-      outs.forEach((o,i)=>addEvent({t:'sub',team,out:o,in:ins[i]}));
-      toast(outs.length+' substitution'+(outs.length>1?'s':'')+' — '+tname(team));
+      const n = Math.max(outs.length, ins.length);
+      for(let i=0;i<n;i++) addEvent({t:'sub',team,out:outs[i]!=null?outs[i]:null,in:ins[i]!=null?ins[i]:null});
+      toast(outs.length===ins.length
+        ? outs.length+' substitution'+(outs.length>1?'s':'')+' — '+tname(team)
+        : tname(team)+' — '+v.after+' on court');
     }
   };
 }
@@ -4367,6 +4811,8 @@ function teamTap(t){
   if(!ui.armed && !ui.pending && !ui.subOut){ openSubPanel(t); return; }
   const p = ui.pending;
   if(p && p.kind==='miss'){
+    const why = followUpWhyNot('reb', p);
+    if(why){ toast(why); return; }
     const at = anchorAt();
     ui.pending = null;
     addEvent(Object.assign({t:'reb',team:t,pid:null,off:t===p.team},at));
@@ -4392,7 +4838,10 @@ function teamTap(t){
     const kind = ui.foulType || 'tech';
     ui.armed = null; ui.foulType = null;
     const i = addEvent({t:'foul',team:t,pid:null,kind});
-    ui.pending = {kind:'foul',team:t,pid:null,anchorIdx:i,foulIdx:i,expires:Date.now()+WIN_MS,at:originAt(i),ftExp:1,steps:[i]};
+    /* a bench technical gives one free throw; a bench unsportsmanlike or disqualifying foul two; a team foul with no
+       player named gives what any personal foul does — two in the penalty, none before it */
+    const ftExp = kind==='tech' ? 1 : ((kind==='unsport' || kind==='disq') ? 2 : (teamFoulsNow(D,t)>=5 ? 2 : 0));
+    ui.pending = {kind:'foul',team:t,pid:null,anchorIdx:i,foulIdx:i,expires:Date.now()+WIN_MS,at:originAt(i),ftExp,steps:[i]};
     toast('bench '+FOULNAMES[kind]+' foul — '+tname(t));
     renderAll(); return;
   }
@@ -4453,7 +4902,10 @@ function wireGame(){
   });
 
   // score panel: the clock is the start/stop control (always reachable); the chevron collapses
-  $$('.thead').forEach(th=>th.addEventListener('click', ()=>teamTap(+th.dataset.team)));
+  $$('.thead').forEach(th=>th.addEventListener('click', ()=>{
+    if(Date.now() - rowGestureAt < 450) return;      // the ghost click of a row tap — see onGUp
+    teamTap(+th.dataset.team);
+  }));
 
   $('#xCancel').addEventListener('click', cancelStep);
   $('#delayB').addEventListener('click', ()=>{
@@ -4462,6 +4914,11 @@ function wireGame(){
     updateXRing(); toast('+10 seconds');
   });
   $('#doneB').addEventListener('click', finishWindow);
+  ['#ctrlHelp','#mpHelp'].forEach(sel=>{ const box = $(sel); if(box) box.addEventListener('click', e=>{
+    const b = e.target.closest('[data-hact]'); if(!b) return;
+    if(b.dataset.hact==='done') finishWindow(); else cancelStep();
+  }); });
+  document.documentElement.classList.toggle('ep-touch', IS_TOUCH);
 
   /* THE SHEET IS LOCKED WHILE A SELECT WINDOW IS OPEN.
 
@@ -4495,12 +4952,25 @@ function wireGame(){
     askConfirm('simulate a full game? are you sure? this replaces the current game with test data', simulateGame); }); }
   $('#btnEnd').addEventListener('click', ()=>{
     $('#sheet').classList.remove('open');
-    askConfirm('end the game?', endGame);
+    requestEndGame();
   });
 
   // desktop keyboard shortcuts
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape' && $('#pcModal') && !$('#pcModal').classList.contains('hidden')){ $('#pcModal').classList.add('hidden'); return; }
+    /* THE QUESTION ON SCREEN TAKES THE KEYBOARD, in every phase: Enter gives the primary answer, Esc says no to a
+       yes/no question, Tab stays between the two buttons. Before, the tip question, the period-end checks and
+       ending the game all needed the mouse, and Tab walked off into the closed menu behind the dialog. */
+    if(!$('#confirmModal').classList.contains('hidden')){
+      if(e.key==='Enter' && !(e.target && e.target.id==='confNo')){ e.preventDefault(); $('#confYes').click(); }
+      else if(e.key==='Escape' && confKind==='confirm'){ e.preventDefault(); $('#confNo').click(); }
+      else if(e.key==='Tab'){ e.preventDefault(); (document.activeElement===$('#confYes') ? $('#confNo') : $('#confYes')).focus(); }
+      return;
+    }
+    /* before the tip: Enter begins the game */
+    if(S && S.phase==='pregame' && e.key==='Enter' && !(e.target && e.target.matches && e.target.matches('input,textarea,button,select'))){
+      e.preventDefault(); beginGame(); return;
+    }
     if(!S || S.phase!=='game') return;
     if(e.target && e.target.matches && e.target.matches('input,textarea')) return;
     if(!$('#adjModal').classList.contains('hidden')){
@@ -4539,11 +5009,13 @@ function wireGame(){
     if(hit){ e.preventDefault(); hit.fn(); return; }
     switch(k){
       case 'space': e.preventDefault(); S.running ? pauseClock() : resumeClock(); break;
-      case 'f': $('.act[data-act="ft"]').click(); openCmd(true); break;
-      case '2': $('.act[data-act="p2"]').click(); openCmd(true); break;
-      case '3': $('.act[data-act="p3"]').click(); openCmd(true); break;
-      case 't': $('.act[data-act="to"]').click(); openCmd(true); break;
-      case 'p': $('.act[data-act="pf"]').click(); openCmd(true); break;
+      /* preventDefault: the arming opens and focuses the command bar, and the key that did it then typed itself
+         into it — "2" then "1;10+" read "21;10+" */
+      case 'f': e.preventDefault(); $('.act[data-act="ft"]').click(); openCmd(true); break;
+      case '2': e.preventDefault(); $('.act[data-act="p2"]').click(); openCmd(true); break;
+      case '3': e.preventDefault(); $('.act[data-act="p3"]').click(); openCmd(true); break;
+      case 't': e.preventDefault(); $('.act[data-act="to"]').click(); openCmd(true); break;
+      case 'p': e.preventDefault(); $('.act[data-act="pf"]').click(); openCmd(true); break;
       case '/': e.preventDefault(); openCmd(true); break;
       case 'x': if(ui.armed||ui.pending||ui.subOut) cancelStep(); break;
       case 'd': if(!$('#delayB').classList.contains('hidden')) $('#delayB').click(); break;
@@ -4744,16 +5216,17 @@ function applyCmd(){
   }
   for(const f of r.follows){
     if(!ui.pending){ toast('window closed — '+({reb:'rebound',blk:'block',ast:'assist',stl:'steal'}[f.act])+' not applied'); break; }
-    if(f.act==='reb' && ui.pending.kind!=='miss'){ toast('no rebound on a made shot'); continue; }
-    if(f.act==='ast' && ui.pending.kind!=='made'){ toast('assist needs a made shot'); continue; }
-    if(f.act==='stl' && ui.pending.kind!=='to'){ toast('steal needs a turnover'); continue; }
-    if(f.act==='blk' && ui.pending.kind!=='miss'){ toast('block needs a missed shot'); continue; }
+    const why = followUpWhyNot(f.act, ui.pending);
+    if(why){ toast(why); continue; }
     if(f.act==='reb' && !f.pid){ const at=anchorAt(); const p=ui.pending; ui.pending=null;
       addEvent(Object.assign({t:'reb',team:f.team,pid:null,off:f.team===p.team},at)); toast('team rebound'); continue; }
     fireOption({act:f.act}, f.team, f.pid);
   }
   inp.value=''; renderCmd();
-  if(cmdVisible()) inp.focus();
+  /* a shot's flow steps (type, location) are driven by their own keys — 1-7, s — so the bar steps aside for them;
+     "/" brings it back */
+  if(ui.pending && ui.pending.flow && ['type','location'].includes(flowSteps(ui.pending)[ui.pending.step])) inp.blur();
+  else if(cmdVisible()) inp.focus();
 }
 function wireCmd(){
   const inp=$('#cmdIn');
@@ -4799,6 +5272,21 @@ function wireAdjust(){
   $('#adjOk').addEventListener('click', ()=>{
     const m = Math.max(0, +($('#adjMin').value)||0);
     const s = Math.min(59, Math.max(0, +($('#adjSec').value)||0));
+    /* A PERIOD IS MOVED WITH ITS START. Setting the number alone left a quarter with no period_start in the log —
+       the arrow flips there, and the play-by-play groups by it. Forward adds the missing starts, in order; back
+       takes them out again, but only past periods with nothing recorded in them (those actions would be left
+       stranded in a quarter the game is no longer in). */
+    if(adjP > S.period){
+      endBreak();
+      for(let q = S.period+1; q <= adjP; q++) addEvent({t:'period_start', period:q, clock:PLEN(q)});
+    } else if(adjP < S.period){
+      const later = S.events.filter(e=>(e.period||1) > adjP && e.t!=='period_start');
+      if(later.length){
+        toast('there are actions in '+perName(later[0].period)+' — move or delete them in the play-by-play first', 4200);
+        return;
+      }
+      S.events = S.events.filter(e=>!(e.t==='period_start' && (e.period||1) > adjP));
+    }
     S.period = adjP;
     S.clockMs = Math.min(PLEN(adjP), (m*60+s)*1000);
     $('#adjModal').classList.add('hidden');
@@ -4831,7 +5319,10 @@ const SHEET_INPLAY  = ['btnBox', 'btnLog', 'btnAdv', 'btnVid',
 function orderSheet(){
   if(!S) return;
   const pre = S.phase === 'pregame';
-  const want = pre ? SHEET_PREGAME : SHEET_INPLAY;
+  let want = pre ? SHEET_PREGAME : SHEET_INPLAY;
+  /* at the final buzzer with a winner, "end game" is the next thing to do — first in the strip, not ninth */
+  if(!pre && S.phase === 'game' && S.period >= gameFmt().periods && S.clockMs === 0 && D && D.score[0] !== D.score[1])
+    want = ['btnEnd'].concat(want.filter(id => id !== 'btnEnd'));
   want.forEach((id, i) => { const b = $('#' + id); if(b) b.style.order = i; });
   const v = $('#btnVid');
   if(v){
@@ -5176,11 +5667,14 @@ function wireVideo(){
 
 /* ==================== confirm modal ==================== */
 let confCb = null, confNoCb = null;
+/* confKind: 'confirm' (a yes/no question: Esc is no) or 'choice' (two answers, both actions: Esc does nothing) */
+let confKind = null;
 function askConfirm(title, yes, no){
   $('#confNo').textContent='no'; $('#confYes').textContent='yes';
-  confCb = yes; confNoCb = no || null;
+  confCb = yes; confNoCb = no || null; confKind = 'confirm';
   $('#confTitle').textContent = title;
   $('#confirmModal').classList.remove('hidden');
+  if(!IS_TOUCH) setTimeout(()=>{ try{ $('#confYes').focus(); }catch(_){ } }, 0);
 }
 function askChoice(title, l0, l1, cb){
   const reset = ()=>{ $('#confNo').textContent='no'; $('#confYes').textContent='yes'; };
@@ -5188,7 +5682,9 @@ function askChoice(title, l0, l1, cb){
   confCb  = ()=>{ reset(); cb(1); };
   $('#confTitle').textContent = title;
   $('#confNo').textContent = l0; $('#confYes').textContent = l1;
+  confKind = 'choice';
   $('#confirmModal').classList.remove('hidden');
+  if(!IS_TOUCH) setTimeout(()=>{ try{ $('#confYes').focus(); }catch(_){ } }, 0);
 }
 function wireConfirm(){
   $('#confYes').addEventListener('click', ()=>{ $('#confirmModal').classList.add('hidden'); if(confCb) confCb(); });
@@ -5625,6 +6121,11 @@ function scoresheetHTML(d){
       return a;
     }, {pts:0,p2m:0,p2a:0,p3m:0,p3a:0,ftm:0,fta:0,or:0,dr:0,ast:0,to:0,stl:0,blk:0,pf:0,fd:0});
 
+    const tos = (S.events || []).filter(e => e.t === 'timeout' && e.team === t)
+      .map(e => perName(e.period || 1) + ' ' + fmtClock(e.clock));
+    const bench = (S.events || []).filter(e => e.t === 'foul' && e.team === t && !e.pid)
+      .map(e => (FOUL_MARK[e.kind] || 'P') + ' ' + perName(e.period || 1) + ' ' + fmtClock(e.clock) +
+                (e.by && PMAP[e.by] ? ' (' + esc(pname(e.by)) + ')' : ''));
     /* team fouls per period, drawn as the four boxes a scoresheet has — the
        fifth is the bonus, and seeing the row fill is the point of the row */
     const tfRow = [];
@@ -5653,7 +6154,13 @@ function scoresheetHTML(d){
         '<td class="fouls">' + tot.pf + '</td>' + cell(tot.fd) +
         '<td class="pts">' + d.score[t] + '</td></tr>' +
       '</tbody></table>' +
-      '<div class="tfoot"><div class="tfl"><span>team fouls</span>' + tfRow.join('') + '</div></div>' +
+      '<div class="tfoot"><div class="tfl"><span>team fouls</span>' + tfRow.join('') + '</div>' +
+      /* THE TIMEOUTS TAKEN AND THE BENCH'S FOULS, which the header above promised and the sheet did not carry:
+         when each timeout was called, and every foul charged to the bench (a coach's, a substitute's, a player's
+         who had fouled out), with who it was where the log knows */
+      '<div class="tfl"><span>timeouts</span>' + (tos.length ? tos.map(x => '<span class="tfp">' + x + '</span>').join('') : '<span class="tfp">none</span>') + '</div>' +
+      (bench.length ? '<div class="tfl"><span>bench fouls</span>' + bench.map(x => '<span class="tfp">' + x + '</span>').join('') + '</div>' : '') +
+      '</div>' +
       '</div>';
   };
 
@@ -5815,6 +6322,60 @@ function refreshOpenViews(){
 
 /* ==================== final view ==================== */
 let fTab = 'box';
+/* ENDING A GAME SAYS WHAT IS WRONG WITH ENDING IT NOW.
+
+   "end the game?" asked nothing else, and the final screen had no way back. So a game ended level at the end of
+   the fourth (the menu button next to resume), or a quarter early, or with a fouled-out player still on court,
+   could not be finalised — the league refuses all three — and could not be put right except by starting again.
+   Now: a level score offers overtime instead; an early end or a fouled-out player on court is named in the
+   question; and the final screen can reopen the game (below). */
+function requestEndGame(){
+  if(!S || S.phase!=='game') return;
+  const d = derive();
+  if(d.score[0]===d.score[1]){
+    askChoice('the score is level, '+d.score[0]+'–'+d.score[1]+'. a game cannot end tied — overtime starts with resume.',
+      'end it level anyway', 'play overtime', c=>{
+        if(c===1){ if(S.clockMs===0) resumeClock(); else toast('finish '+perName(S.period)+' first — overtime follows'); return; }
+        askConfirm('end it level? the league will not accept a tied result until it is corrected', endGame);
+      });
+    return;
+  }
+  const bits = [];
+  if(S.period < gameFmt().periods) bits.push('only '+perName(S.period)+' has been reached');
+  else if(S.clockMs > 0) bits.push('the clock still shows '+fmtClock(S.clockMs)+' in '+perName(S.period));
+  const still = [];
+  [0,1].forEach(t=>d.onCourt[t].forEach(pid=>{ const st=d.stats[pid]; if(st && (st.dq || st.pf>=5)) still.push(pname(pid)); }));
+  if(still.length) bits.push(still.join(', ')+(still.length>1?' have':' has')+' fouled out and '+(still.length>1?'are':'is')+' still on court — sub them out first, or the league will not accept the game');
+  askConfirm(bits.length ? 'end the game? '+bits.join('; ')+'.' : 'end the game? final score '+d.score[0]+'–'+d.score[1]+'.', endGame);
+}
+/* REOPENING. A game ended by mistake goes back to the game screen with the clock stopped where it was. One the
+   league has already accepted has to be reopened there first (bootstrap.js epReopenFixture asks finalise-game),
+   which withdraws the published box score until it is finalised again. */
+function reopenGame(){
+  if(!S || S.phase!=='final') return;
+  const back = ()=>{
+    S.events = S.events.filter(e=>e.t!=='game_end');
+    S.phase = 'game'; S.running = false; delete S.finalisedAt;
+    save(); showScreen('game'); renderAll();
+    toast('game reopened — the clock is stopped', 3600);
+  };
+  if(S.finalisedAt){
+    if(typeof window.epReopenFixture !== 'function'){ toast('this game has been finalised — a league administrator can reopen it'); return; }
+    askConfirm('reopen this game? the published box score is withdrawn until you finalise it again', async ()=>{
+      toast('reopening…');
+      let r = null;
+      try{ r = await window.epReopenFixture(); }catch(err){ r = {ok:false, error:String(err && err.message || err)}; }
+      if(r && r.ok) back(); else toast('could not reopen: '+((r && r.error) || 'no answer'), 4200);
+    });
+    return;
+  }
+  askConfirm('reopen the game and carry on scoring?', back);
+}
+/* once the league has the game, the log is the league's: a change here would never reach it */
+function finalisedHold(){
+  if(S && S.finalisedAt){ toast('finalised to the league — reopen the game to correct it', 3600); return true; }
+  return false;
+}
 function endGame(){
   ui.armed=null; ui.pending=null; ui.subOut=null;
   S.running = false;
@@ -6529,8 +7090,12 @@ function renderFinal(){
     '<div class="tabrow" style="flex-wrap:wrap">'+tabs.map(t=>
       '<button class="tabbtn'+(fTab===t[0]?' on':'')+'" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+
     body+
+    '<div class="mbtns" style="padding:10px 0 0;">'+
+    '<button id="finSheet">scoresheet · pdf</button>'+
+    '<button id="finDetails">match details</button></div>'+
     '<div class="mbtns" style="padding:10px 0 8px;">'+
-    '<button id="editPbp">edit play-by-play</button></div>'+
+    '<button id="editPbp">edit play-by-play</button>'+
+    '<button id="reopenB">'+(S.finalisedAt?'reopen to correct':'reopen the game')+'</button></div>'+
     '<div class="mbtns" style="padding:0 0 30px;">'+
     '<button id="expJson">export livestats json</button>'+
     '<button id="newGame" class="yes">new game</button></div>';
@@ -6538,6 +7103,10 @@ function renderFinal(){
   if(fTab==='adv') wireAdvTables($('#finalview'));
   if(fTab==='box') wirePlayerCards($('#finalview'));
   $('#editPbp').onclick = openLog;
+  $('#reopenB').onclick = reopenGame;
+  /* the sign-off moment at the table: the official sheet, and the attendance only known now */
+  $('#finSheet').onclick = printScoresheet;
+  $('#finDetails').onclick = openDetails;
   $('#expJson').onclick = downloadJSON;
   $('#newGame').onclick = ()=>askConfirm('start a new game? this clears the finished one', ()=>{
     localStorage.removeItem(EP_KEY); location.reload();
@@ -6775,7 +7344,9 @@ function initSetup(){
   $('#goGame').addEventListener('click', startGame);
   $('#trainB').addEventListener('click', startTraining);
 }
+let trainingSetup = false;     // the squads on the picker came from the practice button
 function startTraining(){
+  trainingSetup = true;
   const roster1 = ['ada lovelace','grace hopper','katherine johnson','hedy lamarr','radia perlman',
     'annie easley','mary jackson','dorothy vaughan','margaret hamilton','joan clarke',
     'frances allen','barbara liskov'];
@@ -6788,6 +7359,7 @@ function startTraining(){
   ]);
 }
 function startGame(){
+  trainingSetup = false;
   const teams = [];
   $$('.team-card').forEach((card,t)=>{
     const name = (card.querySelector('.tname').value.trim() || 'team '+(t+1)).toLowerCase();
@@ -6801,6 +7373,18 @@ function startGame(){
     teams.push({name, players, color:card.dataset.color||TEAMCOLORS[t]});
   });
   if(!teams[0].players.length || !teams[1].players.length){ toast('add players to both teams'); return; }
+  /* ONE NUMBER, ONE PLAYER. Two #7s on a team go through to a scoresheet nobody can read and to typed commands
+     that always find the first. Said before the game, when it can still be fixed. */
+  const dupes = [];
+  teams.forEach(tm=>{ const seen = {}; tm.players.forEach(p=>{ const n = String(p.num||'').trim(); if(!n) return;
+    if(seen[n]) dupes.push(tm.name+' #'+n); seen[n] = true; }); });
+  if(dupes.length){
+    askConfirm('two players share a number: '+dupes.join(', ')+'. start anyway?', ()=>{
+      if(teams[0].players.length<5 || teams[1].players.length<5) askConfirm('fewer than five on a team — start anyway?', ()=>showStarterPick(teams));
+      else showStarterPick(teams);
+    });
+    return;
+  }
   const proceed = ()=>showStarterPick(teams);
   if(teams[0].players.length<5 || teams[1].players.length<5)
     askConfirm('fewer than five on a team — start anyway?', proceed);
@@ -6868,9 +7452,32 @@ function renderStarterPick(){
    game does; and bootstrap.js only claims the fixture and publishes the roster
    snapshot once the phase is 'game', so the squad written to the public page is
    the one after these edits rather than the one from the team sheet. */
+/* STARTING A NEW GAME OVER ONE IN PROGRESS ASKS FIRST, AND KEEPS A COPY.
+
+   The guard in save() protects a stored game only from a page still on the setup screen. The starter picker
+   moves the phase on to 'pregame', so pressing "start game" after a reload — which is where a fixture link
+   lands — wrote a blank game over the one in progress, and every action that had not reached the server went
+   with it. So it is asked, in words that say which game would go; and the old one is copied to a key of its own
+   (the latest only), so even a wrong answer can be recovered from this phone. */
 function launchGame(teams, starters){
+  if(savedInPlay){
+    const stored = loadSaved();
+    const sd = stored && window.describeSaved ? window.describeSaved(stored) : null;
+    const what = sd ? sd.names.join(' v ')+', '+perName(sd.period)+', '+sd.score.join('–')+' ('+sd.events+' actions)' : 'a game in progress';
+    askChoice('this phone is holding '+what+'. starting this game replaces it — resume it from the bar at the foot of the screen instead?',
+      'replace it', 'keep it — go back', c=>{
+        if(c!==0) return;
+        try{ const raw = localStorage.getItem(EP_KEY); if(raw) localStorage.setItem(EP_KEY+':replaced', raw); }catch(_){ }
+        savedInPlay = false;
+        launchGame(teams, starters);
+      });
+    return;
+  }
   S = newState();
   S.teams = teams; S.phase = 'pregame'; S.starters = starters;
+  /* a game built by the practice button is never a league's: bootstrap.js will not claim, publish or
+     finalise it, whatever the address says */
+  if(trainingSetup || EP_TRAIN) S.training = true;
   buildPmap();
   save();
   showScreen('game');
@@ -6888,6 +7495,15 @@ function pregameHold(){
 
 function beginGame(){
   if(!S || S.phase !== 'pregame') return;
+  /* "← pre-game" in the squad editor saves without the count check "done" makes, so a dropped starter could
+     leave a team to begin with four on court, and nothing later can add a fifth. */
+  for(const t of [0,1]){
+    const want = Math.min(5, S.teams[t].players.length);
+    if(S.starters[t].length !== want){
+      toast(tname(t)+' has '+S.starters[t].length+' starters — pick '+want+' in edit squads', 4200);
+      return;
+    }
+  }
   S.phase = 'game';
   addEvent({t:'period_start'});
   /* showScreen again on purpose: bootstrap.js claims the fixture on a screen
@@ -7186,10 +7802,31 @@ window.__epResume = { pending:false, resumed:false, done:null };
 window.loadSaved = loadSaved;
 window.migrateSaved = migrate;
 window.applySaved = function (saved) {
+  const wasRunning = !!saved.running, at = +saved.savedAt || 0;
   S = saved; S.running = false; buildPmap();
   if (S.phase === 'final') { renderFinal(); showScreen('finalview'); }
-  else { showScreen('game'); renderAll(); }
+  else {
+    showScreen('game'); renderAll();
+    if (wasRunning && S.phase === 'game' && at && S.clockMs > 0) offerClockCatchUp(Date.now() - at);
+  }
 };
+/* A GAME RESTORED WITH ITS CLOCK RUNNING IS BEHIND THE HALL.
+
+   The clock in the hall kept going while the phone was reloading, and the restored copy stops it where it was
+   last written. Nothing said so, so the next plays were stamped with a clock that was minutes out until somebody
+   looked up at the board. Now it says how long ago that was and offers the time the board should be showing —
+   and the clock stays stopped either way, because only the person at the table can see the board. */
+function offerClockCatchUp(ms){
+  if(!(ms > 1500)) return;
+  const after = Math.max(0, S.clockMs - ms), secs = Math.round(ms/1000);
+  const ago = secs < 120 ? secs+' seconds' : Math.round(secs/60)+' minutes';
+  askChoice('the clock was running when this game was last saved, '+ago+' ago, at '+fmtClock(S.clockMs)+
+    '. if it kept running in the hall, the board shows about '+fmtClock(after)+' now.',
+    'keep '+fmtClock(S.clockMs), 'set '+fmtClock(after), c=>{
+      if(c===1){ S.clockMs = after; save(); renderAll(); }
+      toast('clock stopped — check it against the board, then start it', 4200);
+    });
+}
 window.describeSaved = function (saved) {
   if (!saved || !saved.teams) return null;
   const names = saved.teams.map(t => t && t.name ? t.name : 'team');
@@ -7208,15 +7845,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=572">
-<link rel="stylesheet" href="../video.css?v=572">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=572">
-<script src="../config.js?v=572" defer></script>
-<script src="../vendor/supabase.js?v=572" defer></script>
-<script src="../live.js?v=572" defer></script>
-<script src="../video.js?v=572" defer></script>
-<script src="sync.js?v=572" defer></script>
-<script src="bootstrap.js?v=572" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=580">
+<link rel="stylesheet" href="../video.css?v=580">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=580">
+<script src="../config.js?v=580" defer></script>
+<script src="../vendor/supabase.js?v=580" defer></script>
+<script src="../live.js?v=580" defer></script>
+<script src="../video.js?v=580" defer></script>
+<script src="sync.js?v=580" defer></script>
+<script src="bootstrap.js?v=580" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it

@@ -10,12 +10,19 @@
                     suspend one, or let it back; open its studio
      MODERATION     the latest pieces, each hidden or shown again with one press
      NEWS SOURCES   the league's own news sites, read by their feeds every half hour
-                    (mountSources): on the league's news page, and every reader's News
+                    (mountSources): on the league's news page, and every reader's News;
+                    and the platform's publishers and creators the league picked (0209)
 
    The platform console mounts mountSources with no league: the sources every reader
-   sees, the sites that cover everything (Eurohoops, BasketNews…). It also mounts
-   mountPartners (0201): every source and every outlet with an "Official partner" switch,
-   which only the platform can flip (set_official_partner).
+   sees, the sites that cover everything (Eurohoops, BasketNews…). Each one there
+   carries the leagues it covers (0207, set_news_source_leagues): every story of it on
+   each one's news page (0209), and a creator's posts under Content creators on each
+   one's Community page. A league's console lists the same sources (0209
+   news_sources_offered) for the league to pick (set_league_news_source, its own league
+   only): one list, written from both sides, and the feed read once for everybody
+   rather than added again by link. It also mounts mountPartners (0201):
+   every source and every outlet with an "Official partner" switch, which only the
+   platform can flip (set_official_partner).
 
    The database decides every one of these (set_league_creators, create_creator_outlet,
    set_creator_outlet_status, hide_creator_post, add_news_source …); what it refuses is
@@ -213,7 +220,7 @@ function mountForum(o) {
     box.appendChild(editor(league, null));
     if (list.length) {
       const open = el('a', 'ep-btn mini', 'the Community page ↗');
-      open.href = base + 'community/?l=' + encodeURIComponent(league.slug || '') + '#cmTalk';
+      open.href = base + 'community/?l=' + encodeURIComponent(league.slug || '') + '#forum';
       open.target = '_blank'; open.rel = 'noopener';
       box.appendChild(row(open));
     }
@@ -384,6 +391,14 @@ function mountSources(o) {
   host.appendChild(box);
   const NR = () => globalThis.EpinoiaNewsRefresh || null;
 
+  /* EVERY LEAGUE, for "covers" (platform console only): the console's own list when it gives one, else read here */
+  async function everyLeague() {
+    const given = typeof o.leagues === 'function' ? o.leagues() : o.leagues;
+    if (Array.isArray(given) && given.length) return given.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    const { data, error } = await sb.from('leagues').select('id,name,slug').order('name');
+    return error ? [] : (data || []);
+  }
+
   /* "LOAD ALL" (platform console only): every publisher on, read now by the news-refresh function; one control that lives
      through every redraw, so what it said stays under it while the list is drawn again with the new counts */
   let allCtl = null;
@@ -397,7 +412,9 @@ function mountSources(o) {
   async function draw() {
     const league = lg();
     const lid = league ? league.id : null;
-    const { data, error } = await sb.rpc('news_sources_admin', { p_league: lid });
+    const [{ data, error }, leagues, offered] = await Promise.all([sb.rpc('news_sources_admin', { p_league: lid }),
+      league ? Promise.resolve([]) : everyLeague().catch(() => []),
+      league ? Promise.resolve(sb.rpc('news_sources_offered', { p_league: lid })).catch(e => ({ data: null, error: e })) : null]);
     box.textContent = '';
     box.appendChild(h(league ? 'Publishers & creators' : 'Publishers & creators for every reader'));
     if (error) {
@@ -407,10 +424,16 @@ function mountSources(o) {
       return;
     }
     box.appendChild(el('p', 'empty', (league
-      ? 'News sites and creators of ' + league.name + '’s own, on the league’s news page and in every reader’s News. '
-      : 'What every reader sees in News; each story also lands on the news page of every league it is about (its league tags). ') +
+      ? 'News sites and creators of ' + league.name + '’s own, on the league’s news page and in every reader’s News; its creators also under Content creators on its Community page. '
+      : 'What every reader sees in News; each story also lands on the news page of every league it is about (its league tags). ' +
+        'Give each one the leagues it covers: every story of it on each one’s news page, and a creator’s posts under Content creators ' +
+        'on its Community page too. A league’s administrators pick from this list for their own league as well. ') +
       'Paste a link: a website, a feed, a YouTube channel, a podcast, a Substack, Medium, Bluesky or Mastodon account. The feed behind ' +
       'it is found at the next read (every half hour) and every new post arrives from then on, with its followers told. A logo is found too.'));
+
+    /* the platform's own publishers and creators, for the league to pick from (0209): made first, so that a link
+       pasted below that the platform reads already can say so */
+    const plat = league ? platformList(league, offered) : null;
 
     /* ---- add by link ---- */
     const link = input('paste a link: https://www.youtube.com/@…, a website, a podcast…', 500);
@@ -432,6 +455,19 @@ function mountSources(o) {
       if (r.refused) { said.textContent = r.why; return; }
       if (!kindTouched) kind.value = r.kind;
       said.textContent = 'That is ' + r.what + '.';
+      /* the platform reads it already: pick it, rather than read the same feed twice (and show every story twice in News) */
+      const same = plat && plat.match(link.value);
+      if (!same) return;
+      said.textContent += ' ' + same.name + ' is on the platform’s list' + (same.picked
+        ? ', and ' + league.name + ' has it already.' : ': pick it rather than read the same feed twice. ');
+      if (same.picked) return;
+      const take = btn('pick ' + same.name, 'pri');
+      take.addEventListener('click', async () => {
+        take.disabled = true;
+        if (await plat.pick(same, true)) { link.value = ''; nm.value = ''; said.textContent = ''; add.disabled = false; }
+        else take.disabled = false;
+      });
+      said.appendChild(take);
     };
     link.addEventListener('input', tell);
     add.addEventListener('click', async () => {
@@ -458,12 +494,13 @@ function mountSources(o) {
     }
 
     /* ---- the list ---- */
+    if (!league && (data || []).some(s => s.assigned_leagues === undefined)) {
+      box.appendChild(el('p', 'empty', 'Giving a source the leagues it covers arrives with migration 0207: it has not been applied to this database yet.'));
+    }
     (data || []).forEach(s => {
       const line = el('div');
       line.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--rule)';
-      const logo = el('span');
-      logo.style.cssText = 'width:26px;height:26px;flex:none;display:grid;place-items:center;overflow:hidden;background:#fff;border:1px solid var(--rule)';
-      if (s.logo_url) { const i = el('img'); i.src = s.logo_url.replace(/#fill$/, ''); i.alt = ''; i.style.cssText = 'width:90%;height:90%;object-fit:contain'; logo.appendChild(i); }
+      const logo = logoBox(s);
       const name = el('b', null, s.name);
       const isCreator = s.kind === 'creator';
       const what = (isCreator ? 'CREATOR' : 'PUBLISHER') + (s.platform ? ' · ' + (PLATFORM_NAMES[s.platform] || s.platform) : '');
@@ -518,6 +555,7 @@ function mountSources(o) {
       line.append(logo, name, meta, page, flip);
       if (load) line.appendChild(load.box);
       line.append(onoff, edit, del);
+      if (!league && Array.isArray(s.assigned_leagues)) line.appendChild(covers(s, leagues));
       box.appendChild(line);
     });
 
@@ -539,6 +577,190 @@ function mountSources(o) {
     });
     more.append(row(mnm, site, feed), row(mlogo, colour, madd));
     box.appendChild(more);
+    if (plat) box.appendChild(plat.box);
+  }
+
+  /* a source's logo, small and square */
+  function logoBox(s) {
+    const logo = el('span');
+    logo.style.cssText = 'width:26px;height:26px;flex:none;display:grid;place-items:center;overflow:hidden;background:#fff;border:1px solid var(--rule)';
+    if (s.logo_url) { const i = el('img'); i.src = s.logo_url.replace(/#fill$/, ''); i.alt = ''; i.style.cssText = 'width:90%;height:90%;object-fit:contain'; logo.appendChild(i); }
+    return logo;
+  }
+
+  /* THE PLATFORM'S PUBLISHERS AND CREATORS, for a league to pick from (0209 news_sources_offered): the ones it has, each
+     to take off, and the rest behind a fold, found by name or site, FIRST_PICKS at a time. A pick is for this league
+     only (set_league_news_source): every story of it then joins the league's news page, and a creator's posts its
+     Community page too. The source stays the platform's, its feed read once for everybody and looked after there. */
+  const FIRST_PICKS = 8;
+  function platformList(league, res) {
+    const wrap = el('div', 'pf-list');
+    wrap.style.marginTop = '18px';
+    wrap.appendChild(h('From the platform’s list'));
+    const nothing = { box: wrap, match: () => null, pick: async () => false };
+    if (!res || res.error) {
+      wrap.appendChild(el('p', 'empty', !res || /news_sources_offered|schema cache|does not exist/i.test(errText(res.error))
+        ? 'Picking from the platform’s publishers and creators arrives with migration 0209: it has not been applied to this database yet.'
+        : 'Could not read the platform’s list: ' + errText(res.error)));
+      return nothing;
+    }
+    const all = (res.data || []).map(x => Object.assign({}, x, { picked: !!x.picked }));
+    wrap.appendChild(el('p', 'empty', 'The publishers and creators Epinoia reads for every reader. Pick one for ' + league.name +
+      ': every story of it joins the league’s news page, and a creator’s posts its Community page too. Its feed stays the ' +
+      'platform’s, read once for everybody; taking it off leaves it there.'));
+    const got = el('div', 'pf-got');
+    const fold = el('details', 'pf-fold');
+    const sum = el('summary', 'empty');
+    const find = input('name or site', 80);
+    find.type = 'search';
+    find.setAttribute('aria-label', 'find one of the platform’s publishers and creators');
+    const kinds = el('select', 'ep-input');
+    [['', 'all kinds'], ['publisher', 'publishers'], ['creator', 'creators']].forEach(([v, t]) => {
+      const op = el('option', null, t); op.value = v; kinds.appendChild(op);
+    });
+    kinds.setAttribute('aria-label', 'publishers, creators or both');
+    const found = el('div', 'pf-found');
+    const more = btn('');
+    let many = false;                                    // past the first FIRST_PICKS
+    fold.append(sum, row(find, kinds), found, more);
+    wrap.append(got, fold);
+
+    const hostOf = u => { const m = /^https?:\/\/(?:www\.|m\.)?([^/?#:]+)/i.exec(String(u || '').trim()); return m ? m[1].toLowerCase() : ''; };
+    /* a link as it is compared: no scheme, no www., no query, no slash at the end */
+    const keyOf = u => {
+      const m = /^https?:\/\/(?:www\.|m\.)?([^/?#:]+)(?::\d+)?([^?#]*)/i.exec(String(u || '').trim());
+      return m ? (m[1] + m[2].replace(/\/+$/, '')).toLowerCase() : '';
+    };
+    const metaOf = s => (s.kind === 'creator' ? 'CREATOR' : 'PUBLISHER') + (s.platform ? ' · ' + (PLATFORM_NAMES[s.platform] || s.platform) : '') +
+      ' · ' + (!s.enabled ? 'switched off by the platform' : s.resolve_from ? 'waiting for its first read'
+        : (s.item_count || 0) + ' posts' + (s.last_at ? ', the latest ' + when(s.last_at) : '')) +
+      (hostOf(s.site_url) ? ' · ' + hostOf(s.site_url) : '');
+
+    async function pick(s, on) {
+      const { data: d, error: e } = await sb.rpc('set_league_news_source', { p_league: league.id, p_id: s.id, p_on: !!on });
+      if (e) {
+        say(/set_league_news_source|schema cache|does not exist/i.test(errText(e))
+          ? 'Picking from the platform’s list arrives with migration 0209: it has not been applied to this database yet.' : errText(e), 'err');
+        paint();
+        return false;
+      }
+      s.picked = typeof d === 'boolean' ? d : !!on;
+      paint();
+      say(s.picked
+        ? s.name + ' is on ' + league.name + '’s pages: every story of it on the league’s news page' +
+          (s.kind === 'creator' ? ', and its posts under Content creators on its Community page.' : '.')
+        : s.name + ' is off ' + league.name + '’s pages. It stays on the platform’s list.', 'ok');
+      return true;
+    }
+    function line(s) {
+      const r = el('div', 'pf-row');
+      r.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--rule)';
+      const meta = el('span', 'empty', metaOf(s));
+      meta.style.cssText = 'flex:1 1 300px;margin:0;overflow-wrap:anywhere';
+      const page = el('a', 'ep-btn mini', 'page'); page.href = (o.base || '../') + 'news/?s=' + encodeURIComponent(s.slug);
+      const b = s.picked ? btn('take off') : btn('pick', 'pri');
+      b.title = (s.picked ? 'take ' + s.name + ' off ' : 'put ' + s.name + ' on ') + league.name + '’s pages';
+      b.setAttribute('aria-label', b.title);
+      b.addEventListener('click', async () => { b.disabled = true; if (!(await pick(s, !s.picked))) b.disabled = false; });
+      r.append(logoBox(s), el('b', null, s.name), meta, page, b);
+      return r;
+    }
+    function paint() {
+      const mine = all.filter(s => s.picked), rest = all.filter(s => !s.picked);
+      got.textContent = '';
+      if (!mine.length) {
+        const none = el('p', 'empty', all.length ? league.name + ' has picked none of them yet.' : 'The platform reads no publishers or creators yet.');
+        none.style.margin = '4px 0';
+        got.appendChild(none);
+      }
+      mine.forEach(s => got.appendChild(line(s)));
+      fold.hidden = !rest.length;                         // every one picked (or none there): nothing left to pick
+      sum.textContent = 'Pick from the platform’s publishers and creators (' + rest.length + ')';
+      const words = find.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const hits = rest.filter(s => (!kinds.value || s.kind === kinds.value) &&
+        words.every(w => (s.name + ' ' + s.slug + ' ' + hostOf(s.site_url)).toLowerCase().indexOf(w) >= 0));
+      found.textContent = '';
+      if (!hits.length && rest.length) found.appendChild(el('p', 'empty', 'None of them by that.'));
+      hits.slice(0, many ? hits.length : FIRST_PICKS).forEach(s => found.appendChild(line(s)));
+      more.hidden = hits.length <= FIRST_PICKS;
+      more.textContent = many ? 'Show fewer' : 'Show more (' + (hits.length - FIRST_PICKS) + ')';
+      more.setAttribute('aria-expanded', String(many));
+    }
+    find.addEventListener('input', () => { many = false; paint(); });
+    kinds.addEventListener('change', () => { many = false; paint(); });
+    more.addEventListener('click', () => { many = !many; paint(); });
+    paint();
+    return {
+      box: wrap,
+      /* the platform's source a pasted link is (its site, its feed, or the link it was added by), or null */
+      match: url => { const k = keyOf(url); return k ? all.find(s => [s.site_url, s.feed_url, s.resolve_from].some(x => x && keyOf(x) === k)) || null : null; },
+      pick
+    };
+  }
+
+  /* WHICH LEAGUES A SOURCE COVERS (0207; a publisher's too since 0209): a chip for each, its × to take it off, and the
+     leagues it does not cover yet to add one. The whole list goes each time (set_news_source_leagues); the row is drawn
+     again from what was kept. A league's own console writes the same list for its own league (set_league_news_source). */
+  function covers(s, leagues) {
+    const r = el('div', 'cv-row');
+    r.style.cssText = 'flex:1 1 100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 0 36px';
+    let have = (s.assigned_leagues || []).filter(x => x && x.id).map(x => ({ id: x.id, name: x.name || '', slug: x.slug || '' }));
+    async function save(next, said) {
+      r.querySelectorAll('button,select').forEach(n => { n.disabled = true; });
+      const { data: d, error: e } = await sb.rpc('set_news_source_leagues', { p_id: s.id, p_leagues: next.map(x => x.id) });
+      if (e) {
+        paint();
+        return say(/set_news_source_leagues|schema cache|does not exist/i.test(errText(e))
+          ? 'Giving a source its leagues arrives with migration 0207: it has not been applied to this database yet.' : errText(e), 'err');
+      }
+      const kept = Array.isArray(d) ? d.map(String) : next.map(x => x.id);
+      have = kept.map(id => next.find(x => x.id === id)).filter(Boolean);
+      s.assigned_leagues = have;
+      paint();
+      say(said, 'ok');
+    }
+    function paint() {
+      r.textContent = '';
+      const lab = el('span', 'empty', 'COVERS');
+      lab.style.cssText = 'margin:0;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em';
+      r.appendChild(lab);
+      if (!have.length) {
+        const none = el('span', 'empty', 'no league yet: its posts are in News, and on a league’s pages only where they name it');
+        none.style.margin = '0';
+        r.appendChild(none);
+      }
+      have.forEach(x => {
+        const chip = el('span', 'cv-chip');
+        chip.style.cssText = 'display:inline-flex;gap:2px;align-items:center;padding:1px 2px 1px 9px;border:1px solid var(--rule-2);border-radius:999px;font-family:var(--f-ui);font-size:12px';
+        chip.appendChild(el('span', null, x.name || x.slug));
+        const off = btn('×');
+        off.style.cssText = 'min-width:0;padding:0 6px;border:0;background:none';
+        off.title = 'take ' + s.name + ' off ' + (x.name || x.slug);
+        off.setAttribute('aria-label', off.title);
+        off.addEventListener('click', () => save(have.filter(y => y.id !== x.id),
+          s.name + ' is off ' + (x.name || x.slug) + '’s pages.'));
+        chip.appendChild(off);
+        r.appendChild(chip);
+      });
+      const left = (leagues || []).filter(l => l && l.id && !have.some(x => x.id === l.id));
+      if (left.length) {
+        const sel = el('select', 'ep-input cv-add');
+        sel.style.cssText = 'width:auto;max-width:260px;padding:3px 6px;font-size:12px';
+        const first = el('option', null, have.length ? '+ another league' : '+ a league it covers'); first.value = ''; sel.appendChild(first);
+        left.forEach(l => { const op = el('option', null, l.name); op.value = l.id; sel.appendChild(op); });
+        sel.setAttribute('aria-label', 'a league ' + s.name + ' covers');
+        sel.addEventListener('change', () => {
+          const l = left.find(x => x.id === sel.value);
+          if (!l) return;
+          save(have.concat([{ id: l.id, name: l.name, slug: l.slug }]), s.name + ' covers ' + l.name + (s.kind === 'creator'
+            ? ': its posts show under Content creators on the league’s Community page, and on its news page.'
+            : ': every story of it shows on the league’s news page.'));
+        });
+        r.appendChild(sel);
+      }
+    }
+    paint();
+    return r;
   }
 
   function editor(s) {

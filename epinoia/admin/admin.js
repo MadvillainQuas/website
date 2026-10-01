@@ -160,10 +160,15 @@ async function render() {
      competitions and the fixture list have loaded and moved everything down the
      page, so by now it is pointing somewhere else entirely. Done once, after
      the load, and only for the one anchor that is linked to from outside. */
-  if (location.hash === '#fixtures' || location.hash === '#backfill') {
-    const sec = document.getElementById(location.hash === '#backfill' ? 'backfillPanel' : 'fixtures');
+  /* ...AND ANY SECTION'S ANCHOR: the index under the tabs (wsindex.js) gives every section an address that can be sent
+     to someone (#sec-discipline, #seasons), and it lands late for the same reason. Only an element of the Settings tab:
+     #graphics is the Graphics tab itself, which wstabs.js opens. */
+  const target = location.hash === '#backfill' ? 'backfillPanel' : location.hash.replace(/^#/, '');
+  const sec = /^[A-Za-z][\w-]*$/.test(target) ? document.getElementById(target) : null;
+  const inSettings = document.getElementById('tabSettings');
+  if (sec && inSettings && inSettings.contains(sec)) {
     if (window.EpinoiaTabs) window.EpinoiaTabs.show('settings', { quiet: true });      // the sections live under Settings
-    if (sec) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 }
 

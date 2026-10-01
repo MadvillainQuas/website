@@ -298,8 +298,8 @@ const bootstrap = rd('epinoia', 'score', 'bootstrap.js');
 const sql85     = rd('supabase', 'migrations', '0085_concurrency_and_indexes.sql');
 
 ok('publishing stops when the server holds more actions than this device',
-   /if \(count <= mine\) return;/.test(bootstrap) &&
-   /EpinoiaSync\.halt\(\)/.test(bootstrap.slice(bootstrap.indexOf('guardAgainstOverwrite'))));
+   /if \(count <= mine\) \{[\s\S]{0,700}?armReconcile\(\);[\s\S]{0,80}?return;\s*\}/.test(bootstrap) &&
+   /EpinoiaSync\.halt\('another device is scoring'\)/.test(bootstrap.slice(bootstrap.indexOf('guardAgainstOverwrite'))));
 ok('...and says so rather than failing quietly',
    /not publishing — another device is scoring/.test(bootstrap));
 ok('...with a way out that is not "give up"',

@@ -574,6 +574,13 @@ jobs:
         # within their limits, and the per-league memory surviving garbage and a missing localStorage
         run: node supabase/tests/graphics-tab.test.mjs
 
+      - name: The league console's index - every section reachable, a dropdown with show more, an address that lands
+        # epinoia/admin/wsindex.js: every section of the Settings tab has an anchor (its own, its heading's, or one from its
+        # title) and no id is used twice; the open tab's showing sections in order; shut until asked, the first eight
+        # with the rest behind "show more", floating over the page and fitted to the screen; picking, Esc or a click
+        # elsewhere shuts it; an arrow on each heading back; admin.js lands any Settings anchor once the league has loaded
+        run: node supabase/tests/admin-index.test.mjs
+
       - name: The Graphics tab's stat catalogue, the month's stars and the leaders - the site's own columns, ranked and drawn
         # epinoia/admin/statcat.js reads fulltable.js's PLAYER_COLS / TEAM_COLS (identity, HIDDEN_COLS and the access.js locks
         # left out, an administrator offered the locked ones unless the lock flag is on), season.js works the numbers for a game,
@@ -606,7 +613,7 @@ jobs:
         # beside Oliver's 40 / 25 / 20 / 15, per league above a minimum, the charts, and a read by JSON path, never the blob
         run: node supabase/tests/winning.test.mjs
 
-      - name: What wins 2 - the feature line, the members-only files, the model, the simulator, the page and the Front office (0209)
+      - name: What wins 2 - the feature line, the members-only files, the model, the simulator, the page and the Front office (0211)
         # supabase/tests/run-ww.mjs runs every ww-*.test.mjs (docs/what-wins-model.md §16): features.js on the fixture game,
         # the gate on a real Postgres (PGlite: nothing for anon, the limits, the refresh), the analytics-file handler, the
         # loader, the statistics and the simulator against known answers, the builder (incremental = full, byte for byte),
@@ -684,6 +691,13 @@ jobs:
         # statinfo.js has an entry for every key in player.js BAR_SECTIONS (and its lower-is-better flag matches BAR_LOW);
         # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart
         run: node supabase/tests/statpop.test.mjs
+
+      - name: The player profile's League percentile - scouting and simple view, all / vs. starters / vs. bench
+        # vsunits.js: per 75 of his team's possessions while he is on the floor (season.js on_poss, index_9's lineup
+        # possessions); the starters rule is the club page's (regularStarters held to seasonline.js); a game cut at each
+        # change of five adds up to the engine's own box; each part is a season line by season.js; a part is ranked by
+        # season.js's count; the profile reads nothing more until somebody asks (the engine and the scope's starters, once)
+        run: node supabase/tests/vsunits.test.mjs
 
       - name: The chart lab - value transforms, regression, the address round trip, edited text, columns and their lock, names, export geometry
         # chartlab.js: z-scores and percentiles agree with the tables' (lower is better turns them round), the ?cl= link round trips
@@ -1111,6 +1125,30 @@ jobs:
         # the fourth a player with five fouls was still on the floor.
         run: node supabase/tests/scorer-foul.test.mjs
 
+      - name: The scorer's rules, its gaps and the thumb (2026-10-01)
+        # one engine for the scorer and the league; a fouled missed shot is no attempt; a team that runs out of
+        # players plays short, and nobody fouled out comes back on; bench fouls are no team fouls; rebounds only
+        # where the ball is live; the window keeps its foul; substitutions added at a past time and checked;
+        # undo by play and by period; a level score offers overtime, the final screen reopens; a game in progress
+        # is never replaced unasked; the ghost click on the team header
+        run: node supabase/tests/scorer-review.test.mjs
+
+      - name: A game night from the scorer's side - saving, resuming, publishing, finishing (2026-10-01)
+        # bootstrap.js run on a fake league: a takeover keeps the phone's copy and reads the league's in game order;
+        # an expired token on dead wifi is "could not ask", not "no"; a saved game goes back to its own fixture; the
+        # bar says what is true (halted, offline, refused); the tip reaches the games row; finalise one at a time,
+        # a lost answer read back from the status, the log's digest sent; reopen publishes again; training games
+        # and read-only tabs publish nothing, and a read-only tab takes no taps
+        run: node supabase/tests/scorer-reliability.test.mjs
+
+      - name: The league's copy of a log agrees with the phone's, by content (2026-10-01)
+        # live.js durableRow/rowKey/logDigest - one shape for an event and the row it became; sync.js reconcile
+        # retracts and resends what differs and never deletes a row this device did not write; the watchdog waits
+        # through 'finalising' and stops loudly on a final it did not cause; a failure is kept until a frame lands;
+        # finalise-game's copy of the digest is the same function, and refuses a different log before it locks anything;
+        # the ?train=1 demo reaches this browser's other tabs and nothing else; only a fixture is announced to the platform
+        run: node supabase/tests/log-reconcile.test.mjs
+
       - name: A second device takes over the game it is given
         # loadRecorded pulled the log but not the five that started, so a device
         # taking over replayed real substitutions against the five its own picker
@@ -1445,6 +1483,14 @@ jobs:
         # league's creators section and the rail's rows are wired
         run: node supabase/tests/newscard.test.mjs
 
+      - name: A match report's card and its article's head - the result, with the league's logo
+        # epinoia/news.js matchPlate: the clubs' three letters (a club's prefix passed over, a derby told apart), the
+        # league's own colour and never the platform's default, its logo's chip (its monogram without one, or when the
+        # logo does not load), the losing figure dimmed, FINAL or LIVE over the score, the card's edge in the winner's
+        # colour, its flag a tab under the print; the article's head from the game's row; the front page and the news
+        # page hand the card their league
+        run: node supabase/tests/match-plate.test.mjs
+
       - name: The page standard - every new page is built to it (docs/page-standard.md)
         # a data-std page: the centred head, sections with a title and a subtitle and never a number, the standard's
         # sheets in their order and none of their rules copied, nav.js's index and SKIP; and every index.html that is
@@ -1459,6 +1505,42 @@ jobs:
         run: |
           npm i --no-save @electric-sql/pglite
           node supabase/tests/fan-profiles.test.mjs
+
+      - name: A league's content creators (0207) and the Community page's Forum
+        # the page run on a stand-in document: the Forum (an old #talk or #cmTalk link landing on it, the server kept at
+        # #forum), Content creators (nine at a time, Show more, the league's own tag left off, the partners' keys, nothing
+        # played, away before 0207 and while empty); the console's COVERS row; a creator's channel wearing its pill; then on
+        # a real Postgres (PGlite): set_news_source_leagues for a platform administrator only, on a source for every reader
+        # only, audit-logged; news_sources_admin with the leagues; league_creator_feed - assigned and own creators, the
+        # league's outlets where it shows them, never a publisher, a source that is off, a hidden piece, a suspended outlet
+        # or a league the reader may not see; news_feed unchanged; and 0207 run again changing nothing
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/league-creators.test.mjs
+
+      - name: A league picks from the platform's publishers and creators (0209)
+        # 0209's news_feed, news_feed_mine and news_sources_public are 0198's but for the one condition each; the league
+        # console's list on a stand-in document (its picks, the rest eight at a time, found by name, site or kind, a pick
+        # sent for this league only, a refusal in the database's words, a pasted link the platform reads already offering
+        # the pick, before 0209 saying so); then on a real Postgres (PGlite): news_sources_offered and
+        # set_league_news_source for a league's administrators and their own league only, never a league's own source or
+        # one switched off; one list with the platform's COVERS row; a pick on the league's news page, its row of sources,
+        # its followers' feed and (a creator) its Community page; everything else as it was; and 0209 run again
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/league-picks.test.mjs
+
+      - name: Global scouting's Imports tab and the scout role (0210)
+        # with no database, on a made-up file in the scouting extension's shape: the reader (quotes, "" in quotes, a
+        # byte-order mark, CRLF, a ; file, a file that is not one), the tidying (a birth year run into the position, the
+        # Eurobasket height, 25-26 and 2026, the line a row is read by, a season only just begun), several files as one
+        # table, the filters, the sort, the shade, the CSV; the tab on a stand-in document; the page (the switch drawn only
+        # after scout_access says yes, the section on the standard, the words in Spanish and Japanese); the platform
+        # console's "scout"; then on a real Postgres (PGlite): who is a scout (a platform admin, a live grant on a
+        # confirmed address), who may name or end one, audit-logged, idempotent, and 0210 run again
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/scout-imports.test.mjs
 
       - name: Suggested edits - fans suggest, the league's and the platform's moderators decide (0199)
         # the pages first (suggest.js's feet-and-inches and Google Maps pins, the fields, positions and reasons the
@@ -1531,11 +1613,14 @@ jobs:
 
       - name: Games stuck live are closed - the rule (Python and SQL agree), the repair pass, the hourly backstop, the void guard
         # stuck.py + 0203 close_stuck_games: final when the feed said so or the clock/lead settles it, else void; never written back
-        # to live; the same-code clubs of the Czech feed keep their own rosters; the HOME strip never shows a game past its cap as live
+        # to live; the same-code clubs of the Czech feed keep their own rosters; the HOME strip never shows a game past its cap as live;
+        # 0208: never a game that moved in the last 30 minutes (a feed's newest play - its game_state is rewritten every pass -
+        # or an app-scored game's heartbeat), and an app-scored game only after 24 h of silence
         run: |
           python scripts/ingest/stuck_test.py
           npm i --no-save @electric-sql/pglite
           node supabase/tests/close-stuck-games.test.mjs
+          node supabase/tests/scorer-stuck.test.mjs
 
       - name: NCAA's two halves in the database (0206) - stuck games, the half-time notice and its lines, the indexes
         # on a real Postgres (PGlite): a game in halves whose second half ended is final, not void; the half-time

@@ -123,6 +123,9 @@ ok('the edition byline keeps the fix it was given first',
 /* ---- the desktop layout is untouched -------------------------------------- */
 ok('the desktop news layout still leads with one wide card',
    /@media \(min-width:1000px\)[\s\S]{0,220}first-child\{grid-column:span 3\}/.test(news));
+ok('...with the card beside it taking the rest of that row, not leaving a hole the width of a column',
+   /@media \(min-width:1000px\)\{[^@]*\.news-grid > \.news-card:nth-child\(2\)\{grid-column:span 3\}/.test(news) &&
+   /@media \(min-width:1400px\)\{[^@]*\.news-card:nth-child\(2\)\{grid-column:span 2\}/.test(news));
 ok('and the desktop grids fill the row: three podium cards and seven more share the width, the directory\'s columns stretch (nothing capped at 240px and packed left)',
    /@media \(min-width:1100px\)\{ \.stargrid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\} \}/.test(home)
    && /@media \(min-width:1100px\)\{ \.stargrid\.starmore\{grid-template-columns:repeat\(7,minmax\(0,1fr\)\)\} \}/.test(home)
@@ -157,6 +160,19 @@ ok('and the desktop grids fill the row: three podium cards and seven more share 
      fringed(sheet('table.css')).some(sel => /\.pv-code/.test(sel)));
   const links = f => readFileSync(path.join(ROOT, 'epinoia', ...f), 'utf8').includes('kit/sectitle.css?v=');
   ok('HOME, a league\'s front page and a player\'s page link it', links(['home', 'index.html']) && links(['index.html']) && links(['p', 'index.html']));
+}
+
+/* ---- HOME's MY FOLLOWED: four games a row, four across or two and two ------------ */
+{
+  const kitHome = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'home.css'), 'utf8');
+  const fol = readFileSync(path.join(ROOT, 'epinoia', 'home', 'followed-home.js'), 'utf8');
+  ok('HOME\'s followed rows are four games each, the results and the fixtures', /const N = 4;/.test(fol) &&
+     /f\.finals\.slice\(0, N\)/.test(fol) && /f\.soon\.slice\(0, N\)/.test(fol));
+  ok('...four across wherever each card has 170px, measured on the dropdown (a container query), else two and two: never three and one',
+     /\.hmf-body\{container:hmf \/ inline-size\}/.test(kitHome) &&
+     /@media \(min-width:561px\)\{\s*\.hm \.hmf-body \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - var\(--u\) \* 1\.5\) \/ 2 - \.5px\)\}/.test(kitHome) &&
+     /@container hmf \(min-width:764px\)\{\s*\.hm \.hmf-body \.fxc-grid>\.fxc\{flex-basis:calc\(\(100% - 3 \* var\(--u\) \* 1\.5\) \/ 4 - \.5px\)\}/.test(kitHome) &&
+     kitHome.indexOf('@container hmf') > kitHome.indexOf('.hm .hmf-body .fxc-grid>.fxc{flex-basis:calc((100% - var(--u) * 1.5) / 2'));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

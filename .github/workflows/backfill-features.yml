@@ -1,6 +1,6 @@
 name: Backfill the What wins feature line
 
-# After migration 0209 (game_features) is applied: works out the feature line (epinoia/features.js, 108 counts a side) for
+# After migration 0211 (game_features) is applied: works out the feature line (epinoia/features.js, 108 counts a side) for
 # every final game finalised before finalise-game wrote it, with the same file the function runs, and upserts the two rows
 # a game. Resumable: it stops taking games after max_minutes and a second run carries on, since the list of games without
 # their rows only shrinks. Run it as a dry run first. See scripts/backfill_features.mjs and docs/what-wins-model.md §4.2.

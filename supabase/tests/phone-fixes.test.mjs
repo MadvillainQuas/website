@@ -58,7 +58,8 @@ console.log('\n-- a match report links its game');
   const page = rd('epinoia', 'news', 'news-page.js');
   ok('the game id is read from the published article row, with the member\'s token as every call here',
      /api\('news_articles\?select=game_id&league_id=eq\.' \+ encodeURIComponent\(league\.id\) \+\s*'&slug=eq\.' \+ encodeURIComponent\(a\.slug\) \+ '&limit=1'\)/.test(page));
-  ok('...the fixture line from the game itself', /api\('games\?select=id,status,home_score,away_score,tipoff_at,' \+\s*'home:home_team_id\(name\),away:away_team_id\(name\)&id=eq\./.test(page));
+  ok('...the fixture line from the game itself (with each club\'s crest and colours, for the article\'s head)',
+     /api\('games\?select=id,status,home_score,away_score,tipoff_at,' \+\s*'home:home_team_id\(name,short_name,colour,colour_2,logo_path\),away:away_team_id\(name,short_name,colour,colour_2,logo_path\)&id=eq\.'/.test(page));
   ok('the card goes under the standfirst, and "the game →" beside "all news →"',
      /gameSlot\.appendChild\(gameCard\(g\)\)/.test(page) && /el\('a', 'ep-chip', 'the game →'\)/.test(page) && /foot\.insertBefore\(chip, link\)/.test(page));
   ok('both open the box score', /const gameHref = id => '\.\.\/game\/\?g=' \+ encodeURIComponent\(id\) \+ '&mode=supabase';/.test(page));

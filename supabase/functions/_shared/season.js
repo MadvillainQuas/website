@@ -480,6 +480,9 @@ function finishPlayer(A, m) {
        read at the same rate. Under 20 possessions on the floor it is noise, and is left null. */
     rim_a100: r1(onPoss >= 20 ? 100 * A.rimA / onPoss : null), mid_a100: r1(onPoss >= 20 ? 100 * A.midA / onPoss : null),
     p3_a100:  r1(onPoss >= 20 ? 100 * A.p3a / onPoss : null),  ft_a100:  r1(onPoss >= 20 ? 100 * A.fta / onPoss : null),
+    /* THE POSSESSIONS THEMSELVES, the denominator of every per-100 above, so a page can put any count over them:
+       the profile's per-75 box score is a count x 75 / these (index_9's "per 75 lineup possessions", vsunits.js) */
+    on_poss: r1(onPoss),
     rim_rate: r1(pct(A.rimA, fga)), mid_rate: r1(pct(A.midA, fga)),
     p3_rate:  r1(pct(A.p3a, fga)),
     ftr: r1(pct(A.fta, fga)),
@@ -855,8 +858,40 @@ function attachBPM(playerRows, teamRows, teamOfPlayer) {
   return playerRows;
 }
 
+/* ------------------------------------------------------ which line this is ---
+   A SEASON IS KEPT IN MORE PLACES THAN THE PAGE THAT SUMS IT: the snapshots function's file for
+   each competition (built by ITS copy of this file, which is deployed on its own), this browser's
+   copy (data.js), and the big competitions' files (tools/build-seasons.mjs). Each was trusted on
+   its token alone - how many games are finished, and when the last one was - so a file built before
+   a statistic existed was served for as long as no new game was finalised, and every page drew that
+   statistic as "no data". LNBP's file on 1 October 2026 had no RIM / MID / 3P / FT ATT / 100, no TEAM
+   SPACING, no ORB% ON TEAM MISSES, no DEF RIM FG% and no FOULS / 30, because the function had not
+   been deployed since they were added; the player profile showed a dash in every one.
+
+   So whatever keeps a season says which code made it, and is used only by code that makes the same
+   line. version() is a fingerprint of the keys a player's and a club's line carry, read off a probe
+   run through the real finishing code (a new statistic is a new key, so adding one changes it by
+   itself), and MATHS, bumped by hand when a formula changes without a new key. data.js puts it in
+   every file name and every copy's key: a file from other code is then never found, the season is
+   summed from the rows instead, and the snapshots function, once it runs this file, sees every name
+   change and builds every file again. */
+const MATHS = 1;
+let versionMemo = null;
+function version() {
+  if (versionMemo) return versionMemo;
+  const keysOf = rows => (rows && rows[0] ? Object.keys(rows[0]).sort().join(',') : '');
+  const pl = finishPlayers(addPlayers(new Map(), [{ game_id: 'g', player_id: 'p', team_idx: 0, stats: { min: 60000 } }], []));
+  const tm = finishTeams(addTeams(new Map(), [{ game_id: 'g', team_idx: 0, stats: {} }],
+                                  { g: { id: 'g', home_team_id: 'h', away_team_id: 'a' } }));
+  const text = 'p:' + keysOf(pl) + '|t:' + keysOf(tm);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193) >>> 0;
+  versionMemo = 's' + MATHS + '.' + ('0000000' + h.toString(16)).slice(-8);
+  return versionMemo;
+}
+
 return { players, teams, addPlayers, finishPlayers, addTeams, finishTeams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS,
-         positionValue, positionGroup, positionGroups, positionLabel, POS_GROUPS };
+         positionValue, positionGroup, positionGroups, positionLabel, POS_GROUPS, version, MATHS };
 }));
 
 /* ---------------------------------------------------------------------------
@@ -867,5 +902,5 @@ return { players, teams, addPlayers, finishPlayers, addTeams, finishTeams, perce
    so the Edge Function and the browser run one identical file.
    --------------------------------------------------------------------------- */
 const __api = globalThis.EpinoiaSeason;
-export const { players, teams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS, positionValue, positionGroup, positionGroups, positionLabel, POS_GROUPS } = __api;
+export const { players, teams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS, positionValue, positionGroup, positionGroups, positionLabel, POS_GROUPS, version, MATHS } = __api;
 export default __api;

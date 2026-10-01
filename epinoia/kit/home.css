@@ -404,6 +404,20 @@ a.plain{color:inherit;text-decoration:none}
   .hm-fol-h,.hmf-wait{margin-left:12px}
   .hmf-go{padding:4px 7px;letter-spacing:.1em}
 }
+/* FOUR GAMES A ROW (followed-home.js N): four across wherever each card has 170px, a little narrower than the
+   compact card two across a phone (kit/fxc.css COMPACT, which drops the venue below 210px); two and two where it
+   has not - never three with one left on its own, which the quarter-but-240px cards of .hm .fxc-grid gave from
+   about 1550 to 1850px. 764 = four cards of 170, three gaps of 12 and the grid's 24 each side. The room is the
+   dropdown's own, measured by a container query in the kit's pixels (as the card's own queries are), not the
+   screen's: the rail beside it opens and closes, and the kit zooms the body on a wide screen. A phone keeps
+   fxc.css's two-across grid. */
+.hmf-body{container:hmf / inline-size}
+@media (min-width:561px){
+  .hm .hmf-body .fxc-grid>.fxc{flex-basis:calc((100% - var(--u) * 1.5) / 2 - .5px)}
+}
+@container hmf (min-width:764px){
+  .hm .hmf-body .fxc-grid>.fxc{flex-basis:calc((100% - 3 * var(--u) * 1.5) / 4 - .5px)}
+}
 
 /* THE INVITATION, in the same slot before anything is followed: what following
    gets you, and the way in. A panel and a rule rather than a banner — it sits

@@ -3,9 +3,9 @@
 <head>
 <!-- FIRST, BEFORE ANYTHING PAINTS: the installed app's route guard (appmode.js). Blocking on
      purpose -- a redirect decided after first paint is a flash of the wrong page. -->
-<script src="../appmode.js?v=572"></script>
-<script src="../i18n.js?v=572"></script>
-<script src="../glyphs.js?v=572" defer></script>
+<script src="../appmode.js?v=580"></script>
+<script src="../i18n.js?v=580"></script>
+<script src="../glyphs.js?v=580" defer></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#04100b">
@@ -43,17 +43,17 @@
 <!-- /seo:head -->
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=572">
-<link rel="stylesheet" href="../kit/nav.css?v=572">
-<link rel="stylesheet" href="../kit/card.css?v=572">
-<link rel="stylesheet" href="../kit/table.css?v=572">
-<link rel="stylesheet" href="../kit/compare.css?v=572">
-<link rel="stylesheet" href="../kit/access.css?v=572">
-<link rel="stylesheet" href="../kit/page.css?v=572">
-<link rel="stylesheet" href="../kit/scouting.css?v=572">
-<link rel="stylesheet" href="../kit/sectitle.css?v=572">
-<link rel="stylesheet" href="../kit/teletext.css?v=572">
-<link rel="stylesheet" href="../kit/legibility.css?v=572">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=580">
+<link rel="stylesheet" href="../kit/nav.css?v=580">
+<link rel="stylesheet" href="../kit/card.css?v=580">
+<link rel="stylesheet" href="../kit/table.css?v=580">
+<link rel="stylesheet" href="../kit/compare.css?v=580">
+<link rel="stylesheet" href="../kit/access.css?v=580">
+<link rel="stylesheet" href="../kit/page.css?v=580">
+<link rel="stylesheet" href="../kit/scouting.css?v=580">
+<link rel="stylesheet" href="../kit/sectitle.css?v=580">
+<link rel="stylesheet" href="../kit/teletext.css?v=580">
+<link rel="stylesheet" href="../kit/legibility.css?v=580">
 <!-- seo:ld -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Basketball Scouting Table: Filter & Compare Players | Epinoia","description":"Every basketball league's current season in one scouting table: sort and filter on several stats at once, then compare up to five players side by side.","url":"https://prophesyscouting.co.uk/epinoia/scouting/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Epinoia","item":"https://prophesyscouting.co.uk/epinoia/home/"},{"@type":"ListItem","position":2,"name":"Scouting"}]}</script>
@@ -75,6 +75,15 @@
     <h1>Global scouting</h1>
     <p class="pg-sub">Set up your scout: the leagues, seasons and players you want, then load them into one table, top 50 by the sorted stat, to filter and compare.</p>
   </header>
+
+  <!-- THE IMPORTS TAB (imports.js, 0210): a scout's or a platform administrator's own files from the scouting extension,
+       as one table to sort and filter. Drawn only for them, once the page has asked scout_access with their own token;
+       Leagues is the page as it was. #imports in the address opens on it. -->
+  <div class="pg-row sc-tabs" id="scTabs" data-i18n-ctx="imports" hidden>
+    <div class="pg-seg" role="group" aria-label="The leagues, or your imported files">
+      <button type="button" data-tab="leagues" aria-pressed="true">Leagues</button><button type="button" data-tab="imports" aria-pressed="false">Imports</button>
+    </div>
+  </div>
 
   <section class="sec su-sec" id="setup" aria-labelledby="setupH">
     <div class="sec-h"><h2 id="setupH">Set up your scout</h2>
@@ -182,25 +191,34 @@
     <div id="cmpPanel" class="sc-cmp" role="region" hidden aria-label="Player comparison"></div>
     <div id="tbl"><div class="sc-skel" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
   </section>
+
+  <!-- IMPORTS (imports.js): the files are read and kept in this browser; nothing of them is sent anywhere -->
+  <section class="sec ix-sec hide" id="imports" aria-labelledby="importsH" data-i18n-ctx="imports">
+    <div class="sec-h"><h2 id="importsH">Imports</h2>
+      <p class="note">Players from your scouting extension’s files, to sort and filter</p></div>
+    <p class="ix-say" id="ixSay" role="status" aria-live="polite"></p>
+    <div class="sec-b" id="ixHost"></div>
+  </section>
   <footer class="sc-foot">Epinoia Network</footer>
 </div>
-<script src="../config.js?v=572" defer></script>
-<script src="../access.js?v=572" defer></script>
-<script src="../season.js?v=572" defer></script>
-<script src="../bpm.js?v=572" defer></script>
-<script src="../data.js?v=572" defer></script>
-<script src="../global.js?v=572" defer></script>
-<script src="../units.js?v=572" defer></script>
-<script src="../ages.js?v=572" defer></script>
-<script src="../memlock.js?v=572" defer></script>
-<script src="../fulltable.js?v=572" defer></script>
-<script src="../compare.js?v=572" defer></script>
-<script src="../country.js?v=572" defer></script>
-<script src="../follow.js?v=572" defer></script>
-<script src="../teamcolour.js?v=572" defer></script>
-<script src="setup.js?v=572" defer></script>
-<script src="scouting.js?v=572" defer></script>
-<script src="../xscroll.js?v=572" defer></script>
-<script src="../nav.js?v=572" defer></script>
+<script src="../config.js?v=580" defer></script>
+<script src="../access.js?v=580" defer></script>
+<script src="../season.js?v=580" defer></script>
+<script src="../bpm.js?v=580" defer></script>
+<script src="../data.js?v=580" defer></script>
+<script src="../global.js?v=580" defer></script>
+<script src="../units.js?v=580" defer></script>
+<script src="../ages.js?v=580" defer></script>
+<script src="../memlock.js?v=580" defer></script>
+<script src="../fulltable.js?v=580" defer></script>
+<script src="../compare.js?v=580" defer></script>
+<script src="../country.js?v=580" defer></script>
+<script src="../follow.js?v=580" defer></script>
+<script src="../teamcolour.js?v=580" defer></script>
+<script src="setup.js?v=580" defer></script>
+<script src="scouting.js?v=580" defer></script>
+<script src="imports.js?v=580" defer></script>
+<script src="../xscroll.js?v=580" defer></script>
+<script src="../nav.js?v=580" defer></script>
 </body>
 </html>

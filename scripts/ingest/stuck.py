@@ -11,6 +11,21 @@ does not care why: a game live more than REPAIR_MIN_AGE after tip-off is read ag
 the normal path (write_event_log -> finalise-game); one still open REPAIR_HARD_CAP after tip-off is closed on
 what it last showed - FINAL when the fourth period or later was over or decided, or the feed had called it
 final; VOID otherwise, because a result nobody can vouch for is worse than none.
+
+NOT A GAME THAT IS STILL MOVING, AND NOT AN APP-SCORED GAME BEFORE A DAY OF SILENCE (0208). The clock here is
+the fixture's tip-off, and a fixture can be played long after it: a postponed game scored weeks later on the
+same row, a tournament day running hours behind. Such a game was closed mid-play - VOID in the first half,
+FINAL on its running score with no box score - and the scorer's watchdog stopped publishing in silence, so the
+rest of the game went nowhere. And an app-scored game whose finalise was refused at the whistle (a fouled-out
+player still on court, a level score) and corrected the next morning was found already FINAL with no box score,
+its finalise answered "already final". So, as in close_stuck_games (0208):
+  * a game that MOVED in the last RECENT_S is being played and is left alone. For a game with a feed, moving
+    means a new play: the ingest rewrites game_state on every pass of a live feed whether or not anything
+    changed (run_ingest.py write_event_log), so that row's updated_at says nothing about the game - the newest
+    game_events.created_at does. For a game scored in the app it is either: the scorer's state heartbeat
+    (every five seconds while a tab holds the game, the half-time interval included) or a new play;
+  * a game with NO external_games row - scored in the app, with nobody's feed to re-read - is closed only
+    after APP_SILENT_S of silence, which the statistician's own finalise will almost always have beaten.
 """
 from __future__ import annotations
 
@@ -20,6 +35,8 @@ from datetime import datetime, timedelta, timezone
 REPAIR_MIN_AGE = 4 * 3600      # a live game this long after tip-off is read again and finalised
 REPAIR_HARD_CAP = 6 * 3600     # ...and closed on its last state if it is still open this long after tip-off
 SWING_MS = 12_000              # one 3-point swing per 12 s of clock left: the most a game could still turn
+RECENT_S = 30 * 60             # a game that moved this recently is being played, whatever its tip-off says (0208)
+APP_SILENT_S = 24 * 3600       # a game scored in the app (no feed row) is closed only after this long silent (0208)
 
 
 def _zulu(d: datetime) -> str:
@@ -53,9 +70,10 @@ def verdict(period: int, clock_ms: int, home: int, away: int, feed_status: str |
 
 def stuck_games(sb, now: datetime, ids=None, min_age: int = REPAIR_MIN_AGE) -> list[dict]:
     """Every game live or finalising more than min_age after tip-off, with what the platform and the feed
-    say about it: [{id, status, tipoff_at, age_s, home, away, period, clock_ms, comp, ext: [external_games rows]}].
-    `ids` narrows to game ids or external ids (a workflow input). Oldest first; ANY age - the catch-up's week
-    is exactly what let a game from October sit here."""
+    say about it: [{id, status, tipoff_at, age_s, home, away, period, clock_ms, comp, ext: [external_games rows],
+    moved}]. `ids` narrows to game ids or external ids (a workflow input). Oldest first; ANY age - the catch-up's
+    week is exactly what let a game from October sit here. A game keep_open() says is still in play, or is an
+    app-scored game not yet silent for a day, is not stuck and is left out (0208)."""
     rows = sb.select_all("games", f"status=in.(live,finalising)&tipoff_at=lt.{_zulu(now - timedelta(seconds=min_age))}"
                                   "&select=id,status,tipoff_at,home_score,away_score,period,competition_id,stalled_since&order=tipoff_at,id")
     want = {str(x).strip() for x in (ids or []) if str(x).strip()}     # "".split(",") is [""]: no ids asked for is not one empty id
@@ -76,18 +94,57 @@ def stuck_games(sb, now: datetime, ids=None, min_age: int = REPAIR_MIN_AGE) -> l
         ext: dict = {}
         for e in sb.select("external_games", f"game_id=in.({gid})&select=game_id,adapter,external_id,competition_code,external_status,home_name,away_name,tipoff_at,error"):
             ext.setdefault(e["game_id"], []).append(e)
-        state = {s["game_id"]: s for s in sb.select("game_state", f"game_id=in.({gid})&select=game_id,period,clock_ms,score_home,score_away")}
+        state = {s["game_id"]: s for s in sb.select("game_state", f"game_id=in.({gid})&select=game_id,period,clock_ms,score_home,score_away,updated_at")}
         for r in chunk:
             s = state.get(r["id"]) or {}
             tip = _tip(r.get("tipoff_at"))
-            out.append({"id": r["id"], "status": r["status"], "tipoff_at": r.get("tipoff_at"), "comp": r.get("competition_id"),
-                        "age_s": (now - tip).total_seconds() if tip else None,
-                        "home": s.get("score_home") if s.get("score_home") is not None else r.get("home_score"),
-                        "away": s.get("score_away") if s.get("score_away") is not None else r.get("away_score"),
-                        "period": s.get("period") if s.get("period") is not None else r.get("period"),
-                        "clock_ms": s.get("clock_ms"), "ext": ext.get(r["id"], []), "stalled": bool(r.get("stalled_since")),
-                        "periods": periods.get(r.get("competition_id"), 4)})
+            g = {"id": r["id"], "status": r["status"], "tipoff_at": r.get("tipoff_at"), "comp": r.get("competition_id"),
+                 "age_s": (now - tip).total_seconds() if tip else None,
+                 "home": s.get("score_home") if s.get("score_home") is not None else r.get("home_score"),
+                 "away": s.get("score_away") if s.get("score_away") is not None else r.get("away_score"),
+                 "period": s.get("period") if s.get("period") is not None else r.get("period"),
+                 "clock_ms": s.get("clock_ms"), "ext": ext.get(r["id"], []), "stalled": bool(r.get("stalled_since")),
+                 "periods": periods.get(r.get("competition_id"), 4)}
+            g["moved"] = last_moved(g, newest_play(sb, r["id"]), _tip(s.get("updated_at")))
+            why = keep_open(g, now)
+            if why:
+                print(f"   (left open: {r['id']} - {why})")
+                continue
+            out.append(g)
     return out
+
+
+def newest_play(sb, game_id: str):
+    """When the newest row of a game's log was written (game_events.created_at), or None. A failed read is None:
+    it can only make a game look older, which is the rule as it was before 0208."""
+    try:
+        got = sb.select("game_events", f"game_id=eq.{game_id}&select=created_at&order=created_at.desc&limit=1")
+        return _tip(got[0].get("created_at")) if got else None
+    except Exception:
+        return None
+
+
+def last_moved(g: dict, play, state_at):
+    """When the game last moved (0208): its newest play for a game with a feed - whose game_state is rewritten on
+    every ingest pass, moving or not - and the newer of that and the scorer's state heartbeat for one scored in
+    the app (no external_games row)."""
+    if g.get("ext"):
+        return play
+    seen = [t for t in (play, state_at) if t is not None]
+    return max(seen) if seen else None
+
+
+def keep_open(g: dict, now: datetime) -> str | None:
+    """Why this game must not be closed yet, or None. Same rule as close_stuck_games in 0208 - change one,
+    change both (stuck_test.py and scorer-stuck.test.mjs)."""
+    moved = g.get("moved")
+    if moved is not None and (now - moved).total_seconds() < RECENT_S:
+        return f"it moved {int((now - moved).total_seconds() // 60)} min ago - still being played"
+    if not g.get("ext"):
+        since = moved or _tip(g.get("tipoff_at"))
+        if since is None or (now - since).total_seconds() < APP_SILENT_S:
+            return "scored in the app and silent for under 24 h - its statistician finalises it"
+    return None
 
 
 def league_periods(sb, comps) -> dict:

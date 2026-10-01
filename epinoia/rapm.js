@@ -228,8 +228,9 @@ function stints(games) {
         const t = ev.team;
         if (t !== 0 && t !== 1) return;
         close(cum);
-        onCourt[t] = onCourt[t].filter(x => x !== ev.out);
-        if (onCourt[t].indexOf(ev.in) === -1) onCourt[t].push(ev.in);
+        if (ev.out != null) onCourt[t] = onCourt[t].filter(x => x !== ev.out);
+        /* a team playing short: a player leaves with nobody to replace him (in: null) */
+        if (ev.in != null && onCourt[t].indexOf(ev.in) === -1) onCourt[t].push(ev.in);
         cur = {
           start: cum,
           home: onCourt[0].slice().sort(),
