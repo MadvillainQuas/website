@@ -5,7 +5,8 @@
 //     stand-in server - the Forum (an old #talk link landing on it), Content creators (nine cards, "Show more" while
 //     there are more, the league's own tag left off, the official partners' keys, nothing played on the page, the
 //     part away before 0207 and while there is nothing); the console's covers row (a chip per league, the leagues left
-//     to add, the whole list sent, a refusal said in the database's words, only for a platform's creators); a creator's
+//     to add, the whole list sent, a refusal said in the database's words, on every one of the platform's own sources -
+//     a publisher's too since 0209, which puts its stories on the league's news page: league-picks.test.mjs); a creator's
 //     channel wearing its partner pill (newscard.js and feedrank.js, one rule); the words in Spanish and Japanese;
 //   * on a real Postgres (PGlite; skipped with a note when it is not installed): set_news_source_leagues for a platform
 //     administrator only and on a source for every reader only, the leagues once each in the order given, audit-logged;
@@ -223,16 +224,15 @@ async function consoleOf(o) {
   } });
   const rows = t.rowsOf();
   const lineOf = n => n.parentNode.textContent;
-  ok('the platform console: a covers row on each creator, none on a publisher',
-     rows.length === 2 && /^Hoops Tube/.test(lineOf(rows[0])) && /^Quiet Pod/.test(lineOf(rows[1])) &&
-     t.host.all().filter(n => /^The Wire/.test(n.textContent) && n.children.some(c => c.tagName === 'B')).every(n => !n.children.some(c => c.className === 'cv-row')));
+  ok('the platform console: a covers row on every source, a publisher\'s too (0209: its stories on the league\'s news page)',
+     rows.length === 3 && /^Hoops Tube/.test(lineOf(rows[0])) && /^The Wire/.test(lineOf(rows[1])) && /^Quiet Pod/.test(lineOf(rows[2])));
   ok('...the console\'s own list of leagues is used (nothing read again)', !t.calls.some(c => c[0] === 'from'));
   const tube = rows[0];
   const chips = n => n.all().filter(x => x.className === 'cv-chip').map(x => x.children[0].textContent);
   const pick = n => n.all().find(x => x.tagName === 'SELECT');
   ok('...a chip for each league it covers', JSON.stringify(chips(tube)) === '["NBL"]', chips(tube));
   ok('...and the leagues it does not cover yet to add one, in name order', pick(tube) && pick(tube).children.map(x => x.textContent).join('|') === '+ another league|KBL|Liga ACB', pick(tube) && pick(tube).children.map(x => x.textContent));
-  ok('a creator with none says where its posts are', /COVERS\s*no league yet: its posts are in News/.test(rows[1].textContent) && pick(rows[1]).children[0].textContent === '+ a league it covers');
+  ok('a creator with none says where its posts are', /COVERS\s*no league yet: its posts are in News/.test(rows[2].textContent) && pick(rows[2]).children[0].textContent === '+ a league it covers');
   const sel = pick(tube);
   sel.value = 'l-kbl';
   await sel.listeners.change[0]();
@@ -266,7 +266,7 @@ async function consoleOf(o) {
 }
 {
   const t = await consoleOf({ leagues: [], handler: async (fn) => (fn === 'news_sources_admin' ? { data: sourceRows(), error: null } : { data: null, error: null }) });
-  ok('given no leagues, the console reads them itself', t.calls.some(c => c[0] === 'from') && t.rowsOf().length === 2);
+  ok('given no leagues, the console reads them itself', t.calls.some(c => c[0] === 'from') && t.rowsOf().length === 3);
   const old = await consoleOf({ leagues: () => LG, handler: async (fn) => (fn === 'news_sources_admin'
     ? { data: sourceRows().map(r => { const x = { ...r }; delete x.assigned_leagues; return x; }), error: null } : { data: null, error: null }) });
   ok('a database without 0207: no covers row, and one line saying why', old.rowsOf().length === 0 && /arrives with migration 0207/.test(old.host.textContent));

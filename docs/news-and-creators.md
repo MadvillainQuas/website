@@ -16,7 +16,7 @@ Both appear on the platform's **News** page, in **HOME's FEED**, on each league'
 | `news/` | Everything on the post card, **For you** (ranked on the reader's device, the default for everyone; an explicit choice is remembered under `epinoia.news.order2`) or **Newest**. Switches for Everything, Publishers, Creators, League news and Following; the ranking applies within each. A row of the publishers, and **Personalise**. |
 | `news/?s=<slug>` | A publisher's page: its head in its colours, the way to its site, a follow bell, its stories. |
 | `news/?i=<id>` | One story, where a notification lands. The publisher's colourway, the headline centred, the opening lines, and a button to read it on their site. |
-| `news/?l=<league>` | The league's own archive as before. Under it, **Around the league**: the publishers' stories about the league (its league tags) and its creators' pieces. |
+| `news/?l=<league>` | The league's own archive as before. Under it, **Around the league**: the publishers' stories about the league (its league tags), every story of the platform's sources the league picked (0209), and its creators' pieces. |
 | `creators/?l=<league>` | The league's creators as tiles, and their latest pieces. |
 | `creators/?l=&o=<outlet>` | An outlet's page: head, platforms, bell, bio. Its videos, episodes and posts play in their cards. |
 | `creators/?l=&o=&p=<piece>` | One piece in the outlet's colourway. An article, or the video / episode / post itself with its caption. |
@@ -76,7 +76,7 @@ The platform can name a news source or a creator outlet an **official partner**.
 
 The platform says which leagues each creator covers. The league's Community page (`community/?l=`) then shows the newest from them, under **Content creators**.
 
-- **Assigning.** Platform console, **News** tab, **Publishers & creators for every reader**. Each creator has a **COVERS** row: a chip for each league it covers (its × takes it off), and a list of the other leagues to add one. A publisher has no row; switch it to a creator first.
+- **Assigning.** Platform console, **News** tab, **Publishers & creators for every reader**. Each source has a **COVERS** row: a chip for each league it covers (its × takes it off), and a list of the other leagues to add one. Since 0209 a publisher has one too, and a league's own console writes the same list for its own league (below).
 - **The database.**
   - `news_sources.assigned_leagues` (`uuid[]`, empty by default).
   - `set_news_source_leagues(id, leagues)` sends the whole list each time. Only a platform administrator can call it, and only for a source for every reader (a league's own source already belongs to its league). The leagues are kept once each, in the order given; a league that does not exist is dropped. It is audit-logged and returns what was kept.
@@ -88,7 +88,31 @@ The platform says which leagues each creator covers. The league's Community page
 
   Never a publisher, assigned or not (switch it to a creator and it shows; the assignment is kept across the switch). Never a source that is off, a suspended outlet, a hidden piece or draft, or a league the reader may not see.
 - **The section.** The feed's post card, nine at a time, with **Show more** while there are more. The league's own tag is left off each card, and an official partner wears its pill. Nothing is played on the page: a card opens its story here (`news/?i=`, `creators/`), where a video or an episode plays. So the page's Content-Security-Policy is unchanged. The section stays away while there is nothing to show, and before 0207 is applied.
-- **Not changed.** `news_feed` and `news_feed_mine`. A creator's posts still reach a league's News page only by naming it (the league tags).
+- **Not changed by 0207.** `news_feed` and `news_feed_mine`. 0209 changes both: a source on the list reads on the league's news page as one of its own.
+
+## A league picks from the platform's list (0209)
+
+A league's administrators could only add sources of their own, by link. When the platform already read that feed, it was read twice, and every story of it showed twice in every reader's News. Now the league's console lists the platform's publishers and creators, and the league picks the ones it wants.
+
+- **Where.** League console, **Settings**, **Creators & news sources**, under the league's own sources: **From the platform's list**.
+  - The league's picks come first, each with **take off**.
+  - The rest sit behind a fold, eight at a time with **Show more**. They can be found by name or site, and narrowed to publishers or creators.
+  - A link pasted into the add box that the platform reads already (its site, its feed, or the link it was added by) is named, with a button to pick it instead.
+- **What a pick does.** The league goes into the source's `assigned_leagues`: the same list as the platform's COVERS row. Whoever put a league there, the source then reads on that league's pages as one of the league's own:
+  - every story of it under **Around the league** on the league's news page, not only the ones that name the league (`news_feed`);
+  - in the row of the league's sources there (`news_sources_public`);
+  - in the feed of everyone who follows the league (`news_feed_mine`);
+  - a creator's posts under **Content creators** on the Community page (`league_creator_feed`, as in 0207). Never a publisher's.
+
+  A story's league tags are not changed: a site that covers everything does not wear the badge of every league that picked it. Nothing new is fetched, and nobody new is notified (a source's notices go to its own followers).
+- **The database.**
+  - `news_sources_offered(league)` lists the platform's sources for a league's administrators (or the platform's). It has every source that is on, plus any the league picked that the platform has since switched off, so it can be taken off. Each row says whether the league has it (`picked`); those come first.
+  - `set_league_news_source(league, id, on)` adds or removes that one league, never another's.
+    - Only a source for every reader: a league's own source already belongs to its league.
+    - Not one the platform has switched off.
+    - Audit-logged when it changes. Returns whether the league has it now.
+  - `news_feed`, `news_feed_mine` and `news_sources_public` are 0198's, with one condition each, tagged `-- 0209`. Same signatures and grants.
+- **One list, two hands.** The platform's COVERS row sends the whole list, so a league it leaves out is off. A league can take off a source the platform gave it: the league's pages are the league's. The source itself stays the platform's, its feed read once and looked after there.
 
 ## The ranked feed (`epinoia/feedrank.js`)
 
@@ -238,6 +262,7 @@ A publisher's articles arrive every half hour. An administrator who does not wan
 - `supabase/tests/news-languages.test.mjs`: 0204 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
 - `supabase/tests/partners-ui.test.mjs`: the console's Official partner switches.
 - `supabase/tests/league-creators.test.mjs`: 0207 on PGlite (who may assign, what the Community page's section shows), the console's COVERS row, the section on a stand-in page, and a creator's channel wearing its pill.
+- `supabase/tests/league-picks.test.mjs`: 0209. On PGlite: who may pick for which league, and where a pick shows. On a stand-in page: the league console's list, and a pasted link the platform reads already. Also that 0209's three readers are 0198's but for the one condition.
 - `supabase/tests/news-refresh.test.mjs`: the `news-refresh` function on a fake database and network: the parser held to the Python's fixtures, the address guard, who may call, the rate limits, the audit rows, idempotence.
 - `supabase/tests/news-refresh-ui.test.mjs`: the **Load now** button: its words, the console's rows, who is shown it, the function missing.
 

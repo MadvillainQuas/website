@@ -1497,6 +1497,18 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/league-creators.test.mjs
 
+      - name: A league picks from the platform's publishers and creators (0209)
+        # 0209's news_feed, news_feed_mine and news_sources_public are 0198's but for the one condition each; the league
+        # console's list on a stand-in document (its picks, the rest eight at a time, found by name, site or kind, a pick
+        # sent for this league only, a refusal in the database's words, a pasted link the platform reads already offering
+        # the pick, before 0209 saying so); then on a real Postgres (PGlite): news_sources_offered and
+        # set_league_news_source for a league's administrators and their own league only, never a league's own source or
+        # one switched off; one list with the platform's COVERS row; a pick on the league's news page, its row of sources,
+        # its followers' feed and (a creator) its Community page; everything else as it was; and 0209 run again
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/league-picks.test.mjs
+
       - name: Suggested edits - fans suggest, the league's and the platform's moderators decide (0199)
         # the pages first (suggest.js's feet-and-inches and Google Maps pins, the fields, positions and reasons the
         # database has, the player's, the club's and the arena's hooks, never a player under 18, both consoles'
