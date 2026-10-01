@@ -106,7 +106,7 @@
       'platform administration': 'Administración de la plataforma',
       'every league, accounts, settings': 'Todas las ligas, cuentas y ajustes',
       'your profile, and the clubs and leagues you follow': 'Tu perfil y los clubes y ligas que sigues',
-      'your hub: your profile, the front offices you work in, and the clubs and leagues you follow': 'Tu espacio: tu perfil, las oficinas técnicas en las que trabajas y los clubes y ligas que sigues',
+      'your hub: your profile, your personalisation, the front offices you work in, and the clubs and leagues you follow': 'Tu espacio: tu perfil, tu personalización, las oficinas técnicas en las que trabajas y los clubes y ligas que sigues',
       'every league, today’s fixtures, the best players': 'Todas las ligas, los partidos de hoy, los mejores jugadores',
       'global fixtures: every league’s games on one page': 'Calendario global: los partidos de todas las ligas en una página',
       'global scouting: every league in one table': 'Scouting global: todas las ligas en una tabla',
@@ -522,6 +522,57 @@
       'pick one above. Overall is shown for reference.': 'Elige uno arriba. Se muestra el total como referencia.',
       'rank him against players of his own position rather than the whole competition':
         'Compararlo con jugadores de su posición en vez de con toda la competición',
+
+      /* ---- scouting: the set-up (scouting/setup.js) ---- */
+      'Set up your scout: the leagues, seasons and players you want, then load them into one table, top 50 by the sorted stat, to filter and compare.': 'Prepara tu scouting: las ligas, temporadas y jugadores que quieras, y cárgalos en una sola tabla, los 50 mejores según la estadística ordenada, para filtrar y comparar.',
+      'Set up your scout': 'Prepara tu scouting',
+      'Choose what to load, then press LOAD: nothing is read before that': 'Elige qué cargar y pulsa CARGAR: antes no se lee nada',
+      'Seasons': 'Temporadas',
+      'also the leagues that have not said': 'también las ligas que no lo indican',
+      'Find a league or a country': 'Busca una liga o un país',
+      'find a league or country': 'busca una liga o un país',
+      'all shown': 'todas las mostradas',
+      'Each league’s newest season, unless you choose others.': 'La temporada más reciente de cada liga, salvo que elijas otras.',
+      'Each league’s newest season. Earlier seasons appear here where a league has them.': 'La temporada más reciente de cada liga. Las anteriores aparecen aquí cuando la liga las tiene.',
+      'Earlier seasons are read only where a league has them.': 'Las temporadas anteriores solo se leen en las ligas que las tienen.',
+      'current season': 'temporada actual',
+      'games, and': 'partidos, y',
+      'min a game': 'min por partido',
+      'Forwards': 'Aleros y alas-pívot',
+      'Centres': 'Pívots',
+      'youngest': 'edad mínima',
+      'oldest': 'edad máxima',
+      'shortest, cm': 'altura mínima, cm',
+      'tallest, cm': 'altura máxima, cm',
+      'lightest, kg': 'peso mínimo, kg',
+      'heaviest, kg': 'peso máximo, kg',
+      'at least this many games': 'al menos estos partidos',
+      'at least this many minutes a game': 'al menos estos minutos por partido',
+      'keep players with no age, height, weight or position on record': 'mantener a los jugadores sin edad, altura, peso o posición registrados',
+      'Every range is optional. Leagues record heights, weights and ages unevenly: how many players had each shows once they are loaded.': 'Todos los rangos son opcionales. Las ligas registran alturas, pesos y edades de forma desigual: al cargar verás cuántos jugadores tenían cada dato.',
+      'Reading the leagues…': 'Leyendo las ligas…',
+      'loading…': 'cargando…',
+      'Your scout': 'Tu scouting',
+      'The players you chose, top 50 by the sorted stat, to compare': 'Los jugadores elegidos, los 50 mejores según la estadística ordenada',
+      'edit set-up': 'editar ajustes',
+      'What was loaded': 'Lo que se ha cargado',
+      'Leagues loaded': 'Ligas cargadas',
+      'Choose at least one league to load.': 'Elige al menos una liga para cargar.',
+      'medium': 'medio',
+      'heavy': 'pesado',
+      'men’s and women’s': 'masculino y femenino',
+      'unknowns kept': 'sin datos incluidos',
+      'Men’s or women’s leagues': 'Ligas masculinas o femeninas',
+      'Seasons to load': 'Temporadas que cargar',
+      'No league matches that. Try another name or country.': 'Ninguna liga coincide. Prueba con otro nombre o país.',
+      'No league is open to you yet.': 'Aún no tienes ninguna liga disponible.',
+      'Could not read the leagues. Check your connection and reload.': 'No se pudieron leer las ligas. Comprueba tu conexión y recarga.',
+      'None of the leagues in this set-up is open to you. Edit the set-up to choose others.': 'Ninguna de las ligas de estos ajustes está disponible para ti. Edita los ajustes para elegir otras.',
+      'No player in these leagues fits the set-up. Widen a range or edit the set-up.': 'Ningún jugador de estas ligas encaja con los ajustes. Amplía un rango o edita los ajustes.',
+      'Stopped before any players arrived. Edit the set-up, or load it again.': 'Detenido antes de que llegara ninguna liga. Edita los ajustes o vuelve a cargar.',
+      '(players with none are kept)': '(se mantienen los jugadores sin el dato)',
+      '(players with none are left out)': '(se excluyen los jugadores sin el dato)',
+      'keep players with no data': 'mantener a los jugadores sin datos',
 
       /* ---- scouting, the injury report ---- */
       'nobody out': 'Sin bajas',
@@ -1356,7 +1407,7 @@
       'open the league’s front page': 'abrir la portada de la liga',
       'every league, by country, on HOME': 'todas las ligas, por país, en Inicio',
       'manage or sign out': 'gestionar o cerrar sesión',
-      'Nothing yet. Follow a club or a player on your profile and their next result lands here.': 'Todavía nada. Sigue a un club o a un jugador desde tu perfil y su próximo resultado llegará aquí.',
+      'Nothing yet. Follow a club or a player in your personalisation and their next result lands here.': 'Todavía nada. Sigue a un club o a un jugador desde tu personalización y su próximo resultado llegará aquí.',
       'settings': 'Ajustes',
       'halftime': 'Descanso',
       'announcement': 'Aviso',
@@ -1580,7 +1631,8 @@
       'variable': 'variable',
       'streaky': 'irregular',
       'reading his games': 'leyendo sus partidos',
-      'squad average': 'Media del equipo'
+      'squad average': 'Media del equipo',
+      'personalisation': 'Personalización'
     },
 
     ctx: {
@@ -1620,6 +1672,11 @@
       /* a section's SKIP button (nav.js, a page of the standard and HOME) */
       skip: {
         'Skip': 'Saltar'
+      },
+      /* the scouting set-up (scouting/, data-i18n-ctx="scout"): the scorer's "load" and the platform's "Who" are other things */
+      scout: {
+        'Who': 'Quién',
+        'LOAD': 'CARGAR'
       },
       /* THE CREATOR HUB (creators/hub/, 0200; data-i18n-ctx="creatorhub" on its frame): the page's own words.
          A context of its own: here "Weight" is a line's, "Light" a weight and "Home" the front page */
@@ -2150,7 +2207,7 @@
         'Add more': 'Añadir más',
         'Remind me later': 'Recordármelo más tarde',
         'Don’t show this again': 'No volver a mostrar',
-        'Find them on your profile and in My followed.': 'Los encontrarás en tu perfil y en «Siguiendo».',
+        'Find them in your personalisation and in My followed.': 'Los encontrarás en tu personalización y en «Siguiendo».',
         'Loading the leagues…': 'Cargando las ligas…',
         'Loading the clubs…': 'Cargando los clubes…',
         'The clubs could not be loaded just now.': 'Ahora mismo no se pudieron cargar los clubes.',
@@ -2259,6 +2316,16 @@
         m => 'El ELO es una valoración de fuerza hecha con los resultados: cada victoria quita puntos al perdedor, más en una sorpresa y con mucha diferencia. 1500 es un equipo medio, así que ' + m[1] + ' es ' + ({ 'about an average team': 'como un equipo medio' }[m[2]] || ((/^slightly /.test(m[2]) ? 'algo ' : /^far /.test(m[2]) ? 'mucho ' : '') + (/stronger/.test(m[2]) ? 'más fuerte' : 'más débil') + ' que un equipo medio')) + '. La liga va de ' + m[3] + ' a ' + m[4] + ', en ' + m[5] + ' partidos.'],
       [/^Schedule strength so far: the opponents this club has faced averaged an ELO rating of (\d+)\. ELO is a strength rating built from results: 1500 is an average team and higher is stronger, so that is (about the same as an average team|(?:slightly |far )?(?:stronger|weaker) than an average team)\. The league runs from (\d+) \(easiest\) to (\d+) \(hardest\), over (\d+) games\.$/,
         m => 'Dificultad del calendario hasta ahora: los rivales de este club promedian un ELO de ' + m[1] + '. El ELO es una valoración de fuerza hecha con los resultados: 1500 es un equipo medio y más alto es más fuerte, así que es ' + ({ 'about the same as an average team': 'como un equipo medio' }[m[2]] || ((/^slightly /.test(m[2]) ? 'algo ' : /^far /.test(m[2]) ? 'mucho ' : '') + (/stronger/.test(m[2]) ? 'más fuerte' : 'más débil') + ' que un equipo medio')) + '. La liga va de ' + m[3] + ' (el más fácil) a ' + m[4] + ' (el más difícil), en ' + m[5] + ' partidos.'],
+      [/^Loading (\d+) of (\d+) leagues?…$/, 'Cargando $1 de $2 ligas…'],
+      [/^Stopped: (\d+) of (\d+) leagues? loaded$/, 'Detenido: $1 de $2 ligas cargadas'],
+      [/^(\d+) leagues? loaded$/, (m) => m[1] + (m[1] === '1' ? ' liga cargada' : ' ligas cargadas')],
+      [/^~([\d,.]+) players$/, (m) => '~' + m[1].replace(/,/g, '.') + ' jugadores'],
+      [/^(\d+) seasons$/, '$1 temporadas'],
+      [/^my leagues \((\d+)\)$/, 'mis ligas ($1)'],
+      [/^(age|height|weight) known: (\d+)%$/, (m) => ({ age: 'edad', height: 'altura', weight: 'peso' })[m[1]] + ' conocida: ' + m[2] + '%'],
+      [/^(\d+)\+ games$/, '$1+ partidos'],
+      [/^All (\d+) of these will take a while to load\. Continue\?$/, 'Cargar las $1 llevará un rato. ¿Continuar?'],
+      [/^Choose every league in (.+)$/, (m, T) => 'Elegir todas las ligas de ' + T(m[1])],
       [/^Q([1-4])$/i, '$1C'],
       [/^Q([1-4]) (\d{1,2}:\d{2}(?:\.\d)?)$/i, '$1C $2'],
       [/^OT(\d?)$/i, 'PR$1'],

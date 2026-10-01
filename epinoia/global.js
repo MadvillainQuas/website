@@ -58,6 +58,8 @@
        An aborted signal rejects with an AbortError and calls onLeague no more.
        onAccess is called once, after the access states and the included leagues
        are known and before any league's rows are read (the page's lock).
+     catalogue({ signal })  the light read alone (leagues, access, seasons): the scouting set-up
+     seasonUnits(leagues, seasonNames)  the (league, season) pairs players() reads
      lockedColumns(accessStates, keys?) -> Set of column keys locked on this page
      leagueShort(league)   'BCB', 'SLB M', 'SLB W'
      mergeLeague(league, S, meta, teams)   one league's rows, pure (the tests)
@@ -196,13 +198,22 @@ function groups(ids, n) {
   return out;
 }
 
-async function players(opts) {
+/* ------------------------------------------------------------- catalogue ---
+   THE LIGHT READ: what the scouting page's set-up offers, before a single row. Three
+   requests whatever the size of the platform (the leagues, what this viewer may see, and
+   every visible league's seasons with their competitions embedded), so the set-up can be
+   drawn at once and players() handed it rather than asking again.
+     catalogue({ signal }) -> { leagues, excluded, access, all }
+       leagues   the included leagues (players()'s shape) + seasons: [{id, name, startsOn,
+                 competitionIds}], newest first
+       all       every league, the members-only ones too, {id, slug, name, short, country,
+                 gender, colour, logoPath, locked}, for a set-up that shows what it cannot load */
+async function catalogue(opts) {
   const o = opts || {};
   const signal = o.signal || null;
-  const onLeague = typeof o.onLeague === 'function' ? o.onLeague : null;
   const D = root.EpinoiaData;
   const A = root.EpinoiaAccess;
-  if (!D || typeof D.season !== 'function') throw new Error('data.js has not loaded');
+  if (!D || typeof D.get !== 'function') throw new Error('data.js has not loaded');
   aborted(signal);
 
   /* 1. the leagues.
@@ -228,13 +239,14 @@ async function players(opts) {
   }
   aborted(signal);
   const excluded = [];
+  const shut = new Set();
   const visible = all.filter(l => {
-    const shut = A && typeof A.canView === 'function' && !A.canView(l.id);
-    if (shut) excluded.push({ id: l.id, name: l.name, reason: 'members' });
-    return !shut;
+    const no = A && typeof A.canView === 'function' && !A.canView(l.id);
+    if (no) { excluded.push({ id: l.id, name: l.name, reason: 'members' }); shut.add(l.id); }
+    return !no;
   });
 
-  /* 3. each league's newest season, and every competition in it. The newest is
+  /* 3. each league's seasons, newest first, and every competition in each. The newest is
      the first by starts_on descending -- data.js pickSeason's rule, over the same
      ordering context() asks for -- and its competitions ride along embedded, so
      this is one request rather than two in a row. */
@@ -245,20 +257,102 @@ async function players(opts) {
               `&select=id,league_id,name,starts_on,competitions(id,name,kind)&order=starts_on.desc`)))).flat()
     : [];
   aborted(signal);
-  const newest = new Map();
-  seasons.forEach(s => { if (!newest.has(s.league_id)) newest.set(s.league_id, s); });
+  const byLeague = new Map();
+  seasons.forEach(s => {
+    if (!byLeague.has(s.league_id)) byLeague.set(s.league_id, []);
+    byLeague.get(s.league_id).push({ id: s.id, name: s.name || '', startsOn: s.starts_on || '',
+      competitionIds: Array.isArray(s.competitions) ? s.competitions.map(c => c.id).filter(Boolean) : [] });
+  });
 
   const leagues = visible.map(l => {
-    const s = newest.get(l.id) || null;
+    const list = byLeague.get(l.id) || [];
+    const s = list[0] || null;
     return {
       id: l.id, slug: l.slug, name: l.name, short: leagueShort(l), country: l.country || '',
       gender: l.gender || '',
       colour: l.colour_a || null, logoPath: l.logo_path || null,
       seasonId: s ? s.id : null, seasonName: s ? s.name : '',
-      competitionIds: s && Array.isArray(s.competitions) ? s.competitions.map(c => c.id).filter(Boolean) : [],
+      competitionIds: s ? s.competitionIds.slice() : [],
+      seasons: list,
       count: 0
     };
   });
+  const everyone = all.map(l => ({ id: l.id, slug: l.slug, name: l.name, short: leagueShort(l), country: l.country || '',
+    gender: l.gender || '', colour: l.colour_a || null, logoPath: l.logo_path || null, locked: shut.has(l.id) }));
+  return { leagues, excluded, access, all: everyone };
+}
+
+/* ------------------------------------------------------ seasons to load ---
+   Each league's seasons as the units players() reads, one D.season each. No names (or
+   'current' alone) is each league's newest season, the league itself as it always was.
+   Names ('2025-26') pick those seasons where a league has them, and 'current' among them
+   keeps the newest too. A season other than the newest is a unit of its own -- its id
+   leagueId~seasonId, its name and short name carrying the season -- so its players rank
+   against that season's league rather than being blended with this one's; accessId keeps
+   the league, for its lock. Pure. */
+const seasonKey = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+function shortSeason(name) {
+  const m = /^(\d{4})\s*[-/–]\s*(\d{2,4})$/.exec(String(name || '').trim());
+  if (m) return m[1].slice(2) + '-' + m[2].slice(-2);
+  return String(name || '').trim();
+}
+function seasonUnits(leagues, names) {
+  const want = (Array.isArray(names) ? names : []).map(seasonKey).filter(Boolean);
+  const onlyCurrent = !want.length || (want.length === 1 && want[0] === 'current');
+  const out = [];
+  (leagues || []).forEach(L => {
+    if (onlyCurrent) { out.push(L); return; }
+    const list = Array.isArray(L.seasons) && L.seasons.length ? L.seasons
+      : (L.seasonId ? [{ id: L.seasonId, name: L.seasonName, competitionIds: L.competitionIds || [] }] : []);
+    list.forEach((s, i) => {
+      const pick = (i === 0 && want.indexOf('current') >= 0) || want.indexOf(seasonKey(s.name)) >= 0;
+      if (!pick) return;
+      if (i === 0) { out.push(L); return; }
+      out.push(Object.assign({}, L, {
+        id: L.id + '~' + s.id, accessId: L.id,
+        name: L.name + ' ' + s.name, short: L.short + ' ' + shortSeason(s.name),
+        seasonId: s.id, seasonName: s.name, competitionIds: (s.competitionIds || []).slice(), count: 0
+      }));
+    });
+  });
+  return out;
+}
+
+/* ------------------------------------------------------------- loading --- */
+/* up to n at once, in order; each task's own failure is its own (one() never throws) */
+async function pool(items, n, fn) {
+  if (!(n > 0) || n >= items.length) { await Promise.all(items.map(fn)); return; }
+  let next = 0;
+  const lane = async () => { while (next < items.length) { const i = next++; await fn(items[i], i); } };
+  await Promise.all(Array.from({ length: n }, lane));
+}
+
+/* players(opts): as documented at the top, and restricted when asked:
+     leagueIds    only these leagues (ids or slugs); the whole platform when absent
+     seasons      season names to read (seasonUnits); each league's newest when absent
+     catalogue    catalogue()'s answer, so the light read is not made twice
+     concurrency  at most this many leagues read at once (all at once when absent) */
+async function players(opts) {
+  const o = opts || {};
+  const signal = o.signal || null;
+  const onLeague = typeof o.onLeague === 'function' ? o.onLeague : null;
+  const D = root.EpinoiaData;
+  if (!D || typeof D.season !== 'function') throw new Error('data.js has not loaded');
+  aborted(signal);
+
+  const cat = o.catalogue || await catalogue({ signal });
+  aborted(signal);
+  const access = cat.access || new Map();
+  let chosen = cat.leagues || [];
+  let excluded = cat.excluded || [];
+  if (Array.isArray(o.leagueIds)) {
+    const want = new Set(o.leagueIds.map(String));
+    chosen = chosen.filter(l => want.has(String(l.id)) || want.has(String(l.slug)));
+    excluded = excluded.filter(x => want.has(String(x.id)) ||
+      (cat.all || []).some(l => l.id === x.id && want.has(String(l.slug))));
+  }
+  /* a fresh object per call: count is written on it, and a catalogue is reused */
+  const leagues = seasonUnits(chosen, o.seasons).map(L => Object.assign({}, L, { count: 0 }));
 
   /* THE WHOLE PICTURE BEFORE ANY ROW. Every included league's access state is known here, so
      a page can settle what is locked once, over all of them, and never draw premium columns a
@@ -267,7 +361,7 @@ async function players(opts) {
     try { o.onAccess(access, leagues, excluded); } catch (e) { if (root.console) console.warn('[global] onAccess', e); }
   }
 
-  /* 4. every league at once, each drawn as it lands */
+  /* 4. every league, each drawn as it lands */
   const failed = [];
   const byLeague = new Map();
   /* every league is announced, an empty one too, so a page can tell "still coming"
@@ -279,6 +373,7 @@ async function players(opts) {
     try { onLeague(rows, L); } catch (e) { if (root.console) console.warn('[global] onLeague', e); }
   };
   const one = async L => {
+    if (signal && signal.aborted) return;
     if (!L.competitionIds.length) { arrived(L, []); return; }
     try {
       /* opts.trim === false reads player rows whole: only the tests ask, to prove
@@ -288,7 +383,7 @@ async function players(opts) {
          would pin ~88 MB and ~114,000 row objects on a full platform, for nothing. */
       const [S, teams] = await Promise.all([
         D.season(L.competitionIds, { trim: o.trim !== false, rows: false }),
-        D.teamMeta(L.id)
+        D.teamMeta(L.accessId || L.id)
       ]);
       if (signal && signal.aborted) return;
       const meta = S.players && S.players.length ? await D.playerMeta(S.players.map(p => p.id)) : {};
@@ -298,7 +393,7 @@ async function players(opts) {
       failed.push({ id: L.id, name: L.name, error: (e && e.message) || String(e) });
     }
   };
-  await Promise.all(leagues.map(one));
+  await pool(leagues, o.concurrency, one);
   aborted(signal);
 
   const withComps = leagues.filter(L => L.competitionIds.length);
@@ -310,5 +405,5 @@ async function players(opts) {
   return { rows, leagues, excluded, failed, access };
 }
 
-return { players, lockedColumns, leagueShort, mergeLeague, qualifies };
+return { players, catalogue, seasonUnits, shortSeason, lockedColumns, leagueShort, mergeLeague, qualifies };
 }));

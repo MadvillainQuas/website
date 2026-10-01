@@ -13,15 +13,13 @@
 <!-- PUBLIC page; the content needs a session, which the page asks Supabase for itself. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
-<title>Your profile · Epinoia</title>
+<title>Personalisation · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<script src="../appmode.js?v=561"></script>
-<script src="../i18n.js?v=561" data-i18n-packs="account"></script>
-<script src="../glyphs.js?v=561" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=561">
-<link rel="stylesheet" href="../kit/newscard.css?v=561">
-<link rel="stylesheet" href="../kit/fan.css?v=561">
-<link rel="stylesheet" href="../kit/nav.css?v=561">
+<script src="../appmode.js?v=563"></script>
+<script src="../i18n.js?v=563" data-i18n-packs="account"></script>
+<script src="../glyphs.js?v=563" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=563">
+<link rel="stylesheet" href="../kit/nav.css?v=563">
 <style>
   .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
@@ -55,18 +53,12 @@
   .ntf small{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
   .ntf time{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);white-space:nowrap;padding-top:4px}
   .hide{display:none}
-  /* the username (0163) */
-  .uname-lead{margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*.5);font-family:var(--f-ui);font-size:14px;line-height:1.55;color:var(--ink-2);max-width:64ch}
-  .uname-row{flex-wrap:nowrap}
-  .uname-at{font-family:var(--f-data);font-size:15px;color:var(--ink-3)}
-  .uname-row .ep-input{flex:1 1 220px;max-width:320px;font-size:15px}
-  .uname-row .ep-btn{min-height:42px}
-  /* the UI face, not the pixel one: that one has no lower case, and a username's case is the fan's */
-  .uname-msg{font-family:var(--f-ui);font-size:13px;line-height:1.6;min-height:1.6em;
-    padding:0 calc(var(--u)*3);color:var(--ink-3)}
-  .uname-msg.ok{color:var(--lume)} .uname-msg.bad{color:var(--flare)}
-  .uname-rules{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.04em;line-height:1.8;color:var(--ink-3);
-    padding:0 calc(var(--u)*3) calc(var(--u))}
+  /* PERSONALISATION's cog, in the head's type; the way to PROFILE and the creator hub under it */
+  .hname .cog{font-family:var(--f-ui);font-size:.8em;vertical-align:.05em}
+  .hero-acts{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
+  /* where the username and the public page went */
+  .moved{margin:0;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule);font-family:var(--f-ui);font-size:14px;line-height:1.55;color:var(--ink-2)}
+  .moved a{color:var(--lume);font-weight:700}
 
   /* membership: one row per plan or grant, the words on the left, the buttons
      on the right (under the words on a phone) */
@@ -150,21 +142,22 @@
   /* the rail, as the learn page and the league page draw it */
   .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
 </style>
-<link rel="stylesheet" href="../kit/teletext.css?v=561">
-<link rel="stylesheet" href="../kit/legibility.css?v=561">
+<link rel="stylesheet" href="../kit/teletext.css?v=563">
+<link rel="stylesheet" href="../kit/legibility.css?v=563">
 </head>
 <body>
 <div class="ep-frame">
   <div class="bar" style="display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--rule)">
     <a href="../home/" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
-    <span id="ctx" class="ep-micro">your profile</span>
+    <span id="ctx" class="ep-micro">your settings</span>
   </div>
 
   <div class="hero">
-    <div class="hname" id="who">Your profile</div>
+    <div class="hname" id="who"><span class="cog" aria-hidden="true">&#x2699;&#xFE0E;</span> Personalisation</div>
     <div class="hsub" id="email">—</div>
-    <!-- the creator hub (0200): the rail's "your hub" panel has it; a phone reaches it from here -->
-    <div style="margin-top:10px"><a class="ep-btn mini" href="../creators/hub/">creator hub →</a></div>
+    <!-- PROFILE (profile/: the username and the public page) and the creator hub (0200): the rail's "your hub"
+         panel has both; a phone reaches them from here too -->
+    <div class="hero-acts"><a class="ep-btn mini" href="../profile/">profile →</a> <a class="ep-btn mini" href="../creators/hub/">creator hub →</a></div>
   </div>
 
   <div id="signedout" class="note hide">
@@ -173,39 +166,19 @@
 
   <div id="body" class="hide">
     <!-- TWO THINGS LIVE HERE NOW, so the page says which one you are looking at
-         rather than making you scroll past one to find the other. Profile is
+         rather than making you scroll past one to find the other. Personalisation is
          everything about you; Your leagues is everything you are attached to. -->
     <div class="tabs-wrap">
       <div class="ep-tabs" role="tablist">
-        <button class="ep-tab on" id="tabProfile" data-p="profile" role="tab" aria-selected="true">Profile</button>
+        <button class="ep-tab on" id="tabProfile" data-p="profile" role="tab" aria-selected="true">Personalisation</button>
         <button class="ep-tab" id="tabLeagues" data-p="leagues" role="tab" aria-selected="false">Your leagues</button>
       </div>
     </div>
 
     <div id="pane-profile" role="tabpanel">
-    <!-- Your username (0163): the public name EPINOIA GO's leaderboards and photos show, never the email.
-         me.js fills it; before the migration is applied the RPC is missing and the section stays hidden.
-         #username in the address brings it into view (EPINOIA GO sends a fan here to choose one). -->
-    <section class="sec hide" id="unameSec" aria-labelledby="unameH">
-      <div class="ep-hdr"><span class="idx">01</span><h2 id="unameH">Username</h2></div>
-      <p class="uname-lead" id="unameLead">Your name on leaderboards and in the fans&rsquo; photos. Never your email.</p>
-      <div class="row uname-row">
-        <span class="uname-at" aria-hidden="true">@</span>
-        <input id="unameIn" class="ep-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20"
-               placeholder="choose a username" aria-describedby="unameMsg unameRules">
-        <button class="ep-btn pri" id="unameSave" type="button" disabled>Save</button>
-      </div>
-      <div class="uname-msg" id="unameMsg" role="status" aria-live="polite"></div>
-      <div class="uname-rules" id="unameRules">3&ndash;20 letters, digits and underscores, starting with a letter. You can change it once a month.</div>
-    </section>
-
-    <!-- Your page (0197): the public profile at fan/?u=<username>, shown while the fan is public on EPINOIA GO.
-         fanprofile.js fills it (from the social accounts they signed in with, at a press); before the migration is
-         applied the RPC is missing and the section stays hidden. #fanprofile in the address brings it into view. -->
-    <section class="sec hide" id="fanprofile" aria-labelledby="fpH">
-      <div class="ep-hdr"><span class="idx">02</span><h2 id="fpH">Your page</h2></div>
-      <div id="fpHost"></div>
-    </section>
+    <!-- THE USERNAME AND YOUR PAGE MOVED TO PROFILE (profile/, 2026-09-30): this says where, so nobody is lost.
+         me.js forwards an old #username or #fanprofile link there. -->
+    <p class="moved" id="movedNote">Your username and your public page are now under <a href="../profile/">PROFILE</a>.</p>
 
     <!-- Membership (my_access, 0117). me.js fills it; before the migration is
          applied the RPC is missing and me.js hides the section and renumbers
@@ -324,13 +297,10 @@
     </div>
   </div>
 </div>
-<script src="../config.js?v=561" defer></script>
-<script src="../vendor/supabase.js?v=561" defer></script>
-<script src="../push.js?v=561" defer></script>
-<!-- your page (0197): the editor of the public profile, and the head as it will look -->
-<script src="../newscard.js?v=561" defer></script>
-<script src="fanprofile.js?v=561" defer></script>
-<script src="me.js?v=561" defer></script>
-<script src="../nav.js?v=561" defer></script>
+<script src="../config.js?v=563" defer></script>
+<script src="../vendor/supabase.js?v=563" defer></script>
+<script src="../push.js?v=563" defer></script>
+<script src="me.js?v=563" defer></script>
+<script src="../nav.js?v=563" defer></script>
 </body>
 </html>

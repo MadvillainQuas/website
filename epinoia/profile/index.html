@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<meta name="robots" content="noindex">
+<!-- PROFILE (Louie, 2026-09-30): the fan's own public page on EPINOIA, from "your hub" on the rail. The username
+     (0163) and the page at fan/?u=<username> (0197): whether it shows, and the editor of what it shows
+     (me/fanprofile.js). It was part of the old "Your profile" (me/, PERSONALISATION now), which forwards an old
+     #username or #fanprofile link here. The content needs a session, which the page asks Supabase for itself. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
+<title>Profile · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
+<script src="../appmode.js?v=563"></script>
+<script src="../i18n.js?v=563" data-i18n-packs="account"></script>
+<script src="../glyphs.js?v=563" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=563">
+<link rel="stylesheet" href="../kit/nav.css?v=563">
+<link rel="stylesheet" href="../kit/newscard.css?v=563">
+<link rel="stylesheet" href="../kit/fan.css?v=563">
+<link rel="stylesheet" href="../kit/page.css?v=563">
+<link rel="stylesheet" href="../kit/profile.css?v=563">
+<link rel="stylesheet" href="../kit/sectitle.css?v=563">
+<link rel="stylesheet" href="../kit/teletext.css?v=563">
+<link rel="stylesheet" href="../kit/legibility.css?v=563">
+</head>
+<body>
+<!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and
+     no number; data-std has nav.js add the teletext line, the quick keys, ON THIS PAGE and each section's SKIP. -->
+<div class="ep-frame" id="profile" data-std>
+  <div class="topbar">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span id="ctx" class="ep-micro">your profile</span>
+  </div>
+
+  <header class="hero pg-head">
+    <p class="pg-kick">Your hub</p>
+    <h1>Profile</h1>
+    <p class="pg-sub">Your public page on EPINOIΛ: the name fans see, and the page they open from it.</p>
+    <div class="pg-acts"><a class="ep-btn mini" href="../me/"><span aria-hidden="true">&#x2699;&#xFE0E;</span> personalisation</a></div>
+  </header>
+
+  <!-- SIGNED OUT: sign in, then straight back here -->
+  <div id="signedout" class="pf-out hide">
+    <div class="pg-empty"><p>You are not signed in. <a href="../signin/?next=/epinoia/profile/">Sign in</a> to choose your username and make your page.</p></div>
+  </div>
+
+  <!-- USERNAME (0163): the public name EPINOIA GO's leaderboards and photos show, never the email. profile.js fills
+       it; before the migration is applied the RPC is missing and the section stays away. #username in the address
+       brings it into view (EPINOIA GO sends a fan here to choose one). -->
+  <section class="sec hide" id="username" aria-labelledby="unameH">
+    <div class="sec-h"><h2 id="unameH">Username</h2>
+      <p class="note">The name fans see, and the address of your page</p></div>
+    <div class="sec-b pf-uname">
+      <p class="uname-lead" id="unameLead">Your name on leaderboards and in the fans&rsquo; photos. Never your email.</p>
+      <div class="uname-row">
+        <span class="uname-at" aria-hidden="true">@</span>
+        <input id="unameIn" class="ep-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20"
+               placeholder="choose a username" aria-label="Username" aria-describedby="unameMsg unameRules">
+        <button class="ep-btn pri" id="unameSave" type="button" disabled>Save</button>
+      </div>
+      <div class="uname-msg" id="unameMsg" role="status" aria-live="polite"></div>
+      <div class="uname-rules" id="unameRules">3&ndash;20 letters, digits and underscores, starting with a letter. You can change it once a month.</div>
+    </div>
+  </section>
+
+  <!-- YOUR PUBLIC PAGE (0197): whether fan/?u=<username> shows, and the way to it (or to going public on
+       EPINOIA GO, 18 or over). fanprofile.js writes the line; away before the migration. -->
+  <section class="sec hide" id="public" aria-labelledby="pubH">
+    <div class="sec-h"><h2 id="pubH">Your public page</h2>
+      <p class="note">Whether fans can open your page, and the way to it</p></div>
+    <div class="sec-b pf-state" id="fpState"></div>
+  </section>
+
+  <!-- YOUR PAGE (0197): the editor of what the page shows, beside its head as it will look (me/fanprofile.js).
+       #fanprofile in the address brings it into view (Discord's linking comes back to it). -->
+  <section class="sec hide" id="fanprofile" aria-labelledby="fpH">
+    <div class="sec-h"><h2 id="fpH">Your page</h2>
+      <p class="note">What your page shows, beside its head as it will look</p></div>
+    <div class="sec-b pf-edit" id="fpHost"></div>
+  </section>
+</div>
+<script src="../config.js?v=563" defer></script>
+<script src="../vendor/supabase.js?v=563" defer></script>
+<script src="../newscard.js?v=563" defer></script>
+<script src="../me/fanprofile.js?v=563" defer></script>
+<script src="profile.js?v=563" defer></script>
+<script src="../nav.js?v=563" defer></script>
+</body>
+</html>

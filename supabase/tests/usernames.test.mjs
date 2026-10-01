@@ -3,7 +3,8 @@
 
    Read from the files: the table nobody writes directly, the rules in one verdict function, the 30 days,
    the functions' grants, the self-check's cases; and the profile page asking for one (me.js, index.html),
-   its messages built so the language engine translates the words and never the name.
+   its messages built so the language engine translates the words and never the name. Since 2026-09-30 the section
+   is on PROFILE (profile/, profile.js), and the old address on me/ forwards there.
 
    0163 itself was run on a real Postgres (PGlite) with 24 checks before it was committed - two fans on one
    name, the case rules, the 30 days, who reads what, a second run - and the profile page was driven in
@@ -44,10 +45,12 @@ ok('the self-check covers the ordinary names a blocklist gets wrong',
 const nums = readdirSync(path.join(ROOT, 'supabase', 'migrations')).filter(f => /^\d{4}_/.test(f)).map(f => f.slice(0, 4));
 ok('0163 is the only 0163', nums.filter(n => n === '0163').length === 1);
 
-console.log('\nthe profile page');
-const html = rd('epinoia', 'me', 'index.html'), js = rd('epinoia', 'me', 'me.js');
-ok('the section is first on the profile, hidden until the database answers',
-   /<div id="pane-profile" role="tabpanel">[\s\S]{0,700}<section class="sec hide" id="unameSec"/.test(html));
+console.log('\nthe profile page (PROFILE, profile/)');
+const html = rd('epinoia', 'profile', 'index.html'), js = rd('epinoia', 'profile', 'profile.js');
+const css = rd('epinoia', 'kit', 'profile.css');
+ok('the section is first on PROFILE, hidden until the database answers',
+   /<\/header>[\s\S]{0,1200}<section class="sec hide" id="username"/.test(html) &&
+   html.indexOf('id="username"') < html.indexOf('id="fanprofile"'));
 ok('...shown only when my_username answers (no 0163: stays hidden)', /const \{ data, error \} = await sb\.rpc\('my_username'\);\s*\n\s*if \(error\) return;/.test(js));
 ok('checked while typing, once per pause, the last answer wins', /username_check/.test(js) && /if \(n !== asked\) return;/.test(js) && /\}, 350\);/.test(js));
 ok('the format is checked on the page without asking', /const UNAME_FORMAT = \/\^\[A-Za-z\]\[A-Za-z0-9_\]\{2,19\}\$\//.test(js));
@@ -57,7 +60,11 @@ ok('too soon says when, in the reader\'s own calendar', /reason === 'too_soon'/.
 ok('a name or a date is never translated; the words around it are', /s\.setAttribute\('translate', 'no'\)/.test(js)
    && /\[\{ name: v \}, ' is available\.'\]/.test(js));
 ok('#username brings it into view', /location\.hash === '#username'/.test(js));
-ok('the message is in the UI face (the pixel one has no lower case)', /\.uname-msg\{font-family:var\(--f-ui\)/.test(html));
+ok('the message is in the UI face (the pixel one has no lower case)', /\.uname-msg\{font-family:var\(--f-ui\)/.test(css));
+const me = rd('epinoia', 'me', 'index.html'), meJs = rd('epinoia', 'me', 'me.js');
+ok('me/ (PERSONALISATION) no longer has it, says where it went, and forwards #username there',
+   !/id="unameSec"|id="unameIn"/.test(me) && /<a href="\.\.\/profile\/">PROFILE<\/a>/.test(me) &&
+   /'#username': '#username'/.test(meJs) && /location\.replace\('\.\.\/profile\/' \+ to\)/.test(meJs) && !/paintUsername/.test(meJs));
 
 console.log('\nthe words');
 const require = createRequire(import.meta.url);

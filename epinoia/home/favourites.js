@@ -551,7 +551,7 @@ async function mount(o) {
     const dAlt = btn('fav-alt', 'Add more'), dGo = btn('fav-go', 'Close');
     sD.append(el('div', 'fav-stamp', 'Following'), said,
       el('p', 'fav-how', 'Following is how you get notifications - game reminders, line-ups and final scores - on your phone and on the site.'),
-      el('p', 'fav-how', 'Find them on your profile and in My followed.'), acts(null, dAlt, dGo));
+      el('p', 'fav-how', 'Find them in your personalisation and in My followed.'), acts(null, dAlt, dGo));
 
     track.append(sC, sL, sT, sD);
 

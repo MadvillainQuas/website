@@ -200,7 +200,9 @@ function rail(url, o = {}) {
   return { ctx, nav, tabs, searchAt, foot, heading, homeTitle, homeRows, cname, hasTabbar: !!(nav && nav.cls.has('has-tabbar')) };
 }
 
-const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
+/* the last place is PERSONALISATION (me/, under the cog) since 2026-09-30: PROFILE, the fan's public page, is in
+   the rail's "your hub" panel */
+const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'personalisation'];
 const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
 {
   const r = rail('/epinoia/home/');
@@ -272,8 +274,30 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
 }
 {
   const r = rail('/epinoia/me/');
-  eq('a page with no league (profile): platform tabs, profile lit', [r.tabs.map(t => t.tx), r.tabs.filter(t => t.on).map(t => t.tx)], [PLATFORM, ['profile']]);
+  eq('a page with no league (personalisation): platform tabs, personalisation lit', [r.tabs.map(t => t.tx), r.tabs.filter(t => t.on).map(t => t.tx)], [PLATFORM, ['personalisation']]);
   eq('...hrefs one folder down', r.tabs.map(t => t.href), ['../home/', '../games/', '../scouting/', '../home/#leagues', '../me/']);
+  const tb = byClass(r.nav, 'ep-tabbar')[0];
+  const pers = tb.children.find(a => a.dataset.tab === 'personalisation');
+  eq('...its key wears the cog, drawn as text (U+2699 U+FE0E), never an emoji', pers && (byClass(pers, 'ic')[0] || {}).textContent, '\u2699\uFE0E');
+  ok('...the platform bar is the crowded one, so "personalisation" fits whole beside the others on a 360px phone', r.nav.cls.has('tabs-crowded'));
+}
+{
+  const r = rail('/epinoia/profile/');
+  eq('PROFILE (profile/): platform tabs, nothing lit (it is in "your hub", not on the bar)', r.tabs.filter(t => t.on).map(t => t.tx), []);
+}
+{
+  /* YOUR HUB: PROFILE first, then PERSONALISATION under the cog, then the creator hub, then the follows */
+  const r = rail('/epinoia/home/');
+  const hub = r.nav.all().find(n => n.tagName === 'A' && (byClass(n, 'tx')[0] || {}).textContent === 'your hub');
+  ok('your hub: a row in the rail\'s foot, still a link to me/ for a modified click, and it moves the rail (the phone sheet too)',
+     hub && hub.href === '../me/' && hub.dataset.railMove === '1', hub && hub.href);
+  try { hub.click(); } catch (_) { /* the stub DOM may stop short of sizing; the rows are drawn first */ }
+  const panel = byClass(r.nav, 'followspanel')[0];
+  const rows = panel ? byClass(panel, 'item').map(a => ({ href: a.href, ic: (byClass(a, 'ic')[0] || {}).textContent, tx: a.title })) : [];
+  eq('your hub, opened: PROFILE, then PERSONALISATION, then the creator hub', rows.slice(0, 3).map(x => [x.tx, x.href]),
+     [['profile', '../profile/'], ['personalisation', '../me/'], ['creator hub', '../creators/hub/']]);
+  eq('...PERSONALISATION wears the cog as text', rows[1] && rows[1].ic, '\u2699\uFE0E');
+  ok('...then "your follows"', panel && byClass(panel, 'gtitle').some(n => n.textContent === 'your follows'));
 }
 /* the Table page's tab reads "Table / Team Stats" since 2026-09-23 (nav.js PAGES), a no-break
    space holding "Team Stats" together when the label takes two lines */

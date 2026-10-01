@@ -546,7 +546,7 @@
 
     const back = el('a', 'ep-btn pri', backLabel());
     back.href = backHref();
-    const me = el('a', 'ep-btn', 'Your profile');
+    const me = el('a', 'ep-btn', 'Personalisation');
     me.href = '../me/';
     if (ok) {
       clearPending();
@@ -556,7 +556,7 @@
       h.textContent = 'You’re a member';
       const what = (pending && pending.planName) || 'Your membership';
       p.textContent = what + ' is active' + (leagueId && SLUG ? ' in ' + leagueName() : '') +
-        '. You can manage it or cancel it at any time from Your profile.';
+        '. You can manage it or cancel it at any time from Personalisation.';
       act.append(back, me);
     } else {
       h.textContent = 'Almost there';

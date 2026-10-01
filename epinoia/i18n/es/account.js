@@ -82,7 +82,7 @@
       'Turning off': 'Desactivando',
       'Turn off the others': 'Desactivar los demás',
       'The others could not be turned off just now. Try again in a minute.': 'No se pudieron desactivar los demás ahora. Inténtalo de nuevo en un minuto.',
-      'Done: those sign-ups are off, and this app keeps its own. If you open Epinoia in Samsung Internet again, its profile page offers to turn notifications off there for good.': 'Hecho: esos registros están desactivados y esta app conserva el suyo. Si vuelves a abrir Epinoia en Samsung Internet, su página de perfil te ofrecerá desactivar allí las notificaciones para siempre.',
+      'Done: those sign-ups are off, and this app keeps its own. If you open Epinoia in Samsung Internet again, its personalisation page offers to turn notifications off there for good.': 'Hecho: esos registros están desactivados y esta app conserva el suyo. Si vuelves a abrir Epinoia en Samsung Internet, su página de personalización te ofrecerá desactivar allí las notificaciones para siempre.',
       'Problem': 'Problema',
       'Checking': 'Comprobando',
       'Waiting for the test to reach this phone': 'Esperando a que la prueba llegue a este teléfono',
@@ -234,7 +234,7 @@
       'Everything that happened on court — box scores, play-by-play, season tables, club and player pages — is free in an open league. Membership adds the advanced analytics.': 'Todo lo que pasó en la pista —estadísticas de los partidos, jugada a jugada, clasificaciones, páginas de clubes y jugadores— es gratis en una liga abierta. Hacerte socio añade la analítica avanzada.',
       'Good to know': 'Conviene saber',
       'How do I cancel?': '¿Cómo cancelo?',
-      'From Your profile: under Membership, press Cancel membership. It is online, one step, and you can do it at any time.': 'Desde Tu perfil: en Socios, pulsa Cancelar suscripción. Es en línea, un solo paso, y puedes hacerlo en cualquier momento.',
+      'From Personalisation: under Membership, press Cancel membership. It is online, one step, and you can do it at any time.': 'Desde Personalización: en Socios, pulsa Cancelar suscripción. Es en línea, un solo paso, y puedes hacerlo en cualquier momento.',
       'What does it cost?': '¿Cuánto cuesta?',
       'The price on the plan, every month or every year, until you cancel. It includes any VAT. There is nothing else to pay.': 'El precio del plan, cada mes o cada año, hasta que canceles. Incluye el IVA que corresponda. No hay nada más que pagar.',
       'The 14 days': 'Los 14 días',
@@ -343,7 +343,15 @@
       'is available.': 'está disponible.',
       'Saving…': 'Guardando…',
       'Saved. Your username is': 'Guardado. Tu nombre de usuario es',
-      'You can change it again on': 'Podrás cambiarlo de nuevo el'
+      'You can change it again on': 'Podrás cambiarlo de nuevo el',
+      'your settings': 'tus ajustes',
+      'Your username and your public page are now under': 'Tu nombre de usuario y tu página pública están ahora en',
+      'Your public page on EPINOIΛ: the name fans see, and the page they open from it.': 'Tu página pública en EPINOIΛ: el nombre que ve la afición y la página que abren desde él.',
+      'The name fans see, and the address of your page': 'El nombre que ve la afición y la dirección de tu página',
+      'Your public page': 'Tu página pública',
+      'Whether fans can open your page, and the way to it': 'Si la afición puede abrir tu página, y cómo llegar a ella',
+      'What your page shows, beside its head as it will look': 'Lo que muestra tu página, junto a su cabecera tal como se verá',
+      'to choose your username and make your page.': 'para elegir tu nombre de usuario y crear tu página.'
     },
 
     ctx: {
@@ -447,8 +455,8 @@
       [/^Pay (\S+) a (month|year) and join$/, m => 'Pagar ' + m[1] + ' al ' + per(m[2]) + ' y hacerme socio'],
       [/^Free in (.+)$/, 'Gratis en $1'],
       [/^Back to (.+)$/, 'Volver a $1'],
-      [/^(.+?) is active(?: in (.+?))?\. You can manage it or cancel it at any time from Your profile\.$/,
-        (m, T) => T(m[1]) + ' está activa' + (m[2] ? ' en ' + m[2] : '') + '. Puedes gestionarla o cancelarla en cualquier momento desde Tu perfil.'],
+      [/^(.+?) is active(?: in (.+?))?\. You can manage it or cancel it at any time from Personalisation\.$/,
+        (m, T) => T(m[1]) + ' está activa' + (m[2] ? ' en ' + m[2] : '') + '. Puedes gestionarla o cancelarla en cualquier momento desde Personalización.'],
 
       /* invitations */
       [/^Epinoia could not be reached just now \((.+)\)\. Your connection may have dropped — try again in a moment\.$/,

@@ -74,11 +74,18 @@ const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + w
   ok('the rail: a community row on every league (Find a game is there whenever it has games); the forum row is gone',
      /href: 'community\/',[^\n]*key: 'community'/.test(nav) && !/href: 'community\/',[^\n]*probe:/.test(nav) && !/'forum\/'|kind === 'forum'/.test(nav));
 
-  const meHtml = page('epinoia/me/index.html'), meJs = page('epinoia/me/me.js'), fp = page('epinoia/me/fanprofile.js');
-  const ms = scripts(meHtml);
-  ok('the profile: a "Your page" section, its editor loaded before me.js and mounted by it',
-     /id="fanprofile"/.test(meHtml) && /id="fpHost"/.test(meHtml) && ms.includes('fanprofile.js') && ms.indexOf('fanprofile.js') < ms.indexOf('me.js') &&
-     ms.includes('../newscard.js') && /EpinoiaFanProfileEditor\.mount\(\{ host: '#fpHost', sec: '#fanprofile'/.test(meJs), ms);
+  /* YOUR PAGE lives on PROFILE (profile/) since 2026-09-30; me/ is PERSONALISATION and forwards #fanprofile there */
+  const pfHtml = page('epinoia/profile/index.html'), pfJs = page('epinoia/profile/profile.js'), fp = page('epinoia/me/fanprofile.js');
+  const meHtml = page('epinoia/me/index.html'), meJs = page('epinoia/me/me.js');
+  const ms = scripts(pfHtml);
+  ok('PROFILE: a "Your page" section and "Your public page", the editor loaded before profile.js and mounted by it',
+     /id="fanprofile"/.test(pfHtml) && /id="fpHost"/.test(pfHtml) && /id="public"/.test(pfHtml) && /id="fpState"/.test(pfHtml) &&
+     ms.includes('../me/fanprofile.js') && ms.indexOf('../me/fanprofile.js') < ms.indexOf('profile.js') &&
+     ms.includes('../newscard.js') && /EpinoiaFanProfileEditor|E\.mount\(\{ host: '#fpHost', sec: '#fanprofile', state: '#fpState'/.test(pfJs) &&
+     /mount\(\{ host: '#fpHost', sec: '#fanprofile', state: '#fpState', stateSec: '#public', sb \}\)/.test(pfJs), ms);
+  ok('...me/ no longer carries the editor, and forwards an old #fanprofile to PROFILE',
+     !/id="fanprofile"|fanprofile\.js/.test(meHtml) && /'#fanprofile': '#fanprofile'/.test(meJs) && /\.\.\/profile\//.test(meJs));
+  ok('...a fan\'s page points its reader at their own on PROFILE', /href="\.\.\/profile\/#fanprofile"/.test(page('epinoia/fan/index.html')));
   ok('...the editor reads, syncs Discord and saves through the functions', /sb\.rpc\('my_fan_profile'\)/.test(fp) &&
      /sb\.rpc\('sync_fan_discord'\)/.test(fp) && /sb\.rpc\('set_fan_profile'/.test(fp) &&
      /linkIdentity\(\{ provider: 'discord'/.test(fp) && !/innerHTML|insertAdjacentHTML/.test(fp));

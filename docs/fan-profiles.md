@@ -14,7 +14,7 @@ Migration **0197**. Two things:
 | Page | What it is |
 | --- | --- |
 | `fan/?u=<username>` | A fan's page, in the fan's own colour: their picture, name, line and accounts; their club; their GO passport (arenas, stamps, kilometres, their place on the board); their stamps and photographs; the leagues and clubs they follow. |
-| `me/#fanprofile` | **Your page** on the profile, where a fan edits theirs, with a live preview. |
+| `profile/` | **PROFILE**, from "your hub" on the rail (first row): the fan's **Username**, **Your public page** (whether `fan/?u=` shows, and the link to it) and **Your page**, where they edit theirs with a live preview (`me/fanprofile.js`). It was on `me/` (now PERSONALISATION) until 2026-09-30; `me/#fanprofile` and `me/#username` forward here. |
 | `community/?l=<league>` | The league's Community page, in the league's colours. **Find a game**: GO's own module (`go/nearby/nearby.js`), for the league's games only. **Talk**: the Discord servers, one card each (see below). **In the stands**: GO's feed of the league's games, stamps and photographs (`go_feed`). **Furthest travelled**: the league's GO board by distance (`go_leaderboard`), each fan to their page. A part with nothing to show (no servers) stays away, and the rest are renumbered. |
 | The rail | **community** on every league. Find a game is there whenever the league has games. |
 | A league console, **Forum** | Attach, edit, reorder and take off servers. Pasting an invitation fills in the rest. |

@@ -63,7 +63,7 @@ console.log('\nthe page');
   ok('CSP: connects to supabase over https and wss', /connect-src[^;]*https:\/\/\*\.supabase\.co/.test(csp) && /connect-src[^;]*wss:\/\/\*\.supabase\.co/.test(csp), csp);
 
   const css = [...head.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);
-  ['epinoia-kit.css', 'nav.css', 'card.css', 'table.css', 'compare.css'].forEach(f =>
+  ['epinoia-kit.css', 'nav.css', 'card.css', 'table.css', 'compare.css', 'page.css', 'scouting.css', 'sectitle.css', 'teletext.css', 'legibility.css'].forEach(f =>
     ok('stylesheet ' + f + ' at ?v=' + V, css.includes('../kit/' + f + '?v=' + V), css.join(' ')));
   const at = f => css.indexOf('../kit/' + f + '?v=' + V);
   ok('the kit comes before the table and compare sheets',
@@ -77,7 +77,8 @@ console.log('\nthe page');
   const deferred = [...body.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m => m[1].replace('?v=' + V, ''));
   eq('deferred scripts, in order', deferred,
      ['../config.js', '../access.js', '../season.js', '../bpm.js', '../data.js', '../global.js',
-      '../units.js', '../ages.js', '../memlock.js', '../fulltable.js', '../compare.js', 'scouting.js', '../nav.js', '../xscroll.js']);
+      '../units.js', '../ages.js', '../memlock.js', '../fulltable.js', '../compare.js', '../country.js', '../follow.js',
+      '../teamcolour.js', 'setup.js', 'scouting.js', '../xscroll.js', '../nav.js']);
   ok('every deferred script is stamped ?v=' + V, [...body.matchAll(/<script src="([^"]+)"/g)].every(m => m[1].endsWith('?v=' + V)));
 
   /* EVERY LOCAL FILE THE PAGE ASKS FOR IS IN THE REPO. appmode.js and home/ are Phase 1's (R2),
@@ -101,8 +102,18 @@ console.log('\nthe page');
   }
 
   ok('the EPINOIΛ wordmark links to HOME',/<a href="\.\.\/home\/"[^>]*>\s*<span[^>]*epinoia-mark[^>]*>EPINOIΛ<\/span><\/a>/.test(HTML));
-  ok('the header says Global scouting', /<h2 id="title">Global scouting<\/h2>/.test(HTML));
-  ok('the header line mentions every league and the top 50', /every league/i.test(HTML) && /top 50/i.test(HTML));
+  ok('the head says Global scouting (the page standard: header.hero.pg-head, its one h1)', /<header class="hero pg-head">\s*<h1>Global scouting<\/h1>/.test(HTML));
+  ok('the head line says set up first, and the top 50', /Set up your scout/.test(HTML) && /top 50/i.test(HTML));
+  ok('the set-up is in the markup, before any script runs: its steps, its LOAD, and no table yet',
+     /<section class="sec su-sec" id="setup"/.test(HTML) && /<form class="su" id="su"/.test(HTML) &&
+     ['suWho', 'suGroups', 'suSeasonChips', 'suAgeMin', 'suHtMax', 'suWtMin', 'suGp', 'suMpg', 'suPos', 'suUnk', 'suLoad'].every(id => HTML.includes('id="' + id + '"')) &&
+     /<button type="submit" class="ep-btn pri su-load" id="suLoad"[^>]*disabled>LOAD<\/button>/.test(HTML) &&
+     /<section class="sec sc-res hide" id="results"/.test(HTML));
+  ok('every set-up box is labelled', [...HTML.matchAll(/<input\b[^>]*>/g)].every(m => {
+     const i = HTML.indexOf(m[0]); const before = HTML.slice(Math.max(0, i - 200), i);
+     return /<label[^>]*>(?:(?!<\/label>)[\s\S])*$/.test(before); }));
+  ok('the progress is announced politely', /id="scProg"[^>]*role="status"[^>]*aria-live="polite"/.test(HTML));
+  ok('EDIT SET-UP over the table', /id="scEdit"/.test(HTML));
   ok('a loading skeleton sits in the table host before any script runs', /<div id="tbl"><div class="sc-skel"/.test(HTML));
   ok('a status line announced politely', /id="status"[^>]*role="status"[^>]*aria-live="polite"/.test(HTML));
   ok('a desktop compare panel above the table', HTML.indexOf('id="cmpPanel"') > -1 && HTML.indexOf('id="cmpPanel"') < HTML.indexOf('id="tbl"'));
@@ -286,7 +297,7 @@ class Node_ {
 }
 const tick = () => new Promise(r => setTimeout(r, 0));
 
-async function bootWith({ search = '', phone = false, leagues, excluded = [], failed = [], reject = null, states = {}, onAccess = false }) {
+async function bootWith({ search = '', phone = false, leagues, excluded = [], failed = [], reject = null, states = {}, onAccess = false, setup = null }) {
   const nodes = { '#tbl': new Node_('div'), '#status': new Node_('div'), '#cmpPanel': new Node_('section') };
   nodes['#cmpPanel'].hidden = true;
   const log = { renders: [], setRows: [], urls: [], opened: [], panels: [], reloads: 0, onChange: null };
@@ -311,9 +322,15 @@ async function bootWith({ search = '', phone = false, leagues, excluded = [], fa
     canView: () => true, onChange: fn => { log.onChange = fn; } };
   g.EpinoiaCompare = { open: o => { log.opened.push(o); return {}; },
     render: (host, o) => { log.panels.push(o); return { destroy () {} }; } };
+  /* the set-up module, when a case asks for it (null: a page without it loads as it always did) */
+  g.EpinoiaScoutSetup = setup;
+  log.playersOpts = [];
   g.EpinoiaGlobal = {
+    catalogue: async () => ({ leagues: leagues.map(x => Object.assign({ slug: String(x[0].id).toLowerCase() }, x[0])), excluded, access: new Map(), all: [] }),
     lockedColumns: sts => new Set(sts.some(s => s && s.analyticsOk === false) ? ['z_rim_att'] : []),
-    players: async ({ onLeague, onAccess: announce }) => {
+    players: async (po) => {
+      const { onLeague, onAccess: announce } = po;
+      log.playersOpts.push(po);
       if (reject) throw reject;
       if (onAccess && announce) { await tick(); announce(new Map(), leagues.map(x => x[0]), excluded); }
       for (const [L, rows] of leagues) { await tick(); onLeague(rows, L); log['status_' + L.short] = nodes['#status'].textContent; }
@@ -357,7 +374,7 @@ console.log('\nthe page boots');
   ok('the members-only note is shown', /1 members-only league not included/.test(st), st);
   ok('...in its own class, not the kit’s 9px centred .sc-note',
      !!nodes['#status'].find(n => n.className === 'sc-excl') && !nodes['#status'].find(n => n.className === 'sc-note') &&
-     /\.sc-excl\{/.test(HTML) && !/\.sc-note\{/.test(HTML));
+     /\.sc-excl\{/.test(rd('epinoia', 'kit', 'scouting.css')) && !/\.sc-note\{/.test(HTML + rd('epinoia', 'kit', 'scouting.css')));
   ok('without onAccess (an older loader) the lock still comes from the arrived leagues', log.lockedAtRender === false && o.locked('z_rim_att') === true);
   ok('the URL is written back from the state the table drew', log.urls.length > log.urlsAtRender);
   ok('the skeleton is gone', !nodes['#tbl'].find(n => n.className === skeleton));
@@ -434,6 +451,43 @@ console.log('\nthe page boots');
   const { nodes } = await bootWith({ leagues: [[{ id: 'L1', short: 'BCB', name: 'BCB' }, [{ id: 'L1:a', name: 'A', leagueId: 'L1' }]]],
     failed: [{ id: 'L4', name: 'Broken League', error: 'x' }] });
   ok('a league that failed is named in the status line', /Could not load Broken League/.test(nodes['#status'].textContent));
+}
+
+/* ------------------------------------------------------- with the set-up --- */
+console.log('\nthe set-up decides what is read');
+{
+  const SU = require(path.join(ROOT, 'epinoia', 'scouting', 'setup.js'));
+  const bcb = { id: 'L1', short: 'BCB', name: 'BCB', gender: 'men' };
+  const slbw = { id: 'L3', short: 'SLB W', name: 'SLB W', gender: 'women' };
+  const rows = [{ id: 'L1:a', playerId: 'a', name: 'Ann', leagueId: 'L1', ppg: 20, gp: 10, min: 300, position: 'PG' },
+                { id: 'L1:b', playerId: 'b', name: 'Bo', leagueId: 'L1', ppg: 9, gp: 2, min: 20, position: 'C' }];
+  {
+    const { log } = await bootWith({ setup: SU, leagues: [[bcb, rows], [slbw, []]] });
+    ok('no go in the address: nothing is loaded, the set-up waits for LOAD', log.playersOpts.length === 0 && log.renders.length === 0);
+  }
+  {
+    const { log, nodes } = await bootWith({ setup: SU, search: '?leagues=l1&season=2025-26,current&gp=5&go=1&s=bpm',
+      leagues: [[bcb, rows], [slbw, []]] });
+    const po = log.playersOpts[0] || {};
+    ok('go=1: loads at once', log.playersOpts.length === 1);
+    eq('...only the chosen leagues, by the catalogue\'s ids', po.leagueIds, ['L1']);
+    eq('...the chosen seasons', po.seasons, ['2025-26', 'current']);
+    ok('...a few at a time, from the catalogue already read', po.concurrency === S.CONCURRENCY && S.CONCURRENCY > 0 && S.CONCURRENCY <= 6 && !!po.catalogue);
+    ok('...with an AbortSignal, so it can be cancelled', !!po.signal && typeof po.signal.aborted === 'boolean');
+    ok('the set-up filters the rows: a player under the games floor is not in the table',
+       log.renders.length === 1 && log.renders[0].rows.length === 1 && log.renders[0].rows[0].name === 'Ann');
+    eq('the table still reads its own state from the address', log.renders[0].state.sort, 'bpm');
+    const url = log.urls.find(u => /leagues=l1/.test(u)) || '';
+    ok('the address keeps the set-up and go=1 (a reload or a shared link loads again)', /go=1/.test(url) && /gp=5/.test(url), url);
+    ok('the status line counts the rows kept', /BCB 1/.test(nodes['#status'].textContent), nodes['#status'].textContent);
+  }
+  {
+    /* an older link to one league's rows (?lg=, the table's league filter) still loads that league */
+    const { log } = await bootWith({ setup: SU, search: '?lg=L3', leagues: [[bcb, rows], [slbw, [{ id: 'L3:c', playerId: 'c', name: 'Cy', leagueId: 'L3', gp: 5, min: 100 }]]] });
+    eq('an older ?lg= link loads that league at once', (log.playersOpts[0] || {}).leagueIds, ['L3']);
+  }
+  eq('loading words', [S.loadingText(3, 12), S.loadingText(1, 1, 'done'), S.loadingText(3, 12, 'stopped')],
+     ['Loading 3 of 12 leagues…', '1 league loaded', 'Stopped: 3 of 12 leagues loaded']);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

@@ -331,7 +331,7 @@ section('the words');
     'Step 1 of 2 · Leagues', 'Step 2 of 2 · Clubs', 'All set', 'You’re In', 'Here’s who you’re following.',
     'Tap a country to see its leagues.', 'Tap a league to follow it.', 'Tap the clubs you back.',
     'Following', 'Skip', 'Advance', 'Done', 'Pick another league', 'Add more leagues', 'Add more',
-    'Remind me later', 'Don’t show this again', 'Find them on your profile and in My followed.',
+    'Remind me later', 'Don’t show this again', 'Find them in your personalisation and in My followed.',
     'Loading the leagues…', 'Loading the clubs…', 'The clubs could not be loaded just now.',
     'These leagues have no clubs listed yet.', 'Pick a league first, and its clubs are here.',
     'Following is not available just now. Try again in a little while.', 'Other leagues', 'Back to the countries',

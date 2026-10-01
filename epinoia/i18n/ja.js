@@ -84,7 +84,7 @@
       'Older stories': '過去の記事',
       'news, publishers and creators': 'ニュース・メディア・クリエイター',
       'Publishers and creators you follow': 'フォロー中のメディアとクリエイター',
-      'your hub: your profile, the front offices you work in, and the clubs and leagues you follow': 'マイハブ：マイページ、所属クラブのフロントオフィス、フォロー中のクラブとリーグ',
+      'your hub: your profile, your personalisation, the front offices you work in, and the clubs and leagues you follow': 'マイハブ：マイページ、パーソナライズ、所属クラブのフロントオフィス、フォロー中のクラブとリーグ',
       'admin controls': '管理メニュー',
       'platform': 'プラットフォーム',
       'sign in': 'ログイン',
@@ -520,6 +520,57 @@
       'pick one above. Overall is shown for reference.': '上で選んでください。参考として全体を表示しています。',
       'rank him against players of his own position rather than the whole competition':
         '大会全体ではなく同ポジションの選手と比較',
+
+      /* ---- scouting: the set-up (scouting/setup.js) ---- */
+      'Set up your scout: the leagues, seasons and players you want, then load them into one table, top 50 by the sorted stat, to filter and compare.': 'スカウトを設定：見たいリーグ・シーズン・選手を選んでから1つの表に読み込み、並べ替えた指標の上位50人を絞り込み・比較できます。',
+      'Set up your scout': 'スカウトを設定',
+      'Choose what to load, then press LOAD: nothing is read before that': '読み込む内容を選んで「読み込む」を押してください。それまでは何も読み込みません',
+      'Seasons': 'シーズン',
+      'also the leagues that have not said': '未設定のリーグも含める',
+      'Find a league or a country': 'リーグまたは国を検索',
+      'find a league or country': 'リーグまたは国を検索',
+      'all shown': '表示中をすべて',
+      'Each league’s newest season, unless you choose others.': '他を選ばない限り、各リーグの最新シーズンです。',
+      'Each league’s newest season. Earlier seasons appear here where a league has them.': '各リーグの最新シーズン。過去のシーズンがあるリーグはここに表示されます。',
+      'Earlier seasons are read only where a league has them.': '過去のシーズンは、そのシーズンがあるリーグのみ読み込みます。',
+      'current season': '今シーズン',
+      'games, and': '試合以上、かつ',
+      'min a game': '分/試合以上',
+      'Forwards': 'フォワード',
+      'Centres': 'センター',
+      'youngest': '最年少',
+      'oldest': '最年長',
+      'shortest, cm': '最低身長（cm）',
+      'tallest, cm': '最高身長（cm）',
+      'lightest, kg': '最低体重（kg）',
+      'heaviest, kg': '最高体重（kg）',
+      'at least this many games': '最低試合数',
+      'at least this many minutes a game': '1試合あたりの最低出場時間（分）',
+      'keep players with no age, height, weight or position on record': '年齢・身長・体重・ポジションが未登録の選手も残す',
+      'Every range is optional. Leagues record heights, weights and ages unevenly: how many players had each shows once they are loaded.': '範囲の指定はすべて任意です。身長・体重・年齢の登録状況はリーグによって異なり、読み込み後にそれぞれの登録率が表示されます。',
+      'Reading the leagues…': 'リーグを読み込み中…',
+      'loading…': '読み込み中…',
+      'Your scout': 'あなたのスカウト',
+      'The players you chose, top 50 by the sorted stat, to compare': '選んだ選手。並べ替えた指標の上位50人を比較',
+      'edit set-up': '設定を編集',
+      'What was loaded': '読み込んだ内容',
+      'Leagues loaded': '読み込んだリーグ',
+      'Choose at least one league to load.': '読み込むリーグを1つ以上選んでください。',
+      'medium': '中',
+      'heavy': '重い',
+      'men’s and women’s': '男子・女子',
+      'unknowns kept': '未登録を含む',
+      'Men’s or women’s leagues': '男子または女子リーグ',
+      'Seasons to load': '読み込むシーズン',
+      'No league matches that. Try another name or country.': '該当するリーグがありません。別の名前や国で試してください。',
+      'No league is open to you yet.': '利用できるリーグはまだありません。',
+      'Could not read the leagues. Check your connection and reload.': 'リーグを読み込めませんでした。接続を確認して再読み込みしてください。',
+      'None of the leagues in this set-up is open to you. Edit the set-up to choose others.': 'この設定のリーグはどれも利用できません。設定を編集して他のリーグを選んでください。',
+      'No player in these leagues fits the set-up. Widen a range or edit the set-up.': '条件に合う選手がいません。範囲を広げるか設定を編集してください。',
+      'Stopped before any players arrived. Edit the set-up, or load it again.': 'リーグの読み込み前に停止しました。設定を編集するか、もう一度読み込んでください。',
+      '(players with none are kept)': '（未登録の選手も含む）',
+      '(players with none are left out)': '（未登録の選手は除外）',
+      'keep players with no data': 'データのない選手も残す',
 
       /* ---- scouting, the injury report ---- */
       'nobody out': '欠場者なし',
@@ -1354,7 +1405,7 @@
       'open the league’s front page': 'リーグのトップページを開く',
       'every league, by country, on HOME': 'トップで国別の全リーグを表示',
       'manage or sign out': '管理・ログアウト',
-      'Nothing yet. Follow a club or a player on your profile and their next result lands here.': 'まだありません。マイページでクラブや選手をフォローすると、次の結果がここに届きます。',
+      'Nothing yet. Follow a club or a player in your personalisation and their next result lands here.': 'まだありません。パーソナライズページでクラブや選手をフォローすると、次の結果がここに届きます。',
       'settings': '設定',
       'halftime': 'ハーフタイム',
       'announcement': 'お知らせ',
@@ -1578,7 +1629,8 @@
       'variable': 'ばらつきあり',
       'streaky': 'ムラあり',
       'reading his games': '試合を読み込み中',
-      'squad average': 'チーム平均'
+      'squad average': 'チーム平均',
+      'personalisation': 'パーソナライズ'
     },
 
     ctx: {
@@ -1618,6 +1670,11 @@
       /* a section's SKIP button (nav.js, a page of the standard and HOME) */
       skip: {
         'Skip': 'スキップ'
+      },
+      /* the scouting set-up (scouting/, data-i18n-ctx="scout"): the scorer's "load" and the platform's "Who" are other things */
+      scout: {
+        'Who': '対象',
+        'LOAD': '読み込む'
       },
       /* THE CREATOR HUB (creators/hub/, 0200; data-i18n-ctx="creatorhub" on its frame): the page's own words.
          A context of its own: here "Weight" is a line's, "Light" a weight and "Home" the front page */
@@ -2149,7 +2206,7 @@
         'Add more': 'さらに追加',
         'Remind me later': 'あとで再表示',
         'Don’t show this again': '今後表示しない',
-        'Find them on your profile and in My followed.': 'マイページと「フォロー中」で確認できます。',
+        'Find them in your personalisation and in My followed.': 'パーソナライズページと「フォロー中」で確認できます。',
         'Loading the leagues…': 'リーグを読み込み中…',
         'Loading the clubs…': 'クラブを読み込み中…',
         'The clubs could not be loaded just now.': '現在、クラブを読み込めません。',
@@ -2258,6 +2315,16 @@
         m => 'ELOは結果から作る強さの指標です。勝つと敗者からポイントを得て、番狂わせや大差ほど多くなります。1500が平均的なチームなので、' + m[1] + 'は' + ({ 'about an average team': '平均的なチーム並み' }[m[2]] || ('平均的なチームより' + (/^slightly /.test(m[2]) ? 'やや' : /^far /.test(m[2]) ? 'かなり' : '') + (/stronger/.test(m[2]) ? '強い' : '弱い'))) + 'です。リーグは' + m[3] + 'から' + m[4] + 'まで(' + m[5] + '試合)。'],
       [/^Schedule strength so far: the opponents this club has faced averaged an ELO rating of (\d+)\. ELO is a strength rating built from results: 1500 is an average team and higher is stronger, so that is (about the same as an average team|(?:slightly |far )?(?:stronger|weaker) than an average team)\. The league runs from (\d+) \(easiest\) to (\d+) \(hardest\), over (\d+) games\.$/,
         m => 'これまでの日程の厳しさ:このクラブが対戦した相手のELOの平均は' + m[1] + 'です。ELOは結果から作る強さの指標で、1500が平均的なチーム、高いほど強いので、' + ({ 'about the same as an average team': '平均的なチーム並み' }[m[2]] || ('平均的なチームより' + (/^slightly /.test(m[2]) ? 'やや' : /^far /.test(m[2]) ? 'かなり' : '') + (/stronger/.test(m[2]) ? '強い' : '弱い'))) + 'です。リーグは' + m[3] + '(最も易しい)から' + m[4] + '(最も厳しい)まで(' + m[5] + '試合)。'],
+      [/^Loading (\d+) of (\d+) leagues?…$/, '$2リーグ中$1を読み込み中…'],
+      [/^Stopped: (\d+) of (\d+) leagues? loaded$/, '停止：$2リーグ中$1を読み込み済み'],
+      [/^(\d+) leagues? loaded$/, '$1リーグを読み込みました'],
+      [/^~([\d,.]+) players$/, '約$1人'],
+      [/^(\d+) seasons$/, '$1シーズン'],
+      [/^my leagues \((\d+)\)$/, 'フォロー中のリーグ（$1）'],
+      [/^(age|height|weight) known: (\d+)%$/, (m) => ({ age: '年齢', height: '身長', weight: '体重' })[m[1]] + 'の登録率：' + m[2] + '%'],
+      [/^(\d+)\+ games$/, '$1試合以上'],
+      [/^All (\d+) of these will take a while to load\. Continue\?$/, '$1件すべての読み込みには時間がかかります。続けますか？'],
+      [/^Choose every league in (.+)$/, (m, T) => T(m[1]) + 'のリーグをすべて選ぶ'],
       [/^Q([1-4])$/i, '$1Q'],
       [/^Q([1-4]) (\d{1,2}:\d{2}(?:\.\d)?)$/i, '$1Q $2'],
       [/^OT(\d?)$/i, 'OT$1'],
