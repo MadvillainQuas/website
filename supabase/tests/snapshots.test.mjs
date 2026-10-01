@@ -321,10 +321,14 @@ console.log('\nseason.js version(): which code summed a season, in every name it
   const prof = readFileSync(path.join(ROOT, 'epinoia', 'p', 'player.js'), 'utf8');
   const sec = prof.slice(prof.indexOf('const BAR_SECTIONS = ['), prof.indexOf('const BAR_GROUPS'));
   const drawn = [...sec.matchAll(/\['([a-z0-9_]+)','/g)].map(m => m[1]);
-  /* box plus/minus is put on by attachBPM, not by the line: a new key there is a MATHS bump (season.js says so) */
+  /* box plus/minus is put on by attachBPM, not by the line: a new key there is a MATHS bump (season.js says so). The simple
+     view's per-75 figures are worked out on the page (vsunits.js per75) from keys of the line: its totals and on_poss */
   const fromBpm = new Set(['bpm', 'obpm', 'dbpm', 'vorp']);
-  const missing = drawn.filter(k => !fromBpm.has(k) && !(k in probeP));
-  ok('every bar on the player profile (' + drawn.length + ') is a key of the line, or box plus/minus', drawn.length > 30 && !missing.length, missing);
+  const V = require(path.join(ROOT, 'epinoia', 'vsunits.js'));
+  const per75 = new Map(V.P75.map(([t, k]) => [k, t]));
+  const missing = drawn.filter(k => !fromBpm.has(k) && !(k in probeP) && !(per75.has(k) && per75.get(k) in probeP && 'on_poss' in probeP));
+  ok('every bar on the player profile (' + drawn.length + ') is a key of the line, worked out on the page from them, or box plus/minus',
+     drawn.length > 30 && !missing.length, missing);
   ok('...the four shot volumes and TEAM SPACING among them',
      ['rim_a100', 'mid_a100', 'p3_a100', 'ft_a100', 'team_spacing'].every(k => drawn.includes(k) && k in probeP));
   /* whoever builds a file names it with this, and builds it again when the name is not the one it holds */

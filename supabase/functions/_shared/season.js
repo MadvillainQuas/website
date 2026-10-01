@@ -480,6 +480,9 @@ function finishPlayer(A, m) {
        read at the same rate. Under 20 possessions on the floor it is noise, and is left null. */
     rim_a100: r1(onPoss >= 20 ? 100 * A.rimA / onPoss : null), mid_a100: r1(onPoss >= 20 ? 100 * A.midA / onPoss : null),
     p3_a100:  r1(onPoss >= 20 ? 100 * A.p3a / onPoss : null),  ft_a100:  r1(onPoss >= 20 ? 100 * A.fta / onPoss : null),
+    /* THE POSSESSIONS THEMSELVES, the denominator of every per-100 above, so a page can put any count over them:
+       the profile's per-75 box score is a count x 75 / these (index_9's "per 75 lineup possessions", vsunits.js) */
+    on_poss: r1(onPoss),
     rim_rate: r1(pct(A.rimA, fga)), mid_rate: r1(pct(A.midA, fga)),
     p3_rate:  r1(pct(A.p3a, fga)),
     ftr: r1(pct(A.fta, fga)),

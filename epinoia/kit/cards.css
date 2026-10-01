@@ -99,6 +99,12 @@
 .bc-d.level{--d:var(--ink-3)}
 .bc-d span{white-space:nowrap}
 
+/* against the starters or the bench (the player profile): the fill is the part, the tick where all his minutes sit */
+.bc.vs .bc-track{overflow:visible}
+.bc-tick{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;
+  background:var(--ink);box-shadow:0 0 0 1px var(--panel)}
+.bc.vs .bc-d span{white-space:normal}
+
 /* ---- the shooting card's distances: grouped, not folded ---- */
 .bsub{margin:calc(var(--u)*1.25) 0 0;padding:calc(var(--u)*1.25) calc(var(--u)*1.25) calc(var(--u)*1.5);border-radius:12px;
   border:1px solid color-mix(in oklch,var(--team-b,var(--aqua)) 32%,var(--rule));

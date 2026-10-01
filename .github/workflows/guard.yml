@@ -672,6 +672,13 @@ jobs:
         # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart
         run: node supabase/tests/statpop.test.mjs
 
+      - name: The player profile's League percentile - scouting and simple view, all / vs. starters / vs. bench
+        # vsunits.js: per 75 of his team's possessions while he is on the floor (season.js on_poss, index_9's lineup
+        # possessions); the starters rule is the club page's (regularStarters held to seasonline.js); a game cut at each
+        # change of five adds up to the engine's own box; each part is a season line by season.js; a part is ranked by
+        # season.js's count; the profile reads nothing more until somebody asks (the engine and the scope's starters, once)
+        run: node supabase/tests/vsunits.test.mjs
+
       - name: The chart lab - value transforms, regression, the address round trip, edited text, columns and their lock, names, export geometry
         # chartlab.js: z-scores and percentiles agree with the tables' (lower is better turns them round), the ?cl= link round trips
         # and caps and cleans what people type, the picker offers the tables' own columns and locks the events and zone ones

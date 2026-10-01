@@ -297,10 +297,10 @@ function statPool(mine, field) {
   const pm = SE.positionGroups(field), g = pm.get(mine.id);
   return g ? field.filter(r => pm.get(r.id) === g) : field;
 }
-function statBind(node, k, label, mine, rows) {
+function statBind(node, k, label, mine, rows, value) {
   const SP = window.EpinoiaStatPop;
   if (!SP || !mine || !rows || rows.length < 3) return;
-  SP.bind(node, () => ({ key: k, label, kind: 'player', subjectId: mine.id, rows, value: k, low: BAR_LOW.indexOf(k) !== -1,
+  SP.bind(node, () => ({ key: k, label, kind: 'player', subjectId: mine.id, rows, value: value || k, low: BAR_LOW.indexOf(k) !== -1,
     signed: BAR_SIGNED(k), dp: BAR_DP(k) }));
 }
 
@@ -387,6 +387,27 @@ const BAR_SECTIONS = [
       rows: [['diff_vs_efg','OPP eFG% ±'],['diff_vs_tov','OPP TOV% ±'],['diff_vs_oreb','OPP OREB% ±'],['diff_vs_ftr','OPP FT RATE ±']] }
   ]}
 ];
+/* SIMPLE VIEW: THE BOX SCORE, PER 75 POSSESSIONS (index_9's "per 75 lineup possessions"). Each count is put over the
+   possessions his team had while he was on the floor (vsunits.js per75, on season.js on_poss), so twelve minutes a night
+   and thirty-six read at the same rate, and no one is flattered by his team's pace. The three shooting percentages
+   beside them are the box score's own. Every bar is ranked and opens its chart like any other. */
+const SIMPLE_SECTIONS = [
+  { key: 'simple_scoring', title: 'scoring', blocks: [
+    { rows: [['pts_p75','PTS / 75']] },
+    { title: 'field goals',    rows: [['fg_pct','FG%'], ['fgm_p75','FGM / 75'], ['fga_p75','FGA / 75']] },
+    { title: 'three-pointers', rows: [['p3_pct','3P%'], ['p3m_p75','3PM / 75'], ['p3a_p75','3PA / 75']] },
+    { title: 'free throws',    rows: [['ft_pct','FT%'], ['ftm_p75','FTM / 75'], ['fta_p75','FTA / 75']] }
+  ]},
+  { key: 'simple_rebounding', title: 'rebounding', blocks: [
+    { rows: [['reb_p75','REB / 75'],['oreb_p75','OREB / 75'],['dreb_p75','DREB / 75']] }
+  ]},
+  { key: 'simple_playmaking', title: 'playmaking', blocks: [
+    { rows: [['ast_p75','AST / 75'],['tov_p75','TOV / 75']] }
+  ]},
+  { key: 'simple_defence', title: 'defence', blocks: [
+    { rows: [['stl_p75','STL / 75'],['blk_p75','BLK / 75'],['pf_p75','PF / 75']] }
+  ]}
+];
 const BAR_GROUPS = BAR_SECTIONS.map(s => [s.title, s.blocks.flatMap(b => b.rows)]);   // the flat view: every row of a section
 /* the ones where a smaller number is the better performance */
 /* ASSISTED% RANKS THE OTHER WAY UP. Every other bar here reads high-is-better, but a
@@ -400,7 +421,7 @@ const BAR_GROUPS = BAR_SECTIONS.map(s => [s.title, s.blocks.flatMap(b => b.rows)
 const BAR_LOW = ['tov_pct', 'diff_drtg', 'diff_tov', 'pf30',
                  'diff_vs_efg', 'diff_vs_oreb', 'diff_vs_ftr',
                  'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp',
-                 'def_rim_fg_pm', 'def_rim_vol_pm'];
+                 'def_rim_fg_pm', 'def_rim_vol_pm', 'tov_p75', 'pf_p75'];
 /* a differential (or a plus/minus) carries its sign: +12.5 is a claim, 12.5 is a number */
 const BAR_SIGNED = k => /^diff_/.test(k) || k === 'bpm' || k === 'obpm' || k === 'dbpm' ||
   k === 'def_rim_fg_pm' || k === 'def_rim_vol_pm';
@@ -433,6 +454,12 @@ function barBand(p) {
    one -- and the choice is remembered for the next profile opened. */
 let barsByPos = false;
 try { barsByPos = localStorage.getItem('epinoia_bars_pos') === '1'; } catch (_) { /* default */ }
+/* SCOUTING VIEW (every bar above) OR SIMPLE VIEW (the per-75 box score), and ALL OR AGAINST THE STARTERS OR THE BENCH:
+   both remembered for the next profile opened, like the position switch */
+let barsView = 'scout', barsVs = 'all';
+try { barsView = localStorage.getItem('epinoia_bars_view') === 'simple' ? 'simple' : 'scout'; } catch (_) { /* default */ }
+try { const v = localStorage.getItem('epinoia_bars_vs'); if (v === 'start' || v === 'bench') barsVs = v; } catch (_) { /* default */ }
+const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (_) { /* fine */ } };
 
 /* ONE BAR, IN ITS OWN CARD: label and value across the top with his percentile under the value, the fill,
    and under it how far the value sits above or below the league average (the field the bar is ranked in) */
@@ -472,6 +499,164 @@ function barCard(k, label, mine, ranks, pool) {
     card.appendChild(row);
   }
   return card;
+}
+
+/* ------------------------------------------------- against the starters and the bench ---
+   HIS OWN NUMBERS IN THE MINUTES AGAINST THE OTHER SIDE'S STARTERS, OR ITS BENCH (index_9's player VS Starters; the
+   club page's split and its rule): vsunits.js replays the games this page has already read for "on the floor with",
+   cuts his minutes wherever either five changes, and turns each part into a season line with season.js. ALL is the
+   baseline: each bar shows the part, ranked where it would sit among the same players, with a tick where all his
+   minutes sit and the gap to them under it. Nothing is read until somebody asks: the engine, and the scope's starters
+   (one small read, for who the regular starters are; not for a competition past VS_BIG games, which keeps to each
+   game's own starting five). Worked out once per scope, then kept for the page's life. */
+const VS_BIG = 800;
+let SCOPE_GAME_COUNT = 0;
+/* the club's games "on the floor with" has read: { games, byGame, capped }, or null when it reads none */
+let clubLogsDone = () => {};
+const CLUB_LOGS = new Promise(r => { clubLogsDone = r; });
+const STARTERS_READ = new Map(), VS_DONE = new Map(), VS_WAIT = new Map();
+function scopeStarters(ids) {
+  const D = window.EpinoiaData, key = ids.slice().sort().join(',');
+  if (!D || !key) return Promise.resolve([]);
+  if (STARTERS_READ.has(key)) return STARTERS_READ.get(key);
+  const p = D.all(`games?competition_id=in.(${key})&status=eq.final&select=id,home_team_id,away_team_id,starters`);
+  p.catch(() => STARTERS_READ.delete(key));
+  STARTERS_READ.set(key, p);
+  return p;
+}
+/* the club card's N (t/seasonline.js, kept in this browser): starts that make a regular starter */
+function vsMinStarts() {
+  try {
+    const v = JSON.parse(localStorage.getItem('epinoia_vs_starters') || 'null');
+    const n = v && Math.round(+v.min);
+    if (n >= 1 && n <= 40) return n;
+  } catch (_) { /* the default */ }
+  return 10;
+}
+async function vsCompute(ids, pid) {
+  const VU = window.EpinoiaVsUnits, SE = window.EpinoiaSeason;
+  if (!VU || !SE) return { state: 'none', why: 'not available on this page' };
+  const [logs, E] = await Promise.all([CLUB_LOGS, VU.loadEngine()]);
+  if (!E) return { state: 'none', why: 'the replay could not be loaded' };
+  if (!logs || !logs.games.length) return { state: 'none', why: 'no play-by-play has been read for his club' };
+  const scope = new Set(ids);
+  const games = logs.games.filter(g => scope.has(g.competition_id));
+  if (!games.length) return { state: 'none', why: 'none of his club’s games in this scope has been read' };
+  const N = vsMinStarts();
+  let regular = new Map(), byRegular = false;
+  if (SCOPE_GAME_COUNT <= VS_BIG) {
+    try { regular = VU.regularStarters(await scopeStarters(ids), N); byRegular = true; } catch (_) { /* each game's own five */ }
+  }
+  const sp = VU.split(games.map(g => ({ id: g.id, starters: g.starters, events: logs.byGame.get(g.id) || [], period: g.period,
+    home_team_id: g.home_team_id, away_team_id: g.away_team_id })), pid, { regular, Engine: E });
+  if (!sp.games) return { state: 'none', why: 'he has not played in the games read' };
+  return { state: 'ready', lines: VU.lines(sp, SE), games: sp.games, capped: logs.capped,
+           min: { all: sp.all.min, start: sp.start.min, bench: sp.bench.min }, N, byRegular };
+}
+/* this scope's split: { state: 'wait' } until it is worked out, and the bars are drawn again when it is */
+function vsLines(mine) {
+  const ids = (SCOPE_IDS || []).slice().sort(), key = ids.join(',');
+  if (VS_DONE.has(key)) return VS_DONE.get(key);
+  if (!VS_WAIT.has(key)) {
+    VS_WAIT.set(key, vsCompute(ids, mine.id)
+      .catch(() => ({ state: 'none', why: 'the play-by-play could not be read' }))
+      .then(r => {
+        VS_DONE.set(key, r); VS_WAIT.delete(key);
+        if (LAST_BARS && barsVs !== 'all') paintBars(LAST_BARS.mine, LAST_BARS.field);
+      }));
+  }
+  return { state: 'wait' };
+}
+/* what the split is, and how much of his season it covers */
+function vsNote(V, unit) {
+  const box = el('div', 'vsnote');
+  const line = t => box.appendChild(el('span', null, t));
+  if (ANALYTICS_LOCKED) {
+    box.innerHTML = accessTeaser({ compact: true, title: 'Against starters and bench',
+      lines: ['His own numbers in the minutes against the other side’s starters, and against its bench, beside all his minutes.'] });
+    return box;
+  }
+  if (!V || V.state === 'wait') { line(unit === 'start' ? 'reading his games against the starters…' : 'reading his games against the bench…'); return box; }
+  if (V.state !== 'ready') { line(V.why || 'the play-by-play could not be read'); return box; }
+  line(unit === 'bench' ? 'against the bench: every other minute'
+    : V.byRegular ? 'against the starters: the other side had 4+ of its regular starters (' + V.N + '+ starts) or 4+ of that game’s starting five on'
+    : 'against the starters: the other side had 4+ of that game’s starting five on');
+  const m = x => Math.round(x / 60000);
+  line(m(V.min[unit]) + ' of his ' + m(V.min.all) + ' minutes, over ' + V.games + (V.games === 1 ? ' game' : ' games') +
+    ' with play-by-play' + (V.capped ? ' (his club’s last ' + V.capped + ')' : ''));
+  line('the tick on each bar is all his minutes in the same games');
+  return box;
+}
+/* ONE BAR, AGAINST THE STARTERS OR THE BENCH: the part's figure, ranked where it would sit among the same pool as the
+   bar's ALL figure (season.js's count), the fill there and a tick where all his minutes sit, the gap to them under it */
+function vsCard(k, label, mine, pool, V, unit) {
+  const VU = window.EpinoiaVsUnits;
+  const part = V.lines[unit], base = V.lines.all;
+  const can = VU.splitable(k);
+  const v = can && part ? part[k] : null, a = can && base ? base[k] : null;
+  const low = BAR_LOW.indexOf(k) !== -1, dp = BAR_DP(k), signed = BAR_SIGNED(k);
+  const vals = VU.sortedOf(pool, k);
+  const p = VU.placeIn(vals, v, low), pa = VU.placeIn(vals, a, low);
+  const fmt = x => (signed && Number(x) > 0 ? '+' : '') + Number(x).toFixed(dp);
+  const card = el('div', 'bc vs');
+  if (/ATT \/ 100$/.test(label)) card.classList.add('vol');
+  if (v == null) card.classList.add('none');
+  if (BAR_HINT[k]) card.title = BAR_HINT[k];
+  card.style.setProperty('--bc-band', barBand(p));
+  /* the chart: the league as it is, and him at the part's figure */
+  if (v != null) statBind(card, k, label, mine, pool, r => (r.id === mine.id ? v : r[k]));
+
+  const top = el('div', 'bc-top');
+  top.appendChild(el('div', 'bc-l', label));
+  const val = el('div', 'bc-v', v == null ? '—' : fmt(v));
+  if (p != null) { const bp = el('div', 'bp', ord(p)); bp.setAttribute('data-i18n-ctx', 'pctl'); val.appendChild(bp); }
+  top.appendChild(val);
+  card.appendChild(top);
+
+  const track = el('div', 'bc-track');
+  const fill = el('i');
+  fill.style.width = (p == null ? 0 : Math.max(2, p)) + '%';
+  fill.style.background = barBand(p);
+  track.appendChild(fill);
+  if (pa != null) {
+    const tick = el('b', 'bc-tick');
+    tick.style.left = pa + '%';
+    tick.title = 'all his minutes: ' + fmt(a);
+    track.appendChild(tick);
+  }
+  card.appendChild(track);
+
+  const row = el('div', 'bc-d');
+  if (!can) { row.classList.add('level'); row.appendChild(el('span', null, 'not split by who he played against')); }
+  else if (v == null) {
+    row.classList.add('level');
+    row.appendChild(el('span', null, unit === 'start' ? 'not enough minutes against the starters' : 'not enough minutes against the bench'));
+  } else if (a != null) {
+    const d = Number(v) - Number(a), shown = Number(Math.abs(d).toFixed(dp));
+    if (shown === 0) { row.classList.add('level'); row.appendChild(el('b', null, 'level with all his minutes')); }
+    else {
+      const up = d > 0;
+      row.classList.add(up ? 'above' : 'below', (low ? !up : up) ? 'good' : 'bad');
+      row.appendChild(el('b', null, (up ? '+' : '-') + shown.toFixed(dp) + ' vs all his minutes'));
+    }
+    row.appendChild(el('span', null, 'all minutes ' + fmt(a)));
+  }
+  card.appendChild(row);
+  return card;
+}
+/* a segmented switch: one pressed button of a few */
+function segs(name, opts, cur, pick) {
+  const g = el('div', 'segs');
+  g.setAttribute('role', 'group');
+  g.setAttribute('aria-label', name);
+  opts.forEach(([v, label]) => {
+    const b = el('button', 'ep-btn' + (v === cur ? ' pri' : ''), label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', v === cur ? 'true' : 'false');
+    b.addEventListener('click', () => { if (v !== cur) pick(v); });
+    g.appendChild(b);
+  });
+  return g;
 }
 
 /* HIS ESTIMATED POSITION, IN THE IDENTITY BAND where the listed position sits: the same guard / wing / big the "adjust for
@@ -558,7 +743,9 @@ function paintBars(mine, field) {
       'Percentiles appear once enough of the competition has played.'));
     return;
   }
-  const SE = window.EpinoiaSeason, C = window.EpinoiaCards;
+  const SE = window.EpinoiaSeason, C = window.EpinoiaCards, VU = window.EpinoiaVsUnits;
+  /* the per-75 box score (simple view) on every line, so its percentiles and the popup's chart read it like any other key */
+  if (VU) field.forEach(VU.per75);
   /* PREMIUM BARS ARE LEFT OUT, not drawn empty: an empty track reads as a bottom percentile.
      The catalogue says which keys they are (today the assisted shares, from the events
      splits); the group they came from says so in one line instead. */
@@ -568,7 +755,7 @@ function paintBars(mine, field) {
   /* bigsOnly blocks (rim protection) are drawn only for an estimated centre or forward */
   const bigGroup = SE.positionGroups ? SE.positionGroups(field).get(mine.id) : null;
   const isBig = bigGroup === 'C' || bigGroup === 'F';
-  const sections = BAR_SECTIONS.map(s => ({
+  const sections = (barsView === 'simple' ? SIMPLE_SECTIONS : BAR_SECTIONS).map(s => ({
     key: s.key, title: s.title,
     held: s.blocks.some(b => b.rows.some(r => premiumBar(r[0]))),
     blocks: s.blocks.filter(b => !b.bigsOnly || isBig)
@@ -582,8 +769,19 @@ function paintBars(mine, field) {
   $('#barNote').textContent = 'vs ' + pool.length + ' ' +
     (group ? (SE.positionLabel ? SE.positionLabel(group) : 'players') : 'players');
 
-  /* the switch sits above the bars, where the note it changes is */
+  /* AGAINST THE STARTERS OR THE BENCH: worked out on the first ask (vsLines), the bars drawn as ALL until it is */
+  const unit = barsVs !== 'all' && !ANALYTICS_LOCKED && VU ? barsVs : null;
+  const V = unit ? vsLines(mine) : null;
+  const vsOn = V && V.state === 'ready' ? V : null;
+
+  /* the switches sit above the bars, where the note they change is */
   const sw = el('div', 'barswitch');
+  sw.appendChild(segs('view', [['scout', 'scouting view'], ['simple', 'simple view']], barsView, v => {
+    barsView = v; keep('epinoia_bars_view', v); paintBars(mine, field);
+  }));
+  sw.appendChild(segs('against', [['all', 'all'], ['start', 'vs. starters'], ['bench', 'vs. bench']], barsVs, v => {
+    barsVs = v; keep('epinoia_bars_vs', v); paintBars(mine, field);
+  }));
   const btn = el('button', 'ep-btn' + (barsByPos ? ' pri' : ''), 'adjust for position');
   btn.type = 'button';
   btn.title = group || !barsByPos
@@ -602,17 +800,22 @@ function paintBars(mine, field) {
   all.append(open, shut);
   sw.appendChild(all);
   host.appendChild(sw);
+  if (barsVs !== 'all') host.appendChild(vsNote(V, barsVs));
 
   const wrap = el('div', 'bars');
+  /* against the starters or the bench, each bar is that part (the consistency card is the whole season's, so it waits) */
   const cardsOf = (rows, extra) => {
     const g = el('div', 'bcs');
-    rows.forEach(([k, label]) => g.appendChild(barCard(k, label, mine, ranks, pool)));
-    if (extra) { const c = extra(); if (c) g.appendChild(c); }
+    rows.forEach(([k, label]) => g.appendChild(vsOn ? vsCard(k, label, mine, pool, vsOn, unit) : barCard(k, label, mine, ranks, pool)));
+    if (extra && !vsOn) { const c = extra(); if (c) g.appendChild(c); }
     return g;
   };
   /* what a section says about itself when it is folded: the average percentile of its bars */
+  const pctOf = k => vsOn
+    ? VU.placeIn(VU.sortedOf(pool, k), VU.splitable(k) && vsOn.lines[unit] ? vsOn.lines[unit][k] : null, BAR_LOW.indexOf(k) !== -1)
+    : (ranks.get(k) || new Map()).get(mine.id);
   const summary = rows => {
-    const ps = rows.map(([k]) => (ranks.get(k) || new Map()).get(mine.id)).filter(p => p != null);
+    const ps = rows.map(([k]) => pctOf(k)).filter(p => p != null);
     return ps.length ? 'avg ' + ord(ps.reduce((a, b) => a + b, 0) / ps.length) : null;
   };
   sections.forEach(s => {
@@ -1110,6 +1313,7 @@ async function loadCareerAccess(pl, lgRow) {
         if (ids.length) {
           const S = await D.season(ids, { rows: false, trim: true });
           sosGames = S.games;
+          SCOPE_GAME_COUNT = (S.games || []).length;
           field = S.players;
           mine = field.find(r => r.id === pl.id) || null;
         }
@@ -1219,7 +1423,7 @@ function drawShotChart(shots, colour, games, gameList) {
            league's fifth season as in its first. */
         const RECENT_GAMES = 40;
         const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-          `&status=eq.final&select=id,home_team_id,away_team_id,starters,tipoff_at` +
+          `&status=eq.final&select=id,home_team_id,away_team_id,starters,tipoff_at,competition_id,period` +
           `&order=tipoff_at.desc&limit=${RECENT_GAMES}`);
         if (!gs.length) {
           $('#withpanel').appendChild(el('div', 'empty',
@@ -1230,6 +1434,11 @@ function drawShotChart(shots, colour, games, gameList) {
             D.stints(gs.map(g => g.id), team.id, byGame),
             D.events(gs.map(g => g.id))
           ]);
+
+          /* the same games, for his numbers against the starters and the bench: nothing is read twice */
+          const logsOf = new Map();
+          evs.forEach(e => { if (!logsOf.has(e.gameId)) logsOf.set(e.gameId, []); logsOf.get(e.gameId).push(e); });
+          clubLogsDone({ games: gs, byGame: logsOf, capped: gs.length >= RECENT_GAMES ? RECENT_GAMES : 0 });
 
           window.EpinoiaWowy.onOffTiles('#onoff', st, pl.id);
 
@@ -1390,5 +1599,7 @@ function drawShotChart(shots, colour, games, gameList) {
     if (LAST_BARS) paintBars(LAST_BARS.mine, LAST_BARS.field);
   } catch (e) {
     fail('Could not load: ' + e.message);
+  } finally {
+    clubLogsDone(null);                                // no club, no games, an early return: the split says so rather than waits
   }
 })();
