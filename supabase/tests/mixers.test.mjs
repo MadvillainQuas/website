@@ -198,7 +198,11 @@ ok('tip-off is stamped on BOTH clocks, for the two different subtractions',
 ok('...and as an elapsed duration, so a retry does not move the anchor',
    /out\.p_tip_ms_ago = Math\.max\(0, Date\.now\(\) - out\.__tipFrom\);/.test(bootstrap));
 ok('the payload reaches the row untouched — rest becomes payload',
-   /const \{ id, seq, t, team, pid, period, clock, \.\.\.rest \} = e;/.test(rd('epinoia', 'live.js')));
+   /* durableRow is the one mapping from an event to a row (send() writes with it,
+      reconcile and the finalise digest compare with it), so it is where rest
+      becomes payload now */
+   /const \{ id, seq, t, team, pid, period, clock, \.\.\.rest \} = e \|\| \{\};[\s\S]{0,400}payload: rest/.test(rd('epinoia', 'live.js')) &&
+   /Object\.assign\(\{ game_id: gameId \}, durableRow\(e\)\)/.test(rd('epinoia', 'live.js')));
 
 ok('the database stamps its own clock on request',
    /p_tip_now/.test(sql83) && /p_stream_ms_ago/.test(sql83));

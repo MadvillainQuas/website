@@ -1106,6 +1106,20 @@ jobs:
         # is never replaced unasked; the ghost click on the team header
         run: node supabase/tests/scorer-review.test.mjs
 
+      - name: A game night from the scorer's side - saving, resuming, publishing, finishing (2026-10-01)
+        # bootstrap.js run on a fake league: a takeover keeps the phone's copy and reads the league's in game order;
+        # an expired token on dead wifi is "could not ask", not "no"; a saved game goes back to its own fixture; the
+        # bar says what is true (halted, offline, refused); the tip reaches the games row; finalise one at a time,
+        # a lost answer read back from the status, the log's digest sent; reopen publishes again; training games
+        # and read-only tabs publish nothing
+        run: node supabase/tests/scorer-reliability.test.mjs
+
+      - name: The league's copy of a log agrees with the phone's, by content (2026-10-01)
+        # live.js durableRow/rowKey/logDigest - one shape for an event and the row it became; sync.js reconcile
+        # retracts and resends what differs and never deletes a row this device did not write; the watchdog waits
+        # through 'finalising' and stops loudly on a final it did not cause; a failure is kept until a frame lands
+        run: node supabase/tests/log-reconcile.test.mjs
+
       - name: A second device takes over the game it is given
         # loadRecorded pulled the log but not the five that started, so a device
         # taking over replayed real substitutions against the five its own picker

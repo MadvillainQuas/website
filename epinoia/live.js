@@ -181,6 +181,85 @@ const whole = v => (v == null || v === '' ? null
   : (Number.isFinite(+v) ? Math.round(+v) : null));
 
 /* ---------------------------------------------------------------------------
+   WHAT THE TABLE HOLDS FOR AN EVENT, AND ONE WAY TO WRITE IT DOWN.
+
+   The durable log could quietly stop agreeing with the phone and nothing could
+   tell. A correction is a delete followed by an insert, carried in a backlog that
+   lives in memory; a tab that dies with one queued comes back with sentIds empty,
+   republishes everything with ignoreDuplicates, and the server keeps the row it
+   already had — the basket that was undone, the scorer before the edit. Every
+   check that existed compared COUNTS, and an edit does not change a count.
+
+   So there is now one canonical shape for "this event as the table stores it",
+   used on both sides of every comparison: durableRow() is exactly the mapping
+   send() writes (whole numbers in the int columns, everything else in payload),
+   and rowKey() writes a row down as text with its keys sorted at every depth,
+   because jsonb hands an object back in its own key order rather than ours.
+   undefined is dropped and a non-finite number is null, which is what
+   JSON.stringify does on the way in — so a local event and the row it became
+   read identically.
+
+   logDigest() is the same comparison for a whole game, small enough to send.
+   finalise-game computes it from the rows it is about to publish
+   (supabase/functions/finalise-game/index.ts carries a copy, kept identical by
+   supabase/tests/log-reconcile.test.mjs) and refuses when the scorer's differs. */
+function durableRow(e) {
+  const { id, seq, t, team, pid, period, clock, ...rest } = e || {};
+  return { seq: whole(seq != null ? seq : id), t: t == null ? null : String(t),
+           team: whole(team), pid: pid == null ? null : String(pid),
+           period: whole(period), clock: whole(clock), payload: rest };
+}
+
+function canonical(v) {
+  if (v === null) return 'null';
+  if (typeof v !== 'object') {
+    if (v === undefined || typeof v === 'function' || typeof v === 'symbol') return undefined;
+    if (typeof v === 'number' && !Number.isFinite(v)) return 'null';
+    return JSON.stringify(v);
+  }
+  if (typeof v.toJSON === 'function') return canonical(v.toJSON());
+  if (Array.isArray(v)) {
+    return '[' + v.map(x => { const c = canonical(x); return c === undefined ? 'null' : c; }).join(',') + ']';
+  }
+  const parts = [];
+  Object.keys(v).sort().forEach(k => {
+    const c = canonical(v[k]);
+    if (c !== undefined) parts.push(JSON.stringify(k) + ':' + c);
+  });
+  return '{' + parts.join(',') + '}';
+}
+
+/* A row as the table holds it (or as durableRow says it will), as text. Only the
+   seven columns the scorer writes: id, game_id, created_at and created_by are the
+   table's own and say nothing about what happened. */
+function rowKey(r) {
+  const x = r || {};
+  return canonical({ seq: whole(x.seq), t: x.t == null ? null : String(x.t), team: whole(x.team),
+                     pid: x.pid == null ? null : String(x.pid), period: whole(x.period),
+                     clock: whole(x.clock), payload: x.payload || {} });
+}
+
+/* Two FNV-1a passes with different offsets, so the digest is 64 bits rather than
+   32 — not cryptography, only "are these the same game", where a chance match
+   must be rarer than anybody will ever see. Rows in seq order, which is the order
+   both the table and finalise-game read them in. */
+function logDigest(rows) {
+  const list = (rows || []).slice().sort((a, b) => (whole(a.seq) || 0) - (whole(b.seq) || 0));
+  let h1 = 0x811c9dc5, h2 = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < list.length; i++) {
+    const s = rowKey(list[i]) + '\n';
+    for (let j = 0; j < s.length; j++) {
+      const c = s.charCodeAt(j);
+      h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+      h2 = Math.imul(h2 ^ c, 0x01000193) >>> 0;
+      h2 = (h2 ^ (h2 >>> 13)) >>> 0;
+    }
+  }
+  const hex = n => ('00000000' + n.toString(16)).slice(-8);
+  return { events: list.length, digest: hex(h1) + hex(h2) };
+}
+
+/* ---------------------------------------------------------------------------
    A COLUMN THE DATABASE HAS NOT GOT MUST COST THE GARNISH, NOT THE GAME.
 
    game_state carries the score, the clock, the period, the possession arrow
@@ -354,10 +433,10 @@ function supabaseTransport(gameId, sb, onError) {
          server how many rows it holds once a minute and only sends anything if
          the answer is short. */
       if (frame.events && frame.events.length && !frame.full) {
+        /* durableRow is the one mapping, so what is written and what reconcile
+           and the finalise digest compare against cannot drift apart. */
         jobs.push(sb.from('game_events').upsert(frame.events.map(e => {
-          const { id, seq, t, team, pid, period, clock, ...rest } = e;
-          return { game_id: gameId, seq: whole(seq != null ? seq : id), t, team: whole(team),
-                   pid, period: whole(period), clock: whole(clock), payload: rest };
+          return Object.assign({ game_id: gameId }, durableRow(e));
         }), { onConflict: 'game_id,seq', ignoreDuplicates: true }));
       }
       /* game_state's clock_ms, period, score and last_seq are all `int` too, so
@@ -536,10 +615,21 @@ function publisher(opts) {
         else break;
       }
       if (backlog.length) { backlog.push(frame); return false; }
-      if (await tx.send(frame)) return true;
+      if (await tx.send(frame)) return delivered(true);
       backlog.push(frame);
       return false;
     } catch (_) { backlog.push(frame); return false; }
+  }
+
+  /* A WRITE THAT WORKED IS NEWS TOO. onError says when the durable write is
+     refused; nothing said when it started working again, so a scorer's "not
+     saving" could only ever be cleared by guessing — on a timer, by the size of
+     the backlog — and the guess painted the bar green while frames were still
+     being refused one at a time. This is said once per frame that actually
+     landed, after the backlog in front of it. */
+  function delivered(ok) {
+    if (ok && typeof opts.onDelivered === 'function') { try { opts.onDelivered(); } catch (_) {} }
+    return ok;
   }
 
   /* A state frame carries whatever events are buffered, so it must not
@@ -557,6 +647,10 @@ function publisher(opts) {
      so a viewer who joined mid-gap would have no way to correct. Beat softly. */
   if (opts.stateProvider) {
     beat = setInterval(() => {
+      /* paused() is the caller's "nothing of this may go out at all" — a
+         training game on a real fixture's page, a second tab that does not own
+         the game. The beat is the one sender nobody else calls, so it asks. */
+      if (typeof opts.paused === 'function' && opts.paused()) return;
       if (Date.now() - lastSend >= HEARTBEAT_MS) pushState(opts.stateProvider());
     }, HEARTBEAT_MS);
   }
@@ -617,7 +711,7 @@ function publisher(opts) {
         while (backlog.length) {
           if (await tx.send(backlog[0])) backlog.shift(); else return false;
         }
-        try { return await tx.send(frame); } catch (_) { return false; }
+        try { return delivered(await tx.send(frame)); } catch (_) { return false; }
       });
       return chain;
     },
@@ -922,5 +1016,5 @@ function subscriber(opts) {
   };
 }
 
-return { publisher, subscriber, diffLog, logKey, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, HANDOVER_MS: 8000, VERSION: '1.1.0' };
+return { publisher, subscriber, diffLog, logKey, durableRow, rowKey, logDigest, canonical, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, HANDOVER_MS: 8000, VERSION: '1.1.0' };
 }));
