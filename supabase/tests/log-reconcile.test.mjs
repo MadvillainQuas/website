@@ -364,6 +364,38 @@ console.log('\n5. nothing goes out from a training game or a read-only tab; a re
   api.halt('test over');
 }
 
+/* ---- 7. finalise-game computes the same digest ----------------------------------- */
+console.log('\n7. finalise-game\'s copy of the digest is the same function');
+{
+  const ts = readFileSync(path.join(ROOT, 'supabase', 'functions', 'finalise-game', 'index.ts'), 'utf8');
+  const from = ts.indexOf('const wholeN = ');
+  const to = ts.indexOf('\n}\n', ts.indexOf('function logDigestOf(')) + 3;
+  /* only `: any` annotations are allowed in it, so stripping them leaves plain JavaScript */
+  const js = ts.slice(from, to).replace(/: any(\[\])?/g, '');
+  const fn = new Function(js + '\nreturn { logDigestOf, rowKeyOf };')();
+  const rows = [
+    { game_id: 'g', id: 41, seq: 3, t: 'p2_made', team: 0, pid: 'b', period: 1, clock: 581000,
+      payload: { wall: 1712345678901, loc: { y: 0.25, x: 0.5 }, tags: ['paint', null] }, created_at: 'x' },
+    { game_id: 'g', id: 40, seq: 1, t: 'period_start', team: null, pid: null, period: 1, clock: 600000, payload: {} },
+    { game_id: 'g', id: 42, seq: 7, t: 'foul', team: 1, pid: 'y', period: 2, clock: 431288, payload: { kind: 'personal', ref: null } }
+  ];
+  const live = Live.logDigest(rows), edge = fn.logDigestOf(rows);
+  ok('the same rows, the same digest, in the browser and in the edge function',
+     live.digest === edge.digest && live.events === edge.events, JSON.stringify([live, edge]));
+  ok('...row by row too', rows.every(r => Live.rowKey(r) === fn.rowKeyOf(r)));
+  /* and from the scorer's own events, the way the page sends it */
+  const evs = [ev(1, 'period_start'), ev(2, 'p2_made', { team: 0, pid: 'a', loc: { x: 0.1, y: 0.2 } }),
+               ev(3, 'ft_made', { team: 1, pid: 'z', clock: 431288.7 })];
+  const fromPage = Live.logDigest(evs.map(e => Live.durableRow(Object.assign({ seq: e.id }, e))));
+  const asStored = evs.map(e => JSON.parse(JSON.stringify(Object.assign({ game_id: 'g' }, Live.durableRow(Object.assign({ seq: e.id }, e))))));
+  ok('what the page sends matches what finalise-game reads back from the table',
+     fromPage.digest === fn.logDigestOf(asStored).digest, JSON.stringify([fromPage, fn.logDigestOf(asStored)]));
+  ok('finalise-game refuses a different log before it locks anything, and says so in words',
+     ts.indexOf("code: 'log_mismatch'") > 0 && ts.indexOf("code: 'log_mismatch'") < ts.indexOf("update({ status: 'finalising'") &&
+     /expect && typeof expect === 'object' && typeof expect\.digest === 'string'/.test(ts) &&
+     /const \{ gameId, reopen, competitionId, awards, expect \} = await req\.json\(\)/.test(ts));
+}
+
 /* ---- the source agrees with itself ---------------------------------------------- */
 console.log('\n6. wiring');
 {

@@ -65,7 +65,33 @@ So the numbers checked at the table were not always the numbers the league publi
 - Every save records the time (`savedAt`). The game is also saved when the page is hidden or closed.
 - A game restored with its clock running says how long ago that was, and offers the time the board should show. The clock stays stopped until the statistician checks it.
 - A tab that is not the one scoring the game (`window.epReadOnly`, set by `bootstrap.js`) never writes.
-- A game built by the practice button is marked `training`. It is never claimed, published or finalised.
+- A game built by the practice button is marked `training`. It is never claimed, published or finalised, and the practice button is not offered on a real fixture's page.
+- **One tab per game.** The first tab to open a fixture holds a lock on it (Web Locks; a localStorage heartbeat where those are missing). Any other tab is read-only: it publishes nothing, never saves, and says so. When the first tab closes, the other is told to reload. A reload keeps the lock.
+- **A takeover** (another device's log is loaded) first copies this phone's game to a backup key, `epinoia_v1:backup:<time>` (the newest only). The league's log is then put in game order, so a play added late is not replayed after the buzzer.
+- **Resuming** sends a saved game to its own fixture's address, never to a scratch room where it would be published nowhere. On a fixture's page, the picker shows a "resume this game" card when the phone holds that fixture's game.
+
+## Publishing and finishing
+
+- **The league's copy agrees with the phone's by content, not by count.** On attach, once the takeover question is settled, `sync.js` reads the league's log back and compares it row by row with the phone's, in the one shape both are written in (`live.js` `durableRow` / `rowKey`). Rows that differ are retracted and sent again. Without this, a correction lost with a dead tab (an undo, a deleted play, an edit) stayed on the server, and the count could not see it. A row this device never wrote is never deleted: that means another device is scoring, and the takeover question is asked.
+- **The bar says what is true:**
+  - red, with the reason, when publishing has stopped;
+  - "offline — will retry" when there is no signal;
+  - red when the league refuses a write, until a frame lands again.
+
+  A final or void that this device did not cause is a banner that stays until it is dismissed. While a game is being finalised, the watchdog waits rather than stopping. On a phone's game screen the state is shown on the strip at the top, so the bar never covers a control.
+- **Signed in, but offline with an expired token**, is "could not ask", not "signed out". The scorer keeps scoring, unpublished, until the league can be reached.
+- **Who won the tip** and the arrow are written to the game's row once the tip is decided, and again if they change.
+- **Finalising**:
+  - It runs one at a time, with a deadline.
+  - It sends the log's digest (`logDigest`), so `finalise-game` can refuse a log the phone has since corrected.
+  - A lost or refused answer is checked against the game's status before anything is shown. If the league has the game as final, that is what the statistician sees.
+  - The result is kept on the game (`S.finalisedAt`).
+- **`finalise-game` checks the digest.** It works the digest out again from the rows it is about to publish (the same function as `live.js`). If the two differ, it refuses with `code: 'log_mismatch'` before it locks or writes anything. The scorer then repairs the league's copy and asks again. A caller that sends no digest, such as the ingest worker or an older scorer, is finalised as before.
+- **The stuck-game clean-up leaves a game being played alone** (`close_stuck_games`, migration 0208, and its Python twin `scripts/ingest/stuck.py`). Its clock is the fixture's tip-off, and a postponed game, or a tournament day running late, used to be closed mid-play. It now leaves alone:
+  - a game that moved in the last 30 minutes. For a game with a feed, that means a new play, because the ingest rewrites `game_state` on every pass. For a game scored in the app, it can also be the scorer's five-second heartbeat;
+  - a game scored in the app (no feed), until it has been silent for 24 hours. Its statistician's own finalise is the right way for it to end.
+- **Reopening** a finalised game goes through `finalise-game`. Publishing then restarts, and the league's copy is repaired, so corrections made since actually arrive.
+- **Offline start.** The offline worker (`sw.js`) waits 3.5 seconds for the network before serving the phone's copy of the page. Offline, it serves the newest cached copy of each script, and it prunes old versions once the new ones are stored.
 
 ## Not done yet
 
@@ -83,3 +109,5 @@ So the numbers checked at the table were not always the numbers the league publi
 - how they are wired in.
 
 It runs in `guard.yml`, beside `scorer-foul.test.mjs` and `scorer-render.test.mjs`.
+
+`supabase/tests/scorer-reliability.test.mjs` runs `bootstrap.js` against a stand-in league (takeover, the sign-in gate, resuming, the bar, the tip, finalise and reopen). `supabase/tests/log-reconcile.test.mjs` covers the content comparison, the watchdog and the publishing states, and runs `finalise-game`'s copy of the digest on the same rows as `live.js`. `supabase/tests/scorer-stuck.test.mjs` runs 0208 on PGlite, and `scripts/ingest/stuck_test.py` runs the Python twin. All of them run in `guard.yml`.

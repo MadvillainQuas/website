@@ -1117,7 +1117,8 @@ jobs:
       - name: The league's copy of a log agrees with the phone's, by content (2026-10-01)
         # live.js durableRow/rowKey/logDigest - one shape for an event and the row it became; sync.js reconcile
         # retracts and resends what differs and never deletes a row this device did not write; the watchdog waits
-        # through 'finalising' and stops loudly on a final it did not cause; a failure is kept until a frame lands
+        # through 'finalising' and stops loudly on a final it did not cause; a failure is kept until a frame lands;
+        # finalise-game's copy of the digest is the same function, and refuses a different log before it locks anything
         run: node supabase/tests/log-reconcile.test.mjs
 
       - name: A second device takes over the game it is given
@@ -1552,11 +1553,14 @@ jobs:
 
       - name: Games stuck live are closed - the rule (Python and SQL agree), the repair pass, the hourly backstop, the void guard
         # stuck.py + 0203 close_stuck_games: final when the feed said so or the clock/lead settles it, else void; never written back
-        # to live; the same-code clubs of the Czech feed keep their own rosters; the HOME strip never shows a game past its cap as live
+        # to live; the same-code clubs of the Czech feed keep their own rosters; the HOME strip never shows a game past its cap as live;
+        # 0208: never a game that moved in the last 30 minutes (a feed's newest play - its game_state is rewritten every pass -
+        # or an app-scored game's heartbeat), and an app-scored game only after 24 h of silence
         run: |
           python scripts/ingest/stuck_test.py
           npm i --no-save @electric-sql/pglite
           node supabase/tests/close-stuck-games.test.mjs
+          node supabase/tests/scorer-stuck.test.mjs
 
       - name: NCAA's two halves in the database (0206) - stuck games, the half-time notice and its lines, the indexes
         # on a real Postgres (PGlite): a game in halves whose second half ended is final, not void; the half-time

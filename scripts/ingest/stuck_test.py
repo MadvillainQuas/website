@@ -150,6 +150,73 @@ ok("with 0203 applied the database function does it (ids and the 6 h cap passed)
 fk = world(rpc_ok=False)
 ok("a dry run changes nothing", S.close_stuck(fk, S.stuck_games(fk, NOW), NOW, dry=True) and not fk.patches and not fk.inserts)
 
+print("\n-- not a game still moving, and not an app-scored game before a day of silence (0208)")
+
+
+class Fake2(Fake):
+    """Fake, plus each game's newest play (game_events.created_at) and game_state.updated_at."""
+    def __init__(self, games, ext, state, plays, rpc_ok=False):
+        super().__init__(games, ext, state, rpc_ok)
+        self.plays = plays
+
+    def select(self, table, q):
+        if table == "game_events":
+            gid = q.split("game_id=eq.")[1].split("&")[0]
+            return [{"created_at": self.plays[gid]}] if self.plays.get(gid) else []
+        return super().select(table, q)
+
+
+def ago(**kw):
+    return (NOW - timedelta(**kw)).isoformat()
+
+
+def world2():
+    def g(i, hours):
+        return {"id": i, "status": "live", "tipoff_at": ago(hours=hours), "home_score": 0, "away_score": 0,
+                "period": 1, "competition_id": "c1", "stalled_since": None}
+    games = [g("fed_frozen", 30), g("fed_moving", 30), g("app_live", 30), g("app_silent", 30),
+             g("app_quiet_day", 30), g("app_nothing", 30), g("app_young", 7)]
+    ext = [dict(game_id=i, adapter="fiba_livestats", external_id="x" + i, competition_code="X", external_status="live",
+                home_name="H", away_name="A", tipoff_at=None, error=None) for i in ("fed_frozen", "fed_moving")]
+    st = lambda i, at: dict(game_id=i, period=4, clock_ms=0, score_home=70, score_away=60, updated_at=at)
+    # fed_frozen: the ingest rewrote its game_state a minute ago, as it does on every pass of a live feed - but its
+    # newest play is three days old. That row says nothing; the game is stuck and must still be closed.
+    state = [st("fed_frozen", ago(minutes=1)), st("fed_moving", ago(minutes=1)),
+             st("app_live", ago(minutes=20)), st("app_silent", ago(hours=25)), st("app_quiet_day", ago(hours=23)),
+             st("app_young", ago(hours=6, minutes=30))]
+    plays = {"fed_frozen": ago(days=3), "fed_moving": ago(minutes=10), "app_live": ago(hours=2),
+             "app_silent": ago(hours=26), "app_quiet_day": ago(hours=23, minutes=30), "app_young": ago(hours=6, minutes=40)}
+    return Fake2(games, ext, state, plays)
+
+
+import io as _io, contextlib as _cl  # noqa: E402
+fk = world2()
+buf = _io.StringIO()
+with _cl.redirect_stdout(buf):
+    found = S.stuck_games(fk, NOW)
+ids = sorted(x["id"] for x in found)
+ok("a feed frozen at 'live' is stuck even though the ingest rewrote its game_state a minute ago",
+   "fed_frozen" in ids, ids)
+ok("a fed game with a play ten minutes ago is being played: left open", "fed_moving" not in ids, ids)
+ok("an app-scored game whose scorer's heartbeat is twenty minutes old is left open", "app_live" not in ids, ids)
+ok("an app-scored game silent for 23 h is left to its statistician", "app_quiet_day" not in ids, ids)
+ok("...and one tipped off 7 h ago, last heard 6.5 h ago", "app_young" not in ids, ids)
+ok("an app-scored game silent for 25 h is stuck", "app_silent" in ids, ids)
+ok("an app-scored game with nothing at all, 30 h after tip-off, is stuck", "app_nothing" in ids, ids)
+ok("each game left open is said, with why", "left open: fed_moving" in buf.getvalue() and "scored in the app" in buf.getvalue(),
+   buf.getvalue())
+with _cl.redirect_stdout(_io.StringIO()):
+    done = {c["id"]: c for c in S.close_stuck(fk, found, NOW)}
+ok("only the stuck ones are closed", sorted(done) == ["app_nothing", "app_silent", "fed_frozen"], sorted(done))
+gm = {g["id"]: g for g in fk.games}
+ok("the games left open are still live", all(gm[i]["status"] == "live" for i in ("fed_moving", "app_live", "app_quiet_day", "app_young")))
+ok("keep_open is the rule, and last_moved ignores game_state for a fed game",
+   S.last_moved({"ext": [{}]}, None, NOW) is None and S.last_moved({"ext": []}, None, NOW) == NOW
+   and S.keep_open({"ext": [{}], "moved": NOW - timedelta(minutes=29)}, NOW) is not None
+   and S.keep_open({"ext": [{}], "moved": NOW - timedelta(minutes=31)}, NOW) is None)
+src_s = open(os.path.join(HERE, "stuck.py"), encoding="utf-8").read()
+ok("the SQL twin is named, so the two are changed together", "0208" in src_s and "scorer-stuck.test.mjs" in src_s)
+
 print("\n-- the report, and failing loudly")
 import io, contextlib  # noqa: E402
 fk = world(rpc_ok=False)

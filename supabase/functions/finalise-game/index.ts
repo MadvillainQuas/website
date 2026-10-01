@@ -70,6 +70,62 @@ const stripTags = (s: string) => String(s)
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
+/* ---------------------------------------------------------------------------
+   THE LOG'S DIGEST — WHAT THE SCORER HOLDS, COMPARED WITH WHAT WE ARE ABOUT TO PUBLISH.
+
+   The scorer used to check, before asking for a finalise, only that the league held at least as MANY
+   events as it did. A correction is a delete and an insert, carried in a backlog that lives in the
+   phone's memory; lose the tab with one queued and the league keeps the undone basket and the scorer
+   before the edit, while the counts still agree — an edit changes no count, and an undo plus one more
+   play does not either. The box score published here was then the one the statistician had corrected.
+
+   So the scorer now sends {events, digest, score} of its own log, and this computes the same digest from
+   the rows it is about to publish. A copy of epinoia/live.js durableRow / rowKey / logDigest: one canonical
+   text per row (the seven columns the scorer writes, keys sorted at every depth because jsonb hands objects
+   back in its own order), two FNV-1a passes over them in seq order. Kept identical by
+   supabase/tests/log-reconcile.test.mjs, which runs both copies on the same rows — change one, change both.
+   Only `: any` annotations, so that test can strip them and run this exact text. */
+const wholeN = (v: any) => (v == null || v === '' ? null : (Number.isFinite(+v) ? Math.round(+v) : null));
+function canonicalJ(v: any): any {
+  if (v === null) return 'null';
+  if (typeof v !== 'object') {
+    if (v === undefined || typeof v === 'function' || typeof v === 'symbol') return undefined;
+    if (typeof v === 'number' && !Number.isFinite(v)) return 'null';
+    return JSON.stringify(v);
+  }
+  if (typeof v.toJSON === 'function') return canonicalJ(v.toJSON());
+  if (Array.isArray(v)) {
+    return '[' + v.map((x: any) => { const c = canonicalJ(x); return c === undefined ? 'null' : c; }).join(',') + ']';
+  }
+  const parts: any[] = [];
+  Object.keys(v).sort().forEach((k: any) => {
+    const c = canonicalJ(v[k]);
+    if (c !== undefined) parts.push(JSON.stringify(k) + ':' + c);
+  });
+  return '{' + parts.join(',') + '}';
+}
+function rowKeyOf(r: any) {
+  const x = r || {};
+  return canonicalJ({ seq: wholeN(x.seq), t: x.t == null ? null : String(x.t), team: wholeN(x.team),
+                      pid: x.pid == null ? null : String(x.pid), period: wholeN(x.period),
+                      clock: wholeN(x.clock), payload: x.payload || {} });
+}
+function logDigestOf(rows: any) {
+  const list = (rows || []).slice().sort((a: any, b: any) => (wholeN(a.seq) || 0) - (wholeN(b.seq) || 0));
+  let h1 = 0x811c9dc5, h2 = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < list.length; i++) {
+    const s = rowKeyOf(list[i]) + '\n';
+    for (let j = 0; j < s.length; j++) {
+      const c = s.charCodeAt(j);
+      h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+      h2 = Math.imul(h2 ^ c, 0x01000193) >>> 0;
+      h2 = (h2 ^ (h2 >>> 13)) >>> 0;
+    }
+  }
+  const hex = (n: any) => ('00000000' + n.toString(16)).slice(-8);
+  return { events: list.length, digest: hex(h1) + hex(h2) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -114,7 +170,7 @@ Deno.serve(async (req) => {
   }
   if (!user) return json({ error: 'sign in first' }, 401);
 
-  const { gameId, reopen, competitionId, awards } = await req.json().catch(() => ({}));
+  const { gameId, reopen, competitionId, awards, expect } = await req.json().catch(() => ({}));
 
   /* ------------------------------------------------- recompute the awards ---
      Awards are rebuilt whenever a game is finalised, which is right for a
@@ -244,6 +300,24 @@ Deno.serve(async (req) => {
   ]);
   if (log.error) return json({ error: 'the event log could not be read', detail: log.error }, 500);
   const rows = log.rows;
+
+  /* THE SAME GAME, OR NOTHING IS PUBLISHED. Asked only when the scorer says what it holds (the ingest worker
+     and older scorers do not, and are finalised as before). Nothing has been locked or written yet, so a
+     refusal leaves the game exactly as it was; the scorer repairs the league's copy and asks again. */
+  if (expect && typeof expect === 'object' && typeof expect.digest === 'string') {
+    const have = logDigestOf(rows ?? []);
+    const want = Number.isFinite(+expect.events) ? +expect.events : null;
+    if (have.digest !== expect.digest || (want != null && want !== have.events)) {
+      const theirs = Array.isArray(expect.score) && expect.score.length === 2
+        ? ` (${expect.score[0]}-${expect.score[1]} on the scorer)` : '';
+      return json({
+        error: 'the league copy of this game differs from the scorer', code: 'log_mismatch',
+        blocking: [`the league holds ${have.events} actions and the scorer ${want ?? '?'}${theirs}, and they are not the same ` +
+                   'log - the scorer is sending its version now; finalise again in a moment'],
+        have
+      }, 409);
+    }
+  }
 
   const events = (rows ?? []).map((r: any) =>
     ({ id: r.seq, seq: r.seq, t: r.t, team: r.team, pid: r.pid, period: r.period, clock: r.clock, ...(r.payload ?? {}) }));
