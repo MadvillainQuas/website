@@ -352,6 +352,76 @@ function pickDaily(liveRows, upRows, nextByLeague, now, n, followed) {
   return lives.concat(rest);
 }
 
+/* ================================================ HOME's three tabs ===
+   LIVE | UPCOMING | RESULTS (home/daily.js). Each tab is one kind of game only, and SHOW MORE only ever ADDS cards at the
+   end: the first `first` cards are what the tab always showed, every card after them is the next by time, so a card a reader
+   has seen never moves when more are revealed under it. */
+
+/* LIVE: games in progress only - the same guard as pickDaily (not overdue, not stalled), followed first, then by tip-off */
+function pickLive(liveRows, now, followed) {
+  const at = ms(now), fol = followSets(followed), mine = g => isFollowed(g, fol);
+  return dedupe(liveRows).filter(g => g.status === 'live' && !overdue(g, at) && !g.stalled_since)
+    .sort((a, b) => (mine(b) - mine(a)) || (t(a) - t(b)));
+}
+
+/* UPCOMING: games not yet started. The first `first` are pickDaily's choice (each league's next game, what the reader
+   follows); the rest, up to n, the following games by tip-off. A game read as scheduled that has since gone live (the
+   upcoming read is kept between ticks) is the LIVE tab's, not this one's. */
+function pickUpcoming(liveRows, upRows, nextByLeague, now, first, n, followed) {
+  const liveIds = new Set(dedupe(liveRows).filter(g => g.status === 'live').map(g => g.id));
+  let nexts = [];
+  if (nextByLeague instanceof Map) nexts = Array.from(nextByLeague.values());
+  else if (Array.isArray(nextByLeague)) nexts = nextByLeague.slice();
+  else if (nextByLeague) nexts = Object.keys(nextByLeague).map(k => nextByLeague[k]);
+  const pool = dedupe([].concat(upRows || [], nexts.filter(Boolean)))
+    .filter(g => g.status === 'scheduled' && !liveIds.has(g.id));
+  const head = pickDaily([], pool, [], now, first, followed).slice(0, Math.min(first, n));
+  const inHead = new Set(head.map(g => g.id));
+  const tail = pool.filter(g => !inHead.has(g.id))
+    .sort((a, b) => t(a) - t(b) || (String(a.id) < String(b.id) ? -1 : 1));
+  return head.concat(tail).slice(0, n);
+}
+
+/* RESULTS: finals, newest first. The first `first` take no more than `per` from one league (a busy night in one league does
+   not push every other off the front door); the rest are simply the next newest. */
+function pickResults(rows, first, n, per) {
+  const fin = dedupe(rows).filter(g => g.status === 'final').sort((a, b) => t(b) - t(a) || (String(a.id) < String(b.id) ? 1 : -1));
+  const count = new Map(), head = [];
+  fin.forEach(g => {
+    if (head.length >= Math.min(first, n)) return;
+    const k = leagueId(g) == null ? '' : leagueId(g);
+    if ((count.get(k) || 0) >= (per || Infinity)) return;
+    count.set(k, (count.get(k) || 0) + 1);
+    head.push(g);
+  });
+  const inHead = new Set(head.map(g => g.id));
+  return head.concat(fin.filter(g => !inHead.has(g.id))).slice(0, n);
+}
+
+/* WHICH TAB. `chosen` is the reader's own pick this visit (sessionStorage), `current` the tab on screen (null before the
+   first draw), `live` how many games are live now. Before the first draw: LIVE when anything is live, else UPCOMING,
+   unless the reader picked one (a pick of LIVE with nothing live is UPCOMING). After it the tab never moves by itself -
+   a game tipping off while the reader is on UPCOMING only lights the LIVE tab - except that LIVE emptying while it is
+   shown falls back to UPCOMING, with `fell` set so the page can say why. */
+function dailyTab(o) {
+  const live = Math.max(0, (o && o.live) || 0), chosen = o && o.chosen, current = o && o.current;
+  const ok = v => v === 'live' || v === 'up' || v === 'res';
+  if (!ok(current)) {
+    const want = ok(chosen) ? chosen : (live ? 'live' : 'up');
+    return { tab: want === 'live' && !live ? 'up' : want, fell: false };
+  }
+  if (current === 'live' && !live) return { tab: 'up', fell: true };
+  return { tab: current, fell: false };
+}
+
+/* SHOW MORE in batches: from `shown` cards to the next batch, never past the cap or past what there is. `more` is whether
+   another press would add anything (there is more than is shown and the cap is not reached); at the cap the button
+   becomes the link to the full fixtures page. */
+function moreStep(shown, avail, step, cap) {
+  const next = Math.min(cap, shown + step);
+  return { next, more: avail > shown && shown < cap, atCap: shown >= cap };
+}
+
 /* THE GLOBAL PAGE'S GROUPS: one per league, ordered by its most imminent game
    (a live game is as imminent as it gets). Inside each, 'next' (anything not
    yet a result) soonest first, then 'results' newest first. */
@@ -797,7 +867,7 @@ function card(g, opts) {
 return {
   SEL, STALE_MS, LIVE_CAP_MS, overdue, LEAGUE_WINDOW_MS,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
-  pickDaily, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
+  pickDaily, pickLive, pickUpcoming, pickResults, dailyTab, moreStep, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
   card, wireBadges, dayLabel, timeLabel, clockText, tickClocks, esc
 };
 }));

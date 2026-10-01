@@ -523,20 +523,21 @@ ok('...and in Japanese and Spanish: the new sentences (the rest are the GO page\
      return ['stamp this venue', 'how it works ›', 'Stamped: a new arena.', 'Stamped: another visit.',
              'No game is being played at this arena in the next day. Stamping opens two hours before tip-off.'].every(k => go.includes("'" + k + "'")); }));
 
-console.log('\nUPCOMING | RESULTS beside HOME\'s daily fixtures (7.14)');
+console.log('\nLIVE | UPCOMING | RESULTS beside HOME\'s daily fixtures (7.14, LIVE 2026-10-01)');
 const homeHtml = rd('epinoia', 'home', 'index.html'), dailyJs = rd('epinoia', 'home', 'daily.js'), homeCss = rd('epinoia', 'kit', 'home.css');
-ok('two buttons in the section\'s heading: UPCOMING (pressed, the view that was always there) and RESULTS',
-   /<div class="hm-seg" id="fxSeg" role="group" aria-label="Fixtures or results">\s*<button type="button" data-fx="up" aria-pressed="true">Upcoming<\/button>\s*<button type="button" data-fx="res" aria-pressed="false">Results<\/button>/.test(homeHtml)
+ok('three tabs in the section\'s heading: LIVE (hidden until a game is live), UPCOMING (selected before the first read) and RESULTS',
+   /<div class="hm-seg" id="fxSeg" role="tablist" aria-label="Live, upcoming or results">\s*<button type="button" role="tab" id="fxTabLive" data-fx="live" aria-selected="false"[^>]*hidden>[\s\S]*?<\/button>\s*<button type="button" role="tab" id="fxTabUp" data-fx="up" aria-selected="true"[^>]*>Upcoming<\/button>\s*<button type="button" role="tab" id="fxTabRes" data-fx="res" aria-selected="false"[^>]*>Results<\/button>/.test(homeHtml)
    && homeHtml.indexOf('id="fxSeg"') > homeHtml.indexOf('id="hmFixturesH"') && homeHtml.indexOf('id="fxSeg"') < homeHtml.indexOf('all fixtures'));
 ok('...RESULTS is the most recent finals, newest first, a few from each league so one busy night does not take the shelf',
-   /G\.recent\(new Date\(now\)\.toISOString\(\), 0, 40\)/.test(dailyJs) && /const PER_LEAGUE = 3;/.test(dailyJs) && /g\.status !== 'final'/.test(dailyJs)
-   && /out\.length >= N/.test(dailyJs));
-ok('...the choice is the reader\'s for the visit, changes the cards at once, and never touches the live/next reads it replaces',
-   /sessionStorage\.setItem\(MODE_KEY, mode\)/.test(dailyJs) && /if \(mode === 'res'\) return \{ rows: await results\(G, now\), state: \{\}, now, mode \};/.test(dailyJs)
-   && /return mode \+ '>' \+ rows\.map/.test(dailyJs) && /No results yet\. The full list is on the fixtures page\./.test(dailyJs));
+   /G\.recent\(new Date\(now\)\.toISOString\(\), 0, 40\)/.test(dailyJs) && /const PER_LEAGUE = 3;/.test(dailyJs)
+   && /G\.pickResults\(held, N, limit\.res \+ 1, PER_LEAGUE\)/.test(dailyJs));
+ok('...the choice is the reader\'s for the visit, changes the cards at once, and the live read runs on every tab (the LIVE count)',
+   /sessionStorage\.setItem\(MODE_KEY, fx\)/.test(dailyJs) && /G\.live\(\)\.catch\(\(\) => \[\]\), followed\(\)/.test(dailyJs)
+   && /return data\.mode \+ '>'/.test(dailyJs) && /No results yet\. The full list is on the fixtures page\./.test(dailyJs));
 ok('...styled as the section\'s own small type, the chosen one filled, a 40px target on a phone; and worded in Japanese and Spanish',
-   /\.hm \.sec-h \.hm-seg button\[aria-pressed="true"\]\{background:var\(--lume\)/.test(homeCss) && /min-height:40px/.test(homeCss.slice(homeCss.indexOf('.hm-seg button{min-height:40px')))
-   && ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code + '.js'); return c.includes("'No results yet. The full list is on the fixtures page.':") && c.includes("'Fixtures or results':") && /'results':/.test(c) && /'upcoming':/.test(c); }));
+   /\.hm \.sec-h \.hm-seg button\[aria-selected="true"\]\{background:var\(--lume\)/.test(homeCss) && /min-height:40px/.test(homeCss.slice(homeCss.indexOf('.hm-seg button{min-height:40px')))
+   && ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code + '.js'); return c.includes("'No results yet. The full list is on the fixtures page.':") && c.includes("'Live, upcoming or results':")
+     && c.includes("'Show less':") && c.includes("'Nothing is live just now, so here is what is next.':") && /'results':/.test(c) && /'upcoming':/.test(c) && /'live':/.test(c); }));
 
 console.log('\nSTAMP THIS GAME in every game\'s preview, before the game (7.14)');
 const gameHtml = rd('epinoia', 'game', 'index.html'), gameJs = rd('epinoia', 'game', 'game.js'), previewJs = rd('epinoia', 'game', 'preview.js');

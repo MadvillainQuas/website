@@ -41,25 +41,25 @@
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode before anything paints. Never the splash's mode
      script, its stylesheet or splash-body here: HOME is where the app goes instead of the water. -->
-<script src="../appmode.js?v=564"></script>
-<script src="../i18n.js?v=564" data-i18n-packs="report"></script>
-<script src="../glyphs.js?v=564" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=564">
-<link rel="stylesheet" href="../kit/nav.css?v=564">
-<link rel="stylesheet" href="../kit/card.css?v=564">
-<link rel="stylesheet" href="../kit/home.css?v=564">
-<link rel="stylesheet" href="../kit/fxc.css?v=564">
-<link rel="stylesheet" href="../kit/sectitle.css?v=564">
-<link rel="stylesheet" href="stars.css?v=564">
-<link rel="stylesheet" href="leagues.css?v=564">
-<link rel="stylesheet" href="favourites.css?v=564">
-<link rel="stylesheet" href="../kit/haze.css?v=564">
-<link rel="stylesheet" href="../kit/records.css?v=564">
-<link rel="stylesheet" href="../kit/starcard.css?v=564">
-<link rel="stylesheet" href="../kit/newscard.css?v=564">
-<link rel="stylesheet" href="../kit/teletext.css?v=564">
-<link rel="stylesheet" href="../kit/ttpanel.css?v=564">
-<link rel="stylesheet" href="../kit/legibility.css?v=564">
+<script src="../appmode.js?v=565"></script>
+<script src="../i18n.js?v=565" data-i18n-packs="report"></script>
+<script src="../glyphs.js?v=565" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=565">
+<link rel="stylesheet" href="../kit/nav.css?v=565">
+<link rel="stylesheet" href="../kit/card.css?v=565">
+<link rel="stylesheet" href="../kit/home.css?v=565">
+<link rel="stylesheet" href="../kit/fxc.css?v=565">
+<link rel="stylesheet" href="../kit/sectitle.css?v=565">
+<link rel="stylesheet" href="stars.css?v=565">
+<link rel="stylesheet" href="leagues.css?v=565">
+<link rel="stylesheet" href="favourites.css?v=565">
+<link rel="stylesheet" href="../kit/haze.css?v=565">
+<link rel="stylesheet" href="../kit/records.css?v=565">
+<link rel="stylesheet" href="../kit/starcard.css?v=565">
+<link rel="stylesheet" href="../kit/newscard.css?v=565">
+<link rel="stylesheet" href="../kit/teletext.css?v=565">
+<link rel="stylesheet" href="../kit/ttpanel.css?v=565">
+<link rel="stylesheet" href="../kit/legibility.css?v=565">
 <!-- seo:ld -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Basketball Scores Today, Results & Top Players | Epinoia","description":"Today's live basketball scores and results from every league on Epinoia, plus the best-performing players, the leagues you follow and the standings.","url":"https://prophesyscouting.co.uk/epinoia/home/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Epinoia","item":"https://prophesyscouting.co.uk/epinoia/home/"},{"@type":"ListItem","position":2,"name":"Home"}]}</script>
@@ -84,17 +84,19 @@
   <div id="homeApp"></div>
 
   <!-- daily fixtures ------------------------------------------------------
-       Live games first, then each league's next game, then the rest by time
+       LIVE | UPCOMING | RESULTS, eight cards and SHOW MORE under them
        (daily.js). The skeleton holds the rail's height until the cards land. -->
   <section class="sec" id="fixtures" aria-labelledby="hmFixturesH">
     <div class="sec-h"><span class="idx">01</span><h2 id="hmFixturesH">Daily fixtures</h2>
-      <!-- UPCOMING (what was always here) or RESULTS (the most recent finals): daily.js -->
-      <div class="hm-seg" id="fxSeg" role="group" aria-label="Fixtures or results">
-        <button type="button" data-fx="up" aria-pressed="true">Upcoming</button>
-        <button type="button" data-fx="res" aria-pressed="false">Results</button>
+      <!-- LIVE (only while something is live, and then the tab a visit opens on), UPCOMING, RESULTS: daily.js -->
+      <div class="hm-seg" id="fxSeg" role="tablist" aria-label="Live, upcoming or results">
+        <button type="button" role="tab" id="fxTabLive" data-fx="live" aria-selected="false" aria-controls="homeDaily" tabindex="-1" hidden><i class="fx-dot" aria-hidden="true"></i>Live <b class="fx-n">0</b></button>
+        <button type="button" role="tab" id="fxTabUp" data-fx="up" aria-selected="true" aria-controls="homeDaily" tabindex="0">Upcoming</button>
+        <button type="button" role="tab" id="fxTabRes" data-fx="res" aria-selected="false" aria-controls="homeDaily" tabindex="-1">Results</button>
       </div>
+      <span class="fx-say" id="fxSay" aria-live="polite"></span>
       <a class="showall" href="../games/">all fixtures →</a></div>
-    <div class="hm-mount" id="homeDaily" aria-busy="true">
+    <div class="hm-mount" id="homeDaily" role="tabpanel" aria-labelledby="fxTabUp" aria-busy="true">
       <div class="hm-skel fx" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     </div>
   </section>
@@ -214,34 +216,34 @@
     </div>
   </footer>
 </div>
-<script src="../config.js?v=564" defer></script>
-<script src="../season.js?v=564" defer></script>
-<script src="../bpm.js?v=564" defer></script>
-<script src="../data.js?v=564" defer></script>
-<script src="../teamcolour.js?v=564" defer></script>
-<script src="../rt.js?v=564" defer></script>
-<script src="../initials.js?v=564" defer></script>
-<script src="../globalgames.js?v=564" defer></script>
-<script src="../stars.js?v=564" defer></script>
-<script src="../records.js?v=564" defer></script>
-<script src="../country.js?v=564" defer></script>
+<script src="../config.js?v=565" defer></script>
+<script src="../season.js?v=565" defer></script>
+<script src="../bpm.js?v=565" defer></script>
+<script src="../data.js?v=565" defer></script>
+<script src="../teamcolour.js?v=565" defer></script>
+<script src="../rt.js?v=565" defer></script>
+<script src="../initials.js?v=565" defer></script>
+<script src="../globalgames.js?v=565" defer></script>
+<script src="../stars.js?v=565" defer></script>
+<script src="../records.js?v=565" defer></script>
+<script src="../country.js?v=565" defer></script>
 <!-- the follow list, and the only thing on HOME that knows who is signed in:
      access.js deliberately sends no token here (see followed-home.js) -->
-<script src="../follow.js?v=564" defer></script>
-<script src="front.js?v=564" defer></script>
-<script src="daily.js?v=564" defer></script>
-<script src="followed-home.js?v=564" defer></script>
-<script src="../newscard.js?v=564" defer></script>
-<script src="../feedrank.js?v=564" defer></script>
-<script src="feed-home.js?v=564" defer></script>
-<script src="stars-home.js?v=564" defer></script>
-<script src="records-home.js?v=564" defer></script>
-<script src="leagues.js?v=564" defer></script>
-<script src="private-leagues.js?v=564" defer></script>
-<script src="favourites.js?v=564" defer></script>
+<script src="../follow.js?v=565" defer></script>
+<script src="front.js?v=565" defer></script>
+<script src="daily.js?v=565" defer></script>
+<script src="followed-home.js?v=565" defer></script>
+<script src="../newscard.js?v=565" defer></script>
+<script src="../feedrank.js?v=565" defer></script>
+<script src="feed-home.js?v=565" defer></script>
+<script src="stars-home.js?v=565" defer></script>
+<script src="records-home.js?v=565" defer></script>
+<script src="leagues.js?v=565" defer></script>
+<script src="private-leagues.js?v=565" defer></script>
+<script src="favourites.js?v=565" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="../haze.js?v=564" defer></script>
-<script src="../nav.js?v=564" defer></script>
-<script src="../xscroll.js?v=564" defer></script>
+<script src="../haze.js?v=565" defer></script>
+<script src="../nav.js?v=565" defer></script>
+<script src="../xscroll.js?v=565" defer></script>
 </body>
 </html>
