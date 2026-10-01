@@ -5,9 +5,10 @@ Migration **0197**. Two things:
 - **A fan's page.** A profile a fan sets up from their social accounts, with their EPINOIΛ GO stamps on it.
 - **A league's Community page.** Where the league's fans meet:
   - EPINOIA GO's Find a game, for the league's own games;
+  - its **Forum**: the Discord servers the league attached. Any server can be attached: the league's own, a fans' community, a club's. Nothing creates a server;
+  - its **Content creators**: the newest from the creators who cover it (0206, `docs/news-and-creators.md`);
   - the fans' stamps and photographs from its games;
-  - who has travelled furthest to its arenas;
-  - the Discord servers the league attached. Any server can be attached: the league's own, a fans' community, a club's. Nothing creates a server.
+  - who has travelled furthest to its arenas.
 
 ## Where things are
 
@@ -15,7 +16,7 @@ Migration **0197**. Two things:
 | --- | --- |
 | `fan/?u=<username>` | A fan's page, in the fan's own colour: their picture, name, line and accounts; their club; their GO passport (arenas, stamps, kilometres, their place on the board); their stamps and photographs; the leagues and clubs they follow. |
 | `profile/` | **PROFILE**, from "your hub" on the rail (first row): the fan's **Username**, **Your public page** (whether `fan/?u=` shows, and the link to it) and **Your page**, where they edit theirs with a live preview (`me/fanprofile.js`). It was on `me/` (now PERSONALISATION) until 2026-09-30; `me/#fanprofile` and `me/#username` forward here. |
-| `community/?l=<league>` | The league's Community page, in the league's colours. **Find a game**: GO's own module (`go/nearby/nearby.js`), for the league's games only. **Talk**: the Discord servers, one card each (see below). **In the stands**: GO's feed of the league's games, stamps and photographs (`go_feed`). **Furthest travelled**: the league's GO board by distance (`go_leaderboard`), each fan to their page. A part with nothing to show (no servers) stays away, and the rest are renumbered. |
+| `community/?l=<league>` | The league's Community page, in the league's colours. **Find a game**: GO's own module (`go/nearby/nearby.js`), for the league's games only. **Forum** (`#forum`): the Discord servers, one card each (see below). It was called Talk; an old link to `#talk`, or the console's old `#cmTalk`, still lands on it. **Content creators** (`#creators`): the newest from the creators the platform assigned to the league, its own creators and its creator outlets, on the feed's post card, nine at a time with **Show more** (`league_creator_feed`, 0206). **In the stands**: GO's feed of the league's games, stamps and photographs (`go_feed`). **Furthest travelled**: the league's GO board by distance (`go_leaderboard`), each fan to their page. A part with nothing to show (no servers, no creators' posts) stays away. |
 | The rail | **community** on every league. Find a game is there whenever the league has games. |
 | A league console, **Forum** | Attach, edit, reorder and take off servers. Pasting an invitation fills in the rest. |
 | The GO leaderboard | Each name links to that fan's page. |
@@ -57,7 +58,7 @@ Migration **0197**. Two things:
 
 Until step 4, the Discord button stays hidden and the profile says Discord sign-in is not switched on yet.
 
-### A league's Discord servers (Community page, Talk)
+### A league's Discord servers (Community page, Forum)
 
 - **Any server, attached.** A league lists the servers where its fans talk: its own, a fans' community, a club's. It does not need to own them, and nothing here creates a server. Up to 12 a league, in the league's order (`league_discords`).
 - **Attaching one** (the console's **Forum** panel):
@@ -77,4 +78,5 @@ Until step 4, the Discord button stays hidden and the profile says Discord sign-
 ## Tests
 
 - `supabase/tests/fan-profiles.test.mjs`: 0197 on PGlite, and the pages' wiring.
-- It runs in `guard.yml`.
+- `supabase/tests/league-creators.test.mjs`: the Forum and Content creators sections, run on a stand-in page, and 0206 on PGlite.
+- Both run in `guard.yml`.

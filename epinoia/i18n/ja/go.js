@@ -7,7 +7,8 @@
   I.register('ja', {
     phrases: {
       /* a league's Community page (community/) */
-      'Talk': 'トーク',
+      'Forum': 'フォーラム',
+      'Content creators': 'コンテンツクリエイター',
       'In the stands': 'スタンドから',
       'Furthest travelled': '最長移動距離',
       'At the game?': '試合会場にいますか？',

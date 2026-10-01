@@ -13,9 +13,11 @@
                     (mountSources): on the league's news page, and every reader's News
 
    The platform console mounts mountSources with no league: the sources every reader
-   sees, the sites that cover everything (Eurohoops, BasketNews…). It also mounts
-   mountPartners (0201): every source and every outlet with an "Official partner" switch,
-   which only the platform can flip (set_official_partner).
+   sees, the sites that cover everything (Eurohoops, BasketNews…). Each creator there
+   carries the leagues it covers (0206, set_news_source_leagues): its posts show under
+   Content creators on each one's Community page. It also mounts mountPartners (0201):
+   every source and every outlet with an "Official partner" switch, which only the
+   platform can flip (set_official_partner).
 
    The database decides every one of these (set_league_creators, create_creator_outlet,
    set_creator_outlet_status, hide_creator_post, add_news_source …); what it refuses is
@@ -213,7 +215,7 @@ function mountForum(o) {
     box.appendChild(editor(league, null));
     if (list.length) {
       const open = el('a', 'ep-btn mini', 'the Community page ↗');
-      open.href = base + 'community/?l=' + encodeURIComponent(league.slug || '') + '#cmTalk';
+      open.href = base + 'community/?l=' + encodeURIComponent(league.slug || '') + '#forum';
       open.target = '_blank'; open.rel = 'noopener';
       box.appendChild(row(open));
     }
@@ -384,6 +386,14 @@ function mountSources(o) {
   host.appendChild(box);
   const NR = () => globalThis.EpinoiaNewsRefresh || null;
 
+  /* EVERY LEAGUE, for "covers" (platform console only): the console's own list when it gives one, else read here */
+  async function everyLeague() {
+    const given = typeof o.leagues === 'function' ? o.leagues() : o.leagues;
+    if (Array.isArray(given) && given.length) return given.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    const { data, error } = await sb.from('leagues').select('id,name,slug').order('name');
+    return error ? [] : (data || []);
+  }
+
   /* "LOAD ALL" (platform console only): every publisher on, read now by the news-refresh function; one control that lives
      through every redraw, so what it said stays under it while the list is drawn again with the new counts */
   let allCtl = null;
@@ -397,7 +407,8 @@ function mountSources(o) {
   async function draw() {
     const league = lg();
     const lid = league ? league.id : null;
-    const { data, error } = await sb.rpc('news_sources_admin', { p_league: lid });
+    const [{ data, error }, leagues] = await Promise.all([sb.rpc('news_sources_admin', { p_league: lid }),
+      league ? Promise.resolve([]) : everyLeague().catch(() => [])]);
     box.textContent = '';
     box.appendChild(h(league ? 'Publishers & creators' : 'Publishers & creators for every reader'));
     if (error) {
@@ -407,8 +418,9 @@ function mountSources(o) {
       return;
     }
     box.appendChild(el('p', 'empty', (league
-      ? 'News sites and creators of ' + league.name + '’s own, on the league’s news page and in every reader’s News. '
-      : 'What every reader sees in News; each story also lands on the news page of every league it is about (its league tags). ') +
+      ? 'News sites and creators of ' + league.name + '’s own, on the league’s news page and in every reader’s News; its creators also under Content creators on its Community page. '
+      : 'What every reader sees in News; each story also lands on the news page of every league it is about (its league tags). ' +
+        'Give each creator the leagues it covers: its posts show under Content creators on each one’s Community page. ') +
       'Paste a link: a website, a feed, a YouTube channel, a podcast, a Substack, Medium, Bluesky or Mastodon account. The feed behind ' +
       'it is found at the next read (every half hour) and every new post arrives from then on, with its followers told. A logo is found too.'));
 
@@ -458,6 +470,9 @@ function mountSources(o) {
     }
 
     /* ---- the list ---- */
+    if (!league && (data || []).some(s => s.kind === 'creator' && s.assigned_leagues === undefined)) {
+      box.appendChild(el('p', 'empty', 'Giving a creator the leagues it covers arrives with migration 0206: it has not been applied to this database yet.'));
+    }
     (data || []).forEach(s => {
       const line = el('div');
       line.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--rule)';
@@ -518,6 +533,7 @@ function mountSources(o) {
       line.append(logo, name, meta, page, flip);
       if (load) line.appendChild(load.box);
       line.append(onoff, edit, del);
+      if (!league && isCreator && Array.isArray(s.assigned_leagues)) line.appendChild(covers(s, leagues));
       box.appendChild(line);
     });
 
@@ -539,6 +555,69 @@ function mountSources(o) {
     });
     more.append(row(mnm, site, feed), row(mlogo, colour, madd));
     box.appendChild(more);
+  }
+
+  /* WHICH LEAGUES A CREATOR COVERS (0206): a chip for each, its × to take it off, and the leagues it does not cover yet
+     to add one. The whole list goes each time (set_news_source_leagues); the row is drawn again from what was kept. */
+  function covers(s, leagues) {
+    const r = el('div', 'cv-row');
+    r.style.cssText = 'flex:1 1 100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 0 36px';
+    let have = (s.assigned_leagues || []).filter(x => x && x.id).map(x => ({ id: x.id, name: x.name || '', slug: x.slug || '' }));
+    async function save(next, said) {
+      r.querySelectorAll('button,select').forEach(n => { n.disabled = true; });
+      const { data: d, error: e } = await sb.rpc('set_news_source_leagues', { p_id: s.id, p_leagues: next.map(x => x.id) });
+      if (e) {
+        paint();
+        return say(/set_news_source_leagues|schema cache|does not exist/i.test(errText(e))
+          ? 'Giving a creator its leagues arrives with migration 0206: it has not been applied to this database yet.' : errText(e), 'err');
+      }
+      const kept = Array.isArray(d) ? d.map(String) : next.map(x => x.id);
+      have = kept.map(id => next.find(x => x.id === id)).filter(Boolean);
+      s.assigned_leagues = have;
+      paint();
+      say(said, 'ok');
+    }
+    function paint() {
+      r.textContent = '';
+      const lab = el('span', 'empty', 'COVERS');
+      lab.style.cssText = 'margin:0;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em';
+      r.appendChild(lab);
+      if (!have.length) {
+        const none = el('span', 'empty', 'no league yet: its posts are in News, and on a league’s pages only where they name it');
+        none.style.margin = '0';
+        r.appendChild(none);
+      }
+      have.forEach(x => {
+        const chip = el('span', 'cv-chip');
+        chip.style.cssText = 'display:inline-flex;gap:2px;align-items:center;padding:1px 2px 1px 9px;border:1px solid var(--rule-2);border-radius:999px;font-family:var(--f-ui);font-size:12px';
+        chip.appendChild(el('span', null, x.name || x.slug));
+        const off = btn('×');
+        off.style.cssText = 'min-width:0;padding:0 6px;border:0;background:none';
+        off.title = 'take ' + s.name + ' off ' + (x.name || x.slug);
+        off.setAttribute('aria-label', off.title);
+        off.addEventListener('click', () => save(have.filter(y => y.id !== x.id),
+          s.name + ' is off ' + (x.name || x.slug) + '’s Community page.'));
+        chip.appendChild(off);
+        r.appendChild(chip);
+      });
+      const left = (leagues || []).filter(l => l && l.id && !have.some(x => x.id === l.id));
+      if (left.length) {
+        const sel = el('select', 'ep-input cv-add');
+        sel.style.cssText = 'width:auto;max-width:260px;padding:3px 6px;font-size:12px';
+        const first = el('option', null, have.length ? '+ another league' : '+ a league it covers'); first.value = ''; sel.appendChild(first);
+        left.forEach(l => { const op = el('option', null, l.name); op.value = l.id; sel.appendChild(op); });
+        sel.setAttribute('aria-label', 'a league ' + s.name + ' covers');
+        sel.addEventListener('change', () => {
+          const l = left.find(x => x.id === sel.value);
+          if (!l) return;
+          save(have.concat([{ id: l.id, name: l.name, slug: l.slug }]),
+            s.name + ' covers ' + l.name + ': its posts show under Content creators on the league’s Community page.');
+        });
+        r.appendChild(sel);
+      }
+    }
+    paint();
+    return r;
   }
 
   function editor(s) {

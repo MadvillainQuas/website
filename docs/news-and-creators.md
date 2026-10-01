@@ -69,7 +69,26 @@ The platform can name a news source or a creator outlet an **official partner**.
 - **The flag.** `news_sources.official_partner` and `creator_outlets.official_partner`, default false, set by `set_official_partner(kind, id, on)` (platform administrators only, audit-logged as `set_official_partner`). The tables stay closed (RLS on, no grant).
 - **The list.** `official_partners()` (open to everyone) returns `[{kind, slug}]` for sources that are on, and `[{kind, slug, league}]` for outlets that are active and shown (an outlet's slug is unique only within its league, so its league's slug is part of its key). The keys are `source:<slug>` and `outlet:<league>/<slug>`. Every page that shows a card asks once per page; the answer is cached for an hour.
 - **The console.** Platform console, **News** tab, **Official partners**: every source and every outlet with an *Official partner* switch. It asks before it changes anything (`official_partners_admin()`, platform administrators only, lists them).
+- **The card's key.** A card carries the key it is known by: `source:<slug>` for a publisher's story and for a creator's channel post (both are news sources), `outlet:<league>/<slug>` for an outlet's piece. `newscard.js` `fromFeed` and `feedrank.js` `pkeyOf` follow the same rule. Before 2026-10-01 a creator's channel post had no key, so it never wore the pill.
 - **The pill.** A small gold teletext block, *Official partner* (`.pc-partner`, `kit/newscard.css`), black on gold in both themes. On a card it sits on the plate at the bottom left, away from the headline and under the headline link's cover, so the card is still pressed anywhere; a card with no plate carries it in its kicker. It is also in the head of a publisher's page, a creator outlet's page and a story or piece, in the row of publishers, and on a creators' tile.
+
+## A league's content creators (0206)
+
+The platform says which leagues each creator covers. The league's Community page (`community/?l=`) then shows the newest from them, under **Content creators**.
+
+- **Assigning.** Platform console, **News** tab, **Publishers & creators for every reader**. Each creator has a **COVERS** row: a chip for each league it covers (its × takes it off), and a list of the other leagues to add one. A publisher has no row; switch it to a creator first.
+- **The database.**
+  - `news_sources.assigned_leagues` (`uuid[]`, empty by default).
+  - `set_news_source_leagues(id, leagues)` sends the whole list each time. Only a platform administrator can call it, and only for a source for every reader (a league's own source already belongs to its league). The leagues are kept once each, in the order given; a league that does not exist is dropped. It is audit-logged and returns what was kept.
+  - `news_sources_admin(league)` now carries `assigned_leagues`: `[{id, slug, name}]`.
+- **What the section shows** (`league_creator_feed(league, before, limit)`, open to everyone, in `news_feed`'s rows):
+  - the posts of the creators assigned to the league;
+  - the posts of the league's own creators (a source of kind *creator* that the league added itself);
+  - the pieces of the league's creator outlets, where the league shows its creators.
+
+  Never a publisher, assigned or not (switch it to a creator and it shows; the assignment is kept across the switch). Never a source that is off, a suspended outlet, a hidden piece or draft, or a league the reader may not see.
+- **The section.** The feed's post card, nine at a time, with **Show more** while there are more. The league's own tag is left off each card, and an official partner wears its pill. Nothing is played on the page: a card opens its story here (`news/?i=`, `creators/`), where a video or an episode plays. So the page's Content-Security-Policy is unchanged. The section stays away while there is nothing to show, and before 0206 is applied.
+- **Not changed.** `news_feed` and `news_feed_mine`. A creator's posts still reach a league's News page only by naming it (the league tags).
 
 ## The ranked feed (`epinoia/feedrank.js`)
 
@@ -218,6 +237,7 @@ A publisher's articles arrive every half hour. An administrator who does not wan
 - `supabase/tests/feedrank.test.mjs`: the ranking, the learning, the storage, and that nothing about the reader is sent.
 - `supabase/tests/news-languages.test.mjs`: 0204 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
 - `supabase/tests/partners-ui.test.mjs`: the console's Official partner switches.
+- `supabase/tests/league-creators.test.mjs`: 0206 on PGlite (who may assign, what the Community page's section shows), the console's COVERS row, the section on a stand-in page, and a creator's channel wearing its pill.
 - `supabase/tests/news-refresh.test.mjs`: the `news-refresh` function on a fake database and network: the parser held to the Python's fixtures, the address guard, who may call, the rate limits, the audit rows, idempotence.
 - `supabase/tests/news-refresh-ui.test.mjs`: the **Load now** button: its words, the console's rows, who is shown it, the function missing.
 

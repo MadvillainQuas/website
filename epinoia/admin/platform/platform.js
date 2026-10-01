@@ -1282,11 +1282,12 @@ function loadLinks() {
 }
 
 /* ------------------------------------------------------------------ news --- */
-/* The news sites every reader sees (migration 0194): creators-ui.js draws the list, the switches and the form. */
+/* The news sites every reader sees (migration 0194): creators-ui.js draws the list, the switches and the form, and
+   each creator's leagues (0206) from the leagues this console already read. */
 function loadNewsSources() {
   const C = window.EpinoiaCreatorsUI;
   if (!C) return say('creators-ui.js did not load, so the news sources cannot be edited. Reload the page.', 'err');
-  C.mountSources({ host: '#newsSourcesHost', sb, say, league: null, base: '../../' });
+  C.mountSources({ host: '#newsSourcesHost', sb, say, league: null, base: '../../', leagues: () => leagues });
   /* ...and which of them (and of the creator outlets) are official partners: the platform's to choose (0201) */
   if (typeof C.mountPartners === 'function') C.mountPartners({ host: '#officialPartnersHost', sb, say });
 }

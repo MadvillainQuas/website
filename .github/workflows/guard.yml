@@ -1441,6 +1441,18 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/fan-profiles.test.mjs
 
+      - name: A league's content creators (0206) and the Community page's Forum
+        # the page run on a stand-in document: the Forum (an old #talk or #cmTalk link landing on it, the server kept at
+        # #forum), Content creators (nine at a time, Show more, the league's own tag left off, the partners' keys, nothing
+        # played, away before 0206 and while empty); the console's COVERS row; a creator's channel wearing its pill; then on
+        # a real Postgres (PGlite): set_news_source_leagues for a platform administrator only, on a source for every reader
+        # only, audit-logged; news_sources_admin with the leagues; league_creator_feed - assigned and own creators, the
+        # league's outlets where it shows them, never a publisher, a source that is off, a hidden piece, a suspended outlet
+        # or a league the reader may not see; news_feed unchanged; and 0206 run again changing nothing
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/league-creators.test.mjs
+
       - name: Suggested edits - fans suggest, the league's and the platform's moderators decide (0199)
         # the pages first (suggest.js's feet-and-inches and Google Maps pins, the fields, positions and reasons the
         # database has, the player's, the club's and the arena's hooks, never a player under 18, both consoles'

@@ -4,16 +4,22 @@
 
    Built to the page standard (docs/page-standard.md): the centred head in the league's colours (teamcolour.js,
    as the league's front page), then one section per part, each with its title and subtitle and no number;
-   nav.js adds ON THIS PAGE and each section's SKIP. Where a league's fans meet, in four parts:
+   nav.js adds ON THIS PAGE and each section's SKIP. Where a league's fans meet, in five parts:
      FIND A GAME         EPINOIA GO's own Find a game (go/nearby/nearby.js), for this league's games only:
                          the nearest first, by the fan's location or passport mode, each arena on the map with
                          the game's preview. It is GO's module itself, not a copy: the page marks its strip
                          data-scope="league" and GO reads only the league's games.
-     TALK                the Discord servers the league attached (0197, league_discords): its own, a fans'
+     FORUM               the Discord servers the league attached (0197, league_discords): its own, a fans'
                          community, a club's. Each a card with its members and online (Discord's public answer
                          for its invitation, sent nothing but the code) and the way in; a server whose id the
                          league gave shows Discord's own widget, framed from discord.com; "show here" swaps it,
-                         and &s= keeps the choice. Hidden while the league has none.
+                         and &s= keeps the choice. Hidden while the league has none. (It was TALK, at #talk: an
+                         old link to #talk, or the console's #cmTalk, still lands on it.)
+     CONTENT CREATORS    the newest from the league's content creators (0206 league_creator_feed): the creators the
+                         platform assigned to the league in its console, and the league's own creator outlets
+                         (0194) when it shows them. On the post card (newscard.js), as the feed shows them, nine
+                         at a time with "show more", an official partner's with its pill. Hidden while there is
+                         nothing, and before 0206 is on the server.
      IN THE STANDS       EPINOIA GO's feed for the league's games (go_feed, 0177): the fans' stamps as GO's stamp
                          cards and their photographs, newest first, and the way to every one on the wall.
      FURTHEST TRAVELLED  the league's GO board by distance (go_leaderboard, 0166): the fans who have covered the
@@ -81,12 +87,14 @@
     a.appendChild(data('span', null, L.name));
     kick.textContent = '';
     kick.appendChild(a);
-    sub.textContent = 'Where ' + L.name + '’s fans meet: its games near you, the stamps and photographs from its arenas, who has travelled furthest, and where they talk.';
+    sub.textContent = 'Where ' + L.name + '’s fans meet: its games near you, its forum, the creators who cover it, the stamps and photographs from its arenas, and who has travelled furthest.';
     $('#cmWall').href = '../go/photos/?l=' + encodeURIComponent(L.id);
-    await Promise.all([talk(L).catch(() => {}), stands(L).catch(() => {}), board(L).catch(() => {})]);
+    await Promise.all([talk(L).catch(() => {}), creators(L).catch(() => {}), stands(L).catch(() => {}), board(L).catch(() => {})]);
   })();
 
-  /* ---------------------------------------------------------------- talk --- */
+  /* --------------------------------------------------------------- forum --- */
+  /* the forum's address, and the two it had: #talk (the section's old name) and the console's #cmTalk */
+  const FORUM_HASH = /^#(forum|talk|cmTalk)$/;
   /* how many are in a server and online, from Discord's public answer for its invitation (no sign-in, no cookie) */
   async function counts(invite) {
     const m = INVITE.exec(String(invite || ''));
@@ -107,7 +115,7 @@
     const servers = ((D && D.servers) || []).filter(s => hasWidget(s) || INVITE.test(String(s.invite || '')));
     if (!servers.length) return;
     const host = $('#cmServers');
-    if (servers.length > 1) $('#talkSub').textContent = servers.length + ' Discord servers: who is online, and the way into each';
+    if (servers.length > 1) $('#forumSub').textContent = servers.length + ' Discord servers: who is online, and the way into each';
     const wrap = el('div', 'fo-wrap');
     host.appendChild(wrap);
 
@@ -138,7 +146,7 @@
         if (c.pick) { c.pick.textContent = id === s.id ? 'Showing' : 'Show here'; c.pick.disabled = id === s.id; }
       });
       if (remember) {
-        try { history.replaceState(null, '', '?l=' + encodeURIComponent(L.slug) + '&s=' + encodeURIComponent(s.id) + '#talk'); } catch (_) { /* file:// */ }
+        try { history.replaceState(null, '', '?l=' + encodeURIComponent(L.slug) + '&s=' + encodeURIComponent(s.id) + '#forum'); } catch (_) { /* file:// */ }
       }
     }
 
@@ -195,8 +203,67 @@
     });
     wrap.appendChild(list);
     showServer(open, false);
-    show('#talk');
-    if (Q.get('s') || location.hash === '#talk') $('#talk').scrollIntoView({ block: 'start' });
+    show('#forum');
+    if (Q.get('s') || FORUM_HASH.test(location.hash)) $('#forum').scrollIntoView({ block: 'start' });
+  }
+
+  /* -------------------------------------------------------- content creators --- */
+  /* THE LEAGUE'S CONTENT CREATORS (0206 league_creator_feed): the newest from the creators the platform assigned to the
+     league, the league's own creators and its creator outlets, on the feed's post card (newscard.js), nine at a time.
+     A card opens its story on Epinoia (news/?i=, creators/), where a video or an episode plays: nothing plays here, so
+     the page frames nothing new. An official partner's card wears its pill (official_partners, 0201). */
+  const PAGE = 9;
+  const mediaUrl = p => CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + String(p).split('/').map(encodeURIComponent).join('/');
+  const crestUrl = p => (typeof window.epinoiaLogoUrl === 'function' ? window.epinoiaLogoUrl(p, 64) : mediaUrl(p));
+  /* the official partners' keys, as the feed knows them (feedrank.js partnerSet): 'source:<slug>', 'outlet:<league>/<slug>' */
+  async function partnerKeys() {
+    let list = [];
+    try { list = await rpc('official_partners'); } catch (_) { list = []; }
+    const keys = new Set();
+    (Array.isArray(list) ? list : []).forEach(x => {
+      if (x && x.kind === 'source' && x.slug) keys.add('source:' + x.slug);
+      else if (x && x.kind === 'outlet' && x.slug && x.league) keys.add('outlet:' + x.league + '/' + x.slug);
+    });
+    return keys;
+  }
+
+  async function creators(L) {
+    /* one more than a page, to know whether there is another */
+    const read = before => rpc('league_creator_feed', { p_league: L.id, p_before: before, p_limit: PAGE + 1 });
+    let rows;
+    try { rows = await read(null); } catch (_) { return; }      // before 0206: the part stays away
+    rows = Array.isArray(rows) ? rows : [];
+    if (!rows.length) return;
+    const partners = await partnerKeys();
+    const opts = { lead: false, now: Date.now(), partners, hideTag: L.slug };
+    const cardsOf = list => list.map(r => K.fromFeed(r, '../', mediaUrl, crestUrl));
+    const host = $('#cmCreators');
+    host.textContent = '';
+    const shown = rows.slice(0, PAGE);
+    const seen = new Set(shown.map(r => r.id));
+    const grid = K.grid(cardsOf(shown), opts);
+    host.appendChild(grid);
+    let last = shown[shown.length - 1].published_at;
+    if (rows.length > PAGE) {
+      const more = el('div', 'pc-more');
+      const b = el('button', 'ep-btn', 'Show more');
+      b.type = 'button';
+      more.appendChild(b);
+      host.appendChild(more);
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        let next;
+        try { next = await read(last); } catch (_) { b.disabled = false; return; }
+        next = Array.isArray(next) ? next : [];
+        const page = next.slice(0, PAGE);
+        cardsOf(page.filter(r => !seen.has(r.id))).forEach(it => grid.appendChild(K.card(it, Object.assign({}, opts, { now: Date.now() }))));
+        page.forEach(r => seen.add(r.id));
+        if (page.length) last = page[page.length - 1].published_at;
+        if (next.length > PAGE) b.disabled = false;
+        else more.remove();
+      });
+    }
+    show('#creators');
   }
 
   /* ------------------------------------------------------------ in the stands --- */

@@ -191,7 +191,8 @@ const KIND = {
 function fromFeed(r, base, media, crest) {
   const it = fromFeedRow(r, base, media, crest);
   /* the row itself stays with the card (the feed's ranking and "opened" read it), and the key the publisher or outlet
-     is known by in official_partners(): 'source:<slug>', 'outlet:<league>/<slug>' (feedrank.js pkeyOf is the same rule) */
+     is known by in official_partners(): 'source:<slug>' (a publisher's, and a creator's channel: both are news sources),
+     'outlet:<league>/<slug>' (feedrank.js pkeyOf is the same rule) */
   it.id = r.id;
   it.row = r;
   /* a story in a language other than the reader's site's wears its code (feedrank.js langOf: the row's own, else the publisher's;
@@ -202,7 +203,7 @@ function fromFeed(r, base, media, crest) {
     const site = FR && typeof FR.siteLang === 'function' ? FR.siteLang() : '';
     if (l && l !== site) it.lang = l;
   } catch (_) { /* no tag */ }
-  it.pkey = r.kind === 'outlet' && r.source_slug ? 'source:' + r.source_slug
+  it.pkey = (r.kind === 'outlet' || r.kind === 'channel') && r.source_slug ? 'source:' + r.source_slug
           : r.kind === 'creator' && r.outlet_slug && r.league_slug ? 'outlet:' + r.league_slug + '/' + r.outlet_slug : null;
   return it;
 }

@@ -254,7 +254,7 @@ function tierOf(it) {
    (an outlet's slug is only unique in its league). A league's own article has none: the league is the source. */
 function pkeyOf(it) {
   if (!it) return null;
-  if (it.kind === 'outlet' && it.source_slug) return 'source:' + it.source_slug;
+  if ((it.kind === 'outlet' || it.kind === 'channel') && it.source_slug) return 'source:' + it.source_slug;
   if (it.kind === 'creator' && it.outlet_slug && it.league_slug) return 'outlet:' + it.league_slug + '/' + it.outlet_slug;
   return null;
 }
