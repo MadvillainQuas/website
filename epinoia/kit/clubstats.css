@@ -99,6 +99,27 @@ table.cst td.cst-club{color:var(--ink-2)}
 .cst-vs-bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--ground)}
 .cst-vs-n{grid-column:1 / -1;font-family:var(--f-ui);font-size:11px;color:var(--ink-3)}
 
+/* heliocentrism: one bar from shared (0) to one player (100), and who carries the load */
+.cst-helio{display:grid;gap:3px}
+.cst-helio-bar{position:relative;display:block;height:8px;margin:4px 0 0;border-radius:4px;
+  background:linear-gradient(90deg,color-mix(in oklch,var(--xc-b,var(--aqua)) 12%,transparent),color-mix(in oklch,var(--xc-b,var(--aqua)) 55%,transparent))}
+.cst-helio-bar::after{content:"";position:absolute;top:50%;left:var(--h,0%);width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;
+  background:var(--xc-a,var(--lume));box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--xc-ink,var(--ink))}
+.cst-helio-who{margin-top:3px;font-family:var(--f-ui);font-size:11.5px;line-height:1.4;color:var(--ink-3)}
+.cst-helio-who b{color:var(--xc-ink,var(--ink));font-weight:700}
+
+/* against the starters / the bench: the ratings as figures, the sample beside them; the net coloured by its sign */
+.cst-trio{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.cst-fig{display:inline-flex;align-items:baseline;gap:7px;padding:5px 10px 4px;border-radius:8px;border:1px solid var(--rule);
+  background:color-mix(in oklch,var(--xc-a,var(--lume)) 5%,var(--panel))}
+.cst-fig-l{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.cst-fig b{font-family:var(--f-score);font-weight:400;font-size:15px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.cst-fig.gap.good b{color:var(--good)}
+.cst-fig.gap.bad b{color:var(--bad)}
+.cst-trio-n{font-family:var(--f-ui);font-size:11px;color:var(--ink-3)}
+table.cst td.v.good{color:var(--good)}
+table.cst td.v.bad{color:var(--bad)}
+
 /* the explainer card, when the '?' opens it, sits in the row's first cell */
 table.cst tr.r > th.l > .stp-ex{max-width:340px}
 

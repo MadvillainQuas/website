@@ -14,28 +14,6 @@ const ok = (n, f) => { try { f(); pass++; console.log('ok  ' + n); } catch (e) {
 const aok = async (n, f) => { try { await f(); pass++; console.log('ok  ' + n); } catch (e) { fail++; console.log('FAIL ' + n + '\n  ' + e.message); } };
 const near = (a, b, eps = 1e-9) => a != null && Math.abs(a - b) < eps;
 
-console.log('\nheliocentrism: the busiest player\'s share of the club\'s used possessions');
-ok('a player\'s used possessions: FGA + 0.44 x FTA + TOV', () => assert.ok(near(SL.usedPoss({ fga: 10, fta: 5, tov: 2 }), 14.2)));
-{
-  const P = [
-    { id: 'p1', t: 'A', fga: 100, fta: 50, tov: 20 },     // 142
-    { id: 'p2', t: 'A', fga: 50, fta: 0, tov: 10 },       // 60
-    { id: 'p3', t: 'A', fga: 40, fta: 0, tov: 0 },        // 40
-    { id: 'p4', t: 'A', fga: 0, fta: 0, tov: 0 },         // used nothing: not a user
-    { id: 'q1', t: 'B', fga: 30, fta: 0, tov: 0 },        // a club under forty used possessions has no reading
-    { id: 'e1', t: 'E', fga: 50, fta: 0, tov: 0 }, { id: 'e2', t: 'E', fga: 50, fta: 0, tov: 0 },
-    { id: 'e3', t: 'E', fga: 50, fta: 0, tov: 0 }, { id: 'e4', t: 'E', fga: 50, fta: 0, tov: 0 },
-    { id: 'z', t: null, fga: 500, fta: 0, tov: 0 }        // no club: left out
-  ];
-  const H = SL.helio(P, p => p.t);
-  const a = H.get('A');
-  const s = [142, 60, 40].map(u => u / 242);
-  ok('the share is the busiest player\'s, and he is named', () => { assert.ok(near(a.share, 100 * 142 / 242)); assert.equal(a.top, 'p1'); assert.equal(a.n, 3); });
-  ok('the equal users are 1 / the sum of the squared shares', () => assert.ok(near(a.users, 1 / s.reduce((t, x) => t + x * x, 0))));
-  ok('four players sharing it evenly: 25%, spread like 4 equal users', () => { assert.ok(near(H.get('E').share, 25)); assert.ok(near(H.get('E').users, 4)); });
-  ok('a club under ' + SL.MIN_USED + ' used possessions, and a player with no club, are left out', () => { assert.equal(H.has('B'), false); assert.equal(H.has(null), false); });
-}
-
 console.log('\nbench minutes: from each game\'s starters and the players\' minutes');
 {
   const five = t => [1, 2, 3, 4, 5].map(i => t + i);
@@ -67,19 +45,33 @@ console.log('\nbench minutes: from each game\'s starters and the players\' minut
   ok('nothing to read is an empty map', () => { assert.equal(SL.bench(null, null).size, 0); assert.equal(SL.bench(games, []).size, 0); });
 }
 
-console.log('\nthe average possession, own and opponents\'');
+console.log('\nthe club\'s play-by-play, summed the way the WOWY page sums it (lineupevents.js)');
 {
-  const logs = [
-    { side: 0, events: [{ team: 0, dur: 10 }, { team: 1, dur: 20 }, { team: 0, dur: null }, { team: 0, dur: 14 }] },
-    { side: 1, events: [{ team: 1, dur: 12 }, { team: 0, dur: 18 }] },
-    { side: 0, events: 'boom' }
+  const LE = require(path.join(ROOT, 'epinoia', 'lineupevents.js'));
+  /* a record is one stretch of a game from the club's side: its box, the other side's, how many of the other side's
+     starters were on (ost) and the possessions it timed (scN, scS) */
+  const rec = (ost, mins, own, opp, sc, osc) => {
+    const o = Object.assign(LE.blankX(), own, { scN: sc[0], scS: sc[1], u: own.u || {} });
+    const d = Object.assign(LE.blankX(), opp, { scN: osc[0], scS: osc[1] });
+    return { g: 'g1', ids: ['a', 'b', 'c', 'd', 'e'], oids: ['v', 'w', 'x', 'y', 'z'], dur: mins * 60000, own: o, opp: d, ost, ev: true };
+  };
+  const R = [
+    rec(5, 10, { pts: 22, fga: 18, fgm: 9, p3m: 2, fta: 4, tov: 2, or: 3, dr: 8 }, { pts: 20, fga: 17, fgm: 8, p3m: 2, fta: 4, tov: 3, or: 2, dr: 7 }, [20, 300], [20, 280]),
+    rec(1, 8, { pts: 20, fga: 14, fgm: 8, p3m: 3, fta: 2, tov: 1, or: 1, dr: 6 }, { pts: 10, fga: 15, fgm: 4, p3m: 1, fta: 0, tov: 2, or: 2, dr: 5 }, [16, 208], [16, 240]),
+    rec(3, 6, { pts: 10, fga: 10, fgm: 4, p3m: 1, fta: 2, tov: 1, or: 1, dr: 4 }, { pts: 12, fga: 10, fgm: 5, p3m: 1, fta: 2, tov: 1, or: 1, dr: 4 }, [12, 180], [12, 168])
   ];
-  const compute = ({ events }) => { if (!Array.isArray(events)) throw new Error('bad log'); return { possessions: events }; };
-  const x = SL.possTime(logs, compute);
-  ok('own: the club\'s timed possessions averaged, whichever side it was (12 s)', () => assert.ok(near(x.own, 12)));
-  ok('opponents: theirs (19 s); an untimed possession is left out of both', () => { assert.ok(near(x.opp, 19)); assert.equal(x.nOwn, 3); assert.equal(x.nOpp, 2); });
-  ok('a log that cannot be read is skipped, not fatal', () => assert.equal(x.games, 2));
-  ok('no logs: nothing', () => { const y = SL.possTime([], compute); assert.equal(y.own, null); assert.equal(y.opp, null); });
+  const x = SL.logSummary(R, 2, LE);
+  ok('every minute, against the starters (all five on) and against the bench (two or fewer), each the module\'s own line', () => {
+    assert.equal(x.games, 2);
+    assert.deepEqual(x.all, LE.line(LE.sum(R)));
+    assert.deepEqual(x.start, LE.line(LE.sum([R[0]])));
+    assert.deepEqual(x.bench, LE.line(LE.sum([R[1]])));
+    assert.ok(x.start.net != null && x.bench.net > x.start.net);
+  });
+  ok('the possession: own from the line (688 s over 48), the opponents\' from theirs (688 over 48)', () => {
+    assert.ok(near(x.all.sclock, Math.round(10 * 688 / 48) / 10)); assert.ok(near(x.oppClock, 688 / 48));
+  });
+  ok('nothing to sum is nothing', () => { assert.equal(SL.logSummary([], 0, LE), null); assert.equal(SL.logSummary(R, 1, null), null); });
 }
 
 console.log('\nMOREY%, the rank and the band');
@@ -105,15 +97,11 @@ ok('...and nothing where it does not (no zones), or nothing was shot', () => {
   });
   ok('band: five from the percentile, none without one', () => assert.deepEqual([0, 19.9, 20, 59.9, 60, 99.9, 100, null].map(SL.band), [1, 1, 2, 3, 4, 5, 5, 0]));
 }
-ok('prepare puts PPP, MOREY% and heliocentrism on the club rows', () => {
-  const S = { teams: [{ id: 'A', ortg: 112.34, fga: 100, rim_share: 30, mid_share: 20, p3_share: 50 }, { id: 'B', ortg: null }],
-              players: [{ id: 'p1', fga: 60, fta: 0, tov: 0, _teamId: 'A' }, { id: 'p2', fga: 20, fta: 0, tov: 0 }],
-              teamOfPlayer: new Map([['p2', 'A'], ['p1', 'B']]) };
+ok('prepare puts PPP and MOREY% on the club rows', () => {
+  const S = { teams: [{ id: 'A', ortg: 112.34, fga: 100, rim_share: 30, mid_share: 20, p3_share: 50 }, { id: 'B', ortg: null }] };
   SL.prepare(S);
-  const A = S.teams[0];
-  assert.equal(A.ppp, 1.123); assert.equal(A.morey, 80);
-  assert.equal(A.helio, 75); assert.equal(A.helio_top, 'p1');           // the row's own club wins over the map
-  assert.equal(S.teams[1].ppp, null); assert.equal(S.teams[1].helio, null);
+  assert.equal(S.teams[0].ppp, 1.123); assert.equal(S.teams[0].morey, 80);
+  assert.equal(S.teams[1].ppp, null); assert.equal(S.teams[1].morey, null);
 });
 
 /* ---- the drawing, on a small stand-in for the document ---- */
@@ -138,19 +126,18 @@ const walk = (n, f, out = []) => { if (n.tagName && f(n)) out.push(n); (n.childr
 const byClass = (n, c) => walk(n, x => x.classList && x.classList.contains(c));
 
 console.log('\nthe card');
-await aok('three ratings on one row, then tempo, efficiency and distribution; the rows that need a read of their own fill in', async () => {
+await aok('three ratings on one row, then four groups; the rows that need a read of their own fill in when it answers', async () => {
   const S = { teams: [
     { id: 'A', ortg: 118, drtg: 101, net: 17, pace: 74, ts: 58, ft_pct: 76, ast_pct: 61, fga: 100, rim_share: 34, mid_share: 20, p3_share: 46 },
     { id: 'B', ortg: 108, drtg: 104, net: 4, pace: 70, ts: 55, ft_pct: 70, ast_pct: 55, fga: 100, rim_share: 30, mid_share: 30, p3_share: 40 },
     { id: 'C', ortg: 101, drtg: 110, net: -9, pace: 68, ts: 52, ft_pct: 72, ast_pct: 50, fga: 100, rim_share: 25, mid_share: 35, p3_share: 40 },
-    { id: 'D', ortg: 99, drtg: 111, net: -12, pace: 72, ts: 51, ft_pct: 68, ast_pct: 58, fga: 100, rim_share: 28, mid_share: 32, p3_share: 40 }],
-    players: [{ id: 'p1', _teamId: 'A', fga: 300, fta: 50, tov: 30 }, { id: 'p2', _teamId: 'A', fga: 100, fta: 0, tov: 10 }], games: [] };
+    { id: 'D', ortg: 99, drtg: 111, net: -12, pace: 72, ts: 51, ft_pct: 68, ast_pct: 58, fga: 100, rim_share: 28, mid_share: 32, p3_share: 40 }], games: [] };
   const host = new El('div');
   const bound = [];
-  let giveBench, givePoss;
+  let giveBench, giveLogs;
   const bench = new Promise(r => { giveBench = r; });
-  const poss = new Promise(r => { givePoss = r; });
-  SL.render(host, { S, mine: S.teams[0], bind: (n, d) => bound.push(d.k), club: { poss_time: poss }, bench, nameOf: async id => (id === 'p1' ? 'Ann Example' : null) });
+  const logs = new Promise(r => { giveLogs = r; });
+  SL.render(host, { S, mine: S.teams[0], bind: (n, d) => bound.push(d.k), logs, bench, nameOf: async id => (id === 'p1' ? 'Ann Example' : null) });
   const tiles = byClass(host, 'csr-t');
   assert.deepEqual(tiles.map(t => t.dataset.k), ['ortg', 'drtg', 'net']);
   assert.equal(byClass(tiles[0], 'csr-v')[0].textContent, '118.0');
@@ -159,23 +146,43 @@ await aok('three ratings on one row, then tempo, efficiency and distribution; th
   const mark = walk(byClass(tiles[1], 'cs-strip')[0], x => x.tagName === 'B')[0];
   assert.equal(mark.style.left, '97.00%');
   const groups = walk(host, x => x.tagName === 'TBODY');
-  assert.deepEqual(groups.map(g => g.dataset.g), ['tempo', 'efficiency', 'distribution']);
+  assert.deepEqual(groups.map(g => g.dataset.g), ['tempo', 'efficiency', 'distribution', 'matchups']);
   assert.deepEqual(groups.map(g => walk(g, x => x.className === 'r').map(r => r.dataset.k)),
-    [['pace', 'poss_time'], ['ppp', 'ts', 'ft_pct', 'morey'], ['ast_pct', 'helio', 'bench_min_pct']]);
+    [['pace', 'poss_time'], ['ppp', 'ts', 'ft_pct', 'morey'], ['ast_pct', 'helio', 'bench_min_pct'], ['vs_start', 'vs_bench']]);
   const row = k => walk(host, x => x.className === 'r' && x.dataset.k === k)[0];
-  assert.equal(byClass(row('ppp'), 'v')[0].textContent, '1.18');
-  assert.equal(byClass(row('morey'), 'v')[0].textContent, '80.0');
-  assert.equal(byClass(row('bench_min_pct'), 'v')[0].textContent, '…', 'the bench waits for its read');
-  assert.equal(byClass(row('poss_time'), 'v')[0].textContent, '…', 'the possession waits for the logs');
-  assert.ok(bound.includes('ortg') && bound.includes('helio') && !bound.includes('bench_min_pct') && !bound.includes('poss_time'));
+  const val = k => byClass(row(k), 'v')[0];
+  assert.equal(val('ppp').textContent, '1.18');
+  assert.equal(val('morey').textContent, '80.0');
+  assert.equal(val('bench_min_pct').textContent, '…', 'the bench waits for its read');
+  for (const k of ['poss_time', 'helio', 'vs_start', 'vs_bench']) assert.equal(val(k).textContent, '…', k + ' waits for the play-by-play');
+  assert.ok(bound.includes('ortg') && bound.includes('ast_pct') && !bound.includes('bench_min_pct') && !bound.includes('helio'));
   giveBench(new Map([['A', { pct: 32.14, games: 5 }], ['B', { pct: 20, games: 5 }], ['C', { pct: 40, games: 4 }]]));
-  givePoss({ v: 14.2, note: new El('div') });
+  const L = (net, extra) => Object.assign({ ortg: 110 + net / 2, drtg: 110 - net / 2, net, mins: 40, poss: 80 }, extra || {});
+  giveLogs({ games: 3, oppClock: 15.06,
+    all: L(10, { sclock: 14.2, helio: 23.4, helioTop: 'p1', helioShare: 31.25, helioUsage: 33.3, helioEff: 3.6 }),
+    start: L(-4.5), bench: L(21) });
   await new Promise(r => setTimeout(r, 10));
-  assert.equal(byClass(row('bench_min_pct'), 'v')[0].textContent, '32.1');
+  assert.equal(val('bench_min_pct').textContent, '32.1');
   assert.match(row('bench_min_pct').textContent, /over 5 games with the starters on record/);
-  assert.equal(byClass(row('poss_time'), 'v')[0].textContent, '14.2 s');
-  assert.match(row('helio').textContent, /Ann Example · spread like \d\.\d equal users/);
   assert.ok(bound.includes('bench_min_pct'), 'once it is in, the bench opens its league chart too');
+  assert.equal(val('poss_time').textContent, '14.2 s');
+  assert.match(row('poss_time').textContent, /offence 14\.2 s.*defence 15\.1 s.*over 3 games of the club’s own logs/);
+  assert.equal(val('helio').textContent, '23.4');
+  assert.match(row('helio').textContent, /Ann Example used 31\.3% of the plays · usage 33\.3% while on · shared like 3\.6 equal hands of 5/);
+  assert.equal(val('vs_start').textContent, '-4.5'); assert.ok(val('vs_start').className.includes('bad'));
+  assert.equal(val('vs_bench').textContent, '+21.0'); assert.ok(val('vs_bench').className.includes('good'));
+  assert.match(row('vs_start').textContent, /ORTG107\.8DRTG112\.3vs all minutes−14\.5over 40 min · 80 possessions/);
+  assert.match(row('vs_bench').textContent, /vs all minutes\+11\.0/);
+});
+await aok('a reader without the play-by-play is told why, and the rest of the card stands', async () => {
+  const S = { teams: [{ id: 'A', ortg: 100, drtg: 100, net: 0 }, { id: 'B', ortg: 90, drtg: 95, net: -5 }], games: [] };
+  const host = new El('div');
+  SL.render(host, { S, mine: S.teams[0], logs: Promise.resolve({ why: 'for members, with the play-by-play' }) });
+  await new Promise(r => setTimeout(r, 10));
+  const row = k => walk(host, x => x.className === 'r' && x.dataset.k === k)[0];
+  for (const k of ['poss_time', 'helio', 'vs_start', 'vs_bench']) {
+    assert.equal(byClass(row(k), 'v')[0].textContent, '—'); assert.match(row(k).textContent, /for members, with the play-by-play/);
+  }
 });
 
 console.log('\nthe club\'s ELO beside its schedule (p/sos-chip.js)');
@@ -237,8 +244,8 @@ console.log('\nthe team table\'s defence + rebounding');
     for (const k of ['rb_rim_orb', 'rb_mid_orb', 'rb_three_orb', 'rb_rim_drb', 'rb_mid_drb', 'rb_three_drb']) assert.match(SI.info(k).formula, /\(own (OREB|DREB) \+ opponents’ (DREB|OREB)\)/);
   });
   ok('the season line\'s new rows are explained, and listed for the club page', () => {
-    for (const k of ['poss_time', 'ppp', 'morey', 'helio', 'bench_min_pct']) assert.ok(SI.info(k, 'team'), k);
-    assert.deepEqual(SL.KEYS, ['ortg', 'drtg', 'net', 'pace', 'poss_time', 'ppp', 'ts', 'ft_pct', 'morey', 'ast_pct', 'helio', 'bench_min_pct']);
+    for (const k of ['poss_time', 'ppp', 'morey', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench']) assert.ok(SI.info(k, 'team'), k);
+    assert.deepEqual(SL.KEYS, ['ortg', 'drtg', 'net', 'pace', 'poss_time', 'ppp', 'ts', 'ft_pct', 'morey', 'ast_pct', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench']);
     assert.deepEqual(SI.TEAM_KEYS.slice(0, SL.KEYS.length), SL.KEYS);
   });
 }
@@ -251,7 +258,8 @@ console.log('\nthe page');
   ok('the season line, the ratings and the chips are loaded before team.js', () => {
     const team = at('<script src="team.js?v=' + V + '" defer></script>');
     for (const s of ['<script src="seasonline.js?v=' + V + '" defer></script>', '<script src="../sos.js?v=' + V + '" defer></script>',
-                     '<script src="../p/sos-chip.js?v=' + V + '" defer></script>', '<script src="../shotclock.js?v=' + V + '" defer></script>'])
+                     '<script src="../p/sos-chip.js?v=' + V + '" defer></script>', '<script src="../shotclock.js?v=' + V + '" defer></script>',
+                     '<script src="../engine.js?v=' + V + '" defer></script>', '<script src="../lineupevents.js?v=' + V + '" defer></script>'])
       assert.ok(at(s) > 0 && at(s) < team, s);
   });
   ok('its stylesheets are in the head, after the cards\', and legibility.css is still the last', () => {
@@ -261,9 +269,14 @@ console.log('\nthe page');
     assert.equal(links[links.length - 1], '../kit/legibility.css');
   });
   const ts = tj.slice(tj.indexOf('async function teamStats'), tj.indexOf('/* ------------------------------------------------------------- shot zones --- */'));
-  ok('the season line card draws EpinoiaSeasonLine, with the club\'s possession and the bench read', () => {
+  ok('the season line card draws EpinoiaSeasonLine, with the club\'s play-by-play (members only) and the bench read', () => {
     const line = ts.slice(ts.indexOf("card('line', 'season line'"), ts.indexOf("card('zones'"));
-    assert.match(line, /SL\.render\(box, \{/); assert.match(line, /poss_time: ACCESS\.locked \?/); assert.match(line, /bench: benchMinutes\(S, team\)/);
+    assert.match(line, /SL\.render\(box, \{/); assert.match(line, /logs: ACCESS\.locked \?/); assert.match(line, /bench: benchMinutes\(S, team\)/);
+  });
+  ok('the club\'s logs are read through lineupevents.js, a game at a time, each game kept for the page\'s life', () => {
+    assert.match(tj, /async function clubLogs\(team, scoped\)/);
+    assert.match(tj, /LE\.gameSegments\(\{ id: g\.id, starters: g\.starters, events: byG\[g\.id\] \|\| \[\], period: g\.period \}\)/);
+    assert.match(tj, /LE\.recordsOf\(G, sideOf\[g\.id\]\)/); assert.match(tj, /SL\.logSummary\(recs, n, LE\)/); assert.match(tj, /segCache\.set\(g\.id, G\)/);
   });
   ok('the ELO and the schedule are painted beside the heading, over the same games', () => assert.match(ts, /EpinoiaSosChip\.paintClub\(th, \{ games: mine \? S\.games : null, teamId: team\.id \}\)/));
   ok('the bench read asks for the starters and the minutes only', () =>

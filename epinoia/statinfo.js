@@ -127,9 +127,11 @@ const INFO = {
   net: e('Net rating', 'Points scored minus points allowed per 100 possessions.', 'ORTG − DRTG', 'Higher is better. The best single number for a club’s strength.'),
   pace: e('Pace', 'How fast the club plays: possessions per 40 minutes, both sides averaged.', '(own + opponent possessions) ÷ 2 per 40 minutes', 'Neither good nor bad: it is a style.'),
   /* the club page's season line (t/seasonline.js) */
-  poss_time: e('Average possession', 'How long the club keeps the ball: game-clock seconds from winning it to the possession’s last action, from its own game logs.', 'timed seconds ÷ timed possessions', 'Neither good nor bad: a style. Shorter is quicker offence; the opponents’ figure beside it is how long the defence keeps them out.'),
+  poss_time: e('Average possession', 'How long the club keeps the ball: game-clock seconds from winning it to the possession’s last action, from its own game logs (the WOWY page’s shot clock).', 'timed seconds ÷ timed possessions', 'Neither good nor bad: a style. Shorter is quicker offence; the opponents’ figure beside it is how long the defence keeps them out.'),
   ppp: e('Points per possession', 'Points scored per possession.', 'points ÷ possessions (ORTG ÷ 100)', 'Higher is better. About 1.00 to 1.10 is typical.'),
   morey: e('MOREY%', 'The share of the club’s shots taken at the rim or from three, the two most efficient places to shoot from.', '(rim FGA + 3PA) ÷ FGA', 'A style: higher is a more modern shot diet. Only where a league’s box score splits the twos by zone.'),
+  vs_start: e('Against the starters', 'The club’s net rating in the minutes the other side had all five of its starters on the floor, with its ORTG and DRTG beside it.', 'NET over the minutes against the five starters of each game (lineupevents.js)', 'Higher is better: how it holds up against the other side’s best five.'),
+  vs_bench: e('Against the bench', 'The club’s net rating in the minutes the other side had two of its starters on the floor, or fewer.', 'NET over the minutes against two or fewer starters (lineupevents.js)', 'Higher is better: whether it beats the second units.'),
   bench_min_pct: e('Bench minutes %', 'The share of the club’s minutes played by those who did not start.', 'non-starters’ minutes ÷ all minutes, over the games with their starters on record', 'A style: high is a deep rotation, low leans on the starting five.'),
   reb_pg: e('Rebounds per game', 'Rebounds the club collects in an average game.', 'rebounds ÷ games', 'More is better, though it also follows how many misses there were.'),
   ast_pg: e('Assists per game', 'Assists the club records in an average game.', 'assists ÷ games', 'More is better: ball movement.'),
@@ -160,7 +162,7 @@ const INFO = {
   rb_all_drb: e('DRB% on every opponents’ miss', 'Of all the opponents’ misses that somebody rebounded, the share the club took.', 'own DREB after an opponent’s miss ÷ (own DREB + opponents’ OREB) after one', 'Higher is better: the possession ends.')
 };
 
-const TEAM_KEYS = ['ortg', 'drtg', 'net', 'pace', 'poss_time', 'ppp', 'ts', 'ft_pct', 'morey', 'ast_pct', 'helio', 'bench_min_pct',
+const TEAM_KEYS = ['ortg', 'drtg', 'net', 'pace', 'poss_time', 'ppp', 'ts', 'ft_pct', 'morey', 'ast_pct', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench',
   'ff_efg', 'ff_tov', 'ff_oreb', 'ff_ftr', 'dff_efg', 'dff_tov', 'dff_oreb', 'dff_ftr'];
 
 /* the MAIN stats of each League percentile card: what the '?' panel lists */
@@ -177,6 +179,7 @@ const TEAM_GROUPS = [
   { key: 'tempo', title: 'tempo', keys: ['pace', 'poss_time'] },
   { key: 'efficiency', title: 'efficiency', keys: ['ppp', 'ts', 'ft_pct', 'morey'] },
   { key: 'distribution', title: 'distribution', keys: ['ast_pct', 'helio', 'bench_min_pct'] },
+  { key: 'matchups', title: 'against starters & bench', keys: ['vs_start', 'vs_bench'] },
   { key: 'four factors', title: 'four factors', keys: ['ff_efg', 'ff_tov', 'ff_oreb', 'ff_ftr', 'dff_efg', 'dff_tov', 'dff_oreb', 'dff_ftr'] }
 ];
 

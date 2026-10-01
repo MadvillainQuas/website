@@ -870,10 +870,11 @@ async function teamStats(team, kind) {
     return grid;
   }, 'own · allowed');
 
-  /* THE SEASON LINE (t/seasonline.js): the three ratings on a row of their own, then tempo, efficiency and how the ball
-     and the minutes are shared, each against every club in the scope. The possession is timed from the club's own logs
-     (members only, as the shot clock analysis is); the bench's minutes need each game's starters and the players'
-     minutes, read once per scope. */
+  /* THE SEASON LINE (t/seasonline.js): the three ratings on a row of their own, then tempo, efficiency, how the ball
+     and the minutes are shared, and the ratings against the other side's starters and its bench. The rows the season
+     can rank are ranked among every club in the scope; the possession, heliocentrism and the two against-starters rows
+     are the club's own play-by-play, read as the WOWY page reads it (members only, as that is); the bench's minutes
+     need each game's starters and the players' minutes, read once per scope. */
   card('line', 'season line', () => {
     const box = el('div');
     const SL = window.EpinoiaSeasonLine;
@@ -882,7 +883,7 @@ async function teamStats(team, kind) {
     SL.render(box, {
       S, mine,
       bind: (node, d) => teamStatBind(node, d.k, d.l, S, mine, team),
-      club: { poss_time: ACCESS.locked ? Promise.resolve({ v: null, why: 'for members, with the shot clock analysis' }) : clubPossTime(team, scoped) },
+      logs: ACCESS.locked ? Promise.resolve({ why: 'for members, with the play-by-play' }) : clubLogs(team, scoped),
       bench: benchMinutes(S, team),
       nameOf: id => metaP.then(m => (m && m[id] && m[id].name && m[id].name !== 'Player') ? m[id].name : null)
     });
@@ -954,16 +955,32 @@ async function teamStats(team, kind) {
   }
 }
 
-/* THE AVERAGE POSSESSION, own and opponents', from the club's own logs (the shot clock's reading), over the games of
-   the scope the season line is showing */
-async function clubPossTime(team, scoped) {
-  const SCk = window.EpinoiaShotClock, SL = window.EpinoiaSeasonLine;
-  if (!SCk || !SL) return { v: null, why: 'not available on this page' };
+/* THE CLUB'S PLAY-BY-PLAY, read the way the WOWY page reads it (lineupevents.js): every logged game of the scope
+   replayed into the stretches in which neither five changed, from the club's side, then summed (seasonline.js
+   logSummary): the possession, heliocentrism, and the ratings against the other side's starters and its bench. A game
+   at a time, so the page stays responsive; each game's segments kept for the page's life, so a scope read again is
+   only summed again. */
+const segCache = new Map();
+async function clubLogs(team, scoped) {
+  const LE = window.EpinoiaLineupEvents, SL = window.EpinoiaSeasonLine;
+  if (!LE || !SL) return { why: 'not available on this page' };
   const { gs, byG, sideOf } = await seasonLogs(team);
   const games = gs.filter(g => scoped.has(g.id));
-  if (!games.length) return { v: null, why: 'no game log in this scope yet' };
-  const x = SL.possTime(games.map(g => ({ side: sideOf[g.id], events: byG[g.id] || [] })), SCk.compute);
-  return SL.possNote(x, x.games);
+  if (!games.length) return { why: 'no game log in this scope yet' };
+  const recs = [];
+  let n = 0;
+  for (const g of games) {
+    let G = segCache.get(g.id);
+    if (!G) {
+      try { G = LE.gameSegments({ id: g.id, starters: g.starters, events: byG[g.id] || [], period: g.period }); } catch (_) { G = { ok: false }; }
+      segCache.set(g.id, G);
+      await new Promise(r => setTimeout(r, 0));
+    }
+    if (!G.ok) continue;
+    n++;
+    LE.recordsOf(G, sideOf[g.id]).forEach(r => recs.push(r));
+  }
+  return SL.logSummary(recs, n, LE) || { why: 'no game with its starters on record yet' };
 }
 
 /* THE BENCH'S MINUTES for every club in the scope: each game's starters and every player's minutes (two small reads a

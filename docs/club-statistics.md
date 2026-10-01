@@ -24,22 +24,28 @@ Both read the games the section already loaded, and both need three games. Tappi
 
 Better is always to the right, so on the DRTG strip the lowest rating is on the right.
 
-**Then one table, in three groups.** Each row has the value, the same strip, the rank and the gap to the average.
+**Then one table, in four groups.** A row the season can rank has the value, the same strip, the rank and the gap to the average.
 
 | Group | Row | How it is counted |
 | --- | --- | --- |
 | Tempo | **PACE** | Possessions per 40 minutes, both sides averaged. |
-| | **AVG POSSESSION** | Game-clock seconds from winning the ball to the possession's last action (`shotclock.js`), from the club's own logs. The opponents' average is beside it. The other clubs' logs are not read on this page, so it is not ranked. Members only, as the shot clock analysis is. |
+| | **AVG POSSESSION** | Game-clock seconds from winning the ball to the possession's last action (`shotclock.js`). The opponents' average is beside it. |
 | Efficiency | **PPP** | Points per possession (ORTG ÷ 100). |
 | | **TS%**, **FT%** | As everywhere else. |
 | | **MOREY%** | The share of the club's shots taken at the rim or from three. Only where the league's box score splits the twos by zone. |
 | Distribution | **AST%** | The share of the club's baskets that were assisted. |
-| | **HELIOCENTRISM%** | How much the club depends on one player, through usage. It is the share of the club's used possessions (FGA + 0.44 × FTA + TOV) that its busiest player used. The player is named beside it. So is how evenly the ball is shared: "spread like 5.8 equal users" (1 ÷ the sum of every player's squared share). |
+| | **HELIOCENTRISM** | How much of the offence runs through one player, from 0 (five equal hands) to 100 (one player uses every play). This is the WOWY page's measure. Each player's usage is shared out within every five he played in, and the Herfindahl index of the shares is averaged over the fives by the plays they used. The top user, his share of the plays and his usage are beside it. |
 | | **BENCH MINS%** | The share of the club's minutes played by those who did not start. It comes from each game's starters and the players' minutes. A side whose starters were never recorded is left out. |
+| Against starters & bench | **VS STARTERS** | The club's NET, with its ORTG and DRTG, in the minutes the other side had all five of its starters on. Beside it: the gap to the club's NET over every minute, and the sample. |
+| | **VS BENCH** | The same, in the minutes the other side had two of its starters on, or fewer. (Three or four is "mixed", on the WOWY page.) |
+
+**From the play-by-play.** Four rows come from the club's own game logs, read the way the WOWY page reads them (`lineupevents.js`): the average possession, heliocentrism, VS STARTERS and VS BENCH. So these numbers are the WOWY page's own: one definition on the site.
+
+- **Not ranked.** The other clubs' logs are not read on this page.
+- **Members only**, as the shot clock analysis and the WOWY page's play-by-play are.
+- **Read once.** The logs are read a game at a time, and each game is kept for the page's life.
 
 Style rows have no good end: pace, the possession, MOREY%, AST%, heliocentrism and the bench. They are ranked by "most", drawn in one colour, and the ends of their strips say what each way means.
-
-**Not there yet:** the club's ratings against the other side's starters and against its bench. They wait for the WOWY work, so that the two are not built twice.
 
 ## Shot zones and what became of every shot attempt
 
@@ -77,7 +83,8 @@ The words are in Spanish and Japanese. The short ones have contexts of their own
 
 `supabase/tests/seasonline.test.mjs` checks:
 
-- heliocentrism, the bench's minutes, the possession, MOREY% and the ranks, worked out by hand;
+- the bench's minutes, MOREY% and the ranks, worked out by hand;
+- the play-by-play summed through the real `lineupevents.js`;
 - the card drawn on a stand-in document, with its late rows filling in;
 - the ELO chip;
 - ORB% and DRB% by zone;
