@@ -647,18 +647,19 @@ function factTimeLed(g) {
   const ev = g.events || [];
   if (!clocked(ev) || g.score[0] === g.score[1]) return out;
   let s = [0, 0], led = [0, 0], level = 0, last = 0, first = null, levelled = 0, trailedAt = [false, false];
+  const H = halvesOf(g);
   const upTo = t => { const d = Math.max(0, t - last); const diff = s[0] - s[1]; if (diff > 0) led[0] += d; else if (diff < 0) led[1] += d; else level += d; last = t; };
   ev.forEach(e => {
     const v = SCORE_PTS[e.t];
     if (!v || e.team == null || e.clock == null) return;
-    upTo(elapsed(e.period, e.clock));
+    upTo(elapsed(e.period, e.clock, H));
     s[e.team] += v;
     if (first == null) first = e.team;
     if (s[0] === s[1]) levelled++;                                   // the score was level again after a basket
     else if (s[0] > s[1]) trailedAt[1] = true; else trailedAt[0] = true;   // somebody was behind, if only for a moment
   });
   let total = 0;
-  for (let p = 1; p <= (g.periods || 4); p++) total += PLEN_(p);
+  for (let p = 1; p <= (g.periods || regOf(g)); p++) total += PLEN_(p, H);
   upTo(total);
   if (total <= 0) return out;
   const w = g.score[0] > g.score[1] ? 0 : 1;
@@ -836,11 +837,16 @@ function factSeasonContext(g) {
 
 /* elapsed ms from the tip to (period, clock-remaining) — the same arithmetic
    the engine uses for minutes, kept local so a brief from any source works */
-const PLEN_ = p => (p <= 4 ? 600000 : 300000);
-function elapsed(period, clock) {
+/* quarters, or NCAA men's two 20-minute halves: the brief says (g.reg, gamefacts.js, from the engine's
+   format), else the log does -- a first- or second-period clock above 10:00 is a half */
+const PLEN_ = (p, h) => (h ? (p <= 2 ? 1200000 : 300000) : (p <= 4 ? 600000 : 300000));
+const halvesOf = g => (g && g.reg != null) ? g.reg === 2
+  : !!(g && g.events && g.events.some(e => e && (+e.period || 1) <= 2 && +e.clock > 600000));
+const regOf = g => (halvesOf(g) ? 2 : 4);
+function elapsed(period, clock, h) {
   let t = 0;
-  for (let p = 1; p < (period || 1); p++) t += PLEN_(p);
-  return t + (PLEN_(period || 1) - (clock == null ? 0 : clock));
+  for (let p = 1; p < (period || 1); p++) t += PLEN_(p, h);
+  return t + (PLEN_(period || 1, h) - (clock == null ? 0 : clock));
 }
 const SCORE_PTS = { p2_made: 2, p3_made: 3, ft_made: 1 };
 /* does the log carry a clock at all? a bulk import may not */
@@ -853,9 +859,11 @@ function clocked(ev) {
 /* ---- the half: where it stood at the break, and what the second half did -- */
 function factHalf(g) {
   const out = [];
-  if (!g.perQ || g.periods < 4) return out;
+  const reg = regOf(g);              // 4 quarters, or 2 halves: the first half is periods 1..reg/2
+  if (!g.perQ || g.periods < reg) return out;
   const per = g.perQ;
-  const h1 = [(per[0][1] || 0) + (per[0][2] || 0), (per[1][1] || 0) + (per[1][2] || 0)];
+  const h1 = [0, 0];
+  for (let p = 1; p <= reg / 2; p++) { h1[0] += per[0][p] || 0; h1[1] += per[1][p] || 0; }
   const h2 = [g.score[0] - h1[0], g.score[1] - h1[1]];          // OT included
   const w = g.score[0] >= g.score[1] ? 0 : 1;
   const halfLead = h1[w] - h1[1 - w];
@@ -870,11 +878,11 @@ function factHalf(g) {
     out.push(F('secondHalfSurge', w, 66, { secondHalf, h2, halfLead },
       g.names[w] + ' won the second half by ' + secondHalf));
   }
-  if (g.periods > 4) {
+  if (g.periods > reg) {
     const ot = [0, 0];
-    for (let p = 5; p <= g.periods; p++) { ot[0] += per[0][p] || 0; ot[1] += per[1][p] || 0; }
-    const reg = [g.score[0] - ot[0], g.score[1] - ot[1]];
-    out.push(F('overtime', w, 93, { ots: g.periods - 4, ot, reg },
+    for (let p = reg + 1; p <= g.periods; p++) { ot[0] += per[0][p] || 0; ot[1] += per[1][p] || 0; }
+    const regScore = [g.score[0] - ot[0], g.score[1] - ot[1]];
+    out.push(F('overtime', w, 93, { ots: g.periods - reg, ot, reg: regScore },
       g.names[w] + ' won in overtime'));
   }
   return out;
@@ -1041,12 +1049,12 @@ function factTexture(g) {
   const s = [0, 0];
   let ties = 0, early = null;
   const lastFG = [null, null], worst = [null, null];
-  const hasClock = clocked(ev);
+  const hasClock = clocked(ev), H = halvesOf(g);
   ev.forEach(e => {
     const v = SCORE_PTS[e.t];
     if (e.t === 'period_start' && hasClock) {
       /* a drought does not run through the interval */
-      for (const t of [0, 1]) lastFG[t] = elapsed(e.period, PLEN_(e.period));
+      for (const t of [0, 1]) lastFG[t] = elapsed(e.period, PLEN_(e.period, H), H);
     }
     if (!v || e.team == null) return;
     s[e.team] += v;
@@ -1056,7 +1064,7 @@ function factTexture(g) {
       if (Math.abs(d) >= 8 && Math.min(s[0], s[1]) <= 6) early = { side: d > 0 ? 0 : 1, score: s.slice() };
     }
     if (hasClock && e.t !== 'ft_made') {
-      const now = elapsed(e.period || 1, e.clock);
+      const now = elapsed(e.period || 1, e.clock, H);
       const t = e.team;
       if (lastFG[t] != null) {
         const gap = now - lastFG[t];

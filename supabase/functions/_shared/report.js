@@ -1973,7 +1973,9 @@ function halftime(g) {
   /* ---- standfirst: how the two quarters went, then who is carrying it ---- */
   const q = p => [(g.perQ[0][p] || 0), (g.perQ[1][p] || 0)];
   const won = s => (s[0] > s[1] ? 0 : s[0] < s[1] ? 1 : null);
-  const q1 = q(1), q2 = q(2), w1 = won(q1), w2 = won(q2);
+  /* a game in halves has no quarters to compare at the break: the lead alone is the story */
+  const inHalves = g.reg === 2;
+  const q1 = q(1), q2 = q(2), w1 = inHalves ? null : won(q1), w2 = inHalves ? null : won(q2);
   const qs = (s, t) => s[t] + '–' + s[1 - t];
   let lede;
   if (L == null) {
@@ -2120,7 +2122,7 @@ function verifyClaims(g, fs, text) {
   for (let p = 1; p <= (g.periods || 4); p++) {
     const a = (g.perQ && g.perQ[0] && g.perQ[0][p]) || 0, b = (g.perQ && g.perQ[1] && g.perQ[1][p]) || 0;
     addPair(a, b);
-    if (p <= 2) { h0 += a; h1 += b; } else { h2a += a; h2b += b; }
+    if (p <= (g.reg || 4) / 2) { h0 += a; h1 += b; } else { h2a += a; h2b += b; }
   }
   addPair(h0, h1); addPair(h2a, h2b);
   const run = fs.find(f => f.kind === 'run');

@@ -29,10 +29,14 @@
   else root.EpinoiaConnections = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
-const PLEN = p => (p <= 4 ? 600000 : 300000);
-function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); return s + (PLEN(p) - clk); }
+/* QUARTERS OR HALVES (engine.js formatOf, docs/ncaa-readiness.md): a first- or second-period clock
+   above 10:00 can only be one of NCAA men's two 20-minute halves; then 5-minute overtimes either way. */
+const halvesIn = evs => !!evs && evs.some(e => e && (+e.period || 1) <= 2 && +e.clock > 600000);
+const PLEN = (p, h) => (h ? (p <= 2 ? 1200000 : 300000) : (p <= 4 ? 600000 : 300000));
+function cumEl(p, clk, h) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q, h); return s + (PLEN(p, h) - clk); }
 function inGameOrder(evs) {
-  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1)) }));
+  const h = halvesIn(evs);
+  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, h), h) }));
   keyed.sort((a, b) => (a.k - b.k) || (a.i - b.i));
   return keyed.map(x => x.ev);
 }

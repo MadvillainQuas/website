@@ -543,7 +543,7 @@ function exportClips() {
 
 /* perName/fmtClock live on the engine; the page has them as free variables in
    its own scope but this module does not, so they are reached deliberately. */
-function perName(p) { return root0().EpinoiaEngine.perName(p); }
+function perName(p) { const E = root0().EpinoiaEngine, S = root0().S; return E.perName(p, E.formatOf && S ? E.formatOf(S) : undefined); }
 function fmtClock(ms) { return root0().EpinoiaEngine.fmtClock(ms); }
 
 /* ------------------------------------------------------- export highlights --- */

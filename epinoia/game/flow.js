@@ -68,13 +68,20 @@
   else root.EpinoiaGameFlow = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
-const PLEN = p => (p <= 4 ? 600000 : 300000);
-function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); return s + (PLEN(p) - clk); }
+/* QUARTERS OR HALVES (engine.js formatOf, docs/ncaa-readiness.md): a first- or second-period clock
+   above 10:00 can only be one of NCAA men's two 20-minute halves; then 5-minute overtimes either way.
+   compute() and timeline() read it off the log they are given; the labels below default to the game
+   compute() last read (curH), because this module draws one game per page. */
+const halvesIn = evs => !!evs && evs.some(e => e && (+e.period || 1) <= 2 && +e.clock > 600000);
+const PLEN = (p, h) => (h ? (p <= 2 ? 1200000 : 300000) : (p <= 4 ? 600000 : 300000));
+function cumEl(p, clk, h) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q, h); return s + (PLEN(p, h) - clk); }
+let curH = false;
+const perLabel = (p, h) => (h ? (p <= 2 ? 'H' + p : 'OT' + (p - 2)) : (p <= 4 ? 'Q' + p : 'OT' + (p - 4)));
 
 /* engine.js's own ordering (inGameOrder): by game time, ties kept in log order,
    so an assist or a free throw stays behind the play it belongs to */
-function inGameOrder(evs) {
-  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1)) }));
+function inGameOrder(evs, h) {
+  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, h), h) }));
   keyed.sort((a, b) => (a.k - b.k) || (a.i - b.i));
   return keyed.map(x => x.ev);
 }
@@ -97,7 +104,7 @@ function formatDuration(seconds) {
   return Math.floor(s / 60) + "'" + String(s % 60).padStart(2, '0') + '"';
 }
 
-const periodEnd = p => (p <= 4 ? p * 600 : 2400 + (p - 4) * 300);
+const periodEnd = (p, h = curH) => (h ? (p <= 2 ? p * 1200 : 2400 + (p - 2) * 300) : (p <= 4 ? p * 600 : 2400 + (p - 4) * 300));
 
 /* ---------------------------------------------------------------- compute --- */
 function compute(S) {
@@ -161,10 +168,11 @@ function compute(S) {
   };
 
   let period = 1, lastElapsed = 0;
-  inGameOrder((S && S.events) || []).forEach(ev => {
+  const H = curH = halvesIn((S && S.events) || []);
+  inGameOrder((S && S.events) || [], H).forEach(ev => {
     const p = ev.period || 1;
     period = Math.max(period, p);
-    const elapsed = cumEl(p, ev.clock != null ? ev.clock : PLEN(p)) / 1000;
+    const elapsed = cumEl(p, ev.clock != null ? ev.clock : PLEN(p, H), H) / 1000;
     lastElapsed = elapsed;
     const t = ev.team;
 
@@ -202,12 +210,12 @@ function compute(S) {
         finalize();
         run = {
           team: t, pts, players: { [ev.pid]: pts }, order: [ev.pid], baskets: [{ id: idOf(ev), pid: ev.pid }],
-          startElapsed: elapsed, startPeriod: p, startClock: ev.clock != null ? ev.clock : PLEN(p),
+          startElapsed: elapsed, startPeriod: p, startClock: ev.clock != null ? ev.clock : PLEN(p, H),
           startHome: R[0].points - (t === 0 ? pts : 0), startAway: R[1].points - (t === 1 ? pts : 0),
           lineup: [...onCourt[t]]
         };
       }
-      run.endElapsed = elapsed; run.endPeriod = p; run.endClock = ev.clock != null ? ev.clock : PLEN(p);
+      run.endElapsed = elapsed; run.endPeriod = p; run.endClock = ev.clock != null ? ev.clock : PLEN(p, H);
       run.endHome = R[0].points; run.endAway = R[1].points;
     }
 
@@ -241,7 +249,7 @@ function compute(S) {
   });
   finalize();                                        // the run the game ended on
 
-  return { points, playerRuns, teamRuns, summary: summarise(points), period, lastElapsed, lineups };
+  return { points, playerRuns, teamRuns, summary: summarise(points), period, lastElapsed, lineups, halves: H };
 }
 
 /* renderGameFlowTab's strip: lead changes and runs read off the flow points */
@@ -276,11 +284,12 @@ const pct = (v, of) => (100 * v / of).toFixed(3);
    is all of it - a live game's charts are drawn on the same width, filled as far as it has got. Seconds. */
 function timeline(S) {
   const events = ((S && S.events) || []).filter(Boolean);
+  const h = halvesIn(events);
   const seen = events.reduce((m, e) => Math.max(m, e.period || 1), 1);
-  const nP = Math.max(4, (S && S.period) || 1, seen);
+  const nP = Math.max(h ? 2 : 4, (S && S.period) || 1, seen);
   const periods = [];
-  for (let n = 1; n <= nP; n++) periods.push({ n, label: n <= 4 ? 'Q' + n : 'OT' + (n - 4), from: n === 1 ? 0 : periodEnd(n - 1), to: periodEnd(n) });
-  return { periods, total: periodEnd(nP) };
+  for (let n = 1; n <= nP; n++) periods.push({ n, label: perLabel(n, h), from: n === 1 ? 0 : periodEnd(n - 1, h), to: periodEnd(n, h) });
+  return { periods, total: periodEnd(nP, h), halves: h };
 }
 const xOf = (sec, tl) => Math.max(0, Math.min(VW, sec / tl.total * VW));
 
@@ -369,7 +378,7 @@ function stateAt(model, sec) {
   const pi = at(model.points, 'elapsed'), li = at(model.lineups, 'sec');
   const pt = pi >= 0 ? model.points[pi] : null;
   return {
-    sec, period: p.n, clock: clockText(p.n, Math.max(0, (p.to - Math.min(sec, p.to)) * 1000)),
+    sec, period: p.n, clock: clockText(p.n, Math.max(0, (p.to - Math.min(sec, p.to)) * 1000), tl.halves),
     score: pt ? [pt.homePoints, pt.awayPoints] : [0, 0], margin: pt ? pt.margin : 0,
     on: li >= 0 ? model.lineups[li].on : [[], []]
   };
@@ -466,9 +475,9 @@ const sideCls = v => (v >= 0 ? 'gf-home' : 'gf-away');
    tooltip — the run, where it started and finished on the game clock, the score either
    side of it, who scored most and the five on the floor — as text a phone can read, in
    game order, under the same numbers. Hovering or tapping either lights the other. */
-const clockText = (period, ms) => {
+const clockText = (period, ms, h = curH) => {
   const s = Math.ceil(Math.max(0, ms || 0) / 1000);                 // boxscore.js fmtClock
-  return (period <= 4 ? 'Q' + period : 'OT' + (period - 4)) + ' ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  return perLabel(period, h) + ' ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 };
 const whenText = r => {
   const a = clockText(r.startPeriod, r.startClock), b = clockText(r.endPeriod, r.endClock);
@@ -485,9 +494,9 @@ function runsCharts(F, names, watch) {
 
   let dividers = '', quarters = '';
   for (let p = 1; p <= maxPeriod; p++) {
-    const a = pct(p === 1 ? 0 : periodEnd(p - 1)), b = pct(periodEnd(p));
+    const a = pct(p === 1 ? 0 : periodEnd(p - 1, F.halves)), b = pct(periodEnd(p, F.halves));
     if (p > 1) dividers += '<span class="gf-strip-div" style="left:' + a.toFixed(2) + '%"></span>';
-    if (b > a) quarters += '<span class="gf-strip-q" style="left:' + ((a + b) / 2).toFixed(2) + '%">' + (p <= 4 ? 'Q' + p : 'OT' + (p - 4)) + '</span>';
+    if (b > a) quarters += '<span class="gf-strip-q" style="left:' + ((a + b) / 2).toFixed(2) + '%">' + perLabel(p, F.halves) + '</span>';
   }
 
   const chart = (runs, kind, emptyText, rowHTML) => {
@@ -693,7 +702,7 @@ let model = null;                       // the last render's, for the hover
 function setModel(S, F, names) {
   const tl = timeline(S);
   const until = S && S.status === 'final' ? tl.total
-    : Math.max(F.lastElapsed || 0, S && S.clockMs != null && S.period ? cumEl(S.period, S.clockMs) / 1000 : 0);
+    : Math.max(F.lastElapsed || 0, S && S.clockMs != null && S.period ? cumEl(S.period, S.clockMs, tl.halves) / 1000 : 0);
   model = { tl, points: F.points, lineups: F.lineups, until, names };
   return tl;
 }

@@ -49,7 +49,7 @@ function cardQuarters(g) {
         '<span class="rq-b" style="height:' + Math.round(b / max * 100) + '%"></span>' +
       '</div>' +
       '<div class="rq-n"><b>' + a + '</b><b>' + b + '</b></div>' +
-      '<div class="rq-p">' + (p > 4 ? 'OT' + (p - 4) : 'Q' + p) + '</div>' +
+      '<div class="rq-p">' + (p > (g.reg || 4) ? 'OT' + (p - (g.reg || 4)) : ((g.reg || 4) === 2 ? 'H' : 'Q') + p) + '</div>' +
     '</div>';
   }
   return '<div class="rcard"><div class="rcard-h">Scoring by period</div>' +

@@ -63,6 +63,8 @@ function brief(S, d, B) {
     names, score: d.score.slice(), players, byId, assists, atop, connections, sitPlayers, clock,
     team: [d.team[0], d.team[1]], adv, lineups, stints,
     perQ: d.perQ, periods, events: S.events || [], sits,
+    /* regulation periods: 4 quarters, or NCAA men's 2 halves (the engine's format) */
+    reg: (d.format && d.format.periods) || 4,
     /* who started, so a 20-point night off the bench can be called that */
     starters: S.starters || [[], []],
     /* where and when: the fixture's own facts, for the dateline */

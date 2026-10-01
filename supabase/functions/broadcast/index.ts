@@ -29,7 +29,7 @@
    invisible in rehearsal and obvious on air.
    ============================================================================ */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { deriveGame, timeoutsLeft } from '../_shared/engine.js';
+import { deriveGame, timeoutsLeft, formatOf, perName } from '../_shared/engine.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +41,8 @@ const NOCACHE = { 'Cache-Control': 'no-store, must-revalidate' };
 const URL_ = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-const periodLabel = (p: number) => (p <= 4 ? 'Q' + p : 'OT' + (p - 4));
+/* 'Q3', or 'H2' for a game in halves (NCAA men; engine formatOf reads it off the log) */
+const periodLabel = (p: number, f?: any) => perName(p, f).toUpperCase();
 
 function mmss(ms: number) {
   const t = Math.max(0, ms || 0);
@@ -270,7 +271,8 @@ Deno.serve(async (req: Request) => {
 
   const teamOf = (t: number) => {
     const T = d ? d.team[t] : null;
-    const fouls = T?.foulsP ? (T.foulsP[period > 4 ? 4 : period] || 0) : 0;
+    const F = d?.format || formatOf(S);
+    const fouls = T?.foulsP ? (T.foulsP[period > F.periods ? F.periods : period] || 0) : 0;
     const src = t === 0 ? game.home : game.away;
     return {
       name: S.teams[t]?.name || '',
@@ -278,7 +280,7 @@ Deno.serve(async (req: Request) => {
       colour: src?.colour || S.teams[t]?.color || '',
       score: d ? d.score[t] : (t === 0 ? game.home_score : game.away_score) || 0,
       periodFouls: fouls,
-      bonus: fouls >= 5,
+      bonus: fouls >= (F.periods === 2 ? 7 : 5),
       timeoutsLeft: d ? timeoutsLeft(S, d, t) : null,
       onCourt: d ? d.onCourt[t].map((pid: string) => card(t, pid)) : []
     };
@@ -304,7 +306,7 @@ Deno.serve(async (req: Request) => {
       /* the same substitution the browser layer makes, so a template bound to this
          and a browser source in the same show never disagree at the buzzer */
       period,
-      periodLabel: game.status === 'final' ? 'FINAL' : periodLabel(period),
+      periodLabel: game.status === 'final' ? 'FINAL' : periodLabel(period, formatOf(S)),
       ms: clockMs,
       display: game.status === 'final' ? 'FIN' : mmss(clockMs),
       final: game.status === 'final',

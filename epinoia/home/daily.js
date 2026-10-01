@@ -42,6 +42,12 @@
   const LIVE_MS = 15000, IDLE_MS = 30000, N = 8;
   /* SHOW MORE: eight a press, forty at most (then the full fixtures page) */
   const STEP = 8, CAP = 40;
+  /* LIVE shows its first 20, then SHOW MORE adds 20 at a time, with no cap: every live game is already in hand, so a
+     press fetches nothing. UPCOMING and RESULTS keep their eight, then eight a press, to 40. */
+  const LIVE_N = 20, LIVE_STEP = 20;
+  const firstOf = m => (m === 'live' ? LIVE_N : N);
+  const stepOf = m => (m === 'live' ? LIVE_STEP : STEP);
+  const capOf = m => (m === 'live' ? Infinity : CAP);
   /* a page of a read: what the upcoming and the results reads ask for at a time */
   const PAGE = 40;
 
@@ -55,7 +61,7 @@
   const PER_LEAGUE = 3;
   let mode = null, chosen = null;
   try { const v = sessionStorage.getItem(MODE_KEY); if (v === 'live' || v === 'up' || v === 'res') chosen = v; } catch (_) { /* private mode */ }
-  const limit = { live: Infinity, up: N, res: N };
+  const limit = { live: LIVE_N, up: N, res: N };
 
   function hidden() { return typeof document !== 'undefined' && document.visibilityState === 'hidden'; }
   function reduced() {
@@ -148,7 +154,7 @@
     const tab = pick.tab;
     let rows, avail;
     if (tab === 'live') {
-      rows = lives; avail = lives.length;
+      rows = lives.slice(0, limit.live); avail = lives.length;
     } else if (tab === 'res') {
       const held = await results(G, now, limit.res + 1);
       const all = G.pickResults(held, N, limit.res + 1, PER_LEAGUE);
@@ -253,7 +259,7 @@
     }
 
     /* MORE LIVE GAMES THAN THE RAIL HOLDS: split by league, one dropdown row each, the shape of MY FOLLOWED's rows */
-    if (isSplit(data)) { drawSplit(G, data, first); return; }
+    if (isSplit(data)) { drawSplit(G, data, first, o || {}); return; }
 
     /* the old rail's scroll position, and what had focus, survive a redraw */
     const old = host.querySelector('.fxc-rail');
@@ -304,11 +310,10 @@
 
   /* SHOW MORE / SHOW LESS / ALL FIXTURES under the cards. Nothing at all when the tab's first eight are all there is. */
   function moreBar(data) {
-    if (data.mode === 'live') return null;
     const G = window.EpinoiaGlobalGames;
-    const shown = data.rows.length;
-    const step = G.moreStep(shown, data.avail, STEP, CAP);
-    const open = data.limit > N && shown > N;
+    const shown = data.rows.length, F = firstOf(data.mode);
+    const step = G.moreStep(shown, data.avail, stepOf(data.mode), capOf(data.mode));
+    const open = data.limit > F && shown > F;
     if (!step.more && !open) return null;
     const bar = document.createElement('div');
     bar.className = 'fx-more';
@@ -322,7 +327,7 @@
       b.textContent = 'Show more';
       b.addEventListener('click', () => showMore(b));
       bar.appendChild(b);
-    } else {
+    } else if (data.mode !== 'live') {
       const a = document.createElement('a');
       a.className = 'ep-btn fx-all';
       a.href = base + 'games/';
@@ -353,7 +358,7 @@
     if (!lastData || lastData.mode !== mode || !btn || btn.disabled && !tries) return;
     const m = mode, G = window.EpinoiaGlobalGames;
     const shown = lastData.rows.length;
-    limit[m] = G.moreStep(shown, lastData.avail, STEP, CAP).next;
+    limit[m] = G.moreStep(shown, lastData.avail, stepOf(m), capOf(m)).next;
     busy = true;
     btn.disabled = true;
     btn.setAttribute('aria-busy', 'true');
@@ -373,8 +378,9 @@
     if (busy || !lastData) return;
     const m = mode;
     const h0 = host.offsetHeight;
-    limit[m] = N;
-    const d = Object.assign({}, lastData, { rows: lastData.rows.slice(0, N), limit: N, avail: Math.max(lastData.avail, lastData.rows.length) });
+    const F = firstOf(m);
+    limit[m] = F;
+    const d = Object.assign({}, lastData, { rows: lastData.rows.slice(0, F), limit: F, avail: Math.max(lastData.avail, lastData.rows.length) });
     draw(d, false, { force: true, h0 });
     const more = host.querySelector('[data-act="more"]');
     if (more) more.focus({ preventScroll: true });
@@ -386,13 +392,13 @@
   /* THE LIVE GAMES BY LEAGUE. With more than eight live, one long rail says nothing about where they are, so above
      eight they are split into a row per league, in the order the games arrive (a followed league first), each row a
      dropdown like the ones in MY FOLLOWED (the league's badge, how many are live, a link to the league) open on that
-     league's cards, which then need no badge of their own. Every live game is shown, so the LIVE tab needs no SHOW
-     MORE. What a reader shuts stays shut, and each row's sideways scroll stays put, across the redraws of a live night. */
+     league's cards, which then need no badge of their own. Above 20 live, the first 20 are shown and SHOW MORE adds
+     20 a press (all of them are already read, so it fetches nothing). What a reader shuts stays shut, and each row's sideways scroll stays put, across the redraws of a live night. */
   const shut = new Set();
   function isSplit(data) {
     return data.mode === 'live' && data.rows.length > N;
   }
-  function drawSplit(G, data, first) {
+  function drawSplit(G, data, first, o) {
     const groups = new Map();
     data.rows.forEach(g => {
       const l = G.leagueOf ? G.leagueOf(g) : null;
@@ -444,8 +450,21 @@
       if (lefts.get(gr.key)) setTimeout(() => { rail.scrollLeft = lefts.get(gr.key); }, 0);
     });
     host.textContent = '';
+    if (fellNote) host.appendChild(note());
     host.appendChild(wrap);
+    /* above 20 live: SHOW MORE / SHOW LESS under the rows, the new cards revealed the way the rail's are */
+    const foot = moreBar(data);
+    if (foot) host.appendChild(foot);
     if (first) H.fadeIn(wrap);
+    if (o.reveal != null) {
+      const cards = Array.from(wrap.querySelectorAll('.fxc'));
+      wipeIn(cards, o.reveal);
+      growFrom(o.h0);
+      const c = cards[o.reveal];
+      if (c && typeof c.focus === 'function') c.focus({ preventScroll: true });
+    } else if (o.h0 != null) {
+      growFrom(o.h0);
+    }
   }
 
   function anyLive() { return liveCount > 0 || !!(host && host.querySelector && host.querySelector('.fxc.is-live')); }
