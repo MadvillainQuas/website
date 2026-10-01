@@ -114,6 +114,40 @@ function chart(o) {
            out: list.filter(p => p.out), total: list.length };
 }
 
+/* THE DEPTH CHART BY THE FLOOR (addendum A.1). Where the builder has the club's stints, each position is filled from
+   the minutes each player actually played there: every five on the floor ranked point guard to centre by the players'
+   box-score positions (EpinoiaWinModel.slotMinutes), each stint's seconds added to each man's slot. o.pos is the `pos`
+   file ({games, min, players: [{id, pos, min: [m1..m5]}], slots}); everything else is chart()'s. A position lists the
+   three who played it most, each with his share of its minutes; a player can stand at two. The projected minutes,
+   who starts and who is missing come from chart() as before. No stints (no pos file, or no minutes in it): null, and the
+   page draws chart() itself. */
+function slotChart(o) {
+  const pos = o && o.pos;
+  if (!pos || !Array.isArray(pos.players)) return null;
+  const at = new Map(pos.players.filter(p => p && p.id != null && Array.isArray(p.min)).map(p => [String(p.id), p]));
+  const totals = [0, 1, 2, 3, 4].map(k => pos.players.reduce((a, p) => a + (Array.isArray(p.min) && num(p.min[k]) > 0 ? +p.min[k] : 0), 0));
+  if (!(totals.reduce((a, b) => a + b, 0) > 0)) return null;
+  const base = chart(o);
+  const games = num(pos.games) || 0;
+  const able = [];
+  base.slots.forEach(s => s.players.forEach(p => able.push(p)));
+  base.reserves.forEach(p => able.push(p));
+  const starters = new Set(base.starters.map(p => p.id));
+  const placed = new Set();
+  const slots = SLOTS.map(([k, label], i) => {
+    const here = able.filter(p => !p.out && at.has(String(p.id)) && num(at.get(String(p.id)).min[i]) > 0)
+      .map(p => { const m = +at.get(String(p.id)).min[i]; return Object.assign({}, p, { role: starters.has(p.id) ? 'starter' : 'rotation', slotMin: m,
+        share: totals[i] > 0 ? m / totals[i] : 0, perGame: games > 0 ? m / games : null }); })
+      .sort((a, b) => (b.slotMin - a.slotMin) || String(a.name).localeCompare(String(b.name)))
+      .slice(0, DEEP);
+    here.forEach(p => placed.add(p.id));
+    return { key: k, label, players: here };
+  });
+  const reserves = able.filter(p => !placed.has(p.id)).map(p => Object.assign({}, p, { role: p.out ? 'out' : 'reserve' }))
+    .sort((a, b) => ((a.out ? 1 : 0) - (b.out ? 1 : 0)) || (b.proj - a.proj) || String(a.name).localeCompare(String(b.name)));
+  return Object.assign({}, base, { slots, reserves, source: 'stints', games: base.games, posGames: games, posMin: totals });
+}
+
 /* ------------------------------------------------------------ the GM ------- */
 /* The measures a GM reads a club by: [key on the team row, label, lower-is-better, kind] */
 const MEASURES = [
@@ -164,15 +198,28 @@ function gm(o) {
     .filter(r => r.rank != null);
   out.graded = ranked.length > 0;
   const q = r => r.rank / r.of;                      // 0..1, small is good
+  /* THE WIN MODEL (o.model, docs/what-wins-model.md §12): the same measures are picked, then ordered by what each is
+     worth in wins (|wins|, the ones the model values first, the rest after in rank order); each entry carries its
+     wins and the needs follow that order. Without a model nothing here changes. */
+  const W = o.model && o.model.wins ? o.model.wins : null;
+  const wOf = k => (W && typeof W[k] === 'number' && isFinite(W[k]) ? W[k] : null);
+  const byWins = list => (!W ? list : list.map((r, i) => ({ r, i })).sort((a, b) => {
+    const x = wOf(a.r.key), y = wOf(b.r.key);
+    if (x != null && y != null) return (Math.abs(y) - Math.abs(x)) || (a.i - b.i);
+    return x != null ? -1 : y != null ? 1 : a.i - b.i;
+  }).map(x => x.r));
+  const entry = (r, e) => (W ? Object.assign(e, { wins: wOf(r.key) }) : e);
   const grades = ranked.filter(r => r.kind === 'grade');
-  grades.filter(r => q(r) <= 0.25).sort((a, b) => q(a) - q(b)).slice(0, 4)
-    .forEach(r => out.strengths.push({ key: r.key, text: cap(r.label), detail: fmt(r.key, r.value) + ', ' + ordinal(r.rank) + ' of ' + r.of }));
-  const weak = grades.filter(r => q(r) > 0.75 && r.rank > r.of - Math.max(1, Math.round(r.of / 4))).sort((a, b) => q(b) - q(a));
-  weak.slice(0, 4).forEach(r => out.weaknesses.push({ key: r.key, text: cap(r.label), detail: fmt(r.key, r.value) + ', ' + ordinal(r.rank) + ' of ' + r.of }));
+  byWins(grades.filter(r => q(r) <= 0.25).sort((a, b) => q(a) - q(b)).slice(0, 4))
+    .forEach(r => out.strengths.push(entry(r, { key: r.key, text: cap(r.label), detail: fmt(r.key, r.value) + ', ' + ordinal(r.rank) + ' of ' + r.of })));
+  const weak0 = grades.filter(r => q(r) > 0.75 && r.rank > r.of - Math.max(1, Math.round(r.of / 4))).sort((a, b) => q(b) - q(a));
+  byWins(weak0.slice(0, 4)).forEach(r => out.weaknesses.push(entry(r, { key: r.key, text: cap(r.label), detail: fmt(r.key, r.value) + ', ' + ordinal(r.rank) + ' of ' + r.of })));
+  const weak = byWins(weak0);
+  if (W) out.model = true;
   /* a need per weakness, the most urgent first, never the same player twice */
   const seen = new Set();
   /* three at most: a GM's list of needs is a priority order, not a wish list */
-  weak.forEach(r => { const n = NEED[r.key]; if (n && !seen.has(n) && out.needs.length < 3) { seen.add(n); out.needs.push({ key: r.key, text: cap(n), why: r.label + ' ' + ordinal(r.rank) + ' of ' + r.of }); } });
+  weak.forEach(r => { const n = NEED[r.key]; if (n && !seen.has(n) && out.needs.length < 3) { seen.add(n); out.needs.push(entry(r, { key: r.key, text: cap(n), why: r.label + ' ' + ordinal(r.rank) + ' of ' + r.of })); } });
   /* identity: the styles, read as choices */
   const style = k => ranked.find(r => r.key === k);
   const pace = style('pace'), three = style('p3_share'), rim = style('rim_share');
@@ -232,11 +279,16 @@ const cap = s => String(s || '').charAt(0).toUpperCase() + String(s || '').slice
 function chartHTML(c, o) {
   const opt = o || {};
   if (!c || !c.total) return '<div class="empty">No players on the roster yet.</div>';
+  /* by the floor (slotChart): the minutes he played at this position a game and his share of them, the bar his share */
+  const bySlot = c.source === 'stints';
   const cell = p => '<div class="dc-p dc-' + p.role + '">' +
     '<span class="dc-n">' + (p.num != null && p.num !== '' ? '<b>#' + esc(p.num) + '</b> ' : '') +
     (opt.link ? '<a href="' + esc(opt.link(p)) + '">' + esc(p.name) + '</a>' : esc(p.name)) + '</span>' +
-    '<span class="dc-m">' + (p.proj ? p.proj.toFixed(1) + ' min' : '—') + (p.role === 'starter' && p.recentStarts ? ' · ' + p.recentStarts + '/' + Math.min(5, c.games) + ' starts' : '') + '</span>' +
-    '<i class="dc-bar" style="--w:' + Math.min(100, p.proj / 40 * 100).toFixed(0) + '%"></i></div>';
+    (bySlot && typeof p.share === 'number'
+      ? '<span class="dc-m">' + (p.perGame != null ? p.perGame.toFixed(1) + ' min a game' : Math.round(p.slotMin) + ' min') + ' · ' + Math.round(p.share * 100) + '%</span>' +
+        '<i class="dc-bar dc-share" style="--w:' + Math.min(100, p.share * 100).toFixed(0) + '%"></i></div>'
+      : '<span class="dc-m">' + (p.proj ? p.proj.toFixed(1) + ' min' : '—') + (p.role === 'starter' && p.recentStarts ? ' · ' + p.recentStarts + '/' + Math.min(5, c.games) + ' starts' : '') + '</span>' +
+        '<i class="dc-bar" style="--w:' + Math.min(100, p.proj / 40 * 100).toFixed(0) + '%"></i></div>');
   /* each position is a button: the league's view of that position (position.js) opens from it */
   const cols = c.slots.map(s => '<div class="dc-col"><button type="button" class="dc-h" data-slot="' + s.key + '" aria-label="' + esc(s.label) +
     's against the league"><b>' + s.key + '</b><span>' + esc(s.label) + '</span><i class="dc-go" aria-hidden="true">↗</i></button>' +
@@ -244,6 +296,11 @@ function chartHTML(c, o) {
   const res = c.reserves.length ? '<div class="dc-res"><span class="dc-rk">also on the roster</span>' + c.reserves.map(p =>
     '<span class="dc-chip' + (p.out ? ' dc-out' : '') + '">' + (p.num != null && p.num !== '' ? '#' + esc(p.num) + ' ' : '') + esc(p.name) +
     (p.out ? ' · out' : p.proj ? ' · ' + p.proj.toFixed(1) + ' min' : '') + '</span>').join('') + '</div>' : '';
+  if (bySlot) return '<div class="dc-hint">press a position for its league view: every club\'s group at it, charted</div>' +
+    '<div class="dc">' + cols + '</div>' + res +
+    '<div class="dc-note">each position filled from the minutes played at it this season' + (c.posGames ? ' (' + c.posGames + (c.posGames === 1 ? ' game' : ' games') + ')' : '') +
+    ': every five on the floor ranked point guard to centre by box-score position' +
+    (c.out.length ? ' · out: ' + c.out.map(p => esc(p.name)).join(', ') + ' (no minutes in the club\'s latest games)' : '') + '</div>';
   return '<div class="dc-hint">press a position for its league view: every club\'s group at it, charted</div>' +
     '<div class="dc">' + cols + '</div>' + res +
     '<div class="dc-note">projected from the last ' + Math.min(5, c.games || 0) + ' games\' starts and minutes (weighted 60 / 40 against the season)' +
@@ -253,8 +310,11 @@ function chartHTML(c, o) {
 
 function gmHTML(g) {
   if (!g || !g.graded) return '<div class="empty">The league has too few clubs with finished games to read this one against yet.</div>';
+  /* with the win model (o.model), an entry it values says what it is worth */
+  const worth = x => (typeof x.wins === 'number' && isFinite(x.wins) ? '<em class="gm-w">worth ' + (x.wins >= 0.05 ? '+' : x.wins <= -0.05 ? '−' : '') +
+    Math.abs(x.wins).toFixed(1) + ' wins per 30 games</em>' : '');
   const block = (title, cls, items, key) => items.length ? '<div class="gm-b gm-' + cls + '"><div class="gm-h">' + title + '</div>' +
-    items.map(x => '<div class="gm-i"><b>' + esc(x.text) + '</b><span>' + esc(x[key || 'detail']) + '</span></div>').join('') + '</div>' : '';
+    items.map(x => '<div class="gm-i"><b>' + esc(x.text) + '</b><span>' + esc(x[key || 'detail']) + '</span>' + worth(x) + '</div>').join('') + '</div>' : '';
   /* A FEW GAMES ARE A FEW GAMES: under five, the reader is told so before anything else */
   const early = g.gp && g.gp < 5 ? '<div class="gm-early">after ' + g.gp + (g.gp === 1 ? ' game' : ' games') +
     ': an early reading, and the ranks will move</div>' : '';
@@ -262,8 +322,9 @@ function gmHTML(g) {
     block('strengths', 'good', g.strengths) + block('weaknesses', 'bad', g.weaknesses) +
     block('identity', 'style', g.identity) + block('the roster', 'roster', g.roster) +
     block('what it needs', 'need', g.needs, 'why') + '</div>' +
-    '<div class="gm-note">every rank is among the ' + g.of + ' clubs of this competition, this season · a style is a choice, not a grade</div>';
+    '<div class="gm-note">every rank is among the ' + g.of + ' clubs of this competition, this season · a style is a choice, not a grade' +
+    (g.model ? ' · ordered by what each is worth in wins (the win model, F3)' : '') + '</div>';
 }
 
-return { chart, gm, chartHTML, gmHTML, projectedMinutes, positionOf, rank, SLOTS, MEASURES, NEED };
+return { chart, slotChart, gm, chartHTML, gmHTML, projectedMinutes, positionOf, rank, SLOTS, MEASURES, NEED };
 }));

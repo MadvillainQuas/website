@@ -220,17 +220,37 @@ console.log('\ncalibration');
   const big = Sim.synth({ teams: 12, games: 500, seed: 21, hca: 0.08, tau: 0.2, kappaN: 1.05, sigmaN: 2, spread: 1 });
   const t0 = performance.now();
   const cal = Sim.calibrate(big.games, Object.assign({}, big.league, { hca: 0, tau: 0, kappaN: 1, sigmaN: 0, dTr: 0 }),
-    { seed: 3, fitN: 500, fitSims: 50, evalSims: 100 });
+    { seed: 3, fitN: 500, fitSims: 50, evalSims: 400 });
   const dt = performance.now() - t0;
   ok('calibrate recovers the planted home court (0.08)', Math.abs(cal.hca - 0.08) < 0.04, cal.hca.toFixed(3));
   ok('...and the planted form noise tau (0.20)', Math.abs(cal.tau - 0.2) < 0.07, cal.tau.toFixed(3));
   ok('...kappa_N within 3%, the transition bonus found', Math.abs(cal.kappaN / 1.05 - 1) < 0.03 && Math.abs(cal.dTr - 0.3) < 0.2, cal.kappaN.toFixed(3) + ' ' + cal.dTr.toFixed(3));
   const rp = cal.report;
-  ok('...validated: n, Brier, slope near 1, the box checks within reach', rp.nEval === 500 && rp.brier < 0.25 && rp.slope > 0.7 && rp.slope < 1.4 &&
+  ok('...validated out of sample: the later 60% of the games, each fold fitted only on earlier games', rp.heldOut === true && rp.nEval === 300 &&
+     rp.folds.length === 3 && rp.folds.every((f, k) => f.nFit === 200 + 100 * k && f.nTest === 100) && rp.inSample && Number.isFinite(rp.inSample.brier),
+     JSON.stringify(rp.folds.map(f => [f.nFit, f.nTest])));
+  ok('...validated: n, Brier, slope near 1, the box checks within reach', rp.brier < 0.25 && rp.slope > 0.7 && rp.slope < 1.4 &&
      Math.abs(rp.checks.ortg.sim - rp.checks.ortg.obs) < 2 && Math.abs(rp.checks.pace.sim - rp.checks.pace.obs) < 1.5,
      'brier ' + rp.brier.toFixed(3) + ' slope ' + rp.slope.toFixed(2) + ' ortg ' + rp.checks.ortg.obs.toFixed(1) + '/' + rp.checks.ortg.sim.toFixed(1) + ' (' + (dt / 1000).toFixed(1) + ' s)');
   ok('...and gated as §8.3 says (n >= 60 and the slope in [0.85, 1.15])', rp.calibrated === (rp.nEval >= 60 && rp.slope >= 0.85 && rp.slope <= 1.15));
   ok('...too tight a simulator gets form noise, not the score effect', cal.lead === 0);
+}
+{
+  /* rolling origin: a fold's parameters never see its own games or later ones. The later games are given an absurd
+     possession count; the folds' kappa_N stay near the truth while the all-games fit (for what comes next) moves */
+  const lg = Sim.synth({ teams: 10, games: 150, seed: 31, kappaN: 1, sigmaN: 1, spread: 1 });
+  const games = lg.games.map((g, i) => Object.assign({}, g, { t: 1000 + i, tally: null }, i >= 60 ? { poss: 3 * g.poss } : {}));
+  const cal = Sim.calibrate(games.slice().reverse(), Object.assign({}, lg.league, { kappaN: 1, sigmaN: 0 }),
+    { seed: 2, fitSims: 30, evalSims: 40, fitSpread: false, fitHca: false });
+  const fk = cal.report.folds;
+  ok('rolling origin: no fold is fitted on its own or later games (time order from t, whatever the input order)', fk.length === 3 && fk[0].nFit === 60 &&
+     Math.abs(fk[0].kappaN - 1) < 0.1 && fk[1].kappaN > fk[0].kappaN && cal.kappaN > 1.8 && cal.report.nEval === 90,
+     fk.map(f => f.nFit + ':' + f.kappaN.toFixed(2)).join(' ') + ' all ' + cal.kappaN.toFixed(2));
+  /* the gate scores the Forecast and Elo on the same held-out games when the games carry their pre-game P(win) */
+  const withP = games.map(g => Object.assign({}, g, { pF: 0.5, pE: 0.5, poss: g.poss }));
+  const c2 = Sim.calibrate(withP, Object.assign({}, lg.league), { seed: 2, fitSims: 20, evalSims: 30, fitSpread: false, fitHca: false, folds: 1, holdFrom: 0.7 });
+  ok('...the gate\'s Forecast and Elo Briers come from the same held-out games (0.25 for a coin)', c2.report.compare && c2.report.compare.forecast === 0.25 && c2.report.compare.elo === 0.25 &&
+     c2.report.nEval === 45, JSON.stringify(c2.report.compare));
 }
 {
   const tight = Sim.synth({ teams: 12, games: 400, seed: 8, hca: 0.06, tau: 0, lead: 0.12, spread: 1 });

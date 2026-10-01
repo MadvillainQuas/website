@@ -1,0 +1,126 @@
+/* ============================================================================
+   THE FRONT OFFICE'S WIN MODEL (t/fomodel.js, F3; docs/what-wins-model.md §12, addendum A.2).
+
+   The panel inside #wmodel (an .ep-card): the status line with RECALCULATE and the staged CEEFAX bar, then eight
+   collapsible blocks, each with its summary line first. Charts come from the chart kit (kit/vizkit.css, loaded
+   before this sheet); everything here is the panel's own layout and words. Colour from the kit's tokens (dark on
+   :root, light under data-theme="light"); figures in --f-data, labels in --f-micro tracked at .2em or less. Phone:
+   no sideways page scroll (wide tables scroll inside .ep-tw), 44 px slider targets, 40 px buttons.
+   ============================================================================ */
+.fm{font-family:var(--f-ui);color:var(--ink);text-align:left;min-width:0}
+.fm *{box-sizing:border-box}
+
+/* ---- the status line, RECALCULATE and the bar (A.2) ---- */
+.fm-status{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 auto 12px;max-width:640px}
+.fm-line{margin:0;font-family:var(--f-data);font-size:12px;color:var(--ink-2);text-align:center;overflow-wrap:anywhere}
+.fm-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.fm-recalc,.fm-cancel{min-height:40px}
+.fm-recalc:disabled{opacity:.5;cursor:default;background:none;color:var(--ink-3);border-color:var(--rule)}
+.fm-recalc:disabled:hover{background:none;color:var(--ink-3)}
+/* THE BAR, CEEFAX STYLE: mosaic blocks filling left to right under the five named stages, the current one lit */
+.fm-prog{width:100%;max-width:560px;padding:10px 12px 12px;background:#050706;border:1px solid #ffe44d;color:#e6fff1}
+.fm-stages{list-style:none;display:flex;flex-wrap:wrap;gap:4px 10px;margin:0 0 8px;padding:0;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(230,255,241,.6)}
+.fm-stages li.on{color:#ffe44d}
+.fm-stages li.done{color:#3ff0ff}
+.fm-stages li.done::before{content:'✓ '}
+.fm-blocks{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;height:14px}
+.fm-blocks i{display:block;background:rgba(63,240,255,.12)}
+.fm-blocks i.on{background:#3ff0ff}
+.fm-progl{margin:8px 0 0;font-family:var(--f-data);font-size:11.5px;color:#e6fff1}
+.fm-msg{margin:0;max-width:62ch;font-size:13.5px;line-height:1.5;color:var(--ink);text-align:center}
+
+/* ---- the blocks ---- */
+.fm-b{border-top:1px solid var(--rule);padding:0}
+.fm-b:last-of-type{border-bottom:1px solid var(--rule)}
+.fm-b > summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:12px 4px;min-height:44px;cursor:pointer;list-style:none}
+.fm-b > summary::-webkit-details-marker{display:none}
+.fm-b > summary::before{content:'▸';font-family:var(--f-data);font-size:11px;color:var(--ink-3);width:12px}
+.fm-b[open] > summary::before{content:'▾'}
+.fm-b > summary:focus-visible{outline:2px solid var(--vz-s1);outline-offset:-2px}
+.fm-bt{font-family:var(--f-ui);font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink)}
+.fm-bs{font-family:var(--f-data);font-size:11.5px;color:var(--ink-3);overflow-wrap:anywhere}
+.fm-bb{padding:2px 4px 16px;min-width:0}
+.fm-big{margin:4px 0 6px;font-size:16px;font-weight:700;line-height:1.4}
+.fm-p{margin:6px 0;font-size:13px;line-height:1.55;color:var(--ink-2)}
+.fm-mute{color:var(--ink-3)}
+.fm-say{margin:10px 0;font-size:15px;font-weight:600;line-height:1.45;color:var(--ink)}
+.fm-check{margin:8px 0;font-family:var(--f-data);font-size:11.5px;line-height:1.5;color:var(--ink-2)}
+.fm-lens{margin:10px 0 0}
+.fm-h4{margin:18px 0 4px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink)}
+.fm-foot{margin:12px 0 0;font-size:11.5px;line-height:1.5;color:var(--ink-3)}
+.fm-empty p{margin:8px 0;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.fm-empty a{color:var(--lume);font-weight:700}
+.fm-chip{display:inline-block;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border:1px solid currentColor;
+  color:var(--ink-2);vertical-align:middle}
+.fm-chip[data-lens="explain"]{color:var(--vz-s1)}
+.fm-chip[data-lens="forecast"],.fm-chip[data-lens="elo"]{color:var(--vz-s2)}
+.fm-chip[data-lens="model"]{color:var(--ink)}
+.fm-chipx{font-size:11.5px;color:var(--ink-3)}
+.fm-n{font-family:var(--f-data);font-size:10.5px;color:var(--ink-3)}
+.fm-chart{margin:10px 0;min-width:0}
+
+/* ---- tables ---- */
+.fm-tw{margin:10px 0;max-width:100%}
+.fm-t{width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px}
+.fm-t th,.fm-t td{padding:6px 7px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+.fm-t thead th{font-family:var(--f-micro);font-size:8.5px;font-weight:400;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);border-bottom-color:var(--rule-2)}
+.fm-t td{font-family:var(--f-data);white-space:nowrap}
+.fm-t tbody th{font-weight:600}
+.fm-t td.fm-five{white-space:normal;min-width:240px;font-family:var(--f-ui);line-height:1.4}
+.fm-good{color:var(--good)}
+.fm-bad{color:var(--bad)}
+.fm-ev{font-family:var(--f-micro);font-size:8px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--rule-2);padding:1px 5px;color:var(--ink-3)}
+.fm-ev[data-ev="strong"]{color:var(--ink);border-color:var(--ink-2)}
+.fm-ev[data-ev="some"]{color:var(--ink-2)}
+
+/* ---- needs, lists, losses ---- */
+.fm-needs{margin:8px 0;padding-left:22px}
+.fm-needs li{margin:0 0 10px;font-size:13.5px;line-height:1.45}
+.fm-needs li b{font-weight:700}
+.fm-w{display:inline-block;font-family:var(--f-data);font-size:12px;color:var(--ink)}
+.fm-need{display:block;font-size:12.5px;color:var(--ink-3)}
+.fm-list{margin:6px 0;padding-left:20px;font-size:13px;line-height:1.5;color:var(--ink-2)}
+.fm-loss{border-top:1px solid color-mix(in oklch,var(--rule) 70%,transparent)}
+.fm-loss > summary{cursor:pointer;min-height:40px;padding:10px 2px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.fm-loss > summary b{font-family:var(--f-data)}
+.fm-slotb{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:10px 0 0}
+.fm-slotb .ep-btn{min-height:40px;min-width:48px}
+
+/* ---- controls ---- */
+.fm-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:8px 0}
+.fm-lab{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.fm-lab .ep-input{min-height:40px;max-width:min(300px,80vw);font-family:var(--f-ui);font-size:13px;cursor:pointer}
+.fm-seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--rule-2)}
+.fm-seg button{all:unset;box-sizing:border-box;min-height:40px;padding:0 12px;display:inline-flex;align-items:center;cursor:pointer;
+  font-family:var(--f-micro);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.fm-seg button + button{border-left:1px solid var(--rule-2)}
+.fm-seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+.fm-seg button:focus-visible{outline:2px solid var(--vz-s1);outline-offset:-2px}
+.fm-dials{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:4px 18px;margin:8px 0}
+.fm-dial{display:grid;grid-template-columns:minmax(0,1fr) 76px;align-items:center;gap:0 10px}
+.fm-dl{grid-column:1 / -1;font-size:12.5px;color:var(--ink-2)}
+.fm-dial input[type=range]{width:100%;min-height:44px;margin:0;accent-color:var(--vz-s1);touch-action:pan-y;cursor:pointer}
+.fm-dial output{font-family:var(--f-data);font-size:12px;color:var(--ink);text-align:right}
+.fm-wi,.fm-needed{min-height:24px}
+
+/* the depth chart by the floor (t/depth.js slotChart): the bar is the player's share of the position's minutes */
+.dc-bar.dc-share{height:3px}
+/* the GM's view, valued by the model */
+.gm-i .gm-w{display:block;font-style:normal;font-family:var(--f-data);font-size:10.5px;color:var(--ink-2);margin-top:2px}
+
+@media (max-width:720px){
+  .fm-bb{padding-left:0;padding-right:0}
+  .fm-say{font-size:14px}
+  .fm-lab{width:100%}
+  .fm-lab .ep-input{max-width:none;width:100%}
+  .fm-dials{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){ .fm *{transition:none !important;animation:none !important} }
+@media (forced-colors:active){
+  .fm-prog{background:Canvas;color:CanvasText;border-color:Highlight}
+  .fm-blocks i{background:Canvas;border:1px solid CanvasText}
+  .fm-blocks i.on{background:Highlight;forced-color-adjust:none}
+  .fm-chip,.fm-ev{border-color:CanvasText}
+  .fm-seg button[aria-pressed="true"]{background:Highlight;color:HighlightText;forced-color-adjust:none}
+}

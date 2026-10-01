@@ -75,7 +75,7 @@ observational data. Positions are estimated (about 42% of active roster entries 
 ```
 finalise-game: deriveGame, teamAdv, situations (already) + EpinoiaFeatures.extract → upsert 2 rows (non-fatal)
                                    └──► public.game_features (service only) ◄── scripts/backfill_features.mjs
-tools/build-analytics.mjs (Actions): keyset read after watermark → private store (bucket + actions/cache)
+tools/build-analytics.mjs (Actions): keyset read after watermark → private store (the bucket only; B.5)
   → EpinoiaWinModel (EpinoiaWinStats, EpinoiaWinSim) → analytics/{wins,fo,club}/… + public.analytics_files
   → snapshots/whatwins/… (public teaser, box score only)
 browser: POST /functions/v1/analytics-file {scope, league, season, team} → {url (signed 120 s), token, bytes, built_at,
@@ -369,8 +369,8 @@ key; every calculation lives in `epinoia/winmodel.js`.
   `ANALYTICS_POOL_GAP_H` (6), or on a layout change, or after 24 h. League fits use the latest pooled priors (§7.4).
 
 ### 6.2 The private store
-`analytics/store/<league>/<season>/s<STORE_V>-fv<FV>.json`, mirrored in `.cache/analytics/` for `actions/cache`
-(whichever has the later watermark wins):
+`analytics/store/<league>/<season>/s<STORE_V>-fv<FV>.json`; a local run mirrors it in the git-ignored `.cache/analytics/`
+(whichever has the later watermark wins; never an Actions cache, B.5):
 ```
 { v, fv, league, season, wm: {at, id}, n,
   games: pack([{id, d: 'YYYY-MM-DD', t: tipoff ms, c: comp index, k: 'l'|'c'|'p', h, a, hs, as, v: venue id|'', s0, s1}]),
@@ -427,8 +427,8 @@ byte-identical files, and incremental equals full.
 
 ### 6.7 Workflow
 Cron `40 * * * *` and `40 3 * * 0` (full); dispatch inputs unit, full, dry_run; concurrency `analytics`; RUNS_ON
-pattern; 50 min; sparse checkout `epinoia`, `tools`; node 24; `actions/cache@v4` on `.cache/analytics` (key
-`analytics-store-s1-${{ github.run_id }}`, restore key `analytics-store-s1-`); secrets `SUPABASE_URL`,
+pattern; 50 min; sparse checkout `epinoia`, `tools`; node 24; no Actions cache (B.5: the stores stay in the private
+bucket); secrets `SUPABASE_URL`,
 `SUPABASE_SERVICE_KEY`; variables `ANALYTICS_MIN_GAP_H`, `ANALYTICS_POOL_GAP_H`.
 
 ## 7. Statistics (primitives in epinoia/winstats.js, assembly in epinoia/winmodel.js)
@@ -624,7 +624,7 @@ league's split of ft_trips.
 - CRN: game i draws from `rng(seed ^ (i·0x9E3779B9))`: game-level draws, then exactly 8 uniforms per chance (transition,
   turnover, live, foul, zone, make, rebound, and-one); free throws from `rng(seed ^ i ^ 0x85EBCA6B)`.
 
-### 8.3 Calibration and gate (builder, per unit, rolling-origin games)
+### 8.3 Calibration and gate (builder, per unit, rolling-origin games; validated out of sample, B.5)
 Fit hca (home win share), τ (actual-vs-simulated margin SD), κ_N (mean possessions = observed pace_x), μ_off (league make
 offset: points per possession within 0.3%), δ_tr (transition − half-court points per chance); σ_N = residual SD of
 possessions on T/(d_A + d_B); fouling kept unless it worsens possessions in games decided by ≤ 8. Validation: Brier, log
@@ -659,10 +659,11 @@ type Cal = { brier: number; logloss: number; ece: number; auc: number; slope: nu
 type Bin = [lo: number, hi: number, x: number, n: number, wins: number, p: number, plo: number, phi: number, margin: number];
 type Curve = [x: number, p: number, lo: number, hi: number][];
 type Rates = Record<'d'|'tov'|'live'|'sfoul'|'bonus'|'mixRim'|'mixMid'|'mix3'|'pRim'|'pMid'|'p3'|'p2'|'and1'|'ft'|'orb'|'tr', number>;
-interface Header { w: 1; fv: 1; code: number; scope: 'wins'|'fo'|'club'|'teaser';
+interface Header { w: 1; fv: 1; code: number; scope: 'wins'|'fo'|'club'|'teaser';   // (as built: + ci_at, below)
   league: { id: string; slug: string; name: string } | null; season: { id: string; name: string } | null;  // null = pooled
   token: string; built: string; n: { games: number; decided: number; teams: number };
-  lens: { explain: true; forecast: boolean; simulate: boolean } }
+  lens: { explain: true; forecast: boolean; simulate: boolean };
+  ci_at: string | null }                       // as built (A.2): when the intervals were last bootstrapped; a RECALCULATE carries them
 interface Model { set: string[]; n: number; lambda: number; r2: number; r2cv: number; sigma: number; home: CI;
   coef: { k: string; b: number; lo: number; hi: number; se: number; own: CI | null; w: number; vif: number;
           sdTeam: { off: number; def: number; net: number }; pts: CI; wins30: CI; winsSeason: CI }[];
@@ -704,7 +705,8 @@ interface Wins extends Header {
              coef: { k: string; own: CI | null; eb: CI; w: number }[] }[] | null }    // pooled only, open leagues only
 interface Fo extends Header {
   lg: { rates: Rates; T: number; Tot: number; kappaN: number; sigmaN: number; hca: number; tau: number; muOff: number; dTr: number;
-        fouling: boolean; zones: boolean; G: number; homeEdge: number };
+        fouling: boolean; zones: boolean; G: number; homeEdge: number;
+        lead: number; ft3: number };          // as built (WP2): the score effect and the three-shot share of shooting trips
   sim: { calibrated: boolean; platt: { a: number; b: number } | null; brier: number; slope: number };
   sigmaPred: number; predLive: boolean;
   value: Record<string, { b: number; lo: number; hi: number; model: 'core4c'|'shot'|'path'; dir: 1|0|-1; unit: string;
@@ -714,7 +716,8 @@ interface Fo extends Header {
            ortg: number; drtg: number; pace3q: number; pyth: number; elo: number; prof: { off: Rates; def: Rates; n: number };
            f: Record<string, { off: number | null; def: number | null }> }[];
   slots: { stats: string[]; p1: Wins['positions']['p1']; targets: Wins['positions']['p2']; forecast: Wins['positions']['p2f'] } | null;
-  squad: Wins['squad']; lineup: Wins['lineup'] }
+  squad: Wins['squad']; lineup: Wins['lineup'];
+  pos: Record<string, Pos> }                  // as built (A.1): team id -> its pos file; may be emptied to fit the budget
 interface Club extends Header { team: { id: string; name: string };
   record: { w: number; l: number; pythW: number; factorW: number };      // factorW = Σ Φ(fitted margin from its factors / σ_acc)
   games: { g: string; d: string; opp: string; h: 1|0|-1; m: number; mc: number; xm: number;
@@ -723,9 +726,12 @@ interface Club extends Header { team: { id: string; name: string };
   losses: { n: number; mean: { k: string; pts: number; lo: number; hi: number }[] };
   realised: Record<string, { own: Rates; opp: Rates }>;                 // per game, for the loss Shapley
   squad: Record<string, number | null>; squadCoverage: { height: number; age: number };
-  slots: Record<'G'|'F'|'C', Record<string, { v: number; z: number; target: number }>>;
+  slots: Record<'G'|'F'|'C', Record<string, { v: number; z: number; target: number; sd: number | null }>>;   // sd: the team-season SD z uses (as built)
   lineups: { ids: string[]; s: number; b: '0'|'1'|'2+'; poss: number; net: number; pred: number }[];   // top 10
-  players: { id: string; g: 'G'|'F'|'C'; v: number; min: number; bpm: number | null; roles: string[] }[] }  // no names; withheld out
+  players: { id: string; g: 'G'|'F'|'C'; v: number; min: number; bpm: number | null; roles: string[] }[];  // no names; withheld out
+  pos: Pos | null }                            // as built (A.1)
+interface Pos { w: 1; team: string; season: string; games: number; min: number;   // A.1, scope 'pos' (≤ 6 KB); no Header
+  players: { id: string; pos: number; min: [number, number, number, number, number] }[]; slots: { slot: 1|2|3|4|5; top: string[] }[] }
 interface Teaser { w: 1; scope: 'teaser'; token: string; built: string; n: number; homeWin: number;
   ranked: { k: string; label: string; r: number; winRate: number }[];    // EpinoiaWinning.analyse on PUBLIC_KEYS rows
   factors: { r2: number; home: number; shares: { k: string; share: number; oliver: number }[] } | null;
@@ -749,7 +755,8 @@ index.ts` wires supabase-js and `Deno.serve`; `supabase/config.toml` gets `[func
    `POST, OPTIONS`). Other methods 405; a bad body or non-uuid id 400 `{reason: 'bad_request'}`.
 2. A JWT bearer (three dot-separated parts) → caller client with it, else anonymous. `rpc analytics_check` →
    PostgREST rejects the JWT: 401 'jwt'; 'signin' 401; 'members' | 'league' | 'scope' 403.
-3. Subject `'u:' + sub`, or `'ip:' + sha256(first x-forwarded-for | user-agent | UTC date | env ANALYTICS_SALT)[0..32]`.
+3. Subject `'u:' + sub`, or `'ip:' + sha256(address | UTC date | env ANALYTICS_SALT)[0..32]`, the address the platform saw
+   (cf-connecting-ip, x-real-ip, else the right end of x-forwarded-for; B.5), no user agent.
 4. `admin.rpc analytics_take` → not ok: 429 `{reason: 'rate', retry_after}` + `Retry-After`, `X-RateLimit-Limit`,
    `X-RateLimit-Remaining`.
 5. `analytics_files` row by scope, `league_key` (id or 'all'), `team_key` (id or ''), `season_key` = season or
@@ -812,10 +819,14 @@ or style.
 | method | How it is worked out | Definitions, sample sizes and what the numbers cannot say | static prose, public: lenses, definitions, §7.16, §7.17, data date and token |
 
 - Cards (fixed templates, also i18n patterns, interval-backed only): "Shooting decides {p}% of the margin here
-  ({lo}-{hi})"; the best hard number; "More possessions help the favourite: γ = {g} ({lo}-{hi})" or "The pace of a game does
-  not change who wins here, once quality is counted"; "Home court is worth {a} points ({lo}-{hi}) and {p}% of games"; "One
-  team-SD better at {factor} is worth {w} wins per 30 games ({lo}-{hi})"; "Time of possession works mostly through
-  {mediator}: {s}% of its effect is indirect". Each with its lens chip.
+  ({lo}-{hi})"; the best hard number (never a score factor); the pace finding, one of four (B.5): "More possessions help
+  the favourite: γ = {g} ({lo}-{hi})", "Longer games help the underdog here: γ = …", "The pace of a game does not change
+  who wins here, once quality is counted: γ = …" (a narrow interval around 0 only) or "These games cannot yet tell whether
+  pace changes who wins: γ could be anywhere from {lo} to {hi}"; "Home court is worth {a} points ({lo}-{hi}) and {p}% of
+  games" with {a} the home side's mean margin (B.5; α is "Home court beyond the four factors"); "One team-SD better at
+  {factor} is worth {w} wins per 30 games ({lo}-{hi})"; time of possession by its DIRECT effect (§7.10.4): "One second
+  more a possession is worth {d} points of margin directly ({lo} to {hi}), beyond the four factors" or "… has no clear
+  direct effect here …". Each with its lens chip.
 - Not entitled: the teaser's cards (box-score preview) and, in member sections, `EpinoiaMemLock.placeholder({rows: 5,
   what: 'What wins model', leagueSlug})` or a sign-in link; titles stay; #method public. Under 20 games: `.pg-empty`
   "Fewer than 20 finished games here yet: showing every league pooled" and the pooled file. 'layout': "The model is being
@@ -984,7 +995,8 @@ mount(host, vm, {worker, link, onSlot}) -> {destroy};  html: {verdict, ledger, n
   backfill, finalise-game and 0207 name `game_features`; the snapshots function names neither it nor the bucket; no
   `stats->sit` in new files; `CATALOGUE.locks.model`; `stamp-assets.py --check`.
 - **Live acceptance** (builder job summary, not blocking): pooled full-game four-factor R² in [0.93, 0.95] with OLS near efg
-  1.157, tovp −1.130, orebp 0.398, ftr 0.094 (FTA/FGA); eFG share [40, 55]; home win [0.55, 0.59]; Forecast Brier < home-only
+  1.157, tovp −1.130, orebp 0.398, ftr 0.094 (FTA/FGA); eFG share [40, 55] (as built: this band is the old |b|·sd share, `models.core4c.legacy`; the Shapley R²
+  share of eFG is 63-74% on live data and has no band); home win [0.55, 0.59]; Forecast Brier < home-only
   and ≤ Elo + 0.002; slope [0.85, 1.15]; simulator ortg and pace within 0.5, margin SD ratio [0.95, 1.05], home within 1.5
   points. A miss downgrades the unit's chip.
 - **Manual**: Playwright signed out, signed in and `epinoia_access_sim = 'locked'` (requests, bytes); 375 and 1,280 px in
@@ -1091,3 +1103,223 @@ button with a loading bar":
   downloads one new compact file. The heavy maths (bootstrap, Monte Carlo) runs in the worker in idle slices.
 - **Edge function limits**: if a delta update cannot finish within the function's time budget, it answers `{queued: true}`
   and marks the unit due so the next scheduled build picks it up first; the UI says so plainly.
+
+
+---
+
+## B. As built (WP6, 2026-10-01; records what the six packages built where it differs from the above)
+
+### B.0 Where things are
+| Piece | File(s) |
+|---|---|
+| Feature line (FV 1) | `epinoia/features.js` (+ generated `supabase/functions/_shared/features.js`) |
+| Migration | `supabase/migrations/0209_what_wins.sql` (A.0: `main` has 0207_league_creators and 0208_scorer_reliability) |
+| Writing the line | `supabase/functions/finalise-game/index.ts`, `scripts/backfill_features.mjs`, `.github/workflows/backfill-features.yml` |
+| Delivery | `supabase/functions/_shared/analyticsfile.ts` (pure `handle`), `supabase/functions/analytics-file/index.ts`, `epinoia/winfile.js` |
+| Statistics, simulator | `epinoia/winstats.js`, `epinoia/winsim.js`, `epinoia/winsim.worker.js` |
+| Model, builder | `epinoia/winmodel.js`, `tools/build-analytics.mjs`, `.github/workflows/analytics.yml` |
+| Page, chart kit | `epinoia/winning/` (`index.html`, `page.js`), `epinoia/vizkit.js`, `epinoia/kit/vizkit.css`, `epinoia/kit/winning.css` |
+| Front office | `epinoia/t/fomodel.js`, `epinoia/kit/fomodel.css`, `epinoia/t/depth.js` (`slotChart`, `gm` with a model), `epinoia/t/team.js` |
+| Words | `epinoia/i18n/{es,ja}/analysis.js` (533 phrases), `epinoia/i18n/{es,ja}/frontoffice.js` (206 phrases) |
+| Tests | twelve `supabase/tests/ww-*.test.mjs`, run by `supabase/tests/run-ww.mjs --strict` in one guard step |
+
+### B.1 What differs from the spec
+**WP1: the feature line and delivery**
+- `game_features` has an extra nullable `st jsonb` (A.1's stints: `{p: [player ids], s: [[seconds, i1..i5], ...]}`), so a row
+  is about 1.4 KB of JSON (f alone about 320 B), not 0.5 KB.
+- `analytics_files`: the scope CHECK adds `'pos'`, and there is an extra `ci_at timestamptz`. `analytics_check` checks
+  'pos' exactly like 'club'.
+- `analytics_take` counts only rows whose scope is not 'refresh'. RECALCULATE has its own table and functions:
+  `analytics_refresh (league_id, season_id, started_at, finished_at, status, by_subject, due)`,
+  `analytics_refresh_take(subject, league, season)` → `{ok}` | `{ok: false, state: 'rate'|'running'|'recent', retry_after?}`
+  (6 an hour, 20 a day per subject; a refresh that died can be taken over after 10 minutes) and
+  `analytics_refresh_done(league, season, 'done'|'failed'|'queued')`.
+- `analytics-file`: RECALCULATE needs a signed-in caller (401 'signin') and a league's own unit (403 'scope' for the pooled
+  file). Answers add `refreshed`, `queued`, `refresh_reason`, `joined`, `retry_after`; every 200 carries `n_games`, `pending`
+  (null for the pooled file) and `ci_at`. A database error is 503 `{reason: 'unavailable'}` (winfile maps it to 'network').
+  `index.ts` states the CORS headers and answers OPTIONS itself (cors.test.mjs). It imports, in order, engine, possessions,
+  situations, shotclock, features, winstats, winsim, bpm, winmodel (winsim finds EpinoiaWinStats on globalThis under Deno;
+  bpm.js so positions, lineups and P2f match the builder's).
+- `features.js` also exports `CLUTCH_MARGIN` (5) and `N` (108). FACTORS entries also carry `uses, pg, min, builder, fn`; the
+  builder-only factors (xefg, making, xpts, luck_pts) have `builder: true` and no formula. Where §3.6 gives no direction:
+  astp/stlp/blkp +1, live_share −1, max_deficit −1. dreb_start needs TIMED. A factor's need bits must be on both rows. With
+  no plays every quality bit is cleared, SIT included.
+- `winfile.js` adds `cached(o)`, options `{onProgress, signal, force}` and the reason 'aborted'.
+- The ww-features timing check uses the p95 budget (10 ms), not 6 ms; measured about 2 ms on the fixture, 1.9 ms p50 live.
+- Feeds where every foul is 'personal' (ORLEN, NBL, EuroLeague) have no FOULKIND bit, so and1, trips_shooting and the
+  foul kinds are masked there (and1 reads 0, trips_bonus is inflated before masking).
+
+**WP2: statistics and simulator**
+- CRN (§8.2): each possession draws its chances from its own sub-stream (fmix32 of the game stream) and its free throws from
+  a sub-stream of `rng(seed ^ i ^ 0x85EBCA6B)`, so one changed outcome does not shift every later draw (variance ratio 0.019).
+- At a neutral venue a game-level coin picks the first possession (identical sides 0.5001).
+- A score effect `lead` in L: make logits shift by −lead × (gap from the expected path, capped ±20) / 10. calibrate fits
+  `lead` when the simulator spreads margins too widely and τ when too narrowly (one is always 0). Without it independent
+  possessions gave about 1.25× the observed margin SD.
+- A shooting foul is a three-shot trip with probability `L.ft3` (0.05), not the three-point share of the shot mix.
+- `endInput` rates: sfoul and bonus are per chance that did not end in a turnover; free throws are conserved (any not from a
+  shooting trip or an and-one counts as a two-shot bonus trip); orb is per missed shot plus 0.12 of missed last free throws;
+  without FOULKIND, and-ones come from the chance accounting and the remaining trips are split by the league share. The
+  default and-one rate is 0.05.
+- dTr is split around each side's expected transition share s: half court −dTr·s, transition +dTr·(1 − s).
+- calibrate's order: κN/σN, dTr, muOff, dTr, muOff, hca, spread (τ or lead), hca, muOff, fouling, κN. Validation
+  probabilities use (wins + 0.5)/(sims + 1).
+- Edits: tovp and ftr are solved exactly on the model's own box numbers (`natural()`); efg is one logit shift.
+- `counterfactual` splits half home, half away by default (`split: false` keeps the venue). Tallies add `gain_dreb`; `game()`
+  also returns the possessions pair. The worker also answers 'calibrate' and 'bootstrap', with positional or named args.
+- winstats conventions: `suff` carries `sx`; ridge's `pen` is per column (s_k² supplied by the caller), scaled by sw; gamLogit
+  has an intercept, λ 1e-5 and a P2-P98 grid; condNumber is √(λmax/λmin) of the correlation matrix; `wilson` and `fisherCI`
+  return [lo, hi]; `valueScale` also returns wins30 and winsSeason; `oaxaca` takes an optional quality / making split.
+
+**WP3: the model and builder**
+- The private store holds each game's compact lines (two 108-count rows, quality bits, player lines, stints) and the last full
+  build's carry, not pre-summed X'X blocks. `update()` recomputes every statistic from those lines (O(n·p)), because the CV
+  λ, Elo walk, curves, probit γ and simulator inputs are not additive; it never re-reads old rows, and its point estimates
+  equal a full build exactly (worst difference 0 on real data). The store is about 1.6 MB for 275 games.
+- Player season rows come from the store's player lines (18 named keys), not data.js `season()`.
+- EB uses CR1 only with at least max(10, 2p) blocks, otherwise the model-based covariance (CR1 gave a 3-block league zero
+  variance in some directions). DerSimonian-Laird: with 4+ leagues of 50+ games a τ² below (0.01β_pool)² is set to that
+  floor (full pooling); fewer such leagues use (0.25β_pool)².
+- §7.12 P1: usage, assist, rebound and turnover shares are reported as contrasts (b_g minus the mean of G, F, C), which are
+  identified; the page words them "against an even spread". The pooled squad model centres within each league-season.
+- §8.3: evalSims 1,000 up to 2,000 games, 400 above.
+- Budgets: a pos file 6 KB. Club trimming: lineups to 5, realised rates to the last 5 defeats, pos.slots dropped, parts to
+  1 decimal. fo trimming: pos slots, squad pd, the embedded pos, then teams[].f to the core four.
+- Builder additions: building a league's current season retires its other seasons' current rows; a store refreshed only for
+  the pooled file gets its index row; the store is not downloaded when the cache holds the indexed token; stints are capped
+  at the latest 3,000 games; `--local --out` reads only public tables with the publishable key; `--fixtures` writes compact
+  JSON; test hooks `opts.trace`, `opts.raw`, `budget`.
+- Index rows: scope 'store' (league_key = league id, season_key = season id, team_key ''), 'pos' with team_key; paths are
+  inside the bucket (`wins/<league>/<season>/v1-<token>.json`); `ci_at` set on full builds; units with
+  `analytics_refresh.due` go first and the flag is cleared; every run calls `analytics_issue_prune`.
+- `club.slots[g][stat].sd` (added in WP6 at WP5's request): the team-season SD the z uses.
+
+**WP4: the page and chart kit**
+- The fixtures in `supabase/tests/fixtures/ww-page/` are the builder's real `--local` output (ORLEN 2025-26, the pooled file,
+  the Zastal club file, the teaser), curves cut to ten factors. They predate `slots[].sd`.
+- §11 P2: BPM and min_share are left out of the "% above the median" dumbbell (a median near 0 swamps it) and listed in a
+  table under it. The hard-number card skips score factors. Style factors (dir 0) are drawn neutral.
+- A refusal that is not about entitlement (rate, layout, network, none with no pooled file) shows a plain message in each
+  member section rather than the membership placeholder.
+- The chart kit's table button reads "show table" / "hide table" (the core dictionary translates "table" as standings).
+  On a phone, the bars chart gives its value labels the room the longest one needs (WP6, at WP5's request).
+- The analysis pack carries a `keep` list (Elo, ECE, AUC, P25, P50, P75, Dean Oliver) and every FACTORS label and definition.
+
+**WP5: the Front office**
+- Expected margins of the fixtures to come always use Elo plus `lg.homeEdge` (the fo file has no Forecast coefficients).
+- Needs drop factor/end pairs whose b interval spans 0; with no fixtures left a need is worth G·(Φ(δ/σ) − ½) over a season
+  against an average side. The simulator's counterfactual replaces the margin model only for calibrated units.
+- Slot gaps value only non-share statistics (P1 identifies only the share contrasts); each gap is P1's points per team-SD ×
+  (target − v)/SD, clamped to ±3 SD, with SD = `club.slots[g][stat].sd` (files built before it: |v − median|/|z|, which on
+  ORLEN understated the C true-shooting SD by about 2.5×).
+- An uncalibrated simulator: P(win) shown is the margin model's, with the simulator's beside it; "needed" values come from
+  the margin model. The roster what-if converts group BPM × θ_g to wins with the margin model and is labelled approximate.
+- A.1 depth chart: `depth.slotChart(o)` beside an unchanged `chart()`; the pos file is read from `club.pos`, else
+  `fo.pos[team]`. The RECALCULATE strip is a local copy in fomodel.js/css with the page's words and stages.
+- The team page's packs are "report go frontoffice" (go-page.test.mjs accepts it).
+
+**WP6: integration**
+- `run-ww.mjs --strict` (the guard step) fails a test that prints SKIP, since PGlite is installed there.
+- ww-contract's game_features rule also allows the generated `_shared/features.js`, `_shared/analyticsfile.ts` (A.2's pending
+  count and delta) and the ww tests, and reads code with comments stripped (winmodel.js names the table in a doc comment).
+  Its "no whole stats" rule allows `*` only on tables with no stats blob (finalise-game's existing game_events, games and
+  game_state reads; the page's leagues row).
+- The end-to-end check (builder files through winfile.js into the page's views and the Front office) is part of
+  ww-contract, on the real ORLEN files and the synthetic `--fixtures` files; `WW_LOCAL_DIR=<--local out dir>` adds every
+  league of a local build.
+- extract-shared: winstats, winsim and winmodel are no longer optional, and their export lists name every public function.
+
+### B.2 Acceptance on real data (read-only, the publishable key)
+Builder `--local`, 36 leagues' current seasons, 1,429 games (WP3), and again with the final code on four leagues (WP6):
+
+| Unit | Games | R² full 4F | b efg / tovp / orebp / ftr | eFG share Shapley / \|b\|·sd | Home win | Forecast Brier (home / Elo) | Slope | Live |
+|---|---|---|---|---|---|---|---|---|
+| Pooled, 36 leagues | 1,429 | 0.943 | 1.154 / −1.130 / 0.401 / 0.093 | 63.3% / 47.6% | 0.568 | 0.211 (0.248 / 0.213) | 0.85 | yes |
+| ORLEN | 275 | 0.934 | 1.136 / −1.010 / 0.395 / 0.071 | 73.4% / 48.9% | 0.607 | 0.227 (0.241 / 0.214) | 0.73 | no |
+| cibacopa | 256 | 0.922 | 1.151 / −1.231 / 0.432 / 0.072 | 66.4% / 46.7% | 0.527 | 0.224 (0.251 / 0.214) | 1.13 | no |
+| lnbp | 168 | 0.932 | 1.069 / −1.060 / 0.380 / 0.058 | 65.2% / 49.3% | 0.530 | 0.214 (0.257 / 0.216) | 1.28 | yes |
+| CEBL | 108 | 0.901 | 1.282 / −1.351 / 0.441 / 0.181 | 72.6% / 47.1% | 0.596 | 0.245 (0.244 / 0.247) | 0.31 | no |
+
+Spec targets met on the pooled unit: R² in [0.93, 0.95]; b near 1.157 / −1.130 / 0.398 / 0.094; |b|·sd eFG share in [40, 55];
+home win in [0.55, 0.59]; Forecast Brier below home-only and within 0.002 of Elo; slope 0.85. The single leagues miss the
+Forecast gate (ORLEN, cibacopa, CEBL) or the slope band (lnbp 1.28-1.37), so their chips say so; that is the gate working.
+
+Simulator (rolling origin): cibacopa Brier 0.213, slope 0.89, pace −0.05, ortg +0.19, margin SD ratio 1.042, calibrated; lnbp
+0.207, 1.14, −0.03, −0.04, 1.004, calibrated; ORLEN 0.215, 0.80, +0.01, −0.24, 1.064, experimental; CEBL 0.248, 0.31, +0.05,
++0.20, 1.142, experimental. Pace and ortg are within 0.5 everywhere.
+
+RECALCULATE (`update()` on the store less its newest 10 games, then the 10): the store comes back byte for byte and every
+point estimate equals the full build (worst difference 0), in 276 ms (CEBL), 382 ms (lnbp), 771 ms (cibacopa) and 925 ms
+(ORLEN) in node. Real file sizes: wins 171-202 KB (pooled 287 KB), fo 49-67 KB, club 21-25 KB, pos 2.3-3.2 KB, teaser 1.7 KB.
+
+Feature line: 481 games in 9 leagues replayed with no score or half mismatch; full-game four-factor OLS R² 0.919 with b 1.153,
+−1.083, 0.401, 0.085; extraction on top of finalise-game 1.9 ms p50, 3.0 ms p95.
+
+### B.3 What the owner has to do (runbook §17, as built)
+1. Finish the events-splits move (`premium_sit_remaining()` = 0); check and redeploy the snapshots function.
+2. `npx supabase db push` (0209_what_wins.sql).
+3. `npx supabase functions deploy finalise-game`; `npx supabase functions deploy analytics-file --no-verify-jwt`; the function
+   secret `ANALYTICS_SALT`. Optional: `ANALYTICS_REFRESH_BUDGET_MS` (default 20000), `ALLOWED_ORIGIN`.
+4. Actions → backfill-features: the dry run (the default), then a real run, until `game_features_missing(1)` is empty.
+5. Repository secrets `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`; variables `ANALYTICS_MIN_GAP_H` (1) and
+   `ANALYTICS_POOL_GAP_H` (6). Actions → analytics by hand once with `--dry-run`, then for real; read the job summary.
+6. Decide `platform_settings.analytics_signin`.
+7. Publish: the stamps are bumped (WP6). docs/data-protection.md has the boundary, the limits and the residual risk.
+
+### B.4 Not verified before release
+The Edge Function and the migration were not run against the real project (PGlite and node stand-ins only; no service key
+here, and the rules forbid writes). The builder's real upload, index and delete paths ran only against a mocked PostgREST and
+Storage. Neither workflow was triggered. The Edge CPU time of a 275-game RECALCULATE (about 1 s in node plus parsing a
+1.6 MB store) has not been measured against the hosted limit. No live league has a calibrated simulator in the Front office's
+browser path, so those paths are covered by unit tests only. Keyboard, screen-reader and forced-colours passes were not done
+in a live browser.
+
+### B.5 After the review (the fixer, 2026-10-01; overrides anything above it contradicts)
+**Statistics**
+- The simulator is validated OUT OF SAMPLE (`EpinoiaWinSim.calibrate`): the games in time order, the later 60% cut into
+  three folds, each fold simulated with league parameters (hca, τ/lead, κN, σN, μoff, δtr, fouling) fitted only on the games
+  played before its first game; Brier, slope, the checks, Platt and the gate are those held-out predictions', and the gate
+  compares against the Forecast's and Elo's own Briers on the same held-out games. The parameters written for what comes
+  next are fitted on every game; `report.inSample` (the same games scored by them) is shown apart and never gated. The
+  WP6 table in B.2 was in sample: on held-out games cibacopa and lnbp are no longer calibrated. Cost about 1.7-2× the old
+  calibration (lnbp 37 s, cibacopa 70 s in node).
+- The pooled core4c `home` is the games-weighted mean of the leagues' alphas (variance w'Vw); `causes()` uses each game's
+  own league's alpha.
+- `score: true` also on every factor built from points or from the margin: the points-per-chance and points-per-possession
+  measures (tr/hc/sc/offto_ppc, ppc_early/mid/late, ato_ppp, cl_ppp) and garbage_share (ww-features checks the rule: any
+  factor reading a `pts` count or g_poss, TS% apart).
+- `wins.homeMargin` {v, lo, hi, n}: the home side's mean margin at home venues, block bootstrap; the home card uses it.
+- Front office: top_avg is valued by its direct path effect only (`model: 'path:direct'`).
+- The CR1 and block-bootstrap SEs are compared per coefficient (`model.seCheck`); over 30% apart is a job-summary warning.
+- Carried intervals record their column names (`carry.ci[key].cols`); an update whose columns moved shows none.
+- A spread below 1e-6 of the values' size is 0 (`sdReal`): min_share (constant under slot minutes) leaves P2 and the slots,
+  pos_entropy leaves the squad fit where it is constant, and their z is 0 / null.
+- A.1's slot ranking breaks a tie between two estimates clamped to 1.0 or 5.0 by the unclamped estimate
+  (`EpinoiaBPM.estimatePosition(…, {raw: true})`).
+**Security**
+- RECALCULATE reads `players.is_minor/public_consent` for every player of the store and the delta and passes the withheld
+  list to `update(…, {withheld})`; every file is `validate`d before upload (a problem: `{queued, refresh_reason: 'validate'}`).
+- The signed-out subject hashes the platform-set address only (no user agent); see data-protection.md for the deploy check.
+- No Actions cache of the stores; `.cache/` is git-ignored.
+- Members' files: uploaded `no-store` / `max-age=0` and fetched with `cache: 'no-store'`; a sign-out mid-download drops the
+  answer (a cache generation); every request waits for `sessionReady()`.
+**Performance**
+- RECALCULATE refuses (queued, 'size') a unit over 400 games or a 2.5 MB store before downloading it; pages its player-line
+  and stint reads past PostgREST's 1000 rows; reads `st` only for games whose stints are missing or short (`stintGaps`; the
+  builder too); uploads wins, fo and the changed clubs' files only, six at a time, after a budget check that counts them.
+- The builder decodes a store once per unit for the club checks, and reads a unit's context once a run.
+- fo for hundreds of clubs: a last trimming step writes each club's simulator profile as arrays in RATES order (EpinoiaWinSim
+  reads either), and the fo budget allows 60 KB + 450 B a club (350 clubs: written, about 207 KB).
+- The team page loads the win model's code and sheets only when the Front office opens; the fo and club files are asked for
+  at once. The What wins page draws two sections at once and the rest as they near the viewport or in idle time.
+- finalise-game reads the competition chain once, beside the stats inserts, and notify() reuses it.
+**The page and the chart kit**
+- The tooltip and focus ring are attached; the meter never overlaps long names; the reliability chart has a key; rotated
+  heatmap labels stay inside the frame; the leagues heatmap is a neutral more/less pair (`mode: 'rel'`); a style measure has
+  its own hue; the dumbbell's bottom quarter is hollow; the share bar shows shares of the whole margin with the unexplained
+  rest; labels are translated before they are cut or split; the time-of-possession forest is one panel a measure on its own
+  unit; the luck note is "shot-making against shot quality"; a simulation redraws only its result (focus kept; any redraw
+  restores the focused control); RECALCULATE answers that updated nothing stop the bar and hold the button for the retry time.
+- Tests: ww-contract no longer requires the What wins migration to be the newest, nor exactly three locks; guard.yml runs
+  on the builder, the backfill scripts and their workflows; ww-features asserts its wall-clock budgets only with WW_PERF=1.
+

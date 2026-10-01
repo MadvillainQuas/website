@@ -61,7 +61,7 @@ function sandbox(o = {}) {
   const W = ctx.EpinoiaWinFile;
   const route = o.route || (() => res(500, {}));
   W._setTransport(async (url, init) => { const r = { url, init: init || {} }; reqs.push(r); return route(r, reqs, state); });
-  return { W, log, reqs, state, ls, ss, fire: () => listeners.forEach(f => f({})) };
+  return { W, log, reqs, state, ls, ss, access: ctx.EpinoiaAccess, fire: () => listeners.forEach(f => f({})) };
 }
 const FILE = (w = 1) => ({ w, fv: 1, scope: 'wins', token: '12@x', built: '2026-09-30T11:00:00Z', n: { games: 12 } });
 const META = (extra = {}) => Object.assign({ url: 'https://proj.supabase.co/storage/v1/object/sign/analytics/wins/a.json?token=T1', token: '12@2026-09-30T10:00:00Z',
@@ -179,6 +179,43 @@ console.log('\nwhere it is kept');
   const b = sandbox({ route: standard(META(), big) });
   const o = await b.W.get({ scope: 'wins', league: L });
   ok('a file over 2 MB is kept in memory only', o.ok && b.ss._m.size === 0 && b.W.cached({ scope: 'wins', league: L }) !== null);
+}
+
+/* -------------------------------------------- sign-out mid-download, expiry, the HTTP cache --- */
+console.log('\nsign-out during a download, an expired token, the browser cache');
+{
+  /* the account signs out while the file is on its way: clear() runs, and the late answer is never written back */
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const b = sandbox({ session: { token: 'eyJ.a.b', userId: 'userA' }, route: async (r) => (r.init.method === 'POST' ? res(200, META()) : (await gate, res(200, FILE()))) });
+  const pend = b.W.get({ scope: 'wins', league: L });
+  await new Promise(r => setTimeout(r, 5));
+  b.state.session = null; b.fire();
+  const right = Array.from(b.ss._m.keys()).filter(k => k.startsWith('epinoia_ww:'));
+  release();
+  const late = await pend;
+  const after = Array.from(b.ss._m.keys()).filter(k => k.startsWith('epinoia_ww:'));
+  ok('signing out mid-download: the file that lands afterwards is dropped, nothing written back (I7)', right.length === 0 && after.length === 0 && late.ok === false &&
+     b.W.cached({ scope: 'wins', league: L }) === null, { right, after, late: late.reason });
+}
+{
+  let readies = 0;
+  const b = sandbox({ session: { token: 'eyJ.old', userId: 'u-9' }, route: standard() });
+  await b.W.get({ scope: 'wins', league: L });
+  const keys0 = Array.from(b.ss._m.keys());
+  b.state.session = null;                                          // expired: session() is null until refreshed
+  b.access.sessionReady = async () => { readies++; b.state.session = { token: 'eyJ.new', userId: 'u-9' }; return b.state.session; };
+  b.state.clock += 11 * 60 * 1000;
+  const n = b.reqs.length;
+  const o = await b.W.refresh({ league: L });
+  ok('an expired token is refreshed (sessionReady) before RECALCULATE: sent as the member, the cache kept', readies >= 1 && o.ok &&
+     b.reqs[n].init.headers.Authorization === 'Bearer eyJ.new' && keys0.every(k => b.ss._m.has(k)), { readies, auth: b.reqs[n] && b.reqs[n].init.headers.Authorization });
+}
+{
+  const b = sandbox({ route: standard() });
+  await b.W.get({ scope: 'wins', league: L });
+  const g = b.reqs.find(r => r.init.method === 'GET');
+  ok('a members\' file is fetched with cache: \'no-store\' (never kept in the browser\'s HTTP cache)', g && g.init.cache === 'no-store', g && g.init);
 }
 
 /* --------------------------------------------------------------- teaser --- */

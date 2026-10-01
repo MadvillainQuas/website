@@ -101,7 +101,9 @@ function per100(raw, possessions) {
 }
 
 /* ------------------------------------------------------------- estimates --- */
-function estimatePosition(p100, team100, minutes, listed) {
+/* opts.raw: the regressed estimate before the clamp to [1, 5] (A.1's slot ranking separates two players who both
+   clamp to 1.0 or 5.0 by it); the default answer is unchanged */
+function estimatePosition(p100, team100, minutes, listed, opts) {
   const pctTrb = div(p100.trb, team100.trb);
   const pctStl = div(p100.stl, team100.stl);
   const pctPf  = div(p100.pf,  team100.pf);
@@ -116,7 +118,7 @@ function estimatePosition(p100, team100, minutes, listed) {
      he happened to grab two rebounds. */
   const listedPos = listed == null ? 3.0 : listed;
   const w = (minutes * raw + 50 * listedPos) / (minutes + 50);
-  return clamp(w, 1, 5);
+  return opts && opts.raw ? w : clamp(w, 1, 5);
 }
 
 function estimateOffensiveRole(p100, teamAvgPtsPerTSA, team100, minutes) {

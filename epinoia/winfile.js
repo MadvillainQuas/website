@@ -10,7 +10,7 @@
         -> {ok: true, data, token, built, pending, ci_at, bytes, cached}
          | {ok: false, reason: 'signin'|'members'|'league'|'scope'|'none'|'rate'|'layout'|'jwt'|'network'|'aborted', retryAfter?}
      refresh({league, season, team?, scope?}, {onProgress?, signal?})   RECALCULATE: the function adds the new games
-        -> get()'s answer + {refreshed, queued, joined, refreshReason}
+        -> get()'s answer + {refreshed, queued, joined, refreshReason, retryAfter (s, for 'recent' and 'queued')}
      cached(o)   what the cache holds for o, without a request (null when nothing)
      clear()     forget every file (memory and sessionStorage)
      FILE_V = 1; _setTransport(fn) for tests (fn(url, init) -> Promise of a fetch Response)
@@ -22,8 +22,12 @@
 
    CACHED IN MEMORY AND sessionStorage, KEYED BY THE USER, NEVER IN localStorage (I7): epinoia_ww:<user|anon>:<scope>:
    <league|all>:<season|current>:<team|->. Reused without a request for ten minutes, then asked again and downloaded
-   only if the token moved. Another account signing in on this tab clears every epinoia_ww: key. The old page's
+   only if the token moved. Another account signing in on this tab clears every epinoia_ww: key, and a download still
+   in flight when that happens is dropped, never written back (a generation that clear() moves on). The old page's
    localStorage copy (epinoia_winning_v1, up to 1.9 MB of somebody's analysis) is removed the first time this loads.
+   A members' file is fetched with cache: 'no-store', so the browser's HTTP disk cache never keeps a copy that sign-out
+   cannot clear. Every request first waits for EpinoiaAccess.sessionReady() (an expired token refreshed), so a tab left
+   open past the hour is not taken for signed out (no false lock, no cache wiped).
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -42,6 +46,8 @@ let transport = null;
 const mem = new Map();
 const inflight = new Map();
 let lastUser = null, subscribed = false;
+/* moved on by clear(): a request started before it may not write the cache or answer for the account that left */
+let gen = 0;
 
 const cfg = () => root.EPINOIA_CONFIG || {};
 const base = () => String(cfg().supabaseUrl || '').replace(/\/$/, '');
@@ -52,6 +58,11 @@ const store = () => { try { return root.sessionStorage || null; } catch (_) { re
 const send = (url, init) => (transport || ((u, i) => root.fetch(u, i)))(url, init);
 const note = (opts, stage, extra) => { try { if (opts && typeof opts.onProgress === 'function') opts.onProgress(Object.assign({ stage }, extra || {})); } catch (_) { /* a progress bar never breaks a load */ } };
 const aborted = opts => !!(opts && opts.signal && opts.signal.aborted);
+/* the session after an expired token has been refreshed (access.js); never rejects */
+async function ready() {
+  const A = access();
+  if (A && typeof A.sessionReady === 'function') { try { await A.sessionReady(); } catch (_) { /* the stored session stands */ } }
+}
 
 /* ------------------------------------------------------------- the old copy --- */
 try { if (root.localStorage) root.localStorage.removeItem(LEGACY); } catch (_) { /* storage blocked: nothing kept there either */ }
@@ -75,6 +86,7 @@ function keep(k, e) {
   } catch (_) { /* full or blocked: memory still has it */ }
 }
 function clear() {
+  gen++;
   mem.clear(); inflight.clear();
   const S = store();
   if (!S) return;
@@ -132,10 +144,13 @@ async function ask(o, refresh, opts) {
   return { ok: false, reason: 'network' };
 }
 
-/* the signed URL, with no headers of ours: storage checks the URL's own token */
-async function download(url, opts) {
+/* the signed URL, with no headers of ours: storage checks the URL's own token. A members' file is never kept in the
+   browser's HTTP cache (no-store): only this loader's per-user cache, which sign-out clears, holds it */
+async function download(url, opts, pub) {
   let r;
-  try { r = await send(url, { method: 'GET', signal: opts && opts.signal }); }
+  const init = { method: 'GET', signal: opts && opts.signal };
+  if (!pub) init.cache = 'no-store';
+  try { r = await send(url, init); }
   catch (_) { return { status: 0 }; }
   if (r.status < 200 || r.status >= 300) return { status: r.status };
   try {
@@ -159,9 +174,10 @@ async function download(url, opts) {
 }
 
 /* what the function said, turned into a file: the cached one when the token has not moved */
-async function settle(o, k, hit, meta, opts) {
+async function settle(o, k, hit, meta, opts, g0) {
   const fresh = e => Object.assign(e, { at: Date.now(), pending: meta.pending == null ? null : meta.pending,
     built: meta.built_at || e.built || null, ci_at: meta.ci_at || e.ci_at || null });
+  if (g0 !== gen) return { ok: false, reason: 'aborted' };
   if (hit && hit.token === meta.token) { const e = fresh(hit); keep(k, e); return answer(e, true); }
   note(opts, 'download', { loaded: 0, total: meta.bytes || null });
   let got = await download(meta.url, opts);
@@ -171,7 +187,7 @@ async function settle(o, k, hit, meta, opts) {
     meta = again;
     got = await download(meta.url, opts);
   }
-  if (aborted(opts)) return { ok: false, reason: 'aborted' };
+  if (aborted(opts) || g0 !== gen) return { ok: false, reason: 'aborted' };   // cancelled, or the account left meanwhile
   if (!got.data) return { ok: false, reason: 'network' };
   if (got.data.w !== FILE_V) return { ok: false, reason: 'layout' };
   const e = fresh({ token: meta.token, data: got.data, bytes: meta.bytes || got.bytes || null });
@@ -181,7 +197,7 @@ async function settle(o, k, hit, meta, opts) {
 }
 
 /* --------------------------------------------------------------- the teaser --- */
-async function teaser(k, hit, opts) {
+async function teaser(k, hit, opts, g0) {
   const pub = base() + '/storage/v1/object/public/snapshots/';
   let r;
   try { r = await send(pub + 'whatwins/index.json', { method: 'GET', signal: opts && opts.signal }); }
@@ -191,10 +207,12 @@ async function teaser(k, hit, opts) {
   let ix;
   try { ix = await r.json(); } catch (_) { return { ok: false, reason: 'network' }; }
   if (!ix || !ix.file) return { ok: false, reason: 'none' };
+  if (g0 !== gen) return { ok: false, reason: 'aborted' };
   if (hit && hit.token === ix.token) { hit.at = Date.now(); keep(k, hit); return answer(hit, true); }
   const f = String(ix.file);
   const url = /^https?:/.test(f) ? f : pub + (f.indexOf('/') >= 0 ? f.replace(/^snapshots\//, '') : 'whatwins/' + f);
-  const got = await download(url, opts);
+  const got = await download(url, opts, true);
+  if (g0 !== gen) return { ok: false, reason: 'aborted' };
   if (!got.data) return { ok: false, reason: got.status === 404 ? 'none' : 'network' };
   if (got.data.w !== FILE_V) return { ok: false, reason: 'layout' };
   const e = { token: ix.token || got.data.token, data: got.data, built: ix.built || got.data.built || null, at: Date.now(), bytes: got.bytes || null };
@@ -203,20 +221,21 @@ async function teaser(k, hit, opts) {
 }
 
 /* ------------------------------------------------------------------ the API --- */
-function get(o, opts) {
+async function get(o, opts) {
   o = o || {};
-  if (SCOPES.indexOf(o.scope) < 0) return Promise.resolve({ ok: false, reason: 'scope' });
+  if (SCOPES.indexOf(o.scope) < 0) return { ok: false, reason: 'scope' };
+  await ready();
   checkUser();
-  const k = keyOf(o);
+  const k = keyOf(o), g0 = gen;
   const hit = mem.get(k) || readSS(k);
-  if (hit && Date.now() - hit.at < REUSE_MS && !(opts && opts.force)) { mem.set(k, hit); return Promise.resolve(answer(hit, true)); }
+  if (hit && Date.now() - hit.at < REUSE_MS && !(opts && opts.force)) { mem.set(k, hit); return answer(hit, true); }
   if (inflight.has(k)) return inflight.get(k);
   const p = (async () => {
     note(opts, 'check');
-    if (o.scope === 'teaser') return teaser(k, hit, opts);
+    if (o.scope === 'teaser') return teaser(k, hit, opts, g0);
     const meta = await ask(o, false, opts);
     if (!meta.ok) return meta;
-    return settle(o, k, hit, meta, opts);
+    return settle(o, k, hit, meta, opts, g0);
   })().catch(() => ({ ok: false, reason: 'network' }));
   inflight.set(k, p);
   p.then(() => { if (inflight.get(k) === p) inflight.delete(k); });
@@ -227,17 +246,18 @@ function get(o, opts) {
 async function refresh(o, opts) {
   o = Object.assign({ scope: 'wins' }, o || {});
   if (['wins', 'fo', 'club', 'pos'].indexOf(o.scope) < 0 || !o.league) return { ok: false, reason: 'scope' };
+  await ready();
   checkUser();
-  const k = keyOf(o);
+  const k = keyOf(o), g0 = gen;
   note(opts, 'check');
   note(opts, 'update');
   const meta = await ask(o, true, opts);
   if (!meta.ok) return meta;
   if (aborted(opts)) return { ok: false, reason: 'aborted' };
   const hit = mem.get(k) || readSS(k);
-  const out = await settle(o, k, hit, meta, opts);
+  const out = await settle(o, k, hit, meta, opts, g0);
   return out.ok ? Object.assign(out, { refreshed: !!meta.refreshed, queued: !!meta.queued, joined: !!meta.joined,
-                                       refreshReason: meta.refresh_reason || null }) : out;
+                                       refreshReason: meta.refresh_reason || null, retryAfter: isFinite(+meta.retry_after) && +meta.retry_after > 0 ? +meta.retry_after : null }) : out;
 }
 
 function _setTransport(fn) { transport = typeof fn === 'function' ? fn : null; }

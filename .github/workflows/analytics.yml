@@ -1,0 +1,69 @@
+name: What wins model (the members-only analysis files)
+
+# Reads the What wins feature lines (public.game_features, service role only) that arrived since each unit's
+# watermark, fits the models with the page's own modules (epinoia/winmodel.js and the statistics it uses) and writes
+# small JSON files to the PRIVATE bucket 'analytics': per league-season a wins file, a Front office file, one file per
+# club and one positions file per club, plus the pooled file over every league's current season and the priors the
+# league fits lean on; and the public box-score teaser (snapshots/whatwins/, open leagues only). A page gets a file
+# only through the analytics-file Edge Function (a 120-second signed URL after the database's own check).
+# See tools/build-analytics.mjs and docs/what-wins-model.md §6.
+#
+# Hourly with a floor (ANALYTICS_MIN_GAP_H, default 1 hour; 6 above 800 games) between two builds of one unit; a unit
+# whose RECALCULATE could not finish in the function goes first. Sunday 03:40 UTC rebuilds every private store from
+# nothing (--full) and refreshes every interval. With nothing new a run reads a count per unit and stops.
+on:
+  schedule:
+    - cron: "40 * * * *"
+    - cron: "40 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      unit:
+        description: "Only this unit: <league id>:<season id> (optional)"
+        required: false
+      full:
+        description: "Rebuild every store from nothing and every file"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Read and build, write nothing; say what would be written"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analytics
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 50
+    steps:
+      # the page's own modules and the builder, not the repository's archived feeds
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            epinoia
+            tools
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      # NO actions/cache: the private stores (feature lines, player lines, stints and the withheld-player list) live
+      # only in the private bucket, read with the service role. A cache of this public repository is readable from
+      # any workflow run, a fork's pull request included, so it is outside that boundary (docs/data-protection.md).
+      - name: Build the What wins files
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANALYTICS_MIN_GAP_H: ${{ vars.ANALYTICS_MIN_GAP_H }}
+          ANALYTICS_POOL_GAP_H: ${{ vars.ANALYTICS_POOL_GAP_H }}
+          UNIT: ${{ github.event.inputs.unit }}
+          FULL: ${{ github.event.inputs.full == 'true' || github.event.schedule == '40 3 * * 0' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ "$FULL" = "true" ]; then args+=(--full); fi
+          if [ -n "$UNIT" ]; then args+=(--unit "$UNIT"); fi
+          node tools/build-analytics.mjs "${args[@]}"

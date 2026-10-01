@@ -183,7 +183,11 @@ function blendEnd(off, def, mu, L, hs, zones) {
   r.d = def && isNum(def.d) && isNum(mu.d) ? off.d * def.d / mu.d : off.d;
   return r;
 }
+/* a profile's rates may come compact (a big league's fo file: each end an array in RATES order): read either way */
+const rateObj = r => (Array.isArray(r) ? RATES.reduce((o, k, i) => { o[k] = r[i]; return o; }, {}) : r);
+const profObj = P => (P && (Array.isArray(P.off) || Array.isArray(P.def)) ? { off: rateObj(P.off), def: rateObj(P.def), n: P.n } : P);
 function matchup(A, B, L, o) {
+  A = profObj(A); B = profObj(B);
   const home = o && o.home != null ? o.home : 0, mu = Object.assign({}, LG, (L && L.rates) || {}), zones = zonesOf(L, mu);
   return {
     v: 1, home, zones, L: lcore(L), lg: L || null, A, B,
@@ -431,6 +435,7 @@ function makeRate(r, zones) {
 }
 /* the model-implied box numbers of one end's rates */
 function natural(r, zones) {
+  r = rateObj(r);
   zones = zones !== false;
   const sh = Mth.max(0, 1 - r.bonus - r.sfoul), non = 1 - r.tov, fga = non * sh;
   const fta = non * (2 * r.bonus + r.sfoul * (2 + FT3) + sh * makeRate(r, zones) * r.and1);
@@ -470,6 +475,7 @@ function editRates(r, key, delta, zones) {
 }
 /* a side's profile with edits in natural units on one end: [{end: 'off'|'def', key, delta}] */
 function applyEdits(P, edits, L) {
+  P = profObj(P);
   const mu = Object.assign({}, LG, (L && L.rates) || {}), zones = zonesOf(L, mu);
   const out = { off: Object.assign({}, P.off), def: Object.assign({}, P.def), n: P.n };
   for (const e of edits || []) out[e.end === 'def' ? 'def' : 'off'] = editRates(out[e.end === 'def' ? 'def' : 'off'], e.key, e.delta, zones);
@@ -644,19 +650,31 @@ function boxChecks(T, games, T40) {
   };
 }
 function addTally(into, t) { for (const k of TALLY) into[k] = (into[k] || 0) + tallySum(t, k); if (t) into.to_n = (into.to_n || 0) + tallySum(t, 'to_n'); }
-/* games: [{A, B (profiles), home (A's venue), y (A's margin), poss? (mean possessions a side), tally? ([A, B] in LAYOUT
-   names), ot?, T?}]. Fits, in this order: kappaN and sigmaN (possessions), dTr (transition minus half-court points per
-   chance), muOff (points per possession within 0.3%), the home court (home win share), the spread of margins around
-   their expectation (tau when the simulator is too tight, the score effect `lead` when it is too loose: one of the
-   two is zero), fouling (kept unless it worsens the possessions of games decided by 8 or fewer), kappaN once more;
-   then validates on every game (a 1,500 sample above 2,000) and adds Platt scaling when the slope is outside
-   [0.9, 1.1]. opts: seed, fitN (300), fitSims (200), evalSims (1000, or 400 above 2,000 games), evalN,
-   compare {forecast, elo} (Briers for the gate), fitSpread / fitHca / fitMuOff / fitDTr (false to hold one).
+/* games: [{A, B (profiles), home (A's venue), y (A's margin), t? (when it was played), poss? (mean possessions a side),
+   tally? ([A, B] in LAYOUT names), ot?, T?}]. Fits, in this order: kappaN and sigmaN (possessions), dTr (transition minus
+   half-court points per chance), muOff (points per possession within 0.3%), the home court (home win share), the spread
+   of margins around their expectation (tau when the simulator is too tight, the score effect `lead` when it is too
+   loose: one of the two is zero), fouling (kept unless it worsens the possessions of games decided by 8 or fewer),
+   kappaN once more.
+   THE VALIDATION IS OUT OF SAMPLE (rolling origin, like the Forecast): the games are put in time order (t, else the
+   order given), the later 1 - holdFrom of them (0.6) are cut into `folds` (3) blocks, and each block is simulated with
+   parameters fitted ONLY on the games played before its first game. The report (Brier, slope, the checks, the gate)
+   is those held-out predictions'; Platt scaling is fitted on them too. The parameters returned are fitted on every
+   game (for what comes next), and report.inSample holds what they score on the same held-out games: fitted on the
+   games they score, so it is shown apart and never gated. A unit too small for a fold (fewer than 20 earlier games)
+   has no held-out games, and is never calibrated.
+   opts: seed, fitN (300), fitSims (200; 0.6 of it for the fold fits), evalSims (1000, or 400 above 2,000 games),
+   evalN (1500 above 2,000), folds (3), holdFrom (0.4), compare {forecast, elo} (Briers for the gate, used when the
+   games do not carry their own pre-game pF / pE: then the gate scores those on the same held-out games), fitSpread /
+   fitHca / fitMuOff / fitDTr (false to hold one).
    Returns {hca, tau, kappaN, sigmaN, muOff, dTr, lead, fouling, platt, report}. */
 function* calibrateSteps(games, L, o) {
   o = o || {};
   const W = WS(), seed = o.seed != null ? o.seed : 1;
-  const all = games.filter(g => g && g.A && g.B && isNum(g.y));
+  const all0 = games.filter(g => g && g.A && g.B && isNum(g.y));
+  /* time order: t when given, else the order given (stable) */
+  const ordd = all0.map((g, i) => ({ g, t: isNum(g.t) ? g.t : i, i })).sort((a, b) => a.t - b.t || a.i - b.i);
+  const all = ordd.map(x => x.g), tOf = ordd.map(x => x.t);
   const pr = W.rng(seed ^ 0x51ED270B);
   const sample = (arr, k) => {
     if (arr.length <= k) return arr.slice();
@@ -664,159 +682,206 @@ function* calibrateSteps(games, L, o) {
     for (let i = idx.length - 1; i > 0; i--) { const j = Mth.floor(pr() * (i + 1)); const t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
     return idx.slice(0, k).sort((a, b) => a - b).map(i => arr[i]);
   };
-  const S = sample(all, o.fitN || 300), fitSims = o.fitSims || 200;
+  const fitN = o.fitN || 300, fitSims = o.fitSims || 200, foldSims = Mth.max(20, Mth.round(0.6 * fitSims));
+  const big = all.length > 2000;
+  const evalSims = o.evalSims || (big ? 400 : 1000), inSims = Mth.min(evalSims, 400);
   const Lc = Object.assign({}, LDEF, L || {});
   const possObs = g => (isNum(g.poss) ? g.poss : g.tally ? tallySum(g.tally, 'poss') / 2 : NaN);
   const Tof = g => g.T || Lc.T;
   const mk = (g, par) => matchup(g.A, g.B, Object.assign({}, Lc, par, { T: Tof(g) }), { home: g.home || 0 });
-  const par = { kappaN: Lc.kappaN || 1, sigmaN: Lc.sigmaN || 0, hca: Lc.hca || 0, tau: Lc.tau || 0, muOff: Lc.muOff || 0, dTr: Lc.dTr || 0, lead: Lc.lead || 0,
+  const par0 = { kappaN: Lc.kappaN || 1, sigmaN: Lc.sigmaN || 0, hca: Lc.hca || 0, tau: Lc.tau || 0, muOff: Lc.muOff || 0, dTr: Lc.dTr || 0, lead: Lc.lead || 0,
     fouling: Lc.fouling !== false };
-  const passes = { n: 0 };
-  const TOTAL = 24;
-  /* one pass over the fitting sample with the parameters q: per game mean and variance of the margin, P(win),
-     possessions, points, transition and half-court points per chance */
-  const pass = function* (q, set, sims) {
+  /* the rolling origins: fold k simulates games [a, b) with parameters fitted on the games played before game a */
+  const nF = Mth.max(0, o.folds != null ? o.folds : 3), from = clamp(o.holdFrom != null ? o.holdFrom : 0.4, 0.1, 0.9);
+  const folds = [];
+  if (nF > 0) {
+    const start = Mth.floor(all.length * from), span = all.length - start;
+    for (let k = 0; k < nF; k++) {
+      const a = start + Mth.floor(span * k / nF), b = start + Mth.floor(span * (k + 1) / nF);
+      if (b <= a) continue;
+      let f = a; while (f > 0 && tOf[f - 1] >= tOf[a]) f--;      // strictly before the fold's first game
+      if (f >= 20) folds.push({ fit: all.slice(0, f), test: all.slice(a, b) });
+    }
+  }
+  /* progress: a fit is about 24 passes, an evaluation 2 */
+  const TOTAL = 24 * (folds.length + 1) + 2 * (folds.length + 1);
+  const prog = { n: 0 };
+  /* one pass over `list` with the parameters q: per game mean and variance of the margin, P(win), possessions, points,
+     transition and half-court points per chance */
+  const pass = function* (q, list, sims) {
     const out = [];
-    const list = set || S;
     for (let i = 0; i < list.length; i++) {
       const g = list[i], M = mk(g, q);
-      const r = run(simulateSteps(M, { n: sims || fitSims, seed: (seed + 7919 * i) >>> 0, tally: true, fouling: q.fouling }));
-      out.push(r);
-      yield Mth.min(0.99, (passes.n + (i + 1) / list.length) / TOTAL);   // every game: a slice is never long
+      out.push(run(simulateSteps(M, { n: sims, seed: (seed + 7919 * i) >>> 0, tally: true, fouling: q.fouling })));
+      yield Mth.min(0.99, (prog.n + (i + 1) / list.length) / TOTAL);   // every game: a slice is never long
     }
-    passes.n++;
+    prog.n++;
     return out;
   };
   const mean = a => a.reduce((s, v) => s + v, 0) / (a.length || 1);
-  const has = S.filter(g => isNum(possObs(g)));
-  /* 1. possessions */
-  if (has.length) {
-    const base = has.map(g => { const M = mk(g, par); return Tof(g) / (M.r[0].d + M.r[1].d); });
-    const obs = has.map(possObs);
-    par.kappaN = obs.reduce((a, b) => a + b, 0) / base.reduce((a, b) => a + b, 0);
-    const res = obs.map((v, i) => v - par.kappaN * base[i]), mr = mean(res);
-    par.sigmaN = Mth.sqrt(Mth.max(0, mean(res.map(v => (v - mr) * (v - mr))) - 1 / 12 - 1 / 16));
-    const sim = yield* pass(par, has);
-    const sp = mean(sim.map(r => (r.poss[0] + r.poss[1]) / 2)), op = mean(obs);
-    if (sp > 0) par.kappaN *= op / sp;
-  }
-  /* a secant search on one parameter for f(results) = 0, f increasing in it: the passes share their seeds (CRN) */
-  const secant = function* (key, f, step, lo, hi, tol, maxIt, set) {
-    const at = function* (x) { return f(yield* pass(Object.assign({}, par, { [key]: x }), set)); };
-    let a = par[key], fa = yield* at(a);
-    if (Mth.abs(fa) <= tol) return a;
-    let b = clamp(a + (fa > 0 ? -step : step), lo, hi), fb = yield* at(b);
-    for (let it = 0; it < maxIt && Mth.abs(fb) > tol && fb !== fa; it++) {
-      const c = clamp(b - fb * (b - a) / (fb - fa), lo, hi);
-      a = b; fa = fb; b = c;
-      fb = yield* at(b);
+  /* the fit on the sample S (simulations a game: sims) */
+  const fitOn = function* (S, sims) {
+    const par = Object.assign({}, par0), p0 = prog.n;
+    const P = (q, set) => pass(q, set || S, sims);
+    const has = S.filter(g => isNum(possObs(g)));
+    /* 1. possessions */
+    if (has.length) {
+      const base = has.map(g => { const M = mk(g, par); return Tof(g) / (M.r[0].d + M.r[1].d); });
+      const obs = has.map(possObs);
+      par.kappaN = obs.reduce((a, b) => a + b, 0) / base.reduce((a, b) => a + b, 0);
+      const res = obs.map((v, i) => v - par.kappaN * base[i]), mr = mean(res);
+      par.sigmaN = Mth.sqrt(Mth.max(0, mean(res.map(v => (v - mr) * (v - mr))) - 1 / 12 - 1 / 16));
+      const sim = yield* P(par, has);
+      const sp = mean(sim.map(r => (r.poss[0] + r.poss[1]) / 2)), op = mean(obs);
+      if (sp > 0) par.kappaN *= op / sp;
     }
-    return Mth.abs(fb) <= Mth.abs(fa) ? b : a;
-  };
-  const withT = S.filter(g => g.tally), tot = {};
-  withT.forEach(g => addTally(tot, g.tally));
-  /* 2. transition: transition minus half-court points per chance (first: it moves the points per possession) */
-  const diffTr = t => t.tr_pts / t.tr_ch - (t.pts - t.tr_pts) / (t.chances - t.tr_ch);
-  const canTr = withT.length && o.fitDTr !== false && tot.tr_ch > 0 && tot.chances > tot.tr_ch;
-  const fitTr = function* (maxIt) {
-    if (!canTr) return;
-    const obsD = diffTr(tot);
-    par.dTr = yield* secant('dTr', rs => { const t = {}; rs.forEach(r => addTally(t, r.tally)); return diffTr(t) - obsD; }, 0.2, -1, 2, 0.01, maxIt, withT);
-  };
-  /* 3. the league make offset: points per possession within 0.3% */
-  const canMu = withT.length && o.fitMuOff !== false && tot.poss > 0;
-  const fitMu = function* (maxIt) {
-    if (!canMu) return;
-    const obsPpp = tot.pts / tot.poss;
-    const pppOf = rs => { let p = 0, n = 0; rs.forEach(r => { p += r.tally[0].pts + r.tally[1].pts; n += r.tally[0].poss + r.tally[1].poss; }); return p / n; };
-    par.muOff = yield* secant('muOff', rs => pppOf(rs) - obsPpp, 0.05, -1, 1, 0.003 * obsPpp, maxIt, withT);
-  };
-  yield* fitTr(2);
-  yield* fitMu(4);
-  yield* fitTr(1);
-  yield* fitMu(2);
-  /* 4. the spread of margins around their expectation: form noise tau when the simulator is too tight, the score
-     effect (lead) when it is too loose; one of the two is zero */
-  const gap = rs => mean(rs.map(r => r.sd * r.sd)) - mean(rs.map((r, i) => (S[i].y - r.mean) * (S[i].y - r.mean)));
-  const fitSpread = function* () {
-    if (o.fitSpread === false) return;
-    const base = Object.assign({}, par, { tau: 0, lead: 0 });
-    const g0 = gap(yield* pass(base));
-    if (g0 < 0) {
-      par.lead = 0;
-      par.tau = yield* secant('tau', rs => gap(rs), 0.2, 0, 1.2, 1, 4);
-    } else {
-      par.tau = 0;
-      par.lead = yield* secant('lead', rs => -gap(rs), 0.15, 0, 1.5, 1, 4);
+    /* a secant search on one parameter for f(results) = 0, f increasing in it: the passes share their seeds (CRN) */
+    const secant = function* (key, f, step, lo, hi, tol, maxIt, set) {
+      const at = function* (x) { return f(yield* P(Object.assign({}, par, { [key]: x }), set)); };
+      let a = par[key], fa = yield* at(a);
+      if (Mth.abs(fa) <= tol) return a;
+      let b = clamp(a + (fa > 0 ? -step : step), lo, hi), fb = yield* at(b);
+      for (let it = 0; it < maxIt && Mth.abs(fb) > tol && fb !== fa; it++) {
+        const c = clamp(b - fb * (b - a) / (fb - fa), lo, hi);
+        a = b; fa = fb; b = c;
+        fb = yield* at(b);
+      }
+      return Mth.abs(fb) <= Mth.abs(fa) ? b : a;
+    };
+    const withT = S.filter(g => g.tally), tot = {};
+    withT.forEach(g => addTally(tot, g.tally));
+    /* 2. transition: transition minus half-court points per chance (first: it moves the points per possession) */
+    const diffTr = t => t.tr_pts / t.tr_ch - (t.pts - t.tr_pts) / (t.chances - t.tr_ch);
+    const canTr = withT.length && o.fitDTr !== false && tot.tr_ch > 0 && tot.chances > tot.tr_ch;
+    const fitTr = function* (maxIt) {
+      if (!canTr) return;
+      const obsD = diffTr(tot);
+      par.dTr = yield* secant('dTr', rs => { const t = {}; rs.forEach(r => addTally(t, r.tally)); return diffTr(t) - obsD; }, 0.2, -1, 2, 0.01, maxIt, withT);
+    };
+    /* 3. the league make offset: points per possession within 0.3% */
+    const canMu = withT.length && o.fitMuOff !== false && tot.poss > 0;
+    const fitMu = function* (maxIt) {
+      if (!canMu) return;
+      const obsPpp = tot.pts / tot.poss;
+      const pppOf = rs => { let p = 0, n = 0; rs.forEach(r => { p += r.tally[0].pts + r.tally[1].pts; n += r.tally[0].poss + r.tally[1].poss; }); return p / n; };
+      par.muOff = yield* secant('muOff', rs => pppOf(rs) - obsPpp, 0.05, -1, 1, 0.003 * obsPpp, maxIt, withT);
+    };
+    yield* fitTr(2);
+    yield* fitMu(4);
+    yield* fitTr(1);
+    yield* fitMu(2);
+    /* 4. the spread of margins around their expectation: form noise tau when the simulator is too tight, the score
+       effect (lead) when it is too loose; one of the two is zero */
+    const gap = rs => mean(rs.map(r => r.sd * r.sd)) - mean(rs.map((r, i) => (S[i].y - r.mean) * (S[i].y - r.mean)));
+    const fitSpread = function* () {
+      if (o.fitSpread === false) return;
+      const base = Object.assign({}, par, { tau: 0, lead: 0 });
+      const g0 = gap(yield* P(base));
+      if (g0 < 0) {
+        par.lead = 0;
+        par.tau = yield* secant('tau', rs => gap(rs), 0.2, 0, 1.2, 1, 4);
+      } else {
+        par.tau = 0;
+        par.lead = yield* secant('lead', rs => -gap(rs), 0.15, 0, 1.5, 1, 4);
+      }
+    };
+    /* 5. the home court: the home side's share of wins */
+    const homeG = S.filter(g => g.home === 1 || g.home === -1);
+    const obsHome = homeG.length ? mean(homeG.map(g => ((g.home === 1) === (g.y > 0) ? 1 : 0))) : null;
+    const fitHca = function* (maxIt) {
+      if (!homeG.length || o.fitHca === false) return;
+      par.hca = yield* secant('hca', rs => mean(rs.map((r, i) => (homeG[i].home === 1 ? r.pRaw : 1 - r.pRaw))) - obsHome, 0.05, -0.6, 0.6, 0.003, maxIt, homeG);
+    };
+    yield* fitHca(3);
+    yield* fitSpread();
+    yield* fitHca(2);
+    yield* fitMu(1);
+    /* 6. end-game fouling: kept unless it worsens the possessions of games decided by 8 or fewer */
+    const close = S.filter(g => Mth.abs(g.y) <= 8 && isNum(possObs(g)));
+    if (close.length >= 10) {
+      const err = rs => mean(rs.map((r, i) => Mth.abs((r.poss[0] + r.poss[1]) / 2 - possObs(close[i]))));
+      const on = err(yield* P(Object.assign({}, par, { fouling: true }), close));
+      const off = err(yield* P(Object.assign({}, par, { fouling: false }), close));
+      const was = par.fouling;
+      par.fouling = !(off < on);
+      if (par.fouling !== was) yield* fitMu(2);
     }
+    /* 6b. possessions once more, now that fouling, the score effect and the rest are settled */
+    if (has.length) {
+      const sim = yield* P(par, has);
+      const sp = mean(sim.map(r => (r.poss[0] + r.poss[1]) / 2)), op = mean(has.map(possObs));
+      if (sp > 0) par.kappaN *= op / sp;
+    }
+    prog.n = Mth.max(prog.n, p0 + 24);
+    return par;
   };
-  /* 5. the home court: the home side's share of wins */
-  const homeG = S.filter(g => g.home === 1 || g.home === -1);
-  const obsHome = homeG.length ? mean(homeG.map(g => ((g.home === 1) === (g.y > 0) ? 1 : 0))) : null;
-  const fitHca = function* (maxIt) {
-    if (!homeG.length || o.fitHca === false) return;
-    par.hca = yield* secant('hca', rs => mean(rs.map((r, i) => (homeG[i].home === 1 ? r.pRaw : 1 - r.pRaw))) - obsHome, 0.05, -0.6, 0.6, 0.003, maxIt, homeG);
+  /* simulate `set` with the parameters q: the per-game P(win) and the sums the checks need */
+  const evalOn = function* (set, q, sims, acc, salt) {
+    for (let i = 0; i < set.length; i++) {
+      const g = set[i];
+      const r = run(simulateSteps(mk(g, q), { n: sims, seed: ((seed ^ 0xA5A5A5A5) + 104729 * (i + salt)) >>> 0, tally: true, fouling: q.fouling }));
+      /* (wins + 0.5) / (sims + 1): a game simulated as never (or always) won is not a certainty, and its logit stays finite */
+      acc.ps.push((r.pRaw * r.n + 0.5) / (r.n + 1)); acc.ys.push(g.y > 0 ? 1 : 0); acc.games.push(g);
+      acc.simMs.push(r.mean); acc.simVar += r.sd * r.sd;
+      acc.simClose += r.close5; acc.simOt += r.otRate;
+      if (g.home === 1 || g.home === -1) acc.simHome += g.home === 1 ? r.pRaw : 1 - r.pRaw;
+      if (g.tally) { addTally(acc.obsT, g.tally); const t = {}; TALLY.forEach(k => { t[k] = (r.tally[0][k] + r.tally[1][k]) / sims; }); for (const k in t) acc.simT[k] = (acc.simT[k] || 0) + t[k]; }
+      yield Mth.min(0.99, (prog.n + 2 * (i + 1) / set.length) / TOTAL);
+    }
+    prog.n += 2;
+    return acc;
   };
-  yield* fitHca(3);
-  yield* fitSpread();
-  yield* fitHca(2);
-  yield* fitMu(1);
-  /* 6. end-game fouling: kept unless it worsens the possessions of games decided by 8 or fewer */
-  const close = S.filter(g => Mth.abs(g.y) <= 8 && isNum(possObs(g)));
-  if (close.length >= 10) {
-    const err = rs => mean(rs.map((r, i) => Mth.abs((r.poss[0] + r.poss[1]) / 2 - possObs(close[i]))));
-    const on = err(yield* pass(Object.assign({}, par, { fouling: true }), close));
-    const off = err(yield* pass(Object.assign({}, par, { fouling: false }), close));
-    const was = par.fouling;
-    par.fouling = !(off < on);
-    if (par.fouling !== was) yield* fitMu(2);
+  const newAcc = () => ({ ps: [], ys: [], games: [], obsT: {}, simT: {}, simMs: [], simClose: 0, simOt: 0, simHome: 0, simVar: 0 });
+  const T40 = 2400 / Lc.T;
+  const checksOf = acc => {
+    const set = acc.games, n = set.length, ys2 = set.map(g => g.y), my = mean(ys2), mm = mean(acc.simMs);
+    const obsSd = Mth.sqrt(mean(ys2.map(y => (y - my) * (y - my)))), simSd = Mth.sqrt(acc.simVar / n + mean(acc.simMs.map(m => (m - mm) * (m - mm))));
+    const withTally = set.filter(g => g.tally).length;
+    const ob = withTally ? boxChecks(acc.obsT, withTally, T40) : null, sb = withTally ? boxChecks(acc.simT, withTally, T40) : null;
+    const checks = {};
+    if (ob) for (const k in ob) checks[k] = { obs: ob[k], sim: sb[k] };
+    checks.marginSd = { obs: obsSd, sim: simSd };
+    checks.close5 = { obs: mean(ys2.map(y => (Mth.abs(y) <= 5 ? 1 : 0))), sim: acc.simClose / n };
+    if (set.some(g => isNum(g.ot))) checks.ot = { obs: mean(set.map(g => (g.ot > 0 ? 1 : 0))), sim: acc.simOt / n };
+    const hg = set.filter(g => g.home === 1 || g.home === -1);
+    if (hg.length) checks.home = { obs: mean(hg.map(g => ((g.home === 1) === (g.y > 0) ? 1 : 0))), sim: acc.simHome / hg.length };
+    return checks;
+  };
+  /* 7. the held-out validation: each fold simulated with parameters fitted before it */
+  const capTest = big ? Mth.max(1, Mth.round((o.evalN || 1500) / Mth.max(1, folds.length))) : Infinity;
+  const held = newAcc(), foldPars = [];
+  for (let k = 0; k < folds.length; k++) {
+    const F = folds[k];
+    const pk = yield* fitOn(sample(F.fit, fitN), foldSims);
+    foldPars.push({ nFit: F.fit.length, nTest: F.test.length, hca: pk.hca, tau: pk.tau, lead: pk.lead, kappaN: pk.kappaN });
+    yield* evalOn(F.test.length > capTest ? sample(F.test, capTest) : F.test, pk, evalSims, held, 100000 * (k + 1));
   }
-  /* 6b. possessions once more, now that fouling, the score effect and the rest are settled */
-  if (has.length) {
-    const sim = yield* pass(par, has);
-    const sp = mean(sim.map(r => (r.poss[0] + r.poss[1]) / 2)), op = mean(has.map(possObs));
-    if (sp > 0) par.kappaN *= op / sp;
-  }
-  /* 7. validation */
-  const evalSet = all.length > 2000 ? sample(all, o.evalN || 1500) : all;
-  const evalSims = o.evalSims || (all.length > 2000 ? 400 : 1000);
-  const ps = [], ys = [], obsT = {}, simT = {}, simMs = [];
-  let simClose = 0, simOt = 0, simHome = 0, simVar = 0;
-  for (let i = 0; i < evalSet.length; i++) {
-    const g = evalSet[i];
-    const r = run(simulateSteps(mk(g, par), { n: evalSims, seed: (seed ^ 0xA5A5A5A5) + 104729 * i >>> 0, tally: true, fouling: par.fouling }));
-    /* (wins + 0.5) / (sims + 1): a game simulated as never (or always) won is not a certainty, and its logit stays finite */
-    ps.push((r.pRaw * r.n + 0.5) / (r.n + 1)); ys.push(g.y > 0 ? 1 : 0);
-    simMs.push(r.mean); simVar += r.sd * r.sd;
-    simClose += r.close5; simOt += r.otRate;
-    if (g.home === 1 || g.home === -1) simHome += g.home === 1 ? r.pRaw : 1 - r.pRaw;
-    if (g.tally) { addTally(obsT, g.tally); const t = {}; TALLY.forEach(k => { t[k] = (r.tally[0][k] + r.tally[1][k]) / evalSims; }); for (const k in t) simT[k] = (simT[k] || 0) + t[k]; }
-    yield Mth.min(0.99, (TOTAL - 2 + 2 * (i + 1) / evalSet.length) / TOTAL);
-  }
-  const cal = W.calibration(ps, ys);
+  /* 8. the parameters for what comes next: fitted on every game */
+  const S = sample(all, fitN);
+  const par = yield* fitOn(S, fitSims);
+  /* 9. what those parameters score on the same held-out games (in sample: shown apart, never gated) */
+  const ins = held.games.length ? yield* evalOn(held.games, par, inSims, newAcc(), 0) : null;
+  const n = held.ps.length;
+  const cal = n ? W.calibration(held.ps, held.ys) : { brier: NaN, logloss: NaN, slope: NaN, intercept: NaN, ece: NaN, auc: NaN };
   let platt = null;
-  if (isNum(cal.slope) && (cal.slope < 0.9 || cal.slope > 1.1) && ps.length >= 30) {
-    const lg = W.logistic(ps.map(p => [1, logit(clamp(p, 1e-4, 1 - 1e-4))]), ys, { maxIter: 50 });
+  if (isNum(cal.slope) && (cal.slope < 0.9 || cal.slope > 1.1) && n >= 30) {
+    const lg = W.logistic(held.ps.map(p => [1, logit(clamp(p, 1e-4, 1 - 1e-4))]), held.ys, { maxIter: 50 });
     if (lg.converged && !lg.separated) platt = { a: lg.b[0], b: lg.b[1] };
   }
-  const n = evalSet.length, ys2 = evalSet.map(g => g.y), my = mean(ys2), mm = mean(simMs);
-  const obsSd = Mth.sqrt(mean(ys2.map(y => (y - my) * (y - my)))), simSd = Mth.sqrt(simVar / n + mean(simMs.map(m => (m - mm) * (m - mm))));
-  const withTally = evalSet.filter(g => g.tally).length, T40 = 2400 / Lc.T;
-  const ob = withTally ? boxChecks(obsT, withTally, T40) : null, sb = withTally ? boxChecks(simT, withTally, T40) : null;
-  const checks = {};
-  if (ob) for (const k in ob) checks[k] = { obs: ob[k], sim: sb[k] };
-  checks.marginSd = { obs: obsSd, sim: simSd };
-  checks.close5 = { obs: mean(ys2.map(y => (Mth.abs(y) <= 5 ? 1 : 0))), sim: simClose / n };
-  if (evalSet.some(g => isNum(g.ot))) checks.ot = { obs: mean(evalSet.map(g => (g.ot > 0 ? 1 : 0))), sim: simOt / n };
-  const nh = evalSet.filter(g => g.home === 1 || g.home === -1).length;
-  if (nh) checks.home = { obs: mean(evalSet.filter(g => g.home === 1 || g.home === -1).map(g => ((g.home === 1) === (g.y > 0) ? 1 : 0))), sim: simHome / nh };
-  const cmp = o.compare;
+  const checks = n ? checksOf(held) : {};
+  let inSample = null;
+  if (ins) { const ci = W.calibration(ins.ps, ins.ys); inSample = { brier: ci.brier, slope: ci.slope, sims: inSims, checks: checksOf(ins) }; }
+  /* the gate compares like with like: when the games carry the Forecast's and Elo's own pre-game P(win) (pF, pE), their
+     Briers on the same held-out games; else opts.compare */
+  const brierOf = key => { let s = 0, m = 0; held.games.forEach((g, i) => { if (isNum(g[key])) { s += (g[key] - held.ys[i]) * (g[key] - held.ys[i]); m++; } }); return m === n && n ? s / m : null; };
+  const same = { forecast: brierOf('pF'), elo: brierOf('pE') };
+  const cmp = same.forecast != null || same.elo != null ? same : o.compare;
   const slopeOk = isNum(cal.slope) && cal.slope >= 0.85 && cal.slope <= 1.15;
   const brierOk = !cmp || !(isNum(cmp.forecast) || isNum(cmp.elo)) || cal.brier <= Mth.min(isNum(cmp.forecast) ? cmp.forecast : Infinity, isNum(cmp.elo) ? cmp.elo : Infinity) + 0.003;
   const calibrated = n >= 60 && slopeOk && brierOk;
   return {
     hca: par.hca, tau: par.tau, kappaN: par.kappaN, sigmaN: par.sigmaN, muOff: par.muOff, dTr: par.dTr, lead: par.lead, fouling: par.fouling, platt,
-    report: Object.assign({ nEval: n, nFit: S.length, sims: evalSims, calibrated, checks }, cal)
+    report: Object.assign({ nEval: n, nFit: S.length, sims: evalSims, calibrated, heldOut: true, folds: foldPars, checks, inSample, compare: cmp || null }, cal)
   };
 }
 const calibrate = (games, L, o) => run(calibrateSteps(games, L, o));
@@ -937,7 +1002,7 @@ function drive(gen, o) {
 
 return {
   RATES, K_PRIOR, GROUPS, EDITS, RANGE, LG, TALLY,
-  endInput, ratesOf, profile, matchup, matchFrom, game, simulate, applyEdits, editMatch, natural,
+  endInput, ratesOf, profile, profObj, matchup, matchFrom, game, simulate, applyEdits, editMatch, natural,
   counterfactual, needed, shapley, season, calibrate, synth, markov,
   simulateSteps, counterfactualSteps, neededSteps, shapleySteps, seasonSteps, calibrateSteps, refitSteps,
   steps, drive, run

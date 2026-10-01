@@ -11,9 +11,13 @@
 //   * analytics_take (service role) counts it: 60 an hour signed in, 20 signed out;
 //   * the file comes from the private 'analytics' bucket as a 120-second signed URL, never through here.
 // RECALCULATE runs EpinoiaWinModel.update on the new games: the model's shared copy, with the statistics it uses,
-// imported for their side effect (features.js reads the engine and the calculators off globalThis when called).
+// imported for their side effect (features.js reads the engine and the calculators off globalThis when called;
+// winstats.js before winsim.js, which finds EpinoiaWinStats on globalThis; bpm.js so positions, lineups and P2f
+// match the builder's).
 //
-// Secrets: ANALYTICS_SALT (hashes a signed-out caller's address and browser for the limit; never stored raw).
+// Secrets: ANALYTICS_SALT (hashes a signed-out caller's address for the limit; never stored raw). Optional:
+// ANALYTICS_IP_HEADERS / ANALYTICS_XFF_HOPS (which header carries the address the edge saw), ANALYTICS_REFRESH_BUDGET_MS,
+// ANALYTICS_REFRESH_MAX_GAMES, ANALYTICS_REFRESH_MAX_STORE_BYTES.
 // ============================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { handle } from '../_shared/analyticsfile.ts';
@@ -24,6 +28,7 @@ import '../_shared/shotclock.js';
 import '../_shared/features.js';
 import '../_shared/winstats.js';
 import '../_shared/winsim.js';
+import '../_shared/bpm.js';
 import '../_shared/winmodel.js';
 
 const URL_ = Deno.env.get('SUPABASE_URL')!;
@@ -51,5 +56,7 @@ Deno.serve((req) => req.method === 'OPTIONS' ? new Response('ok', { headers: { .
   admin,
   env: Deno.env,
   sha256,
-  update: (store, delta, opts) => (globalThis as any).EpinoiaWinModel.update(store, delta, opts)
+  update: (store, delta, opts) => (globalThis as any).EpinoiaWinModel.update(store, delta, opts),
+  validate: (file, scope, o) => (globalThis as any).EpinoiaWinModel.validate(file, scope, o),
+  stintGaps: (rows, stints) => (globalThis as any).EpinoiaWinModel.stintGaps(rows, stints)
 }));

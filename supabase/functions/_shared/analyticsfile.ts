@@ -29,6 +29,14 @@ export const FV = 1;                       // the feature layout the pending cou
 export const MAX_BODY = 1024;
 export const SIGNED_TTL = 120;
 export const REFRESH_CAP = 500;            // new games a refresh may add; above it, the scheduled build does it
+/* the unit a refresh may take on at all. update() re-sums the whole store (O(n): about 1 s of CPU at 275 games in node,
+   linear in n) and the store is read, parsed, re-encoded and written whole, so a unit past these is left to the
+   scheduled build ({queued: true, refresh_reason: 'size'}) BEFORE its store is downloaded. Overridable by
+   ANALYTICS_REFRESH_MAX_GAMES / ANALYTICS_REFRESH_MAX_STORE_BYTES once measured on the hosted runtime. */
+export const REFRESH_MAX_GAMES = 400;
+export const REFRESH_MAX_STORE_BYTES = 2_500_000;
+export const UPLOAD_LANES = 6;             // uploads in flight at once
+export const UPLOAD_MS_EST = 300;          // a storage upload from the edge, for the budget check before the upload phase
 export const BUCKET = 'analytics';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -41,6 +49,8 @@ export interface Deps {
   env: { get(k: string): string | undefined } | Record<string, string | undefined>;
   sha256: (s: string) => Promise<string>;          // hex digest
   update?: (store: any, delta: any, opts: any) => any;   // EpinoiaWinModel.update (the shared copy)
+  validate?: (file: any, scope: string, o: any) => string[];   // EpinoiaWinModel.validate: every file is checked before upload
+  stintGaps?: (rows: any[], stints: any[]) => string[];        // EpinoiaWinModel.stintGaps: games whose stints need the row's own st
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
   log?: (o: Record<string, unknown>) => void;
@@ -55,6 +65,20 @@ const corsOf = (deps: Deps) => ({
   'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 });
+
+/* THE SIGNED-OUT CALLER'S ADDRESS, as the platform saw it, never what the client wrote: a header the edge sets itself
+   (cf-connecting-ip, then x-real-ip; ANALYTICS_IP_HEADERS, comma-separated, overrides the list), else the
+   x-forwarded-for entry ANALYTICS_XFF_HOPS (1) from the right: proxies APPEND, so the left end is whatever the client
+   sent and the right end is what the last trusted hop saw. The user agent is not part of it: rotating it would mint a
+   new bucket on every request. */
+export function clientAddress(req: Request, env: (k: string) => string | undefined): string {
+  const list = (env('ANALYTICS_IP_HEADERS') || 'cf-connecting-ip,x-real-ip').split(',').map(h => h.trim().toLowerCase()).filter(Boolean);
+  for (const h of list) { const v = (req.headers.get(h) || '').trim(); if (v) return v.split(',')[0].trim(); }
+  const xff = (req.headers.get('x-forwarded-for') || '').split(',').map(x => x.trim()).filter(Boolean);
+  if (!xff.length) return '';
+  const hops = Math.max(1, Math.floor(+(env('ANALYTICS_XFF_HOPS') || 1)) || 1);
+  return xff[Math.max(0, xff.length - hops)];
+}
 
 /* the JWT's subject. PostgREST has just verified the token (analytics_check ran with it), so reading it is enough. */
 export function jwtSub(jwt: string): string {
@@ -129,10 +153,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let subject: string;
   if (sub) subject = 'u:' + sub;
   else {
-    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim();
-    const ua = req.headers.get('user-agent') || '';
+    const ip = clientAddress(req, k => envOf(deps, k));
     const day = new Date(now()).toISOString().slice(0, 10);
-    subject = 'ip:' + String(await deps.sha256([ip, ua, day, envOf(deps, 'ANALYTICS_SALT') || ''].join('|'))).slice(0, 32);
+    subject = 'ip:' + String(await deps.sha256([ip, day, envOf(deps, 'ANALYTICS_SALT') || ''].join('|'))).slice(0, 32);
   }
   const admin = deps.admin;
 
@@ -269,17 +292,21 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
 
   /* the unit's index rows, the store's among them */
   const { data: idx, error: idxErr } = await admin.from('analytics_files')
-    .select('scope,league_key,season_key,team_key,league_id,season_id,team_id,is_current,path,token,layout,fv,ci_at')
+    .select('scope,league_key,season_key,team_key,league_id,season_id,team_id,is_current,path,token,layout,fv,ci_at,bytes,n_games')
     .eq('league_key', league).eq('season_key', season);
   if (idxErr) throw new Error(idxErr.message);
   const old = new Map<string, any>();
   (idx || []).forEach((r: any) => old.set(r.scope + '|' + (r.team_key || ''), r));
   const storeRow = old.get('store|');
   if (!storeRow) return { refreshed: false, queued: true, reason: 'store' };
+  /* too big a unit for the function: left to the scheduled build before a byte of the store is read */
+  const maxGames = +(envOf(deps, 'ANALYTICS_REFRESH_MAX_GAMES') || REFRESH_MAX_GAMES), maxBytes = +(envOf(deps, 'ANALYTICS_REFRESH_MAX_STORE_BYTES') || REFRESH_MAX_STORE_BYTES);
+  if ((+storeRow.n_games || 0) > maxGames || (+storeRow.bytes || 0) > maxBytes) return { refreshed: false, queued: true, reason: 'size' };
 
   const dl = await admin.storage.from(BUCKET).download(String(storeRow.path).replace(/^analytics\//, ''));
   if (dl.error || !dl.data) throw new Error('the store could not be read');
   const store = JSON.parse(typeof dl.data === 'string' ? dl.data : await dl.data.text());
+  if ((+store.n || 0) > maxGames) return { refreshed: false, queued: true, reason: 'size' };
   const fv = +store.fv || FV;
   const wm = store.wm || { at: '1970-01-01T00:00:00Z', id: '00000000-0000-0000-0000-000000000000' };
   const after = `finalised_at.gt.${wm.at},and(finalised_at.eq.${wm.at},game_id.gt.${wm.id})`;
@@ -294,7 +321,8 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
   /* the delta, keyset after the watermark: the lines, their games, player lines and stints (§6.3) */
   const rows: any[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await admin.from('game_features').select('game_id,team_idx,f,q,st,finalised_at')
+    /* not st: about 1 KB a row the model reads only for a game without lineup_stints (fetched below for those) */
+    const { data, error } = await admin.from('game_features').select('game_id,team_idx,f,q,finalised_at')
       .eq('league_id', league).eq('season_id', season).eq('fv', fv).or(after)
       .order('finalised_at').order('game_id').order('team_idx').range(from, from + 999);
     if (error) throw new Error(error.message);
@@ -308,19 +336,51 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
     if (error) throw new Error(error.message);
     games.push(...(data || []).filter((g: any) => g.status === 'final'));
   }
+  /* PostgREST answers at most 1000 rows a request (a game has 30-60 stints and 20-30 player lines): every read pages,
+     in a fixed order, until a short page, or a chunk would come back cut and the store keep it */
+  const paged = async (table: string, cols: string, ids: string[], order: string[]) => {
+    const out: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      let q = admin.from(table).select(cols).in('game_id', ids);
+      for (const o of order) q = q.order(o);
+      const { data, error } = await q.range(from, from + 999);
+      if (error) throw new Error(error.message);
+      out.push(...(data || []));
+      if (!data || data.length < 1000) return out;
+    }
+  };
   for (const c of chunks(gids, 40)) {
     const [p, s] = await Promise.all([
-      admin.from('player_game_stats').select(PGS_SELECT).in('game_id', c),
-      admin.from('lineup_stints').select(STINT_SELECT).in('game_id', c)
+      paged('player_game_stats', PGS_SELECT, c, ['game_id', 'team_idx', 'player_id']),
+      paged('lineup_stints', STINT_SELECT, c, ['game_id', 'team_idx', 'id'])
     ]);
-    if (p.error) throw new Error(p.error.message);
-    if (s.error) throw new Error(s.error.message);
-    pgs.push(...(p.data || [])); stints.push(...(s.data || []));
+    pgs.push(...p); stints.push(...s);
+  }
+  /* the row's own stints (A.1) only for the games whose lineup_stints are missing or short */
+  const gaps = typeof deps.stintGaps === 'function' ? deps.stintGaps(rows, stints) : gids.filter(g => !stints.some((x: any) => x.game_id === g));
+  for (const c of chunks(gaps, 40)) {
+    const { data, error } = await admin.from('game_features').select('game_id,team_idx,st').eq('fv', fv).in('game_id', c);
+    if (error) throw new Error(error.message);
+    const by = new Map((data || []).map((r: any) => [r.game_id + ':' + r.team_idx, r.st]));
+    rows.forEach(r => { const v = by.get(r.game_id + ':' + r.team_idx); if (v) r.st = v; });
   }
   if (late(0.6)) return { refreshed: false, queued: true, reason: 'budget' };
 
+  /* I6: every player the unit names is checked against the database NOW (a player who debuts in the delta, a consent
+     withdrawn since the last full build), and the minors without public consent are left out of every file */
+  const UUIDS = new Set<string>();
+  ((store.pgs && store.pgs.players) || []).forEach((id: any) => { if (UUID.test(String(id))) UUIDS.add(String(id).toLowerCase()); });
+  pgs.forEach((r: any) => { if (r.player_uuid && UUID.test(String(r.player_uuid))) UUIDS.add(String(r.player_uuid).toLowerCase()); });
+  stints.forEach((r: any) => (r.player_ids || []).forEach((id: any) => { if (UUID.test(String(id))) UUIDS.add(String(id).toLowerCase()); }));
+  const withheld: string[] = [];
+  for (const c of chunks(Array.from(UUIDS).sort(), 150)) {
+    const { data, error } = await admin.from('players').select('id,is_minor,public_consent').in('id', c);
+    if (error) throw new Error(error.message);
+    (data || []).forEach((r: any) => { if (r.is_minor && !r.public_consent) withheld.push(String(r.id)); });
+  }
+
   const builtAt = new Date(now()).toISOString();
-  const res = await deps.update(store, { rows, games, pgs, stints }, { now: builtAt, league, season });
+  const res = await deps.update(store, { rows, games, pgs, stints }, { now: builtAt, league, season, withheld });
   if (!res || !res.store) throw new Error('the model returned no store');
   if (late(0.85)) return { refreshed: false, queued: true, reason: 'budget' };
 
@@ -333,6 +393,9 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
     const entries: [string, any][] = m instanceof Map ? Array.from(m.entries()) : Object.entries(m);
     entries.forEach(([t, f]) => out.push({ scope, team: t, file: f }));
   };
+  /* the clubs whose games changed (and any club or pos file with no index row yet), as the builder does (§6.4): the
+     others keep their rows and files until the next scheduled build */
+  const changed = new Set<string>(Array.isArray(res.changed) ? res.changed.map(String) : games.flatMap((g: any) => [g.home_team_id, g.away_team_id]).filter(Boolean));
   if (res.files) {
     if (res.files.wins) out.push({ scope: 'wins', team: '', file: res.files.wins });
     if (res.files.fo) out.push({ scope: 'fo', team: '', file: res.files.fo });
@@ -341,18 +404,45 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
   } else if (res.file) {
     out.push({ scope: res.file.scope && FILE_SCOPES.includes(res.file.scope) ? res.file.scope : 'wins', team: '', file: res.file });
   }
+  const todo = out.filter(o => !o.team || changed.has(o.team) || !old.has(o.scope + '|' + o.team));
 
+  /* every file checked as the builder checks it (I6: no withheld player; a club file only its own games; the budget)
+     before anything is written: a problem leaves the unit to the scheduled build */
+  if (typeof deps.validate === 'function') {
+    const wh = new Set<string>(((nextStore.ctx && nextStore.ctx.withheld) || []).concat(withheld).map(String));
+    const gidsOf = (t: string) => {
+      const ok = new Set<string>();
+      const G = nextStore.games, cols: string[] = (G && G.k) || [], rowsG: any[] = (G && G.v) || [];   // the store's packed game rows {k, v}
+      const ci = cols.indexOf('id'), hi = cols.indexOf('h'), ai = cols.indexOf('a');
+      if (ci >= 0 && hi >= 0 && ai >= 0) rowsG.forEach((r: any[]) => { if (r[hi] === t || r[ai] === t) ok.add(r[ci]); });
+      return ok.size ? ok : null;
+    };
+    for (const o of todo) {
+      const probs = deps.validate(o.file, o.scope, { withheld: wh, games: o.scope === 'club' ? gidsOf(o.team) : null });
+      if (probs && probs.length) {
+        console.warn('[analytics-file] refresh refused by validate:', o.scope, String(probs[0]).slice(0, 160));
+        return { refreshed: false, queued: true, reason: 'validate' };
+      }
+    }
+  }
+  /* the upload phase only when it fits what is left of the budget (an estimate per file, UPLOAD_LANES at a time) */
+  const estUp = Math.ceil((todo.length + 1) / UPLOAD_LANES) * UPLOAD_MS_EST;
+  if (now() - t0 + estUp > budget) return { refreshed: false, queued: true, reason: 'budget' };
+
+  /* members' files and the store: never kept by a browser's HTTP cache (supabase-js writes max-age=<cacheControl>) */
   const upload = async (path: string, text: string, upsert: boolean) => {
-    const { error } = await admin.storage.from(BUCKET).upload(path, text, { contentType: 'application/json', cacheControl: '31536000', upsert });
+    const { error } = await admin.storage.from(BUCKET).upload(path, text, { contentType: 'application/json', cacheControl: '0', upsert });
     if (error && !/exist|duplicate|409/i.test(String(error.message || error.statusCode || ''))) throw new Error('upload: ' + error.message);
   };
   const indexRows: any[] = [];
   const stale: string[] = [];
-  for (const o of out) {
+  const jobs = todo.map(o => {
     const v = +(o.file && o.file.w) || 1;
     const path = o.scope + '/' + league + '/' + season + '/' + (o.team ? o.team + '/' : '') + fileName(v, token);
-    const text = JSON.stringify(o.file);
-    await upload(path, text, false);
+    return { o, v, path, text: JSON.stringify(o.file) };
+  });
+  for (const lane of chunks(jobs, UPLOAD_LANES)) await Promise.all(lane.map(j => upload(j.path, j.text, false)));
+  for (const { o, v, path, text } of jobs) {
     const prev = old.get(o.scope + '|' + o.team);
     indexRows.push({ scope: o.scope, league_key: league, season_key: season, team_key: o.team, league_id: league, season_id: season,
       team_id: o.team || null, is_current: prev ? !!prev.is_current : !!storeRow.is_current, path, token, layout: v, fv,
@@ -368,5 +458,5 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
   const { error: upErr } = await admin.from('analytics_files').upsert(indexRows, { onConflict: 'scope,league_key,season_key,team_key' });
   if (upErr) throw new Error(upErr.message);
   if (stale.length) { try { await admin.storage.from(BUCKET).remove(stale); } catch (_) { /* the next build sweeps */ } }
-  return { refreshed: true, added: count, files: out.length };
+  return { refreshed: true, added: count, files: todo.length };
 }

@@ -424,6 +424,12 @@ Deno.serve(async (req) => {
     const lineupRows = [0, 1].flatMap(t =>
       lineupAgg(d, t).map((l: any) => ({ game_id: gameId, team_idx: t, player_ids: l.ids, stats: l })));
 
+    /* the competition's season and league (the feature rows' keys, and notify()'s chain): asked for once, while the
+       stats are written, so it adds no round trip of its own before the game is published */
+    const chainP: Promise<any> = g.competition_id
+      ? Promise.resolve(admin.from('competitions').select('name,season_id,seasons(league_id,leagues(name,slug))').eq('id', g.competition_id).maybeSingle())
+          .then((r: any) => r, (e: any) => ({ data: null, error: { message: String(e) } }))
+      : Promise.resolve({ data: null, error: null });
     await admin.from('player_game_stats').delete().eq('game_id', gameId);
     await admin.from('team_game_stats').delete().eq('game_id', gameId);
     await admin.from('lineup_stints').delete().eq('game_id', gameId);
@@ -441,8 +447,8 @@ Deno.serve(async (req) => {
     const publishedAt = new Date().toISOString();
     if (FL && g.competition_id) {
       try {
-        const { data: comp, error: compErr } = await admin.from('competitions')
-          .select('season_id,seasons(league_id)').eq('id', g.competition_id).maybeSingle();
+        /* .select('season_id,seasons(league_id)') and more, read beside the inserts above (chainP) */
+        const { data: comp, error: compErr } = await chainP;
         const seasonId = (comp as any)?.season_id, leagueId = (comp as any)?.seasons?.league_id;
         if (compErr || !seasonId || !leagueId) throw new Error(compErr?.message || 'the competition has no season or league');
         const { error: flErr } = await admin.from('game_features').upsert(
@@ -591,7 +597,7 @@ Deno.serve(async (req) => {
     // non-throwing: the game is final and correct whatever a third-party
     // webhook does, and a Discord outage must not fail a finalise or reopen a
     // game. The outcome is recorded so an admin can see why nothing arrived.
-    await notify(admin, gameId, g.competition_id, d, game.teams).catch(() => {});
+    await notify(admin, gameId, g.competition_id, d, game.teams, chainP).catch(() => {});
 
     // And tell the sites that carry our results — RealGM, Eurobasket, anyone
     // else holding a scraper key. Queued first so a delivery survives this
@@ -638,10 +644,11 @@ Deno.serve(async (req) => {
    it or leave a game stranded in 'finalising'.
    ============================================================================ */
 async function notify(admin: any, gameId: string, competitionId: string | null,
-                      d: any, teams: any[]) {
+                      d: any, teams: any[], chainP?: Promise<any>) {
   if (!competitionId) return;
 
-  const { data: chain } = await admin.from('competitions')
+  /* the chain finalise already read beside its inserts, else asked for here */
+  const { data: chain } = chainP ? await chainP : await admin.from('competitions')
     .select('name,seasons(league_id,leagues(name,slug))')
     .eq('id', competitionId).maybeSingle();
   const leagueId = (chain as any)?.seasons?.league_id;

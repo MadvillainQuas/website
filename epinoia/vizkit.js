@@ -135,7 +135,7 @@ function xAxis(sx, lo, hi, a, b, yTop, yBase, ax, n) {
   let s = t.map(v => line(sx(v), yTop, sx(v), yBase, 'vz-grid') + txt(sx(v), yBase + 13, fx(ax, v), 'vz-tick', 'middle')).join('');
   if (ax && ax.label) {
     /* the pixel face runs about 7.6 px a character: centred on the plot, cut to stay inside the frame */
-    const room = (b - a) + 2 * Math.min(a, 40), lab = String(ax.label);
+    const room = (b - a) + 2 * Math.min(a, 40), lab = String(tr(ax.label));
     if (lab.length * 7.6 <= room) s += txt((a + b) / 2, yBase + 28, lab, 'vz-axis', 'middle');
     else {                                                   // two lines, broken at the space nearest the middle
       const sp = [...lab.matchAll(/ /g)].map(m => m.index).sort((p, q) => Math.abs(p - lab.length / 2) - Math.abs(q - lab.length / 2))[0];
@@ -152,11 +152,27 @@ function yAxis(sy, lo, hi, xLeft, xRight, ax, n) {
   return s;
 }
 const narrow = W => W < 480;
-const fitPx = (s, px) => { const m = Math.max(6, Math.floor(px / 7.6)); return s.length > m ? s.slice(0, m - 1) + '…' : s; };
-/* a label cut to fit about `px` of width at ~6.6 px a character */
-const fit = (s, px) => { s = String(s == null ? '' : s); const m = Math.max(4, Math.floor(px / 6.6)); return s.length > m ? s.slice(0, m - 1) + '…' : s; };
+/* the page's translator (EpinoiaI18n.t when a pack is loaded): run on a whole label BEFORE it is cut to fit or split
+   onto two lines, so the words that reach the SVG are already the reader's language (a cut or split English string
+   no longer matches its dictionary entry). Identity without i18n.js, and on an English page. */
+const tr = s => {
+  if (typeof s !== 'string' || !s) return s;
+  try { const I = root.EpinoiaI18n; if (I && typeof I.t === 'function') { const t = I.t(s); return typeof t === 'string' && t ? t : s; } } catch (_) { /* untranslated */ }
+  return s;
+};
+/* a wide (CJK, full-width) character takes about two of the face's columns: cut by columns, not characters */
+const WIDE = /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/;
+const cut = (s, m) => { let w = 0, i = 0; const cols = [...s].map(c => (WIDE.test(c) ? 2 : 1)), tot = cols.reduce((a, b) => a + b, 0); if (tot <= m) return s;
+  const ch = [...s]; for (; i < ch.length && w + cols[i] <= m - 1; i++) w += cols[i]; return ch.slice(0, i).join('') + '…'; };
+const fitPx = (s, px) => cut(s, Math.max(6, Math.floor(px / 7.6)));
+/* a label translated, then cut to fit about `px` of width at ~6.6 px a character (the full label stays in the
+   tooltip and the table twin) */
+const fit = (s, px) => cut(String(s == null ? '' : tr(s)), Math.max(4, Math.floor(px / 6.6)));
 const glyph = (v, dir) => (!isNum(v) || v === 0 || !dir ? '' : (v * dir > 0 ? '▲' : '▼'));
 const goodBad = (v, dir) => (!dir || !isNum(v) || v === 0 ? 'vz-neu' : (v * dir > 0 ? 'vz-good' : 'vz-bad'));
+/* a bar's colour: better or worse (dir ±1); a style measure (dir 0, no better side) its own neutral hue, so it is never
+   read as the grey of noise; muted (not distinguishable from noise) is grey whatever the measure */
+const barClass = (v, dir, muted) => (muted ? 'vz-neu vz-muted' : !dir ? 'vz-style' : goodBad(v, dir));
 
 /* ------------------------------------------------------------------ forest --- */
 /* rows [{id, label, v, lo, hi, shrunk?, own?: {v, lo, hi}, muted?, badge?, cls?}] */
@@ -200,14 +216,17 @@ function forest(rows, o) {
 }
 
 /* ------------------------------------------------------------------ stackShare --- */
-/* rows [{label, parts: [{k, label, v (share, %), cls?}]}] ; each strip sums to its own total */
+/* rows [{label, total?, rest?, parts: [{k, label, v (share, %), lo?, hi?, cls?}]}] ; each strip sums to its own total, or
+   to `total` when given (shares of a whole the parts do not fill: the gap is drawn as a grey segment named `rest`) */
 function stackShare(rows, o) {
   o = o || {}; rows = rows || [];
   const W = o.W || 760, nar = narrow(W), labW = nar ? 0 : Math.min(150, W * 0.22), barH = 26, gap = nar ? 30 : 14, top = 8;
   const keys = [];
   rows.forEach(r => (r.parts || []).forEach(p => { if (keys.indexOf(p.k) < 0) keys.push(p.k); }));
+  const restRow = rows.find(r => isNum(r.total) && r.total > (r.parts || []).reduce((t, p) => t + (isNum(p.v) ? Math.max(0, p.v) : 0), 0) + 1e-9);
+  if (restRow) keys.push('_rest');
   const a = labW + (nar ? 0 : 12), b = W - 4;
-  const keyLab = k => { const p = rows.flatMap(r => r.parts || []).find(q => q.k === k) || {}; return p.label || k; };
+  const keyLab = k => { if (k === '_rest') return restRow.rest || 'not explained'; const p = rows.flatMap(r => r.parts || []).find(q => q.k === k) || {}; return p.label || k; };
   const keyLines = []; let kl = [], kw = 0;
   keys.forEach(k => { const w = 32 + keyLab(k).length * 6.6; if (kl.length && a + kw + w > W) { keyLines.push(kl); kl = []; kw = 0; } kl.push(k); kw += w; });
   if (kl.length) keyLines.push(kl);
@@ -216,7 +235,8 @@ function stackShare(rows, o) {
   const hits = [], trows = [];
   rows.forEach((r, i) => {
     const y = top + i * (barH + gap) + (nar ? 16 : 0);
-    const tot = (r.parts || []).reduce((t, p) => t + (isNum(p.v) ? Math.max(0, p.v) : 0), 0) || 1;
+    const sumP = (r.parts || []).reduce((t, p) => t + (isNum(p.v) ? Math.max(0, p.v) : 0), 0);
+    const tot = isNum(r.total) && r.total >= sumP ? r.total : (sumP || 1);
     s += nar ? txt(a, y - 4, r.label, 'vz-lab') : txt(labW, y + barH / 2 + 4, fit(r.label, labW - 6), 'vz-lab', 'end');
     let x = a;
     (r.parts || []).forEach(p => {
@@ -225,18 +245,25 @@ function stackShare(rows, o) {
       s += rect(x, y, Math.max(0, w - 2), barH, 'vz-seg ' + (p.cls || 'vz-c' + (ci % 6)));
       if (w > 44) s += txt(x + 6, y + barH / 2 + 4, Math.round(100 * p.v / tot) + '%', 'vz-segv');
       hits.push({ id: r.label + ':' + p.k, x: x + w / 2, y: y + barH / 2, label: r.label + ' · ' + (p.label || p.k), value: fmt(100 * p.v / tot, 1) + '%' +
-        (isNum(p.lo) && isNum(p.hi) ? ' (' + fmt(p.lo, 1) + '–' + fmt(p.hi, 1) + ')' : '') });
+        (isNum(p.lo) && isNum(p.hi) ? ' (' + fmt(100 * p.lo / tot, 1) + '–' + fmt(100 * p.hi / tot, 1) + ')' : '') });
       trows.push([r.label, p.label || p.k, fmt(100 * p.v / tot, 1) + '%']);
       x += w;
     });
+    if (tot - sumP > 1e-9 && isNum(r.total)) {
+      const w = (b - a) * (tot - sumP) / tot, lab = r.rest || 'not explained';
+      s += rect(x, y, Math.max(0, w - 2), barH, 'vz-seg vz-neuf vz-rest');
+      if (w > 44) s += txt(x + 6, y + barH / 2 + 4, Math.round(100 * (tot - sumP) / tot) + '%', 'vz-segv');
+      hits.push({ id: r.label + ':_rest', x: x + w / 2, y: y + barH / 2, label: r.label + ' · ' + lab, value: fmt(100 * (tot - sumP) / tot, 1) + '%' });
+      trows.push([r.label, lab, fmt(100 * (tot - sumP) / tot, 1) + '%']);
+    }
   });
-  /* the key, wrapped onto as many lines as it needs */
+  /* the key, wrapped onto as many lines as it needs (the unexplained rest last, in its own grey) */
   keyLines.forEach((line_, li) => {
     const ky = top + rows.length * (barH + gap) + 14 + li * 20;
     let kx = a;
     line_.forEach(k => {
       const i = keys.indexOf(k), p = rows.flatMap(r => r.parts || []).find(q => q.k === k) || {}, lab = keyLab(k);
-      s += rect(kx, ky - 9, 10, 10, 'vz-seg ' + (p.cls || 'vz-c' + (i % 6))) + txt(kx + 14, ky, lab, 'vz-key');
+      s += rect(kx, ky - 9, 10, 10, 'vz-seg ' + (k === '_rest' ? 'vz-neuf vz-rest' : p.cls || 'vz-c' + (i % 6))) + txt(kx + 14, ky, lab, 'vz-key');
       kx += 32 + lab.length * 6.6;
     });
   });
@@ -252,14 +279,17 @@ function bars(rows, o) {
   const ax = o.x || {};
   const [lo, hi] = isNum(ax.lo) && isNum(ax.hi) ? [ax.lo, ax.hi] : range(rows.flatMap(r => [r.v, r.lo, r.hi]), 0, 0.08);
   const badgeW = nar ? 0 : Math.max(0, ...rows.map(r => (r.badge ? String(r.badge).length * 7.2 + 10 : 0)));
-  const a = labW + 12, b = W - (nar ? 50 : 70 + badgeW), sx = scale(lo, hi, a, b), x0 = sx(clamp(0, lo, hi));
+  /* the value labels to the right of the bars ('▲ 0.10'): on a phone the plot gives way to the longest one, so
+     it is never clipped at the SVG's edge (the 11px data face is wide: about 9px a character) */
+  const valW = Math.max(0, ...rows.map(r => { const g = glyph(r.v, r.dir == null ? (o.dir == null ? 1 : o.dir) : r.dir); return (g ? g.length + 1 : 0) + String(fx(ax, r.v)).length; })) * 9 + 10;
+  const a = labW + 12, b = W - (nar ? Math.max(50, valW) : 70 + badgeW), sx = scale(lo, hi, a, b), x0 = sx(clamp(0, lo, hi));
   const yb = H - 30 - (nar ? 10 : 0);
   let s = xAxis(sx, lo, hi, a, b, top - 6, yb, ax, nar ? 4 : 6) + line(x0, top - 6, x0, yb, 'vz-zero');
   const hits = [], trows = [];
   rows.forEach((r, i) => {
     const y = top + i * rowH + (nar ? 22 : 4), bh = nar ? 12 : rowH - 10;
     const dir = r.dir == null ? (o.dir == null ? 1 : o.dir) : r.dir;
-    const cls = (r.cls || goodBad(r.v, dir)) + (r.muted ? ' vz-muted' : '');
+    const cls = r.cls ? r.cls + (r.muted ? ' vz-muted' : '') : barClass(r.v, dir, r.muted);
     const xv = sx(clamp(r.v, lo, hi));
     if (nar) s += txt(a, y - 5, fit(r.label, W - 40) + (r.badge ? ' · ' + r.badge : ''), 'vz-lab' + (r.muted ? ' vz-muted' : ''));
     else s += txt(labW, y + bh / 2 + 4, fit(r.label, labW - 8), 'vz-lab' + (r.muted ? ' vz-muted' : ''), 'end');
@@ -411,13 +441,22 @@ function heatmap(d, o) {
     const t = colsL.map((_, j) => rowsL.map((__, i) => (cells[i] || [])[j] || null));
     [rowsL, colsL, cells] = [colsL, rowsL, t];
   }
-  const mode = d.mode === 'seq' ? 'seq' : 'div';
-  const labW = Math.min(narrow(W) ? 110 : 190, W * 0.3), T = colsL.some(c => String(c).length > 6) ? 92 : 56, cw = Math.max(18, (W - labW - 8) / Math.max(1, colsL.length)), ch = narrow(W) ? 30 : 28;
+  /* 'div': better / worse around 0 (good / bad); 'rel': more / less than a reference with no better side (s1 / s2, never
+     good / bad); 'seq': one hue by opacity */
+  const mode = d.mode === 'seq' ? 'seq' : d.mode === 'rel' ? 'rel' : 'div';
+  const labW = Math.min(narrow(W) ? 110 : 190, W * 0.3), T = colsL.some(c => String(c).length > 6) ? 92 : 56, ch = narrow(W) ? 30 : 28;
+  /* the column labels are rotated -35° from each cell's centre and may run 130 px: the last one's horizontal reach
+     (cos 35° × its width) is kept inside the frame, the label cut to what is left when the columns cannot give way */
+  const COS = Math.cos(35 * Math.PI / 180), colLab = c => fit(c, 130), reach = c => COS * String(colLab(c)).length * 6.6;
+  const lastReach = colsL.length ? reach(colsL[colsL.length - 1]) : 0;
+  let cw = Math.max(18, (W - labW - 8) / Math.max(1, colsL.length));
+  if (colsL.length && labW + (colsL.length - 0.5) * cw + lastReach > W - 4) cw = Math.max(18, (W - 4 - labW - lastReach) / Math.max(1, colsL.length - 0.5));
+  const room = j => (W - 4 - (labW + j * cw + cw / 2)) / COS;
   const H = o.H || T + rowsL.length * ch + 10;
   const vals = cells.flat().filter(c => c && isNum(c.v)).map(c => c.v);
   const mx = Math.max(1e-9, ...vals.map(Math.abs)), mn = vals.length ? Math.min(...vals) : 0, mxv = vals.length ? Math.max(...vals) : 1;
   let s = '<defs><pattern id="vzHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" class="vz-hatchl"/></pattern></defs>';
-  colsL.forEach((c, j) => { s += txt(labW + j * cw + cw / 2, T - 8, fit(c, 130), 'vz-tick', 'start', ' transform="rotate(-35 ' + r1(labW + j * cw + cw / 2) + ' ' + (T - 8) + ')"'); });
+  colsL.forEach((c, j) => { s += txt(labW + j * cw + cw / 2, T - 8, fit(c, Math.max(30, Math.min(130, room(j)))), 'vz-tick', 'start', ' transform="rotate(-35 ' + r1(labW + j * cw + cw / 2) + ' ' + (T - 8) + ')"'); });
   const hits = [], trows = [];
   rowsL.forEach((r, i) => {
     const y = T + i * ch;
@@ -428,10 +467,11 @@ function heatmap(d, o) {
       if (!cell || !isNum(cell.v)) { s += rect(x + 1, y + 1, cw - 2, ch - 2, 'vz-cell vz-nil'); trow.push('–'); return; }
       let cls, op;
       if (mode === 'seq') { const step = Math.min(4, Math.floor(5 * (cell.v - mn) / ((mxv - mn) || 1))); cls = 'vz-seq'; op = 0.18 + step * 0.18; }
+      else if (mode === 'rel') { cls = cell.v >= 0 ? 'vz-s1f' : 'vz-s2f'; op = 0.12 + 0.78 * Math.abs(cell.v) / mx; }
       else { cls = cell.v >= 0 ? 'vz-good' : 'vz-bad'; op = 0.12 + 0.78 * Math.abs(cell.v) / mx; }
       s += rect(x + 1, y + 1, cw - 2, ch - 2, 'vz-cell ' + cls, ' fill-opacity="' + op.toFixed(2) + '"');
       if (cell.hatch) s += rect(x + 1, y + 1, cw - 2, ch - 2, 'vz-hatch', ' fill="url(#vzHatch)"');
-      const extreme = mode === 'div' && Math.abs(cell.v) >= 0.8 * mx - 1e-9 ? (cell.v > 0 ? '▲' : '▼') : '';
+      const extreme = (mode === 'div' || mode === 'rel') && Math.abs(cell.v) >= 0.8 * mx - 1e-9 ? (cell.v > 0 ? '▲' : '▼') : '';
       const lab = cell.label != null ? cell.label : (cw >= 38 ? fmt(cell.v, o.dp) : '');
       if (lab || extreme) s += txt(x + cw / 2, y + ch / 2 + 4, (extreme ? extreme + (lab ? ' ' : '') : '') + lab, 'vz-cellv', 'middle', ' translate="no"');
       hits.push({ id: i + ':' + j, x: x + cw / 2, y: y + ch / 2, label: r + ' · ' + c, value: (extreme ? extreme + ' ' : '') + fmt(cell.v, o.dp) +
@@ -467,7 +507,7 @@ function dumbbell(rows, o) {
       if (!isNum(p.v)) { trow.push('–'); return; }
       const cls = p.cls || ['vz-s1f', 'vz-neuf', 'vz-s2f'][keys.indexOf(p.k) % 3];
       if (isNum(p.lo) && isNum(p.hi)) s += line(sx(clamp(p.lo, lo, hi)), y, sx(clamp(p.hi, lo, hi)), y, 'vz-whisk');
-      s += circ(sx(clamp(p.v, lo, hi)), y, k ? 4.5 : 6, 'vz-pt ' + cls);
+      s += circ(sx(clamp(p.v, lo, hi)), y, k ? 4.5 : 6, 'vz-pt ' + cls + (p.hollow ? ' vz-ptho' : ''));
       hits.push({ id: (r.id || i) + ':' + p.k, x: sx(clamp(p.v, lo, hi)), y, label: r.label + ' · ' + (p.label || p.k), value: fx(ax, p.v) +
         (isNum(p.lo) && isNum(p.hi) ? ' (' + fx(ax, p.lo) + ' to ' + fx(ax, p.hi) + ')' : '') });
       trow.push(fx(ax, p.v));
@@ -479,7 +519,7 @@ function dumbbell(rows, o) {
   keys.forEach((k, i) => {
     const p = rows.flatMap(r => r.pts).find(q => q.k === k) || {};
     const lab = p.label || k;
-    s += circ(kx + 5, 10, 5, 'vz-pt ' + (p.cls || ['vz-s1f', 'vz-neuf', 'vz-s2f'][i % 3])) + txt(kx + 14, 14, lab, 'vz-key');
+    s += circ(kx + 5, 10, 5, 'vz-pt ' + (p.cls || ['vz-s1f', 'vz-neuf', 'vz-s2f'][i % 3]) + (p.hollow ? ' vz-ptho' : '')) + txt(kx + 14, 14, lab, 'vz-key');
     kx += 24 + lab.length * 6.6;
   });
   const head = ['row'].concat(keys.map(k => { const p = rows.flatMap(r => r.pts).find(q => q.k === k) || {}; return p.label || k; }));
@@ -565,8 +605,18 @@ function meter(d, o) {
   let s = rect(L, y, sx(p) - L, h, 'vz-bar vz-s1f') + rect(sx(p), y, W - R - sx(p), h, 'vz-bar vz-s2f');
   if (se > 0) s += line(sx(clamp(p - 1.96 * se, 0, 1)), y + h / 2, sx(clamp(p + 1.96 * se, 0, 1)), y + h / 2, 'vz-whisk vz-onbar');
   s += line(sx(0.5), y - 6, sx(0.5), y + h + 6, 'vz-zero');
-  s += txt(L, y - 10, (d.a || 'A') + ' ' + Math.round(p * 100) + '%', 'vz-big', 'start', ' translate="no"');
-  s += txt(W - R, y - 10, Math.round((1 - p) * 100) + '% ' + (d.b || 'B'), 'vz-big', 'end', ' translate="no"');
+  /* the two sides' names and chances: on one line in the big face when both fit with a gap (about 13 px a character
+     at 22 px), else the chances big above the bar and the names, shortened to their half, in the small face beside
+     them, so the two never run into each other */
+  const la = (d.a || 'A') + ' ' + Math.round(p * 100) + '%', lb = Math.round((1 - p) * 100) + '% ' + (d.b || 'B');
+  if ((la.length + lb.length) * 13 + 24 <= W - L - R) {
+    s += txt(L, y - 10, la, 'vz-big', 'start', ' translate="no"');
+    s += txt(W - R, y - 10, lb, 'vz-big', 'end', ' translate="no"');
+  } else {
+    const half = (W - L - R) / 2 - 8;
+    s += txt(L, y - 10, Math.round(p * 100) + '%', 'vz-big', 'start', ' translate="no"') + txt(L + 13 * String(Math.round(p * 100) + '%').length + 6, y - 10, fit(d.a || 'A', half - 60), 'vz-lab', 'start', ' translate="no"');
+    s += txt(W - R, y - 10, Math.round((1 - p) * 100) + '%', 'vz-big', 'end', ' translate="no"') + txt(W - R - 13 * String(Math.round((1 - p) * 100) + '%').length - 6, y - 10, fit(d.b || 'B', half - 60), 'vz-lab', 'end', ' translate="no"');
+  }
   if (se > 0) s += txt(W / 2, y + h + 18, '± ' + fmt(196 * se, 1) + ' points of chance (95%)', 'vz-key', 'middle');
   const hits = [{ id: 'p', x: sx(p), y: y + h / 2, label: d.label || 'chance of winning', value: Math.round(p * 100) + '%' + (se > 0 ? ' ± ' + fmt(196 * se, 1) : '') }];
   return { svg: frame('meter', o, W, H, s), table: { head: ['side', 'chance of winning'], rows: [[d.a || 'A', fmt(100 * p, 1) + '%'], [d.b || 'B', fmt(100 * (1 - p), 1) + '%']] }, hits };
@@ -576,13 +626,25 @@ function meter(d, o) {
 /* d = {series: [{k, label, bins: [[pMean, yMean, n]], cls?}]} */
 function reliability(d, o) {
   o = o || {}; d = d || {};
-  const W = o.W || 760, size = Math.min(W, o.H || 360), H = o.H || Math.min(380, Math.max(240, W * 0.55)), L = 46, R = 14, T = 18, B = 42;
+  const W = o.W || 760, size = Math.min(W, o.H || 360), L = 46, R = 14;
+  /* the key: a swatch (solid for the first series, dashed after) and its label, wrapped onto as many lines as needed */
+  const series = d.series || [], keyLines = [];
+  { let kl = [], kw = 0; series.forEach((sr, si) => { const w = 40 + String(tr(sr.label || '')).length * 6.6; if (kl.length && L + kw + w > W - R) { keyLines.push(kl); kl = []; kw = 0; } kl.push(si); kw += w; }); if (kl.length) keyLines.push(kl); }
+  const T = 18 + (series.length > 1 ? keyLines.length * 18 : 0), B = 42, H = o.H || Math.min(380, Math.max(240, W * 0.55)) + T - 18;
   const sx = scale(0, 1, L, W - R), sy = scale(0, 1, H - B, T);
   const pc = { fmt: v => Math.round(v * 100) + '%' };
   let s = yAxis(sy, 0, 1, L, W - R, Object.assign({ label: 'won' }, pc), 4) + xAxis(sx, 0, 1, L, W - R, T, H - B, Object.assign({ label: 'forecast' }, pc), 5);
   s += line(sx(0), sy(0), sx(1), sy(1), 'vz-ref');
+  if (series.length > 1) keyLines.forEach((kl, li) => {
+    let kx = L;
+    kl.forEach(si => {
+      const sr = series[si], cls = sr.cls || ['vz-s1', 'vz-s2', 'vz-s3', 'vz-neu'][si % 4], lab = String(tr(sr.label || ''));
+      s += line(kx, 12 + li * 18, kx + 22, 12 + li * 18, 'vz-curve ' + cls + 'l' + (si ? ' vz-dash' : '')) + circ(kx + 11, 12 + li * 18, si ? 3 : 4.5, 'vz-pt ' + cls + 'f') + txt(kx + 28, 16 + li * 18, lab, 'vz-key');
+      kx += 40 + lab.length * 6.6;
+    });
+  });
   const hits = [], trows = [];
-  (d.series || []).forEach((sr, si) => {
+  series.forEach((sr, si) => {
     const cls = sr.cls || ['vz-s1', 'vz-s2', 'vz-s3', 'vz-neu'][si % 4];
     const bins = (sr.bins || []).filter(b => isNum(b[0]) && isNum(b[1]));
     if (bins.length > 1) s += path(poly(bins.map(b => [sx(b[0]), sy(b[1])])), 'vz-curve ' + cls + 'l' + (si ? ' vz-dash' : ''));
@@ -661,9 +723,9 @@ function bind(host, make, opts) {
   if (opts.label) plot.setAttribute('aria-label', opts.label + '. Arrow keys move between marks; Enter shows the table.');
   const tip = doc.createElement('div'); tip.className = 'vz-tip'; tip.hidden = true; tip.setAttribute('role', 'status'); tip.setAttribute('aria-live', 'polite');
   const ring = doc.createElement('div'); ring.className = 'vz-ring'; ring.hidden = true; ring.setAttribute('aria-hidden', 'true');
-  const tbtn = doc.createElement('button'); tbtn.type = 'button'; tbtn.className = 'vz-tbtn'; tbtn.textContent = 'table'; tbtn.setAttribute('aria-expanded', 'false');
+  const tbtn = doc.createElement('button'); tbtn.type = 'button'; tbtn.className = 'vz-tbtn'; tbtn.textContent = 'show table'; tbtn.setAttribute('aria-expanded', 'false');
   const twin = doc.createElement('div'); twin.className = 'vz-twin'; twin.hidden = true;
-  host.append(plot, tbtn, twin);
+  host.append(plot, tip, ring, tbtn, twin);
   const width = () => Math.max(260, Math.round(host.clientWidth || (host.getBoundingClientRect && host.getBoundingClientRect().width) || 760));
   const svgEl = () => plot.querySelector('svg');
   const toSvg = (cx, cy) => {
@@ -753,7 +815,7 @@ function bind(host, make, opts) {
   function toggleTwin() {
     twin.hidden = !twin.hidden;
     tbtn.setAttribute('aria-expanded', String(!twin.hidden));
-    tbtn.textContent = twin.hidden ? 'table' : 'hide table';
+    tbtn.textContent = twin.hidden ? 'show table' : 'hide table';
   }
   tbtn.addEventListener('click', toggleTwin);
   plot.addEventListener('pointermove', onMove);

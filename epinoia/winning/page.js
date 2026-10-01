@@ -35,12 +35,20 @@ const MEMBER = ['value', 'factors', 'curves', 'tempo', 'positions', 'squad', 'si
 const CORE = ['c_efg', 'c_tovp', 'c_orebp', 'c_ftmr'];
 const LENS = { explain: 'Explains', forecast: 'Forecasts', model: 'Model', preview: 'Box-score preview' };
 const P1_LABEL = { ts: 'True shooting', usg_share: 'Usage share', ast_share: 'Assist share', reb_share: 'Rebound share', stocks40: 'Steals + blocks per 40',
-  tov_share: 'Turnover share', p3a_rate: '3PA rate' };
+  tov_share: 'Turnover share', p3a_rate: '3PA rate', bpm: 'Minutes-weighted BPM', min_share: 'Share of minutes' };
+/* the forecast model's terms (§7.8): an expected difference e_<factor>, and the rating and schedule terms */
+const FC_LABEL = { h: 'Home court', elo: 'Elo difference', rest: 'Rest days', b2b: 'Back-to-back', km: 'Travel distance' };
+/* the lineup model's terms (§7.13), under either spelling */
+const TERM_LABEL = { shooters: 'Shooters', bigs0: 'No big', 'bigs 0': 'No big', bigs2: 'Two or more bigs', 'bigs 2+': 'Two or more bigs', hand0: 'No handler',
+  'handlers 0': 'No handler', hand2: 'Two or more handlers', 'handlers 2+': 'Two or more handlers', prot: 'A rim protector', protector: 'A rim protector',
+  hz: 'Height', 'height z': 'Height', bpm: 'Talent (BPM)', BPM: 'Talent (BPM)', shooters_x_prot: 'Shooters × protector', 'shooters × protector': 'Shooters × protector',
+  hand_x_shooters: 'Handlers × shooters', 'handlers × shooters': 'Handlers × shooters' };
 const SQUAD_LABEL = { rot_n: 'Rotation size', top5_share: 'Top five’s minutes', star_pts_share: 'Star’s share of points', usg_hhi: 'Usage concentration',
   pos_entropy: 'Positional balance', shooters: 'Shooters in the rotation', handlers: 'Handlers in the rotation', protectors: 'Rim protectors', bench_share: 'Bench minutes',
   depth_bpm: 'Depth (players 6-9)', talent: 'Talent (BPM)', continuity: 'Continuity', starter_stability: 'Starting five kept', availability: 'Availability',
   height_w: 'Height', age_w: 'Age' };
 const GROUP = { G: 'Guards', F: 'Wings', C: 'Bigs' };
+const P1_STATS = ['ts', 'usg_share', 'ast_share', 'reb_share', 'stocks40', 'tov_share', 'p3a_rate'];
 const PART_LABEL = { expected: 'expected', quality: 'shot quality', making: 'shot-making', efg: 'shooting', c_efg: 'shooting', tovp: 'turnovers', c_tovp: 'turnovers',
   orebp: 'boards', c_orebp: 'boards', ftmr: 'free throws', c_ftmr: 'free throws', other: 'other', garbage: 'garbage time' };
 /* the six simulator dials (§12 what-if ranges), on a side's offence */
@@ -58,11 +66,16 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const isNum = v => typeof v === 'number' && isFinite(v);
 const MINUS = s => s.replace(/^-/, '−');                                          // a true minus sign in words
 const f1 = v => (isNum(v) ? MINUS((Math.round(v * 10) / 10).toFixed(1)).replace(/^−0\.0$/, '0.0') : '–');
+/* two decimals under 10, one above: a share (0.43) and a percentage (55.4) side by side in one table */
+const f2s = v => (isNum(v) ? (Math.abs(v) < 10 ? f2(v) : f1(v)) : '–');
 const f2 = v => (isNum(v) ? MINUS(v.toFixed(2)).replace(/^−0\.00$/, '0.00') : '–');
 const sg = (v, d) => (isNum(v) ? (v > 0 ? '+' : '') + MINUS(v.toFixed(d == null ? 1 : d)) : '–');
 const pc = v => (isNum(v) ? Math.round(v * 100) + '' : '–');                      // a share as a whole per cent, no sign
 const rng = (lo, hi, fmt) => (isNum(lo) && isNum(hi) ? fmt(lo) + '–' + fmt(hi) : '');
 const label = (W, k) => (W && W.meta && W.meta[k] && W.meta[k].label) || P1_LABEL[k] || SQUAD_LABEL[k] || k;
+const fcLabel = (W, k) => FC_LABEL[k] || (/^e_/.test(k) ? label(W, k.slice(2)) + ' (expected)' : label(W, k));
+/* Shapley shares come as per cents (the builder) or as fractions; this is the factor to a fraction of the margin */
+const shareScale = sh => ((sh || []).reduce((t, x) => t + (isNum(x.phi) ? x.phi : 0), 0) > 1.5 ? 0.01 : 1);
 const defOf = (W, k) => (W && W.meta && W.meta[k] && W.meta[k].def) || '';
 const dirOf = (W, k) => (W && W.meta && W.meta[k] ? W.meta[k].dir : 1);
 const chip = (lens, n, extra) => '<span class="ww-chip" data-lens="' + lens + '">' + esc(LENS[lens] || lens) + '</span>' +
@@ -100,31 +113,54 @@ function statusLine(ans, W, o) {
   return { line: parts.join(' · '), canRecalc: !!(W.league && pend > 0), upToDate: pend === 0 };
 }
 
+/* ------------------------------------------------------------------ the pace finding --- */
+/* γ (§7.9) is fitted on [-1, 2] (the golden search's range). Three findings and a fourth that is none:
+   lo > 0  more possessions help the favourite;  hi < 0  longer games help the underdog;
+   an interval narrow (< 1 wide) around 0, away from the range's ends: pace does not change who wins;
+   anything else (wide, or at an end of the range, which is where an unidentified γ lands): the games cannot yet tell. */
+const GAMMA_LO = -1, GAMMA_HI = 2;
+function paceText(g) {
+  const G = g && g.gamma;
+  if (!G || !isNum(G.lo) || !isNum(G.hi)) return null;
+  const atEnd = v => isNum(v) && (v <= GAMMA_LO + 0.02 || v >= GAMMA_HI - 0.02);
+  const iv = ' (' + f2(G.lo) + '–' + f2(G.hi) + ')';
+  if (G.lo > 0) return 'More possessions help the favourite: γ = ' + f2(G.v) + iv;
+  if (G.hi < 0) return 'Longer games help the underdog here: γ = ' + f2(G.v) + iv;
+  if (G.hi - G.lo < 1 && !atEnd(G.v) && !atEnd(G.lo) && !atEnd(G.hi) && !g.bound) return 'The pace of a game does not change who wins here, once quality is counted: γ = ' + f2(G.v) + iv;
+  return 'These games cannot yet tell whether pace changes who wins: γ could be anywhere from ' + f2(G.lo) + ' to ' + f2(G.hi);
+}
+
 /* ------------------------------------------------------------------ the cards (§11) --- */
 /* ≤ 6, fixed templates, interval-backed only; each with its lens chip */
 function cards(W) {
   const out = [];
   if (!W || !W.models || !W.models.core4c) return out;
   const C = W.models.core4c, n = W.n && W.n.games;
-  const sh = (C.shares || []).find(s => s.k === 'c_efg');
-  if (sh && isNum(sh.phi) && isNum(sh.lo)) out.push({ lens: 'explain', n, text: 'Shooting decides ' + pc(sh.phi) + '% of the margin here (' + pc(sh.lo) + '–' + pc(sh.hi) + ')' });
-  const hard = Object.keys(W.curves || {}).map(k => ({ k, h: W.curves[k].hard })).filter(x => x.h && x.h.n >= 50 && isNum(x.h.lo))
+  const sh = (C.shares || []).find(s => s.k === 'c_efg'), ss = shareScale(C.shares);
+  if (sh && isNum(sh.phi) && isNum(sh.lo) && isNum(sh.hi)) out.push({ lens: 'explain', n, text: 'Shooting decides ' + pc(ss * sh.phi) + '% of the margin here (' + pc(ss * sh.lo) + '–' + pc(ss * sh.hi) + ')' });
+  /* the best hard number on a measure that is not itself part of the score (a points lead "wins" every game) */
+  const hard = Object.keys(W.curves || {}).filter(k => !(W.meta && W.meta[k] && W.meta[k].score)).map(k => ({ k, h: W.curves[k].hard })).filter(x => x.h && x.h.n >= 50 && isNum(x.h.lo))
     .sort((a, b) => Math.abs(b.h.p - 0.5) - Math.abs(a.h.p - 0.5))[0];
   if (hard) out.push({ lens: 'explain', n: hard.h.n, k: hard.k, text: 'Sides ahead by ' + hard.h.t + ' or more on ' + label(W, hard.k) + ' won ' + pc(hard.h.p) + '% (' + pc(hard.h.lo) + '–' + pc(hard.h.hi) + ') of ' + hard.h.n + ' games' });
-  const g = W.tempo && W.tempo.sqrtN;
-  if (g && g.gamma && isNum(g.gamma.lo)) {
-    out.push(g.gamma.lo > 0 ? { lens: 'forecast', n: g.n, text: 'More possessions help the favourite: γ = ' + f2(g.gamma.v) + ' (' + f2(g.gamma.lo) + '–' + f2(g.gamma.hi) + ')' }
-      : { lens: 'forecast', n: g.n, text: 'The pace of a game does not change who wins here, once quality is counted' });
-  }
-  if (C.home && isNum(C.home.v) && W.homeWin && isNum(W.homeWin.p)) out.push({ lens: 'explain', n, text: 'Home court is worth ' + f1(C.home.v) + ' points (' + f1(C.home.lo) + '–' + f1(C.home.hi) + ') and ' + pc(W.homeWin.p) + '% of games' });
+  const g = W.tempo && W.tempo.sqrtN, pt = paceText(g);
+  if (pt) out.push({ lens: 'forecast', n: g.n, text: pt });
+  /* home court: the whole edge (the home side's mean margin, block-bootstrapped), never α alone, which is what is left
+     of it once the four factors are counted (most of the edge flows through them); α is named as that when it is all
+     the file has */
+  const HM = W.homeMargin;
+  if (HM && isNum(HM.v) && isNum(HM.lo) && isNum(HM.hi) && W.homeWin && isNum(W.homeWin.p)) out.push({ lens: 'explain', n: HM.n, text: 'Home court is worth ' + f1(HM.v) + ' points (' + f1(HM.lo) + '–' + f1(HM.hi) + ') and ' + pc(W.homeWin.p) + '% of games' });
+  else if (C.home && isNum(C.home.v) && isNum(C.home.lo)) out.push({ lens: 'explain', n, text: 'Home court beyond the four factors is worth ' + f1(C.home.v) + ' points (' + f1(C.home.lo) + '–' + f1(C.home.hi) + ')' });
   const best = (C.coef || []).filter(c => c.wins30 && isNum(c.wins30.v) && isNum(c.wins30.lo)).sort((a, b) => Math.abs(b.wins30.v) - Math.abs(a.wins30.v))[0];
   if (best) out.push({ lens: 'explain', n, k: best.k, text: 'One team-SD better at ' + label(W, best.k) + ' is worth ' + f1(Math.abs(best.wins30.v)) + ' wins per 30 games (' +
     f1(Math.min(Math.abs(best.wins30.lo), Math.abs(best.wins30.hi))) + '–' + f1(Math.max(Math.abs(best.wins30.lo), Math.abs(best.wins30.hi))) + ')' });
+  /* time of possession: the DIRECT effect is the headline (§7.10.4). Its path through the factors is partly true by
+     definition (a possession's clock runs through its own second chances), so it is never the card */
   const top = (W.path || []).find(p => p.k === 'top_avg');
-  if (top && top.indirect && isNum(top.indirect.lo) && (top.indirect.lo > 0 || top.indirect.hi < 0) && top.via && top.via.length) {
-    const via = top.via.slice().sort((a, b) => Math.abs(b.v) - Math.abs(a.v))[0];
-    const s = Math.abs(top.indirect.v) / ((Math.abs(top.direct.v) + Math.abs(top.indirect.v)) || 1);
-    out.push({ lens: 'explain', n, text: 'Time of possession works mostly through ' + label(W, via.f) + ': ' + Math.round(100 * s) + '% of its effect is indirect' });
+  if (top && top.direct && isNum(top.direct.v) && isNum(top.direct.lo) && isNum(top.direct.hi)) {
+    const d = top.direct, iv = ' (' + sg(d.lo, 2) + ' to ' + sg(d.hi, 2) + ')';
+    out.push({ lens: 'explain', n, text: d.lo > 0 || d.hi < 0
+      ? 'One second more a possession is worth ' + sg(d.v, 2) + ' points of margin directly' + iv + ', beyond the four factors'
+      : 'Time of possession has no clear direct effect here once the four factors are counted' + iv });
   }
   return out.slice(0, 6);
 }
@@ -138,7 +174,7 @@ const views = {
     if (W) {
       const cs = cards(W);
       let html = '';
-      if (ctx.pooledFallback) html += empty('Fewer than 20 finished games here yet: showing every league pooled');
+      if (ctx.pooledFallback) html += empty(ctx.fallbackWhy === 'none' ? 'This league’s model has not been built yet: showing every league pooled' : 'Fewer than 20 finished games here yet: showing every league pooled');
       html += cs.length ? '<div class="ww-cardgrid">' + cs.map(cardHTML).join('') + '</div>' : empty('The short answer appears once the model has its first full build here');
       return { state: 'ok', html, charts: [] };
     }
@@ -161,7 +197,7 @@ const views = {
       html += '<p class="ww-lead">' + chip('forecast', P && P.nEval) + '</p>';
       if (!P || !P.live) html += empty('Season numbers do not forecast better than Elo here');
       if (P && P.coef && P.coef.length) {
-        html += chartSlot({ kind: 'forest', label: 'Forecast coefficients', data: P.coef.map(c => ({ id: c.k, label: label(W, c.k), v: c.b, lo: c.lo, hi: c.hi, muted: !P.live })),
+        html += chartSlot({ kind: 'forest', label: 'Forecast coefficients', data: P.coef.map(c => ({ id: c.k, label: fcLabel(W, c.k), v: c.b, lo: c.lo, hi: c.hi, muted: !P.live })),
           o: { x: { label: 'points of margin per unit of the expected difference' }, title: 'What the forecast leans on', desc: 'Coefficients of the forecast model, with 95% ranges' } }, charts);
       }
       return { state: 'ok', html, charts };
@@ -184,13 +220,15 @@ const views = {
       o: { x: { label: xl }, title: 'What each factor is worth', desc: 'Each of the four factors: points or wins for one step better, with 95% ranges' } }, charts);
     if (W.sigma && isNum(W.sigma.pred)) html += '<p class="ww-note">' + esc('Points become wins through the spread of results around a pre-game expectation (σ = ' + f1(W.sigma.pred) + ' points), never through the much smaller spread the factors leave over (' + f1(W.sigma.acc) + ')') + '</p>';
     if (C.shares && C.shares.length) {
-      const olv = C.oliver || {};
-      html += '<h3 class="ww-h3">Shares of what the four factors explain</h3>';
-      html += chartSlot({ kind: 'stackShare', label: 'Shares of the margin the four factors explain', data: [
-        { label: 'Measured here', parts: C.shares.map(s => ({ k: s.k, label: label(W, s.k), v: s.phi, lo: isNum(s.lo) ? 100 * s.lo : null, hi: isNum(s.hi) ? 100 * s.hi : null })) },
+      const olv = C.oliver || {}, ss = shareScale(C.shares);
+      html += '<h3 class="ww-h3">Shares of the margin</h3>';
+      html += chartSlot({ kind: 'stackShare', label: 'Shares of the margin', data: [
+        /* shares of the whole margin (the card's numbers), the part the four factors leave unexplained drawn grey */
+        { label: 'Measured here', total: 100, rest: 'not explained', parts: C.shares.map(s => ({ k: s.k, label: label(W, s.k), v: 100 * ss * s.phi, lo: isNum(s.lo) ? 100 * ss * s.lo : null, hi: isNum(s.hi) ? 100 * ss * s.hi : null })) },
         { label: 'Dean Oliver', parts: CORE.map(k => ({ k, label: label(W, k), v: olv[k] != null ? olv[k] : { c_efg: 0.4, c_tovp: 0.25, c_orebp: 0.2, c_ftmr: 0.15 }[k] })) }],
-        o: { title: 'Shares of the margin', desc: 'Exact Shapley shares of R² against Dean Oliver’s 40 / 25 / 20 / 15' } }, charts);
-      if (C.legacy) html += '<details class="ww-details"><summary>The old |b| × spread shares</summary><p>' + CORE.map(k => esc(label(W, k)) + ' <span class="ww-num" translate="no">' + pc(C.legacy[k]) + '%</span>').join('<br>') + '</p></details>';
+        o: { title: 'Shares of the margin', desc: 'Exact Shapley shares of the margin’s variance (the grey rest is what the four factors leave unexplained), against Dean Oliver’s 40 / 25 / 20 / 15' } }, charts);
+      if (C.legacy) { const ls = CORE.reduce((t, k) => t + (isNum(C.legacy[k]) ? C.legacy[k] : 0), 0) > 1.5 ? 0.01 : 1;
+        html += '<details class="ww-details"><summary>The old |b| × spread shares</summary><p>' + CORE.map(k => esc(label(W, k)) + ' <span class="ww-num" translate="no">' + pc(ls * C.legacy[k]) + '%</span>').join('<br>') + '</p></details>'; }
       html += '<p class="ww-note">' + esc('The four factors explain ' + pc(C.r2) + '% of the competitive margin (' + pc(C.r2cv) + '% out of sample); on the full-game margin, ' + pc(W.models.fullR2) + '%') + '</p>';
     }
     /* pick the factors yourself: a re-fit from the file's weekly blocks, in the Worker */
@@ -223,12 +261,12 @@ const views = {
     const scan = (W.scan || []).slice();
     if (!scan.length) return { state: 'empty', html: empty('The measures appear once the league has 20 finished games'), charts };
     let html = '<div class="pg-row ww-ctl">' + seg('fview', [['bars', 'Bars'], ['table', 'Table']], st.fview, 'View') + '</div>';
-    html += '<p class="ww-lead">' + chip('explain', W.n.games) + ' <span class="ww-legend">grey: not distinguishable from noise (q ≥ 0.05)</span></p>';
+    html += '<p class="ww-lead">' + chip('explain', W.n.games) + ' <span class="ww-legend"><i class="ww-k-bar ww-k-good"></i>better side <i class="ww-k-bar ww-k-bad"></i>worse side <i class="ww-k-bar ww-k-style"></i>a style measure, no better side <i class="ww-k-bar ww-k-noise"></i>not distinguishable from noise (q ≥ 0.05)</span></p>';
     const key = st.sortKey, dir = st.sortDir;
     const val = s => key === 'k' ? label(W, s.k) : key === 'won' ? s.wonIt : key === 'q' ? s.q : Math.abs(s.r);
     scan.sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
     if (st.fview === 'bars') {
-      html += chartSlot({ kind: 'bars', pick: 'curves', label: 'Every measure against winning', data: scan.map(s => ({ id: s.k, label: label(W, s.k), v: s.r, lo: s.lo, hi: s.hi, dir: 1,
+      html += chartSlot({ kind: 'bars', pick: 'curves', label: 'Every measure against winning', data: scan.map(s => ({ id: s.k, label: label(W, s.k), v: s.r, lo: s.lo, hi: s.hi, dir: dirOf(W, s.k) === 0 ? 0 : 1,
         muted: !(s.q < 0.05), badge: s.score ? 'part of the score' : '', detail: defOf(W, s.k) + ' · won it, won the game ' + pc(s.wonIt) + '% of ' + s.decided })),
         o: { x: { label: 'correlation with winning (r), better side up' }, title: 'Every measure against winning', desc: 'Point-biserial correlation of each measure’s difference with winning, with 95% ranges' } }, charts);
     } else {
@@ -236,7 +274,7 @@ const views = {
       html += '<div class="ep-tw"><table class="ww-tbl"><thead><tr>' + th('k', 'Measure') + th('r', 'r with winning') + th('q', 'q') + th('won', 'Won it, won') +
         '<th scope="col">Winners</th><th scope="col">Losers</th><th scope="col">VIF</th></tr></thead><tbody>' +
         scan.map(s => '<tr' + (s.q < 0.05 ? '' : ' class="ww-grey"') + '><th scope="row">' + esc(label(W, s.k)) + (s.score ? ' <span class="ww-badge">part of the score</span>' : '') + '</th>' +
-          '<td translate="no">' + f2(s.r) + ' <small>' + rng(s.lo, s.hi, f2) + '</small></td><td translate="no">' + (isNum(s.q) ? s.q < 0.001 ? '<0.001' : s.q.toFixed(3) : '–') + '</td>' +
+          '<td translate="no">' + f2(s.r) + ' <small>' + rng(s.lo, s.hi, f2) + '</small></td><td translate="no">' + (isNum(s.q) ? s.q < 0.001 ? '&lt;0.001' : s.q.toFixed(3) : '–') + '</td>' +
           '<td translate="no">' + pc(s.wonIt) + '% <small>' + rng(s.wonLo, s.wonHi, pc) + '</small></td><td translate="no">' + f1(s.winMean) + '</td><td translate="no">' + f1(s.loseMean) + '</td>' +
           '<td translate="no" class="' + (s.vif > 10 ? 'ww-red' : s.vif > 5 ? 'ww-amber' : '') + '">' + (isNum(s.vif) ? f1(s.vif) : '–') + '</td></tr>').join('') + '</tbody></table></div>';
     }
@@ -284,8 +322,8 @@ const views = {
     const g = T.sqrtN;
     if (g) {
       html += '<h3 class="ww-h3">Do more possessions help the favourite?</h3>' + chip('forecast', g.n);
-      html += '<p class="ww-hard">' + esc(g.gamma.lo > 0 ? 'More possessions help the favourite: γ = ' + f2(g.gamma.v) + ' (' + f2(g.gamma.lo) + '–' + f2(g.gamma.hi) + ')' :
-        'The pace of a game does not change who wins here, once quality is counted') + '</p>';
+      const pt = paceText(g);
+      if (pt) html += '<p class="ww-hard">' + esc(pt) + '</p>';
       html += chartSlot({ kind: 'line', label: 'The favourite’s chance by expected possessions', data: [
         { k: 'obs', label: 'observed', pts: g.terciles.map(t => [t.rho, 100 * t.p, 100 * t.lo, 100 * t.hi]) },
         { k: 'fit', label: 'fitted', dash: true, pts: g.terciles.map(t => [t.rho, 100 * t.fit]) }],
@@ -296,12 +334,16 @@ const views = {
       pc(T.control.p) + '% (' + pc(T.control.lo) + '–' + pc(T.control.hi) + ') of ' + T.control.n + ' games; odds ratio ' + f2(T.control.or.v) + ' (' + f2(T.control.or.lo) + '–' + f2(T.control.or.hi) + ')</p>';
     const top = (W.path || []).filter(p => ['top_avg', 'early_share', 'top_share'].indexOf(p.k) >= 0);
     if (top.length) {
-      html += '<h3 class="ww-h3">Time of possession: direct and through the four factors</h3>' + chartSlot({ kind: 'forest', label: 'Time of possession, direct and indirect', data: top.flatMap(p => [
-        { id: p.k + ':d', label: label(W, p.k) + ' · direct', v: p.direct.v, lo: p.direct.lo, hi: p.direct.hi },
-        { id: p.k + ':i', label: label(W, p.k) + ' · via the factors', v: p.indirect.v, lo: p.indirect.lo, hi: p.indirect.hi, shrunk: true },
-        { id: p.k + ':t', label: label(W, p.k) + ' · total', v: p.total.v, lo: p.total.lo, hi: p.total.hi }]),
-        o: { x: { label: 'points of margin per unit' }, title: 'Time of possession effects', desc: 'Direct effect, the part through the four factors, and the total, with 95% ranges' } }, charts);
-      html += '<p class="ww-note">The direct effect is the headline: short possessions are partly transition and offensive rebounds, which the factors already count.</p>';
+      /* one small forest a measure, each on its own unit (seconds, or ten points of a share), so a per-second effect is
+         never flattened against a per-share one */
+      const per = k => (k === 'top_avg' ? { f: 1, x: 'points of margin per second' } : { f: 0.1, x: 'points of margin per 10 points of share' });
+      const sc = (c, f) => (c && isNum(c.v) ? { v: c.v * f, lo: isNum(c.lo) ? c.lo * f : null, hi: isNum(c.hi) ? c.hi * f : null } : null);
+      html += '<h3 class="ww-h3">Time of possession: direct and through the four factors</h3>' + chartSlot({ kind: 'smallMultiples', label: 'Time of possession, direct and indirect',
+        data: top.map(p => { const u = per(p.k), d = sc(p.direct, u.f), i = sc(p.indirect, u.f), t = sc(p.total, u.f);
+          return { title: label(W, p.k), kind: 'forest', data: [d && Object.assign({ id: p.k + ':d', label: 'direct' }, d), i && Object.assign({ id: p.k + ':i', label: 'via factors', shrunk: true }, i),
+            t && Object.assign({ id: p.k + ':t', label: 'total' }, t)].filter(Boolean), o: { x: { label: u.x } } }; }),
+        o: { panelH: 200, cols: 1, title: 'Time of possession effects', desc: 'Direct effect, the part through the four factors, and the total, each measure on its own unit, with 95% ranges' } }, charts);
+      html += '<p class="ww-note">The direct effect is the headline: short possessions are partly transition and offensive rebounds, which the factors already count, so the path through offensive rebounds is partly true by definition.</p>';
     }
     if (T.windows) html += '<h3 class="ww-h3">Points per chance by shot clock</h3>' + chartSlot({ kind: 'bars', label: 'Points per first chance by time used', data: [
       { id: 'e', label: 'within 8 s', v: T.windows.e.v, lo: T.windows.e.lo, hi: T.windows.e.hi, cls: 'vz-s1f' },
@@ -326,13 +368,17 @@ const views = {
     if (P.p2.length) {
       const g = ['G', 'F', 'C'].indexOf(st.posG) >= 0 ? st.posG : 'G';
       html += '<h3 class="ww-h3">What winners get from each group</h3><div class="pg-row ww-ctl">' + seg('posG', [['G', 'Guards'], ['F', 'Wings'], ['C', 'Bigs']], g, 'Group') + '</div>';
-      /* each statistic on its own scale: per cent above or below the league's median (the values are in the table) */
-      const rel = (v, m) => (isNum(v) && isNum(m) && m !== 0 ? 100 * (v / m - 1) : null);
-      html += chartSlot({ kind: 'dumbbell', label: 'What winners get from ' + GROUP[g].toLowerCase(), data: P.p2.filter(r => r.g === g).map(r => ({ id: r.stat, label: P1_LABEL[r.stat] || r.stat,
+      /* the seven statistics on one scale: per cent above or below the league's median. BPM and the minutes share sit
+         near 0 or are shares of a whole, so they are in the table only (a per cent of a median near 0 says nothing) */
+      const rel = (v, m) => (isNum(v) && isNum(m) && Math.abs(m) > 1e-9 ? 100 * (v / m - 1) : null);
+      const rows = P.p2.filter(r => r.g === g), seven = rows.filter(r => P1_STATS.indexOf(r.stat) >= 0 && isNum(rel(r.top, r.mid)));
+      if (seven.length) html += chartSlot({ kind: 'dumbbell', label: 'What winners get from ' + GROUP[g].toLowerCase(), data: seven.map(r => ({ id: r.stat, label: P1_LABEL[r.stat] || r.stat,
         pts: [{ k: 'top', label: 'top quarter', v: rel(r.top, r.mid), lo: rel(r.topLo, r.mid), hi: rel(r.topHi, r.mid), cls: GROUPCLS[g] }, { k: 'mid', label: 'league', v: 0, cls: 'vz-neuf' },
-              { k: 'bottom', label: 'bottom quarter', v: rel(r.bottom, r.mid), cls: 'vz-neuf' }] })),
+              { k: 'bottom', label: 'bottom quarter', v: rel(r.bottom, r.mid), cls: 'vz-neuf', hollow: true }] })),
         o: { x: { label: '% above or below the league’s median', fmt: v => (v > 0 ? '+' : '') + Math.round(v) + '%' }, title: 'What winners get', desc: 'Median of the top quarter by net rating and of the bottom quarter, against the league' } }, charts);
-      html += '<p class="ww-note ww-vals">' + P.p2.filter(r => r.g === g).map(r => '<span>' + esc(P1_LABEL[r.stat] || r.stat) + '</span> <span class="ww-num" translate="no">' + f1(r.top) + ' / ' + f1(r.mid) + ' / ' + f1(r.bottom) + '</span>').join('<br>') + '</p>';
+      html += '<div class="ep-tw"><table class="ww-tbl"><thead><tr><th scope="col">' + esc(GROUP[g]) + '</th><th scope="col">Top quarter</th><th scope="col">League</th><th scope="col">Bottom quarter</th></tr></thead><tbody>' +
+        rows.map(r => '<tr><th scope="row">' + esc(P1_LABEL[r.stat] || r.stat) + '</th><td translate="no">' + f2s(r.top) + (isNum(r.topLo) ? ' <small>' + rng(r.topLo, r.topHi, f2s) + '</small>' : '') +
+          '</td><td translate="no">' + f2s(r.mid) + '</td><td translate="no">' + f2s(r.bottom) + '</td></tr>').join('') + '</tbody></table></div>';
     }
     if (P.p2f && P.p2f.length) html += '<h3 class="ww-h3">Does a better group forecast wins?</h3>' + chip('forecast', W.n.games) + chartSlot({ kind: 'forest', label: 'Forecast value of each group’s talent', data: P.p2f.map(r => ({ id: r.g, label: GROUP[r.g], v: r.b, lo: r.lo, hi: r.hi, cls: GROUPCLS[r.g] })),
       o: { x: { label: 'points of margin per point of minutes-weighted BPM' }, title: 'Slot forecast', desc: 'Season-to-date BPM by group as a forecast of the margin' } }, charts);
@@ -351,7 +397,7 @@ const views = {
         cells: [0, 1, 2, 3, 4, 5].map(s => ['0', '1', '2+'].map(b => { const c = L.grid.find(x => x.s === s && x.b === b); return c ? { v: c.net, lo: c.lo, hi: c.hi, hatch: c.poss < 200, label: sg(c.net), detail: c.poss + ' possessions' } : null; })) },
         o: { dp: 1, transpose: false, title: 'Lineup mixes', desc: 'Net per 100 possessions by shooters on the floor and bigs, against the reference five' } }, charts);
       html += '<p class="ww-note">The opposing five is not controlled for.</p>';
-      if (L.terms && L.terms.length) html += chartSlot({ kind: 'forest', label: 'Lineup terms', data: L.terms.map(t => ({ id: t.k, label: t.k, v: t.b, lo: t.lo, hi: t.hi })),
+      if (L.terms && L.terms.length) html += chartSlot({ kind: 'forest', label: 'Lineup terms', data: L.terms.map(t => ({ id: t.k, label: TERM_LABEL[t.k] || t.k, v: t.b, lo: t.lo, hi: t.hi })),
         o: { x: { label: 'net per 100 possessions' }, title: 'Lineup terms', desc: 'Each term of the lineup model' } }, charts);
     }
     if (Q && Q.coef && Q.coef.length) {
@@ -373,6 +419,8 @@ const views = {
   sim(ctx) {
     const W = ctx.W, st = ctx.st, charts = [];
     if (!W) return locked(6);
+    /* the pooled file stands in for a league's own: say why there is no simulator, never "pick a league" */
+    if (!W.league && ctx.pooledFallback) return { state: 'empty', html: empty(ctx.fallbackWhy === 'none' ? 'This league’s simulator is built with its model: back within the hour' : 'The simulator needs 20 finished games in this league'), charts };
     if (!W.league) return { state: 'empty', html: empty('Pick a league to simulate its games'), charts };
     if (ctx.foState === 'idle' || ctx.foState === 'loading') return { state: 'loading', html: '<div class="pg-row"><button type="button" class="ep-btn pri" data-act="loadsim"' + (ctx.foState === 'loading' ? ' disabled' : '') + '>' +
       (ctx.foState === 'loading' ? 'Loading the simulator…' : 'Open the simulator') + '</button></div>', charts };
@@ -391,6 +439,21 @@ const views = {
         return '<label class="ww-dial" for="' + id + '"><span class="ww-dlab">' + esc(d.label) + '</span><input type="range" id="' + id + '" data-act="dial" data-side="' + side + '" data-key="' + d.key +
           '" min="' + d.min + '" max="' + d.max + '" step="' + d.step + '" value="' + v + '"><output translate="no">' + sg(v, d.step < 1 ? 1 : 0) + ' ' + d.unit + '</output></label>'; }).join('') + '</fieldset>').join('') + '</div>';
     html += '<div class="pg-row"><button type="button" class="ep-btn" data-act="dialreset">Reset the dials</button></div>';
+    /* the result in its own part: a simulation redraws only this, never the controls (a slider being dragged, a
+       select with focus) */
+    const r = views.simResult(ctx);
+    r.charts.forEach(c => charts.push(c));
+    html += '<div class="ww-simr" data-part="simR">' + r.html.replace(/data-chart="(\d+)"/g, (m, i) => 'data-chart="' + (charts.length - r.charts.length + +i) + '"') + '</div>';
+    return { state: 'ok', html, charts };
+  },
+
+  /* the simulator's result alone (meter, margins, what moves the odds), for #sim's result part */
+  simResult(ctx) {
+    const st = ctx.st, charts = [], fo = ctx.fo, teams = (fo && fo.teams) || [];
+    if (teams.length < 2) return { state: 'empty', html: '', charts };
+    const t1 = teams.some(t => t.id === st.t1) ? st.t1 : teams[0].id, t2 = teams.some(t => t.id === st.t2 && t.id !== t1) ? st.t2 : teams.find(t => t.id !== t1).id;
+    const name = id => (teams.find(t => t.id === id) || {}).name || '';
+    let html = '';
     const R = st.simResult;
     if (st.simState === 'running') html += '<p class="ww-note" aria-live="polite">Simulating…</p>';
     if (R && R.key === simKey(st, t1, t2)) {
@@ -413,7 +476,9 @@ const views = {
     let html = '<p class="ww-lead">' + chip('explain', L.n) + '</p><h3 class="ww-h3">The average defeat</h3>';
     html += chartSlot({ kind: 'waterfall', label: 'The average defeat, part by part', data: { start: { label: 'expected', v: ex ? ex.pts : 0 }, parts: L.parts.filter(p => p.k !== 'expected').map(p => ({ k: p.k, label: PART_LABEL[p.k] || label(W, p.k), v: p.pts, lo: p.lo, hi: p.hi })),
       total: { label: 'average defeat' } }, o: { y: { label: 'points' }, title: 'The average defeat', desc: 'Expected margin, then each part, adding up to the average losing margin' } }, charts);
-    if (isNum(L.luckSd)) html += '<p class="ww-note">' + esc('Shooting luck beyond the parts moves a game by about ' + f1(L.luckSd) + ' points either way') + '</p><p class="ww-note">It is shown beside the parts, never added to them.</p>';
+    /* luckSd is the spread of (points − expected points), net of the opponent's: shot-making against shot quality with
+       free throws in. It overlaps the shot-making part; it is not a remainder beyond the parts (that is 'other') */
+    if (isNum(L.luckSd)) html += '<p class="ww-note">' + esc('Shot-making against shot quality (both sides, free throws included) varies by about ' + f1(L.luckSd) + ' points a game') + '</p><p class="ww-note">It overlaps the shot-making part, so it is shown beside the parts, never added to them.</p>';
     const teams = (W.tempo && W.tempo.teams) || [];
     if (W.league && teams.length) {
       html += '<h3 class="ww-h3">A club’s defeats</h3><div class="pg-row ww-ctl"><label class="ww-field"><span class="ww-flab">Club</span>' + sel('club', [['', 'Pick a club']].concat(teams.map(t => [t.id, t.name]).sort((a, b) => (a[1] < b[1] ? -1 : 1))), st.club || '', 'Club', true) + '</label></div>';
@@ -449,12 +514,14 @@ const views = {
     }
     if (W.leagues && W.leagues.length) {
       const lg = W.leagues, pool = Object.fromEntries((W.models.core4c.coef || []).map(c => [c.k, c.b]));
-      let html = '<p class="ww-lead">' + chip('explain', W.n.games) + ' <span class="ww-legend">each league’s coefficient against the pooled one; hatched where it leans mostly on the pool (over 60%)</span></p>';
-      html += chartSlot({ kind: 'heatmap', label: 'Leagues against the pooled answer', data: { rows: lg.map(l => l.name), cols: CORE.map(k => label(W, k)), mode: 'div',
-        cells: lg.map(l => CORE.map(k => { const c = l.coef.find(x => x.k === k); if (!c || !c.eb || !isNum(pool[k])) return null; const rel = (c.eb.v - pool[k]) / (Math.abs(pool[k]) || 1) * Math.sign(dirOf(W, k) || 1);
+      let html = '<p class="ww-lead">' + chip('explain', W.n.games) + ' <span class="ww-legend"><i class="ww-k-bar ww-k-s1"></i>weighs more than in the pool <i class="ww-k-bar ww-k-s2"></i>weighs less; a weight, not better or worse; hatched where it leans mostly on the pool (over 60%)</span></p>';
+      /* a factor's weight: how many points of margin a unit of it is worth. More or less weight than the pool is not
+         better or worse, so the colour is a neutral pair (s1 / s2), on the size of the weight */
+      html += chartSlot({ kind: 'heatmap', label: 'Leagues against the pooled answer', data: { rows: lg.map(l => l.name), cols: CORE.map(k => label(W, k)), mode: 'rel',
+        cells: lg.map(l => CORE.map(k => { const c = l.coef.find(x => x.k === k); if (!c || !c.eb || !isNum(pool[k])) return null; const rel = (Math.abs(c.eb.v) - Math.abs(pool[k])) / (Math.abs(pool[k]) || 1);
           return { v: rel, hatch: c.w > 0.6, label: f2(c.eb.v), lo: c.eb.lo, hi: c.eb.hi, detail: pc(c.w) + '% from the pool' + (c.own ? ' · own ' + f2(c.own.v) : '') }; })) },
-        o: { dp: 2, title: 'Leagues against the pooled answer', desc: 'Each league’s shrunk coefficient; colour is how far it sits from the pooled one, better or worse' } }, charts);
-      html += '<div class="ep-tw"><table class="ww-tbl"><thead><tr><th scope="col">League</th><th scope="col">Games</th><th scope="col">Home court</th><th scope="col">Strongest measures</th></tr></thead><tbody>' +
+        o: { dp: 2, title: 'Leagues against the pooled answer', desc: 'Each league’s shrunk coefficient; colour is how much more or less the factor weighs than in the pool' } }, charts);
+      html += '<div class="ep-tw"><table class="ww-tbl"><thead><tr><th scope="col">League</th><th scope="col">Games</th><th scope="col">Home court beyond the factors</th><th scope="col">Strongest measures</th></tr></thead><tbody>' +
         lg.map(l => '<tr><th scope="row"><a href="?l=' + encodeURIComponent(l.slug) + '" data-act="league" data-v="' + esc(l.slug) + '" translate="no">' + esc(l.name) + '</a></th><td translate="no">' + l.n + '</td><td translate="no">' + sg(l.home.v) + ' <small>' + rng(l.home.lo, l.home.hi, f1) + '</small></td><td>' +
           esc((l.top || []).map(k => label(W, k)).join(', ')) + '</td></tr>').join('') + '</tbody></table></div>';
       return { state: 'ok', html, charts };
@@ -485,9 +552,13 @@ const views = {
       html += '<p class="ww-note">Lower Brier and log loss are better; a slope of 1 means the forecasts are as confident as they should be.</p>';
     }
     if (P && P.sim && P.sim.checks) {
-      const ck = P.sim.checks, names = { pace: 'Pace', ortg: 'Offensive rating', efg: 'eFG%', tovp: 'TOV%', orebp: 'OREB%', ftr: 'FT rate', marginSd: 'Margin spread', close5: 'Decided by 5 or fewer', ot: 'Overtime' };
+      const ck = P.sim.checks, names = { pace: 'Pace', ortg: 'Offensive rating', efg: 'eFG%', tovp: 'TOV%', orebp: 'OREB%', ftr: 'FT rate', marginSd: 'Margin spread', close5: 'Decided by 5 or fewer', ot: 'Overtime', home: 'Home win share' };
+      const share = k => k === 'close5' || k === 'ot' || k === 'home';
       html += '<h3 class="ww-h3">The simulator against the games</h3><p class="ww-lead">' + chip('model', null, P.sim.calibrated ? 'calibrated' : 'experimental') + '</p><div class="ep-tw"><table class="ww-tbl"><thead><tr><th scope="col">Check</th><th scope="col">Observed</th><th scope="col">Simulated</th></tr></thead><tbody>' +
-        Object.keys(ck).map(k => '<tr><th scope="row">' + esc(names[k] || k) + '</th><td translate="no">' + (k === 'close5' || k === 'ot' ? pc(ck[k].obs) + '%' : f1(ck[k].obs)) + '</td><td translate="no">' + (k === 'close5' || k === 'ot' ? pc(ck[k].sim) + '%' : f1(ck[k].sim)) + '</td></tr>').join('') + '</tbody></table></div>';
+        Object.keys(ck).map(k => '<tr><th scope="row">' + esc(names[k] || k) + '</th><td translate="no">' + (share(k) ? pc(ck[k].obs) + '%' : f1(ck[k].obs)) + '</td><td translate="no">' + (share(k) ? pc(ck[k].sim) + '%' : f1(ck[k].sim)) + '</td></tr>').join('') + '</tbody></table></div>';
+      /* the checks and the gate are out of sample (rolling origin); the in-sample score is only shown beside them */
+      if (P.sim.heldOut) html += '<p class="ww-note">Each game is simulated with the league’s parameters fitted only on the games played before it, as the forecasts are.</p>';
+      if (P.sim.inSample && isNum(P.sim.inSample.brier)) html += '<p class="ww-note">' + esc('Fitted on the same games it scores, the simulator’s Brier would be ' + P.sim.inSample.brier.toFixed(3) + ': shown for comparison, never used for the gate') + '</p>';
     }
     if (P && P.transfer && P.transfer.length) {
       const nm = id => ((W.leagues || []).find(l => l.id === id) || {}).name || id.slice(0, 8);
@@ -568,17 +639,49 @@ function boot() {
   };
 
   /* ---- drawing a section ---- */
+  /* the control that had focus, as a selector for the same control after a redraw (its id, or its data-act with
+     data-v / data-side / data-key), so a keyboard user's place survives a section being drawn again */
+  const cssEsc = v => (root.CSS && root.CSS.escape ? root.CSS.escape(v) : String(v).replace(/["\\]/g, '\\$&'));
+  function focusKey(el, host) {
+    if (!el || !host || el === host || !host.contains(el)) return null;
+    if (el.id) return '#' + cssEsc(el.id);
+    const a = el.getAttribute && el.getAttribute('data-act');
+    if (!a) return null;
+    let q = '[data-act="' + cssEsc(a) + '"]';
+    ['data-v', 'data-side', 'data-key'].forEach(k => { const v = el.getAttribute(k); if (v != null) q += '[' + k + '="' + cssEsc(v) + '"]'; });
+    return q;
+  }
+  const PARTS = { sim: ['simR'] };
+  function render(host, out, key) {
+    const fk = focusKey(doc.activeElement, host);
+    host.innerHTML = out.html;
+    host.removeAttribute('aria-busy');
+    if (fk) { const el = host.querySelector(fk); if (el && el.focus) { try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); } } }
+    bindCharts(host, out, key);
+  }
   function mount(id) {
     const host = id === 'answer' ? $('wwCards') : $(id + 'B');
     if (!host || !views[id]) return;
-    (binds.get(id) || []).forEach(b => b.destroy());
-    binds.set(id, []);
+    dirty.delete(id);
+    [id].concat(PARTS[id] || []).forEach(k => { (binds.get(k) || []).forEach(b => b.destroy()); binds.set(k, []); });
     let out;
     try { out = views[id](ctx); } catch (e) { out = { state: 'empty', html: '<div class="pg-empty"><p>This part could not be drawn.</p></div>', charts: [] }; if (root.console) root.console.warn('[winning]', id, e); }
-    host.innerHTML = out.html;
-    host.removeAttribute('aria-busy');
+    render(host, out, id);
+  }
+  /* #sim's result part alone: the controls (a slider mid-drag, a select) are never replaced by a simulation */
+  function mountSimResult() {
+    const part = $('simB') && $('simB').querySelector('[data-part="simR"]');
+    if (!part) { mount('sim'); return; }
+    (binds.get('simR') || []).forEach(b => b.destroy()); binds.set('simR', []);
+    let out;
+    try { out = views.simResult(ctx); } catch (e) { out = { state: 'empty', html: '<div class="pg-empty"><p>This part could not be drawn.</p></div>', charts: [] }; }
+    render(part, out, 'simR');
+  }
+  function bindCharts(host, out, id) {
     host.querySelectorAll('[data-memlock]').forEach(ph => {
       const rows = +ph.getAttribute('data-memlock') || 5;
+      /* a refusal that is not about entitlement (rate, layout, network, none) is said plainly, never as a membership pitch */
+      if (!ctx.lockedNow && ctx.reason && ['members', 'signin', 'league'].indexOf(ctx.reason) < 0) { ph.innerHTML = '<div class="pg-empty"><p></p></div>'; ph.querySelector('p').textContent = ctx.message || MSG.network; return; }
       if (ctx.reason === 'signin') { ph.innerHTML = '<div class="pg-empty"><p>Members’ analysis. <a href="' + esc(signinHref()) + '">Sign in</a> to see it.</p></div>'; return; }
       const M = root.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows, what: 'What wins model', leagueSlug: league ? league.slug : undefined }) : null;
       if (node) ph.replaceWith(node); else ph.innerHTML = '<div class="pg-empty"><p>Members’ analysis.</p></div>';
@@ -587,13 +690,30 @@ function boot() {
     host.querySelectorAll('[data-chart]').forEach(slot => {
       const spec = out.charts[+slot.getAttribute('data-chart')];
       if (!spec || !VK || !VK[spec.kind]) return;
+      const pt = slot.closest('[data-part]'), bk = pt && host.contains(pt) && pt !== host ? pt.getAttribute('data-part') : id;
+      if (!binds.has(bk)) binds.set(bk, []);
       const opts = { label: spec.label };
       if (spec.pick === 'curves') opts.onPick = h => { if (ctx.W && ctx.W.curves && ctx.W.curves[h.id]) { st.k = h.id; address(); mount('curves'); const s = $('curves'); if (s) s.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); } };
       if (spec.kind === 'scatter' && spec.brush) opts.onBrush = ids => { st.brushed = ids && ids.length ? ids : null; mount(id); };
-      binds.get(id).push(VK.bind(slot, o => VK[spec.kind](spec.data, Object.assign({}, spec.o, { W: o.W, id: id + slot.getAttribute('data-chart') })), opts));
+      binds.get(bk).push(VK.bind(slot, o => VK[spec.kind](spec.data, Object.assign({}, spec.o, { W: o.W, id: bk + slot.getAttribute('data-chart') })), opts));
     });
   }
-  const drawAll = () => SECTIONS.forEach(s => { if (s !== 'method') mount(s); });
+  /* drawing every section at once is one long task (23 charts, a forced layout each): the first two now, the rest as
+     they come near the viewport, and any still waiting in idle time one at a time */
+  const dirty = new Set();
+  let lazyObs = null;
+  const idle = fn => (root.requestIdleCallback ? root.requestIdleCallback(fn, { timeout: 1500 }) : root.setTimeout(fn, 60));
+  function drainIdle() { idle(() => { const next = SECTIONS.find(s => dirty.has(s)); if (!next) return; mount(next); drainIdle(); }); }
+  function drawAll() {
+    const ids = SECTIONS.filter(s => s !== 'method');
+    ids.forEach(s => dirty.add(s));
+    ids.slice(0, 2).forEach(mount);
+    if (!root.IntersectionObserver) { ids.forEach(s => { if (dirty.has(s)) mount(s); }); return; }
+    if (lazyObs) lazyObs.disconnect();
+    lazyObs = new root.IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && dirty.has(e.target.id)) mount(e.target.id); }), { rootMargin: '600px 0px' });
+    ids.slice(2).forEach(s => { const el = $(s); if (el) lazyObs.observe(el); });
+    drainIdle();
+  }
   const reduced = () => root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const signinHref = () => { const A = root.EpinoiaAccess; try { return A && A.signinHref ? A.signinHref(root.location.pathname + root.location.search) : '../signin/'; } catch (_) { return '../signin/'; } };
 
@@ -601,7 +721,11 @@ function boot() {
   function status() {
     const s = statusLine(ctx.ans, ctx.W), line = $('wwLine'), btn = $('wwRecalc');
     line.textContent = ctx.W ? s.line : (ctx.teaser ? 'Box-score preview of ' + ctx.teaser.n + ' games' : ctx.message || '');
-    btn.disabled = !s.canRecalc;
+    /* held off after a refusal or a no-op answer (rate, recent, queued) until its retry time has passed */
+    const wait = holdUntil - Date.now();
+    btn.disabled = !s.canRecalc || wait > 0;
+    root.clearTimeout(holdT);
+    if (wait > 0) holdT = root.setTimeout(status, Math.min(wait + 50, 2147483647));
     btn.classList.toggle('hide', !ctx.W || !ctx.W.league);
     btn.textContent = s.upToDate ? 'Up to date' : 'Recalculate';
     const ban = $('wwBanner'), built = Date.parse((ctx.ans && ctx.ans.built) || (ctx.W && ctx.W.built) || '');
@@ -617,7 +741,7 @@ function boot() {
     league: 'This league’s analysis is not open to you' };
   const rateMsg = s => 'Too many requests: try again in ' + Math.max(1, Math.ceil((s || 60) / 60)) + ' minutes';
   async function load(force) {
-    ctx.W = null; ctx.ans = null; ctx.fo = null; ctx.foState = 'idle'; ctx.club = null; ctx.clubState = 'idle'; ctx.teaser = null; ctx.reason = null; ctx.pooledFallback = false; ctx.message = '';
+    ctx.W = null; ctx.ans = null; ctx.fo = null; ctx.foState = 'idle'; ctx.club = null; ctx.clubState = 'idle'; ctx.teaser = null; ctx.reason = null; ctx.lockedNow = false; ctx.pooledFallback = false; ctx.fallbackWhy = ''; ctx.message = '';
     st.simResult = null; st.refit = null;
     $('wwCards').setAttribute('aria-busy', 'true');
     $('wwLine').textContent = 'Loading the model…';
@@ -628,14 +752,15 @@ function boot() {
     const lid = league ? league.id : undefined;
     let lockedNow = !!(M && M.locked && M.locked('model', lid));
     try { if (!lockedNow && A && A.CATALOGUE && A.CATALOGUE.locks && !A.CATALOGUE.locks.model && A.analyticsOk) lockedNow = A.analyticsOk(lid) === false; } catch (_) { /* fails open */ }
+    ctx.lockedNow = lockedNow;
     let ans = null;
     if (!lockedNow) {
       ans = await WF().get(league ? { scope: 'wins', league: league.id, season: seasonId || undefined } : { scope: 'wins' }, { force: !!force });
       if (!ans.ok && ans.reason === 'none' && league) {
-        ctx.pooledFallback = true;
+        ctx.pooledFallback = true; ctx.fallbackWhy = 'none';
         ans = await WF().get({ scope: 'wins' });
       } else if (ans.ok && league && ans.data && ans.data.n && ans.data.n.games < 20) {
-        ctx.pooledFallback = true;
+        ctx.pooledFallback = true; ctx.fallbackWhy = 'few';
         ans = await WF().get({ scope: 'wins' });
       }
     }
@@ -689,7 +814,7 @@ function boot() {
     const M = S.matchup(pa, pb, L, { home: +st.venue, platt });
     if (simAbort) simAbort.abort();
     const ab = simAbort = new root.AbortController();
-    st.simState = 'running'; mount('sim');
+    st.simState = 'running'; mountSimResult();
     const key = simKey(st, t1, t2);
     Work.run('simulate', { M, n: 5000, seed: 1 }, { signal: ab.signal }).then(async r => {
       if (ab.signal.aborted) return;
@@ -704,8 +829,8 @@ function boot() {
         void cur;
       }
       st.simResult = Object.assign({ key, tornado: tor }, r);
-      st.simState = 'done'; mount('sim');
-    }).catch(e => { if (ab.signal.aborted) return; st.simState = 'error'; st.simError = String(e && e.message || e); mount('sim'); });
+      st.simState = 'done'; mountSimResult();
+    }).catch(e => { if (ab.signal.aborted) return; st.simState = 'error'; st.simError = String(e && e.message || e); mountSimResult(); });
   }
 
   /* ---- the re-fit (Worker) ---- */
@@ -721,6 +846,8 @@ function boot() {
   }
 
   /* ---- RECALCULATE (A.2): the staged bar ---- */
+  let holdUntil = 0, holdT = 0;
+  const hold = sec => { holdUntil = Math.max(holdUntil, Date.now() + 1000 * Math.max(1, sec || 0)); };
   const STAGES = ['check', 'update', 'download', 'sim', 'draw'];
   const blocks = $('wwBlocks');
   for (let i = 0; i < 24; i++) blocks.appendChild(doc.createElement('i'));
@@ -749,6 +876,7 @@ function boot() {
       } });
     } catch (_) { a = { ok: false, reason: 'network' }; }
     if (!a.ok) {
+      if (a.reason === 'rate') hold(a.retryAfter || 60);
       finish();
       if (a.reason === 'aborted') return say('Cancelled: anything the server had started still finishes, and is reused next time');
       if (a.reason === 'rate') return say(rateMsg(a.retryAfter));
@@ -757,6 +885,17 @@ function boot() {
       return say(MSG[a.reason] || 'The model could not be reached just now');
     }
     const before = W.n.games;
+    /* nothing was updated (queued for the scheduled build, too many games, or updated moments ago): the bar stops at
+       the server's step and says why; no download, no re-simulating, no "Done"; the button waits out the retry time */
+    if (a.queued || a.refreshReason === 'recent' || a.refreshReason === 'cap') {
+      if (a.data && a.token !== (ctx.ans && ctx.ans.token)) { ctx.ans = a; ctx.W = a.data; }
+      else if (ctx.ans) ctx.ans = Object.assign({}, ctx.ans, { pending: a.pending != null ? a.pending : ctx.ans.pending });
+      hold(a.retryAfter || (a.refreshReason === 'recent' ? 600 : 120));
+      $('wwProg').classList.add('hide');
+      finish();
+      return say(a.refreshReason === 'cap' ? 'Too many new games for a quick update: a full rebuild is scheduled'
+        : a.refreshReason === 'recent' ? 'Updated a few minutes ago: try again shortly' : 'The update is queued: the next scheduled build picks these games up first');
+    }
     ctx.ans = a; ctx.W = a.data;
     stage('sim', 0, 'Re-simulating');
     if (ctx.W.blocks && ctx.W.blocks.list && ctx.W.blocks.list.length) {
@@ -774,9 +913,7 @@ function boot() {
     stage('draw', 1, 'Done');
     finish();
     const added = ctx.W.n.games - before;
-    if (a.queued) say(a.refreshReason === 'cap' ? 'Too many new games for a quick update: a full rebuild is scheduled' : 'The update is queued: the next scheduled build picks these games up first');
-    else if (a.refreshReason === 'recent') say('Updated a few minutes ago: try again shortly');
-    else if (a.joined) say('Joined an update already running' + (added > 0 ? ': ' + added + ' new games added' : ''));
+    if (a.joined) say('Joined an update already running' + (added > 0 ? ': ' + added + ' new games added' : ''));
     else if (a.refreshed) say(added > 0 ? 'Recalculated with ' + added + ' new games' : 'Recalculated');
     else say('Up to date');
   }
@@ -871,6 +1008,13 @@ function boot() {
     st.k = c.getAttribute('data-k'); address(); mount('curves');
     $('curves').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
   });
+
+  /* the chart kit translates a label whole before cutting it (vizkit's tr): charts drawn before the language pack
+     arrived are drawn again once it has */
+  try {
+    const I = root.EpinoiaI18n;
+    if (I && I.lang && I.lang !== 'en' && typeof I.whenReady === 'function') I.whenReady(() => binds.forEach(list => list.forEach(b => { try { b.redraw(); } catch (_) { /* a section redrawn since */ } })));
+  } catch (_) { /* English */ }
 
   (async function start() {
     if (!WF() || !D() || !V()) { $('wwLine').textContent = 'The page could not be loaded.'; return; }

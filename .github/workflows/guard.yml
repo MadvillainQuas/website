@@ -7,7 +7,10 @@ name: guard
 on:
   push:
     paths: ['epinoia/**', 'share/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml',
-            '.well-known/**', 'android/**', '.github/workflows/android.yml', 'tools/ios-team.mjs']
+            '.well-known/**', 'android/**', '.github/workflows/android.yml', 'tools/ios-team.mjs',
+            # What wins: the builder, the backfill and their workflows (the run-ww tests read them)
+            'tools/build-analytics.mjs', 'scripts/backfill_features.mjs', 'scripts/backfill_situations.mjs',
+            '.github/workflows/analytics.yml', '.github/workflows/backfill-features.yml']
   workflow_dispatch:
 
 jobs:
@@ -602,6 +605,16 @@ jobs:
         # one-sided box scores out), fewer-is-better measures the right way round, the four factors fitted to the margin
         # beside Oliver's 40 / 25 / 20 / 15, per league above a minimum, the charts, and a read by JSON path, never the blob
         run: node supabase/tests/winning.test.mjs
+
+      - name: What wins 2 - the feature line, the members-only files, the model, the simulator, the page and the Front office (0209)
+        # supabase/tests/run-ww.mjs runs every ww-*.test.mjs (docs/what-wins-model.md §16): features.js on the fixture game,
+        # the gate on a real Postgres (PGlite: nothing for anon, the limits, the refresh), the analytics-file handler, the
+        # loader, the statistics and the simulator against known answers, the builder (incremental = full, byte for byte),
+        # the chart kit, the page, the Front office, and the contract across them (who names game_features, no stats->sit,
+        # the model lock, the stamps, builder files through winfile.js into both pages). --strict: a SKIP is a failure here
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/run-ww.mjs --strict
 
       - name: The WOWY / lineups page - colour scale, reliability, pair buckets, column picker, gate, address
         # epinoia/wowylogic.js over lineups.js, pure: percentile colours turned round where lower is better, small samples

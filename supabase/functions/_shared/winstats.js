@@ -982,5 +982,5 @@ return {
    so the Edge Function and the browser run one identical file.
    --------------------------------------------------------------------------- */
 const __api = globalThis.EpinoiaWinStats;
-export const { normCdf, normPdf, normInv, logit, expit, rng, normal, hash, chol, cholSolve, invSPD, gaussJordan, suff, addSuff, subSuff, pick, ridge, cvLambda, clusterCov, blockBootstrap, logistic, corrFromSuff, vif, condNumber, shapleyR2, dersimonianLaird, ebPosterior, wilson, fisherCI, fisherP, bh, welchCI, icc, pointBiserial, bins, quantile, nsBasis, gamLogit, calibration, valueScale, winsOver, oaxaca, golden, bisect, niceTicks } = __api;
+export const { normCdf, normPdf, normInv, logit, expit, rng, normal, hash, chol, cholSolve, invSPD, gaussJordan, suff, addSuff, subSuff, pick, ridge, cvLambda, clusterCov, blockBootstrap, logistic, corrFromSuff, vif, condNumber, shapleyR2, dersimonianLaird, ebPosterior, wilson, fisherCI, fisherP, bh, welchCI, icc, pointBiserial, bins, quantile, nsBasis, gamLogit, calibration, valueScale, winsOver, oaxaca, golden, bisect, niceTicks, log1pexp, eigSym, full, packedLen, pidx, zeroSuff, copySuff, sumSuff, sse, blockBootstrapSteps, run, pearson, mean, sd, lnGamma, betaInc, gammaInc, tCdf, tInv, fP, chi2P, auc } = __api;
 export default __api;

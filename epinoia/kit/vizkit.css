@@ -60,6 +60,12 @@
 .vz-bar.vz-muted{fill-opacity:.32}
 .vz-s1f{fill:var(--vz-s1)} .vz-s2f{fill:var(--vz-s2)} .vz-s3f{fill:var(--vz-s3)} .vz-neuf{fill:var(--vz-neu)}
 .vz-s1l{stroke:var(--vz-s1)} .vz-s2l{stroke:var(--vz-s2)} .vz-s3l{stroke:var(--vz-s3)} .vz-neul{stroke:var(--vz-neu)}
+/* a style measure (no better side): its own hue, never the grey of noise */
+.vz-style{fill:var(--vz-s1)}
+.vz-bar.vz-style{fill-opacity:.62}
+/* a hollow marker (the dumbbell's bottom quarter beside the league's grey) */
+.vz-pt.vz-ptho{fill:var(--ground);stroke:var(--vz-axisc);stroke-width:2}
+.vz-seg.vz-rest{fill-opacity:.45}
 .vz-curve{fill:none;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
 .vz-dash{stroke-dasharray:6 5}
 .vz-band{fill:var(--vz-s1);fill-opacity:.16;stroke:none}
@@ -87,6 +93,7 @@
 .vz-tip b{font-family:var(--f-micro);font-size:9px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--vz-tiphi)}
 .vz-tip .vz-tipv{font-family:var(--f-data);font-size:12.5px}
 .vz-tip .vz-tipd{font-size:11px;opacity:.9}
+.vz-tip[hidden],.vz-ring[hidden]{display:none}
 .vz-ring{position:absolute;width:18px;height:18px;border:2px solid var(--vz-tiphi);border-radius:50%;pointer-events:none;box-sizing:border-box}
 .vz-tbtn{display:block;margin:6px auto 0;background:none;border:1px solid var(--rule);color:var(--ink-2);font-family:var(--f-micro);font-size:8.5px;
   letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;min-height:28px;cursor:pointer}
@@ -108,7 +115,7 @@
 @media (forced-colors:active){
   .vz text{fill:CanvasText}
   .vz-dot,.vz-pt,.vz-bar,.vz-seg,.vz-cell,.vz-hbar,.vz-s1f,.vz-s2f,.vz-s3f{fill:CanvasText;stroke:Canvas;forced-color-adjust:none}
-  .vz-dot.vz-hollow{fill:Canvas;stroke:CanvasText}
+  .vz-dot.vz-hollow,.vz-pt.vz-ptho{fill:Canvas;stroke:CanvasText}
   .vz-curve,.vz-whisk,.vz-zero,.vz-ref,.vz-grid,.vz-mark,.vz-dl{stroke:CanvasText}
   .vz-band,.vz-xband{fill:none}
   .vz-tip{background:Canvas;color:CanvasText;border-color:Highlight}

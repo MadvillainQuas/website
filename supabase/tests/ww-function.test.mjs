@@ -152,11 +152,23 @@ console.log('\nthe check, with the caller\'s token');
   await handle(post({ scope: 'wins', league: L }, { authorization: 'Bearer sb_publishable_iYjQ' }), w.deps);
   ok('a bearer that is not a JWT (the publishable key) asks as the signed-out', w.callers[0] === null);
   const take = w.calls.find(c => c.rpc === 'analytics_take');
-  const want = 'ip:' + createHash('sha256').update(['203.0.113.9', '', '2026-10-01', 'pepper'].join('|')).digest('hex').slice(0, 32);
-  ok('...counted against a salted hash of address, browser and day', take.args.p_subject.startsWith('ip:') && take.args.p_subject.length === 35 && take.args.p_signed === false);
+  const want = 'ip:' + createHash('sha256').update(['10.0.0.1', '2026-10-01', 'pepper'].join('|')).digest('hex').slice(0, 32);
+  ok('...counted against a salted hash of the address and the day', take.args.p_subject.startsWith('ip:') && take.args.p_subject.length === 35 && take.args.p_signed === false);
   const w2 = world();
   await handle(post({ scope: 'wins', league: L }, { 'x-forwarded-for': '203.0.113.9, 10.0.0.1' }), w2.deps);
-  ok('...the first x-forwarded-for address, the user agent, the UTC date and ANALYTICS_SALT, 32 hex characters', w2.calls.find(c => c.rpc === 'analytics_take').args.p_subject === want);
+  ok('...the address the edge appended (the LAST x-forwarded-for entry), the UTC date and ANALYTICS_SALT, 32 hex characters', w2.calls.find(c => c.rpc === 'analytics_take').args.p_subject === want);
+  /* SEC-2: a client cannot mint buckets: rotating the left x-forwarded-for entry or the user agent keeps one subject */
+  const subs = new Set();
+  for (let i = 0; i < 20; i++) {
+    const w3 = world();
+    await handle(post({ scope: 'wins', league: L }, { 'x-forwarded-for': '10.0.' + i + '.' + (i * 7 % 255) + ', 198.51.100.7', 'user-agent': 'bot/' + i }), w3.deps);
+    subs.add(w3.calls.find(c => c.rpc === 'analytics_take').args.p_subject);
+  }
+  ok('20 requests rotating the client-written x-forwarded-for entry and the user agent count as ONE subject', subs.size === 1, subs.size);
+  const w4 = world();
+  await handle(post({ scope: 'wins', league: L }, { 'x-forwarded-for': '6.6.6.6, 198.51.100.7', 'cf-connecting-ip': '192.0.2.44' }), w4.deps);
+  ok('...a header the edge sets itself (cf-connecting-ip) is preferred to x-forwarded-for', w4.calls.find(c => c.rpc === 'analytics_take').args.p_subject ===
+     'ip:' + createHash('sha256').update(['192.0.2.44', '2026-10-01', 'pepper'].join('|')).digest('hex').slice(0, 32));
   const files = w.calls.find(c => c.table === 'analytics_files');
   ok('no season asked: the league\'s current file', files.filters.some(f => f[1] === 'is_current' && f[2] === true));
 }
@@ -319,6 +331,81 @@ function refreshWorld(o = {}) {
   const r2 = await handle(post({ scope: 'wins', refresh: true }, { authorization: 'Bearer ' + JWT }), w2.deps);
   ok('...and only for a league\'s own unit, not the pooled file', r2.status === 403 && !w2.updates.length);
 }
+{
+  /* SEC-1: a player who debuts in the delta and is a minor without consent: the database is asked, update() is told,
+     and a file that still names him is refused by validate before anything is uploaded */
+  const W_ID = '0d000000-0000-4000-8000-0000000000aa', OK_ID = '0d000000-0000-4000-8000-0000000000bb';
+  const w = refreshWorld();
+  const base = w.st.extra;
+  w.st.extra = (q, st) => {
+    if (q.table === 'players') { st.playerAsk = (st.playerAsk || []).concat(q.filters.find(f => f[0] === 'in')[2]); return { data: [{ id: W_ID, is_minor: true, public_consent: false }, { id: OK_ID, is_minor: true, public_consent: true }], error: null }; }
+    if (q.table === 'player_game_stats') return { data: [{ game_id: 'g0', team_idx: 0, player_uuid: W_ID, pts: 3 }, { game_id: 'g0', team_idx: 0, player_uuid: OK_ID, pts: 4 }], error: null };
+    return base(q, st);
+  };
+  w.deps.validate = (file, scope, o) => (o.withheld.has(W_ID) && JSON.stringify(file).includes(W_ID) ? ['withheld player ' + W_ID] : []);
+  const upd = w.deps.update;
+  w.deps.update = async (store, delta, opts) => { const r = await upd(store, delta, opts); r.files.club[T] = { w: 1, scope: 'club', players: [{ id: W_ID }] }; return r; };
+  const b = await json(await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps));
+  ok('a withheld player debuting in the delta: the players table is asked for every uuid, update() gets the withheld list',
+     (w.st.playerAsk || []).includes(W_ID) && w.updates[0].opts.withheld.includes(W_ID) && !w.updates[0].opts.withheld.includes(OK_ID), w.updates[0] && w.updates[0].opts.withheld);
+  ok('...a file still naming him is refused by validate: nothing uploaded, the unit queued for the scheduled build', b.queued === true && b.refresh_reason === 'validate' &&
+     !w.st.order.some(x => x.startsWith('upload:')) && w.st.done.p_status === 'queued', [b, w.st.order]);
+}
+{
+  /* POS-2: PostgREST answers at most 1000 rows; the stints and player lines of a chunk are paged until a short page */
+  const many = Array.from({ length: 2500 }, (_, i) => ({ game_id: 'g' + (i % 3), team_idx: i % 2, dur: 1000 }));
+  const w = refreshWorld();
+  const base = w.st.extra;
+  w.st.extra = (q, st) => {
+    if (q.table === 'lineup_stints') { const [a, z] = q.range || [0, 999]; st.stintPages = (st.stintPages || 0) + 1; st.stintOrder = q.order; return { data: many.slice(a, Math.min(z + 1, a + 1000)), error: null }; }
+    return base(q, st);
+  };
+  await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps);
+  ok('stints past the 1000-row cap are all read (three pages, ordered by game, side and id)', w.updates[0].delta.stints.length === 2500 && w.st.stintPages === 3 &&
+     JSON.stringify(w.st.stintOrder) === '["game_id","team_idx","id"]', [w.updates[0] && w.updates[0].delta.stints.length, w.st.stintPages]);
+}
+{
+  /* PERF-8: the delta's lines are read without st; st is asked for only the games whose stints are missing or short */
+  const w = refreshWorld();
+  w.deps.stintGaps = (rows, stints) => ['g1'];
+  await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps);
+  const reads = w.calls.filter(c => c.table === 'game_features' && c.op === 'select' && !(c.selectOpts && c.selectOpts.head));
+  ok('the delta read leaves st out; a second read asks st for the stint gaps only', !/\bst\b/.test(reads[0].cols) && reads.some(c => /\bst\b/.test(c.cols) &&
+     JSON.stringify(c.filters.find(f => f[0] === 'in')[2]) === '["g1"]'), reads.map(c => c.cols));
+}
+{
+  /* PERF-1 / PERF-5: a unit too big for the function is left to the scheduled build before its store is downloaded */
+  const w = refreshWorld();
+  const base = w.st.extra;
+  w.st.extra = (q, st) => {
+    if (q.table === 'analytics_files' && q.op === 'select' && q.filters.some(f => f[1] === 'season_key') && !q.filters.some(f => f[1] === 'scope'))
+      return { data: [Object.assign({}, w.old.store, { n_games: 900, bytes: 5400000 }), w.old.wins], error: null };
+    return base(q, st);
+  };
+  const b = await json(await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps));
+  ok('a 900-game unit: {queued, refresh_reason: \'size\'}, its store never downloaded, no update', b.queued === true && b.refresh_reason === 'size' &&
+     !w.calls.some(c => c.storage === 'download') && !w.updates.length && w.st.done.p_status === 'queued', b);
+}
+{
+  /* PERF-2: only the clubs whose games changed are rewritten, in parallel lanes; members' files are never browser-cached */
+  const T2 = '0c000000-0000-4000-8000-0000000000f2';
+  const w = refreshWorld();
+  const base = w.st.extra;
+  w.st.extra = (q, st) => {
+    if (q.table === 'analytics_files' && q.op === 'select' && q.filters.some(f => f[1] === 'season_key') && !q.filters.some(f => f[1] === 'scope'))
+      return { data: [w.old.store, w.old.wins, Object.assign({}, w.old.wins, { scope: 'club', team_key: T, team_id: T, path: 'club/x/T.json' }),
+        Object.assign({}, w.old.wins, { scope: 'club', team_key: T2, team_id: T2, path: 'club/x/T2.json' })], error: null };
+    if (q.storage === 'upload') { st.cache = (st.cache || []).concat(q.opts.cacheControl); }
+    return base(q, st);
+  };
+  const upd = w.deps.update;
+  w.deps.update = async (store, delta, opts) => { const r = await upd(store, delta, opts); r.files.club[T2] = { w: 1, scope: 'club' }; r.changed = [T]; return r; };
+  await handle(post({ scope: 'wins', league: L, season: S, refresh: true }, { authorization: 'Bearer ' + JWT }), w.deps);
+  const ups = w.st.order.filter(x => x.startsWith('upload:'));
+  ok('only the changed club\'s file is rewritten (T, not T2); wins, fo and the store too', ups.some(x => x.includes('/' + T + '/')) && !ups.some(x => x.includes(T2)) &&
+     ups.some(x => x.startsWith('upload:wins/')) && ups.some(x => x.startsWith('upload:fo/')) && ups.some(x => x.startsWith('upload:store/')), ups);
+  ok('...every upload with cacheControl 0 (a browser never keeps a members\' file)', (w.st.cache || []).length === ups.length && w.st.cache.every(c => c === '0'), w.st.cache);
+}
 ok('helpers: fileName replaces each non-alphanumeric run, tokenAt reads a unit token and not a pooled one, jwtSub reads the subject',
    fileName(1, '12@2026-09-30T10:00:00.5+00:00') === 'v1-12-2026-09-30T10-00-00-5-00-00.json' && tokenAt('12@2026-09-30T10:00:00Z') === '2026-09-30T10:00:00Z' &&
    tokenAt('40@2026-09-30T10:00:00Z@oab12') === null && jwtSub(JWT) === 'user-1' && jwtSub('x.y.z') === '');
@@ -349,6 +436,10 @@ console.log('\nthe wiring');
   const block = fin.slice(fin.indexOf('const publishedAt'), iPub);
   ok('...in their own try/catch, never blocking, with the backfill warning', /if \(FL && g\.competition_id\) \{\s*try \{/.test(block) &&
      /\} catch \(e\) \{[\s\S]{0,200}?was not stored — run the features backfill/.test(block) && !/return json\(/.test(block));
+  const iChain = fin.indexOf('const chainP'), iDel = fin.indexOf("await admin.from('player_game_stats').delete()", iChain);
+  ok('PERF-12: the competition chain is read once, beside the inserts (not a serial round trip before publishing), and notify() reuses it',
+     iChain > 0 && iChain < iDel && /select\('name,season_id,seasons\(league_id,leagues\(name,slug\)\)'\)/.test(fin.slice(iChain, iDel)) && /await chainP;/.test(block) &&
+     /notify\(admin, gameId, g\.competition_id, d, game\.teams, chainP\)/.test(fin));
   ok('...upserted on game_id,team_idx with the competition\'s season and league', /\.select\('season_id,seasons\(league_id\)'\)/.test(block) &&
      /\{ onConflict: 'game_id,team_idx' \}/.test(block) && /featureRows\(gameId, FL, \{ league_id: leagueId, season_id: seasonId, competition_id: g\.competition_id, finalised_at: publishedAt \}\)/.test(block));
   ok('one publishedAt for games.finalised_at and the rows', (fin.match(/const publishedAt = new Date\(\)\.toISOString\(\);/g) || []).length === 1 &&

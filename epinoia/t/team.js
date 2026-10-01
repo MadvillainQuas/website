@@ -111,6 +111,14 @@ function decideAccess(lg) {
    read of the club's games below appends inSeason(), so the page is one season at a time. With one
    season on offer nothing is set and the page reads as it always did. */
 let SEASON_COMPS = null;
+/* the season's own id, for the Front office's model files (EpinoiaWinFile); null = the league's current season */
+let SEASON_ID = null;
+/* this script's own ?v=, so the win model's code loaded later (loadWinModel) is of the same deploy */
+const TEAM_V = (() => {
+  const s = document.currentScript || Array.from(document.scripts).find(x => /\/t\/team\.js/.test(x.src));
+  const m = /[?&]v=([^&#]+)/.exec((s && s.src) || '');
+  return m ? m[1] : '';
+})();
 const inSeason = () => (SEASON_COMPS && SEASON_COMPS.length ? '&competition_id=in.(' + SEASON_COMPS.join(',') + ')' : '');
 async function chooseSeason(team, lg) {
   const SB = window.EpinoiaSeasonBar;
@@ -129,6 +137,7 @@ async function chooseSeason(team, lg) {
       season = (cid && o.list.find(s => (s.comps || []).some(c => c.id === cid))) || o.list[0];
     }
     SEASON_COMPS = (season.comps || []).map(c => c.id);
+    SEASON_ID = season.id || null;
     SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: o.list, season });
   } catch (_) { /* every season, as before */ }
 }
@@ -299,6 +308,25 @@ function seasonLogs(team) {
   })();
   logsP.catch(() => { logsP = null; });
   return logsP;
+}
+
+/* THE SEASON'S GAMES WITHOUT THEIR LOGS (docs/what-wins-model.md §12): the Front office needs the club's last forty
+   finals and their starters, not their event logs, so it reads seasonLogs' games query alone (or seasonLogs' own
+   answer when a section has already loaded it). Opening the tab no longer downloads the logs. */
+let gamesP = null;
+function seasonGames(team) {
+  if (logsP) return logsP.then(({ gs, sideOf }) => ({ gs, sideOf }));
+  if (gamesP) return gamesP;
+  const D = window.EpinoiaData;
+  gamesP = (async () => {
+    const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,period,starters,roster_snapshot` + inSeason() +
+      `&order=tipoff_at.desc&limit=40`);
+    const sideOf = {}; gs.forEach(g => { sideOf[g.id] = g.home_team_id === team.id ? 0 : 1; });
+    return { gs, sideOf };
+  })();
+  gamesP.catch(() => { gamesP = null; });
+  return gamesP;
 }
 
 /* the club's colour as this theme can read it: on the light page a pale kit is inked darker */
@@ -541,12 +569,15 @@ function syncTabs() {
   });
 }
 
-/* THE FRONT OFFICE: the projected depth chart and the GM's view (t/depth.js). Everything it reads is already
-   read for this page or cached: the club's last forty finals with their starters (seasonLogs), the league's season
-   line (D.season without rows: the snapshot or this browser's copy), the last ten games' player lines for the
-   minutes and who is missing now, the roster for positions and heights, the releases and the ages. */
+/* THE FRONT OFFICE: the depth chart, the GM's view (t/depth.js) and the win model (t/fomodel.js). Everything it reads
+   is already read for this page or cached: the club's last forty finals with their starters (seasonGames: the games,
+   never their event logs), the league's season line (D.season without rows: the snapshot or this browser's copy), the
+   last ten games' player lines for the minutes and who is missing now, the roster for positions and heights, the
+   releases and the ages; and, for the win model, two members-only files through EpinoiaWinFile (the league's `fo`
+   file and the club's own) and the fixtures to come. The files carry the club's minutes at each position (A.1), so
+   the depth chart is filled from the floor where they arrive. */
 async function frontOffice(team) {
-  const hostD = $('#depth'), hostG = $('#gmview');
+  const hostD = $('#depth'), hostG = $('#gmview'), hostM = $('#wmodel');
   const X = window.EpinoiaDepth, D = window.EpinoiaData;
   if (ACCESS.paywall || !hostD || !X || !D) return;
   if (!frontOfficeOpen(team)) {
@@ -555,11 +586,14 @@ async function frontOffice(team) {
       'Every position charted against the same position at every club in the league.',
       'Strengths, weaknesses and needs, read the way a general manager would.'] });
     if (hostG) hostG.textContent = '';
+    modelLocked(hostM, team);
     return;
   }
+  /* the win model's files, asked for at once beside everything else */
+  const modelP = winModelFiles(team).catch(() => null);
   try {
     const [{ gs, sideOf }, roster, rel] = await Promise.all([
-      seasonLogs(team),
+      seasonGames(team),
       api(`roster_entries?team_id=eq.${team.id}&active=eq.true&select=jersey,position,players(id,first_name,last_name,height_cm)`),
       D.releases(team.id).catch(() => [])
     ]);
@@ -613,7 +647,8 @@ async function frontOffice(team) {
       try { const meta = await D.playerMeta(missingNames); mine.forEach(p => { if (!p.name && meta[p.id]) p.name = meta[p.id].name; }); } catch (_) { /* unnamed */ }
     }
 
-    const c = X.chart({ roster: people, season: seasonRows, recent, starts, out, released });
+    const chartIn = { roster: people, season: seasonRows, recent, starts, out, released };
+    let c = X.chart(chartIn);
     const link = p => '../p/?p=' + encodeURIComponent(p.id);
     hostD.innerHTML = X.chartHTML(c, { link });
     /* EACH POSITION OPENS ITS LEAGUE VIEW (position.js): every club put through the same chart, read the first time
@@ -628,7 +663,8 @@ async function frontOffice(team) {
       ]);
       return PV.context({ season: S, rosters, meta, own: { teamId: team.id, chart: c } });
     })().catch(e => { ctxP = null; throw e; }));
-    if (PV) hostD.addEventListener('click', async e => {
+    /* the depth chart's positions and the win model's slot buttons (F3) open the same view */
+    const onSlot = async e => {
       const b = e.target.closest && e.target.closest('[data-slot]');
       if (!b) return;
       b.classList.add('dc-busy');
@@ -638,11 +674,31 @@ async function frontOffice(team) {
         PV.open(PV.html(rep, { close: true, link }), b);
       } catch (_) { PV.open('<div class="pv"><div class="empty">The league view could not be read just now.</div><button type="button" class="pv-x" data-pv-close aria-label="close">×</button></div>', b); }
       b.classList.remove('dc-busy');
-    });
+    };
+    if (PV) { hostD.addEventListener('click', onSlot); if (hostM) hostM.addEventListener('click', onSlot); }
+
+    /* THE WIN MODEL'S FILES: the minutes at each position fill the depth chart (A.1), the GM's view is ordered by
+       what each measure is worth, and F3 is drawn */
+    const M = await modelP;
+    const fo = M && M.fo && M.fo.ok ? M.fo.data : null, club = M && M.club && M.club.ok ? M.club.data : null;
+    const pos = (club && club.pos) || (fo && fo.pos && fo.pos[team.id]) || null;
+    if (pos && X.slotChart) {
+      const cs = X.slotChart(Object.assign({ pos }, chartIn));
+      if (cs) {
+        c = cs; ctxP = null;
+        hostD.innerHTML = X.chartHTML(c, { link });
+        const note = $('#depthNote');
+        if (note) note.textContent = 'filled from the minutes each player has played at each position';
+      }
+    }
+    mine.forEach(p => { if (p.name && !names.has(p.id)) names.set(p.id, p.name); });
+    winModel(hostM, team, M, { names, link });
     if (!hostG) return;
     const ages = window.EpinoiaAges ? await window.EpinoiaAges.load(CFG, mine.map(p => p.id)).catch(() => ({})) : {};
+    const FM = window.EpinoiaFoModel;
     const g = X.gm({ team, teams: S.teams || [], players: mine, ages: new Map(Object.entries(ages)),
-                     heights: new Map(people.filter(p => p.height).map(p => [p.id, +p.height])) });
+                     heights: new Map(people.filter(p => p.height).map(p => [p.id, +p.height])),
+                     model: fo && FM ? FM.gmModel(fo, team.id) : undefined });
     hostG.innerHTML = X.gmHTML(g);
     const note = $('#gmNote');
     if (note && g.of) note.textContent = 'against the ' + g.of + ' clubs of the league';
@@ -650,6 +706,88 @@ async function frontOffice(team) {
   } catch (e) {
     hostD.innerHTML = '<div class="empty">The depth chart could not be drawn.</div>';
   }
+}
+
+/* THE WIN MODEL'S FILES (F3; docs/what-wins-model.md §10, §12): the league-season's `fo` file, then the club's own, and
+   the fixtures to come. The database decides on each request; the catalogue's 'model' lock (or, before access.js
+   lists it, the analytics entitlement it rides on) only skips asking when the answer is already known to be no. */
+function modelUnit(team) {
+  const lg = (team && team.leagues) || {};
+  return { league: lg.id, season: SEASON_ID || undefined };
+}
+function modelKnownLocked(team) {
+  const A = window.EpinoiaAccess, M = window.EpinoiaMemLock, lid = ((team && team.leagues) || {}).id;
+  let locked = false;
+  try { locked = !!(M && M.locked && M.locked('model', lid)); } catch (_) { /* fails open */ }
+  try { if (!locked && A && A.CATALOGUE && A.CATALOGUE.locks && !A.CATALOGUE.locks.model && A.analyticsOk) locked = A.analyticsOk(lid) === false; } catch (_) { /* fails open */ }
+  return locked;
+}
+/* THE WIN MODEL'S CODE (PERF: about 250 KB a team-page view never needed): loaded when the Front office first opens,
+   never on a plain view. The statistics and the simulator (the panel builds its matchups on the page; its Worker
+   imports its own copies), the files' loader, the chart kit and the panel, in that order, at this script's own ?v=;
+   their two sheets go in before legibility.css, which stays last. Resolves when all have run (or failed: the panel
+   then says the model could not be reached). */
+let winModelLoad = null;
+function loadWinModel() {
+  if (winModelLoad) return winModelLoad;
+  const v = TEAM_V ? '?v=' + TEAM_V : '';
+  const last = document.querySelector('link[rel="stylesheet"][href*="kit/legibility.css"]');
+  ['../kit/vizkit.css', '../kit/fomodel.css'].forEach(href => {
+    if (document.querySelector('link[href^="' + href + '"]')) return;
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href + v;
+    if (last && last.parentNode) last.parentNode.insertBefore(l, last); else document.head.appendChild(l);
+  });
+  const one = (src, has) => new Promise(res => {
+    if (has()) return res(true);
+    const s = document.createElement('script'); s.src = src + v; s.async = false;
+    s.onload = () => res(true); s.onerror = () => res(false);
+    document.head.appendChild(s);
+  });
+  winModelLoad = (async () => {
+    for (const [src, has] of [['../winstats.js', () => !!window.EpinoiaWinStats], ['../winsim.js', () => !!window.EpinoiaWinSim],
+      ['../winfile.js', () => !!window.EpinoiaWinFile], ['../vizkit.js', () => !!window.EpinoiaVizKit], ['fomodel.js', () => !!window.EpinoiaFoModel]]) await one(src, has);
+    return !!(window.EpinoiaWinFile && window.EpinoiaFoModel);
+  })();
+  return winModelLoad;
+}
+async function winModelFiles(team) {
+  await loadWinModel();
+  const WF = window.EpinoiaWinFile, unit = modelUnit(team);
+  if (!WF || !window.EpinoiaFoModel || !unit.league) return null;
+  if (modelKnownLocked(team)) return { fo: { ok: false, reason: 'members' } };
+  const fixturesP = api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})&status=in.(scheduled,live)` +
+    `&select=id,home_team_id,away_team_id,tipoff_at` + inSeason() + `&order=tipoff_at.asc`).catch(() => []);
+  /* the league's file and the club's at once: the club's ask needs nothing from the fo file, only that it is allowed,
+     and a refusal of one is a refusal of both (the club's answer is then dropped) */
+  const [fo, club] = await Promise.all([WF.get(Object.assign({ scope: 'fo' }, unit)), WF.get(Object.assign({ scope: 'club', team: team.id }, unit))]);
+  return { fo, club: fo.ok ? club : null, fixtures: await fixturesP };
+}
+function modelLocked(host, team) {
+  if (!host) return;
+  const M = window.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows: 5, what: 'What wins model', leagueSlug: ((team && team.leagues) || {}).slug }) : null;
+  host.textContent = '';
+  if (node) host.appendChild(node); else host.appendChild(el('div', 'empty', 'Members’ analysis.'));
+}
+/* F3: the panel, its Worker, and RECALCULATE (the fo file refreshed, then the club's own read again) */
+function winModel(host, team, M, o) {
+  const FM = window.EpinoiaFoModel, WF = window.EpinoiaWinFile;
+  if (!host || !FM) return;
+  if (!M) { host.innerHTML = '<div class="empty">The model could not be reached just now</div>'; return; }
+  const unit = modelUnit(team), A = window.EpinoiaAccess;
+  const fo = M.fo || { ok: false, reason: 'network' };
+  const input = { fo: fo.ok ? fo.data : null, club: M.club && M.club.ok ? M.club.data : null, team: { id: team.id, name: team.name },
+                  fixtures: M.fixtures || [], names: o.names, reason: fo.ok ? null : fo.reason, retryAfter: fo.retryAfter };
+  let signin = '../signin/';
+  try { if (A && A.signinHref) signin = A.signinHref(location.pathname + location.search); } catch (_) { /* the plain link */ }
+  const refresh = async ({ signal, onProgress }) => {
+    const a = await WF.refresh(Object.assign({ scope: 'fo' }, unit), { signal, onProgress });
+    if (!a.ok) return a;
+    if (a.queued || a.refreshReason === 'recent' || a.refreshReason === 'cap') return Object.assign({}, a, { ans: a, fo: a.data, club: input.club });
+    const c = await WF.get(Object.assign({ scope: 'club', team: team.id }, unit), { force: true, signal });
+    return Object.assign({}, a, { ans: a, fo: a.data, club: c.ok ? c.data : input.club });
+  };
+  FM.mount(host, FM.view(input), { input, worker: FM.makeWorker(), link: o.link, ans: fo.ok ? fo : null, refresh, signin,
+                                   leagueSlug: ((team && team.leagues) || {}).slug });
 }
 
 /* ON VIDEO — every play the club made in every game that has footage the page can

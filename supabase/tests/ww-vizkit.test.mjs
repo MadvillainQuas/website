@@ -199,6 +199,52 @@ console.log('\ncolour');
   ok('a phone gets 40 px table buttons and pan-y on the chart', /max-width:720px[\s\S]*\.vz-tbtn\{min-height:40px/.test(css) && /touch-action:pan-y/.test(css));
 }
 
+console.log('\nthe review\'s fixes: the tooltip attached, the meter, the reliability key, the heatmap\'s labels, translation');
+{
+  /* UI-1: bind() puts the tooltip and the focus ring INTO the host (a minimal DOM: what bind touches) */
+  const mk = tag => { const e = { tagName: tag.toUpperCase(), children: [], attrs: {}, style: {}, hidden: false, className: '', _html: '',
+    classList: { add() {}, toggle() {} }, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, addEventListener() {},
+    append(...c) { c.forEach(x => this.children.push(x)); }, appendChild(c) { this.children.push(c); return c; }, querySelector() { return null; },
+    set textContent(v) { this.children = []; }, get textContent() { return ''; }, set innerHTML(v) { this._html = v; }, get innerHTML() { return this._html; } };
+    return e; };
+  const doc = { createElement: mk, addEventListener() {}, removeEventListener() {}, documentElement: null };
+  const host = mk('div'); host.ownerDocument = doc; host.clientWidth = 600;
+  V.bind(host, o => V.bars([{ id: 'a', label: 'A', v: 0.3 }], { W: o.W }), { label: 'x' });
+  const cls = host.children.map(c => c.className);
+  ok('UI-1: bind() attaches the tooltip (role status, aria-live) and the focus ring to the host', cls.includes('vz-tip') && cls.includes('vz-ring') && cls.includes('vz-plot'), cls.join(','));
+  const css = fs.readFileSync(path.join(ROOT, 'epinoia/kit/vizkit.css'), 'utf8');
+  ok('...and a hidden one is not shown (the flex display does not override [hidden])', /\.vz-tip\[hidden\],\.vz-ring\[hidden\]\{display:none\}/.test(css));
+  /* UI-3: long names at phone width never run into each other */
+  const m = V.meter({ p: 0.62, se: 0.01, a: 'Zastal Zielona Gora', b: 'Anwil Wloclawek' }, { W: 380 });
+  const texts = [...m.svg.matchAll(/<text x="([\d.]+)" y="30" text-anchor="(start|end)" class="(vz-big|vz-lab)"[^>]*>([^<]*)<\/text>/g)].map(t => ({ x: +t[1], a: t[2], c: t[3], s: t[4] }));
+  const ext = t => (t.a === 'start' ? [t.x, t.x + t.s.length * (t.c === 'vz-big' ? 13 : 6.6)] : [t.x - t.s.length * (t.c === 'vz-big' ? 13 : 6.6), t.x]);
+  const left = texts.filter(t => t.x < 190).map(ext), right = texts.filter(t => t.x >= 190).map(ext);
+  ok('UI-3: the meter\'s two sides do not overlap at 380 px with long names (the chances big, the names cut to their half)', left.length === 2 && right.length === 2 &&
+     Math.max(...left.map(e => e[1])) < Math.min(...right.map(e => e[0])), JSON.stringify(texts));
+  ok('...and short names keep one line each in the big face', (V.meter({ p: 0.5, a: 'Home', b: 'Away' }, { W: 760 }).svg.match(/class="vz-big"/g) || []).length === 2);
+  /* UI-4 */
+  ok('UI-4: the reliability chart keys its series (a swatch and the label for each)', /class="vz-key">model</.test(BUILT.reliability.svg) && /class="vz-key">home only</.test(BUILT.reliability.svg));
+  /* UI-9 */
+  const cols = ['eFG% (competitive)', 'TOV% (competitive)', 'OREB% (competitive)', 'FTM rate (competitive)'];
+  const hm = V.heatmap({ rows: ['A', 'B'], cols, cells: [[1, -2, 3, 4], [4, 3, -2, 1]], mode: 'rel' }, { W: 760 });
+  const ticks = [...hm.svg.matchAll(/<text x="([\d.]+)" y="[\d.]+" text-anchor="start" class="vz-tick" transform="rotate\(-35[^"]*"[^>]*>([^<]*)<\/text>/g)];
+  const reach = ticks.map(t => +t[1] + Math.cos(35 * Math.PI / 180) * t[2].length * 6.6);
+  ok('UI-9: every rotated column label ends inside the frame', ticks.length === 4 && reach.every(x => x <= 760), reach.map(x => x.toFixed(0)).join(','));
+  ok('UI-10: the \'rel\' mode colours more / less with the neutral pair, never good / bad', /vz-s1f/.test(hm.svg) && /vz-s2f/.test(hm.svg) && !/vz-good|vz-bad/.test(hm.svg));
+  /* UI-12: labels are translated whole, before they are cut or split */
+  globalThis.EpinoiaI18n = { t: x => ({ 'Possessions from a defensive rebound': 'ディフェンスリバウンドから始まったポゼッション', 'correlation with winning (r), better side up': '勝利との相関（r）、良い側が上' })[x] || x };
+  const fo = V.forest([{ id: 'a', label: 'Possessions from a defensive rebound', v: 0.2, lo: 0.1, hi: 0.3 }], { W: 760, x: { label: 'correlation with winning (r), better side up' } });
+  delete globalThis.EpinoiaI18n;
+  ok('UI-12: a label is translated before fit() cuts it, an axis label before it is split onto two lines', /ディフェンスリバウンド/.test(fo.svg) && !/Possessions from a def/.test(fo.svg) && /勝利との相関/.test(fo.svg) &&
+     !/correlation with/.test(fo.svg));
+  const jp = (/>(ディフェンス[^<]*)</.exec(fo.svg) || [])[1] || '';
+  ok('...and a wide (Japanese) label is cut by its width, two columns a character, so it stays inside its column', /…$/.test(jp) && [...jp].length * 2 * 6.6 <= Math.min(260, 760 * 0.34) + 14, jp);
+  /* UI-7 */
+  const sh = V.stackShare([{ label: 'Measured here', total: 100, rest: 'not explained', parts: [{ k: 'e', label: 'eFG', v: 70, lo: 63, hi: 74 }, { k: 't', label: 'TOV', v: 25 }] }], { W: 760 });
+  const e = sh.hits.find(h => /eFG/.test(h.label));
+  ok('UI-7: with a total, a strip shows shares of the whole (70%, not 74%), its interval on the same scale, the rest named', e.value === '70.0% (63.0–74.0)' && sh.hits.some(h => /not explained/.test(h.label) && h.value === '5.0%'), e && e.value);
+}
+
 console.log('\nthe binder');
 {
   const src = fs.readFileSync(path.join(ROOT, 'epinoia/vizkit.js'), 'utf8');

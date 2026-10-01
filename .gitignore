@@ -47,3 +47,6 @@ google-services.json
 
 # reset_league.py backups hold player records: never committed
 data/reset/
+
+# What wins builder: the private store and --local output (members-only data) when run here
+.cache/

@@ -24,8 +24,10 @@
    object is deleted: a reader never meets a row naming a missing file. A file over its budget by more than 25%
    fails its unit and the old file stays.
 
-   THE STORE (§6.2) lives in the private bucket (store/<league>/<season>/s1-fv1.json) and in .cache/analytics/ for
-   actions/cache; whichever has the later watermark wins. A full run starts every store from nothing.
+   THE STORE (§6.2) lives in the private bucket (store/<league>/<season>/s1-fv1.json), read with the service role only.
+   A local run also mirrors it into .cache/analytics/ (git-ignored; never an Actions cache, which a public repository's
+   other workflow runs could restore); whichever has the later watermark wins. A full run starts every store from
+   nothing.
    ============================================================================ */
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -43,7 +45,9 @@ export const PGS_SELECT = 'game_id,team_idx,player_uuid,player_id,min:stats->min
   'p3m:stats->p3m,fta:stats->fta,ftm:stats->ftm,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,to:stats->to,pf:stats->pf';
 export const STINT_SELECT = 'game_id,team_idx,player_ids,dur:stats->dur,pf:stats->pf,pa:stats->pa,off:stats->off,def:stats->def';
 export const GAME_SELECT = 'id,status,competition_id,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue_id,starters';
-export const FEATURE_SELECT = 'game_id,team_idx,f,q,st,finalised_at';
+/* not st (about 1 KB a row): the model reads a row's own stints only for a game without usable lineup_stints, so
+   readDelta asks for st for those games alone (winmodel stintGaps) */
+export const FEATURE_SELECT = 'game_id,team_idx,f,q,finalised_at';
 
 /* the page's own modules, as a browser loads them: globals first, then the files */
 export function load(url, key) {
@@ -64,6 +68,7 @@ const q = v => '"' + String(v).replace(/"/g, '\\"') + '"';
 export const fileName = (v, token) => 'v' + v + '-' + String(token).replace(/[^A-Za-z0-9]+/g, '-') + '.json';
 const sameLayout = (p, v) => new RegExp('(^|/)v' + v + '-').test(String(p || '').split('/').pop());
 const stripBucket = p => String(p || '').replace(/^analytics\//, '');
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /* PostgREST and Storage with a key: {rest, restAll, count, storage, upload, download, remove, list} */
 function client(url, key, f, opts) {
@@ -101,8 +106,10 @@ function client(url, key, f, opts) {
     try { return t ? JSON.parse(t) : null; } catch (_) { return t; }
   };
   const enc = p => p.split('/').map(encodeURIComponent).join('/');
+  /* a members' file (the private bucket) is never kept by a browser's HTTP cache: no-store unless o.maxAge (the public
+     teaser and its index) says otherwise */
   const upload = (bucket, p, body, o) => storage('object/' + bucket + '/' + enc(p), { method: 'POST', body,
-    headers: { 'Content-Type': 'application/json', 'x-upsert': 'true', 'cache-control': 'max-age=' + ((o && o.maxAge) || 31536000) } });
+    headers: { 'Content-Type': 'application/json', 'x-upsert': 'true', 'cache-control': o && o.maxAge ? 'max-age=' + o.maxAge : 'private, no-store' } });
   const download = async (bucket, p) => {
     const r = await f(base + '/storage/v1/object/' + bucket + '/' + enc(p), { headers: hdr });
     if (r.status === 404 || r.status === 400) return null;
@@ -141,6 +148,13 @@ export async function readDelta(api, rows) {
     pgs.push(...await api.restAll(`player_game_stats?game_id=in.(${c.join(',')})&select=${PGS_SELECT}&order=game_id,team_idx,player_id`));
     stints.push(...await api.restAll(`lineup_stints?game_id=in.(${c.join(',')})&select=${STINT_SELECT}&order=game_id,team_idx,id`));
   }
+  /* the rows' own stints (A.1), only for the games whose lineup_stints are missing or short */
+  const M = globalThis.EpinoiaWinModel, gaps = M && M.stintGaps ? M.stintGaps(rows, stints) : ids.filter(id => !stints.some(x => x.game_id === id));
+  for (const c of chunks(gaps, 40)) {
+    const got = (await api.rest(`game_features?game_id=in.(${c.join(',')})&select=game_id,team_idx,st`)) || [];
+    const by = new Map(got.map(r => [r.game_id + ':' + r.team_idx, r.st]));
+    rows.forEach(r => { const v = by.get(r.game_id + ':' + r.team_idx); if (v) r.st = v; });
+  }
   return { rows, games, pgs, stints };
 }
 /* the context a unit's files need (clubs, rosters, heights and ages, the withheld, venues, fixtures to come) */
@@ -154,7 +168,8 @@ async function readContext(api, M, unit, store, o) {
     const rs = await api.restAll(`roster_entries?team_id=in.(${c.join(',')})&active=eq.true&select=team_id,position,players(id,height_cm)&order=team_id`);
     rs.forEach(r => rosters.push({ team_id: r.team_id, player_id: r.players && r.players.id, position: r.position || null, height_cm: r.players && r.players.height_cm }));
   }
-  const pids = D.players.slice();
+  /* a player is player_uuid, else the feed's player_id ('1:3'): only the uuids have a players row, a bio and a consent */
+  const pids = D.players.filter(id => UUID.test(id));
   const bios = {};
   for (const c of chunks(pids, 500)) {
     const rs = await api.rest('rpc/player_bio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_ids: c }) });
@@ -188,7 +203,8 @@ function cacheRead(dir, p) { try { return JSON.parse(fs.readFileSync(path.join(d
 function cacheWrite(dir, p, obj) { const f = path.join(dir, p); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(obj)); }
 
 /* =============================================================================================== run === */
-/* opts: {url, serviceKey, fetch, dryRun, unit, full, minGapHours, poolGapHours, fixtures, log, now, cacheDir, B, simOpts}
+/* opts: {url, serviceKey, fetch, dryRun, unit, full, minGapHours, poolGapHours, fixtures, log, now, cacheDir, B, simOpts,
+   budget (smaller byte budgets, for the tests)}
    -> {built: [{scope, unit, bytes, games}], current, skipped, failed: [{unit, error}], summary, accept, writes, reads} */
 export async function run(opts) {
   const o = opts || {};
@@ -279,8 +295,11 @@ export async function run(opts) {
       let st = null;
       if (!o.full) {
         const fromCache = cacheDir ? cacheRead(cacheDir, sp) : null;
+        /* the cache is as new as the bucket's copy when it holds the token the index names: no download */
+        const row = idx.get('store|' + u.league + '|' + u.season + '|');
+        const cacheCurrent = fromCache && fromCache.wm && row && row.token === fromCache.n + '@' + fromCache.wm.at;
         let fromBucket = null;
-        try { fromBucket = await api.download(BUCKET, sp); } catch (_) { fromBucket = null; }
+        if (!cacheCurrent) { try { fromBucket = await api.download(BUCKET, sp); } catch (_) { fromBucket = null; } }
         st = later(fromCache, fromBucket);
         if (st && (st.v !== M.STORE_V || +st.fv !== FV)) st = null;
       }
@@ -298,13 +317,14 @@ export async function run(opts) {
 
   /* 3. the pooled file and the priors */
   let priors = null, poolBuilt = false;
+  const ctxRead = new Set();
   const priorsRow = idx.get('priors|all|current|');
   if (poolDue && !o.unit) {
     const cur = units.filter(u => u.current && stores.has(u.key));
     const inputs = [];
     for (const u of cur) {
       const st = stores.get(u.key);
-      if (!st.ctx || deltas.get(u.key).rows.length || o.full) st.ctx = await readContext(api, M, u, st, { priors: st.ctx && st.ctx.priors });
+      if (!st.ctx || deltas.get(u.key).rows.length || o.full) { st.ctx = await readContext(api, M, u, st, { priors: st.ctx && st.ctx.priors, prev: st.ctx && st.ctx.prev }); ctxRead.add(u.key); }
       inputs.push(Object.assign(M.inputFromStore(st), { league: st.ctx.league, token: u.token }));
     }
     if (inputs.length) {
@@ -330,7 +350,7 @@ export async function run(opts) {
           const tp = M.validate(teaser, 'teaser');
           if (!tp.length) {
             const tf = 'whatwins/' + fileName(M.FILE_V, token);
-            await write('upload snapshots/' + tf, () => api.upload(PUBLIC_BUCKET, tf, JSON.stringify(teaser)));
+            await write('upload snapshots/' + tf, () => api.upload(PUBLIC_BUCKET, tf, JSON.stringify(teaser), { maxAge: 31536000 }));
             await write('upload snapshots/whatwins/index.json', () => api.upload(PUBLIC_BUCKET, 'whatwins/index.json', JSON.stringify({ file: tf, token, built: nowIso }), { maxAge: 600 }));
             const old = await write('list snapshots/whatwins', () => api.list(PUBLIC_BUCKET, 'whatwins'));
             const stale = (Array.isArray(old) ? old : []).map(x => x && x.name).filter(n => n && n !== 'index.json' && 'whatwins/' + n !== tf).map(n => 'whatwins/' + n);
@@ -357,7 +377,9 @@ export async function run(opts) {
         if (!ps) { try { ps = await api.download(BUCKET, storePath(u.league, prevSeason.id, M)); } catch (_) { ps = null; } }
         if (ps) { const D = M.decodeStore(ps), by = {}; D.pgs.forEach(r => { const g = D.games[r.g]; if (!g || !(r.min > 0)) return; const t = r.side ? g.a : g.h; (by[t] = by[t] || new Set()).add(D.players[r.p]); }); prev = {}; Object.keys(by).forEach(t => { prev[t] = Array.from(by[t]).sort(); }); }
       }
-      st.ctx = await readContext(api, M, u, st, { priors, prev });
+      /* read once a run: a unit whose context step 3 has just read only takes this step's priors and previous season */
+      if (ctxRead.has(u.key)) st.ctx = Object.assign({}, st.ctx, { priors: priors || null, prev: prev || null });
+      else st.ctx = await readContext(api, M, u, st, { priors, prev });
       if (st.n < M.MIN.own) {
         await write('upload ' + sp, async () => { await api.upload(BUCKET, sp, JSON.stringify(st), { maxAge: 60 }); if (cacheDir) cacheWrite(cacheDir, sp, st); });
         await write('index store ' + u.key, () => upsertIndex(api, [storeRow(u, sp, st, M, FV, nowIso, st.ci_at)]));
@@ -365,7 +387,7 @@ export async function run(opts) {
         continue;
       }
       const t0 = Date.now();
-      const r = M.buildUnit(M.inputFromStore(st), { token: u.token, now: nowIso, B: o.B || 400, priors, simOpts: o.simOpts });
+      const r = M.buildUnit(M.inputFromStore(st), { token: u.token, now: nowIso, B: o.B || 400, priors, simOpts: o.simOpts, budget: o.budget });
       r.warnings.forEach(w => out.warnings.push(u.leagueRow.slug + ': ' + w));
       const withheld = new Set(st.ctx.withheld || []);
       const files = [];
@@ -378,10 +400,12 @@ export async function run(opts) {
       r.clubs.forEach((c, tid) => { if (full || changed.has(tid) || !idx.get('club|' + u.league + '|' + u.season + '|' + tid)) files.push({ scope: 'club', team: tid, file: c }); });
       r.pos.forEach((p, tid) => { if (full || changed.has(tid) || !idx.get('pos|' + u.league + '|' + u.season + '|' + tid)) files.push({ scope: 'pos', team: tid, file: p }); });
       const rows = [], stale = [];
+      /* the store decoded once, its games indexed by club, for the club files' own-games check */
+      const byTeam = new Map();
+      M.decodeStore(st).games.forEach(g => [g.h, g.a].forEach(t => { if (!byTeam.has(t)) byTeam.set(t, new Set()); byTeam.get(t).add(g.id); }));
       for (const x of files) {
-        const D = M.decodeStore(st);
-        const clubGames = x.scope === 'club' ? new Set(D.games.filter(g => g.h === x.team || g.a === x.team).map(g => g.id)) : null;
-        const probs = M.validate(x.file, x.scope, { games: clubGames, withheld });
+        const clubGames = x.scope === 'club' ? (byTeam.get(x.team) || new Set()) : null;
+        const probs = M.validate(x.file, x.scope, { games: clubGames, withheld, budget: o.budget });
         if (probs.length) { out.failed.push({ unit: u.key, error: x.scope + (x.team ? ' ' + x.team : '') + ': ' + probs.slice(0, 3).join('; ') }); continue; }
         const p = x.scope + '/' + u.league + '/' + u.season + '/' + (x.team ? x.team + '/' : '') + fileName(M.FILE_V, u.token), text = JSON.stringify(x.file);
         await write('upload ' + p, () => api.upload(BUCKET, p, text));
@@ -396,6 +420,9 @@ export async function run(opts) {
       rows.push(storeRow(u, sp, st, M, FV, nowIso, nowIso));
       /* the index after the uploads, the deletes after the index */
       await write('index ' + u.key, () => upsertIndex(api, rows));
+      /* one current season a league: a new season's first build retires the last one's rows */
+      if (u.current) await write('retire older seasons of ' + u.leagueRow.slug, () => api.rest(`analytics_files?league_key=eq.${u.league}&season_key=neq.${u.season}&is_current=eq.true`,
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ is_current: false }) }));
       if (stale.length) await write('delete ' + stale.length + ' old files of ' + u.key, () => api.remove(BUCKET, stale));
       if (u.flagged) await write('refresh flag ' + u.key, () => api.rest(`analytics_refresh?league_id=eq.${u.league}&season_id=eq.${u.season}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ due: false }) }));
       out.accept[u.key] = Object.assign({ slug: u.leagueRow.slug, ms: Date.now() - t0 }, r.accept);
@@ -413,6 +440,7 @@ export async function run(opts) {
     const u = units.find(x => x.key === key), sp = storePath(u.league, u.season, M);
     if (!(deltas.get(key) || {}).rows || !deltas.get(key).rows.length) continue;
     await write('upload ' + sp, async () => { await api.upload(BUCKET, sp, JSON.stringify(st), { maxAge: 60 }); if (cacheDir) cacheWrite(cacheDir, sp, st); });
+    await write('index store ' + key, () => upsertIndex(api, [storeRow(u, sp, st, M, FV, nowIso, st.ci_at)]));
   }
 
   /* 6. the objects of deleted leagues */
@@ -441,16 +469,19 @@ export function summary(out, o) {
   L.push('## What wins model build' + (o && o.dry ? ' (dry run: nothing written)' : ''));
   L.push('');
   L.push(`${(o && o.units) || 0} units, ${(o && o.due) || 0} due, ${out.built.length} files, ${out.current} current, ${out.failed.length} failed` + (o && o.poolBuilt ? ', pooled file rebuilt' : ''));
+  const by = {};
+  out.built.forEach(b => { const k = String(b.scope).split('.')[0].replace(/-.*$/, ''); (by[k] = by[k] || []).push(b.bytes || 0); });
+  if (Object.keys(by).length) L.push('Sizes: ' + Object.keys(by).sort().map(k => `${k} ${by[k].length} (max ${(Math.max(...by[k]) / 1024).toFixed(1)} KB)`).join(', '));
   if (out.failed.length) { L.push(''); out.failed.forEach(x => L.push(`- FAILED ${x.unit}: ${x.error}`)); }
   const acc = out.accept || {};
   if (Object.keys(acc).length) {
     L.push('');
-    L.push('| unit | games | R² (4F, FT rate) | b efg / tovp / orebp / ftr | eFG share | home win | Brier (home / Elo) | log loss | slope | live | sim Brier | sim slope | sim pace / ortg Δ | margin SD ratio | sim calibrated |');
+    L.push('| unit | games | R² (4F, FT rate) | b efg / tovp / orebp / ftr | eFG share (Shapley / \|b\|·sd) | home win | Brier (home / Elo) | log loss | slope | live | sim Brier | sim slope | sim pace / ortg Δ | margin SD ratio | sim calibrated |');
     L.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
     Object.keys(acc).sort().forEach(k => {
       const a = acc[k] || {}, c = a.check4 || {}, s = a.sim || {}, ch = s.checks || {};
       const d = x => (ch[x] ? f(ch[x].sim - ch[x].obs, 2) : '–');
-      L.push(`| ${a.slug || k} | ${a.n || '–'} | ${f(c.r2)} | ${f(c.efg)} / ${f(c.tovp)} / ${f(c.orebp)} / ${f(c.ftr)} | ${f(a.efgShare, 1)}% | ${f(a.homeWin)} | ${f(a.brier)} (${f(a.brierHome)} / ${f(a.brierElo)}) | ${f(a.logloss)} | ${f(a.slope, 2)} | ${a.live ? 'yes' : 'no'} | ${f(s.brier)} | ${f(s.slope, 2)} | ${d('pace')} / ${d('ortg')} | ${ch.marginSd ? f(ch.marginSd.sim / ch.marginSd.obs, 3) : '–'} | ${s.calibrated ? 'yes' : 'no'} |`);
+      L.push(`| ${a.slug || k} | ${a.n || '–'} | ${f(c.r2)} | ${f(c.efg)} / ${f(c.tovp)} / ${f(c.orebp)} / ${f(c.ftr)} | ${f(a.efgShare, 1)}% / ${f(a.efgLegacy, 1)}% | ${f(a.homeWin)} | ${f(a.brier)} (${f(a.brierHome)} / ${f(a.brierElo)}) | ${f(a.logloss)} | ${f(a.slope, 2)} | ${a.live ? 'yes' : 'no'} | ${f(s.brier)} | ${f(s.slope, 2)} | ${d('pace')} / ${d('ortg')} | ${ch.marginSd ? f(ch.marginSd.sim / ch.marginSd.obs, 3) : '–'} | ${s.calibrated ? 'yes' : 'no'} |`);
     });
     L.push('');
     L.push('Targets (§16): pooled R² in [0.93, 0.95], b near 1.157 / −1.130 / 0.398 / 0.094; eFG share [40, 55]; home win [0.55, 0.59]; Brier below home-only and within 0.002 of Elo; slope [0.85, 1.15]; simulator pace and ortg within 0.5, margin SD ratio [0.95, 1.05].');
@@ -481,7 +512,7 @@ export function fixtures(dir, o) {
   });
   if (probs.length) throw new Error('the sample files are not valid: ' + probs.join('; '));
   fs.mkdirSync(dir, { recursive: true });
-  Object.entries(files).forEach(([n, f]) => fs.writeFileSync(path.join(dir, n), JSON.stringify(f, null, 1) + '\n'));
+  Object.entries(files).forEach(([n, f]) => fs.writeFileSync(path.join(dir, n), JSON.stringify(f) + '\n'));
   (o.log || console.log)('wrote ' + Object.keys(files).map(n => n + ' (' + fs.statSync(path.join(dir, n)).size + ' B)').join(', ') + ' to ' + dir);
   return { built: Object.keys(files).map(n => ({ scope: n, bytes: fs.statSync(path.join(dir, n)).size })), files };
 }
@@ -560,7 +591,7 @@ export async function local(opts) {
     const token = n + '@' + st.wm.at;
     const unit = { key: lg.id + ':' + pick.id, league: lg.id, season: pick.id, leagueRow: lg, seasonRow: pick, current: true, open: true, comps: Object.keys(kinds).sort(), kinds };
     st.ctx = await readContext(api, M, unit, st, { anon: true });
-    units.push({ slug, unit, store: st, token, skipped, focus: (o.leagues || []).includes(slug) });
+    units.push({ slug, unit, store: st, token, skipped, focus: (o.leagues || []).includes(slug), raw: { rows, games: gameRows, pgs, stints, kinds } });
     log(`${slug} ${pick.name}: ${n} games with lines (${Object.entries(skipped).map(([k, v]) => v + ' ' + k).join(', ') || 'none skipped'}), ${pgs.length} player lines, ${stints.length} stints`);
   }
   const open = new Set(units.map(u => u.unit.league));
@@ -580,7 +611,7 @@ export async function local(opts) {
     const r = M.buildUnit(M.inputFromStore(u.store), { token: u.token, now: nowIso, priors: pool.priors, B: o.B || 400, simOpts: o.simOpts });
     r.warnings.forEach(w => out.warnings.push(u.slug + ': ' + w));
     if (!r.wins) { out.failed.push({ unit: u.slug, error: r.warnings.join('; ') }); continue; }
-    wr(`wins-${u.slug}.json`, r.wins); wr(`fo-${u.slug}.json`, r.fo);
+    wr(`wins-${u.slug}.json`, r.wins); wr(`fo-${u.slug}.json`, r.fo); wr(`store-${u.slug}.json`, Object.assign({}, u.store, { carry: r.carry, ci_at: nowIso }));
     const tid = Array.from(r.clubs.keys())[0];
     if (tid) wr(`club-${u.slug}.json`, r.clubs.get(tid));
     const pid = Array.from(r.pos.keys())[0];
@@ -590,20 +621,22 @@ export async function local(opts) {
     out.accept[u.unit.key] = Object.assign({ slug: u.slug, ms: Date.now() - t1, timing: r.timing, sizes: { wins: JSON.stringify(r.wins).length, fo: JSON.stringify(r.fo).length,
       clubMax: Math.max(...Array.from(r.clubs.values()).map(c => JSON.stringify(c).length)), posMax: Math.max(...Array.from(r.pos.values()).map(c => JSON.stringify(c).length)) } }, r.accept);
     log(`${u.slug}: built in ${Math.round((Date.now() - t1) / 1000)} s`);
-    /* RECALCULATE as the Edge Function runs it: the newest games held back, the store built without them, then update() */
+    /* RECALCULATE as the Edge Function runs it: the store without the newest ten games (built from the rows, as the
+       builder would have), its full build (the carry), then update() with those games' rows; checked against the
+       store built from nothing and against a full build of the union, point estimate by point estimate */
     if (o.updateCheck !== false) {
-      const D = M.decodeStore(u.store), keep = D.games.slice(0, Math.max(M.MIN.own, D.games.length - 10)).map(g => g.id);
-      const late = D.games.filter(g => !keep.includes(g.id)).map(g => g.id);
-      if (late.length) {
-        const A = M.storeDrop(u.store, late);
-        A.ctx = u.store.ctx;
-        const ra = M.buildUnit(M.inputFromStore(A), { now: nowIso, priors: pool.priors, B: 40, sim: false });
-        A.carry = ra.carry; A.ci_at = nowIso;
-        const t2 = Date.now();
-        const delta = deltaOf(u.store, late, M);
-        const up = M.update(A, delta, { now: nowIso });
-        out.accept[u.unit.key].update = { games: late.length, ms: Date.now() - t2, files: Object.keys(up.files), n: up.store.n, sameStore: storeBody(up.store) === storeBody(u.store) };
-      }
+      const R = u.raw, D = M.decodeStore(u.store), late = new Set(D.games.slice(-10).map(g => g.id));
+      const keepR = x => !late.has(x.game_id), lateR = x => late.has(x.game_id);
+      const A = M.storeAdd(M.emptyStore(u.unit.league, u.unit.season), R.rows.filter(keepR), R.games.filter(g => !late.has(g.id)), R.pgs.filter(keepR), R.stints.filter(keepR), { kinds: R.kinds });
+      A.ctx = u.store.ctx;
+      const ra = M.buildUnit(M.inputFromStore(A), { now: nowIso, priors: pool.priors, B: 40, sim: false });
+      A.carry = ra.carry; A.ci_at = nowIso;
+      const t2 = Date.now();
+      const up = M.update(A, { rows: R.rows.filter(lateR), games: R.games.filter(g => late.has(g.id)), pgs: R.pgs.filter(lateR), stints: R.stints.filter(lateR) }, { now: nowIso, raw: true });
+      const ms = Date.now() - t2;
+      const full = M.buildUnit(M.inputFromStore(Object.assign({}, u.store, { ctx: u.store.ctx })), { now: nowIso, priors: pool.priors, B: 40, sim: false, raw: true, token: up.token });
+      const worst = maxDiff([['wins', full.wins, up.files.wins], ['fo', full.fo, up.files.fo]].concat(Array.from(full.clubs.entries()).map(([k, c]) => ['club', c, (up.files.club || {})[k]])));
+      out.accept[u.unit.key].update = { games: late.size, ms, files: Object.keys(up.files), n: up.store.n, sameStore: storeBody(up.store) === storeBody(u.store), worst: worst.d, where: worst.d > 1e-9 ? worst.at : '' };
     }
   }
   out.summary = summary(out, { units: units.length, due: units.filter(u => u.focus).length, poolBuilt: !!pool.wins });
@@ -613,22 +646,24 @@ export async function local(opts) {
 }
 /* the store's lines without its context, carry and build stamps */
 const storeBody = s => JSON.stringify(Object.assign({}, s, { ctx: null, carry: null, ci_at: null }));
-/* a store's games as the delta the Edge Function would read (the rows game_features and the tables give) */
-function deltaOf(store, ids, M) {
-  const D = M.decodeStore(store), want = new Set(ids), F = globalThis.EpinoiaFeatures;
-  const rows = [], games = [], pgs = [], stints = [];
-  D.games.forEach((g, gi) => {
-    if (!want.has(g.id)) return;
-    const fa = g.fa || new Date(g.t).toISOString();
-    [0, 1].forEach(s => rows.push({ game_id: g.id, team_idx: s, fv: F.FV, f: Array.from(g.F[s], v => (isFinite(v) ? v : null)), q: g.q[s], finalised_at: fa }));
-    games.push({ id: g.id, status: 'final', competition_id: store.comps[g.c] || null, home_team_id: g.h, away_team_id: g.a, home_score: g.hs, away_score: g.as,
-      tipoff_at: new Date(g.t).toISOString(), venue_id: g.v || null, starters: null, _s: [g.s0, g.s1] });
-    D.pgs.filter(r => r.g === gi).forEach(r => pgs.push({ game_id: g.id, team_idx: r.side, player_uuid: D.players[r.p], player_id: D.players[r.p], min: r.min * 60000, pts: r.pts,
-      p2a: r.fga - r.fg3a, p2m: r.fgm - r.fg3m, p3a: r.fg3a, p3m: r.fg3m, fta: r.fta, ftm: r.ftm, or: r.or, dr: r.dr, ast: r.ast, stl: r.stl, blk: r.blk, to: r.to, pf: r.pf }));
-    D.stints.filter(r => r.g === gi).forEach(r => stints.push({ game_id: g.id, team_idx: r.side, player_ids: r.p.map(i => D.players[i]), dur: r.dur * 1000, pf: r.pf, pa: r.pa,
-      off: { fga: r.poss / 0.96, tov: 0, fta: 0, or: 0 }, def: { fga: r.poss / 0.96, tov: 0, fta: 0, or: 0 } }));
-  });
-  return { rows, games, pgs, stints };
+/* the largest relative difference between two builds' point estimates (intervals and the calibration are carried) */
+const CARRIED = new Set(['lo', 'hi', 'se', 'topLo', 'topHi', 'star', 'evidence', 'power', 'logitAgree', 'ci_at', 'built', 'sim', 'lens', 'platt', 'calibrated',
+  'kappaN', 'sigmaN', 'hca', 'tau', 'muOff', 'dTr', 'lead', 'fouling', 'checks', 'own', 'gamma', 'x50', 'x75', 'addR2', 'or']);
+function maxDiff(pairs) {
+  let d = 0, at = '';
+  const cmp = (a, b, p) => {
+    if (/\.pd\.[a-z_]+\[\d+\]\[[23]\]$/.test(p)) return;
+    if (typeof a === 'number' || typeof b === 'number') {
+      if (a == null && b == null) return;
+      const x = Math.abs(a - b) / Math.max(1, Math.abs(a));
+      if (!(x <= d)) { d = isNaN(x) ? Infinity : x; at = p; }
+      return;
+    }
+    if (Array.isArray(a)) { a.forEach((v, i) => cmp(v, b && b[i], p + '[' + i + ']')); return; }
+    if (a && typeof a === 'object') Object.keys(a).forEach(k => { if (!CARRIED.has(k)) cmp(a[k], b ? b[k] : undefined, p + '.' + k); });
+  };
+  pairs.forEach(([n, a, b]) => cmp(a, b, n));
+  return { d, at };
 }
 
 /* =============================================================================================== cli === */
