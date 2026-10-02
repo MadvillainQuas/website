@@ -64,6 +64,7 @@ const G = (id, h, a, hn, an, at, venue) => ({ id, home_team_id: h, away_team_id:
   ok('...away and beaten: the club\'s score first, a loss, the headline as the scoreboard reads',
     away.subject === 'Game analysis: Illawarra Hawks 100–121 Sydney Kings (NBL)' && /100–121 loss to Sydney Kings/.test(away.html) && /Sydney Kings 121–100 Illawarra Hawks/.test(away.html), away.subject);
   ok('the email is built as email is: tables, inline styles, the club\'s colour, how to stop it', /<table role="presentation"/.test(E.html) && /background:#e01837/.test(E.html) && /reply to this email/.test(E.html) && !/<style/.test(E.html));
+  ok('...and where the reports are kept: the dashboard, for the account with this address', /href="https:\/\/prophesyscouting\.co\.uk\/epinoia\/profile\/#reports"/.test(E.html) && /sign in with this address/.test(GE.html));
 }
 
 console.log('\nsize');
@@ -72,6 +73,23 @@ console.log('\nsize');
   const parts = M.partsOfFiles([f('a'), f('b'), f('c'), f('d')]);
   ok('reports past the limit go in parts, each whole, in order', parts.length === 2 && parts[0].map(a => a.filename).join() === 'a.pdf,b.pdf' && parts[1].map(a => a.filename).join() === 'c.pdf,d.pdf');
   ok('...under it, one email', M.partsOfFiles([f('a'), f('b')]).length === 1);
+}
+
+console.log('\nkept for the dashboard (0225)');
+{
+  const sub = { id: '00000000-0000-0000-0000-0000000000b1', email: 'coach@example.com' };
+  ok('a report is kept at <address>/<day>/<file>, the name made safe', M.reportPath(sub.id, '2026-10-04T08:00:00Z', 'scouting-report-sydney kings/../x.pdf') ===
+     sub.id + '/2026-10-04/scouting-report-sydney-kings-..-x.pdf' && /^[0-9a-f-]{36}\/[A-Za-z0-9._\/-]{1,200}\.pdf$/.test(M.reportPath(sub.id, '2026-10-04', 'game-analysis-a-v-b.pdf')));
+  const row = M.fileRow({ sub, kind: 'opp', ref: '2026-10-04:T2', title: 'Sydney Kings', subtitle: 'Week of Mon 5 Oct 2026', path: 'p.pdf', bytes: 1200 });
+  ok('...with a row saying what it is, for whom, and how big', row.sub_id === sub.id && row.kind === 'opp' && row.ref === '2026-10-04:T2' && row.title === 'Sydney Kings' &&
+     row.subtitle === 'Week of Mon 5 Oct 2026' && row.bytes === 1200 && !('seen_at' in row) && !('made_at' in row));
+  const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
+  const one = src.slice(src.indexOf('async function one('));
+  ok('every report is kept before its email goes (a failed email still leaves it in the dashboard)',
+     one.indexOf("kind: 'game'") < one.indexOf('await send(sub.email, E.subject, E.html, [pdf])') && one.indexOf("kind: 'opp'") < one.lastIndexOf('await send(') &&
+     one.indexOf("kind: 'team'") < one.lastIndexOf('await send('));
+  ok('...a rerun writes the same row (sub, kind, ref), so an opened report stays opened', /report_files\?on_conflict=sub_id,kind,ref/.test(src) && /resolution=merge-duplicates/.test(src) && /'x-upsert': 'true'/.test(src));
+  ok('...and keeping it failing never stops the email', /catch \(e\) \{ console\.warn\('\[' \+ sub\.email \+ '\] not kept for the dashboard/.test(src));
 }
 
 console.log('\nthe schedule and the tables');

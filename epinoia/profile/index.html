@@ -10,27 +10,29 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
 <meta name="robots" content="noindex">
-<!-- PROFILE (Louie, 2026-09-30): the fan's own public page on EPINOIA, from "your hub" on the rail. The username
-     (0163) and the page at fan/?u=<username> (0197): whether it shows, and the editor of what it shows
-     (me/fanprofile.js). It was part of the old "Your profile" (me/, PERSONALISATION now), which forwards an old
-     #username or #fanprofile link here. The content needs a session, which the page asks Supabase for itself. -->
+<!-- PROFILE, A FAN'S DASHBOARD (2026-10-02; the fan's public page since 2026-09-30): under a head they make their own (a
+     title, their colour, a banner, light or dark; 0224), the reports made for them (0225, for an account hooked up to
+     the report mailer), what is coming up, the leagues, clubs and players they follow, and their public page: the
+     username (0163), whether fan/?u=<username> shows and the editor of what it shows (0197, me/fanprofile.js).
+     The content needs a session, which the page asks Supabase for itself. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
 <title>Profile · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=608"></script>
-<script src="../i18n.js?v=608" data-i18n-packs="account"></script>
-<script src="../glyphs.js?v=608" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=608">
-<link rel="stylesheet" href="../kit/nav.css?v=608">
-<link rel="stylesheet" href="../kit/newscard.css?v=608">
-<link rel="stylesheet" href="../kit/fan.css?v=608">
-<link rel="stylesheet" href="../kit/page.css?v=608">
-<link rel="stylesheet" href="../kit/profile.css?v=608">
-<link rel="stylesheet" href="../kit/sectitle.css?v=608">
-<link rel="stylesheet" href="../kit/teletext.css?v=608">
-<link rel="stylesheet" href="../kit/legibility.css?v=608">
+<script src="../appmode.js?v=609"></script>
+<script src="../i18n.js?v=609" data-i18n-packs="account"></script>
+<script src="../glyphs.js?v=609" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=609">
+<link rel="stylesheet" href="../kit/nav.css?v=609">
+<link rel="stylesheet" href="../kit/newscard.css?v=609">
+<link rel="stylesheet" href="../kit/fan.css?v=609">
+<link rel="stylesheet" href="../kit/fxc.css?v=609">
+<link rel="stylesheet" href="../kit/page.css?v=609">
+<link rel="stylesheet" href="../kit/profile.css?v=609">
+<link rel="stylesheet" href="../kit/sectitle.css?v=609">
+<link rel="stylesheet" href="../kit/teletext.css?v=609">
+<link rel="stylesheet" href="../kit/legibility.css?v=609">
 </head>
 <body>
 <!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and
@@ -38,20 +40,88 @@
 <div class="ep-frame" id="profile" data-std>
   <div class="topbar">
     <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <span id="ctx" class="ep-micro">your profile</span>
+    <span id="ctx" class="ep-micro">your dashboard</span>
   </div>
 
-  <header class="hero pg-head">
-    <p class="pg-kick">Your hub</p>
-    <h1>Profile</h1>
-    <p class="pg-sub">Your public page on EPINOIΛ: the name fans see, and the page they open from it.</p>
-    <div class="pg-acts"><a class="ep-btn mini" href="../me/"><span aria-hidden="true">&#x2699;&#xFE0E;</span> personalisation</a></div>
+  <!-- THE HEAD IS THE FAN'S (0224): their title over the page (the page's own until they choose one), their picture or
+       initial in their colour, a banner (data-banner: plain, glow, stripes, grid, or their first club's colours), and
+       at a glance how many of each thing they follow and how many reports are new. "Customise" opens the form. -->
+  <header class="hero pg-head" id="dashHead" data-banner="glow">
+    <p class="pg-kick" id="dashKick">Your hub</p>
+    <div class="dash-me" id="dashMe" aria-hidden="true"><span class="dash-av" id="dashAv">·</span></div>
+    <h1 id="dashTitle">Your dashboard</h1>
+    <p class="pg-sub">Your page, your reports, and the leagues, clubs and players you follow, in one place.</p>
+    <nav class="dash-glance hide" id="dashGlance" aria-label="At a glance"></nav>
+    <div class="pg-acts">
+      <button class="ep-btn mini hide" id="dashEdit" type="button" aria-expanded="false" aria-controls="dashCustom">customise</button>
+      <a class="ep-btn mini" href="../me/"><span aria-hidden="true">&#x2699;&#xFE0E;</span> personalisation</a>
+    </div>
+    <form class="dash-custom hide" id="dashCustom" autocomplete="off">
+      <label class="dash-f"><span>Title</span>
+        <input class="ep-input" id="dcTitle" maxlength="40" placeholder="Your dashboard"></label>
+      <div class="dash-f"><span>Colour</span><div class="dash-sw" id="dcSwatches"></div></div>
+      <div class="dash-f"><span>Banner</span><div class="pg-seg dash-ban" id="dcBanner" role="group" aria-label="Banner"></div></div>
+      <div class="dash-f"><span>Look</span><div class="pg-seg" id="dcTheme" role="group" aria-label="Light or dark">
+        <button type="button" data-t="dark" aria-pressed="true">dark</button><button type="button" data-t="light" aria-pressed="false">light</button></div></div>
+      <div class="pg-row"><button class="ep-btn pri" id="dcSave" type="submit">save</button>
+        <button class="ep-btn mini" id="dcCancel" type="button">cancel</button></div>
+      <p class="dash-msg" id="dcMsg" role="status" aria-live="polite"></p>
+    </form>
   </header>
 
   <!-- SIGNED OUT: sign in, then straight back here -->
   <div id="signedout" class="pf-out hide">
-    <div class="pg-empty"><p>You are not signed in. <a href="../signin/?next=/epinoia/profile/">Sign in</a> to choose your username and make your page.</p></div>
+    <div class="pg-empty"><p>You are not signed in. <a href="../signin/?next=/epinoia/profile/">Sign in</a> to see your dashboard: your page, and the leagues, clubs and players you follow.</p></div>
   </div>
+
+  <!-- YOUR REPORTS (0225): only for an account hooked up to the report mailer. Each report: its kind, its title and
+       line, the day it was made, NEW until it is opened, and Open / Download (a short-lived signed link). -->
+  <section class="sec hide" id="reports" aria-labelledby="repH">
+    <div class="sec-h"><h2 id="repH">Your reports</h2>
+      <p class="note">Game analyses and scouting reports made for you, newest first</p>
+      <div class="pg-seg" id="repKinds" role="group" aria-label="Which reports"></div>
+    </div>
+    <div class="sec-b"><div class="rep-list" id="repList"></div>
+      <div class="pg-row"><button class="ep-btn mini hide" id="repAllSeen" type="button">mark all as opened</button>
+        <button class="ep-btn mini hide" id="repMore" type="button">show more</button></div></div>
+  </section>
+
+  <!-- COMING UP: the next games of everything followed, as the fixture cards HOME and Global fixtures use -->
+  <section class="sec hide" id="soon" aria-labelledby="soonH">
+    <div class="sec-h"><h2 id="soonH">Coming up</h2>
+      <p class="note">The next games of the leagues and clubs you follow</p>
+      <a class="showall" href="../games/">all fixtures →</a></div>
+    <div class="sec-b"><div class="fxc-grid" id="soonGrid"></div></div>
+  </section>
+
+  <section class="sec hide" id="leagues" aria-labelledby="lgH">
+    <div class="sec-h"><h2 id="lgH">Your leagues</h2>
+      <p class="note">The leagues you follow, with their next game</p>
+      <a class="showall" href="../home/#leagues">find a league →</a></div>
+    <div class="sec-b"><div class="dash-grid" id="lgGrid"></div></div>
+  </section>
+
+  <section class="sec hide" id="clubs" aria-labelledby="clH">
+    <div class="sec-h"><h2 id="clH">Your clubs</h2>
+      <p class="note">The clubs you follow: the last result and the next game</p>
+      <a class="showall" href="../me/">follow a club →</a></div>
+    <div class="sec-b"><div class="dash-grid" id="clGrid"></div></div>
+  </section>
+
+  <section class="sec hide" id="players" aria-labelledby="plH">
+    <div class="sec-h"><h2 id="plH">Your players</h2>
+      <p class="note">The players you follow and their latest line</p>
+      <a class="showall" href="../me/">follow a player →</a></div>
+    <div class="sec-b"><div class="dash-grid" id="plGrid"></div></div>
+  </section>
+
+  <!-- YOUR PUBLIC PAGE (0197): whether fan/?u=<username> shows, and the way to it (or to going public on
+       EPINOIA GO, 18 or over). fanprofile.js writes the line; away before the migration. -->
+  <section class="sec hide" id="public" aria-labelledby="pubH">
+    <div class="sec-h"><h2 id="pubH">Your public page</h2>
+      <p class="note">Whether fans can open your page, and the way to it</p></div>
+    <div class="sec-b pf-state" id="fpState"></div>
+  </section>
 
   <!-- USERNAME (0163): the public name EPINOIA GO's leaderboards and photos show, never the email. profile.js fills
        it; before the migration is applied the RPC is missing and the section stays away. #username in the address
@@ -72,14 +142,6 @@
     </div>
   </section>
 
-  <!-- YOUR PUBLIC PAGE (0197): whether fan/?u=<username> shows, and the way to it (or to going public on
-       EPINOIA GO, 18 or over). fanprofile.js writes the line; away before the migration. -->
-  <section class="sec hide" id="public" aria-labelledby="pubH">
-    <div class="sec-h"><h2 id="pubH">Your public page</h2>
-      <p class="note">Whether fans can open your page, and the way to it</p></div>
-    <div class="sec-b pf-state" id="fpState"></div>
-  </section>
-
   <!-- YOUR PAGE (0197): the editor of what the page shows, beside its head as it will look (me/fanprofile.js).
        #fanprofile in the address brings it into view (Discord's linking comes back to it). -->
   <section class="sec hide" id="fanprofile" aria-labelledby="fpH">
@@ -88,11 +150,16 @@
     <div class="sec-b pf-edit" id="fpHost"></div>
   </section>
 </div>
-<script src="../config.js?v=608" defer></script>
-<script src="../vendor/supabase.js?v=608" defer></script>
-<script src="../newscard.js?v=608" defer></script>
-<script src="../me/fanprofile.js?v=608" defer></script>
-<script src="profile.js?v=608" defer></script>
-<script src="../nav.js?v=608" defer></script>
+<script src="../config.js?v=609" defer></script>
+<script src="../vendor/supabase.js?v=609" defer></script>
+<script src="../data.js?v=609" defer></script>
+<script src="../teamcolour.js?v=609" defer></script>
+<script src="../initials.js?v=609" defer></script>
+<script src="../globalgames.js?v=609" defer></script>
+<script src="../newscard.js?v=609" defer></script>
+<script src="../me/fanprofile.js?v=609" defer></script>
+<script src="dashboard.js?v=609" defer></script>
+<script src="profile.js?v=609" defer></script>
+<script src="../nav.js?v=609" defer></script>
 </body>
 </html>

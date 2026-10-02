@@ -286,7 +286,9 @@ visible changes.
 
 The same push applies the later membership migrations still waiting: `0220_report_features` (the club
 and player report tiers), `0222_access_gates` (what is behind the wall, editable, with each prompt's
-wording) and `0223_free_trials` (6.4b). None of them changes anything for fans while memberships are off.
+wording) and `0223_free_trials` (6.4b). None of them changes anything for fans while memberships are off. It also
+applies `0224_dashboard` and `0225_report_inbox`: the Profile dashboard's head and the reports kept in it
+(`docs/dashboard.md`, which also has the report mailer's secrets and its dry run).
 
 ### 6.2 Deploy the function
 

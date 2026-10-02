@@ -1,8 +1,10 @@
 'use strict';
 /* ============================================================================
-   PROFILE — the fan's own public page on EPINOIA (profile/, Louie 2026-09-30).
+   PROFILE — a fan's dashboard (2026-10-02; their public page on EPINOIA since 2026-09-30).
 
-   It was two sections of the old "Your profile" (me/, which is PERSONALISATION now):
+   The dashboard itself (the head they customise, their reports, what is coming up, the leagues, clubs and players
+   they follow) is dashboard.js, mounted here once there is a session. Below it, their public page, as it was two
+   sections of the old "Your profile" (me/, which is PERSONALISATION now):
      USERNAME      the public name (0163): EPINOIA GO's leaderboards and photos, and the address of the page
      YOUR PAGE     the state of the public page at fan/?u=<username> (a username, 18 or over, and public on
                    EPINOIA GO) and the editor of what it shows (me/fanprofile.js, 0197, reused as it is)
@@ -127,6 +129,7 @@ function mountPage() {
   const { data: { session } } = sb ? await sb.auth.getSession() : { data: { session: null } };
   if (!session) { $('#signedout').classList.remove('hide'); return; }
   $('#signedout').remove();
+  if (window.EpinoiaDashboard) window.EpinoiaDashboard.mount({ sb, session }).catch(() => { /* the page's own head stays */ });
   paintUsername().catch(() => { /* hidden, as before 0163 */ });
   mountPage()
     .then(() => {
@@ -134,6 +137,9 @@ function mountPage() {
       try { $(location.hash).scrollIntoView({ block: 'start' }); } catch (_) { /* old browser */ }
     })
     .catch(() => { /* hidden, as before 0197 */ });
-  /* a username chosen here changes what the page's state says: draw it again */
-  window.addEventListener('epinoia:username', () => { mountPage().catch(() => { /* kept as it was */ }); });
+  /* a username chosen here changes what the page's state says, and the head's @name: draw them again */
+  window.addEventListener('epinoia:username', () => {
+    mountPage().catch(() => { /* kept as it was */ });
+    if (window.EpinoiaDashboard) window.EpinoiaDashboard.mount({ sb, session }).catch(() => { /* kept as it was */ });
+  });
 })();

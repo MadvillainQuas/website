@@ -14,10 +14,11 @@
    The PDFs are the site's own: a headless Chromium opens the page served from this checkout (SITE, a local server the
    workflow starts), presses the report's own "Download PDF" and takes the file. EPINOIA_RP_BOT, set before the page's
    scripts run, opens the members' report for the member it is bought for, and draws it at email weight (report.js).
-   An email that would still pass Resend's size limit goes as parts ("part 1 of 2"), each whole.
+   An email that would still pass Resend's size limit goes as parts ("part 1 of 2"), each whole. Every report is also
+   kept for the PROFILE dashboard of the account it went to (0225, keep()).
 
    env: SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY, REPORTS_FROM ("Epinoia <reports@...>"), SITE (default
-        http://127.0.0.1:8765), DRY=1 (build and log nothing, send nothing: prints what it would do), ONLY=<email>
+        http://127.0.0.1:8765), PUBLIC_SITE (the dashboard link; default https://prophesyscouting.co.uk), DRY=1 (build and log nothing, send nothing: prints what it would do), ONLY=<email>
    The helpers below are exported (supabase/tests/report-mailer.test.mjs); the run starts only when this is the script.
    ============================================================================ */
 import { pathToFileURL } from 'node:url';
@@ -26,6 +27,8 @@ const env = process.env;
 const SITE = (env.SITE || 'http://127.0.0.1:8765').replace(/\/$/, '');
 const DRY = env.DRY === '1' || env.DRY === 'true';
 const FROM = env.REPORTS_FROM || 'Epinoia <onboarding@resend.dev>';
+/* the public site, for the link to the dashboard where every report is kept too (0225) */
+const PUBLIC = (env.PUBLIC_SITE || 'https://prophesyscouting.co.uk').replace(/\/$/, '');
 /* Resend takes 40 MB an email, attachments base64-encoded; parts stay under this */
 export const MAX_EMAIL_BYTES = 34e6;
 
@@ -105,6 +108,7 @@ export function layout({ colour, kicker, title, meta, greeting, blocks, files })
       (fileRows ? '<tr><td style="padding:18px 28px 6px"><div style="' + F + 'font-size:11px;font-weight:bold;letter-spacing:.14em;text-transform:uppercase;color:#5b6b63;margin-bottom:4px">Attached</div>' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + fileRows + '</table></td></tr>' : '') +
       '<tr><td style="padding:18px 28px 24px;' + F + 'font-size:12px;line-height:1.5;color:#7a8a82;border-top:1px solid #e4ebe7">' +
+        'Every report is also kept in your <a href="' + PUBLIC + '/epinoia/profile/#reports" style="color:#0d1f17;font-weight:bold">Epinoia dashboard</a>, to open or download again: sign in with this address. ' +
         'You receive these because your club’s reports were set up for this address on Epinoia. To change or stop them, simply reply to this email and let us know.' +
       '</td></tr>' +
     '</table></td></tr></table></body></html>';
@@ -223,6 +227,31 @@ async function send(to, subject, html, attachments) {
   }
 }
 
+/* ------------------------------------------------------------------ the dashboard's copy (0225) ---
+   Every report sent is kept too, so the account it went to can open or download it again from its PROFILE dashboard:
+   the PDF in the private 'reports' bucket at <address id>/<day>/<file>.pdf, and a row of report_files saying what it
+   is. Kept before the email goes, so a report whose email fails is still there; keeping it failing never stops the
+   email. A rerun writes the same path and the same row (sub, kind, ref), so nothing is doubled and an opened report
+   stays opened. */
+export const reportPath = (subId, day, filename) =>
+  subId + '/' + String(day).slice(0, 10) + '/' + String(filename).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+/, '').slice(0, 150);
+export function fileRow({ sub, kind, ref, title, subtitle, path, bytes }) {
+  return { sub_id: sub.id, kind, ref: String(ref).slice(0, 120), title: String(title).slice(0, 200),
+    subtitle: subtitle ? String(subtitle).slice(0, 300) : null, path, bytes: bytes == null ? null : bytes };
+}
+async function keep(sub, day, pdf, what) {
+  if (DRY) { console.log('[dry] keep', reportPath(sub.id, day, pdf.filename), '|', what.title); return; }
+  try {
+    const path = reportPath(sub.id, day, pdf.filename), body = Buffer.from(pdf.content, 'base64');
+    const r = await fetch(env.SUPABASE_URL + '/storage/v1/object/reports/' + path, { method: 'POST', body,
+      headers: { apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY, 'Content-Type': 'application/pdf', 'x-upsert': 'true' } });
+    if (!r.ok) throw new Error('storage ' + r.status + ': ' + (await r.text()).slice(0, 200));
+    await rest('report_files?on_conflict=sub_id,kind,ref', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify(fileRow({ sub, path, bytes: body.length, ...what })) });
+  } catch (e) { console.warn('[' + sub.email + '] not kept for the dashboard (' + what.title + '):', e.message || e); }
+}
+const shortDay = (iso, tz) => { try { return new Date(iso).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); } catch (_) { return ''; } };
+
 /* ------------------------------------------------------------------ one address --- */
 const GAME_SELECT = 'id,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue,home:home_team_id(name),away:away_team_id(name)';
 async function one(sub, team) {
@@ -243,6 +272,9 @@ async function one(sub, team) {
     const opp = ((side ? g.home : g.away) || {}).name || 'opponent';
     console.log('game', club, 'v', opp, g.id);
     const pdf = await pdfOf(`/epinoia/game/?g=${g.id}&analysis=${side}`, `game-analysis-${slug(club)}-v-${slug(opp)}-${(g.tipoff_at || '').slice(0, 10)}`);
+    const comp = (g.competitions && g.competitions.name) || '';
+    await keep(sub, (g.tipoff_at || new Date().toISOString()).slice(0, 10), pdf, { kind: 'game', ref: g.id, title: E.subject.replace(/^Game analysis: /, ''),
+      subtitle: [comp, shortDay(g.tipoff_at, tz), g.venue].filter(Boolean).join(' · ') });
     await send(sub.email, E.subject, E.html, [pdf]);
     await log(sub, 'game', g.id, `${side ? g.away_score : g.home_score}-${side ? g.home_score : g.away_score} v ${opp}`);
   }
@@ -257,8 +289,20 @@ async function one(sub, team) {
   if (!next.length && !ownDue) { await log(sub, 'sunday', L.date, 'nothing this week'); return; }
   const { uniq } = opponentsOf(team, next);
   const att = [];
-  for (const o of uniq) { console.log('opponent', club, '->', o.oname); att.push(await pdfOf(`/epinoia/t/?t=${o.oid}&tab=report`, `scouting-report-${slug(o.oname)}`)); }
-  if (ownDue) { console.log('own', club); att.push(await pdfOf(`/epinoia/t/?t=${team.id}&tab=report`, `team-report-${slug(club)}`)); }
+  const week = 'Week of ' + shortDay(W.from.toISOString(), tz);
+  for (const o of uniq) {
+    console.log('opponent', club, '->', o.oname);
+    const pdf = await pdfOf(`/epinoia/t/?t=${o.oid}&tab=report`, `scouting-report-${slug(o.oname)}`);
+    const when = next.filter(g => g.home_team_id === o.oid || g.away_team_id === o.oid).map(g => shortDay(g.tipoff_at, tz)).join(', ');
+    await keep(sub, L.date, pdf, { kind: 'opp', ref: L.date + ':' + o.oid, title: o.oname, subtitle: week + ' · ' + club + ' play them ' + when });
+    att.push(pdf);
+  }
+  if (ownDue) {
+    console.log('own', club);
+    const pdf = await pdfOf(`/epinoia/t/?t=${team.id}&tab=report`, `team-report-${slug(club)}`);
+    await keep(sub, L.date, pdf, { kind: 'team', ref: L.date, title: club, subtitle: 'Fortnightly team report · ' + shortDay(new Date().toISOString(), tz) });
+    att.push(pdf);
+  }
   const E = sundayEmail({ sub, team, games: next, ownDue, tz, monday: W.from });
   await send(sub.email, E.subject, E.html, att);
   await log(sub, 'sunday', L.date, uniq.length + ' opponent(s)' + (ownDue ? ' + own' : ''));

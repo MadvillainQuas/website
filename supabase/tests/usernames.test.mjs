@@ -48,8 +48,9 @@ ok('0163 is the only 0163', nums.filter(n => n === '0163').length === 1);
 console.log('\nthe profile page (PROFILE, profile/)');
 const html = rd('epinoia', 'profile', 'index.html'), js = rd('epinoia', 'profile', 'profile.js');
 const css = rd('epinoia', 'kit', 'profile.css');
-ok('the section is first on PROFILE, hidden until the database answers',
-   /<\/header>[\s\S]{0,1200}<section class="sec hide" id="username"/.test(html) &&
+/* PROFILE is a dashboard since 2026-10-02 (dashboard.js): the username sits with the public page, after the follows */
+ok('the section is on PROFILE with the public page, hidden until the database answers',
+   /<section class="sec hide" id="username"/.test(html) && html.indexOf('id="players"') < html.indexOf('id="username"') &&
    html.indexOf('id="username"') < html.indexOf('id="fanprofile"'));
 ok('...shown only when my_username answers (no 0163: stays hidden)', /const \{ data, error \} = await sb\.rpc\('my_username'\);\s*\n\s*if \(error\) return;/.test(js));
 ok('checked while typing, once per pause, the last answer wins', /username_check/.test(js) && /if \(n !== asked\) return;/.test(js) && /\}, 350\);/.test(js));
