@@ -85,7 +85,7 @@ the notifications to four fan-outs of their own:
 |---|---|
 | `games`, `game_officials`, and the anon RPCs `game_tip_wallclock`, `league_channel_for_game` | `can_read_game` |
 | `game_events`, `game_state`, `player_game_stats`, `team_game_stats`, `lineup_stints` | `can_read_game_rows` (0136) |
-| `player_season_stats`, `team_season_stats` (owner-rights views, which no policy reaches) | the views' own `vis` CTE |
+| `player_season_stats`, `team_season_stats` (owner-rights queries, which no policy reaches; in the `private` schema since 0218, read through public invoker views of the same names) | the queries' own `vis` CTE |
 | result, player line, half-time, lineups and fixture notifications | `notify_game_final`, `notify_halftime`, `notify_lineups`, `notify_fixture_windows` |
 | standings, awards, brackets, news, suspensions, TOTY, advanced stats, video and video jobs, highlight jobs, external games | 0118's restrictive policies → the four gates above (0139 already covered these) |
 
@@ -151,6 +151,37 @@ scores. League-scoped keys are limited to their own league.
 - The `feeds` Edge Function renders whatever `gameId` it is sent, and never checks that the
   game belongs to the feed's league. So the admin of any league with a feed can `preview` any
   other league's game, private or members-only, and read back the whole payload.
+
+## Owner-rights views and Supabase's security advisor (0218)
+
+The advisor's lint 0010 ("Security Definer View") flags any view in a schema PostgREST serves (live: `public`,
+`graphql_public`) that anon or authenticated may read and that runs with its owner's rights. Four did, each on
+purpose. 0218 changed how they are built, not what anybody sees; `advisor-views.test.mjs` reads all four, the six
+fast-path tables and `season_leaders` as twelve kinds of reader, memberships off and on, before and after, and
+compares them exactly, and compares the plans.
+
+| view | what it is for | the fix |
+|---|---|---|
+| `team_staff_public` | a club's active staff (name, role, an age, the order) for everybody; the raw rows were for the club's managers | **a real `security_invoker` view.** `team_staff` gained a read policy for the active rows (`team_staff_active_read`) and column grants for anon and authenticated on exactly what the view reads (`id, team_id, name, role, born_year, sort, active`; not `created_at`, and not any column added later). The managers' policy is unchanged. `born_year` was already public as the age. |
+| `player_season_stats` | season lines, by league visibility (0118, 0147), a withheld minor's name masked (0171) | **the query moved, letter for letter, to `private.player_season_stats`** (owner-rights, not served by the API); `public.player_season_stats` is a `security_invoker` view selecting every row and column of it. |
+| `team_season_stats` | season totals, by league visibility | the same: `private.team_season_stats` behind a public invoker view. |
+| `game_rows_public` | 0151's fast path inside the read policies of `game_events`, `game_state`, `player_game_stats`, `team_game_stats`, `lineup_stints` and (0215) `record_lines`; also read by the snapshots function | the same: `private.game_rows_public`; **the six policies read it from `private` directly**, in 0151's scalar sub-select form; `public.game_rows_public` is an invoker view for the snapshots function. |
+
+Why not invoker views over the tables for the last three: the season views decide by the *league* (a club manager
+or a game official may read box scores the season views leave out), they mask a name where players' policy would
+drop the row, and they aggregate whole seasons, which through `pgs_read` would cost a sub-select a line; the fast
+path read through games' own policy would be the per-row cost 0151 removed.
+
+Is a public invoker view over a private owner-rights view honest? It still reads past RLS one level down, exactly
+as before: what a reader sees is what each query's own conditions allow. What changed is where an owner-rights
+query may live: not in the schema the API serves, where any view re-created from an old copy would be served as it
+is. `private` grants USAGE, and SELECT on those three views only (nothing writable; `game_rows_public` is an
+updatable view, so only SELECT is ever granted on either name). 0218 refuses to move a query that a later file has
+changed (it compares `pg_get_viewdef` before touching anything), and its self-test runs lint 0010.
+
+A later migration that re-creates `public.player_season_stats` (or any of the four) with a plain
+`create or replace view ... as` turns it back into an owner-rights view in `public`; `advisor-views.test.mjs`
+fails on that. Change the query in `private`, and leave the public name as `select * from private.<name>`.
 
 ## Appointing people (0140)
 

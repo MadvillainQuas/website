@@ -524,9 +524,12 @@ const norm = t => t.replace(/\s+/g, ' ').trim();
 const READS = [['game_events', 'events_read'], ['game_state', 'state_read'],
                ['player_game_stats', 'pgs_read'], ['team_game_stats', 'tgs_read'],
                ['lineup_stints', 'ls_read']];
-const fast = lastWith(/create or replace view public\.game_rows_public\b/);
+/* the owner-rights query that IS the fast path: public until 0218 moved it, letter for letter, to the private
+   schema the API does not serve (Supabase's advisor, lint 0010); public.game_rows_public is now an invoker view over it */
+const fast = lastWith(/create or replace view (public|private)\.game_rows_public as\b/);
 ok('the fast path exists (a view of the games whose rows are public)', !!fast);
 const fsql = fast ? fast.sql : '';
+const FS = /create or replace view private\.game_rows_public as\b/.test(fsql) ? 'private' : 'public';
 
 for (const [tbl, pol] of READS) {
   const setter = lastWith(new RegExp(`(create|alter) policy (${pol}\\b|%I on public\\.%I)`));
@@ -535,21 +538,23 @@ for (const [tbl, pol] of READS) {
 }
 const tablesArr = /tables\s+text\[\] := array\[([^\]]*)\]/.exec(fsql);
 const polsArr = /policies\s+text\[\] := array\[([^\]]*)\]/.exec(fsql);
+/* (0218 also carries 0215's record_lines_read, after the five) */
 ok('...each policy paired with its own table, in order',
    tablesArr && polsArr &&
-   JSON.stringify(tablesArr[1].match(/'[^']+'/g)) === JSON.stringify(READS.map(r => `'${r[0]}'`)) &&
-   JSON.stringify(polsArr[1].match(/'[^']+'/g)) === JSON.stringify(READS.map(r => `'${r[1]}'`)));
+   JSON.stringify(tablesArr[1].match(/'[^']+'/g).slice(0, READS.length)) === JSON.stringify(READS.map(r => `'${r[0]}'`)) &&
+   JSON.stringify(polsArr[1].match(/'[^']+'/g).slice(0, READS.length)) === JSON.stringify(READS.map(r => `'${r[1]}'`)) &&
+   tablesArr[1].match(/'[^']+'/g).length === polsArr[1].match(/'[^']+'/g).length);
 
 /* THE TEXT THAT IS ATTACHED. One template, proved and then attached; this is the
    whole of the security argument, so it is compared exactly: a fast path OR the
    rule itself, never anything else. */
-const tplLit = /expr_tpl\s+text\s*:=\s*((?:'[^']*'\s*)+);/.exec(fsql);
+const tplLit = /(?:expr_tpl|v_expr)\s+text\s*:=\s*((?:'[^']*'\s*)+);/.exec(fsql);
 const tpl = tplLit ? tplLit[1].match(/'([^']*)'/g).map(s => s.slice(1, -1)).join('') : '';
 ok('the policy is "fast path OR can_read_game_rows", exactly',
-   tpl === 'coalesce((select true from public.game_rows_public p where p.id = %1$s), false) '
+   tpl === 'coalesce((select true from ' + FS + '.game_rows_public p where p.id = %1$s), false) '
          + 'or public.can_read_game_rows(%1$s)', tpl);
 ok('...attached with each table\'s own game_id, from that same text',
-   /format\('alter policy %I on public\.%I using \(%s\)',\s*policies\[i\], tables\[i\], format\(expr_tpl, format\('%I\.game_id', tables\[i\]\)\)\)/.test(fsql));
+   /format\('alter policy %I on public\.%I using \(%s\)',\s*(v_)?policies\[(v_)?i\], (v_)?tables\[(v_)?i\], format\((expr_tpl|v_expr), format\('%I\.game_id', (v_)?tables\[(v_)?i\]\)\)\)/.test(fsql));
 ok('...and ALTERed, so no moment passes with no read policy at all',
    !/drop policy[^\n]*(events_read|state_read|pgs_read|tgs_read|ls_read)/.test(fsql));
 
@@ -564,7 +569,13 @@ ok('the fast path cannot be hashed into a per-statement scan of every game',
    narrower than can_read_game_rows' public half: the same statuses, the same
    league condition letter for letter, plus a public league. Compared against
    the LATEST definition of the rule, so a later change to the rule shows up here. */
-const viewBody = norm((/create or replace view public\.game_rows_public as([\s\S]*?);/.exec(fsql) || [, ''])[1]);
+const viewBody = norm((new RegExp('create or replace view ' + FS + '\\.game_rows_public as([\\s\\S]*?);').exec(fsql) || [, ''])[1]);
+/* the soundness proof (every game, every kind of reader) was run by the file that last CHANGED the fast path's
+   query; a file that only moved it must be moving the same text */
+const proof = lastWith(/the fast path admits % games that can_read_game_rows refuses/);
+const proofBody = proof ? norm((/create or replace view public\.game_rows_public as([\s\S]*?);/.exec(proof.sql) || [, ''])[1]) : '';
+ok(`the fast path's query is the one ${proof && proof.f} proved sound` + (fast && proof && fast.f !== proof.f ? `, moved by ${fast.f} letter for letter` : ''),
+   !!proof && viewBody === proofBody && (fast.f === proof.f || /is no longer the query this file copies/.test(fsql)), viewBody + '\n          ' + proofBody);
 ok('the fast path admits finished games, and live ones only through the live list',
    viewBody.includes("g.status = 'final' and ( g.competition_id is null or g.competition_id in (select public.game_rows_open_competitions(false)) )") &&
    viewBody.includes("g.status = 'live' and g.competition_id in (select public.game_rows_open_competitions(true))") &&
@@ -588,22 +599,22 @@ ok(`...and the league condition is the rule's own (${rule && rule.f})`,
    defines the rule must be no newer than the one that last proved the fast path,
    or must carry the proof itself: copy 0151's section 2. */
 ok('the rule has not changed since the fast path was last proved',
-   rule && fast && (rule.n <= fast.n || /the fast path admits % games that can_read_game_rows refuses/.test(rule.sql)),
-   rule && fast ? `${rule.f} changes can_read_game_rows after ${fast.f} proved the fast path` : '');
+   rule && proof && (rule.n <= proof.n || /the fast path admits % games that can_read_game_rows refuses/.test(rule.sql)),
+   rule && proof ? `${rule.f} changes can_read_game_rows after ${proof.f} proved the fast path` : '');
 
 /* THE VIEW WRITES AS ITS OWNER. It is one table with no aggregate, so it is
    automatically updatable, and Supabase's default privileges give every browser
    role ALL on a new relation. SELECT only, granted inside the same statement that
    creates it, and never security_invoker (that would put games' own per-row
    policy back inside the fast path). */
-const iRev = fsql.indexOf('revoke all on public.game_rows_public from public, anon, authenticated, service_role;');
-const iGrant = fsql.indexOf('grant select on public.game_rows_public to anon, authenticated;');
+const iRev = fsql.indexOf('revoke all on ' + FS + '.game_rows_public from public, anon, authenticated, service_role;');
+const iGrant = fsql.indexOf('grant select on ' + FS + '.game_rows_public to anon, authenticated;');
 const iProof = fsql.indexOf('2. THE PROOF');
 ok('the view is SELECT-only for browsers, before anything reads it',
    iRev > 0 && iGrant > iRev && iProof > iGrant && !/grant (all|insert|update|delete)[^;]*game_rows_public/.test(fsql));
-ok('...owner-rights on purpose',
-   !/create or replace view public\.game_rows_public with/.test(fsql) &&
-   /alter view public\.game_rows_public owner to postgres/.test(fsql));
+ok('...owner-rights on purpose' + (FS === 'private' ? ', in the schema the API does not serve' : ''),
+   !new RegExp('create or replace view ' + FS + '\\.game_rows_public with').test(fsql) &&
+   new RegExp('alter view ' + FS + '\\.game_rows_public owner to postgres').test(fsql));
 
 /* PROVED ON THE DATABASE IT CHANGES, IN ONE STATEMENT. A push has not always
    been one transaction (0140 stopped half way; CLI 2.117 rolled 0145's failed
@@ -612,10 +623,13 @@ ok('...owner-rights on purpose',
 const body = fsql.replace(/--[^\n]*\n/g, '\n').trim();
 ok('the migration is one statement, so a failed proof leaves nothing behind',
    /^do \$mig\$/.test(body) && /end \$mig\$;$/.test(body) && body.split('$mig$').length === 3);
-ok('...which proves soundness on every game, for every kind of reader, before the swap',
-   /the fast path admits % games that can_read_game_rows refuses/.test(fsql) &&
-   /if passes <> 22 then/.test(fsql) &&
-   fsql.indexOf('the fast path admits % games') < fsql.indexOf("format('alter policy"));
+ok('...which proves soundness on every game, for every kind of reader, before the swap (or, moving it, that it is the proved query)',
+   (/the fast path admits % games that can_read_game_rows refuses/.test(fsql) &&
+    /if passes <> 22 then/.test(fsql) &&
+    fsql.indexOf('the fast path admits % games') < fsql.indexOf("format('alter policy")) ||
+   (FS === 'private' && /pg_get_viewdef/.test(fsql) &&
+    fsql.indexOf('is no longer the query this file copies') > 0 &&
+    fsql.indexOf('is no longer the query this file copies') < fsql.indexOf("format('alter policy")));
 ok('...and never RESET ROLE (the push connects through a temporary login role)',
    !/reset role/i.test(fsql.replace(/--[^\n]*\n/g, '\n')));
 

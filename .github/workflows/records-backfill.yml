@@ -1,0 +1,49 @@
+name: Records backfill
+
+# After migrations 0215 (the kept records) and 0219 (a backfill step that builds ONE competition and never waits for a
+# finalise): builds every competition's records, one competition a call to rpc/records_backfill_step with the
+# service key, a pause between calls (1.5 s by default), until the database answers "left": 0 or the time budget is
+# spent (a second run carries on). Each call is one short transaction (0.1-1 s on the biggest competitions), and a
+# competition a finalise is working on is passed over and taken later. One log line a step.
+# Nightly as well, off-peak: once everything is built it is one call, and it rebuilds any competition a failure
+# marked stale since (records_touch). Before 0219 is pushed it says so and does nothing.
+# See scripts/records_backfill.mjs and docs/performance-audit.md ("Backfill").
+on:
+  workflow_dispatch:
+    inputs:
+      pause_seconds:
+        description: "Seconds between steps"
+        required: false
+        default: "1.5"
+      max_minutes:
+        description: "Stop after this many minutes (run again to carry on)"
+        required: false
+        default: "20"
+  schedule:
+    - cron: '23 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: records-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Backfill, one competition a step
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PAUSE: ${{ github.event.inputs.pause_seconds }}
+          MAX_MINUTES: ${{ github.event.inputs.max_minutes }}
+        run: node scripts/records_backfill.mjs --pause "${PAUSE:-1.5}" --max-minutes "${MAX_MINUTES:-20}"

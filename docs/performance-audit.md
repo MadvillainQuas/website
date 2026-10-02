@@ -126,17 +126,44 @@ approved crest).
 - **U22** takes the board's seasons and runs the old player reads over those competitions only (an age is not
   something a kept list can know); it no longer reads every finished game on the platform first.
 
-### Backfill
+### Backfill (gently: one competition a call, 0219)
+
+0215's `records_backfill(25)` built up to 25 competitions in one transaction, holding each competition's lock (the
+lock a finalise takes for it) until the last was built. 0219 replaces it with **`records_backfill_step()`**: one
+competition a call, built whole in one short transaction, and the competition's lock only **tried** — a competition
+a finalise is working on at that moment is passed over and taken on a later call, so the backfill never waits for a
+finalise and a finalise waits at most one competition's build. Its own `lock_timeout` (2 s) and `statement_timeout`
+(20 s, applied by PostgREST before the call). It answers
+`{"built": 1, "competition": "…", "games": 272, "ms": 140, "left": 41, "ready": false, "busy": 0}`; when `left`
+reaches 0 it sets `records_state.ready` and the pages switch over. Finding the next competition and counting what is
+left go through `games_competition_status` and `record_comps`' key (about 2 ms); no new index.
+
+Measured on PGlite with every migration applied (`supabase/tests/records-backfill.test.mjs` prints these): a
+300-game competition 1.0–1.2 s, 120 games 0.4 s, 20 games 0.07 s; the call once everything is built 1 ms. (The
+biggest competition on the platform has 272 finished games; a real Postgres is faster than PGlite.)
+
+**Run it paced, from GitHub** (after `npx supabase db push`): Actions → **Records backfill** → Run workflow
+(`.github/workflows/records-backfill.yml`, `scripts/records_backfill.mjs`). It calls the step with the service key,
+waits 1.5 s (twice that after a step that found every candidate busy), calls again, until `left` is 0 or the budget
+(20 minutes) is spent — a second run carries on. One log line a step. The 57 competitions take about two minutes.
+It also runs nightly at 03:23 UTC: one call once everything is built, and a rebuild of any competition a failure
+marked stale since.
+
+**Or by hand, in the SQL editor**, one competition a run:
 
 ```sql
-select public.records_backfill(25);   -- repeat until it answers "left": 0
+select public.records_backfill_step();   -- run again until it answers "left": 0
 ```
 
-Each call builds at most 25 competitions not built yet (or stale), each under its lock, and answers
-`{"built": n, "left": m}`. On a copy of the live data the whole platform (1,799 finals, 57 competitions) took 7 s in
-PGlite, so two or three calls. It is safe to run while games are being finalised and safe to run again (a built
-competition is skipped). When nothing is left it sets `records_state.ready`, and the pages switch over. To rebuild
-everything later: `update record_comps set stale = true;` then the backfill again.
+(`select public.records_backfill(25);`, the call 0215 printed, now does one step too.) Safe while games are being
+finalised and safe to run again. To rebuild everything later: `update record_comps set stale = true;` then the
+backfill again.
+
+**The triggers on game writes** (0215, unchanged; measured on PGlite with and without them): a live game's score
+update costs their `WHEN` clause only (+0.01 ms; they fire only when a *final* game's status, competition or score
+changes); a live game's 24 player lines upserted in one statement +0.2–0.3 ms, its two team lines +0.2 ms (one
+statement-level trigger, one look at `games` for the statement, nothing a row); correcting one line of a final game
+in a 120-game competition +12 ms (its lines checked against the lists, the lists it reaches cut back).
 
 ### Verifying the records
 
@@ -166,8 +193,10 @@ Two places where the board can differ from the old reads, neither seen in the da
 
 ## What the user must run
 
-1. `npx supabase db push` — applies `0215_records.sql` (tables, policies, triggers, functions; idempotent).
-2. In the SQL editor: `select public.records_backfill(25);` until `"left": 0`.
+1. `npx supabase db push` — applies `0215_records.sql` (tables, policies, triggers, functions; idempotent) and
+   `0219_records_backfill_gentle.sql` (the one-competition step).
+2. Actions → **Records backfill** → Run workflow (paced, logs each step); or in the SQL editor
+   `select public.records_backfill_step();` until `"left": 0`.
 
 No Edge Function to deploy. Until step 2 has finished the pages work the records out as before.
 
