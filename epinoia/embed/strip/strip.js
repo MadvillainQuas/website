@@ -1019,6 +1019,11 @@ function wrap() {
 }
 
 function tick(now) {
+  /* NOTHING MOVES THAT NOBODY CAN SEE (watching(), below): the loop ends, and the observer or the tab coming back
+     starts it again. Every frame the drift moves the rail, the page around the strip is laid out into layers again,
+     the whole page when it is a club page's own strip: measured 2026-10-02 on a club page at a phone's speed, 65 ms a
+     frame, 12 frames a second with the reader far below the strip at the depth chart, and 50 with the drift stopped. */
+  if (!dragging && !watching()) { rafId = null; return; }
   const rail = $('#rail');
   const dt = lastT ? Math.min(4, (now - lastT) / 16.667) : 1;   // in 60fps frames
   lastT = now;
@@ -1209,10 +1214,15 @@ let onScreen = true;
 function watching() { return !document.hidden && onScreen; }
 
 function wake() {
+  still();
   if (!watching()) return;
+  if (document.querySelector('#rail .ep-card')) startMotion();   // the drift, where there are fixtures to drift
   clearTimeout(pollTimer);
   load().catch(() => {}).then(schedule);
 }
+
+/* the sheen and the live dot stop with the drift (kit/embed.css .ep-still) */
+function still() { document.documentElement.classList.toggle('ep-still', !watching()); }
 
 document.addEventListener('visibilitychange', wake);
 
@@ -1221,6 +1231,7 @@ if (typeof IntersectionObserver === 'function') {
     new IntersectionObserver(entries => {
       const was = onScreen;
       onScreen = entries.some(e => e.isIntersecting);
+      still();
       if (onScreen && !was) wake();
     }, { rootMargin: '200px' }).observe(document.body);
   } catch (_) { /* no observer, no gate — polls as it always did */ }

@@ -1871,6 +1871,8 @@ function renumber() {
     const strip = document.querySelector('#strip');
     /* the strip opens in the page's colourway, and teamcolour.js keeps it there */
     if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
+    /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
+    if (strip && window.EpinoiaTeamColour && window.EpinoiaTeamColour.drawDistance) window.EpinoiaTeamColour.drawDistance(strip);
 
     const head = document.querySelector('#leaguesHead');
     if (head) head.textContent = 'This season';

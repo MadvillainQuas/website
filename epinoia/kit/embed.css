@@ -310,6 +310,11 @@
 /* Motion is opt-out. A bar that scrolls itself is exactly what makes a page
    unusable for someone who cannot tolerate movement, so the sheen, the pulse
    and the scroll all stop — strip.js reads the same query. */
+/* NOTHING MOVES THAT NOBODY CAN SEE: strip.js sets .ep-still while the strip is off the screen or its tab is in the
+   background. The sheen never stops by itself, and a frame of it on a page the reader has scrolled away from still
+   lays the whole host page out into layers again: 65 ms a frame on a club page at a phone's speed (2026-10-02). */
+.ep-still .ep-strip::before, .ep-still .ep-card .meta .st .dot{ animation-play-state:paused }
+
 @media (prefers-reduced-motion:reduce){
   .ep-strip::before{ animation:none }
   .ep-card .meta .st .dot{ animation:none }

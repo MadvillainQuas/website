@@ -257,6 +257,38 @@
     });
   }
 
+  /* DRAW DISTANCE: AN EMBED FAR FROM THE READER IS NOT DRAWN (2026-10-02). Once the reader is a screen or more away
+     from it, the frame is taken out of the page (display:none) and its box keeps its height, so nothing above or below
+     moves; coming back within a screen draws it again, as it was (the frame's own page is kept, so no reload and no
+     flash of 'Loading'). A frame on the page is laid out and painted with the page around it every time it changes: the
+     fixture strip's drifting sheen made every frame of a club page lay the whole page out into layers again, 65 ms at a
+     phone's speed, 12 frames a second with the reader down at the depth chart (50 with the strip out of the way). The
+     strip also stops its own motion while it cannot be seen (embed/strip/strip.js), which is all a club's own site gets. */
+  const FAR = '100% 0px';
+  function drawDistance(f) {
+    const host = f && f.parentElement;
+    if (!host || f.__epFar || typeof IntersectionObserver !== 'function') return;
+    f.__epFar = true;
+    let away = false, keepH = '', keepD = '';
+    new IntersectionObserver(entries => {
+      const near = entries[entries.length - 1].isIntersecting;
+      if (near === !away) return;
+      if (!near) {
+        /* the height as the page lays it out, given back to it: right whatever the box model and the page's zoom */
+        const h = getComputedStyle(host).height;
+        if (!(parseFloat(h) > 0)) return;  // not laid out (a strip still hidden): nothing to keep
+        keepH = host.style.height; keepD = f.style.display;
+        host.style.height = h;
+        f.style.display = 'none';
+        away = true;
+      } else {
+        f.style.display = keepD;
+        host.style.height = keepH;
+        away = false;
+      }
+    }, { rootMargin: FAR }).observe(host);
+  }
+
   function syncEmbeds() {
     if (typeof document === 'undefined' || window.top !== window || !document.body || document.body.classList.contains('cse')) return;
     let last = '';
@@ -264,6 +296,7 @@
       try { if (frame.contentWindow) frame.contentWindow.postMessage(colourway(), location.origin); } catch (_) { /* not ready */ }
     };
     const wire = f => {
+      drawDistance(f);
       if (f.__epColourway) return;
       f.__epColourway = true;
       f.addEventListener('load', () => send(f));
@@ -299,5 +332,5 @@
     else syncEmbeds();
   }
 
-  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, league, paintLeague, clearLeague, colourway, contrast: (a, b) => contrast(parse(a), parse(b)) };
+  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, league, paintLeague, clearLeague, colourway, drawDistance, contrast: (a, b) => contrast(parse(a), parse(b)) };
 })();

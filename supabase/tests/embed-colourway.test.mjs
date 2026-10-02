@@ -267,5 +267,58 @@ ok('...showing only that club\'s games, its league named, in the page\'s theme',
   }
 }
 
+/* ------------------------------------------------------------ draw distance --- */
+console.log('\n-- an embed far from the reader is not drawn (teamcolour.js drawDistance, 2026-10-02)');
+{
+  const observers = [];
+  const ctx = {
+    console, setTimeout,
+    getComputedStyle: el => ({ getPropertyValue: () => '', height: el.__h || '0px' }),
+    IntersectionObserver: function (cb, o) { const me = { cb, o, seen: [] }; observers.push(me); this.observe = el => me.seen.push(el); },
+    document: { readyState: 'loading', addEventListener: () => {}, body: null, documentElement: { getAttribute: () => null } }
+  };
+  ctx.window = ctx; ctx.top = {};
+  vm.createContext(ctx);
+  vm.runInContext(read('epinoia', 'teamcolour.js'), ctx);
+  const TC = ctx.EpinoiaTeamColour;
+  const host = { style: { height: '' }, __h: '222px' }, frame = { parentElement: host, style: { display: '' } };
+  TC.drawDistance(frame);
+  TC.drawDistance(frame);
+  ok('one watcher a frame, on its box, a screen above and below', observers.length === 1 && observers[0].seen[0] === host && observers[0].o.rootMargin === '100% 0px');
+  const see = near => observers[0].cb([{ isIntersecting: near }]);
+  see(true);
+  ok('near: drawn as it was', frame.style.display === '' && host.style.height === '');
+  see(false);
+  ok('far: the frame is out of the page and its box keeps its height exactly, so nothing on the page moves',
+     frame.style.display === 'none' && host.style.height === '222px');
+  host.__h = '999px'; see(false);
+  ok('...and stays so while it is far', frame.style.display === 'none' && host.style.height === '222px');
+  see(true);
+  ok('back within a screen: drawn again, the box as the page lays it out', frame.style.display === '' && host.style.height === '');
+  const host2 = { style: { height: '10px' }, __h: '140px' }, frame2 = { parentElement: host2, style: { display: 'block' } };
+  TC.drawDistance(frame2);
+  observers[1].cb([{ isIntersecting: false }]); observers[1].cb([{ isIntersecting: true }]);
+  ok('...a box\'s own inline height and the frame\'s own display are given back, not cleared', host2.style.height === '10px' && frame2.style.display === 'block');
+  const host3 = { style: { height: '' }, __h: '0px' }, frame3 = { parentElement: host3, style: { display: '' } };
+  TC.drawDistance(frame3);
+  observers[2].cb([{ isIntersecting: false }]);
+  ok('a frame not laid out yet (its box hidden) is left alone', frame3.style.display === '' && host3.style.height === '');
+  const tj = read('epinoia', 't', 'team.js'), hj = read('epinoia', 'home.js'), tc = read('epinoia', 'teamcolour.js');
+  ok('the club page and the league front page draw their strip at a distance, and so does every embed teamcolour.js wires',
+     /TC\.drawDistance\(frame\)/.test(tj) && /EpinoiaTeamColour\.drawDistance\(strip\)/.test(hj) && /const wire = f => \{\s*drawDistance\(f\);/.test(tc));
+}
+{
+  /* the strip itself, on a club's own site as much as here: nothing moves while it cannot be seen */
+  const sj = read('epinoia', 'embed', 'strip', 'strip.js'), css = read('epinoia', 'kit', 'embed.css');
+  ok('the strip\'s drift ends while nobody can see it (off the screen, or the tab in the background)',
+     /function tick\(now\) \{[\s\S]{0,700}if \(!dragging && !watching\(\)\) \{ rafId = null; return; \}/.test(sj));
+  ok('...and starts again when it can, where there are fixtures to drift',
+     /function wake\(\) \{\s*still\(\);\s*if \(!watching\(\)\) return;\s*if \(document\.querySelector\('#rail \.ep-card'\)\) startMotion\(\);/.test(sj));
+  ok('...the sheen and the live dot pause with it (.ep-still), set by the observer and the tab\'s visibility',
+     /function still\(\) \{ document\.documentElement\.classList\.toggle\('ep-still', !watching\(\)\); \}/.test(sj) &&
+     /onScreen = entries\.some\(e => e\.isIntersecting\);\s*still\(\);/.test(sj) &&
+     /\.ep-still \.ep-strip::before, \.ep-still \.ep-card \.meta \.st \.dot\{ animation-play-state:paused \}/.test(css));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
