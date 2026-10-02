@@ -141,18 +141,17 @@ ok('every section is a card, and every bar a card with its delta', /C\.collapsib
 ok('the average is over the same pool the bar is ranked in (his position when adjusted)', /pool = group \? field\.filter/.test(pjs) && /barCard\(k, label, mine, ranks, pool\)/.test(pjs));
 ok('expand all / collapse all are on the switch row', /'expand all'/.test(pjs) && /'collapse all'/.test(pjs));
 
-console.log('\nthe estimated position, where position sits');
+console.log('\nthe position breakdown, where the estimated position sat (2026-10-02)');
 {
   const Season = require(path.join(ROOT, 'epinoia', 'season.js'));
-  ok('the identity band gets an "EST POS:" chip, from the same positionGroups the adjust-for-position switch ranks with',
-     /'EST POS: ' \+ EST_POS\[g\]/.test(pjs) && /SE\.positionGroups\(field\)\.get\(mine\.id\)/.test(pjs) && /const posMap = barsByPos && SE\.positionGroups \? SE\.positionGroups\(field\)/.test(pjs));
-  ok('...drawn whether or not the switch is on, and again whenever the season is redrawn', /function paintBars\(mine, field\) \{\s*LAST_BARS = \{ mine, field \};\s*paintEstPos\(mine, field\);/.test(pjs));
-  ok('...beside the listed position when the club gave one, after the club and league when not', /const after = listed \|\| sub\.querySelector\('\.sub-break'\) \|\| sub\.querySelector\('\.sub-league'\)/.test(pjs) && /after\.after\(chip\)/.test(pjs));
-  ok('...guard, wing or big, the three groups season.js cuts', JSON.stringify(Season.POS_GROUPS.map(g => g[0])) === '["G","F","C"]' && /G: 'guard', F: 'wing', C: 'big'/.test(pjs));
+  ok('the "EST POS:" chip is gone: the hero has the share of his minutes at each position instead', !/EST POS/.test(pjs) && !/paintEstPos/.test(pjs) &&
+     /async function paintPosBreakdown\(rows, field\)/.test(pjs) && /el\('span', 'ip-l', 'position breakdown'\)/.test(pjs));
+  ok('...the adjust-for-position switch still ranks by season.js positionGroups (guard, wing or big)', /const posMap = barsByPos && SE\.positionGroups \? SE\.positionGroups\(field\)/.test(pjs) &&
+     JSON.stringify(Season.POS_GROUPS.map(g => g[0])) === '["G","F","C"]');
   const rows = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => ({ id, bpm_pos: 1 + i, position: '' }));
   const groups = Season.positionGroups(rows);
   ok('a competition is cut in thirds: the lowest-numbered third are guards, the highest bigs', groups.get('a') === 'G' && groups.get('c') === 'F' && groups.get('f') === 'C', [...groups]);
-  ok('under three players there is nothing to rank against, so no chip', Season.positionGroups(rows.slice(0, 2)).size === 0);
+  ok('under three players there is nothing to rank against', Season.positionGroups(rows.slice(0, 2)).size === 0);
 }
 
 console.log('\nattempts per 100 possessions (not per game) in shooting');

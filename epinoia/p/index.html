@@ -15,20 +15,20 @@
 <title>Player · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=597"></script>
-<script src="../i18n.js?v=597" data-i18n-packs="report"></script>
-<script src="../glyphs.js?v=597" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=597">
-<link rel="stylesheet" href="../kit/sectitle.css?v=597">
-<link rel="stylesheet" href="../kit/linkswitch.css?v=597">
-<link rel="stylesheet" href="../kit/table.css?v=597">
-<link rel="stylesheet" href="../video.css?v=597">
-<link rel="stylesheet" href="../kit/nav.css?v=597">
-<link rel="stylesheet" href="../kit/sitpanel.css?v=597">
-<link rel="stylesheet" href="../kit/cards.css?v=597">
-<link rel="stylesheet" href="../kit/access.css?v=597">
+<script src="../appmode.js?v=598"></script>
+<script src="../i18n.js?v=598" data-i18n-packs="report"></script>
+<script src="../glyphs.js?v=598" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=598">
+<link rel="stylesheet" href="../kit/sectitle.css?v=598">
+<link rel="stylesheet" href="../kit/linkswitch.css?v=598">
+<link rel="stylesheet" href="../kit/table.css?v=598">
+<link rel="stylesheet" href="../video.css?v=598">
+<link rel="stylesheet" href="../kit/nav.css?v=598">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=598">
+<link rel="stylesheet" href="../kit/cards.css?v=598">
+<link rel="stylesheet" href="../kit/access.css?v=598">
 <!-- the club's "released" button (offerRelease), styled with the injury report it feeds -->
-<link rel="stylesheet" href="../kit/wire.css?v=597">
+<link rel="stylesheet" href="../kit/wire.css?v=598">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -67,13 +67,54 @@
     .vit{padding:1px 12px} .vit .vv{font-size:19px}
     .vitals .vit-units{margin-left:12px}
   }
-  .pos-chip.est-pos{border-style:dashed;cursor:help}      /* estimated, not listed: the dashed edge says so */
+  /* POSITION BREAKDOWN (player.js paintPosBreakdown): the share of his minutes at each position in the season shown, on a
+     half court with the modern box score's five spots, each disc coloured as Football Manager colours a player's
+     positions: green over half his minutes, light green a quarter to a half, yellow a tenth to a quarter, orange less,
+     an empty ring never; his main position the largest, ringed */
+  .idpos{width:250px;align-self:center}
+  .idpos[hidden]{display:none}
+  /* the kit's body zoom (1.5 from 1200px) leaves a 1440px screen about 790px of hero: the third column only from 1800px */
+  @media (min-width:1800px){ .idband:has(> .idpos:not([hidden])){grid-template-columns:auto minmax(0,1fr) auto} }
+  @media (max-width:1799px) and (min-width:641px){ .idband > .idpos{grid-column:2;align-self:start;margin-top:-4px} }
+  @media (max-width:640px){ .idband > .idpos{grid-column:1 / -1;justify-self:center;width:min(100%,300px)} }
+  .idpos .ip-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;margin:0 0 6px}
+  .idpos .ip-l{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  .idpos .ip-n{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .idpos .ip-court{position:relative;width:100%;aspect-ratio:1500/1400;border-radius:8px;overflow:hidden;isolation:isolate;
+    --court-floor:color-mix(in oklch,var(--team-a,var(--lume)) 7%,var(--panel,#fff));
+    box-shadow:0 0 0 1px var(--rule-2),0 6px 18px rgba(0,0,0,.08)}
+  .idpos .ip-court svg{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:.75}
+  .idpos .ip-spots{position:absolute;inset:0}
+  .idpos .ip-spot{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;background:var(--ipc);color:var(--ipt);
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--ipc) 60%,#000),0 2px 6px rgba(0,0,0,.18)}
+  .idpos .ip-spot b{font-family:var(--f-micro);font-weight:400;font-size:9px;letter-spacing:.06em;line-height:1}
+  .idpos .ip-spot i{font-style:normal;font-family:var(--f-data,ui-monospace,monospace);font-size:10px;font-weight:700;line-height:1}
+  .idpos .ip-spot.top{width:50px;height:50px;margin:-25px 0 0 -25px;box-shadow:0 0 0 2px var(--panel,#fff),0 0 0 4px var(--ipc),0 4px 10px rgba(0,0,0,.25)}
+  .idpos .ip-spot.top b{font-size:10px}
+  .idpos .ip-spot.top i{font-size:12px}
+  .idpos .b4{--ipc:#1f9d55;--ipt:#ffffff}
+  .idpos .b3{--ipc:#7cc98a;--ipt:#0b2214}
+  .idpos .b2{--ipc:#e2cf5f;--ipt:#2a2408}
+  .idpos .b1{--ipc:#e8964d;--ipt:#2b1606}
+  .idpos .ip-spot.b0{--ipc:transparent;--ipt:var(--ink-3);background:color-mix(in srgb,var(--panel,#fff) 70%,transparent);
+    box-shadow:inset 0 0 0 1.5px var(--rule-2)}
+  .idpos .ip-key{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-family:var(--f-micro);font-size:7px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .idpos .ip-kk{display:inline-flex;align-items:center;gap:5px}
+  .idpos .ip-kk i{width:9px;height:9px;border-radius:50%;background:var(--ipc)}
+  .idpos .ip-kk i.b0{background:transparent;box-shadow:inset 0 0 0 1.5px var(--rule-2)}
   /* WHICH SEASON HIS NUMBERS ARE FROM (player.js), under his vitals: the season large, the competition beside it */
   .idseason{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-top:12px}
   .idseason[hidden]{display:none}
   .idseason .is-l{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
   .idseason .is-v{font-family:var(--f-score);font-size:22px;line-height:1;color:var(--team-a,var(--lume))}
   .idseason .is-c{font-family:var(--f-micro);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+  /* CAREER STATS (player.js paintCareer): the row the profile is showing, marked in the club's colour; a season is a link */
+  #seasons table.ft tbody tr.cur td{background-color:color-mix(in oklch,var(--team-a,var(--lume)) 10%,var(--ground))}
+  #seasons table.ft tbody tr.cur td.stick.c0{box-shadow:inset 4px 0 0 var(--team-a,var(--lume))}
+  #seasons table.ft .ft-name a{font-weight:700}
+  #seasons table.ft tbody tr.cur .ft-name a{color:var(--team-a-ink,var(--lume))}
   /* the season and competition chips (player.js), between the hero and his numbers */
   .pscope{display:flex;flex-direction:column;gap:8px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .pscope[hidden], .pscope-row[hidden]{display:none}
@@ -225,15 +266,17 @@
   table.shot td.shot-team{font-weight:600;font-size:13px;color:var(--ink);
     white-space:normal;min-width:6em}
 </style>
-<link rel="stylesheet" href="../kit/shotchart.css?v=597">
-<link rel="stylesheet" href="../kit/soschip.css?v=597">
-<link rel="stylesheet" href="../kit/teletext.css?v=597">
-<link rel="stylesheet" href="../kit/playerhero.css?v=597">
-<link rel="stylesheet" href="../kit/silhouette.css?v=597">
-<link rel="stylesheet" href="../kit/statpop.css?v=597">
-<link rel="stylesheet" href="../kit/suggest.css?v=597">
-<link rel="stylesheet" href="../kit/adminedit.css?v=597">
-<link rel="stylesheet" href="../kit/legibility.css?v=597">
+<link rel="stylesheet" href="../kit/shotchart.css?v=598">
+<link rel="stylesheet" href="../kit/gamelog.css?v=598">
+<link rel="stylesheet" href="../kit/onfloor.css?v=598">
+<link rel="stylesheet" href="../kit/soschip.css?v=598">
+<link rel="stylesheet" href="../kit/teletext.css?v=598">
+<link rel="stylesheet" href="../kit/playerhero.css?v=598">
+<link rel="stylesheet" href="../kit/silhouette.css?v=598">
+<link rel="stylesheet" href="../kit/statpop.css?v=598">
+<link rel="stylesheet" href="../kit/suggest.css?v=598">
+<link rel="stylesheet" href="../kit/adminedit.css?v=598">
+<link rel="stylesheet" href="../kit/legibility.css?v=598">
 </head>
 <body>
 <div class="ep-frame">
@@ -252,6 +295,9 @@
       <div class="idseason" id="idseason" hidden></div>
       <div class="idactions" id="idactions"></div>
     </div>
+    <!-- POSITION BREAKDOWN (player.js paintPosBreakdown): the share of his minutes at each position in that season, on a
+         half court; the hero's third column on a wide screen, under the rest on a narrow one -->
+    <div class="idpos" id="idpos" hidden></div>
   </div>
   <!-- THE SEASON AND THE COMPETITION (player.js): every season he has played, his linked profiles' too, newest first,
        and the competitions of the one shown. Hidden when there is nothing to choose. -->
@@ -287,7 +333,7 @@
   </div>
 
   <div class="sec">
-    <div class="sec-h"><span class="idx">03</span><h2>Season</h2>
+    <div class="sec-h"><span class="idx">03</span><h2>Career stats</h2>
       <span class="note" id="seasonNote"></span></div>
     <div class="seasonview" id="seasonView" hidden>
       <button type="button" class="ep-btn pri" data-view="table">full table</button>
@@ -333,49 +379,52 @@
     <span>Epinoia Network</span>
   </div>
 </div>
-<script src="../config.js?v=597" defer></script>
-<script src="../access.js?v=597" defer></script>
-<script src="../follow.js?v=597" defer></script>
-<script src="../teamcolour.js?v=597" defer></script>
-<script src="../bpm.js?v=597" defer></script>
-<script src="../season.js?v=597" defer></script>
-<script src="../data.js?v=597" defer></script>
-<script src="../boxscore.js?v=597" defer></script>
-<script src="../shotchart.js?v=597" defer></script>
-<script src="../upload.js?v=597" defer></script>
-<script src="../lineups.js?v=597" defer></script>
-<script src="../wowy.js?v=597" defer></script>
-<script src="../withstats.js?v=597" defer></script>
-<script src="../vsunits.js?v=597" defer></script>
-<script src="withui.js?v=597" defer></script>
-<script src="../memlock.js?v=597" defer></script>
-<script src="../fulltable.js?v=597" defer></script>
-<script src="../video.js?v=597" defer></script>
-<script src="video.js?v=597" defer></script>
-<script src="../sitpanel.js?v=597" defer></script>
-<script src="../consistency.js?v=597" defer></script>
-<script src="../units.js?v=597" defer></script>
-<script src="../ages.js?v=597" defer></script>
-<script src="../cards.js?v=597" defer></script>
-<script src="../statinfo.js?v=597" defer></script>
-<script src="../statpop.js?v=597" defer></script>
+<script src="../config.js?v=598" defer></script>
+<script src="../access.js?v=598" defer></script>
+<script src="../follow.js?v=598" defer></script>
+<script src="../teamcolour.js?v=598" defer></script>
+<script src="../bpm.js?v=598" defer></script>
+<script src="../season.js?v=598" defer></script>
+<script src="../data.js?v=598" defer></script>
+<script src="../boxscore.js?v=598" defer></script>
+<script src="../shotchart.js?v=598" defer></script>
+<script src="../upload.js?v=598" defer></script>
+<script src="../lineups.js?v=598" defer></script>
+<script src="../wowy.js?v=598" defer></script>
+<script src="../withstats.js?v=598" defer></script>
+<script src="../vsunits.js?v=598" defer></script>
+<script src="withui.js?v=598" defer></script>
+<script src="../memlock.js?v=598" defer></script>
+<script src="../fulltable.js?v=598" defer></script>
+<script src="../video.js?v=598" defer></script>
+<script src="video.js?v=598" defer></script>
+<script src="../sitpanel.js?v=598" defer></script>
+<script src="../consistency.js?v=598" defer></script>
+<script src="../units.js?v=598" defer></script>
+<script src="../ages.js?v=598" defer></script>
+<script src="../cards.js?v=598" defer></script>
+<script src="../statinfo.js?v=598" defer></script>
+<script src="../statpop.js?v=598" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box
      score reads, needed here by the weekly report's ledger -->
-<script src="../gamepct-data.js?v=597" defer></script>
-<script src="../gamepct.js?v=597" defer></script>
-<script src="../reportcard.js?v=597" defer></script>
-<script src="../weekly.js?v=597" defer></script>
-<script src="../sos.js?v=597" defer></script>
-<script src="sos-chip.js?v=597" defer></script>
-<script src="../linkswitch.js?v=597" defer></script>
-<script src="../suggest.js?v=597" defer></script>
-<script src="../adminedit.js?v=597" defer></script>
-<script src="../silhouette.js?v=597" defer></script>
-<script src="../seasonbar.js?v=597" defer></script>
-<script src="player.js?v=597" defer></script>
-<script src="../feedrank.js?v=597" defer></script>
-<script src="../interest.js?v=597" defer></script>
-<script src="../nav.js?v=597" defer></script>
-<script src="../xscroll.js?v=597" defer></script>
+<script src="../gamepct-data.js?v=598" defer></script>
+<script src="../gamepct.js?v=598" defer></script>
+<script src="../reportcard.js?v=598" defer></script>
+<script src="../weekly.js?v=598" defer></script>
+<script src="../sos.js?v=598" defer></script>
+<script src="sos-chip.js?v=598" defer></script>
+<script src="../linkswitch.js?v=598" defer></script>
+<script src="../suggest.js?v=598" defer></script>
+<script src="../adminedit.js?v=598" defer></script>
+<script src="../silhouette.js?v=598" defer></script>
+<script src="../seasonbar.js?v=598" defer></script>
+<!-- the depth chart's ranking of a five, point guard to centre: the position breakdown's (player.js paintPosBreakdown) -->
+<script src="../t/depth.js?v=598" defer></script>
+<script src="gamelog.js?v=598" defer></script>
+<script src="player.js?v=598" defer></script>
+<script src="../feedrank.js?v=598" defer></script>
+<script src="../interest.js?v=598" defer></script>
+<script src="../nav.js?v=598" defer></script>
+<script src="../xscroll.js?v=598" defer></script>
 </body>
 </html>

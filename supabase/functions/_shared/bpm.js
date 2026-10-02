@@ -312,8 +312,46 @@ function teamInputs(totals, players) {
   };
 }
 
+/* ------------------------------------------------------------- one game ---
+   A GAME'S BPM FROM ITS BOX SCORE ALONE (2026-10-02): the player profile's game log and the social graphics' player of
+   the game, stars and leaders, which have every player's line of a game but not its play-by-play. The box score page
+   (game/game.js gameBPM) asks the same forTeam with the engine's team ratings; here the ratings come from the lines:
+   each side's possessions 0.96 x (FGA + TOV + 0.44 FTA - OREB), its offensive rating per 100 of them and the other
+   side's as its defensive rating, the game's pace per 40 minutes, and the two offences' average as the league's.
+   lines: [{ id, side: 0 | 1, stats }] in the box score's own keys (min in ms, pts, p2m/p2a, p3m/p3a, ftm/fta, or, dr,
+   ast, stl, blk, to, pf). -> Map id -> { bpm, obpm, dbpm }; nothing for a side without a line, or a player without
+   a minute. A game with one side's lines only has no team ratings to adjust to, so nothing at all. */
+function gameFromBox(lines) {
+  const out = new Map();
+  const n = v => (v == null || isNaN(v) ? 0 : +v);
+  const sides = [0, 1].map(t => (lines || []).filter(l => l && l.stats && +l.side === t).map(l => {
+    const s = l.stats;
+    return { id: l.id, minutes: n(s.min) / 60000, pts: n(s.pts), tpm: n(s.p3m), ast: n(s.ast), to: n(s.to), orb: n(s.or), drb: n(s.dr),
+             stl: n(s.stl), blk: n(s.blk), pf: n(s.pf), fga: n(s.p2a) + n(s.p3a), fgm: n(s.p2m) + n(s.p3m), fta: n(s.fta) };
+  }).filter(p => p.minutes > 0));
+  if (!sides[0].length || !sides[1].length) return out;
+  const tot = ps => {
+    const T = { pts: 0, fga: 0, fta: 0, oreb: 0, dreb: 0, tov: 0, stl: 0, pf: 0, ast: 0, blk: 0, min: 0 };
+    ps.forEach(p => { T.pts += p.pts; T.fga += p.fga; T.fta += p.fta; T.oreb += p.orb; T.dreb += p.drb; T.tov += p.to;
+                      T.stl += p.stl; T.pf += p.pf; T.ast += p.ast; T.blk += p.blk; T.min += p.minutes; });
+    T.poss = Math.max(1, 0.96 * (T.fga + T.tov + 0.44 * T.fta - T.oreb));
+    return T;
+  };
+  const T = sides.map(tot);
+  const ortg = T.map(x => 100 * x.pts / x.poss);
+  const gameMin = Math.max(1, Math.max(T[0].min, T[1].min) / 5);
+  const pace = (T[0].poss + T[1].poss) / 2 / gameMin * 40;
+  const leagueAvg = (ortg[0] + ortg[1]) / 2;
+  [0, 1].forEach(t => {
+    const inputs = teamInputs(T[t], sides[t]);
+    const team = { pace, netRtg: ortg[t] - ortg[1 - t], offRtg: ortg[t], avgPtsPerTSA: inputs.avgPtsPerTSA, per100: inputs.per100 };
+    forTeam(team, sides[t], leagueAvg).forEach(r => { if (r.bpm != null) out.set(r.id, { bpm: r.bpm, obpm: r.obpm, dbpm: r.dbpm }); });
+  });
+  return out;
+}
+
 return {
-  forLeague, forTeam, teamInputs,
+  forLeague, forTeam, teamInputs, gameFromBox,
   estimatedPossessions, per100, estimatePosition, estimateOffensiveRole,
   rawBPM, positionConstant, teamAdjustment, lerp,
   COEF_BPM_POSITION, COEF_BPM_ROLE, POS_CONST_BPM

@@ -738,6 +738,12 @@ jobs:
         # counting a three as one and a half makes), the court's bands on the pills, a thin row hatched; kit/shotchart.css
         run: node supabase/tests/zone-table.test.mjs
 
+      - name: The player profile's game log, on/off deltas, position breakdown and career stats
+        # p/gamelog.js (a statistic charted game by game, percentages as makes over attempts, the game's BPM); bpm.js
+        # gameFromBox; wowy.js deltaCell / onOffTiles and p/withui.js; p/player.js paintPosBreakdown (files first, the
+        # lineups ranked as the depth chart ranks them) and paintCareer; seasonbar.js compLabel; p/index.html's wiring
+        run: node supabase/tests/player-profile.test.mjs
+
       - name: Stat explainers and the stat popup - every percentile bar explained, labels never overlap
         # statinfo.js has an entry for every key in player.js BAR_SECTIONS (and its lower-is-better flag matches BAR_LOW);
         # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart

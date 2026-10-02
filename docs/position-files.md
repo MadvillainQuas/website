@@ -45,6 +45,10 @@ The function uses the **latest season file** built for the competition (`data.js
 
 The box scores and the season line are now read only for the projected chart, which is used when a club has no lineups at all.
 
+## How the player page reads them
+
+The player profile's position breakdown (`p/player.js` `paintPosBreakdown`, `docs/player-profile.md`) reads the same files for the games of the season and competition shown, newest three first, and takes the player's own seconds at each position. Without any file it ranks the lineups he was in, as above.
+
 ## Deploying
 
 1. Apply the migration: `npx supabase db push` (0216 creates `pos_files`).

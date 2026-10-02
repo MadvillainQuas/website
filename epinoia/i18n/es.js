@@ -1709,7 +1709,39 @@
       'Order by winning percentage': 'Ordenar por porcentaje de victorias',
       'Order by league points: the official order': 'Ordenar por puntos de liga: el orden oficial',
       'below break-even': 'por debajo del punto de equilibrio',
-      'fg% and efg% are coloured as the court is: against the zone’s break-even (paint 58%, mid-range 40%, three 35%), and a cut of several zones against the mix it was shot from; the figure under each is the gap': 'el TC% y el eFG% se colorean como la pista: frente al punto de equilibrio de la zona (zona 58 %, media distancia 40 %, triple 35 %), y un corte de varias zonas frente a la mezcla desde la que se tiró; la cifra de debajo es la diferencia'
+      'fg% and efg% are coloured as the court is: against the zone’s break-even (paint 58%, mid-range 40%, three 35%), and a cut of several zones against the mix it was shot from; the figure under each is the gap': 'el TC% y el eFG% se colorean como la pista: frente al punto de equilibrio de la zona (zona 58 %, media distancia 40 %, triple 35 %), y un corte de varias zonas frente a la mezcla desde la que se tiró; la cifra de debajo es la diferencia',
+      'Career stats': 'Estadísticas de carrera',
+      'the competition these numbers come from': 'la competición de la que salen estas cifras',
+      'find a season, team or competition': 'Busca una temporada, equipo o competición',
+      'personal fouls': 'faltas personales',
+      'field goal percentage': 'porcentaje de tiros de campo',
+      'three-point percentage': 'porcentaje de triples',
+      'free throw percentage': 'porcentaje de tiros libres',
+      'true shooting percentage': 'porcentaje de tiro verdadero',
+      'plus-minus': 'más/menos',
+      'box plus/minus': 'box plus/minus',
+      'statistic to chart': 'estadística del gráfico',
+      'avg of games': 'media de los partidos',
+      '1st half → 2nd': '1.ª mitad → 2.ª',
+      'best': 'mejor',
+      'season average': 'media de la temporada',
+      'no attempt': 'sin intentos',
+      'No teammate picked yet: this player’s own numbers over these games, for reference.': 'Aún no has elegido compañero: las cifras propias de este jugador en estos partidos, como referencia.',
+      'fewer': 'menos',
+      'this player’s own numbers per 36 minutes, with the teammates picked on the floor against with none of them on': 'las cifras propias de este jugador por 36 minutos, con los compañeros elegidos en pista frente a sin ninguno de ellos',
+      'green is better, red worse (fewer turnovers are better)': 'verde es mejor, rojo peor (menos pérdidas es mejor)',
+      'grey is only a style: how many shots a player takes is the role': 'gris es solo un estilo: cuántos tiros hace un jugador depende de su rol',
+      'off the floor': 'fuera de pista',
+      'net rating per 100 possessions': 'rating neto por 100 posesiones',
+      'effective fg%': 'eFG%',
+      'opponents’ effective fg%': 'eFG% rival',
+      'the team’s numbers in the minutes this player was on the floor and the minutes off it': 'las cifras del equipo en los minutos de este jugador en pista y en los que estuvo fuera',
+      'green is better for the team with this player on, red worse (a lower defensive rating, turnover rate and opponents’ shooting are better)': 'verde es mejor para el equipo con este jugador en pista, rojo peor (un rating defensivo, un porcentaje de pérdidas y un tiro rival más bajos son mejores)',
+      'grey is only a style': 'gris es solo un estilo',
+      'position breakdown': 'minutos por posición',
+      'over half': 'más de la mitad',
+      'under 10%': 'menos del 10%',
+      'never': 'nunca'
     },
 
     ctx: {
@@ -2381,7 +2413,8 @@
         'AS': 'As',
         'BS': 'Tap',
         'ST': 'Rec',
-        'AGE': 'Edad'
+        'AGE': 'Edad',
+        'COMP': 'COMP.'
       },
       /* a standings row (a PA beside it), as Spanish standings write it (PJ PG PP PF PC PT) */
       standings: {
@@ -2482,6 +2515,25 @@
       },
       gtab: {
         'advanced stats': 'Estadísticas avanzadas'
+      },
+      onoff: {
+        'on': 'en pista',
+        'off': 'fuera',
+        'on − off': 'en pista − fuera',
+        'with': 'con',
+        'without': 'sin',
+        'with − without': 'con − sin',
+        'net rating': 'rating neto',
+        'offensive rating': 'rating ofensivo',
+        'defensive rating': 'rating defensivo',
+        'turnover %': '% de pérdidas',
+        'offensive rebound %': '% de rebote ofensivo',
+        'FG%': 'TC%'
+      },
+      gamelog: {
+        'a game': 'un partido',
+        'won': 'victoria',
+        'lost': 'derrota'
       }
     },
 
@@ -2509,7 +2561,9 @@
       'lineup': '{n} quinteto', 'season': '{n} temporada', 'seasons': '{n} temporadas', 'readings': '{n} lecturas',
       'mpg': '{n} min/p', 'gp': '{n} PJ',
       'country': '{n} país', 'countries': '{n} países', 'article': '{n} noticia',
-      'live': '{n} en directo'
+      'live': '{n} en directo',
+      'competition': '{n} competición',
+      'competitions': '{n} competiciones'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */
@@ -2573,6 +2627,19 @@
     patterns: [
       /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
       [/^fewer than (\d+) attempts$/, 'menos de $1 intentos'],
+      /* the player profile (2026-10-02): career stats, the game log, on the floor with, the position breakdown */
+      [/^the newest (\d+)$/, 'las $1 más recientes'],
+      [/^chart (.+) game by game$/, (m, T) => 'ver ' + T(m[1]) + ' partido a partido en el gráfico'],
+      [/^(.+) game by game$/, (m, T) => T(m[1]) + ' partido a partido'],
+      [/^last (\d+)$/, 'últimos $1'],
+      [/^last (\d+) games, running$/, 'media de los últimos $1 partidos'],
+      [/^([+−±][\d.,]+) on his (season|average) \(([^)]+)\)$/, m => m[1] + ' sobre su ' + (m[2] === 'season' ? 'temporada' : 'media') + ' (' + m[3] + ')'],
+      [/^\+(\d+) more$/, '+$1 más'],
+      [/^(\d+) minutes together$/, '$1 minutos juntos'],
+      [/^(point guard|shooting guard|small forward|power forward|centre): (\d+)% of his minutes$/,
+        m => ({ 'point guard': 'base', 'shooting guard': 'escolta', 'small forward': 'alero', 'power forward': 'ala-pívot', 'centre': 'pívot' })[m[1]] + ': ' + m[2] + '% de sus minutos'],
+      [/^minutes at each position: (.+)$/, m => 'minutos por posición: ' + m[1].replace(/point guard|shooting guard|small forward|power forward|centre/g,
+        p => ({ 'point guard': 'base', 'shooting guard': 'escolta', 'small forward': 'alero', 'power forward': 'ala-pívot', 'centre': 'pívot' })[p])],
       /* the club page's season line and chips */
       [/^Nobody in the scope has started (\d+) games yet \(the most is (\d+)\), so only that game’s starting five counts for now\.$/,
         'Nadie en este ámbito ha sido titular en $1 partidos todavía (el máximo es $2), así que por ahora solo cuenta el quinteto inicial de cada partido.'],

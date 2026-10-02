@@ -509,6 +509,34 @@ ok('series colours match the compare chart and avoid --good and --flare',
    !/ft-chip[^{]*\{[^}]*var\(--(good|flare)\)/.test(css));
 ok('the tray has a light-theme surface', /:root\[data-theme="light"\] \.ft-tray\{/.test(css));
 
+/* ---- 11. the competition column (a player's career stats, 2026-10-02) ------------------------------------------ */
+console.log('\nthe competition column: a career table, one row a season and competition');
+{
+  const career = [
+    { id: 'k1', name: '2026/27', teamName: 'LON', compLabel: 'SLB', gp: 3, min: 66, mpg: 22, ppg: 12.3, pts: 37 },
+    { id: 'k2', name: '2026/27', teamName: 'LLI', compLabel: 'EuroCup', gp: 1, min: 23, mpg: 23, ppg: 5, pts: 5 },
+    { id: 'k3', name: '2025/26', teamName: 'LON', compLabel: 'SLB', gp: 30, min: 800, mpg: 27, ppg: 14, pts: 420 }
+  ];
+  const { host: hc, api: ac } = draw({ rows: career, nameLabel: 'SEASON', compColumn: true, sortKey: 'rank', sortDir: 1 });
+  const hd0 = heads(hc);
+  ok('COMP sits beside the club, before GP and MPG: # SEASON TEAM COMP GP MPG', same(hd0.slice(0, 6), ['#', 'SEASON', 'TEAM', 'COMP', 'GP', 'MPG']), hd0.join(' '));
+  ok('...and in every preset, locked like the club, GP and MPG', ['totals', 'shooting', 'advanced', 'onoff'].every(k => {
+    const b = pill(hc, k); if (!b) return true; b.fire('click'); const x = heads(hc); return x[2] === 'TEAM' && x[3] === 'COMP';
+  }), heads(hc).join(' '));
+  pill(hc, 'basic').fire('click');
+  ok('a season with two competitions is two rows, each naming its own, in the order they came (newest first)',
+     same(bodyRows(hc).map(r => r.children[1].textContent + ':' + r.children[3].textContent), ['2026/27:SLB', '2026/27:EuroCup', '2025/26:SLB']),
+     bodyRows(hc).map(r => r.children[1].textContent + ':' + r.children[3].textContent).join());
+  ok('...the tally counts competitions, the search looks for one', hc.querySelector('span.ft-tally').textContent === '3 competitions' &&
+     hc.querySelector('input.grow').placeholder === 'find a season, team or competition…');
+  const qc = hc.querySelector('input.grow');
+  qc.value = 'euro'; qc.fire('input'); flushTimers();
+  ok('...and finds it', ac.getView().length === 1 && ac.getView()[0].id === 'k2', ac.getView().map(r => r.id).join());
+  ok('...a table that does not ask has no COMP column', !heads(draw({ rows: plain(3) }).host).includes('COMP'));
+  ok('the column is not in the drawer, and sorts like any text column', /COMP_COL = opts\.compColumn && !isTeam \? \{ k: 'compLabel', l: 'COMP', g: \['comp'\], text: true,/.test(rd('epinoia', 'fulltable.js')) &&
+     /\(COMP_COL && k === COMP_COL\.k \? COMP_COL : null\)/.test(rd('epinoia', 'fulltable.js')));
+}
+
 globalThis.setTimeout = realSetTimeout; globalThis.clearTimeout = realClearTimeout;
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -180,14 +180,17 @@ async function readExtras(sb, comps) {
   return out;
 }
 
-/* every player line of the week's finals, ready for socialcard.js's weekstars() to rank */
+/* every player line of the week's finals, ready for socialcard.js's weekstars() to rank, each with its game's BPM */
 function starEntries(data, team) {
+  const SC = root.EpinoiaSocialCard;
   const out = [];
   data.finals.forEach(g => {
-    (data.players.get(g.id) || []).forEach(p => {
+    const players = data.players.get(g.id) || [];
+    const bp = SC && SC.gameBPMs ? SC.gameBPMs(players) : new Map();
+    players.forEach(p => {
       const mine = p.team_idx === 0 ? 0 : 1;
       const name = (p.stats.adv && p.stats.adv.name) || '';
-      out.push({ key: g.id + ':' + mine + ':' + name, stats: p.stats, name, gameId: g.id,
+      out.push({ key: g.id + ':' + mine + ':' + name, stats: p.stats, name, gameId: g.id, bpm: bp.has(p) ? bp.get(p) : null,
         team: team(mine ? g.away_team_id : g.home_team_id), opp: team(mine ? g.home_team_id : g.away_team_id),
         teamScore: mine ? g.away_score : g.home_score, oppScore: mine ? g.home_score : g.away_score });
     });
@@ -231,10 +234,11 @@ function items(data, size, crestOf) {
     const p = SC.performer(base);
     if (p) out.push({ group: 'games', title: 'Player of the game · ' + p.player.name, model: p });
   });
-  /* the player of the week: the best game score of the week's players of the game, when there was more than a game */
+  /* the player of the week: the best BPM of the week's players of the game, when there was more than a game */
   const stars = out0.filter(x => x.model.kind === 'performer');
+  const bpmOf = m => (m.bpm == null ? -Infinity : m.bpm);
   if (stars.length > 1) {
-    const best = stars.slice().sort((a, b) => b.model.gameScore - a.model.gameScore)[0].model;
+    const best = stars.slice().sort((a, b) => bpmOf(b.model) - bpmOf(a.model) || (b.model.stats.pts || 0) - (a.model.stats.pts || 0))[0].model;
     const g = data.finals.find(x => x.id === best.gameId);
     if (g) {
       const c = data.comps.find(x => x.id === g.competition_id) || {};
@@ -359,8 +363,9 @@ function decorateStandings(standings, lines, keys, opts, only) {
   return { standings: out, cat };
 }
 
-/* The month's stars. Each player's month worked out by the site's engine over the month's games; ranked by average game score
-   (the default), by points a game, by one column of the catalogue (`stat`), or by the person's pick; `minGames` keeps out a
+/* The month's stars. Each player's month worked out by the site's engine over the month's games; ranked by his BPM over the
+   month (the default; 'gs', the average game score it replaced on 2026-10-02, means it too), by points a game, by one column
+   of the catalogue (`stat`), or by the person's pick; `minGames` keeps out a
    player who played too little to be a star (0 or 'auto': two fifths of the most anyone played, at least one). Each is shown with the
    catalogue keys asked (per game unless another is chosen) and his best game under his name. Returns the model. */
 function monthStars(data, lines, sel, crestOf) {
@@ -369,26 +374,30 @@ function monthStars(data, lines, sel, crestOf) {
   const empty = { model: null, reason: 'No game finished in ' + b.label + '.', games: only.size, pool: [] };
   if (!only.size) return empty;
   const pl = X.byId('player', sel.opts), rows = X.rowsOf(lines, only).players;
-  const gsOf = new Map(), best = new Map();
-  lines.pgs.forEach(r => {
-    if (!only.has(r.game_id)) return;
-    const id = r.player_uuid || r.player_id, s = r.stats || {};
-    if (!id || !(+s.min > 0)) return;
-    const gs = SC.gameScore({ pts: s.pts, p2m: s.p2m, p2a: s.p2a, p3m: s.p3m, p3a: s.p3a, fta: s.fta, ftm: s.ftm, or: s.or, dr: s.dr, stl: s.stl, ast: s.ast, blk: s.blk, pf: s.pf, to: s.to });
-    const a = gsOf.get(id) || { sum: 0, n: 0 }; a.sum += gs; a.n++; gsOf.set(id, a);
-    if (!best.has(id) || gs > best.get(id).gs) best.set(id, { gs, r, s });
+  /* each player's best game of the month, by its BPM (the game's lines, both sides: socialcard.js gameBPMs) */
+  const best = new Map(), byGame = new Map();
+  lines.pgs.forEach(r => { if (only.has(r.game_id)) { if (!byGame.has(r.game_id)) byGame.set(r.game_id, []); byGame.get(r.game_id).push(r); } });
+  byGame.forEach(list => {
+    const bp = SC.gameBPMs(list);
+    list.forEach(r => {
+      const id = r.player_uuid || r.player_id, s = r.stats || {};
+      if (!id || !(+s.min > 0)) return;
+      const v = bp.has(r) ? bp.get(r) : -Infinity;
+      const was = best.get(id);
+      if (!was || v > was.v || (v === was.v && (+s.pts || 0) > (+was.s.pts || 0))) best.set(id, { v, r, s });
+    });
   });
   const most = rows.reduce((a, r) => Math.max(a, r.gp || 0), 0);
   const min = sel.minGames > 0 ? +sel.minGames : Math.max(1, Math.ceil(most * 0.4));
   const keys = sel.keys && sel.keys.length ? sel.keys : ['c:ppg', 'c:rpg', 'c:apg'];
-  const by = sel.by || 'gs', rankCol = pl.get(sel.stat || 'c:ppg') || pl.get('c:ppg');
+  const by = !sel.by || sel.by === 'gs' ? 'bpm' : sel.by, rankCol = pl.get(sel.stat || 'c:ppg') || pl.get('c:ppg');
   const eligible = rows.filter(r => (r.gp || 0) >= min);
   const teamOf = r => team(r.teamId);
   const entries = eligible.map(r => {
     const bst = best.get(r.id), g = bst && lines.games.find(x => x.id === bst.r.game_id);
     const oppId = g ? (bst.r.team_idx === 0 ? g.away_team_id : g.home_team_id) : null;
     const out = {}; keys.forEach(k => { const c = pl.get(k); if (c) out[k] = X.text(c, r); });
-    const score = by === 'stat' ? X.value(rankCol, r) : by === 'pts' ? (r.ppg == null ? null : r.ppg) : (gsOf.get(r.id) ? gsOf.get(r.id).sum / gsOf.get(r.id).n : null);
+    const score = by === 'stat' ? X.value(rankCol, r) : by === 'pts' ? (r.ppg == null ? null : r.ppg) : (r.bpm == null || isNaN(r.bpm) ? null : +r.bpm);
     return { key: r.id, name: r.name || '', stats: { adv: { name: r.name || '', num: r.jersey } }, out, score, low: by === 'stat' && X.isLow(rankCol),
       team: teamOf(r), sub: 'GP ' + r.gp + (bst ? ' · best ' + bst.s.pts + ' pts v ' + ((data.teams.get(oppId) || lines.teams.get(oppId) || {}).name || '?') : '') };
   }).filter(e => e.score != null);
@@ -462,11 +471,10 @@ function builderModel0(data, sel, size, crestOf) {
     const entries = starEntries(data, team);
     const comp = data.comps.length > 1 ? 'All competitions' : (data.comps[0] || {}).name || L.name;
     const model = SC.weekstars({ entries, league: L, comp, range: rangeLabel(data.since, data.now), by: s.by, picks: s.picks });
-    /* the week's players to pick from, best first (a player once, his best game) */
-    const cands = SC.weekstars({ entries, league: L, by: 'gs' });
-    const all = entries.slice().sort((a, b) => SC.gameScore(b.stats) - SC.gameScore(a.stats)), seen = new Set(), pool = [];
+    /* the week's players to pick from, best first (a player once, his best game, by its BPM) */
+    const nightOf = e => (e.bpm == null ? -Infinity : e.bpm);
+    const all = entries.slice().sort((a, b) => (nightOf(b) - nightOf(a)) || ((b.stats.pts || 0) - (a.stats.pts || 0))), seen = new Set(), pool = [];
     all.forEach(e => { const k = e.name + '|' + e.team.name; if (!seen.has(k)) { seen.add(k); pool.push({ key: e.key, name: e.name, team: e.team.name, pts: e.stats.pts }); } });
-    void cands;
     return { model: model.rows.length ? model : null, pool: pool.slice(0, 20), reason: s.by === 'pick' ? 'Pick up to five players from the week.' : 'No player lines in this week.' };
   }
   const compOf = id => data.comps.find(c => c.id === id) || {};
@@ -474,7 +482,9 @@ function builderModel0(data, sel, size, crestOf) {
   if (tpl === 'result' || tpl === 'star') {
     const g = data.finals.find(x => x.id === s.gameId) || data.finals[data.finals.length - 1];
     if (!g) return { model: null, reason: 'No game has finished in this week.' };
-    const players = (data.players.get(g.id) || []).slice().sort((a, b) => SC.gameScore(b.stats) - SC.gameScore(a.stats));
+    const all = data.players.get(g.id) || [], bp = SC.gameBPMs(all);
+    const nightOf = p => (bp.has(p) ? bp.get(p) : -Infinity);
+    const players = all.slice().sort((a, b) => (nightOf(b) - nightOf(a)) || ((b.stats.pts || 0) - (a.stats.pts || 0)));
     const base = { game: g, home: team(g.home_team_id), away: team(g.away_team_id), players, perQ: data.perQ.get(g.id), league: L,
                    comp: nameOf(compOf(g.competition_id)) };
     if (tpl === 'result') return { model: SC.result(base), game: g, players, reason: '' };

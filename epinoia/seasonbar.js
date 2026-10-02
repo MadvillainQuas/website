@@ -112,16 +112,21 @@ const bareComp = n => String(n == null ? '' : n)
   .replace(/\s*\(?\b(\d{4}|\d{2})\s*[-/–]\s*(\d{4}|\d{2})\)?\s*$/, '')
   .replace(/^\s*\(?(\d{4}|\d{2})\s*[-/–]\s*(\d{4}|\d{2})\)?\s+/, '').trim();
 const KIND_WORD = { cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
+/* a competition named only for what it is, which says nothing without its league */
+const GENERIC = /^(the )?(cup|trophy|play-?offs?|playoff|final four|finals?|friendl(y|ies)|league|regular season|championship)$/i;
 /* A COMPETITION AS A READER NAMES IT: its league, and what kind of competition it is when it is not the league itself --
-   SLB, SLB Cup, EuroCup. The club's season card and the player profile's competition column, buttons and game log say
-   it with this. c: { name, kind, league: { name, slug, initials } } (a league's name alone will do). */
+   SLB, SLB Cup, EuroCup. A cup or a trophy with a name of its own keeps it (Copa Princesa). The club's season card and
+   the player profile's competition column, chips and game log say it with this.
+   c: { name, kind, league: { name, slug, initials } } (a league's name alone will do). */
 function compLabel(c) {
   if (!c) return '';
   const kind = c.kind || 'league';
   if (kind === 'friendly') return KIND_WORD.friendly;
   const ab = leagueAbbr(c.league);
-  if (!ab) return bareComp(c.name) || String(c.name || '');
-  return kind === 'league' ? ab : ab + ' ' + (KIND_WORD[kind] || kind);
+  const bare = bareComp(c.name);
+  if (!ab) return bare || String(c.name || '');
+  if (kind === 'league') return ab;
+  return bare && !GENERIC.test(bare) ? bare : ab + ' ' + (KIND_WORD[kind] || kind);
 }
 /* ...for a set of competitions shown together, where two would read the same (two of a league's competitions of one
    kind in a season): those two say their own names after the league's. -> Map id -> label */

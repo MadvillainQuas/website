@@ -6,7 +6,7 @@
    What is held here (the pure parts; the screen itself is looked at in a browser):
      * the week's posts are sorted by kind, each kind counted, and a filter keeps exactly one kind
        (results / stars / table / week ahead / roundup); a kind with nothing is not offered;
-     * a player of the week is offered only when there were several games, and is the best game score of them;
+     * a player of the week is offered only when there were several games, and is the best BPM of them (each game's own);
      * the week picker: this week, last week, further back (never forward, never past a year); an earlier week
        reads the seven days ending then, has finals and their players, and no table and no week ahead;
      * one competition's view of the week holds its games, its table and no other's;
@@ -31,7 +31,7 @@ const ok = (name, cond, extra = '') => {
 const sandbox = { console, module: undefined, setTimeout, clearTimeout, Intl, TextEncoder };
 sandbox.self = sandbox; sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
-for (const f of ['epinoia/reportcard.js', 'epinoia/socialcard.js', 'epinoia/admin/socialgfx-ui.js', 'epinoia/admin/graphics-ui.js']) {
+for (const f of ['epinoia/bpm.js', 'epinoia/reportcard.js', 'epinoia/socialcard.js', 'epinoia/admin/socialgfx-ui.js', 'epinoia/admin/graphics-ui.js']) {
   vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 }
 const SC = sandbox.EpinoiaSocialCard, GX = sandbox.EpinoiaSocialGfx, UI = sandbox.EpinoiaGraphicsUI;
@@ -99,12 +99,13 @@ ok('two competitions: a roundup and a week ahead for each that has them, a table
    byType('roundup') === 2 && byType('ahead') === 1 + 0 + 1 - 0 && byType('table') === 1 && byType('results') === 5, ['roundup', 'ahead', 'table', 'results', 'stars'].map(t => t + ':' + byType(t)).join(' '));
 ok('...the stars: a player of the game for each of the five, a player of the week, and the stars of the week (there were several games)', byType('stars') === 7
    && list.filter(x => x.type === 'stars').some(x => x.model.label === 'Player of the week'));
-const best = list.filter(x => x.type === 'stars' && x.model.label !== 'Player of the week').sort((a, b) => b.model.gameScore - a.model.gameScore)[0];
+const nightOf = m => (m.bpm == null ? -Infinity : m.bpm);
+const best = list.filter(x => x.type === 'stars' && x.model.label !== 'Player of the week').sort((a, b) => nightOf(b.model) - nightOf(a.model))[0];
 ok('the stars of the week are a card of their own under Stars: five players, ranked, one per player', (() => { const w = list.find(x => x.model.kind === 'weekstars'); return w && w.type === 'stars' && w.group === 'week' && w.model.rows.length === 5
-   && new Set(w.model.rows.map(r => r.name + r.team.name)).size === 5 && w.model.rows.every((r, i) => i === 0 || r.gameScore <= w.model.rows[i - 1].gameScore); })());
-ok('...built for the builder by game score, by points, or by pick (in the order given); earlier weeks too', (() => {
+   && new Set(w.model.rows.map(r => r.name + r.team.name)).size === 5 && w.model.rows.every((r, i) => i === 0 || nightOf(r) <= nightOf(w.model.rows[i - 1])) && w.model.by === 'bpm'; })());
+ok('...built for the builder by the game\'s BPM, by points, or by pick (in the order given); earlier weeks too', (() => {
   const g = by => GX.builderModel(now0, { tpl: 'weekstars', by }, 'portrait', null);
-  const pts = g('pts').model.rows.map(r => r.stats.pts), pool = g('gs').pool;
+  const pts = g('pts').model.rows.map(r => r.stats.pts), pool = g('bpm').pool;
   const pick = GX.builderModel(now0, { tpl: 'weekstars', by: 'pick', picks: [pool[3].key, pool[0].key] }, 'portrait', null).model;
   return pts.every((v, i) => i === 0 || v <= pts[i - 1]) && pool.length > 5 && pick.rows.map(r => r.name).join() === pool[3].name + ',' + pool[0].name
     && GX.builderModel(now0, { tpl: 'weekstars', by: 'pick', picks: [] }, 'portrait', null).model === null && GX.builderModel(last, { tpl: 'weekstars' }, 'portrait', null).model !== undefined;

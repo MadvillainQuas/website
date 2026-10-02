@@ -686,26 +686,115 @@ function segs(name, opts, cur, pick) {
   return g;
 }
 
-/* HIS ESTIMATED POSITION, IN THE IDENTITY BAND where the listed position sits: the same guard / wing / big the "adjust for
-   position" switch ranks him in (season.js positionGroups: what he did with the ball and on the boards, corrected by the
-   position the club listed). Always shown once the season is known, whether or not the switch is on; a listed position, if
-   the club gave one, stays beside it. */
-const EST_POS = { G: 'guard', F: 'wing', C: 'big' };
-function paintEstPos(mine, field) {
-  const sub = document.querySelector('.idmeta .sub');
-  if (!sub) return;
-  const old = sub.querySelector('.est-pos');
-  if (old) old.remove();
-  const SE = window.EpinoiaSeason;
-  const g = mine && field && field.length >= 3 && SE && SE.positionGroups ? SE.positionGroups(field).get(mine.id) : null;
-  if (!g) return;
-  const chip = el('span', 'pos-chip est-pos', 'EST POS: ' + EST_POS[g]);
-  chip.title = 'Estimated position: worked out from his rebounds, assists, blocks, steals and fouls as a share of his team\u2019s, ' +
-    'corrected by the position the club lists. It is the group "adjust for position" ranks him in.';
-  const listed = sub.querySelector('.pos-chip');
-  /* after the listed position, else after the club and league - never after a button appended since */
-  const after = listed || sub.querySelector('.sub-break') || sub.querySelector('.sub-league') || sub.firstElementChild;
-  if (after) after.after(chip); else sub.appendChild(chip);
+/* ---- POSITION BREAKDOWN (2026-10-02, in place of the estimated-position chip) ----
+   THE SHARE OF HIS MINUTES AT EACH POSITION, point guard to centre, in the games of the season and competition shown: each
+   five he was in is ranked point guard to centre (t/depth.js floorPos, the club page's depth chart's own ranking) and its
+   minutes go to his place in it. Each game is read from its position file (snapshots/pos/<game>.json, docs/position-
+   files.md) where it has one, or else from its lineups -- the ones "on the floor with" has already read where it has, the
+   rest read here -- each five ranked by its players' positions on the season line, their listed positions and heights. */
+let POS_RUN = 0;
+const CLUB_STINTS = new Map();          // game id -> its lineup stints (both sides), as "on the floor with" read them
+async function paintPosBreakdown(rows, field) {
+  const host = $('#idpos');
+  const X = window.EpinoiaDepth, D = window.EpinoiaData;
+  const run = ++POS_RUN;
+  if (!host) return;
+  const mine = (rows || []).filter(r => r && r.game_id && r.player_uuid && (r.team_idx === 0 || r.team_idx === 1) &&
+    (!SCOPE_IDS || !SCOPE_IDS.length || SCOPE_IDS.indexOf((r.games || {}).competition_id) >= 0));
+  if (!X || !X.floorPos || !D || !mine.length) { host.hidden = true; host.textContent = ''; return; }
+  const sideOf = {}, who = {};
+  mine.forEach(r => { sideOf[r.game_id] = r.team_idx; who[r.game_id] = r.player_uuid; });
+  const ids = Object.keys(sideOf);
+  const sec = [0, 0, 0, 0, 0];
+  const games = new Set();
+  /* the newest three games' files first: none there (a members-only league, or before the files were written), and
+     no more are asked for -- the club page's rule (team.js depthShares) */
+  let files = new Map();
+  try {
+    if (D.posFiles) {
+      const when = id => String(((mine.find(r => r.game_id === id) || {}).games || {}).tipoff_at || '');
+      const order = ids.slice().sort((a, b) => when(b).localeCompare(when(a)));
+      files = await D.posFiles(order.slice(0, 3));
+      if (order.length > 3 && [...files.values()].some(Boolean)) (await D.posFiles(order.slice(3))).forEach((f, id) => files.set(id, f));
+    }
+  } catch (_) { /* the lineups, below */ }
+  const rest = [];
+  ids.forEach(id => {
+    const f = files.get(id);
+    if (!f || !(X.posFileOk ? X.posFileOk(f, id) : true)) { rest.push(id); return; }
+    const a = (f.t[sideOf[id]] || {})[who[id]];
+    if (!Array.isArray(a)) return;
+    let here = 0;
+    for (let k = 0; k < 5; k++) { const x = +a[k + 1] || 0; sec[k] += x; here += x; }
+    if (here > 0) games.add(id);
+  });
+  if (rest.length) {
+    try {
+      const need = rest.filter(id => !CLUB_STINTS.has(id));
+      if (need.length) {
+        const got = await D.stints(need);
+        need.forEach(id => CLUB_STINTS.set(id, []));
+        got.forEach(st => { if (CLUB_STINTS.has(st.game_id)) CLUB_STINTS.get(st.game_id).push(st); });
+      }
+      const st = rest.flatMap(id => (CLUB_STINTS.get(id) || []).map(x => Object.assign({}, x, { dur: x.dur != null ? x.dur : (x.stats || {}).dur })));
+      /* each player's place: his season line's position, his listing and his height (depth.js positionOf) */
+      const people = [...new Set(st.filter(x => x.team_idx === sideOf[x.game_id]).flatMap(x => x.player_ids || []))].filter(Boolean);
+      const meta = people.length && D.playerMeta ? await D.playerMeta(people).catch(() => ({})) : {};
+      const tall = new Map();
+      try {
+        for (let i = 0; i < people.length; i += 60) {
+          (await api('players?id=in.(' + people.slice(i, i + 60).join(',') + ')&select=id,height_cm')).forEach(p => tall.set(p.id, p.height_cm));
+        }
+      } catch (_) { /* positions from the season line and the listings */ }
+      const line = new Map((field || []).map(r => [r.id, r]));
+      const fp = X.floorPos(st, sideOf, id => X.positionOf({ position: (meta[id] || {}).position || '', height: tall.get(id) }, line.get(id) || null));
+      ((fp && fp.players) || []).forEach(p => {
+        if (!rest.some(gid => who[gid] === p.id)) return;
+        /* his minutes in those games only: a linked profile's id is one game's, and floorPos summed the games together */
+        p.min.forEach((m, k) => { sec[k] += m * 60; });
+      });
+      rest.forEach(gid => { if ((CLUB_STINTS.get(gid) || []).some(x => (x.player_ids || []).indexOf(who[gid]) >= 0)) games.add(gid); });
+    } catch (e) { console.warn('[positions]', e); }
+  }
+  if (run !== POS_RUN) return;
+  const total = sec.reduce((a, b) => a + b, 0);
+  host.textContent = '';
+  if (!(total > 0)) { host.hidden = true; return; }
+  const SL = X.SLOTS || [['PG', 'point guard'], ['SG', 'shooting guard'], ['SF', 'small forward'], ['PF', 'power forward'], ['C', 'centre']];
+  const pct = sec.map(x => 100 * x / total);
+  const top = pct.indexOf(Math.max(...pct));
+  const head = el('div', 'ip-h');
+  head.append(el('span', 'ip-l', 'position breakdown'),
+              el('span', 'ip-n', games.size + (games.size === 1 ? ' game · ' : ' games · ') + Math.round(total / 60) + ' min'));
+  /* A HALF COURT, AS THE SHORTLIST AND THE MODERN BOX SCORE DRAW ONE (2026-10-02): the five spots of the modern box score
+     (game/modern.js SLOTS, fractions of boxscore.js's court, the ring at the top), each a disc coloured by the share of his
+     minutes there, the way Football Manager colours a player's positions -- green where he lives, through yellow and
+     orange to an empty ring where he never plays -- his main position the largest, ringed */
+  const SPOTS = [[0.50, 0.84], [0.19, 0.62], [0.81, 0.62], [0.29, 0.31], [0.71, 0.22]];
+  const band = v => (v < 0.5 ? 0 : v < 10 ? 1 : v < 25 ? 2 : v < 50 ? 3 : 4);
+  const B = window.EpinoiaBox;
+  const court = el('div', 'ip-court');
+  court.setAttribute('role', 'img');
+  court.setAttribute('aria-label', 'minutes at each position: ' + SL.map((s2, k) => s2[1] + ' ' + Math.round(pct[k]) + '%').join(', '));
+  if (B && B.courtSVG) court.innerHTML = B.courtSVG(null, { plain: true });
+  const spots = el('div', 'ip-spots');
+  SL.forEach((s2, k) => {
+    const sp = el('span', 'ip-spot b' + band(pct[k]) + (k === top ? ' top' : ''));
+    sp.style.left = (SPOTS[k][0] * 100).toFixed(1) + '%';
+    sp.style.top = (SPOTS[k][1] * 100).toFixed(1) + '%';
+    sp.title = s2[1] + ': ' + Math.round(pct[k]) + '% of his minutes';
+    sp.append(el('b', null, s2[0]), el('i', null, Math.round(pct[k]) + '%'));
+    spots.appendChild(sp);
+  });
+  court.appendChild(spots);
+  const key = el('div', 'ip-key');
+  [['b4', 'over half'], ['b3', '25\u201350%'], ['b2', '10\u201325%'], ['b1', 'under 10%'], ['b0', 'never']].forEach(([c, t]) => {
+    const k = el('span', 'ip-kk');
+    k.append(el('i', c), document.createTextNode(t));
+    key.appendChild(k);
+  });
+  host.append(head, court, key);
+  host.hidden = false;
 }
 
 /* 3PT CONSISTENCY (consistency.js): worked out here, for this player alone, from his game log once it has been read -
@@ -758,7 +847,6 @@ function consistencyCard() {
 
 function paintBars(mine, field) {
   LAST_BARS = { mine, field };
-  paintEstPos(mine, field);
   /* the '?' in the section heading (statpop.js): the explainer for every main statistic below */
   try {
     const sh = $('#bars') && $('#bars').closest('.sec') && $('#bars').closest('.sec').querySelector('.sec-h');
@@ -882,120 +970,113 @@ function paintBars(mine, field) {
    wait for it; null when he is linked to nothing, or the database has not had 0178 yet. */
 let LINKED_P = Promise.resolve(null);
 
-/* Every competition this player has appeared in, newest first, aggregated
-   through the shared intermediary.
-
-   Bounded at eight: each season is a full aggregation, and a profile that
-   takes ten seconds to draw because somebody played for fifteen years is worse
-   than one that shows the last eight and says so. */
-const CAREER_MAX = 8;
-
-async function paintCareer(pl, current, team) {
+/* ---- CAREER STATS (2026-10-02) ----
+   EVERY SEASON AND EVERY COMPETITION HE HAS PLAYED, under this profile and every profile linked to it (0178), one row
+   each and newest first: a season with two competitions is two rows (Keenan Evans's SLB row and EuroCup row), and the
+   COMP column says which (fulltable.js compColumn: locked beside the club, GP and MPG in every preset). The club is the
+   one he played that competition for, not today's. Each row is the competition's own season line (D.season, the leaders
+   board's aggregation), so every column means what it means everywhere else.
+   THE ROWS ARE THE PAGE'S SEASON AND COMPETITION: pressing a season shows it on this profile -- the hero, the tiles, the
+   bars, the events and the game log -- as the chips under the hero do, and the row shown is marked. The seasons and
+   competitions are the chips' own (playerScopes). It was cut at the newest eight; now every one is read, three at a
+   time, up to a cap no career reaches. */
+const CAREER_CAP = 60;
+let CAREER = null;               // { rows, byHref, hooks } -- for marking the row shown and pressing a row
+async function paintCareer(pl, team, scopes, hooks) {
   const D = window.EpinoiaData;
   const host = $('#seasons');
   host.textContent = '';
-
-  /* HIS CAREER RUNS ACROSS EVERY PROFILE LINKED TO HIS: the same person written differently in another
-     competition's feed appears here as one row per competition, whichever profile it was played under */
-  const linked = await LINKED_P;
-  const ids = window.EpinoiaLinks ? window.EpinoiaLinks.playerIds(linked, pl.id) : [pl.id];
-  let appearances = [];
-  try {
-    appearances = await D.all(`player_season_stats?player_id=${ids.length > 1 ? 'in.(' + ids.join(',') + ')' : 'eq.' + pl.id}` +
-      `&select=competition_id,season_id,team_id,gp`);
-  } catch (e) { console.warn('[career]', e); }
-
-  if (!appearances.length) {
-    if (current) {
-      /* the intermediary found a season the view has not caught up with */
-      $('#seasonNote').textContent = current.gp + (current.gp === 1 ? ' game' : ' games');
-      return renderCareerRows(host, [Object.assign({}, current, {
-        name: ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim(),
-        teamName: (team && team.short_name) || '', teamShort: (team && team.short_name) || '',
-        colour: (team && team.colour) || null,
-        _club: (team && (team.name || team.short_name)) || ''
-      })], pl);
-    }
-    host.appendChild(el('div', 'empty',
-      'No finalised games yet — a season line appears once one is played.'));
+  const items = [];
+  ((scopes && scopes.seasons) || []).forEach(sn => sn.comps.forEach(c => items.push({ sn, c })));
+  if (!items.length) {
+    $('#seasonNote').textContent = '';
+    host.appendChild(el('div', 'empty', 'No finalised games yet — a season line appears once one is played.'));
     return;
   }
-
-  /* name the seasons and competitions so a row says which year it was */
-  const compIds = [...new Set(appearances.map(a => a.competition_id).filter(Boolean))];
-  let comps = [];
+  const shown = items.slice(0, CAREER_CAP);
+  /* the clubs he played each competition for: names, colours and crests */
+  const clubIds = [...new Set(shown.flatMap(x => x.c.teams || []))];
+  const clubs = new Map();
   try {
-    comps = await D.all(`competitions?id=in.(${compIds.join(',')})` +
-      `&select=id,name,seasons(id,name,starts_on,leagues(name,slug))`);
-  } catch (e) { console.warn('[career comps]', e); }
-  const compById = new Map(comps.map(c => [c.id, c]));
-
-  /* THE CLUB HE PLAYED FOR IN EACH, for the screenshot's TEAM column (the table's rows all
-     carry today's club). The full name: a short name is as often a three-letter code. */
-  const clubIds = [...new Set(appearances.map(a => a.team_id).filter(Boolean))];
-  let clubs = [];
-  try {
-    if (clubIds.length) clubs = await D.all(`teams?id=in.(${clubIds.join(',')})&select=id,name,short_name`);
+    if (clubIds.length) (await D.all(`teams?id=in.(${clubIds.join(',')})&select=id,name,short_name,colour,logo_path`)).forEach(t => clubs.set(t.id, t));
   } catch (e) { console.warn('[career clubs]', e); }
-  const clubName = new Map(clubs.map(t => [t.id, t.name || t.short_name]));
-  const clubsIn = cid => [...new Set(appearances.filter(a => a.competition_id === cid)
-    .map(a => clubName.get(a.team_id)).filter(Boolean))];
-
-  /* newest first, by the season's start date */
-  const ordered = compIds.slice().sort((a, b) => {
-    const sa = (compById.get(a) || {}).seasons || {};
-    const sb = (compById.get(b) || {}).seasons || {};
-    return String(sb.starts_on || '').localeCompare(String(sa.starts_on || ''));
-  });
-  const shown = ordered.slice(0, CAREER_MAX);
-
-  const rows = [];
-  for (const cid of shown) {
-    try {
-      const S = await D.season(cid, { rows: false, trim: true });
-      const row = S.players.find(r => r.id === pl.id) || S.players.find(r => ids.indexOf(r.id) >= 0);
-      if (!row) continue;
-      const c = compById.get(cid) || {};
-      const sn = c.seasons || {};
-      rows.push(Object.assign({}, row, {
-        /* the name column carries the season, since every row is the same
-           person and repeating their name down the table says nothing */
-        name: sn.name || c.name || '—',
-        teamName: (team && team.short_name) || '',
-        teamShort: (team && team.short_name) || '',
-        colour: (team && team.colour) || null,
-        _comp: c.name || '', _league: (sn.leagues && sn.leagues.name) || '',
-        _club: clubsIn(cid).join(' / ') || (team && (team.name || team.short_name)) || '',
-        _label: [sn.name, c.name].filter(Boolean).join(' · ')
-      }));
-    } catch (e) { console.warn('[career season]', cid, e); }
-  }
-
-  if (!rows.length) {
+  const rows = new Array(shown.length).fill(null);
+  let next = 0;
+  const work = async () => {
+    while (next < shown.length) {
+      const i = next++, { sn, c } = shown[i];
+      try {
+        const S = await D.season(c.id, { rows: false, trim: true });
+        const row = S.players.find(r => r.id === c.pid) || S.players.find(r => ((scopes && scopes.ids) || []).indexOf(r.id) >= 0);
+        if (!row) continue;
+        const cl = (c.teams || []).map(id => clubs.get(id)).filter(Boolean);
+        const top = cl[0] || null;                    // the club he played most of its minutes for
+        const short = c.short || c.name || '';
+        rows[i] = Object.assign({}, row, {
+          /* the name column carries the season: every row is the same person */
+          name: sn.label,
+          teamName: cl.length ? cl.map(t => t.short_name || t.name).join(' / ') : (row.teamName || ''),
+          teamShort: top ? (top.short_name || '') : (row.teamShort || ''), teamFull: top ? (top.name || '') : (row.teamFull || ''),
+          colour: top ? (top.colour || null) : (row.colour || null), teamLogo: top ? (top.logo_path || null) : (row.teamLogo || null),
+          compLabel: short, _comp: c.name || '', _league: c.league || '',
+          _club: cl.length ? cl.map(t => t.name || t.short_name).join(' / ') : (row.teamFull || row.teamName || ''),
+          _label: [sn.label, short].filter(Boolean).join(' · '),
+          _season: sn.label, _cid: c.id, _href: scopeHref(sn, c.id)
+        });
+      } catch (e) { console.warn('[career season]', c.id, e); }
+    }
+  };
+  await Promise.all([work(), work(), work()]);
+  const list = rows.filter(Boolean);
+  if (!list.length) {
+    $('#seasonNote').textContent = '';
     host.appendChild(el('div', 'empty', 'No finalised games yet.'));
     return;
   }
-
-  const games = rows.reduce((n, r) => n + (r.gp || 0), 0);
-  $('#seasonNote').textContent = rows.length +
-    (rows.length === 1 ? ' season · ' : ' seasons · ') + games +
-    (games === 1 ? ' game' : ' games') +
-    (ordered.length > shown.length ? ' · showing the last ' + CAREER_MAX : '');
-
-  renderCareerRows(host, rows, pl);
+  const nS = new Set(list.map(r => r._season)).size, games = list.reduce((n, r) => n + (r.gp || 0), 0);
+  $('#seasonNote').textContent = nS + (nS === 1 ? ' season · ' : ' seasons · ') +
+    list.length + (list.length === 1 ? ' competition · ' : ' competitions · ') + games + (games === 1 ? ' game' : ' games') +
+    (items.length > shown.length ? ' · the newest ' + CAREER_CAP : '');
+  CAREER = { rows: list, byHref: new Map(list.map(r => [r._href, r])), hooks: hooks || null };
+  renderCareerRows(host, list, pl);
 }
 
 function renderCareerRows(host, rows, pl) {
   window.EpinoiaTable.render({
-    host: '#seasons', kind: 'player', sortKey: 'gp', showMinGames: false, heat: false,
+    host: '#seasons', kind: 'player', sortKey: 'rank', sortDir: 1, showMinGames: false, heat: false,
     filename: (pl.slug || 'player') + '-career',
-    nameLabel: 'SEASON',
+    nameLabel: 'SEASON', compColumn: true,
+    /* a season is a link to it on this page (?s= and ?c=): a plain press redraws in place (below) */
+    playerHref: r => r._href || null,
+    onDraw: markCareer,
     /* the table drops the premium columns itself when this league's analytics are locked */
     leagueId: ACCESS_LEAGUE.id, leagueSlug: ACCESS_LEAGUE.slug,
     rows
   });
   paintSeasonShot(rows);
 }
+/* the row (or, for every competition of a season, the rows) the profile is showing */
+function markCareer() {
+  if (!CAREER) return;
+  const cur = CAREER.hooks && CAREER.hooks.current ? CAREER.hooks.current() : null;
+  document.querySelectorAll('#seasons table.ft tbody tr').forEach(tr => {
+    const a = tr.querySelector('.ft-name a');
+    const r = a ? CAREER.byHref.get(a.getAttribute('href')) : null;
+    const on = !!(cur && r && r._season === cur.label && (cur.kind === 'all' || r._cid === cur.kind));
+    tr.classList.toggle('cur', on);
+    if (a) { if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); }
+  });
+}
+document.addEventListener('click', e => {
+  const a = e.target && e.target.closest && e.target.closest('#seasons table.ft .ft-name a');
+  if (!a || !CAREER || !CAREER.hooks || !CAREER.hooks.pick) return;
+  /* a modified click is the reader asking for a new tab */
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+  const r = CAREER.byHref.get(a.getAttribute('href'));
+  if (!r) return;
+  e.preventDefault();
+  CAREER.hooks.pick(r._season, r._cid);
+});
 
 /* ------------------------------------------------------ the season, as a picture ---
    THE SAME ROWS, FRAMED TO BE CAPTURED. The full table is for reading; this is the per-game
@@ -1082,61 +1163,14 @@ document.addEventListener('click', e => {
 });
 
 /* -------------------------------------------------------------- game log --- */
-function paintLog(rows) {
-  const host = $('#log'); host.textContent = '';
-  if (!rows.length) {
-    host.appendChild(el('div', 'empty', 'No games yet.'));
-    return;
-  }
-  $('#logNote').textContent = rows.length + (rows.length === 1 ? ' game' : ' games');
-
-  const wrap = el('div', 'ft-wrap');
-  const t = el('table', 'ft');
-  const head = ['DATE', 'OPP', 'RES', 'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF', 'FG', '3PT', 'FT', '+/-'];
-  const thead = el('thead'), hr = el('tr');
-  head.forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));
-  thead.appendChild(hr); t.appendChild(thead);
-
-  const tb = el('tbody');
-  rows.forEach(r => {
-    const s = r.stats || {};
-    const g = r.games || {};
-    const tr = el('tr');
-    const date = g.tipoff_at
-      ? new Date(g.tipoff_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—';
-
-    const d0 = el('td', 'stick c0', date); tr.appendChild(d0);
-
-    const oppTd = el('td', 'stick c1');
-    const cell = el('div', 'ft-name');
-    if (r.__opp) {
-      const a = el('a', null, (r.__home ? 'v ' : '@ ') + r.__opp.name);
-      a.href = '../t/?t=' + encodeURIComponent(r.__opp.slug || '');
-      cell.appendChild(a);
-    } else cell.appendChild(el('span', null, '—'));
-    oppTd.appendChild(cell); tr.appendChild(oppTd);
-
-    const res = el('td', null, r.__res || '');
-    if (r.__res && r.__res.startsWith('W')) res.classList.add('pos');
-    if (r.__res && r.__res.startsWith('L')) res.classList.add('neg');
-    tr.appendChild(res);
-
-    const boxLink = '../game/?g=' + encodeURIComponent(r.game_id) + '&mode=supabase';
-    [Math.round((s.min || 0) / 60000) + "'", s.pts, (s.or || 0) + (s.dr || 0), s.ast,
-     s.stl, s.blk, s.to, s.pf,
-     `${(s.p2m || 0) + (s.p3m || 0)}-${(s.p2a || 0) + (s.p3a || 0)}`,
-     `${s.p3m || 0}-${s.p3a || 0}`, `${s.ftm || 0}-${s.fta || 0}`]
-      .forEach(v => tr.appendChild(el('td', null, v)));
-
-    const pmTd = el('td', null, (s.pm > 0 ? '+' : '') + (s.pm ?? ''));
-    if (s.pm > 0) pmTd.classList.add('pos'); else if (s.pm < 0) pmTd.classList.add('neg');
-    tr.appendChild(pmTd);
-
-    tr.style.cursor = 'pointer';
-    tr.addEventListener('click', () => { location.href = boxLink; });
-    tb.appendChild(tr);
-  });
-  t.appendChild(tb); wrap.appendChild(t); host.appendChild(wrap);
+/* THE GAME LOG (p/gamelog.js): a chart of any statistic over the season, picked by pressing it, over the table of his
+   games, each with its competition (comps: id -> SLB, EuroCup). A row opens the game's box score. */
+function paintLog(rows, comps) {
+  $('#logNote').textContent = rows.length ? rows.length + (rows.length === 1 ? ' game' : ' games') : '';
+  const GL = window.EpinoiaGameLog;
+  if (!GL) { $('#log').textContent = ''; return; }
+  GL.render({ host: '#log', rows, comps: comps || new Map(),
+              boxHref: id => '../game/?g=' + encodeURIComponent(id) + '&mode=supabase' });
 }
 
 /* Every league he has a roster entry in, read once per page however many callers ask
@@ -1228,10 +1262,12 @@ async function playerScopes(pl, team) {
   const byComp = new Map();
   apps.forEach(a => {
     if (!a.competition_id) return;
-    const gp = +a.gp || 0, min = +a.min || 0, cur = byComp.get(a.competition_id);
-    if (!cur) { byComp.set(a.competition_id, { pid: a.player_id, gp, min, best: min }); return; }
+    const gp = +a.gp || 0, min = +a.min || 0;
+    let cur = byComp.get(a.competition_id);
+    if (!cur) { cur = { pid: a.player_id, gp: 0, min: 0, best: min, clubs: new Map() }; byComp.set(a.competition_id, cur); }
+    else if (min > cur.best) { cur.pid = a.player_id; cur.best = min; }
     cur.gp += gp; cur.min += min;                    // a season at two clubs is two rows
-    if (min > cur.best) { cur.pid = a.player_id; cur.best = min; }
+    if (a.team_id) cur.clubs.set(a.team_id, (cur.clubs.get(a.team_id) || 0) + min);
   });
   if (!byComp.size && team && team.id) {
     try {
@@ -1243,7 +1279,7 @@ async function playerScopes(pl, team) {
   let comps = [];
   try {
     comps = await D.all(`competitions?id=in.(${[...byComp.keys()].join(',')})` +
-      `&select=id,name,kind,season_id,seasons(id,name,starts_on,leagues(name))`);
+      `&select=id,name,kind,season_id,seasons(id,name,starts_on,leagues(name,slug,initials))`);
   } catch (e) { console.warn('[scopes comps]', e); }
   const seasons = new Map();
   comps.forEach(c => {
@@ -1254,7 +1290,9 @@ async function playerScopes(pl, team) {
     if (sn.starts_on && (!S.starts_on || sn.starts_on > S.starts_on)) S.starts_on = sn.starts_on;
     const a = byComp.get(c.id) || {};
     S.comps.push({ id: c.id, name: c.name || '', kind: c.kind || 'league', league: (sn.leagues && sn.leagues.name) || '', pid: a.pid || pl.id,
-                   gp: a.gp || 0, min: a.min || 0 });
+                   gp: a.gp || 0, min: a.min || 0, leagueRow: sn.leagues || null,
+                   /* the clubs he played it for, the most minutes first (the career table's TEAM) */
+                   teams: a.clubs ? [...a.clubs.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]) : [] });
   });
   const SB = window.EpinoiaSeasonBar;
   const newest = SB && SB.newestFirst ? SB.newestFirst
@@ -1262,6 +1300,11 @@ async function playerScopes(pl, team) {
   const list = [...seasons.values()].sort(newest);
   /* most minutes first, so a season he played under two profiles opens on the one he mostly played */
   list.forEach(sn => sn.comps.sort((a, b) => (b.min - a.min) || (b.gp - a.gp) || String(a.name).localeCompare(String(b.name))));
+  /* each competition as a reader names it, within its season: SLB, SLB Cup, EuroCup (seasonbar.js compLabels) */
+  list.forEach(sn => {
+    const labs = SB && SB.compLabels ? SB.compLabels(sn.comps.map(c => ({ id: c.id, name: c.name, kind: c.kind, league: c.leagueRow || c.league }))) : new Map();
+    sn.comps.forEach(c => { c.short = labs.get(c.id) || c.name || ''; });
+  });
   return { ids, seasons: list };
 }
 /* ?s= is the season as a person writes it (2025/26), its name (2025-26) or its id; nothing, or nothing he played: the newest */
@@ -1293,18 +1336,42 @@ function paintScopeLabel(sn, kind) {
   const comps = sn.comps || [];
   const one = kind === 'all' ? (comps.length === 1 ? comps[0] : null) : comps.find(c => c.id === kind);
   host.append(el('span', 'is-l', 'season'), el('span', 'is-v', sn.label));
-  const c = one ? el('span', 'is-c', one.name || one.league || '') : el('span', 'is-c', 'all competitions');
+  const c = one ? el('span', 'is-c', one.short || one.name || one.league || '') : el('span', 'is-c', 'all competitions');
   if (one) c.setAttribute('translate', 'no');
   if (c.textContent) host.appendChild(c);
   host.hidden = false;
 }
+/* EACH GAME'S BPM (bpm.js gameFromBox, the box score page's own sum): every line of his games, both sides, read lean --
+   the numbers BPM needs out of each stats blob (aliases, since "or" and "to" are words PostgREST keeps) -- twenty games to
+   a request, so a request stays under the thousand rows the API returns. On each of his rows as __bpm. */
+const BPM_COLS = 'game_id,team_idx,player_uuid,' + [['pts', 'pts'], ['p2m', 'p2m'], ['p2a', 'p2a'], ['p3m', 'p3m'], ['p3a', 'p3a'],
+  ['fta', 'fta'], ['ftm', 'ftm'], ['oreb', 'or'], ['dreb', 'dr'], ['ast', 'ast'], ['stl', 'stl'], ['blk', 'blk'], ['tov', 'to'],
+  ['pf', 'pf'], ['min', 'min']].map(([a, k]) => a + ':stats->' + k).join(',');
+async function logBPM(rows) {
+  const B = window.EpinoiaBPM;
+  if (!B || !B.gameFromBox || !rows.length) return;
+  const gids = [...new Set(rows.map(r => r.game_id).filter(Boolean))];
+  const chunks = [];
+  for (let i = 0; i < gids.length; i += 20) chunks.push(gids.slice(i, i + 20));
+  const byGame = new Map();
+  (await Promise.all(chunks.map(c => api(`player_game_stats?game_id=in.(${c.join(',')})&select=${BPM_COLS}`)))).forEach(list => list.forEach(l => {
+    if (!byGame.has(l.game_id)) byGame.set(l.game_id, []);
+    byGame.get(l.game_id).push({ id: l.player_uuid, side: l.team_idx, stats: { min: l.min, pts: l.pts, p2m: l.p2m, p2a: l.p2a, p3m: l.p3m, p3a: l.p3a,
+      fta: l.fta, ftm: l.ftm, or: l.oreb, dr: l.dreb, ast: l.ast, stl: l.stl, blk: l.blk, to: l.tov, pf: l.pf } });
+  }));
+  rows.forEach(r => {
+    const b = B.gameFromBox(byGame.get(r.game_id) || []).get(r.player_uuid);
+    r.__bpm = b ? b.bpm : null;
+  });
+}
+
 /* THE GAME LOG OF THE SEASON SHOWN, every linked profile's games in it, with the opponent resolved from the game row:
    the competitions of the season, so 3PT CONSISTENCY (consistencyCard) reads the season the bars are from */
 async function seasonLog(ids, sn) {
   const who = ids.length > 1 ? 'in.(' + ids.join(',') + ')' : 'eq.' + ids[0];
   const comps = sn ? sn.comps.map(c => c.id) : [];
   const gl = await api(`player_game_stats?player_uuid=${who}` +
-    `&select=game_id,team_idx,stats,games!inner(tipoff_at,competition_id,home_score,away_score,status,` +
+    `&select=game_id,team_idx,player_uuid,stats,games!inner(tipoff_at,competition_id,home_score,away_score,status,` +
     `home:home_team_id(name,slug),away:away_team_id(name,slug))` +
     (comps.length ? `&games.competition_id=in.(${comps.join(',')})` : '') + `&limit=80`);
   const rows = gl.filter(r => r.games)
@@ -1321,9 +1388,11 @@ async function seasonLog(ids, sn) {
                                                  : 'L ' + us + '-' + them) : ''
       });
     });
-  paintLog(rows);
+  try { await logBPM(rows); } catch (e) { console.warn('[log bpm]', e); }
+  paintLog(rows, new Map((sn ? sn.comps : []).map(c => [c.id, c.short || c.name || ''])));
   LOG_ROWS = rows;                                   // 3PT CONSISTENCY is worked out now, from the log just read
   if (LAST_BARS) paintBars(LAST_BARS.mine, LAST_BARS.field);
+  paintPosBreakdown(rows, LAST_BARS && LAST_BARS.field).catch(e => console.warn('[positions]', e));
 }
 
 /* ------------------------------------------------------------------- boot --- */
@@ -1446,7 +1515,8 @@ async function seasonLog(ids, sn) {
     /* the label the events panel names its rows for: computed here, apart from
        any markup, and escaped by the panel itself */
     const fullName = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
-    const compName = c => c.name || KIND_LABEL[c.kind] || c.kind || '';
+    /* a competition as a reader names it (playerScopes: SLB, SLB Cup, EuroCup), its own name where there is no short one */
+    const compName = c => c.short || c.name || KIND_LABEL[c.kind] || c.kind || '';
     const paintScope = async kind => {
       scopeKind = kind;
       const comps = SEASON ? SEASON.comps : [];
@@ -1489,6 +1559,10 @@ async function seasonLog(ids, sn) {
       if (bn && kind !== 'all') bn.textContent = (bn.textContent || '').replace(/ · .*$/, '') + ' · ' + compName(comps.find(c => c.id === kind) || {});
       paintScopeLabel(SEASON, kind);
       document.querySelectorAll('#pscopeC .ep-chip').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
+      markCareer();
+      /* the breakdown follows the competition chosen; a new season's is drawn when its log arrives (seasonLog) */
+      if (LOG_ROWS && LOG_ROWS.some(r => ids.indexOf((r.games || {}).competition_id) >= 0)) paintPosBreakdown(LOG_ROWS, field).catch(() => {});
+      else { const ip = $('#idpos'); if (ip) { ip.hidden = true; ip.textContent = ''; } }
     };
     /* the chips: the seasons (more than one), and the competitions of the season shown (more than one). ALL is offered
        only where one profile played them all: two profiles' season lines are two people's to the season maths. */
@@ -1554,7 +1628,19 @@ async function seasonLog(ids, sn) {
        It waits for his other leagues' answers (started beside the season above),
        and so does everything after it: the game log reads across them too. */
     await careerAccess;
-    await paintCareer(pl, mine, team);
+    await paintCareer(pl, team, scopes, {
+      current: () => ({ label: SEASON ? SEASON.label : '', kind: scopeKind }),
+      /* a row pressed: that season and competition on this profile, as its chips would, and the hero brought into view */
+      pick: (label, cid) => {
+        const sn = SEASONS.find(x => x.label === label);
+        if (!sn) return;
+        chooseSeason(sn, cid, true).then(() => {
+          const top = $('#pscope') && !$('#pscope').hidden ? $('#pscope') : $('#tiles');
+          if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return seasonLog(scopes.ids, SEASON);
+        }).catch(e => console.warn('[career pick]', e));
+      }
+    });
 
     /* ---------------------------------------------------------------------------
    THE SHOT CHART, AND THE TWO NUMBERS THAT MAKE IT READABLE.
@@ -1621,6 +1707,9 @@ function drawShotChart(shots, colour, games, gameList) {
             D.stints(gs.map(g => g.id), team.id, byGame),
             D.events(gs.map(g => g.id))
           ]);
+          /* the position breakdown reads these games' lineups from here, not again (both sides are not needed: his) */
+          gs.forEach(g => { if (!CLUB_STINTS.has(g.id)) CLUB_STINTS.set(g.id, []); });
+          st.forEach(x => { const l = CLUB_STINTS.get(x.game_id); if (l && l.indexOf(x) < 0) l.push(x); });
 
           /* the same games, for his numbers against the starters and the bench: nothing is read twice */
           const logsOf = new Map();
