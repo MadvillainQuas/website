@@ -566,6 +566,12 @@ jobs:
         # partner line): all default = the same picture, each one toggles, nothing overflows or overlaps in any shape
         run: node supabase/tests/socialcard.test.mjs
 
+      - name: The player with no photograph yet - a pixel figure in his club's colours
+        # epinoia/silhouette.js + kit/silhouette.css: the variant fixed by the player's id alone (never a gender or a
+        # league), one head, neck and shoulders for everybody, the club's colour readable in both themes, a labelled
+        # picture with no script or request, and the profile, the star cards and the graphics' discs drawing it
+        run: node supabase/tests/silhouette.test.mjs
+
       - name: The stats page's graphic, full names on hover, the comparison's picture
         # epinoia/statgfx.js over socialcard.js 'statboard': the column the table is sorted by and its top N rows in the table's
         # order, the stats beside it, every count 3..20 with 0..4 stats on every shape inside the page and never overlapping,

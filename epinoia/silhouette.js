@@ -9,24 +9,27 @@
    screen and dark on the light one, so nothing in it says anything about the person but that
    there is one.
 
-   Four heads (close crop, high top, headband, swept) and two necklines (round, V) are chosen
-   from the player's id, so a squad of unphotographed players is not one face copied, and the
-   same player always gets the same one.
+   One head, one neck and one pair of shoulders for every player, men's leagues and women's alike:
+   no hair, no build, no jewellery, nothing that says who the player is. What varies, chosen from
+   the player's id alone (so the same player always gets the same one, and a squad without
+   photographs is not one picture copied): a headband in the club's colour or none, a round
+   or a V neck, the head straight or turned a touch to either side.
 
    Every colour is checked before it is drawn: the figure clears 7:1 against its screen, the trim
    3:1 against the figure it sits on (a navy club's trim is lifted on the dark-on-light figure, a
    yellow club's darkened on the light one), the frame 3:1 against the screen. The maths is
    teamcolour.js's (WCAG relative luminance), repeated here so the module stands alone.
 
-     EpinoiaSilhouette.variant(seed)          -> { head: 0-3, neck: 0-1 }
-     EpinoiaSilhouette.palette(opts)          -> { screen, glow, scan, figure, trim, trim2, frame, theme }
-     EpinoiaSilhouette.grid(opts)             -> { cols, rows, cells }  0 screen, 1 figure, 2 trim, 3 second trim
+     EpinoiaSilhouette.variant(seed)          -> { band: 0-1, neck: 0-1, turn: -1, 0, 1 }
+     EpinoiaSilhouette.palette(opts)          -> { screen, glow, scan, figure, vest, rim, trim, frame, theme }
+     EpinoiaSilhouette.grid(opts)             -> { cols, rows, cells }  0 screen, 1 figure, 2 trim, 3 headband, 4 rim, 5 vest
      EpinoiaSilhouette.svg(opts)              -> '<svg role="img" ...>'  string; crisp rects, no network
      EpinoiaSilhouette.draw(ctx, x, y, w, h, opts)   the same picture on a canvas
      EpinoiaSilhouette.mount(host, opts)      puts the svg in host and redraws it when the theme flips
      EpinoiaSilhouette.label(name)            -> 'Ben Baker — no photograph yet'
 
-   opts: { seed (the player's id), teamColour, teamColour2, theme 'dark' | 'light' | 'auto' (the
+   opts: { seed (the player's id), teamColour (the club's first colour: the glow, the bezel, the
+   vest, its trim and the headband all come from it), theme 'dark' | 'light' | 'auto' (the
    page's data-theme), shape 'portrait' (4:5, the profile) | 'square' (a disc), res (columns: 32
    by default), frame (default: true on a portrait), label, scan (default true) }
 
@@ -77,8 +80,6 @@ function palette(o) {
   const theme = themeOf(o.theme);
   const light = theme === 'light';
   const A = parse(o.teamColour) || parse(MINT);
-  /* a club with one colour gets a second of the same hue, as teamcolour.js derives it */
-  const B = parse(o.teamColour2) || (lum(A) > 0.3 ? mix(A, parse(DARK_GROUND), 0.55) : mix(A, [255, 255, 255], 0.45));
   const ground = parse(light ? LIGHT_GROUND : DARK_GROUND);
   /* the screen: the page's ground with a breath of the club in it */
   const screen = mix(ground, A, light ? 0.07 : 0.09);
@@ -90,12 +91,11 @@ function palette(o) {
   const rim = light ? mix(figure, A, 0.45) : mix(figure, [255, 255, 255], 0.45);
   /* the trim sits on the figure: the club's colour, moved off the figure until it shows */
   const trim = clear(clear(A.slice(), vest, 3), figure, 3);
-  const trim2 = clear(B.slice(), figure, 3);
   /* the frame and the glow sit on the screen */
   const frame = clear(A.slice(), screen, 3);
   return {
     theme,
-    screen: toHex(screen), figure: toHex(figure), vest: toHex(vest), rim: toHex(rim), trim: toHex(trim), trim2: toHex(trim2),
+    screen: toHex(screen), figure: toHex(figure), vest: toHex(vest), rim: toHex(rim), trim: toHex(trim),
     frame: toHex(frame), glow: toHex(A), glowAlpha: light ? 0.2 : 0.34,
     scan: light ? '#0d1f17' : '#000000', scanAlpha: light ? 0.05 : 0.28
   };
@@ -109,28 +109,27 @@ function hash(s) {
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
   return h >>> 0;
 }
+/* Only the id decides it, and only in ways that say nothing about who the player is: a headband or
+   none, a round or a V neck, the head straight or turned a touch. One head outline, one neck, one pair
+   of shoulders for every player, in a men's league or a women's: no hair, no build, no jewellery. */
 function variant(seed) {
   const h = hash(seed);
-  return { head: h % 4, neck: (h >>> 7) & 1 };
+  return { band: h & 1, neck: (h >>> 7) & 1, turn: ((h >>> 13) % 3) - 1 };
 }
 
 /* ---------------------------------------------------------------- the shape --- */
 /* Drawn on a 32 x 40 design: the head's centre at (16, 14.5). Each test answers for one point. */
 const CX = 16;
 function headIn(x, y, v) {
-  const dx = x - CX, cy = 14.4, ry = 7.2, dy = y - cy;
-  /* a rounded-square crown, the jaw narrowing below the cheekbones */
+  /* a turn moves the head half a pixel to one side and tucks the far ear in; nothing else changes */
+  const hx = CX + v.turn * 0.55, dx = x - hx, cy = 14.4, ry = 7.2, dy = y - cy;
+  /* one close-cropped outline for everybody: a rounded-square crown, the jaw narrowing below the cheekbones */
   const n = dy < 0 ? 2.6 : 2.1;
   const rx = dy > 0 ? 5.9 * (1 - 0.22 * Math.pow(dy / ry, 2)) : 5.9;
   if (Math.pow(Math.abs(dx) / rx, n) + Math.pow(Math.abs(dy) / ry, n) <= 1) return true;
-  /* the ears */
-  if (Math.pow((Math.abs(dx) - 5.95) / 1.05, 2) + Math.pow((y - 15.2) / 1.8, 2) <= 1) return true;
-  if (v.head === 1) {                                     // a high top: flat across, its corners cut
-    if (y >= 4.2 && y <= 10 && Math.abs(dx) <= 5.4 && !(y < 5.2 && Math.abs(dx) > 4.4)) return true;
-  }
-  if (v.head === 3) {                                     // swept: the hair lifted and pushed up to one side
-    if (Math.abs(dx) <= 5.5 && y <= 9.6 && y >= 8.6 - (dx + 5.5) * 0.36 && !(dx > 4.4 && y < 6.6)) return true;
-  }
+  /* the ears; the one the head turns from shows less */
+  const far = v.turn !== 0 && Math.sign(dx) === -v.turn;
+  if (Math.pow((Math.abs(dx) - (far ? 5.6 : 5.95)) / (far ? 0.8 : 1.05), 2) + Math.pow((y - 15.2) / 1.8, 2) <= 1) return true;
   return false;
 }
 /* the half-width of neck, shoulders and chest at height y */
@@ -173,7 +172,7 @@ function trimIn(x, y, v, t) {
   return false;
 }
 function headbandIn(x, y, v, t) {
-  return v.head === 2 && y >= 9.9 && y <= 9.9 + Math.max(1.5, t) && headIn(x, y, v);
+  return v.band === 1 && y >= 9.9 && y <= 9.9 + Math.max(1.5, t) && headIn(x, y, v);
 }
 
 /* the design window each shape looks through */
@@ -183,7 +182,7 @@ function frameOf(shape) {
 
 function grid(o) {
   o = o || {};
-  const v = o.variant || variant(o.seed);
+  const v = Object.assign({ band: 0, neck: 0, turn: 0 }, o.variant || variant(o.seed));
   const win = frameOf(o.shape);
   const cols = Math.max(8, Math.min(64, Math.round(o.res || 32)));
   const rows = Math.round(cols * win.h / win.w);
@@ -250,7 +249,7 @@ function svg(o) {
   const lab = o.label != null ? String(o.label) : label(o.name);
   let s = '<svg class="sil' + (portrait ? ' sil-portrait' : ' sil-square') + '" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '"' +
     ' preserveAspectRatio="xMidYMax slice" shape-rendering="crispEdges" role="img" aria-label="' + esc(lab) + '"' +
-    ' data-sil-head="' + g.variant.head + '" data-sil-neck="' + g.variant.neck + '" data-sil-theme="' + p.theme + '">';
+    ' data-sil-band="' + g.variant.band + '" data-sil-neck="' + g.variant.neck + '" data-sil-turn="' + g.variant.turn + '" data-sil-theme="' + p.theme + '">';
   s += '<defs><radialGradient id="' + id + '" cx="' + gx + '" cy="' + gy + '" r="' + (W * 0.62).toFixed(2) + '" gradientUnits="userSpaceOnUse">' +
     '<stop offset="0" stop-color="' + p.glow + '" stop-opacity="' + p.glowAlpha + '"/>' +
     '<stop offset="1" stop-color="' + p.glow + '" stop-opacity="0"/></radialGradient></defs>';
@@ -268,7 +267,7 @@ function svg(o) {
   if (tr) s += '<path class="sil-rim" fill="' + p.rim + '" d="' + tr + '"/>';
   const t1 = runs(g, 2), t2 = runs(g, 3);
   if (t1) s += '<path class="sil-trim" fill="' + p.trim + '" d="' + t1 + '"/>';
-  if (t2) s += '<path class="sil-trim2" fill="' + p.trim2 + '" d="' + t2 + '"/>';
+  if (t2) s += '<path class="sil-band" fill="' + p.trim + '" d="' + t2 + '"/>';
   if (o.scan !== false) {
     /* scanlines: a dark sliver along the foot of every row of pixels, and a fainter one up every column */
     let d = '';
@@ -300,7 +299,7 @@ function draw(ctx, x, y, w, h, o) {
     gr.addColorStop(1, 'rgba(' + rgb.join(',') + ',0)');
     ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
   }
-  const fills = [null, p.figure, p.trim, p.trim2, p.rim, p.vest];
+  const fills = [null, p.figure, p.trim, p.trim, p.rim, p.vest];
   for (let j = 0; j < g.rows; j++) {
     let i = 0;
     while (i < g.cols) {

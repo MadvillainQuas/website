@@ -265,8 +265,8 @@ function card(r, p, i, small, opts) {
       disc.appendChild(el('span', 'star-ini', initials(name)));
       /* no photograph yet: his pixel figure in the club's colours (silhouette.js, where the page has it) */
       const SIL = root.EpinoiaSilhouette;
-      if (SIL && root.document) SIL.mount(disc, { seed: p.id, teamColour: ink, teamColour2: team.colour_2,
-        theme: 'auto', shape: 'square', res: 24, label: SIL.label(name) });
+      if (SIL && root.document) SIL.mount(disc, { seed: p.id, teamColour: ink,
+        theme: 'auto', shape: 'square', res: 30, label: SIL.label(name) });
       const photo = m.photo_url && /^https:\/\//i.test(m.photo_url) ? m.photo_url : null;
       if (photo) disc.appendChild(pic('star-photo', photo));
       plate.appendChild(disc);

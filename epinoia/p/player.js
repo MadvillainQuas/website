@@ -125,7 +125,7 @@ function paintIdentity(pl, entry, team) {
   const standIn = () => {
     const SIL = window.EpinoiaSilhouette;
     if (SIL) {
-      SIL.mount(box, { seed: pl.id, teamColour: team && team.colour, teamColour2: team && team.colour_2,
+      SIL.mount(box, { seed: pl.id, teamColour: team && team.colour,
         theme: 'auto', shape: 'portrait', label: SIL.label(name) });
       return;
     }

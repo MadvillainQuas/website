@@ -1082,8 +1082,8 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.clip();
     const light = SIL.contrast(th.ground, '#000000') > 10.5;
-    SIL.draw(ctx, cx - rad, cy - rad, 2 * rad, 2 * rad, { seed: r.seed || r.name, teamColour: col, teamColour2: r.team.colour2 || r.team.colour_2,
-      theme: light ? 'light' : 'dark', shape: 'square', res: rad >= 70 ? 32 : 24 });
+    SIL.draw(ctx, cx - rad, cy - rad, 2 * rad, 2 * rad, { seed: r.seed || r.name, teamColour: col,
+      theme: light ? 'light' : 'dark', shape: 'square', res: rad >= 70 ? 30 : 20 });
     ctx.restore();
     ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
   }
