@@ -655,7 +655,6 @@
       'Deleted.': 'Eliminado.',
 
       /* ---- news-ui.js: the editor ---- */
-      'Headline': 'Titular',
       'One line for the card (optional — the opening words are used if blank)': 'Una línea para la tarjeta (opcional: si está vacía se usan las primeras palabras)',
       'Cover image — upload, or paste an https address': 'Imagen de portada: súbela o pega una dirección https',
       'upload cover': 'Subir portada',

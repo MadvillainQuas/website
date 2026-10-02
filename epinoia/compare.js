@@ -409,7 +409,8 @@ function fromTable(o) {
     title: opt.title || ('Compare ' + rows.length + ' players'),
     players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '',
       /* the club, for the exported picture's circles (the table's own name, colour and crest) */
-      team: { name: r.teamFull || r.teamName || '', short_name: r.teamShort || '', colour: r.colour || r.teamColour || null, logo: r.teamLogo || r.logo || null } })),
+      team: { name: r.teamFull || r.teamName || '', short_name: r.teamShort || '', colour: r.colour || r.teamColour || null, logo: r.teamLogo || r.logo || null },
+      photo: r.photo_url || r.photoUrl || null })),
     stats: S.keys.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
     allStats: S.pool.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
     statGroups: tableGroups(opt.groups, cols, opt.locked),
@@ -594,7 +595,7 @@ function exportModel(o, extra) {
     mode,
     players: P.map((p, i) => {
       const t = p.team || {};
-      return { name: (p.name || 'Player') + (p.league ? ' · ' + p.league : ''), colour: (x.colours || [])[i] || null,
+      return { name: (p.name || 'Player') + (p.league ? ' · ' + p.league : ''), colour: (x.colours || [])[i] || null, photoUrl: p.photo || null,
                team: { name: t.name || '', short_name: t.short_name || '', colour: t.colour || null, crestUrl: crestOf(t.logo) } };
     }),
     stats: S.map(st => ({ key: st.key, label: String(st.label || st.key), signed: isSigned(st.key, st),
@@ -628,10 +629,15 @@ function pageTheme() {
     return m && (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255 > 0.5 ? 'light' : 'dark';
   } catch (_) { return 'dark'; }
 }
-async function exportPng(o, scope) {
+/* THE CIRCLES IN THE PICTURE, the console's Graphics choice: each player's own circle (his photo, else his initials, his
+   club's crest on its edge) or his club's crest alone. Kept on the device. */
+const DISCS_KEY = 'epinoia.cmp.discs';
+function discsChoice() { try { return root.localStorage.getItem(DISCS_KEY) === 'team' ? 'team' : 'player'; } catch (_) { return 'player'; } }
+function keepDiscs(v) { try { root.localStorage.setItem(DISCS_KEY, v === 'team' ? 'team' : 'player'); } catch (_) { /* a private window */ } }
+async function exportPng(o, scope, discs) {
   const SC = await socialCard();
   const model = SC.compare(exportModel(o, { colours: seriesColours(scope) }));
-  const blob = await SC.png(model, { size: 'auto', theme: pageTheme(), scale: 1 });
+  const blob = await SC.png(model, { size: 'auto', theme: pageTheme(), scale: 1, modules: discs === 'team' ? { discs: 'team' } : {} });
   const url = URL.createObjectURL(blob);
   const a = root.document.createElement('a');
   a.href = url; a.download = exportName(o);
@@ -651,11 +657,18 @@ function open(o) {
   dlg.className = 'cmp-sheet';
   dlg.setAttribute('aria-label', o.title || 'Compare players');
   dlg.innerHTML = '<div class="cmp-sheet-head"><span class="cmp-sheet-title">' + esc(o.title || 'Compare') + '</span>' +
+    '<span class="cmp-sheet-discs" role="group" aria-label="Circles in the image">' +
+      '<button type="button" class="cmp-disc" data-cmp-discs="player">Player circles</button>' +
+      '<button type="button" class="cmp-disc" data-cmp-discs="team">Team circles</button></span>' +
     '<button type="button" class="cmp-sheet-export">Export image</button>' +
     '<button type="button" class="cmp-sheet-close" aria-label="Close" autofocus>×</button></div>' +
     '<div class="cmp-sheet-body"></div>';
   doc.body.appendChild(dlg);
   const body = dlg.querySelector('.cmp-sheet-body');
+  let discs = discsChoice();
+  const paintDiscs = () => dlg.querySelectorAll('[data-cmp-discs]').forEach(b =>
+    b.setAttribute('aria-pressed', b.getAttribute('data-cmp-discs') === discs ? 'true' : 'false'));
+  paintDiscs();
   let chart = null;
   const close = () => { if (dlg.open && dlg.close) dlg.close(); else done(); };
   const done = () => {
@@ -668,13 +681,17 @@ function open(o) {
   dlg.addEventListener('click', e => {
     if (e.target === dlg) close();                                   /* a tap on the backdrop */
     else if (e.target.closest && e.target.closest('.cmp-sheet-close')) close();
+    else if (e.target.closest && e.target.closest('[data-cmp-discs]')) {
+      discs = e.target.closest('[data-cmp-discs]').getAttribute('data-cmp-discs') === 'team' ? 'team' : 'player';
+      keepDiscs(discs); paintDiscs();
+    }
     else if (e.target.closest && e.target.closest('.cmp-sheet-export')) {
       const b = e.target.closest('.cmp-sheet-export');
       if (!chart || b.disabled) return;
       b.disabled = true;
       const was = b.textContent;
       b.textContent = 'Drawing…';
-      exportPng(chart.current(), body)
+      exportPng(chart.current(), body, discs)
         .catch(err => { console.warn('[compare] export', err); })
         .then(() => { b.textContent = was; b.disabled = false; });
     }

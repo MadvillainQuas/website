@@ -453,8 +453,9 @@ function statboard(o) {
   const secs = (o.secs || []).filter(x => x && x.key && x.key !== st.key).slice(0, SB_SECS)
     .map(x => ({ key: String(x.key), label: String(x.label || x.key).toUpperCase() }));
   const txt = v => (v == null || v === '' ? '—' : String(v));
+  const photo = v => (typeof v === 'string' && /^https:\/\//i.test(v) ? v : null);
   const rows = (o.rows || []).slice(0, SB_MAX).map((r, i) => ({ rank: r.rank != null ? n0(r.rank) : i + 1, name: r.name || '?', team: side(r.team, 0),
-    value: txt(r.value), secs: secs.map((x, j) => txt((r.secs || [])[j])) }));
+    photoUrl: photo(r.photoUrl), value: txt(r.value), secs: secs.map((x, j) => txt((r.secs || [])[j])) }));
   return { kind: 'statboard', key: 'top-' + rows.length + '-' + slug(st.key || st.label || 'stat'), league: o.league || {}, comp: o.comp || '', range: o.range || '',
            title: o.title || (String(st.label || 'Stat') + ' leaders'), sub: o.sub || '',
            stat: { key: String(st.key || ''), label: String(st.label || st.key || '').toUpperCase() }, secs, rows, tz: leagueZone(o.league) };
@@ -466,6 +467,7 @@ function statboard(o) {
 const CMP_COLOURS = ['#93f2bf', '#8ff5ff', '#ffd166', '#b7a8ff', '#e6fff1'];
 function compare(o) {
   const players = (o.players || []).slice(0, 5).map((p, i) => ({ name: p.name || 'Player', team: side(p.team, 0),
+    photoUrl: typeof p.photoUrl === 'string' && /^https:\/\//i.test(p.photoUrl) ? p.photoUrl : null,
     colour: /^#[0-9a-f]{6}$/i.test(p.colour || '') ? p.colour : CMP_COLOURS[i % CMP_COLOURS.length] }));
   const fin = v => typeof v === 'number' && isFinite(v);
   const stats = (o.stats || []).filter(x => x && x.key != null).map(x => {
@@ -1042,16 +1044,32 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
   const u = U();
   if (MOD.discs === 'team') { crest(ctx, th, r.team, cx, cy, rad); return; }     // the crest alone, at the disc's size and place (initials on the club colour when it has none)
   const col = u.rgb(r.team.colour) ? r.team.colour : accent;
+  /* HIS PHOTO, when the model brings one that can be drawn (r.photo, read by withCrests from r.photoUrl): cut to the circle,
+     filling it, under the ring of his club's colour. Without one, his initials, as always. */
+  const pic = r.photo && r.photo.width ? r.photo : null;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-  ctx.fillStyle = u.accentOn(col, th); ctx.globalAlpha = 0.22; ctx.fill();
-  ctx.globalAlpha = 1; ctx.lineWidth = Math.max(3, rad * 0.06); ctx.strokeStyle = u.accentOn(col, th); ctx.stroke();
+  ctx.fillStyle = u.accentOn(col, th); ctx.globalAlpha = pic ? 1 : 0.22; ctx.fill();
+  ctx.globalAlpha = 1;
+  if (pic) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.clip();
+    const iw = pic.naturalWidth || pic.width, ih = pic.naturalHeight || pic.height;
+    const k = Math.max(2 * rad / iw, 2 * rad / ih);
+    /* a head-and-shoulders shot keeps its head: the top of a tall picture, the middle of a wide one */
+    ctx.drawImage(pic, cx - iw * k / 2, ih * k > 2 * rad ? cy - rad : cy - ih * k / 2, iw * k, ih * k);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+  }
+  ctx.lineWidth = Math.max(3, rad * 0.06); ctx.strokeStyle = u.accentOn(col, th); ctx.stroke();
   ctx.restore();
-  u.font(ctx, rad * 0.78, u.F.score);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = th.ink;
-  ctx.fillText(u.initials(r.name), cx, cy + rad * 0.27);
-  ctx.textAlign = 'left';
+  if (!pic) {
+    u.font(ctx, rad * 0.78, u.F.score);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = th.ink;
+    ctx.fillText(u.initials(r.name), cx, cy + rad * 0.27);
+    ctx.textAlign = 'left';
+  }
   crest(ctx, th, r.team, cx + rad * 0.72, cy + rad * 0.72, Math.max(14, rad * 0.36));
 }
 function starLine(r, keys) { return keys.map(k => mn(r.stats[k]) + ' ' + sl(k)).join(' · '); }
@@ -1318,9 +1336,10 @@ function drawStatBoard(ctx, m, th, S, M, accent) {
   const L = statLayout(S, n, m.secs.length);
   const secs = m.secs.slice(0, L.nsec);
   /* the figures' columns of a one-column board, right to left: the board's own stat, then each stat beside it */
-  const pw = 170, sw = secs.length >= 4 ? 104 : 118;
+  /* narrower figures as more stats stand beside the board's, so the name keeps a third of the row */
+  const pw = secs.length >= 3 ? 136 : 170, sw = secs.length >= 4 ? 86 : secs.length === 3 ? 96 : 112;
   const secRight = (box, j) => box.x + box.w - 20 - pw - 10 - (secs.length - 1 - j) * sw;
-  const disc = (r, cx, cy, rad) => starDisc(ctx, th, { name: r.name, team: r.team }, cx, cy, rad, accent);
+  const disc = (r, cx, cy, rad) => starDisc(ctx, th, { name: r.name, team: r.team, photo: r.photo }, cx, cy, rad, accent);
   const row = (r, i, box) => {
     const { x, w, h } = box, y = box.y, cy = y + (h - 6) / 2, first = i === 0;
     if (i % 2 === 0 || first) { ctx.fillStyle = th.panel; u.roundRect(ctx, x, y, w, h - 6, 12); ctx.fill(); }
@@ -1438,7 +1457,7 @@ function drawCompare(ctx, m, th, S, M, accent) {
       ctx.fillStyle = th.panel; u.roundRect(ctx, x, py, cw, 72, 12); ctx.fill();
       ctx.fillStyle = col[i]; ctx.fillRect(x, py + 8, 6, 56);
       const rad = 28, cx = x + 22 + rad, cy = py + 36;
-      starDisc(ctx, th, { name: p.name, team: p.team }, cx, cy, rad, col[i]);
+      starDisc(ctx, th, { name: p.name, team: p.team, photo: p.photo }, cx, cy, rad, col[i]);
       u.font(ctx, 18, NUMF, 700);
       const tag = String(i + 1);
       const tx = cx + rad + 16, tw = cw - (tx - x) - 16;
@@ -1601,12 +1620,16 @@ function teamsOf(m) {
   (m.players || []).forEach(p => { if (p && p.team) out.push(p.team); });
   return out.filter(Boolean);
 }
-async function withCrests(m) {
+async function withCrests(m, o) {
   const u = U();
   const c = JSON.parse(JSON.stringify(m));
   const teams = teamsOf(c);
   const get = url => { if (!crestCache.has(url)) crestCache.set(url, u.readableCrest(url)); return crestCache.get(url); };
+  /* a player's photo only where his circle is drawn (not with the team circles chosen), read the same careful way */
+  const mods = Object.assign({}, m.modules, o && o.modules);
+  const people = mods.discs === 'team' ? [] : (c.rows || []).concat(c.players || []).filter(r => r && r.photoUrl);
   await Promise.all(teams.map(async t => { if (t.crestUrl) t.crest = await get(t.crestUrl); })
+    .concat(people.map(async r => { r.photo = await get(r.photoUrl); }))
     .concat(c.league && c.league.logoUrl ? [get(c.league.logoUrl).then(img => { c.league.logo = img; })] : []));
   return c;
 }
@@ -1621,7 +1644,7 @@ async function canvas(m, opts) {
   c.height = Math.round(S.h * o.scale);
   const ctx = c.getContext('2d');
   ctx.scale(o.scale, o.scale);
-  c.dropped = draw(ctx, await withCrests(m), o).dropped;      // what a full shape left out (see drawIn)
+  c.dropped = draw(ctx, await withCrests(m, o), o).dropped;      // what a full shape left out (see drawIn)
   return c;
 }
 

@@ -8,25 +8,24 @@
 .sg{ border-bottom:1px solid var(--rule); padding:calc(var(--u)*2) calc(var(--u)*3) calc(var(--u)*3);
   background:color-mix(in oklch, var(--panel) 70%, transparent) }
 .sg[hidden]{ display:none }
-.sg-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px }
+.sg-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px }
 .sg-title{ margin:0; font-family:var(--f-score); font-weight:400; font-size:22px; line-height:1; text-transform:uppercase; color:var(--ink) }
-.sg-status{ margin:0; flex:1 1 220px; min-width:0; font-family:var(--f-ui); font-size:12.5px; line-height:1.35; color:var(--ink-3) }
+.sg-status{ margin:0; flex:1 1 0; min-width:0; font-family:var(--f-ui); font-size:12.5px; line-height:1.35; color:var(--ink-3) }
 .sg-close{ min-width:40px; min-height:40px; border:0; background:transparent; cursor:pointer; color:var(--ink-2); font-size:24px; line-height:1 }
 .sg-close:hover{ color:var(--ink) }
 
 .sg-body{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:18px 24px; align-items:start }
-.sg-form{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px 14px; align-content:start; min-width:0 }
+.sg-form{ display:grid; grid-template-columns:minmax(0, 1fr); gap:12px 14px; align-content:start; min-width:0 }
 .sg-field{ display:grid; gap:5px; min-width:0 }
 .sg-wide, .sg-acts{ grid-column:1 / -1 }
-.sg-lab{ font-family:var(--f-micro); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3) }
+.sg-lab{ font-family:var(--f-micro); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3) }
 .sg-sel, .sg-hl{ width:100%; min-width:0; font-size:12.5px; padding:7px 9px; min-height:36px }
 .sg-secs{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px }
 .sg-nrow{ display:flex; align-items:center; gap:10px; min-height:36px }
 .sg-range{ flex:1 1 auto; min-width:0; accent-color:var(--lume) }
-.sg-n{ flex:none; min-width:2.2em; text-align:right; font-family:var(--f-data); font-size:15px; font-weight:700; color:var(--ink) }
+.sg-n{ flex:none; min-width:2.6em; text-align:right; font-family:var(--f-data); font-size:15px; font-weight:700; color:var(--ink) }
 .sg-seg{ display:flex; flex-wrap:wrap; gap:6px }
 .sg-chip{ cursor:pointer; min-height:34px; text-transform:uppercase }
-.sg-chip.on{ background:var(--lume); border-color:var(--lume); color:var(--on-accent) }
 .sg-acts{ display:flex; flex-wrap:wrap; gap:8px; align-items:center }
 .sg-dl[disabled]{ opacity:.5; cursor:default }
 
@@ -47,7 +46,7 @@
   .sg-dl{ min-height:44px; flex:1 1 auto }
 }
 @media (max-width:420px){
-  .sg-form, .sg-secs{ grid-template-columns:minmax(0, 1fr) }
+  .sg-secs{ grid-template-columns:minmax(0, 1fr) }
 }
 /* the body is zoomed on a wide screen (kit/epinoia-kit.css: 1.25 from 1000px, 1.5 from 1200px) and a vh is not:
    the frame's cap is in the screen's own height */

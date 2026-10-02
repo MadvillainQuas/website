@@ -140,6 +140,15 @@
   background:transparent; color:var(--ink-2);
   font-family:var(--f-micro); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
 }
+/* the picture's circles: the player's own or his club's crest (the console's Graphics choice) */
+.cmp-sheet-discs{ flex:none; display:inline-flex; border:1px solid var(--rule-2); border-radius:3px; overflow:hidden }
+.cmp-disc{ border:0; background:transparent; color:var(--ink-3); cursor:pointer; min-height:38px; padding:0 10px;
+  font-family:var(--f-micro); font-size:11px; letter-spacing:.04em; text-transform:uppercase }
+.cmp-disc + .cmp-disc{ border-left:1px solid var(--rule-2) }
+.cmp-disc[aria-pressed="true"]{ background:var(--lume); color:var(--on-accent) }
+.cmp-disc:hover{ color:var(--ink) }
+.cmp-disc[aria-pressed="true"]:hover{ color:var(--on-accent) }
+.cmp-disc:focus-visible{ outline:2px solid var(--aqua); outline-offset:-2px }
 .cmp-sheet-export:hover{ color:var(--on-accent); background:var(--lume); border-color:var(--lume) }
 .cmp-sheet-export:focus-visible{ outline:2px solid var(--aqua); outline-offset:2px }
 .cmp-sheet-export[disabled]{ opacity:.6; cursor:progress }
@@ -155,6 +164,13 @@
     border-radius:12px 12px 0 0; border-bottom:0;
   }
   .cmp-sheet-body{ padding:12px 16px calc(18px + env(safe-area-inset-bottom)) }
+  /* the head wraps: the title and the close on the first line, the picture's circles and its export under them */
+  .cmp-sheet-head{ flex-wrap:wrap; row-gap:8px }
+  .cmp-sheet-title{ flex:1 1 calc(100% - 60px); font-size:20px }
+  .cmp-sheet-close{ order:1 }
+  .cmp-sheet-discs{ order:2; flex:1 1 auto }
+  .cmp-sheet-discs .cmp-disc{ flex:1 1 0; min-height:40px }
+  .cmp-sheet-export{ order:3 }
   .cmp-mode-btn{ min-height:40px }
   .cmp-stat{ min-height:36px }
 }

@@ -1691,7 +1691,6 @@
       'story': 'Historia',
       'Circles': 'Círculos',
       'Player circles': 'Círculos de jugador',
-      'Team crests': 'Escudos de los equipos',
       'Colours': 'Colores',
       'High contrast': 'Alto contraste',
       'Stats beside it (up to 4)': 'Estadísticas al lado (hasta 4)',
@@ -1703,7 +1702,9 @@
       'The graphic could not be drawn.': 'No se pudo dibujar el gráfico.',
       'Preview of the graphic': 'Vista previa del gráfico',
       'no figures yet': 'aún sin cifras',
-      'Export image': 'Exportar imagen'
+      'Export image': 'Exportar imagen',
+      'Team circles': 'Círculos de equipo',
+      'Circles in the image': 'Círculos de la imagen'
     },
 
     ctx: {
@@ -2516,8 +2517,8 @@
       [/^Next: (.+)$/, (m, T) => 'Próximo: ' + T(m[1])],
       [/^(\d{4}-\d{2}) season$/i, 'Temporada $1'],
       /* the stats page's graphic panel (statgfx.js): what it is drawing */
-      [/^Sorted by (.+)$/, (m, T) => 'Ordenado por ' + T(m[1], 'col')],
-      [/^Sort the table by a stat to change it: (.+)$/, (m, T) => 'Ordena el cuadro por una estadística para cambiarlo: ' + T(m[1], 'col')],
+      [/^Sorted by (.+)$/, (m, T) => 'Ordenado por ' + T(m[1])],
+      [/^Sort the table by a stat to change it: (.+)$/, (m, T) => 'Ordena el cuadro por una estadística para cambiarlo: ' + T(m[1])],
       [/^top (\d+) of (\d+)$/, 'los $1 primeros de $2'],
       [/^show (\d+) more$/i, 'Mostrar $1 más'],
       [/^show all \((\d+)\)$/i, 'Mostrar todo ($1)'],

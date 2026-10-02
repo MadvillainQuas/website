@@ -655,7 +655,6 @@
       'Deleted.': '削除しました。',
 
       /* ---- news-ui.js: the editor ---- */
-      'Headline': '見出し',
       'One line for the card (optional — the opening words are used if blank)': 'カード用の一文（任意 — 空欄の場合は冒頭の文章が使われます）',
       'Cover image — upload, or paste an https address': 'カバー画像 — アップロードするか、httpsのアドレスを貼り付け',
       'upload cover': 'カバーをアップロード',

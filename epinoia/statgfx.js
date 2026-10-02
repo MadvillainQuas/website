@@ -87,7 +87,7 @@ function modelFrom(table, o) {
     sub: [o.scope || 'Whole season', said].filter(Boolean).join(' · '),
     stat: { key: col ? col.k : '', label: col ? col.l : '' },
     secs: secCols.map(c => ({ key: c.k, label: c.l })),
-    rows: top.map((r, i) => ({ rank: i + 1, name: r.name || 'Player', team: teamOf(r, o.crestOf),
+    rows: top.map((r, i) => ({ rank: i + 1, name: r.name || 'Player', team: teamOf(r, o.crestOf), photoUrl: r.photo_url || r.photoUrl || null,
       value: fmt(col, r, i), secs: secCols.map(c => fmt(c, r, i)) }))
   };
   const S = SC();
@@ -156,7 +156,18 @@ function mount(opts) {
     list.forEach(([v, l]) => { const o = el('option', null, l); o.value = v; s.appendChild(o); });
     s.value = value; s.addEventListener('change', () => on(s.value)); return s;
   };
-  form.appendChild(field('Circles', sel([['player', 'Player circles'], ['team', 'Team crests']], st.discs, v => { st.discs = v; persist(); later(); })));
+  /* THE CIRCLES, as the console's Graphics offer them: the player's own (his photo where the register has one, else his
+     initials, with his club's crest small on its edge) or the club's crest alone */
+  const discs = el('div', 'sg-seg'); discs.setAttribute('role', 'group'); discs.setAttribute('aria-label', 'Circles');
+  const discBtns = [['player', 'Player circles'], ['team', 'Team circles']].map(([k, l]) => {
+    const b = el('button', 'ep-chip sg-chip', l); b.type = 'button'; b.dataset.discs = k;
+    b.addEventListener('click', () => { st.discs = k; paintDiscs(); persist(); later(); });
+    discs.appendChild(b); return b;
+  });
+  const paintDiscs = () => discBtns.forEach(b => { const on = b.dataset.discs === st.discs; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  paintDiscs();
+  const discF = el('div', 'sg-field'); discF.append(el('span', 'sg-lab', 'Circles'), discs);
+  form.appendChild(discF);
   form.appendChild(field('Colours', sel([['dark', 'Dark'], ['light', 'Light'], ['contrast', 'High contrast']], st.theme, v => { st.theme = v; persist(); later(); })));
 
   /* the stats beside it: four dropdowns of every column the table has, by its own categories */

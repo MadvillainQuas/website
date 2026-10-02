@@ -1689,7 +1689,6 @@
       'story': 'ストーリー',
       'Circles': '円',
       'Player circles': '選手の円',
-      'Team crests': 'クラブのエンブレム',
       'Colours': '配色',
       'High contrast': 'ハイコントラスト',
       'Stats beside it (up to 4)': '並べて表示するスタッツ(最大4つ)',
@@ -1701,7 +1700,9 @@
       'The graphic could not be drawn.': 'グラフィックを描画できませんでした。',
       'Preview of the graphic': 'グラフィックのプレビュー',
       'no figures yet': 'まだ数字がありません',
-      'Export image': '画像を書き出す'
+      'Export image': '画像を書き出す',
+      'Team circles': 'クラブの円',
+      'Circles in the image': '画像の円'
     },
 
     ctx: {
@@ -2516,8 +2517,8 @@
       [/^Next: (.+)$/, (m, T) => '次の試合: ' + T(m[1])],
       [/^(\d{4}-\d{2}) season$/i, '$1シーズン'],
       /* the stats page's graphic panel (statgfx.js): what it is drawing */
-      [/^Sorted by (.+)$/, (m, T) => T(m[1], 'col') + 'で並べ替え'],
-      [/^Sort the table by a stat to change it: (.+)$/, (m, T) => '変えるには表をスタッツで並べ替えてください: ' + T(m[1], 'col')],
+      [/^Sorted by (.+)$/, (m, T) => T(m[1]) + 'で並べ替え'],
+      [/^Sort the table by a stat to change it: (.+)$/, (m, T) => '変えるには表をスタッツで並べ替えてください: ' + T(m[1])],
       [/^top (\d+) of (\d+)$/, '$2人中上位$1人'],
       [/^show (\d+) more$/i, 'さらに$1件表示'],
       [/^show all \((\d+)\)$/i, 'すべて表示（$1）'],

@@ -566,6 +566,13 @@ jobs:
         # partner line): all default = the same picture, each one toggles, nothing overflows or overlaps in any shape
         run: node supabase/tests/socialcard.test.mjs
 
+      - name: The stats page's graphic, full names on hover, the comparison's picture
+        # epinoia/statgfx.js over socialcard.js 'statboard': the column the table is sorted by and its top N rows in the table's
+        # order, the stats beside it, every count 3..20 with 0..4 stats on every shape inside the page and never overlapping,
+        # player or team circles; fulltable.js name cells carry the whole name (title, aria-label, hidden text); compare.js's
+        # export draws every chosen stat and the popup scrolls inside the screen
+        run: node supabase/tests/statgfx.test.mjs
+
       - name: The Graphics tab - the week's posts by kind, the week picker, the builder's subject and options
         # epinoia/admin/graphics-ui.js over socialgfx-ui.js: posts sorted by kind with counts and a filter that keeps exactly
         # one, a player of the week only when there were several games, this week / last week / earlier weeks (an earlier
