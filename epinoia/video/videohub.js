@@ -502,7 +502,9 @@ function boot() {
         wall.classList.remove('hide');
         return;
       }
-      runsLocked = typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id);
+      /* the scoring runs are their own section (0222 'videoRuns'), the analytics until the platform says otherwise */
+      runsLocked = typeof A.featureLocked === 'function' ? !!A.featureLocked('videoRuns', league.id)
+        : (typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id));
     }
 
     let list;

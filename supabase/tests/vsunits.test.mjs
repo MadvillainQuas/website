@@ -213,8 +213,8 @@ console.log('\n6. the profile');
   ok('the bars are drawn as ALL until the split is ready, and again when it is',
      /const vsOn = V && V\.state === 'ready' \? V : null;/.test(pjs) && /if \(LAST_BARS && barsVs !== 'all'\) paintBars\(LAST_BARS\.mine, LAST_BARS\.field\);/.test(pjs));
   ok('the wait always ends: the boot settles the logs whatever path it took', /\} finally \{\s*clubLogsDone\(null\);/.test(pjs));
-  ok('without analytics, the switch shows what it would add instead', /if \(ANALYTICS_LOCKED\) \{\s*box\.innerHTML = accessTeaser\(/.test(pjs) &&
-     /const unit = barsVs !== 'all' && !ANALYTICS_LOCKED && VU \? barsVs : null;/.test(pjs));
+  ok('without analytics, the switch shows what it would add instead', /if \(pLocked\('splits'\)\) \{\s*box\.innerHTML = accessTeaser\(/.test(pjs) &&
+     /const unit = barsVs !== 'all' && !pLocked\('splits'\) && VU \? barsVs : null;/.test(pjs));
   ok('the club card\'s N is the profile\'s N', /localStorage\.getItem\('epinoia_vs_starters'\)/.test(pjs) && /'epinoia_vs_starters'/.test(rd('epinoia', 't', 'seasonline.js')));
 }
 

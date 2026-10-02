@@ -831,7 +831,9 @@ function render(opts) {
      says which columns are locked on it and they are gone for every row. */
   const OWN_LOCK = typeof opts.locked === 'function';
   const pageLocks = k => { try { return !!opts.locked(k); } catch (_) { return false; } };
+  /* one league: the premium columns are their own section (0222 'statColumns'), the analytics until the platform says otherwise */
   const isLocked = () => { if (OWN_LOCK) return CAT.some(c => pageLocks(c.k)); const A = ACC();
+    if (A && typeof A.featureLocked === 'function') return !!A.featureLocked('statColumns', opts.leagueId);
     return !!(A && typeof A.analyticsOk === 'function' && !A.analyticsOk(opts.leagueId)); };
   /* what is locked, as one string, so a change of WHICH columns (not only whether any) redraws */
   const lockSig = () => OWN_LOCK ? CAT.filter(c => pageLocks(c.k)).map(c => c.k).join(',') : (isLocked() ? '*' : '');

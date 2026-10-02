@@ -37,6 +37,11 @@ const ord = n => { const v = Math.round(n), t = v % 100;
    analytics fail open, and the members-only card needs a known "cannot view". A free agent
    has no league to ask about, so his page is never gated. */
 let ANALYTICS_LOCKED = false;
+/* EACH SECTION ASKS FOR ITS OWN LOCK (0222): the platform can open one to everyone, or put it behind a report. A key
+   with no answer falls back to the analytics one. */
+const PLAYER_LOCK_KEYS = ['events', 'splits', 'shotZones', 'wowy'];
+let PLAYER_LOCKS = {};
+const pLocked = k => (Object.prototype.hasOwnProperty.call(PLAYER_LOCKS, k) ? PLAYER_LOCKS[k] : ANALYTICS_LOCKED);
 let ACCESS_LEAGUE = { id: null, slug: '' };
 const accessTeaser = o => { const A = window.EpinoiaAccess;
   return A && typeof A.teaserHTML === 'function'
@@ -644,8 +649,8 @@ function vsLines(mine) {
 function vsNote(V, unit) {
   const box = el('div', 'vsnote');
   const line = t => box.appendChild(el('span', null, t));
-  if (ANALYTICS_LOCKED) {
-    box.innerHTML = accessTeaser({ compact: true, title: 'Against starters and bench',
+  if (pLocked('splits')) {
+    box.innerHTML = accessTeaser({ compact: true, key: 'splits', title: 'Against starters and bench',
       lines: ['His own numbers in the minutes against the other side’s starters, and against its bench, beside all his minutes.'] });
     return box;
   }
@@ -913,7 +918,7 @@ function paintBars(mine, field) {
   /* PREMIUM BARS ARE LEFT OUT, not drawn empty: an empty track reads as a bottom percentile.
      The catalogue says which keys they are (today the assisted shares, from the events
      splits); the group they came from says so in one line instead. */
-  const CAT = ANALYTICS_LOCKED && window.EpinoiaAccess ? window.EpinoiaAccess.CATALOGUE : null;
+  const CAT = pLocked('events') && window.EpinoiaAccess ? window.EpinoiaAccess.CATALOGUE : null;
   const premiumBar = k => !!CAT && (typeof CAT.barKeys === 'function' ? !!CAT.barKeys(k)
     : Array.isArray(CAT.barKeys) && CAT.barKeys.indexOf(k) !== -1);
   /* bigsOnly blocks (rim protection) are drawn only for an estimated centre or forward */
@@ -934,7 +939,7 @@ function paintBars(mine, field) {
     (group ? (SE.positionLabel ? SE.positionLabel(group) : 'players') : 'players');
 
   /* AGAINST THE STARTERS OR THE BENCH: worked out on the first ask (vsLines), the bars drawn as ALL until it is */
-  const unit = barsVs !== 'all' && !ANALYTICS_LOCKED && VU ? barsVs : null;
+  const unit = barsVs !== 'all' && !pLocked('splits') && VU ? barsVs : null;
   const V = unit ? vsLines(mine) : null;
   const vsOn = V && V.state === 'ready' ? V : null;
 
@@ -1512,10 +1517,14 @@ async function seasonLog(ids, sn) {
     }
     if (A) {
       const lockedNow = () => typeof A.analyticsOk === 'function' && !A.analyticsOk(lgRow ? lgRow.id : null);
+      const locksNow = () => { const o = {}, lid = lgRow ? lgRow.id : null;
+        PLAYER_LOCK_KEYS.forEach(k => { o[k] = typeof A.featureLocked === 'function' ? !!A.featureLocked(k, lid) : lockedNow(); }); return o; };
+      const locksSig = o => PLAYER_LOCK_KEYS.map(k => (o[k] ? 1 : 0)).join('');
       const shutNow = () => { if (!lgRow || typeof A.get !== 'function' || typeof A.canView !== 'function') return false;
         const s = A.get(lgRow.id); return !!(s && s.known) && !A.canView(lgRow.id); };
       if (lgRow) ACCESS_LEAGUE = { id: lgRow.id, slug: lgRow.slug || '' };
       ANALYTICS_LOCKED = lockedNow();
+      PLAYER_LOCKS = locksNow();
       /* THE ANSWER CAN MOVE UNDER A DRAWN PAGE: a sign-in or sign-out in another tab, an answer
          that lands after the module's time limit, the admin preview switch. The bars, the
          events, the shot chart and the teammate panel were all drawn from it, so a change to
@@ -1523,9 +1532,9 @@ async function seasonLog(ids, sn) {
          change of account the new account's answer is waited for, not the empty state between.
          Answers about his OTHER leagues (loadCareerAccess, membersOnly) are not this page's
          decision and are ignored here, so loading them can never start a reload. */
-      const drawn = ANALYTICS_LOCKED + '|' + shutNow();
+      const drawn = ANALYTICS_LOCKED + '|' + shutNow() + '|' + locksSig(PLAYER_LOCKS);
       if (typeof A.onChange === 'function') {
-        const check = () => { if (lockedNow() + '|' + shutNow() !== drawn) location.reload(); };
+        const check = () => { if (lockedNow() + '|' + shutNow() + '|' + locksSig(locksNow()) !== drawn) location.reload(); };
         try {
           A.onChange(d => {
             if (d && d.leagueId && (!lgRow || d.leagueId !== lgRow.id)) return;
@@ -1597,8 +1606,8 @@ async function seasonLog(ids, sn) {
       try {
         const evHost = $('#events');
         /* without analytics the section stays, with the teaser where the panel would be */
-        if (evHost && ANALYTICS_LOCKED) {
-          evHost.innerHTML = accessTeaser({ title: 'Events',
+        if (evHost && pLocked('events')) {
+          evHost.innerHTML = accessTeaser({ key: 'events', title: 'Events',
             lines: ['Second chances, transition, points off turnovers, after-timeout sets, the half court and assisted baskets, ranked against the league.'] });
           { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS_LEAGUE.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
         } else if (evHost && window.EpinoiaSitPanel) {
@@ -1722,9 +1731,9 @@ function drawShotChart(shots, colour, games, gameList) {
   /* without analytics: the same court and the same marks, no zones -- and a line saying
      what the zones would add */
   window.EpinoiaShotChart.renderZones({ host, shots: SHOTS, colour: SHOT_COLOUR || '#93f2bf', minAttempts: 3, games: SHOT_GAMES,
-    gameList: SHOT_GAMELIST, zones: !ANALYTICS_LOCKED });
-  if (ANALYTICS_LOCKED) {
-    host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
+    gameList: SHOT_GAMELIST, zones: !pLocked('shotZones') });
+  if (pLocked('shotZones')) {
+    host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, key: 'shotZones', title: 'Shot zones',
       lines: ['Twelve zones, each tinted against its own break-even, with a zone-by-zone table.'] }));
   }
 }
@@ -1895,7 +1904,7 @@ function drawShotChart(shots, colour, games, gameList) {
           /* locked: withui.js draws its compact teaser in place of the teammate comparison */
           window.EpinoiaWithUI.render({
             host: '#withpanel', recs, stints: st, playerId: pl.id,
-            meta: mm, teammates: [...mates], locked: ANALYTICS_LOCKED, leagueSlug: ACCESS_LEAGUE.slug
+            meta: mm, teammates: [...mates], locked: pLocked('wowy'), leagueSlug: ACCESS_LEAGUE.slug
           });
         }
       }

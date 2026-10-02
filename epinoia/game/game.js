@@ -780,7 +780,7 @@ function checkHalf() {
 const GATED_TABS_DEFAULT = ['flow', 'connections', 'events', 'shotclock'];
 let walled = null;                  // the league whose paywall card is showing instead of the game
 let accessWatched = false;
-let drawnLocked = false;            // the analytics lock the body was last drawn under
+let drawnLocked = '';               // the tabs' locks the body was last drawn under (lockSig)
 
 function gatedTabs() {
   const A = window.EpinoiaAccess;
@@ -794,6 +794,17 @@ function analyticsLocked() {
   const S = window.S;
   return !!(A && typeof A.analyticsOk === 'function' && !A.analyticsOk(S && S.leagueId));
 }
+/* EACH MEMBERS' TAB ASKS FOR ITS OWN LOCK (0222): the platform can open one to everyone, or put it behind a report, in
+   the platform console; until it does, every one follows the analytics as before */
+const TAB_KEY = { adv: 'gameAdvanced', flow: 'gameFlow', connections: 'gameConnections', events: 'events', shotclock: 'shotClock' };
+function tabLocked(tab) {
+  if (gatedTabs().indexOf(tab) === -1) return false;
+  const A = window.EpinoiaAccess, S = window.S, key = TAB_KEY[tab];
+  if (key && A && typeof A.featureLocked === 'function') return !!A.featureLocked(key, S && S.leagueId);
+  return analyticsLocked();
+}
+/* what is locked, tab by tab, as one string: a change of WHICH tabs (not only whether any) redraws */
+const lockSig = () => gatedTabs().map(t => (tabLocked(t) ? 1 : 0)).join('');
 /* the members-only answer, only when the server gave one */
 function leagueWalled(leagueId) {
   const A = window.EpinoiaAccess, S = window.S;
@@ -817,10 +828,9 @@ function leagueRefused() {
    toggled on them rather than a rebuild — a rebuild would lose nothing here, but
    the same toggle has to run again whenever the access state changes. */
 function markLockedTabs() {
-  const locked = analyticsLocked();
-  const gated = gatedTabs();
+  const locked = gatedTabs().some(tabLocked);
   document.querySelectorAll('#view .tabbtn[data-tab]').forEach(b => {
-    const on = locked && gated.indexOf(b.dataset.tab) !== -1;
+    const on = tabLocked(b.dataset.tab);
     b.classList.toggle('locked', on);
     if (on) b.setAttribute('aria-label', b.textContent + ', members only');
     else b.removeAttribute('aria-label');
@@ -850,10 +860,10 @@ function markLockedTabs() {
   });
 }
 
-function lockedTabHTML() {
+function lockedTabHTML(tab) {
   const A = window.EpinoiaAccess, S = window.S || {};
   return A.teaserHTML({
-    leagueSlug: S.leagueSlug || null,
+    leagueSlug: S.leagueSlug || null, key: TAB_KEY[tab] || undefined,
     title: 'Advanced stats are for members',
     lines: [
       'Full stats: the four factors, shooting by zone and every advanced rate, player by player.',
@@ -899,7 +909,7 @@ function onAccessChange() {
   /* ONLY A MOVED ANSWER REDRAWS. The first answer for an open league is "not
      locked", which is what the body was drawn as; redrawing it anyway would
      rebuild a table somebody may already be scrolling. */
-  const locked = analyticsLocked();
+  const locked = lockSig();
   if (locked === drawnLocked) return;
   if (fTab === 'video') { mountVideo(window.derive()); return; }   // redraws the list, keeps the player
   if (gatedTabs().indexOf(fTab) === -1) { drawnLocked = locked; return; }   // nothing on this tab depends on it
@@ -2374,9 +2384,9 @@ function renderBody(d) {
        replay the whole log to draw, and a locked tab should cost nothing. The
        body key above does not know about access, which is why a change of access
        state clears it (onAccessChange). */
-    drawnLocked = analyticsLocked();
-    if (gatedTabs().indexOf(fTab) !== -1 && drawnLocked) {
-      el.innerHTML = lockedTabHTML();
+    drawnLocked = lockSig();
+    if (tabLocked(fTab)) {
+      el.innerHTML = lockedTabHTML(fTab);
       return;
     }
     if (fTab === 'pbp') { mountPBP(el, d); return; }
@@ -2497,7 +2507,7 @@ function mountVideo(d) {
     return;
   }
   const qp2 = new URLSearchParams(location.search);
-  drawnLocked = analyticsLocked();
+  drawnLocked = lockSig();
   window.EpinoiaVideoTab.render({
     host: '#vidHost', video: S.video, events: S.events, S: S, d: d,
     focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null, seq: qp2.get('vs') || null,
@@ -2505,7 +2515,8 @@ function mountVideo(d) {
              run: qp2.get('vr') || null },
     /* the runs are the game flow tab's, so they are the members' too; the tab takes
        the page's decision rather than reading access itself */
-    runsLocked: drawnLocked,
+    runsLocked: (() => { const A = window.EpinoiaAccess, S = window.S;
+      return A && typeof A.featureLocked === 'function' ? !!A.featureLocked('videoRuns', S && S.leagueId) : analyticsLocked(); })(),
     /* the people who may attach a video may also nudge it; the same check */
     canEdit: vidShown,
     onTrim: nudgeVideo,

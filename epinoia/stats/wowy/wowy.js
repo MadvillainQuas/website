@@ -51,6 +51,11 @@ let evVersion = 0;
 const SS_PREFIX = 'epinoia.wowy.ev' + (LE ? LE.VERSION : 0) + ':';
 
 /* ------------------------------------------------------------- memberships --- */
+/* the full WOWY screen is its own section (0222 'wowy'), the analytics until the platform says otherwise */
+function wowyLocked(A) {
+  if (typeof A.featureLocked === 'function') return !!A.featureLocked('wowy', league && league.id);
+  return typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id);
+}
 function accessState() {
   const A = window.EpinoiaAccess;
   if (!A || !league || typeof A.get !== 'function') return { A: null, st: {} };
@@ -71,7 +76,7 @@ function onAccessChange() {
   if (!A || !st.known) return;
   const nowWalled = typeof A.canView === 'function' && !A.canView(league.id);
   if (nowWalled !== walled) { location.reload(); return; }
-  const nowPreview = typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id);
+  const nowPreview = wowyLocked(A);
   if (nowPreview !== preview) {
     preview = nowPreview; TD.forEach(d => { d.preview = preview; }); rowCache.clear();
     if (preview) state.vs = 'all';
@@ -699,7 +704,7 @@ function watchWidth() {
         if (typeof A.onChange === 'function') A.onChange(onAccessChange);
         return;
       }
-      preview = typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id);
+      preview = wowyLocked(A);
       if (typeof A.onChange === 'function') A.onChange(onAccessChange);
     }
     if (preview) state.vs = 'all';

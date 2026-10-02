@@ -63,7 +63,10 @@ function accessNow() {
   if (!A || !league) return { locked: false, paywalled: false, st: null };
   const st = typeof A.get === 'function' ? A.get(league.id) : null;
   return {
-    locked: typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id),
+    /* the premium table columns and the zones they show are one section (0222 'statColumns'), the analytics until the
+       platform says otherwise */
+    locked: typeof A.featureLocked === 'function' ? !!A.featureLocked('statColumns', league.id)
+      : (typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id)),
     paywalled: !!(st && st.known) && typeof A.canView === 'function' && !A.canView(league.id),
     st
   };

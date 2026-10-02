@@ -506,6 +506,33 @@ console.log('\nwhat is behind the wall, as the platform set it (0222)');
   ok('a database without 0222: the defaults, and nothing promoted', A.gateOf('shotZones') === 'analytics' && A.trialMonths() === 0 && !A.teaserHTML({ leagueSlug: 'slb' }).includes('free trial'));
 }
 
+{
+  /* EVERY PAGE ASKS FOR ITS SECTION'S OWN LOCK, so a gate moved in the console moves that section and no other; each
+     key a page asks about is one the console can move (CATALOGUE.locks, seeded by 0222) */
+  const rd = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
+  const team = rd('epinoia', 't', 'team.js'), player = rd('epinoia', 'p', 'player.js'), game = rd('epinoia', 'game', 'game.js');
+  const asked = new Set();
+  const grab = (src, re) => { const m = re.exec(src); (m ? JSON.parse(m[1].replace(/'/g, '"')) : []).forEach(k => asked.add(k)); return m; };
+  ok('the club page: each section its own key', grab(team, /const LOCK_KEYS = (\[[^\]]+\]);/) &&
+     ['shotZones', 'shotClock', 'rotations', 'events', 'splits', 'lineups', 'wowy'].every(k => team.includes("sectionLocked('" + k + "')")));
+  ok('the player page: each section its own key', grab(player, /const PLAYER_LOCK_KEYS = (\[[^\]]+\]);/) &&
+     ['events', 'splits', 'shotZones', 'wowy'].every(k => player.includes("pLocked('" + k + "')")));
+  const tabs = /const TAB_KEY = (\{[^}]+\});/.exec(game);
+  const tabKeys = tabs ? Object.values(JSON.parse(tabs[1].replace(/(\w+):/g, '"$1":').replace(/'/g, '"'))) : [];
+  tabKeys.forEach(k => asked.add(k));
+  ok('the box score: each members\' tab its own key, the video\'s runs theirs', tabKeys.join() === 'gameAdvanced,gameFlow,gameConnections,events,shotClock' &&
+     /featureLocked\('videoRuns'/.test(game));
+  ['statColumns', 'videoRuns', 'wowy'].forEach(k => asked.add(k));
+  ok('the tables, the chart lab and the league page: the premium columns; the video hub: the runs; WOWY: its own',
+     /featureLocked\('statColumns', opts\.leagueId\)/.test(rd('epinoia', 'fulltable.js')) && /featureLocked\('statColumns', opts\.leagueId\)/.test(rd('epinoia', 'chartlab.js')) &&
+     /featureLocked\('statColumns', league\.id\)/.test(rd('epinoia', 'l', 'league.js')) && /featureLocked\('videoRuns', league\.id\)/.test(rd('epinoia', 'video', 'videohub.js')) &&
+     /featureLocked\('wowy', league && league\.id\)/.test(rd('epinoia', 'stats', 'wowy', 'wowy.js')));
+  const missing = [...asked].filter(k => !A.CATALOGUE.locks[k]);
+  ok('...and every key asked about is one the platform console can move', missing.length === 0, missing);
+  const sql = rd('supabase', 'migrations', '0222_access_gates.sql');
+  ok('...each seeded as a row by 0222', Object.keys(A.CATALOGUE.locks).every(k => sql.includes("('" + k + "', ")));
+}
+
 /* ======================================================= free trials (0223) === */
 console.log('\na new member\'s free trial, on every prompt (0223)');
 {

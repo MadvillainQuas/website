@@ -342,13 +342,13 @@ console.log('\nthe page');
   const ts = tj.slice(tj.indexOf('async function teamStats'), tj.indexOf('/* ------------------------------------------------------------- shot zones --- */'));
   ok('the season line card draws EpinoiaSeasonLine, with the club\'s play-by-play (members only) and the bench read', () => {
     const line = ts.slice(ts.indexOf("card('line', 'season line'"), ts.indexOf("card('zones'"));
-    assert.match(line, /SL\.render\(box, \{/); assert.match(line, /logs: ACCESS\.locked \?/); assert.match(line, /bench: benchMinutes\(S, team\)/);
+    assert.match(line, /SL\.render\(box, \{/); assert.match(line, /logs: sectionLocked\('events'\) \?/); assert.match(line, /bench: benchMinutes\(S, team\)/);
   });
   ok('the club\'s logs are read through lineupevents.js, a game at a time, each game kept for the page\'s life', () => {
     assert.match(tj, /async function clubLogs\(team, scoped\)/);
     assert.match(tj, /LE\.gameSegments\(\{ id: g\.id, starters: g\.starters, events: byG\[g\.id\] \|\| \[\], period: g\.period \}\)/);
     assert.match(tj, /LE\.recordsOf\(G, side\)\.forEach\(r => \{ r\.oteam = oteam; recs\.push\(r\); \}\)/); assert.match(tj, /segCache\.set\(g\.id, G\)/);
-    assert.match(tj, /starters: ACCESS\.locked \? null : scopeStarters\(scopeComps\)/);
+    assert.match(tj, /starters: sectionLocked\('splits'\) \? null : scopeStarters\(scopeComps\)/);
     assert.ok(tj.includes('games?competition_id=in.(${key})&status=eq.final&select=id,home_team_id,away_team_id,starters'));
   });
   ok('the ELO and the schedule are painted beside the heading, over the same games', () => assert.match(ts, /EpinoiaSosChip\.paintClub\(th, \{ games: mine \? S\.games : null, teamId: team\.id \}\)/));

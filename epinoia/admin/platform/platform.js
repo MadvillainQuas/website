@@ -1790,6 +1790,7 @@ async function loadPlans() {
   drawPlanTiles();
   drawAnalyticsDefault();
   drawTrials();
+  drawWall();
   drawPlatformPlans();
   drawLeagueAccess();
   drawLeaguePlans();
@@ -2123,6 +2124,120 @@ function drawTrials() {
   if (!buyablePlatformPlans().length) {
     host.appendChild(el('p', 'note', 'No platform plan can be bought yet, so nothing is promoted until one has a Stripe price.'));
   }
+}
+
+/* WHAT IS BEHIND THE WALL (0222). Every lockable section of the site (access.js CATALOGUE.locks, one list for the pages
+   and this editor) with what opens it - free to everyone, the analytics, the club report or the player report - and the
+   title and up to three lines its teaser shows when it is locked (blank: the page's own words). Saved a row at a time
+   through platform_set_gate (audited). Under it, the wording every membership prompt shares (access.js COPY), saved as
+   the public setting access_copy; a box left empty keeps the site's own words. Pages read both through access_wall()
+   and keep them five minutes, so a change reaches every visitor within five minutes. */
+const GATE_WORDS = { free: 'free to everyone', analytics: 'the analytics', club_report: 'the club report', player_report: 'the player report' };
+const COPY_WORDS = {
+  teaserTitle: 'Teaser title, where a section has none of its own',
+  membersOnly: 'Where nothing is for sale',
+  seeMembership: 'The button to the plans',
+  alreadyMember: 'Before the sign-in link',
+  signIn: 'The sign-in link',
+  popupText: 'The popup on a locked control',
+  popupLink: 'The popup\'s link',
+  paywallLead: 'A members-only league\'s card ({league}: its name)',
+  modalTitle: 'The payment window\'s title',
+  modalLead: 'The payment window\'s line',
+  modalDone: 'When payment is confirmed',
+  trialCta: 'The button while a free trial is offered ({months}: its length)',
+  trialBadge: 'The free-trial badge ({months}: its length)'
+};
+async function drawWall() {
+  const host = $('#plWall'); if (!host) return;
+  host.textContent = '';
+  const A = window.EpinoiaAccess;
+  if (!A || !A.CATALOGUE || !A.COPY) { host.appendChild(el('p', 'note bad', 'access.js did not load, so the wall cannot be edited. Reload the page.')); return; }
+  const { data: w, error } = await sb.rpc('access_wall');
+  if (error) {
+    host.appendChild(el('p', 'note bad', PLAN_MISSING(error) ? 'Run migration 0222 (what is behind the wall) to edit it.' : 'Could not read it: ' + (error.message || error)));
+    return;
+  }
+  const rows = {};
+  ((w && w.gates) || []).forEach(g => { if (g && g.key) rows[g.key] = g; });
+  host.appendChild(el('p', 'lead',
+    'What a membership opens, section by section, and the words a fan reads where it is locked. A section made free opens ' +
+    'to everyone, its data too where the database holds it back (the events splits, What wins). Pages keep what they ' +
+    'read for five minutes, so a change reaches every visitor within five minutes.' +
+    (plans && plans.membershipsEnabled === false ? ' Memberships are switched off, so nothing is locked until they are switched on.' : ''))).dataset.i18nCtx = 'prose';
+
+  const wrap = el('div', 'scroll');
+  const t = el('table', 'tbl');
+  const hr = t.createTHead().insertRow();
+  ['Section', 'Opens with', 'Teaser, when locked', ''].forEach(h => hr.appendChild(el('th', null, h)));
+  const body = t.createTBody();
+  Object.keys(A.CATALOGUE.locks).forEach(key => {
+    const L = A.CATALOGUE.locks[key], cur = rows[key] || { gate: L.gate };
+    const tr = body.insertRow();
+    const c0 = tr.insertCell();
+    c0.appendChild(el('div', 'nm', L.label));
+    c0.appendChild(el('div', 'mt', L.what + (rows[key] ? '' : ' · not in the database yet')));
+    const sel = el('select', 'ep-input');
+    Object.keys(GATE_WORDS).forEach(g => { const o = el('option', null, GATE_WORDS[g]); o.value = g; sel.appendChild(o); });
+    sel.value = cur.gate || L.gate;
+    tr.insertCell().appendChild(sel);
+    const c2 = tr.insertCell();
+    const ti = el('input', 'ep-input'); ti.maxLength = 120; ti.placeholder = 'the page\'s own title'; ti.value = cur.title || '';
+    const li = el('textarea', 'ep-input'); li.rows = 2; li.maxLength = 480; li.placeholder = 'the page\'s own lines: up to three, one a line';
+    li.value = (cur.lines || []).join('\n');
+    ti.style.width = li.style.width = '100%';
+    c2.append(ti, li);
+    const ac = tr.insertCell(); ac.className = 'ac';
+    const save = el('button', 'ep-btn mini', 'save'); save.type = 'button';
+    save.disabled = !rows[key];
+    const dirty = () => { save.classList.toggle('pri', sel.value !== (cur.gate || L.gate) || ti.value.trim() !== (cur.title || '') || li.value.trim() !== (cur.lines || []).join('\n')); };
+    [sel, ti, li].forEach(x => x.addEventListener('input', dirty));
+    save.addEventListener('click', async () => {
+      const lines = li.value.split('\n').map(x => x.trim()).filter(Boolean);
+      if (lines.length > 3) return say('A teaser has three lines at most.', 'err');
+      if (sel.value === 'free' && (cur.gate || L.gate) !== 'free' &&
+          !confirm('Make “' + L.label + '” free to everyone?\n\nIt opens for every fan in every league' +
+                   (key === 'events' || key === 'model' ? ', its data as well as its drawing' : '') + '.')) return;
+      save.disabled = true;
+      const out = await rpc('platform_set_gate', { p_key: key, p_gate: sel.value, p_title: ti.value.trim() || null, p_lines: lines.length ? lines : null });
+      save.disabled = false;
+      if (!out) return;
+      say('“' + L.label + '” opens with ' + GATE_WORDS[sel.value] + '.', 'ok');
+      drawWall();
+    });
+    ac.appendChild(save);
+  });
+  wrap.appendChild(t);
+  host.appendChild(wrap);
+
+  /* the wording every prompt shares */
+  host.appendChild(el('div', 'ax-sub', 'Wording on every membership prompt'));
+  host.appendChild(el('p', 'lead', 'Leave a box empty to keep the site\'s own words, shown greyed in it.')).dataset.i18nCtx = 'prose';
+  const copy = (w && w.copy && typeof w.copy === 'object') ? w.copy : {};
+  const boxes = {};
+  const grid = el('div', 'wall-copy');
+  Object.keys(A.COPY).forEach(k => {
+    const row = el('label', 'wall-copy-row');
+    row.appendChild(el('span', 'mt', COPY_WORDS[k] || k));
+    const inp = el('input', 'ep-input'); inp.maxLength = 300; inp.placeholder = A.COPY[k]; inp.value = typeof copy[k] === 'string' ? copy[k] : '';
+    boxes[k] = inp;
+    row.appendChild(inp);
+    grid.appendChild(row);
+  });
+  host.appendChild(grid);
+  const go = el('button', 'ep-btn', 'save the wording'); go.type = 'button';
+  go.addEventListener('click', async () => {
+    const value = {};
+    Object.keys(boxes).forEach(k => { const v = boxes[k].value.replace(/\s+/g, ' ').trim(); if (v) value[k] = v; });
+    go.disabled = true;
+    const out = await rpc('platform_set_setting', { p_key: 'access_copy', p_value: value });
+    go.disabled = false;
+    if (!out) return;
+    say(Object.keys(value).length ? 'The prompts\' wording is saved.' : 'The prompts use the site\'s own words again.', 'ok');
+    drawWall();
+  });
+  const r = el('div', 'row'); r.appendChild(go);
+  host.appendChild(r);
 }
 
 function openPlanForm(plan) {
@@ -3451,7 +3566,7 @@ const SETTING_TEXT = {
   trial_months: 'The months free a new member gets on every plan without a length of its own, 0 to 12 (0: no trials). ' +
                 'Changed on the Plans tab.',
   access_copy: 'The wording every membership prompt shares (the teasers, the popup, the buttons). ' +
-               'Empty: the site’s own words.'
+               'Empty: the site’s own words. Changed on the Plans tab, under What is behind the wall.'
 };
 
 /* Settings with a consequence, edited on the Plans tab with a confirm that
@@ -3460,7 +3575,8 @@ const SETTING_TEXT = {
 const PLANS_TAB_SETTINGS = {
   analytics_access: v => v === 'members' ? 'members' : 'free',
   memberships_enabled: v => v === true ? 'on' : 'off',
-  trial_months: v => (Number(v) > 0 ? monthsWords(Math.min(12, Math.floor(Number(v)))) + ' free' : 'no trials')
+  trial_months: v => (Number(v) > 0 ? monthsWords(Math.min(12, Math.floor(Number(v)))) + ' free' : 'no trials'),
+  access_copy: v => (v && typeof v === 'object' && Object.keys(v).length ? Object.keys(v).length + ' phrase(s) of its own' : 'the site\'s own words')
 };
 
 async function loadSettings() {

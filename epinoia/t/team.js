@@ -55,19 +55,27 @@ function oops(msg) {
               and the statistics were, and nothing behind it is fetched -- the database would
               refuse every row
    fixtures   upcoming fixtures stay public in a members-only league while the league says so */
-const ACCESS = { locked: false, paywall: false, fixtures: true, slug: '' };
+const ACCESS = { locked: false, paywall: false, fixtures: true, slug: '', locks: {} };
+/* EACH SECTION ASKS FOR ITS OWN LOCK (0222): the platform can open one to everyone, or put it behind a report, in the
+   platform console. A key this page never asked about falls back to the analytics answer (locked). */
+const LOCK_KEYS = ['events', 'shotZones', 'shotClock', 'rotations', 'lineups', 'wowy', 'splits'];
+const sectionLocked = k => (Object.prototype.hasOwnProperty.call(ACCESS.locks, k) ? ACCESS.locks[k] : ACCESS.locked);
 const accessTeaser = o => { const A = window.EpinoiaAccess;
   return A && typeof A.teaserHTML === 'function'
     ? A.teaserHTML(Object.assign({ leagueSlug: ACCESS.slug }, o)) : ''; };
 
 function accessNow(A, lg) {
   const st = typeof A.get === 'function' ? A.get(lg.id) : null;
+  const any = typeof A.analyticsOk === 'function' && !A.analyticsOk(lg.id);
+  const locks = {};
+  LOCK_KEYS.forEach(k => { locks[k] = typeof A.featureLocked === 'function' ? !!A.featureLocked(k, lg.id) : any; });
   return {
-    locked: typeof A.analyticsOk === 'function' && !A.analyticsOk(lg.id),
+    locked: any, locks,
     paywall: !!(st && st.known) && typeof A.canView === 'function' && !A.canView(lg.id),
     st
   };
 }
+const lockSig = n => n.locked + '|' + n.paywall + '|' + LOCK_KEYS.map(k => (n.locks[k] ? 1 : 0)).join('');
 
 /* THE ANSWER CAN MOVE UNDER A DRAWN PAGE: a sign-in or sign-out in another tab, an answer that
    lands after the module's time limit, the admin preview switch. Nearly every section was drawn
@@ -76,8 +84,8 @@ function accessNow(A, lg) {
    account's answer is waited for rather than read from the empty state in between. */
 function watchAccess(A, lg) {
   if (typeof A.onChange !== 'function') return;
-  const drawn = ACCESS.locked + '|' + ACCESS.paywall;
-  const check = () => { const n = accessNow(A, lg); if (n.locked + '|' + n.paywall !== drawn) location.reload(); };
+  const drawn = lockSig(ACCESS);
+  const check = () => { const n = accessNow(A, lg); if (lockSig(n) !== drawn) location.reload(); };
   try {
     A.onChange(d => {
       if (d && d.leagueId && d.leagueId !== lg.id) return;
@@ -94,6 +102,7 @@ function decideAccess(lg) {
   ACCESS.slug = lg.slug || '';
   const now = accessNow(A, lg);
   ACCESS.locked = now.locked;
+  ACCESS.locks = now.locks;
   ACCESS.paywall = now.paywall;
   watchAccess(A, lg);
   if (!ACCESS.paywall) return;
@@ -380,7 +389,7 @@ async function teamShots(team) {
     const SC = window.EpinoiaShotChart;
     const opts = { host, shots, colour: team.colour || '#93f2bf', minAttempts: 5, games: gs.length, table: false,
       gameList: SC.gameListOf ? SC.gameListOf(gs) : null,
-      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games'), zones: !ACCESS.locked };
+      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games'), zones: !sectionLocked('shotZones') };
     SC.renderZones(opts);
     const pids = [...new Set(shots.map(s => s.pid).filter(Boolean))];
     if (pids.length > 1 && window.EpinoiaData.playerMeta) {
@@ -388,14 +397,14 @@ async function teamShots(team) {
         const names = {};
         pids.forEach(id => { const m = meta && meta[id]; if (m && m.name) names[id] = (m.jersey ? '#' + m.jersey + ' ' : '') + m.name; });
         SC.renderZones(Object.assign(opts, { names }));
-        if (ACCESS.locked) {
-          host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
+        if (sectionLocked('shotZones')) {
+          host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, key: 'shotZones', title: 'Shot zones',
             lines: ['Twelve zones, each tinted against its own break-even.'] }));
         }
       }).catch(() => { /* the chart without the player control */ });
     }
-    if (ACCESS.locked) {
-      host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
+    if (sectionLocked('shotZones')) {
+      host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, key: 'shotZones', title: 'Shot zones',
         lines: ['Twelve zones, each tinted against its own break-even.'] }));
     }
   } catch (e) { host.appendChild(el('div', 'empty', 'The shot chart could not be drawn.')); }
@@ -412,8 +421,8 @@ async function teamShotClock(team) {
   if (ACCESS.paywall || !host) return;
   const SCk = window.EpinoiaShotClock, V = window.EpinoiaShotClockView;
   if (!SCk || !V || !window.EpinoiaData) return;
-  if (ACCESS.locked) {
-    host.innerHTML = accessTeaser({ compact: true, title: 'Shot clock analysis',
+  if (sectionLocked('shotClock')) {
+    host.innerHTML = accessTeaser({ compact: true, key: 'shotClock', title: 'Shot clock analysis',
       lines: ['The four factors and the shots of the possessions that ended in any stretch of the 24 seconds, at both ends.'] });
     return;
   }
@@ -451,8 +460,8 @@ async function teamRotations(team) {
   if (ACCESS.paywall || !host) return;
   const R = window.EpinoiaRotation, D = window.EpinoiaData;
   if (!R || !D) return;
-  if (ACCESS.locked) {
-    host.innerHTML = accessTeaser({ compact: true, title: 'Rotations',
+  if (sectionLocked('rotations')) {
+    host.innerHTML = accessTeaser({ compact: true, key: 'rotations', title: 'Rotations',
       lines: ['Who is on the floor at every minute of a game, across the season.'] });
     return;
   }
@@ -1508,8 +1517,8 @@ async function teamStats(team, kind) {
     SL.render(box, {
       S, mine, LE: window.EpinoiaLineupEvents,
       bind: (node, d) => teamStatBind(node, d.k, d.l, S, mine, team),
-      logs: ACCESS.locked ? Promise.resolve({ why: 'for members, with the play-by-play' }) : clubLogs(team, scoped),
-      starters: ACCESS.locked ? null : scopeStarters(scopeComps),
+      logs: sectionLocked('events') ? Promise.resolve({ why: 'for members, with the play-by-play' }) : clubLogs(team, scoped),
+      starters: sectionLocked('splits') ? null : scopeStarters(scopeComps),
       bench: benchMinutes(S, team),
       nameOf: id => metaP.then(m => (m && m[id] && m[id].name && m[id].name !== 'Player') ? m[id].name : null)
     });
@@ -1523,9 +1532,9 @@ async function teamStats(team, kind) {
     const zh = el('div');
     /* Without analytics the teaser stands in, and the zone read is never made: it fetches the
        event log of every game in the competition, and saving that is half the point. */
-    if (ACCESS.locked) {
+    if (sectionLocked('shotZones')) {
       const tz = el('div');
-      tz.innerHTML = accessTeaser({ title: 'Shot zones, ranked in the league',
+      tz.innerHTML = accessTeaser({ key: 'shotZones', title: 'Shot zones, ranked in the league',
         lines: ['Share of shots, attempts per 100 possessions, makes and eFG% from every area of the floor, each a percentile among the league’s clubs.'] });
       zh.appendChild(tz);
     } else {
@@ -1545,8 +1554,8 @@ async function teamStats(team, kind) {
     const evHost = el('div');
     try {
       const clubLabel = team.name || team.short_name || '';
-      if (ACCESS.locked) {
-        evHost.innerHTML = accessTeaser({ title: 'Events, at both ends',
+      if (sectionLocked('events')) {
+        evHost.innerHTML = accessTeaser({ key: 'events', title: 'Events, at both ends',
           lines: ['Second chances, transition, points off turnovers, after-timeout sets and the half court — what the club made of each, and what opponents made of the same.'] });
         { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
       } else if (window.EpinoiaSitPanel) {
@@ -1772,8 +1781,8 @@ function reboundZones(host, S, mine) {
 async function lineupCards(team) {
   const host = $('#lucards'), V = window.EpinoiaTeamViz, X = window.EpinoiaLineupEvents;
   if (!host || ACCESS.paywall) return;
-  if (ACCESS.locked) {
-    host.innerHTML = accessTeaser({ title: 'The most-used lineups, as cards',
+  if (sectionLocked('lineups')) {
+    host.innerHTML = accessTeaser({ key: 'lineups', title: 'The most-used lineups, as cards',
       lines: ['Each five’s offence and defence and how it plays, every number coloured against the club’s own.'] });
     return;
   }
@@ -1840,7 +1849,7 @@ async function lineupPanels(team) {
       team, league: { id: lg.id, slug: lg.slug || ACCESS.slug, name: lg.name },
       games: gs, stints: st, meta, hosts,
       /* without analytics: every five and the filter as ever, the members' parts locked (teamwowy.js gates) */
-      locked: ACCESS.locked,
+      locked: sectionLocked('wowy'),
       previewMax: (A && A.CATALOGUE && A.CATALOGUE.wowyPreviewMax) || 1,
       compIds: SEASON_COMPS, season: SEASON_NAME, base: '../',
       readLogs: () => seasonLogs(team), segCache

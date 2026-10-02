@@ -245,7 +245,7 @@ console.log('\nthe club page');
   ok('the old panels\' rules are gone from the page', !/\.lu-chips\{|\.wowy-bar\{|\.tiles\{/.test(page));
   ok('team.js mounts it with the three sections, the gate and the page\'s own play-by-play',
      /TW\.mount\(\{/.test(team) && /hosts = \{ wowy: \$\('#wowy'\), build: \$\('#lufilter'\), lineups: \$\('#lulist'\) \}/.test(team) &&
-     /locked: ACCESS\.locked/.test(team) && /readLogs: \(\) => seasonLogs\(team\), segCache/.test(team));
+     /locked: sectionLocked\('wowy'\)/.test(team) && /readLogs: \(\) => seasonLogs\(team\), segCache/.test(team));
   ok('...reading the games with what the views need', /select=\$\{TW\.GAME_SELECT\}/.test(team) && /starters/.test(TW.GAME_SELECT) && /tipoff_at/.test(TW.GAME_SELECT));
   ok('...starting when the first of the three comes near', /whenNear\(\$\('#wowy'\) \|\| \$\('#lulist'\)/.test(team));
   ok('...and the season\'s name for the links', /SEASON_NAME = season\.name/.test(team) && /season: SEASON_NAME/.test(team));

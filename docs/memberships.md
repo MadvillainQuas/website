@@ -649,6 +649,16 @@ keys; `{league}` is the league's name and `{months}` the trial's length.
   everything, a league's administrators always pass): the events splits (`game_analytics_ok`, row `events`) and What
   wins / Front office (`analytics_check`, row `model`). Making either `free` opens its data, not only its drawing.
 - `platform_set_gate(key, gate, title, lines)`: platform administrators only, seeded keys only, audited.
+- **The editor**: platform console → Plans → **What is behind the wall**: a row a section (what opens it, its teaser's
+  title and lines; blank keeps the page's words), and under it the wording every prompt shares (a box left empty keeps
+  the site's own words, shown greyed in it). A change reaches every visitor within five minutes.
+- **Every page asks for its section's own lock** (`featureLocked(key, league)`), falling back to the analytics answer:
+  the club page (`events`, `shotZones`, `shotClock`, `rotations`, `lineups`, `wowy`, `splits`), the player page
+  (`events`, `splits`, `shotZones`, `wowy`), the box score's members' tabs (`gameAdvanced`, `gameFlow`,
+  `gameConnections`, `events`, `shotClock`) and its video's runs (`videoRuns`), the tables, the chart lab and a league's
+  zone read (`statColumns`), the video hub (`videoRuns`), WOWY (`wowy`), the CSV button (`csv`), What wins and the
+  Front office (`model`), the reports (`clubReport`, `playerReport`). Each teaser carries its key, so the console's words
+  for it are the ones shown.
 - Tests: `node supabase/tests/access-gates.test.mjs` (PGlite) and the wall block of `access.test.mjs`.
 
 ## 11. Free trials (0223)

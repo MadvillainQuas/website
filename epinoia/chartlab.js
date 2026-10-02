@@ -1438,7 +1438,8 @@ async function mountAsync(opts) {
   }
 
   const A = root.EpinoiaAccess, MLock = root.EpinoiaMemLock;
-  const accessCtx = () => ({ locked: !!(A && typeof A.analyticsOk === 'function' && !A.analyticsOk(opts.leagueId)),
+  const accessCtx = () => ({ locked: !!(A && (typeof A.featureLocked === 'function' ? A.featureLocked('statColumns', opts.leagueId)
+      : typeof A.analyticsOk === 'function' && !A.analyticsOk(opts.leagueId))),
     isPremium: k => !!(A && typeof A.isPremiumColumn === 'function' && A.isPremiumColumn(k)) });
   let ctx = accessCtx();
   /* ---- the catalogues, from the tables' own columns ---- */
