@@ -1,0 +1,12 @@
+/* THE PLAYER WITH NO PHOTOGRAPH YET (silhouette.js): a pixel figure on a small screen, laid into whatever box
+   held his photo - the profile's portrait, a star card's disc. The picture draws its own colours (the club's, made
+   safe for the theme, and redrawn when the theme flips); this only fits it to the box and keeps its pixels square. */
+.has-sil{overflow:hidden}
+.has-sil>svg.sil{position:absolute;inset:0;width:100%;height:100%;display:block;
+  image-rendering:pixelated;shape-rendering:crispEdges}
+/* the initials it replaces stay in the markup for a script-less page, and step aside */
+.has-sil .ini,.has-sil .star-ini{display:none}
+/* the profile's portrait: the screen is the plate, so the halftone behind it goes */
+body .photo.has-sil{background:var(--panel-2)}
+/* the shirt number stays on the screen, over the picture and under the scanlines and the brackets */
+.photo.has-sil .num{z-index:1}

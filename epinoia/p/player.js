@@ -120,16 +120,27 @@ function paintIdentity(pl, entry, team) {
      whatever host someone linked. photo_url stays as the simple fallback. */
   const stored = pl.__photoPath
     ? window.EpinoiaUpload.publicUrl(CFG, pl.__photoPath) : null;
+  /* NO PHOTOGRAPH YET: a pixel figure in the club's colours on a small screen (silhouette.js),
+     the same one for him every time; the initials only where that module is missing */
+  const standIn = () => {
+    const SIL = window.EpinoiaSilhouette;
+    if (SIL) {
+      SIL.mount(box, { seed: pl.id, teamColour: team && team.colour, teamColour2: team && team.colour_2,
+        theme: 'auto', shape: 'portrait', label: SIL.label(name) });
+      return;
+    }
+    const ini = $('#ini');
+    if (ini) ini.textContent = ((pl.first_name || '?')[0] + (pl.last_name || '')[0] || '').toUpperCase() || '—';
+  };
   if (stored || pl.photo_url) {
     const img = document.createElement('img');
     img.src = stored || pl.photo_url;
     img.alt = name;
-    img.addEventListener('error', () => img.remove());   // never a broken frame
+    img.addEventListener('error', () => { img.remove(); standIn(); });   // never a broken frame
     box.textContent = '';
     box.appendChild(img);
   } else {
-    $('#ini').textContent = ((pl.first_name || '?')[0] + (pl.last_name || '')[0] || '')
-      .toUpperCase() || '—';
+    standIn();
   }
   if (entry && entry.jersey) {
     const num = el('span', 'num', entry.jersey);

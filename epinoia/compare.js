@@ -569,6 +569,7 @@ function socialCard() {
   if (root.EpinoiaSocialCard && root.EpinoiaReportCard) return Promise.resolve(root.EpinoiaSocialCard);
   if (!cardReady) {
     cardReady = (root.EpinoiaReportCard ? Promise.resolve() : loadScript('reportcard.js'))
+      .then(() => (root.EpinoiaSilhouette ? null : loadScript('silhouette.js').catch(() => null)))   // the figure for a player with no photograph; initials without it
       .then(() => (root.EpinoiaSocialCard ? null : loadScript('socialcard.js')))
       .then(() => root.EpinoiaSocialCard)
       .catch(e => { cardReady = null; throw e; });

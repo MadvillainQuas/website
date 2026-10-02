@@ -1061,8 +1061,10 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
   if (MOD.discs === 'team') { crest(ctx, th, r.team, cx, cy, rad); return; }     // the crest alone, at the disc's size and place (initials on the club colour when it has none)
   const col = u.rgb(r.team.colour) ? r.team.colour : accent;
   /* HIS PHOTO, when the model brings one that can be drawn (r.photo, read by withCrests from r.photoUrl): cut to the circle,
-     filling it, under the ring of his club's colour. Without one, his initials, as always. */
+     filling it, under the ring of his club's colour. Without one, his silhouette below, or his initials where that is not loaded. */
   const pic = r.photo && r.photo.width ? r.photo : null;
+  /* WITHOUT ONE, his pixel figure in his club's colours on a small screen (silhouette.js), where the page has it */
+  const SIL = !pic && root.EpinoiaSilhouette && rad >= 24 ? root.EpinoiaSilhouette : null;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
   ctx.fillStyle = u.accentOn(col, th); ctx.globalAlpha = pic ? 1 : 0.22; ctx.fill();
@@ -1076,10 +1078,18 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
     ctx.drawImage(pic, cx - iw * k / 2, ih * k > 2 * rad ? cy - rad : cy - ih * k / 2, iw * k, ih * k);
     ctx.restore();
     ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+  } else if (SIL) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.clip();
+    const light = SIL.contrast(th.ground, '#000000') > 10.5;
+    SIL.draw(ctx, cx - rad, cy - rad, 2 * rad, 2 * rad, { seed: r.seed || r.name, teamColour: col, teamColour2: r.team.colour2 || r.team.colour_2,
+      theme: light ? 'light' : 'dark', shape: 'square', res: rad >= 70 ? 32 : 24 });
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
   }
   ctx.lineWidth = Math.max(3, rad * 0.06); ctx.strokeStyle = u.accentOn(col, th); ctx.stroke();
   ctx.restore();
-  if (!pic) {
+  if (!pic && !SIL) {
     u.font(ctx, rad * 0.78, u.F.score);
     ctx.textAlign = 'center';
     ctx.fillStyle = th.ink;
