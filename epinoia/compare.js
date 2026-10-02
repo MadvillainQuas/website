@@ -407,13 +407,16 @@ function fromTable(o) {
   });
   return {
     title: opt.title || ('Compare ' + rows.length + ' players'),
-    players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '' })),
+    players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '',
+      /* the club, for the exported picture's circles (the table's own name, colour and crest) */
+      team: { name: r.teamFull || r.teamName || '', short_name: r.teamShort || '', colour: r.colour || r.teamColour || null, logo: r.teamLogo || r.logo || null } })),
     stats: S.keys.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
     allStats: S.pool.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
     statGroups: tableGroups(opt.groups, cols, opt.locked),
     values, pcts,
     mode: 'pct',
-    note: opt.note || ''
+    note: opt.note || '',
+    league: opt.league || null, range: opt.range || ''
   };
 }
 
@@ -525,6 +528,8 @@ function render(host, o) {
   draw();
   const api = {
     state: st,
+    /* what is on screen now: the players, the mode and every stat chosen, in order (the export draws this) */
+    current,
     redraw: () => drawChart(true),
     update(next) {
       o = Object.assign({}, o, next || {});
@@ -544,6 +549,97 @@ function render(host, o) {
   return api;
 }
 
+/* ===================================================== the comparison as a picture ===
+   EXPORT IMAGE: the comparison on screen - its players in their colours, the scale it is read on and every stat chosen,
+   not only the ones the panel has scrolled to - drawn as a PNG in the house style of the console's Graphics
+   (socialcard.js, kind 'compare'), which this page loads only when the button is first pressed. */
+const SELF = (root.document && root.document.currentScript && root.document.currentScript.src) || '';
+function loadScript(name) {
+  return new Promise((res, rej) => {
+    const d = root.document, m = /^(.*\/)compare\.js(\?v=\d+)?/.exec(SELF);
+    const s = d.createElement('script');
+    s.src = (m ? m[1] : '/epinoia/') + name + (m && m[2] ? m[2] : '');
+    s.onload = () => res(); s.onerror = () => rej(new Error('could not load ' + name));
+    d.head.appendChild(s);
+  });
+}
+let cardReady = null;
+function socialCard() {
+  if (root.EpinoiaSocialCard && root.EpinoiaReportCard) return Promise.resolve(root.EpinoiaSocialCard);
+  if (!cardReady) {
+    cardReady = (root.EpinoiaReportCard ? Promise.resolve() : loadScript('reportcard.js'))
+      .then(() => (root.EpinoiaSocialCard ? null : loadScript('socialcard.js')))
+      .then(() => root.EpinoiaSocialCard)
+      .catch(e => { cardReady = null; throw e; });
+  }
+  return cardReady;
+}
+const slugOf = t => String(t || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'player';
+function exportName(o) {
+  return 'compare-' + players(o).map(p => slugOf(p.name)).join('-') + '.png';
+}
+/* the model socialcard.compare() takes: every stat on screen with each player's value, its text and percentile */
+function exportModel(o, extra) {
+  const P = players(o), S = stats(o), mode = modeOf(o), x = extra || {};
+  const L = o.league || {};
+  const crestOf = path => (path && typeof root.epinoiaLogoUrl === 'function' ? root.epinoiaLogoUrl(path, 256) : null);
+  return {
+    league: { name: L.name || '', slug: L.slug || '', colour: L.colour_a || L.colour || null, colour2: L.colour_b || L.colour2 || null,
+              timezone: L.timezone || null, country: L.country || null, logoUrl: L.logo_path ? crestOf(L.logo_path) : null },
+    comp: L.name || '', range: o.range || '',
+    title: 'Head to head',
+    sub: mode === 'pct' ? (P.some(p => p.league) ? 'Percentiles, each against his own league' : 'Percentiles among the league’s players')
+      : 'Values, each stat on its own scale',
+    mode,
+    players: P.map((p, i) => {
+      const t = p.team || {};
+      return { name: (p.name || 'Player') + (p.league ? ' · ' + p.league : ''), colour: (x.colours || [])[i] || null,
+               team: { name: t.name || '', short_name: t.short_name || '', colour: t.colour || null, crestUrl: crestOf(t.logo) } };
+    }),
+    stats: S.map(st => ({ key: st.key, label: String(st.label || st.key), signed: isSigned(st.key, st),
+      cells: P.map(p => { const v = cell(o.values, p.id, st.key); return { v, pct: cell(o.pcts, p.id, st.key), text: fmtValue(st, v) }; }) }))
+  };
+}
+/* a series colour as the page paints it (a league's page re-points --lume), as #rrggbb: read off one painted pixel */
+function seriesColours(scope) {
+  const d = root.document;
+  try {
+    const c = d.createElement('canvas'); c.width = c.height = 1;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    return SERIES.map((_, i) => {
+      const chip = scope && scope.querySelector('.cmp-chip.cmp-s' + i);
+      if (!chip) return null;
+      const probe = d.createElement('span');
+      probe.style.color = 'var(--cmp-c)';
+      chip.appendChild(probe);
+      const css = root.getComputedStyle(probe).color;
+      probe.remove();
+      x.clearRect(0, 0, 1, 1); x.fillStyle = '#000'; x.fillStyle = css; x.fillRect(0, 0, 1, 1);
+      const px = x.getImageData(0, 0, 1, 1).data;
+      return '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+    });
+  } catch (_) { return []; }
+}
+/* the page's own theme, for the picture: light paper or the screen's dark */
+function pageTheme() {
+  try {
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(root.getComputedStyle(root.document.body).backgroundColor || '');
+    return m && (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255 > 0.5 ? 'light' : 'dark';
+  } catch (_) { return 'dark'; }
+}
+async function exportPng(o, scope) {
+  const SC = await socialCard();
+  const model = SC.compare(exportModel(o, { colours: seriesColours(scope) }));
+  const blob = await SC.png(model, { size: 'auto', theme: pageTheme(), scale: 1 });
+  const url = URL.createObjectURL(blob);
+  const a = root.document.createElement('a');
+  a.href = url; a.download = exportName(o);
+  root.document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return model;
+}
+
 /* The chart in a native <dialog>: Escape closes it, focus is held inside, the backdrop
    comes free. kit/compare.css makes it a bottom sheet on a phone and a centred panel on
    a wider screen. Closing removes it from the page. */
@@ -555,7 +651,8 @@ function open(o) {
   dlg.className = 'cmp-sheet';
   dlg.setAttribute('aria-label', o.title || 'Compare players');
   dlg.innerHTML = '<div class="cmp-sheet-head"><span class="cmp-sheet-title">' + esc(o.title || 'Compare') + '</span>' +
-    '<button type="button" class="cmp-sheet-close" aria-label="Close">×</button></div>' +
+    '<button type="button" class="cmp-sheet-export">Export image</button>' +
+    '<button type="button" class="cmp-sheet-close" aria-label="Close" autofocus>×</button></div>' +
     '<div class="cmp-sheet-body"></div>';
   doc.body.appendChild(dlg);
   const body = dlg.querySelector('.cmp-sheet-body');
@@ -571,6 +668,16 @@ function open(o) {
   dlg.addEventListener('click', e => {
     if (e.target === dlg) close();                                   /* a tap on the backdrop */
     else if (e.target.closest && e.target.closest('.cmp-sheet-close')) close();
+    else if (e.target.closest && e.target.closest('.cmp-sheet-export')) {
+      const b = e.target.closest('.cmp-sheet-export');
+      if (!chart || b.disabled) return;
+      b.disabled = true;
+      const was = b.textContent;
+      b.textContent = 'Drawing…';
+      exportPng(chart.current(), body)
+        .catch(err => { console.warn('[compare] export', err); })
+        .then(() => { b.textContent = was; b.disabled = false; });
+    }
   });
   if (typeof dlg.showModal === 'function') dlg.showModal();
   else dlg.setAttribute('open', '');
@@ -579,6 +686,6 @@ function open(o) {
   return { dialog: dlg, chart, close };
 }
 
-return { html, legendHtml, render, open, fromTable, tableStats, tableGroups, statFrom,
+return { html, legendHtml, render, open, fromTable, exportModel, exportName, exportPng, tableStats, tableGroups, statFrom,
          isSigned, ord, SERIES, NARROW, MAX_PLAYERS, CORE_STATS, MAX_STATS, DEMOTED };
 }));

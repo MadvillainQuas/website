@@ -201,6 +201,9 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 :where(button,a,input,select,[tabindex]):focus-visible{outline:2px solid var(--lume);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{
   animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* words for a screen reader only: the whole of a name the page shows cut short (fulltable.js, wowy) */
+.ep-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+  overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 
 /* ---------- 4. the frame: no floating cards, only ruled regions ---------- */
 .ep-frame{max-width:1140px;margin:0 auto;position:relative;

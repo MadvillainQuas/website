@@ -434,6 +434,7 @@ function rowsOf(m, mods) {
 /* the stat lines a stars graphic shows unless told: points, rebounds, assists - or, for a month's, the per-game keys it came with */
 const starKeys = (m, mods) => (mods && mods.statKeys ? mods.statKeys : (m.rows && m.rows[0] && Object.keys(m.rows[0].stats).some(catKey) ? Object.keys(m.rows[0].stats).filter(catKey) : ['pts', 'reb', 'ast']));
 const MOD_CAPTION_KEYS = (mods, m) => starKeys(m || {}, mods).slice(0, 4);
+const MOD_HEAD = mods => (mods && mods.headline) || '';
 /* THE LEADERS BOARD: `boards` = [{ key, label, low, rows: [{ rank, tie, name, team (a club row), value (the text) }] }] - the site's
    league leaders in the categories chosen, players or clubs. `title` is what the caption and the graphic call it ("Season leaders"). */
 function leaders(o) {
@@ -442,6 +443,45 @@ function leaders(o) {
   return { kind: 'leaders', key: 'leaders-' + slug(o.title || 'leaders'), league: o.league || {}, comp: o.comp || '', range: o.range || '', title: o.title || 'Leaders',
            subject: o.subject === 'teams' ? 'teams' : 'players', boards, cat: o.cat || null, tz: leagueZone(o.league) };
 }
+/* THE STAT BOARD (the stats page's graphic, statgfx.js): the top N of a statistics table as it is sorted - one stat the board
+   is about (`stat`, the column the table is sorted by, its text already formatted as the table prints it) and up to four
+   beside it (`secs`). `rows` = [{ name, team (a club row with crestUrl), value, secs: [text…] }], in the table's own order:
+   the rank is the row's place in it. `sub` says what the table covers (the season, a phase, its filters). */
+const SB_MIN = 3, SB_MAX = 20, SB_SECS = 4;
+function statboard(o) {
+  const st = o.stat || {};
+  const secs = (o.secs || []).filter(x => x && x.key && x.key !== st.key).slice(0, SB_SECS)
+    .map(x => ({ key: String(x.key), label: String(x.label || x.key).toUpperCase() }));
+  const txt = v => (v == null || v === '' ? '—' : String(v));
+  const rows = (o.rows || []).slice(0, SB_MAX).map((r, i) => ({ rank: r.rank != null ? n0(r.rank) : i + 1, name: r.name || '?', team: side(r.team, 0),
+    value: txt(r.value), secs: secs.map((x, j) => txt((r.secs || [])[j])) }));
+  return { kind: 'statboard', key: 'top-' + rows.length + '-' + slug(st.key || st.label || 'stat'), league: o.league || {}, comp: o.comp || '', range: o.range || '',
+           title: o.title || (String(st.label || 'Stat') + ' leaders'), sub: o.sub || '',
+           stat: { key: String(st.key || ''), label: String(st.label || st.key || '').toUpperCase() }, secs, rows, tz: leagueZone(o.league) };
+}
+
+/* HEAD TO HEAD (compare.js's export): two to five players over the stats a reader picked, as the popup draws them - each
+   stat a block, a bar per player in his own colour, on one scale of percentiles or each stat's own domain of values.
+   players = [{ name, team, colour }]; stats = [{ key, label, signed, cells: [{ text, pct }] }] (the cell's `v` is the value). */
+const CMP_COLOURS = ['#93f2bf', '#8ff5ff', '#ffd166', '#b7a8ff', '#e6fff1'];
+function compare(o) {
+  const players = (o.players || []).slice(0, 5).map((p, i) => ({ name: p.name || 'Player', team: side(p.team, 0),
+    colour: /^#[0-9a-f]{6}$/i.test(p.colour || '') ? p.colour : CMP_COLOURS[i % CMP_COLOURS.length] }));
+  const fin = v => typeof v === 'number' && isFinite(v);
+  const stats = (o.stats || []).filter(x => x && x.key != null).map(x => {
+    const cells = players.map((p, i) => {
+      const c = (x.cells || [])[i] || {};
+      return { v: fin(c.v) ? c.v : null, pct: fin(c.pct) ? Math.max(0, Math.min(100, c.pct)) : null, text: c.text == null || c.text === '' ? '—' : String(c.text) };
+    });
+    let lo = 0, hi = 0;
+    cells.forEach(c => { if (c.v != null) { lo = Math.min(lo, c.v); hi = Math.max(hi, c.v); } });
+    return { key: String(x.key), label: String(x.label || x.key), signed: !!x.signed, lo, hi, cells };
+  });
+  const mode = o.mode === 'value' ? 'value' : 'pct';
+  return { kind: 'compare', key: 'compare-' + players.map(p => slug(p.name)).join('-'), league: o.league || {}, comp: o.comp || '', range: o.range || '',
+           title: o.title || 'Head to head', sub: o.sub || (mode === 'pct' ? 'Percentiles' : 'Values'), mode, players, stats, tz: leagueZone(o.league) };
+}
+
 /* ------------------------------------------------------------ captions ----- */
 function tags(league) {
   const t = String(league && league.name || '').replace(/[^\p{L}\p{N}]+/gu, '');
@@ -475,6 +515,16 @@ function caption(m0, mods0) {
   if (m.kind === 'leaders') {
     const per = mods.rows > 0 ? mods.rows : (m.boards.length === 1 ? 10 : m.boards.length > 3 ? 3 : 5);
     return [m.title + (m.comp ? ' in the ' + m.comp : '') + ':', '', m.boards.map(b => b.label + '\n' + b.rows.slice(0, per).map(r => (r.tie ? 'T-' : '') + r.rank + '. ' + r.name + (m.subject === 'teams' ? '' : ' (' + r.team.name + ')') + ' ' + r.value).join('\n')).join('\n\n'),
+      '', tags(L)].join('\n');
+  }
+  if (m.kind === 'statboard') {
+    return [(MOD_HEAD(mods) || m.title) + (m.comp ? ' in the ' + m.comp : '') + (m.range ? ' (' + m.range + ')' : '') + ':', '',
+      m.rows.map(r => r.rank + '. ' + r.name + (r.team.name && r.team.name !== '?' ? ' (' + r.team.name + ')' : '') + ' ' + mn(r.value) + ' ' + m.stat.label).join('\n'),
+      '', tags(L)].join('\n');
+  }
+  if (m.kind === 'compare') {
+    return [m.players.map(p => p.name).join(' v ') + (m.comp ? ' in the ' + m.comp : '') + ':', '',
+      m.stats.map(x => x.label + ': ' + x.cells.map(c => mn(c.text) + (m.mode === 'pct' && c.pct != null ? ' (' + U().ordinal(c.pct) + ')' : '')).join(' v ')).join('\n'),
       '', tags(L)].join('\n');
   }
   if (m.kind === 'weekstars') {
@@ -1233,7 +1283,228 @@ function drawFixtures(ctx, m, th, S, M, accent) {
   ];
 }
 
-const TAGS = { leaders: 'LEADERS', weekstars: 'STARS', result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
+/* THE STAT BOARD'S ROOM, and how its rows are set out in it - pure, so the tests can hold every count to the page. The rows
+   share what the heading (76), the footer (100), the title (128), the column names (`headH`) and the least gaps leave. One
+   column while every row keeps SB_ONE px (a name and its figures read on a phone); past that two columns, filled down the
+   left first, each row then twice as tall and its secondary figures on a line under the name. No row is ever taller than
+   a list's on the same shape. `boxes` are each row's own box, from the top of the rows. */
+const SB_ONE = 56;
+function statLayout(S0, n, nsec) {
+  const S = S0 && S0.w ? S0 : SIZES[S0] || SIZES.portrait;
+  const W = S.w, M = 64;
+  const titleH = 128, headH = 40;
+  const room = S.h - S.top - S.bottom - 176;
+  const avail = room - titleH - headH - 12 * 2;
+  const N = Math.max(1, Math.min(SB_MAX, Math.floor(n) || 1));
+  /* a short board's rows grow, so five players fill a story as ten fill a square */
+  const cap = S.h >= 1900 ? (N <= 6 ? 150 : 112) : (N <= 5 ? 124 : 96);
+  const cols = N > 1 && avail / N < SB_ONE ? 2 : 1;
+  const per = cols === 1 ? N : Math.ceil(N / 2);
+  const rowH = Math.floor(Math.min(cols === 1 ? cap : cap + 12, avail / per));
+  const gap = 24, colW = cols === 1 ? W - 2 * M : (W - 2 * M - gap) / 2;
+  const boxes = [];
+  for (let i = 0; i < N; i++) {
+    const c = cols === 1 ? 0 : Math.floor(i / per), j = cols === 1 ? i : i % per;
+    boxes.push({ x: M + c * (colW + gap), y: headH + j * rowH, w: colW, h: rowH });
+  }
+  return { cols, per, rowH, colW, gap, headH, titleH, avail, h: headH + per * rowH, boxes, compact: cols === 2, nsec: Math.max(0, Math.min(SB_SECS, nsec || 0)) };
+}
+
+function drawStatBoard(ctx, m, th, S, M, accent) {
+  const u = U(), W = S.w, rows = m.rows, n = rows.length;
+  const title = titleBlock(ctx, th, S, M, m.title, m.sub || m.comp);
+  title.h = 128;                                  // the layout counts on a subtitle's room whether there is one or not
+  if (!n) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No players to show yet.', M, y + 40); } }];
+  const L = statLayout(S, n, m.secs.length);
+  const secs = m.secs.slice(0, L.nsec);
+  /* the figures' columns of a one-column board, right to left: the board's own stat, then each stat beside it */
+  const pw = 170, sw = secs.length >= 4 ? 104 : 118;
+  const secRight = (box, j) => box.x + box.w - 20 - pw - 10 - (secs.length - 1 - j) * sw;
+  const disc = (r, cx, cy, rad) => starDisc(ctx, th, { name: r.name, team: r.team }, cx, cy, rad, accent);
+  const row = (r, i, box) => {
+    const { x, w, h } = box, y = box.y, cy = y + (h - 6) / 2, first = i === 0;
+    if (i % 2 === 0 || first) { ctx.fillStyle = th.panel; u.roundRect(ctx, x, y, w, h - 6, 12); ctx.fill(); }
+    if (first) { ctx.fillStyle = accent; ctx.fillRect(x, y + 8, 6, h - 22); }
+    else stripe(ctx, th, r.team.colour, x, y + 10, h - 26, 4);
+    /* the rank */
+    u.font(ctx, Math.min(L.compact ? 28 : 30, h * 0.42), NUMF, 700);
+    ctx.fillStyle = first ? accent : th.ink3; ctx.textAlign = 'center';
+    ctx.fillText(String(r.rank), x + (L.compact ? 30 : 36), cy + Math.min(30, h * 0.42) * 0.36);
+    ctx.textAlign = 'left';
+    const rad = Math.min(L.compact ? 32 : 44, (h - 6) * 0.4), cx = x + (L.compact ? 60 : 74) + rad;
+    disc(r, cx, cy, rad);
+    const nx = cx + rad + (L.compact ? 14 : 18);
+    /* the board's stat, at the row's right, the leader's lit */
+    const vs = Math.min(L.compact ? 40 : 56, h * (L.compact ? 0.4 : 0.5));
+    u.font(ctx, vs, NUMF, 700);
+    const val = u.ellipsis(ctx, mn(r.value), L.compact ? w * 0.3 : pw - 10), vw = ctx.measureText(val).width;
+    ctx.fillStyle = first ? accent : th.ink; ctx.textAlign = 'right';
+    ctx.fillText(val, x + w - 20, cy + vs * 0.36);
+    ctx.textAlign = 'left';
+    if (!L.compact) {
+      /* each stat beside it in its own column, under its name in the header */
+      secs.forEach((s, j) => {
+        const fs = Math.min(h >= 100 ? 30 : 26, h * 0.42);
+        u.font(ctx, fs, NUMF, 600);
+        ctx.fillStyle = th.ink2; ctx.textAlign = 'right';
+        ctx.fillText(u.ellipsis(ctx, mn(r.secs[j]), sw - 14), secRight(box, j), cy + fs * 0.36);
+        ctx.textAlign = 'left';
+      });
+      const nr = (secs.length ? secRight(box, 0) - sw + 14 : x + w - 20 - vw) - 18;
+      const nw = Math.max(60, nr - nx);
+      const two = h >= 74;
+      u.fit(ctx, r.name, nw, Math.min(38, h * (two ? 0.3 : 0.42)), 17, u.F.ui, first ? 800 : 700);
+      ctx.fillStyle = th.ink; ctx.fillText(u.ellipsis(ctx, r.name, nw), nx, two ? cy - 3 : cy + Math.min(32, h * 0.42) * 0.34);
+      if (two && r.team.name && r.team.name !== '?') {
+        u.font(ctx, Math.max(16, Math.min(22, h * 0.19)), u.F.ui, 500); ctx.fillStyle = th.ink3;
+        ctx.fillText(u.ellipsis(ctx, r.team.name, nw), nx, cy + Math.min(32, h * 0.25));
+      }
+      return;
+    }
+    /* two columns: the name, and under it the stats beside the board's (or the club, when there are none) */
+    const nw = Math.max(60, x + w - 20 - vw - 16 - nx);
+    /* three or four stats on a tall row go on two lines, two to a line, rather than one line cut short */
+    const bit = j => mn(r.secs[j]) + ' ' + secs[j].label;
+    const lines = !secs.length ? (r.team.name && r.team.name !== '?' ? [r.team.name] : [])
+      : secs.length > 2 && h >= 84 ? [[0, 1], [2, 3]].map(p => p.filter(j => j < secs.length).map(bit).join('  ·  '))
+      : [secs.map((_, j) => bit(j)).join('  ·  ')];
+    const two = lines.length === 2;
+    const ns = Math.min(28, h * (lines.length ? (two ? 0.27 : 0.3) : 0.4));
+    u.fit(ctx, r.name, nw, ns, 15, u.F.ui, first ? 800 : 700);
+    ctx.fillStyle = th.ink; ctx.fillText(u.ellipsis(ctx, r.name, nw), nx, !lines.length ? cy + ns * 0.34 : two ? cy - h * 0.16 : cy - 3);
+    if (lines.length) {
+      const ls = Math.max(14, Math.min(19, h * (two ? 0.18 : 0.21)));
+      /* one size for every line, the size the longest fits at */
+      const longest = lines.reduce((a, b) => (b.length > a.length ? b : a), '');
+      const fs = u.fit(ctx, longest, nw, ls, 13, secs.length ? NUMF : u.F.ui, 500);
+      ctx.fillStyle = secs.length ? th.ink2 : th.ink3;
+      lines.forEach((t, k) => {
+        u.font(ctx, fs, secs.length ? NUMF : u.F.ui, 500);
+        ctx.fillText(u.ellipsis(ctx, t, nw), nx, two ? cy + h * 0.06 + k * (fs + 7) : cy + Math.min(26, h * 0.25));
+      });
+    }
+  };
+  const board = { h: L.h, layout: L, draw: y => {
+    /* the column names: the board's stat over its figures (in the league's colour), each other stat over its own */
+    const hy = y + L.headH - 14;
+    for (let c = 0; c < L.cols; c++) {
+      const box = Object.assign({}, L.boxes[c * L.per] || L.boxes[0]);
+      u.font(ctx, 17, u.F.micro); ctx.textAlign = 'right';
+      ctx.fillStyle = accent;
+      ctx.fillText(u.ellipsis(ctx, m.stat.label, L.compact ? box.w * 0.4 : pw), box.x + box.w - 20, hy);
+      if (!L.compact) {
+        ctx.fillStyle = th.ink3;
+        secs.forEach((s, j) => ctx.fillText(u.ellipsis(ctx, s.label, sw - 12), secRight(box, j), hy));
+      }
+      ctx.textAlign = 'left';
+    }
+    rows.forEach((r, i) => { const b = L.boxes[i]; if (b) row(r, i, Object.assign({}, b, { y: y + b.y })); });
+  } };
+  return [title, board];
+}
+
+/* HEAD TO HEAD's room: the title, the players (two to a line), and a block per stat - its name over one bar per player.
+   compareLayout(m, size) -> the shape it fits (square, else portrait, else as tall as it needs at the portrait's width and
+   margins) and the bar's height. Every stat is drawn, never only the ones a screen had room for. */
+const CMP_MIN_ROW = 26, CMP_MAX_ROW = 46, CMP_LABEL = 32, CMP_GAP = 14;
+function compareLayout(m, size) {
+  const P = Math.max(1, (m.players || []).length), N = Math.max(1, (m.stats || []).length);
+  const legendH = 16 + Math.ceil(P / 2) * 84;
+  const fixed = 128 + legendH + 12 * 2;
+  const statsNeed = rowH => N * (CMP_LABEL + P * rowH + CMP_GAP) - CMP_GAP;
+  const roomOf = S => S.h - S.top - S.bottom - 176 - fixed;
+  const tryOn = S => (roomOf(S) >= statsNeed(CMP_MIN_ROW) ? S : null);
+  const want = size && SIZES[size] ? [SIZES[size]] : [SIZES.square, SIZES.portrait];
+  let S = want.map(tryOn).find(Boolean);
+  if (!S) {
+    const base = size && SIZES[size] ? SIZES[size] : SIZES.portrait;
+    S = { w: base.w, h: Math.ceil(base.top + base.bottom + 176 + fixed + statsNeed(CMP_MIN_ROW) + 24), top: base.top, bottom: base.bottom, label: 'tall' };
+  }
+  const rowH = Math.floor(clampN((roomOf(S) - N * (CMP_LABEL + CMP_GAP) + CMP_GAP) / (N * P), CMP_MIN_ROW, CMP_MAX_ROW));
+  return { S, rowH, legendH, statH: P * rowH + CMP_LABEL, h: statsNeed(rowH), fixed };
+}
+
+function drawCompare(ctx, m, th, S, M, accent) {
+  const u = U(), W = S.w, P = m.players, N = m.stats.length;
+  const title = titleBlock(ctx, th, S, M, m.title, m.sub || m.comp);
+  title.h = 128;
+  const L = compareLayout(m, null);
+  const rowH = Math.floor(clampN((S.h - S.top - S.bottom - 176 - L.fixed - N * (CMP_LABEL + CMP_GAP) + CMP_GAP) / Math.max(1, N * P.length), CMP_MIN_ROW, CMP_MAX_ROW));
+  const col = P.map(p => u.accentOn(p.colour, th));
+  const legend = { h: L.legendH, draw: y => {
+    const cw = (W - 2 * M - 20) / 2;
+    P.forEach((p, i) => {
+      const x = M + (i % 2) * (cw + 20), py = y + 16 + Math.floor(i / 2) * 84;
+      ctx.fillStyle = th.panel; u.roundRect(ctx, x, py, cw, 72, 12); ctx.fill();
+      ctx.fillStyle = col[i]; ctx.fillRect(x, py + 8, 6, 56);
+      const rad = 28, cx = x + 22 + rad, cy = py + 36;
+      starDisc(ctx, th, { name: p.name, team: p.team }, cx, cy, rad, col[i]);
+      u.font(ctx, 18, NUMF, 700);
+      const tag = String(i + 1);
+      const tx = cx + rad + 16, tw = cw - (tx - x) - 16;
+      ctx.fillStyle = col[i]; u.roundRect(ctx, tx, cy - 22, 24, 24, 12); ctx.fill();
+      ctx.fillStyle = contrastInk(col[i], th); ctx.textAlign = 'center'; ctx.fillText(tag, tx + 12, cy - 3); ctx.textAlign = 'left';
+      u.fit(ctx, p.name, tw - 34, 26, 16, u.F.ui, 800);
+      ctx.fillStyle = th.ink; ctx.fillText(u.ellipsis(ctx, p.name, tw - 34), tx + 34, cy - 2);
+      if (p.team.name && p.team.name !== '?') {
+        u.font(ctx, 17, u.F.ui, 500); ctx.fillStyle = th.ink3;
+        ctx.fillText(u.ellipsis(ctx, p.team.name, tw), tx, cy + 24);
+      }
+    });
+  } };
+  const pct = m.mode === 'pct';
+  const valW = pct ? 176 : 130;
+  const blockH = CMP_LABEL + P.length * rowH;
+  const chart = { h: N * (blockH + CMP_GAP) - CMP_GAP, draw: y0 => {
+    m.stats.forEach((st, si) => {
+      const y = y0 + si * (blockH + CMP_GAP);
+      u.font(ctx, 19, u.F.micro); ctx.fillStyle = th.ink2;
+      ctx.fillText(u.ellipsis(ctx, st.label.toUpperCase(), W - 2 * M), M, y + 21);
+      const tx = M + 34, tw = W - 2 * M - 34 - valW - 12;
+      const ty = y + CMP_LABEL;
+      ctx.fillStyle = th.track; ctx.fillRect(tx, ty, tw, P.length * rowH);
+      const span = (st.hi - st.lo) || 1, xAt = v => tx + ((v - st.lo) / span) * tw, x0 = pct ? tx : xAt(0);
+      if (pct) { ctx.fillStyle = th.rule2; for (let d = 0; d < P.length * rowH; d += 8) ctx.fillRect(tx + tw / 2 - 1, ty + d, 2, 4); }
+      else if (st.signed && st.lo < 0) { ctx.fillStyle = th.ink2; ctx.fillRect(x0 - 1, ty - 3, 2, P.length * rowH + 6); }
+      st.cells.forEach((c, i) => {
+        const ry = ty + i * rowH, bh = Math.max(10, rowH - 12), by = ry + (rowH - bh) / 2, cy = ry + rowH / 2;
+        u.font(ctx, Math.min(22, rowH * 0.6), NUMF, 700); ctx.fillStyle = col[i]; ctx.textAlign = 'right';
+        ctx.fillText(String(i + 1), tx - 10, cy + Math.min(22, rowH * 0.6) * 0.36); ctx.textAlign = 'left';
+        const shown = pct ? c.pct : c.v;
+        if (shown == null) {
+          /* no number is drawn as none: a dashed stub, never a bar of nothing */
+          ctx.strokeStyle = th.ink3; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+          u.roundRect(ctx, x0, by, 36, bh, 3); ctx.stroke(); ctx.setLineDash([]);
+        } else {
+          let bx, bw;
+          if (pct) { bx = tx; bw = Math.max(3, shown / 100 * tw); }
+          else { const xv = xAt(shown); bx = Math.min(x0, xv); bw = Math.max(3, Math.abs(xv - x0)); }
+          ctx.fillStyle = col[i]; u.roundRect(ctx, bx, by, bw, bh, Math.min(4, bh / 2)); ctx.fill();
+        }
+        /* the figure: in percentile mode the rank in the player's colour and the value it rests on beside it */
+        const fs = Math.min(24, rowH * 0.62);
+        ctx.textAlign = 'right';
+        if (pct) {
+          u.font(ctx, fs, NUMF, 700); ctx.fillStyle = shown == null ? th.ink3 : th.ink;
+          const o = shown == null ? '—' : u.ordinal(shown);
+          ctx.fillText(o, W - M, cy + fs * 0.36);
+          const ow = ctx.measureText(o).width;
+          if (c.text !== '—') {
+            u.font(ctx, fs * 0.8, NUMF, 500); ctx.fillStyle = th.ink3;
+            ctx.fillText(u.ellipsis(ctx, mn(c.text), valW - ow - 18), W - M - ow - 14, cy + fs * 0.32);
+          }
+        } else {
+          u.font(ctx, fs, NUMF, 700); ctx.fillStyle = shown == null ? th.ink3 : th.ink;
+          ctx.fillText(u.ellipsis(ctx, mn(c.text), valW), W - M, cy + fs * 0.36);
+        }
+        ctx.textAlign = 'left';
+      });
+    });
+  } };
+  return [title, legend, chart];
+}
+
+const TAGS = { statboard: 'STATS', compare: 'COMPARE', leaders: 'LEADERS', weekstars: 'STARS', result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
 
 function draw(ctx, m0, opts) {
   const o = opts || {};
@@ -1245,8 +1516,14 @@ function draw(ctx, m0, opts) {
   try { return drawIn(ctx, relabel(rowsOf(m0, MOD), MOD), o, u, themes); } finally { MOD = {}; ZNOTE = null; CAT = {}; }
 }
 
+/* THE SHAPE: one of the three, or for head to head as tall as its stats need (compareLayout) */
+function sizeOf(m, o) {
+  if (m && m.kind === 'compare') return compareLayout(m, SIZES[o.size] ? o.size : null).S;
+  return SIZES[o.size] || SIZES.portrait;
+}
+
 function drawIn(ctx, m, o, u, themes) {
-  const S = SIZES[o.size] || SIZES.portrait;
+  const S = sizeOf(m, o);
   const th = themes[MOD.theme || o.theme] || EXTRA_THEMES[MOD.theme || o.theme] || themes.dark;
   const W = S.w, H = S.h, M = 64;
   const L = m.league || {};
@@ -1273,6 +1550,8 @@ function drawIn(ctx, m, o, u, themes) {
     : m.kind === 'weekstars' ? drawWeekStars(ctx, m, th, S, M, accent)
     : m.kind === 'leaders' ? drawLeaders(ctx, m, th, S, M, accent)
     : m.kind === 'table' ? drawTable(ctx, m, th, S, M, accent)
+    : m.kind === 'statboard' ? drawStatBoard(ctx, m, th, S, M, accent)
+    : m.kind === 'compare' ? drawCompare(ctx, m, th, S, M, accent)
     : drawFixtures(ctx, m, th, S, M, accent);
   /* ROOM FOR EVERYTHING: the blocks and the least gap between them must fit the space the heading and the footer
      leave. A default graphic always does. When the person's own additions (a headline block, a subline) would
@@ -1307,7 +1586,7 @@ function drawIn(ctx, m, o, u, themes) {
     }
   }
   footer(ctx, th, M, W, bottom - 70, L);
-  return { size: o.size || 'portrait', blocks: body.length, at, dropped };
+  return { size: o.size || 'portrait', S, blocks: body.length, at, dropped, body };
 }
 
 /* ---------------------------------------------------------------- assets --- */
@@ -1319,6 +1598,7 @@ function teamsOf(m) {
   if (m.team) out.push(m.team, m.opp);
   (m.rows || []).forEach(r => { if (r.home) out.push(r.home, r.away); if (r.team) out.push(r.team); if (r.opp) out.push(r.opp); });
   (m.boards || []).forEach(b => b.rows.forEach(r => { if (r.team) out.push(r.team); }));
+  (m.players || []).forEach(p => { if (p && p.team) out.push(p.team); });
   return out.filter(Boolean);
 }
 async function withCrests(m) {
@@ -1335,7 +1615,7 @@ async function canvas(m, opts) {
   const o = Object.assign({ size: 'portrait', theme: 'dark', scale: 1 }, opts || {});   // opts.modules rides through to draw()
   const u = U();
   await u.fontsReady();
-  const S = SIZES[o.size] || SIZES.portrait;
+  const S = sizeOf(m, o);
   const c = root.document.createElement('canvas');
   c.width = Math.round(S.w * o.scale);
   c.height = Math.round(S.h * o.scale);
@@ -1412,6 +1692,6 @@ function zip(files, when) {
   return out;
 }
 
-return { SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, catKey, leaders, result, performer, weekstars, LAYOUTS, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
+return { statboard, statLayout, compare, compareLayout, sizeOf, SB_MIN, SB_MAX, SB_SECS, CMP_COLOURS, SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, catKey, leaders, result, performer, weekstars, LAYOUTS, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
          gameScore, statLine, local, dayLabel, dateLabel, timeLabel, slug };
 }));

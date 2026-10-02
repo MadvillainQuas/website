@@ -113,8 +113,17 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     const host = $('#tbl');
     host.textContent = '';
     const bar = el('div', 'scopehost');
+    /* THE TABLE AS A GRAPHIC (statgfx.js): its panel sits between the covering buttons and the table, outside the
+       table's own host (which every draw empties), and follows the table it is given after every draw of it */
+    const gfxHost = el('div', 'gfxhost');
     const board = el('div', 'boardhost');
-    host.append(bar, board);
+    host.append(bar, gfxHost, board);
+    const G = window.EpinoiaStatGfx && window.EpinoiaSocialCard ? window.EpinoiaStatGfx.mount({
+      host: gfxHost, league,
+      season: () => (season && season.name) || '',
+      /* one phase of the season, when the covering buttons chose one */
+      scope: () => { const c = scope !== 'all' && (comps || []).find(x => x.id === scope); return c ? c.name || '' : ''; }
+    }) : null;
 
     /* TABLE OR CHARTS (#charts in the address): the same season, scope and conference either way */
     let view = location.hash === '#charts' ? 'charts' : 'table';
@@ -133,6 +142,7 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     async function draw() {
       const my = ++drawing;
       board.textContent = '';
+      if (G) G.close();
       const [S, M] = await Promise.all([D.season(scopeIds(), { rows: false, trim: true }), factsFor()]);
       /* a newer choice is already drawing */
       if (my !== drawing) return;
@@ -182,14 +192,19 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
       const meta = await D.playerMeta(rows.map(p => p.id));
       if (my !== drawing) return;
       rows.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));
-      window.EpinoiaTable.render({
+      const T = window.EpinoiaTable.render({
         host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
+        /* the "graphic" button, and the picture following every sort and filter */
+        graphic: G ? (api, b) => G.toggle(api, b) : null,
+        onDraw: G ? () => G.refresh() : null,
         /* fifty rows and a "show more": the whole league is a search away, and building
            every row on each filter change is what made the page slow on a phone */
         pageSize: 50,
         filename: league.slug + '-season-stats',
         /* the table drops the premium columns itself when this league's analytics are locked */
         leagueId: league.id, leagueSlug: league.slug,
+        /* the comparison's exported picture wears the league's colours and names the season */
+        leagueRow: league, seasonName: () => (season && season.name) || '',
         /* PICK UP TO FIVE AND COMPARE THEM (fulltable.js tray -> compare.js). No onCompare:
            this table's percentiles are one league's, which is exactly what the table's own
            comparison ranks over, so it opens the shared chart itself. */
@@ -203,6 +218,7 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
           ? (onProgress => window.EpinoiaRAPM.season(D, S.games.map(g => g.id), onProgress))
           : null
       });
+      if (G && T) G.bind(T);
       if (asOf) board.insertBefore(asOf, board.firstChild);
     }
 

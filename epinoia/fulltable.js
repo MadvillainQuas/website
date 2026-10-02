@@ -1297,6 +1297,18 @@ function render(opts) {
   csv.type = 'button';
   csv.addEventListener('click', exportCsv);
   more.appendChild(csv);
+  /* THE TABLE AS A PICTURE (opts.graphic, the stats page's statgfx.js): a button in the bar itself, not
+     folded into the phone's 'filters', that hands the page this table's API to draw from. Free to every
+     reader: it draws only the rows and columns already on the screen. */
+  let gfxBtn = null;
+  if (typeof opts.graphic === 'function' && !isTeam) {
+    gfxBtn = el('button', 'ep-btn ft-btn ft-gfx', 'graphic');
+    gfxBtn.type = 'button';
+    gfxBtn.title = 'make a graphic for socials of the table as it is sorted';
+    gfxBtn.setAttribute('aria-expanded', 'false');
+    gfxBtn.addEventListener('click', () => { try { opts.graphic(api, gfxBtn); } catch (e) { console.warn('[fulltable] graphic', e); } });
+    bar.appendChild(gfxBtn);
+  }
   /* THE CSV IS A MEMBERSHIP FEATURE (access.js CATALOGUE.locks.csv, drawn by memlock.js): visible either way, and while
      locked it does nothing but say so. Re-decided on every access change (relock, below). exportCsv checks it too, so
      no other caller can get around the button. */
@@ -1592,6 +1604,8 @@ function render(opts) {
     C.open(C.fromTable({
       picks: getSelected(), statKeys: keys, cols: CAT, ranks, groups: presets,
       locked: k => absent(k), max: PICK_MAX,
+      /* the league's row and the season's name, when the page gives them: the exported picture's colours and words */
+      league: opts.leagueRow || null, range: typeof opts.seasonName === 'function' ? opts.seasonName() : (opts.seasonName || ''),
       note: 'Percentiles among the players this table covers, before its stat filters and search.'
     }));
   }
@@ -1836,6 +1850,15 @@ function render(opts) {
   }
 
   const hasCrest = r => !!(r.colour || r.teamColour || r.logo || r.teamLogo);
+  /* a row's whole name: first and last as the register stores them (data.js playerMeta joins the two;
+     a row that carries them apart, or a fullName of its own, is joined here). Nothing for a career
+     table, whose name column is a season. */
+  const fullName = r => {
+    if (opts.nameLabel) return '';
+    if (r.fullName) return String(r.fullName).trim();
+    const fl = ((r.first_name || '') + ' ' + (r.last_name || '')).trim();
+    return fl || String(r.name || '').trim();
+  };
 
   function rowEl(r, idx, cols, ranks) {
     const tr = el('tr');
@@ -1855,8 +1878,23 @@ function render(opts) {
         }
         const href = isTeam ? (opts.teamHref && opts.teamHref(r))
                             : (opts.playerHref && opts.playerHref(r));
-        if (href) { const a = el('a', null, r.name); a.href = href; cell.appendChild(a); }
-        else cell.appendChild(el('span', null, r.name));
+        /* THE WHOLE NAME ON HOVER AND TO A SCREEN READER. The name column is narrow (132px on a phone)
+           and cuts a long name with an ellipsis, so "Thomas Hurley-Williams" can read "Thomas Hurl…":
+           the full name as stored (first and last, fullName()) rides on the cell as its title, the
+           link's own label, and, where it is no link, as hidden text in place of the cut one. */
+        const full = fullName(r);
+        if (href) {
+          const a = el('a', null, r.name); a.href = href;
+          if (full) { a.title = full; a.setAttribute('aria-label', full); }
+          cell.appendChild(a);
+        } else {
+          const s = el('span', null, r.name);
+          if (full) {
+            s.title = full;
+            if (full !== r.name) { s.setAttribute('aria-hidden', 'true'); cell.appendChild(el('span', 'ep-sr', full)); }
+          }
+          cell.appendChild(s);
+        }
         td.appendChild(cell);
       } else if (SELECT && c.k === 'rank') {
         /* the rank stays the button's text: a pick is a press on the row's own number */
@@ -1949,6 +1987,7 @@ function render(opts) {
       wrap.appendChild(el('div', 'ft-empty', rows.length
         ? 'Nothing matches that filter.'
         : 'No statistics yet — these fill in as games are finalised.'));
+      drawn();
       return;
     }
 
@@ -2043,6 +2082,13 @@ function render(opts) {
     /* a filter or a preset on a phone keeps the reader where they were sideways */
     if (phone) { wrap.scrollLeft = keepX; head.scrollLeft = wrap.scrollLeft; }
     paintEdges();
+    drawn();
+  }
+  /* EVERY DRAW IS ANNOUNCED (opts.onDraw): a sort, a filter, a preset, rows arriving. The stats page's
+     graphic follows the table through it, so the picture is always of the table as it stands. */
+  function drawn() {
+    if (typeof opts.onDraw !== 'function') return;
+    try { opts.onDraw(); } catch (e) { console.warn('[fulltable] draw', e); }
   }
 
   /* CROSSING THE BREAKPOINT REDRAWS (followWidth, above render): one listener for every table */
@@ -2118,8 +2164,31 @@ function render(opts) {
   }
   bioLoad();
 
-  return {
+  /* WHAT A PICTURE OF THE TABLE NEEDS (statgfx.js): the column it is sorted by and which way, every
+     column a reader could choose to show beside it (none that is locked here, none that is the row's
+     identity), and the words for who the table covers. */
+  function getSort() {
+    const c = (!absent(sortKey) && colOf(sortKey)) || null;
+    return { key: c ? c.k : null, dir: sortDir, col: c };
+  }
+  function getColumns() {
+    return CAT.concat(BIO_COLS).filter(c => !c.g.includes('id') && !absent(c.k));
+  }
+  function describe() {
+    const bits = [];
+    if (minGames > 1) bits.push('min ' + minGames + ' GP');
+    if (minMinutes) bits.push(minMinutes + '+ min');
+    if (qualRows && qualOn) bits.push('qualified');
+    if (teamPick) bits.push(LEAGUES ? ((rows.find(r => String(r.teamId) === teamPick) || {}).teamName || '') : teamPick);
+    if (posPick) { const g = (SE() && SE().POS_GROUPS || []).find(x => x[0] === posPick); bits.push(g ? g[1] : posPick); }
+    liveLines().forEach(f => { const c = fcol(f.k); bits.push((c ? c.l : f.k) + (f.op === 'le' ? ' ≤ ' : ' ≥ ') + f.x + (f.mode === 'pct' ? 'th pct' : '')); });
+    if (search) bits.push('“' + String(q.value || '').trim() + '”');
+    return bits.filter(Boolean).join(' · ');
+  }
+  const api = {
     redraw: draw,
+    getSort, getColumns, describe, presets,
+    getVisible: () => visible().filter(c => !absent(c.k)),
     /* ROWS THAT ARRIVE IN PARTS (global scouting draws each league as it lands). Everything
        derived from the rows is derived again -- per-game forms, position groups, the league and
        club lists, the lock -- while the sort, the filters, the picks and the rows shown stay. */
@@ -2143,6 +2212,7 @@ function render(opts) {
     getSelected,
     getState
   };
+  return api;
 }
 
 return { render, PLAYER_COLS: P, TEAM_COLS: T, HIDDEN_COLS, PRESETS, heatStyle, PHONE_MQ };
