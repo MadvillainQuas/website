@@ -148,5 +148,9 @@ ok('no export module: no canvas drawing, no download', files.every(f => !/toBlob
 ok('pixel-font letter-spacing stays at or under .2em in the new stylesheet', [...read('epinoia/kit/wowy.css').matchAll(/letter-spacing:\s*([.\d]+)em/g)].every(m => parseFloat(m[1]) <= 0.2));
 ok('the engine\'s old API is intact for the team page and the box score', ['filter', 'all', 'wowy', 'onOff', 'pairs', 'combo', 'matrix', 'finish', 'blank', 'add', 'poss'].every(k => typeof L[k] === 'function'));
 
+ok('the stints are read as the page uses them: the five, the minutes and the two boxes (docs/performance-audit.md)',
+   /const STINT_SELECT = 'game_id,team_idx,player_ids,dur:stats->dur,off:stats->off,def:stats->def';/.test(read('epinoia/stats/wowy/wowy.js')) &&
+   !/D\.stints\(/.test(read('epinoia/stats/wowy/wowy.js')));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

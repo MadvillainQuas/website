@@ -136,6 +136,21 @@ function rosterOf(stints) {
 }
 
 const GAME_SELECT = 'id,home_team_id,away_team_id,starters,period,tipoff_at,finalised_at';
+/* A STINT AS THIS PAGE READS ONE: who was on, for how long, and the two boxes (LE.fromStints, rosterOf) -
+   nothing else. data.js stints() reads the whole stats block, which repeats the five ids and carries a dozen
+   derived rates (ratings, shares, possessions) this page works out itself: about 1.1 kB a stint against 0.4 kB.
+   The league's stints are this page's biggest read (1.2 MB on CIBACOPA, 2 October 2026); the same rows, as these
+   keys by JSON path, put back into the shape stints() returns. */
+const STINT_SELECT = 'game_id,team_idx,player_ids,dur:stats->dur,off:stats->off,def:stats->def';
+async function leanStints(gameIds, teamId, byId) {
+  if (!gameIds || !gameIds.length) return [];
+  const parts = [];
+  for (let i = 0; i < gameIds.length; i += 40) parts.push(gameIds.slice(i, i + 40));
+  const rows = (await Promise.all(parts.map(c => D.all('lineup_stints?game_id=in.(' + c.join(',') + ')&select=' + STINT_SELECT)))).flat()
+    .map(r => ({ game_id: r.game_id, team_idx: r.team_idx, player_ids: r.player_ids, stats: { dur: r.dur, off: r.off, def: r.def } }));
+  if (!teamId || !byId) return rows;
+  return rows.filter(r => { const g = byId[r.game_id]; return !!g && (r.team_idx === 0 ? g.home_team_id : g.away_team_id) === teamId; });
+}
 async function fetchTeam(t) {
   if (TD.has(t.id) && TD.get(t.id).preview === preview) return TD.get(t.id);
   let out;
@@ -150,7 +165,7 @@ async function fetchTeam(t) {
     if (!gs.length) out = { games: [], stints: [], roster: [], preview };
     else {
       const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
-      const st = await D.stints(gs.map(g => g.id), t.id, byGame);
+      const st = await leanStints(gs.map(g => g.id), t.id, byGame);
       out = { games: gs, stints: st, roster: rosterOf(st), preview };
     }
   }
@@ -166,7 +181,7 @@ function ensureLeague() {
     if (!compIds.length) return null;
     const gs = await D.all('games?competition_id=in.(' + compIds.join(',') + ')&status=eq.final&select=' + GAME_SELECT);
     const games = new Map(); gs.forEach(g => games.set(g.id, g));
-    const raw = await D.stints(gs.map(g => g.id));
+    const raw = await leanStints(gs.map(g => g.id));
     const byTeam = new Map();
     raw.forEach(r => {
       const g = games.get(r.game_id); if (!g) return;

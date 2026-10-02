@@ -349,5 +349,13 @@ console.log('\n10. the report reaches the pages that draw it');
      /p_released: want/.test(prof));
 }
 
+{
+  /* docs/performance-audit.md: the wire reads who was on the sheet and for how long, not the whole season */
+  const W = readFileSync(path.join(ROOT, 'epinoia', 'injuries', 'wire.js'), 'utf8');
+  ok('the wire reads the games and four fields of each line, never the season, the team lines or the events splits',
+     /select=game_id,player_uuid,player_id,team_idx,min:stats->min/.test(W) && !/d\.season\(/.test(W) &&
+     !/team_game_stats|game_sit_lines/.test(W) && /status=in\.\(final,finalising\)/.test(W));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
