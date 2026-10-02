@@ -199,6 +199,9 @@ jobs:
           # docs/feed-timing.md: flipped from the repository's variables, no commit needed
           EPINOIA_OBSERVER: ${{ vars.EPINOIA_OBSERVER }}   # "0" = inline fetch (kill switch); unset = observer on
           EPINOIA_STAMPS: ${{ vars.EPINOIA_STAMPS }}       # step 3 memory stamps: "shadow" = print only, "off" = poll stamps; unset = on (needs the observer)
+          # the live lane starts console-jobs.yml for a queued backfill or reset (console_kick.py): this workflow's own
+          # token, which may dispatch a workflow (actions: write, above)
+          GH_TOKEN: ${{ github.token }}
         run: |
           python scripts/ingest/run_ingest.py --config \
             ${{ (github.event.inputs.source || steps.reset.outputs.codes) && format('--source "{0}"', github.event.inputs.source || steps.reset.outputs.codes) || '' }} \

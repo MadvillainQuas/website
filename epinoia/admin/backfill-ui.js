@@ -140,8 +140,8 @@ function draw(panel) {
   host.appendChild(el('div', 'empty',
     'Ask for a season before this one to be read in from the same source this ' +
     'league already uses — the games, box scores, tables and player records ' +
-    'as they were. THIS IS A REQUEST, NOT AN IMPORT: the button writes it down, ' +
-    'and the ingest worker picks it up within ten minutes, with a bar here showing how far it has got. A full season is a few ' +
+    'as they were. THIS IS A REQUEST, NOT AN IMPORT: the button writes it down and starts the worker, ' +
+    'which takes it within minutes, with a bar here showing each step it is on. A full season is a few ' +
     'hundred games fetched one at a time, so give it an hour or two before ' +
     'worrying, and do not ask twice — the request stays on this list until it ' +
     'is finished.'));
@@ -193,22 +193,42 @@ function draw(panel) {
     /* the league's name goes on the front of a refusal: "already queued" on its own does not say
        for whom, and this panel can be looking at a different league by the time the answer comes back */
     if (error) return opts.say(league.name + ': ' + error.message, 'err');
-    opts.say(name + ' is queued. The worker takes it within ten minutes; the bar below follows it.', 'ok');
+    opts.say(name + ' is queued; starting the worker\u2026', 'ok');
+    restart();
+    /* THE WORKER IS STARTED NOW, not at GitHub's next cron slot (0217): the console-kick function where it is set up,
+       and the live lane within a few minutes where it is not */
+    const k = window.EpinoiaJobBar && window.EpinoiaJobBar.kick ? await window.EpinoiaJobBar.kick(opts.sb) : { started: false };
+    opts.say(k.started || k.why === 'already started'
+      ? name + ' is queued and the worker has been started: it usually begins within a couple of minutes, and the bar below follows it.'
+      : name + ' is queued. The worker will be started within a few minutes (at most about an hour); the bar below follows it.', 'ok');
     restart();
   });
 
   /* WITH THE WORKER'S OWN PROGRESS (0187): step and detail.pct, drawn by jobbar.js - the same bar as a league
      reset. A database without 0187 has neither column; the list is then read without them, and a request shows
      its words alone, as before. */
-  let busy = false, cols = 'id,season,state,step,detail,requested_at,claimed_at,finished_at,sources_run,games_seen,games_written,error';
+  let busy = false, cols = 'id,season,state,step,detail,requested_at,dispatched_at,claimed_at,finished_at,sources_run,games_seen,games_written,error';
+  const ahead = new Map();          // a queued request's place in the queue (0217 season_backfill_queue)
   async function load() {
     let { data, error } = await opts.sb.from('season_backfills').select(cols)
       .eq('league_id', lid).order('requested_at', { ascending: false }).limit(12);
+    if (error && /dispatched_at/.test(error.message || '')) {          // before 0217
+      cols = cols.replace(',dispatched_at', '');
+      ({ data, error } = await opts.sb.from('season_backfills').select(cols)
+        .eq('league_id', lid).order('requested_at', { ascending: false }).limit(12));
+    }
     if (error && /step|detail/.test(error.message || '')) {
       cols = 'id,season,state,requested_at,claimed_at,finished_at,sources_run,games_seen,games_written,error';
       ({ data, error } = await opts.sb.from('season_backfills').select(cols)
         .eq('league_id', lid).order('requested_at', { ascending: false }).limit(12));
     }
+    /* how many requests the worker takes before each queued one: the queue runs oldest first across every league */
+    await Promise.all((data || []).filter(r => r.state === 'queued').map(async r => {
+      try {
+        const { data: q } = await opts.sb.rpc('season_backfill_queue', { p_id: r.id });
+        if (q && typeof q.ahead === 'number') ahead.set(r.id, q.ahead);
+      } catch (_) { /* before 0217: no place said */ }
+    }));
     list.textContent = '';
     if (error) { busy = false; list.appendChild(el('div', 'empty', error.message)); return; }
     const rows = data || [];
@@ -239,6 +259,7 @@ function draw(panel) {
       bits.push('since ' + when(r.claimed_at));
     } else {
       bits.push('asked ' + when(r.requested_at));
+      if (r.dispatched_at) bits.push('worker started ' + when(r.dispatched_at));
     }
     left.appendChild(el('div', 'mt', bits.join(' · ')));
     /* THE REASON, IN FULL. "failed" with nothing after it is the report nobody
@@ -246,8 +267,7 @@ function draw(panel) {
        adapter that cannot read one. */
     if (r.error) left.appendChild(el('div', 'mt', r.error));
     if (window.EpinoiaJobBar && r.state !== 'done') {
-      left.appendChild(window.EpinoiaJobBar.draw(r, { queued: 'Waiting for the worker - it looks every 10 minutes.',
-                                                      failed: 'Stopped - the reason is above.' }));
+      left.appendChild(window.EpinoiaJobBar.draw(r, { ahead: ahead.get(r.id) || 0, failed: 'Stopped - the reason is above.' }));
     }
     item.appendChild(left);
 

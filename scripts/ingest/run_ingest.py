@@ -82,6 +82,7 @@ from feedplatform import Platform, season_name_for, team_code  # noqa: E402
 import groups  # noqa: E402
 from fetchwindow import seconds_until_tip, worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
+import console_kick  # noqa: E402
 import stuck as stuckmod  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -2402,6 +2403,10 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     # follows the table; everything else keeps the ten-second cadence. The armed set is
     # re-read every 20 s so pressing the button takes effect within a poll or two.
     armed: set[str] = set(); armed_check = 0.0; slow_due = 0.0
+    # THE CONSOLE'S JOBS, STARTED FROM HERE (console_kick.py): this lane runs around the clock, and GitHub's own
+    # ten-minute cron for console-jobs.yml went hours without a run. Every two minutes, a queued backfill or reset
+    # that nobody has started is started; nothing at all without a token (GH_TOKEN, the workflow's own).
+    console_check = 0.0
     def armed_games():
         try:
             rows = sb.select("games", f"broadcast_until=gt.{datetime.now(timezone.utc).isoformat()}&select=id")
@@ -2416,6 +2421,11 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             was = armed; armed = armed_games(); armed_check = time.time() + 20
             if armed != was:
                 print(f"{now.strftime('%H:%M:%S')}Z broadcast heartbeat: {len(armed)} armed game(s)")
+        if sb and time.time() >= console_check:
+            console_check = time.time() + 120
+            said = console_kick.kick(sb)
+            if said.startswith("started") or said.startswith("dispatch failed"):
+                print(f"{now.strftime('%H:%M:%S')}Z console jobs: {said}")
         if time.time() >= recheck:
             due, next_tip = live_due(sb, fiba, now)
             due = [(s, r) for s, r in due if str(r["external_id"]) not in finished and in_shard(r["external_id"], shard)]
@@ -2695,7 +2705,7 @@ _SPLIT_SEASON = re.compile(r"\d{4}\s*[-/]\s*\d{2,4}")
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 
 
-def beat(pct: float | None = None, step: str | None = None) -> None:
+def beat(pct: float | None = None, step: str | None = None, force: bool = False, extra: dict | None = None) -> None:
     """Keep a claimed backfill's lease alive. 0135 re-queues a row whose worker has not been heard
     from for 90 minutes — that is what stops a killed runner blocking its league's season for ever —
     and a season is several hundred games, so the pass has to say it is still there. Throttled to
@@ -2703,15 +2713,17 @@ def beat(pct: float | None = None, step: str | None = None) -> None:
     b = _BEAT
     # WITH PROGRESS (0187): how far along the season is, for the console's bar - written at most every 8 s,
     # and it keeps the lease alive as well. A database without 0187 falls back to the plain heartbeat.
+    # A NEW STEP IS SAID AT ONCE (force): the console's line follows the worker from the claim through the schedule
+    # and the fixtures to the games, rather than "Starting" for the first half hour of a big season.
     every = 8 if pct is not None else 60
-    if not b or time.time() - b["at"] < every:
+    if not b or (not force and time.time() - b["at"] < every):
         return
     b["at"] = time.time()
     try:
         if pct is not None and b.get("progress", True):
             try:
                 b["q"].rpc("progress_season_backfill", {"p_id": b["id"], "p_step": step or "",
-                                                        "p_detail": {"pct": round(max(0.0, min(100.0, pct)), 1)}})
+                                                        "p_detail": dict(extra or {}, pct=round(max(0.0, min(100.0, pct)), 1))})
                 return
             except Exception:
                 b["progress"] = False          # not on the server yet: heartbeats only from here on
@@ -2748,6 +2760,11 @@ def backfill_claim(args) -> tuple[dict | None, "Supabase | None"]:
         if job:
             print(f"claimed backfill {job['id']} - {job['season']}")
             _BEAT = {"q": q, "id": job["id"], "at": time.time()}
+            # the console's first word from the worker, with a link to this run's log
+            run = os.environ.get("GITHUB_RUN_ID")
+            log = (f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run}"
+                   if run and os.environ.get("GITHUB_REPOSITORY") else None)
+            beat(0.5, "taken by the worker: reading the league's sources", force=True, extra={"run_url": log} if log else None)
     if not job:
         print("no season backfill is queued")
         return None, q
@@ -2799,6 +2816,8 @@ def backfill_sources(job: dict, sources: list[dict]) -> list[dict]:
         ac.pop("season_auto", None)
         out.append({**s, "adapter_config": dict(ac, season=job["season"]), "competition_id": None, "id": None})
     print(f"   {len(out)} source(s) pinned to {job['season']}: " + (", ".join(s.get("code") or "?" for s in out) or "none"))
+    if out:
+        beat(1.0, f"{len(out)} source(s) to read for {job['season']}: " + ", ".join(s.get("label") or s.get("code") or "?" for s in out), force=True)
     return out
 
 
@@ -3009,7 +3028,12 @@ def main() -> int:
                     print("   no live or due games"); continue
                 print(f"   {len(games)} live/due game(s): " + ", ".join(f"{g.home_name or g.external_id} v {g.away_name}" for g in games[:6]))
             else:
+                lbl = src.get("label") or src.get("code")
+                if job:
+                    beat(100.0 * src_i / max(1, len(sources)), f"{lbl}: reading the {job['season']} schedule", force=True)
                 games = list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code"))))
+                if job:
+                    beat(100.0 * src_i / max(1, len(sources)), f"{lbl}: {len(games)} game(s) on the {job['season']} schedule", force=True)
                 # the groups a feed names on its own fixtures (groups.learn: NBL1's conferences),
                 # known before a single club is entered
                 learnt = groups.learn(src, (src.get("adapter_config") or {}).get("season") or season_name_for(), games)
@@ -3101,6 +3125,9 @@ def main() -> int:
                                              if (stored.get(str(g.external_id)) or {}).get("game_id")],
                                         conf=any("conference_game" in (g.extra or {}) for g in fixtures))
             wrote = 0
+            if job and fixtures:
+                beat(100.0 * src_i / max(1, len(sources)),
+                     f"{src.get('label') or src.get('code')}: writing {len(fixtures)} fixture(s) of {job['season']}", force=True)
             for g in games:
                 if g.tipoff_at or g.home_name:
                     entries[g.external_id] = sched_entry(g, entries.get(g.external_id))
@@ -3253,8 +3280,15 @@ def main() -> int:
     # the queued row is closed whatever happened: `running` left behind is a league whose season
     # nobody can ask for again until the lease expires
     if job:
-        backfill_finish(queue, job, "failed" if exit_code else "done", len(sources),
-                        tot["seen"], tot["written"], tot["error"])
+        state, error = ("failed" if exit_code else "done"), tot["error"]
+        if not exit_code and not tot["seen"]:
+            # NOTHING ON THE SCHEDULE IS NOT "DONE". A source that answers but holds no game of that season (it keeps
+            # the season being played only, or names it differently) finished cleanly and wrote nothing, and "filled
+            # in: 0 of 0 games" read as a success nobody could explain. Said as what it is, on the request.
+            state = "failed"
+            error = (f"found no {job['season']} games on " + ", ".join(s.get("label") or s.get("code") or "?" for s in sources) +
+                     " - the source shows nothing for that season")
+        backfill_finish(queue, job, state, len(sources), tot["seen"], tot["written"], error)
         return exit_code            # an old season has no live games - never chain the live lane
     # discovery is done - if a game is live or tips soon, ask the workflow to start the live lane
     if sb and not args.dry_run and not args.ids and not args.catch_up:

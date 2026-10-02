@@ -10,3 +10,6 @@
 .jb-pct{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--f-micro);font-size:9px;color:var(--ink)}
 .jb-done .jb-pct{color:#fff}
 .jb-step{font-family:var(--f-micro);font-size:9px;color:var(--ink-2);margin-top:5px;line-height:1.6}
+/* the worker's own log (jobbar.js), under its line */
+.jb-log{display:inline-block;margin-top:4px;font-family:var(--f-micro);font-size:9px;color:var(--ink-3);text-decoration:underline}
+.jb-log:hover{color:var(--lume)}

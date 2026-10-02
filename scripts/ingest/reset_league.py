@@ -282,6 +282,10 @@ def claim(db: DB, batch: int) -> int:
         except Exception as exc:
             print(f"   (progress not recorded: {exc})")
     pg = Progress(send)
+    # the console's first word from the worker, with a link to this run's log (jobbar.js draws it)
+    run = os.environ.get("GITHUB_RUN_ID")
+    if run and os.environ.get("GITHUB_REPOSITORY"):
+        send("taken by the worker", {"pct": 0.5, "run_url": f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run}"})
     lg = db.get(f"leagues?id=eq.{job['league_id']}&select=slug,name")
     slug = lg[0]["slug"] if lg else None
     codes = source_codes(slug) if slug else []

@@ -3,7 +3,7 @@
    START A LEAGUE AGAIN - the platform console's front door to scripts/ingest/reset_league.py (migration 0187).
 
    Pick a league, see what would go and what stays, type its slug to confirm, and the request is queued. The
-   worker (.github/workflows/console-jobs.yml, every ten minutes) takes it, deletes the league's games and
+   worker (.github/workflows/console-jobs.yml, started as soon as it is queued: ../jobbar.js kick) takes it, deletes the league's games and
    players in small paced batches - clubs, crests, colours, venues and competitions are kept - and reads the
    league again from its feed. Nothing happens in the browser.
 
@@ -37,7 +37,8 @@ function row(r, o, redraw) {
   const head = card.appendChild(el('div', 'rs-head'));
   head.appendChild(data('strong', 'rs-lg', (r.leagues && r.leagues.name) || r.league_id));
   head.appendChild(el('span', 'pill ' + (PILL[r.state] || ''), LABEL[r.state] || r.state));
-  head.appendChild(el('span', 'rs-when', r.state === 'queued' ? 'asked ' + ago(r.requested_at) + ' - waiting for the worker (checks every 10 min)'
+  head.appendChild(el('span', 'rs-when', r.state === 'queued' ? 'asked ' + ago(r.requested_at) +
+    (r.dispatched_at ? ' - the worker was started ' + ago(r.dispatched_at) : ' - waiting for the worker to be started')
     : r.finished_at ? 'finished ' + ago(r.finished_at) : 'started ' + ago(r.claimed_at)));
 
   /* the shared bar (../jobbar.js), the same one the league console's backfills draw */
@@ -123,7 +124,13 @@ async function mount(o) {
     go.disabled = true;
     const { error } = await sb.rpc('request_league_reset', { p_league: l.id });
     if (error) { go.disabled = false; return oops(error); }
-    say(l.name + ' is queued. The worker takes it within ten minutes; the bar below follows it.');
+    say(l.name + ' is queued; starting the worker\u2026');
+    /* started now, not at GitHub's next cron slot (0217): the console-kick function where it is set up, the live lane
+       within a few minutes where it is not */
+    const k = window.EpinoiaJobBar && window.EpinoiaJobBar.kick ? await window.EpinoiaJobBar.kick(sb) : { started: false };
+    say(k.started || k.why === 'already started'
+      ? l.name + ' is queued and the worker has been started: it usually begins within a couple of minutes, and the bar below follows it.'
+      : l.name + ' is queued. The worker will be started within a few minutes (at most about an hour); the bar below follows it.');
     pick.value = ''; typed.value = ''; prev.textContent = ''; conf.classList.add('hide');
     restart();
   });
@@ -131,9 +138,14 @@ async function mount(o) {
   let busy = false;
   async function draw() {
     if (!host.isConnected) { busy = false; return; }
-    const { data: rows, error } = await sb.from('league_resets')
-      .select('id,league_id,state,step,detail,error,requested_at,claimed_at,finished_at,leagues(name,slug)')
+    let { data: rows, error } = await sb.from('league_resets')
+      .select('id,league_id,state,step,detail,error,requested_at,dispatched_at,claimed_at,finished_at,leagues(name,slug)')
       .order('requested_at', { ascending: false }).limit(12);
+    if (error && /dispatched_at/.test(error.message || '')) {          // before 0217
+      ({ data: rows, error } = await sb.from('league_resets')
+        .select('id,league_id,state,step,detail,error,requested_at,claimed_at,finished_at,leagues(name,slug)')
+        .order('requested_at', { ascending: false }).limit(12));
+    }
     if (error) {
       busy = false;
       list.textContent = '';

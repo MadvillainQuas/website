@@ -3,42 +3,67 @@ name: Console jobs (league resets and season backfills)
 # The two long jobs an administrator asks for from a console, and nothing else:
 #   "Start a league again"     platform console -> league_resets (0187) -> scripts/ingest/reset_league.py --claim
 #   "Fill in an older season"  league console   -> season_backfills (0135) -> run_ingest.py --backfill
-# This looks every ten minutes; with nothing queued it is two requests and done. Each job writes its step and a
-# percentage as it goes (0187), which is the bar both consoles draw (epinoia/admin/jobbar.js). Until this workflow
-# existed nothing ever claimed a backfill: the button queued a request that sat there for good.
+# Each job writes its step and a percentage as it goes (0187), which is the bar both consoles draw
+# (epinoia/admin/jobbar.js).
+#
+# STARTED THE MOMENT SOMETHING IS QUEUED, NOT WHEN GITHUB GETS ROUND TO A CRON SLOT (2026-10-02). This
+# looked every ten minutes by its own cron and nothing else, and GitHub delivered 16 of those runs in 76
+# hours: a season somebody asked for waited up to seven hours before anything happened, while its
+# console said "the worker looks every 10 minutes". Now (scripts/ingest/console_kick.py):
+#   * the live lane, which runs around the clock, starts this workflow within two minutes of a request;
+#   * the console starts it on the press, through the console-kick Edge Function, where that is set up;
+#   * this workflow starts itself again when it finishes with something still queued.
+# The cron stays as the floor. Each start is noted on the request (dispatched_at, 0217), so the console
+# can say when the worker was started.
+#
+# A RESET AND A BACKFILL NO LONGER WAIT FOR EACH OTHER: two jobs, each with its own concurrency group, so
+# a league being started again does not hold up another league's old season. And the backfill job takes
+# every queued request in turn, rather than one a run.
 on:
   schedule:
     - cron: "7-57/10 * * * *"
   workflow_dispatch: {}
 
-# one reset at a time, and a second tick waits rather than cancelling the one running
-concurrency:
-  group: console-jobs
-  cancel-in-progress: false
-
 permissions:
   contents: read
+  actions: write        # this workflow may start itself again (console_kick.py)
 
 jobs:
   reset:
     runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
     timeout-minutes: 330
+    # one reset at a time; a second start waits rather than cancelling the one running
+    concurrency:
+      group: console-jobs-reset
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+      # ANYTHING TO DO? Two requests on the standard library, before Chrome and the scraper are installed for nothing
+      - name: Anything queued?
+        id: q
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if python3 scripts/ingest/console_kick.py --queued reset; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-python@v5
+        if: ${{ steps.q.outputs.any == 'true' }}
         with: { python-version: "3.12" }
       - uses: browser-actions/setup-chrome@v1
+        if: ${{ steps.q.outputs.any == 'true' }}
       - run: dpkg -s libcairo2 > /dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2)
+        if: ${{ steps.q.outputs.any == 'true' }}
       - run: pip install -r scripts/requirements.txt
+        if: ${{ steps.q.outputs.any == 'true' }}
       - name: Checkout scraper pipeline
-        if: ${{ vars.SCRAPER_REPO != '' }}
+        if: ${{ steps.q.outputs.any == 'true' && vars.SCRAPER_REPO != '' }}
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.SCRAPER_REPO }}
           ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
           path: scraper
       - name: Install scraper requirements
-        if: ${{ vars.SCRAPER_REPO != '' }}
+        if: ${{ steps.q.outputs.any == 'true' && vars.SCRAPER_REPO != '' }}
         run: |
           # As ingest.yml: win10toast/pypiwin32 are Windows-only and pypiwin32's setup.py has
           # Python-2 print syntax, which pip intermittently tries to source-build on this Linux
@@ -48,21 +73,14 @@ jobs:
           grep -viE "win10toast|pywin32" scraper/requirements.txt > "$RUNNER_TEMP/req.txt" || true
           pip install -r "$RUNNER_TEMP/req.txt" || pip install selenium beautifulsoup4 requests pandas numpy scikit-learn tqdm
       - name: Take a queued reset, if any
+        if: ${{ steps.q.outputs.any == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           SCRAPER_DIR: ${{ github.workspace }}/scraper
           PYTHONPATH: ${{ github.workspace }}/scraper
-        run: python scripts/ingest/reset_league.py --claim
-      - name: Take a queued season backfill, if any
-        if: ${{ always() }}
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          SCRAPER_DIR: ${{ github.workspace }}/scraper
-          PYTHONPATH: ${{ github.workspace }}/scraper
-        # --feed-out "": the database is where a backfilled season lives; this job commits nothing
-        run: python scripts/ingest/run_ingest.py --config --backfill --max-games 2000 --feed-out ""
+          PYTHONUNBUFFERED: "1"      # the log follows the worker, line by line
+        run: python -u scripts/ingest/reset_league.py --claim
       # the backup of every row a reset deleted: a run artifact for 30 days, never committed (it holds player records)
       - name: Keep the backup
         if: ${{ always() && hashFiles('data/reset/*.json') != '' }}
@@ -71,3 +89,78 @@ jobs:
           name: league-reset-backup-${{ github.run_id }}
           path: data/reset/
           retention-days: 30
+      - name: Start again if something is still queued
+        if: ${{ always() }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          CONSOLE_JOBS_REF: ${{ github.ref_name }}
+        run: python3 scripts/ingest/console_kick.py --kick reset
+
+  backfill:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 340
+    concurrency:
+      group: console-jobs-backfill
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      # ANYTHING TO DO? Two requests on the standard library, before Chrome and the scraper are installed for nothing
+      - name: Anything queued?
+        id: q
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if python3 scripts/ingest/console_kick.py --queued backfill; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-python@v5
+        if: ${{ steps.q.outputs.any == 'true' }}
+        with: { python-version: "3.12" }
+      - uses: browser-actions/setup-chrome@v1
+        if: ${{ steps.q.outputs.any == 'true' }}
+      - run: dpkg -s libcairo2 > /dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2)
+        if: ${{ steps.q.outputs.any == 'true' }}
+      - run: pip install -r scripts/requirements.txt
+        if: ${{ steps.q.outputs.any == 'true' }}
+      - name: Checkout scraper pipeline
+        if: ${{ steps.q.outputs.any == 'true' && vars.SCRAPER_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SCRAPER_REPO }}
+          ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
+          path: scraper
+      - name: Install scraper requirements
+        if: ${{ steps.q.outputs.any == 'true' && vars.SCRAPER_REPO != '' }}
+        run: |
+          # As ingest.yml: win10toast/pypiwin32 are Windows-only and pypiwin32's setup.py has
+          # Python-2 print syntax, which pip intermittently tries to source-build on this Linux
+          # runner and fails on ("SyntaxError: Missing parentheses in call to 'print'", seen twice
+          # on this workflow, 2026-09-28/29). The bare `|| true` this had before let the step pass
+          # either way, but left the parser libraries half-installed on the runs that hit it.
+          grep -viE "win10toast|pywin32" scraper/requirements.txt > "$RUNNER_TEMP/req.txt" || true
+          pip install -r "$RUNNER_TEMP/req.txt" || pip install selenium beautifulsoup4 requests pandas numpy scikit-learn tqdm
+      # EVERY QUEUED SEASON IN TURN: a request made while another league's season is being read is taken
+      # next, in this run, rather than at the next start. Bounded at six: a run is up to five and a half hours.
+      - name: Take every queued season backfill
+        if: ${{ steps.q.outputs.any == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+          PYTHONUNBUFFERED: "1"
+        # --feed-out "": the database is where a backfilled season lives; this job commits nothing
+        run: |
+          for i in 1 2 3 4 5 6; do
+            python -u scripts/ingest/console_kick.py --queued backfill || break
+            python -u scripts/ingest/run_ingest.py --config --backfill --max-games 2000 --feed-out "" || echo "backfill $i ended with an error (its request says why)"
+          done
+      - name: Start again if something is still queued
+        if: ${{ always() }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          CONSOLE_JOBS_REF: ${{ github.ref_name }}
+        run: python3 scripts/ingest/console_kick.py --kick backfill
