@@ -405,8 +405,17 @@ all three functions. If `npx supabase@latest secrets list` already shows `SITE_U
 the command. `RESEND_API_KEY` and `CONTACT_FROM` are already set for `notify`, and `billing` sends its
 emails with them. New secrets take effect without a redeploy.
 
+**The publishable key, for buying on the page** (`docs/memberships.md` §12). Developers → API keys →
+**Publishable key** (`pk_test_…`, live `pk_live_…` in 6.11). It is public by design; the payment window opens
+Stripe's embedded Checkout inside whatever page the fan is on with it:
+
+```bash
+npx supabase@latest secrets set STRIPE_PUBLISHABLE_KEY=pk_test_…
+```
+Without it every purchase still works, on Stripe's own page, coming back to the page the fan was on.
+
 Checks (Command Prompt):
-- The status call from 6.2 now answers `{"configured":true,"connect":false}`.
+- The status call from 6.2 now answers `{"configured":true,"connect":false,"publishable_key":"pk_test_…"}`.
 - A webhook call with no signature:
   ```bash
   curl.exe -s -i -X POST https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/billing/webhook -d "{}"
@@ -535,7 +544,7 @@ Then:
 Switch the dashboard to live mode and repeat 6.3 to 6.8:
 - the live API key;
 - the live endpoint or endpoints and their secrets: `secrets set STRIPE_SECRET_KEY=sk_live_…
-  STRIPE_WEBHOOK_SECRET=whsec_…`, plus the Connect secret if 6.10 is done;
+  STRIPE_WEBHOOK_SECRET=whsec_… STRIPE_PUBLISHABLE_KEY=pk_live_…`, plus the Connect secret if 6.10 is done;
 - the portal settings, saved again;
 - the products and prices, created again;
 - **every price id in both consoles replaced with its live one.** A test price doesn't exist for

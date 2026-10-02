@@ -681,3 +681,34 @@ with the same `seller` in the same league (Epinoia's own plans count as one sell
   `customer.subscription.trial_will_end` (three days before) sends `trialEndingEmail` unless it is already cancelled.
 - Consoles: the platform's length on the Plans tab (**Free trials**), a plan's own in the plan form, both consoles
   (`plan_trials()` reads what is stored, `set_plan_trial(plan, months)` writes it with `save_access_plan`'s rights).
+
+## 12. The payment window: buying on the page the fan is on
+
+Every membership prompt (a teaser's button, the members-only card, the popup on a locked control) links to the join
+page. `access.js` turns a click on one into the **payment window** (`epinoia/paywindow.js`, styles in
+`kit/access.css`), loaded the first time from beside `access.js`; if it cannot load, the click goes on to the join page
+as before. Never on the join page itself, in an embed (its link opens the join page) or in the iPhone app.
+
+1. **Plans**: `access_plans_public(league)`, the league's own first, each with this fan's free trial
+   (`my_trial_offers`). Memberships switched off, payments not switched on (billing `status`), or a plan without a
+   Stripe price: shown, and nothing can be started. Signed out: sign in, then back to this page with the window open
+   on that plan (`#epjoin=<plan>.<league>`).
+2. **The step before money**: the summary (what, the price, that it renews, the trial and the first payment's day)
+   and the two boxes, word for word the billing function's `CONSENT` and `ADULT_WORDING` (`paywindow.test.mjs`).
+3. **Paying**: with a publishable key (billing `status` → `publishable_key`, from the `STRIPE_PUBLISHABLE_KEY`
+   secret), `checkout` with `embedded: true` answers `{ client_secret, account }`, and the window frames the **payment
+   frame** (`epinoia/payframe.html` + `payframe.js`), the one page on the site that runs Stripe.js. The frame says it is
+   ready; the window hands it the checkout by `postMessage` (same origin, that frame only, never in an address); the
+   frame mounts Stripe's **embedded Checkout** (`ui_mode: embedded`, `redirect_on_completion: if_required`: a card is
+   confirmed in place) and reports its height, completion or failure. A league's own plan runs Stripe.js on its
+   connected account. Without the key, on a page whose CSP may not frame its own site, if the frame fails or never
+   answers (15 s): Stripe's own page, which comes back to the same page with `joined=1`.
+4. **Confirmed**: the window waits for the webhook (access_state every two seconds, up to a minute), then says so. The
+   page redraws itself when what it may show changes (often a reload); the window's record
+   (`sessionStorage.epinoia_pay_pending`) outlives it and the window reopens on the result.
+
+**CSP.** No page's own CSP admits Stripe: only `payframe.html`'s does (`https://js.stripe.com` for scripts and frames,
+`https://hooks.stripe.com` and `https://checkout.stripe.com` for frames, `https://api.stripe.com`,
+`https://merchant-ui-api.stripe.com` and `https://checkout.stripe.com` to connect). A page frames it as its own site
+(`frame-src`, else `default-src`, `'self'`); the few whose `frame-src` names only other sites (Community, News,
+Creators, GO nearby) pay on Stripe's own page. Tests: `node supabase/tests/paywindow.test.mjs`.

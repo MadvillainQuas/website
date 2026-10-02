@@ -1,0 +1,4 @@
+/* the payment frame (payframe.html): Stripe's embedded Checkout on a plain ground, no margins of its own */
+html,body{margin:0;padding:0;background:#ffffff;color:#0d1f17;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+#checkout{min-height:120px}
+.wait{margin:0;padding:40px 16px;text-align:center;font-size:14px;color:#5b6b63}

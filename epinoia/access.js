@@ -1250,6 +1250,59 @@ if (BROWSER) {
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hookSdk);
   else hookSdk();
+  wirePayWindow();
+}
+
+/* ---------------------------------------------------- the payment window ---
+   MEMBERSHIP BOUGHT ON THE PAGE THE FAN IS ON (paywindow.js, docs/memberships.md §12). A click on any membership
+   prompt's button (a teaser's, the members-only card's, the popup's: they all link to the join page) opens the
+   payment window instead, loading paywindow.js the first time, from beside this file. If it cannot load, the click
+   goes on to the join page as it always did. Back from signing in for a plan (#epjoin=<plan>.<league>) the window reopens
+   on it; back from Stripe's own page (?joined=1 with a purchase pending) it opens on the confirmation. Not on the
+   join page itself, which is the long form of the same thing, and never in the iPhone app, which sells nothing. */
+const PAY_SRC = (() => { try { const s = document.currentScript && document.currentScript.src; return s ? s.replace(/access\.js(\?|$)/, 'paywindow.js$1') : ''; } catch (_) { return ''; } })();
+let payP = null;
+function payWindow() {
+  if (root.EpinoiaPayWindow) return Promise.resolve(root.EpinoiaPayWindow);
+  if (!PAY_SRC) return Promise.reject(new Error('no payment window'));
+  if (!payP) {
+    payP = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = PAY_SRC; s.async = true;
+      s.onload = () => (root.EpinoiaPayWindow ? res(root.EpinoiaPayWindow) : rej(new Error('no payment window')));
+      s.onerror = () => { payP = null; rej(new Error('no payment window')); };
+      document.head.appendChild(s);
+    });
+  }
+  return payP;
+}
+function wirePayWindow() {
+  /* not on the join page, not inside an embed on someone else's site (its link opens the join page), not in the app */
+  const off = () => /\/epinoia\/(join|embed)\//.test(location.pathname) || document.documentElement.classList.contains('m-ios-app');
+  document.addEventListener('click', e => {
+    const a = e.target && e.target.closest ? e.target.closest('a.ep-lock-go, a.mem-tip-go, a[data-paywindow]') : null;
+    if (!a || off() || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    const href = a.getAttribute('href') || joinHref({});
+    payWindow().then(P => P.open({ href, key: a.getAttribute('data-lock') || null }), () => { location.assign(href); });
+  }, true);
+  const resume = () => {
+    if (off()) return;
+    const m = /^#epjoin=([0-9a-f-]{36})(?:\.([a-z0-9][a-z0-9-]{0,60}))?$/i.exec(location.hash || '');
+    let pending = null;
+    try { pending = JSON.parse(sessionStorage.getItem('epinoia_pay_pending') || 'null'); } catch (_) { pending = null; }
+    /* back from Stripe's own page, or the page reloaded itself while the window was confirming (within ten minutes) */
+    const back = pending && (/[?&]joined=1(&|$)/.test(location.search) || (pending.confirming && Date.now() - (pending.at || 0) < 600000));
+    if (!m && !back) return;
+    try {
+      const u = new URL(location.href);
+      u.hash = ''; u.searchParams.delete('joined'); u.searchParams.delete('session_id');
+      history.replaceState(history.state, '', u.pathname + u.search);
+    } catch (_) { /* the address keeps it; harmless */ }
+    payWindow().then(P => P.open(back ? { confirming: true } : { planId: m[1], leagueSlug: m[2] || null }), () => {});
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', resume);
+  else setTimeout(resume, 0);
 }
 
 return {

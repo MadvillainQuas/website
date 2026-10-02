@@ -592,7 +592,7 @@ export function trialEnd(months, now = Date.now()) {
  * only on the Session, and the subscription's copy is what every later
  * customer.subscription.* event and every re-fetch carries.
  */
-export function checkoutParams({ plan, userId, email, customerId, account, feePercent, siteUrl, next, checkoutId, consentVersion, trialMonths, now }) {
+export function checkoutParams({ plan, userId, email, customerId, account, feePercent, siteUrl, next, checkoutId, consentVersion, trialMonths, now, embedded }) {
   if (!plan || !plan.stripe_price_id) throw new Error('that plan cannot be bought yet');
   if (!userId || !checkoutId) throw new Error('a checkout needs the buyer and its checkout record');
   if (typeof consentVersion !== 'string' || !hasOwn(CONSENT, consentVersion)) {
@@ -637,6 +637,17 @@ export function checkoutParams({ plan, userId, email, customerId, account, feePe
     success_url: withJoined(back),
     cancel_url: back
   };
+  /* ON THE SAME PAGE (the payment window, paywindow.js): Stripe's embedded Checkout inside the page the fan is on,
+     instead of a trip to Stripe's own page. Nothing to cancel back to; a card is confirmed in place and the page is
+     told (redirect_on_completion if_required), and only a payment method that has to leave the page comes back, to the
+     same page, with joined=1. The idempotency key differs, so a window and a full page never share a session. */
+  if (embedded) {
+    params.ui_mode = 'embedded';
+    params.redirect_on_completion = 'if_required';
+    params.return_url = withJoined(back);
+    delete params.success_url;
+    delete params.cancel_url;
+  }
   /* A known customer is passed so Checkout does not make a second one — in
      subscription mode a blank `customer` ALWAYS creates a new Customer.
      customer_email is only the fallback that pre-fills a new one. */
@@ -649,7 +660,7 @@ export function checkoutParams({ plan, userId, email, customerId, account, feePe
     path: '/checkout/sessions',
     params,
     account: byLeague ? account : null,
-    idempotencyKey: 'checkout-' + checkoutId
+    idempotencyKey: 'checkout-' + checkoutId + (embedded ? '-embedded' : '')
   };
 }
 

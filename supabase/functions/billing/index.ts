@@ -1,9 +1,10 @@
 // ============================================================================
 // billing — memberships paid through Stripe (docs/memberships.md §5).
 //
-//   POST { action: 'status' }                                  -> { configured, connect }
+//   POST { action: 'status' }                                  -> { configured, connect, publishable_key }
 //   POST { action: 'checkout', planId, next,
-//          consent: { version, acknowledged: true, adult: true } }  -> { url }
+//          consent: { version, acknowledged: true, adult: true },
+//          embedded? }                                        -> { url } or, embedded, { client_secret, account }
 //   POST { action: 'portal', subscriptionId?, cancel?, next }  -> { url }
 //   POST { action: 'connect', leagueId, next }                 -> { url }
 //   POST /functions/v1/billing/webhook    (Stripe, signed)     -> { ok }
@@ -108,9 +109,13 @@ Deno.serve(async (req) => {
 
   if (action === 'status') {
     const key = !!env('STRIPE_SECRET_KEY');
+    /* the publishable key is public by design (it is what Stripe.js runs with in the browser); the payment window
+       opens Checkout on the page with it, and without it falls back to Stripe's own page */
+    const pk = env('STRIPE_PUBLISHABLE_KEY') || '';
     return json({
       configured: key && !!env('STRIPE_WEBHOOK_SECRET'),
-      connect: key && !!env('STRIPE_CONNECT_WEBHOOK_SECRET')
+      connect: key && !!env('STRIPE_CONNECT_WEBHOOK_SECRET'),
+      publishable_key: /^pk_(test|live)_[A-Za-z0-9]+$/.test(pk) ? pk : null
     });
   }
   if (action !== 'checkout' && action !== 'portal' && action !== 'connect') {
@@ -262,7 +267,7 @@ async function checkout(admin: any, who: Who, body: any) {
   const build = (cid: string) => checkoutParams({
     plan, userId: who.user.id, email: who.user.email, customerId: cid, account,
     feePercent: fee, siteUrl: env('SITE_URL'), next: body.next,
-    checkoutId, consentVersion: body.consent.version, trialMonths
+    checkoutId, consentVersion: body.consent.version, trialMonths, embedded: body.embedded === true
   });
   let call = build(customerId);
   let session: any;
@@ -280,8 +285,9 @@ async function checkout(admin: any, who: Who, body: any) {
     session = await stripe(call.method, call.path, call.params,
       { account: call.account, idempotencyKey: call.idempotencyKey + '-customer-' + fresh });
   }
-  if (typeof session?.url !== 'string' || typeof session?.id !== 'string') {
-    throw new Error('Stripe answered without a Checkout URL');
+  const embedded = body.embedded === true;
+  if (typeof session?.id !== 'string' || (embedded ? typeof session?.client_secret !== 'string' : typeof session?.url !== 'string')) {
+    throw new Error(embedded ? 'Stripe answered without a client secret' : 'Stripe answered without a Checkout URL');
   }
 
   /* Not fatal: the checkout row already holds the evidence, and the session id
@@ -290,6 +296,8 @@ async function checkout(admin: any, who: Who, body: any) {
     .update({ stripe_session_id: session.id }).eq('id', checkoutId);
   if (sidErr) console.error('[billing] checkout session id not stored:', describe(sidErr));
 
+  /* the payment window mounts Checkout with this; a league's own account is named so Stripe.js runs on it */
+  if (embedded) return json({ client_secret: session.client_secret, account: call.account || null });
   return json({ url: session.url });
 }
 

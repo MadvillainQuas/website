@@ -173,3 +173,49 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn, html.m-ios-app .ep-lock
 @media (prefers-reduced-motion:reduce){
   .ep-lock-go{transition:none}
 }
+
+/* ---------- the payment window (paywindow.js): membership bought on the page the fan is on ---------- */
+html.pw-open{overflow:hidden}
+.pw-back{position:fixed;inset:0;z-index:2147482000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;
+  padding:clamp(12px,5vh,56px) 12px;background:rgba(4,10,8,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.pw{position:relative;box-sizing:border-box;width:100%;max-width:620px;padding:22px 22px 18px;background:var(--panel,#fff);color:var(--ink,#111);
+  border:1px solid var(--rule-2,#ccc);border-top:3px solid #1f9d55;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:var(--f-ui,sans-serif)}
+.pw-x{position:absolute;top:8px;right:10px;width:36px;height:36px;border:0;background:none;color:var(--ink-3,#666);font-size:26px;line-height:1;cursor:pointer}
+.pw-x:hover{color:var(--ink,#111)}
+.pw-h{margin:0 36px 6px 0;font-family:var(--f-ui,sans-serif);font-weight:800;font-size:22px;line-height:1.25;outline:none}
+.pw-lead{margin:0 0 14px;font-size:14.5px;line-height:1.55;color:var(--ink-2,#333)}
+.pw-plans{display:flex;flex-direction:column;gap:10px}
+.pw-wait{margin:6px 0;font-size:14px;color:var(--ink-3,#666)}
+.pw-plan{display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:center;padding:12px 14px;border:1px solid var(--rule-2,#ccc);
+  background:color-mix(in srgb,var(--panel,#fff) 92%,#1f9d55)}
+.pw-plan.on{border-color:#1f9d55}
+.pw-ph{display:flex;flex-direction:column;gap:2px;grid-column:1}
+.pw-ph b{font-size:16px}
+.pw-scope{font-family:var(--f-micro,monospace);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3,#666)}
+.pw-trial{grid-column:2;grid-row:1;justify-self:end;padding:3px 9px;border-radius:999px;background:#1f9d55;color:#fff;font-weight:800;font-size:12px}
+.pw-price{grid-column:1;font-size:14px;color:var(--ink-2,#333)}
+.pw-price b{font-size:18px;color:var(--ink,#111)}
+.pw-then{color:var(--ink-3,#666)}
+.pw-feat{grid-column:1;margin:0;font-size:12.5px;color:var(--ink-3,#666)}
+.pw-go{grid-column:2;grid-row:2 / span 2;justify-self:end;white-space:nowrap}
+.pw-plan .ep-btn.pri:not([disabled]){background:#1f9d55;border-color:#1f9d55;color:#fff}
+.pw-more{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:var(--ink-2,#333)}
+.pw-sum{padding:12px 14px;border-left:4px solid #1f9d55;background:color-mix(in srgb,var(--panel,#fff) 90%,#1f9d55);margin:4px 0 14px}
+.pw-sum p{margin:0 0 4px;font-size:14px;line-height:1.5}
+.pw-what{font-family:var(--f-micro,monospace);font-size:8.5px !important;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3,#666)}
+.pw-cost{font-weight:800;font-size:16px !important}
+.pw-form{display:flex;flex-direction:column;gap:10px}
+.pw-consent{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:13.5px;line-height:1.5;cursor:pointer}
+.pw-consent input{width:18px;height:18px;margin:2px 0 0}
+.pw-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:4px}
+.pw-order{background:#1f9d55 !important;border-color:#1f9d55 !important;color:#fff !important;min-height:44px}
+.pw-fine{margin:12px 0 0;font-size:12px;line-height:1.5;color:var(--ink-3,#666)}
+.pw-msg{margin:10px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink-2,#333)}
+.pw-msg.bad{color:var(--flare,#c2393d)}
+/* the payment frame (payframe.html): as tall as what Checkout draws, which it reports */
+.pw-frame{display:block;width:100%;height:520px;border:0;background:#ffffff}
+@media (max-width:520px){
+  .pw{padding:18px 14px 14px}
+  .pw-plan{grid-template-columns:1fr}
+  .pw-trial,.pw-go{grid-column:1;grid-row:auto;justify-self:start}
+}

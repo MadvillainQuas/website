@@ -940,6 +940,20 @@ console.log('the function');
      /cancel online in one step from Your account before 2 January 2027 and you pay nothing/.test(r.text) && r.text.includes(manageUrl),
      'the reminder: the day, the amount, and how to stop it', r.text);
   ok(/kind === 'trial_ending'\) \{\s*mail = trialEndingEmail\(/.test(fn) && /trialEnd: facts\.trialEnd,/.test(fn), 'the webhook sends it, and the welcome is told the trial');
+
+  /* ON THE SAME PAGE (paywindow.js): embedded Checkout, confirmed in place, back to the same page only if it must leave */
+  const E = checkoutParams({ ...base, consentVersion: TRIAL_CONSENT, trialMonths: 3, embedded: true });
+  ok(E.params.ui_mode === 'embedded' && E.params.redirect_on_completion === 'if_required' && E.params.success_url === undefined && E.params.cancel_url === undefined &&
+     E.params.return_url === 'https://x.test/epinoia/t/?t=1&joined=1', 'embedded: Checkout in the page, confirmed in place, a return to the same page only when it must', E.params.return_url);
+  ok(E.params.subscription_data.trial_end === trialEnd(3, now) && E.params.payment_method_collection === 'always' && E.params.custom_text.submit.message === T.custom_text.submit.message,
+     '...the same trial, the same card taken, the same words on its button');
+  ok(E.idempotencyKey === 'checkout-ck-embedded' && checkoutParams({ ...base, consentVersion: TRIAL_CONSENT, trialMonths: 3 }).idempotencyKey === 'checkout-ck',
+     '...and never the same Stripe session as the full page\'s');
+  const H = checkoutParams({ ...base, consentVersion: '2026-09-a', embedded: false });
+  ok(H.params.ui_mode === undefined && H.params.success_url === 'https://x.test/epinoia/t/?t=1&joined=1' && H.params.cancel_url === 'https://x.test/epinoia/t/?t=1', 'without it, Stripe\'s own page, back to the same page either way');
+  ok(/embedded: body\.embedded === true/.test(fn) && /if \(embedded\) return json\(\{ client_secret: session\.client_secret, account: call\.account \|\| null \}\)/.test(fn),
+     'the function asks for it only when the window says so, and answers the secret and the league\'s account');
+  ok(/publishable_key: \/\^pk_\(test\|live\)_\[A-Za-z0-9\]\+\$\/\.test\(pk\) \? pk : null/.test(fn), 'status names the publishable key (public by design), or none');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
