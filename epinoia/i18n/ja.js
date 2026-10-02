@@ -1705,7 +1705,13 @@
       'Circles in the image': '画像の円',
       'win%': '勝率',
       'Order by winning percentage': '勝率順に並べる',
-      'Order by league points: the official order': '勝ち点順に並べる(公式順位)'
+      'Order by league points: the official order': '勝ち点順に並べる(公式順位)',
+      'Partners, publishers, creators and match reports, in your order': 'パートナー、メディア、クリエイター、試合レポートをあなた向けの順で',
+      'Because you open match reports': '試合レポートをよく開くため',
+      'Because you open stories like this': 'このような記事をよく開くため',
+      'For you': 'あなた向け',
+      'Personalise': 'パーソナライズ',
+      'Official partner': '公式パートナー'
     },
 
     ctx: {

@@ -1,0 +1,38 @@
+/* ============================================================================
+   THE FEED AS A SECTION (feedview.js): HOME's feed and a league's front-page news, one look.
+
+   The switch in the heading (For you | Followed | Newest on HOME, For you | Newest on a league's page, and HOME's
+   daily fixtures' Live | Upcoming | Results, which wear the same switch): two or three buttons in the section's own
+   small type, the chosen one filled with the lume. `.hm` is HOME's frame, `.fv` the feed's section anywhere else.
+   Then the cards: six post cards (kit/newscard.css) three to a row, a sideways run of them on a phone, as the
+   fixtures are, rather than six cards stacked down the page.
+   ============================================================================ */
+:is(.hm, .fv) .sec-h .hm-seg{display:inline-flex;gap:0;margin-left:0;order:0;border:1px solid var(--rule-2,var(--rule));border-radius:999px;overflow:hidden;
+  align-self:center;flex:none}
+:is(.hm, .fv) .sec-h .hm-seg button{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-2,var(--ink-3));
+  background:none;border:0;margin:0;padding:8px 13px;min-height:30px;cursor:pointer;transition:background .15s ease,color .15s ease}
+:is(.hm, .fv) .sec-h .hm-seg button + button{border-left:1px solid var(--rule-2,var(--rule))}
+:is(.hm, .fv) .sec-h .hm-seg button:hover,:is(.hm, .fv) .sec-h .hm-seg button:focus-visible{color:var(--ink);background:color-mix(in oklch,var(--lume) 12%,transparent)}
+/* the chosen one: the fixtures' switch says it with aria-selected, the feed's with aria-pressed */
+:is(.hm, .fv) .sec-h .hm-seg button[aria-selected="true"],:is(.hm, .fv) .sec-h .hm-seg button[aria-pressed="true"]{background:var(--lume);color:var(--ground);cursor:default}
+:is(.hm, .fv) .sec-h .hm-seg button[hidden]{display:none}
+:is(.hm, .fv) .sec-h .hm-seg button[hidden] + button{border-left:0}
+/* the subtitle wraps on a phone (HOME's other notes are one short word and never do) */
+.fv .sec-h .note{white-space:normal}
+@media (max-width:820px){
+  .fv .sec-h{flex-wrap:wrap}
+  :is(.hm, .fv) .sec-h .hm-seg button{min-height:40px;padding:0 16px}
+}
+
+/* ---- THE CARDS: six post cards, three to a row; a sideways run on a phone */
+.fv-mount{padding:0 calc(var(--u)*3) calc(var(--u)*4)}
+.hm-feed-note{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;line-height:1.8;color:var(--ink-3);margin:0 0 calc(var(--u)*2);text-align:center}
+.hm-feed-note:empty{display:none}
+@media (max-width:640px){
+  .fv-mount{padding:0 0 calc(var(--u)*3)}
+  .hm-feed-note{padding:0 calc(var(--u)*2)}
+  .hm-feed .pc-grid{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:84%;overflow-x:auto;
+    scroll-snap-type:x mandatory;scroll-padding:0 calc(var(--u)*2);padding:4px calc(var(--u)*2) 10px;scrollbar-width:none}
+  .hm-feed .pc-grid::-webkit-scrollbar{display:none}
+  .hm-feed .pc{scroll-snap-align:start}
+}

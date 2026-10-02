@@ -1707,7 +1707,13 @@
       'Circles in the image': 'Círculos de la imagen',
       'win%': '% victorias',
       'Order by winning percentage': 'Ordenar por porcentaje de victorias',
-      'Order by league points: the official order': 'Ordenar por puntos de liga: el orden oficial'
+      'Order by league points: the official order': 'Ordenar por puntos de liga: el orden oficial',
+      'Partners, publishers, creators and match reports, in your order': 'Socios, medios, creadores y crónicas de partidos, en tu orden',
+      'Because you open match reports': 'Porque abres crónicas de partidos',
+      'Because you open stories like this': 'Porque abres noticias como esta',
+      'For you': 'Para ti',
+      'Personalise': 'Personalizar',
+      'Official partner': 'Socio oficial'
     },
 
     ctx: {

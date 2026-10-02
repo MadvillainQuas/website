@@ -1649,19 +1649,23 @@ function dropFlatGround(img) {
   } catch (_) { /* a canvas it may not read: the logo stays as uploaded */ }
 }
 
-/* The five most recent published articles, above everything else a league
-   page shows. Silent when there are none: a league that does not write news
-   should not carry an empty section explaining that it does not. */
+/* THE LEAGUE'S NEWS, above everything else a league page shows: HOME's feed (feedview.js, the same file and the same
+   ranking, feedrank.js) scoped to this league - its partners' pieces first, then the publishers', the creators' and
+   its own articles, then its match reports, For you or Newest, Personalise beside them, six cards and "all news". One
+   read (news_feed for this league, in place of the five headlines it replaced), with the member's headers (rpc).
+   Silent when there is nothing: a league that does not publish should not carry an empty section. */
 async function news() {
-  if (!LEAGUE || !window.EpinoiaNews) return;
+  const V = window.EpinoiaFeedView;
+  const sec = $('#newsSec');
+  if (!LEAGUE || !V || !sec) return;
   try {
-    await window.EpinoiaNews.mountHeadlines({
-      sec: $('#newsSec'), host: $('#news'), note: $('#newsNote'),
-      leagueId: LEAGUE.id, leagueSlug: LEAGUE.slug, rpc, base: '', league: LEAGUE,
-      url: p => /^https?:\/\//.test(p || '') ? p
-        : (window.EpinoiaUpload ? window.EpinoiaUpload.publicUrl(CFG, p) : p)
+    await V.mount({
+      sec, host: $('#news'), seg: $('#newsSeg'), all: $('#newsAll'), base: '', rpc,
+      league: { id: LEAGUE.id, slug: LEAGUE.slug, name: LEAGUE.name, country: LEAGUE.country || '' },
+      key: 'epinoia.league.feed',
+      reveal: shown => sec.classList.toggle('hide', !shown)
     });
-  } catch (_) { /* news is not load-bearing for the rest of the page */ }
+  } catch (_) { sec.classList.add('hide'); /* news is not load-bearing for the rest of the page */ }
 }
 
 /* THE LEAGUE'S CREATORS (0194), under its own news: their three most recent pieces on the post card, each to its
@@ -1688,7 +1692,7 @@ async function creators() {
   let partners = new Set();
   try { if (FR) partners = await FR.partners(); } catch (_) { /* no pill */ }
   const pkey = o => 'outlet:' + LEAGUE.slug + '/' + o;
-  const onOpen = it => { try { if (FR && it && it.row) FR.opened(it.row); } catch (_) { /* never in the reader's way */ } };
+  const onOpen = it => { try { if (FR && it && it.row) FR.opened(Object.assign({}, it.row, partners.has(it.pkey) ? { partner: true } : {})); } catch (_) { /* never in the reader's way */ } };
   host.textContent = '';
   if ((outlets || []).length > 1) {
     host.appendChild(K.brands(outlets.slice(0, 8).map(o => ({ name: o.name, logo: o.logo_url, colour: o.colour, href: outletHref(o.slug),
