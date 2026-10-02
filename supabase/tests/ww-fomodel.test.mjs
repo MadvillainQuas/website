@@ -171,10 +171,21 @@ console.log('\nthe Front office path (team.js, t/index.html)');
 const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
 {
   const fn = (src, name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = src.indexOf('{', i); for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(i, j + 1); };
-  /* the Front office reads through depthInput (shared with the profile's depth chart) and floorMinutes (the club's lineups) */
-  const fo1 = fn(TEAMJS, 'frontOffice') + fn(TEAMJS, 'depthInput') + fn(TEAMJS, 'floorMinutes');
+  /* the Front office reads through depthInput (on depthBase, shared with the profile's depth chart) and floorMinutes (the club's lineups) */
+  const fo1 = fn(TEAMJS, 'frontOffice') + fn(TEAMJS, 'depthInput') + fn(TEAMJS, 'depthBase') + fn(TEAMJS, 'floorMinutes');
   ok('frontOffice() calls seasonGames, never seasonLogs and never D.events', /seasonGames\(team\)/.test(fo1) && !/seasonLogs\(/.test(fo1) && !/\.events\(/.test(fo1));
   ok('...nor do the win model\'s loaders', !/\.events\(|seasonLogs\(/.test(fn(TEAMJS, 'winModelFiles') + fn(TEAMJS, 'winModel')));
+  /* THE PROFILE'S DEPTH CHART READS EACH GAME'S POSITION FILE (0216): the box scores and the season line only for the
+     projection (no lineups) or a club with no file at all, and only the club's own side of the lineups */
+  const shares = fn(TEAMJS, 'depthShares'), prof = fn(TEAMJS, 'profileDepth'), files = fn(TEAMJS, 'clubFiles'), base = fn(TEAMJS, 'depthBase');
+  ok('the profile\'s chart sums the files (posFromFiles), reading lineups only for a game without one, ranked by where the files put each player',
+     /X\.posFromFiles\(filed\.map/.test(shares) && /clubStintsFor\(rest, B\.sideOf\)/.test(shares) && /clubStints\(team\)/.test(shares) && !/depthInput\(/.test(shares));
+  ok('...the files from data.js posFiles, the newest three first', /D\.posFiles\(ids\.slice\(0, 3\)\)/.test(files) && /D\.posFiles\(ids\.slice\(3\)\)/.test(files));
+  ok('...depthInput (the box scores, the season line) only for the projection', (prof.match(/depthInput\(team\)/g) || []).length === 1 &&
+     prof.indexOf('depthInput(team)') > prof.indexOf('if (!whole || !whole.c)'));
+  ok('...the base reads no box score and no season line', !/statsForGames|\.season\(|lineup_stints/.test(base));
+  ok('...and a lineup read is the club\'s own side alone', /&team_idx=eq\.\$\{side\}/.test(fn(TEAMJS, 'clubStintsFor')) &&
+     (TEAMJS.match(/lineup_stints\?/g) || []).length === 1);
   const SEASONLOGS = `function seasonLogs(team) {
   if (logsP) return logsP;
   const D = window.EpinoiaData;
@@ -416,6 +427,20 @@ textsOf(F.whatIfHTML(noFx.v, null, { dWin: 0.07, dMargin: -2.3, seMargin: 0.04 }
   const cs = X.slotChart({ pos, roster, season, recent: new Map(), starts: { season: new Map(), recent: new Map(), games: 0 }, out: new Set([roster[0].id]) });
   const ch = X.chartHTML(cs).replace(/<span class="dc-n">[\s\S]*?<\/span>/g, '').replace(/<span class="dc-chip[^"]*">[^<]*<\/span>/g, '');
   textsOf(ch).map(s => s.replace(/ · out: .*$/, '')).filter(s => !/^out: /.test(s)).forEach(s => lines.add(s));
+  /* the profile's chart of shares (shareChart): the season and the last five, a man out, one gone, starts, and the
+     lines team.js writes around it (the switch, the heading note, its messages) */
+  const ids = pos.players.map(p => String(p.id));
+  const who = id => ({ name: 'N' + id, num: '1', out: id === ids[0], left: id === ids[1] });
+  const sc = X.shareChart({ pos, who, starts: new Map([[ids[0], 3], [ids[2], 1]]), window: 'season', games: pos.games });
+  const sc5 = X.shareChart({ pos: Object.assign({}, pos, { games: 4 }), who, starts: new Map([[ids[0], 4]]), window: 'last5', games: 5 });
+  const sc1 = X.shareChart({ pos: Object.assign({}, pos, { games: 1 }), who, window: 'last5', games: 1 });
+  const sc3 = X.shareChart({ pos: Object.assign({}, pos, { games: 2 }), who, window: 'last5', games: 3 });
+  const scAll = X.shareChart({ pos, who, starts: new Map([[ids[0], 3]]), window: 'season', games: pos.games, all: true });
+  [sc, sc5, sc1, sc3, scAll].forEach(c => textsOf(X.shareHTML(c).replace(/<span class="dc-n">[\s\S]*?<\/span>/g, '').replace(/ title="[^"]*"/g, '')).forEach(s => lines.add(s)));
+  ['3 others', '1 other', 'under 1%', 'No lineups in these games yet.', 'Last 5 games', 'Season 2026/27', 'depth chart period', 'Show all', 'Show fewer',
+   'a share under 5% is folded into others',
+   'from the club\'s own lineups: each player\'s share of the minutes at each position', 'Working out the depth chart…',
+   'The depth chart could not be drawn just now.', 'projected from the club\'s own games'].forEach(s => lines.add(s));
   const clubs = Array.from({ length: 12 }, (_, i) => ({ id: 't' + i, gp: 10, ortg: 100 + i, drtg: 110 - i * 0.5, net: i - 6, ff_efg: 48 + i * 0.5, dff_efg: 54 - i * 0.4, ff_tov: 12 + (i % 5), dff_tov: 13 + (i % 4),
     ff_oreb: 25 + i, dff_oreb: 28 - (i % 6), ff_ftr: 25 + (i % 7), dff_ftr: 22 + (i % 3), p3_pct: 30 + i * 0.6, ft_pct: 70 + (i % 9), rim_pct: 55 + (i % 8), pace: 68 + i, p3_share: 30 + i * 1.5, rim_share: 30 - i }));
   const gh = X.gmHTML(X.gm({ team: { id: 't2' }, teams: clubs, players: [], model: F.gmModel(fo, TID) }));

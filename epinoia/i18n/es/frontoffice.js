@@ -244,6 +244,15 @@
       "STL% in the top quarter": "STL% en el cuarto superior",
       "most minutes at centre": "la mayoría de los minutos de pívot",
       "Each cut is a percentile within this league-season; What wins shows the values and how each role goes with winning": "Cada corte es un percentil dentro de esta liga y temporada; What wins muestra los valores y cómo va cada rol con ganar",
+      'Working out the depth chart…': 'Calculando la rotación…',
+      'The depth chart could not be drawn just now.': 'La rotación no se pudo dibujar ahora mismo.',
+      'No lineups in these games yet.': 'Aún no hay quintetos en estos partidos.',
+      'Last 5 games': 'Últimos 5 partidos',
+      'depth chart period': 'periodo de la rotación',
+      'from the club\'s own lineups: each player\'s share of the minutes at each position': 'de los quintetos del propio club: la parte de los minutos de cada posición que jugó cada jugador',
+      'out': 'de baja',
+      'left the club': 'dejó el club',
+      'under 1%': 'menos del 1%',
     },
     keep: ['Elo', 'P75', 'BPM'],
     patterns: [
@@ -296,7 +305,13 @@
       [/^(\d) shooters?$/, (m) => m[1] + (m[1] === '1' ? ' tirador' : ' tiradores')],
       [/^(\d\+?) bigs?$/, (m) => m[1] + (m[1] === '1' ? ' interior' : ' interiores')],
       [/^± ([−+\-]?[\d.,]+) points of chance \(95%\)$/, (m) => '± ' + m[1] + ' puntos de probabilidad (95%)'],
-      [/^(.+)\. Arrow keys move between marks; Enter shows the table\.$/, (m, T) => T(m[1]) + '. Las flechas recorren las marcas; Intro muestra la tabla.']
+      [/^(.+)\. Arrow keys move between marks; Enter shows the table\.$/, (m, T) => T(m[1]) + '. Las flechas recorren las marcas; Intro muestra la tabla.'],
+      [/^(\d+) starts?$/, (m) => m[1] + (m[1] === '1' ? ' titularidad' : ' titularidades')],
+      [/^(\d+)\/(\d+) starts$/, (m) => m[1] + '/' + m[2] + ' titularidades'],
+      [/^(\d+) others?$/, (m) => m[1] + ' más'],
+      [/^Season (\d{4}\/\d{2})$/, (m) => 'Temporada ' + m[1]],
+      [/^each player's share of the minutes played at each position in (this season|the club's last 5 games|the club's only game so far|the club's (\d+) games so far)(?: \((\d+) of the (\d+) games have lineups\)| \((\d+) games?\))?: every five on the floor ranked point guard to centre by box-score position, so a player who moves between positions is at each$/, (m) => 'la parte de los minutos jugados en cada posición que tomó cada jugador ' + (m[1] === 'this season' ? 'esta temporada' : /last 5/.test(m[1]) ? 'en los últimos 5 partidos del club' : /only game/.test(m[1]) ? 'en el único partido del club hasta ahora' : 'en los ' + m[2] + ' partidos del club hasta ahora') + (m[3] ? ' (' + m[3] + ' de los ' + m[4] + ' partidos tienen quintetos)' : m[5] ? ' (' + m[5] + (m[5] === '1' ? ' partido' : ' partidos') + ')' : '') + ': cada quinteto en pista ordenado de base a pívot por su posición estadística, así que un jugador que cambia de posición está en cada una'],
+      [/^a share under (\d+)% is folded into others$/, (m) => 'una parte de menos del ' + m[1] + '% se agrupa en otros']
     ]
   }, 'frontoffice');
 })();

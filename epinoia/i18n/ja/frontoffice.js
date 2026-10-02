@@ -244,6 +244,15 @@
       "STL% in the top quarter": "STL%が上位4分の1",
       "most minutes at centre": "出場時間の大半がセンター",
       "Each cut is a percentile within this league-season; What wins shows the values and how each role goes with winning": "各基準はこのリーグ・シーズン内の百分位です。What winsで値と各役割と勝利の関係を確認できます",
+      'Working out the depth chart…': 'デプスチャートを計算中…',
+      'The depth chart could not be drawn just now.': 'デプスチャートを今は表示できません。',
+      'No lineups in these games yet.': 'これらの試合にはまだラインナップがありません。',
+      'Last 5 games': '直近5試合',
+      'depth chart period': 'デプスチャートの期間',
+      'from the club\'s own lineups: each player\'s share of the minutes at each position': 'クラブ自身のラインナップから：各ポジションの出場時間に占める各選手の割合',
+      'out': '欠場中',
+      'left the club': '退団',
+      'under 1%': '1%未満',
     },
     keep: ['Elo', 'P75', 'BPM'],
     patterns: [
@@ -296,7 +305,13 @@
       [/^(\d) shooters?$/, (m) => 'シューター' + m[1] + '人'],
       [/^(\d\+?) bigs?$/, (m) => 'ビッグマン' + m[1] + '人'],
       [/^± ([−+\-]?[\d.,]+) points of chance \(95%\)$/, (m) => '± ' + m[1] + 'ポイント（95%）'],
-      [/^(.+)\. Arrow keys move between marks; Enter shows the table\.$/, (m, T) => T(m[1]) + '。矢印キーでマークを移動、Enterで表を表示。']
+      [/^(.+)\. Arrow keys move between marks; Enter shows the table\.$/, (m, T) => T(m[1]) + '。矢印キーでマークを移動、Enterで表を表示。'],
+      [/^(\d+) starts?$/, (m) => '先発' + m[1] + '回'],
+      [/^(\d+)\/(\d+) starts$/, (m) => '先発' + m[1] + '/' + m[2]],
+      [/^(\d+) others?$/, (m) => '他' + m[1] + '人'],
+      [/^Season (\d{4}\/\d{2})$/, (m) => m[1] + 'シーズン'],
+      [/^each player's share of the minutes played at each position in (this season|the club's last 5 games|the club's only game so far|the club's (\d+) games so far)(?: \((\d+) of the (\d+) games have lineups\)| \((\d+) games?\))?: every five on the floor ranked point guard to centre by box-score position, so a player who moves between positions is at each$/, (m) => (m[1] === 'this season' ? '今シーズン' : /last 5/.test(m[1]) ? 'クラブの直近5試合' : /only game/.test(m[1]) ? 'クラブのこれまで唯一の試合' : 'クラブのこれまでの' + m[2] + '試合') + 'の各ポジションの出場時間に占める各選手の割合' + (m[3] ? '（' + m[4] + '試合中' + m[3] + '試合にラインナップあり）' : m[5] ? '（' + m[5] + '試合）' : '') + '：コート上の5人をボックススコア上のポジションでPGからCの順に並べるため、ポジションを移る選手はそれぞれに入ります'],
+      [/^a share under (\d+)% is folded into others$/, (m) => m[1] + '%未満の割合は「その他」にまとめています']
     ]
   }, 'frontoffice');
 })();

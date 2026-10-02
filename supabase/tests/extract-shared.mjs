@@ -213,6 +213,16 @@ const FILES = [
     names: ['WINDOWS', 'PLAYER_KEYS', 'TEAM_KEYS', 'PLAYER_SEL', 'TEAM_SEL', 'unpick',
             'computeWindow', 'pick', 'span', 'boxScores', 'global']
   },
+  /* THE DEPTH CHART'S POSITIONS, for the snapshots function's position files (0216): each finished game's minutes at
+     each position, written with posFile, the sums the club page's depth chart makes, and ranked with positionOf, the
+     page's own blend. positionOf reads EpinoiaSeason off globalThis when it is called, so the caller imports season.js. */
+  {
+    src: join(repo, 'epinoia', 't', 'depth.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'depth.js'),
+    global: 'EpinoiaDepth',
+    names: ['chart', 'slotChart', 'splitChart', 'floorPos', 'positionOf', 'squad', 'shareChart', 'SLOTS',
+            'POS_FILE_V', 'posFile', 'posFileOk', 'posFromFiles', 'posLines']
+  },
   /* THE DATA LAYER, for the snapshots function (0152). It builds HOME's podiums and each
      competition's season lines by running the page's own reads and sums (stars.global,
      EpinoiaData.season) as a signed-out reader, so a snapshot is what a visitor's browser

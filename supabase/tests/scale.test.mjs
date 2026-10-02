@@ -258,6 +258,33 @@ function fakeLogs(sizes, failOn) {
   ok('files:false reads the database alone', asked.length === 0 && srv3.calls.length === srv.calls.length, asked);
 }
 
+{
+  /* 0216: EACH GAME'S POSITIONS FROM ITS FILE. posFiles asks the CDN for snapshots/pos/<id>.json, a game at a time,
+     POS_LANES at once, and answers null for a game without a usable file (missing, or naming another game), which the
+     club page then reads the long way. */
+  const POS_LANES = +(datajs.match(/const POS_LANES = (\d+);/) || [])[1];
+  const posFiles = (cfg, f) => new Function('CFG', 'fetch', 'POS_LANES', lift(datajs, 'async function posFiles(gameIds)') + '\nreturn posFiles;')(cfg, f, POS_LANES);
+  const asked = [];
+  let open = 0, peak = 0;
+  const cdn = async url => {
+    asked.push(url);
+    open++; peak = Math.max(peak, open);
+    await new Promise(r => setTimeout(r, 2));
+    open--;
+    const id = (String(url).match(/snapshots\/pos\/([^/]+)\.json$/) || [])[1];
+    if (/^p\d+$/.test(id) && id !== 'p3') return { ok: true, status: 200, json: async () => ({ v: 1, game: id === 'p4' ? 'p9' : id, t: [{}, {}] }) };
+    return { ok: false, status: 400, json: async () => ({ error: 'not_found' }) };
+  };
+  const ids = Array.from({ length: 20 }, (_, i) => 'p' + i).concat(['p1', 'x1']);
+  const got = await posFiles(() => ({ supabaseUrl: 'https://abcref.supabase.co' }), cdn)(ids);
+  ok('posFiles: one ask a game, each under snapshots/pos/<id>.json, a game asked twice asked once',
+     asked.length === 21 && asked.every(u => /^https:\/\/abcref\.supabase\.co\/storage\/v1\/object\/public\/snapshots\/pos\/[px]\d+\.json$/.test(u)), asked.length);
+  ok('...the file for a game that has one; null for one without, and for a file that names another game',
+     got.get('p0') && got.get('p0').game === 'p0' && got.get('p3') === null && got.get('p4') === null && got.get('x1') === null && got.size === 21);
+  ok('...at most POS_LANES (' + POS_LANES + ') at once', POS_LANES > 0 && peak <= POS_LANES && peak > 1, 'peak ' + peak);
+  ok('...nothing asked for nothing', (await posFiles(() => ({ supabaseUrl: 'x' }), cdn)([])).size === 0);
+}
+
 /* ---- 2. the profile asks for a bounded amount of work -------------------- */
 console.log('\nthe cost of a page does not grow with the league');
 

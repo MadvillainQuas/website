@@ -113,6 +113,8 @@ function decideAccess(lg) {
 let SEASON_COMPS = null, SEASON_NAME = '';
 /* the season's own id, for the Front office's model files (EpinoiaWinFile); null = the league's current season */
 let SEASON_ID = null;
+/* is the season shown the newest one (or the only one)? Who is out now, and who has left, belong to it alone */
+let SEASON_NOW = true;
 /* this script's own ?v=, so the win model's code loaded later (loadWinModel) is of the same deploy */
 const TEAM_V = (() => {
   const s = document.currentScript || Array.from(document.scripts).find(x => /\/t\/team\.js/.test(x.src));
@@ -120,6 +122,14 @@ const TEAM_V = (() => {
   return m ? m[1] : '';
 })();
 const inSeason = () => (SEASON_COMPS && SEASON_COMPS.length ? '&competition_id=in.(' + SEASON_COMPS.join(',') + ')' : '');
+/* THE SQUAD OF THE SEASON SHOWN, one row a player (depth.js squad()): a player has a roster row for every season he is
+   on the club's books, so every read of the club's active rows - the squad, the depth chart, the league's view of a
+   position - listed a player of two seasons twice. SQUAD_COLS are the columns squad() needs beside each read's own. */
+const SQUAD_COLS = 'team_id,season_id,created_at,seasons(name)';
+const squadOf = rows => {
+  const X = window.EpinoiaDepth;
+  return X && X.squad ? X.squad(rows || [], SEASON_ID) : (rows || []);
+};
 async function chooseSeason(team, lg) {
   const SB = window.EpinoiaSeasonBar;
   if (!SB || !lg || !lg.id) return;
@@ -139,6 +149,7 @@ async function chooseSeason(team, lg) {
     SEASON_COMPS = (season.comps || []).map(c => c.id);
     SEASON_NAME = season.name || '';
     SEASON_ID = season.id || null;
+    SEASON_NOW = !o.list[0] || season.id === o.list[0].id;
     SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: o.list, season });
   } catch (_) { /* every season, as before */ }
 }
@@ -571,16 +582,17 @@ function syncTabs() {
   });
 }
 
-/* THE DEPTH CHART'S INPUTS, read once for the page: the club's last forty finals with their starters, the roster, the
-   releases, the last ten games' lines (recent minutes, who is missing now) and the league's season line. The profile's
-   depth chart and the Front office's both draw from it; neither waits for the win model. */
-let depthInP = null;
-function depthInput(team) {
+/* THE DEPTH CHART'S BASE, read once for the page: the club's last forty finals with their starters (seasonGames: never
+   their logs), the squad, the releases and who started. Enough for the profile's chart wherever each game's position
+   file is there (depthShares); depthInput adds what only the projection and the Front office need. */
+let depthBaseP = null;
+function depthBase(team) {
   const D = window.EpinoiaData;
-  return depthInP || (depthInP = (async () => {
+  return depthBaseP || (depthBaseP = (async () => {
     const [{ gs, sideOf }, roster, rel] = await Promise.all([
       seasonGames(team),
-      api(`roster_entries?team_id=eq.${team.id}&active=eq.true&select=jersey,position,players(id,first_name,last_name,height_cm)`),
+      api(`roster_entries?team_id=eq.${team.id}&active=eq.true&select=jersey,position,${SQUAD_COLS},players(id,first_name,last_name,height_cm)`)
+        .then(rows => squadOf(rows)),
       D.releases(team.id).catch(() => [])
     ]);
     const games = gs.slice().sort((a, b) => String(b.tipoff_at).localeCompare(String(a.tipoff_at)));
@@ -595,6 +607,22 @@ function depthInput(team) {
         if (i < 5) starts.recent.set(id, (starts.recent.get(id) || 0) + 1);
       });
     });
+    const released = new Set((rel || []).map(r => r.player_id));
+    const people = roster.filter(r => r.players && r.players.id).map(r => ({
+      id: r.players.id, name: ((r.players.first_name || '') + ' ' + (r.players.last_name || '')).trim(), num: r.jersey,
+      position: r.position || '', height: r.players.height_cm }));
+    return { gs, sideOf, games, rel, starts, released, people };
+  })().catch(e => { depthBaseP = null; throw e; }));
+}
+
+/* THE DEPTH CHART'S INPUTS, read once for the page: the base, the last ten games' lines (recent minutes, who is missing
+   now) and the league's season line. The projection (a club with no lineups) and the Front office draw from it; neither
+   waits for the win model. */
+let depthInP = null;
+function depthInput(team) {
+  const D = window.EpinoiaData;
+  return depthInP || (depthInP = (async () => {
+    const { gs, sideOf, games, rel, starts, released, people } = await depthBase(team);
     /* the last ten games' lines: minutes over the last five, and who is missing now */
     const last10 = games.slice(0, 10);
     const W = last10.length ? await D.statsForGames(last10) : { pgs: [] };
@@ -613,10 +641,6 @@ function depthInput(team) {
       const rep = I.report({ games: last10, pgs: W.pgs || [], released: rel });
       (rep.byTeam.get(String(team.id)) || []).forEach(e => { if (!e.stale) out.add(e.playerId); });
     }
-    const released = new Set((rel || []).map(r => r.player_id));
-    const people = roster.filter(r => r.players && r.players.id).map(r => ({
-      id: r.players.id, name: ((r.players.first_name || '') + ' ' + (r.players.last_name || '')).trim(), num: r.jersey,
-      position: r.position || '', height: r.players.height_cm }));
 
     /* the league's season line: the club's own players, and every club for the ranks */
     const played = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})&status=eq.final&select=competition_id` + inSeason());
@@ -638,41 +662,188 @@ function depthInput(team) {
   })().catch(e => { depthInP = null; throw e; }));
 }
 
-/* THE CLUB'S MINUTES AT EACH POSITION, FROM ITS OWN LINEUPS (no model file): every stint of its last forty finals
-   (lineup_stints: the five on the floor and how long; ids and seconds only), each five ranked point guard to centre
-   by the players' positions (depth.js floorPos). Kept for the page. */
-let floorP = null;
-function floorMinutes(team) {
-  return floorP || (floorP = (async () => {
-    const X = window.EpinoiaDepth, D = window.EpinoiaData;
-    const I = await depthInput(team);
-    const ids = I.gs.map(g => g.id);
-    const stints = [];
+/* THE CLUB'S OWN LINEUPS (lineup_stints: the five on the floor and how long; ids and seconds only), its own side of
+   each game alone (a home game's team_idx 0, an away game's 1: half the rows), read once a game for the page. */
+const stintCache = new Map();          // game id -> the club's stints in it (a promise)
+function clubStintsFor(games, sideOf) {
+  const D = window.EpinoiaData;
+  const todo = games.filter(g => !stintCache.has(g.id));
+  [0, 1].forEach(side => {
+    const ids = todo.filter(g => sideOf[g.id] === side).map(g => g.id);
     for (let i = 0; i < ids.length; i += 40) {
-      const part = await D.all(`lineup_stints?game_id=in.(${ids.slice(i, i + 40).join(',')})&select=game_id,team_idx,player_ids,dur:stats->dur&order=game_id,id`);
-      stints.push(...part);
+      const chunk = ids.slice(i, i + 40);
+      const read = D.all(`lineup_stints?game_id=in.(${chunk.join(',')})&team_idx=eq.${side}&select=game_id,team_idx,player_ids,dur:stats->dur&order=game_id,id`);
+      read.catch(() => chunk.forEach(id => stintCache.delete(id)));
+      chunk.forEach(id => stintCache.set(id, read.then(rows => rows.filter(r => r.game_id === id))));
     }
-    const value = new Map();
-    I.people.forEach(p => value.set(p.id, X.positionOf(p, I.chartIn.season.get(p.id))));
-    return X.floorPos(stints, I.sideOf, id => value.has(id) ? value.get(id) : X.positionOf({}, I.chartIn.season.get(id)));
-  })().catch(e => { floorP = null; throw e; }));
+  });
+  return Promise.all(games.map(g => stintCache.get(g.id) || Promise.resolve([]))).then(parts => parts.flat());
 }
 
-/* THE PROFILE'S DEPTH CHART (under the team statistics): who plays where, from the club's own lineups, every position
-   one game long. Open to every reader the page is open to; the Front office's own view adds the league comparison. */
-async function profileDepth(team) {
+/* THE CLUB'S MINUTES AT EACH POSITION, FROM ITS OWN LINEUPS (no model file): every stint of its last forty finals, each
+   five ranked point guard to centre by the players' positions on the league's season line (depth.js floorPos). The
+   Front office's, and the profile's for a club whose games have no position files. Kept for the page. */
+let stintsP = null, floorP = null;
+function clubStints(team) {
+  return stintsP || (stintsP = (async () => {
+    const X = window.EpinoiaDepth;
+    const I = await depthInput(team);
+    const stints = await clubStintsFor(I.gs, I.sideOf);
+    const value = new Map();
+    I.people.forEach(p => value.set(p.id, X.positionOf(p, I.chartIn.season.get(p.id))));
+    return { I, stints, valueOf: id => value.has(id) ? value.get(id) : X.positionOf({}, I.chartIn.season.get(id)) };
+  })().catch(e => { stintsP = null; throw e; }));
+}
+function floorMinutes(team) {
+  return floorP || (floorP = clubStints(team).then(({ I, stints, valueOf }) => window.EpinoiaDepth.floorPos(stints, I.sideOf, valueOf))
+    .catch(e => { floorP = null; throw e; }));
+}
+
+/* EACH GAME'S POSITION FILE (snapshots/pos/<game>.json, written by the snapshots function with depth.js posFile): the
+   minutes each player played at each position, a few hundred bytes a game, in place of both sides' lineups and the
+   league's season line it took to rank them. Read once for the page. */
+let filesP = null;
+function clubFiles(team) {
+  return filesP || (filesP = (async () => {
+    const B = await depthBase(team), D = window.EpinoiaData;
+    if (!D.posFiles || !B.games.length) return { B, files: new Map() };
+    /* the newest three first: a league whose games get no file (members-only) costs three asks, not forty */
+    const ids = B.games.map(g => g.id);
+    const files = await D.posFiles(ids.slice(0, 3));
+    if (ids.length > 3 && [...files.values()].some(Boolean)) (await D.posFiles(ids.slice(3))).forEach((f, id) => files.set(id, f));
+    return { B, files };
+  })().catch(e => { filesP = null; throw e; }));
+}
+/* WHO IS MISSING NOW (injuries.js), from the files' box minutes for the club's last ten games, and for a game with no
+   file yet from its own lineups; a game with neither says nothing about who played and is left out. */
+let outP = null;
+function outNow(team) {
+  return outP || (outP = (async () => {
+    const I = window.EpinoiaInjuries, X = window.EpinoiaDepth;
+    if (!I || !I.report) return new Set();
+    const { B, files } = await clubFiles(team);
+    const last10 = B.games.slice(0, 10);
+    const pgs = X.posLines(last10.map(g => files.get(g.id)).filter(Boolean));
+    const bare = last10.filter(g => !files.get(g.id));
+    if (bare.length) {
+      const per = new Map();
+      (await clubStintsFor(bare, B.sideOf)).forEach(r => (r.player_ids || []).forEach(id => {
+        const k = r.game_id + '|' + id;
+        per.set(k, (per.get(k) || 0) + (+r.dur || 0));
+      }));
+      per.forEach((ms, k) => { const [g, id] = k.split('|'); pgs.push({ game_id: g, player_uuid: id, team_idx: B.sideOf[g], stats: { min: ms } }); });
+    }
+    const known = new Set(pgs.map(r => r.game_id));
+    const rep = I.report({ games: last10.filter(g => known.has(g.id)), pgs, released: B.rel });
+    const out = new Set();
+    (rep.byTeam.get(String(team.id)) || []).forEach(e => { if (!e.stale) out.add(e.playerId); });
+    return out;
+  })().catch(e => { outP = null; throw e; }));
+}
+
+/* THE PROFILE'S DEPTH CHART (under the team statistics): each position's minutes and who took them (depth.js shareChart),
+   over the season shown or the club's last five games - the switch above it. Every column adds up to 100%: each player's
+   share of the minutes the club played at that position, a player standing once however many roster rows he has
+   (squadOf), and one out now or let go since keeping the minutes he played. A club with no lineups yet gets the
+   projection (splitChart) and no switch. Open to every reader the page is open to; the Front office's own view adds
+   the league comparison and the win model.
+   FROM THE FILES FIRST: the club's side of each game's position file, summed (depth.js posFromFiles); a game without one
+   (finished in the last few minutes) is read from its own lineups, each five ranked by where the files put each player
+   (his minutes' average position, else his listing and height). A club whose games have no file at all (a members-only
+   league's, or before the files were written) is read the old way, the season line and every lineup (clubStints). */
+let depthWin = 'season', depthAll = false;
+const depthNames = new Map();          // names of players the squad does not carry, read once
+async function depthShares(team, win, all) {
+  const X = window.EpinoiaDepth, D = window.EpinoiaData;
+  const { B, files } = await clubFiles(team);
+  const want = win === 'last5' ? B.games.slice(0, 5) : B.games;
+  const filed = X.posFromFiles ? want.filter(g => files.get(g.id)) : [];
+  let pos, out, I = null;
+  if (filed.length || (X.posFromFiles && B.games.some(g => files.get(g.id)))) {
+    pos = X.posFromFiles(filed.map(g => files.get(g.id)), B.sideOf);
+    const rest = want.filter(g => !files.get(g.id));
+    if (rest.length) {
+      const seen = X.posFromFiles(B.games.map(g => files.get(g.id)).filter(Boolean), B.sideOf);
+      const place = new Map(((seen && seen.players) || []).map(p => {
+        const t = p.min.reduce((a, m) => a + m, 0);
+        return [String(p.id), t > 0 ? p.min.reduce((a, m, k) => a + (k + 1) * m, 0) / t : 3];
+      }));
+      const roster = new Map(B.people.map(p => [String(p.id), p]));
+      const more = X.floorPos(await clubStintsFor(rest, B.sideOf), B.sideOf,
+        id => (place.has(String(id)) ? place.get(String(id)) : X.positionOf(roster.get(String(id)) || {}, null)));
+      if (more) pos = pos ? { games: pos.games + more.games, min: pos.min + more.min, players: pos.players.concat(more.players) } : more;
+    }
+    /* out now: today's news, so only on the season being played now */
+    out = SEASON_NOW ? await outNow(team).catch(() => new Set()) : new Set();
+  } else {
+    const cs = await clubStints(team);
+    I = cs.I;
+    const ids = new Set(want.map(g => g.id));
+    pos = X.floorPos(cs.stints.filter(st => ids.has(st.game_id)), cs.I.sideOf, cs.valueOf);
+    out = SEASON_NOW ? cs.I.chartIn.out || new Set() : new Set();
+  }
+  if (!pos) return { c: null, games: want.length };
+  const people = new Map(B.people.map(p => [String(p.id), p]));
+  const seasonNames = new Map(((I && I.mine) || []).map(p => [String(p.id), p.name]));
+  const unnamed = pos.players.map(p => String(p.id)).filter(id => !people.has(id) && !seasonNames.get(id) && !depthNames.has(id));
+  if (unnamed.length && D.playerMeta) {
+    try { const meta = await D.playerMeta(unnamed); unnamed.forEach(id => depthNames.set(id, (meta[id] && meta[id].name) || '')); } catch (_) { /* unnamed */ }
+  }
+  /* gone since: today's news too */
+  const left = SEASON_NOW ? B.released : new Set();
+  const who = id => {
+    const p = people.get(id);
+    return { name: (p && p.name) || seasonNames.get(id) || depthNames.get(id) || '', num: p ? p.num : '',
+             out: out.has(id), left: left.has(id) && !p };
+  };
+  const starts = win === 'last5' ? B.starts.recent : B.starts.season;
+  return { c: X.shareChart({ pos, who, starts, window: win, games: want.length, all: !!all }), games: want.length };
+}
+
+async function profileDepth(team, win, all) {
   const host = $('#teamdepth'), X = window.EpinoiaDepth;
   if (!host || !X || ACCESS.paywall) return;
-  host.innerHTML = '<div class="empty">Working out the depth chart…</div>';
+  if (win) depthWin = win;
+  if (typeof all === 'boolean') depthAll = all;
+  if (!host.firstChild) host.innerHTML = '<div class="empty">Working out the depth chart…</div>';
+  const note = $('#tdepthNote');
+  const link = p => '../p/?p=' + encodeURIComponent(p.id);
+  const season = SEASON_NAME ? String(SEASON_NAME).replace(/^(\d{4})-(\d{2})$/, '$1/$2') : '';
   try {
-    const I = await depthInput(team);
-    const gameMin = X.gameMinutes ? X.gameMinutes(team.leagues || {}) : 40;
-    let c = null;
-    try { const pos = await floorMinutes(team); if (pos) c = X.slotChart(Object.assign({ pos, gameMin }, I.chartIn)); } catch (_) { /* no lineups: projected */ }
-    if (!c) c = X.splitChart(X.chart(I.chartIn), gameMin);
-    host.innerHTML = X.chartHTML(c, { link: p => '../p/?p=' + encodeURIComponent(p.id), static: true });
-    const note = $('#tdepthNote');
-    if (note) note.textContent = c.source === 'stints' ? 'from the club\'s own lineups: the minutes each player has played at each position' : 'projected from the club\'s own games';
+    let whole = null;
+    try { whole = X.shareChart ? await depthShares(team, 'season', depthAll) : null; } catch (_) { /* no lineups read: projected */ }
+    if (!whole || !whole.c) {
+      /* no lineups: the projection, which is what needs the box scores and the season line */
+      const I = await depthInput(team);
+      const gameMin = X.gameMinutes ? X.gameMinutes(team.leagues || {}) : 40;
+      host.innerHTML = X.chartHTML(X.splitChart(X.chart(I.chartIn), gameMin), { link, static: true });
+      if (note) note.textContent = 'projected from the club\'s own games';
+      return;
+    }
+    const view = depthWin === 'last5' ? await depthShares(team, 'last5', depthAll) : whole;
+    const sw = el('div', 'ep-tabs dcwin');
+    sw.setAttribute('role', 'tablist'); sw.setAttribute('aria-label', 'depth chart period');
+    [['season', season ? 'Season ' + season : 'Season'], ['last5', 'Last 5 games']].forEach(([k, lab]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ep-tab' + (k === depthWin ? ' on' : ''); b.textContent = lab;
+      b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(k === depthWin));
+      b.onclick = () => { if (k !== depthWin) profileDepth(team, k); };
+      sw.appendChild(b);
+    });
+    /* SHOW ALL: the shares under 5% are folded into each column's 'others' line until the reader asks for them */
+    const row = el('div', 'dcbar');
+    row.appendChild(sw);
+    if (depthAll || (view.c && view.c.hidden)) {
+      const more = document.createElement('button');
+      more.type = 'button'; more.className = 'ep-btn dcall'; more.setAttribute('aria-pressed', String(depthAll));
+      more.textContent = depthAll ? 'Show fewer' : 'Show all';
+      more.onclick = () => profileDepth(team, null, !depthAll);
+      row.appendChild(more);
+    }
+    host.textContent = '';
+    host.appendChild(row);
+    host.insertAdjacentHTML('beforeend', X.shareHTML(view.c, { link }));
+    if (note) note.textContent = 'from the club\'s own lineups: each player\'s share of the minutes at each position';
   } catch (_) { host.innerHTML = '<div class="empty">The depth chart could not be drawn just now.</div>'; }
 }
 
@@ -718,7 +889,7 @@ async function frontOffice(team) {
     const leagueCtx = () => ctxP || (ctxP = (async () => {
       const ids = (S.teams || []).map(t => t.id).filter(Boolean);
       const [rosters, meta] = await Promise.all([
-        ids.length ? api(`roster_entries?team_id=in.(${ids.join(',')})&active=eq.true&select=team_id,position,players(id,height_cm)`) : [],
+        ids.length ? api(`roster_entries?team_id=in.(${ids.join(',')})&active=eq.true&select=position,${SQUAD_COLS},players(id,height_cm)`).then(rows => squadOf(rows)) : [],
         ids.length ? api(`teams?id=in.(${ids.join(',')})&select=id,name,short_name,colour,logo_path`) : []
       ]);
       return PV.context({ season: S, rosters, meta, own: { teamId: team.id, chart: cLeague } });
@@ -1747,9 +1918,9 @@ async function staff(team, canEdit, sb) {
 }
 
 async function roster(team) {
-  const rows = await api(`roster_entries?team_id=eq.${team.id}&active=eq.true` +
-    `&select=jersey,position,players(id,first_name,last_name,slug,is_minor,` +
-    `birth_year,height_cm,weight_kg,wingspan_cm,previous_club)&order=jersey`);
+  const rows = squadOf(await api(`roster_entries?team_id=eq.${team.id}&active=eq.true` +
+    `&select=jersey,position,${SQUAD_COLS},players(id,first_name,last_name,slug,is_minor,` +
+    `birth_year,height_cm,weight_kg,wingspan_cm,previous_club)&order=jersey`));
   const host = $('#roster'); host.textContent = '';
   /* Ages, from the database's age function (0184): the date of birth itself is never sent to a browser. A server without it gives none. */
   const AGES = window.EpinoiaAges
@@ -1980,6 +2151,9 @@ function teamStrip(team, lg) {
   frame.title = team.name + ' fixtures';
   frame.src = src;
   wrap.hidden = false;
+  /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
+  const TC = window.EpinoiaTeamColour;
+  if (TC && TC.drawDistance) TC.drawDistance(frame);
 }
 
 let TG = { comp: '', show: 'all', rows: [] };

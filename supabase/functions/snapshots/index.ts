@@ -19,6 +19,9 @@
 //   events/<game>.json      a finished game's event log (0156): EpinoiaData.gameLog(),
 //                           the very read events() makes, rewritten when the game is
 //                           finalised again or its log changes.
+//   pos/<game>.json         a finished game's minutes at each position (0216): t/depth.js
+//                           posFile(), the club page's depth chart's own sums, a few
+//                           hundred bytes a game, rewritten when the game is finalised again.
 //   crests/<key>            a copy of each crest that is another site's URL (0158), which
 //                           pages ask Storage's image transformation for at display size.
 //
@@ -41,6 +44,7 @@ import '../_shared/bpm.js';        // globalThis.EpinoiaBPM
 import '../_shared/season.js';     // globalThis.EpinoiaSeason
 import '../_shared/data.js';       // globalThis.EpinoiaData — the page's own reads and sums
 import '../_shared/stars.js';      // globalThis.EpinoiaStars
+import '../_shared/depth.js';      // globalThis.EpinoiaDepth — the depth chart's positions (posFile)
 
 const PUBLISHABLE = 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO';   // epinoia/config.js publishes it
 /* CPU, measured under node on 2026-09-24: the podiums about 0.6 s (a month of box scores
@@ -213,20 +217,24 @@ async function allAdmin(admin: any, table: string, cols: string, filter?: (q: an
   }
 }
 
-async function buildEventFiles(admin: any, D: any, started: number, maxBuilds: number) {
-  /* what a signed-out reader may read: the public games (final, or live where the league shows
-     live), and the finished ones among them with the finalisation their file is named from */
-  /* (a paged read needs a total order, or two pages can overlap: hence the ids) */
+/* what a signed-out reader may read: the public games (final, or live where the league shows live), and the
+   finished ones among them with the finalisation their files are named from, newest first: the games people are
+   opening now. Read once a call, for the event logs and the positions alike. */
+/* (a paged read needs a total order, or two pages can overlap: hence the ids) */
+async function publicFinals(D: any) {
   const pub = new Set((await D.all('game_rows_public?select=id&order=id')).map((r: any) => r.id));
-  const finals = (await D.all('games?select=id,finalised_at&status=eq.final&order=finalised_at.desc.nullslast,id'))
+  return (await D.all('games?select=id,finalised_at,competition_id&status=eq.final&order=finalised_at.desc.nullslast,id'))
     .filter((g: any) => pub.has(g.id));
+}
+const sameMoment = (a: any, b: any) => a != null && b != null && Date.parse(a) === Date.parse(b);
+
+async function buildEventFiles(admin: any, D: any, finals: any[], started: number, maxBuilds: number) {
   const want = new Map(finals.map((g: any) => [g.id, g.finalised_at]));
   const held = new Map((await allAdmin(admin, 'event_files', 'game_id,finalised_at'))
     .map((r: any) => [r.game_id, r.finalised_at]));
 
   /* newest finals first: the games people are opening now */
-  const same = (a: any, b: any) => a != null && b != null && Date.parse(a) === Date.parse(b);
-  const due = finals.filter((g: any) => !same(held.get(g.id), g.finalised_at)).map((g: any) => g.id);
+  const due = finals.filter((g: any) => !sameMoment(held.get(g.id), g.finalised_at)).map((g: any) => g.id);
   const gone = [...held.keys()].filter(id => !want.has(id));
 
   let removed = 0;
@@ -258,6 +266,97 @@ async function buildEventFiles(admin: any, D: any, started: number, maxBuilds: n
     }
   };
   await Promise.all(Array.from({ length: Math.min(EVENT_LANES, todo.length) }, lane));
+  return { built, removed, current: finals.length - due.length,
+           left: (due.length - built) + (gone.length - removed) };
+}
+
+/* EACH FINISHED GAME'S MINUTES AT EACH POSITION, AS A FILE (0216): snapshots/pos/<game id>.json, written with
+   t/depth.js posFile() - the club page's depth chart's own sums - for the games that get an event log, and rewritten
+   when a game is finalised again (lineups and box scores are only ever written by finalising). Each five is ranked
+   point guard to centre by the players' positions as the page ranks them (depth.js positionOf: the box score's
+   estimate on the season line of the game's competition, the roster's listing, the height), from the latest line
+   built: a game finalised a moment ago may be ranked by the line from before it, which moves nobody. A batch is forty
+   games of one competition: their lineups and box minutes in two reads, the players' heights in one; the files are
+   a few hundred bytes. pos_files is the index, as event_files is the logs'. */
+const POS_LANES = 6;
+const MAX_POS_FILES = 120;           // written per call
+const MAX_POS_REMOVALS = 200;        // and removed
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function buildPosFiles(admin: any, D: any, X: any, finals: any[], started: number, maxBuilds: number) {
+  const want = new Map(finals.map((g: any) => [g.id, g]));
+  const held = new Map((await allAdmin(admin, 'pos_files', 'game_id,finalised_at'))
+    .map((r: any) => [r.game_id, r.finalised_at]));
+  const due = finals.filter((g: any) => !sameMoment(held.get(g.id), g.finalised_at));
+  const gone = [...held.keys()].filter(id => !want.has(id));
+
+  let removed = 0;
+  const drop = gone.slice(0, MAX_POS_REMOVALS);
+  if (drop.length) {
+    const { error } = await admin.storage.from(BUCKET).remove(drop.map(id => 'pos/' + id + '.json'));
+    if (error) throw new Error('pos remove: ' + error.message);
+    const { error: delErr } = await admin.from('pos_files').delete().in('game_id', drop);
+    if (delErr) throw new Error('pos_files delete: ' + delErr.message);
+    removed = drop.length;
+  }
+
+  /* the batches: forty games of one competition at a time, newest competitions' games first */
+  const byComp = new Map<string, any[]>();
+  due.slice(0, maxBuilds).forEach((g: any) => {
+    const k = g.competition_id || '';
+    if (!byComp.has(k)) byComp.set(k, []);
+    byComp.get(k)!.push(g);
+  });
+  const batches: { comp: string, games: any[] }[] = [];
+  byComp.forEach((gs, comp) => { for (let i = 0; i < gs.length; i += 40) batches.push({ comp, games: gs.slice(i, i + 40) }); });
+
+  const lines = new Map<string, any>();
+  let built = 0;
+  for (const b of batches) {
+    if (Date.now() - started >= WALL_MS) break;
+    const ids = b.games.map((g: any) => g.id).join(',');
+    if (b.comp && !lines.has(b.comp)) lines.set(b.comp, await D.latestSeason([b.comp]).catch(() => null));
+    const [stints, box] = await Promise.all([
+      D.all(`lineup_stints?game_id=in.(${ids})&select=game_id,team_idx,player_ids,dur:stats->dur&order=game_id,id`),
+      D.all(`player_game_stats?game_id=in.(${ids})&select=game_id,player_uuid,player_id,team_idx,min:stats->min&order=game_id,team_idx,player_id`)
+    ]);
+    /* what positionOf reads: the season line's estimate and minutes, the roster's listing (the season file's own
+       names, else the register's), the height */
+    const pids = [...new Set(stints.flatMap((st: any) => st.player_ids || []).concat(box.map((r: any) => r.player_uuid))
+      .filter((id: any) => UUID.test(String(id || ''))))] as string[];
+    const height = new Map<string, any>();
+    for (let i = 0; i < pids.length; i += 40) {
+      (await D.all(`players?id=in.(${pids.slice(i, i + 40).join(',')})&select=id,height_cm`)).forEach((p: any) => height.set(p.id, p.height_cm));
+    }
+    const meta = pids.length ? await D.playerMeta(pids).catch(() => ({})) : {};
+    const line = b.comp ? lines.get(b.comp) : null;
+    const row = new Map(((line && line.players) || []).map((p: any) => [p.id, p]));
+    const value = new Map<string, number>();
+    const valueOf = (id: string) => {
+      if (!value.has(id)) value.set(id, X.positionOf({ position: (meta[id] && meta[id].position) || '', height: height.get(id) }, row.get(id)));
+      return value.get(id)!;
+    };
+    const stintsOf = new Map<string, any[]>(), boxOf = new Map<string, any[]>();
+    stints.forEach((st: any) => { if (!stintsOf.has(st.game_id)) stintsOf.set(st.game_id, []); stintsOf.get(st.game_id)!.push(st); });
+    box.forEach((r: any) => { if (!boxOf.has(r.game_id)) boxOf.set(r.game_id, []); boxOf.get(r.game_id)!.push(r); });
+
+    let next = 0;
+    const lane = async () => {
+      while (next < b.games.length && Date.now() - started < WALL_MS) {
+        const g = b.games[next++];
+        const file = X.posFile({ game: g.id, finalised_at: g.finalised_at, stints: stintsOf.get(g.id) || [], lines: boxOf.get(g.id) || [], valueOf });
+        const { error } = await admin.storage.from(BUCKET).upload('pos/' + g.id + '.json', JSON.stringify(file),
+          { contentType: 'application/json', upsert: true, cacheControl: '300' });
+        if (error) throw new Error('pos/' + g.id + ': ' + error.message);
+        const { error: upErr } = await admin.from('pos_files').upsert(
+          { game_id: g.id, finalised_at: g.finalised_at, players: Object.keys(file.t[0]).length + Object.keys(file.t[1]).length,
+            built_at: new Date().toISOString() }, { onConflict: 'game_id' });
+        if (upErr) throw new Error('pos_files ' + g.id + ': ' + upErr.message);
+        built++;
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(POS_LANES, b.games.length) }, lane));
+  }
   return { built, removed, current: finals.length - due.length,
            left: (due.length - built) + (gone.length - removed) };
 }
@@ -357,7 +456,7 @@ Deno.serve(async (req) => {
   const started = Date.now();
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
                              { auth: { persistSession: false } });
-  const D = (globalThis as any).EpinoiaData, ST = (globalThis as any).EpinoiaStars;
+  const D = (globalThis as any).EpinoiaData, ST = (globalThis as any).EpinoiaStars, X = (globalThis as any).EpinoiaDepth;
   try {
     /* what the tick last saw: marking THAT done means a game finalised while this runs
        leaves the two different, and the next tick calls again */
@@ -366,16 +465,18 @@ Deno.serve(async (req) => {
     const seasons = await buildSeasons(admin, D, started,
       stars === 'built' ? MAX_SEASONS_AFTER_STARS : MAX_SEASONS);
     /* the event files take what is left of the call: fewer when seasons were rebuilt in it */
-    const events = await buildEventFiles(admin, D, started,
+    const finals = await publicFinals(D);
+    const events = await buildEventFiles(admin, D, finals, started,
       seasons.built ? Math.floor(MAX_EVENT_FILES / 2) : MAX_EVENT_FILES);
+    const pos = await buildPosFiles(admin, D, X, finals, started, MAX_POS_FILES);
     const crests = await buildCrests(admin, D, started, MAX_CRESTS);
-    const complete = seasons.left === 0 && events.left === 0 && crests.left === 0;
+    const complete = seasons.left === 0 && events.left === 0 && pos.left === 0 && crests.left === 0;
     if (complete) {
       await admin.from('snapshot_ticks').upsert(
         { id: 1, done_fingerprint: tick ? tick.fingerprint : null, done_at: new Date().toISOString() },
         { onConflict: 'id' });
     }
-    return json({ stars, seasons, events, crests, complete, ms: Date.now() - started });
+    return json({ stars, seasons, events, pos, crests, complete, ms: Date.now() - started });
   } catch (e) {
     return json({ error: String((e as Error)?.message || e), ms: Date.now() - started }, 500);
   }

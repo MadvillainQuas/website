@@ -780,6 +780,8 @@ function tooBig(list, opts, n) {
   if (opts && opts.snapshot === false) return Promise.reject(new Error('too big for this builder (' + n + ' games): tools/build-seasons.mjs builds it'));
   return bigSeason(list);
 }
+/* (exported as latestSeason: the snapshots function ranks each game's five by the latest line of its competition,
+   built or not by the game just finished, for the position files - t/depth.js posFile) */
 async function bigSeason(list) {
   const key = 'season:' + list.slice().sort().join(',');
   try {
@@ -1002,6 +1004,30 @@ async function events(gameIds, opts) {
   });
 }
 
+/* EACH FINISHED GAME'S MINUTES AT EACH POSITION, AS A FILE (snapshots/pos/<game id>.json, t/depth.js posFile): a few
+   hundred bytes a game, written by the snapshots function for every finished game a signed-out reader may read, and
+   rewritten when the game is finalised again. Answers a Map of game id -> the file, or null for a game without one (one
+   finished in the last few minutes, a members-only league's, any blip), which the caller reads the long way. */
+const POS_LANES = 8;
+async function posFiles(gameIds) {
+  const ids = [...new Set((gameIds || []).filter(Boolean))];
+  const out = new Map();
+  let next = 0;
+  const lane = async () => {
+    while (next < ids.length) {
+      const id = ids[next++];
+      let f = null;
+      try {
+        const r = await fetch(`${CFG().supabaseUrl}/storage/v1/object/public/snapshots/pos/${id}.json`);
+        if (r.ok) { const j = await r.json(); if (j && j.game === id && Array.isArray(j.t)) f = j; }
+      } catch (_) { /* the long way */ }
+      out.set(id, f);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(POS_LANES, ids.length) }, lane));
+  return out;
+}
+
 /* names, jerseys and colours for a set of player ids — the stats carry none.
 
    THE CHUNKS ARE ASKED FOR TOGETHER. They ran one after another, which on a
@@ -1100,9 +1126,9 @@ function pickSeason(seasons, ref) {
          seasons[0];
 }
 
-return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, playerMeta, teamMeta,
+return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, posFiles, playerMeta, teamMeta,
          releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile, attachSit, sitLines,
-         pack, unpack, packMap, unpackMap, packSeason, unpackSeason, BIG_GAMES, gamesIn, seasonUnits };
+         pack, unpack, packMap, unpackMap, packSeason, unpackSeason, BIG_GAMES, gamesIn, seasonUnits, latestSeason: bigSeason };
 }));
 
 /* ---------------------------------------------------------------------------

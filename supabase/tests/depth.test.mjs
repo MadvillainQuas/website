@@ -229,5 +229,148 @@ console.log('\nthe depth chart from the club\'s own lineups (no model file)');
   ok('the profile\'s copy: positions are headings, not buttons, and no league-view hint', !/data-slot/.test(h) && !/dc-hint/.test(h) && /dc-hs/.test(h));
 }
 
+console.log('\none row a player, of the season shown (squad)');
+{
+  /* Grupo Alega Cantabria, Primera FEB, after its 2025-26 season was filled in (1 Oct 2026): every player of both
+     seasons had two active rows, and German Martinez Diaz wore #7 in 2026-27 and #10 in 2025-26 */
+  const S27 = 'b96f68c6', S26 = 'b681ac15', T = 'c3f03e9d';
+  const row = (pid, season, name, jersey, at) => ({ team_id: T, season_id: season, created_at: at, seasons: season ? { name } : null, jersey, players: { id: pid } });
+  const rows = [
+    row('german', S27, '2026-27', '7', '2026-09-26T19:57:27Z'), row('german', S26, '2025-26', '10', '2026-10-01T09:19:35Z'),
+    row('miha', S27, '2026-27', '31', '2026-09-26T19:57:38Z'), row('miha', S26, '2025-26', '31', '2026-10-01T09:52:49Z'),
+    row('only26', S26, '2025-26', '4', '2026-10-01T09:20:00Z'), row('hand', null, '', '99', '2026-09-30T10:00:00Z')
+  ];
+  const now = X.squad(rows, S27);
+  ok('the season shown (2026-27): one row a player, its own jersey - German Martinez Diaz is #7, once',
+     now.filter(r => r.players.id === 'german').length === 1 && now.find(r => r.players.id === 'german').jersey === '7'
+     && now.filter(r => r.players.id === 'miha').length === 1, JSON.stringify(now.map(r => r.players.id + '#' + r.jersey)));
+  ok('...last season\'s players are not on this season\'s squad, a row filed under no season is',
+     !now.some(r => r.players.id === 'only26') && now.some(r => r.players.id === 'hand'));
+  const old = X.squad(rows, S26);
+  ok('the 2025-26 season shown: #10, and last season\'s players back', old.find(r => r.players.id === 'german').jersey === '10' && old.some(r => r.players.id === 'only26'));
+  const any = X.squad(rows, null);
+  ok('no season chosen (a league with one): one row a player, the newest season\'s - though written first',
+     any.length === 4 && any.find(r => r.players.id === 'german').jersey === '7', JSON.stringify(any.map(r => r.players.id + '#' + r.jersey)));
+  ok('...two clubs\' rows (the league view) are kept apart, a player at each', X.squad([row('miha', S27, '2026-27', '31', 'x'), Object.assign(row('miha', S27, '2026-27', '8', 'y'), { team_id: 'other' })], S27).length === 2);
+  ok('...rows naming no player are dropped, the order kept', X.squad([{ team_id: T, players: null }, row('b', S27, '2026-27', '2', 'x'), row('a', S27, '2026-27', '1', 'x')], S27).map(r => r.players.id).join() === 'b,a');
+  ok('whole numbers that add up: 63.2 / 24.4 / 11.6 / 0.8 -> 63 / 24 / 12 / 1', X.apportion([63.2, 24.4, 11.6, 0.8], 100).join() === '63,24,12,1');
+}
+
+console.log('\nthe profile\'s depth chart: each position\'s minutes and who took them (shareChart)');
+{
+  /* two games of floorPos minutes: at the point, p1 30 + p2 10 (+ a duplicate row for p1, as two roster rows gave),
+     a gone man and a man out at the wing, and a 0.3% sliver at centre */
+  const pos = { games: 2, min: 400, players: [
+    { id: 'p1', min: [30, 10, 0, 0, 0] }, { id: 'p1', min: [0, 0, 0, 0, 0] }, { id: 'p2', min: [10, 25, 5, 0, 0] },
+    { id: 'p3', min: [0, 5, 30, 10, 0] }, { id: 'gone', min: [0, 0, 5, 0, 0] }, { id: 'hurt', min: [0, 0, 0, 25, 4] },
+    { id: 'big', min: [0, 0, 0, 5, 35.88] }, { id: 'sliver', min: [0, 0, 0, 0, 0.12] }] };
+  const names = { p1: ['Point One', '1'], p2: ['Two Guard', '2'], p3: ['Wing Three', '3'], gone: ['Gone Man', ''], hurt: ['Hurt Four', '4'], big: ['Big Five', '5'], sliver: ['Tiny Sliver', '9'] };
+  const who = id => ({ name: names[id][0], num: names[id][1], out: id === 'hurt', left: id === 'gone' });
+  const c = X.shareChart({ pos, who, starts: new Map([['p1', 2], ['big', 1]]), window: 'season', games: 2 });
+  const col = k => c.slots.find(s => s.key === k);
+  ok('each column adds up to 100%, folded tail included', c.slots.every(s => s.players.reduce((a, p) => a + p.pct, 0) + (s.others ? s.others.pct : 0) === 100),
+     c.slots.map(s => s.players.map(p => p.pct).join('+') + (s.others ? '+' + s.others.pct : '')).join(' | '));
+  ok('a player stands once at a position, however many rows the file has for him: Point One 75% of the point',
+     col('PG').players.filter(p => p.id === 'p1').length === 1 && col('PG').players[0].pct === 75 && col('PG').players[1].pct === 25);
+  ok('...and at every position he played: Two Guard at the 1, the 2 and the 3', ['PG', 'SG', 'SF'].every(k => col(k).players.some(p => p.id === 'p2')));
+  ok('the minutes of a man out or gone stay his, and say so', col('PF').players.find(p => p.id === 'hurt').out && col('SF').players.find(p => p.id === 'gone').left
+     && col('PF').players[0].id === 'hurt');
+  ok('a share under one percent is folded into one others line', !col('C').players.some(p => p.id === 'sliver') && col('C').others && col('C').others.n === 1 && col('C').others.names[0] === 'Tiny Sliver');
+  ok('the first choice at each position is its biggest share', c.slots.every(s => !s.players.length || s.players[0].role === 'starter'));
+  const h = X.shareHTML(c, { link: p => '../p/?p=' + p.id });
+  ok('drawn: the share first, the minutes, the starts, 100% under each column, the rule said',
+     /<b class="dc-pct">75%<\/b> · 30 min · 2 starts/.test(h) && (h.match(/100% · \d+ min/g) || []).length === 5 && /share of the minutes played at each position in this season \(2 games\)/.test(h), h.slice(0, 400));
+  ok('...out and gone marked and dimmed, the others line titled with who they are', /· out</.test(h) && /· left the club</.test(h) && /dc-gone/.test(h) && /title="Tiny Sliver"/.test(h));
+  ok('...names escaped', !/<script>/.test(X.shareHTML(X.shareChart({ pos, who: () => ({ name: '<script>x</script>' }) }))));
+  const l5 = X.shareHTML(X.shareChart({ pos: Object.assign({}, pos, { games: 4 }), who, starts: new Map([['p1', 4]]), window: 'last5', games: 5 }));
+  ok('the last five: starts out of five, and how many of the five carry lineups', /4\/5 starts/.test(l5) && /in the club's last 5 games \(4 of the 5 games have lineups\)/.test(l5));
+  ok('no minutes at all: null, and the page says there are no lineups', X.shareChart({ pos: { players: [{ id: 'a', min: [0, 0, 0, 0, 0] }] } }) === null && /No lineups/.test(X.shareHTML(null)));
+
+  /* SHOW ALL: under 5% is folded by default; the reader's button shows everyone */
+  const pos2 = { games: 3, players: [{ id: 'a', min: [80, 0, 0, 0, 0] }, { id: 'b', min: [16, 0, 0, 0, 0] }, { id: 'c', min: [3.7, 0, 0, 0, 0] }, { id: 'd', min: [0.3, 0, 0, 0, 0] }] };
+  const nm = id => ({ name: 'Player ' + id.toUpperCase() });
+  const few = X.shareChart({ pos: pos2, who: nm }), all = X.shareChart({ pos: pos2, who: nm, all: true });
+  const pg = c => c.slots[0];
+  ok('by default a share under 5% is folded: 80% and 16% shown, the 3.7% and the 0.3% are "2 others · 4%"',
+     pg(few).players.map(p => p.pct).join() === '80,16' && pg(few).others.n === 2 && pg(few).others.pct === 4 && few.hidden === 2,
+     JSON.stringify(pg(few).players.map(p => p.pct)) + ' ' + JSON.stringify(pg(few).others));
+  ok('...and the rule is said', /a share under 5% is folded into others/.test(X.shareHTML(few)));
+  ok('show all: every player who played there, the column still 100%, the sliver "under 1%", no others line, no rule',
+     pg(all).players.length === 4 && !pg(all).others && all.hidden === 0 && pg(all).players.reduce((a, p) => a + p.pct, 0) === 100
+     && /under 1%<\/b>/.test(X.shareHTML(all)) && !/is folded into others/.test(X.shareHTML(all)), JSON.stringify(pg(all).players.map(p => p.pct)));
+}
+
+console.log('\neach game\'s minutes at each position, as a file (posFile, posFromFiles, posLines)');
+{
+  /* a home side of seven and an away side of six, three and two stints; a stint of four is a feed's gap */
+  const val = { h1: 1.2, h2: 1.9, h3: 2.6, h4: 3.4, h5: 4.6, h6: 2.0, h7: 4.9, a1: 1.1, a2: 2.2, a3: 3.1, a4: 4.0, a5: 4.8, a6: 1.5 };
+  const valueOf = id => val[id];
+  const st = (game, side, ids, s) => ({ game_id: game, team_idx: side, player_ids: ids, dur: s * 1000 });
+  const g1 = [st('g1', 0, ['h1', 'h2', 'h3', 'h4', 'h5'], 600), st('g1', 0, ['h6', 'h2', 'h3', 'h4', 'h7'], 420.4),
+              st('g1', 0, ['h1', 'h6', 'h3', 'h4', 'h5'], 179.6), st('g1', 0, ['h1', 'h2', 'h3', 'h4'], 90),
+              st('g1', 1, ['a1', 'a2', 'a3', 'a4', 'a5'], 900), st('g1', 1, ['a6', 'a2', 'a3', 'a4', 'a5'], 300)];
+  const line = (game, side, id, sec) => ({ game_id: game, team_idx: side, player_uuid: id, player_id: id, min: sec * 1000 });
+  const box1 = [line('g1', 0, 'h1', 1300), line('g1', 0, 'h2', 1100), line('g1', 0, 'h3', 1200), line('g1', 0, 'h4', 1290),
+                line('g1', 0, 'h5', 780), line('g1', 0, 'h6', 600), line('g1', 0, 'h7', 420), line('g1', 0, 'h8', 0), line('g1', 0, 'h9', 75),
+                line('g1', 1, 'a1', 900), line('g1', 1, 'a2', 1200), line('g1', 1, 'a3', 1200), line('g1', 1, 'a4', 1200), line('g1', 1, 'a5', 1200), line('g1', 1, 'a6', 300)];
+  const f1 = X.posFile({ game: 'g1', finalised_at: '2026-10-02T10:00:00Z', stints: g1, lines: box1, valueOf });
+  ok('a file: this layout, its game and the finalisation it was written from, a side each', f1.v === X.POS_FILE_V && f1.v === 1 &&
+     f1.game === 'g1' && f1.f === '2026-10-02T10:00:00Z' && Array.isArray(f1.t) && f1.t.length === 2);
+  ok('...every player on the floor or with box minutes, his box seconds first and then PG..C',
+     Object.keys(f1.t[0]).sort().join() === 'h1,h2,h3,h4,h5,h6,h7,h9' && Object.keys(f1.t[1]).sort().join() === 'a1,a2,a3,a4,a5,a6' &&
+     Object.values(f1.t[0]).concat(Object.values(f1.t[1])).every(a => a.length === 6 && a.every(x => Number.isInteger(x) && x >= 0)), JSON.stringify(f1.t[0]));
+  ok('...a player who did not play is not in it, one with minutes and no lineup is [box, 0, 0, 0, 0, 0]',
+     !('h8' in f1.t[0]) && JSON.stringify(f1.t[0].h9) === '[75,0,0,0,0,0]');
+  ok('...each five laid point guard to centre by its positions (h6 at 2.0 is the shooting guard beside h2 at 1.9)',
+     f1.t[0].h1[1] === 780 && f1.t[0].h2[1] === 420 && f1.t[0].h2[2] === 600 && f1.t[0].h6[2] === 600 && f1.t[0].h5[5] === 780 && f1.t[0].h7[5] === 420 && f1.t[0].h6[1] === 0,
+     JSON.stringify({ h1: f1.t[0].h1, h2: f1.t[0].h2, h6: f1.t[0].h6 }));
+  const posSec = t => Object.values(t).reduce((a, x) => a + x.slice(1).reduce((b, y) => b + y, 0), 0);
+  ok('...five on the floor: a side\'s position seconds are five times its stints\' (the stint of four left out), to the rounding',
+     Math.abs(posSec(f1.t[0]) - 5 * 1200) <= 3 && posSec(f1.t[1]) === 5 * 1200, posSec(f1.t[0]) + ' / ' + posSec(f1.t[1]));
+  ok('...and small: a game\'s file is under 2 KB', JSON.stringify(f1).length < 2048, JSON.stringify(f1).length + ' bytes');
+
+  /* the page's sums from the files are floorPos's from the lineups */
+  const g2 = [st('g2', 1, ['h1', 'h2', 'h3', 'h4', 'h5'], 1000), st('g2', 1, ['h1', 'h6', 'h3', 'h7', 'h5'], 1400),
+              st('g2', 0, ['a1', 'a2', 'a3', 'a4', 'a5'], 2400)];
+  const f2 = X.posFile({ game: 'g2', finalised_at: null, stints: g2, lines: [], valueOf });
+  const f3 = X.posFile({ game: 'g3', stints: [], lines: [line('g3', 0, 'h1', 2000)], valueOf });     // a feed with no lineups
+  const sideOf = { g1: 0, g2: 1, g3: 0 };
+  const fromFiles = X.posFromFiles([f1, f2, f3], sideOf), fromStints = X.floorPos(g1.concat(g2), sideOf, valueOf);
+  const near = (a, b) => [...new Set(a.players.map(p => p.id).concat(b.players.map(p => p.id)))].every(id => {
+    const x = a.players.find(p => p.id === id), y = b.players.find(p => p.id === id);
+    return x && y && x.min.every((m, k) => Math.abs(m - y.min[k]) < 1 / 60 + 1e-9);
+  });
+  ok('the club\'s side of its files, summed, is floorPos on its lineups: the same players, each position to the second',
+     fromFiles && fromStints && near(fromFiles, fromStints) && fromFiles.players.length === fromStints.players.length,
+     JSON.stringify(fromFiles && fromFiles.players.slice(0, 3)));
+  ok('...the same games (a game whose file has no lineups adds none) and the same minutes on the floor',
+     fromFiles.games === 2 && fromStints.games === 2 && Math.abs(fromFiles.min - fromStints.min) < 0.05, fromFiles.games + ' ' + fromFiles.min + ' ' + fromStints.min);
+  ok('...the other side is not the club\'s', !fromFiles.players.some(p => /^a/.test(p.id)));
+  ok('...and the share chart draws it as it draws floorPos', JSON.stringify(X.shareChart({ pos: fromFiles }).slots.map(s => s.players.map(p => p.id + p.pct))) ===
+     JSON.stringify(X.shareChart({ pos: fromStints }).slots.map(s => s.players.map(p => p.id + p.pct))));
+  ok('no files, or none with the club\'s lineups: null', X.posFromFiles([], sideOf) === null && X.posFromFiles([f3], sideOf) === null && X.posFromFiles(null) === null);
+  ok('a file this code cannot read is skipped: another layout, another game, a broken shape',
+     X.posFileOk(f1, 'g1') && !X.posFileOk(f1, 'g2') && !X.posFileOk(Object.assign({}, f1, { v: 2 })) && !X.posFileOk({ v: 1, game: 'g1', t: [{}] }) &&
+     X.posFromFiles([Object.assign({}, f1, { v: 2 })], sideOf) === null);
+
+  /* who played: the box minutes, as injuries.js reads them */
+  const rows = X.posLines([f1, f2, f3]);
+  ok('posLines: the box minutes as player_game_stats rows (stats.min in milliseconds, both sides)',
+     rows.length === 8 + 6 + 1 && rows.every(r => r.player_uuid && (r.team_idx === 0 || r.team_idx === 1) && r.stats.min > 0) &&
+     rows.find(r => r.game_id === 'g1' && r.player_uuid === 'h9').stats.min === 75000 && !rows.some(r => r.game_id === 'g2'), rows.length);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'epinoia/injuries.js'), 'utf8'), ctx, { filename: 'injuries.js' });
+  const INJ = sandbox.EpinoiaInjuries;
+  /* five games of a club: its starter h1 plays the first three heavily and none of the last two */
+  const games = ['k1', 'k2', 'k3', 'k4', 'k5'].map((id, i) => ({ id, tipoff_at: '2026-09-0' + (i + 1), home_team_id: 'T', away_team_id: 'U' }));
+  const files = games.map((g, i) => X.posFile({ game: g.id, stints: [], valueOf,
+    lines: [line(g.id, 0, 'h2', 1500)].concat(i < 3 ? [line(g.id, 0, 'h1', 1800)] : []).concat([line(g.id, 0, 'h3', i === 4 ? 0 : 900)]) }));
+  const pgs = games.flatMap((g, i) => [line(g.id, 0, 'h2', 1500), line(g.id, 0, 'h1', i < 3 ? 1800 : 0), line(g.id, 0, 'h3', i === 4 ? 0 : 900)])
+    .map(r => ({ game_id: r.game_id, player_uuid: r.player_uuid, team_idx: r.team_idx, stats: { min: r.min } }));
+  const fromBox = INJ.report({ games, pgs }), fromPos = INJ.report({ games, pgs: X.posLines(files) });
+  const ids = rep => (rep.byTeam.get('T') || []).map(e => e.playerId + ':' + e.missed).sort().join();
+  ok('...and the injury report reads them as it reads the box score: the same players missing, the same games missed',
+     ids(fromPos) === ids(fromBox) && /h1:2/.test(ids(fromPos)), ids(fromPos) + ' | ' + ids(fromBox));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -50,3 +50,5 @@ What happens next:
 - a file from other code is never read;
 - the version follows the line's keys;
 - every bar on the player profile is one of those keys.
+
+See also [Position files](position-files.md): each finished game's minutes at each position, for the club page's depth chart.

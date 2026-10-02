@@ -339,5 +339,34 @@ console.log('\nseason.js version(): which code summed a season, in every name it
      /const name = D\.snapFile\(tok\), file = 'season\/' \+ unit \+ '\/' \+ name;/.test(bsSrc) && /h\.file === file/.test(bsSrc));
 }
 
+{
+  /* 0216: EACH FINISHED GAME'S POSITIONS, AS A FILE. The function writes pos/<game>.json with the page's own depth.js
+     (its generated copy) for the games it writes event logs for, indexes them in pos_files, rewrites one when its game
+     is finalised again, and is not done while any is left; the index is the service role's alone. */
+  console.log('\nthe position files (0216)');
+  const { readFileSync, existsSync } = await import('node:fs');
+  const fnSrc = readFileSync(path.join(ROOT, 'supabase', 'functions', 'snapshots', 'index.ts'), 'utf8');
+  const pos = fnSrc.slice(fnSrc.indexOf('async function buildPosFiles('), fnSrc.indexOf('/* CRESTS, COPIED ONCE'));
+  ok('the function loads the page\'s depth.js and writes each file with its posFile, ranked by its positionOf',
+     /import '\.\.\/_shared\/depth\.js';/.test(fnSrc) && /X\.posFile\(\{ game: g\.id, finalised_at: g\.finalised_at,/.test(pos) && /X\.positionOf\(/.test(pos));
+  ok('...under pos/<game id>.json in the snapshots bucket, kept five minutes, indexed in pos_files by its finalisation',
+     /upload\('pos\/' \+ g\.id \+ '\.json'/.test(pos) && /cacheControl: '300'/.test(pos) && /from\('pos_files'\)\.upsert\(/.test(pos) && /finalised_at: g\.finalised_at/.test(pos));
+  ok('...for the same games as the event logs (one list of public finals), a file rewritten when its game\'s finalisation moves',
+     /const finals = await publicFinals\(D\);/.test(fnSrc) && /buildEventFiles\(admin, D, finals,/.test(fnSrc) && /buildPosFiles\(admin, D, X, finals,/.test(fnSrc) &&
+     /!sameMoment\(held\.get\(g\.id\), g\.finalised_at\)/.test(pos));
+  ok('...a game gone from the list has its file and its row removed', /remove\(drop\.map\(id => 'pos\/' \+ id \+ '\.json'\)\)/.test(pos) && /from\('pos_files'\)\.delete\(\)\.in\('game_id', drop\)/.test(pos));
+  ok('...each five by the latest season line of its competition (data.js latestSeason, never a season summed here)',
+     /D\.latestSeason\(\[b\.comp\]\)/.test(pos) && !/D\.season\(/.test(pos));
+  ok('...and the call is not complete while a file is left to write', /pos\.left === 0/.test(fnSrc) && /json\(\{ stars, seasons, events, pos, crests, complete/.test(fnSrc));
+  const sh = readFileSync(path.join(ROOT, 'supabase', 'tests', 'extract-shared.mjs'), 'utf8');
+  ok('depth.js is one of the generated shared files, with posFile and positionOf', /join\(repo, 'epinoia', 't', 'depth\.js'\)/.test(sh) && /'posFile'/.test(sh) && /'positionOf'/.test(sh) &&
+     existsSync(path.join(ROOT, 'supabase', 'functions', '_shared', 'depth.js')));
+  const mig = readFileSync(path.join(ROOT, 'supabase', 'migrations', '0216_pos_files.sql'), 'utf8');
+  ok('0216: pos_files, with row level security, the service role\'s alone, and a self-test that says so',
+     /create table if not exists public\.pos_files/.test(mig) && /alter table public\.pos_files enable row level security;/.test(mig) &&
+     /revoke all on table public\.pos_files from public, anon, authenticated;/.test(mig) && /grant all on table public\.pos_files to service_role;/.test(mig) &&
+     /has_table_privilege\('anon', 'public\.pos_files', 'select'\)/.test(mig));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
