@@ -403,7 +403,7 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
     const c = src.indexOf('} catch', at);
     return t > 0 && c > at && src.slice(t, at).indexOf('} catch') === -1 && c - t < 1200;
   };
-  const scope = pjs.slice(pjs.indexOf('const paintScope = async kind =>'), pjs.indexOf('if (kinds.length > 1)'));
+  const scope = pjs.slice(pjs.indexOf('const paintScope = async kind =>'), pjs.indexOf('const drawComps = ()'));
   ok('player.js: paintScope calls EpinoiaSitPanel.render after paintBars, inside its own try',
      scope.indexOf('paintBars(mine, field);') > 0 && scope.indexOf('EpinoiaSitPanel.render') > scope.indexOf('paintBars(mine, field);') &&
      insideTry(scope, 'EpinoiaSitPanel.render(') && /kind: 'player', row: mine, field/.test(scope));

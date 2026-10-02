@@ -78,6 +78,17 @@ apart. **It is a link, not a merge**: every game and stat stays on its own profi
 table, the "other profiles" button). The career is read when the page opens, so after an edit a button offers to reload it. There is no
 player merge here; that is 0183, below.
 
+**One page, a season and a competition to choose (2026-10-02).** A linked player's statistics are all on any one of his profiles:
+
+* **Seasons:** the chips under the hero offer every season he played, under this profile or a linked one, newest first. A season is
+  its name, so his league's 2026-27 and a cup's 2026-27 are one season with two competitions.
+* **Competitions:** the season shown offers each of its competitions. **All** appears only when there is more than one and one
+  profile played them all, because two profiles' lines cannot be summed into one.
+* **What follows the choice:** the tiles, the league percentile, the events and the game log are that season's (or that
+  competition's). His row is read under the profile he played it under.
+* **The hero says which:** "season 2026/27" and the competition. `?s=` and `?c=` carry the choice.
+* **Where it lives:** `player.js` `playerScopes`; the tests are in `supabase/tests/player-scope.test.mjs`.
+
 ## Merging two profiles (0183, platform administrators)
 
 For the day a link is not enough: one person under two profiles that both rank in one table, so he is in it twice. `platform_player_merge(keep,

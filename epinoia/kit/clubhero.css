@@ -97,6 +97,12 @@ body.themed .hero-in .ls-comp.on .ls-women, body.themed .hero-in .ls-comp.on .ls
   padding:14px 20px;border-left:0;background:color-mix(in oklch,var(--team-a,var(--lume)) 34%,#0a0a0a)}
 .hero-in > #rec > [data-k="rank"] .v{font-size:clamp(36px,3.6vw,52px);color:#ffe14d}
 .hero-in > #rec > [data-k="rank"] .l{color:rgba(255,255,255,.75)}
+/* which season the board is from (team.js record): a line across its top */
+.hero-in > #rec > [data-k="season"]{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:7px 13px 6px;border-left:0;border-top:0;border-bottom:1px solid rgba(255,255,255,.09)}
+.hero-in > #rec > [data-k="season"] .l{margin-top:0}
+.hero-in > #rec > [data-k="season"] .v{font-size:clamp(14px,1.3vw,16px);color:#ffe14d;letter-spacing:.02em}
+.hero-in > #rec.has-season > div:nth-child(-n+5){border-top:0}
 
 /* ---- a narrow head: the scoreboard under the rest, across the width ---- */
 @container clubhead (max-width:760px){

@@ -1207,6 +1207,125 @@ async function loadCareerAccess(pl, lgRow) {
   } catch (_) { /* the career as the current league's answer leaves it */ }
 }
 
+/* ------------------------------------------------------- season and competition --- */
+/* THE SEASONS HE HAS PLAYED, newest first, each with the competitions he played in it and the profile he played each
+   under: his season lines (player_season_stats) across every profile linked to his (linkswitch.js), named by their
+   competitions. A season is its name, so 2025-26 in his league and 2025-26 in a European cup are one season of his
+   career with two competitions. A profile the view has not caught up with yet falls back on his club's games.
+     -> { ids: every linked profile id, seasons: [{ key, name, label, starts_on, comps: [{ id, name, kind, league, pid, gp }] }] } */
+const seasonLabelOf = n => { const SB = window.EpinoiaSeasonBar; return SB && SB.label ? SB.label(n) : String(n || ''); };
+async function playerScopes(pl, team) {
+  const D = window.EpinoiaData, L = window.EpinoiaLinks;
+  let linked = null;
+  try { linked = await LINKED_P; } catch (_) { /* his own profile alone */ }
+  const ids = L && L.playerIds ? L.playerIds(linked, pl.id) : [pl.id];
+  let apps = [];
+  try {
+    apps = await D.all(`player_season_stats?player_id=${ids.length > 1 ? 'in.(' + ids.join(',') + ')' : 'eq.' + pl.id}` +
+      `&select=player_id,competition_id,season_id,team_id,gp,min`);
+  } catch (e) { console.warn('[scopes]', e); }
+  /* a competition is his under the profile he played most of its minutes under */
+  const byComp = new Map();
+  apps.forEach(a => {
+    if (!a.competition_id) return;
+    const gp = +a.gp || 0, min = +a.min || 0, cur = byComp.get(a.competition_id);
+    if (!cur) { byComp.set(a.competition_id, { pid: a.player_id, gp, min, best: min }); return; }
+    cur.gp += gp; cur.min += min;                    // a season at two clubs is two rows
+    if (min > cur.best) { cur.pid = a.player_id; cur.best = min; }
+  });
+  if (!byComp.size && team && team.id) {
+    try {
+      const played = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})&status=eq.final&select=competition_id`);
+      [...new Set(played.map(g => g.competition_id).filter(Boolean))].forEach(id => byComp.set(id, { pid: pl.id, gp: 0, min: 0, best: 0 }));
+    } catch (e) { console.warn('[scopes club]', e); }
+  }
+  if (!byComp.size) return { ids, seasons: [] };
+  let comps = [];
+  try {
+    comps = await D.all(`competitions?id=in.(${[...byComp.keys()].join(',')})` +
+      `&select=id,name,kind,season_id,seasons(id,name,starts_on,leagues(name))`);
+  } catch (e) { console.warn('[scopes comps]', e); }
+  const seasons = new Map();
+  comps.forEach(c => {
+    const sn = c.seasons || {}, label = seasonLabelOf(sn.name);
+    const key = label || 'c:' + c.id;
+    if (!seasons.has(key)) seasons.set(key, { key, name: sn.name || '', label: label || c.name || '', starts_on: sn.starts_on || null, comps: [] });
+    const S = seasons.get(key);
+    if (sn.starts_on && (!S.starts_on || sn.starts_on > S.starts_on)) S.starts_on = sn.starts_on;
+    const a = byComp.get(c.id) || {};
+    S.comps.push({ id: c.id, name: c.name || '', kind: c.kind || 'league', league: (sn.leagues && sn.leagues.name) || '', pid: a.pid || pl.id,
+                   gp: a.gp || 0, min: a.min || 0 });
+  });
+  const SB = window.EpinoiaSeasonBar;
+  const newest = SB && SB.newestFirst ? SB.newestFirst
+    : (a, b) => String(b.starts_on || '').localeCompare(String(a.starts_on || '')) || String(b.name).localeCompare(String(a.name));
+  const list = [...seasons.values()].sort(newest);
+  /* most minutes first, so a season he played under two profiles opens on the one he mostly played */
+  list.forEach(sn => sn.comps.sort((a, b) => (b.min - a.min) || (b.gp - a.gp) || String(a.name).localeCompare(String(b.name))));
+  return { ids, seasons: list };
+}
+/* ?s= is the season as a person writes it (2025/26), its name (2025-26) or its id; nothing, or nothing he played: the newest */
+function pickScopeSeason(list, ref) {
+  if (!list.length) return null;
+  if (!ref) return list[0];
+  const want = String(ref).trim();
+  return list.find(s => s.label === want || s.name === want || s.key === want) ||
+         list.find(s => seasonLabelOf(want) && s.label === seasonLabelOf(want)) || list[0];
+}
+/* every competition of the season together: where there is more than one, and one profile played them all */
+const allOk = sn => !!sn && sn.comps.length > 1 && new Set(sn.comps.map(c => c.pid)).size === 1;
+function scopeHref(sn, kind) {
+  const u = new URL(location.href);
+  u.searchParams.set('s', (sn && sn.label) || '');
+  if (kind && kind !== 'all' && sn && sn.comps.length > 1) u.searchParams.set('c', kind); else u.searchParams.delete('c');
+  return u.pathname + u.search + u.hash;
+}
+function syncScopeUrl(sn, kind) {
+  if (!sn) return;
+  try { history.replaceState(null, '', scopeHref(sn, kind)); } catch (_) { /* the page is still right */ }
+}
+/* WHICH SEASON HIS NUMBERS ARE FROM, on the hero, always: the season large, the competition beside it */
+function paintScopeLabel(sn, kind) {
+  const host = $('#idseason');
+  if (!host) return;
+  host.textContent = '';
+  if (!sn) { host.hidden = true; return; }
+  const comps = sn.comps || [];
+  const one = kind === 'all' ? (comps.length === 1 ? comps[0] : null) : comps.find(c => c.id === kind);
+  host.append(el('span', 'is-l', 'season'), el('span', 'is-v', sn.label));
+  const c = one ? el('span', 'is-c', one.name || one.league || '') : el('span', 'is-c', 'all competitions');
+  if (one) c.setAttribute('translate', 'no');
+  if (c.textContent) host.appendChild(c);
+  host.hidden = false;
+}
+/* THE GAME LOG OF THE SEASON SHOWN, every linked profile's games in it, with the opponent resolved from the game row:
+   the competitions of the season, so 3PT CONSISTENCY (consistencyCard) reads the season the bars are from */
+async function seasonLog(ids, sn) {
+  const who = ids.length > 1 ? 'in.(' + ids.join(',') + ')' : 'eq.' + ids[0];
+  const comps = sn ? sn.comps.map(c => c.id) : [];
+  const gl = await api(`player_game_stats?player_uuid=${who}` +
+    `&select=game_id,team_idx,stats,games!inner(tipoff_at,competition_id,home_score,away_score,status,` +
+    `home:home_team_id(name,slug),away:away_team_id(name,slug))` +
+    (comps.length ? `&games.competition_id=in.(${comps.join(',')})` : '') + `&limit=80`);
+  const rows = gl.filter(r => r.games)
+    .sort((a, b) => new Date(b.games.tipoff_at || 0) - new Date(a.games.tipoff_at || 0))
+    .map(r => {
+      const g = r.games;
+      const home = r.team_idx === 0;
+      const us = home ? g.home_score : g.away_score;
+      const them = home ? g.away_score : g.home_score;
+      return Object.assign({}, r, {
+        __home: home,
+        __opp: home ? g.away : g.home,
+        __res: g.status === 'final' ? (us > them ? 'W ' + us + '-' + them
+                                                 : 'L ' + us + '-' + them) : ''
+      });
+    });
+  paintLog(rows);
+  LOG_ROWS = rows;                                   // 3PT CONSISTENCY is worked out now, from the log just read
+  if (LAST_BARS) paintBars(LAST_BARS.mine, LAST_BARS.field);
+}
+
 /* ------------------------------------------------------------------- boot --- */
 (async function boot() {
   if (!want) return fail('No player specified.');
@@ -1312,29 +1431,28 @@ async function loadCareerAccess(pl, lgRow) {
        be ranked against everyone else in it. */
     const D = window.EpinoiaData;
     let mine = null, field = [];
-    /* WHICH COMPETITION. A club plays a league and a trophy in the same season and
-       the two are different fields; the reader chooses all of it or one kind of it.
-       The competitions are whatever the club's finalised games belong to. */
-    let compRows = [];
-    try {
-      const played = team && team.id
-        ? await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-                      `&status=eq.final&select=competition_id`)
-        : [];
-      const ids = [...new Set(played.map(g => g.competition_id).filter(Boolean))];
-      if (ids.length) {
-        compRows = await D.all(`competitions?id=in.(${ids.join(',')})&select=id,name,kind`);
-      }
-    } catch (e) { console.warn('[competitions]', e); }
+    /* WHICH SEASON, AND WHICH COMPETITION OF IT (2026-10-02). Every season he has played, under this profile and every
+       profile linked to it (0178: the same person in another competition's feed), newest first, and in the season shown
+       every competition he played (playerScopes). The hero's tiles, the percentile bars, the events and the game log are
+       that season's - all of it, or one competition - and the hero says which. The scope used to be every competition
+       his club had ever played, every season at once: one line added up across seasons, which no season ever had.
+       ?s= names the season, ?c= a competition of it; both can be sent and reloaded into. */
+    const scopes = await playerScopes(pl, team);
+    const SEASONS = scopes.seasons;
     const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
-    const kinds = [...new Set(compRows.map(c => c.kind || 'league'))];
+    const q0 = new URLSearchParams(location.search);
+    let SEASON = pickScopeSeason(SEASONS, q0.get('s'));
     let scopeKind = 'all';
     /* the label the events panel names its rows for: computed here, apart from
        any markup, and escaped by the panel itself */
     const fullName = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
+    const compName = c => c.name || KIND_LABEL[c.kind] || c.kind || '';
     const paintScope = async kind => {
       scopeKind = kind;
-      const ids = compRows.filter(c => kind === 'all' || (c.kind || 'league') === kind).map(c => c.id);
+      const comps = SEASON ? SEASON.comps : [];
+      const ids = comps.filter(c => kind === 'all' || c.id === kind).map(c => c.id);
+      /* the profile he played these under: his own, or the linked one the season line knows him by there */
+      const pids = new Set(comps.filter(c => ids.indexOf(c.id) >= 0).map(c => c.pid));
       mine = null; field = []; SCOPE_IDS = ids; let sosGames = null;
       try {
         if (ids.length) {
@@ -1342,7 +1460,7 @@ async function loadCareerAccess(pl, lgRow) {
           sosGames = S.games;
           SCOPE_GAME_COUNT = (S.games || []).length;
           field = S.players;
-          mine = field.find(r => r.id === pl.id) || null;
+          mine = field.find(r => pids.has(r.id)) || field.find(r => r.id === pl.id) || null;
         }
       } catch (e) { console.warn('[season]', e); }
       paintTiles(mine, field);
@@ -1364,26 +1482,68 @@ async function loadCareerAccess(pl, lgRow) {
         } else if (evHost && window.EpinoiaSitPanel) {
           window.EpinoiaSitPanel.render({ host: evHost, kind: 'player', row: mine, field, name: fullName });
           const en = $('#eventsNote');
-          if (en) en.textContent = kind === 'all' ? '' : (KIND_LABEL[kind] || kind);
+          if (en) en.textContent = kind === 'all' ? '' : compName(comps.find(c => c.id === kind) || {});
         }
       } catch (e) { console.warn('[events]', e); }
       const bn = $('#barNote');
-      if (bn && kind !== 'all') bn.textContent = (bn.textContent || '').replace(/ \u00b7 .*$/, '') + ' \u00b7 ' + (KIND_LABEL[kind] || kind);
-      document.querySelectorAll('#compScope .ep-tab').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
+      if (bn && kind !== 'all') bn.textContent = (bn.textContent || '').replace(/ · .*$/, '') + ' · ' + compName(comps.find(c => c.id === kind) || {});
+      paintScopeLabel(SEASON, kind);
+      document.querySelectorAll('#pscopeC .ep-chip').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
     };
-    if (kinds.length > 1) {
-      const strip = document.createElement('div');
-      strip.className = 'ep-tabs compscope'; strip.id = 'compScope'; strip.setAttribute('role', 'tablist');
-      [['all', 'All']].concat(kinds.map(k => [k, KIND_LABEL[k] || k])).forEach(([k, lab]) => {
-        const b = document.createElement('button');
-        b.className = 'ep-tab' + (k === 'all' ? ' on' : ''); b.dataset.k = k; b.setAttribute('role', 'tab'); b.textContent = lab;
-        b.onclick = () => paintScope(k);
-        strip.appendChild(b);
-      });
-      const bars = $('#bars');
-      if (bars && bars.parentNode) bars.parentNode.insertBefore(strip, bars);
-    }
-    await paintScope('all');
+    /* the chips: the seasons (more than one), and the competitions of the season shown (more than one). ALL is offered
+       only where one profile played them all: two profiles' season lines are two people's to the season maths. */
+    const drawComps = () => {
+      const comps = SEASON ? SEASON.comps : [];
+      const kinds = (allOk(SEASON) ? [['all', 'All']] : []).concat(comps.map(c => [c.id, compName(c)]));
+      const host = $('#pscopeC');
+      if (host) host.textContent = '';
+      if (kinds.length > 1 && host) {
+        kinds.forEach(([k, lab]) => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'ep-chip' + (k === scopeKind ? ' on' : ''); b.dataset.k = k; b.textContent = lab;
+          if (k !== 'all') b.setAttribute('translate', 'no');
+          b.onclick = () => { if (k !== scopeKind) { paintScope(k); syncScopeUrl(SEASON, k); } };
+          host.appendChild(b);
+        });
+      }
+      const row = $('#pscopeComps');
+      if (row) row.hidden = !(kinds.length > 1);
+      return kinds;
+    };
+    const firstKind = () => (allOk(SEASON) ? 'all' : ((SEASON && SEASON.comps[0]) || {}).id || 'all');
+    const chooseSeason = async (sn, kind, picked) => {
+      SEASON = sn;
+      scopeKind = kind && SEASON && (kind === 'all' ? allOk(SEASON) : SEASON.comps.some(c => c.id === kind)) ? kind : firstKind();
+      drawSeasons();
+      drawComps();
+      if (picked) syncScopeUrl(SEASON, scopeKind);   // the reader's choice goes in the address; the default does not
+      await paintScope(scopeKind);
+    };
+    const drawSeasons = () => {
+      const host = $('#pscopeS');
+      if (host) host.textContent = '';
+      if (SEASONS.length > 1 && host) {
+        SEASONS.forEach(sn => {
+          const a = document.createElement('a');
+          a.className = 'ep-chip' + (sn === SEASON ? ' on' : ''); a.textContent = sn.label;
+          a.href = scopeHref(sn, null);
+          if (sn === SEASON) a.setAttribute('aria-current', 'true');
+          a.addEventListener('click', ev => {
+            /* a modified click is the reader asking for a new tab */
+            if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button) return;
+            ev.preventDefault();
+            if (sn === SEASON) return;
+            chooseSeason(sn, null, true).then(() => seasonLog(scopes.ids, SEASON)).catch(e => console.warn('[scope]', e));
+          });
+          host.appendChild(a);
+        });
+      }
+      const row = $('#pscopeSeasons');
+      if (row) row.hidden = !(SEASONS.length > 1);
+      const box = $('#pscope');
+      if (box) box.hidden = !(SEASONS.length > 1 || (SEASON && SEASON.comps.length > 1));
+    };
+    await chooseSeason(SEASON, q0.get('c'));
 
     /* ---- career, a row per season ----
        One line was fine when nobody had a second season. A career table is the
@@ -1603,27 +1763,8 @@ function drawShotChart(shots, colour, games, gameList) {
       }
     }
 
-    /* game log, with the opponent resolved from the game row */
-    const gl = await api(`player_game_stats?player_uuid=eq.${pl.id}` +
-      `&select=game_id,team_idx,stats,games(tipoff_at,competition_id,home_score,away_score,status,` +
-      `home:home_team_id(name,slug),away:away_team_id(name,slug))&limit=80`);
-    const rows = gl.filter(r => r.games)
-      .sort((a, b) => new Date(b.games.tipoff_at || 0) - new Date(a.games.tipoff_at || 0))
-      .map(r => {
-        const g = r.games;
-        const home = r.team_idx === 0;
-        const us = home ? g.home_score : g.away_score;
-        const them = home ? g.away_score : g.home_score;
-        return Object.assign({}, r, {
-          __home: home,
-          __opp: home ? g.away : g.home,
-          __res: g.status === 'final' ? (us > them ? 'W ' + us + '-' + them
-                                                   : 'L ' + us + '-' + them) : ''
-        });
-      });
-    paintLog(rows);
-    LOG_ROWS = rows;                                   // 3PT CONSISTENCY is worked out now, from the log just read
-    if (LAST_BARS) paintBars(LAST_BARS.mine, LAST_BARS.field);
+    /* game log, the season shown (seasonLog) */
+    await seasonLog(scopes.ids, SEASON);
   } catch (e) {
     fail('Could not load: ' + e.message);
   } finally {

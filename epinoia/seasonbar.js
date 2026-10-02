@@ -81,6 +81,15 @@ function offer(o) {
   return { all, list, current: list[0] || null };
 }
 
+/* A SEASON AS A PERSON WRITES IT OVER A LINE OF STATISTICS: "2026-27" is 2026/27, and so is "2026-2027"; a season named
+   by its one year ("2027"), or anything else, is left as it is. The hero of a club or a player says which season its
+   numbers are from with it, and the depth chart's switch names its season with it. */
+function label(name) {
+  const s = String(name == null ? '' : name).trim();
+  const m = s.match(/^(\d{4})\s*[-/\u2013]\s*(\d{2}|\d{4})$/);
+  return m ? m[1] + '/' + m[2].slice(-2) : s;
+}
+
 /* ?s= may be a name or an id, and data.js pickSeason owns that matching rule —
    it is the one the fixtures page has been using since ?s= existed. Kept there
    rather than copied here: two spellings of "which season did they mean" is
@@ -234,5 +243,5 @@ function mount(o) {
   return true;
 }
 
-return { offer, pick, load, context, mount, href, syncUrl, newestFirst };
+return { offer, pick, load, context, mount, href, syncUrl, newestFirst, label };
 }));

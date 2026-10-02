@@ -97,7 +97,7 @@ const three = pjs.slice(pjs.indexOf("title: 'three-pointers'"), pjs.indexOf("tit
 ok('3PT CONSISTENCY sits with the three-pointers, as a card of its own', /consistency: true/.test(three) && /'3PT CONSISTENCY'/.test(pjs) && /blk\.consistency \? consistencyCard : null/.test(pjs));
 ok('...worked out from the game log the page already reads, not asked for again', /LOG_ROWS = rows;/.test(pjs) && /K\.fromLog\(LOG_ROWS, SCOPE_IDS/.test(pjs) && !/consistency[^\n]*api\(/i.test(pjs));
 ok('...for this player only: nothing about it is computed in season.js or for the league', !/consistency/i.test(rd('epinoia', 'season.js')));
-ok('...cut to the competitions in view, so the log query names each game’s competition', /games\(tipoff_at,competition_id,/.test(pjs) && /SCOPE_IDS = ids;/.test(pjs));
+ok('...cut to the competitions in view, so the log query names each game’s competition', /games(!inner)?\(tipoff_at,competition_id,/.test(pjs) && /SCOPE_IDS = ids;/.test(pjs));
 ok('...and drawn again when the log arrives', /if \(LAST_BARS\) paintBars\(LAST_BARS\.mine, LAST_BARS\.field\)/.test(pjs));
 const html = rd('epinoia', 'p', 'index.html');
 ok('the page loads consistency.js before player.js', html.indexOf('../consistency.js?v=') > 0 && html.indexOf('../consistency.js?v=') < html.indexOf('<script src="player.js'));

@@ -115,6 +115,9 @@ let SEASON_COMPS = null, SEASON_NAME = '';
 let SEASON_ID = null;
 /* is the season shown the newest one (or the only one)? Who is out now, and who has left, belong to it alone */
 let SEASON_NOW = true;
+/* the season the page's numbers are from, as a person writes it (seasonbar.js label): the hero's scoreboard says it */
+let SEASON_LABEL = '';
+const seasonText = n => { const SB = window.EpinoiaSeasonBar; return SB && SB.label ? SB.label(n) : String(n || ''); };
 /* this script's own ?v=, so the win model's code loaded later (loadWinModel) is of the same deploy */
 const TEAM_V = (() => {
   const s = document.currentScript || Array.from(document.scripts).find(x => /\/t\/team\.js/.test(x.src));
@@ -135,6 +138,7 @@ async function chooseSeason(team, lg) {
   if (!SB || !lg || !lg.id) return;
   try {
     const o = await SB.load(api, lg.id);
+    SEASON_LABEL = o.current ? seasonText(o.current.name) : '';    // one season: still named on the hero
     if (!o.list || o.list.length < 2) return;
     const wantS = new URLSearchParams(location.search).get('s');
     let season = wantS ? SB.pick(o.list, wantS) : null;
@@ -150,6 +154,7 @@ async function chooseSeason(team, lg) {
     SEASON_NAME = season.name || '';
     SEASON_ID = season.id || null;
     SEASON_NOW = !o.list[0] || season.id === o.list[0].id;
+    SEASON_LABEL = seasonText(season.name);
     SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: o.list, season });
   } catch (_) { /* every season, as before */ }
 }
@@ -810,7 +815,7 @@ async function profileDepth(team, win, all) {
   if (!host.firstChild) host.innerHTML = '<div class="empty">Working out the depth chart…</div>';
   const note = $('#tdepthNote');
   const link = p => '../p/?p=' + encodeURIComponent(p.id);
-  const season = SEASON_NAME ? String(SEASON_NAME).replace(/^(\d{4})-(\d{2})$/, '$1/$2') : '';
+  const season = SEASON_NAME ? seasonText(SEASON_NAME) : '';
   try {
     let whole = null;
     try { whole = X.shareChart ? await depthShares(team, 'season', depthAll) : null; } catch (_) { /* no lineups read: projected */ }
@@ -1139,6 +1144,13 @@ async function record(team) {
     const d = el('div'); d.dataset.k = l.replace(/\s+/g, '-');
     d.append(el('div', 'v', v), el('div', 'l', l)); wrap.appendChild(d);
   });
+  /* WHICH SEASON THE BOARD IS FROM, always: a line across its top (2025/26) */
+  if (SEASON_LABEL) {
+    const h = el('div'); h.dataset.k = 'season';
+    h.append(el('div', 'l', 'season'), el('div', 'v', SEASON_LABEL));
+    wrap.insertBefore(h, wrap.firstChild);
+    wrap.classList.add('has-season');
+  }
 }
 
 /* ------------------------------------------------------------ team stats --- */

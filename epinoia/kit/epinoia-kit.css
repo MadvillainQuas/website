@@ -650,7 +650,7 @@ body .ep-hdr > :not(h2):not(.idx){margin-left:0;margin-right:0;text-align:center
 
 /* ---- light: every chip, button and tab is a solid surface ---- */
 :root[data-theme="light"] .ep-chip{ background:#ffffff; color:var(--ink-2); border-color:var(--rule-2) }
-:root[data-theme="light"] .ep-chip:hover{ border-color:var(--lume); color:var(--lume) }
+:root[data-theme="light"] .ep-chip:not(.on):hover{ border-color:var(--lume); color:var(--lume) }   /* the chosen chip keeps its ink: --lume on --lume is no text at all */
 :root[data-theme="light"] .ep-btn{ background:#ffffff; color:var(--ink); border-color:var(--rule-2) }
 :root[data-theme="light"] .ep-btn:hover{ background:var(--lume); color:#ffffff }
 :root[data-theme="light"] .ep-btn.pri{ background:var(--lume); color:#ffffff }
