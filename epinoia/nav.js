@@ -1662,6 +1662,46 @@
   nav.appendChild(navScroll);
   nav.appendChild(navFoot);
 
+  /* THE TOP HALF SCROLLS, AND SAYS SO (2026-10-02): a track down its left edge with a thumb the size of the part on show,
+     where the part on show is, drawn only while there is more than fits. The browser's own bar stays hidden (it would
+     sit on the right, over the rows, and a phone hides it anyway). The thumb drags; a press on the track pages. Here on
+     the rail and in the phone's open menu sheet alike, which hold the same scroller. */
+  const sbar = el('div', 'ep-nav-sb'), sthumb = el('i');
+  sbar.setAttribute('aria-hidden', 'true');
+  sbar.appendChild(sthumb);
+  nav.appendChild(sbar);
+  const paintBar = () => {
+    const ch = navScroll.clientHeight, sh = navScroll.scrollHeight;
+    const on = ch > 40 && sh > ch + 2 && getComputedStyle(navScroll).overflowY !== 'hidden';
+    sbar.classList.toggle('on', on);
+    if (!on) return;
+    sbar.style.top = navScroll.offsetTop + 'px';
+    sbar.style.height = ch + 'px';
+    const th = Math.max(28, Math.round(ch * ch / sh));
+    sthumb.style.height = th + 'px';
+    sthumb.style.transform = 'translateY(' + Math.round((ch - th) * navScroll.scrollTop / (sh - ch)) + 'px)';
+  };
+  navScroll.addEventListener('scroll', paintBar, { passive: true });
+  window.addEventListener('resize', paintBar, { passive: true });
+  if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(paintBar); ro.observe(navScroll); ro.observe(navdeck); }
+  if (typeof MutationObserver === 'function') new MutationObserver(() => requestAnimationFrame(paintBar)).observe(nav, { attributes: true, attributeFilter: ['class'] });
+  sthumb.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const y0 = e.clientY, t0 = navScroll.scrollTop;
+    const ch = navScroll.clientHeight, sh = navScroll.scrollHeight, th = sthumb.offsetHeight;
+    const zx = sbar.getBoundingClientRect().height / Math.max(1, sbar.offsetHeight);   // the page's zoom
+    const move = ev => { navScroll.scrollTop = t0 + (ev.clientY - y0) / zx * (sh - ch) / Math.max(1, ch - th); };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); sbar.classList.remove('drag'); };
+    sbar.classList.add('drag');
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  });
+  sbar.addEventListener('pointerdown', e => {
+    if (e.target === sthumb) return;
+    const r = sthumb.getBoundingClientRect();
+    navScroll.scrollBy({ top: (e.clientY < r.top ? -1 : 1) * navScroll.clientHeight * 0.85, behavior: 'smooth' });
+  });
+  setTimeout(paintBar, 0); setTimeout(paintBar, 600);
+
   /* THE WAY IN, ON A PHONE.
      The bar below 820px is every one of these same rows, reflowed into a
      58px strip you swipe sideways — nothing in it is hidden, but nothing
