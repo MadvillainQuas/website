@@ -131,7 +131,7 @@ function events(row, field, o) {
   };
   const rows = SITS.map(([k, name, what]) => '<div class="tv-ev">' +
     '<div class="tv-ev-n"><i>' + ICON[k] + '</i><b>' + name + '</b><span>' + what + '</span></div>' + side(k, false) + side(k, true) + '</div>').join('');
-  return '<div class="tv tv-evs"><div class="tv-ev tv-ev-hd"><span></span><span class="o">' + esc(opt.name || 'The club') + ' with the ball</span><span class="d">Opponents with the ball</span></div>' +
+  return '<div class="tv tv-evs"><div class="tv-ev tv-ev-hd"><span></span><span class="o">' + esc(opt.name || 'The club') + ' with the ball</span><span class="d">' + esc(opt.opp || 'Opponents') + ' with the ball</span></div>' +
     rows + '</div>' + key('the league’s clubs (points a chance; eFG and TO chips too)', false);
 }
 

@@ -624,14 +624,17 @@ async function season(competitionId, opts) {
   const allowBig = !!(opts && opts.allowBig);
   const list = (Array.isArray(competitionId) ? competitionId : [competitionId]).filter(Boolean);
   if (!list.length) return { games: [], players: [], teams: [], byId: {} };
-  const scope = list.length === 1
+  /* opts.gameIds: only those games of the competitions (the game analysis: one game's line, game/analysis.js) -- never
+     cached and never from a file, which hold the whole season */
+  const only = opts && Array.isArray(opts.gameIds) && opts.gameIds.length ? opts.gameIds : null;
+  const scope = (list.length === 1
     ? `competition_id=eq.${list[0]}`
-    : `competition_id=in.(${list.join(',')})`;
+    : `competition_id=in.(${list.join(',')})`) + (only ? `&id=in.(${only.join(',')})` : '');
 
   /* THE SEASON A READER ALREADY HAS IS NOT WORTH SENDING AGAIN. Only for the callers that
      asked for the season line and not the rows (rows: false): the line is a few hundred
      small objects and keeps, the rows are megabytes and do not. See seasonToken(). */
-  const ckey = keepRows ? null : seasonCachePrefix() + list.slice().sort().join(',');
+  const ckey = keepRows || only ? null : seasonCachePrefix() + list.slice().sort().join(',');
   let token = null;
   if (ckey) {
     token = await seasonToken(scope);

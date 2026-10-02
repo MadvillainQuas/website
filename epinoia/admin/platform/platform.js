@@ -160,7 +160,7 @@ async function gate() {
     const tab = asked && [...document.querySelectorAll('.ep-tab')].find(t => t.dataset.p === asked);
     if (tab) { hashTabOpened = true; tab.click(); }
   }
-  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadPending(), loadScouts()]);
+  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadPending(), loadScouts(), loadMail()]);
 }
 
 /* ------------------------------------------------------------------ tabs --- */
@@ -932,6 +932,71 @@ async function loadScouts() {
       if (n != null) { say(n ? x.email + ' is no longer a scout.' : x.email + ' was not a scout.', 'ok'); loadScouts(); }
     });
     r.append(who, what, when, end);
+    host.appendChild(r);
+  });
+}
+
+/* ------------------------------------------------------- reports by email (0221) --- */
+/* an address and a club; the mailer (scripts/report_mailer.mjs) does the rest. The club is found by name as it is typed */
+let MAIL_TEAMS = new Map();
+async function loadMail() {
+  const host = $('#mailList'), go = $('#mailGo');
+  if (!host || !sb) return;
+  const tz = $('#mailTz');
+  if (tz && !tz.options.length) {
+    const here = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+    const zones = (Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [here, 'UTC']);
+    zones.forEach(z => { const o = document.createElement('option'); o.value = o.textContent = z; if (z === here) o.selected = true; tz.appendChild(o); });
+  }
+  const tIn = $('#mailTeam');
+  if (tIn && !tIn.dataset.wired) {
+    tIn.dataset.wired = '1';
+    let tm = null;
+    tIn.addEventListener('input', () => {
+      clearTimeout(tm);
+      const q = tIn.value.trim();
+      if (q.length < 2 || MAIL_TEAMS.has(q)) return;
+      tm = setTimeout(async () => {
+        const { data } = await sb.from('teams').select('id,name,leagues(name)').ilike('name', '%' + q.replace(/[%_,()]/g, ' ') + '%').limit(20);
+        const dl = $('#mailTeams'); dl.textContent = '';
+        (data || []).forEach(t => { const label = t.name + (t.leagues && t.leagues.name ? ' (' + t.leagues.name + ')' : ''); MAIL_TEAMS.set(label, t.id);
+          const o = document.createElement('option'); o.value = label; dl.appendChild(o); });
+      }, 250);
+    });
+  }
+  if (go && !go.dataset.wired) {
+    go.dataset.wired = '1';
+    go.addEventListener('click', async () => {
+      const email = $('#mailEmail').value.trim().toLowerCase(), team = MAIL_TEAMS.get($('#mailTeam').value.trim());
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('That email address does not look right.', 'warn'); return; }
+      if (!team) { say('Pick the club from the list as you type its name.', 'warn'); return; }
+      const { error } = await sb.from('report_mail_subs').upsert({ email, team_id: team, name: $('#mailName').value.trim() || null, tz: $('#mailTz').value || 'UTC', active: true },
+        { onConflict: 'email,team_id' });
+      if (error) { oops(error); return; }
+      say(email + ' will be sent ' + $('#mailTeam').value.trim() + '’s reports.', 'ok');
+      $('#mailEmail').value = ''; $('#mailTeam').value = ''; $('#mailName').value = '';
+      loadMail();
+    });
+  }
+  const { data, error } = await sb.from('report_mail_subs').select('id,email,name,tz,active,created_at,teams(name)').order('created_at', { ascending: false });
+  host.textContent = '';
+  if (error) { host.appendChild(el('p', 'lead', /report_mail_subs|schema cache|does not exist/i.test(error.message || '') ? 'Reports by email arrive with migration 0221: it has not been applied to this database yet.' : 'Could not read them: ' + error.message)); return; }
+  if (!(data || []).length) { host.appendChild(el('p', 'mt', 'Nobody is sent reports yet.')); return; }
+  const { data: log } = await sb.from('report_mail_log').select('sub_id,kind,sent_at').order('sent_at', { ascending: false }).limit(500);
+  data.forEach(x => {
+    const r = el('div', 'row'); r.style.cssText = 'align-items:center;gap:8px;margin-bottom:4px';
+    const last = (log || []).find(l => l.sub_id === x.id);
+    const who = el('span', 'grow', x.email + (x.name ? ' (' + x.name + ')' : '') + ' · ' + ((x.teams || {}).name || 'club'));
+    who.style.overflowWrap = 'anywhere';
+    const what = el('span', 'mt', x.tz + ' · ' + (last ? 'last sent ' + fmtDate(last.sent_at) : 'nothing sent yet') + (x.active ? '' : ' · paused'));
+    const pause = el('button', 'ep-btn mini', x.active ? 'pause' : 'resume'); pause.type = 'button';
+    pause.addEventListener('click', async () => { const { error: e } = await sb.from('report_mail_subs').update({ active: !x.active }).eq('id', x.id); if (e) oops(e); else loadMail(); });
+    const end = el('button', 'ep-btn mini danger', 'remove'); end.type = 'button';
+    end.addEventListener('click', async () => {
+      if (!confirm(x.email + ' will no longer be sent ' + ((x.teams || {}).name || 'the club') + '’s reports.')) return;
+      const { error: e } = await sb.from('report_mail_subs').delete().eq('id', x.id); if (e) oops(e); else loadMail();
+    });
+    r.append(who, what, pause, end);
     host.appendChild(r);
   });
 }

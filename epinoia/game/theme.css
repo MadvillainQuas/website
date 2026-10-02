@@ -379,3 +379,12 @@ html.tt-on .wrap > .top > .ctx{ display:none }
   text-shadow:2px 2px 0 rgba(0,0,0,.25) }
 .mv .mv-benchlabel i{ flex:1 1 auto; height:2px; background:currentColor; opacity:.45 }
 .mv .mv-benchlabel span{ padding:3px 7px 2px; background:#0a0a0a; color:#ffe14d; font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap }
+
+/* ---- the game analysis's panel under the head (game/analysis.js) ---- */
+.bt-sheet.bt-ga{ margin-left:6px }
+.bt-sheet.bt-ga.locked::after{ content:" \1F512"; font-size:.85em }
+.ga-wrap{ margin:16px 0 24px; padding:12px; border:1px solid var(--rule-2); border-radius:12px; background:var(--panel) }
+.ga-top{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:0 0 10px }
+.ga-top h2{ margin:0; font-family:var(--f-score,inherit); font-weight:400; font-size:20px; letter-spacing:.03em; text-transform:uppercase }
+.ga-sides{ display:flex; gap:6px; flex-wrap:wrap }
+.ga-x{ margin-left:auto }

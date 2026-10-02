@@ -29,6 +29,8 @@
   const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.EpinoiaReport = api;
+  /* the A4 engine under a name of its own too: the game page already has an EpinoiaReport (game/report.js, the match report) */
+  if (typeof root === 'object' && root) root.EpinoiaA4 = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 const PAGE = { w: 794, h: 1123 };
@@ -598,7 +600,7 @@ function newPage(c, label, cont) {
   const pg = el('div', 'rp-pg');
   pg.style.setProperty('--rp-a', c.accent || '#08603f');
   pg.innerHTML = '<div class="rp-top">' + crestHTML(c, 'rp-top-c') +
-    '<div class="rp-top-n"><b>' + esc(c.name) + '</b><span>' + esc(c.line || '') + '</span></div>' +
+    '<div class="rp-top-n"><b>' + esc(c.head || c.name) + '</b><span>' + esc(c.line || '') + '</span></div>' +
     '<div class="rp-top-m">' + esc(label) + (cont ? '<i> · continued</i>' : '') + '</div></div>' +
     '<div class="rp-body"></div>' +
     '<div class="rp-foot"><span class="epinoia-mark">EPINOIA</span><span>' + esc(c.title || 'Report') + ' · ' + esc(c.generated) + '</span><span class="rp-no"></span></div>';
@@ -803,7 +805,9 @@ function mount(o) {
      clubReport / playerReport). Locked, the tab still opens - on blurred rows and the membership card instead of the
      report - and wears the lock; the answer is asked again whenever the viewer's access changes (a sign-in, a join) */
   const AX = () => root.EpinoiaAccess;
-  const isLocked = () => !!(o.lock && AX() && typeof AX().featureLocked === 'function' && AX().featureLocked(o.lock.key, o.lock.league));
+  /* the mailer's headless browser (scripts/report_mailer.mjs) sets EPINOIA_RP_BOT before the page's own scripts run: the
+     reports it emails were bought by the member they are sent to */
+  const isLocked = () => !root.EPINOIA_RP_BOT && !!(o.lock && AX() && typeof AX().featureLocked === 'function' && AX().featureLocked(o.lock.key, o.lock.league));
   const markTab = () => {
     const l = isLocked();
     btn.classList.toggle('rp-tab-locked', l);
@@ -858,11 +862,11 @@ function mount(o) {
 /* THE PANEL: the controls (what goes in, the title, the template, RAPM, the downloads) above the pages */
 function ui(state) {
   const o = state.o, panel = state.panel;
-  const key = 'epinoia_report_' + o.kind;
+  const key = o.store || ('epinoia_report_' + o.kind);
   const saved = store.get(key, {});
   const conf = state.conf = {
     on: Object.assign({}, ...o.modules.map(m => ({ [m.key]: m.on !== false })), saved.on || {}),
-    title: saved.title || (o.kind === 'team' ? 'Scouting report' : 'Scouting report'),
+    title: saved.title || o.title || 'Scouting report',
     subtitle: null, tpl: saved.tpl || {}
   };
   panel.innerHTML = '';
@@ -992,6 +996,8 @@ function ui(state) {
       all.forEach((p, i) => { const n = p.querySelector('.rp-no'); if (n) n.textContent = (i + 1) + ' / ' + all.length; });
       say(all.length + (all.length === 1 ? ' page' : ' pages'));
       (state.onBuilt || []).forEach(f => { try { f(); } catch (_) { /* a label */ } });
+      /* the mailer waits for this before it asks for the PDF */
+      root.__rpBuilt = (root.__rpBuilt || 0) + 1;
     } catch (e) {
       warn(e);
       say('the report could not be built: ' + (e.message || e));

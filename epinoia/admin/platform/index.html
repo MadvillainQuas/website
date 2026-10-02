@@ -16,12 +16,12 @@
 <title>Platform · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=604"></script>
-<script src="../../i18n.js?v=604" data-i18n-packs="admin platform"></script>
-<script src="../../glyphs.js?v=604" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=604">
-<link rel="stylesheet" href="../../kit/nav.css?v=604">
-<link rel="stylesheet" href="../jobbar.css?v=604">
+<script src="../../appmode.js?v=605"></script>
+<script src="../../i18n.js?v=605" data-i18n-packs="admin platform"></script>
+<script src="../../glyphs.js?v=605" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=605">
+<link rel="stylesheet" href="../../kit/nav.css?v=605">
+<link rel="stylesheet" href="../jobbar.css?v=605">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -308,9 +308,9 @@
   .gq-cap{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
   .gq-card .row{padding:0 10px 10px;margin:0}
 </style>
-<link rel="stylesheet" href="../../kit/suggest.css?v=604">
-<link rel="stylesheet" href="../../kit/newsrefresh.css?v=604">
-<link rel="stylesheet" href="../../kit/legibility.css?v=604">
+<link rel="stylesheet" href="../../kit/suggest.css?v=605">
+<link rel="stylesheet" href="../../kit/newsrefresh.css?v=605">
+<link rel="stylesheet" href="../../kit/legibility.css?v=605">
 </head>
 <body>
 <div class="ep-frame">
@@ -438,6 +438,22 @@
            end it. Every platform admin is a scout already. -->
       <h3 id="scoutsH">Scouts</h3>
       <div id="scoutsList"></div>
+
+      <!-- 0221: REPORTS BY EMAIL. An address and a club: the game analysis after each of its games, its own report every
+           other Sunday morning and its opponents' reports for the week ahead (scripts/report_mailer.mjs). -->
+      <h3 id="mailH">Reports by email</h3>
+      <p class="lead">Name an address and a club. As soon as each of the club's games is final they are emailed its game analysis
+        (from the club's side); every Sunday morning, at their own time, the reports on the clubs it plays in the week ahead,
+        in one email, with the club's own report every other Sunday.</p>
+      <div class="row" id="mailForm" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <input id="mailEmail" class="ep-input" type="email" placeholder="their@email" style="min-width:200px">
+        <input id="mailName" class="ep-input" type="text" placeholder="first name (optional)" style="width:150px">
+        <input id="mailTeam" class="ep-input" type="text" placeholder="club: type to find" list="mailTeams" style="min-width:220px">
+        <datalist id="mailTeams"></datalist>
+        <select id="mailTz" class="ep-input"></select>
+        <button id="mailGo" class="ep-btn pri" type="button">add</button>
+      </div>
+      <div id="mailList"></div>
       </div><!-- /acctList: the general grant form and the waiting room are
            inside it on purpose, so opening one account's dashboard takes them
            away. Two grant forms on screen at once — one against the account you
@@ -792,22 +808,22 @@
   </div>
 </div>
 
-<script src="../../config.js?v=604" defer></script>
-<script src="../../vendor/supabase.js?v=604" defer></script>
-<script src="../access-ui.js?v=604" defer></script>
-<script src="../../newsrefresh.js?v=604" defer></script>
-<script src="../creators-ui.js?v=604" defer></script>
-<script src="../../homearenas.js?v=604" defer></script>
-<script src="arenas-ui.js?v=604" defer></script>
-<script src="analytics-ui.js?v=604" defer></script>
-<script src="links-ui.js?v=604" defer></script>
-<script src="go-photos-ui.js?v=604" defer></script>
-<script src="../suggestions-ui.js?v=604" defer></script>
-<script src="../jobbar.js?v=604" defer></script>
-<script src="reset-ui.js?v=604" defer></script>
-<script src="../../upload.js?v=604" defer></script>
-<script src="platform.js?v=604" defer></script>
-<script src="../../go/logo.js?v=604" defer></script>
-<script src="../../nav.js?v=604" defer></script>
+<script src="../../config.js?v=605" defer></script>
+<script src="../../vendor/supabase.js?v=605" defer></script>
+<script src="../access-ui.js?v=605" defer></script>
+<script src="../../newsrefresh.js?v=605" defer></script>
+<script src="../creators-ui.js?v=605" defer></script>
+<script src="../../homearenas.js?v=605" defer></script>
+<script src="arenas-ui.js?v=605" defer></script>
+<script src="analytics-ui.js?v=605" defer></script>
+<script src="links-ui.js?v=605" defer></script>
+<script src="go-photos-ui.js?v=605" defer></script>
+<script src="../suggestions-ui.js?v=605" defer></script>
+<script src="../jobbar.js?v=605" defer></script>
+<script src="reset-ui.js?v=605" defer></script>
+<script src="../../upload.js?v=605" defer></script>
+<script src="platform.js?v=605" defer></script>
+<script src="../../go/logo.js?v=605" defer></script>
+<script src="../../nav.js?v=605" defer></script>
 </body>
 </html>

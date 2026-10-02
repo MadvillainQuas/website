@@ -125,7 +125,7 @@ function rankOf(teams, k, id, low) {
 }
 
 function modules(ctx) {
-  const E = root.EpinoiaReport, V = root.EpinoiaTeamViz;
+  const E = root.EpinoiaA4 || root.EpinoiaReport, V = root.EpinoiaTeamViz;
   const { block, title, esc } = E;
   Object.keys(TEAM_STATS).forEach(k => { E.STATS[k] = TEAM_STATS[k]; });
   Object.keys(TEAM_DEFS).forEach(k => { E.DEFS[k] = TEAM_DEFS[k]; });
@@ -266,24 +266,25 @@ function modules(ctx) {
         const ov = me[o], dv = me[d];
         const bo = E.band(Rf.pct(o, me.id)), bd = E.band(Rf.pct(d, me.id));
         return '<div class="rp-ffc"><h4>' + l + ' · ' + u + '</h4><div class="rp-ffp">' +
-          '<div class="rp-ffs" data-b="' + bo + '"><b>' + f1(ov) + '</b><span>own</span>' + chip(o) + '</div>' +
-          '<div class="rp-ffs" data-b="' + bd + '"><b>' + f1(dv) + '</b><span>allowed</span>' + chip(d) + '</div></div></div>';
+          '<div class="rp-ffs" data-b="' + bo + '"><b>' + f1(ov) + '</b><span>' + (c.vs ? esc(c.vs.as) : 'own') + '</span>' + chip(o) + '</div>' +
+          '<div class="rp-ffs" data-b="' + bd + '"><b>' + f1(dv) + '</b><span>' + (c.vs ? esc(c.vs.bs) : 'allowed') + '</span>' + chip(d) + '</div></div></div>';
       }).join('') + '</div>';
       const tiles = [['ORTG', 'ortg', 'points scored per 100'], ['DRTG', 'drtg', 'points allowed per 100'], ['NET', 'net', 'the difference'], ['PACE', 'pace', 'possessions a game']];
       const tileHTML = '<div class="rp-tiles rp-tiles-b" style="--n:4;margin-top:10px">' + tiles.map(([l, k, w]) => {
         const s = E.STATS[k] || {}, b = E.band(Rf.pct(k, me.id), s.style);
         return '<div class="rp-tile" data-b="' + b + '"><b>' + (k === 'net' ? sg1(me[k]) : f1(me[k])) + '</b><span>' + l + '</span><em>' + w + '</em>' + chip(k) + '</div>'; }).join('') + '</div>';
-      const out = [block(title('Four factors', [c.scope, 'own and allowed · the chip is the club’s place among ' + N].filter(Boolean).join(' · ')) + ffHTML + tileHTML)];
+      const out = [block(title('Four factors', [c.scope, (c.vs ? c.vs.a + ' and ' + c.vs.b + ' side by side, each against the competition’s clubs over the season' : 'own and allowed') + ' · the chip is the place among ' + N].filter(Boolean).join(' · ')) + ffHTML + tileHTML)];
       /* each group split in two (Louie, 2026-10-02): what the club does with the ball, then what it allows; the
          starters and bench groups lead with their net ratings */
       const groups = [
         ['EFFICIENCY', [['o', ['ts', 'ft_pct', 'tm_ppp']], ['d', ['opp_ts', 'tm_oppp']]]],
         ['HALF COURT', [['o', ['ev_half_pts_sh', 'hc_ast_pct', 'ev_half_tov_pct', 'ev_half_efg', 'ev_half_ppp']], ['d', ['evd_half_pts_sh', 'evd_half_tov_pct', 'evd_half_efg', 'evd_half_ppp']]]],
         ['TRANSITION', [['o', ['ev_transition_pts_sh', 'ev_transition_ppp']], ['d', ['tr_def_delta', 'evd_transition_ppp']]]],
-        ['AGAINST STARTERS & BENCH', [['n', ['vs_start_net', 'vs_bench_net']], ['o', ['vs_start_ortg', 'vs_bench_ortg']], ['d', ['vs_start_drtg', 'vs_bench_drtg']]]],
-        ['OUR STARTERS & BENCH', [['n', ['own_start_net', 'own_bench_net']], ['o', ['own_start_ortg', 'own_bench_ortg']], ['d', ['own_start_drtg', 'own_bench_drtg']]]]
+        [c.vs ? (c.vs.as + ' v ' + c.vs.bs + ' starters & bench').toUpperCase() : 'AGAINST STARTERS & BENCH', [['n', ['vs_start_net', 'vs_bench_net']], ['o', ['vs_start_ortg', 'vs_bench_ortg']], ['d', ['vs_start_drtg', 'vs_bench_drtg']]]],
+        [c.vs ? (c.vs.as + ' starters & bench').toUpperCase() : 'OUR STARTERS & BENCH', [['n', ['own_start_net', 'own_bench_net']], ['o', ['own_start_ortg', 'own_bench_ortg']], ['d', ['own_start_drtg', 'own_bench_drtg']]]]
       ];
-      const SIDE = { o: 'Offence', d: 'Defence', n: 'Net rating' };
+      /* a single game (c.vs): the offence is one club with the ball, the defence the other one with it */
+      const SIDE = c.vs ? { o: c.vs.as + ' ball', d: c.vs.bs + ' ball', n: 'Net rating' } : { o: 'Offence', d: 'Defence', n: 'Net rating' };
       /* inside a group and a half the group's own words are not repeated: "HALF COURT / Defence / TO%" */
       const SHORT = {
         ft_pct: 'FT%', tm_ppp: 'PTS / POSSESSION', opp_ts: 'TS% ALLOWED', tm_oppp: 'PTS / POSSESSION',
@@ -322,7 +323,7 @@ function modules(ctx) {
             '<em>' + (r ? (s.style ? E.ordinal(r.r) + ' most' : E.ordinal(r.r) + ' of ' + r.n) : '') + '</em></div></td>';
         };
         out.push(block(title('Shot distribution', 'where the shots come from and how they go in, at both ends · the club’s place among ' + N + ' (blue: a style, ranked by most)') +
-          '<table class="rp-tbl rp-sd"><thead><tr><th class="l">shots</th><th class="o">' + esc(c.name) + ' shooting</th><th class="d">opponents shooting against ' + esc(c.name) + '</th></tr></thead><tbody>' +
+          '<table class="rp-tbl rp-sd"><thead><tr><th class="l">shots</th><th class="o">' + esc(c.name) + ' shooting</th><th class="d">' + (c.vs ? esc(c.vs.b) + ' shooting' : 'opponents shooting against ' + esc(c.name)) + '</th></tr></thead><tbody>' +
           SD.map(([k, l, w], i) => '<tr' + (i && /_att100$/.test(k) ? ' class="grp"' : '') + '><td class="l"><b>' + esc(l) + '</b><small>' + esc(w) + '</small></td>' + cell('z_' + k) + cell('zd_' + k) + '</tr>').join('') +
           '</tbody></table>'));
       }
@@ -353,7 +354,7 @@ function modules(ctx) {
             }).join('');
             const key = '<p class="rp-rb-key"><span><i class="m"></i>made</span><span><i class="o"></i>' + (own ? 'own' : 'their') + ' off. rebound</span>' +
               '<span><i class="d"></i>' + (own ? 'their' : 'own') + ' def. rebound</span><span><i class="n"></i>no rebound</span></p>';
-            return '<div class="rp-rb ' + (own ? 'own' : 'opp') + '"><h4>' + (own ? esc(c.name) + ' shooting' : 'Opponents shooting against ' + esc(c.name)) + '</h4>' + key +
+            return '<div class="rp-rb ' + (own ? 'own' : 'opp') + '"><h4>' + (own ? esc(c.name) + ' shooting' : c.vs ? esc(c.vs.b) + ' shooting' : 'Opponents shooting against ' + esc(c.name)) + '</h4>' + key +
               '<table><thead><tr><th>zone</th><th class="at">att</th><th>what became of them</th><th>fg%</th><th>' + (own ? 'orb%' : 'drb%') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
           };
           out.push(block(title('Rebounds analysis', 'what became of every shot attempt, by zone, at both ends \u00b7 the colour is the club\u2019s place among ' + N) +
@@ -390,7 +391,7 @@ function modules(ctx) {
       const head = (t, sh) => { const m = sh.filter(s => s.made).length; return '<div class="rp-cap">' + t + '<span>' + m + '/' + sh.length + (sh.length ? ' · ' + Math.round(100 * m / sh.length) + '%' : '') + '</span></div>'; };
       const out = [];
       out.push(block(title('Offence and defence by zone', 'the last ' + L.gs.length + ' games · each zone tinted against its break-even') +
-        '<div class="rp-two"><div>' + head('Offence', off) + court(off, 'zones', colour) + '</div><div>' + head('Defence (opponents’ shots)', def) + court(def, 'zones', '#5d6b64') + '</div></div>'));
+        '<div class="rp-two"><div>' + head(c.vs ? esc(c.vs.a) + '’s shots' : 'Offence', off) + court(off, 'zones', colour) + '</div><div>' + head(c.vs ? esc(c.vs.b) + '’s shots' : 'Defence (opponents’ shots)', def) + court(def, 'zones', '#5d6b64') + '</div></div>'));
       /* both ends, zone by zone, in one table */
       const zr = sh => { const z = SC.zoneRows(sh, L.gs.length); return z.groups.concat(z.big); };
       const ro = zr(off), rd = zr(def);
@@ -421,10 +422,10 @@ function modules(ctx) {
           try { const meta = await ctx.meta(pids); pids.forEach(id => { if (meta[id] && meta[id].name) names[id] = meta[id].name; }); } catch (_) { /* unnamed */ }
           out.push(block(title('Half court', 'the box score’s half-court card over the last ' + L.gs.length + ' games, both ends') +
             E.sitCardHTML(O.half, { key: 'half', colour, who: c.name + ' offence', names })));
-          out.push(block(E.sitCardHTML(Dd.half, { key: 'half', colour: '#5d6b64', who: 'opponents against ' + c.name, names })));
+          out.push(block(E.sitCardHTML(Dd.half, { key: 'half', colour: '#5d6b64', who: c.vs ? c.vs.b + ' offence' : 'opponents against ' + c.name, names })));
           out.push(block(title('Transition', 'fast breaks, and within eight seconds of a defensive rebound or a steal') +
             E.sitCardHTML(O.transition, { key: 'transition', colour: '#b4572e', who: c.name + ' offence', names, compact: true })));
-          out.push(block(E.sitCardHTML(Dd.transition, { key: 'transition', colour: '#5d6b64', who: 'opponents against ' + c.name, names, compact: true })));
+          out.push(block(E.sitCardHTML(Dd.transition, { key: 'transition', colour: '#5d6b64', who: c.vs ? c.vs.b + ' offence' : 'opponents against ' + c.name, names, compact: true })));
         }
       } catch (e) { if (root.console) root.console.warn('[report situations]', e); }
       /* the events: what the club made of each situation, and what opponents made of the same, each on its colour */
@@ -432,7 +433,7 @@ function modules(ctx) {
         const T = await season();
         if (T && T.mine && V) {
           out.push(block(title('Events', 'what each kind of possession is worth, at both ends · coloured by the club’s place among ' + T.S.teams.length + ' clubs') +
-            V.events(T.mine, T.S.teams, { name: c.name }), 'rp-ev'));
+            V.events(T.mine, T.S.teams, { name: c.name, opp: c.vs && c.vs.b }), 'rp-ev'));
           R.legendExtra.push(['EVENTS', 'Half court: a set offence against a set defence. Transition: a fast break, or a shot within eight seconds of a defensive rebound or a steal. Second chances: after an offensive rebound. Off turnovers: after the other side gave the ball away. After timeouts: the play drawn up in a timeout. Points a chance is what one such trip is worth; the word beside it is the club’s place among the clubs (strength: the top quarter; weakness: the bottom).']);
         }
       } catch (_) { /* without it */ }

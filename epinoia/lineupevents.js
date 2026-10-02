@@ -57,7 +57,7 @@ const req = p => { try { return typeof require === 'function' ? require(p) : nul
 const Engine = () => root.EpinoiaEngine || req('./engine.js');
 const Sit = () => root.EpinoiaSituations || req('./situations.js');
 const Clock = () => root.EpinoiaShotClock || req('./shotclock.js');
-const Lin = () => root.EpinoiaLineups || req('./lineups.js');
+const Lin = () => root.EpinoiaLineupsCore || root.EpinoiaLineups || req('./lineups.js');
 /* shotclock.js and situations.js find possessions.js on the global: make sure node has it there */
 if (typeof root.EpinoiaPossessions === 'undefined') { const P = req('./possessions.js'); if (P) root.EpinoiaPossessions = P; }
 

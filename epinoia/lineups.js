@@ -25,6 +25,8 @@
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.EpinoiaLineups = api;
+  /* under a name of its own too: the game page has an EpinoiaLineups of its own (game/lineups.js, the Lineups tab) */
+  if (typeof root === 'object' && root) root.EpinoiaLineupsCore = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const num = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
