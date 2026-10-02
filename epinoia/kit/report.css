@@ -321,3 +321,51 @@
 
 .rp-body > .rp-blk + .rp-blk:has(> .rp-pcard){ margin-top:-6px }
 .rp-ed[hidden]{ display:none }
+
+/* ---- 2026-10-02: colour on every figure, and the pages packed ---- */
+/* a module that starts in the space the one before left: a rule in the club's colour over its title */
+.rp-blk.rp-join{ margin-top:6px; padding-top:12px; border-top:3px solid var(--rp-a,#08603f) }
+.rp-top-m b{ color:var(--ink-3); font-weight:400 }
+/* a figure only this club has, against the club's own: the bar grows from the middle */
+.rp-st-bar.dv{ overflow:visible }
+.rp-st-bar.dv::after{ content:''; position:absolute; left:50%; top:-2px; bottom:-2px; width:1.5px; margin-left:-.75px; background:rgba(13,31,23,.45) }
+.rp-st-bar.dv i{ border-radius:3px }
+.rp-st[data-r]{ grid-template-columns:minmax(0,1fr) 46px 66px 38px 52px }
+.rp-st{ background:color-mix(in srgb,var(--b) 9%,#ffffff) }
+.rp-st[data-b="0"]{ background:none }
+/* the four factors and the ratings, each box on the colour of the club's place */
+.rp-ffs[data-b]{ background:color-mix(in srgb,var(--fb,#c9d3cd) 22%,#ffffff); box-shadow:inset 0 0 0 1.5px var(--fb,#c9d3cd) }
+.rp-ffs[data-b="4"], .rp-tile[data-b="4"]{ --fb:var(--b4) } .rp-ffs[data-b="3"], .rp-tile[data-b="3"]{ --fb:var(--b3) }
+.rp-ffs[data-b="2"], .rp-tile[data-b="2"]{ --fb:var(--b2) } .rp-ffs[data-b="1"], .rp-tile[data-b="1"]{ --fb:var(--b1) } .rp-ffs[data-b="9"], .rp-tile[data-b="9"]{ --fb:var(--b9) }
+.rp-ffs .rp-rk, .rp-tile .rp-rk{ margin-top:2px }
+.rp-tiles-b .rp-tile[data-b]{ background:color-mix(in srgb,var(--fb,#c9d3cd) 20%,#ffffff); box-shadow:inset 0 -4px 0 var(--fb,#c9d3cd) }
+.rp-rk[data-b="9"]{ background:#cfe0ea }
+/* the shot distribution: both ends, each figure with its bar and its place */
+.rp-sd th.o{ color:#fff; background:var(--rp-a,#08603f) } .rp-sd th.d{ color:#fff; background:#3f5249 }
+.rp-sd td{ padding:3px 6px; vertical-align:middle }
+.rp-sd td.l b{ display:block; font-size:9px; font-weight:800; letter-spacing:.02em }
+.rp-sd td.l small{ display:block; font-weight:400; font-size:7.5px; color:var(--ink-3) }
+.rp-sd tr.grp td{ border-top:2px solid var(--rule-2) }
+.rp-sdc{ --b:var(--b0); display:grid; grid-template-columns:42px minmax(0,1fr) 56px; align-items:center; gap:7px; padding:3px 6px; border-radius:6px;
+  background:color-mix(in srgb,var(--b) 16%,#ffffff) }
+.rp-sdc[data-b="4"]{ --b:var(--b4) } .rp-sdc[data-b="3"]{ --b:var(--b3) } .rp-sdc[data-b="2"]{ --b:var(--b2) } .rp-sdc[data-b="1"]{ --b:var(--b1) } .rp-sdc[data-b="9"]{ --b:var(--b9) }
+.rp-sdc b{ font-family:var(--f-data,ui-monospace,monospace); font-size:11px; text-align:right }
+.rp-sdb{ position:relative; height:8px; border-radius:4px; background:#e7eeea; overflow:hidden }
+.rp-sdb i{ position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:var(--b) }
+.rp-sdc em{ font-style:normal; font-family:var(--f-data,ui-monospace,monospace); font-size:8px; font-weight:700; text-align:right; color:color-mix(in srgb,var(--b) 60%,#0d1f17) }
+/* RAPM not calculated: a flag on the panel, a line on the page */
+.rp-rapm.rp-flag{ padding:8px 10px; border-radius:10px; border:1px solid #f2b33d; background:color-mix(in srgb,#f2b33d 16%,transparent) }
+.rp-flagnote{ margin:0 0 8px; padding:5px 9px; border-radius:8px; font-size:9.5px; background:color-mix(in srgb,#f2b33d 18%,#ffffff); border:1px solid #f2b33d }
+/* the transition cards, smaller: their shots are mostly at the rim */
+.rp-sit.cp .rp-sit-g{ grid-template-columns:minmax(0,0.62fr) minmax(0,1fr) }
+.rp-sit.cp{ padding:8px 12px 6px }
+/* combinations: the best in green, the worst in red */
+.rp-cap.good{ color:#1f7a45 } .rp-cap.bad{ color:#b32433 }
+.rp-cap.good::before, .rp-cap.bad::before{ content:''; width:10px; height:10px; border-radius:3px; align-self:center; margin-right:6px; background:currentColor }
+.rp-cap.good, .rp-cap.bad{ justify-content:flex-start }
+.rp-tbl td.rp-netc{ font-weight:800 }
+/* who scored: the makes beside the points on one line */
+.rp-scorers li{ grid-template-columns:minmax(0,1.1fr) minmax(0,0.8fr) 22px 54px }
+.rp-scorers small{ white-space:nowrap }
+.rp-sit-h h4 small{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px }
+.rp-cell-v small, .rp-st-v small{ font-size:9px; font-weight:600; color:var(--ink-3) }

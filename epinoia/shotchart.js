@@ -69,9 +69,11 @@
         const B = (typeof window !== 'undefined') && window.EpinoiaBox;
         const fix = (B && B.snapToValue) ? B.snapToValue(+l.x, +l.y, three)
                                          : { x: +l.x, y: +l.y, moved: false };
-        out.push({ x: fix.x, y: fix.y, moved: fix.moved,
+        const sh = { x: fix.x, y: fix.y, moved: fix.moved,
                    made: /_made$/.test(e.t), three, gameId: e.gameId != null ? e.gameId : gid, team: e.team, pid: e.pid,
-                   period: e.period != null ? +e.period : null, clock: e.clock != null ? +e.clock : null });
+                   period: e.period != null ? +e.period : null, clock: e.clock != null ? +e.clock : null };
+        if (opts.tag) sh.ast = !!opts.tag(e);        // the caller's mark on the shot's event (assisted, say)
+        out.push(sh);
       });
     }
     return out;
@@ -413,27 +415,53 @@
     if (!cached) {
       const evs = await D.events(S.games.map(g => g.id));
       const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
-      const all = await gather({ fetchEvents: async () => Object.values(byG), gameIds: S.games.map(g => g.id), playerId: null });
-      const side = {}; S.games.forEach(g => { side[g.id] = [g.home_team_id, g.away_team_id]; });
-      const shotsBy = {};
-      all.forEach(sh => {
-        const tid = (side[sh.gameId] || [])[+sh.team];
-        if (tid) (shotsBy[tid] = shotsBy[tid] || []).push(sh);
+      /* which made shots were assisted (situations.js, the box score's own reading of a pass before a basket) */
+      const SI = typeof window !== 'undefined' && window.EpinoiaSituations;
+      const astd = new Set();
+      if (SI && SI.assistedShots && SI.inGameOrder) Object.keys(byG).forEach(gid => {
+        try { SI.assistedShots(SI.inGameOrder(byG[gid]).filter(e => e && !/^(loc|stype|tag|tags)$/.test(e.t))).assisted.forEach(e => astd.add(e)); }
+        catch (_) { /* that game unmarked */ }
       });
-      cached = attachCache[key] = { perTeam: shotsBy, reb: reboundsOf(byG, side) };
+      const all = await gather({ fetchEvents: async () => Object.values(byG), gameIds: S.games.map(g => g.id), playerId: null,
+                                 tag: astd.size ? (e => astd.has(e)) : null });
+      const side = {}; S.games.forEach(g => { side[g.id] = [g.home_team_id, g.away_team_id]; });
+      const shotsBy = {}, shotsAg = {};
+      all.forEach(sh => {
+        const sd = side[sh.gameId] || [], tid = sd[+sh.team], opp = sd[1 - +sh.team];
+        if (tid) (shotsBy[tid] = shotsBy[tid] || []).push(sh);
+        if (opp) (shotsAg[opp] = shotsAg[opp] || []).push(sh);
+      });
+      cached = attachCache[key] = { perTeam: shotsBy, against: shotsAg, ast: astd.size > 0, reb: reboundsOf(byG, side) };
     }
     const perTeam = cached.perTeam;
     const out = {};
-    S.teams.forEach(tm => {
-      const shots = perTeam[tm.id] || [];
-      const gp = tm.gp || S.games.filter(g => g.home_team_id === tm.id || g.away_team_id === tm.id).length || 1;
+    /* each cut's share of the makes that came off a pass, and the rim's share of the points scored in the paint */
+    const astOf = shots => {
+      const C = dims(), per = {};
+      ALL.forEach(k => { per[k] = { m: 0, a: 0 }; });
+      shots.forEach(sh => { if (!sh.made) return; const z = per[zoneOf(sh.x * C.W, sh.y * C.H, !!sh.three)]; if (z) { z.m++; if (sh.ast) z.a++; } });
+      const o = {};
+      GROUPS.concat(BIG).forEach(g => { const m = g.zones.reduce((n, k) => n + per[k].m, 0), a = g.zones.reduce((n, k) => n + per[k].a, 0); o[g.k] = m ? 100 * a / m : null; });
+      return o;
+    };
+    const put = (tm, pre, shots, gp) => {
       const zr = zoneRows(shots, gp);
       const poss = tm.poss || null;
       zr.groups.concat(zr.big).forEach(r => {
-        tm['z_' + r.k + '_share'] = r.share; tm['z_' + r.k + '_att100'] = poss ? 100 * r.att / poss : null;
-        tm['z_' + r.k + '_attG'] = r.attG; tm['z_' + r.k + '_madeG'] = r.madeG;
-        tm['z_' + r.k + '_fg'] = r.fg; tm['z_' + r.k + '_efg'] = r.efg; tm['z_' + r.k + '_att'] = r.att;
+        tm[pre + r.k + '_share'] = r.share; tm[pre + r.k + '_att100'] = poss ? 100 * r.att / poss : null;
+        tm[pre + r.k + '_attG'] = r.attG; tm[pre + r.k + '_madeG'] = r.madeG;
+        tm[pre + r.k + '_fg'] = r.fg; tm[pre + r.k + '_efg'] = r.efg; tm[pre + r.k + '_att'] = r.att;
       });
+      const rim = zr.groups.find(r => r.k === 'rim'), pnt = zr.groups.find(r => r.k === 'paint');
+      tm[pre + 'rim_ptsh'] = rim && pnt && rim.made + pnt.made ? 100 * rim.made / (rim.made + pnt.made) : null;
+      if (cached.ast) { const A = astOf(shots); Object.keys(A).forEach(k => { tm[pre + k + '_astp'] = A[k]; }); }
+      return zr;
+    };
+    S.teams.forEach(tm => {
+      const shots = perTeam[tm.id] || [];
+      const gp = tm.gp || S.games.filter(g => g.home_team_id === tm.id || g.away_team_id === tm.id).length || 1;
+      const zr = put(tm, 'z_', shots, gp);
+      put(tm, 'zd_', (cached.against || {})[tm.id] || [], gp);       // the same, of the shots taken against it
       tm.z_located = shots.length;
       const rb = cached.reb && cached.reb[tm.id];
       if (rb) {

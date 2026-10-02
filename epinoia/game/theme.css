@@ -345,3 +345,37 @@ html.tt-on .wrap > .top > .ctx{ display:none }
 /* the club's name in the page's ink: its colour is the band above and the wash behind, and a dark
    club colour on the dark theme's card would not read */
 .mv .mv-head h3{ color:var(--ink) }
+/* THE BENCH SCROLLS SIDEWAYS, AND SAYS SO (2026-10-02). With a mouse the strip's scrollbar is drawn - a track in a wash
+   of the club's colour, a thumb in the colour itself, thick enough to take hold of - and the strip can be dragged
+   along (modern.js). Touch keeps its swipe and no bar. */
+@media (hover:hover) and (pointer:fine){
+  .mv .mv-bench{ padding-bottom:12px; scrollbar-width:auto; scrollbar-color:var(--c,var(--ink-3)) color-mix(in srgb,var(--c,var(--ink-3)) 16%,transparent); cursor:grab }
+  .mv .mv-bench.drag{ cursor:grabbing; user-select:none }
+  .mv .mv-bench.drag .mv-p{ pointer-events:none }
+  .mv .mv-bench::-webkit-scrollbar{ display:block; height:12px }
+  .mv .mv-bench::-webkit-scrollbar-track{ margin:0 12px; border-radius:6px; background:color-mix(in srgb,var(--c,#888) 16%,transparent) }
+  .mv .mv-bench::-webkit-scrollbar-thumb{ border-radius:6px; border:2px solid transparent; background:var(--c,#888) padding-box }
+  .mv .mv-bench::-webkit-scrollbar-thumb:hover{ border-width:1px }
+}
+/* TIGHTER (2026-10-02): the modern box score with its air taken out - a shallower head, the court nearer it and the
+   bench close under it (the lowest player's two lines need about 24px below the court, not 50), the bench cards
+   narrower and the strip's label snug */
+.mv .mv-card{ padding-bottom:8px }
+.mv .mv-head{ padding:8px 12px 7px; margin-bottom:6px }
+.mv .mv-court{ margin:0 auto 26px; width:min(calc(100% - 16px),480px) }
+.mv .mv-benchlabel{ margin:0 10px 5px; padding:4px 8px 3px }
+.mv .mv-bench{ gap:6px; padding:0 10px 3px }
+.mv .mv-p.bench{ flex:0 0 70px; width:70px; padding:6px 3px 5px }
+@media (max-width:720px){ .mv .mv-court{ margin-bottom:30px } }
+/* the note under the modern box score wraps inside the column (it ran off both edges as one line) */
+.mv-note{ grid-column:1 / -1; white-space:normal; max-width:100%; overflow-wrap:anywhere; text-align:center; padding:6px 2px 0; line-height:1.6; letter-spacing:.08em }
+/* THE BENCH STRIP (2026-10-02, in place of the small pill): a band right across the card in the club's colour, its
+   stripes the hero's, 'BENCH' in the score face, a rule running from it, and the bench's players and points on a
+   teletext plate at the end - the starters' tag above says the same of the five */
+.mv .mv-benchlabel{ display:flex; align-items:center; gap:10px; width:auto; margin:0 0 7px; padding:4px 10px 3px 12px; border-top:0;
+  background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c) 86%,#000) 0 7px,var(--c) 7px 14px);
+  color:var(--kink,#fff); font-size:inherit; letter-spacing:0; text-transform:none }
+.mv .mv-benchlabel b{ font-family:var(--f-score,var(--f-head)); font-weight:400; font-size:17px; line-height:1; letter-spacing:.22em; text-transform:uppercase;
+  text-shadow:2px 2px 0 rgba(0,0,0,.25) }
+.mv .mv-benchlabel i{ flex:1 1 auto; height:2px; background:currentColor; opacity:.45 }
+.mv .mv-benchlabel span{ padding:3px 7px 2px; background:#0a0a0a; color:#ffe14d; font-family:var(--f-micro,var(--f-mono)); font-size:8px; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap }

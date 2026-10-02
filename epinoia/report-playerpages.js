@@ -59,23 +59,11 @@ function modules(ctx) {
     key: 'main', title: 'Main stats', page: 'MAIN STATS', on: true,
     controls(host, state) {
       E.templateControl(host, state, { set: 'main', label: 'main stats', pos: () => group });
-      if (ctx.rapm) {
-        const row = E.el('div', 'rp-rapm');
-        const b = E.el('button', 'ep-btn mini', 'Calculate RAPM'); b.type = 'button';
-        const say = E.el('span', null, 'ORAPM and DRAPM need every stint of the league’s season: worked out on request.');
-        b.onclick = async () => {
-          if (RAPM.running) return;
-          RAPM.running = true; b.disabled = true;
-          try {
-            RAPM.map = await ctx.rapm((d, n) => { say.textContent = 'reading the league’s games: ' + d + ' of ' + n + '…'; });
-            say.textContent = 'RAPM worked out over ' + (RAPM.map ? RAPM.map.size : 0) + ' players.';
-            state.rebuild();
-          } catch (e) { say.textContent = 'RAPM could not be worked out: ' + (e.message || e); }
-          RAPM.running = false; b.disabled = false;
-        };
-        row.append(E.el('span', 'rp-k', 'RAPM'), b, say);
-        host.appendChild(row);
-      }
+      if (ctx.rapm) E.rapmControl(host, state, RAPM, {
+        ids: async () => (ctx.gameIds ? await ctx.gameIds() : []),
+        run: (ids, fn) => ctx.rapm(ids, fn),
+        scope: () => (state.c && state.c.scope) || 'this league and season'
+      });
     },
     async build(c, R) {
       const B = await ctx.bars();
@@ -85,7 +73,8 @@ function modules(ctx) {
       const field = (B.field || []).map(r => Object.assign({}, r));
       let mine = field.find(r => r.id === B.mine.id) || Object.assign({}, B.mine);
       if (field.indexOf(mine) < 0) field.push(mine);
-      if (RAPM.map) field.forEach(r => { const v = RAPM.map.get(r.id); if (v) { r.orapm = v.orapm; r.drapm = v.drapm; r.rapm = v.rapm; } });
+      const ids = ctx.gameIds ? await ctx.gameIds() : [];
+      const rapmOk = RAPM.map && RAPM.key === E.rapmKey(ids) && E.rapmOn(RAPM, field);
       field.forEach(E.derive);
       /* the turnover types, his own (from the club's logs the page has read) */
       try {
@@ -99,16 +88,19 @@ function modules(ctx) {
       const keys = groups.flatMap(g => g[1]);
       const Rk = E.ranker(field, keys);
       R.legend.push(...keys);
-      const tiles = [['GP', mine.gp, 0], ['MIN / G', mine.mpg, 1], ['PTS / G', mine.ppg, 1], ['REB / G', mine.rpg, 1], ['AST / G', mine.apg, 1], ['BPM', mine.bpm, 1, true]];
-      const tileHTML = '<div class="rp-tiles" style="--n:' + tiles.length + '">' + tiles.map(([l, v, dp, sg]) =>
-        '<div class="rp-tile' + (sg && +v > 0 ? ' good' : sg && +v < 0 ? ' bad' : '') + '"><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span>' + l + '</span></div>').join('') + '</div>';
-      const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !RAPM.map;
-      const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' players' : ''].filter(Boolean).join(' · ')) + tileHTML)];
+      const tiles = [['GP', 'gp', 0], ['MIN / G', 'mpg', 1], ['PTS / G', 'ppg', 1], ['REB / G', 'rpg', 1], ['AST / G', 'apg', 1], ['BPM', 'bpm', 1, true]];
+      const Rt = E.ranker(field, tiles.map(t => t[1]).filter(k => k !== 'gp'));
+      const tileHTML = '<div class="rp-tiles rp-tiles-b" style="--n:' + tiles.length + '">' + tiles.map(([l, k, dp, sg]) => {
+        const v = mine[k], p = k === 'gp' ? null : Rt.pct(k, mine.id);
+        return '<div class="rp-tile"' + (p == null ? '' : ' data-b="' + E.band(p) + '"') + '><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span>' + l + '</span>' +
+          (p == null ? '' : '<span class="rp-rk" data-b="' + E.band(p) + '">' + E.ordinal(p) + '</span>') + '</div>'; }).join('') + '</div>';
+      const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !rapmOk;
+      const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' players' : ''].filter(Boolean).join(' · ')) + tileHTML +
+        (needRapm ? '<p class="rp-flagnote" style="margin-top:8px">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : ''))];
       out.push(block('<div class="rp-groups">' + groups.map(([t, ks]) =>
         '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, mine, Rk)).join('') + '</div>').join('') + '</div>' +
         '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' players of ' + (c.scope || 'the competition') +
-          ' (the bar), and their average. Template: ' + templateName(R.state, group) + '.' +
-          (needRapm ? ' ORAPM and DRAPM are blank until RAPM is worked out (the button above the pages).' : '')) + '</p>'));
+          ' (the bar), and their average. Template: ' + templateName(R.state, group) + '.') + '</p>'));
       return out;
     }
   };
@@ -192,12 +184,13 @@ function modules(ctx) {
         const meta = F.meta || {};
         const nm = id => (meta[id] && meta[id].name) || 'Player';
         const f1 = v => (v == null ? '—' : ((+v > 0 ? '+' : '') + (+v).toFixed(1)));
-        const tbl = (rows, cap) => '<div><div class="rp-cap">' + cap + '</div><table class="rp-tbl"><thead><tr><th class="l">with</th><th>min</th><th>net both on</th><th>net him only</th><th>swing</th></tr></thead><tbody>' +
-          (rows.length ? rows.map(p => '<tr><td class="l">' + esc(nm(p.id)) + '</td><td>' + Math.round(p.withMate.mins) + '</td><td>' + f1(p.withMate.net) + '</td><td>' + f1(p.withoutMate.net) +
-            '</td><td class="' + (p.swing > 0 ? 'pos' : p.swing < 0 ? 'neg' : '') + '">' + f1(p.swing) + '</td></tr>').join('') :
+        const tbl = (rows, cap, cls) => '<div><div class="rp-cap ' + (cls || '') + '">' + cap + '</div><table class="rp-tbl"><thead><tr><th class="l">with</th><th>min</th><th>net both on</th><th>net him only</th><th>swing</th></tr></thead><tbody>' +
+          (rows.length ? rows.map(p => '<tr><td class="l">' + esc(nm(p.id)) + '</td><td>' + Math.round(p.withMate.mins) + '</td>' +
+            '<td data-b="' + E.bandVs(p.withMate.net, 0, 6) + '">' + f1(p.withMate.net) + '</td><td data-b="' + E.bandVs(p.withoutMate.net, 0, 6) + '">' + f1(p.withoutMate.net) +
+            '</td><td class="rp-netc" data-b="' + E.bandVs(p.swing, 0, 6) + '">' + f1(p.swing) + '</td></tr>').join('') :
             '<tr><td class="l" colspan="5">Not enough shared minutes yet (20 or more).</td></tr>') + '</tbody></table></div>';
         const best = all.slice(0, 3), worst = all.slice(-3).reverse().filter(p => best.indexOf(p) < 0);
-        out.push(block(title('Pairings', 'teammates he shared 20+ minutes with') + '<div class="rp-two">' + tbl(best, 'Best three') + tbl(worst, 'Worst three') + '</div>' +
+        out.push(block(title('Pairings', 'teammates he shared 20+ minutes with · green: the team outscores opponents, red: it is outscored') + '<div class="rp-two">' + tbl(best, 'Best three', 'good') + tbl(worst, 'Worst three', 'bad') + '</div>' +
           '<p class="rp-note">Swing: the team’s net rating with both of them on the floor minus with him on and that teammate off. Positive means the team is better when the two play together.</p>'));
         R.legendExtra.push(['SWING', 'The team’s net rating with both players on the floor minus with this player on and the teammate off, per 100 possessions.'],
           ['NET / ORTG / DRTG', 'Points scored minus allowed, points scored, and points allowed, each per 100 possessions.'],

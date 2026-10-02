@@ -287,6 +287,7 @@ async function chooseSeason(team, lg) {
     whenNear($('#teamclock'), () => teamShotClock(team));
     whenNear($('#teamrot'), () => teamRotations(team));
     whenNear($('#wowy') || $('#lulist'), () => { lineupPanels(team).catch(() => {}); });
+    whenNear($('#lucards'), () => { lineupCards(team).catch(e => console.warn('[lineup cards]', e)); });
     reportTab(team);
     await videoPanel(team);
     frontOfficeTab(team);
@@ -855,6 +856,12 @@ async function profileDepth(team, win, all) {
     }
     host.textContent = '';
     host.appendChild(row);
+    /* each position at a glance first (teamviz.js depthBars): one bar split between its players, the first choice
+       darkest, in the club's colour; the cards with each player's minutes and starts under it */
+    if (window.EpinoiaTeamViz) {
+      const TC = window.EpinoiaTeamColour, club = (TC && TC.ink && TC.ink(team.colour)) || team.colour || null;
+      host.insertAdjacentHTML('beforeend', '<div class="tv-host dc-bars">' + window.EpinoiaTeamViz.depthBars(view.c, { colour: club }) + '</div>');
+    }
     host.insertAdjacentHTML('beforeend', X.shareHTML(view.c, { link }));
     if (note) note.textContent = 'from the club\'s own lineups: each player\'s share of the minutes at each position';
   } catch (_) { host.innerHTML = '<div class="empty">The depth chart could not be drawn just now.</div>'; }
@@ -1135,6 +1142,10 @@ function reportTab(team) {
     depth: all => depthShares(team, 'season', !!all),
     /* the rebounds off each zone need the competition's shots read once (shotchart.js attachZoneStats), as the page's own
        shot zones card reads them when it is opened */
+    /* every club's shot zones at both ends, assisted or not (shotchart.js attachZoneStats, read once and kept) */
+    zones: async S => {
+      if (window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) { try { await window.EpinoiaShotChart.attachZoneStats(S, D); } catch (_) { /* without */ } }
+    },
     rebounds: async (S, mine) => {
       if (!mine.rb_ready && window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) { try { await window.EpinoiaShotChart.attachZoneStats(S, D); } catch (_) { /* without */ } }
       const row = S.teams.find(t => t.id === mine.id) || mine;
@@ -1143,6 +1154,7 @@ function reportTab(team) {
     meta: ids => D.playerMeta(ids),
     stints: gs => { const by = {}; gs.forEach(g => { by[g.id] = g; }); return D.stints(gs.map(g => g.id), team.id, by); },
     rapm: window.EpinoiaRAPM ? ((ids, fn) => window.EpinoiaRAPM.season(D, ids, fn).then(r => r.rapm)) : null,
+    bigGames: D.BIG_GAMES || 0,
     week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }) : null
   };
   REPORT = E.mount({
@@ -1373,6 +1385,15 @@ function teamStatBind(node, k, label, S, mine, team, opts) {
   }));
 }
 
+/* the events as cards (teamviz.js events), in the club's colour, and a line saying the table follows */
+function teamEvents(mine, field, name, team) {
+  const vz = el('div', 'tv-host');
+  vz.innerHTML = window.EpinoiaTeamViz.events(mine, field, { name });
+  const TC = window.EpinoiaTeamColour, club = (TC && TC.ink && TC.ink(team.colour)) || team.colour || null;
+  if (club) vz.querySelectorAll('.tv').forEach(n => n.style.setProperty('--tv-club', club));
+  vz.appendChild(el('div', 'tv-more', 'the full table: tap a situation for its rim, mid-range and three breakdown'));
+  return vz;
+}
 async function teamStats(team, kind) {
   const host = $('#teamstats'); host.textContent = '';
   try {   // the '?' in the section heading: what every statistic below means (statpop.js)
@@ -1530,6 +1551,9 @@ async function teamStats(team, kind) {
           host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',
           note: teamScopeKind !== 'all' ? (KIND_LABEL[teamScopeKind] || teamScopeKind) : ''
         });
+        /* the events drawn for a coach first (teamviz.js): points a chance at both ends on its colour and its word;
+           the full table, each situation's breakdown on a tap, under it */
+        if (window.EpinoiaTeamViz) evHost.insertBefore(teamEvents(mine, S.teams, clubLabel, team), evHost.firstChild);
       }
     } catch (e) {
       console.warn('[events]', e);
@@ -1735,6 +1759,52 @@ function reboundZones(host, S, mine) {
     'the four add up to the attempts \u00b7 the first rebound after each miss counts, team rebounds too; a miss followed by a foul and free throws, a turnover or the end of a period has none \u00b7 ' +
     'orb% and drb% are of the misses somebody rebounded, as the four factors count them \u00b7 the chip is the club\u2019s rank among the clubs, on ten rebounded misses or more</div>';
   host.appendChild(wrap);
+}
+
+/* ------------------------------------------------------- the lineup cards --- */
+/* THE MOST-USED FIVES AS CARDS (teamviz.js lineupCards, as the report draws them): the six fives with the most minutes
+   together, each two rows deep - the offence, then the defence beside how the five plays - every number coloured
+   against the club over all its minutes, from the club's play-by-play records (clubLogs, lineupevents.js). Six to
+   start; the button shows the rest of the twelve. */
+async function lineupCards(team) {
+  const host = $('#lucards'), V = window.EpinoiaTeamViz, X = window.EpinoiaLineupEvents;
+  if (!host || ACCESS.paywall) return;
+  if (ACCESS.locked) {
+    host.innerHTML = accessTeaser({ title: 'The most-used lineups, as cards',
+      lines: ['Each five’s offence and defence and how it plays, every number coloured against the club’s own.'] });
+    return;
+  }
+  if (!V || !X) return;
+  host.innerHTML = '<div class="empty">reading the club’s lineups…</div>';
+  const SL = await seasonLogs(team);
+  const logs = await clubLogs(team, new Set((SL.gs || []).map(g => g.id)));
+  const recs = logs && logs.recs ? logs.recs : [];
+  if (!recs.length) { host.innerHTML = '<div class="empty">No lineups with play-by-play yet.</div>'; return; }
+  const base = X.line(X.sum(recs));
+  let floor = 10;
+  const pick = () => X.units(recs, 5).map(u => ({ ids: u.ids, line: X.line(u.acc) })).filter(u => u.line.mins >= floor).sort((a, b) => b.line.mins - a.line.mins);
+  let units = pick();
+  while (units.length < 6 && floor > 2) { floor = Math.floor(floor / 2); units = pick(); }
+  units = units.slice(0, 12);
+  if (!units.length) { host.innerHTML = '<div class="empty">No five has played enough minutes together yet.</div>'; return; }
+  const meta = await window.EpinoiaData.playerMeta([...new Set(units.flatMap(u => u.ids))]).catch(() => ({}));
+  const names = {}, photos = {};
+  Object.keys(meta || {}).forEach(id => { names[id] = meta[id].name; if (meta[id].photo_url) photos[id] = meta[id].photo_url; });
+  const TC = window.EpinoiaTeamColour;
+  const club = (TC && TC.ink && TC.ink(team.colour)) || team.colour || null;
+  let shown = Math.min(6, units.length);
+  const draw = () => {
+    host.innerHTML = V.lineupCards(units.slice(0, shown), base, { names, photos });
+    if (club) host.querySelectorAll('.tv').forEach(n => n.style.setProperty('--tv-club', club));
+    if (shown < units.length) {
+      const b = el('button', 'ep-btn', 'Show ' + (units.length - shown) + ' more'); b.type = 'button';
+      b.onclick = () => { shown = units.length; draw(); };
+      host.appendChild(b);
+    }
+  };
+  draw();
+  const note = $('#lucardsNote');
+  if (note) note.textContent = 'fives with ' + floor + '+ minutes together · coloured against the club';
 }
 
 /* ------------------------------------------------------- lineups & WOWY --- */

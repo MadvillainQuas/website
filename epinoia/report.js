@@ -75,7 +75,7 @@ const STATS = {
   diff_vs_oreb: { l: 'DEF ORB ±', dp: 1, signed: true, low: true }, diff_net: { l: 'NET ±', dp: 1, signed: true },
   def_rim_fg_pm: { l: 'DEF RIM FG% ±', dp: 1, signed: true, low: true }, def_rim_vol_pm: { l: 'DEF RIM VOL ±', dp: 1, signed: true, low: true },
   pf_pg: { l: 'FOULS CONCEDED / G', dp: 1, low: true }, pf30: { l: 'FOULS / 30', dp: 1, low: true },
-  badpass_pg: { l: 'BAD PASS TO / G', dp: 1, low: true, rank: false }, handle_pg: { l: 'DRIBBLE TO / G', dp: 1, low: true, rank: false }
+  badpass_pg: { l: 'BAD PASS TO / G', dp: 1, low: true, rank: false, feed: true }, handle_pg: { l: 'DRIBBLE TO / G', dp: 1, low: true, rank: false, feed: true }
 };
 
 /* what each one means, for the legend: statinfo.js has most of them; these are the ones it does not */
@@ -129,6 +129,11 @@ function derive(r) {
     if (isNum(r.pf) && +r.gp > 0) r.pf_pg = Math.round(10 * r.pf / r.gp) / 10;
     else if (isNum(r.pf30) && isNum(r.mpg)) r.pf_pg = Math.round(r.pf30 * r.mpg / 3) / 10;
   }
+  /* half-court turnover %: a player's row has the half court's turnovers, shots and free throws but not the rate */
+  if (r.ev_half_tov_pct == null && isNum(r.ev_half_tov) && isNum(r.ev_half_fga)) {
+    const ch = +r.ev_half_fga + 0.44 * (+r.ev_half_fta || 0) + +r.ev_half_tov;
+    if (ch > 0) r.ev_half_tov_pct = Math.round(1000 * r.ev_half_tov / ch) / 10;
+  }
   if (r.spg == null && isNum(r.stl) && +r.gp > 0) r.spg = Math.round(10 * r.stl / r.gp) / 10;
   if (r.bpg == null && isNum(r.blk) && +r.gp > 0) r.bpg = Math.round(10 * r.blk / r.gp) / 10;
   return r;
@@ -142,13 +147,17 @@ function turnoverTypes(byG) {
   Object.keys(byG || {}).forEach(gid => {
     const evs = byG[gid] || [];
     const typed = new Map();
-    evs.forEach(e => { if (e.t === 'stype' && e.payload && e.payload.v) typed.set(String(e.payload.ref), String(e.payload.v)); });
+    evs.forEach(e => {
+      if (e.t !== 'stype') return;
+      const p = e.payload || {}, v = e.v != null ? e.v : p.v, ref = e.ref != null ? e.ref : p.ref;
+      if (v) typed.set(String(ref), String(v));
+    });
     const seen = new Set();
     evs.forEach(e => {
       if (!e.pid) return;
       seen.add(e.pid);
       if (e.t !== 'to') return;
-      const ty = typed.get(String(e.seq != null ? e.seq : e.id)) || (e.payload && (e.payload.sub || e.payload.kind)) || '';
+      const ty = typed.get(String(e.id != null ? e.id : e.seq)) || typed.get(String(e.seq)) || e.kind || (e.payload && (e.payload.sub || e.payload.kind)) || '';
       if (!ty) return;
       const o = out.get(e.pid) || { bad: 0, handle: 0, typed: 0, games: 0 };
       o.typed++;
@@ -279,27 +288,51 @@ function fmtStat(k, v) {
 }
 
 /* ---------------------------------------------------------------- drawing --- */
-/* ONE STATISTIC: label, value, percentile bar, ordinal, the field's average */
+/* a figure only some feeds can give (the turnover's type): 'n/a' where this league's does not */
+const FEED_NA = 'this league\u2019s play-by-play does not say what kind of turnover each one was';
+/* ONE STATISTIC: label, value, percentile bar, ordinal, the field's average. A figure no other club carries (ref on its
+   STATS entry: another key of the same row, or a number) is drawn against that instead: the bar grows from the middle,
+   green to the right where it is better than the club's own figure, red to the left where it is worse, and the gap is
+   printed where the percentile would be */
+function refOf(s, row) { return s.ref == null ? null : typeof s.ref === 'number' ? s.ref : row ? row[s.ref] : null; }
+function bandVs(v, ref, scale, low) {
+  if (!isNum(v) || !isNum(ref)) return 0;
+  const g = (low ? -1 : 1) * (+v - +ref), sc = scale || 3;
+  return g >= sc ? 4 : g >= 0 ? 3 : g > -sc ? 2 : 1;
+}
 function statRowHTML(k, row, R, opt) {
   const s = STATS[k] || { l: k.toUpperCase() };
   const v = row ? row[k] : null;
+  const rv = refOf(s, row);
+  const head = '<span class="rp-st-l">' + esc(s.l) + '</span><span class="rp-st-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</span>';
+  const c = opt && opt.compact ? ' data-c="1"' : '';
+  if (s.rank === false && isNum(rv) && isNum(v)) {
+    const d = +v - +rv, g = s.low ? -d : d, sc = s.sc || 3;
+    const b = bandVs(v, rv, sc, s.low);
+    const w = Math.max(3, Math.min(50, 50 * Math.abs(g) / (3 * sc)));
+    const t = (+Math.abs(d)).toFixed(s.dp == null ? 1 : s.dp);
+    return '<div class="rp-st" data-b="' + b + '"' + c + '>' + head +
+      '<span class="rp-st-bar dv"><i style="' + (g >= 0 ? 'left:50%' : 'left:' + (50 - w).toFixed(1) + '%') + ';width:' + w.toFixed(1) + '%"></i></span>' +
+      '<span class="rp-st-p">' + (d > 0 ? '+' : d < 0 ? '\u2212' : '\u00b1') + t + '</span>' +
+      '<span class="rp-st-a">' + esc(s.refL || 'club') + ' ' + fmtStat(typeof s.ref === 'string' && STATS[s.ref] ? s.ref : k, rv) + '</span></div>';
+  }
   const p = s.rank === false ? null : R.pct(k, row && row.id);
   const b = band(p, s.style);
   const a = s.rank === false ? null : R.avg(k);         // a figure only this side has: no field to average
   const w = p == null ? 0 : Math.max(3, p);
-  return '<div class="rp-st" data-b="' + b + '"' + (opt && opt.compact ? ' data-c="1"' : '') + '>' +
-    '<span class="rp-st-l">' + esc(s.l) + '</span>' +
-    '<span class="rp-st-v">' + fmtStat(k, v) + '</span>' +
+  const pl = p != null && opt && opt.place ? opt.place(k) : null;      // a club's place ('3rd/18') where a percentile would be
+  return '<div class="rp-st" data-b="' + b + '"' + c + (pl ? ' data-r="1"' : '') + '>' + head +
     '<span class="rp-st-bar"><i style="width:' + w + '%"></i></span>' +
-    '<span class="rp-st-p">' + (p == null ? '—' : ordinal(p)) + '</span>' +
+    '<span class="rp-st-p">' + (pl || (p == null ? '\u2014' : ordinal(p))) + '</span>' +
     '<span class="rp-st-a">' + (a == null ? '' : 'avg ' + fmtStat(k, a)) + '</span></div>';
 }
 /* a cell of the PLAYERS card: label over value, the cell tinted by the percentile */
 function statCellHTML(k, row, R) {
   const s = STATS[k] || { l: k.toUpperCase() };
   const p = s.rank === false ? null : R.pct(k, row && row.id);
+  const v = row ? row[k] : null;
   return '<div class="rp-cell" data-b="' + band(p, s.style) + '"><span class="rp-cell-l">' + esc(s.l) + '</span>' +
-    '<b class="rp-cell-v">' + fmtStat(k, row ? row[k] : null) + '</b>' +
+    '<b class="rp-cell-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</b>' +
     '<span class="rp-cell-p">' + (p == null ? '' : ordinal(p)) + '</span></div>';
 }
 
@@ -455,7 +488,7 @@ function sitCardHTML(A, o) {
   const figs = '<span><b>' + A.pts + '</b>pts</span>' + (A.ppp != null ? '<span><b>' + A.ppp.toFixed(2) + '</b>per chance</span>' : '') +
     '<span><b>' + (A.efg == null ? '–' : Math.round(100 * A.efg) + '%') + '</b>eFG</span><span><b>' + A.ftm + '/' + A.fta + '</b>FT</span>' +
     (A.tovPct != null ? '<span><b>' + pc(A.tovPct) + '</b>TO</span>' : '<span><b>' + A.tov + '</b>TO</span>');
-  return '<div class="rp-sit" style="--s:' + (opt.colour || '#08603f') + '"><div class="rp-sit-h"><h4><i></i>' + esc(nm[0]) + (opt.who ? ' <small>' + esc(opt.who) + '</small>' : '') + '</h4>' +
+  return '<div class="rp-sit' + (opt.compact ? ' cp' : '') + '" style="--s:' + (opt.colour || '#08603f') + '"><div class="rp-sit-h"><h4><i></i>' + esc(nm[0]) + (opt.who ? ' <small>' + esc(opt.who) + '</small>' : '') + '</h4>' +
     '<p class="rp-sit-f">' + figs + '</p></div>' +
     '<div class="rp-sit-g"><div class="rp-sit-c">' + (located.length ? '<div class="rp-court">' + court + '</div>' : court) +
       '<p class="rp-sit-k"><span><i class="m"></i>made</span><span><i class="x"></i>missed</span><span>' + located.length + ' of ' + A.fga + ' shots located · zones tinted against break-even</span></p></div>' +
@@ -514,14 +547,37 @@ function coverPage(c, art) {
 }
 
 /* LAY BLOCKS ONTO PAGES. Each is added to the page being filled; one that makes the page's body overflow moves to a
-   new page (continued), and one that overflows a page on its own is drawn smaller until it fits */
-function layout(host, c, label, blocks) {
-  let pg = null, body = null, count = 0;
-  const open = cont => { pg = newPage(c, label, cont); host.appendChild(pg); body = pg.querySelector('.rp-body'); count = 0; };
+   new page (continued), and one that overflows a page on its own is drawn smaller until it fits. PACKED (opt.pack):
+   a module starts in what is left of the page before when its first block fits there - under a rule, the page's head
+   then naming both - so a short section never leaves half a sheet blank. Returns the page the module starts on. */
+function setLabels(pg, labels, cont) {
+  pg.dataset.labels = JSON.stringify(labels);
+  const m = pg.querySelector('.rp-top-m');
+  if (m) m.innerHTML = labels.map(esc).join(' <b>\u00b7</b> ') + (cont ? '<i> \u00b7 continued</i>' : '');
+}
+function layout(host, c, label, blocks, opt) {
+  let pg = null, body = null, count = 0, start = null;
+  const open = cont => { pg = newPage(c, label, cont); pg.dataset.labels = JSON.stringify([label]); host.appendChild(pg); body = pg.querySelector('.rp-body'); count = 0; };
   const over = () => body.scrollHeight > body.clientHeight + 1;
-  open(false);
-  (blocks || []).filter(Boolean).forEach(b => {
-    if (b.classList && b.classList.contains('rp-break') && count) { open(true); return; }
+  const list = (blocks || []).filter(Boolean);
+  const prev = opt && opt.pack ? host.lastElementChild : null;
+  if (prev && prev.classList.contains('rp-pg') && !prev.classList.contains('rp-cover') && list.length && !list[0].classList.contains('rp-break')) {
+    pg = prev; body = pg.querySelector('.rp-body');
+    const b0 = list[0];
+    b0.classList.add('rp-join');
+    body.appendChild(b0);
+    if (over()) { b0.remove(); b0.classList.remove('rp-join'); pg = null; }
+    else {
+      list.shift(); count = body.children.length; start = pg;
+      let labels = []; try { labels = JSON.parse(pg.dataset.labels || '[]'); } catch (_) { labels = []; }
+      if (labels.indexOf(label) < 0) labels.push(label);
+      setLabels(pg, labels, /continued/.test(pg.querySelector('.rp-top-m') ? pg.querySelector('.rp-top-m').textContent : ''));
+    }
+  }
+  if (!pg) open(false);
+  start = start || pg;
+  list.forEach(b => {
+    if (b.classList && b.classList.contains('rp-break')) { if (count) open(true); return; }
     body.appendChild(b);
     count++;
     if (!over()) return;
@@ -534,6 +590,7 @@ function layout(host, c, label, blocks) {
       if (over()) b.style.zoom = Math.max(0.4, z * room / Math.max(1, body.scrollHeight)).toFixed(3);
     }
   });
+  return start;
 }
 
 /* THE LEGEND: every statistic the report printed, defined, and how to read the colours */
@@ -559,6 +616,84 @@ function legendBlocks(keys, extra, kind) {
   (extra || []).forEach(([t, d]) => rows.push('<div class="rp-lg-row"><b>' + esc(t) + '</b><span>' + esc(d) + '</span></div>'));
   for (let i = 0; i < rows.length; i += 12) out.push(block('<div class="rp-lg">' + rows.slice(i, i + 12).join('') + '</div>'));
   return out;
+}
+
+/* ---------------------------------------------------------------- RAPM --- */
+/* RAPM, ON REQUEST, ONCE FOR A SEASON OF GAMES. Never worked out by itself: where it has not been, the panel says so in
+   a flag and offers the button (every stint of the league's season is read, a few games at a time, rapm.js). What is
+   worked out is kept in this browser under the games' fingerprint, so the next report of the same league and season -
+   another player, the club - has it at once; one more game played is a new fingerprint and a new request.
+   holder: { key, map, running }; o: { ids: async () => [game ids], run: (ids, onProgress) -> Promise<Map(id ->
+   {orapm, drapm, rapm})>, scope: () => 'the league and season, in words' } */
+const RAPM_STORE = 'epinoia_report_rapm';
+function rapmKey(ids) {
+  const t = (ids || []).slice().sort().join(',');
+  let h = 2166136261;
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (ids || []).length + '-' + (h >>> 0).toString(36);
+}
+function rapmLoad(key) {
+  const e = store.get(RAPM_STORE, {})[key];
+  return e && Array.isArray(e.m) ? { at: e.at, map: new Map(e.m.map(([id, o, d]) => [id, { orapm: o, drapm: d, rapm: isNum(o) && isNum(d) ? Math.round(10 * (o + d)) / 10 : null }])) } : null;
+}
+function rapmSave(key, map) {
+  const all = store.get(RAPM_STORE, {});
+  const r1 = v => (isNum(v) ? Math.round(10 * v) / 10 : null);
+  all[key] = { at: Date.now(), m: [...map].map(([id, v]) => [id, r1(v.orapm), r1(v.drapm)]) };
+  Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0)).slice(6).forEach(k => { delete all[k]; });   // the six newest
+  store.set(RAPM_STORE, all);
+}
+function rapmControl(host, state, holder, o) {
+  const row = el('div', 'rp-rapm');
+  const b = el('button', 'ep-btn mini pri', 'Calculate RAPM'); b.type = 'button';
+  const say = el('span', null, '');
+  row.append(el('span', 'rp-k', 'RAPM'), b, say);
+  host.appendChild(row);
+  const when = t => { const d = new Date(t); return isNaN(d) ? '' : d.getDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]; };
+  const scope = () => { try { return (o.scope && o.scope()) || 'this league and season'; } catch (_) { return 'this league and season'; } };
+  const flag = on => { row.classList.toggle('rp-flag', on); };
+  /* look for one already worked out for these games (no reading); calc: work it out now */
+  async function check(calc) {
+    if (holder.running) return;
+    let ids;
+    try { ids = (await o.ids()) || []; } catch (_) { ids = []; }
+    if (!ids.length) { flag(true); b.hidden = true; say.textContent = 'ORAPM and DRAPM need the league\u2019s games: there are none in this scope yet.'; return; }
+    const key = rapmKey(ids);
+    if (!calc) {
+      if (holder.key === key && holder.map) return;
+      const kept = rapmLoad(key);
+      if (kept) {
+        Object.assign(holder, { key, map: kept.map });
+        flag(false); b.textContent = 'Calculate again';
+        say.textContent = 'calculated for ' + scope() + ' (' + ids.length + ' games, ' + kept.map.size + ' players, ' + when(kept.at) + ')';
+        state.rebuild(); return;
+      }
+      holder.key = key; holder.map = null;
+      flag(true); b.textContent = 'Calculate RAPM';
+      say.textContent = 'not calculated for ' + scope() + ': ORAPM and DRAPM stay blank until it is (it reads all ' + ids.length + ' games of the league\u2019s season)';
+      return;
+    }
+    holder.running = true; b.disabled = true;
+    try {
+      const map = await o.run(ids, (d, n) => { say.textContent = 'calculating RAPM for ' + scope() + ': reading the league\u2019s games, ' + d + ' of ' + n + '\u2026'; });
+      Object.assign(holder, { key, map });
+      rapmSave(key, map);
+      flag(false); b.textContent = 'Calculate again';
+      say.textContent = 'calculated for ' + scope() + ' (' + ids.length + ' games, ' + map.size + ' players)';
+      state.rebuild();
+    } catch (e) { flag(true); say.textContent = 'RAPM could not be calculated: ' + (e.message || e); }
+    holder.running = false; b.disabled = false;
+  }
+  b.onclick = () => check(true);
+  holder.check = check;
+  state.onBuilt = (state.onBuilt || []).concat(() => { check(false); });   // the scope may have changed
+  check(false);
+}
+/* a row's RAPM from the holder, when it is for these games */
+function rapmOn(holder, field) {
+  if (!holder || !holder.map) return false;
+  field.forEach(r => { const v = holder.map.get(r.id); if (v) { r.orapm = v.orapm; r.drapm = v.drapm; r.rapm = v.rapm; } });
+  return true;
 }
 
 /* ---------------------------------------------------------------- mounting --- */
@@ -724,8 +859,8 @@ function ui(state) {
         try { blocks = await m.build(c, R); } catch (e) { warn(e); blocks = [block('<div class="rp-empty">' + esc(m.title) + ' could not be built: ' + esc(e.message || e) + '</div>')]; }
         if (R.stale()) return;
         if (!blocks || !blocks.length) continue;
-        toc.push([m.page || m.title, pagesNew.querySelectorAll('.rp-pg').length + 1]);
-        layout(pagesNew, c, m.page || m.title, blocks);
+        const at = layout(pagesNew, c, m.page || m.title, blocks, { pack: m.pack !== false });
+        toc.push([m.page || m.title, [...pagesNew.querySelectorAll('.rp-pg')].indexOf(at) + 1]);
       }
       const lg = o.modules.find(m => m.key === 'legend');
       if (lg && conf.on.legend && (R.legend.length || R.legendExtra.length)) {
@@ -846,6 +981,6 @@ function groupsFor(state, set, pos) {
   return templateOf(set, state.conf.tpl[set], pos);
 }
 
-return { mount, inkOn, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, posCourtHTML, POS_KEY, block, title, frag, el, esc,
+return { mount, inkOn, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, posCourtHTML, POS_KEY, block, title, frag, el, esc,
          fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, layout, legendBlocks, PAGE, SLOTS, isNum };
 }));

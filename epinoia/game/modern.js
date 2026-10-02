@@ -260,6 +260,14 @@
       '</div>';
   }
 
+  /* the ink on the club's colour (the bench strip, a pinned name): black on a light colour, white on a dark one */
+  function kinkOf(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+    if (!m) return '#ffffff';
+    const n = parseInt(m[1], 16), lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255);
+    return L > 0.4 ? '#0a0a0a' : '#ffffff';
+  }
   function teamHTML(d, t) {
     const S = window.S, B = window.EpinoiaBox;
     const team = S.teams[t] || {};
@@ -274,11 +282,12 @@
     const floor = onFloor.map(({ p, slot }) => circleHTML(p, d.stats[p.id] || B.mkP(), colour,
       { style: 'left:' + (slot.x * 100).toFixed(1) + '%;top:' + (slot.y * 100).toFixed(1) + '%' })).join('');
     const T = d.team[t] || {};
-    return '<div class="glass bxteam mv-card t' + t + '" data-t="' + t + '" style="--c:' + esc(colour) + '">' +
+    return '<div class="glass bxteam mv-card t' + t + '" data-t="' + t + '" style="--c:' + esc(colour) + ';--kink:' + kinkOf(colour) + '">' +
       '<div class="mv-head"><h3 data-team-slot="' + t + '" style="color:' + colour + '">' + esc(B.tname(t)) + '</h3>' +
         '<span class="mv-tag">' + (final ? 'starters' : 'on the floor') + ' · ' + (T.pts || 0) + ' pts</span></div>' +
       '<div class="mv-court">' + court + '<div class="mv-five">' + floor + '</div></div>' +
-      (bench.length ? '<div class="mv-benchlabel">bench</div><div class="mv-bench">' +
+      (bench.length ? '<div class="mv-benchlabel"><b>bench</b><i></i><span>' + bench.length + ' players · ' +
+        bench.reduce((n, p) => n + ((d.stats[p.id] || {}).pts || 0), 0) + ' pts</span></div><div class="mv-bench">' +
         bench.map(p => circleHTML(p, d.stats[p.id] || B.mkP(), colour, { bench: true })).join('') + '</div>' : '') +
       '</div>';
   }
@@ -539,6 +548,31 @@
         const to = ev.relatedTarget;
         if (to && (p.contains(to) || (to.closest && to.closest('#mvPop')))) return;
         const el = document.getElementById('mvPop'); if (el) el.hidden = true;
+      });
+    }
+    /* THE BENCH, DRAGGED ALONG (2026-10-02): with a mouse the strip moves with a press and a drag (its scrollbar is
+       drawn too, game/theme.css); a drag of a few pixels is a drag, not a click on the face under it */
+    if (!coarse) {
+      let drag = null;
+      host.addEventListener('mousedown', ev => {
+        const b = ev.button === 0 && ev.target.closest && ev.target.closest('.mv-bench');
+        if (!b || b.scrollWidth <= b.clientWidth + 1) return;
+        const r = b.getBoundingClientRect();
+        if (ev.clientY > r.bottom - 14) return;               // the scrollbar itself: the browser's own
+        drag = { b, x: ev.clientX, left: b.scrollLeft, moved: false };
+      });
+      window.addEventListener('mousemove', ev => {
+        if (!drag) return;
+        const dx = ev.clientX - drag.x;
+        if (!drag.moved && Math.abs(dx) < 5) return;
+        if (!drag.moved) { drag.moved = true; drag.b.classList.add('drag'); }
+        drag.b.scrollLeft = drag.left - dx;
+        ev.preventDefault();
+      });
+      window.addEventListener('mouseup', () => {
+        if (!drag) return;
+        const d = drag; drag = null;
+        if (d.moved) setTimeout(() => d.b.classList.remove('drag'), 0);
       });
     }
     host.addEventListener('keydown', ev => {

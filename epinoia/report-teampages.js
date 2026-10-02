@@ -3,20 +3,26 @@
    THE CLUB'S REPORT (report.js on the club page, t/team.js reportTab): its modules.
 
      cover            the club's name and crest, the title and subtitle, its most-used five on a half court
-     MAIN STATS       the four factors in a row; the ratings; the season line (half court and transition at both ends,
-                      against the other side's starters and bench, the club's own starters and bench); REBOUNDS
-                      ANALYSIS (what became of every shot attempt) after it, a page of its own when it does not fit
+     MAIN STATS       the four factors in a row (each end's rank among the clubs); the ratings; the season line
+                      (efficiency at both ends, half court and transition at both ends, against the other side's
+                      starters and bench, the club's own starters and bench - those last drawn against the club's own
+                      ratings, as no other club has them); the SHOT DISTRIBUTION at both ends (rim, paint, mid-range,
+                      three, corner three: volume, accuracy, assisted), each ranked among the clubs; REBOUNDS ANALYSIS
      SHOT CHART       offence and defence on the zones court, side by side, then one table of both ends zone by zone
-                      in the court's colours, then both ends' shots on the half court over the zones, then the events
+                      in the court's colours, the half-court and transition cards at both ends, then the EVENTS as
+                      cards (teamviz.js): points a chance at both ends, each with its word among the league's clubs
      PLAYERS          a card row a player: photo, name, his minutes at each position, and the stats of his position's
-                      template (guard, wing, big), each tinted by his percentile in the competition
-     DEPTH CHART      each position's share of minutes, the rotations with the average margin at each minute, and the
-                      most-used lineups as a table
-     COMBINATIONS     the five best and five worst trios, and the shot clock: 0-7, 8-16 and 17-24 seconds at both ends
+                      template (guard, wing, big), each tinted by his percentile in the competition. RAPM on request
+                      (a flag says when it has not been calculated for the league and season)
+     DEPTH CHART      each position's minutes as one bar split between its players, the rotations with the average
+                      margin at each minute, and the most-used fives as cards two rows deep (teamviz.js lineupCards)
+     COMBINATIONS     the five best and five worst trios, and the shot clock: early, middle and late at both ends
      LEGEND           every statistic printed, defined
+   A module starts in the space the one before left, when its first block fits there (report.js layout, packed).
 
    ctx (from t/team.js): season() -> {S, mine, scopeComps, kind}, logs() -> {gs, byG, sideOf}, clubLogs(scopedSet),
-   starters(compIds), depth(all) -> {c}, rebounds(S, mine) -> html, meta(ids), stints(gs) -> full stints, rapm(ids, fn).
+   starters(compIds), depth(all) -> {c}, zones(S) (every club's shot zones at both ends), rebounds(S, mine) -> html,
+   meta(ids), stints(gs) -> full stints, rapm(ids, fn).
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -24,33 +30,71 @@
   else root.EpinoiaReportTeam = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
-/* the club's season line, as report.js's catalogue reads it (added once) */
+/* the club's season line, as report.js's catalogue reads it (added once). ref: a figure no other club has, drawn against
+   the club's own (vs_* and own_* against its ratings over every minute; the half court's assisted share against all its
+   baskets'); sc: the step, in the stat's units, from better to much better */
+const SPLIT = (l, ref, low) => ({ l, dp: 1, signed: ref === 'net', low: !!low, rank: false, ref, refL: 'club', sc: 4 });
 const TEAM_STATS = {
   ff_efg: { l: 'eFG%', dp: 1 }, ff_tov: { l: 'TOV%', dp: 1, low: true }, ff_oreb: { l: 'OREB%', dp: 1 }, ff_ftr: { l: 'FTr', dp: 1 },
   dff_efg: { l: 'OPP eFG%', dp: 1, low: true }, dff_tov: { l: 'OPP TOV%', dp: 1 }, dff_oreb: { l: 'OPP OREB%', dp: 1, low: true }, dff_ftr: { l: 'OPP FTr', dp: 1, low: true },
   ortg: { l: 'ORTG', dp: 1 }, drtg: { l: 'DRTG', dp: 1, low: true }, net: { l: 'NET', dp: 1, signed: true }, pace: { l: 'PACE', dp: 1, style: true },
-  ft_pct: { l: 'FT%', dp: 1 },
+  ft_pct: { l: 'FT%', dp: 1 }, ts: { l: 'TS%', dp: 1 }, opp_ts: { l: 'OPP TS%', dp: 1, low: true },
+  tm_ppp: { l: 'PTS / POSSESSION', dp: 2 }, tm_oppp: { l: 'OPP PTS / POSSESSION', dp: 2, low: true }, ast_sh_all: { l: 'AST% (ALL BASKETS)', dp: 1, style: true },
   ev_half_pts_sh: { l: 'HALF-COURT %PTS', dp: 1, style: true }, evd_half_pts_sh: { l: 'DEF HALF-COURT %PTS', dp: 1, style: true },
-  hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, style: true, rank: false },
+  hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, rank: false, ref: 'ast_sh_all', refL: 'all baskets', sc: 5 },
   evd_half_tov_pct: { l: 'DEF HALF-COURT TO%', dp: 1 }, evd_half_efg: { l: 'DEF HALF-COURT eFG%', dp: 1, low: true },
   evd_half_ppp: { l: 'DEF HALF-COURT PTS / CHANCE', dp: 2, low: true },
-  tr_def_delta: { l: 'TRANSITION PTS GIVEN v OPP AVG', dp: 1, signed: true, low: true, rank: false },
+  tr_def_delta: { l: 'TRANSITION PTS GIVEN v OPP AVG', dp: 1, signed: true, low: true },
   evd_transition_ppp: { l: 'DEF TRANSITION PTS / CHANCE', dp: 2, low: true },
-  vs_start_net: { l: 'VS STARTERS NET', dp: 1, signed: true, rank: false }, vs_start_ortg: { l: 'VS STARTERS ORTG', dp: 1, rank: false },
-  vs_start_drtg: { l: 'VS STARTERS DRTG', dp: 1, low: true, rank: false },
-  vs_bench_net: { l: 'VS BENCH NET', dp: 1, signed: true, rank: false }, vs_bench_ortg: { l: 'VS BENCH ORTG', dp: 1, rank: false },
-  vs_bench_drtg: { l: 'VS BENCH DRTG', dp: 1, low: true, rank: false },
-  own_start_net: { l: 'OUR STARTERS NET', dp: 1, signed: true, rank: false }, own_start_ortg: { l: 'OUR STARTERS ORTG', dp: 1, rank: false },
-  own_start_drtg: { l: 'OUR STARTERS DRTG', dp: 1, low: true, rank: false },
-  own_bench_net: { l: 'OUR BENCH NET', dp: 1, signed: true, rank: false }, own_bench_ortg: { l: 'OUR BENCH ORTG', dp: 1, rank: false },
-  own_bench_drtg: { l: 'OUR BENCH DRTG', dp: 1, low: true, rank: false }
+  vs_start_net: SPLIT('VS STARTERS NET', 'net'), vs_start_ortg: SPLIT('VS STARTERS ORTG', 'ortg'), vs_start_drtg: SPLIT('VS STARTERS DRTG', 'drtg', true),
+  vs_bench_net: SPLIT('VS BENCH NET', 'net'), vs_bench_ortg: SPLIT('VS BENCH ORTG', 'ortg'), vs_bench_drtg: SPLIT('VS BENCH DRTG', 'drtg', true),
+  own_start_net: SPLIT('OUR STARTERS NET', 'net'), own_start_ortg: SPLIT('OUR STARTERS ORTG', 'ortg'), own_start_drtg: SPLIT('OUR STARTERS DRTG', 'drtg', true),
+  own_bench_net: SPLIT('OUR BENCH NET', 'net'), own_bench_ortg: SPLIT('OUR BENCH ORTG', 'ortg'), own_bench_drtg: SPLIT('OUR BENCH DRTG', 'drtg', true)
 };
+/* THE SHOT DISTRIBUTION (Louie, 2026-10-02), both ends, from every located shot of every club (shotchart.js
+   attachZoneStats: z_ the club's own shots, zd_ the shots taken against it). [cut, label, the coach's words, decimals,
+   the offence's good end, the defence's]: 'hi' more is better, 'lo' less is, 'style' neither */
+const SD = [
+  ['rim_att100', 'RIM / 100', 'shots at the rim, per 100 possessions', 1, 'hi', 'lo'],
+  ['rim_fg', 'RIM FG%', 'how many of them go in', 1, 'hi', 'lo'],
+  ['rim_astp', 'RIM ASSISTED%', 'rim baskets made off a pass', 1, 'style', 'style'],
+  ['rim_ptsh', 'RIM SHARE OF PAINT POINTS', 'paint points scored right at the rim', 1, 'hi', 'lo'],
+  ['paint_att100', 'PAINT / 100', 'the rest of the paint (not at the rim)', 1, 'style', 'style'],
+  ['paint_fg', 'PAINT FG%', 'how many of them go in', 1, 'hi', 'lo'],
+  ['paint_astp', 'PAINT ASSISTED%', 'paint baskets made off a pass', 1, 'style', 'style'],
+  ['mid_att100', 'MID / 100', 'two-point jumpers outside the paint', 1, 'style', 'style'],
+  ['mid_fg', 'MID FG%', 'how many of them go in', 1, 'hi', 'lo'],
+  ['mid_astp', 'MID ASSISTED%', 'mid-range baskets made off a pass', 1, 'style', 'style'],
+  ['three_att100', '3PT / 100', 'threes, per 100 possessions', 1, 'style', 'lo'],
+  ['three_fg', '3PT%', 'how many of them go in', 1, 'hi', 'lo'],
+  ['three_astp', '3PT ASSISTED%', 'threes made off a pass', 1, 'style', 'style'],
+  ['c3_att100', 'CORNER 3 / 100', 'the shortest three, per 100 possessions', 1, 'hi', 'lo']
+];
+SD.forEach(([k, l, , dp, o, d]) => {
+  TEAM_STATS['z_' + k] = { l, dp, low: o === 'lo', style: o === 'style' };
+  TEAM_STATS['zd_' + k] = { l: 'OPP ' + l, dp, low: d === 'lo', style: d === 'style' };
+});
 const TEAM_DEFS = {
+  opp_ts: ['Opponents’ true shooting %', 'How efficiently opponents score against the club, twos, threes and free throws together (from the play-by-play). Lower is better.'],
+  tm_ppp: ['Points per possession', 'Points scored per possession (the offensive rating over 100).'],
+  tm_oppp: ['Opponents’ points per possession', 'Points allowed per possession. Lower is better.'],
+  z_rim_att100: ['Rim volume', 'Shots at the rim per 100 possessions (located shots), the club’s own and (OPP) its opponents’ against it.'],
+  z_rim_fg: ['Rim FG%', 'The share of shots at the rim that go in.'],
+  z_rim_astp: ['Rim assisted %', 'Of the baskets at the rim, the share made off a pass.'],
+  z_rim_ptsh: ['Rim share of paint points', 'Of the points scored in the paint, the share scored right at the rim rather than further out in the key.'],
+  z_paint_att100: ['Paint volume', 'Shots in the paint away from the rim, per 100 possessions.'],
+  z_paint_fg: ['Paint FG%', 'The share of those that go in.'], z_paint_astp: ['Paint assisted %', 'Of the paint baskets away from the rim, the share made off a pass.'],
+  z_mid_att100: ['Mid-range volume', 'Two-point jump shots outside the paint, per 100 possessions.'],
+  z_mid_fg: ['Mid-range FG%', 'The share of those that go in.'], z_mid_astp: ['Mid-range assisted %', 'Of the mid-range baskets, the share made off a pass.'],
+  z_three_att100: ['Three-point volume', 'Threes per 100 possessions.'], z_three_fg: ['Three-point %', 'The share of threes that go in.'],
+  z_three_astp: ['Three-point assisted %', 'Of the made threes, the share made off a pass.'],
+  z_c3_att100: ['Corner three volume', 'Threes from the corners (the shortest three) per 100 possessions.'],
+  ast_sh_all: ['Assisted share of baskets', 'Of all the club’s baskets, the share made off a pass.'],
   ortg: ['Offensive rating', 'Points scored per 100 possessions.'], drtg: ['Defensive rating', 'Points allowed per 100 possessions. Lower is better.'],
   net: ['Net rating', 'Offensive rating minus defensive rating.'], pace: ['Pace', 'Possessions per 40 minutes, both sides averaged.'],
   ev_half_pts_sh: ['Half-court share of points', 'The share of the club’s points scored in the half court (not a second chance, a fast break, off a turnover or after a timeout).'],
   evd_half_pts_sh: ['Opponents’ half-court share of points', 'The same share for what opponents scored against the club.'],
-  hc_ast_pct: ['Half-court assist %', 'Of the club’s half-court baskets, the share that were assisted (its last forty games’ play-by-play).'],
+  hc_ast_pct: ['Half-court assist %', 'Of the club’s half-court baskets, the share that were assisted (its play-by-play), drawn against the assisted share of all its baskets.'],
   ev_half_tov_pct: ['Half-court turnover %', 'Turnovers per half-court chance. Lower is better.'],
   evd_half_tov_pct: ['Opponents’ half-court turnover %', 'Turnovers the club forces per half-court chance. Higher is better.'],
   ev_half_efg: ['Half-court eFG%', 'Effective field-goal percentage in the half court.'], evd_half_efg: ['Opponents’ half-court eFG%', 'Lower is better.'],
@@ -59,10 +103,10 @@ const TEAM_DEFS = {
   ev_transition_pts_sh: ['Transition share of points', 'The share of the club’s points scored in transition.'],
   tr_def_delta: ['Transition points given up against the opponents’ own average', 'Transition points a game opponents scored against the club, minus what the same opponents average in transition over the season. Below zero, the club gives up fewer than those opponents usually score.'],
   ev_transition_ppp: ['Transition points per chance', 'Points per transition chance.'], evd_transition_ppp: ['Opponents’ transition points per chance', 'Lower is better.'],
-  vs_start_net: ['Against the starters', 'Net, offensive and defensive rating in the minutes the other side had four or more of its regular starters on (a regular starter: ten starts or more in the scope, or that game’s starters).'],
-  vs_bench_net: ['Against the bench', 'The same ratings in every other minute.'],
-  own_start_net: ['Our starters', 'Net, offensive and defensive rating in the minutes the club had four or more of its own regular starters on (the five who started most when fewer than five have ten starts).'],
-  own_bench_net: ['Our bench', 'The same ratings in every other minute of the club’s.'],
+  vs_start_net: ['Against the starters', 'Net, offensive and defensive rating in the minutes the other side had four or more of its regular starters on (a regular starter: ten starts or more in the scope, or that game’s starters). The bar is drawn against the club’s own rating over every minute: green to the right is better than that, red to the left worse.'],
+  vs_bench_net: ['Against the bench', 'The same ratings in every other minute, drawn against the club’s own.'],
+  own_start_net: ['Our starters', 'Net, offensive and defensive rating in the minutes the club had four or more of its own regular starters on (the five who started most when fewer than five have ten starts), against the club’s own.'],
+  own_bench_net: ['Our bench', 'The same ratings in every other minute of the club’s, against the club’s own.'],
   vs_start_ortg: ['Against the starters: offence', 'Points scored per 100 possessions against the other side’s starters.'],
   vs_start_drtg: ['Against the starters: defence', 'Points allowed per 100 possessions against the other side’s starters. Lower is better.'],
   vs_bench_ortg: ['Against the bench: offence', 'Points scored per 100 possessions against the other side’s bench.'],
@@ -72,17 +116,25 @@ const TEAM_DEFS = {
   own_bench_ortg: ['Our bench: offence', 'Points scored per 100 possessions in the club’s other minutes.'],
   own_bench_drtg: ['Our bench: defence', 'Points allowed per 100 possessions in the club’s other minutes. Lower is better.']
 };
+/* a club's place among the clubs on one key: '3rd of 18' (style: by most) */
+function rankOf(teams, k, id, low) {
+  const vals = teams.filter(t => t[k] != null && t[k] !== '' && isFinite(+t[k]));
+  const me = vals.find(t => t.id === id);
+  if (!me || vals.length < 3) return null;
+  return { r: vals.filter(t => (low ? +t[k] < +me[k] : +t[k] > +me[k])).length + 1, n: vals.length };
+}
 
 function modules(ctx) {
-  const E = root.EpinoiaReport;
+  const E = root.EpinoiaReport, V = root.EpinoiaTeamViz;
   const { block, title, esc } = E;
-  Object.keys(TEAM_STATS).forEach(k => { if (!E.STATS[k] || /^(ft_pct|ortg|drtg|net|pace|ff_|dff_)/.test(k)) E.STATS[k] = TEAM_STATS[k]; });
-  Object.keys(TEAM_DEFS).forEach(k => { if (!E.DEFS[k]) E.DEFS[k] = TEAM_DEFS[k]; });
-  const RAPM = { map: null, running: false };
+  Object.keys(TEAM_STATS).forEach(k => { E.STATS[k] = TEAM_STATS[k]; });
+  Object.keys(TEAM_DEFS).forEach(k => { E.DEFS[k] = TEAM_DEFS[k]; });
+  const RAPM = { key: null, map: null, running: false };
   const f1 = v => (E.isNum(v) ? (+v).toFixed(1) : '—');
   const sg1 = v => (E.isNum(v) ? (+v > 0 ? '+' : '') + (+v).toFixed(1) : '—');
   const nameOf = (meta, id) => (meta && meta[id] && meta[id].name) || 'Player';
   const surname = n => { const p = String(n || '').trim().split(/\s+/); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : (p[0] || ''); };
+  const rk = (r, n) => (r ? E.ordinal(r.r) + ' of ' + r.n : '');
 
   /* the club's season once: the season object, its row, its scope's games and its lineups' records */
   let seasonP = null;
@@ -154,19 +206,32 @@ function modules(ctx) {
     const l = X.line(X.sum(recs));
     return l && l.mins > 0 ? l : null;
   }
+  /* EVERY CLUB'S: opponents' true shooting (their play-by-play), points a possession at both ends, the assisted share of
+     all baskets, and transition points given up against what those opponents usually score */
+  function deriveTeams(teams, games) {
+    const tr = new Map(teams.map(r => [r.id, r.ev_transition_ppg]));
+    teams.forEach(r => {
+      const pts = +r.evd_all_pts, fga = +r.evd_all_fga, fta = +r.evd_all_fta || 0;
+      if (fga > 0) r.opp_ts = Math.round(1000 * pts / (2 * (fga + 0.44 * fta))) / 10;
+      if (E.isNum(r.ortg)) r.tm_ppp = Math.round(r.ortg) / 100;
+      if (E.isNum(r.drtg)) r.tm_oppp = Math.round(r.drtg) / 100;
+      const a = +r.ev_ast_fgm, u = +r.ev_unast_fgm;
+      if (a + u > 0) r.ast_sh_all = Math.round(1000 * a / (a + u)) / 10;
+      const opp = (games || []).filter(g => g.home_team_id === r.id || g.away_team_id === r.id)
+        .map(g => tr.get(g.home_team_id === r.id ? g.away_team_id : g.home_team_id)).filter(E.isNum).map(Number);
+      if (opp.length && E.isNum(r.evd_transition_ppg)) r.tr_def_delta = Math.round(10 * (r.evd_transition_ppg - opp.reduce((x, y) => x + y, 0) / opp.length)) / 10;
+    });
+  }
   const main = {
     key: 'main', title: 'Main stats', page: 'MAIN STATS', on: true,
     async build(c, R) {
       const T = await season();
       if (!T || !T.mine) return [block('<div class="rp-empty">No team statistics for this club in this scope yet.</div>')];
       const { S, mine } = T;
+      try { if (ctx.zones) await ctx.zones(S); } catch (_) { /* the shot distribution without its zones */ }
       const teams = S.teams.map(r => Object.assign({}, r));
       const me = teams.find(r => r.id === mine.id);
-      /* the transition points opponents scored against the club, against what they score on average */
-      const tByT = new Map(teams.map(r => [r.id, r.ev_transition_ppg]));
-      const mineGames = (S.games || []).filter(g => g.home_team_id === me.id || g.away_team_id === me.id);
-      const oppAvg = mineGames.map(g => tByT.get(g.home_team_id === me.id ? g.away_team_id : g.home_team_id)).filter(E.isNum).map(Number);
-      if (oppAvg.length && E.isNum(me.evd_transition_ppg)) me.tr_def_delta = Math.round(10 * (me.evd_transition_ppg - oppAvg.reduce((a, b) => a + b, 0) / oppAvg.length)) / 10;
+      deriveTeams(teams, S.games);
       try { me.hc_ast_pct = await halfCourtAst(); } catch (_) { /* without it */ }
       /* against the other side's starters and bench, and the club's own: its play-by-play records */
       try {
@@ -190,25 +255,27 @@ function modules(ctx) {
           put('own_start', ratingsOf(st)); put('own_bench', ratingsOf(bn));
         }
       } catch (e) { if (root.console) root.console.warn('[report starters]', e); }
+      const N = teams.length;
       const ff = [['Shooting', 'eFG%', 'ff_efg', 'dff_efg', false], ['Turnovers', 'TOV%', 'ff_tov', 'dff_tov', true],
                   ['Rebounding', 'OREB%', 'ff_oreb', 'dff_oreb', false], ['Free throws', 'FTr', 'ff_ftr', 'dff_ftr', false]];
       const Rf = E.ranker(teams, ff.flatMap(x => [x[2], x[3]]).concat(['ortg', 'drtg', 'net', 'pace']));
-      const lowFF = new Set(['ff_tov', 'dff_efg', 'dff_oreb', 'dff_ftr']);
-      const rk = k => { const p = Rf.pct(k, me.id); if (p == null) return ''; const pp = lowFF.has(k) ? p : p; return '<span class="rp-rk" data-b="' + E.band(pp) + '">' + E.ordinal(pp) + '</span>'; };
+      const chip = k => { const p = Rf.pct(k, me.id), s = E.STATS[k] || {}; const r = rankOf(teams, k, me.id, s.low);
+        return r ? '<span class="rp-rk" data-b="' + E.band(p, s.style) + '">' + rk(r) + '</span>' : ''; };
       R.legend.push('ff_efg', 'ff_tov', 'ff_oreb', 'ff_ftr');
       const ffHTML = '<div class="rp-ff">' + ff.map(([l, u, o, d, lowGood]) => {
         const ov = me[o], dv = me[d];
-        const edge = E.isNum(ov) && E.isNum(dv) ? (lowGood ? dv - ov : ov - dv) : null;
+        const bo = E.band(Rf.pct(o, me.id)), bd = E.band(Rf.pct(d, me.id));
         return '<div class="rp-ffc"><h4>' + l + ' · ' + u + '</h4><div class="rp-ffp">' +
-          '<div class="rp-ffs' + (edge > 0.05 ? ' win' : '') + '"><b>' + f1(ov) + '</b><span>own ' + rk(o) + '</span></div>' +
-          '<div class="rp-ffs' + (edge < -0.05 ? ' lose' : '') + '"><b>' + f1(dv) + '</b><span>allowed ' + rk(d) + '</span></div></div></div>';
+          '<div class="rp-ffs" data-b="' + bo + '"><b>' + f1(ov) + '</b><span>own</span>' + chip(o) + '</div>' +
+          '<div class="rp-ffs" data-b="' + bd + '"><b>' + f1(dv) + '</b><span>allowed</span>' + chip(d) + '</div></div></div>';
       }).join('') + '</div>';
-      const tiles = [['ORTG', 'ortg', false], ['DRTG', 'drtg', false], ['NET', 'net', true], ['PACE', 'pace', false]];
-      const tileHTML = '<div class="rp-tiles" style="--n:4;margin-top:10px">' + tiles.map(([l, k, sg]) => '<div class="rp-tile' + (sg && +me[k] > 0 ? ' good' : sg && +me[k] < 0 ? ' bad' : '') + '"><b>' +
-        (sg ? sg1(me[k]) : f1(me[k])) + '</b><span>' + l + ' ' + rk(k) + '</span></div>').join('') + '</div>';
-      const out = [block(title('Four factors', [c.scope, 'own · allowed · the chip is the club’s place among ' + teams.length].filter(Boolean).join(' · ')) + ffHTML + tileHTML)];
+      const tiles = [['ORTG', 'ortg', 'points scored per 100'], ['DRTG', 'drtg', 'points allowed per 100'], ['NET', 'net', 'the difference'], ['PACE', 'pace', 'possessions a game']];
+      const tileHTML = '<div class="rp-tiles rp-tiles-b" style="--n:4;margin-top:10px">' + tiles.map(([l, k, w]) => {
+        const s = E.STATS[k] || {}, b = E.band(Rf.pct(k, me.id), s.style);
+        return '<div class="rp-tile" data-b="' + b + '"><b>' + (k === 'net' ? sg1(me[k]) : f1(me[k])) + '</b><span>' + l + '</span><em>' + w + '</em>' + chip(k) + '</div>'; }).join('') + '</div>';
+      const out = [block(title('Four factors', [c.scope, 'own and allowed · the chip is the club’s place among ' + N].filter(Boolean).join(' · ')) + ffHTML + tileHTML)];
       const groups = [
-        ['EFFICIENCY', ['ts', 'ft_pct']],
+        ['EFFICIENCY', ['ts', 'opp_ts', 'ft_pct', 'tm_ppp', 'tm_oppp']],
         ['HALF COURT', ['ev_half_pts_sh', 'evd_half_pts_sh', 'hc_ast_pct', 'ev_half_tov_pct', 'evd_half_tov_pct', 'ev_half_efg', 'evd_half_efg', 'ev_half_ppp', 'evd_half_ppp']],
         ['TRANSITION', ['ev_transition_pts_sh', 'tr_def_delta', 'ev_transition_ppp', 'evd_transition_ppp']],
         ['AGAINST STARTERS & BENCH', ['vs_start_net', 'vs_start_ortg', 'vs_start_drtg', 'vs_bench_net', 'vs_bench_ortg', 'vs_bench_drtg']],
@@ -216,14 +283,43 @@ function modules(ctx) {
       ];
       const keys = groups.flatMap(g => g[1]);
       const Rk = E.ranker(teams, keys);
+      const place = k => { const s = E.STATS[k] || {}; const r = rankOf(teams, k, me.id, s.low); return r ? E.ordinal(r.r) + '/' + r.n : null; };
       R.legend.push(...keys);
-      out.push(block(title('Season line', 'ranked among ' + teams.length + ' clubs where every club has the number') +
-        '<div class="rp-groups">' + groups.map(([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, me, Rk)).join('') + '</div>').join('') + '</div>'));
+      out.push(block(title('Season line', 'the bar and its colour: the club’s place among ' + N + ' (green the top quarter, red the bottom); against starters and bench: against the club’s own') +
+        '<div class="rp-groups">' + groups.map(([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, me, Rk, { place })).join('') + '</div>').join('') + '</div>'));
+      /* THE SHOT DISTRIBUTION at both ends, each ranked among the clubs */
+      if (SD.some(([k]) => E.isNum(me['z_' + k]) || E.isNum(me['zd_' + k]))) {
+        const sk = SD.flatMap(([k]) => ['z_' + k, 'zd_' + k]);
+        const Rs = E.ranker(teams, sk);
+        R.legend.push(...SD.map(([k]) => 'z_' + k));
+        const cell = k => {
+          const s = E.STATS[k] || {}, v = me[k], p = Rs.pct(k, me.id), b = E.band(p, s.style), r = rankOf(teams, k, me.id, s.low);
+          return '<td><div class="rp-sdc" data-b="' + (E.isNum(v) ? b : 0) + '"><b>' + E.fmtStat(k, v) + '</b><span class="rp-sdb"><i style="width:' + (p == null ? 0 : Math.max(3, p)) + '%"></i></span>' +
+            '<em>' + (r ? (s.style ? E.ordinal(r.r) + ' most' : E.ordinal(r.r) + ' of ' + r.n) : '') + '</em></div></td>';
+        };
+        out.push(block(title('Shot distribution', 'where the shots come from and how they go in, at both ends · the club’s place among ' + N + ' (blue: a style, ranked by most)') +
+          '<table class="rp-tbl rp-sd"><thead><tr><th class="l">shots</th><th class="o">' + esc(c.name) + ' shooting</th><th class="d">opponents shooting against ' + esc(c.name) + '</th></tr></thead><tbody>' +
+          SD.map(([k, l, w], i) => '<tr' + (i && /_att100$/.test(k) ? ' class="grp"' : '') + '><td class="l"><b>' + esc(l) + '</b><small>' + esc(w) + '</small></td>' + cell('z_' + k) + cell('zd_' + k) + '</tr>').join('') +
+          '</tbody></table>'));
+      }
       try {
         const html = await ctx.rebounds(S, mine);
-        if (html) out.push(block(title('Rebounds analysis', 'what became of every shot attempt, by zone') + html, 'rp-reb'));
+        if (html) {
+          /* its two halves (the club's own attempts, those against it) as two blocks, so each can fill a gap */
+          const d = E.frag(html), w = d.querySelector('.cob'), tb = w ? w.querySelectorAll('tbody.cob-g') : [];
+          if (tb.length === 2) {
+            const w2 = w.cloneNode(true);
+            const h2 = w2.querySelector('.czt-h'); if (h2) h2.remove();
+            w2.querySelectorAll('tbody.cob-g')[0].remove();
+            tb[1].remove();
+            const n1 = w.querySelector('.czt-note'); if (n1) n1.remove();
+            out.push(block(title('Rebounds analysis', 'what became of every shot attempt, by zone') + d.innerHTML, 'rp-reb'));
+            out.push(block(w2.outerHTML, 'rp-reb'));
+          } else out.push(block(title('Rebounds analysis', 'what became of every shot attempt, by zone') + html, 'rp-reb'));
+        }
       } catch (_) { /* without it */ }
-      R.legendExtra.push(['FOUR FACTORS', 'Shooting (eFG%), turnovers (per 100 possessions), offensive rebounding (share of own misses rebounded) and free-throw rate: the four things that decide a game, at both ends. The better end of each is boxed in green.'],
+      R.legendExtra.push(['FOUR FACTORS', 'Shooting (eFG%), turnovers (per 100 possessions), offensive rebounding (share of own misses rebounded) and free-throw rate: the four things that decide a game, at both ends. Each box is coloured by the club’s place among the clubs.'],
+        ['SHOT DISTRIBUTION', 'Every located shot at both ends cut into the rim, the rest of the paint, mid-range and three (the corners on their own line): how many per 100 possessions, how many go in, how many came off a pass.'],
         ['REBOUNDS ANALYSIS', 'Every shot attempt in a zone went in, was rebounded by the shooter’s side, by the other side, or had no rebound; ORB% and DRB% are of the misses somebody rebounded.']);
       return out;
     }
@@ -283,19 +379,17 @@ function modules(ctx) {
             E.sitCardHTML(O.half, { key: 'half', colour, who: c.name + ' offence', names })));
           out.push(block(E.sitCardHTML(Dd.half, { key: 'half', colour: '#5d6b64', who: 'opponents against ' + c.name, names })));
           out.push(block(title('Transition', 'fast breaks, and within eight seconds of a defensive rebound or a steal') +
-            E.sitCardHTML(O.transition, { key: 'transition', colour: '#b4572e', who: c.name + ' offence', names })));
-          out.push(block(E.sitCardHTML(Dd.transition, { key: 'transition', colour: '#5d6b64', who: 'opponents against ' + c.name, names })));
+            E.sitCardHTML(O.transition, { key: 'transition', colour: '#b4572e', who: c.name + ' offence', names, compact: true })));
+          out.push(block(E.sitCardHTML(Dd.transition, { key: 'transition', colour: '#5d6b64', who: 'opponents against ' + c.name, names, compact: true })));
         }
       } catch (e) { if (root.console) root.console.warn('[report situations]', e); }
-      /* the events: what the club made of each situation, and what opponents made of the same */
+      /* the events: what the club made of each situation, and what opponents made of the same, each on its colour */
       try {
         const T = await season();
-        const SP = root.EpinoiaSitPanel;
-        if (T && T.mine && SP && SP.html) {
-          const h1 = SP.html({ kind: 'team', row: T.mine, field: T.S.teams, name: c.name, side: 'off' });
-          const h2 = SP.html({ kind: 'team', row: T.mine, field: T.S.teams, name: c.name, side: 'def' });
-          out.push(block(title('Events', 'second chances, transition, off turnovers, after timeouts and the half court, at both ends') +
-            '<div class="rp-cap">Offence</div>' + h1 + '<div class="rp-cap" style="margin-top:10px">Defence</div>' + h2, 'rp-ev'));
+        if (T && T.mine && V) {
+          out.push(block(title('Events', 'what each kind of possession is worth, at both ends · coloured by the club’s place among ' + T.S.teams.length + ' clubs') +
+            V.events(T.mine, T.S.teams, { name: c.name }), 'rp-ev'));
+          R.legendExtra.push(['EVENTS', 'Half court: a set offence against a set defence. Transition: a fast break, or a shot within eight seconds of a defensive rebound or a steal. Second chances: after an offensive rebound. Off turnovers: after the other side gave the ball away. After timeouts: the play drawn up in a timeout. Points a chance is what one such trip is worth; the word beside it is the club’s place among the clubs (strength: the top quarter; weakness: the bottom).']);
         }
       } catch (_) { /* without it */ }
       R.legendExtra.push(['ZONES', 'The court cut into twelve areas, each tinted against its own break-even (paint 58%, mid-range 40%, three 35%): orange above, blue below, grey within two points; hatched where there are too few attempts to rate.'],
@@ -309,30 +403,17 @@ function modules(ctx) {
     key: 'players', title: 'Players', page: 'PLAYERS', on: true,
     controls(host, state) {
       E.templateControl(host, state, { set: 'players', label: 'players page', pos: () => 'guard' });
-      if (ctx.rapm) {
-        const row = E.el('div', 'rp-rapm');
-        const b = E.el('button', 'ep-btn mini', 'Calculate RAPM'); b.type = 'button';
-        const say = E.el('span', null, 'ORAPM and DRAPM need every stint of the league’s season: worked out on request.');
-        b.onclick = async () => {
-          if (RAPM.running) return;
-          RAPM.running = true; b.disabled = true;
-          try {
-            const T = await season();
-            RAPM.map = await ctx.rapm((T.S.games || []).map(g => g.id), (d, n) => { say.textContent = 'reading the league’s games: ' + d + ' of ' + n + '…'; });
-            say.textContent = 'RAPM worked out over ' + (RAPM.map ? RAPM.map.size : 0) + ' players.';
-            state.rebuild();
-          } catch (e) { say.textContent = 'RAPM could not be worked out: ' + (e.message || e); }
-          RAPM.running = false; b.disabled = false;
-        };
-        row.append(E.el('span', 'rp-k', 'RAPM'), b, say);
-        host.appendChild(row);
-      }
+      if (ctx.rapm) E.rapmControl(host, state, RAPM, {
+        ids: async () => { const T = await season(); return T && T.S ? (T.S.games || []).map(g => g.id).filter(Boolean) : []; },
+        run: (ids, fn) => ctx.rapm(ids, fn),
+        scope: () => (state.c && state.c.scope) || 'this league and season'
+      });
     },
     async build(c, R) {
       const T = await season();
       if (!T || !T.S) return [block('<div class="rp-empty">No player statistics for this club in this scope yet.</div>')];
       const field = T.S.players.map(r => Object.assign({}, r));
-      if (RAPM.map) field.forEach(r => { const v = RAPM.map.get(r.id); if (v) { r.orapm = v.orapm; r.drapm = v.drapm; r.rapm = v.rapm; } });
+      const rapmOk = RAPM.map && RAPM.key === E.rapmKey((T.S.games || []).map(g => g.id).filter(Boolean)) && E.rapmOn(RAPM, field);
       field.forEach(E.derive);
       const squad = field.filter(r => r.teamId === T.mine.id && +r.gp > 0).sort((a, b) => (+b.mpg || 0) * (+b.gp || 0) - (+a.mpg || 0) * (+a.gp || 0));
       if (!squad.length) return [block('<div class="rp-empty">No player has played for the club in this scope yet.</div>')];
@@ -354,8 +435,11 @@ function modules(ctx) {
       const Rk = E.ranker(field, [...allKeys]);
       R.legend.push(...allKeys);
       const SL = ['PG', 'SG', 'SF', 'PF', 'C'];
-      const out = [block(title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the ' + Rk.n + ' players of ' + (c.scope || 'the competition')))];
-      squad.forEach(r => {
+      const needR = !rapmOk && [...allKeys].some(k => E.STATS[k] && E.STATS[k].rapm);
+      const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the ' + Rk.n + ' players of ' + (c.scope || 'the competition')) +
+        (needR ? '<p class="rp-flagnote">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : '');
+      const out = [];
+      squad.forEach((r, i) => {
         const m = meta[r.id] || {};
         const pm = posMin.get(String(r.id));
         const tot = pm ? pm.reduce((a, b) => a + b, 0) : 0;
@@ -367,7 +451,7 @@ function modules(ctx) {
           : '<span class="rp-ph"><b>' + esc((m.jersey ? m.jersey : (m.name || r.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2))) + '</b></span>';
         const nm = m.name || r.name || 'Player';
         const groups = sets[grp].map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + ks.map(k => E.statCellHTML(k, r, Rk)).join('') + '</div></div>').join('');
-        out.push(block('<div class="rp-pcard"><div class="rp-pid">' + ph + '<div class="rp-pname">' + (m.jersey ? '#' + esc(m.jersey) + ' ' : '') + esc(nm) + '</div>' +
+        out.push(block((i === 0 ? head : '') + '<div class="rp-pcard"><div class="rp-pid">' + ph + '<div class="rp-pname">' + (m.jersey ? '#' + esc(m.jersey) + ' ' : '') + esc(nm) + '</div>' +
           '<div class="rp-pmeta">' + esc(grp) + ' · ' + (r.gp || 0) + ' gp · ' + f1(r.mpg) + ' mpg · ' + f1(r.ppg) + ' ppg</div>' +
           '<div class="rp-ppos">' + chips + '</div></div><div class="rp-pgroups">' + groups + '</div></div>'));
       });
@@ -376,14 +460,36 @@ function modules(ctx) {
   };
 
   /* ---------------- DEPTH CHART ---------------- */
+  /* the most-used fives as cards (teamviz.js), from the club's play-by-play records (lineupevents.js: the four factors at
+     both ends, assisted baskets, where the shots came from), each number against the club's own over all its minutes */
+  async function lineupBlock(c, n) {
+    const T = await season();
+    const X = LE();
+    if (!T || !T.S || !X || !V) return null;
+    const logs = await ctx.clubLogs(new Set((T.S.games || []).map(g => g.id)));
+    if (!logs || !logs.recs || !logs.recs.length) return null;
+    const base = X.line(X.sum(logs.recs));
+    let floor = 10;
+    const pick = () => X.units(logs.recs, 5).map(u => ({ ids: u.ids, line: X.line(u.acc) })).filter(u => u.line.mins >= floor).sort((a, b) => b.line.mins - a.line.mins);
+    let units = pick();
+    while (units.length < n && floor > 2) { floor = Math.floor(floor / 2); units = pick(); }
+    units = units.slice(0, n);
+    if (!units.length) return null;
+    const meta = await ctx.meta([...new Set(units.flatMap(u => u.ids))]).catch(() => ({}));
+    const names = {}; Object.keys(meta || {}).forEach(id => { names[id] = meta[id].name; });
+    return { units, floor, html: V.lineupCards(units, base, { names }) };
+  }
   const depth = {
-    key: 'depth', title: 'Depth chart', page: 'DEPTH CHART', on: true,
+    key: 'depth', title: 'Depth chart & lineups', page: 'DEPTH CHART', on: true,
     async build(c, R) {
-      const X = root.EpinoiaDepth, Ro = root.EpinoiaRotation, Ln = root.EpinoiaLineups;
+      const X = root.EpinoiaDepth, Ro = root.EpinoiaRotation;
       const out = [];
       try {
         const d = await ctx.depth(false);
-        if (d && d.c && X && X.shareHTML) out.push(block(title('Depth chart', 'each player’s share of the minutes at each position') + '<div class="rp-dc">' + X.shareHTML(d.c, {}) + '</div>'));
+        if (d && d.c && V) out.push(block(title('Depth chart', 'each position’s minutes, split between the players who played there (darkest: the first choice)') +
+          V.depthBars(d.c, { colour: c.accent }) +
+          '<p class="rp-note">' + esc('Every five on the floor is ranked point guard to centre by the players’ positions, so a player who moves between positions is in each row; the striped end is everyone under 5%.') + '</p>'));
+        else if (d && d.c && X && X.shareHTML) out.push(block(title('Depth chart', 'each player’s share of the minutes at each position') + '<div class="rp-dc">' + X.shareHTML(d.c, {}) + '</div>'));
       } catch (_) { /* without it */ }
       try {
         const L = await ctx.logs();
@@ -401,16 +507,13 @@ function modules(ctx) {
         }
       } catch (e) { if (root.console) root.console.warn('[report rotations]', e); }
       try {
-        const { st, meta } = await stints();
-        let floor = 10, units = Ln.all(st, floor);
-        while (units.length < 5 && floor > 2) { floor = Math.floor(floor / 2); units = Ln.all(st, floor); }
-        units = units.slice(0, 10);
-        if (units.length) {
-          const rows = units.map(u => '<tr><td class="l names">' + u.ids.map(id => esc(surname(nameOf(meta, id)))).join(', ') + '</td><td>' + Math.round(u.mins) + '</td><td>' + Math.round(u.poss) + '</td>' +
-            '<td>' + f1(u.ortg) + '</td><td>' + f1(u.drtg) + '</td><td class="' + (u.net > 0 ? 'pos' : u.net < 0 ? 'neg' : '') + '">' + sg1(u.net) + '</td>' +
-            '<td>' + f1(u.efg) + '</td><td>' + f1(u.tov) + '</td><td>' + f1(u.oreb) + '</td><td>' + f1(u.ftr) + '</td><td>' + (u.pm > 0 ? '+' : '') + Math.round(u.pm || 0) + '</td></tr>').join('');
-          out.push(block(title('The most-used lineups', 'every five with ' + floor + '+ minutes together, most minutes first') +
-            '<table class="rp-tbl"><thead><tr><th class="l">lineup</th><th>min</th><th>poss</th><th>ORTG</th><th>DRTG</th><th>NET</th><th>eFG%</th><th>TOV%</th><th>OREB%</th><th>FTr</th><th>+/-</th></tr></thead><tbody>' + rows + '</tbody></table>'));
+        const LB = await lineupBlock(c, 6);
+        if (LB) {
+          /* a card a block, so the cards fill what the rotations left and run on to the next page whole */
+          const d = E.frag(LB.html), cards = [...d.querySelectorAll('.tv-lu')], keyEl = d.querySelector('.tv-key');
+          cards.forEach((cd, i) => out.push(block((i === 0 ? title('The most-used lineups', 'the ' + LB.units.length + ' fives with the most minutes together (' + LB.floor + '+) · every number coloured against the club over all its minutes') : '') +
+            '<div class="tv tv-lus">' + cd.outerHTML + '</div>' + (i === cards.length - 1 && keyEl ? '<div class="tv">' + keyEl.outerHTML + '</div>' : ''))));
+          R.legendExtra.push(['LINEUP CARDS', 'Each five’s offence (points per 100 possessions and the four factors), its defence (the four factors allowed) and how it plays (the share of its baskets made off a pass; rim, mid-range and three-point attempts per 100 possessions; three-point %). Each tile is coloured against the club over all its minutes: green better, red worse; blue a style. The small figure is the gap to the club.']);
         }
       } catch (e) { if (root.console) root.console.warn('[report lineups]', e); }
       R.legendExtra.push(['DEPTH CHART', 'Every five on the floor ranked point guard to centre by the players’ positions; each player’s share of the minutes at each position.'],
@@ -425,6 +528,8 @@ function modules(ctx) {
     async build(c, R) {
       const Ln = root.EpinoiaLineups, SCk = root.EpinoiaShotClock;
       const out = [];
+      const T = await season().catch(() => null);
+      const me = T && T.mine ? T.mine : {};
       try {
         const { st, meta } = await stints();
         let floor = 20, trios = Ln.sized(st, 3, floor).filter(t => E.isNum(t.net));
@@ -432,26 +537,25 @@ function modules(ctx) {
         if (trios.length) {
           trios.sort((a, b) => b.net - a.net);
           const best = trios.slice(0, 5), worst = trios.slice(-5).reverse().filter(t => best.indexOf(t) < 0);
-          const tbl = (rows, cap) => '<div><div class="rp-cap">' + cap + '</div><table class="rp-tbl"><thead><tr><th class="l">trio</th><th>min</th><th>ORTG</th><th>DRTG</th><th>NET</th></tr></thead><tbody>' +
-            rows.map(t => '<tr><td class="l names">' + t.ids.map(id => esc(surname(nameOf(meta, id)))).join(', ') + '</td><td>' + Math.round(t.mins) + '</td><td>' + f1(t.ortg) + '</td><td>' + f1(t.drtg) + '</td>' +
-              '<td class="' + (t.net > 0 ? 'pos' : t.net < 0 ? 'neg' : '') + '">' + sg1(t.net) + '</td></tr>').join('') + '</tbody></table></div>';
-          out.push(block(title('Combinations', 'trios with ' + floor + '+ minutes together, by net rating') + '<div class="rp-two">' + tbl(best, 'Best five') + tbl(worst, 'Worst five') + '</div>'));
+          const td = (v, ref, low, sc) => '<td data-b="' + E.bandVs(v, ref, sc, low) + '">' + f1(v) + '</td>';
+          const tbl = (rows, cap, cls) => '<div><div class="rp-cap ' + cls + '">' + cap + '</div><table class="rp-tbl rp-cmb"><thead><tr><th class="l">trio</th><th>min</th><th>ORTG</th><th>DRTG</th><th>NET</th></tr></thead><tbody>' +
+            rows.map(t => '<tr><td class="l names">' + t.ids.map(id => esc(surname(nameOf(meta, id)))).join(', ') + '</td><td>' + Math.round(t.mins) + '</td>' +
+              td(t.ortg, me.ortg, false, 5) + td(t.drtg, me.drtg, true, 5) + '<td class="rp-netc" data-b="' + E.bandVs(t.net, me.net, 6, false) + '">' + sg1(t.net) + '</td></tr>').join('') + '</tbody></table></div>';
+          out.push(block(title('Combinations', 'trios with ' + floor + '+ minutes together, by net rating · coloured against the club’s own ratings') +
+            '<div class="rp-two">' + tbl(best, 'The best five', 'good') + tbl(worst, 'The worst five', 'bad') + '</div>'));
         }
       } catch (e) { if (root.console) root.console.warn('[report combos]', e); }
       try {
         const L = await ctx.logs();
-        if (SCk && L.gs.length) {
+        if (SCk && L.gs.length && V) {
           const own = [], opp = [];
           L.gs.forEach(g => { const Rr = SCk.compute({ events: L.byG[g.id] || [] }); (Rr.chances || []).forEach(r => (r.team === L.sideOf[g.id] ? own : opp).push(r)); });
           const W = [['0–7 s', 0, 8], ['8–16 s', 8, 17], ['17–24 s', 17, 1e9]];
-          const rowsOf = list => { const first = list.filter(r => !r.second && r.dur != null); return W.map(([l, a, b]) => { const sub = first.filter(r => r.dur >= a && r.dur < b); return [l, sub.length, first.length, SCk.summary(sub)]; }); };
-          const pc = v => (v == null ? '—' : (100 * v).toFixed(1));
-          const tbl = (rows, cap, def) => '<div><div class="rp-cap">' + cap + '</div><table class="rp-tbl"><thead><tr><th class="l">shot clock</th><th>poss</th><th>share</th><th>PPP</th><th>eFG%</th><th>TOV%</th><th>OREB%</th><th>FTr</th></tr></thead><tbody>' +
-            rows.map(([l, n, all, s]) => '<tr><td class="l">' + l + '</td><td>' + n + '</td><td>' + (all ? (100 * n / all).toFixed(1) + '%' : '—') + '</td>' +
-              '<td>' + (s.ppp == null ? '—' : s.ppp.toFixed(2)) + '</td><td>' + pc(s.efg) + '</td><td>' + pc(s.tovPct) + '</td><td>' + pc(s.orebPct) + '</td><td>' + pc(s.ftr) + '</td></tr>').join('') + '</tbody></table></div>';
-          out.push(block(title('Shot clock', 'every first chance of the last ' + L.gs.length + ' games by how long it ran from the change of possession') +
-            tbl(rowsOf(own), 'Offence') + '<div style="height:10px"></div>' + tbl(rowsOf(opp), 'Defence (what opponents did)') +
-            '<p class="rp-note">PPP: points per possession. A possession’s time runs from winning the ball to its last action; second chances after an offensive rebound are left out, so each row is how the first look ended.</p>'));
+          const firsts = list => list.filter(r => !r.second && r.dur != null);
+          const rowsOf = list => { const first = firsts(list); return W.map(([l, a, b]) => { const sub = first.filter(r => r.dur >= a && r.dur < b); return { label: l, n: sub.length, all: first.length, s: SCk.summary(sub) }; }); };
+          out.push(block(title('Shot clock', 'every first chance of the last ' + L.gs.length + ' games by how long it ran · each coloured against the club’s (or its opponents’) average') +
+            V.shotClock(rowsOf(own), rowsOf(opp), SCk.summary(firsts(own)), SCk.summary(firsts(opp))) +
+            '<p class="rp-note">Points a possession, and its share of the possessions as the bar; the chips are its shooting (eFG), turnovers (TO), offensive rebounds (OREB) and free-throw rate (FTr). Second chances after an offensive rebound are left out, so each is how the first look ended.</p>'));
           R.legendExtra.push(['SHOT CLOCK', 'Possessions grouped by how long they ran: early offence (0–7 seconds), the middle of the clock (8–16) and late (17–24).'],
             ['PPP', 'Points per possession.']);
         }

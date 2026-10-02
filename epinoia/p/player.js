@@ -91,9 +91,12 @@ function reportTab(pl, name, team) {
     shots: () => rpGet('shots'),
     floor: () => rpGet('floor'),
     week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.playerWeek(api, pl.id, { name, league: ACCESS_LEAGUE.slug, days: 7 }) : null,
-    rapm: window.EpinoiaRAPM ? (onProgress => {
-      if (!SCOPE_GAMES.length) return Promise.reject(new Error('no games in this scope'));
-      return window.EpinoiaRAPM.season(window.EpinoiaData, SCOPE_GAMES, onProgress).then(r => r.rapm);
+    /* the league's games of the scope shown (RAPM is the league's regression; report.js keeps it per set of games) */
+    gameIds: async () => { await rpGet('bars').catch(() => null); return SCOPE_GAMES.slice(); },
+    bigGames: (window.EpinoiaData && window.EpinoiaData.BIG_GAMES) || 0,
+    rapm: window.EpinoiaRAPM ? ((ids, onProgress) => {
+      if (!ids || !ids.length) return Promise.reject(new Error('no games in this scope'));
+      return window.EpinoiaRAPM.season(window.EpinoiaData, ids, onProgress).then(r => r.rapm);
     }) : null
   };
   REPORT = E.mount({
