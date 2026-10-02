@@ -1586,6 +1586,17 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/admin-edits.test.mjs
 
+      - name: The records are kept, not worked out on every visit (0215) - on a real Postgres
+        # PGlite: the backfill builds exactly the records records.js used to work out (its old reads run over the same
+        # fixture), for a league's season and across leagues (ALL / MEN'S / WOMEN'S), in one request; a game's lines
+        # go in only when they reach a list; ties shared and credited to whoever set them first; either finalise order
+        # gives a rebuild's lists; a correction, a revert, a move and a delete rebuild only the lists they touch; a
+        # private league and a withheld minor stay hidden; a failure never stops a finalise
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/records.test.mjs
+          node supabase/tests/records-store.test.mjs
+
       - name: The creator hub - the numbers, the writing desk, storylines, graphics and icons (0200)
         # the pages first (the editor's words, permalink, tags and typed shortcuts; storylines.js on a season; the icon
         # set; the hub on the page standard, in the rail, and counting a piece where it is shown; its words in Spanish
