@@ -85,14 +85,24 @@ function defaultsOf(node) {
 /* AN ELEMENT WITH TEXT OF ITS OWN IS NOT GIVEN ITS WIDTH: the picture lays text out a hair wider than the page did
    (the page is drawn at the screen's zoom, the picture at its own), and a box exactly as wide as its words would wrap */
 const SIZE = new Set(['width', 'height']);
-function styleText(cs, defs, pseudo, free) {
+/* THE PROPERTIES A CHILD INHERITS are written where they differ from its parent's, not only from the tag's default: a
+   child that sets one back to its default (text-transform:none under an uppercase label, a normal weight inside a bold
+   one) would otherwise take its parent's in the copy, which carries the parent's on its style attribute (2026-10-02,
+   the on/off rows' "lower is better", printed in the label's capitals) */
+const INHERITED = new Set(['color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-stretch', 'font-variant-numeric',
+  'font-feature-settings', 'line-height', 'letter-spacing', 'word-spacing', 'text-align', 'text-transform', 'text-indent', 'text-shadow',
+  'white-space', 'word-break', 'overflow-wrap', 'hyphens', 'direction', 'list-style-type', 'list-style-position', 'visibility', 'cursor',
+  'quotes', 'border-collapse', 'border-spacing', 'caption-side', 'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width',
+  'stroke-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'text-anchor', 'dominant-baseline',
+  'paint-order', 'pointer-events']);
+function styleText(cs, defs, pseudo, free, parent) {
   let s = '';
   PROPS.forEach(p => {
     const v = cs.getPropertyValue(p);
     if (!v) return;
     if (free && SIZE.has(p)) return;
     if (p === 'content' && !pseudo) return;
-    if (!pseudo && defs && defs[p] === v) return;
+    if (!pseudo && defs && defs[p] === v && !(parent && INHERITED.has(p) && parent.getPropertyValue(p) !== v)) return;
     s += p + ':' + v + ';';
   });
   return s;
@@ -100,7 +110,7 @@ function styleText(cs, defs, pseudo, free) {
 
 /* the copy, with every style inlined. The page's width and height are fixed on the root so it lays out as it did */
 function cloneStyled(src) {
-  const walk = (n) => {
+  const walk = (n, top) => {
     if (n.nodeType === 3) return root.document.createTextNode(n.nodeValue);
     if (n.nodeType !== 1) return null;
     const tag = n.localName;
@@ -116,7 +126,9 @@ function cloneStyled(src) {
     if (tag === 'canvas') { try { c.setAttribute('src', n.toDataURL('image/png')); } catch (_) { /* tainted */ } }
     if (tag === 'input' || tag === 'textarea') c.setAttribute('value', n.value || '');
     const ownText = !svg && tag !== 'img' && [...n.childNodes].some(x => x.nodeType === 3 && x.nodeValue.trim());
-    c.setAttribute('style', styleText(cs, defaultsOf(n), false, ownText && cs.position !== 'absolute'));
+    /* the copy's root has no parent in the picture but the page's defaults; everything under it has its copied parent */
+    const par = !top && n.parentElement ? root.getComputedStyle(n.parentElement) : null;
+    c.setAttribute('style', styleText(cs, defaultsOf(n), false, ownText && cs.position !== 'absolute', par));
     const pseudo = ps => {
       if (svg) return null;
       const pcs = root.getComputedStyle(n, ps);
@@ -129,11 +141,11 @@ function cloneStyled(src) {
     };
     const before = pseudo('::before'), after = pseudo('::after');
     if (before) c.appendChild(before);
-    for (const ch of n.childNodes) { const x = walk(ch); if (x) c.appendChild(x); }
+    for (const ch of n.childNodes) { const x = walk(ch, false); if (x) c.appendChild(x); }
     if (after) c.appendChild(after);
     return c;
   };
-  const out = walk(src);
+  const out = walk(src, true);
   return out;
 }
 

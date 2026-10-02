@@ -158,11 +158,13 @@ function outHTML(inst) {
   const total = firstAll.pts + secondChances.pts;
   const whole = '<p class="scx-whole">' + (inst.opts.unit === 'season' ? 'This season' : 'The whole game') + ': ' +
     firstAll.pts + ' on first chances + ' + secondChances.pts + ' after offensive rebounds = <b>' + total + ' points</b>.</p>';
+  /* a defence's side (side.def): what the opponents did against it, so every good direction turns round */
+  const D = !!side.def;
   const ff = '<div class="scx-ff">' +
-    factorHTML('eFG%', w.efg, all.efg, true, pct, 'Effective field goal %: (FGM + ½·3PM) / FGA · ' + w.fgm + '/' + w.fga + ' FG, ' + w.p3m + '/' + w.p3a + ' 3PT') +
-    factorHTML('TOV%', w.tovPct, all.tovPct, false, pct, 'Turnovers per possession · ' + w.tov + ' in ' + w.n) +
-    factorHTML('OREB%', w.orebPct, all.orebPct, true, pct, 'Of the misses somebody rebounded, the share won back by the offence · ' + w.off + ' of ' + (w.off + w.def)) +
-    factorHTML('FTA rate', w.ftr, all.ftr, true, pct, 'Free throw attempts per field goal attempt · ' + w.fta + ' FTA, ' + w.fga + ' FGA') +
+    factorHTML('eFG%', w.efg, all.efg, !D, pct, 'Effective field goal %: (FGM + ½·3PM) / FGA · ' + w.fgm + '/' + w.fga + ' FG, ' + w.p3m + '/' + w.p3a + ' 3PT') +
+    factorHTML('TOV%', w.tovPct, all.tovPct, D, pct, 'Turnovers per possession · ' + w.tov + ' in ' + w.n) +
+    factorHTML('OREB%', w.orebPct, all.orebPct, !D, pct, 'Of the misses somebody rebounded, the share won back by the offence · ' + w.off + ' of ' + (w.off + w.def)) +
+    factorHTML('FTA rate', w.ftr, all.ftr, !D, pct, 'Free throw attempts per field goal attempt · ' + w.fta + ' FTA, ' + w.fga + ' FGA') +
   '</div>';
   const small = w.n && w.n < SMALL ? '<p class="scx-small">' + w.n + ' possession' + (w.n === 1 ? '' : 's') + ': read these rates as a sketch.</p>' : '';
   const note = '<p class="scx-note">Timed from the moment the ball changed hands — the other side\'s made basket, last free throw or turnover, this side\'s defensive rebound, or the start of the period — to the shot, turnover or trip to the line that ended the first chance. ' +

@@ -183,7 +183,8 @@ function cardScout(g, fs, rep) {
       const b = sc.sides[1].rows.find(x => x.key === r.key);
       if (!b) return '';
       const a = r.value, c = b.value;
-      const better = r.style ? -1 : (a === c ? -1 : (a > c ? 0 : 1));
+      const lo = r.key === 'tovp' || r.key === 'drtg';            // game/report.js LOWER_IS_BETTER
+      const better = r.style ? -1 : (a === c ? -1 : ((lo ? a < c : a > c) ? 0 : 1));
       const one = (v, t) => '<span class="sn-h' + (better === t ? ' win' : '') + '">' +
         (Math.round(v * 10) / 10) + '</span>';
       return '<div class="sn-hrow">' + one(a, 0) +

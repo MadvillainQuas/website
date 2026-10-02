@@ -372,9 +372,10 @@ function narrative(ctx) {
    player names come from the database and are treated as hostile, exactly as
    the box score treats them. */
 
-function factorRow(f, a, b) {
+function factorRow(f, a, b, def) {
   const av = num(a), bv = num(b);
-  const e = edge(f, av, bv);
+  /* the defence's factors are what it allowed (forced, for turnovers): every direction turned round */
+  const e0 = edge(f, av, bv), e = e0 == null ? null : def ? -e0 : e0;
   const aWins = e != null && e > 0, bWins = e != null && e < 0;
   /* The bar is each side's share of the pair, so two similar numbers give two
      similar bars instead of an exaggerated gap off a zero baseline. */
@@ -507,7 +508,7 @@ function render(ctx) {
 
   const paras = narrative(ctx).map(p => '<p>' + p + '</p>').join('');
   const ffOff = FACTORS.map(f => factorRow(f, A && A[f.off], B && B[f.off])).join('');
-  const ffDef = FACTORS.map(f => factorRow(f, A && A[f.def], B && B[f.def])).join('');
+  const ffDef = FACTORS.map(f => factorRow(f, A && A[f.def], B && B[f.def], true)).join('');
 
   const stars = (ctx.starsA || []).slice(0, 2).map(p => playerCard(p, ctx.colourA, nameA))
     .concat((ctx.starsB || []).slice(0, 2).map(p => playerCard(p, ctx.colourB, nameB)))

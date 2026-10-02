@@ -249,7 +249,7 @@
 .rp-pg .czt-wrap, .rp-pg .scz-wrap{ margin:6px 0 0 }
 .rp-pg .ep-tabs, .rp-pg .barswitch, .rp-pg button{ display:none !important }
 .rp-pg .oo{ padding:0 }
-.rp-pg .dl, .rp-pg .oo-s, .rp-pg .oo-sw, .rp-pg .tile{ background:#ffffff }
+.rp-pg .dl, .rp-pg .tile{ background:#ffffff }
 .rp-pg .rot, .rp-pg .dc{ font-size:10px }
 .rp-pg a{ color:inherit; text-decoration:none }
 
@@ -424,3 +424,6 @@
 .rp-rb.own i.m{ background:#1f9d55 } .rp-rb.own i.o{ background:#8cc63f } .rp-rb.own i.d{ background:#b9c2bd }
 .rp-rb.opp i.m{ background:#d9534f } .rp-rb.opp i.o{ background:#f0a19e } .rp-rb.opp i.d{ background:#1f9d55 }
 .rp-rb i.n{ background:repeating-linear-gradient(45deg,#d5dbd7 0 2px,#ffffff 2px 4px) }
+/* whom a squad card's colours are against: the players of his position (report.js posRanker) */
+.rp-pvs{ display:inline-block; margin-top:1px; padding:1px 7px; border-radius:999px; font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:#fff; background:var(--rp-a,#08603f) }

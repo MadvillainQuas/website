@@ -59,7 +59,7 @@ const STATS = {
   drapm: { l: 'DRAPM', dp: 1, signed: true, rapm: true },
   usg: { l: 'USG%', dp: 1, style: true }, ts: { l: 'TS%', dp: 1 }, efg: { l: 'eFG%', dp: 1 }, ftr: { l: 'FTr', dp: 1 },
   ft_pct: { l: 'FT%', dp: 1 }, fg_pct: { l: 'FG%', dp: 1 },
-  au: { l: 'A/U', dp: 2 }, ast_to: { l: 'AST / TO', dp: 2 }, ast_pct: { l: 'AST%', dp: 1 },
+  au: { l: 'A/U', dp: 2 }, ast_to: { l: 'AST / TO', dp: 2 }, ast_pct: { l: 'AST%', dp: 1 }, hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1 },
   ast3_sh: { l: "% OF ASSISTS THAT ARE 3'S", dp: 1, style: true }, ast2_sh: { l: "% OF ASSISTS THAT ARE 2'S", dp: 1, style: true },
   tov_pct: { l: 'TO%', dp: 1, low: true },
   rim_a100: { l: 'RIM VOL / 100', dp: 1, style: true }, rim_pct: { l: 'RIM%', dp: 1 }, ev_rim_astp: { l: 'RIM ASSISTED%', dp: 1, style: true },
@@ -84,6 +84,7 @@ const DEFS = {
   orapm: ['Offensive RAPM', 'Regularised adjusted plus-minus, offence: points per 100 possessions he adds to his team’s offence once every teammate and opponent on the floor is accounted for (ridge regression over every stint of the league’s season).'],
   drapm: ['Defensive RAPM', 'The same regression’s defensive coefficient: points per 100 possessions he takes off the opponent’s offence. Higher is better.'],
   rapm: ['RAPM', 'Offensive plus defensive RAPM.'],
+  hc_ast_pct: ['Half-court assist %', 'Of his teammates’ baskets in the half court while he was on the floor (not a second chance, a fast break or off a turnover), the share he assisted: how much of the set offence he creates. Worked out from every game’s play-by-play in the competition; blank under 20 such baskets.'],
   ast3_sh: ['Assists that were threes', 'Of the baskets he assisted, the share that were three-pointers (points off his assists minus two per assist).'],
   ast2_sh: ['Assists that were twos', 'Of the baskets he assisted, the share that were two-pointers.'],
   pf_pg: ['Fouls conceded a game', 'Personal fouls he commits per game. Fewer is better.'],
@@ -169,13 +170,58 @@ function turnoverTypes(byG) {
   return out;
 }
 
+/* HALF-COURT ASSIST %, for every player of a set of games (2026-10-02): of his teammates' baskets in the half court
+   while he was on the floor, the share he assisted. The half court is the club report's (situations.js stamps: not a
+   second chance, not off a turnover, not in transition); an assist belongs to the last made basket of its own side
+   (situations.js's pairing); who was on the floor comes from each game's frozen starters and its substitutions
+   (withstats.js's replay). A game whose feed logs no assist at all says nothing and is left out.
+   games: [{ starters: [[ids], [ids]], events }] -> Map(pid -> { a: his assists on those baskets, m: those baskets }) */
+const HC_MIN = 20;
+function hcAssists(games) {
+  const SI = root.EpinoiaSituations, out = new Map();
+  if (!SI || !SI.inGameOrder || !SI.stamps) return out;
+  const at = pid => { let o = out.get(pid); if (!o) out.set(pid, o = { a: 0, m: 0 }); return o; };
+  (games || []).forEach(g => {
+    const st = g && g.starters;
+    if (!Array.isArray(st) || !Array.isArray(st[0]) || !Array.isArray(st[1]) || !st[0].length || !st[1].length) return;
+    const evs = (g.events || []).filter(Boolean);
+    if (!evs.some(e => e.t === 'ast')) return;
+    let all, stamp;
+    try {
+      all = SI.inGameOrder(evs);
+      stamp = SI.stamps(all.filter(e => !/^(loc|stype|tag|tags)$/.test(e.t)), (SI.describe ? SI.describe(all) : { tags: {} }).tags);
+    } catch (_) { return; }
+    const plays = all.filter(e => !/^(loc|stype|tag|tags)$/.test(e.t));
+    const by = new Map();
+    let last = null;
+    plays.forEach(e => {
+      if ((e.t === 'p2_made' || e.t === 'p3_made') && e.pid) last = e;
+      else if (e.t === 'ast') { if (e.pid && last && last.team === e.team) by.set(last, e.pid); last = null; }
+    });
+    const on = [new Set(st[0]), new Set(st[1])];
+    plays.forEach(e => {
+      if (e.t === 'sub') { const s = on[e.team]; if (s) { if (e.out) s.delete(e.out); if (e.in) s.add(e.in); } return; }
+      if (!(e.t === 'p2_made' || e.t === 'p3_made') || !(e.team === 0 || e.team === 1)) return;
+      const sp = stamp.get(e);
+      if (!sp || sp.second || sp.offTo || sp.transition) return;
+      const who = by.get(e);
+      on[e.team].forEach(pid => { if (pid !== e.pid) { const o = at(pid); o.m++; if (who === pid) o.a++; } });
+      /* the passer was on the floor whatever the log's substitutions say */
+      if (who && who !== e.pid && !on[e.team].has(who)) { const o = at(who); o.m++; o.a++; }
+    });
+  });
+  return out;
+}
+/* the rate on a row, from hcAssists' tally: blank under HC_MIN baskets */
+function hcAstOf(t) { return t && t.m >= HC_MIN ? Math.round(1000 * t.a / t.m) / 10 : null; }
+
 /* ---------------------------------------------------------------- templates --- */
 /* THE DEFAULTS BY POSITION (Louie, 2026-10-02). MAIN STATS, the player's page; PLAYERS, the club report's card rows. */
 const TPL = {
   main: {
     guard: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
             ['SCORING', ['usg', 'ts', 'efg', 'ftr', 'ft_pct']],
-            ['PLAYMAKING', ['au', 'ast3_sh', 'ast2_sh', 'tov_pct']],
+            ['PLAYMAKING', ['au', 'hc_ast_pct', 'ast3_sh', 'ast2_sh', 'tov_pct']],
             ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'mid_a100', 'mid_pct', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
             ['SITUATIONS', ['ev_transition_pts_sh', 'ev_half_efg', 'ev_half_tov_pct']],
             ['DEFENCE & GLASS', ['stl_pct', 'dreb_pct']],
@@ -280,6 +326,32 @@ function ranker(field, keys) {
            avg: k => avg.get(k), n: fl.length };
 }
 const band = (p, style) => (p == null ? 0 : style ? 9 : p >= 75 ? 4 : p >= 50 ? 3 : p >= 25 ? 2 : 1);
+
+/* POSITION-ADJUSTED, ALWAYS (2026-10-02). A player in a report is ranked among the players of his own position in the
+   competition, never the whole of it: a centre's rebounding among the bigs, a point guard's assists among the guards.
+   The pools are the site's own (season.js positionGroups, the profile's "adjust for position": the third of the
+   competition that plays most like guards, the wings, the third that plays most like bigs). The player himself goes in
+   the pool of the group his report is drawn for (his minutes at each position, the cover's breakdown), so the cover,
+   the template and the pool always agree. A pool of fewer than POS_MIN players ranks him against everybody instead,
+   and the page says so. */
+const POS_MIN = 12;
+const POS_OF = { G: 'guard', F: 'wing', C: 'big' };
+const POS_PLURAL = { guard: 'guards', wing: 'wings', big: 'bigs' };
+function posPools(field) {
+  const SE = root.EpinoiaSeason, out = new Map();
+  if (SE && SE.positionGroups) SE.positionGroups(field || []).forEach((g, id) => out.set(id, POS_OF[g] || null));
+  return out;
+}
+/* a ranker over one position's pool, the player `id` put in it: R.group (null when it fell back on everybody), R.who */
+function posRanker(field, keys, group, id, pools) {
+  const P = pools || posPools(field);
+  const pool = group ? (field || []).filter(r => (id != null && r.id === id) || P.get(r.id) === group) : [];
+  const ok = pool.length >= POS_MIN;
+  const R = ranker(ok ? pool : field, keys);
+  R.group = ok ? group : null;
+  R.who = ok ? (POS_PLURAL[group] || 'players') : 'players';
+  return R;
+}
 function fmtStat(k, v) {
   const s = STATS[k] || { dp: 1 };
   if (!isNum(v)) return '—';
@@ -616,6 +688,8 @@ function legendBlocks(keys, extra, kind) {
     '<div><i data-b="9"></i><span><b>a style</b>: more is neither better nor worse, so it is ranked by most and drawn in one tone</span></div>' +
     '<div><i data-b="0"></i><span><b>not ranked</b>: too few to rank, or a figure the field does not carry</span></div></div>' +
     '<p class="rp-lg-p">A percentile says where the figure sits among the others in the same competition and season: the 80th is better than eight in ten. ' +
+    (kind === 'team' ? 'A club is ranked among the clubs; a player always among the players of his own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition. '
+      : 'A player is always ranked among the players of his own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition, and the average shown is theirs. ') +
     'Where smaller is better (turnovers, fouls, what an opponent did with him on the floor) the order is turned round, so a high percentile is always good. ' +
     '± is with him (or the unit) on the floor minus off it. All rates are worked out from the season’s totals, never averaged from games.</p>'));
   const seen = new Set(), rows = [];
@@ -1027,5 +1101,5 @@ function groupsFor(state, set, pos) {
 }
 
 return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, posCourtHTML, POS_KEY, block, title, frag, el, esc,
-         fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, layout, legendBlocks, PAGE, SLOTS, isNum };
+         fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, HC_MIN, posPools, posRanker, POS_PLURAL, layout, legendBlocks, PAGE, SLOTS, isNum };
 }));

@@ -30,6 +30,7 @@ function modules(ctx) {
   const pos = () => posP || (posP = Promise.resolve(ctx.pos ? ctx.pos() : null).catch(() => null));
   let group = 'guard';
   const RAPM = { map: null, running: false };
+  const HC = { key: null, map: null };                       // the competition's half-court assists, once per set of games
 
   /* ---------------- the cover ---------------- */
   const cover = {
@@ -86,21 +87,35 @@ function modules(ctx) {
       } catch (_) { /* without them */ }
       const groups = E.groupsFor(R.state, 'main', group);
       const keys = groups.flatMap(g => g[1]);
-      const Rk = E.ranker(field, keys);
+      /* half-court AST%: every game of the competition replayed once (report.js hcAssists), for every player of the field */
+      if (keys.indexOf('hc_ast_pct') >= 0 && ctx.fieldGames && E.hcAssists) {
+        try {
+          const G = await ctx.fieldGames();
+          if (G && G.length) {
+            const k = G.map(g => g.id).sort().join(',');
+            if (HC.key !== k) { HC.key = k; HC.map = E.hcAssists(G); }
+            field.forEach(r => { r.hc_ast_pct = E.hcAstOf(HC.map.get(r.id)); });
+          }
+        } catch (e) { if (root.console) root.console.warn('[report half-court AST%]', e); }
+      }
+      /* every percentile among the players of his position (report.js posRanker), his own average theirs */
+      const pools = E.posPools(field);
+      const Rk = E.posRanker(field, keys, group, mine.id, pools);
       R.legend.push(...keys);
       const tiles = [['GP', 'gp', 0], ['MIN / G', 'mpg', 1], ['PTS / G', 'ppg', 1], ['REB / G', 'rpg', 1], ['AST / G', 'apg', 1], ['BPM', 'bpm', 1, true]];
-      const Rt = E.ranker(field, tiles.map(t => t[1]).filter(k => k !== 'gp'));
+      const Rt = E.posRanker(field, tiles.map(t => t[1]).filter(k => k !== 'gp'), group, mine.id, pools);
       const tileHTML = '<div class="rp-tiles rp-tiles-b" style="--n:' + tiles.length + '">' + tiles.map(([l, k, dp, sg]) => {
         const v = mine[k], p = k === 'gp' ? null : Rt.pct(k, mine.id);
         return '<div class="rp-tile"' + (p == null ? '' : ' data-b="' + E.band(p) + '"') + '><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span>' + l + '</span>' +
           (p == null ? '' : '<span class="rp-rk" data-b="' + E.band(p) + '">' + E.ordinal(p) + '</span>') + '</div>'; }).join('') + '</div>';
       const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !rapmOk;
-      const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' players' : ''].filter(Boolean).join(' · ')) + tileHTML +
+      const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' ' + Rk.who + (Rk.group ? ' (adjusted for position)' : '') : ''].filter(Boolean).join(' · ')) + tileHTML +
         (needRapm ? '<p class="rp-flagnote" style="margin-top:8px">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : ''))];
       out.push(block(E.colsHTML(groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, mine, Rk)).join('') + '</div>',
         ([, ks]) => ks.length + 1.6) +
-        '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' players of ' + (c.scope || 'the competition') +
-          ' (the bar), and their average. Template: ' + templateName(R.state, group) + '.') + '</p>'));
+        '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' ' + Rk.who + ' of ' + (c.scope || 'the competition') +
+          ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of his own' : ': too few players of his position to rank him among them alone, so against everybody') +
+          '. Template: ' + templateName(R.state, group) + '.') + '</p>'));
       return out;
     }
   };
@@ -171,10 +186,36 @@ function modules(ctx) {
           const l = sp && sp.all;
           if (l) {
             const f1 = v => (v == null ? '—' : (+v).toFixed(1));
-            const cells = [['minutes', f1(l.mins)], ['pts / 36', f1(l.pts36)], ['shots / 36', f1(l.fga36)], ['threes / 36', f1(l.p3a36)],
-              ['reb / 36', f1(l.reb36)], ['ast / 36', f1(l.ast36)], ['tov / 36', f1(l.tov36)], ['TS%', f1(l.ts)]];
-            out.push(block(title('His own numbers', 'per 36 minutes, over the games these lineups come from') +
-              '<div class="rp-tiles" style="--n:' + cells.length + '">' + cells.map(([k, v]) => '<div class="rp-tile"><b>' + v + '</b><span>' + k + '</span></div>').join('') + '</div>'));
+            /* each against the players of his position (report.js posPools): their season per 36 minutes, ten or more a game;
+               fewer turnovers are better, and how many shots and threes he takes is a style */
+            const B = ctx.bars ? await ctx.bars().catch(() => null) : null;
+            const P = await pos();
+            const grp = E.posGroup(P && P.pct, c.listedPos);
+            const fld = ((B && B.field) || []).filter(r => +r.mpg >= 10);
+            const pools = E.posPools((B && B.field) || []);
+            const myId = B && B.mine && B.mine.id;
+            const same = fld.filter(r => r.id === myId || pools.get(r.id) === grp);
+            const pool = same.length >= 12 ? same : fld;
+            const p36 = (r, k) => (E.isNum(r[k]) && +r.mpg > 0 ? 36 * r[k] / r.mpg : null);
+            const pctOf = (vals, v, low) => {
+              const xs = vals.filter(E.isNum).map(Number);
+              if (xs.length < 5 || !E.isNum(v)) return null;
+              const below = xs.filter(x => x < +v).length, eq = xs.filter(x => x === +v).length;
+              const p = 100 * (below + eq / 2) / xs.length;
+              return Math.round(low ? 100 - p : p);
+            };
+            const cells = [['minutes', l.mins, null], ['pts / 36', l.pts36, r => p36(r, 'ppg')], ['shots / 36', l.fga36, r => p36(r, 'fga_pg'), 'style'],
+              ['threes / 36', l.p3a36, r => p36(r, 'p3a_pg'), 'style'], ['reb / 36', l.reb36, r => p36(r, 'rpg')], ['ast / 36', l.ast36, r => p36(r, 'apg')],
+              ['tov / 36', l.tov36, r => p36(r, 'topg'), 'low'], ['TS%', l.ts, r => r.ts]];
+            const tile = ([k, v, of, how]) => {
+              const p = of ? pctOf(pool.map(of), v, how === 'low') : null;
+              const b = p == null ? 0 : E.band(p, how === 'style');
+              return '<div class="rp-tile"' + (b ? ' data-b="' + b + '"' : '') + '><b>' + f1(v) + '</b><span>' + k + '</span>' +
+                (p == null ? '' : '<span class="rp-rk" data-b="' + b + '">' + (how === 'style' ? E.ordinal(Math.max(1, Math.round((100 - p) / 100 * pool.length))) + ' most' : E.ordinal(p)) + '</span>') + '</div>';
+            };
+            out.push(block(title('His own numbers', 'per 36 minutes, over the games these lineups come from · coloured by his place among ' + pool.length + ' ' +
+              (pool === same ? (E.POS_PLURAL[grp] || 'players') : 'players') + ' (10+ minutes a game)') +
+              '<div class="rp-tiles rp-tiles-b" style="--n:' + cells.length + '">' + cells.map(tile).join('') + '</div>'));
           }
         } catch (_) { /* without it */ }
       }

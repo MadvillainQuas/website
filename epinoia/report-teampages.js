@@ -476,11 +476,16 @@ function modules(ctx) {
       const allKeys = new Set();
       const sets = {};
       ['guard', 'wing', 'big'].forEach(g => { sets[g] = E.groupsFor(R.state, 'players', g); sets[g].forEach(x => x[1].forEach(k => allKeys.add(k))); });
-      const Rk = E.ranker(field, [...allKeys]);
+      /* each player among the players of his position (report.js posRanker): one pool a group, and his own where the
+         site's position groups put him elsewhere than his minutes do */
+      const pools = E.posPools(field), byGroup = {};
+      const rankerOf = (r, grp) => (pools.get(r.id) === grp
+        ? (byGroup[grp] || (byGroup[grp] = E.posRanker(field, [...allKeys], grp, null, pools)))
+        : E.posRanker(field, [...allKeys], grp, r.id, pools));
       R.legend.push(...allKeys);
       const SL = ['PG', 'SG', 'SF', 'PF', 'C'];
       const needR = !rapmOk && [...allKeys].some(k => E.STATS[k] && E.STATS[k].rapm);
-      const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the ' + Rk.n + ' players of ' + (c.scope || 'the competition')) +
+      const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the players of his own position in ' + (c.scope || 'the competition') + ' (guards, wings, bigs)') +
         (needR ? '<p class="rp-flagnote">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : '');
       const out = [];
       squad.forEach((r, i) => {
@@ -489,6 +494,7 @@ function modules(ctx) {
         const tot = pm ? pm.reduce((a, b) => a + b, 0) : 0;
         const pct = tot > 0 ? pm.map(v => 100 * v / tot) : null;
         const grp = E.posGroup(pct, m.position);
+        const Rk = rankerOf(r, grp);
         const top = pct ? pct.indexOf(Math.max(...pct)) : -1;
         const chips = pct ? pct.map((v, k) => v >= 1 ? '<span' + (k === top ? ' class="top"' : '') + '>' + SL[k] + ' ' + Math.round(v) + '%</span>' : '').join('') : (m.position ? '<span>' + esc(m.position) + '</span>' : '');
         const ph = m.photo_url ? '<span class="rp-ph"><img src="' + esc(m.photo_url) + '" alt="" crossorigin="anonymous"></span>'
@@ -497,6 +503,7 @@ function modules(ctx) {
         const groups = sets[grp].map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + ks.map(k => E.statCellHTML(k, r, Rk)).join('') + '</div></div>').join('');
         out.push(block((i === 0 ? head : '') + '<div class="rp-pcard"><div class="rp-pid">' + ph + '<div class="rp-pname">' + (m.jersey ? '#' + esc(m.jersey) + ' ' : '') + esc(nm) + '</div>' +
           '<div class="rp-pmeta">' + esc(grp) + ' · ' + (r.gp || 0) + ' gp · ' + f1(r.mpg) + ' mpg · ' + f1(r.ppg) + ' ppg</div>' +
+          '<div class="rp-pvs">vs ' + Rk.n + ' ' + esc(Rk.who) + '</div>' +
           '<div class="rp-ppos">' + chips + '</div></div><div class="rp-pgroups">' + groups + '</div></div>'));
       });
       return out;

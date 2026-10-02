@@ -1921,9 +1921,11 @@ function render(opts) {
           /* the shade goes to --heat, and kit/table.css draws it as a rounded chip inside the cell */
           if (p != null) { const hs = heatStyle(p); if (hs) { td.classList.add('heat'); td.style.cssText = hs.replace('background:', '--heat:'); } }
         }
-        if (c.signed && !heat) {
-          const n = r[c.k];
-          if (n > 0) td.classList.add('pos'); else if (n < 0) td.classList.add('neg');
+        /* WITHOUT THE HEAT MAP a signed figure is green where it is better and red where it is worse: the right way round
+           where less is better (a DRTG, TOV% or what the opponents did going up is worse), and pace, a style, in neither */
+        if (c.signed && !heat && c.k !== 'diff_pace') {
+          const n = r[c.k], g = c.low ? -n : n;
+          if (g > 0) td.classList.add('pos'); else if (g < 0) td.classList.add('neg');
         }
       }
       tr.appendChild(td);

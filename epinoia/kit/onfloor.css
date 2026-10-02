@@ -83,3 +83,69 @@
   .dl.five .dpill{ min-width:0; padding:3px 7px 2px; font-size:11px }
 }
 @media (max-width:520px){ .oo{ padding:0 10px calc(var(--u,8px)*2) } #withpanel{ padding:0 10px calc(var(--u,8px)*2) } }
+
+/* ---- 2026-10-02: THE TEAM ON AND OFF, IN COLOUR (wowy.js onOffTiles) -------------------------------------------------
+   The heads on a ground coloured by their net rating (data-b 4 deep green, 3 light green, 2 amber, 1 red: the report's
+   bands), the swing a solid tile with its verdict, his share of the minutes as a bar, the rows in tagged groups (the
+   ratings, the offence, the defence, the style), the better of each pair of figures green and the worse red, and every
+   gap in four strengths (deltaCell's data-s): the colours the reports use, so the profile and the PDF read alike. */
+.oo, .wcmp, .dl{ --oo4:#1f9d55; --oo3:#8cc63f; --oo2:#f2b33d; --oo1:#d9534f; --oo9:#5b8fa8; --oo0:#c9d3cd }
+.oo [data-b="4"]{ --c:var(--oo4) } .oo [data-b="3"]{ --c:var(--oo3) } .oo [data-b="2"]{ --c:var(--oo2) } .oo [data-b="1"]{ --c:var(--oo1) }
+.oo [data-b="9"]{ --c:var(--oo9) } .oo [data-b="0"]{ --c:var(--oo0) }
+/* the heads */
+.oo-s[data-b]{ border-color:color-mix(in srgb,var(--c) 60%,var(--rule-2));
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 24%,var(--panel)),color-mix(in srgb,var(--c) 7%,var(--panel)));
+  box-shadow:inset 0 4px 0 var(--c) }
+.oo-s[data-b] b{ color:color-mix(in srgb,var(--c) 58%,var(--ink)) }
+.oo-r{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:center; gap:3px 5px;
+  font-family:var(--f-data,ui-monospace,monospace); font-size:11.5px; color:var(--ink); font-variant-numeric:tabular-nums }
+.oo-r i{ font-style:normal; font-family:var(--f-micro); font-size:7.5px; letter-spacing:.1em; color:var(--ink-3) }
+.oo-r i:not(:first-child){ margin-left:7px }
+.oo-sw[data-b]{ border:0; color:#ffffff; background:var(--c); box-shadow:0 10px 22px -14px var(--c), inset 0 -3px 0 rgba(0,0,0,.14) }
+.oo-sw[data-b="3"], .oo-sw[data-b="2"], .oo-sw[data-b="0"]{ color:#0d1f17 }
+.oo-sw[data-b] b, .oo-sw[data-b] .oo-k, .oo-sw[data-b] .oo-m{ color:inherit }
+.oo-sw[data-b] .oo-k, .oo-sw[data-b] .oo-m{ opacity:.85 }
+.oo-v{ font-family:var(--f-ui); font-weight:800; font-size:12.5px; line-height:1.2 }
+/* his minutes, on against off */
+.oo-split{ display:flex; gap:3px; height:20px; margin:-2px 0 12px; border-radius:999px; overflow:hidden }
+.oo-split span{ display:flex; align-items:center; justify-content:center; gap:5px; min-width:0; flex-basis:0; padding:0 8px;
+  white-space:nowrap; overflow:hidden; font-family:var(--f-data,ui-monospace,monospace); font-size:10.5px; color:#ffffff;
+  text-shadow:0 1px 1px rgba(0,0,0,.35) }
+.oo-split span b{ font-family:var(--f-micro); font-weight:400; font-size:7.5px; letter-spacing:.12em; text-transform:uppercase }
+.oo-split .on{ background:linear-gradient(90deg,var(--team-a,var(--oo4)),color-mix(in srgb,var(--team-a,var(--oo4)) 62%,#000000)) }
+.oo-split .off{ background:color-mix(in srgb,var(--ink-3) 50%,var(--panel)) }
+/* the groups */
+.dl > .dl-g{ grid-column:1 / -1; display:flex; align-items:baseline; gap:8px; padding:7px 12px 6px; --gc:#0d1f17;
+  background:color-mix(in srgb,var(--gc) 8%,var(--panel)); box-shadow:inset 4px 0 0 var(--gc);
+  border-bottom:1px solid color-mix(in srgb,var(--gc) 26%,transparent) }
+.dl-g b{ font-family:var(--f-micro); font-weight:400; font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:#ffffff;
+  background:color-mix(in srgb,var(--gc) 86%,#000000); padding:3px 8px 2px; border-radius:4px }
+.dl-g span{ font-family:var(--f-ui); font-size:11px; color:var(--ink-3) }
+.dl-g.of{ --gc:var(--team-a,#1f9d55) } .dl-g.df{ --gc:#3f5249 } .dl-g.st{ --gc:#5b8fa8 }
+/* a label, and "lower is better" where it is */
+.dl > .dl-l{ flex-wrap:wrap; gap:3px 8px }
+.dl-l em.lo{ font-style:normal; font-family:var(--f-ui); font-size:9.5px; letter-spacing:0; text-transform:none; white-space:nowrap;
+  color:var(--ink-2); background:color-mix(in srgb,var(--oo9) 16%,transparent); padding:1px 7px; border-radius:999px }
+/* the better figure of the two, and the worse */
+.dl > .dl-v.w{ font-weight:700; color:color-mix(in srgb,var(--oo4) 72%,var(--ink)); background:color-mix(in srgb,var(--oo4) 13%,var(--panel)) }
+.dl > .dl-v.l{ color:color-mix(in srgb,var(--oo1) 78%,var(--ink)); background:color-mix(in srgb,var(--oo1) 8%,var(--panel)) }
+/* the gaps in four strengths */
+.dl-d[data-s="2"] .dpill.gd{ color:#ffffff; background:var(--oo4) }
+.dl-d[data-s="1"] .dpill.gd{ color:color-mix(in srgb,var(--oo4) 70%,var(--ink)); background:color-mix(in srgb,var(--oo3) 36%,var(--panel)) }
+.dl-d[data-s="1"] .dpill.bd{ color:color-mix(in srgb,#9a5b00 82%,var(--ink)); background:color-mix(in srgb,var(--oo2) 40%,var(--panel)) }
+.dl-d[data-s="2"] .dpill.bd{ color:#ffffff; background:var(--oo1) }
+.dl-d[data-s="2"] .dbar i.gd{ background:var(--oo4) } .dl-d[data-s="1"] .dbar i.gd{ background:var(--oo3) }
+.dl-d[data-s="1"] .dbar i.bd{ background:var(--oo2) } .dl-d[data-s="2"] .dbar i.bd{ background:var(--oo1) }
+.dpill.st{ color:color-mix(in srgb,var(--oo9) 72%,var(--ink)); background:color-mix(in srgb,var(--oo9) 20%,var(--panel)) }
+.dbar i.st{ background:var(--oo9) }
+/* the key */
+.oo-key{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:10px 0 0 }
+.oo-c{ padding:3px 10px; border-radius:999px; font-family:var(--f-ui); font-size:11px; font-weight:700; color:var(--ink);
+  background:color-mix(in srgb,var(--c) 22%,var(--panel)); border:1px solid color-mix(in srgb,var(--c) 60%,transparent) }
+.oo-kt{ font-family:var(--f-ui); font-size:11px; color:var(--ink-3) }
+@container oo (max-width:560px){
+  .oo-r{ font-size:10.5px }
+  .dl-g span{ display:none }
+}
+/* "lower is better" under its label, the same on every row that has it */
+.dl > .dl-l:has(> em.lo){ flex-direction:column; flex-wrap:nowrap; align-items:flex-start; justify-content:center }

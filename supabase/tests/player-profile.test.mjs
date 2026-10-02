@@ -213,9 +213,12 @@ ok('a style is grey, nothing is nothing, and no number is a dash', style.tone ==
   const st = (ids, dur, pf, pa) => ({ game_id: 'g', team_idx: 0, player_ids: ids, stats: { dur, pf, pa, off: bx(pf), def: bx(pa) } });
   const host = new Node('div');
   WY.onOffTiles(host, [st(['A', 'b', 'c', 'd', 'e'], 600000, 24, 18), st(['A', 'b', 'c', 'd', 'f'], 480000, 20, 16), st(['g', 'b', 'c', 'd', 'e'], 600000, 14, 22)], 'A');
-  const labels = all(host, 'div.dl-l').map(x => x.textContent);
-  ok('on / off: the net ratings large with the swing between them, then every rating and factor a row', host.querySelector('div.oo-sw') && labels.length === 9 &&
-     labels[0] === 'net rating' && labels.indexOf('defensive rating') === 2 && labels.indexOf('pace') === 8, labels);
+  const labels = all(host, 'span.dl-t').map(x => x.textContent);
+  const lows = all(host, 'div.dl-l').filter(x => x.querySelector('em.lo')).map(x => x.querySelector('span.dl-t').textContent);
+  ok('on / off: the net ratings large with the swing between them, then the ratings, both ends\' four factors and the pace, a row each', host.querySelector('div.oo-sw') && labels.length === 13 &&
+     labels[0] === 'net rating' && labels.indexOf('defensive rating') === 2 && labels.indexOf('pace') === 12 && all(host, 'div.dl-g').length === 4, labels);
+  ok('...every figure where less is better says so (DRTG, TO%, the opponents\' eFG%, OREB%, FTr), turnovers forced does not', lows.join('|') ===
+     ['defensive rating', 'turnover %', 'opponents\u2019 effective fg%', 'opponents\u2019 offensive rebound %', 'opponents\u2019 free-throw rate'].join('|'), lows);
   const sw = host.querySelector('div.oo-sw'), ons = all(host, 'div.oo-s').map(x => x.children[1].textContent);
   ok('...the swing is green, the arrow up, when the team is better with him on (+2.0 a minute on, -0.8 off)', sw.classList.contains('gd') && /^\u25b2 \+/.test(sw.children[1].textContent) &&
      +ons[0] > +ons[1], [sw.className, sw.children[1].textContent, ons]);

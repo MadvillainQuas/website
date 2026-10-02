@@ -76,6 +76,8 @@ function rpSlot(k) { if (!RP_WAIT[k]) { let res; RP_WAIT[k] = { p: new Promise(r
 function rpGive(k, v) { const w = rpSlot(k); w.v = v; if (!w.done) { w.done = true; w.res(v); } }
 function rpGet(k, ms) { const w = rpSlot(k); return w.done ? Promise.resolve(w.v) : Promise.race([w.p, new Promise(r => setTimeout(() => r(w.v), ms || 120000))]); }
 let REPORT = null, PL_LISTED = '', SCOPE_GAMES = [], RP_SEASON = null;      // RP_SEASON: the season shown (boot's SEASON)
+let RP_FIELD = null;                                                       // the scope's games with their logs, once
+const RP_LOG_GAMES = 600;
 function reportTab(pl, name, team) {
   const E = window.EpinoiaReport, RPm = window.EpinoiaReportPlayer;
   if (!E || !RPm || !pl || !pl.id || REPORT) return;
@@ -93,6 +95,19 @@ function reportTab(pl, name, team) {
     week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.playerWeek(api, pl.id, { name, league: ACCESS_LEAGUE.slug, days: 7 }) : null,
     /* the league's games of the scope shown (RAPM is the league's regression; report.js keeps it per set of games) */
     gameIds: async () => { await rpGet('bars').catch(() => null); return SCOPE_GAMES.slice(); },
+    /* every game of the scope with its frozen starters and its log, read once, for what only the play-by-play of the
+       whole competition can rank (half-court AST%, report.js hcAssists); a competition of more than RP_LOG_GAMES games
+       is not read in a browser, and the figure is left blank */
+    fieldGames: () => RP_FIELD || (RP_FIELD = (async () => {
+      const ids = await ctx.gameIds();
+      const D = window.EpinoiaData;
+      if (!D || !ids.length || ids.length > RP_LOG_GAMES) return null;
+      const rows = [];
+      for (let i = 0; i < ids.length; i += 80) rows.push(...await D.all('games?id=in.(' + ids.slice(i, i + 80).join(',') + ')&select=id,starters'));
+      const evs = await D.events(rows.filter(g => Array.isArray(g.starters)).map(g => g.id));
+      const by = {}; evs.forEach(e => { (by[e.gameId] = by[e.gameId] || []).push(e); });
+      return rows.filter(g => by[g.id]).map(g => ({ id: g.id, starters: g.starters, events: by[g.id] }));
+    })().catch(() => null)),
     bigGames: (window.EpinoiaData && window.EpinoiaData.BIG_GAMES) || 0,
     rapm: window.EpinoiaRAPM ? ((ids, onProgress) => {
       if (!ids || !ids.length) return Promise.reject(new Error('no games in this scope'));
@@ -1565,6 +1580,7 @@ async function seasonLog(ids, sn) {
           sosGames = S.games;
           SCOPE_GAME_COUNT = (S.games || []).length;
           SCOPE_GAMES = (S.games || []).map(g => g.id).filter(Boolean);
+          RP_FIELD = null;                                                   // another scope: its own games' logs
           field = S.players;
           mine = field.find(r => pids.has(r.id)) || field.find(r => r.id === pl.id) || null;
         }

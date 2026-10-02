@@ -430,7 +430,7 @@ async function teamShotClock(team) {
     const name = team.short_name || team.name || 'This club';
     V.mount(host, 'team', { unit: 'season', sides: [
       { label: name + ' offence', colour: readableColour(team), chances: own },
-      { label: name + ' defence', colour: '#8a9a92', chances: opp }
+      { label: name + ' defence', colour: '#8a9a92', chances: opp, def: true }
     ] });
     const note = $('#clockNote');
     if (note) note.textContent = 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games');

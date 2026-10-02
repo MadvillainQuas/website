@@ -207,12 +207,15 @@ function render(opts) {
 /* one player against every minute they were not on the floor */
 /* A GAP AS IT READS AT A GLANCE (2026-10-02, the player profile's "on the floor with"): the signed difference on a pill,
    green where it is better, red where it is worse and grey where more is only a style, the arrow the way the number
-   went; beside it a bar from the centre, right for better and left for worse, full at `scale`.
+   went; beside it a bar from the centre, right for better and left for worse, full at `scale`. The cell's data-s is how
+   big the gap is against the scale (2: half of it or more, 1: less), so a big gain is a deep green and a small one a
+   light one, a small loss amber and a big one red: the report's four bands.
    dir: 1 more is better, -1 less is better, 0 neither. kit/onfloor.css. */
 function deltaCell(d, dir, scale, dp) {
   const cell = el('div', 'dl-d');
   const small = dp === 2 ? 0.005 : 0.05;
   const tone = d == null || Math.abs(d) < small ? 'nt' : dir === 0 ? 'st' : ((d > 0) === (dir > 0) ? 'gd' : 'bd');
+  if (tone === 'gd' || tone === 'bd') cell.setAttribute('data-s', Math.abs(d) >= (scale || 1) / 2 ? '2' : '1');
   const pill = el('span', 'dpill ' + tone);
   pill.appendChild(el('i', null, d == null || Math.abs(d) < small ? '' : d > 0 ? '\u25b2' : '\u25bc'));
   pill.appendChild(document.createTextNode(d == null ? '\u2014' : (Math.abs(d) < small ? '\u00b1' : d > 0 ? '+' : '\u2212') + Math.abs(d).toFixed(dp == null ? 1 : dp)));
@@ -230,13 +233,29 @@ function deltaCell(d, dir, scale, dp) {
   return cell;
 }
 
-/* THE TEAM WITH HIM ON AND OFF (the player profile): the net rating each way and the swing between them, large, then every
-   rating and factor the stints hold, on against off, each gap a delta (deltaCell). The ratings are per 100 possessions. */
-const OO_ROWS = [
-  ['net', 'net rating', 1, 20], ['ortg', 'offensive rating', 1, 15], ['drtg', 'defensive rating', -1, 15],
-  ['efg', 'effective fg%', 1, 8], ['ts', 'true shooting %', 1, 8], ['tov', 'turnover %', -1, 6],
-  ['oreb', 'offensive rebound %', 1, 10], ['defg', 'opponents\u2019 effective fg%', -1, 8], ['pace', 'pace', 0, 8]
+/* THE TEAM WITH HIM ON AND OFF (the player profile, and the player report's "on the floor with"; 2026-10-02 in colour).
+   THE HEAD    with him on and with him off, each with its net rating large on a ground coloured by how good it is
+               (deep green the team outscores opponents by five or more per 100, light green it outscores them, amber
+               it is outscored, red by five or more), its ratings at both ends and its minutes; between them the swing
+               (on - off) in a solid colour, its arrow, and a verdict in words; under the three, his share of the minutes.
+   THE ROWS    in four groups -- the ratings, the offence's four factors, the defence's four factors (what the opponents
+               did), the style -- each figure with him on and off, the better of the two tinted green and the worse red,
+               the gap as a pill and a bar (deltaCell). Every figure where less is better (the defensive rating, the
+               turnover rate, the opponents' shooting, offensive rebounding and free throws) is turned round, and says
+               so ("lower is better"); turnovers forced are better higher; pace is neither. Ratings per 100 possessions. */
+const OO_GROUPS = [
+  ['rt', 'the ratings', 'points per 100 possessions', [['net', 'net rating', 1, 20], ['ortg', 'offensive rating', 1, 15], ['drtg', 'defensive rating', -1, 15]]],
+  ['of', 'offence', 'the four factors, with the ball', [['efg', 'effective fg%', 1, 8], ['ts', 'true shooting %', 1, 8], ['tov', 'turnover %', -1, 6],
+    ['oreb', 'offensive rebound %', 1, 10], ['ftr', 'free-throw rate', 1, 10]]],
+  ['df', 'defence', 'what the opponents did', [['defg', 'opponents\u2019 effective fg%', -1, 8], ['dtov', 'turnovers forced %', 1, 6],
+    ['doreb', 'opponents\u2019 offensive rebound %', -1, 10], ['dftr', 'opponents\u2019 free-throw rate', -1, 10]]],
+  ['st', 'style', 'neither better nor worse', [['pace', 'pace', 0, 8]]]
 ];
+const OO_ROWS = OO_GROUPS.flatMap(g => g[3]);
+/* a net rating's band: 4 five or more to the good, 3 to the good, 2 behind, 1 five or more behind */
+const netBand = v => (v == null ? 0 : v >= 5 ? 4 : v >= 0 ? 3 : v > -5 ? 2 : 1);
+/* the swing's verdict: within two points of even it is the same team */
+const SWING = [[6, 4, 'much better with him on'], [2, 3, 'better with him on'], [-2, 0, 'about the same either way'], [-6, 2, 'worse with him on'], [-Infinity, 1, 'much worse with him on']];
 function onOffTiles(host, stints, playerId) {
   const L = window.EpinoiaLineups;
   const h = typeof host === 'string' ? document.querySelector(host) : host;
@@ -247,25 +266,62 @@ function onOffTiles(host, stints, playerId) {
   const card = el('div', 'oo');
   card.setAttribute('data-i18n-ctx', 'onoff');
   const top = el('div', 'oo-top');
-  const side = (cls, label, v, mins) => {
+  const side = (cls, label, l) => {
     const s = el('div', 'oo-s ' + cls);
-    s.append(el('span', 'oo-k', label), el('b', null, sgn(v)), el('span', 'oo-m', f1(mins) + ' min'));
+    s.setAttribute('data-b', String(netBand(l.net)));
+    const r = el('span', 'oo-r');
+    r.append(el('i', null, 'ORTG'), document.createTextNode(f1(l.ortg)), el('i', null, 'DRTG'), document.createTextNode(f1(l.drtg)));
+    s.append(el('span', 'oo-k', label), el('b', null, sgn(l.net)), r, el('span', 'oo-m', f1(l.mins) + ' min'));
     return s;
   };
   const d = oo.diff.net;
+  const v = d == null ? null : SWING.find(x => d >= x[0]);
   const sw = el('div', 'oo-sw ' + (d == null || Math.abs(d) < 0.05 ? 'nt' : d > 0 ? 'gd' : 'bd'));
-  sw.append(el('span', 'oo-k', 'on\u2013off'), el('b', null, (d > 0 ? '\u25b2 ' : d < 0 ? '\u25bc ' : '') + sgn(d)), el('span', 'oo-m', 'net rating per 100 possessions'));
-  top.append(side('on', 'on the floor', oo.on.net, oo.on.mins), sw, side('off', 'off the floor', oo.off.net, oo.off.mins));
+  sw.setAttribute('data-b', String(v ? v[1] : 0));
+  sw.append(el('span', 'oo-k', 'on\u2013off'), el('b', null, (d > 0 ? '\u25b2 ' : d < 0 ? '\u25bc ' : '') + sgn(d)),
+    el('span', 'oo-v', v ? v[2] : 'not enough minutes yet'), el('span', 'oo-m', 'net rating per 100 possessions'));
+  top.append(side('on', 'on the floor', oo.on), sw, side('off', 'off the floor', oo.off));
   card.appendChild(top);
-  const grid = el('div', 'dl');
+  /* his share of the minutes, on against off */
+  const tm = (+oo.on.mins || 0) + (+oo.off.mins || 0);
+  if (tm > 0) {
+    const share = el('div', 'oo-split');
+    const part = (cls, label, m) => {
+      const p = el('span', cls);
+      p.style.flexGrow = String(Math.max(0.0001, m));
+      p.append(el('b', null, label), document.createTextNode(' ' + Math.round(100 * m / tm) + '%'));
+      return p;
+    };
+    share.append(part('on', 'on', +oo.on.mins || 0), part('off', 'off', +oo.off.mins || 0));
+    card.appendChild(share);
+  }
+  const grid = el('div', 'dl oo-dl');
   ['', 'on', 'off', 'on \u2212 off'].forEach((t, i) => grid.appendChild(el('div', 'dl-h' + (i ? ' n' : ' l'), t)));
-  OO_ROWS.forEach(([k, label, dir, scale]) => {
-    const on = oo.on[k], off = oo.off[k], dd = on != null && off != null ? on - off : null;
-    grid.append(el('div', 'dl-l', label), el('div', 'dl-v', f1(on)), el('div', 'dl-v', f1(off)), deltaCell(dd, dir, scale));
+  OO_GROUPS.forEach(([g, name, what, rows]) => {
+    const gh = el('div', 'dl-g ' + g);
+    gh.append(el('b', null, name), el('span', null, what));
+    grid.appendChild(gh);
+    rows.forEach(([k, label, dir, scale]) => {
+      const on = oo.on[k], off = oo.off[k], dd = on != null && off != null ? on - off : null;
+      const lab = el('div', 'dl-l');
+      lab.appendChild(el('span', 'dl-t', label));
+      if (dir < 0) lab.appendChild(el('em', 'lo', '\u2193 lower is better'));
+      /* the better of the two figures green, the worse red: the right way round for a figure where less is better */
+      const better = dir === 0 || dd == null || Math.abs(dd) < 0.05 ? 0 : (dd > 0) === (dir > 0) ? 1 : -1;
+      const vOn = el('div', 'dl-v' + (better > 0 ? ' w' : better < 0 ? ' l' : ''), f1(on));
+      const vOff = el('div', 'dl-v' + (better < 0 ? ' w' : better > 0 ? ' l' : ''), f1(off));
+      grid.append(lab, vOn, vOff, deltaCell(dd, dir, scale));
+    });
   });
   card.appendChild(grid);
-  card.appendChild(el('div', 'oo-note', 'the team\u2019s numbers in the minutes this player was on the floor and the minutes off it \u00b7 green is better for the team with this player on, red worse ' +
-    '(a lower defensive rating, turnover rate and opponents\u2019 shooting are better) \u00b7 grey is only a style'));
+  const key = el('div', 'oo-key');
+  [['4', 'much better'], ['3', 'better'], ['2', 'worse'], ['1', 'much worse'], ['9', 'a style']].forEach(([b, t]) => {
+    const c = el('span', 'oo-c', t); c.setAttribute('data-b', b); key.appendChild(c);
+  });
+  key.appendChild(el('span', 'oo-kt', 'for the team with him on the floor'));
+  card.appendChild(key);
+  card.appendChild(el('div', 'oo-note', 'the team\u2019s numbers in the minutes this player was on the floor and the minutes off it \u00b7 the better of the two figures is green and the worse red, ' +
+    'the right way round where less is better (a defensive rating, a turnover rate and what the opponents did) \u00b7 a gap of half its scale or more is a deep green or red'));
   h.appendChild(card);
 }
 
