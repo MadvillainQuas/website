@@ -1,0 +1,75 @@
+/* ============================================================================
+   EDIT FROM THE PAGE (adminedit.js, 0214): the panel someone who manages a club or a player opens instead of
+   suggesting. It is suggest.css's dialog (sg-*) with sections, colour pickers and the picture frames added.
+   Every colour is the kit's token, so the light theme and a club's colours follow on their own.
+   ============================================================================ */
+
+/* the chip and the button, for someone who edits: filled, so it reads as a different act from suggesting */
+.sg-chip.sg-ed{background:var(--lume);color:var(--on-accent)}
+.ep-btn.sg-btn.sg-ed{border-color:var(--lume);color:var(--lume)}
+.ep-btn.sg-btn.sg-ed:hover,.ep-btn.sg-btn.sg-ed:focus-visible{background:var(--lume);color:var(--on-accent)}
+
+dialog.sg-dlg.ae-dlg{width:min(640px,94vw)}
+@media (min-width:1000px){ dialog.sg-dlg.ae-dlg{width:min(640px,calc(94vw / 1.25))} }
+@media (min-width:1200px){ dialog.sg-dlg.ae-dlg{width:min(640px,calc(94vw / 1.5))} }
+.ae-dlg .sg-head{text-align:center;justify-items:center}
+.ae-dlg .sg-sub{max-width:52ch}
+
+/* a section: its title centred on a hairline, then its fields */
+.ae-sec{display:grid;gap:calc(var(--u)*1.25);padding-top:calc(var(--u)*1.5);border-top:1px solid var(--rule)}
+.ae-sec:first-child{border-top:0;padding-top:0}
+.ae-sec-h{display:grid;gap:4px;text-align:center;justify-items:center}
+.ae-sec-t{margin:0;font:400 9px/1.4 var(--f-micro);letter-spacing:0.12em;text-transform:uppercase;color:var(--lume)}
+.ae-sec-h .sg-hint{max-width:52ch}
+.ae-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:calc(var(--u)*1.25)}
+.ae-grid.two{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.ae-ini{text-transform:uppercase;letter-spacing:0.08em}
+
+/* colours: the picker beside its hex, and a strip showing the two with the name on them */
+.ae-colour-row{display:flex;gap:8px;align-items:stretch}
+.ae-pick{flex:none;width:44px;min-height:38px;padding:2px;border:1px solid var(--rule-2);border-radius:2px;background:var(--panel-2);cursor:pointer}
+.ae-hex{flex:1 1 auto;min-width:0;font-family:var(--f-micro);font-size:12px;text-transform:lowercase}
+.ae-clear{flex:none;align-self:center}
+.ae-swatch{position:relative;display:grid;grid-template-columns:3fr 1fr;height:46px;border:1px solid var(--rule-2);border-radius:2px;overflow:hidden}
+.ae-sw-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 12px;
+  font:400 clamp(16px,3vw,22px)/1 var(--f-score);text-transform:uppercase;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.55);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* the pictures: what it is now beside what it will be */
+.ae-pic{display:grid;gap:calc(var(--u)*1.25);justify-items:center}
+.ae-pic .sg-field{width:100%}
+.ae-pic .sg-hint{text-align:center;max-width:52ch}
+.ae-discs,.ae-frames{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:18px}
+.ae-disc-f,.ae-frame-f{margin:0;display:grid;justify-items:center;gap:6px}
+.ae-disc-f[hidden],.ae-frame-f[hidden]{display:none}
+.ae-disc-f .sg-lab,.ae-frame-f .sg-lab{margin:0}
+/* the badge's own disc (kit/clubhero.css): white, the crest whole at 74% */
+.ae-disc{position:relative;width:96px;height:96px;border-radius:50%;background:#fff;overflow:hidden;border:1px solid var(--rule-2)}
+.ae-disc img{position:absolute;inset:13%;width:74%;height:74%;object-fit:contain;display:block}
+/* the profile's frame (kit/playerhero.css): 4:5, rounded */
+.ae-frame{display:flex;align-items:center;justify-content:center;width:144px;aspect-ratio:4/5;height:auto;border-radius:10px;
+  overflow:hidden;background:var(--panel-2);border:1px solid var(--rule-2)}
+.ae-frame img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block}
+canvas.ae-crop{width:144px;cursor:grab;touch-action:none;border-color:var(--lume)}
+canvas.ae-crop:active{cursor:grabbing}
+.ae-none{font:400 8px/1.4 var(--f-micro);letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-3);text-align:center;padding:6px}
+.ae-zoom{max-width:280px}
+.ae-zoom[hidden]{display:none}
+.ae-range{width:100%;accent-color:var(--lume)}
+.ae-usecol{justify-self:center}
+.ae-usecol[hidden]{display:none}
+
+/* a measure's other units, under it */
+.ae-alt{display:block;min-height:1.4em;margin-top:4px;font:400 8.5px/1.6 var(--f-micro);color:var(--ink-3)}
+
+.ae-dlg .sg-status.ok{color:var(--lume)}
+.ae-dlg .sg-acts{justify-content:center}
+
+@media (max-width:480px){
+  .ae-grid,.ae-grid.two{grid-template-columns:1fr}
+  .ae-disc{width:80px;height:80px}
+  .ae-frame,canvas.ae-crop{width:120px}
+}
+
+/* a message of several sentences, each its own text */
+.ae-dlg .sg-status .ae-part{margin-left:0.45em}

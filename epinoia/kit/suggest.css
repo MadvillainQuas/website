@@ -77,6 +77,11 @@ select.sg-in{appearance:auto}
 .sg-done{margin:0;font:400 24px/1 var(--f-score);text-transform:uppercase;color:var(--lume)}
 .sg-acts{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-end}
 
+/* the kit zooms the body on a wide screen (epinoia-kit.css: 1.25, then 1.5), and a dialog's vh and vw are zoomed with it:
+   divided back, so a long one still fits the window and scrolls inside */
+@media (min-width:1000px){ dialog.sg-dlg,.sg-form{max-height:calc(88vh / 1.25)} dialog.sg-dlg{width:min(520px,calc(92vw / 1.25))} }
+@media (min-width:1200px){ dialog.sg-dlg,.sg-form{max-height:calc(88vh / 1.5)} dialog.sg-dlg{width:min(520px,calc(92vw / 1.5))} }
+
 @media (max-width:480px){
   .sg-form{padding:calc(var(--u)*2)}
   .sg-acts .ep-btn{flex:1 1 auto;justify-content:center;text-align:center}

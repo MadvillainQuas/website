@@ -231,6 +231,22 @@ function suggestOn(node, field, opts) {
 }
 function suggestable(pl, entry, name) {
   const S = window.EpinoiaSuggest;
+  /* EDIT, for whoever manages him (adminedit.js, 0214), a player under 18 included: the database says who. What it
+     saves, his measures and position are redrawn here; his name and photograph by the editor */
+  if (window.EpinoiaAdminEdit && pl && pl.id) {
+    window.EpinoiaAdminEdit.mount({ type: 'player', id: pl.id, name, host: '#idactions', onSaved: row => {
+      ['first_name', 'last_name', 'height_cm', 'weight_kg', 'wingspan_cm', 'previous_club'].forEach(k => { if (k in row) pl[k] = row[k]; });
+      if (entry) entry.position = row.position || null;
+      const sub = $('#sub');
+      let pc = sub && sub.querySelector('.pos-chip:not(.est-pos)');
+      if (pc && !row.position) pc.remove();
+      else if (row.position && sub) {
+        if (!pc) { pc = el('span', 'pos-chip'); pc.setAttribute('data-i18n-ctx', 'pos'); (sub.querySelector('.sub-break') || sub.lastChild).after(pc); }
+        pc.textContent = row.position;
+      }
+      paintVitals(pl);
+    } });
+  }
   suggestFor = S && pl && pl.id && !pl.is_minor ? { pl, entry, name } : null;
   if (!suggestFor) return;
   suggestOn($('#name'), 'name');

@@ -20,6 +20,10 @@
                                               over a map whose links hold the bottom; else on its corner)
      button(choices | () => choices, opts?)   the page's "suggest an edit" button (a list: a picker first)
      open(choices, opts?)                     the dialog itself
+     setEditor({ covers(choices), open(choices, opts) })
+                                              someone who may change a detail directly (adminedit.js, 0214):
+                                              the chips and the button read "edit" and open their panel
+                                              for every detail it covers; the rest stay suggestions
      choice = { type: 'player'|'team'|'staff'|'venue', id, field, subject, current?, label? }
 
    For the test (supabase/tests/suggestions.test.mjs):  toCm(ft, in)  toKg(lb)  readPin(text)  FIELDS  REASONS
@@ -306,6 +310,24 @@ function measure(host, c, kind) {
   };
 }
 
+/* ------------------------------------------------------------- the editor --- */
+/* WHOEVER MAY CHANGE A DETAIL THEMSELVES does not suggest it (adminedit.js asks the database who that is): the
+   chip and the button say "edit" and open that panel instead. A detail it does not cover stays a suggestion. */
+let editor = null;
+const listOf = l => [].concat(typeof l === 'function' ? l() : l).filter(Boolean);
+function edits(list) { try { return !!(editor && editor.covers(listOf(list))); } catch (_) { return false; } }
+function labelButton(b) {
+  const ed = edits(b.__sgList);
+  b.classList.toggle('sg-ed', ed);
+  b.lastChild.textContent = ed ? 'edit' : (b.__sgLabel || 'suggest an edit');
+  b.title = ed ? 'Edit this page’s details: your changes go live at once'
+               : 'Suggest a correction to this page’s details: the league’s moderators check it first';
+}
+function setEditor(e) {
+  editor = e && typeof e.covers === 'function' && typeof e.open === 'function' ? e : null;
+  if (doc) doc.querySelectorAll('.sg-btn').forEach(b => { if (b.__sgList) labelButton(b); });
+}
+
 /* ------------------------------------------------------------- the dialog --- */
 let openNow = null;
 function open(list, opts) {
@@ -314,6 +336,7 @@ function open(list, opts) {
   const choices = [].concat(typeof list === 'function' ? list() : list)
     .filter(c => c && c.id && FIELDS[c.field] && (c.field !== 'photo' || root.EpinoiaUpload));
   if (!choices.length) return null;
+  if (editor && edits(choices)) return editor.open(choices, o);
   if (openNow) { try { openNow.close(); } catch (_) { /* gone */ } }
 
   const dlg = doc.body.appendChild(el('dialog', 'sg-dlg'));
@@ -483,12 +506,13 @@ function attach(node, list, opts) {
   if (root.getComputedStyle && root.getComputedStyle(node).position === 'static') node.classList.add('sg-rel');
   node.addEventListener('mouseenter', () => {
     if (node.querySelector(':scope > .sg-chip')) return;
-    const chip = node.appendChild(el('button', 'sg-chip'));
+    const ed = edits((node.__sg || {}).list);
+    const chip = node.appendChild(el('button', 'sg-chip' + (ed ? ' sg-ed' : '')));
     chip.type = 'button';
     chip.setAttribute('data-i18n-ctx', 'suggest');
     chip.appendChild(el('span', 'sg-chip-i', '✎'));
-    chip.appendChild(el('span', 'sg-chip-t', 'suggest an edit'));
-    chip.title = 'suggest an edit';
+    chip.appendChild(el('span', 'sg-chip-t', ed ? 'edit' : 'suggest an edit'));
+    chip.title = ed ? 'edit' : 'suggest an edit';
     chip.addEventListener('click', e => {
       e.preventDefault(); e.stopPropagation();
       const s = node.__sg || {};
@@ -512,9 +536,11 @@ function button(list, opts) {
   b.appendChild(el('span', 'sg-chip-i', '✎'));
   b.appendChild(el('span', null, o.label || 'suggest an edit'));
   b.title = 'Suggest a correction to this page’s details: the league’s moderators check it first';
+  b.__sgList = list; b.__sgLabel = o.label || null;
+  if (editor) labelButton(b);
   b.addEventListener('click', () => open(typeof list === 'function' ? list() : list, o));
   return b;
 }
 
-return { open, attach, button, toCm, toKg, readPin, FIELDS, REASONS, VALUE, POSITIONS };
+return { open, attach, button, setEditor, toCm, toKg, readPin, FIELDS, REASONS, VALUE, POSITIONS };
 }));

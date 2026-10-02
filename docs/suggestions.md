@@ -70,6 +70,75 @@ A suggested picture is decided in **Photographs** with every other upload, and o
 - **In Photographs.** The row is marked **suggested by a fan**, with the fan's note, name and source.
 - **The decision.** Approve and reject work as for any upload. Approving a crest makes it the club's crest. The suggestion follows the decision (a trigger on `media`), and the fan is told.
 
+## Editing directly (migration 0214)
+
+Someone who already has the right to change a detail does not suggest it. On a club's page and a player's page, the **suggest an edit** button and the hover chips read **edit** for them, and open an edit panel (`adminedit.js`, `kit/adminedit.css`). What they save is live at once, and every save is written to the audit log. Everybody else sees the suggestion flow exactly as before.
+
+### Who may edit what
+
+The page never decides this: it asks the database (`admin_edit_rights`), and the functions that save ask again. No right is new; each is the one the tables and the picture queue already give.
+
+| Subject | Who may edit | Their picture |
+| --- | --- | --- |
+| A club | the platform's administrators, its league's administrators, and the club's own managers (`is_team_manager`, as `teams_write` and `publish_team_logo`) | a crest goes live at once for all three, as in the club portal |
+| A player | the platform's administrators, and the administrators and managers of a club he is on now (an active squad entry) | live at once for the platform's and the league's administrators (`approve_media`'s own rule). A club manager's photograph waits in the league's **Photographs**, as every club upload does |
+| An arena | the platform's administrators, and the administrators of the league it belongs to (`suggestion_owner`, the people who accept a suggestion about it) | none |
+
+A club's manager still *suggests* a change to an arena. A player under 18 has no suggest button, but the people who manage him get **edit** (his details are theirs). His photograph still needs a guardian's consent on record (`approve_media`).
+
+### What the panel edits
+
+- **A club:** its name, short name, initials (2 to 4 letters or digits, unique in the league; empty means the site works them out), first and second colour (hex; the second may be none), and its crest.
+  - The crest is previewed on the badge's white disc, whole, as the page shows it.
+  - **use the crest's colours** reads the new crest (`teamcolour.js`) and fills in both colours.
+  - Changing a colour marks the club's colours as chosen by hand (`colour_source = 'manual'`), so the ingest's crest reader leaves them alone.
+  - A renamed club keeps its old name as an alias, so a feed that still spells it the old way finds it.
+- **The club's arena,** in the same panel, for its league's administrators: its name, address, city and place on the map (pasted from Google Maps, as in the suggestion dialog). The page reloads after an arena change, because the arena card is drawn from several sources.
+- **A player:** his first and last name (a last name may be empty), height, weight and wingspan (in cm and kg, with feet, inches and pounds shown as you type), position, previous club, and his photograph.
+  - The photograph is cut to the profile's 4:5 frame in the browser: drag it into place and zoom.
+  - His position is set on the active squad entries the editor manages.
+  - A renamed player keeps his old name as an alias.
+
+Not editable here: a player's date or year of birth, whether he is under 18, his consents, a club's league, slug or feed ids. Those stay in the league's console.
+
+### How a save works
+
+1. The panel sends only what changed, to one function per subject: `admin_edit_team(team, patch)`, `admin_edit_player(player, patch)` or `admin_edit_venue(venue, patch)`.
+2. Each function is `security definer` with `search_path = public`. It:
+   - refuses a caller who is signed out or has no right (error `42501`), whatever the page shows;
+   - refuses the whole patch if it names any column outside its list (`reason: 'field'`);
+   - checks every value with 0199's own rules (`suggestion_value`): names of letters, measures in a person's range, a position of the game, a pin on the Earth. Club names are 2 to 80 characters, short names up to 40, colours `#rrggbb`. A bad value is `reason: 'value'` with its `field`, and nothing is written;
+   - writes the change and one `audit_log` row: `action = 'admin_edit'`, the subject and its id, the actor, and `detail = { as, before, after }` (only the fields that changed). An edit that changes nothing writes nothing;
+   - returns `{ ok, changed, team | player | venue }`, the row as it now is. The page redraws from it.
+3. **A picture** goes up as every other one does (`upload.js prepare`: resized, EXIF dropped), under the existing storage policies:
+   - a crest, or an administrator's photograph, goes straight into `media-public` (`media_public_write`);
+   - a club manager's photograph goes into `media-pending`;
+   - either way, a pending `media` row is recorded (`media_insert`).
+
+   The patch then names that row (`logo_media` or `photo_media`). The function checks four things about it: it is this caller's upload, it is of this subject and of the right kind, its path is one `upload.js` writes, and its file is in the public bucket. It then publishes it through the existing doors, `publish_team_logo` (which also hands back the old crest's file for the page to delete) and `approve_media`. No storage policy and no table policy was added or widened.
+
+### Setting it up
+
+Run `npx supabase@latest db push` once `supabase/migrations/0214_admin_edits.sql` is on the branch Supabase deploys from. There is no function to deploy and nothing to switch on. Until the migration is on the server, nobody is offered **edit** (the rights check fails quietly), and the suggestion flow carries on as it was.
+
+### Tests
+
+`supabase/tests/admin-edits.test.mjs`. With no database, it checks:
+
+- the wiring in both pages, and the hand-over from `suggest.js`;
+- that the fields the panel sends are the ones each function takes;
+- the patch and crop helpers;
+- the translations.
+
+On PGlite, it checks:
+
+- who may edit what, across two leagues, a club manager, a fan and a signed-out visitor;
+- the whole patch refused for a column outside the list, and every value check;
+- nothing written on a refusal;
+- the audit rows;
+- the crest and photograph routes, including a club manager's photograph and a player under 18;
+- the grants.
+
 ## Limits
 
 - **Waiting suggestions.** A fan may have 30 suggestions waiting at once, and send 60 a day.
