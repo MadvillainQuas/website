@@ -583,7 +583,8 @@ ok('0147 is there', !!m47file);
 function definition(sql, kind, name) {
   const head = kind === 'view' ? 'create or replace view public.' + name + ' as'
                                : 'create or replace function public.' + name + '(';
-  const at = sql.lastIndexOf(head);
+  /* a view's query may live in private behind a public invoker view of the same name (0218) */
+  const at = kind === 'view' ? Math.max(sql.lastIndexOf(head), sql.lastIndexOf(head.replace('view public.', 'view private.'))) : sql.lastIndexOf(head);
   if (at < 0) return '';
   const end = sql.indexOf(kind === 'view' ? ';' : '$$;', at);
   return end < 0 ? '' : sql.slice(at, end);

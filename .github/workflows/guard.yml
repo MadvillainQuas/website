@@ -10,7 +10,9 @@ on:
             '.well-known/**', 'android/**', '.github/workflows/android.yml', 'tools/ios-team.mjs',
             # What wins: the builder, the backfill and their workflows (the run-ww tests read them)
             'tools/build-analytics.mjs', 'scripts/backfill_features.mjs', 'scripts/backfill_situations.mjs',
-            '.github/workflows/analytics.yml', '.github/workflows/backfill-features.yml']
+            '.github/workflows/analytics.yml', '.github/workflows/backfill-features.yml',
+            # the records backfill's runner and workflow (records-backfill.test.mjs reads them)
+            'scripts/records_backfill.mjs', '.github/workflows/records-backfill.yml']
   workflow_dispatch:
 
 jobs:
@@ -1611,6 +1613,28 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/records.test.mjs
           node supabase/tests/records-store.test.mjs
+
+      - name: The records backfill is gentle - one competition a call, never waiting for a finalise (0219)
+        # the migration (one competition a step, the lock tried with records_lock's key, its own lock and statement
+        # timeouts, records_backfill(n) one step, not callable from a browser); the runner with a fake clock (a pause
+        # between steps, longer when every candidate was busy, the time budget, retries, quiet before the push); the
+        # workflow; then every migration on PGlite: a platform's worth of finals backfilled step by step, each step
+        # timed, the lists equal to a rebuild from nothing, ready at the end, the next competition found through
+        # indexes, and the records' triggers measured with and without them on a live game and a final one
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/records-backfill.test.mjs
+
+      - name: No owner-rights view where the API can reach it, and nobody sees anything different (0218)
+        # Supabase's advisor (lint 0010) flagged four owner-rights views in public. Every migration before 0218 on
+        # PGlite, a fixture of every kind of league (open, live, members-only, private, both, none, a cup tie), a
+        # withheld minor, retired staff; twelve readers with memberships off and on read the four views, the six
+        # fast-path tables and season_leaders before and after 0218, compared exactly; lint 0010 finds nothing after;
+        # 0218 refuses (changing nothing) when a public view is no longer the query it copies, and applies twice;
+        # the plans are the plans they were and the box-score reads keep 0151's primary-key fast path
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/advisor-views.test.mjs
 
       - name: The creator hub - the numbers, the writing desk, storylines, graphics and icons (0200)
         # the pages first (the editor's words, permalink, tags and typed shortcuts; storylines.js on a season; the icon

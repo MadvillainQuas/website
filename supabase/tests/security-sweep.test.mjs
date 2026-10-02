@@ -45,7 +45,8 @@ function latest(kind, name) {
     const head = kind === 'view' ? 'create or replace view public.' + name + ' as'
       : kind === 'policy' ? 'create policy ' + name + ' on '
       : 'create or replace function public.' + name + '(';
-    const at = sql.lastIndexOf(head);
+    /* a view's query may live in private behind a public invoker view of the same name (0218) */
+    const at = kind === 'view' ? Math.max(sql.lastIndexOf(head), sql.lastIndexOf(head.replace('view public.', 'view private.'))) : sql.lastIndexOf(head);
     if (at < 0) continue;
     const end = sql.indexOf(kind === 'function' ? '$$;' : ';', at);
     return { file: f, text: end < 0 ? '' : sql.slice(at, end) };
