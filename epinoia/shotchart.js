@@ -555,6 +555,7 @@
   }
   function controlsHTML(r) {
     const o = r.o, st = r.st, out = [];
+    if (o.controls === false) return '';               // a printed page (report.js): the view it was asked for, no buttons
     if (o.zones) out.push(segHTML('view', st.view, 'view', [['zones', 'zones'], ['both', 'zones + shots'], ['shots', 'shots']]));
     if (o.kind === 'game' && o.sides) out.push(segHTML('side', st.side, 'team', [['both', 'both']].concat(o.sides.map((sd, i) => [String(i), sd.short || sd.name]))));
     const gl = o.gameList || [];
@@ -831,6 +832,7 @@
     if (!id || !REG[id]) { id = 'c' + (++seq); if (host.dataset) host.dataset.scwId = id; REG[id] = { st: initState(opts) }; }
     REG[id].o = opts;
     if (!opts.zones) REG[id].st.view = 'shots';
+    else if (/^(zones|both|shots)$/.test(o.view || '')) REG[id].st.view = o.view;   // a fixed view (report.js), not the reader's last
     bind();
     host.innerHTML = '<div class="scw" data-scw="' + id + '">' + innerHTML(REG[id]) + '</div>';
     return { zones: zones(o.shots || []), attempts: (o.shots || []).length };

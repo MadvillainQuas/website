@@ -1,0 +1,323 @@
+/* ============================================================================
+   THE REPORT (report.js, report-playerpages.js, report-teampages.js): the controls on the screen, and the A4 pages under them,
+   drawn exactly as they print. A page is 794 x 1123 px (210 x 297 mm at 96 dpi), scaled to the column by --rp-z.
+   Loaded before kit/teletext.css and kit/legibility.css on both profiles.
+
+   THE PAGES ARE PAPER. Inside .rp-pg the kit's tokens are its light colourway (print colours), so a component the
+   report borrows from the profile (the shot chart, the zone tables, the rotations, the depth chart) is drawn in ink
+   on white like the rest of the page. The cover alone is the site's own green-black.
+
+   BANDS (data-b on a stat row or cell): 4 the 75th percentile and up, 3 the 50th, 2 the 25th, 1 below, 9 a style
+   (one neutral tone), 0 not ranked.
+   ============================================================================ */
+
+/* ---- the controls ---- */
+#reportsec{ padding:0 calc(var(--u,8px)*3) calc(var(--u,8px)*3) }
+.rp-bar{ display:grid; gap:12px; padding:14px 16px; margin:0 0 16px; border:1px solid var(--rule-2); border-radius:14px;
+  background:var(--panel) }
+.rp-fields{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px }
+.rp-f{ display:flex; flex-direction:column; gap:4px; min-width:0 }
+.rp-f span, .rp-k{ font-family:var(--f-micro); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3) }
+.rp-f input, .rp-ed input, .rp-tpl select, .rp-ed select{ min-width:0; padding:8px 10px; border:1px solid var(--rule-2); border-radius:8px;
+  background:var(--ground); color:var(--ink); font-family:var(--f-ui); font-size:13px }
+.rp-mods, .rp-extras, .rp-outs, .rp-tpl{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px }
+.rp-extras:empty{ display:none }
+.rp-extras{ flex-direction:column; align-items:stretch }
+.rp-mod{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--rule-2); border-radius:999px;
+  font-family:var(--f-ui); font-size:12px; color:var(--ink); cursor:pointer; user-select:none }
+.rp-mod input{ accent-color:var(--lume); margin:0 }
+.rp-mod:has(input:checked){ border-color:var(--lume); background:color-mix(in srgb,var(--lume) 14%,transparent) }
+.rp-status{ font-family:var(--f-ui); font-size:12px; color:var(--ink-3) }
+.rp-rapm{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; font-family:var(--f-ui); font-size:12px; color:var(--ink-2) }
+.rp-ed{ display:grid; gap:8px; padding:10px; border:1px dashed var(--rule-2); border-radius:10px }
+.rp-ed-g{ display:grid; grid-template-columns:150px minmax(0,1fr) 170px auto; gap:8px; align-items:start;
+  padding:8px 0; border-bottom:1px solid var(--rule) }
+.rp-ed-chips{ display:flex; flex-wrap:wrap; gap:5px }
+.rp-ed-chip{ display:inline-flex; align-items:center; gap:4px; padding:3px 4px 3px 4px; border:1px solid var(--rule-2); border-radius:6px;
+  font-family:var(--f-ui); font-size:11px; color:var(--ink) }
+.rp-ed-chip button{ border:0; background:none; color:var(--ink-3); cursor:pointer; font-size:12px; padding:0 3px }
+.rp-ed-chip button:hover{ color:var(--flare) }
+.rp-ed-foot{ display:flex; flex-wrap:wrap; gap:8px; align-items:center }
+@media (max-width:700px){ .rp-fields{ grid-template-columns:1fr } .rp-ed-g{ grid-template-columns:1fr } }
+
+/* ---- the desk the pages lie on ---- */
+.rp-pages{ --rp-z:1; padding:18px 0 6px; border-radius:14px; overflow:hidden;
+  background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--panel-2) 92%,transparent) 0 14px,var(--panel) 14px 28px) }
+.rp-stage{ display:flex; flex-direction:column; align-items:center }
+
+/* ---- a page ---- */
+.rp-pg{ --ground:#ffffff; --panel:#ffffff; --panel-2:#eef4f0; --ink:#0d1f17; --ink-2:rgba(13,31,23,.92); --ink-3:rgba(13,31,23,.68);
+  --rule:rgba(13,31,23,.14); --rule-2:rgba(13,31,23,.3); --lume:#08603f; --aqua:#075a73; --amber:#8a5a00; --flare:#a01b2a;
+  --violet:#4a30b0; --good:#0a6d43; --bad:#b32433; --team-a:var(--rp-a,#08603f); --team-b:#075a73; --line-hi:rgba(13,31,23,.42);
+  --on-accent:#ffffff; --sc-ink:#0d1f17;
+  --b4:#1f9d55; --b3:#8cc63f; --b2:#f2b33d; --b1:#d9534f; --b9:#5b8fa8; --b0:#c9d3cd;
+  color-scheme:light; position:relative; flex:none; width:794px; height:1123px; margin:0 0 18px; overflow:hidden;
+  display:flex; flex-direction:column; background:#ffffff; color:var(--ink); font-family:var(--f-ui); font-size:11px; line-height:1.4;
+  box-shadow:0 2px 6px rgba(0,0,0,.25),0 14px 34px rgba(0,0,0,.28); zoom:var(--rp-z,1); text-align:left }
+.rp-pg *{ box-sizing:border-box }
+.rp-top{ flex:none; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px;
+  padding:22px 34px 12px; border-bottom:3px solid var(--rp-a,#08603f) }
+.rp-top-c{ width:38px; height:38px; border-radius:50%; display:grid; place-items:center; overflow:hidden; background:var(--rp-a,#08603f) }
+.rp-top-c.img{ background:#f2f6f4 }
+.rp-top-c img{ width:82%; height:82%; object-fit:contain }
+.rp-top-c b{ font-family:var(--f-score); font-size:17px; font-weight:400; color:#fff }
+.rp-top-n{ display:flex; flex-direction:column; min-width:0 }
+.rp-top-n b{ font-family:var(--f-score); font-weight:400; font-size:24px; line-height:1; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.rp-top-n span{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); margin-top:4px }
+.rp-top-m{ font-family:var(--f-score); font-size:22px; letter-spacing:.04em; color:var(--rp-a,#08603f); text-transform:uppercase; white-space:nowrap }
+.rp-top-m i{ font-style:normal; font-family:var(--f-micro); font-size:7.5px; letter-spacing:.1em; color:var(--ink-3) }
+.rp-body{ flex:1 1 auto; min-height:0; overflow:hidden; padding:16px 34px 10px; display:flex; flex-direction:column; gap:14px }
+.rp-foot{ flex:none; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 34px 16px;
+  border-top:1px solid var(--rule); font-family:var(--f-micro); font-size:7px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+.rp-foot .epinoia-mark{ font-size:11px; color:var(--ink) }
+.rp-blk{ flex:none; min-width:0 }
+.rp-empty{ padding:14px; border:1px dashed var(--rule-2); border-radius:8px; color:var(--ink-3); font-size:11px }
+.rp-h{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 0 8px; padding:0 0 4px; border-bottom:1px solid var(--rule-2) }
+.rp-h h3{ margin:0; font-family:var(--f-score); font-weight:400; font-size:19px; letter-spacing:.03em; text-transform:uppercase; color:var(--ink) }
+.rp-h span{ font-family:var(--f-micro); font-size:7px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); text-align:right }
+.rp-note{ margin:6px 0 0; font-size:9px; line-height:1.45; color:var(--ink-3) }
+
+/* ---- the front page: the subject on the deep green, a band of the club's colour, then paper ---- */
+.rp-cover{ background:#ffffff; padding:0 }
+.rp-cv-hero{ position:relative; flex:none; height:560px; display:flex; flex-direction:column; overflow:hidden;
+  background:linear-gradient(160deg,#0f2219 0%,#0a1711 55%,#07120d 100%); color:#f1f7f3 }
+.rp-cv-hero::before{ content:""; position:absolute; inset:0; background:radial-gradient(55% 45% at 50% 42%,color-mix(in srgb,var(--rp-a) 26%,transparent),transparent 72%) }
+.rp-cv-stripes{ position:absolute; top:-80px; right:-150px; width:420px; height:760px; transform:rotate(22deg); opacity:.22;
+  background:repeating-linear-gradient(90deg,var(--rp-a) 0 22px,transparent 22px 40px) }
+.rp-cv-top, .rp-cv-mid{ position:relative; z-index:1 }
+.rp-cv-top{ display:flex; justify-content:space-between; align-items:center; padding:34px 48px 0;
+  font-family:var(--f-ui); font-weight:600; font-size:9px; letter-spacing:.26em; text-transform:uppercase; color:rgba(241,247,243,.72) }
+.rp-cv-top .epinoia-mark{ font-size:18px; color:#ffffff }
+.rp-cv-mid{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:0 52px 30px; text-align:center }
+.rp-cv-crest{ width:164px; height:164px; border-radius:50%; display:grid; place-items:center; overflow:hidden; margin:0 0 10px;
+  background:#ffffff; border:4px solid var(--rp-a); box-shadow:0 0 0 8px rgba(255,255,255,.06),0 14px 34px rgba(0,0,0,.45) }
+.rp-cv-crest img{ width:74%; height:74%; object-fit:contain }
+.rp-cv-crest b{ font-family:var(--f-ui); font-weight:800; font-size:58px; color:#0d1f17 }
+.rp-cv-title{ display:flex; align-items:center; gap:14px; font-family:var(--f-ui); font-weight:700; font-size:11px; letter-spacing:.34em;
+  text-transform:uppercase; color:rgba(241,247,243,.9) }
+.rp-cv-title i{ width:46px; height:2px; background:var(--rp-a) }
+.rp-cv-name{ margin:0; max-width:100%; font-family:var(--f-ui); font-weight:800; font-size:50px; line-height:1.04; letter-spacing:.005em;
+  text-transform:uppercase; color:#ffffff; text-shadow:none }
+.rp-cv-sub{ font-family:var(--f-ui); font-weight:500; font-size:13px; letter-spacing:.08em; color:rgba(241,247,243,.78) }
+.rp-cv-band{ flex:none; height:10px; background:linear-gradient(90deg,var(--rp-a) 0 78%,color-mix(in srgb,var(--rp-a) 55%,#0b1813) 78% 90%,#0b1813 90%) }
+.rp-cv-low{ flex:1 1 auto; min-height:0; display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,1fr); gap:30px; padding:28px 48px 12px }
+.rp-cv-low h4{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:0 0 10px; padding:0 0 6px;
+  border-bottom:2px solid var(--rp-ink-a,#08603f); font-family:var(--f-ui); font-weight:800; font-size:10px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink) }
+.rp-cv-low h4 span{ font-weight:600; font-size:8px; letter-spacing:.1em; color:var(--ink-3) }
+.rp-cv-art .rp-court{ background:#f5f9f7 }
+.rp-cv-art .rp-spot{ width:50px; height:50px } .rp-cv-art .rp-spot.top{ width:60px; height:60px }
+.rp-cv-side{ min-width:0; display:flex; flex-direction:column }
+.rp-cv-facts{ margin:0 0 20px }
+.rp-cv-facts div{ display:grid; grid-template-columns:92px minmax(0,1fr); gap:8px; padding:6px 0; border-bottom:1px solid var(--rule) }
+.rp-cv-facts dt{ font-family:var(--f-ui); font-weight:600; font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); padding-top:2px }
+.rp-cv-facts dd{ margin:0; font-family:var(--f-ui); font-weight:700; font-size:11px; line-height:1.3; color:var(--ink) }
+.rp-cv-toc{ list-style:none; margin:0; padding:0 }
+.rp-cv-toc li{ display:flex; align-items:baseline; gap:6px; padding:5px 0; font-family:var(--f-ui); font-weight:600; font-size:11px; color:var(--ink) }
+.rp-cv-toc li i{ flex:1; border-bottom:1px dotted var(--rule-2); transform:translateY(-3px) }
+.rp-cv-toc li b{ font-family:var(--f-data,ui-monospace,monospace); font-size:10px; color:var(--rp-ink-a,#08603f) }
+.rp-cv-foot{ flex:none; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 48px 22px; border-top:1px solid var(--rule);
+  font-family:var(--f-ui); font-weight:600; font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3) }
+.rp-cv-foot .epinoia-mark{ font-size:11px; color:var(--ink); margin-left:4px }
+
+/* ---- the half court with the five spots ---- */
+.rp-court{ position:relative; width:100%; aspect-ratio:1500/1400; border-radius:10px; overflow:hidden; background:#f6faf8; border:1px solid var(--rule) }
+.rp-court > svg{ position:absolute; inset:0; width:100%; height:100% }
+.rp-spots{ position:absolute; inset:0 }
+.rp-spot{ --c:var(--b0); position:absolute; transform:translate(-50%,-50%); width:58px; height:58px; border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--c); color:#0d1f17;
+  border:2px solid rgba(255,255,255,.9); box-shadow:0 2px 6px rgba(0,0,0,.25) }
+.rp-spot b{ font-family:var(--f-micro); font-size:9px; letter-spacing:.06em; line-height:1 }
+.rp-spot i{ font-style:normal; font-family:var(--f-score); font-size:17px; line-height:1 }
+.rp-spot em{ position:absolute; top:100%; margin-top:4px; white-space:nowrap; font-style:normal; font-family:var(--f-ui); font-weight:700; font-size:10px;
+  padding:2px 6px; border-radius:6px; background:rgba(4,16,11,.82); color:#ffffff }
+.rp-spot.b4{ --c:#1f9d55; color:#ffffff } .rp-spot.b3{ --c:#8cc63f } .rp-spot.b2{ --c:#f2d04f } .rp-spot.b1{ --c:#f0a052 }
+.rp-spot.b0{ --c:transparent; border:2px dashed rgba(13,31,23,.35); box-shadow:none; color:rgba(13,31,23,.55) }
+.rp-spot.top{ width:70px; height:70px; box-shadow:0 0 0 4px rgba(31,157,85,.35),0 3px 8px rgba(0,0,0,.3) }
+.rp-court.sm .rp-spot{ width:30px; height:30px; border-width:1px } .rp-court.sm .rp-spot.top{ width:36px; height:36px }
+.rp-court.sm .rp-spot b{ font-size:6px } .rp-court.sm .rp-spot i{ font-size:10px }
+.rp-poskey{ display:flex; flex-wrap:wrap; gap:6px 12px; margin:8px 0 0; font-family:var(--f-micro); font-size:7px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3) }
+.rp-poskey span{ display:inline-flex; align-items:center; gap:5px }
+.rp-poskey i{ width:10px; height:10px; border-radius:50% }
+.rp-poskey i.b4{ background:#1f9d55 } .rp-poskey i.b3{ background:#8cc63f } .rp-poskey i.b2{ background:#f2d04f } .rp-poskey i.b1{ background:#f0a052 }
+.rp-poskey i.b0{ border:1.5px dashed currentColor }
+
+/* ---- tiles ---- */
+.rp-tiles{ display:grid; grid-template-columns:repeat(var(--n,6),minmax(0,1fr)); border:1px solid var(--rule-2); border-radius:10px; overflow:hidden }
+.rp-tile{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px 6px 8px; border-left:1px solid var(--rule) }
+.rp-tile:first-child{ border-left:0 }
+.rp-tile b{ font-family:var(--f-score); font-weight:400; font-size:27px; line-height:1; color:var(--ink) }
+.rp-tile span{ font-family:var(--f-micro); font-size:7px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); text-align:center }
+.rp-tile em{ font-style:normal; font-family:var(--f-data,ui-monospace,monospace); font-size:8.5px; color:var(--ink-3) }
+.rp-tile[data-b] b{ color:var(--ink) }
+.rp-tile.good b{ color:var(--good) } .rp-tile.bad b{ color:var(--bad) }
+
+/* ---- a statistic as a row, groups of them ---- */
+.rp-groups{ columns:2; column-gap:18px }
+.rp-g{ display:inline-block; width:100%; margin:0 0 12px; border:1px solid var(--rule-2); border-radius:10px; padding:8px 10px 6px; break-inside:avoid }
+.rp-g h4{ margin:0 0 4px; font-family:var(--f-micro); font-weight:400; font-size:8px; letter-spacing:.14em; color:var(--rp-a,#08603f) }
+.rp-st{ --b:var(--b0); display:grid; grid-template-columns:minmax(0,1fr) 46px 74px 30px 52px; align-items:center; gap:6px;
+  padding:4px 0; border-top:1px solid var(--rule) }
+.rp-g h4 + .rp-st{ border-top:0 }
+.rp-st[data-b="4"]{ --b:var(--b4) } .rp-st[data-b="3"]{ --b:var(--b3) } .rp-st[data-b="2"]{ --b:var(--b2) } .rp-st[data-b="1"]{ --b:var(--b1) } .rp-st[data-b="9"]{ --b:var(--b9) }
+.rp-st-l{ font-family:var(--f-ui); font-weight:700; font-size:9.5px; letter-spacing:.02em; color:var(--ink); text-transform:uppercase; line-height:1.15 }
+.rp-st-v{ font-family:var(--f-data,ui-monospace,monospace); font-size:11.5px; font-weight:700; text-align:right; color:var(--ink); font-variant-numeric:tabular-nums }
+.rp-st-bar{ position:relative; height:8px; border-radius:4px; background:#e7eeea; overflow:hidden }
+.rp-st-bar i{ position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:var(--b) }
+.rp-st-p{ font-family:var(--f-data,ui-monospace,monospace); font-size:9px; font-weight:700; text-align:right; color:color-mix(in srgb,var(--b) 70%,#0d1f17) }
+.rp-st-a{ font-family:var(--f-data,ui-monospace,monospace); font-size:8px; text-align:right; color:var(--ink-3) }
+.rp-st[data-b="0"] .rp-st-p{ color:var(--ink-3) }
+
+/* ---- the players' card rows (club report) ---- */
+.rp-pcard{ display:grid; grid-template-columns:128px minmax(0,1fr); gap:10px; padding:7px 9px; border:1px solid var(--rule-2); border-radius:12px;
+  border-left:5px solid var(--rp-a,#08603f) }
+.rp-pid{ display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; min-width:0 }
+.rp-ph{ width:46px; height:46px; border-radius:50%; overflow:hidden; display:grid; place-items:center; background:#e9f1ec; border:2px solid var(--rp-a,#08603f) }
+.rp-ph img{ width:100%; height:100%; object-fit:cover }
+.rp-ph b{ font-family:var(--f-score); font-weight:400; font-size:19px; color:var(--rp-a,#08603f) }
+.rp-pname{ font-family:var(--f-ui); font-weight:800; font-size:10.5px; line-height:1.15; color:var(--ink) }
+.rp-pmeta{ font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+.rp-ppos{ display:flex; flex-wrap:wrap; justify-content:center; gap:3px }
+.rp-ppos span{ font-family:var(--f-data,ui-monospace,monospace); font-size:8px; padding:1px 4px; border-radius:4px; background:#eef4f0; color:var(--ink) }
+.rp-ppos span.top{ background:#1f9d55; color:#fff }
+.rp-pgroups{ display:flex; flex-wrap:wrap; gap:3px 8px; align-content:flex-start }
+.rp-pg2{ display:flex; flex-direction:column; gap:2px }
+.rp-pg2 h5{ margin:0; font-family:var(--f-micro); font-weight:400; font-size:6.5px; letter-spacing:.12em; color:var(--rp-a,#08603f) }
+.rp-cells{ display:flex; flex-wrap:wrap; gap:2px }
+.rp-cell{ --b:var(--b0); width:51px; padding:2px 2px 1px; border-radius:5px; display:flex; flex-direction:column; align-items:center; gap:1px;
+  background:color-mix(in srgb,var(--b) 24%,#ffffff); border:1px solid color-mix(in srgb,var(--b) 55%,#ffffff) }
+.rp-cell[data-b="4"]{ --b:var(--b4) } .rp-cell[data-b="3"]{ --b:var(--b3) } .rp-cell[data-b="2"]{ --b:var(--b2) } .rp-cell[data-b="1"]{ --b:var(--b1) } .rp-cell[data-b="9"]{ --b:var(--b9) }
+.rp-cell[data-b="0"]{ background:#f4f7f5; border-color:#e1e8e4 }
+.rp-cell-l{ font-family:var(--f-ui); font-weight:700; font-size:5.8px; line-height:1.1; text-align:center; color:var(--ink-2); text-transform:uppercase; min-height:12px; display:flex; align-items:center }
+.rp-cell-v{ font-family:var(--f-data,ui-monospace,monospace); font-size:9.5px; color:var(--ink); line-height:1.1 }
+.rp-cell-p{ font-family:var(--f-data,ui-monospace,monospace); font-size:6px; color:var(--ink-2); min-height:7px }
+
+/* ---- tables ---- */
+.rp-tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:9.5px; border:1px solid var(--rule-2); border-radius:10px; overflow:hidden }
+.rp-tbl th{ padding:6px 6px 5px; background:#eef4f0; font-family:var(--f-micro); font-weight:400; font-size:7px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-2); text-align:right; border-bottom:1px solid var(--rule-2); white-space:nowrap }
+.rp-tbl th.l, .rp-tbl td.l{ text-align:left }
+.rp-tbl td{ padding:5px 6px; text-align:right; border-top:1px solid var(--rule); font-family:var(--f-data,ui-monospace,monospace); font-variant-numeric:tabular-nums; color:var(--ink) }
+.rp-tbl tr:first-child td{ border-top:0 }
+.rp-tbl td.l{ font-family:var(--f-ui); font-weight:600 }
+.rp-tbl td.names{ font-family:var(--f-ui); font-weight:600; font-size:9px; line-height:1.25; white-space:normal }
+.rp-tbl tr.sub th{ background:#f7faf8; font-family:var(--f-ui); font-weight:800; font-size:8.5px; letter-spacing:.04em; text-align:left; color:var(--rp-a,#08603f) }
+.rp-tbl td.pos{ color:var(--good); font-weight:700 } .rp-tbl td.neg{ color:var(--bad); font-weight:700 }
+.rp-tbl td[data-b]{ background:color-mix(in srgb,var(--b) 18%,#ffffff) }
+.rp-tbl td[data-b="4"]{ --b:var(--b4) } .rp-tbl td[data-b="3"]{ --b:var(--b3) } .rp-tbl td[data-b="2"]{ --b:var(--b2) } .rp-tbl td[data-b="1"]{ --b:var(--b1) }
+.rp-tbl td[data-b="9"]{ --b:var(--b9) } .rp-tbl td[data-b="0"]{ background:none }
+.rp-rk{ display:inline-block; min-width:26px; margin-left:4px; padding:1px 3px; border-radius:4px; font-size:7.5px; text-align:center;
+  background:#eef4f0; color:var(--ink-2) }
+.rp-rk[data-b="4"]{ background:#1f9d55; color:#fff } .rp-rk[data-b="3"]{ background:#cfe8b0 } .rp-rk[data-b="2"]{ background:#f8dfa4 } .rp-rk[data-b="1"]{ background:#f2c1bf }
+
+/* ---- two things side by side ---- */
+.rp-two{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:start }
+.rp-two > div{ min-width:0 }
+.rp-cap{ margin:0 0 6px; font-family:var(--f-ui); font-weight:800; font-size:11px; letter-spacing:.02em; color:var(--ink); text-transform:uppercase; display:flex; justify-content:space-between; gap:8px }
+.rp-cap span{ font-weight:400; font-family:var(--f-micro); font-size:7px; letter-spacing:.1em; color:var(--ink-3); align-self:center }
+
+/* ---- the four factors ---- */
+.rp-ff{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px }
+.rp-ffc{ border:1px solid var(--rule-2); border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; gap:6px }
+.rp-ffc h4{ margin:0; font-family:var(--f-micro); font-weight:400; font-size:7.5px; letter-spacing:.12em; color:var(--rp-a,#08603f); text-transform:uppercase }
+.rp-ffp{ display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.rp-ffs{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 4px; border-radius:8px; background:#f4f7f5 }
+.rp-ffs b{ font-family:var(--f-score); font-weight:400; font-size:24px; line-height:1 }
+.rp-ffs span{ font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+.rp-ffs.win{ background:color-mix(in srgb,#1f9d55 18%,#ffffff); box-shadow:inset 0 0 0 1.5px #1f9d55 }
+.rp-ffs.lose{ background:color-mix(in srgb,#d9534f 12%,#ffffff); box-shadow:inset 0 0 0 1.5px #d9534f }
+
+/* ---- the legend ---- */
+.rp-lg-key{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 18px; padding:10px; border:1px solid var(--rule-2); border-radius:10px; font-size:9.5px }
+.rp-lg-key div{ display:flex; align-items:flex-start; gap:8px } .rp-lg-key div span{ min-width:0 }
+.rp-lg-key i{ flex:none; width:22px; height:10px; margin-top:2px; border-radius:3px; background:var(--b0) }
+.rp-lg-key i[data-b="4"]{ background:var(--b4) } .rp-lg-key i[data-b="3"]{ background:var(--b3) } .rp-lg-key i[data-b="2"]{ background:var(--b2) }
+.rp-lg-key i[data-b="1"]{ background:var(--b1) } .rp-lg-key i[data-b="9"]{ background:var(--b9) }
+.rp-lg-p{ margin:8px 0 0; font-size:9.5px; line-height:1.5; color:var(--ink-2) }
+.rp-lg{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 18px }
+.rp-lg-row{ display:grid; grid-template-columns:96px minmax(0,1fr); gap:8px; padding:6px 0; border-top:1px solid var(--rule); break-inside:avoid }
+.rp-lg-row b{ font-family:var(--f-ui); font-weight:800; font-size:8.5px; text-transform:uppercase; color:var(--rp-a,#08603f) }
+.rp-lg-row span{ font-size:8.5px; line-height:1.45; color:var(--ink-2) }
+.rp-lg-row em{ font-style:normal; font-weight:700; color:var(--ink) }
+.rp-lg-row code{ display:block; margin-top:2px; font-family:var(--f-data,ui-monospace,monospace); font-size:7.5px; color:var(--ink-3) }
+
+/* ---- what the report borrows from the profile, in print dress ---- */
+.rp-pg .scw{ font-size:10px }
+.rp-pg .scw-ctl, .rp-pg .scw-tip, .rp-pg .sc-ctl, .rp-pg .scw-tiles, .rp-pg .scw-be{ display:none !important }
+/* single-line labels never wrap (a picture lays text out a hair wider than the page) */
+.rp-cv-title span, .rp-cv-top span, .rp-h h3, .rp-top-m, .rp-cap, .rp-tile span, .rp-cv-low h4, .rp-cv-facts dt, .rp-g h4{ white-space:nowrap }
+.rp-pg .czt-wrap, .rp-pg .scz-wrap{ margin:6px 0 0 }
+.rp-pg .ep-tabs, .rp-pg .barswitch, .rp-pg button{ display:none !important }
+.rp-pg .oo{ padding:0 }
+.rp-pg .dl, .rp-pg .oo-s, .rp-pg .oo-sw, .rp-pg .tile{ background:#ffffff }
+.rp-pg .rot, .rp-pg .dc{ font-size:10px }
+.rp-pg a{ color:inherit; text-decoration:none }
+
+/* ---- printing: the pages alone, one a sheet ---- */
+#rp-print{ display:none }
+@media print{
+  @page{ size:A4; margin:0 }
+  html, body{ zoom:1 !important; margin:0 !important; padding:0 !important; background:#ffffff !important }
+  body.rpprint > *:not(#rp-print){ display:none !important }
+  body.rpprint #rp-print{ display:block !important }
+  #rp-print .rp-pg{ zoom:1 !important; margin:0 !important; box-shadow:none !important; break-after:page; page-break-after:always;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact }
+  #rp-print .rp-pg:last-child{ break-after:auto; page-break-after:auto }
+}
+
+/* ---- the shot zones in two columns ---- */
+.rp-zt{ font-size:9px }
+.rp-zt th, .rp-zt td{ padding:4px 5px }
+.rp-zt td.l{ font-size:9px; white-space:nowrap }
+.rp-zt tr.none td{ color:var(--ink-3) }
+.rp-zs{ position:relative; min-width:58px }
+.rp-zs span{ position:relative; z-index:1 }
+.rp-zs i{ position:absolute; left:5px; bottom:2px; height:3px; border-radius:2px; background:var(--rp-a,#08603f); max-width:calc(100% - 10px) }
+.rp-zp{ display:inline-block; min-width:36px; padding:1px 5px; border-radius:999px; text-align:center; font-family:var(--f-data,ui-monospace,monospace);
+  font-size:9px; font-weight:700; background:#e6e9e7; color:#0d1f17 }
+.rp-zp.bm3{ background:#3f6fd8; color:#fff } .rp-zp.bm2{ background:#7f9fe8 } .rp-zp.bm1{ background:#c9d7f7 }
+.rp-zp.bp1{ background:#f8d4bd } .rp-zp.bp2{ background:#f0a273 } .rp-zp.bp3{ background:#e2723a; color:#fff }
+.rp-zp.few{ background:repeating-linear-gradient(135deg,#eef1ef 0 3px,#dfe5e1 3px 6px); color:var(--ink-3) }
+.rp-zp.nil{ background:none; color:var(--ink-3) }
+.rp-zkey{ display:flex; flex-wrap:wrap; align-items:center; gap:5px 6px; margin:6px 0 0; font-size:8px; color:var(--ink-3) }
+.rp-zkey .rp-zp{ min-width:22px; font-size:7.5px; font-weight:400 }
+
+/* ---- the box score's situation card, over a season ---- */
+.rp-sit{ border:1px solid var(--rule-2); border-radius:12px; padding:10px 12px 8px }
+.rp-sit-h{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin:0 0 8px }
+.rp-sit-h h4{ display:flex; align-items:baseline; gap:8px; margin:0; font-family:var(--f-ui); font-weight:800; font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink); white-space:nowrap }
+.rp-sit-h h4 i{ width:10px; height:10px; border-radius:3px; background:var(--s); align-self:center }
+.rp-sit-h h4 small{ font-weight:600; font-size:9px; letter-spacing:.08em; color:var(--ink-3) }
+.rp-sit-f{ display:flex; gap:10px; margin:0; font-size:8.5px; color:var(--ink-3); white-space:nowrap }
+.rp-sit-f b{ margin-right:3px; padding:1px 4px; border-radius:4px; font-family:var(--f-data,ui-monospace,monospace); font-size:12px; color:var(--ink); background:#eef4f0 }
+.rp-sit-g{ display:grid; grid-template-columns:minmax(0,0.9fr) minmax(0,1fr); gap:14px; align-items:start }
+.rp-sit-c .rp-court{ background:#f1f7f3 }
+.rp-dot.m{ fill:#4e5b55; stroke:#ffffff; stroke-width:6 }
+.rp-dot.x{ fill:#ffffff; stroke:#7d8a84; stroke-width:7 }
+.rp-sit-k{ display:flex; flex-wrap:wrap; gap:4px 10px; margin:5px 0 0; font-size:8px; color:var(--ink-3) }
+.rp-sit-k span{ display:inline-flex; align-items:center; gap:4px }
+.rp-sit-k i{ width:8px; height:8px; border-radius:50% } .rp-sit-k i.m{ background:#4e5b55 } .rp-sit-k i.x{ border:1.5px solid #7d8a84 }
+.rp-sit-s h5{ margin:0 0 4px; font-family:var(--f-ui); font-weight:800; font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink) }
+.rp-types, .rp-scorers{ list-style:none; margin:0 0 8px; padding:0; display:grid; gap:3px }
+.rp-types li, .rp-scorers li{ display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 34px; align-items:center; gap:6px; font-size:9px }
+.rp-scorers li{ grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 18px 40px }
+.rp-types li > span:first-child, .rp-scorers li > span:first-child{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.rp-tb{ position:relative; height:7px; border-radius:4px; background:#edf1ee; overflow:hidden }
+.rp-tb i{ position:absolute; left:0; top:0; bottom:0; border-radius:4px }
+.rp-tb i.a{ background:#cdd6d1 } .rp-tb i.m{ background:#5d6b64 }
+.rp-types b, .rp-scorers b{ font-family:var(--f-data,ui-monospace,monospace); font-size:9px; text-align:right }
+.rp-scorers small{ font-family:var(--f-data,ui-monospace,monospace); font-size:7.5px; color:var(--ink-3); text-align:right }
+.rp-sz{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin:0 0 8px }
+.rp-sz span{ position:relative; display:flex; flex-direction:column; padding:4px 6px 6px; border-radius:6px; background:#f3f6f4; overflow:hidden }
+.rp-sz small{ font-family:var(--f-ui); font-size:7px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+.rp-sz b{ font-family:var(--f-data,ui-monospace,monospace); font-size:12px; color:var(--ink) }
+.rp-sz em{ font-style:normal; font-size:8px; color:var(--ink-2) }
+.rp-sz i{ position:absolute; left:6px; bottom:3px; height:3px; border-radius:2px; background:#9fc4b2; max-width:calc(100% - 12px) }
+.rp-zl{ list-style:none; margin:0 0 8px; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px 12px }
+.rp-zl li{ display:grid; grid-template-columns:minmax(0,1fr) 34px 40px; align-items:center; gap:5px; font-size:8.5px; padding:2px 0; border-bottom:1px solid var(--rule) }
+.rp-zl li > span:first-child{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.rp-zl b{ font-family:var(--f-data,ui-monospace,monospace); font-size:8.5px; text-align:right }
+.rp-zl .rp-zp{ min-width:0; font-size:8px; padding:1px 3px }
+
+.rp-body > .rp-blk + .rp-blk:has(> .rp-pcard){ margin-top:-6px }
+.rp-ed[hidden]{ display:none }

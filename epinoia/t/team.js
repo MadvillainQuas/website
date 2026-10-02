@@ -287,8 +287,8 @@ async function chooseSeason(team, lg) {
     whenNear($('#teamclock'), () => teamShotClock(team));
     whenNear($('#teamrot'), () => teamRotations(team));
     whenNear($('#wowy') || $('#lulist'), () => { lineupPanels(team).catch(() => {}); });
+    reportTab(team);
     await videoPanel(team);
-    weeklyTab(team);
     frontOfficeTab(team);
   } catch (e) { oops('Could not load: ' + e.message); }
 })();
@@ -587,7 +587,7 @@ function syncTabs() {
   const tabs = $('#ttabs');
   if (!tabs) return;
   const c = document.body.classList;
-  const open = c.contains('fotab') ? 'front-office' : c.contains('wktab') ? 'weekly' : c.contains('vtab') ? 'video' : 'profile';
+  const open = c.contains('rptab') ? 'report' : c.contains('fotab') ? 'front-office' : c.contains('vtab') ? 'video' : 'profile';
   tabs.querySelectorAll('.ep-tab').forEach(b => {
     const on = b.dataset.p === open;
     b.classList.toggle('on', on);
@@ -1108,28 +1108,53 @@ async function videoPanel(team) {
       tabs.querySelectorAll('.ep-tab').forEach(b => b.classList.toggle('on', (b.dataset.p === 'video') === on));
       if (on) window.scrollTo({ top: tabs.getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
     };
-    tabs.querySelectorAll('.ep-tab').forEach(b => { b.onclick = () => showVideo(b.dataset.p === 'video'); });
+    tabs.querySelectorAll('.ep-tab').forEach(b => { if (b.dataset.p === 'profile' || b.dataset.p === 'video') b.onclick = () => showVideo(b.dataset.p === 'video'); });
     if (new URLSearchParams(location.search).get('tab') === 'video') showVideo(true);
   } catch (e) { console.warn('[video]', e); }
 }
 
-/* THE WEEK, SCOUTED. The same ledger the match report's scout's note is built on, asked of the
-   club's last seven days instead of one game: what to keep doing, what to work on, and the whole
-   column of measures underneath as the evidence for both. Mounted whether or not there is video,
-   so the tab bar appears for every club rather than only the filmed ones. */
-function weeklyTab(team) {
-  const W = window.EpinoiaWeekly;
-  if (!W || !W.mount) return;
+/* THE REPORT (report.js, report-teampages.js; 2026-10-02, in place of the weekly report): the club's analysis as A4 pages,
+   the preview the document. Its data is this page's own, read once and shared: the season line of the scope shown
+   (teamStats hands it over as it is drawn, rpGive), the club's logs, lineups and depth chart. */
+const RP_WAIT = {};
+function rpSlot(k) { if (!RP_WAIT[k]) { let res; RP_WAIT[k] = { p: new Promise(r => { res = r; }), res, done: false, v: null }; } return RP_WAIT[k]; }
+function rpGive(k, v) { const w = rpSlot(k); w.v = v; if (!w.done) { w.done = true; w.res(v); } }
+function rpGet(k, ms) { const w = rpSlot(k); return w.done ? Promise.resolve(w.v) : Promise.race([w.p, new Promise(r => setTimeout(() => r(w.v), ms || 120000))]); }
+let REPORT = null;
+function reportTab(team) {
+  const E = window.EpinoiaReport, RT = window.EpinoiaReportTeam, D = window.EpinoiaData;
+  if (!E || !RT || !D || REPORT || ACCESS.paywall) return;
   const lg = team.leagues || {};
-  W.mount({
-    tabs: '#ttabs', panel: '#weeklysec', window: 'the last seven days', days: 7,
-    load: () => W.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }),
-    /* the saved page's identity (reportcard.js): the club, its league, its colour and its crest */
-    card: () => ({ kind: 'team', name: team.name, sub: lg.name || '', colour: team.colour, colour2: team.colour_2,
-                   crest: window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path, 256) : null,
-                   monogram: team.short_name && team.short_name.length <= 4 ? team.short_name : null,
-                   leagueCrest: lg.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(lg.logo_path, 256) : null,
-                   leagueColour: lg.colour_a || null })
+  const scopeText = () => [teamScopeKind !== 'all' ? (KIND_LABEL[teamScopeKind] || teamScopeKind) : '', lg.name, SEASON_NAME ? seasonText(SEASON_NAME) : '']
+    .filter(Boolean).join(' ');
+  const ctx = {
+    season: () => rpGet('season'),
+    logs: () => seasonLogs(team),
+    clubLogs: scoped => clubLogs(team, scoped),
+    starters: comps => scopeStarters(comps),
+    depth: all => depthShares(team, 'season', !!all),
+    /* the rebounds off each zone need the competition's shots read once (shotchart.js attachZoneStats), as the page's own
+       shot zones card reads them when it is opened */
+    rebounds: async (S, mine) => {
+      if (!mine.rb_ready && window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) { try { await window.EpinoiaShotChart.attachZoneStats(S, D); } catch (_) { /* without */ } }
+      const row = S.teams.find(t => t.id === mine.id) || mine;
+      const h = el('div'); reboundZones(h, S, row); return h.innerHTML;
+    },
+    meta: ids => D.playerMeta(ids),
+    stints: gs => { const by = {}; gs.forEach(g => { by[g.id] = g; }); return D.stints(gs.map(g => g.id), team.id, by); },
+    rapm: window.EpinoiaRAPM ? ((ids, fn) => window.EpinoiaRAPM.season(D, ids, fn).then(r => r.rapm)) : null,
+    week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }) : null
+  };
+  REPORT = E.mount({
+    tabs: '#ttabs', panel: '#reportsec', kind: 'team', label: 'Report',
+    modules: RT.modules(ctx),
+    context: () => ({
+      kind: 'team', name: team.name, club: team.name, kicker: 'Club report',
+      crest: window.epinoiaLogoUrl && team.logo_path ? window.epinoiaLogoUrl(team.logo_path, 512) : null,
+      colour: team.colour || '#93f2bf', accent: E.inkOn ? E.inkOn(team.colour) : '#08603f',
+      monogram: team.short_name && team.short_name.length <= 4 ? team.short_name : null,
+      line: [team.name, lg.name].filter(Boolean).join(' · '), scope: scopeText(), subtitle: scopeText()
+    })
   });
 }
 
@@ -1383,6 +1408,8 @@ async function teamStats(team, kind) {
     host.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return;
   }
   const mine = S && S.teams.find(t => t.id === team.id);
+  rpGive('season', S ? { S, mine: mine || null, scopeComps, kind: teamScopeKind } : null);
+  if (REPORT && REPORT.refresh) REPORT.refresh();
   try {   // the club's ELO and its schedule, beside the heading (p/sos-chip.js), over the same games as everything below
     let th = host.previousElementSibling;          // statpop's hint line sits between the heading and the section
     while (th && !th.classList.contains('ep-hdr')) th = th.previousElementSibling;

@@ -1,0 +1,226 @@
+'use strict';
+/* ============================================================================
+   THE PLAYER'S REPORT (report.js on the player profile, p/player.js reportTab): its modules.
+
+     cover            his name, his club's crest, the title and subtitle, his position breakdown on a half court
+     MAIN STATS       the stats of a template (by his position, or the reader's own), in groups, each against the
+                      competition: value, percentile, bar, the field's average. RAPM on request (a button: every stint
+                      of the league's season is read). Headline tiles over them.
+     SHOT CHART       the zones court and every shot beside it, the zone table in the court's colours, the hot spots
+     ON THE FLOOR     the team with him on and off, his own line, and his three best and three worst pairings
+     LAST 7 DAYS      the old weekly report (weekly.js), off by default
+     LEGEND           every statistic printed, defined
+
+   ctx (from p/player.js): identity(), bars() -> {mine, field, gameIds}, pos() -> {pct, games, minutes},
+   shots() -> {shots, games, colour, gameList}, floor() -> {stints, recs, meta, playerId, logs}, rapm(onProgress) ->
+   Map(id -> {orapm, drapm, rapm}), week() -> the weekly report.
+   ============================================================================ */
+(function (root, factory) {
+  const api = factory(root);
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.EpinoiaReportPlayer = api;
+}(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
+
+const RP = () => root.EpinoiaReport;
+
+function modules(ctx) {
+  const E = RP();
+  const { block, title, esc } = E;
+  let posP = null;
+  const pos = () => posP || (posP = Promise.resolve(ctx.pos ? ctx.pos() : null).catch(() => null));
+  let group = 'guard';
+  const RAPM = { map: null, running: false };
+
+  /* ---------------- the cover ---------------- */
+  const cover = {
+    key: 'cover', title: 'Cover', on: true,
+    async build(c) {
+      const P = await pos();
+      const NAMES = ['point guard', 'shooting guard', 'small forward', 'power forward', 'centre'];
+      let main = '';
+      if (P && P.pct) {
+        group = E.posGroup(P.pct, c.listedPos);
+        const k = P.pct.indexOf(Math.max(...P.pct));
+        main = NAMES[k] + ' (' + Math.round(P.pct[k]) + '% of his minutes)';
+      }
+      const B = await Promise.resolve(ctx.bars ? ctx.bars() : null).catch(() => null);
+      const m = B && B.mine;
+      c.facts = [['Player', c.name], ['Club', c.club], ['Competition', c.scope], ['Position', main || c.listedPos || ''],
+        ['Template', { guard: 'Guard', wing: 'Wing', big: 'Big' }[group] + ' (by position)'],
+        ['Games', m && m.gp ? m.gp + ' played \u00b7 ' + (+m.mpg || 0).toFixed(1) + ' min a game' : '']];
+      if (!P || !P.pct) return '<h4>Position breakdown</h4><div class="rp-empty">No minutes at a position on record yet.</div>';
+      return '<h4>Position breakdown<span>' + P.games + (P.games === 1 ? ' game' : ' games') + ' \u00b7 ' + Math.round(P.minutes) + ' min</span></h4>' +
+        E.posCourtHTML(P.pct) + E.POS_KEY;
+    }
+  };
+
+  /* ---------------- MAIN STATS ---------------- */
+  const main = {
+    key: 'main', title: 'Main stats', page: 'MAIN STATS', on: true,
+    controls(host, state) {
+      E.templateControl(host, state, { set: 'main', label: 'main stats', pos: () => group });
+      if (ctx.rapm) {
+        const row = E.el('div', 'rp-rapm');
+        const b = E.el('button', 'ep-btn mini', 'Calculate RAPM'); b.type = 'button';
+        const say = E.el('span', null, 'ORAPM and DRAPM need every stint of the league’s season: worked out on request.');
+        b.onclick = async () => {
+          if (RAPM.running) return;
+          RAPM.running = true; b.disabled = true;
+          try {
+            RAPM.map = await ctx.rapm((d, n) => { say.textContent = 'reading the league’s games: ' + d + ' of ' + n + '…'; });
+            say.textContent = 'RAPM worked out over ' + (RAPM.map ? RAPM.map.size : 0) + ' players.';
+            state.rebuild();
+          } catch (e) { say.textContent = 'RAPM could not be worked out: ' + (e.message || e); }
+          RAPM.running = false; b.disabled = false;
+        };
+        row.append(E.el('span', 'rp-k', 'RAPM'), b, say);
+        host.appendChild(row);
+      }
+    },
+    async build(c, R) {
+      const B = await ctx.bars();
+      if (!B || !B.mine) return [block('<div class="rp-empty">No season line for this player in this scope yet.</div>')];
+      const P = await pos();
+      group = E.posGroup(P && P.pct, c.listedPos);
+      const field = (B.field || []).map(r => Object.assign({}, r));
+      let mine = field.find(r => r.id === B.mine.id) || Object.assign({}, B.mine);
+      if (field.indexOf(mine) < 0) field.push(mine);
+      if (RAPM.map) field.forEach(r => { const v = RAPM.map.get(r.id); if (v) { r.orapm = v.orapm; r.drapm = v.drapm; r.rapm = v.rapm; } });
+      field.forEach(E.derive);
+      /* the turnover types, his own (from the club's logs the page has read) */
+      try {
+        const F = ctx.floor ? await ctx.floor() : null;
+        if (F && F.logs) {
+          const t = E.turnoverTypes(F.logs).get(mine.id);
+          if (t && t.typed) { mine.badpass_pg = t.games ? Math.round(10 * t.bad / t.games) / 10 : null; mine.handle_pg = t.games ? Math.round(10 * t.handle / t.games) / 10 : null; }
+        }
+      } catch (_) { /* without them */ }
+      const groups = E.groupsFor(R.state, 'main', group);
+      const keys = groups.flatMap(g => g[1]);
+      const Rk = E.ranker(field, keys);
+      R.legend.push(...keys);
+      const tiles = [['GP', mine.gp, 0], ['MIN / G', mine.mpg, 1], ['PTS / G', mine.ppg, 1], ['REB / G', mine.rpg, 1], ['AST / G', mine.apg, 1], ['BPM', mine.bpm, 1, true]];
+      const tileHTML = '<div class="rp-tiles" style="--n:' + tiles.length + '">' + tiles.map(([l, v, dp, sg]) =>
+        '<div class="rp-tile' + (sg && +v > 0 ? ' good' : sg && +v < 0 ? ' bad' : '') + '"><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span>' + l + '</span></div>').join('') + '</div>';
+      const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !RAPM.map;
+      const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' players' : ''].filter(Boolean).join(' · ')) + tileHTML)];
+      out.push(block('<div class="rp-groups">' + groups.map(([t, ks]) =>
+        '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, mine, Rk)).join('') + '</div>').join('') + '</div>' +
+        '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' players of ' + (c.scope || 'the competition') +
+          ' (the bar), and their average. Template: ' + templateName(R.state, group) + '.' +
+          (needRapm ? ' ORAPM and DRAPM are blank until RAPM is worked out (the button above the pages).' : '')) + '</p>'));
+      return out;
+    }
+  };
+  function templateName(state, g) {
+    const t = state.conf.tpl.main || 'auto';
+    if (state.temp && state.temp.main) return 'unsaved edit';
+    if (t === 'auto') return 'by position (' + g + ')';
+    if (/^pos:/.test(t)) return t.slice(4) + ' defaults';
+    return t;
+  }
+
+  /* ---------------- SHOT CHART ---------------- */
+  /* the zones court and every shot side by side, the shot zones in two columns under them; then the box score's
+     half-court and transition cards over the season (his shots in each, situations.js on every game's log) */
+  const shots = {
+    key: 'shots', title: 'Shot chart', page: 'SHOT CHART', on: true,
+    async build(c, R) {
+      const SC = root.EpinoiaShotChart;
+      const S = await ctx.shots();
+      if (!SC || !S || !S.shots || !S.shots.length) return [block('<div class="rp-empty">No located shots for this player yet.</div>')];
+      const colour = c.accent || '#08603f';
+      const court = view => {
+        const h = E.el('div');
+        SC.renderZones({ host: h, shots: S.shots, colour: S.colour || colour, minAttempts: 3, games: S.games, gameList: S.gameList, zones: true, table: false,
+                         view, controls: false });
+        return h.innerHTML;
+      };
+      const made = S.shots.filter(x => x.made).length;
+      const out = [];
+      out.push(block(title('Where he shoots', S.shots.length + ' located shots · ' + made + ' made · ' + S.games + ' games') +
+        '<div class="rp-two"><div><div class="rp-cap">Zones<span>tinted against each zone’s break-even</span></div>' + court('zones') + '</div>' +
+        '<div><div class="rp-cap">Every shot<span>made ● missed ×</span></div>' + court('shots') + '</div></div>' +
+        '<div class="rp-cap" style="margin-top:10px">Shot zones</div>' + E.zoneColumnsHTML(S.shots, S.games)));
+      try {
+        const F = await ctx.floor();
+        if (F && F.logs && F.sideOf && root.EpinoiaSituations) {
+          const games = Object.keys(F.logs).filter(id => F.sideOf[id] != null).map(id => ({ events: F.logs[id], side: F.sideOf[id], pid: F.playerId }));
+          const A = E.sitSeason(games);
+          if (A.half.fga || A.transition.fga) {
+            out.push(block(title('Half court and transition', 'his shots in each, the club’s last ' + games.length + ' games') +
+              E.sitCardHTML(A.half, { key: 'half', colour, player: true, who: c.name })));
+            out.push(block(E.sitCardHTML(A.transition, { key: 'transition', colour: '#b4572e', player: true, who: c.name })));
+          }
+        }
+      } catch (e) { if (root.console) root.console.warn('[report situations]', e); }
+      R.legendExtra.push(['ZONES', 'The court cut into twelve areas, each tinted against its own break-even (paint 58%, mid-range 40%, three 35%): orange above, blue below, grey within two points; hatched where there are too few attempts to rate.'],
+        ['eFG%', 'Effective field-goal percentage: a made three counts as one and a half makes.'],
+        ['HALF COURT / TRANSITION', 'The box score’s situations over the season: transition is a fast break, or within eight seconds of a defensive rebound or a steal; the half court is a chance that was none of second chance, transition, off a turnover or after a timeout.']);
+      return out;
+    }
+  };
+
+  /* ---------------- ON THE FLOOR WITH ---------------- */
+  const floor = {
+    key: 'floor', title: 'On the floor with', page: 'ON THE FLOOR WITH', on: true,
+    async build(c, R) {
+      const F = await ctx.floor();
+      const WY = root.EpinoiaWowy, L = root.EpinoiaLineups, W = root.EpinoiaWith;
+      if (!F || !F.stints || !F.stints.length || !WY) return [block('<div class="rp-empty">No lineup data for this player yet.</div>')];
+      const out = [];
+      const oo = E.el('div');
+      WY.onOffTiles(oo, F.stints, F.playerId);
+      out.push(block(title('The team with him on and off', 'net, offensive and defensive rating per 100 possessions') + oo.innerHTML));
+      /* his own line over these games (the panel with no teammate picked) */
+      if (W && W.split) {
+        try {
+          const sp = W.split(F.recs, F.stints, F.playerId, []);
+          const l = sp && sp.all;
+          if (l) {
+            const f1 = v => (v == null ? '—' : (+v).toFixed(1));
+            const cells = [['minutes', f1(l.mins)], ['pts / 36', f1(l.pts36)], ['shots / 36', f1(l.fga36)], ['threes / 36', f1(l.p3a36)],
+              ['reb / 36', f1(l.reb36)], ['ast / 36', f1(l.ast36)], ['tov / 36', f1(l.tov36)], ['TS%', f1(l.ts)]];
+            out.push(block(title('His own numbers', 'per 36 minutes, over the games these lineups come from') +
+              '<div class="rp-tiles" style="--n:' + cells.length + '">' + cells.map(([k, v]) => '<div class="rp-tile"><b>' + v + '</b><span>' + k + '</span></div>').join('') + '</div>'));
+          }
+        } catch (_) { /* without it */ }
+      }
+      /* the pairings: the team with both of them on, against with him on and the teammate off */
+      if (L && L.pairs) {
+        const all = L.pairs(F.stints, F.playerId, 20).filter(p => p.swing != null);
+        const meta = F.meta || {};
+        const nm = id => (meta[id] && meta[id].name) || 'Player';
+        const f1 = v => (v == null ? '—' : ((+v > 0 ? '+' : '') + (+v).toFixed(1)));
+        const tbl = (rows, cap) => '<div><div class="rp-cap">' + cap + '</div><table class="rp-tbl"><thead><tr><th class="l">with</th><th>min</th><th>net both on</th><th>net him only</th><th>swing</th></tr></thead><tbody>' +
+          (rows.length ? rows.map(p => '<tr><td class="l">' + esc(nm(p.id)) + '</td><td>' + Math.round(p.withMate.mins) + '</td><td>' + f1(p.withMate.net) + '</td><td>' + f1(p.withoutMate.net) +
+            '</td><td class="' + (p.swing > 0 ? 'pos' : p.swing < 0 ? 'neg' : '') + '">' + f1(p.swing) + '</td></tr>').join('') :
+            '<tr><td class="l" colspan="5">Not enough shared minutes yet (20 or more).</td></tr>') + '</tbody></table></div>';
+        const best = all.slice(0, 3), worst = all.slice(-3).reverse().filter(p => best.indexOf(p) < 0);
+        out.push(block(title('Pairings', 'teammates he shared 20+ minutes with') + '<div class="rp-two">' + tbl(best, 'Best three') + tbl(worst, 'Worst three') + '</div>' +
+          '<p class="rp-note">Swing: the team’s net rating with both of them on the floor minus with him on and that teammate off. Positive means the team is better when the two play together.</p>'));
+        R.legendExtra.push(['SWING', 'The team’s net rating with both players on the floor minus with this player on and the teammate off, per 100 possessions.'],
+          ['NET / ORTG / DRTG', 'Points scored minus allowed, points scored, and points allowed, each per 100 possessions.'],
+          ['ON / OFF', 'The team’s numbers in the minutes he was on the floor against the minutes he was off it.']);
+      }
+      return out;
+    }
+  };
+
+  /* ---------------- LAST 7 DAYS (the weekly report) ---------------- */
+  const week = {
+    key: 'week', title: 'Last 7 days', page: 'LAST 7 DAYS', on: false,
+    async build() {
+      const W = root.EpinoiaWeekly;
+      if (!W || !ctx.week) return [];
+      const rep = await ctx.week();
+      return [block(W.render(rep, { window: 'the last seven days', saveable: false }))];
+    }
+  };
+
+  const legend = { key: 'legend', title: 'Legend', on: true };
+  return [cover, main, shots, floor, week, legend];
+}
+
+return { modules };
+}));

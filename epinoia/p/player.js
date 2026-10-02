@@ -67,23 +67,46 @@ function fail(msg) {
   $('#log').textContent = '';
 }
 
-/* THE WEEK, SCOUTED. The same ledger the match report's scout's note is built on, asked of this
-   player's last seven days: what to keep doing, what to work on, and the measures underneath as
-   the evidence for both. Mounted whether or not there is footage, so the tab bar appears for
-   every player rather than only the filmed ones. */
-function weeklyTab(pl, name, team) {
-  const W = window.EpinoiaWeekly;
-  if (!W || !W.mount || !pl || !pl.id) return;
+/* THE REPORT (report.js, report-playerpages.js; 2026-10-02, in place of the weekly report): his analysis as A4 pages, the
+   preview the document. Its data is what this page works out anyway, handed over as each piece is ready (rpGive): the
+   season line and its field, the position breakdown, the shots, the lineups and logs of "on the floor with". A piece
+   that never comes (no club, a locked league) is handed over as nothing after a while, and its page says so. */
+const RP_WAIT = {};
+function rpSlot(k) { if (!RP_WAIT[k]) { let res; RP_WAIT[k] = { p: new Promise(r => { res = r; }), res, done: false, v: null }; } return RP_WAIT[k]; }
+function rpGive(k, v) { const w = rpSlot(k); w.v = v; if (!w.done) { w.done = true; w.res(v); } }
+function rpGet(k, ms) { const w = rpSlot(k); return w.done ? Promise.resolve(w.v) : Promise.race([w.p, new Promise(r => setTimeout(() => r(w.v), ms || 120000))]); }
+let REPORT = null, PL_LISTED = '', SCOPE_GAMES = [], RP_SEASON = null;      // RP_SEASON: the season shown (boot's SEASON)
+function reportTab(pl, name, team) {
+  const E = window.EpinoiaReport, RPm = window.EpinoiaReportPlayer;
+  if (!E || !RPm || !pl || !pl.id || REPORT) return;
   const lg = (team && team.leagues) || {};
-  W.mount({
-    tabs: '#ptabs', panel: '#weeklysec', window: 'the last seven days', days: 7,
-    load: () => W.playerWeek(api, pl.id, { name: name, league: ACCESS_LEAGUE.slug, days: 7 }),
-    /* the saved page's identity (reportcard.js): the player, his club and league, the club's colour and crest */
-    card: () => ({ kind: 'player', name: name, sub: [team && team.name, lg.name].filter(Boolean).join(' · '),
-                   colour: team && team.colour, colour2: team && team.colour_2,
-                   crest: team && team.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path, 256) : null,
-                   leagueCrest: lg.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(lg.logo_path, 256) : null,
-                   leagueColour: lg.colour_a || null })
+  const logo = (path, px) => (path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(path, px) : null);
+  const scopeText = () => {
+    const comps = RP_SEASON ? RP_SEASON.comps.filter(c => !SCOPE_IDS || SCOPE_IDS.indexOf(c.id) >= 0) : [];
+    return [comps.map(c => c.short || compName(c)).filter(Boolean).join(' + '), RP_SEASON && RP_SEASON.label].filter(Boolean).join(' ');
+  };
+  const ctx = {
+    bars: () => rpGet('bars'),
+    pos: () => rpGet('pos', 60000),
+    shots: () => rpGet('shots'),
+    floor: () => rpGet('floor'),
+    week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.playerWeek(api, pl.id, { name, league: ACCESS_LEAGUE.slug, days: 7 }) : null,
+    rapm: window.EpinoiaRAPM ? (onProgress => {
+      if (!SCOPE_GAMES.length) return Promise.reject(new Error('no games in this scope'));
+      return window.EpinoiaRAPM.season(window.EpinoiaData, SCOPE_GAMES, onProgress).then(r => r.rapm);
+    }) : null
+  };
+  REPORT = E.mount({
+    tabs: '#ptabs', panel: '#reportsec', kind: 'player', label: 'Report',
+    modules: RPm.modules(ctx),
+    context: () => ({
+      kind: 'player', name, club: team && team.name, listedPos: PL_LISTED,
+      crest: logo(team && team.logo_path, 512), colour: (team && team.colour) || '#93f2bf',
+      accent: E.inkOn ? E.inkOn(team && team.colour) : '#08603f',
+      monogram: team && team.short_name && team.short_name.length <= 4 ? team.short_name : null,
+      line: [team && team.name, lg.name].filter(Boolean).join(' · '),
+      scope: scopeText(), subtitle: scopeText()
+    })
   });
 }
 
@@ -93,7 +116,8 @@ function paintIdentity(pl, entry, team) {
   $('#name').textContent = name;
   /* the copy tools/build-seo.py wrote for him already has his title (team and league in it); keep that one */
   if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = name + ' · Epinoia';
-  weeklyTab(pl, name, team);
+  PL_LISTED = (entry && entry.position) || '';
+  reportTab(pl, name, team);
   /* follow the player: his line after every game */
   if (window.EpinoiaFollow && pl.id) {
     const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });
@@ -701,7 +725,7 @@ async function paintPosBreakdown(rows, field) {
   if (!host) return;
   const mine = (rows || []).filter(r => r && r.game_id && r.player_uuid && (r.team_idx === 0 || r.team_idx === 1) &&
     (!SCOPE_IDS || !SCOPE_IDS.length || SCOPE_IDS.indexOf((r.games || {}).competition_id) >= 0));
-  if (!X || !X.floorPos || !D || !mine.length) { host.hidden = true; host.textContent = ''; return; }
+  if (!X || !X.floorPos || !D || !mine.length) { host.hidden = true; host.textContent = ''; rpGive('pos', null); return; }
   const sideOf = {}, who = {};
   mine.forEach(r => { sideOf[r.game_id] = r.team_idx; who[r.game_id] = r.player_uuid; });
   const ids = Object.keys(sideOf);
@@ -759,9 +783,10 @@ async function paintPosBreakdown(rows, field) {
   if (run !== POS_RUN) return;
   const total = sec.reduce((a, b) => a + b, 0);
   host.textContent = '';
-  if (!(total > 0)) { host.hidden = true; return; }
+  if (!(total > 0)) { host.hidden = true; rpGive('pos', null); return; }
   const SL = X.SLOTS || [['PG', 'point guard'], ['SG', 'shooting guard'], ['SF', 'small forward'], ['PF', 'power forward'], ['C', 'centre']];
   const pct = sec.map(x => 100 * x / total);
+  rpGive('pos', { pct, games: games.size, minutes: total / 60 });
   const top = pct.indexOf(Math.max(...pct));
   const head = el('div', 'ip-h');
   head.append(el('span', 'ip-l', 'position breakdown'),
@@ -847,6 +872,8 @@ function consistencyCard() {
 
 function paintBars(mine, field) {
   LAST_BARS = { mine, field };
+  rpGive('bars', { mine, field });
+  if (REPORT && REPORT.refresh) REPORT.refresh();
   /* the '?' in the section heading (statpop.js): the explainer for every main statistic below */
   try {
     const sh = $('#bars') && $('#bars').closest('.sec') && $('#bars').closest('.sec').querySelector('.sec-h');
@@ -1519,6 +1546,7 @@ async function seasonLog(ids, sn) {
     const compName = c => c.short || c.name || KIND_LABEL[c.kind] || c.kind || '';
     const paintScope = async kind => {
       scopeKind = kind;
+      RP_SEASON = SEASON;
       const comps = SEASON ? SEASON.comps : [];
       const ids = comps.filter(c => kind === 'all' || c.id === kind).map(c => c.id);
       /* the profile he played these under: his own, or the linked one the season line knows him by there */
@@ -1529,6 +1557,7 @@ async function seasonLog(ids, sn) {
           const S = await D.season(ids, { rows: false, trim: true });
           sosGames = S.games;
           SCOPE_GAME_COUNT = (S.games || []).length;
+          SCOPE_GAMES = (S.games || []).map(g => g.id).filter(Boolean);
           field = S.players;
           mine = field.find(r => pids.has(r.id)) || field.find(r => r.id === pl.id) || null;
         }
@@ -1662,6 +1691,7 @@ function drawShotChart(shots, colour, games, gameList) {
   if (colour) SHOT_COLOUR = colour;
   if (games) SHOT_GAMES = games;
   if (gameList) SHOT_GAMELIST = gameList;
+  if (shots) rpGive('shots', { shots: SHOTS, games: SHOT_GAMES, colour: SHOT_COLOUR, gameList: SHOT_GAMELIST });
   const host = document.querySelector('#shotchart');
   if (!host || !window.EpinoiaShotChart) return;
   /* THE BOX SCORE'S CHART, over the season: every located shot as a dot or a cross in the
@@ -1815,7 +1845,7 @@ function drawShotChart(shots, colour, games, gameList) {
                     tabs.querySelectorAll('.ep-tab').forEach(b => b.classList.toggle('on', (b.dataset.p === 'video') === on));
                     if (on) window.scrollTo({ top: tabs.getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
                   };
-                  tabs.querySelectorAll('.ep-tab').forEach(b => { b.onclick = () => showVideo(b.dataset.p === 'video'); });
+                  tabs.querySelectorAll('.ep-tab').forEach(b => { if (b.dataset.p === 'profile' || b.dataset.p === 'video') b.onclick = () => showVideo(b.dataset.p === 'video'); });
                   if (new URLSearchParams(location.search).get('tab') === 'video') showVideo(true);
                 }
               }
@@ -1834,6 +1864,8 @@ function drawShotChart(shots, colour, games, gameList) {
             ids.forEach(id => { if (id !== pl.id) mates.add(id); });
           });
           const mm = await D.playerMeta([...mates]);
+          { const logs = {}, sideOf = {}; logsOf.forEach((v, k) => { logs[k] = v; }); gs.forEach(g => { sideOf[g.id] = g.home_team_id === team.id ? 0 : 1; });
+            rpGive('floor', { stints: st, recs, meta: mm, playerId: pl.id, logs, sideOf }); }
           $('#wowyNote').textContent = st.length + ' stints · ' + mates.size + ' teammates' +
             (gs.length >= RECENT_GAMES ? ' · last ' + RECENT_GAMES + ' games' : '');
 
@@ -1858,5 +1890,6 @@ function drawShotChart(shots, colour, games, gameList) {
     fail('Could not load: ' + e.message);
   } finally {
     clubLogsDone(null);                                // no club, no games, an early return: the split says so rather than waits
+    ['floor', 'shots'].forEach(k => { if (!rpSlot(k).done) rpGive(k, null); });   // a piece never worked out: nothing, not a wait
   }
 })();

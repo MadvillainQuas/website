@@ -269,10 +269,10 @@ function breakdown(o) {
   const asked = [];
   const D = { posFiles: async ids => { asked.push(ids.slice()); return new Map(ids.map(id => [id, (o.files || {})[id] || null])); },
               stints: async ids => (o.stints || []).filter(s => ids.indexOf(s.game_id) >= 0), playerMeta: async () => ({}) };
-  const fn = new Function('window', '$', 'el', 'api', 'SCOPE_IDS', 'console',
+  const fn = new Function('window', '$', 'el', 'api', 'SCOPE_IDS', 'console', 'rpGive',
     'let POS_RUN = 0; const CLUB_STINTS = new Map();\n' + BREAK + '\nreturn paintPosBreakdown;')(
     { EpinoiaDepth: X, EpinoiaData: D, EpinoiaBox: { courtSVG: () => '<svg/>' } }, s => (s === '#idpos' ? host : null),
-    (t, c, x) => { const n = new Node(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }, async () => [], o.scope || null, { warn: () => {} });
+    (t, c, x) => { const n = new Node(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }, async () => [], o.scope || null, { warn: () => {} }, () => {});
   return fn(o.rows, o.field || []).then(() => ({ host, asked, spots: all(host, 'span.ip-spot').map(s => s.querySelector('b').textContent + ':' + s.querySelector('i').textContent + ':' + s.className) }));
 }
 const prow = (i, comp, side) => ({ game_id: 'p' + i, team_idx: side == null ? 0 : side, player_uuid: 'A', games: { competition_id: comp || 'lg', tipoff_at: '2026-02-' + String(10 + i) + 'T18:00:00Z' } });
