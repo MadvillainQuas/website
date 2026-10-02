@@ -944,7 +944,10 @@ function ui(state) {
     pages.style.setProperty('--rp-z', '1');            // drawn at its own size, whatever the column shows
     try {
       const name = (state.c && state.c.file) || 'report';
-      if (kind === 'pdf') await X.savePdf(sheets, name, { w: PAGE.w, h: PAGE.h, title: (state.c && state.c.docTitle) || 'Report', onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + '…') });
+      /* the mailer's copy (EPINOIA_RP_BOT) at email weight: twice the page's size (about 190 dpi on A4) and a lighter
+         JPEG, a third of the bytes, so a week's reports go in one email */
+      const bot = !!root.EPINOIA_RP_BOT;
+      if (kind === 'pdf') await X.savePdf(sheets, name, { w: PAGE.w, h: PAGE.h, scale: bot ? 2 : 3, quality: bot ? 0.84 : 0.9, title: (state.c && state.c.docTitle) || 'Report', onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + '…') });
       else await X.saveImages(sheets, name, { w: PAGE.w, h: PAGE.h, onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + '…') });
       say('saved');
       setTimeout(() => say(''), 4000);

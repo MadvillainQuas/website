@@ -938,7 +938,7 @@ async function loadScouts() {
 
 /* ------------------------------------------------------- reports by email (0221) --- */
 /* an address and a club; the mailer (scripts/report_mailer.mjs) does the rest. The club is found by name as it is typed */
-let MAIL_TEAMS = new Map();
+let MAIL_TEAMS = new Map(), MAIL_TZ = new Map();     // the club's label -> its id, and its league's time zone
 async function loadMail() {
   const host = $('#mailList'), go = $('#mailGo');
   if (!host || !sb) return;
@@ -955,11 +955,13 @@ async function loadMail() {
     tIn.addEventListener('input', () => {
       clearTimeout(tm);
       const q = tIn.value.trim();
+      /* a club picked: its league's clock is the reader's, most likely (it can still be changed) */
+      if (MAIL_TZ.get(q) && tz && [...tz.options].some(o => o.value === MAIL_TZ.get(q))) tz.value = MAIL_TZ.get(q);
       if (q.length < 2 || MAIL_TEAMS.has(q)) return;
       tm = setTimeout(async () => {
-        const { data } = await sb.from('teams').select('id,name,leagues(name)').ilike('name', '%' + q.replace(/[%_,()]/g, ' ') + '%').limit(20);
+        const { data } = await sb.from('teams').select('id,name,leagues(name,timezone)').ilike('name', '%' + q.replace(/[%_,()]/g, ' ') + '%').limit(20);
         const dl = $('#mailTeams'); dl.textContent = '';
-        (data || []).forEach(t => { const label = t.name + (t.leagues && t.leagues.name ? ' (' + t.leagues.name + ')' : ''); MAIL_TEAMS.set(label, t.id);
+        (data || []).forEach(t => { const label = t.name + (t.leagues && t.leagues.name ? ' (' + t.leagues.name + ')' : ''); MAIL_TEAMS.set(label, t.id); if (t.leagues && t.leagues.timezone) MAIL_TZ.set(label, t.leagues.timezone);
           const o = document.createElement('option'); o.value = label; dl.appendChild(o); });
       }, 250);
     });

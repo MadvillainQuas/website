@@ -351,7 +351,7 @@ async function savePdf(nodes, name, opt) {
   for (let i = 0; i < nodes.length; i++) {
     if (o.onProgress) o.onProgress(i + 1, nodes.length);
     const c = await canvasOf(nodes[i], { scale: o.scale || 3, w: o.w, h: o.h });
-    pages.push({ bytes: new Uint8Array(await (await blobOf(c, 'image/jpeg', 0.9)).arrayBuffer()), w: c.width, h: c.height });
+    pages.push({ bytes: new Uint8Array(await (await blobOf(c, 'image/jpeg', o.quality || 0.9)).arrayBuffer()), w: c.width, h: c.height });
     c.width = c.height = 1;
   }
   const bytes = pdfFromJpegs(pages, { title: o.title, date: new Date() });
