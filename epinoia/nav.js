@@ -1670,18 +1670,28 @@
   sbar.setAttribute('aria-hidden', 'true');
   sbar.appendChild(sthumb);
   nav.appendChild(sbar);
+  /* the open panel's head (HOME's masthead, a league's name) stays put at the top of the scroller, so the track
+     starts under it and never runs beside it; the rows sit in from the left (sb-on) so the track has a gutter of its
+     own, and a row's hover band and key edge start to the right of it rather than under it */
+  const headH = () => {
+    const h = navScroll.querySelector('.panel[aria-hidden="false"] > .phead, .panel[aria-hidden="false"] > .ptitle');
+    return h ? h.offsetHeight : 0;
+  };
   const paintBar = () => {
     const ch = navScroll.clientHeight, sh = navScroll.scrollHeight;
     const on = ch > 40 && sh > ch + 2 && getComputedStyle(navScroll).overflowY !== 'hidden';
     sbar.classList.toggle('on', on);
+    navScroll.classList.toggle('sb-on', on);
     navScroll.classList.toggle('sb-up', on && navScroll.scrollTop > 2);           // rows fade out where there are more
     navScroll.classList.toggle('sb-down', on && navScroll.scrollTop < sh - ch - 2);
     if (!on) return;
-    sbar.style.top = navScroll.offsetTop + 'px';
-    sbar.style.height = ch + 'px';
-    const th = Math.max(28, Math.round(ch * ch / sh));
+    const hh = Math.min(headH(), ch - 40), track = ch - hh;
+    navScroll.style.setProperty('--sb-h', hh + 'px');
+    sbar.style.top = (navScroll.offsetTop + hh) + 'px';
+    sbar.style.height = track + 'px';
+    const th = Math.max(28, Math.round(track * track / Math.max(1, sh - hh)));
     sthumb.style.height = th + 'px';
-    sthumb.style.transform = 'translateY(' + Math.round((ch - th) * navScroll.scrollTop / (sh - ch)) + 'px)';
+    sthumb.style.transform = 'translateY(' + Math.round((track - th) * navScroll.scrollTop / (sh - ch)) + 'px)';
   };
   navScroll.addEventListener('scroll', paintBar, { passive: true });
   window.addEventListener('resize', paintBar, { passive: true });
@@ -1690,9 +1700,9 @@
   sthumb.addEventListener('pointerdown', e => {
     e.preventDefault();
     const y0 = e.clientY, t0 = navScroll.scrollTop;
-    const ch = navScroll.clientHeight, sh = navScroll.scrollHeight, th = sthumb.offsetHeight;
+    const ch = navScroll.clientHeight, sh = navScroll.scrollHeight, th = sthumb.offsetHeight, track = sbar.offsetHeight;
     const zx = sbar.getBoundingClientRect().height / Math.max(1, sbar.offsetHeight);   // the page's zoom
-    const move = ev => { navScroll.scrollTop = t0 + (ev.clientY - y0) / zx * (sh - ch) / Math.max(1, ch - th); };
+    const move = ev => { navScroll.scrollTop = t0 + (ev.clientY - y0) / zx * (sh - ch) / Math.max(1, track - th); };
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); sbar.classList.remove('drag'); };
     sbar.classList.add('drag');
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);

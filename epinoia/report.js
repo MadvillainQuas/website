@@ -304,7 +304,8 @@ function statRowHTML(k, row, R, opt) {
   const s = STATS[k] || { l: k.toUpperCase() };
   const v = row ? row[k] : null;
   const rv = refOf(s, row);
-  const head = '<span class="rp-st-l">' + esc(s.l) + '</span><span class="rp-st-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</span>';
+  const lab = (opt && typeof opt.label === 'function' && opt.label(k)) || s.l;     // a shorter name where the group says the rest
+  const head = '<span class="rp-st-l" title="' + esc(s.l) + '">' + esc(lab) + '</span><span class="rp-st-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</span>';
   const c = opt && opt.compact ? ' data-c="1"' : '';
   if (s.rank === false && isNum(rv) && isNum(v)) {
     const d = +v - +rv, g = s.low ? -d : d, sc = s.sc || 3;
@@ -325,6 +326,18 @@ function statRowHTML(k, row, R, opt) {
     '<span class="rp-st-bar"><i style="width:' + w + '%"></i></span>' +
     '<span class="rp-st-p">' + (pl || (p == null ? '\u2014' : ordinal(p))) + '</span>' +
     '<span class="rp-st-a">' + (a == null ? '' : 'avg ' + fmtStat(k, a)) + '</span></div>';
+}
+/* GROUPS IN TWO COLUMNS, explicitly (the PDF's renderer does not lay out CSS columns): the groups in reading order, cut
+   where the two columns come out most nearly the same height; weight(item) is an item's height in any unit */
+function colsHTML(items, html, weight) {
+  const w = items.map(weight), tot = w.reduce((a, b) => a + b, 0);
+  let best = 0, bestGap = Infinity, run = 0;
+  for (let i = 0; i <= items.length; i++) {
+    const gap = Math.abs(tot - 2 * run);
+    if (gap < bestGap) { bestGap = gap; best = i; }
+    if (i < items.length) run += w[i];
+  }
+  return '<div class="rp-cols"><div>' + items.slice(0, best).map(html).join('') + '</div><div>' + items.slice(best).map(html).join('') + '</div></div>';
 }
 /* a cell of the PLAYERS card: label over value, the cell tinted by the percentile */
 function statCellHTML(k, row, R) {
@@ -561,14 +574,15 @@ function layout(host, c, label, blocks, opt) {
   const over = () => body.scrollHeight > body.clientHeight + 1;
   const list = (blocks || []).filter(Boolean);
   const prev = opt && opt.pack ? host.lastElementChild : null;
-  if (prev && prev.classList.contains('rp-pg') && !prev.classList.contains('rp-cover') && list.length && !list[0].classList.contains('rp-break')) {
+  /* a module packs into the space the one before left only when the whole of it fits there: a section is never
+     split between a page it shares and one of its own */
+  if (prev && prev.classList.contains('rp-pg') && !prev.classList.contains('rp-cover') && list.length && !list.some(b => b.classList && b.classList.contains('rp-break'))) {
     pg = prev; body = pg.querySelector('.rp-body');
-    const b0 = list[0];
-    b0.classList.add('rp-join');
-    body.appendChild(b0);
-    if (over()) { b0.remove(); b0.classList.remove('rp-join'); pg = null; }
+    list[0].classList.add('rp-join');
+    list.forEach(b => body.appendChild(b));
+    if (over()) { list.forEach(b => b.remove()); list[0].classList.remove('rp-join'); pg = null; }
     else {
-      list.shift(); count = body.children.length; start = pg;
+      list.length = 0; count = body.children.length; start = pg;
       let labels = []; try { labels = JSON.parse(pg.dataset.labels || '[]'); } catch (_) { labels = []; }
       if (labels.indexOf(label) < 0) labels.push(label);
       setLabels(pg, labels, /continued/.test(pg.querySelector('.rp-top-m') ? pg.querySelector('.rp-top-m').textContent : ''));
@@ -888,7 +902,9 @@ function ui(state) {
         try { blocks = await m.build(c, R); } catch (e) { warn(e); blocks = [block('<div class="rp-empty">' + esc(m.title) + ' could not be built: ' + esc(e.message || e) + '</div>')]; }
         if (R.stale()) return;
         if (!blocks || !blocks.length) continue;
-        const at = layout(pagesNew, c, m.page || m.title, blocks, { pack: m.pack !== false });
+        /* a module starts a page of its own unless it says it may follow on (pack: true, the combinations after the
+           depth chart): a new section half-way down a page read as clutter (Louie, 2026-10-02) */
+        const at = layout(pagesNew, c, m.page || m.title, blocks, { pack: m.pack === true });
         toc.push([m.page || m.title, [...pagesNew.querySelectorAll('.rp-pg')].indexOf(at) + 1]);
       }
       const lg = o.modules.find(m => m.key === 'legend');
@@ -1010,6 +1026,6 @@ function groupsFor(state, set, pos) {
   return templateOf(set, state.conf.tpl[set], pos);
 }
 
-return { mount, inkOn, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, posCourtHTML, POS_KEY, block, title, frag, el, esc,
+return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, posCourtHTML, POS_KEY, block, title, frag, el, esc,
          fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, layout, legendBlocks, PAGE, SLOTS, isNum };
 }));

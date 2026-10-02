@@ -97,8 +97,8 @@ function modules(ctx) {
       const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !rapmOk;
       const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' players' : ''].filter(Boolean).join(' · ')) + tileHTML +
         (needRapm ? '<p class="rp-flagnote" style="margin-top:8px">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : ''))];
-      out.push(block('<div class="rp-groups">' + groups.map(([t, ks]) =>
-        '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, mine, Rk)).join('') + '</div>').join('') + '</div>' +
+      out.push(block(E.colsHTML(groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, mine, Rk)).join('') + '</div>',
+        ([, ks]) => ks.length + 1.6) +
         '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' players of ' + (c.scope || 'the competition') +
           ' (the bar), and their average. Template: ' + templateName(R.state, group) + '.') + '</p>'));
       return out;

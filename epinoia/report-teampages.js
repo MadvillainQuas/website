@@ -41,7 +41,7 @@ const TEAM_STATS = {
   ft_pct: { l: 'FT%', dp: 1 }, ts: { l: 'TS%', dp: 1 }, opp_ts: { l: 'OPP TS%', dp: 1, low: true },
   tm_ppp: { l: 'PTS / POSSESSION', dp: 2 }, tm_oppp: { l: 'OPP PTS / POSSESSION', dp: 2, low: true }, ast_sh_all: { l: 'AST% (ALL BASKETS)', dp: 1, style: true },
   ev_half_pts_sh: { l: 'HALF-COURT %PTS', dp: 1, style: true }, evd_half_pts_sh: { l: 'DEF HALF-COURT %PTS', dp: 1, style: true },
-  hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, rank: false, ref: 'ast_sh_all', refL: 'all baskets', sc: 5 },
+  hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, rank: false, ref: 'ast_sh_all', refL: 'all', sc: 5 },
   evd_half_tov_pct: { l: 'DEF HALF-COURT TO%', dp: 1 }, evd_half_efg: { l: 'DEF HALF-COURT eFG%', dp: 1, low: true },
   evd_half_ppp: { l: 'DEF HALF-COURT PTS / CHANCE', dp: 2, low: true },
   tr_def_delta: { l: 'TRANSITION PTS GIVEN v OPP AVG', dp: 1, signed: true, low: true },
@@ -274,19 +274,43 @@ function modules(ctx) {
         const s = E.STATS[k] || {}, b = E.band(Rf.pct(k, me.id), s.style);
         return '<div class="rp-tile" data-b="' + b + '"><b>' + (k === 'net' ? sg1(me[k]) : f1(me[k])) + '</b><span>' + l + '</span><em>' + w + '</em>' + chip(k) + '</div>'; }).join('') + '</div>';
       const out = [block(title('Four factors', [c.scope, 'own and allowed · the chip is the club’s place among ' + N].filter(Boolean).join(' · ')) + ffHTML + tileHTML)];
+      /* each group split in two (Louie, 2026-10-02): what the club does with the ball, then what it allows; the
+         starters and bench groups lead with their net ratings */
       const groups = [
-        ['EFFICIENCY', ['ts', 'opp_ts', 'ft_pct', 'tm_ppp', 'tm_oppp']],
-        ['HALF COURT', ['ev_half_pts_sh', 'evd_half_pts_sh', 'hc_ast_pct', 'ev_half_tov_pct', 'evd_half_tov_pct', 'ev_half_efg', 'evd_half_efg', 'ev_half_ppp', 'evd_half_ppp']],
-        ['TRANSITION', ['ev_transition_pts_sh', 'tr_def_delta', 'ev_transition_ppp', 'evd_transition_ppp']],
-        ['AGAINST STARTERS & BENCH', ['vs_start_net', 'vs_start_ortg', 'vs_start_drtg', 'vs_bench_net', 'vs_bench_ortg', 'vs_bench_drtg']],
-        ['OUR STARTERS & BENCH', ['own_start_net', 'own_start_ortg', 'own_start_drtg', 'own_bench_net', 'own_bench_ortg', 'own_bench_drtg']]
+        ['EFFICIENCY', [['o', ['ts', 'ft_pct', 'tm_ppp']], ['d', ['opp_ts', 'tm_oppp']]]],
+        ['HALF COURT', [['o', ['ev_half_pts_sh', 'hc_ast_pct', 'ev_half_tov_pct', 'ev_half_efg', 'ev_half_ppp']], ['d', ['evd_half_pts_sh', 'evd_half_tov_pct', 'evd_half_efg', 'evd_half_ppp']]]],
+        ['TRANSITION', [['o', ['ev_transition_pts_sh', 'ev_transition_ppp']], ['d', ['tr_def_delta', 'evd_transition_ppp']]]],
+        ['AGAINST STARTERS & BENCH', [['n', ['vs_start_net', 'vs_bench_net']], ['o', ['vs_start_ortg', 'vs_bench_ortg']], ['d', ['vs_start_drtg', 'vs_bench_drtg']]]],
+        ['OUR STARTERS & BENCH', [['n', ['own_start_net', 'own_bench_net']], ['o', ['own_start_ortg', 'own_bench_ortg']], ['d', ['own_start_drtg', 'own_bench_drtg']]]]
       ];
-      const keys = groups.flatMap(g => g[1]);
+      const SIDE = { o: 'Offence', d: 'Defence', n: 'Net rating' };
+      /* inside a group and a half the group's own words are not repeated: "HALF COURT / Defence / TO%" */
+      const SHORT = {
+        ft_pct: 'FT%', tm_ppp: 'PTS / POSSESSION', opp_ts: 'TS% ALLOWED', tm_oppp: 'PTS / POSSESSION',
+        ev_half_pts_sh: '%PTS', hc_ast_pct: 'AST%', ev_half_tov_pct: 'TO%', ev_half_efg: 'eFG%', ev_half_ppp: 'PTS / CHANCE',
+        evd_half_pts_sh: '%PTS', evd_half_tov_pct: 'TO% FORCED', evd_half_efg: 'eFG%', evd_half_ppp: 'PTS / CHANCE',
+        ev_transition_pts_sh: '%PTS', ev_transition_ppp: 'PTS / CHANCE', tr_def_delta: 'PTS v OPP AVERAGE', evd_transition_ppp: 'PTS / CHANCE',
+        vs_start_net: 'VS STARTERS', vs_bench_net: 'VS BENCH', vs_start_ortg: 'VS STARTERS', vs_bench_ortg: 'VS BENCH',
+        vs_start_drtg: 'VS STARTERS', vs_bench_drtg: 'VS BENCH',
+        own_start_net: 'STARTERS', own_bench_net: 'BENCH', own_start_ortg: 'STARTERS', own_bench_ortg: 'BENCH',
+        own_start_drtg: 'STARTERS', own_bench_drtg: 'BENCH'
+      };
+      const SIDE_RT = { o: 'Offence · ORTG', d: 'Defence · DRTG' };
+      const keys = groups.flatMap(g => g[1].flatMap(x => x[1]));
       const Rk = E.ranker(teams, keys);
       const place = k => { const s = E.STATS[k] || {}; const r = rankOf(teams, k, me.id, s.low); return r ? E.ordinal(r.r) + '/' + r.n : null; };
       R.legend.push(...keys);
-      out.push(block(title('Season line', 'the bar and its colour: the club’s place among ' + N + ' (green the top quarter, red the bottom); against starters and bench: against the club’s own') +
-        '<div class="rp-groups">' + groups.map(([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + ks.map(k => E.statRowHTML(k, me, Rk, { place })).join('') + '</div>').join('') + '</div>'));
+      const groupHTML = ([t, parts]) => '<div class="rp-g rp-gx"><h4>' + esc(t) + '</h4>' +
+        parts.map(([side, ks]) => '<div class="rp-gs ' + side + '"><span class="rp-gs-t">' + (/STARTERS/.test(t) && SIDE_RT[side] ? SIDE_RT[side] : SIDE[side]) + '</span>' +
+          ks.map(k => E.statRowHTML(k, me, Rk, { place, label: k2 => SHORT[k2] })).join('') + '</div>').join('') + '</div>';
+      /* two blocks: the club's own season, then the starters and the bench (a page of their own when the first fills one) */
+      /* explicit columns (the PDF's renderer does not lay out CSS columns): the half court beside efficiency and
+         transition, which balance it; against the other side's starters and bench beside the club's own */
+      const cols = (l, r) => '<div class="rp-cols"><div>' + l.map(groupHTML).join('') + '</div><div>' + r.map(groupHTML).join('') + '</div></div>';
+      out.push(block(title('Season line', 'the bar and its colour: the club’s place among ' + N + ' (green the top quarter, red the bottom)') +
+        cols([groups[1]], [groups[0], groups[2]])));
+      out.push(block(title('Starters and bench', 'ratings per 100 possessions · the bar from the middle: better (green, right) or worse (red, left) than the club over every minute') +
+        cols([groups[3]], [groups[4]])));
       /* THE SHOT DISTRIBUTION at both ends, each ranked among the clubs */
       if (SD.some(([k]) => E.isNum(me['z_' + k]) || E.isNum(me['zd_' + k]))) {
         const sk = SD.flatMap(([k]) => ['z_' + k, 'zd_' + k]);
@@ -303,21 +327,41 @@ function modules(ctx) {
           '</tbody></table>'));
       }
       try {
-        const html = await ctx.rebounds(S, mine);
-        if (html) {
-          /* its two halves (the club's own attempts, those against it) as two blocks, so each can fill a gap */
-          const d = E.frag(html), w = d.querySelector('.cob'), tb = w ? w.querySelectorAll('tbody.cob-g') : [];
-          if (tb.length === 2) {
-            const w2 = w.cloneNode(true);
-            const h2 = w2.querySelector('.czt-h'); if (h2) h2.remove();
-            w2.querySelectorAll('tbody.cob-g')[0].remove();
-            tb[1].remove();
-            const n1 = w.querySelector('.czt-note'); if (n1) n1.remove();
-            out.push(block(title('Rebounds analysis', 'what became of every shot attempt, by zone') + d.innerHTML, 'rp-reb'));
-            out.push(block(w2.outerHTML, 'rp-reb'));
-          } else out.push(block(title('Rebounds analysis', 'what became of every shot attempt, by zone') + html, 'rp-reb'));
+        /* both ends side by side, in the report's own dress (the club page's table is a page wide for each end) */
+        if (ctx.rebounds) await ctx.rebounds(S, mine);
+        const src = S.teams.find(t => t.id === me.id) || {};
+        if (src.rb_ready) {
+          const field = S.teams;
+          const ZS = [['rim', 'At the rim'], ['mid', 'Mid-range'], ['three', 'Threes'], ['all', 'Every shot']];
+          const FEW = 10;
+          const pc = v => (E.isNum(v) ? (+v).toFixed(1) + '%' : '\u2014');
+          const bd = (k, low, few) => (few ? 0 : V.bandP(V.pctIn(field, k, me.id, low)));
+          const end = own => {
+            const g = (z, f) => +src['rb_' + z + '_' + (own ? '' : 'g') + f] || 0;
+            const rows = ZS.map(([z, label]) => {
+              const a = g(z, 'a'), m = g(z, 'm'), o = g(z, 'o'), d = g(z, 'd'), n = Math.max(0, a - m - o - d);
+              const w = x => (a ? (100 * x / a).toFixed(2) : 0);
+              const seg = (x, cls, t) => (x > 0 ? '<i class="' + cls + '" style="width:' + w(x) + '%" title="' + t + '"></i>' : '');
+              const rk = 'rb_' + z + '_' + (own ? 'orb' : 'drb'), fk = 'rb_' + z + '_' + (own ? 'fg' : 'gfg');
+              const few = o + d < FEW, r = few ? null : rankOf(field, rk, me.id, false);
+              const fb = bd(fk, !own, a < FEW), rb = bd(rk, false, few);
+              return '<tr' + (z === 'all' ? ' class="tot"' : '') + '><th>' + label + '</th><td class="at">' + a + '</td>' +
+                '<td class="bar"><span class="rp-rb-bar">' + seg(m, 'm', 'made') + seg(o, 'o', own ? 'own offensive rebound' : 'their offensive rebound') +
+                  seg(d, 'd', own ? 'their defensive rebound' : 'own defensive rebound') + seg(n, 'n', 'no rebound') + '</span></td>' +
+                '<td class="v" data-b="' + fb + '">' + (a ? pc(100 * m / a) : '\u2014') + '</td>' +
+                '<td class="v" data-b="' + rb + '">' + pc(src[rk]) + (r ? '<small>' + E.ordinal(r.r) + '</small>' : '') + '</td></tr>';
+            }).join('');
+            const key = '<p class="rp-rb-key"><span><i class="m"></i>made</span><span><i class="o"></i>' + (own ? 'own' : 'their') + ' off. rebound</span>' +
+              '<span><i class="d"></i>' + (own ? 'their' : 'own') + ' def. rebound</span><span><i class="n"></i>no rebound</span></p>';
+            return '<div class="rp-rb ' + (own ? 'own' : 'opp') + '"><h4>' + (own ? esc(c.name) + ' shooting' : 'Opponents shooting against ' + esc(c.name)) + '</h4>' + key +
+              '<table><thead><tr><th>zone</th><th class="at">att</th><th>what became of them</th><th>fg%</th><th>' + (own ? 'orb%' : 'drb%') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+          };
+          out.push(block(title('Rebounds analysis', 'what became of every shot attempt, by zone, at both ends \u00b7 the colour is the club\u2019s place among ' + N) +
+            E.colsHTML([end(true), end(false)], h => h, () => 1) +
+            '<p class="rp-note">The first rebound after each miss counts, team rebounds too; a miss followed by free throws, a turnover or the end of a period has none. ' +
+            'ORB% and DRB% are of the misses somebody rebounded, as the four factors count them; the small figure is the club\u2019s place, once it has ten rebounded misses.</p>', 'rp-reb'));
         }
-      } catch (_) { /* without it */ }
+      } catch (e) { if (root.console) root.console.warn('[report rebounds]', e); }
       R.legendExtra.push(['FOUR FACTORS', 'Shooting (eFG%), turnovers (per 100 possessions), offensive rebounding (share of own misses rebounded) and free-throw rate: the four things that decide a game, at both ends. Each box is coloured by the club’s place among the clubs.'],
         ['SHOT DISTRIBUTION', 'Every located shot at both ends cut into the rim, the rest of the paint, mid-range and three (the corners on their own line): how many per 100 possessions, how many go in, how many came off a pass.'],
         ['REBOUNDS ANALYSIS', 'Every shot attempt in a zone went in, was rebounded by the shooter’s side, by the other side, or had no rebound; ORB% and DRB% are of the misses somebody rebounded.']);
@@ -400,7 +444,7 @@ function modules(ctx) {
 
   /* ---------------- PLAYERS ---------------- */
   const players = {
-    key: 'players', title: 'Players', page: 'PLAYERS', on: true,
+    key: 'players', title: 'Players', page: 'PLAYERS', on: true, pack: false,
     controls(host, state) {
       E.templateControl(host, state, { set: 'players', label: 'players page', pos: () => 'guard' });
       if (ctx.rapm) E.rapmControl(host, state, RAPM, {
@@ -524,7 +568,7 @@ function modules(ctx) {
 
   /* ---------------- COMBINATIONS & SHOT CLOCK ---------------- */
   const combos = {
-    key: 'combos', title: 'Combinations & shot clock', page: 'COMBINATIONS', on: true,
+    key: 'combos', title: 'Combinations & shot clock', page: 'COMBINATIONS', on: true, pack: true,
     async build(c, R) {
       const Ln = root.EpinoiaLineups, SCk = root.EpinoiaShotClock;
       const out = [];

@@ -1055,11 +1055,19 @@ html .ep-nav .panel > .ptitle, html .ep-nav .panel > .ptitle.on{ border-bottom:0
   transition:left .15s,width .15s,opacity .15s }
 .ep-nav .ep-nav-sb:hover i, .ep-nav .ep-nav-sb.drag i{ left:2px; width:6px; opacity:1 }
 .ep-nav .ep-nav-sb.drag i{ cursor:grabbing }
+/* the fade at the top starts under the open panel's head (--sb-h, nav.js), which stays whole */
 .ep-nav .ep-nav-scroll.sb-down{ -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent); mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) }
-.ep-nav .ep-nav-scroll.sb-up{ -webkit-mask-image:linear-gradient(to bottom,transparent,#000 22px); mask-image:linear-gradient(to bottom,transparent,#000 22px) }
-.ep-nav .ep-nav-scroll.sb-up.sb-down{ -webkit-mask-image:linear-gradient(to bottom,transparent,#000 22px,#000 calc(100% - 30px),transparent);
-  mask-image:linear-gradient(to bottom,transparent,#000 22px,#000 calc(100% - 30px),transparent) }
+.ep-nav .ep-nav-scroll.sb-up{
+  -webkit-mask-image:linear-gradient(to bottom,#000 var(--sb-h,0px),transparent var(--sb-h,0px),#000 calc(var(--sb-h,0px) + 22px));
+  mask-image:linear-gradient(to bottom,#000 var(--sb-h,0px),transparent var(--sb-h,0px),#000 calc(var(--sb-h,0px) + 22px)) }
+.ep-nav .ep-nav-scroll.sb-up.sb-down{
+  -webkit-mask-image:linear-gradient(to bottom,#000 var(--sb-h,0px),transparent var(--sb-h,0px),#000 calc(var(--sb-h,0px) + 22px),#000 calc(100% - 30px),transparent);
+  mask-image:linear-gradient(to bottom,#000 var(--sb-h,0px),transparent var(--sb-h,0px),#000 calc(var(--sb-h,0px) + 22px),#000 calc(100% - 30px),transparent) }
+/* the track's own gutter: while it shows, the rows sit in by its width (the head keeps the full width above it), so
+   a row's hover band and its key edge start beside the track and never under it */
+.ep-nav .ep-nav-scroll.sb-on .panel > :not(.phead):not(.ptitle){ margin-left:12px }
 @media (max-width:820px){
   .ep-nav:not(.drawer-open) .ep-nav-sb{ display:none !important }
+  .ep-nav:not(.drawer-open) .ep-nav-scroll.sb-on .panel > :not(.phead):not(.ptitle){ margin-left:0 }
   .ep-nav.drawer-open .ep-nav-sb{ left:3px }
 }

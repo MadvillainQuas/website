@@ -54,9 +54,9 @@ const surname = n => { const p = String(n || '').trim().split(/\s+/); return p.l
 /* [key, the coach's word, the abbreviation, decimals, lower is better ('style': neither), the step] */
 const LU_OFF = [['ortg', 'Points per 100', 'ORTG', 1, false, 4], ['efg', 'Shooting', 'eFG%', 1, false, 3], ['tov', 'Turnovers', 'TO%', 1, true, 2],
   ['oreb', 'Off. rebounds', 'OREB%', 1, false, 4], ['ftr', 'Gets to the line', 'FTr', 1, false, 5], ['ts', 'True shooting', 'TS%', 1, false, 3]];
-const LU_DEF = [['drtg', 'Allowed /100', 'DRTG', 1, true, 4], ['defg', 'Opp. shooting', 'opp eFG%', 1, true, 3], ['dtov', 'TOs forced', 'opp TO%', 1, false, 2],
-  ['drb', 'Def. rebounds', 'DRB%', 1, false, 4], ['dftr', 'Opp. FT rate', 'opp FTr', 1, true, 5]];
-const LU_PLAY = [['astp', 'Assisted', 'AST%', 1, false, 5], ['rim100', 'Rim shots', '/100', 1, false, 3], ['mid100', 'Mid-range', '/100', 1, 'style', 3],
+const LU_DEF = [['drtg', 'Allowed', 'DRTG', 1, true, 4], ['defg', 'Opp. shots', 'opp eFG%', 1, true, 3], ['dtov', 'TOs forced', 'opp TO%', 1, false, 2],
+  ['drb', 'Def. reb.', 'DRB%', 1, false, 4], ['dftr', 'Opp. FTs', 'opp FTr', 1, true, 5]];
+const LU_PLAY = [['astp', 'Assisted', 'AST%', 1, false, 5], ['rim100', 'Rim', '/100', 1, false, 3], ['mid100', 'Mid', '/100', 1, 'style', 3],
   ['p3a100', 'Threes', '/100', 1, 'style', 3], ['p3', '3PT%', '3P%', 1, false, 4]];
 /* a five's share of its baskets that came off a pass (lineupevents.js line: each zone's own rate and makes) */
 function astOf(l) {
@@ -84,9 +84,9 @@ function lineupCards(units, base, o) {
     const nb = bandVs(l.net, B.net, 5, false);
     const five = (u.ids || []).map(id => '<li>' + (opt.photos && opt.photos[id] ? '<img src="' + esc(opt.photos[id]) + '" alt="" crossorigin="anonymous">' : '') + '<span>' + esc(nm(id)) + '</span></li>').join('');
     return '<article class="tv-lu">' +
-      '<header><b class="tv-lu-no">' + (i + 1) + '</b><ol class="tv-lu-five">' + five + '</ol>' +
-        '<div class="tv-lu-net" data-b="' + nb + '"><b>' + (isNum(l.net) ? sg(l.net, 1) : '—') + '</b><span>net per 100</span><em>' + WORD_VS[nb] + (nb ? ' than the club' : '') + '</em></div>' +
-        '<div class="tv-lu-meta"><span><b>' + Math.round(l.mins || 0) + '</b> min</span><span><b>' + Math.round(l.poss || 0) + '</b> poss</span><span><b>' + (l.pm > 0 ? '+' : '') + (l.pm || 0) + '</b> +/−</span></div></header>' +
+      '<header><b class="tv-lu-no">' + (i + 1) + '</b><div class="tv-lu-who"><ol class="tv-lu-five">' + five + '</ol>' +
+        '<p class="tv-lu-meta"><b>' + Math.round(l.mins || 0) + '</b> min \u00b7 <b>' + Math.round(l.poss || 0) + '</b> possessions \u00b7 <b>' + (l.pm > 0 ? '+' : '') + (l.pm || 0) + '</b> on the scoreboard</p></div>' +
+        '<div class="tv-lu-net" data-b="' + nb + '"><b>' + (isNum(l.net) ? sg(l.net, 1) : '\u2014') + '</b><span>net per 100</span><em>' + WORD_VS[nb] + (nb ? ' than the club' : '') + '</em></div></header>' +
       '<div class="tv-lu-row"><div class="tv-lu-g"><h5 class="o">Offence</h5><div class="tv-ts">' + LU_OFF.map(s => tile(s, l, B)).join('') + '</div></div></div>' +
       '<div class="tv-lu-row tv-lu-r2"><div class="tv-lu-g"><h5 class="d">Defence</h5><div class="tv-ts">' + LU_DEF.map(s => tile(s, l, B)).join('') + '</div></div>' +
         '<div class="tv-lu-g"><h5 class="p">How it plays</h5><div class="tv-ts">' + LU_PLAY.map(s => tile(s, l, B)).join('') + '</div></div></div>' +
@@ -125,7 +125,7 @@ function events(row, field, o) {
       '<div class="tv-ev-ppp" data-b="' + bp + '"><b>' + fx(ppp, 2) + '</b><span>pts a chance</span></div>' +
       '<div class="tv-ev-m"><div class="tv-wl"><span class="tv-w" data-b="' + bp + '">' + (WORD[bp] || 'not ranked') + '</span>' +
         (isNum(efg) ? chip(p + 'efg', efg, def, 'eFG') : '') + (isNum(tov) ? chip(p + 'tov_pct', tov, !def, 'TO') : '') + '</div>' +
-        '<p><b>' + fx(ppg, 1) + '</b> pts a game' + (def ? ' allowed' : '') + ' · ' + fx(sh, 0) + '% of ' + (def ? 'all' : 'its points') + '</p>' +
+        '<p><b>' + fx(ppg, 1) + '</b> ' + (def ? 'allowed' : 'pts') + ' a game · ' + fx(sh, 0) + '% of ' + (def ? 'all allowed' : 'its points') + '</p>' +
         '<div class="tv-bar" title="share of the points"><i style="width:' + (isNum(sh) ? Math.max(2, Math.min(100, +sh)).toFixed(1) : 0) + '%"></i></div>' +
         (isNum(fq) ? '<p class="tv-sm">' + fx(fq, 0) + '% of ' + (def ? 'opponents’' : 'its') + ' chances</p>' : '') + '</div></div>';
   };
