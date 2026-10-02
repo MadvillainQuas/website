@@ -50,8 +50,8 @@
     const compIds = s && Array.isArray(s.competitions) ? s.competitions.map(c => c.id).filter(Boolean) : [];
     if (!compIds.length) return null;
 
-    const S = await d.season(compIds, { trim: true });
-    if (!S.games || !S.games.length) return null;
+    const S = await appearances(d, compIds);
+    if (!S.games.length) return null;
 
     const teams = await d.teamMeta(league.id);
     const clubIds = Object.keys(teams);
@@ -67,6 +67,28 @@
     if (ids.length) { try { meta = await d.playerMeta(ids); } catch (_) { meta = {}; } }
 
     return { league, rep, teams, meta, season: s, out: rep.entries.length };
+  }
+
+  /* WHO WAS ON THE SHEET, AND FOR HOW LONG — all report() reads. This page asked for the whole
+     season (d.season with its rows kept): every player line's thirty-odd statistics, every team
+     line whole and the members' events splits, summed into season lines nobody here draws. The
+     global wire did that for every league at once: measured 2 October 2026, 449 requests and
+     5.8 MB transferred, 35 s to settle (docs/performance-audit.md). The same games (final and
+     finalising, as season() read them) and, of each line, the game, the player, the side and the
+     minutes are the report exactly, at a fraction of the bytes. A competition too big for a
+     browser is refused as season() refused it. */
+  async function appearances(d, compIds) {
+    const scope = compIds.length === 1 ? 'competition_id=eq.' + compIds[0] : 'competition_id=in.(' + compIds.join(',') + ')';
+    const games = await d.all('games?' + scope + '&status=in.(final,finalising)&select=id,home_team_id,away_team_id,tipoff_at');
+    if (!games.length) return { games: [], pgs: [] };
+    if (d.BIG_GAMES && games.length > d.BIG_GAMES) throw new Error('this competition is too big to read whole in a browser (' + games.length + ' games)');
+    const ids = games.map(g => g.id), parts = [];
+    for (let i = 0; i < ids.length; i += 40) parts.push(ids.slice(i, i + 40));
+    const rows = await Promise.all(parts.map(c =>
+      d.all('player_game_stats?game_id=in.(' + c.join(',') + ')&select=game_id,player_uuid,player_id,team_idx,min:stats->min')));
+    const pgs = rows.flat().map(r => ({ game_id: r.game_id, player_uuid: r.player_uuid, player_id: r.player_id,
+                                        team_idx: r.team_idx, stats: r.min == null ? {} : { min: r.min } }));
+    return { games, pgs };
   }
 
   /* WHICH CLUBS DO I MANAGE — one call for the whole page, and nothing at all

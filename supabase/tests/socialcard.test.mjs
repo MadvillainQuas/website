@@ -297,8 +297,8 @@ console.log('\nthe modules (the builder\'s options)');
   const names = (mods, size) => words(drawLog(SC.table({ standings, league: withLogo }, size || 'portrait')[0], size || 'portrait', mods)).filter(t => /^Club \d+$/.test(t));
   ok('table rows: the top 4, 6, 8, or all', [4, 6, 8].every(n => names({ rows: n }).length === n) && names({}).length === 18 && names({ rows: 99 }).length === 18);
   const heads = mods => words(drawLog(SC.table({ standings: standings.map(s => Object.assign({}, s, { pts_for: 900, pts_against: 850 })), league }, 'portrait')[0], 'portrait', mods));
-  ok('table columns: the ones chosen, in the table\'s order, and no more than are asked for', ['GP', 'W', 'L', 'DIFF'].every(c => heads({}).includes(c)) && heads({ cols: ['pa', 'w', 'pf'] }).filter(t => /^(GP|W|L|PF|PA|DIFF|PCT|STK|PTS)$/.test(t)).join() === 'W,PF,PA'
-     && heads({ cols: ['pct'] }).includes('PCT') && !heads({ cols: ['pct'] }).includes('DIFF'));
+  ok('table columns: the ones chosen, in the order chosen, and no more than are asked for; WIN% in the default', ['GP', 'W', 'L', 'WIN%', 'DIFF'].every(c => heads({}).includes(c)) && heads({ cols: ['pa', 'w', 'pf'] }).filter(t => /^(GP|W|L|PF|PA|DIFF|WIN%|STK|PTS)$/.test(t)).join() === 'PA,W,PF'
+     && heads({ cols: ['pct'] }).includes('WIN%') && !heads({ cols: ['pct'] }).includes('DIFF'));
   ok('...the win rate and the points for and against are the club\'s own', heads({ cols: ['pct', 'pf', 'pa'] }).includes('.750') && heads({ cols: ['pf'] }).includes('900'), heads({ cols: ['pct'] }).slice(-12).join());
   const ground0 = log => log.find(e => e.kind === 'rect').fill;
   ok('colour: the kit\'s light, and a high-contrast black and yellow', ground0(drawLog(posts.table, 'portrait', { theme: 'light' })) === RC.THEMES.light.ground

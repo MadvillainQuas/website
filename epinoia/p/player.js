@@ -120,16 +120,27 @@ function paintIdentity(pl, entry, team) {
      whatever host someone linked. photo_url stays as the simple fallback. */
   const stored = pl.__photoPath
     ? window.EpinoiaUpload.publicUrl(CFG, pl.__photoPath) : null;
+  /* NO PHOTOGRAPH YET: a pixel figure in the club's colours on a small screen (silhouette.js),
+     the same one for him every time; the initials only where that module is missing */
+  const standIn = () => {
+    const SIL = window.EpinoiaSilhouette;
+    if (SIL) {
+      SIL.mount(box, { seed: pl.id, teamColour: team && team.colour,
+        theme: 'auto', shape: 'portrait', label: SIL.label(name) });
+      return;
+    }
+    const ini = $('#ini');
+    if (ini) ini.textContent = ((pl.first_name || '?')[0] + (pl.last_name || '')[0] || '').toUpperCase() || '—';
+  };
   if (stored || pl.photo_url) {
     const img = document.createElement('img');
     img.src = stored || pl.photo_url;
     img.alt = name;
-    img.addEventListener('error', () => img.remove());   // never a broken frame
+    img.addEventListener('error', () => { img.remove(); standIn(); });   // never a broken frame
     box.textContent = '';
     box.appendChild(img);
   } else {
-    $('#ini').textContent = ((pl.first_name || '?')[0] + (pl.last_name || '')[0] || '')
-      .toUpperCase() || '—';
+    standIn();
   }
   if (entry && entry.jersey) {
     const num = el('span', 'num', entry.jersey);
@@ -231,6 +242,22 @@ function suggestOn(node, field, opts) {
 }
 function suggestable(pl, entry, name) {
   const S = window.EpinoiaSuggest;
+  /* EDIT, for whoever manages him (adminedit.js, 0214), a player under 18 included: the database says who. What it
+     saves, his measures and position are redrawn here; his name and photograph by the editor */
+  if (window.EpinoiaAdminEdit && pl && pl.id) {
+    window.EpinoiaAdminEdit.mount({ type: 'player', id: pl.id, name, host: '#idactions', onSaved: row => {
+      ['first_name', 'last_name', 'height_cm', 'weight_kg', 'wingspan_cm', 'previous_club'].forEach(k => { if (k in row) pl[k] = row[k]; });
+      if (entry) entry.position = row.position || null;
+      const sub = $('#sub');
+      let pc = sub && sub.querySelector('.pos-chip:not(.est-pos)');
+      if (pc && !row.position) pc.remove();
+      else if (row.position && sub) {
+        if (!pc) { pc = el('span', 'pos-chip'); pc.setAttribute('data-i18n-ctx', 'pos'); (sub.querySelector('.sub-break') || sub.lastChild).after(pc); }
+        pc.textContent = row.position;
+      }
+      paintVitals(pl);
+    } });
+  }
   suggestFor = S && pl && pl.id && !pl.is_minor ? { pl, entry, name } : null;
   if (!suggestFor) return;
   suggestOn($('#name'), 'name');

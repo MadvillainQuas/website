@@ -25,6 +25,16 @@
    no name for an anonymous reader, so the record passes to the next line
    rather than drawing a nameless card.
 
+   KEPT BY THE DATABASE (0215). Since migration 0215 the database keeps every
+   competition's record lines as games are finalised (record_lines, maintained
+   by triggers on every path that finalises or corrects a game) and answers a
+   page's records in ONE read, records_board(), as the reader, with the names,
+   photographs and clubs on them. load() and global() ask it first; the reads
+   below are what they fall back to while it is not there (a database before
+   0215, or before records_backfill has finished), and what HOME's U22 filter
+   still runs (an age is not something a kept list can know), now over the
+   board's competitions rather than every finished game on the platform.
+
    Needs data.js (get, all, playerMeta) and, for the card's colours,
    teamcolour.js through stars.js's paintCard.
    ============================================================================ */
@@ -114,6 +124,72 @@ function settle(rows, shown) {
   return { v: best, holder: tied[0], shared: tied.length };
 }
 
+/* ------------------------------------------------------------ the board ---
+   records_board (0215): the kept records in one read. null when the database
+   has no such function (404, asked once a page) or has not finished its
+   backfill (ready false); the caller then works them out the old way. */
+let boardMissing = false;
+async function board(D, comps, filter) {
+  if (boardMissing || !D || typeof D.get !== 'function') return null;
+  const q = 'rpc/records_board?' + (comps && comps.length ? 'p_comps=' + comps.join(',') + '&' : '') +
+    'p_filter=' + encodeURIComponent(filter || 'all');
+  try {
+    const rows = await D.get(q);
+    const b = rows && rows[0] && rows[0].board;
+    return b && b.ready ? b : null;
+  } catch (e) {
+    if (/^(404|400)\b/.test(String(e && e.message))) boardMissing = true;
+    return null;
+  }
+}
+/* a holder's photograph, as playerRecords reads one: an approved upload, else a pasted
+   address, never an insecure one */
+function photoOf(path, url) {
+  const cfg = root.EPINOIA_CONFIG || {};
+  const U = root.EpinoiaUpload;
+  const stored = path ? (U && U.publicUrl ? U.publicUrl(cfg, path)
+    : (cfg.supabaseUrl || '') + '/storage/v1/object/public/media-public/' + path) : null;
+  const u = stored || url || null;
+  return u && /^https:\/\//i.test(u) ? u : null;
+}
+/* the board's answer in the shape load() has always returned */
+function fromBoard(b) {
+  const game = j => ({ id: j.id, tipoff_at: j.tipoff_at, home_team_id: j.home_team_id, away_team_id: j.away_team_id,
+                       home_score: j.home_score, away_score: j.away_score, competition_id: j.competition_id });
+  const byCat = (list, cats) => cats.map(c => [c, (list || []).find(r => r.cat === c.k)]).filter(x => x[1]);
+  const player = byCat(b.player, PLAYER).map(([c, r]) => {
+    const g = game(r.game);
+    const side = r.side === 0 ? 0 : 1;
+    const v = num(r.v);
+    return { cat: c, v, shared: r.shared, game: g, side,
+             holder: { game_id: g.id, pid: r.pid, team_idx: side, at: g.tipoff_at, v },
+             meta: { name: r.name, slug: r.slug, photo_url: r.photo_url },
+             teamId: side === 0 ? g.home_team_id : g.away_team_id,
+             oppId: side === 0 ? g.away_team_id : g.home_team_id,
+             photo: photoOf(r.photo_path, r.photo_url), league: r.league || null };
+  });
+  const team = byCat(b.team, TEAM).map(([c, r]) => {
+    const g = game(r.game);
+    const side = r.side === 0 ? 0 : 1;
+    const pts = num(side === 0 ? g.home_score : g.away_score), opp = num(side === 0 ? g.away_score : g.home_score);
+    const teamId = side === 0 ? g.home_team_id : g.away_team_id, oppId = side === 0 ? g.away_team_id : g.home_team_id;
+    const v = num(r.v);
+    return { cat: c, v, shared: r.shared, game: g, side, teamId, oppId, pts, opp,
+             holder: { game_id: g.id, at: g.tipoff_at, game: g, side, teamId, oppId, pts, opp, v },
+             league: r.league || null };
+  });
+  return { player, team, games: +b.games || 0 };
+}
+/* the clubs on the cards, with their crests (an approved upload first, as the clubs grid does) */
+function clubsOf(b) {
+  const out = {};
+  Object.keys(b.teams || {}).forEach(id => {
+    const t = b.teams[id];
+    out[id] = Object.assign({}, t, { __logo: t.crest_path && typeof root.epinoiaLogoUrl === 'function' ? root.epinoiaLogoUrl(t.crest_path) : null });
+  });
+  return out;
+}
+
 /* ------------------------------------------------------------ the loads ---
    load({comps, teamsById}) -> {player: [...], team: [...], games}
    Each record: {cat, v, shared, holder, game, side, opp, meta?}. */
@@ -122,13 +198,24 @@ async function load(opts) {
   const comps = (opts && opts.comps) || [];
   if (!D || !comps.length) return null;
 
+  /* U22 is a player's filter: a team has no age, so there are no team records under it */
+  const u22 = opts.filter === 'u22';
+  /* THE KEPT RECORDS (0215), in one read, whenever the database has them */
+  if (!u22 && opts.board !== false) {
+    const b = await board(D, comps, 'all');
+    if (b) {
+      if (!b.games) return null;
+      const out = fromBoard(b);
+      out.teamsById = clubsOf(b);
+      return out;
+    }
+  }
+
   const games = opts.games || await D.all('games?competition_id=' + inList(comps) + '&status=eq.final' +
-    '&select=id,tipoff_at,home_team_id,away_team_id,home_score,away_score&order=tipoff_at.asc,id.asc');
+    '&select=id,tipoff_at,home_team_id,away_team_id,home_score,away_score,competition_id&order=tipoff_at.asc,id.asc');
   if (!games.length) return null;
   const byId = new Map(games.map(g => [g.id, g]));
 
-  /* U22 is a player's filter: a team has no age, so there are no team records under it */
-  const u22 = opts.filter === 'u22';
   const born = u22 ? (opts.now instanceof Date ? opts.now : new Date()).getFullYear() - 22 : null;
   const [player, team] = await Promise.all([
     playerRecords(D, comps, byId, born).catch(() => []),
@@ -406,11 +493,15 @@ function render(host, data, opts) {
    on. Leagues run to different calendars, so one date range would cut one
    league's season in half and reach back into another's last.
 
-   Every finished game on the platform is one small read (id, date, clubs,
-   scores, competition), which is what decides the seasons; the records
-   themselves are then load()'s, over those seasons' competitions. Cached for
-   ten minutes in sessionStorage, keyed by the newest final, so a result
-   anywhere misses the cache. */
+   THE BOARD DECIDES THE SEASONS (0215): records_board(null, filter) picks them in
+   the database, from the competitions with a finished game the reader may see,
+   and answers the records with them in the same read.
+
+   Without it (globalRead, the old way): every finished game on the platform is
+   one small read (id, date, clubs, scores, competition), which is what decides
+   the seasons; the records themselves are then load()'s, over those seasons'
+   competitions. Cached for ten minutes in sessionStorage, keyed by the newest
+   final, so a result anywhere misses the cache. */
 const CACHE_KEY = 'epinoia_records_global:';
 const CACHE_MS = 10 * 60 * 1000;
 function cacheGet(key) {
@@ -433,6 +524,59 @@ async function global(opts) {
   const filter = ST && ST.cleanFilter ? ST.cleanFilter(o.filter) : 'all';
   const D = root.EpinoiaData;
   if (!D) return null;
+
+  /* THE KEPT RECORDS (0215): one read answers the leagues, their current seasons, the records,
+     the names and the clubs, as this reader. Men's and women's are the board's own filter;
+     U22 takes the board's seasons and reads the lines itself (an age is not kept). */
+  const b = await board(D, null, filter === 'u22' ? 'all' : filter);
+  if (b) {
+    if (filter !== 'u22') {
+      if (!b.games) return null;
+      const data = fromBoard(b);
+      if (!data.player.length && !data.team.length) return null;
+      return { data, teamsById: clubsOf(b), leagues: +b.leagues || 0 };
+    }
+    return under22Board(D, b, o);
+  }
+  return globalRead(D, ST, filter, o);
+}
+
+/* U22 across leagues over the board's seasons: the reads load() makes, on those competitions only */
+async function under22Board(D, b, o) {
+  const comps = (b.comps || []).map(c => c.id);
+  if (!comps.length || !b.games) return null;
+  const key = CACHE_KEY + 'u22:b:' + b.games + ':' + comps.length + ':' + comps[0];
+  const hit = cacheGet(key);
+  if (hit) return hit;
+  const leagueOf = new Map((b.comps || []).map(c => [c.id, c.league]));
+  const data = await load({ comps, filter: 'u22', now: o.now, board: false });
+  if (!data || (!data.player.length && !data.team.length)) return null;
+  data.player.forEach(r => { r.league = leagueOf.get(r.game && r.game.competition_id) || null; });
+  const teamsById = await clubsFor(D, data);
+  const out = { data, teamsById, leagues: +b.leagues || 0 };
+  cachePut(key, out);
+  return out;
+}
+
+/* the clubs on the cards, with their crests: an approved upload first, as the clubs grid does */
+async function clubsFor(D, data) {
+  const teamIds = [...new Set(data.player.concat(data.team).flatMap(r => [r.teamId, r.oppId]).filter(Boolean))];
+  const teamsById = {};
+  if (teamIds.length) {
+    const [ts, crests] = await Promise.all([
+      D.get('teams?id=' + inList(teamIds) + '&select=id,name,short_name,slug,colour,colour_2,logo_path').catch(() => []),
+      D.get('media?owner_type=eq.team&kind=eq.logo&status=eq.approved&owner_id=' + inList(teamIds) +
+        '&select=owner_id,storage_path&order=created_at.desc').catch(() => [])
+    ]);
+    const crest = {};
+    (crests || []).forEach(m => { if (!crest[m.owner_id] && typeof root.epinoiaLogoUrl === 'function') crest[m.owner_id] = root.epinoiaLogoUrl(m.storage_path); });
+    (ts || []).forEach(t => { teamsById[t.id] = Object.assign({}, t, { __logo: crest[t.id] || null }); });
+  }
+  return teamsById;
+}
+
+/* THE OLD WAY, while the database has no board (before 0215 and its backfill) */
+async function globalRead(D, ST, filter, o) {
   const G = root.EpinoiaGlobalGames;
   const lgs = G && typeof G.leagues === 'function' ? await G.leagues()
     : await D.get('leagues?select=id,slug,name,gender&order=name.asc');
@@ -468,7 +612,7 @@ async function global(opts) {
   const compSet = new Set(comps);
   const games = finals.filter(g => compSet.has(g.competition_id));
 
-  const data = await load({ comps, games, filter });
+  const data = await load({ comps, games, filter, now: o.now, board: false });
   if (!data || (!data.player.length && !data.team.length)) return null;
   const leagueOfGame = g => {
     const se = seasonOfComp.get(g.competition_id);
@@ -477,23 +621,12 @@ async function global(opts) {
   };
   data.player.concat(data.team).forEach(r => { r.league = leagueOfGame(r.game); });
 
-  /* the clubs on the cards, with their crests: an approved upload first, as the clubs grid does */
-  const teamIds = [...new Set(data.player.concat(data.team).flatMap(r => [r.teamId, r.oppId]).filter(Boolean))];
-  const teamsById = {};
-  if (teamIds.length) {
-    const [ts, crests] = await Promise.all([
-      D.get('teams?id=' + inList(teamIds) + '&select=id,name,short_name,slug,colour,colour_2,logo_path').catch(() => []),
-      D.get('media?owner_type=eq.team&kind=eq.logo&status=eq.approved&owner_id=' + inList(teamIds) +
-        '&select=owner_id,storage_path&order=created_at.desc').catch(() => [])
-    ]);
-    const crest = {};
-    (crests || []).forEach(m => { if (!crest[m.owner_id] && typeof root.epinoiaLogoUrl === 'function') crest[m.owner_id] = root.epinoiaLogoUrl(m.storage_path); });
-    (ts || []).forEach(t => { teamsById[t.id] = Object.assign({}, t, { __logo: crest[t.id] || null }); });
-  }
+  const teamsById = await clubsFor(D, data);
   const out = { data, teamsById, leagues: current.size };
   cachePut(key, out);
   return out;
 }
 
-return { PLAYER, TEAM, load, render, card, settle, when, global };
+return { PLAYER, TEAM, load, render, card, settle, when, global, fromBoard, board,
+         _reset: () => { boardMissing = false; } };
 }));

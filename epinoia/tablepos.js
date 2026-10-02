@@ -15,6 +15,10 @@
    only given once somebody in its table (its group, where the league has
    groups) has played.
 
+   WHICH ORDER. The order the league's own table opens in: winning percentage, level
+   percentages in the league's points-and-tiebreak order (standings.js byWinPct), so "3rd in
+   the league" under a club's name is the 3rd row of the table beside it and of the league page.
+
    Pure where it can be (ordinal, place, tableHTML run under node); load()
    reads through the page's api(path) -> rows.
    ============================================================================ */
@@ -56,6 +60,20 @@ async function load(api, competitionId) {
   return rows && rows.length ? { comp, rows } : null;
 }
 
+/* THE ORDER A TABLE IS READ IN: winning percentage first, as the league's own table opens
+   (standings.js byWinPct: level percentages keep the league's points-and-tiebreak order, a club
+   with no games last), each row's `pos` its place in it. Without standings.js, the stored rank. */
+function STD() {
+  try { if (typeof module === 'object' && module && module.exports && typeof require === 'function') return require('./standings.js'); } catch (_) { /* the page's own */ }
+  return (typeof globalThis !== 'undefined' ? globalThis : self).EpinoiaStandings || null;
+}
+function ordered(rows) {
+  const S = STD();
+  if (S && S.byWinPct) return S.byWinPct(rows);
+  return rows.slice().sort((a, b) => (a.rank ?? 1e9) - (b.rank ?? 1e9)).map(r => Object.assign({}, r, { pos: r.rank }));
+}
+const pctText = r => (r.gp > 0 ? ((r.w || 0) >= r.gp ? '1.000' : ((r.w || 0) / r.gp).toFixed(3).replace(/^0/, '')) : '\u2014');
+
 /* the rows of the table a club is in: its group, where the league has groups */
 function tableOf(rows, teamId) {
   const me = (rows || []).find(r => r.team_id === teamId);
@@ -68,10 +86,12 @@ function tableOf(rows, teamId) {
 function place(T, teamId) {
   if (!T) return null;
   const t = tableOf(T.rows, teamId);
-  if (!t || t.me.rank == null || !t.rows.some(r => (r.gp || 0) > 0)) return null;
+  if (!t || !t.rows.some(r => (r.gp || 0) > 0)) return null;
+  const me = ordered(t.rows).find(r => r.team_id === teamId);
+  if (!me || me.pos == null) return null;
   const g = t.me.group_name || '';
   const where = g ? (/\s/.test(g) ? g : 'Group ' + g) : (T.comp && T.comp.name) || 'the league';
-  return { rank: t.me.rank, of: t.rows.length, text: ordinal(t.me.rank) + ' in ' + where, group: g };
+  return { rank: me.pos, of: t.rows.length, text: ordinal(me.pos) + ' in ' + where, group: g };
 }
 
 /* THE TABLE, WITH BOTH CLUBS LIT. The two clubs' rows carry their colour down the edge and a tint,
@@ -89,7 +109,7 @@ function tableHTML(T, ids, opts) {
   const colourOf = id => (o.colours && o.colours[id]) || '';
   const max = o.max || 10;
   const block = g => {
-    const rows = T.rows.filter(r => (r.group_name || '') === g).slice().sort((a, b) => (a.rank ?? 1e9) - (b.rank ?? 1e9));
+    const rows = ordered(T.rows.filter(r => (r.group_name || '') === g));
     let keep = rows.map(() => rows.length <= max);
     if (rows.length > max) {
       const lit = rows.map((r, i) => want.indexOf(r.team_id) !== -1 ? i : -1).filter(i => i >= 0);
@@ -97,7 +117,7 @@ function tableHTML(T, ids, opts) {
     }
     let out = '', gap = false;
     rows.forEach((r, i) => {
-      if (!keep[i]) { if (!gap) { out += '<tr class="tp-gap"><td colspan="7">⋯</td></tr>'; gap = true; } return; }
+      if (!keep[i]) { if (!gap) { out += '<tr class="tp-gap"><td colspan="8">⋯</td></tr>'; gap = true; } return; }
       gap = false;
       const lit = want.indexOf(r.team_id) !== -1;
       const t = r.teams || {};
@@ -105,15 +125,16 @@ function tableHTML(T, ids, opts) {
       const cell = o.base != null && t.slug
         ? '<a href="' + esc(o.base) + 't/?t=' + esc(encodeURIComponent(t.slug)) + '">' + esc(name) + '</a>' : esc(name);
       out += '<tr' + (lit ? ' class="lit" style="--tc:' + esc(colourOf(r.team_id) || t.colour || 'var(--lume)') + '"' : '') + '>' +
-        '<td class="tp-r">' + esc(r.rank ?? '') + '</td>' +
+        '<td class="tp-r">' + esc(r.pos ?? '') + '</td>' +
         '<td class="tp-n">' + cell + '</td>' +
         '<td>' + (r.gp || 0) + '</td><td>' + (r.w || 0) + '</td><td>' + (r.l || 0) + '</td>' +
+        '<td class="tp-w">' + pctText(r) + '</td>' +
         '<td>' + ((r.diff || 0) > 0 ? '+' : '') + (r.diff || 0) + '</td>' +
         '<td class="tp-p">' + esc(r.league_points ?? '') + '</td></tr>';
     });
     const head = g ? '<caption>' + esc(/\s/.test(g) ? g : 'Group ' + g) + '</caption>' : '';
     return '<table class="tp-table">' + head +
-      '<thead><tr><th class="tp-r">#</th><th class="tp-n">Club</th><th>GP</th><th>W</th><th>L</th><th>+/−</th><th class="tp-p">PTS</th></tr></thead>' +
+      '<thead><tr><th class="tp-r">#</th><th class="tp-n">Club</th><th>GP</th><th>W</th><th>L</th><th class="tp-w">WIN%</th><th>+/−</th><th class="tp-p">PTS</th></tr></thead>' +
       '<tbody>' + out + '</tbody></table>';
   };
   return groups.map(block).join('');

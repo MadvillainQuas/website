@@ -123,7 +123,39 @@
   color:var(--ink-2); font-size:24px; line-height:1;
 }
 .cmp-sheet-close:hover{ color:var(--ink) }
-.cmp-sheet-body{ overflow:auto; overscroll-behavior:contain; padding:14px 16px 18px; min-height:0 }
+/* THE SHEET FITS THE SCREEN AND ITS BARS SCROLL INSIDE IT. The players, the scale and the stat chips stay at the top;
+   only the chart scrolls (overscroll contained, so the page behind does not move). The chart gives up its height first
+   when the room runs short (its basis is all its bars), and never below a few rows; the controls scroll in their own
+   box once "every stat" opens them past what is left. */
+.cmp-sheet-body{ overflow:hidden; padding:14px 16px 18px; min-height:0; flex:1 1 auto; display:flex; flex-direction:column }
+.cmp-sheet-body > .cmp{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column }
+.cmp-sheet-body > .cmp > *{ flex:0 1 auto; min-height:0 }
+.cmp-sheet-body > .cmp > .cmp-legend, .cmp-sheet-body > .cmp > .cmp-note{ flex:none }
+.cmp-sheet-body > .cmp > .cmp-controls, .cmp-sheet-body > .cmp > .cmp-statbox{ flex:none; max-height:var(--cmp-ctl-h, 38vh); overflow:auto; overscroll-behavior:contain }
+.cmp-sheet-body > .cmp > .cmp-chart{ flex:1 1 auto; min-height:140px; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain;
+  border-top:1px solid var(--rule); padding-top:10px; scrollbar-gutter:stable }
+.cmp-sheet-title{ flex:1 1 auto; min-width:0 }
+.cmp-sheet-export{
+  flex:none; min-height:40px; padding:0 12px; border:1px solid var(--rule-2); border-radius:3px; cursor:pointer;
+  background:transparent; color:var(--ink-2);
+  font-family:var(--f-micro); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+}
+/* the picture's circles: the player's own or his club's crest (the console's Graphics choice) */
+.cmp-sheet-discs{ flex:none; display:inline-flex; border:1px solid var(--rule-2); border-radius:3px; overflow:hidden }
+.cmp-disc{ border:0; background:transparent; color:var(--ink-3); cursor:pointer; min-height:38px; padding:0 10px;
+  font-family:var(--f-micro); font-size:11px; letter-spacing:.04em; text-transform:uppercase }
+.cmp-disc + .cmp-disc{ border-left:1px solid var(--rule-2) }
+.cmp-disc[aria-pressed="true"]{ background:var(--lume); color:var(--on-accent) }
+.cmp-disc:hover{ color:var(--ink) }
+.cmp-disc[aria-pressed="true"]:hover{ color:var(--on-accent) }
+.cmp-disc:focus-visible{ outline:2px solid var(--aqua); outline-offset:-2px }
+.cmp-sheet-export:hover{ color:var(--on-accent); background:var(--lume); border-color:var(--lume) }
+.cmp-sheet-export:focus-visible{ outline:2px solid var(--aqua); outline-offset:2px }
+.cmp-sheet-export[disabled]{ opacity:.6; cursor:progress }
+/* the body is zoomed on a wide screen (kit/epinoia-kit.css: 1.25 from 1000px, 1.5 from 1200px) and a vh is not, so the
+   sheet's cap is divided by the zoom: 86vh of the screen, not 86vh times one and a half, which ran it off the top */
+@media (min-width:1000px){ .cmp-sheet{ max-height:min(calc(86vh / 1.25), 720px); --cmp-ctl-h:calc(38vh / 1.25) } }
+@media (min-width:1200px){ .cmp-sheet{ max-height:min(calc(86vh / 1.5), 600px); --cmp-ctl-h:calc(38vh / 1.5) } }
 
 /* phones: a bottom sheet, full width, clear of the gesture bar */
 @media (max-width:559px){
@@ -132,6 +164,13 @@
     border-radius:12px 12px 0 0; border-bottom:0;
   }
   .cmp-sheet-body{ padding:12px 16px calc(18px + env(safe-area-inset-bottom)) }
+  /* the head wraps: the title and the close on the first line, the picture's circles and its export under them */
+  .cmp-sheet-head{ flex-wrap:wrap; row-gap:8px }
+  .cmp-sheet-title{ flex:1 1 calc(100% - 60px); font-size:20px }
+  .cmp-sheet-close{ order:1 }
+  .cmp-sheet-discs{ order:2; flex:1 1 auto }
+  .cmp-sheet-discs .cmp-disc{ flex:1 1 0; min-height:40px }
+  .cmp-sheet-export{ order:3 }
   .cmp-mode-btn{ min-height:40px }
   .cmp-stat{ min-height:36px }
 }

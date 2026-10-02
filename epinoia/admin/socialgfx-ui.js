@@ -328,7 +328,7 @@ function decorate(model, lines, keys, opts) {
   const X = root.EpinoiaStatCat, ks = (keys || []).filter(k => /^c:/.test(k));
   if (!model || !ks.length || !lines || !X) return model;
   const pl = X.byId('player', opts), tm = X.byId('team', opts);
-  const cat = Object.assign({}, model.cat);
+  const cat = Object.assign({}, model.cat), tcat = Object.assign({}, model.tcat);
   const fill = (obj, row, map) => ks.forEach(k => { const c = map.get(k); if (c && row) { obj[k] = X.text(c, row); cat[k] = { l: c.label, low: X.isLow(c) }; } });
   if (model.kind === 'performer') fill(model.stats, X.gameRow(lines, model.gameId, model.player.name, model.idx), pl);
   if (model.kind === 'weekstars') model.rows.forEach(r => { const m = /^(.*?):(\d):/.exec(r.key || ''); if (m && !r.sub) fill(r.stats, X.gameRow(lines, r.gameId, r.name, +m[2]), pl); });
@@ -336,8 +336,15 @@ function decorate(model, lines, keys, opts) {
     const g = lines.games.find(x => x.id === model.gameId), rows = X.rowsOf(lines, new Set([model.gameId])).teams;
     if (g) [['home', g.home_team_id], ['away', g.away_team_id]].forEach(([side, id]) => {
       const row = rows.find(t => t.id === id);
-      ks.forEach(k => { const c = tm.get(k); if (c && row) { model.teamStats[side][k] = { v: X.text(c, row), n: X.value(c, row) == null ? -1 : X.value(c, row) }; cat[k] = { l: c.label, low: X.isLow(c) }; } });
+      ks.forEach(k => { const c = tm.get(k); if (c && row) { model.teamStats[side][k] = { v: X.text(c, row), n: X.value(c, row) == null ? -1 : X.value(c, row) }; tcat[k] = { l: c.label, low: X.isLow(c) }; } });
     });
+    model.tcat = tcat;               // the team stats' own labels: a key the leaders use too is a player's column there (c:fast is TRANS for a player, FAST for a club)
+  }
+  /* a final's leaders: each side's leader and top scorers carry the site's numbers for that night too (their stat lines may be any
+     column of the catalogue: without this they were drawn as a label with no figure, "27 PTS · PPG") */
+  if (model.kind === 'result' && model.gameId) {
+    [['top', 'home', 0], ['top', 'away', 1]].forEach(([, side, idx]) => { const t = model.top && model.top[side]; if (t && t.stats) fill(t.stats, X.gameRow(lines, model.gameId, t.name, idx), pl); });
+    [['home', 0], ['away', 1]].forEach(([side, idx]) => ((model.scorers && model.scorers[side]) || []).forEach(p => { if (p.stats) fill(p.stats, X.gameRow(lines, model.gameId, p.name, idx), pl); }));
   }
   model.cat = cat;
   return model;
@@ -484,7 +491,7 @@ function builderModel0(data, sel, size, crestOf) {
   const withExtras = x => Object.assign({}, x, { team: team(x.team_id) }, ex ? { elo: ex.elo.get(x.team_id), l5: ex.l5.get(x.team_id), home: ex.home.get(x.team_id), away: ex.away.get(x.team_id) } : {});
   const models0 = tpl === 'week' ? SC.week({ games: games(data.finals), league: L, comp, range }, size)
     : tpl === 'fixtures' ? SC.fixtures({ games: games(data.upcoming), league: L, comp, range: ahead }, size)
-    : SC.table({ standings: data.standings.filter(x => x.competition_id === c.id).map(withExtras), league: L, comp, asOf }, size);
+    : SC.table({ standings: data.standings.filter(x => x.competition_id === c.id).map(withExtras), league: L, comp, asOf, order: s.order === 'official' ? 'official' : 'pct' }, size);
   const models = models0.filter(m => m.rows.length);          // a list with no rows is an empty page, not a graphic
   const page = Math.max(0, Math.min(models.length - 1, +s.page || 0));
   const none = tpl === 'week' ? 'No game finished in this competition in this week.' : tpl === 'fixtures'

@@ -94,6 +94,18 @@ const byJersey = (ctx, ids) => ids.slice().sort((a, b) => {
 });
 const nameOf = (ctx, id) => ((ctx.meta && ctx.meta[id]) || {}).name || 'Player';
 const short = (ctx, id) => W.surname(nameOf(ctx, id));
+/* A SURNAME WITH THE WHOLE NAME BEHIND IT: the lineup tables print surnames to fit five to a row, so the
+   full name (first and last, as stored) is the span's title on hover, and what a screen reader reads in
+   place of the cut one (kit .ep-sr) */
+function shortEl(ctx, id, tag, cls) {
+  const full = nameOf(ctx, id), cut = short(ctx, id);
+  const s = el(tag || 'span', cls || null);
+  s.title = full;
+  if (cut === full) { s.textContent = cut; return s; }
+  const seen = el('span', null, cut); seen.setAttribute('aria-hidden', 'true');
+  s.append(seen, el('span', 'ep-sr', full));
+  return s;
+}
 
 function circleRow(ctx, ids, o) {
   const row = el('span', 'wc-row wc-row-' + ((o && o.size) || 's'));
@@ -257,7 +269,7 @@ function rail(ctx, o) {
     if (o.max && !sel.has(id) && sel.size >= o.max) { c.disabled = true; c.classList.add('locked'); }
     c.addEventListener('click', () => o.onPick(id));
     item.appendChild(c);
-    item.appendChild(el('span', 'wrail-n', short(ctx, id)));
+    item.appendChild(shortEl(ctx, id, 'span', 'wrail-n'));
     r.appendChild(item);
   });
   return r;
@@ -344,7 +356,7 @@ function labelOf(ctx, row, o, size) {
   const box = el('div', 'wu-lab');
   box.appendChild(circleRow(ctx, row.ids, { size: size || 's', team: row.team || undefined }));
   const names = el('div', 'wu-names');
-  byJersey(ctx, row.ids).forEach(id => names.appendChild(el('span', null, short(ctx, id))));
+  byJersey(ctx, row.ids).forEach(id => names.appendChild(shortEl(ctx, id)));
   box.appendChild(names);
   const meta = el('div', 'wu-meta');
   if (o.showTeam && row.team) { const tt = el('span', 'wu-team', row.team.short || row.team.name); tt.style.color = 'var(--wc)'; meta.appendChild(tt); }
@@ -615,7 +627,7 @@ function unitDetail(ctx, row, o) {
   const head = el('div', 'wdet-h');
   head.appendChild(circleRow(ctx, row.ids, { size: 'm', team: row.team || undefined }));
   const t = el('div', 'wdet-t');
-  t.appendChild(el('b', null, byJersey(ctx, row.ids).map(id => short(ctx, id)).join(' · ')));
+  { const b = el('b'); byJersey(ctx, row.ids).forEach((id, i) => { if (i) b.appendChild(document.createTextNode(' · ')); b.appendChild(shortEl(ctx, id)); }); t.appendChild(b); }
   t.appendChild(el('span', null, row.ids.length + ' on the floor · ' + W.fmt('mins', row.line.mins) + ' min · ' + W.fmt('poss', row.line.poss) + ' possessions'));
   head.appendChild(t);
   box.appendChild(head);
@@ -1052,5 +1064,5 @@ function buildView(ctx, host) {
 }
 
 root.EpinoiaWowyUI = { circle, circleRow, hydrate, statList, splitGrid, tiles, seg, legend, columnPicker, rail, teaser, notice, btn, facedBar, layBar, cellOf,
-  lineupsView, overviewView, onOffView, pairView, wowyView, vsView, buildView, inkOn, safeColour, byJersey, short, nameOf };
+  lineupsView, overviewView, onOffView, pairView, wowyView, vsView, buildView, inkOn, safeColour, byJersey, short, shortEl, nameOf };
 })(typeof window !== 'undefined' ? window : globalThis);

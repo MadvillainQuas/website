@@ -263,6 +263,10 @@ function card(r, p, i, small, opts) {
       /* the player: a photo where the site has one, else the initials on the club's colour */
       const disc = el('div', 'star-disc');
       disc.appendChild(el('span', 'star-ini', initials(name)));
+      /* no photograph yet: his pixel figure in the club's colours (silhouette.js, where the page has it) */
+      const SIL = root.EpinoiaSilhouette;
+      if (SIL && root.document) SIL.mount(disc, { seed: p.id, teamColour: ink,
+        theme: 'auto', shape: 'square', res: 30, label: SIL.label(name) });
       const photo = m.photo_url && /^https:\/\//i.test(m.photo_url) ? m.photo_url : null;
       if (photo) disc.appendChild(pic('star-photo', photo));
       plate.appendChild(disc);

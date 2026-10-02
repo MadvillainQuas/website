@@ -382,38 +382,79 @@ async function renderStandingsInto(pane, competition) {
   });
 }
 
-function groupTable(rows) {
-  const wrap = el('div', 'ep-tw');
-  const t = el('table', 'ep-tbl stand'); t.style.minWidth = '680px';
-  const thead = el('thead'); const hr = el('tr');
-  ['#', 'TEAM', 'GP', 'W', 'L', 'PF', 'PA', 'DIFF', 'PTS', 'STREAK', 'ELO']
-    .forEach(h => hr.appendChild(h === 'ELO' ? eloHead() : el('th', null, h)));
-  thead.appendChild(hr); t.appendChild(thead);
+/* THE ORDER OF THE TABLE. A reader meets it in winning-percentage order (standings.js byWinPct:
+   level percentages keep the league's points-and-tiebreak order, a club with no games goes last)
+   and the # follows what is on screen. The WIN% and PTS headers are buttons: PTS puts the table
+   back in the official order (league points, then the league's tiebreak rules: the stored rank).
+   The choice lasts for the page's life and every table on it follows it. */
+let tableOrder = 'pct';
+const ORDERED = new Set();          // the tables drawn, each one's redraw; a click redraws every one still on the page (and forgets the rest)
 
-  const tb = el('tbody');
-  rows.forEach(r => {
-    const tr = el('tr');
-    if (r.teams && r.teams.colour) tr.style.setProperty('--tc', r.teams.colour);
-    tr.appendChild(el('td', 'rk', r.rank ?? ''));
-    tr.appendChild(teamCell(r.teams));
-
-    [r.gp, r.w, r.l, r.pts_for, r.pts_against].forEach(v => tr.appendChild(el('td', null, v)));
-    tr.appendChild(diffCell(r.diff));
-    /* A DOCKED TOTAL HAS TO SAY SO. Without the marker the points column
-       simply does not follow from the W-L beside it, and the first thing
-       anybody does with a table that does not add up is assume it is broken. */
-    const pts = el('td', 'pts', r.league_points);
-    if (r.deducted_points) {
-      const d = el('span', 'dock', ' −' + r.deducted_points);
-      d.title = r.deducted_points + ' points deducted';
-      pts.appendChild(d);
-    }
-    tr.appendChild(pts);
-    tr.appendChild(streakCell(r.streak));
-    tr.appendChild(eloCell(r.team_id));
-    tb.appendChild(tr);
+function sortHead(label, key, title) {
+  const th = el('th', 'sorted-' + key);
+  const b = el('button', 'sorth', label);
+  b.type = 'button';
+  b.title = title;
+  b.addEventListener('click', () => {
+    if (tableOrder === key) return;
+    tableOrder = key;
+    ORDERED.forEach(f => { if (!f()) ORDERED.delete(f); });
   });
+  th.appendChild(b);
+  return th;
+}
+
+function groupTable(rows) {
+  const ST = window.EpinoiaStandings;
+  const wrap = el('div', 'ep-tw');
+  const t = el('table', 'ep-tbl stand ord'); t.style.minWidth = '740px';
+  const thead = el('thead'); const hr = el('tr');
+  const heads = {};
+  ['#', 'TEAM', 'GP', 'W', 'L', 'WIN%', 'PF', 'PA', 'DIFF', 'PTS', 'STREAK', 'ELO'].forEach(h => {
+    const th = h === 'ELO' ? eloHead()
+      : h === 'WIN%' ? sortHead('WIN%', 'pct', 'Order by winning percentage')
+      : h === 'PTS' ? sortHead('PTS', 'pts', 'Order by league points: the official order')
+      : el('th', null, h);
+    if (h === 'WIN%' || h === 'PTS') heads[h === 'WIN%' ? 'pct' : 'pts'] = th;
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr); t.appendChild(thead);
+  const tb = el('tbody');
   t.appendChild(tb); wrap.appendChild(t);
+
+  const draw = () => {
+    if (!wrap.isConnected && tb.childNodes.length) return false;     // a table no longer on the page
+    const pct = tableOrder === 'pct' && ST && ST.byWinPct;
+    Object.keys(heads).forEach(k => heads[k].setAttribute('aria-sort', k === tableOrder ? 'descending' : 'none'));
+    tb.textContent = '';
+    (pct ? ST.byWinPct(rows) : rows.slice().sort((a, b) => (a.rank ?? 1e9) - (b.rank ?? 1e9))).forEach(r => {
+      const tr = el('tr');
+      if (r.teams && r.teams.colour) tr.style.setProperty('--tc', r.teams.colour);
+      tr.appendChild(el('td', 'rk', pct ? r.pos : (r.rank ?? '')));
+      tr.appendChild(teamCell(r.teams));
+
+      [r.gp, r.w, r.l].forEach(v => tr.appendChild(el('td', null, v)));
+      tr.appendChild(el('td', 'wpct' + (pct ? ' key' : ''), ST ? ST.pct(r.w, r.gp) : (r.gp ? (r.w / r.gp).toFixed(3) : '\u2014')));
+      [r.pts_for, r.pts_against].forEach(v => tr.appendChild(el('td', null, v)));
+      tr.appendChild(diffCell(r.diff));
+      /* A DOCKED TOTAL HAS TO SAY SO. Without the marker the points column
+         simply does not follow from the W-L beside it, and the first thing
+         anybody does with a table that does not add up is assume it is broken. */
+      const pts = el('td', 'pts' + (pct ? '' : ' key'), r.league_points);
+      if (r.deducted_points) {
+        const d = el('span', 'dock', ' \u2212' + r.deducted_points);
+        d.title = r.deducted_points + ' points deducted';
+        pts.appendChild(d);
+      }
+      tr.appendChild(pts);
+      tr.appendChild(streakCell(r.streak));
+      tr.appendChild(eloCell(r.team_id));
+      tb.appendChild(tr);
+    });
+    return true;
+  };
+  draw();
+  ORDERED.add(draw);
   return wrap;
 }
 

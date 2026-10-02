@@ -566,6 +566,19 @@ jobs:
         # partner line): all default = the same picture, each one toggles, nothing overflows or overlaps in any shape
         run: node supabase/tests/socialcard.test.mjs
 
+      - name: The player with no photograph yet - a pixel figure in his club's colours
+        # epinoia/silhouette.js + kit/silhouette.css: the variant fixed by the player's id alone (never a gender or a
+        # league), one head, neck and shoulders for everybody, the club's colour readable in both themes, a labelled
+        # picture with no script or request, and the profile, the star cards and the graphics' discs drawing it
+        run: node supabase/tests/silhouette.test.mjs
+
+      - name: The stats page's graphic, full names on hover, the comparison's picture
+        # epinoia/statgfx.js over socialcard.js 'statboard': the column the table is sorted by and its top N rows in the table's
+        # order, the stats beside it, every count 3..20 with 0..4 stats on every shape inside the page and never overlapping,
+        # player or team circles; fulltable.js name cells carry the whole name (title, aria-label, hidden text); compare.js's
+        # export draws every chosen stat and the popup scrolls inside the screen
+        run: node supabase/tests/statgfx.test.mjs
+
       - name: The Graphics tab - the week's posts by kind, the week picker, the builder's subject and options
         # epinoia/admin/graphics-ui.js over socialgfx-ui.js: posts sorted by kind with counts and a filter that keeps exactly
         # one, a player of the week only when there were several games, this week / last week / earlier weeks (an earlier
@@ -587,6 +600,24 @@ jobs:
         # a week, a month or a season; ranking with ties, thresholds and lower-is-better; the calendar month in Sydney / Honolulu /
         # UTC; the month's stars and the leaders boards; every shape at 1-6 boards, long names, both colourways
         run: node supabase/tests/stat-catalogue.test.mjs
+
+      - name: The Graphics tab's stat picker - chips in their order, removed, moved by key, button or drag, a search box to add
+        # epinoia/admin/statpicker.js: add / remove / move within the least and the most, what the add box offers (not chosen,
+        # searched, by group); x, Backspace / Delete, the arrow keys, Home / End and the arrow buttons; a pointer drag (a finger as
+        # a mouse) and a press that is not one; the limits said, reset to default; every list of stats in the tab is one
+        run: node supabase/tests/statpicker.test.mjs
+
+      - name: Every stat on every graphic that takes stats - label and value drawn, never undefined, never cut
+        # each of the graphic's own stats and every column of the site's catalogue (BPM, OBPM, DBPM, VORP, the percentages ...)
+        # on a star, the week's and the month's stars (every layout), the table, the leaders, a final's team stats and leaders,
+        # through the builder's own path, on the three shapes, with every fillText recorded
+        run: node supabase/tests/graphics-every-stat.test.mjs
+
+      - name: Every standings table says WIN% and opens in win% order, the # following
+        # epinoia/standings.js byWinPct (level percentages by points, then the stored rank: the league's tiebreak; no games last);
+        # the league page's table (WIN% between L and PF, the WIN% / PTS headers ordering every table on the page), the embed,
+        # the preview's table and a club's place (tablepos.js), the live dynamic table, the club's record strip; the graphics' table
+        run: node supabase/tests/winpct.test.mjs
 
       - name: The front office - a projected depth chart and the GM's view, read against the club's own league
         # epinoia/t/depth.js: projected minutes (last five 60 / 40), positions from the box score by minutes, the listing and
@@ -1560,6 +1591,26 @@ jobs:
         run: |
           npm i --no-save @electric-sql/pglite
           node supabase/tests/suggestions.test.mjs
+
+      - name: Editing from the page - whoever manages a club or a player changes it directly, audited (0214)
+        # the pages first (adminedit.js wired into the club's and the player's page, suggest.js handing its chips and button
+        # over, the fields each function takes, the patch and the crop, the words in Spanish and Japanese); then on PGlite:
+        # who may edit what across two leagues, a club manager, a fan and a signed-out visitor; a column outside the list
+        # refusing the whole patch; every value checked; the audit row; a crest and a photograph through the existing doors
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/admin-edits.test.mjs
+
+      - name: The records are kept, not worked out on every visit (0215) - on a real Postgres
+        # PGlite: the backfill builds exactly the records records.js used to work out (its old reads run over the same
+        # fixture), for a league's season and across leagues (ALL / MEN'S / WOMEN'S), in one request; a game's lines
+        # go in only when they reach a list; ties shared and credited to whoever set them first; either finalise order
+        # gives a rebuild's lists; a correction, a revert, a move and a delete rebuild only the lists they touch; a
+        # private league and a withheld minor stay hidden; a failure never stops a finalise
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/records.test.mjs
+          node supabase/tests/records-store.test.mjs
 
       - name: The creator hub - the numbers, the writing desk, storylines, graphics and icons (0200)
         # the pages first (the editor's words, permalink, tags and typed shortcuts; storylines.js on a season; the icon

@@ -655,7 +655,6 @@
       'Deleted.': 'Eliminado.',
 
       /* ---- news-ui.js: the editor ---- */
-      'Headline': 'Titular',
       'One line for the card (optional — the opening words are used if blank)': 'Una línea para la tarjeta (opcional: si está vacía se usan las primeras palabras)',
       'Cover image — upload, or paste an https address': 'Imagen de portada: súbela o pega una dirección https',
       'upload cover': 'Subir portada',
@@ -781,7 +780,24 @@
       'from our own domain': 'desde nuestro propio dominio',
       'Snippet copied.': 'Fragmento copiado.',
       'Select the snippet and copy it.': 'Selecciona el fragmento y cópialo.',
-      'On your own domain (optional)': 'En tu propio dominio (opcional)'
+      'On your own domain (optional)': 'En tu propio dominio (opcional)',
+      'This graphic\'s own': 'Propias de este gráfico',
+      '+ add a stat (search: ts, rebound, usage…)': '+ añadir una estadística (busca: ts, rebote, uso…)',
+      'Add a stat': 'Añadir una estadística',
+      'reset to default': 'Volver a lo predeterminado',
+      'None chosen': 'Ninguna elegida',
+      'Nothing matches.': 'No hay coincidencias.',
+      'Stat lines, in order (3–8; the first three are the big numbers)': 'Estadísticas, en orden (3–8; las tres primeras son los números grandes)',
+      'Stat lines, in order (3–8; the first three are the star\'s big numbers)': 'Estadísticas, en orden (3–8; las tres primeras son los números grandes de la estrella)',
+      'Stat lines, in order (the site\'s, per game over the month; 3–8)': 'Estadísticas, en orden (las del sitio, por partido en el mes; 3–8)',
+      'Table columns, in order (1–6)': 'Columnas de la tabla, en orden (1–6)',
+      'Team stats, in order (up to 6, none by default)': 'Estadísticas de equipo, en orden (hasta 6; ninguna por defecto)',
+      'Stats beside each leader, in order (1–4)': 'Estadísticas junto a cada líder, en orden (1–4)',
+      'Categories, in order (1–6; one is a top ten, several a panel)': 'Categorías, en orden (1–6; una es un top 10, varias un panel)',
+      'Order the table by': 'Ordenar la tabla por',
+      'Win percentage (level: league points, then the tiebreak)': 'Porcentaje de victorias (empate: puntos de liga y luego el desempate)',
+      'League points: the official order': 'Puntos de liga: el orden oficial',
+      'winning percentage (wins over games played)': 'porcentaje de victorias (victorias entre partidos jugados)'
     },
 
     ctx: {
@@ -977,6 +993,17 @@
     },
 
     patterns: [
+      /* the Graphics tab's stat picker (statpicker.js): a stat's label is its own (PTS, TS%, eFG%) and stays */
+      [/^At most (\d+): remove one to add another\.$/, 'Como máximo $1: quita una para añadir otra.'],
+      [/^At least (\d+): add another before removing ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23})\.$/, 'Al menos $1: añade otra antes de quitar $2.'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) removed\.$/, '$1 quitada.'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) added, (\d+) of (\d+)\.$/, '$1 añadida: $2 de $3.'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) moved to (\d+) of (\d+)\.$/, '$1 movida: posición $2 de $3.'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}), (\d+) of (\d+)\. Arrow keys move it, Delete removes it\.$/, '$1, $2 de $3. Las flechas la mueven; Suprimir la quita.'],
+      [/^Move ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) earlier$/, 'Mover $1 antes'],
+      [/^Move ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) later$/, 'Mover $1 después'],
+      [/^Remove ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23})$/, 'Quitar $1'],
+      [/^Back to the default: (.+)\.$/, 'De vuelta a lo predeterminado: $1.'],
       [/^Your account has no administrative roles\. Ask a league administrator to grant you one — they will need this exact address: (.*)$/, 'Tu cuenta no tiene roles de administración. Pide a un administrador de la liga que te dé uno; necesitará exactamente esta dirección: $1'],
       [/^(\d+) games? to score$/, m => m[1] + (m[1] === '1' ? ' partido por anotar' : ' partidos por anotar')],
       [/^edit (.+)$/, 'editar $1'],
