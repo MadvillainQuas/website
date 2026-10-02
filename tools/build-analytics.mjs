@@ -13,6 +13,8 @@
      node tools/build-analytics.mjs --local --out <dir> [--leagues cebl,orlen-basket-liga] [--pool-leagues a,b,…]
                                      REAL data, read-only: the public tables with the publishable key, feature lines
                                      worked out here with epinoia/features.js, files written to <dir> with a summary
+       … --page-fixtures supabase/tests/fixtures --club Zastal --leagues orlen-basket-liga,cebl
+                                     also (re)writes fixtures/ww-page and fixtures/ww-fo from this real build
 
    Run hourly (and a full rebuild on Sunday 03:40 UTC) by .github/workflows/analytics.yml.
 
@@ -45,12 +47,15 @@ const DAY = 86400000, HOUR = 3600000;
 const BIG_GAMES = 800;
 /* §6.3's reads: the named stats keys out of the blob, never the blob */
 export const PGS_SELECT = 'game_id,team_idx,player_uuid,player_id,min:stats->min,pts:stats->pts,p2a:stats->p2a,p2m:stats->p2m,p3a:stats->p3a,' +
-  'p3m:stats->p3m,fta:stats->fta,ftm:stats->ftm,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,to:stats->to,pf:stats->pf';
+  'p3m:stats->p3m,fta:stats->fta,ftm:stats->ftm,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,to:stats->to,pf:stats->pf,' +
+  /* A.3: the engine's zone counts of the same rows, four more named keys */
+  'rimA:stats->rimA,rimM:stats->rimM,midA:stats->midA,midM:stats->midM';
 export const STINT_SELECT = 'game_id,team_idx,player_ids,dur:stats->dur,pf:stats->pf,pa:stats->pa,off:stats->off,def:stats->def';
 export const GAME_SELECT = 'id,status,competition_id,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue_id,starters';
 /* not st (about 1 KB a row): the model reads a row's own stints only for a game without usable lineup_stints, so
-   readDelta asks for st for those games alone (winmodel stintGaps) */
-export const FEATURE_SELECT = 'game_id,team_idx,f,q,finalised_at';
+   readDelta asks for st for those games alone (winmodel stintGaps). u (A.3) is st's small part every row needs: each
+   scorer's unassisted makes, a few dozen bytes */
+export const FEATURE_SELECT = 'game_id,team_idx,f,q,finalised_at,u:st->u';
 
 /* the page's own modules, as a browser loads them: globals first, then the files */
 export function load(url, key) {
@@ -447,7 +452,10 @@ export async function run(opts) {
       (delta.games || []).forEach(g => { changed.add(g.home_team_id); changed.add(g.away_team_id); });
       r.clubs.forEach((c, tid) => { if (full || changed.has(tid) || !idx.get('club|' + u.league + '|' + u.season + '|' + tid)) files.push({ scope: 'club', team: tid, file: c }); });
       r.pos.forEach((p, tid) => { if (full || changed.has(tid) || !idx.get('pos|' + u.league + '|' + u.season + '|' + tid)) files.push({ scope: 'pos', team: tid, file: p }); });
-      const rows = [], stale = [];
+      /* A.3: the lineup mixes' file; its index row goes on its own after the others (before migration 0213 the scope
+         CHECK refuses it, and that must never fail the unit) */
+      if (r.mix) files.push({ scope: 'mix', team: '', file: r.mix });
+      const rows = [], stale = [], mixRows = [], mixStale = [], mixNew = [];
       /* the store decoded once, its games indexed by club, for the club files' own-games check */
       const byTeam = new Map();
       M.decodeStore(st).games.forEach(g => [g.h, g.a].forEach(t => { if (!byTeam.has(t)) byTeam.set(t, new Set()); byTeam.get(t).add(g.id); }));
@@ -458,9 +466,10 @@ export async function run(opts) {
         const p = x.scope + '/' + u.league + '/' + u.season + '/' + (x.team ? x.team + '/' : '') + fileName(M.FILE_V, u.token), text = JSON.stringify(x.file);
         await write('upload ' + p, () => api.upload(BUCKET, p, text));
         const prevRow = idx.get(x.scope + '|' + u.league + '|' + u.season + '|' + x.team);
-        rows.push({ scope: x.scope, league_key: u.league, season_key: u.season, team_key: x.team, league_id: u.league, season_id: u.season, team_id: x.team || null,
+        (x.scope === 'mix' ? mixRows : rows).push({ scope: x.scope, league_key: u.league, season_key: u.season, team_key: x.team, league_id: u.league, season_id: u.season, team_id: x.team || null,
           is_current: !!u.current, path: p, token: u.token, layout: M.FILE_V, fv: FV, bytes: text.length, n_games: st.n, built_at: nowIso, ci_at: nowIso });
-        if (prevRow && stripBucket(prevRow.path) !== p) stale.push(stripBucket(prevRow.path));
+        if (x.scope === 'mix') mixNew.push(p);
+        if (prevRow && stripBucket(prevRow.path) !== p) (x.scope === 'mix' ? mixStale : stale).push(stripBucket(prevRow.path));
         out.built.push({ scope: x.scope, unit: u.key, team: x.team || undefined, bytes: text.length, games: st.n });
       }
       st.carry = r.carry; st.ci_at = nowIso;
@@ -468,6 +477,10 @@ export async function run(opts) {
       rows.push(storeRow(u, sp, st, M, FV, nowIso, nowIso));
       /* the index after the uploads, the deletes after the index */
       await write('index ' + u.key, () => upsertIndex(api, rows));
+      if (mixRows.length) {
+        try { await write('index mix ' + u.key, () => upsertIndex(api, mixRows)); stale.push(...mixStale); }
+        catch (_) { out.warnings.push(label(u) + ': the lineup mixes file was not indexed (apply migration 0213)'); stale.push(...mixNew); }
+      }
       /* one current season a league: a new season's first build retires the last one's rows */
       if (u.current) await write('retire older seasons of ' + u.leagueRow.slug, () => api.rest(`analytics_files?league_key=eq.${u.league}&season_key=neq.${u.season}&is_current=eq.true`,
         { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ is_current: false }) }));
@@ -536,7 +549,7 @@ export function summary(out, o) {
   if (closed.length) { L.push(''); L.push(`${closed.length} members-only or private unit${closed.length === 1 ? '' : 's'} built: ${closed.map(k => accAll[k].label || opaque(k)).sort().join(', ')} (their numbers are in the private report, reports/last.json)`); }
   if (Object.keys(acc).length) {
     L.push('');
-    L.push('| unit | games | R² (4F, FT rate) | b efg / tovp / orebp / ftr | eFG share (Shapley / \|b\|·sd) | home win | Brier (home / Elo) | log loss | slope | live | sim Brier | sim slope | sim pace / ortg Δ | margin SD ratio | sim calibrated |');
+    L.push('| unit | games | R² (4F, FT attempt rate) | b efg / tovp / orebp / ftr (FTA/FGA) | eFG share (Shapley / \|b\|·sd) | home win | Brier (home / Elo) | log loss | slope | live | sim Brier | sim slope | sim pace / ortg Δ | margin SD ratio | sim calibrated |');
     L.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
     Object.keys(acc).sort().forEach(k => {
       const a = acc[k] || {}, c = a.check4 || {}, s = a.sim || {}, ch = s.checks || {};
@@ -551,7 +564,8 @@ export function summary(out, o) {
 }
 
 /* =============================================================================================== fixtures === */
-/* the five §9 sample files from synthetic leagues (deterministic), for the page's and the Front office's tests */
+/* the §9 sample files from synthetic leagues (deterministic), for the page's and the Front office's tests: wins, the pooled
+   wins, fo, a club, the teaser, and (A.3) the lineup mixes */
 export function fixtures(dir, o) {
   o = o || {};
   const M = load('', PUBLISHABLE);
@@ -564,7 +578,7 @@ export function fixtures(dir, o) {
   const r = M.buildUnit(A, { now, token: A.token, priors: pool.priors, B: o.B || 100, simOpts: { fitN: 60, fitSims: 60, evalSims: 200 } });
   const teaser = M.buildTeaser([A, B, C], open, { token: pt, now });
   const club = Array.from(r.clubs.values())[0];
-  const files = { 'wins.sample.json': r.wins, 'wins-all.sample.json': pool.wins, 'fo.sample.json': r.fo, 'club.sample.json': club, 'teaser.sample.json': teaser };
+  const files = { 'wins.sample.json': r.wins, 'wins-all.sample.json': pool.wins, 'fo.sample.json': r.fo, 'club.sample.json': club, 'teaser.sample.json': teaser, 'mix.sample.json': r.mix };
   const probs = [];
   Object.entries(files).forEach(([n, f]) => {
     const scope = n.startsWith('wins') ? 'wins' : n.split('.')[0];
@@ -615,24 +629,25 @@ export async function local(opts) {
       if (gs.length) { pick = s; games = gs; cs.forEach(c => { kinds[c.id] = c.kind; }); break; }
     }
     if (!pick) { log('no finished games for ' + slug); continue; }
-    /* the feature lines: computed once per game and cached in out/cache */
+    /* the feature lines, worked out here with the current features.js; each game's log is read once and cached in
+       out/cache (<id>.ev.json), so a second run reads no event at all */
     const rows = [], skipped = {};
     let i = 0;
     const lane = async () => {
       for (;;) {
         const g = games[i++];
         if (!g) return;
-        const cf = path.join(outDir, 'cache', g.id + '.json');
-        let plan = null;
-        try { plan = JSON.parse(fs.readFileSync(cf, 'utf8')); } catch (_) { plan = null; }
-        if (!plan) {
-          const ev = [];
+        const cf = path.join(outDir, 'cache', g.id + '.ev.json');
+        let ev = null;
+        try { ev = JSON.parse(fs.readFileSync(cf, 'utf8')); } catch (_) { ev = null; }
+        if (!ev) {
+          ev = [];
           let after = -1;
           for (;;) { const page = await api.rest(`game_events?game_id=eq.${g.id}&select=seq,t,team,pid,period,clock,payload&order=seq&seq=gt.${after}&limit=1000`); ev.push(...(page || [])); if (!page || page.length < 1000) break; after = page[page.length - 1].seq; }
-          const p = planFeatures({ row: g, events: mapEvents(ev), meta: { league_id: lg.id, season_id: pick.id } });
-          plan = { skip: p.skip, rows: p.rows };
-          fs.writeFileSync(cf, JSON.stringify(plan));
+          fs.writeFileSync(cf, JSON.stringify(ev));
         }
+        const p = planFeatures({ row: g, events: mapEvents(ev), meta: { league_id: lg.id, season_id: pick.id } });
+        const plan = { skip: p.skip, rows: p.rows };
         if (plan.skip) { skipped[plan.skip] = (skipped[plan.skip] || 0) + 1; continue; }
         rows.push(...plan.rows);
       }
@@ -641,11 +656,19 @@ export async function local(opts) {
     const ids = Array.from(new Set(rows.map(r => r.game_id))).sort();
     const gameRows = games.filter(g => ids.includes(g.id)).map(g => ({ id: g.id, status: g.status, competition_id: g.competition_id, home_team_id: g.home_team_id,
       away_team_id: g.away_team_id, home_score: g.home_score, away_score: g.away_score, tipoff_at: g.tipoff_at, venue_id: g.venue_id, starters: g.starters }));
-    const pgs = [], stints = [];
-    for (const c of chunks(ids, 40)) {
-      pgs.push(...await api.restAll(`player_game_stats?game_id=in.(${c.join(',')})&select=${PGS_SELECT}&order=game_id,team_idx,player_id`));
-      stints.push(...await api.restAll(`lineup_stints?game_id=in.(${c.join(',')})&select=${STINT_SELECT}&order=game_id,team_idx,id`));
+    /* the player lines and stints, cached with the selects and games they were read for (a second run reads none) */
+    const lc = path.join(outDir, 'cache', slug + '.lines.json'), lkey = crypto.createHash('sha256').update(PGS_SELECT + '|' + STINT_SELECT + '|' + ids.join(',')).digest('hex');
+    let lines = null;
+    try { lines = JSON.parse(fs.readFileSync(lc, 'utf8')); if (lines.key !== lkey) lines = null; } catch (_) { lines = null; }
+    if (!lines) {
+      lines = { key: lkey, pgs: [], stints: [] };
+      for (const c of chunks(ids, 40)) {
+        lines.pgs.push(...await api.restAll(`player_game_stats?game_id=in.(${c.join(',')})&select=${PGS_SELECT}&order=game_id,team_idx,player_id`));
+        lines.stints.push(...await api.restAll(`lineup_stints?game_id=in.(${c.join(',')})&select=${STINT_SELECT}&order=game_id,team_idx,id`));
+      }
+      fs.writeFileSync(lc, JSON.stringify(lines));
     }
+    const pgs = lines.pgs, stints = lines.stints;
     let st = M.storeAdd(M.emptyStore(lg.id, pick.id), rows, gameRows, pgs, stints, { kinds });
     const n = st.n;
     const token = n + '@' + st.wm.at;
@@ -665,21 +688,25 @@ export async function local(opts) {
   if (pool.wins) wr('wins-all.json', pool.wins);
   wr('priors.json', pool.priors);
   wr('teaser.json', M.buildTeaser(inputs, open, { token: pt, now: nowIso }));
+  const built = [];
   for (const u of units.filter(x => x.focus)) {
     u.store.ctx.priors = pool.priors;
     const t1 = Date.now();
     const r = M.buildUnit(M.inputFromStore(u.store), { token: u.token, now: nowIso, priors: pool.priors, B: o.B || 400, simOpts: o.simOpts });
     r.warnings.forEach(w => out.warnings.push(u.slug + ': ' + w));
     if (!r.wins) { out.failed.push({ unit: u.slug, error: r.warnings.join('; ') }); continue; }
+    built.push({ slug: u.slug, r });
     wr(`wins-${u.slug}.json`, r.wins); wr(`fo-${u.slug}.json`, r.fo); wr(`store-${u.slug}.json`, Object.assign({}, u.store, { carry: r.carry, ci_at: nowIso }));
     const tid = Array.from(r.clubs.keys())[0];
     if (tid) wr(`club-${u.slug}.json`, r.clubs.get(tid));
     const pid = Array.from(r.pos.keys())[0];
     if (pid) wr(`pos-${u.slug}.json`, r.pos.get(pid));
+    if (r.mix) wr(`mix-${u.slug}.json`, r.mix);
     const probs = [M.validate(r.wins, 'wins'), M.validate(r.fo, 'fo'), ...Array.from(r.clubs.values()).map(c => M.validate(c, 'club', { withheld: new Set(u.store.ctx.withheld) }))].flat();
     if (probs.length) out.warnings.push(u.slug + ' validation: ' + probs.slice(0, 5).join('; '));
     out.accept[u.unit.key] = Object.assign({ slug: u.slug, ms: Date.now() - t1, timing: r.timing, sizes: { wins: JSON.stringify(r.wins).length, fo: JSON.stringify(r.fo).length,
-      clubMax: Math.max(...Array.from(r.clubs.values()).map(c => JSON.stringify(c).length)), posMax: Math.max(...Array.from(r.pos.values()).map(c => JSON.stringify(c).length)) } }, r.accept);
+      clubMax: Math.max(...Array.from(r.clubs.values()).map(c => JSON.stringify(c).length)), posMax: Math.max(...Array.from(r.pos.values()).map(c => JSON.stringify(c).length)),
+      mix: r.mix ? JSON.stringify(r.mix).length : null } }, r.accept);
     log(`${u.slug}: built in ${Math.round((Date.now() - t1) / 1000)} s`);
     /* RECALCULATE as the Edge Function runs it: the store without the newest ten games (built from the rows, as the
        builder would have), its full build (the carry), then update() with those games' rows; checked against the
@@ -695,9 +722,23 @@ export async function local(opts) {
       const up = M.update(A, { rows: R.rows.filter(lateR), games: R.games.filter(g => late.has(g.id)), pgs: R.pgs.filter(lateR), stints: R.stints.filter(lateR) }, { now: nowIso, raw: true });
       const ms = Date.now() - t2;
       const full = M.buildUnit(M.inputFromStore(Object.assign({}, u.store, { ctx: u.store.ctx })), { now: nowIso, priors: pool.priors, B: 40, sim: false, raw: true, token: up.token });
-      const worst = maxDiff([['wins', full.wins, up.files.wins], ['fo', full.fo, up.files.fo]].concat(Array.from(full.clubs.entries()).map(([k, c]) => ['club', c, (up.files.club || {})[k]])));
+      const worst = maxDiff([['wins', full.wins, up.files.wins], ['fo', full.fo, up.files.fo], ['mix', full.mix, up.files.mix]].concat(Array.from(full.clubs.entries()).map(([k, c]) => ['club', c, (up.files.club || {})[k]])));
       out.accept[u.unit.key].update = { games: late.size, ms, files: Object.keys(up.files), n: up.store.n, sameStore: storeBody(up.store) === storeBody(u.store), worst: worst.d, where: worst.d > 1e-9 ? worst.at : '' };
     }
+  }
+  /* --page-fixtures <dir>: the page's and the Front office's test fixtures from this REAL build (ww-page: the first focus
+     league's wins file with its curves cut to the ten the tests draw, the pooled file cut the same, its fo file, the
+     club o.club (a name) or the first, the teaser and the mix file; ww-fo: the same fo and club) */
+  if (o.pageFixtures && built.length) {
+    const b = built[0], KEEP = ['efg', 'p3r', 'rimr', 'c_efg', 'c_tovp', 'c_orebp', 'c_ftr', 'top_avg', 'tr_freq', 'ast_share'];
+    const cut = w => Object.assign({}, w, { curves: Object.fromEntries(KEEP.filter(k => w.curves && w.curves[k]).map(k => [k, w.curves[k]])) });
+    const club = Array.from(b.r.clubs.values()).find(c => o.club && new RegExp(o.club, 'i').test(c.team.name)) || b.r.clubs.values().next().value;
+    const put = (d, n, obj) => { fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, n), JSON.stringify(obj)); };
+    const pd = path.join(o.pageFixtures, 'ww-page'), fd = path.join(o.pageFixtures, 'ww-fo');
+    put(pd, 'wins.json', cut(b.r.wins)); if (pool.wins) put(pd, 'wins-all.json', cut(pool.wins)); put(pd, 'fo.json', b.r.fo); put(pd, 'club.json', club);
+    put(pd, 'teaser.json', M.buildTeaser(inputs, open, { token: pt, now: nowIso })); if (b.r.mix) put(pd, 'mix.json', b.r.mix);
+    put(fd, 'fo.json', b.r.fo); put(fd, 'club.json', club);
+    log('page fixtures written to ' + pd + ' and ' + fd + ' (' + b.slug + ', club ' + club.team.name + ')');
   }
   out.summary = summary(out, { units: units.length, due: units.filter(u => u.focus).length, poolBuilt: !!pool.wins });
   fs.writeFileSync(path.join(outDir, 'summary.md'), out.summary + '\n\n```json\n' + JSON.stringify(out.accept, null, 1) + '\n```\n');
@@ -707,7 +748,7 @@ export async function local(opts) {
 /* the store's lines without its context, carry and build stamps */
 const storeBody = s => JSON.stringify(Object.assign({}, s, { ctx: null, carry: null, ci_at: null }));
 /* the largest relative difference between two builds' point estimates (intervals and the calibration are carried) */
-const CARRIED = new Set(['lo', 'hi', 'se', 'topLo', 'topHi', 'star', 'evidence', 'power', 'logitAgree', 'ci_at', 'built', 'sim', 'lens', 'platt', 'calibrated',
+const CARRIED = new Set(['lo', 'hi', 'se', 'seCheck', 'topLo', 'topHi', 'star', 'evidence', 'power', 'logitAgree', 'ci_at', 'built', 'sim', 'lens', 'platt', 'calibrated',
   'kappaN', 'sigmaN', 'hca', 'tau', 'muOff', 'dTr', 'lead', 'tripOff', 'fouling', 'checks', 'ftrOk', 'own', 'gamma', 'x50', 'x75', 'addR2', 'or']);
 function maxDiff(pairs) {
   let d = 0, at = '';
@@ -743,6 +784,8 @@ export function parseArgs(argv) {
     else if (x === '--leagues') a.leagues = String(nx() || '').split(',').filter(Boolean);
     else if (x === '--pool-leagues') a.poolLeagues = String(nx() || '').split(',').filter(Boolean);
     else if (x === '--B') a.B = +nx();
+    else if (x === '--page-fixtures') a.pageFixtures = nx();
+    else if (x === '--club') a.club = nx();
   }
   return a;
 }
@@ -750,7 +793,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const a = parseArgs(process.argv.slice(2));
   const env = k => (process.env[k] != null && process.env[k] !== '' ? process.env[k] : null);
   const p = a.local
-    ? local({ out: a.out || path.join(ROOT, '.cache', 'analytics-local'), leagues: a.leagues.length ? a.leagues : ['cebl', 'orlen-basket-liga'], poolLeagues: a.poolLeagues, B: a.B || undefined })
+    ? local({ out: a.out || path.join(ROOT, '.cache', 'analytics-local'), leagues: a.leagues.length ? a.leagues : ['cebl', 'orlen-basket-liga'], poolLeagues: a.poolLeagues, B: a.B || undefined,
+      pageFixtures: a.pageFixtures || null, club: a.club || null })
     : run({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY, dryRun: a.dryRun, unit: a.unit, full: a.full, fullPast: a.fullPast, fixtures: a.fixtures,
       minGapHours: a.minGapHours != null ? a.minGapHours : (env('ANALYTICS_MIN_GAP_H') != null ? +env('ANALYTICS_MIN_GAP_H') : 1),
       poolGapHours: a.poolGapHours != null ? a.poolGapHours : (env('ANALYTICS_POOL_GAP_H') != null ? +env('ANALYTICS_POOL_GAP_H') : 6), B: a.B || undefined });

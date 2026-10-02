@@ -51,38 +51,49 @@ const BPMm = () => dep('EpinoiaBPM', './bpm.js');
 const DEPTH = () => dep('EpinoiaDepth', './t/depth.js');
 const WINNING = () => dep('EpinoiaWinning', './winning.js');
 
-const FILE_V = 1, CODE_V = 1, STORE_V = 1;
+/* STORE_V 2 (A.3): the player lines and the stints carry byte sidecars (zones and unassisted makes; each stint's box at
+   both ends). A store of version 1 still decodes (the new columns read unknown), but the builder rebuilds it from
+   nothing and RECALCULATE leaves it to the builder (update() answers stale) */
+const FILE_V = 1, CODE_V = 2, STORE_V = 2;
 /* the simulator calibration's own version, carried in store.carry.sim: 2 = the trip offset, the FT-rate gate and the
    intercept-free Platt map (R2S-1, R2S-3); a carried calibration of another version is fitted again */
 const SIMCAL_V = 2;
 /* raw bytes a file may take (§6.6); fo is 150 KB above 800 games */
-const BUDGET = Object.freeze({ teaser: 40000, wins: 300000, winsPool: 400000, fo: 100000, foBig: 150000, foBase: 60000, foPerClub: 450, club: 25000, pos: 6000 });
+/* mix (A.3): the lineup mixes' fives, raw bytes; about a quarter of it gzipped (well under 100 KB a league-season) */
+const BUDGET = Object.freeze({ teaser: 40000, wins: 300000, winsPool: 400000, fo: 100000, foBig: 150000, foBase: 60000, foPerClub: 450, club: 25000, pos: 6000, mix: 360000 });
 const BIG_GAMES = 800;
 /* §12: the GM's measures (t/depth.js MEASURES) the model can value, and the factor and end each reads */
 const KEYMAP = Object.freeze({
   ff_efg: ['c_efg', 'off'], dff_efg: ['c_efg', 'def'], ff_tov: ['c_tovp', 'off'], dff_tov: ['c_tovp', 'def'],
-  ff_oreb: ['c_orebp', 'off'], dff_oreb: ['c_orebp', 'def'], ff_ftr: ['c_ftmr', 'off'], dff_ftr: ['c_ftmr', 'def'],
+  ff_oreb: ['c_orebp', 'off'], dff_oreb: ['c_orebp', 'def'], ff_ftr: ['c_ftr', 'off'], dff_ftr: ['c_ftr', 'def'],
   p3_pct: ['p3p', 'off'], ft_pct: ['ftp', 'off'], rim_pct: ['rimp', 'off']
 });
-const CORE = ['c_efg', 'c_tovp', 'c_orebp', 'c_ftmr'];
-const FULL4 = ['efg', 'tovp', 'orebp', 'ftmr'];
-const CHECK4 = ['efg', 'tovp', 'orebp', 'ftr'];            // §16 live acceptance: the site's FT rate
+/* the four factors (A.3): the free-throw factor is the ATTEMPT rate, FTA / FGA (how often a side gets to the line),
+   as the GM's measures (t/depth.js ff_ftr) and the simulator's ftr edit read it; FT% is a measure of its own */
+const CORE = ['c_efg', 'c_tovp', 'c_orebp', 'c_ftr'];
+const FULL4 = ['efg', 'tovp', 'orebp', 'ftr'];
+const CHECK4 = FULL4;                                       // §16 live acceptance: the full-game four factors
 const SHOT = ['rimr', 'midr', 'rimp', 'midp', 'p3p', 'tovp', 'orebp', 'ftr', 'ftp'];
 const STYLE = ['top_avg', 'early_share', 'tr_freq', 'sc_freq', 'ast_share', 'p3r', 'rimr', 'live_share', 'foul100', 'trips100',
   'usg_hhi', 'top5_min_share'];
 /* the extended model's Shapley groups (§7.6) */
 const EXT_GROUPS = [['shooting', ['c_efg', 'p3r', 'rimr']], ['turnovers', ['c_tovp', 'live_share']], ['boards', ['c_orebp']],
-  ['free throws', ['c_ftmr', 'trips100']], ['tempo and possession', ['top_avg', 'early_share']], ['transition', ['tr_freq', 'sc_freq']],
+  ['free throws', ['c_ftr', 'trips100']], ['tempo and possession', ['top_avg', 'early_share']], ['transition', ['tr_freq', 'sc_freq']],
   ['ball movement and usage', ['ast_share', 'usg_hhi', 'top5_min_share']], ['fouling', ['foul100']]];
-const OLIVER = Object.freeze({ c_efg: 40, c_tovp: 25, c_orebp: 20, c_ftmr: 15 });
+const OLIVER = Object.freeze({ c_efg: 40, c_tovp: 25, c_orebp: 20, c_ftr: 15 });
 /* the Front office's levers beyond core4c (§12 block 2) and the model each is valued from */
-const LEVERS = ['rimr', 'p3r', 'rimp', 'p3p', 'tr_freq', 'top_avg', 'live_share', 'ftr'];
+/* FT% (ftp) here, not the attempt rate: that is the core four's own free-throw factor now (A.3) */
+const LEVERS = ['rimr', 'p3r', 'rimp', 'p3p', 'tr_freq', 'top_avg', 'live_share', 'ftp'];
 const PROP = { c_efg: 1, c_tovp: 1, c_orebp: 1 };          // proportions (in %): blended on the logit scale (§7.8)
 const GROUPS3 = ['G', 'F', 'C'];
 const P1_STATS = ['ts', 'usg_share', 'ast_share', 'reb_share', 'stocks40', 'tov_share', 'p3a_rate'];
 const SHARE_STATS = ['usg_share', 'ast_share', 'reb_share', 'tov_share'];
 const SQUAD_KEYS = ['rot_n', 'top5_share', 'star_pts_share', 'usg_hhi', 'pos_entropy', 'shooters', 'handlers', 'protectors',
-  'height_w', 'age_w', 'bench_share', 'depth_bpm', 'talent', 'continuity', 'starter_stability', 'availability'];
+  'height_w', 'age_w', 'bench_share', 'depth_bpm', 'talent', 'continuity', 'starter_stability', 'availability',
+  /* A.3: the new roles in the rotation (players with 10 minutes a game or more) */
+  'passers', 'slashers', 'crashers', 'glass', 'disruptors'];
+/* A.3: each role's count key in the squad features and its tag */
+const ROLE_SQUAD = { shooter: 'shooters', handler: 'handlers', passer: 'passers', slasher: 'slashers', crasher: 'crashers', glass: 'glass', protector: 'protectors', disruptor: 'disruptors' };
 const ELO_K = 20, ELO_0 = 1500;                             // sos.js's K_FACTOR and INITIAL_ELO, and its margin multiplier
 const MIN = { own: 20, shown: 200, bin: 30, hard: 50, team: 8, test: 3, gate: 60, faint: 200, squad: 50, p2f: 200 };
 
@@ -188,12 +199,23 @@ function unpackRows(p) {
    { v, fv, league, season, wm: {at, id}, n,
      games: pack([{id, d: 'YYYY-MM-DD', t: tip-off ms, c: comp index, k: 'l'|'c'|'p', h, a, hs, as, v: venue | '', s0, s1, fa}]),
      comps: [ids], F: base64 Float32Array(n x 2 x 108), Q: base64 Int32Array(n x 2),
-     pgs: {players: [ids], rows: base64 Float32Array(m x 18)}, stints: {rows: base64 Float32Array(s x 11)},
-     ctx, carry, ci_at }
+     pgs: {players: [ids], rows: base64 Float32Array(m x 18), x: base64 Uint8Array(m x 6)},
+     stints: {rows: base64 Float32Array(s x 11), box: base64 Uint8Array(s x 16)}, ctx, carry, ci_at }
    pgs row: gameIdx, side, playerIdx, min (minutes), pts, fga, fgm, fg3a, fg3m, fta, ftm, or, dr, ast, stl, blk, to, pf.
    stint row: gameIdx, side, p0..p4 (player indexes, -1 unknown), poss, pf, pa, dur (s). fa = the game's finalised_at,
-   kept so a re-finalised game can be told apart and the watermark rebuilt. */
+   kept so a re-finalised game can be told apart and the watermark rebuilt.
+   v2 sidecars (A.3), one byte a count, 255 = not known: pgs x = rimA, rimM, midA, midM (the engine's zones; unknown on a
+   side without the ZONES bit), unFgm, unPts (unassisted makes and their points, from the feature row's st.u); stint box =
+   the five's own fga, fgm, f3m, fta, pts, tov, or, dr, then the opponents' the same (lineup_stints' off and def). */
 const PGS_COLS = ['g', 'side', 'p', 'min', 'pts', 'fga', 'fgm', 'fg3a', 'fg3m', 'fta', 'ftm', 'or', 'dr', 'ast', 'stl', 'blk', 'to', 'pf'];
+const PGX_COLS = ['rimA', 'rimM', 'midA', 'midM', 'unFgm', 'unPts'];
+const BOX_KEYS = ['fga', 'fgm', 'f3m', 'fta', 'pts', 'tov', 'or', 'dr'];
+const STB_COLS = BOX_KEYS.map(k => 'o' + k).concat(BOX_KEYS.map(k => 'd' + k));
+const U8_NA = 255;
+const u8 = v => (isNum(v) && v >= 0 && v < U8_NA ? Math.round(v) : U8_NA);
+const fromU8 = b => (b === U8_NA ? NaN : b);
+function u8enc(vals) { const a = new Uint8Array(vals.length); for (let i = 0; i < vals.length; i++) a[i] = u8(vals[i]); return b64enc(a); }
+function u8dec(s) { return s ? b64dec(s) : new Uint8Array(0); }
 const STINT_COLS = ['g', 'side', 'p0', 'p1', 'p2', 'p3', 'p4', 'poss', 'pf', 'pa', 'dur'];
 const KIND = { league: 'l', cup: 'c', playoff: 'p', playoffs: 'p', tournament: 'c' };
 const STINT_GAMES = 3000;
@@ -216,16 +238,20 @@ function decodeStore(store) {
   });
   const players = (s.pgs && s.pgs.players) || [];
   const pr = s.pgs && s.pgs.rows ? f32dec(s.pgs.rows) : new Float64Array(0), pgs = [];
-  for (let i = 0; i + PGS_COLS.length <= pr.length; i += PGS_COLS.length) {
+  const px = u8dec(s.pgs && s.pgs.x), nP = Math.floor(pr.length / PGS_COLS.length), hasX = px.length === nP * PGX_COLS.length;
+  for (let i = 0, r = 0; i + PGS_COLS.length <= pr.length; i += PGS_COLS.length, r++) {
     const o = {};
     PGS_COLS.forEach((k, j) => { o[k] = pr[i + j]; });
     o.g |= 0; o.side |= 0; o.p |= 0;
+    PGX_COLS.forEach((k, j) => { o[k] = hasX ? fromU8(px[r * PGX_COLS.length + j]) : NaN; });
     pgs.push(o);
   }
   const sr = s.stints && s.stints.rows ? f32dec(s.stints.rows) : new Float64Array(0), stints = [];
-  for (let i = 0; i + STINT_COLS.length <= sr.length; i += STINT_COLS.length) {
+  const sb = u8dec(s.stints && s.stints.box), nS = Math.floor(sr.length / STINT_COLS.length), hasB = sb.length === nS * STB_COLS.length;
+  for (let i = 0, r = 0; i + STINT_COLS.length <= sr.length; i += STINT_COLS.length, r++) {
     const o = { g: sr[i] | 0, side: sr[i + 1] | 0, p: [sr[i + 2] | 0, sr[i + 3] | 0, sr[i + 4] | 0, sr[i + 5] | 0, sr[i + 6] | 0],
       poss: sr[i + 7], pf: sr[i + 8], pa: sr[i + 9], dur: sr[i + 10] };
+    o.box = hasB ? Array.from(sb.subarray(r * STB_COLS.length, (r + 1) * STB_COLS.length), fromU8) : null;
     stints.push(o);
   }
   return { games, players, pgs, stints, comps: s.comps || [] };
@@ -252,14 +278,15 @@ function encodeStore(base, W) {
   });
   const pg = W.pgs.filter(r => remap[r.g] >= 0 && pidx(r.p) >= 0).map(r => Object.assign({}, r, { g: remap[r.g], p: pidx(r.p) }))
     .sort((a, b) => (a.g - b.g) || (a.side - b.side) || (a.p - b.p));
-  const pgFlat = [];
-  pg.forEach(r => PGS_COLS.forEach(k => pgFlat.push(r[k])));
+  const pgFlat = [], pgX = [];
+  pg.forEach(r => { PGS_COLS.forEach(k => pgFlat.push(r[k])); PGX_COLS.forEach(k => pgX.push(r[k])); });
   /* stints: every game up to STINT_GAMES, else the latest STINT_GAMES (§6.2) */
   const stintFrom = Math.max(0, games.length - STINT_GAMES);
-  const st = W.stints.filter(r => remap[r.g] >= stintFrom).map(r => ({ g: remap[r.g], side: r.side, p: r.p.map(pidx), poss: r.poss, pf: r.pf, pa: r.pa, dur: r.dur }))
-    .sort((a, b) => (a.g - b.g) || (a.side - b.side) || byId(a.p.join(','), b.p.join(',')) || (a.dur - b.dur) || (a.pf - b.pf) || (a.pa - b.pa));
-  const stFlat = [];
-  st.forEach(r => { stFlat.push(r.g, r.side, r.p[0], r.p[1], r.p[2], r.p[3], r.p[4], r.poss, r.pf, r.pa, r.dur); });
+  const boxKey = r => (r.box ? r.box.map(v => (isNum(v) ? v : U8_NA)).join(',') : '');
+  const st = W.stints.filter(r => remap[r.g] >= stintFrom).map(r => ({ g: remap[r.g], side: r.side, p: r.p.map(pidx), poss: r.poss, pf: r.pf, pa: r.pa, dur: r.dur, box: r.box || null }))
+    .sort((a, b) => (a.g - b.g) || (a.side - b.side) || byId(a.p.join(','), b.p.join(',')) || (a.dur - b.dur) || (a.pf - b.pf) || (a.pa - b.pa) || byId(boxKey(a), boxKey(b)));
+  const stFlat = [], stBox = [];
+  st.forEach(r => { stFlat.push(r.g, r.side, r.p[0], r.p[1], r.p[2], r.p[3], r.p[4], r.poss, r.pf, r.pa, r.dur); STB_COLS.forEach((k, j) => stBox.push(r.box ? r.box[j] : NaN)); });
   const rows = games.map(g => ({ id: g.id, d: g.d, t: g.t, c: g.cid != null && cAt.has(g.cid) ? cAt.get(g.cid) : -1, k: g.k || 'l', h: g.h, a: g.a,
     hs: g.hs, as: g.as, v: g.v || '', s0: g.s0 >>> 0, s1: g.s1 >>> 0, fa: g.fa || '' }));
   /* the watermark: the newest (finalised_at, id) the store has seen, never moved back */
@@ -269,7 +296,7 @@ function encodeStore(base, W) {
   return Object.assign({}, base || emptyStore(), {
     v: STORE_V, fv: (base && base.fv) || (FT() && FT().FV) || 1, wm: { at: wm.at, id: wm.id }, n: games.length,
     games: packRows(rows), comps, F: f32enc(F), Q: i32enc(Q),
-    pgs: { players, rows: f32enc(pgFlat) }, stints: { rows: f32enc(stFlat) }
+    pgs: { players, rows: f32enc(pgFlat), x: u8enc(pgX) }, stints: { rows: f32enc(stFlat), box: u8enc(stBox) }
   });
 }
 /* the decoded games carry their competition id as cid */
@@ -329,13 +356,25 @@ function storeAdd(store, rows, games, pgs, stints, opts) {
       hs: +g.home_score, as: +g.away_score, v: g.venue_id || '', s0: startersHash(g.starters && g.starters[0]), s1: startersHash(g.starters && g.starters[1]),
       fa: pair[0].finalised_at > pair[1].finalised_at ? pair[0].finalised_at : pair[1].finalised_at,
       F: [F.fromRow(pair[0]), F.fromRow(pair[1])], q: [pair[0].q | 0, pair[1].q | 0] });
-    (pgBy.get(id) || []).forEach(r => {
+    /* A.3 sidecars: the zones where the side's feed has them (the ZONES bit), the unassisted makes where its feature row
+       carries them (st.u, keyed by player) and every one of its makers is one of the side's player lines */
+    const pls = pgBy.get(id) || [];
+    const uOf = [0, 1].map(side => {
+      const r = pair[side], u = r.u != null ? r.u : (r.st && r.st.u != null ? r.st.u : null);
+      if (!u || typeof u !== 'object' || Array.isArray(u)) return null;
+      const ids = new Set(pls.filter(x => (x.team_idx === 1 ? 1 : 0) === side).map(x => String(x.player_uuid || x.player_id)));
+      return Object.keys(u).every(k => ids.has(k)) ? u : null;
+    });
+    const zonesOk = [0, 1].map(side => !!(pair[side].q & F.QBITS.ZONES));
+    pls.forEach(r => {
       const pid = r.player_uuid || r.player_id, side = r.team_idx === 1 ? 1 : 0;
       if (!pid) return;
-      const v = k => (isNum(+r[k]) ? +r[k] : 0);
+      const v = k => (isNum(+r[k]) ? +r[k] : 0), z = k => (zonesOk[side] && r[k] != null && isNum(+r[k]) ? +r[k] : NaN);
+      const u = uOf[side], uu = u ? (u[String(pid)] || [0, 0]) : null;
       pgsK.push({ g: gi, side, p: pIndex(pid), min: v('min') / 60000, pts: v('pts'), fga: v('p2a') + v('p3a'), fgm: v('p2m') + v('p3m'),
         fg3a: v('p3a'), fg3m: v('p3m'), fta: v('fta'), ftm: v('ftm'), or: v('or'), dr: v('dr'), ast: v('ast'), stl: v('stl'), blk: v('blk'),
-        to: v('to'), pf: v('pf') });
+        to: v('to'), pf: v('pf'), rimA: z('rimA'), rimM: z('rimM'), midA: z('midA'), midM: z('midM'),
+        unFgm: uu ? +uu[0] || 0 : NaN, unPts: uu ? +uu[1] || 0 : NaN });
     });
     /* A.1: each side's lineup_stints rows, else (no rows, or rows whose seconds fall short of the game's length: a
        read that was cut off) the feature row's own compact stints */
@@ -353,7 +392,9 @@ function storeAdd(store, rows, games, pgs, stints, opts) {
         const side = r.team_idx === 1 ? 1 : 0, p = (r.player_ids || []).slice(0, 5).map(pIndex);
         while (p.length < 5) p.push(-1);
         const poss = 0.5 * (possEst(r.off) + possEst(r.def));
-        stK.push({ g: gi, side, p, poss: isNum(poss) ? poss : NaN, pf: isNum(+r.pf) ? +r.pf : NaN, pa: isNum(+r.pa) ? +r.pa : NaN, dur: (+r.dur || 0) / 1000 });
+        /* the five's box at both ends (A.3: the lineup mixes' four factors), a count a byte */
+        const bx = (r.off && typeof r.off === 'object' && r.def && typeof r.def === 'object') ? BOX_KEYS.map(k => +r.off[k]).concat(BOX_KEYS.map(k => +r.def[k])).map(x => (isNum(x) ? x : NaN)) : null;
+        stK.push({ g: gi, side, p, poss: isNum(poss) ? poss : NaN, pf: isNum(+r.pf) ? +r.pf : NaN, pa: isNum(+r.pa) ? +r.pa : NaN, dur: (+r.dur || 0) / 1000, box: bx });
       });
     }
     {
@@ -508,27 +549,80 @@ function groupsFor(players) {
   return out;
 }
 
-/* §7.13 / §7.15 roles, rule-based. players: season rows {id, min, fga, fg3a, fg3m, ast_pct, blk_pct, usg, hz, group}
-   -> Map id -> ['shooter'|'handler'|'protector'|'big'|'creator']. unit: {p3: the unit's 3P%} */
+/* §7.13 / §7.15 roles, rule-based, A.3's set. Every cut is a percentile WITHIN the league-season, over its regular
+   players (200 minutes or more); a player is placed against that distribution by its empirical CDF (pct), so a
+   player with fewer minutes is judged against the regulars. A tag needs 100 minutes (the big tag: none; the
+   protector: 60, as before).
+     shooter    3PA ≥ 40, 3PA rate ≥ P60, 3P% shrunk toward the league ((3PM + 150 μ) / (3PA + 150)) ≥ P50
+     handler    a BALL HANDLER: 0.45 pct(AST%) + 0.30 pct(UPS) + 0.25 pct(USG%) ≥ 0.70, the weights renormalised over
+                the parts a player has (UPS, the unassisted points share, needs the feature rows' st.u)
+     passer     A/U (AST% ÷ USG%, assist-to-usage) ≥ P75 and AST% ≥ P50: pass-first
+     slasher    RIM PRESSURE: ½ (pct(rim rate) + pct(FT rate)) ≥ 0.75 and FGA ≥ 40; a league whose feeds have no shot
+                locations: pct(FT rate) ≥ 0.80 alone (cuts.slasher.zones says which)
+     crasher    ORB% ≥ P75 (offensive rebounder)
+     glass      DRB% ≥ P75 (defensive rebounder)
+     protector  BLK% ≥ P75 and height z ≥ 0.5, or group C without a height (60 minutes)
+     disruptor  STL% ≥ P75 (a turnover generator)
+     big        group C
+     creator    USG% ≥ P80, 200 minutes
+   players: season rows {id, min, fga, fg3a, fg3m, ast_pct, blk_pct, usg, hz, group, ups, au, rimr, ftr, orb_pct,
+   drb_pct, stl_pct} -> Map id -> [tags], with .cuts: the league-season's cut values (the page says how a tag is
+   earned here). unit: {p3: the unit's 3P%, zones: true when the shot locations are there} */
+const ROLE_KEYS = ['shooter', 'handler', 'passer', 'slasher', 'crasher', 'glass', 'protector', 'disruptor', 'big', 'creator'];
+const ROLE_MIN = 100, ROLE_REG = 200;
+const HANDLER_W = { ast_pct: 0.45, ups: 0.30, usg: 0.25 }, HANDLER_CUT = 0.70;
 function roles(players, unit) {
   const list = players || [];
   const q = (a, p) => qtl(a, p);
-  const reg = list.filter(p => (+p.min || 0) >= 200);
+  const reg = list.filter(p => (+p.min || 0) >= ROLE_REG);
   const mu3 = unit && isNum(unit.p3) ? unit.p3 : (sum(list.map(p => p.fg3m)) / (sum(list.map(p => p.fg3a)) || 1));
   const sh3 = p => ((+p.fg3m || 0) + 150 * mu3) / ((+p.fg3a || 0) + 150);
   const p3r = p => ((+p.fga || 0) > 0 ? (+p.fg3a || 0) / p.fga : 0);
+  const sorted = k => reg.map(p => p[k]).filter(isNum).sort((a, b) => a - b);
+  /* the empirical CDF of a statistic over the regulars: the share below, half the share equal */
+  const ecdf = k => { const v = sorted(k); return x => { if (!isNum(x) || !v.length) return null; let lo = 0, eq = 0; for (const y of v) { if (y < x) lo++; else if (y === x) eq++; } return (lo + 0.5 * eq) / v.length; }; };
+  const pc = {}; ['ast_pct', 'ups', 'usg', 'rimr', 'ftr'].forEach(k => { pc[k] = ecdf(k); });
+  const zones = unit && unit.zones != null ? !!unit.zones : sorted('rimr').length >= Math.max(5, 0.5 * reg.length);
   const cutRate = q(reg.map(p3r), 0.6), cutSh = q(reg.map(sh3), 0.5);
   const cutAst = q(reg.map(p => p.ast_pct), 0.75), cutBlk = q(reg.map(p => p.blk_pct), 0.75), cutUsg = q(reg.map(p => p.usg), 0.8);
+  const cutAu = q(reg.map(p => p.au), 0.75), cutAst50 = q(reg.map(p => p.ast_pct), 0.5);
+  const cutOrb = q(reg.map(p => p.orb_pct), 0.75), cutDrb = q(reg.map(p => p.drb_pct), 0.75), cutStl = q(reg.map(p => p.stl_pct), 0.75);
+  const hasUps = sorted('ups').length >= Math.max(5, 0.5 * reg.length);
+  const handlerScore = p => {
+    let s = 0, w = 0;
+    Object.keys(HANDLER_W).forEach(k => { if (k === 'ups' && !hasUps) return; const v = pc[k](p[k]); if (v != null) { s += HANDLER_W[k] * v; w += HANDLER_W[k]; } });
+    return w >= 0.5 ? s / w : null;
+  };
+  const slashScore = p => {
+    const f = pc.ftr(p.ftr);
+    if (f == null || (+p.fga || 0) < 40) return null;
+    if (!zones) return f;
+    const r = pc.rimr(p.rimr);
+    return r == null ? null : (r + f) / 2;
+  };
   const out = new Map();
   list.forEach(p => {
-    const r = [], enough = (+p.min || 0) >= 60;
+    const r = [], enough = (+p.min || 0) >= 60, tag = (+p.min || 0) >= ROLE_MIN;
+    const ge = (v, c) => isNum(v) && isNum(c) && v >= c;
     if ((+p.fg3a || 0) >= 40 && p3r(p) >= cutRate && sh3(p) >= cutSh) r.push('shooter');
-    if (enough && isNum(p.ast_pct) && p.ast_pct >= cutAst) r.push('handler');
+    const hs = handlerScore(p);
+    if (tag && hs != null && hs >= HANDLER_CUT) r.push('handler');
+    if (tag && ge(p.au, cutAu) && ge(p.ast_pct, cutAst50)) r.push('passer');
+    const ss = slashScore(p);
+    if (tag && ss != null && ss >= (zones ? 0.75 : 0.8)) r.push('slasher');
+    if (tag && ge(p.orb_pct, cutOrb)) r.push('crasher');
+    if (tag && ge(p.drb_pct, cutDrb)) r.push('glass');
     if (enough && ((isNum(p.blk_pct) && p.blk_pct >= cutBlk && isNum(p.hz) && p.hz >= 0.5) || (p.group === 'C' && !isNum(p.hz)))) r.push('protector');
+    if (tag && ge(p.stl_pct, cutStl)) r.push('disruptor');
     if (p.group === 'C') r.push('big');
-    if ((+p.min || 0) >= 200 && isNum(p.usg) && p.usg >= cutUsg) r.push('creator');
+    if ((+p.min || 0) >= ROLE_REG && isNum(p.usg) && p.usg >= cutUsg) r.push('creator');
     out.set(p.id, r);
   });
+  /* the cuts as they fall in this league-season, for the page's "how a player earns this tag here" */
+  out.cuts = { n: reg.length, shooter: { p3r: 100 * cutRate, p3p: 100 * cutSh }, handler: { cut: HANDLER_CUT, w: Object.assign({}, HANDLER_W), ups: hasUps,
+    ast50: q(reg.map(p => p.ast_pct), 0.5), usg50: q(reg.map(p => p.usg), 0.5), ups50: hasUps ? q(reg.map(p => p.ups), 0.5) : null },
+    passer: { au: cutAu, ast: cutAst50 }, slasher: { zones, rimr: zones ? q(reg.map(p => p.rimr), 0.75) : null, ftr: q(reg.map(p => p.ftr), zones ? 0.75 : 0.8) },
+    crasher: { orb: cutOrb }, glass: { drb: cutDrb }, protector: { blk: cutBlk }, disruptor: { stl: cutStl }, creator: { usg: cutUsg } };
   return out;
 }
 
@@ -615,6 +709,30 @@ function pairsOf(X, tid, before) {
 }
 const swap = pairs => pairs.map(p => ({ own: p.opp, opp: p.own, qOwn: p.qOpp, qOpp: p.qOwn }));
 
+/* A.3: a player's season rates from his totals and the context he played in (every one a ratio of season sums; null
+   where the denominator is 0 or the data are not there). The filterable statistics of the lineup mixes, the per-position
+   statistics and the role rules all read these, under these keys (PLAYER_STATS) */
+const PLAYER_STATS = ['ast_pct', 'usg', 'ts', 'efg', 'orb_pct', 'drb_pct', 'stl_pct', 'blk_pct', 'tov_pct', 'p3r', 'p3p', 'rimr', 'midr', 'ftr', 'una', 'ups', 'au'];
+function rates(p) {
+  const r = (num, den, k) => (den > 0 && isNum(num) ? (k || 100) * num / den : null);
+  const sh = p.gameMin > 0 && p.min > 0 ? p.gameMin / p.min : 0;     // the game's minutes over his (5 × his share of the floor)
+  p.ts = r(p.pts, 2 * (p.fga + 0.44 * p.fta));
+  p.efg = r(p.fgm + 0.5 * p.fg3m, p.fga);
+  p.orb_pct = sh > 0 ? r(p.or * sh, p.tmOR + p.oppDR) : null;
+  p.drb_pct = sh > 0 ? r(p.dr * sh, p.tmDR + p.oppOR) : null;
+  p.stl_pct = sh > 0 ? r(p.stl * sh, p.oppPoss) : null;
+  p.tov_pct = r(p.to, p.fga + 0.44 * p.fta + p.to);
+  p.p3r = r(p.fg3a, p.fga);
+  p.p3p = r(p.fg3m, p.fg3a);
+  p.ftr = r(p.fta, p.fga);
+  p.rimr = r(p.rimA, p.fgaZ);
+  p.midr = r(p.midA, p.fgaZ);
+  p.una = r(p.unFgm, p.fgmU);
+  p.ups = p.gameMinU > 0 && p.minU > 0 ? r(p.unPts * p.gameMinU / p.minU, p.tmUnPts) : null;
+  p.au = isNum(p.ast_pct) && isNum(p.usg) && p.usg > 0 ? p.ast_pct / p.usg : null;
+  return p;
+}
+
 /* the players: season totals per (player, club) from the player lines, the context they played in (for AST%, BLK%,
    USG%), BPM (bpm.js forLeague, the whole league at once) and the season position estimate at full precision
    (bpm.js estimatePosition with the listed position as its prior, as A.1 ranks by) */
@@ -629,6 +747,10 @@ function playerRows(X, before) {
   });
   const bios = (X.input.bios || ctx.bios) || {};
   const rows = new Map();
+  /* A.3: each game-side's unassisted points (its lines' sum, where the side's lines carry them), the denominator of a
+     player's unassisted points share */
+  const unSide = new Map();
+  for (const r of W.pgs) { if (!(r.min > 0) || !isNum(r.unPts)) continue; const k = r.g * 2 + r.side; unSide.set(k, (unSide.get(k) || 0) + r.unPts); }
   for (const r of W.pgs) {
     const g = X.games[r.g];
     if (!g || (before != null && !(g.t < before))) continue;
@@ -639,7 +761,8 @@ function playerRows(X, before) {
     if (!o) {
       const ro = rost.get(pid) || {}, bio = bios[pid] || {};
       o = { key, id: pid, team: tid, gp: 0, games: new Set(), min: 0, pts: 0, fga: 0, fgm: 0, fg3a: 0, fg3m: 0, fta: 0, ftm: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, to: 0, pf: 0,
-        gameMin: 0, tmFGM: 0, tmFGA: 0, tmFTA: 0, tmTOV: 0, oppFG2A: 0, tmReb: 0,
+        gameMin: 0, tmFGM: 0, tmFGA: 0, tmFTA: 0, tmTOV: 0, oppFG2A: 0, tmReb: 0, tmOR: 0, tmDR: 0, oppOR: 0, oppDR: 0, oppPoss: 0,
+        rimA: 0, rimM: 0, midA: 0, midM: 0, fgaZ: 0, unFgm: 0, unPts: 0, fgmU: 0, minU: 0, gameMinU: 0, tmUnPts: 0,
         position: ro.position || '', height: ro.height || bio.height_cm || null, age: isNum(bio.age) ? bio.age : (isNum(bio.birth_year) && isNum(X.refYear) ? X.refYear - bio.birth_year : null) };
       rows.set(key, o);
     }
@@ -649,6 +772,10 @@ function playerRows(X, before) {
       const own = g.F[r.side], opp = g.F[1 - r.side], v = (a, k) => (isNum(a[I[k]]) ? a[I[k]] : 0);
       o.gameMin += v(own, 'minutes'); o.tmFGM += v(own, 'fgm'); o.tmFGA += v(own, 'fga'); o.tmFTA += v(own, 'fta'); o.tmTOV += v(own, 'tov');
       o.oppFG2A += v(opp, 'fga') - v(opp, 'fg3a'); o.tmReb += v(own, 'oreb') + v(own, 'dreb');
+      o.tmOR += v(own, 'oreb'); o.tmDR += v(own, 'dreb'); o.oppOR += v(opp, 'oreb'); o.oppDR += v(opp, 'dreb'); o.oppPoss += v(opp, 'poss_est');
+      /* the zone counts where the side's feed has them, the unassisted makes where its row carried them (A.3) */
+      if (isNum(r.rimA) && isNum(r.midA)) { o.rimA += r.rimA; o.rimM += isNum(r.rimM) ? r.rimM : 0; o.midA += r.midA; o.midM += isNum(r.midM) ? r.midM : 0; o.fgaZ += isNum(r.fga) ? r.fga : 0; }
+      if (isNum(r.unFgm) && isNum(r.unPts)) { o.unFgm += r.unFgm; o.unPts += r.unPts; o.fgmU += isNum(r.fgm) ? r.fgm : 0; o.minU += r.min; o.gameMinU += v(own, 'minutes'); o.tmUnPts += unSide.get(r.g * 2 + r.side) || 0; }
     }
   }
   const list = Array.from(rows.values()).sort((a, b) => byId(a.key, b.key));
@@ -660,6 +787,7 @@ function playerRows(X, before) {
     p.usg = p.min > 0 && tu > 0 ? 100 * (p.fga + 0.44 * p.fta + p.to) * p.gameMin / (p.min * tu) : null;
     p.mpg = p.gp ? p.min / p.gp : 0;
     p.listed = normListed(p.position);
+    rates(p);
   });
   /* BPM, the whole league at once (bpm.js), each club's totals from its own feature rows */
   const B = BPMm();
@@ -1154,10 +1282,10 @@ function pregameProfiles(X) {
   X.teamState = st;
 }
 
-const FC_COLS = ['h', 'e_c_efg', 'e_c_tovp', 'e_c_orebp', 'e_c_ftmr', 'elo', 'rest', 'b2b', 'km'];
+const FC_COLS = ['h', 'e_c_efg', 'e_c_tovp', 'e_c_orebp', 'e_c_ftr', 'elo', 'rest', 'b2b', 'km'];
 function fcRow(X, i, withKm) {
   const o = X.pre[i];
-  const r = [X.h[i], o.ex.c_efg, o.ex.c_tovp, o.ex.c_orebp, o.ex.c_ftmr, (o.elo[0] - o.elo[1]) / 100, o.rest[0] - o.rest[1], o.b2b[0] - o.b2b[1]];
+  const r = [X.h[i], o.ex.c_efg, o.ex.c_tovp, o.ex.c_orebp, o.ex.c_ftr, (o.elo[0] - o.elo[1]) / 100, o.rest[0] - o.rest[1], o.b2b[0] - o.b2b[1]];
   if (withKm) r.push(isNum(o.km[0]) && isNum(o.km[1]) ? (o.km[0] - o.km[1]) / 1000 : 0);
   return r;
 }
@@ -1602,9 +1730,20 @@ function people(X) {
   const hs = rows.filter(p => p.min > 0 && isNum(+p.height) && +p.height > 0).map(p => +p.height);
   const hm = meanOf(hs), hsd = sdOf(hs);
   rows.forEach(p => { p.hz = isNum(+p.height) && +p.height > 0 && hsd > 0 ? (+p.height - hm) / hsd : null; });
-  const rl = roles(rows.map(p => ({ id: p.key, min: p.min, fga: p.fga, fg3a: p.fg3a, fg3m: p.fg3m, ast_pct: p.ast_pct, blk_pct: p.blk_pct, usg: p.usg, hz: p.hz, group: p.group })),
-    { p3: X.rates && X.rates.p3 });
-  rows.forEach(p => { p.roles = rl.get(p.key) || []; });
+  /* the roles, each league-season's players against their own league-season (the pooled unit holds many: one call a
+     league, its own cuts) */
+  const roleIn = list => roles(list.map(p => ({ id: p.key, min: p.min, fga: p.fga, fg3a: p.fg3a, fg3m: p.fg3m, ast_pct: p.ast_pct, blk_pct: p.blk_pct, usg: p.usg, hz: p.hz, group: p.group,
+    ups: p.ups, au: p.au, rimr: p.rimr, ftr: p.ftr, orb_pct: p.orb_pct, drb_pct: p.drb_pct, stl_pct: p.stl_pct })), { p3: X.rates && X.rates.p3, zones: X.quality.zones >= 0.5 });
+  if (X.leagueOfTeam) {
+    const by = new Map();
+    rows.forEach(p => { const l = X.leagueOfTeam.get(p.team) || ''; if (!by.has(l)) by.set(l, []); by.get(l).push(p); });
+    Array.from(by.keys()).sort(byId).forEach(l => { const rl = roleIn(by.get(l)); by.get(l).forEach(p => { p.roles = rl.get(p.key) || []; }); });
+    X.roleCuts = null;
+  } else {
+    const rl = roleIn(rows);
+    rows.forEach(p => { p.roles = rl.get(p.key) || []; });
+    X.roleCuts = rl.cuts;
+  }
   const played = rows.filter(p => p.min > 0);
   const coverage = { listed: played.length ? played.filter(p => p.listed).length / played.length : 0,
     height: played.length ? played.filter(p => isNum(+p.height) && +p.height > 0).length / played.length : 0,
@@ -1903,6 +2042,13 @@ function squadFeatures(X) {
       shooters: rot.filter(p => p.roles.includes('shooter')).length,
       handlers: rot.filter(p => p.roles.includes('handler')).length,
       protectors: rot.filter(p => p.roles.includes('protector')).length,
+      passers: rot.filter(p => p.roles.includes('passer')).length,
+      slashers: rot.filter(p => p.roles.includes('slasher')).length,
+      crashers: rot.filter(p => p.roles.includes('crasher')).length,
+      glass: rot.filter(p => p.roles.includes('glass')).length,
+      disruptors: rot.filter(p => p.roles.includes('disruptor')).length,
+      /* each role's share of the club's minutes (A.3: the squad's role analysis reads it) */
+      _roleMin: Object.fromEntries(Object.keys(ROLE_SQUAD).map(r => [r, mins ? sum(rs.filter(p => p.roles.includes(r)).map(p => p.min)) / mins : null])),
       height_w: hCov > 0.5 ? wmean(p => p.hz, p => isNum(p.hz)) : null,
       age_w: aCov > 0.5 ? wmean(p => p.age, p => isNum(p.age)) : null,
       bench_share: ssm.length ? 1 - meanOf(ssm) : (mins ? 1 - sum(byMin.slice(0, 5).map(p => p.min)) / mins : null),
@@ -2015,9 +2161,232 @@ function squad(X, feats) {
   return { n: base.n, power: base.power, coef: base.coef, adj: base.adj, bands, pd: base.pd || {} };
 }
 
+/* ================================================================== A.3: ROLES AND WINNING, POSITIONS IN DEPTH === */
+/* the club seasons a team-season analysis reads (8 games or more, a net rating), their outcome shrunk by games
+   (net × n / (n + 10), as the squad model) and the league-season (unit) each belongs to */
+function seasonRows(X, feats) {
+  const tt = X.tempoTeams || new Map();
+  const unitOf = t => (X.leagueOfTeam ? X.leagueOfTeam.get(t) || '' : X.unitKey || '');
+  return X.teamIds.filter(t => (!feats || (feats.has(t) && feats.get(t)._games >= MIN.team)) && tt.get(t) && isNum(tt.get(t).net) && X.teams.get(t).gl.length >= MIN.team)
+    .map(t => { const r = tt.get(t), n = r.gp; return { id: t, unit: unitOf(t), net: r.net * n / (n + 10), win: n ? r.w / n : null, gp: n }; });
+}
+/* x and y centred within their unit, then pooled: the within-league association (the pooled file holds many leagues) */
+function centred(rows, xOf, yOf) {
+  const by = new Map();
+  rows.forEach(r => { const x = xOf(r), y = yOf(r); if (!isNum(x) || !isNum(y)) return; if (!by.has(r.unit)) by.set(r.unit, []); by.get(r.unit).push([x, y]); });
+  const xs = [], ys = [];
+  let units = 0;
+  by.forEach(list => { if (list.length < 3) return; units++; const mx = meanOf(list.map(v => v[0])), my = meanOf(list.map(v => v[1])); list.forEach(v => { xs.push(v[0] - mx); ys.push(v[1] - my); }); });
+  return { xs, ys, units };
+}
+/* r with a Fisher interval (n less the units' means), and the outcome per one SD of x with the same interval */
+function corrCI(xs, ys, units) {
+  const W = WS(), n = xs.length, nEff = n - Math.max(0, units - 1);
+  if (n < 6 || nEff < 5) return null;
+  const r = W.pearson(xs, ys);
+  if (!isNum(r)) return null;
+  const ci = W.fisherCI(r, nEff), sdy = sdOf(ys);
+  return { n, r, lo: ci[0], hi: ci[1], p: W.fisherP(r, nEff), sdy, b: r * sdy, blo: ci[0] * sdy, bhi: ci[1] * sdy };
+}
+
+/* ROLES AND WINNING (A.3). For each role (ROLE_SQUAD):
+   (1) the club seasons: the share of the club's minutes its tagged players played (and how many were in the rotation),
+       against net per 100: r with its Fisher interval and the slope, net per 100 for ten points more of the minutes,
+       with a club-season bootstrap (B = 1000), centred within each league-season;
+   (2) the lineups: net per 100 possessions for each tagged player more on the floor, the five's mean BPM held, within
+       team-game (possession weights, demeaned as the lineup model), bootstrap by game (B = 200); and the possessions
+       played with 0, 1 and 2 or more of them.
+   Evidence: 'strong' when a 95% interval leaves out 0 after the false-discovery check across the roles, 'some' when
+   the 90% one does, else 'none'; under 30 club seasons the analysis says it is underpowered. */
+function roleAnalysis(X, feats) {
+  const W = WS(), P = X.people;
+  if (!P || !feats) return null;
+  const rows = seasonRows(X, feats);
+  const list = [];
+  const keys = Object.keys(ROLE_SQUAD);
+  /* (1) the club seasons */
+  const club = keys.map(role => {
+    const C = centred(rows, r => { const v = feats.get(r.id)._roleMin[role]; return isNum(v) ? 100 * v : NaN; }, r => r.net);
+    const cc = corrCI(C.xs, C.ys, C.units);
+    const sxx = sum(C.xs.map(x => x * x)), slope = sxx > 0 ? 10 * sum(C.xs.map((x, i) => x * C.ys[i])) / sxx : null;
+    return { C, cc, slope };
+  });
+  const cb = boot(X, 'roles:club', () => {
+    const r = W.rng(seedOf(X, 'roles:club')), d = [];
+    for (let b = 0; b < 1000; b++) {
+      d.push(club.map(o => {
+        const n = o.C.xs.length;
+        if (n < 6) return NaN;
+        let sxy = 0, sxx = 0;
+        for (let j = 0; j < n; j++) { const k = Math.floor(r() * n); sxy += o.C.xs[k] * o.C.ys[k]; sxx += o.C.xs[k] * o.C.xs[k]; }
+        return sxx > 0 ? 10 * sxy / sxx : NaN;
+      }));
+    }
+    return { lo: keys.map((_, j) => pctl(d, j)[0]), hi: keys.map((_, j) => pctl(d, j)[1]), se: keys.map((_, j) => pctl(d, j)[2]) };
+  }, keys);
+  /* (2) the lineups: each stint's count of tagged players and its five's mean BPM, demeaned within team-game */
+  const raw = X.luRaw || [];
+  const lu = keys.map(() => null);
+  if (raw.length >= 40) {
+    const counts = raw.map(r => keys.map(role => r.ids.reduce((a, id) => { const p = P.byKey.get(r.tid + '|' + id); return a + (p && p.roles.includes(role) ? 1 : 0); }, 0)));
+    keys.forEach((role, j) => {
+      const grp = new Map();
+      raw.forEach((r, i) => { if (!grp.has(r.key)) grp.set(r.key, []); grp.get(r.key).push([r, counts[i][j]]); });
+      const byGame = new Map();
+      grp.forEach(L => {
+        const sw = sum(L.map(([r]) => r.w)), mx = sum(L.map(([r, c]) => r.w * c)) / sw, mb = sum(L.map(([r]) => r.w * r.c.bpm)) / sw, my = sum(L.map(([r]) => r.w * r.y)) / sw;
+        L.forEach(([r, c]) => { if (!byGame.has(r.g)) byGame.set(r.g, { r: [], y: [], w: [] }); const b = byGame.get(r.g); b.r.push([c - mx, r.c.bpm - mb]); b.y.push(r.y - my); b.w.push(r.w); });
+      });
+      const blocks = Array.from(byGame.keys()).sort((a, b) => a - b).map(k => { const b = byGame.get(k); return W.suff(b.r, b.y, b.w); });
+      const S = W.sumSuff(blocks), pen = [Math.pow(rms(S, 0) || 1, 2), Math.pow(rms(S, 1) || 1, 2)];
+      const fit = W.ridge(S, { lambda: 1e-4, pen });
+      if (!fit || !(S.xx[0] > 0)) return;
+      const bs = boot(X, 'roles:lu:' + role, () => { const q = W.blockBootstrap(blocks, T => { const f = W.ridge(T, { lambda: 1e-4, pen }); return f ? [f.b[0]] : null; }, { B: Math.min(200, X.B), seed: seedOf(X, 'roles:lu:' + role) }); return { lo: q.lo, hi: q.hi, se: q.se }; }, ['count', 'bpm']);
+      const poss = [0, 0, 0];
+      raw.forEach((r, i) => { poss[Math.min(2, counts[i][j])] += r.poss; });
+      lu[j] = { b: fit.b[0], lo: bs ? nn(bs.lo[0]) : null, hi: bs ? nn(bs.hi[0]) : null, se: bs ? nn(bs.se[0]) : null, poss };
+    });
+  }
+  /* evidence across the roles (both parts' p-values together in one false-discovery set) */
+  const pOf = (b, se) => (isNum(b) && se > 0 ? 2 * W.normCdf(-Math.abs(b / se)) : null);
+  const ps = keys.map((_, j) => pOf(club[j].slope, cb && cb.se ? cb.se[j] : null)).concat(lu.map(l => (l ? pOf(l.b, l.se) : null)));
+  const q = W.bh(ps);
+  const grade = (b, lo, hi, se, qq) => (isNum(lo) && isNum(hi) && (lo > 0 || hi < 0) && qq != null && qq < 0.05 ? 'strong' : se > 0 && Math.abs(b) > 1.6448536269514722 * se ? 'some' : 'none');
+  keys.forEach((role, j) => {
+    const o = club[j], cnt = rows.map(r => feats.get(r.id)[ROLE_SQUAD[role]]).filter(isNum), msh = rows.map(r => feats.get(r.id)._roleMin[role]).filter(isNum);
+    const lo = cb ? nn(cb.lo[j]) : null, hi = cb ? nn(cb.hi[j]) : null, se = cb && cb.se ? cb.se[j] : null, L = lu[j];
+    list.push({ k: role, n: o.C.xs.length, count: nn(meanOf(cnt)), minShare: nn(meanOf(msh)),
+      r: o.cc ? o.cc.r : null, rlo: o.cc ? o.cc.lo : null, rhi: o.cc ? o.cc.hi : null,
+      b: nn(o.slope), lo, hi, evidence: grade(o.slope, lo, hi, se, q[j]),
+      lu: L ? { b: L.b, lo: L.lo, hi: L.hi, poss: L.poss, evidence: grade(L.b, L.lo, L.hi, L.se, q[keys.length + j]) } : null });
+  });
+  const tagged = {};
+  ROLE_KEYS.forEach(k => { tagged[k] = P.rows.filter(p => p.min > 0 && p.roles.includes(k)).length; });
+  return { n: rows.length, power: rows.length < 30 ? 'low' : 'ok', players: P.rows.filter(p => p.min >= ROLE_MIN).length, tagged, cuts: X.roleCuts || null, list };
+}
+
+/* BY POSITION IN DEPTH (A.3): for each club season and each position group (G, F, C by the A.1 slot shares) and each
+   of the five slots (minutes at the slot), the minutes-weighted mean of every player's season rate (PLAYER_STATS less
+   A/U); across the club seasons its median, spread (SD, P25-P75) and its association with net per 100 and with the
+   share of games won (r with a Fisher interval, centred within each league-season; ★ after the false-discovery
+   check). A group's stat needs 60% of its minutes from players with the rate. */
+const POS_STATS = ['ast_pct', 'usg', 'ts', 'efg', 'p3r', 'p3p', 'rimr', 'midr', 'ftr', 'una', 'ups', 'orb_pct', 'drb_pct', 'tov_pct', 'stl_pct', 'blk_pct'];
+const POS_GROUPS = ['G', 'F', 'C', '1', '2', '3', '4', '5'];
+function posStats(X, feats) {
+  const W = WS(), P = X.people;
+  if (!P) return null;
+  const rows = seasonRows(X, feats);
+  if (rows.length < 6) return null;
+  const weightOf = (p, g) => {
+    const k = GROUPS3.indexOf(g);
+    if (k >= 0) { const sh = P.shares.get(p.key); return sh ? sh[k] * p.min : 0; }
+    return p.slots ? p.slots[+g - 1] : 0;
+  };
+  const byTeam = new Map();
+  P.rows.forEach(p => { if (p.min > 0) { if (!byTeam.has(p.team)) byTeam.set(p.team, []); byTeam.get(p.team).push(p); } });
+  /* value[team][group][stat] */
+  const val = new Map();
+  rows.forEach(r => {
+    const ps = byTeam.get(r.id) || [], v = {};
+    POS_GROUPS.forEach(g => {
+      v[g] = {};
+      const tot = sum(ps.map(p => weightOf(p, g)));
+      POS_STATS.forEach(k => {
+        let s = 0, w = 0;
+        ps.forEach(p => { const x = p[k], wt = weightOf(p, g); if (isNum(x) && wt > 0) { s += wt * x; w += wt; } });
+        v[g][k] = tot > 0 && w >= 0.6 * tot ? s / w : null;
+      });
+    });
+    val.set(r.id, v);
+  });
+  const cells = [];
+  POS_GROUPS.forEach(g => POS_STATS.forEach(k => {
+    const xs = rows.map(r => val.get(r.id)[g][k]).filter(isNum).sort((a, b) => a - b);
+    if (xs.length < 6) return;
+    const cn = corrCI(...(C => [C.xs, C.ys, C.units])(centred(rows, r => val.get(r.id)[g][k], r => r.net)));
+    const cw = corrCI(...(C => [C.xs, C.ys, C.units])(centred(rows, r => val.get(r.id)[g][k], r => r.win)));
+    cells.push({ g, k, n: xs.length, med: W.quantile(xs, 0.5), p25: W.quantile(xs, 0.25), p75: W.quantile(xs, 0.75), sd: nn(sdOf(xs)),
+      r: cn ? cn.r : null, lo: cn ? cn.lo : null, hi: cn ? cn.hi : null, b: cn ? cn.b : null, blo: cn ? cn.blo : null, bhi: cn ? cn.bhi : null, _p: cn ? cn.p : null,
+      rw: cw ? cw.r : null, rwlo: cw ? cw.lo : null, rwhi: cw ? cw.hi : null });
+  }));
+  const q = W.bh(cells.map(c => c._p));
+  cells.forEach((c, i) => { c.star = isNum(c.lo) && isNum(c.hi) && (c.lo > 0 || c.hi < 0) && q[i] != null && q[i] < 0.05; delete c._p; });
+  return { n: rows.length, stats: POS_STATS.slice(), groups: POS_GROUPS.slice(), cells };
+}
+
+/* ================================================================== A.3: THE LINEUP MIXES FILE (scope 'mix') === */
+/* What the page's lineup builder filters, in the browser, with no other read: every five a club used (its stints
+   summed over the season), its minutes and both ends' box, and an anonymous index of the players with their season
+   rates and role tags. Columnar and integer where it can be:
+     {w, scope: 'mix', league, season, token, built, n: {games, stints, fives, players},
+      stats: MIX_STATS, roles: ROLE_KEYS, cuts, pct: {stat: [P25, P50, P75, P90] over the regulars}, minRate: 100,
+      teams: [club ids],
+      players: {t: [club index], min: [minutes], tag: [role bitmask, bit i = roles[i]], v: [[value per player] per stat]},
+      rows: {t: [club index], p: [5 player indexes a five, -1 unknown], s: [seconds], o: [8 a five], d: [8 a five]},
+      box: BOX_KEYS, trim: {minPoss, fives, poss} | null}
+   o and d: the five's own and its opponents' fga, fgm, f3m, fta, pts, tov, or, dr, summed over its stints with a known
+   box (a stint without one, a feature row's own, is left out and counted in n.stints only). No names, no ids of
+   players; a withheld player (I6) is index -1, as an unknown one is. Over the budget, the fives with the fewest
+   possessions go first and trim says how many and their share of the possessions. */
+const MIX_STATS = ['ast_pct', 'usg', 'ups', 'au', 'ts', 'p3r', 'p3p', 'rimr', 'ftr', 'una', 'orb_pct', 'drb_pct', 'stl_pct', 'blk_pct', 'tov_pct'];
+const MIX_MIN = 100;
+function mixFile(X, o) {
+  o = o || {};
+  const P = X.people, Wd = X.W;
+  if (!P || !Wd || !Wd.stints || !Wd.stints.length) return null;
+  const teams = X.teamIds.slice(), tAt = new Map(teams.map((t, i) => [t, i]));
+  const pl = P.rows.filter(p => p.min > 0 && !P.withheld.has(String(p.id))).slice().sort((a, b) => byId(a.team, b.team) || byId(a.key, b.key));
+  const pAt = new Map(pl.map((p, i) => [p.key, i]));
+  const rd = (v, k) => (isNum(v) ? (k === 'au' ? r2d(v) : r1(v)) : null);
+  const players = { t: pl.map(p => tAt.get(p.team)), min: pl.map(p => Math.round(p.min)), tag: pl.map(p => ROLE_KEYS.reduce((m, k, i) => m | (p.roles.includes(k) ? 1 << i : 0), 0)),
+    v: MIX_STATS.map(k => pl.map(p => rd(p[k], k))) };
+  const reg = pl.filter(p => p.min >= ROLE_REG);
+  const pct = {};
+  MIX_STATS.forEach(k => { const v = reg.map(p => p[k]).filter(isNum).sort((a, b) => a - b); pct[k] = v.length >= 5 ? [0.25, 0.5, 0.75, 0.9].map(q => rd(WS().quantile(v, q), k)) : null; });
+  /* the fives: stints summed by (club, the five's player indexes sorted) */
+  const fives = new Map();
+  let stints = 0;
+  Wd.stints.forEach(st => {
+    const g = X.games[st.g];
+    if (!g) return;
+    stints++;
+    if (!st.box || st.box.some(v => !isNum(v)) || !(st.dur > 0)) return;
+    const tid = st.side ? g.a : g.h, idx = st.p.map(i => (i >= 0 ? pAt.get(tid + '|' + Wd.players[i]) : undefined)).map(i => (i == null ? -1 : i)).sort((a, b) => a - b);
+    const key = tid + ':' + idx.join(',');
+    let f = fives.get(key);
+    if (!f) { f = { t: tAt.get(tid), p: idx, s: 0, box: new Array(16).fill(0) }; fives.set(key, f); }
+    f.s += st.dur;
+    for (let j = 0; j < 16; j++) f.box[j] += st.box[j];
+  });
+  const possOf = f => 0.5 * (possEst({ fga: f.box[0], tov: f.box[5], fta: f.box[3], or: f.box[6] }) + possEst({ fga: f.box[8], tov: f.box[13], fta: f.box[11], or: f.box[14] }));
+  let list = Array.from(fives.values()).sort((a, b) => (a.t - b.t) || byId(a.p.join(','), b.p.join(',')));
+  const enc = L => ({ t: L.map(f => f.t), p: L.flatMap(f => f.p), s: L.map(f => Math.round(f.s)), o: L.flatMap(f => f.box.slice(0, 8)), d: L.flatMap(f => f.box.slice(8)) });
+  const file = { w: FILE_V, scope: 'mix', league: X.league ? { id: X.league.id, slug: X.league.slug || '', name: X.league.name || '' } : null, season: X.season ? { id: X.season.id, name: X.season.name || '' } : null,
+    token: o.token || '', built: o.now || '', n: { games: X.n, stints, fives: list.length, players: pl.length }, stats: MIX_STATS.slice(), roles: ROLE_KEYS.slice(), cuts: X.roleCuts || null,
+    pct, minRate: MIX_MIN, teams, players, box: BOX_KEYS.slice(), rows: enc(list), trim: null };
+  /* the budget: the fives with the fewest possessions leave first, in tenths of the list, until it fits */
+  const lim = budgetOf('mix', file, o);
+  if (bytesOf(file) > lim) {
+    const all = list.map(f => [possOf(f), f]).sort((a, b) => (a[0] - b[0]) || (a[1].t - b[1].t) || byId(a[1].p.join(','), b[1].p.join(',')));
+    const totalPoss = sum(all.map(x => x[0]));
+    let cut = 0, minPoss = 0;
+    while (bytesOf(file) > lim && cut < all.length - 1) {
+      cut = Math.min(all.length - 1, cut + Math.max(1, Math.ceil(all.length / 20)));
+      minPoss = all[cut][0];
+      const keep = new Set(all.slice(cut).map(x => x[1]));
+      list = list.filter(f => keep.has(f));
+      file.rows = enc(list);
+      file.trim = { minPoss: r1(minPoss), fives: cut, poss: totalPoss > 0 ? sum(all.slice(0, cut).map(x => x[0])) / totalPoss : 0 };
+    }
+    file.n.fives = list.length;
+  }
+  return file;
+}
+
 /* ================================================================== CAUSES OF A RESULT (§7.11) === */
-const PART_KEYS = ['quality', 'making', 'tovp', 'orebp', 'ftmr', 'other', 'garbage'];
-/* every game split exactly (home view): y = expected + quality + making + tovp + orebp + ftmr + other + garbage */
+const PART_KEYS = ['quality', 'making', 'tovp', 'orebp', 'ftr', 'other', 'garbage'];
+/* every game split exactly (home view): y = expected + quality + making + tovp + orebp + ftr + other + garbage (ftr: the
+   free-throw attempt part; files built before A.3 call it ftmr, and the readers take either) */
 function causes(X, core) {
   const W = WS(), I = X.I;
   const beta = {}, coef = core.model.coef;
@@ -2032,7 +2401,7 @@ function causes(X, core) {
     const dq = isNum(X.xe[i][0]) && isNum(X.xe[i][1]) ? X.xe[i][0] - X.xe[i][1] : NaN, eq = isNum(o.ex.xefg) ? o.ex.xefg : 0;
     const yc = isNum(X.yc[i]) ? X.yc[i] : X.y[i];
     const r = W.oaxaca({ beta, alpha, h: X.h[i], dx, ex, y: X.y[i], yc, split: { k: 'c_efg', dx: isNum(dq) ? dq : eq, ex: eq, names: ['quality', 'making'] } });
-    const parts = { quality: r.parts.quality, making: r.parts.making, tovp: r.parts.c_tovp, orebp: r.parts.c_orebp, ftmr: r.parts.c_ftmr, other: r.other, garbage: r.garbage };
+    const parts = { quality: r.parts.quality, making: r.parts.making, tovp: r.parts.c_tovp, orebp: r.parts.c_orebp, ftr: r.parts.c_ftr, other: r.other, garbage: r.garbage };
     const sq = X.sq[i], luck = isNum(sq[0][2]) && isNum(sq[1][2]) ? (g.F[0][I.pts] - sq[0][2]) - (g.F[1][I.pts] - sq[1][2]) : null;
     /* the factors' fitted margin, for the club's factor-expected wins */
     let fitM = alpha * X.h[i];
@@ -2197,6 +2566,7 @@ function budgetOf(scope, file, o) {
   }
   if (scope === 'club') return BUDGET.club;
   if (scope === 'pos') return BUDGET.pos;
+  if (scope === 'mix') return BUDGET.mix;
   return Infinity;
 }
 /* §6.6: over budget, drop the adjusted curves, thin curves to 15 points, merge blocks to fortnights, drop the curves
@@ -2271,7 +2641,8 @@ function validate(file, scope, o) {
   if (b > lim * 1.25) P.push('over budget: ' + b + ' bytes (budget ' + lim + ')');
   const walk = (v, path, key) => {
     if (Array.isArray(v)) {
-      if (v.length === 108 && v.every(x => x == null || typeof x === 'number')) P.push('a 108-number array at ' + path);
+      /* (a mix file's columns are its own: a list of 108 players or fives is no feature vector) */
+      if (scope !== 'mix' && v.length === 108 && v.every(x => x == null || typeof x === 'number')) P.push('a 108-number array at ' + path);
       v.forEach((x, i) => walk(x, path + '[' + i + ']', key));
       return;
     }
@@ -2286,9 +2657,19 @@ function validate(file, scope, o) {
   };
   walk(file, scope, '');
   const need = { wins: ['quality', 'meta', 'homeWin', 'sigma', 'scan', 'models', 'predictive', 'curves', 'tempo', 'losses'],
-    fo: ['lg', 'sim', 'value', 'teams'], club: ['team', 'record', 'games', 'losses', 'realised', 'players'], teaser: ['ranked', 'leagues'], pos: ['team', 'season', 'players', 'slots'] }[scope] || [];
+    fo: ['lg', 'sim', 'value', 'teams'], club: ['team', 'record', 'games', 'losses', 'realised', 'players'], teaser: ['ranked', 'leagues'], pos: ['team', 'season', 'players', 'slots'],
+    mix: ['stats', 'roles', 'teams', 'players', 'rows'] }[scope] || [];
   need.forEach(k => { if (!(k in file)) P.push('missing ' + k); });
-  if (scope !== 'teaser' && scope !== 'pos') ['fv', 'code', 'token', 'built', 'n', 'lens'].forEach(k => { if (!(k in file)) P.push('missing ' + k); });
+  if (scope !== 'teaser' && scope !== 'pos' && scope !== 'mix') ['fv', 'code', 'token', 'built', 'n', 'lens'].forEach(k => { if (!(k in file)) P.push('missing ' + k); });
+  if (scope === 'mix') {
+    /* the mix file's columns line up: five players, 8 counts an end, a club and seconds a five; a club a player; no
+       player id at all (anonymous indexes only) */
+    const R = file.rows || {}, n = (R.t || []).length, np = ((file.players && file.players.t) || []).length;
+    if ((R.p || []).length !== 5 * n || (R.o || []).length !== 8 * n || (R.d || []).length !== 8 * n || (R.s || []).length !== n) P.push('mix rows do not line up');
+    if ((R.p || []).some(i => i !== -1 && !(i >= 0 && i < np))) P.push('mix rows name a player outside the index');
+    if (((file.players && file.players.v) || []).length !== (file.stats || []).length) P.push('mix players lack a stat');
+    if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(JSON.stringify(file.players || {}))) P.push('mix players carry an id');
+  }
   if (scope === 'wins') {
     if (file.blocks && file.blocks.list) file.blocks.list.forEach((bl, i) => { if (!(bl.n >= 8)) P.push('block ' + i + ' covers ' + bl.n + ' games'); });
     if (file.league == null) {
@@ -2309,7 +2690,7 @@ function validate(file, scope, o) {
   }
   if (o.withheld && o.withheld.size) {
     const ids = [];
-    ((file.players) || []).forEach(p => ids.push(p.id));
+    (Array.isArray(file.players) ? file.players : []).forEach(p => ids.push(p.id));     // (a mix file's players are anonymous columns)
     ((file.pos && file.pos.players) || []).forEach(p => ids.push(p.id));
     Object.values(file.pos || {}).forEach(pf => { if (pf && Array.isArray(pf.players)) pf.players.forEach(p => ids.push(p.id)); });
     ids.forEach(id => { if (o.withheld.has(id)) P.push('withheld player ' + id); });
@@ -2370,7 +2751,7 @@ function buildUnit(input, opts) {
   X.refYear = new Date(now).getUTCFullYear();
   X.unitKey = (X.league && X.league.id) || '';
   const ciAt = X.mode === 'full' ? now : (carry && carry.at) || store.ci_at || null;
-  const out = { wins: null, fo: null, clubs: new Map(), pos: new Map(), carry: null, warnings: X.warnings, accept: null, n: X.n, ms: 0 };
+  const out = { wins: null, fo: null, clubs: new Map(), pos: new Map(), mix: null, carry: null, warnings: X.warnings, accept: null, n: X.n, ms: 0 };
   if (X.n < MIN.own) { X.warnings.push('fewer than ' + MIN.own + ' finished games: no league files (pages use the pooled file)'); return out; }
   const parts = assemble(X, opts);
   if (!parts) { X.warnings.push('the competitive four factors could not be fitted'); return out; }
@@ -2383,6 +2764,9 @@ function buildUnit(input, opts) {
   out.fo = fin('fo', fo);
   parts.clubs.forEach((c, tid) => { const f = fin('club', Object.assign(hdr('club'), c)); if (f) out.clubs.set(tid, f); });
   parts.pos.forEach((p, tid) => { out.pos.set(tid, opts.raw ? p : pack(p)); });
+  /* A.3: the lineup mixes' file (league files only); integers and rounded rates already, so never packed (4 significant
+     figures would move a five's seconds) */
+  out.mix = mixFile(X, { token, now, budget: opts.budget });
   out.carry = X.mode === 'full' ? { at: now, ci: X.carryOut, sim: X.simCal ? pack(X.simCal) : null } : carry;
   out.accept = parts.accept;
   out.ms = Date.now() - t0;
@@ -2461,6 +2845,9 @@ function assemble(X, opts) {
   const feats = squadFeatures(X);
   X.feats = feats;
   const squadR = squad(X, feats);
+  /* A.3: the roles against winning, and each position group's statistics in depth */
+  const rolesR = roleAnalysis(X, feats);
+  positionsR.stats = posStats(X, feats);
   tick('squad');
   const lossesR = causes(X, core);
   tick('causes');
@@ -2506,7 +2893,7 @@ function assemble(X, opts) {
     sigma: { acc: X.sigmaAcc, pred: sigmaPred, src: X.fc.src }, G,
     scan: scanR.map(r => { const o = Object.assign({}, r); delete o.p; return o; }),
     models: { core4c: stripModel(core.model), fullR2: full ? full.model.r2 : null, shot: shot ? stripModel(shot.model) : null, extended: ep.extended ? Object.assign({}, ep.extended, { set: undefined }) : null },
-    path: ep.path, predictive: X.predictive, curves: curvesR, tempo: tempoR, positions: positionsR, lineup: lineupR, squad: squadR, losses: lossesR,
+    path: ep.path, predictive: X.predictive, curves: curvesR, tempo: tempoR, positions: positionsR, lineup: lineupR, squad: squadR, roles: rolesR, losses: lossesR,
     blocks, leagues: null
   };
   /* the Front office file */
@@ -2550,7 +2937,9 @@ function assemble(X, opts) {
     sim: { calibrated: !!(cal && cal.report && cal.report.calibrated), platt: cal ? cal.platt || null : null, brier: cal && cal.report ? nn(cal.report.brier) : null, slope: cal && cal.report ? nn(cal.report.slope) : null },
     sigmaPred, predLive: !!X.fc.live, value, teams: teamsF,
     slots: positionsR.p1.length || positionsR.p2.length ? { stats: X.p2Stats || ['bpm'].concat(P1_STATS), p1: positionsR.p1, targets: positionsR.p2, forecast: positionsR.p2f } : null,
-    squad: squadR, lineup: lineupR, pos: Object.fromEntries(Array.from(posMap.entries()))
+    squad: squadR, lineup: lineupR, pos: Object.fromEntries(Array.from(posMap.entries())),
+    /* A.3: how a role is earned in this league-season (the Front office's squad block names its players' roles) */
+    roles: rolesR ? { cuts: rolesR.cuts, tagged: rolesR.tagged } : null
   };
   const clubs = new Map();
   X.teamIds.forEach(tid => { const c = clubFile(X, tid, value, positionsR, posMap.get(tid)); if (c) clubs.set(tid, c); });
@@ -2858,6 +3247,9 @@ function buildTeaser(inputs, open, opts) {
 function update(store, delta, opts) {
   opts = opts || {};
   const d = delta || {};
+  /* a store of an older layout is the builder's to rebuild from nothing: folding a delta into it would leave its older
+     games without the newer columns for good (A.3). The caller queues the unit instead */
+  if (store && store.v != null && +store.v !== STORE_V) return { store: null, files: {}, token: null, changed: [], stale: true };
   const next = storeAdd(store, d.rows || [], d.games || [], d.pgs || [], d.stints || [], { kinds: (store && store.ctx && store.ctx.kinds) || {} });
   next.carry = store && store.carry ? store.carry : null;
   next.ci_at = store && store.ci_at ? store.ci_at : null;
@@ -2875,6 +3267,7 @@ function update(store, delta, opts) {
     if (r.fo) files.fo = r.fo;
     if (r.clubs.size) files.club = Object.fromEntries(r.clubs.entries());
     if (r.pos.size) files.pos = Object.fromEntries(r.pos.entries());
+    if (r.mix) files.mix = r.mix;
   }
   return { store: next, files, token, changed };
 }
@@ -2895,7 +3288,7 @@ function synthUnit(o) {
   const W = WS(), Fm = FT(), I = Fm.INDEX, N = Fm.N, Q = Fm.QBITS;
   const seed = o.seed != null ? o.seed : 1, nT = o.teams || 12, nG = o.games || 132, zones = o.zones !== false;
   const rand = W.rng(seed), nz = () => W.normal(rand), un = () => rand();
-  const truth = Object.assign({ alpha: 2.5, beta: { c_efg: 1.6, c_tovp: -1.2, c_orebp: 0.45, c_ftmr: 0.35 }, sigma: 4, trEfg: 30, shooter: 4 }, o.truth || {});
+  const truth = Object.assign({ alpha: 2.5, beta: { c_efg: 1.6, c_tovp: -1.2, c_orebp: 0.45, c_ftr: 0.3 }, sigma: 4, trEfg: 30, shooter: 4 }, o.truth || {});
   const hex = (tag, n) => { let s = ''; let k = 0; while (s.length < n) { s += (fnv(seed + ':' + tag + ':' + k++) >>> 0).toString(16).padStart(8, '0'); } return s.slice(0, n); };
   const uuid = tag => hex(tag, 8) + '-' + hex(tag + 'b', 4) + '-4' + hex(tag + 'c', 3) + '-a' + hex(tag + 'd', 3) + '-' + hex(tag + 'e', 12);
   const league = o.league || { id: uuid('league'), slug: 'synth-' + seed, name: 'Synthetic League ' + seed };
@@ -2947,8 +3340,10 @@ function synthUnit(o) {
       const efg = (50 + T.lat.efg - O.dl.efg + truth.trEfg * (tr - 0.16) + 4 * nz()) / 100;
       const tovp = clamp((14 + T.lat.tov - O.dl.tov + 2.5 * nz()) / 100, 0.05, 0.3);
       const orb = clamp((28 + T.lat.orb - O.dl.orb + 5 * nz()) / 100, 0.08, 0.6);
-      const ftmr = clamp((20 + T.lat.ftm - O.dl.ftm + 5 * nz()) / 100, 0.05, 0.5);
-      return { poss, tr, efg, tovp, orb, ftmr };
+      /* the planted free-throw factor is the attempt rate (FTA / FGA); the share made is drawn apart, out of the truth */
+      const ftr = clamp((27 + 1.3 * (T.lat.ftm - O.dl.ftm) + 6 * nz()) / 100, 0.08, 0.7);
+      const ftp = clamp(0.73 + 0.06 * nz(), 0.45, 0.95);
+      return { poss, tr, efg, tovp, orb, ftr, ftp };
     };
     const sa = side(A, B), sb = side(B, A);
     const build = (sd, T) => {
@@ -2958,7 +3353,7 @@ function synthUnit(o) {
       const fgm = clamp(Math.round(sd.efg * fga - 0.5 * fg3m), fg3m, fga);
       const two = fga - fg3a, rim_a = Math.round(two * 0.55), mid_a = two - rim_a, m2 = fgm - fg3m;
       const rim_m = clamp(Math.round(m2 * (rim_a * 0.62) / (rim_a * 0.62 + mid_a * 0.4 || 1)), 0, rim_a), mid_m = clamp(m2 - rim_m, 0, mid_a);
-      const ftm = Math.round(sd.ftmr * fga), fta = Math.max(ftm, Math.round(ftm / 0.73));
+      const fta = Math.round(sd.ftr * fga), ftm = clamp(Math.round(sd.ftp * fta), 0, fta);
       const tov = Math.round(sd.tovp * (fga + 0.44 * fta) / (1 - sd.tovp));
       const miss = fga - fgm, oreb = clamp(Math.round(sd.orb * miss), 0, miss);
       Object.assign(f, { fga, fgm, fg3a, fg3m, fta, ftm, tov, oreb, rim_a, rim_m, mid_a, mid_m, miss });
@@ -3013,6 +3408,7 @@ function synthUnit(o) {
     gamesRows.push({ id: gid, status: 'final', competition_id: comp, home_team_id: A.id, away_team_id: B.id, home_score: hs, away_score: as,
       tipoff_at: new Date(s.t).toISOString(), venue_id: venue, starters: [A.roster.slice(0, 5).map(p => p.id), B.roster.slice(0, 5).map(p => p.id)] });
     /* player lines: the team's counts shared by minutes, shooters taking the threes, bigs the boards */
+    const uRow = [{}, {}];
     [[A, ca, 0, cb], [B, cb, 1, ca]].forEach(([T, c, ti, oc]) => {
       const mins = T.roster.map(p => (p.deep ? (un() < 0.3 ? 3 : 0) : p.starter ? 30 + 3 * nz() : 15 + 3 * nz()));
       const tot = sum(mins), scale = 200 / tot;
@@ -3021,11 +3417,18 @@ function synthUnit(o) {
       T.roster.forEach((p, j) => {
         if (!(mins[j] > 0)) return;
         const fg3a = c.fg3a * w3[j], fg3m = fg3a * (p.shooter ? 0.4 : 0.28), p2a = (c.fga - c.fg3a) * w2[j], p2m = p2a * ((c.fgm - c.fg3m) / Math.max(1, c.fga - c.fg3a));
+        /* A.3: zone counts (bigs nearer the rim) where the league has zones, and the unassisted makes (guards create
+           more of their own); the makers' unassisted counts ride on the feature row as st.u does */
+        const rimA = zones ? p2a * (0.3 + 0.1 * p.slot) : null, rimM = zones ? Math.min(p2m, rimA * 0.62) : null;
+        const un = (p2m + fg3m) * (0.6 - 0.09 * p.slot);
         pgs.push({ game_id: gid, team_idx: ti, player_uuid: p.id, player_id: p.id, min: mins[j] * scale * 60000, pts: 2 * p2m + 3 * fg3m + c.ftm * w2[j],
           p2a, p2m, p3a: fg3a, p3m: fg3m, fta: c.fta * w2[j], ftm: c.ftm * w2[j], or: c.oreb * wb[j], dr: (oc.miss - oc.oreb) * wb[j], ast: 0.6 * c.fgm * wg[j],
-          stl: 0.5 * oc.tov * wg[j], blk: 0.08 * (oc.fga - oc.fg3a) * wbk[j], to: c.tov * w2[j], pf: 2 + nz() * 0.5 });
+          stl: 0.5 * oc.tov * wg[j], blk: 0.08 * (oc.fga - oc.fg3a) * wbk[j], to: c.tov * w2[j], pf: 2 + nz() * 0.5,
+          rimA, rimM, midA: zones ? p2a - rimA : null, midM: zones ? p2m - rimM : null });
+        if (p2m + fg3m > 0) uRow[ti][p.id] = [Math.round(un), Math.round(2 * un * p2m / (p2m + fg3m) + 3 * un * fg3m / (p2m + fg3m)), Math.round(p2m + fg3m - un)];
       });
     });
+    rows[rows.length - 2].u = uRow[0]; rows[rows.length - 1].u = uRow[1];
     /* stints: ten fives a side, the bench mixed in; net per 100 carries the planted shooter effect */
     [[A, sa, 0, ycR], [B, sb, 1, -ycR]].forEach(([T, sd, ti, mg]) => {
       let left = 2400;
@@ -3039,8 +3442,11 @@ function synthUnit(o) {
         const poss = sd.poss * dur / 2400, nSh = five.filter(p => p.shooter).length;
         const net = 100 * mg / sd.poss + truth.shooter * (nSh - 2) + 12 * nz();
         const diff = net * poss / 100;
+        /* both ends' box (A.3), shaped so the possessions it gives stay poss: fga + tov + 0.44 fta - or = poss / 0.96 */
+        const box = pts => { const tov = 0.14 * poss, fta = 0.22 * poss, or = 0.1 * poss, fga = poss / 0.96 - tov - 0.44 * fta + or;
+          return { fga, fgm: 0.45 * fga, f3m: 0.12 * fga, fta, pts, tov, or, dr: 0.3 * poss }; };
         stints.push({ game_id: gid, team_idx: ti, player_ids: uniq, dur: dur * 1000, pf: poss * 1.05 + diff / 2, pa: poss * 1.05 - diff / 2,
-          off: { fga: poss / 0.96, tov: 0, fta: 0, or: 0 }, def: { fga: poss / 0.96, tov: 0, fta: 0, or: 0 } });
+          off: box(poss * 1.05 + diff / 2), def: box(poss * 1.05 - diff / 2) });
       }
     });
   });
@@ -3056,9 +3462,9 @@ function synthUnit(o) {
     raw: { rows, games: gamesRows, pgs, stints, comp, teams, rosters, bios, venues, withheld, scheduled } });
 }
 
-return { FILE_V, CODE_V, STORE_V, BUDGET, KEYMAP, MIN, CORE, normListed, positionOf, groupsFor, roles, blocksOf, slotMinutes, isoWeek,
+return { FILE_V, CODE_V, STORE_V, BUDGET, KEYMAP, MIN, CORE, ROLE_KEYS, MIX_STATS, PLAYER_STATS, POS_STATS, BOX_KEYS, normListed, positionOf, groupsFor, roles, blocksOf, slotMinutes, isoWeek,
          emptyStore, storeAdd, storeDrop, stintGaps, decodeStore, inputFromStore, buildUnit, buildPool, buildTeaser, update, validate, pack, unpack, synthUnit,
-         poolToken, bytesOf, budgetOf, _sdReal: sdReal };
+         poolToken, bytesOf, budgetOf, _sdReal: sdReal, _centred: centred, _corrCI: corrCI };
 }));
 
 /* ---------------------------------------------------------------------------

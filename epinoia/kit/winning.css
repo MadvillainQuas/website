@@ -132,8 +132,38 @@ a.plain{color:inherit;text-decoration:none}
 .ww-lenses dd{margin:0}
 .ww-asof{font-family:var(--f-data);font-size:11.5px;color:var(--ink-3);text-align:center;overflow-wrap:anywhere}
 
+/* ---- A.3: a measure explained, move the gap, the glossaries ---- */
+.ww-def{max-width:72ch;margin:10px auto;padding:10px 14px;border:1px solid var(--rule);border-left:3px solid var(--vz-s1);text-align:left;font-family:var(--f-ui);font-size:13px;line-height:1.55;color:var(--ink-2)}
+.ww-def p{margin:2px 0}
+.ww-defh{font-size:14px;color:var(--ink)}
+.ww-mute{color:var(--ink-3)}
+.ww-gap{max-width:640px;margin:10px auto 6px;text-align:center}
+.ww-gaprow{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:10px;align-items:center}
+.ww-gaprow input[type=range]{width:100%;min-height:44px;margin:0;accent-color:var(--vz-s3);touch-action:pan-y;cursor:pointer}
+.ww-gapn{min-height:40px;width:100%;font-family:var(--f-data);font-size:13px}
+.ww-gapout{margin:6px auto 0;max-width:62ch;font-family:var(--f-ui);font-size:14px;line-height:1.5;color:var(--ink)}
+.ww-gapout span{display:block}
+.ww-dl{margin:6px 0;display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:6px 14px}
+.ww-dl dt{font-weight:600;color:var(--ink)}
+.ww-dl dd{margin:0}
+.ww-roles .ww-tbl td{white-space:normal}
+.ww-roles .ww-tbl td:nth-child(2){font-family:var(--f-ui);font-size:13px;min-width:22ch}
+/* ---- A.3: lineup mixes ---- */
+.ww-conds{display:flex;flex-direction:column;align-items:center;gap:8px;margin:8px auto}
+.ww-cond{border:1px solid var(--rule);margin:0;padding:8px 12px 10px;min-width:0;max-width:100%}
+.ww-cond legend{font-family:var(--f-micro);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);padding:0 6px}
+.ww-condrow{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.ww-condrow .ep-input{min-height:40px;font-family:var(--f-ui);font-size:13px;max-width:100%}
+.ww-mixx{width:96px;font-family:var(--f-data)}
+.ww-mixr{margin-top:6px}
+.ww-warn{color:var(--bad, #b3261e);font-weight:600}
+
 @media (max-width:720px){
   .ww .ww-chart{margin-left:0;margin-right:0}
+  .ww-dl{grid-template-columns:1fr}
+  .ww-gaprow{grid-template-columns:minmax(0,1fr) 84px}
+  .ww-condrow .ep-input{flex:1 1 40%}
+  .ww-mixx{flex:1 1 40%}
   .ww-ctext{font-size:15px}
   .ww-cardgrid{grid-template-columns:1fr}
   .ww-lenses{grid-template-columns:1fr}

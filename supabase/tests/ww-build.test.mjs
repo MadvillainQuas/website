@@ -217,8 +217,11 @@ let first;
     mk.bucket.has(w1.path) && w1.token === '100@' + U1.features.filter(r => early.has(r.game_id)).map(r => r.finalised_at).sort().pop() && w1.layout === 1 && w1.fv === F.FV &&
     w1.n_games === 100 && w1.built_at === at(0) && w1.ci_at === at(0) && w1.is_current === true && w1.bytes === mk.bucket.get(w1.path).body.length);
   const st = idxRow(mk, 'store', U1.league.id), pos = mk.db.analytics_files.filter(r => r.scope === 'pos');
-  ok('...the private store is registered (scope store) and pos files have scope pos and their team', !!st && st.path === 'store/' + U1.league.id + '/' + U1.season.id + '/s1-fv1.json' &&
+  ok('...the private store is registered (scope store) and pos files have scope pos and their team', !!st && st.path === 'store/' + U1.league.id + '/' + U1.season.id + '/s' + M.STORE_V + '-fv1.json' &&
     mk.bucket.has(st.path) && pos.length === 18 && pos.every(r => r.team_key && r.team_id === r.team_key && mk.bucket.has(r.path)));
+  const mixRows = mk.db.analytics_files.filter(r => r.scope === 'mix');
+  ok('...A.3: each unit\'s lineup mixes file (scope mix, no team) is uploaded and indexed', mixRows.length >= 2 && mixRows.every(r => r.team_key === '' && mk.bucket.has(r.path) &&
+    M.validate(JSON.parse(mk.bucket.get(r.path).body), 'mix').length === 0), mixRows.length);
   const pool = idxRow(mk, 'wins', 'all'), pri = idxRow(mk, 'priors', 'all');
   ok('...the pooled row (all / current) and the priors', !!pool && pool.season_key === 'current' && pool.is_current && mk.bucket.has(pool.path) && !!pri && mk.bucket.has('priors/v1.json'));
   const ix = mk.snapshots.get('whatwins/index.json');
@@ -237,7 +240,7 @@ let first;
     (x.startsWith('HEAD') || x.includes('limit=1&') || x.endsWith('limit=1') || (x.includes('or=(finalised_at.gt.') && x.includes('order=finalised_at,game_id,team_idx')) ||
      /game_id=in\.\([^)]*\)&select=game_id,team_idx,st$/.test(x))));
   const lines = gf.filter(x => x.includes('or=(finalised_at.gt.'));
-  ok('...the delta\'s lines are read without st (asked for only for the games whose stints are missing or short)', lines.length > 0 && lines.every(x => /select=game_id,team_idx,f,q,finalised_at&/.test(x)), lines[0]);
+  ok('...the delta\'s lines are read without st, only its small part u (A.3; st itself is asked for only for the games whose stints are missing or short)', lines.length > 0 && lines.every(x => /select=game_id,team_idx,f,q,finalised_at,u:st->u&/.test(x)), lines[0]);
   /* PERF-10: a unit's context (teams, rosters, bios, the withheld check, venues, fixtures) is read once a run, even when
      the pooled file is due too */
   const teamsReads = mk.urls.filter(x => /\/rest\/v1\/teams\?id=in\./.test(x)).length;
@@ -441,9 +444,9 @@ console.log('\n--fixtures');
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ww-fix-'));
   const r = await B.run({ fixtures: dir, log: () => {}, B: 40 });
-  const names = ['wins.sample.json', 'wins-all.sample.json', 'fo.sample.json', 'club.sample.json', 'teaser.sample.json'];
+  const names = ['wins.sample.json', 'wins-all.sample.json', 'fo.sample.json', 'club.sample.json', 'teaser.sample.json', 'mix.sample.json'];
   const files = names.map(n => (fs.existsSync(path.join(dir, n)) ? JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')) : null));
-  ok('--fixtures writes the five §9 sample files', files.every(Boolean) && r.built.length === 5, names.filter((n, i) => !files[i]).join(', '));
+  ok('--fixtures writes the six sample files (§9\'s five and A.3\'s lineup mixes)', files.every(Boolean) && r.built.length === 6 && M.validate(files[5], 'mix').length === 0, names.filter((n, i) => !files[i]).join(', '));
   ok('...each valid for its scope (the pooled one without blocks, the teaser public keys only)', M.validate(files[0], 'wins').length === 0 && M.validate(files[1], 'wins').length === 0 &&
     files[1].blocks === null && M.validate(files[2], 'fo').length === 0 && M.validate(files[3], 'club').length === 0 && M.validate(files[4], 'teaser').length === 0);
   const committed = path.join(ROOT, 'supabase', 'tests', 'fixtures', 'ww');

@@ -89,6 +89,13 @@ ok('the migration loads on a fresh Postgres (' + MIG + ')', true);
 const UNLINK = readdirSync(path.join(here, '..', 'migrations')).find(f => /^\d{4}_analytics_refresh_unlink\.sql$/.test(f));
 await db.exec(readFileSync(path.join(here, '..', 'migrations', UNLINK), 'utf8').replace(/^notify .*$/m, ''));
 ok('...and the unlink after it (' + UNLINK + ')', true);
+const MIXM = readdirSync(path.join(here, '..', 'migrations')).find(f => /^\d{4}_analytics_mix\.sql$/.test(f));
+await db.exec(readFileSync(path.join(here, '..', 'migrations', MIXM), 'utf8').replace(/^notify .*$/m, ''));
+ok('...and the lineup mixes scope after them (A.3, ' + MIXM + ')', !!MIXM);
+{
+  const def = (await q(`select pg_get_constraintdef(oid) as d from pg_constraint where conname = 'analytics_files_scope_check'`))[0];
+  ok('...the index accepts scope mix beside the others', !!def && /'mix'/.test(def.d) && ['wins', 'fo', 'club', 'pos', 'store', 'priors', 'teaser'].every(x => def.d.includes("'" + x + "'")), def && def.d);
+}
 
 console.log('\nno new route between tables for the API');
 // A table whose primary key is made of foreign keys to two tables is read by the API as a many-to-many link between them,
@@ -117,6 +124,8 @@ const bucket = await one(`select * from storage.buckets where id = 'analytics'`)
 ok('the analytics bucket exists, private, JSON only, 100 MB', bucket && bucket.public === false && bucket.allowed_mime_types.join() === 'application/json' && +bucket.file_size_limit === 104857600, bucket);
 await db.exec(`update storage.buckets set public = true where id = 'analytics'`);
 await db.exec(sql);
+/* the later migrations again after it, as a fresh deployment runs them (0213 replaces analytics_check; it runs twice cleanly) */
+await db.exec(readFileSync(path.join(here, '..', 'migrations', MIXM), 'utf8').replace(/^notify .*$/m, ''));
 ok('...and running the migration again puts it back to private', (await one(`select public from storage.buckets where id = 'analytics'`)).public === false);
 ok('no storage policy names the analytics bucket', (await one(`select count(*)::int as n from pg_policies where schemaname = 'storage'
    and (coalesce(qual, '') ilike '%analytics%' or coalesce(with_check, '') ilike '%analytics%' or policyname ilike '%analytics%')`)).n === 0);
@@ -143,6 +152,8 @@ ok('a club file needs a team, one that played in the league', await check('club'
    await check('club', lg.id, s1.id, stranger.id) === 'league' && await check('club', lg.id, s1.id, home.id) === 'ok');
 ok('...and a pos file (A.1) is checked as a club file', await check('pos', lg.id, s1.id, away.id) === 'ok' && await check('pos', lg.id, s1.id, null) === 'scope'
    && await check('pos', lg.id, null, stranger.id) === 'league');
+ok('A.3: the mix file is a league-season\'s, checked as fo is: no pooled one, no team', await check('mix', lg.id, s1.id, null) === 'ok' && await check('mix', null, null, null) === 'scope' &&
+   await check('mix', lg.id, s1.id, home.id) === 'scope' && await check('mix', lg.id, sPaid.id, null) === 'league');
 ok('a season of another league is refused', await check('wins', lg.id, sPaid.id, null) === 'league');
 ok('a private league is refused to somebody who cannot see it', await check('wins', priv.id, sPriv.id, null) === 'league');
 await q(`insert into test_admins values ($1, $2)`, [priv.id, ADMIN]);
@@ -151,10 +162,12 @@ ok('...and answered for its administrator', await check('wins', priv.id, sPriv.i
 await db.exec(`update test_switch set on_ = true`);
 await as(FAN);
 ok('memberships on: a members-only league\'s model is refused to a fan', await check('wins', paid.id, sPaid.id, null) === 'members');
+ok('...its lineup mixes file too (A.3)', await check('mix', paid.id, sPaid.id, null) === 'members');
 ok('...a free league\'s is not', await check('wins', lg.id, s1.id, null) === 'ok');
 await q(`insert into test_members values ($1, $2)`, [paid.id, MEMBER]);
 await as(MEMBER);
 ok('...a member of the league gets it', await check('fo', paid.id, sPaid.id, null) === 'ok');
+ok('...and its lineup mixes file the same way (A.3)', await check('mix', paid.id, sPaid.id, null) === 'ok');
 await q(`insert into test_admins values ($1, $2)`, [paid.id, ADMIN]);
 await as(ADMIN);
 ok('...and so does its administrator', await check('wins', paid.id, null, null) === 'ok');

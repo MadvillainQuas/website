@@ -179,7 +179,8 @@ the score (scan only, badged, never in a multivariable model); `pub` = built fro
   stlp = 100 stl/opp.poss_est; blkp = 100 blk/(opp.fga − opp.fg3a). Score: ortg = 100 pts/poss, ppp = pts/poss;
   paint, fast, second, offto, bench (pub, per game).
 - Competitive (diff; the Explain inputs): c_efg = 100 c_efgm/c_fga; c_tovp = 100 c_tov/(c_fga + 0.44 c_fta + c_tov);
-  c_orebp = 100 c_reb_off/(c_reb_off + c_reb_def); c_ftmr = 100 c_ftm/c_fga; c_margin = c_pts − opp.c_pts (game,
+  c_orebp = 100 c_reb_off/(c_reb_off + c_reb_def); c_ftmr = 100 c_ftm/c_fga (A.3: a measure only; the model's free-throw factor
+  is c_ftr = 100 c_fta/c_fga); c_margin = c_pts − opp.c_pts (game,
   score); garbage_share = g_poss/poss (0).
 - Tempo (game unless noted): pace = 40(poss_est + opp.poss_est)/2/minutes (= TA.pace, pub); pace_x the same with poss;
   pace3q = 40(poss_3q + opp.poss_3q)/2/(0.75 reg_min); pace_own = 40 poss_est/minutes (own, pub); chances_pp =
@@ -466,7 +467,7 @@ the unit's factors (q ≥ 0.05 drawn grey: "not distinguishable from noise"). "W
 winners' and losers' means with Welch. Score factors badged "part of the score".
 
 ### 7.2 Explain models
-- **core4c** (every unit): `y^c = α h + Σ β Δ(c_efg, c_tovp, c_orebp, c_ftmr)`, OLS (shares comparable with Oliver's
+- **core4c** (every unit; A.3: c_ftr in place of c_ftmr, and ftr in the full-game twin): `y^c = α h + Σ β Δ(c_efg, c_tovp, c_orebp, c_ftmr)`, OLS (shares comparable with Oliver's
   40/25/20/15). Its residual SD is σ_acc. The full-game twin (efg, tovp, orebp, ftmr on y) is reported as `fullR2` (live
   0.944).
 - **shot** (ZONES on ≥ 80% of games): `y` on rimr, midr, rimp, midp, p3p, tovp, orebp, ftr, ftp (eFG replaced by its parts).
@@ -744,7 +745,7 @@ interface Fo extends Header {
 interface Club extends Header { team: { id: string; name: string };
   record: { w: number; l: number; pythW: number; factorW: number };      // factorW = Σ Φ(fitted margin from its factors / σ_acc)
   games: { g: string; d: string; opp: string; h: 1|0|-1; m: number; mc: number; xm: number;
-           parts: { quality: number; making: number; tovp: number; orebp: number; ftmr: number; other: number; garbage: number };
+           parts: { quality: number; making: number; tovp: number; orebp: number; ftmr: number; other: number; garbage: number };  // A.3: ftr (files before: ftmr)
            luck: number }[];                                            // club view; m = xm + Σ parts exactly
   losses: { n: number; mean: { k: string; pts: number; lo: number; hi: number }[] };
   realised: Record<string, { own: Rates; opp: Rates }>;                 // per game, for the loss Shapley
@@ -888,7 +889,7 @@ or style.
   250 ms debounce, CRN, `?wi=<base64url>`; roster what-if where P2f exists (remove a player or add a median shooter at a
   slot → `projectedMinutes` → Δ group BPM × θ → Δ net → make-logit shift matching it in the simulator → Δ wins, "approximate").
 - `depth.gm(o)` accepts `o.model = {wins: {<MEASURES key>: number}}` built by `EpinoiaFoModel.gmModel` through KEYMAP:
-  ff_efg/dff_efg → c_efg off/def, ff_tov/dff_tov → c_tovp, ff_oreb/dff_oreb → c_orebp, ff_ftr/dff_ftr → c_ftmr,
+  ff_efg/dff_efg → c_efg off/def, ff_tov/dff_tov → c_tovp, ff_oreb/dff_oreb → c_orebp, ff_ftr/dff_ftr → c_ftmr (A.3: c_ftr, which is what depth.js's ff_ftr measures),
   p3_pct → p3p off, ft_pct → ftp off, rim_pct → rimp off (ortg, drtg, net unmapped). Selection unchanged; order by |wins|
   (unmapped after, in rank order); entries gain `wins`; needs follow. Without a model the output is byte-identical.
   `positionOf`, `projectedMinutes` and `chart` do not change (the builder uses positionOf).
@@ -1348,3 +1349,170 @@ in a live browser.
 - Tests: ww-contract no longer requires the What wins migration to be the newest, nor exactly three locks; guard.yml runs
   on the builder, the backfill scripts and their workflows; ww-features asserts its wall-clock budgets only with WW_PERF=1.
 
+
+---
+
+## A.3 Depth upgrade (Oct 2026)
+User requirement ("more depth across the board"), 2026-10-01; overrides anything above it contradicts. Six asks: the four
+factors by free-throw ATTEMPT rate; "Where the line is" with every measure defined and a gap the reader moves; positions
+with the players' own rates against winning; a lineup builder over every five; a composite ball handler; more roles in
+the squad shape. Built under one extra rule from the owner: no new per-pageview database read, no new full-table read in
+the builder, nothing more for the Edge Function per request, the new lineup data loaded only when its section is near.
+
+### A.3.1 The four factors use FT attempt rate (FTA / FGA)
+- `features.js` gains `c_ftr = 100 c_fta / c_fga` (FACTORS only: the counts were in the line already, so FV stays 1).
+  `core4c = [c_efg, c_tovp, c_orebp, c_ftr]`; the full-game twin `[efg, tovp, orebp, ftr]` (= CHECK4, the §16 acceptance
+  model, which already used FTA / FGA). `ftmr` / `c_ftmr` (FTM / FGA) stay as measures, out of every model; FT% (`ftp`) is
+  its own measure and now a Front office lever (LEVERS: `ftr` out, `ftp` in, valued by the shot model).
+- KEYMAP `ff_ftr` / `dff_ftr` → `c_ftr`: t/depth.js's ff_ftr IS FTA / FGA (season.js `pct(A.fta, A.fga)`), so the old
+  mapping to c_ftmr valued the GM's measure with another quantity. The Front office's FT dial is valued by `c_ftr`, and
+  `SIM_KEY.c_ftr = 'ftr'` lets a c_ftr need use the simulator's ftr edit (which was always FTA / FGA).
+- The Forecast's column is `e_c_ftr`; the extended model's free-throw group `[c_ftr, trips100]`; Oliver's 15 is shown
+  against c_ftr. The causes part is `ftr` (club files `parts.ftr`; files built before A.3 say `ftmr` and the page and the
+  Front office read either, so no FILE_V bump: a FILE_V bump would send every signed-out reader to the box-score
+  fallback until the next build).
+- Labels say it: "FT attempt rate (FTA/FGA)", "FT attempt rate (FTA/FGA, competitive)", "FT made rate (FTM/FGA)",
+  "Clutch FT attempt rate (FTA/FGA)"; #method says the FT factor is getting to the line and FT% is apart.
+- `synthUnit` plants the attempt rate (β c_ftr 0.3) with FT% drawn on its own; ww-winmodel recovers it within 3 SE.
+- **Real data** (builder `--local`, ORLEN 2025-26 + CEBL 2026, 402 games, read-only, 2026-10-01):
+
+| Unit | core4c R² before → after | FT coefficient before (c_ftmr) → after (c_ftr) | FT Shapley share | pts per team-SD (FT) | full-game R² (FULL4) |
+|---|---|---|---|---|---|
+| Pooled (2 leagues) | 0.934 → 0.917 | 0.178 (0.155–0.198) → 0.080 (0.058–0.098) | 1.5% → 0.4% | 0.76 → 0.45 | 0.942 → 0.920 |
+| ORLEN (275) | 0.942 → 0.926 | 0.162 (0.134–0.190) → 0.069 (0.050–0.089) | 2.3% → 0.7% | 0.77 → 0.46 | 0.953 → 0.934 |
+| CEBL (127) | 0.940 → 0.916 | 0.264 (0.226–0.302) → 0.120 (0.090–0.149) | 2.0% → 1.5% | 0.93 → 0.47 | 0.939 → 0.904 |
+
+  The other three coefficients barely move (pooled eFG 1.077 → 1.077, TOV −1.058 → −1.037, OREB 0.378 → 0.365). The R²
+  falls by about 0.02 because whether the free throws go in now sits in the residual (and in the parts' `other`): FTM /
+  FGA is FTA / FGA × FT%. **Acceptance**: the §16 targets were set on the FTA version (CHECK4) and do not change; the
+  core4c R² with the attempt rate is expected about 0.015-0.025 below the made-rate version, so read B.2's "R² full 4F" as
+  the FTA model's. σ_acc grows accordingly (pooled 3.59 → 4.03).
+
+### A.3.2 The store's sidecars and the reads (STORE_V 2)
+- Player lines gain a byte sidecar `pgs.x` (m × 6): rimA, rimM, midA, midM (the engine's zones, four more named keys of
+  the same player_game_stats rows; unknown on a side without the ZONES bit) and unFgm, unPts (each scorer's unassisted
+  makes, from the feature row). Stints gain `stints.box` (s × 16): the five's and its opponents' fga, fgm, f3m, fta, pts,
+  tov, or, dr (lineup_stints' off and def, which the builder already read whole, for the possessions). 255 = unknown.
+  ORLEN's store: 1.66 → 1.93 MB.
+- `extract()` writes `st.u = {player id: [unassisted FGM, unassisted FG points, assisted FGM]}` (situations.js's own
+  pairing, the one fgm_ast / fgm_unast count). The builder and RECALCULATE read only that part: `u:st->u` beside f and q
+  (a few dozen bytes a row), never st whole. Rows written before A.3 have no u: their players' unassisted shares are
+  unknown (and the ball-handler score drops that part, below) until `backfill-features --force` rewrites them.
+- A v1 store still decodes (the sidecars unknown). The builder rebuilds a store of another STORE_V from nothing on its
+  next due build (the same reads as the weekly full run, once). `update()` answers `{stale: true}` for an older store and
+  analytics-file then queues the unit (`refresh_reason: 'layout'`) rather than fold games into a layout it would never fill.
+
+### A.3.3 The players' season rates (winmodel `rates()`, PLAYER_STATS)
+Ratios of season sums over the games he played (context as AST% / BLK% / USG% already were, §7.12): ts, efg, AST%,
+USG%, ORB% = 100 or × (game minutes ÷ his minutes) ÷ (team OR + opponents' DR), DRB% the same way round, STL% = 100 stl
+× (…) ÷ opponents' possessions, TOV% = 100 to ÷ (fga + 0.44 fta + to), 3PA rate, 3P%, rim rate and mid rate (÷ the FGA of
+games with zones), FT attempt rate (fta ÷ fga), unassisted share `una` = unFgm ÷ fgm (games where known), unassisted
+points share `ups` = 100 unPts × (game minutes ÷ his minutes) ÷ the team's unassisted FG points (usage's construction:
+20 is an even fifth), A/U = AST% ÷ USG% (the site's assist-to-usage, season.js `au`).
+
+### A.3.4 Roles (replaces §7.15; §7.13 and the squad features use them)
+Every cut is a percentile within the league-season over its regulars (200 minutes or more); a player is placed against
+them by the empirical CDF; a tag needs 100 minutes (protector 60, as before; big none). In the pooled unit each league is
+cut on its own.
+- **shooter** (unchanged): 3PA ≥ 40, 3PA rate ≥ P60, shrunk 3P% ≥ P50.
+- **handler = ball handler**: 0.45 pct(AST%) + 0.30 pct(UPS) + 0.25 pct(USG%) ≥ 0.70, weights renormalised over the
+  parts a player has (UPS needs st.u on half the regulars). AST% weighs most: it is the handler-specific part; usage and
+  UPS are both scoring load. The cut was set on real data so about a quarter of 100-minute players qualify (ORLEN: 49 of
+  201; at 0.65 it was 62, a third, and four "handlers" a rotation).
+- **passer**: A/U ≥ P75 and AST% ≥ P50 (pass-first, not a low-usage player with two assists).
+- **slasher (rim pressure)**: ½ (pct(rim rate) + pct(FT attempt rate)) ≥ 0.75 on 40 FGA; without shot locations (zones on
+  under half the games) pct(FT attempt rate) ≥ 0.80 alone, and the file says so (`cuts.slasher.zones`).
+- **crasher** ORB% ≥ P75; **glass** DRB% ≥ P75; **protector** (unchanged); **disruptor** (turnover generator) STL% ≥ P75;
+  **big** group C; **creator** USG% ≥ P80 (200 min).
+- `roles()` returns the Map with `.cuts` (the values as they fall); `wins.roles.cuts` and `fo.roles.cuts` carry them so
+  the page can say how a tag is earned HERE.
+
+### A.3.5 Roles and winning (`wins.roles`; squad features)
+SQUAD_KEYS gain passers, slashers, crashers, glass, disruptors (counts in the rotation, ≥ 10 mpg). `roleAnalysis` per
+role: (1) club seasons — the share of the club's minutes its tagged players played against shrunk net per 100, centred
+within each league-season: r with a Fisher interval (n less the leagues' means) and the slope, net per 100 for ten points
+more of the minutes, club-season bootstrap (B = 1000); (2) lineups — net per 100 for each tagged player more on the floor,
+the five's mean BPM held, within team-game (as §7.13), game bootstrap (B = 200), and the possessions with 0 / 1 / 2+.
+Evidence strong / some / none as the squad model, one false-discovery set across both parts; power 'low' under 30 club
+seasons. ORLEN (16 club seasons, all 'low'): a ball handler more on the floor +3.0 net per 100 (0.4 to 6.9, some), a
+passer +3.5 (0.5 to 6.5, some), a turnover generator +5.0 (1.6 to 8.6, some), a defensive rebounder −4.4 (−8.5 to −0.6,
+some); no club-season association is told from noise.
+
+### A.3.6 By position, in depth (`wins.positions.stats`)
+For each club season (8 games) and each group — G / F / C by the A.1 slot shares and each of the five slots by its
+minutes — the minutes-weighted mean of every player's season rate (POS_STATS: AST%, USG%, TS%, eFG%, 3PA rate, 3P%, rim
+rate, mid rate, FT attempt rate, unassisted share, UPS, ORB%, DRB%, TOV%, STL%, BLK%; a group's value needs 60% of its
+minutes rated). Across club seasons: median, P25-P75 and SD; r with net per 100 and r with the share of games won, each
+with a Fisher interval, centred within league-season; `b` = net per 100 for one club-season SD more (r × SD of net) with
+the same interval; ★ after BH. ORLEN's strongest: wings' TOV% r −0.69 (−0.88 to −0.29), slot 2's DRB% +0.63 (0.19 to 0.86),
+slot 2's usage +0.61, slot 3's ORB% +0.59 (16 club seasons each: flagged as few).
+
+### A.3.7 The lineup mixes file (scope `mix`) and the builder
+- `mixFile(X)`: every (club, five) with its stints summed — seconds and both ends' box — in columns
+  (`rows: {t, p (5 a five), s, o (8), d (8)}`), and an anonymous player index (`players: {t, min, tag (role bits), v
+  (MIX_STATS)}`: AST%, USG%, UPS, A/U, TS%, 3PA rate, 3P%, rim rate, FT attempt rate, unassisted share, ORB%, DRB%, STL%,
+  BLK%, TOV%), the league's P25 / P50 / P75 / P90 of each over its regulars (`pct`, the builder's defaults and presets),
+  the role cuts, `minRate` 100. No player id or name; a withheld player (I6) is index −1. Integers and rounded rates, never
+  packed. Budget 360,000 raw bytes; over it the fives with the fewest possessions go first and `trim` = {minPoss, fives,
+  poss share}, said on the page. ORLEN: 4,170 fives from 10,204 stints, 261 KB raw, **62 KB gzipped**; CEBL 164 KB raw.
+- Gating: migration `0213_analytics_mix.sql` adds 'mix' to analytics_files' scope CHECK and to `analytics_check` (a
+  league-season's file, checked as fo: a league required, no team). analytics-file serves it like any file (FILE_SCOPES);
+  RECALCULATE writes it with the rest. The builder and the function index the mix row in an upsert of its own: before
+  0213 is applied the CHECK refuses it, the unit's other rows stand and the new mix upload is removed.
+- `winfile.js` accepts scope 'mix' (same cache rules).
+- Builder reads: no new table; player_game_stats gains four named keys, game_features `u:st->u`. Build time is the
+  simulator's as before (ORLEN 97 s at B = 100 before, 94-97 s after); the non-simulator part grew by the roles' and
+  positions' bootstraps (ORLEN, B = 400: squad step 0.2 s). `update()` on real data: ORLEN 1.0 → 1.5 s (refused at the
+  function anyway, over 250 games), CEBL 0.28 → 0.49 s; worst point-estimate difference against a full build 0 (wins, fo,
+  club, mix).
+
+### A.3.8 The page
+- **Where the line is**: under the picker the measure's definition (FACTORS `def`), how to read it (which end is better,
+  or a style, or part of the score; the gap is this side less the other, in its unit), and a glossary of every measure
+  the picker lists. **Move the gap**: a range input and a number over the fitted curve's own x range (≈ 200 nice steps,
+  starting at the x75 break-even or 0), the curve's mark (vizkit binnedCurve `d.mark`) and an aria-live readout move live
+  without drawing the section again: the fitted chance with its 95% band, the curve with the other factors held level
+  where the file has it, and how often a gap that big happened. Keyboard: the native range (arrows, Page keys).
+- **By position**: "Each group's own numbers against winning": a heatmap of r (groups × statistics, G/F/C or the five
+  slots, against net rating or the share of games won), the chosen group's forest (net per 100 for one SD more, sorted),
+  the table (typical, middle half, SD, r with both, club seasons) and the statistics' definitions; few club seasons said.
+- **Building a squad**: the grid's heading is "Shooters and bigs on the floor"; new "Roles in the rotation": the lineup
+  forest (each role on the floor), the club-season forest (each role's share of the minutes), and "How a player earns each
+  tag here" (rule, the cut values in this league-season, players tagged).
+- **Lineup mixes** (a 13th section, after Building a squad; `#mixes`): presets (two ball handlers, three shooters, two
+  passers, no big, a protector and three shooters, two rim attackers, AST% / ORB% above the top quarter), a club picker,
+  one or two conditions (AND), each "at least / exactly / at most n players who are <role> | whose <stat> is above / below
+  x". The result: fives, minutes, possessions and their share of what is in view; net, offensive and defensive rating and
+  the four factors at both ends for these fives, the rest and the difference, each with a 95% cluster-robust interval
+  (each five a cluster; winmix.js says how); the difference forest; net rating by how many of the five meet the first
+  condition (the dose). Under 200 possessions flagged; the share of possessions with a player no rule could judge (under
+  100 minutes, or withheld) said; the opposing five is not controlled for.
+- The mix file is asked for only when #mixes comes within 200 px (IntersectionObserver, as #sim's fo file) or its button
+  is pressed; nothing else is read. `epinoia/winmix.js` decodes once (typed arrays, 10 ms at ORLEN) and filters in one
+  pass with every group's five sums a ratio (0.7 ms median, 1.6 ms worst in node at ORLEN, against a 50 ms phone budget);
+  a typed threshold waits 250 ms.
+
+### A.3.9 The Front office
+SQUAD_LABEL names the new rotation counts (its squad table lists every squad feature the file has); a new "Roles in the
+squad" table names the club's players by role (names on the page only) with how each is earned; the ball handler is the
+composite wherever handlers appear (the lineup grid's reference five, the squad shape). The core four and needs read
+c_ftr; FT% is a lever.
+
+### A.3.10 Tests
+ww-winmodel (FTA mapping and the planted c_ftr; store v2 and v1 compatibility; update stale; the role rules incl. the
+ball-handler composite and the no-zones fallback; roles and winning; positions in depth; the mix file's sums, budget
+and trim; update = full incl. mix), ww-winmix (new: a filter equals hand sums on a small file; the cluster-robust
+interval; minRate, unknown and withheld players; the real fixture's partition and timing; under 100 KB gzipped, no
+ids), ww-page (13 sections; definitions and the gap control; gapAt / gapRange; the new sections' translations; no read
+but the files, the mix file only near its section), ww-contract (the mix file through winfile.js into #mixes), ww-build
+(u:st->u, s2 store, the mix file uploaded and indexed), ww-function (stale → queued 'layout'; the mix row apart, and a
+refused one costing nothing else), ww-gate (0213: the CHECK and analytics_check for mix). Fixtures: `fixtures/ww` from
+`--fixtures` (now with mix.sample.json); `fixtures/ww-page` and `ww-fo` from `--local --page-fixtures supabase/tests/fixtures
+--club Zastal --leagues orlen-basket-liga,cebl` (new flag; replaces the hand cut).
+
+### A.3.11 Runbook (owner)
+1. `npx supabase db push` (0213_analytics_mix.sql). Until then the page's #mixes says the file is built with the next run.
+2. `npx supabase functions deploy analytics-file --no-verify-jwt` (scope mix; the u read; the stale queue) and
+   `npx supabase functions deploy finalise-game` (st.u on every new line).
+3. Optional, for the unassisted shares of past games: Actions → backfill-features with `force` (about 250 MB once).
+4. The next scheduled builds rebuild each due unit's store once (STORE_V 2) and publish the mix files.

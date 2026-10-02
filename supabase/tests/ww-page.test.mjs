@@ -66,22 +66,23 @@ const TABLE = [
   ['tempo', 'Pace and possession', 'Whether playing fast or holding the ball changes who wins'],
   ['positions', 'By position', 'What guards, wings and bigs add, and what winners get from each'],
   ['squad', 'Building a squad', 'Roster shapes and lineup mixes that go with winning'],
+  ['mixes', 'Lineup mixes', 'Set your own lineup conditions and see how those fives did'],
   ['sim', 'Simulate a game', 'Pick two sides, move the dials, and see the odds change'],
   ['losses', 'Why games are lost', 'Each defeat split into shooting, turnovers, boards and the rest'],
   ['leagues', 'League by league', 'Each league’s answer, leaning on the rest where games are few'],
   ['model', 'How good is the model', 'Forecasts checked against games the model had not seen'],
   ['method', 'How it is worked out', 'Definitions, sample sizes and what the numbers cannot say']
 ];
-console.log('\nthe twelve sections');
+console.log('\nthe thirteen sections (A.3 added Lineup mixes)');
 {
   const secs = [...HTML.matchAll(/<section class="sec" id="([^"]+)" aria-labelledby="([^"]+)">\s*<div class="sec-h"><h2 id="([^"]+)">([^<]+)<\/h2>\s*<p class="note">([^<]+)<\/p><\/div>/g)];
-  ok('twelve static sections, in §11\'s order', secs.length === 12 && secs.map(m => m[1]).join() === TABLE.map(t => t[0]).join(), secs.map(m => m[1]).join());
+  ok('thirteen static sections, in §11\'s order (+ A.3\'s Lineup mixes after Building a squad)', secs.length === 13 && secs.map(m => m[1]).join() === TABLE.map(t => t[0]).join(), secs.map(m => m[1]).join());
   ok('every section is labelled by its own h2 (id + "H")', secs.every(m => m[2] === m[1] + 'H' && m[3] === m[1] + 'H'));
   TABLE.forEach(([id, title, note]) => {
     const m = secs.find(x => x[1] === id);
     ok(id + ': "' + title + '" with its note, the .sec-h closing after the note', !!m && m[4] === title && m[5] === note);
   });
-  ok('no section count matches anything but the twelve', (HTML.match(/<section\b/g) || []).length === 12);
+  ok('no section count matches anything but the thirteen', (HTML.match(/<section\b/g) || []).length === 13);
   ok('titles are never numbered', TABLE.every(t => !/^\s*\d/.test(t[1])) && !/class="idx"/.test(HTML));
   ok('every note is sentence case, no full stop, 70 characters or fewer', TABLE.every(t => /^[A-Z]/.test(t[2]) && !/\.$/.test(t[2]) && t[2].length <= 70));
 }
@@ -96,8 +97,8 @@ console.log('\nthe sheets and scripts');
      /data-i18n-packs="analysis"/.test(heads[1][2]) && heads[2][1] === 'glyphs' && /\bdefer\b/.test(heads[2][2]));
   const body = [...HTML.split('</head>')[1].matchAll(/<script src="([^"?]+)\?v=\d+"([^>]*)><\/script>/g)];
   const order = body.map(m => m[1].replace(/^\.\.\//, '').replace(/\.js$/, ''));
-  ok('the scripts, deferred, in order: config, access, memlock, data, teamcolour, winning, winstats, winsim, winfile, vizkit, xscroll, page, nav',
-     order.join() === 'config,access,memlock,data,teamcolour,winning,winstats,winsim,winfile,vizkit,xscroll,page,nav' && body.every(m => /\bdefer\b/.test(m[2])), order.join());
+  ok('the scripts, deferred, in order: config, access, memlock, data, teamcolour, winning, winstats, winsim, winfile, vizkit, xscroll, winmix, page, nav',
+     order.join() === 'config,access,memlock,data,teamcolour,winning,winstats,winsim,winfile,vizkit,xscroll,winmix,page,nav' && body.every(m => /\bdefer\b/.test(m[2])), order.join());
   ok('nav.js is the last script; teamcolour.js comes before the page\'s own', order[order.length - 1] === 'nav' && order.indexOf('teamcolour') < order.indexOf('page'));
   ok('one stamp on every asset', new Set([...HTML.matchAll(/\?v=(\d+)/g)].map(m => m[1])).size === 1);
   ok('every script and sheet named exists', body.every(m => fs.existsSync(path.join(EP, 'winning', m[1]))) && sheets.every(s => fs.existsSync(path.join(EP, 'kit', s + '.css'))));
@@ -221,8 +222,8 @@ function textsOf(html) {
 const sandbox = { console, module: undefined, Math, Date, JSON };
 sandbox.self = sandbox; sandbox.globalThis = sandbox; sandbox.window = sandbox;
 const cx = vm.createContext(sandbox);
-for (const f of ['winstats.js', 'winsim.js', 'winning.js', 'vizkit.js', 'winning/page.js']) vm.runInContext(read(EP, f), cx, { filename: f });
-const P = sandbox.EpinoiaWinPage, VK = sandbox.EpinoiaVizKit, Sim = sandbox.EpinoiaWinSim, WN = sandbox.EpinoiaWinning;
+for (const f of ['winstats.js', 'winsim.js', 'winning.js', 'vizkit.js', 'winmix.js', 'winning/page.js']) vm.runInContext(read(EP, f), cx, { filename: f });
+const P = sandbox.EpinoiaWinPage, VK = sandbox.EpinoiaVizKit, Sim = sandbox.EpinoiaWinSim, WN = sandbox.EpinoiaWinning, MX = sandbox.EpinoiaWinMix;
 ok('page.js loads in node without a document and exports its views, cards and statusLine', !!P && typeof P.views === 'object' && typeof P.cards === 'function' && typeof P.statusLine === 'function' &&
    P.SECTIONS.join() === TABLE.map(t => t[0]).join());
 
@@ -242,8 +243,9 @@ function wellFormed(xml) {
   if (/[<>]/.test(xml.slice(last))) return 'trailing';
   return stack.length ? 'unclosed ' + stack.join(',') : '';
 }
-const st0 = () => ({ lens: 'explain', unit: 'pts', k: '', t1: '', t2: '', venue: 1, dials: { A: {}, B: {} }, picks: null, fview: 'bars', sortKey: 'r', sortDir: -1, posG: 'G', club: '', brushed: null, refit: null, simState: 'idle', simResult: null });
-const ctxOf = (o) => Object.assign({ W: null, ans: null, fo: null, foState: 'idle', club: null, clubState: 'idle', teaser: null, reason: null, pooledFallback: false, message: '', gateNote: '', st: st0() }, o);
+const st0 = () => ({ lens: 'explain', unit: 'pts', k: '', t1: '', t2: '', venue: 1, dials: { A: {}, B: {} }, picks: null, fview: 'bars', sortKey: 'r', sortDir: -1, posG: 'G', club: '', brushed: null, refit: null, simState: 'idle', simResult: null,
+  posSet: 'grp', posOut: 'net', posS: '', gap: null, gapK: '', mix: null });
+const ctxOf = (o) => Object.assign({ W: null, ans: null, fo: null, foState: 'idle', club: null, clubState: 'idle', mix: null, mixState: 'idle', teaser: null, reason: null, pooledFallback: false, message: '', gateNote: '', st: st0() }, o);
 /* draw one view and every chart it asks for; {out, charts: built[], problems} */
 function draw(id, ctx, widths) {
   const out = P.views[id](ctx), problems = [];
@@ -271,7 +273,8 @@ function draw(id, ctx, widths) {
 const load = (dir, f) => { const p = path.join(dir, f); return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null; };
 
 function drawFiles(dir, tag) {
-  const wins = load(dir, 'wins.json'), pooled = load(dir, 'wins-all.json'), fo = load(dir, 'fo.json'), club = load(dir, 'club.json'), teaser = load(dir, 'teaser.json');
+  const wins = load(dir, 'wins.json'), pooled = load(dir, 'wins-all.json'), fo = load(dir, 'fo.json'), club = load(dir, 'club.json'), teaser = load(dir, 'teaser.json'), mixF = load(dir, 'mix.json');
+  const mixD = mixF ? MX.decode(mixF) : null;
   console.log('\neach section draws from ' + tag);
   ok(tag + ': the five files are there (wins, wins-all, fo, club, teaser)', !!(wins && pooled && fo && club && teaser));
   if (!(wins && pooled && fo && club && teaser)) return;
@@ -286,8 +289,9 @@ function drawFiles(dir, tag) {
     const ctx = ctxOf({ W: wins, ans: ansL });
     if (id === 'sim') { ctx.fo = fo; ctx.foState = 'ok'; }
     if (id === 'losses') { ctx.st.club = club.team.id; ctx.club = club; ctx.clubState = 'ok'; }
+    if (id === 'mixes') { ctx.mix = mixD; ctx.mixState = mixD ? 'ok' : 'error'; }
     const d = drawn[id] = draw(id, ctx);
-    ok(tag + ' league file: #' + id + ' draws (' + d.out.charts.length + ' charts) with no problem', d.out.state === 'ok' && d.out.html.length > 40 && !d.problems.length, d.out.state + ' ' + d.problems.slice(0, 4).join(' | '));
+    ok(tag + ' league file: #' + id + ' draws (' + d.out.charts.length + ' charts) with no problem', (d.out.state === 'ok' || (id === 'mixes' && !mixD)) && d.out.html.length > 40 && !d.problems.length, d.out.state + ' ' + d.problems.slice(0, 4).join(' | '));
   }
   if (wins.tempo && wins.tempo.bins && wins.tempo.bins.length) {
     const th = drawn.tempo.out.html, at = th.indexOf('Winning by team pace');
@@ -295,15 +299,19 @@ function drawFiles(dir, tag) {
        at >= 0 && /<i class="ww-k-line"><\/i>observed/.test(th) && (!wins.tempo.curveAdj || /ww-k-line ww-k-dash"><\/i>with net rating held level/.test(th)) &&
        th.indexOf('data-chart', at) > at);
   }
-  const want = { value: 2, factors: 1, curves: 3, tempo: 1, positions: 1, squad: 1, sim: 0, losses: 2, leagues: wins.models.core4c.coef.some(c => c.own) ? 1 : 0, model: 1 };
+  const want = { value: 2, factors: 1, curves: 3, tempo: 1, positions: wins.positions && wins.positions.stats ? 3 : 1, squad: wins.roles ? 3 : 1, mixes: mixD ? 2 : 0, sim: 0, losses: 2, leagues: wins.models.core4c.coef.some(c => c.own) ? 1 : 0, model: 1 };
   const short = Object.keys(want).filter(id => drawn[id].out.charts.length < want[id]);
   ok(tag + ': each member section has its charts (value ≥ 2, curves ≥ 3, losses ≥ 2 with the club …)', !short.length, short.join());
   /* the variants a reader can switch to */
   const variants = [
     ['value', { unit: 'wins' }], ['value', { unit: 'unit' }], ['value', { lens: 'forecast' }], ['factors', { fview: 'table' }], ['factors', { sortKey: 'k', sortDir: 1 }],
-    ['positions', { posG: 'C' }], ['positions', { posG: 'F' }], ['tempo', { brushed: [(wins.tempo && wins.tempo.teams[0] || {}).id] }]
-  ].concat(Object.keys(wins.curves || {}).map(k => ['curves', { k }]));
-  const bad = variants.map(([id, s]) => { const ctx = ctxOf({ W: wins, ans: ansL }); Object.assign(ctx.st, s); const d = draw(id, ctx); return d.problems.length || d.out.state !== 'ok' ? id + JSON.stringify(s) + ': ' + d.problems[0] : null; }).filter(Boolean);
+    ['positions', { posG: 'C' }], ['positions', { posG: 'F' }], ['tempo', { brushed: [(wins.tempo && wins.tempo.teams[0] || {}).id] }],
+    ['positions', { posSet: 'slot' }], ['positions', { posSet: 'slot', posS: '5', posOut: 'win' }], ['positions', { posS: 'C' }]
+  ].concat(Object.keys(wins.curves || {}).map(k => ['curves', { k }]), Object.keys(wins.curves || {}).map(k => ['curves', { k, gap: -2.5, gapK: k }]),
+    mixD ? [['mixes', { mix: { c: [{ kind: 'stat', stat: 'ast_pct', cmp: '>', x: 20, op: 'ge', n: 2 }, { kind: 'role', role: 'shooter', op: 'ge', n: 3 }], two: true } }],
+      ['mixes', { mix: { c: [{ kind: 'stat', stat: 'orb_pct', cmp: '>', x: 7, op: 'eq', n: 1 }], two: false, team: mixD.teams[0] } }],
+      ['mixes', { mix: { c: [{ kind: 'role', role: 'big', op: 'eq', n: 0 }], two: false } }]] : []);
+  const bad = variants.map(([id, s]) => { const ctx = ctxOf({ W: wins, ans: ansL }); Object.assign(ctx.st, s); if (id === 'mixes') { ctx.mix = mixD; ctx.mixState = 'ok'; } const d = draw(id, ctx); return d.problems.length || d.out.state !== 'ok' ? id + JSON.stringify(s) + ': ' + d.problems[0] : null; }).filter(Boolean);
   ok(tag + ': every switch and every curve\'s factor draws (' + variants.length + ' variants)', !bad.length, bad.slice(0, 3).join(' | '));
   /* pooled */
   for (const id of ['answer', 'value', 'factors', 'curves', 'leagues', 'model', 'losses', 'tempo']) {
@@ -393,7 +401,7 @@ function drawFiles(dir, tag) {
   if (wins.blocks) {
     let r = null, err = '';
     try {
-      const keys = wins.blocks.keys, cols = ['h'].concat(['c_efg', 'c_tovp', 'c_orebp', 'c_ftmr'].filter(k => keys.includes(k)));
+      const keys = wins.blocks.keys, cols = ['h'].concat(wins.models.core4c.coef.map(c => c.k).filter(k => keys.includes(k)));
       const scale = wins.blocks.scale.slice(); scale[keys.indexOf('h')] = 0;
       r = Sim.run(Sim.steps('refit', { blocks: JSON.parse(JSON.stringify(wins.blocks.list)), keys, cols, lambda: wins.blocks.lambda, scale, B: 40, seed: 1 }));
       r.cols = cols;
@@ -413,6 +421,38 @@ function drawFiles(dir, tag) {
 }
 
 const F = drawFiles(FIX, 'fixtures/ww-page');
+
+/* ------------------------------------------------------------------ A.3: where the line is, in depth --- */
+console.log('\nA.3: every measure defined, and the gap a reader moves');
+{
+  const W0 = F.wins, keys = Object.keys(W0.curves || {});
+  const c = { raw: [[-10, 0.1, 0.05, 0.2], [0, 0.5, 0.4, 0.6], [10, 0.9, 0.8, 0.95]], adj: [[-10, 0.2], [10, 0.8]], hist: [[-10, -5, 10], [-5, 0, 40], [0, 5, 40], [5, 10, 10]] };
+  const a = P.gapAt(c, 5);
+  ok('gapAt: the fitted chance and its band between the curve\'s points, the curve with the others level, the share of games with a gap this big either way',
+     Math.abs(a.p - 0.7) < 1e-12 && Math.abs(a.lo - 0.6) < 1e-12 && Math.abs(a.hi - 0.775) < 1e-12 && Math.abs(a.adj - 0.65) < 1e-12 && Math.abs(a.share - 0.2) < 1e-12, JSON.stringify(a));
+  const G = P.gapRange(c);
+  ok('gapRange: the curve\'s own x range in about 200 nice steps, starting at 0 when there is no x75', G.lo === -10 && G.hi === 10 && G.step === 0.1 && G.start === 0, JSON.stringify(G));
+  ok('...beyond the curve the chance holds its end (never extrapolated)', P.gapAt(c, 99).p === 0.9 && P.gapAt(c, -99).p === 0.1);
+  const d = draw('curves', ctxOf({ W: W0 }));
+  ok('every factor the picker lists has its definition and how to read it (the box under the picker and the glossary)', keys.every(k => W0.meta[k] && W0.meta[k].def) &&
+     /class="ww-def"/.test(d.out.html) && (d.out.html.match(/<dt>/g) || []).length === keys.length && /Higher is better|Lower is better|A style|Part of the score/.test(d.out.html));
+  ok('move the gap: a keyboard-operable range and a number over the same values, described by an aria-live readout', /<input type="range" id="wwGap" data-act="gap"[^>]*aria-describedby="wwGapOut"/.test(d.out.html) &&
+     /<input type="number"[^>]*id="wwGapN" data-act="gapn"/.test(d.out.html) && /<p class="ww-gapout" id="wwGapOut" aria-live="polite">/.test(d.out.html));
+  const ch = d.out.charts.find(x => x.live === 'gap'), k0 = keys[0], at0 = P.gapAt(W0.curves[k0], P.gapRange(W0.curves[k0]).start);
+  ok('...the curve carries the reader\'s mark (the page moves it without drawing the section again)', !!ch && ch.data.mark && Math.abs(ch.data.mark.p - at0.p) < 1e-12 && /vz-cursor/.test(VK.binnedCurve(ch.data, { W: 760 }).svg));
+  const lines = P.gapText(W0, k0, W0.curves[k0], Object.assign({}, at0, { x: 2.5 }));
+  for (const code of ['es', 'ja']) { const miss = lines.concat(P.gapText(W0, 'efg', W0.curves.efg || W0.curves[k0], Object.assign({}, at0, { x: -3 }))).filter(x => tr(code, x) == null); ok(code + ': the readout translates', !miss.length, miss.join(' | ')); }
+}
+console.log('\nA.3: the new sections read nothing but their files');
+{
+  const code = PAGE.replace(/\/\*[\s\S]*?\*\//g, '');
+  ok('the lineup mixes\' file comes through EpinoiaWinFile (scope mix) only when #mixes comes near or its button is pressed', /mixObs\.observe\(\$\('mixes'\)\)/.test(code) && /scope: 'mix'/.test(code) &&
+     (code.match(/scope: 'mix'/g) || []).length === 1 && /act === 'loadmix'\) \{ loadMix\(\)/.test(code) && /function load\(force\)[^]*?observeMix\(\);/.test(code));
+  const WM = read(EP, 'winmix.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok('winmix.js reads nothing: no fetch, no XHR, no EpinoiaData, no storage', !/\bfetch\(|XMLHttpRequest|EpinoiaData|localStorage|sessionStorage|EpinoiaWinFile/.test(WM));
+  ok('...nor does page.js add a read: its only table reads are still leagues and seasons, and files only through EpinoiaWinFile', !/\bfetch\(|XMLHttpRequest/.test(code) &&
+     [...code.matchAll(/D\(\)\.get\('([a-z_]+)\?/g)].every(m => m[1] === 'leagues' || m[1] === 'seasons'));
+}
 
 /* ------------------------------------------------------------------ the review's fixes (S4, S5, S7, UI-5..UI-11) --- */
 console.log('\nwhat the cards and sections claim');
