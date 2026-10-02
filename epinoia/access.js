@@ -130,6 +130,24 @@ const FEATURES = Object.freeze({
       'The full with-or-without screen, every combination of players (everyone gets a preview)'
     ])
   }),
+  club_report: Object.freeze({
+    label: 'Club report',
+    blurb: 'A printable scouting report on any club: A4 pages, coloured for a coach, ready as a PDF or as images.',
+    includes: Object.freeze([
+      'Four factors, the season line, the shot distribution and the rebounds analysis, every figure ranked in the league',
+      'Shot charts at both ends, the half court and transition, and every kind of possession',
+      'The squad position by position, the depth chart, rotations, the most-used lineups, combinations and the shot clock'
+    ])
+  }),
+  player_report: Object.freeze({
+    label: 'Player report',
+    blurb: 'A printable scouting report on any player: A4 pages with stats chosen by position, ready as a PDF or as images.',
+    includes: Object.freeze([
+      'Main stats by position (guard, wing, big) or your own saved templates, each ranked in the league, with RAPM',
+      'His shot chart, shot zones, the half court and transition',
+      'The team with him on and off, and his best and worst pairings'
+    ])
+  }),
   league: Object.freeze({
     label: 'Members-only league',
     blurb: 'A league that keeps its games for its members: results, box scores, live games, statistics, standings, awards, news and video.',
@@ -165,7 +183,10 @@ const CATALOGUE = Object.freeze({
   locks: Object.freeze({
     events: Object.freeze({ gate: 'analytics', label: 'Events stats' }),   // ev_* splits, the Events section, team events
     csv:    Object.freeze({ gate: 'analytics', label: 'CSV download' }),   // every table's csv button
-    model:  Object.freeze({ gate: 'analytics', label: 'What wins model' }) // What wins and the Front office's win model (docs/what-wins-model.md §10.3)
+    model:  Object.freeze({ gate: 'analytics', label: 'What wins model' }), // What wins and the Front office's win model (docs/what-wins-model.md §10.3)
+    /* the reports, each sold on its own (0220): the club profile's Report tab and the player profile's */
+    clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report' }),
+    playerReport: Object.freeze({ gate: 'player_report', label: 'Player report' })
   }),
   barKeys: key => /^ev_/.test(String(key == null ? '' : key)),
   wowyPreviewMax: 1
@@ -182,7 +203,17 @@ function featureLocked(key, league) {
   const L = CATALOGUE.locks[String(key)];
   if (!L) return false;
   if (L.gate === 'analytics') return !analyticsOk(league);
-  return false;
+  return !featureOk(L.gate, league);
+}
+/* A FEATURE SOLD ON ITS OWN (club_report, player_report): the viewer holds it in this league, by the server's
+   answer. As the analytics: the simulation first, memberships switched off opens it, and no answer fails open. */
+function featureOk(feature, league) {
+  const m = sim();
+  if (m === 'locked') return false;
+  if (m === 'member') return true;
+  const st = raw(league);
+  if (!st || !st.known || st.membershipsEnabled === false) return true;
+  return (st.features || []).indexOf(String(feature)) >= 0;
 }
 
 /* -------------------------------------------------------------- plumbing --- */
@@ -1105,7 +1136,7 @@ if (BROWSER) {
 
 return {
   FEATURES, CATALOGUE,
-  load, loadMany, get, analyticsOk, canView, isPremiumColumn, featureLocked,
+  load, loadMany, get, analyticsOk, canView, isPremiumColumn, featureLocked, featureOk,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,
   /* for supabase/tests/access.test.mjs only: a fake network, a shorter deadline,

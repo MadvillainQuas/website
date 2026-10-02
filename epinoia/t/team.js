@@ -1159,6 +1159,9 @@ function reportTab(team) {
   };
   REPORT = E.mount({
     tabs: '#ttabs', panel: '#reportsec', kind: 'team', label: 'Report',
+    /* the club report is sold on its own (0220, access.js CATALOGUE.locks.clubReport) */
+    lock: { key: 'clubReport', what: 'The club report', league: lg.id || null, get leagueSlug() { return ACCESS.slug || lg.slug || ''; },
+            lines: ['A printable A4 scouting report on any club: four factors, shot charts, the squad, lineups and the shot clock.'] },
     modules: RT.modules(ctx),
     context: () => ({
       kind: 'team', name: team.name, club: team.name, kicker: 'Club report',

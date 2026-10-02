@@ -501,7 +501,7 @@
   function confirmed(st, pending) {
     if (!st || !st.known) return false;
     const need = pending && Array.isArray(pending.features)
-      ? pending.features.filter(f => f === 'analytics' || f === 'league') : null;
+      ? pending.features.filter(f => /^(analytics|league|club_report|player_report)$/.test(f)) : null;
     if (st.leagueId && need && need.length && (!pending.leagueId || pending.leagueId === st.leagueId)) {
       return need.every(f => st.features.indexOf(f) !== -1);
     }

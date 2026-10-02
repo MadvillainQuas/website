@@ -1720,6 +1720,89 @@ async function loadPlans() {
   drawPlatformPlans();
   drawLeagueAccess();
   drawLeaguePlans();
+  drawPlatformGrantForm();
+  loadPlatformGrants();
+}
+
+/* WHAT EPINOIA SELLS, AND SO WHAT A PLATFORM PLAN OR A PLATFORM-WIDE GRANT MAY CARRY (0220): the analytics and the two
+   reports, in any mix (each mix a tier); never a league, which each league opens for itself */
+const PLATFORM_FEATURES = ['analytics', 'club_report', 'player_report'];
+
+/* ACCESS BY EMAIL, IN EVERY LEAGUE (grant_access with no league): a tier for one person without payment - a coach given
+   the club report, a scout the player report, a press pass with everything. It takes effect when they sign in with
+   that address; an end date means through that day. */
+function drawPlatformGrantForm() {
+  const host = $('#plGrantForm');
+  if (!host || host.dataset.done) return;
+  host.dataset.done = '1';
+  const F = (window.EpinoiaAccessUI && window.EpinoiaAccessUI.FEATURES) || {};
+  const r1 = el('div', 'row');
+  const email = el('input', 'ep-input'); email.type = 'email'; email.placeholder = 'the address they sign in with';
+  const until = el('input', 'ep-input'); until.type = 'date'; until.title = 'until (optional): through that day';
+  const note = el('input', 'ep-input'); note.maxLength = 400; note.placeholder = 'note (optional): who, and why';
+  r1.append(email, until, note);
+  const r2 = el('div', 'row');
+  const boxes = {};
+  PLATFORM_FEATURES.forEach(k => {
+    const lab = el('label', 'sw'), b = el('input'); b.type = 'checkbox';
+    boxes[k] = b;
+    lab.append(b, document.createTextNode(' ' + ((F[k] || {}).label || k)));
+    r2.appendChild(lab);
+  });
+  const go = el('button', 'ep-btn pri', 'give access'); go.type = 'button';
+  r2.appendChild(go);
+  host.append(r1, r2);
+  go.addEventListener('click', async () => {
+    const e = email.value.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return say('Enter the email address the person signs in with.', 'err');
+    const features = PLATFORM_FEATURES.filter(k => boxes[k].checked);
+    if (!features.length) return say('Tick what the access unlocks.', 'err');
+    let expires = null;
+    if (until.value) {
+      const [y, m, d] = until.value.split('-').map(Number);
+      const end = new Date(y, m - 1, d, 23, 59, 59, 999);
+      if (isNaN(end) || end.getTime() <= Date.now()) return say('That date has already passed. Leave it empty for access with no end date.', 'err');
+      expires = end.toISOString();
+    }
+    go.disabled = true;
+    const id = await rpc('grant_access', { p_league: null, p_email: e, p_features: features, p_expires: expires, p_note: note.value.trim() || null });
+    go.disabled = false;
+    if (!id) return;
+    say('Access given to ' + e + ': ' + features.map(k => (F[k] || { label: k }).label).join(' + ') +
+        (expires ? ', until ' + new Date(expires).toLocaleDateString() : ', with no end date') + ', in every league.', 'ok');
+    email.value = ''; until.value = ''; note.value = '';
+    PLATFORM_FEATURES.forEach(k => { boxes[k].checked = false; });
+    loadPlatformGrants();
+  });
+}
+async function loadPlatformGrants() {
+  const host = $('#plGrants');
+  if (!host) return;
+  const { data, error } = await sb.from('access_grants').select('id,email,features,expires_at,note,created_at')
+    .is('league_id', null).is('revoked_at', null).order('created_at', { ascending: false }).limit(200);
+  host.textContent = '';
+  if (error) { host.appendChild(el('p', 'note bad', 'The grants could not be read: ' + (error.message || error))); return; }
+  const now = Date.now();
+  const live = (data || []).filter(g => !g.expires_at || new Date(g.expires_at).getTime() > now);
+  if (!live.length) { host.appendChild(el('p', 'note', 'Nobody has access given this way yet.')); return; }
+  const F = (window.EpinoiaAccessUI && window.EpinoiaAccessUI.FEATURES) || {};
+  live.forEach(g => {
+    const row = el('div', 'card');
+    const c0 = el('div');
+    c0.appendChild(el('div', 'nm', g.email));
+    c0.appendChild(el('div', 'mt', (g.features || []).map(k => (F[k] || { label: k }).label).join(' + ') +
+      (g.expires_at ? ' \u00b7 until ' + new Date(g.expires_at).toLocaleDateString() : ' \u00b7 no end date') + (g.note ? ' \u00b7 ' + g.note : '')));
+    const x = el('button', 'ep-btn', 'revoke'); x.type = 'button';
+    x.addEventListener('click', async () => {
+      if (!window.confirm('Take this access away from ' + g.email + '?')) return;
+      const { error: e2 } = await sb.rpc('revoke_access_grant', { p_grant: g.id });
+      if (e2) return oops({ code: e2.code, message: 'revoke_access_grant: ' + (e2.message || e2) });
+      say('Access taken away from ' + g.email + '.', 'ok');
+      loadPlatformGrants();
+    });
+    row.append(c0, x);
+    host.appendChild(row);
+  });
 }
 
 /* platform plans somebody could actually buy today: active, priced, analytics */
@@ -1920,12 +2003,12 @@ function openPlanForm(plan) {
   const A = window.EpinoiaAccessUI;
   if (!A) return say('access-ui.js did not load, so plans cannot be edited. Reload the page.', 'err');
   const form = A.planForm({
-    plan, leagueId: null, features: ['analytics'], seller: 'platform', say,
+    plan, leagueId: null, features: PLATFORM_FEATURES, seller: 'platform', say,
     cancel: () => { host.textContent = ''; },
     save: async payload => {
       payload.league_id = null;
       payload.seller = 'platform';
-      payload.features = ['analytics'];
+      payload.features = (payload.features || []).filter(k => PLATFORM_FEATURES.indexOf(k) >= 0);   // never the league
       const id = await rpc('save_access_plan', { p: payload });
       if (!id) return false;
       host.textContent = '';

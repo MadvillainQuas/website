@@ -57,8 +57,19 @@ const FEATURES = {
     label: 'Analytics',
     hint: 'the advanced analytics: events splits, zone shot charts, the game flow, ' +
           'connections and events tabs, and the full WOWY screen'
+  },
+  /* the reports, each sold on its own (0220): the club profile's Report tab and the player profile's */
+  club_report: {
+    label: 'Club report',
+    hint: 'the club profile\u2019s Report tab: the A4 scouting report of any club, as a PDF or images'
+  },
+  player_report: {
+    label: 'Player report',
+    hint: 'the player profile\u2019s Report tab: the A4 scouting report of any player, as a PDF or images'
   }
 };
+/* what only Epinoia gives away: the analytics and the reports (a league grants its league) */
+const EPINOIA_FEATURES = ['analytics', 'club_report', 'player_report'];
 const featureWords = list => (list || []).length
   ? list.map(k => (FEATURES[k] || { label: k }).label).join(' + ')
   : 'nothing';
@@ -191,8 +202,9 @@ function planForm(o) {
   wrap.appendChild(feats);
   if (!o.leagueId) {
     wrap.appendChild(el('div', 'ax-hint',
-      'A plan sold by Epinoia can only unlock the analytics. A league that closes ' +
-      'its doors does so for its own members, and Epinoia does not sell a way past that.'));
+      'A plan sold by Epinoia can unlock the analytics and the reports, in any mix: each ' +
+      'mix is a tier. It never opens a league: a league that closes its doors does so for ' +
+      'its own members, and Epinoia does not sell a way past that.'));
   }
 
   const r3 = el('div', 'row');
@@ -861,7 +873,7 @@ function mount(o) {
     const r2 = el('div', 'row');
     ui.gBoxes = {};
     ui.gLabs = {};
-    ['league', 'analytics'].forEach(k => {
+    ['league'].concat(EPINOIA_FEATURES).forEach(k => {
       const lab = el('label', 'sw');
       const box = el('input'); box.type = 'checkbox'; box.checked = k === 'league';
       ui.gBoxes[k] = box;
@@ -873,8 +885,8 @@ function mount(o) {
     r2.appendChild(go);
     host.appendChild(r2);
     ui.gHint = el('div', 'ax-hint',
-      'Complimentary access opens the league. The advanced analytics are Epinoia’s ' +
-      'product, so only Epinoia can give those away.');
+      'Complimentary access opens the league. The advanced analytics and the reports are ' +
+      'Epinoia’s product, so only Epinoia can give those away.');
     host.appendChild(ui.gHint);
 
     ui.grantList = el('div', 'list');
@@ -885,8 +897,8 @@ function mount(o) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         return o.say('Enter the email address the person signs in with.', 'err');
       }
-      const features = ['league', 'analytics']
-        .filter(k => ui.gBoxes[k].checked && (k !== 'analytics' || isPlat()));
+      const features = ['league'].concat(EPINOIA_FEATURES)
+        .filter(k => ui.gBoxes[k].checked && (EPINOIA_FEATURES.indexOf(k) < 0 || isPlat()));
       if (!features.length) return o.say('Tick what the access unlocks.', 'err');
       /* a date means "through that day": the end of it, in the admin's own
          time, rather than midnight at its start, which would end a pass
@@ -918,8 +930,10 @@ function mount(o) {
 
   function fillGrants() {
     const plat = isPlat();
-    ui.gLabs.analytics.classList.toggle('hide', !plat);
-    if (!plat) ui.gBoxes.analytics.checked = false;
+    EPINOIA_FEATURES.forEach(k => {
+      ui.gLabs[k].classList.toggle('hide', !plat);
+      if (!plat) ui.gBoxes[k].checked = false;
+    });
     ui.gHint.classList.toggle('hide', plat);
     const list = ui.grantList;
     list.textContent = '';

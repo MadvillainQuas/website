@@ -369,3 +369,10 @@
 .rp-scorers small{ white-space:nowrap }
 .rp-sit-h h4 small{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px }
 .rp-cell-v small, .rp-st-v small{ font-size:9px; font-weight:600; color:var(--ink-3) }
+/* a report sold on its own and not held: the tab wears a padlock, the panel blurred rows and the membership card */
+.ep-tab.rp-tab-locked::after{ content:''; display:inline-block; width:9px; height:10px; margin-left:7px; vertical-align:-1px;
+  background:currentColor; opacity:.75;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 10'%3E%3Cpath d='M2 4V3a2.5 2.5 0 0 1 5 0v1h1v6H1V4zm1 0h3V3a1.5 1.5 0 0 0-3 0z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 10'%3E%3Cpath d='M2 4V3a2.5 2.5 0 0 1 5 0v1h1v6H1V4zm1 0h3V3a1.5 1.5 0 0 0-3 0z'/%3E%3C/svg%3E") center/contain no-repeat }
+.rp-locked{ display:grid; gap:14px; padding:6px 0 18px }
+.rp-lockcard{ max-width:680px }

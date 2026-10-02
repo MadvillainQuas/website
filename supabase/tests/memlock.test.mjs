@@ -50,8 +50,12 @@ async function state(top, e) {
 const press = (el, ran) => { const a = el.fire('click', {}); el.fire('keydown', { key: 'Enter' }); el.fire('keydown', { key: ' ' }); return a; };
 
 console.log('\ncatalogue');
-ok('CATALOGUE.locks names events, csv and the What wins model (docs/what-wins-model.md §10.3)', Object.keys(A.CATALOGUE.locks).sort().join() === 'csv,events,model' &&
-   A.CATALOGUE.locks.model.gate === 'analytics' && A.CATALOGUE.locks.model.label === 'What wins model');
+ok('CATALOGUE.locks names events, csv, the What wins model and the two reports (docs/what-wins-model.md §10.3, 0220)',
+   Object.keys(A.CATALOGUE.locks).sort().join() === 'clubReport,csv,events,model,playerReport' &&
+   A.CATALOGUE.locks.model.gate === 'analytics' && A.CATALOGUE.locks.model.label === 'What wins model' &&
+   A.CATALOGUE.locks.clubReport.gate === 'club_report' && A.CATALOGUE.locks.playerReport.gate === 'player_report');
+ok('the two reports are features a fan can read about (label, blurb, three lines)',
+   ['club_report', 'player_report'].every(k => A.FEATURES[k] && A.FEATURES[k].label && A.FEATURES[k].blurb && A.FEATURES[k].includes.length >= 3));
 ok('unknown feature keys are never locked', A.featureLocked('nonsense', 'L1') === false && M.locked('nonsense', 'L1') === false);
 ok('the popup words are exact', M.tipText === 'ACCESS IS MEMBERSHIP-ONLY' && M.tipLink === 'Become a member');
 
@@ -85,6 +89,19 @@ for (const k of ['events', 'csv']) ok(k + ' locked', M.locked(k, 'L1') === true)
   M.lock(pill, { passive: true }); pill.fire('click', {});
   ok('passive lock: cursor class but the action (the teaser) still runs', pill.classList.contains('mem-lock') && pill.getAttribute('aria-disabled') === null && pr === 1);
 }
+
+console.log('\nthe reports: each its own feature (0220)');
+await state({ memberships_enabled: false }, entry());
+ok('switched off: neither report is locked', A.featureLocked('clubReport', 'L1') === false && A.featureLocked('playerReport', 'L1') === false);
+await state({ memberships_enabled: true }, entry({ analytics_ok: true, features: ['analytics'] }));
+ok('switched on, the analytics alone: both reports locked', A.featureLocked('clubReport', 'L1') === true && A.featureLocked('playerReport', 'L1') === true);
+await state({ memberships_enabled: true }, entry({ features: ['club_report'] }));
+ok('the club report alone: the club report open, the player report locked',
+   A.featureLocked('clubReport', 'L1') === false && A.featureLocked('playerReport', 'L1') === true && M.locked('events', 'L1') === true);
+await state({ memberships_enabled: true }, entry({ analytics_ok: true, features: ['analytics', 'league', 'club_report', 'player_report'] }));
+ok('staff (every feature): both open', A.featureLocked('clubReport', 'L1') === false && A.featureLocked('playerReport', 'L1') === false);
+A._test.reset(); A._test.transport(null);
+ok('no answer (fails open): not locked', A.featureLocked('clubReport', 'never') === false);
 
 console.log('\ngating ON, with access: normal');
 await state({ memberships_enabled: true }, entry({ analytics_ok: true }));

@@ -1674,6 +1674,8 @@
     const ch = navScroll.clientHeight, sh = navScroll.scrollHeight;
     const on = ch > 40 && sh > ch + 2 && getComputedStyle(navScroll).overflowY !== 'hidden';
     sbar.classList.toggle('on', on);
+    navScroll.classList.toggle('sb-up', on && navScroll.scrollTop > 2);           // rows fade out where there are more
+    navScroll.classList.toggle('sb-down', on && navScroll.scrollTop < sh - ch - 2);
     if (!on) return;
     sbar.style.top = navScroll.offsetTop + 'px';
     sbar.style.height = ch + 'px';

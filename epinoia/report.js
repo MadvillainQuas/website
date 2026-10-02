@@ -711,6 +711,29 @@ function mount(o) {
   tabs.style.display = '';
   panel.style.display = 'none';
   const state = { built: false, running: 0, o, panel };
+  /* MEMBERSHIP (o.lock: { key, league, leagueSlug, what, lines }): a report sold on its own (access.js CATALOGUE.locks,
+     clubReport / playerReport). Locked, the tab still opens - on blurred rows and the membership card instead of the
+     report - and wears the lock; the answer is asked again whenever the viewer's access changes (a sign-in, a join) */
+  const AX = () => root.EpinoiaAccess;
+  const isLocked = () => !!(o.lock && AX() && typeof AX().featureLocked === 'function' && AX().featureLocked(o.lock.key, o.lock.league));
+  const markTab = () => {
+    const l = isLocked();
+    btn.classList.toggle('rp-tab-locked', l);
+    if (l) btn.title = (o.lock.what || 'The report') + ': for members'; else btn.removeAttribute('title');
+  };
+  const lockedPanel = () => {
+    panel.textContent = '';
+    const wrap = el('div', 'rp rp-locked');
+    const M = root.EpinoiaMemLock;
+    const ph = M && typeof M.placeholder === 'function' ? M.placeholder({ what: o.lock.what || 'The report', rows: 8 }) : null;
+    if (ph) wrap.appendChild(ph);
+    const t = el('div', 'rp-lockcard');
+    t.innerHTML = AX() && typeof AX().teaserHTML === 'function'
+      ? AX().teaserHTML({ leagueSlug: o.lock.leagueSlug, title: (o.lock.what || 'The report') + ' is for members', lines: o.lock.lines || [] }) : '';
+    wrap.appendChild(t);
+    panel.appendChild(wrap);
+    state.lockedShown = true;
+  };
   const show = on => {
     ST.open = on;
     const body = doc().body;
@@ -722,6 +745,8 @@ function mount(o) {
       if (!tabs.querySelector('.ep-tab.on')) { const prof = tabs.querySelector('.ep-tab[data-p="profile"]'); if (prof) prof.classList.add('on'); }
       return;
     }
+    if (isLocked()) { lockedPanel(); return; }
+    if (state.lockedShown) { state.lockedShown = false; panel.textContent = ''; state.built = false; }
     if (!state.built) { state.built = true; ui(state); }
     else if (state.dirty && state.rebuild) { state.dirty = false; state.rebuild(); }
     try { root.scrollTo({ top: tabs.getBoundingClientRect().top + root.scrollY - 12, behavior: 'smooth' }); } catch (_) { /* fine */ }
@@ -733,6 +758,10 @@ function mount(o) {
     if (ST.open) show(false);
   }, true);
   if (/^(report|weekly)$/.test(new URLSearchParams(root.location.search).get('tab') || '')) setTimeout(() => show(true), 0);
+  if (o.lock) {
+    markTab();
+    if (AX() && typeof AX().onChange === 'function') AX().onChange(() => { markTab(); if (ST.open) show(true); });
+  }
   /* the page's scope changed (another season or competition): built again now if it is open, else when it is next */
   const refresh = () => { if (!state.built) return; if (ST.open && state.rebuild) state.rebuild(); else state.dirty = true; };
   return { show, refresh };

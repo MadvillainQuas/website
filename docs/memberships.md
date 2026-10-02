@@ -31,6 +31,16 @@ compares against these and nothing else.
 |---|---|
 | `analytics` | the advanced analytics: the **events** splits (second chance, transition, off turnovers, after timeout, assisted/unassisted) on every screen; the **zone** analytics (tinted twelve-zone shot charts, zone tables, zone and expected-eFG columns); the **game flow**, **connections** and **events** tabs of every box score (the box score's **lineups** tab is free: it sits beside the shot charts, outside the "advanced stats" group); the **full WOWY** screen (non-members get a preview) |
 | `league` | a **members-only league** at all: its results, box scores, live games, statistics, standings, awards, news and video |
+| `club_report` | (0220) the **club profile's Report tab**: the A4 scouting report of any club (`report.js`, `report-teampages.js`), as a PDF, images or print |
+| `player_report` | (0220) the **player profile's Report tab**: the A4 scouting report of any player (`report-playerpages.js`) |
+
+**Tiers are mixes of these** (0220). A platform plan may carry `analytics`, `club_report` and `player_report` in any
+mix, so each plan is a tier (a scouting tier with the player report, a club tier with the club report, an all-in tier),
+and a platform administrator gives any mix to one person by email in the platform console's Plans tab (*Give access by
+email, in every league*: a grant with no league). The reports are Epinoia's product as the analytics are: only a
+platform administrator grants them, a plan a league sells on its own account may carry them only at a price, and a
+league's staff hold every feature in their league (club managers still hold `league` only). A report is locked by the
+page (`EpinoiaAccess.featureLocked('clubReport' | 'playerReport', league)`, §9) and only while memberships are on.
 
 **Plans** bundle features at a price. A plan is either
 
@@ -605,8 +615,11 @@ right.
 ## 9. The membership lock (`epinoia/memlock.js`, `.mem-lock` in `kit/access.css`)
 
 The one general rule for "a control or section that membership pays for". What is gated is
-listed in ONE place, `EpinoiaAccess.CATALOGUE.locks` (today `events` and `csv`, both riding on
-`analyticsOk()`); `EpinoiaAccess.featureLocked(key, league)` answers it. Master switch and
+listed in ONE place, `EpinoiaAccess.CATALOGUE.locks` (`events`, `csv` and `model` riding on
+`analyticsOk()`; `clubReport` and `playerReport` (0220) on their own features, `club_report` and
+`player_report`, read from the viewer's `features` in `access_state`: `EpinoiaAccess.featureOk(feature, league)`);
+`EpinoiaAccess.featureLocked(key, league)` answers it. The Report tab (`report.js` mount, `o.lock`) stays clickable when
+locked and wears a padlock; it opens on `placeholder()` and the membership card, and asks again on `onChange`. Master switch and
 failure semantics are unchanged: memberships off, or no answer, means nothing is locked.
 
 - `EpinoiaMemLock.locked(key, league)`, `.apply(el, key, {league, leagueSlug})`, `.lock(el, {what, passive})`,
