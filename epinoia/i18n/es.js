@@ -1707,7 +1707,9 @@
       'Circles in the image': 'Círculos de la imagen',
       'win%': '% victorias',
       'Order by winning percentage': 'Ordenar por porcentaje de victorias',
-      'Order by league points: the official order': 'Ordenar por puntos de liga: el orden oficial'
+      'Order by league points: the official order': 'Ordenar por puntos de liga: el orden oficial',
+      'below break-even': 'por debajo del punto de equilibrio',
+      'fg% and efg% are coloured as the court is: against the zone’s break-even (paint 58%, mid-range 40%, three 35%), and a cut of several zones against the mix it was shot from; the figure under each is the gap': 'el TC% y el eFG% se colorean como la pista: frente al punto de equilibrio de la zona (zona 58 %, media distancia 40 %, triple 35 %), y un corte de varias zonas frente a la mezcla desde la que se tiró; la cifra de debajo es la diferencia'
     },
 
     ctx: {
@@ -1734,7 +1736,9 @@
       },
       /* the club page's shot zones and what became of every shot attempt (t/team.js; data-i18n-ctx="zonetable") */
       zonetable: {
-        'made': 'anotado'
+        'made': 'anotado',
+        'above': 'por encima',
+        'made / att': 'anot. / int.'
       },
       /* the schedule and ELO chips (p/sos-chip.js; data-i18n-ctx="soschip" on each chip and its sentence) */
       soschip: {
@@ -2567,6 +2571,8 @@
     },
 
     patterns: [
+      /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
+      [/^fewer than (\d+) attempts$/, 'menos de $1 intentos'],
       /* the club page's season line and chips */
       [/^Nobody in the scope has started (\d+) games yet \(the most is (\d+)\), so only that game’s starting five counts for now\.$/,
         'Nadie en este ámbito ha sido titular en $1 partidos todavía (el máximo es $2), así que por ahora solo cuenta el quinteto inicial de cada partido.'],

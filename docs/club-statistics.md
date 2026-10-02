@@ -2,6 +2,19 @@
 
 The **Team statistics** section of a club's page (`t/`). Its code is `t/team.js` (the section), `t/seasonline.js` (the season line) and `p/sos-chip.js` (the chips). Its look is `kit/clubstats.css` and `kit/soschip.css`.
 
+## The season card
+
+The black scoreboard in the club's hero (`t/team.js` `record`, `kit/clubhero.css`). Since 2 October 2026 it shows **one competition at a time**:
+
+- **A button for each competition** of the season the club has a game in, named as a reader names it (`seasonbar.js` `compLabels`): **SLB**, **SLB Cup**, **EuroCup**. A competition with no game for the club has no button. A club in one competition has its name there instead.
+- **The default** is the competition with the most finished games, a league before a cup.
+- **The figures** are the competition's own table (`standings`): rank, record, win%, points for and against, difference and streak. Where the table has no row for the club, or has not caught up with its finished games (a knockout cup keeps none), they are worked out from the games themselves, without a rank. Before a game, rank, win% and streak are dashes.
+- **The same squad's other competitions.** A club's linked sides (`linked_teams`, migration 0178) are its other entries anywhere: London Lions' EuroCup side, but also its NBL Division One side, which is another squad. A side's competitions of the same season get buttons when it shares its players with this one (their profiles linked in `player_group_members`): two at least, and a third of the smaller squad. Its women's and youth flags must match. Measured on 2 October 2026: the EuroCup side shares 11 of its 12 players, the Division One side none of its 15.
+
+**Why.** The card used to read one standings row of any competition (`limit=1`). Liverpool has three 2026-27 rows: the Championship (0-2, 10th), the Cup and an empty "Super League Basketball Men" (0-0, 3rd). The card showed the empty one.
+
+`supabase/tests/season-card.test.mjs` runs the card's own code against Liverpool's and London Lions' shapes.
+
 ## Beside the heading: ELO and schedule
 
 Two chips sit under the title, as the player page's schedule chip sits under its own.

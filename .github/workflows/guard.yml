@@ -725,6 +725,19 @@ jobs:
           node supabase/tests/seasonline.test.mjs
           node supabase/tests/sos-chip.test.mjs
 
+      - name: The club's season card and the season a page is from - one competition at a time, the player's season and competition
+        # t/team.js record: a button for each competition of the season the club has a game in (SLB, SLB Cup, the same
+        # squad's EuroCup), the table's own figures or the games' when it lags, never one row of any competition;
+        # seasonbar.js label / compLabels; p/player.js playerScopes and the season shown
+        run: |
+          node supabase/tests/season-card.test.mjs
+          node supabase/tests/player-scope.test.mjs
+
+      - name: The player profile's shot zones table - coloured as the court is
+        # shotchart.js zoneRows / zoneTableHTML: each row's break-even (a cut of several kinds against its own mix, eFG
+        # counting a three as one and a half makes), the court's bands on the pills, a thin row hatched; kit/shotchart.css
+        run: node supabase/tests/zone-table.test.mjs
+
       - name: Stat explainers and the stat popup - every percentile bar explained, labels never overlap
         # statinfo.js has an entry for every key in player.js BAR_SECTIONS (and its lower-is-better flag matches BAR_LOW);
         # statpop.js placeLabels never yields overlapping label boxes, however crowded the chart

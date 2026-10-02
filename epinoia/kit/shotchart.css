@@ -137,4 +137,87 @@
 .scw-card .scw-tiles{ padding:10px 0 0 }
 @media (max-width:760px){ .scw-courts{ grid-template-columns:minmax(0,1fr) } }
 
+/* ---- THE ZONES AS A TABLE (shotchart.js zoneTableHTML; the player profile's): the club page's table dress
+   (kit/clubstats.css table.czt) -- a heading row over each group, the zone's swatch, the share as a bar -- with FG% and
+   eFG% on pills in the court's own scale against the same break-even, the gap under each. --scz-a is the club's
+   colour as the marks wear it. Under 600px of its own width every row is a card. ---- */
+.scz-wrap{ --scz-a:var(--lume); container:scz / inline-size; max-width:980px; margin:22px auto 0; padding:0 calc(var(--u,8px)*2) }
+table.scz{ width:100%; border-collapse:separate; border-spacing:0; font-variant-numeric:tabular-nums }
+table.scz thead th{ padding:0 10px 8px; text-align:right; white-space:nowrap; font-family:var(--f-micro,monospace); font-weight:400;
+  font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); border-bottom:1px solid var(--rule-2) }
+table.scz th.l{ text-align:left; padding-left:12px }
+table.scz .scz-gh th{ padding:18px 10px 8px 12px; text-align:left; font-family:var(--f-micro,monospace); font-weight:400; font-size:9.5px;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ink-2); border-bottom:1px solid var(--rule) }
+table.scz tbody:first-of-type .scz-gh th{ padding-top:12px }
+table.scz .scz-gh th::before{ content:""; display:inline-block; width:8px; height:8px; margin-right:9px; border-radius:2px; vertical-align:0;
+  background:var(--scz-a) }
+table.scz tr.r > *{ padding:9px 10px; text-align:right; white-space:nowrap; vertical-align:middle;
+  border-bottom:1px solid color-mix(in oklch,var(--rule) 70%,transparent) }
+table.scz tr.r > th.l{ padding-left:12px; text-align:left; white-space:normal; min-width:120px; max-width:220px; font-family:var(--f-micro,monospace);
+  font-weight:400; font-size:9.5px; line-height:1.5; letter-spacing:.1em; text-transform:uppercase; color:var(--ink); box-shadow:inset 3px 0 0 transparent }
+table.scz tr.r:hover > *{ background:color-mix(in oklch,var(--scz-a) 6%,transparent) }
+table.scz tr.r:hover > th.l{ box-shadow:inset 3px 0 0 var(--scz-a) }
+table.scz tr.r.none > *{ opacity:.45 }
+table.scz tr.r.tot > *{ border-top:1px solid var(--rule-2) }
+table.scz tr.r.tot > th.l{ font-weight:700 }
+.scz-lb{ display:none }
+.scz-v{ font-family:var(--f-data,ui-monospace,monospace); font-size:13px; color:var(--ink) }
+.scz-sw{ display:inline-block; width:8px; height:8px; margin-right:9px; border-radius:2px; vertical-align:0 }
+.scz-sw.k-paint{ background:var(--scz-a) }
+.scz-sw.k-mid{ background:color-mix(in srgb,var(--scz-a) 62%,transparent) }
+.scz-sw.k-three{ background:color-mix(in srgb,var(--scz-a) 34%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--scz-a) 50%,transparent) }
+table.scz td.scz-share{ min-width:130px }
+.scz-bar{ display:block; height:5px; margin:7px 0 0 auto; max-width:170px; border-radius:3px; overflow:hidden;
+  background:color-mix(in srgb,var(--ink-3) 14%,transparent) }
+.scz-bar i{ display:block; height:100%; margin-left:auto; border-radius:3px; background:var(--scz-a) }
+/* the pill: the percentage on the court's scale, the gap to the break-even under it */
+table.scz td.scz-p{ min-width:74px }
+.scz-pill{ display:inline-block; min-width:48px; padding:4px 9px 3px; border-radius:999px; text-align:center; font-family:var(--f-data,ui-monospace,monospace);
+  font-size:12.5px; font-weight:700; line-height:1.2; color:var(--sc-ink); background:var(--sc-b0);
+  box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--sc-ink) 12%,transparent) }
+.scz-pill.bm3{ background:var(--sc-bm3) } .scz-pill.bm2{ background:var(--sc-bm2) } .scz-pill.bm1{ background:var(--sc-bm1) }
+.scz-pill.b0{ background:var(--sc-b0) }
+.scz-pill.bp1{ background:var(--sc-bp1) } .scz-pill.bp2{ background:var(--sc-bp2) } .scz-pill.bp3{ background:var(--sc-bp3) }
+.scz-pill.few{ font-weight:400; color:var(--ink-2);
+  background:repeating-linear-gradient(45deg,color-mix(in oklch,var(--sc-ink) 16%,transparent) 0 2px,transparent 2px 5px) }
+.scz-pill.nil{ background:transparent; box-shadow:none; font-weight:400; color:var(--ink-3) }
+.scz-be{ display:block; margin-top:4px; font-family:var(--f-micro,monospace); font-size:7.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3) }
+.scz-be b{ font-weight:400; color:var(--ink-2) }
+/* the key: the court's ramp again, beside the table it colours */
+.scz-key{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px 0; margin:14px 0 0;
+  font-family:var(--f-micro,monospace); font-size:8px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2) }
+.scz-key > i{ display:block; width:14px; height:10px }
+.scz-key > i + i{ margin-left:2px }
+.scz-key .rl{ margin:0 7px }
+.scz-key .bm3{ background:var(--sc-bm3) } .scz-key .bm2{ background:var(--sc-bm2) } .scz-key .bm1{ background:var(--sc-bm1) }
+.scz-key .b0{ background:var(--sc-b0) }
+.scz-key .bp1{ background:var(--sc-bp1) } .scz-key .bp2{ background:var(--sc-bp2) } .scz-key .bp3{ background:var(--sc-bp3) }
+.scz-fewkey{ display:inline-flex; align-items:center; gap:6px; margin-left:16px }
+.scz-fewkey i{ display:block; width:14px; height:10px; box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--sc-ink) 40%,transparent);
+  background:repeating-linear-gradient(45deg,color-mix(in oklch,var(--sc-ink) 22%,transparent) 0 2px,var(--sc-floor) 2px 5px) }
+.scz-note{ max-width:96ch; margin:10px auto 0; text-align:center; font-family:var(--f-ui,sans-serif); font-size:11.5px; line-height:1.5; color:var(--ink-3) }
+
+/* a narrow table: every row a card, the figures five to a line with their names, the share a bar across it */
+@container scz (max-width:600px){
+  table.scz, table.scz tbody, table.scz tr, table.scz th, table.scz td{ display:block }
+  table.scz thead{ display:none }
+  table.scz .scz-gh th{ padding:16px 2px 8px; border-bottom:0 }
+  table.scz tr.r{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px 6px; margin:0 0 8px; padding:11px 12px 12px;
+    border-radius:11px; border:1px solid color-mix(in oklch,var(--scz-a) 22%,var(--rule)); background:var(--panel) }
+  table.scz tr.r > *{ padding:0; border:0; text-align:left; white-space:normal; min-width:0 }
+  table.scz tr.r > th.l{ grid-column:1 / -1; padding:0; max-width:none; box-shadow:none }
+  table.scz tr.r:hover > *{ background:none }
+  table.scz tr.r.tot > *{ border-top:0 }
+  table.scz tr.r.tot{ border-color:color-mix(in oklch,var(--scz-a) 45%,var(--rule)) }
+  table.scz.pg tr.r{ grid-template-columns:repeat(5,minmax(0,1fr)) }
+  table.scz td.scz-share{ grid-column:1 / -1; min-width:0; order:9 }
+  table.scz td.scz-p{ min-width:0 }
+  .scz-lb{ display:block; margin:0 0 4px; font-family:var(--f-micro,monospace); font-size:7px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+  .scz-bar{ margin-left:0; max-width:none }
+  .scz-bar i{ margin-left:0 }
+  .scz-pill{ min-width:0; padding:3px 7px 2px; font-size:12px }
+  .scz-bev{ display:none }
+  .scz-fewkey{ margin-left:0; flex-basis:100%; justify-content:center }
+}
+
 @media (prefers-reduced-motion:reduce){ .scw *{ transition:none !important } }

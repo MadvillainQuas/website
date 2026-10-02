@@ -1705,7 +1705,9 @@
       'Circles in the image': '画像の円',
       'win%': '勝率',
       'Order by winning percentage': '勝率順に並べる',
-      'Order by league points: the official order': '勝ち点順に並べる(公式順位)'
+      'Order by league points: the official order': '勝ち点順に並べる(公式順位)',
+      'below break-even': '損益分岐点未満',
+      'fg% and efg% are coloured as the court is: against the zone’s break-even (paint 58%, mid-range 40%, three 35%), and a cut of several zones against the mix it was shot from; the figure under each is the gap': 'FG%とeFG%はコートと同じ色分けです：ゾーンの損益分岐点（ペイント58%、ミドル40%、3P 35%）と比べ、複数ゾーンの区分はシュートの配分に応じた基準と比べます。下の数字はその差です'
     },
 
     ctx: {
@@ -1732,7 +1734,9 @@
       },
       /* the club page's shot zones and what became of every shot attempt (t/team.js; data-i18n-ctx="zonetable") */
       zonetable: {
-        'made': '成功'
+        'made': '成功',
+        'above': '以上',
+        'made / att': '成功 / 試投'
       },
       /* the schedule and ELO chips (p/sos-chip.js; data-i18n-ctx="soschip" on each chip and its sentence) */
       soschip: {
@@ -2566,6 +2570,8 @@
     },
 
     patterns: [
+      /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
+      [/^fewer than (\d+) attempts$/, '試投$1本未満'],
       /* the club page's season line and chips */
       [/^Nobody in the scope has started (\d+) games yet \(the most is (\d+)\), so only that game’s starting five counts for now\.$/,
         'この範囲で$1試合以上先発した選手はまだいません(最多は$2試合)。今はその試合の先発5人だけが数えられます。'],

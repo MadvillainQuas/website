@@ -125,7 +125,7 @@ console.log('\nthe page reads the season shown, and says which');
 }
 {
   const TJS = rd('epinoia', 't', 'team.js'), CSS = rd('epinoia', 'kit', 'clubhero.css');
-  const rec = lift(TJS, 'async function record(team)'), choose = lift(TJS, 'async function chooseSeason(team, lg)');
+  const rec = lift(TJS, 'function drawRec()'), choose = lift(TJS, 'async function chooseSeason(team, lg)');
   ok('the club\'s scoreboard says its season, on a line across its top', /if \(SEASON_LABEL\) \{/.test(rec) && /h\.dataset\.k = 'season';/.test(rec) &&
      /wrap\.insertBefore\(h, wrap\.firstChild\);/.test(rec) && /\[data-k="season"\]\{grid-column:1\/-1;/.test(CSS) && /#rec\.has-season > div:nth-child\(-n\+5\)\{border-top:0\}/.test(CSS));
   ok('...a league with one season still names it; the chosen one when there is a choice',
