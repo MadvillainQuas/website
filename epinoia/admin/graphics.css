@@ -119,3 +119,40 @@
 .gx-cat .ep-input{width:100%;max-width:none;margin:6px 0}
 .gx-catbody{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px 2px 6px}
 .gx-catbody .gx-checks{gap:4px 12px}
+
+/* THE STAT PICKER (statpicker.js): the chosen as chips in their order, each dragged, moved or removed; one search box to add */
+.gx-pick{border:1px solid var(--rule-2);border-radius:8px;padding:8px 10px 10px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.gx-pick-h{display:flex;align-items:baseline;gap:10px}
+.gx-pick-h .gx-cl{flex:1 1 auto}
+.gx-pick-n{flex:none;font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+.gx-pick.full .gx-pick-n{color:var(--lume)}
+.gx-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.gx-chip{display:inline-flex;align-items:center;gap:2px;min-height:34px;padding:0 2px 0 4px;border:1px solid var(--rule-2);border-radius:999px;
+  background:var(--panel);color:var(--ink);font-family:var(--f-ui);font-weight:700;font-size:12.5px;cursor:grab;touch-action:none;user-select:none;
+  -webkit-user-select:none;counter-increment:gxc}
+.gx-chips{counter-reset:gxc}
+.gx-chip::before{content:counter(gxc);font-family:var(--f-micro);font-size:8px;color:var(--ink-3);padding:0 2px 0 4px}
+.gx-chip:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.gx-chip.dragging{cursor:grabbing;border-color:var(--lume);background:color-mix(in oklch,var(--lume) 16%,var(--panel));box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.gx-pick.sorting .gx-chip:not(.dragging){opacity:.75}
+.gx-grip{color:var(--ink-3);font-size:14px;line-height:1;padding:0 2px}
+.gx-chl{padding:0 4px;white-space:nowrap}
+.gx-cb{flex:none;width:26px;height:26px;display:inline-grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--ink-3);
+  font:700 14px/1 var(--f-ui);cursor:pointer;padding:0}
+.gx-cb:hover:not(:disabled){background:color-mix(in oklch,var(--ink) 12%,transparent);color:var(--ink)}
+.gx-cb.gx-x:hover:not(:disabled){color:var(--bad,#c62828)}
+.gx-cb:disabled{opacity:.25;cursor:default}
+.gx-chip-none{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);padding:8px 2px}
+.gx-add{position:relative}
+.gx-add .ep-input{width:100%;max-width:none}
+.gx-menu{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);max-height:300px;overflow:auto;padding:6px;border:1px solid var(--rule-2);
+  border-radius:10px;background:var(--panel);box-shadow:0 14px 34px rgba(0,0,0,.35)}
+.gx-menu-g{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--lume);padding:8px 8px 4px}
+.gx-opt{display:flex;align-items:baseline;gap:8px;padding:7px 8px;border-radius:7px;cursor:pointer;font-family:var(--f-ui);font-size:12.5px;color:var(--ink)}
+.gx-opt b{flex:none;min-width:5.5em}
+.gx-opt span{color:var(--ink-3);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-opt:hover,.gx-opt.on{background:color-mix(in oklch,var(--lume) 14%,transparent)}
+.gx-menu-x{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);padding:8px;line-height:1.7}
+.gx-pick-say{margin:0;min-height:1em;font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.6}
+.gx-pick-say:empty{display:none}
+.gx-pick-f{display:flex;justify-content:flex-end}

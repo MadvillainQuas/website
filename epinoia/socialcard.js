@@ -63,7 +63,7 @@ const STAT_DEFS = {   // key: [big label, small label]
 };
 /* the league table's columns: those the standings hold, some worked out from them, and the ones read from the games
    (form, home and away records, the ELO rating: the console reads them when they are asked for) */
-const COL_DEFS = { gp: 'GP', w: 'W', l: 'L', pct: 'PCT', pts: 'PTS', diff: 'DIFF', avg: 'AVG', pf: 'PF', pa: 'PA', ppg: 'PPG', papg: 'OPP',
+const COL_DEFS = { gp: 'GP', w: 'W', l: 'L', pct: 'WIN%', pts: 'PTS', diff: 'DIFF', avg: 'AVG', pf: 'PF', pa: 'PA', ppg: 'PPG', papg: 'OPP',
                    streak: 'STK', l5: 'L5', home: 'HOME', away: 'AWAY', elo: 'ELO' };
 /* a final's team stats, side by side (worked from the players' lines): [label, lower is better] */
 const TEAM_STAT_DEFS = { fgp: ['FG%'], p3p: ['3P%'], ftp: ['FT%'], efg: ['EFG%'], fg: ['FG'], p3: ['3PT'], ft: ['FT'], reb: ['REBOUNDS'], oreb: ['OFF. REB'],
@@ -80,8 +80,10 @@ const BOOL_MODS = ['crests', 'quarters', 'leaders', 'venue', 'days', 'venues', '
 const catKey = k => typeof k === 'string' && /^c:[A-Za-z0-9_]{1,40}$/.test(k);
 let CAT = {};
 const sl = (k, long) => (STAT_DEFS[k] ? STAT_DEFS[k][long ? 0 : 1] : String((CAT[k] && CAT[k].l) || String(k).slice(2)).toUpperCase());
-const tl = k => (TEAM_STAT_DEFS[k] ? TEAM_STAT_DEFS[k][0] : String((CAT[k] && CAT[k].l) || String(k).slice(2)).toUpperCase());
-const tlow = k => (TEAM_STAT_DEFS[k] ? !!TEAM_STAT_DEFS[k][1] : !!(CAT[k] && CAT[k].low));
+let TCAT = {};                     // a final's team stats' own labels (model.tcat), where a key means a club's column, not a player's
+const tc = k => TCAT[k] || CAT[k];
+const tl = k => (TEAM_STAT_DEFS[k] ? TEAM_STAT_DEFS[k][0] : String((tc(k) && tc(k).l) || String(k).slice(2)).toUpperCase());
+const tlow = k => (TEAM_STAT_DEFS[k] ? !!TEAM_STAT_DEFS[k][1] : !!(tc(k) && tc(k).low));
 const cl = k => (COL_DEFS[k] || String((CAT[k] && CAT[k].l) || String(k).slice(2)).toUpperCase());
 
 /* The modules as the drawing reads them: only what is known, in range, and not the default's own words. Anything
@@ -102,7 +104,7 @@ function cleanModules(m) {
   if (m.zoneLabel === 'always' || m.zoneLabel === 'never') o.zoneLabel = m.zoneLabel;
   const rows = parseInt(m.rows, 10);
   if (rows > 0) o.rows = Math.min(rows, 40);
-  if (Array.isArray(m.cols)) { const c = Object.keys(COL_DEFS).filter(k => m.cols.includes(k)).concat([...new Set(m.cols.filter(catKey))]).slice(0, 6); if (c.length) o.cols = c; }   // six: a phone reads no more
+  if (Array.isArray(m.cols)) { const c = [...new Set(m.cols.filter(k => COL_DEFS[k] || catKey(k)))].slice(0, 6); if (c.length) o.cols = c; }   // six: a phone reads no more; in the order chosen
   const list = (k, defs, min, max) => {
     if (!Array.isArray(m[k])) return;
     const v = [...new Set(m[k].filter(x => (Array.isArray(defs) ? defs.includes(x) : defs[x] || catKey(x))))].slice(0, max);
@@ -361,16 +363,28 @@ function weekstars(o) {
            rows, by, cat: o.cat || null, tz: leagueZone(o.league) };
 }
 
-/* THE TABLE: standings rows in rank order, one set of graphics per group */
+/* THE TABLE, one set of graphics per group: in winning-percentage order unless `o.order` is 'official' (the stored rank: league
+   points, then the league's tiebreak rules). Level percentages keep the official order, a club with no games goes last, and
+   `rank` is the place in the order drawn (`official` keeps the stored one) - the same order the league's own page opens in. */
+const pctOf = r => (n0(r.gp) > 0 ? n0(r.w) / n0(r.gp) : null);
+const pctText = p => (p == null ? '—' : p >= 1 ? '1.000' : p.toFixed(3).replace(/^0/, ''));
+function byWinPct(a, b) {
+  const ga = n0(a.gp), gb = n0(b.gp);
+  if (!ga !== !gb) return ga ? -1 : 1;
+  const d = ga && gb ? n0(b.w) * ga - n0(a.w) * gb : 0;
+  return d || (n0(b.league_points != null ? b.league_points : -1e9) - n0(a.league_points != null ? a.league_points : -1e9)) ||
+    ((a.rank == null ? 1e9 : n0(a.rank)) - (b.rank == null ? 1e9 : n0(b.rank)));
+}
 function table(o, size) {
   const groups = new Map();
-  (o.standings || []).slice().sort((a, b) => n0(a.rank) - n0(b.rank)).forEach(r => {
+  const official = o.order === 'official';
+  (o.standings || []).slice().sort((a, b) => n0(a.rank) - n0(b.rank)).sort(official ? () => 0 : byWinPct).forEach(r => {
     const k = r.group_name || '';
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(Object.assign(Object.keys(r).filter(catKey).reduce((a, c) => { a[c] = r[c]; return a; }, {}), { tid: r.team_id, rank: n0(r.rank), team: side(r.team, 0), gp: n0(r.gp), w: n0(r.w), l: n0(r.l),
+    groups.get(k).push(Object.assign(Object.keys(r).filter(catKey).reduce((a, c) => { a[c] = r[c]; return a; }, {}), { tid: r.team_id, rank: official ? n0(r.rank) : groups.get(k).length + 1, official: n0(r.rank), team: side(r.team, 0), gp: n0(r.gp), w: n0(r.w), l: n0(r.l),
                          pts: r.league_points != null ? n0(r.league_points) : null, diff: n0(r.diff), streak: r.streak || '',
                          pf: r.pts_for != null ? n0(r.pts_for) : null, pa: r.pts_against != null ? n0(r.pts_against) : null,
-                         pct: n0(r.w) + n0(r.l) > 0 ? n0(r.w) / (n0(r.w) + n0(r.l)) : null,
+                         pct: pctOf(r),
                          ppg: r.pts_for != null && n0(r.gp) > 0 ? n0(r.pts_for) / n0(r.gp) : null,
                          papg: r.pts_against != null && n0(r.gp) > 0 ? n0(r.pts_against) / n0(r.gp) : null,
                          avg: n0(r.gp) > 0 ? n0(r.diff) / n0(r.gp) : null,
@@ -380,7 +394,7 @@ function table(o, size) {
   groups.forEach((rows, group) => {
     const pp = pages(rows, PER.table[size] || 14);
     pp.forEach((p, i) => out.push({ kind: 'table', key: 'table' + (group ? '-' + slug(group) : '') + (pp.length > 1 ? '-' + (i + 1) : ''),
-      league: o.league || {}, comp: o.comp || '', group, asOf: o.asOf || '', rows: p, page: i + 1, pages: pp.length,
+      league: o.league || {}, comp: o.comp || '', group, asOf: o.asOf || '', rows: p, page: i + 1, pages: pp.length, order: official ? 'official' : 'pct',
       showPts: rows.some(r => r.pts != null && r.pts !== 2 * r.w + r.l && r.pts !== 2 * r.w) || !!o.showPts }));
   });
   return out;
@@ -433,7 +447,7 @@ function rowsOf(m, mods) {
 
 /* the stat lines a stars graphic shows unless told: points, rebounds, assists - or, for a month's, the per-game keys it came with */
 const starKeys = (m, mods) => (mods && mods.statKeys ? mods.statKeys : (m.rows && m.rows[0] && Object.keys(m.rows[0].stats).some(catKey) ? Object.keys(m.rows[0].stats).filter(catKey) : ['pts', 'reb', 'ast']));
-const MOD_CAPTION_KEYS = (mods, m) => starKeys(m || {}, mods).slice(0, 4);
+const MOD_CAPTION_KEYS = (mods, m) => starKeys(m || {}, mods);              // every stat chosen, as the graphic says them all
 const MOD_HEAD = mods => (mods && mods.headline) || '';
 /* THE LEADERS BOARD: `boards` = [{ key, label, low, rows: [{ rank, tie, name, team (a club row), value (the text) }] }] - the site's
    league leaders in the categories chosen, players or clubs. `title` is what the caption and the graphic call it ("Season leaders"). */
@@ -531,7 +545,7 @@ function caption(m0, mods0) {
   }
   if (m.kind === 'weekstars') {
     const keys = MOD_CAPTION_KEYS(mods, m);
-    const said = r => keys.map(k => r.stats[k] + ' ' + sl(k).toLowerCase()).join(', ');
+    const said = r => keys.map(k => mn(r.stats[k] == null || r.stats[k] === '' ? '—' : r.stats[k]) + ' ' + sl(k).toLowerCase()).join(', ');
     return ['Stars of the ' + (m.period === 'month' ? 'month' : 'week') + (m.comp ? ' in the ' + m.comp : '') + (m.range && m.period === 'month' ? ' (' + m.range + ')' : '') + ':', '',
       m.rows.map(r => r.rank + '. ' + r.name + ' (' + r.team.name + '): ' + said(r) + (r.sub ? ' - ' + r.sub : ' vs ' + r.opp.name + ' (' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ')')).join('\n'),
       '', tags(L)].join('\n');
@@ -542,7 +556,7 @@ function caption(m0, mods0) {
   }
   if (m.kind === 'table') {
     return [(m.group ? m.group + ': the table' : 'The table') + (m.asOf ? ' after ' + m.asOf : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : ''), '',
-      m.rows.map(r => r.rank + '. ' + r.team.name + ' ' + r.w + '-' + r.l).join('\n'), '', tags(L)].join('\n');
+      m.rows.map(r => r.rank + '. ' + r.team.name + ' ' + r.w + '-' + r.l + (r.gp > 0 ? ' (' + pctText(r.pct) + ')' : '')).join('\n'), '', tags(L)].join('\n');
   }
   if (m.kind === 'fixtures') {
     return ['Coming up' + (m.comp ? ' in the ' + m.comp : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : '') + (zn ? ' (times in ' + zn.text + ')' : ''), '',
@@ -782,8 +796,9 @@ function drawResult(ctx, m, th, S, M, accent) {
         ctx.fillText('TOP SCORERS', x + 20, y + 26);
         (list || []).slice(0, ln).forEach((p, i) => {
           const by = y + 40 + i * 44 + 30;
-          u.font(ctx, 20, NUMF, 600);
-          const line = u.ellipsis(ctx, said(p.stats, keys), Math.min(colW - 24 - 130, (colW - 24) * 0.62));
+          const lw0 = Math.min(colW - 24 - 130, (colW - 24) * 0.62);
+          u.fit(ctx, said(p.stats, keys), lw0, 20, 14, NUMF, 600);                  // set smaller before it is ever cut
+          const line = u.ellipsis(ctx, said(p.stats, keys), lw0);
           const lw = ctx.measureText(line).width;
           ctx.fillStyle = th.ink2;
           ctx.textAlign = 'right';
@@ -808,9 +823,10 @@ function drawResult(ctx, m, th, S, M, accent) {
         u.font(ctx, 30, u.F.ui, 700);
         ctx.fillStyle = th.ink;
         ctx.fillText(u.ellipsis(ctx, t.name, colW - 24), x + 20, y + 62);
-        u.font(ctx, 22, NUMF, 600);
+        const ln0 = lk && t.stats ? said(t.stats, lk) : t.line;
+        u.fit(ctx, ln0, colW - 24, 22, 15, NUMF, 600);
         ctx.fillStyle = th.ink2;
-        ctx.fillText(u.ellipsis(ctx, lk && t.stats ? said(t.stats, lk) : t.line, colW - 24), x + 20, y + 94);
+        ctx.fillText(u.ellipsis(ctx, ln0, colW - 24), x + 20, y + 94);
       });
     } });
   }
@@ -1072,14 +1088,42 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
   }
   crest(ctx, th, r.team, cx + rad * 0.72, cy + rad * 0.72, Math.max(14, rad * 0.36));
 }
-function starLine(r, keys) { return keys.map(k => mn(r.stats[k]) + ' ' + sl(k)).join(' · '); }
+const starVal = (r, k) => { const v = r.stats[k]; return v == null || v === '' ? '—' : mn(k === 'pm' && +v > 0 ? '+' + v : String(v)); };
+function starLine(r, keys) { return keys.map(k => starVal(r, k) + ' ' + sl(k)).join(' · '); }
+/* EVERY STAT CHOSEN IS SAID. A star's line is set in as few lines as it fits (up to `maxLines`, broken between stats, never inside
+   one), at the largest size from `max` down to `min` that holds it in `width`; only past all of that is the last line cut. Returns
+   { lines, size } with the font left at that size. */
+function statLines(ctx, r, keys, width, max, min, maxLines, weight) {
+  const u = U(), parts = keys.map(k => starVal(r, k) + ' ' + sl(k));
+  const pack = () => {
+    const out = [];
+    parts.forEach(p => {
+      const last = out.length ? out[out.length - 1] + ' · ' + p : null;
+      if (last != null && ctx.measureText(last).width <= width) out[out.length - 1] = last; else out.push(p);
+    });
+    return out;
+  };
+  for (let n = 1; n <= maxLines; n++) {
+    for (let sz = max; sz >= min; sz -= 1) {
+      u.font(ctx, sz, NUMF, weight || 600);
+      const lines = pack();
+      if (lines.length <= n && lines.every(l => ctx.measureText(l).width <= width)) return { lines, size: sz };
+    }
+  }
+  u.font(ctx, min, NUMF, weight || 600);
+  const lines = pack();
+  const keep = lines.slice(0, maxLines);
+  if (lines.length > maxLines) keep[maxLines - 1] = u.ellipsis(ctx, lines.slice(maxLines - 1).join(' · '), width);
+  return { lines: keep.map(l => u.ellipsis(ctx, l, width)), size: min };
+}
 
 function drawWeekStars(ctx, m, th, S, M, accent) {
   const u = U(), W = S.w;
   const rows = m.rows, n = rows.length;
   const layout = MOD.layout || 'list';
-  const keys = starKeys(m, MOD).slice(0, 4);
-  const big = starKeys(m, MOD).slice(0, 3);
+  /* the first three are the lead card's big numbers and the rest are said under them; every row says them all */
+  const keys = starKeys(m, MOD);
+  const big = keys.slice(0, 3);
   const monthly = m.period === 'month';
   const title = titleBlock(ctx, th, S, M, monthly ? 'Stars of the month' : 'Stars of the week', [m.comp, m.range].filter(Boolean).join(' · '));
   if (!n) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No player lines this week.', M, y + 40); } }];
@@ -1103,14 +1147,27 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
     const after = y + 34 + nb.size * (0.95 + (nb.lines.length - 1) * 0.9);
     u.font(ctx, 22, u.F.ui, 600); ctx.fillStyle = th.ink2;
     ctx.fillText(u.ellipsis(ctx, gameLine(r), tw), tx, Math.min(after + 34, y + head));
-    const cw = (W - 2 * M - 48) / big.length, by0 = y + h - 22, nsize = Math.max(34, Math.min(96, (h - head - 44) * 0.95));
-    big.forEach((k, i) => {
-      const cx2 = M + 24 + cw * (i + 0.5);
+    /* THE NUMBERS ROW: the first three big, the rest (up to five more) beside them at half the width and size, so every stat
+       chosen is on the lead card without taking height from the three */
+    const cols = keys.map((k, i) => ({ k, w: i < 3 ? 2 : 1 })), units = cols.reduce((a, c) => a + c.w, 0);
+    const unit = (W - 2 * M - 48) / units, by0 = y + h - 22, nsize = Math.max(34, Math.min(96, (h - head - 44) * 0.95));
+    let x0 = M + 24;
+    cols.forEach((c, i) => {
+      const cw = unit * c.w, cx2 = x0 + cw / 2, v = starVal(r, c.k);
+      x0 += cw;
       ctx.textAlign = 'center';
-      u.fit(ctx, String(r.stats[k]), cw - 30, nsize, 30, u.F.score);
-      u.display(ctx, th, String(r.stats[k]), cx2, by0 - 30, i === 0 ? accent : th.ink, i === 0 ? 2 : 0);
-      u.font(ctx, 17, u.F.micro); ctx.fillStyle = th.ink3;
-      ctx.fillText(sl(k, true).slice(0, 12), cx2, by0);
+      if (i < 3) {
+        u.fit(ctx, v, cw - 30, nsize, 26, u.F.score);
+        u.display(ctx, th, v, cx2, by0 - 30, i === 0 ? accent : th.ink, i === 0 ? 2 : 0);
+        u.font(ctx, 17, u.F.micro); ctx.fillStyle = th.ink3;
+        ctx.fillText(u.ellipsis(ctx, sl(c.k, true).slice(0, 12), cw - 8), cx2, by0);
+      } else {
+        if (i === 3) { ctx.fillStyle = th.rule; ctx.fillRect(cx2 - cw / 2 - 1, by0 - 30 - nsize * 0.7, 2, nsize * 0.7 + 34); }
+        u.fit(ctx, v, cw - 12, Math.min(44, nsize * 0.55), 16, NUMF, 700);
+        ctx.fillStyle = th.ink2; ctx.fillText(v, cx2, by0 - 30);
+        u.fit(ctx, sl(c.k), cw - 8, 15, 10, u.F.micro); ctx.fillStyle = th.ink3;
+        ctx.fillText(sl(c.k), cx2, by0);
+      }
     });
     ctx.textAlign = 'left';
   } });
@@ -1122,15 +1179,16 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
     const rad = Math.min(38, (h - 6) * 0.36), cx = M + 100 + rad, cy = y + (h - 6) / 2;
     starDisc(ctx, th, r, cx, cy, rad, accent);
     const tx = cx + rad + 24, right = W - M - 22;
-    u.font(ctx, Math.min(22, h * 0.2), NUMF, 600);
-    const line = u.ellipsis(ctx, starLine(r, keys), (right - tx) * 0.55);
-    const lw = ctx.measureText(line).width;
-    ctx.fillStyle = accent; ctx.textAlign = 'right'; ctx.fillText(line, right, cy + 8); ctx.textAlign = 'left';
+    const sw = (right - tx) * 0.58, sl0 = statLines(ctx, r, keys, sw, Math.min(22, h * 0.2), 13, Math.max(1, Math.min(3, Math.floor((h - 14) / 22))), 600);
+    const lw = Math.max(...sl0.lines.map(l => ctx.measureText(l).width)), lh = sl0.size + 5;
+    ctx.fillStyle = accent; ctx.textAlign = 'right';
+    sl0.lines.forEach((l, i) => ctx.fillText(l, right, cy + 8 + (i - (sl0.lines.length - 1) / 2) * lh));
+    ctx.textAlign = 'left';
     const nw = right - tx - lw - 16;
     u.fit(ctx, r.name, nw, Math.min(32, h * 0.3), 20, u.F.ui, 700);
     ctx.fillStyle = th.ink; ctx.fillText(u.ellipsis(ctx, r.name, nw), tx, cy - 4);
     u.font(ctx, Math.max(15, Math.min(19, h * 0.17)), u.F.ui, 500); ctx.fillStyle = th.ink3;
-    ctx.fillText(u.ellipsis(ctx, gameLine(r), right - tx), tx, cy + Math.min(30, h * 0.26));
+    ctx.fillText(u.ellipsis(ctx, gameLine(r), sl0.lines.length > 1 ? nw : right - tx), tx, cy + Math.min(30, h * 0.26));      // beside a stat line of two or three, the game keeps to the name's width
     stripe(ctx, th, r.team.colour, M, y + 8, h - 22, 5);
   } });
   if (layout === 'five') {
@@ -1150,8 +1208,10 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
         ctx.fillText(u.ellipsis(ctx, r.name, cw - 24), cx, y + 20 + 2 * rad + 40);
         u.font(ctx, 17, u.F.ui, 500); ctx.fillStyle = th.ink3;
         ctx.fillText(u.ellipsis(ctx, r.team.name, cw - 24), cx, y + 20 + 2 * rad + 66);
-        u.font(ctx, Math.min(26, h * 0.095), NUMF, 600); ctx.fillStyle = i === 0 && r.rank === 1 ? accent : th.ink;
-        ctx.fillText(u.ellipsis(ctx, starLine(r, keys.slice(0, list.length > 2 ? 2 : 3)), cw - 20), cx, y + h - 22);
+        ctx.fillStyle = i === 0 && r.rank === 1 ? accent : th.ink;
+        const room = Math.max(1, Math.min(5, Math.floor((h - 2 * rad - 96) / 17)));      // the lines between the club's name and the card's foot
+        const sl1 = statLines(ctx, r, keys, cw - 20, Math.min(26, h * 0.095), 12, room, 600);
+        sl1.lines.forEach((l, j) => ctx.fillText(l, cx, y + h - 22 - (sl1.lines.length - 1 - j) * (sl1.size + 5)));
         ctx.textAlign = 'left';
       });
     } });
@@ -1224,15 +1284,14 @@ function drawTable(ctx, m, th, S, M, accent) {
   /* the rows share what the heading, the title, the column names and the footer leave */
   const rowH = fitRows(S, n, 128 + 34, 44, S.h >= 1900 ? 76 : 66, 4);
   const cols = MOD.cols ? MOD.cols.map(k => [cl(k), k])
-    : [['GP', 'gp'], ['W', 'w'], ['L', 'l']].concat(m.showPts ? [['PTS', 'pts']] : []).concat([['DIFF', 'diff']]);
-  const cw = cols.length > 5 ? 76 : 92, x0 = W - M - cols.length * cw;
+    : [['GP', 'gp'], ['W', 'w'], ['L', 'l'], ['WIN%', 'pct']].concat(m.showPts ? [['PTS', 'pts']] : []).concat([['DIFF', 'diff']]);
+  const cw = cols.length > 5 ? 84 : cols.length === 5 ? 104 : 92, x0 = W - M - cols.length * cw;
   return [
     titleBlock(ctx, th, S, M, m.group || 'The table', [m.comp, m.asOf ? 'after ' + m.asOf : ''].filter(Boolean).join(' · ')),
     { h: 34, draw: y => {
-      u.font(ctx, 18, u.F.micro);
-      ctx.fillStyle = th.ink3;
       ctx.textAlign = 'right';
-      cols.forEach(([l], i) => ctx.fillText(l, x0 + cw * (i + 1) - 12, y + 24));
+      /* a long label (a site column: PTS CONTRIB/G) is set smaller to keep inside its column, never over the next */
+      cols.forEach(([l, k], i) => { u.fit(ctx, l, cw - 10, 18, 9, u.F.micro); ctx.fillStyle = k === (m.order === 'official' ? 'pts' : 'pct') ? accent : th.ink3; ctx.fillText(l, x0 + cw * (i + 1) - 12, y + 24); });
       ctx.textAlign = 'left';
     } },
     rowsBlock(ctx, th, S, M, n, rowH, (i, y, h) => {
@@ -1253,7 +1312,7 @@ function drawTable(ctx, m, th, S, M, accent) {
         u.font(ctx, Math.min(cols.length > 5 ? 24 : 28, h * 0.46), NUMF, 600);
         const one = x => (x == null ? '—' : x.toFixed(1));
         const v = k === 'diff' ? (r.diff > 0 ? '+' : '') + r.diff : k === 'avg' ? (r.avg == null ? '—' : (r.avg > 0 ? '+' : '') + one(r.avg))
-          : k === 'pct' ? (r.pct == null ? '—' : r.pct >= 1 ? '1.000' : r.pct.toFixed(3).replace(/^0/, ''))
+          : k === 'pct' ? pctText(r.pct)
           : k === 'ppg' || k === 'papg' ? one(r[k]) : r[k] == null || r[k] === '' ? '—' : String(r[k]);
         const signed = k === 'diff' ? r.diff : k === 'avg' ? r.avg : null;
         ctx.fillStyle = k === 'w' ? th.ink : signed != null ? (signed > 0 ? th.good : signed < 0 ? th.bad : th.ink3) : th.ink2;
@@ -1531,8 +1590,8 @@ function draw(ctx, m0, opts) {
   if (!u || !themes) throw new Error('socialcard.js needs reportcard.js loaded first');
   MOD = cleanModules(Object.assign({}, m0.modules, o.modules));
   ZNOTE = zoneNote(m0, MOD);
-  CAT = m0.cat || {};
-  try { return drawIn(ctx, relabel(rowsOf(m0, MOD), MOD), o, u, themes); } finally { MOD = {}; ZNOTE = null; CAT = {}; }
+  CAT = m0.cat || {}; TCAT = m0.tcat || {};
+  try { return drawIn(ctx, relabel(rowsOf(m0, MOD), MOD), o, u, themes); } finally { MOD = {}; ZNOTE = null; CAT = {}; TCAT = {}; }
 }
 
 /* THE SHAPE: one of the three, or for head to head as tall as its stats need (compareLayout) */

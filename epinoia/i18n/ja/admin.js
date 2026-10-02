@@ -780,7 +780,24 @@
       'from our own domain': '自分たちのドメインから',
       'Snippet copied.': 'スニペットをコピーしました。',
       'Select the snippet and copy it.': 'スニペットを選択してコピーしてください。',
-      'On your own domain (optional)': '自分のドメインで（任意）'
+      'On your own domain (optional)': '自分のドメインで（任意）',
+      'This graphic\'s own': 'このグラフィック独自',
+      '+ add a stat (search: ts, rebound, usage…)': '+ スタッツを追加(検索: ts、リバウンド、使用率…)',
+      'Add a stat': 'スタッツを追加',
+      'reset to default': '初期設定に戻す',
+      'None chosen': '未選択',
+      'Nothing matches.': '一致するものはありません。',
+      'Stat lines, in order (3–8; the first three are the big numbers)': '表示するスタッツ(順番どおり、3〜8。最初の3つが大きな数字)',
+      'Stat lines, in order (3–8; the first three are the star\'s big numbers)': '表示するスタッツ(順番どおり、3〜8。最初の3つがスターの大きな数字)',
+      'Stat lines, in order (the site\'s, per game over the month; 3–8)': '表示するスタッツ(順番どおり。サイトの月間1試合平均、3〜8)',
+      'Table columns, in order (1–6)': '順位表の列(順番どおり、1〜6)',
+      'Team stats, in order (up to 6, none by default)': 'チームスタッツ(順番どおり、最大6。初期設定はなし)',
+      'Stats beside each leader, in order (1–4)': '各リーダーの横のスタッツ(順番どおり、1〜4)',
+      'Categories, in order (1–6; one is a top ten, several a panel)': '部門(順番どおり、1〜6。1つならトップ10、複数ならパネル)',
+      'Order the table by': '順位表の並び順',
+      'Win percentage (level: league points, then the tiebreak)': '勝率(同率なら勝ち点、次にタイブレーク)',
+      'League points: the official order': '勝ち点(公式順位)',
+      'winning percentage (wins over games played)': '勝率(勝利数÷試合数)'
     },
 
     ctx: {
@@ -976,6 +993,17 @@
     },
 
     patterns: [
+      /* the Graphics tab's stat picker (statpicker.js): a stat's label is its own (PTS, TS%, eFG%) and stays */
+      [/^At most (\d+): remove one to add another\.$/, '最大$1つまでです。追加するには1つ外してください。'],
+      [/^At least (\d+): add another before removing ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23})\.$/, '最低$1つ必要です。$2を外す前に別のスタッツを追加してください。'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) removed\.$/, '$1を外しました。'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) added, (\d+) of (\d+)\.$/, '$1を追加しました($2/$3)。'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) moved to (\d+) of (\d+)\.$/, '$1を$2番目に移動しました(全$3)。'],
+      [/^([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}), (\d+) of (\d+)\. Arrow keys move it, Delete removes it\.$/, '$1、$2/$3。矢印キーで移動、Deleteで外します。'],
+      [/^Move ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) earlier$/, '$1を前へ'],
+      [/^Move ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23}) later$/, '$1を後ろへ'],
+      [/^Remove ([A-Z0-9e][A-Z0-9%+\/\-.±# ]{0,23})$/, '$1を外す'],
+      [/^Back to the default: (.+)\.$/, '初期設定に戻しました: $1。'],
       [/^Your account has no administrative roles\. Ask a league administrator to grant you one — they will need this exact address: (.*)$/, 'このアカウントには管理権限がありません。リーグ管理者に権限の付与を依頼してください。その際は次のアドレスが必要です: $1'],
       [/^(\d+) games? to score$/, '記録する試合 $1件'],
       [/^edit (.+)$/, '$1を編集'],

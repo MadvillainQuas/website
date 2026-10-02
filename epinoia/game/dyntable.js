@@ -364,16 +364,18 @@ function tableHTML(P, games, viewIds, colours, showNow, ST) {
           (mark ? '<span class="dt-marks">' + mark + '</span>' : '') + '</td>' +
         (conf
           ? '<td class="rec">' + rec(cw, cl) + '</td><td>' + pct(cw, cgp) + '</td><td class="rec">' + rec(w, l) + '</td><td>' + pct(w, gp) + '</td>'
-          : '<td>' + gp + '</td><td>' + w + '</td><td>' + l + '</td>') +
+          : '<td>' + gp + '</td><td>' + w + '</td><td>' + l + '</td><td>' + pct(w, gp) + '</td>') +
         '<td>' + pf + '</td><td>' + pa + '</td>' +
         '<td' + (dCol ? ' style="color:' + dCol + '"' : '') + '>' + sign(diff) + '</td>' +
         (conf ? '' : '<td class="pts">' + pts + dock + '</td>') + '</tr>';
     }).join('');
     const heads = conf
       ? ['#', 'TEAM', 'CONF W-L', 'CONF PCT', 'W-L', 'PCT', 'PF', 'PA', 'DIFF']
-      : ['#', 'TEAM', 'GP', 'W', 'L', 'PF', 'PA', 'DIFF', 'PTS'];
+      /* WIN% beside the record, as on every table; the order stays the projection's (league points), since this is the
+         table the live games move, read against the official one by places gained and lost */
+      : ['#', 'TEAM', 'GP', 'W', 'L', 'WIN%', 'PF', 'PA', 'DIFF', 'PTS'];
     return '<div class="ep-tw dt-tw">' + (head ? '<div class="dt-cap">' + head.replace(/^<caption>|<\/caption>$/g, '') + '</div>' : '') +
-      '<table class="ep-tbl stand" style="min-width:' + (conf ? 700 : 640) + 'px"><thead><tr>' +
+      '<table class="ep-tbl stand" style="min-width:700px"><thead><tr>' +
       heads.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' + body + '</tbody></table></div>';
   }).join('') + (anyPlayed ? '' : '<p class="dt-note">No games have finished in this competition yet.</p>');
 }

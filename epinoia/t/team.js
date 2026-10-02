@@ -232,6 +232,8 @@ async function chooseSeason(team, lg) {
       window.EpinoiaSuggest.attach(badge, crestChoice(), { at: 'icon' });
       acts.appendChild(window.EpinoiaSuggest.button(suggestList, { title: team.name }));
     }
+    /* EDIT, for whoever manages the club (adminedit.js, 0214): the database says who; the button above becomes theirs */
+    if (window.EpinoiaAdminEdit) window.EpinoiaAdminEdit.mount({ type: 'team', id: team.id, name: team.name, host: acts, venue: team.home_venue_id || null });
     $('#tname').parentNode.appendChild(acts);
     const lg = team.leagues || {};
     if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
@@ -955,7 +957,8 @@ async function record(team) {
   const wrap = $('#rec'); wrap.textContent = '';
   const s = st[0];
   const cells = s
-    ? [['rank', s.rank ?? '—'], ['record', `${s.w}-${s.l}`], ['played', s.gp],
+    /* the winning percentage in place of games played (a basketball record already says how many: W + L) */
+    ? [['rank', s.rank ?? '—'], ['record', `${s.w}-${s.l}`], ['win%', window.EpinoiaStandings ? window.EpinoiaStandings.pct(s.w, s.gp) : (s.gp ? (s.w / s.gp).toFixed(3).replace(/^0/, '') : '—')],
        ['pts for', s.pts_for], ['pts against', s.pts_against],
        ['diff', (s.diff > 0 ? '+' : '') + s.diff], ['streak', s.streak || '—']]
     : [['record', '0-0'], ['played', 0]];

@@ -19,6 +19,11 @@
    recompute_standings orders the overall record: winning percentage, then wins,
    then the point difference, then points scored.
 
+   WHAT A READER SEES FIRST is the table in winning-percentage order (byWinPct): the
+   stored rank, which is the league's points-and-tiebreak order, settles only clubs level
+   on percentage. The rank itself is untouched; byWinPct only orders the rows for display
+   and numbers them in that order.
+
    Pure functions over the rows PostgREST returns, so they run the same in the
    browser and under node (supabase/tests/standings.test.mjs).
    ============================================================================ */
@@ -52,6 +57,33 @@ function pct(w, gp) {
   const p = w / gp;
   if (p >= 1) return '1.000';
   return p.toFixed(3).replace(/^0/, '');
+}
+
+/* THE WINNING PERCENTAGE, as a number (0..1), or null for a club with no games */
+function winPct(w, gp) {
+  return gp > 0 ? (+w || 0) / gp : null;
+}
+
+/* THE TABLE IN WINNING-PERCENTAGE ORDER: the order a reader meets every standings table in.
+   Best percentage first; level percentages keep the league's own order, league points and
+   then the stored rank (recompute_standings's, which already applies the league's tiebreak
+   rules from leagues.rules.tiebreak); a club with no games goes last. Compared by cross
+   multiplication, so 2/4 and 3/6 are level exactly. Returns new row objects with `pos`, the
+   place in this order (1, 2, 3 ... within the rows given: call it once per group). */
+function byWinPct(rows) {
+  const num = (v, d) => (v == null || v === '' || isNaN(v) ? d : +v);
+  const name = r => String((r.teams && r.teams.name) || (r.team && r.team.name) || r.name || '');
+  const sorted = (rows || []).slice().sort((a, b) => {
+    const ga = num(a.gp, 0), gb = num(b.gp, 0);
+    if (!ga !== !gb) return ga ? -1 : 1;
+    if (ga && gb) {
+      const d = num(b.w, 0) * ga - num(a.w, 0) * gb;
+      if (d) return d;
+    }
+    return (num(b.league_points, -1e9) - num(a.league_points, -1e9)) ||
+      (num(a.rank, 1e9) - num(b.rank, 1e9)) || byName(name(a), name(b));
+  });
+  return sorted.map((r, i) => Object.assign({}, r, { pos: i + 1 }));
 }
 
 function record(w, l) {
@@ -114,5 +146,5 @@ function groupLabel(name, comp) {
   return 'Group ' + name;
 }
 
-return { isConferences, columns, pct, record, split, overall, groupLabel, BASE_COLS, CONF_COLS };
+return { isConferences, columns, pct, winPct, byWinPct, record, split, overall, groupLabel, BASE_COLS, CONF_COLS };
 }));

@@ -64,13 +64,16 @@ const MONTH_BY = [['gs', 'Average game score (efficiency)'], ['pts', 'Points a g
 const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'gmsc', 'pm', 'min'];
 const STAT_DEFAULT = ['pts', 'reb', 'ast', 'fg', 'p3', 'ft', 'pm', 'min'];
 const COL_ORDER = ['gp', 'w', 'l', 'pct', 'pts', 'diff', 'avg', 'pf', 'pa', 'ppg', 'papg', 'streak', 'l5', 'home', 'away', 'elo'];
-const COL_DEFAULT = ['gp', 'w', 'l', 'diff'];
+const COL_DEFAULT = ['gp', 'w', 'l', 'pct', 'diff'];          // WIN% in the default: the table is ordered by it
+/* the table's order: winning percentage (the default, as the league's own table opens) or the official one (league points, then the
+   league's tiebreak rules: the stored rank) */
+const TABLE_ORDER = [['', 'Win percentage (level: league points, then the tiebreak)'], ['official', 'League points: the official order']];
 const COL_READ = ['l5', 'home', 'away', 'elo'];            // read from the games, not the standings
-const COL_HINT = { pct: 'win rate', pts: 'league points', avg: 'average margin', ppg: 'points scored a game', papg: 'points allowed a game', l5: 'last five games',
+const COL_HINT = { pct: 'winning percentage (wins over games played)', pts: 'league points', avg: 'average margin', ppg: 'points scored a game', papg: 'points allowed a game', l5: 'last five games',
                    home: 'home record', away: 'away record', elo: 'ELO rating (1500 is average)', streak: 'current run' };
 const TEAM_ORDER = ['fgp', 'p3p', 'ftp', 'efg', 'fg', 'p3', 'ft', 'reb', 'oreb', 'ast', 'stl', 'blk', 'tov', 'pf'];
 const LEAD_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'p3p', 'pm'];
-const LEAD_DEFAULT = ['pts', 'reb', 'ast'];
+const LEAD_DEFAULT = ['pts', 'reb', 'ast'], WEEK_DEFAULT = ['pts', 'reb', 'ast'];
 const WEEK_EXTRAS = [['time', 'Tip-off time'], ['venue', 'Venue'], ['quarters', 'Quarter scores'], ['record', 'Records'], ['elo', 'ELO']];
 const FIX_EXTRAS = [['record', 'Records'], ['elo', 'ELO']];
 const ACCENTS = [['', 'League colour'], ['#ffe600', 'Teletext yellow'], ['#00e5ff', 'Cyan']];
@@ -85,7 +88,7 @@ const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8, MAX_TEAM = 6, MAX_LEAD = 4;
 function defaultBuilder() {
   return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'gs', picks: [], monthOff: 0,
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
-            cols: null, statKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
+            cols: null, tableOrder: '', statKeys: null, weekKeys: null, monthKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
             layout: '', discs: '', leadCats: null, leadScope: 'season', leadSubject: 'players', minGames: '', rankStat: 'c:ppg', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
 }
 /* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
@@ -96,7 +99,10 @@ function modulesOf(b) {
   const tpl = b && b.tpl;
   /* each template's own choices: a star's stat lines, a table's columns, a final's team stats and leaders, the extras of
      a results row and of a fixture's row are kept apart, so changing template never carries one's choices to another */
-  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: tpl === 'star' || tpl === 'weekstars' || tpl === 'monthstars' ? m.statKeys || null : null, layout: tpl === 'weekstars' || tpl === 'monthstars' ? m.layout : '',
+  /* each stars template its own stat lines: a star's, the week's (any of a night's), the month's (the site's only: a month's star has
+     no night's line to read a built-in stat from, so one carried over would be drawn as a dash) */
+  const stat = tpl === 'star' ? m.statKeys : tpl === 'weekstars' ? m.weekKeys : tpl === 'monthstars' ? (catOf(m.monthKeys).length ? catOf(m.monthKeys) : null) : null;
+  return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: stat || null, layout: tpl === 'weekstars' || tpl === 'monthstars' ? m.layout : '',
     teamStats: tpl === 'result' ? m.teamStats : null, leaderKeys: tpl === 'result' ? m.leaderKeys : null, leaderN: tpl === 'result' ? m.leaderN : 0,
     rowExtras: tpl === 'week' ? m.weekExtras : tpl === 'fixtures' ? m.fixExtras : null }));
 }
@@ -104,7 +110,7 @@ function modulesOf(b) {
 const catOf = list => (Array.isArray(list) ? list : []).filter(k => /^c:/.test(k));
 function needKeys(b) {
   const m = (b && b.mods) || {};
-  const ks = b.tpl === 'star' || b.tpl === 'weekstars' ? catOf(m.statKeys) : b.tpl === 'monthstars' ? catOf(m.statKeys).concat(m.statKeys ? [] : MONTH_DEFAULT) : b.tpl === 'table' ? catOf(m.cols)
+  const ks = b.tpl === 'star' ? catOf(m.statKeys) : b.tpl === 'weekstars' ? catOf(m.weekKeys) : b.tpl === 'monthstars' ? (catOf(m.monthKeys).length ? catOf(m.monthKeys) : MONTH_DEFAULT) : b.tpl === 'table' ? catOf(m.cols)
     : b.tpl === 'result' ? catOf(m.teamStats).concat(catOf(m.leaderKeys)) : b.tpl === 'leaders' ? catOf(m.leadCats || LEAD_CAT_DEFAULT) : [];
   return [...new Set(ks)];
 }
@@ -520,7 +526,7 @@ function drawBuilder(panel, pane) {
   const season = typeof panel.o.season === 'function' ? panel.o.season() : null;
   /* the subject and the site's own columns the graphic asks for (the lines are read when something needs them) */
   const selOf = () => Object.assign({}, b, { lines: d.lines, need: needKeys(b), opts: CATOPTS, bounds: bounds(), by: b.tpl === 'monthstars' ? ({ gs: 'gs', pts: 'pts', stat: 'stat', pick: 'pick' }[b.by] || 'gs') : b.by,
-    stat: M.rankStat, minGames: +M.minGames || 0, keys: b.tpl === 'leaders' ? (M.leadCats || (M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT)) : (catOf(M.statKeys).length ? catOf(M.statKeys) : MONTH_DEFAULT), scope: M.leadScope, subject: M.leadSubject,
+    stat: M.rankStat, minGames: +M.minGames || 0, keys: b.tpl === 'leaders' ? (M.leadCats || (M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT)) : (catOf(M.monthKeys).length ? catOf(M.monthKeys) : MONTH_DEFAULT), scope: M.leadScope, order: M.tableOrder || '', subject: M.leadSubject,
     rows: +M.rows || 0, seasonName: season ? season.name : 'Season' });
   const compute = () => { res = GX().builderModel(d, selOf(), panel.size, crestOf); return res; };
   compute();
@@ -606,8 +612,7 @@ function drawBuilder(panel, pane) {
   put(fs3, 'discs', field('Circles', select([['', 'Follow the setting above'], ['player', 'Player circles'], ['team', 'Team crests']], M.discs || '', v => { M.discs = v; persist(); setRes(); })));
   put(fs3, 'layout', field('Layout', select(STAR_LAYOUT, M.layout || '', v => { M.layout = v; persist(); setRes(); })));
   put(fs3, 'rows', field('How many rows', select(ROWS, M.rows || '', v => { M.rows = v; persist(); setRes(); })));
-  /* A GROUP OF STATS TO SHOW: tick the ones wanted, within the least and most the shape can carry. `current` is what is
-     drawn now (the template's default until a choice is made); a tick that would break the limits is put back. */
+  /* A GROUP OF TICKS (what a results row or a fixture says besides its clubs): tick the ones wanted */
   const checks = (has, title, order, labelOf, current, set, min, max, hint) => {
     const box = el('div', 'gx-checks');
     box.appendChild(el('span', 'gx-cl', title));
@@ -624,58 +629,44 @@ function drawBuilder(panel, pane) {
     });
     return put(fs3, has, box);
   };
-  /* THE STAR'S STAT LINES: 3 to 8 of the player's whole line, the first three the big numbers */
-  if (b.tpl !== 'monthstars') checks('stats', 'Stat lines (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the big numbers)', STAT_ORDER, k => SCd.STAT_DEFS[k][1],
-    () => M.statKeys || (b.tpl === 'weekstars' ? LEAD_DEFAULT : STAT_DEFAULT), v => { M.statKeys = v; }, MIN_STATS, MAX_STATS);
-  /* THE TABLE'S COLUMNS: what the standings hold, some worked out from them, and ELO, form and home / away read from the games */
-  checks('cols', 'Table columns (1–' + MAX_COLS + ')', COL_ORDER, k => SCd.COL_DEFS[k], () => M.cols || COL_DEFAULT, v => { M.cols = v; }, 1, MAX_COLS, COL_HINT);
-  /* A FINAL'S TEAM STATS, side by side (none unless ticked), and the leaders' lines */
-  checks('teamstats', 'Team stats to show (up to ' + MAX_TEAM + ', none by default)', TEAM_ORDER, k => SCd.TEAM_STAT_DEFS[k][0], () => M.teamStats, v => { M.teamStats = v; }, 0, MAX_TEAM);
+  /* THE STATS A GRAPHIC SHOWS, IN ITS ORDER (statpicker.js): the chosen as chips to drag, move or remove, one search box to add
+     from the graphic's own stats and every column of the site's (statcat.js), the limits said, a reset. The preview redraws at once. */
+  const X = root.EpinoiaStatCat, SP = root.EpinoiaStatPicker;
+  const siteItems = kind => {
+    if (!X || !X.catalogue) return [];
+    let list = X.catalogue(kind, CATOPTS);
+    if (d.lines) { const r = X.rowsOf(d.lines, null); list = X.available(list, kind === 'team' ? r.teams : r.players); }
+    return list.map(c => { const info = X.explain(c); return { id: c.id, label: c.label, title: (info ? info.title : c.title) + (X.isLow(c) ? ' (lower is better)' : ''), group: c.group, groupLabel: c.groupLabel }; });
+  };
+  const ownItems = (order, labelOf, titleOf) => order.map(k => ({ id: k, label: labelOf(k), title: titleOf ? titleOf(k) : '', group: 'own', groupLabel: 'This graphic\'s own' }));
+  const picker = (has, title, items, current, set, def, min, max) => {
+    if (!SP) return null;
+    const node = SP.create({ title, items, current, set: v => { set(v); persist(); setRes(); }, def, min, max });
+    return put(fs3, has, node);
+  };
+  const STAR_OWN = () => ownItems(STAT_ORDER, k => SCd.STAT_DEFS[k][1], k => SCd.STAT_DEFS[k][0].toLowerCase());
+  /* THE STAR'S, THE WEEK'S AND THE MONTH'S STAT LINES: 3 to 8, each template its own list (a month's are the site's only:
+     its stars are worked over the month, not a night) */
+  if (b.tpl === 'star') picker('stats', 'Stat lines, in order (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the big numbers)', STAR_OWN().concat(siteItems('player')),
+    () => M.statKeys || STAT_DEFAULT, v => { M.statKeys = v; }, STAT_DEFAULT, MIN_STATS, MAX_STATS);
+  if (b.tpl === 'weekstars') picker('stats', 'Stat lines, in order (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the star\'s big numbers)', STAR_OWN().concat(siteItems('player')),
+    () => M.weekKeys || WEEK_DEFAULT, v => { M.weekKeys = v; }, WEEK_DEFAULT, MIN_STATS, MAX_STATS);
+  if (b.tpl === 'monthstars') picker('stats', 'Stat lines, in order (the site\'s, per game over the month; ' + MIN_STATS + '–' + MAX_STATS + ')', siteItems('player'),
+    () => catOf(M.monthKeys).length ? catOf(M.monthKeys) : MONTH_DEFAULT, v => { M.monthKeys = v; }, MONTH_DEFAULT, MIN_STATS, MAX_STATS);
+  /* THE TABLE'S COLUMNS: what the standings hold, some worked out from them, ELO, form and home / away read from the games, and the
+     site's club columns; 1 to 6, in the order chosen. WIN% is in the default, as the table is ordered by it */
+  picker('cols', 'Table columns, in order (1–' + MAX_COLS + ')', ownItems(COL_ORDER, k => SCd.COL_DEFS[k], k => COL_HINT[k] || '').concat(siteItems('team')),
+    () => M.cols || COL_DEFAULT, v => { M.cols = v; }, COL_DEFAULT, 1, MAX_COLS);
+  put(fs3, 'cols', field('Order the table by', select(TABLE_ORDER, M.tableOrder || '', v => { M.tableOrder = v; persist(); setRes(); })));
+  /* A FINAL'S TEAM STATS, side by side (none unless chosen), and the leaders' lines */
+  picker('teamstats', 'Team stats, in order (up to ' + MAX_TEAM + ', none by default)', ownItems(TEAM_ORDER, k => SCd.TEAM_STAT_DEFS[k][0]).concat(siteItems('team')),
+    () => M.teamStats || [], v => { M.teamStats = v; }, [], 0, MAX_TEAM);
   put(fs3, 'leadstats', field('Top scorers per side', select([['', 'The leader of each side'], ['2', 'Top 2 scorers'], ['3', 'Top 3 scorers']], M.leaderN || '', v => { M.leaderN = v; persist(); setRes(); })));
-  checks('leadstats', 'Stats beside each leader (1–' + MAX_LEAD + ')', LEAD_ORDER, k => SCd.STAT_DEFS[k][1], () => M.leaderKeys || LEAD_DEFAULT, v => { M.leaderKeys = v; }, 1, MAX_LEAD);
+  picker('leadstats', 'Stats beside each leader, in order (1–' + MAX_LEAD + ')', ownItems(LEAD_ORDER, k => SCd.STAT_DEFS[k][1], k => SCd.STAT_DEFS[k][0].toLowerCase()).concat(siteItems('player')),
+    () => M.leaderKeys || LEAD_DEFAULT, v => { M.leaderKeys = v; }, LEAD_DEFAULT, 1, MAX_LEAD);
   /* WHAT A ROW SAYS BESIDES ITS CLUBS AND SCORE */
   checks('weekextras', 'Also on each result', WEEK_EXTRAS.map(x => x[0]), k => WEEK_EXTRAS.find(x => x[0] === k)[1], () => M.weekExtras, v => { M.weekExtras = v; }, 0, WEEK_EXTRAS.length);
   checks('fixextras', 'Also on each fixture', FIX_EXTRAS.map(x => x[0]), k => FIX_EXTRAS.find(x => x[0] === k)[1], () => M.fixExtras, v => { M.fixExtras = v; }, 0, FIX_EXTRAS.length);
-  /* THE SITE'S OWN STATS beside each built-in picker: every column of the site's statistics tables (statcat.js), by group, with a
-     search box. A tick that would go past the graphic's limit is refused, so nothing can overflow. */
-  const X = root.EpinoiaStatCat;
-  const catBox = (has, title, kind, current, set, min, max, only) => {
-    if (!X || !X.catalogue) return null;
-    const box = el('details', 'gx-cat');
-    box.appendChild(el('summary', null, title));
-    let list = X.catalogue(kind, CATOPTS);
-    if (d.lines) { const r = X.rowsOf(d.lines, null); list = X.available(list, kind === 'team' ? r.teams : r.players); }
-    if (only) list = list.filter(only);
-    const q = el('input', 'ep-input'); q.type = 'search'; q.placeholder = 'search the site\'s stats (ts, rebound, usage…)'; q.setAttribute('aria-label', 'Search stats');
-    const body = el('div', 'gx-catbody');
-    const paintList = () => {
-      body.textContent = '';
-      X.grouped(X.search(list, q.value)).forEach(g => {
-        const gh = el('div', 'gx-cl', g.label); body.appendChild(gh);
-        const row = el('div', 'gx-checks');
-        g.cols.forEach(c => {
-          const l = el('label', 'sw'); const i = el('input'); i.type = 'checkbox'; i.checked = current().includes(c.id);
-          const info = X.explain(c); l.title = (info ? info.title + ': ' + info.what + ' ' : c.title + '. ') + (X.isLow(c) ? '(Lower is better.)' : '');
-          i.addEventListener('change', () => {
-            const cur = current(), next = toggleKey(cur, c.id, cur.concat([c.id]), min, max);
-            i.checked = next.includes(c.id); set(next); persist(); schedule();
-          });
-          l.append(i, el('span', null, c.label)); row.appendChild(l);
-        });
-        body.appendChild(row);
-      });
-      if (!body.firstChild) body.appendChild(el('div', 'gx-cl', 'Nothing matches.'));
-    };
-    q.addEventListener('input', paintList); paintList();
-    box.append(q, body);
-    return put(fs3, has, box);
-  };
-  const withCat = (list, def) => (list || def);
-  catBox('stats', b.tpl === 'monthstars' ? 'Month stat lines (any of the site\'s; ' + MIN_STATS + '–' + MAX_STATS + ')' : 'More stat lines: the site\'s own (counts toward the ' + MAX_STATS + ')', 'player',
-    () => (b.tpl === 'monthstars' ? withCat(M.statKeys, MONTH_DEFAULT) : withCat(M.statKeys, b.tpl === 'weekstars' ? LEAD_DEFAULT : STAT_DEFAULT)), v => { M.statKeys = v; }, MIN_STATS, MAX_STATS);
-  catBox('cols', 'More table columns: the site\'s own club stats (counts toward the ' + MAX_COLS + ')', 'team', () => M.cols || COL_DEFAULT, v => { M.cols = v; }, 1, MAX_COLS);
-  catBox('teamstats', 'More team stats: the site\'s own club stats (counts toward the ' + MAX_TEAM + ')', 'team', () => M.teamStats, v => { M.teamStats = v; }, 0, MAX_TEAM);
-  catBox('leadstats', 'More leader stats: the site\'s own (counts toward the ' + MAX_LEAD + ')', 'player', () => M.leaderKeys || LEAD_DEFAULT, v => { M.leaderKeys = v; }, 1, MAX_LEAD);
   /* THE MONTH: which one, how its stars are ranked, and how many games a player needs */
   const months = Array.from({ length: 13 }, (_, i) => [String(-i), GX().monthBounds(new Date(), -i, clockOf(panel).zone || SCd.leagueZone(d.league)).label]);
   put(fs3, 'monthpick', field('Month', select(months, String(b.monthOff || 0), v => { b.monthOff = +v; setRes(); })));
@@ -701,8 +692,9 @@ function drawBuilder(panel, pane) {
   put(fs3, 'leadscope', field('Over', select(LEAD_SCOPES, M.leadScope, v => { M.leadScope = v; persist(); setRes(); })));
   put(fs3, 'leadsubject', field('Leaders among', select([['players', 'Players'], ['teams', 'Clubs']], M.leadSubject, v => { M.leadSubject = v; M.leadCats = null; persist(); drawBuilder2('gxLeadSubj'); })));
   fs3.querySelector('[data-has="leadsubject"] select').id = 'gxLeadSubj';
-  catBox('leadcats', 'Categories (1–' + MAX_LEAD_CATS + '; one is a top ten, several a panel)', M.leadSubject === 'teams' ? 'team' : 'player', () => M.leadCats || (M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT),
-    v => { M.leadCats = v; }, 1, MAX_LEAD_CATS);
+  const leadDef = M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT;
+  picker('leadcats', 'Categories, in order (1–' + MAX_LEAD_CATS + '; one is a top ten, several a panel)', siteItems(M.leadSubject === 'teams' ? 'team' : 'player'),
+    () => M.leadCats || leadDef, v => { M.leadCats = v; }, leadDef, 1, MAX_LEAD_CATS);
   form.appendChild(fs3);
 
   /* --- 4. look --- */
@@ -780,6 +772,6 @@ function drawBuilder(panel, pane) {
   paint();
 }
 
-return { mount, refresh, loadDiscs, saveDiscs, discsKey, needKeys, needsLines, CATOPTS, LEAD_CAT_DEFAULT, MONTH_DEFAULT, TZ_MODES, zoneFor, loadTz, saveTz, tzKey, deviceZone, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
+return { mount, refresh, TABLE_ORDER, WEEK_DEFAULT, loadDiscs, saveDiscs, discsKey, needKeys, needsLines, CATOPTS, LEAD_CAT_DEFAULT, MONTH_DEFAULT, TZ_MODES, zoneFor, loadTz, saveTz, tzKey, deviceZone, TEMPLATES, HAS, STAT_ORDER, STAT_DEFAULT, COL_ORDER, COL_DEFAULT, COL_READ, TEAM_ORDER, LEAD_ORDER, defaultBuilder, modulesOf, needsExtras, toggleKey, gameLabel,
          loadBuilder, saveBuilder, memKey };
 }));

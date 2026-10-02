@@ -52,3 +52,15 @@
 /* the ELO rating beside the streak (sos.js; 1500 is average); the table scrolls sideways on a phone like every other column */
 .ep-tbl.stand th.elo,.ep-tbl.stand td.elo{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .ep-tbl.stand td.elo{font-family:var(--f-score);font-size:15px;color:var(--ink-2)}
+/* THE WINNING PERCENTAGE (.750) and the order of the table: a reader meets it in winning-percentage order, and the WIN% and
+   PTS headers are buttons that order it (PTS: the official order). The column the table is ordered by is the heavy one (.key). */
+.ep-tbl.stand td.wpct{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ep-tbl.stand tbody td.wpct.key{font-family:var(--f-score);font-size:18px;color:var(--ink);
+  background:color-mix(in srgb,var(--ink) 5%,var(--panel))}
+.ep-tbl.stand.ord tbody td.pts:not(.key){font-family:inherit;font-size:13px;color:var(--ink-2);background:var(--panel)}
+.ep-tbl.stand tbody tr:hover td.key{background:color-mix(in srgb,var(--tc,var(--lume)) 14%,var(--panel))}
+.ep-tbl.stand th .sorth{all:unset;cursor:pointer;font:inherit;letter-spacing:inherit;color:inherit;text-transform:inherit;white-space:nowrap}
+.ep-tbl.stand th .sorth:hover{text-decoration:underline;text-underline-offset:3px}
+.ep-tbl.stand th .sorth:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.ep-tbl.stand th[aria-sort="descending"] .sorth{color:var(--tt-yellow,#ffe14d)}          /* the teletext header is black in both themes: the yellow of the first place */
+.ep-tbl.stand th[aria-sort="descending"] .sorth::after{content:" \25BC";font-size:.8em}

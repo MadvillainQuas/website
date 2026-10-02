@@ -182,11 +182,13 @@ const stat = Object.prototype.hasOwnProperty.call(STATS, qp.get('stat') || '') ?
                           ST.record(r.conf_w, r.conf_l), ST.record(r.w, r.l), ST.pct(r.w, r.gp),
                           (r.diff > 0 ? '+' : '') + r.diff];
                 }))
-            : standingsTable(['#', 'TEAM', 'GP', 'W', 'L', 'DIFF', 'PTS'],
-                d.rows.slice(0, rows).map(r => {
+            /* in winning-percentage order, as the league's own table opens (standings.js byWinPct: level
+               percentages keep the league's points-and-tiebreak order), the # following it */
+            : standingsTable(['#', 'TEAM', 'GP', 'W', 'L', 'WIN%', 'DIFF', 'PTS'],
+                (ST && ST.byWinPct ? ST.byWinPct(d.rows) : d.rows).slice(0, rows).map(r => {
                   const t = r.teams || {};
-                  return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
-                          r.gp, r.w, r.l, (r.diff > 0 ? '+' : '') + r.diff, r.league_points];
+                  return [r.pos ?? r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
+                          r.gp, r.w, r.l, ST ? ST.pct(r.w, r.gp) : '—', (r.diff > 0 ? '+' : '') + r.diff, r.league_points];
                 })));
         });
       });
