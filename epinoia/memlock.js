@@ -59,7 +59,8 @@ function ensureTip() {
   tip.className = 'mem-tip'; tip.id = 'mem-tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true;
   const a = DOC.createElement('b'); a.className = 'mem-tip-t'; a.textContent = TIP_TEXT;
   const l = DOC.createElement('a'); l.className = 'mem-tip-go'; l.textContent = TIP_LINK;
-  tip.append(a, l);
+  const b = DOC.createElement('span'); b.className = 'mem-tip-b'; b.hidden = true;
+  tip.append(a, l, b);
   tip.addEventListener('pointerenter', () => clearTimeout(hideT));
   tip.addEventListener('pointerleave', () => hide(120));
   DOC.body.appendChild(tip);
@@ -69,10 +70,23 @@ function ensureTip() {
   }, true);
   return tip;
 }
+/* the popup's words: the platform's (access.js copyOf, 0222), the free trial promoted where there is one (0223) */
+function words() {
+  const A = access();
+  const c = k => { try { return A && typeof A.copyOf === 'function' ? A.copyOf(k) : ''; } catch (_) { return ''; } };
+  let trial = 0;
+  try { trial = A && typeof A.trialMonths === 'function' ? A.trialMonths() : 0; } catch (_) { trial = 0; }
+  return { text: (c('popupText') || TIP_TEXT).toUpperCase(), link: trial ? c('trialCta') : (c('popupLink') || TIP_LINK), badge: trial ? c('trialBadge') : '' };
+}
 function show(el, o) {
   if (!ensureTip()) return;
   clearTimeout(hideT);
   tipFor = el;
+  const wd = words();
+  tip.querySelector('.mem-tip-t').textContent = wd.text;
+  tip.querySelector('.mem-tip-go').textContent = wd.link;
+  const b = tip.querySelector('.mem-tip-b');
+  b.textContent = wd.badge; b.hidden = !wd.badge;
   tip.querySelector('.mem-tip-go').href = joinHref({ leagueSlug: o && o.leagueSlug });
   tip.hidden = false;
   el.setAttribute('aria-describedby', 'mem-tip');

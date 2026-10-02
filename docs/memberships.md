@@ -631,3 +631,43 @@ failure semantics are unchanged: memberships off, or no answer, means nothing is
 - Locked events sections (profile, team) draw `placeholder()` (blurred rows plus the notice) above the teaser.
 - Preview without switching memberships on: `localStorage.epinoia_access_sim = 'locked'` (existing flag).
 - Tests: `node supabase/tests/memlock.test.mjs`.
+
+## 10. What is behind the wall, editable (0222)
+
+Every lockable section is a row of `access_gates` (`key`, `gate` = `free` | `analytics` | `club_report` |
+`player_report`, a teaser `title` and up to three `lines`), seeded with the sixteen keys of
+`CATALOGUE.locks` at the gates they always had. The wording every prompt shares (the teaser title, the buttons, the popup,
+the members-only card, the payment window) is the public setting `access_copy`, an object over `EpinoiaAccess.COPY`'s
+keys; `{league}` is the league's name and `{months}` the trial's length.
+
+- Pages read both through `access_wall()` (anonymous, one round trip, five minutes in sessionStorage), laid OVER
+  access.js's defaults: no answer, or a database without 0222, draws exactly what it drew before.
+- `featureLocked(key, league)` follows the row (`gateOf(key)`); `free` is open to everyone. `teaserHTML({key})` uses
+  the row's title and lines over the page's own and marks the button `data-lock="<key>"`; `copyOf(k, league)`
+  gives a shared phrase.
+- The database's own gates follow the same rows through `gate_open(key, league)` (never null; memberships off opens
+  everything, a league's administrators always pass): the events splits (`game_analytics_ok`, row `events`) and What
+  wins / Front office (`analytics_check`, row `model`). Making either `free` opens its data, not only its drawing.
+- `platform_set_gate(key, gate, title, lines)`: platform administrators only, seeded keys only, audited.
+- Tests: `node supabase/tests/access-gates.test.mjs` (PGlite) and the wall block of `access.test.mjs`.
+
+## 11. Free trials (0223)
+
+A new member's first months free: `trial_months` (public platform setting, default **3**, 0 = off, a whole number
+or one written as text) for every plan without `access_plans.trial_months` of its own (0 = none, null = the
+platform's). One trial a person a seller: `trial_months_for(user, plan)` gives 0 to anyone who has ever held a plan
+with the same `seller` in the same league (Epinoia's own plans count as one seller everywhere).
+
+- Checkout under consent version `2026-10-t` (`TRIAL_CONSENT`) asks `trial_months_for` with the service key and
+  refuses (409) a trial the account is not due; it sets `subscription_data.trial_end` (calendar months from now),
+  `trial_settings.end_behavior.missing_payment_method = cancel` and `payment_method_collection = always`. Any other
+  wording never gets a trial.
+- A trial subscription is `trialing`, which `access_active` has always counted as a member.
+- The join page reads `my_trial_offers(league)` (the caller's months on every plan on sale there) and shows
+  "N months free, then …" with the trial wording; `access_plans_public` carries each plan's `trial_months`.
+- Every prompt promotes it from `access_wall().trial_months` while something is for sale: the teaser's button
+  (`trialCta`) and badge (`trialBadge`), the members-only card, the memlock popup. The iOS app hides the promotion.
+- Emails: the welcome to a trial says nothing has been charged and gives the first payment's amount and day;
+  `customer.subscription.trial_will_end` (three days before) sends `trialEndingEmail` unless it is already cancelled.
+- Consoles: the platform's length on the Plans tab (**Free trials**), a plan's own in the plan form, both consoles
+  (`plan_trials()` reads what is stored, `set_plan_trial(plan, months)` writes it with `save_access_plan`'s rights).

@@ -1760,7 +1760,10 @@ async function wrote(call) {
 }
 
 async function loadPlans() {
-  const { data, error } = await sb.rpc('platform_access_admin');
+  /* each plan's free trial as stored and the platform's (0223), asked alongside: a server without them leaves the
+     trial out of the forms and says so where it is set */
+  const [{ data, error }, tr, td] = await Promise.all([sb.rpc('platform_access_admin'),
+    sb.rpc('plan_trials').then(r => r, () => ({ error: true })), sb.rpc('trial_months_default').then(r => r, () => ({ error: true }))]);
   if (error) {
     const missing = PLAN_MISSING(error);
     $('#plMissing').classList.toggle('hide', !missing);
@@ -1779,11 +1782,14 @@ async function loadPlans() {
     analyticsDefault: d.analytics_default === 'members' ? 'members' : 'free',
     plans: d.plans || [],
     leagues: d.leagues || [],
-    totals: d.totals || {}
+    totals: d.totals || {},
+    trials: !tr.error && tr.data && typeof tr.data === 'object' && !td.error
+      ? { own: tr.data, platform: Number(td.data) || 0 } : null
   };
   drawMasterSwitch();
   drawPlanTiles();
   drawAnalyticsDefault();
+  drawTrials();
   drawPlatformPlans();
   drawLeagueAccess();
   drawLeaguePlans();
@@ -2065,19 +2071,80 @@ function drawAnalyticsDefault() {
   });
 }
 
+/* A NEW MEMBER'S FREE TRIAL (0223). The platform's length, which every plan without its own takes, and each plan's
+   own (in the plan form). Trials are Stripe's: a trial subscription starts at once at no charge, and Stripe charges
+   the card given at checkout when it ends unless the member has cancelled. One trial a person a seller. */
+const trialOwn = p => {
+  const v = p && p.id && plans && plans.trials ? plans.trials.own[p.id] : null;
+  return v == null ? null : Number(v);
+};
+const monthsWords = m => m + (m === 1 ? ' month' : ' months');
+function trialWords(p) {
+  if (!plans.trials) return '';
+  const own = trialOwn(p), m = own == null ? plans.trials.platform : own;
+  return m > 0 ? monthsWords(m) + ' free' + (own == null ? '' : ' (its own)') : 'no trial';
+}
+function drawTrials() {
+  const host = $('#plTrial'); if (!host) return;
+  host.textContent = '';
+  if (!plans.trials) {
+    host.appendChild(el('p', 'note bad', 'Run migration 0223 (free trials) to offer them.'));
+    return;
+  }
+  const cur = plans.trials.platform;
+  host.appendChild(el('p', 'lead',
+    'New members get their first months free: nothing is charged at checkout, Stripe charges the card they gave when ' +
+    'the trial ends unless they have cancelled, and anyone who has held a plan from the same seller in the same league ' +
+    'before pays from the first day. Every membership prompt on the site (the teasers, the popups, the members-only ' +
+    'card and the join page) promotes it. It is ' + (cur ? monthsWords(cur) : 'switched off') + ' now, for every plan ' +
+    'without a length of its own.')).dataset.i18nCtx = 'prose';
+  const row = el('div', 'row');
+  const sel = el('select', 'ep-input');
+  const o0 = el('option', null, 'none (trials off)'); o0.value = '0'; sel.appendChild(o0);
+  for (let m = 1; m <= 12; m++) { const o = el('option', null, monthsWords(m)); o.value = String(m); sel.appendChild(o); }
+  sel.value = String(cur);
+  const save = el('button', 'ep-btn', 'save'); save.type = 'button';
+  save.addEventListener('click', async () => {
+    const v = Number(sel.value);
+    if (v === cur) return say('The free trial is already ' + (v ? monthsWords(v) : 'off') + '.', 'ok');
+    if (!confirm(v ? 'Offer new members ' + monthsWords(v) + ' free on every plan without a length of its own?\n\n' +
+                     'It applies to checkouts from now on. Members already on a trial keep the one they started.'
+                   : 'Switch free trials off on every plan without a length of its own?\n\nThe prompts stop promoting ' +
+                     'them straight away. Members already on a trial keep the one they started.')) return;
+    save.disabled = true;
+    const out = await rpc('platform_set_setting', { p_key: 'trial_months', p_value: v });
+    save.disabled = false;
+    if (!out) return;
+    say(v ? 'New members now get ' + monthsWords(v) + ' free.' : 'Free trials are off.', 'ok');
+    loadPlans();
+  });
+  row.append(el('span', 'k', 'Free trial for new members'), sel, save);
+  host.appendChild(row);
+  if (!buyablePlatformPlans().length) {
+    host.appendChild(el('p', 'note', 'No platform plan can be bought yet, so nothing is promoted until one has a Stripe price.'));
+  }
+}
+
 function openPlanForm(plan) {
   const host = $('#plForm'); host.textContent = '';
   const A = window.EpinoiaAccessUI;
   if (!A) return say('access-ui.js did not load, so plans cannot be edited. Reload the page.', 'err');
   const form = A.planForm({
     plan, leagueId: null, features: PLATFORM_FEATURES, seller: 'platform', say,
+    trial: plans && plans.trials ? { platform: plans.trials.platform, own: trialOwn(plan) } : null,
     cancel: () => { host.textContent = ''; },
     save: async payload => {
       payload.league_id = null;
       payload.seller = 'platform';
       payload.features = (payload.features || []).filter(k => PLATFORM_FEATURES.indexOf(k) >= 0);   // never the league
+      const tm = payload.trial_months; delete payload.trial_months;
       const id = await rpc('save_access_plan', { p: payload });
       if (!id) return false;
+      /* the trial is its own audited write, made only when it changed */
+      if (tm !== undefined && tm !== trialOwn(plan) && !(await rpc('set_plan_trial', { p_plan: id, p_months: tm }))) {
+        loadPlans();
+        return false;
+      }
       host.textContent = '';
       say(payload.id
         ? '“' + payload.name + '” saved.' + (payload.active ? '' : ' It is not on sale.')
@@ -2108,7 +2175,7 @@ function drawPlatformPlans() {
   const wrap = el('div', 'scroll');
   const t = el('table', 'tbl');
   const hr = t.createTHead().insertRow();
-  ['Plan', 'Price', 'Stripe price', 'State', ''].forEach(h => hr.appendChild(el('th', null, h)));
+  ['Plan', 'Price', 'Free trial', 'Stripe price', 'State', ''].forEach(h => hr.appendChild(el('th', null, h)));
   const body = t.createTBody();
   rows.forEach(p => {
     const tr = body.insertRow();
@@ -2118,6 +2185,7 @@ function drawPlatformPlans() {
     c0.appendChild(el('div', 'mt', 'unlocks ' + planFeatures(p.features) +
       ' · order ' + (p.sort || 0) + (p.blurb ? ' · ' + p.blurb : '')));
     tr.insertCell().appendChild(el('span', 'mt', planMoney(p)));
+    tr.insertCell().appendChild(el('span', 'mt', trialWords(p) || '—'));
     tr.insertCell().appendChild(el('span', 'mt', p.stripe_price_id || '—'));
     tr.insertCell().appendChild(el('span', 'pill' + (p.active === false ? '' :
       planPriced(p) ? ' la' : ' pa'), planStateWords(p)));
@@ -3379,7 +3447,11 @@ const SETTING_TEXT = {
   analytics_access: 'free or members: whether the advanced analytics need a plan in ' +
                     'every league set to inherit. Changed on the Plans tab.',
   memberships_enabled: 'The memberships master switch. Off: nothing is gated anywhere, ' +
-                       'whatever the leagues and the analytics default say. Changed on the Plans tab.'
+                       'whatever the leagues and the analytics default say. Changed on the Plans tab.',
+  trial_months: 'The months free a new member gets on every plan without a length of its own, 0 to 12 (0: no trials). ' +
+                'Changed on the Plans tab.',
+  access_copy: 'The wording every membership prompt shares (the teasers, the popup, the buttons). ' +
+               'Empty: the site’s own words.'
 };
 
 /* Settings with a consequence, edited on the Plans tab with a confirm that
@@ -3387,7 +3459,8 @@ const SETTING_TEXT = {
    current value, keyed by setting. */
 const PLANS_TAB_SETTINGS = {
   analytics_access: v => v === 'members' ? 'members' : 'free',
-  memberships_enabled: v => v === true ? 'on' : 'off'
+  memberships_enabled: v => v === true ? 'on' : 'off',
+  trial_months: v => (Number(v) > 0 ? monthsWords(Math.min(12, Math.floor(Number(v)))) + ' free' : 'no trials')
 };
 
 async function loadSettings() {
@@ -3435,8 +3508,16 @@ async function loadSettings() {
       const inp = el('input', 'ep-input grow');
       inp.value = typeof v === 'string' ? v : JSON.stringify(v);
       const btn = el('button', 'ep-btn mini', 'save'); btn.type = 'button';
-      btn.addEventListener('click', () => save(s.key, inp.value));
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') save(s.key, inp.value); });
+      /* a setting stored as an object or a number is saved as one: the box shows its JSON, and text that is not
+         JSON is refused rather than stored as a string nothing reads */
+      const typed = v !== null && (typeof v === 'object' || typeof v === 'number');
+      const value = () => {
+        if (!typed) return inp.value;
+        try { return JSON.parse(inp.value); } catch (_) { say(s.key.replace(/_/g, ' ') + ' is ' + (typeof v === 'number' ? 'a number' : 'JSON') + ': that is not.', 'err'); return undefined; }
+      };
+      const go = () => { const x = value(); if (x !== undefined) save(s.key, x); };
+      btn.addEventListener('click', go);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
       row.append(inp, btn);
       cell.appendChild(row);
     }

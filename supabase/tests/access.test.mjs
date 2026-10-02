@@ -80,7 +80,7 @@ const setSim = v => (v ? LS.setItem('epinoia_access_sim', v) : LS.removeItem('ep
 const LOCK_KEY = A._test.LOCK_KEY;
 const pause = ms => new Promise(r => setTimeout(r, ms));
 function fresh() {
-  A._test.reset(); A._test.transport(null); A._test.deadline(4000); SS.clear(); setSim(''); signOut();
+  A._test.reset(); A._test.wall(false); A._test.transport(null); A._test.deadline(4000); SS.clear(); setSim(''); signOut();
   LS.removeItem(LOCK_KEY);
   delete globalThis.supabase; delete globalThis.epinoiaClientReady;
 }
@@ -452,6 +452,84 @@ console.log('\npaywallHTML');
   const own = A.paywallHTML({ league: { id: 'bbl', slug: 'bbl', name: 'BBL' } });
   ok('paywall, the league sells its own plan: the join link', own.includes('/epinoia/join/?l=bbl') && !own.includes('not on sale'));
   ok('the analytics teaser in the first league still offers the analytics plan', A.teaserHTML({ leagueSlug: 'nbl' }).includes('/join/?l=nbl'));
+}
+
+/* ========================================================== the wall (0222) === */
+console.log('\nwhat is behind the wall, as the platform set it (0222)');
+{
+  fresh();
+  A._test.transport(fakeServer([entry('slb', { analytics: 'members', analytics_ok: false, has_plans: true, features: [] }),
+                                entry('rep', { analytics: 'members', analytics_ok: false, has_plans: true, features: ['club_report'] })]));
+  await A.load({ leagueSlug: 'slb' }); await A.load({ leagueSlug: 'rep' });
+  ok('no wall: every section keeps its default gate', A.gateOf('shotZones') === 'analytics' && A.gateOf('clubReport') === 'club_report' && A.gateOf('nothing') === null &&
+     A.featureLocked('shotZones', 'slb') === true && A.trialMonths() === 0);
+  A._test.wall({ gates: [{ key: 'shotZones', gate: 'free' }, { key: 'events', gate: 'club_report', title: '  Events for report holders ', lines: ['one', ' ', 'two', 'three', 'four'] },
+                         { key: 'rotations', gate: 'gold' }, { gate: 'free' }],
+                 copy: { seeMembership: 'Join now', paywallLead: '{league} is for its members.', trialCta: 7, evil: 'x' } });
+  ok('a section made free opens to everyone', A.featureLocked('shotZones', 'slb') === false);
+  ok('a section moved behind the club report opens to whoever holds it, not to the rest', A.featureLocked('events', 'rep') === false && A.featureLocked('events', 'slb') === true);
+  ok('a gate that does not exist, or a row with no key, changes nothing', A.gateOf('rotations') === 'analytics' && A.featureLocked('rotations', 'slb') === true);
+  const t = A.teaserHTML({ leagueSlug: 'slb', key: 'events', title: 'The page\'s own title', lines: ['the page\'s line'] });
+  ok('the teaser says what the platform wrote for the section, at most three lines, blank ones dropped',
+     t.includes('Events for report holders') && !t.includes('own title') && (t.match(/class="ep-lock-l"/g) || []).length === 3 && t.includes('>two<') && !t.includes('four'));
+  ok('...names its section, and the shared wording replaces the button\'s', t.includes('data-lock="events"') && t.includes('>Join now<') && !t.includes('See membership'));
+  const own = A.teaserHTML({ leagueSlug: 'slb', key: 'wowy', title: 'WOWY is for members', lines: ['Pairs.'] });
+  ok('a section the platform left alone keeps the page\'s words', own.includes('WOWY is for members') && own.includes('Pairs.'));
+  ok('the paywall\'s lead names the league in the platform\'s words', A.paywallHTML({ league: { name: 'NBL', slug: 'nbl' } }).includes('NBL is for its members.'));
+  ok('a phrase that is not text, or is not one of the shared phrases, is ignored', A.copyOf('trialCta').startsWith('Start your') && A.copyOf('evil') === '');
+  A._test.wall({ gates: [], copy: { teaserTitle: '<img src=x onerror=alert(1)>' } });
+  ok('the platform\'s words are escaped like any other', !A.teaserHTML({ leagueSlug: 'slb' }).includes('<img') && A.teaserHTML({ leagueSlug: 'slb' }).includes('&lt;img'));
+}
+{
+  /* read once, anonymously, alongside the first answer, and kept for the session */
+  fresh(); A._test.wall(null);
+  const srv = fakeServer([entry('slb', { analytics: 'members', analytics_ok: false })]);
+  let walls = 0;
+  A._test.transport(async (url, init) => {
+    if (url.endsWith('/rest/v1/rpc/access_wall')) {
+      walls++; srv.calls.push({ url, init });
+      return { ok: true, status: 200, json: async () => ({ gates: [{ key: 'shotZones', gate: 'free', title: null, lines: null }], copy: {}, trial_months: 3 }) };
+    }
+    return srv(url, init);
+  });
+  await A.load({ leagueSlug: 'slb' });
+  const call = srv.calls.find(c => c.url.endsWith('/rpc/access_wall'));
+  ok('the wall is read with the first answer, signed out (no Authorization)', walls === 1 && call && !(call.init.headers || {}).Authorization && A.gateOf('shotZones') === 'free' && A.trialMonths() === 3);
+  await A.load({ leagueSlug: 'slb' });
+  ok('...once a page', walls === 1);
+  A._test.reset(); A._test.wall(null);
+  await A.load({ leagueSlug: 'slb' });
+  ok('...and once a session (kept five minutes)', walls === 1 && A.trialMonths() === 3);
+  fresh(); A._test.wall(null); SS.clear();
+  A._test.transport(async (url, init) => (url.endsWith('/rest/v1/rpc/access_wall') ? { ok: false, status: 404, json: async () => ({ code: 'PGRST202' }) } : srv(url, init)));
+  await A.load({ leagueSlug: 'slb' });
+  ok('a database without 0222: the defaults, and nothing promoted', A.gateOf('shotZones') === 'analytics' && A.trialMonths() === 0 && !A.teaserHTML({ leagueSlug: 'slb' }).includes('free trial'));
+}
+
+/* ======================================================= free trials (0223) === */
+console.log('\na new member\'s free trial, on every prompt (0223)');
+{
+  fresh();
+  A._test.transport(fakeServer([entry('slb', { analytics: 'members', analytics_ok: false, has_plans: true }),
+                                entry('bare', { analytics: 'members', analytics_ok: false, has_plans: false })]));
+  await A.load({ leagueSlug: 'slb' }); await A.load({ leagueSlug: 'bare' });
+  A._test.wall({ gates: [], copy: {}, trial_months: 3 });
+  const t = A.teaserHTML({ leagueSlug: 'slb', key: 'lineups' });
+  ok('the teaser\'s button is the trial, to the join page', /<a class="ep-lock-go ep-lock-trial" href="\/epinoia\/join\/\?l=slb[^"]*" data-lock="lineups">Start your 3-month free trial<\/a>/.test(t), t);
+  ok('...under the badge: three months free, cancel any time', t.includes('<span class="ep-lock-badge">3 months free for new members · cancel any time</span>'));
+  const c = A.teaserHTML({ leagueSlug: 'slb', compact: true });
+  ok('compact: the trial button, no badge', c.includes('Start your 3-month free trial') && !c.includes('ep-lock-badge'));
+  const p = A.paywallHTML({ league: { slug: 'nbl', name: 'NBL', hasLeaguePlans: true } });
+  ok('a members-only league\'s paywall promotes it too', p.includes('Start your 3-month free trial') && p.includes('ep-lock-badge') && p.includes('data-lock="league"'));
+  const none = A.teaserHTML({ leagueSlug: 'bare' }), pn = A.paywallHTML({ league: { slug: 'c', name: 'C', hasLeaguePlans: false } });
+  ok('nothing on sale: no trial is promoted', !none.includes('free trial') && !none.includes('ep-lock-badge') && !pn.includes('free trial') && !pn.includes('ep-lock-badge'));
+  A._test.wall({ gates: [], copy: { trialCta: 'Try {months} months on us', trialBadge: 'New here? {months} months free' }, trial_months: 2 });
+  ok('the length and the words are the platform\'s', A.teaserHTML({ leagueSlug: 'slb' }).includes('Try 2 months on us') && A.teaserHTML({ leagueSlug: 'slb' }).includes('New here? 2 months free'));
+  for (const bad of [0, -1, 13, 'three', null, 2.5]) {
+    A._test.wall({ gates: [], copy: {}, trial_months: bad });
+    if (bad === 2.5) ok('a fractional length is rounded down', A.trialMonths() === 2);
+    else ok('trial_months ' + JSON.stringify(bad) + ': no trial, the plain button', A.trialMonths() === 0 && A.teaserHTML({ leagueSlug: 'slb' }).includes('>See membership<') && !A.teaserHTML({ leagueSlug: 'slb' }).includes('ep-lock-trial'));
+  }
 }
 
 /* ================================================================= links === */

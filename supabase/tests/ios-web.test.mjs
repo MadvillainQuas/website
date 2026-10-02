@@ -177,7 +177,9 @@ console.log('\nwhat the iPhone app does not offer');
   const me = read('epinoia', 'me', 'me.js');
   ok('profile: Manage billing and Cancel membership are hidden in the iPhone app', /function billingButton[\s\S]{0,300}m-ios-app'\)\) b\.style\.display = 'none'/.test(me));
   const access = read('epinoia', 'kit', 'access.css');
-  ok('paywalls: "See membership" is hidden in the iPhone app', /html\.m-ios-app \.ep-lock-go, html\.m-ios-app \.billing-btn\{ display:none !important \}/.test(access));
+  const iosHide = (/^html\.m-ios-app [^{]+\{ display:none !important \}/m.exec(access) || [''])[0];
+  ok('paywalls: "See membership" is hidden in the iPhone app', /html\.m-ios-app \.ep-lock-go\b/.test(iosHide) && /html\.m-ios-app \.billing-btn\b/.test(iosHide));
+  ok('...and so is every free-trial promotion (the badge, the popup\'s line and its link)', ['ep-lock-badge', 'mem-tip-b', 'mem-tip-go'].every(c => iosHide.includes('html.m-ios-app .' + c)));
 }
 
 console.log('\nuniversal links: .well-known/apple-app-site-association');

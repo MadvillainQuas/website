@@ -241,6 +241,23 @@ function planForm(o) {
   if (sellerSel) sellerSel.addEventListener('change', drawSellerHint);
   wrap.appendChild(sellerHint);
 
+  /* A NEW MEMBER'S FREE TRIAL (0223): the platform's length, none, or the plan's own. Shown only where the
+     server said what is stored (o.trial: { platform: months, own: the plan's, null for the platform's }). */
+  let trial = null;
+  if (o.trial) {
+    const r5 = el('div', 'row');
+    trial = el('select', 'ep-input');
+    const plat = Number(o.trial.platform) || 0;
+    trial.append(opt('', 'the platform’s (' + (plat ? plat + (plat === 1 ? ' month' : ' months') : 'none') + ')'), opt('0', 'none'));
+    for (let m = 1; m <= 12; m++) trial.appendChild(opt(String(m), m + (m === 1 ? ' month' : ' months')));
+    trial.value = o.trial.own == null ? '' : String(o.trial.own);
+    r5.appendChild(field('FREE TRIAL FOR NEW MEMBERS', trial, '0 0 240px'));
+    wrap.appendChild(r5);
+    wrap.appendChild(el('div', 'ax-hint',
+      'Someone who has never held a plan from this seller here pays nothing for this long, then Stripe charges ' +
+      'the card they gave unless they have cancelled. One trial a person. Every membership prompt promotes it.'));
+  }
+
   const r4 = el('div', 'row');
   const activeLab = el('label', 'sw');
   const active = el('input'); active.type = 'checkbox';
@@ -293,6 +310,7 @@ function planForm(o) {
       seller
     };
     if (p.id) payload.id = p.id;
+    if (trial) payload.trial_months = trial.value === '' ? null : Number(trial.value);
     save.disabled = true;
     try { await o.save(payload); } finally { save.disabled = false; }
   });
@@ -348,7 +366,10 @@ function mount(o) {
   async function load() {
     const lg = current();
     if (!lg) return;
-    const { data, error } = await o.sb.rpc('league_access_admin', { p_league: lg.id });
+    /* each plan's free trial as stored, and the platform's (0223): asked alongside, and a server without them
+       leaves the trial out of the form rather than failing the panel */
+    const [{ data, error }, tr, td] = await Promise.all([o.sb.rpc('league_access_admin', { p_league: lg.id }),
+      o.sb.rpc('plan_trials').then(r => r, () => ({ error: true })), o.sb.rpc('trial_months_default').then(r => r, () => ({ error: true }))]);
     if (!live()) return;
     const now = current();
     if (!now || now.id !== lg.id) { load(); return; }
@@ -389,7 +410,9 @@ function mount(o) {
       members: d.members || [],
       grants: d.grants || [],
       counts: d.counts || {},
-      payouts: d.payouts || {}
+      payouts: d.payouts || {},
+      trials: !tr.error && tr.data && typeof tr.data === 'object' && !td.error
+        ? { own: tr.data, platform: Number(td.data) || 0 } : null
     };
     if (!built) build();
     fill();
@@ -643,19 +666,40 @@ function mount(o) {
     add.addEventListener('click', () => openEditor(null));
   }
 
+  /* the plan's own trial as stored (null: the platform's), and what the form is given */
+  const trialOwn = plan => {
+    const v = plan && plan.id && state && state.trials ? state.trials.own[plan.id] : null;
+    return v == null ? null : Number(v);
+  };
+  /* only a plan the caller may change is in plan_trials' answer; a new plan always may */
+  const trialMine = plan => !!(state && state.trials && (!plan || !plan.id || Object.prototype.hasOwnProperty.call(state.trials.own, plan.id)));
+  const trialFor = plan => (trialMine(plan) ? { platform: state.trials.platform, own: trialOwn(plan) } : null);
+  const trialWords = plan => {
+    if (!trialMine(plan)) return null;
+    const own = trialOwn(plan), m = own == null ? state.trials.platform : own;
+    return m > 0 ? m + (m === 1 ? ' month' : ' months') + ' free for new members' + (own == null ? ' (the platform’s)' : '') : 'no free trial';
+  };
+
   function openEditor(plan) {
     ui.editor.textContent = '';
     const L = state.league;
     const form = planForm({
-      plan, leagueId: L.id, features: ['league', 'analytics'],
+      plan, leagueId: L.id, features: ['league', 'analytics'], trial: trialFor(plan),
       seller: 'league', sellerChoice: isPlat(), say: o.say,
       cancel: () => { ui.editor.textContent = ''; },
       save: async payload => {
         const id = pinned(); if (!id) return false;
         payload.league_id = id;
-        const { error } = await o.sb.rpc('save_access_plan', { p: payload });
+        const tm = payload.trial_months; delete payload.trial_months;
+        const { data: planId, error } = await o.sb.rpc('save_access_plan', { p: payload });
         if (!live()) return false;
         if (error) { fail(error); return false; }
+        /* the trial is its own audited write (set_plan_trial), made only when it changed */
+        if (tm !== undefined && planId && tm !== trialOwn(plan)) {
+          const t = await o.sb.rpc('set_plan_trial', { p_plan: planId, p_months: tm });
+          if (!live()) return false;
+          if (t.error) { fail(t.error); load(); return false; }
+        }
         ui.editor.textContent = '';
         o.say(payload.id
           ? '“' + payload.name + '” saved.' + (payload.active ? '' : ' It is not on sale.')
@@ -697,11 +741,12 @@ function mount(o) {
       const bits = [
         'unlocks ' + featureWords(p.features),
         p.seller === 'league' ? 'sold by the league' : 'sold by Epinoia',
+        trialWords(p),
         planState(p)
       ];
       if (p.stripe_price_id) bits.push(p.stripe_price_id);
       bits.push('order ' + (p.sort || 0));
-      box.appendChild(el('div', 'mt', bits.join(' · ')));
+      box.appendChild(el('div', 'mt', bits.filter(Boolean).join(' · ')));
       if (p.blurb) box.appendChild(el('div', 'mt', p.blurb));
       row.appendChild(box);
 

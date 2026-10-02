@@ -47,7 +47,8 @@ import {
   checkoutParams, customerParams, portalParams, connectAccountParams, accountLinkParams, accountRow,
   subscriptionIdFromEvent, subscriptionRow, matchingCheckout, grantsAccess, graceUntil,
   deliveryMode, planAccountProblem, transitionEmails, eventEmails, emailFacts,
-  escapeHtml, longDate, welcomeEmail, endNoticeEmail, paymentFailedEmail, renewalReminderEmail
+  escapeHtml, longDate, welcomeEmail, endNoticeEmail, paymentFailedEmail, renewalReminderEmail,
+  TRIAL_CONSENT, trialEnd, submitMessage, trialEndingEmail
 } from '../functions/_shared/billing.js';
 
 let pass = 0, fail = 0;
@@ -299,7 +300,7 @@ console.log('prices');
 console.log('checkout');
 {
   const V = '2026-09-a';
-  eq(Object.keys(CONSENT), [V], 'the consent wording is versioned, and this is the version the join page shows');
+  eq(Object.keys(CONSENT), [V, TRIAL_CONSENT], 'the consent wording is versioned: the one the join page shows, and a new member\'s free trial (0223)');
   eq(CONSENT[V], 'Start my access now. I understand that access begins straight away, so once it has started I lose my 14-day right to cancel.',
      'the wording is exactly the contract\'s');
   eq(consentProblem({ version: V, acknowledged: true, adult: true }), null, 'both boxes ticked on a known wording is enough');
@@ -485,7 +486,7 @@ console.log('portal and connect');
 console.log('webhook events');
 {
   eq(SUBSCRIPTION_EVENTS, ['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated',
-    'customer.subscription.deleted', 'invoice.paid', 'invoice.payment_failed', 'invoice.upcoming'],
+    'customer.subscription.deleted', 'invoice.paid', 'invoice.payment_failed', 'invoice.upcoming', 'customer.subscription.trial_will_end'],
      'the subscription events the contract names');
 
   const ev = (type, object, extra = {}) => ({ id: 'evt_x', type, data: { object }, ...extra });
@@ -879,5 +880,67 @@ console.log('the function');
 }
 
 /* --------------------------------------------------------------------- */
+/* ====================================================================== free trials (0223) ====== */
+{
+  const join = readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', 'epinoia', 'join', 'join.js'), 'utf8');
+  eq(TRIAL_CONSENT, '2026-10-t', 'a free trial is asked for under its own wording');
+  ok(join.includes("const TRIAL_VERSION = '2026-10-t';") && join.includes("const TRIAL_WORDING = '" + CONSENT[TRIAL_CONSENT].replace(/'/g, "\\'") + "';"),
+     'the join page shows the trial wording word for word, under that version');
+  ok(/unless I cancel before the free trial ends/.test(CONSENT[TRIAL_CONSENT]) && /charged automatically/.test(CONSENT[TRIAL_CONSENT]) && /14-day right to cancel/.test(CONSENT[TRIAL_CONSENT]),
+     'it says the charge follows the trial unless cancelled, and the 14 days');
+  eq(consentProblem({ version: TRIAL_CONSENT, acknowledged: true, adult: true }), null, 'both boxes ticked on the trial wording is enough');
+  const now = Date.UTC(2026, 9, 2, 12, 0, 0);
+  eq(new Date(trialEnd(3, now) * 1000).toISOString(), '2027-01-02T12:00:00.000Z', 'three months from 2 October is 2 January');
+  eq(new Date(trialEnd(1, Date.UTC(2026, 0, 31)) * 1000).toISOString(), '2026-02-28T00:00:00.000Z', 'a month from 31 January is the last of February');
+  const plan = { id: 'p1', league_id: null, seller: 'platform', stripe_price_id: 'price_x', price_pennies: 499, currency: 'gbp', interval: 'month' };
+  const base = { plan, userId: 'u', email: 'a@b.c', checkoutId: 'ck', siteUrl: 'https://x.test', next: '/epinoia/t/?t=1', now };
+  const T = checkoutParams({ ...base, consentVersion: TRIAL_CONSENT, trialMonths: 3 }).params;
+  ok(T.subscription_data.trial_end === trialEnd(3, now) && T.payment_method_collection === 'always' &&
+     T.subscription_data.trial_settings.end_behavior.missing_payment_method === 'cancel',
+     'a trial: no charge until its end, the card taken now, cancelled at the end if there is no way to pay');
+  ok(T.metadata.trial_months === '3' && T.subscription_data.metadata.trial_months === '3', '...and the months ride on the session and the subscription');
+  ok(/^3 months free, then £4\.99 a month, including any VAT, from 2 January 2027\. Nothing is charged today\./.test(T.custom_text.submit.message),
+     'Stripe\'s page says the months free, the price after and the day it starts', T.custom_text.submit.message);
+  const N = checkoutParams({ ...base, consentVersion: '2026-09-a', trialMonths: 3 }).params;
+  ok(N.subscription_data.trial_end === undefined && N.payment_method_collection === undefined && N.custom_text.submit.message === submitMessage(plan),
+     'under the pay-now wording there is no trial, whatever is passed');
+  let threw = false;
+  try { checkoutParams({ ...base, consentVersion: TRIAL_CONSENT, trialMonths: 0 }); } catch (_) { threw = true; }
+  ok(threw, 'the trial wording with no trial due is refused rather than charged at once');
+  const fn = readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'functions', 'billing', 'index.ts'), 'utf8');
+  ok(/body\.consent\.version === TRIAL_CONSENT[\s\S]{0,200}rpc\('trial_months_for', \{ p_user: who\.user\.id, p_plan: plan\.id \}\)/.test(fn) &&
+     /trialMonths <= 0\) \{\s*return json\(\{ error: 'The free trial is for new members/.test(fn) && /checkoutId, consentVersion: body\.consent\.version, trialMonths/.test(fn),
+     'checkout asks the database whether this account is due a trial, refuses one it is not, and passes the months on');
+  const sql = readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'migrations', '0223_free_trials.sql'), 'utf8');
+  ok(/'trial_months', '3'::jsonb, true/.test(sql) && /q\.seller = p\.seller and q\.league_id is not distinct from p\.league_id/.test(sql),
+     '0223: three months by default; none for whoever held a plan from the same seller before');
+
+  /* the emails a trial sends: the welcome says nothing is charged and when the first payment is; three days before
+     the end, a reminder */
+  const end = trialEnd(3, now), item = { price: { unit_amount: 499, currency: 'gbp', recurring: { interval: 'month' } }, current_period_end: end };
+  const trialing = { id: 'sub_T1', status: 'trialing', trial_end: end, items: { data: [item] } };
+  eq(emailFacts(trialing).trialEnd, '2027-01-02T12:00:00.000Z', 'a trialing subscription\'s facts carry the day the trial ends');
+  eq(emailFacts({ ...trialing, status: 'active' }).trialEnd, null, '...an active one\'s do not');
+  const manageUrl = 'https://x.test/epinoia/me/';
+  const w = welcomeEmail({ planName: 'Analytics', pricePennies: 499, currency: 'gbp', interval: 'month', periodEnd: emailFacts(trialing).periodEnd,
+    trialEnd: emailFacts(trialing).trialEnd, consentVersion: TRIAL_CONSENT, acknowledgedAt: '2026-10-02T12:00:00.000Z', manageUrl });
+  ok(w.subject === '[Epinoia] Your free trial of Analytics has started', 'the welcome to a trial says it is a free trial', w.subject);
+  ok(/free trial runs until 2 January 2027\. Nothing has been charged\./.test(w.text) &&
+     /£4\.99 a month, including any VAT, charged on 2 January 2027 to the card you gave, and automatically every month after that until you cancel/.test(w.text),
+     '...that nothing has been charged, and the first payment, its amount and its day', w.text);
+  ok(/Cancel online before 2 January 2027/.test(w.text) && w.text.includes(manageUrl) && w.text.includes(CONSENT[TRIAL_CONSENT]),
+     '...how to stop it before then, and the trial wording agreed to');
+  const tw = (sub, extra = {}) => eventEmails({ id: 'evt_t', type: 'customer.subscription.trial_will_end', data: { object: sub }, ...extra }, sub, now);
+  eq(tw(trialing), ['trial_ending'], 'three days before the end, a reminder');
+  eq(tw({ ...trialing, cancel_at_period_end: true }), [], '...not to someone who has already cancelled');
+  eq(tw({ ...trialing, cancel_at: end }), [], '...nor the flexible-mode way');
+  eq(tw({ ...trialing, status: 'active' }), [], '...nor once the trial has turned into a paid plan');
+  const r = trialEndingEmail({ planName: 'Analytics', pricePennies: 499, currency: 'gbp', interval: 'month', trialEnd: emailFacts(trialing).trialEnd, manageUrl });
+  ok(r.subject === '[Epinoia] Your free trial of Analytics ends on 2 January 2027' && /£4\.99 a month, including any VAT, is charged on 2 January 2027/.test(r.text) &&
+     /cancel online in one step from Your account before 2 January 2027 and you pay nothing/.test(r.text) && r.text.includes(manageUrl),
+     'the reminder: the day, the amount, and how to stop it', r.text);
+  ok(/kind === 'trial_ending'\) \{\s*mail = trialEndingEmail\(/.test(fn) && /trialEnd: facts\.trialEnd,/.test(fn), 'the webhook sends it, and the welcome is told the trial');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

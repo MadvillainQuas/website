@@ -180,13 +180,26 @@ const CATALOGUE = Object.freeze({
      they open and close with analyticsOk() -- master switch off = nothing locked, and an
      unanswerable check fails open. To sell one on its own later, give it its own gate here
      and teach featureLocked() the new name; no page changes. */
+  /* Each section's DEFAULT: the platform can move any of them (0222, access_gates; the platform console's
+     "What is behind the wall"), and featureLocked() reads its row first. `what` says where it shows. */
   locks: Object.freeze({
-    events: Object.freeze({ gate: 'analytics', label: 'Events stats' }),   // ev_* splits, the Events section, team events
-    csv:    Object.freeze({ gate: 'analytics', label: 'CSV download' }),   // every table's csv button
-    model:  Object.freeze({ gate: 'analytics', label: 'What wins model' }), // What wins and the Front office's win model (docs/what-wins-model.md §10.3)
+    events: Object.freeze({ gate: 'analytics', label: 'Events stats', what: 'The events splits: second chances, transition, off turnovers, after timeouts, half court, assisted (club, player and box score), and their table columns' }),
+    csv:    Object.freeze({ gate: 'analytics', label: 'CSV download', what: 'The CSV button on every statistics table' }),
+    model:  Object.freeze({ gate: 'analytics', label: 'What wins model', what: 'What wins and the Front office win model (docs/what-wins-model.md §10.3)' }),
     /* the reports, each sold on its own (0220): the club profile's Report tab and the player profile's */
-    clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report' }),
-    playerReport: Object.freeze({ gate: 'player_report', label: 'Player report' })
+    clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report', what: 'The club profile Report tab and the game analysis PDF' }),
+    playerReport: Object.freeze({ gate: 'player_report', label: 'Player report', what: 'The player profile Report tab' }),
+    shotZones:   Object.freeze({ gate: 'analytics', label: 'Shot zones', what: 'Zone courts and zone tables on the club, player and league pages' }),
+    shotClock:   Object.freeze({ gate: 'analytics', label: 'Shot clock', what: 'The club page shot clock and the box score Shot clock tab' }),
+    rotations:   Object.freeze({ gate: 'analytics', label: 'Rotations', what: 'The club page rotations, minute by minute' }),
+    lineups:     Object.freeze({ gate: 'analytics', label: 'Lineups', what: 'The club page lineup cards and combinations' }),
+    wowy:        Object.freeze({ gate: 'analytics', label: 'With or without', what: 'The WOWY screen beyond its preview, the club WOWY and the teammates comparison' }),
+    splits:      Object.freeze({ gate: 'analytics', label: 'Starters and bench splits', what: 'Ratings against starters and bench on the club and player pages' }),
+    statColumns: Object.freeze({ gate: 'analytics', label: 'Premium table columns', what: 'The events, zone and rebounding columns and presets of every statistics table and the chart lab' }),
+    gameFlow:        Object.freeze({ gate: 'analytics', label: 'Game flow tab', what: 'The box score Game flow tab' }),
+    gameConnections: Object.freeze({ gate: 'analytics', label: 'Connections tab', what: 'The box score Connections tab' }),
+    gameAdvanced:    Object.freeze({ gate: 'analytics', label: 'Advanced tab', what: 'The box score Advanced tab' }),
+    videoRuns:       Object.freeze({ gate: 'analytics', label: 'Video runs', what: 'Scoring runs in the video hub' })
   }),
   barKeys: key => /^ev_/.test(String(key == null ? '' : key)),
   wowyPreviewMax: 1
@@ -198,13 +211,101 @@ function isPremiumColumn(key) {
   return CATALOGUE.columnPrefixes.some(p => k.indexOf(p) === 0) || CATALOGUE.columns.indexOf(k) !== -1;
 }
 
-/* Is this lockable feature (CATALOGUE.locks) locked for this viewer? Unknown keys are free. */
+/* Is this lockable feature (CATALOGUE.locks) locked for this viewer? Unknown keys are free. The gate is the
+   platform's (0222) where it set one, else the default above; a free section is open to everyone. */
 function featureLocked(key, league) {
   const L = CATALOGUE.locks[String(key)];
   if (!L) return false;
-  if (L.gate === 'analytics') return !analyticsOk(league);
-  return !featureOk(L.gate, league);
+  const g = gateOf(key);
+  if (g === 'free') return false;
+  if (g === 'analytics') return !analyticsOk(league);
+  return !featureOk(g, league);
 }
+
+/* ------------------------------------------------------- the wall (0222) ---
+   WHAT IS BEHIND THE WALL, AS THE PLATFORM SET IT: each section's gate and its teaser's words (access_gates), and the
+   wording every prompt shares (the public setting access_copy), read once a page through access_wall() -- anonymous,
+   the same for everyone -- alongside the first access answer, and kept five minutes in sessionStorage. Always laid
+   OVER the defaults here, never instead of them: no answer, a database without 0222, a section or a phrase nobody
+   set, and the page draws what it always drew. */
+const WALL_KEY = 'epinoia_access_wall';
+const WALL_MS = 5 * 60 * 1000;
+const GATES = Object.freeze(['free', 'analytics', 'club_report', 'player_report']);
+/* the shared words, as written here; any of them may be replaced in the platform console. {league} is the league's name */
+const COPY = Object.freeze({
+  teaserTitle: 'Advanced analytics are for members',
+  membersOnly: 'Members only',
+  seeMembership: 'See membership',
+  alreadyMember: 'Already a member?',
+  signIn: 'Sign in',
+  popupText: 'Access is membership-only',
+  popupLink: 'Become a member',
+  paywallLead: '{league} keeps its results and statistics for its members.',
+  modalTitle: 'Become a member',
+  modalLead: 'Choose a membership and pay here: you stay on this page, and what you unlock opens as soon as payment is confirmed.',
+  modalDone: 'Payment confirmed: welcome.',
+  /* a new member's free trial (0223), promoted wherever something is for sale; {months} is its length */
+  trialCta: 'Start your {months}-month free trial',
+  trialBadge: '{months} months free for new members · cancel any time'
+});
+let WALL = null, wallP = null, WALL_OFF = false;
+function wallOf(j) {
+  const gates = {};
+  (Array.isArray(j && j.gates) ? j.gates : []).forEach(g => {
+    if (!g || typeof g.key !== 'string' || GATES.indexOf(g.gate) < 0) return;
+    gates[g.key] = {
+      gate: g.gate,
+      title: typeof g.title === 'string' && g.title.trim() ? g.title.trim().slice(0, 120) : null,
+      lines: Array.isArray(g.lines) ? g.lines.filter(l => typeof l === 'string' && l.trim()).map(l => l.trim()).slice(0, 3) : null
+    };
+  });
+  const copy = {}, c = j && j.copy && typeof j.copy === 'object' ? j.copy : {};
+  Object.keys(COPY).forEach(k => { if (typeof c[k] === 'string' && c[k].trim()) copy[k] = c[k].trim().slice(0, 300); });
+  const tm = Math.floor(Number(j && j.trial_months));
+  return { gates, copy, trialMonths: tm > 0 && tm <= 12 ? tm : 0 };
+}
+function loadWall(until) {
+  if (WALL_OFF || WALL) return Promise.resolve(WALL);
+  try {
+    const j = JSON.parse(sget('sessionStorage', WALL_KEY) || 'null');
+    if (j && j.wall && Date.now() - j.at < WALL_MS) { WALL = j.wall; return Promise.resolve(WALL); }
+  } catch (_) { /* ask again */ }
+  if (wallP) return wallP;
+  const f = net(), c = cfg();
+  if (!f || !c.supabaseUrl || !c.supabaseAnonKey || missingRecently()) return Promise.resolve(null);
+  wallP = timed((until || Date.now() + DEADLINE_MS) - Date.now(), signal =>
+    f(c.supabaseUrl + '/rest/v1/rpc/access_wall', {
+      method: 'POST', cache: 'no-store', signal, body: '{}',
+      headers: { apikey: c.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' }
+    }).then(r => (r && r.ok ? r.json() : null)))
+    .then(j => {
+      if (j && j !== TIMED_OUT && typeof j === 'object' && !WALL) {
+        WALL = wallOf(j);
+        sset('sessionStorage', WALL_KEY, JSON.stringify({ at: Date.now(), wall: WALL }));
+        emit({ reason: 'wall' });
+      }
+      return WALL;
+    }, () => WALL)
+    .then(w => { wallP = null; return w; });
+  return wallP;
+}
+/* the gate a section opens with, its teaser's words, a shared phrase */
+function gateOf(key) {
+  const w = WALL && WALL.gates[String(key)];
+  if (w) return w.gate;
+  const L = CATALOGUE.locks[String(key)];
+  return L ? L.gate : null;
+}
+function lockWords(key) {
+  const w = (WALL && WALL.gates[String(key)]) || {};
+  return { title: w.title || null, lines: w.lines && w.lines.length ? w.lines.slice() : null };
+}
+function copyOf(k, league) {
+  const v = (WALL && WALL.copy[k]) || COPY[k] || '';
+  return (league != null ? v.replace(/\{league\}/g, String(league)) : v).replace(/\{months\}/g, String(trialMonths()));
+}
+/* the months free a new member is offered (0223), 0 when trials are off or nobody has said */
+function trialMonths() { return WALL && WALL.trialMonths > 0 ? WALL.trialMonths : 0; }
 /* A FEATURE SOLD ON ITS OWN (club_report, player_report): the viewer holds it in this league, by the server's
    answer. As the analytics: the simulation first, memberships switched off opens it, and no answer fails open. */
 function featureOk(feature, league) {
@@ -803,10 +904,12 @@ function loadMany(opts) {
   try {
     const o = opts || {};
     const until = Date.now() + DEADLINE_MS;
+    const w = loadWall(until);
+    const done = m => w.then(() => m, () => m);
     if (refreshPlan(stored(), Date.now()) === 'refresh') {
-      return ensureSession(until).then(() => loadManyNow(o, until), () => loadManyNow(o, until));
+      return ensureSession(until).then(() => loadManyNow(o, until), () => loadManyNow(o, until)).then(done);
     }
-    return loadManyNow(o, until);
+    return loadManyNow(o, until).then(done);
   } catch (_) {
     return Promise.resolve(new Map());
   }
@@ -870,6 +973,14 @@ function load(opts) {
   try {
     const o = opts || {};
     const until = Date.now() + DEADLINE_MS;
+    const w = loadWall(until);
+    return loadInner(o, until).then(st => w.then(() => st, () => st));
+  } catch (_) {
+    return Promise.resolve(failOpen());
+  }
+}
+function loadInner(o, until) {
+  try {
     /* signed in with a token that has run out: renew it first, or the question
        is asked about a stranger and a member is drawn the paywall */
     if (refreshPlan(stored(), Date.now()) === 'refresh') {
@@ -969,7 +1080,6 @@ function priceText(pennies, currency, interval) {
 const LOCK_SVG = '<svg class="ep-lock-ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">' +
   '<rect x="5" y="10.5" width="14" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
   '<path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-const DEFAULT_TITLE = 'Advanced analytics are for members';
 
 function stateBySlug(slug) {
   if (!slug) {
@@ -986,35 +1096,40 @@ function stateBySlug(slug) {
 const plansFor = st => (st && st.known ? !!st.hasPlans : true);
 
 function teaserHTML(o) {
-  const x = o || {};
+  /* a section's own words where the platform wrote them (x.key, 0222), over the page's */
+  const x = Object.assign({}, o || {});
+  if (x.key) { const w = lockWords(x.key); if (w.title) x.title = w.title; if (w.lines) x.lines = w.lines; }
   const slug = x.leagueSlug ? String(x.leagueSlug) : '';
   const plans = plansFor(stateBySlug(slug));
   const signedIn = !!session();
   const join = joinHref({ leagueSlug: slug });
 
+  const trial = trialMonths() > 0;
+  const go = '<a class="ep-lock-go' + (trial ? ' ep-lock-trial' : '') + '" href="' + esc(join) + '"' + (x.key ? ' data-lock="' + esc(x.key) + '"' : '') + '>' +
+    esc(copyOf(trial ? 'trialCta' : 'seeMembership')) + '</a>';
+  const badge = trial ? '<span class="ep-lock-badge">' + esc(copyOf('trialBadge')) + '</span>' : '';
   if (x.compact) {
-    const t = plans ? (x.title || DEFAULT_TITLE) : 'Members only';
+    const t = plans ? (x.title || copyOf('teaserTitle')) : copyOf('membersOnly');
     return '<div class="ep-lock ep-lock-compact" role="note">' + LOCK_SVG +
-      '<span class="ep-lock-t">' + esc(t) + '</span>' +
-      (plans ? '<a class="ep-lock-go" href="' + esc(join) + '">See membership</a>' : '') +
-      '</div>';
+      '<span class="ep-lock-t">' + esc(t) + '</span>' + (plans ? go : '') + '</div>';
   }
 
-  const title = plans ? (x.title || DEFAULT_TITLE) : 'Members only';
+  const title = plans ? (x.title || copyOf('teaserTitle')) : copyOf('membersOnly');
   const given = x.lines == null ? [FEATURES.analytics.blurb] : (Array.isArray(x.lines) ? x.lines : [x.lines]);
   const lines = given.filter(l => l != null && String(l).trim()).slice(0, 3);
   const cta = [];
-  if (plans) cta.push('<a class="ep-lock-go" href="' + esc(join) + '">See membership</a>');
+  if (plans) cta.push(go);
   /* a grant is keyed on an email address and only counts once its holder signs
      in, so the way in is offered even where nothing is for sale */
   if (!signedIn) {
-    cta.push('<span class="ep-lock-or">Already a member?</span>' +
-             '<a class="ep-lock-in" href="' + esc(signinHref()) + '">Sign in</a>');
+    cta.push('<span class="ep-lock-or">' + esc(copyOf('alreadyMember')) + '</span>' +
+             '<a class="ep-lock-in" href="' + esc(signinHref()) + '">' + esc(copyOf('signIn')) + '</a>');
   }
   return '<div class="ep-lock" role="note">' + LOCK_SVG +
     '<div class="ep-lock-tx">' +
       '<div class="ep-lock-t">' + esc(title) + '</div>' +
       lines.map(l => '<p class="ep-lock-l">' + esc(l) + '</p>').join('') +
+      (plans ? badge : '') +
       (cta.length ? '<div class="ep-lock-cta">' + cta.join('') + '</div>' : '') +
     '</div></div>';
 }
@@ -1043,21 +1158,24 @@ function paywallHTML(o) {
   if (plans) free.push('Membership plans and prices');
 
   const cta = [];
-  if (plans) cta.push('<a class="ep-lock-go" href="' + esc(joinHref({ leagueSlug: slug })) + '">See membership</a>');
+  const trial = plans && trialMonths() > 0;
+  if (plans) cta.push('<a class="ep-lock-go' + (trial ? ' ep-lock-trial' : '') + '" href="' + esc(joinHref({ leagueSlug: slug })) + '" data-lock="league">' +
+    esc(copyOf(trial ? 'trialCta' : 'seeMembership')) + '</a>');
   if (!signedIn) {
-    cta.push('<span class="ep-lock-or">Already a member?</span>' +
-             '<a class="ep-lock-in" href="' + esc(signinHref()) + '">Sign in</a>');
+    cta.push('<span class="ep-lock-or">' + esc(copyOf('alreadyMember')) + '</span>' +
+             '<a class="ep-lock-in" href="' + esc(signinHref()) + '">' + esc(copyOf('signIn')) + '</a>');
   }
 
   return '<section class="ep-paywall" aria-labelledby="' + id + '">' +
-    '<div class="ep-paywall-kick">' + LOCK_SVG + '<span>Members only</span></div>' +
+    '<div class="ep-paywall-kick">' + LOCK_SVG + '<span>' + esc(copyOf('membersOnly')) + '</span></div>' +
     '<h2 class="ep-paywall-h" id="' + id + '">' + esc(name) + '</h2>' +
-    '<p class="ep-paywall-p">' + esc(name) + ' keeps its results and statistics for its members.</p>' +
+    '<p class="ep-paywall-p">' + esc(copyOf('paywallLead', name)) + '</p>' +
     (signedIn ? '<p class="ep-paywall-p">You are signed in, but this account is not a member here yet.</p>' : '') +
     (plans ? '' : '<p class="ep-paywall-p">Memberships are not on sale here yet. The league arranges them itself.</p>') +
     '<div class="ep-paywall-free"><div class="ep-paywall-k">Free to everyone</div><ul class="ep-paywall-list">' +
       free.map(f => '<li>' + esc(f) + '</li>').join('') +
     '</ul></div>' +
+    (trial ? '<span class="ep-lock-badge">' + esc(copyOf('trialBadge')) + '</span>' : '') +
     (cta.length ? '<div class="ep-lock-cta">' + cta.join('') + '</div>' : '') +
     '</section>';
 }
@@ -1135,8 +1253,9 @@ if (BROWSER) {
 }
 
 return {
-  FEATURES, CATALOGUE,
+  FEATURES, CATALOGUE, COPY, GATES,
   load, loadMany, get, analyticsOk, canView, isPremiumColumn, featureLocked, featureOk,
+  gateOf, lockWords, copyOf, loadWall, trialMonths,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,
   /* for supabase/tests/access.test.mjs only: a fake network, a shorter deadline,
@@ -1149,6 +1268,8 @@ return {
     checkAuth(settled) { return checkAuth(settled); },
     sig() { return sig(); },
     setAuthSig(v) { authSig = v; },
+    /* the wall: false keeps it out of a case (no request), an object sets it as access_wall() would answer */
+    wall(v) { WALL_OFF = v === false; WALL = v && typeof v === 'object' ? wallOf(v) : null; wallP = null; },
     reset() {
       states.clear(); slugs.clear(); inflight.clear(); slugInflight.clear(); listeners.clear();
       memoRaw = null; memoSess = null; refreshing = null; deadRefresh = ''; refreshQuietUntil = 0;

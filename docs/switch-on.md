@@ -284,6 +284,10 @@ It lists `0117_access_plans` and `0118_members_only_leagues`. Answer `Y`. Each o
 what it created as real roles, so a broken rule stops the push instead of reaching the site. Nothing
 visible changes.
 
+The same push applies the later membership migrations still waiting: `0220_report_features` (the club
+and player report tiers), `0222_access_gates` (what is behind the wall, editable, with each prompt's
+wording) and `0223_free_trials` (6.4b). None of them changes anything for fans while memberships are off.
+
 ### 6.2 Deploy the function
 
 ```bash
@@ -333,6 +337,34 @@ Billing → **Subscriptions and emails** (called **Revenue recovery** on newer d
 - Upcoming renewal events: **on**, for example 14 days before. `billing` turns `invoice.upcoming` into
   the renewal reminder for yearly plans (DMCCA s.258). Monthly plans don't get one.
 
+### 6.4b Free trials (migration 0223)
+
+New members get their **first three months free** as shipped: the public platform setting `trial_months`
+(Plans tab → **Free trials**, 0 to 12, 0 switches trials off), and a plan can have its own length or
+none (the plan form → **FREE TRIAL FOR NEW MEMBERS**). One trial a person a seller: whoever has held any
+plan from the same seller in the same league before pays from the first day. The database decides
+(`trial_months_for`) and checkout refuses a trial it is not due.
+
+How it runs. The join page shows "3 months free, then £4.99 a month" and the trial wording (consent
+version `2026-10-t`). Checkout takes the card and charges nothing; the subscription is `trialing`, which
+counts as a member at once. Stripe charges the card on the day the trial ends, and if there is no card
+it cancels instead. Every membership prompt on the site (the teasers, the popups, the members-only card)
+promotes the trial while a plan is for sale.
+
+The emails, all from `billing` (Stripe's own are off, as in 6.4):
+- the welcome says the trial has started, that nothing has been charged, and the first payment's amount
+  and day;
+- three days before the end, `customer.subscription.trial_will_end` (6.5, event eight) sends the
+  reminder: the day, the amount and how to cancel. Not to anyone who has already cancelled.
+
+In Stripe → Billing → **Subscriptions and emails** → *Manage free trial messaging*: leave Stripe's own
+trial reminder **off**, or members get two.
+
+Test it in 6.9 with an account that has never held a plan: Stripe's page should say "3 months free,
+then …, from <date>. Nothing is charged today", the subscription should show **Trialing**, and
+Your account should show the plan with the trial's end date. To see the reminder without waiting three
+months, `stripe trigger customer.subscription.trial_will_end`, or use a test clock.
+
 ### 6.5 The webhook endpoint for your own account
 
 Developers → Webhooks → **Add destination**:
@@ -341,9 +373,11 @@ Developers → Webhooks → **Add destination**:
    version, not the function's. On any other version an invoice names its subscription in a
    different place and the period end moves. Payments would be recorded but would never reach the
    member.
-3. Events: these seven. The function records and ignores anything else.
+3. Events: these eight. The function records and ignores anything else.
    `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
-   `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `invoice.upcoming`
+   `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `invoice.upcoming`,
+   `customer.subscription.trial_will_end` (the free-trial reminder, 6.4b). An endpoint made before
+   2026-10-02 has the first seven: edit it and add the eighth.
 4. Destination type: webhook endpoint. URL:
    `https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/billing/webhook`
 5. Create it, then **Reveal** the signing secret (`whsec_…`). That is `STRIPE_WEBHOOK_SECRET`.
@@ -463,7 +497,7 @@ Then:
 2. Developers → Webhooks → **Add destination**:
    - Events from: **Connected accounts**.
    - API version: **`2026-08-26.dahlia`**.
-   - Events: the same seven as 6.5, **plus `account.updated`**.
+   - Events: the same eight as 6.5, **plus `account.updated`**.
    - URL: the same `…/functions/v1/billing/webhook`.
 
    Reveal its signing secret and set it:

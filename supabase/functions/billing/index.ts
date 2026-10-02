@@ -68,12 +68,12 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   SUBSCRIPTION_EVENTS, NOT_SYNCED,
   isUuid, isStripeId, verifyWebhook, stripeRequest, siteOrigin, publicStripeError,
-  consentProblem, planProblem, testModeProblem, priceParams, priceProblem,
+  consentProblem, planProblem, testModeProblem, priceParams, priceProblem, TRIAL_CONSENT,
   checkoutParams, customerParams, portalParams,
   connectAccountParams, accountLinkParams, accountRow,
   subscriptionIdFromEvent, subscriptionRow, matchingCheckout, grantsAccess, graceUntil,
   deliveryMode, planAccountProblem, transitionEmails, eventEmails, emailFacts,
-  welcomeEmail, endNoticeEmail, paymentFailedEmail, renewalReminderEmail
+  welcomeEmail, endNoticeEmail, paymentFailedEmail, renewalReminderEmail, trialEndingEmail
 } from '../_shared/billing.js';
 
 const CORS = {
@@ -94,7 +94,7 @@ const env = (k: string) => (Deno.env.get(k) ?? '').trim();
 const MAX_EVENT_CHARS = 1_000_000;
 const OUTBOUND_MS = 15_000;
 
-const PLAN_COLUMNS = 'id, league_id, name, features, price_pennies, currency, interval, stripe_price_id, seller, active';
+const PLAN_COLUMNS = 'id, league_id, name, features, price_pennies, currency, interval, stripe_price_id, seller, active, trial_months';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -217,6 +217,18 @@ async function checkout(admin: any, who: Who, body: any) {
      evidence row is written and before any customer is made, so a refused sale
      leaves nothing behind. A price this key cannot find — a test id left in a
      plan after the switch to live — is the same refusal, in words. */
+  /* A FREE TRIAL (0223) is given only under its own wording, and only to whoever is due one: the database decides
+     (trial_months_for: the plan's length, none for a past member of the same seller), as the join page was told. */
+  let trialMonths = 0;
+  if (body.consent.version === TRIAL_CONSENT) {
+    const { data: months, error: trErr } = await admin.rpc('trial_months_for', { p_user: who.user.id, p_plan: plan.id });
+    if (trErr) throw trErr;
+    trialMonths = Number(months) || 0;
+    if (trialMonths <= 0) {
+      return json({ error: 'The free trial is for new members, and this account has had a membership from this seller before. Reload the page to see the price.' }, 409);
+    }
+  }
+
   const pc = priceParams(plan, account);
   let price: any = null;
   try {
@@ -250,7 +262,7 @@ async function checkout(admin: any, who: Who, body: any) {
   const build = (cid: string) => checkoutParams({
     plan, userId: who.user.id, email: who.user.email, customerId: cid, account,
     feePercent: fee, siteUrl: env('SITE_URL'), next: body.next,
-    checkoutId, consentVersion: body.consent.version
+    checkoutId, consentVersion: body.consent.version, trialMonths
   });
   let call = build(customerId);
   let session: any;
@@ -682,7 +694,7 @@ async function sendEmails(admin: any, kinds: string[], event: any, sub: any, use
           planName: facts.planName, leagueName,
           sellerName: plan?.seller === 'league' ? (leagueName || 'the league') : 'Epinoia',
           pricePennies: facts.pricePennies, currency: facts.currency, interval: facts.interval,
-          periodEnd: facts.periodEnd,
+          periodEnd: facts.periodEnd, trialEnd: facts.trialEnd,
           consentVersion: ck ? ck.consent_version : null,
           acknowledgedAt: ck ? ck.acknowledged_at : null,
           manageUrl
@@ -706,6 +718,11 @@ async function sendEmails(admin: any, kinds: string[], event: any, sub: any, use
           amountPennies: Number.isFinite(invoice.amount_due) ? invoice.amount_due : facts.pricePennies,
           currency: invoice.currency || facts.currency,
           renewsAt: facts.periodEnd, manageUrl
+        });
+      } else if (kind === 'trial_ending') {
+        mail = trialEndingEmail({
+          planName: facts.planName, leagueName, pricePennies: facts.pricePennies, currency: facts.currency,
+          interval: facts.interval, trialEnd: facts.trialEnd, manageUrl
         });
       }
       if (!mail) continue;

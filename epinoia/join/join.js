@@ -47,6 +47,12 @@
      function stores it on the checkout row and repeats that wording in the
      confirmation email, so the three change together or not at all. */
   const CONSENT_VERSION = '2026-09-a';
+  /* A NEW MEMBER'S FREE TRIAL (0223) is asked for under its own wording, word for word the billing function's
+     CONSENT['2026-10-t'] (billing.test.mjs holds the two equal); checkout gives the trial only under it, and only
+     to whoever is due one, which my_trial_offers says beforehand */
+  const TRIAL_VERSION = '2026-10-t';
+  const TRIAL_WORDING = 'Start my free trial now. I understand that access begins straight away and that, unless I cancel before the free trial ends, my membership is then charged automatically and renews until I cancel. Once my access has started I lose my 14-day right to cancel, but I can cancel online at any time.';
+  let NOW_WORDING = '';
   const PENDING_KEY = 'epinoia_join_pending';
   const WAIT_MS = 60000, POLL_MS = 2000;
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -57,6 +63,7 @@
   let payments = false;    // the billing function says it is switched on
   let mine = null;         // my_access(), signed in
   let chosen = null;
+  let offers = null;       // my_trial_offers(): { plan id: months free }, null before it is known
 
   /* ------------------------------------------------------------ helpers --- */
   const sess = () => (A && A.session ? A.session() : null);
@@ -303,16 +310,34 @@
   }
 
   /* --------------------------------------------------------------- plans --- */
+  /* the months free this viewer is offered on a plan: the database's answer for them, else the plan's own length */
+  function trialOf(p) {
+    const v = offers && Object.prototype.hasOwnProperty.call(offers, p.id) ? offers[p.id] : p.trial_months;
+    const n = Math.floor(Number(v) || 0);
+    return n > 0 && n <= 12 ? n : 0;
+  }
+  /* the day a trial begun now ends: the same day of the month, months on (the billing function's trialEnd) */
+  function trialEndDate(months) {
+    const d = new Date(), day = d.getDate();
+    const t = new Date(d.getFullYear(), d.getMonth() + months, 1);
+    t.setDate(Math.min(day, new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()));
+    return t.getDate() + ' ' + ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][t.getMonth()] + ' ' + t.getFullYear();
+  }
   function planCard(p) {
     const mineSub = owned(p);
+    const trial = mineSub ? 0 : trialOf(p);
     const card = el('article', 'plan' + (mineSub ? ' owned' : ''));
     card.setAttribute('aria-label', (p.name || 'Membership') + ', ' + amount(p) + ' a ' + per(p));
     card.appendChild(el('div', 'eyebrow', p.league_id ? leagueName() : 'Every league'));
     card.appendChild(el('h3', null, p.name || 'Membership'));
+    if (trial) card.appendChild(el('div', 'trial', trial + (trial === 1 ? ' month' : ' months') + ' free'));
     const price = el('div', 'price');
+    if (trial) price.appendChild(el('span', 'then', 'then'));
     price.append(el('b', null, amount(p)), el('span', null, 'a ' + per(p)));
     card.appendChild(price);
-    card.appendChild(el('div', 'vat', 'Including any VAT. Renews every ' + per(p) + ' until you cancel.'));
+    card.appendChild(el('div', 'vat', trial
+      ? 'Nothing to pay today. Including any VAT, from the end of the trial; renews every ' + per(p) + ' until you cancel, and you can cancel any time.'
+      : 'Including any VAT. Renews every ' + per(p) + ' until you cancel.'));
     if (p.blurb) card.appendChild(el('p', 'blurb', p.blurb));
 
     const ul = el('ul');
@@ -354,11 +379,11 @@
     } else if (!payments) {
       act.appendChild(off('Payments open soon'));
     } else if (!sess()) {
-      const a = el('a', 'ep-btn pri', 'Sign in to join');
+      const a = el('a', 'ep-btn pri', trial ? 'Sign in to start your free trial' : 'Sign in to join');
       a.href = signinTo(pagePath({ plan: p.id }));
       act.appendChild(a);
     } else {
-      const b = el('button', 'ep-btn pri', 'Choose this plan');
+      const b = el('button', 'ep-btn pri', trial ? 'Start ' + trial + (trial === 1 ? ' month' : ' months') + ' free' : 'Choose this plan');
       b.type = 'button';
       b.onclick = () => openPre(p);
       act.appendChild(b);
@@ -393,13 +418,23 @@
     chosen = p;
     const price = A ? A.priceText(p.price_pennies, p.currency, p.interval) : amount(p) + ' a ' + per(p);
     $('#sumPlan').textContent = (p.name || 'Membership') + ' — ' + (p.league_id ? leagueName() + ' only' : 'every league');
-    $('#sumPrice').textContent = price + ', including any VAT.';
-    $('#sumRenew').textContent = 'It renews automatically every ' + per(p) + ' at ' + amount(p) + ' until you cancel.';
+    const trial = trialOf(p);
+    if (trial) {
+      const from = trialEndDate(trial);
+      $('#sumPrice').textContent = trial + (trial === 1 ? ' month' : ' months') + ' free, then ' + price + ', including any VAT. Nothing is charged today.';
+      $('#sumRenew').textContent = 'From ' + from + ' it renews automatically every ' + per(p) + ' at ' + amount(p) + ' until you cancel. Cancel before then and you pay nothing.';
+    } else {
+      $('#sumPrice').textContent = price + ', including any VAT.';
+      $('#sumRenew').textContent = 'It renews automatically every ' + per(p) + ' at ' + amount(p) + ' until you cancel.';
+    }
+    /* the box says the wording this purchase is asked under */
+    const nowText = $('#cNowText');
+    if (nowText) { if (!NOW_WORDING) NOW_WORDING = nowText.textContent; nowText.textContent = trial ? TRIAL_WORDING : NOW_WORDING; }
     $('#cNow').checked = false;
     $('#cAdult').checked = false;
     const order = $('#order');
     order.disabled = false;
-    order.textContent = 'Pay ' + price + ' and join';
+    order.textContent = trial ? 'Start my free trial' : 'Pay ' + price + ' and join';
     say('#preMsg', '');
     show('#preSec', true);
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -427,7 +462,7 @@
     say('#preMsg', '');
     const res = await billing({
       action: 'checkout', planId: plan.id, next: pagePath(),
-      consent: { version: CONSENT_VERSION, acknowledged: true, adult: true }
+      consent: { version: trialOf(plan) ? TRIAL_VERSION : CONSENT_VERSION, acknowledged: true, adult: true }
     });
     if (res.status === 200 && goodUrl(res.data.url)) {
       /* what to wait for when Stripe sends the fan back here */
@@ -617,8 +652,10 @@
     payments = stat.status === 200 && !!(stat.data && stat.data.configured);
     mine = my && !my.error && my.data && typeof my.data === 'object' ? my.data : null;
 
-    const pr = await rpc('access_plans_public', { p_league: leagueId });
+    const [pr, tr] = await Promise.all([rpc('access_plans_public', { p_league: leagueId }), rpc('my_trial_offers', { p_league: leagueId })]);
     plans = pr.error ? null : (Array.isArray(pr.data) ? pr.data : []);
+    /* no answer (a database without 0223): no trial is promised, each plan's own length stands for a signed-out fan */
+    offers = !tr.error && tr.data && typeof tr.data === 'object' ? tr.data : (s ? {} : null);
 
     paintLeague();
     paintMember();

@@ -82,8 +82,12 @@ export const DEFAULT_CONNECT_NEXT = '/epinoia/admin/';
    new version, because a stored consent_version must keep meaning the words
    that person saw. */
 export const CONSENT = Object.freeze({
-  '2026-09-a': 'Start my access now. I understand that access begins straight away, so once it has started I lose my 14-day right to cancel.'
+  '2026-09-a': 'Start my access now. I understand that access begins straight away, so once it has started I lose my 14-day right to cancel.',
+  /* a new member's free trial (0223): the months free and the first charge are in the order summary and on Stripe's page */
+  '2026-10-t': 'Start my free trial now. I understand that access begins straight away and that, unless I cancel before the free trial ends, my membership is then charged automatically and renews until I cancel. Once my access has started I lose my 14-day right to cancel, but I can cancel online at any time.'
 });
+/* the wording that asks for a free trial: checkout gives one only to whoever ticked it, and only when they are due one */
+export const TRIAL_CONSENT = '2026-10-t';
 export const ADULT_WORDING = 'I am 18 or over.';
 
 /* The events the webhook acts on. Anything else that arrives signed is recorded
@@ -96,7 +100,9 @@ export const SUBSCRIPTION_EVENTS = Object.freeze([
   'customer.subscription.deleted',
   'invoice.paid',
   'invoice.payment_failed',
-  'invoice.upcoming'
+  'invoice.upcoming',
+  /* three days before a free trial ends (0223): the reminder that the first payment is coming */
+  'customer.subscription.trial_will_end'
 ]);
 export const ACCOUNT_EVENTS = Object.freeze(['account.updated']);
 
@@ -548,11 +554,27 @@ export function priceProblem(plan, price) {
 /* The line Stripe prints above its pay button. Deliberately not "today": a
    promotion code can change what is taken now, and Checkout shows that total
    itself. What this line owns is the recurring promise and the way out. */
-export function submitMessage(plan) {
+export function submitMessage(plan, trial) {
   const every = plan.interval === 'year' ? 'year' : 'month';
+  if (trial && trial.months > 0) {
+    const from = new Date(trial.end * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    return trial.months + (trial.months === 1 ? ' month' : ' months') + ' free, then ' + priceLabel(plan.price_pennies, plan.currency, plan.interval) +
+      ', including any VAT, from ' + from + '. Nothing is charged today. It renews automatically every ' + every +
+      ' until you cancel, and you can cancel online at any time from Your account, during the free trial too.';
+  }
   return priceLabel(plan.price_pennies, plan.currency, plan.interval) +
     ', including any VAT. It renews automatically every ' + every +
     ' until you cancel, and you can cancel online at any time from Your account.';
+}
+
+/* THE END OF A FREE TRIAL, months after now in calendar months (the same day of the month, or the month's last
+   day where it is shorter), as the unix seconds Stripe takes. */
+export function trialEnd(months, now = Date.now()) {
+  const d = new Date(now), day = d.getUTCDate();
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1, d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(day, last));
+  return Math.floor(t.getTime() / 1000);
 }
 
 /**
@@ -570,7 +592,7 @@ export function submitMessage(plan) {
  * only on the Session, and the subscription's copy is what every later
  * customer.subscription.* event and every re-fetch carries.
  */
-export function checkoutParams({ plan, userId, email, customerId, account, feePercent, siteUrl, next, checkoutId, consentVersion }) {
+export function checkoutParams({ plan, userId, email, customerId, account, feePercent, siteUrl, next, checkoutId, consentVersion, trialMonths, now }) {
   if (!plan || !plan.stripe_price_id) throw new Error('that plan cannot be bought yet');
   if (!userId || !checkoutId) throw new Error('a checkout needs the buyer and its checkout record');
   if (typeof consentVersion !== 'string' || !hasOwn(CONSENT, consentVersion)) {
@@ -588,6 +610,17 @@ export function checkoutParams({ plan, userId, email, customerId, account, feePe
     checkout_id: checkoutId
   };
   const subscription_data = { metadata: { ...metadata } };
+  /* A FREE TRIAL (0223), only under the trial wording: the card is taken now and nothing charged until its end; a
+     subscription that reaches the end with no way to pay is cancelled, never left owing */
+  const months = consentVersion === TRIAL_CONSENT ? Math.max(0, Math.min(12, Math.floor(Number(trialMonths) || 0))) : 0;
+  const trial = months > 0 ? { months, end: trialEnd(months, now) } : null;
+  if (consentVersion === TRIAL_CONSENT && !trial) throw new Error('a free trial was asked for that this account is not due');
+  if (trial) {
+    subscription_data.trial_end = trial.end;
+    subscription_data.trial_settings = { end_behavior: { missing_payment_method: 'cancel' } };
+    metadata.trial_months = String(months);
+    subscription_data.metadata.trial_months = String(months);
+  }
   const fee = Number(feePercent);
   if (byLeague && Number.isFinite(fee) && fee > 0) {
     subscription_data.application_fee_percent = Math.min(100, Math.round(fee * 100) / 100);
@@ -600,7 +633,7 @@ export function checkoutParams({ plan, userId, email, customerId, account, feePe
     metadata,
     subscription_data,
     allow_promotion_codes: true,
-    custom_text: { submit: { message: submitMessage(plan) } },
+    custom_text: { submit: { message: submitMessage(plan, trial) } },
     success_url: withJoined(back),
     cancel_url: back
   };
@@ -609,6 +642,7 @@ export function checkoutParams({ plan, userId, email, customerId, account, feePe
      customer_email is only the fallback that pre-fills a new one. */
   if (customerId) params.customer = customerId;
   else if (email) params.customer_email = email;
+  if (trial) params.payment_method_collection = 'always';
 
   return {
     method: 'POST',
@@ -946,6 +980,11 @@ export function eventEmails(event, sub, now = Date.now()) {
   if (type === 'invoice.upcoming' && live && !cancelling &&
       item.price?.recurring?.interval === 'year') kinds.push('renewal_reminder');
 
+  /* A FREE TRIAL ENDING (Stripe says so three days before): the first payment, its amount and day, and how to stop
+     it, unless it has already been cancelled. Not on a trial that has already ended or been turned into a paid
+     plan early (the re-fetched subscription is no longer trialing). */
+  if (type === 'customer.subscription.trial_will_end' && sub?.status === 'trialing' && !cancelling) kinds.push('trial_ending');
+
   return kinds;
 }
 
@@ -959,7 +998,9 @@ export function emailFacts(sub, plan = null) {
     currency: price.currency || plan?.currency || 'gbp',
     interval: price.recurring?.interval || plan?.interval || 'month',
     periodEnd: isoFromUnix(item.current_period_end),
-    endsAt: isoFromUnix(sub?.ended_at) || isoFromUnix(sub?.cancel_at) || isoFromUnix(item.current_period_end)
+    endsAt: isoFromUnix(sub?.ended_at) || isoFromUnix(sub?.cancel_at) || isoFromUnix(item.current_period_end),
+    /* on a free trial: the day it ends, which is the day of the first payment */
+    trialEnd: sub?.status === 'trialing' ? isoFromUnix(sub?.trial_end) : null
   };
 }
 
@@ -1027,17 +1068,30 @@ const planTitle = (planName, leagueName) =>
  * online, and the consent wording the person agreed to, quoted by version.
  */
 export function welcomeEmail({ planName, leagueName, sellerName, pricePennies, currency, interval,
-                               periodEnd, consentVersion, acknowledgedAt, manageUrl }) {
+                               periodEnd, consentVersion, acknowledgedAt, manageUrl, trialEnd }) {
   const every = interval === 'year' ? 'year' : 'month';
   const wording = hasOwn(CONSENT, consentVersion) ? CONSENT[consentVersion] : null;
-  return compose('Your ' + planTitle(planName, leagueName) + ' membership has started', [
-    'Thank you for joining. This email confirms your membership, so it is worth keeping.',
-    'What you bought: ' + planTitle(planName, leagueName) + '.',
-    'Price: ' + priceLabel(pricePennies, currency, interval) + ', including any VAT.',
-    'It renews automatically every ' + every + ' until you cancel.' +
-      (periodEnd ? ' The next payment is due on ' + longDate(periodEnd) + '.' : ''),
-    'You can cancel online at any time, in one step, from Your account. Cancelling stops the next ' +
-      'payment, and your access carries on until the end of the period you have paid for.',
+  /* a free trial (0223): nothing has been charged, and the first payment is the day it ends */
+  const trial = trialEnd ? longDate(trialEnd) : '';
+  const head = trial
+    ? ['Thank you for joining. Your free trial has started, and this email confirms it, so it is worth keeping.',
+       'What you chose: ' + planTitle(planName, leagueName) + '.',
+       'Your free trial runs until ' + trial + '. Nothing has been charged.',
+       'Then: ' + priceLabel(pricePennies, currency, interval) + ', including any VAT, charged on ' + trial +
+         ' to the card you gave, and automatically every ' + every + ' after that until you cancel.',
+       'Cancel online before ' + trial + ', in one step, from Your account, and you pay nothing at all. We will ' +
+         'remind you a few days before the trial ends. Cancelling later stops the next payment, and your access ' +
+         'carries on until the end of the period you have paid for.']
+    : ['Thank you for joining. This email confirms your membership, so it is worth keeping.',
+       'What you bought: ' + planTitle(planName, leagueName) + '.',
+       'Price: ' + priceLabel(pricePennies, currency, interval) + ', including any VAT.',
+       'It renews automatically every ' + every + ' until you cancel.' +
+         (periodEnd ? ' The next payment is due on ' + longDate(periodEnd) + '.' : ''),
+       'You can cancel online at any time, in one step, from Your account. Cancelling stops the next ' +
+         'payment, and your access carries on until the end of the period you have paid for.'];
+  return compose(trial ? 'Your free trial of ' + planTitle(planName, leagueName) + ' has started'
+                       : 'Your ' + planTitle(planName, leagueName) + ' membership has started', [
+    ...head,
     { link: ['Your account', manageUrl] },
     'Sold by ' + oneLine(sellerName || 'Epinoia') + '.',
     wording
@@ -1087,6 +1141,22 @@ export function paymentFailedEmail({ planName, leagueName, amountPennies, curren
     until ? 'Your access carries on until ' + longDate(until) + ' while it is retried.' : null,
     { link: ['Update your card', manageUrl] },
     { link: ['Or pay this invoice with another card', invoiceUrl] }
+  ]);
+}
+
+/** customer.subscription.trial_will_end: the free trial ends soon, and the first payment with it (DMCCA 2024
+    s.258 asks the same of a free trial as of a renewal). */
+export function trialEndingEmail({ planName, leagueName, pricePennies, currency, interval, trialEnd, manageUrl }) {
+  const title = planTitle(planName, leagueName);
+  const when = longDate(trialEnd);
+  return compose('Your free trial of ' + title + ' ends' + (when ? ' on ' + when : ' soon'), [
+    'Your free trial of ' + title + ' ends' + (when ? ' on ' + when : ' soon') + '.',
+    'Unless you cancel before then, ' + priceLabel(pricePennies, currency, interval) + ', including any VAT, is charged ' +
+      (when ? 'on ' + when + ' ' : '') + 'to the card you gave, and then automatically every ' +
+      (interval === 'year' ? 'year' : 'month') + ' until you cancel.',
+    'To keep your membership you need do nothing. To stop it, cancel online in one step from Your account before ' +
+      (when || 'the trial ends') + ' and you pay nothing.',
+    { link: ['Your account', manageUrl] }
   ]);
 }
 

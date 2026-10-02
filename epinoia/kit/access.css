@@ -48,7 +48,7 @@
    Apple's in-app purchase or not at all), so inside it (html.m-ios-app, appmode.js) no page
    links to the join page's plans or opens Stripe's billing portal. Signing in still unlocks
    what an account already holds. */
-html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important }
+html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn, html.m-ios-app .ep-lock-badge, html.m-ios-app .mem-tip-b, html.m-ios-app .mem-tip-go{ display:none !important }
 .ep-lock-go{
   display:inline-flex; align-items:center; justify-content:center; min-height:40px;
   padding:8px 16px; box-sizing:border-box;
@@ -58,6 +58,16 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important
   transition:background .2s var(--ease), color .2s var(--ease);
 }
 .ep-lock-go:hover{background:transparent; color:var(--lume)}
+/* A NEW MEMBER'S FREE TRIAL (0223), promoted wherever something is for sale: the button says it, a pill under the lines
+   says how long and that it can be cancelled. The green is mixed with the page's ink, so it reads darker on a light card
+   and lighter on a dark one. */
+.ep-lock-go.ep-lock-trial{background:#1f9d55; border-color:#1f9d55; color:#ffffff}
+.ep-lock-go.ep-lock-trial:hover{background:transparent; color:color-mix(in oklch,#1f9d55 62%,var(--ink, #fff)); border-color:#1f9d55}
+.ep-lock-badge{display:inline-flex; align-items:center; gap:6px; margin-top:calc(var(--u)*1); padding:3px 10px; border-radius:999px;
+  background:color-mix(in srgb,#1f9d55 14%,transparent); border:1px solid color-mix(in srgb,#1f9d55 50%,transparent);
+  font-family:var(--f-ui, sans-serif); font-weight:700; font-size:12px; color:color-mix(in oklch,#1f9d55 62%,var(--ink, #fff))}
+.ep-lock-badge::before{content:""; width:7px; height:7px; border-radius:50%; background:#1f9d55}
+.ep-paywall .ep-lock-badge{margin-bottom:calc(var(--u)*0.5)}
 .ep-lock-or{font-family:var(--f-micro); font-size:9px; color:var(--ink-3)}
 .ep-lock-in{
   display:inline-flex; align-items:center; min-height:40px;
@@ -138,6 +148,9 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important
   cursor:pointer;
 }
 .mem-tip-go:hover{color:var(--ink, #fff)}
+/* the free trial on offer (0223): a line under the link, in the trial's green */
+.mem-tip-b{font-family:var(--f-ui, sans-serif); text-transform:none; font-size:11px; letter-spacing:0; color:color-mix(in oklch,#1f9d55 62%,var(--ink, #fff))}
+.mem-tip-b[hidden]{display:none}
 .mem-tip-go:focus-visible{outline:2px solid var(--lume); outline-offset:2px}
 /* a locked table or section: dummy rows under blur, the notice on top */
 .mem-ph{position:relative; overflow:hidden; border:1px solid var(--rule-2); background:var(--panel); min-height:120px; opacity:1}
