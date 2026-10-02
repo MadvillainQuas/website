@@ -125,7 +125,8 @@ const partners = new Set(['source:eurohoops', 'outlet:kbl/hoops-pod']);
   const rd = story({ h: 5 });
   ok('it is not read yet: the boost is on', S(rd, prof).boost > 0 && S(rd, prof).read === false);
   ok('opening it (noteOpen) is the read', FR.noteOpen(prof, rd, NOW) === true && S(rd, prof).read === true);
-  ok('...a read partner story loses the boost and is scored as any story of its age (the same as with no partners at all)', S(rd, prof).boost === 0 && near(S(rd, prof).score, S(rd, Object.assign({}, prof, { partners: new Set() })).score));
+  ok('...a read partner story loses the boost and is scored as any story of its age (the same as with no partners at all, but for the group click the open made)',
+     S(rd, prof).boost === 0 && near(S(rd, prof).score / S(rd, prof).kindMul, S(rd, Object.assign({}, prof, { partners: new Set() })).score / S(rd, Object.assign({}, prof, { partners: new Set() })).kindMul));
   ok('...and falls behind an unread partner story of the same age, and its own why is no longer "Official partner"',
      (() => { const other = story({ h: 5 }); const out = FR.rank([rd, other], prof, NOW); return out[0].id === other.id && out.find(x => x.id === rd.id).why !== 'Official partner'; })());
   ok('a read from long ago (past 60 days) is forgotten: the boost is back if it is still in the window', (() => {

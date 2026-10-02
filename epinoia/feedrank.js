@@ -30,11 +30,29 @@
                                                                         curve, so one obsession cannot bury the rest
        base      =  TIER[tier] (+ what a match report's game is worth)  publisher = creator > league-written > report
        score     =  base * recency * personal * (impressions: a little less when shown and never opened)
+                    * language factor           when the story is in a language the reader does not read
+                    * the group's weight        the group the reader opens more often climbs (below)
                     + FOLLOW_BONUS * sqrt(recency)      when it comes from something they follow
                     + PARTNER_BOOST * fade(age)         when it is an official partner's and UNREAD
-                    * language factor           when the story is in a language the reader does not read
-   The partner boost is full for a week from publication and gone two days after. Then the order is made to
-   vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
+   The partner boost is full for a week from publication and gone two days after, and it is more than any other story
+   can score at all (scoreMax: 9.14 against 10), so an unread partner piece of the last week leads. Then the order is
+   made to vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
+
+   THE THREE GROUPS, in the order a reader sees them unless they show otherwise: an official PARTNER's piece (the boost),
+   then the PRESS (a publisher's story = a creator's piece or post, base 1; a league's own article, 0.8), then AUTO, the
+   match reports (0.35, lifted by the game's significance). Weights, not walls: a cup final, a fresh report of a league
+   the reader follows, or a reader who opens reports can put one above a weaker story.
+   LEARNING THE GROUPS: every first open is a click for its group (profile.k, halving every KIND_HALF_LIFE_DAYS = 14).
+       share(g) = (clicks(g) + 3) / (all clicks + 9)                       three virtual clicks each: one click moves little
+       weight(g) = clamp(1 + 1.25 (3 share(g) - 1) / 2, 0.6, 2)            1 for a reader with no clicks, or even ones
+   One report opened: reports 1.13, the rest 0.94. Five reports and nothing else: 1.45 against 0.78; ten: 1.66 against
+   0.67, and a plain report (0.58) passes a publisher's story some hours older, a significant game's report most; thirty:
+   1.96 against 0.6, and a plain report passes a publisher's story of its own age (0.69 to 0.6). A reader who opens both
+   keeps the tiers. THE EXPLORATION FLOOR: no group goes below 60% of its weight, and each group in the pool keeps
+   a card in the first six (its best one, at the last places), so no group vanishes and the reader can still show they
+   want it. A fresh partner piece stays first whatever was learned (scoreMax counts KIND_MAX).
+   A SLOW POOL (a league's own news, which can span months): the recency half-life is the larger of 18 h and half the
+   pool's median age, so 'fresh' is fresh for that league. HOME's pool is hours old and keeps 18 h.
 
    LANGUAGE. A publisher's language comes from news_source_languages() (0204; until it is applied, from SOURCE_LANG, the
    sources 0195 seeded). A story in a language the reader does not read is multiplied by LANG_PENALTY (0.3) - it sinks,
@@ -104,7 +122,7 @@ const W = Object.freeze({
   REPORT_SIG_GAIN: 0.85,               // ...and lift a report's base by this much: 0.35 -> 1.2 at most
   SIG_WHY_MIN: 10,                     // a game worth this many says why
   AUTO_AUTHOR: 'Epinoia match report', // how finalise-game signs a report: the low tier
-  PARTNER_BOOST: 3,                    // an official partner's unread story: larger than every personal multiplier's whole
+  PARTNER_BOOST: 10,                   // an official partner's unread story: more than any other story can score (scoreMax, 9.14), so it leads
   PARTNER_FULL_H: 168,                 // ...in full for a week from publication
   PARTNER_END_H: 216,                  // ...and fading until nothing is left, two days after
   /* language: a story in a language the reader does not read is multiplied by LANG_PENALTY, less as they engage with it */
@@ -118,6 +136,22 @@ const W = Object.freeze({
   LANG_ALL_KEY: 'epinoia_feed_v1_langall',   // '1' when the reader asked to see every language (kept through a reset)
   LANGS_KEY: 'epinoia_feed_langs', LANGS_TTL_MS: 12 * HOUR,   // the publishers' languages, cached
   IMPRESSION_SOFT_AT: 3, IMPRESSION_SOFT: 0.85, IMPRESSION_HARD_AT: 6, IMPRESSION_HARD: 0.7,   // shown, never opened
+
+  /* THE GROUPS THE READER OPENS (THE THREE GROUPS, in the file's head): partner, press (a publisher's story, a creator's
+     piece or post, a league's own article) or auto (a match report). Each first open is a click for its group; the clicks
+     halve every 14 days; a group's share is smoothed by KIND_PRIOR virtual clicks for every group, and its stories' score
+     is multiplied by 1 + KIND_GAIN x (3 x share - 1) / 2, held between KIND_FLOOR and KIND_MAX */
+  KIND_HALF_LIFE_DAYS: 14,
+  KIND_PRIOR: 3,
+  KIND_GAIN: 1.25,
+  KIND_FLOOR: 0.6,                     // a group the reader never opens keeps 60% of its weight: it sinks, it does not go
+  KIND_MAX: 2,
+  KIND_OPEN_PTS: 1,
+  WHY_KIND_MIN: 0.25,                  // a group's multiplier this far above 1 is worth saying why
+  EXPLORE_N: 6,                        // every kind in the pool has a card in the first six (the exploration floor)
+  /* a slow pool (a league's own news can span months): freshness is measured against the pool, its half-life stretched to
+     RECENCY_STRETCH x the pool's median age, never below RECENCY_HALF_LIFE_H. HOME's pool is hours old: unchanged there */
+  RECENCY_STRETCH: 0.5,
 
   /* variety */
   MAX_RUN: 2,                          // never more than two in a row from one source
@@ -337,6 +371,45 @@ function isRead(profile, id, now, w) {
   return !!t && num(now) - num(t) < c.READS_TTL_DAYS * DAY;
 }
 
+/* ================================================================================== the three kinds === */
+const GROUPS = Object.freeze(['partner', 'press', 'auto']);
+/* WHICH KIND A ROW IS: an official partner's (by its key in the partners, or a row the ranking already marked partner),
+   a match report (auto), or press: a publisher's story, a creator's piece or post, a league's own article */
+function groupOf(it, partners) {
+  if (!it) return 'press';
+  if (it.partner === true) return 'partner';
+  const k = pkeyOf(it);
+  if (k && partners && partnerSet(partners).has(k)) return 'partner';
+  return tierOf(it) === 'report' ? 'auto' : 'press';
+}
+const kindW = w => Object.assign({}, w || W, { DECAY_HALF_LIFE_DAYS: (w || W).KIND_HALF_LIFE_DAYS });
+/* THE WEIGHT OF EACH GROUP FOR THIS READER: the clicks of each group (profile.k, halving every 14 days), smoothed by
+   KIND_PRIOR virtual clicks for every group, as a multiplier on the group's stories:
+       share(g) = (clicks(g) + PRIOR) / (all clicks + 3 PRIOR)
+       mult(g)  = clamp(1 + KIND_GAIN * (3 share(g) - 1) / 2, KIND_FLOOR, KIND_MAX)
+   No clicks, or clicks spread evenly: 1 for every group. One report opened: 1.13 (the others 0.94). Five reports and nothing
+   else: 1.45 (press 0.78); ten: 1.66 (press 0.67); thirty: 1.96 (press 0.6, the floor). */
+function groupWeights(profile, now, w) {
+  const c = w || W;
+  const kw = kindW(c);
+  const k = (profile && profile.k) || {};
+  const n = {}; let total = 0;
+  GROUPS.forEach(x => { n[x] = decay(k[x], now, kw); total += n[x]; });
+  const out = {};
+  GROUPS.forEach(x => {
+    const share = (n[x] + c.KIND_PRIOR) / (total + GROUPS.length * c.KIND_PRIOR);
+    out[x] = Math.min(c.KIND_MAX, Math.max(c.KIND_FLOOR, 1 + c.KIND_GAIN * (GROUPS.length * share - 1) / (GROUPS.length - 1)));
+  });
+  return out;
+}
+/* THE MOST A STORY THAT IS NOT A BOOSTED PARTNER'S CAN SCORE: the highest base (a report of the most significant game),
+   fresh, its group at KIND_MAX, every personal term at its cap, and followed. The partner boost is above it. */
+function scoreMax(w) {
+  const c = w || W;
+  const base = Math.max(c.TIER.publisher, c.TIER.creator, c.TIER.league, c.TIER.report + c.REPORT_SIG_GAIN);
+  return base * c.KIND_MAX * (1 + c.W_LEAGUE + c.W_COUNTRY + c.W_PUB) + c.FOLLOW_BONUS;
+}
+
 /* ============================================================================================= scoring === */
 /* THE SCORE OF ONE ITEM, with the parts it is made of (the tests and "why" read them) */
 function scoreOf(it, profile, now, w) {
@@ -388,8 +461,13 @@ function scoreOf(it, profile, now, w) {
     if (partner) langFactor = Math.max(langFactor, c.LANG_PARTNER_FLOOR);
   }
 
-  const score = base * rec * personal * imp * langFactor + follow + boost;
-  return { score, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
+  /* the group the reader opens more often climbs, one they never open sinks (to KIND_FLOOR at most) */
+  const group = partner ? 'partner' : (tier === 'report' ? 'auto' : 'press');
+  const gw = P.groupW || groupWeights(P, now, c);
+  const kindMul = gw[group] != null ? gw[group] : 1;
+
+  const score = base * kindMul * rec * personal * imp * langFactor + follow + boost;
+  return { score, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
            sigPoints, sigReasons: tier === 'report' && sig && Array.isArray(sig.reasons) ? sig.reasons : [], imp,
            terms: { league: c.W_LEAGUE * L, country: c.W_COUNTRY * C, pub: c.W_PUB * Pp } };
 }
@@ -412,6 +490,7 @@ function whyOf(it, s, profile, w) {
   if (t.league >= c.WHY_LEAGUE_MIN && s.Lleague) cand.push([t.league, 'Because you read a lot about ' + (s.Lleague.name || s.Lleague.slug.toUpperCase())]);
   if (t.pub >= c.WHY_PUB_MIN && it.source_name) cand.push([t.pub, 'Because you read ' + it.source_name]);
   if (t.country >= c.WHY_COUNTRY_MIN) cand.push([t.country, 'Popular where you are']);
+  if (s.kindMul - 1 >= c.WHY_KIND_MIN && s.group !== 'partner') cand.push([s.kindMul - 1, s.group === 'auto' ? 'Because you open match reports' : 'Because you open stories like this']);
   if (cand.length) return cand.sort((a, b) => b[0] - a[0])[0][1];
   if (s.tier === 'publisher') return 'From a publisher';
   if (s.tier === 'creator') return 'From a creator';
@@ -429,8 +508,13 @@ function rank(items, profile, now, w) {
   const t = num(now) || Date.now();
   if (!profile || profile.off) return list.slice().sort(newestFirst).map(it => Object.assign({}, it, { why: '', score: 0 }));
 
+  /* a slow pool: freshness against the pool's own median age (never quicker than RECENCY_HALF_LIFE_H) */
+  const ages = list.map(it => Math.max(0, t - dateOf(it)) / HOUR).sort((a, b) => a - b);
+  const median = ages.length ? ages[Math.floor((ages.length - 1) / 2)] : 0;
+  const cs = median * c.RECENCY_STRETCH > c.RECENCY_HALF_LIFE_H ? Object.assign({}, c, { RECENCY_HALF_LIFE_H: median * c.RECENCY_STRETCH }) : c;
+  const prof = Object.assign({}, profile, { groupW: groupWeights(profile, t, c) });
   const scored = list.map(it => {
-    const s = scoreOf(it, profile, t, c);
+    const s = scoreOf(it, prof, t, cs);
     return { it, s, source: sourceOf(it), at: dateOf(it) };
   });
   scored.sort((a, b) => b.s.score - a.s.score || b.at - a.at || String(a.it.id || '').localeCompare(String(b.it.id || '')));
@@ -450,17 +534,25 @@ function rank(items, profile, now, w) {
     if (x.s.boost > 0 && out.length < c.PARTNER_TOP_N) boosted++;
     out.push(x);
   }
+  /* THE EXPLORATION FLOOR: a kind in the pool with no card in the first EXPLORE_N gets its best one at the last of those
+     places (press first, then auto), so no kind vanishes and the reader can still show they want it */
+  const N = Math.min(c.EXPLORE_N, out.length);
+  const picks = ['press', 'auto'].filter(g => !out.slice(0, N).some(x => x.s.group === g))
+    .map(g => out.find((x, j) => j >= N && x.s.group === g)).filter(Boolean);
+  picks.forEach(x => { out.splice(out.indexOf(x), 1); x.explore = true; });
+  picks.forEach((x, i) => out.splice(Math.max(0, N - picks.length + i), 0, x));
   return out.map(x => Object.assign({}, x.it, {
-    why: whyOf(x.it, x.s, profile, c), score: x.s.score, lang: x.s.lang || x.it.lang || undefined, tier: x.s.tier, partner: x.s.partner, boosted: x.s.boost > 0, read: x.s.read
+    why: whyOf(x.it, x.s, profile, c), score: x.s.score, lang: x.s.lang || x.it.lang || undefined, tier: x.s.tier, group: x.s.group, partner: x.s.partner,
+    boosted: x.s.boost > 0, read: x.s.read, explore: !!x.explore
   }));
 }
 
 /* ==================================================================================== learning (pure) === */
-const emptyState = () => ({ v: 1, l: {}, p: {}, r: {}, i: {}, g: {} });
+const emptyState = () => ({ v: 1, l: {}, p: {}, r: {}, i: {}, g: {}, k: {} });
 function sane(v) {
   const o = emptyState();
   if (!v || typeof v !== 'object' || v.v !== 1) return o;
-  ['l', 'p', 'i', 'g'].forEach(k => { if (v[k] && typeof v[k] === 'object') Object.keys(v[k]).forEach(x => { const e = v[k][x]; if (Array.isArray(e) && isFinite(e[0]) && isFinite(e[1])) o[k][x] = [+e[0], +e[1]]; }); });
+  ['l', 'p', 'i', 'g', 'k'].forEach(k => { if (v[k] && typeof v[k] === 'object') Object.keys(v[k]).forEach(x => { const e = v[k][x]; if (Array.isArray(e) && isFinite(e[0]) && isFinite(e[1])) o[k][x] = [+e[0], +e[1]]; }); });
   if (v.r && typeof v.r === 'object') Object.keys(v.r).forEach(x => { if (isFinite(v.r[x])) o.r[x] = +v.r[x]; });
   return o;
 }
@@ -481,6 +573,8 @@ function prune(state, now, w) {
   Object.keys(state.p).forEach(k => { if (decay(state.p[k], now, c) < c.PRUNE_BELOW) delete state.p[k]; });
   if (!state.g) state.g = {};
   Object.keys(state.g).forEach(k => { if (decay(state.g[k], now, c) < c.PRUNE_BELOW) delete state.g[k]; });
+  if (!state.k) state.k = {};
+  Object.keys(state.k).forEach(k => { if (GROUPS.indexOf(k) < 0 || decay(state.k[k], now, kindW(c)) < c.PRUNE_BELOW) delete state.k[k]; });
   Object.keys(state.r).forEach(k => { if (num(now) - state.r[k] > c.READS_TTL_DAYS * DAY) delete state.r[k]; });
   Object.keys(state.i).forEach(k => { if (num(now) - state.i[k][1] > c.IMPRESSIONS_TTL_DAYS * DAY) delete state.i[k]; });
   cap(state.l, c.LEAGUES_MAX, e => e[1]); cap(state.p, c.PUBS_MAX, e => e[1]); cap(state.g, c.LANGS_MAX, e => e[1]);
@@ -499,8 +593,9 @@ function addDwell(state, slug, seconds, now, session, w) {
   addPoints(state.l, slug, credit / 60 * c.DWELL_PTS_PER_MIN, now, c);
   return credit;
 }
-/* a story or a piece opened: it is read; its publisher or outlet, and a little its leagues, gain. Only the first
-   time: opening it again is not a second reason to like it. Returns whether it was new. */
+/* a story or a piece opened: it is read; its publisher or outlet, and a little its leagues, gain, and its group (partner,
+   press, auto: groupOf) gets a click. Only the first time: opening it again is not a second reason to like it. Returns
+   whether it was new. */
 function noteOpen(state, row, now, w) {
   const c = w || W;
   const keys = readKeys(row);
@@ -512,6 +607,8 @@ function noteOpen(state, row, now, w) {
   if (!state.g) state.g = {};
   addPoints(state.g, langOf(row), c.OPEN_LANG_PTS, now, c);
   leaguesOf(row).slice(0, 4).forEach(l => addPoints(state.l, l.slug, c.OPEN_LEAGUE_PTS, now, c));
+  if (!state.k) state.k = {};
+  addPoints(state.k, groupOf(row), c.KIND_OPEN_PTS, now, kindW(c));
   return true;
 }
 function noteVisit(state, key, now, w) {
@@ -581,6 +678,8 @@ function memoryStorage() {
   const m = {};
   return { getItem: k => (Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } };
 }
+/* the window's storage area by name: reading the property itself throws where site data is blocked */
+function area(name) { try { return root[name]; } catch (_) { return null; } }
 /* the browser's storage if it works, else null: a private window, blocked site data, a sandbox */
 function usable(area) {
   try {
@@ -593,8 +692,8 @@ function usable(area) {
    o: { local, session, now } - injected in the tests. */
 function createStore(o) {
   const opts = o || {};
-  const local = opts.local === undefined ? usable(root.localStorage) : opts.local;
-  const sess = opts.session === undefined ? usable(root.sessionStorage) : opts.session;
+  const local = opts.local === undefined ? usable(area('localStorage')) : opts.local;
+  const sess = opts.session === undefined ? usable(area('sessionStorage')) : opts.session;
   const mem = memoryStorage(), memSess = memoryStorage();
   const now = opts.now || (() => Date.now());
   const rd = (s, m, k) => { try { const v = s ? s.getItem(k) : null; if (v != null) return v; } catch (_) { /* fall through */ } return m.getItem(k); };
@@ -653,7 +752,7 @@ function createStore(o) {
     /* forget what was learned; the switch, and the follows (which are the reader's account's), stay */
     reset() { rm(local, mem, W.KEY); rm(sess, memSess, W.SESSION_KEY); cache = null; return true; },
     isRead(id) { return isRead(load(), id, now()); },
-    learned() { const st = load(); return Object.keys(st.l).length + Object.keys(st.p).length + Object.keys(st.r).length + Object.keys(st.g || {}).length; },
+    learned() { const st = load(); return Object.keys(st.l).length + Object.keys(st.p).length + Object.keys(st.r).length + Object.keys(st.g || {}).length + Object.keys(st.k || {}).length; },
     usingStorage: !!local
   };
 }
@@ -668,10 +767,10 @@ function createNet(o) {
   const opts = o || {};
   const cfg = () => opts.config || root.EPINOIA_CONFIG || {};
   const fetcher = () => opts.fetch || (typeof root.fetch === 'function' ? root.fetch.bind(root) : null);
-  const local = opts.local === undefined ? usable(root.localStorage) : opts.local;
+  const local = opts.local === undefined ? usable(area('localStorage')) : opts.local;
   const now = opts.now || (() => Date.now());
   const memo = {};
-  const sessArea = opts.session === undefined ? usable(root.sessionStorage) : opts.session;
+  const sessArea = opts.session === undefined ? usable(area('sessionStorage')) : opts.session;
   const readCache = (key, ttl, area) => { try { const v = JSON.parse((area || local).getItem(key) || 'null'); if (v && now() - v.t < ttl) return v.d; } catch (_) { /* none */ } return null; };
   /* `aged`: written as if it were already that old, so a short-lived answer (a database that does not have the function yet) is asked again soon */
   const writeCache = (key, d, aged, area) => { try { const a = area || local; if (a) a.setItem(key, JSON.stringify({ t: now() - (aged || 0), d })); } catch (_) { /* none */ } };
@@ -706,9 +805,12 @@ function createNet(o) {
     },
     /* the publishers' languages { 'source:slug': 'es', 'outlet:league/slug': 'es' }, once, kept half a day; a database without 0204 answers 404:
        the map of what 0195 seeded (SOURCE_LANG) stands. Never throws. */
-    languages() {
-      return once('languages', async () => {
+    languages(lo) {
+      /* cachedOnly: what this browser already has (a league's front page asks nothing more of the server), else the seeded map */
+      const cachedOnly = !!(lo && lo.cachedOnly);
+      return once(cachedOnly ? 'languagesCached' : 'languages', async () => {
         let rows = readCache(W.LANGS_KEY, W.LANGS_TTL_MS);
+        if (!rows && cachedOnly) rows = [];
         if (!rows) {
           try { rows = await call('rpc', 'rpc/news_source_languages', {}); writeCache(W.LANGS_KEY, Array.isArray(rows) ? rows : []); }
           catch (e) { rows = []; if (e && e.status === 404) writeCache(W.LANGS_KEY, [], W.LANGS_TTL_MS - W.ABSENT_TTL_MS); }
@@ -725,9 +827,11 @@ function createNet(o) {
       });
     },
     /* { country: { slug: 'GB+IE' }, idToSlug: { uuid: slug } }, once and remembered for half a day */
-    leagueMap() {
-      return once('leagues', async () => {
+    leagueMap(lo) {
+      const cachedOnly = !!(lo && lo.cachedOnly);
+      return once(cachedOnly ? 'leaguesCached' : 'leagues', async () => {
         let rows = readCache(W.LEAGUES_KEY, W.LEAGUES_TTL_MS);
+        if (!rows && cachedOnly) rows = [];
         if (!rows) {
           try { rows = await call('get', 'leagues?select=id,slug,country&order=slug'); writeCache(W.LEAGUES_KEY, rows); }
           catch (_) { rows = []; }
@@ -738,8 +842,9 @@ function createNet(o) {
       });
     },
     /* the points and reasons of the match reports among `rows`: { articleId: { points, reasons } } */
-    async significance(rows) {
-      const ids = (rows || []).filter(r => isReport(r) && r.id && !(r.id in sigCache)).map(r => r.id);
+    async significance(rows, lo) {
+      /* cachedOnly: only what this tab was already told (HOME or News asked); nothing is asked */
+      const ids = lo && lo.cachedOnly ? [] : (rows || []).filter(r => isReport(r) && r.id && !(r.id in sigCache)).map(r => r.id);
       if (ids.length) {
         const ask = ids.slice(0, 60);
         ask.forEach(id => { sigCache[id] = null; });
@@ -789,8 +894,10 @@ function readerLangs(nav, site) {
 
 /* THE RANKING OF A POOL OF ROWS, end to end: the profile from the device; the partners, the leagues' countries and the
    match reports' points from the public calls; the follows from follow.js (the reader's account, which the server already
-   has). opts: { followedIds (the ids in the reader's own feed, news_feed_mine), now }. Personalisation off, or nothing
-   learnable: the newest first, ranked: false. Never throws. */
+   has). opts: { followedIds (the ids in the reader's own feed, news_feed_mine), now, cachedOnly (ask the server nothing
+   that is not cached already: a league's front page, whose page view must not cost a call more; the partners are the
+   exception, which that page asks for anyway), leagues ({ slug: country } the caller knows, added to the map) }.
+   Personalisation off, or nothing learnable: the newest first, ranked: false. Never throws. */
 async function rankRows(rows, opts) {
   const o = opts || {};
   const t = o.now || Date.now();
@@ -799,7 +906,9 @@ async function rankRows(rows, opts) {
   try { partners = await n.partners(); } catch (_) { /* none */ }
   if (!st.enabled()) return { rows: rank(rows, { off: true }, t), ranked: false, partners };
   try {
-    const [lm, sig, langMap] = await Promise.all([n.leagueMap(), n.significance(rows), n.languages().catch(() => ({}))]);
+    const co = { cachedOnly: !!o.cachedOnly };
+    const [lm0, sig, langMap] = await Promise.all([n.leagueMap(co), n.significance(rows, co), n.languages(co).catch(() => ({}))]);
+    const lm = { country: Object.assign({}, lm0.country, o.leagues && o.leagues.country), idToSlug: Object.assign({}, lm0.idToSlug, o.leagues && o.leagues.idToSlug) };
     let followedLeagues = [];
     try {
       const F = root.EpinoiaFollow;
@@ -935,7 +1044,7 @@ function control(opts) {
 
 return {
   W, HOUR, DAY,
-  recency, decay, sat, partnerFade, scoreOf, whyOf, rank, rankRows,
+  recency, decay, sat, partnerFade, scoreOf, whyOf, rank, rankRows, GROUPS, groupOf, groupWeights, scoreMax,
   langCode, langOf, langOfKey, siteLang, readerLangs, SOURCE_LANG, LANG_CACHE,
   detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS,
   tierOf, isReport, pkeyOf, sourceOf, leaguesOf, readKeys, partnerSet, isRead,

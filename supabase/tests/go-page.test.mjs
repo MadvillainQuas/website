@@ -535,7 +535,9 @@ ok('...the choice is the reader\'s for the visit, changes the cards at once, and
    /sessionStorage\.setItem\(MODE_KEY, fx\)/.test(dailyJs) && /G\.live\(\)\.catch\(\(\) => \[\]\), followed\(\)/.test(dailyJs)
    && /return data\.mode \+ '>'/.test(dailyJs) && /No results yet\. The full list is on the fixtures page\./.test(dailyJs));
 ok('...styled as the section\'s own small type, the chosen one filled, a 40px target on a phone; and worded in Japanese and Spanish',
-   /\.hm \.sec-h \.hm-seg button\[aria-selected="true"\]\{background:var\(--lume\)/.test(homeCss) && /min-height:40px/.test(homeCss.slice(homeCss.indexOf('.hm-seg button{min-height:40px')))
+   /* the switch is kit/feedview.css's since HOME's feed and a league's news share it */
+   (() => { const seg = rd('epinoia', 'kit', 'feedview.css'); return /:is\(\.hm, \.fv\) \.sec-h \.hm-seg button\[aria-selected="true"\]/.test(seg) && /button\[aria-pressed="true"\]\{background:var\(--lume\)/.test(seg) &&
+     /\.hm-seg button\{min-height:40px/.test(seg) && /feedview\.css\?v=/.test(homeHtml); })()
    && ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code + '.js'); return c.includes("'No results yet. The full list is on the fixtures page.':") && c.includes("'Live, upcoming or results':")
      && c.includes("'Show less':") && c.includes("'Nothing is live just now, so here is what is next.':") && /'results':/.test(c) && /'upcoming':/.test(c) && /'live':/.test(c); }));
 

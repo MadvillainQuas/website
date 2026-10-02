@@ -47,6 +47,7 @@
 <link rel="stylesheet" href="kit/fanvote.css?v=599">
 <link rel="stylesheet" href="kit/news.css?v=599">
 <link rel="stylesheet" href="kit/newscard.css?v=599">
+<link rel="stylesheet" href="kit/feedview.css?v=599">
 <link rel="stylesheet" href="kit/splash.css?v=599">
 <link rel="stylesheet" href="kit/access.css?v=599">
 <link rel="stylesheet" href="kit/sectitle.css?v=599">
@@ -566,8 +567,6 @@
   .seasonmore, .news-more{padding-left:calc(var(--u)*3);padding-right:calc(var(--u)*3)}
   .merch-foot{text-align:center} .merch-note{margin:10px auto 0;text-align:center}
   @media (min-width:721px){
-    #news .news-grid{display:flex;flex-wrap:wrap;justify-content:center}
-    #news .news-grid>.news-card, #news .news-grid>.news-card:first-child{flex:0 0 calc((100% - 4 * var(--u)) / 3)}
     .merch-rack{display:flex;flex-wrap:wrap;justify-content:center}
     .merch-rack>.prod{flex:0 0 max(132px, calc((100% - 8 * var(--u)) / 5))}
     #takepartSec .grid{display:flex;flex-wrap:wrap;justify-content:center;gap:0;background:none}
@@ -729,14 +728,19 @@
 
   <!-- news (league splash only) -------------------------------------------
        ABOVE the clubs, because a league's front page leads with what has
-       happened rather than with a directory. Up to five, and the section is
-       absent entirely when nothing has been published — an empty "News"
-       heading is worse than no heading. -->
-  <div class="sec hide" id="newsSec">
-    <div class="sec-h"><span class="idx">00</span><h2>News</h2>
-      <span class="note" id="newsNote"></span></div>
-    <div id="news"></div>
-  </div>
+       happened rather than with a directory. HOME's feed, scoped to the league
+       (feedview.js, ranked by feedrank.js): For you or Newest, Personalise beside
+       them, six post cards. Absent entirely when nothing has been published. -->
+  <section class="sec hide fv" id="newsSec" aria-labelledby="newsH">
+    <div class="sec-h"><h2 id="newsH">News</h2>
+      <p class="note">Partners, publishers, creators and match reports, in your order</p>
+      <div class="hm-seg" id="newsSeg" role="group" aria-label="For you or newest">
+        <button type="button" data-feed="foryou" aria-pressed="true">For you</button>
+        <button type="button" data-feed="newest" aria-pressed="false">Newest</button>
+      </div>
+      <a class="showall" id="newsAll" href="news/">all news →</a></div>
+    <div class="hm-mount fv-mount" id="news"></div>
+  </section>
 
   <!-- the league's creators (league splash only, 0194) ----------------------
        Independent podcasts, channels and writers the league has given an outlet: their three latest
@@ -918,8 +922,6 @@
 <script src="data.js?v=599" defer></script>
 <script src="merch.js?v=599" defer></script>
 <script src="upload.js?v=599" defer></script>
-<script src="newsblocks.js?v=599" defer></script>
-<script src="news.js?v=599" defer></script>
 <script src="newscard.js?v=599" defer></script>
 <script src="toty.js?v=599" defer></script>
 <script src="igtile.js?v=599" defer></script>
@@ -941,8 +943,9 @@
 <script src="gameslist.js?v=599" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
 <script src="haze.js?v=599" defer></script>
-<script src="home.js?v=599" defer></script>
 <script src="feedrank.js?v=599" defer></script>
+<script src="feedview.js?v=599" defer></script>
+<script src="home.js?v=599" defer></script>
 <script src="interest.js?v=599" defer></script>
 <script src="nav.js?v=599" defer></script>
 <script src="xscroll.js?v=599" defer></script>

@@ -58,6 +58,7 @@
 <link rel="stylesheet" href="../kit/starcard.css?v=599">
 <link rel="stylesheet" href="../kit/silhouette.css?v=599">
 <link rel="stylesheet" href="../kit/newscard.css?v=599">
+<link rel="stylesheet" href="../kit/feedview.css?v=599">
 <link rel="stylesheet" href="../kit/teletext.css?v=599">
 <link rel="stylesheet" href="../kit/ttpanel.css?v=599">
 <link rel="stylesheet" href="../kit/legibility.css?v=599">
@@ -122,10 +123,11 @@
 
   <!-- the feed --------------------------------------------------------------
        Six posts, on the post card: the leagues' news, their creators' pieces, the publishers' stories
-       (feed-home.js). For you (ranked on this device: feedrank.js), Followed or Newest, and Personalise
+       (feed-home.js, on feedview.js: the same section a league's front page has). For you (ranked on this device: feedrank.js), Followed or Newest, and Personalise
        beside them; shut until it has some. -->
-  <section class="sec" id="feed" aria-labelledby="hmFeedH" hidden>
+  <section class="sec fv" id="feed" aria-labelledby="hmFeedH" hidden>
     <div class="sec-h"><span class="idx">03</span><h2 id="hmFeedH">Feed</h2>
+      <p class="note">Partners, publishers, creators and match reports, in your order</p>
       <!-- FOR YOU (ranked here, on this device), FOLLOWED (what the reader follows) or NEWEST (everything): feed-home.js -->
       <div class="hm-seg" id="feedSeg" role="group" aria-label="For you, followed or newest">
         <button type="button" data-feed="foryou" aria-pressed="true">For you</button>
@@ -133,7 +135,7 @@
         <button type="button" data-feed="newest" aria-pressed="false">Newest</button>
       </div>
       <a class="showall" id="feedAll" href="../news/">all news →</a></div>
-    <div class="hm-mount" id="homeFeed" aria-busy="true"></div>
+    <div class="hm-mount fv-mount" id="homeFeed" aria-busy="true"></div>
   </section>
 
   <!-- best performing players ---------------------------------------------
@@ -237,6 +239,7 @@
 <script src="followed-home.js?v=599" defer></script>
 <script src="../newscard.js?v=599" defer></script>
 <script src="../feedrank.js?v=599" defer></script>
+<script src="../feedview.js?v=599" defer></script>
 <script src="feed-home.js?v=599" defer></script>
 <script src="stars-home.js?v=599" defer></script>
 <script src="records-home.js?v=599" defer></script>

@@ -23,6 +23,7 @@ Both appear on the platform's **News** page, in **HOME's FEED**, on each league'
 | `creators/studio/` | Where an outlet's people write (the editor: `docs/creator-hub.md`). |
 | `creators/hub/` | The creator hub (0200): a creator's numbers and writing desk; a league's storylines, graphics and icons for anybody. See `docs/creator-hub.md`. |
 | HOME, **Feed** | Six cards, under My followed. **For you** (the default) is the ranked feed below; **Followed** shows what the reader follows (leagues, clubs' leagues, publishers, creators), newest first; **Newest** shows everything, newest first. The choice is remembered under `epinoia.home.feed2` (a new key: everyone starts on For you again, and an explicit choice after that sticks). **Personalise** sits beside them. |
+| A league's front page, **News** | HOME's feed, scoped to the league: the same section (`epinoia/feedview.js`, `kit/feedview.css`), the same post cards, the same ranking. Six cards, **For you** (the default) or **Newest**, **Personalise** beside them, and *all news →* to `news/?l=`. **Followed** is not offered (the league is what is followed there). One read, `news_feed(p_league)` for its newest 60 (it replaced the five headlines of `news_public`), that both switches draw from; the ranking asks nothing that is not cached already (below). The choice is remembered under `epinoia.league.feed`. Absent while the league has published nothing. Match reports are post cards here, as on HOME; the result plate stays the report's own head and the news page's card. |
 | A league's front page, **Creators** | The three latest pieces and a row of the outlets. Absent while creators are off or nothing is published. |
 | The rail | **News** on the platform panel. **Creators** on a league with some (probed). **Creator studio** in the hub for an outlet's people, and **creator hub** for everybody. |
 
@@ -36,7 +37,7 @@ A logo ending `#fill` fills its square, and is drawn to the edge of the disc. Th
 
 ## A match report's card and head (`epinoia/news.js`, `kit/news.css`)
 
-A league's own news (its front page's headlines and its news page) has a card of its own. A **match report** without a cover photograph shows the result, as a broadcast puts it up:
+A league's own news page (`news/?l=`) has a card of its own (its front page's news is HOME's feed now, on the post card). A **match report** without a cover photograph shows the result, as a broadcast puts it up:
 
 - **The halves.** Each half is one club's colour, with the halftone over it, cut on a diagonal. A club still on the default colour takes the headline's tint.
 - **The stripe.** The cut is a stripe in the league's colour. Only the league's own colour counts (`colour_source` is `logo` or `manual`); with the platform's default, the stripe is the kit's own.
@@ -146,7 +147,7 @@ A league's administrators could only add sources of their own, by link. When the
 
 ## The ranked feed (`epinoia/feedrank.js`)
 
-**For you** puts the newest posts in an order made for the reader. The ranking is done in the browser, from a profile that is kept **only in the browser** (`localStorage`, `epinoia_feed_v1`) and is **never sent** to the server: not the points, not what was opened, not the reader's country. The calls it makes are the same for every reader: the newest 60 posts (and, signed in, the newest 60 of what they follow: `news_feed_mine`, which already knows their follows), `official_partners()`, the leagues' countries (`leagues?select=id,slug,country`) and `news_report_significance()` for the match reports among the candidates. The big RPCs are unchanged.
+**For you** (HOME, the News page, a league's front page) puts the newest posts in an order made for the reader. HOME's feed and a league's front-page news are one module, `epinoia/feedview.js`, which reads the pool, ranks it with `feedrank.js` and draws it with `newscard.js`. The ranking is done in the browser, from a profile that is kept **only in the browser** (`localStorage`, `epinoia_feed_v1`) and is **never sent** to the server: not the points, not what was opened, not the reader's country. The calls it makes are the same for every reader: the newest 60 posts (and, signed in, the newest 60 of what they follow: `news_feed_mine`, which already knows their follows), `official_partners()`, the leagues' countries (`leagues?select=id,slug,country`) and `news_report_significance()` for the match reports among the candidates. The big RPCs are unchanged.
 
 **What is learned** (only while personalisation is on):
 
@@ -165,12 +166,29 @@ Learned points halve every 30 days.
 recency  = 0.03 + 0.97 * 2^(-age / 18 h)
 personal = 1 + 1.2 * L + 0.6 * C + 0.8 * P        L, P = 1 - e^(-points/20 or /10);  C = 1 home, 0.4 region
 base     = TIER + 0.85 * min(1, significance / 60)     (the lift is for match reports only)
-score    = base * recency * personal * (0.85 after 3 sightings never opened, 0.7 after 6)
+score    = base * weight(group) * recency * personal * (0.85 after 3 sightings never opened, 0.7 after 6) * langFactor
            + 0.5 * sqrt(recency)          if it is from what they follow
-           + 3 * fade(age)                if it is an official partner's and UNREAD
+           + 10 * fade(age)               if it is an official partner's and UNREAD
 ```
 
-The partner boost is in full for a week from publication, then fades to nothing over two days, and is larger than the whole personal multiplier's range, so an unread partner story outranks an ordinary story of the same age. A read one is an ordinary story.
+The partner boost is in full for a week from publication, then fades to nothing over two days. It is larger than the most any other story can score (`scoreMax()`: the top base 1.2 x the top group weight 2 x the top personal 3.6 + the follow bonus 0.5 = 9.14), so an unread partner piece of the last week is first whatever else was learned (but for the variety cap below). A read one is an ordinary story.
+
+**The three groups**, in the order a reader sees them unless they show otherwise: an official **partner**'s piece (the boost), then the **press** (a publisher's story, a creator's piece or channel post, a league's own article), then **auto**, the match reports. Within each group the order is the score: freshness, interest, significance.
+
+**Learning the groups.** Every story or piece opened for the first time is a click for its group, kept in the profile (`k`, in `epinoia_feed_v1`, on the device like everything else; a card that the ranking marked partner counts as a partner click). The clicks halve every 14 days (`KIND_HALF_LIFE_DAYS`). The weight of each group:
+
+```
+share(g)  = (clicks(g) + 3) / (all clicks + 9)                 3 virtual clicks for each group (KIND_PRIOR)
+weight(g) = clamp(1 + 1.25 * (3 * share(g) - 1) / 2, 0.6, 2)   KIND_GAIN, KIND_FLOOR, KIND_MAX
+```
+
+No clicks, or clicks spread evenly: every weight is 1 and the order is as before. One report opened: reports 1.13, the rest 0.94. Ten reports and nothing else: 1.66 against 0.67, so a plain report (0.35 x 1.66 = 0.58) passes a publisher's story some hours older and a significant game's report passes most, but not a publisher's story of its own age (0.67); thirty: 1.96 against the floor 0.6, and a plain report draws past a publisher's story of its age (0.69 to 0.6). Eight weeks later the ten clicks are a sixteenth and the order is nearly back. A card whose group's weight is at least 1.25 says *Because you open match reports* (or *...stories like this*).
+
+**The exploration floor.** A group the reader never opens keeps 60% of its weight (it sinks, it does not go), and each of press and auto that is in the pool keeps a card in the first six (its best, at the last of those places, `explore: true` on the row), so a reader can always show they want it.
+
+**A slow pool.** A league's newest 60 can span months. The recency half-life is the larger of 18 h and half the pool's median age, so "fresh" is fresh for that league (a report of five days ago is above a publisher's story of a hundred). HOME's and the News page's pools are hours old and keep 18 h.
+
+**No new calls on a league's front page.** Its page view makes the one `news_feed` read. The ranking runs with `cachedOnly`: the publishers' languages and the leagues' countries from this browser's cache (else the seeded `SOURCE_LANG` and the league's own country, which the page has), a report's significance only if this tab was already told (HOME or News asked); `official_partners()` is the creators section's call already (cached ten minutes). Nothing about the reader is ever sent: the clicks are in `localStorage`, read and written in a `try/catch`, in memory for the page when storage is blocked.
 
 **The tiers** (`TIER`): a publisher's story = a creator's piece (1.0) > a league's own article (0.8) > the site's own **match report** (0.35). A match report is the article `finalise-game` files for each game, signed `Epinoia match report` (its slug is `report-` and the first 8 hex digits of the game's id). Its base is lifted by what the game is worth:
 
@@ -195,11 +213,11 @@ The groups are capped (table 30, players 45, stage 50, extras 30) and the game a
 
 *Where a publisher's language comes from.* `news_sources.language` and `creator_outlets.language` (0204: lower-case ISO 639-1 or NULL; the seeded sources are back-filled) through `news_source_languages()`, a small public function the page calls once and keeps half a day. `news_feed` and `news_feed_mine` are unchanged (no `lang` column: adding one means dropping and re-creating both), the page joins by `source_slug` (and an outlet's league and slug). **0204 need not be applied for the feature to work**: without it (404, offline) `feedrank.js` uses `SOURCE_LANG`, the map of the sources 0195 seeded (a test holds it equal to the migration); a source added later has no language until 0204 is applied and an administrator sets it (`update news_sources set language = 'de' where slug = ...`), and is never held back meanwhile. A row that carries its own `lang` wins over its publisher's.
 
-**Variety.** Never more than two in a row from one source, and no more than two boosted partner items in the first six.
+**Variety.** Never more than two in a row from one source, and no more than two boosted partner items in the first six; then the exploration floor.
 
-**Why.** Each ranked card has a line saying why (*Official partner*, *Cup final*, *You follow NBL*, *Because you read a lot about NBL*, *Because you read Eurohoops*, *Popular where you are*, *From a publisher*...).
+**Why.** Each ranked card has a line saying why (*Official partner*, *Cup final*, *You follow NBL*, *Because you read a lot about NBL*, *Because you read Eurohoops*, *Because you open match reports*, *Popular where you are*, *From a publisher*...).
 
-**Personalise** (the button in the feed's heading on HOME and the News page, and the privacy page): a switch, the **languages** (the ones counted as the reader's, with *Remove* on those learned from what they opened, and *Show every language*, kept through a reset like the switch: `epinoia_feed_v1_langall`), and *Reset what the site has learned* (which clears the language points too). Off means the feed is the newest first, nothing is recorded, and what was learned before is left as it is; the switch (`epinoia_feed_v1_off`) survives a reset. A reset deletes the profile; what the reader follows belongs to their account and is untouched. The privacy page says all of this in plain words.
+**Personalise** (the button in the feed's heading on HOME, a league's front page and the News page, and the privacy page): a switch, the **languages** (the ones counted as the reader's, with *Remove* on those learned from what they opened, and *Show every language*, kept through a reset like the switch: `epinoia_feed_v1_langall`), and *Reset what the site has learned* (which clears the language points too). Off means the feed is the newest first, nothing is recorded, and what was learned before is left as it is; the switch (`epinoia_feed_v1_off`) survives a reset. A reset deletes the profile; what the reader follows belongs to their account and is untouched. The privacy page says all of this in plain words.
 
 **With no storage** (a private window, blocked site data) everything still works, in memory for the page.
 
@@ -290,6 +308,7 @@ A publisher's articles arrive every half hour. An administrator who does not wan
 - `supabase/tests/official-partners.test.mjs`: 0201 on PGlite (who may name a partner, what the list carries).
 - `supabase/tests/game-significance.test.mjs`: 0202 on PGlite (the points and the reasons for a game).
 - `supabase/tests/feedrank.test.mjs`: the ranking, the learning, the storage, and that nothing about the reader is sent.
+- `supabase/tests/league-feed.test.mjs`: the three groups, learning from clicks (it climbs, it decays, it is bounded, nothing vanishes), a slow pool, and a league's front page and HOME on the one module: one read, nothing more asked, storage blocked.
 - `supabase/tests/news-languages.test.mjs`: 0204 on PGlite (the column, the backfill, the public list, `SOURCE_LANG` in step).
 - `supabase/tests/partners-ui.test.mjs`: the console's Official partner switches.
 - `supabase/tests/league-creators.test.mjs`: 0207 on PGlite (who may assign, what the Community page's section shows), the console's COVERS row, the section on a stand-in page, and a creator's channel wearing its pill.

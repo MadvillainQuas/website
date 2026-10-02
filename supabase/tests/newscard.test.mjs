@@ -222,11 +222,11 @@ ok('HOME: the FEED under MY FOLLOWED, its switch in its heading, its script afte
 ok('...mounted by front.js as the feed section', /feed: 'homeFeed'/.test(read('epinoia', 'home', 'front.js')) && /H\.register\('feed'/.test(read('epinoia', 'home', 'feed-home.js')));
 ok('HOME: For you first (the new default), then Followed and Newest, and feedrank.js before the feed\'s script',
    home.indexOf('data-feed="foryou"') > 0 && home.indexOf('data-feed="foryou"') < home.indexOf('data-feed="followed"') && home.indexOf('feedrank.js?v=') > home.indexOf('newscard.js?v=') && home.indexOf('feedrank.js?v=') < home.indexOf('feed-home.js?v='));
-const npage = read('epinoia', 'news', 'news-page.js'), hfeed = read('epinoia', 'home', 'feed-home.js');
+const npage = read('epinoia', 'news', 'news-page.js'), hfeed = read('epinoia', 'home', 'feed-home.js'), fview = read('epinoia', 'feedview.js');
 ok('DEFAULT IS FOR YOU on both: the News page and HOME open on For you when nothing was chosen, and the remembered choice lives under NEW keys so an old remembered Newest cannot stick',
-   /\|\| 'you'/.test(npage) && /const ORDER_KEY = 'epinoia\.news\.order2'/.test(npage) && /let mode = stored\(\) \|\| 'foryou'/.test(hfeed) && /const KEY = 'epinoia\.home\.feed2'/.test(hfeed) &&
+   /\|\| 'you'/.test(npage) && /const ORDER_KEY = 'epinoia\.news\.order2'/.test(npage) && /let mode = stored\(\) \|\| 'foryou'/.test(fview) && /const KEY = 'epinoia\.home\.feed2'/.test(hfeed) &&
    !/'epinoia\.news\.order'/.test(npage) && !/'epinoia\.home\.feed'/.test(hfeed));
-ok('an explicit choice is still remembered (the buttons write the key), in a try/catch', /localStorage\.setItem\(ORDER_KEY/.test(npage) && /localStorage\.setItem\(KEY/.test(hfeed));
+ok('an explicit choice is still remembered (the buttons write the key), in a try/catch', /localStorage\.setItem\(ORDER_KEY/.test(npage) && /localStorage\.setItem\(KEY/.test(fview) && /key: KEY/.test(hfeed));
 {
   /* the language chip: only on a story in a language other than the site's */
   const FRm = require(path.join(root, 'epinoia', 'feedrank.js'));
