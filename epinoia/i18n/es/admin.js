@@ -255,7 +255,6 @@
       'status': 'Estado',
       'waiting for first run': 'esperando la primera sincronización',
       'paused': 'en pausa',
-      'never': 'nunca',
       'pause': 'Pausar',
       'resume': 'Reanudar',
       'poll next run': 'Consultar en la próxima sincronización',

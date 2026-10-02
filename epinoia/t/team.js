@@ -117,6 +117,10 @@ let SEASON_ID = null;
 let SEASON_NOW = true;
 /* the season the page's numbers are from, as a person writes it (seasonbar.js label): the hero's scoreboard says it */
 let SEASON_LABEL = '';
+/* the season row shown (seasonbar.js), with its competitions: the season card's buttons are its competitions */
+let SEASON_ROW = null;
+/* the club's linked sides (linkswitch.js paintTeam, migration 0178): the season card adds the same squad's other competitions */
+let LINKED_T = null;
 const seasonText = n => { const SB = window.EpinoiaSeasonBar; return SB && SB.label ? SB.label(n) : String(n || ''); };
 /* this script's own ?v=, so the win model's code loaded later (loadWinModel) is of the same deploy */
 const TEAM_V = (() => {
@@ -139,6 +143,7 @@ async function chooseSeason(team, lg) {
   try {
     const o = await SB.load(api, lg.id);
     SEASON_LABEL = o.current ? seasonText(o.current.name) : '';    // one season: still named on the hero
+    SEASON_ROW = o.current || null;
     if (!o.list || o.list.length < 2) return;
     const wantS = new URLSearchParams(location.search).get('s');
     let season = wantS ? SB.pick(o.list, wantS) : null;
@@ -155,6 +160,7 @@ async function chooseSeason(team, lg) {
     SEASON_ID = season.id || null;
     SEASON_NOW = !o.list[0] || season.id === o.list[0].id;
     SEASON_LABEL = seasonText(season.name);
+    SEASON_ROW = season;
     SB.mount({ host: $('#seasonPick'), wrap: $('#seasonRow'), seasons: o.list, season });
   } catch (_) { /* every season, as before */ }
 }
@@ -163,7 +169,7 @@ async function chooseSeason(team, lg) {
   if (!want) return oops('No team specified.');
   try {
     const key = isUuid ? 'id' : 'slug';
-    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug,country,logo_path,colour_a,periods:rules->periods,period_ms:rules->period_ms)&limit=1`);
+    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug,initials,country,logo_path,colour_a,periods:rules->periods,period_ms:rules->period_ms)&limit=1`);
     if (!ts.length) return oops('Team not found.');
     const team = ts[0];
     const colour = team.colour || '#93f2bf';
@@ -260,7 +266,7 @@ async function chooseSeason(team, lg) {
     else $('#leagueLink').style.display = 'none';
     /* A WOMEN'S SIDE SAYS SO beside its league, and a club linked to its other competitions (the SLB, the EuroCup,
        the women's side) gets a button that opens them (linkswitch.js, migration 0178). Asked without waiting. */
-    if (window.EpinoiaLinks) window.EpinoiaLinks.paintTeam(team, { sub: $('#tsub') }).catch(() => { /* the page as it was */ });
+    if (window.EpinoiaLinks) LINKED_T = window.EpinoiaLinks.paintTeam(team, { sub: $('#tsub') }).catch(() => null);   // null: the page as it was
     if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = team.name + ' · Epinoia';   // a build-seo.py copy keeps its own
     teamStrip(team, lg);
 
@@ -1127,23 +1133,91 @@ function weeklyTab(team) {
   });
 }
 
-async function record(team) {
-  if (ACCESS.paywall) return;          // standings are behind the wall; the strip is hidden
-  const st = await api(`standings?team_id=eq.${team.id}` + inSeason() +
-    `&select=gp,w,l,pts_for,pts_against,diff,league_points,rank,streak&limit=1`);
-  const wrap = $('#rec'); wrap.textContent = '';
-  const s = st[0];
+/* THE SEASON CARD (2026-10-02): the club's standing in ONE competition of the season at a time, with a button for each
+   competition it has a game in -- its league's own (SLB, SLB Cup) and, where the club is linked to the same squad playing
+   another competition that season (0178: London Lions' EuroCup side), that one's too. The pressed button says which
+   competition the numbers are from; a club in one competition has its name there instead.
+   It used to read the club's first standings row of ANY competition (limit 1): Liverpool's was an empty placeholder
+   ("Super League Basketball Men", 0-0, rank 3) while its Championship stood at 0-2.
+   The numbers are the competition's own table (standings). Where the table has no row for the club, or has not caught
+   up with its finished games (a knockout cup keeps none), they are worked out from the games themselves, without a rank.
+   The default is the competition with the most finished games, a league before a cup. */
+const REC = { cards: [], at: null, chosen: false };
+const KIND_ORDER = { league: 0, playoff: 1, cup: 2, trophy: 3, friendly: 4 };
+const REC_GAME_COLS = 'competition_id,status,tipoff_at,home_team_id,away_team_id,home_score,away_score';
+function recFromGames(gs, teamId) {
+  const fin = (gs || []).filter(g => g.status === 'final' && g.home_score != null && g.away_score != null)
+    .sort((a, b) => String(a.tipoff_at || '').localeCompare(String(b.tipoff_at || '')));
+  let w = 0, l = 0, pf = 0, pa = 0;
+  const res = fin.map(g => {
+    const home = g.home_team_id === teamId;
+    const us = +(home ? g.home_score : g.away_score) || 0, them = +(home ? g.away_score : g.home_score) || 0;
+    pf += us; pa += them;
+    if (us > them) { w++; return 'W'; }
+    if (us < them) { l++; return 'L'; }
+    return 'T';
+  });
+  let streak = '';
+  const last = res[res.length - 1];
+  if (last === 'W' || last === 'L') { let n = 0; for (let i = res.length - 1; i >= 0 && res[i] === last; i--) n++; streak = last + n; }
+  return { gp: fin.length, w, l, pts_for: pf, pts_against: pa, diff: pf - pa, rank: null, streak };
+}
+function recNumbers(card) {
+  const fin = card.games.filter(g => g.status === 'final').length;
+  const r = card.row;
+  if (r && (+r.gp || 0) >= fin) return r;
+  return recFromGames(card.games, card.teamId);
+}
+/* the competitions in the order the buttons stand: the club's own first (its league, then playoffs, cups), then a linked side's */
+function recSort(a, b) {
+  return (a.own === b.own ? 0 : a.own ? -1 : 1) || ((KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9)) ||
+    String(a.label || '').localeCompare(String(b.label || ''));
+}
+function recLabel() {
+  const SB = window.EpinoiaSeasonBar;
+  const labels = SB && SB.compLabels ? SB.compLabels(REC.cards) : new Map();
+  REC.cards.forEach(c => { c.label = labels.get(c.id) || c.name || KIND_LABEL[c.kind] || ''; });
+  REC.cards.sort(recSort);
+}
+function drawRec() {
+  const wrap = $('#rec');
+  if (!wrap) return;
+  wrap.textContent = '';
+  wrap.classList.remove('has-season', 'has-comps');
+  const card = REC.cards.find(c => c.id === REC.at) || REC.cards[0] || null;
+  const s = card ? recNumbers(card) : null;
+  const played = !!s && (+s.gp || 0) > 0;
+  const pct = s && played ? (window.EpinoiaStandings ? window.EpinoiaStandings.pct(s.w, s.gp) : (s.w / s.gp).toFixed(3).replace(/^0/, '')) : '\u2014';
   const cells = s
     /* the winning percentage in place of games played (a basketball record already says how many: W + L) */
-    ? [['rank', s.rank ?? '—'], ['record', `${s.w}-${s.l}`], ['win%', window.EpinoiaStandings ? window.EpinoiaStandings.pct(s.w, s.gp) : (s.gp ? (s.w / s.gp).toFixed(3).replace(/^0/, '') : '—')],
+    ? [['rank', played && s.rank != null ? s.rank : '\u2014'], ['record', `${s.w}-${s.l}`], ['win%', pct],
        ['pts for', s.pts_for], ['pts against', s.pts_against],
-       ['diff', (s.diff > 0 ? '+' : '') + s.diff], ['streak', s.streak || '—']]
+       ['diff', (s.diff > 0 ? '+' : '') + s.diff], ['streak', s.streak || '\u2014']]
     : [['record', '0-0'], ['played', 0]];
   cells.forEach(([l, v]) => {
     /* data-k: the scoreboard lays the rank out on its own (kit/clubhero.css) */
     const d = el('div'); d.dataset.k = l.replace(/\s+/g, '-');
     d.append(el('div', 'v', v), el('div', 'l', l)); wrap.appendChild(d);
   });
+  /* WHICH COMPETITION: a button each, the one shown pressed; one competition is named */
+  if (REC.cards.length) {
+    const row = el('div', 'rec-comps'); row.dataset.k = 'comps';
+    if (REC.cards.length > 1) {
+      row.setAttribute('role', 'group'); row.setAttribute('aria-label', 'competition');
+      REC.cards.forEach(c => {
+        const b = el('button', 'rec-c' + (c === card ? ' on' : ''), c.label);
+        b.type = 'button'; b.setAttribute('translate', 'no'); b.setAttribute('aria-pressed', c === card ? 'true' : 'false');
+        b.title = [c.name, c.linked ? c.linked.league || '' : ''].filter(Boolean).join(' \u00b7 ');
+        b.onclick = () => { if (REC.at === c.id) return; REC.at = c.id; REC.chosen = true; drawRec(); };
+        row.appendChild(b);
+      });
+    } else {
+      const one = el('span', 'rec-c one', card.label); one.setAttribute('translate', 'no'); one.title = card.name || '';
+      row.appendChild(one);
+    }
+    wrap.insertBefore(row, wrap.firstChild);
+    wrap.classList.add('has-comps');
+  }
   /* WHICH SEASON THE BOARD IS FROM, always: a line across its top (2025/26) */
   if (SEASON_LABEL) {
     const h = el('div'); h.dataset.k = 'season';
@@ -1151,6 +1225,100 @@ async function record(team) {
     wrap.insertBefore(h, wrap.firstChild);
     wrap.classList.add('has-season');
   }
+}
+async function record(team) {
+  if (ACCESS.paywall) return;          // standings are behind the wall; the strip is hidden
+  const lg = team.leagues || {};
+  let comps = (SEASON_ROW && SEASON_ROW.comps) || [];
+  let gs = [];
+  try {
+    if (comps.length) {
+      gs = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})&competition_id=in.(${comps.map(c => c.id).join(',')})` +
+        `&select=${REC_GAME_COLS}&order=tipoff_at.asc`);
+    } else {
+      /* no season read (seasonbar.js missing or refused): the competitions of the season of the club's latest game */
+      const all = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})&select=${REC_GAME_COLS}` +
+        `,competitions(id,name,kind,season_id)&order=tipoff_at.asc`);
+      const last = all.length ? (all[all.length - 1].competitions || {}).season_id : null;
+      gs = all.filter(g => g.competitions && g.competitions.season_id === last);
+      comps = [...new Map(gs.map(g => [g.competition_id, g.competitions])).values()];
+    }
+  } catch (e) { console.warn('[record]', e); }
+  const ids = [...new Set(gs.map(g => g.competition_id).filter(Boolean))];
+  let st = [];
+  try {
+    if (ids.length) st = await api(`standings?team_id=eq.${team.id}&competition_id=in.(${ids.join(',')})` +
+      `&select=competition_id,gp,w,l,pts_for,pts_against,diff,league_points,rank,streak`);
+  } catch (e) { console.warn('[record standings]', e); }
+  const byId = new Map(comps.map(c => [c.id, c]));
+  REC.cards = ids.map(id => {
+    const c = byId.get(id) || {};
+    return { id, own: true, teamId: team.id, name: c.name || '', kind: c.kind || 'league',
+             league: { name: lg.name, slug: lg.slug, initials: lg.initials }, row: st.find(r => r.competition_id === id) || null,
+             games: gs.filter(g => g.competition_id === id) };
+  });
+  recLabel();
+  /* the default: the most finished games, a league before a cup, then the most games */
+  const fin = c => c.games.filter(g => g.status === 'final').length;
+  const best = REC.cards.slice().sort((a, b) => (fin(b) - fin(a)) || ((KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9)) ||
+    (b.games.length - a.games.length))[0];
+  REC.at = best ? best.id : null;
+  drawRec();
+  recLinked(team).catch(e => console.warn('[record linked]', e));
+}
+
+/* THE SAME SQUAD IN ANOTHER COMPETITION. A club's linked sides (0178) are its other entries anywhere -- London Lions'
+   EuroCup side, but also its NBL Division One side, another squad. A side counts on this card when it plays a
+   competition of the same season and shares its players with this one (their profiles linked, player_group_members):
+   two at least, and a third of the smaller squad. Measured 2026-10-02: the EuroCup side shares 11 of its 12, the
+   Division One side none of its 15. Its women's and youth flags must match too. */
+async function sameSquad(a, b) {
+  const A = [...new Set(a.map(r => r.player_id).filter(Boolean))], B = [...new Set(b.map(r => r.player_id).filter(Boolean))];
+  if (A.length < 2 || B.length < 2) return false;
+  const ids = A.concat(B), grp = new Map();
+  for (let i = 0; i < ids.length; i += 60) {
+    (await api(`player_group_members?player_id=in.(${ids.slice(i, i + 60).join(',')})&select=player_id,group_id`))
+      .forEach(r => grp.set(r.player_id, r.group_id));
+  }
+  const ga = new Set(A.map(id => grp.get(id) || id));
+  const shared = new Set(B.map(id => grp.get(id) || id).filter(g => ga.has(g))).size;
+  return shared >= 2 && shared >= Math.min(A.length, B.length) / 3;
+}
+async function recLinked(team) {
+  if (!LINKED_T || !SEASON_LABEL) return;
+  const found = await LINKED_T;
+  const sides = ((found && found.linked && found.linked.teams) || []);
+  const me = sides.find(t => t.id === team.id) || {};
+  const others = sides.filter(t => t.id !== team.id && !!t.women === !!me.women && !!t.youth === !!me.youth &&
+    (t.age || null) === (me.age || null) && (t.competitions || []).some(k => seasonText(k.season) === SEASON_LABEL));
+  if (!others.length) return;
+  const ownIds = REC.cards.filter(c => c.own).map(c => c.id);
+  const mine = ownIds.length ? await api(`player_season_stats?team_id=eq.${team.id}&competition_id=in.(${ownIds.join(',')})&select=player_id`) : [];
+  let added = false;
+  for (const t of others) {
+    try {
+      const tg = (await api(`games?or=(home_team_id.eq.${t.id},away_team_id.eq.${t.id})&select=${REC_GAME_COLS}` +
+        `,competitions(id,name,kind,seasons(name,leagues(name,slug,initials)))&order=tipoff_at.asc`))
+        .filter(g => g.competitions && g.competitions.seasons && seasonText(g.competitions.seasons.name) === SEASON_LABEL);
+      const tc = [...new Set(tg.map(g => g.competition_id))];
+      if (!tc.length) continue;
+      const theirs = await api(`player_season_stats?team_id=eq.${t.id}&competition_id=in.(${tc.join(',')})&select=player_id`);
+      if (!(await sameSquad(mine, theirs))) continue;
+      const st = await api(`standings?team_id=eq.${t.id}&competition_id=in.(${tc.join(',')})` +
+        `&select=competition_id,gp,w,l,pts_for,pts_against,diff,league_points,rank,streak`);
+      tc.forEach(id => {
+        if (REC.cards.some(c => c.id === id)) return;
+        const c = tg.find(g => g.competition_id === id).competitions;
+        REC.cards.push({ id, own: false, teamId: t.id, name: c.name || '', kind: c.kind || 'league', linked: t,
+                         league: (c.seasons && c.seasons.leagues) || { name: t.league, slug: t.league_slug },
+                         row: st.find(r => r.competition_id === id) || null, games: tg.filter(g => g.competition_id === id) });
+        added = true;
+      });
+    } catch (e) { console.warn('[record linked side]', t.id, e); }
+  }
+  if (!added) return;
+  recLabel();
+  drawRec();
 }
 
 /* ------------------------------------------------------------ team stats --- */

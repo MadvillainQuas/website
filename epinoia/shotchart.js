@@ -271,6 +271,19 @@
     { k: 'three',  label: 'all threes',                   zones: ['c3l', 'c3r', 'w3l', 'w3r', 't3'] },
     { k: 'all',    label: 'every shot',                   zones: ALL }
   ];
+  /* EACH ROW'S BREAK-EVEN, for the table's colours: a zone's is its kind's (ANCHOR, below), and a cut of several kinds
+     is held to the mix it was shot from, weighted by attempts -- "every shot" taken mostly at the rim is not judged
+     against the three's 35%. eFG% counts a three as one and a half makes, and so does its break-even (35% from three
+     is 52.5% eFG). With no attempts, a single-kind row keeps its kind's number and a mixed one has none. */
+  const KIND_OF = {};
+  ZONES.forEach(z => { KIND_OF[z.k] = z.kind; });
+  const beOf = (zs, per, efg) => {
+    let att = 0, sum = 0;
+    zs.forEach(k => { const a = per[k].att, kind = KIND_OF[k]; att += a; sum += a * ANCHOR[kind] * (efg && kind === 'three' ? 1.5 : 1); });
+    if (att) return sum / att;
+    const kinds = [...new Set(zs.map(k => KIND_OF[k]))];
+    return kinds.length === 1 ? ANCHOR[kinds[0]] * (efg && kinds[0] === 'three' ? 1.5 : 1) : null;
+  };
   function zoneRows(shots, games) {
     const C = dims();
     const per = {};
@@ -288,24 +301,58 @@
       return { k: g.k, label: g.label, kind: g.kind || null, att, made, miss: att - made, m3,
                share: total ? 100 * att / total : null,
                attG: games ? att / games : null, madeG: games ? made / games : null, missG: games ? (att - made) / games : null,
-               fg: att ? 100 * made / att : null, efg: att ? 100 * (made + 0.5 * m3) / att : null };
+               fg: att ? 100 * made / att : null, efg: att ? 100 * (made + 0.5 * m3) / att : null,
+               be: beOf(g.zones, per, false), beE: beOf(g.zones, per, true) };
     };
     return { groups: GROUPS.map(row), big: BIG.map(row), total, games: games || 0 };
   }
-  function zoneTableHTML(rows) {
+  /* THE ZONES AS A TABLE, in the club page's table dress (t/team.js zoneStats, kit/clubstats.css table.czt): a heading
+     row over each group, each zone's swatch by kind, the share of the shots as a bar, and FG% and eFG% on a pill
+     COLOURED AS THE COURT IS -- the same diverging scale against the same break-even, blue below and orange above,
+     grey within two points -- with the gap to the break-even under it. A row under the court's attempt floor is
+     hatched rather than coloured, as its zone is: too few to rate is not average. Under 600px of its own width
+     (a container query: the rail eats the page) every row is a card. o: { minAttempts, colour } */
+  function zoneTableHTML(rows, o) {
+    o = o || {};
+    const few = o.minAttempts == null ? 3 : o.minAttempts;
     const f1 = v => v == null ? '\u2014' : v.toFixed(1);
-    const f0 = v => v == null ? '\u2014' : v.toFixed(0);
     const g = rows.games > 0;
-    const head = '<tr><th class="l">zone</th><th>shots</th><th>% of shots</th>' + (g ? '<th>att / g</th><th>made / g</th><th>missed / g</th>' : '<th>made</th><th>missed</th>') +
-                 '<th>fg%</th><th>efg%</th></tr>';
-    const tr = r => '<tr' + (r.att ? '' : ' class="none"') + '><td class="l" data-i18n-ctx="zone">' + r.label + '</td><td>' + r.att + '</td><td>' + f1(r.share) + '</td>' +
-      (g ? '<td>' + f1(r.attG) + '</td><td>' + f1(r.madeG) + '</td><td>' + f1(r.missG) + '</td>' : '<td>' + r.made + '</td><td>' + r.miss + '</td>') +
-      '<td>' + f0(r.fg) + '</td><td>' + f0(r.efg) + '</td></tr>';
-    return '<div class="sc-tablewrap"><table class="sc-table">' +
-      '<thead>' + head + '</thead><tbody>' + rows.groups.map(tr).join('') + '</tbody>' +
-      '<thead><tr><th class="l" colspan="' + (g ? 8 : 7) + '">the larger cuts</th></tr>' + head + '</thead><tbody>' + rows.big.map(tr).join('') + '</tbody>' +
-      '</table></div>' +
-      '<div class="sc-note">eFG% counts a three as one and a half makes \u00b7 % of shots is the share of every located attempt' + (g ? ' \u00b7 per game over ' + rows.games + (rows.games === 1 ? ' game' : ' games') : '') + '</div>';
+    const lb = t => '<span class="scz-lb" data-i18n-ctx="col">' + t + '</span>';
+    const pill = (pct, be, att) => {
+      if (pct == null) return '<span class="scz-pill nil">\u2014</span>';
+      if (att < few || be == null) return '<span class="scz-pill few" title="fewer than ' + few + ' attempts: too few to rate">' + pct.toFixed(1) + '</span>';
+      const d = pct - be;
+      return '<span class="scz-pill ' + bandCls(bandAt(pct, be)) + '" title="break-even ' + be.toFixed(1) + '%">' + pct.toFixed(1) + '</span>' +
+        '<span class="scz-be"><b>' + (d > 0 ? '+' : d < 0 ? '\u2212' : '\u00b1') + Math.abs(d).toFixed(1) + '</b><span class="scz-bev"> v ' + be.toFixed(0) + '</span></span>';
+    };
+    const SW = { paint: 'k-paint', mid: 'k-mid', three: 'k-three' };
+    const tr = (r, max) => {
+      const w = r.share == null || !(max > 0) ? 0 : Math.min(100, Math.max(2, 100 * r.share / max));
+      return '<tr class="r' + (r.att ? '' : ' none') + (r.k === 'all' ? ' tot' : '') + '">' +
+        '<th class="l" scope="row" data-i18n-ctx="zone">' + (r.kind ? '<i class="scz-sw ' + SW[r.kind] + '"></i>' : '') + r.label + '</th>' +
+        '<td>' + lb('made / att') + '<span class="scz-v">' + r.made + '/' + r.att + '</span></td>' +
+        '<td class="scz-share">' + lb('% of shots') + '<span class="scz-v">' + (r.share == null ? '\u2014' : f1(r.share) + '%') + '</span>' +
+          '<span class="scz-bar"><i style="width:' + w.toFixed(1) + '%"></i></span></td>' +
+        (g ? '<td>' + lb('att / g') + '<span class="scz-v">' + f1(r.attG) + '</span></td><td>' + lb('made / g') + '<span class="scz-v">' + f1(r.madeG) + '</span></td>'
+           : '<td>' + lb('missed') + '<span class="scz-v">' + r.miss + '</span></td>') +
+        '<td class="scz-p">' + lb('fg%') + pill(r.fg, r.be, r.att) + '</td>' +
+        '<td class="scz-p">' + lb('efg%') + pill(r.efg, r.beE, r.att) + '</td></tr>';
+    };
+    const cols = g ? 7 : 6;
+    const block = (title, list) => {
+      const max = Math.max(0, ...list.filter(r => r.k !== 'all').map(r => +r.share || 0));
+      return '<tbody><tr class="scz-gh"><th colspan="' + cols + '">' + title + '</th></tr>' + list.map(r => tr(r, max)).join('') + '</tbody>';
+    };
+    const tint = hexOk(o.colour) ? ' style="--scz-a:' + o.colour + '"' : '';
+    return '<div class="scz-wrap" data-i18n-ctx="zonetable"' + tint + '><table class="scz' + (g ? ' pg' : '') + '">' +
+      '<thead><tr><th class="l">zone</th><th>made / att</th><th>% of shots</th>' + (g ? '<th>att / g</th><th>made / g</th>' : '<th>missed</th>') +
+      '<th>fg%</th><th>efg%</th></tr></thead>' +
+      block('every zone', rows.groups) + block('the larger cuts', rows.big) + '</table>' +
+      '<div class="scz-key"><span class="rl">below break-even</span><i class="bm3"></i><i class="bm2"></i><i class="bm1"></i><i class="b0"></i><i class="bp1"></i><i class="bp2"></i><i class="bp3"></i><span class="rl">above</span>' +
+        '<span class="scz-fewkey"><i></i>fewer than ' + few + ' attempts</span></div>' +
+      '<div class="scz-note">fg% and efg% are coloured as the court is: against the zone\u2019s break-even (paint ' + ANCHOR.paint + '%, mid-range ' + ANCHOR.mid + '%, three ' + ANCHOR.three +
+        '%), and a cut of several zones against the mix it was shot from; the figure under each is the gap \u00b7 eFG% counts a three as one and a half makes \u00b7 % of shots is the share of every located attempt' +
+        (g ? ' \u00b7 per game over ' + rows.games + (rows.games === 1 ? ' game' : ' games') : '') + '</div></div>';
   }
 
   /* ---- the zones on a season's team rows ------------------------------------
@@ -448,8 +495,10 @@
   let PREG = 4;                                        // set by innerHTML for the chart being drawn
   const perTxt = p => (!p ? '' : p <= PREG ? (PREG === 2 ? 'H' : 'Q') + p : 'OT' + (p > PREG + 1 ? p - PREG : ''));
   /* the band a zone's percentage falls in against its break-even: -3 .. 3, 0 within two points */
-  function band(pct, kind) {
-    const d = pct - ANCHOR[kind];
+  function band(pct, kind) { return bandAt(pct, ANCHOR[kind]); }
+  /* ...against any break-even: the zone table's cuts of several kinds have their own (zoneRows) */
+  function bandAt(pct, anchor) {
+    const d = pct - anchor;
     const a = Math.abs(d), n = a <= 2 ? 0 : a <= 6 ? 1 : a <= 12 ? 2 : 3;
     return d < 0 ? -n : n;
   }
@@ -663,7 +712,7 @@
     body = courtHTML(r, all, marks, o.colour, 0) + legendHTML(r, all.length, madeN) + (o.zones && all.length ? tilesHTML(all, true) : '');
     let games = o.games || 0;
     if (st.last !== 'all' && o.gameList) games = Math.min(+st.last, o.gameList.length);
-    const table = o.zones && o.table !== false && all.length ? zoneTableHTML(zoneRows(all, games)) : '';
+    const table = o.zones && o.table !== false && all.length ? zoneTableHTML(zoneRows(all, games), { minAttempts: o.minAttempts, colour: o.colour }) : '';
     return controlsHTML(r) + body + table;
   }
 
@@ -801,5 +850,5 @@
     return '<div class="scw scw-game" data-scw="game">' + innerHTML(REG.game) + '</div>';
   }
 
-  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, gameHTML, gameListOf, whenOf, band, attachZoneStats, reboundsOf, rebRow, markColour, ZONES, GROUPS, BIG, ANCHOR };
+  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, gameHTML, gameListOf, whenOf, band, bandAt, attachZoneStats, reboundsOf, rebRow, markColour, ZONES, GROUPS, BIG, ANCHOR };
 }));

@@ -205,6 +205,38 @@ function render(opts) {
 }
 
 /* one player against every minute they were not on the floor */
+/* A GAP AS IT READS AT A GLANCE (2026-10-02, the player profile's "on the floor with"): the signed difference on a pill,
+   green where it is better, red where it is worse and grey where more is only a style, the arrow the way the number
+   went; beside it a bar from the centre, right for better and left for worse, full at `scale`.
+   dir: 1 more is better, -1 less is better, 0 neither. kit/onfloor.css. */
+function deltaCell(d, dir, scale, dp) {
+  const cell = el('div', 'dl-d');
+  const small = dp === 2 ? 0.005 : 0.05;
+  const tone = d == null || Math.abs(d) < small ? 'nt' : dir === 0 ? 'st' : ((d > 0) === (dir > 0) ? 'gd' : 'bd');
+  const pill = el('span', 'dpill ' + tone);
+  pill.appendChild(el('i', null, d == null || Math.abs(d) < small ? '' : d > 0 ? '\u25b2' : '\u25bc'));
+  pill.appendChild(document.createTextNode(d == null ? '\u2014' : (Math.abs(d) < small ? '\u00b1' : d > 0 ? '+' : '\u2212') + Math.abs(d).toFixed(dp == null ? 1 : dp)));
+  const bar = el('span', 'dbar');
+  bar.setAttribute('aria-hidden', 'true');
+  if (tone !== 'nt') {
+    const w = Math.min(50, 50 * Math.abs(d) / (scale || 1));
+    const right = tone === 'gd' || (tone === 'st' && d > 0);
+    const i = el('i', tone);
+    i.style.width = Math.max(2, w).toFixed(1) + '%';
+    i.style.left = (right ? 50 : 50 - Math.max(2, w)).toFixed(1) + '%';
+    bar.appendChild(i);
+  }
+  cell.append(pill, bar);
+  return cell;
+}
+
+/* THE TEAM WITH HIM ON AND OFF (the player profile): the net rating each way and the swing between them, large, then every
+   rating and factor the stints hold, on against off, each gap a delta (deltaCell). The ratings are per 100 possessions. */
+const OO_ROWS = [
+  ['net', 'net rating', 1, 20], ['ortg', 'offensive rating', 1, 15], ['drtg', 'defensive rating', -1, 15],
+  ['efg', 'effective fg%', 1, 8], ['ts', 'true shooting %', 1, 8], ['tov', 'turnover %', -1, 6],
+  ['oreb', 'offensive rebound %', 1, 10], ['defg', 'opponents\u2019 effective fg%', -1, 8], ['pace', 'pace', 0, 8]
+];
 function onOffTiles(host, stints, playerId) {
   const L = window.EpinoiaLineups;
   const h = typeof host === 'string' ? document.querySelector(host) : host;
@@ -212,20 +244,30 @@ function onOffTiles(host, stints, playerId) {
   h.textContent = '';
   if (!stints || !stints.length || !playerId) return;
   const oo = L.onOff(stints, playerId);
-  const grid = el('div', 'tiles');
-  [['on court net', sgn(oo.on.net), true],
-   ['off court net', sgn(oo.off.net), false],
-   ['on–off', sgn(oo.diff.net), true],
-   ['on ortg', f1(oo.on.ortg), false],
-   ['on drtg', f1(oo.on.drtg), false],
-   ['minutes on', f1(oo.on.mins), false]]
-    .forEach(([l, v, hi]) => {
-      const d = el('div', 'tile' + (hi ? ' hi' : ''));
-      d.append(el('div', 'v', v), el('div', 'l', l));
-      grid.appendChild(d);
-    });
-  h.appendChild(grid);
+  const card = el('div', 'oo');
+  card.setAttribute('data-i18n-ctx', 'onoff');
+  const top = el('div', 'oo-top');
+  const side = (cls, label, v, mins) => {
+    const s = el('div', 'oo-s ' + cls);
+    s.append(el('span', 'oo-k', label), el('b', null, sgn(v)), el('span', 'oo-m', f1(mins) + ' min'));
+    return s;
+  };
+  const d = oo.diff.net;
+  const sw = el('div', 'oo-sw ' + (d == null || Math.abs(d) < 0.05 ? 'nt' : d > 0 ? 'gd' : 'bd'));
+  sw.append(el('span', 'oo-k', 'on\u2013off'), el('b', null, (d > 0 ? '\u25b2 ' : d < 0 ? '\u25bc ' : '') + sgn(d)), el('span', 'oo-m', 'net rating per 100 possessions'));
+  top.append(side('on', 'on the floor', oo.on.net, oo.on.mins), sw, side('off', 'off the floor', oo.off.net, oo.off.mins));
+  card.appendChild(top);
+  const grid = el('div', 'dl');
+  ['', 'on', 'off', 'on \u2212 off'].forEach((t, i) => grid.appendChild(el('div', 'dl-h' + (i ? ' n' : ' l'), t)));
+  OO_ROWS.forEach(([k, label, dir, scale]) => {
+    const on = oo.on[k], off = oo.off[k], dd = on != null && off != null ? on - off : null;
+    grid.append(el('div', 'dl-l', label), el('div', 'dl-v', f1(on)), el('div', 'dl-v', f1(off)), deltaCell(dd, dir, scale));
+  });
+  card.appendChild(grid);
+  card.appendChild(el('div', 'oo-note', 'the team\u2019s numbers in the minutes this player was on the floor and the minutes off it \u00b7 green is better for the team with this player on, red worse ' +
+    '(a lower defensive rating, turnover rate and opponents\u2019 shooting are better) \u00b7 grey is only a style'));
+  h.appendChild(card);
 }
 
-return { render, onOffTiles };
+return { render, onOffTiles, deltaCell };
 }));

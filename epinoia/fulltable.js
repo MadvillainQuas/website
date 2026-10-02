@@ -772,7 +772,8 @@ function render(opts) {
   let preset = opts.preset || presets[0][0];
   if (S0.preset && presets.some(p => p[0] === S0.preset)) preset = S0.preset;
   let sortKey = opts.sortKey || (isTeam ? 'ppg' : 'ppg');
-  let sortDir = -1;
+  /* opts.sortDir 1: the sort column ascending from the start (a career table opens in the order its rows came: newest first) */
+  let sortDir = opts.sortDir === 1 ? 1 : -1;
   if (typeof S0.sort === 'string' && S0.sort) sortKey = S0.sort;
   if (S0.dir === 1 || S0.dir === -1) sortDir = S0.dir;
   let search = typeof S0.search === 'string' ? S0.search.trim().toLowerCase() : '';
@@ -890,7 +891,13 @@ function render(opts) {
   const LEAGUE_COL = opts.leagueColumn && !isTeam ? { k: 'leagueShort', l: 'LEAGUE', g: ['league'], text: true,
     fmt: r => r.leagueShort || r.leagueName || '', sort: r => r.leagueShort || r.leagueName || '',
     t: 'the league these numbers come from' } : null;
-  const colOf = k => CAT.find(x => x.k === k) || (LEAGUE_COL && k === LEAGUE_COL.k ? LEAGUE_COL : null) || BIO_COLS.find(x => x.k === k) || null;
+  /* THE COMPETITION COLUMN (opts.compColumn) sits beside the club in every preset, like the club, GP and MPG, and is not in
+     the column drawer: on a career table a season with two competitions is two rows (an SLB row and a EuroCup row), and
+     each says which. The rows carry compLabel (seasonbar.js compLabels: SLB, SLB Cup, EuroCup). */
+  const COMP_COL = opts.compColumn && !isTeam ? { k: 'compLabel', l: 'COMP', g: ['comp'], text: true,
+    fmt: r => r.compLabel || '', sort: r => r.compLabel || '', t: 'the competition these numbers come from' } : null;
+  const colOf = k => CAT.find(x => x.k === k) || (LEAGUE_COL && k === LEAGUE_COL.k ? LEAGUE_COL : null) ||
+    (COMP_COL && k === COMP_COL.k ? COMP_COL : null) || BIO_COLS.find(x => x.k === k) || null;
 
   const idCols = CAT.filter(c => c.g.includes('id'));
   const inPreset = c => preset === '*' ? !c.g.includes('id') : c.g.includes(preset);
@@ -899,6 +906,7 @@ function render(opts) {
     const out = idCols.slice(0, 2).concat(
       BIO_COLS.filter(c => bioShown[c.show]),
       idCols.slice(2),
+      COMP_COL ? [COMP_COL] : [],
       CAT.filter(c => !c.g.includes('id') && !absent(c.k) &&
                       ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
          .map((c, i) => [c, i])
@@ -954,6 +962,7 @@ function render(opts) {
   q.type = 'search';
   q.placeholder = isTeam ? 'find a team…' : 'find a player or team…';
   if (opts.searchLeagues) q.placeholder = 'find a player, team or league…';
+  if (opts.compColumn) q.placeholder = 'find a season, team or competition…';
   if (search) q.value = S0.search.trim();
   let qTimer = null;
   q.addEventListener('input', () => {
@@ -1676,7 +1685,7 @@ function render(opts) {
       });
     }
     if (search) v = v.filter(r =>
-      ((r.name || '') + ' ' + (r.teamName || '') +
+      ((r.name || '') + ' ' + (r.teamName || '') + (COMP_COL ? ' ' + (r.compLabel || '') : '') +
        (opts.searchLeagues ? ' ' + (r.leagueName || '') + ' ' + (r.leagueShort || '') : '')).toLowerCase().includes(search));
     if (v === pop) v = v.slice();
     /* a locked column is not a sort either: ordering by it would print its ranking.
@@ -1925,7 +1934,9 @@ function render(opts) {
   /* what the last draw put on screen, so "show more" can add rows without redrawing */
   let last = null;              // { all, cols, ranks, tb }
 
-  const noun = n => isTeam ? (n === 1 ? ' team' : ' teams') : (n === 1 ? ' player' : ' players');
+  /* a career table counts its rows as what they are: a season's competitions */
+  const noun = n => isTeam ? (n === 1 ? ' team' : ' teams') : opts.compColumn ? (n === 1 ? ' competition' : ' competitions')
+    : (n === 1 ? ' player' : ' players');
   function paintCount(all) {
     const on = Math.min(shown, all.length);
     const floors = floorText();

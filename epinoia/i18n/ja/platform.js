@@ -694,7 +694,6 @@
       'The clock': '期限',
       'Identity confirmed': '本人確認済み',
       'not yet': 'まだ',
-      'never': 'なし',
       'Extended to': '延長後の期限',
       'moves on while the clock is stopped': '期限停止中は延びます',
       'Outcome': '結果',

@@ -1,0 +1,85 @@
+/* ============================================================================
+   ON THE FLOOR WITH (the player profile, 2026-10-02): the team with him on and off (wowy.js onOffTiles) and his own
+   numbers with and without the teammates picked (p/withui.js). Loaded before kit/teletext.css.
+
+   THE HEAD      .oo-top    with him on, the swing (on - off), with him off: the net ratings large
+   THE ROWS      .dl        a statistic a row: the two figures, then the gap (.dl-d) as a pill and a bar; .dl.five adds
+                            his overall line. Under 560px of its own width the label takes its own line
+   THE GAP       .dpill     green better (.gd), red worse (.bd), grey a style (.st) or nothing (.nt), the arrow the way the
+                            number went; .dbar a bar from the centre, right for better and left for worse
+   THE CHIPS     .wchip     a teammate and the minutes the two shared, most first
+   ============================================================================ */
+#onoff:empty{ display:none }
+#withpanel{ padding:0 calc(var(--u,8px)*3) calc(var(--u,8px)*3) }
+#withpanel .lu-lead{ margin:0 0 10px; max-width:80ch; font-family:var(--f-ui); font-size:12.5px; line-height:1.55; color:var(--ink-2) }
+#withpanel .lu-note{ margin:0 0 10px; font-family:var(--f-micro); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3) }
+.oo{ container:oo / inline-size; padding:0 calc(var(--u,8px)*3) calc(var(--u,8px)*2) }
+.oo-top{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr); gap:10px; margin:0 0 12px }
+.oo-s, .oo-sw, .wcmp-s{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; min-width:0;
+  padding:12px 12px 11px; border-radius:12px; border:1px solid var(--rule-2); background:var(--panel); text-align:center }
+.oo-k{ font-family:var(--f-micro); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3) }
+.oo-s b, .oo-sw b{ font-family:var(--f-score); font-weight:400; font-size:clamp(24px,3vw,32px); line-height:1; color:var(--ink) }
+.oo-m{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3) }
+.oo-sw{ border-width:2px }
+.oo-sw.gd{ border-color:color-mix(in srgb,var(--good) 70%,transparent); background:color-mix(in srgb,var(--good) 10%,var(--panel)) }
+.oo-sw.gd b{ color:var(--good) }
+.oo-sw.bd{ border-color:color-mix(in srgb,var(--bad) 70%,transparent); background:color-mix(in srgb,var(--bad) 9%,var(--panel)) }
+.oo-sw.bd b{ color:var(--bad) }
+.oo-note{ margin:10px 0 0; font-family:var(--f-ui); font-size:11.5px; line-height:1.5; color:var(--ink-3) }
+
+/* ---- the rows ---- */
+.dl{ display:grid; grid-template-columns:minmax(120px,1.3fr) minmax(54px,.55fr) minmax(54px,.55fr) minmax(160px,2fr);
+  align-items:stretch; border:1px solid var(--rule-2); border-radius:12px; background:var(--panel); overflow:hidden }
+.dl.five{ grid-template-columns:minmax(118px,1.25fr) minmax(54px,.5fr) minmax(54px,.5fr) minmax(150px,1.8fr) minmax(54px,.5fr) }
+.dl > div{ display:flex; align-items:center; min-width:0; padding:9px 12px; border-bottom:1px solid color-mix(in oklch,var(--rule) 70%,transparent) }
+.dl-h{ font-family:var(--f-micro); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3);
+  background:color-mix(in oklch,var(--team-a,var(--lume)) 6%,var(--panel)); border-bottom-color:var(--rule-2) !important }
+.dl-h.n{ justify-content:flex-end; text-align:right }
+.dl-h.n:nth-child(4), .dl.five .dl-h.n:nth-child(4){ justify-content:center; text-align:center }
+.dl-l{ font-family:var(--f-micro); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink) }
+.dl-v{ justify-content:flex-end; text-align:right; font-family:var(--f-data,ui-monospace,monospace); font-size:13px; color:var(--ink); font-variant-numeric:tabular-nums }
+.dl-v.o{ color:var(--ink-3) }
+.dl-d{ display:flex; align-items:center; gap:10px }
+.dpill{ flex:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:66px; padding:4px 9px 3px;
+  border-radius:999px; font-family:var(--f-data,ui-monospace,monospace); font-size:12px; font-weight:700; line-height:1.2;
+  font-variant-numeric:tabular-nums; color:var(--ink-2); background:color-mix(in srgb,var(--ink-3) 12%,transparent) }
+.dpill i{ font-style:normal; font-size:8px; line-height:1 }
+.dpill.gd{ color:var(--good); background:color-mix(in srgb,var(--good) 16%,transparent) }
+.dpill.bd{ color:var(--bad); background:color-mix(in srgb,var(--bad) 14%,transparent) }
+.dpill.st{ color:var(--ink-2); background:color-mix(in oklch,var(--team-b,var(--aqua)) 16%,transparent) }
+.dbar{ position:relative; flex:1; min-width:40px; height:8px; border-radius:4px; background:color-mix(in srgb,var(--ink-3) 12%,transparent) }
+.dbar::after{ content:""; position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:var(--rule-2) }
+.dbar i{ position:absolute; top:0; bottom:0; border-radius:4px }
+.dbar i.gd{ background:var(--good) }
+.dbar i.bd{ background:var(--bad) }
+.dbar i.st{ background:color-mix(in oklch,var(--team-b,var(--aqua)) 70%,var(--ink-3)) }
+
+/* ---- his numbers with and without ---- */
+.wcmp{ container:wcmp / inline-size }
+.wcmp-h{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0 0 12px }
+.wcmp-s b{ font-family:var(--f-ui); font-weight:800; font-size:14px; line-height:1.25; color:var(--ink); overflow-wrap:anywhere }
+.wcmp-s.w{ box-shadow:inset 0 3px 0 var(--team-a,var(--lume)) }
+.wchips{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px }
+.wchip{ display:inline-flex; align-items:baseline; gap:7px }
+.wchip .wc-m{ font-family:var(--f-data,ui-monospace,monospace); font-size:10px; letter-spacing:0; text-transform:none; opacity:.7 }
+.wmore{ border-style:dashed }
+.wtiles{ border:1px solid var(--rule); border-radius:12px; overflow:hidden }
+
+/* ---- narrow: the label on its own line, the figures and the gap beneath ---- */
+@container oo (max-width:560px){
+  .oo-top{ grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .oo-sw{ grid-column:1 / -1; order:-1 }
+}
+@container oo (max-width:560px){
+  .dl{ grid-template-columns:minmax(46px,.6fr) minmax(46px,.6fr) minmax(0,2fr) }
+  .dl > .dl-h.l{ display:none }
+  .dl-l{ grid-column:1 / -1; padding-bottom:0 !important; border-bottom:0 !important }
+}
+@container wcmp (max-width:560px){
+  .dl.five{ grid-template-columns:minmax(44px,.6fr) minmax(44px,.6fr) minmax(0,2fr) minmax(44px,.6fr) }
+  .dl.five > .dl-h.l{ display:none }
+  .dl.five .dl-l{ grid-column:1 / -1; padding-bottom:0 !important; border-bottom:0 !important }
+  .dl.five > div{ padding:8px 8px }
+  .dl.five .dpill{ min-width:0; padding:3px 7px 2px; font-size:11px }
+}
+@media (max-width:520px){ .oo{ padding:0 10px calc(var(--u,8px)*2) } #withpanel{ padding:0 10px calc(var(--u,8px)*2) } }

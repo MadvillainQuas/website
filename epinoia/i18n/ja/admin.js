@@ -255,7 +255,6 @@
       'status': '状態',
       'waiting for first run': '初回の取り込み待ち',
       'paused': '一時停止中',
-      'never': 'なし',
       'pause': '一時停止',
       'resume': '再開',
       'poll next run': '次回の取り込みで取得',

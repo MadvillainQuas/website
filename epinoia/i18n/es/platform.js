@@ -698,7 +698,6 @@
       'The clock': 'El plazo',
       'Identity confirmed': 'Identidad confirmada',
       'not yet': 'todavía no',
-      'never': 'nunca',
       'Extended to': 'Prorrogada hasta',
       'moves on while the clock is stopped': 'se aplaza mientras el plazo está detenido',
       'Outcome': 'Resultado',

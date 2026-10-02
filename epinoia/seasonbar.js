@@ -90,6 +90,59 @@ function label(name) {
   return m ? m[1] + '/' + m[2].slice(-2) : s;
 }
 
+/* A LEAGUE NAMED IN A FEW LETTERS, for a button or a table cell that names a competition (2026-10-02): the initials the
+   league has set; a name of up to sixteen letters as it is (EuroCup, Primera FEB, NBL Division One); a short slug in
+   capitals with the men's or women's ending dropped (slb-men: SLB, wnbl-d1: WNBL D1); otherwise the name's initials,
+   hyphenated words counted apart and the men's or women's word left out (Azerbaijan Basketball League: ABL). */
+const GENDER_WORD = /^(men|mens|men's|women|womens|women's)$/i;
+function leagueAbbr(l) {
+  if (!l) return '';
+  if (typeof l === 'string') l = { name: l };
+  const own = String(l.initials || '').trim();
+  if (own) return own;
+  const name = String(l.name || '').trim();
+  if (name && name.length <= 16) return name;
+  const slug = String(l.slug || '').toLowerCase().replace(/-(men|mens|women|womens)$/, '');
+  if (slug && slug.length <= 7) return slug.replace(/-/g, ' ').toUpperCase();
+  const words = name.split(/[\s\-–]+/).filter(w => /^[0-9A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/.test(w) && !GENDER_WORD.test(w));
+  return words.length >= 2 ? words.map(w => w[0]).join('').toUpperCase() : (name || slug.toUpperCase());
+}
+/* a competition's own name without the season written into it ("Championship 26-27": Championship) */
+const bareComp = n => String(n == null ? '' : n)
+  .replace(/\s*\(?\b(\d{4}|\d{2})\s*[-/–]\s*(\d{4}|\d{2})\)?\s*$/, '')
+  .replace(/^\s*\(?(\d{4}|\d{2})\s*[-/–]\s*(\d{4}|\d{2})\)?\s+/, '').trim();
+const KIND_WORD = { cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
+/* a competition named only for what it is, which says nothing without its league */
+const GENERIC = /^(the )?(cup|trophy|play-?offs?|playoff|final four|finals?|friendl(y|ies)|league|regular season|championship)$/i;
+/* A COMPETITION AS A READER NAMES IT: its league, and what kind of competition it is when it is not the league itself --
+   SLB, SLB Cup, EuroCup. A cup or a trophy with a name of its own keeps it (Copa Princesa). The club's season card and
+   the player profile's competition column, chips and game log say it with this.
+   c: { name, kind, league: { name, slug, initials } } (a league's name alone will do). */
+function compLabel(c) {
+  if (!c) return '';
+  const kind = c.kind || 'league';
+  if (kind === 'friendly') return KIND_WORD.friendly;
+  const ab = leagueAbbr(c.league);
+  const bare = bareComp(c.name);
+  if (!ab) return bare || String(c.name || '');
+  if (kind === 'league') return ab;
+  return bare && !GENERIC.test(bare) ? bare : ab + ' ' + (KIND_WORD[kind] || kind);
+}
+/* ...for a set of competitions shown together, where two would read the same (two of a league's competitions of one
+   kind in a season): those two say their own names after the league's. -> Map id -> label */
+function compLabels(list) {
+  const first = (list || []).filter(Boolean).map(c => [c, compLabel(c)]);
+  const n = new Map();
+  first.forEach(([, l]) => n.set(l, (n.get(l) || 0) + 1));
+  const out = new Map();
+  first.forEach(([c, l]) => {
+    if (n.get(l) < 2) { out.set(c.id, l); return; }
+    const ab = leagueAbbr(c.league), own = bareComp(c.name) || String(c.name || '');
+    out.set(c.id, ab && own && own !== ab ? ab + ' · ' + own : (own || l));
+  });
+  return out;
+}
+
 /* ?s= may be a name or an id, and data.js pickSeason owns that matching rule —
    it is the one the fixtures page has been using since ?s= existed. Kept there
    rather than copied here: two spellings of "which season did they mean" is
@@ -243,5 +296,5 @@ function mount(o) {
   return true;
 }
 
-return { offer, pick, load, context, mount, href, syncUrl, newestFirst, label };
+return { offer, pick, load, context, mount, href, syncUrl, newestFirst, label, leagueAbbr, compLabel, compLabels, bareComp };
 }));

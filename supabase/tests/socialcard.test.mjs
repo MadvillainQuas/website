@@ -4,7 +4,7 @@
      node supabase/tests/socialcard.test.mjs
 
    What is held here:
-     * the posts are the week's own: a final with its quarters and each side's leading player (by game score),
+     * the posts are the week's own: a final with its quarters and each side's leading player (by the game's BPM),
        the player of the game from the winning side, the results, the table and the week ahead cut into even
        pages, every date and tip-off in the league's own time zone, and the words to post each with;
      * every template on every shape (square, portrait, story) keeps everything on the page, and on a story
@@ -32,7 +32,7 @@ const ok = (name, cond, extra = '') => {
 const sandbox = { console, module: undefined, setTimeout, clearTimeout, Intl, TextEncoder };
 sandbox.self = sandbox; sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
-for (const f of ['epinoia/reportcard.js', 'epinoia/socialcard.js', 'epinoia/admin/socialgfx-ui.js']) {
+for (const f of ['epinoia/bpm.js', 'epinoia/reportcard.js', 'epinoia/socialcard.js', 'epinoia/admin/socialgfx-ui.js']) {
   vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 }
 const SC = sandbox.EpinoiaSocialCard, GX = sandbox.EpinoiaSocialGfx, RC = sandbox.EpinoiaReportCard;
@@ -55,8 +55,13 @@ const res = SC.result({ game, home: paris, away: virtus, perQ, players, league, 
 ok('a final: the score, the date in the league\'s own zone (20:45 in Paris is still Tuesday)', res.home.score === 79 && res.away.score === 92
    && res.date === 'Tue 29 Sep 2026', res.date);
 ok('...the four quarters, each side\'s', res.periods.map(p => p.label + ':' + p.home + '-' + p.away).join() === 'Q1:18-15,Q2:22-29,Q3:23-23,Q4:16-25');
-ok('...each side led by its best game score (Hifi\'s 19 over Willis\'s 14 and ten boards is close: game score decides)',
-   res.top.home.name === SC.gameScore(players[0].stats) >= SC.gameScore(players[1].stats) ? 'Nadir Hifi' : 'Derek Willis' || true);
+const bp0 = SC.gameBPMs(players);
+ok('...each side led by its best BPM of the game, worked out over both sides\' lines (bpm.js gameFromBox); the figure is on the line',
+   bp0.size === 4 && res.top.home.name === (bp0.get(players[0]) >= bp0.get(players[1]) ? 'Nadir Hifi' : 'Derek Willis') &&
+   res.top.away.name === (bp0.get(players[2]) >= bp0.get(players[3]) ? 'Tornike Shengelia' : 'Arijan Lakic') && /^[+-]?\d+\.\d$/.test(res.top.home.stats.bpm),
+   [...bp0.values()].join());
+ok('...and a game with one side\'s lines only has no BPM to rank by: the most points lead', SC.gameBPMs(players.slice(0, 2)).size === 0 &&
+   SC.result({ game, home: paris, away: virtus, players: players.slice(0, 2), league }).top.home.name === 'Nadir Hifi');
 ok('...and the away side\'s: Shengelia, 24 PTS · 10 REB · 5 AST', res.top.away.name === 'Tornike Shengelia' && res.top.away.line === '24 PTS · 10 REB · 5 AST', res.top.away.line);
 const ot = SC.result({ game, home: paris, away: virtus, perQ: [{ 1: 18, 2: 22, 3: 23, 4: 16, 5: 9 }, { 1: 15, 2: 29, 3: 23, 4: 15, 5: 10 }], players, league });
 ok('an overtime is OT, a second one OT2', ot.periods.map(p => p.label).join() === 'Q1,Q2,Q3,Q4,OT'
@@ -361,8 +366,10 @@ console.log('\nthe modules (the builder\'s options)');
      && SC.draw(recorder(), fin, { size: 'story', modules: { teamStats: ['fgp', 'p3p', 'ftp', 'reb'], leaderN: 3, headline: 'X', subline: 'Y' } }).dropped.length === 0);
   const star = SC.performer({ game, home: paris, away: virtus, players: roster, league, pick: roster[3] });
   const sw = keys => words(drawLog(star, 'portrait', { statKeys: keys }));
-  ok('the star can show any of the player\'s whole line: offensive and defensive boards, turnovers, fouls, twos, effective shooting, game score', star.stats.oreb === 1 && star.stats.dreb === 6 && star.stats.tov === 5 && star.stats.pf === 3 && star.stats.p2 === '9/12' && star.stats.efg === '75%' && /^-?\d+(\.\d)?$/.test(star.stats.gmsc));
-  ok('...each drawn with its label and figure', ['OREB', 'DREB', 'TOV', 'PF', '2PT', 'EFG%', 'GMSC'].every(l => sw(['pts', 'reb', 'ast', 'oreb', 'dreb', 'tov']).concat(sw(['pts', 'reb', 'ast', 'pf', 'p2', 'efg', 'gmsc'])).includes(l)) && sw(['pts', 'reb', 'ast', 'tov']).includes('5') && sw(['pts', 'reb', 'ast', 'efg']).includes('75%'));
+  ok('the star can show any of the player\'s whole line: offensive and defensive boards, turnovers, fouls, twos, effective shooting, the game\'s BPM', star.stats.oreb === 1 && star.stats.dreb === 6 && star.stats.tov === 5 && star.stats.pf === 3 && star.stats.p2 === '9/12' && star.stats.efg === '75%' && /^[+-]?\d+\.\d$/.test(star.stats.bpm) && star.bpm != null, star.stats.bpm);
+  ok('...each drawn with its label and figure', ['OREB', 'DREB', 'TOV', 'PF', '2PT', 'EFG%', 'BPM'].every(l => sw(['pts', 'reb', 'ast', 'oreb', 'dreb', 'tov']).concat(sw(['pts', 'reb', 'ast', 'pf', 'p2', 'efg', 'bpm'])).includes(l)) && sw(['pts', 'reb', 'ast', 'tov']).includes('5') && sw(['pts', 'reb', 'ast', 'efg']).includes('75%'));
+  ok('...a graphic saved with game score (gmsc) shows the game\'s BPM, which replaced it', sw(['pts', 'reb', 'ast', 'gmsc']).includes('BPM') && !sw(['pts', 'reb', 'ast', 'gmsc']).includes('GMSC') &&
+     JSON.stringify(SC.cleanModules({ statKeys: ['pts', 'reb', 'gmsc'] }).statKeys) === '["pts","reb","bpm"]');
   const tstand = ['A', 'B', 'C'].map((n, i) => ({ rank: i + 1, team: { name: 'Club ' + n, colour: '#fd0204' }, gp: 10, w: 8 - i, l: 2 + i, diff: 50 - 40 * i, pts_for: 900 - 10 * i, pts_against: 850 + 20 * i, streak: 'W' + (3 - i), l5: (4 - i) + '-' + (1 + i), home: '5-0', away: (3 - i) + '-' + (2 + i), elo: 1612.4 - 50 * i }));
   const tm = SC.table({ standings: tstand, league }, 'portrait')[0];
   const th2 = mods => words(drawLog(tm, 'portrait', mods));
@@ -406,7 +413,7 @@ console.log('\nthe modules (the builder\'s options)');
       for (const [label, mods] of [['default', {}], ['everything', everything], ['no crests, no extras', { crests: false, quarters: false, leaders: false, venue: false, days: false, venues: false, logoPos: 'none', handle: false }],
                                    ['light + sponsor', { theme: 'light', sponsor: 'Presented by Acme' }], ['3 stats', { statKeys: ['fgp', 'p3p', 'min'] }], ['4 rows', { rows: 4 }], ['new columns', { cols: ['elo', 'l5', 'home', 'away', 'avg', 'papg'] }],
                                    ['team stats', { teamStats: ['fgp', 'p3p', 'ftp', 'efg', 'fg', 'reb'], leaderN: 3 }], ['row extras', { rowExtras: ['time', 'venue', 'quarters', 'record', 'elo'] }],
-                                   ['star: every kind of stat', { statKeys: ['oreb', 'dreb', 'tov', 'pf', 'p2', 'efg', 'gmsc', 'fg'] }]]) {
+                                   ['star: every kind of stat', { statKeys: ['oreb', 'dreb', 'tov', 'pf', 'p2', 'efg', 'bpm', 'fg'] }]]) {
         for (const theme of ['dark', 'light']) {
           const c = recorder();
           let threw = null;
@@ -491,19 +498,26 @@ console.log('\nstars of the week');
   const drawLog = (m, size, modules, theme) => { const c = recorder(); const r = SC.draw(c, m, { size, modules, theme }); return { log: c.log, r }; };
   const words = (m, size, mods) => drawLog(m, size, mods).log.filter(e => e.kind === 'text').map(e => e.t);
   const TS = ['Alpha', 'Bravo', 'Charlie'].map((n, i) => ({ name: n + ' Basket', colour: ['#fd0204', '#004d98', '#ffd100'][i], short_name: n.slice(0, 3).toUpperCase() }));
-  const ent = (name, ti, oi, s, k) => ({ key: 'g' + k + ':0:' + name, stats: Object.assign({ adv: { name, num: '7' } }, s), team: TS[ti], opp: TS[oi], teamScore: 80, oppScore: 70, gameId: 'g' + k });
+  /* each line's BPM is the real one, worked out in a game of its own: four ordinary teammates beside it, five ordinary opponents */
+  const mate = { pts: 8, p2m: 3, p2a: 6, p3m: 0, p3a: 2, fta: 2, ftm: 2, or: 1, dr: 3, ast: 2, stl: 1, to: 1, pf: 2, min: 1500000 };
+  const nightBPM = s => { const me = { team_idx: 0, stats: s };
+    return SC.gameBPMs([me].concat([1, 2, 3, 4].map(() => ({ team_idx: 0, stats: mate })), [0, 1, 2, 3, 4].map(() => ({ team_idx: 1, stats: mate })))).get(me); };
+  const ent = (name, ti, oi, s, k) => { const stats = Object.assign({ adv: { name, num: '7' } }, s);
+    return { key: 'g' + k + ':0:' + name, stats, bpm: nightBPM(stats), team: TS[ti], opp: TS[oi], teamScore: 80, oppScore: 70, gameId: 'g' + k }; };
   const big = { p2m: 8, p2a: 12, p3m: 2, p3a: 5, fta: 4, ftm: 4, or: 2, dr: 6, ast: 6, stl: 2, blk: 1, to: 2, pf: 2, pm: 9, min: 1800000 };
   const E = [ent('Ann Ace', 0, 1, Object.assign({ pts: 30 }, big), 1), ent('Bea Big', 1, 2, Object.assign({}, big, { pts: 28, p2m: 12, p2a: 14 }), 2), ent('Cy Cold', 2, 0, { pts: 33, p2m: 10, p2a: 30, p3m: 1, p3a: 12, fta: 6, ftm: 1, or: 0, dr: 1, ast: 0, to: 6, pf: 5, min: 2000000 }, 3),
     ent('Di Dime', 0, 2, Object.assign({}, big, { pts: 12, ast: 14 }), 4), ent('Ed Even', 1, 0, Object.assign({}, big, { pts: 20 }), 5), ent('Flo Few', 2, 1, Object.assign({}, big, { pts: 6 }), 6), ent('Ann Ace', 0, 2, Object.assign({}, big, { pts: 8 }), 7)];
   const W = SC.weekstars({ entries: E, league, comp: 'Premier', range: '23-30 Sep 2026' });
-  ok('ranked by game score by default: the efficient night over the wasteful 33', W.by === 'gs' && W.rows[0].name === 'Ann Ace' && !W.rows.slice(0, 3).some(r => r.name === 'Cy Cold') && W.rows.map(r => r.gameScore).every((v, i, a) => !i || v <= a[i - 1]), W.rows.map(r => r.name + ':' + r.gameScore).join());
+  ok('ranked by the game\'s BPM by default: the efficient nights over the wasteful 33', W.by === 'bpm' && !W.rows.some(r => r.name === 'Cy Cold') && W.rows.every(r => r.bpm != null) &&
+     W.rows.map(r => r.bpm).every((v, i, a) => !i || v <= a[i - 1]) && E[2].bpm < E[0].bpm, W.rows.map(r => r.name + ':' + r.bpm).join());
   ok('...five at most, a player once (his best game: Ann Ace\'s 30, not her 8), the ranks 1 to 5', W.rows.length === 5 && W.rows.filter(r => r.name === 'Ann Ace').length === 1 && W.rows[0].stats.pts === 30 && W.rows.map(r => r.rank).join() === '1,2,3,4,5' && W.rows.every(r => r.team.name));
   const P = SC.weekstars({ entries: E, league, by: 'pts' });
   ok('by points: the 33 leads, then 30, 28', P.rows.map(r => r.stats.pts).slice(0, 3).join() === '33,30,28' && P.rows[0].name === 'Cy Cold');
   const tie = SC.weekstars({ entries: [ent('Zed Z', 0, 1, Object.assign({}, big, { pts: 25 }), 1), ent('Abe A', 1, 2, Object.assign({}, big, { pts: 25 }), 2), ent('Mo Extra', 2, 0, Object.assign({}, big, { pts: 25, ast: 9 }), 3)], league });
-  ok('ties: the higher game score, then the points, then the name - the same order every time', tie.rows.map(r => r.name).join() === 'Mo Extra,Abe A,Zed Z' && SC.weekstars({ entries: E.slice().reverse(), league }).rows.map(r => r.name).join() === W.rows.map(r => r.name).join());
+  ok('ties: the higher BPM, then the points, then the name - the same order every time', tie.rows.map(r => r.name).join() === 'Mo Extra,Abe A,Zed Z' && SC.weekstars({ entries: E.slice().reverse(), league }).rows.map(r => r.name).join() === W.rows.map(r => r.name).join());
+  ok('...an entry without a BPM (no other side\'s lines) is ranked after every one with one', SC.weekstars({ entries: [Object.assign({}, E[5], { bpm: null }), E[4]], league }).rows.map(r => r.name).join() === 'Ed Even,Flo Few');
   const pk = SC.weekstars({ entries: E, league, by: 'pick', picks: [E[5].key, E[0].key, 'gone'] });
-  ok('by pick: the players named, in the order given, and no one else (an unknown pick is ignored)', pk.rows.map(r => r.name).join() === 'Flo Few,Ann Ace' && SC.weekstars({ entries: E, league, by: 'pick' }).rows.length === 0 && SC.weekstars({ entries: E, league, by: 'bogus' }).by === 'gs');
+  ok('by pick: the players named, in the order given, and no one else (an unknown pick is ignored)', pk.rows.map(r => r.name).join() === 'Flo Few,Ann Ace' && SC.weekstars({ entries: E, league, by: 'pick' }).rows.length === 0 && SC.weekstars({ entries: E, league, by: 'bogus' }).by === 'bpm' && SC.weekstars({ entries: E, league, by: 'gs' }).by === 'bpm');
   const few = SC.weekstars({ entries: E.slice(0, 2), league });
   ok('fewer players than places: two stars are two, no empty rows, and none at all says so', few.rows.length === 2 && words(few, 'portrait').includes('AA') && words(SC.weekstars({ entries: [], league }), 'portrait').includes('No player lines this week.'));
   ok('the words: "Stars of the week in the Premier:", each ranked with team, line and the game', (() => { const c = SC.caption(W); return /^Stars of the week in the Premier:\n\n1\. Ann Ace \(Alpha Basket\): 30 pts, \d+ reb, 6 ast vs Bravo Basket \(W 80–70\)\n2\./.test(SC.caption(Object.assign({}, W, { comp: 'Premier' }))) && /#EuroLeague #basketball$/.test(c); })(), SC.caption(W).split('\n').slice(0, 3).join(' / '));
@@ -524,7 +538,7 @@ console.log('\nstars of the week');
   for (const size of Object.keys(SC.SIZES)) {
     const S = SC.SIZES[size];
     for (const [tag, m] of [['normal', W], ['long names', SC.weekstars({ entries: longE, league: withLogo })], ['three', SC.weekstars({ entries: E.slice(0, 3), league })], ['one', SC.weekstars({ entries: E.slice(0, 1), league })]]) {
-      for (const layout of ['list', 'hero', 'five']) for (const mods of [{}, { rows: 3 }, { statKeys: ['pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'gmsc', 'tov'] }, { headline: 'A headline that is long enough to need cutting to fit the width', subline: 'and a subline', theme: 'light', crests: false, sponsor: 'Presented by Acme' }]) {
+      for (const layout of ['list', 'hero', 'five']) for (const mods of [{}, { rows: 3 }, { statKeys: ['pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'bpm', 'tov'] }, { headline: 'A headline that is long enough to need cutting to fit the width', subline: 'and a subline', theme: 'light', crests: false, sponsor: 'Presented by Acme' }]) {
         const c = recorder(); let threw = null;
         try { SC.draw(c, m, { size, modules: Object.assign({ layout }, mods) }); } catch (e) { threw = e.message; }
         const drawn = c.log.filter(e => !(e.kind === 'rect' && (e.x1 - e.x0 >= S.w || e.x0 === 0)));

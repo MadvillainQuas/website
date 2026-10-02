@@ -59,8 +59,11 @@ const STAT_DEFS = {   // key: [big label, small label]
   pts: ['POINTS', 'PTS'], reb: ['REBOUNDS', 'REB'], ast: ['ASSISTS', 'AST'], stl: ['STEALS', 'STL'], blk: ['BLOCKS', 'BLK'],
   fg: ['FIELD GOALS', 'FG'], p3: ['THREES', '3PT'], ft: ['FREE THROWS', 'FT'], fgp: ['FG%', 'FG%'], p3p: ['3P%', '3P%'],
   pm: ['PLUS/MINUS', '+/-'], min: ['MINUTES', 'MIN'], oreb: ['OFF. REBOUNDS', 'OREB'], dreb: ['DEF. REBOUNDS', 'DREB'],
-  tov: ['TURNOVERS', 'TOV'], pf: ['FOULS', 'PF'], p2: ['TWO-POINTERS', '2PT'], efg: ['EFG%', 'EFG%'], gmsc: ['GAME SCORE', 'GMSC']
+  tov: ['TURNOVERS', 'TOV'], pf: ['FOULS', 'PF'], p2: ['TWO-POINTERS', '2PT'], efg: ['EFG%', 'EFG%'], bpm: ['BOX PLUS/MINUS', 'BPM']
 };
+/* a graphic saved with game score (before 2026-10-02) shows the game's BPM, which replaced it */
+const OLD_KEY = { gmsc: 'bpm' };
+const newKey = x => OLD_KEY[x] || x;
 /* the league table's columns: those the standings hold, some worked out from them, and the ones read from the games
    (form, home and away records, the ELO rating: the console reads them when they are asked for) */
 const COL_DEFS = { gp: 'GP', w: 'W', l: 'L', pct: 'WIN%', pts: 'PTS', diff: 'DIFF', avg: 'AVG', pf: 'PF', pa: 'PA', ppg: 'PPG', papg: 'OPP',
@@ -110,11 +113,12 @@ function cleanModules(m) {
     const v = [...new Set(m[k].filter(x => (Array.isArray(defs) ? defs.includes(x) : defs[x] || catKey(x))))].slice(0, max);
     if (v.length >= min) o[k] = v;
   };
+  if (Array.isArray(m.leaderKeys)) m = Object.assign({}, m, { leaderKeys: m.leaderKeys.map(newKey) });
   list('teamStats', TEAM_STAT_DEFS, 1, 6); list('leaderKeys', STAT_DEFS, 1, 4); list('rowExtras', ROW_EXTRAS, 1, 5);
   const ln = parseInt(m.leaderN, 10);
   if (ln > 1) o.leaderN = Math.min(ln, 3);
   if (Array.isArray(m.statKeys)) {
-    const k = [...new Set(m.statKeys.filter(x => STAT_DEFS[x] || catKey(x)))].slice(0, 8);
+    const k = [...new Set(m.statKeys.map(newKey).filter(x => STAT_DEFS[x] || catKey(x)))].slice(0, 8);
     if (k.length >= 3) o.statKeys = k;
   }
   return o;
@@ -195,12 +199,29 @@ const timeLabel = t => (t ? t.hh + ':' + t.mm : '');
 
 /* ---------------------------------------------------------- the numbers --- */
 const n0 = v => (v == null || isNaN(v) ? 0 : +v);
-/* Hollinger's game score: one number for a night's work, the same the box score's leaders read */
-function gameScore(s) {
-  const fgm = n0(s.p2m) + n0(s.p3m), fga = n0(s.p2a) + n0(s.p3a);
-  return n0(s.pts) + 0.4 * fgm - 0.7 * fga - 0.4 * (n0(s.fta) - n0(s.ftm)) + 0.7 * n0(s.or) + 0.3 * n0(s.dr) +
-    n0(s.stl) + 0.7 * n0(s.ast) + 0.7 * n0(s.blk) - 0.4 * n0(s.pf) - n0(s.to);
+/* A NIGHT'S WORK IS ITS BPM (2026-10-02, in place of Hollinger's game score): each player's box plus/minus in the game,
+   from both sides' lines (bpm.js gameFromBox, the sum the box score page shows). players: one game's player_game_stats
+   rows ({ team_idx, stats }). -> Map row -> BPM. Without bpm.js on the page, or with one side's lines only, nobody has
+   one, and the picks fall back to points. */
+const BPM_OF = new WeakMap();
+function gameBPMs(players) {
+  if (players && typeof players === 'object' && BPM_OF.has(players)) return BPM_OF.get(players);
+  const B = root.EpinoiaBPM || null;
+  const out = new Map();
+  const rows = (players || []).filter(p => p && p.stats);
+  if (B && B.gameFromBox && rows.length) {
+    const m = B.gameFromBox(rows.map((p, i) => ({ id: i, side: p.team_idx === 1 ? 1 : 0, stats: p.stats })));
+    rows.forEach((p, i) => { const b = m.get(i); if (b && b.bpm != null) out.set(p, b.bpm); });
+  }
+  if (players && typeof players === 'object') BPM_OF.set(players, out);
+  return out;
 }
+const bpmText = v => (v == null || isNaN(v) ? '\u2014' : (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1));
+/* the better night of two: the higher BPM (one without a BPM below one with), then more points */
+const byNight = bp => (a, b) => {
+  const x = bp.has(a) ? bp.get(a) : -Infinity, y = bp.has(b) ? bp.get(b) : -Infinity;
+  return (y - x) || (n0(b.stats.pts) - n0(a.stats.pts));
+};
 /* "24 PTS · 8 REB · 5 AST": the counting stats worth saying, biggest first, points always */
 function statLine(s, max) {
   const reb = n0(s.or) + n0(s.dr);
@@ -210,14 +231,15 @@ function statLine(s, max) {
 }
 const made = (m, a) => n0(m) + '/' + n0(a);
 const pct = (m, a) => (n0(a) > 0 ? Math.round(100 * n0(m) / n0(a)) + '%' : '—');
-/* one player line as the graphics say it: every number a stat line can name, counting stats as numbers and shooting as text */
-function statsOf(s) {
+/* one player line as the graphics say it: every number a stat line can name, counting stats as numbers and shooting as text,
+   and the game's BPM where it is known */
+function statsOf(s, bpm) {
   const fgm = n0(s.p2m) + n0(s.p3m), fga = n0(s.p2a) + n0(s.p3a);
   return { pts: n0(s.pts), reb: n0(s.or) + n0(s.dr), ast: n0(s.ast), stl: n0(s.stl), blk: n0(s.blk),
            fg: made(fgm, fga), p3: made(s.p3m, s.p3a), ft: made(s.ftm, s.fta), fgp: pct(fgm, fga), p3p: pct(s.p3m, s.p3a),
            pm: n0(s.pm), min: Math.round(n0(s.min) / 60000), oreb: n0(s.or), dreb: n0(s.dr), tov: n0(s.to), pf: n0(s.pf),
            p2: made(s.p2m, s.p2a), efg: fga > 0 ? Math.round(100 * (fgm + 0.5 * n0(s.p3m)) / fga) + '%' : '—',
-           gmsc: String(Math.round(gameScore(s) * 10) / 10) };
+           bpm: bpmText(bpm) };
 }
 /* a side's totals for the game, summed from its players' lines: { key: { v: 'what is said', n: what is compared } } */
 function sideTotals(players, idx) {
@@ -244,20 +266,21 @@ function side(team, score, perQ) {
 }
 
 /* THE FINAL SCORE. `players` are player_game_stats rows ({ team_idx, stats }); the leading player of each side
-   by game score, and the period scores from team_game_stats' perQ when both sides have them. */
+   by the game's BPM, and the period scores from team_game_stats' perQ when both sides have them. */
 function result(o) {
   const g = o.game || {};
   const home = side(o.home, g.home_score, o.perQ && o.perQ[0]), away = side(o.away, g.away_score, o.perQ && o.perQ[1]);
+  const bp = gameBPMs(o.players);
   const lead = idx => {
     const rows = (o.players || []).filter(p => p.team_idx === idx && p.stats);
     if (!rows.length) return null;
-    const best = rows.slice().sort((a, b) => gameScore(b.stats) - gameScore(a.stats))[0];
-    return { name: best.stats.adv && best.stats.adv.name || best.name || '', line: statLine(best.stats, 3), stats: statsOf(best.stats) };
+    const best = rows.slice().sort(byNight(bp))[0];
+    return { name: best.stats.adv && best.stats.adv.name || best.name || '', line: statLine(best.stats, 3), stats: statsOf(best.stats, bp.get(best)) };
   };
   /* each side's three top scorers, for a final that names more than one */
   const scorers = idx => (o.players || []).filter(p => p.team_idx === idx && p.stats)
-    .sort((a, b) => n0(b.stats.pts) - n0(a.stats.pts) || gameScore(b.stats) - gameScore(a.stats)).slice(0, 3)
-    .map(p => ({ name: p.stats.adv && p.stats.adv.name || p.name || '', stats: statsOf(p.stats) }));
+    .sort((a, b) => n0(b.stats.pts) - n0(a.stats.pts) || byNight(bp)(a, b)).slice(0, 3)
+    .map(p => ({ name: p.stats.adv && p.stats.adv.name || p.name || '', stats: statsOf(p.stats, bp.get(p)) }));
   const ts = { home: sideTotals(o.players, 0), away: sideTotals(o.players, 1) };
   const periods = [];
   if (home.perQ && away.perQ) {
@@ -273,7 +296,7 @@ function result(o) {
   };
 }
 
-/* THE PLAYER OF THE GAME: the best game score on the winning side (a draw: either side). */
+/* THE PLAYER OF THE GAME: the best BPM of the game on the winning side (a draw: either side). */
 function performer(o) {
   const g = o.game || {};
   const hs = n0(g.home_score), as = n0(g.away_score);
@@ -282,7 +305,8 @@ function performer(o) {
   /* `o.pick` names one player line (the console's builder: any player of the game, not only its best) */
   const picked = o.pick && (o.players || []).includes(o.pick) && o.pick.stats ? o.pick : null;
   if (!rows.length && !picked) return null;
-  const best = picked || rows.slice().sort((a, b) => gameScore(b.stats) - gameScore(a.stats))[0];
+  const bp = gameBPMs(o.players);
+  const best = picked || rows.slice().sort(byNight(bp))[0];
   const s = best.stats, adv = s.adv || {};
   const mine = best.team_idx === 0 ? o.home : o.away, theirs = best.team_idx === 0 ? o.away : o.home;
   const my = best.team_idx === 0 ? hs : as, their = best.team_idx === 0 ? as : hs;
@@ -293,8 +317,8 @@ function performer(o) {
     kind: 'performer', key: (o.label ? slug(o.label) : 'player-of-the-game') + '-' + slug(name), label: o.label || '', league: o.league || {}, comp: o.comp || '', date: dateLabel(t),
     player: { name, num: adv.num != null ? String(adv.num) : '' },
     team: side(mine, my), opp: side(theirs, their), won: my > their,
-    stats: statsOf(s),
-    gameScore: Math.round(gameScore(s) * 10) / 10, gameId: g.id || null
+    stats: statsOf(s, bp.get(best)),
+    bpm: bp.has(best) ? Math.round(bp.get(best) * 10) / 10 : null, gameId: g.id || null
   };
 }
 
@@ -331,18 +355,21 @@ function week(o, size) {
 }
 
 /* THE STARS OF THE WEEK: the week's best performances, ranked. `o.entries` are one per player line of the week:
-   { key, stats (a player_game_stats stats blob, with adv.name / adv.num), team, opp (club rows), teamScore, oppScore, gameId }.
-   `by` is how they are ranked: 'gs' game score (efficiency, the default), 'pts' points, or 'pick' - `o.picks`, a list of
-   entry keys, in the order the person gave them. A player who played twice is his best game only. Ties go to the higher
-   game score, then more points, then the name, so the same week always ranks the same way. Five at most. */
-const STAR_BY = ['gs', 'pts', 'pick', 'score'];
+   { key, stats (a player_game_stats stats blob, with adv.name / adv.num), bpm (the game's BPM: gameBPMs), team, opp (club
+   rows), teamScore, oppScore, gameId }. `by` is how they are ranked: 'bpm' the game's BPM (the default; 'gs', game score,
+   which it replaced on 2026-10-02, means it too), 'pts' points, or 'pick' - `o.picks`, a list of entry keys, in the order
+   the person gave them. A player who played twice is his best game only. Ties go to the higher BPM, then more points,
+   then the name, so the same week always ranks the same way. Five at most. */
+const STAR_BY = ['bpm', 'pts', 'pick', 'score'];
 function weekstars(o) {
-  const by = STAR_BY.includes(o.by) ? o.by : 'gs';
+  const by = o.by === 'gs' ? 'bpm' : STAR_BY.includes(o.by) ? o.by : 'bpm';
   /* the month's stars come with a `score` of their own (any catalogue stat, `low` if lower is better) and `out`, the stats to
      show, already worked out (per game over the month); `sub` is the line under the name in place of the game */
-  const metric = e => (by === 'score' ? n0(e.score) * (o.low ? -1 : 1) : by === 'pts' ? n0(e.stats.pts) : gameScore(e.stats));
+  const bpmOf = e => (e.bpm == null || isNaN(e.bpm) ? -Infinity : +e.bpm);
+  const metric = e => (by === 'score' ? n0(e.score) * (o.low ? -1 : 1) : by === 'pts' ? n0(e.stats.pts) : bpmOf(e));
   const nameOf = e => (e.stats.adv && e.stats.adv.name) || e.name || '';
-  const cmp = (a, b) => metric(b) - metric(a) || gameScore(b.stats) - gameScore(a.stats) || n0(b.stats.pts) - n0(a.stats.pts) || nameOf(a).localeCompare(nameOf(b));
+  const less = (x, y) => (x === y ? 0 : x === -Infinity ? 1 : y === -Infinity ? -1 : y - x);
+  const cmp = (a, b) => less(metric(a), metric(b)) || less(bpmOf(a), bpmOf(b)) || n0(b.stats.pts) - n0(a.stats.pts) || nameOf(a).localeCompare(nameOf(b));
   const best = new Map();
   (o.entries || []).filter(e => e && e.stats).forEach(e => {
     const k = nameOf(e) + '|' + (e.team && e.team.name);
@@ -356,7 +383,7 @@ function weekstars(o) {
   const rows = list.slice(0, 5).map((e, i) => ({
     rank: i + 1, name: nameOf(e), num: e.stats.adv && e.stats.adv.num != null ? String(e.stats.adv.num) : '', sub: e.sub || '',
     team: side(e.team, e.teamScore), opp: side(e.opp, e.oppScore), won: n0(e.teamScore) > n0(e.oppScore),
-    stats: e.out || statsOf(e.stats), gameScore: Math.round(gameScore(e.stats) * 10) / 10, gameId: e.gameId || null, key: e.key || ''
+    stats: e.out || statsOf(e.stats, e.bpm), bpm: e.bpm == null || isNaN(e.bpm) ? null : Math.round(e.bpm * 10) / 10, gameId: e.gameId || null, key: e.key || ''
   }));
   const month = o.period === 'month';
   return { kind: 'weekstars', period: month ? 'month' : 'week', key: month ? 'stars-of-the-month' : 'stars-of-the-week', league: o.league || {}, comp: o.comp || '', range: o.range || '',
@@ -1785,5 +1812,5 @@ function zip(files, when) {
 }
 
 return { statboard, statLayout, compare, compareLayout, sizeOf, SB_MIN, SB_MAX, SB_SECS, CMP_COLOURS, SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, catKey, leaders, result, performer, weekstars, LAYOUTS, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
-         gameScore, statLine, local, dayLabel, dateLabel, timeLabel, slug };
+         gameBPMs, bpmText, statLine, local, dayLabel, dateLabel, timeLabel, slug };
 }));

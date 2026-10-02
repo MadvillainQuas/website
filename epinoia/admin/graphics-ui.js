@@ -59,9 +59,9 @@ const LEAD_CAT_DEFAULT = ['c:ppg', 'c:rpg', 'c:apg', 'c:spg', 'c:bpg'], MONTH_DE
 const MAX_LEAD_CATS = 6, TEAM_LEAD_DEFAULT = ['c:ppg', 'c:papg', 'c:diffpg'];
 const MIN_GAMES = [['', 'Automatic (two fifths of the most played)'], ['1', '1 game'], ['2', '2 games'], ['3', '3 games'], ['5', '5 games'], ['8', '8 games'], ['10', '10 games']];
 const LEAD_SCOPES = [['season', 'The season'], ['month', 'The month'], ['week', 'The week']];
-const MONTH_BY = [['gs', 'Average game score (efficiency)'], ['pts', 'Points a game'], ['stat', 'Any stat of the site\'s'], ['pick', 'My pick']];
+const MONTH_BY = [['bpm', 'BPM over the month'], ['pts', 'Points a game'], ['stat', 'Any stat of the site\'s'], ['pick', 'My pick']];
 /* the stats each template can show, in the order they are laid out (the first three of a star are its big numbers) */
-const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'gmsc', 'pm', 'min'];
+const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'bpm', 'pm', 'min'];
 const STAT_DEFAULT = ['pts', 'reb', 'ast', 'fg', 'p3', 'ft', 'pm', 'min'];
 const COL_ORDER = ['gp', 'w', 'l', 'pct', 'pts', 'diff', 'avg', 'pf', 'pa', 'ppg', 'papg', 'streak', 'l5', 'home', 'away', 'elo'];
 const COL_DEFAULT = ['gp', 'w', 'l', 'pct', 'diff'];          // WIN% in the default: the table is ordered by it
@@ -80,13 +80,15 @@ const ACCENTS = [['', 'League colour'], ['#ffe600', 'Teletext yellow'], ['#00e5f
 const THEMES = [['dark', 'League, dark'], ['light', 'Light'], ['contrast', 'High contrast']];
 const LOGOS = [['both', 'Heading and footer'], ['heading', 'Heading only'], ['footer', 'Footer only'], ['none', 'Hidden']];
 const ROWS = [['', 'All'], ['3', 'Top 3'], ['4', 'Top 4'], ['5', 'Top 5'], ['6', 'Top 6'], ['8', 'Top 8']];
-const STAR_BY = [['gs', 'Game score (efficiency)'], ['pts', 'Points'], ['pick', 'My pick']];
+/* the stars' ranking: the game's BPM (in place of game score, 2026-10-02: a builder saved with 'gs' reads as 'bpm') */
+const STAR_BY = [['bpm', 'BPM (the game\'s)'], ['pts', 'Points'], ['pick', 'My pick']];
+const byOf = v => (!v || v === 'gs' ? 'bpm' : v);
 const STAR_LAYOUT = [['', 'Ranked list'], ['hero', 'One star, two runners-up'], ['five', 'Starting five']];
 const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8, MAX_TEAM = 6, MAX_LEAD = 4;
 
 /* the builder's starting point: every module at today's default */
 function defaultBuilder() {
-  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'gs', picks: [], monthOff: 0,
+  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'bpm', picks: [], monthOff: 0,
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
             cols: null, tableOrder: '', statKeys: null, weekKeys: null, monthKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
             layout: '', discs: '', leadCats: null, leadScope: 'season', leadSubject: 'players', minGames: '', rankStat: 'c:ppg', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
@@ -366,7 +368,7 @@ function extraItems(panel) {
   const zone = clockOf(panel).zone || SCd.leagueZone(d.league);
   const bounds = GX().monthBounds(new Date(), 0, zone);
   const out = [];
-  const ms = GX().builderModel(d, { tpl: 'monthstars', lines: panel.lines, bounds, by: 'gs', opts: CATOPTS }, panel.size, crestOf);
+  const ms = GX().builderModel(d, { tpl: 'monthstars', lines: panel.lines, bounds, by: 'bpm', opts: CATOPTS }, panel.size, crestOf);
   if (ms.model && ms.games >= 3) out.push({ group: 'week', type: 'stars', title: 'Stars of the month · ' + bounds.label, model: ms.model });
   const season = typeof panel.o.season === 'function' ? panel.o.season() : null;
   const ld = GX().builderModel(d, { tpl: 'leaders', lines: panel.lines, scope: 'season', seasonName: season ? season.name : 'Season', opts: CATOPTS }, panel.size, crestOf);
@@ -525,7 +527,7 @@ function drawBuilder(panel, pane) {
   const bounds = () => GX().monthBounds(new Date(), b.monthOff || 0, clockOf(panel).zone || SCd.leagueZone(d.league));
   const season = typeof panel.o.season === 'function' ? panel.o.season() : null;
   /* the subject and the site's own columns the graphic asks for (the lines are read when something needs them) */
-  const selOf = () => Object.assign({}, b, { lines: d.lines, need: needKeys(b), opts: CATOPTS, bounds: bounds(), by: b.tpl === 'monthstars' ? ({ gs: 'gs', pts: 'pts', stat: 'stat', pick: 'pick' }[b.by] || 'gs') : b.by,
+  const selOf = () => Object.assign({}, b, { lines: d.lines, need: needKeys(b), opts: CATOPTS, bounds: bounds(), by: b.tpl === 'monthstars' ? ({ pts: 'pts', stat: 'stat', pick: 'pick' }[b.by] || 'bpm') : byOf(b.by),
     stat: M.rankStat, minGames: +M.minGames || 0, keys: b.tpl === 'leaders' ? (M.leadCats || (M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT)) : (catOf(M.monthKeys).length ? catOf(M.monthKeys) : MONTH_DEFAULT), scope: M.leadScope, order: M.tableOrder || '', subject: M.leadSubject,
     rows: +M.rows || 0, seasonName: season ? season.name : 'Season' });
   const compute = () => { res = GX().builderModel(d, selOf(), panel.size, crestOf); return res; };
@@ -594,7 +596,7 @@ function drawBuilder(panel, pane) {
   put(ticks, 'venues', tick('venues', 'Venue of each game'));
   fs3.appendChild(ticks);
   /* STARS OF THE WEEK: how they are picked, the layout, and (for "my pick") which players, up to five, in the order ticked */
-  put(fs3, 'starsby', field('Choose the stars by', select(STAR_BY, b.by, v => { b.by = v; persist(); drawBuilder2('gxBy'); })));
+  put(fs3, 'starsby', field('Choose the stars by', select(STAR_BY, byOf(b.by), v => { b.by = v; persist(); drawBuilder2('gxBy'); })));
   fs3.querySelector('[data-has="starsby"] select').id = 'gxBy';
   if (b.by === 'pick') {
     const pk = el('div', 'gx-checks'); pk.appendChild(el('span', 'gx-cl', 'Your five, in the order ticked'));
@@ -670,7 +672,7 @@ function drawBuilder(panel, pane) {
   /* THE MONTH: which one, how its stars are ranked, and how many games a player needs */
   const months = Array.from({ length: 13 }, (_, i) => [String(-i), GX().monthBounds(new Date(), -i, clockOf(panel).zone || SCd.leagueZone(d.league)).label]);
   put(fs3, 'monthpick', field('Month', select(months, String(b.monthOff || 0), v => { b.monthOff = +v; setRes(); })));
-  put(fs3, 'monthby', field('Rank the stars by', select(MONTH_BY, b.by === 'pts' || b.by === 'stat' || b.by === 'pick' ? b.by : 'gs', v => { b.by = v; persist(); drawBuilder2('gxMonthBy'); })));
+  put(fs3, 'monthby', field('Rank the stars by', select(MONTH_BY, b.by === 'pts' || b.by === 'stat' || b.by === 'pick' ? b.by : 'bpm', v => { b.by = v; persist(); drawBuilder2('gxMonthBy'); })));
   fs3.querySelector('[data-has="monthby"] select').id = 'gxMonthBy';
   if (b.tpl === 'monthstars' && b.by === 'stat' && X) {
     const rs = el('select', 'ep-input'); rs.id = 'gxRankStat';

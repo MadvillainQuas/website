@@ -386,12 +386,12 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
     ok(who + ': links kit/sitpanel.css?v=' + V, css > 0 && css < h.indexOf('</head>'));
     ok(who + ': loads ../sitpanel.js?v=' + V + ' before ' + own, js > 0 && mine > js);
   }
-  const lp = phtml.indexOf('<h2>League percentile</h2>'), ev = phtml.indexOf('<div class="sec" id="eventsSec">'), se = phtml.indexOf('<h2>Season</h2>');
-  ok('p/index.html: an Events section, 02, between League percentile and Season',
+  const lp = phtml.indexOf('<h2>League percentile</h2>'), ev = phtml.indexOf('<div class="sec" id="eventsSec">'), se = phtml.indexOf('<h2>Career stats</h2>');   // "Season" until 2026-10-02
+  ok('p/index.html: an Events section, 02, between League percentile and Career stats',
      lp > 0 && ev > lp && se > ev &&
      /<div class="sec" id="eventsSec">\s*<div class="sec-h"><span class="idx">02<\/span><h2>Events<\/h2><span class="note" id="eventsNote"><\/span><\/div>\s*<div id="events"><\/div>\s*<\/div>/.test(phtml));
   const idx = [...phtml.matchAll(/<span class="idx">([^<]+)<\/span><h2>([^<]+)<\/h2>/g)].map(m => m[1] + ' ' + m[2]);
-  ok('p/index.html: later sections renumbered', JSON.stringify(idx) === JSON.stringify(['01 League percentile', '02 Events', '03 Season', '04 Game log', '04b On video', '05 On the floor with', '06 Shot chart']), idx.join(' / '));
+  ok('p/index.html: later sections renumbered', JSON.stringify(idx) === JSON.stringify(['01 League percentile', '02 Events', '03 Career stats', '04 Game log', '04b On video', '05 On the floor with', '06 Shot chart']), idx.join(' / '));
   ok('p/index.html: the 05 section closes as a div and the shot chart is a section of its own after it',
      /<div id="withpanel"><\/div>\s*<\/div>\s*<!--[^>]*-->\s*<div class="sec" id="shotsec">[\s\S]*?<div id="shotchart"><\/div>\s*<\/div>/.test(phtml));
 

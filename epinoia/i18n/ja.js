@@ -1711,7 +1711,41 @@
       'Because you open stories like this': 'このような記事をよく開くため',
       'For you': 'あなた向け',
       'Personalise': 'パーソナライズ',
-      'Official partner': '公式パートナー'
+      'Official partner': '公式パートナー',
+      'below break-even': '損益分岐点未満',
+      'fg% and efg% are coloured as the court is: against the zone’s break-even (paint 58%, mid-range 40%, three 35%), and a cut of several zones against the mix it was shot from; the figure under each is the gap': 'FG%とeFG%はコートと同じ色分けです：ゾーンの損益分岐点（ペイント58%、ミドル40%、3P 35%）と比べ、複数ゾーンの区分はシュートの配分に応じた基準と比べます。下の数字はその差です',
+      'Career stats': '通算成績',
+      'the competition these numbers come from': 'この成績が記録された大会',
+      'find a season, team or competition': 'シーズン・クラブ・大会を検索',
+      'personal fouls': 'ファウル',
+      'field goal percentage': 'フィールドゴール成功率',
+      'three-point percentage': '3ポイント成功率',
+      'free throw percentage': 'フリースロー成功率',
+      'true shooting percentage': 'トゥルーシューティング%',
+      'plus-minus': 'プラスマイナス',
+      'box plus/minus': 'ボックス・プラスマイナス',
+      'statistic to chart': 'グラフにするスタッツ',
+      'avg of games': '試合平均',
+      '1st half → 2nd': '前半戦 → 後半戦',
+      'best': '最高',
+      'season average': 'シーズン平均',
+      'no attempt': '試投なし',
+      'No teammate picked yet: this player’s own numbers over these games, for reference.': 'チームメイトが未選択です。参考として、この期間のこの選手自身の成績を表示しています。',
+      'fewer': '表示を減らす',
+      'this player’s own numbers per 36 minutes, with the teammates picked on the floor against with none of them on': 'この選手自身の36分あたりの成績。選んだチームメイトの同時出場時と、誰も出場していない時の比較',
+      'green is better, red worse (fewer turnovers are better)': '緑は良化、赤は悪化（ターンオーバーは少ないほど良い）',
+      'grey is only a style: how many shots a player takes is the role': 'グレーはスタイルの違いのみ：シュート数は役割による',
+      'off the floor': 'コート外',
+      'net rating per 100 possessions': '100ポゼッションあたりのネットレーティング',
+      'effective fg%': 'EFG%',
+      'opponents’ effective fg%': '相手のEFG%',
+      'the team’s numbers in the minutes this player was on the floor and the minutes off it': 'この選手の出場中と不在中のチームの成績',
+      'green is better for the team with this player on, red worse (a lower defensive rating, turnover rate and opponents’ shooting are better)': '緑はこの選手の出場中にチームが良化、赤は悪化（ディフェンスレーティング、ターンオーバー率、相手のシュート率は低いほど良い）',
+      'grey is only a style': 'グレーはスタイルの違いのみ',
+      'position breakdown': 'ポジション別出場時間',
+      'over half': '半分以上',
+      'under 10%': '10%未満',
+      'never': 'なし'
     },
 
     ctx: {
@@ -1738,7 +1772,9 @@
       },
       /* the club page's shot zones and what became of every shot attempt (t/team.js; data-i18n-ctx="zonetable") */
       zonetable: {
-        'made': '成功'
+        'made': '成功',
+        'above': '以上',
+        'made / att': '成功 / 試投'
       },
       /* the schedule and ELO chips (p/sos-chip.js; data-i18n-ctx="soschip" on each chip and its sentence) */
       soschip: {
@@ -2381,7 +2417,8 @@
         'AS': 'AS',
         'BS': 'BS',
         'ST': 'ST',
-        'AGE': '年齢'
+        'AGE': '年齢',
+        'COMP': '大会'
       },
       /* a standings row (a PA beside it), as Japanese standings write it */
       standings: {
@@ -2483,6 +2520,25 @@
       },
       gtab: {
         'advanced stats': 'アドバンストスタッツ'
+      },
+      onoff: {
+        'on': 'オン',
+        'off': 'オフ',
+        'on − off': 'オン − オフ',
+        'with': '同時出場',
+        'without': '不在時',
+        'with − without': '差',
+        'net rating': 'ネットレーティング',
+        'offensive rating': 'オフェンスレーティング',
+        'defensive rating': 'ディフェンスレーティング',
+        'turnover %': 'ターンオーバー率',
+        'offensive rebound %': 'オフェンスリバウンド率',
+        'FG%': 'FG%'
+      },
+      gamelog: {
+        'a game': '1試合',
+        'won': '勝ち',
+        'lost': '負け'
       }
     },
 
@@ -2510,7 +2566,9 @@
       'lineup': '{n}ラインナップ', 'season': '{n}シーズン', 'seasons': '{n}シーズン', 'readings': '{n}回の読み取り',
       'mpg': '平均{n}分', 'gp': '{n}試合',
       'country': '{n}か国', 'countries': '{n}か国', 'article': '{n}件の記事',
-      'live': '{n}試合が試合中'
+      'live': '{n}試合が試合中',
+      'competition': '{n}大会',
+      'competitions': '{n}大会'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */
@@ -2572,6 +2630,21 @@
     },
 
     patterns: [
+      /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
+      [/^fewer than (\d+) attempts$/, '試投$1本未満'],
+      /* the player profile (2026-10-02): career stats, the game log, on the floor with, the position breakdown */
+      [/^the newest (\d+)$/, '最新$1件'],
+      [/^chart (.+) game by game$/, (m, T) => T(m[1]) + 'を試合ごとにグラフ表示'],
+      [/^(.+) game by game$/, (m, T) => '試合ごとの' + T(m[1])],
+      [/^last (\d+)$/, '直近$1試合'],
+      [/^last (\d+) games, running$/, '直近$1試合の平均（推移）'],
+      [/^([+−±][\d.,]+) on his (season|average) \(([^)]+)\)$/, m => (m[2] === 'season' ? 'シーズン平均' : '試合平均') + '（' + m[3] + '）比 ' + m[1]],
+      [/^\+(\d+) more$/, '+$1人'],
+      [/^(\d+) minutes together$/, '同時出場$1分'],
+      [/^(point guard|shooting guard|small forward|power forward|centre): (\d+)% of his minutes$/,
+        m => ({ 'point guard': 'ポイントガード', 'shooting guard': 'シューティングガード', 'small forward': 'スモールフォワード', 'power forward': 'パワーフォワード', 'centre': 'センター' })[m[1]] + '：出場時間の' + m[2] + '%'],
+      [/^minutes at each position: (.+)$/, m => 'ポジション別出場時間：' + m[1].replace(/, /g, '、').replace(/point guard|shooting guard|small forward|power forward|centre/g,
+        p => ({ 'point guard': 'ポイントガード', 'shooting guard': 'シューティングガード', 'small forward': 'スモールフォワード', 'power forward': 'パワーフォワード', 'centre': 'センター' })[p])],
       /* the club page's season line and chips */
       [/^Nobody in the scope has started (\d+) games yet \(the most is (\d+)\), so only that game’s starting five counts for now\.$/,
         'この範囲で$1試合以上先発した選手はまだいません(最多は$2試合)。今はその試合の先発5人だけが数えられます。'],
