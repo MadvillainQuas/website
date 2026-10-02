@@ -592,6 +592,9 @@ function today() {
   return d.getDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getFullYear();
 }
 function crestHTML(c, cls) {
+  /* a game's two clubs (game/analysis.js c.crests): both crests, "vs" between them */
+  if (Array.isArray(c.crests) && c.crests.length === 2)
+    return '<span class="' + cls + '-pair">' + crestHTML(c.crests[0], cls) + '<i class="rp-vs">vs</i>' + crestHTML(c.crests[1], cls) + '</span>';
   if (c.crest) return '<span class="' + cls + ' img"><img src="' + esc(c.crest) + '" alt="" crossorigin="anonymous"></span>';
   const mono = String(c.monogram || c.club || c.name || '?').replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 3).toUpperCase();
   return '<span class="' + cls + '"><b>' + esc(mono || '?') + '</b></span>';
@@ -599,6 +602,7 @@ function crestHTML(c, cls) {
 function newPage(c, label, cont) {
   const pg = el('div', 'rp-pg');
   pg.style.setProperty('--rp-a', c.accent || '#08603f');
+  if (c.accentB) pg.style.setProperty('--rp-b', c.accentB);     // a game's other club (game/analysis.js)
   pg.innerHTML = '<div class="rp-top">' + crestHTML(c, 'rp-top-c') +
     '<div class="rp-top-n"><b>' + esc(c.head || c.name) + '</b><span>' + esc(c.line || '') + '</span></div>' +
     '<div class="rp-top-m">' + esc(label) + (cont ? '<i> · continued</i>' : '') + '</div></div>' +
@@ -669,6 +673,11 @@ function layout(host, c, label, blocks, opt) {
     body.appendChild(b);
     count++;
     if (!over()) return;
+    /* a little smaller rather than a page of its own and a gap where it was: down to 88% where that makes it fit */
+    if (count > 1 && !b.style.zoom) {
+      const need = b.offsetHeight || 1, z = (need - (body.scrollHeight - body.clientHeight) - 3) / need;
+      if (z >= 0.88) { b.style.zoom = z.toFixed(3); if (!over()) return; b.style.zoom = ''; }
+    }
     if (count > 1) { b.remove(); open(true); body.appendChild(b); count = 1; }
     if (over()) {
       /* too tall for a whole page: smaller, to fit */

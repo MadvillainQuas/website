@@ -160,7 +160,7 @@ async function gate() {
     const tab = asked && [...document.querySelectorAll('.ep-tab')].find(t => t.dataset.p === asked);
     if (tab) { hashTabOpened = true; tab.click(); }
   }
-  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadPending(), loadScouts(), loadMail()]);
+  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadMail(), loadPending(), loadScouts()]);
 }
 
 /* ------------------------------------------------------------------ tabs --- */

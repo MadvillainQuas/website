@@ -112,16 +112,18 @@ const ICON = {
   ato: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l3 2M9 3h6"/></svg>'
 };
 /* row: the club's season row (ev_ / evd_ keys); field: every club's; o: { name } */
-function events(row, field, o) {
+function events(row0, field, o) {
   const opt = o || {};
-  if (!row) return '';
-  const side = (k, def) => {
+  if (!row0) return '';
+  /* a single game (o.other): the second column is the other club with the ball, read as its own like the first */
+  const side = (k, def, r0) => {
+    const row = r0 || row0;
     const p = (def ? 'evd_' : 'ev_') + k + '_';
     const ppp = row[p + 'ppp'], ppg = row[p + 'ppg'], sh = row[p + 'pts_sh'], efg = row[p + 'efg'], tov = row[p + 'tov_pct'], fq = row[p + 'freq'];
     if (!isNum(ppp) && !isNum(ppg)) return '<div class="tv-ev-s"><span class="tv-ev-none">not recorded</span></div>';
     const bp = bandP(pctIn(field, p + 'ppp', row.id, def));
     const chip = (key, v, low, lab) => { const b = bandP(pctIn(field, key, row.id, low)); return '<span class="tv-c" data-b="' + b + '">' + lab + ' <b>' + fx(v, 1) + '%</b></span>'; };
-    return '<div class="tv-ev-s ' + (def ? 'd' : 'o') + '">' +
+    return '<div class="tv-ev-s ' + (def ? 'd' : r0 ? 'o b' : 'o') + '">' +
       '<div class="tv-ev-ppp" data-b="' + bp + '"><b>' + fx(ppp, 2) + '</b><span>pts a chance</span></div>' +
       '<div class="tv-ev-m"><div class="tv-wl"><span class="tv-w" data-b="' + bp + '">' + (WORD[bp] || 'not ranked') + '</span>' +
         (isNum(efg) ? chip(p + 'efg', efg, def, 'eFG') : '') + (isNum(tov) ? chip(p + 'tov_pct', tov, !def, 'TO') : '') + '</div>' +
@@ -130,7 +132,7 @@ function events(row, field, o) {
         (isNum(fq) ? '<p class="tv-sm">' + fx(fq, 0) + '% of ' + (def ? 'opponents’' : 'its') + ' chances</p>' : '') + '</div></div>';
   };
   const rows = SITS.map(([k, name, what]) => '<div class="tv-ev">' +
-    '<div class="tv-ev-n"><i>' + ICON[k] + '</i><b>' + name + '</b><span>' + what + '</span></div>' + side(k, false) + side(k, true) + '</div>').join('');
+    '<div class="tv-ev-n"><i>' + ICON[k] + '</i><b>' + name + '</b><span>' + what + '</span></div>' + side(k, false) + (opt.other ? side(k, false, opt.other) : side(k, true)) + '</div>').join('');
   return '<div class="tv tv-evs"><div class="tv-ev tv-ev-hd"><span></span><span class="o">' + esc(opt.name || 'The club') + ' with the ball</span><span class="d">' + esc(opt.opp || 'Opponents') + ' with the ball</span></div>' +
     rows + '</div>' + key('the league’s clubs (points a chance; eFG and TO chips too)', false);
 }

@@ -57,7 +57,7 @@
 .tv-ev{ display:grid; grid-template-columns:minmax(0,0.62fr) minmax(0,1fr) minmax(0,1fr); gap:8px; align-items:stretch }
 .tv-ev-hd span{ font-family:var(--f-micro); font-size:8px; letter-spacing:.12em; text-transform:uppercase; padding:4px 8px; border-radius:6px; color:#fff }
 .tv-ev-hd span:first-child{ background:none }
-.tv-ev-hd .o{ background:var(--tv-club) } .tv-ev-hd .d{ background:#3f5249 }
+.tv-ev-hd .o{ background:var(--tv-club) } .tv-ev-hd .d{ background:var(--rp-b,#3f5249) }
 .tv-ev-n{ display:grid; grid-template-columns:30px minmax(0,1fr); grid-template-rows:auto auto; column-gap:7px; align-content:center;
   padding:6px 8px; border-radius:10px; background:color-mix(in srgb,var(--tv-club) 10%,var(--panel)); border:1px solid var(--rule) }
 .tv-ev-n i{ grid-row:span 2; display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:var(--tv-club) }
@@ -80,6 +80,8 @@
   background:color-mix(in srgb,var(--c) 26%,var(--panel)); border:1px solid var(--c) }
 .tv-cs{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px }
 .tv-ev-s.d .tv-bar i{ background:#3f5249 }
+/* a single game's other club (report.js --rp-b), with the ball like the first */
+.tv-ev-s.o.b{ border-top-color:var(--rp-b,#3f5249) } .tv-ev-s.o.b .tv-bar i{ background:var(--rp-b,#3f5249) }
 
 /* ---- the shot clock ---- */
 .tv-sc{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px }

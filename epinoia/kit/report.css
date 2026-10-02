@@ -207,7 +207,7 @@
 .rp-tbl td[data-b="4"]{ --b:var(--b4) } .rp-tbl td[data-b="3"]{ --b:var(--b3) } .rp-tbl td[data-b="2"]{ --b:var(--b2) } .rp-tbl td[data-b="1"]{ --b:var(--b1) }
 .rp-tbl td[data-b="9"]{ --b:var(--b9) } .rp-tbl td[data-b="0"]{ background:none }
 .rp-rk{ display:inline-block; min-width:26px; margin-left:4px; padding:1px 3px; border-radius:4px; font-size:7.5px; text-align:center;
-  background:#eef4f0; color:var(--ink-2) }
+  white-space:nowrap; background:#eef4f0; color:var(--ink-2) }
 .rp-rk[data-b="4"]{ background:#1f9d55; color:#fff } .rp-rk[data-b="3"]{ background:#cfe8b0 } .rp-rk[data-b="2"]{ background:#f8dfa4 } .rp-rk[data-b="1"]{ background:#f2c1bf }
 
 /* ---- two things side by side ---- */
@@ -221,6 +221,9 @@
 .rp-ffc{ border:1px solid var(--rule-2); border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; gap:6px }
 .rp-ffc h4{ margin:0; font-family:var(--f-micro); font-weight:400; font-size:7.5px; letter-spacing:.12em; color:var(--rp-a,#08603f); text-transform:uppercase }
 .rp-ffp{ display:grid; grid-template-columns:1fr 1fr; gap:6px }
+/* a game's merged card: both offences and the margin, three boxes across two columns of the row */
+.rp-ffc.rp-ff2{ grid-column:span 2 } .rp-ffp.rp-ffp3{ grid-template-columns:1fr 1fr 1fr }
+.rp-ffs b small{ font-size:.55em; margin-left:1px }
 .rp-ffs{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 4px; border-radius:8px; background:#f4f7f5 }
 .rp-ffs b{ font-family:var(--f-score); font-weight:400; font-size:24px; line-height:1 }
 .rp-ffs span{ font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
@@ -341,7 +344,7 @@
 .rp-tiles-b .rp-tile[data-b]{ background:color-mix(in srgb,var(--fb,#c9d3cd) 20%,#ffffff); box-shadow:inset 0 -4px 0 var(--fb,#c9d3cd) }
 .rp-rk[data-b="9"]{ background:#cfe0ea }
 /* the shot distribution: both ends, each figure with its bar and its place */
-.rp-sd th.o{ color:#fff; background:var(--rp-a,#08603f) } .rp-sd th.d{ color:#fff; background:#3f5249 }
+.rp-sd th.o{ color:#fff; background:var(--rp-a,#08603f) } .rp-sd th.d{ color:#fff; background:var(--rp-b,#3f5249) }
 .rp-sd td{ padding:3px 6px; vertical-align:middle }
 .rp-sd td.l b{ display:block; font-size:9px; font-weight:800; letter-spacing:.02em }
 .rp-sd td.l small{ display:block; font-weight:400; font-size:7.5px; color:var(--ink-3) }
@@ -378,11 +381,11 @@
 .rp-lockcard{ max-width:680px }
 /* the season line's groups, split: offence (the club's colour), defence (slate), net (the ink), each with its tag */
 .rp-gs{ position:relative; margin:4px 0 0; padding:14px 0 0 7px; border-left:3px solid var(--rp-a,#08603f) }
-.rp-gs.d{ border-left-color:#3f5249 } .rp-gs.n{ border-left-color:#0d1f17 }
+.rp-gs.d{ border-left-color:var(--rp-b,#3f5249) } .rp-gs.n{ border-left-color:#0d1f17 }
 .rp-gs + .rp-gs{ margin-top:7px }
 .rp-gs-t{ position:absolute; left:7px; top:0; padding:1px 6px; border-radius:4px; font-family:var(--f-micro); font-size:6.5px; letter-spacing:.12em;
-  text-transform:uppercase; line-height:1.5; color:#fff; background:var(--rp-a,#08603f) }
-.rp-gs.d .rp-gs-t{ background:#3f5249 } .rp-gs.n .rp-gs-t{ background:#0d1f17 }
+  text-transform:uppercase; line-height:1.5; white-space:nowrap; color:#fff; background:var(--rp-a,#08603f) }
+.rp-gs.d .rp-gs-t{ background:var(--rp-b,#3f5249) } .rp-gs.n .rp-gs-t{ background:#0d1f17 }
 .rp-gs .rp-st:first-of-type{ border-top:0 }
 /* the season line, compact: one line a figure, the reference on one line */
 .rp-gx .rp-st{ padding:3px 0 }
@@ -403,17 +406,21 @@
 .rp-rb{ border:1px solid var(--rule-2); border-radius:10px; overflow:hidden; background:#fff }
 .rp-rb h4{ margin:0; padding:5px 9px; font-family:var(--f-micro); font-weight:400; font-size:7.5px; letter-spacing:.12em; text-transform:uppercase;
   color:#fff; background:var(--rp-a,#08603f) }
-.rp-rb.opp h4{ background:#3f5249 }
+.rp-rb.opp h4{ background:#3f5249 } .rp-rb.b h4{ background:var(--rp-b,#3f5249) }
 .rp-rb-key{ display:flex; flex-wrap:wrap; gap:3px 10px; margin:0; padding:5px 9px 4px; font-size:7.5px; color:var(--ink-3); border-bottom:1px solid var(--rule) }
 .rp-rb-key span{ display:inline-flex; align-items:center; gap:4px }
 .rp-rb-key i{ display:inline-block; width:10px; height:7px; border-radius:2px }
-.rp-rb table{ width:100%; border-collapse:collapse; font-size:9px }
+.rp-rb table{ width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed }
+/* fixed columns, so the last one (the rebound rate and its place) stays inside the panel however wide its figures run */
+.rp-rb thead th:nth-child(1){ width:23% } .rp-rb thead th:nth-child(2){ width:10% } .rp-rb thead th:nth-child(3){ width:27% }
+.rp-rb thead th:nth-child(4){ width:17% } .rp-rb thead th:nth-child(5){ width:23% }
+.rp-rb td.v{ padding-left:4px; padding-right:6px } .rp-rb td.v small{ margin-left:2px }
 .rp-rb th, .rp-rb td{ padding:4px 6px; border-top:1px solid var(--rule); text-align:right; white-space:nowrap }
 .rp-rb thead th{ border-top:0; font-family:var(--f-micro); font-weight:400; font-size:6.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); background:#f6f9f7 }
 .rp-rb th:first-child, .rp-rb thead th:nth-child(3){ text-align:left }
 .rp-rb tbody th{ font-weight:700; color:var(--ink) }
 .rp-rb td{ font-family:var(--f-data,ui-monospace,monospace); font-variant-numeric:tabular-nums }
-.rp-rb td.bar{ width:40%; padding-left:3px; padding-right:3px }
+.rp-rb td.bar{ padding-left:3px; padding-right:10px }
 .rp-rb tr.tot th, .rp-rb tr.tot td{ border-top:2px solid var(--rule-2) }
 .rp-rb-bar{ display:flex; height:10px; border-radius:3px; overflow:hidden; background:#eef2ef }
 .rp-rb-bar i{ display:block; height:100%; flex:none }
@@ -428,33 +435,110 @@
 .rp-pvs{ display:inline-block; margin-top:1px; padding:1px 7px; border-radius:999px; font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em;
   text-transform:uppercase; color:#fff; background:var(--rp-a,#08603f) }
 
-/* ---- the game analysis (game/analysis.js): both box scores on one page, the game flow on another ---- */
-.ga-box{ margin:0 0 12px }
-.ga-bh{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:5px 9px; border-radius:8px 8px 0 0; background:var(--tc,#08603f); color:#ffffff }
-.ga-bh b{ font-family:var(--f-score); font-weight:400; font-size:15px; letter-spacing:.03em; text-transform:uppercase; text-shadow:0 1px 1px rgba(0,0,0,.35) }
-.ga-bh span{ font-family:var(--f-micro); font-size:7px; letter-spacing:.1em; text-transform:uppercase; text-shadow:0 1px 1px rgba(0,0,0,.35) }
-.ga-tbl{ border-radius:0 0 8px 8px; font-size:8.5px }
-.ga-tbl th{ padding:4px 3px; font-size:6.5px }
-.ga-tbl td{ padding:3px 3px; white-space:nowrap }
-.ga-tbl td.l{ font-size:8.5px; max-width:150px; overflow:hidden; text-overflow:ellipsis }
-.ga-tbl td.l i{ font-style:normal; font-family:var(--f-micro); font-size:6px; padding:0 3px; border-radius:3px; background:#0d1f17; color:#fff; vertical-align:1px }
-.ga-tbl tr.ga-st td{ background-color:#f7faf8 }
-.ga-tbl td[data-b]{ background:color-mix(in srgb,var(--b) 20%,#ffffff) }
-.ga-tbl td[data-b="9"]{ --b:var(--b9) }
-.ga-flow .gf-mv, .ga-flow .gf-fold, .ga-flow .gf-tip{ display:none !important }
+/* ---- the game analysis (game/analysis.js) ---- */
+/* the cover: the score by quarter, then both starting fives, each headed in its club's colour */
+.rp-cv-art .ga-h4{ margin-top:14px }
+.rp-cv-art h4{ margin-bottom:6px }
+.ga-qs, .ga-five{ width:100%; border-collapse:separate; border-spacing:0; font-family:var(--f-ui); color:var(--ink,#0d1f17) }
+.ga-qs th, .ga-five thead tr:not(.t) th{ padding:3px 4px 4px; font-family:var(--f-micro); font-weight:400; font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3,#5d6b64); text-align:center; border-bottom:1px solid var(--rule,#dfe7e2) }
+.ga-qs th.l, .ga-five th.l, .ga-five thead tr:not(.t) th.l{ text-align:left }
+.ga-qs td{ padding:4px 4px; font-family:var(--f-data,ui-monospace,monospace); font-size:12px; text-align:center; border-bottom:1px solid var(--rule,#dfe7e2) }
+.ga-qs td.l{ text-align:left; font-family:var(--f-ui); font-weight:700; font-size:11.5px; white-space:nowrap }
+.ga-qs td.l i{ display:inline-block; width:9px; height:9px; margin-right:7px; border-radius:2px; background:var(--tc); vertical-align:-1px }
+.ga-qs td.w{ font-weight:700 }
+.ga-qs td.f{ font-family:var(--f-score); font-size:17px; color:var(--ink-3,#5d6b64); background:#f4f8f6 }
+.ga-qs td.f.w{ color:var(--ink,#0d1f17); font-weight:400 }
+.ga-qs th.f{ background:#f4f8f6 }
+.ga-five{ margin:0 0 8px; border:1px solid var(--rule,#dfe7e2); border-radius:8px; overflow:hidden }
+.ga-five tr.t th{ padding:4px 9px; background:var(--tc); color:var(--ti,#ffffff); text-align:left; font-family:var(--f-score); font-weight:400; font-size:14px; letter-spacing:.04em; text-transform:uppercase }
+.ga-five td{ padding:2px 4px; font-family:var(--f-data,ui-monospace,monospace); font-size:10.5px; text-align:center; border-top:1px solid #edf2ef }
+.ga-five td.l{ text-align:left; font-family:var(--f-ui); font-weight:600; font-size:10.5px; white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis }
+.ga-five td.n, .ga-five th.n{ width:22px; color:var(--ink-3,#5d6b64); font-size:9px }
+.ga-five td.b{ font-weight:700 }
+.ga-five td.pos{ color:#1f7a45 } .ga-five td.neg{ color:#b3261e }
+/* the full stats: the tab's figures as a table of the report's own, a strip in each club's colour over it, each column
+   group under a band of its own colour, every rated figure shaded by its percentile, a bar under it for its size */
+.ga-team{ margin:0 0 10px }
+.ga-th{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 12px; border-radius:8px 8px 0 0; background:var(--tc,#08603f); color:var(--ti,#ffffff) }
+.ga-th b{ font-family:var(--f-ui); font-weight:800; font-size:12.5px; letter-spacing:.08em; text-transform:uppercase }
+.ga-th span{ font-family:var(--f-ui); font-weight:800; font-size:13px; font-variant-numeric:tabular-nums }
+.ga-fs{ width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; font-family:var(--f-ui); color:#0d1f17; background:#ffffff;
+  border:1px solid #e1e8e4; border-top:0; border-radius:0 0 8px 8px; overflow:hidden }
+.ga-fs col.fs-cn{ width:148px }
+.ga-fs .g-scoring{ --gh:#e8590c } .ga-fs .g-usage{ --gh:#7048e8 } .ga-fs .g-shotdist{ --gh:#1971c2 }
+.ga-fs .g-individual{ --gh:#0c8599 } .ga-fs .g-offcourt{ --gh:#e67700 } .ga-fs .g-defcourt{ --gh:#364fc7 }
+.ga-fs th{ font-family:var(--f-ui); white-space:nowrap }
+/* the game page sets every table cell in its data face; these are set in the report's sans */
+.ga-fs td, .ga-fs td b, .ga-fs td em, .ga-fs td span{ font-family:var(--f-ui) !important }
+.ga-fs th.fs-g{ padding:4px 4px; background:var(--gh); color:#ffffff; font-weight:800; font-size:8px; letter-spacing:.1em; text-transform:uppercase; text-align:center; border-left:2px solid #ffffff }
+.ga-fs tr.fs-lr th{ padding:4px 2px 5px; background:color-mix(in srgb,var(--gh) 11%,#ffffff); color:color-mix(in srgb,var(--gh) 72%,#0d1f17);
+  font-weight:800; font-size:7.5px; line-height:1.2; letter-spacing:.03em; text-align:center; vertical-align:bottom; border-bottom:2px solid var(--gh) }
+.ga-fs th.fs-n{ padding:4px 8px 5px; text-align:left; vertical-align:bottom; background:#f4f8f6; color:#46564e; font-weight:800; font-size:7.5px;
+  letter-spacing:.1em; text-transform:uppercase; border-bottom:2px solid var(--tc,#08603f) }
+.ga-fs td{ padding:3px 2px; border-top:1px solid #edf2ef; text-align:center; vertical-align:middle }
+.ga-fs tbody tr:nth-child(even) td{ background:#fafcfb }
+.ga-fs .fs-first{ border-left:1px solid #dfe7e2 }
+.ga-fs td.fs-n{ padding:3px 6px; text-align:left; white-space:nowrap; overflow:hidden }
+.ga-fs .fs-no{ display:inline-block; min-width:17px; margin-right:6px; padding:1px 3px; border-radius:4px; background:var(--tc,#08603f); color:var(--ti,#ffffff);
+  font-weight:800; font-size:8px; line-height:1.4; text-align:center; vertical-align:middle; font-variant-numeric:tabular-nums }
+.ga-fs .fs-who{ display:inline-flex; flex-direction:column; vertical-align:middle; line-height:1.15 }
+.ga-fs .fs-who b{ font-weight:700; font-size:10px }
+.ga-fs .fs-who em{ font-style:normal; font-size:7.5px; color:#6b7a72; font-variant-numeric:tabular-nums }
+.ga-fs td.fs-v b{ display:block; font-weight:700; font-size:10px; line-height:1.2; font-variant-numeric:tabular-nums; white-space:nowrap }
+.ga-fs td.fs-v.pos b{ color:#1f7a45 } .ga-fs td.fs-v.neg b{ color:#b3261e }
+.ga-fs tbody tr td.fs-v[data-b]{ background:color-mix(in srgb,var(--b) 24%,#ffffff) }
+.ga-fs td[data-b="4"]{ --b:var(--b4) } .ga-fs td[data-b="3"]{ --b:var(--b3) } .ga-fs td[data-b="2"]{ --b:var(--b2) } .ga-fs td[data-b="1"]{ --b:var(--b1) } .ga-fs td[data-b="9"]{ --b:var(--b9) }
+.ga-fs .fs-b, .ga-fs .fs-d{ position:relative; display:block; width:78%; height:3px; margin:2px auto 0; border-radius:2px; background:rgba(13,31,23,.1) }
+.ga-fs .fs-b{ overflow:hidden } .ga-fs .fs-b i{ display:block; height:100%; border-radius:2px; background:var(--gh) }
+.ga-fs .fs-d::after{ content:""; position:absolute; left:50%; top:-1px; bottom:-1px; width:1px; background:rgba(13,31,23,.4) }
+.ga-fs .fs-d i{ position:absolute; top:0; height:100%; border-radius:2px } .ga-fs .fs-d i.p{ background:#1f9d55 } .ga-fs .fs-d i.n{ background:#d9534f }
+.ga-fs tbody tr.fs-tot td{ border-top:2px solid var(--tc,#08603f); background:color-mix(in srgb,var(--tc,#08603f) 8%,#ffffff) }
+.ga-fs tr.fs-tot .fs-who b{ font-weight:800; font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--tk,#08603f) }
+/* the margin, explained: each club's shot attempts and possessions, then the two battles adding up to the margin */
+.ga-bt-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+.ga-bt-c{ display:flex; flex-direction:column; gap:6px; padding:8px 10px; border:1px solid var(--rule-2); border-radius:10px }
+.ga-bt-c h4{ margin:0; font-family:var(--f-micro); font-weight:400; font-size:7.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--rp-a,#08603f) }
+.ga-bt-p{ display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.ga-bt-s{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:7px 4px 5px; border-radius:8px; background:color-mix(in srgb,var(--tc) 9%,#ffffff); box-shadow:inset 0 3px 0 var(--tc) }
+.ga-bt-s b{ font-family:var(--f-score); font-weight:400; font-size:24px; line-height:1; color:#0d1f17 }
+.ga-bt-s span{ font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+.ga-bt-s em{ font-style:normal; font-family:var(--f-ui); font-size:8.5px; color:var(--ink-2) }
+.ga-eq{ display:grid; grid-template-columns:minmax(0,1fr) 14px minmax(0,1fr) 14px minmax(0,1fr) minmax(0,.85fr); gap:6px; align-items:stretch; margin-top:10px }
+.ga-eq > i{ align-self:center; text-align:center; font-style:normal; font-family:var(--f-score); font-size:22px; color:var(--ink-3) }
+.ga-eq-t{ display:flex; flex-direction:column; gap:2px; padding:7px 10px; border-radius:10px; background:color-mix(in srgb,var(--tc) 10%,#ffffff); border:1.5px solid var(--tc) }
+.ga-eq-t small{ font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap }
+.ga-eq-t b{ font-family:var(--f-score); font-weight:400; font-size:24px; line-height:1; color:var(--tk) }
+.ga-eq-t span{ font-family:var(--f-ui); font-weight:800; font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--tk) }
+.ga-eq-t em{ font-style:normal; font-family:var(--f-ui); font-size:8px; line-height:1.3; color:var(--ink-2) }
+.ga-eq-t.est{ background:color-mix(in srgb,var(--tc) 22%,#ffffff) }
+.ga-eq-t.act{ background:#0d1f17; border-color:#0d1f17 } .ga-eq-t.act b, .ga-eq-t.act span{ color:#ffffff } .ga-eq-t.act small, .ga-eq-t.act em{ color:rgba(255,255,255,.72) }
+dl.ga-key{ display:grid; grid-template-columns:1fr 1fr; gap:3px 18px; margin:6px 0 0; padding:9px 12px; border-radius:10px; background:#eef4f0 }
+dl.ga-key div{ display:flex; gap:7px; align-items:baseline; min-width:0 }
+dl.ga-key dt{ flex:none; font-family:var(--f-ui); font-weight:800; font-size:8px; letter-spacing:.04em; color:#08603f; white-space:nowrap }
+dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35; color:#0d1f17 }
+.ga-flow .gf-mv, .ga-flow .gf-fold, .ga-flow .gf-tip, .ga-flow .gf-ytitle{ display:none !important }
+.ga-flow .gf-scroll{ overflow:visible }
+.ga-flow .gf-legend-item{ white-space:nowrap }
+/* the lineup cards a little tighter on a game's page, so a club's four sit on one */
+.ga-lus .tv-lu header{ padding:6px 12px } .ga-lus .tv-lu-row{ gap:8px; padding:5px 12px } .ga-lus .tv-lu-row + .tv-lu-row{ padding-top:0 }
+.ga-lus .tv-t{ padding:3px 4px } .ga-lus .tv-lu-net{ padding:2px 10px } .ga-lus .tv-lu-net b{ font-size:19px }
+.ga-flow{ --f-mono:var(--f-ui) }
+.ga-flow .gf-summary{ padding-top:0; border-top:0; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px }
+.ga-flow .gf-runlist{ gap:4px; margin-top:8px }
+.ga-flow .gf-runrow{ padding:5px 10px; gap:1px 12px; font-size:11px }
+.ga-flow .gf-runbig{ font-size:15px }
+.ga-flow .gf-runwhen, .ga-flow .gf-runclock, .ga-flow .gf-runscore, .ga-flow .gf-runtop{ font-size:10px }
+.ga-flow .gf-runline{ font-size:9.5px }
+.ga-flow .gf-strip{ height:150px }
+.ga-flow.ga-tall .gf{ --gf-h:230px }
+.rp-pg .tv-ev-ppp span{ white-space:nowrap }
 .ga-flow .gf-card{ break-inside:avoid }
 .rp-lg-key b{ white-space:nowrap }
-.ga-box .ga-tbl{ font-size:7.5px; margin:0 } .ga-box .ga-tbl + .ga-tbl{ border-top-left-radius:0; border-top-right-radius:0; margin-top:-1px }
-.ga-box .ga-tbl th{ font-size:6px; padding:3px 2px } .ga-box .ga-tbl td{ padding:2px 2px }
-.ga-box .ga-tbl th.l{ color:var(--rp-a,#08603f) }
-.ga-box .ga-tbl td.l{ width:118px; max-width:118px }
-.ga-box .ga-tbl{ table-layout:fixed; width:100% }
-.ga-box .ga-tbl th, .ga-box .ga-tbl td{ font-size:7.5px !important; overflow:hidden; text-overflow:clip }
-.ga-box .ga-tbl th{ font-size:5.5px !important; letter-spacing:.04em }
-/* the game page's Full stats tables in the analysis: everything in the flow of the page, nothing sticky or scrolling */
-.ga-adv{ overflow:visible }
-.ga-adv div, .ga-adv .tblwrap{ overflow:visible !important; max-height:none !important; max-width:none !important }
-.ga-adv table.adv th, .ga-adv table.adv td{ position:static !important }
-.ga-adv .grpchips, .ga-adv .advcard > .ep-tabs{ display:none !important }
-.ga-key{ margin:10px 0 0; padding:9px 12px; border-radius:10px; background:#eef4f0; font-size:10px; line-height:1.5; color:#0d1f17 }
-.ga-fives .rp-cap{ margin:0 0 4px }
+/* a game's two crests (report.js crestHTML with c.crests) */
+.rp-cv-crest-pair{ display:flex; align-items:center; gap:26px; margin:0 0 10px }
+.rp-cv-crest-pair .rp-cv-crest{ width:136px; height:136px; margin:0 }
+.rp-cv-crest-pair .rp-vs{ font-style:normal; font-family:var(--f-score); font-size:30px; letter-spacing:.06em; text-transform:uppercase; color:#ffffff; opacity:.85 }
+.rp-top-c-pair{ display:flex; align-items:center; gap:4px; flex:none }
+.rp-top-c-pair .rp-vs{ font-style:normal; font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+/* the zone courts' keys on one line each */
+.rp-pg .scz-key .rl, .rp-pg .lg.ramp .rl{ white-space:nowrap }

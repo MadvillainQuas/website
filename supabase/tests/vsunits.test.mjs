@@ -200,8 +200,12 @@ console.log('\n6. the profile');
   ok('the engine is not on the page; vsunits.js loads it from beside itself, with its stamp, on the first ask',
      !/src="\.\.\/engine\.js/.test(html) && /<script src="\.\.\/vsunits\.js\?v=\d+" defer><\/script>/.test(html) &&
      /s\.src = SELF\.replace\(\/vsunits\\\.js\(\\\?\.\*\)\?\$\/, 'engine\.js\$1'\)/.test(rd('epinoia', 'vsunits.js')));
+  /* the player report's own read of the whole competition's logs (half-court AST%, ranked among the field) is set
+     aside: it is made once, and only when the report asks for it */
+  const pjsPage = pjs.replace(/fieldGames: \(\) => RP_FIELD[\s\S]*?\}\)\(\)\.catch\(\(\) => null\)\),/, '');
   ok('the split replays the games "on the floor with" already read: one read of the logs on the page',
-     (pjs.match(/D\.events\(/g) || []).length === 1 && /clubLogsDone\(\{ games: gs, byGame: logsOf/.test(pjs));
+     pjsPage !== pjs && (pjsPage.match(/D\.events\(/g) || []).length === 1 && /clubLogsDone\(\{ games: gs, byGame: logsOf/.test(pjs));
+  ok('...the report reads the competition\'s logs once, and only when it is asked (half-court AST%)', /fieldGames: \(\) => RP_FIELD \|\| \(RP_FIELD = /.test(pjs));
   ok('...which now name their competition (for the scope) and period', /select=id,home_team_id,away_team_id,starters,tipoff_at,competition_id,period/.test(pjs));
   ok('the scope\'s starters are one read, kept for the page, and none for a competition past ' + 800 + ' games',
      /const VS_BIG = 800;/.test(pjs) && /if \(SCOPE_GAME_COUNT <= VS_BIG\)/.test(pjs) && /STARTERS_READ\.set\(key, p\)/.test(pjs));
