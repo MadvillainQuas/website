@@ -128,6 +128,30 @@ These three sections are the WOWY / Lineups page's own views, drawn by its code 
 
 The page cannot load `kit/page.css`, because its `.topbar` and `.sec` would restyle this older page. So the two rules the views need from it, the switch and the empty box, are given to the lineups alone in `kit/teampage.css`.
 
+## The club report's three pieces from 2026-10-03
+
+The Report tab (`report-teampages.js`, drawn by `teamviz.js`, styled in `kit/teamviz.css`) is the club as A4 pages, and the same
+pages are the PDF in the report emails. Three things were added on a request from the people who read it:
+
+- **The most-used five names one player a spot.** Each position's first choice in the depth chart, but a player who leads two
+  positions is named once, at the one he plays the most minutes at, and the other spot takes the next player in its depth chart who
+  is not already named (down the list, and a spot with nobody left stays empty). `teamviz.js fiveOf`; the cover reads every
+  player's minutes at each position (`ctx.depth(true)`) so there is a next player to go to. The note under the court says so.
+- **True shots gap** (Main stats, under the rebounds analysis). True shooting attempts (TSA, as the game analysis calls them: field
+  goal attempts + .44 of the free throw attempts) a game for the club and against it, and the gap between them, each on its colour
+  with the club's place among the competition's clubs. Underneath, where the gap comes from: **TSA = possessions + offensive
+  rebounds − turnovers**, so the gap is the turnovers the club forces less those it gives away, the offensive rebounds it wins less
+  those it allows, and the difference in possessions, which add up to it exactly (a test holds that over 1,000 random seasons).
+  From the play-by-play (`ev_` and `evd_` totals over the games that have one, and the rebounds analysis's own counts). A club's
+  page only: a single game keeps its own "margin, explained" block.
+- **Shot clock · defence** (Combinations, under the shot clock). The same three windows (the opponent's possession ran 0–7, 8–16,
+  17–24 seconds) for the club's defence alone: points a possession they scored, their share of the possessions, their shooting,
+  the turnovers forced, the share of misses the defence rebounded (DREB, the other side of their OREB) and their free throws,
+  coloured against the club's defence over every possession (green is better for the club). Under each, **how every first chance
+  ended** as a bar: a basket, free throws alone, a miss they won back, a turnover, or a stop.
+
+Both blocks fit the room the pages had left, so the report is no longer than before. `node supabase/tests/team-report-extras.test.mjs`.
+
 ## Phones
 
 Every table is its own container. Below 560–600 px of its own width, every row becomes a card: the figures sit with their names, and the bars run across the width. The ratings stay on one row.

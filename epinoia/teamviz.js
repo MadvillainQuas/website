@@ -11,6 +11,10 @@
                    points per chance at both ends on a coloured badge with its word (strength .. weakness) from its
                    place among the league's clubs, points a game, and its share of the club's points as a bar
      shotClock     early, middle and late offence at both ends, each coloured against the club's own average
+     shotClockDef  the same three windows for the club's defence alone: what the opponents did against it by how long
+                   their possession ran, and how each of those possessions ended (2026-10-03)
+     trueShots     true shot attempts a game for the club and against it, and the gap: where it comes from (2026-10-03)
+     fiveOf        the most-used five, one player a spot: a player who leads two positions keeps the one he plays most
      depthBars     each position's minutes as one bar, split between the players who played there
 
    THE COLOURS (kit/teamviz.css): 4 green, well better; 3 light green, better; 2 amber, worse; 1 red, well worse;
@@ -158,6 +162,121 @@ function shotClock(own, opp, ownAll, oppAll) {
     key('the club’s (or its opponents’) average over every possession', true);
 }
 
+/* ----------------------------------------------------------- the shot clock, the defence --- */
+/* HOW EACH FIRST CHANCE ENDED, in one word: a made basket (and-ones included), a turnover, free throws alone, a miss the
+   offence won back (a second chance follows), or a stop (a miss the defence rebounded, or that nobody did). The order is
+   the rule: a basket is a basket whatever else happened. */
+const END_KEYS = ['made', 'ft', 'oreb', 'to', 'stop'];
+function outcomesOf(list) {
+  const o = { n: 0, made: 0, ft: 0, oreb: 0, to: 0, stop: 0 };
+  (list || []).forEach(r => { o.n++; o[r.fgm > 0 ? 'made' : r.tov > 0 ? 'to' : r.fta > 0 ? 'ft' : r.reb === 'off' ? 'oreb' : 'stop']++; });
+  return o;
+}
+
+/* THE SHOT CLOCK FROM THE DEFENCE'S SIDE (2026-10-03). The same three windows as shotClock, for the club's defence alone:
+   what the opponents did against it when their possession ran 0-7, 8-16 and 17-24 seconds, coloured against the club's
+   defence over every possession (green: better for the club), and underneath how each of those chances ended.
+   opp: [{ label, n, all, s: shotclock.js summary, out: outcomesOf }], oppAll: the summary of every first chance against */
+function shotClockDef(opp, oppAll) {
+  const pc = v => (isNum(v) ? (100 * v).toFixed(1) : '—');
+  const A = oppAll || {};
+  const dreb = v => (isNum(v) ? 1 - v : null);
+  const card = r => {
+    const s = r.s || {}, o = r.out || outcomesOf([]);
+    const bp = bandVs(s.ppp, A.ppp, 0.08, true);
+    const sh = r.all ? 100 * r.n / r.all : null;
+    const chip = (lab, v, ref, low, sc) => '<span class="tv-c" data-b="' + bandVs(isNum(v) ? 100 * v : null, isNum(ref) ? 100 * ref : null, sc, low) + '">' + lab + ' <b>' + pc(v) + '</b></span>';
+    const seg = k => (o[k] > 0 && o.n ? '<i class="' + k + '" style="flex:' + o[k] + ' 1 0" title="' + END_WORD[k] + ' ' + (100 * o[k] / o.n).toFixed(0) + '%">' +
+      (100 * o[k] / o.n >= 11 ? (100 * o[k] / o.n).toFixed(0) : '') + '</i>' : '');
+    return '<div class="tv-sc-c d"><h6>The club’s defence</h6><div class="tv-sc-top"><div class="tv-ev-ppp" data-b="' + bp + '"><b>' + (isNum(s.ppp) ? s.ppp.toFixed(2) : '—') + '</b><span>pts a poss.</span></div>' +
+      '<div class="tv-sc-r"><div class="tv-bar"><i style="width:' + (isNum(sh) ? Math.max(2, sh).toFixed(1) : 0) + '%"></i></div>' +
+      '<p class="tv-sm">' + (isNum(sh) ? sh.toFixed(0) + '% of theirs' : '') + ' · ' + r.n + '</p></div></div>' +
+      '<div class="tv-cs">' + chip('eFG', s.efg, A.efg, true, 3) + chip('TO', s.tovPct, A.tovPct, false, 2) + chip('DREB', dreb(s.orebPct), dreb(A.orebPct), false, 4) + chip('FTr', s.ftr, A.ftr, true, 5) + '</div></div>' +
+      '<div class="tv-sc-c d tv-oc"><h6>How they ended</h6><div class="tv-oc-bar">' + END_KEYS.map(seg).join('') + '</div></div>';
+  };
+  const NAME = [['Early', 'the first 7 seconds'], ['Middle', '8 to 16 seconds'], ['Late', '17 seconds and after']];
+  return '<div class="tv tv-sc tv-scd">' + (opp || []).map((r, i) => '<div class="tv-sc-w"><div class="tv-sc-h"><b>' + NAME[i][0] + '</b><span>' + r.label + ' · ' + NAME[i][1] + ' of theirs</span></div>' + card(r) + '</div>').join('') + '</div>' +
+    '<p class="tv-key tv-oc-key">' + END_KEYS.map(k => '<span class="tv-oc-k"><i class="' + k + '"></i>' + END_WORD[k] + '</span>').join('') + '</p>' +
+    key('the club’s defence over every possession', true);
+}
+const END_WORD = { made: 'basket', ft: 'free throws', oreb: 'their rebound', to: 'turnover', stop: 'stop' };
+
+/* ------------------------------------------------------------------- true shots --- */
+/* TRUE SHOOTING ATTEMPTS (TSA) a game (2026-10-03; the game analysis's "True shooting attempts"): field goal attempts plus 0.44
+   of the free throw attempts, from the play-by-play, for the club and against it, and what the club has over its
+   opponents, the true shots gap. r: a club's row (ev_ and evd_ totals, their games) */
+function tsaOf(r) {
+  const g = +(r && r.ev_gp), gd = +(r && r.evd_gp);
+  const own = g > 0 && isNum(r.ev_all_fga) ? (+r.ev_all_fga + 0.44 * (+r.ev_all_fta || 0)) / g : null;
+  const vs = gd > 0 && isNum(r.evd_all_fga) ? (+r.evd_all_fga + 0.44 * (+r.evd_all_fta || 0)) / gd : null;
+  return { own, vs, gap: own != null && vs != null ? own - vs : null };
+}
+/* WHERE THE GAP COMES FROM. A true shot is a possession's shot, or one won back off the glass, less the possession a
+   turnover threw away: true shots = possessions + offensive rebounds - turnovers. So the gap between the club and its
+   opponents is exactly their difference in turnovers (forced less given away), in offensive rebounds (won less allowed)
+   and in possessions, to the decimal. src: the club's row with its rebounds (rb_all_o: its own, rb_all_go: the opponents') */
+function trueShotsOf(me, src) {
+  const t = tsaOf(me);
+  if (t.own == null || t.vs == null) return null;
+  const g = +me.ev_gp, gd = +me.evd_gp;
+  const tovF = isNum(me.ev_all_tov) ? me.ev_all_tov / g : null, tovV = isNum(me.evd_all_tov) ? me.evd_all_tov / gd : null;
+  const ok = src && src.rb_ready;
+  const orF = ok && isNum(src.rb_all_o) ? src.rb_all_o / g : null, orV = ok && isNum(src.rb_all_go) ? src.rb_all_go / gd : null;
+  let parts = null;
+  if ([tovF, tovV, orF, orV].every(isNum)) {
+    const possF = t.own - orF + tovF, possV = t.vs - orV + tovV;
+    parts = { tov: tovV - tovF, oreb: orF - orV, poss: possF - possV, tovF, tovV, orF, orV, possF, possV };
+  }
+  return { games: g, own: t.own, vs: t.vs, gap: t.gap, fga: +me.ev_all_fga / g, fta: (+me.ev_all_fta || 0) / g, fgaV: +me.evd_all_fga / gd, ftaV: (+me.evd_all_fta || 0) / gd, parts };
+}
+/* the tiles and the gap's three parts. o: { bands: {own, vs, gap} (the colours), ranks: {own, vs, gap} (words: "1st of 10") } */
+function trueShots(ts, o) {
+  if (!ts) return '';
+  const opt = o || {}, B = opt.bands || {}, R = opt.ranks || {};
+  const tile = (k, big, lab, sub) => '<div class="tv-tsa-k' + (k === 'gap' ? ' gap' : '') + '" data-b="' + (B[k] == null ? 0 : B[k]) + '"><b>' + big + '</b><div class="tv-tsa-x"><span>' + lab + '</span><em>' + sub + '</em></div>' +
+    (R[k] ? '<span class="tv-c" data-b="' + (B[k] == null ? 0 : B[k]) + '">' + esc(R[k]) + '</span>' : '') + '</div>';
+  let h = '<div class="tv tv-tsa"><div class="tv-tsa-t">' +
+    tile('own', fx(ts.own), 'TSA a game', fx(ts.fga) + ' shots + ' + fx(ts.fta) + ' free throws × .44') +
+    tile('vs', fx(ts.vs), 'TSA allowed a game', fx(ts.fgaV) + ' shots + ' + fx(ts.ftaV) + ' free throws × .44') +
+    tile('gap', sg(ts.gap), 'the true shots gap', ts.gap > 0.05 ? 'more shots a game than its opponents get' : ts.gap < -0.05 ? 'fewer shots a game than its opponents get' : 'level with its opponents') + '</div>';
+  const P = ts.parts;
+  if (P) {
+    const top = Math.max(0.5, Math.abs(P.tov), Math.abs(P.oreb), Math.abs(P.poss));
+    const row = (lab, v, why) => '<div class="tv-tsa-r"><b>' + lab + '</b><span class="tv-tsa-b"><i class="' + (v < 0 ? 'neg' : 'pos') + '" style="width:' + Math.max(1.5, 50 * Math.abs(v) / top).toFixed(1) + '%;' +
+      (v < 0 ? 'right:50%' : 'left:50%') + '"></i></span><u class="' + (Math.abs(v) < 0.05 ? 'nil' : v < 0 ? 'neg' : 'pos') + '">' + sg(v) + '</u><small>' + why + '</small></div>';
+    h += '<div class="tv-tsa-w"><h6>Where the gap comes from <span>true shots = possessions + offensive rebounds − turnovers</span></h6>' +
+      row('Turnovers', P.tov, 'forces ' + fx(P.tovV) + ' a game, gives away ' + fx(P.tovF)) +
+      row('Offensive rebounds', P.oreb, 'takes ' + fx(P.orF) + ' a game, allows ' + fx(P.orV)) +
+      row('Possessions', P.poss, fx(P.possF) + ' a game to their ' + fx(P.possV)) + '</div>';
+  }
+  return h + '</div>';
+}
+
+/* ------------------------------------------------------------------ the most-used five --- */
+/* THE MOST-USED FIVE, ONE PLAYER A SPOT (2026-10-03). Each position's first choice in the depth chart, but a player who
+   leads two positions is placed once: at the one he plays the most minutes at, and the other takes the next player in its
+   depth chart (a player already placed is skipped, and so on down). A position with nobody left is empty.
+   slots: [{ players: [{ id, name, min }] }] point guard to centre, each list the most minutes first.
+   Answers the five players (or null for an empty spot). */
+function fiveOf(slots) {
+  const lists = (slots || []).map(s => ((s && s.players) || []).filter(p => p && (p.min == null || +p.min > 0)));
+  const key = p => (p.id != null && p.id !== '' ? 'i' + p.id : 'n' + String(p.name || '').trim().toLowerCase());
+  const mins = new Map();                                     // a player's minutes at each position
+  lists.forEach((l, i) => l.forEach(p => { const k = key(p); if (!mins.has(k)) mins.set(k, []); mins.get(k)[i] = +p.min || 0; }));
+  const at = lists.map(() => 0);                              // how far down each position's list the pick has gone
+  const pick = i => lists[i][at[i]] || null;
+  for (let guard = 0; guard < 500; guard++) {
+    const placed = new Map();
+    lists.forEach((_, i) => { const p = pick(i); if (p) { const k = key(p); if (!placed.has(k)) placed.set(k, []); placed.get(k).push(i); } });
+    const twice = [...placed].find(([, where]) => where.length > 1);
+    if (!twice) break;
+    const m = mins.get(twice[0]);
+    const keep = twice[1].reduce((best, i) => ((m[i] || 0) > (m[best] || 0) ? i : best), twice[1][0]);    // a tie keeps the earlier position
+    twice[1].forEach(i => { if (i !== keep) at[i]++; });
+  }
+  return lists.map((_, i) => pick(i));
+}
+
 /* --------------------------------------------------------------- depth --- */
 /* c: depth.js's shares ({ slots: [{ key, label, players: [{ name, num, pct, min }], others }] }); colour: the club's */
 function depthBars(c, o) {
@@ -182,5 +301,5 @@ function key(against, vs) {
     (vs ? '<span class="tv-c" data-b="9">a style</span>' : '') + '<span>against ' + esc(against) + '</span></p>';
 }
 
-return { lineupCards, events, shotClock, depthBars, key, bandVs, bandP, pctIn, astOf, WORD, SITS, LU_OFF, LU_DEF, LU_PLAY };
+return { lineupCards, events, shotClock, shotClockDef, outcomesOf, tsaOf, trueShotsOf, trueShots, fiveOf, depthBars, key, bandVs, bandP, pctIn, astOf, WORD, SITS, LU_OFF, LU_DEF, LU_PLAY };
 }));

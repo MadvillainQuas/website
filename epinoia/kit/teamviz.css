@@ -102,6 +102,41 @@
 .tv-sc-r .tv-bar{ margin-top:3px }
 .tv-sc-c.d .tv-bar i{ background:#3f5249 }
 
+/* ---- the shot clock, the defence: how each first chance ended (teamviz.js shotClockDef) ---- */
+.tv-oc-bar{ display:flex; height:20px; border-radius:6px; overflow:hidden; background:color-mix(in srgb,var(--ink) 9%,transparent) }
+.tv-oc-bar i{ display:flex; align-items:center; justify-content:center; min-width:0; overflow:hidden; font-style:normal; font-family:var(--f-data,ui-monospace,monospace); font-size:8.5px; font-weight:700; color:#0d1f17 }
+.tv-oc-bar i.made, .tv-oc-k i.made{ background:#e0524f; color:#fff } .tv-oc-bar i.ft, .tv-oc-k i.ft{ background:#f2b33d }
+.tv-oc-bar i.oreb, .tv-oc-k i.oreb{ background:#f2c1bf } .tv-oc-bar i.to, .tv-oc-k i.to{ background:#1f9d55; color:#fff } .tv-oc-bar i.stop, .tv-oc-k i.stop{ background:#8cc63f }
+.tv-oc-key{ gap:4px 12px }
+.tv-oc-k{ display:inline-flex; align-items:center; gap:4px }
+.tv-oc-k i{ display:inline-block; width:10px; height:8px; border-radius:2px }
+.tv-sc-c.tv-oc{ gap:5px }
+
+/* ---- true shots: true shot attempts a game for the club and against it, the gap, and what it is made of (teamviz.js trueShots) ---- */
+.tv-tsa{ display:grid; gap:9px }
+.tv-tsa-t{ display:grid; grid-template-columns:1fr 1fr 1.25fr; gap:8px }
+.tv-tsa-k{ display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-areas:"n x" "n c"; align-items:center; gap:3px 10px; padding:8px 10px 9px; border-radius:10px; border:1px solid var(--rule-2);
+  background:color-mix(in srgb,var(--c,#9aa7a0) 18%,#ffffff); box-shadow:inset 0 -4px 0 var(--c,#9aa7a0) }
+.tv-tsa-k b{ grid-area:n; font-family:var(--f-score,var(--f-ui)); font-weight:400; font-size:30px; line-height:1; color:var(--ink) }
+.tv-tsa-k.gap b{ font-size:34px }
+.tv-tsa-x{ grid-area:x; display:grid; gap:1px; min-width:0 }
+.tv-tsa-x span{ font-family:var(--f-micro); font-size:7px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
+.tv-tsa-x em{ font-style:normal; font-size:8px; color:var(--ink-3) }
+.tv-tsa-k > .tv-c{ grid-area:c; justify-self:start }
+.tv-tsa-w{ border:1px solid var(--rule-2); border-radius:10px; padding:7px 10px 4px }
+.tv-tsa-w h6{ margin:0 0 3px; font-family:var(--f-micro); font-weight:400; font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3) }
+.tv-tsa-w h6 span{ margin-left:8px; letter-spacing:.03em; text-transform:none; font-family:var(--f-ui); font-size:8px }
+.tv-tsa-r{ display:grid; grid-template-columns:100px minmax(0,1fr) 40px minmax(0,1.3fr); align-items:center; gap:8px; padding:4px 0; border-top:1px solid var(--rule) }
+.tv-tsa-w h6 + .tv-tsa-r{ border-top:0 }
+.tv-tsa-r b{ font-size:9.5px }
+.tv-tsa-b{ position:relative; height:10px; border-radius:5px; background:color-mix(in srgb,var(--ink) 7%,transparent) }
+.tv-tsa-b::after{ content:''; position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:var(--ink-3) }
+.tv-tsa-b i{ position:absolute; top:0; bottom:0; border-radius:5px }
+.tv-tsa-b i.pos{ background:#1f9d55 } .tv-tsa-b i.neg{ background:#e0524f }
+.tv-tsa-r u{ text-decoration:none; font-family:var(--f-data,ui-monospace,monospace); font-size:11px; font-weight:700; text-align:right }
+.tv-tsa-r u.pos{ color:#17803f } .tv-tsa-r u.neg{ color:#c23b38 } .tv-tsa-r u.nil{ color:var(--ink-3) }
+.tv-tsa-r small{ font-size:8.5px; color:var(--ink-3) }
+
 /* ---- the depth bars ---- */
 .tv-dps{ display:grid; gap:6px }
 .tv-dp{ display:grid; grid-template-columns:34px minmax(0,1fr); gap:8px; align-items:center }

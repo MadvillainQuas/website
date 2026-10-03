@@ -2,12 +2,14 @@
 /* ============================================================================
    THE CLUB'S REPORT (report.js on the club page, t/team.js reportTab): its modules.
 
-     cover            the club's name and crest, the title and subtitle, its most-used five on a half court
+     cover            the club's name and crest, the title and subtitle, its most-used five on a half court (one player a
+                      spot: a player who leads two positions keeps the one he plays most, teamviz.js fiveOf)
      MAIN STATS       the four factors in a row (each end's rank among the clubs); the ratings; the season line
                       (efficiency at both ends, half court and transition at both ends, against the other side's
                       starters and bench, the club's own starters and bench - those last drawn against the club's own
                       ratings, as no other club has them); the SHOT DISTRIBUTION at both ends (rim, paint, mid-range,
-                      three, corner three: volume, accuracy, assisted), each ranked among the clubs; REBOUNDS ANALYSIS
+                      three, corner three: volume, accuracy, assisted), each ranked among the clubs; REBOUNDS ANALYSIS;
+                      TRUE SHOTS GAP (true shooting attempts, TSA, a game for the club and against it, the gap, where it comes from)
      SHOT CHART       offence and defence on the zones court, side by side, then one table of both ends zone by zone
                       in the court's colours, the half-court and transition cards at both ends, then the EVENTS as
                       cards (teamviz.js): points a chance at both ends, each with its word among the league's clubs
@@ -16,7 +18,8 @@
                       (a flag says when it has not been calculated for the league and season)
      DEPTH CHART      each position's minutes as one bar split between its players, the rotations with the average
                       margin at each minute, and the most-used fives as cards two rows deep (teamviz.js lineupCards)
-     COMBINATIONS     the five best and five worst trios, and the shot clock: early, middle and late at both ends
+     COMBINATIONS     the five best and five worst trios, and the shot clock: early, middle and late at both ends, then
+                      the same three windows for the defence alone, with how each chance ended
      LEGEND           every statistic printed, defined
    A module starts in the space the one before left, when its first block fits there (report.js layout, packed).
 
@@ -40,6 +43,7 @@ const TEAM_STATS = {
   ortg: { l: 'ORTG', dp: 1 }, drtg: { l: 'DRTG', dp: 1, low: true }, net: { l: 'NET', dp: 1, signed: true }, pace: { l: 'PACE', dp: 1, style: true },
   ft_pct: { l: 'FT%', dp: 1 }, ts: { l: 'TS%', dp: 1 }, opp_ts: { l: 'OPP TS%', dp: 1, low: true },
   tm_ppp: { l: 'PTS / POSSESSION', dp: 2 }, tm_oppp: { l: 'OPP PTS / POSSESSION', dp: 2, low: true }, ast_sh_all: { l: 'AST% (ALL BASKETS)', dp: 1, style: true },
+  tsa_for: { l: 'TSA A GAME', dp: 1 }, tsa_vs: { l: 'TSA ALLOWED A GAME', dp: 1, low: true }, tsa_gap: { l: 'TRUE SHOTS GAP', dp: 1, signed: true },
   ev_half_pts_sh: { l: 'HALF-COURT %PTS', dp: 1, style: true }, evd_half_pts_sh: { l: 'DEF HALF-COURT %PTS', dp: 1, style: true },
   hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, rank: false, ref: 'ast_sh_all', refL: 'all', sc: 5 },
   evd_half_tov_pct: { l: 'DEF HALF-COURT TO%', dp: 1 }, evd_half_efg: { l: 'DEF HALF-COURT eFG%', dp: 1, low: true },
@@ -76,6 +80,9 @@ SD.forEach(([k, l, , dp, o, d]) => {
 });
 const TEAM_DEFS = {
   opp_ts: ['Opponents’ true shooting %', 'How efficiently opponents score against the club, twos, threes and free throws together (from the play-by-play). Lower is better.'],
+  tsa_for: ['True shooting attempts (TSA) a game', 'Field goal attempts plus .44 of the free throw attempts, a game, from the play-by-play: every shot the club takes, a trip to the line counting as the .44 of a shot it is worth.'],
+  tsa_vs: ['True shooting attempts allowed a game', 'The same count for the opponents against the club. Fewer is better.'],
+  tsa_gap: ['True shots gap', 'The club’s TSA a game less its opponents’: how many more shots it gets than it gives. It is the club’s turnover, offensive rebound and possession differences added up, because TSA = possessions + offensive rebounds − turnovers.'],
   tm_ppp: ['Points per possession', 'Points scored per possession (the offensive rating over 100).'],
   tm_oppp: ['Opponents’ points per possession', 'Points allowed per possession. Lower is better.'],
   z_rim_att100: ['Rim volume', 'Shots at the rim per 100 possessions (located shots), the club’s own and (OPP) its opponents’ against it.'],
@@ -154,8 +161,9 @@ function modules(ctx) {
     async build(c) {
       let names = null, games = 0;
       try {
-        const d = await ctx.depth(false);
-        if (d && d.c && d.c.slots) { names = d.c.slots.map(s => (s.players[0] ? surname(s.players[0].name) : '')); games = d.c.games || 0; }
+        /* every player with minutes at each position, so a spot has a next player to go to when one leads two */
+        const d = await ctx.depth(true);
+        if (d && d.c && d.c.slots) { names = V.fiveOf(d.c.slots).map(p => (p ? surname(p.name) : '')); games = d.c.games || 0; }
       } catch (_) { /* no lineups */ }
       try {
         const T = await season();
@@ -170,7 +178,7 @@ function modules(ctx) {
       if (!names) return '<h4>The most-used five</h4><div class="rp-empty">No lineups on record yet.</div>';
       return '<h4>The most-used five<span>most minutes at each position' + (games ? ' · ' + games + ' games' : '') + '</span></h4>' +
         E.posCourtHTML([20, 20, 20, 20, 20], { names }) +
-        '<p class="rp-note">Each spot names the player with the most minutes there this season (the depth chart’s first choice).</p>';
+        '<p class="rp-note">Each spot names the player with the most minutes there this season (the depth chart’s first choice). A player who leads two positions is named once, at the one he plays most; the other spot takes the next player in its depth chart.</p>';
     }
   };
 
@@ -213,6 +221,8 @@ function modules(ctx) {
     teams.forEach(r => {
       const pts = +r.evd_all_pts, fga = +r.evd_all_fga, fta = +r.evd_all_fta || 0;
       if (fga > 0) r.opp_ts = Math.round(1000 * pts / (2 * (fga + 0.44 * fta))) / 10;
+      const V0 = root.EpinoiaTeamViz;
+      if (V0 && V0.tsaOf) { const t = V0.tsaOf(r); r.tsa_for = t.own; r.tsa_vs = t.vs; r.tsa_gap = t.gap; }
       if (E.isNum(r.ortg)) r.tm_ppp = Math.round(r.ortg) / 100;
       if (E.isNum(r.drtg)) r.tm_oppp = Math.round(r.drtg) / 100;
       const a = +r.ev_ast_fgm, u = +r.ev_unast_fgm;
@@ -402,6 +412,21 @@ function modules(ctx) {
             'ORB% and DRB% are of the misses somebody rebounded, as the four factors count them; the small figure is the club\u2019s place, once it has ten rebounded misses.</p>', 'rp-reb'));
         }
       } catch (e) { if (root.console) root.console.warn('[report rebounds]', e); }
+      /* TRUE SHOTS, under the rebounds (2026-10-03): the club's true shot attempts a game and its opponents', the gap
+         between them, and what the gap is made of (a club's page only: a single game has its own two clubs' lines) */
+      try {
+        const srcRow = S.teams.find(t => t.id === me.id) || {};
+        const TS = them ? null : V.trueShotsOf(me, srcRow);
+        if (TS) {
+          const ks = ['tsa_for', 'tsa_vs', 'tsa_gap'], Rt = E.ranker(teams, ks);
+          const bandOf = k => E.band(Rt.pct(k, me.id), (E.STATS[k] || {}).style);
+          const placeOf = k => rk(rankOf(teams, k, me.id, (E.STATS[k] || {}).low));
+          R.legend.push(...ks);
+          out.push(block(title('True shots gap', 'true shooting attempts (TSA) a game, the club’s and its opponents’ · the colour and the chip: the club’s place among ' + N) +
+            V.trueShots(TS, { bands: { own: bandOf('tsa_for'), vs: bandOf('tsa_vs'), gap: bandOf('tsa_gap') }, ranks: { own: placeOf('tsa_for'), vs: placeOf('tsa_vs'), gap: placeOf('tsa_gap') } }) +
+            '', 'rp-tsa'));
+        }
+      } catch (e) { if (root.console) root.console.warn('[report true shots]', e); }
       R.legendExtra.push(['FOUR FACTORS', 'Shooting (eFG%), turnovers (per 100 possessions), offensive rebounding (share of own misses rebounded) and free-throw rate: the four things that decide a game, at both ends. Each box is coloured by the club’s place among the clubs.'],
         ['SHOT DISTRIBUTION', 'Every located shot at both ends cut into the rim, the rest of the paint, mid-range and three (the corners on their own line): how many per 100 possessions, how many go in, how many came off a pass.'],
         ['REBOUNDS ANALYSIS', 'Every shot attempt in a zone went in, was rebounded by the shooter’s side, by the other side, or had no rebound; ORB% and DRB% are of the misses somebody rebounded.']);
@@ -646,11 +671,16 @@ function modules(ctx) {
           L.gs.forEach(g => { const Rr = SCk.compute({ events: L.byG[g.id] || [] }); (Rr.chances || []).forEach(r => (r.team === L.sideOf[g.id] ? own : opp).push(r)); });
           const W = [['0–7 s', 0, 8], ['8–16 s', 8, 17], ['17–24 s', 17, 1e9]];
           const firsts = list => list.filter(r => !r.second && r.dur != null);
-          const rowsOf = list => { const first = firsts(list); return W.map(([l, a, b]) => { const sub = first.filter(r => r.dur >= a && r.dur < b); return { label: l, n: sub.length, all: first.length, s: SCk.summary(sub) }; }); };
+          const rowsOf = list => { const first = firsts(list); return W.map(([l, a, b]) => { const sub = first.filter(r => r.dur >= a && r.dur < b); return { label: l, n: sub.length, all: first.length, s: SCk.summary(sub), out: V.outcomesOf(sub) }; }); };
           out.push(block(title('Shot clock', 'every first chance of the last ' + L.gs.length + ' games by how long it ran · each coloured against the club’s (or its opponents’) average') +
             V.shotClock(rowsOf(own), rowsOf(opp), SCk.summary(firsts(own)), SCk.summary(firsts(opp))) +
             '<p class="rp-note">Points a possession, and its share of the possessions as the bar; the chips are its shooting (eFG), turnovers (TO), offensive rebounds (OREB) and free-throw rate (FTr). Second chances after an offensive rebound are left out, so each is how the first look ended.</p>'));
+          /* THE SAME FROM THE DEFENCE'S SIDE (2026-10-03), underneath: the opponents' first chances against the club */
+          out.push(block(title('Shot clock · defence', 'the same first chances from the other end: what the opponents did against the club by how long their possession ran · each coloured against the club’s defence over every possession') +
+            V.shotClockDef(rowsOf(opp), SCk.summary(firsts(opp))) +
+            '<p class="rp-note">Points a possession the opponents scored, and their share of the possessions as the bar; the chips are their shooting (eFG), the turnovers the defence forced (TO), the share of their misses it rebounded (DREB) and their free-throw rate (FTr), green where it is better for the club. Underneath, every first chance by how it ended: a basket, free throws alone, a miss they won back, a turnover or a stop.</p>'));
           R.legendExtra.push(['SHOT CLOCK', 'Possessions grouped by how long they ran: early offence (0–7 seconds), the middle of the clock (8–16) and late (17–24).'],
+            ['SHOT CLOCK · DEFENCE', 'The opponents’ possessions against the club, grouped the same way, and how each first chance ended: a basket, free throws alone, a miss they won back, a turnover or a stop.'],
             ['PPP', 'Points per possession.']);
         }
       } catch (e) { if (root.console) root.console.warn('[report shot clock]', e); }
