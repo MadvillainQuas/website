@@ -62,11 +62,12 @@ const MIN_GAMES = [['', 'Automatic (two fifths of the most played)'], ['1', '1 g
 const LEAD_SCOPES = [['season', 'The season'], ['month', 'The month'], ['week', 'The week']];
 const MONTH_BY = [['bpm', 'BPM over the month'], ['pts', 'Points a game'], ['stat', 'Any stat of the site\'s'], ['pick', 'My pick']];
 /* the stats each template can show, in the order they are laid out (the first three of a star are its big numbers) */
-const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'bpm', 'usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg', 'pm', 'min'];
+const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'bpm', 'usg', 'ts', 'stocks', 'net', 'ortg', 'drtg', 'pm', 'min'];
 /* a player of the game's own, worked from the game's lines (the site's engine: socialcard.js nightAdv): the stars of the week have no such line */
-const NIGHT_ONLY = ['usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg'];
-/* what a player of the game says by default: the three big numbers, then BPM (what he was picked on), usage, true shooting, steals + blocks and the on-off trio */
-const STAT_DEFAULT = ['pts', 'reb', 'ast', 'bpm', 'usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg'];
+const NIGHT_ONLY = ['usg', 'ts', 'stocks', 'net', 'ortg', 'drtg'];
+/* what a player of the game says by default: the three big numbers, then BPM (what he was picked on), usage, true shooting, steals + blocks
+   and the game page's on-court trio (net, offensive and defensive rating) */
+const STAT_DEFAULT = ['pts', 'reb', 'ast', 'bpm', 'usg', 'ts', 'stocks', 'net', 'ortg', 'drtg'];
 const COL_ORDER = ['gp', 'w', 'l', 'pct', 'pts', 'diff', 'avg', 'pf', 'pa', 'ppg', 'papg', 'streak', 'l5', 'home', 'away', 'elo'];
 const COL_DEFAULT = ['gp', 'w', 'l', 'pct', 'diff'];          // WIN% in the default: the table is ordered by it
 /* the table's order: winning percentage (the default, as the league's own table opens) or the official one (league points, then the
@@ -600,7 +601,7 @@ function drawBuilder(panel, pane) {
   put(fs1, 'day', field('Game day', dsel));
   if (!dayList.length) dsel.disabled = true;
   const players = (res && res.players) || [];
-  const night = players.length ? SCd.gameBPMs(players) : new Map();            // the game's BPM, which the list is in the order of
+  const night = players.length ? SCd.gameBPMs(players, d.teamAdv && res && res.game ? d.teamAdv.get(res.game.id) : null) : new Map();            // the game's BPM, which the list is in the order of
   const psel = select([['', 'Player of the game']].concat(players.map((p, i) => [String(i), ((p.stats.adv && p.stats.adv.name) || 'Player') + ' · ' + p.stats.pts + ' pts' +
     (night.has(p) ? ' · ' + SCd.bpmText(night.get(p)) + ' BPM' : '') + ' · ' + Math.round((p.stats.min || 0) / 60000) + ' min'])),
     b.player == null ? '' : String(b.player), v => { b.player = v === '' ? null : +v; persist(); setRes(); });

@@ -60,14 +60,14 @@ const STAT_DEFS = {   // key: [big label, small label]
   fg: ['FIELD GOALS', 'FG'], p3: ['THREES', '3PT'], ft: ['FREE THROWS', 'FT'], fgp: ['FG%', 'FG%'], p3p: ['3P%', '3P%'],
   pm: ['PLUS/MINUS', '+/-'], min: ['MINUTES', 'MIN'], oreb: ['OFF. REBOUNDS', 'OREB'], dreb: ['DEF. REBOUNDS', 'DREB'],
   tov: ['TURNOVERS', 'TOV'], pf: ['FOULS', 'PF'], p2: ['TWO-POINTERS', '2PT'], efg: ['EFG%', 'EFG%'], bpm: ['BOX PLUS/MINUS', 'BPM'],
-  /* the player of the game's own: worked from the game's lines by the site's engine (nightAdv) */
+  /* the player of the game's own, worked as the game page's Full stats tab works them (nightAdv) */
   usg: ['USAGE', 'USG%'], ts: ['TRUE SHOOTING', 'TS%'], stocks: ['STEALS + BLOCKS %', 'STOCKS%'],
-  onnet: ['ON-OFF NET', 'ON-OFF NET'], onortg: ['ON-OFF OFFENCE', 'ON-OFF ORTG'], ondrtg: ['ON-OFF DEFENCE', 'ON-OFF DRTG']
+  net: ['ON-COURT NET RATING', 'ON-COURT NET'], ortg: ['ON-COURT OFFENSIVE RATING', 'ON-COURT ORTG'], drtg: ['ON-COURT DEFENSIVE RATING', 'ON-COURT DRTG']
 };
 /* what a player of the game says under his points, rebounds and assists unless told otherwise, left to right */
-const NIGHT_STRIP = ['bpm', 'usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg'];
+const NIGHT_STRIP = ['bpm', 'usg', 'ts', 'stocks', 'net', 'ortg', 'drtg'];
 /* a graphic saved with game score (before 2026-10-02) shows the game's BPM, which replaced it */
-const OLD_KEY = { gmsc: 'bpm' };
+const OLD_KEY = { gmsc: 'bpm', onnet: 'net', onortg: 'ortg', ondrtg: 'drtg' };      // game score became BPM; the first on-off strip became the box score's on-court numbers
 const newKey = x => OLD_KEY[x] || x;
 /* the league table's columns: those the standings hold, some worked out from them, and the ones read from the games
    (form, home and away records, the ELO rating: the console reads them when they are asked for) */
@@ -209,16 +209,41 @@ const n0 = v => (v == null || isNaN(v) ? 0 : +v);
    rows ({ team_idx, stats }). -> Map row -> BPM. Without bpm.js on the page, or with one side's lines only, nobody has
    one, and the picks fall back to points. */
 const BPM_OF = new WeakMap();
-function gameBPMs(players) {
-  if (players && typeof players === 'object' && BPM_OF.has(players)) return BPM_OF.get(players);
+/* THE CLUBS' LINES for the game: the stored `adv` of team_game_stats, [home, away], or null unless both have a pace to work from */
+const clubLines = a => (a && a[0] && a[1] && n0(a[0].pace) > 0 && n0(a[1].pace) > 0 ? a : null);
+const PER100 = ['pts', 'tpm', 'ast', 'to', 'orb', 'drb', 'stl', 'blk', 'pf', 'fga', 'fta'];
+/* THE GAME'S BPM, AS THE GAME PAGE WORKS IT (game.js gameBPM: the figure on each player's circle, so a graphic says what the page
+   says): each side's lines with the CLUB'S OWN pace and ratings from the game's team line (`teamAdv`), the league average the mean
+   of the two clubs' offensive ratings. Without the clubs' lines it is the sum of the box's own (bpm.js gameFromBox: a little
+   different, as it has no team turnovers or rebounds). players: one game's player_game_stats rows ({ team_idx, stats }).
+   -> Map row -> BPM. Without bpm.js on the page, or with one side's lines only, nobody has one, and the picks fall back to points. */
+function gameBPMs(players, teamAdv) {
+  const adv = clubLines(teamAdv), hit = players && typeof players === 'object' ? BPM_OF.get(players) : null;
+  if (hit && hit.adv === adv) return hit.map;
   const B = root.EpinoiaBPM || null;
   const out = new Map();
   const rows = (players || []).filter(p => p && p.stats);
-  if (B && B.gameFromBox && rows.length) {
+  if (B && rows.length && adv && B.forTeam) {
+    const ortgs = adv.map(a => n0(a.ortg)).filter(v => v > 0);
+    const leagueAvg = ortgs.length ? ortgs.reduce((a, b) => a + b, 0) / ortgs.length : 100;
+    [0, 1].forEach(t => {
+      const mine = rows.filter(p => (p.team_idx === 1 ? 1 : 0) === t);
+      const lines = mine.map((p, i) => { const x = p.stats;
+        return { id: i, minutes: n0(x.min) / 60000, pts: n0(x.pts), tpm: n0(x.p3m), ast: n0(x.ast), to: n0(x.to), orb: n0(x.or), drb: n0(x.dr),
+                 stl: n0(x.stl), blk: n0(x.blk), pf: n0(x.pf), fga: n0(x.p2a) + n0(x.p3a), fta: n0(x.fta) }; });
+      const sum = k => lines.reduce((n, q) => n + q[k], 0);
+      const tsa = sum('fga') + 0.44 * sum('fta'), mins = Math.max(1, sum('minutes') / 5);
+      const poss = adv[t].pace ? adv[t].pace * mins / 40 : Math.max(1, tsa);
+      const per100 = {}; PER100.forEach(k => { per100[k] = sum(k) * 100 / Math.max(1, poss); });
+      per100.trb = per100.orb + per100.drb;
+      const team = { pace: adv[t].pace || 70, netRtg: n0(adv[t].ortg) - n0(adv[t].drtg), offRtg: adv[t].ortg || null, avgPtsPerTSA: tsa ? sum('pts') / tsa : 1.0, per100 };
+      try { B.forTeam(team, lines, leagueAvg).forEach(r => { if (r.bpm != null && !isNaN(r.bpm)) out.set(mine[r.id], r.bpm); }); } catch (_) { /* no BPM for this side */ }
+    });
+  } else if (B && B.gameFromBox && rows.length) {
     const m = B.gameFromBox(rows.map((p, i) => ({ id: i, side: p.team_idx === 1 ? 1 : 0, stats: p.stats })));
     rows.forEach((p, i) => { const b = m.get(i); if (b && b.bpm != null) out.set(p, b.bpm); });
   }
-  if (players && typeof players === 'object') BPM_OF.set(players, out);
+  if (players && typeof players === 'object') BPM_OF.set(players, { adv, map: out });
   return out;
 }
 const bpmText = v => (v == null || isNaN(v) ? '\u2014' : (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1));
@@ -263,33 +288,59 @@ function statsOf(s, bpm) {
            p2: made(s.p2m, s.p2a), efg: fga > 0 ? Math.round(100 * (fgm + 0.5 * n0(s.p3m)) / fga) + '%' : '—',
            bpm: bpmText(bpm) };
 }
-/* THE NIGHT'S ADVANCED NUMBERS for one player, worked by the site's own engine (season.js: the one a season is worked by, so a night
-   reads exactly as the season's numbers do): his usage and true shooting, his steals and blocks as a share of the opponent's chances
-   (STL% + BLK%: STOCKS%), and what his club did with him on the floor against without him (net, offence and defence rating: the
-   profile's NET ±, ORTG ± and DRTG ±). `players` are the game's lines (each with its on-court block, `oc`) and `teamAdv` the two
-   clubs' game lines. A number it cannot work out - no on-court record for the game, too little time off the floor to compare with -
-   is a dash, never a guess. */
+/* THE NIGHT'S ADVANCED NUMBERS for one player, WORKED EXACTLY AS THE GAME PAGE'S FULL STATS TAB WORKS THEM (boxscore.js playerAdv),
+   so a graphic says what the page says: usage and true shooting; STOCKS% (his steal % + his block %, as the tab prints them);
+   and what his club did while he was on the floor - ON-COURT NET (its offensive rating less its defensive one) and, as the tab
+   prints them, ON-COURT ORTG and DRTG as the difference from the game's average rating (the mean of the two clubs'). `teamAdv` is
+   the game's two clubs' lines (the stored `adv` of team_game_stats) and each player's line carries his on-court block, `oc`.
+   A number it cannot work out is a dash, never a guess. */
 function nightAdv(players, best, teamAdv) {
-  const none = '—', out = { usg: none, ts: none, stocks: none, onnet: none, onortg: none, ondrtg: none };
-  const S = root.EpinoiaSeason, rows = (players || []).filter(p => p && p.stats), at = rows.indexOf(best);
-  if (!S || !S.players || at < 0) return out;
-  const pgs = rows.map((p, i) => ({ game_id: 'g', player_id: 'p' + i, team_idx: p.team_idx === 1 ? 1 : 0, stats: p.stats }));
-  const tgs = teamAdv && teamAdv[0] && teamAdv[1] ? [0, 1].map(i => ({ game_id: 'g', team_idx: i, stats: { adv: teamAdv[i] } })) : [];
-  let row = null;
-  try { row = S.players(pgs, tgs).find(r => r.id === 'p' + at); } catch (_) { /* no numbers: dashes */ }
-  if (!row) return out;
-  const num = (v, signed) => (v == null || isNaN(v) ? none : (signed && v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1));
-  out.usg = num(row.usg); out.ts = num(row.ts);
-  out.stocks = row.stl_pct != null && row.blk_pct != null ? num(row.stl_pct + row.blk_pct) : none;
-  out.onnet = num(row.diff_net, true); out.onortg = num(row.diff_ortg, true); out.ondrtg = num(row.diff_drtg, true);
+  const none = '—', out = { usg: none, ts: none, stocks: none, net: none, ortg: none, drtg: none };
+  const s = best && best.stats;
+  if (!s) return out;
+  const f1 = v => (isFinite(v) ? (Math.round(v * 10) / 10).toFixed(1) : none);
+  const whole = v => { if (!isFinite(v)) return none; const t = v.toFixed(0); return t === '0' || t === '-0' ? '0' : (v > 0 ? '+' : '') + t; };
+  const mins = n0(s.min) / 60000, fga = n0(s.p2a) + n0(s.p3a), fta = n0(s.fta), tsa = fga + 0.44 * fta;
+  if (tsa > 0) out.ts = f1(100 * n0(s.pts) / (2 * tsa));
+  const adv = teamAdv && teamAdv[0] && teamAdv[1] ? teamAdv : null;
+  if (!adv || !(mins > 0)) return out;
+  const idx = best.team_idx === 1 ? 1 : 0, TT = adv[idx], OT = adv[1 - idx];
+  const gm = Math.max(1, n0(TT.minutes) / 5);
+  if (n0(TT.minutes) > 0) {
+    const teamPoss = n0(TT.fga) + 0.44 * n0(TT.fta) + n0(TT.tov), pPoss = fga + 0.44 * fta + n0(s.to);
+    if (teamPoss > 0) out.usg = f1(100 * (pPoss * gm) / (mins * teamPoss));
+    const oppPoss = n0(OT.fga) + 0.44 * n0(OT.fta) - n0(OT.oreb) + n0(OT.tov), oppTwos = n0(OT.fga) - n0(OT.fg3a);
+    if (oppPoss > 0 && oppTwos > 0) {
+      const r1 = v => Math.round(v * 10) / 10;
+      out.stocks = f1(r1(100 * (n0(s.stl) * gm) / (mins * oppPoss)) + r1(100 * (n0(s.blk) * gm) / (mins * oppTwos)));          // the sum of the two figures the tab prints
+    }
+  }
+  const oc = s.oc;
+  if (oc && typeof oc.tPTS === 'number' && typeof oc.oPTS === 'number') {
+    const onPoss = 0.96 * (n0(oc.tFGA) + n0(oc.tTOV) + 0.44 * n0(oc.tFTA) - n0(oc.tOR)), onOpp = 0.96 * (n0(oc.oFGA) + n0(oc.oTOV) + 0.44 * n0(oc.oFTA) - n0(oc.oOR));
+    const rating = a => (n0(a.ortg) > 0 ? n0(a.ortg) : 100 * n0(a.pts) / (0.96 * (n0(a.fga) + n0(a.tov) + 0.44 * n0(a.fta) - n0(a.oreb))));
+    if (onPoss > 0 && onOpp > 0) {
+      const on = 100 * n0(oc.tPTS) / onPoss, against = 100 * n0(oc.oPTS) / onOpp, avg = (rating(adv[0]) + rating(adv[1])) / 2;
+      out.net = whole(on - against); out.ortg = whole(on - avg); out.drtg = whole(against - avg);
+    }
+  }
   return out;
 }
-/* a side's totals for the game, summed from its players' lines: { key: { v: 'what is said', n: what is compared } } */
-function sideTotals(players, idx) {
+/* a side's totals for the game, summed from its players' lines: { key: { v: 'what is said', n: what is compared } }. Where the club's own
+   game line is to hand (`line`: the stored `adv` of team_game_stats) its figures are the box score's team totals - the rebounds and
+   turnovers (and a bench or coach foul) that belong to the team and to no player are in them, and in no player's line - so the graphic
+   says what the page does. */
+function sideTotals(players, idx, line) {
   const rows = (players || []).filter(p => p.team_idx === idx && p.stats);
   if (!rows.length) return null;
   const t = { pts: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, ftm: 0, fta: 0, or: 0, dr: 0, ast: 0, stl: 0, blk: 0, to: 0, pf: 0 };
   rows.forEach(p => Object.keys(t).forEach(k => { t[k] += n0(p.stats[k]); }));
+  if (line && n0(line.fga) > 0) {
+    t.p3m = n0(line.fg3m); t.p3a = n0(line.fg3a); t.p2m = n0(line.fgm) - n0(line.fg3m); t.p2a = n0(line.fga) - n0(line.fg3a);
+    t.ftm = n0(line.ftm); t.fta = n0(line.fta); t.or = n0(line.oreb); t.dr = n0(line.dreb);
+    t.ast = n0(line.ast); t.stl = n0(line.stl); t.blk = n0(line.blk); t.to = n0(line.tov);
+    if (typeof line.pf === 'number') t.pf = line.pf;      // the team's fouls, a bench or coach foul in them
+  }
   const fgm = t.p2m + t.p3m, fga = t.p2a + t.p3a;
   const rate = (m, a) => (a > 0 ? Math.round(1000 * m / a) / 10 : null);
   const put = (n, v) => ({ n, v: v != null ? v : String(n) });
@@ -321,13 +372,13 @@ function leaderOf(players, idx, bp) {
 function result(o) {
   const g = o.game || {};
   const home = side(o.home, g.home_score, o.perQ && o.perQ[0]), away = side(o.away, g.away_score, o.perQ && o.perQ[1]);
-  const bp = gameBPMs(o.players);
+  const bp = gameBPMs(o.players, o.teamAdv);
   const lead = idx => leaderOf(o.players, idx, bp);
   /* each side's three top scorers, for a final that names more than one */
   const scorers = idx => (o.players || []).filter(p => p.team_idx === idx && p.stats)
     .sort((a, b) => n0(b.stats.pts) - n0(a.stats.pts) || byNight(bp)(a, b)).slice(0, 3)
     .map(p => ({ name: p.stats.adv && p.stats.adv.name || p.name || '', stats: statsOf(p.stats, bp.get(p)) }));
-  const ts = { home: sideTotals(o.players, 0), away: sideTotals(o.players, 1) };
+  const ts = { home: sideTotals(o.players, 0, o.teamAdv && o.teamAdv[0]), away: sideTotals(o.players, 1, o.teamAdv && o.teamAdv[1]) };
   const periods = [];
   if (home.perQ && away.perQ) {
     const keys = [...new Set(Object.keys(home.perQ).concat(Object.keys(away.perQ)))].map(Number).filter(k => k > 0).sort((a, b) => a - b);
@@ -351,7 +402,7 @@ function performer(o) {
   /* `o.pick` names one player line (the console's builder: any player of the game, not only its best) */
   const picked = o.pick && (o.players || []).includes(o.pick) && o.pick.stats ? o.pick : null;
   if (!rows.length && !picked) return null;
-  const bp = gameBPMs(o.players);
+  const bp = gameBPMs(o.players, o.teamAdv);
   const best = picked || nightsOf(rows, bp)[0];
   const s = best.stats, adv = s.adv || {};
   const mine = best.team_idx === 0 ? o.home : o.away, theirs = best.team_idx === 0 ? o.away : o.home;
@@ -408,7 +459,7 @@ function week(o, size) {
 function day(o, size) {
   const tz = leagueZone(o.league);
   const rows = (o.games || []).slice().sort((a, b) => String(a.tipoff_at).localeCompare(String(b.tipoff_at))).map(g => {
-    const bp = gameBPMs(g.players), t = local(g.tipoff_at, tz);
+    const bp = gameBPMs(g.players, g.teamAdv), t = local(g.tipoff_at, tz);
     return { iso: g.tipoff_at || '', home: side(g.home, g.home_score), away: side(g.away, g.away_score), time: timeLabel(t), venue: g.venue || '',
              quarters: quartersOf(g.perQ), top: { home: leaderOf(g.players, 0, bp), away: leaderOf(g.players, 1, bp) }, gameId: g.id || null };
   });
@@ -1003,7 +1054,7 @@ function drawPerformer(ctx, m, th, S, M, accent) {
   const val = k => mn(k === 'pm' ? (s.pm > 0 ? '+' : '') + s.pm : String(s[k] == null ? '—' : s[k]));
   const big = keys ? keys.slice(0, 3).map(k => [val(k), sl(k, true)]) : [[String(s.pts), 'POINTS'], [String(s.reb), 'REBOUNDS'], [String(s.ast), 'ASSISTS']];
   /* BY DEFAULT, under the three big numbers, left to right: the BPM he was picked on, usage, true shooting, steals + blocks and
-     the on-off trio (net, offence, defence). A number the game cannot give (no on-court record, say) is left out, not dashed */
+     the on-court trio the Full stats tab prints (net, offence, defence). A number the game cannot give (no on-court record, say) is left out, not dashed */
   const cells = keys ? keys.slice(3).map(k => [sl(k), val(k)])
     : NIGHT_STRIP.map(k => [sl(k), val(k)]).filter(c => c[1] !== '—');
   const blocks = [

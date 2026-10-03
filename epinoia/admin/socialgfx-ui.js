@@ -39,7 +39,7 @@ const el = (t, c, x) => { const n = root.document.createElement(t); if (c) n.cla
 const PLAYER_COLS = 'game_id,team_idx,' + [['pts', 'pts'], ['p2m', 'p2m'], ['p2a', 'p2a'], ['p3m', 'p3m'], ['p3a', 'p3a'],
   ['fta', 'fta'], ['ftm', 'ftm'], ['oreb', 'or'], ['dreb', 'dr'], ['ast', 'ast'], ['stl', 'stl'], ['blk', 'blk'], ['tov', 'to'],
   ['pf', 'pf'], ['pm', 'pm'], ['min', 'min']].map(([a, k]) => a + ':stats->' + k).join(',') + ',name:stats->adv->>name,num:stats->adv->>num' +
-  ',oc:stats->oc';          // the on-court block (what the club did with him on the floor): the player of the game's on-off numbers
+  ',oc:stats->oc';          // the on-court block (what the club did with him on the floor): the player of the game's on-court net, ORTG and DRTG
 
 /* a player row as socialcard.js reads it ({ team_idx, stats: {..., adv: {name, num}} }) */
 function playerRow(r) {
@@ -123,14 +123,15 @@ async function read(sb, league, comps, now, offset, win) {
   for (let i = 0; i < fin.length; i += 30) {
     const chunk = fin.slice(i, i + 30);
     const [q, p] = await Promise.all([
-      sb.from('team_game_stats').select('game_id,team_idx,perQ:stats->perQ,adv:stats->adv').in('game_id', chunk),
+      sb.from('team_game_stats').select('game_id,team_idx,perQ:stats->perQ,adv:stats->adv,foul:stats->foulTot').in('game_id', chunk),
       sb.from('player_game_stats').select(PLAYER_COLS).in('game_id', chunk)
     ]);
     ((q && q.data) || []).forEach(r => {
       if (!out.perQ.has(r.game_id)) out.perQ.set(r.game_id, [null, null]);
       out.perQ.get(r.game_id)[r.team_idx] = r.perQ || null;
       if (!out.teamAdv.has(r.game_id)) out.teamAdv.set(r.game_id, [null, null]);
-      out.teamAdv.get(r.game_id)[r.team_idx] = r.adv && typeof r.adv === 'object' ? r.adv : null;
+      /* the club's line, with the fouls the box score's totals row prints (a bench or coach foul is the team's and in no player's line) */
+      out.teamAdv.get(r.game_id)[r.team_idx] = r.adv && typeof r.adv === 'object' ? (typeof r.foul === 'number' ? Object.assign({}, r.adv, { pf: r.foul }) : r.adv) : null;
     });
     ((p && p.data) || []).forEach(r => {
       if (!out.players.has(r.game_id)) out.players.set(r.game_id, []);
@@ -250,7 +251,7 @@ function starEntries(data, team) {
   const out = [];
   data.finals.forEach(g => {
     const players = data.players.get(g.id) || [];
-    const bp = SC && SC.gameBPMs ? SC.gameBPMs(players) : new Map();
+    const bp = SC && SC.gameBPMs ? SC.gameBPMs(players, data.teamAdv && data.teamAdv.get(g.id)) : new Map();
     players.forEach(p => {
       const mine = p.team_idx === 0 ? 0 : 1;
       const name = (p.stats.adv && p.stats.adv.name) || '';
@@ -268,7 +269,8 @@ function dayModels(data, key, size, crestOf) {
   const w = dayWindow(key, SC.leagueZone(L));
   const fin = data.finals.filter(g => +new Date(g.tipoff_at) >= +w.start && +new Date(g.tipoff_at) < +w.end);
   const comp = data.comps.length > 1 ? 'All competitions' : ((data.comps[0] || {}).name || L.name);
-  const games = fin.map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id), perQ: data.perQ.get(g.id), players: data.players.get(g.id) || [] }));
+  const games = fin.map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id), perQ: data.perQ.get(g.id), players: data.players.get(g.id) || [],
+    teamAdv: data.teamAdv && data.teamAdv.get(g.id) }));
   return SC.day({ games, league: L, comp, date: dayKeyLabel(key), dayKey: key }, size);
 }
 
@@ -456,11 +458,12 @@ function monthStars(data, lines, sel, crestOf) {
   const empty = { model: null, reason: 'No game finished in ' + b.label + '.', games: only.size, pool: [] };
   if (!only.size) return empty;
   const pl = X.byId('player', sel.opts), rows = X.rowsOf(lines, only).players;
-  /* each player's best game of the month, by its BPM (the game's lines, both sides: socialcard.js gameBPMs) */
-  const best = new Map(), byGame = new Map();
+  /* each player's best game of the month, by its BPM (the game's lines, both sides, and the clubs' own lines: socialcard.js gameBPMs) */
+  const best = new Map(), byGame = new Map(), advOf = new Map();
+  (lines.tgs || []).forEach(r => { if (!advOf.has(r.game_id)) advOf.set(r.game_id, [null, null]); advOf.get(r.game_id)[r.team_idx === 1 ? 1 : 0] = (r.stats && r.stats.adv) || null; });
   lines.pgs.forEach(r => { if (only.has(r.game_id)) { if (!byGame.has(r.game_id)) byGame.set(r.game_id, []); byGame.get(r.game_id).push(r); } });
   byGame.forEach(list => {
-    const bp = SC.gameBPMs(list);
+    const bp = SC.gameBPMs(list, advOf.get(list[0] && list[0].game_id));
     list.forEach(r => {
       const id = r.player_uuid || r.player_id, s = r.stats || {};
       if (!id || !(+s.min > 0)) return;
@@ -580,7 +583,7 @@ function builderModel0(data, sel, size, crestOf) {
   if (tpl === 'result' || tpl === 'star') {
     const g = data.finals.find(x => x.id === s.gameId) || data.finals[data.finals.length - 1];
     if (!g) return { model: null, reason: 'No game has finished in this week.' };
-    const all = data.players.get(g.id) || [], bp = SC.gameBPMs(all);
+    const all = data.players.get(g.id) || [], bp = SC.gameBPMs(all, data.teamAdv && data.teamAdv.get(g.id));
     const nightOf = p => (bp.has(p) ? bp.get(p) : -Infinity);
     const players = all.slice().sort((a, b) => (nightOf(b) - nightOf(a)) || ((b.stats.pts || 0) - (a.stats.pts || 0)));
     const base = { game: g, home: team(g.home_team_id), away: team(g.away_team_id), players, perQ: data.perQ.get(g.id), teamAdv: data.teamAdv && data.teamAdv.get(g.id), league: L,

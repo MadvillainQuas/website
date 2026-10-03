@@ -622,7 +622,9 @@ jobs:
         # three-figure score; the weekly list's daily graphics (whole days only) and the builder's game-day subject. The night's picks:
         # a player of the game, a side's leader and the stars of the week ranked by BPM and nothing else, from eighteen minutes
         # (waived for a side where nobody played them), BPM printed on each; the player of the game's strip, left to right: BPM, USG%,
-        # TS%, STOCKS%, ON-OFF NET, ON-OFF ORTG, ON-OFF DRTG, the site's own numbers (season.js), cells it cannot fill left out
+        # TS%, STOCKS%, ON-COURT NET, ON-COURT ORTG, ON-COURT DRTG - the game page's own figures, held to a real game (London 71-66
+        # Leicester, 21 players: BPM, usage, true shooting, steal and block %, on-court net / ORTG / DRTG against the page), cells it
+        # cannot fill left out; a final's team stats are the clubs' own lines (the team's rebounds and turnovers in them)
         run: node supabase/tests/daily-scores.test.mjs
 
       - name: Every standings table says WIN% and opens in win% order, the # following

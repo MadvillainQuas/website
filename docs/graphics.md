@@ -6,7 +6,7 @@ Code: `socialcard.js` draws and words them, `admin/socialgfx-ui.js` reads the ro
 
 ## The night's picks: BPM and nothing else, from 18 minutes
 
-A game's player, a side's leader, and the week's stars are picked by the game's own **BPM** (`bpm.js` `gameFromBox`, from both sides' lines). Two things bend that, and only these:
+A game's player, a side's leader, and the week's stars are picked by the game's own **BPM**: the figure on the game page's squads circles, to the tenth (`socialcard.js` `gameBPMs`: each club's own pace and ratings from its game line, `bpm.js` `forTeam`; where a game has no club lines, `bpm.js` `gameFromBox` from the players' lines, a little different). Two things bend that, and only these:
 
 - **18 minutes.** A player must have played 18 minutes in the game to be in the running (`socialcard.js` `NIGHT_MIN_MS`). Per-100 rates worked from a few minutes are noise: before this, one pick in three on live data (74 of 227 player-of-the-game picks, 27 league-weeks) went to a player of under 18 minutes, +97.6 BPM in eight minutes the worst. Where nobody on a side played 18, the minimum is waived for that side (a deep rotation still has a best night).
 - **No BPM, points.** A feed with no minutes has no BPM; the picks go by points, as they always did, and the graphic says "ranked by points", not BPM.
@@ -15,13 +15,22 @@ Level BPM is ordered by name, never by another stat. **BPM is printed wherever a
 
 The **stars of the month** (and a BPM leaders board) rank players averaging 18+ minutes a game; a month's list was led by a player of two minutes and no points.
 
+## Every number is the page's number
+
+A graphic is only worth posting if it says what the game page says. So the figures on the cards are **worked the way the page works them** (`boxscore.js` `playerAdv` / `teamAdv`, `game.js` `gameBPM`), not by the season's formulas run over one game, and a test holds each to the page's own figure on a real game (`daily-scores.test.mjs`, fixture `slb-london-leicester-2026-10-02.json`: London Lions 71-66 Leicester Riders, all 21 players, the page's BPM, USG%, TS%, STL%, BLK%, on-court NET / ORTG / DRTG against each player's line).
+
+- **The inputs** are what the game page reads: each player's stored line and his **on-court block** (`oc`, from `player_game_stats`), and the two **club lines** of the game (`adv` of `team_game_stats`: totals with the team's own rebounds and turnovers, pace and ratings), read with the week (`socialgfx-ui.js` `PLAYER_COLS`, `read()` → `teamAdv`).
+- **A number the game cannot work out is a dash** (or, in the strip, a cell left out), never a guess: a player with no shot attempts has no TS%; a player with no on-court possessions has no on-court ratings (the page prints a meaningless -110 there).
+- **A final's optional TEAM STATS** are the clubs' own lines, as the box score's totals row prints them: the rebounds and turnovers that belong to the team and to no player, and a bench or coach foul, are in them and in no player's line (the club's line is read with its fouls total, `foulTot`). A game with no club lines is summed from the players' lines. Checked against the live box score tab on every final of the Super League (14 totals rows, none different).
+
 ## The player of the game
 
-Winning side's best night (a draw: either side). Under his points, rebounds and assists, left to right: **BPM** (lit), **USG%**, **TS%**, **STOCKS%**, **ON-OFF NET**, **ON-OFF ORTG**, **ON-OFF DRTG**. They are the site's own numbers for that one game: `season.js` `players()` is run over the game's lines (the on-court block `oc` of each player and each club's `adv` line, read with the week: `socialgfx-ui.js` `PLAYER_COLS`, `read()`), so a night reads exactly as the season's numbers do.
+Winning side's best night (a draw: either side). Under his points, rebounds and assists, left to right: **BPM** (lit), **USG%**, **TS%**, **STOCKS%**, **ON-COURT NET**, **ON-COURT ORTG**, **ON-COURT DRTG** (`socialcard.js` `NIGHT_STRIP`, worked by `nightAdv`).
 
-- USG% and TS%: as the profile's. **STOCKS% is STL% + BLK%** (the site has no column of its own).
-- ON-OFF: the profile's NET ±, ORTG ±, DRTG ± (his club's rating with him on the floor minus off it, in that game). With almost no time off the floor there is no off-court sample and the site leaves it blank; so does this.
-- A cell the game cannot fill (a league scored without on-court records, no club lines) is **left out**, not dashed. Chosen stat lines (the builder's picker, up to ten) still win.
+- **USG%** is his possessions (shots, 0.44 x free throws, turnovers) over the club's, in the minutes he played against the game's. **TS%** is points over twice his shooting possessions. **STOCKS% is STL% + BLK%**, the two figures the Full stats tab prints, added (the site has no column of its own).
+- **ON-COURT NET** is what the club did while he was on the floor, as the Full stats tab prints it: its offensive rating less its defensive one. **ON-COURT ORTG** and **DRTG** are, as the tab prints them, each **against the game's average rating** (the mean of the two clubs'): a DRTG of -30 is thirty fewer points allowed per 100 possessions than the game's average. Whole numbers, a real minus.
+- This is the **box score's Full stats numbers, not the on-minus-off of the season profile** (his club's rating with him on the floor minus off it): they are different things and the cards used to print the second under the first's name. They are labelled ON-COURT so nobody takes them for the profile's ON-OFF.
+- A cell the game cannot fill (a league scored without on-court records, no club lines) is **left out**, not dashed. Chosen stat lines (the builder's picker, up to ten) still win; the first keys older builders saved for the on-off numbers (`onnet`, `onortg`, `ondrtg`) read as the on-court ones.
 
 ## Daily scores
 

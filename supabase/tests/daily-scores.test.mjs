@@ -13,8 +13,10 @@
        midnight), the weekly list's daily graphics for the days the window holds whole, and the builder's subject;
      * THE NIGHT'S PICKS are ranked by BPM and nothing else: a player of the game, a side's leader and the stars of the week must
        have played eighteen minutes (waived where nobody on a side did), and BPM is printed on each of them;
-     * THE PLAYER OF THE GAME'S STRIP, left to right under points, rebounds and assists: BPM, USG%, TS%, STOCKS%, ON-OFF NET,
-       ON-OFF ORTG, ON-OFF DRTG - the site's own numbers for the night (season.js), a number the game cannot give left out.
+     * THE PLAYER OF THE GAME'S STRIP, left to right under points, rebounds and assists: BPM, USG%, TS%, STOCKS%, ON-COURT NET,
+       ON-COURT ORTG, ON-COURT DRTG - every one the number the game page shows for that player (BPM on his circle; the Full stats
+       tab's usage, true shooting, steal and block %, and its on-court net and ratings against the game's average), checked on a real
+       game's 21 players; a cell the game cannot fill left out.
    ============================================================================ */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,10 +32,10 @@ const ok = (name, cond, extra = '') => {
 const sandbox = { console, module: undefined, setTimeout, clearTimeout, Intl, TextEncoder };
 sandbox.self = sandbox; sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
-for (const f of ['epinoia/bpm.js', 'epinoia/reportcard.js', 'epinoia/season.js', 'epinoia/socialcard.js', 'epinoia/admin/socialgfx-ui.js', 'epinoia/admin/graphics-ui.js']) {
+for (const f of ['epinoia/bpm.js', 'epinoia/reportcard.js', 'epinoia/socialcard.js', 'epinoia/admin/socialgfx-ui.js', 'epinoia/admin/graphics-ui.js']) {
   vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 }
-const SC = sandbox.EpinoiaSocialCard, GX = sandbox.EpinoiaSocialGfx, UI = sandbox.EpinoiaGraphicsUI, SE = sandbox.EpinoiaSeason;
+const SC = sandbox.EpinoiaSocialCard, GX = sandbox.EpinoiaSocialGfx, UI = sandbox.EpinoiaGraphicsUI;
 
 /* a 2D context that records where every word and shape lands */
 function recorder() {
@@ -117,22 +119,74 @@ console.log('\nBPM is on the cards');
   ok('...and the words say it too', /Stan Starter \(Paris Basket\): 22 pts, 9 reb, 6 ast, [+-]\d+\.\d bpm/.test(SC.caption(res)), SC.caption(res).split('\n').slice(0, 4).join(' / '));
 }
 
-console.log('\nthe player of the game\'s strip');
-/* a game with its on-court blocks and both clubs' lines, so the site's own engine has what it works from */
-const oc = { tFGA: 40, tFGM: 18, t3M: 5, tFTA: 12, tTOV: 7, tOR: 6, tDR: 20, tPTS: 52, oFGA: 38, oFGM: 15, o3M: 4, oFTA: 10, oTOV: 9, oOR: 5, oDR: 22, oPTS: 40 };
-const adv = [{ pts: 84, fgm: 31, fga: 66, fg3m: 8, fg3a: 22, ftm: 14, fta: 19, oreb: 9, dreb: 27, ast: 18, stl: 8, blk: 3, tov: 11, minutes: 200 },
-  { pts: 79, fgm: 29, fga: 64, fg3m: 7, fg3a: 21, ftm: 14, fta: 17, oreb: 8, dreb: 25, ast: 15, stl: 6, blk: 2, tov: 13, minutes: 200 }];
-const withOc = pl.map((p, i) => (i === 1 ? { team_idx: 0, stats: Object.assign({}, p.stats, { oc }) } : p));
-const strip = SC.performer({ game: g1, home: T[0], away: T[1], players: withOc, teamAdv: adv, league });
-const engine = SE.players(withOc.map((p, i) => ({ game_id: 'g', player_id: 'p' + i, team_idx: p.team_idx, stats: p.stats })), [0, 1].map(i => ({ game_id: 'g', team_idx: i, stats: { adv: adv[i] } }))).find(r => r.id === 'p1');
-const f1 = v => (v == null ? '—' : (Math.round(v * 10) / 10).toFixed(1));
-const sg = v => (v == null ? '—' : (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1));
-ok('the numbers are the site\'s own for the night (season.js): usage, true shooting, steals + blocks (STL% + BLK%), on-off net, offence and defence',
-   strip.stats.usg === f1(engine.usg) && strip.stats.ts === f1(engine.ts) && strip.stats.stocks === f1(engine.stl_pct + engine.blk_pct) && strip.stats.onnet === sg(engine.diff_net)
-   && strip.stats.onortg === sg(engine.diff_ortg) && strip.stats.ondrtg === sg(engine.diff_drtg) && engine.usg != null && engine.diff_net != null, JSON.stringify(strip.stats).slice(0, 400));
-const tsa = 12 + 0.44 * 4;
-ok('...true shooting is points over twice the shooting possessions, worked by hand', Math.abs(+strip.stats.ts - Math.round(1000 * 22 / (2 * (12 + 5 + 0.44 * 4))) / 10) < 0.15, strip.stats.ts + ' v ' + (100 * 22 / (2 * (17 + 0.44 * 4))).toFixed(1));
-const order = ['BPM', 'USG%', 'TS%', 'STOCKS%', 'ON-OFF NET', 'ON-OFF ORTG', 'ON-OFF DRTG'];
+console.log('\nthe player of the game\'s strip: the game page\'s own numbers');
+/* a REAL game - London Lions 71-66 Leicester Riders, Fri 2 Oct 2026 - its stored lines, and what the game page showed for each of its
+   21 players (the BPM on each circle; the Full stats tab's usage, true shooting, steal and block %, on-court net, ORTG and DRTG, the
+   last three against the game's average, in whole numbers) */
+const REAL = JSON.parse(fs.readFileSync(path.join(ROOT, 'supabase/tests/fixtures/slb-london-leicester-2026-10-02.json'), 'utf8'));
+const realG = { id: 'real', tipoff_at: '2026-10-02T18:30:00Z', home_score: 71, away_score: 66 }, realPl = REAL.players, nameOf = p => p.stats.adv.name;
+const pick = p => SC.performer({ game: realG, home: T[0], away: T[1], players: realPl, teamAdv: REAL.teamAdv, league, pick: p });
+const plus = v => (v > 0 ? '+' : '') + v.toFixed(1);
+const realBpm = SC.gameBPMs(realPl, REAL.teamAdv), boxBpm = SC.gameBPMs(realPl);
+ok('BPM is the game page\'s figure for each of the 21 players (each club\'s own pace and ratings from its game line), to a tenth', realPl.length === 21
+   && realPl.every(p => realBpm.has(p) && SC.bpmText(realBpm.get(p)) === plus(REAL.page[nameOf(p)].bpm)), realPl.filter(p => !realBpm.has(p) || SC.bpmText(realBpm.get(p)) !== plus(REAL.page[nameOf(p)].bpm)).map(p => nameOf(p) + ' ' + (realBpm.has(p) && SC.bpmText(realBpm.get(p))) + ' v ' + REAL.page[nameOf(p)].bpm));
+ok('...without the clubs\' lines it is the sum of the box\'s own (bpm.js gameFromBox: no team turnovers or rebounds, so a little different), and still a BPM for everyone',
+   realPl.every(p => boxBpm.has(p)) && realPl.some(p => SC.bpmText(boxBpm.get(p)) !== SC.bpmText(realBpm.get(p))));
+ok('...a graphic names the same BPM wherever it is made: a final\'s leader and the player of the game say the page\'s figure', (() => { const r = SC.result({ game: realG, home: T[0], away: T[1], players: realPl, teamAdv: REAL.teamAdv, league });
+  return r.top.home.stats.bpm === plus(REAL.page['Morayo Soluade'].bpm) && r.top.away.stats.bpm === plus(REAL.page['Trent Donald Macdonnell Johnson'].bpm); })());
+const mism = [];
+const norm = v => String(v).replace(/^[+-]0$/, '0');
+realPl.forEach(p => {
+  const e = REAL.page[nameOf(p)], st = pick(p).stats;
+  const want = { usg: (+e.usg).toFixed(1), ts: (+e.ts).toFixed(1), stocks: ((+e.stl) + (+e.blk)).toFixed(1), net: e.net, ortg: e.ortg, drtg: e.drtg };
+  Object.keys(want).forEach(k => { if (norm(st[k]) !== norm(want[k])) mism.push(nameOf(p) + ' ' + k + ': page ' + want[k] + ' graphic ' + st[k]); });
+});
+ok('USG%, TS%, STOCKS% (the page\'s STL% + BLK%), ON-COURT NET, ORTG and DRTG are what the Full stats tab shows, for each of the 21 players', !mism.length, mism.slice(0, 6));
+const kennedy = realPl.find(p => nameOf(p) === 'Thomas Kennedy'), ks = pick(kennedy).stats;
+ok('Thomas Kennedy, who was checked by eye: +14.7 BPM, 26.4 USG%, 51.4 TS%, 7.2 STOCKS%, net +18, ORTG -12, DRTG -30 (not the on-minus-off -23.8 and -47.3 of before)',
+   [ks.bpm, ks.usg, ks.ts, ks.stocks, ks.net, ks.ortg, ks.drtg].join() === '+14.7,26.4,51.4,7.2,+18,-12,-30', JSON.stringify(ks).slice(0, 300));
+ok('...the three on-court numbers agree with each other: net is ORTG less DRTG, to the rounding of the two', realPl.every(p => { const s = pick(p).stats, n = x => +String(x).replace('+', ''); return Math.abs(n(s.ortg) - n(s.drtg) - n(s.net)) <= 1; }));
+{
+  /* the final's optional TEAM STATS: the box score's team totals (the clubs' own lines), which hold the rebounds and turnovers that belong
+     to the team and to no player - the players' lines alone left London 5 rebounds and Leicester 4 rebounds and a turnover short */
+  const fin = SC.result({ game: realG, home: T[0], away: T[1], players: realPl, teamAdv: REAL.teamAdv, league }).teamStats;
+  const A = REAL.teamAdv, v = (side, k) => fin[side][k].v;
+  ok('a final\'s team stats are the clubs\' own lines: London 42 rebounds (12 offensive), 7 turnovers; Leicester 44 (8), 17 turnovers',
+     v('home', 'reb') === '42' && v('home', 'oreb') === '12' && v('home', 'tov') === '7' && v('away', 'reb') === '44' && v('away', 'oreb') === '8' && v('away', 'tov') === '17',
+     ['home', 'away'].map(s => ['reb', 'oreb', 'tov'].map(k => v(s, k)).join('/')).join(' v '));
+  ok('...and every other line the same as the club\'s: shooting, threes, free throws, assists, steals and blocks',
+     ['home', 'away'].every((s, i) => v(s, 'fg') === A[i].fgm + '/' + A[i].fga && v(s, 'p3') === A[i].fg3m + '/' + A[i].fg3a && v(s, 'ft') === A[i].ftm + '/' + A[i].fta
+       && v(s, 'ast') === String(A[i].ast) && v(s, 'stl') === String(A[i].stl) && v(s, 'blk') === String(A[i].blk) && v(s, 'reb') === String(A[i].oreb + A[i].dreb)),
+     JSON.stringify(['home', 'away'].map(s => [v(s, 'fg'), v(s, 'p3'), v(s, 'ft')])));
+  ok('...and the percentages are worked from those (London 26 of 74 is 35%, effective 41%)', v('home', 'fgp') === '35%' && v('home', 'efg') === '41%' && v('away', 'fgp') === '40%', [v('home', 'fgp'), v('home', 'efg'), v('away', 'fgp')].join());
+  const bare = SC.result({ game: realG, home: T[0], away: T[1], players: realPl, league }).teamStats;
+  ok('...a game with no club lines is summed from its players\' lines, as it always was (fouls too)', bare && bare.home.reb.v === '37' && bare.away.reb.v === '40' && v('home', 'pf') === bare.home.pf.v && v('away', 'pf') === bare.away.pf.v,
+     bare && [bare.home.reb.v, bare.away.reb.v].join());
+  const foul = SC.result({ game: realG, home: T[0], away: T[1], players: realPl, teamAdv: [Object.assign({}, A[0], { pf: 19 }), Object.assign({}, A[1], { pf: 14 })], league }).teamStats;
+  ok('...the club\'s fouls total, where the game stored one, is the PF (a bench or coach foul is the team\'s and in no player\'s line: London\'s players have 18, the box score 19)',
+     foul.home.pf.v === '19' && foul.away.pf.v === '14' && v('home', 'pf') === '18', [foul.home.pf.v, foul.away.pf.v, v('home', 'pf')].join());
+}
+/* worked by hand, on a game small enough to check: one player's on-court block and the two clubs' lines */
+{
+  const oc = { tFGA: 40, tFGM: 18, t3M: 5, tFTA: 12, tTOV: 7, tOR: 6, tDR: 20, tPTS: 52, oFGA: 38, oFGM: 15, o3M: 4, oFTA: 10, oTOV: 9, oOR: 5, oDR: 22, oPTS: 40 };
+  const adv = [{ pts: 84, fgm: 31, fga: 66, fg3m: 8, fg3a: 22, ftm: 14, fta: 19, oreb: 9, dreb: 27, ast: 18, stl: 8, blk: 3, tov: 11, minutes: 200, pace: 72 },
+    { pts: 79, fgm: 29, fga: 64, fg3m: 7, fg3a: 21, ftm: 14, fta: 17, oreb: 8, dreb: 25, ast: 15, stl: 6, blk: 2, tov: 13, minutes: 200, pace: 72 }];
+  const withOc = pl.map((p, i) => (i === 1 ? { team_idx: 0, stats: Object.assign({}, p.stats, { oc }) } : p));
+  const st = SC.performer({ game: g1, home: T[0], away: T[1], players: withOc, teamAdv: adv, league, pick: withOc[1] }).stats;
+  const poss = (f, t, ft, o) => 0.96 * (f + t + 0.44 * ft - o);
+  const on = 100 * 52 / poss(40, 7, 12, 6), against = 100 * 40 / poss(38, 9, 10, 5);
+  const avg = (100 * 84 / poss(66, 11, 19, 9) + 100 * 79 / poss(64, 13, 17, 8)) / 2;
+  const w = v => (v > 0 ? '+' : '') + v.toFixed(0);
+  ok('on-court net is the club\'s rating with him on the floor less its rating against; ORTG and DRTG are each against the game\'s average rating (the mean of the two clubs\')',
+     st.net === w(on - against) && st.ortg === w(on - avg) && st.drtg === w(against - avg), [st.net, st.ortg, st.drtg].join() + ' v ' + [w(on - against), w(on - avg), w(against - avg)].join());
+  const mins = 30, gm = 40, teamPoss = 66 + 0.44 * 19 + 11, pPoss = 17 + 0.44 * 4 + 2;
+  ok('...usage is his possessions over the club\'s while he was on (minutes against the game\'s), true shooting is points over twice his shooting possessions',
+     st.usg === (100 * pPoss * gm / (mins * teamPoss)).toFixed(1) && st.ts === (100 * 22 / (2 * (17 + 0.44 * 4))).toFixed(1), st.usg + ' ' + st.ts);
+  ok('...a number it cannot work out is a dash, never a guess (a club with no line: no usage, no on-court numbers; the shooting stays)', (() => { const x = SC.performer({ game: g1, home: T[0], away: T[1], players: withOc, league, pick: withOc[1] }).stats;
+    return x.usg === '—' && x.net === '—' && x.ortg === '—' && x.drtg === '—' && x.ts === st.ts; })());
+}
+const strip = pick(kennedy);
+const order = ['BPM', 'USG%', 'TS%', 'STOCKS%', 'ON-COURT NET', 'ON-COURT ORTG', 'ON-COURT DRTG'];
 for (const size of ['portrait', 'square', 'story']) {
   const d = draw(strip, size), S = SC.SIZES[size];
   const labs = order.map(l => d.words.find(e => e.t === l));
@@ -142,18 +196,18 @@ for (const size of ['portrait', 'square', 'story']) {
   ok(`${size}: all of it on the page (the seven labels fit their cells)`, !off.length && labs.every(e => e && e.size >= 9), off.map(e => e.t));
 }
 const values = draw(strip, 'portrait').words.map(e => e.t);
-ok('...each with its figure: the BPM he was picked on first, then the five others', [strip.stats.bpm, strip.stats.usg, strip.stats.ts, strip.stats.stocks, strip.stats.onnet, strip.stats.onortg, strip.stats.ondrtg]
-   .every(v => values.includes(v.replace(/^-(?=[\d.])/, '−'))), values.slice(0, 40));
+ok('...each with the game page\'s figure under it: +14.7, 26.4, 51.4, 7.2, +18, -12, -30 (the minus a real minus)', ['+14.7', '26.4', '51.4', '7.2', '+18', '−12', '−30'].every(v => values.includes(v)), values.slice(0, 40));
 const bare = SC.performer({ game: g1, home: T[0], away: T[1], players: pl, league });
 const bd = draw(bare, 'portrait');
-ok('a game with no on-court record or club lines: the cells it cannot fill are left out, not dashed', bd.words.some(e => e.t === 'BPM') && bd.words.some(e => e.t === 'TS%') && !bd.words.some(e => e.t === 'ON-OFF NET')
-   && !bd.words.some(e => e.t === 'USG%') && !bd.words.some(e => e.t === '—'), bd.words.map(e => e.t).filter(t => /%|ON-OFF|BPM/.test(t)));
-ok('chosen stat lines still win: the first three big, the rest in the strip (ten at most)', (() => {
+ok('a game with no on-court record or club lines: the cells it cannot fill are left out, not dashed', bd.words.some(e => e.t === 'BPM') && bd.words.some(e => e.t === 'TS%') && !bd.words.some(e => /ON-COURT/.test(e.t))
+   && !bd.words.some(e => e.t === 'USG%') && !bd.words.some(e => e.t === '—'), bd.words.map(e => e.t).filter(t => /%|ON-COURT|BPM/.test(t)));
+ok('chosen stat lines still win: the first three big, the rest in the strip (ten at most); the first on-off keys, saved by a builder, read as the on-court ones', (() => {
   const d = draw(strip, 'portrait', { statKeys: ['pts', 'reb', 'ast', 'usg', 'ts'] });
   return d.words.some(e => e.t === 'USG%') && d.words.some(e => e.t === 'TS%') && !d.words.some(e => e.t === 'BPM');
-})() && SC.cleanModules({ statKeys: ['pts', 'reb', 'ast', 'bpm', 'usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg', 'fg'] }).statKeys.length === 10);
-ok('the builder\'s own stat list knows them, its default is the strip, and the stars of the week do not offer what they have no line of', UI.STAT_DEFAULT.join() === 'pts,reb,ast,bpm,usg,ts,stocks,onnet,onortg,ondrtg'
-   && ['usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg'].every(k => UI.STAT_ORDER.includes(k) && SC.STAT_DEFS[k]) && UI.WEEK_DEFAULT.join() === 'pts,reb,ast,bpm' && UI.MONTH_DEFAULT.includes('c:bpm') && UI.LEAD_ORDER.includes('bpm'));
+})() && SC.cleanModules({ statKeys: ['pts', 'reb', 'ast', 'bpm', 'usg', 'ts', 'stocks', 'net', 'ortg', 'drtg', 'fg'] }).statKeys.length === 10
+   && SC.cleanModules({ statKeys: ['pts', 'reb', 'ast', 'onnet', 'onortg', 'ondrtg'] }).statKeys.join() === 'pts,reb,ast,net,ortg,drtg');
+ok('the builder\'s own stat list knows them, its default is the strip, and the stars of the week do not offer what they have no line of', UI.STAT_DEFAULT.join() === 'pts,reb,ast,bpm,usg,ts,stocks,net,ortg,drtg'
+   && ['usg', 'ts', 'stocks', 'net', 'ortg', 'drtg'].every(k => UI.STAT_ORDER.includes(k) && SC.STAT_DEFS[k]) && UI.WEEK_DEFAULT.join() === 'pts,reb,ast,bpm' && UI.MONTH_DEFAULT.includes('c:bpm') && UI.LEAD_ORDER.includes('bpm'));
 
 /* ------------------------------------------------------------------ the day, model --- */
 console.log('\nthe day\'s scores');
@@ -249,6 +303,7 @@ console.log('\nthe game days');
           queries.push({ table, sel: b.sel, f: b.f });
           if (table === 'games') return { data: G.filter(g => (b.f.gte === undefined || g.tipoff_at >= b.f.gte) && (b.f.lt === undefined || g.tipoff_at < b.f.lt) && (!b.f['eq:status'] || g.status === b.f['eq:status'])) };
           if (table === 'teams') return { data: clubs };
+          if (table === 'team_game_stats') return { data: [{ game_id: 'x1', team_idx: 0, perQ: null, adv: { fga: 60, pace: 70 }, foul: 17 }, { game_id: 'x1', team_idx: 1, perQ: null, adv: { fga: 55, pace: 70 }, foul: null }] };
           return { data: [] };
         },
         maybeSingle() { return Promise.resolve(b.run()); }, then(res, rej) { return Promise.resolve(b.run()).then(res, rej); } };
@@ -270,6 +325,8 @@ console.log('\nthe game days');
   ok('...no table read, and the league row it was handed not read again (nor its handle)', !queries.some(x => x.table === 'standings' || x.table === 'leagues' || x.rpc) && dd.league === lg && dd.standings.length === 0);
   ok('...its clubs, quarter scores, club lines (the on-court numbers\' denominators) and players read as a week\'s are', queries.some(x => x.table === 'teams') && queries.find(x => x.table === 'team_game_stats').sel.includes('adv:stats->adv')
      && queries.find(x => x.table === 'player_game_stats').sel.includes('oc:stats->oc'), queries.filter(x => /game_stats/.test(x.table)).map(x => x.sel.slice(0, 80)));
+  ok('...a club\'s line carries its fouls total (the box score\'s PF, a bench or coach foul in it) when the game stored one, and is left as stored when not',
+     queries.find(x => x.table === 'team_game_stats').sel.includes('foul:stats->foulTot') && dd.teamAdv.get('x1')[0].pf === 17 && dd.teamAdv.get('x1')[0].fga === 60 && !('pf' in dd.teamAdv.get('x1')[1]), JSON.stringify(dd.teamAdv.get('x1')));
   /* a busy day (college basketball plays seventy games on one) is read thirty games' players at a time: a request is cut at a thousand rows */
   {
     const many = Array.from({ length: 70 }, (_, i) => ({ id: 'm' + i, competition_id: 'c1', tipoff_at: '2026-10-02T' + String(8 + (i % 14)).padStart(2, '0') + ':00:00Z', venue: '', status: 'final', home_score: 80, away_score: 70, home_team_id: 't0', away_team_id: 't1' }));
