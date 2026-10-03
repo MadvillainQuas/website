@@ -7,7 +7,11 @@ What this holds (console_kick.py, run_ingest.py, console-jobs.yml, ingest.yml):
     every queued row is stamped with when; one started in the last fifteen minutes is not started again, one started
     longer ago than that is; a refusal from GitHub stamps nothing; each kind can be kicked on its own;
   * a database without 0217 (no dispatched_at) is still started, just not noted;
-  * the dispatch is GitHub's workflow_dispatch for console-jobs.yml on the branch asked for, with the token;
+  * a queued "send next week's reports now" (report_mail_requests, 0226) starts report-mail.yml the same way, each
+    worker judged on its own queues: a fresh backfill is started while the mailer waits on one started a minute ago, a
+    request nobody took in three hours is given up, a database without 0226 holds nothing else up, and a refusal for
+    one worker does not stop the other;
+  * the dispatch is GitHub's workflow_dispatch for console-jobs.yml (or report-mail.yml) on the branch asked for, with the token;
   * the light client: two PostgREST calls with the service key and nothing to install;
   * the live lane kicks every two minutes; a backfill says each step at once (force), with its run's log, and a season
     with nothing on its schedule is failed with the reason rather than "done";
@@ -41,13 +45,16 @@ def ok(what, cond, saw=None):
 class Q:
     """the two queues as PostgREST would answer them, and every patch written"""
 
-    def __init__(self, backfills=(), resets=(), no_column=False):
-        self.rows = {"season_backfills": [dict(r) for r in backfills], "league_resets": [dict(r) for r in resets]}
-        self.no_column = no_column
+    def __init__(self, backfills=(), resets=(), reports=(), no_column=False, no_reports=False):
+        self.rows = {"season_backfills": [dict(r) for r in backfills], "league_resets": [dict(r) for r in resets],
+                     "report_mail_requests": [dict(r) for r in reports]}
+        self.no_column, self.no_reports = no_column, no_reports
         self.selects, self.patches = [], []
 
     def select(self, table, query):
         self.selects.append((table, query))
+        if self.no_reports and table == "report_mail_requests":
+            raise RuntimeError('relation "report_mail_requests" does not exist')
         if self.no_column and "dispatched_at" in query:
             raise RuntimeError("column season_backfills.dispatched_at does not exist")
         return [dict(r) for r in self.rows[table]]
@@ -63,12 +70,16 @@ NOW = 1_800_000_000.0
 iso = lambda t: __import__("datetime").datetime.fromtimestamp(t, __import__("datetime").timezone.utc).isoformat()
 
 
-def sender(answer=(True, "HTTP 204")):
-    calls = []
+def sender(answer=(True, "HTTP 204"), refuse=()):
+    """the dispatcher: calls are (repo, token, ref); send.flows says which workflow each one asked for; a workflow named
+    in refuse is refused with HTTP 403"""
+    calls, flows = [], []
 
-    def send(repo, token, ref):
+    def send(repo, token, ref, workflow=K.WORKFLOW):
         calls.append((repo, token, ref))
-        return answer
+        flows.append(workflow)
+        return (False, "HTTP 403") if workflow in refuse else answer
+    send.flows = flows
     return send, calls
 
 
@@ -104,6 +115,63 @@ said = K.kick(only, env=ENV, now=NOW, send=send, kinds=("backfill",))
 ok("a kind on its own: the backfill job asks about backfills only, and stamps only those",
    said.startswith("started the worker for 1") and {t for t, _ in only.selects} == {"season_backfills"} and
    [t for t, _, _ in only.patches] == ["season_backfills"], (said, only.selects, only.patches))
+
+print("\nthe report mailer, started the same way (0226)")
+send, calls = sender()
+rq = Q(reports=[{"id": "q1", "requested_at": iso(NOW - 120), "dispatched_at": None}])
+said = K.kick(rq, env=ENV, now=NOW, send=send)
+ok("a queued \"send next week's reports now\" starts report-mail.yml, and only that, and its row says when",
+   said.startswith("started the worker for 1") and send.flows == ["report-mail.yml"] and
+   rq.patches == [("report_mail_requests", "id=in.(q1)&state=eq.queued", {"dispatched_at": iso(NOW)})], (said, send.flows, rq.patches))
+
+send, calls = sender()
+three = Q(backfills=[{"id": "b1"}], resets=[{"id": "r1"}], reports=[{"id": "q1", "requested_at": iso(NOW - 60)}, {"id": "q2", "requested_at": iso(NOW - 30)}])
+said = K.kick(three, env=ENV, now=NOW, send=send)
+ok("a backfill, a reset and two report requests: console-jobs.yml once and report-mail.yml once, every row noted",
+   said.startswith("started the worker for 4") and sorted(send.flows) == ["console-jobs.yml", "report-mail.yml"] and
+   sorted((t, qq) for t, qq, _ in three.patches) == [("league_resets", "id=in.(r1)&state=eq.queued"), ("report_mail_requests", "id=in.(q1,q2)&state=eq.queued"),
+                                                    ("season_backfills", "id=in.(b1)&state=eq.queued")], (said, send.flows, three.patches))
+
+send, calls = sender()
+judged = Q(backfills=[{"id": "b1", "dispatched_at": None}], reports=[{"id": "q1", "requested_at": iso(NOW - 300), "dispatched_at": iso(NOW - 60)}])
+said = K.kick(judged, env=ENV, now=NOW, send=send)
+ok("each worker is judged on its own: the mailer started a minute ago waits, a fresh backfill is started",
+   said.startswith("started the worker for 1") and send.flows == ["console-jobs.yml"] and [t for t, _, _ in judged.patches] == ["season_backfills"], (said, send.flows))
+send, calls = sender()
+waiting = Q(reports=[{"id": "q1", "requested_at": iso(NOW - 300), "dispatched_at": iso(NOW - 60)}])
+ok("...and a mailer started a minute ago, with nothing else queued, is not started again", K.kick(waiting, env=ENV, now=NOW, send=send) == "already started" and not calls)
+send, calls = sender()
+late = Q(reports=[{"id": "q1", "requested_at": iso(NOW - 20 * 60), "dispatched_at": iso(NOW - 16 * 60)}])
+ok("...but one still waiting sixteen minutes after its start is started again", K.kick(late, env=ENV, now=NOW, send=send).startswith("started") and send.flows == ["report-mail.yml"])
+
+send, calls = sender()
+stale = Q(reports=[{"id": "q1", "requested_at": iso(NOW - 4 * 3600), "dispatched_at": None}], backfills=[])
+ok("a request nobody took in three hours is given up (the database fails it): it is not started for, and no run is wasted on it",
+   K.kick(stale, env=ENV, now=NOW, send=send) == "nothing queued" and not calls)
+
+send, calls = sender()
+before = Q(backfills=[{"id": "b1", "dispatched_at": None}], no_reports=True)
+said = K.kick(before, env=ENV, now=NOW, send=send)
+ok("a database without 0226 has no such table: the backfill is started all the same, and the lane carries on",
+   said.startswith("started the worker for 1") and send.flows == ["console-jobs.yml"], (said, send.flows))
+ok("...but a missing table of the other kinds is still the caller's to judge", K.kick(Q(no_reports=True, backfills=[]), env=ENV, now=NOW, send=send) == "nothing queued")
+
+send, calls = sender(refuse=("report-mail.yml",))
+half = Q(backfills=[{"id": "b1", "dispatched_at": None}], reports=[{"id": "q1", "requested_at": iso(NOW - 60), "dispatched_at": None}])
+said = K.kick(half, env=ENV, now=NOW, send=send)
+ok("GitHub refusing the mailer does not stop the backfill, and the refused request is not noted as started",
+   said.startswith("started the worker for 1") and sorted(send.flows) == ["console-jobs.yml", "report-mail.yml"] and [t for t, _, _ in half.patches] == ["season_backfills"], (said, half.patches))
+send, calls = sender(refuse=("report-mail.yml",))
+lone = Q(reports=[{"id": "q1", "requested_at": iso(NOW - 60), "dispatched_at": None}])
+ok("...and when the mailer alone is refused, that is said", K.kick(lone, env=ENV, now=NOW, send=send) == "dispatch failed: HTTP 403" and not lone.patches)
+
+send, calls = sender()
+only = Q(backfills=[{"id": "b1", "dispatched_at": None}], reports=[{"id": "q1", "requested_at": iso(NOW - 60), "dispatched_at": None}])
+said = K.kick(only, env=ENV, now=NOW, send=send, kinds=("report",))
+ok("a kind on its own: the mailer's start asks about report requests only", said.startswith("started the worker for 1") and {t for t, _ in only.selects} == {"report_mail_requests"} and send.flows == ["report-mail.yml"])
+import inspect  # noqa: E402
+ok("the live lane's own call (no kinds named) takes all three", inspect.signature(K.kick).parameters["kinds"].default == ("backfill", "reset", "report") and
+   K.WORKFLOWS == {"backfill": "console-jobs.yml", "reset": "console-jobs.yml", "report": "report-mail.yml"} and K.TABLES["report"] == "report_mail_requests")
 
 send, calls = sender()
 old = Q(backfills=[{"id": "b1"}], no_column=True)
@@ -159,6 +227,8 @@ def refuse(req, timeout=None):
 
 
 ok("...a refusal is said with its status", K.dispatch("owner/site", "tok", opener=refuse) == (False, "HTTP 404"))
+K.dispatch("owner/site", "tok", "main", workflow=K.REPORT_WORKFLOW, opener=opener)
+ok("...and the mailer's is the same call for report-mail.yml", seen[-1].full_url == "https://api.github.com/repos/owner/site/actions/workflows/report-mail.yml/dispatches")
 
 seen.clear()
 rest = K.Rest("https://x.supabase.co/", "svc", opener=lambda req, timeout=None: (seen.append(req), Resp(200, b'[{"id":"b1"}]'))[1])
@@ -233,6 +303,9 @@ ok("the backfill job takes every queued season in turn, its log unbuffered",
    "for i in 1 2 3 4 5 6; do" in WF and "console_kick.py --queued backfill || break" in WF and
    "python -u scripts/ingest/run_ingest.py --config --backfill" in WF and 'PYTHONUNBUFFERED: "1"' in WF)
 ok("the live lane holds the workflow's own token, to start the console's jobs", "GH_TOKEN: ${{ github.token }}\n        run: |\n          python scripts/ingest/run_ingest.py --config" in IN)
+RM = open(os.path.join(ROOT, ".github", "workflows", "report-mail.yml")).read()
+ok("report-mail.yml can be started by dispatch, with no input needed, and has an hourly slot as its floor beside the half-hourly one",
+   "workflow_dispatch:" in RM and "required: true" not in RM and "cron: '7,37 * * * *'" in RM and "cron: '22 * * * *'" in RM, RM[:900])
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

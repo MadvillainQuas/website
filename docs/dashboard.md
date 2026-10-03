@@ -57,10 +57,14 @@ there is more than one. Pressing it says what will go and asks first.
 - **It counts as that Sunday's email.** It is logged as the Sunday before the week, which Sunday morning's own run finds, so
   that Sunday does not send it again. A week with no games and no team report due sends nothing, says so, and is *not*
   logged: the fixtures may still be announced, and Sunday morning looks again.
-- **When it goes:** a press queues a request (`report_mail_requests`, `request_report_send`, platform administrators only) and
-  starts the mailer through the `console-kick` function, so the reports are on their way within a few minutes. Where
-  `console-kick` is not set up (see `docs/backfills.md`, "Setting up the instant start"), the request waits for the mailer's next
-  half-hourly run: within 30 minutes. No setup is needed for that.
+- **When it goes:** a press queues a request (`report_mail_requests`, `request_report_send`, platform administrators only), and
+  the first of three things starts the mailer: the `console-kick` function, the moment you press, where it is set up
+  (`docs/backfills.md`, "Setting up the instant start"); the live lane, within about two minutes, which needs no setup (it
+  starts `report-mail.yml` for a queued request as it starts `console-jobs.yml` for a backfill, `scripts/ingest/console_kick.py`);
+  or the mailer's own schedule (every half hour, with an hourly slot as the floor), which GitHub can delay by hours: it delivered
+  two runs in four hours on 2026-10-03, and a request pressed in that gap waited an hour. So expect the email a few minutes
+  after pressing. If it has not come within the hour, run the workflow by hand (Actions → Reports by email → Run workflow, no
+  inputs): it takes the request at once.
 - **Where it stands:** each address shows *queued*, *sending now*, then what went (*Sent Sat 3 Oct, 14:02 · Sent the week of Mon
   12 Oct: scouting reports on …*), *not sent* (nothing to send, or the address was paused meanwhile) or *failed* with the reason.
   The list refreshes by itself while a request is open. Pressing twice sends once; an address already on its way is left alone.

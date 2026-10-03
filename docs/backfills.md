@@ -61,7 +61,9 @@ Without this, the live lane starts the worker within a few minutes, so everythin
 
 The same function also starts the report mailer (`report-mail.yml`) when the platform console's Reports by email asks to
 **send next week's reports now** (0226, `docs/dashboard.md`): no second secret, no second function. Redeploy `console-kick`
-once after pulling 0226 so it knows about it; without that the request waits for the mailer's half-hourly run.
+once after pulling 0226 so it knows about it. Without it nothing is lost: the live lane starts the mailer for a queued request
+within about two minutes (`scripts/ingest/console_kick.py`, the same call that starts a backfill), and the mailer's own schedule is
+the floor.
 
 ## Deploying
 

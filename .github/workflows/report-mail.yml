@@ -4,12 +4,17 @@ name: Reports by email (game analyses, Sunday scouting reports)
 # they are final, and on Sunday morning at each address's own time the week's opponents' reports (with the club's own every
 # other Sunday), all in one email. The PDFs are drawn by the site itself, served from this checkout, in headless Chromium.
 # "SEND NEXT WEEK'S REPORTS NOW" (0226): the platform console's Reports by email can ask for the Sunday email at once, for an address
-# or for everyone. Each run takes those requests first (report_mail_requests); the console-kick function starts this workflow
-# the moment the button is pressed, and where it is not set up the next half hour does. No input is needed to start it.
+# or for everyone. Each run takes those requests first (report_mail_requests). Something starts this workflow for a request,
+# whichever comes first: the console-kick function the moment the button is pressed (where it is set up), the live lane within
+# two minutes (scripts/ingest/console_kick.py, no setup), or the schedule above, which GitHub can delay by hours. No input is
+# needed to start it.
 # Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY, REPORTS_FROM ("Epinoia <reports@your-domain>").
 on:
   schedule:
     - cron: '7,37 * * * *'
+    # AN HOURLY SLOT AS THE FLOOR: GitHub's cron is best-effort and drops frequent schedules first (this one delivered two
+    # runs in four hours on 2026-10-03), while hourly ones are delivered far more reliably (see ingest.yml).
+    - cron: '22 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:

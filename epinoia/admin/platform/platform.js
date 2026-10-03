@@ -954,12 +954,14 @@ function weekWords(tz, now = new Date()) {
     return f(mon) + ' to ' + f(mon + 6 * 864e5);
   } catch (_) { return 'the Monday-to-Sunday week that begins next Monday'; }
 }
-const mailOpen = r => !!r && (r.state === 'queued' || r.state === 'running');
+const MAIL_GIVE_UP = 3 * 36e5;            // the database gives up a request that has been open this long (0226)
+const mailOpen = r => !!r && (r.state === 'queued' || r.state === 'running') && Date.now() - Date.parse(r.requested_at) < MAIL_GIVE_UP;
 /* where a request stands, in words; nothing once it is a day old (the address's "last sent" is the record) */
 function sendLine(r) {
   if (!r) return '';
-  if (r.state === 'queued') return 'Queued: ' + (r.dispatched_at ? 'the mailer has been started and it goes out in a few minutes.' : 'it goes out on the mailer’s next half-hourly run.');
-  if (r.state === 'running') return 'Sending now: the reports are being built, which takes a few minutes.';
+  if (r.state === 'queued' && mailOpen(r)) return 'Queued: ' + (r.dispatched_at ? 'the mailer has been started and it goes out in a few minutes.' : 'the mailer is started within a few minutes (at most about an hour) and it goes out then.');
+  if (r.state === 'running' && mailOpen(r)) return 'Sending now: the reports are being built, which takes a few minutes.';
+  if (r.state === 'queued' || r.state === 'running') return 'Not done within three hours: send it again.';
   if (Date.now() - Date.parse(r.finished_at || r.requested_at) > 864e5) return '';
   /* the detail says what went ("Sent the week of …"), or why nothing did */
   return (r.state === 'failed' ? 'Failed ' : '') + fmtWhen(r.finished_at) + ' · ' + (r.detail || (r.state === 'sent' ? 'Sent.' : 'Nothing was sent.'));
@@ -972,7 +974,7 @@ async function sendNow(sub) {
   const k = window.EpinoiaJobBar && window.EpinoiaJobBar.kick ? await window.EpinoiaJobBar.kick(sb) : { started: false };
   const what = n === 1 ? 'Queued' : n + ' addresses queued';
   say(k.started || k.why === 'already started' ? what + ' and the mailer has been started: the reports go out in a few minutes.'
-                                              : what + '. They go out on the mailer’s next half-hourly run, within 30 minutes.', 'ok');
+                                              : what + '. The mailer is started within a few minutes (at most about an hour); each address shows where it stands.', 'ok');
   loadMail();
 }
 

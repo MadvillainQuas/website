@@ -386,9 +386,9 @@ console.log('\nthe console');
      /confirm\('Send next week’s reports now to all ' \+ live\.length \+ ' active addresses\?/.test(js));
   ok('...it queues through request_report_send, then starts the mailer (console-kick), and says which happened',
      /rpc\('request_report_send', \{ p_sub: sub \}\)/.test(js) && /window\.EpinoiaJobBar\.kick\(sb\)/.test(js) && /the mailer has been started: the reports go out in a few minutes/.test(js) &&
-     /next half-hourly run, within 30 minutes/.test(js) && /Already on its way, or paused: nothing new was queued\./.test(js));
+     /The mailer is started within a few minutes \(at most about an hour\); each address shows where it stands\./.test(js) && /Already on its way, or paused: nothing new was queued\./.test(js));
   ok('...each address shows where its request stands (queued, sending, sent, nothing to send, failed) and the button waits while one is open',
-     /from\('report_mail_requests'\)\.select\('sub_id,state,requested_at,dispatched_at,finished_at,detail'\)/.test(js) && /'Queued: '/.test(js) && /'Sending now: /.test(js) &&
+     /from\('report_mail_requests'\)\.select\('sub_id,state,requested_at,dispatched_at,finished_at,detail'\)/.test(js) && /'Queued: '/.test(js) && /'Sending now: /.test(js) && /Date\.now\(\) - Date\.parse\(r\.requested_at\) < MAIL_GIVE_UP/.test(js) && /Not done within three hours: send it again\./.test(js) &&
      /'Failed '/.test(js) && /\(r\.detail \|\| \(r\.state === 'sent' \? 'Sent\.' : 'Nothing was sent\.'\)\)/.test(js) && /now\.disabled = mailOpen\(ask\);/.test(js));
   ok('...read again every 15 seconds while a request is open, and not at all once none is (one timer, cleared at each draw)',
      /\.some\(mailOpen\)\) mailTimer = setTimeout\(/.test(js) && /clearTimeout\(mailTimer\);/.test(js) && /, 15000\)/.test(js));

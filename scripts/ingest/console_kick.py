@@ -16,8 +16,14 @@ GITHUB_TOKEN with actions: write). Each queued row is stamped with dispatched_at
 worker was started at 14:02" and a request is not dispatched again until KICK_AGAIN_S has gone by without anything
 taking it. The cron stays, as the floor.
 
-    python scripts/ingest/console_kick.py --kick [backfill|reset]   start the worker if anything (of that kind) is queued
-    python scripts/ingest/console_kick.py --queued backfill         exit 0 when a backfill is queued, 1 when none is
+THE REPORT MAILER IS KICKED THE SAME WAY (0226, 2026-10-03). "Send next week's reports now" (report_mail_requests, the
+platform console's Reports by email) is a queued row that .github/workflows/report-mail.yml takes, and that workflow's
+own half-hourly cron went hours without a run too (two runs in four hours, measured 2026-10-03: a request sat for an
+hour). So the live lane starts report-mail.yml for a queued request exactly as it starts console-jobs.yml for a
+backfill, each workflow on its own: no extra token, no function to deploy.
+
+    python scripts/ingest/console_kick.py --kick [backfill|reset|report]   start the worker if anything (of that kind) is queued
+    python scripts/ingest/console_kick.py --queued backfill                exit 0 when a backfill is queued, 1 when none is
 
 Nothing but the standard library: the workflow asks --queued BEFORE it installs Chrome and the scraper, so a run
 with nothing to do costs a checkout and two requests.
@@ -33,8 +39,11 @@ import urllib.request
 from datetime import datetime, timezone
 
 WORKFLOW = "console-jobs.yml"
+REPORT_WORKFLOW = "report-mail.yml"
 KICK_AGAIN_S = 15 * 60          # a request still queued this long after a dispatch is dispatched again
-TABLES = {"backfill": "season_backfills", "reset": "league_resets"}
+REPORT_GIVE_UP_S = 3 * 3600     # a "send next week's reports now" nobody took in three hours is given up (0226), not started again
+TABLES = {"backfill": "season_backfills", "reset": "league_resets", "report": "report_mail_requests"}
+WORKFLOWS = {"backfill": WORKFLOW, "reset": WORKFLOW, "report": REPORT_WORKFLOW}      # the worker that takes each kind
 
 
 def _at(iso) -> float | None:
@@ -53,7 +62,12 @@ def queued(q, kinds=("backfill", "reset")) -> list[dict]:
             rows = q.select(table, "state=eq.queued&select=id,requested_at,dispatched_at&order=requested_at.asc")
         except Exception:
             # a database without 0217 has no dispatched_at yet; a second failure is the caller's to judge
-            rows = q.select(table, "state=eq.queued&select=id,requested_at&order=requested_at.asc")
+            try:
+                rows = q.select(table, "state=eq.queued&select=id,requested_at&order=requested_at.asc")
+            except Exception:
+                if kind == "report":
+                    continue        # 0226 is not applied: no such table, nothing asked for, and the others are not held up
+                raise
         out += [dict(r, _kind=kind) for r in rows or []]
     return out
 
@@ -75,9 +89,10 @@ def dispatch(repo: str, token: str, ref: str = "main", workflow: str = WORKFLOW,
         return False, str(exc)[:200]
 
 
-def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill", "reset")) -> str:
-    """Start console-jobs.yml when a request is queued and nobody has started it for KICK_AGAIN_S. Never raises: the
-    live lane calls this between polls of live games, and nothing here is worth a missed score."""
+def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill", "reset", "report")) -> str:
+    """Start console-jobs.yml when a backfill or reset is queued, and report-mail.yml when a "send next week's reports
+    now" is, each when nobody has started it for KICK_AGAIN_S. Never raises: the live lane calls this between polls of
+    live games, and nothing here is worth a missed score."""
     try:
         e = env if env is not None else os.environ
         token = e.get("GH_TOKEN") or e.get("GITHUB_TOKEN")
@@ -85,25 +100,34 @@ def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill"
         if not (q and token and repo):
             return "not set up"
         rows = queued(q, kinds)
+        t = time.time() if now is None else now
+        rows = [r for r in rows if not (r["_kind"] == "report" and t - (_at(r.get("requested_at")) or t) > REPORT_GIVE_UP_S)]
         if not rows:
             return "nothing queued"
-        t = time.time() if now is None else now
-        last = [_at(r.get("dispatched_at")) for r in rows]
-        recent = [x for x in last if x is not None and t - x < KICK_AGAIN_S]
-        if recent:
-            return "already started"
-        ok, why = send(repo, token, e.get("CONSOLE_JOBS_REF") or "main")
-        if not ok:
-            return "dispatch failed: " + why
         stamp = datetime.fromtimestamp(t, timezone.utc).isoformat()
-        for kind in kinds:
-            ids = [r["id"] for r in rows if r["_kind"] == kind]
-            if ids:
-                try:
-                    q.patch(TABLES[kind], f"id=in.({','.join(ids)})&state=eq.queued", {"dispatched_at": stamp})
-                except Exception:
-                    pass            # before 0217: started all the same, just not noted
-        return f"started the worker for {len(rows)} queued request(s)"
+        started, why = 0, []
+        for workflow in dict.fromkeys(WORKFLOWS[k] for k in kinds):              # each worker on its own, in order
+            mine = [r for r in rows if WORKFLOWS[r["_kind"]] == workflow]
+            if not mine:
+                continue
+            if any(x is not None and t - x < KICK_AGAIN_S for x in (_at(r.get("dispatched_at")) for r in mine)):
+                why.append("already started")
+                continue
+            ok, said = send(repo, token, e.get("CONSOLE_JOBS_REF") or "main", workflow)
+            if not ok:
+                why.append("dispatch failed: " + said)
+                continue
+            for kind in kinds:
+                ids = [r["id"] for r in mine if r["_kind"] == kind]
+                if ids:
+                    try:
+                        q.patch(TABLES[kind], f"id=in.({','.join(ids)})&state=eq.queued", {"dispatched_at": stamp})
+                    except Exception:
+                        pass        # before 0217: started all the same, just not noted
+            started += len(mine)
+        if started:
+            return f"started the worker for {started} queued request(s)"
+        return next((w for w in why if w.startswith("dispatch failed")), why[0])
     except Exception as exc:
         return f"kick failed: {exc}"[:200]
 
@@ -131,7 +155,7 @@ def main(argv=None) -> int:
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--kick", nargs="?", const="all", choices=["all"] + sorted(TABLES),
-                    help="start console-jobs.yml if anything (of this kind) is queued")
+                    help="start the worker (console-jobs.yml, or report-mail.yml for a report) if anything (of this kind) is queued")
     ap.add_argument("--queued", choices=sorted(TABLES), help="exit 0 if a request of this kind is queued, 1 if not")
     a = ap.parse_args(argv)
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
