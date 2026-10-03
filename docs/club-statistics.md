@@ -80,6 +80,8 @@ Style rows have no good end: pace, the possession, MOREY%, AST%, heliocentrism a
 
 Each figure carries the club's rank among the clubs. Makes and eFG% are coloured green to red. Volumes are only a style, so their ranks are plain.
 
+**In parts (2026-10-03).** The zones are not one list. Under **every zone** there is a heading for each kind of shot (rim & paint, mid-range, threes) and its zones sit on a bar of the same colour; **the larger cuts** are headed *by side of the floor* and *by kind of shot*, and the three cuts that are a kind of shot (rim & paint, all mid-range, all threes) wear its colour. The colours are the club's, then 62% of it, then 34% of it, as the swatches always were. Which row goes under which heading is `PARTS` in `shotchart.js`; the player page's table and the player report's zone tables are cut by the same list (`parts`). "What became of every shot attempt" is one row a kind already, and is as it was.
+
 **What became of every shot attempt.** One bar per zone, for the club's own attempts and for the attempts against it. Every attempt ended one of four ways:
 
 - it went in;

@@ -36,6 +36,12 @@ The rim here is the events lines' own (`situations.js zoneOf`), so these rim cou
 score's RIM VOL / 100 and RIM% (`engine.js isRim`, which asks the marker before the shot type). RIM ASSISTED% has always been read
 the same way.
 
+## The shot profile in parts (2026-10-03)
+
+A group of stats about several kinds of shot is drawn in a part for each: a small heading (*at the rim*, *mid-range*, *three-point*) and the rows on a bar of the kind's colour (`groupRowsHTML`). On the club report's player cards the cells have the bar on top and a gap between the parts (`groupCellsHTML`). The colours are the club's, then 62% of it, then 34% of it, which are the zone tables' swatches.
+
+Which stat is about which kind of shot is `SHOT_KIND` in `report.js` (the volume, the percentage, the assisted share, the half-court share of the rim). A group about one kind, or none (SITUATIONS, RIM PROTECTION), is drawn as it was, and a reader's own template is cut the same way wherever its stats are of several kinds. The report's two shot zone tables are cut by the profile pages' list (`shotchart.js parts`); their labels may wrap now, which also fixes the larger cuts' table running off the page.
+
 ## Rim defence on and off
 
 DEF RIM FG% ± and DEF RIM VOL ± (the bigs' RIM PROTECTION) are the opponents' rim field-goal percentage, and rim shots per 100
@@ -65,7 +71,7 @@ which is slower and right. After merging:
 
 ## Tests
 
-`supabase/tests/report-situation-stats.test.mjs`: the ten-basket line; the derived rim stats on a row (rounding, the guards, no
+`supabase/tests/report-situation-stats.test.mjs` (and `zone-table.test.mjs` for the zone tables' parts): the ten-basket line; the derived rim stats on a row (rounding, the guards, no
 coverage is blank, never zero); the new figures ranked and drawn; every template (the new keys beside the rim stats, after USG%, in
 every position's SITUATIONS); half-court usage in `season.js` on a hand-worked season (weights, a game with no events line, under ten
 chances); the Edge Function's copy.

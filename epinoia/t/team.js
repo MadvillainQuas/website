@@ -1700,20 +1700,24 @@ async function zoneStats(host, S, team) {
     const share = mine[k('share')];
     const w = share == null || !(max > 0) ? 0 : Math.max(2, 100 * share / max);
     const cell = (m, label, dir) => '<td>' + lb(label) + '<span class="czt-v">' + f1(mine[k(m)]) + '</span>' + (none ? '' : rankChip(S, mine, k(m), dir)) + '</td>';
-    return '<tr class="r' + (none ? ' none' : '') + '"><th class="l" scope="row">' + (g.kind ? '<i class="czt-sw z-' + SW[g.kind] + '"></i>' : '') + g.label + '</th>' +
+    return '<tr class="r' + (none ? ' none' : '') + '"' + (g.kind ? ' data-k="' + g.kind + '"' : '') + '><th class="l" scope="row">' + (g.kind ? '<i class="czt-sw z-' + SW[g.kind] + '"></i>' : '') + g.label + '</th>' +
       '<td class="czt-share">' + lb('% of shots') + '<span class="czt-v">' + (share == null ? '\u2014' : f1(share) + '%') + '</span>' +
         (none ? '' : rankChip(S, mine, k('share'), 0)) + '<span class="czt-bar"><i style="width:' + w.toFixed(1) + '%"></i></span></td>' +
       cell('att100', 'att / 100 poss', 0) + cell('attG', 'att / g', 0) + cell('madeG', 'made / g', 1) + cell('efg', 'efg%', 1) + '</tr>';
   };
-  const block = (title, groups) => {
+  /* a heading over each part (shotchart.js parts): the kind of shot's swatch and name, its rows on a bar of the same colour */
+  const block = (title, groups, which) => {
     const max = Math.max(0, ...groups.filter(g => g.k !== 'all').map(g => +mine['z_' + g.k + '_share'] || 0));
-    return '<tbody><tr class="czt-gh"><th colspan="6">' + title + '</th></tr>' + groups.map(g => row(g, max)).join('') + '</tbody>';
+    const body = SC.parts(groups, which).map(p => (p.title
+      ? '<tr class="czt-kh"' + (p.kind ? ' data-k="' + p.kind + '"' : '') + '><th colspan="6" data-i18n-ctx="zone">' +
+        (p.kind ? '<i class="czt-sw z-' + SW[p.kind] + '"></i>' : '') + p.title + '</th></tr>' : '') + p.rows.map(g => row(g, max)).join('')).join('');
+    return '<tbody><tr class="czt-gh"><th colspan="6">' + title + '</th></tr>' + body + '</tbody>';
   };
   const wrap = el('div', 'czt-wrap');
   wrap.setAttribute('data-i18n-ctx', 'zonetable');
   wrap.innerHTML = '<table class="czt">' +
     '<thead><tr><th class="l">zone</th><th>% of shots</th><th>att / 100 poss</th><th>att / g</th><th>made / g</th><th>efg%</th></tr></thead>' +
-    block('every zone', SC.GROUPS) + block('the larger cuts', SC.BIG) + '</table>' +
+    block('every zone', SC.GROUPS, 'groups') + block('the larger cuts', SC.BIG, 'big') + '</table>' +
     '<div class="czt-note">every located shot in the competition' + (teamScopeKind !== 'all' ? ' (' + (KIND_LABEL[teamScopeKind] || teamScopeKind).toLowerCase() + ')' : '') +
     ' \u00b7 the chip is the club\u2019s rank among the ' + S.teams.length + ' clubs: green to red where more is better, plain where it is only a style' +
     ' \u00b7 att / 100 = attempts per 100 of the club\u2019s own possessions \u00b7 the same numbers for every club are under \u201cshot zones\u201d in the league table\u2019s team statistics</div>';

@@ -49,7 +49,7 @@ ok('the court\'s band against any break-even: grey within two, then 6 and 12 poi
 
 console.log('\nthe table');
 const H = SC.zoneTableHTML(R, { minAttempts: 3, colour: '#c8102e' });
-const tr = label => (H.match(new RegExp('<tr class="r[^"]*"><th class="l" scope="row" data-i18n-ctx="zone">(<i class="scz-sw [^"]+"></i>)?' + label + '</th>.*?</tr>')) || [''])[0];
+const tr = label => (H.match(new RegExp('<tr class="r[^"]*"(?: data-k="[a-z]+")?><th class="l" scope="row" data-i18n-ctx="zone">(<i class="scz-sw [^"]+"></i>)?' + label + '</th>.*?</tr>')) || [''])[0];
 ok('the club page\'s dress: a heading row over each group, the zone\'s swatch by kind, the share as a bar, in the club\'s colour',
    /<tr class="scz-gh"><th colspan="7">every zone<\/th><\/tr>/.test(H) && /<tr class="scz-gh"><th colspan="7">the larger cuts<\/th><\/tr>/.test(H) &&
    /<i class="scz-sw k-paint"><\/i>at the rim/.test(H) && /<i class="scz-sw k-three"><\/i>corner 3/.test(H) && /class="scz-bar"><i style="width:/.test(H) &&
@@ -60,7 +60,7 @@ ok('the corner three: two steps above 35 on FG%, and its eFG% (62.5) against 52.
    /<span class="scz-pill bp2" title="break-even 35.0%">41\.7<\/span>/.test(tr('corner 3')) && /<span class="scz-pill bp2" title="break-even 52.5%">62\.5<\/span>/.test(tr('corner 3')), tr('corner 3'));
 ok('top mid, 1 of 2: under the floor, hatched and not rated', /<span class="scz-pill few" title="fewer than 3 attempts: too few to rate">50\.0<\/span>/.test(tr('top mid')) &&
    !/scz-be/.test(tr('top mid')), tr('top mid'));
-ok('a zone nobody shot from: dimmed, its percentages a dash', /<tr class="r none">/.test(tr('wing 3')) && /<span class="scz-pill nil">—<\/span>/.test(tr('wing 3')));
+ok('a zone nobody shot from: dimmed, its percentages a dash', /<tr class="r none"/.test(tr('wing 3')) && /<span class="scz-pill nil">—<\/span>/.test(tr('wing 3')));
 ok('every shot is the total row', /<tr class="r tot">/.test(tr('every shot')));
 ok('with the games known: per-game columns, and the table says so for the phone layout',
    /<table class="scz pg">/.test(H) && /<th>att \/ g<\/th><th>made \/ g<\/th>/.test(H) && /per game over 4 games/.test(H));
@@ -70,6 +70,44 @@ ok('...without them: made and missed, no per-game columns, five columns of headi
 ok('the key and the note say what the colours are', /class="scz-key"><span class="rl">below break-even<\/span><i class="bm3"><\/i>/.test(H) &&
    /fewer than 3 attempts/.test(H) && /coloured as the court is: against the zone’s break-even \(paint 58%, mid-range 40%, three 35%\)/.test(H));
 ok('the player page draws it with the chart\'s own floor and colour', /zoneTableHTML\(zoneRows\(all, games\), \{ minAttempts: o\.minAttempts, colour: o\.colour \}\)/.test(rd('epinoia', 'shotchart.js')));
+
+console.log('\nthe table in parts (2026-10-03)');
+{
+  const names = list => list.map(p => (p.title || '-') + ':' + p.rows.map(r => r.k).join('+')).join(' | ');
+  ok('every zone is cut into rim & paint, mid-range and threes, each kind its zones in order',
+     names(SC.parts(R.groups, 'groups')) === 'rim & paint:rim+paint | mid-range:base+topm | threes:c3+w3+t3', names(SC.parts(R.groups, 'groups')));
+  ok('the larger cuts are cut into the sides, the kinds of shot, and every shot alone under no heading',
+     names(SC.parts(R.big, 'big')) === 'by side of the floor:left+centre+right | by kind of shot:atrim+jump+mid+three | -:all', names(SC.parts(R.big, 'big')));
+  ok('the kinds colour their parts: paint, mid and three on the zone parts; the cuts\' parts have none',
+     SC.parts(R.groups, 'groups').map(p => p.kind).join() === 'paint,mid,three' && SC.parts(R.big, 'big').every(p => p.kind === null));
+  ok('a row the parts do not name goes last under no heading; a part with none of its rows is left out; no list gives none',
+     names(SC.parts(R.groups.concat([{ k: 'odd' }]), 'groups')).endsWith('| -:odd') && names(SC.parts(R.groups.filter(r => r.k !== 'topm' && r.k !== 'base'), 'groups')) === 'rim & paint:rim+paint | threes:c3+w3+t3'
+     && SC.parts(null, 'groups').length === 0 && SC.parts(R.groups, 'nothing').map(p => p.rows.length).join() === String(R.groups.length));
+  ok('the three cuts that are a kind of shot wear it (rim & paint, all mid-range, all threes), so the swatch and the bar tie them to the zones above',
+     row('atrim').kind === 'paint' && row('mid').kind === 'mid' && row('three').kind === 'three' && row('jump').kind === null && row('left').kind === null && row('all').kind === null);
+  const kh = (H.match(/<tr class="scz-kh"[^>]*>.*?<\/tr>/g) || []);
+  ok('the table has a heading row for each part, spanning the table, with the kind\'s swatch where it has a kind',
+     kh.length === 5 && /^<tr class="scz-kh" data-k="paint"><th colspan="7" data-i18n-ctx="zone"><i class="scz-sw k-paint"><\/i>rim &amp; paint<\/th><\/tr>$/.test(kh[0].replace('rim & paint', 'rim &amp; paint')) &&
+     /<tr class="scz-kh" data-k="mid"><th colspan="7" data-i18n-ctx="zone"><i class="scz-sw k-mid"><\/i>mid-range/.test(kh[1]) && /<tr class="scz-kh" data-k="three">.*threes/.test(kh[2]) &&
+     /<tr class="scz-kh"><th colspan="7" data-i18n-ctx="zone">by side of the floor<\/th><\/tr>/.test(kh[3]) && /by kind of shot/.test(kh[4]), kh);
+  ok('the headings are in order: every zone, its three parts, the larger cuts, its two',
+     H.indexOf('every zone') < H.indexOf('rim &') && H.indexOf('rim &') < H.indexOf('>mid-range') && H.indexOf('>mid-range') < H.indexOf('threes') && H.indexOf('threes') < H.indexOf('the larger cuts') &&
+     H.indexOf('the larger cuts') < H.indexOf('by side of the floor') && H.indexOf('by side of the floor') < H.indexOf('by kind of shot'));
+  ok('every zone row carries its kind, so it sits on its colour\'s bar; every shot and the sides carry none',
+     /<tr class="r" data-k="paint"><th class="l" scope="row" data-i18n-ctx="zone"><i class="scz-sw k-paint"><\/i>at the rim/.test(H) && /<tr class="r" data-k="three"><th class="l" scope="row" data-i18n-ctx="zone"><i class="scz-sw k-three"><\/i>corner 3/.test(H)
+     && /<tr class="r tot"><th class="l"/.test(H) && /<tr class="r"><th class="l" scope="row" data-i18n-ctx="zone">left side/.test(H));
+  ok('the table\'s rows are all still there, once (seven zones, eight cuts)', (H.match(/<tr class="r[ "]/g) || []).length === 15, (H.match(/<tr class="r[ "]/g) || []).length);
+  const CSSp = rd('epinoia', 'kit', 'shotchart.css');
+  ok('the stylesheet: the heading band with its wash, the kinds\' colours (the club\'s, 62%, 34% of it towards white), the bar on each row, and cards under 600px',
+     /table\.scz \.scz-kh th\{/.test(CSSp) && /table\.scz tr\[data-k="mid"\]\{ --kc:color-mix\(in srgb,var\(--scz-a\) 62%,#fff\) \}/.test(CSSp) && /table\.scz tr\[data-k="three"\]\{ --kc:color-mix\(in srgb,var\(--scz-a\) 34%,#fff\) \}/.test(CSSp)
+     && /table\.scz tr\.r\[data-k\] > th\.l\{ box-shadow:inset 3px 0 0 var\(--kc\) \}/.test(CSSp) && /table\.scz tr\.r\[data-k\]\{ box-shadow:inset 4px 0 0 var\(--kc\) \}/.test(CSSp));
+  const team = rd('epinoia', 't', 'team.js'), CSSt = rd('epinoia', 'kit', 'clubstats.css');
+  ok('the club page\'s zone table is cut by the same parts (SC.parts), with its own heading row and the club\'s colour on the bars',
+     /SC\.parts\(groups, which\)/.test(team) && /block\('every zone', SC\.GROUPS, 'groups'\) \+ block\('the larger cuts', SC\.BIG, 'big'\)/.test(team) && /<tr class="czt-kh"/.test(team) && /data-k="' \+ g\.kind/.test(team)
+     && /table\.czt \.czt-kh th\{/.test(CSSt) && /table\.czt tr\[data-k="paint"\]\{--kc:var\(--xc-a,var\(--lume\)\)\}/.test(CSSt) && /table\.czt tr\.r\[data-k\]\{box-shadow:inset 4px 0 0 var\(--kc\)\}/.test(CSSt));
+  const rb = rd('epinoia', 't', 'team.js');
+  ok('what became of every shot attempt is left as it was: its rows are the kinds already, one each', /const ZS = \[\['rim', 'at the rim', 'rim'\], \['mid', 'mid-range', 'mid'\], \['three', 'threes', 'three'\], \['all', 'every shot', ''\]\];/.test(rb));
+}
 
 console.log('\nthe stylesheet');
 const CSS = rd('epinoia', 'kit', 'shotchart.css');

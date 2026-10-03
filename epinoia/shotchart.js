@@ -267,12 +267,32 @@
     { k: 'left',   label: 'left side',                    zones: ['bl', 'c3l', 'w3l'] },
     { k: 'centre', label: 'centre',                       zones: ['ra', 'paint', 'tm', 't3'] },
     { k: 'right',  label: 'right side',                   zones: ['br', 'c3r', 'w3r'] },
-    { k: 'atrim',  label: 'rim & paint',                  zones: ['ra', 'paint'] },
+    { k: 'atrim',  label: 'rim & paint',                  zones: ['ra', 'paint'],  kind: 'paint' },
     { k: 'jump',   label: 'jump shots (outside the paint)', zones: ['bl', 'br', 'tm', 'c3l', 'c3r', 'w3l', 'w3r', 't3'] },
-    { k: 'mid',    label: 'all mid-range',                zones: ['bl', 'br', 'tm'] },
-    { k: 'three',  label: 'all threes',                   zones: ['c3l', 'c3r', 'w3l', 'w3r', 't3'] },
+    { k: 'mid',    label: 'all mid-range',                zones: ['bl', 'br', 'tm'],  kind: 'mid' },
+    { k: 'three',  label: 'all threes',                   zones: ['c3l', 'c3r', 'w3l', 'w3r', 't3'], kind: 'three' },
     { k: 'all',    label: 'every shot',                   zones: ALL }
   ];
+  /* THE TABLE IN PARTS (2026-10-03). Every table of zones (the player's page, the club's page, both reports) draws its rows
+     under a heading for each kind of shot - rim and paint, mid-range, threes - and the larger cuts under a heading for each
+     way of cutting them, so that seventeen rows read as a few. This is the one place that says which row goes under which,
+     in order; a row it does not name goes last, under no heading. `kind` colours the heading and its rows. */
+  const PARTS = {
+    groups: [{ kind: 'paint', title: 'rim & paint', keys: ['rim', 'paint'] },
+             { kind: 'mid',   title: 'mid-range',   keys: ['base', 'topm'] },
+             { kind: 'three', title: 'threes',      keys: ['c3', 'w3', 't3'] }],
+    big:    [{ kind: null, title: 'by side of the floor', keys: ['left', 'centre', 'right'] },
+             { kind: null, title: 'by kind of shot',      keys: ['atrim', 'jump', 'mid', 'three'] },
+             { kind: null, title: null,                   keys: ['all'] }]
+  };
+  /* a list of rows (any with a `k`) cut into [{ kind, title, rows }] by PARTS[which] */
+  function parts(list, which) {
+    const spec = PARTS[which] || [], rows = list || [], by = new Map(rows.map(r => [r.k, r]));
+    const out = spec.map(p => ({ kind: p.kind, title: p.title, rows: p.keys.map(k => by.get(k)).filter(Boolean) })).filter(p => p.rows.length);
+    const rest = rows.filter(r => !spec.some(p => p.keys.indexOf(r.k) >= 0));
+    if (rest.length) out.push({ kind: null, title: null, rows: rest });
+    return out;
+  }
   /* EACH ROW'S BREAK-EVEN, for the table's colours: a zone's is its kind's (ANCHOR, below), and a cut of several kinds
      is held to the mix it was shot from, weighted by attempts -- "every shot" taken mostly at the rim is not judged
      against the three's 35%. eFG% counts a three as one and a half makes, and so does its break-even (35% from three
@@ -330,7 +350,7 @@
     const SW = { paint: 'k-paint', mid: 'k-mid', three: 'k-three' };
     const tr = (r, max) => {
       const w = r.share == null || !(max > 0) ? 0 : Math.min(100, Math.max(2, 100 * r.share / max));
-      return '<tr class="r' + (r.att ? '' : ' none') + (r.k === 'all' ? ' tot' : '') + '">' +
+      return '<tr class="r' + (r.att ? '' : ' none') + (r.k === 'all' ? ' tot' : '') + '"' + (r.kind ? ' data-k="' + r.kind + '"' : '') + '>' +
         '<th class="l" scope="row" data-i18n-ctx="zone">' + (r.kind ? '<i class="scz-sw ' + SW[r.kind] + '"></i>' : '') + r.label + '</th>' +
         '<td>' + lb('made / att') + '<span class="scz-v">' + r.made + '/' + r.att + '</span></td>' +
         '<td class="scz-share">' + lb('% of shots') + '<span class="scz-v">' + (r.share == null ? '\u2014' : f1(r.share) + '%') + '</span>' +
@@ -341,15 +361,19 @@
         '<td class="scz-p">' + lb('efg%') + pill(r.efg, r.beE, r.att) + '</td></tr>';
     };
     const cols = g ? 7 : 6;
-    const block = (title, list) => {
+    /* a heading over each part (parts, above): the kind of shot's swatch and name, its rows on a bar of the same colour */
+    const block = (title, list, which) => {
       const max = Math.max(0, ...list.filter(r => r.k !== 'all').map(r => +r.share || 0));
-      return '<tbody><tr class="scz-gh"><th colspan="' + cols + '">' + title + '</th></tr>' + list.map(r => tr(r, max)).join('') + '</tbody>';
+      const body = parts(list, which).map(p => (p.title
+        ? '<tr class="scz-kh"' + (p.kind ? ' data-k="' + p.kind + '"' : '') + '><th colspan="' + cols + '" data-i18n-ctx="zone">' +
+          (p.kind ? '<i class="scz-sw ' + SW[p.kind] + '"></i>' : '') + p.title + '</th></tr>' : '') + p.rows.map(r => tr(r, max)).join('')).join('');
+      return '<tbody><tr class="scz-gh"><th colspan="' + cols + '">' + title + '</th></tr>' + body + '</tbody>';
     };
     const tint = hexOk(o.colour) ? ' style="--scz-a:' + o.colour + '"' : '';
     return '<div class="scz-wrap" data-i18n-ctx="zonetable"' + tint + '><table class="scz' + (g ? ' pg' : '') + '">' +
       '<thead><tr><th class="l">zone</th><th>made / att</th><th>% of shots</th>' + (g ? '<th>att / g</th><th>made / g</th>' : '<th>missed</th>') +
       '<th>fg%</th><th>efg%</th></tr></thead>' +
-      block('every zone', rows.groups) + block('the larger cuts', rows.big) + '</table>' +
+      block('every zone', rows.groups, 'groups') + block('the larger cuts', rows.big, 'big') + '</table>' +
       '<div class="scz-key"><span class="rl">below break-even</span><i class="bm3"></i><i class="bm2"></i><i class="bm1"></i><i class="b0"></i><i class="bp1"></i><i class="bp2"></i><i class="bp3"></i><span class="rl">above</span>' +
         '<span class="scz-fewkey"><i></i>fewer than ' + few + ' attempts</span></div>' +
       '<div class="scz-note">fg% and efg% are coloured as the court is: against the zone\u2019s break-even (paint ' + ANCHOR.paint + '%, mid-range ' + ANCHOR.mid + '%, three ' + ANCHOR.three +
@@ -880,5 +904,5 @@
     return '<div class="scw scw-game" data-scw="game">' + innerHTML(REG.game) + '</div>';
   }
 
-  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, gameHTML, gameListOf, whenOf, band, bandAt, attachZoneStats, reboundsOf, rebRow, markColour, ZONES, GROUPS, BIG, ANCHOR };
+  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, parts, PARTS, renderZones, gameHTML, gameListOf, whenOf, band, bandAt, attachZoneStats, reboundsOf, rebRow, markColour, ZONES, GROUPS, BIG, ANCHOR };
 }));

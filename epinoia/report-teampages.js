@@ -568,7 +568,7 @@ function modules(ctx) {
         const ph = m.photo_url ? '<span class="rp-ph"><img src="' + esc(m.photo_url) + '" alt="" crossorigin="anonymous"></span>'
           : '<span class="rp-ph"><b>' + esc((m.jersey ? m.jersey : (m.name || r.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2))) + '</b></span>';
         const nm = m.name || r.name || 'Player';
-        const groups = sets[grp].map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + ks.map(k => E.statCellHTML(k, r, Rk)).join('') + '</div></div>').join('');
+        const groups = sets[grp].map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + E.groupCellsHTML(ks, r, Rk) + '</div></div>').join('');
         out.push(block((i === 0 ? head : '') + '<div class="rp-pcard"><div class="rp-pid">' + ph + '<div class="rp-pname">' + (m.jersey ? '#' + esc(m.jersey) + ' ' : '') + esc(nm) + '</div>' +
           '<div class="rp-pmeta">' + esc(grp) + ' · ' + (r.gp || 0) + ' gp · ' + f1(r.mpg) + ' mpg · ' + f1(r.ppg) + ' ppg</div>' +
           '<div class="rp-pvs">vs ' + Rk.n + ' ' + esc(Rk.who) + '</div>' +

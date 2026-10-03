@@ -399,6 +399,7 @@ function statRowHTML(k, row, R, opt) {
   const v = row ? row[k] : null;
   const rv = refOf(s, row);
   const lab = (opt && typeof opt.label === 'function' && opt.label(k)) || s.l;     // a shorter name where the group says the rest
+  const zA = opt && opt.z ? ' data-z="' + opt.z + '"' : '';                         // the kind of shot it is about (groupRowsHTML)
   const head = '<span class="rp-st-l" title="' + esc(s.l) + '">' + esc(lab) + '</span><span class="rp-st-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</span>';
   const c = opt && opt.compact ? ' data-c="1"' : '';
   if (s.rank === false && isNum(rv) && isNum(v)) {
@@ -406,7 +407,7 @@ function statRowHTML(k, row, R, opt) {
     const b = bandVs(v, rv, sc, s.low);
     const w = Math.max(3, Math.min(50, 50 * Math.abs(g) / (3 * sc)));
     const t = (+Math.abs(d)).toFixed(s.dp == null ? 1 : s.dp);
-    return '<div class="rp-st" data-b="' + b + '"' + c + '>' + head +
+    return '<div class="rp-st" data-b="' + b + '"' + c + zA + '>' + head +
       '<span class="rp-st-bar dv"><i style="' + (g >= 0 ? 'left:50%' : 'left:' + (50 - w).toFixed(1) + '%') + ';width:' + w.toFixed(1) + '%"></i></span>' +
       '<span class="rp-st-p">' + (d > 0 ? '+' : d < 0 ? '\u2212' : '\u00b1') + t + '</span>' +
       '<span class="rp-st-a">' + esc(s.refL || 'club') + ' ' + fmtStat(typeof s.ref === 'string' && STATS[s.ref] ? s.ref : k, rv) + '</span></div>';
@@ -416,7 +417,7 @@ function statRowHTML(k, row, R, opt) {
   const a = s.rank === false ? null : R.avg(k);         // a figure only this side has: no field to average
   const w = p == null ? 0 : Math.max(3, p);
   const pl = p != null && opt && opt.place ? opt.place(k) : null;      // a club's place ('3rd/18') where a percentile would be
-  return '<div class="rp-st" data-b="' + b + '"' + c + (pl ? ' data-r="1"' : '') + '>' + head +
+  return '<div class="rp-st" data-b="' + b + '"' + c + (pl ? ' data-r="1"' : '') + zA + '>' + head +
     '<span class="rp-st-bar"><i style="width:' + w + '%"></i></span>' +
     '<span class="rp-st-p">' + (pl || (p == null ? '\u2014' : ordinal(p))) + '</span>' +
     '<span class="rp-st-a">' + (a == null ? '' : 'avg ' + fmtStat(k, a)) + '</span></div>';
@@ -434,14 +435,50 @@ function colsHTML(items, html, weight) {
   return '<div class="rp-cols"><div>' + items.slice(0, best).map(html).join('') + '</div><div>' + items.slice(best).map(html).join('') + '</div></div>';
 }
 /* a cell of the PLAYERS card: label over value, the cell tinted by the percentile */
-function statCellHTML(k, row, R) {
+function statCellHTML(k, row, R, opt) {
   const s = STATS[k] || { l: k.toUpperCase() };
   const p = s.rank === false ? null : R.pct(k, row && row.id);
   const v = row ? row[k] : null;
-  return '<div class="rp-cell" data-b="' + band(p, s.style) + '"><span class="rp-cell-l">' + esc(s.l) + '</span>' +
+  return '<div class="rp-cell' + (opt && opt.first ? ' zn' : '') + '" data-b="' + band(p, s.style) + '"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l">' + esc(s.l) + '</span>' +
     '<b class="rp-cell-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</b>' +
     '<span class="rp-cell-p">' + (p == null ? '' : ordinal(p)) + '</span></div>';
 }
+
+/* THE SHOT PROFILE IN ITS PARTS (2026-10-03). The stats of a group that are about one kind of shot - at the rim, mid-range,
+   from three - are drawn in a part for each, in the order the group lists them: a small heading with the kind's colour, and
+   the rows (or, on a player's card, the cells) on a bar of that colour, so ten rows read as three. A group about one kind of
+   shot, or none (SITUATIONS, RIM PROTECTION), is drawn as it always was, and so is a reader's own template. */
+const SHOT_KIND = { rim_a100: 'rim', rim_pct: 'rim', ev_rim_astp: 'rim', rim_half_sh: 'rim', ev_half_rim_pct: 'rim',
+  mid_a100: 'mid', mid_pct: 'mid', ev_mid_astp: 'mid', p3_a100: 'three', p3_pct: 'three', ev_p3_astp: 'three' };
+const SHOT_KIND_NAME = { rim: 'at the rim', mid: 'mid-range', three: 'three-point' };
+/* the kinds of a group's stats in order, one entry a run: ['rim', 'mid', 'three'], or null when the group is not about several */
+function shotRuns(ks) {
+  const runs = [];
+  (ks || []).forEach(k => { const z = SHOT_KIND[k] || null; if (z && runs[runs.length - 1] !== z) runs.push(z); else if (!z) runs.push(null); });
+  return new Set(runs.filter(Boolean)).size > 1 ? runs : null;
+}
+function groupRowsHTML(ks, row, R, opt) {
+  const split = !!shotRuns(ks);
+  let cur = null;
+  return (ks || []).map(k => {
+    const z = split ? SHOT_KIND[k] || null : null;
+    const head = z && z !== cur ? '<div class="rp-zh" data-z="' + z + '"><i></i>' + SHOT_KIND_NAME[z] + '</div>' : '';
+    cur = z;
+    return head + statRowHTML(k, row, R, Object.assign({}, opt, { z }));
+  }).join('');
+}
+function groupCellsHTML(ks, row, R) {
+  const split = !!shotRuns(ks);
+  let cur = null, n = 0;
+  return (ks || []).map(k => {
+    const z = split ? SHOT_KIND[k] || null : null;
+    const first = !!z && z !== cur && n > 0;
+    cur = z; n++;
+    return statCellHTML(k, row, R, { z, first });
+  }).join('');
+}
+/* a group's height in rows, for cutting the page's two columns evenly: a row each, the group's title, and a heading a part */
+function groupWeight(ks) { const runs = shotRuns(ks); return (ks || []).length + 1.6 + (runs ? 0.9 * runs.filter(Boolean).length : 0); }
 
 /* THE HALF COURT WITH THE FIVE SPOTS (the profile's position breakdown, p/player.js): each disc coloured by its share,
    the main one ringed. pct: five numbers summing to about 100; labels: the names to print under each spot (a club's
@@ -481,12 +518,15 @@ function zoneColumnsHTML(shots, games) {
     return '<td><span class="rp-zp ' + b + '">' + f1(v) + '</span></td>';
   };
   const max = Math.max(1, ...Z.groups.map(r => +r.share || 0));
-  const row = r => '<tr' + (r.att ? '' : ' class="none"') + '><td class="l">' + esc(r.label) + '</td><td>' + r.made + '/' + r.att + '</td>' +
+  const row = r => '<tr' + (r.att ? '' : ' class="none"') + (r.kind ? ' data-k="' + r.kind + '"' : '') + '><td class="l">' + esc(r.label) + '</td><td>' + r.made + '/' + r.att + '</td>' +
     '<td class="rp-zs"><span>' + (isNum(r.share) ? f1(r.share) + '%' : '—') + '</span><i style="width:' + (isNum(r.share) ? Math.max(2, 100 * r.share / max).toFixed(1) : 0) + '%"></i></td>' +
     pill(r.fg, r.be, r.att) + pill(r.efg, r.beE, r.att) + '</tr>';
-  const tbl = (rows, cap) => '<table class="rp-tbl rp-zt"><thead><tr><th class="l">' + cap + '</th><th>made/att</th><th>% of shots</th><th>FG%</th><th>eFG%</th></tr></thead><tbody>' +
-    rows.map(row).join('') + '</tbody></table>';
-  return '<div class="rp-two">' + '<div>' + tbl(Z.groups, 'every zone') + '</div><div>' + tbl(Z.big, 'the larger cuts') + '</div></div>' +
+  /* a heading over each part (shotchart.js parts): the kind of shot's swatch and name, its rows on a bar of the same colour */
+  const body = (rows, which) => (SC.parts ? SC.parts(rows, which) : [{ kind: null, title: null, rows }]).map(p =>
+    (p.title ? '<tr class="rp-zk"' + (p.kind ? ' data-k="' + p.kind + '"' : '') + '><td colspan="5"><i></i>' + esc(p.title) + '</td></tr>' : '') + p.rows.map(row).join('')).join('');
+  const tbl = (rows, cap, which) => '<table class="rp-tbl rp-zt"><thead><tr><th class="l">' + cap + '</th><th>made/att</th><th>% of shots</th><th>FG%</th><th>eFG%</th></tr></thead><tbody>' +
+    body(rows, which) + '</tbody></table>';
+  return '<div class="rp-two">' + '<div>' + tbl(Z.groups, 'every zone', 'groups') + '</div><div>' + tbl(Z.big, 'the larger cuts', 'big') + '</div></div>' +
     '<p class="rp-zkey"><span class="rp-zp bm3">below</span><span class="rp-zp bm1"></span><span class="rp-zp b0">break-even</span><span class="rp-zp bp1"></span><span class="rp-zp bp3">above</span>' +
     '<span class="rp-zp few">fewer than 3 attempts</span><span>break-even: paint 58% · mid-range 40% · three 35% (eFG% 52.5)</span></p>';
 }
@@ -1138,6 +1178,6 @@ function groupsFor(state, set, pos) {
   return templateOf(set, state.conf.tpl[set], pos);
 }
 
-return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, posCourtHTML, POS_KEY, block, title, frag, el, esc,
+return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, groupRowsHTML, groupCellsHTML, groupWeight, shotRuns, SHOT_KIND, posCourtHTML, POS_KEY, block, title, frag, el, esc,
          fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, HC_MIN, posPools, posRanker, POS_PLURAL, layout, legendBlocks, PAGE, SLOTS, isNum };
 }));

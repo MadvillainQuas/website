@@ -10,7 +10,10 @@
 //     time as USG%'s are, only the games whose side line is there, blank under ten chances;
 //   * the templates: the two rim stats sit beside the rim stats in every SHOT PROFILE (player report and club report's
 //     player cards), the transition rim stats are in every position's SITUATIONS (a big has one now), half-court usage
-//     follows USG% in every SCORING group; every key has its label and, the new ones, their definition for the legend.
+//     follows USG% in every SCORING group; every key has its label and, the new ones, their definition for the legend;
+//   * THE SHOT PROFILE IN ITS PARTS (2026-10-03): a group about several kinds of shot is drawn under a heading for each (at the
+//     rim, mid-range, three-point) with its rows on a bar of the kind's colour, its cells under a bar with a gap between the
+//     parts; a group about one kind, or none, is drawn as it was; the report's zone tables are cut by shotchart.js parts.
 //
 //   node supabase/tests/report-situation-stats.test.mjs
 import { readFileSync } from 'node:fs';
@@ -115,6 +118,66 @@ console.log('\nhalf-court usage in the season line (season.js)');
   ok('it is a key of every season line, so the version of the code that sums a season changes with it (a season file from before is not read)', 'ev_half_usg' in probe && /^s\d+\.[0-9a-f]{8}$/.test(SE.version()), Object.keys(probe).length);
   const sh = read('supabase', 'functions', '_shared', 'season.js');
   ok('the Edge Function\'s copy of season.js has it too (extract-shared.mjs)', /ev_half_usg/.test(sh) && /A\.den\.hcCh \+= share/.test(sh));
+}
+
+console.log('\nthe shot profile in its parts');
+{
+  const SC = globalThis.EpinoiaShotChart = require(path.join(ROOT, 'epinoia', 'shotchart.js'));
+  const guard = E.TPL.main.guard.find(g => g[0] === 'SHOT PROFILE')[1];
+  const row = { id: 'x', rim_a100: 4.1, rim_pct: 66.7, ev_rim_astp: 50, rim_half_sh: 50, ev_half_rim_pct: 100, mid_a100: 2.7, mid_pct: 50, p3_a100: 16.3, p3_pct: 50, ev_p3_astp: 83.3, ev_half_efg: 84.6 };
+  const field = Array.from({ length: 12 }, (_, i) => Object.assign({}, row, { id: 'p' + i, rim_pct: 40 + i }));
+  field.push(row);
+  const R = E.ranker(field, guard);
+  const kinds = ks => E.shotRuns(ks);
+  ok('the guard\'s shot profile is three parts, in order', JSON.stringify(kinds(guard)) === '["rim","mid","three"]', kinds(guard));
+  ok('a group about one kind of shot, or none, is not cut (SITUATIONS, RIM PROTECTION, SCORING, a lone rim group)',
+     [['ev_transition_pts_sh', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg'], ['def_rim_fg_pm', 'def_rim_vol_pm'], ['usg', 'ts'], ['rim_a100', 'rim_pct', 'ev_rim_astp'], []].every(ks => kinds(ks) === null));
+  ok('the wing\'s and the big\'s shot profiles are cut too: the rim, then the three',
+     JSON.stringify(kinds(E.TPL.main.wing.find(g => g[0] === 'SHOT PROFILE')[1])) === '["rim","three"]' && JSON.stringify(kinds(E.TPL.main.big.find(g => g[0] === 'SHOT PROFILE')[1])) === '["rim","three"]'
+     && ['guard', 'wing', 'big'].every(p => kinds(E.TPL.players[p].find(g => g[0] === 'SHOT PROFILE')[1])));
+  const html = E.groupRowsHTML(guard, row, R);
+  const heads = html.match(/<div class="rp-zh" data-z="[a-z]+"><i><\/i>[^<]+<\/div>/g) || [];
+  ok('the rows: a heading for each part (at the rim, mid-range, three-point), a row for every stat, each on its kind',
+     heads.length === 3 && /data-z="rim"><i><\/i>at the rim/.test(heads[0]) && /data-z="mid"><i><\/i>mid-range/.test(heads[1]) && /data-z="three"><i><\/i>three-point/.test(heads[2])
+     && (html.match(/<div class="rp-st"/g) || []).length === guard.length && (html.match(/<div class="rp-st"[^>]* data-z="rim"/g) || []).length === 5
+     && (html.match(/<div class="rp-st"[^>]* data-z="mid"/g) || []).length === 2 && (html.match(/<div class="rp-st"[^>]* data-z="three"/g) || []).length === 3, heads);
+  ok('...a heading comes before the first row of its part and after the last of the one before',
+     html.indexOf('at the rim') < html.indexOf('RIM VOL / 100') && html.indexOf('HALF-COURT RIM%') < html.indexOf('mid-range') && html.indexOf('mid-range') < html.indexOf('MID VOL / 100')
+     && html.indexOf('MID%') < html.indexOf('three-point') && html.indexOf('three-point') < html.indexOf('3PT VOL / 100'));
+  ok('...every row is the row it was (label, value, percentile)', /RIM VOL \/ 100/.test(html) && />4\.1</.test(html) && /% OF RIM ATT IN HALF COURT/.test(html) && />100\.0</.test(html));
+  const one = E.groupRowsHTML(['usg', 'ts'], { id: 'x', usg: 20, ts: 55 }, E.ranker(field, ['usg', 'ts']));
+  ok('a group that is not cut is drawn exactly as before: no heading, no part on a row',
+     !/rp-zh|data-z/.test(one) && (one.match(/<div class="rp-st"/g) || []).length === 2 && one === ['usg', 'ts'].map(k => E.statRowHTML(k, { id: 'x', usg: 20, ts: 55 }, E.ranker(field, ['usg', 'ts']))).join(''));
+  const mixed = E.groupRowsHTML(['rim_a100', 'ev_half_efg', 'rim_pct', 'mid_a100'], row, R);
+  ok('a reader\'s own mixture is drawn in order, every stat once, the parts named where the kind changes', (mixed.match(/<div class="rp-st"/g) || []).length === 4 &&
+     mixed.indexOf('RIM VOL / 100') < mixed.indexOf('HALF-COURT eFG%') && mixed.indexOf('HALF-COURT eFG%') < mixed.indexOf('RIM%') && /data-z="mid"><i><\/i>mid-range/.test(mixed) && !/<div class="rp-st"[^>]*data-z="[^"]*"[^>]*>(?:(?!<div class="rp-st").)*HALF-COURT eFG%/.test(mixed.replace(/\n/g, '')));
+  const cells = E.groupCellsHTML(guard, row, R);
+  ok('the cells: every stat a cell, on its kind, and the first cell of the second and third part set apart (the first of all is not)',
+     (cells.match(/<div class="rp-cell/g) || []).length === guard.length && (cells.match(/<div class="rp-cell zn"/g) || []).length === 2 && !/^<div class="rp-cell zn"/.test(cells)
+     && (cells.match(/data-z="rim"/g) || []).length === 5 && (cells.match(/data-z="mid"/g) || []).length === 2 && (cells.match(/data-z="three"/g) || []).length === 3
+     && /<div class="rp-cell zn" data-b="\d" data-z="mid">/.test(cells) && /<div class="rp-cell zn" data-b="\d" data-z="three">/.test(cells), cells.slice(0, 300));
+  const plain = E.groupCellsHTML(['usg', 'ts'], { id: 'x', usg: 20, ts: 55 }, E.ranker(field, ['usg', 'ts']));
+  ok('a group of cells that is not cut is as before', !/data-z|zn/.test(plain) && plain === ['usg', 'ts'].map(k => E.statCellHTML(k, { id: 'x', usg: 20, ts: 55 }, E.ranker(field, ['usg', 'ts']))).join(''));
+  ok('a part\'s heading is height the page\'s two columns are cut by: a row each, the group\'s title, and a heading a part',
+     Math.abs(E.groupWeight(guard) - (guard.length + 1.6 + 0.9 * 3)) < 1e-9 && E.groupWeight(['usg', 'ts', 'efg']) === 3 + 1.6 && E.groupWeight([]) === 1.6, E.groupWeight(guard));
+  /* the report's own zone tables, cut by the same parts as the pages' */
+  const shot = (x, y, three, made) => ({ x: x / 1500, y: y / 1400, three: !!three, made: !!made });
+  const shots = [shot(750, 170, false, true), shot(750, 170, false, false), shot(30, 100, true, true), shot(750, 700, false, true), shot(1300, 960, true, false)];
+  const Z = E.zoneColumnsHTML(shots, 2);
+  const zk = Z.match(/<tr class="rp-zk"[^>]*>.*?<\/tr>/g) || [];
+  ok('the report\'s zone tables: a heading row for each part (three and two), each across the table, and the rows on their kind',
+     zk.length === 5 && /data-k="paint"><td colspan="5"><i><\/i>rim &amp; paint/.test(zk[0]) && /data-k="mid"><td colspan="5"><i><\/i>mid-range/.test(zk[1]) && /data-k="three"><td colspan="5"><i><\/i>threes/.test(zk[2])
+     && /<tr class="rp-zk"><td colspan="5"><i><\/i>by side of the floor/.test(zk[3]) && /by kind of shot/.test(zk[4]) && /<tr data-k="paint"><td class="l">at the rim/.test(Z) && /<tr data-k="three"><td class="l">corner 3/.test(Z)
+     && /<tr class="none" data-k="three"><td class="l">top 3/.test(Z) && (Z.match(/<tr( class="none")?( data-k="[a-z]+")?><td class="l">/g) || []).length === 15, zk);
+  const css = read('epinoia', 'kit', 'report.css');
+  ok('the stylesheet: the kinds\' colours (the club\'s, 62%, 34%), the heading, the bar on a row, the bar over a cell and the gap between parts, the zone table\'s heading band',
+     /\.rp-zh\[data-z="mid"\][^{]*\{ --zc:color-mix\(in srgb,var\(--rp-a,#08603f\) 62%,#ffffff\) \}/.test(css) && /\.rp-zh\[data-z="three"\][^{]*\{ --zc:color-mix\(in srgb,var\(--rp-a,#08603f\) 34%,#ffffff\) \}/.test(css)
+     && /\.rp-st\[data-z\]\{ padding-left:7px; box-shadow:inset 3px 0 0 var\(--zc\) \}/.test(css) && /\.rp-cell\[data-z\]\{ box-shadow:inset 0 3px 0 var\(--zc\)/.test(css) && /\.rp-cell\.zn\{ margin-left:6px \}/.test(css)
+     && /\.rp-zt tr\.rp-zk td\{/.test(css) && /\.rp-zt tr\[data-k\] > td\.l\{ box-shadow:inset 3px 0 0 var\(--zc\) \}/.test(css));
+  ok('and a label may wrap, so the larger cuts\' table (its "jump shots (outside the paint)") is no longer wider than its page', /\.rp-zt td\.l\{[^}]*white-space:normal/.test(css) && !/\.rp-zt td\.l\{[^}]*nowrap/.test(css));
+  const pp = read('epinoia', 'report-playerpages.js'), tp = read('epinoia', 'report-teampages.js');
+  ok('the pages draw their groups through it: the player report\'s rows (and cut its columns by the weight), the club report\'s player cards\' cells',
+     /E\.groupRowsHTML\(ks, mine, Rk\)/.test(pp) && /\(\[, ks\]\) => E\.groupWeight\(ks\)/.test(pp) && /E\.groupCellsHTML\(ks, r, Rk\)/.test(tp) && !/ks\.map\(k => E\.statCellHTML/.test(tp));
 }
 
 console.log('\nthe pages');

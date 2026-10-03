@@ -13,7 +13,9 @@ Under the court, every zone and then the larger cuts (the sides, the paint, jump
 - eFG% counts a three as one and a half makes, and so does its break-even (35% from three is 52.5% eFG).
 - A row under the court's attempt floor is hatched, as its zone is: too few to rate is not average.
 
-Below 600 px of the table's own width, every row is a card with its figures on one line. Code: `shotchart.js` `zoneRows` and `zoneTableHTML`, `kit/shotchart.css` (`.scz`). Test: `supabase/tests/zone-table.test.mjs`.
+**In parts (2026-10-03).** Under *every zone*, a heading band for each kind of shot (rim & paint, mid-range, threes) with its zones on a bar of the same colour; the larger cuts are headed *by side of the floor* and *by kind of shot*, the three cuts that are a kind of shot wearing its colour, and *every shot* stands alone. The colours are the club's, then 62% of it, then 34% of it. Below 600 px of the table's own width, the band is a small heading over the cards and a card's bar is its left edge. The club page's table is cut the same way (see [the club page's team statistics](club-statistics.md)).
+
+Below 600 px of the table's own width, every row is a card with its figures on one line. Code: `shotchart.js` `PARTS`, `parts`, `zoneRows` and `zoneTableHTML`, `kit/shotchart.css` (`.scz`, `.scz-kh`). Test: `supabase/tests/zone-table.test.mjs`.
 
 ## Career stats
 

@@ -194,12 +194,26 @@ table.czt tr.r:hover > th.l{box-shadow:inset 3px 0 0 var(--xc-a,var(--lume))}
 table.czt tr.r.none > *{opacity:.45}
 table.czt tr.r.tot > *{border-top:1px solid var(--rule-2)}
 table.czt tr.r.tot > th.l{font-weight:700}
+/* THE ZONES IN PARTS (2026-10-03; shotchart.js parts): a heading band for each kind of shot - the swatch, the name, a wash of its
+   colour fading across the row - and its rows on a bar of the same colour. --kc is the kind's colour: the club's, then 62% of
+   it, then 34% of it, mixed towards white (the swatches were towards nothing, which on a dark page was towards black: a dark
+   club's mid-range and threes could not be seen); a heading with no kind (the larger cuts' "by side") is grey. */
+table.czt .czt-kh{--kc:var(--ink-3)}
+table.czt tr[data-k="paint"]{--kc:var(--xc-a,var(--lume))}
+table.czt tr[data-k="mid"]{--kc:color-mix(in srgb,var(--xc-a,var(--lume)) 62%,#fff)}
+table.czt tr[data-k="three"]{--kc:color-mix(in srgb,var(--xc-a,var(--lume)) 34%,#fff)}
+table.czt .czt-kh th{padding:11px 10px 6px 12px;text-align:left;font-family:var(--f-micro);font-weight:400;font-size:8.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--kc) 16%,transparent),transparent 70%);
+  border-bottom:1px solid color-mix(in srgb,var(--kc) 50%,var(--rule))}
+table.czt tr.r[data-k] > th.l{box-shadow:inset 3px 0 0 var(--kc)}
+table.czt tr.r[data-k]:hover > th.l{box-shadow:inset 3px 0 0 var(--xc-a,var(--lume))}
 .czt-lb{display:none}
 .czt-v{font-family:var(--f-data,ui-monospace,monospace);font-size:13px;color:var(--ink)}
 .czt-sw{display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:2px;vertical-align:0}
 .czt-sw.z-rim{background:var(--xc-a,var(--lume))}
-.czt-sw.z-mid{background:color-mix(in srgb,var(--xc-a,var(--lume)) 62%,transparent)}
-.czt-sw.z-three{background:color-mix(in srgb,var(--xc-a,var(--lume)) 34%,transparent)}
+.czt-sw.z-mid{background:color-mix(in srgb,var(--xc-a,var(--lume)) 62%,#fff)}
+.czt-sw.z-three{background:color-mix(in srgb,var(--xc-a,var(--lume)) 34%,#fff)}
 
 /* the rank chip (as .cs-rk, smaller), under its number */
 .czt-rk{--rk:var(--rule-2);display:block;width:max-content;min-width:30px;margin:4px 0 0 auto;padding:2px 6px 1px;border-radius:999px;text-align:center;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);
@@ -243,6 +257,9 @@ table.czt .czt-sh th.cob-c{text-align:left}
   table.czt, table.czt tbody, table.czt tr, table.czt th, table.czt td{display:block}
   table.czt thead, table.czt .czt-sh{display:none}
   table.czt .czt-gh th{padding:16px 2px 8px;border-bottom:0}
+  table.czt .czt-kh th{padding:10px 2px 6px;background:none;border-bottom:0}
+  table.czt tr.r[data-k]{box-shadow:inset 4px 0 0 var(--kc)}
+  table.czt tr.r[data-k] > th.l, table.czt tr.r[data-k]:hover > th.l{box-shadow:none}
   table.czt tr.r{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 10px;margin:0 0 8px;padding:11px 12px 12px;
     border-radius:11px;border:1px solid color-mix(in oklch,var(--xc-a,var(--lume)) 22%,var(--rule));background:var(--panel)}
   table.czt tr.r > *{padding:0;border:0;text-align:left;white-space:normal}

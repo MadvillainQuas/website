@@ -192,6 +192,21 @@
 .rp-cell-v{ font-family:var(--f-data,ui-monospace,monospace); font-size:9.5px; color:var(--ink); line-height:1.1 }
 .rp-cell-p{ font-family:var(--f-data,ui-monospace,monospace); font-size:6px; color:var(--ink-2); min-height:7px }
 
+/* ---- 2026-10-03: a shot profile in its parts (report.js groupRowsHTML, groupCellsHTML) ----
+   A group about several kinds of shot gets a heading for each - at the rim, mid-range, three-point - in a colour of its own:
+   the club's, then 62% of it, then 34% of it (the zone tables' swatches use the same), and its rows go on a bar of that colour,
+   its cells under a bar of it with a gap between the parts. --zc is the colour of the kind. */
+.rp-zh, .rp-st[data-z], .rp-cell[data-z]{ --zc:var(--rp-a,#08603f) }
+.rp-zh[data-z="mid"], .rp-st[data-z="mid"], .rp-cell[data-z="mid"]{ --zc:color-mix(in srgb,var(--rp-a,#08603f) 62%,#ffffff) }
+.rp-zh[data-z="three"], .rp-st[data-z="three"], .rp-cell[data-z="three"]{ --zc:color-mix(in srgb,var(--rp-a,#08603f) 34%,#ffffff) }
+.rp-zh{ display:flex; align-items:center; gap:6px; margin:7px 0 1px; font-family:var(--f-micro); font-size:6.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2) }
+.rp-zh i{ flex:none; width:8px; height:8px; border-radius:2px; background:var(--zc) }
+.rp-zh::after{ content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--zc),transparent) }
+.rp-g h4 + .rp-zh{ margin-top:2px }
+.rp-st[data-z]{ padding-left:7px; box-shadow:inset 3px 0 0 var(--zc) }
+.rp-cell[data-z]{ box-shadow:inset 0 3px 0 var(--zc); padding-top:4px }
+.rp-cell.zn{ margin-left:6px }
+
 /* ---- tables ---- */
 .rp-tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:9.5px; border:1px solid var(--rule-2); border-radius:10px; overflow:hidden }
 .rp-tbl th{ padding:6px 6px 5px; background:#eef4f0; font-family:var(--f-micro); font-weight:400; font-size:7px; letter-spacing:.08em; text-transform:uppercase;
@@ -271,8 +286,17 @@
 /* ---- the shot zones in two columns ---- */
 .rp-zt{ font-size:9px }
 .rp-zt th, .rp-zt td{ padding:4px 5px }
-.rp-zt td.l{ font-size:9px; white-space:nowrap }
+.rp-zt td.l{ font-size:9px; white-space:normal; min-width:78px }
 .rp-zt tr.none td{ color:var(--ink-3) }
+/* the zones in parts (shotchart.js parts): a heading band for each kind of shot, its rows on a bar of its colour (--zc, as the shot profile's) */
+.rp-zt tr{ --zc:var(--ink-3) }
+.rp-zt tr[data-k="paint"]{ --zc:var(--rp-a,#08603f) }
+.rp-zt tr[data-k="mid"]{ --zc:color-mix(in srgb,var(--rp-a,#08603f) 62%,#ffffff) }
+.rp-zt tr[data-k="three"]{ --zc:color-mix(in srgb,var(--rp-a,#08603f) 34%,#ffffff) }
+.rp-zt tr.rp-zk td{ padding:4px 5px 3px; text-align:left; font-family:var(--f-micro); font-size:6.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--zc) 22%,#ffffff),#ffffff 75%) }
+.rp-zt tr.rp-zk td i{ display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:2px; vertical-align:-.5px; background:var(--zc) }
+.rp-zt tr[data-k] > td.l{ box-shadow:inset 3px 0 0 var(--zc) }
 .rp-zs{ position:relative; min-width:58px }
 .rp-zs span{ position:relative; z-index:1 }
 .rp-zs i{ position:absolute; left:5px; bottom:2px; height:3px; border-radius:2px; background:var(--rp-a,#08603f); max-width:calc(100% - 10px) }

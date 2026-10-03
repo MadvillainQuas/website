@@ -160,12 +160,26 @@ table.scz tr.r:hover > th.l{ box-shadow:inset 3px 0 0 var(--scz-a) }
 table.scz tr.r.none > *{ opacity:.45 }
 table.scz tr.r.tot > *{ border-top:1px solid var(--rule-2) }
 table.scz tr.r.tot > th.l{ font-weight:700 }
+/* THE ZONES IN PARTS (2026-10-03; shotchart.js parts): a heading band for each kind of shot - the swatch, the name, a wash of
+   its colour fading across the row - and its rows on a bar of the same colour. --kc is the colour of the kind: the club's, then
+   62% of it, then 34% of it, mixed towards white (as the swatches were towards nothing, which on a dark page was
+   towards black: a dark club's mid-range and threes could not be seen); a heading with no kind (the larger cuts' "by side") is grey. */
+table.scz .scz-kh{ --kc:var(--ink-3) }
+table.scz tr[data-k="paint"]{ --kc:var(--scz-a) }
+table.scz tr[data-k="mid"]{ --kc:color-mix(in srgb,var(--scz-a) 62%,#fff) }
+table.scz tr[data-k="three"]{ --kc:color-mix(in srgb,var(--scz-a) 34%,#fff) }
+table.scz .scz-kh th{ padding:11px 10px 6px 12px; text-align:left; font-family:var(--f-micro,monospace); font-weight:400; font-size:8.5px;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ink-2);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--kc) 16%,transparent),transparent 70%);
+  border-bottom:1px solid color-mix(in srgb,var(--kc) 50%,var(--rule)) }
+table.scz tr.r[data-k] > th.l{ box-shadow:inset 3px 0 0 var(--kc) }
+table.scz tr.r[data-k]:hover > th.l{ box-shadow:inset 3px 0 0 var(--scz-a) }
 .scz-lb{ display:none }
 .scz-v{ font-family:var(--f-data,ui-monospace,monospace); font-size:13px; color:var(--ink) }
 .scz-sw{ display:inline-block; width:8px; height:8px; margin-right:9px; border-radius:2px; vertical-align:0 }
 .scz-sw.k-paint{ background:var(--scz-a) }
-.scz-sw.k-mid{ background:color-mix(in srgb,var(--scz-a) 62%,transparent) }
-.scz-sw.k-three{ background:color-mix(in srgb,var(--scz-a) 34%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--scz-a) 50%,transparent) }
+.scz-sw.k-mid{ background:color-mix(in srgb,var(--scz-a) 62%,#fff) }
+.scz-sw.k-three{ background:color-mix(in srgb,var(--scz-a) 34%,#fff); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--scz-a) 50%,#fff) }
 table.scz td.scz-share{ min-width:130px }
 .scz-bar{ display:block; height:5px; margin:7px 0 0 auto; max-width:170px; border-radius:3px; overflow:hidden;
   background:color-mix(in srgb,var(--ink-3) 14%,transparent) }
@@ -202,6 +216,9 @@ table.scz td.scz-p{ min-width:74px }
   table.scz, table.scz tbody, table.scz tr, table.scz th, table.scz td{ display:block }
   table.scz thead{ display:none }
   table.scz .scz-gh th{ padding:16px 2px 8px; border-bottom:0 }
+  table.scz .scz-kh th{ padding:10px 2px 6px; background:none; border-bottom:0 }
+  table.scz tr.r[data-k]{ box-shadow:inset 4px 0 0 var(--kc) }
+  table.scz tr.r[data-k] > th.l, table.scz tr.r[data-k]:hover > th.l{ box-shadow:none }
   table.scz tr.r{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px 6px; margin:0 0 8px; padding:11px 12px 12px;
     border-radius:11px; border:1px solid color-mix(in oklch,var(--scz-a) 22%,var(--rule)); background:var(--panel) }
   table.scz tr.r > *{ padding:0; border:0; text-align:left; white-space:normal; min-width:0 }

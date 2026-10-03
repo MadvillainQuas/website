@@ -1747,7 +1747,10 @@
       'position breakdown': 'minutos por posición',
       'over half': 'más de la mitad',
       'under 10%': 'menos del 10%',
-      'never': 'nunca'
+      'never': 'nunca',
+      'by side of the floor': 'por lado de la cancha',
+      'by kind of shot': 'por tipo de tiro',
+      'three-point': 'de tres puntos'
     },
 
     ctx: {

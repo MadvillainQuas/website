@@ -1745,7 +1745,10 @@
       'position breakdown': 'ポジション別出場時間',
       'over half': '半分以上',
       'under 10%': '10%未満',
-      'never': 'なし'
+      'never': 'なし',
+      'by side of the floor': 'コートの左右別',
+      'by kind of shot': 'シュートの種類別',
+      'three-point': '3ポイント'
     },
 
     ctx: {
