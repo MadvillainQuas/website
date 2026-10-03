@@ -231,14 +231,26 @@ async function canvasOf(node, opt) {
   const w = o.w || node.offsetWidth, h = o.h || node.offsetHeight;
   if (root.document.fonts && root.document.fonts.ready) await root.document.fonts.ready;
   const copy = cloneStyled(node);
-  copy.setAttribute('style', copy.getAttribute('style') + 'margin:0;zoom:1;transform:none;width:' + w + 'px;height:' + h + 'px;');
+  /* SAFARI AND EVERY BROWSER ON AN IPHONE (WebKit) DRAW A foreignObject'S CONTENT AT 1x INSIDE A LARGER SVG, whatever the viewBox
+     says: the page came out in the top-left third of its canvas, its half court blank (2026-10-03, a report downloaded on an
+     iPhone). There the svg is the picture's own size and the copy is scaled by a CSS transform, laid out at 1x as before. */
+  const ua = (root.navigator && root.navigator.userAgent) || '';
+  const webkit = /CriOS|FxiOS|EdgiOS/.test(ua) || (/AppleWebKit/.test(ua) && !/Chrome\/|Chromium\/|Edg\//.test(ua));
+  const scaled = webkit && o.scale !== 1;
+  copy.setAttribute('style', copy.getAttribute('style') + 'margin:0;zoom:1;width:' + w + 'px;height:' + h + 'px;' +
+    (scaled ? 'transform:scale(' + o.scale + ');transform-origin:0 0;' : 'transform:none;'));
   copy.setAttribute('xmlns', XHTML);
   await inlineImages(copy);
   const css = await fonts();
   const xml = new root.XMLSerializer().serializeToString(copy);
-  const svg = '<svg xmlns="' + SVGNS + '" width="' + (w * o.scale) + '" height="' + (h * o.scale) + '" viewBox="0 0 ' + w + ' ' + h + '">' +
-    '<defs><style>' + css.replace(/<\/?style/gi, '') + '</style></defs>' +
-    '<foreignObject x="0" y="0" width="' + w + '" height="' + h + '">' + xml + '</foreignObject></svg>';
+  const W = w * o.scale, H = h * o.scale;
+  const svg = scaled
+    ? '<svg xmlns="' + SVGNS + '" width="' + W + '" height="' + H + '">' +
+      '<defs><style>' + css.replace(/<\/?style/gi, '') + '</style></defs>' +
+      '<foreignObject x="0" y="0" width="' + W + '" height="' + H + '">' + xml + '</foreignObject></svg>'
+    : '<svg xmlns="' + SVGNS + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+      '<defs><style>' + css.replace(/<\/?style/gi, '') + '</style></defs>' +
+      '<foreignObject x="0" y="0" width="' + w + '" height="' + h + '">' + xml + '</foreignObject></svg>';
   const im = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
   const c = root.document.createElement('canvas');
   c.width = Math.round(w * o.scale); c.height = Math.round(h * o.scale);
