@@ -615,6 +615,16 @@ jobs:
         # through the builder's own path, on the three shapes, with every fillText recorded
         run: node supabase/tests/graphics-every-stat.test.mjs
 
+      - name: The daily scores graphic and the night's picks - a game day's scores and leaders, BPM and nothing else, the player of the game's strip
+        # epinoia/socialcard.js day() / drawDay over admin/socialgfx-ui.js readDays / readDay / dayModels: every final of one game day
+        # (the league's own calendar day, midnight to midnight in its zone), oldest first, even pages for a busy day, leaders when the
+        # rows are tall enough and said to be left out when they are not, the tip-off times in the clock chosen, never touching a
+        # three-figure score; the weekly list's daily graphics (whole days only) and the builder's game-day subject. The night's picks:
+        # a player of the game, a side's leader and the stars of the week ranked by BPM and nothing else, from eighteen minutes
+        # (waived for a side where nobody played them), BPM printed on each; the player of the game's strip, left to right: BPM, USG%,
+        # TS%, STOCKS%, ON-OFF NET, ON-OFF ORTG, ON-OFF DRTG, the site's own numbers (season.js), cells it cannot fill left out
+        run: node supabase/tests/daily-scores.test.mjs
+
       - name: Every standings table says WIN% and opens in win% order, the # following
         # epinoia/standings.js byWinPct (level percentages by points, then the stored rank: the league's tiebreak; no games last);
         # the league page's table (WIN% between L and PF, the WIN% / PTS headers ordering every table on the page), the embed,

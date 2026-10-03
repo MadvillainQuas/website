@@ -2,8 +2,8 @@
 /* ============================================================================
    GRAPHICS FOR SOCIALS — every finished game and every week, drawn for Instagram without anybody drawing it.
 
-   A league's socials are the same five posts, over and over: the final score, the player of the game, the
-   week's results, the table and what is coming up. Each is built here from the league's own data the moment
+   A league's socials are the same few posts, over and over: the final score, the player of the game, the
+   week's results, a day's scores, the table and what is coming up. Each is built here from the league's own data the moment
    there is something to show (the console's panel, admin/socialgfx-ui.js, lists them), in the three shapes
    Instagram takes:
 
@@ -16,7 +16,7 @@
    between them, so the one design fills all three shapes. The house style is reportcard.js's (its util: the
    same faces, colours and measuring rules), in the league's own colour.
 
-     models                   result / performer / week / table / fixtures, from rows the console has read
+     models                   result / performer / week / day / table / fixtures, from rows the console has read
      draw(ctx, model, opts)   one graphic onto a 2D context (pure layout: the tests drive it)
      png(model, opts)         -> Blob image/png at 1080 wide
      caption(model)           the words to post it with: what happened, who, and the league's tags
@@ -59,8 +59,13 @@ const STAT_DEFS = {   // key: [big label, small label]
   pts: ['POINTS', 'PTS'], reb: ['REBOUNDS', 'REB'], ast: ['ASSISTS', 'AST'], stl: ['STEALS', 'STL'], blk: ['BLOCKS', 'BLK'],
   fg: ['FIELD GOALS', 'FG'], p3: ['THREES', '3PT'], ft: ['FREE THROWS', 'FT'], fgp: ['FG%', 'FG%'], p3p: ['3P%', '3P%'],
   pm: ['PLUS/MINUS', '+/-'], min: ['MINUTES', 'MIN'], oreb: ['OFF. REBOUNDS', 'OREB'], dreb: ['DEF. REBOUNDS', 'DREB'],
-  tov: ['TURNOVERS', 'TOV'], pf: ['FOULS', 'PF'], p2: ['TWO-POINTERS', '2PT'], efg: ['EFG%', 'EFG%'], bpm: ['BOX PLUS/MINUS', 'BPM']
+  tov: ['TURNOVERS', 'TOV'], pf: ['FOULS', 'PF'], p2: ['TWO-POINTERS', '2PT'], efg: ['EFG%', 'EFG%'], bpm: ['BOX PLUS/MINUS', 'BPM'],
+  /* the player of the game's own: worked from the game's lines by the site's engine (nightAdv) */
+  usg: ['USAGE', 'USG%'], ts: ['TRUE SHOOTING', 'TS%'], stocks: ['STEALS + BLOCKS %', 'STOCKS%'],
+  onnet: ['ON-OFF NET', 'ON-OFF NET'], onortg: ['ON-OFF OFFENCE', 'ON-OFF ORTG'], ondrtg: ['ON-OFF DEFENCE', 'ON-OFF DRTG']
 };
+/* what a player of the game says under his points, rebounds and assists unless told otherwise, left to right */
+const NIGHT_STRIP = ['bpm', 'usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg'];
 /* a graphic saved with game score (before 2026-10-02) shows the game's BPM, which replaced it */
 const OLD_KEY = { gmsc: 'bpm' };
 const newKey = x => OLD_KEY[x] || x;
@@ -118,7 +123,7 @@ function cleanModules(m) {
   const ln = parseInt(m.leaderN, 10);
   if (ln > 1) o.leaderN = Math.min(ln, 3);
   if (Array.isArray(m.statKeys)) {
-    const k = [...new Set(m.statKeys.map(newKey).filter(x => STAT_DEFS[x] || catKey(x)))].slice(0, 8);
+    const k = [...new Set(m.statKeys.map(newKey).filter(x => STAT_DEFS[x] || catKey(x)))].slice(0, 10);          // ten: a player of the game's own seven under his three big numbers
     if (k.length >= 3) o.statKeys = k;
   }
   return o;
@@ -217,10 +222,22 @@ function gameBPMs(players) {
   return out;
 }
 const bpmText = v => (v == null || isNaN(v) ? '\u2014' : (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1));
-/* the better night of two: the higher BPM (one without a BPM below one with), then more points */
+/* THE NIGHT'S PICKS (a game's player, a side's leader, the week's stars) ARE RANKED BY BPM AND BY NOTHING ELSE: the higher BPM
+   first. Two things only bend that. A player must have played EIGHTEEN MINUTES in the game to be in the running (a rate worked
+   from a few minutes is noise: +97 in eight; where nobody on a side did, the minimum is waived for that side), and where no BPM
+   can be worked at all (a feed with no minutes) the picks go by points, as they always did. His BPM is still his, and is printed
+   wherever he is named. */
+const NIGHT_MIN_MS = 18 * 60000;
+const played = s => s == null || s.min == null || n0(s.min) >= NIGHT_MIN_MS;          // a line that carries no minutes is not judged by them
+/* the better night of two: the higher BPM (one without a BPM below one with), then, only where there is none, more points */
 const byNight = bp => (a, b) => {
   const x = bp.has(a) ? bp.get(a) : -Infinity, y = bp.has(b) ? bp.get(b) : -Infinity;
   return (y - x) || (n0(b.stats.pts) - n0(a.stats.pts));
+};
+/* player lines, the better night first: those who played the eighteen minutes (all of them when none did) */
+const nightsOf = (rows, bp) => {
+  const long = rows.filter(p => played(p.stats));
+  return (long.length ? long : rows).slice().sort(byNight(bp));
 };
 /* "24 PTS · 8 REB · 5 AST": the counting stats worth saying, biggest first, points always */
 function statLine(s, max) {
@@ -228,6 +245,11 @@ function statLine(s, max) {
   const bits = [[n0(s.pts), 'PTS', true], [reb, 'REB'], [n0(s.ast), 'AST'], [n0(s.stl), 'STL'], [n0(s.blk), 'BLK']]
     .filter(b => b[2] || b[0] >= 3);
   return bits.slice(0, max || 3).map(b => b[0] + ' ' + b[1]).join(' · ');
+}
+/* a leader's line with the BPM he was picked on: "24 PTS · 8 REB · 5 AST · +12.3 BPM" */
+function leaderLine(s, bpm) {
+  const l = statLine(s, 3);
+  return bpm == null || isNaN(bpm) ? l : l + ' · ' + bpmText(bpm) + ' BPM';
 }
 const made = (m, a) => n0(m) + '/' + n0(a);
 const pct = (m, a) => (n0(a) > 0 ? Math.round(100 * n0(m) / n0(a)) + '%' : '—');
@@ -240,6 +262,27 @@ function statsOf(s, bpm) {
            pm: n0(s.pm), min: Math.round(n0(s.min) / 60000), oreb: n0(s.or), dreb: n0(s.dr), tov: n0(s.to), pf: n0(s.pf),
            p2: made(s.p2m, s.p2a), efg: fga > 0 ? Math.round(100 * (fgm + 0.5 * n0(s.p3m)) / fga) + '%' : '—',
            bpm: bpmText(bpm) };
+}
+/* THE NIGHT'S ADVANCED NUMBERS for one player, worked by the site's own engine (season.js: the one a season is worked by, so a night
+   reads exactly as the season's numbers do): his usage and true shooting, his steals and blocks as a share of the opponent's chances
+   (STL% + BLK%: STOCKS%), and what his club did with him on the floor against without him (net, offence and defence rating: the
+   profile's NET ±, ORTG ± and DRTG ±). `players` are the game's lines (each with its on-court block, `oc`) and `teamAdv` the two
+   clubs' game lines. A number it cannot work out - no on-court record for the game, too little time off the floor to compare with -
+   is a dash, never a guess. */
+function nightAdv(players, best, teamAdv) {
+  const none = '—', out = { usg: none, ts: none, stocks: none, onnet: none, onortg: none, ondrtg: none };
+  const S = root.EpinoiaSeason, rows = (players || []).filter(p => p && p.stats), at = rows.indexOf(best);
+  if (!S || !S.players || at < 0) return out;
+  const pgs = rows.map((p, i) => ({ game_id: 'g', player_id: 'p' + i, team_idx: p.team_idx === 1 ? 1 : 0, stats: p.stats }));
+  const tgs = teamAdv && teamAdv[0] && teamAdv[1] ? [0, 1].map(i => ({ game_id: 'g', team_idx: i, stats: { adv: teamAdv[i] } })) : [];
+  let row = null;
+  try { row = S.players(pgs, tgs).find(r => r.id === 'p' + at); } catch (_) { /* no numbers: dashes */ }
+  if (!row) return out;
+  const num = (v, signed) => (v == null || isNaN(v) ? none : (signed && v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1));
+  out.usg = num(row.usg); out.ts = num(row.ts);
+  out.stocks = row.stl_pct != null && row.blk_pct != null ? num(row.stl_pct + row.blk_pct) : none;
+  out.onnet = num(row.diff_net, true); out.onortg = num(row.diff_ortg, true); out.ondrtg = num(row.diff_drtg, true);
+  return out;
 }
 /* a side's totals for the game, summed from its players' lines: { key: { v: 'what is said', n: what is compared } } */
 function sideTotals(players, idx) {
@@ -267,16 +310,19 @@ function side(team, score, perQ) {
 
 /* THE FINAL SCORE. `players` are player_game_stats rows ({ team_idx, stats }); the leading player of each side
    by the game's BPM, and the period scores from team_game_stats' perQ when both sides have them. */
+/* a side's leader of the night: its best BPM (nightsOf: the eighteen minutes, and nothing else ranks them), the line he is said by
+   (with the BPM) and every number a stat line can name; null for a side with no player lines */
+function leaderOf(players, idx, bp) {
+  const rows = (players || []).filter(p => p.team_idx === idx && p.stats);
+  if (!rows.length) return null;
+  const best = nightsOf(rows, bp)[0];
+  return { name: best.stats.adv && best.stats.adv.name || best.name || '', line: leaderLine(best.stats, bp.get(best)), stats: statsOf(best.stats, bp.get(best)) };
+}
 function result(o) {
   const g = o.game || {};
   const home = side(o.home, g.home_score, o.perQ && o.perQ[0]), away = side(o.away, g.away_score, o.perQ && o.perQ[1]);
   const bp = gameBPMs(o.players);
-  const lead = idx => {
-    const rows = (o.players || []).filter(p => p.team_idx === idx && p.stats);
-    if (!rows.length) return null;
-    const best = rows.slice().sort(byNight(bp))[0];
-    return { name: best.stats.adv && best.stats.adv.name || best.name || '', line: statLine(best.stats, 3), stats: statsOf(best.stats, bp.get(best)) };
-  };
+  const lead = idx => leaderOf(o.players, idx, bp);
   /* each side's three top scorers, for a final that names more than one */
   const scorers = idx => (o.players || []).filter(p => p.team_idx === idx && p.stats)
     .sort((a, b) => n0(b.stats.pts) - n0(a.stats.pts) || byNight(bp)(a, b)).slice(0, 3)
@@ -306,7 +352,7 @@ function performer(o) {
   const picked = o.pick && (o.players || []).includes(o.pick) && o.pick.stats ? o.pick : null;
   if (!rows.length && !picked) return null;
   const bp = gameBPMs(o.players);
-  const best = picked || rows.slice().sort(byNight(bp))[0];
+  const best = picked || nightsOf(rows, bp)[0];
   const s = best.stats, adv = s.adv || {};
   const mine = best.team_idx === 0 ? o.home : o.away, theirs = best.team_idx === 0 ? o.away : o.home;
   const my = best.team_idx === 0 ? hs : as, their = best.team_idx === 0 ? as : hs;
@@ -317,7 +363,7 @@ function performer(o) {
     kind: 'performer', key: (o.label ? slug(o.label) : 'player-of-the-game') + '-' + slug(name), label: o.label || '', league: o.league || {}, comp: o.comp || '', date: dateLabel(t),
     player: { name, num: adv.num != null ? String(adv.num) : '' },
     team: side(mine, my), opp: side(theirs, their), won: my > their,
-    stats: statsOf(s, bp.get(best)),
+    stats: Object.assign(statsOf(s, bp.get(best)), nightAdv(o.players, best, o.teamAdv)),
     bpm: bp.has(best) ? Math.round(bp.get(best) * 10) / 10 : null, gameId: g.id || null
   };
 }
@@ -333,7 +379,7 @@ function pages(rows, per) {
 }
 /* how many rows each shape can hold, by template */
 const PER = { week: { square: 7, portrait: 9, story: 10 }, table: { square: 12, portrait: 18, story: 20 },
-              fixtures: { square: 5, portrait: 7, story: 9 } };
+              fixtures: { square: 5, portrait: 7, story: 9 }, day: { square: 7, portrait: 9, story: 10 } };
 
 /* a game's quarters as a line: "18-15 22-29 23-23 16-25" (nothing unless both sides have all four) */
 function quartersOf(perQ) {
@@ -354,24 +400,48 @@ function week(o, size) {
     comp: o.comp || '', range: o.range || '', rows: p, page: i + 1, pages: pp.length, tz }));
 }
 
+/* THE DAY'S SCORES: every final of one game day (the league's own calendar day), oldest first, each with its score and each side's
+   leader (the night's best BPM, with the line behind it) for the rows that have room to say so. `o.games` rows carry home / away
+   clubs already, with `perQ` and `players` (the game's player lines) where they were read; `o.date` is the day as the graphic says
+   it ("Fri 2 Oct 2026") and `o.dayKey` the day as the file does ("2026-10-02"). A day with more games than a page holds is cut
+   into even pages, and a page of few games has the room for the leaders. */
+function day(o, size) {
+  const tz = leagueZone(o.league);
+  const rows = (o.games || []).slice().sort((a, b) => String(a.tipoff_at).localeCompare(String(b.tipoff_at))).map(g => {
+    const bp = gameBPMs(g.players), t = local(g.tipoff_at, tz);
+    return { iso: g.tipoff_at || '', home: side(g.home, g.home_score), away: side(g.away, g.away_score), time: timeLabel(t), venue: g.venue || '',
+             quarters: quartersOf(g.perQ), top: { home: leaderOf(g.players, 0, bp), away: leaderOf(g.players, 1, bp) }, gameId: g.id || null };
+  });
+  const pp = pages(rows, PER.day[size] || 8);
+  return pp.map((p, i) => ({ kind: 'day', key: 'scores' + (o.dayKey ? '-' + o.dayKey : '') + (pp.length > 1 ? '-' + (i + 1) : ''), league: o.league || {},
+    comp: o.comp || '', date: o.date || '', rows: p, page: i + 1, pages: pp.length, tz }));
+}
+
 /* THE STARS OF THE WEEK: the week's best performances, ranked. `o.entries` are one per player line of the week:
    { key, stats (a player_game_stats stats blob, with adv.name / adv.num), bpm (the game's BPM: gameBPMs), team, opp (club
    rows), teamScore, oppScore, gameId }. `by` is how they are ranked: 'bpm' the game's BPM (the default; 'gs', game score,
    which it replaced on 2026-10-02, means it too), 'pts' points, or 'pick' - `o.picks`, a list of entry keys, in the order
-   the person gave them. A player who played twice is his best game only. Ties go to the higher BPM, then more points,
-   then the name, so the same week always ranks the same way. Five at most. */
+   the person gave them. A player who played twice is his best game only. Ranked by BPM, they are ordered by BPM and nothing
+   else (a player under eighteen minutes in that game is not in the running; level BPM goes by name, so the same week always
+   ranks the same way); where no night has a BPM, by points. `rankedBy` says which, for the graphic's subline. Five at most. */
 const STAR_BY = ['bpm', 'pts', 'pick', 'score'];
 function weekstars(o) {
   const by = o.by === 'gs' ? 'bpm' : STAR_BY.includes(o.by) ? o.by : 'bpm';
   /* the month's stars come with a `score` of their own (any catalogue stat, `low` if lower is better) and `out`, the stats to
      show, already worked out (per game over the month); `sub` is the line under the name in place of the game */
-  const bpmOf = e => (e.bpm == null || isNaN(e.bpm) ? -Infinity : +e.bpm);
+  const bpmOf = e => (e.bpm == null || isNaN(e.bpm) || !played(e.stats) ? -Infinity : +e.bpm);
   const metric = e => (by === 'score' ? n0(e.score) * (o.low ? -1 : 1) : by === 'pts' ? n0(e.stats.pts) : bpmOf(e));
   const nameOf = e => (e.stats.adv && e.stats.adv.name) || e.name || '';
   const less = (x, y) => (x === y ? 0 : x === -Infinity ? 1 : y === -Infinity ? -1 : y - x);
-  const cmp = (a, b) => less(metric(a), metric(b)) || less(bpmOf(a), bpmOf(b)) || n0(b.stats.pts) - n0(a.stats.pts) || nameOf(a).localeCompare(nameOf(b));
+  /* ranked by BPM, a week's stars are ordered by BPM and nothing else (level BPM: the name, so a week always ranks the same
+     way); only where no night has a BPM at all do they go by points */
+  const entries = (o.entries || []).filter(e => e && e.stats);
+  const hasBPM = entries.some(e => bpmOf(e) !== -Infinity);
+  const cmp = (a, b) => less(metric(a), metric(b))
+    || (by === 'bpm' ? (hasBPM ? 0 : n0(b.stats.pts) - n0(a.stats.pts)) : less(bpmOf(a), bpmOf(b)) || n0(b.stats.pts) - n0(a.stats.pts))
+    || nameOf(a).localeCompare(nameOf(b));
   const best = new Map();
-  (o.entries || []).filter(e => e && e.stats).forEach(e => {
+  entries.filter(e => by !== 'bpm' || !hasBPM || e.bpm == null || played(e.stats)).forEach(e => {      // by BPM, a line with a BPM under eighteen minutes is not in the running (one with none, no other side's lines, ranks last)
     const k = nameOf(e) + '|' + (e.team && e.team.name);
     if (!best.has(k) || cmp(e, best.get(k)) < 0) best.set(k, e);
   });
@@ -386,8 +456,10 @@ function weekstars(o) {
     stats: e.out || statsOf(e.stats, e.bpm), bpm: e.bpm == null || isNaN(e.bpm) ? null : Math.round(e.bpm * 10) / 10, gameId: e.gameId || null, key: e.key || ''
   }));
   const month = o.period === 'month';
+  /* what the list is ranked by, said on the graphic ("ranked by BPM"): a pick is nobody's ranking */
+  const rankedBy = by === 'bpm' ? (hasBPM ? 'BPM' : 'points') : by === 'pts' ? (month ? 'points a game' : 'points') : by === 'score' ? String(o.rankLabel || '') : '';
   return { kind: 'weekstars', period: month ? 'month' : 'week', key: month ? 'stars-of-the-month' : 'stars-of-the-week', league: o.league || {}, comp: o.comp || '', range: o.range || '',
-           rows, by, cat: o.cat || null, tz: leagueZone(o.league) };
+           rows, by, rankedBy, cat: o.cat || null, tz: leagueZone(o.league) };
 }
 
 /* THE TABLE, one set of graphics per group: in winning-percentage order unless `o.order` is 'official' (the stored rank: league
@@ -449,6 +521,7 @@ function relabel(m, mods) {
   const at = iso => local(iso, z);
   if (m.kind === 'result' || m.kind === 'performer') return m.iso ? Object.assign({}, m, { date: dateLabel(at(m.iso)) }) : m;
   if (m.kind === 'week') return Object.assign({}, m, { rows: m.rows.map(r => (r.iso ? Object.assign({}, r, { day: dayLabel(at(r.iso)), time: timeLabel(at(r.iso)) }) : r)) });
+  if (m.kind === 'day') return Object.assign({}, m, { rows: m.rows.map(r => (r.iso ? Object.assign({}, r, { time: timeLabel(at(r.iso)) }) : r)) });          // the game day is the league's; only the tip-off times move
   if (m.kind === 'fixtures') return Object.assign({}, m, { rows: m.rows.map(r => (r.iso ? Object.assign({}, r, { day: dayLabel(at(r.iso)), time: timeLabel(at(r.iso)) }) : r)) });
   return m;
 }
@@ -472,8 +545,10 @@ function rowsOf(m, mods) {
   return Object.assign({}, m, { rows: m.rows.slice(0, mods.rows) });
 }
 
-/* the stat lines a stars graphic shows unless told: points, rebounds, assists - or, for a month's, the per-game keys it came with */
-const starKeys = (m, mods) => (mods && mods.statKeys ? mods.statKeys : (m.rows && m.rows[0] && Object.keys(m.rows[0].stats).some(catKey) ? Object.keys(m.rows[0].stats).filter(catKey) : ['pts', 'reb', 'ast']));
+/* the stat lines a stars graphic shows unless told: points, rebounds, assists and the BPM they are ranked by (where there is
+   one) - or, for a month's, the per-game keys it came with */
+const starKeys = (m, mods) => (mods && mods.statKeys ? mods.statKeys : (m.rows && m.rows[0] && Object.keys(m.rows[0].stats).some(catKey) ? Object.keys(m.rows[0].stats).filter(catKey)
+  : ['pts', 'reb', 'ast'].concat(m.rows && m.rows.some(r => r.bpm != null) ? ['bpm'] : [])));
 const MOD_CAPTION_KEYS = (mods, m) => starKeys(m || {}, mods);              // every stat chosen, as the graphic says them all
 const MOD_HEAD = mods => (mods && mods.headline) || '';
 /* THE LEADERS BOARD: `boards` = [{ key, label, low, rows: [{ rank, tie, name, team (a club row), value (the text) }] }] - the site's
@@ -530,6 +605,8 @@ function tags(league) {
   const t = String(league && league.name || '').replace(/[^\p{L}\p{N}]+/gu, '');
   return (t ? '#' + t + ' ' : '') + '#basketball';
 }
+/* " in the Premier" for the words of a post - and nothing for "All competitions", which is no competition's name */
+const inThe = comp => (comp && comp !== 'All competitions' ? ' in the ' + comp : '');
 function caption(m0, mods0) {
   if (!m0) return '';
   const mods = cleanModules(Object.assign({}, m0.modules, mods0));
@@ -552,41 +629,49 @@ function caption(m0, mods0) {
     const s = m.stats;
     return [(m.label || 'Player of the game') + ': ' + m.player.name + ' (' + m.team.name + ')', '',
       s.pts + ' points, ' + s.reb + ' rebounds, ' + s.ast + ' assists on ' + s.fg + ' shooting' +
-      (s.pm ? ', ' + (s.pm > 0 ? '+' : '') + s.pm + ' on the floor' : '') + ', in ' + (m.won ? 'the ' + m.team.score + '–' + m.opp.score + ' win over '
+      (s.pm ? ', ' + (s.pm > 0 ? '+' : '') + s.pm + ' on the floor' : '') + (m.bpm != null ? ', ' + bpmText(m.bpm) + ' BPM' : '') + ', in ' + (m.won ? 'the ' + m.team.score + '–' + m.opp.score + ' win over '
         : 'the ' + m.team.score + '–' + m.opp.score + ' game against ') + m.opp.name + '.', '', tags(L)].join('\n');
   }
   if (m.kind === 'leaders') {
     const per = mods.rows > 0 ? mods.rows : (m.boards.length === 1 ? 10 : m.boards.length > 3 ? 3 : 5);
-    return [m.title + (m.comp ? ' in the ' + m.comp : '') + ':', '', m.boards.map(b => b.label + '\n' + b.rows.slice(0, per).map(r => (r.tie ? 'T-' : '') + r.rank + '. ' + r.name + (m.subject === 'teams' ? '' : ' (' + r.team.name + ')') + ' ' + r.value).join('\n')).join('\n\n'),
+    return [m.title + inThe(m.comp) + ':', '', m.boards.map(b => b.label + '\n' + b.rows.slice(0, per).map(r => (r.tie ? 'T-' : '') + r.rank + '. ' + r.name + (m.subject === 'teams' ? '' : ' (' + r.team.name + ')') + ' ' + r.value).join('\n')).join('\n\n'),
       '', tags(L)].join('\n');
   }
   if (m.kind === 'statboard') {
-    return [(MOD_HEAD(mods) || m.title) + (m.comp ? ' in the ' + m.comp : '') + (m.range ? ' (' + m.range + ')' : '') + ':', '',
+    return [(MOD_HEAD(mods) || m.title) + inThe(m.comp) + (m.range ? ' (' + m.range + ')' : '') + ':', '',
       m.rows.map(r => r.rank + '. ' + r.name + (r.team.name && r.team.name !== '?' ? ' (' + r.team.name + ')' : '') + ' ' + mn(r.value) + ' ' + m.stat.label).join('\n'),
       '', tags(L)].join('\n');
   }
   if (m.kind === 'compare') {
-    return [m.players.map(p => p.name).join(' v ') + (m.comp ? ' in the ' + m.comp : '') + ':', '',
+    return [m.players.map(p => p.name).join(' v ') + inThe(m.comp) + ':', '',
       m.stats.map(x => x.label + ': ' + x.cells.map(c => mn(c.text) + (m.mode === 'pct' && c.pct != null ? ' (' + U().ordinal(c.pct) + ')' : '')).join(' v ')).join('\n'),
       '', tags(L)].join('\n');
   }
   if (m.kind === 'weekstars') {
     const keys = MOD_CAPTION_KEYS(mods, m);
     const said = r => keys.map(k => mn(r.stats[k] == null || r.stats[k] === '' ? '—' : r.stats[k]) + ' ' + sl(k).toLowerCase()).join(', ');
-    return ['Stars of the ' + (m.period === 'month' ? 'month' : 'week') + (m.comp ? ' in the ' + m.comp : '') + (m.range && m.period === 'month' ? ' (' + m.range + ')' : '') + ':', '',
+    return ['Stars of the ' + (m.period === 'month' ? 'month' : 'week') + inThe(m.comp) + (m.range && m.period === 'month' ? ' (' + m.range + ')' : '') + (m.rankedBy ? ', ranked by ' + m.rankedBy : '') + ':', '',
       m.rows.map(r => r.rank + '. ' + r.name + ' (' + r.team.name + '): ' + said(r) + (r.sub ? ' - ' + r.sub : ' vs ' + r.opp.name + ' (' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ')')).join('\n'),
       '', tags(L)].join('\n');
   }
   if (m.kind === 'week') {
-    return ['The week\'s results' + (m.comp ? ' in the ' + m.comp : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : ''), '',
+    return ['The week\'s results' + inThe(m.comp) + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : ''), '',
       m.rows.map(r => r.home.name + ' ' + r.home.score + '–' + r.away.score + ' ' + r.away.name).join('\n'), '', tags(L)].join('\n');
+  }
+  if (m.kind === 'day') {
+    const lead = mods.leaders !== false;
+    const said = r => r.home.name + ' ' + r.home.score + '–' + r.away.score + ' ' + r.away.name;
+    const tops = r => [r.top.home && [r.top.home, r.home], r.top.away && [r.top.away, r.away]].filter(Boolean)
+      .map(x => x[0].name + ' (' + x[1].name + ') ' + x[0].line.replace(/ · /g, ', ').toLowerCase()).join(' | ');
+    return ['Scores' + inThe(m.comp) + ' · ' + m.date + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : ''), '',
+      m.rows.map(r => said(r) + (lead && (r.top.home || r.top.away) ? '\n  ' + tops(r) : '')).join('\n'), '', tags(L)].join('\n');
   }
   if (m.kind === 'table') {
     return [(m.group ? m.group + ': the table' : 'The table') + (m.asOf ? ' after ' + m.asOf : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : ''), '',
       m.rows.map(r => r.rank + '. ' + r.team.name + ' ' + r.w + '-' + r.l + (r.gp > 0 ? ' (' + pctText(r.pct) + ')' : '')).join('\n'), '', tags(L)].join('\n');
   }
   if (m.kind === 'fixtures') {
-    return ['Coming up' + (m.comp ? ' in the ' + m.comp : '') + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : '') + (zn ? ' (times in ' + zn.text + ')' : ''), '',
+    return ['Coming up' + inThe(m.comp) + (m.pages > 1 ? ' (' + m.page + '/' + m.pages + ')' : '') + (zn ? ' (times in ' + zn.text + ')' : ''), '',
       m.rows.map(r => r.day + ' ' + r.time + (zn ? ' ' + (zoneName(r.iso, zn.zone).abbr || zoneName(r.iso, zn.zone).offset) : '') + ' · ' + r.home.name + ' v ' + r.away.name).join('\n'), '', tags(L)].join('\n');
   }
   return '';
@@ -917,8 +1002,10 @@ function drawPerformer(ctx, m, th, S, M, accent) {
   const keys = MOD.statKeys;
   const val = k => mn(k === 'pm' ? (s.pm > 0 ? '+' : '') + s.pm : String(s[k] == null ? '—' : s[k]));
   const big = keys ? keys.slice(0, 3).map(k => [val(k), sl(k, true)]) : [[String(s.pts), 'POINTS'], [String(s.reb), 'REBOUNDS'], [String(s.ast), 'ASSISTS']];
+  /* BY DEFAULT, under the three big numbers, left to right: the BPM he was picked on, usage, true shooting, steals + blocks and
+     the on-off trio (net, offence, defence). A number the game cannot give (no on-court record, say) is left out, not dashed */
   const cells = keys ? keys.slice(3).map(k => [sl(k), val(k)])
-    : [['FG', s.fg], ['3PT', s.p3], ['FT', s.ft], ['+/-', (s.pm > 0 ? '+' : '') + s.pm], ['MIN', String(s.min)]];
+    : NIGHT_STRIP.map(k => [sl(k), val(k)]).filter(c => c[1] !== '—');
   const blocks = [
     { h: tall ? 250 : 200, draw: y => {
       /* the shirt number, huge and faint, behind the name */
@@ -966,10 +1053,10 @@ function drawPerformer(ctx, m, th, S, M, accent) {
       cells.forEach(([l, v], i) => {
         const cx = M + cw * (i + 0.5);
         ctx.textAlign = 'center';
-        if (keys) u.fit(ctx, v, cw - 16, 34, 20, NUMF, 600); else u.font(ctx, 34, NUMF, 600);
-        ctx.fillStyle = th.ink;
+        u.fit(ctx, v, cw - 16, 34, 20, NUMF, 600);
+        ctx.fillStyle = !keys && i === 0 && l === 'BPM' ? accent : th.ink;               // the BPM he was picked on, lit
         ctx.fillText(v, cx, y + 50);
-        u.font(ctx, 17, u.F.micro);
+        u.fit(ctx, l, cw - 10, 17, 9, u.F.micro);
         ctx.fillStyle = th.ink3;
         ctx.fillText(l, cx, y + 80);
       });
@@ -1042,7 +1129,7 @@ function drawWeek(ctx, m, th, S, M) {
       const cr = Math.min(36, h * 0.4), inset = 36 + 2 * cr;
       crest(ctx, th, r.home, M + 20 + cr, cy, cr);
       crest(ctx, th, r.away, W - M - 20 - cr, cy, cr);
-      const nameW = mid - M - inset - 90;
+      const nameW = mid - M - inset - 116;                               // short of a three-figure score (103) on either side
       /* a long name is set smaller before it is cut: Crvena Zvezda Meridianbet is a club, not a typo */
       const nm = (t, x, won, align) => {
         const said = nameWith(t);
@@ -1075,6 +1162,94 @@ function drawWeek(ctx, m, th, S, M) {
       }
     }) : { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No finished games this week.', M, y + 40); } }
   ];
+}
+
+/* THE DAY'S SCORES: a row a game - each club's crest and name, the score between them and, where the rows are tall enough (a day of
+   few games, or a taller shape) and the person has not turned them off, each side's leader under its club with the BPM he was
+   picked on. A busy day is short rows of scores only; what it leaves out for want of room is said (`skipped`). */
+const DAY_LEAD_ROW = 132;
+function drawDay(ctx, m, th, S, M) {
+  const u = U(), W = S.w, n = m.rows.length;
+  const ex = MOD.rowExtras || [];
+  const title = titleBlock(ctx, th, S, M, 'Scores', [m.comp, m.date].filter(Boolean).join(' · '), ex.includes('time') ? 'times in' : '');
+  if (!n) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No finished games on this day.', M, y + 40); } }];
+  const wants = on('leaders') && m.rows.some(r => r.top && (r.top.home || r.top.away));
+  const room = fitRows(S, n, title.h, 80, 170, 3);
+  const tall = wants && room >= DAY_LEAD_ROW;
+  const rowH = tall ? Math.min(room, S.h >= 1900 ? 170 : 150) : Math.min(room, S.h >= 1900 ? 116 : 100);
+  const lk = MOD.leaderKeys;
+  const said = (st, keys) => keys.map(k => mn(st[k]) + ' ' + sl(k)).join(' · ');
+  const rows = rowsBlock(ctx, th, S, M, n, rowH, (i, y, h) => {
+    const r = m.rows[i], mid = W / 2;
+    const hw = r.home.score > r.away.score, aw = r.away.score > r.home.score;
+    stripe(ctx, th, r.home.colour, M, y + 10, h - 20);
+    stripe(ctx, th, r.away.colour, W - M - 6, y + 10, h - 20);
+    const grow = tall ? clampN((h - 126) / 36, 0, 1) : 0;                      // a day of few games has rows to spare: the type grows into them
+    const cr = Math.min(36 + 8 * grow, h * (tall ? 0.28 : 0.4)), inset = 36 + 2 * cr, cy = y + h / 2;
+    crest(ctx, th, r.home, M + 20 + cr, cy, cr);
+    crest(ctx, th, r.away, W - M - 20 - cr, cy, cr);
+    const ex2 = [ex.includes('time') ? r.time : '', ex.includes('venue') ? String(r.venue || '').toUpperCase() : '', ex.includes('quarters') ? r.quarters : ''].filter(Boolean);
+    /* the line the names and the score sit on: the row's middle, or higher in a tall row (leaders beneath, a line of extras above) */
+    const ly = tall ? y + (ex2.length ? 54 : 46) + (h - 126) * 0.25 : cy;
+    const nameW = mid - M - inset - 116 - 18 * grow;                          // short of a three-figure score on either side
+    /* a name too long for a line at a size a phone reads goes onto two (balanced at a space) in a short row, which has the height; in a
+       tall row, where the leaders are beneath, a club is said by its short name instead (Daegu KOGAS Pegasus: Daegu KOGAS) */
+    const nm = (t, x, won, align) => {
+      u.font(ctx, 22, u.F.ui, 700);
+      const full = nameWith(t), fits = ctx.measureText(full).width <= nameW;
+      ctx.fillStyle = won ? th.ink : th.ink2;
+      ctx.textAlign = align;
+      if (!fits && !tall) {
+        const w = full.split(' ');
+        let best = null;
+        for (let k = 1; k < w.length; k++) {
+          const a = w.slice(0, k).join(' '), b = w.slice(k).join(' '), wd = Math.max(ctx.measureText(a).width, ctx.measureText(b).width);
+          if (!best || wd < best.wd) best = { a, b, wd };
+        }
+        if (best && best.wd <= nameW) { ctx.fillText(best.a, x, ly - 1); ctx.fillText(best.b, x, ly + 21); return; }
+      }
+      const txt = !fits && t.short ? nameWith(Object.assign({}, t, { name: t.short })) : full;
+      u.fit(ctx, txt, nameW, 28 + 4 * grow, 20, u.F.ui, 700);
+      ctx.fillText(u.ellipsis(ctx, txt, nameW), x, ly + 10);
+    };
+    nm(r.home, M + inset, hw, 'left');
+    nm(r.away, W - M - inset, aw, 'right');
+    ctx.textAlign = 'right';
+    u.font(ctx, 44 + 10 * grow, NUMF, 700);
+    ctx.fillStyle = hw ? th.ink : th.ink3;
+    ctx.fillText(String(r.home.score), mid - 14, ly + 16 + 4 * grow);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = aw ? th.ink : th.ink3;
+    ctx.fillText(String(r.away.score), mid + 14, ly + 16 + 4 * grow);
+    ctx.fillStyle = th.rule2;
+    ctx.fillRect(mid - 4, ly - 2 + 2 * grow, 8, 4);
+    /* the extras (tip-off, venue, quarters): above the names in a tall row, under the score in a short one */
+    if (ex2.length && (tall || h >= 96 || (ex.length && h >= 84))) {
+      u.font(ctx, 15, u.F.micro);
+      ctx.fillStyle = th.ink3;
+      ctx.textAlign = 'center';
+      ctx.fillText(u.ellipsis(ctx, ex2.join('  ·  '), W - 2 * M - 2 * inset), mid, tall ? y + 22 : y + h - 10);
+      ctx.textAlign = 'left';
+    }
+    /* each side's leader, under its club: his name, and his line with the BPM he was picked on (or the stats chosen) */
+    if (tall) {
+      const lw = mid - 24 - (M + inset);
+      [[r.top.home, M + inset, 'left'], [r.top.away, W - M - inset, 'right']].forEach(([t, x, align]) => {
+        if (!t) return;
+        ctx.textAlign = align;
+        u.fit(ctx, t.name, lw, 21 + 4 * grow, 15, u.F.ui, 700);
+        ctx.fillStyle = th.ink;
+        ctx.fillText(u.ellipsis(ctx, t.name, lw), x, y + h - 38 - 6 * grow);
+        const line = lk && t.stats ? said(t.stats, lk) : t.line;
+        u.fit(ctx, line, lw, 18 + 3 * grow, 12, NUMF, 600);
+        ctx.fillStyle = th.ink2;
+        ctx.fillText(u.ellipsis(ctx, line, lw), x, y + h - 14);
+      });
+      ctx.textAlign = 'left';
+    }
+  });
+  if (wants && !tall) rows.skipped = 'each side\'s leaders';
+  return [title, rows];
 }
 
 /* STARS OF THE WEEK. Three layouts of one idea - the best of the week, the first the biggest:
@@ -1162,7 +1337,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
   const keys = starKeys(m, MOD);
   const big = keys.slice(0, 3);
   const monthly = m.period === 'month';
-  const title = titleBlock(ctx, th, S, M, monthly ? 'Stars of the month' : 'Stars of the week', [m.comp, m.range].filter(Boolean).join(' · '));
+  const title = titleBlock(ctx, th, S, M, monthly ? 'Stars of the month' : 'Stars of the week', [m.comp, m.range, m.rankedBy ? 'ranked by ' + m.rankedBy : ''].filter(Boolean).join(' · '));
   if (!n) return [title, { h: 80, draw: y => { u.font(ctx, 30, u.F.ui, 500); ctx.fillStyle = th.ink3; ctx.fillText('No player lines this week.', M, y + 40); } }];
   const avail = S.h - S.top - S.bottom - 76 - 100 - title.h - 12 * 3;
   const gameLine = r => r.sub ? r.team.name + '  ·  ' + r.sub : (r.team.name + '  ·  ' + (r.won ? 'W' : r.team.score === r.opp.score ? 'D' : 'L') + ' ' + r.team.score + '–' + r.opp.score + ' v ' + r.opp.name);
@@ -1619,7 +1794,7 @@ function drawCompare(ctx, m, th, S, M, accent) {
   return [title, legend, chart];
 }
 
-const TAGS = { statboard: 'STATS', compare: 'COMPARE', leaders: 'LEADERS', weekstars: 'STARS', result: 'FINAL', performer: 'MVP', week: 'RESULTS', table: 'STANDINGS', fixtures: 'THIS WEEK' };
+const TAGS = { statboard: 'STATS', compare: 'COMPARE', leaders: 'LEADERS', weekstars: 'STARS', result: 'FINAL', performer: 'MVP', week: 'RESULTS', day: 'SCORES', table: 'STANDINGS', fixtures: 'THIS WEEK' };
 
 function draw(ctx, m0, opts) {
   const o = opts || {};
@@ -1655,13 +1830,14 @@ function drawIn(ctx, m, o, u, themes) {
       ? [{ colour: m.team.colour, x: 0.85, y: 0.08 }, { colour: m.team.colour2 || L.colour2, x: 0.05, y: 0.95, r: 0.6, a: 0.7 }]
       : [{ colour: leagueCol, x: 0.85, y: 0.05 }, { colour: L.colour2, x: 0.05, y: 0.98, r: 0.6, a: 0.7 }];
   ground(ctx, th, W, H, glows, colour, m.kind === 'performer' ? m.team.colour2 : L.colour2);
-  const when = m.kind === 'result' || m.kind === 'performer' ? m.date + (ZNOTE ? ' · ' + ZNOTE.short : '') : m.kind === 'table' ? (m.asOf || '') : (m.range || '');
+  const when = m.kind === 'result' || m.kind === 'performer' ? m.date + (ZNOTE ? ' · ' + ZNOTE.short : '') : m.kind === 'day' ? m.date : m.kind === 'table' ? (m.asOf || '') : (m.range || '');
   const what = [m.comp || L.name || '', m.pages > 1 ? m.page + '/' + m.pages : ''].filter(Boolean).join(' · ');
   const top = S.top, bottom = H - S.bottom;
   heading(ctx, th, M, W, top, TAGS[m.kind] || '', what, when, accent, !MOD.logoPos || MOD.logoPos === 'heading' ? L.logo : null);
   const body = m.kind === 'result' ? drawResult(ctx, m, th, S, M, accent)
     : m.kind === 'performer' ? drawPerformer(ctx, m, th, S, M, accent)
     : m.kind === 'week' ? drawWeek(ctx, m, th, S, M)
+    : m.kind === 'day' ? drawDay(ctx, m, th, S, M)
     : m.kind === 'weekstars' ? drawWeekStars(ctx, m, th, S, M, accent)
     : m.kind === 'leaders' ? drawLeaders(ctx, m, th, S, M, accent)
     : m.kind === 'table' ? drawTable(ctx, m, th, S, M, accent)
@@ -1683,6 +1859,7 @@ function drawIn(ctx, m, o, u, themes) {
   }
   const at = stack(body, top + 40 + 36, bottom - 70 - 30, S.h >= 1900 ? 90 : 60);
   body.forEach((b, i) => b.draw(at[i]));
+  body.forEach(b => { if (b.skipped) dropped.push(b.skipped); });          // a block that drew less than asked for says what (a day's leaders, for want of tall rows)
   /* the line above the footer: a final's venue on the left, the partner's line (or on its own, all the way across) */
   const slot = bottom - 70 - 14;
   const venue = m.kind === 'result' && m.venue && on('venue') ? m.venue.toUpperCase() : '';
@@ -1811,6 +1988,6 @@ function zip(files, when) {
   return out;
 }
 
-return { statboard, statLayout, compare, compareLayout, sizeOf, SB_MIN, SB_MAX, SB_SECS, CMP_COLOURS, SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, catKey, leaders, result, performer, weekstars, LAYOUTS, week, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
-         gameBPMs, bpmText, statLine, local, dayLabel, dateLabel, timeLabel, slug };
+return { statboard, statLayout, compare, compareLayout, sizeOf, SB_MIN, SB_MAX, SB_SECS, CMP_COLOURS, SIZES, PER, THEME_KEYS, STAT_DEFS, COL_DEFS, LOGO_POS, cleanModules, rowsOf, validZone, leagueZone, zoneName, zoneNote, relabel, COUNTRY_ZONE, TEAM_STAT_DEFS, ROW_EXTRAS, catKey, leaders, result, performer, weekstars, LAYOUTS, week, day, table, fixtures, caption, draw, canvas, png, filename, zip, crc32,
+         gameBPMs, bpmText, statLine, played, NIGHT_MIN_MS, nightsOf, NIGHT_STRIP, local, dayLabel, dateLabel, timeLabel, slug };
 }));

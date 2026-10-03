@@ -62,7 +62,7 @@ ok('...each side led by its best BPM of the game, worked out over both sides\' l
    [...bp0.values()].join());
 ok('...and a game with one side\'s lines only has no BPM to rank by: the most points lead', SC.gameBPMs(players.slice(0, 2)).size === 0 &&
    SC.result({ game, home: paris, away: virtus, players: players.slice(0, 2), league }).top.home.name === 'Nadir Hifi');
-ok('...and the away side\'s: Shengelia, 24 PTS · 10 REB · 5 AST', res.top.away.name === 'Tornike Shengelia' && res.top.away.line === '24 PTS · 10 REB · 5 AST', res.top.away.line);
+ok('...and the away side\'s: Shengelia, 24 PTS · 10 REB · 5 AST, and the BPM he was picked on', res.top.away.name === 'Tornike Shengelia' && /^24 PTS · 10 REB · 5 AST · [+-]\d+\.\d BPM$/.test(res.top.away.line) && res.top.away.line.endsWith(res.top.away.stats.bpm + ' BPM'), res.top.away.line);
 const ot = SC.result({ game, home: paris, away: virtus, perQ: [{ 1: 18, 2: 22, 3: 23, 4: 16, 5: 9 }, { 1: 15, 2: 29, 3: 23, 4: 15, 5: 10 }], players, league });
 ok('an overtime is OT, a second one OT2', ot.periods.map(p => p.label).join() === 'Q1,Q2,Q3,Q4,OT'
    && SC.result({ game, home: paris, away: virtus, perQ: [{ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 }, { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2 }], league }).periods.slice(-2).map(p => p.label).join() === 'OT,OT2');
@@ -90,7 +90,7 @@ console.log('\nthe words');
 const cr = SC.caption(res);
 ok('a final: the score, who led whom, the margin and where, the league\'s tag', /^FINAL \| Paris Basketball 79–92 Virtus Olidata Bologna/.test(cr)
    && /Tornike Shengelia \(Virtus Olidata Bologna\): 24 pts, 10 reb, 5 ast/.test(cr) && /beat Paris Basketball by 13 at Adidas Arena/.test(cr) && /#EuroLeague #basketball$/.test(cr), cr);
-ok('the player of the game: his line and the result', /24 points, 10 rebounds, 5 assists on 10\/16 shooting, \+14 on the floor, in the 92–79 win over Paris Basketball/.test(SC.caption(mvp)));
+ok('the player of the game: his line, his BPM and the result', /24 points, 10 rebounds, 5 assists on 10\/16 shooting, \+14 on the floor, [+-]\d+\.\d BPM, in the 92–79 win over Paris Basketball/.test(SC.caption(mvp)), SC.caption(mvp));
 ok('the table and the week ahead say which page they are', /^The table \(1\/2\)/.test(SC.caption(SC.table({ standings, league }, 'square')[0]))
    && /^Coming up/.test(SC.caption(fx)));
 ok('a league named with spaces and accents is one tag', /#LigaEndesa\b/.test(SC.caption(Object.assign({}, res, { league: { name: 'Liga Endesa' } })))
@@ -248,8 +248,8 @@ console.log('\nthe console');
      && data.players.get('g1')[2].stats.or === 3 && data.players.get('g1')[2].stats.adv.name === 'Tornike Shengelia');
   ok('...the clubs read with both their colours', calls.some(c => /^teams:.*colour_2/.test(c)));
   const list = GX.items(data, 'portrait', t => (t.logo_path ? 'https://cdn/' + t.logo_path : null));
-  ok('the list: results, the table, coming up, then the final and its player of the game',
-     list.map(x => x.model.kind).join() === 'week,table,fixtures,result,performer', list.map(x => x.title).join(' | '));
+  ok('the list: results, the table, coming up, the day\'s scores, then the final and its player of the game',
+     list.map(x => x.model.kind).join() === 'week,table,fixtures,day,result,performer', list.map(x => x.title).join(' | '));
   ok('...the league\'s logo and each club\'s crest handed to the drawing', list.every(x => x.model.league.logoUrl === 'https://cdn/leagues/el.png')
      && list.find(x => x.model.kind === 'result').model.home.crestUrl === 'https://cdn/x.png');
 }
@@ -514,13 +514,13 @@ console.log('\nstars of the week');
   const P = SC.weekstars({ entries: E, league, by: 'pts' });
   ok('by points: the 33 leads, then 30, 28', P.rows.map(r => r.stats.pts).slice(0, 3).join() === '33,30,28' && P.rows[0].name === 'Cy Cold');
   const tie = SC.weekstars({ entries: [ent('Zed Z', 0, 1, Object.assign({}, big, { pts: 25 }), 1), ent('Abe A', 1, 2, Object.assign({}, big, { pts: 25 }), 2), ent('Mo Extra', 2, 0, Object.assign({}, big, { pts: 25, ast: 9 }), 3)], league });
-  ok('ties: the higher BPM, then the points, then the name - the same order every time', tie.rows.map(r => r.name).join() === 'Mo Extra,Abe A,Zed Z' && SC.weekstars({ entries: E.slice().reverse(), league }).rows.map(r => r.name).join() === W.rows.map(r => r.name).join());
+  ok('ties: the higher BPM first, level BPM by the name (no other stat) - the same order every time', tie.rows.map(r => r.name).join() === 'Mo Extra,Abe A,Zed Z' && SC.weekstars({ entries: E.slice().reverse(), league }).rows.map(r => r.name).join() === W.rows.map(r => r.name).join());
   ok('...an entry without a BPM (no other side\'s lines) is ranked after every one with one', SC.weekstars({ entries: [Object.assign({}, E[5], { bpm: null }), E[4]], league }).rows.map(r => r.name).join() === 'Ed Even,Flo Few');
   const pk = SC.weekstars({ entries: E, league, by: 'pick', picks: [E[5].key, E[0].key, 'gone'] });
   ok('by pick: the players named, in the order given, and no one else (an unknown pick is ignored)', pk.rows.map(r => r.name).join() === 'Flo Few,Ann Ace' && SC.weekstars({ entries: E, league, by: 'pick' }).rows.length === 0 && SC.weekstars({ entries: E, league, by: 'bogus' }).by === 'bpm' && SC.weekstars({ entries: E, league, by: 'gs' }).by === 'bpm');
   const few = SC.weekstars({ entries: E.slice(0, 2), league });
   ok('fewer players than places: two stars are two, no empty rows, and none at all says so', few.rows.length === 2 && words(few, 'portrait').includes('AA') && words(SC.weekstars({ entries: [], league }), 'portrait').includes('No player lines this week.'));
-  ok('the words: "Stars of the week in the Premier:", each ranked with team, line and the game', (() => { const c = SC.caption(W); return /^Stars of the week in the Premier:\n\n1\. Ann Ace \(Alpha Basket\): 30 pts, \d+ reb, 6 ast vs Bravo Basket \(W 80–70\)\n2\./.test(SC.caption(Object.assign({}, W, { comp: 'Premier' }))) && /#EuroLeague #basketball$/.test(c); })(), SC.caption(W).split('\n').slice(0, 3).join(' / '));
+  ok('the words: "Stars of the week in the Premier, ranked by BPM:", each ranked with team, line (BPM too) and the game', (() => { const c = SC.caption(W); return /^Stars of the week in the Premier, ranked by BPM:\n\n1\. Ann Ace \(Alpha Basket\): 30 pts, \d+ reb, 6 ast, [+\-]?\d+\.\d bpm vs Bravo Basket \(W 80–70\)\n2\./.test(SC.caption(Object.assign({}, W, { comp: 'Premier' }))) && /#EuroLeague #basketball$/.test(c); })(), SC.caption(W).split('\n').slice(0, 3).join(' / '));
   ok('...with the stat lines chosen, and only the rows shown', /1\. Ann Ace \(Alpha Basket\): 2 stl, 1 blk/.test(SC.caption(W, { statKeys: ['stl', 'blk', 'pts'].sort((a, b) => 0) }).replace('30 pts, ', '')) || true);
   const c2 = SC.caption(W, { rows: 3, statKeys: ['pts', 'reb', 'ast', 'fgp'] });
   ok('...only the rows asked for, and the extra stat line in it', c2.split('\n').filter(l => /^\d\. /.test(l)).length === 3 && /fgp|fg%/i.test(c2));

@@ -94,7 +94,7 @@ ok('stepping back goes back, stepping on stops at this week, and nothing goes pa
 console.log('\nthe kinds, counted and filtered');
 const list = GX.items(now0, 'portrait', null);
 const byType = t => list.filter(x => x.type === t).length;
-ok('every post has a kind', list.length > 0 && list.every(x => ['results', 'stars', 'table', 'ahead', 'roundup'].includes(x.type)), [...new Set(list.map(x => x.type))].join());
+ok('every post has a kind', list.length > 0 && list.every(x => ['results', 'daily', 'stars', 'table', 'ahead', 'roundup'].includes(x.type)), [...new Set(list.map(x => x.type))].join());
 ok('two competitions: a roundup and a week ahead for each that has them, a table for the league (a cup has none), a result and a star for every final',
    byType('roundup') === 2 && byType('ahead') === 1 + 0 + 1 - 0 && byType('table') === 1 && byType('results') === 5, ['roundup', 'ahead', 'table', 'results', 'stars'].map(t => t + ':' + byType(t)).join(' '));
 ok('...the stars: a player of the game for each of the five, a player of the week, and the stars of the week (there were several games)', byType('stars') === 7
@@ -115,7 +115,7 @@ ok('...the player of the week is the best of the players of the game', list.find
 ok('...and says so in its words', /^Player of the week: /.test(SC.caption(list.find(x => x.model.label === 'Player of the week').model)));
 const c = GX.counts(list);
 ok('the chips: "All" and the count of everything first, then each kind that has any, in a set order', c[0].id === 'all' && c[0].n === list.length
-   && c.slice(1).map(x => x.id).join() === 'results,stars,table,ahead,roundup' && c.slice(1).reduce((a, x) => a + x.n, 0) === list.length, JSON.stringify(c.map(x => x.id + ':' + x.n)));
+   && c.slice(1).map(x => x.id).join() === 'results,daily,stars,table,ahead,roundup' && c.slice(1).reduce((a, x) => a + x.n, 0) === list.length, JSON.stringify(c.map(x => x.id + ':' + x.n)));
 ok('a kind with nothing is not offered', !GX.counts(list.filter(x => x.type !== 'table')).some(x => x.id === 'table') && GX.counts([]).length === 1 && GX.counts([])[0].n === 0);
 ok('a filter keeps exactly one kind, "all" and nothing keep everything', GX.filterBy(list, 'stars').length === 7 && GX.filterBy(list, 'stars').every(x => x.type === 'stars')
    && GX.filterBy(list, 'all').length === list.length && GX.filterBy(list, '').length === list.length && GX.filterBy(list, 'nope').length === 0);
@@ -126,7 +126,7 @@ const only1 = GX.items(GX.scope(now0, 'c1'), 'portrait', null);
 ok('one competition\'s view: its games and table, none of the other\'s', only1.filter(x => x.type === 'results').length === 3 && only1.some(x => x.type === 'table') && GX.scope(now0, 'c2').standings.length === 0
    && GX.scope(now0, 'c2').finals.every(g => g.competition_id === 'c2') && GX.scope(now0, 'all') === now0 && GX.scope(now0, '') === now0);
 const wkList = GX.items(last, 'portrait', null);
-ok('an earlier week: results, stars and the roundup - no table, no week ahead', GX.counts(wkList).map(x => x.id).join() === 'all,results,stars,roundup', GX.counts(wkList).map(x => x.id + ':' + x.n).join());
+ok('an earlier week: results, daily scores, stars and the roundup - no table, no week ahead', GX.counts(wkList).map(x => x.id).join() === 'all,results,daily,stars,roundup', GX.counts(wkList).map(x => x.id + ':' + x.n).join());
 ok('...the graphics say which days they cover (the seven days to then, not to today)', wkList.find(x => x.type === 'roundup').model.range === GX.rangeLabel(last.since, last.until));
 const wide = GX.items(now0, 'story', null), sq = GX.items(now0, 'square', null);
 ok('the shape changes how a list is cut, never what there is', wide.length >= list.length - 0 && sq.map(x => x.title).length >= 1 && sq.filter(x => x.type === 'results').length === 5);

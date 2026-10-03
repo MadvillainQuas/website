@@ -135,7 +135,7 @@ console.log('\nthe month\'s stars');
   const data = { comps: [{ id: 'c1', name: 'Premier' }], league: { name: 'L', colour: '#ff6600', timezone: 'UTC' }, teams: new Map(teamsList.map(t => [t.id, t])), finals: [], standings: [] };
   const run = sel => GX.monthStars(data, lines, Object.assign({ bounds: b }, sel), null);
   const m = run({}), rows = m.model.rows;
-  ok('a ranked line-up for the month, per-game stats shown by default (points, rebounds, assists a game), the games and best night under each name', rows.length === 5 && m.model.period === 'month' && m.model.key === 'stars-of-the-month' && Object.keys(rows[0].stats).join() === 'c:ppg,c:rpg,c:apg'
+  ok('a ranked line-up for the month, per-game stats shown by default (points, rebounds, assists a game, and the BPM it is ranked by), the games and best night under each name', rows.length === 5 && m.model.period === 'month' && m.model.key === 'stars-of-the-month' && Object.keys(rows[0].stats).join() === 'c:ppg,c:rpg,c:apg,c:bpm' && m.model.rankedBy === 'BPM'
      && /^GP \d+ · best \d+ pts v /.test(rows[0].sub) && rows.every((r, i) => r.rank === i + 1));
   ok('...the default minimum is two fifths of the most games anyone played (Gus, with one, is out)', m.min === Math.max(1, Math.ceil(X.rowsOf(lines, GX.gameSet(lines, b.start, b.end)).players.reduce((a, r) => Math.max(a, r.gp), 0) * 0.4)) && m.min >= 2 && !rows.some(r => r.name === 'Gus Guest'));
   ok('...by average game score (the default), by points a game, by any catalogue column, lowest first for a low one', (() => {
@@ -147,7 +147,25 @@ console.log('\nthe month\'s stars');
   const pick = run({ by: 'pick', picks: ['p6', 'p1'] }).model;
   ok('...by pick: the players named, in the order given (a player under the minimum can still be picked)', pick.rows.map(r => r.name).join() === 'Flo Few,Ann Ace' && run({ by: 'pick', picks: ['p7'], minGames: 1 }).model.rows[0].name === 'Gus Guest');
   ok('a month with no game says so', GX.monthStars(data, lines, { bounds: GX.monthBounds(new Date('2026-05-10T00:00:00Z'), 0, 'UTC') }, null).model === null);
-  ok('the caption: "Stars of the month in the Premier (September 2026):" and each with his line and best night', /^Stars of the month in the Premier \(September 2026\):\n\n1\. .* \(.*\): [\d.]+ ppg, [\d.]+ rpg, [\d.]+ apg - GP \d+ · best/.test(SC.caption(Object.assign({}, m.model, { comp: 'Premier' }))), SC.caption(Object.assign({}, m.model, { comp: 'Premier' })).split('\n').slice(0, 3).join(' / '));
+  ok('the caption: "Stars of the month in the Premier (September 2026), ranked by BPM:" and each with his line (BPM too) and best night', /^Stars of the month in the Premier \(September 2026\), ranked by BPM:\n\n1\. .* \(.*\): [\d.]+ ppg, [\d.]+ rpg, [\d.]+ apg, [+\-]?[\d.]+ bpm - GP \d+ · best/.test(SC.caption(Object.assign({}, m.model, { comp: 'Premier' }))), SC.caption(Object.assign({}, m.model, { comp: 'Premier' })).split('\n').slice(0, 3).join(' / '));
+}
+
+console.log('\nBPM is ranked among players of eighteen minutes a game');
+{
+  /* Ann Ace plays six minutes a game here, with the same line: a rate worked from that is noise, and ranks her first */
+  const short = Object.assign({}, lines, { pgs: lines.pgs.map(r => (r.player_uuid === 'p1' ? Object.assign({}, r, { stats: Object.assign({}, r.stats, { min: 6 * 60000 }) }) : r)) });
+  const b = GX.monthBounds(new Date('2026-09-30T12:00:00Z'), 0, 'UTC');
+  const data = { comps: [{ id: 'c1', name: 'Premier' }], league: { name: 'L', colour: '#ff6600', timezone: 'UTC' }, teams: new Map(teamsList.map(t => [t.id, t])), finals: G.slice(0, 3), standings: [] };
+  const ms = (l, by) => GX.monthStars(data, l, { bounds: b, by }, null);
+  const rowsAll = X.rowsOf(short, GX.gameSet(short, b.start, b.end)).players, ann = rowsAll.find(r => r.id === 'p1');
+  ok('the set-up: Ann averages six minutes and her BPM, from them, is the highest of the month (what the minimum is for)', ann && ann.mpg < 18 && rowsAll.every(r => r.id === 'p1' || ann.bpm > r.bpm), rowsAll.map(r => r.name + ' ' + r.mpg + ' mpg ' + r.bpm).join(' | '));
+  ok('the month\'s stars by BPM leave her out (under eighteen minutes a game), by points a game she is in the running', !ms(short, 'bpm').model.rows.some(r => r.name === 'Ann Ace') && ms(short, 'pts').model.rows.some(r => r.name === 'Ann Ace')
+     && ms(lines, 'bpm').model.rows.some(r => r.name === 'Ann Ace'));
+  ok('...the stars are in BPM order and say so', (() => { const m = ms(short, 'bpm').model; return m.rankedBy === 'BPM' && m.rows.map(r => +r.stats['c:bpm']).every((v, i, a) => !i || v <= a[i - 1]); })());
+  ok('...a league where nobody averages eighteen says why, and what it asked for', (() => { const none = Object.assign({}, lines, { pgs: lines.pgs.map(r => Object.assign({}, r, { stats: Object.assign({}, r.stats, { min: 9 * 60000 }) })) }); const r = ms(none, 'bpm'); return r.model === null && /eighteen minutes/.test(r.reason); })());
+  const board = l => GX.leadersModel(data, l, { keys: ['c:bpm'], minGames: 1 }, null).model.boards[0].rows.map(r => r.name);
+  ok('a BPM leaders board is the same: Ann (six minutes) is not on it; the points board has her', !board(short).includes('Ann Ace') && board(lines).includes('Ann Ace')
+     && GX.leadersModel(data, short, { keys: ['c:ppg'], minGames: 1 }, null).model.boards[0].rows.some(r => r.name === 'Ann Ace'));
 }
 
 console.log('\nleaders');

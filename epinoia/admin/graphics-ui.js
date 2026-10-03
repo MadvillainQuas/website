@@ -6,14 +6,14 @@
    For the league in the dropdown above the tabs:
 
      WEEKLY CONTENT   everything the week has earned (socialgfx-ui.js reads and lays it out; socialcard.js
-                      draws it), sorted by TYPE with a count on each: game results, stars (the players of the
-                      game and the player of the week), the table, the week ahead and the results roundup.
+                      draws it), sorted by TYPE with a count on each: game results, daily scores, stars (the
+                      players of the game and the player of the week), the table, the week ahead and the results roundup.
                       Pick the week (this week, last week, further back), the competition when there are several,
                       and the shape (square, portrait, story). One download each, or the lot as a ZIP, each with
                       the words to post it with.
 
-     BUILD YOUR OWN   pick a template (a final, a star, the table, the week ahead, the week's results), the game
-                      or the competition it is about, then switch its MODULES on and off and reword them:
+     BUILD YOUR OWN   pick a template (a final, a star, a day's scores, the table, the week ahead, the week's results),
+                      the game, game day or competition it is about, then switch its MODULES on and off and reword them:
                       headline, subline, crests, quarter scores, leaders, venue, which stat lines, how many table
                       rows and which columns, the colours, the logo, the footer's handle or words, a partner's
                       line. The preview redraws as you go; download it or copy its words.
@@ -38,7 +38,7 @@ const SC = () => root.EpinoiaSocialCard;
 /* ------------------------------------------------------------ pure parts --- */
 /* the builder's templates, in the order offered */
 const TEMPLATES = [
-  { id: 'result', label: 'Final score' }, { id: 'star', label: 'Star of the game' }, { id: 'table', label: 'The table' },
+  { id: 'result', label: 'Final score' }, { id: 'star', label: 'Star of the game' }, { id: 'day', label: 'Daily scores' }, { id: 'table', label: 'The table' },
   { id: 'fixtures', label: 'Week ahead' }, { id: 'week', label: 'Results roundup' }, { id: 'weekstars', label: 'Stars of the week' },
   { id: 'monthstars', label: 'Stars of the month' }, { id: 'leaders', label: 'Stats leaders' }
 ];
@@ -46,6 +46,7 @@ const TEMPLATES = [
 const HAS = {
   result: ['game', 'headline', 'subline', 'crests', 'quarters', 'leaders', 'leadstats', 'teamstats', 'venue'],
   star: ['game', 'player', 'headline', 'subline', 'crests', 'stats', 'discs'],
+  day: ['day', 'page', 'headline', 'subline', 'crests', 'rows', 'leaders', 'dayleadstats', 'dayextras'],
   table: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'cols'],
   fixtures: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'venues', 'fixextras'],
   week: ['comp', 'page', 'headline', 'subline', 'crests', 'rows', 'days', 'weekextras'],
@@ -55,14 +56,17 @@ const HAS = {
 };
 /* the site's own columns (statcat.js) are offered wherever a stat is picked; the console's administrator may have the locked ones */
 const CATOPTS = { premium: true, locked: false };
-const LEAD_CAT_DEFAULT = ['c:ppg', 'c:rpg', 'c:apg', 'c:spg', 'c:bpg'], MONTH_DEFAULT = ['c:ppg', 'c:rpg', 'c:apg'];
+const LEAD_CAT_DEFAULT = ['c:ppg', 'c:rpg', 'c:apg', 'c:spg', 'c:bpg'], MONTH_DEFAULT = ['c:ppg', 'c:rpg', 'c:apg', 'c:bpm'];
 const MAX_LEAD_CATS = 6, TEAM_LEAD_DEFAULT = ['c:ppg', 'c:papg', 'c:diffpg'];
 const MIN_GAMES = [['', 'Automatic (two fifths of the most played)'], ['1', '1 game'], ['2', '2 games'], ['3', '3 games'], ['5', '5 games'], ['8', '8 games'], ['10', '10 games']];
 const LEAD_SCOPES = [['season', 'The season'], ['month', 'The month'], ['week', 'The week']];
 const MONTH_BY = [['bpm', 'BPM over the month'], ['pts', 'Points a game'], ['stat', 'Any stat of the site\'s'], ['pick', 'My pick']];
 /* the stats each template can show, in the order they are laid out (the first three of a star are its big numbers) */
-const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'bpm', 'pm', 'min'];
-const STAT_DEFAULT = ['pts', 'reb', 'ast', 'fg', 'p3', 'ft', 'pm', 'min'];
+const STAT_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fg', 'p3', 'ft', 'fgp', 'p3p', 'efg', 'p2', 'oreb', 'dreb', 'tov', 'pf', 'bpm', 'usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg', 'pm', 'min'];
+/* a player of the game's own, worked from the game's lines (the site's engine: socialcard.js nightAdv): the stars of the week have no such line */
+const NIGHT_ONLY = ['usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg'];
+/* what a player of the game says by default: the three big numbers, then BPM (what he was picked on), usage, true shooting, steals + blocks and the on-off trio */
+const STAT_DEFAULT = ['pts', 'reb', 'ast', 'bpm', 'usg', 'ts', 'stocks', 'onnet', 'onortg', 'ondrtg'];
 const COL_ORDER = ['gp', 'w', 'l', 'pct', 'pts', 'diff', 'avg', 'pf', 'pa', 'ppg', 'papg', 'streak', 'l5', 'home', 'away', 'elo'];
 const COL_DEFAULT = ['gp', 'w', 'l', 'pct', 'diff'];          // WIN% in the default: the table is ordered by it
 /* the table's order: winning percentage (the default, as the league's own table opens) or the official one (league points, then the
@@ -72,9 +76,10 @@ const COL_READ = ['l5', 'home', 'away', 'elo'];            // read from the game
 const COL_HINT = { pct: 'winning percentage (wins over games played)', pts: 'league points', avg: 'average margin', ppg: 'points scored a game', papg: 'points allowed a game', l5: 'last five games',
                    home: 'home record', away: 'away record', elo: 'ELO rating (1500 is average)', streak: 'current run' };
 const TEAM_ORDER = ['fgp', 'p3p', 'ftp', 'efg', 'fg', 'p3', 'ft', 'reb', 'oreb', 'ast', 'stl', 'blk', 'tov', 'pf'];
-const LEAD_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'p3p', 'pm'];
-const LEAD_DEFAULT = ['pts', 'reb', 'ast'], WEEK_DEFAULT = ['pts', 'reb', 'ast'];
+const LEAD_ORDER = ['pts', 'reb', 'ast', 'stl', 'blk', 'fgp', 'p3p', 'pm', 'bpm'];
+const LEAD_DEFAULT = ['pts', 'reb', 'ast'], WEEK_DEFAULT = ['pts', 'reb', 'ast', 'bpm'];
 const WEEK_EXTRAS = [['time', 'Tip-off time'], ['venue', 'Venue'], ['quarters', 'Quarter scores'], ['record', 'Records'], ['elo', 'ELO']];
+const DAY_EXTRAS = [['time', 'Tip-off time'], ['venue', 'Venue'], ['quarters', 'Quarter scores']];          // a day is read on its own: no standings, so no records
 const FIX_EXTRAS = [['record', 'Records'], ['elo', 'ELO']];
 const ACCENTS = [['', 'League colour'], ['#ffe600', 'Teletext yellow'], ['#00e5ff', 'Cyan']];
 const THEMES = [['dark', 'League, dark'], ['light', 'Light'], ['contrast', 'High contrast']];
@@ -84,13 +89,13 @@ const ROWS = [['', 'All'], ['3', 'Top 3'], ['4', 'Top 4'], ['5', 'Top 5'], ['6',
 const STAR_BY = [['bpm', 'BPM (the game\'s)'], ['pts', 'Points'], ['pick', 'My pick']];
 const byOf = v => (!v || v === 'gs' ? 'bpm' : v);
 const STAR_LAYOUT = [['', 'Ranked list'], ['hero', 'One star, two runners-up'], ['five', 'Starting five']];
-const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8, MAX_TEAM = 6, MAX_LEAD = 4;
+const MAX_COLS = 6, MIN_STATS = 3, MAX_STATS = 8, MAX_STAR = 10, MAX_TEAM = 6, MAX_LEAD = 4;
 
 /* the builder's starting point: every module at today's default */
 function defaultBuilder() {
-  return { tpl: 'result', gameId: '', player: null, compId: '', page: 0, by: 'bpm', picks: [], monthOff: 0,
+  return { tpl: 'result', gameId: '', day: '', player: null, compId: '', page: 0, by: 'bpm', picks: [], monthOff: 0,
     mods: { headline: '', subline: '', crests: true, quarters: true, leaders: true, venue: true, days: true, venues: true, rows: '',
-            cols: null, tableOrder: '', statKeys: null, weekKeys: null, monthKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [],
+            cols: null, tableOrder: '', statKeys: null, weekKeys: null, monthKeys: null, teamStats: [], leaderKeys: null, leaderN: '', weekExtras: [], fixExtras: [], dayExtras: [],
             layout: '', discs: '', leadCats: null, leadScope: 'season', leadSubject: 'players', minGames: '', rankStat: 'c:ppg', zoneLabel: '', theme: 'dark', accent: '', logoPos: 'both', handle: true, footerText: '', sponsor: '' } };
 }
 /* the builder's options as socialcard.js's modules: only what differs from the default, so an untouched builder
@@ -105,8 +110,8 @@ function modulesOf(b) {
      no night's line to read a built-in stat from, so one carried over would be drawn as a dash) */
   const stat = tpl === 'star' ? m.statKeys : tpl === 'weekstars' ? m.weekKeys : tpl === 'monthstars' ? (catOf(m.monthKeys).length ? catOf(m.monthKeys) : null) : null;
   return SC().cleanModules(Object.assign({}, m, { rows: m.rows || 0, cols: tpl === 'table' ? m.cols || null : null, statKeys: stat || null, layout: tpl === 'weekstars' || tpl === 'monthstars' ? m.layout : '',
-    teamStats: tpl === 'result' ? m.teamStats : null, leaderKeys: tpl === 'result' ? m.leaderKeys : null, leaderN: tpl === 'result' ? m.leaderN : 0,
-    rowExtras: tpl === 'week' ? m.weekExtras : tpl === 'fixtures' ? m.fixExtras : null }));
+    teamStats: tpl === 'result' ? m.teamStats : null, leaderKeys: tpl === 'result' ? m.leaderKeys : tpl === 'day' ? (m.leaderKeys || []).filter(k => !/^c:/.test(k)) : null, leaderN: tpl === 'result' ? m.leaderN : 0,
+    rowExtras: tpl === 'week' ? m.weekExtras : tpl === 'fixtures' ? m.fixExtras : tpl === 'day' ? m.dayExtras : null }));
 }
 /* the site's columns ("c:...") a builder graphic asks for, and whether it needs the season's lines read to work them out */
 const catOf = list => (Array.isArray(list) ? list : []).filter(k => /^c:/.test(k));
@@ -216,7 +221,7 @@ function mount(o) {
    season on screen when its tab is first opened */
 function refresh() {
   if (!current || !current.started) return;
-  current.extras = null; current.lines = null;             // another season: its games, its ratings, its lines
+  current.extras = null; current.lines = null; resetDays(current);             // another season: its games, its ratings, its lines, its game days
   load(current);
 }
 
@@ -337,7 +342,7 @@ function draw(panel, keepFocus) {
   Object.keys(SCd.SIZES).forEach(k => shape.appendChild(chip(SCd.SIZES[k].label, k === panel.size, () => { panel.size = k; draw(panel); })));
   ctx.appendChild(shape);
   const again = el('button', 'ep-btn mini', 'read again'); again.type = 'button';
-  again.addEventListener('click', () => load(panel));
+  again.addEventListener('click', () => { resetDays(panel); load(panel); });
   ctx.appendChild(again);
   body.appendChild(ctx);
 
@@ -360,6 +365,25 @@ function ensureLines(panel) {
   if (!panel.linesP) panel.linesP = GX().readLines(panel.o.sb, panel.data.comps).then(l => { panel.lines = l; return l; }, e => { panel.linesP = null; throw e; });
   return panel.linesP;
 }
+/* THE GAME DAYS, for the Daily scores template: which days the league played on (one narrow read of every finished game's tip-off, kept),
+   and any one day read on its own (its games, clubs, quarters, team lines and players: kept by day and competition). A read again, or
+   another season, forgets them. */
+function resetDays(panel) { panel.daysRaw = null; panel.daysP = null; panel.dayCache = null; }
+function ensureDays(panel) {
+  if (panel.daysRaw) return Promise.resolve(panel.daysRaw);
+  if (!panel.daysP) panel.daysP = GX().readDays(panel.o.sb, panel.data.comps).then(r => { panel.daysRaw = r; return r; }, e => { panel.daysP = null; throw e; });
+  return panel.daysP;
+}
+/* the days with a final on, newest first, for the competition on screen: [{ day, n }] (the newest 150: a season is never that many game days to pick from) */
+const daysOf = panel => (panel.daysRaw ? GX().gameDays(panel.daysRaw.rows, SC().leagueZone(panel.data.league), panel.compId).slice(0, 150) : []);
+const dayKeyOf = (panel, key) => key + '|' + panel.compId;
+function ensureDay(panel, key) {
+  panel.dayCache = panel.dayCache || new Map();
+  const k = dayKeyOf(panel, key);
+  if (panel.dayCache.has(k)) return Promise.resolve(panel.dayCache.get(k));
+  return GX().readDay(panel.o.sb, panel.data.league, viewOf(panel).comps, key).then(d => { panel.dayCache.set(k, d); return d; });
+}
+
 /* the month and the season's leaders as cards of Weekly content (Stars, Leaders), once the lines are here */
 function extraItems(panel) {
   if (!panel.lines) return [];
@@ -527,7 +551,11 @@ function drawBuilder(panel, pane) {
   const bounds = () => GX().monthBounds(new Date(), b.monthOff || 0, clockOf(panel).zone || SCd.leagueZone(d.league));
   const season = typeof panel.o.season === 'function' ? panel.o.season() : null;
   /* the subject and the site's own columns the graphic asks for (the lines are read when something needs them) */
-  const selOf = () => Object.assign({}, b, { lines: d.lines, need: needKeys(b), opts: CATOPTS, bounds: bounds(), by: b.tpl === 'monthstars' ? ({ pts: 'pts', stat: 'stat', pick: 'pick' }[b.by] || 'bpm') : byOf(b.by),
+  /* a day: the game day picked (the newest the league has when none is, or the one picked is not a day of this competition), and its own read */
+  const days = () => daysOf(panel);
+  const dayKey = () => { const l = days(); return b.day && l.some(x => x.day === b.day) ? b.day : (l[0] && l[0].day) || ''; };
+  const dayData = () => (panel.dayCache && dayKey() ? panel.dayCache.get(dayKeyOf(panel, dayKey())) : null) || null;
+  const selOf = () => Object.assign({}, b, { dayKey: b.tpl === 'day' ? dayKey() : '', dayData: b.tpl === 'day' ? dayData() : null, lines: d.lines, need: needKeys(b), opts: CATOPTS, bounds: bounds(), by: b.tpl === 'monthstars' ? ({ pts: 'pts', stat: 'stat', pick: 'pick' }[b.by] || 'bpm') : byOf(b.by),
     stat: M.rankStat, minGames: +M.minGames || 0, keys: b.tpl === 'leaders' ? (M.leadCats || (M.leadSubject === 'teams' ? TEAM_LEAD_DEFAULT : LEAD_CAT_DEFAULT)) : (catOf(M.monthKeys).length ? catOf(M.monthKeys) : MONTH_DEFAULT), scope: M.leadScope, order: M.tableOrder || '', subject: M.leadSubject,
     rows: +M.rows || 0, seasonName: season ? season.name : 'Season' });
   const compute = () => { res = GX().builderModel(d, selOf(), panel.size, crestOf); return res; };
@@ -564,8 +592,17 @@ function drawBuilder(panel, pane) {
   gsel.id = 'gxGame';
   put(fs1, 'game', field('Game', gsel));
   if (!games.length) gsel.disabled = true;
+  /* the game day: every day the league played on (the competition on screen's), newest first, each with its games counted */
+  const dayList = days();
+  const dsel = select(dayList.map(x => [x.day, GX().dayKeyLabel(x.day) + ' · ' + x.n + (x.n === 1 ? ' game' : ' games')]), dayKey(),
+    v => { b.day = v; b.page = 0; drawBuilder2('gxDay'); });
+  dsel.id = 'gxDay';
+  put(fs1, 'day', field('Game day', dsel));
+  if (!dayList.length) dsel.disabled = true;
   const players = (res && res.players) || [];
-  const psel = select([['', 'Player of the game']].concat(players.map((p, i) => [String(i), ((p.stats.adv && p.stats.adv.name) || 'Player') + ' · ' + p.stats.pts + ' pts'])),
+  const night = players.length ? SCd.gameBPMs(players) : new Map();            // the game's BPM, which the list is in the order of
+  const psel = select([['', 'Player of the game']].concat(players.map((p, i) => [String(i), ((p.stats.adv && p.stats.adv.name) || 'Player') + ' · ' + p.stats.pts + ' pts' +
+    (night.has(p) ? ' · ' + SCd.bpmText(night.get(p)) + ' BPM' : '') + ' · ' + Math.round((p.stats.min || 0) / 60000) + ' min'])),
     b.player == null ? '' : String(b.player), v => { b.player = v === '' ? null : +v; persist(); setRes(); });
   put(fs1, 'player', field('Player', psel));
   if (d.comps.length > 1) {
@@ -606,7 +643,7 @@ function drawBuilder(panel, pane) {
         if (i.checked && b.picks.length >= 5) { i.checked = false; return; }
         b.picks = i.checked ? b.picks.concat([p.key]) : b.picks.filter(k => k !== p.key); setRes();
       });
-      l.append(i, el('span', null, p.name + ' · ' + p.team + ' · ' + p.pts + ' pts'));
+      l.append(i, el('span', null, p.name + ' · ' + p.team + ' · ' + p.pts + ' pts' + (p.bpm != null ? ' · ' + SCd.bpmText(p.bpm) + ' BPM' : '')));
       pk.appendChild(l);
     });
     put(fs3, 'starsby', pk);
@@ -646,11 +683,11 @@ function drawBuilder(panel, pane) {
     const node = SP.create({ title, items, current, set: v => { set(v); persist(); setRes(); }, def, min, max });
     return put(fs3, has, node);
   };
-  const STAR_OWN = () => ownItems(STAT_ORDER, k => SCd.STAT_DEFS[k][1], k => SCd.STAT_DEFS[k][0].toLowerCase());
+  const STAR_OWN = night => ownItems(night ? STAT_ORDER : STAT_ORDER.filter(k => !NIGHT_ONLY.includes(k)), k => SCd.STAT_DEFS[k][1], k => SCd.STAT_DEFS[k][0].toLowerCase());
   /* THE STAR'S, THE WEEK'S AND THE MONTH'S STAT LINES: 3 to 8, each template its own list (a month's are the site's only:
      its stars are worked over the month, not a night) */
-  if (b.tpl === 'star') picker('stats', 'Stat lines, in order (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the big numbers)', STAR_OWN().concat(siteItems('player')),
-    () => M.statKeys || STAT_DEFAULT, v => { M.statKeys = v; }, STAT_DEFAULT, MIN_STATS, MAX_STATS);
+  if (b.tpl === 'star') picker('stats', 'Stat lines, in order (' + MIN_STATS + '–' + MAX_STAR + '; the first three are the big numbers)', STAR_OWN(true).concat(siteItems('player')),
+    () => M.statKeys || STAT_DEFAULT, v => { M.statKeys = v; }, STAT_DEFAULT, MIN_STATS, MAX_STAR);
   if (b.tpl === 'weekstars') picker('stats', 'Stat lines, in order (' + MIN_STATS + '–' + MAX_STATS + '; the first three are the star\'s big numbers)', STAR_OWN().concat(siteItems('player')),
     () => M.weekKeys || WEEK_DEFAULT, v => { M.weekKeys = v; }, WEEK_DEFAULT, MIN_STATS, MAX_STATS);
   if (b.tpl === 'monthstars') picker('stats', 'Stat lines, in order (the site\'s, per game over the month; ' + MIN_STATS + '–' + MAX_STATS + ')', siteItems('player'),
@@ -666,7 +703,11 @@ function drawBuilder(panel, pane) {
   put(fs3, 'leadstats', field('Top scorers per side', select([['', 'The leader of each side'], ['2', 'Top 2 scorers'], ['3', 'Top 3 scorers']], M.leaderN || '', v => { M.leaderN = v; persist(); setRes(); })));
   picker('leadstats', 'Stats beside each leader, in order (1–' + MAX_LEAD + ')', ownItems(LEAD_ORDER, k => SCd.STAT_DEFS[k][1], k => SCd.STAT_DEFS[k][0].toLowerCase()).concat(siteItems('player')),
     () => M.leaderKeys || LEAD_DEFAULT, v => { M.leaderKeys = v; }, LEAD_DEFAULT, 1, MAX_LEAD);
+  /* A DAY'S LEADERS: the stat lines beside each side's leader (the leader is the night's best BPM, 18 minutes or more), the graphic's own only */
+  picker('dayleadstats', 'Stats beside each leader, in order (1–' + MAX_LEAD + ')', ownItems(LEAD_ORDER, k => SCd.STAT_DEFS[k][1], k => SCd.STAT_DEFS[k][0].toLowerCase()),
+    () => (M.leaderKeys || LEAD_DEFAULT).filter(k => !/^c:/.test(k)), v => { M.leaderKeys = v; }, LEAD_DEFAULT, 1, MAX_LEAD);
   /* WHAT A ROW SAYS BESIDES ITS CLUBS AND SCORE */
+  checks('dayextras', 'Also on each game', DAY_EXTRAS.map(x => x[0]), k => DAY_EXTRAS.find(x => x[0] === k)[1], () => M.dayExtras, v => { M.dayExtras = v; }, 0, DAY_EXTRAS.length);
   checks('weekextras', 'Also on each result', WEEK_EXTRAS.map(x => x[0]), k => WEEK_EXTRAS.find(x => x[0] === k)[1], () => M.weekExtras, v => { M.weekExtras = v; }, 0, WEEK_EXTRAS.length);
   checks('fixextras', 'Also on each fixture', FIX_EXTRAS.map(x => x[0]), k => FIX_EXTRAS.find(x => x[0] === k)[1], () => M.fixExtras, v => { M.fixExtras = v; }, 0, FIX_EXTRAS.length);
   /* THE MONTH: which one, how its stars are ranked, and how many games a player needs */
@@ -742,6 +783,22 @@ function drawBuilder(panel, pane) {
       compute();
       if (b.tpl === 'monthstars' || b.tpl === 'leaders') { drawBuilder2(); return; }        // the pickers list only what these games have numbers for
     }
+    /* a day: the league's game days first (the picker lists only the days it played on), then the day picked, read on its own */
+    if (b.tpl === 'day') {
+      if (!panel.daysRaw) {
+        status.textContent = 'Reading the game days…';
+        try { await ensureDays(panel); } catch (e) { status.textContent = 'Could not read the game days: ' + (e && e.message || e); return; }
+        if (mine !== seq) return;
+        drawBuilder2(); return;
+      }
+      const key = dayKey();
+      if (key && !dayData()) {
+        status.textContent = 'Reading that game day…';
+        try { await ensureDay(panel, key); } catch (e) { status.textContent = 'Could not read that game day: ' + (e && e.message || e); return; }
+        if (mine !== seq) return;
+        compute();
+      }
+    }
     /* ELO, form and the home / away records are read from the games the first time a graphic asks for them */
     if (needsExtras(b) && !d.extras) {
       status.textContent = 'Reading ratings and form from the games…';
@@ -766,7 +823,7 @@ function drawBuilder(panel, pane) {
       c.className = 'gx-canvas'; c.setAttribute('role', 'img');
       c.setAttribute('aria-label', 'Preview of the graphic');
       stage.textContent = ''; stage.appendChild(c);
-      if (c.dropped && c.dropped.length) status.textContent = 'Not enough room in this shape, so it leaves out ' + c.dropped.join(', ') + '. Try a taller shape, or fewer parts.';
+      if (c.dropped && c.dropped.length) status.textContent = 'Not enough room in this shape, so it leaves out ' + c.dropped.join(', ') + '. Try a taller shape, fewer rows, or fewer parts.';
     } catch (e) {
       if (mine === seq) status.textContent = 'The preview could not be drawn: ' + (e && e.message || e);
     }

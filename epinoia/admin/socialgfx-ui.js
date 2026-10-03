@@ -7,10 +7,12 @@
 
      THE WEEK      the week's results, the table after it, and the week coming up (each competition's own),
                    and a player of the week when there were several games
+     DAILY SCORES  every game day of the week the window holds whole: the league's own calendar day, all its games with
+                   their scores and leaders (the builder reads any day on its own: readDays, readDay)
      EACH GAME     a final score and a player of the game for every game finished in the week
 
    in the shape chosen (square, portrait or story), each with the words to post it with, and each tagged with a
-   content TYPE (results / stars / table / ahead / roundup) so the tab can filter and count them. Every graphic
+   content TYPE (results / daily / stars / table / ahead / roundup) so the tab can filter and count them. Every graphic
    is drawn in this browser from the rows read here, so a game corrected in the console is a corrected graphic
    the next time it is read; nothing is stored.
 
@@ -33,15 +35,17 @@ const DAY = 86400000;
 const el = (t, c, x) => { const n = root.document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
-/* the eleven numbers a graphic uses, read out of the stats blob by PostgREST (aliases avoid "or" and "to") */
+/* the sixteen numbers a graphic uses, and each player's on-court block, read out of the stats blob by PostgREST (aliases avoid "or" and "to") */
 const PLAYER_COLS = 'game_id,team_idx,' + [['pts', 'pts'], ['p2m', 'p2m'], ['p2a', 'p2a'], ['p3m', 'p3m'], ['p3a', 'p3a'],
   ['fta', 'fta'], ['ftm', 'ftm'], ['oreb', 'or'], ['dreb', 'dr'], ['ast', 'ast'], ['stl', 'stl'], ['blk', 'blk'], ['tov', 'to'],
-  ['pf', 'pf'], ['pm', 'pm'], ['min', 'min']].map(([a, k]) => a + ':stats->' + k).join(',') + ',name:stats->adv->>name,num:stats->adv->>num';
+  ['pf', 'pf'], ['pm', 'pm'], ['min', 'min']].map(([a, k]) => a + ':stats->' + k).join(',') + ',name:stats->adv->>name,num:stats->adv->>num' +
+  ',oc:stats->oc';          // the on-court block (what the club did with him on the floor): the player of the game's on-off numbers
 
 /* a player row as socialcard.js reads it ({ team_idx, stats: {..., adv: {name, num}} }) */
 function playerRow(r) {
   const s = { pts: r.pts, p2m: r.p2m, p2a: r.p2a, p3m: r.p3m, p3a: r.p3a, fta: r.fta, ftm: r.ftm, or: r.oreb, dr: r.dreb,
               ast: r.ast, stl: r.stl, blk: r.blk, to: r.tov, pf: r.pf, pm: r.pm, min: r.min, adv: { name: r.name || '', num: r.num } };
+  if (r.oc && typeof r.oc === 'object') s.oc = r.oc;
   return { game_id: r.game_id, team_idx: r.team_idx, stats: s };
 }
 
@@ -60,32 +64,38 @@ function rangeLabel(a, b) {
 }
 
 /* ---------------------------------------------------------------- reading --- */
-/* Everything the graphics need, in five reads (and one more per thousand games). Pure of the DOM: the test
+/* Everything the graphics need, in five reads (and one more per thirty games). Pure of the DOM: the test
    drives it with a stub client. */
-async function read(sb, league, comps, now, offset) {
+async function read(sb, league, comps, now, offset, win) {
   const off = Math.min(0, Math.round(+offset || 0));            // weeks back from now: 0 is this week, -1 last week
   const t = new Date((now || new Date()).getTime() + off * 7 * DAY);
-  const since = new Date(t.getTime() - 7 * DAY), until = off < 0 ? t : new Date(t.getTime() + 7 * DAY);
+  /* `win` ({ since, until, league }) is one game day instead of a week: its finals and their players, no table, no week ahead,
+     and the league row the caller already has (readDay) */
+  const since = win ? win.since : new Date(t.getTime() - 7 * DAY), until = win ? win.until : off < 0 ? t : new Date(t.getTime() + 7 * DAY);
   const ids = comps.map(c => c.id);
-  const out = { league: null, comps, finals: [], upcoming: [], teams: new Map(), perQ: new Map(), players: new Map(), standings: [],
+  const out = { league: null, comps, finals: [], upcoming: [], teams: new Map(), perQ: new Map(), teamAdv: new Map(), players: new Map(), standings: [],
                 since, until, now: t, offset: off };
-  const lg = await sb.from('leagues').select('id,name,slug,timezone,country,colour_a,colour_b,logo_path').eq('id', league.id).maybeSingle();
-  const L = lg && lg.data || league;
-  let handle = '';
-  try {
-    const so = await sb.rpc('league_socials_admin', { p_league: league.id });
-    const row = Array.isArray(so && so.data) ? so.data[0] : so && so.data;
-    handle = handleOf(row && row.instagram);
-    /* anybody but the league's administrators (the creator hub): the league's public accounts */
-    if (!handle) {
-      const pub = await sb.rpc('league_socials_public', { p_league: league.id });
-      const r2 = Array.isArray(pub && pub.data) ? pub.data[0] : pub && pub.data;
-      handle = handleOf(r2 && r2.instagram);
-    }
-  } catch (_) { /* no handle: the footer names the league */ }
-  /* the league's own colours and logo: the graphics are the league's, not the platform's */
-  out.league = { id: L.id, name: L.name || league.name, slug: L.slug || league.slug, timezone: L.timezone || null, country: L.country || null,
-                 colour: L.colour_a || null, colour2: L.colour_b || null, logoPath: L.logo_path || null, handle };
+  if (win && win.league) {
+    out.league = win.league;
+  } else {
+    const lg = await sb.from('leagues').select('id,name,slug,timezone,country,colour_a,colour_b,logo_path').eq('id', league.id).maybeSingle();
+    const L = lg && lg.data || league;
+    let handle = '';
+    try {
+      const so = await sb.rpc('league_socials_admin', { p_league: league.id });
+      const row = Array.isArray(so && so.data) ? so.data[0] : so && so.data;
+      handle = handleOf(row && row.instagram);
+      /* anybody but the league's administrators (the creator hub): the league's public accounts */
+      if (!handle) {
+        const pub = await sb.rpc('league_socials_public', { p_league: league.id });
+        const r2 = Array.isArray(pub && pub.data) ? pub.data[0] : pub && pub.data;
+        handle = handleOf(r2 && r2.instagram);
+      }
+    } catch (_) { /* no handle: the footer names the league */ }
+    /* the league's own colours and logo: the graphics are the league's, not the platform's */
+    out.league = { id: L.id, name: L.name || league.name, slug: L.slug || league.slug, timezone: L.timezone || null, country: L.country || null,
+                   colour: L.colour_a || null, colour2: L.colour_b || null, logoPath: L.logo_path || null, handle };
+  }
   if (!ids.length) return out;
   const games = await sb.from('games')
     .select('id,competition_id,tipoff_at,venue,status,home_score,away_score,home_team_id,away_team_id')
@@ -94,9 +104,9 @@ async function read(sb, league, comps, now, offset) {
   if (games.error) throw games.error;
   (games.data || []).forEach(g => {
     if (g.status === 'final' && new Date(g.tipoff_at) <= t) out.finals.push(g);
-    else if ((g.status === 'scheduled' || !g.status) && new Date(g.tipoff_at) > t) out.upcoming.push(g);
+    else if (!win && (g.status === 'scheduled' || !g.status) && new Date(g.tipoff_at) > t) out.upcoming.push(g);
   });
-  if (off === 0) {
+  if (off === 0 && !win) {
     const st = await sb.from('standings').select('competition_id,team_id,rank,gp,w,l,league_points,diff,streak,group_name,pts_for,pts_against')
       .in('competition_id', ids);
     out.standings = (st && st.data) || [];
@@ -108,15 +118,19 @@ async function read(sb, league, comps, now, offset) {
     ((tm && tm.data) || []).forEach(x => out.teams.set(x.id, x));
   }
   const fin = out.finals.map(g => g.id);
-  for (let i = 0; i < fin.length; i += 100) {
-    const chunk = fin.slice(i, i + 100);
+  /* thirty games at a time: a request is cut at a thousand rows (PostgREST's own cap), and thirty games of twenty-odd players are
+     under it - a hundred games were not, and a busy day or week lost the players of the games past the cut */
+  for (let i = 0; i < fin.length; i += 30) {
+    const chunk = fin.slice(i, i + 30);
     const [q, p] = await Promise.all([
-      sb.from('team_game_stats').select('game_id,team_idx,perQ:stats->perQ').in('game_id', chunk),
+      sb.from('team_game_stats').select('game_id,team_idx,perQ:stats->perQ,adv:stats->adv').in('game_id', chunk),
       sb.from('player_game_stats').select(PLAYER_COLS).in('game_id', chunk)
     ]);
     ((q && q.data) || []).forEach(r => {
       if (!out.perQ.has(r.game_id)) out.perQ.set(r.game_id, [null, null]);
       out.perQ.get(r.game_id)[r.team_idx] = r.perQ || null;
+      if (!out.teamAdv.has(r.game_id)) out.teamAdv.set(r.game_id, [null, null]);
+      out.teamAdv.get(r.game_id)[r.team_idx] = r.adv && typeof r.adv === 'object' ? r.adv : null;
     });
     ((p && p.data) || []).forEach(r => {
       if (!out.players.has(r.game_id)) out.players.set(r.game_id, []);
@@ -124,6 +138,56 @@ async function read(sb, league, comps, now, offset) {
     });
   }
   return out;
+}
+
+/* ------------------------------------------------------------- the game days --- */
+/* A GAME DAY is the league's own calendar day (its timezone's, never the browser's): a game late on a Saturday in UTC is early
+   on the Sunday in Sydney, and the Sunday's. Days are named "2026-10-02", the way the file is. */
+const pad2 = n => String(n).padStart(2, '0');
+function dayKeyOf(iso, zone) {
+  const p = root.EpinoiaSocialCard.local(iso, zone);
+  return p ? p.y + '-' + pad2(p.mo + 1) + '-' + pad2(p.d) : '';
+}
+/* the instants a day covers: its first midnight to the next, in the zone */
+function dayWindow(key, zone) {
+  const [y, m, d] = String(key).split('-').map(Number);
+  return { start: new Date(zonedMidnight(y, m - 1, d, zone)), end: new Date(zonedMidnight(y, m - 1, d + 1, zone)) };
+}
+/* "Fri 2 Oct 2026" */
+function dayKeyLabel(key) {
+  const [y, m, d] = String(key).split('-').map(Number);
+  return root.EpinoiaSocialCard.dateLabel({ y, mo: m - 1, d, wd: new Date(Date.UTC(y, m - 1, d)).getUTCDay() });
+}
+/* Every finished game's tip-off and competition and nothing else (a thousand to a request, the newest `cap`): which days the
+   league played on, for the day picker, however far back. { rows: [{ competition_id, tipoff_at }], truncated } */
+async function readDays(sb, comps, o) {
+  const ids = (comps || []).map(c => c.id), cap = (o && o.cap) || 4000, out = { rows: [], truncated: false };
+  if (!ids.length) return out;
+  for (let from = 0; from < cap; from += 1000) {
+    const r = await sb.from('games').select('competition_id,tipoff_at').in('competition_id', ids).eq('status', 'final')
+      .order('tipoff_at', { ascending: false }).range(from, from + 999);
+    if (r && r.error) throw r.error;
+    const rows = (r && r.data) || [];
+    rows.forEach(g => out.rows.push(g));
+    if (rows.length < 1000) return out;
+  }
+  out.truncated = true;
+  return out;
+}
+/* the days with a final in them (one competition's, or all), newest first: [{ day, n }] */
+function gameDays(rows, zone, compId) {
+  const m = new Map();
+  (rows || []).forEach(r => {
+    if (compId && compId !== 'all' && r.competition_id !== compId) return;
+    const k = dayKeyOf(r.tipoff_at, zone);
+    if (k) m.set(k, (m.get(k) || 0) + 1);
+  });
+  return [...m].map(([day, n]) => ({ day, n })).sort((a, b) => b.day.localeCompare(a.day));
+}
+/* ONE GAME DAY read on its own, whichever it is: its finals, their clubs, quarter scores, team lines and players, as read() reads a week */
+async function readDay(sb, league, comps, key, now) {
+  const w = dayWindow(key, root.EpinoiaSocialCard.leagueZone(league));
+  return read(sb, league, comps, now, 0, { since: w.start, until: w.end, league });
 }
 
 /* ---------------------------------------------------------------- the list --- */
@@ -198,6 +262,16 @@ function starEntries(data, team) {
   return out;
 }
 
+/* THE DAY'S SCORES for one game day, from data that holds its finals (a week's, or readDay's): one graphic, or several for a busy day */
+function dayModels(data, key, size, crestOf) {
+  const SC = root.EpinoiaSocialCard, { L, team } = frame(data, crestOf);
+  const w = dayWindow(key, SC.leagueZone(L));
+  const fin = data.finals.filter(g => +new Date(g.tipoff_at) >= +w.start && +new Date(g.tipoff_at) < +w.end);
+  const comp = data.comps.length > 1 ? 'All competitions' : ((data.comps[0] || {}).name || L.name);
+  const games = fin.map(g => Object.assign({}, g, { home: team(g.home_team_id), away: team(g.away_team_id), perQ: data.perQ.get(g.id), players: data.players.get(g.id) || [] }));
+  return SC.day({ games, league: L, comp, date: dayKeyLabel(key), dayKey: key }, size);
+}
+
 function items(data, size, crestOf) {
   const SC = root.EpinoiaSocialCard;
   const { L, team } = frame(data, crestOf);
@@ -224,11 +298,19 @@ function items(data, size, crestOf) {
         .forEach(m => out.push({ group: 'week', title: 'Coming up' + (m.pages > 1 ? ' ' + m.page + '/' + m.pages : '') + (data.comps.length > 1 ? ' · ' + c.name : ''), model: m }));
     }
   });
+  /* the daily scores: every game day the window holds whole (a day cut by the window's edge would be a partial list: the builder reads
+     any day exactly), the league's own day, all the competitions' games together; the newest day first */
+  const zone = SC.leagueZone(L);
+  [...new Set(data.finals.map(g => dayKeyOf(g.tipoff_at, zone)))].filter(Boolean).sort().reverse().forEach(k => {
+    const w = dayWindow(k, zone);
+    if (+w.start < +data.since || +w.end > +data.until) return;
+    dayModels(data, k, size, crestOf).forEach(m => out.push({ group: 'week', title: 'Daily scores · ' + dayKeyLabel(k).replace(/ \d{4}$/, '') + (m.pages > 1 ? ' ' + m.page + '/' + m.pages : ''), model: m }));
+  });
   data.finals.slice().reverse().forEach(g => {
     const c = data.comps.find(x => x.id === g.competition_id) || {};
     const comp = data.comps.length > 1 ? c.name : (c.name || L.name);
     const base = { game: g, home: team(g.home_team_id), away: team(g.away_team_id), players: data.players.get(g.id) || [],
-                   perQ: data.perQ.get(g.id), league: L, comp };
+                   perQ: data.perQ.get(g.id), teamAdv: data.teamAdv && data.teamAdv.get(g.id), league: L, comp };
     const r = SC.result(base);
     out.push({ group: 'games', title: r.home.name + ' ' + r.home.score + '–' + r.away.score + ' ' + r.away.name, model: r });
     const p = SC.performer(base);
@@ -243,7 +325,7 @@ function items(data, size, crestOf) {
     if (g) {
       const c = data.comps.find(x => x.id === g.competition_id) || {};
       const w = SC.performer({ game: g, home: team(g.home_team_id), away: team(g.away_team_id), players: data.players.get(g.id) || [],
-                               league: L, comp: data.comps.length > 1 ? c.name : (c.name || L.name), label: 'Player of the week' });
+                               teamAdv: data.teamAdv && data.teamAdv.get(g.id), league: L, comp: data.comps.length > 1 ? c.name : (c.name || L.name), label: 'Player of the week' });
       if (w) out.push({ group: 'week', title: 'Player of the week · ' + w.player.name, model: w });
     }
   }
@@ -382,16 +464,20 @@ function monthStars(data, lines, sel, crestOf) {
     list.forEach(r => {
       const id = r.player_uuid || r.player_id, s = r.stats || {};
       if (!id || !(+s.min > 0)) return;
-      const v = bp.has(r) ? bp.get(r) : -Infinity;
+      /* his best night is by BPM among the games he played the minutes in (a few minutes is no night's work: socialcard.js played) */
+      const v = bp.has(r) ? bp.get(r) : -Infinity, long = SC.played(s);
       const was = best.get(id);
-      if (!was || v > was.v || (v === was.v && (+s.pts || 0) > (+was.s.pts || 0))) best.set(id, { v, r, s });
+      if (!was || (long && !was.long) || (long === was.long && (v > was.v || (v === was.v && (+s.pts || 0) > (+was.s.pts || 0))))) best.set(id, { v, r, s, long });
     });
   });
   const most = rows.reduce((a, r) => Math.max(a, r.gp || 0), 0);
   const min = sel.minGames > 0 ? +sel.minGames : Math.max(1, Math.ceil(most * 0.4));
-  const keys = sel.keys && sel.keys.length ? sel.keys : ['c:ppg', 'c:rpg', 'c:apg'];
+  const keys = sel.keys && sel.keys.length ? sel.keys : ['c:ppg', 'c:rpg', 'c:apg', 'c:bpm'];
   const by = !sel.by || sel.by === 'gs' ? 'bpm' : sel.by, rankCol = pl.get(sel.stat || 'c:ppg') || pl.get('c:ppg');
-  const eligible = rows.filter(r => (r.gp || 0) >= min);
+  /* ranked by BPM, a player averaging under eighteen minutes a game is not in the running (a rate worked from a few minutes a night:
+     socialcard.js NIGHT_MIN_MS, the minimum of a night's picks): a month's list was led by a player of two minutes and no points */
+  const mpgMin = by === 'bpm' ? SC.NIGHT_MIN_MS / 60000 : 0;
+  const eligible = rows.filter(r => (r.gp || 0) >= min && (r.mpg || 0) >= mpgMin);
   const teamOf = r => team(r.teamId);
   const entries = eligible.map(r => {
     const bst = best.get(r.id), g = bst && lines.games.find(x => x.id === bst.r.game_id);
@@ -404,9 +490,10 @@ function monthStars(data, lines, sel, crestOf) {
   const pool = entries.slice().sort((a, c) => c.score - a.score).slice(0, 30).map(e => ({ key: e.key, name: e.name, team: e.team.name, pts: '' }));
   const use = by === 'pick' ? 'pick' : 'score';
   const lowSort = by === 'stat' && X.isLow(rankCol);
+  const rankLabel = by === 'bpm' ? 'BPM' : by === 'pts' ? 'points a game' : by === 'stat' && rankCol ? rankCol.label : '';
   const model = SC.weekstars({ entries, league: L, comp: sel.compLabel || '', range: b.label, by: use, picks: sel.picks, low: lowSort, period: 'month',
-    cat: catLabels(pl, keys) });
-  return { model: model.rows.length ? model : null, reason: by === 'pick' ? 'Pick up to five players from the month.' : 'No player played ' + min + ' games or more in ' + b.label + '.', games: only.size, pool, min };
+    cat: catLabels(pl, keys), rankLabel });
+  return { model: model.rows.length ? model : null, reason: by === 'pick' ? 'Pick up to five players from the month.' : 'No player played ' + min + ' games or more' + (by === 'bpm' ? ', averaging eighteen minutes or more,' : '') + ' in ' + b.label + '.', games: only.size, pool, min };
 }
 
 /* THE LEADERS: the site's league leaders in the categories chosen (any column of the catalogue), players or clubs, over a week, a
@@ -423,8 +510,10 @@ function leadersModel(data, lines, sel, crestOf) {
   const most = rows.reduce((a, r) => Math.max(a, r.gp || 0), 0);
   const min = teams ? 0 : (sel.minGames > 0 ? +sel.minGames : Math.max(1, Math.ceil(most * 0.4)));
   const per = sel.rows > 0 ? sel.rows : (keys.length === 1 ? 10 : 5);
+  /* a BPM category is ranked among players averaging eighteen minutes or more, as the night's picks and the month's stars are */
+  const BPM_KEYS = ['c:bpm', 'c:obpm', 'c:dbpm'], mpgMin = SC.NIGHT_MIN_MS / 60000;
   const boards = keys.map(k => {
-    const c = cats.get(k), ranked = X.rank(rows, c, { minGames: min });
+    const c = cats.get(k), ranked = X.rank(!teams && BPM_KEYS.includes(k) ? rows.filter(r => (r.mpg || 0) >= mpgMin) : rows, c, { minGames: min });
     return { key: k, label: c.title && c.title.length <= 26 ? c.title : c.label, low: X.isLow(c),
       rows: ranked.slice(0, Math.max(per, 10)).map(x => ({ rank: x.rank, tie: x.tie, name: x.row.name || '', team: teams ? team(x.row.id) : team(x.row.teamId), value: X.text(c, x.row) })) };
   }).filter(b => b.rows.length);
@@ -471,11 +560,20 @@ function builderModel0(data, sel, size, crestOf) {
     const entries = starEntries(data, team);
     const comp = data.comps.length > 1 ? 'All competitions' : (data.comps[0] || {}).name || L.name;
     const model = SC.weekstars({ entries, league: L, comp, range: rangeLabel(data.since, data.now), by: s.by, picks: s.picks });
-    /* the week's players to pick from, best first (a player once, his best game, by its BPM) */
-    const nightOf = e => (e.bpm == null ? -Infinity : e.bpm);
+    /* the week's players to pick from, best first (a player once, his best game, by its BPM; those under the minutes last) */
+    const nightOf = e => (e.bpm == null || !SC.played(e.stats) ? -Infinity : e.bpm);
     const all = entries.slice().sort((a, b) => (nightOf(b) - nightOf(a)) || ((b.stats.pts || 0) - (a.stats.pts || 0))), seen = new Set(), pool = [];
-    all.forEach(e => { const k = e.name + '|' + e.team.name; if (!seen.has(k)) { seen.add(k); pool.push({ key: e.key, name: e.name, team: e.team.name, pts: e.stats.pts }); } });
+    all.forEach(e => { const k = e.name + '|' + e.team.name; if (!seen.has(k)) { seen.add(k); pool.push({ key: e.key, name: e.name, team: e.team.name, pts: e.stats.pts, bpm: e.bpm }); } });
     return { model: model.rows.length ? model : null, pool: pool.slice(0, 20), reason: s.by === 'pick' ? 'Pick up to five players from the week.' : 'No player lines in this week.' };
+  }
+  if (tpl === 'day') {
+    /* the day's own read (readDay, kept by the tab), for the game day picked: one graphic a page of the day */
+    const dd = s.dayData;
+    if (!s.dayKey) return { model: null, reason: 'No game has finished in this league yet.' };
+    if (!dd) return { model: null, reason: 'Reading that game day…', needsDay: true };
+    const models = dayModels(dd, s.dayKey, size, crestOf).filter(m => m.rows.length);
+    const page = Math.max(0, Math.min(models.length - 1, +s.page || 0));
+    return { model: models[page] || null, pages: models.length, page, reason: models.length ? '' : 'No game finished on this day.' };
   }
   const compOf = id => data.comps.find(c => c.id === id) || {};
   const nameOf = c => (data.comps.length > 1 ? c.name : (c.name || L.name));
@@ -485,7 +583,7 @@ function builderModel0(data, sel, size, crestOf) {
     const all = data.players.get(g.id) || [], bp = SC.gameBPMs(all);
     const nightOf = p => (bp.has(p) ? bp.get(p) : -Infinity);
     const players = all.slice().sort((a, b) => (nightOf(b) - nightOf(a)) || ((b.stats.pts || 0) - (a.stats.pts || 0)));
-    const base = { game: g, home: team(g.home_team_id), away: team(g.away_team_id), players, perQ: data.perQ.get(g.id), league: L,
+    const base = { game: g, home: team(g.home_team_id), away: team(g.away_team_id), players, perQ: data.perQ.get(g.id), teamAdv: data.teamAdv && data.teamAdv.get(g.id), league: L,
                    comp: nameOf(compOf(g.competition_id)) };
     if (tpl === 'result') return { model: SC.result(base), game: g, players, reason: '' };
     const pick = s.player != null && players[s.player] ? players[s.player] : null;
@@ -512,10 +610,10 @@ function builderModel0(data, sel, size, crestOf) {
 /* ------------------------------------------------------- types and filters --- */
 /* The kinds of post, as the Graphics tab sorts them. `stars` is the players of the game and the player of the week. */
 const TYPES = [
-  { id: 'results', label: 'Game results' }, { id: 'stars', label: 'Stars' }, { id: 'table', label: 'Table' },
+  { id: 'results', label: 'Game results' }, { id: 'daily', label: 'Daily scores' }, { id: 'stars', label: 'Stars' }, { id: 'table', label: 'Table' },
   { id: 'ahead', label: 'Week ahead' }, { id: 'roundup', label: 'Results roundup' }, { id: 'leaders', label: 'Leaders' }
 ];
-const TYPE_OF = { result: 'results', performer: 'stars', weekstars: 'stars', leaders: 'leaders', table: 'table', fixtures: 'ahead', week: 'roundup' };
+const TYPE_OF = { result: 'results', day: 'daily', performer: 'stars', weekstars: 'stars', leaders: 'leaders', table: 'table', fixtures: 'ahead', week: 'roundup' };
 /* [{ id, label, n }] for the chips: "all" first, then every type that has anything (a type with none is not offered) */
 function counts(list) {
   const rows = [{ id: 'all', label: 'All', n: list.length }];
@@ -537,5 +635,5 @@ function weekLabel(offset) {
 }
 const stepWeek = (offset, dir) => Math.max(-52, Math.min(0, (Math.round(+offset || 0)) + dir));
 
-return { read, readExtras, readLines, monthBounds, stepMonth, gameSet, decorate, decorateStandings, monthStars, leadersModel, catLabels, items, builderModel, frame, playerRow, handleOf, rangeLabel, PLAYER_COLS, TYPES, TYPE_OF, counts, filterBy, scope, weekLabel, stepWeek };
+return { read, readDays, readDay, gameDays, dayKeyOf, dayWindow, dayKeyLabel, dayModels, readExtras, readLines, monthBounds, stepMonth, gameSet, decorate, decorateStandings, monthStars, leadersModel, catLabels, items, builderModel, frame, playerRow, handleOf, rangeLabel, PLAYER_COLS, TYPES, TYPE_OF, counts, filterBy, scope, weekLabel, stepWeek };
 }));
