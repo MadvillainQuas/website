@@ -59,6 +59,10 @@ Without this, the live lane starts the worker within a few minutes, so everythin
    ```
    `GITHUB_REF` (default `main`) names the branch the workflow runs from.
 
+The same function also starts the report mailer (`report-mail.yml`) when the platform console's Reports by email asks to
+**send next week's reports now** (0226, `docs/dashboard.md`): no second secret, no second function. Redeploy `console-kick`
+once after pulling 0226 so it knows about it; without that the request waits for the mailer's half-hourly run.
+
 ## Deploying
 
 ```

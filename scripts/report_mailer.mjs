@@ -10,6 +10,10 @@
                Sunday before it, never in two), and every other Sunday the club's own report too, all in ONE email.
                An address's first Sunday also takes in any game later that day. A Sunday with neither sends nothing.
    report_mail_log keeps what went (a row a game, a row a Sunday), so a rerun never sends twice.
+   SEND NEXT WEEK'S REPORTS NOW (0226): a platform administrator can ask, in the console, for the SUNDAY email at once, for one
+               address or every active one (report_mail_requests). Taken first in each run, for the Monday-to-Sunday
+               that begins next Monday at the address's own time; it counts as that Sunday's email (it logs the Sunday
+               before the week), so the Sunday round finds it done and sends nothing twice.
 
    The PDFs are the site's own: a headless Chromium opens the page served from this checkout (SITE, a local server the
    workflow starts), presses the report's own "Download PDF" and takes the file. EPINOIA_RP_BOT, set before the page's
@@ -37,7 +41,10 @@ const H = () => ({ apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + 
 async function rest(path, opt = {}) {
   const r = await fetch(env.SUPABASE_URL + '/rest/v1/' + path, { ...opt, headers: { ...H(), ...(opt.headers || {}) } });
   if (!r.ok) throw new Error(r.status + ' on ' + path.split('?')[0] + ': ' + (await r.text()).slice(0, 300));
-  return r.status === 204 ? null : r.json();
+  if (r.status === 204) return null;
+  /* an insert that does not ask for the row back answers 201 with nothing in it (PostgREST's return=minimal) */
+  const text = await r.text();
+  return text ? JSON.parse(text) : null;
 }
 const log = (sub, kind, ref, detail) => DRY ? Promise.resolve() :
   rest('report_mail_log', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ sub_id: sub.id, kind, ref, detail: detail || null }) });
@@ -59,6 +66,15 @@ export function weekAhead(tz, now = new Date(), first = false) {
   const p = partsOf(tz, now), base = Date.UTC(p.y, p.mo - 1, p.d);
   const at = days => { const x = new Date(base + days * 864e5); return midnight(x.getUTCFullYear(), x.getUTCMonth() + 1, x.getUTCDate(), tz); };
   return { from: new Date(first ? now.getTime() : at(1)), to: new Date(at(8)) };
+}
+/* NEXT WEEK, asked for on any day: the Monday-to-Sunday that begins at the next Monday (tomorrow, on a Sunday), at the
+   reader's time. `sunday` is the date of the day before it: the Sunday whose email this is, which that Sunday's own
+   round looks for in the log. On a Sunday it is weekAhead's week. (The console draws the same range: platform.js weekWords.) */
+export function nextWeek(tz, now = new Date()) {
+  const p = partsOf(tz, now), base = Date.UTC(p.y, p.mo - 1, p.d);
+  const k = (8 - new Date(base).getUTCDay()) % 7 || 7;                    // days to the next Monday: from Sunday 1, from Monday 7
+  const at = days => { const x = new Date(base + days * 864e5); return midnight(x.getUTCFullYear(), x.getUTCMonth() + 1, x.getUTCDate(), tz); };
+  return { from: new Date(at(k)), to: new Date(at(k + 7)), sunday: new Date(base + (k - 1) * 864e5).toISOString().slice(0, 10) };
 }
 const dayName = (iso, tz) => new Date(iso).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
 const dayShort = (iso, tz) => new Date(iso).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' });
@@ -171,7 +187,7 @@ export function sundayEmail({ sub, team, games, ownDue, tz, monday }) {
   if (!n) {
     return { subject: `${possessive(club)} fortnightly team report`, html: layout({ colour, kicker: 'Fortnightly team report', title: club + ': your team report',
       meta: week ? 'Week of ' + week : '', greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,', files, blocks: [
-        P(`There are no games for ${esc(club)} in the week ahead, so this Sunday brings your fortnightly team report, attached: the season’s four factors and ` +
+        P(`There are no games for ${esc(club)} in the week ahead, so your fortnightly team report comes on its own, attached: the season’s four factors and ` +
           'season line, shooting at both ends, the squad’s profiles, the depth chart and the most-used lineups, each figure coloured against the competition’s clubs.'),
         P('Enjoy the week, and we will be in touch as soon as the next game is on the schedule.')] }) };
   }
@@ -183,13 +199,16 @@ export function sundayEmail({ sub, team, games, ownDue, tz, monday }) {
       P(`Attached ${n > 1 ? 'are scouting reports on each opponent' : 'is a scouting report on ' + esc(uniq[0].oname)}, so you can prepare in good time. Each covers:`),
       inside,
       ownDue ? NOTE(ink, `As it is your fortnightly report week, ${esc(possessive(club))} own team report is attached too, so you can see how the season is shaping up on the same measures.`) : '',
-      P('Good luck this week.')].filter(Boolean) }) };
+      P('Good luck in the week ahead.')].filter(Boolean) }) };
 }
 
 /* ------------------------------------------------------------------ the PDFs and sending --- */
 let browser = null;
+/* a test's own drawing, in place of Chromium: hooks.pdf(path, name) answers { filename, content } */
+export const hooks = { pdf: null };
 /* opt.context: a browser context of the caller's (a test routes the page's calls through it) */
 export async function pdfOf(path, name, opt = {}) {
+  if (hooks.pdf) return hooks.pdf(path, name);
   let ctx = opt.context;
   if (!ctx) {
     if (!browser) { const { chromium } = await import('playwright'); browser = await chromium.launch(); }
@@ -254,12 +273,48 @@ const shortDay = (iso, tz) => { try { return new Date(iso).toLocaleDateString('e
 
 /* ------------------------------------------------------------------ one address --- */
 const GAME_SELECT = 'id,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue,home:home_team_id(name),away:away_team_id(name)';
+const mineOf = team => `or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})`;
+const tzOf = (sub, team) => sub.tz || (team.leagues && team.leagues.timezone) || 'UTC';
+
+/* THE WEEK AHEAD, SENT (on a Sunday, and for "send next week's reports now"): a scouting report on each opponent of the games of
+   W (W.from to W.to) and, in the club's fortnight, its own report, in ONE email. `day` is the Sunday it counts as, which
+   the log and the dashboard know it by. Answers what went ({ names, own }), or null when there was nothing to send, which
+   the caller says. */
+async function sendWeek(sub, team, tz, sent, W, day) {
+  const club = team.name;
+  const next = await rest(`games?${mineOf(team)}&status=in.(scheduled,live)&tipoff_at=gte.${W.from.toISOString()}&tipoff_at=lt.${W.to.toISOString()}&select=${GAME_SELECT}&order=tipoff_at.asc`);
+  const lastTeam = sent.filter(x => x.kind === 'team').map(x => Date.parse(x.sent_at)).sort((a, b) => a - b).pop() || 0;
+  const ownDue = Date.now() - lastTeam > 13 * 864e5;
+  if (!next.length && !ownDue) return null;
+  const { uniq } = opponentsOf(team, next);
+  const att = [];
+  const week = 'Week of ' + shortDay(W.from.toISOString(), tz);
+  for (const o of uniq) {
+    console.log('opponent', club, '->', o.oname);
+    const pdf = await pdfOf(`/epinoia/t/?t=${o.oid}&tab=report`, `scouting-report-${slug(o.oname)}`);
+    const when = next.filter(g => g.home_team_id === o.oid || g.away_team_id === o.oid).map(g => shortDay(g.tipoff_at, tz)).join(', ');
+    await keep(sub, day, pdf, { kind: 'opp', ref: day + ':' + o.oid, title: o.oname, subtitle: week + ' · ' + club + ' play them ' + when });
+    att.push(pdf);
+  }
+  if (ownDue) {
+    console.log('own', club);
+    const pdf = await pdfOf(`/epinoia/t/?t=${team.id}&tab=report`, `team-report-${slug(club)}`);
+    await keep(sub, day, pdf, { kind: 'team', ref: day, title: club, subtitle: 'Fortnightly team report · ' + shortDay(new Date().toISOString(), tz) });
+    att.push(pdf);
+  }
+  const E = sundayEmail({ sub, team, games: next, ownDue, tz, monday: W.from });
+  await send(sub.email, E.subject, E.html, att);
+  await log(sub, 'sunday', day, uniq.length + ' opponent(s)' + (ownDue ? ' + own' : ''));
+  if (ownDue) await log(sub, 'team', day, 'own report');
+  return { names: uniq.map(o => o.oname), own: ownDue };
+}
+
 async function one(sub, team) {
-  const tz = sub.tz || (team.leagues && team.leagues.timezone) || 'UTC';
+  const tz = tzOf(sub, team);
   const sent = await rest(`report_mail_log?sub_id=eq.${sub.id}&select=kind,ref,sent_at`);
   const has = (kind, ref) => sent.some(x => x.kind === kind && x.ref === ref);
   const club = team.name;
-  const mine = `or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})`;
+  const mine = mineOf(team);
 
   /* GAME: every final since the address was added, in the last week, not sent yet; oldest first */
   const since = new Date(Math.max(Date.parse(sub.created_at), Date.now() - 7 * 864e5)).toISOString();
@@ -283,30 +338,54 @@ async function one(sub, team) {
   const L = local(tz);
   if (L.wd !== 'Sun' || L.hour < 8 || has('sunday', L.date)) return;
   const W = weekAhead(tz, new Date(), !sent.some(x => x.kind === 'sunday'));
-  const next = await rest(`games?${mine}&status=in.(scheduled,live)&tipoff_at=gte.${W.from.toISOString()}&tipoff_at=lt.${W.to.toISOString()}&select=${GAME_SELECT}&order=tipoff_at.asc`);
-  const lastTeam = sent.filter(x => x.kind === 'team').map(x => Date.parse(x.sent_at)).sort((a, b) => a - b).pop() || 0;
-  const ownDue = Date.now() - lastTeam > 13 * 864e5;
-  if (!next.length && !ownDue) { await log(sub, 'sunday', L.date, 'nothing this week'); return; }
-  const { uniq } = opponentsOf(team, next);
-  const att = [];
-  const week = 'Week of ' + shortDay(W.from.toISOString(), tz);
-  for (const o of uniq) {
-    console.log('opponent', club, '->', o.oname);
-    const pdf = await pdfOf(`/epinoia/t/?t=${o.oid}&tab=report`, `scouting-report-${slug(o.oname)}`);
-    const when = next.filter(g => g.home_team_id === o.oid || g.away_team_id === o.oid).map(g => shortDay(g.tipoff_at, tz)).join(', ');
-    await keep(sub, L.date, pdf, { kind: 'opp', ref: L.date + ':' + o.oid, title: o.oname, subtitle: week + ' · ' + club + ' play them ' + when });
-    att.push(pdf);
+  if (!(await sendWeek(sub, team, tz, sent, W, L.date))) await log(sub, 'sunday', L.date, 'nothing this week');
+}
+
+/* ------------------------------------------------------------------ "send next week's reports now" (0226) --- */
+/* The console's requests (report_mail_requests), taken BEFORE the rounds. One is the Sunday email at once, for the week
+   that begins next Monday at the address's own time, and it counts as that Sunday's (sendWeek logs the Sunday before the
+   week), so the Sunday round finds it done. A Sunday email already sent is sent again: it was asked for. No games that
+   week and no team report due is not logged as the Sunday (the fixtures may yet be announced): the request says nothing
+   to send. Each is claimed (another run cannot take it), run, and left sent, nothing or failed, with the line the console
+   shows. Requests not done in three hours are given up, as the database does when it is next asked. */
+const SUB_SELECT = 'id,email,name,tz,created_at,active,team_id,teams(id,name,colour,leagues(timezone))';
+const GIVE_UP_MS = 3 * 36e5;
+export function requestLine(W, tz, done) {
+  const week = 'the week of ' + dayShort(W.from.toISOString(), tz);
+  if (!done) return 'No games in ' + week + ' and no team report due: nothing to send.';
+  const what = [];
+  if (done.names.length) what.push('scouting report' + (done.names.length > 1 ? 's' : '') + ' on ' + listOf(done.names));
+  if (done.own) what.push('the club’s own team report');
+  return 'Sent ' + week + ': ' + what.join(', plus ') + '.';
+}
+export async function requests(now = new Date()) {
+  if (!DRY) await rest(`report_mail_requests?state=in.(queued,running)&requested_at=lt.${new Date(now.getTime() - GIVE_UP_MS).toISOString()}`, { method: 'PATCH',
+    body: JSON.stringify({ state: 'failed', finished_at: new Date().toISOString(), detail: 'Not done within three hours: send it again.' }) });
+  const rows = await rest(`report_mail_requests?state=eq.queued&select=id,sub:report_mail_subs(${SUB_SELECT})&order=requested_at.asc`);
+  let failed = 0;
+  for (const r of rows) {
+    const s = r.sub;
+    if (!s || (env.ONLY && s.email !== env.ONLY)) continue;
+    const mark = (state, detail) => DRY ? Promise.resolve() : rest(`report_mail_requests?id=eq.${r.id}`, { method: 'PATCH',
+      body: JSON.stringify({ state, finished_at: new Date().toISOString(), detail: String(detail).slice(0, 400) }) });
+    if (!DRY) {
+      const got = await rest(`report_mail_requests?id=eq.${r.id}&state=eq.queued`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ state: 'running', started_at: new Date().toISOString() }) });
+      if (!got.length) continue;                                        // another run has it
+    }
+    if (!s.active) { await mark('nothing', 'This address is paused: nothing was sent.'); continue; }
+    const team = s.teams || { id: s.team_id, name: 'your club' }, tz = tzOf(s, team);
+    try {
+      const W = nextWeek(tz, now);
+      console.log('send now', s.email, '->', team.name, '| the week from', W.from.toISOString());
+      const done = await sendWeek(s, team, tz, await rest(`report_mail_log?sub_id=eq.${s.id}&select=kind,ref,sent_at`), W, W.sunday);
+      await mark(done ? 'sent' : 'nothing', requestLine(W, tz, done));
+    } catch (e) {
+      failed++; console.error('[' + s.email + '] send now:', e.message || e);
+      await mark('failed', e.message || e).catch(() => {});
+    }
   }
-  if (ownDue) {
-    console.log('own', club);
-    const pdf = await pdfOf(`/epinoia/t/?t=${team.id}&tab=report`, `team-report-${slug(club)}`);
-    await keep(sub, L.date, pdf, { kind: 'team', ref: L.date, title: club, subtitle: 'Fortnightly team report · ' + shortDay(new Date().toISOString(), tz) });
-    att.push(pdf);
-  }
-  const E = sundayEmail({ sub, team, games: next, ownDue, tz, monday: W.from });
-  await send(sub.email, E.subject, E.html, att);
-  await log(sub, 'sunday', L.date, uniq.length + ' opponent(s)' + (ownDue ? ' + own' : ''));
-  if (ownDue) await log(sub, 'team', L.date, 'own report');
+  return failed;
 }
 
 /* ------------------------------------------------------------------ everybody --- */
@@ -315,6 +394,8 @@ async function main() {
   if (!DRY && !env.RESEND_API_KEY) { console.error('RESEND_API_KEY is needed to send (or DRY=1)'); process.exit(1); }
   const subs = await rest('report_mail_subs?active=eq.true&select=id,email,name,tz,created_at,team_id,teams(id,name,colour,leagues(timezone))');
   let failed = 0;
+  /* the console's "send next week's reports now" first (0226); that table is away until the migration is applied, which must not stop the rounds */
+  try { failed += await requests(); } catch (e) { console.warn('send-now requests skipped:', e.message || e); }
   for (const s of subs) {
     if (env.ONLY && s.email !== env.ONLY) continue;
     try { await one(s, s.teams || { id: s.team_id, name: 'your club' }); }

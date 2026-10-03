@@ -85,9 +85,10 @@ console.log('\nkept for the dashboard (0225)');
      row.subtitle === 'Week of Mon 5 Oct 2026' && row.bytes === 1200 && !('seen_at' in row) && !('made_at' in row));
   const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
   const one = src.slice(src.indexOf('async function one('));
+  const week = src.slice(src.indexOf('async function sendWeek('), src.indexOf('async function one('));     // the Sunday email, which a "send next week's reports now" shares (0226)
   ok('every report is kept before its email goes (a failed email still leaves it in the dashboard)',
-     one.indexOf("kind: 'game'") < one.indexOf('await send(sub.email, E.subject, E.html, [pdf])') && one.indexOf("kind: 'opp'") < one.lastIndexOf('await send(') &&
-     one.indexOf("kind: 'team'") < one.lastIndexOf('await send('));
+     one.indexOf("kind: 'game'") >= 0 && one.indexOf("kind: 'game'") < one.indexOf('await send(sub.email, E.subject, E.html, [pdf])') &&
+     week.indexOf("kind: 'opp'") >= 0 && week.indexOf("kind: 'opp'") < week.lastIndexOf('await send(') && week.indexOf("kind: 'team'") >= 0 && week.indexOf("kind: 'team'") < week.lastIndexOf('await send('));
   ok('...a rerun writes the same row (sub, kind, ref), so an opened report stays opened', /report_files\?on_conflict=sub_id,kind,ref/.test(src) && /resolution=merge-duplicates/.test(src) && /'x-upsert': 'true'/.test(src));
   ok('...and keeping it failing never stops the email', /catch \(e\) \{ console\.warn\('\[' \+ sub\.email \+ '\] not kept for the dashboard/.test(src));
 }

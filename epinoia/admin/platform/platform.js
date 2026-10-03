@@ -939,9 +939,47 @@ async function loadScouts() {
 /* ------------------------------------------------------- reports by email (0221) --- */
 /* an address and a club; the mailer (scripts/report_mailer.mjs) does the rest. The club is found by name as it is typed */
 let MAIL_TEAMS = new Map(), MAIL_TZ = new Map();     // the club's label -> its id, and its league's time zone
+
+/* "SEND NEXT WEEK'S REPORTS NOW" (0226): the Sunday email at once, for one address or every active one. A request is queued
+   (request_report_send), the mailer is started (console-kick, where it is set up; else its half-hourly run takes it) and
+   each address says where its latest request stands, read again every 15 seconds while one is open. */
+let mailTimer = 0;
+/* "next week" as the mailer counts it (scripts/report_mailer.mjs nextWeek): the Monday-to-Sunday that begins next Monday,
+   on the address's own calendar */
+function weekWords(tz, now = new Date()) {
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now).map(x => [x.type, x.value]));
+    const base = Date.UTC(+p.year, +p.month - 1, +p.day), mon = base + ((8 - new Date(base).getUTCDay()) % 7 || 7) * 864e5;
+    const f = ms => new Date(ms).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
+    return f(mon) + ' to ' + f(mon + 6 * 864e5);
+  } catch (_) { return 'the Monday-to-Sunday week that begins next Monday'; }
+}
+const mailOpen = r => !!r && (r.state === 'queued' || r.state === 'running');
+/* where a request stands, in words; nothing once it is a day old (the address's "last sent" is the record) */
+function sendLine(r) {
+  if (!r) return '';
+  if (r.state === 'queued') return 'Queued: ' + (r.dispatched_at ? 'the mailer has been started and it goes out in a few minutes.' : 'it goes out on the mailer’s next half-hourly run.');
+  if (r.state === 'running') return 'Sending now: the reports are being built, which takes a few minutes.';
+  if (Date.now() - Date.parse(r.finished_at || r.requested_at) > 864e5) return '';
+  /* the detail says what went ("Sent the week of …"), or why nothing did */
+  return (r.state === 'failed' ? 'Failed ' : '') + fmtWhen(r.finished_at) + ' · ' + (r.detail || (r.state === 'sent' ? 'Sent.' : 'Nothing was sent.'));
+}
+/* one address (its id) or every active one (null) */
+async function sendNow(sub) {
+  const n = await rpc('request_report_send', { p_sub: sub });
+  if (n == null) return;
+  if (!n) { say('Already on its way, or paused: nothing new was queued.', 'warn'); loadMail(); return; }
+  const k = window.EpinoiaJobBar && window.EpinoiaJobBar.kick ? await window.EpinoiaJobBar.kick(sb) : { started: false };
+  const what = n === 1 ? 'Queued' : n + ' addresses queued';
+  say(k.started || k.why === 'already started' ? what + ' and the mailer has been started: the reports go out in a few minutes.'
+                                              : what + '. They go out on the mailer’s next half-hourly run, within 30 minutes.', 'ok');
+  loadMail();
+}
+
 async function loadMail() {
   const host = $('#mailList'), go = $('#mailGo');
   if (!host || !sb) return;
+  clearTimeout(mailTimer);
   const tz = $('#mailTz');
   if (tz && !tz.options.length) {
     const here = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
@@ -985,8 +1023,26 @@ async function loadMail() {
   if (error) { host.appendChild(el('p', 'lead', /report_mail_subs|schema cache|does not exist/i.test(error.message || '') ? 'Reports by email arrive with migration 0221: it has not been applied to this database yet.' : 'Could not read them: ' + error.message)); return; }
   if (!(data || []).length) { host.appendChild(el('p', 'mt', 'Nobody is sent reports yet.')); return; }
   const { data: log } = await sb.from('report_mail_log').select('sub_id,kind,sent_at').order('sent_at', { ascending: false }).limit(500);
+  /* the latest request of each address (0226; none before that migration is applied) */
+  const { data: rq } = await sb.from('report_mail_requests').select('sub_id,state,requested_at,dispatched_at,finished_at,detail').order('requested_at', { ascending: false }).limit(200);
+  const asked = new Map();
+  (rq || []).forEach(q => { if (!asked.has(q.sub_id)) asked.set(q.sub_id, q); });
+  const live = data.filter(x => x.active);
+  if (live.length > 1) {
+    const top = el('div', 'row'); top.style.cssText = 'align-items:center;gap:8px;margin-bottom:8px';
+    const every = el('button', 'ep-btn', 'send everyone next week’s reports now'); every.type = 'button';
+    every.disabled = live.every(x => mailOpen(asked.get(x.id)));
+    every.title = 'Email every active address the week-ahead reports now instead of on Sunday morning';
+    every.addEventListener('click', () => {
+      if (!confirm('Send next week’s reports now to all ' + live.length + ' active addresses?\n\nEach gets the week that begins next Monday at its own time: a scouting report on each club its club plays, plus the club’s own report if this is its fortnight, in one email. ' +
+        'That counts as that Sunday’s email, so Sunday morning will not send it again. It takes a few minutes.')) return;
+      every.disabled = true; sendNow(null);
+    });
+    top.append(every, el('span', 'mt', live.length + ' active addresses'));
+    host.appendChild(top);
+  }
   data.forEach(x => {
-    const r = el('div', 'row'); r.style.cssText = 'align-items:center;gap:8px;margin-bottom:4px';
+    const r = el('div', 'row'); r.style.cssText = 'align-items:center;gap:4px 8px;margin-bottom:0;padding:8px 0;border-bottom:1px solid var(--rule)';
     const last = (log || []).find(l => l.sub_id === x.id);
     const who = el('span', 'grow', x.email + (x.name ? ' (' + x.name + ')' : '') + ' · ' + ((x.teams || {}).name || 'club'));
     who.style.overflowWrap = 'anywhere';
@@ -998,9 +1054,28 @@ async function loadMail() {
       if (!confirm(x.email + ' will no longer be sent ' + ((x.teams || {}).name || 'the club') + '’s reports.')) return;
       const { error: e } = await sb.from('report_mail_subs').delete().eq('id', x.id); if (e) oops(e); else loadMail();
     });
-    r.append(who, what, pause, end);
+    r.append(who, what);
+    /* the second line: send next week's reports now (an active address), pause, remove, and where the latest request stands */
+    const acts = el('div', 'row'); acts.style.cssText = 'flex-basis:100%;margin:0;gap:8px';
+    if (x.active) {
+      const ask = asked.get(x.id), club = (x.teams || {}).name || 'the club';
+      const now = el('button', 'ep-btn mini', mailOpen(ask) ? (ask.state === 'running' ? 'sending…' : 'queued') : 'send next week’s reports now'); now.type = 'button';
+      now.disabled = mailOpen(ask);
+      now.title = 'Email them the week-ahead reports now instead of on Sunday morning';
+      now.addEventListener('click', () => {
+        if (!confirm('Send ' + x.email + ' next week’s reports now?\n\nNext week is ' + weekWords(x.tz) + ' at their time: a scouting report on each club ' + club + ' plays that week, plus the club’s own report if this is its fortnight, in one email. ' +
+          'That counts as that Sunday’s email, so Sunday morning will not send it again. It takes a few minutes.')) return;
+        now.disabled = true; sendNow(x.id);
+      });
+      acts.appendChild(now);
+    }
+    acts.append(pause, end);
+    const line = sendLine(asked.get(x.id));
+    if (line) acts.appendChild(el('span', 'mt', line));
+    r.appendChild(acts);
     host.appendChild(r);
   });
+  if ([...asked.values()].some(mailOpen)) mailTimer = setTimeout(() => { if (!document.hidden) loadMail(); else mailTimer = setTimeout(loadMail, 15000); }, 15000);
 }
 
 /* --------------------------------------------------------------- leagues --- */

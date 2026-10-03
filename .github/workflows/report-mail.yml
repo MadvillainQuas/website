@@ -3,6 +3,9 @@ name: Reports by email (game analyses, Sunday scouting reports)
 # Every half hour (scripts/report_mailer.mjs, migration 0221): the game analysis of each subscribed club's games as soon as
 # they are final, and on Sunday morning at each address's own time the week's opponents' reports (with the club's own every
 # other Sunday), all in one email. The PDFs are drawn by the site itself, served from this checkout, in headless Chromium.
+# "SEND NEXT WEEK'S REPORTS NOW" (0226): the platform console's Reports by email can ask for the Sunday email at once, for an address
+# or for everyone. Each run takes those requests first (report_mail_requests); the console-kick function starts this workflow
+# the moment the button is pressed, and where it is not set up the next half hour does. No input is needed to start it.
 # Secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY, REPORTS_FROM ("Epinoia <reports@your-domain>").
 on:
   schedule:

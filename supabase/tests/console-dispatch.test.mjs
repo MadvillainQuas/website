@@ -6,7 +6,8 @@
 //     first), the seasons being read now, and when its worker was started; nothing ahead of one already running;
 //   * only its league's administrators and the platform's may ask; a signed-out reader cannot call it at all.
 // And the console-kick function: it reads the queue as its caller (row level security decides what they may start),
-// holds the GitHub token as its own secret, starts console-jobs.yml, and notes when on the queued rows only.
+// holds the GitHub token as its own secret, starts console-jobs.yml (and report-mail.yml for a queued "send next
+// week's reports now", 0226; supabase/tests/report-send-now.test.mjs), and notes when on the queued rows only.
 //
 //   node supabase/tests/console-dispatch.test.mjs
 import { readFileSync } from 'node:fs';
@@ -21,15 +22,16 @@ const FN = readFileSync(path.join(here, '..', 'functions', 'console-kick', 'inde
 console.log('the console-kick function');
 ok('it reads the queue with the caller\'s own token, so row level security decides what they may start',
    /createClient\(URL_, ANON, \{\s*global: \{ headers: \{ Authorization: req\.headers\.get\('Authorization'\) \|\| '' \} \}/.test(FN) &&
-   /caller\.from\(table\)\.select\('id,dispatched_at'\)\.eq\('state', 'queued'\)/.test(FN) && /why: 'nothing queued'/.test(FN));
+   /caller\.from\(table\)\.select\('id,dispatched_at'\)\.eq\('state', 'queued'\)/.test(FN) && /why = 'nothing queued'/.test(FN));
 ok('...the GitHub token is its own secret, and without it nothing is tried',
    /Deno\.env\.get\('GITHUB_DISPATCH_TOKEN'\)/.test(FN) && /if \(!TOKEN \|\| !\/\^\[\\w\.-\]\+\\\/\[\\w\.-\]\+\$\/\.test\(REPO\)\) return json\(\{ started: false, why: 'not set up' \}\);/.test(FN));
-ok('...it starts console-jobs.yml by workflow_dispatch, and only a 204 counts',
-   /api\.github\.com\/repos\/\$\{REPO\}\/actions\/workflows\/\$\{WORKFLOW\}\/dispatches/.test(FN) && /const WORKFLOW = 'console-jobs\.yml';/.test(FN) &&
+ok('...it starts console-jobs.yml by workflow_dispatch (and, since 0226, report-mail.yml for a queued report request), and only a 204 counts',
+   /api\.github\.com\/repos\/\$\{REPO\}\/actions\/workflows\/\$\{job\.workflow\}\/dispatches/.test(FN) &&
+   /\{ workflow: 'console-jobs\.yml', tables: \['season_backfills', 'league_resets'\] \}/.test(FN) && /\{ workflow: 'report-mail\.yml', tables: \['report_mail_requests'\] \}/.test(FN) &&
    /if \(gh\.status !== 204\)/.test(FN));
 ok('...not again within three minutes, and the service role notes when on queued rows alone',
-   /const AGAIN_MS = 3 \* 60 \* 1000;/.test(FN) && /why: 'already started'/.test(FN) &&
-   /admin\.from\(table\)\.update\(\{ dispatched_at: at \}\)\.in\('id', ids\)\.eq\('state', 'queued'\)/.test(FN));
+   /const AGAIN_MS = 3 \* 60 \* 1000;/.test(FN) && /why = 'already started'/.test(FN) &&
+   /admin\.from\(table\)\.update\(\{ dispatched_at: stamp \}\)\.in\('id', ids\)\.eq\('state', 'queued'\)/.test(FN));
 
 let PGlite;
 try { ({ PGlite } = await import(process.env.PGLITE_DIR ? pathToFileURL(path.join(process.env.PGLITE_DIR, 'dist', 'index.js')).href : '@electric-sql/pglite')); }
