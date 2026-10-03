@@ -45,7 +45,7 @@
   font-family:var(--f-micro); font-weight:400; font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#fff }
 .tv-lu-row h5.o{ background:var(--tv-club) } .tv-lu-row h5.d{ background:#3f5249 } .tv-lu-row h5.p{ background:#5b8fa8 }
 .tv-ts{ display:flex; flex-wrap:nowrap; gap:5px; min-width:0 }
-.tv-t{ flex:1 1 0; min-width:0; display:grid; align-content:start; gap:1px; padding:5px 4px 4px; border-radius:8px; text-align:center;
+.tv-t{ flex:1 1 0; min-width:0; display:grid; align-content:start; gap:1px; padding:5px 2px 4px; border-radius:8px; text-align:center;
   background:color-mix(in srgb,var(--c) 24%,var(--panel)); border:1px solid color-mix(in srgb,var(--c) 75%,transparent) }
 .tv-t small{ font-size:8px; font-weight:700; line-height:1.25; color:var(--ink-2,var(--ink)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .tv-t b{ font-family:var(--f-data,ui-monospace,monospace); font-size:13px; line-height:1.2 }

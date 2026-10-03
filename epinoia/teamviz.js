@@ -86,7 +86,7 @@ function lineupCards(units, base, o) {
   const cards = (units || []).map((u, i) => {
     const l = Object.assign({}, u.line); l.astp = astOf(u.line);
     const nb = bandVs(l.net, B.net, 5, false);
-    const five = (u.ids || []).map(id => '<li>' + (opt.photos && opt.photos[id] ? '<img src="' + esc(opt.photos[id]) + '" alt="" crossorigin="anonymous">' : '') + '<span>' + esc(nm(id)) + '</span></li>').join('');
+    const five = (u.ids || []).map(id => '<li>' + (opt.photos && opt.photos[id] ? '<img src="' + esc(opt.photos[id]) + '" alt="" crossorigin="anonymous" data-fb="">' : '') + '<span>' + esc(nm(id)) + '</span></li>').join('');
     return '<article class="tv-lu">' +
       '<header><b class="tv-lu-no">' + (i + 1) + '</b><div class="tv-lu-who"><ol class="tv-lu-five">' + five + '</ol>' +
         '<p class="tv-lu-meta"><b>' + Math.round(l.mins || 0) + '</b> min \u00b7 <b>' + Math.round(l.poss || 0) + '</b> possessions \u00b7 <b>' + (l.pm > 0 ? '+' : '') + (l.pm || 0) + '</b> on the scoreboard</p></div>' +

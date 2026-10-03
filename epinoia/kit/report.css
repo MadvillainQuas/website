@@ -129,7 +129,7 @@
   border:2px solid rgba(255,255,255,.9); box-shadow:0 2px 6px rgba(0,0,0,.25) }
 .rp-spot b{ font-family:var(--f-micro); font-size:9px; letter-spacing:.06em; line-height:1 }
 .rp-spot i{ font-style:normal; font-family:var(--f-score); font-size:17px; line-height:1 }
-.rp-spot em{ position:absolute; top:100%; margin-top:4px; white-space:nowrap; font-style:normal; font-family:var(--f-ui); font-weight:700; font-size:10px;
+.rp-spot em{ position:absolute; top:100%; margin-top:4px; width:max-content; max-width:112px; text-align:center; line-height:1.2; font-style:normal; font-family:var(--f-ui); font-weight:700; font-size:10px;
   padding:2px 6px; border-radius:6px; background:rgba(4,16,11,.82); color:#ffffff }
 .rp-spot.b4{ --c:#1f9d55; color:#ffffff } .rp-spot.b3{ --c:#8cc63f } .rp-spot.b2{ --c:#f2d04f } .rp-spot.b1{ --c:#f0a052 }
 .rp-spot.b0{ --c:transparent; border:2px dashed rgba(13,31,23,.35); box-shadow:none; color:rgba(13,31,23,.55) }
@@ -297,6 +297,16 @@
   background:linear-gradient(90deg,color-mix(in srgb,var(--zc) 22%,#ffffff),#ffffff 75%) }
 .rp-zt tr.rp-zk td i{ display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:2px; vertical-align:-.5px; background:var(--zc) }
 .rp-zt tr[data-k] > td.l{ box-shadow:inset 3px 0 0 var(--zc) }
+/* the both-teams / both-ends table (report-teampages.js shots): fixed columns, so a club's name or a long label is never
+   what makes it wider than its page; each club's three columns under its name, a banner for each of the two ways of cutting */
+.rp-zz{ table-layout:fixed }
+.rp-zz col{ width:11.67% } .rp-zz col.z{ width:21% } .rp-zz col.be{ width:9% }
+.rp-zz th{ white-space:normal }
+.rp-zz thead th.rp-zh-a, .rp-zz thead th.rp-zh-b{ text-align:center; box-shadow:inset 0 -3px 0 var(--rp-a,#08603f) }
+.rp-zz thead th.rp-zh-b{ box-shadow:inset 0 -3px 0 var(--rp-b,#5d6b64) }
+.rp-zz thead tr + tr th{ padding-top:3px }
+.rp-zz tr.rp-zg td{ padding:6px 6px 3px; text-align:left; font-family:var(--f-micro); font-size:7px; letter-spacing:.16em; text-transform:uppercase; color:var(--rp-a,#08603f);
+  background:#f6faf7; border-top:1px solid var(--rule-2) }
 .rp-zs{ position:relative; min-width:58px }
 .rp-zs span{ position:relative; z-index:1 }
 .rp-zs i{ position:absolute; left:5px; bottom:2px; height:3px; border-radius:2px; background:var(--rp-a,#08603f); max-width:calc(100% - 10px) }
@@ -545,7 +555,7 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .ga-flow .gf-legend-item{ white-space:nowrap }
 /* the lineup cards a little tighter on a game's page, so a club's four sit on one */
 .ga-lus .tv-lu header{ padding:6px 12px } .ga-lus .tv-lu-row{ gap:8px; padding:5px 12px } .ga-lus .tv-lu-row + .tv-lu-row{ padding-top:0 }
-.ga-lus .tv-t{ padding:3px 4px } .ga-lus .tv-lu-net{ padding:2px 10px } .ga-lus .tv-lu-net b{ font-size:19px }
+.ga-lus .tv-t{ padding:3px 2px } .ga-lus .tv-lu-net{ padding:2px 10px } .ga-lus .tv-lu-net b{ font-size:19px }
 .ga-flow{ --f-mono:var(--f-ui) }
 .ga-flow .gf-summary{ padding-top:0; border-top:0; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px }
 .ga-flow .gf-runlist{ gap:4px; margin-top:8px }
@@ -566,3 +576,5 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .rp-top-c-pair .rp-vs{ font-style:normal; font-family:var(--f-micro); font-size:6.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3) }
 /* the zone courts' keys on one line each */
 .rp-pg .scz-key .rl, .rp-pg .lg.ramp .rl{ white-space:nowrap }
+/* a long name wraps in the rotations' label column rather than being cut short */
+.rp-pg .rot-nm b{ white-space:normal; overflow:visible; text-wrap:balance }

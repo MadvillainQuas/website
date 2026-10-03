@@ -457,11 +457,13 @@ function modules(ctx) {
       const poss = n => esc(n) + (/s$/i.test(n) ? '’' : '’s');     // Illawarra Hawks’, Adelaide 36ers’
       out.push(block(title(c.vs ? 'Both teams’ shots by zone' : 'Offence and defence by zone', (c.vs ? 'this game' : 'the last ' + L.gs.length + ' games') + ' · each zone tinted against its break-even') +
         '<div class="rp-two"><div>' + head(c.vs ? poss(c.vs.a) + ' shots' : 'Offence', off) + court(off, 'zones', colour) + '</div><div>' + head(c.vs ? poss(c.vs.b) + ' shots' : 'Defence (opponents’ shots)', def) + court(def, 'zones', (c.vs && c.vs.bcol) || '#5d6b64') + '</div></div>'));
-      /* both ends, zone by zone, in one table */
-      const zr = sh => { const z = SC.zoneRows(sh, L.gs.length); return z.groups.concat(z.big); };
-      const ro = zr(off), rd = zr(def);
+      /* both ends, zone by zone, in one table. Cut into parts as every table of zones is (shotchart.js parts: a heading for each kind
+         of shot, then for each way of cutting the larger cuts), the two clubs' figures side by side under a heading of their own
+         (a club's name once, not on every column), in fixed columns: it is the page's width, whatever the names are */
+      const zr = sh => SC.zoneRows(sh, L.gs.length);
+      const zo = zr(off), zd = zr(def);
       const byKey = rows => new Map(rows.map(r => [r.k || r.label, r]));
-      const mo = byKey(ro), md = byKey(rd);
+      const mo = byKey(zo.groups.concat(zo.big)), md = byKey(zd.groups.concat(zd.big));
       /* FG% against the zone's break-even: green above it for the offence, under it for the defence */
       const cell = (r, def) => {
         if (!r || !r.att) return '<td>\u2014</td><td>\u2014</td><td>\u2014</td>';
@@ -470,13 +472,19 @@ function modules(ctx) {
         return '<td>' + r.made + '/' + r.att + '</td><td>' + (E.isNum(r.share) ? f1(r.share) + '%' : '\u2014') + '</td><td data-b="' + b + '">' + f1(r.fg) + '</td>';
       };
       const cellD = r => cell(r, !c.vs);
-      const keys = [...new Set(ro.map(r => r.k || r.label).concat(rd.map(r => r.k || r.label)))];
+      const nameA = c.vs ? esc(c.vs.as || c.vs.a) : 'offence', nameB = c.vs ? esc(c.vs.bs || c.vs.b) : 'defence';
+      const zrow = (a, b, k) => {
+        const any = a || b;
+        return '<tr' + (any.kind ? ' data-k="' + any.kind + '"' : '') + '><td class="l">' + esc(any.label || k) + '</td>' + cell(a) + cellD(b) + '<td>' + (E.isNum(any.be) ? f1(any.be) : '\u2014') + '</td></tr>';
+      };
+      const zbody = [['every zone', 'groups', zo.groups], ['the larger cuts', 'big', zo.big]].map(([cap, which, list]) =>
+        '<tr class="rp-zg"><td colspan="8">' + cap + '</td></tr>' +
+        SC.parts(list, which).map(p => (p.title ? '<tr class="rp-zk"' + (p.kind ? ' data-k="' + p.kind + '"' : '') + '><td colspan="8"><i></i>' + esc(p.title) + '</td></tr>' : '') +
+          p.rows.map(r => zrow(mo.get(r.k || r.label), md.get(r.k || r.label), r.k || r.label)).join('')).join('')).join('');
       out.push(block(title(c.vs ? 'Both teams, zone by zone' : 'Both ends, zone by zone', c.vs ? 'FG% green where it beat the zone’s break-even, red where it fell short' : 'FG% green where it beats the zone’s break-even (offence) or holds opponents under it (defence)') +
-        '<table class="rp-tbl"><thead><tr><th class="l">zone</th>' + (() => { const a = c.vs ? esc(c.vs.as) : 'off', b = c.vs ? esc(c.vs.bs) : 'def';
-          return '<th>' + a + ' made/att</th><th>' + a + ' % of shots</th><th>' + a + ' FG%</th><th>' + b + ' made/att</th><th>' + b + ' % of shots</th><th>' + b + ' FG%</th>'; })() + '<th>break-even</th></tr></thead><tbody>' +
-        keys.map(k => { const a = mo.get(k), b = md.get(k), any = a || b;
-          return '<tr><td class="l">' + esc(any.label || k) + '</td>' + cell(a) + cellD(b) + '<td>' + (E.isNum(any.be) ? f1(any.be) : '—') + '</td></tr>'; }).join('') +
-        '</tbody></table>'));
+        '<table class="rp-tbl rp-zt rp-zz"><colgroup><col class="z"><col span="6"><col class="be"></colgroup><thead>' +
+        '<tr><th class="l" rowspan="2">zone</th><th colspan="3" class="rp-zh-a">' + nameA + '</th><th colspan="3" class="rp-zh-b">' + nameB + '</th><th rowspan="2">break-even</th></tr>' +
+        '<tr><th>made/att</th><th>% of shots</th><th>FG%</th><th>made/att</th><th>% of shots</th><th>FG%</th></tr></thead><tbody>' + zbody + '</tbody></table>'));
       /* the box score's half-court and transition cards over the season, at both ends (situations.js on every log) */
       try {
         if (root.EpinoiaSituations) {
@@ -565,7 +573,7 @@ function modules(ctx) {
         const Rk = rankerOf(r, grp);
         const top = pct ? pct.indexOf(Math.max(...pct)) : -1;
         const chips = pct ? pct.map((v, k) => v >= 1 ? '<span' + (k === top ? ' class="top"' : '') + '>' + SL[k] + ' ' + Math.round(v) + '%</span>' : '').join('') : (m.position ? '<span>' + esc(m.position) + '</span>' : '');
-        const ph = m.photo_url ? '<span class="rp-ph"><img src="' + esc(m.photo_url) + '" alt="" crossorigin="anonymous"></span>'
+        const ph = m.photo_url ? '<span class="rp-ph"><img src="' + esc(m.photo_url) + '" alt="" crossorigin="anonymous" data-fb="' + esc(m.jersey ? m.jersey : (m.name || r.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2)) + '"></span>'
           : '<span class="rp-ph"><b>' + esc((m.jersey ? m.jersey : (m.name || r.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2))) + '</b></span>';
         const nm = m.name || r.name || 'Player';
         const groups = sets[grp].map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + E.groupCellsHTML(ks, r, Rk) + '</div></div>').join('');

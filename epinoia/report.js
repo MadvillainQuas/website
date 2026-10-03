@@ -642,6 +642,28 @@ function sitCardHTML(A, o) {
       '<div class="rp-sit-s"><h5>Shot types</h5>' + types + zones + zl + sc + '</div></div></div>';
 }
 
+/* A CREST OR A PHOTO THAT DID NOT LOAD (2026-10-03). Another site's logo sends no CORS header, which the pictures need to be
+   drawn into the PDF, or the link is dead: the page then carried a broken-picture icon where the crest should be (a KBL
+   game's analysis did). An image with a data-fb is put right once the pages are built, and when it fails later: its
+   monogram or initials, as the page draws a club or a player with no picture; an empty fallback just takes it out. */
+function stand(scope) {
+  const fix = img => {
+    const fb = img.getAttribute('data-fb'), box = img.parentNode;
+    if (fb == null || !box) return;
+    if (!fb) { img.remove(); return; }
+    if (box.classList) box.classList.remove('img');
+    box.textContent = '';
+    box.appendChild(el('b', null, fb));
+  };
+  /* decode() answers for a picture that failed, and one still loading, alike; a vector logo with no size of its own has no
+     naturalWidth and has not failed */
+  scope.querySelectorAll('img[data-fb]').forEach(img => {
+    if (typeof img.decode === 'function') img.decode().catch(() => fix(img));
+    else if (img.complete) { if (!img.naturalWidth) fix(img); }
+    else img.addEventListener('error', () => fix(img), { once: true });
+  });
+}
+
 /* a section title inside a page, and a block: everything a module returns is one of these */
 function block(html, cls) { const b = el('div', 'rp-blk' + (cls ? ' ' + cls : '')); if (typeof html === 'string') b.innerHTML = html; else if (html) b.appendChild(html); return b; }
 const title = (t, note) => '<div class="rp-h"><h3>' + esc(t) + '</h3>' + (note ? '<span>' + esc(note) + '</span>' : '') + '</div>';
@@ -655,8 +677,9 @@ function crestHTML(c, cls) {
   /* a game's two clubs (game/analysis.js c.crests): both crests, "vs" between them */
   if (Array.isArray(c.crests) && c.crests.length === 2)
     return '<span class="' + cls + '-pair">' + crestHTML(c.crests[0], cls) + '<i class="rp-vs">vs</i>' + crestHTML(c.crests[1], cls) + '</span>';
-  if (c.crest) return '<span class="' + cls + ' img"><img src="' + esc(c.crest) + '" alt="" crossorigin="anonymous"></span>';
   const mono = String(c.monogram || c.club || c.name || '?').replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 3).toUpperCase();
+  /* data-fb: what stands in for it if it does not load (stand, below) */
+  if (c.crest) return '<span class="' + cls + ' img"><img src="' + esc(c.crest) + '" alt="" crossorigin="anonymous" data-fb="' + esc(mono || '?') + '"></span>';
   return '<span class="' + cls + '"><b>' + esc(mono || '?') + '</b></span>';
 }
 function newPage(c, label, cont) {
@@ -737,6 +760,18 @@ function layout(host, c, label, blocks, opt) {
     if (count > 1 && !b.style.zoom) {
       const need = b.offsetHeight || 1, z = (need - (body.scrollHeight - body.clientHeight) - 3) / need;
       if (z >= 0.88) { b.style.zoom = z.toFixed(3); if (!over()) return; b.style.zoom = ''; }
+      /* or every block of the page a little smaller together (down to 92%), which saves a page holding one small block */
+      const kids = [...body.children];
+      if (kids.every(k => !k.style.zoom)) {
+        const tall = kids.reduce((s, k) => s + (k.offsetHeight || 0), 0) || 1;
+        let zz = (tall - (body.scrollHeight - body.clientHeight) - 3) / tall;
+        for (let i = 0; i < 2 && zz >= 0.92; i++) {
+          kids.forEach(k => { k.style.zoom = zz.toFixed(3); });
+          if (!over()) return;
+          zz *= (body.clientHeight - 2) / Math.max(1, body.scrollHeight);
+        }
+        kids.forEach(k => { k.style.zoom = ''; });
+      }
     }
     if (count > 1) { b.remove(); open(true); body.appendChild(b); count = 1; }
     if (over()) {
@@ -1067,6 +1102,7 @@ function ui(state) {
       const all = pagesNew.querySelectorAll('.rp-pg');
       all.forEach((p, i) => { const n = p.querySelector('.rp-no'); if (n) n.textContent = (i + 1) + ' / ' + all.length; });
       say(all.length + (all.length === 1 ? ' page' : ' pages'));
+      stand(pagesNew);
       (state.onBuilt || []).forEach(f => { try { f(); } catch (_) { /* a label */ } });
       /* the mailer waits for this before it asks for the PDF */
       root.__rpBuilt = (root.__rpBuilt || 0) + 1;
@@ -1178,6 +1214,6 @@ function groupsFor(state, set, pos) {
   return templateOf(set, state.conf.tpl[set], pos);
 }
 
-return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, groupRowsHTML, groupCellsHTML, groupWeight, shotRuns, SHOT_KIND, posCourtHTML, POS_KEY, block, title, frag, el, esc,
+return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, stand, groupRowsHTML, groupCellsHTML, groupWeight, shotRuns, SHOT_KIND, posCourtHTML, POS_KEY, block, title, frag, el, esc,
          fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, HC_MIN, posPools, posRanker, POS_PLURAL, layout, legendBlocks, PAGE, SLOTS, isNum };
 }));
