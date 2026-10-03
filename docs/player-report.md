@@ -1,0 +1,71 @@
+# The player report's statistics
+
+The Report tab on a player's profile (`report.js`, `report-playerpages.js`) is the player as A4 pages; the same rows, as cards, are
+the club report's PLAYERS pages (`report-teampages.js`). Each row is a value, its percentile among the players of his position in the
+competition (guards, wings, bigs: the third that plays most like each), and their average.
+
+**The templates** are `TPL` in `report.js`: `main` for a player's page, `players` for the club report's cards, each by position. A
+reader can edit one and save it in the browser. A stat is in `STATS` (label, decimals, whether lower is better, whether it is a
+*style*, drawn in one neutral tone because it has no good end) and, for the legend, in `DEFS`.
+
+## Situation stats (2026-10-03)
+
+| Stat | Where | What it is |
+|---|---|---|
+| HALF-COURT AST% | player report, guards | of his teammates' half-court baskets while he was on the floor, the share he assisted |
+| HALF-COURT USG% | SCORING, both reports, every position | of his team's half-court chances while he was on the floor, the share he ended: a shot, 0.44 of a free throw, a turnover |
+| % OF RIM ATT IN HALF COURT | SHOT PROFILE, both reports | of his shots at the rim, the share taken in the half court |
+| HALF-COURT RIM% | SHOT PROFILE, both reports | his field-goal percentage at the rim in the half court |
+| TRANSITION RIM VOL / 100 | SITUATIONS, player report | his shots at the rim in transition per 100 of his team's possessions while he is on the floor |
+| TRANSITION RIM% | SITUATIONS, player report | his field-goal percentage at the rim in transition |
+
+The half court is the events lines' (`situations.js`): a chance that was none of a second chance, a fast break (or within eight
+seconds of a defensive rebound or a steal), off a turnover, or after a timeout.
+
+- **HALF-COURT USG%** is worked out in `season.js` (`ev_half_usg`). The team's half-court chances come from the club's stored
+  events line of each game, weighted by the share of that game's floor time he played, exactly as USG%'s possessions are. It counts
+  only the games that have an events line, on both sides of the fraction, and is blank under ten chances. Averaged over the minutes
+  played, it is the same as USG%: about 20%.
+- **The share of rim attempts, and the transition volume,** are worked out in `report.js derive` from the row's `ev_` counts
+  (`rim_half_sh = ev_half_rimA / ev_all_rimA`; `ev_transition_rim_a100 = ev_transition_rimA / on_poss × 100`, blank under 20
+  possessions). The two rim percentages are the row's own (`ev_half_rim_pct`, `ev_transition_rim_pct`).
+- **HALF-COURT AST%** needs every game's play-by-play of the competition, which the player page reads once (`fieldGames`), and is
+  blank under **ten** such baskets (it was twenty, which left most of a competition blank for its first weeks).
+
+The rim here is the events lines' own (`situations.js zoneOf`), so these rim counts can differ by a shot or two from the box
+score's RIM VOL / 100 and RIM% (`engine.js isRim`, which asks the marker before the shot type). RIM ASSISTED% has always been read
+the same way.
+
+## Rim defence on and off
+
+DEF RIM FG% ± and DEF RIM VOL ± (the bigs' RIM PROTECTION) are the opponents' rim field-goal percentage, and rim shots per 100
+possessions, with him on the floor minus with him off it. They need the **on-court rim counts** stored on each player's game row
+(`stats.oc.oRimA`, `oRimM`, written by `engine.js` since 30 September 2026), and 15 opponent rim shots on and off.
+
+Games finalised before that carry none, so until the **Backfill stored player stats** workflow (`backfill-stats.yml`) has been run
+for real the figure is blank for a player whose games are older. The workflow's `dry_run` defaults to **true**, which only counts. For
+real: Actions, Backfill stored player stats, Run workflow, untick *Count what would change, write nothing*. It replays each stored
+log with `engine.js` and merges six numbers into each row (`scripts/backfill_player_reb.mjs`); a game whose replay does not give the
+stored score is skipped and named.
+
+A season is kept as a file named by its token (the number of finished games and when the last was finalised), and the backfill
+changes neither, so a competition's file keeps the old figures until its next final, or until `season.js`'s version changes (below).
+Run the backfill **before** deploying the snapshots function, so the files it builds read the backfilled rows.
+
+## When this reaches the site
+
+Adding `ev_half_usg` is a new key on every season line, so the version of the code that sums a season changed
+(`EpinoiaSeason.version()`, see [Season files](season-files.md)). Pages sum a season themselves until the files are built again,
+which is slower and right. After merging:
+
+1. (once) run the backfill for real, as above, and wait for it to finish;
+2. `npx supabase functions deploy snapshots`.
+
+`finalise-game` runs a copy of `season.js` too (for the BPM award), but reads nothing that changed, so it needs no deploy for this.
+
+## Tests
+
+`supabase/tests/report-situation-stats.test.mjs`: the ten-basket line; the derived rim stats on a row (rounding, the guards, no
+coverage is blank, never zero); the new figures ranked and drawn; every template (the new keys beside the rim stats, after USG%, in
+every position's SITUATIONS); half-court usage in `season.js` on a hand-worked season (weights, a game with no events line, under ten
+chances); the Edge Function's copy.

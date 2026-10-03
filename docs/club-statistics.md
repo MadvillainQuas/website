@@ -152,6 +152,8 @@ pages are the PDF in the report emails. Three things were added on a request fro
 
 Both blocks fit the room the pages had left, so the report is no longer than before. `node supabase/tests/team-report-extras.test.mjs`.
 
+The PLAYERS pages (a card for each player) take the player report's situation stats too: half-court usage, the half-court share of rim attempts and the half-court rim%. See [The player report's statistics](player-report.md).
+
 ## Phones
 
 Every table is its own container. Below 560–600 px of its own width, every row becomes a card: the figures sit with their names, and the bars run across the width. The ratings stay on one row.

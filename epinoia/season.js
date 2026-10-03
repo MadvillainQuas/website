@@ -325,6 +325,9 @@ function addPlayers(acc, pgs, tgs) {
       A.den.teamFgm    += share * TT.fgm;
       A.den.team3a     += share * TT.fg3a;               // the team's threes while he played: TEAM SPACING (below)
       A.den.team3m     += share * TT.fg3m;
+      /* the team's half-court chances while he played, weighted the same way: the denominator of HALF-COURT USAGE
+         (ev_half_usg). Only the games whose side line is there, which are the games his events splits count. */
+      if (isSit(TT.sit) && Array.isArray(TT.sit.half)) A.den.hcCh += share * num(TT.sit.half[SIT_NF - 1]);
       A.den.oppPoss    += share * oppPoss;
       A.den.oppFga2    += share * (OT.fga - OT.fg3a);
       A.den.orebChance += share * (TT.oreb + OT.dreb);
@@ -355,7 +358,7 @@ function blankPlayer(id) {
     ptsAst: 0, rimA: 0, rimM: 0, midA: 0, midM: 0, dq: 0, paint: 0, fast: 0, sc: 0, pot: 0,
     oc: { tFGA:0,tFGM:0,t3M:0,tFTA:0,tTOV:0,tOR:0,tDR:0,tPTS:0,
           oFGA:0,oFGM:0,o3M:0,oFTA:0,oTOV:0,oOR:0,oDR:0,oPTS:0 },
-    den: { teamPoss:0, teamFgm:0, oppPoss:0, oppFga2:0, orebChance:0, drebChance:0, team3a:0, team3m:0 },
+    den: { teamPoss:0, teamFgm:0, oppPoss:0, oppFga2:0, orebChance:0, drebChance:0, team3a:0, team3m:0, hcCh:0 },
     teamAll: { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0, min:0 },
     oppAll:  { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0 },
     rb:  { tm:0, tmO:0, sf:0, sfO:0, n:0 },      // rebound-linked counts, over games that carry them
@@ -554,6 +557,14 @@ function finishPlayer(A, m) {
   out.diff_vs_ftr  = dif('vs_ftr', 'vs_off_ftr');
   out.au = out.usg ? r2(out.ast_pct / out.usg) : null;   // assist-to-usage
   sitOut(out, SIT_EV, A.ev, false);
+  /* HALF-COURT USAGE (2026-10-03): the plays he ended in the half court - his shots, 0.44 of his free throws, his
+     turnovers, as USG% counts them - over the half-court chances of his team while he was on the floor, which are
+     weighted by his share of each game's floor time as USG%'s are. A chance is one attempt sequence (possessions.js), so
+     each ends in exactly one play. Under 10 chances it is noise, and is left null. */
+  {
+    const hn = A.ev ? A.ev.n : SIT_ZERO, ho = SIT_KEYS.indexOf('half') * SIT_NF;
+    out.ev_half_usg = A.den.hcCh >= 10 ? r1(pct(hn[ho + FI.fga] + 0.44 * hn[ho + FI.fta] + hn[ho + FI.tov], A.den.hcCh)) : null;
+  }
   return Object.assign(out, m || {});
 }
 

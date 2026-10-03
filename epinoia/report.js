@@ -59,7 +59,7 @@ const STATS = {
   dbpm: { l: 'DBPM', dp: 1, signed: true },
   rapm: { l: 'RAPM', dp: 1, signed: true, rapm: true }, orapm: { l: 'ORAPM', dp: 1, signed: true, rapm: true },
   drapm: { l: 'DRAPM', dp: 1, signed: true, rapm: true },
-  usg: { l: 'USG%', dp: 1, style: true }, ts: { l: 'TS%', dp: 1 }, efg: { l: 'eFG%', dp: 1 }, ftr: { l: 'FTr', dp: 1 },
+  usg: { l: 'USG%', dp: 1, style: true }, ev_half_usg: { l: 'HALF-COURT USG%', dp: 1, style: true }, ts: { l: 'TS%', dp: 1 }, efg: { l: 'eFG%', dp: 1 }, ftr: { l: 'FTr', dp: 1 },
   ft_pct: { l: 'FT%', dp: 1 }, fg_pct: { l: 'FG%', dp: 1 },
   au: { l: 'A/U', dp: 2 }, ast_to: { l: 'AST / TO', dp: 2 }, ast_pct: { l: 'AST%', dp: 1 }, hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1 },
   ast3_sh: { l: "% OF ASSISTS THAT ARE 3'S", dp: 1, style: true }, ast2_sh: { l: "% OF ASSISTS THAT ARE 2'S", dp: 1, style: true },
@@ -68,6 +68,8 @@ const STATS = {
   mid_a100: { l: 'MID VOL / 100', dp: 1, style: true }, mid_pct: { l: 'MID%', dp: 1 }, ev_mid_astp: { l: 'MID ASSISTED%', dp: 1, style: true },
   p3_a100: { l: '3PT VOL / 100', dp: 1, style: true }, p3_pct: { l: '3PT%', dp: 1 }, ev_p3_astp: { l: '3PT ASSISTED%', dp: 1, style: true },
   ev_transition_pts_sh: { l: 'TRANSITION %PTS', dp: 1, style: true },
+  ev_transition_rim_a100: { l: 'TRANSITION RIM VOL / 100', dp: 1, style: true }, ev_transition_rim_pct: { l: 'TRANSITION RIM%', dp: 1 },
+  rim_half_sh: { l: '% OF RIM ATT IN HALF COURT', dp: 1, style: true }, ev_half_rim_pct: { l: 'HALF-COURT RIM%', dp: 1 },
   ev_half_efg: { l: 'HALF-COURT eFG%', dp: 1 }, ev_half_tov_pct: { l: 'HALF-COURT TO%', dp: 1, low: true },
   ev_half_ppp: { l: 'HALF-COURT PTS / CHANCE', dp: 2 }, ev_transition_ppp: { l: 'TRANSITION PTS / CHANCE', dp: 2 },
   stl_pct: { l: 'STL%', dp: 1 }, blk_pct: { l: 'BLK%', dp: 1 }, oreb_pct: { l: 'ORB%', dp: 1 }, dreb_pct: { l: 'DRB%', dp: 1 },
@@ -86,13 +88,18 @@ const DEFS = {
   orapm: ['Offensive RAPM', 'Regularised adjusted plus-minus, offence: points per 100 possessions he adds to his team’s offence once every teammate and opponent on the floor is accounted for (ridge regression over every stint of the league’s season).'],
   drapm: ['Defensive RAPM', 'The same regression’s defensive coefficient: points per 100 possessions he takes off the opponent’s offence. Higher is better.'],
   rapm: ['RAPM', 'Offensive plus defensive RAPM.'],
-  hc_ast_pct: ['Half-court assist %', 'Of his teammates’ baskets in the half court while he was on the floor (not a second chance, a fast break or off a turnover), the share he assisted: how much of the set offence he creates. Worked out from every game’s play-by-play in the competition; blank under 20 such baskets.'],
+  hc_ast_pct: ['Half-court assist %', 'Of his teammates’ baskets in the half court while he was on the floor (not a second chance, a fast break or off a turnover), the share he assisted: how much of the set offence he creates. Worked out from every game’s play-by-play in the competition; blank under 10 such baskets.'],
   ast3_sh: ['Assists that were threes', 'Of the baskets he assisted, the share that were three-pointers (points off his assists minus two per assist).'],
   ast2_sh: ['Assists that were twos', 'Of the baskets he assisted, the share that were two-pointers.'],
   pf_pg: ['Fouls conceded a game', 'Personal fouls he commits per game. Fewer is better.'],
   badpass_pg: ['Bad-pass turnovers a game', 'Turnovers the feed typed as a bad pass, per game; only leagues whose feed types its turnovers have them.'],
   handle_pg: ['Dribble turnovers a game', 'Turnovers the feed typed as a ball-handling error (travelling, a lost dribble, a carry), per game.'],
   ev_transition_pts_sh: ['Transition share of points', 'The share of his points scored in transition: within eight seconds of a defensive rebound or a steal, or tagged a fast break.'],
+  ev_half_usg: ['Half-court usage', 'Of his team’s half-court chances while he was on the floor (not a second chance, a fast break, off a turnover or after a timeout), the share he ended himself: a shot, a trip to the line or a turnover, counted as USG% counts them. Blank under 10 such chances.'],
+  ev_transition_rim_a100: ['Transition rim volume', 'Shots at the rim in transition (a fast break, or within eight seconds of a defensive rebound or a steal) per 100 of his team’s possessions while he is on the floor.'],
+  ev_transition_rim_pct: ['Transition rim %', 'Field-goal percentage on his shots at the rim in transition.'],
+  rim_half_sh: ['Rim attempts in the half court', 'Of his shots at the rim, the share taken in the half court (not a second chance, a fast break, off a turnover or after a timeout): how much of his work at the rim comes against a set defence.'],
+  ev_half_rim_pct: ['Half-court rim %', 'Field-goal percentage on his shots at the rim in the half court.'],
   ev_half_efg: ['Half-court eFG%', 'Effective field-goal percentage on chances that were not a second chance, a fast break, off a turnover or after a timeout.'],
   ev_half_tov_pct: ['Half-court turnover %', 'Turnovers per half-court chance. Lower is better.'],
   ev_half_ppp: ['Half-court points per chance', 'Points scored per half-court chance (a trip that ends in a shot, a turnover or free throws).'],
@@ -137,6 +144,15 @@ function derive(r) {
     const ch = +r.ev_half_fga + 0.44 * (+r.ev_half_fta || 0) + +r.ev_half_tov;
     if (ch > 0) r.ev_half_tov_pct = Math.round(1000 * r.ev_half_tov / ch) / 10;
   }
+  /* THE RIM, BY SITUATION (the events lines, ev_): his shots at the rim in transition per 100 of his team's possessions
+     while he is on the floor (season.js on_poss, with its own guard: under 20 possessions it is noise), and the share of
+     all his rim attempts that came in the half court */
+  if (r.ev_transition_rim_a100 == null && isNum(r.ev_transition_rimA) && isNum(r.on_poss) && +r.on_poss >= 20) {
+    r.ev_transition_rim_a100 = Math.round(1000 * r.ev_transition_rimA / r.on_poss) / 10;
+  }
+  if (r.rim_half_sh == null && isNum(r.ev_half_rimA) && isNum(r.ev_all_rimA) && +r.ev_all_rimA > 0) {
+    r.rim_half_sh = Math.round(1000 * r.ev_half_rimA / r.ev_all_rimA) / 10;
+  }
   if (r.spg == null && isNum(r.stl) && +r.gp > 0) r.spg = Math.round(10 * r.stl / r.gp) / 10;
   if (r.bpg == null && isNum(r.blk) && +r.gp > 0) r.bpg = Math.round(10 * r.blk / r.gp) / 10;
   return r;
@@ -178,7 +194,10 @@ function turnoverTypes(byG) {
    (situations.js's pairing); who was on the floor comes from each game's frozen starters and its substitutions
    (withstats.js's replay). A game whose feed logs no assist at all says nothing and is left out.
    games: [{ starters: [[ids], [ids]], events }] -> Map(pid -> { a: his assists on those baskets, m: those baskets }) */
-const HC_MIN = 20;
+/* Ten, not twenty (2026-10-03): the figure showed a dash for most of a competition's players through its first weeks,
+   a rotation guard two games in having fifteen such baskets. Ten is the line the site draws elsewhere (rebound-linked
+   ORB%: ten resolved misses). */
+const HC_MIN = 10;
 function hcAssists(games) {
   const SI = root.EpinoiaSituations, out = new Map();
   if (!SI || !SI.inGameOrder || !SI.stamps) return out;
@@ -222,42 +241,43 @@ function hcAstOf(t) { return t && t.m >= HC_MIN ? Math.round(1000 * t.a / t.m) /
 const TPL = {
   main: {
     guard: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
-            ['SCORING', ['usg', 'ts', 'efg', 'ftr', 'ft_pct']],
+            ['SCORING', ['usg', 'ev_half_usg', 'ts', 'efg', 'ftr', 'ft_pct']],
             ['PLAYMAKING', ['au', 'hc_ast_pct', 'ast3_sh', 'ast2_sh', 'tov_pct']],
-            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'mid_a100', 'mid_pct', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
-            ['SITUATIONS', ['ev_transition_pts_sh', 'ev_half_efg', 'ev_half_tov_pct']],
+            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_a100', 'mid_pct', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
+            ['SITUATIONS', ['ev_transition_pts_sh', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg', 'ev_half_tov_pct']],
             ['DEFENCE & GLASS', ['stl_pct', 'dreb_pct']],
             ['ON / OFF', ['diff_efg', 'diff_tov']]],
     wing: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
-           ['SCORING', ['usg', 'ts', 'efg', 'ftr']],
+           ['SCORING', ['usg', 'ev_half_usg', 'ts', 'efg', 'ftr']],
            ['PLAYMAKING', ['au', 'tov_pct']],
-           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'p3_a100', 'p3_pct']],
-           ['SITUATIONS', ['ev_transition_pts_sh', 'ev_half_efg']],
+           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
+           ['SITUATIONS', ['ev_transition_pts_sh', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg']],
            ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'oreb_pct', 'dreb_pct']],
            ['ON / OFF', ['diff_vs_efg']]],
     big: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
-          ['SCORING', ['usg', 'ts', 'ft_pct', 'ftr']],
+          ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ft_pct', 'ftr']],
           ['PLAYMAKING', ['au', 'tov_pct']],
-          ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'p3_a100', 'p3_pct']],
+          ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
+          ['SITUATIONS', ['ev_transition_rim_a100', 'ev_transition_rim_pct']],
           ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm']],
           ['GLASS & DEFENCE', ['oreb_pct', 'dreb_pct', 'blk_pct', 'pf_pg']],
           ['ON / OFF', ['diff_oreb', 'diff_vs_oreb']]]
   },
   players: {
     guard: [['IMPACT', ['orapm', 'drapm', 'bpm']],
-            ['SCORING', ['usg', 'ts', 'ftr']],
+            ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ftr']],
             ['PLAYMAKING', ['au', 'ast3_sh', 'ast2_sh', 'diff_efg']],
             ['HALF COURT', ['ev_half_efg', 'ev_half_tov_pct', 'badpass_pg', 'handle_pg', 'ev_transition_pts_sh']],
-            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
+            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
             ['DEFENCE', ['stl_pct', 'dreb_pct']]],
     wing: [['IMPACT', ['orapm', 'drapm', 'bpm']],
-           ['SCORING', ['usg', 'ts', 'ftr', 'au', 'tov_pct']],
+           ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ftr', 'au', 'tov_pct']],
            ['HALF COURT', ['ev_half_efg', 'ev_transition_pts_sh']],
-           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
+           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
            ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'dreb_pct', 'oreb_pct', 'diff_vs_efg']]],
     big: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
-          ['SCORING', ['usg', 'ts', 'ft_pct', 'ftr', 'au', 'tov_pct']],
-          ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'p3_a100', 'p3_pct']],
+          ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ft_pct', 'ftr', 'au', 'tov_pct']],
+          ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
           ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm']],
           ['GLASS', ['oreb_pct', 'dreb_pct', 'blk_pct', 'pf_pg', 'diff_oreb', 'diff_vs_oreb']]]
   }
