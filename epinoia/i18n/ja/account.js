@@ -346,7 +346,27 @@
       'Your public page': 'あなたの公開ページ',
       'Whether fans can open your page, and the way to it': 'ファンがあなたのページを開けるかどうかと、その開き方',
       'What your page shows, beside its head as it will look': 'ページに表示する内容と、実際に表示されるヘッダー',
-      'to choose your username and make your page.': 'して、ユーザー名を選び、あなたのページを作りましょう。'
+      'to choose your username and make your page.': 'して、ユーザー名を選び、あなたのページを作りましょう。',
+      'I want to delete my account': 'アカウントを削除したい',
+      'This deletes your account now. It cannot be undone.': 'アカウントをいますぐ削除します。元に戻すことはできません。',
+      'What goes': '削除されるもの',
+      'What stays': '残るもの',
+      'Your email address, your name and your sign-in': 'メールアドレス、名前、ログイン情報',
+      'What you follow, your preferences and your notification subscriptions': 'フォロー中の項目、設定、通知の登録',
+      'Your EPINOIA GO stamps and photographs': 'EPINOIA GOのスタンプと写真',
+      'Any role you hold, and any invitation, grant or report email addressed to you': 'あなたが持つ役割、およびあなた宛ての招待、権限、レポートメール',
+      'Games, scores and statistics you entered, without your name': 'あなたが入力した試合、スコア、統計（名前は削除されます）',
+      'What the law has us keep, and a note that this account was deleted, with no name or address': '法律上保管が必要なもの、およびこのアカウントが削除されたという記録（名前・アドレスは含みません）',
+      'Messages you sent us through the contact form': 'お問い合わせフォームから送られたメッセージ',
+      'With a membership still running, cancel it first (Membership, above): the billing would not stop with the account. If you cannot delete your account here,': 'メンバーシップが有効な場合は、先にキャンセルしてください（上の「メンバーシップ」）。アカウントを削除しても請求は止まりません。ここで削除できない場合は、',
+      'ask on the privacy page': 'プライバシーページで依頼してください',
+      'Type your email address to confirm': '確認のため、メールアドレスを入力してください',
+      'Type DELETE to confirm': '確認のため DELETE と入力してください',
+      'Deleting your photographs…': '写真を削除しています…',
+      'Deleting your account…': 'アカウントを削除しています…',
+      'Your account could not be deleted. Try again.': 'アカウントを削除できませんでした。もう一度お試しください。',
+      'Account deleted': 'アカウントを削除しました',
+      'Your account has been deleted, and what was kept with it. Games and statistics you entered stay, without your name.': 'アカウントと、それに紐づく情報を削除しました。あなたが入力した試合と統計は、名前を除いて残ります。'
     },
 
     ctx: {

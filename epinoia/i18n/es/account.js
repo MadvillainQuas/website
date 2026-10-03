@@ -351,7 +351,27 @@
       'Your public page': 'Tu página pública',
       'Whether fans can open your page, and the way to it': 'Si la afición puede abrir tu página, y cómo llegar a ella',
       'What your page shows, beside its head as it will look': 'Lo que muestra tu página, junto a su cabecera tal como se verá',
-      'to choose your username and make your page.': 'para elegir tu nombre de usuario y crear tu página.'
+      'to choose your username and make your page.': 'para elegir tu nombre de usuario y crear tu página.',
+      'I want to delete my account': 'Quiero eliminar mi cuenta',
+      'This deletes your account now. It cannot be undone.': 'Esto elimina tu cuenta ahora. No se puede deshacer.',
+      'What goes': 'Qué se elimina',
+      'What stays': 'Qué se conserva',
+      'Your email address, your name and your sign-in': 'Tu correo electrónico, tu nombre y tu inicio de sesión',
+      'What you follow, your preferences and your notification subscriptions': 'Lo que sigues, tus preferencias y tus suscripciones a notificaciones',
+      'Your EPINOIA GO stamps and photographs': 'Tus sellos y fotografías de EPINOIA GO',
+      'Any role you hold, and any invitation, grant or report email addressed to you': 'Cualquier rol que tengas, y cualquier invitación, permiso o correo de informes dirigido a ti',
+      'Games, scores and statistics you entered, without your name': 'Los partidos, resultados y estadísticas que introdujiste, sin tu nombre',
+      'What the law has us keep, and a note that this account was deleted, with no name or address': 'Lo que la ley nos obliga a conservar, y una nota de que esta cuenta fue eliminada, sin nombre ni dirección',
+      'Messages you sent us through the contact form': 'Los mensajes que nos enviaste por el formulario de contacto',
+      'With a membership still running, cancel it first (Membership, above): the billing would not stop with the account. If you cannot delete your account here,': 'Si tienes una suscripción activa, cancélala primero (Socios, arriba): el cobro no se detendría con la cuenta. Si no puedes eliminar tu cuenta aquí,',
+      'ask on the privacy page': 'pídelo en la página de privacidad',
+      'Type your email address to confirm': 'Escribe tu correo electrónico para confirmar',
+      'Type DELETE to confirm': 'Escribe DELETE para confirmar',
+      'Deleting your photographs…': 'Eliminando tus fotografías…',
+      'Deleting your account…': 'Eliminando tu cuenta…',
+      'Your account could not be deleted. Try again.': 'No se pudo eliminar tu cuenta. Inténtalo de nuevo.',
+      'Account deleted': 'Cuenta eliminada',
+      'Your account has been deleted, and what was kept with it. Games and statistics you entered stay, without your name.': 'Tu cuenta ha sido eliminada, junto con lo que contenía. Los partidos y estadísticas que introdujiste se conservan, sin tu nombre.'
     },
 
     ctx: {

@@ -317,7 +317,7 @@ months · **XL** a quarter or more.
 | P0.4 | audit log unforgeable and league-readable | M | open |
 | P0.5 | minors in the API and season views; enforce `youth_protected`; officials' licence numbers staff-only | S | open |
 | P0.6 | private realtime channels | M | open |
-| P0.7 | account deletion, season export, same-day suspension count | S | open |
+| P0.7 | account deletion (done: 0227, `docs/account-deletion.md`), season export, same-day suspension count | S | open |
 | P0.8 | MFA for admin roles; restore-tested backups | M | open |
 
 ### Stage 1 — the gaps (sold alongside PlayHQ, built on native foundations)

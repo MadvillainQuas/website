@@ -267,8 +267,9 @@ receipts and check. What changes is **who posts the notification**.
   account has a `twa` row, no longer saves itself again (`sync()`) and instead offers
   **Turn off notifications here**, which unsubscribes that browser. Before 0128 the
   `client` read fails and it syncs as before.
-- The profile page also carries **Delete my account**, a link to
-  `privacy/#delete` (Google Play's account-deletion rule), for every signed-in fan.
+- The Personalisation page also carries **Delete my account**, which deletes the account
+  there and then (0227, `docs/account-deletion.md`); `privacy/#delete` is the address Google Play's
+  account-deletion rule is given, and the way for whoever cannot use the button.
 
 ## 6. The lineups link
 

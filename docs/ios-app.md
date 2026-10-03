@@ -471,9 +471,9 @@ A website change never needs this. A new app is only needed when something in `i
     links, native dialogs and downloads, an offline screen and pull-to-refresh.
   - Say so in the review notes. If Apple still objects, the usual answer is one more native
     feature, such as a native tab bar or widgets.
-- **5.1.1(v) Account deletion.** **Profile → Delete my account** opens the erasure request on the
-  privacy page, inside the app. If Apple wants deletion to happen immediately, the fix is a
-  self-service deletion function.
+- **5.1.1(v) Account deletion.** **Personalisation → Delete my account** deletes the account in the
+  app, at once, after the person types their address (`delete_my_account`, migration 0227; see
+  `docs/account-deletion.md`). The privacy page's erasure form stays for whoever cannot use it.
 - **3.1.1 In-app purchase.** Memberships aren't sold in the app, and the join page says so. While
   memberships are off, nothing more is needed.
   - Before switching memberships on, decide the iPhone route: Apple's in-app purchase, or Apple's

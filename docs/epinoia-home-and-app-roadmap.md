@@ -491,7 +491,7 @@ added later, commit it with `git add --chmod=+x android/gradlew`. CI never runs 
   - says clubs enter player records, including minors' birth years (`app/app.js:660`);
   - says email goes through Resend;
   - states there are no ads or tracking and that notifications are optional.
-- **`epinoia/me/`**: a "Delete my account" link to `privacy/#delete`, so deletion can be started inside the app, as Play's account-deletion rule requires.
+- **`epinoia/me/`**: "Delete my account" deletes the account inside the app, at once, after the address is typed (0227, `docs/account-deletion.md`); `privacy/#delete` stays the web address Play is given and the way for whoever cannot use the button.
 - **The Play listing** describes what the app adds to the website: the native Game alerts channel, the native notification settings screen and the offline page.
 - **The download page and `version.json`**: a Play badge once the app is live. An optional Play upload step in `android.yml`.
 
@@ -504,7 +504,7 @@ added later, commit it with `git add --chmod=+x android/gradlew`. CI never runs 
 - No crashes in the pre-launch report.
 - Data safety matches the audit and the privacy page, and the deletion URL opens the erasure form.
 - The reviewer account named under App access reaches the staff areas.
-- "Delete my account" on the profile page opens the erasure form inside the app.
+- "Delete my account" on the Personalisation page deletes the account inside the app (0227).
 - Production access is granted.
 - A Play install updates a GitHub-installed app in place.
 - `version.json` has its `play` field set.

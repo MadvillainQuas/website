@@ -945,6 +945,71 @@ function forwardMoved() {
   return true;
 }
 
+/* ------------------------------------------------------- DELETE MY ACCOUNT (0227) --- */
+/* What goes and what stays is written on the page. The address typed is the confirmation and delete_my_account asks for it
+   again (this only keeps the button off until it is right). The photographs' files go first, as they do for one photograph
+   (go.js removePhoto: a public file's permission asks its row whose it is), then the database deletes the account and the
+   rows that hang from it, and this browser forgets the session. */
+async function removeMyPhotos() {
+  for (let round = 0; round < 10; round++) {
+    const { data, error } = await sb.rpc('go_my_photos');
+    if (error) throw new Error(error.message);
+    const list = Array.isArray(data) ? data : [];
+    if (!list.length) break;
+    for (const p of list) {
+      if (p.status !== 'rejected') {                      // a rejected one's files went when it was rejected
+        const bucket = p.status === 'approved' || p.status === 'hidden' ? 'go-public' : 'go-pending';
+        const r = await sb.storage.from(bucket).remove([p.path, p.thumb_path]);
+        if (r.error) throw new Error(r.error.message);
+      }
+      await sb.rpc('delete_go_photo', { p_photo: p.id });
+    }
+  }
+  /* what else is in their pending folder: an upload that never became a photograph */
+  const { data: left } = await sb.storage.from('go-pending').list(user.id, { limit: 1000 });
+  const names = (left || []).filter(f => f && f.name).map(f => user.id + '/' + f.name);
+  if (names.length) await sb.storage.from('go-pending').remove(names);
+}
+
+function wireDelete() {
+  const box = $('#delBox'), input = $('#delConfirm'), go = $('#delGo'), msg = $('#delMsg');
+  if (!box || !input || !go || !msg) return;
+  const email = (user && user.email ? String(user.email) : '').trim();
+  const want = email ? email.toLowerCase() : 'delete';
+  $('#delAsk').textContent = email ? 'Type your email address to confirm' : 'Type DELETE to confirm';
+  input.placeholder = email || 'DELETE';
+  const tell = (t, cls) => { msg.textContent = t; msg.className = 'msg ' + cls; };
+  const typed = () => input.value.trim().toLowerCase() === want;
+  input.addEventListener('input', () => { go.disabled = !typed(); });
+  go.addEventListener('click', async () => {
+    if (!typed()) return;
+    go.disabled = true; input.disabled = true;
+    tell('Deleting your photographs…', 'ok');
+    try {
+      await removeMyPhotos();
+      tell('Deleting your account…', 'ok');
+      const { error } = await sb.rpc('delete_my_account', { p_confirm: input.value });
+      if (error) throw new Error(error.message);
+    } catch (e) {
+      const t = String((e && e.message) || e || '').trim();
+      tell(t ? t.charAt(0).toUpperCase() + t.slice(1) + (/[.!?]$/.test(t) ? '' : '.') : 'Your account could not be deleted. Try again.', 'err');
+      input.disabled = false; go.disabled = !typed();
+      return;
+    }
+    /* this browser forgets the session (the shared sign-out, config.js: local, whatever the server says: it has no account to end) */
+    try { if (window.epinoiaSignOut) await window.epinoiaSignOut(sb); else await sb.auth.signOut({ scope: 'local' }); } catch (_) { /* gone either way */ }
+    const done = el('div', 'hero');
+    done.append(el('div', 'hname', 'Account deleted'),
+      el('div', 'hsub', 'Your account has been deleted, and what was kept with it. Games and statistics you entered stay, without your name.'));
+    const home = el('a', 'ep-btn', 'Back to Epinoia'); home.href = '../';
+    const acts = el('div', 'hero-acts'); acts.appendChild(home); done.appendChild(acts);
+    const host = $('#body'); host.textContent = ''; host.appendChild(done);
+    window.scrollTo(0, 0);
+  });
+  /* the old link's address, and the privacy page's pointer: open it and bring it into view */
+  if (String(location.hash || '').toLowerCase() === '#delete') { box.open = true; try { box.scrollIntoView({ block: 'start' }); } catch (_) { /* a courtesy */ } }
+}
+
 /* ----------------------------------------------------------------- boot --- */
 (async function boot() {
   if (forwardMoved()) return;
@@ -955,6 +1020,7 @@ function forwardMoved() {
   $('#email').textContent = user.email || '';
   $('#nEmailTo').textContent = 'to ' + (user.email || 'the address you sign in with');
   $('#body').classList.remove('hide');
+  wireDelete();
   /* not awaited: the membership read never holds up (or breaks) the rest */
   paintMembership().catch(() => { $('#memberSec').classList.add('hide'); renumberSections(); });
 

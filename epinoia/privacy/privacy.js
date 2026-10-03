@@ -306,8 +306,9 @@
   /* ------------------------------------------------- privacy/#delete --- */
   function syncDeleteNote() {
     const radio = document.querySelector('input[name="kind"][value="erasure"]');
-    const note = $('#deleteNote');
+    const note = $('#deleteNote'), now = $('#deleteNow');
     if (note) note.classList.toggle('hide', !(radio && radio.checked));
+    if (now) now.classList.toggle('hide', !(radio && radio.checked));
   }
   /* ACCOUNT DELETION STARTS HERE (roadmap Phase 8). Google Play asks for a web
      address where deleting an account begins, and the one given is

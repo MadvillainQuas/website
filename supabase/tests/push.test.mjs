@@ -1208,8 +1208,8 @@ console.log('\nwired into the pages');
      /\$\('#pushSettings'\)\.addEventListener\('click', settingsTapped\)/.test(me) && /a\.addEventListener\('click', settingsTapped\)/.test(me) &&
      /EpinoiaPush\.settingsOpened\(\)/.test(me) && /a\.addEventListener\('click', settingsOpened\)/.test(read('epinoia', 'push.js')));
   const body = page.slice(page.indexOf('<div id="body"'), page.indexOf('<script src="../config.js'));
-  ok('Delete my account links to the privacy page\'s erasure form, inside the signed-in body',
-     /<a id="deleteAccount" href="\.\.\/privacy\/#delete"[^>]*>Delete my account<\/a>/.test(body));
+  ok('Delete my account is a section of the signed-in body (a typed confirmation and delete_my_account, 0227), and the privacy page\'s erasure form stays the way for whoever cannot',
+     /<section class="sec" id="delSec">/.test(body) && /id="delGo"/.test(body.slice(body.indexOf('id="delSec"'))) && /href="\.\.\/privacy\/#delete"/.test(body.slice(body.indexOf('id="delSec"'))));
 
   const Pv = require(path.join(ROOT, 'epinoia', 'game', 'preview.js'));
   const five = pre => [1, 2, 3, 4, 5].map(i => ({ id: pre + i, name: pre + i + ' Player', num: String(i) }));
