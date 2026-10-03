@@ -78,21 +78,23 @@ function resultOf(g, teamId) {
   const opp = home ? g.away : g.home;
   return { won: us > them, drawn: us === them, us, them, home, opp: (opp && (opp.short_name || opp.name)) || 'opponent' };
 }
-/* a player's line: points, rebounds, assists (and minutes when there are any) */
-function lineOf(s) {
-  if (!s) return '';
+/* a player's line as pieces, each a number and its label: points, rebounds (both ends), assists (and minutes when there
+   are any). Pieces, so a narrow screen wraps between them and never inside one ("30 / MIN"). */
+function lineBits(s) {
+  if (!s) return [];
   const n = v => (v == null || v === '' || !isFinite(Number(v)) ? null : Number(v));
   const pts = n(s.pts), reb = n(s.or) != null || n(s.dr) != null ? (n(s.or) || 0) + (n(s.dr) || 0) : n(s.reb), ast = n(s.ast);
   const bits = [];
-  if (pts != null) bits.push(pts + ' PTS');
-  if (reb != null) bits.push(reb + ' REB');
-  if (ast != null) bits.push(ast + ' AST');
+  if (pts != null) bits.push({ n: String(pts), k: 'PTS' });
+  if (reb != null) bits.push({ n: String(reb), k: 'REB' });
+  if (ast != null) bits.push({ n: String(ast), k: 'AST' });
   /* minutes are stored as milliseconds on the clock (a game is 2,400,000); an older row in minutes is read as it is */
   let min = n(s.min);
   if (min != null && min > 100) min = min / 60000;
-  if (min != null && min >= 0.5) bits.push(Math.round(min) + ' MIN');
-  return bits.join(' · ');
+  if (min != null && min >= 0.5) bits.push({ n: String(Math.round(min)), k: 'MIN' });
+  return bits;
 }
+const lineOf = s => lineBits(s).map(b => b.n + ' ' + b.k).join(' · ');
 /* the latest line of each player among the rows (any order) */
 function latestLines(rows) {
   const by = {};
@@ -434,9 +436,12 @@ function playerTile(id, m, row) {
     const home = row.team_idx === 0;
     const opp = home ? g.away : g.home;
     const s = { pts: row.s_pts, or: row.s_or, dr: row.s_dr, ast: row.s_ast, min: row.s_min };
-    const l = el('span', 'dash-line');
-    l.append(el('b', null, lineOf(s) || 'Played'), doc.createTextNode(' ' + (home ? 'v ' : 'at ') + teamName(opp) + ' · ' + dayWords(g.tipoff_at)));
-    tx.appendChild(l);
+    /* the line (points, rebounds, assists, minutes), then where and when on a line of its own: "at" never dangles */
+    const line = el('span', 'dash-line');
+    const bits = lineBits(s);
+    if (bits.length) bits.forEach(b => { const c = el('span'); c.append(el('b', null, b.n), doc.createTextNode(' ' + b.k)); line.appendChild(c); });
+    else line.appendChild(el('span', null, 'Played'));
+    tx.append(line, el('span', 'dash-when', (home ? 'v ' : 'at ') + teamName(opp) + ' · ' + dayWords(g.tipoff_at)));
   } else tx.appendChild(el('span', 'dash-next quiet', 'No game in the last two months'));
   a.append(ph, tx);
   return a;
@@ -532,6 +537,6 @@ async function mount(o) {
   await Promise.all([loadReports(), loadFollows().catch(() => { /* the sections stay as they are */ })]);
 }
 
-return { mount, kindOf, sizeWords, dayWords, fileName, initialOf, isNew, titleOf, bannerOf, resultOf, lineOf, latestLines, glance,
+return { mount, kindOf, sizeWords, dayWords, fileName, initialOf, isNew, titleOf, bannerOf, resultOf, lineOf, lineBits, latestLines, glance,
   BANNERS, SWATCHES, DEFAULT_TITLE };
 }));

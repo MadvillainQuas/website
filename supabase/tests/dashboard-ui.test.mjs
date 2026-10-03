@@ -5,7 +5,10 @@
 //   * a club's last result from its own side, a player's line (minutes stored as milliseconds), their latest game;
 //   * at a glance: new reports first and lit only when there are some;
 //   * the page: built to the standard, every section the dashboard fills present and away until filled, the reports
-//     opened through a short signed link and marked, the head saved through 0224 and the follows read from fan_prefs.
+//     opened through a short signed link and marked, the head saved through 0224 and the follows read from fan_prefs;
+//   * the look: the title paints whole (its background has the kit's two layers, the shine and then the colour, so the
+//     shine's size and sweep never take the colour off the letters: it once showed as "YOUR DAS"), in the fan's own hue
+//     held to a lightness that reads on a light and on a dark page, and the small layout fixes that came with it.
 //
 //   node supabase/tests/dashboard-ui.test.mjs
 import { readFileSync } from 'node:fs';
@@ -53,6 +56,9 @@ const lines = D.latestLines([
   { player_uuid: 'p2', s_pts: 7, games: { tipoff_at: '2026-09-28T09:00Z', status: 'final' } }]);
 ok('each player\'s latest final game, never one still being played', lines.p1.s_pts === 22 && lines.p2.s_pts === 7);
 
+ok('a line comes as pieces too (a number and its label), so a narrow screen wraps between them', JSON.stringify(D.lineBits({ pts: 28, or: 1, dr: 4, ast: 3, min: 1804000 })) ===
+   JSON.stringify([{ n: '28', k: 'PTS' }, { n: '5', k: 'REB' }, { n: '3', k: 'AST' }, { n: '30', k: 'MIN' }]) && D.lineBits(null).length === 0 && D.lineBits({}).length === 0);
+
 console.log('\nat a glance');
 const gl = D.glance({ reports: 4, newReports: 2, leagues: 1, clubs: 2, players: 0 });
 ok('new reports first and lit; then the follows, singular where it is one', gl[0].href === '#reports' && gl[0].hot && gl[0].label === 'new reports' &&
@@ -80,6 +86,37 @@ console.log('\nthe page');
   ok('every banner has its look, and the reduced-motion reader gets no pulse', ['glow', 'stripes', 'grid', 'club', 'plain'].every(b => css.includes('#dashHead[data-banner="' + b + '"]')) &&
      /prefers-reduced-motion:reduce\)\{\.rep-new\{animation:none\}/.test(css));
   ok('the banner stays inside the head (no sideways scroll on a phone)', /#dashHead::before\{content:"";position:absolute;inset:0;/.test(css));
+}
+
+console.log('\nthe look');
+{
+  const css = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'profile.css'), 'utf8');
+  const tt = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'teletext.css'), 'utf8');
+  const html = readFileSync(path.join(ROOT, 'epinoia', 'profile', 'index.html'), 'utf8');
+  const js = readFileSync(path.join(ROOT, 'epinoia', 'profile', 'dashboard.js'), 'utf8');
+  /* a rule's background-image as the list of its top-level layers */
+  const layers = decl => { const body = /background-image:([^;}]*(?:\([^)]*\)[^;}]*)*)/.exec(decl)[1]; let d = 0, cur = '', out = [];
+    for (const ch of body) { if (ch === '(') d++; if (ch === ')') d--; if (ch === ',' && d === 0) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out.filter(Boolean); };
+  const kit = /\.ep-frame > \.hero h1\{\s*background-image:([\s\S]*?);\s*background-size:([^;]*);/.exec(tt);
+  const mine = /#dashHead h1\{([\s\S]*?)\}/.exec(css);
+  const kitLayers = kit ? layers('background-image:' + kit[1]) : [], myLayers = mine ? layers(mine[1]) : [];
+  ok('THE TITLE has as many background layers as the kit\'s title it sits on: a shine, then the colour (one layer took the shine\'s 260% size and was swept off the letters)',
+     kitLayers.length === 2 && myLayers.length === kitLayers.length && /^linear-gradient\(104deg,transparent 0 44%/.test(myLayers[0]) && /rgba\(255,255,255,\.78\)/.test(myLayers[0]), [kitLayers.length, myLayers]);
+  ok('...the colour layer is the fan\'s, in the ink the page can read, not a hue-sweeping mix', /^linear-gradient\(100deg,var\(--dash-ink\),var\(--dash-ink-2\)\)$/.test(myLayers[1] || '') && !/color-mix\(in oklch,var\(--dash-c\)/.test(css), myLayers[1]);
+  ok('...and it does not restyle the size, position or animation the kit gives that title (so the shine still crosses it)', !/#dashHead h1\{[^}]*background-(size|position|repeat)|#dashHead h1\{[^}]*animation/.test(css));
+  ok('the ink keeps the hue and holds the lightness: never paler than .52 on a light page, never darker than .76 on a dark one',
+     /@supports \(color:oklch\(from red l c h\)\)/.test(css) && /--dash-ink:oklch\(from var\(--dash-c\) max\(l,\.76\) c h\)/.test(css) &&
+     /:root\[data-theme="light"\] #dashHead\{--dash-ink:oklch\(from var\(--dash-c\) min\(l,\.52\) c h\)/.test(css));
+  ok('...with a fallback for browsers without relative colours (mixed in oklab, which keeps the hue)', /#dashHead\{--dash-ink:color-mix\(in oklab,var\(--dash-c\) 55%,var\(--ink\)\);--dash-ink-2:color-mix\(in oklab,var\(--dash-c\) 32%,var\(--ink\)\)\}/.test(css));
+  ok('the text and lines that wear the colour use the ink (the handle, the ring and its letter, the lit tile), the fill keeps the pick',
+     /\.pg-kick a\{color:var\(--dash-ink\)\}/.test(css) && /\.dash-av\{[^}]*border:2px solid var\(--dash-ink\)[^}]*color:var\(--dash-ink\)/.test(css) && /\.dash-gl\.hot b\{color:var\(--dash-ink\)\}/.test(css));
+  const sub = (/<p class="pg-sub">([^<]*)<\/p>/.exec(html) || [])[1] || '';
+  ok('the line under the title is short enough for one line on a desktop, and balances where it wraps', sub.length > 0 && sub.length <= 72 && /#dashHead \.pg-sub\{text-wrap:balance\}/.test(css), sub);
+  ok('a section\'s link goes on the line under the subtitle (page.css\'s 70ch cap had let it slip beside it and off-centred the subtitle)', /#profile \.sec-h \.note\{max-width:none\}/.test(css));
+  ok('"personalisation" is a button like its neighbour: no underline', /#dashHead \.pg-acts \.ep-btn\{text-decoration:none\}/.test(css));
+  ok('a player\'s tile: the line in pieces that wrap whole, then where and when on a line of its own', /el\('span', 'dash-line'\)/.test(js) && /lineBits\(s\)/.test(js) && /el\('span', 'dash-when'/.test(js) &&
+     /\.dash-line>span\{white-space:nowrap/.test(css));
+  ok('the club banner is a soft wash (a white second colour no longer streaks it grey)', /#dashHead\[data-banner="club"\]::before\{background:linear-gradient\(100deg,color-mix\(in srgb,var\(--dash-c1\) 40%,transparent\),color-mix\(in srgb,var\(--dash-c2\) 22%,transparent\) 70%,transparent\)/.test(css));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
