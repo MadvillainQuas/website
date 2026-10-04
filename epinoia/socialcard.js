@@ -211,39 +211,25 @@ const n0 = v => (v == null || isNaN(v) ? 0 : +v);
 const BPM_OF = new WeakMap();
 /* THE CLUBS' LINES for the game: the stored `adv` of team_game_stats, [home, away], or null unless both have a pace to work from */
 const clubLines = a => (a && a[0] && a[1] && n0(a[0].pace) > 0 && n0(a[1].pace) > 0 ? a : null);
-const PER100 = ['pts', 'tpm', 'ast', 'to', 'orb', 'drb', 'stl', 'blk', 'pf', 'fga', 'fta'];
-/* THE GAME'S BPM, AS THE GAME PAGE WORKS IT (game.js gameBPM: the figure on each player's circle, so a graphic says what the page
-   says): each side's lines with the CLUB'S OWN pace and ratings from the game's team line (`teamAdv`), the league average the mean
-   of the two clubs' offensive ratings. Without the clubs' lines it is the sum of the box's own (bpm.js gameFromBox: a little
-   different, as it has no team turnovers or rebounds). players: one game's player_game_stats rows ({ team_idx, stats }).
+/* THE GAME'S BPM, AS THE GAME PAGE WORKS IT (bpm.js game: Basketball-Reference's game BPM, the figure on each player's circle,
+   so a graphic says what the page says): both sides' lines, the clubs' own lines for the game (`teamAdv`: pace, ratings and
+   average lead) and, where the caller has it, the competition's season (`season`: id -> season.js row, for each player's
+   season position, role and BPM). players: one game's player_game_stats rows ({ team_idx, player_uuid | player_id, stats }).
    -> Map row -> BPM. Without bpm.js on the page, or with one side's lines only, nobody has one, and the picks fall back to points. */
-function gameBPMs(players, teamAdv) {
+function gameBPMs(players, teamAdv, season) {
+  /* the season travels with the game's club lines (socialgfx-ui.js withSeasons), so every caller of a game's lines has it */
+  season = season || (teamAdv && teamAdv.season) || null;
   const adv = clubLines(teamAdv), hit = players && typeof players === 'object' ? BPM_OF.get(players) : null;
-  if (hit && hit.adv === adv) return hit.map;
+  if (hit && hit.adv === adv && hit.season === (season || null)) return hit.map;
   const B = root.EpinoiaBPM || null;
   const out = new Map();
   const rows = (players || []).filter(p => p && p.stats);
-  if (B && rows.length && adv && B.forTeam) {
-    const ortgs = adv.map(a => n0(a.ortg)).filter(v => v > 0);
-    const leagueAvg = ortgs.length ? ortgs.reduce((a, b) => a + b, 0) / ortgs.length : 100;
-    [0, 1].forEach(t => {
-      const mine = rows.filter(p => (p.team_idx === 1 ? 1 : 0) === t);
-      const lines = mine.map((p, i) => { const x = p.stats;
-        return { id: i, minutes: n0(x.min) / 60000, pts: n0(x.pts), tpm: n0(x.p3m), ast: n0(x.ast), to: n0(x.to), orb: n0(x.or), drb: n0(x.dr),
-                 stl: n0(x.stl), blk: n0(x.blk), pf: n0(x.pf), fga: n0(x.p2a) + n0(x.p3a), fta: n0(x.fta) }; });
-      const sum = k => lines.reduce((n, q) => n + q[k], 0);
-      const tsa = sum('fga') + 0.44 * sum('fta'), mins = Math.max(1, sum('minutes') / 5);
-      const poss = adv[t].pace ? adv[t].pace * mins / 40 : Math.max(1, tsa);
-      const per100 = {}; PER100.forEach(k => { per100[k] = sum(k) * 100 / Math.max(1, poss); });
-      per100.trb = per100.orb + per100.drb;
-      const team = { pace: adv[t].pace || 70, netRtg: n0(adv[t].ortg) - n0(adv[t].drtg), offRtg: adv[t].ortg || null, avgPtsPerTSA: tsa ? sum('pts') / tsa : 1.0, per100 };
-      try { B.forTeam(team, lines, leagueAvg).forEach(r => { if (r.bpm != null && !isNaN(r.bpm)) out.set(mine[r.id], r.bpm); }); } catch (_) { /* no BPM for this side */ }
-    });
-  } else if (B && B.gameFromBox && rows.length) {
-    const m = B.gameFromBox(rows.map((p, i) => ({ id: i, side: p.team_idx === 1 ? 1 : 0, stats: p.stats })));
-    rows.forEach((p, i) => { const b = m.get(i); if (b && b.bpm != null) out.set(p, b.bpm); });
+  if (B && B.game && rows.length) {
+    const idOf = (p, i) => p.player_uuid || p.player_id || ('#' + i);
+    const m = B.game({ lines: rows.map((p, i) => ({ id: idOf(p, i), side: p.team_idx === 1 ? 1 : 0, stats: p.stats })), clubs: adv, season: season || null });
+    rows.forEach((p, i) => { const b = m.get(idOf(p, i)); if (b && b.bpm != null && !isNaN(b.bpm)) out.set(p, b.bpm); });
   }
-  if (players && typeof players === 'object') BPM_OF.set(players, { adv, map: out });
+  if (players && typeof players === 'object') BPM_OF.set(players, { adv, season: season || null, map: out });
   return out;
 }
 const bpmText = v => (v == null || isNaN(v) ? '\u2014' : (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1));

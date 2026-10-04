@@ -36,7 +36,7 @@ const el = (t, c, x) => { const n = root.document.createElement(t); if (c) n.cla
   if (x != null) n.textContent = x; return n; };
 
 /* the sixteen numbers a graphic uses, and each player's on-court block, read out of the stats blob by PostgREST (aliases avoid "or" and "to") */
-const PLAYER_COLS = 'game_id,team_idx,' + [['pts', 'pts'], ['p2m', 'p2m'], ['p2a', 'p2a'], ['p3m', 'p3m'], ['p3a', 'p3a'],
+const PLAYER_COLS = 'game_id,team_idx,player_uuid,player_id,' + [['pts', 'pts'], ['p2m', 'p2m'], ['p2a', 'p2a'], ['p3m', 'p3m'], ['p3a', 'p3a'],
   ['fta', 'fta'], ['ftm', 'ftm'], ['oreb', 'or'], ['dreb', 'dr'], ['ast', 'ast'], ['stl', 'stl'], ['blk', 'blk'], ['tov', 'to'],
   ['pf', 'pf'], ['pm', 'pm'], ['min', 'min']].map(([a, k]) => a + ':stats->' + k).join(',') + ',name:stats->adv->>name,num:stats->adv->>num' +
   ',oc:stats->oc';          // the on-court block (what the club did with him on the floor): the player of the game's on-court net, ORTG and DRTG
@@ -46,7 +46,8 @@ function playerRow(r) {
   const s = { pts: r.pts, p2m: r.p2m, p2a: r.p2a, p3m: r.p3m, p3a: r.p3a, fta: r.fta, ftm: r.ftm, or: r.oreb, dr: r.dreb,
               ast: r.ast, stl: r.stl, blk: r.blk, to: r.tov, pf: r.pf, pm: r.pm, min: r.min, adv: { name: r.name || '', num: r.num } };
   if (r.oc && typeof r.oc === 'object') s.oc = r.oc;
-  return { game_id: r.game_id, team_idx: r.team_idx, stats: s };
+  /* who it is, for the game's BPM (each player's season row: socialcard.js gameBPMs) */
+  return { game_id: r.game_id, team_idx: r.team_idx, player_uuid: r.player_uuid || null, player_id: r.player_id || null, stats: s };
 }
 
 const handleOf = v => {
@@ -64,6 +65,27 @@ function rangeLabel(a, b) {
 }
 
 /* ---------------------------------------------------------------- reading --- */
+/* EACH COMPETITION'S SEASON, for a game's BPM (bpm.js game, Basketball-Reference's game BPM: each player's season position,
+   offensive role and season BPM), read as the game page reads it (data.js EpinoiaData.season of the game's competition), once
+   a competition for the console's visit. Without data.js on the page a game's BPM is the box score's own estimate. */
+const SEASONS = new Map();
+function seasonRows(compId) {
+  const D = root.EpinoiaData;
+  if (!compId || !D || !D.season) return Promise.resolve(null);
+  if (!SEASONS.has(compId)) SEASONS.set(compId, D.season(compId, { rows: false, trim: true }).then(S =>
+    new Map((S.players || []).map(p => [p.id, { bpm: p.bpm, min: p.min || 0, gp: p.gp || 0, bpm_pos: p.bpm_pos, bpm_role: p.bpm_role }])), () => null));
+  return SEASONS.get(compId);
+}
+/* a game's club lines carry its competition's season (not enumerable: a line is still a line), so every BPM worked from them
+   (socialcard.js gameBPMs) has it. adv: Map game id -> [home, away]; games: [{ id, competition_id }] */
+async function withSeasons(adv, games) {
+  for (const g of games || []) {
+    const a = adv && adv.get(g.id);
+    if (!a) continue;
+    const s = await seasonRows(g.competition_id);
+    if (s) Object.defineProperty(a, 'season', { value: s, configurable: true, writable: true, enumerable: false });
+  }
+}
 /* Everything the graphics need, in five reads (and one more per thirty games). Pure of the DOM: the test
    drives it with a stub client. */
 async function read(sb, league, comps, now, offset, win) {
@@ -138,6 +160,8 @@ async function read(sb, league, comps, now, offset, win) {
       out.players.get(r.game_id).push(playerRow(r));
     });
   }
+  /* each game's club lines carry its competition's season: its BPM as the game page has it */
+  await withSeasons(out.teamAdv, out.finals);
   return out;
 }
 
@@ -373,6 +397,9 @@ async function readLines(sb, comps, o) {
       ((t && t.data) || []).forEach(r => out.tgs.push(r));
     });
   }
+  /* each competition's season, for the games' BPM (the month's stars: monthBest) */
+  out.seasons = new Map();
+  for (const id of ids) { const s = await seasonRows(id); if (s) out.seasons.set(id, s); }
   return out;
 }
 
@@ -461,6 +488,9 @@ function monthStars(data, lines, sel, crestOf) {
   /* each player's best game of the month, by its BPM (the game's lines, both sides, and the clubs' own lines: socialcard.js gameBPMs) */
   const best = new Map(), byGame = new Map(), advOf = new Map();
   (lines.tgs || []).forEach(r => { if (!advOf.has(r.game_id)) advOf.set(r.game_id, [null, null]); advOf.get(r.game_id)[r.team_idx === 1 ? 1 : 0] = (r.stats && r.stats.adv) || null; });
+  /* each game's competition's season goes with its club lines (withSeasons): the game's BPM as the game page has it */
+  const compOfGame = new Map((lines.games || []).map(x => [x.id, x.competition_id]));
+  advOf.forEach((a, gid) => { const s = lines.seasons && lines.seasons.get(compOfGame.get(gid)); if (s) Object.defineProperty(a, 'season', { value: s, configurable: true, writable: true, enumerable: false }); });
   lines.pgs.forEach(r => { if (only.has(r.game_id)) { if (!byGame.has(r.game_id)) byGame.set(r.game_id, []); byGame.get(r.game_id).push(r); } });
   byGame.forEach(list => {
     const bp = SC.gameBPMs(list, advOf.get(list[0] && list[0].game_id));

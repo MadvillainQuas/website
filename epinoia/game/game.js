@@ -419,6 +419,7 @@ const BODIES = {
     const g = window.EpinoiaGameFacts.brief(window.S, d, B);
     const html = window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g), reportLook());
     /* THE SQUADS UNDER THE HEADLINE: both sides, every player who played, the starters first */
+    ensureSeasonPositions();
     const strip = squadsHTML(d);
     setTimeout(squadPhotos, 0);
     return strip ? html.replace('</p></div>', '</p></div>' + strip) : html;   // the standfirst is the last thing in .rep-head
@@ -482,32 +483,26 @@ const BODIES = {
    always, then the bench -- each a face where the league has passed a photograph and the
    player's name where it has not, with minutes largest, the game's BPM, then the line. On a
    phone each row scrolls sideways; on a desktop the bench wraps inside its section. */
-function gameBPM(d) {
+/* THE GAME'S BPM, ONE FIGURE FOR THE WHOLE PAGE: Basketball-Reference's game BPM (bpm.js game) - the game's box lines, the
+   clubs' own lines (the engine's teamAdv: pace, ratings and the average lead) and the competition's season (positions,
+   offensive roles and season BPMs, EpinoiaModernBox.loadSeason; until it arrives each figure is the box score's own estimate,
+   and the page is drawn again once it has). The squads' circles here and the modern box score (modern.js) both read it. */
+function gameBPMRows(d) {
   const BPM = window.EpinoiaBPM, S = window.S;
+  if (!BPM || !BPM.game || !S || !S.teams || !d || !d.stats) return new Map();
+  const lines = [];
+  [0, 1].forEach(t => (S.teams[t].players || []).forEach(p => { if (d.stats[p.id]) lines.push({ id: p.id, side: t, stats: d.stats[p.id] }); }));
+  let clubs = null;
+  try { clubs = [E.teamAdv(S, d, 0), E.teamAdv(S, d, 1)]; } catch (_) { clubs = null; }
+  const MB = window.EpinoiaModernBox, season = MB && MB.season ? MB.season() : null;
+  try { return BPM.game({ lines, clubs, season }); } catch (_) { return new Map(); }
+}
+function gameBPM(d) {
   const out = {};
-  if (!BPM || !BPM.forTeam || !S) return out;
-  const adv = [0, 1].map(t => { try { return E.teamAdv(S, d, t); } catch (_) { return {}; } });
-  const ortgs = adv.map(a => a.ortg).filter(v => v > 0);
-  const leagueAvg = ortgs.length ? ortgs.reduce((a, b) => a + b, 0) / ortgs.length : 100;
-  [0, 1].forEach(t => {
-    const players = (S.teams[t].players || []).map(p => {
-      const x = d.stats[p.id]; if (!x) return null;
-      return { id: p.id, minutes: (x.min || 0) / 60000, pts: x.pts || 0, tpm: x.p3m || 0, ast: x.ast || 0, to: x.to || 0,
-               orb: x.or || 0, drb: x.dr || 0, stl: x.stl || 0, blk: x.blk || 0, pf: x.pf || 0,
-               fga: (x.p2a || 0) + (x.p3a || 0), fta: x.fta || 0 };
-    }).filter(Boolean);
-    const sum = k => players.reduce((n, q) => n + (q[k] || 0), 0);
-    const tsa = sum('fga') + 0.44 * sum('fta');
-    const mins = Math.max(1, sum('minutes') / 5);
-    const poss = adv[t].pace ? adv[t].pace * mins / 40 : Math.max(1, tsa);
-    const per100 = {}; ['pts', 'tpm', 'ast', 'to', 'orb', 'drb', 'stl', 'blk', 'pf', 'fga', 'fta'].forEach(k => { per100[k] = sum(k) * 100 / Math.max(1, poss); });
-    per100.trb = per100.orb + per100.drb;
-    const team = { pace: adv[t].pace || 70, netRtg: (adv[t].ortg || 0) - (adv[t].drtg || 0), offRtg: adv[t].ortg || null,
-                   avgPtsPerTSA: tsa ? sum('pts') / tsa : 1.0, per100 };
-    try { BPM.forTeam(team, players, leagueAvg).forEach(r => { out[r.id] = r.bpm; }); } catch (_) { /* no BPM for this side */ }
-  });
+  gameBPMRows(d).forEach((r, id) => { out[id] = r.bpm; });
   return out;
 }
+window.EpinoiaGameBPM = gameBPM;
 function squadsHTML(d) {
   const S = window.S;
   if (!S || !S.teams || !d || !d.stats) return '';
@@ -621,8 +616,9 @@ let seasonAsked = false;
 function ensureSeasonPositions() {
   if (seasonAsked || !window.EpinoiaModernBox || !window.S) return;
   seasonAsked = true;
+  /* the season gives each player's season position, role and BPM to the game's BPM (gameBPMRows): drawn again once it is here */
   window.EpinoiaModernBox.loadSeason(window.S).then(ok => {
-    if (ok && fTab === 'box' && boxMode === 'modern') { lastBodyKey = ''; renderBody(); }
+    if (ok && ((fTab === 'box' && boxMode === 'modern') || fTab === 'report')) { lastBodyKey = ''; renderBody(); }
   });
 }
 function bindBoxSwitch(el) {

@@ -322,36 +322,118 @@ function teamInputs(totals, players) {
    ast, stl, blk, to, pf). -> Map id -> { bpm, obpm, dbpm }; nothing for a side without a line, or a player without
    a minute. A game with one side's lines only has no team ratings to adjust to, so nothing at all. */
 function gameFromBox(lines) {
+  /* the box score's own estimate: game() with neither the clubs' lines nor a season (kept for its callers; the pages ask game()) */
+  return game({ lines });
+}
+
+/* ====================================================== one game, as BBRef ===
+   A GAME'S BPM AS BASKETBALL-REFERENCE ADAPTS BPM 2.0 TO ONE GAME (2026-10-04; basketball-reference.com/about/bpm2.html,
+   "game-level BPM"): the regression and its adjustments run on the game's box score, but
+     - POSITION AND OFFENSIVE ROLE ARE THE SEASON'S, not one game's (a game is too few minutes to estimate them from);
+     - THE TEAM'S RATING FOR THE GAME is not its margin alone. Each side's quality is first estimated from the players who
+       actually played - each one's season BPM, regressed to the mean for few minutes, weighted by his share of the game's
+       possessions - and the two estimates averaged; then each side gets half the game's efficiency margin either way,
+       with the leading side credited 0.35 points per 100 possessions for every point of average lead (a side in the lead
+       plays about that much worse). BBRef's example: both sides' players at +10, a +12 margin with a +5 average lead:
+       +10 + 12/2 + 0.35/2 x 5 = +16.9 and +10 - 6 - 0.875 = +3.1;
+     - A SEASON BPM FROM FEW MINUTES IS REGRESSED to -4.75 + 0.175 x minutes / (games + 4), weighted (450 - minutes) / 3
+       (none past 450 minutes), against the season BPM weighted by its minutes. That estimate is BBRef's for a whole NBA
+       season; for a season a few games old, or a league of fewer games, its LEVEL is set by the competition itself (calib:
+       moved so the minute-weighted mean of every player's estimate is the competition's minute-weighted mean season BPM).
+       Unmoved, two games into a season it put every player near -3, both sides' ratings 13 points low and every BPM 3 low;
+       moved, it still says what a player of those minutes is worth, in this competition.
+   Every page that prints one game's BPM asks this - the box score page's circles and the modern box (game/), the player's
+   game log (p/player.js), the graphics' player of the game, stars and leaders (socialcard.js gameBPMs) - so a player's
+   BPM for a game is the same number wherever it is printed.
+
+   g: { lines: [{ id, side: 0 | 1, stats }]   both sides' box lines (min in ms, pts, p2m/p2a, p3m/p3a, ftm/fta, or, dr,
+                                              ast, stl, blk, to, pf)
+        clubs: [home, away] | null             the clubs' own lines for the game (engine.js teamAdv; team_game_stats.adv):
+                                              pace, ortg, drtg and avgLead (the side's average lead, in points); without
+                                              them each side's possessions, ratings and pace come from the lines and the
+                                              lead correction is left out
+        season: Map | { id: row } | null       the competition's season rows (season.js: bpm, min, gp, bpm_pos, bpm_role) }
+   Without a season row a player's position and role are estimated from the game, and his season BPM is the regression's
+   alone; without any season at all the team rating is the game's own margin (the box score estimate before 2026-10-04).
+   -> Map id -> { bpm, obpm, dbpm }; nothing for a player without a minute, nor for a game with one side's lines only. */
+const LEAD_PER_POINT = 0.35;
+const estBase = row => { const min = row && row.min > 0 ? +row.min : 0, gp = row && row.gp > 0 ? +row.gp : 0; return -4.75 + 0.175 * (min / (gp + 4)); };
+/* the competition's level for the estimate: its minute-weighted mean season BPM less the mean of the estimates (once a season) */
+const CALIB = new WeakMap();
+function calibration(season) {
+  if (!season || typeof season !== 'object') return 0;
+  if (CALIB.has(season)) return CALIB.get(season);
+  let w = 0, b = 0, e = 0;
+  (season.forEach ? [...season.values()] : Object.values(season)).forEach(r => {
+    if (!r || !(r.min > 0) || r.bpm == null || !isFinite(r.bpm)) return;
+    w += +r.min; b += r.min * r.bpm; e += r.min * estBase(r);
+  });
+  const c = w > 0 ? (b - e) / w : 0;
+  CALIB.set(season, c);
+  return c;
+}
+function regressedSeasonBPM(row, calib) {
+  const min = row && row.min > 0 ? +row.min : 0;
+  const est = estBase(row) + (+calib || 0);
+  const w = Math.max(0, (450 - min) / 3);
+  const b = row && row.bpm != null && isFinite(row.bpm) ? +row.bpm : est;
+  return (min + w) > 0 ? (min * b + w * est) / (min + w) : est;
+}
+function game(g) {
   const out = new Map();
   const n = v => (v == null || isNaN(v) ? 0 : +v);
-  const sides = [0, 1].map(t => (lines || []).filter(l => l && l.stats && +l.side === t).map(l => {
+  const lines = (g && g.lines) || [];
+  const seasonOf = id => { const S = g && g.season; return !S ? null : S.get ? S.get(id) || null : S[id] || null; };
+  const sides = [0, 1].map(t => lines.filter(l => l && l.stats && +l.side === t).map(l => {
     const s = l.stats;
-    return { id: l.id, minutes: n(s.min) / 60000, pts: n(s.pts), tpm: n(s.p3m), ast: n(s.ast), to: n(s.to), orb: n(s.or), drb: n(s.dr),
-             stl: n(s.stl), blk: n(s.blk), pf: n(s.pf), fga: n(s.p2a) + n(s.p3a), fgm: n(s.p2m) + n(s.p3m), fta: n(s.fta) };
+    const p = { id: l.id, minutes: n(s.min) / 60000, pts: n(s.pts), tpm: n(s.p3m), ast: n(s.ast), to: n(s.to), orb: n(s.or), drb: n(s.dr),
+                stl: n(s.stl), blk: n(s.blk), pf: n(s.pf), fga: n(s.p2a) + n(s.p3a), fgm: n(s.p2m) + n(s.p3m), fta: n(s.fta) };
+    const r = seasonOf(l.id);
+    if (r && r.bpm_pos != null && isFinite(r.bpm_pos)) p.position = +r.bpm_pos;
+    if (r && r.bpm_role != null && isFinite(r.bpm_role)) p.role = +r.bpm_role;
+    return p;
   }).filter(p => p.minutes > 0));
   if (!sides[0].length || !sides[1].length) return out;
-  const tot = ps => {
-    const T = { pts: 0, fga: 0, fta: 0, oreb: 0, dreb: 0, tov: 0, stl: 0, pf: 0, ast: 0, blk: 0, min: 0 };
-    ps.forEach(p => { T.pts += p.pts; T.fga += p.fga; T.fta += p.fta; T.oreb += p.orb; T.dreb += p.drb; T.tov += p.to;
-                      T.stl += p.stl; T.pf += p.pf; T.ast += p.ast; T.blk += p.blk; T.min += p.minutes; });
-    T.poss = Math.max(1, 0.96 * (T.fga + T.tov + 0.44 * T.fta - T.oreb));
-    return T;
-  };
-  const T = sides.map(tot);
-  const ortg = T.map(x => 100 * x.pts / x.poss);
+  const T = sides.map(ps => {
+    const x = { pts: 0, fga: 0, fta: 0, oreb: 0, dreb: 0, tov: 0, stl: 0, pf: 0, ast: 0, blk: 0, min: 0 };
+    ps.forEach(p => { x.pts += p.pts; x.fga += p.fga; x.fta += p.fta; x.oreb += p.orb; x.dreb += p.drb; x.tov += p.to;
+                      x.stl += p.stl; x.pf += p.pf; x.ast += p.ast; x.blk += p.blk; x.min += p.minutes; });
+    x.poss = Math.max(1, 0.96 * (x.fga + x.tov + 0.44 * x.fta - x.oreb));
+    return x;
+  });
   const gameMin = Math.max(1, Math.max(T[0].min, T[1].min) / 5);
-  const pace = (T[0].poss + T[1].poss) / 2 / gameMin * 40;
+  const clubs = g && g.clubs && g.clubs[0] && g.clubs[1] && n(g.clubs[0].pace) > 0 && n(g.clubs[1].pace) > 0 ? g.clubs : null;
+  /* the club's own line counts the team turnovers and rebounds a player's line leaves out: its pace is the side's possessions */
+  if (clubs) [0, 1].forEach(t => { T[t].poss = Math.max(1, n(clubs[t].pace) * gameMin / 40); });
+  const ortg = [0, 1].map(t => (clubs && n(clubs[t].ortg) > 0 ? n(clubs[t].ortg) : 100 * T[t].pts / T[t].poss));
+  const drtg = [0, 1].map(t => (clubs && n(clubs[t].drtg) > 0 ? n(clubs[t].drtg) : ortg[1 - t]));
+  const pace = [0, 1].map(t => (clubs ? n(clubs[t].pace) : (T[0].poss + T[1].poss) / 2 / gameMin * 40));
   const leagueAvg = (ortg[0] + ortg[1]) / 2;
+  const margin = [0, 1].map(t => ortg[t] - drtg[t]);
+  /* THE TEAM RATING FOR THE GAME: the players who played, by their season BPMs, then half the margin each way */
+  const S = g && g.season, hasSeason = !!S && (S.size > 0 || (!S.get && Object.keys(S).length > 0));
+  let rating = margin;
+  if (hasSeason) {
+    const calib = calibration(S);
+    const est = sides.map(ps => {
+      const tm = ps.reduce((a, p) => a + p.minutes, 0);
+      return tm > 0 ? ps.reduce((a, p) => a + regressedSeasonBPM(seasonOf(p.id), calib) * p.minutes / (tm / 5), 0) : 0;
+    });
+    const avgEst = (est[0] + est[1]) / 2;
+    const lead = clubs && clubs[0].avgLead != null && isFinite(clubs[0].avgLead) ? n(clubs[0].avgLead) : 0;
+    const adjMargin = (margin[0] - margin[1]) / 2 + LEAD_PER_POINT * lead;       // home's, per 100, lead-corrected
+    rating = [avgEst + adjMargin / 2, avgEst - adjMargin / 2];
+  }
   [0, 1].forEach(t => {
     const inputs = teamInputs(T[t], sides[t]);
-    const team = { pace, netRtg: ortg[t] - ortg[1 - t], offRtg: ortg[t], avgPtsPerTSA: inputs.avgPtsPerTSA, per100: inputs.per100 };
+    const team = { pace: pace[t], netRtg: rating[t], offRtg: ortg[t], avgPtsPerTSA: inputs.avgPtsPerTSA, per100: inputs.per100 };
     forTeam(team, sides[t], leagueAvg).forEach(r => { if (r.bpm != null) out.set(r.id, { bpm: r.bpm, obpm: r.obpm, dbpm: r.dbpm }); });
   });
   return out;
 }
 
 return {
-  forLeague, forTeam, teamInputs, gameFromBox,
+  forLeague, forTeam, teamInputs, gameFromBox, game, regressedSeasonBPM, calibration, LEAD_PER_POINT,
   estimatedPossessions, per100, estimatePosition, estimateOffensiveRole,
   rawBPM, positionConstant, teamAdjustment, lerp,
   COEF_BPM_POSITION, COEF_BPM_ROLE, POS_CONST_BPM

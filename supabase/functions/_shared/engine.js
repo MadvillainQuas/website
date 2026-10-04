@@ -220,7 +220,10 @@ function deriveGame(game) {
     stats: {}, team: [mkT(), mkT()], score: [0, 0], perQ: [{}, {}], pbp: [],
     poss: (game.tipWinner != null ? game.tipWinner : null),
     onCourt: [[...game.starters[0]], [...game.starters[1]]],
-    lineups: [[], []], format: F
+    lineups: [[], []], format: F,
+    /* THE AVERAGE LEAD (bpm.js game: Basketball-Reference's game BPM credits the leading side 0.35 per 100 possessions for
+       every point of it): the home side's margin, summed over the game time it stood (leadInt, in point-ms), over the time */
+    leadInt: 0, leadMs: 0
   };
   let arw = (game.arrowInit != null) ? game.arrowInit : null;   // alternating-possession arrow
   const flag = { sc: [false, false], pot: [false, false] };     // live 2nd-chance / points-off-TO windows
@@ -391,8 +394,10 @@ function deriveGame(game) {
     }
   };
 
+  let leadAt = 0;
   events.forEach(ev => {
     const cum = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1, F), F);
+    if (cum > leadAt) { d.leadInt += (d.score[0] - d.score[1]) * (cum - leadAt); leadAt = cum; }
 
     if (ev.t === 'reb') resolveMiss(ev);
     else if (ev.t in { p2_made:1, p3_made:1, p2_miss:1, p3_miss:1, ft_made:1, ft_miss:1, to:1 } ||
@@ -523,6 +528,8 @@ function deriveGame(game) {
 
   for (const pid in lastIn) { if (d.stats[pid]) d.stats[pid].min += Math.max(0, nowCum - lastIn[pid]); }
   close(0, nowCum); close(1, nowCum);
+  if (nowCum > leadAt) { d.leadInt += (d.score[0] - d.score[1]) * (nowCum - leadAt); leadAt = nowCum; }
+  d.leadMs = leadAt;
   d.arrow = arw;
   return d;
 }
@@ -574,7 +581,9 @@ function teamAdv(game, d, t) {
     // game pace (both teams' possessions averaged, per 40 min of game clock) and
     // this team's own possessions per 40, which can differ by a possession or two
     pace: dv(T.possessions + O.possessions, 2) / Math.max(1, T.minutes / 5) * 40,
-    paceOwn: T.possessions / Math.max(1, T.minutes / 5) * 40
+    paceOwn: T.possessions / Math.max(1, T.minutes / 5) * 40,
+    /* the side's average lead over the game, in points (deriveGame leadInt / leadMs; bpm.js game) */
+    avgLead: d.leadMs > 0 ? (t === 0 ? 1 : -1) * d.leadInt / d.leadMs : 0
   });
 }
 

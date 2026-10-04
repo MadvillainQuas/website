@@ -270,6 +270,12 @@ jobs:
         # the released left out), the reply threaded under the Sunday email, every report primed with Synergy and RAPM kept
         run: node supabase/tests/reports-manager.test.mjs
 
+      - name: One game's BPM, as Basketball-Reference adapts BPM 2.0 to a game
+        # bpm.js game: the season's position and role, the team rating from the season BPMs of the players who played plus
+        # half the margin and the lead correction (BBRef's worked example: +16.9 / +3.1), few minutes regressed at the
+        # competition's level; the engine's average lead; the game page, modern box, game log and graphics all ask it
+        run: node supabase/tests/game-bpm.test.mjs
+
       - name: Box score renders with nothing but S and derive()
         # catches a helper left behind by the extraction, which otherwise only
         # shows up as a blank public page

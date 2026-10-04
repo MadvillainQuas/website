@@ -1395,26 +1395,49 @@ function paintScopeLabel(sn, kind) {
   if (c.textContent) host.appendChild(c);
   host.hidden = false;
 }
-/* EACH GAME'S BPM (bpm.js gameFromBox, the box score page's own sum): every line of his games, both sides, read lean --
-   the numbers BPM needs out of each stats blob (aliases, since "or" and "to" are words PostgREST keeps) -- twenty games to
-   a request, so a request stays under the thousand rows the API returns. On each of his rows as __bpm. */
+/* EACH GAME'S BPM, as the game page works it (bpm.js game: Basketball-Reference's game BPM): every line of his games, both
+   sides, read lean - the numbers BPM needs out of each stats blob (aliases, since "or" and "to" are words PostgREST keeps) -
+   with the clubs' own lines for the game (pace, ratings, average lead) and each game's competition's season (positions,
+   offensive roles and season BPMs), twenty games to a request, so a request stays under the thousand rows the API returns.
+   On each of his rows as __bpm. */
 const BPM_COLS = 'game_id,team_idx,player_uuid,' + [['pts', 'pts'], ['p2m', 'p2m'], ['p2a', 'p2a'], ['p3m', 'p3m'], ['p3a', 'p3a'],
   ['fta', 'fta'], ['ftm', 'ftm'], ['oreb', 'or'], ['dreb', 'dr'], ['ast', 'ast'], ['stl', 'stl'], ['blk', 'blk'], ['tov', 'to'],
   ['pf', 'pf'], ['min', 'min']].map(([a, k]) => a + ':stats->' + k).join(',');
+const CLUB_COLS = 'game_id,team_idx,pace:stats->adv->pace,ortg:stats->adv->ortg,drtg:stats->adv->drtg,avgLead:stats->adv->avgLead';
 async function logBPM(rows) {
-  const B = window.EpinoiaBPM;
-  if (!B || !B.gameFromBox || !rows.length) return;
+  const B = window.EpinoiaBPM, D = window.EpinoiaData;
+  if (!B || !B.game || !rows.length) return;
   const gids = [...new Set(rows.map(r => r.game_id).filter(Boolean))];
   const chunks = [];
   for (let i = 0; i < gids.length; i += 20) chunks.push(gids.slice(i, i + 20));
-  const byGame = new Map();
-  (await Promise.all(chunks.map(c => api(`player_game_stats?game_id=in.(${c.join(',')})&select=${BPM_COLS}`)))).forEach(list => list.forEach(l => {
-    if (!byGame.has(l.game_id)) byGame.set(l.game_id, []);
-    byGame.get(l.game_id).push({ id: l.player_uuid, side: l.team_idx, stats: { min: l.min, pts: l.pts, p2m: l.p2m, p2a: l.p2a, p3m: l.p3m, p3a: l.p3a,
-      fta: l.fta, ftm: l.ftm, or: l.oreb, dr: l.dreb, ast: l.ast, stl: l.stl, blk: l.blk, to: l.tov, pf: l.pf } });
+  const byGame = new Map(), clubs = new Map();
+  await Promise.all(chunks.map(async c => {
+    const [list, tm] = await Promise.all([api(`player_game_stats?game_id=in.(${c.join(',')})&select=${BPM_COLS}`),
+      api(`team_game_stats?game_id=in.(${c.join(',')})&select=${CLUB_COLS}`).catch(() => [])]);
+    list.forEach(l => {
+      if (!byGame.has(l.game_id)) byGame.set(l.game_id, []);
+      byGame.get(l.game_id).push({ id: l.player_uuid, side: l.team_idx, stats: { min: l.min, pts: l.pts, p2m: l.p2m, p2a: l.p2a, p3m: l.p3m, p3a: l.p3a,
+        fta: l.fta, ftm: l.ftm, or: l.oreb, dr: l.dreb, ast: l.ast, stl: l.stl, blk: l.blk, to: l.tov, pf: l.pf } });
+    });
+    (tm || []).forEach(t => { if (!clubs.has(t.game_id)) clubs.set(t.game_id, [null, null]); clubs.get(t.game_id)[t.team_idx === 1 ? 1 : 0] = t; });
   }));
+  /* each game's competition's season, as the game page reads it (EpinoiaModernBox.loadSeason: data.js season of that competition) */
+  const seasons = new Map();
+  const cids = [...new Set(rows.map(r => r.games && r.games.competition_id).filter(Boolean))];
+  if (D && D.season) await Promise.all(cids.map(async cid => {
+    try {
+      const S = await D.season(cid, { rows: false, trim: true });
+      seasons.set(cid, new Map((S.players || []).map(p => [p.id, { bpm: p.bpm, min: p.min || 0, gp: p.gp || 0, bpm_pos: p.bpm_pos, bpm_role: p.bpm_role }])));
+    } catch (_) { /* that game's BPM is then the box score's own estimate */ }
+  }));
+  const games = new Map();
   rows.forEach(r => {
-    const b = B.gameFromBox(byGame.get(r.game_id) || []).get(r.player_uuid);
+    if (!games.has(r.game_id)) {
+      const cl = clubs.get(r.game_id);
+      games.set(r.game_id, B.game({ lines: byGame.get(r.game_id) || [], clubs: cl && cl[0] && cl[1] ? cl : null,
+        season: seasons.get(r.games && r.games.competition_id) || null }));
+    }
+    const b = games.get(r.game_id).get(r.player_uuid);
     r.__bpm = b ? b.bpm : null;
   });
 }

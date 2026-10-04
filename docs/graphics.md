@@ -6,7 +6,7 @@ Code: `socialcard.js` draws and words them, `admin/socialgfx-ui.js` reads the ro
 
 ## The night's picks: BPM and nothing else, from 18 minutes
 
-A game's player, a side's leader, and the week's stars are picked by the game's own **BPM**: the figure on the game page's squads circles, to the tenth (`socialcard.js` `gameBPMs`: each club's own pace and ratings from its game line, `bpm.js` `forTeam`; where a game has no club lines, `bpm.js` `gameFromBox` from the players' lines, a little different). Two things bend that, and only these:
+A game's player, a side's leader, and the week's stars are picked by the game's own **BPM**: the figure on the game page's squads circles, to the tenth (`socialcard.js` `gameBPMs` asks `bpm.js` `game`, Basketball-Reference's game BPM, with the game's club lines and its competition's season, which the loader attaches to each game's club lines; see `docs/player-profile.md`). Two things bend that, and only these:
 
 - **18 minutes.** A player must have played 18 minutes in the game to be in the running (`socialcard.js` `NIGHT_MIN_MS`). Per-100 rates worked from a few minutes are noise: before this, one pick in three on live data (74 of 227 player-of-the-game picks, 27 league-weeks) went to a player of under 18 minutes, +97.6 BPM in eight minutes the worst. Where nobody on a side played 18, the minimum is waived for that side (a deep rotation still has a best night).
 - **No BPM, points.** A feed with no minutes has no BPM; the picks go by points, as they always did, and the graphic says "ranked by points", not BPM.

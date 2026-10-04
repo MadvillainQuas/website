@@ -183,12 +183,14 @@
                        avgPtsPerTSA: tsa ? sum('pts') / tsa : 1.0, per100 };
         try {
           BPM.forTeam(team, players, leagueAvg).forEach(r => {
-            bpmByPid[r.id] = r.bpm;
             if (r.position != null) posByPid[r.id] = Object.assign({}, posByPid[r.id], { n: r.position, src: 'game' });
           });
         } catch (_) { /* positions stay listed */ }
       });
     }
+    /* THE BPM PRINTED is the game page's one figure (game.js gameBPM: Basketball-Reference's game BPM); the estimate above,
+       with the club's listed position as its prior, only says where each player stands */
+    try { if (window.EpinoiaGameBPM) bpmByPid = window.EpinoiaGameBPM(d) || {}; } catch (_) { /* none */ }
     /* THE SEASON'S ESTIMATE, where it exists. bpm.js regresses its estimate towards a listed
        position with a fifty-minute prior, and the season aggregation had no listed position to
        give it (it used 3.0). With the club's own listing to hand the prior is re-pointed at it:
@@ -711,7 +713,7 @@
   }
 
   /* the season's positions: one aggregation of the competition, cached for the page */
-  let seasonPos = null, seasonLoading = null;
+  let seasonPos = null, seasonRows = null, seasonLoading = null;
   function loadSeason(S) {
     if (seasonLoading) return seasonLoading;
     const D = window.EpinoiaData;
@@ -720,9 +722,13 @@
     seasonLoading = (async () => {
       try {
         const r = await D.season(cid, { rows: false, trim: true });
-        const map = {};
-        (r.players || []).forEach(p => { if (p.bpm_pos != null) map[p.id] = { pos: p.bpm_pos, min: p.min || 0 }; });
-        seasonPos = map;
+        const map = {}, rows = new Map();
+        (r.players || []).forEach(p => {
+          if (p.bpm_pos != null) map[p.id] = { pos: p.bpm_pos, min: p.min || 0 };
+          /* the game's BPM (bpm.js game) takes each player's season position, role and BPM from here */
+          rows.set(p.id, { bpm: p.bpm, min: p.min || 0, gp: p.gp || 0, bpm_pos: p.bpm_pos, bpm_role: p.bpm_role });
+        });
+        seasonPos = map; seasonRows = rows;
         return Object.keys(map).length > 0;
       } catch (_) { return false; }
     })();
@@ -745,5 +751,5 @@
     } catch (_) { return false; }
   }
 
-  window.EpinoiaModernBox = { render, mounted, loadListed, loadSeason, hidePop, listedToNumber, nameLabels, SLOTS, placed, _pos: () => posByPid };
+  window.EpinoiaModernBox = { render, mounted, loadListed, loadSeason, season: () => seasonRows, hidePop, listedToNumber, nameLabels, SLOTS, placed, _pos: () => posByPid };
 }());
