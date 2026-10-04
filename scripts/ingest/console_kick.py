@@ -72,6 +72,32 @@ def queued(q, kinds=("backfill", "reset")) -> list[dict]:
     return out
 
 
+def _creds(env=None) -> tuple[str | None, str | None]:
+    """The token and the repository to dispatch with. In a workflow they are in the environment (GH_TOKEN, GITHUB_REPOSITORY). On the
+    machine that runs the live lane (2026-10-04) neither is, so the lane falls back on what the machine already has: the GitHub CLI's
+    own login (`gh auth token`, with GH_TOKEN/GITHUB_TOKEN cleared so it answers with its stored one) and the checkout's origin
+    remote. A test passes its own env and gets exactly what is in it."""
+    if env is not None:
+        return (env.get("GH_TOKEN") or env.get("GITHUB_TOKEN")), env.get("GITHUB_REPOSITORY")
+    e = os.environ
+    token, repo = e.get("GH_TOKEN") or e.get("GITHUB_TOKEN"), e.get("GITHUB_REPOSITORY")
+    if not token or not repo:
+        try:
+            import re
+            import subprocess
+            clean = {k: v for k, v in e.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN")}
+            if not token:
+                token = subprocess.run(["gh", "auth", "token"], env=clean, capture_output=True, text=True, timeout=15).stdout.strip() or None
+            if not repo:
+                url = subprocess.run(["git", "remote", "get-url", "origin"], cwd=os.path.dirname(os.path.abspath(__file__)),
+                                     capture_output=True, text=True, timeout=15).stdout.strip()
+                m = re.search(r"github\.com[:/]([^/]+/[^/.]+?)(?:\.git)?$", url)
+                repo = m.group(1) if m else None
+        except Exception:
+            pass
+    return token, repo
+
+
 def dispatch(repo: str, token: str, ref: str = "main", workflow: str = WORKFLOW, opener=None) -> tuple[bool, str]:
     """One workflow_dispatch. GitHub answers 204 with no body when the run is created."""
     req = urllib.request.Request(
@@ -95,8 +121,7 @@ def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill"
     live games, and nothing here is worth a missed score."""
     try:
         e = env if env is not None else os.environ
-        token = e.get("GH_TOKEN") or e.get("GITHUB_TOKEN")
-        repo = e.get("GITHUB_REPOSITORY")
+        token, repo = _creds(env)
         if not (q and token and repo):
             return "not set up"
         rows = queued(q, kinds)
@@ -142,8 +167,7 @@ def mail_cadence(env=None, now: float | None = None, send=dispatch, opener=None)
     a run in MAIL_EVERY_S, and starts one when not. Never raises; nothing at all without a token and a repository."""
     try:
         e = env if env is not None else os.environ
-        token = e.get("GH_TOKEN") or e.get("GITHUB_TOKEN")
-        repo = e.get("GITHUB_REPOSITORY")
+        token, repo = _creds(env)
         if not (token and repo):
             return "not set up"
         req = urllib.request.Request(
