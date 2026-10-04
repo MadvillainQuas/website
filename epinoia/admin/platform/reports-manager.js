@@ -34,13 +34,18 @@ function style() {
   if (document.getElementById('rm-style')) return;
   const s = el('style'); s.id = 'rm-style';
   s.textContent = `
-.rm{ width:min(980px,96vw); max-height:92vh; padding:0; border:1px solid var(--rule-2,#ccc); border-radius:14px; background:var(--panel,#fff); color:var(--ink,#111) }
+/* the page is zoomed (the kit's body zoom: 1.25 from 1000px, 1.5 from 1200px) and the zoom multiplies vw / vh too: --rmz (set on
+   opening) takes it back out, so the pop-up fits the screen and its close button is always on it */
+.rm{ width:min(980px, calc(96vw / var(--rmz, 1))); max-height:calc(92vh / var(--rmz, 1)); padding:0; overflow:hidden; border:1px solid var(--rule-2,#ccc); border-radius:14px; background:var(--panel,#fff); color:var(--ink,#111) }
+/* the title bar and the tabs never scroll away: only the body does */
+.rm[open]{ display:flex; flex-direction:column }
 .rm::backdrop{ background:rgba(6,14,10,.55) }
-.rm-h{ position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px 10px; background:var(--panel,#fff); border-bottom:1px solid var(--rule,#ddd) }
+.rm-h{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px 10px; background:var(--panel,#fff); border-bottom:1px solid var(--rule,#ddd) }
 .rm-h h3{ margin:0; font-size:18px }
-.rm-tabs{ display:flex; gap:6px; padding:10px 18px 0 }
+.rm-tabs{ flex:none; display:flex; gap:6px; padding:10px 18px 0 }
 .rm-tabs button.on{ background:var(--ink,#111); color:var(--panel,#fff) }
-.rm-b{ padding:12px 18px 18px; overflow:auto; max-height:calc(92vh - 110px) }
+.rm-b{ flex:1 1 auto; min-height:0; padding:12px 18px 18px; overflow:auto }
+.rm-x{ font-size:15px !important; font-weight:800 }
 .rm-box{ border:1px solid var(--rule,#ddd); border-radius:12px; padding:10px 12px; margin:0 0 12px }
 .rm-box h4{ margin:0 0 8px; font-size:13px; letter-spacing:.04em; text-transform:uppercase }
 .rm-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px }
@@ -67,13 +72,20 @@ function style() {
   document.head.appendChild(s);
 }
 
+function fitZoom() {
+  if (!dlg) return;
+  const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+  dlg.style.setProperty('--rmz', String(z > 0 ? z : 1));
+}
 async function open(client, hooks) {
   sb = client; H = hooks || {};
   style();
   if (!dlg) {
     dlg = el('dialog', 'rm');
     const head = el('div', 'rm-h');
-    head.append(el('h3', null, 'Reports manager'), btn('close', 'mini', () => dlg.close()));
+    const x = btn('\u2715 close', 'mini rm-x', () => dlg.close());
+    x.setAttribute('aria-label', 'Close the reports manager'); x.title = 'Close (Esc)';
+    head.append(el('h3', null, 'Reports manager'), x);
     const tabs = el('div', 'rm-tabs');
     [['addr', 'Addresses and clubs'], ['syn', 'Synergy files']].forEach(([k, t]) => {
       const b = btn(t, 'mini', () => { tab = k; tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
@@ -82,8 +94,12 @@ async function open(client, hooks) {
     body = el('div', 'rm-b');
     dlg.append(head, tabs, body);
     dlg.addEventListener('close', () => { if (H.reload) H.reload(); });
+    /* a click outside it (on the dimmed page) closes it too, as Esc does */
+    dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
     document.body.appendChild(dlg);
+    window.addEventListener('resize', fitZoom);
   }
+  fitZoom();
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
   await draw();
 }

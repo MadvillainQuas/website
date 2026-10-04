@@ -133,6 +133,9 @@ RM._t.use({ from });
 {
   const src = read('epinoia', 'admin', 'platform', 'reports-manager.js');
   ok('the manager never searches the whole site for a match (no site_search)', !/site_search|rpc\(/.test(src));
+  ok('it can always be closed: the title bar and its close button never scroll away, its size takes the page\'s zoom back out (so it fits the screen), Esc or a click outside closes it',
+     /\.rm\[open\]\{ display:flex; flex-direction:column \}/.test(src) && /\.rm-b\{ flex:1 1 auto; min-height:0;/.test(src) && /max-height:calc\(92vh \/ var\(--rmz, 1\)\)/.test(src) &&
+     /getComputedStyle\(document\.body\)\.zoom/.test(src) && /if \(e\.target === dlg\) dlg\.close\(\)/.test(src) && /aria-label', 'Close the reports manager'/.test(src));
   ok('every file input takes any number of CSVs at once: the manager\'s (each club\'s and the drop box) and the report tab\'s',
      /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true;/.test(src) && (src.match(/filesButton\(/g) || []).length >= 3 &&
      /createTextNode\('Add Synergy CSVs'\)/.test(read('epinoia', 'report.js')) && /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true; inp\.hidden = true;/.test(read('epinoia', 'report.js')));
