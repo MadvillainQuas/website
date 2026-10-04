@@ -109,7 +109,8 @@ ok('no location in the page\'s own storage: only the intro seen, "later" for thi
    && /store\(KEYS\.uname, JSON\.stringify\(\{ u: S\.session\.userId, has: !!S\.username \}\)\)/.test(js));
 
 console.log('\nthe redesign (Louie, 2026-09-24): the intro');
-const css = rd('epinoia', 'go', 'go.css');
+/* the page's own look, and the arenas' and the games list's, shared with HOME since 2026-10-04 (go/arenas.css) */
+const css = rd('epinoia', 'go', 'go.css') + '\n' + rd('epinoia', 'go', 'arenas.css');
 ok('the screen goes black on the light theme, white on the dark, and asks in a sans serif',
    /<div class="gi-msg" id="goIntroMsg">Please Enter A Username\.<\/div>/.test(html)
    && /\.go-intro\{[^}]*background:#fbfdfc;/.test(css) && /:root\[data-theme="light"\] \.go-intro\{background:#000;/.test(css)
@@ -559,6 +560,68 @@ ok('...it stands alone on a page that does not load the kit: the logo\'s and the
    /@font-face\{font-family:'Orbitron';src:url\('\.\.\/kit\/fonts\/orbitron\.woff2'\)/.test(gvCss) && /\.gv \.go-logo \.gl-go\{font-family:var\(--f-go,'Orbitron'/.test(gvCss)
    && /\.pv-go \.gv\{/.test(rd('epinoia', 'game', 'preview.css')));
 ok('...and the words in Japanese and Spanish', ['ja', 'es'].every(code => rd('epinoia', 'i18n', code, 'go.js').includes("'stamp this game':")));
+
+console.log('\nEPINOIA GO on HOME, under the feed (2026-10-04)');
+{
+  const hHtml = rd('epinoia', 'home', 'index.html'), front = rd('epinoia', 'home', 'front.js'), goHome = rd('epinoia', 'home', 'go-home.js');
+  const arenas = rd('epinoia', 'go', 'arenas.css'), goCss = rd('epinoia', 'go', 'go.css'), homeCss = rd('epinoia', 'kit', 'home.css');
+  const at = id => hHtml.indexOf('id="' + id + '"');
+  ok('a section of its own straight after the feed, shut until there is something to show, its title and its link going to the GO page',
+     at('feed') > 0 && at('go') > at('feed') && at('stars') > at('go') && /<section class="sec hm-go" id="go" aria-labelledby="hmGoH" hidden>/.test(hHtml)
+     && /<h2 id="hmGoH"><a class="plain" href="\.\.\/go\/">EPINOIA GO<\/a><\/h2>/.test(hHtml) && /<a class="showall" href="\.\.\/go\/">open EPINOIA GO →<\/a>/.test(hHtml));
+  ok('...the two pills\' host, the country picker and the strip, as the GO page has them',
+     /<div class="hm-go-today" id="homeGoToday" aria-live="polite"><\/div>/.test(hHtml) && /<select class="hm-go-pick" id="homeGoCountry" aria-label="Country"><\/select>/.test(hHtml)
+     && /<div class="go-strip hm-mount" id="homeGoStrip" aria-busy="true"><\/div>/.test(hHtml));
+  ok('...HOME loads the arenas\' look, the logo, go.js and then its section file, and the go words',
+     /href="\.\.\/go\/arenas\.css\?v=\d+"/.test(hHtml) && /<script src="\.\.\/go\/logo\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\/go\.js\?v=\d+" defer><\/script>\s*<script src="go-home\.js\?v=\d+" defer><\/script>/.test(hHtml)
+     && /data-i18n-packs="report go"/.test(hHtml) && !/go\/go\.css/.test(hHtml));
+  ok('front.js runs it after the feed, into the strip\'s mount, and numbers it with the rest',
+     /go: 'homeGoStrip'/.test(front) && /const go = feed\.then\(\(\) => run\('go'\)\);/.test(front) && /Promise\.all\(\[fixtures, followed, feed, go,/.test(front)
+     && /go: 'EPINOIA GO could not be loaded just now\.'/.test(front));
+  ok('go-home.js hands go.js the hosts, and opens the section only when EPINOIA GO is open',
+     /G\.home\(\{ pills: document\.getElementById\('homeGoToday'\), sec: '#homeGoStripSec',\s*pick: '#homeGoCountry', strip: '#homeGoStrip', goHref: ctx\.base \+ 'go\/' \}\)/.test(goHome)
+     && /if \(!ok\) \{ sec\.hidden = true; return; \}/.test(goHome) && /sec\.hidden = false;/.test(goHome));
+  ok('go.js boots only on its own pages (HOME calls home()), and home() takes the session follow.js holds (HOME loads no access.js)',
+     /if \(!document\.getElementById\('goFind'\) && !onStampsPage\(\)\) return;/.test(js) && typeof G.home === 'function'
+     && /S\.session = F && typeof F\.session === 'function' \? F\.session\(\) : null;/.test(js)
+     && /drawToday\(o\.pills, \{ leagues: false \}\);/.test(js) && /if \(S\.session\) S\.mine = await fetchMine\(\);/.test(js)
+     && !/<script src="[./]*access\.js/.test(hHtml));
+  ok('...the same two pills as the GO page: a hover lists their games, a press too and asks where the phone is; the list hangs from the pills it came from',
+     /const host = sheet \? document\.body : POP\.home \|\| \$\('#goToday'\);/.test(js) && /POP\.home = t;/.test(js)
+     && /chipsOf\(\)\.forEach\(b => b\.setAttribute\('aria-expanded', String\(b === anchor\)\)\);/.test(js) && /e\.target\.closest\('button\.go-chip'\)/.test(js)
+     && /if \(!\(opts && opts\.leagues === false\)\) chip\(null, 'Leagues', String\(leagues\)\);/.test(js));
+  ok('...the stamp is the GO page\'s: away from it the list\'s button goes there',
+     /&& !\$\('#goAt'\)\) \{[\s\S]{0,200}'stamp it on EPINOIA GO'\)\)\.href = S\.goHref \|\| '\.\.\/go\/';/.test(js));
+  ok('...the strip in the hosts given, the GO page\'s own by default',
+     /const STRIP_AT = \{ sec: '#goStripSec', pick: '#goCountry', strip: '#goStrip' \};/.test(js) && /const sec = \$\(STRIP_AT\.sec\), pick = \$\(STRIP_AT\.pick\);/.test(js)
+     && /const host = \$\(STRIP_AT\.strip\);/.test(js));
+  const T = Date.parse('2026-10-04T18:00:00Z'), iso = m => new Date(T + m * 60000).toISOString();
+  const row = (venue, o) => Object.assign({ game_id: 'g-' + venue, venue_id: venue, trusted: true, opens_at: iso(-60), closes_at: iso(120), home: 'Home', away: 'Away' }, o || {});
+  const list = [row('v1'), row('v2', { trusted: false }), row('v3', { opens_at: iso(30) }), row('v4', { closes_at: iso(-5) })];
+  ok('OPEN TO STAMP on an arena\'s card: a game there whose window is open now and whose pin is checked; not before it opens or after it shuts',
+     G.openAt('v1', T, list).game_id === 'g-v1' && G.openAt('v2', T, list) === null && G.openAt('v3', T, list) === null
+     && G.openAt('v4', T, list) === null && G.openAt('v9', T, list) === null);
+  ok('...the card lit, a chip with a beating dot, and the game and until when rising into it under a pointer (always shown where nothing hovers)',
+     /a\.classList\.add\('is-open'\);/.test(js) && /el\('span', 'vc-chip vc-open'\)/.test(js) && /'open to stamp'/.test(js) && /el\('span', 'vc-game'\)/.test(js)
+     && /\.vcard\.is-open\{/.test(arenas) && /\.vcard\.is-open:hover \.vc-game,\.vcard\.is-open:focus-visible \.vc-game\{max-height:64px;opacity:1/.test(arenas)
+     && /@media \(hover:none\)\{ \.vc-game\{max-height:64px;opacity:1/.test(arenas) && /@media \(prefers-reduced-motion:reduce\)\{ \.vc-dot\{animation:none\}/.test(arenas));
+  ok('the arenas\' cards, the strip and the games list are go/arenas.css\'s, with nothing of a page\'s own: go.css keeps the GO page\'s',
+     /\.vcard\{position:relative;/.test(arenas) && /\.go-strip-view\{overflow-x:auto;/.test(arenas) && /\.go-pop\.sheet\{position:fixed;/.test(arenas)
+     && !/\.vcard\{position:relative;|\.go-strip-view\{|\.go-pop\{/.test(goCss) && !/(^|[^-.\w])body\b(?!-)|\.ep-frame|\.ep-bell\{/.test(arenas.replace(/\/\*[\s\S]*?\*\//g, '').replace(/html\.go-pop-sheet[^\n]*\n/g, ''))
+     && /--go-card-w:250px/.test(arenas) && !/--go-card-w/.test(goCss));
+  ok('...and every page that loads go.css loads arenas.css just before it',
+     [['go', 'index.html'], ['go', 'stamps', 'index.html'], ['go', 'nearby', 'index.html'], ['community', 'index.html']].every(p => {
+       const h = rd('epinoia', ...p); const a = h.search(/arenas\.css\?v=/), c = h.search(/\/?go\.css\?v=/); return a > 0 && c > a; }));
+  ok('HOME\'s pills are HOME\'s own: the micro face, the count in a lume bubble, a caret; the section above the ones after it, so the list hangs over them',
+     /\.hm-go-today \.go-chip\{[^}]*font-size:0;/.test(homeCss) && /\.hm-go-today \.go-chip b\{[^}]*color:var\(--lume\)/.test(homeCss)
+     && /\.hm-go-today \.go-chip::after\{content:"▾"/.test(homeCss) && /\.hm-go\{position:relative;z-index:2\}/.test(homeCss)
+     && /\.hm-go \.sec-h \.note\{white-space:normal\}/.test(homeCss));
+  ok('...and its words in Japanese and Spanish',
+     ['ja', 'es'].every(code => { const c = rd('epinoia', 'i18n', code, 'go.js');
+       return ['Arenas to tick off: go to a game at one, stamp it with your phone, and it is yours', 'open EPINOIA GO', 'stamp it on EPINOIA GO', 'open to stamp', 'until']
+         .every(w => c.includes("'" + w + "':")); })
+     && ['ja', 'es'].every(code => rd('epinoia', 'i18n', code + '.js').includes("'EPINOIA GO could not be loaded just now.':")));
+}
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

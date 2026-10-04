@@ -1774,7 +1774,8 @@
       'Show more leagues': 'リーグをもっと見る',
       'Show fewer leagues': 'リーグの表示を減らす',
       'All live leagues': '試合中のすべてのリーグ',
-      'Half-time': 'ハーフタイム'
+      'Half-time': 'ハーフタイム',
+      'EPINOIA GO could not be loaded just now.': 'EPINOIA GOを今は読み込めませんでした。'
     },
 
     ctx: {

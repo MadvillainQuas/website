@@ -41,27 +41,28 @@
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode before anything paints. Never the splash's mode
      script, its stylesheet or splash-body here: HOME is where the app goes instead of the water. -->
-<script src="../appmode.js?v=632"></script>
-<script src="../i18n.js?v=632" data-i18n-packs="report"></script>
-<script src="../glyphs.js?v=632" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=632">
-<link rel="stylesheet" href="../kit/nav.css?v=632">
-<link rel="stylesheet" href="../kit/card.css?v=632">
-<link rel="stylesheet" href="../kit/home.css?v=632">
-<link rel="stylesheet" href="../kit/fxc.css?v=632">
-<link rel="stylesheet" href="../kit/sectitle.css?v=632">
-<link rel="stylesheet" href="stars.css?v=632">
-<link rel="stylesheet" href="leagues.css?v=632">
-<link rel="stylesheet" href="favourites.css?v=632">
-<link rel="stylesheet" href="../kit/haze.css?v=632">
-<link rel="stylesheet" href="../kit/records.css?v=632">
-<link rel="stylesheet" href="../kit/starcard.css?v=632">
-<link rel="stylesheet" href="../kit/silhouette.css?v=632">
-<link rel="stylesheet" href="../kit/newscard.css?v=632">
-<link rel="stylesheet" href="../kit/feedview.css?v=632">
-<link rel="stylesheet" href="../kit/teletext.css?v=632">
-<link rel="stylesheet" href="../kit/ttpanel.css?v=632">
-<link rel="stylesheet" href="../kit/legibility.css?v=632">
+<script src="../appmode.js?v=633"></script>
+<script src="../i18n.js?v=633" data-i18n-packs="report go"></script>
+<script src="../glyphs.js?v=633" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=633">
+<link rel="stylesheet" href="../kit/nav.css?v=633">
+<link rel="stylesheet" href="../kit/card.css?v=633">
+<link rel="stylesheet" href="../kit/home.css?v=633">
+<link rel="stylesheet" href="../kit/fxc.css?v=633">
+<link rel="stylesheet" href="../kit/sectitle.css?v=633">
+<link rel="stylesheet" href="stars.css?v=633">
+<link rel="stylesheet" href="leagues.css?v=633">
+<link rel="stylesheet" href="favourites.css?v=633">
+<link rel="stylesheet" href="../kit/haze.css?v=633">
+<link rel="stylesheet" href="../kit/records.css?v=633">
+<link rel="stylesheet" href="../kit/starcard.css?v=633">
+<link rel="stylesheet" href="../kit/silhouette.css?v=633">
+<link rel="stylesheet" href="../kit/newscard.css?v=633">
+<link rel="stylesheet" href="../kit/feedview.css?v=633">
+<link rel="stylesheet" href="../go/arenas.css?v=633">
+<link rel="stylesheet" href="../kit/teletext.css?v=633">
+<link rel="stylesheet" href="../kit/ttpanel.css?v=633">
+<link rel="stylesheet" href="../kit/legibility.css?v=633">
 <!-- seo:ld -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Basketball Scores Today, Results & Top Players | Epinoia","description":"Today's live basketball scores and results from every league on Epinoia, plus the best-performing players, the leagues you follow and the standings.","url":"https://prophesyscouting.co.uk/epinoia/home/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Epinoia","item":"https://prophesyscouting.co.uk/epinoia/home/"},{"@type":"ListItem","position":2,"name":"Home"}]}</script>
@@ -136,6 +137,23 @@
       </div>
       <a class="showall" id="feedAll" href="../news/">all news →</a></div>
     <div class="hm-mount fv-mount" id="homeFeed" aria-busy="true"></div>
+  </section>
+
+  <!-- EPINOIA GO ------------------------------------------------------------
+       The arenas in the reader's country they have not stamped yet, sliding past: the GO page's own strip
+       (go.js), in its cards (go/arenas.css), and an arena with a game open to stamp just now says so, the
+       game under a pointer. Beside the title, the GO page's two pills: games open to stamp now, and today
+       and tomorrow, each listing its games on a hover or a press, with how far each one is (go-home.js).
+       The title and the link go to EPINOIA GO. Shut unless EPINOIA GO is open. -->
+  <section class="sec hm-go" id="go" aria-labelledby="hmGoH" hidden>
+    <div class="sec-h"><span class="idx">04</span><h2 id="hmGoH"><a class="plain" href="../go/">EPINOIA GO</a></h2>
+      <p class="note">Arenas to tick off: go to a game at one, stamp it with your phone, and it is yours</p>
+      <div class="hm-go-today" id="homeGoToday" aria-live="polite"></div>
+      <select class="hm-go-pick" id="homeGoCountry" aria-label="Country"></select>
+      <a class="showall" href="../go/">open EPINOIA GO →</a></div>
+    <div class="hm-go-strip" id="homeGoStripSec">
+      <div class="go-strip hm-mount" id="homeGoStrip" aria-busy="true"></div>
+    </div>
   </section>
 
   <!-- best performing players ---------------------------------------------
@@ -219,36 +237,39 @@
     </div>
   </footer>
 </div>
-<script src="../config.js?v=632" defer></script>
-<script src="../season.js?v=632" defer></script>
-<script src="../bpm.js?v=632" defer></script>
-<script src="../data.js?v=632" defer></script>
-<script src="../teamcolour.js?v=632" defer></script>
-<script src="../rt.js?v=632" defer></script>
-<script src="../initials.js?v=632" defer></script>
-<script src="../globalgames.js?v=632" defer></script>
-<script src="../silhouette.js?v=632" defer></script>
-<script src="../stars.js?v=632" defer></script>
-<script src="../records.js?v=632" defer></script>
-<script src="../country.js?v=632" defer></script>
+<script src="../config.js?v=633" defer></script>
+<script src="../season.js?v=633" defer></script>
+<script src="../bpm.js?v=633" defer></script>
+<script src="../data.js?v=633" defer></script>
+<script src="../teamcolour.js?v=633" defer></script>
+<script src="../rt.js?v=633" defer></script>
+<script src="../initials.js?v=633" defer></script>
+<script src="../globalgames.js?v=633" defer></script>
+<script src="../silhouette.js?v=633" defer></script>
+<script src="../stars.js?v=633" defer></script>
+<script src="../records.js?v=633" defer></script>
+<script src="../country.js?v=633" defer></script>
 <!-- the follow list, and the only thing on HOME that knows who is signed in:
      access.js deliberately sends no token here (see followed-home.js) -->
-<script src="../follow.js?v=632" defer></script>
-<script src="front.js?v=632" defer></script>
-<script src="daily.js?v=632" defer></script>
-<script src="followed-home.js?v=632" defer></script>
-<script src="../newscard.js?v=632" defer></script>
-<script src="../feedrank.js?v=632" defer></script>
-<script src="../feedview.js?v=632" defer></script>
-<script src="feed-home.js?v=632" defer></script>
-<script src="stars-home.js?v=632" defer></script>
-<script src="records-home.js?v=632" defer></script>
-<script src="leagues.js?v=632" defer></script>
-<script src="private-leagues.js?v=632" defer></script>
-<script src="favourites.js?v=632" defer></script>
+<script src="../follow.js?v=633" defer></script>
+<script src="front.js?v=633" defer></script>
+<script src="daily.js?v=633" defer></script>
+<script src="followed-home.js?v=633" defer></script>
+<script src="../newscard.js?v=633" defer></script>
+<script src="../feedrank.js?v=633" defer></script>
+<script src="../feedview.js?v=633" defer></script>
+<script src="feed-home.js?v=633" defer></script>
+<script src="../go/logo.js?v=633" defer></script>
+<script src="../go/go.js?v=633" defer></script>
+<script src="go-home.js?v=633" defer></script>
+<script src="stars-home.js?v=633" defer></script>
+<script src="records-home.js?v=633" defer></script>
+<script src="leagues.js?v=633" defer></script>
+<script src="private-leagues.js?v=633" defer></script>
+<script src="favourites.js?v=633" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="../haze.js?v=632" defer></script>
-<script src="../nav.js?v=632" defer></script>
-<script src="../xscroll.js?v=632" defer></script>
+<script src="../haze.js?v=633" defer></script>
+<script src="../nav.js?v=633" defer></script>
+<script src="../xscroll.js?v=633" defer></script>
 </body>
 </html>

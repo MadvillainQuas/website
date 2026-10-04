@@ -244,7 +244,12 @@
       'Stamps without a photograph': 'Sellos sin foto',
       'Nothing here yet.': 'Todavía no hay nada.',
       'Photographs of stamped games first, then the stamps of fans who chose to show them. A person looks at every photograph before it goes up.': 'Primero las fotos de partidos sellados y después los sellos de los aficionados que eligieron mostrarlos. Una persona revisa cada foto antes de publicarla.',
-      'stamped by': 'sellado por'
+      'stamped by': 'sellado por',
+      'Arenas to tick off: go to a game at one, stamp it with your phone, and it is yours': 'Pabellones pendientes: ve a un partido en uno, séllalo con el móvil y será tuyo',
+      'open EPINOIA GO': 'abrir EPINOIA GO',
+      'stamp it on EPINOIA GO': 'séllalo en EPINOIA GO',
+      'open to stamp': 'se puede sellar',
+      'until': 'hasta'
     },
     units: {
       'arena': '{n} pabellón',

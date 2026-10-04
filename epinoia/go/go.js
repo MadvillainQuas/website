@@ -364,9 +364,11 @@ function closed(msg) {
   c.classList.remove('hide');
 }
 
-function drawToday() {
-  const t = $('#goToday');
+/* the chips: the GO page's (#goToday), or the host another page gives (HOME's two pills: { leagues: false }) */
+function drawToday(host, opts) {
+  const t = host || $('#goToday');
   if (!t) return;
+  POP.home = t;
   t.textContent = '';
   const leagues = new Set(S.games.map(g => g.league_id).filter(Boolean)).size;
   const chip = (key, k, v) => {
@@ -382,7 +384,7 @@ function drawToday() {
   };
   chip('open', 'Games open to stamp now', String(openNow(Date.now()).length));
   chip('all', 'Today and tomorrow', String(S.games.length));
-  chip(null, 'Leagues', String(leagues));
+  if (!(opts && opts.leagues === false)) chip(null, 'Leagues', String(leagues));
 }
 
 /* ------------------------------------------------- today's games, listed (7.11) --- */
@@ -394,7 +396,8 @@ function drawToday() {
    so a pointer passing over never makes the browser ask. A drop-down under the chips on a desktop, a sheet
    from the foot of the screen on a phone; scrolls when it is long. */
 const openNow = (now, games) => (games || S.games).filter(g => now >= Date.parse(g.opens_at) && now <= Date.parse(g.closes_at));
-const POP = { el: null, key: null, pinned: false, hover: false, anchor: null, timer: null, locating: false, geo: null };
+const POP = { el: null, key: null, pinned: false, hover: false, anchor: null, timer: null, locating: false, geo: null, home: null };
+const chipsOf = () => (POP.home || document).querySelectorAll('button.go-chip');
 
 /* the list: open now nearest first (by tip-off until the phone has said where it is); today and tomorrow by
    tip-off, under their days */
@@ -458,7 +461,10 @@ function drawPop() {
     const ar = li.appendChild(el('div', 'gp-ar'));
     ar.appendChild(data('span', 'gp-venue', [g.venue, g.city].filter(Boolean).join(' · ') || '—'));
     if (d != null) ar.appendChild(data('b', 'gp-d', distanceText(d)));
-    if (here && open && g.trusted && !stamped(g.game_id)) {
+    if (here && open && g.trusted && !stamped(g.game_id) && !$('#goAt')) {
+      /* away from the GO page (HOME): the stamp is made there, where the phone is asked again */
+      li.appendChild(el('a', 'ep-btn pri gp-stamp', 'stamp it on EPINOIA GO')).href = S.goHref || '../go/';
+    } else if (here && open && g.trusted && !stamped(g.game_id)) {
       const b = li.appendChild(el('button', 'ep-btn pri gp-stamp', S.session ? 'stamp this venue' : 'sign in to stamp'));
       b.type = 'button';
       b.addEventListener('click', () => {
@@ -478,7 +484,7 @@ function placePop() {
   const sheet = !(typeof matchMedia === 'function' && matchMedia('(hover: hover) and (min-width: 700px)').matches);
   p.classList.toggle('sheet', sheet);
   p.classList.toggle('drop', !sheet);
-  const host = sheet ? document.body : $('#goToday');
+  const host = sheet ? document.body : POP.home || $('#goToday');
   if (host && p.parentNode !== host) host.appendChild(p);
 }
 
@@ -491,7 +497,7 @@ function openPop(key, anchor, pinned) {
     POP.el.addEventListener('mouseleave', () => { POP.hover = false; if (!POP.pinned) closeSoon(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && POP.el && !POP.el.hidden) closePop(true); });
     document.addEventListener('click', e => {
-      if (!POP.el || POP.el.hidden || POP.el.contains(e.target) || (e.target.closest && e.target.closest('#goToday .go-chip'))) return;
+      if (!POP.el || POP.el.hidden || POP.el.contains(e.target) || (e.target.closest && e.target.closest('button.go-chip'))) return;
       closePop();
     });
   }
@@ -500,7 +506,7 @@ function openPop(key, anchor, pinned) {
   POP.key = key;
   POP.anchor = anchor;
   POP.el.setAttribute('aria-label', key === 'open' ? 'Games open to stamp now' : 'Today and tomorrow');
-  document.querySelectorAll('#goToday button.go-chip').forEach(b => b.setAttribute('aria-expanded', String(b === anchor)));
+  chipsOf().forEach(b => b.setAttribute('aria-expanded', String(b === anchor)));
   placePop();
   drawPop();
   POP.el.hidden = false;
@@ -513,7 +519,7 @@ function closePop(refocus) {
   POP.pinned = false;
   POP.hover = false;
   document.documentElement.classList.remove('go-pop-sheet');
-  document.querySelectorAll('#goToday button.go-chip').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  chipsOf().forEach(b => b.setAttribute('aria-expanded', 'false'));
   if (refocus && POP.anchor) POP.anchor.focus();
 }
 
@@ -1034,8 +1040,11 @@ const countryName = cc => {
   try { return new Intl.DisplayNames([loc() || 'en-GB'], { type: 'region' }).of(cc) || cc; } catch (_) { return cc; }
 };
 
+/* where the strip is drawn: the GO page's own section, or the hosts home() is given (selectors) */
+const STRIP_AT = { sec: '#goStripSec', pick: '#goCountry', strip: '#goStrip' };
+
 async function loadStrip() {
-  const sec = $('#goStripSec'), pick = $('#goCountry');
+  const sec = $(STRIP_AT.sec), pick = $(STRIP_AT.pick);
   if (!sec || !pick) return;
   const r = await restGet('venues?select=country&lat=not.is.null&pin_note=is.null&limit=3000');
   const avail = [...new Set((r.data || []).map(x => String(x.country || '').toUpperCase()).filter(c => /^[A-Z]{2}$/.test(c)))]
@@ -1085,6 +1094,11 @@ function clubsAt(v) {
   return out.sort((a, b) => (b.logo_path ? 1 : 0) - (a.logo_path ? 1 : 0) || a.name.localeCompare(b.name));
 }
 
+/* the game open to stamp at an arena just now, if one is (in `games`, go_games_now's rows: the page's own by default) */
+function openAt(venueId, now, games) {
+  return (games || S.games || []).find(g => g.venue_id === venueId && g.trusted && now >= Date.parse(g.opens_at) && now <= Date.parse(g.closes_at)) || null;
+}
+
 function venueCard(v, photo) {
   const clubs = clubsAt(v);
   const club = clubs[0] || {};
@@ -1108,12 +1122,28 @@ function venueCard(v, photo) {
     b.appendChild(data('span', 'vc-clubs', clubs.map(c => c.name).join(' · ')));
   }
   a.title = [v.name].concat(clubs.map(c => c.name)).join(' · ');
+  /* OPEN TO STAMP: a game here whose window is open now (go_games_now; a checked pin) lights the card, and a pointer
+     over it, or focus, shows which game and until when it can be stamped */
+  const g = openAt(v.id, Date.now());
+  if (g) {
+    a.classList.add('is-open');
+    const chip = a.appendChild(el('span', 'vc-chip vc-open'));
+    chip.appendChild(el('i', 'vc-dot'));
+    chip.appendChild(el('span', null, 'open to stamp'));
+    const gm = b.insertBefore(el('span', 'vc-game'), b.firstChild);
+    gm.appendChild(data('b', null, (g.home || '—') + ' v ' + (g.away || '—')));
+    const until = gm.appendChild(el('span', 'vc-until'));
+    until.appendChild(el('span', null, 'until'));
+    until.appendChild(document.createTextNode(' '));
+    until.appendChild(data('time', null, timeText(g.closes_at))).dateTime = g.closes_at;
+    a.title += ' · ' + (g.home || '—') + ' v ' + (g.away || '—');
+  }
   a.setAttribute('translate', 'no');                 // names only, the tooltip too
   return a;
 }
 
 async function drawStrip() {
-  const host = $('#goStrip');
+  const host = $(STRIP_AT.strip);
   if (!host || !S.country) return;
   const want = S.country;
   const r = await restGet('venues?country=eq.' + encodeURIComponent(want) + '&lat=not.is.null&pin_note=is.null' +
@@ -1715,6 +1745,8 @@ async function bootStamps() {
 }
 
 async function boot() {
+  /* the GO page and its stamps page: another page that loads this file (HOME) calls home() instead */
+  if (!document.getElementById('goFind') && !onStampsPage()) return;
   S.cfg = window.EPINOIA_CONFIG;
   S.access = window.EpinoiaAccess || null;
   if (!S.cfg) return closed('This page could not load. Try again in a moment.');
@@ -1736,6 +1768,25 @@ async function boot() {
   loadFeed();
 }
 
-return { boot, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, journeyOf, byLeague, badgesOf, rerank,
+/* HOME'S EPINOIA GO (home/go-home.js): the GO page's two pills, each listing its games on a hover or a press, and its
+   strip of arenas still to tick off, drawn in the hosts HOME gives - { pills (element), sec, pick, strip (selectors),
+   goHref }. HOME loads no access.js: the stored session is follow.js's (EpinoiaFollow.session), which is all a read
+   needs, so a signed-in fan's own arenas are left off the strip. False when EPINOIA GO is not open (no go_games_now). */
+async function home(o) {
+  S.cfg = window.EPINOIA_CONFIG;
+  if (!S.cfg || !o) return false;
+  const F = window.EpinoiaFollow;
+  S.session = F && typeof F.session === 'function' ? F.session() : null;
+  S.goHref = o.goHref || '../go/';
+  Object.assign(STRIP_AT, { sec: o.sec, pick: o.pick, strip: o.strip });
+  const games = await loadGames();
+  if (games === 'missing') return false;
+  drawToday(o.pills, { leagues: false });
+  if (S.session) S.mine = await fetchMine();
+  await loadStrip();
+  return true;
+}
+
+return { boot, home, openAt, metres, placeOf, nearby, nearest, distanceText, kmText, numbersOf, journeyOf, byLeague, badgesOf, rerank,
          countryGuess, clubsAt, gamesFor, dayLabel, whyOf, factsOf, unameLocal, WHY, GEO, UNAME_WHY, NOTE_WHY, PHOTO_WHY, PHOTO_STATE, BY, ALLOW_M, NEAR_M, TZ_CC };
 }));

@@ -526,3 +526,33 @@ a.plain{color:inherit;text-decoration:none}
 .fxd-bar .hmf-go{margin-left:auto}
 .fxd-back{min-height:36px}
 @media (prefers-reduced-motion:reduce){ .fxd-lg{transition:none} .fxd-n .dot, .fxd-lg.is-back, .fxd-g.run .fxd-pg i.now, .fxd-w .fxc-clk.run::before{animation:none} }
+
+/* EPINOIA GO, UNDER THE FEED (home/go-home.js; go.js draws the pills, their list and the strip; go/arenas.css the cards
+   and the list). The GO page's two pills in HOME's own pill: the words in the micro face, the count in a lume bubble, a
+   caret for the list they open (a drop-down under them here, a sheet from the foot on a phone). */
+/* above the sections after it, so the list the pills drop down hangs over them rather than under */
+.hm-go{position:relative;z-index:2}
+.hm-go .sec-h h2 a{color:inherit;text-decoration:none}
+.hm-go .sec-h .note{white-space:normal}            /* a sentence, not HOME's usual word: it wraps on a phone */
+.hm-go .sec-h h2 a:hover .gl-go{text-shadow:0 0 14px color-mix(in oklch,var(--lume) 70%,transparent)}
+.hm-go-today{position:relative;display:inline-flex;flex-wrap:wrap;justify-content:center;gap:8px}
+/* font-size 0 on the pill hides the ": " go.js writes between the words and the count; each part sets its own */
+.hm-go-today .go-chip{display:inline-flex;align-items:center;min-height:32px;padding:0 11px 0 13px;border-radius:999px;cursor:pointer;
+  font-size:0;color:var(--ink-2);background:color-mix(in oklch,var(--lume) 5%,var(--panel));border:1px solid var(--rule-2);
+  transition:border-color .15s ease,box-shadow .15s ease,color .15s ease}
+.hm-go-today .go-chip .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-right:8px}
+.hm-go-today .go-chip b{font-family:var(--f-data);font-size:11.5px;font-weight:400;letter-spacing:0;line-height:1.5;min-width:1.7em;
+  padding:0 7px;border-radius:999px;text-align:center;color:var(--lume);background:color-mix(in oklch,var(--lume) 14%,transparent)}
+.hm-go-today .go-chip::after{content:"▾";margin-left:7px;font-family:system-ui,sans-serif;font-size:10px;opacity:.65}
+.hm-go-today .go-chip:hover,.hm-go-today .go-chip:focus-visible,.hm-go-today .go-chip[aria-expanded="true"]{color:var(--ink);
+  border-color:var(--lume);box-shadow:0 0 0 3px color-mix(in oklch,var(--lume) 16%,transparent)}
+.hm-go-pick{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);min-height:32px;
+  max-width:200px;padding:0 10px;border-radius:999px;border:1px solid var(--rule-2);background:var(--panel);cursor:pointer}
+.hm-go-pick:hover,.hm-go-pick:focus-visible{border-color:var(--lume);color:var(--ink)}
+.hm-go-strip{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+.hm-go .go-strip-track{padding:6px 0 14px}
+.hm-go .go-strip-done{text-align:center}
+@media (max-width:720px){
+  .hm-go-strip{padding:0 calc(var(--u)*1) calc(var(--u)*2)}
+  .hm-go-today .go-chip,.hm-go-pick{min-height:40px}
+}

@@ -1776,7 +1776,8 @@
       'Show more leagues': 'Mostrar más ligas',
       'Show fewer leagues': 'Mostrar menos ligas',
       'All live leagues': 'Todas las ligas en directo',
-      'Half-time': 'Descanso'
+      'Half-time': 'Descanso',
+      'EPINOIA GO could not be loaded just now.': 'EPINOIA GO no se ha podido cargar ahora mismo.'
     },
 
     ctx: {

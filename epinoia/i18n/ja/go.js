@@ -244,7 +244,12 @@
       'Stamps without a photograph': '写真のないスタンプ',
       'Nothing here yet.': 'まだ何もありません。',
       'Photographs of stamped games first, then the stamps of fans who chose to show them. A person looks at every photograph before it goes up.': 'スタンプした試合の写真を先に、続いて公開を選んだファンのスタンプを表示します。すべての写真は掲載前に人が確認します。',
-      'stamped by': 'スタンプした人'
+      'stamped by': 'スタンプした人',
+      'Arenas to tick off: go to a game at one, stamp it with your phone, and it is yours': '未スタンプのアリーナ：試合に行ってスマホでスタンプすれば、あなたのものに',
+      'open EPINOIA GO': 'EPINOIA GOを開く',
+      'stamp it on EPINOIA GO': 'EPINOIA GOでスタンプ',
+      'open to stamp': 'スタンプ受付中',
+      'until': '締切'
     },
     units: {
       'arena': '{n}アリーナ',

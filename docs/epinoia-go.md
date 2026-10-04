@@ -193,7 +193,8 @@ needs Louie says so.
 
 ## Phase 7 — The redesign (Louie, 2026-09-24)
 
-Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO page and its stamps page).
+Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO page and its stamps page); since 7.17 the arena
+cards, the strip and today's games list are `go/arenas.css`, which every page showing them loads before `go.css`.
 
 - [x] **7.1 The intro** — on a first visit, the screen fades to black (white on the dark theme) and asks
       "Please Enter A Username." in the site's sans serif; a signed-in fan types one there (0163's
@@ -388,3 +389,24 @@ Louie's brief, in order down the page. Styles in `go/go.css` (shared by the GO p
       and opens that fan's page there (`?u=`), which is where a public profile will grow. Ja/es for all of it.
       **To apply:** `npx supabase@latest db push` for 0177 (the client works before it, as it was); the feed then fills
       as fans go public. Real Postgres (PGlite): 45 checks; Chromium: 40; `go-public.test.mjs`: 70.
+- [x] **7.17 EPINOIA GO on HOME, under the feed** (Louie, 2026-10-04) - "an EPINOIA GO Arenas to tick off strip that
+      aesthetically fits the home screen plus directs to the screen, plus two small 'games open to stamp now' and 'today
+      and tomorrow' pills ... that have the same function as the EPINOIA GO screen, plus the open to stamp on that hover
+      over visual". HOME's section `#go` (`home/go-home.js`, run by `front.js` after the feed) has the following:
+      - **The title** is the GO logo (`logo.js`), linking to the GO page, with "open EPINOIA GO →" under it.
+      - **The two pills**, the GO page's own, drawn by `go.js`. A hover lists their games and a press does too and asks
+        the phone where it is, for how far each game is. The list is a drop-down under the pills, or a sheet on a
+        phone. Away from the GO page, the list's stamp button is a link to it ("stamp it on EPINOIA GO"): the stamp is
+        made there.
+      - **A country picker** (the GO page's choice, kept in this browser).
+      - **The strip of arenas still to tick off**, the GO page's own, in that country.
+
+      `go.js` exports `home({ pills, sec, pick, strip, goHref })` to draw them in HOME's hosts (`STRIP_AT`, `POP.home`).
+      It boots on its own only where the GO page's markup is. HOME loads no `access.js`, so `home()` reads the session
+      `follow.js` holds (`EpinoiaFollow.session`); a signed-in fan's stamped arenas are then left off the strip.
+      **Open to stamp:** an arena with a game whose stamping window is open now (`openAt`, from `go_games_now`; a
+      checked pin) gets a neon ring and an "open to stamp" chip with a beating dot, here and on the GO page. A pointer
+      over the card, or focus, raises the game and until when it can be stamped into it; on a phone, which has no
+      hover, it is always shown. The section stays shut when GO is not open. HOME's pills are HOME's own pill (the
+      micro face, the count in a lume bubble, a caret), and the section sits above the ones after it so the list hangs
+      over them. Ja/es. Tests: `go-page.test.mjs` (the HOME section, `openAt`, the stylesheet split).

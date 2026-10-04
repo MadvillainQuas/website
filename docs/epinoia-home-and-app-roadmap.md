@@ -251,6 +251,7 @@ In-app checks need Phase 6, and Phase 6's gate runs them all again.
   - 1280px: two cards across, the scorebugs two abreast with the clubs' letters;
   - 1440px: two across, short names;
   - 1920px: four across, one scorebug a row with full names.
+- **EPINOIA GO under the feed (2026-10-04).** HOME has the GO page's two pills (games open to stamp now, today and tomorrow, each listing its games on a hover or a press) and its strip of arenas still to tick off, with an arena open to stamp now lit up. Details: `docs/epinoia-go.md` 7.17.
 - **Groups.** Each league is a `<details>` element, ordered by its most imminent game. Inside a group, upcoming games run soonest first under "next", then results newest first under "results". Later pages add into existing groups and keep each group's open state.
 - **Games that don't show.** Games still marked "scheduled" more than two hours after tip-off match neither query (Q18). Anonymous reads never see `finalising`, so a game can disappear briefly at full time: de-duplicate by id, and never assume counts only grow.
 
