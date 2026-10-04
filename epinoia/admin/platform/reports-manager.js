@@ -59,6 +59,8 @@ function style() {
 .rm-club .acts{ display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end }
 .rm-club small, .rm-mt{ color:var(--ink-3,#666); font-size:12px }
 .rm-primes{ grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:6px }
+.rm-primed-at{ display:inline-flex; align-items:center; gap:6px }
+.rm-stored{ color:#1d7a46 !important; font-weight:700 }
 .rm-prime{ background:#0d1f17 !important; color:#ffd166 !important; border-color:#0d1f17 !important; font-weight:800; letter-spacing:.06em }
 .rm-syn{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:10px; align-items:start; padding:9px 0; border-top:1px solid var(--rule,#ddd) }
 .rm-syn:first-child{ border-top:0 }
@@ -156,6 +158,7 @@ function clubFinder(onPick) {
 async function drawAddresses() {
   const rows = await subs();
   const ahead = await upcoming([...new Set(rows.map(r => r.team_id))]).catch(() => new Map());
+  const stored = await primedNow().catch(() => new Map());
   const [{ data: log }, { data: rq }] = await Promise.all([
     sb.from('report_mail_log').select('sub_id,kind,sent_at').order('sent_at', { ascending: false }).limit(800),
     sb.from('report_mail_requests').select('sub_id,state,requested_at,dispatched_at,finished_at,detail').order('requested_at', { ascending: false }).limit(300)
@@ -232,9 +235,9 @@ async function drawAddresses() {
       const primes = el('div', 'rm-primes');
       primes.appendChild(el('small', null, 'PRIME REPORT:'));
       const opps = [...new Map((ahead.get(r.team_id) || []).map(o => [o.id, o])).values()];
-      opps.forEach(o => primes.appendChild(primeLink(o.name + ' \u00b7 ' + dayOf(o.at), o.id, o.name)));
+      opps.forEach(o => primes.appendChild(primeLink(o.name + ' \u00b7 ' + dayOf(o.at), o.id, o.name, stored.get('team:' + o.id))));
       if (!opps.length) primes.appendChild(el('small', 'rm-mt', 'no games in the next two weeks'));
-      primes.appendChild(primeLink('own report: ' + (t.name || 'the club'), r.team_id, t.name || 'the club'));
+      primes.appendChild(primeLink('own report: ' + (t.name || 'the club'), r.team_id, t.name || 'the club', stored.get('team:' + r.team_id)));
       row.append(nm, st, acts, primes);
       box.appendChild(row);
     });
@@ -276,12 +279,24 @@ async function upcoming(ids) {
   }));
   return out;
 }
-/* PRIME REPORT for one report: it opens primed (report.js ?prime=1: RAPM, Synergy, every page) and downloads */
-function primeLink(text, id, who) {
+/* THE REPORTS PRIMED AND STORED FOR SENDING (0229 primed_reports): 'kind:id' -> when; none before 0229 */
+async function primedNow() {
+  const { data, error } = await sb.from('primed_reports').select('kind,ref_id,primed_at');
+  return new Map((error ? [] : data || []).map(r => [r.kind + ':' + r.ref_id, r.primed_at]));
+}
+const hm = iso => { const d = new Date(iso); return dayOf(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+/* PRIME REPORT for one report: it opens primed (report.js ?prime=1: RAPM, Synergy, every page) and stores it for sending; one
+   already stored says when (at), and goes with the next email that carries it */
+function primeLink(text, id, who, at, kind) {
+  const k = kind || 't';
   const a = el('a', 'ep-btn mini rm-prime', text);
-  a.href = SITE + 't/?t=' + encodeURIComponent(id) + '&tab=report&prime=1'; a.target = '_blank'; a.rel = 'noopener';
-  a.title = 'Open ' + poss(who) + ' report made ready - RAPM worked out and kept, Synergy read, every page built - and download it';
-  return a;
+  a.href = SITE + k + '/?' + k + '=' + encodeURIComponent(id) + '&tab=report&prime=1'; a.target = '_blank'; a.rel = 'noopener';
+  a.title = 'Open ' + poss(who) + ' report made ready - RAPM worked out and kept, Synergy read, every page built - and store it for sending';
+  if (!at) return a;
+  const w = el('span', 'rm-primed-at');
+  w.append(a, el('small', 'rm-stored', '\u2713 stored ' + hm(at)));
+  w.title = 'Primed and stored for sending ' + hm(at) + ': the next email carrying this report sends it, then it is deleted';
+  return w;
 }
 async function reportedClubs() {
   const rows = (await subs().catch(() => [])).filter(r => r.active);
@@ -353,6 +368,7 @@ async function drawSynergy() {
   body.textContent = '';
   if (!S) { body.appendChild(el('p', 'rm-mt', 'The Synergy reader (synergy.js) is not on this page.')); return; }
   const { clubs, people } = await reportedClubs();
+  const stored = await primedNow().catch(() => new Map());
   /* the suggestions follow the squads (a club added, or one that left): a pick made by hand stays */
   PENDING.forEach(x => { if (!x.hand) suggest(x, people); });
 
@@ -368,7 +384,7 @@ async function drawSynergy() {
     const nm = el('div'); nm.append(el('b', null, c.name), el('br'), el('small', null, whyOf(c)));
     const st = el('div'); st.appendChild(el('small', null, n ? n + (n === 1 ? ' player' : ' players') + ' in the squad' : 'no squad listed for this club'));
     const acts = el('div', 'acts');
-    acts.appendChild(primeLink('PRIME REPORT', c.id, c.name));
+    acts.appendChild(primeLink('PRIME REPORT', c.id, c.name, stored.get('team:' + c.id)));
     /* this club's files, as many as there are: matched to its squad alone */
     const add = filesButton('add CSVs', async files => { await readFiles(files, people, c); drawSynergy(); });
     add.title = 'Any number of Synergy CSV files for ' + poss(c.name) + ' players, matched to its squad alone';
@@ -425,10 +441,7 @@ async function drawSynergy() {
     const span = S.span(S.seasonsOf(r.seasons || ''));
     const st = el('div'); st.appendChild(el('small', null, (span ? span + ' · ' : '') + 'kept ' + new Date(r.uploaded_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })));
     const acts = el('div', 'acts');
-    const prime = el('a', 'ep-btn mini rm-prime', 'PRIME REPORT');
-    prime.href = SITE + 'p/?p=' + encodeURIComponent(r.player_id) + '&tab=report&prime=1'; prime.target = '_blank'; prime.rel = 'noopener';
-    prime.title = 'Open ' + pn + '’s report made ready and download it';
-    acts.append(prime, btn('remove', 'mini danger', async () => {
+    acts.append(primeLink('PRIME REPORT', r.player_id, pn, stored.get('player:' + r.player_id), 'p'), btn('remove', 'mini danger', async () => {
       if (!confirm('Take ' + pn + '’s Synergy numbers out of every report?')) return;
       const { error } = await sb.from('synergy_profiles').delete().eq('player_id', r.player_id); if (error) oops(error); else drawSynergy();
     }));

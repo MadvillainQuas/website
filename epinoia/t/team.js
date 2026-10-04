@@ -1187,7 +1187,7 @@ function reportTab(team) {
     week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }) : null
   };
   REPORT = E.mount({
-    tabs: '#ttabs', panel: '#reportsec', kind: 'team', label: 'Report',
+    tabs: '#ttabs', panel: '#reportsec', kind: 'team', id: team.id, label: 'Report',
     /* the club report is sold on its own (0220, access.js CATALOGUE.locks.clubReport) */
     lock: { key: 'clubReport', what: 'The club report', league: lg.id || null, get leagueSlug() { return ACCESS.slug || lg.slug || ''; },
             lines: ['A printable A4 scouting report on any club: four factors, shot charts, the squad, lineups and the shot clock.'] },

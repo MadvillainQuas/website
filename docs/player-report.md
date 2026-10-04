@@ -128,8 +128,9 @@ The club's own half-court AST% has a key of its own (`tm_hc_ast_pct`).
 **The type**: every report page (player, club, game analysis) is set in Archivo; the site's pixel faces are not used on paper.
 
 **PRIME REPORT**: one click makes the report ready - RAPM read where it was already worked out (this browser, then `report_rapm`,
-0228) or worked out now and kept there for every report of that league and season, Synergy read, every page built - then the PDF.
-`?prime=1` on a report's address does the same on opening; the mailer primes its reports itself.
+0228) or worked out now and kept there for every report of that league and season, Synergy read, every page built - then the PDF
+**stored for sending** (0229, below), not downloaded (*Download PDF* gives a copy). `?prime=1` on a report's address does the same
+on opening; the mailer primes the reports it draws itself.
 
 ## The reports manager and the players' reports (2026-10-04)
 
@@ -160,3 +161,19 @@ workflow's limit is 120 minutes.
 
 Tests: `supabase/tests/reports-manager.test.mjs` (the clubs a file is matched to, the ZIP read back, whose reports go in, the threaded
 reply, priming).
+
+## PRIME REPORT stores the report for sending (0229, 2026-10-04)
+
+PRIME REPORT (a club's or a player's Report tab, or the reports manager's buttons) draws the report at email weight and keeps the
+PDF in the private bucket `primed` (`<team|player>/<id>.pdf`) with its row in `primed_reports` (kind, ref_id, path, bytes,
+primed_at, primed_by); a new PRIME replaces it. Platform administrators alone write and read them.
+
+The mailer sends that file in place of drawing its own - the Sunday email's club reports and the players' ZIP - while no game of
+its club has been finalised since it was primed (otherwise it is drawn afresh). At the end of the run every primed copy an email
+carried is deleted (file and row), as are the stale ones and any older than two weeks; one no email has carried yet stays for the
+one that will. An email that fails to go leaves its copies for the next try. Before 0229 every report is drawn as before.
+
+What PRIME did is said under its buttons, read back where it is kept: green "Primed" when all is ready for the emailed reports
+(RAPM kept for the league and season, Synergy kept for n of the players, the pages built, the file stored for sending), amber with
+what is not (for instance a sign-in that is not a platform administrator's: the file is not stored). The reports manager marks
+every report stored for sending with when (`✓ stored Sun 4 Oct 08:14`).

@@ -24,6 +24,8 @@
    The PDFs are the site's own: a headless Chromium opens the page served from this checkout (SITE, a local server the
    workflow starts), presses the report's own "Download PDF" and takes the file. EPINOIA_RP_BOT, set before the page's
    scripts run, opens the members' report for the member it is bought for, and draws it at email weight (report.js).
+   PRIMED FOR SENDING (0229): a report PRIME REPORT kept (primed_reports, bucket 'primed') is sent as it was primed, in place of
+   one drawn here, while no game of its club has been finalised since; it is deleted once the run has emailed it.
    SYNERGY AND RAPM (0228): every report is PRIMED first (EPINOIA_RP_PRIME, report.js prime: RAPM read from report_rapm or
    worked out), with the Synergy numbers the admins kept (synergy_profiles, read with the service key) handed to the page
    (EPINOIA_SYNERGY); RAPM a page had to work out is kept in report_rapm, so the next report of that league and season,
@@ -314,6 +316,57 @@ async function keep(sub, day, pdf, what) {
 }
 const shortDay = (iso, tz) => { try { return new Date(iso).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); } catch (_) { return ''; } };
 
+/* ------------------------------------------------------------------ reports primed for sending (0229) --- */
+/* PRIME REPORT keeps a report's PDF (primed_reports, the private bucket 'primed'). The mailer sends that file in place of drawing
+   its own while no game of its club has been finalised since it was primed. Once an email carrying it has gone, it is deleted at
+   the end of the run (so every address that needs it in that run gets it), as is one a newer game has made stale, or one older
+   than two weeks. Before 0229 there is none, and every report is drawn as before. */
+export const PRIMED = new Map();                     // 'kind:id' -> { path, sent, stale }
+/* a run's own caches, empty again (supabase/tests: one run after another in one process) */
+export function newRun() { PRIMED.clear(); PLAYER_PDF.clear(); SYN_ALL = undefined; }
+const PRIMED_DAYS = 14;
+const SK = () => ({ apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY });
+async function primedPdf(kind, id, clubId, name) {
+  try {
+    const [row] = await rest(`primed_reports?kind=eq.${kind}&ref_id=eq.${id}&select=path,primed_at`);
+    if (!row) return null;
+    const key = kind + ':' + id;
+    const newer = clubId ? await rest(`games?or=(home_team_id.eq.${clubId},away_team_id.eq.${clubId})&status=eq.final&finalised_at=gt.${encodeURIComponent(row.primed_at)}&select=id&limit=1`) : [];
+    if (newer.length) { console.log('primed', key, 'is older than a game since: drawn afresh'); PRIMED.set(key, { path: row.path, stale: true }); return null; }
+    const r = await fetch(env.SUPABASE_URL + '/storage/v1/object/primed/' + row.path, { headers: SK() });
+    if (!r.ok) { console.warn('primed', key, 'not read (' + r.status + '): drawn afresh'); return null; }
+    const bytes = Buffer.from(await r.arrayBuffer());
+    if (!PRIMED.has(key)) PRIMED.set(key, { path: row.path, sent: false });
+    console.log('primed', key, 'sent as primed (' + bytes.length + ' bytes)');
+    return { filename: name + '.pdf', content: bytes.toString('base64'), primed: key };
+  } catch (_) { return null; }
+}
+/* A REPORT FOR AN EMAIL: the primed copy when there is a fresh one, else drawn; `used` takes the primed keys of the email */
+async function reportPdf(kind, id, clubId, path, name, used) {
+  const got = await primedPdf(kind, id, clubId, name);
+  if (got) { used.push(got.primed); return { filename: got.filename, content: got.content }; }
+  return pdfOf(path, name);
+}
+const sentWith = keys => keys.forEach(k => { const s = PRIMED.get(k); if (s) s.sent = true; });
+/* AT THE END OF A RUN: the primed copies emailed in it, the stale and the old, deleted (the file, then its row) */
+export async function cleanPrimed(now = new Date()) {
+  if (DRY) return 0;
+  const gone = [...PRIMED].filter(([, x]) => x.sent || x.stale).map(([k, x]) => ({ kind: k.slice(0, k.indexOf(':')), id: k.slice(k.indexOf(':') + 1), path: x.path }));
+  try {
+    (await rest(`primed_reports?primed_at=lt.${new Date(now.getTime() - PRIMED_DAYS * 864e5).toISOString()}&select=kind,ref_id,path`))
+      .forEach(r => { if (!gone.some(g => g.kind === r.kind && g.id === r.ref_id)) gone.push({ kind: r.kind, id: r.ref_id, path: r.path }); });
+  } catch (_) { /* before 0229 */ }
+  let n = 0;
+  for (const g of gone) {
+    try {
+      await fetch(env.SUPABASE_URL + '/storage/v1/object/primed/' + g.path, { method: 'DELETE', headers: SK() });
+      await rest(`primed_reports?kind=eq.${g.kind}&ref_id=eq.${g.id}`, { method: 'DELETE' });
+      PRIMED.delete(g.kind + ':' + g.id); n++;
+    } catch (e) { console.warn('primed copy not deleted (' + g.path + '):', e.message || e); }
+  }
+  return n;
+}
+
 /* ------------------------------------------------------------------ the players' reports (0228) --- */
 /* A ZIP (PKWARE's APPNOTE: a local header and the data for each file, then the central directory): each file deflated,
    unless that would not make it smaller (a PDF's pages are compressed already, so most are stored), names in UTF-8 */
@@ -401,7 +454,7 @@ async function sendPlayers(sub, team, day, subject, mid, clubs) {
   let on = false;
   try { const [me] = await rest(`report_mail_subs?id=eq.${sub.id}&select=player_zip`); on = !!me && me.player_zip !== false; } catch (_) { return null; }
   if (!on) return null;
-  const done = [], att = [];
+  const done = [], att = [], primedUsed = [];
   for (const c of clubs) {
     let gone = new Set();
     try { gone = new Set((await rest(`player_releases?team_id=eq.${c.id}&select=player_id`)).map(r => r.player_id)); } catch (_) { /* none kept */ }
@@ -412,7 +465,12 @@ async function sendPlayers(sub, team, day, subject, mid, clubs) {
     const files = [], used = new Set();
     for (const p of picked) {
       p.name = nameOf.get(p.id) || 'Player';
-      if (!PLAYER_PDF.has(p.id)) { console.log('player', c.name, '->', p.name); PLAYER_PDF.set(p.id, await pdfOf(`/epinoia/p/?p=${p.id}&tab=report`, 'player-report-' + slug(p.name))); }
+      if (!PLAYER_PDF.has(p.id)) {
+        console.log('player', c.name, '->', p.name);
+        const mine = [], pdf = await reportPdf('player', p.id, c.id, `/epinoia/p/?p=${p.id}&tab=report`, 'player-report-' + slug(p.name), mine);
+        PLAYER_PDF.set(p.id, Object.assign(pdf, { primed: mine[0] || null }));
+      }
+      if (PLAYER_PDF.get(p.id).primed) primedUsed.push(PLAYER_PDF.get(p.id).primed);
       let fn = 'player-report-' + (slug(p.name) || 'player');
       for (let k = 2; used.has(fn); k++) fn = 'player-report-' + (slug(p.name) || 'player') + '-' + k;
       used.add(fn);
@@ -428,6 +486,7 @@ async function sendPlayers(sub, team, day, subject, mid, clubs) {
   if (!done.length) return null;
   const E = playersEmail({ sub, team, subject, clubs: done });
   await send(sub.email, E.subject, E.html, att, mid ? { 'In-Reply-To': mid, References: mid } : null);
+  sentWith(primedUsed);
   await log(sub, 'players', day, done.map(d => d.name + ': ' + d.players.length).join(', '));
   return done;
 }
@@ -448,24 +507,25 @@ async function sendWeek(sub, team, tz, sent, W, day) {
   const ownDue = Date.now() - lastTeam > 13 * 864e5;
   if (!next.length && !ownDue) return null;
   const { uniq } = opponentsOf(team, next);
-  const att = [];
+  const att = [], used = [];
   const week = 'Week of ' + shortDay(W.from.toISOString(), tz);
   for (const o of uniq) {
     console.log('opponent', club, '->', o.oname);
-    const pdf = await pdfOf(`/epinoia/t/?t=${o.oid}&tab=report`, `scouting-report-${slug(o.oname)}`);
+    const pdf = await reportPdf('team', o.oid, o.oid, `/epinoia/t/?t=${o.oid}&tab=report`, `scouting-report-${slug(o.oname)}`, used);
     const when = next.filter(g => g.home_team_id === o.oid || g.away_team_id === o.oid).map(g => shortDay(g.tipoff_at, tz)).join(', ');
     await keep(sub, day, pdf, { kind: 'opp', ref: day + ':' + o.oid, title: o.oname, subtitle: week + ' · ' + club + ' play them ' + when });
     att.push(pdf);
   }
   if (ownDue) {
     console.log('own', club);
-    const pdf = await pdfOf(`/epinoia/t/?t=${team.id}&tab=report`, `team-report-${slug(club)}`);
+    const pdf = await reportPdf('team', team.id, team.id, `/epinoia/t/?t=${team.id}&tab=report`, `team-report-${slug(club)}`, used);
     await keep(sub, day, pdf, { kind: 'team', ref: day, title: club, subtitle: 'Fortnightly team report · ' + shortDay(new Date().toISOString(), tz) });
     att.push(pdf);
   }
   const E = sundayEmail({ sub, team, games: next, ownDue, tz, monday: W.from });
   const mid = msgId(sub, day);
   await send(sub.email, E.subject, E.html, att, { 'Message-ID': mid });
+  sentWith(used);
   await log(sub, 'sunday', day, uniq.length + ' opponent(s)' + (ownDue ? ' + own' : ''));
   if (ownDue) await log(sub, 'team', day, 'own report');
   /* the players' reports of the clubs in it, in a reply to it (0228); the Sunday email has gone whatever becomes of it */
@@ -567,6 +627,8 @@ async function main() {
     try { await one(s, s.teams || { id: s.team_id, name: 'your club' }); }
     catch (e) { failed++; console.error('[' + s.email + ']', e.message || e); }
   }
+  /* the primed copies emailed in this run, the stale and the old, deleted (0229) */
+  try { const n = await cleanPrimed(); if (n) console.log(n + ' primed report(s) deleted'); } catch (e) { console.warn('primed copies not cleaned:', e.message || e); }
   if (browser) await browser.close();
   console.log(subs.length + ' address(es), ' + failed + ' failed');
   if (failed) process.exitCode = 1;

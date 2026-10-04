@@ -1013,6 +1013,25 @@ function synergyControl(host, state, o) {
   row.append(el('span', 'rp-k', 'Synergy'), lab, say);
   host.append(row, box);
   const close = () => { box.hidden = true; box.textContent = ''; };
+  /* PRIME REPORT: the report's players' Synergy files READ BACK from synergy_profiles, where the emailed reports find them */
+  (state.primers = state.primers || []).push(async () => {
+    let people = [];
+    try { people = (await o.players()) || []; } catch (_) { people = []; }
+    const ids = people.map(q => String(q.id));
+    if (!ids.length) return null;
+    const one = ids.length === 1 ? people[0].name || 'this player' : '';
+    const words = k => (one ? (k ? 'Synergy kept for ' + one : 'no Synergy file kept for ' + one) : (k ? 'Synergy kept for ' + k + ' of ' + ids.length + ' players' : 'no Synergy files kept for these players'));
+    if (root.EPINOIA_RP_BOT) return { ok: true, text: words(ids.filter(id => root.EPINOIA_SYNERGY && root.EPINOIA_SYNERGY[id]).length) };
+    const here = ids.filter(id => SYN.local.has(id));
+    const c = await synClient();
+    if (!c || !c.from) return { ok: !here.length, text: here.length ? here.length + ' Synergy file' + (here.length === 1 ? '' : 's') + ' on this page only: a platform administrator\u2019s sign-in keeps them' : 'Synergy files are read by platform administrators only' };
+    try {
+      const { data, error } = await c.from('synergy_profiles').select('player_id').in('player_id', ids);
+      if (error) return { ok: false, text: 'the Synergy files could not be read back (' + (error.message || error) + ')' };
+      const kept = new Set((data || []).map(r => String(r.player_id))), only = here.filter(id => !kept.has(id)).length;
+      return { ok: !only, text: words(kept.size) + (only ? '; ' + only + ' on this page only, not kept' : '') };
+    } catch (e) { return { ok: false, text: 'the Synergy files could not be read back' }; }
+  });
   inp.onchange = async () => {
     const files = [...(inp.files || [])]; inp.value = '';
     if (!files.length) return;
@@ -1228,7 +1247,7 @@ function rapmControl(host, state, holder, o) {
   const scope = () => { try { return (o.scope && o.scope()) || 'this league and season'; } catch (_) { return 'this league and season'; } };
   const flag = on => { row.classList.toggle('rp-flag', on); };
   const done = (key, map, n, at) => {
-    Object.assign(holder, { key, map });
+    Object.assign(holder, { key, map, n });
     flag(false); b.textContent = 'Calculate again';
     say.textContent = 'calculated for ' + scope() + ' (' + n + ' games, ' + map.size + ' players' + (at ? ', ' + when(at) : '') + ')';
   };
@@ -1238,6 +1257,7 @@ function rapmControl(host, state, holder, o) {
     if (holder.running) return holder.running;
     let ids;
     try { ids = (await o.ids()) || []; } catch (_) { ids = []; }
+    holder.none = !ids.length;
     if (!ids.length) { flag(true); b.hidden = true; say.textContent = 'ORAPM and DRAPM need the league\u2019s games: there are none in this scope yet.'; return; }
     const key = rapmKey(ids);
     if (!calc) {
@@ -1270,8 +1290,18 @@ function rapmControl(host, state, holder, o) {
   b.onclick = () => check(true);
   holder.check = check;
   state.onBuilt = (state.onBuilt || []).concat(() => { check(false); });   // the scope may have changed
-  /* PRIME REPORT: what is kept anywhere, else worked out now */
-  (state.primers = state.primers || []).push(async () => { await check(false, true); if (!holder.map) await check(true, true); });
+  /* PRIME REPORT: what is kept anywhere, else worked out now; then READ BACK from report_rapm, where the emailed reports find it
+     (a copy kept only in this browser, from before 0228, is put there) */
+  (state.primers = state.primers || []).push(async () => {
+    await check(false, true);
+    if (!holder.map && !holder.none) await check(true, true);
+    if (holder.none) return { ok: true, text: 'no RAPM: no games in ' + scope() + ' yet' };
+    if (!holder.map) return { ok: false, text: 'RAPM could not be worked out' };
+    let there = await rapmRemote(holder.key);
+    if (!there && await rapmKeep(holder.key, holder.map, holder.n || 0)) there = await rapmRemote(holder.key);
+    return there ? { ok: true, text: 'RAPM kept for every report of ' + scope() + ' (' + (holder.n || '?') + ' games, ' + holder.map.size + ' players)' }
+                 : { ok: false, text: 'RAPM worked out on this page only, not kept for the emailed reports (a platform administrator\u2019s sign-in keeps it)' };
+  });
   if (!state.priming) check(false);
 }
 /* a row's RAPM from the holder, when it is for these games */
@@ -1394,14 +1424,20 @@ function ui(state) {
   const status = el('span', 'rp-status');
   const mk = (t, cls, fn) => { const b = el('button', 'ep-btn ' + cls, t); b.type = 'button'; b.onclick = fn; outs.appendChild(b); return b; };
   /* PRIME REPORT (2026-10-04): the report made ready in one click - RAPM read where it was already worked out or worked out now
-     and kept for every report of the league and season, the Synergy files read, every page built - and the PDF downloaded */
+     and kept for every report of the league and season, the Synergy files read, every page built - and the PDF stored for
+     sending (0229, storeForSending), not downloaded: Download PDF is there for a copy */
   const bPrime = mk('PRIME REPORT', 'prime', () => prime(true));
-  bPrime.title = 'Make the report ready in one go: RAPM worked out (or read where it already was) and kept for every report of this league and season, Synergy read, every page built, then the PDF';
+  bPrime.title = 'Make the report ready for sending in one go: RAPM worked out (or read where it already was) and kept for every report of this league and season, Synergy read, every page built, then the PDF stored for the next email that carries it (deleted once emailed)';
   const bPdf = mk('Download PDF', 'pri', () => download('pdf'));
   const bImg = mk('Download images', '', () => download('png'));
   mk('Print', '', () => printPages(pages));
   outs.appendChild(status);
   bar.appendChild(outs);
+  /* WHAT PRIME REPORT DID, read back where it is kept (primedSay) */
+  const primedBox = el('div', 'rp-primed');
+  primedBox.hidden = true;
+  primedBox.setAttribute('role', 'status');
+  bar.appendChild(primedBox);
   const pages = el('div', 'rp-pages');
   wrap.appendChild(pages);
   panel.appendChild(wrap);
@@ -1428,7 +1464,8 @@ function ui(state) {
   async function download(kind) {
     const X = root.EpinoiaRaster;
     const sheets = [...pages.querySelectorAll('.rp-pg')];
-    if (!X || !sheets.length) { say('nothing to download yet'); return; }
+    if (!X || !sheets.length) { say('nothing to download yet'); return false; }
+    let done = false;
     bPdf.disabled = bImg.disabled = true;
     const z = pages.style.getPropertyValue('--rp-z');
     pages.style.setProperty('--rp-z', '1');            // drawn at its own size, whatever the column shows
@@ -1441,6 +1478,7 @@ function ui(state) {
       else await X.saveImages(sheets, name, { w: PAGE.w, h: PAGE.h, onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + '…') });
       say('saved');
       setTimeout(() => say(''), 4000);
+      done = true;
     } catch (e) {
       say('could not draw it here: use Print and save as PDF');
       if (root.console) root.console.warn('[report save]', e);
@@ -1448,6 +1486,7 @@ function ui(state) {
     pages.style.setProperty('--rp-z', z || '1');
     fit();
     bPdf.disabled = bImg.disabled = false;
+    return done;
   }
 
   async function rebuild() {
@@ -1508,21 +1547,66 @@ function ui(state) {
   }
   state.rebuild = rebuild;
   const PRIME_CAP_MS = 240000;
+  /* PRIME REPORT KEEPS THE PDF FOR SENDING (0229) in place of downloading it: drawn at email weight (as the mailer draws its own),
+     kept in the private 'primed' bucket with its row in primed_reports - then READ BACK - where the mailer takes it in place of
+     drawing one (while no game of the club has been finalised since) and deletes it once it has been emailed. o.kind and o.id
+     say whose report it is; a platform administrator's sign-in keeps it. */
+  async function storeForSending() {
+    const X = root.EpinoiaRaster, sheets = [...pages.querySelectorAll('.rp-pg')];
+    if (!X || !X.pdfBytes || !sheets.length || !o.id) return { ok: false, text: 'nothing could be stored for sending' };
+    const c = await synClient();
+    if (!c || !c.storage || !c.from) return { ok: false, text: 'not stored for sending: a platform administrator\u2019s sign-in is needed' };
+    const z = pages.style.getPropertyValue('--rp-z');
+    pages.style.setProperty('--rp-z', '1');
+    try {
+      const bytes = await X.pdfBytes(sheets, { w: PAGE.w, h: PAGE.h, scale: 2, quality: 0.84, title: (state.c && state.c.docTitle) || 'Report',
+        onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + ' for sending\u2026') });
+      const path = o.kind + '/' + o.id + '.pdf';
+      say('storing it for sending\u2026');
+      const up = await c.storage.from('primed').upload(path, new root.Blob([bytes], { type: 'application/pdf' }), { upsert: true, contentType: 'application/pdf' });
+      if (up && up.error) return { ok: false, text: 'not stored for sending (' + (up.error.message || up.error) + ')' };
+      const row = { kind: o.kind, ref_id: o.id, path, title: (state.c && state.c.name) || null, bytes: bytes.length, primed_at: new Date().toISOString() };
+      const w = await c.from('primed_reports').upsert(row, { onConflict: 'kind,ref_id' });
+      if (w.error) return { ok: false, text: 'not stored for sending (' + (w.error.message || w.error) + ')' };
+      const back = await c.from('primed_reports').select('bytes,primed_at').eq('kind', o.kind).eq('ref_id', o.id).limit(1);
+      const got = back && !back.error && back.data && back.data[0];
+      say('');
+      return got ? { ok: true, text: 'stored for sending (' + (got.bytes / 1e6).toFixed(1) + ' MB): the next email carrying this report sends this file, and it is deleted once emailed' }
+                 : { ok: false, text: 'stored, but it could not be read back: prime it again' };
+    } catch (e) {
+      return { ok: false, text: 'not stored for sending (' + (e.message || e) + ')' };
+    } finally { pages.style.setProperty('--rp-z', z || '1'); fit(); }
+  }
+  /* each step says what it did ({ ok, text }); green when all is ready for the emailed reports, amber with what is not */
+  function primedSay(results) {
+    const good = results.every(r => r.ok), t = new Date(), two = n => String(n).padStart(2, '0');
+    primedBox.className = 'rp-primed ' + (good ? 'ok' : 'gap');
+    primedBox.textContent = '';
+    primedBox.append(el('b', null, (good ? '\u2713 Primed' : '\u26a0 Primed, with gaps') + ' at ' + two(t.getHours()) + ':' + two(t.getMinutes())),
+      el('span', null, results.map(r => r.text).join(' \u00b7 ') + (good ? '. The emailed reports are drawn with the same.' : '.')));
+    primedBox.hidden = false;
+  }
   async function prime(dl) {
     if (state.primed === 'running') return;
     state.primed = 'running'; bPrime.disabled = true; root.__rpBusy = (root.__rpBusy || 0) + 1;
+    primedBox.hidden = true;
     try {
       say('priming: RAPM, Synergy and every page\u2026');
-      const primers = (async () => { for (const f of state.primers || []) { try { await f(); } catch (e) { warn(e); } } })();
+      const results = [];
+      const primers = (async () => { for (const f of state.primers || []) {
+        try { const r = await f(); if (r && r.text) results.push(r); } catch (e) { warn(e); results.push({ ok: false, text: 'a step failed: ' + (e.message || e) }); } } })();
       /* the mailer's copy never waits on it for ever: past PRIME_CAP_MS it is drawn with what is there (RAPM blank) */
       await (root.EPINOIA_RP_BOT ? Promise.race([primers, new Promise(r => setTimeout(r, PRIME_CAP_MS))]) : primers);
       await rebuild();
-      if (dl) await download('pdf');
+      const n = pages.querySelectorAll('.rp-pg').length;
+      results.push({ ok: n > 0, text: n ? n + (n === 1 ? ' page' : ' pages') + ' built' : 'no pages were built' });
+      if (dl) results.push(await storeForSending());
+      primedSay(results);
     } finally { state.primed = 'done'; state.priming = false; bPrime.disabled = false; root.__rpBusy = Math.max(0, (root.__rpBusy || 1) - 1); }
   }
   state.prime = prime;
   /* the modules' own controls, drawn once; primed on opening when asked (?prime=1: the reports manager's PRIME REPORT, which
-     downloads it too; EPINOIA_RP_PRIME: the mailer, which takes the PDF itself) */
+     stores it for sending too; EPINOIA_RP_PRIME: the mailer, which takes the PDF itself) */
   const q = new URLSearchParams(root.location.search);
   const primeNow = q.get('prime') === '1' || !!root.EPINOIA_RP_PRIME;
   state.priming = primeNow;

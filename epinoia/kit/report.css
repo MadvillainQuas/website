@@ -768,3 +768,10 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .rp-drv-r.main b.up{ color:#08703d } .rp-drv-r.main b.dn{ color:#b32433 }
 .rp-cell2 .rp-cell-v i.up, .rp-st2 .rp-st-v i.up{ color:#08703d; font-weight:800 }
 .rp-cell2 .rp-cell-v i.dn, .rp-st2 .rp-st-v i.dn{ color:#b32433 }
+
+/* WHAT PRIME REPORT DID (report.js primedSay): green when all is ready for the emailed reports, amber with what is not */
+.rp-primed{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; margin:12px 0 0; padding:10px 14px; border-radius:10px; font-size:14px; line-height:1.45 }
+.rp-primed[hidden]{ display:none }
+.rp-primed b{ font-weight:800; letter-spacing:.02em; white-space:nowrap }
+.rp-primed.ok{ background:#e6f5ea; color:#0e4a2a; border:1px solid #93cfa5 }
+.rp-primed.gap{ background:#fff3dc; color:#6b4100; border:1px solid #e9c070 }

@@ -141,8 +141,8 @@ RM._t.use({ from });
      /createTextNode\('Add Synergy CSVs'\)/.test(read('epinoia', 'report.js')) && /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true; inp\.hidden = true;/.test(read('epinoia', 'report.js')));
   ok('...a match by hand is typed or picked from those squads', /people\.filter\(z => S\.normName\(z\.name\)\.includes\(q\)\)/.test(src) && /pick from a club\\u2019s squad|pick from a club’s squad/.test(src));
   ok('...kept one a player (a new file replaces the old), the numbers only', /from\('synergy_profiles'\)\.upsert\(\{ player_id: x\.pick\.id, profile: S\.pack\(S\.profile\(x\.p\)\)/.test(src) && /onConflict: 'player_id'/.test(src));
-  ok('PRIME REPORT opens a club\'s or a player\'s report primed (report.js ?prime=1)', /a\.href = SITE \+ 't\/\?t=' \+ encodeURIComponent\(id\) \+ '&tab=report&prime=1'/.test(src) &&
-     /p\/\?p=' \+ encodeURIComponent\(r\.player_id\) \+ '&tab=report&prime=1'/.test(src));
+  ok('PRIME REPORT opens a club\'s or a player\'s report primed (report.js ?prime=1)', /a\.href = SITE \+ k \+ '\/\?' \+ k \+ '=' \+ encodeURIComponent\(id\) \+ '&tab=report&prime=1'/.test(src) &&
+     /primeLink\('PRIME REPORT', r\.player_id, pn, stored\.get\('player:' \+ r\.player_id\), 'p'\)/.test(src));
   ok('...an address\'s club offers it for each club it plays in the next two weeks, or for its own report', /opps\.forEach\(o => primes\.appendChild\(primeLink\(o\.name/.test(src) &&
      /primes\.appendChild\(primeLink\('own report: ' \+ \(t\.name \|\| 'the club'\), r\.team_id/.test(src) && /no games in the next two weeks/.test(src));
   ok('an address with all its clubs: one club or several added at once, another added to it, the ZIP switched for the address',
@@ -216,7 +216,7 @@ const PGS = [
   { game_id: 'f4', player_uuid: 'pT1', team_idx: 0, min: min(18) }, { game_id: 'f4', player_uuid: 'pT2', team_idx: 0, min: min(9.9) }];
 const NAMES = { pP1: ['Mitch', 'Creek'], pP4: ['Owen', 'Foxwell'], pJ1: ['Milton', 'Doyle'], pT1: ['Tyler', 'Harvey'] };
 const NOW = new Date('2026-10-07T10:00:00Z');
-const quiet = async f => { const k = { l: console.log, e: console.error, w: console.warn }; console.log = console.error = console.warn = () => {}; try { return await f(); } finally { Object.assign(console, { log: k.l, error: k.e, warn: k.w }); } };
+const quiet = async f => { if (process.env.LOUD) return f(); const k = { l: console.log, e: console.error, w: console.warn }; console.log = console.error = console.warn = () => {}; try { return await f(); } finally { Object.assign(console, { log: k.l, error: k.e, warn: k.w }); } };
 const inList = v => (v || '').replace(/^in\.\(|\)$/g, '').split(',');
 function world(st) {
   const calls = [];
@@ -225,9 +225,23 @@ function world(st) {
   const none = status => new Response(null, { status });
   globalThis.fetch = async (url, opt = {}) => {
     const u = new URL(url), q = u.searchParams, method = opt.method || 'GET', body = typeof opt.body === 'string' && opt.body[0] === '{' ? JSON.parse(opt.body) : null;
-    if (u.hostname === 'api.resend.com') { const b = JSON.parse(opt.body); calls.push({ k: 'mail', subject: b.subject, headers: b.headers || null, files: b.attachments, html: b.html }); return J({ id: 'm' + calls.length }); }
+    if (u.hostname === 'api.resend.com') { const b = JSON.parse(opt.body); calls.push({ k: 'mail', subject: b.subject, headers: b.headers || null, files: b.attachments, html: b.html });
+      return (st.resend || 200) === 200 ? J({ id: 'm' + calls.length }) : new Response('the mail service is down', { status: st.resend }); }
     if (u.pathname.startsWith('/storage/v1/object/reports/')) { calls.push({ k: 'store' }); return J({ Key: 'ok' }); }
+    if (u.pathname.startsWith('/storage/v1/object/primed/')) {
+      const f = u.pathname.replace('/storage/v1/object/primed/', '');
+      if (method === 'DELETE') { calls.push({ k: 'unstore', path: f }); return J({}); }
+      calls.push({ k: 'primed-get', path: f });
+      return st.files && st.files[f] ? new Response(st.files[f], { status: 200 }) : new Response('not found', { status: 404 });
+    }
     const table = u.pathname.replace('/rest/v1/', '');
+    if (table === 'primed_reports') {
+      if (!st.primed) return J({ code: 'PGRST205', message: 'Could not find the table public.primed_reports' }, 404);
+      if (method === 'DELETE') { calls.push({ k: 'unprime', kind: q.get('kind'), ref: q.get('ref_id') }); return none(204); }
+      if (q.get('primed_at')) return J(st.primed.filter(r => r.primed_at < q.get('primed_at').replace(/^lt\./, '')));
+      const kind = (q.get('kind') || '').replace(/^eq\./, ''), ref = (q.get('ref_id') || '').replace(/^eq\./, '');
+      return J(st.primed.filter(r => r.kind === kind && r.ref_id === ref));
+    }
     if (table === 'report_mail_requests') {
       if (method === 'GET') return J(st.requests.filter(r => r.state === 'queued').map(r => ({ id: r.id, sub: r.sub })));
       const id = (q.get('id') || '').replace(/^eq\./, ''), r = st.requests.find(x => x.id === id);
@@ -243,6 +257,11 @@ function world(st) {
       return J([{ player_zip: st.zip }]);
     }
     if (table === 'games') {
+      if (q.get('finalised_at')) {
+        const t = /home_team_id\.eq\.([^,)]+)/.exec(q.get('or'))[1];
+        calls.push({ k: 'newer?', team: t, since: q.get('finalised_at') });
+        return J((st.newer || []).includes(t) ? [{ id: 'gx' }] : []);
+      }
       if (q.get('status') === 'eq.final') {
         const t = /home_team_id\.eq\.([^,)]+)/.exec(q.get('or'))[1];
         calls.push({ k: 'season', team: t, comps: q.get('competition_id') });
@@ -302,6 +321,102 @@ function world(st) {
   const failed = await quiet(() => M.requests(NOW));
   ok('a database before 0228: the Sunday email as before, no reply, nothing failed', failed === 0 && calls.filter(c => c.k === 'mail').length === 1 &&
      calls.filter(c => c.k === 'log').map(l => l.kind).join() === 'sunday,team' && /^Sent the week of Mon 12 Oct: .*team report\.$/.test(calls.find(c => c.k === 'mark').detail));
+}
+
+/* ---------------------------------------------------------------- PRIME REPORT stores it for sending (0229) --- */
+console.log('\nPRIME REPORT stores it for sending (0229)');
+{
+  const primed = () => [
+    { kind: 'team', ref_id: 'P', path: 'team/P.pdf', primed_at: '2026-10-07T08:00:00Z' },
+    { kind: 'team', ref_id: 'J', path: 'team/J.pdf', primed_at: '2026-10-07T08:00:00Z' },
+    { kind: 'player', ref_id: 'pP1', path: 'player/pP1.pdf', primed_at: '2026-10-07T08:05:00Z' },
+    { kind: 'team', ref_id: 'Q', path: 'team/Q.pdf', primed_at: '2026-10-07T08:10:00Z' },
+    { kind: 'team', ref_id: 'OLD', path: 'team/OLD.pdf', primed_at: '2026-09-01T00:00:00Z' }];
+  const files = { 'team/P.pdf': '%PDF-1.7 primed Phoenix', 'team/J.pdf': '%PDF-1.7 primed JackJumpers', 'player/pP1.pdf': '%PDF-1.7 primed Mitch Creek', 'team/Q.pdf': 'q', 'team/OLD.pdf': 'old' };
+  M.newRun();
+  const calls = world({ primed: primed(), files, newer: ['J'] });
+  await quiet(() => M.requests(NOW));
+  const [sun, re] = calls.filter(c => c.k === 'mail');
+  const att = f => Buffer.from(sun.files.find(a => a.filename === f).content, 'base64').toString();
+  ok('a club report primed and stored is the one sent: Phoenix\'s attachment is the stored file, not drawn again', att('scouting-report-south-east-melbourne-phoenix.pdf') === '%PDF-1.7 primed Phoenix' &&
+     !calls.some(c => c.k === 'pdf' && c.path === '/epinoia/t/?t=P&tab=report'), sun.files.map(a => a.filename));
+  ok('...one primed before a game the club has played since is drawn again (the JackJumpers\'), and the club\'s own (not primed) as always',
+     calls.some(c => c.k === 'pdf' && c.path === '/epinoia/t/?t=J&tab=report') && att('scouting-report-tasmania-jackjumpers.pdf') !== '%PDF-1.7 primed JackJumpers' &&
+     calls.some(c => c.k === 'pdf' && c.path === `/epinoia/t/?t=${TEAM}&tab=report`) && calls.some(c => c.k === 'newer?' && c.team === 'J' && /^gt\.2026-10-07T08/.test(decodeURIComponent(c.since))), calls.filter(c => c.k === 'newer?'));
+  const zip = unzip(Buffer.from(re.files[0].content, 'base64'));
+  ok('...a player report primed and stored goes in the players\' ZIP as it was stored', zip.out[0].data.toString() === '%PDF-1.7 primed Mitch Creek' && !calls.some(c => c.k === 'pdf' && c.path === '/epinoia/p/?p=pP1&tab=report'));
+  ok('...the stored copy is kept on the dashboard like any report (it is what went)', calls.filter(c => c.k === 'store').length >= 3);
+  const n = await quiet(() => M.cleanPrimed(NOW));
+  const gone = calls.filter(c => c.k === 'unstore').map(c => c.path).sort().join(' '), rows = calls.filter(c => c.k === 'unprime').map(c => c.kind + ' ' + c.ref).sort().join(' | ');
+  ok('once the run has emailed them they are deleted, file and row: the sent ones, the stale one and one older than two weeks', n === 4 &&
+     gone === 'player/pP1.pdf team/J.pdf team/OLD.pdf team/P.pdf' && rows === 'eq.player eq.pP1 | eq.team eq.J | eq.team eq.OLD | eq.team eq.P', [n, gone, rows]);
+  ok('...a primed report no email has carried yet stays for the email that will (Q)', !/team\/Q\.pdf/.test(gone));
+}
+{
+  M.newRun();
+  const calls = world({ primed: [{ kind: 'team', ref_id: 'P', path: 'team/P.pdf', primed_at: '2026-10-07T08:00:00Z' }], files: { 'team/P.pdf': '%PDF primed' }, resend: 500 });
+  await quiet(() => M.requests(NOW));
+  const n = await quiet(() => M.cleanPrimed(NOW));
+  ok('an email that did not go leaves its primed copy for the next try', n === 0 && !calls.some(c => c.k === 'unstore'), calls.filter(c => c.k === 'unstore'));
+}
+{
+  M.newRun();
+  const calls = world({});
+  const failed = await quiet(() => M.requests(NOW));
+  ok('a database before 0229: every report drawn as before, nothing failed', failed === 0 && calls.filter(c => c.k === 'pdf' && c.path.startsWith('/epinoia/t/')).length === 3 && (await M.cleanPrimed(NOW)) === 0);
+}
+{
+  const rp = read('epinoia', 'report.js');
+  ok('the report page\'s PRIME REPORT stores the PDF for sending in place of downloading it', /if \(dl\) results\.push\(await storeForSending\(\)\);/.test(rp) && !/if \(dl\) await download\('pdf'\)/.test(rp));
+  ok('...drawn at email weight, in the private bucket under its kind and id, its row written, then READ BACK',
+     /scale: 2, quality: 0\.84/.test(rp) && /c\.storage\.from\('primed'\)\.upload\(path, new root\.Blob\(\[bytes\], \{ type: 'application\/pdf' \}\), \{ upsert: true/.test(rp) &&
+     /const path = o\.kind \+ '\/' \+ o\.id \+ '\.pdf';/.test(rp) && /from\('primed_reports'\)\.upsert\(row, \{ onConflict: 'kind,ref_id' \}\)/.test(rp) && /from\('primed_reports'\)\.select\('bytes,primed_at'\)/.test(rp));
+  ok('...and says what it did: RAPM and Synergy read back where the mailer reads them, the pages, the stored file; green, or amber with what is not done',
+     /function primedSay\(results\)/.test(rp) && /'rp-primed ' \+ \(good \? 'ok' : 'gap'\)/.test(rp) && /let there = await rapmRemote\(holder\.key\);/.test(rp) &&
+     /c\.from\('synergy_profiles'\)\.select\('player_id'\)\.in\('player_id', ids\)/.test(rp) && /stored for sending \(/.test(rp));
+  ok('...whose report it is: the club page and the player page say', /kind: 'team', id: team\.id,/.test(read('epinoia', 't', 'team.js')) && /kind: 'player', id: pl\.id,/.test(read('epinoia', 'p', 'player.js')));
+  ok('raster.js gives the PDF\'s bytes without downloading it (the download uses them too)', /async function pdfBytes\(nodes, opt\)/.test(read('epinoia', 'raster.js')) &&
+     /const bytes = await pdfBytes\(nodes, opt\);/.test(read('epinoia', 'raster.js')) && /savePdf, pdfBytes,/.test(read('epinoia', 'raster.js')));
+  const src = read('epinoia', 'admin', 'platform', 'reports-manager.js');
+  ok('the reports manager says which reports are stored for sending, and when', /from\('primed_reports'\)\.select\('kind,ref_id,primed_at'\)/.test(src) && /\\u2713 stored /.test(src));
+}
+/* 0229 on a real Postgres */
+{
+  let PGlite;
+  try { ({ PGlite } = await import(pathToFileURL(path.join(ROOT, 'node_modules', '@electric-sql', 'pglite', 'dist', 'index.js')).href)); } catch { PGlite = null; }
+  if (!PGlite) console.log('  SKIP  0229 on PGlite: @electric-sql/pglite is not installed');
+  else {
+    const db = new PGlite();
+    await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+      create schema auth; create table auth.users (id uuid primary key); create schema storage;
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+      create table storage.buckets (id text primary key, name text, public boolean, allowed_mime_types text[], file_size_limit bigint);
+      create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+      alter table storage.objects enable row level security;
+      grant usage on schema storage to authenticated; grant select, insert, update, delete on storage.objects to authenticated;
+      create function public.is_platform_admin() returns boolean language sql stable as $$ select coalesce(current_setting('test.padmin', true), 'no') = 'yes' $$;
+      grant usage on schema public to anon, authenticated, service_role; grant usage on schema auth to anon, authenticated, service_role;`);
+    let applied = true;
+    try { for (let i = 0; i < 2; i++) await db.exec(read('supabase', 'migrations', '0229_primed_reports.sql')); } catch (e) { applied = e.message; }
+    ok('0229 applies, twice', applied === true, applied);
+    const U = '00000000-0000-0000-0000-0000000000a1', T = '00000000-0000-0000-0000-0000000000c1';
+    await db.exec(`insert into auth.users values ('${U}')`);
+    const as = async (who, sql) => {
+      await db.exec(`reset role; set test.padmin = '${who === 'admin' ? 'yes' : 'no'}'; set test.uid = '${who === 'anon' ? '' : U}'; set role ${who === 'anon' ? 'anon' : 'authenticated'};`);
+      try { return (await db.query(sql)).rows; } catch (e) { return 'ERR ' + e.message; } finally { await db.exec('reset role'); }
+    };
+    const b = (await db.query(`select public, allowed_mime_types from storage.buckets where id = 'primed'`)).rows[0];
+    ok('the bucket is private, PDFs only', b && b.public === false && b.allowed_mime_types.join() === 'application/pdf', b);
+    const put = await as('admin', `insert into public.primed_reports (kind, ref_id, path, bytes) values ('team', '${T}', 'team/${T}.pdf', 2100000) returning primed_by`);
+    const file = await as('admin', `insert into storage.objects (bucket_id, name) values ('primed', 'team/${T}.pdf') returning name`);
+    ok('a platform administrator stores a primed report (its row, signed as theirs, and its file)', Array.isArray(put) && put[0].primed_by === U && Array.isArray(file) && file.length === 1, [put, file]);
+    const fanRow = await as('fan', `select * from public.primed_reports`), fanFile = await as('fan', `select * from storage.objects where bucket_id = 'primed'`);
+    const fanPut = await as('fan', `insert into storage.objects (bucket_id, name) values ('primed', 'team/x.pdf')`), anon = await as('anon', `select * from public.primed_reports`);
+    ok('...nobody else reads or writes one', Array.isArray(fanRow) && !fanRow.length && Array.isArray(fanFile) && !fanFile.length && /row-level security/.test(String(fanPut)) && /permission denied/.test(String(anon)), [fanRow, fanFile, fanPut, anon]);
+    const again = await as('admin', `insert into public.primed_reports (kind, ref_id, path) values ('team', '${T}', 'team/${T}.pdf')`);
+    const bad = await as('admin', `insert into public.primed_reports (kind, ref_id, path) values ('game', '${T}', 'x')`);
+    ok('...one a report (a new PRIME replaces it), a club or a player only', /duplicate key|primed_reports_pkey/.test(String(again)) && /check constraint/.test(String(bad)), [again, bad]);
+  }
 }
 
 /* ---------------------------------------------------------------- every report primed --- */

@@ -120,7 +120,7 @@ function reportTab(pl, name, team) {
     }) : null
   };
   REPORT = E.mount({
-    tabs: '#ptabs', panel: '#reportsec', kind: 'player', label: 'Report',
+    tabs: '#ptabs', panel: '#reportsec', kind: 'player', id: pl.id, label: 'Report',
     /* the player report is sold on its own (0220, access.js CATALOGUE.locks.playerReport); the league is read when
        the check is made, as the page learns it after the tab is drawn */
     lock: { key: 'playerReport', what: 'The player report', get league() { return ACCESS_LEAGUE.id; }, get leagueSlug() { return ACCESS_LEAGUE.slug; },

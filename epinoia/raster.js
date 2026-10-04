@@ -11,6 +11,7 @@
    OUT.
      canvasOf(node, {scale})            -> a canvas
      savePdf(nodes, name, {title})      one A4 PDF, a page per node (each a JPEG at that resolution), downloaded
+     pdfBytes(nodes, {title})           the same PDF's bytes, not downloaded (PRIME REPORT keeps them for sending)
      saveImages(nodes, name)            one PNG per node, a ZIP of them when there is more than one, downloaded
      pdfFromJpegs([{bytes, w, h}], meta) and zip(files) are the writers, pure (no library, every offset counted)
 
@@ -357,7 +358,8 @@ function download(blob, name) {
   setTimeout(() => root.URL.revokeObjectURL(url), 60000);
 }
 
-async function savePdf(nodes, name, opt) {
+/* the PDF's bytes, a page per node, without downloading it (report.js PRIME REPORT keeps them for sending, 0229) */
+async function pdfBytes(nodes, opt) {
   const o = opt || {};
   const pages = [];
   for (let i = 0; i < nodes.length; i++) {
@@ -366,7 +368,10 @@ async function savePdf(nodes, name, opt) {
     pages.push({ bytes: new Uint8Array(await (await blobOf(c, 'image/jpeg', o.quality || 0.9)).arrayBuffer()), w: c.width, h: c.height });
     c.width = c.height = 1;
   }
-  const bytes = pdfFromJpegs(pages, { title: o.title, date: new Date() });
+  return pdfFromJpegs(pages, { title: o.title, date: new Date() });
+}
+async function savePdf(nodes, name, opt) {
+  const bytes = await pdfBytes(nodes, opt);
   download(new root.Blob([bytes], { type: 'application/pdf' }), name + '.pdf');
 }
 
@@ -383,5 +388,5 @@ async function saveImages(nodes, name, opt) {
   else download(new root.Blob([zip(files)], { type: 'application/zip' }), name + '-pages.zip');
 }
 
-return { canvasOf, savePdf, saveImages, pdfFromJpegs, zip, crc32, PROPS };
+return { canvasOf, savePdf, pdfBytes, saveImages, pdfFromJpegs, zip, crc32, PROPS };
 }));
