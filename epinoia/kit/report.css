@@ -578,3 +578,193 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .rp-pg .scz-key .rl, .rp-pg .lg.ramp .rl{ white-space:nowrap }
 /* a long name wraps in the rotations' label column rather than being cut short */
 .rp-pg .rot-nm b{ white-space:normal; overflow:visible; text-wrap:balance }
+
+/* ---- THE TYPE (2026-10-04): every report - a player's, a club's, a game's analysis - is set in one clean sans, Archivo
+   (the site's own, a variable face: any weight, any width). The site's pixel faces - Silkscreen for its labels, Jersey25 for
+   its scores and headings - read as a scoreboard on a printed page; a scouting report should read as a document. Every rule
+   names the faces through --f-micro and --f-score, so a page redefines both, and the weight and spacing the pixel faces
+   carried in their shapes are set here: headings and big figures heavy and a touch condensed, labels in semibold small
+   capitals, opened up, and the smallest of them a half point larger (the pixel face's capitals were wider). Whatever another
+   module draws inside a page (the shot chart's keys, the lineups, the shot clock) takes the same faces through the same two. */
+.rp-pg{ --f-micro:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif; --f-score:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif }
+.rp-pg .rp-h h3, .rp-pg .rp-top-n b, .rp-pg .rp-top-m, .rp-pg .rp-tile b, .rp-pg .rp-ffs b, .rp-pg .ga-bt-s b, .rp-pg .ga-eq-t b,
+.rp-pg .ga-eq > i, .rp-pg .ga-qs td.f, .rp-pg .ga-five tr.t th, .rp-pg .rp-ph b, .rp-pg .rp-spot i, .rp-pg .rp-top-c b,
+.rp-pg .rp-cv-crest-pair .rp-vs{ font-weight:800; font-stretch:92%; letter-spacing:0 }
+.rp-pg .rp-h h3{ font-size:16.5px; letter-spacing:.03em }
+.rp-pg .rp-top-n b{ font-size:21px }
+.rp-pg .rp-top-m{ font-size:16px; letter-spacing:.08em }
+.rp-pg .rp-tile b, .rp-pg .rp-ffs b, .rp-pg .ga-bt-s b, .rp-pg .ga-eq-t b{ font-size:22px; font-variant-numeric:tabular-nums }
+.rp-pg .rp-ph b{ font-size:17px }
+.rp-pg .rp-f span, .rp-pg .rp-k, .rp-pg .rp-top-n span, .rp-pg .rp-top-m i, .rp-pg .rp-h span, .rp-pg .rp-spot b, .rp-pg .rp-poskey,
+.rp-pg .rp-tile span, .rp-pg .rp-g h4, .rp-pg .rp-pmeta, .rp-pg .rp-pg2 h5, .rp-pg .rp-zh, .rp-pg .rp-tbl th, .rp-pg .rp-cap span,
+.rp-pg .rp-ffc h4, .rp-pg .rp-ffs span, .rp-pg .rp-zt tr.rp-zk td, .rp-pg .rp-zz tr.rp-zg td, .rp-pg .rp-gs-t, .rp-pg .rp-rb h4,
+.rp-pg .rp-rb thead th, .rp-pg .rp-pvs, .rp-pg .ga-qs th, .rp-pg .ga-five thead tr:not(.t) th, .rp-pg .ga-bt-c h4, .rp-pg .ga-bt-s span,
+.rp-pg .ga-eq-t small, .rp-pg .rp-top-c-pair .rp-vs, .rp-pg .rp-foot{ font-weight:650; letter-spacing:.09em }
+.rp-pg .rp-pmeta, .rp-pg .rp-pg2 h5, .rp-pg .rp-zh, .rp-pg .rp-ffs span, .rp-pg .rp-zt tr.rp-zk td, .rp-pg .rp-gs-t, .rp-pg .rp-rb thead th,
+.rp-pg .rp-pvs, .rp-pg .ga-bt-s span, .rp-pg .ga-eq-t small, .rp-pg .rp-top-c-pair .rp-vs{ font-size:7px }
+.rp-pg .rp-h span, .rp-pg .rp-poskey, .rp-pg .rp-tile span, .rp-pg .rp-tbl th, .rp-pg .rp-cap span, .rp-pg .rp-zz tr.rp-zg td,
+.rp-pg .ga-qs th, .rp-pg .ga-five thead tr:not(.t) th, .rp-pg .rp-foot{ font-size:7.5px }
+.rp-pg .rp-g h4, .rp-pg .rp-ffc h4, .rp-pg .rp-rb h4, .rp-pg .ga-bt-c h4{ font-size:8px; font-weight:750 }
+/* ---- AST% in the gap under a situation's court (report.js sitAstHTML) ---- */
+.rp-sit-a{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:center; margin:10px 0 2px; padding:9px 11px;
+  border:1px solid var(--rule); border-radius:10px; background:#f7faf8 }
+.rp-sit-a1{ display:flex; flex-direction:column; align-items:center; min-width:58px; padding-right:12px; border-right:1px solid var(--rule) }
+.rp-sit-a1 b{ font-family:var(--f-ui); font-weight:800; font-stretch:92%; font-size:24px; line-height:1; color:var(--s,#08603f); font-variant-numeric:tabular-nums }
+.rp-sit-a1 span{ margin-top:3px; font-family:var(--f-ui); font-weight:700; font-size:7.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3) }
+.rp-sit-a2 p{ margin:0 0 5px; font-size:8.5px; color:var(--ink-2) }
+.rp-sit-a2 ul{ list-style:none; margin:0; padding:0; display:grid; gap:3px }
+.rp-sit-a2 li{ display:grid; grid-template-columns:52px minmax(0,1fr) 30px 34px; align-items:center; gap:6px; font-size:8.5px; color:var(--ink) }
+.rp-sit-a2 li i{ display:block; height:6px; border-radius:3px; background:#e3ebe6; overflow:hidden }
+.rp-sit-a2 li em{ display:block; height:100%; border-radius:3px; background:var(--s,#08603f) }
+.rp-sit-a2 li b{ font-family:var(--f-data,ui-monospace,monospace); font-size:9px; text-align:right }
+.rp-sit-a2 li small{ font-family:var(--f-data,ui-monospace,monospace); font-size:7.5px; color:var(--ink-3); text-align:right }
+.rp-sit.cp .rp-sit-a{ margin-top:7px; padding:7px 9px; gap:9px }
+.rp-sit.cp .rp-sit-a1{ min-width:48px; padding-right:9px }
+.rp-sit.cp .rp-sit-a1 b{ font-size:20px }
+.rp-sit.cp .rp-sit-a2 li{ grid-template-columns:44px minmax(0,1fr) 26px 30px; gap:4px }
+/* ---- PRIME REPORT (report.js prime): the one-click button, before the downloads ---- */
+.rp-outs .ep-btn.prime{ background:#0d1f17; border-color:#0d1f17; color:#ffd166; font-weight:800; letter-spacing:.08em }
+.rp-outs .ep-btn.prime:hover{ background:#163527 }
+.rp-outs .ep-btn.prime[disabled]{ opacity:.6 }
+
+/* ---- A PLAYER'S CARD, 2026-10-04 (report-teampages.js players): the shot profile in labelled runs; a third column with his
+   small zone chart in the top-right corner; his Synergy drives under his name (left) and beside his shot profile ---- */
+.rp-run{ display:flex; flex-direction:column; gap:1px; padding:2px 3px 3px; border-radius:6px; border-top:3px solid var(--zc,var(--rp-a,#08603f));
+  background:color-mix(in srgb,var(--zc,#08603f) 7%,#ffffff); margin-right:3px }
+.rp-run[data-z="rim"]{ --zc:var(--rp-a,#08603f) }
+.rp-run[data-z="mid"]{ --zc:color-mix(in srgb,var(--rp-a,#08603f) 62%,#ffffff) }
+.rp-run[data-z="three"]{ --zc:color-mix(in srgb,var(--rp-a,#08603f) 34%,#ffffff) }
+.rp-run em{ font-style:normal; font-family:var(--f-ui); font-weight:800; font-size:6.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2) }
+.rp-run-c{ display:flex; flex-wrap:wrap; gap:2px }
+.rp-run .rp-cell.zn{ margin-left:0 }
+/* the small zone chart */
+.rp-mz{ display:flex; flex-direction:column; align-items:center; gap:1px }
+.rp-mz-c{ width:100%; border-radius:6px; overflow:hidden; background:#f1f7f3; border:1px solid var(--rule) }
+.rp-mz-c svg{ display:block; width:100%; height:auto }
+.rp-mz p{ margin:0; font-family:var(--f-data,ui-monospace,monospace); font-size:7px; color:var(--ink-3) }
+/* each side's drive shots (report.js driveTableHTML) */
+.rp-dt{ width:100%; border-collapse:collapse; font-size:9px; color:var(--ink) }
+.rp-dt th{ font-family:var(--f-ui); font-weight:700; font-size:7.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); padding:2px 3px; text-align:center }
+.rp-dt thead tr:first-child th[data-k]{ border-bottom:3px solid var(--rp-a,#08603f); color:var(--ink) }
+.rp-dt thead tr:first-child th[data-k="mid"]{ border-bottom-color:color-mix(in srgb,var(--rp-a,#08603f) 62%,#ffffff) }
+.rp-dt thead tr:first-child th[data-k="three"]{ border-bottom-color:color-mix(in srgb,var(--rp-a,#08603f) 34%,#ffffff) }
+.rp-dt tbody th{ text-align:left; color:var(--ink); font-size:8px }
+.rp-dt td{ padding:2px 3px; text-align:center; font-family:var(--f-data,ui-monospace,monospace); border-top:1px solid var(--rule) }
+.rp-dt td.a{ color:var(--ink-3) }
+.rp-dt td[data-b]{ --b:var(--b0) }
+.rp-dt td[data-b="4"]{ --b:var(--b4) } .rp-dt td[data-b="3"]{ --b:var(--b3) } .rp-dt td[data-b="2"]{ --b:var(--b2) } .rp-dt td[data-b="1"]{ --b:var(--b1) }
+.rp-dt td[data-b]:not([data-b="0"]){ background:color-mix(in srgb,var(--b) 26%,#ffffff); font-weight:700 }
+.rp-dt.cp{ font-size:7px; width:auto }
+.rp-dt.cp th{ font-size:5.5px; padding:1px 2px; letter-spacing:.02em }
+.rp-dt.cp tbody th{ font-size:6.5px }
+.rp-dt.cp td{ padding:1px 3px }
+.rp-pdrv{ min-width:0 }
+/* where each side's drives end (report.js directionMixHTML) */
+.rp-dmx{ margin:2px 0 8px }
+.rp-dmx-r{ display:grid; grid-template-columns:58px minmax(0,1fr); align-items:center; gap:8px; margin:4px 0 }
+.rp-dmx-r > span{ display:flex; flex-direction:column; font-family:var(--f-ui); font-weight:800; font-size:9.5px; color:var(--ink) }
+.rp-dmx-r > span small{ font-weight:600; font-size:7.5px; color:var(--ink-3) }
+.rp-dmx-b{ display:flex; height:20px; border-radius:5px; overflow:hidden; background:#eef2f0 }
+.rp-dmx-b i{ display:flex; align-items:center; justify-content:center; font-style:normal; font-family:var(--f-data,ui-monospace,monospace); font-size:8px; font-weight:700; color:#fff }
+.rp-dir .rp-drv{ margin-top:4px }
+/* the Synergy control on the report's panel */
+.rp-syn label.ep-btn{ cursor:pointer }
+/* the Synergy match, checked and changed by hand before anything is kept (report.js synergyControl) */
+.rp-syn-box{ margin:6px 0 4px; padding:9px 11px; border:1px solid var(--rule-2); border-radius:10px; background:var(--panel-2,#eef4f0) }
+.rp-syn-t{ margin:0 0 6px; font-size:12px; color:var(--ink-2) }
+.rp-syn-row{ display:grid; grid-template-columns:minmax(0,1.2fr) auto minmax(0,1fr) minmax(0,1fr); align-items:center; gap:8px; padding:4px 0; border-top:1px solid var(--rule) }
+.rp-syn-n{ font-family:var(--f-ui); font-weight:700; font-size:12px; color:var(--ink); overflow-wrap:anywhere }
+.rp-syn-to{ color:var(--ink-3) }
+.rp-syn-row select{ min-width:0; width:100% }
+.rp-syn-row small{ font-size:11px; color:var(--ink-3) }
+.rp-syn-act{ display:flex; gap:8px; margin-top:8px }
+@media (max-width:640px){ .rp-syn-row{ grid-template-columns:1fr } .rp-syn-to{ display:none } }
+/* a pair (DRIVE L/R ...): both sides in one cell or row, each on its own tint (report.js pairHTML) */
+.rp-cell2 .rp-cell-v, .rp-st2 .rp-st-v{ display:flex; gap:2px; justify-content:center }
+.rp-cell2 .rp-cell-v i, .rp-st2 .rp-st-v i{ --b:var(--b0); display:inline-flex; align-items:baseline; gap:1px; font-style:normal; padding:0 2px; border-radius:3px; font-size:8.5px;
+  background:color-mix(in srgb,var(--b) 30%,#ffffff) }
+.rp-cell2 .rp-cell-v i small, .rp-st2 .rp-st-v i small{ font-family:var(--f-ui); font-weight:700; font-size:5px; color:var(--ink-3) }
+.rp-cell2 i[data-b="4"], .rp-st2 i[data-b="4"]{ --b:var(--b4) } .rp-cell2 i[data-b="3"], .rp-st2 i[data-b="3"]{ --b:var(--b3) }
+.rp-cell2 i[data-b="2"], .rp-st2 i[data-b="2"]{ --b:var(--b2) } .rp-cell2 i[data-b="1"], .rp-st2 i[data-b="1"]{ --b:var(--b1) }
+.rp-cell2 i[data-b="0"], .rp-st2 i[data-b="0"]{ background:#eef2f0 }
+.rp-cell2 .rp-cell-p{ font-size:5.5px }
+.rp-st2 .rp-st-v{ justify-content:flex-end }
+.rp-st2 .rp-st-v i{ font-size:10.5px; padding:0 3px }
+.rp-st2 .rp-st-v i small{ font-size:6.5px }
+
+/* ---- THE DRIVES, LEFT AGAINST RIGHT (report.js driveChartHTML, 2026-10-04): a track per measure on each side of the middle,
+   the bar growing outwards along it, the value at its outer end; PPP the heaviest row, in its lean's colour; marks at PPP 1.0
+   and eFG% 52.5 ---- */
+.rp-drv{ width:100%; margin-top:4px; padding:7px 9px 6px; border:1px solid var(--rule); border-radius:10px; background:linear-gradient(180deg,#fbfdfc,#f3f7f5); text-align:left }
+.rp-drv-h{ display:flex; justify-content:space-between; align-items:flex-end; gap:8px; margin:0 0 6px }
+.rp-drv-h > span{ display:flex; flex-direction:column; gap:1px }
+.rp-drv-h > span.r{ align-items:flex-end; text-align:right }
+.rp-drv-h b{ font-family:var(--f-ui); font-weight:800; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink) }
+.rp-drv-h small{ font-family:var(--f-data,ui-monospace,monospace); font-size:7.5px; color:var(--ink-3) }
+.rp-drv-b{ position:relative; display:grid; gap:5px }
+.rp-drv-b::before{ content:''; position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:var(--rule-2) }
+.rp-drv-r{ position:relative; display:grid; grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr); align-items:center }
+.rp-drv-r .lb{ position:relative; z-index:1; justify-self:center; padding:1px 5px; border-radius:6px; background:#fff; border:1px solid var(--rule);
+  font-family:var(--f-ui); font-weight:700; font-size:7px; letter-spacing:.08em; color:var(--ink-2); white-space:nowrap }
+.rp-drv-r .sd{ display:flex; align-items:center; gap:5px; min-width:0 }
+.rp-drv-r .tr{ position:relative; flex:1; height:7px; border-radius:4px; background:#e3ebe6; overflow:hidden }
+.rp-drv-r .sd.l .tr i{ position:absolute; right:0; top:0; bottom:0; border-radius:4px 0 0 4px; background:#8d9b94 }
+.rp-drv-r .sd.r .tr i{ position:absolute; left:0; top:0; bottom:0; border-radius:0 4px 4px 0; background:#8d9b94 }
+.rp-drv-r .tr u{ position:absolute; top:-1px; bottom:-1px; width:0; border-left:1.5px dashed rgba(13,31,23,.55) }
+.rp-drv-r b{ flex:none; min-width:30px; font-family:var(--f-data,ui-monospace,monospace); font-size:9px; font-weight:600; color:var(--ink-2) }
+.rp-drv-r .sd.l b{ text-align:right }
+.rp-drv-r.main .tr{ height:15px; border-radius:5px }
+.rp-drv-r.main .sd.l .tr i{ border-radius:5px 0 0 5px } .rp-drv-r.main .sd.r .tr i{ border-radius:0 5px 5px 0 }
+.rp-drv-r.main b{ font-size:13px; font-weight:800; color:var(--ink) }
+.rp-drv-r.main .lb{ font-size:8px; font-weight:800; color:var(--ink); border-color:var(--rule-2) }
+.rp-drv-k{ display:flex; flex-wrap:wrap; align-items:center; gap:3px 6px; margin:6px 0 0; font-size:7.5px; line-height:1.4; color:var(--ink-3) }
+.rp-drv-k i{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:-3px; vertical-align:-1px }
+/* in a player's card: the same, small */
+.rp-drv.cp{ margin-top:6px; padding:5px 5px 4px; border-radius:8px }
+.rp-drv.cp .rp-drv-h{ margin-bottom:4px; gap:4px }
+.rp-drv.cp .rp-drv-h b{ font-size:6.5px; letter-spacing:.06em }
+.rp-drv.cp .rp-drv-h small{ font-size:5.5px }
+.rp-drv.cp .rp-drv-b{ gap:3px }
+.rp-drv.cp .rp-drv-r{ grid-template-columns:minmax(0,1fr) 25px minmax(0,1fr) }
+.rp-drv.cp .rp-drv-r .lb{ padding:0 2px; font-size:5px; letter-spacing:.02em; border-radius:4px }
+.rp-drv.cp .rp-drv-r .sd{ gap:2px }
+.rp-drv.cp .rp-drv-r .tr{ height:4px; border-radius:2px }
+.rp-drv.cp .rp-drv-r b{ min-width:17px; font-size:6px }
+.rp-drv.cp .rp-drv-r.main .tr{ height:9px; border-radius:3px }
+.rp-drv.cp .rp-drv-r.main b{ font-size:7.5px }
+.rp-drv.cp .rp-drv-r.main .lb{ font-size:5.5px }
+.rp-drv.cp .rp-drv-k{ justify-content:center; font-size:5.5px; margin-top:4px; gap:2px 4px }
+.rp-drv.cp .rp-drv-k i{ width:6px; height:6px; margin-right:-2px }
+
+/* ---- A PLAYER'S CARD KEPT SHORT (2026-10-04): the small zone chart floats in the top-right corner of the stats and the groups
+   flow round it and then across the card's whole width under it, rather than down a narrower column beside it ---- */
+.rp-pgroups{ display:block; line-height:1 }
+.rp-pgroups > .rp-pg2{ display:inline-flex; vertical-align:top; margin:0 8px 4px 0 }
+.rp-pside{ float:right; width:90px; margin:0 0 4px 8px }
+.rp-pgroups::after{ content:''; display:block; clear:both }
+/* in a card the chart is narrow: each measure's name over its row, the two tracks the whole width either side of the middle */
+.rp-drv.cp .rp-drv-r{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:auto auto; row-gap:1px }
+.rp-drv.cp .rp-drv-r .lb{ grid-column:1 / 3; grid-row:1; justify-self:center; padding:0 3px; border:0; background:transparent; font-size:5px; line-height:1 }
+.rp-drv.cp .rp-drv-r .sd.l{ grid-column:1; grid-row:2; padding-right:1px }
+.rp-drv.cp .rp-drv-r .sd.r{ grid-column:2; grid-row:2; padding-left:1px }
+.rp-drv.cp .rp-drv-r.main .lb{ font-size:5.5px }
+.rp-drv.cp .rp-drv-b::before{ top:4px }
+.rp-psrc{ margin:3px 0 0; font-size:5.5px; line-height:1.25; color:var(--ink-3) }
+/* a pair's cell is wider, its two values side by side; a footer never wraps */
+.rp-cell.rp-cell2{ width:80px }
+.rp-cell2 .rp-cell-l{ min-height:7px }
+.rp-cell-p{ white-space:nowrap; overflow:hidden; max-width:100% }
+.rp-st2 .rp-st-bar{ visibility:hidden }
+.rp-st2 .rp-st-a{ white-space:nowrap }
+/* the chart's head: two halves, never wrapped; a card's in two lines (name over count), a page's on one */
+.rp-drv-h{ display:grid; grid-template-columns:1fr 1fr; align-items:end }
+.rp-drv-h > span{ display:block; min-width:0 }
+.rp-drv-h b, .rp-drv-h small{ white-space:nowrap }
+.rp-drv-h small{ margin-left:6px }
+.rp-drv.cp .rp-drv-h small{ display:block; margin-left:0 }
+.rp-dmx-b i{ flex-shrink:0; min-width:0; overflow:hidden; white-space:nowrap }
+/* which side is better, in the numbers themselves (report.js sideTone): green the better, red the worse */
+.rp-drv-r b.up{ color:#0a7a43 } .rp-drv-r b.dn{ color:#c0283a }
+.rp-drv-r.main b.up{ color:#08703d } .rp-drv-r.main b.dn{ color:#b32433 }
+.rp-cell2 .rp-cell-v i.up, .rp-st2 .rp-st-v i.up{ color:#08703d; font-weight:800 }
+.rp-cell2 .rp-cell-v i.dn, .rp-st2 .rp-st-v i.dn{ color:#b32433 }

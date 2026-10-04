@@ -1133,6 +1133,10 @@ async function videoPanel(team) {
    the preview the document. Its data is this page's own, read once and shared: the season line of the scope shown
    (teamStats hands it over as it is drawn, rpGive), the club's logs, lineups and depth chart. */
 const RP_WAIT = {};
+/* the scope's games with their logs, once a set of games: what only the whole competition's play-by-play can rank (the half-court
+   and transition AST% of the squad's cards, report.js hcAssists); a competition of more than RP_LOG_GAMES games is not read */
+let RP_FIELD = null;
+const RP_LOG_GAMES = 600;
 function rpSlot(k) { if (!RP_WAIT[k]) { let res; RP_WAIT[k] = { p: new Promise(r => { res = r; }), res, done: false, v: null }; } return RP_WAIT[k]; }
 function rpGive(k, v) { const w = rpSlot(k); w.v = v; if (!w.done) { w.done = true; w.res(v); } }
 function rpGet(k, ms) { const w = rpSlot(k); return w.done ? Promise.resolve(w.v) : Promise.race([w.p, new Promise(r => setTimeout(() => r(w.v), ms || 120000))]); }
@@ -1161,6 +1165,22 @@ function reportTab(team) {
       const h = el('div'); reboundZones(h, S, row); return h.innerHTML;
     },
     meta: ids => D.playerMeta(ids),
+    fieldGames: async () => {
+      const T = await rpGet('season');
+      const ids = T && T.S ? (T.S.games || []).map(g => g.id).filter(Boolean) : [];
+      const key = ids.slice().sort().join(',');
+      if (!ids.length || ids.length > RP_LOG_GAMES) return null;
+      if (RP_FIELD && RP_FIELD.key === key) return RP_FIELD.p;
+      const p = (async () => {
+        const rows = [];
+        for (let i = 0; i < ids.length; i += 80) rows.push(...await D.all('games?id=in.(' + ids.slice(i, i + 80).join(',') + ')&select=id,starters'));
+        const evs = await D.events(rows.filter(g => Array.isArray(g.starters)).map(g => g.id));
+        const by = {}; evs.forEach(e => { (by[e.gameId] = by[e.gameId] || []).push(e); });
+        return rows.filter(g => by[g.id]).map(g => ({ id: g.id, starters: g.starters, events: by[g.id] }));
+      })().catch(() => null);
+      RP_FIELD = { key, p };
+      return p;
+    },
     stints: gs => { const by = {}; gs.forEach(g => { by[g.id] = g; }); return D.stints(gs.map(g => g.id), team.id, by); },
     rapm: window.EpinoiaRAPM ? ((ids, fn) => window.EpinoiaRAPM.season(D, ids, fn).then(r => r.rapm)) : null,
     bigGames: D.BIG_GAMES || 0,

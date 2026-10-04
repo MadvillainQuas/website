@@ -107,14 +107,14 @@ const VERSION = 1;
 /* a zone's shooting, and what became of its misses: o = the side's own offensive rebounds off them, d = the
    other side's defensive rebounds off them; what is left of a zone's misses (a foul and free throws, a turnover,
    the period ending, a feed that logged no rebound) is neither */
-const zoneCell = () => ({ a: 0, m: 0, o: 0, d: 0 });
+const zoneCell = () => ({ a: 0, m: 0, o: 0, d: 0, x: 0 });      // x: its makes that were assisted
 function bucket() {
-  return { chances: 0, pts: 0, fga: 0, fgm: 0, p3a: 0, p3m: 0, fta: 0, ftm: 0, tov: 0,
+  return { chances: 0, pts: 0, fga: 0, fgm: 0, p3a: 0, p3m: 0, fta: 0, ftm: 0, tov: 0, astd: 0,
            zones: { rim: zoneCell(), mid: zoneCell(), three: zoneCell() },
            types: {}, scorers: {}, shots: [], players: {} };
 }
 function pbucket() {
-  return { pts: 0, fga: 0, fgm: 0, p3a: 0, p3m: 0, fta: 0, ftm: 0, tov: 0,
+  return { pts: 0, fga: 0, fgm: 0, p3a: 0, p3m: 0, fta: 0, ftm: 0, tov: 0, astd: 0,
            zones: { rim: { a: 0, m: 0 }, mid: { a: 0, m: 0 }, three: { a: 0, m: 0 } } };
 }
 const agroup = () => ({ fgm: 0, pts: 0, p3m: 0, zones: { rim: 0, mid: 0, three: 0 } });
@@ -248,6 +248,8 @@ function compute(S) {
 
   const plays = all.filter(ev => ev && !DESCRIPTOR[ev.t]);
   const rebOf = reboundOutcomes(plays);
+  /* which made baskets were assisted (connections.js's pairing): each situation counts its own, for its AST% */
+  const { assisted, ftAssists } = assistedShots(plays);
   const isAction = ev => (ev.t in FG || ev.t in FT || ev.t === 'to') && (ev.team === 0 || ev.team === 1);
 
   const stamp = stamps(plays, tags);
@@ -305,12 +307,13 @@ function compute(S) {
       const made = FG[ev.t] > 0, three = ev.t[1] === '3', z = zoneOf(ev);
       b.fga++; b.zones[z].a++;
       if (three) b.p3a++;
-      if (made) { b.fgm++; b.zones[z].m++; b.pts += FG[ev.t]; if (three) b.p3m++; }
+      const astd = made && assisted.has(ev);
+      if (made) { b.fgm++; b.zones[z].m++; b.pts += FG[ev.t]; if (three) b.p3m++; if (astd) { b.astd++; b.zones[z].x++; } }
       else { const r = rebOf.get(ev); if (r === 'off') b.zones[z].o++; else if (r === 'def') b.zones[z].d++; }
       if (pl) {
         pl.fga++; pl.zones[z].a++;
         if (three) pl.p3a++;
-        if (made) { pl.fgm++; pl.zones[z].m++; pl.pts += FG[ev.t]; if (three) pl.p3m++; }
+        if (made) { pl.fgm++; pl.zones[z].m++; pl.pts += FG[ev.t]; if (three) pl.p3m++; if (astd) pl.astd++; }
       }
       const ty = stypes[ev.id] || '';
       const key = (three ? 'three' : 'two') + '|' + ty;
@@ -318,7 +321,7 @@ function compute(S) {
       T.a++; if (made) T.m++;
       const l = locs[ev.id];
       b.shots.push({ id: ev.seq != null ? ev.seq : ev.id, x: l ? l.x : null, y: l ? l.y : null, made, three, zone: z,
-                     type: ty, pid: ev.pid || null, period: ev.period, clock: ev.clock });
+                     type: ty, pid: ev.pid || null, period: ev.period, clock: ev.clock, ast: astd });
       if (ev.pid) { const s = b.scorers[ev.pid] = b.scorers[ev.pid] || { pid: ev.pid, pts: 0, fgm: 0, fga: 0 }; s.fga++; if (made) { s.fgm++; s.pts += FG[ev.t]; } }
     } else if (ev.t in FT) {
       b.fta++;
@@ -376,8 +379,7 @@ function compute(S) {
     return { sits, ato: atoPlays, assists: null, players: {} };
   });
 
-  /* ---- assisted and unassisted: connections.js's pairing (assistedShots) ---- */
-  const { assisted, ftAssists } = assistedShots(plays);
+  /* ---- assisted and unassisted: connections.js's pairing (assistedShots, above) ---- */
   const pAssist = [{}, {}];                                  // pid -> { ast, unast } per side
   [0, 1].forEach(t => {
     const A = { ast: agroup(), unast: agroup() };
@@ -432,6 +434,7 @@ function finish(b, total, names) {
   const types = Object.values(b.types).sort((x, y) => (y.a - x.a) || (y.m - x.m));
   return {
     chances: b.chances, pts: b.pts, fga: b.fga, fgm: b.fgm, p3a: b.p3a, p3m: b.p3m, fta: b.fta, ftm: b.ftm, tov: b.tov,
+    astd: b.astd, astPct: b.fgm ? b.astd / b.fgm : null,
     ppp: b.chances ? b.pts / b.chances : null,
     efg: b.fga ? (b.fgm + 0.5 * b.p3m) / b.fga : null,
     tovPct: b.chances ? b.tov / b.chances : null,

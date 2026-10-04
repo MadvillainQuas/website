@@ -31,6 +31,8 @@ function modules(ctx) {
   let group = 'guard';
   const RAPM = { map: null, running: false };
   const HC = { key: null, map: null };                       // the competition's half-court assists, once per set of games
+  /* his Synergy profile (report.js synergyOf), where there is one */
+  const synOf = async id => (E.synergyOf && id != null ? (await E.synergyOf([id]).catch(() => new Map())).get(String(id)) || null : null);
 
   /* ---------------- the cover ---------------- */
   const cover = {
@@ -60,6 +62,11 @@ function modules(ctx) {
     key: 'main', title: 'Main stats', page: 'MAIN STATS', on: true,
     controls(host, state) {
       E.templateControl(host, state, { set: 'main', label: 'main stats', pos: () => group });
+      /* his Synergy file: added here, it goes in this report (and, for a platform administrator, every report after it) */
+      if (E.synergyControl) E.synergyControl(host, state, { single: true, players: async () => {
+        const B = ctx.bars ? await ctx.bars().catch(() => null) : null;
+        return B && B.mine ? [{ id: B.mine.id, name: (state.c && state.c.name) || B.mine.name || '' }] : [];
+      } });
       if (ctx.rapm) E.rapmControl(host, state, RAPM, {
         ids: async () => (ctx.gameIds ? await ctx.gameIds() : []),
         run: (ids, fn) => ctx.rapm(ids, fn),
@@ -77,6 +84,8 @@ function modules(ctx) {
       const ids = ctx.gameIds ? await ctx.gameIds() : [];
       const rapmOk = RAPM.map && RAPM.key === E.rapmKey(ids) && E.rapmOn(RAPM, field);
       field.forEach(E.derive);
+      const prof = await synOf(mine.id);
+      if (prof && E.synergyOnRow) E.synergyOnRow(mine, prof);
       /* the turnover types, his own (from the club's logs the page has read) */
       try {
         const F = ctx.floor ? await ctx.floor() : null;
@@ -88,20 +97,20 @@ function modules(ctx) {
       const groups = E.groupsFor(R.state, 'main', group);
       const keys = groups.flatMap(g => g[1]);
       /* half-court AST%: every game of the competition replayed once (report.js hcAssists), for every player of the field */
-      if (keys.indexOf('hc_ast_pct') >= 0 && ctx.fieldGames && E.hcAssists) {
+      if ((keys.indexOf('hc_ast_pct') >= 0 || keys.indexOf('tr_ast_pct') >= 0) && ctx.fieldGames && E.hcAssists) {
         try {
           const G = await ctx.fieldGames();
           if (G && G.length) {
             const k = G.map(g => g.id).sort().join(',');
             if (HC.key !== k) { HC.key = k; HC.map = E.hcAssists(G); }
-            field.forEach(r => { r.hc_ast_pct = E.hcAstOf(HC.map.get(r.id)); });
+            field.forEach(r => { const t = HC.map.get(r.id); r.hc_ast_pct = E.hcAstOf(t); r.tr_ast_pct = E.trAstOf ? E.trAstOf(t) : null; });
           }
         } catch (e) { if (root.console) root.console.warn('[report half-court AST%]', e); }
       }
       /* every percentile among the players of his position (report.js posRanker), his own average theirs */
       const pools = E.posPools(field);
       const Rk = E.posRanker(field, keys, group, mine.id, pools);
-      R.legend.push(...keys);
+      R.legend.push(...keys.filter(k => !(E.STATS[k] && E.STATS[k].optional) || (E.hasStat ? E.hasStat(k, mine) : E.isNum(mine[k]))));
       const tiles = [['GP', 'gp', 0], ['MIN / G', 'mpg', 1], ['PTS / G', 'ppg', 1], ['REB / G', 'rpg', 1], ['AST / G', 'apg', 1], ['BPM', 'bpm', 1, true]];
       const Rt = E.posRanker(field, tiles.map(t => t[1]).filter(k => k !== 'gp'), group, mine.id, pools);
       const tileHTML = '<div class="rp-tiles rp-tiles-b" style="--n:' + tiles.length + '">' + tiles.map(([l, k, dp, sg]) => {
@@ -111,7 +120,7 @@ function modules(ctx) {
       const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !rapmOk;
       const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' ' + Rk.who + (Rk.group ? ' (adjusted for position)' : '') : ''].filter(Boolean).join(' · ')) + tileHTML +
         (needRapm ? '<p class="rp-flagnote" style="margin-top:8px">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : ''))];
-      out.push(block(E.colsHTML(groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + E.groupRowsHTML(ks, mine, Rk) + '</div>',
+      out.push(block(E.colsHTML(E.groupsOn ? E.groupsOn(groups, mine) : groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + E.groupRowsHTML(ks, mine, Rk) + '</div>',
         ([, ks]) => E.groupWeight(ks)) +
         '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' ' + Rk.who + ' of ' + (c.scope || 'the competition') +
           ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of his own' : ': too few players of his position to rank him among them alone, so against everybody') +
@@ -149,6 +158,15 @@ function modules(ctx) {
         '<div class="rp-two"><div><div class="rp-cap">Zones<span>tinted against each zone’s break-even</span></div>' + court('zones') + '</div>' +
         '<div><div class="rp-cap">Every shot<span>made ● missed ×</span></div>' + court('shots') + '</div></div>' +
         '<div class="rp-cap" style="margin-top:10px">Shot zones</div>' + E.zoneColumnsHTML(S.shots, S.games)));
+      /* DIRECTION (Synergy): his drives left against right, and where each side's drives end - in the gap under the zones */
+      try {
+        const B = ctx.bars ? await ctx.bars().catch(() => null) : null;
+        const prof = B && B.mine ? await synOf(B.mine.id) : null;
+        const ch = prof && E.driveChartHTML ? E.driveChartHTML(prof) : '';
+        if (ch) out.push(block(title('Direction', 'his drives, left and right') +
+          '<div class="rp-two rp-dir"><div><div class="rp-cap">Left against right<span>PPP, share of his possessions, eFG%, TO%</span></div>' + ch + '</div>' +
+          '<div><div class="rp-cap">Where the drives end<span>% of each side\u2019s shots</span></div>' + E.directionMixHTML(prof) + '</div></div>'));
+      } catch (e) { if (root.console) root.console.warn('[report direction]', e); }
       try {
         const F = await ctx.floor();
         if (F && F.logs && F.sideOf && root.EpinoiaSituations) {

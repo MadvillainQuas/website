@@ -249,6 +249,21 @@ jobs:
       - name: The match report must say true things
         run: node supabase/tests/report.test.mjs
 
+      - name: A Synergy play-type file read right - drives left, right and straight, their shots, face-up and post-up defence
+        # epinoia/synergy.js over a made-up player in the scraper's own columns (Side, Play Type, Sub 1..4, POSS, PTS, FG MADE ...):
+        # an isolation's drives counted once (the Overall total, the split's shot types), a spot-up and a pick-and-pop's too;
+        # TO BASKET the rim, the DRIBBLE JUMPER's twos mid-range and threes threes; attacked face-up = every isolation and every
+        # drive outside one; post-D = the post-ups; the older "Sub Category" export; a name matched by surname and initial
+        run: node supabase/tests/synergy.test.mjs
+
+      - name: Synergy in the reports, AST% on the situation cards, the clean type, PRIME REPORT and RAPM kept (0228)
+        # report.js: the DRIVES L/R category (pairs tinted against his drives in all directions, never this season's marks, the
+        # better side green, the sample under each), face-up / post-D in every defence group, no category for a player with no
+        # file; the left / right chart (PPP in its lean's colour, marks at all directions); a situation card's AST% by kind; the
+        # pixel faces set to Archivo; PRIME REPORT; RAPM read from and kept in report_rapm; 0228 on PGlite (Synergy for platform
+        # administrators only, RAPM read by anyone, the players' ZIP on for every address)
+        run: node supabase/tests/report-synergy.test.mjs
+
       - name: Box score renders with nothing but S and derive()
         # catches a helper left behind by the extraction, which otherwise only
         # shows up as a blank public page

@@ -45,7 +45,9 @@ const TEAM_STATS = {
   tm_ppp: { l: 'PTS / POSSESSION', dp: 2 }, tm_oppp: { l: 'OPP PTS / POSSESSION', dp: 2, low: true }, ast_sh_all: { l: 'AST% (ALL BASKETS)', dp: 1, style: true },
   tsa_for: { l: 'TSA A GAME', dp: 1 }, tsa_vs: { l: 'TSA ALLOWED A GAME', dp: 1, low: true }, tsa_gap: { l: 'TRUE SHOTS GAP', dp: 1, signed: true },
   ev_half_pts_sh: { l: 'HALF-COURT %PTS', dp: 1, style: true }, evd_half_pts_sh: { l: 'DEF HALF-COURT %PTS', dp: 1, style: true },
-  hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, rank: false, ref: 'ast_sh_all', refL: 'all', sc: 5 },
+  /* the CLUB's half-court AST% has a key of its own: hc_ast_pct is the player's (his share of teammates' half-court baskets he
+     assisted, ranked among his position on the squad's cards), and one key for both blanked the players' ranking */
+  tm_hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, rank: false, ref: 'ast_sh_all', refL: 'all', sc: 5 },
   evd_half_tov_pct: { l: 'DEF HALF-COURT TO%', dp: 1 }, evd_half_efg: { l: 'DEF HALF-COURT eFG%', dp: 1, low: true },
   evd_half_ppp: { l: 'DEF HALF-COURT PTS / CHANCE', dp: 2, low: true },
   tr_def_delta: { l: 'TRANSITION PTS GIVEN v OPP AVG', dp: 1, signed: true, low: true },
@@ -101,7 +103,7 @@ const TEAM_DEFS = {
   net: ['Net rating', 'Offensive rating minus defensive rating.'], pace: ['Pace', 'Possessions per 40 minutes, both sides averaged.'],
   ev_half_pts_sh: ['Half-court share of points', 'The share of the club’s points scored in the half court (not a second chance, a fast break, off a turnover or after a timeout).'],
   evd_half_pts_sh: ['Opponents’ half-court share of points', 'The same share for what opponents scored against the club.'],
-  hc_ast_pct: ['Half-court assist %', 'Of the club’s half-court baskets, the share that were assisted (its play-by-play), drawn against the assisted share of all its baskets.'],
+  tm_hc_ast_pct: ['Half-court assist %', 'Of the club’s half-court baskets, the share that were assisted (its play-by-play), drawn against the assisted share of all its baskets.'],
   ev_half_tov_pct: ['Half-court turnover %', 'Turnovers per half-court chance. Lower is better.'],
   evd_half_tov_pct: ['Opponents’ half-court turnover %', 'Turnovers the club forces per half-court chance. Higher is better.'],
   ev_half_efg: ['Half-court eFG%', 'Effective field-goal percentage in the half court.'], evd_half_efg: ['Opponents’ half-court eFG%', 'Lower is better.'],
@@ -246,7 +248,7 @@ function modules(ctx) {
          the game, ranked and coloured as that club's against the competition's clubs over the season (not one club's
          offence against what it allowed: in one game what one allowed is the other's own) */
       const them = c.vs ? teams.find(r => r.id === c.vs.bid) || null : null;
-      try { me.hc_ast_pct = await halfCourtAst(); if (them) them.hc_ast_pct = await halfCourtAst(true); } catch (_) { /* without it */ }
+      try { me.tm_hc_ast_pct = await halfCourtAst(); if (them) them.tm_hc_ast_pct = await halfCourtAst(true); } catch (_) { /* without it */ }
       /* against the other side's starters and bench, and the club's own: its play-by-play records */
       try {
         const scoped = new Set((S.games || []).map(g => g.id));
@@ -315,11 +317,11 @@ function modules(ctx) {
       const both = ks => [['o', ks, me], ['d', ks, them]];
       const groups = them ? [
         ['EFFICIENCY', both(['ts', 'ft_pct', 'tm_ppp'])],
-        ['HALF COURT', both(['ev_half_pts_sh', 'hc_ast_pct', 'ev_half_tov_pct', 'ev_half_efg', 'ev_half_ppp'])],
+        ['HALF COURT', both(['ev_half_pts_sh', 'tm_hc_ast_pct', 'ev_half_tov_pct', 'ev_half_efg', 'ev_half_ppp'])],
         ['TRANSITION', both(['ev_transition_pts_sh', 'ev_transition_ppp'])]
       ] : [
         ['EFFICIENCY', [['o', ['ts', 'ft_pct', 'tm_ppp']], ['d', ['opp_ts', 'tm_oppp']]]],
-        ['HALF COURT', [['o', ['ev_half_pts_sh', 'hc_ast_pct', 'ev_half_tov_pct', 'ev_half_efg', 'ev_half_ppp']], ['d', ['evd_half_pts_sh', 'evd_half_tov_pct', 'evd_half_efg', 'evd_half_ppp']]]],
+        ['HALF COURT', [['o', ['ev_half_pts_sh', 'tm_hc_ast_pct', 'ev_half_tov_pct', 'ev_half_efg', 'ev_half_ppp']], ['d', ['evd_half_pts_sh', 'evd_half_tov_pct', 'evd_half_efg', 'evd_half_ppp']]]],
         ['TRANSITION', [['o', ['ev_transition_pts_sh', 'ev_transition_ppp']], ['d', ['tr_def_delta', 'evd_transition_ppp']]]],
         ['AGAINST STARTERS & BENCH', [['n', ['vs_start_net', 'vs_bench_net']], ['o', ['vs_start_ortg', 'vs_bench_ortg']], ['d', ['vs_start_drtg', 'vs_bench_drtg']]]],
         ['OUR STARTERS & BENCH', [['n', ['own_start_net', 'own_bench_net']], ['o', ['own_start_ortg', 'own_bench_ortg']], ['d', ['own_start_drtg', 'own_bench_drtg']]]]
@@ -329,7 +331,7 @@ function modules(ctx) {
       /* inside a group and a half the group's own words are not repeated: "HALF COURT / Defence / TO%" */
       const SHORT = {
         ft_pct: 'FT%', tm_ppp: 'PTS / POSSESSION', opp_ts: 'TS% ALLOWED', tm_oppp: 'PTS / POSSESSION',
-        ev_half_pts_sh: '%PTS', hc_ast_pct: 'AST%', ev_half_tov_pct: 'TO%', ev_half_efg: 'eFG%', ev_half_ppp: 'PTS / CHANCE',
+        ev_half_pts_sh: '%PTS', tm_hc_ast_pct: 'AST%', ev_half_tov_pct: 'TO%', ev_half_efg: 'eFG%', ev_half_ppp: 'PTS / CHANCE',
         evd_half_pts_sh: '%PTS', evd_half_tov_pct: 'TO% FORCED', evd_half_efg: 'eFG%', evd_half_ppp: 'PTS / CHANCE',
         ev_transition_pts_sh: '%PTS', ev_transition_ppp: 'PTS / CHANCE', tr_def_delta: 'PTS v OPP AVERAGE', evd_transition_ppp: 'PTS / CHANCE',
         vs_start_net: 'VS STARTERS', vs_bench_net: 'VS BENCH', vs_start_ortg: 'VS STARTERS', vs_bench_ortg: 'VS BENCH',
@@ -519,10 +521,19 @@ function modules(ctx) {
   };
 
   /* ---------------- PLAYERS ---------------- */
+  const HC = { key: null, map: null };                       // the competition's half-court assists, once per set of games
   const players = {
     key: 'players', title: 'Players', page: 'PLAYERS', on: true, pack: false,
     controls(host, state) {
       E.templateControl(host, state, { set: 'players', label: 'players page', pos: () => 'guard' });
+      /* the squad's Synergy files: each matched to a player of the club by his name */
+      if (E.synergyControl) E.synergyControl(host, state, { players: async () => {
+        const T = await season();
+        if (!T || !T.S) return [];
+        const sq = T.S.players.filter(r => r.teamId === T.mine.id);
+        const meta = await ctx.meta(sq.map(r => r.id)).catch(() => ({}));
+        return sq.map(r => ({ id: r.id, name: (meta[r.id] && meta[r.id].name) || r.name || '' }));
+      } });
       if (ctx.rapm) E.rapmControl(host, state, RAPM, {
         ids: async () => { const T = await season(); return T && T.S ? (T.S.games || []).map(g => g.id).filter(Boolean) : []; },
         run: (ids, fn) => ctx.rapm(ids, fn),
@@ -549,16 +560,41 @@ function modules(ctx) {
         squad.forEach(r => { const t = tt.get(r.id); if (t && t.typed) { r.badpass_pg = Math.round(10 * t.bad / Math.max(1, +r.gp)) / 10; r.handle_pg = Math.round(10 * t.handle / Math.max(1, +r.gp)) / 10; } });
       } catch (_) { /* without them */ }
       const meta = await ctx.meta(squad.map(r => r.id)).catch(() => ({}));
+      /* SYNERGY (report.js synergyOf): his drives left and right, and what his man shot at him, where he has a file */
+      const syn = E.synergyOf ? await E.synergyOf(squad.map(r => r.id)).catch(() => new Map()) : new Map();
+      squad.forEach(r => { if (E.synergyOnRow) E.synergyOnRow(r, syn.get(String(r.id))); });
+      /* each player's own shots over the club's games, for the small zone chart in his card's corner */
+      const shotsBy = new Map();
+      try {
+        const SC = root.EpinoiaShotChart, L = await ctx.logs();
+        if (SC && SC.gather && L && L.gs && L.gs.length) {
+          const sh = await SC.gather({ fetchEvents: async () => Object.values(L.byG), gameIds: L.gs.map(g => g.id), playerId: null, sideOf: id => L.sideOf[id] });
+          sh.forEach(x => { const k = String(x.pid); if (!shotsBy.has(k)) shotsBy.set(k, []); shotsBy.get(k).push(x); });
+        }
+      } catch (_) { /* without the corner charts */ }
       const allKeys = new Set();
       const sets = {};
       ['guard', 'wing', 'big'].forEach(g => { sets[g] = E.groupsFor(R.state, 'players', g); sets[g].forEach(x => x[1].forEach(k => allKeys.add(k))); });
+      /* half-court (and transition) AST%: every game of the competition replayed once (report.js hcAssists), for every player of
+         the field, so a guard's is ranked among the guards as every other cell is */
+      if ((allKeys.has('hc_ast_pct') || allKeys.has('tr_ast_pct')) && ctx.fieldGames && E.hcAssists) {
+        try {
+          const G = await ctx.fieldGames();
+          if (G && G.length) {
+            const k = G.map(g => g.id).sort().join(',');
+            if (HC.key !== k) { HC.key = k; HC.map = E.hcAssists(G); }
+            field.forEach(r => { const t = HC.map.get(r.id); r.hc_ast_pct = E.hcAstOf(t); r.tr_ast_pct = E.trAstOf ? E.trAstOf(t) : null; });
+          }
+        } catch (e) { if (root.console) root.console.warn('[report half-court AST%]', e); }
+      }
       /* each player among the players of his position (report.js posRanker): one pool a group, and his own where the
          site's position groups put him elsewhere than his minutes do */
       const pools = E.posPools(field), byGroup = {};
       const rankerOf = (r, grp) => (pools.get(r.id) === grp
         ? (byGroup[grp] || (byGroup[grp] = E.posRanker(field, [...allKeys], grp, null, pools)))
         : E.posRanker(field, [...allKeys], grp, r.id, pools));
-      R.legend.push(...allKeys);
+      /* the legend: every stat the cards print - an optional one (Synergy) only where a player has it */
+      R.legend.push(...[...allKeys].filter(k => !(E.STATS[k] && E.STATS[k].optional) || squad.some(r => (E.hasStat ? E.hasStat(k, r) : E.isNum(r[k])))));
       const SL = ['PG', 'SG', 'SF', 'PF', 'C'];
       const needR = !rapmOk && [...allKeys].some(k => E.STATS[k] && E.STATS[k].rapm);
       const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the players of his own position in ' + (c.scope || 'the competition') + ' (guards, wings, bigs)') +
@@ -576,11 +612,17 @@ function modules(ctx) {
         const ph = m.photo_url ? '<span class="rp-ph"><img src="' + esc(m.photo_url) + '" alt="" crossorigin="anonymous" data-fb="' + esc(m.jersey ? m.jersey : (m.name || r.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2)) + '"></span>'
           : '<span class="rp-ph"><b>' + esc((m.jersey ? m.jersey : (m.name || r.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2))) + '</b></span>';
         const nm = m.name || r.name || 'Player';
-        const groups = sets[grp].map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + E.groupCellsHTML(ks, r, Rk) + '</div></div>').join('');
+        const prof = syn.get(String(r.id)) || null;
+        /* his Synergy drives are in the shot profile's own runs (DRIVE L / R at the rim, mid-range, three: report.js synergyOnRow),
+           and what his man shot at him in his defence group; a player with no file has neither */
+        const groups = (E.groupsOn ? E.groupsOn(sets[grp], r) : sets[grp]).map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + E.groupCellsHTML(ks, r, Rk) + '</div></div>').join('');
+        const chart = prof && E.driveChartHTML ? E.driveChartHTML(prof, { compact: true }) : '';
+        const mz = E.miniZonesHTML ? E.miniZonesHTML(shotsBy.get(String(r.id)) || []) : '';
         out.push(block((i === 0 ? head : '') + '<div class="rp-pcard"><div class="rp-pid">' + ph + '<div class="rp-pname">' + (m.jersey ? '#' + esc(m.jersey) + ' ' : '') + esc(nm) + '</div>' +
           '<div class="rp-pmeta">' + esc(grp) + ' · ' + (r.gp || 0) + ' gp · ' + f1(r.mpg) + ' mpg · ' + f1(r.ppg) + ' ppg</div>' +
           '<div class="rp-pvs">vs ' + Rk.n + ' ' + esc(Rk.who) + '</div>' +
-          '<div class="rp-ppos">' + chips + '</div></div><div class="rp-pgroups">' + groups + '</div></div>'));
+          '<div class="rp-ppos">' + chips + '</div>' + chart + '</div>' +
+          '<div class="rp-pgroups">' + (mz ? '<div class="rp-pside">' + mz + '</div>' : '') + groups + '</div></div>'));
       });
       return out;
     }

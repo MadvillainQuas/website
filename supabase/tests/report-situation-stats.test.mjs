@@ -76,10 +76,11 @@ console.log('\nthe templates');
   ok('every SCORING has half-court usage straight after USG%', all.every(([s, p]) => { const k = keys(s, p, 'SCORING'), i = k.indexOf('usg'); return i >= 0 && k[i + 1] === 'ev_half_usg'; }));
   ok('the guard\'s and the wing\'s SITUATIONS carry the two transition rim stats, TRANSITION %PTS first', ['guard', 'wing'].every(p => {
     const k = keys('main', p, 'SITUATIONS'); return k[0] === 'ev_transition_pts_sh' && k.includes('ev_transition_rim_a100') && k.includes('ev_transition_rim_pct'); }));
+  /* (the Synergy drives, a category drawn only for a player with a file, sit between the shot profile and what follows it) */
+  const real = g => T.main.big.filter(x => !/SYNERGY/.test(x[0])).findIndex(x => x[0] === g);
   ok('the big has a SITUATIONS group now: the two transition rim stats, after the shot profile and before the rim protection',
      JSON.stringify(keys('main', 'big', 'SITUATIONS')) === JSON.stringify(['ev_transition_rim_a100', 'ev_transition_rim_pct'])
-     && T.main.big.findIndex(x => x[0] === 'SITUATIONS') === T.main.big.findIndex(x => x[0] === 'SHOT PROFILE') + 1
-     && T.main.big.findIndex(x => x[0] === 'RIM PROTECTION') === T.main.big.findIndex(x => x[0] === 'SITUATIONS') + 1);
+     && real('SITUATIONS') === real('SHOT PROFILE') + 1 && real('RIM PROTECTION') === real('SITUATIONS') + 1);
   ok('the club report\'s player cards take the half-court rim stats and half-court usage, and no transition rim stats (not asked for there)',
      ['guard', 'wing', 'big'].every(p => !T.players[p].some(g => g[1].some(k => /^ev_transition_rim/.test(k)))));
   ok('nothing the templates held is gone (the older keys are all still there)',
@@ -129,17 +130,23 @@ console.log('\nthe shot profile in its parts');
   field.push(row);
   const R = E.ranker(field, guard);
   const kinds = ks => E.shotRuns(ks);
+  /* the stats a player with no Synergy file is drawn with: the templates' optional ones (DRIVE L / R) left out */
+  const base = ks => ks.filter(k => !(E.STATS[k] && E.STATS[k].optional));
   ok('the guard\'s shot profile is three parts, in order', JSON.stringify(kinds(guard)) === '["rim","mid","three"]', kinds(guard));
   ok('a group about one kind of shot, or none, is not cut (SITUATIONS, RIM PROTECTION, SCORING, a lone rim group)',
      [['ev_transition_pts_sh', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg'], ['def_rim_fg_pm', 'def_rim_vol_pm'], ['usg', 'ts'], ['rim_a100', 'rim_pct', 'ev_rim_astp'], []].every(ks => kinds(ks) === null));
-  ok('the wing\'s and the big\'s shot profiles are cut too: the rim, then the three',
-     JSON.stringify(kinds(E.TPL.main.wing.find(g => g[0] === 'SHOT PROFILE')[1])) === '["rim","three"]' && JSON.stringify(kinds(E.TPL.main.big.find(g => g[0] === 'SHOT PROFILE')[1])) === '["rim","three"]'
+  ok('the wing\'s and the big\'s shot profiles are cut too: the rim, then the three (with no Synergy file)',
+     JSON.stringify(kinds(base(E.TPL.main.wing.find(g => g[0] === 'SHOT PROFILE')[1]))) === '["rim","three"]' && JSON.stringify(kinds(base(E.TPL.main.big.find(g => g[0] === 'SHOT PROFILE')[1]))) === '["rim","three"]'
      && ['guard', 'wing', 'big'].every(p => kinds(E.TPL.players[p].find(g => g[0] === 'SHOT PROFILE')[1])));
+  ok('...the Synergy drives are a category of their own, straight after the shot profile, in every template - and none of them in the shot profile',
+     ['main', 'players'].every(set => ['guard', 'wing', 'big'].every(p => {
+       const g = E.TPL[set][p], i = g.findIndex(x => x[0] === 'SHOT PROFILE'), d = g.findIndex(x => /DRIVES L\/R/.test(x[0]));
+       return d === i + 1 && g[d][1].join() === 'drv_rim_fg,drv_rim_att,drv_mid_fg,drv_mid_att,drv_3_fg,drv_3_att' && !g[i][1].some(k => /^drv_/.test(k)); })));
   const html = E.groupRowsHTML(guard, row, R);
   const heads = html.match(/<div class="rp-zh" data-z="[a-z]+"><i><\/i>[^<]+<\/div>/g) || [];
   ok('the rows: a heading for each part (at the rim, mid-range, three-point), a row for every stat, each on its kind',
      heads.length === 3 && /data-z="rim"><i><\/i>at the rim/.test(heads[0]) && /data-z="mid"><i><\/i>mid-range/.test(heads[1]) && /data-z="three"><i><\/i>three-point/.test(heads[2])
-     && (html.match(/<div class="rp-st"/g) || []).length === guard.length && (html.match(/<div class="rp-st"[^>]* data-z="rim"/g) || []).length === 5
+     && (html.match(/<div class="rp-st"/g) || []).length === base(guard).length && (html.match(/<div class="rp-st"[^>]* data-z="rim"/g) || []).length === 5
      && (html.match(/<div class="rp-st"[^>]* data-z="mid"/g) || []).length === 2 && (html.match(/<div class="rp-st"[^>]* data-z="three"/g) || []).length === 3, heads);
   ok('...a heading comes before the first row of its part and after the last of the one before',
      html.indexOf('at the rim') < html.indexOf('RIM VOL / 100') && html.indexOf('HALF-COURT RIM%') < html.indexOf('mid-range') && html.indexOf('mid-range') < html.indexOf('MID VOL / 100')
@@ -152,10 +159,12 @@ console.log('\nthe shot profile in its parts');
   ok('a reader\'s own mixture is drawn in order, every stat once, the parts named where the kind changes', (mixed.match(/<div class="rp-st"/g) || []).length === 4 &&
      mixed.indexOf('RIM VOL / 100') < mixed.indexOf('HALF-COURT eFG%') && mixed.indexOf('HALF-COURT eFG%') < mixed.indexOf('RIM%') && /data-z="mid"><i><\/i>mid-range/.test(mixed) && !/<div class="rp-st"[^>]*data-z="[^"]*"[^>]*>(?:(?!<div class="rp-st").)*HALF-COURT eFG%/.test(mixed.replace(/\n/g, '')));
   const cells = E.groupCellsHTML(guard, row, R);
-  ok('the cells: every stat a cell, on its kind, and the first cell of the second and third part set apart (the first of all is not)',
-     (cells.match(/<div class="rp-cell/g) || []).length === guard.length && (cells.match(/<div class="rp-cell zn"/g) || []).length === 2 && !/^<div class="rp-cell zn"/.test(cells)
-     && (cells.match(/data-z="rim"/g) || []).length === 5 && (cells.match(/data-z="mid"/g) || []).length === 2 && (cells.match(/data-z="three"/g) || []).length === 3
-     && /<div class="rp-cell zn" data-b="\d" data-z="mid">/.test(cells) && /<div class="rp-cell zn" data-b="\d" data-z="three">/.test(cells), cells.slice(0, 300));
+  const runs = cells.match(/<div class="rp-run" data-z="[a-z]+"><em>[^<]+<\/em>/g) || [];
+  ok('the cells: every stat a cell, on its kind, each kind\'s cells in a box of their own named over them (Rim, Mid-range, Three)',
+     (cells.match(/<div class="rp-cell/g) || []).length === base(guard).length && runs.length === 3
+     && /data-z="rim"><em>Rim</.test(runs[0]) && /data-z="mid"><em>Mid-range</.test(runs[1]) && /data-z="three"><em>Three</.test(runs[2])
+     && (cells.match(/<div class="rp-cell[^"]*" data-b="\d" data-z="rim"/g) || []).length === 5 && (cells.match(/<div class="rp-cell[^"]*" data-b="\d" data-z="mid"/g) || []).length === 2
+     && (cells.match(/<div class="rp-cell[^"]*" data-b="\d" data-z="three"/g) || []).length === 3, runs);
   const plain = E.groupCellsHTML(['usg', 'ts'], { id: 'x', usg: 20, ts: 55 }, E.ranker(field, ['usg', 'ts']));
   ok('a group of cells that is not cut is as before', !/data-z|zn/.test(plain) && plain === ['usg', 'ts'].map(k => E.statCellHTML(k, { id: 'x', usg: 20, ts: 55 }, E.ranker(field, ['usg', 'ts']))).join(''));
   ok('a part\'s heading is height the page\'s two columns are cut by: a row each, the group\'s title, and a heading a part',

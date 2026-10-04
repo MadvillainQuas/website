@@ -97,3 +97,36 @@ crest fallback, the zone table's columns and the names; `supabase/tests/report-s
 coverage is blank, never zero); the new figures ranked and drawn; every template (the new keys beside the rim stats, after USG%, in
 every position's SITUATIONS); half-court usage in `season.js` on a hand-worked season (weights, a game with no events line, under ten
 chances); the Edge Function's copy.
+
+## Synergy, AST% by situation, the type, PRIME REPORT (2026-10-04)
+
+**A player's Synergy file** (the scraper's `synergy_playtypes_<Player>_accumulated.csv`) is read by `synergy.js`: one row per node of
+Synergy's play-type tree, each side of the ball. What the reports take from it, and only that (the file itself is never kept):
+
+| What | Where | How |
+|---|---|---|
+| Left / right chart | the club report's player card (bottom left), the player report's DIRECTION (under WHERE HE SHOOTS) | his drives left against right: PPP (the heaviest bar, in the colour of the shot that side leans on - red the rim, blue the pull-up jumper, light for mid-range, dark for threes, stronger the more one-sided), % of his possessions, eFG%, TO%; each on one scale for both sides; the dashed marks his drives in all directions; the better side's numbers green, the worse red |
+| Where the drives end | DIRECTION | each side's shots at the rim, pull-up mid-range and pull-up threes, as % of that side's shots |
+| DRIVES L/R · SYNERGY | a category of its own after SHOT PROFILE, both reports | DRIVE L/R RIM FG% and ATT%, MID FG% and ATT%, 3FG% and 3 ATT%: each pair tinted against his drives in all directions (never against this season's RIM% / MID% / 3PT%: the file covers several seasons); the better side's number green; the attempts (or each side's shots) under it |
+| ATTACKED FACE-UP eFG% | every position's defence group, both reports | what his man shot isolating him or driving at him (every defensive isolation, and every drive left, right or straight outside one); against the break-even 52.5, lower is better |
+| POST-D eFG% | the same | what his man shot posting him up |
+
+Drives come from every play type that has them (a spot-up closeout attacked, an isolation, a pick-and-pop), counted once: an
+isolation's drives are split by where he started (Top / Left / Right) and summed again under "Isolation - Overall" - the total is the
+Overall row, the shot types the split's. A player with no file has none of these: no category, no rows, no chart.
+
+**Adding one**: *Add Synergy CSV* on the report's own panel (one or several files). Each player in them is matched to the report's
+players by name, or by surname and initial where only one fits ("JJ White" is Jaylon White), and **the match is shown to be checked
+and changed by hand** (or left out) before anything is kept. A platform administrator's are kept in `synergy_profiles` (0228) for every
+report after it, the mailer's too; anyone else's stay on that page.
+
+**AST% by situation**: every half-court and transition card (club report, both ends; a player's own) has its AST% in the gap under
+the court: the share of its made baskets that were assisted, and the same at the rim, mid-range and three (`situations.js` marks
+each made shot assisted or not). A guard's card has HALF-COURT AST% in HALF COURT; the player report has TRANSITION AST% in SITUATIONS.
+The club's own half-court AST% has a key of its own (`tm_hc_ast_pct`).
+
+**The type**: every report page (player, club, game analysis) is set in Archivo; the site's pixel faces are not used on paper.
+
+**PRIME REPORT**: one click makes the report ready - RAPM read where it was already worked out (this browser, then `report_rapm`,
+0228) or worked out now and kept there for every report of that league and season, Synergy read, every page built - then the PDF.
+`?prime=1` on a report's address does the same on opening; the mailer primes its reports itself.

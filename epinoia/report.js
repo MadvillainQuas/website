@@ -62,6 +62,7 @@ const STATS = {
   usg: { l: 'USG%', dp: 1, style: true }, ev_half_usg: { l: 'HALF-COURT USG%', dp: 1, style: true }, ts: { l: 'TS%', dp: 1 }, efg: { l: 'eFG%', dp: 1 }, ftr: { l: 'FTr', dp: 1 },
   ft_pct: { l: 'FT%', dp: 1 }, fg_pct: { l: 'FG%', dp: 1 },
   au: { l: 'A/U', dp: 2 }, ast_to: { l: 'AST / TO', dp: 2 }, ast_pct: { l: 'AST%', dp: 1 }, hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1 },
+  tr_ast_pct: { l: 'TRANSITION AST%', dp: 1 },
   ast3_sh: { l: "% OF ASSISTS THAT ARE 3'S", dp: 1, style: true }, ast2_sh: { l: "% OF ASSISTS THAT ARE 2'S", dp: 1, style: true },
   tov_pct: { l: 'TO%', dp: 1, low: true },
   rim_a100: { l: 'RIM VOL / 100', dp: 1, style: true }, rim_pct: { l: 'RIM%', dp: 1 }, ev_rim_astp: { l: 'RIM ASSISTED%', dp: 1, style: true },
@@ -79,6 +80,20 @@ const STATS = {
   diff_vs_oreb: { l: 'DEF ORB ±', dp: 1, signed: true, low: true }, diff_net: { l: 'NET ±', dp: 1, signed: true },
   def_rim_fg_pm: { l: 'DEF RIM FG% ±', dp: 1, signed: true, low: true }, def_rim_vol_pm: { l: 'DEF RIM VOL ±', dp: 1, signed: true, low: true },
   pf_pg: { l: 'FOULS CONCEDED / G', dp: 1, low: true }, pf30: { l: 'FOULS / 30', dp: 1, low: true },
+  /* SYNERGY (2026-10-04): a player's own file (synergy.js), so no field to rank in - each is drawn against the break-even
+     eFG% instead; optional: a player with no file has no such row or cell at all */
+  syn_fu_efg: { l: 'ATTACKED FACE-UP eFG%', dp: 1, low: true, rank: false, optional: true, ref: 52.5, refL: 'vs', sc: 5 },
+  syn_post_efg: { l: 'POST-D eFG%', dp: 1, low: true, rank: false, optional: true, ref: 52.5, refL: 'vs', sc: 5 },
+  /* HIS SYNERGY DRIVES, a category of their own (DRIVES L/R): each kind's FG% going left and going right, each tinted against his
+     drives in ALL directions (left, right and straight together: the same file, the same seasons - never this season's own RIM%,
+     MID% or 3PT%, the Synergy file being several seasons; the kind's break-even only where he has no such shot at all) - and the
+     share of each side's drive shots of the kind. No words of comparison: the colour says it. */
+  drv_rim_fg: { l: 'DRIVE L/R RIM FG%', dp: 1, rank: false, optional: true, pair: ['drv_l_rim_fg', 'drv_r_rim_fg'], ref: 'drv_all_rim_fg', refBE: 58, sc: 5 },
+  drv_rim_att: { l: 'DRIVE L/R RIM ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_rim_att', 'drv_r_rim_att'] },
+  drv_mid_fg: { l: 'DRIVE L/R MID FG%', dp: 1, rank: false, optional: true, pair: ['drv_l_mid_fg', 'drv_r_mid_fg'], ref: 'drv_all_mid_fg', refBE: 40, sc: 5 },
+  drv_mid_att: { l: 'DRIVE L/R MID ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_mid_att', 'drv_r_mid_att'] },
+  drv_3_fg: { l: 'DRIVE L/R 3FG%', dp: 1, rank: false, optional: true, pair: ['drv_l_3_fg', 'drv_r_3_fg'], ref: 'drv_all_3_fg', refBE: 35, sc: 5 },
+  drv_3_att: { l: 'DRIVE L/R 3 ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_3_att', 'drv_r_3_att'] },
   badpass_pg: { l: 'BAD PASS TO / G', dp: 1, low: true, rank: false, feed: true }, handle_pg: { l: 'DRIBBLE TO / G', dp: 1, low: true, rank: false, feed: true }
 };
 
@@ -89,9 +104,18 @@ const DEFS = {
   drapm: ['Defensive RAPM', 'The same regression’s defensive coefficient: points per 100 possessions he takes off the opponent’s offence. Higher is better.'],
   rapm: ['RAPM', 'Offensive plus defensive RAPM.'],
   hc_ast_pct: ['Half-court assist %', 'Of his teammates’ baskets in the half court while he was on the floor (not a second chance, a fast break or off a turnover), the share he assisted: how much of the set offence he creates. Worked out from every game’s play-by-play in the competition; blank under 10 such baskets.'],
+  tr_ast_pct: ['Transition assist %', 'Of his teammates’ baskets in transition while he was on the floor (a fast break, or within eight seconds of a defensive rebound or a steal), the share he assisted.'],
   ast3_sh: ['Assists that were threes', 'Of the baskets he assisted, the share that were three-pointers (points off his assists minus two per assist).'],
   ast2_sh: ['Assists that were twos', 'Of the baskets he assisted, the share that were two-pointers.'],
   pf_pg: ['Fouls conceded a game', 'Personal fouls he commits per game. Fewer is better.'],
+  syn_fu_efg: ['Attacked face-up eFG% (Synergy)', 'What his man shot (effective field-goal %) when he was attacked face-up: every defensive isolation, and every drive at him (left, right or straight) outside one, from his Synergy file. Lower is better; drawn against the break-even 52.5%.'],
+  drv_rim_fg: ['Drive left / right, rim FG% (Synergy)', 'His field-goal percentage at the rim (to the basket) on drives going left, then right, from his Synergy file; each tinted against his rim FG% on drives in all directions (green above it, red below).'],
+  drv_rim_att: ['Drive left / right, rim attempts % (Synergy)', 'Of his shots on drives going left, then right, the share at the rim.'],
+  drv_mid_fg: ['Drive left / right, mid-range FG% (Synergy)', 'His field-goal percentage on pull-up twos (dribble jumpers short of the arc) going left, then right; each tinted against his pull-up two FG% on drives in all directions.'],
+  drv_mid_att: ['Drive left / right, mid-range attempts % (Synergy)', 'Of his shots on drives going left, then right, the share that were pull-up twos.'],
+  drv_3_fg: ['Drive left / right, 3FG% (Synergy)', 'His three-point percentage on pull-up threes going left, then right; each tinted against his pull-up three FG% on drives in all directions.'],
+  drv_3_att: ['Drive left / right, three attempts % (Synergy)', 'Of his shots on drives going left, then right, the share that were pull-up threes.'],
+  syn_post_efg: ['Post-D eFG% (Synergy)', 'What his man shot (effective field-goal %) posting him up: every defensive post-up in his Synergy file. Lower is better; drawn against the break-even 52.5%.'],
   badpass_pg: ['Bad-pass turnovers a game', 'Turnovers the feed typed as a bad pass, per game; only leagues whose feed types its turnovers have them.'],
   handle_pg: ['Dribble turnovers a game', 'Turnovers the feed typed as a ball-handling error (travelling, a lost dribble, a carry), per game.'],
   ev_transition_pts_sh: ['Transition share of points', 'The share of his points scored in transition: within eight seconds of a defensive rebound or a steal, or tagged a fast break.'],
@@ -201,7 +225,7 @@ const HC_MIN = 10;
 function hcAssists(games) {
   const SI = root.EpinoiaSituations, out = new Map();
   if (!SI || !SI.inGameOrder || !SI.stamps) return out;
-  const at = pid => { let o = out.get(pid); if (!o) out.set(pid, o = { a: 0, m: 0 }); return o; };
+  const at = pid => { let o = out.get(pid); if (!o) out.set(pid, o = { a: 0, m: 0, ta: 0, tm: 0 }); return o; };
   (games || []).forEach(g => {
     const st = g && g.starters;
     if (!Array.isArray(st) || !Array.isArray(st[0]) || !Array.isArray(st[1]) || !st[0].length || !st[1].length) return;
@@ -224,17 +248,23 @@ function hcAssists(games) {
       if (e.t === 'sub') { const s = on[e.team]; if (s) { if (e.out) s.delete(e.out); if (e.in) s.add(e.in); } return; }
       if (!(e.t === 'p2_made' || e.t === 'p3_made') || !(e.team === 0 || e.team === 1)) return;
       const sp = stamp.get(e);
-      if (!sp || sp.second || sp.offTo || sp.transition) return;
+      if (!sp) return;
+      /* the half court (no second chance, no break, not off a turnover) in a and m; transition in ta and tm */
+      const half = !sp.second && !sp.offTo && !sp.transition, tr = !!sp.transition;
+      if (!half && !tr) return;
+      const M = half ? 'm' : 'tm', A = half ? 'a' : 'ta';
       const who = by.get(e);
-      on[e.team].forEach(pid => { if (pid !== e.pid) { const o = at(pid); o.m++; if (who === pid) o.a++; } });
+      on[e.team].forEach(pid => { if (pid !== e.pid) { const o = at(pid); o[M]++; if (who === pid) o[A]++; } });
       /* the passer was on the floor whatever the log's substitutions say */
-      if (who && who !== e.pid && !on[e.team].has(who)) { const o = at(who); o.m++; o.a++; }
+      if (who && who !== e.pid && !on[e.team].has(who)) { const o = at(who); o[M]++; o[A]++; }
     });
   });
   return out;
 }
 /* the rate on a row, from hcAssists' tally: blank under HC_MIN baskets */
 function hcAstOf(t) { return t && t.m >= HC_MIN ? Math.round(1000 * t.a / t.m) / 10 : null; }
+/* the same in transition */
+function trAstOf(t) { return t && t.tm >= HC_MIN ? Math.round(1000 * t.ta / t.tm) / 10 : null; }
 
 /* ---------------------------------------------------------------- templates --- */
 /* THE DEFAULTS BY POSITION (Louie, 2026-10-02). MAIN STATS, the player's page; PLAYERS, the club report's card rows. */
@@ -244,22 +274,25 @@ const TPL = {
             ['SCORING', ['usg', 'ev_half_usg', 'ts', 'efg', 'ftr', 'ft_pct']],
             ['PLAYMAKING', ['au', 'hc_ast_pct', 'ast3_sh', 'ast2_sh', 'tov_pct']],
             ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_a100', 'mid_pct', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
-            ['SITUATIONS', ['ev_transition_pts_sh', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg', 'ev_half_tov_pct']],
-            ['DEFENCE & GLASS', ['stl_pct', 'dreb_pct']],
+            ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
+            ['SITUATIONS', ['ev_transition_pts_sh', 'tr_ast_pct', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg', 'ev_half_tov_pct']],
+            ['DEFENCE & GLASS', ['stl_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg']],
             ['ON / OFF', ['diff_efg', 'diff_tov']]],
     wing: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
            ['SCORING', ['usg', 'ev_half_usg', 'ts', 'efg', 'ftr']],
            ['PLAYMAKING', ['au', 'tov_pct']],
            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
-           ['SITUATIONS', ['ev_transition_pts_sh', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg']],
-           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'oreb_pct', 'dreb_pct']],
+            ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
+           ['SITUATIONS', ['ev_transition_pts_sh', 'tr_ast_pct', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg']],
+           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'oreb_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg']],
            ['ON / OFF', ['diff_vs_efg']]],
     big: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
           ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ft_pct', 'ftr']],
           ['PLAYMAKING', ['au', 'tov_pct']],
           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
+            ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
           ['SITUATIONS', ['ev_transition_rim_a100', 'ev_transition_rim_pct']],
-          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm']],
+          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm', 'syn_post_efg', 'syn_fu_efg']],
           ['GLASS & DEFENCE', ['oreb_pct', 'dreb_pct', 'blk_pct', 'pf_pg']],
           ['ON / OFF', ['diff_oreb', 'diff_vs_oreb']]]
   },
@@ -267,18 +300,21 @@ const TPL = {
     guard: [['IMPACT', ['orapm', 'drapm', 'bpm']],
             ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ftr']],
             ['PLAYMAKING', ['au', 'ast3_sh', 'ast2_sh', 'diff_efg']],
-            ['HALF COURT', ['ev_half_efg', 'ev_half_tov_pct', 'badpass_pg', 'handle_pg', 'ev_transition_pts_sh']],
+            ['HALF COURT', ['ev_half_efg', 'hc_ast_pct', 'ev_half_tov_pct', 'badpass_pg', 'handle_pg', 'ev_transition_pts_sh']],
             ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
-            ['DEFENCE', ['stl_pct', 'dreb_pct']]],
+            ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
+            ['DEFENCE', ['stl_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg']]],
     wing: [['IMPACT', ['orapm', 'drapm', 'bpm']],
            ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ftr', 'au', 'tov_pct']],
            ['HALF COURT', ['ev_half_efg', 'ev_transition_pts_sh']],
            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
-           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'dreb_pct', 'oreb_pct', 'diff_vs_efg']]],
+            ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
+           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'dreb_pct', 'oreb_pct', 'diff_vs_efg', 'syn_fu_efg', 'syn_post_efg']]],
     big: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
           ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ft_pct', 'ftr', 'au', 'tov_pct']],
           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
-          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm']],
+            ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
+          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm', 'syn_post_efg', 'syn_fu_efg']],
           ['GLASS', ['oreb_pct', 'dreb_pct', 'blk_pct', 'pf_pg', 'diff_oreb', 'diff_vs_oreb']]]
   }
 };
@@ -388,7 +424,14 @@ const FEED_NA = 'this league\u2019s play-by-play does not say what kind of turno
    STATS entry: another key of the same row, or a number) is drawn against that instead: the bar grows from the middle,
    green to the right where it is better than the club's own figure, red to the left where it is worse, and the gap is
    printed where the percentile would be */
-function refOf(s, row) { return s.ref == null ? null : typeof s.ref === 'number' ? s.ref : row ? row[s.ref] : null; }
+function refOf(s, row) {
+  if (s.ref == null) return null;
+  if (typeof s.ref === 'number') return s.ref;
+  const v = row ? row[s.ref] : null;
+  return isNum(v) ? v : isNum(s.refBE) ? s.refBE : null;
+}
+/* what the reference is called: his own figure's name, or 'break-even' where it fell back to that */
+function refName(s, row) { return typeof s.ref === 'string' && !(row && isNum(row[s.ref])) && isNum(s.refBE) ? 'break-even' : (s.refL || 'club'); }
 function bandVs(v, ref, scale, low) {
   if (!isNum(v) || !isNum(ref)) return 0;
   const g = (low ? -1 : 1) * (+v - +ref), sc = scale || 3;
@@ -396,6 +439,11 @@ function bandVs(v, ref, scale, low) {
 }
 function statRowHTML(k, row, R, opt) {
   const s = STATS[k] || { l: k.toUpperCase() };
+  if (s.pair) {
+    const rv = refOf(s, row), zA = opt && opt.z ? ' data-z="' + opt.z + '"' : '';
+    return '<div class="rp-st rp-st2" data-b="0"' + zA + '><span class="rp-st-l" title="' + esc(s.l) + '">' + esc(s.l) + '</span><span class="rp-st-v">' + pairHTML(k, row) + '</span>' +
+      '<span class="rp-st-bar"></span><span class="rp-st-p"></span><span class="rp-st-a">' + esc(pairN(k, row)) + '</span></div>';
+  }
   const v = row ? row[k] : null;
   const rv = refOf(s, row);
   const lab = (opt && typeof opt.label === 'function' && opt.label(k)) || s.l;     // a shorter name where the group says the rest
@@ -410,7 +458,7 @@ function statRowHTML(k, row, R, opt) {
     return '<div class="rp-st" data-b="' + b + '"' + c + zA + '>' + head +
       '<span class="rp-st-bar dv"><i style="' + (g >= 0 ? 'left:50%' : 'left:' + (50 - w).toFixed(1) + '%') + ';width:' + w.toFixed(1) + '%"></i></span>' +
       '<span class="rp-st-p">' + (d > 0 ? '+' : d < 0 ? '\u2212' : '\u00b1') + t + '</span>' +
-      '<span class="rp-st-a">' + esc(s.refL || 'club') + ' ' + fmtStat(typeof s.ref === 'string' && STATS[s.ref] ? s.ref : k, rv) + '</span></div>';
+      '<span class="rp-st-a">' + esc(refName(s, row)) + ' ' + fmtStat(typeof s.ref === 'string' && STATS[s.ref] ? s.ref : k, rv) + '</span></div>';
   }
   const p = s.rank === false ? null : R.pct(k, row && row.id);
   const b = band(p, s.style);
@@ -435,13 +483,47 @@ function colsHTML(items, html, weight) {
   return '<div class="rp-cols"><div>' + items.slice(0, best).map(html).join('') + '</div><div>' + items.slice(best).map(html).join('') + '</div></div>';
 }
 /* a cell of the PLAYERS card: label over value, the cell tinted by the percentile */
+/* WHICH SIDE IS BETTER, at a glance: the better of two numbers green, the worse red, neither when they are within eps (or
+   either side has too few to say); low: smaller is better. -> [left's, right's] as 'up' / 'dn' / '' */
+function sideTone(a, b, low, eps) {
+  if (!isNum(a) || !isNum(b) || Math.abs(+a - +b) < (eps || 0)) return ['', ''];
+  const leftBetter = low ? +a < +b : +a > +b;
+  return leftBetter ? ['up', 'dn'] : ['dn', 'up'];
+}
+/* A PAIR (DRIVE L/R ...): both sides in one cell or row, left then right; each on a tint against the reference (his drives in
+   all directions), and the better side's number green, the worse red (an FG% on fewer than three attempts says nothing) */
+/* the sample under a pair, left then right: the attempts behind each FG%, or each side's drive shots behind the shares */
+function pairN(k, row) {
+  const s = STATS[k];
+  if (!row || !s || !s.pair) return '';
+  const fg = /_fg$/.test(s.pair[0]);
+  const n = s.pair.map((x, i) => row[fg ? x.replace(/_fg$/, '_n') : 'drv_' + (i ? 'r' : 'l') + '_shots']);
+  return n.some(isNum) ? n.map(v => (isNum(v) ? v : 0)).join(' \u00b7 ') + (fg ? ' att' : ' shots') : '';
+}
+function pairHTML(k, row) {
+  const s = STATS[k], rv = refOf(s, row);
+  const n = x => (row ? row[x.replace(/_fg$/, '_n')] : null);
+  const tone = s.ref != null && s.pair.every(x => !/_fg$/.test(x) || (isNum(n(x)) && n(x) >= 3)) ? sideTone(row && row[s.pair[0]], row && row[s.pair[1]], s.low, 3) : ['', ''];
+  return s.pair.map((x, i) => {
+    const v = row ? row[x] : null;
+    const b = isNum(v) && isNum(rv) ? bandVs(v, rv, s.sc || 3, s.low) : 0;
+    return '<i data-b="' + b + '"' + (tone[i] ? ' class="' + tone[i] + '"' : '') + '><small>' + (i ? 'R' : 'L') + '</small>' + (isNum(v) ? (+v).toFixed(s.dp == null ? 1 : s.dp) : '\u2014') + '</i>';
+  }).join('');
+}
 function statCellHTML(k, row, R, opt) {
   const s = STATS[k] || { l: k.toUpperCase() };
+  if (s.pair) {
+    const rv = refOf(s, row);
+    return '<div class="rp-cell rp-cell2" data-b="0"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l">' + esc(s.l) + '</span>' +
+      '<b class="rp-cell-v">' + pairHTML(k, row) + '</b><span class="rp-cell-p">' + esc(pairN(k, row)) + '</span></div>';
+  }
   const p = s.rank === false ? null : R.pct(k, row && row.id);
   const v = row ? row[k] : null;
-  return '<div class="rp-cell' + (opt && opt.first ? ' zn' : '') + '" data-b="' + band(p, s.style) + '"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l">' + esc(s.l) + '</span>' +
+  const rv = refOf(s, row);
+  const b = p == null && s.rank === false && isNum(rv) && isNum(v) ? bandVs(v, rv, s.sc || 3, s.low) : band(p, s.style);
+  return '<div class="rp-cell' + (opt && opt.first ? ' zn' : '') + '" data-b="' + b + '"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l">' + esc(s.l) + '</span>' +
     '<b class="rp-cell-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</b>' +
-    '<span class="rp-cell-p">' + (p == null ? '' : ordinal(p)) + '</span></div>';
+    '<span class="rp-cell-p">' + (p == null ? (s.rank === false && isNum(rv) && isNum(v) ? (+v - +rv > 0 ? '+' : +v - +rv < 0 ? '\u2212' : '\u00b1') + Math.abs(+v - +rv).toFixed(1) + ' v ' + fmtStat(typeof s.ref === 'string' && STATS[s.ref] ? s.ref : k, rv) : '') : ordinal(p)) + '</span></div>';
 }
 
 /* THE SHOT PROFILE IN ITS PARTS (2026-10-03). The stats of a group that are about one kind of shot - at the rim, mid-range,
@@ -457,7 +539,13 @@ function shotRuns(ks) {
   (ks || []).forEach(k => { const z = SHOT_KIND[k] || null; if (z && runs[runs.length - 1] !== z) runs.push(z); else if (!z) runs.push(null); });
   return new Set(runs.filter(Boolean)).size > 1 ? runs : null;
 }
-function groupRowsHTML(ks, row, R, opt) {
+/* a stat marked optional (a Synergy figure) is left out where the row has no value for it: no file, no row */
+function hasStat(k, row) { const s = STATS[k]; if (!row) return false; return s && s.pair ? s.pair.some(x => isNum(row[x])) : isNum(row[k]); }
+const present = (ks, row) => (ks || []).filter(k => !(STATS[k] && STATS[k].optional) || hasStat(k, row));
+/* a template's groups as a row draws them: a group all of whose stats are optional and absent is not drawn at all */
+const groupsOn = (groups, row) => (groups || []).filter(g => present(g[1], row).length);
+function groupRowsHTML(ks0, row, R, opt) {
+  const ks = present(ks0, row);
   const split = !!shotRuns(ks);
   let cur = null;
   return (ks || []).map(k => {
@@ -467,15 +555,18 @@ function groupRowsHTML(ks, row, R, opt) {
     return head + statRowHTML(k, row, R, Object.assign({}, opt, { z }));
   }).join('');
 }
-function groupCellsHTML(ks, row, R) {
+/* ON A PLAYER'S CARD (2026-10-04) a group about several kinds of shot is set out in RUNS: each kind's cells in a box of their own
+   with its name over them - RIM, MID-RANGE, THREE - on a bar of its colour, so the three read apart at a glance */
+const RUN_NAME = { rim: 'Rim', mid: 'Mid-range', three: 'Three' };
+function groupCellsHTML(ks0, row, R) {
+  const ks = present(ks0, row);
   const split = !!shotRuns(ks);
-  let cur = null, n = 0;
-  return (ks || []).map(k => {
-    const z = split ? SHOT_KIND[k] || null : null;
-    const first = !!z && z !== cur && n > 0;
-    cur = z; n++;
-    return statCellHTML(k, row, R, { z, first });
-  }).join('');
+  if (!split) return ks.map(k => statCellHTML(k, row, R, {})).join('');
+  const runs = [];
+  ks.forEach(k => { const z = SHOT_KIND[k] || null, last = runs[runs.length - 1]; if (last && last.z === z) last.ks.push(k); else runs.push({ z, ks: [k] }); });
+  return runs.map(u => u.z
+    ? '<div class="rp-run" data-z="' + u.z + '"><em>' + RUN_NAME[u.z] + '</em><div class="rp-run-c">' + u.ks.map(k => statCellHTML(k, row, R, { z: u.z })).join('') + '</div></div>'
+    : u.ks.map(k => statCellHTML(k, row, R, {})).join('')).join('');
 }
 /* a group's height in rows, for cutting the page's two columns evenly: a row each, the group's title, and a heading a part */
 function groupWeight(ks) { const runs = shotRuns(ks); return (ks || []).length + 1.6 + (runs ? 0.9 * runs.filter(Boolean).length : 0); }
@@ -538,8 +629,8 @@ const SIT_KEYS = ['half', 'transition'];
 function sitSeason(games) {
   const SI = root.EpinoiaSituations;
   const out = {};
-  SIT_KEYS.forEach(k => { out[k] = { games: 0, chances: 0, pts: 0, fga: 0, fgm: 0, p3m: 0, fta: 0, ftm: 0, tov: 0, shots: [], types: new Map(),
-    zones: { rim: { a: 0, m: 0 }, mid: { a: 0, m: 0 }, three: { a: 0, m: 0 } }, scorers: new Map() }; });
+  SIT_KEYS.forEach(k => { out[k] = { games: 0, chances: 0, pts: 0, fga: 0, fgm: 0, p3m: 0, fta: 0, ftm: 0, tov: 0, astd: 0, shots: [], types: new Map(),
+    zones: { rim: { a: 0, m: 0, x: 0 }, mid: { a: 0, m: 0, x: 0 }, three: { a: 0, m: 0, x: 0 } }, scorers: new Map() }; });
   if (!SI || !SI.compute) return out;
   (games || []).forEach(g => {
     let C;
@@ -562,6 +653,8 @@ function sitSeason(games) {
         const T = A.types.get(key) || { three: x.three, type: x.type || '', a: 0, m: 0 };
         T.a++; if (x.made) T.m++; A.types.set(key, T);
         const z = A.zones[x.zone] || null; if (z) { z.a++; if (x.made) z.m++; }
+        /* an assisted basket (situations.js marks each made shot): the card's AST% and each kind's */
+        if (x.made && x.ast) { A.astd++; if (z) z.x++; }
       });
       if (!g.pid) Object.keys(s.players || {}).forEach(pid => {
         const p = s.players[pid], cur = A.scorers.get(pid) || { pid, pts: 0, fgm: 0, fga: 0 };
@@ -574,6 +667,7 @@ function sitSeason(games) {
     A.efg = A.fga ? (A.fgm + 0.5 * A.p3m) / A.fga : null;
     A.ppp = A.chances ? A.pts / A.chances : null;
     A.tovPct = A.chances ? A.tov / A.chances : null;
+    A.astPct = A.fgm ? A.astd / A.fgm : null;
     A.types = [...A.types.values()].sort((x, y) => (y.a - x.a) || (y.m - x.m));
     A.scorers = [...A.scorers.values()].filter(x => x.pts > 0).sort((x, y) => y.pts - x.pts).slice(0, 5);
   });
@@ -638,8 +732,23 @@ function sitCardHTML(A, o) {
   return '<div class="rp-sit' + (opt.compact ? ' cp' : '') + '" style="--s:' + (opt.colour || '#08603f') + '"><div class="rp-sit-h"><h4><i></i>' + esc(nm[0]) + (opt.who ? ' <small>' + esc(opt.who) + '</small>' : '') + '</h4>' +
     '<p class="rp-sit-f">' + figs + '</p></div>' +
     '<div class="rp-sit-g"><div class="rp-sit-c">' + (located.length ? '<div class="rp-court">' + court + '</div>' : court) +
-      '<p class="rp-sit-k"><span><i class="m"></i>made</span><span><i class="x"></i>missed</span><span>' + located.length + ' of ' + A.fga + ' shots located · zones tinted against break-even</span></p></div>' +
+      '<p class="rp-sit-k"><span><i class="m"></i>made</span><span><i class="x"></i>missed</span><span>' + located.length + ' of ' + A.fga + ' shots located · zones tinted against break-even</span></p>' +
+      sitAstHTML(A, opt) + '</div>' +
       '<div class="rp-sit-s"><h5>Shot types</h5>' + types + zones + zl + sc + '</div></div></div>';
+}
+
+/* AST% IN THE GAP UNDER THE COURT (2026-10-04): the share of the situation's made baskets that were assisted (situations.js
+   pairs each assist with the basket it made), big, then the same for each kind of shot - at the rim, mid-range, threes - as a
+   bar. On a player's card it is the share of HIS baskets that were assisted, and says so. Nothing when nothing was made. */
+function sitAstHTML(A, opt) {
+  if (!A || !A.fgm || A.astPct == null) return '';
+  const who = opt && opt.player ? 'his' : 'its';
+  const kinds = [['rim', 'Rim'], ['mid', 'Mid-range'], ['three', 'Three']].map(([k, l]) => {
+    const z = A.zones[k] || { m: 0, x: 0 }, p = z.m ? z.x / z.m : null;
+    return '<li><span>' + l + '</span><i><em style="width:' + (p == null ? 0 : (100 * p).toFixed(1)) + '%"></em></i><b>' + (p == null ? '–' : Math.round(100 * p) + '%') + '</b><small>' + (z.x || 0) + '/' + (z.m || 0) + '</small></li>';
+  }).join('');
+  return '<div class="rp-sit-a"><div class="rp-sit-a1"><b>' + Math.round(100 * A.astPct) + '%</b><span>' + (opt && opt.player ? 'Assisted' : 'AST%') + '</span></div>' +
+    '<div class="rp-sit-a2"><p>' + A.astd + ' of ' + who + ' ' + A.fgm + ' baskets were assisted</p><ul>' + kinds + '</ul></div></div>';
 }
 
 /* A CREST OR A PHOTO THAT DID NOT LOAD (2026-10-03). Another site's logo sends no CORS header, which the pictures need to be
@@ -812,6 +921,254 @@ function legendBlocks(keys, extra, kind) {
   return out;
 }
 
+/* ---------------------------------------------------------------- SYNERGY --- */
+/* A PLAYER'S SYNERGY FILE IN HIS REPORTS (2026-10-04; synergy.js reads the scraper's CSV, 0228 synergy_profiles keeps the numbers).
+   Where a profile comes from, first found first: one added on this page (SYN.local), one the mailer handed the page
+   (EPINOIA_SYNERGY: { player id: profile }, read with its own key), then the database - which answers a platform administrator
+   only (Synergy's data is licensed), so the SDK is not even loaded for a reader who is not signed in. What a report draws
+   from it: the drives left and right (driveChartHTML), each side's shots (driveTableHTML, directionMixHTML) and the two
+   defensive figures (syn_fu_efg, syn_post_efg). */
+const SYN = { local: new Map(), cache: new Map() };
+async function synClient() {
+  try {
+    if (typeof root.epinoiaMaybeSignedIn === 'function' && !root.epinoiaMaybeSignedIn()) return null;
+    if (typeof root.epinoiaClientReady === 'function') return await root.epinoiaClientReady();
+    return typeof root.epinoiaClient === 'function' ? root.epinoiaClient() : null;
+  } catch (_) { return null; }
+}
+const synOk = p => { const S = root.EpinoiaSynergy; return !!p && (!S || S.ok(p)); };
+async function synergyOf(ids) {
+  const out = new Map(), given = root.EPINOIA_SYNERGY || null, need = [];
+  (ids || []).forEach(id => {
+    const k = String(id), p = SYN.local.get(k) || (given && given[k]) || null;
+    if (synOk(p)) out.set(k, p);
+    else if (SYN.cache.has(k)) { if (SYN.cache.get(k)) out.set(k, SYN.cache.get(k)); }
+    else need.push(k);
+  });
+  if (need.length && !root.EPINOIA_RP_BOT) {
+    const c = await synClient();
+    if (c && c.from) {
+      try {
+        const { data, error } = await c.from('synergy_profiles').select('player_id,profile').in('player_id', need);
+        if (!error) {
+          need.forEach(k => SYN.cache.set(k, null));
+          (data || []).forEach(r => { if (synOk(r.profile)) { SYN.cache.set(String(r.player_id), r.profile); out.set(String(r.player_id), r.profile); } });
+        }
+      } catch (_) { /* without it */ }
+    }
+  }
+  return out;
+}
+/* kept for this page at once; in the database too when the reader may (a platform administrator): true when it was */
+async function synergySave(pid, prof, meta) {
+  const k = String(pid);
+  SYN.local.set(k, prof); SYN.cache.set(k, prof);
+  const c = await synClient();
+  if (!c || !c.from) return false;
+  try {
+    const { error } = await c.from('synergy_profiles').upsert(Object.assign({ player_id: k, profile: prof, uploaded_at: new Date().toISOString() }, meta || {}), { onConflict: 'player_id' });
+    return !error;
+  } catch (_) { return false; }
+}
+/* a row's Synergy figures, for the templates' stats */
+function synergyOnRow(row, prof) {
+  if (!row || !synOk(prof)) return;
+  const d = prof.defense || {};
+  if (d.faceUp && isNum(d.faceUp.efg)) row.syn_fu_efg = Math.round(10 * d.faceUp.efg) / 10;
+  if (d.post && isNum(d.post.efg)) row.syn_post_efg = Math.round(10 * d.post.efg) / 10;
+  const dv = prof.offense && prof.offense.drives, r1 = v => (isNum(v) ? Math.round(10 * v) / 10 : null);
+  /* the baseline: his drives in all directions (a profile kept before it carried them: left, right and straight added up) */
+  const all = dv && (dv.all || (() => {
+    const sh = { rim: { m: 0, a: 0 }, mid: { m: 0, a: 0 }, three: { m: 0, a: 0 } };
+    ['left', 'right', 'straight'].forEach(d => { const ln = dv[d]; if (ln && ln.shots) ['rim', 'mid', 'three'].forEach(k => { sh[k].m += ln.shots[k].m; sh[k].a += ln.shots[k].a; }); });
+    const pc = (m, a) => (a > 0 ? 100 * m / a : null);
+    return { shots: sh, rimFg: pc(sh.rim.m, sh.rim.a), midFg: pc(sh.mid.m, sh.mid.a), threeFg: pc(sh.three.m, sh.three.a) };
+  })());
+  if (all) [['rim', 'rim'], ['mid', 'mid'], ['3', 'three']].forEach(([k, z]) => { if (all.shots[z].a > 0) row['drv_all_' + k + '_fg'] = r1(all[z + 'Fg']); });
+  [['l', dv && dv.left], ['r', dv && dv.right]].forEach(([sd, ln]) => {
+    if (!ln || !ln.att) return;
+    row['drv_' + sd + '_shots'] = ln.att;
+    [['rim', 'rim'], ['mid', 'mid'], ['3', 'three']].forEach(([k, z]) => {
+      if (ln.shots[z].a > 0) { row['drv_' + sd + '_' + k + '_fg'] = r1(ln[z + 'Fg']); row['drv_' + sd + '_' + k + '_n'] = ln.shots[z].a; }
+      row['drv_' + sd + '_' + k + '_att'] = r1(ln[z + 'Att']);
+    });
+  });
+}
+/* ADD SYNERGY, on the report's own panel: one or several of the scraper's CSV files. Each player in them is matched to one of
+   the report's players (o.players() -> [{ id, name }]) - by his name, or by surname and initial where that is the only one -
+   and the MATCH IS SHOWN TO BE CHECKED AND CHANGED BY HAND before anything is kept: a list of the report's players beside
+   each file's name, the automatic match chosen (or nothing, when there was none), any of them changeable, or left out.
+   Then kept (synergySave) and the report built again. */
+function synergyControl(host, state, o) {
+  const S = root.EpinoiaSynergy;
+  if (!S) return;
+  const row = el('div', 'rp-rapm rp-syn');
+  const lab = el('label', 'ep-btn mini');
+  lab.appendChild(doc().createTextNode('Add Synergy CSV'));
+  const inp = el('input'); inp.type = 'file'; inp.accept = '.csv,text/csv'; inp.multiple = true; inp.hidden = true;
+  lab.appendChild(inp);
+  const say = el('span', null, 'a player\u2019s Synergy play-type file: his drives left and right, and what his man shot at him');
+  const box = el('div', 'rp-syn-box'); box.hidden = true;
+  row.append(el('span', 'rp-k', 'Synergy'), lab, say);
+  host.append(row, box);
+  const close = () => { box.hidden = true; box.textContent = ''; };
+  inp.onchange = async () => {
+    const files = [...(inp.files || [])]; inp.value = '';
+    if (!files.length) return;
+    say.textContent = 'reading\u2026';
+    let people = [];
+    try { people = (await o.players()) || []; } catch (_) { people = []; }
+    const found = [];
+    for (const f of files) {
+      let list = [];
+      try { list = S.read(await f.text()); } catch (_) { list = []; }
+      list.forEach(p => found.push({ p, file: f.name }));
+    }
+    if (!found.length) { say.textContent = 'no Synergy rows in ' + (files.length === 1 ? 'that file' : 'those files'); return; }
+    close(); box.hidden = false;
+    box.appendChild(el('p', 'rp-syn-t', 'Match each file to its player: chosen by name where it could be - check it, and change any by hand.'));
+    const picks = found.map(x => {
+      const hit = (S.matchPlayer && S.matchPlayer(x.p.name, people)) || (o.single && people.length === 1 ? { person: people[0], how: 'only' } : null);
+      const line = el('div', 'rp-syn-row');
+      const nm = el('span', 'rp-syn-n', x.p.name + (x.p.seasons && x.p.seasons.length ? ' \u00b7 ' + S.span(x.p.seasons) : ''));
+      nm.title = x.file;
+      const sel = el('select', 'ep-input');
+      const opt = (v, t) => { const op = el('option', null, t); op.value = v; sel.appendChild(op); };
+      opt('', '\u2014 leave this file out \u2014');
+      people.forEach(q => opt(String(q.id), q.name));
+      sel.value = hit ? String(hit.person.id) : '';
+      const how = el('small', null, hit ? ({ name: 'same name', initial: 'same surname and initial: check it', only: 'this report\u2019s player: check it' }[hit.how] || '') : 'no match by name: pick him');
+      sel.onchange = () => { how.textContent = sel.value ? 'chosen by hand' : 'left out'; };
+      line.append(nm, el('span', 'rp-syn-to', '\u2192'), sel, how);
+      box.appendChild(line);
+      return { x, sel };
+    });
+    const go = el('button', 'ep-btn mini pri', 'Use these'); go.type = 'button';
+    const no = el('button', 'ep-btn mini', 'Cancel'); no.type = 'button';
+    const act = el('div', 'rp-syn-act'); act.append(go, no);
+    box.appendChild(act);
+    say.textContent = found.length + (found.length === 1 ? ' player' : ' players') + ' in ' + (files.length === 1 ? 'the file' : files.length + ' files') + ': match below';
+    no.onclick = () => { close(); say.textContent = ''; };
+    go.onclick = async () => {
+      go.disabled = no.disabled = true;
+      let stored = 0, here = 0, out = 0;
+      for (const { x, sel } of picks) {
+        if (!sel.value) { out++; continue; }
+        const ok = await synergySave(sel.value, S.pack(S.profile(x.p)), { source_name: x.p.name || null, source_id: x.p.id || null,
+          seasons: (x.p.seasonsText || '').slice(0, 600) || null, file_name: String(x.file).slice(0, 200) });
+        if (ok) stored++; else here++;
+      }
+      close();
+      say.textContent = [stored ? stored + ' added and kept for every report' : '', here ? here + ' added to this page (only a platform administrator can keep Synergy files)' : '',
+        out ? out + ' left out' : ''].filter(Boolean).join(' \u00b7 ') || 'nothing added';
+      if (stored || here) state.rebuild();
+    };
+  };
+}
+
+/* the colour of a side's PPP: the shot it leans on - at the rim (red) or the pull-up jumper (blue: light for mid-range, dark
+   for threes) - and how far it leans (from grey, level, to the full colour, all one kind) */
+const SYN_RGB = { rim: [200, 66, 46], mid: [110, 150, 230], three: [24, 52, 150], level: [170, 178, 174] };
+function leanColour(line) {
+  const S = root.EpinoiaSynergy, L = S && S.lean ? S.lean(line) : null;
+  const mx = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  if (!L) return 'rgb(' + SYN_RGB.level.join(',') + ')';
+  const base = L.kind === 'rim' ? SYN_RGB.rim : mx(SYN_RGB.mid, SYN_RGB.three, L.threes == null ? 0.5 : L.threes);
+  return 'rgb(' + mx(SYN_RGB.level, base, 0.3 + 0.7 * L.by).join(',') + ')';
+}
+const leanWords = line => {
+  const S = root.EpinoiaSynergy, L = S && S.lean ? S.lean(line) : null;
+  if (!L) return '';
+  const pc = v => Math.round(100 * v) + '%';
+  return L.kind === 'rim' ? 'mostly at the rim' : 'mostly pull-ups (' + pc(L.threes || 0) + ' threes)';
+};
+/* THE DRIVES, LEFT AGAINST RIGHT (2026-10-04): four measures, one a row, the left drive growing leftwards from the middle and the
+   right one rightwards along a track that is the measure's whole scale, so every row reads on the same picture - PPP 0 to 2,
+   the share of his possessions 0 to 20% (more when needed), eFG% 30 to 60%, TO% 0 to 30%. PPP leads: the thickest bar, in the
+   colour of the shot that side leans on (leanColour), with a mark at 1.0; eFG% has a mark at the break-even 52.5. The value
+   stands at the outer end of each track. opt.compact: a player's card's corner */
+function driveChartHTML(prof, opt) {
+  const o = opt || {}, dv = prof && prof.offense && prof.offense.drives;
+  if (!dv || !dv.left || !dv.right || !(dv.left.poss + dv.right.poss)) return '';
+  const Lt = dv.left, Rt = dv.right, All = dv.all || null;   // the marks: his drives in all directions
+  const pmax = Math.max(20, Math.ceil(Math.max(Lt.pctPoss || 0, Rt.pctPoss || 0) / 5) * 5);
+  const rows = [
+    { k: 'ppp', l: 'PPP', lo: 0, hi: 2, f: v => v.toFixed(2), main: true, eps: 0.05 },
+    { k: 'pctPoss', l: '% POSS', lo: 0, hi: pmax, f: v => v.toFixed(1) + '%', nomark: true },
+    { k: 'efg', l: 'eFG%', lo: 30, hi: 60, f: v => v.toFixed(1), eps: 2 },
+    { k: 'toPct', l: 'TO%', lo: 0, hi: 30, f: v => v.toFixed(1), low: true, eps: 2 }
+  ];
+  const at = (v, r) => Math.max(0, Math.min(100, 100 * (v - r.lo) / (r.hi - r.lo)));
+  const side = (ln, r, left) => {
+    const v = ln[r.k], w = isNum(v) ? Math.max(3, at(+v, r)) : 0;
+    /* the better side's number green, the worse red (a tendency, the share of possessions, is neither) */
+    const tone = r.eps == null ? '' : sideTone(Lt[r.k], Rt[r.k], r.low, r.eps)[left ? 0 : 1];
+    const fill = r.main ? leanColour(ln) : '';
+    const bar = '<span class="tr"><i style="width:' + w.toFixed(1) + '%' + (fill ? ';background:' + fill : '') + '"></i>' +
+      (All && !r.nomark && isNum(All[r.k]) ? '<u style="' + (left ? 'right' : 'left') + ':' + at(+All[r.k], r).toFixed(1) + '%"></u>' : '') + '</span>';
+    const val = '<b' + (tone ? ' class="' + tone + '"' : '') + '>' + (isNum(v) ? r.f(+v) : '\u2014') + '</b>';
+    return '<span class="sd ' + (left ? 'l' : 'r') + '">' + (left ? val + bar : bar + val) + '</span>';
+  };
+  const body = rows.map(r => '<div class="rp-drv-r' + (r.main ? ' main' : '') + '">' + side(Lt, r, true) + '<span class="lb">' + r.l + '</span>' + side(Rt, r, false) + '</div>').join('');
+  const cnt = ln => (ln.poss || 0) + (o.compact ? '' : ' poss') + (isNum(ln.share) ? ' \u00b7 ' + Math.round(ln.share) + '%' : '');
+  const head = '<div class="rp-drv-h"><span><b>\u25c0 ' + (o.compact ? 'Left' : 'Drives left') + '</b><small>' + cnt(Lt) + '</small></span>' +
+    '<span class="r"><b>' + (o.compact ? 'Right' : 'Drives right') + ' \u25b6</b><small>' + cnt(Rt) + '</small></span></div>';
+  const sw = c => '<i style="background:rgb(' + SYN_RGB[c].join(',') + ')"></i>';
+  const key = o.compact ? '<p class="rp-drv-k">PPP colour: ' + sw('rim') + 'rim ' + sw('mid') + 'mid ' + sw('three') + '3</p>'
+    : '<p class="rp-drv-k">PPP in the colour of the shot each side leans on: ' + sw('rim') + 'at the rim, ' + sw('mid') + 'pull-up mid-range, ' + sw('three') + 'pull-up threes - the stronger the colour, the more one-sided. The dashed marks: his drives in all directions (PPP ' + (All && isNum(All.ppp) ? All.ppp.toFixed(2) : '\u2014') + ', eFG% ' + (All && isNum(All.efg) ? All.efg.toFixed(1) : '\u2014') + ', TO% ' + (All && isNum(All.toPct) ? All.toPct.toFixed(1) : '\u2014') + '). Left ' + leanWords(Lt) + '; right ' + leanWords(Rt) + '.</p>';
+  return '<div class="rp-drv' + (o.compact ? ' cp' : '') + '">' + head + '<div class="rp-drv-b">' + body + '</div>' + key + '</div>';
+}
+/* EACH SIDE'S SHOTS ON THE DRIVE: FG% and share of the attempts at the rim, mid-range and from three, left and right; the FG%
+   tinted against the kind's break-even (rim 58, mid-range 40, three 35), as the zone tables are */
+function driveTableHTML(prof, opt) {
+  const o = opt || {}, dv = prof && prof.offense && prof.offense.drives;
+  if (!dv || !dv.left || !dv.right || !(dv.left.att + dv.right.att)) return '';
+  const SC = root.EpinoiaShotChart, AN = (SC && SC.ANCHOR) || { paint: 58, mid: 40, three: 35 };
+  const BE = { rim: AN.paint, mid: AN.mid, three: AN.three };
+  const f = v => (isNum(v) ? (+v).toFixed(o.compact ? 0 : 1) : '—');
+  const fg = (ln, k) => { const v = ln[k + 'Fg'], a = ln.shots[k].a; return '<td data-b="' + (a >= 3 && isNum(v) ? bandVs(v, BE[k], 6, false) : 0) + '">' + f(v) + '</td>'; };
+  const at = (ln, k) => '<td class="a">' + (isNum(ln[k + 'Att']) && ln.att ? Math.round(ln[k + 'Att']) + '%' : '—') + '</td>';
+  const tr = (l, ln) => '<tr><th>' + (o.compact ? l : l === 'L' ? 'Left' : 'Right') + '</th>' + ['rim', 'mid', 'three'].map(k => fg(ln, k) + at(ln, k)).join('') + '</tr>';
+  return '<table class="rp-dt' + (o.compact ? ' cp' : '') + '"><thead><tr><th>' + (o.compact ? 'drives' : 'Synergy drives') + '</th><th colspan="2" data-k="rim">rim</th><th colspan="2" data-k="mid">mid</th><th colspan="2" data-k="three">3pt</th></tr>' +
+    '<tr><th></th><th>FG%</th><th>att%</th><th>FG%</th><th>att%</th><th>FG%</th><th>att%</th></tr></thead><tbody>' + tr('L', dv.left) + tr('R', dv.right) + '</tbody></table>';
+}
+/* WHERE EACH SIDE'S DRIVES END: the share of the attempts at the rim, pull-up mid-range and pull-up threes, left and right */
+function directionMixHTML(prof) {
+  const dv = prof && prof.offense && prof.offense.drives;
+  if (!dv || !dv.left || !dv.right || !(dv.left.att + dv.right.att)) return '';
+  const seg = (ln, k, c) => { const v = ln[k + 'Att']; return isNum(v) && v > 0 ? '<i style="flex:0 0 ' + v.toFixed(1) + '%;background:rgb(' + SYN_RGB[c].join(',') + ')">' + (v >= 12 ? Math.round(v) + '%' : '') + '</i>' : ''; };
+  const bar = (l, ln) => '<div class="rp-dmx-r"><span>' + l + '<small>' + ln.att + ' shots</small></span><div class="rp-dmx-b">' + (ln.att ? seg(ln, 'rim', 'rim') + seg(ln, 'mid', 'mid') + seg(ln, 'three', 'three') : '') + '</div></div>';
+  return '<div class="rp-dmx">' + bar('Left', dv.left) + bar('Right', dv.right) +
+    '<p class="rp-drv-k"><i style="background:rgb(' + SYN_RGB.rim.join(',') + ')"></i>at the rim <i style="background:rgb(' + SYN_RGB.mid.join(',') + ')"></i>pull-up mid-range <i style="background:rgb(' + SYN_RGB.three.join(',') + ')"></i>pull-up threes · % of the shots on each side’s drives</p></div>';
+}
+/* the Synergy file a report draws from, in words */
+function synergySource(prof, short) {
+  if (!prof) return '';
+  if (short) return 'Synergy' + (prof.span ? ' ' + prof.span : '') + ((prof.seasons || []).length > 1 ? ' \u00b7 ' + prof.seasons.length + ' seasons' : '');
+  const n = (prof.seasons || []).length;
+  return 'Synergy' + (prof.span ? ', ' + prof.span : '') + (n > 1 ? ' (' + n + ' seasons' + ([...new Set(prof.seasons.map(x => x.team).filter(Boolean))].length > 1 ? ', ' + [...new Set(prof.seasons.map(x => x.team).filter(Boolean))].join(', ') : '') + ')' : '');
+}
+
+/* A SMALL ZONE CHART: the half court, each zone tinted against its break-even (orange above, blue below, grey within two points;
+   pale where it has fewer than three attempts), nothing else - a player's card's corner */
+function miniZonesHTML(shots) {
+  const Box = root.EpinoiaBox, SC = root.EpinoiaShotChart;
+  const located = (shots || []).filter(x => x && x.x != null && x.y != null);
+  if (!Box || !Box.courtSVG || !SC || !SC.zonePaths || !SC.zones || !SC.bandAt || !located.length) return '';
+  const P = SC.zonePaths(), Zs = SC.zones(located), AN = SC.ANCHOR || { paint: 58, mid: 40, three: 35 };
+  const fill = Object.keys(P).map(k => {
+    const z = Zs[k];
+    if (!z || !z.att) return '';
+    if (z.att < 3) return '<path d="' + P[k] + '" fill="rgba(160,170,165,.16)"/>';
+    const b = SC.bandAt(z.pct, AN[z.kind]);
+    const col = b > 0 ? '239,138,75' : b < 0 ? '91,141,239' : '160,170,165';
+    return '<path d="' + P[k] + '" fill="rgba(' + col + ',' + (0.3 + 0.17 * Math.abs(b)).toFixed(2) + ')"/>';
+  }).join('');
+  const m = located.filter(x => x.made).length;
+  const svg = Box.courtSVG(null, { plain: true }).replace(/(<svg[^>]*>)/, '$1' + fill);
+  return '<div class="rp-mz"><div class="rp-mz-c">' + svg + '</div><p>' + m + '/' + located.length + ' · ' + Math.round(100 * m / located.length) + '%</p></div>';
+}
+
 /* ---------------------------------------------------------------- RAPM --- */
 /* RAPM, ON REQUEST, ONCE FOR A SEASON OF GAMES. Never worked out by itself: where it has not been, the panel says so in
    a flag and offers the button (every stint of the league's season is read, a few games at a time, rapm.js). What is
@@ -837,6 +1194,29 @@ function rapmSave(key, map) {
   Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0)).slice(6).forEach(k => { delete all[k]; });   // the six newest
   store.set(RAPM_STORE, all);
 }
+/* RAPM KEPT IN THE DATABASE TOO (0228 report_rapm, 2026-10-04): worked out once for a set of games, it is there for every
+   report of that league and season, in any browser and in the mailer's. Read by anyone; written by a platform administrator
+   (the button, or PRIME REPORT) - a write anyone else attempts is refused by the database and changes nothing here - and by
+   the mailer with its own key: the copy it worked out is left on the page for it (__rpRapm). */
+const r1 = v => (isNum(v) ? Math.round(10 * v) / 10 : null);
+const mapOf = m => new Map(m.map(([id, o, d]) => [id, { orapm: o, drapm: d, rapm: isNum(o) && isNum(d) ? Math.round(10 * (o + d)) / 10 : null }]));
+async function rapmRemote(key) {
+  const D = root.EpinoiaData;
+  if (!D || typeof D.all !== 'function') return null;
+  try {
+    const rows = await D.all('report_rapm?key=eq.' + encodeURIComponent(key) + '&select=m,computed_at&limit=1');
+    const e = rows && rows[0];
+    return e && Array.isArray(e.m) ? { at: Date.parse(e.computed_at) || Date.now(), map: mapOf(e.m) } : null;
+  } catch (_) { return null; }
+}
+async function rapmKeep(key, map, games) {
+  const m = [...map].map(([id, v]) => [id, r1(v.orapm), r1(v.drapm)]);
+  root.__rpRapm = { key, games, m };
+  const c = typeof root.epinoiaClient === 'function' ? root.epinoiaClient() : null;
+  if (!c || !c.from) return false;
+  try { const { error } = await c.from('report_rapm').upsert({ key, games, m, computed_at: new Date().toISOString() }, { onConflict: 'key' }); return !error; }
+  catch (_) { return false; }
+}
 function rapmControl(host, state, holder, o) {
   const row = el('div', 'rp-rapm');
   const b = el('button', 'ep-btn mini pri', 'Calculate RAPM'); b.type = 'button';
@@ -846,42 +1226,52 @@ function rapmControl(host, state, holder, o) {
   const when = t => { const d = new Date(t); return isNaN(d) ? '' : d.getDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]; };
   const scope = () => { try { return (o.scope && o.scope()) || 'this league and season'; } catch (_) { return 'this league and season'; } };
   const flag = on => { row.classList.toggle('rp-flag', on); };
-  /* look for one already worked out for these games (no reading); calc: work it out now */
-  async function check(calc) {
-    if (holder.running) return;
+  const done = (key, map, n, at) => {
+    Object.assign(holder, { key, map });
+    flag(false); b.textContent = 'Calculate again';
+    say.textContent = 'calculated for ' + scope() + ' (' + n + ' games, ' + map.size + ' players' + (at ? ', ' + when(at) : '') + ')';
+  };
+  /* look for one already worked out for these games - in this browser, then in the database - with no reading of games;
+     calc: work it out now. quiet: the caller builds the pages itself (PRIME REPORT), so this does not */
+  async function check(calc, quiet) {
+    if (holder.running) return holder.running;
     let ids;
     try { ids = (await o.ids()) || []; } catch (_) { ids = []; }
     if (!ids.length) { flag(true); b.hidden = true; say.textContent = 'ORAPM and DRAPM need the league\u2019s games: there are none in this scope yet.'; return; }
     const key = rapmKey(ids);
     if (!calc) {
       if (holder.key === key && holder.map) return;
-      const kept = rapmLoad(key);
+      const kept = rapmLoad(key) || await rapmRemote(key);
       if (kept) {
-        Object.assign(holder, { key, map: kept.map });
-        flag(false); b.textContent = 'Calculate again';
-        say.textContent = 'calculated for ' + scope() + ' (' + ids.length + ' games, ' + kept.map.size + ' players, ' + when(kept.at) + ')';
-        state.rebuild(); return;
+        if (!rapmLoad(key)) rapmSave(key, kept.map);
+        done(key, kept.map, ids.length, kept.at);
+        if (!quiet) state.rebuild();
+        return;
       }
       holder.key = key; holder.map = null;
       flag(true); b.textContent = 'Calculate RAPM';
       say.textContent = 'not calculated for ' + scope() + ': ORAPM and DRAPM stay blank until it is (it reads all ' + ids.length + ' games of the league\u2019s season)';
       return;
     }
-    holder.running = true; b.disabled = true;
-    try {
-      const map = await o.run(ids, (d, n) => { say.textContent = 'calculating RAPM for ' + scope() + ': reading the league\u2019s games, ' + d + ' of ' + n + '\u2026'; });
-      Object.assign(holder, { key, map });
-      rapmSave(key, map);
-      flag(false); b.textContent = 'Calculate again';
-      say.textContent = 'calculated for ' + scope() + ' (' + ids.length + ' games, ' + map.size + ' players)';
-      state.rebuild();
-    } catch (e) { flag(true); say.textContent = 'RAPM could not be calculated: ' + (e.message || e); }
-    holder.running = false; b.disabled = false;
+    b.disabled = true;
+    holder.running = (async () => {
+      try {
+        const map = await o.run(ids, (d, n) => { say.textContent = 'calculating RAPM for ' + scope() + ': reading the league\u2019s games, ' + d + ' of ' + n + '\u2026'; });
+        rapmSave(key, map);
+        await rapmKeep(key, map, ids.length);
+        done(key, map, ids.length);
+        if (!quiet) state.rebuild();
+      } catch (e) { flag(true); say.textContent = 'RAPM could not be calculated: ' + (e.message || e); }
+    })();
+    await holder.running;
+    holder.running = null; b.disabled = false;
   }
   b.onclick = () => check(true);
   holder.check = check;
   state.onBuilt = (state.onBuilt || []).concat(() => { check(false); });   // the scope may have changed
-  check(false);
+  /* PRIME REPORT: what is kept anywhere, else worked out now */
+  (state.primers = state.primers || []).push(async () => { await check(false, true); if (!holder.map) await check(true, true); });
+  if (!state.priming) check(false);
 }
 /* a row's RAPM from the holder, when it is for these games */
 function rapmOn(holder, field) {
@@ -1002,6 +1392,10 @@ function ui(state) {
   const outs = el('div', 'rp-outs');
   const status = el('span', 'rp-status');
   const mk = (t, cls, fn) => { const b = el('button', 'ep-btn ' + cls, t); b.type = 'button'; b.onclick = fn; outs.appendChild(b); return b; };
+  /* PRIME REPORT (2026-10-04): the report made ready in one click - RAPM read where it was already worked out or worked out now
+     and kept for every report of the league and season, the Synergy files read, every page built - and the PDF downloaded */
+  const bPrime = mk('PRIME REPORT', 'prime', () => prime(true));
+  bPrime.title = 'Make the report ready in one go: RAPM worked out (or read where it already was) and kept for every report of this league and season, Synergy read, every page built, then the PDF';
   const bPdf = mk('Download PDF', 'pri', () => download('pdf'));
   const bImg = mk('Download images', '', () => download('png'));
   mk('Print', '', () => printPages(pages));
@@ -1112,9 +1506,24 @@ function ui(state) {
     }
   }
   state.rebuild = rebuild;
-  /* the modules' own controls, drawn once */
+  async function prime(dl) {
+    if (state.primed === 'running') return;
+    state.primed = 'running'; bPrime.disabled = true; root.__rpBusy = (root.__rpBusy || 0) + 1;
+    try {
+      say('priming: RAPM, Synergy and every page\u2026');
+      for (const f of state.primers || []) { try { await f(); } catch (e) { warn(e); } }
+      await rebuild();
+      if (dl) await download('pdf');
+    } finally { state.primed = 'done'; state.priming = false; bPrime.disabled = false; root.__rpBusy = Math.max(0, (root.__rpBusy || 1) - 1); }
+  }
+  state.prime = prime;
+  /* the modules' own controls, drawn once; primed on opening when asked (?prime=1: the reports manager's PRIME REPORT, which
+     downloads it too; EPINOIA_RP_PRIME: the mailer, which takes the PDF itself) */
+  const q = new URLSearchParams(root.location.search);
+  const primeNow = q.get('prime') === '1' || !!root.EPINOIA_RP_PRIME;
+  state.priming = primeNow;
   o.modules.forEach(m => { if (m.controls) { try { m.controls(extras, state); } catch (e) { warn(e); } } });
-  rebuild();
+  if (primeNow) prime(q.get('prime') === '1' && !root.EPINOIA_RP_BOT); else rebuild();
 }
 const warn = e => { if (root.console) root.console.warn('[report]', e); };
 
@@ -1215,5 +1624,5 @@ function groupsFor(state, set, pos) {
 }
 
 return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, stand, groupRowsHTML, groupCellsHTML, groupWeight, shotRuns, SHOT_KIND, posCourtHTML, POS_KEY, block, title, frag, el, esc,
-         fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, HC_MIN, posPools, posRanker, POS_PLURAL, layout, legendBlocks, PAGE, SLOTS, isNum };
+         fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, trAstOf, HC_MIN, synergyOf, synergySave, synergyOnRow, hasStat, groupsOn, sideTone, synergyControl, synergySource, driveChartHTML, driveTableHTML, directionMixHTML, miniZonesHTML, leanColour, posPools, posRanker, POS_PLURAL, layout, legendBlocks, PAGE, SLOTS, isNum };
 }));
