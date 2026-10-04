@@ -153,7 +153,7 @@ function teaser(ctx, title, lines) {
   const A = root.EpinoiaAccess;
   const box = el('div', 'wtease');
   if (A && typeof A.teaserHTML === 'function') {
-    box.innerHTML = A.teaserHTML({ leagueSlug: ctx.league && ctx.league.slug, title, lines: lines || [] });   // escaped by access.js
+    box.innerHTML = A.teaserHTML({ leagueSlug: ctx.league && ctx.league.slug, peek: 'wowy', title, lines: lines || [] });   // escaped by access.js
   } else {
     box.appendChild(el('p', null, title));
   }
@@ -961,7 +961,7 @@ function vsView(ctx, host) {
   if (!G.events) {
     host.appendChild(teaser(ctx, 'The vs-starters split is for members', ['Every unit and every player split by who the other side had on: its starting five, a mixed five or its bench, with every stat and its delta. It is read from the play-by-play.']));
     const M = root.EpinoiaMemLock;
-    if (M && M.placeholder) host.appendChild(M.placeholder({ rows: 6, what: 'The vs-starters split', leagueSlug: ctx.league && ctx.league.slug }));
+    if (M && M.placeholder) host.appendChild(M.placeholder({ rows: 6, what: 'The vs-starters split', key: 'wowy', leagueSlug: ctx.league && ctx.league.slug }));
     return;
   }
   host.appendChild(facedBar(ctx, { noAll: true }));

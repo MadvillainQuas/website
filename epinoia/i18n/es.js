@@ -1766,7 +1766,13 @@
       'This account no longer exists': 'Esta cuenta ya no existe',
       'It has been deleted, so it has been signed out.': 'Se ha eliminado, así que se ha cerrado su sesión.',
       'Everything public, from scores and tables to players and clubs, is still open to you. If you think this is a mistake, contact us.': 'Todo lo público, de los resultados y las clasificaciones a los jugadores y los clubes, sigue abierto para ti. Si crees que es un error, contáctanos.',
-      'This account has been disabled, so it cannot sign in. If you think that is a mistake, contact us.': 'Esta cuenta ha sido desactivada, así que no puede iniciar sesión. Si crees que es un error, contáctanos.'
+      'This account has been disabled, so it cannot sign in. If you think that is a mistake, contact us.': 'Esta cuenta ha sido desactivada, así que no puede iniciar sesión. Si crees que es un error, contáctanos.',
+      'Preview it': 'Vista previa',
+      'Open your free report': 'Abre tu informe gratis',
+      'Preview open for 30 minutes': 'Vista previa abierta durante 30 minutos',
+      'Sign in to keep everything open': 'Inicia sesión para tenerlo todo abierto',
+      'No previews left this week': 'No te quedan vistas previas esta semana',
+      'The preview could not be opened. Try again in a moment': 'No se ha podido abrir la vista previa. Vuelve a intentarlo en un momento'
     },
 
     ctx: {
@@ -2867,6 +2873,12 @@
       [/^A preview: (\d+) players? at a time\. Sign in to compare up to (\d+) at once\.$/, m => 'Una vista previa: ' + m[1] + (m[1] === '1' ? ' jugador' : ' jugadores') + ' a la vez. Inicia sesión para comparar hasta ' + m[2] + ' a la vez.'],
       /* signed in first (access.js signinNeed): "Shot zones need an EPINOIA account." */
       [/^(.+\S) needs? an EPINOIA account\.$/, (m, T) => 'Hace falta una cuenta de EPINOIA para ver: ' + T(m[1]) + '.'],
+      /* previews, signed out (access.js, 0231): the week's count, and a report kind's free one */
+      [/^(\d+) of (\d+) previews left this week$/, '$1 de $2 vistas previas restantes esta semana'],
+      [/^Signed out, you can preview (\d+) things a week\.?$/, 'Sin iniciar sesión, puedes ver $1 vistas previas a la semana.'],
+      [/^Signed out, you can open one free (player|club|game) report a week\.?$/, m => 'Sin iniciar sesión, puedes abrir gratis un informe ' + ({ player: 'de jugador', club: 'de club', game: 'de partido' })[m[1]] + ' a la semana.'],
+      [/^This week’s free (player|club|game) report has been used\.?$/, m => 'Ya se ha usado el informe ' + ({ player: 'de jugador', club: 'de club', game: 'de partido' })[m[1]] + ' gratuito de esta semana.'],
+      [/^Your free (player|club|game) report is open for 30 minutes$/, m => 'Tu informe ' + ({ player: 'de jugador', club: 'de club', game: 'de partido' })[m[1]] + ' gratuito está abierto durante 30 minutos'],
       [/^The (.+) view$/, (m, T) => 'la vista «' + T(m[1]) + '»'],
       [/^(\d+) of (\d+) combinations played$/, '$1 de $2 combinaciones jugadas'],
       [/^members get up to (\d+)$/, 'los socios, hasta $1'],

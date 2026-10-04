@@ -636,7 +636,14 @@
       'How long it is kept': 'Cuánto tiempo se guarda',
       'An address is forgotten 90 days after it was last seen, and straight away if the account is deleted. A blocked network stays blocked until an administrator lifts the block, or enables the account it was made for.': 'Una dirección se olvida 90 días después de la última vez que se vio, y de inmediato si se elimina la cuenta. Una red bloqueada sigue bloqueada hasta que un administrador levanta el bloqueo o reactiva la cuenta para la que se hizo.',
       'On a blocked network': 'En una red bloqueada',
-      'Reading the site signed out works as always. An account cannot be used there: it is signed out, with a message saying why, and an account made there after the block is disabled. If you think a block is a mistake, contact us.': 'Leer el sitio sin iniciar sesión funciona como siempre. Allí no se puede usar una cuenta: se cierra su sesión con un mensaje que explica por qué, y una cuenta creada allí después del bloqueo se desactiva. Si crees que un bloqueo es un error, contáctanos.'
+      'Reading the site signed out works as always. An account cannot be used there: it is signed out, with a message saying why, and an account made there after the block is disabled. If you think a block is a mistake, contact us.': 'Leer el sitio sin iniciar sesión funciona como siempre. Allí no se puede usar una cuenta: se cierra su sesión con un mensaje que explica por qué, y una cuenta creada allí después del bloqueo se desactiva. Si crees que un bloqueo es un error, contáctanos.',
+      'Previews when signed out': 'Vistas previas sin iniciar sesión',
+      'When you are signed out and open a preview of something that needs an account (a club’s lineups, a league’s statistics views, a report), the preview is counted: what it was, on which page, and when.': 'Cuando no has iniciado sesión y abres una vista previa de algo que requiere una cuenta (los quintetos de un club, las vistas de estadísticas de una liga, un informe), la vista previa se cuenta: qué era, en qué página y cuándo.',
+      'Against what': 'Con qué se cuenta',
+      'A one-way code made from your network address with a secret key, never the address itself, so that the week’s previews cannot be had again by clearing the browser. Everyone on the same network shares them.': 'Un código de un solo sentido creado a partir de tu dirección de red con una clave secreta, nunca la dirección en sí, para que las vistas previas de la semana no se recuperen borrando el navegador. Todos los que usan la misma red las comparten.',
+      'How many': 'Cuántas',
+      'Ten previews a week, plus one free player report and one free club report a week. Opening the same thing again in the same week is free.': 'Diez vistas previas a la semana, más un informe de jugador y un informe de club gratis a la semana. Volver a abrir lo mismo en la misma semana es gratis.',
+      'A week, and then it is deleted.': 'Una semana, y después se borra.'
     },
 
     ctx: {

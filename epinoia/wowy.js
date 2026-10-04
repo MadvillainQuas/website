@@ -90,7 +90,7 @@ function render(opts) {
     const tease = el('div', 'wowy-tease');
     tease.style.flex = '1 1 100%';          // its own line under the controls, on every page that hosts the bar
     tease.innerHTML = A.teaserHTML({   // escaped by access.js
-      compact: true, leagueSlug: opts.leagueSlug || null,
+      compact: true, leagueSlug: opts.leagueSlug || null, peek: 'wowy',
       title: 'A preview: ' + MAX + (MAX === 1 ? ' player' : ' players') + ' at a time. Members compare up to ' +
              (opts.max || 4) + ' at once.',
       signinTitle: 'A preview: ' + MAX + (MAX === 1 ? ' player' : ' players') + ' at a time. Sign in to compare up to ' +

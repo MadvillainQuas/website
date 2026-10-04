@@ -636,7 +636,7 @@ async function drawWith(pid) {
   if (preview) {
     hostEl.textContent = '';
     hostEl.innerHTML = window.EpinoiaAccess && window.EpinoiaAccess.teaserHTML ? window.EpinoiaAccess.teaserHTML({
-      leagueSlug: league && league.slug, title: 'On the floor with is for members',
+      leagueSlug: league && league.slug, peek: 'wowy', title: 'On the floor with is for members',
       lines: ['One player’s own box score split by who shared the floor with him: his shooting, his creation and his mistakes, with any teammates you choose against without them.']
     }) : '';
     return;

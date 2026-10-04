@@ -529,8 +529,8 @@ console.log('\nwhat is behind the wall, as the platform set it (0222)');
      /featureLocked\('wowy', league && league\.id\)/.test(rd('epinoia', 'stats', 'wowy', 'wowy.js')));
   const missing = [...asked].filter(k => !A.CATALOGUE.locks[k]);
   ok('...and every key asked about is one the platform console can move', missing.length === 0, missing);
-  const sql = rd('supabase', 'migrations', '0222_access_gates.sql');
-  ok('...each seeded as a row by 0222', Object.keys(A.CATALOGUE.locks).every(k => sql.includes("('" + k + "', ")));
+  const sql = rd('supabase', 'migrations', '0222_access_gates.sql') + rd('supabase', 'migrations', '0231_previews.sql');
+  ok('...each seeded as a row by 0222 (the game report by 0231)', Object.keys(A.CATALOGUE.locks).every(k => sql.includes("('" + k + "', ") || sql.includes("select '" + k + "', ")));
 }
 
 /* ======================================================= free trials (0223) === */

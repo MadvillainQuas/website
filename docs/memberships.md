@@ -740,3 +740,30 @@ nothing is sold at this step: the card has one button, to the sign-in page, whic
   the same views locked by the membership answer instead.
 
 Tests: `supabase/tests/signin-gates.test.mjs`, `fulltable-global.test.mjs` (the views past MISC).
+
+## 14. Previews, signed out (2026-10-04, migration 0231)
+
+A signed-out reader can see what an account opens before making one. Every sign-in card, placeholder and box that names
+its feature (`key`, or `peek` for a teaser that keeps the membership words) carries a second button:
+
+- **Preview it** (the ten): opens that feature on that page (a club's lineups, a league's statistics views, the CSV...)
+  in this tab for thirty minutes. Ten a week (`platform_settings.preview_limit`).
+- **Open your free report**: the player report and the club report, **one of each kind a week**
+  (`preview_report_limit`), counted apart from the ten and from each other. The game report on the game page is open
+  to everyone with no limit for the time being (`SIGNIN_FREE`; its lock `gameReport` keeps the club report's membership
+  gate for later, and the database already counts it apart for the day it is limited).
+
+Opening the same thing again in the same week costs nothing. The note under the buttons says what is left ("9 of 10
+previews left this week", "This week's free club report has been used."), read once a page from `preview_left()` and
+kept five minutes; when none is left the button is greyed out. A preview that opens says so in a message low on the
+screen (kept across the reload some pages do on an access change).
+
+**Counted by the database, not the browser** (`preview_take(feature, subject)`): against a one-way code made from the
+reader's network (`request_ip()` from 0230, the IPv4 address or the IPv6 /64) hashed with a secret salt, so clearing the
+browser does not give more, and the address itself is never kept. A use is forgotten after a week (the daily
+`epinoia-preview-uses-prune`). A request with no address to count is let through; a signed-in reader never needs one.
+The page that drew the lock redraws on the change (`emit({ reason: 'preview' })`), as on a sign-in: `access.js`
+`featureLocked()` answers open for a key with a live preview on this page (`previewActive`), and `global.js` opens
+scouting's premium columns the same way. The privacy page says all this (**Previews when signed out**).
+
+Tests: `supabase/tests/previews.test.mjs`.

@@ -405,7 +405,7 @@
     const line = (S.teams[0].name + ' ' + sc[0] + '–' + sc[1] + ' ' + S.teams[1].name);
     current = E.mount({
       tabs: '#gaTabs', panel: '#gaPanel', kind: 'team', label: 'Game analysis', title: 'Game analysis', store: 'epinoia_report_game',
-      lock: { key: 'clubReport', what: 'The game analysis', league: S.leagueId || null, leagueSlug: S.leagueSlug || '',
+      lock: { key: 'gameReport', what: 'The game analysis', league: S.leagueId || null, leagueSlug: S.leagueSlug || '',
               lines: ['A printable A4 analysis of any game: four factors, shot charts, both box scores and the game flow.'] },
       modules: mods,
       context: () => ({
@@ -433,7 +433,7 @@
     const b = document.createElement('button');
     b.type = 'button'; b.id = 'csAnalysis'; b.className = 'bt-sheet bt-ga'; b.textContent = 'Game analysis · PDF';
     const AX = window.EpinoiaAccess, S = window.S;
-    if (AX && AX.featureLocked && S && AX.featureLocked('clubReport', S.leagueId || null)) b.classList.add('locked');
+    if (AX && AX.featureLocked && S && AX.featureLocked('gameReport', S.leagueId || null)) b.classList.add('locked');
     b.onclick = e => { e.preventDefault(); e.stopPropagation(); open(0); };
     sheet.insertAdjacentElement('afterend', b);
   };

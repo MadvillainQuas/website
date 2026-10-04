@@ -1632,7 +1632,7 @@ async function seasonLog(ids, sn) {
         if (evHost && pLocked('events')) {
           evHost.innerHTML = accessTeaser({ key: 'events', title: 'Events',
             lines: ['Second chances, transition, points off turnovers, after-timeout sets, the half court and assisted baskets, ranked against the league.'] });
-          { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS_LEAGUE.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
+          { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', key: 'events', leagueSlug: ACCESS_LEAGUE.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
         } else if (evHost && window.EpinoiaSitPanel) {
           window.EpinoiaSitPanel.render({ host: evHost, kind: 'player', row: mine, field, name: fullName });
           const en = $('#eventsNote');

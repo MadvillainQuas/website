@@ -633,7 +633,14 @@
       'How long it is kept': '保存期間',
       'An address is forgotten 90 days after it was last seen, and straight away if the account is deleted. A blocked network stays blocked until an administrator lifts the block, or enables the account it was made for.': 'アドレスは最後に確認されてから90日後に、アカウントが削除された場合は直ちに消去されます。ブロックされたネットワークは、管理者がブロックを解除するか、対象のアカウントを再び有効にするまでブロックされたままです。',
       'On a blocked network': 'ブロックされたネットワークでは',
-      'Reading the site signed out works as always. An account cannot be used there: it is signed out, with a message saying why, and an account made there after the block is disabled. If you think a block is a mistake, contact us.': 'サインアウトした状態での閲覧はこれまでどおりです。そこではアカウントを利用できず、理由を伝えるメッセージとともにサインアウトされます。ブロック後にそこで作られたアカウントは無効化されます。ブロックが間違いだと思われる場合はお問い合わせください。'
+      'Reading the site signed out works as always. An account cannot be used there: it is signed out, with a message saying why, and an account made there after the block is disabled. If you think a block is a mistake, contact us.': 'サインアウトした状態での閲覧はこれまでどおりです。そこではアカウントを利用できず、理由を伝えるメッセージとともにサインアウトされます。ブロック後にそこで作られたアカウントは無効化されます。ブロックが間違いだと思われる場合はお問い合わせください。',
+      'Previews when signed out': 'サインアウト中のプレビュー',
+      'When you are signed out and open a preview of something that needs an account (a club’s lineups, a league’s statistics views, a report), the preview is counted: what it was, on which page, and when.': 'サインアウト中に、アカウントが必要なもの（クラブのラインナップ、リーグの統計ビュー、レポートなど）のプレビューを開くと、何を、どのページで、いつ開いたかが数えられます。',
+      'Against what': '何に対して数えるか',
+      'A one-way code made from your network address with a secret key, never the address itself, so that the week’s previews cannot be had again by clearing the browser. Everyone on the same network shares them.': 'ネットワークアドレスと秘密鍵から作られる一方向のコードで数えます。アドレスそのものは保存しません。ブラウザを消去しても週のプレビューが戻らないようにするためです。同じネットワークの人は全員で共有します。',
+      'How many': '回数',
+      'Ten previews a week, plus one free player report and one free club report a week. Opening the same thing again in the same week is free.': '週に10回のプレビューに加え、選手レポートとクラブレポートをそれぞれ週に1件無料で開けます。同じ週に同じものを開き直すのは無料です。',
+      'A week, and then it is deleted.': '1週間保存し、その後削除します。'
     },
 
     ctx: {

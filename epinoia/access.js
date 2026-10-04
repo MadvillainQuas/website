@@ -192,8 +192,11 @@ const CATALOGUE = Object.freeze({
     csv:    Object.freeze({ gate: 'analytics', label: 'CSV download', what: 'The CSV button on every statistics table' }),
     model:  Object.freeze({ gate: 'analytics', label: 'What wins model', what: 'What wins and the Front office win model (docs/what-wins-model.md §10.3)' }),
     /* the reports, each sold on its own (0220): the club profile's Report tab and the player profile's */
-    clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report', what: 'The club profile Report tab and the game analysis PDF' }),
+    clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report', what: 'The club profile Report tab' }),
     playerReport: Object.freeze({ gate: 'player_report', label: 'Player report', what: 'The player profile Report tab' }),
+    /* the game page's analysis PDF: sold with the club report (its gate) once memberships are on; open to a signed-out
+       reader, with no limit, for the time being (SIGNIN_FREE) */
+    gameReport:   Object.freeze({ gate: 'club_report', label: 'Game report', what: 'The game analysis PDF on the game page' }),
     shotZones:   Object.freeze({ gate: 'analytics', label: 'Shot zones', what: 'Zone courts and zone tables on the club, player and league pages' }),
     shotClock:   Object.freeze({ gate: 'analytics', label: 'Shot clock', what: 'The club page shot clock and the box score Shot clock tab' }),
     rotations:   Object.freeze({ gate: 'analytics', label: 'Rotations', what: 'The club page rotations, minute by minute' }),
@@ -221,7 +224,7 @@ function isPremiumColumn(key) {
 function featureLocked(key, league) {
   const L = CATALOGUE.locks[String(key)];
   if (!L) return false;
-  if (signinFirst(key)) return true;
+  if (signinFirst(key)) return !previewActive(key);
   const g = gateOf(key);
   if (g === 'free') return false;
   if (g === 'analytics') return !analyticsOk(league);
@@ -233,11 +236,12 @@ function featureLocked(key, league) {
    CATALOGUE.locks (WOWY and the lineups, the club and player reports, shot zones, rotations, the premium table columns,
    the CSV, What wins...) is asked to sign in, whether memberships are switched on or not: featureLocked() says locked,
    and the teaser, the placeholder and the popup say "sign in" (signinHTML here, memlock.js). NOT on a game page or an
-   embed: the box score and the game report stay as they are (SIGNIN_FREE names the box score's own tabs for any other
-   page that shows them). A members-only league's own wall (paywallHTML) is not this either. A stored session whose
+   embed: the box score and the game's report stay open (SIGNIN_FREE names them for any other page that shows them). A members-only league's own wall (paywallHTML) is not this either. A stored session whose
    token has run out but can still be refreshed counts as signed in, so a member is never shown the prompt for the
    second a refresh takes. Under node (the tests) nothing is ever asked. */
-const SIGNIN_FREE = Object.freeze(['gameFlow', 'gameConnections', 'gameAdvanced']);
+/* never asked for an account: the box score's own tabs, and (for the time being, 2026-10-04) the game's report, which
+   stays open to every reader with no limit -- its membership gate (the club report's) is kept for later */
+const SIGNIN_FREE = Object.freeze(['gameFlow', 'gameConnections', 'gameAdvanced', 'gameReport']);
 function gamePage() {
   try { return !!(root.location && /\/(game|embed)\//.test(String(root.location.pathname || ''))); } catch (_) { return false; }
 }
@@ -248,14 +252,207 @@ function signedInish() {
 }
 /* true when this reader must sign in before `key` (any lockable feature when no key is named) can open, here */
 function signinFirst(key) {
-  if (!BROWSER || gamePage()) return false;
-  if (key != null && (!CATALOGUE.locks[String(key)] || SIGNIN_FREE.indexOf(String(key)) >= 0)) return false;
+  if (!BROWSER) return false;
+  const k = key == null ? null : String(key);
+  if (k != null && (!CATALOGUE.locks[k] || SIGNIN_FREE.indexOf(k) >= 0)) return false;
+  if (gamePage()) return false;
   return !signedInish();
 }
 /* why a feature is shut: 'signin', 'membership', or null when it is open */
 function lockReason(key, league) {
   if (!featureLocked(key, league)) return null;
   return signinFirst(key) ? 'signin' : 'membership';
+}
+
+/* ---------------------------------------------------------------- previews ---
+   A SIGNED-OUT READER MAY PREVIEW (2026-10-04, migration 0231): ten things a week (the platform's 'preview_limit'),
+   counted by the database against a one-way code made from the reader's network, so clearing the browser does not give
+   ten more. One preview opens one locked feature on one page (a club's lineups, a league's statistics views, a player's
+   report) in this tab for thirty minutes; the same thing again that week costs nothing. Only where an account comes
+   first: a signed-in reader needs none. The page that drew the lock redraws (or reloads) on the change, as it does on a
+   sign-in, and the feature is open. */
+const PEEK_KEY = 'epinoia_peek', PEEK_LEFT_KEY = 'epinoia_peek_left', PEEK_SAID = 'epinoia_peek_said';
+const PEEK_MS = 30 * 60 * 1000;
+const PEEK_IDS = ['t', 'p', 'l', 'league', 'c', 'g'];
+/* the page a preview is for: its path and the club, player or league it shows (never its tab or its sort) */
+function peekSubject() {
+  try {
+    const q = new URLSearchParams(String((root.location && root.location.search) || ''));
+    const id = PEEK_IDS.map(k => q.get(k)).find(Boolean);
+    return (String((root.location && root.location.pathname) || '/') + (id ? '#' + id : '')).slice(0, 200);
+  } catch (_) { return '/'; }
+}
+function peeks() {
+  try { const j = JSON.parse(sget('sessionStorage', PEEK_KEY) || '{}'); return j && typeof j === 'object' ? j : {}; } catch (_) { return {}; }
+}
+function previewActive(key) {
+  const until = peeks()[String(key) + '|' + peekSubject()];
+  return typeof until === 'number' && until > Date.now();
+}
+/* what is left this week, as the database last said (five minutes in this tab), or null where previews cannot be counted */
+let peekLeftP = null;
+function previewLeft() {
+  try { const j = JSON.parse(sget('sessionStorage', PEEK_LEFT_KEY) || 'null'); if (j && j.v && Date.now() - j.at < 5 * 60 * 1000) return Promise.resolve(j.v); } catch (_) { /* ask */ }
+  if (peekLeftP) return peekLeftP;
+  const f = net(), c = cfg();
+  if (!f || !c.supabaseUrl || !c.supabaseAnonKey) return Promise.resolve(null);
+  peekLeftP = timed(DEADLINE_MS, signal => f(c.supabaseUrl + '/rest/v1/rpc/preview_left', {
+      method: 'POST', cache: 'no-store', signal, body: '{}',
+      headers: { apikey: c.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' }
+    }).then(r => (r && r.ok ? r.json() : null)))
+    .then(j => (!j || j === TIMED_OUT || typeof j.limit !== 'number') ? null : keepLeft(j, null), () => null)
+    .then(v => { peekLeftP = null; return v; });
+  return peekLeftP;
+}
+/* THE REPORTS ARE COUNTED ON THEIR OWN: one of each kind a week, apart from the ten and from each other (the game's report
+   is open to everyone for now, so nothing asks for one; the database counts it apart the day it is not) */
+const REPORT_KEYS = Object.freeze(['playerReport', 'clubReport', 'gameReport']);
+const REPORT_KIND = Object.freeze({ playerReport: 'player report', clubReport: 'club report', gameReport: 'game report' });
+const isReport = key => REPORT_KEYS.indexOf(String(key)) >= 0;
+/* what is left for this key: a report kind's own, or the previews' */
+function peekLeftOf(v, key) {
+  if (!v) return null;
+  if (isReport(key)) return v.reports && typeof v.reports[key] === 'number' ? v.reports[key] : null;
+  return typeof v.left === 'number' ? v.left : null;
+}
+function peekText(v, key) {
+  if (isReport(key)) {
+    const kind = REPORT_KIND[key];
+    return peekLeftOf(v, key) === 0 ? copyOf('reportNone').replace(/\{kind\}/g, kind) : copyOf('reportNote').replace(/\{kind\}/g, kind);
+  }
+  const n = v && typeof v.limit === 'number' ? v.limit : 10;
+  const left = peekLeftOf(v, key);
+  if (left != null) {
+    return left > 0 ? copyOf('previewLeft').replace(/\{left\}/g, String(left)).replace(/\{n\}/g, String(n)) : copyOf('previewNone');
+  }
+  return copyOf('previewNote').replace(/\{n\}/g, String(n));
+}
+/* every preview button and note on the page, as the answer stands (null: previews cannot be counted here, so none) */
+function paintPeeks(v) {
+  if (!BROWSER) return;
+  try {
+    document.querySelectorAll('[data-peek], [data-peek-left]').forEach(n => { n.style.display = v ? '' : 'none'; });
+    if (!v) return;
+    document.querySelectorAll('[data-peek-left]').forEach(n => { n.textContent = peekText(v, n.getAttribute('data-peek-left') || null); });
+    document.querySelectorAll('[data-peek]').forEach(b => { b.disabled = peekLeftOf(v, b.getAttribute('data-peek')) === 0; });
+  } catch (_) { /* the buttons as drawn */ }
+}
+/* the database's answer, kept: a take updates only its own count */
+function keepLeft(j, key) {
+  let was = null;
+  try { const c = JSON.parse(sget('sessionStorage', PEEK_LEFT_KEY) || 'null'); was = c && c.v; } catch (_) { was = null; }
+  const v = Object.assign({ left: null, limit: 10, reports: {}, reportLimit: 1, nextAt: null }, was || {});
+  v.reports = Object.assign({}, v.reports);
+  if (j && typeof j === 'object') {
+    if (key != null && isReport(key)) { if (typeof j.left === 'number') v.reports[key] = j.left; if (typeof j.limit === 'number') v.reportLimit = j.limit; }
+    else if (key != null) { if (typeof j.left === 'number') v.left = j.left; if (typeof j.limit === 'number') v.limit = j.limit; v.nextAt = j.next_at || null; }
+    else {
+      v.left = typeof j.left === 'number' ? j.left : null; v.limit = typeof j.limit === 'number' ? j.limit : 10; v.nextAt = j.next_at || null;
+      if (j.reports && typeof j.reports === 'object') v.reports = Object.assign({}, j.reports);
+      if (typeof j.report_limit === 'number') v.reportLimit = j.report_limit;
+    }
+  }
+  sset('sessionStorage', PEEK_LEFT_KEY, JSON.stringify({ at: Date.now(), v }));
+  return v;
+}
+let peekFillQueued = false;
+function queuePeekFill() {
+  if (!BROWSER || peekFillQueued) return;
+  peekFillQueued = true;
+  setTimeout(() => { peekFillQueued = false; previewLeft().then(paintPeeks, () => {}); }, 0);
+}
+let toastEl = null, toastT = 0;
+/* parts: each its own line of words (so a translation finds it whole), joined with a dot */
+function peekToast(parts, withSignIn) {
+  if (!BROWSER || !document.body) return;
+  const list = (Array.isArray(parts) ? parts : [parts]).filter(Boolean);
+  if (!toastEl || !toastEl.isConnected) {
+    toastEl = document.createElement('div');
+    toastEl.className = 'ep-peek-toast'; toastEl.setAttribute('role', 'status'); toastEl.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = '';
+  const t = document.createElement('span'); t.className = 'ep-peek-words';
+  list.forEach((w, i) => { if (i) t.appendChild(document.createTextNode(' \u00b7 ')); const p = document.createElement('span'); p.textContent = String(w).replace(/\.$/, ''); t.appendChild(p); });
+  toastEl.appendChild(t);
+  if (withSignIn) { const a = document.createElement('a'); a.className = 'ep-in-go'; a.href = signinHref(); a.textContent = copyOf('signIn'); toastEl.appendChild(a); }
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'ep-peek-x'; x.setAttribute('aria-label', 'Close'); x.textContent = '\u00d7';
+  x.addEventListener('click', () => toastEl.classList.remove('on'));
+  toastEl.appendChild(x);
+  toastEl.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => { if (toastEl) toastEl.classList.remove('on'); }, 10000);
+}
+/* use one: -> { ok, left, limit, nextAt, again? } or { ok: false, error: 'none-left' | 'unavailable' | 'offline' } */
+async function takePreview(key) {
+  key = String(key == null ? '' : key);
+  if (!CATALOGUE.locks[key] || !signinFirst(key)) return { ok: true, open: true };
+  if (previewActive(key)) return { ok: true, open: true };
+  const f = net(), c = cfg();
+  if (!f || !c.supabaseUrl || !c.supabaseAnonKey) return { ok: false, error: 'offline' };
+  let j = null;
+  try {
+    const r = await timed(DEADLINE_MS, signal => f(c.supabaseUrl + '/rest/v1/rpc/preview_take', {
+      method: 'POST', cache: 'no-store', signal, body: JSON.stringify({ p_feature: key, p_subject: peekSubject() }),
+      headers: { apikey: c.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' }
+    }));
+    if (!r || r === TIMED_OUT) return { ok: false, error: 'offline' };
+    if (r.status === 404) return { ok: false, error: 'unavailable' };
+    j = r.ok ? await r.json() : null;
+  } catch (_) { return { ok: false, error: 'offline' }; }
+  if (!j || typeof j !== 'object') return { ok: false, error: 'offline' };
+  const v = keepLeft(j, key);
+  if (!j.ok) return Object.assign({ ok: false, error: 'none-left', key }, v);
+  const p = peeks(), now = Date.now();
+  Object.keys(p).forEach(k => { if (!(p[k] > now)) delete p[k]; });
+  p[key + '|' + peekSubject()] = now + PEEK_MS;
+  sset('sessionStorage', PEEK_KEY, JSON.stringify(p));
+  /* said after the change, which may reload the page: kept for the next page if it does */
+  const said = isReport(key)
+    ? [copyOf('reportOpen').replace(/\{kind\}/g, REPORT_KIND[key]), copyOf('previewKeep')]
+    : [copyOf('previewOpen'), peekText(v, key), copyOf('previewKeep')];
+  sset('sessionStorage', PEEK_SAID, JSON.stringify(said));
+  emit({ reason: 'preview', key });
+  if (BROWSER) {
+    setTimeout(() => { if (sget('sessionStorage', PEEK_SAID)) { sdel('sessionStorage', PEEK_SAID); peekToast(said, true); } }, 400);
+    setTimeout(() => emit({ reason: 'preview-end', key }), PEEK_MS + 1000);
+  }
+  return Object.assign({ ok: true, again: !!j.again, key }, v);
+}
+/* a press on a preview button anywhere on the page */
+async function peekPress(key, b) {
+  const label = b ? b.textContent : '';
+  if (b) { b.disabled = true; b.textContent = '\u2026'; }
+  const r = await takePreview(key);
+  if (b && b.isConnected) { b.disabled = false; b.textContent = label; }
+  if (r.ok) return r;
+  if (r.error === 'none-left') { paintPeeks(r); peekToast([peekText(r, key), copyOf('previewKeep')], true); }
+  else if (r.error === 'unavailable') paintPeeks(null);
+  else peekToast(['The preview could not be opened. Try again in a moment.'], false);
+  return r;
+}
+function wirePreviews() {
+  document.addEventListener('click', e => {
+    const b = e.target && e.target.closest ? e.target.closest('button[data-peek]') : null;
+    if (!b || b.disabled) return;
+    e.preventDefault();
+    peekPress(b.getAttribute('data-peek'), b);
+  });
+  let said = null;
+  try { said = JSON.parse(sget('sessionStorage', PEEK_SAID) || 'null'); } catch (_) { said = null; }
+  if (said) {
+    sdel('sessionStorage', PEEK_SAID);
+    const show = () => peekToast(said, true);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else setTimeout(show, 0);
+  }
+}
+/* a preview button for this key, with the week's note under it ('' where the feature cannot be previewed) */
+function peekHTML(key) {
+  if (!key || !CATALOGUE.locks[String(key)] || SIGNIN_FREE.indexOf(String(key)) >= 0) return null;
+  queuePeekFill();
+  const label = copyOf(isReport(key) ? 'reportIt' : 'previewIt');
+  return { label, report: isReport(key),
+           button: '<button type="button" class="ep-in-peek' + (isReport(key) ? ' ep-in-report' : '') + '" data-peek="' + esc(key) + '">' + esc(label) + '</button>',
+           note: '<p class="ep-lock-l ep-in-left" data-peek-left="' + esc(key) + '">' + esc(peekText(null, key)) + '</p>' };
 }
 
 /* ------------------------------------------------------- the wall (0222) ---
@@ -287,7 +484,19 @@ const COPY = Object.freeze({
   signinTitle: 'Sign in to see this',
   signinLead: 'It takes a moment with your email, Google or Discord, and brings you straight back here.',
   signinAll: 'An account opens WOWY and the lineups, the player and club reports, shot zones, rotations and the full statistics tables.',
-  signinTip: 'Sign in to use this'
+  signinTip: 'Sign in to use this',
+  /* previews, signed out (0231): {n} is the week's allowance, {left} what is left of it */
+  previewIt: 'Preview it',
+  previewNote: 'Signed out, you can preview {n} things a week.',
+  previewLeft: '{left} of {n} previews left this week',
+  previewNone: 'No previews left this week',
+  previewOpen: 'Preview open for 30 minutes',
+  previewKeep: 'Sign in to keep everything open',
+  /* a report kind's free one a week (0231): {kind} is "player report", "club report" or "game report" */
+  reportIt: 'Open your free report',
+  reportNote: 'Signed out, you can open one free {kind} a week.',
+  reportNone: 'This week\u2019s free {kind} has been used.',
+  reportOpen: 'Your free {kind} is open for 30 minutes'
 });
 let WALL = null, wallP = null, WALL_OFF = false;
 function wallOf(j) {
@@ -1150,7 +1359,7 @@ function signinWhat(x) {
   if (x.what) return { phrase: String(x.what), plural: !!x.plural };
   const m = String(x.title || '').match(/^(.*\S)\s+(is|are)\s+for members\.?$/i);
   if (m) return { phrase: m[1], plural: m[2].toLowerCase() === 'are' };
-  const L = x.key && CATALOGUE.locks[String(x.key)];
+  const L = (x.key || x.peek) && CATALOGUE.locks[String(x.key || x.peek)];
   if (L) return { phrase: L.label, plural: /[^s]s$/i.test(L.label) };
   return null;
 }
@@ -1162,9 +1371,10 @@ function signinNeed(x) {
 function signinHTML(o) {
   const x = Object.assign({}, o || {});
   const go = '<a class="ep-in-go" href="' + esc(signinHref()) + '">' + esc(copyOf('signIn')) + '</a>';
+  const pk = peekHTML(x.key || x.peek);
   if (x.compact) {
     return '<div class="ep-lock ep-lock-compact ep-lock-signin" role="note">' + LOCK_SVG +
-      '<span class="ep-lock-t">' + esc(x.signinTitle || signinNeed(x)) + '</span>' + go + '</div>';
+      '<span class="ep-lock-t">' + esc(x.signinTitle || signinNeed(x)) + '</span>' + go + (pk ? pk.button : '') + '</div>';
   }
   const given = x.lines == null ? [] : (Array.isArray(x.lines) ? x.lines : [x.lines]);
   const lines = given.filter(l => l != null && String(l).trim()).slice(0, 2);
@@ -1175,13 +1385,15 @@ function signinHTML(o) {
       lines.map(l => '<p class="ep-lock-l">' + esc(l) + '</p>').join('') +
       '<p class="ep-lock-l">' + esc(copyOf('signinAll')) + '</p>' +
       '<p class="ep-lock-l">' + esc(copyOf('signinLead')) + '</p>' +
-      '<div class="ep-lock-cta">' + go + '</div>' +
+      '<div class="ep-lock-cta">' + go + (pk ? pk.button : '') + '</div>' +
+      (pk ? pk.note : '') +
     '</div></div>';
 }
 
 function teaserHTML(o) {
-  /* signed out, where an account comes first: the sign-in card (a members-only league's banner names key 'league') */
-  if (o && o.signin !== false && signinFirst(o.key)) return signinHTML(o);
+  /* signed out, where an account comes first: the sign-in card (a members-only league's banner names key 'league').
+     `peek` names the feature for the card and its preview without taking the platform's words for it (`key` does) */
+  if (o && o.signin !== false && signinFirst(o.key || o.peek)) return signinHTML(o);
   /* a section's own words where the platform wrote them (x.key, 0222), over the page's */
   const x = Object.assign({}, o || {});
   if (x.key) { const w = lockWords(x.key); if (w.title) x.title = w.title; if (w.lines) x.lines = w.lines; }
@@ -1337,6 +1549,7 @@ if (BROWSER) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hookSdk);
   else hookSdk();
   wirePayWindow();
+  wirePreviews();
 }
 
 /* ---------------------------------------------------- the payment window ---
@@ -1395,6 +1608,7 @@ return {
   FEATURES, CATALOGUE, COPY, GATES,
   load, loadMany, get, analyticsOk, canView, isPremiumColumn, featureLocked, featureOk,
   signinFirst, lockReason, signinHTML, signinNeed, signinArt: () => SIGNIN_ART,
+  previewActive, previewLeft, takePreview, peekPress, peekHTML, peekText, queuePeekFill, peekSubject, REPORT_KEYS,
   gateOf, lockWords, copyOf, loadWall, trialMonths,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,

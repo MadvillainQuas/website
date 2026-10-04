@@ -976,7 +976,7 @@ function boot() {
       /* a refusal that is not about entitlement (rate, layout, network, none) is said plainly, never as a membership pitch */
       if (!ctx.lockedNow && ctx.reason && ['members', 'signin', 'league'].indexOf(ctx.reason) < 0) { ph.innerHTML = '<div class="pg-empty"><p></p></div>'; ph.querySelector('p').textContent = ctx.message || MSG.network; return; }
       if (ctx.reason === 'signin') { ph.innerHTML = '<div class="pg-empty"><p>Members’ analysis. <a href="' + esc(signinHref()) + '">Sign in</a> to see it.</p></div>'; return; }
-      const M = root.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows, what: 'What wins model', leagueSlug: league ? league.slug : undefined }) : null;
+      const M = root.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows, what: 'What wins model', key: 'model', leagueSlug: league ? league.slug : undefined }) : null;
       if (node) ph.replaceWith(node); else ph.innerHTML = '<div class="pg-empty"><p>Members’ analysis.</p></div>';
     });
     const VK = V();

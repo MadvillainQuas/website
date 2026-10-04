@@ -189,6 +189,35 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn, html.m-ios-app .ep-lock
 .mem-ph-need{font-family:var(--f-ui); font-size:13px; line-height:1.45; color:var(--ink-2); max-width:42ch}
 .mem-ph-in .mem-ph-note a.ep-in-go{font-family:var(--f-micro); font-weight:400; font-size:9.5px; color:var(--on-accent); text-decoration:none}
 .mem-ph-in .mem-ph-note a.ep-in-go:hover{color:var(--lume)}
+/* PREVIEWS, signed out (access.js, 0231): the second button beside Sign in, and the week's note under them */
+.ep-in-peek{
+  display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:8px 18px; box-sizing:border-box;
+  background:transparent; color:var(--lume); border:1px solid var(--lume); border-radius:999px; cursor:pointer;
+  font-family:var(--f-micro); font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; white-space:nowrap;
+  transition:background .2s var(--ease), color .2s var(--ease);
+}
+.ep-in-peek:hover:not([disabled]){background:color-mix(in oklch,var(--lume) 14%,transparent)}
+.ep-in-peek:focus-visible{outline:2px solid var(--lume); outline-offset:2px}
+.ep-in-peek[disabled]{opacity:.45; cursor:not-allowed}
+.ep-lock-compact.ep-lock-signin .ep-in-peek{min-height:34px; padding:6px 12px; font-size:9px}
+.ep-in-left, .mem-ph-left, .mem-ask-left{font-family:var(--f-micro); font-size:9px; letter-spacing:.04em; color:var(--ink-3); margin:8px 0 0}
+.mem-ph-row-go{display:flex; flex-wrap:wrap; gap:8px; justify-content:center}
+.mem-ph-in, .mem-ph-in *{cursor:auto}
+.mem-ph-in a, .mem-ph-in button{cursor:pointer}
+.mem-ph-in:has(~ .ep-lock-signin, ~ * .ep-lock-signin) .ep-in-peek,
+.mem-ph-in:has(~ .ep-lock-signin, ~ * .ep-lock-signin) .mem-ph-left{display:none}
+/* said once a preview opens (or none is left): low on the screen, out of the way, gone by itself */
+.ep-peek-toast{position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); z-index:2147482600; transform:translate(-50%, 140%);
+  display:flex; align-items:center; gap:12px; max-width:min(560px, calc(100vw - 32px)); box-sizing:border-box; padding:10px 10px 10px 16px;
+  background:var(--panel,#0a1a13); color:var(--ink,#e6fff1); border:1px solid var(--rule-2); border-left:3px solid var(--lume);
+  box-shadow:0 14px 40px rgba(0,0,0,.35); font-family:var(--f-ui); font-size:13.5px; line-height:1.45; opacity:0; pointer-events:none;
+  transition:transform .25s var(--ease), opacity .25s var(--ease)}
+.ep-peek-toast.on{transform:translate(-50%, 0); opacity:1; pointer-events:auto}
+.ep-peek-toast .ep-in-go{min-height:34px; padding:6px 14px; font-size:9px; flex:none}
+.ep-peek-x{flex:none; width:32px; height:32px; border:0; background:none; color:var(--ink-3); font-size:20px; line-height:1; cursor:pointer}
+.ep-peek-x:hover{color:var(--ink)}
+@media (max-width:820px){ .ep-peek-toast{bottom:calc(76px + env(safe-area-inset-bottom, 0px))} }
+
 /* a section that draws the blurred rows AND the card: the picture on the rows, the words and the button on the card */
 .mem-ph-in ~ .ep-lock-signin .ep-in-art, .mem-ph-in ~ * .ep-lock-signin .ep-in-art{display:none}
 .mem-ph-in:has(~ .ep-lock-signin, ~ * .ep-lock-signin) .mem-ph-need,
@@ -217,7 +246,7 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn, html.m-ios-app .ep-lock
 }
 
 @media (prefers-reduced-motion:reduce){
-  .ep-lock-go, .ep-in-go{transition:none}
+  .ep-lock-go, .ep-in-go, .ep-in-peek, .ep-peek-toast{transition:none}
 }
 
 /* ---------- the payment window (paywindow.js): membership bought on the page the fan is on ---------- */

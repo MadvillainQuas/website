@@ -1374,7 +1374,7 @@ function render(opts) {
     if (!A || typeof A.teaserHTML !== 'function') return;
     if (!teaserEl) { teaserEl = el('div', 'ft-teaser'); host.insertBefore(teaserEl, head); }
     teaserEl.innerHTML = A.teaserHTML({
-      leagueSlug: opts.leagueSlug, title: label, what: 'The ' + label + ' view',
+      leagueSlug: opts.leagueSlug, peek: 'statColumns', title: label, what: 'The ' + label + ' view',
       lines: [key === '*'
         ? 'Every column of the table at once, the events and the zones included.'
         : /^z_/.test(key)

@@ -1343,11 +1343,11 @@ function mount(o) {
     panel.textContent = '';
     const wrap = el('div', 'rp rp-locked');
     const M = root.EpinoiaMemLock;
-    const ph = M && typeof M.placeholder === 'function' ? M.placeholder({ what: o.lock.what || 'The report', rows: 8 }) : null;
+    const ph = M && typeof M.placeholder === 'function' ? M.placeholder({ what: o.lock.what || 'The report', rows: 8, key: o.lock.key }) : null;
     if (ph) wrap.appendChild(ph);
     const t = el('div', 'rp-lockcard');
     t.innerHTML = AX() && typeof AX().teaserHTML === 'function'
-      ? AX().teaserHTML({ leagueSlug: o.lock.leagueSlug, title: (o.lock.what || 'The report') + ' is for members', lines: o.lock.lines || [] }) : '';
+      ? AX().teaserHTML({ leagueSlug: o.lock.leagueSlug, peek: o.lock.key, title: (o.lock.what || 'The report') + ' is for members', lines: o.lock.lines || [] }) : '';
     wrap.appendChild(t);
     panel.appendChild(wrap);
     state.lockedShown = true;

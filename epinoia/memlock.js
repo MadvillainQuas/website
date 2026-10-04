@@ -72,8 +72,8 @@ function ensureTip() {
 }
 /* SIGNED IN FIRST (access.js signinFirst): a signed-out reader is asked for an account before anything else, so the
    popup, the placeholder and a locked control's press say "sign in" and lead to the sign-in page */
-function signinNow() {
-  try { const A = access(); return !!(A && typeof A.signinFirst === 'function' && A.signinFirst()); } catch (_) { return false; }
+function signinNow(key) {
+  try { const A = access(); return !!(A && typeof A.signinFirst === 'function' && A.signinFirst(key == null ? undefined : key)); } catch (_) { return false; }
 }
 function signinHref() {
   try { const A = access(); return A && A.signinHref ? A.signinHref() : '/epinoia/signin/'; } catch (_) { return '/epinoia/signin/'; }
@@ -129,7 +129,7 @@ function lock(el, o) {
   const prev = { label: el.getAttribute('aria-label'), title: el.getAttribute('title'), dis: el.getAttribute('aria-disabled') };
   el.classList.add('mem-lock');
   /* signed out it is a way in, not a wall: a pointer rather than the stop sign */
-  if (signinNow()) el.classList.add('mem-in');
+  if (signinNow(o.key)) el.classList.add('mem-in');
   if (!o.passive) el.setAttribute('aria-disabled', 'true');
   el.setAttribute('aria-label', (prev.label || (el.textContent || '').trim() || what) + ' — locked, ' + TIP_TEXT.toLowerCase());
   el.removeAttribute('title');            // the popup is the explanation; a native tooltip would fight it
@@ -139,10 +139,10 @@ function lock(el, o) {
      gets the cursor and the popup */
   const stop = e => { if (!o.passive) { e.preventDefault(); e.stopImmediatePropagation(); } };
   const onClick = e => { stop(e); if (o.passive) return;
-    if (signinNow()) { hide(0); askSignIn({ what: o.what }); return; }
+    if (signinNow(o.key)) { hide(0); askSignIn({ what: o.what, key: o.key }); return; }
     if (tipFor === el && tip && !tip.hidden) hide(0); else show(el, o); };
   const onKey = e => {
-    if (!o.passive && (e.key === 'Enter' || e.key === ' ')) { stop(e); if (signinNow()) askSignIn({ what: o.what }); else show(el, o); }
+    if (!o.passive && (e.key === 'Enter' || e.key === ' ')) { stop(e); if (signinNow(o.key)) askSignIn({ what: o.what, key: o.key }); else show(el, o); }
   };
   const onEnter = e => { if (e.pointerType !== 'touch') show(el, o); };
   const onLeave = () => hide(160);
@@ -187,7 +187,7 @@ function set(el, now, o) {
 function apply(el, key, o) {
   o = o || {};
   const A = access();
-  return set(el, locked(key, o.league), Object.assign({ what: (A && A.CATALOGUE && A.CATALOGUE.locks[key] || {}).label }, o));
+  return set(el, locked(key, o.league), Object.assign({ what: (A && A.CATALOGUE && A.CATALOGUE.locks[key] || {}).label, key }, o));
 }
 
 function guard(key, league, fn) {
@@ -209,7 +209,7 @@ function placeholder(o) {
     rows.appendChild(r);
   }
   const note = DOC.createElement('div'); note.className = 'mem-ph-note';
-  if (signinNow()) {
+  if (signinNow(o.key)) {
     /* signed out: the picture, what needs the account and the way in */
     const A = access();
     wrap.classList.add('mem-ph-in');
@@ -220,7 +220,20 @@ function placeholder(o) {
     const p = DOC.createElement('span'); p.className = 'mem-ph-need';
     p.textContent = A && A.signinNeed ? A.signinNeed({ what: o.what, plural: o.plural }) : '';
     const a = DOC.createElement('a'); a.className = 'ep-in-go'; a.href = signinHref(); a.textContent = (A && A.copyOf ? A.copyOf('signIn') : '') || 'Sign in';
-    note.append(art, t, p, a);
+    const row = DOC.createElement('span'); row.className = 'mem-ph-row-go';
+    row.appendChild(a);
+    note.append(art, t, p, row);
+    /* a preview of it (access.js previews): the button is wired by access.js, on the document */
+    const pk = o.key && A && typeof A.peekHTML === 'function' ? A.peekHTML(o.key) : null;
+    if (pk) {
+      const b = DOC.createElement('button'); b.type = 'button'; b.className = 'ep-in-peek'; b.setAttribute('data-peek', String(o.key));
+      b.textContent = pk.label || 'Preview it';
+      if (pk.report) b.classList.add('ep-in-report');
+      const left = DOC.createElement('span'); left.className = 'mem-ph-left'; left.setAttribute('data-peek-left', String(o.key));
+      left.textContent = A.peekText ? A.peekText(null, o.key) : '';
+      row.appendChild(b);
+      note.appendChild(left);
+    }
   } else {
     const t = DOC.createElement('b'); t.textContent = TIP_TEXT;
     const a = DOC.createElement('a'); a.href = joinHref({ leagueSlug: o.leagueSlug }); a.textContent = TIP_LINK;
@@ -252,8 +265,24 @@ function askSignIn(o) {
   const row = DOC.createElement('div'); row.className = 'mem-ask-row';
   const go = DOC.createElement('a'); go.className = 'ep-in-go'; go.href = signinHref(); go.textContent = c('signIn', 'Sign in');
   const no = DOC.createElement('button'); no.type = 'button'; no.className = 'mem-ask-no'; no.textContent = 'Not now';
-  row.append(go, no);
+  row.append(go);
+  /* a preview of what was pressed (access.js previews): taken here, and the box closes when it opens */
+  let left = null;
+  const pk = o.key && A && typeof A.peekHTML === 'function' ? A.peekHTML(o.key) : null;
+  if (pk) {
+    const pv = DOC.createElement('button'); pv.type = 'button'; pv.className = 'ep-in-peek mem-ask-peek';
+    pv.textContent = pk.label || 'Preview it';
+    pv.addEventListener('click', () => {
+      if (!A.peekPress) return;
+      Promise.resolve(A.peekPress(o.key, pv)).then(r => { if (r && r.ok) close(); }, () => {});
+    });
+    row.append(pv);
+    left = DOC.createElement('p'); left.className = 'mem-ask-left'; left.setAttribute('data-peek-left', String(o.key));
+    left.textContent = A.peekText ? A.peekText(null, o.key) : '';
+  }
+  row.append(no);
   box.append(art, h, need, all, how, row);
+  if (left) box.appendChild(left);
   back.appendChild(box);
   const was = DOC.activeElement;
   const close = () => { back.remove(); if (askBox === back) askBox = null; DOC.removeEventListener('keydown', onKey, true); try { if (was && was.focus) was.focus(); } catch (_) {} };

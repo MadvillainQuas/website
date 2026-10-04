@@ -1764,7 +1764,13 @@
       'This account no longer exists': 'このアカウントは存在しません',
       'It has been deleted, so it has been signed out.': '削除されたため、サインアウトされました。',
       'Everything public, from scores and tables to players and clubs, is still open to you. If you think this is a mistake, contact us.': 'スコアや順位表から選手、クラブまで、公開されている内容はこれまでどおり閲覧できます。間違いだと思われる場合はお問い合わせください。',
-      'This account has been disabled, so it cannot sign in. If you think that is a mistake, contact us.': 'このアカウントは無効化されているため、サインインできません。間違いだと思われる場合はお問い合わせください。'
+      'This account has been disabled, so it cannot sign in. If you think that is a mistake, contact us.': 'このアカウントは無効化されているため、サインインできません。間違いだと思われる場合はお問い合わせください。',
+      'Preview it': 'プレビュー',
+      'Open your free report': '無料レポートを開く',
+      'Preview open for 30 minutes': 'プレビューは30分間表示されます',
+      'Sign in to keep everything open': 'サインインするとすべて開いたままになります',
+      'No previews left this week': '今週のプレビューは残っていません',
+      'The preview could not be opened. Try again in a moment': 'プレビューを開けませんでした。しばらくしてからもう一度お試しください'
     },
 
     ctx: {
@@ -2867,6 +2873,12 @@
       [/^A preview: (\d+) players? at a time\. Sign in to compare up to (\d+) at once\.$/, 'プレビュー: 一度に$1人まで。サインインすると最大$2人まで同時に比較できます。'],
       /* signed in first (access.js signinNeed): "Shot zones need an EPINOIA account." */
       [/^(.+\S) needs? an EPINOIA account\.$/, (m, T) => T(m[1]) + 'にはEPINOIAアカウントが必要です。'],
+      /* previews, signed out (access.js, 0231): the week's count, and a report kind's free one */
+      [/^(\d+) of (\d+) previews left this week$/, '今週のプレビュー残り$1回（全$2回）'],
+      [/^Signed out, you can preview (\d+) things a week\.?$/, 'サインインしていなくても、週に$1件までプレビューできます。'],
+      [/^Signed out, you can open one free (player|club|game) report a week\.?$/, m => 'サインインしていなくても、' + ({ player: '選手', club: 'クラブ', game: '試合' })[m[1]] + 'レポートを週に1件無料で開けます。'],
+      [/^This week’s free (player|club|game) report has been used\.?$/, m => '今週の無料の' + ({ player: '選手', club: 'クラブ', game: '試合' })[m[1]] + 'レポートは使用済みです。'],
+      [/^Your free (player|club|game) report is open for 30 minutes$/, m => '無料の' + ({ player: '選手', club: 'クラブ', game: '試合' })[m[1]] + 'レポートは30分間開いています'],
       [/^The (.+) view$/, (m, T) => '「' + T(m[1]) + '」ビュー'],
       [/^(\d+) of (\d+) combinations played$/, '$2通り中$1通りに出場実績'],
       [/^members get up to (\d+)$/, '会員は最大$1人'],

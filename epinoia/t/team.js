@@ -1045,7 +1045,7 @@ async function winModelFiles(team) {
 }
 function modelLocked(host, team) {
   if (!host) return;
-  const M = window.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows: 5, what: 'What wins model', leagueSlug: ((team && team.leagues) || {}).slug }) : null;
+  const M = window.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows: 5, what: 'What wins model', key: 'model', leagueSlug: ((team && team.leagues) || {}).slug }) : null;
   host.textContent = '';
   if (node) host.appendChild(node); else host.appendChild(el('div', 'empty', 'Members’ analysis.'));
 }
@@ -1577,7 +1577,7 @@ async function teamStats(team, kind) {
       if (sectionLocked('events')) {
         evHost.innerHTML = accessTeaser({ key: 'events', title: 'Events, at both ends',
           lines: ['Second chances, transition, points off turnovers, after-timeout sets and the half court — what the club made of each, and what opponents made of the same.'] });
-        { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', leagueSlug: ACCESS.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
+        { const M = window.EpinoiaMemLock, ph = M && M.placeholder({ what: 'Events', key: 'events', leagueSlug: ACCESS.slug }); if (ph) evHost.insertBefore(ph, evHost.firstChild); }
       } else if (window.EpinoiaSitPanel) {
         window.EpinoiaSitPanel.render({
           host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',

@@ -177,7 +177,8 @@ function lockedColumns(accessStates, keys) {
   const S = accessStates;
   const list = !S ? [] : (S instanceof Map ? [...S.values()] : Array.isArray(S) ? S : Object.values(S));
   /* signed out, the premium columns wait for an account (access.js signinFirst), on every league at once */
-  const signin = !!(A && typeof A.signinFirst === 'function' && A.signinFirst('statColumns'));
+  const signin = !!(A && typeof A.signinFirst === 'function' && A.signinFirst('statColumns'))
+    && !(typeof A.previewActive === 'function' && A.previewActive('statColumns'));          // a preview of the table opens it
   const locks = signin || list.some(st => st && st.canView !== false && st.analyticsOk === false);
   if (!locks || !A || typeof A.isPremiumColumn !== 'function') return new Set();
   const cat = Array.isArray(keys) ? keys

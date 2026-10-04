@@ -124,7 +124,7 @@ console.log('\npage.js: what it reads and keeps');
   ok('the Worker is built from this script\'s own ?v=', /new root\.Worker\('\.\.\/winsim\.worker\.js\?v=' \+ myV\)/.test(code) && /winning\\\/page\\\.js/.test(code));
   ok('...and without a Worker the same op runs on the main thread, n / 5, in idle slices', /a\.n = Math\.max\(200, Math\.round\(a\.n \/ 5\)\)/.test(code) && /requestIdleCallback/.test(code) && /Sim\(\)\.drive\(Sim\(\)\.steps\(op, a\)/.test(code));
   ok('a cancel reaches the Worker as {id, op: \'cancel\'}', /postMessage\(\{ id, op: 'cancel' \}\)/.test(code));
-  ok('memlock placeholders for a refused reader: EpinoiaMemLock.placeholder({rows, what: \'What wins model\', leagueSlug})', /M\.placeholder\(\{ rows, what: 'What wins model', leagueSlug: /.test(code));
+  ok('memlock placeholders for a refused reader: EpinoiaMemLock.placeholder({rows, what: \'What wins model\', key: \'model\', leagueSlug})', /M\.placeholder\(\{ rows, what: 'What wins model', key: 'model', leagueSlug: /.test(code));
   const inner = [...code.matchAll(/\.innerHTML\s*=\s*([^;]+);/g)].map(m => m[1].trim());
   ok('innerHTML only takes a view\'s escaped html or a fixed literal (names and messages go in by textContent)', inner.length > 0 &&
      inner.every(r => r === 'out.html' || (/^'/.test(r) && !/\+\s*(?!esc\()[a-zA-Z]/.test(r))), inner.join(' | '));

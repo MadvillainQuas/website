@@ -761,7 +761,7 @@ function mount(host, vm, opts) {
   }
   function placeholders() {
     host.querySelectorAll('[data-memlock]').forEach(ph => {
-      const M = root.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows: +ph.getAttribute('data-memlock') || 5, what: 'What wins model', leagueSlug: opts.leagueSlug }) : null;
+      const M = root.EpinoiaMemLock, node = M && M.placeholder ? M.placeholder({ rows: +ph.getAttribute('data-memlock') || 5, what: 'What wins model', key: 'model', leagueSlug: opts.leagueSlug }) : null;
       if (node) ph.replaceWith(node); else ph.innerHTML = empty(MSG.members);
     });
   }

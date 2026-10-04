@@ -64,7 +64,7 @@ function render(opts) {
   if (opts.locked && A && typeof A.teaserHTML === 'function') {
     const tease = el('div', 'with-tease');
     tease.innerHTML = A.teaserHTML({   // escaped by access.js
-      compact: true, leagueSlug: opts.leagueSlug || null,
+      compact: true, leagueSlug: opts.leagueSlug || null, peek: 'wowy',
       title: 'This player’s splits with and without each teammate are for members'
     });
     host.appendChild(tease);

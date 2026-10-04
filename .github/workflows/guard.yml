@@ -288,6 +288,12 @@ jobs:
         # MISC (players) and TOTALS (clubs) are part of the lock
         run: node supabase/tests/signin-gates.test.mjs
 
+      - name: Previews for a signed-out reader, ten a week and one free report of each kind
+        # 0231: counted against a salted one-way code of the network (never the address); the eleventh refused, the same
+        # thing again free, the reports apart; a preview opens one feature on one page for thirty minutes; the game report
+        # stays open to everyone for now
+        run: node supabase/tests/previews.test.mjs
+
       - name: Box score renders with nothing but S and derive()
         # catches a helper left behind by the extraction, which otherwise only
         # shows up as a blank public page
