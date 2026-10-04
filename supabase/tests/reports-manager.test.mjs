@@ -381,7 +381,12 @@ console.log('\nPRIME REPORT stores it for sending (0229)');
 }
 {
   const rp = read('epinoia', 'report.js');
-  ok('the report page\'s PRIME REPORT stores the PDF for sending in place of downloading it', /if \(dl\) results\.push\(await storeForSending\(\)\);/.test(rp) && !/if \(dl\) await download\('pdf'\)/.test(rp));
+  ok('the report page\'s PRIME REPORT stores the PDF for sending in place of downloading it', /if \(dl && !thin && n > 0\) results\.push\(await storeForSending\(\)\);/.test(rp) && !/if \(dl\) await download\('pdf'\)/.test(rp));
+  ok('...only the FINISHED report: PRIME waits for the newest build, and a one-page player report (the cover alone) is not stored',
+     /state\.lastDone !== state\.running/.test(rp) && /state\.lastDone = run;/.test(rp) && /const thin = o\.kind === 'player' && n < 2;/.test(rp));
+  ok('...the mailer waits for no build in flight before it takes a PDF', /!window\.__rpBuilding/.test(read('scripts', 'report_mailer.mjs')));
+  ok('PRIME CLUB + PLAYERS opens a checklist first: each player’s Synergy file kept or not, add CSVs, then start priming; closable when done',
+     (rmSrc => /'start priming'/.test(rmSrc) && /add CSVs for these players/.test(rmSrc) && /function closeRunBtn/.test(rmSrc))(read('epinoia', 'admin', 'platform', 'reports-manager.js')));
   ok('...drawn at email weight, in the private bucket under its kind and id, its row written, then READ BACK',
      /scale: 2, quality: 0\.84/.test(rp) && /c\.storage\.from\('primed'\)\.upload\(path, new root\.Blob\(\[bytes\], \{ type: 'application\/pdf' \}\), \{ upsert: true/.test(rp) &&
      /const path = o\.kind \+ '\/' \+ o\.id \+ '\.pdf';/.test(rp) && /from\('primed_reports'\)\.upsert\(row, \{ onConflict: 'kind,ref_id' \}\)/.test(rp) && /from\('primed_reports'\)\.select\('bytes,primed_at'\)/.test(rp));

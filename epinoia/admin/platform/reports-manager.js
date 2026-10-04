@@ -599,19 +599,68 @@ function primeAllBtn(teamId, name, stored) {
   w.append(b, del);
   return w;
 }
+/* FIRST, THE CHECKLIST: whose reports will be primed (the club and every ZIP player), each player's Synergy file kept or not, and
+   "add CSVs" for this club's players before anything is drawn (matched on the Synergy tab, then kept); "start priming" when ready. */
 async function primeAll(teamId, name) {
   if (RUN.busy) { say('A priming run is going already: wait for it, or close the reports manager to stop it.', 'warn'); return; }
-  RUN.busy = true; RUN.stop = false;
   const box = RUN.box;
   box.textContent = ''; box.classList.add('on');
+  const side = el('div'); side.style.cssText = 'flex:1 1 auto;min-width:0';
+  const head = el('b', null, 'Prime ' + name + ': reading whose reports its players’ ZIP carries…');
+  const bar = el('div', 'rm-row'); bar.style.margin = '6px 0';
+  const list = el('ol');
+  side.append(head, bar, list);
+  box.append(side);
+  let squad = [];
+  try { squad = await zipSquad(teamId); } catch (e) { head.textContent = 'Could not read ' + poss(name) + ' players: ' + (e.message || e); bar.appendChild(closeRunBtn()); return; }
+  const drawList = async () => {
+    const { data } = squad.length ? await sb.from('synergy_profiles').select('player_id,uploaded_at').in('player_id', squad.map(p => p.id)) : { data: [] };
+    const kept = new Map((data || []).map(r => [r.player_id, r.uploaded_at]));
+    list.textContent = '';
+    list.appendChild(el('li', null, name + ' — club report'));
+    squad.forEach(p => {
+      const at = kept.get(p.id);
+      const li = el('li', at ? 'ok' : 'gap', p.name + ' (' + p.mpg.toFixed(1) + ' min a game): ' + (at ? '✓ Synergy file kept ' + hm(at) : 'no Synergy file kept'));
+      list.appendChild(li);
+    });
+    const n = squad.filter(p => kept.has(p.id)).length;
+    head.textContent = 'Prime ' + name + ': the club report and ' + squad.length + ' player report' + (squad.length === 1 ? '' : 's') +
+      ' · Synergy kept for ' + n + ' of ' + squad.length + '. Add any CSVs first, then start.';
+  };
+  await drawList();
+  const add = filesButton('add CSVs for these players', async files => {
+    const { people, clubs } = await reportedClubs();
+    if (!clubs.has(teamId)) EXTRA.set(teamId, { id: teamId, name, why: 'primed from here' });
+    const mine = people.filter(p => (p.teams || [p.team]).includes(teamId));
+    const n = await readFiles(files, mine.length ? mine : people, { id: teamId, name });
+    if (n) {
+      head.textContent = n + ' player' + (n === 1 ? '' : 's') + ' read: check the matches on the Synergy files tab below and press keep, then "check again" here.';
+      tab = 'syn';
+      if (dlg) dlg.querySelectorAll('.rm-tabs button').forEach(x => x.classList.toggle('on', x.dataset.t === 'syn'));
+      draw();
+    }
+  });
+  add.title = 'Synergy CSV files for ' + poss(name) + ' players: matched to its squad on the Synergy files tab, where you keep them';
+  bar.append(btn('start priming', 'mini rm-prime-all', () => runPrime(teamId, name, squad)), add,
+    btn('check again', 'mini', () => drawList()), closeRunBtn('cancel'));
+}
+function closeRunBtn(text) {
+  return btn(text || '✕ close', 'mini', () => { if (RUN.busy) RUN.stop = true; else { RUN.box.textContent = ''; RUN.box.classList.remove('on'); } });
+}
+async function runPrime(teamId, name, squad) {
+  if (RUN.busy) return;
+  RUN.busy = true; RUN.stop = false;
+  const box = RUN.box;
+  box.textContent = '';
   const list = el('ol'), frame = el('div', 'frame'), side = el('div');
   side.style.cssText = 'flex:1 1 auto;min-width:0';
-  const head = el('b', null, 'Priming ' + name + ': reading whose reports its players’ ZIP carries…');
+  const head = el('b', null, 'Priming ' + name + '…');
+  const bar = el('div', 'rm-row'); bar.style.margin = '6px 0';
   const stop = btn('stop', 'mini', () => { RUN.stop = true; });
-  side.append(head, el('span', null, ' '), stop, list);
+  bar.appendChild(stop);
+  side.append(head, bar, list);
   box.append(side, frame);
   try {
-    const squad = await zipSquad(teamId);
     const jobs = [{ k: 't', id: teamId, name: name + ' — club report' }].concat(squad.map(p => ({ k: 'p', id: p.id, name: p.name + ' (' + p.mpg.toFixed(1) + ' min a game)' })));
     head.textContent = 'Priming ' + name + ': the club report and ' + squad.length + ' player report' + (squad.length === 1 ? '' : 's') + ', one at a time';
     const lines = jobs.map(j => { const li = el('li', null, j.name); list.appendChild(li); return li; });
@@ -622,7 +671,7 @@ async function primeAll(teamId, name) {
       li.scrollIntoView({ block: 'nearest' });
       const r = await primeInFrame(SITE + j.k + '/?' + j.k + '=' + encodeURIComponent(j.id) + '&tab=report&prime=1', frame);
       li.className = r.ok ? 'ok' : 'gap';
-      li.textContent = j.name + ': ' + (r.ok ? '✓ ' : '⚠ ') + r.text;
+      li.textContent = j.name + ': ' + (r.ok ? '' : '⚠ ') + r.text.replace(/^[✓⚠]\s*/, '');
       if (r.ok) good++;
     }
     head.textContent = (RUN.stop ? 'Stopped: ' : 'Done: ') + good + ' of ' + jobs.length + ' reports of ' + name + ' primed and stored for sending' + (good < jobs.length ? ' (amber lines say what is missing)' : '');
@@ -631,7 +680,9 @@ async function primeAll(teamId, name) {
     head.textContent = 'Priming stopped: ' + (e.message || e);
     oops(e);
   } finally {
-    frame.textContent = '';
+    frame.remove();
+    stop.remove();
+    bar.appendChild(closeRunBtn());
     RUN.busy = false;
     if (dlg && dlg.open) draw();
   }

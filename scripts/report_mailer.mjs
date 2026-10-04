@@ -261,7 +261,7 @@ export async function pdfOf(path, name, opt = {}) {
   try {
     await page.goto(SITE + path, { waitUntil: 'domcontentloaded', timeout: 120000 });
     /* built, and done priming (RAPM worked out for a league's season the first time can take minutes) */
-    await page.waitForFunction(() => window.__rpBuilt > 0 && !window.__rpBusy, null, { timeout: 600000 });
+    await page.waitForFunction(() => window.__rpBuilt > 0 && !window.__rpBusy && !window.__rpBuilding, null, { timeout: 600000 });
     await page.waitForTimeout(1500);
     await keepRapm(await page.evaluate(() => window.__rpRapm || null).catch(() => null));
     const dl = page.waitForEvent('download', { timeout: 300000 });
