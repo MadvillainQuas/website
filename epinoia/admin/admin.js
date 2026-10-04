@@ -1568,7 +1568,7 @@ async function verifyEmailCode(box) {
     if (/rate|limit|too many/i.test(m)) {
       return say('Too many tries for now. Wait a minute, then try again.', 'err');
     }
-    return say(m, 'err');
+    return say((window.epinoiaAuthText || String)(m), 'err');
   }
   input.value = '';
   box.style.display = 'none';

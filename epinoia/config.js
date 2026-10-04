@@ -417,3 +417,127 @@ window.epinoiaMode = function () {
   const c = window.EPINOIA_CONFIG;
   return c.supabaseAnonKey ? 'supabase' : c.defaultMode;
 };
+
+/* ============================================================================
+   A DISABLED ACCOUNT IS SIGNED OUT, AND TOLD WHY (migration 0230).
+
+   Disabling an account in the platform console stops it signing in, ends its
+   sessions, and the database refuses every signed-in request it makes
+   (api_gate). This is the page's half: a signed-in page asks account_status()
+   when it opens, when the tab comes back, when the session changes and every
+   ten minutes while it stays open. An account that has been disabled, or that
+   is on a network the console blocked, is signed out here and now, and a box
+   says why. The answer is remembered for a minute in this tab, so moving from
+   page to page costs nothing.
+
+   The same words for GoTrue's refusal at sign-in: epinoiaAuthText(message).
+   ============================================================================ */
+window.epinoiaAuthText = function (m) {
+  const s = String((m && m.message) || m || '');
+  if (/banned/i.test(s)) return 'This account has been disabled, so it cannot sign in. If you think that is a mistake, contact us.';
+  return s;
+};
+
+(function accountStatus() {
+  if (typeof document === 'undefined' || typeof location === 'undefined' || typeof fetch !== 'function'
+      || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+  if (/\/embed\//.test(location.pathname)) return;
+  const here = document.currentScript && document.currentScript.src;
+  const contact = (() => { try { return new URL('contact/', here || location.href).href; } catch (_) { return '/epinoia/contact/'; } })();
+  const SEEN = 'epinoia_acct_ok', SAID = 'epinoia_acct_refused';
+  let busy = false, off = false;
+
+  function token() {
+    try {
+      const m = String((window.EPINOIA_CONFIG || {}).supabaseUrl || '').match(/^https?:\/\/([^.]+)\./);
+      const j = m && JSON.parse(localStorage.getItem('sb-' + m[1] + '-auth-token') || 'null');
+      return (j && (j.access_token || (j.currentSession && j.currentSession.access_token))) || null;
+    } catch (_) { return null; }
+  }
+  function seen() { try { return JSON.parse(sessionStorage.getItem(SEEN) || 'null') || {}; } catch (_) { return {}; } }
+
+  const WORDS = {
+    disabled: ['This account has been disabled',
+               'It has been signed out, and it cannot sign in again or use the parts of EPINOIA that need an account.'],
+    blocked:  ['Accounts can’t be used from this network',
+               'Signing in from the network you are on has been blocked, so this account has been signed out.'],
+    gone:     ['This account no longer exists',
+               'It has been deleted, so it has been signed out.']
+  };
+  function tell(why) {
+    if (!document.body) { document.addEventListener('DOMContentLoaded', () => tell(why)); return; }
+    if (document.querySelector('.ep-refused')) return;
+    const w = WORDS[why] || WORDS.disabled;
+    if (!document.getElementById('ep-refused-css')) {
+      const st = document.createElement('style'); st.id = 'ep-refused-css';
+      st.textContent =
+        '.ep-refused{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:16px;background:rgba(2,8,5,.72);backdrop-filter:blur(3px)}' +
+        '.ep-refused .box{max-width:420px;width:100%;background:var(--panel,#0a1a13);color:var(--ink,#e6fff1);border:1px solid var(--rule-2,rgba(147,242,191,.44));' +
+        'border-radius:14px;padding:22px 22px 18px;text-align:center;font-family:var(--f-ui,system-ui,sans-serif);box-shadow:0 18px 60px rgba(0,0,0,.5)}' +
+        '.ep-refused svg{width:64px;height:64px;color:var(--flare,#ff5f6b);margin:0 auto 10px;display:block}' +
+        '.ep-refused h2{margin:0 0 8px;font:700 18px/1.25 var(--f-ui,system-ui,sans-serif)}' +
+        '.ep-refused p{margin:0 0 8px;font-size:14px;line-height:1.5;color:var(--ink-3,rgba(230,255,241,.84))}' +
+        '.ep-refused .row{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}' +
+        '.ep-refused a,.ep-refused button{font:600 13px/1 var(--f-ui,system-ui,sans-serif);padding:10px 16px;border-radius:999px;cursor:pointer;text-decoration:none;' +
+        'border:1px solid var(--rule-2,rgba(147,242,191,.44));background:transparent;color:var(--ink,#e6fff1)}' +
+        '.ep-refused button{background:var(--lume,#93f2bf);color:var(--on-accent,#04100b);border-color:transparent}';
+      document.head.appendChild(st);
+    }
+    const veil = document.createElement('div');
+    veil.className = 'ep-refused';
+    veil.setAttribute('role', 'alertdialog'); veil.setAttribute('aria-modal', 'true');
+    veil.setAttribute('aria-labelledby', 'ep-refused-h'); veil.setAttribute('aria-describedby', 'ep-refused-p');
+    veil.innerHTML =
+      '<div class="box"><svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4">' +
+      '<circle cx="32" cy="32" r="26"/><path d="M14 50 50 14"/>' +
+      (why === 'blocked' ? '<path d="M20 30a17 17 0 0 1 24 0M25 37a9 9 0 0 1 14 0" stroke-width="3"/><circle cx="32" cy="44" r="2.5" fill="currentColor" stroke="none"/>'
+                         : '<rect x="23" y="30" width="18" height="14" rx="2" stroke-width="3"/><path d="M27 30v-5a5 5 0 0 1 10 0v5" stroke-width="3"/>') +
+      '</svg><h2 id="ep-refused-h"></h2><p id="ep-refused-p"></p>' +
+      '<p>Everything public, from scores and tables to players and clubs, is still open to you. If you think this is a mistake, contact us.</p>' +
+      '<div class="row"><a class="ct"></a><button type="button">OK</button></div></div>';
+    veil.querySelector('h2').textContent = w[0];
+    veil.querySelector('#ep-refused-p').textContent = w[1];
+    const a = veil.querySelector('a.ct'); a.href = contact; a.textContent = 'Contact us';
+    const close = () => { veil.remove(); try { sessionStorage.removeItem(SAID); } catch (_) {} };
+    veil.querySelector('button').addEventListener('click', close);
+    veil.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    document.body.appendChild(veil);
+    veil.querySelector('button').focus();
+  }
+
+  async function check(timer) {
+    if (busy || off) return;
+    const t = token();
+    if (!t) return;
+    const mark = t.slice(-24), s = seen();
+    if (s.t === mark && Date.now() - (s.at || 0) < (timer ? 600000 : 60000)) return;
+    const c = window.EPINOIA_CONFIG || {};
+    if (!c.supabaseUrl || !c.supabaseAnonKey) return;
+    busy = true;
+    try {
+      const r = await fetch(c.supabaseUrl + '/rest/v1/rpc/account_status', {
+        method: 'POST', body: '{}',
+        headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }
+      });
+      if (r.status === 404) { off = true; return; }     // the database has not had 0230 yet
+      if (!r.ok) return;                                // an expired token, a hiccup: nothing to say
+      const a = await r.json();
+      const why = a && (a.disabled ? 'disabled' : a.blocked ? 'blocked' : a.gone ? 'gone' : null);
+      if (!why) { try { sessionStorage.setItem(SEEN, JSON.stringify({ t: mark, at: Date.now() })); } catch (_) {} return; }
+      try { sessionStorage.removeItem(SEEN); sessionStorage.setItem(SAID, why); } catch (_) {}
+      try { if (window.epinoiaSignOut) await window.epinoiaSignOut(); } catch (_) {}
+      tell(why);
+    } catch (_) { /* offline */ }
+    finally { busy = false; }
+  }
+  window.epinoiaAccountCheck = check;
+
+  /* said on the page that signed out, and once more if that page moved on before it could be read */
+  try { const said = sessionStorage.getItem(SAID); if (said && !token()) tell(said); } catch (_) {}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => check());
+  else check();
+  window.addEventListener('focus', () => check());
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  window.addEventListener('storage', e => { if (e.key && e.key.indexOf('-auth-token') !== -1) check(); });
+  setInterval(() => check(true), 20000);
+})();

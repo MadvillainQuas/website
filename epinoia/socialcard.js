@@ -205,7 +205,7 @@ const timeLabel = t => (t ? t.hh + ':' + t.mm : '');
 /* ---------------------------------------------------------- the numbers --- */
 const n0 = v => (v == null || isNaN(v) ? 0 : +v);
 /* A NIGHT'S WORK IS ITS BPM (2026-10-02, in place of Hollinger's game score): each player's box plus/minus in the game,
-   from both sides' lines (bpm.js gameFromBox, the sum the box score page shows). players: one game's player_game_stats
+   from both sides' lines (bpm.js game, as the box score page asks it). players: one game's player_game_stats
    rows ({ team_idx, stats }). -> Map row -> BPM. Without bpm.js on the page, or with one side's lines only, nobody has
    one, and the picks fall back to points. */
 const BPM_OF = new WeakMap();

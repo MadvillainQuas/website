@@ -16,12 +16,12 @@
 <title>Platform · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=628"></script>
-<script src="../../i18n.js?v=628" data-i18n-packs="admin platform"></script>
-<script src="../../glyphs.js?v=628" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=628">
-<link rel="stylesheet" href="../../kit/nav.css?v=628">
-<link rel="stylesheet" href="../jobbar.css?v=628">
+<script src="../../appmode.js?v=629"></script>
+<script src="../../i18n.js?v=629" data-i18n-packs="admin platform"></script>
+<script src="../../glyphs.js?v=629" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=629">
+<link rel="stylesheet" href="../../kit/nav.css?v=629">
+<link rel="stylesheet" href="../jobbar.css?v=629">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -315,9 +315,9 @@
   .gq-cap{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
   .gq-card .row{padding:0 10px 10px;margin:0}
 </style>
-<link rel="stylesheet" href="../../kit/suggest.css?v=628">
-<link rel="stylesheet" href="../../kit/newsrefresh.css?v=628">
-<link rel="stylesheet" href="../../kit/legibility.css?v=628">
+<link rel="stylesheet" href="../../kit/suggest.css?v=629">
+<link rel="stylesheet" href="../../kit/newsrefresh.css?v=629">
+<link rel="stylesheet" href="../../kit/legibility.css?v=629">
 </head>
 <body>
 <div class="ep-frame">
@@ -410,6 +410,21 @@
         <button id="acctPrev" class="ep-btn mini" type="button">previous</button>
         <span id="acctPage"></span>
         <button id="acctNext" class="ep-btn mini" type="button">next</button>
+      </div>
+
+      <!-- BLOCKED NETWORKS (migration 0230): a disabled account's network addresses. Every signed-in account is
+           refused on them, and an account made there after the block is disabled the first time it is used. -->
+      <div id="netBlocks" class="hide">
+        <h3>Blocked networks</h3>
+        <p class="lead">
+          Addresses blocked when an account was disabled, so the same person cannot come back with another email.
+          Any account on one is refused while it is there, and an account made there after the block is disabled
+          the first time it is used. Signed-out visitors can still read everything. Enabling the account lifts its
+          blocks; an IPv6 block covers the /64 a home or a phone keeps.
+        </p>
+        <div class="scroll"><table class="tbl"><thead><tr>
+          <th>Network</th><th>Blocked for</th><th>Since</th><th>Refused</th><th></th>
+        </tr></thead><tbody id="netBody"></tbody></table></div>
       </div>
 
       <h3>Grant a role</h3>
@@ -833,25 +848,25 @@
   </div>
 </div>
 
-<script src="../../config.js?v=628" defer></script>
-<script src="../../vendor/supabase.js?v=628" defer></script>
-<script src="../../access.js?v=628" defer></script>
-<script src="../access-ui.js?v=628" defer></script>
-<script src="../../newsrefresh.js?v=628" defer></script>
-<script src="../creators-ui.js?v=628" defer></script>
-<script src="../../homearenas.js?v=628" defer></script>
-<script src="arenas-ui.js?v=628" defer></script>
-<script src="analytics-ui.js?v=628" defer></script>
-<script src="links-ui.js?v=628" defer></script>
-<script src="go-photos-ui.js?v=628" defer></script>
-<script src="../suggestions-ui.js?v=628" defer></script>
-<script src="../jobbar.js?v=628" defer></script>
-<script src="reset-ui.js?v=628" defer></script>
-<script src="../../upload.js?v=628" defer></script>
-<script src="../../synergy.js?v=628" defer></script>
-<script src="reports-manager.js?v=628" defer></script>
-<script src="platform.js?v=628" defer></script>
-<script src="../../go/logo.js?v=628" defer></script>
-<script src="../../nav.js?v=628" defer></script>
+<script src="../../config.js?v=629" defer></script>
+<script src="../../vendor/supabase.js?v=629" defer></script>
+<script src="../../access.js?v=629" defer></script>
+<script src="../access-ui.js?v=629" defer></script>
+<script src="../../newsrefresh.js?v=629" defer></script>
+<script src="../creators-ui.js?v=629" defer></script>
+<script src="../../homearenas.js?v=629" defer></script>
+<script src="arenas-ui.js?v=629" defer></script>
+<script src="analytics-ui.js?v=629" defer></script>
+<script src="links-ui.js?v=629" defer></script>
+<script src="go-photos-ui.js?v=629" defer></script>
+<script src="../suggestions-ui.js?v=629" defer></script>
+<script src="../jobbar.js?v=629" defer></script>
+<script src="reset-ui.js?v=629" defer></script>
+<script src="../../upload.js?v=629" defer></script>
+<script src="../../synergy.js?v=629" defer></script>
+<script src="reports-manager.js?v=629" defer></script>
+<script src="platform.js?v=629" defer></script>
+<script src="../../go/logo.js?v=629" defer></script>
+<script src="../../nav.js?v=629" defer></script>
 </body>
 </html>

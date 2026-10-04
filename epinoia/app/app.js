@@ -851,7 +851,7 @@ async function verifyEmailCode(box) {
     if (/rate|limit|too many/i.test(m)) {
       return say('Too many tries for now. Wait a minute, then try again.', 'err');
     }
-    return say(m, 'err');
+    return say((window.epinoiaAuthText || String)(m), 'err');
   }
   input.value = '';
   box.style.display = 'none';
@@ -872,7 +872,7 @@ async function sendLink(to) {
   if (!error && offerEmailCode($('#send').closest('.row') || $('#send'), email, sendLink)) {
     return say('Email sent to ' + email + '. What to do next is below.', 'ok');
   }
-  say(error ? error.message : 'Link sent — check your inbox, then come back here.', error ? 'err' : 'ok');
+  say(error ? (window.epinoiaAuthText || String)(error.message) : 'Link sent — check your inbox, then come back here.', error ? 'err' : 'ok');
 }
 $('#send').addEventListener('click', () => sendLink());
 

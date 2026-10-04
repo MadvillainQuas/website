@@ -128,12 +128,18 @@ const realG = { id: 'real', tipoff_at: '2026-10-02T18:30:00Z', home_score: 71, a
 const pick = p => SC.performer({ game: realG, home: T[0], away: T[1], players: realPl, teamAdv: REAL.teamAdv, league, pick: p });
 const plus = v => (v > 0 ? '+' : '') + v.toFixed(1);
 const realBpm = SC.gameBPMs(realPl, REAL.teamAdv), boxBpm = SC.gameBPMs(realPl);
-ok('BPM is the game page\'s figure for each of the 21 players (each club\'s own pace and ratings from its game line), to a tenth', realPl.length === 21
-   && realPl.every(p => realBpm.has(p) && SC.bpmText(realBpm.get(p)) === plus(REAL.page[nameOf(p)].bpm)), realPl.filter(p => !realBpm.has(p) || SC.bpmText(realBpm.get(p)) !== plus(REAL.page[nameOf(p)].bpm)).map(p => nameOf(p) + ' ' + (realBpm.has(p) && SC.bpmText(realBpm.get(p))) + ' v ' + REAL.page[nameOf(p)].bpm));
+/* THE GAME PAGE'S BPM IS bpm.js game (Basketball-Reference's game BPM, 2026-10-04): game.js gameBPMRows hands it the game's lines and the
+   two clubs' own lines (pace, ratings, average lead), with the season's files where the page has them. The figures the page showed
+   before (REAL.page[].bpm) were the older per-100 box BPM's, so the graphic is held to the function the page calls, on the same lines */
+const pageBpm = (() => { const m = sandbox.EpinoiaBPM.game({ lines: realPl.map((p, i) => ({ id: 'p' + i, side: p.team_idx === 1 ? 1 : 0, stats: p.stats })), clubs: REAL.teamAdv, season: null });
+  return new Map(realPl.map((p, i) => [p, m.get('p' + i) && m.get('p' + i).bpm])); })();
+ok('BPM is the game page\'s figure for each of the 21 players (bpm.js game on the clubs\' own lines, as the page asks it), to a tenth', realPl.length === 21
+   && realPl.every(p => realBpm.has(p) && pageBpm.get(p) != null && SC.bpmText(realBpm.get(p)) === SC.bpmText(pageBpm.get(p))), realPl.filter(p => !realBpm.has(p) || SC.bpmText(realBpm.get(p)) !== SC.bpmText(pageBpm.get(p))).map(p => nameOf(p) + ' ' + (realBpm.has(p) && SC.bpmText(realBpm.get(p))) + ' v ' + SC.bpmText(pageBpm.get(p))));
 ok('...without the clubs\' lines it is the sum of the box\'s own (bpm.js gameFromBox: no team turnovers or rebounds, so a little different), and still a BPM for everyone',
    realPl.every(p => boxBpm.has(p)) && realPl.some(p => SC.bpmText(boxBpm.get(p)) !== SC.bpmText(realBpm.get(p))));
 ok('...a graphic names the same BPM wherever it is made: a final\'s leader and the player of the game say the page\'s figure', (() => { const r = SC.result({ game: realG, home: T[0], away: T[1], players: realPl, teamAdv: REAL.teamAdv, league });
-  return r.top.home.stats.bpm === plus(REAL.page['Morayo Soluade'].bpm) && r.top.away.stats.bpm === plus(REAL.page['Trent Donald Macdonnell Johnson'].bpm); })());
+  const of = n => SC.bpmText(pageBpm.get(realPl.find(p => nameOf(p) === n)));
+  return r.top.home.stats.bpm === of('Morayo Soluade') && r.top.away.stats.bpm === of('Trent Donald Macdonnell Johnson'); })());
 const mism = [];
 const norm = v => String(v).replace(/^[+-]0$/, '0');
 realPl.forEach(p => {
@@ -143,8 +149,8 @@ realPl.forEach(p => {
 });
 ok('USG%, TS%, STOCKS% (the page\'s STL% + BLK%), ON-COURT NET, ORTG and DRTG are what the Full stats tab shows, for each of the 21 players', !mism.length, mism.slice(0, 6));
 const kennedy = realPl.find(p => nameOf(p) === 'Thomas Kennedy'), ks = pick(kennedy).stats;
-ok('Thomas Kennedy, who was checked by eye: +14.7 BPM, 26.4 USG%, 51.4 TS%, 7.2 STOCKS%, net +18, ORTG -12, DRTG -30 (not the on-minus-off -23.8 and -47.3 of before)',
-   [ks.bpm, ks.usg, ks.ts, ks.stocks, ks.net, ks.ortg, ks.drtg].join() === '+14.7,26.4,51.4,7.2,+18,-12,-30', JSON.stringify(ks).slice(0, 300));
+ok('Thomas Kennedy, who was checked by eye: 26.4 USG%, 51.4 TS%, 7.2 STOCKS%, net +18, ORTG -12, DRTG -30 (not the on-minus-off -23.8 and -47.3 of before), and the game BPM +14.9 (+14.7 by the older box BPM)',
+   [ks.bpm, ks.usg, ks.ts, ks.stocks, ks.net, ks.ortg, ks.drtg].join() === '+14.9,26.4,51.4,7.2,+18,-12,-30', JSON.stringify(ks).slice(0, 300));
 ok('...the three on-court numbers agree with each other: net is ORTG less DRTG, to the rounding of the two', realPl.every(p => { const s = pick(p).stats, n = x => +String(x).replace('+', ''); return Math.abs(n(s.ortg) - n(s.drtg) - n(s.net)) <= 1; }));
 {
   /* the final's optional TEAM STATS: the box score's team totals (the clubs' own lines), which hold the rebounds and turnovers that belong
@@ -196,7 +202,7 @@ for (const size of ['portrait', 'square', 'story']) {
   ok(`${size}: all of it on the page (the seven labels fit their cells)`, !off.length && labs.every(e => e && e.size >= 9), off.map(e => e.t));
 }
 const values = draw(strip, 'portrait').words.map(e => e.t);
-ok('...each with the game page\'s figure under it: +14.7, 26.4, 51.4, 7.2, +18, -12, -30 (the minus a real minus)', ['+14.7', '26.4', '51.4', '7.2', '+18', '−12', '−30'].every(v => values.includes(v)), values.slice(0, 40));
+ok('...each with the game page\'s figure under it: +14.9, 26.4, 51.4, 7.2, +18, -12, -30 (the minus a real minus)', ['+14.9', '26.4', '51.4', '7.2', '+18', '−12', '−30'].every(v => values.includes(v)), values.slice(0, 40));
 const bare = SC.performer({ game: g1, home: T[0], away: T[1], players: pl, league });
 const bd = draw(bare, 'portrait');
 ok('a game with no on-court record or club lines: the cells it cannot fill are left out, not dashed', bd.words.some(e => e.t === 'BPM') && bd.words.some(e => e.t === 'TS%') && !bd.words.some(e => /ON-COURT/.test(e.t))

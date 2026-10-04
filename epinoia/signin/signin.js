@@ -262,7 +262,7 @@ async function verifyEmailCode(box) {
     if (/rate|limit|too many/i.test(m)) {
       return say('Too many tries for now. Wait a minute, then try again.', 'err');
     }
-    return say(m, 'err');
+    return say((window.epinoiaAuthText || String)(m), 'err');
   }
   input.value = '';
   box.style.display = 'none';
@@ -315,7 +315,7 @@ async function sendLink(to) {
                  'the hour — this is shared across the whole project, so it is ' +
                  'worth waiting rather than retrying.', 'err');
     }
-    return say(error.message, 'err');
+    return say((window.epinoiaAuthText || String)(error.message), 'err');
   }
   try { localStorage.setItem(RATE_KEY, String(Date.now())); } catch (_) {}
   if (offerEmailCode($('#send'), email, sendLink)) {
@@ -439,7 +439,7 @@ $('#signout').addEventListener('click', async () => {
   const q = new URLSearchParams(location.search);
   const err = h.get('error_description') || h.get('error') || q.get('error_description');
   if (!err) return;
-  say(decodeURIComponent(String(err).replace(/\+/g, ' ')), 'err');
+  say((window.epinoiaAuthText || String)(decodeURIComponent(String(err).replace(/\+/g, ' '))), 'err');
   /* keep only a next= this page would actually follow */
   const next = safeNext();
   history.replaceState(null, '', location.pathname +

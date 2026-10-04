@@ -190,8 +190,8 @@ const total0 = mins0.reduce((a, x) => a + x[1], 0);
 const weighted = mins0.reduce((a, [id, mn]) => a + (mn / (total0 / 5)) * m.get(id).bpm, 0);
 ok('the team adjustment holds: the roster\'s BPM weighted by its share of five positions\' minutes is 1.2 x its net rating',
    near(weighted, 1.2 * net0, 0.3), [weighted, 1.2 * net0]);
-ok('the box score page and the graphics read the same sum: gameFromBox is forTeam over teamInputs', /teamInputs\(T\[t\], sides\[t\]\)/.test(rd('epinoia', 'bpm.js')) &&
-   /B\.gameFromBox\(rows\.map/.test(rd('epinoia', 'socialcard.js')) && /B\.gameFromBox\(byGame\.get\(r\.game_id\) \|\| \[\]\)/.test(rd('epinoia', 'p', 'player.js')));
+ok('the box score page, the graphics and the game log read the same function: bpm.js game, forTeam over teamInputs on each side', /teamInputs\(T\[t\], sides\[t\]\)/.test(rd('epinoia', 'bpm.js')) &&
+   /B\.game\(\{ lines: rows\.map/.test(rd('epinoia', 'socialcard.js')) && /B\.game\(\{ lines: byGame\.get\(r\.game_id\) \|\| \[\]/.test(rd('epinoia', 'p', 'player.js')));
 ok('the Edge copy is regenerated from the page\'s (supabase/functions/_shared/bpm.js)', rd('supabase', 'functions', '_shared', 'bpm.js').includes('function gameFromBox(lines)'));
 
 /* ------------------------------------------------------------------ on the floor with --- */

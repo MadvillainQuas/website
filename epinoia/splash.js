@@ -153,7 +153,7 @@ function signIn(sb, cfg) {
         }
       });
       g.disabled = false;
-      if (error) msg(error.message, 'err');
+      if (error) msg((window.epinoiaAuthText || String)(error.message), 'err');
     });
   }
 
@@ -192,7 +192,7 @@ function signIn(sb, cfg) {
                    'the hour. It is shared across the project, so waiting beats ' +
                    'retrying.', 'err');
       }
-      return msg(error.message, 'err');
+      return msg((window.epinoiaAuthText || String)(error.message), 'err');
     }
     try { localStorage.setItem(RATE_KEY, String(Date.now())); } catch (_) {}
     msg('Link sent. Open it on this device — it signs you in here, not where ' +

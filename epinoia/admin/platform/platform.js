@@ -393,7 +393,7 @@ async function verifyEmailCode(box) {
     if (/rate|limit|too many/i.test(m)) {
       return say('Too many tries for now. Wait a minute, then try again.', 'err');
     }
-    return say(m, 'err');
+    return say((window.epinoiaAuthText || String)(m), 'err');
   }
   input.value = '';
   box.style.display = 'none';
@@ -492,6 +492,7 @@ async function stalledGames(att) {
 
 /* -------------------------------------------------------------- accounts --- */
 async function loadAccounts() {
+  loadBlocks();
   acctQuery = ($('#acctQ').value || '').trim();
   const rows = await rpc('platform_accounts',
     { p_search: acctQuery, p_limit: PAGE, p_offset: acctOffset });
@@ -551,7 +552,11 @@ async function loadAccounts() {
       ban.addEventListener('click', async () => {
         const r2 = await rpc('platform_set_account_banned',
           { p_user: r.user_id, p_banned: !r.banned });
-        if (r2) { say(r2 + ' — ' + r.email, 'ok'); loadAccounts(); }
+        if (r2) {
+          say(r2 + ' — ' + r.email, 'ok');
+          if (!r.banned) await offerBlock(r.user_id, r.email);
+          loadAccounts();
+        }
       });
       const del = el('button', 'ep-btn mini danger', 'delete');
       del.type = 'button';
@@ -818,7 +823,11 @@ async function openAccount(userId) {
     ban.addEventListener('click', async () => {
       const out = await rpc('platform_set_account_banned',
         { p_user: a.user_id, p_banned: !a.banned });
-      if (out) { say(out + ' — ' + a.email, 'ok'); redraw(); }
+      if (out) {
+        say(out + ' — ' + a.email, 'ok');
+        if (!a.banned) await offerBlock(a.user_id, a.email);
+        redraw();
+      }
     });
     const del = el('button', 'ep-btn mini danger', 'delete'); del.type = 'button';
     del.addEventListener('click', async () => {
@@ -826,7 +835,96 @@ async function openAccount(userId) {
     });
     acts.append(ban, del);
     host.appendChild(acts);
+    await drawNetworks(host, a, redraw);
   }
+}
+
+/* ---------------------------------------------------------------- networks ---
+   THE NETWORKS AN ACCOUNT WAS SEEN ON (migration 0230), so a disabled account's can be blocked and the same person
+   cannot come back with another email. Read with sb.rpc rather than rpc(): before 0230 there is simply nothing to show. */
+async function networksOf(user) {
+  const { data, error } = await sb.rpc('platform_account_networks', { p_user: user });
+  return error ? null : (data || []);
+}
+const sharedNote = n => n.others ? 'also used by ' + n.others + ' other account' + (n.others === 1 ? '' : 's') : '';
+
+async function offerBlock(user, email) {
+  const nets = await networksOf(user);
+  const open = (nets || []).filter(n => !n.blocked);
+  if (!open.length) return;
+  const shared = open.filter(n => n.others > 0).length;
+  const lines = open.slice(0, 8).map(n => '  ' + n.ip + '  · last seen ' + fmtDate(n.last_seen) +
+                                          (n.others ? '  · ' + sharedNote(n) : ''));
+  if (open.length > 8) lines.push('  …and ' + (open.length - 8) + ' more');
+  const ask = 'Also block the network' + (open.length === 1 ? '' : 's') + ' ' + email + ' used?\n\n' + lines.join('\n') +
+    '\n\nEvery account is refused on a blocked network while it is there, and an account made there from now on is ' +
+    'disabled the first time it is used. Signed-out visitors can still read everything.' +
+    (shared ? '\n\nCareful: ' + shared + ' of ' + (open.length === 1 ? 'it is' : 'them ' + (shared === 1 ? 'is' : 'are')) +
+              ' shared with other accounts (a household, a school, an office or a mobile network). They would be refused too.' : '');
+  if (!confirm(ask)) return;
+  const out = await rpc('platform_block_networks', { p_user: user, p_ips: null });
+  if (out) say(out + ' — ' + email, 'ok');
+}
+
+async function drawNetworks(host, a, redraw) {
+  const nets = await networksOf(a.user_id);
+  if (!nets) return;
+  host.appendChild(el('h3', null, 'Networks it was seen on'));
+  if (!nets.length) {
+    host.appendChild(el('div', 'lead', 'None noted yet: an account\u2019s network is noted when it opens a page signed in.'));
+    return;
+  }
+  const t = el('table', 'tbl');
+  const hr = t.createTHead().insertRow();
+  ['Address', 'First seen', 'Last seen', 'Shared', ''].forEach(x => hr.appendChild(el('th', null, x)));
+  const tb = t.createTBody();
+  nets.forEach(n => {
+    const tr = tb.insertRow();
+    tr.insertCell().appendChild(el('span', 'nm', n.ip));
+    tr.insertCell().appendChild(el('span', 'mt', fmtDate(n.first_seen)));
+    tr.insertCell().appendChild(el('span', 'mt', fmtDate(n.last_seen)));
+    tr.insertCell().appendChild(el('span', 'mt', sharedNote(n) || 'no'));
+    const ac = tr.insertCell(); ac.className = 'ac';
+    if (n.blocked) ac.appendChild(el('span', 'pill', 'blocked'));
+    else if (a.banned) {
+      const b = el('button', 'ep-btn mini danger', 'block'); b.type = 'button';
+      b.addEventListener('click', async () => {
+        if (n.others && !confirm(n.ip + ' is ' + sharedNote(n) + '. Blocking it refuses them too while they are on it. Block it?')) return;
+        const out = await rpc('platform_block_networks', { p_user: a.user_id, p_ips: [n.ip] });
+        if (out) { say(out + ' — ' + a.email, 'ok'); redraw(); }
+      });
+      ac.appendChild(b);
+    }
+  });
+  const box = el('div', 'scroll'); box.appendChild(t);
+  host.appendChild(box);
+  if (!a.banned) host.appendChild(el('div', 'lead', 'Only a disabled account\u2019s networks can be blocked.'));
+}
+
+async function loadBlocks() {
+  const wrap = $('#netBlocks');
+  if (!wrap) return;
+  const { data, error } = await sb.rpc('platform_ip_blocks');
+  const rows = error ? [] : (data || []);
+  wrap.classList.toggle('hide', !rows.length);
+  const body = $('#netBody'); body.textContent = '';
+  rows.forEach(b => {
+    const tr = body.insertRow();
+    tr.insertCell().appendChild(el('span', 'nm', String(b.net).replace(/\/32$/, '')));
+    const who = tr.insertCell();
+    who.appendChild(el('span', null, b.for_email || 'a deleted account'));
+    if (b.accounts_since) who.appendChild(el('div', 'mt', b.accounts_since + ' other account' + (b.accounts_since === 1 ? '' : 's') + ' seen on it since'));
+    tr.insertCell().appendChild(el('span', 'mt', fmtDate(b.blocked_at)));
+    tr.insertCell().appendChild(el('span', 'mt', b.refused ? b.refused + (b.last_refused ? ' · last ' + fmtDate(b.last_refused) : '') : 'none yet'));
+    const ac = tr.insertCell(); ac.className = 'ac';
+    const un = el('button', 'ep-btn mini', 'unblock'); un.type = 'button';
+    un.addEventListener('click', async () => {
+      if (!confirm('Unblock ' + b.net + '? Accounts on it can sign in and be used again.')) return;
+      const out = await rpc('platform_unblock_network', { p_net: b.net });
+      if (out) { say(out, 'ok'); loadBlocks(); }
+    });
+    ac.appendChild(un);
+  });
 }
 
 /* Leagues or clubs, by name, for whichever kind of scope the role takes. */
