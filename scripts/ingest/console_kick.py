@@ -132,6 +132,36 @@ def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill"
         return f"kick failed: {exc}"[:200]
 
 
+MAIL_EVERY_S = 35 * 60          # the report mailer is meant to run every half hour: no run started for this long is one that GitHub's cron dropped
+
+
+def mail_cadence(env=None, now: float | None = None, send=dispatch, opener=None) -> str:
+    """THE REPORT MAILER'S CRON, KEPT BY THE LIVE LANE (2026-10-04). report-mail.yml's own schedule (every half hour, and an hourly
+    floor) went an hour and a half without a run on a Sunday, and a Sunday email held until an hour after an opponent's game
+    (sundayHold) went out an hour late. So the lane that runs around the clock looks every two minutes whether the mailer has had
+    a run in MAIL_EVERY_S, and starts one when not. Never raises; nothing at all without a token and a repository."""
+    try:
+        e = env if env is not None else os.environ
+        token = e.get("GH_TOKEN") or e.get("GITHUB_TOKEN")
+        repo = e.get("GITHUB_REPOSITORY")
+        if not (token and repo):
+            return "not set up"
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{repo}/actions/workflows/{REPORT_WORKFLOW}/runs?per_page=1",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+                     "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "epinoia-console-kick"})
+        with (opener or urllib.request.urlopen)(req, timeout=20) as r:
+            runs = (json.loads(r.read() or b"{}") or {}).get("workflow_runs") or []
+        t = time.time() if now is None else now
+        last = _at(runs[0].get("created_at")) if runs else None
+        if last is not None and t - last < MAIL_EVERY_S:
+            return "mailer ran recently"
+        ok, said = send(repo, token, e.get("CONSOLE_JOBS_REF") or "main", REPORT_WORKFLOW)
+        return "started the mailer" if ok else "dispatch failed: " + said
+    except Exception as exc:
+        return f"mail cadence failed: {exc}"[:200]
+
+
 class Rest:
     """The two calls this needs, over PostgREST with the service key, and nothing to install."""
 

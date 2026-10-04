@@ -100,9 +100,11 @@ export function nextWeek(tz, now = new Date()) {
    opponents' games of that Sunday ({ status, finalised_at }); `cutoff`: the instant to stop waiting. Answers { wait, why }. */
 export const SUNDAY_AFTER_MS = 36e5;
 export const SUNDAY_CUTOFF_MIN = 23 * 60 + 30;
+/* a game still "scheduled" or "live" this long after its tip-off is one the feed lost (or never started): it is not waited for */
+export const SUNDAY_STALE_MS = 5 * 36e5;
 export function sundayHold(games, now, cutoff) {
   if (now.getTime() >= cutoff.getTime()) return { wait: false, why: 'past the cut-off' };
-  const open = games.filter(g => g.status === 'scheduled' || g.status === 'live');
+  const open = games.filter(g => (g.status === 'scheduled' || g.status === 'live') && !(g.tipoff_at && now.getTime() - Date.parse(g.tipoff_at) > SUNDAY_STALE_MS));
   if (open.length) return { wait: true, why: open.length + ' game(s) still to finish' };
   const ends = games.filter(g => g.status === 'final' && g.finalised_at).map(g => Date.parse(g.finalised_at));
   const last = ends.length ? Math.max.apply(null, ends) : 0;
@@ -629,7 +631,7 @@ async function one(sub, team) {
   const oppIds = opponentsOf(team, ahead).uniq.map(o => o.oid);
   if (oppIds.length) {
     const B = sundayBounds(tz);
-    const today = await rest(`games?or=(home_team_id.in.(${oppIds.join(',')}),away_team_id.in.(${oppIds.join(',')}))&status=in.(scheduled,live,final)&tipoff_at=gte.${B.from.toISOString()}&tipoff_at=lt.${B.to.toISOString()}&select=id,status,finalised_at`);
+    const today = await rest(`games?or=(home_team_id.in.(${oppIds.join(',')}),away_team_id.in.(${oppIds.join(',')}))&status=in.(scheduled,live,final)&tipoff_at=gte.${B.from.toISOString()}&tipoff_at=lt.${B.to.toISOString()}&select=id,status,tipoff_at,finalised_at`);
     const hold = sundayHold(today, new Date(), sundayCutoff(tz));
     if (hold.wait) { console.log('sunday', club, ': waiting,', hold.why); return; }
     if (today.length) console.log('sunday', club, ': sending,', hold.why);

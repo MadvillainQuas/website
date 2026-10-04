@@ -132,6 +132,8 @@ console.log('\nan opponent playing on the Sunday: the email waits for it');
   ok('...finished an hour ago: go', !M.sundayHold([fin], at('2026-10-11T16:00:00Z'), cut).wait);
   ok('two opponents: the LAST game decides', M.sundayHold([fin, { status: 'final', finalised_at: '2026-10-11T17:30:00Z' }], at('2026-10-11T18:00:00Z'), cut).wait);
   ok('a game that never finalises does not hold the email past the cut-off', !M.sundayHold([{ status: 'live' }], at('2026-10-11T22:31:00Z'), cut).wait);
+  ok('a game still live five hours after its tip-off is one the feed lost: not waited for', !M.sundayHold([{ status: 'live', tipoff_at: '2026-10-11T09:00:00Z' }], at('2026-10-11T15:00:00Z'), cut).wait);
+  ok('...but a game that tipped off two hours ago is', M.sundayHold([{ status: 'live', tipoff_at: '2026-10-11T13:00:00Z' }], at('2026-10-11T15:00:00Z'), cut).wait);
   const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
   ok('the Sunday round asks it before sending, and says so in the log', src.includes('sundayHold(today, new Date(), sundayCutoff(tz))') && src.includes('waiting,'));
 }

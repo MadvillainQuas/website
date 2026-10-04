@@ -307,5 +307,28 @@ RM = open(os.path.join(ROOT, ".github", "workflows", "report-mail.yml")).read()
 ok("report-mail.yml can be started by dispatch, with no input needed, and has an hourly slot as its floor beside the half-hourly one",
    "workflow_dispatch:" in RM and "required: true" not in RM and "cron: '7,37 * * * *'" in RM and "cron: '22 * * * *'" in RM, RM[:900])
 
+# ---- the lane keeps the mailer's cron (mail_cadence) ----
+class _R:
+    def __init__(self, body): self.b = body; self.status = 200
+    def read(self): return self.b
+    def __enter__(self): return self
+    def __exit__(self, *x): return False
+def _runs(created):
+    return lambda req, timeout=0: _R(json.dumps({"workflow_runs": [{"created_at": created}] if created else []}).encode())
+ENV = {"GH_TOKEN": "t", "GITHUB_REPOSITORY": "o/r"}
+NOW = 1_800_000_000.0
+def _iso(sec):
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(sec, timezone.utc).isoformat()
+sent = []
+fake = lambda repo, token, ref, wf: (sent.append(wf) or True, "HTTP 204")
+ok("the mailer ran 10 minutes ago: nothing is started", K.mail_cadence(ENV, NOW, fake, _runs(_iso(NOW - 600))) == "mailer ran recently" and not sent)
+ok("no run for 90 minutes (cron dropped): report-mail.yml is started", K.mail_cadence(ENV, NOW, fake, _runs(_iso(NOW - 5400))) == "started the mailer" and sent == ["report-mail.yml"], sent)
+ok("it has never run: started", K.mail_cadence(ENV, NOW, fake, _runs(None)) == "started the mailer")
+ok("no token: nothing, and no error", K.mail_cadence({}, NOW, fake, _runs(None)) == "not set up")
+ok("a failed dispatch is said, not raised", K.mail_cadence(ENV, NOW, lambda *a: (False, "HTTP 403"), _runs(None)) == "dispatch failed: HTTP 403")
+ok("the live lane calls it beside the console's kick", "console_kick.mail_cadence()" in open(os.path.join(ROOT, "scripts", "ingest", "run_ingest.py"), encoding="utf-8").read())
+
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

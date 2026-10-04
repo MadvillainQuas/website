@@ -2426,6 +2426,9 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             said = console_kick.kick(sb)
             if said.startswith("started") or said.startswith("dispatch failed"):
                 print(f"{now.strftime('%H:%M:%S')}Z console jobs: {said}")
+            said = console_kick.mail_cadence()
+            if said.startswith("started") or said.startswith("dispatch failed"):
+                print(f"{now.strftime('%H:%M:%S')}Z report mailer: {said}")
         if time.time() >= recheck:
             due, next_tip = live_due(sb, fiba, now)
             due = [(s, r) for s, r in due if str(r["external_id"]) not in finished and in_shard(r["external_id"], shard)]
