@@ -135,7 +135,7 @@ RM._t.use({ from });
   ok('the manager never searches the whole site for a match (no site_search)', !/site_search|rpc\(/.test(src));
   ok('it can always be closed: the title bar and its close button never scroll away, its size takes the page\'s zoom back out (so it fits the screen), Esc or a click outside closes it',
      /\.rm\[open\]\{ display:flex; flex-direction:column \}/.test(src) && /\.rm-b\{ flex:1 1 auto; min-height:0;/.test(src) && /max-height:calc\(92vh \/ var\(--rmz, 1\)\)/.test(src) &&
-     /getComputedStyle\(document\.body\)\.zoom/.test(src) && /if \(e\.target === dlg\) dlg\.close\(\)/.test(src) && /aria-label', 'Close the reports manager'/.test(src));
+     /getComputedStyle\(document\.body\)\.zoom/.test(src) && /if \(e\.target === dlg\) closeAsked\(\)/.test(src) && /function closeAsked\(\)/.test(src) && /aria-label', 'Close the reports manager'/.test(src));
   ok('every file input takes any number of CSVs at once: the manager\'s (each club\'s and the drop box) and the report tab\'s',
      /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true;/.test(src) && (src.match(/filesButton\(/g) || []).length >= 3 &&
      /createTextNode\('Add Synergy CSVs'\)/.test(read('epinoia', 'report.js')) && /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true; inp\.hidden = true;/.test(read('epinoia', 'report.js')));
@@ -143,10 +143,27 @@ RM._t.use({ from });
   ok('...kept one a player (a new file replaces the old), the numbers only', /from\('synergy_profiles'\)\.upsert\(\{ player_id: x\.pick\.id, profile: S\.pack\(S\.profile\(x\.p\)\)/.test(src) && /onConflict: 'player_id'/.test(src));
   ok('PRIME REPORT opens a club\'s or a player\'s report primed (report.js ?prime=1)', /a\.href = SITE \+ k \+ '\/\?' \+ k \+ '=' \+ encodeURIComponent\(id\) \+ '&tab=report&prime=1'/.test(src) &&
      /primeLink\('PRIME REPORT', r\.player_id, pn, stored\.get\('player:' \+ r\.player_id\), 'p'\)/.test(src));
-  ok('...an address\'s club offers it for each club it plays in the next two weeks, or for its own report', /opps\.forEach\(o => primes\.appendChild\(primeLink\(o\.name/.test(src) &&
+  ok('...an address\'s club offers it for each club it plays in the next two weeks, or for its own report', /opps\.forEach\(o => \{ primes\.appendChild\(primeLink\(o\.name/.test(src) &&
      /primes\.appendChild\(primeLink\('own report: ' \+ \(t\.name \|\| 'the club'\), r\.team_id/.test(src) && /no games in the next two weeks/.test(src));
   ok('an address with all its clubs: one club or several added at once, another added to it, the ZIP switched for the address',
      /\[\.\.\.picked\.keys\(\)\]\.map\(team_id => \(\{ email: e, team_id/.test(src) && /onConflict: 'email,team_id'/.test(src) && /update\(\{ player_zip: cb\.checked \}\)\.in\('id', list\.map\(r => r\.id\)\)/.test(src));
+  ok('PRIME CLUB + PLAYERS beside every club PRIME (each opponent, the own report, each club of the Synergy tab)',
+     (src.match(/primeAllBtn\(/g) || []).length >= 4 && /rm-prime-all/.test(src));
+  ok('...it primes the club report then each ZIP player’s report, one at a time, in a window of its own (not a frame inside the zoomed console) that waits for the report’s own Primed line',
+     /&tab=report&prime=1', win\)/.test(src) && /window\.open\('about:blank', 'epinoia-prime'/.test(src) && !/el\('iframe'\)/.test(src) && /querySelector\('\.rp-primed'\)/.test(src) && /for \(let i = 0; i < jobs\.length && !RUN\.stop; i\+\+\)/.test(src));
+  ok('...closing the manager mid-run asks first', /Reports are being primed\. Close and stop them\?/.test(src));
+  ok('a stored report has "delete stored" (the file, then its row), and a club "delete stored (club + players)"',
+     /'delete stored'/.test(src) && /'delete stored \(club \+ players\)'/.test(src) && /storage\.from\('primed'\)\.remove\(\[r\.path\]\)/.test(src) && /from\('primed_reports'\)\.delete\(\)/.test(src));
+  {
+    const zp = RM._t.zipPlayers;
+    const T = 'club', rows = [{ pid: 'a', team: T, min: 30 * 60000 }, { pid: 'a', team: T, min: 20 * 60000 }, { pid: 'b', team: T, min: 9 * 60000 },
+      { pid: 'c', team: T, min: 15 * 60000 }, { pid: 'd', team: 'other', min: 40 * 60000 }, { pid: 'e', team: T, min: 0 }];
+    const got = zp(rows, T, new Set(['c']), 1);
+    ok('...the players are the mailer’s: this club only, 10+ minutes a game, not released, most minutes first', got.map(x => x.id).join() === 'a' && got[0].mpg === 25 && JSON.stringify(M.zipPlayers(rows, T, new Set(['c']), 10, 1)) === JSON.stringify(got), got);
+    ok('...and more than two games: nobody here has three, so no ZIP (the manager and the mailer alike)', zp(rows, T, new Set(['c'])).length === 0 && M.zipPlayers(rows, T, new Set(['c'])).length === 0);
+    const three = rows.concat([{ pid: 'a', team: T, min: 15 * 60000 }]);
+    ok('...a player with three games of 10+ minutes goes in', zp(three, T, new Set()).map(x => x.id).join() === 'a' && M.zipPlayers(three, T, new Set()).map(x => x.id).join() === 'a');
+  }
   const html = read('epinoia', 'admin', 'platform', 'index.html'), js = read('epinoia', 'admin', 'platform', 'platform.js');
   ok('the console opens it from Reports by email, with the Synergy reader on the page', /id="mailManage"/.test(html) && /<script src="\.\.\/\.\.\/synergy\.js\?v=\d+" defer><\/script>/.test(html) &&
      /<script src="reports-manager\.js\?v=\d+" defer><\/script>/.test(html) && /EpinoiaReportsManager\.open\(sb, \{ say, oops, sendNow, sendLine, reload: loadMail \}\)/.test(js));
@@ -191,7 +208,7 @@ console.log('\nwhose reports go in');
     { pid: 'd', team: 'T', min: 0 }, { pid: 'd', team: 'T', min: m(12) },                  // a DNP does not count as a game
     { pid: 'e', team: 'X', min: m(40) },                                                   // the other side of the game
     { pid: 'f', team: 'T', min: m(10) }];                                                  // exactly ten
-  const got = M.zipPlayers(rows, 'T', new Set(['c']));
+  const got = M.zipPlayers(rows, 'T', new Set(['c']), 10, 1);
   ok('everyone who played for the club at 10 minutes a game or more, the most minutes first', got.map(p => p.id).join(' ') === 'a d f' && got[0].mpg === 29 && got[1].games === 1, got);
   ok('...under 10 a game left out (9.75), the released left out, the other side\'s players left out', !got.some(p => ['b', 'c', 'e'].includes(p.id)));
   ok('...the threshold is 10', M.MIN_MPG === 10);
@@ -206,6 +223,8 @@ const G = (id, h, a, hn, an, t) => ({ id, home_team_id: h, away_team_id: a, home
 const WEEK = [G('w1', 'P', TEAM, 'South East Melbourne Phoenix', 'Illawarra Hawks', '2026-10-13T18:00:00Z'), G('w2', TEAM, 'J', 'Illawarra Hawks', 'Tasmania JackJumpers', '2026-10-18T14:00:00Z')];
 const FINALS = [{ id: 'f1', home_team_id: 'P', away_team_id: 'X' }, { id: 'f2', home_team_id: 'Y', away_team_id: 'P' }, { id: 'f3', home_team_id: 'J', away_team_id: TEAM }, { id: 'f4', home_team_id: TEAM, away_team_id: 'Z' }];
 const min = x => x * 60000;
+/* these fixtures' players have one or two games: the run below is held to the old floor (ZIP_MIN_GAMES), the 3-game rule is checked above */
+process.env.ZIP_MIN_GAMES = '1';
 const PGS = [
   { game_id: 'f1', player_uuid: 'pP1', team_idx: 0, min: min(31) }, { game_id: 'f2', player_uuid: 'pP1', team_idx: 1, min: min(29) },
   { game_id: 'f1', player_uuid: 'pP2', team_idx: 0, min: min(8) }, { game_id: 'f2', player_uuid: 'pP2', team_idx: 1, min: min(7) },
@@ -300,7 +319,7 @@ function world(st) {
   ok('...drawn after the Sunday email went (it never waits on them)', calls.findIndex(c => c.k === 'mail') < calls.findIndex(c => c.k === 'pdf' && c.path.startsWith('/epinoia/p/')));
   ok('the season is the club\'s league\'s newest, its final games in that season\'s competitions', calls.some(c => c.k === 'seasons' && c.order === 'starts_on.desc') && calls.filter(c => c.k === 'season').every(c => c.comps === 'in.(C1,C2)'));
   ok('...the minutes read lean (min out of the stats) and a page at a time', calls.filter(c => c.k === 'pgs').every(c => /min:stats->min/.test(c.select) && c.limit === '1000'));
-  ok('the reply names each club\'s players and their minutes, and says who is left out', /Mitch Creek <span[^>]*>\(30\.0 mpg\)/.test(re.html) && /released and those averaging under 10 minutes a game/.test(re.html) &&
+  ok('the reply names each club\'s players and their minutes, and says who is left out', /Mitch Creek <span[^>]*>\(30\.0 mpg\)/.test(re.html) && /released, those averaging under 10 minutes a game and those with two games or fewer/.test(re.html) &&
      /Every player’s report: South East Melbourne Phoenix, Tasmania JackJumpers and Illawarra Hawks/.test(re.html) && />ZIP<\/span>South East Melbourne Phoenix: 2 player reports/.test(re.html));
   ok('...and does not say they are kept in the dashboard (only the club reports are)', /these player reports come in this email/.test(re.html) && !/Every report is also kept/.test(re.html) && /Every report is also kept/.test(sun.html));
   const logs = calls.filter(c => c.k === 'log');
@@ -367,7 +386,12 @@ console.log('\nPRIME REPORT stores it for sending (0229)');
 }
 {
   const rp = read('epinoia', 'report.js');
-  ok('the report page\'s PRIME REPORT stores the PDF for sending in place of downloading it', /if \(dl\) results\.push\(await storeForSending\(\)\);/.test(rp) && !/if \(dl\) await download\('pdf'\)/.test(rp));
+  ok('the report page\'s PRIME REPORT stores the PDF for sending in place of downloading it', /if \(dl && !thin && n > 0\) results\.push\(await storeForSending\(\)\);/.test(rp) && !/if \(dl\) await download\('pdf'\)/.test(rp));
+  ok('...only the FINISHED report: PRIME waits for the newest build, and a one-page player report (the cover alone) is not stored',
+     /state\.lastDone !== state\.running/.test(rp) && /state\.lastDone = run;/.test(rp) && /const thin = o\.kind === 'player' && n < 2;/.test(rp));
+  ok('...the mailer waits for no build in flight before it takes a PDF', /!window\.__rpBuilding/.test(read('scripts', 'report_mailer.mjs')));
+  ok('PRIME CLUB + PLAYERS opens a checklist first: each player’s Synergy file kept or not, add CSVs, then start priming; closable when done',
+     (rmSrc => /'start priming'/.test(rmSrc) && /add CSVs for these players/.test(rmSrc) && /function closeRunBtn/.test(rmSrc))(read('epinoia', 'admin', 'platform', 'reports-manager.js')));
   ok('...drawn at email weight, in the private bucket under its kind and id, its row written, then READ BACK',
      /scale: 2, quality: 0\.84/.test(rp) && /c\.storage\.from\('primed'\)\.upload\(path, new root\.Blob\(\[bytes\], \{ type: 'application\/pdf' \}\), \{ upsert: true/.test(rp) &&
      /const path = o\.kind \+ '\/' \+ o\.id \+ '\.pdf';/.test(rp) && /from\('primed_reports'\)\.upsert\(row, \{ onConflict: 'kind,ref_id' \}\)/.test(rp) && /from\('primed_reports'\)\.select\('bytes,primed_at'\)/.test(rp));

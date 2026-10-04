@@ -52,6 +52,17 @@ const G = (id, h, a, hn, an, at, venue) => ({ id, home_team_id: h, away_team_id:
     /fortnightly report week/.test(E.html) && /Hi Sam,/.test(E.html));
   const off = M.sundayEmail({ sub: {}, team, games: [], ownDue: true, tz });
   ok('an off week sends the fortnightly report alone, and says so', off.subject === 'Illawarra Hawks’ fortnightly team report' && /no games for Illawarra Hawks/.test(off.html) && /Hello,/.test(off.html));
+  /* a club that has not played this season: no club report on it (the game stays in the email, said to have none) */
+  const nr = M.sundayEmail({ sub, team, games, ownDue: false, tz, monday: new Date('2026-10-04T13:00:00Z'), noReport: ['J'] });
+  ok('an opponent that has not played: no report on it, the subject names only the one there is, the email says why',
+    nr.subject === 'Your week ahead: scouting report on South East Melbourne Phoenix' && !/Scouting report: Tasmania JackJumpers/.test(nr.html) &&
+    /No scouting report on Tasmania JackJumpers yet: they have not played a game this season/.test(nr.html) && /three games/.test(nr.html), nr.subject);
+  const onlyOwn = M.sundayEmail({ sub, team, games: [games[1]], ownDue: true, tz, noReport: ['J'] });
+  ok('...and when it is the only opponent, the own report goes alone, saying there is no scouting report this week',
+    !/Scouting report:/.test(onlyOwn.html) && /Tasmania JackJumpers, who has not played a game this season yet, so there is no scouting report this week/.test(onlyOwn.html), onlyOwn.html.slice(0, 300));
+  const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
+  ok('the mailer asks hasPlayed of every opponent and of the club itself before its own report',
+    /if \(await hasPlayed\(o\.oid\)\) uniq\.push\(o\)/.test(src) && /> 13 \* 864e5 && await hasPlayed\(team\.id\)/.test(src) && /status=eq\.final&competition_id=in\./.test(src));
   ok('three or more opponents read as a list', M.listOf(['A', 'B', 'C']) === 'A, B and C' && M.possessive('Adelaide 36ers') === 'Adelaide 36ers’' && M.possessive('Cairns') === 'Cairns’');
   const g = Object.assign(G('9', 'T', 'A', 'Illawarra Hawks', 'Adelaide 36ers', '2026-10-02T09:30:00Z', 'WIN Entertainment Centre'), { home_score: 114, away_score: 94,
     competitions: { name: 'NBL', seasons: { leagues: { name: 'NBL' } } } });

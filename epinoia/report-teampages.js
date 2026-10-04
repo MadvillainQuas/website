@@ -484,7 +484,7 @@ function modules(ctx) {
         SC.parts(list, which).map(p => (p.title ? '<tr class="rp-zk"' + (p.kind ? ' data-k="' + p.kind + '"' : '') + '><td colspan="8"><i></i>' + esc(p.title) + '</td></tr>' : '') +
           p.rows.map(r => zrow(mo.get(r.k || r.label), md.get(r.k || r.label), r.k || r.label)).join('')).join('')).join('');
       out.push(block(title(c.vs ? 'Both teams, zone by zone' : 'Both ends, zone by zone', c.vs ? 'FG% green where it beat the zone’s break-even, red where it fell short' : 'FG% green where it beats the zone’s break-even (offence) or holds opponents under it (defence)') +
-        '<table class="rp-tbl rp-zt rp-zz"><colgroup><col class="z"><col span="6"><col class="be"></colgroup><thead>' +
+        '<table class="rp-tbl rp-zt rp-zz"><colgroup><col class="z">' + '<col>'.repeat(6) + '<col class="be"></colgroup><thead>' +
         '<tr><th class="l" rowspan="2">zone</th><th colspan="3" class="rp-zh-a">' + nameA + '</th><th colspan="3" class="rp-zh-b">' + nameB + '</th><th rowspan="2">break-even</th></tr>' +
         '<tr><th>made/att</th><th>% of shots</th><th>FG%</th><th>made/att</th><th>% of shots</th><th>FG%</th></tr></thead><tbody>' + zbody + '</tbody></table>'));
       /* the box score's half-court and transition cards over the season, at both ends (situations.js on every log) */

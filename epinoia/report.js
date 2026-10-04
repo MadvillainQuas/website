@@ -1490,7 +1490,15 @@ function ui(state) {
     return done;
   }
 
-  async function rebuild() {
+  /* every build is kept as state.current; one that a newer build overtakes stops where it is (R.stale), so whoever needs the
+     WHOLE report (PRIME) waits until the newest build has finished: state.lastDone === state.running */
+  function rebuild() {
+    root.__rpBuilding = (root.__rpBuilding || 0) + 1;            // the mailer waits for none in flight before it takes the PDF
+    const p = rebuildRun();
+    p.finally(() => { root.__rpBuilding = Math.max(0, (root.__rpBuilding || 1) - 1); }).catch(() => null);
+    return (state.current = p);
+  }
+  async function rebuildRun() {
     const run = ++state.running;
     say('building…');
     try {
@@ -1540,6 +1548,7 @@ function ui(state) {
       stand(pagesNew);
       (state.onBuilt || []).forEach(f => { try { f(); } catch (_) { /* a label */ } });
       /* the mailer waits for this before it asks for the PDF */
+      state.lastDone = run;
       root.__rpBuilt = (root.__rpBuilt || 0) + 1;
     } catch (e) {
       warn(e);
@@ -1598,10 +1607,15 @@ function ui(state) {
         try { const r = await f(); if (r && r.text) results.push(r); } catch (e) { warn(e); results.push({ ok: false, text: 'a step failed: ' + (e.message || e) }); } } })();
       /* the mailer's copy never waits on it for ever: past PRIME_CAP_MS it is drawn with what is there (RAPM blank) */
       await (root.EPINOIA_RP_BOT ? Promise.race([primers, new Promise(r => setTimeout(r, PRIME_CAP_MS))]) : primers);
+      /* THE FINISHED REPORT, not a half one: the page hands its data over as it arrives and each piece asks for a rebuild,
+         which stops the one before it part-way (2026-10-04: player reports stored as their cover alone). Wait for the newest. */
       await rebuild();
+      for (let i = 0; i < 40 && state.lastDone !== state.running; i++) await (state.current || Promise.resolve()).catch(() => null);
       const n = pages.querySelectorAll('.rp-pg').length;
-      results.push({ ok: n > 0, text: n ? n + (n === 1 ? ' page' : ' pages') + ' built' : 'no pages were built' });
-      if (dl) results.push(await storeForSending());
+      /* a player report is never one page (the cover alone means its data did not arrive): said, and not stored for sending */
+      const thin = o.kind === 'player' && n < 2;
+      results.push({ ok: n > 0 && !thin, text: n ? n + (n === 1 ? ' page' : ' pages') + ' built' + (thin ? ' — the cover alone: his numbers had not loaded, so it was NOT stored; prime it again' : '') : 'no pages were built' });
+      if (dl && !thin && n > 0) results.push(await storeForSending());
       primedSay(results);
     } finally { state.primed = 'done'; state.priming = false; bPrime.disabled = false; root.__rpBusy = Math.max(0, (root.__rpBusy || 1) - 1); }
   }
