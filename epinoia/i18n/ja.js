@@ -1777,7 +1777,9 @@
       'Half-time': 'ハーフタイム',
       'EPINOIA GO could not be loaded just now.': 'EPINOIA GOを今は読み込めませんでした。',
       'Sign in with a free EPINOIA account to see this': 'EPINOIAの無料アカウントでサインインして表示',
-      'An EPINOIA account is free at the moment: all you need to do is sign in.': '現在、EPINOIAのアカウントは無料です。サインインするだけで利用できます。'
+      'An EPINOIA account is free at the moment: all you need to do is sign in.': '現在、EPINOIAのアカウントは無料です。サインインするだけで利用できます。',
+      'shooting efficiency': 'シュート効率',
+      'rebounding %': 'リバウンド率'
     },
 
     ctx: {

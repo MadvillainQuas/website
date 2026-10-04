@@ -402,7 +402,8 @@
       'Collapse': '折りたたむ',
       'Expand': '展開する',
       'time on court': '出場時間帯',
-      'game clock at each check-in and check-out': '各出場・交代時の試合時計'
+      'game clock at each check-in and check-out': '各出場・交代時の試合時計',
+      'turnover %': 'ターンオーバー率'
     },
 
     ctx: {

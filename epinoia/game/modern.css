@@ -211,3 +211,5 @@
 .mv-szkey i.x{ background:color-mix(in srgb,var(--text-secondary) 22%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text-secondary) 40%,transparent) }
 @media (max-width:640px){ .mv-szrow{ grid-template-columns:40px minmax(0,1fr) 74px minmax(0,1fr) 40px; gap:6px; padding:10px 8px }
   .mv-szmid span{ font-size:9px; white-space:normal } .mv-szv b{ font-size:13px } }
+.mv-fxab{ text-transform:none; letter-spacing:.02em }
+.mv-fxrow .mv-fxlabel{ line-height:1.3 }

@@ -309,7 +309,8 @@
     const num = v => (v == null || !isFinite(v)) ? 0 : v;
     const f1 = v => num(v).toFixed(1);
     /* hb: higher is better (turnover % is the one that is not) */
-    const ROWS = [['efg%', 'efg', true], ['tov%', 'tovp', false], ['oreb%', 'orebp', true], ['fta rate', 'ftr', true]];
+    const ab = x => ' <span class="mv-fxab" translate="no">(' + x + ')</span>';
+    const ROWS = [['shooting efficiency' + ab('eFG%'), 'efg', true], ['turnover %', 'tovp', false], ['rebounding %' + ab('ORB%'), 'orebp', true], ['free throw rate' + ab('FTr'), 'ftr', true]];
     /* THE GAP BETWEEN THE TWO MARKS, under each label: how many points (of the rate) separate the clubs, an arrow to the side
        that is ahead and the figure in that club's colour. Ahead means higher, except turnover %, where lower is. Even, or
        within the rounding, says "even". */
