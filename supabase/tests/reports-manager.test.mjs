@@ -58,13 +58,18 @@ const T = {
 const asked = [];
 function from(table) {
   const f = [];
+  let by = null;
   const api = {
-    select() { return api; }, order() { return api; }, limit() { return api; },
+    select() { return api; }, order(k, o) { by = [k, !(o && o.ascending === false)]; return api; }, limit() { return api; },
     eq(k, v) { f.push(r => r[k] === v); return api; },
     in(k, v) { asked.push([table, 'in', k, v]); f.push(r => v.includes(r[k])); return api; },
     gte(k, v) { f.push(r => r[k] >= v); return api; }, lt(k, v) { f.push(r => r[k] < v); return api; },
     or(s) { asked.push([table, 'or', s]); const ids = /home_team_id\.in\.\(([^)]*)\)/.exec(s)[1].split(','); f.push(r => ids.includes(r.home_team_id) || ids.includes(r.away_team_id)); return api; },
-    then(res, rej) { return Promise.resolve({ data: (T[table] || []).filter(r => f.every(fn => fn(r))), error: null }).then(res, rej); }
+    then(res, rej) {
+      const rows = (T[table] || []).filter(r => f.every(fn => fn(r)));
+      if (by) rows.sort((a, b) => (a[by[0]] < b[by[0]] ? -1 : a[by[0]] > b[by[0]] ? 1 : 0) * (by[1] ? 1 : -1));
+      return Promise.resolve({ data: rows, error: null }).then(res, rej);
+    }
   };
   return api;
 }
@@ -81,6 +86,10 @@ RM._t.use({ from });
   ok('...each says why: whom its reports go to, or whom it plays and when', clubs.get('tA').own && clubs.get('tA').emails.join() === 'coach@club.test,gm@club.test' &&
      !clubs.get('tO').own && /^Alpha Riders /.test(clubs.get('tO').plays[0]) && /^Beta Lions /.test(clubs.get('tP').plays[0]), [clubs.get('tA'), clubs.get('tO')]);
   ok('...two subscribed clubs that meet each other are both its own, not each other\'s opponents', clubs.get('tB').own && !clubs.get('tB').plays.length);
+  const ahead = await RM._t.upcoming(['tA', 'tB']);
+  ok('the upcoming opponents of a club, in the order they come: the next two weeks\' games still to be played', (ahead.get('tA') || []).map(o => o.id).join(' ') === 'tO tB' &&
+     (ahead.get('tB') || []).map(o => o.id).join(' ') === 'tA tP' && ahead.get('tA')[0].name === 'Omega Flyers' && !!ahead.get('tA')[0].at, [...ahead].map(([k, v]) => [k, v.map(o => o.id)]));
+  ok('...not a game in 30 days, not one already played, not a club it was not asked about', ![...ahead.values()].flat().some(o => ['tZ', 'tF', 'tQ'].includes(o.id)) && !ahead.has('tC'));
   const games = asked.find(a => a[0] === 'games' && a[1] === 'or');
   ok('...the schedule read is of those clubs\' games', /home_team_id\.in\.\(tA,tB\)/.test(games[2]) && /away_team_id\.in\.\(tA,tB\)/.test(games[2]), games);
   const st = asked.find(a => a[0] === 'games' && a[1] === 'in' && a[2] === 'status');
@@ -129,8 +138,10 @@ RM._t.use({ from });
      /createTextNode\('Add Synergy CSVs'\)/.test(read('epinoia', 'report.js')) && /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true; inp\.hidden = true;/.test(read('epinoia', 'report.js')));
   ok('...a match by hand is typed or picked from those squads', /people\.filter\(z => S\.normName\(z\.name\)\.includes\(q\)\)/.test(src) && /pick from a club\\u2019s squad|pick from a club’s squad/.test(src));
   ok('...kept one a player (a new file replaces the old), the numbers only', /from\('synergy_profiles'\)\.upsert\(\{ player_id: x\.pick\.id, profile: S\.pack\(S\.profile\(x\.p\)\)/.test(src) && /onConflict: 'player_id'/.test(src));
-  ok('PRIME REPORT opens the club\'s or the player\'s report primed (report.js ?prime=1)', /t\/\?t=' \+ encodeURIComponent\(r\.team_id\) \+ '&tab=report&prime=1'/.test(src) &&
-     /t\/\?t=' \+ encodeURIComponent\(c\.id\) \+ '&tab=report&prime=1'/.test(src) && /p\/\?p=' \+ encodeURIComponent\(r\.player_id\) \+ '&tab=report&prime=1'/.test(src));
+  ok('PRIME REPORT opens a club\'s or a player\'s report primed (report.js ?prime=1)', /a\.href = SITE \+ 't\/\?t=' \+ encodeURIComponent\(id\) \+ '&tab=report&prime=1'/.test(src) &&
+     /p\/\?p=' \+ encodeURIComponent\(r\.player_id\) \+ '&tab=report&prime=1'/.test(src));
+  ok('...an address\'s club offers it for each club it plays in the next two weeks, or for its own report', /opps\.forEach\(o => primes\.appendChild\(primeLink\(o\.name/.test(src) &&
+     /primes\.appendChild\(primeLink\('own report: ' \+ \(t\.name \|\| 'the club'\), r\.team_id/.test(src) && /no games in the next two weeks/.test(src));
   ok('an address with all its clubs: one club or several added at once, another added to it, the ZIP switched for the address',
      /\[\.\.\.picked\.keys\(\)\]\.map\(team_id => \(\{ email: e, team_id/.test(src) && /onConflict: 'email,team_id'/.test(src) && /update\(\{ player_zip: cb\.checked \}\)\.in\('id', list\.map\(r => r\.id\)\)/.test(src));
   const html = read('epinoia', 'admin', 'platform', 'index.html'), js = read('epinoia', 'admin', 'platform', 'platform.js');

@@ -5,9 +5,10 @@
 
      ADDRESSES AND CLUBS  each address with ALL its clubs - an address can have several (report_mail_subs is a row an address
                  and a club) - its name and time zone, whether its clubs' players' reports follow the Sunday email in a ZIP
-                 (0228 player_zip), and for each club: PRIME REPORT (the club's report made ready - RAPM, Synergy, every page
-                 - and downloaded, report.js prime), send next week's reports now, pause, remove. An address is added with
-                 one club or several at once, and a club is added to an address already there.
+                 (0228 player_zip), and for each club: PRIME REPORT (a report made ready - RAPM, Synergy, every page - and
+                 downloaded, report.js prime) of each club it plays in the next two weeks (the reports its Sunday email
+                 carries) or of its own, send next week's reports now, pause, remove. An address is added with one club or
+                 several at once, and a club is added to an address already there.
      SYNERGY FILES  the scraper's CSV files dropped in (synergy.js reads them; only the numbers are kept, 0228
                  synergy_profiles), each player in them matched to a player OF THE CLUBS THE REPORTS ARE ON - every club an
                  address is sent reports of, and every club those play in the next two weeks (the Sunday email's scouting
@@ -52,6 +53,7 @@ function style() {
 .rm-club{ display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto; align-items:center; gap:6px 10px; padding:8px 12px; border-top:1px solid var(--rule,#ddd) }
 .rm-club .acts{ display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end }
 .rm-club small, .rm-mt{ color:var(--ink-3,#666); font-size:12px }
+.rm-primes{ grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:6px }
 .rm-prime{ background:#0d1f17 !important; color:#ffd166 !important; border-color:#0d1f17 !important; font-weight:800; letter-spacing:.06em }
 .rm-syn{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:10px; align-items:start; padding:9px 0; border-top:1px solid var(--rule,#ddd) }
 .rm-syn:first-child{ border-top:0 }
@@ -137,6 +139,7 @@ function clubFinder(onPick) {
 /* ------------------------------------------------------------------ addresses and clubs --- */
 async function drawAddresses() {
   const rows = await subs();
+  const ahead = await upcoming([...new Set(rows.map(r => r.team_id))]).catch(() => new Map());
   const [{ data: log }, { data: rq }] = await Promise.all([
     sb.from('report_mail_log').select('sub_id,kind,sent_at').order('sent_at', { ascending: false }).limit(800),
     sb.from('report_mail_requests').select('sub_id,state,requested_at,dispatched_at,finished_at,detail').order('requested_at', { ascending: false }).limit(300)
@@ -204,16 +207,19 @@ async function drawAddresses() {
       const line = H.sendLine ? H.sendLine(asked.get(r.id)) : '';
       if (line) { st.appendChild(el('br')); st.appendChild(el('small', null, line)); }
       const acts = el('div', 'acts');
-      const prime = el('a', 'ep-btn mini rm-prime', 'PRIME REPORT');
-      prime.href = SITE + 't/?t=' + encodeURIComponent(r.team_id) + '&tab=report&prime=1'; prime.target = '_blank'; prime.rel = 'noopener';
-      prime.title = 'Open ' + (t.name || 'the club') + '’s report made ready - RAPM worked out and kept, Synergy read, every page built - and download it';
-      acts.appendChild(prime);
       acts.appendChild(btn(r.active ? 'pause' : 'resume', 'mini', async () => { const { error } = await sb.from('report_mail_subs').update({ active: !r.active }).eq('id', r.id); if (error) oops(error); else draw(); }));
       acts.appendChild(btn('remove', 'mini danger', async () => {
         if (!confirm(addr + ' will no longer be sent ' + (t.name || 'the club') + '’s reports.')) return;
         const { error } = await sb.from('report_mail_subs').delete().eq('id', r.id); if (error) oops(error); else draw();
       }));
-      row.append(nm, st, acts);
+      /* PRIME REPORT: each upcoming opponent's report (what its Sunday email carries), or the club's own */
+      const primes = el('div', 'rm-primes');
+      primes.appendChild(el('small', null, 'PRIME REPORT:'));
+      const opps = [...new Map((ahead.get(r.team_id) || []).map(o => [o.id, o])).values()];
+      opps.forEach(o => primes.appendChild(primeLink(o.name + ' \u00b7 ' + dayOf(o.at), o.id, o.name)));
+      if (!opps.length) primes.appendChild(el('small', 'rm-mt', 'no games in the next two weeks'));
+      primes.appendChild(primeLink('own report: ' + (t.name || 'the club'), r.team_id, t.name || 'the club'));
+      row.append(nm, st, acts, primes);
       box.appendChild(row);
     });
     /* another club for this address */
@@ -238,6 +244,29 @@ async function drawAddresses() {
 const nameOf = p => ((p.first_name || '') + ' ' + (p.last_name || '')).trim();
 const poss = n => String(n) + (/s$/i.test(String(n)) ? '\u2019' : '\u2019s');           // Omega Flyers\u2019, Alpha\u2019s
 const dayOf = iso => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+/* THE UPCOMING GAMES of some clubs, the next two weeks' still to be played (what the next Sunday emails carry): club id ->
+   its opponents in the order they come, [{ id, name, at }] */
+async function upcoming(ids) {
+  const out = new Map();
+  if (!ids.length) return out;
+  const list = ids.join(',');
+  const { data } = await sb.from('games').select('home_team_id,away_team_id,tipoff_at,home:home_team_id(name),away:away_team_id(name)')
+    .or('home_team_id.in.(' + list + '),away_team_id.in.(' + list + ')').in('status', ['scheduled', 'live'])
+    .gte('tipoff_at', new Date(Date.now() - 3 * 36e5).toISOString()).lt('tipoff_at', new Date(Date.now() + AHEAD_MS).toISOString()).order('tipoff_at');
+  (data || []).forEach(g => [[g.home_team_id, g.away_team_id, g.away], [g.away_team_id, g.home_team_id, g.home]].forEach(([mine, opp, o]) => {
+    if (!opp || !ids.includes(mine)) return;
+    if (!out.has(mine)) out.set(mine, []);
+    out.get(mine).push({ id: opp, name: (o && o.name) || 'opponent', at: g.tipoff_at });
+  }));
+  return out;
+}
+/* PRIME REPORT for one report: it opens primed (report.js ?prime=1: RAPM, Synergy, every page) and downloads */
+function primeLink(text, id, who) {
+  const a = el('a', 'ep-btn mini rm-prime', text);
+  a.href = SITE + 't/?t=' + encodeURIComponent(id) + '&tab=report&prime=1'; a.target = '_blank'; a.rel = 'noopener';
+  a.title = 'Open ' + poss(who) + ' report made ready - RAPM worked out and kept, Synergy read, every page built - and download it';
+  return a;
+}
 async function reportedClubs() {
   const rows = (await subs().catch(() => [])).filter(r => r.active);
   const clubs = new Map();
@@ -246,20 +275,13 @@ async function reportedClubs() {
     if (c) { if (!c.emails.includes(r.email)) c.emails.push(r.email); return; }
     clubs.set(r.team_id, { id: r.team_id, name: (r.teams && r.teams.name) || 'club', own: true, emails: [r.email], plays: [] });
   });
-  const own = [...clubs.values()];
-  if (own.length) {
-    const ids = own.map(c => c.id).join(',');
-    const { data: games } = await sb.from('games').select('home_team_id,away_team_id,tipoff_at,home:home_team_id(name),away:away_team_id(name)')
-      .or('home_team_id.in.(' + ids + '),away_team_id.in.(' + ids + ')').in('status', ['scheduled', 'live'])
-      .gte('tipoff_at', new Date(Date.now() - 3 * 36e5).toISOString()).lt('tipoff_at', new Date(Date.now() + AHEAD_MS).toISOString()).order('tipoff_at');
-    (games || []).forEach(g => [[g.home_team_id, g.away_team_id, g.away], [g.away_team_id, g.home_team_id, g.home]].forEach(([mine, opp, o]) => {
-      const me = clubs.get(mine);
-      if (!me || !me.own || !opp) return;
-      if (!clubs.has(opp)) clubs.set(opp, { id: opp, name: (o && o.name) || 'opponent', own: false, emails: [], plays: [] });
-      const them = clubs.get(opp);
-      if (!them.own) them.plays.push(me.name + ' ' + dayOf(g.tipoff_at));
-    }));
-  }
+  const ahead = await upcoming([...clubs.keys()]);
+  ahead.forEach((opps, mine) => opps.forEach(o => {
+    const me = clubs.get(mine);
+    if (!clubs.has(o.id)) clubs.set(o.id, { id: o.id, name: o.name, own: false, emails: [], plays: [] });
+    const them = clubs.get(o.id);
+    if (!them.own) them.plays.push(me.name + ' ' + dayOf(o.at));
+  }));
   EXTRA.forEach((c, id) => { if (!clubs.has(id)) clubs.set(id, c); });
   /* one player once, with every one of those clubs that lists him (teams): a club's own files find him in its squad */
   const people = [], seen = new Map();
@@ -330,10 +352,7 @@ async function drawSynergy() {
     const nm = el('div'); nm.append(el('b', null, c.name), el('br'), el('small', null, whyOf(c)));
     const st = el('div'); st.appendChild(el('small', null, n ? n + (n === 1 ? ' player' : ' players') + ' in the squad' : 'no squad listed for this club'));
     const acts = el('div', 'acts');
-    const prime = el('a', 'ep-btn mini rm-prime', 'PRIME REPORT');
-    prime.href = SITE + 't/?t=' + encodeURIComponent(c.id) + '&tab=report&prime=1'; prime.target = '_blank'; prime.rel = 'noopener';
-    prime.title = 'Open ' + c.name + '’s report made ready - RAPM worked out and kept, Synergy read, every page built - and download it';
-    acts.appendChild(prime);
+    acts.appendChild(primeLink('PRIME REPORT', c.id, c.name));
     /* this club's files, as many as there are: matched to its squad alone */
     const add = filesButton('add CSVs', async files => { await readFiles(files, people, c); drawSynergy(); });
     add.title = 'Any number of Synergy CSV files for ' + poss(c.name) + ' players, matched to its squad alone';
@@ -444,5 +463,5 @@ function matchRow(x, people, clubs) {
 }
 
 /* _t: for supabase/tests/reports-manager.test.mjs (a client of its own, the clubs and the suggestions) */
-window.EpinoiaReportsManager = { open, _t: { use: c => { sb = c; }, reportedClubs, suggest, readFiles, EXTRA, PENDING } };
+window.EpinoiaReportsManager = { open, _t: { use: c => { sb = c; }, reportedClubs, upcoming, suggest, readFiles, EXTRA, PENDING } };
 }());

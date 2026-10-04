@@ -136,8 +136,9 @@ The club's own half-court AST% has a key of its own (`tm_hc_ast_pct`).
 **The reports manager** (platform console, Accounts > Reports by email > *open the reports manager*; `admin/platform/reports-manager.js`):
 
 - *Addresses and clubs*: each address with all its clubs (an address may have several: a `report_mail_subs` row is an address and
-  a club), added with one club or several at once, or a club added to an address already there. For each club: PRIME REPORT (its
-  report opened with `?prime=1`), pause, remove, and *send next week's reports now* for the address. The address's
+  a club), added with one club or several at once, or a club added to an address already there. For each club: PRIME REPORT (a
+  report opened with `?prime=1`) of each club it plays in the next two weeks (the reports its Sunday email carries) or of its own
+  report; pause, remove, and *send next week's reports now* for the address. The address's
   *players' reports (ZIP)* switch is `player_zip` (0228, on by default).
 - *Synergy files*: the CSVs dropped in are matched to **the clubs the reports are on**, never the whole site: every club an active
   address is sent reports of, and every club those play in the next two weeks (the Sunday email's scouting reports), each listed
