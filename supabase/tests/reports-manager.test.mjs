@@ -135,7 +135,7 @@ RM._t.use({ from });
   ok('the manager never searches the whole site for a match (no site_search)', !/site_search|rpc\(/.test(src));
   ok('it can always be closed: the title bar and its close button never scroll away, its size takes the page\'s zoom back out (so it fits the screen), Esc or a click outside closes it',
      /\.rm\[open\]\{ display:flex; flex-direction:column \}/.test(src) && /\.rm-b\{ flex:1 1 auto; min-height:0;/.test(src) && /max-height:calc\(92vh \/ var\(--rmz, 1\)\)/.test(src) &&
-     /getComputedStyle\(document\.body\)\.zoom/.test(src) && /if \(e\.target === dlg\) dlg\.close\(\)/.test(src) && /aria-label', 'Close the reports manager'/.test(src));
+     /getComputedStyle\(document\.body\)\.zoom/.test(src) && /if \(e\.target === dlg\) closeAsked\(\)/.test(src) && /function closeAsked\(\)/.test(src) && /aria-label', 'Close the reports manager'/.test(src));
   ok('every file input takes any number of CSVs at once: the manager\'s (each club\'s and the drop box) and the report tab\'s',
      /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true;/.test(src) && (src.match(/filesButton\(/g) || []).length >= 3 &&
      /createTextNode\('Add Synergy CSVs'\)/.test(read('epinoia', 'report.js')) && /inp\.type = 'file'; inp\.accept = '\.csv,text\/csv'; inp\.multiple = true; inp\.hidden = true;/.test(read('epinoia', 'report.js')));
@@ -143,10 +143,24 @@ RM._t.use({ from });
   ok('...kept one a player (a new file replaces the old), the numbers only', /from\('synergy_profiles'\)\.upsert\(\{ player_id: x\.pick\.id, profile: S\.pack\(S\.profile\(x\.p\)\)/.test(src) && /onConflict: 'player_id'/.test(src));
   ok('PRIME REPORT opens a club\'s or a player\'s report primed (report.js ?prime=1)', /a\.href = SITE \+ k \+ '\/\?' \+ k \+ '=' \+ encodeURIComponent\(id\) \+ '&tab=report&prime=1'/.test(src) &&
      /primeLink\('PRIME REPORT', r\.player_id, pn, stored\.get\('player:' \+ r\.player_id\), 'p'\)/.test(src));
-  ok('...an address\'s club offers it for each club it plays in the next two weeks, or for its own report', /opps\.forEach\(o => primes\.appendChild\(primeLink\(o\.name/.test(src) &&
+  ok('...an address\'s club offers it for each club it plays in the next two weeks, or for its own report', /opps\.forEach\(o => \{ primes\.appendChild\(primeLink\(o\.name/.test(src) &&
      /primes\.appendChild\(primeLink\('own report: ' \+ \(t\.name \|\| 'the club'\), r\.team_id/.test(src) && /no games in the next two weeks/.test(src));
   ok('an address with all its clubs: one club or several added at once, another added to it, the ZIP switched for the address',
      /\[\.\.\.picked\.keys\(\)\]\.map\(team_id => \(\{ email: e, team_id/.test(src) && /onConflict: 'email,team_id'/.test(src) && /update\(\{ player_zip: cb\.checked \}\)\.in\('id', list\.map\(r => r\.id\)\)/.test(src));
+  ok('PRIME CLUB + PLAYERS beside every club PRIME (each opponent, the own report, each club of the Synergy tab)',
+     (src.match(/primeAllBtn\(/g) || []).length >= 4 && /rm-prime-all/.test(src));
+  ok('...it primes the club report then each ZIP player’s report, one at a time, in a frame that waits for the report’s own Primed line',
+     /&tab=report&prime=1', frame\)/.test(src) && /querySelector\('\.rp-primed'\)/.test(src) && /for \(let i = 0; i < jobs\.length && !RUN\.stop; i\+\+\)/.test(src));
+  ok('...closing the manager mid-run asks first', /Reports are being primed\. Close and stop them\?/.test(src));
+  ok('a stored report has "delete stored" (the file, then its row), and a club "delete stored (club + players)"',
+     /'delete stored'/.test(src) && /'delete stored \(club \+ players\)'/.test(src) && /storage\.from\('primed'\)\.remove\(\[r\.path\]\)/.test(src) && /from\('primed_reports'\)\.delete\(\)/.test(src));
+  {
+    const zp = RM._t.zipPlayers;
+    const T = 'club', rows = [{ pid: 'a', team: T, min: 30 * 60000 }, { pid: 'a', team: T, min: 20 * 60000 }, { pid: 'b', team: T, min: 9 * 60000 },
+      { pid: 'c', team: T, min: 15 * 60000 }, { pid: 'd', team: 'other', min: 40 * 60000 }, { pid: 'e', team: T, min: 0 }];
+    const got = zp(rows, T, new Set(['c']));
+    ok('...the players are the mailer’s: this club only, 10+ minutes a game, not released, most minutes first', got.map(x => x.id).join() === 'a' && got[0].mpg === 25 && JSON.stringify(M.zipPlayers(rows, T, new Set(['c']))) === JSON.stringify(got), got);
+  }
   const html = read('epinoia', 'admin', 'platform', 'index.html'), js = read('epinoia', 'admin', 'platform', 'platform.js');
   ok('the console opens it from Reports by email, with the Synergy reader on the page', /id="mailManage"/.test(html) && /<script src="\.\.\/\.\.\/synergy\.js\?v=\d+" defer><\/script>/.test(html) &&
      /<script src="reports-manager\.js\?v=\d+" defer><\/script>/.test(html) && /EpinoiaReportsManager\.open\(sb, \{ say, oops, sendNow, sendLine, reload: loadMail \}\)/.test(js));

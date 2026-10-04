@@ -61,6 +61,14 @@ function style() {
 .rm-primes{ grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:6px }
 .rm-primed-at{ display:inline-flex; align-items:center; gap:6px }
 .rm-stored{ color:#1d7a46 !important; font-weight:700 }
+.rm-prime-all{ background:#7a1f2b !important; color:#fff !important; border-color:#7a1f2b !important; font-weight:800; letter-spacing:.04em }
+.rm-del{ color:#b32433 !important }
+.rm-run{ flex:none; display:none; gap:12px; padding:10px 18px; border-bottom:1px solid var(--rule,#ddd); background:#fffbea }
+.rm-run.on{ display:flex }
+.rm-run ol{ margin:6px 0 0; padding-left:18px; max-height:150px; overflow:auto; font-size:12px }
+.rm-run li.ok{ color:#1d7a46 } .rm-run li.gap{ color:#8a5a00 } .rm-run li.go{ font-weight:700 }
+.rm-run .frame{ flex:none; width:325px; height:250px; overflow:hidden; border:1px solid var(--rule,#ddd); border-radius:8px; background:#fff }
+.rm-run iframe{ width:1300px; height:1000px; border:0; transform:scale(.25); transform-origin:0 0 }
 .rm-prime{ background:#0d1f17 !important; color:#ffd166 !important; border-color:#0d1f17 !important; font-weight:800; letter-spacing:.06em }
 .rm-syn{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:10px; align-items:start; padding:9px 0; border-top:1px solid var(--rule,#ddd) }
 .rm-syn:first-child{ border-top:0 }
@@ -85,7 +93,7 @@ async function open(client, hooks) {
   if (!dlg) {
     dlg = el('dialog', 'rm');
     const head = el('div', 'rm-h');
-    const x = btn('\u2715 close', 'mini rm-x', () => dlg.close());
+    const x = btn('\u2715 close', 'mini rm-x', () => closeAsked());
     x.setAttribute('aria-label', 'Close the reports manager'); x.title = 'Close (Esc)';
     head.append(el('h3', null, 'Reports manager'), x);
     const tabs = el('div', 'rm-tabs');
@@ -94,16 +102,24 @@ async function open(client, hooks) {
       b.dataset.t = k; if (k === tab) b.classList.add('on'); tabs.appendChild(b);
     });
     body = el('div', 'rm-b');
-    dlg.append(head, tabs, body);
+    RUN.box = el('div', 'rm-run');
+    dlg.append(head, tabs, RUN.box, body);
+    /* a priming run draws its reports in a frame inside this pop-up: closing it would stop them, so it asks */
+    dlg.addEventListener('cancel', e => { if (RUN.busy && !confirm('Reports are being primed. Close and stop them?')) e.preventDefault(); else RUN.stop = true; });
     dlg.addEventListener('close', () => { if (H.reload) H.reload(); });
     /* a click outside it (on the dimmed page) closes it too, as Esc does */
-    dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener('click', e => { if (e.target === dlg) closeAsked(); });
     document.body.appendChild(dlg);
     window.addEventListener('resize', fitZoom);
   }
   fitZoom();
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
   await draw();
+}
+function closeAsked() {
+  if (RUN.busy && !confirm('Reports are being primed. Close and stop them?')) return;
+  RUN.stop = true;
+  dlg.close();
 }
 const say = (t, k) => (H.say ? H.say(t, k) : null);
 const oops = e => (H.oops ? H.oops(e) : say(String(e && e.message || e), 'err'));
@@ -235,9 +251,10 @@ async function drawAddresses() {
       const primes = el('div', 'rm-primes');
       primes.appendChild(el('small', null, 'PRIME REPORT:'));
       const opps = [...new Map((ahead.get(r.team_id) || []).map(o => [o.id, o])).values()];
-      opps.forEach(o => primes.appendChild(primeLink(o.name + ' \u00b7 ' + dayOf(o.at), o.id, o.name, stored.get('team:' + o.id))));
+      opps.forEach(o => { primes.appendChild(primeLink(o.name + ' \u00b7 ' + dayOf(o.at), o.id, o.name, stored.get('team:' + o.id))); primes.appendChild(primeAllBtn(o.id, o.name, stored)); });
       if (!opps.length) primes.appendChild(el('small', 'rm-mt', 'no games in the next two weeks'));
       primes.appendChild(primeLink('own report: ' + (t.name || 'the club'), r.team_id, t.name || 'the club', stored.get('team:' + r.team_id)));
+      primes.appendChild(primeAllBtn(r.team_id, t.name || 'the club', stored));
       row.append(nm, st, acts, primes);
       box.appendChild(row);
     });
@@ -294,7 +311,13 @@ function primeLink(text, id, who, at, kind) {
   a.title = 'Open ' + poss(who) + ' report made ready - RAPM worked out and kept, Synergy read, every page built - and store it for sending';
   if (!at) return a;
   const w = el('span', 'rm-primed-at');
-  w.append(a, el('small', 'rm-stored', '\u2713 stored ' + hm(at)));
+  const del = btn('delete stored', 'mini rm-del', async () => {
+    if (!confirm('Delete the stored copy of ' + poss(who) + ' report? The next email draws it afresh unless it is primed again.')) return;
+    const n = await deleteStored([[k === 'p' ? 'player' : 'team', id]]);
+    say(n ? 'Deleted the stored copy of ' + poss(who) + ' report.' : 'Nothing was deleted.', n ? 'ok' : 'warn');
+    draw();
+  });
+  w.append(a, el('small', 'rm-stored', '\u2713 stored ' + hm(at)), del);
   w.title = 'Primed and stored for sending ' + hm(at) + ': the next email carrying this report sends it, then it is deleted';
   return w;
 }
@@ -385,6 +408,7 @@ async function drawSynergy() {
     const st = el('div'); st.appendChild(el('small', null, n ? n + (n === 1 ? ' player' : ' players') + ' in the squad' : 'no squad listed for this club'));
     const acts = el('div', 'acts');
     acts.appendChild(primeLink('PRIME REPORT', c.id, c.name, stored.get('team:' + c.id)));
+    acts.appendChild(primeAllBtn(c.id, c.name, stored));
     /* this club's files, as many as there are: matched to its squad alone */
     const add = filesButton('add CSVs', async files => { await readFiles(files, people, c); drawSynergy(); });
     add.title = 'Any number of Synergy CSV files for ' + poss(c.name) + ' players, matched to its squad alone';
@@ -491,6 +515,143 @@ function matchRow(x, people, clubs) {
   return row;
 }
 
+/* ------------------------------------------------------------------ PRIME CLUB + PLAYERS (2026-10-04) --- */
+/* A club's report AND the player report of everyone its players' ZIP carries, primed one after another and each stored for sending,
+   so the Sunday email and its ZIP reply send the primed files. Each report is opened with ?prime=1 in a frame inside this pop-up
+   (RAPM read from report_rapm or worked out and kept, the kept Synergy CSVs read, every page built, the PDF stored), and the run waits
+   for the report's own "Primed" line before the next. The players are the mailer's (scripts/report_mailer.mjs zipPlayers): everyone
+   who has played for the club in its league's newest season, at 10 minutes a game or more, not released by it, most minutes first. */
+const RUN = { busy: false, stop: false, box: null };
+const MIN_MPG = 10;
+function zipPlayers(rows, teamId, released) {
+  const acc = new Map();
+  rows.forEach(r => {
+    const m = +r.min || 0;
+    if (r.team !== teamId || !r.pid || m <= 0) return;
+    const a = acc.get(r.pid) || { id: r.pid, games: 0, min: 0 };
+    a.games++; a.min += m / 60000; acc.set(r.pid, a);
+  });
+  return [...acc.values()].map(a => ({ ...a, mpg: a.min / a.games }))
+    .filter(a => a.mpg >= MIN_MPG && !(released && released.has(a.id))).sort((a, b) => b.mpg - a.mpg);
+}
+async function allOf(q) {                                     // q: (from, to) -> a supabase query; every page of it
+  const out = [];
+  for (let off = 0; ; off += 1000) {
+    const { data, error } = await q(off, off + 999);
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < 1000) return out;
+  }
+}
+async function zipSquad(teamId) {
+  const { data: t } = await sb.from('teams').select('league_id').eq('id', teamId).limit(1);
+  if (!t || !t[0] || !t[0].league_id) return [];
+  const { data: s } = await sb.from('seasons').select('id').eq('league_id', t[0].league_id).order('starts_on', { ascending: false }).limit(1);
+  const { data: comps } = s && s[0] ? await sb.from('competitions').select('id').eq('season_id', s[0].id) : { data: [] };
+  if (!comps || !comps.length) return [];
+  const games = await allOf((a, b) => sb.from('games').select('id,home_team_id,away_team_id').or('home_team_id.eq.' + teamId + ',away_team_id.eq.' + teamId)
+    .eq('status', 'final').in('competition_id', comps.map(c => c.id)).order('id').range(a, b));
+  const rows = [];
+  for (let i = 0; i < games.length; i += 40) {
+    const part = games.slice(i, i + 40), by = new Map(part.map(g => [g.id, g]));
+    const got = await allOf((a, b) => sb.from('player_game_stats').select('game_id,player_uuid,team_idx,min:stats->min').in('game_id', part.map(g => g.id))
+      .not('player_uuid', 'is', null).order('game_id').order('player_id').range(a, b));
+    got.forEach(r => { const g = by.get(r.game_id); if (g) rows.push({ pid: r.player_uuid, team: r.team_idx === 0 ? g.home_team_id : g.away_team_id, min: r.min }); });
+  }
+  let gone = new Set();
+  try { const { data } = await sb.from('player_releases').select('player_id').eq('team_id', teamId); gone = new Set((data || []).map(r => r.player_id)); } catch (_) { /* none kept */ }
+  const picked = zipPlayers(rows, teamId, gone);
+  if (!picked.length) return [];
+  const { data: named } = await sb.from('players').select('id,first_name,last_name').in('id', picked.map(p => p.id));
+  const nm = new Map((named || []).map(p => [p.id, nameOf(p)]));
+  return picked.map(p => ({ ...p, name: nm.get(p.id) || 'Player' }));
+}
+/* one report, primed in the run's frame: resolves with what its "Primed" line says */
+function primeInFrame(url, frameBox) {
+  return new Promise(resolve => {
+    frameBox.textContent = '';
+    const f = el('iframe'); f.title = 'report being primed'; f.src = url;
+    frameBox.appendChild(f);
+    const t0 = Date.now();
+    const tick = () => {
+      if (RUN.stop) { resolve({ ok: false, text: 'stopped' }); return; }
+      let box = null;
+      try { box = f.contentDocument && f.contentDocument.querySelector('.rp-primed'); } catch (_) { /* not loaded yet */ }
+      if (box && !box.hidden && box.textContent.trim()) { resolve({ ok: box.classList.contains('ok'), text: box.textContent.trim() }); return; }
+      if (Date.now() - t0 > 10 * 60000) { resolve({ ok: false, text: 'did not finish within 10 minutes' }); return; }
+      setTimeout(tick, 1000);
+    };
+    setTimeout(tick, 1500);
+  });
+}
+function primeAllBtn(teamId, name, stored) {
+  const b = btn('PRIME CLUB + PLAYERS', 'mini rm-prime-all', () => primeAll(teamId, name));
+  b.title = 'Prime ' + poss(name) + ' club report and every player report its players’ ZIP carries (10+ minutes a game, not released), each with its Synergy CSVs and RAPM, and store them all for sending';
+  if (!(stored && stored.has('team:' + teamId))) return b;
+  const w = el('span', 'rm-primed-at');
+  const del = btn('delete stored (club + players)', 'mini rm-del', async () => {
+    if (!confirm('Delete the stored copies of ' + poss(name) + ' club report and its players’ reports?')) return;
+    const squad = await zipSquad(teamId).catch(() => []);
+    const k = await deleteStored([['team', teamId]].concat(squad.map(p => ['player', p.id])));
+    say('Deleted ' + k + ' stored report' + (k === 1 ? '' : 's') + ' of ' + name + '.', 'ok');
+    draw();
+  });
+  w.append(b, del);
+  return w;
+}
+async function primeAll(teamId, name) {
+  if (RUN.busy) { say('A priming run is going already: wait for it, or close the reports manager to stop it.', 'warn'); return; }
+  RUN.busy = true; RUN.stop = false;
+  const box = RUN.box;
+  box.textContent = ''; box.classList.add('on');
+  const list = el('ol'), frame = el('div', 'frame'), side = el('div');
+  side.style.cssText = 'flex:1 1 auto;min-width:0';
+  const head = el('b', null, 'Priming ' + name + ': reading whose reports its players’ ZIP carries…');
+  const stop = btn('stop', 'mini', () => { RUN.stop = true; });
+  side.append(head, el('span', null, ' '), stop, list);
+  box.append(side, frame);
+  try {
+    const squad = await zipSquad(teamId);
+    const jobs = [{ k: 't', id: teamId, name: name + ' — club report' }].concat(squad.map(p => ({ k: 'p', id: p.id, name: p.name + ' (' + p.mpg.toFixed(1) + ' min a game)' })));
+    head.textContent = 'Priming ' + name + ': the club report and ' + squad.length + ' player report' + (squad.length === 1 ? '' : 's') + ', one at a time';
+    const lines = jobs.map(j => { const li = el('li', null, j.name); list.appendChild(li); return li; });
+    let good = 0;
+    for (let i = 0; i < jobs.length && !RUN.stop; i++) {
+      const j = jobs[i], li = lines[i];
+      li.className = 'go'; li.textContent = j.name + ': priming…';
+      li.scrollIntoView({ block: 'nearest' });
+      const r = await primeInFrame(SITE + j.k + '/?' + j.k + '=' + encodeURIComponent(j.id) + '&tab=report&prime=1', frame);
+      li.className = r.ok ? 'ok' : 'gap';
+      li.textContent = j.name + ': ' + (r.ok ? '✓ ' : '⚠ ') + r.text;
+      if (r.ok) good++;
+    }
+    head.textContent = (RUN.stop ? 'Stopped: ' : 'Done: ') + good + ' of ' + jobs.length + ' reports of ' + name + ' primed and stored for sending' + (good < jobs.length ? ' (amber lines say what is missing)' : '');
+    say(head.textContent, good === jobs.length ? 'ok' : 'warn');
+  } catch (e) {
+    head.textContent = 'Priming stopped: ' + (e.message || e);
+    oops(e);
+  } finally {
+    frame.textContent = '';
+    RUN.busy = false;
+    if (dlg && dlg.open) draw();
+  }
+}
+/* stored copies deleted (the file, then its row); [[kind, id]] -> how many went */
+async function deleteStored(pairs) {
+  const { data } = await sb.from('primed_reports').select('kind,ref_id,path').in('ref_id', pairs.map(p => p[1]));
+  const want = new Set(pairs.map(p => p[0] + ':' + p[1]));
+  const rows = (data || []).filter(r => want.has(r.kind + ':' + r.ref_id));
+  let n = 0;
+  for (const r of rows) {
+    const rm = await sb.storage.from('primed').remove([r.path]);
+    if (rm && rm.error) { oops(rm.error); continue; }
+    const { error } = await sb.from('primed_reports').delete().eq('kind', r.kind).eq('ref_id', r.ref_id);
+    if (error) { oops(error); continue; }
+    n++;
+  }
+  return n;
+}
+
 /* _t: for supabase/tests/reports-manager.test.mjs (a client of its own, the clubs and the suggestions) */
-window.EpinoiaReportsManager = { open, _t: { use: c => { sb = c; }, reportedClubs, upcoming, suggest, readFiles, EXTRA, PENDING } };
+window.EpinoiaReportsManager = { open, _t: { use: c => { sb = c; }, reportedClubs, upcoming, suggest, readFiles, EXTRA, PENDING, zipPlayers, zipSquad, deleteStored } };
 }());
