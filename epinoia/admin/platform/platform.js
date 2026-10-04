@@ -1006,6 +1006,15 @@ async function loadMail() {
       }, 250);
     });
   }
+  /* the reports manager (reports-manager.js): every address with all its clubs, PRIME REPORT, the Synergy files */
+  const manage = $('#mailManage');
+  if (manage && !manage.dataset.wired) {
+    manage.dataset.wired = '1';
+    manage.addEventListener('click', () => {
+      if (!window.EpinoiaReportsManager) { say('The reports manager has not loaded: reload the page.', 'warn'); return; }
+      window.EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload: loadMail }).catch(oops);
+    });
+  }
   if (go && !go.dataset.wired) {
     go.dataset.wired = '1';
     go.addEventListener('click', async () => {

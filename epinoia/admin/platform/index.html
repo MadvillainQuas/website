@@ -16,12 +16,12 @@
 <title>Platform · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=624"></script>
-<script src="../../i18n.js?v=624" data-i18n-packs="admin platform"></script>
-<script src="../../glyphs.js?v=624" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=624">
-<link rel="stylesheet" href="../../kit/nav.css?v=624">
-<link rel="stylesheet" href="../jobbar.css?v=624">
+<script src="../../appmode.js?v=625"></script>
+<script src="../../i18n.js?v=625" data-i18n-packs="admin platform"></script>
+<script src="../../glyphs.js?v=625" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=625">
+<link rel="stylesheet" href="../../kit/nav.css?v=625">
+<link rel="stylesheet" href="../jobbar.css?v=625">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -315,9 +315,9 @@
   .gq-cap{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
   .gq-card .row{padding:0 10px 10px;margin:0}
 </style>
-<link rel="stylesheet" href="../../kit/suggest.css?v=624">
-<link rel="stylesheet" href="../../kit/newsrefresh.css?v=624">
-<link rel="stylesheet" href="../../kit/legibility.css?v=624">
+<link rel="stylesheet" href="../../kit/suggest.css?v=625">
+<link rel="stylesheet" href="../../kit/newsrefresh.css?v=625">
+<link rel="stylesheet" href="../../kit/legibility.css?v=625">
 </head>
 <body>
 <div class="ep-frame">
@@ -456,6 +456,12 @@
         give the address the account uses. <b>Send next week&rsquo;s reports now</b>, on an address (and for everyone, above the list), emails
         the week-ahead reports within a few minutes instead of on Sunday morning: the week that begins next Monday at their time. It counts as
         that Sunday&rsquo;s email, so Sunday morning does not send it again (0226).</p>
+      <!-- 2026-10-04: THE REPORTS MANAGER (reports-manager.js): every address with all its clubs, PRIME REPORT, the players'
+           reports ZIP, and the Synergy files, matched to the clubs the reports are on -->
+      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+        <button id="mailManage" class="ep-btn pri" type="button">open the reports manager</button>
+        <span class="mt">every address with all its clubs, PRIME REPORT, the players&rsquo; reports ZIP and the Synergy files</span>
+      </div>
       <div class="row" id="mailForm" style="flex-wrap:wrap;gap:8px;align-items:center">
         <input id="mailEmail" class="ep-input" type="email" placeholder="their@email" style="min-width:200px">
         <input id="mailName" class="ep-input" type="text" placeholder="first name (optional)" style="width:150px">
@@ -827,23 +833,25 @@
   </div>
 </div>
 
-<script src="../../config.js?v=624" defer></script>
-<script src="../../vendor/supabase.js?v=624" defer></script>
-<script src="../../access.js?v=624" defer></script>
-<script src="../access-ui.js?v=624" defer></script>
-<script src="../../newsrefresh.js?v=624" defer></script>
-<script src="../creators-ui.js?v=624" defer></script>
-<script src="../../homearenas.js?v=624" defer></script>
-<script src="arenas-ui.js?v=624" defer></script>
-<script src="analytics-ui.js?v=624" defer></script>
-<script src="links-ui.js?v=624" defer></script>
-<script src="go-photos-ui.js?v=624" defer></script>
-<script src="../suggestions-ui.js?v=624" defer></script>
-<script src="../jobbar.js?v=624" defer></script>
-<script src="reset-ui.js?v=624" defer></script>
-<script src="../../upload.js?v=624" defer></script>
-<script src="platform.js?v=624" defer></script>
-<script src="../../go/logo.js?v=624" defer></script>
-<script src="../../nav.js?v=624" defer></script>
+<script src="../../config.js?v=625" defer></script>
+<script src="../../vendor/supabase.js?v=625" defer></script>
+<script src="../../access.js?v=625" defer></script>
+<script src="../access-ui.js?v=625" defer></script>
+<script src="../../newsrefresh.js?v=625" defer></script>
+<script src="../creators-ui.js?v=625" defer></script>
+<script src="../../homearenas.js?v=625" defer></script>
+<script src="arenas-ui.js?v=625" defer></script>
+<script src="analytics-ui.js?v=625" defer></script>
+<script src="links-ui.js?v=625" defer></script>
+<script src="go-photos-ui.js?v=625" defer></script>
+<script src="../suggestions-ui.js?v=625" defer></script>
+<script src="../jobbar.js?v=625" defer></script>
+<script src="reset-ui.js?v=625" defer></script>
+<script src="../../upload.js?v=625" defer></script>
+<script src="../../synergy.js?v=625" defer></script>
+<script src="reports-manager.js?v=625" defer></script>
+<script src="platform.js?v=625" defer></script>
+<script src="../../go/logo.js?v=625" defer></script>
+<script src="../../nav.js?v=625" defer></script>
 </body>
 </html>

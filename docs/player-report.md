@@ -115,7 +115,7 @@ Drives come from every play type that has them (a spot-up closeout attacked, an 
 isolation's drives are split by where he started (Top / Left / Right) and summed again under "Isolation - Overall" - the total is the
 Overall row, the shot types the split's. A player with no file has none of these: no category, no rows, no chart.
 
-**Adding one**: *Add Synergy CSV* on the report's own panel (one or several files). Each player in them is matched to the report's
+**Adding them**: *Add Synergy CSVs* on the report's own panel (any number of files at once, and more after them). Each player in them is matched to the report's
 players by name, or by surname and initial where only one fits ("JJ White" is Jaylon White), and **the match is shown to be checked
 and changed by hand** (or left out) before anything is kept. A platform administrator's are kept in `synergy_profiles` (0228) for every
 report after it, the mailer's too; anyone else's stay on that page.
@@ -130,3 +130,32 @@ The club's own half-court AST% has a key of its own (`tm_hc_ast_pct`).
 **PRIME REPORT**: one click makes the report ready - RAPM read where it was already worked out (this browser, then `report_rapm`,
 0228) or worked out now and kept there for every report of that league and season, Synergy read, every page built - then the PDF.
 `?prime=1` on a report's address does the same on opening; the mailer primes its reports itself.
+
+## The reports manager and the players' reports (2026-10-04)
+
+**The reports manager** (platform console, Accounts > Reports by email > *open the reports manager*; `admin/platform/reports-manager.js`):
+
+- *Addresses and clubs*: each address with all its clubs (an address may have several: a `report_mail_subs` row is an address and
+  a club), added with one club or several at once, or a club added to an address already there. For each club: PRIME REPORT (its
+  report opened with `?prime=1`), pause, remove, and *send next week's reports now* for the address. The address's
+  *players' reports (ZIP)* switch is `player_zip` (0228, on by default).
+- *Synergy files*: the CSVs dropped in are matched to **the clubs the reports are on**, never the whole site: every club an active
+  address is sent reports of, and every club those play in the next two weeks (the Sunday email's scouting reports), each listed
+  with why it is there and its PRIME REPORT. A club the schedule does not show yet can be added by hand. A name is suggested from
+  those squads alone, and changed by hand from them (typed, or picked from a club's squad); then kept (`synergy_profiles`). Files are
+  taken as many at a time as are chosen: in the drop box for all those clubs, or with a club's own *add CSVs*, matched to its
+  squad alone. The
+  kept ones are listed, each with its player report's PRIME REPORT, or to remove.
+
+**The players' reports** (`scripts/report_mailer.mjs`): right after a Sunday email (or a *send now* one), a reply to it ("Re:" its
+subject, `In-Reply-To` / `References` the Message-ID the mailer gives the Sunday email), with one ZIP a club whose report went in it:
+the player report of everyone who has played for the club this season (its league's newest season, final games), at 10 minutes a
+game or more, and not released by it (`player_releases`). A player's report is drawn once a run. Logged as kind `players`. An address
+with `player_zip` off, or a database before 0228, gets the Sunday email alone.
+
+**Every report the mailer draws is primed** (`EPINOIA_RP_PRIME`) with the Synergy numbers kept (`EPINOIA_SYNERGY`, read with the
+service key); RAPM a report had to work out is kept in `report_rapm`, so the next report of that league and season reads it. The
+workflow's limit is 120 minutes.
+
+Tests: `supabase/tests/reports-manager.test.mjs` (the clubs a file is matched to, the ZIP read back, whose reports go in, the threaded
+reply, priming).

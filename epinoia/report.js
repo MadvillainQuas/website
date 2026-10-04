@@ -1004,10 +1004,11 @@ function synergyControl(host, state, o) {
   if (!S) return;
   const row = el('div', 'rp-rapm rp-syn');
   const lab = el('label', 'ep-btn mini');
-  lab.appendChild(doc().createTextNode('Add Synergy CSV'));
+  lab.appendChild(doc().createTextNode('Add Synergy CSVs'));
+  lab.title = 'One or several of the scraper\u2019s CSV files at once (any number), each with one player or more';
   const inp = el('input'); inp.type = 'file'; inp.accept = '.csv,text/csv'; inp.multiple = true; inp.hidden = true;
   lab.appendChild(inp);
-  const say = el('span', null, 'a player\u2019s Synergy play-type file: his drives left and right, and what his man shot at him');
+  const say = el('span', null, 'Synergy play-type files, as many as you like: each player\u2019s drives left and right, and what his man shot at him');
   const box = el('div', 'rp-syn-box'); box.hidden = true;
   row.append(el('span', 'rp-k', 'Synergy'), lab, say);
   host.append(row, box);
@@ -1506,12 +1507,15 @@ function ui(state) {
     }
   }
   state.rebuild = rebuild;
+  const PRIME_CAP_MS = 240000;
   async function prime(dl) {
     if (state.primed === 'running') return;
     state.primed = 'running'; bPrime.disabled = true; root.__rpBusy = (root.__rpBusy || 0) + 1;
     try {
       say('priming: RAPM, Synergy and every page\u2026');
-      for (const f of state.primers || []) { try { await f(); } catch (e) { warn(e); } }
+      const primers = (async () => { for (const f of state.primers || []) { try { await f(); } catch (e) { warn(e); } } })();
+      /* the mailer's copy never waits on it for ever: past PRIME_CAP_MS it is drawn with what is there (RAPM blank) */
+      await (root.EPINOIA_RP_BOT ? Promise.race([primers, new Promise(r => setTimeout(r, PRIME_CAP_MS))]) : primers);
       await rebuild();
       if (dl) await download('pdf');
     } finally { state.primed = 'done'; state.priming = false; bPrime.disabled = false; root.__rpBusy = Math.max(0, (root.__rpBusy || 1) - 1); }

@@ -264,6 +264,12 @@ jobs:
         # administrators only, RAPM read by anyone, the players' ZIP on for every address)
         run: node supabase/tests/report-synergy.test.mjs
 
+      - name: The reports manager, and the players' reports in a reply (0228)
+        # reports-manager.js: a Synergy file matched to the clubs the reports are on (each address's clubs and whom they play in
+        # the next two weeks; never the whole site); the mailer: the ZIP read back whole, whose reports go in (10 minutes a game,
+        # the released left out), the reply threaded under the Sunday email, every report primed with Synergy and RAPM kept
+        run: node supabase/tests/reports-manager.test.mjs
+
       - name: Box score renders with nothing but S and derive()
         # catches a helper left behind by the extraction, which otherwise only
         # shows up as a blank public page

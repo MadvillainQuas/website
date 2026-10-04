@@ -15,9 +15,19 @@
                that begins next Monday at the address's own time; it counts as that Sunday's email (it logs the Sunday
                before the week), so the Sunday round finds it done and sends nothing twice.
 
+   THE PLAYERS' REPORTS (0228): right after a Sunday email (or a "send now" one), a reply to it - "Re:" its subject, threaded
+               under it (In-Reply-To / References its Message-ID, which the mailer sets) - with the player report of every
+               player of each club whose report went in it, one ZIP a club: everyone who has played for the club this
+               season, leaving out the players it has released (player_releases) and those under 10 minutes a game. An
+               address's player_zip turns it off (the reports manager). A player's report is drawn once a run.
+
    The PDFs are the site's own: a headless Chromium opens the page served from this checkout (SITE, a local server the
    workflow starts), presses the report's own "Download PDF" and takes the file. EPINOIA_RP_BOT, set before the page's
    scripts run, opens the members' report for the member it is bought for, and draws it at email weight (report.js).
+   SYNERGY AND RAPM (0228): every report is PRIMED first (EPINOIA_RP_PRIME, report.js prime: RAPM read from report_rapm or
+   worked out), with the Synergy numbers the admins kept (synergy_profiles, read with the service key) handed to the page
+   (EPINOIA_SYNERGY); RAPM a page had to work out is kept in report_rapm, so the next report of that league and season,
+   in this run or any other, reads it. Before 0228 is applied neither is there, and the reports are drawn as before.
    An email that would still pass Resend's size limit goes as parts ("part 1 of 2"), each whole. Every report is also
    kept for the PROFILE dashboard of the account it went to (0225, keep()).
 
@@ -26,6 +36,7 @@
    The helpers below are exported (supabase/tests/report-mailer.test.mjs); the run starts only when this is the script.
    ============================================================================ */
 import { pathToFileURL } from 'node:url';
+import { deflateRawSync } from 'node:zlib';
 
 const env = process.env;
 const SITE = (env.SITE || 'http://127.0.0.1:8765').replace(/\/$/, '');
@@ -102,10 +113,10 @@ const colourOf = team => (/^#[0-9a-f]{6}$/i.test((team && team.colour) || '') ? 
 /* AN EMAIL, BUILT AS EMAIL IS: tables, inline styles, one column of 600px. The Epinoia bar, a band in the club's
    colour, the kind of email and its headline, then the letter; the attachments named; why it came and how to stop it */
 const F = 'font-family:Arial,Helvetica,sans-serif;';
-export function layout({ colour, kicker, title, meta, greeting, blocks, files }) {
+export function layout({ colour, kicker, title, meta, greeting, blocks, files, kept = true }) {
   const ink = inkOn(colour);
   const fileRows = (files || []).map(f => '<tr><td style="padding:7px 0;border-top:1px solid #e4ebe7;' + F + 'font-size:14px;color:#0d1f17">' +
-    '<span style="display:inline-block;padding:2px 6px;margin-right:8px;border-radius:4px;background:' + ink + ';color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:.06em">PDF</span>' +
+    '<span style="display:inline-block;padding:2px 6px;margin-right:8px;border-radius:4px;background:' + ink + ';color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:.06em">' + esc(f.kind || 'PDF') + '</span>' +
     esc(f.label) + '</td></tr>').join('');
   return '<!doctype html><html><body style="margin:0;padding:0;background:#eef2ef">' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ef"><tr><td align="center" style="padding:24px 12px">' +
@@ -124,7 +135,8 @@ export function layout({ colour, kicker, title, meta, greeting, blocks, files })
       (fileRows ? '<tr><td style="padding:18px 28px 6px"><div style="' + F + 'font-size:11px;font-weight:bold;letter-spacing:.14em;text-transform:uppercase;color:#5b6b63;margin-bottom:4px">Attached</div>' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + fileRows + '</table></td></tr>' : '') +
       '<tr><td style="padding:18px 28px 24px;' + F + 'font-size:12px;line-height:1.5;color:#7a8a82;border-top:1px solid #e4ebe7">' +
-        'Every report is also kept in your <a href="' + PUBLIC + '/epinoia/profile/#reports" style="color:#0d1f17;font-weight:bold">Epinoia dashboard</a>, to open or download again: sign in with this address. ' +
+        (kept ? 'Every report is also kept in your <a href="' + PUBLIC + '/epinoia/profile/#reports" style="color:#0d1f17;font-weight:bold">Epinoia dashboard</a>, to open or download again: sign in with this address. '
+              : 'The club reports are kept in your <a href="' + PUBLIC + '/epinoia/profile/#reports" style="color:#0d1f17;font-weight:bold">Epinoia dashboard</a> (sign in with this address); these player reports come in this email. ') +
         'You receive these because your club’s reports were set up for this address on Epinoia. To change or stop them, simply reply to this email and let us know.' +
       '</td></tr>' +
     '</table></td></tr></table></body></html>';
@@ -206,6 +218,31 @@ export function sundayEmail({ sub, team, games, ownDue, tz, monday }) {
 let browser = null;
 /* a test's own drawing, in place of Chromium: hooks.pdf(path, name) answers { filename, content } */
 export const hooks = { pdf: null };
+/* SYNERGY FOR EVERY REPORT (0228): every profile the admins kept, { player id: profile }, read once a run with the service
+   key (the table answers admins only: the data is licensed). null when it cannot be read (0228 not applied): then the
+   reports are drawn as before 0228, not primed either. */
+let SYN_ALL;
+export async function synergyAll() {
+  if (SYN_ALL !== undefined) return SYN_ALL;
+  try {
+    const all = {};
+    for (let off = 0; ; off += 1000) {
+      const rows = await rest(`synergy_profiles?select=player_id,profile&order=player_id&limit=1000&offset=${off}`);
+      rows.forEach(r => { all[r.player_id] = r.profile; });
+      if (rows.length < 1000) break;
+    }
+    SYN_ALL = all;
+  } catch (e) { console.warn('Synergy and RAPM left out (0228 not applied?):', e.message || e); SYN_ALL = null; }
+  return SYN_ALL;
+}
+/* RAPM a page worked out (report.js leaves it on window.__rpRapm), kept for the next report of that league and season */
+async function keepRapm(r) {
+  if (DRY || !r || !r.key || !Array.isArray(r.m) || !(r.games > 0)) return;
+  try {
+    await rest('report_rapm?on_conflict=key', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({ key: r.key, games: r.games, m: r.m, computed_at: new Date().toISOString() }) });
+  } catch (e) { console.warn('RAPM not kept (' + r.key + '):', e.message || e); }
+}
 /* opt.context: a browser context of the caller's (a test routes the page's calls through it) */
 export async function pdfOf(path, name, opt = {}) {
   if (hooks.pdf) return hooks.pdf(path, name);
@@ -214,12 +251,15 @@ export async function pdfOf(path, name, opt = {}) {
     if (!browser) { const { chromium } = await import('playwright'); browser = await chromium.launch(); }
     ctx = await browser.newContext({ viewport: { width: 1300, height: 1000 }, acceptDownloads: true });
   }
-  await ctx.addInitScript(() => { window.EPINOIA_RP_BOT = true; });
+  const syn = await synergyAll();
+  await ctx.addInitScript(s => { window.EPINOIA_RP_BOT = true; if (s) { window.EPINOIA_RP_PRIME = true; window.EPINOIA_SYNERGY = s; } }, syn);
   const page = await ctx.newPage();
   try {
     await page.goto(SITE + path, { waitUntil: 'domcontentloaded', timeout: 120000 });
-    await page.waitForFunction(() => window.__rpBuilt > 0, null, { timeout: 300000 });
+    /* built, and done priming (RAPM worked out for a league's season the first time can take minutes) */
+    await page.waitForFunction(() => window.__rpBuilt > 0 && !window.__rpBusy, null, { timeout: 600000 });
     await page.waitForTimeout(1500);
+    await keepRapm(await page.evaluate(() => window.__rpRapm || null).catch(() => null));
     const dl = page.waitForEvent('download', { timeout: 300000 });
     await page.click('.rp-outs .ep-btn.pri');
     const d = await dl;
@@ -234,14 +274,17 @@ export function partsOfFiles(att, max = MAX_EMAIL_BYTES) {
     if (last && last.size + size <= max) { last.files.push(a); last.size += size; } else out.push({ files: [a], size }); });
   return out.length ? out.map(p => p.files) : [[]];
 }
-async function send(to, subject, html, attachments) {
+/* headers: the email's own (a Message-ID to reply to, a reply's In-Reply-To / References); a second part gets a Message-ID
+   of its own */
+async function send(to, subject, html, attachments, headers) {
   const parts = partsOfFiles(attachments);
   for (let i = 0; i < parts.length; i++) {
     const subj = subject + (parts.length > 1 ? ` (part ${i + 1} of ${parts.length})` : '');
     if (DRY) { console.log('[dry] to', to, '|', subj, '|', parts[i].map(a => a.filename).join(', ')); continue; }
+    const h = headers && Object.fromEntries(Object.entries(headers).map(([k, v]) => [k, k === 'Message-ID' && i ? v.replace('@', '-p' + (i + 1) + '@') : v]));
     const r = await fetch('https://api.resend.com/emails', { method: 'POST',
       headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [to], subject: subj, html, attachments: parts[i] }) });
+      body: JSON.stringify({ from: FROM, to: [to], subject: subj, html, attachments: parts[i], ...(h ? { headers: h } : {}) }) });
     if (!r.ok) throw new Error('resend ' + r.status + ': ' + (await r.text()).slice(0, 300));
   }
 }
@@ -270,6 +313,124 @@ async function keep(sub, day, pdf, what) {
   } catch (e) { console.warn('[' + sub.email + '] not kept for the dashboard (' + what.title + '):', e.message || e); }
 }
 const shortDay = (iso, tz) => { try { return new Date(iso).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); } catch (_) { return ''; } };
+
+/* ------------------------------------------------------------------ the players' reports (0228) --- */
+/* A ZIP (PKWARE's APPNOTE: a local header and the data for each file, then the central directory): each file deflated,
+   unless that would not make it smaller (a PDF's pages are compressed already, so most are stored), names in UTF-8 */
+const CRC_T = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } return t; })();
+export const crc32 = buf => { let c = -1; for (let i = 0; i < buf.length; i++) c = CRC_T[(c ^ buf[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
+export function zipOf(files, when = new Date()) {
+  const time = (when.getHours() << 11) | (when.getMinutes() << 5) | (when.getSeconds() >> 1);
+  const date = ((when.getFullYear() - 1980) << 9) | ((when.getMonth() + 1) << 5) | when.getDate();
+  const out = [], dir = [];
+  let at = 0;
+  for (const f of files) {
+    const name = Buffer.from(f.name, 'utf8'), data = Buffer.isBuffer(f.data) ? f.data : Buffer.from(f.data);
+    const packed = deflateRawSync(data, { level: 9 }), deflated = packed.length < data.length, body = deflated ? packed : data, crc = crc32(data);
+    const loc = Buffer.alloc(30);
+    loc.writeUInt32LE(0x04034b50, 0); loc.writeUInt16LE(20, 4); loc.writeUInt16LE(0x0800, 6); loc.writeUInt16LE(deflated ? 8 : 0, 8);
+    loc.writeUInt16LE(time, 10); loc.writeUInt16LE(date, 12); loc.writeUInt32LE(crc, 14); loc.writeUInt32LE(body.length, 18);
+    loc.writeUInt32LE(data.length, 22); loc.writeUInt16LE(name.length, 26);
+    const cen = Buffer.alloc(46);
+    cen.writeUInt32LE(0x02014b50, 0); cen.writeUInt16LE(20, 4); cen.writeUInt16LE(20, 6); cen.writeUInt16LE(0x0800, 8); cen.writeUInt16LE(deflated ? 8 : 0, 10);
+    cen.writeUInt16LE(time, 12); cen.writeUInt16LE(date, 14); cen.writeUInt32LE(crc, 16); cen.writeUInt32LE(body.length, 20);
+    cen.writeUInt32LE(data.length, 24); cen.writeUInt16LE(name.length, 28); cen.writeUInt32LE(at, 42);
+    out.push(loc, name, body); dir.push(cen, name);
+    at += 30 + name.length + body.length;
+  }
+  const cd = Buffer.concat(dir), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(at, 16);
+  return Buffer.concat([...out, cd, end]);
+}
+/* WHOSE REPORTS GO IN: everyone who has played for the club this season (a game counts when the player was on the floor;
+   rows: { pid, team, min } with min in milliseconds, as the box score keeps it), at 10 minutes a game or more, and not
+   released by it; the most minutes first */
+export const MIN_MPG = 10;
+export function zipPlayers(rows, teamId, released, minMpg = MIN_MPG) {
+  const acc = new Map();
+  rows.forEach(r => {
+    const m = +r.min || 0;
+    if (r.team !== teamId || !r.pid || m <= 0) return;
+    const a = acc.get(r.pid) || { id: r.pid, games: 0, min: 0 };
+    a.games++; a.min += m / 60000; acc.set(r.pid, a);
+  });
+  return [...acc.values()].map(a => ({ ...a, mpg: a.min / a.games }))
+    .filter(a => a.mpg >= minMpg && !(released && released.has(a.id))).sort((a, b) => b.mpg - a.mpg);
+}
+/* a read past PostgREST's thousand rows, a page at a time (the path carries its own order) */
+async function restAll(path, page = 1000) {
+  const out = [];
+  for (let off = 0; ; off += page) { const rows = await rest(path + `&limit=${page}&offset=${off}`); out.push(...rows); if (rows.length < page) return out; }
+}
+/* the club's minutes this season: its league's newest season (what its report shows), the club's final games in it */
+async function seasonMinutes(teamId) {
+  const [t] = await rest(`teams?id=eq.${teamId}&select=league_id`);
+  if (!t || !t.league_id) return [];
+  const [s] = await rest(`seasons?league_id=eq.${t.league_id}&select=id&order=starts_on.desc&limit=1`);
+  const comps = s ? await rest(`competitions?season_id=eq.${s.id}&select=id`) : [];
+  if (!comps.length) return [];
+  const games = await restAll(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=eq.final&competition_id=in.(${comps.map(c => c.id).join(',')})&select=id,home_team_id,away_team_id&order=id`);
+  const rows = [];
+  for (let i = 0; i < games.length; i += 40) {
+    const part = games.slice(i, i + 40), by = new Map(part.map(g => [g.id, g]));
+    const got = await restAll(`player_game_stats?game_id=in.(${part.map(g => g.id).join(',')})&player_uuid=not.is.null&select=game_id,player_uuid,team_idx,min:stats->min&order=game_id,player_id`);
+    got.forEach(r => { const g = by.get(r.game_id); if (g) rows.push({ pid: r.player_uuid, team: r.team_idx === 0 ? g.home_team_id : g.away_team_id, min: r.min }); });
+  }
+  return rows;
+}
+/* THE REPLY: under the Sunday email, one ZIP a club (in parts when one would pass the email's limit) */
+export function playersEmail({ sub, team, subject, clubs }) {
+  const names = clubs.map(c => c.name), n = clubs.reduce((s, c) => s + c.players.length, 0);
+  const files = [];
+  clubs.forEach(c => { for (let i = 0; i < (c.zips || 1); i++) files.push({ kind: 'ZIP', label: c.name + ': ' + c.players.length + ' player reports' + (c.zips > 1 ? ' (part ' + (i + 1) + ' of ' + c.zips + ')' : '') }); });
+  return { subject: 'Re: ' + subject, html: layout({ colour: colourOf(team), kicker: 'Players’ reports', title: 'Every player’s report: ' + listOf(names),
+    meta: n + ' player report' + (n === 1 ? '' : 's') + ', ' + (files.length === 1 ? 'in one ZIP' : 'in ' + files.length + ' ZIPs'), greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,', kept: false, files, blocks: [
+      P(`Following this week’s reports, attached is the player report of everyone who has played for ${esc(listOf(names))} this season, ` +
+        'leaving out the players a club has released and those averaging under 10 minutes a game. Each has the season line ranked against the position, ' +
+        'where and how the player scores, the defence, and the impact on the floor.'),
+      ...clubs.map(c => P('<b>' + esc(c.name) + '</b>: ' + c.players.map(p => esc(p.name) + ' <span style="color:#5b6b63">(' + p.mpg.toFixed(1) + ' mpg)</span>').join(', ')))] }) };
+}
+export const ZIP_MAX = 24e6;                         // one ZIP's bytes: base64, it stays under the email's limit
+const PLAYER_PDF = new Map();                        // a player's report, drawn once a run
+const MAIL_HOST = (/@([A-Za-z0-9.-]+)>?\s*$/.exec(FROM) || [])[1] || 'epinoia.mail';
+export const msgId = (sub, day) => '<sunday-' + day + '-' + Date.now().toString(36) + '.' + sub.id + '@' + MAIL_HOST + '>';
+/* clubs: [{ id, name }], the clubs whose reports the Sunday email had. Answers what went, or null */
+async function sendPlayers(sub, team, day, subject, mid, clubs) {
+  /* the address's switch (0228); before it is applied the column is not there, and there is no reply */
+  let on = false;
+  try { const [me] = await rest(`report_mail_subs?id=eq.${sub.id}&select=player_zip`); on = !!me && me.player_zip !== false; } catch (_) { return null; }
+  if (!on) return null;
+  const done = [], att = [];
+  for (const c of clubs) {
+    let gone = new Set();
+    try { gone = new Set((await rest(`player_releases?team_id=eq.${c.id}&select=player_id`)).map(r => r.player_id)); } catch (_) { /* none kept */ }
+    const picked = zipPlayers(await seasonMinutes(c.id), c.id, gone);
+    if (!picked.length) { console.log('players', c.name, ': none at 10 minutes a game'); continue; }
+    const named = await rest(`players?id=in.(${picked.map(p => p.id).join(',')})&select=id,first_name,last_name`);
+    const nameOf = new Map(named.map(p => [p.id, ((p.first_name || '') + ' ' + (p.last_name || '')).trim()]));
+    const files = [], used = new Set();
+    for (const p of picked) {
+      p.name = nameOf.get(p.id) || 'Player';
+      if (!PLAYER_PDF.has(p.id)) { console.log('player', c.name, '->', p.name); PLAYER_PDF.set(p.id, await pdfOf(`/epinoia/p/?p=${p.id}&tab=report`, 'player-report-' + slug(p.name))); }
+      let fn = 'player-report-' + (slug(p.name) || 'player');
+      for (let k = 2; used.has(fn); k++) fn = 'player-report-' + (slug(p.name) || 'player') + '-' + k;
+      used.add(fn);
+      files.push({ name: fn + '.pdf', data: Buffer.from(PLAYER_PDF.get(p.id).content, 'base64') });
+    }
+    const groups = [];
+    let cur = [], size = 0;
+    files.forEach(f => { if (cur.length && size + f.data.length > ZIP_MAX) { groups.push(cur); cur = []; size = 0; } cur.push(f); size += f.data.length; });
+    if (cur.length) groups.push(cur);
+    groups.forEach((g, i) => att.push({ filename: slug(c.name) + '-player-reports' + (groups.length > 1 ? '-' + (i + 1) : '') + '.zip', content: zipOf(g).toString('base64') }));
+    done.push({ name: c.name, players: picked, zips: groups.length });
+  }
+  if (!done.length) return null;
+  const E = playersEmail({ sub, team, subject, clubs: done });
+  await send(sub.email, E.subject, E.html, att, mid ? { 'In-Reply-To': mid, References: mid } : null);
+  await log(sub, 'players', day, done.map(d => d.name + ': ' + d.players.length).join(', '));
+  return done;
+}
 
 /* ------------------------------------------------------------------ one address --- */
 const GAME_SELECT = 'id,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue,home:home_team_id(name),away:away_team_id(name)';
@@ -303,10 +464,15 @@ async function sendWeek(sub, team, tz, sent, W, day) {
     att.push(pdf);
   }
   const E = sundayEmail({ sub, team, games: next, ownDue, tz, monday: W.from });
-  await send(sub.email, E.subject, E.html, att);
+  const mid = msgId(sub, day);
+  await send(sub.email, E.subject, E.html, att, { 'Message-ID': mid });
   await log(sub, 'sunday', day, uniq.length + ' opponent(s)' + (ownDue ? ' + own' : ''));
   if (ownDue) await log(sub, 'team', day, 'own report');
-  return { names: uniq.map(o => o.oname), own: ownDue };
+  /* the players' reports of the clubs in it, in a reply to it (0228); the Sunday email has gone whatever becomes of it */
+  let players = null;
+  try { players = await sendPlayers(sub, team, day, E.subject, mid, uniq.map(o => ({ id: o.oid, name: o.oname })).concat(ownDue ? [{ id: team.id, name: club }] : [])); }
+  catch (e) { console.warn('[' + sub.email + '] the players’ reports were not sent:', e.message || e); }
+  return { names: uniq.map(o => o.oname), own: ownDue, players: players ? players.reduce((s, c) => s + c.players.length, 0) : 0 };
 }
 
 async function one(sub, team) {
@@ -356,7 +522,7 @@ export function requestLine(W, tz, done) {
   const what = [];
   if (done.names.length) what.push('scouting report' + (done.names.length > 1 ? 's' : '') + ' on ' + listOf(done.names));
   if (done.own) what.push('the club’s own team report');
-  return 'Sent ' + week + ': ' + what.join(', plus ') + '.';
+  return 'Sent ' + week + ': ' + what.join(', plus ') + (done.players ? '; and ' + done.players + ' player report' + (done.players === 1 ? '' : 's') + ' in a reply' : '') + '.';
 }
 export async function requests(now = new Date()) {
   if (!DRY) await rest(`report_mail_requests?state=in.(queued,running)&requested_at=lt.${new Date(now.getTime() - GIVE_UP_MS).toISOString()}`, { method: 'PATCH',
