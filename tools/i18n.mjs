@@ -287,7 +287,8 @@ function removeCmd(pack, section, keys) {
     let src = fs.readFileSync(f, 'utf8');
     for (const k of keys) {
       for (const lit of [q(k), JSON.stringify(k)]) {
-        const re = new RegExp('\\n[ \\t]*' + lit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*:\\s*(\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"),?');
+        /* the line's own \r goes with it: a pack written with Windows line ends would otherwise keep one on the line above */
+        const re = new RegExp('\\r?\\n[ \\t]*' + lit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*:\\s*(\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"),?');
         src = src.replace(re, '');
       }
     }

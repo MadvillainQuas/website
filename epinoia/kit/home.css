@@ -449,3 +449,80 @@ a.plain{color:inherit;text-decoration:none}
 }
 :root[data-theme="light"] .hm-links a{background:#ffffff}
 :root[data-theme="light"] .hm-links a:hover{background:color-mix(in oklch,var(--lume) 8%,#ffffff)}
+
+/* THE LIVE DASHBOARD (home/daily.js drawDash; 2026-10-04): more than three leagues live on a wide screen, a card a league
+   in its own colours (--la, --lb: colour_a and colour_b), its games a line each, and the league's games behind it. */
+.fxd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:calc(var(--u)*1.5);
+  padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+.fxd-item{display:flex;min-width:0}
+.fxd-lg{position:relative;display:flex;flex-direction:column;gap:10px;width:100%;min-width:0;box-sizing:border-box;
+  padding:14px 14px 12px;text-align:left;cursor:pointer;font:inherit;color:var(--ink);
+  background:linear-gradient(160deg,color-mix(in oklch,var(--la,var(--lume)) 9%,var(--panel)),var(--panel) 62%);
+  border:1px solid var(--rule);border-radius:6px;overflow:hidden;
+  transition:transform .16s var(--ease),border-color .16s ease,box-shadow .16s ease}
+.fxd-lg::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,var(--la,var(--lume)),var(--lb,var(--aqua)))}
+.fxd-lg:hover{transform:translateY(-2px);border-color:color-mix(in oklch,var(--la,var(--lume)) 60%,var(--rule-2));
+  box-shadow:0 10px 26px rgba(0,0,0,.18)}
+.fxd-lg:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.fxd-hd{display:flex;align-items:center;gap:10px;min-width:0}
+.fxd-badge{display:flex;align-items:center;min-width:0;flex:1 1 auto;overflow:hidden}
+.fxd-n{flex:none;display:inline-flex;align-items:center;gap:6px;font-family:var(--f-micro);font-size:8.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--flare)}
+.fxd-n .dot{width:7px;height:7px;border-radius:50%;background:var(--flare);animation:fxdPulse 1.6s ease-in-out infinite}
+@keyframes fxdPulse{0%,100%{opacity:1}50%{opacity:.35}}
+/* THE GAMES, a scorebug each (globalgames.js liveLine): two abreast in a card with room, one under another otherwise */
+.fxd-lines{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:6px;min-width:0}
+.fxd-g{display:flex;flex-direction:column;min-width:0;container-type:inline-size;border-radius:5px;overflow:hidden;
+  background:color-mix(in oklch,var(--ink) 3%,var(--panel));border:1px solid var(--rule)}
+.fxd-r{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:7px;
+  min-width:0;padding:4px 8px 3px 10px;
+  background:linear-gradient(90deg,color-mix(in oklch,var(--tc,transparent) 15%,transparent),transparent 72%)}
+.fxd-r.a{padding:3px 8px 4px 10px}
+.fxd-r::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tc,var(--rule-2))}
+.fxd-cr{width:18px;height:18px;border-radius:3px;overflow:hidden;display:grid;place-items:center;flex:none;
+  font-family:var(--f-score);font-size:9px;line-height:1;color:#04100b;box-shadow:0 0 0 1px var(--rule)}
+.fxd-cr.has-img{background:#ffffff}
+.fxd-cr img{width:100%;height:100%;object-fit:contain;display:block}
+.fxd-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--f-ui);font-weight:600;font-size:12px;line-height:1.3;color:var(--ink-3)}
+.fxd-t .full, .fxd-t .short{display:none}
+.fxd-t .code.is-code{letter-spacing:.05em}
+.fxd-s{font-family:var(--f-score);font-weight:400;font-size:19px;line-height:1;font-variant-numeric:tabular-nums;
+  min-width:2ch;text-align:right;color:var(--ink-3)}
+.fxd-r.up .fxd-t{color:var(--ink);font-weight:800}
+.fxd-r.up .fxd-s{color:var(--ink)}
+/* the game so far: period, periods, clock */
+.fxd-w{display:flex;align-items:center;gap:7px;min-width:0;padding:4px 8px 5px 10px;border-top:1px solid var(--rule);
+  background:color-mix(in oklch,var(--la,var(--lume)) 6%,transparent)}
+.fxd-p{flex:none;font-family:var(--f-micro);font-size:8px;line-height:1;letter-spacing:.08em;text-transform:uppercase;
+  padding:3px 5px 2px;border-radius:3px;color:var(--ink);background:color-mix(in oklch,var(--la,var(--lume)) 24%,transparent)}
+.fxd-pg{flex:1 1 auto;display:flex;gap:3px;min-width:24px;height:4px}
+.fxd-pg i{flex:1 1 0;border-radius:2px;background:color-mix(in oklch,var(--ink) 11%,transparent)}
+.fxd-pg i.on{background:linear-gradient(90deg,var(--la,var(--lume)),var(--lb,var(--la,var(--aqua))))}
+.fxd-pg i.now{background:color-mix(in oklch,var(--la,var(--lume)) 55%,transparent)}
+.fxd-g.run .fxd-pg i.now{animation:fxdPulse 1.6s ease-in-out infinite}
+.fxd-pg i.ot{flex:.6 1 0}
+.fxd-pg i.ot.on, .fxd-pg i.ot.now{background:var(--flare)}
+.fxd-w .fxc-clk{flex:none;margin:0 0 0 auto;align-self:center;font-size:14px;color:var(--ink-3)}
+.fxd-w .fxc-clk.run{color:var(--ink)}
+.fxd-w .fxc-clk.run::before{content:"";display:inline-block;width:5px;height:5px;margin:0 5px 2px 0;border-radius:50%;
+  vertical-align:middle;background:var(--flare);animation:fxdPulse 1.6s ease-in-out infinite}
+/* the name a bug has room for: the club's letters, its short name from 150px, its name from 210px (the kit's pixels) */
+@container (min-width:150px){ .fxd-t .short{display:inline} .fxd-t .code{display:none} }
+@container (min-width:210px){ .fxd-t .full{display:inline} .fxd-t .short{display:none} .fxd-t{font-size:12.5px} }
+.fxd-ft{display:flex;align-items:center;gap:10px;margin-top:auto;min-width:0}
+.fxd-more{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-2)}
+.fxd-go{margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--lume)}
+.fxd-lg.is-back{animation:fxdBack 1.3s var(--ease)}
+@keyframes fxdBack{0%{box-shadow:0 0 0 3px color-mix(in oklch,var(--la,var(--lume)) 80%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+/* one league's games, out of its card */
+.fxd-one{position:relative}
+.fxd-one::before{content:"";position:absolute;left:calc(var(--u)*3);right:calc(var(--u)*3);top:0;height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--la,var(--lume)),var(--lb,var(--aqua)))}
+.fxd-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:calc(var(--u)*1.75) calc(var(--u)*3) calc(var(--u)*1.5)}
+.fxd-bar .fxd-badge{flex:0 1 auto}
+.fxd-bar .hmf-go{margin-left:auto}
+.fxd-back{min-height:36px}
+@media (prefers-reduced-motion:reduce){ .fxd-lg{transition:none} .fxd-n .dot, .fxd-lg.is-back, .fxd-g.run .fxd-pg i.now, .fxd-w .fxc-clk.run::before{animation:none} }

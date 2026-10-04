@@ -29,7 +29,6 @@
       'with your email to see your membership, follow clubs and players, and choose how Epinoia keeps you posted.': 'con tu correo para ver tu suscripción, seguir clubes y jugadores y elegir cómo te mantiene informado Epinoia.',
       'Checking this browser': 'Comprobando este navegador',
       'on every phone or computer where notifications are turned on. Ticking it turns them on for this one; unticking stops them everywhere.': 'en cada móvil u ordenador donde estén activadas. Al marcarlo se activan en este; al desmarcarlo se detienen en todos.',
-      'Half-time': 'Descanso',
       'reminders and lineups for a player’s games when you don’t follow their club': 'recordatorios y quintetos de los partidos de un jugador cuando no sigues a su club',
       'none followed yet': 'ninguno seguido todavía',
       'No players followed yet. Search above.': 'Aún no sigues a ningún jugador. Busca arriba.',

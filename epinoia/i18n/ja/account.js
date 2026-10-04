@@ -24,7 +24,6 @@
       'with your email to see your membership, follow clubs and players, and choose how Epinoia keeps you posted.': 'すると、メンバーシップの確認、クラブや選手のフォロー、Epinoiaからのお知らせの受け取り方の設定ができます（メールアドレスでログインできます）。',
       'Checking this browser': 'このブラウザを確認中',
       'on every phone or computer where notifications are turned on. Ticking it turns them on for this one; unticking stops them everywhere.': '通知をオンにしたすべてのスマホとPCに届きます。チェックを入れるとこの端末でもオンになり、外すとすべての端末で止まります。',
-      'Half-time': 'ハーフタイム',
       'reminders and lineups for a player’s games when you don’t follow their club': 'クラブをフォローしていない選手の試合のリマインダーとスターティングメンバー',
       'none followed yet': 'フォローなし',
       'No players followed yet. Search above.': 'フォロー中の選手はいません。上で検索してください。',

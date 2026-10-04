@@ -1770,7 +1770,11 @@
       'Preview open for 30 minutes': 'プレビューは30分間表示されます',
       'Sign in to keep everything open': 'サインインするとすべて開いたままになります',
       'No previews left this week': '今週のプレビューは残っていません',
-      'The preview could not be opened. Try again in a moment': 'プレビューを開けませんでした。しばらくしてからもう一度お試しください'
+      'The preview could not be opened. Try again in a moment': 'プレビューを開けませんでした。しばらくしてからもう一度お試しください',
+      'Show more leagues': 'リーグをもっと見る',
+      'Show fewer leagues': 'リーグの表示を減らす',
+      'All live leagues': '試合中のすべてのリーグ',
+      'Half-time': 'ハーフタイム'
     },
 
     ctx: {
@@ -2728,6 +2732,13 @@
       /* a league's front page and HOME, section by section */
       [/^Could not reach the server\. (.+)$/, 'サーバーに接続できませんでした。$1'],
       [/^(\d+) live now$/, '試合中 $1試合'],
+      /* HOME's dashboard of live leagues (home/daily.js) */
+      [/^\.\.\.and (\d+) more$/, 'ほか$1試合'],
+      [/^(\d+) leagues live$/, '試合中のリーグ $1'],
+      [/^(.+): (\d+) live\. Open its games$/, '$1：試合中 $2試合。試合を開く'],
+      [/^(.+), half-time$/, '$1、ハーフタイム'],
+      /* a live game's clock at the end of a period (globalgames.js clockText: the cards and the dashboard) */
+      [/^End (Q\d|H\d|OT\d*)$/, (m, T) => (T(m[1]) || m[1]) + '終了'],
       [/^(\d+) this week$/, '今週$1試合'],
       [/^(\d+) dated ahead$/, '日付が先の試合 $1'],
       [/^no (\d+)\/(\d+)$/, 'No.$1/$2'],

@@ -70,6 +70,13 @@ ok('an entry missing a visible language is refused', refused && !('only one' in 
 console.log('\nremove');
 run('remove', 'core', 'phrases', "it's a test");
 ok('a phrase goes from every language', !("it's a test" in dict('ja').phrases) && !("it's a test" in dict('es').phrases));
+/* some packs are written with Windows line ends (CRLF): a removed line takes its \r with it, leaving none stray */
+run('add', json('crlf.json', { pack: 'demo', section: 'phrases', entries: { 'first one': { ja: '一', es: 'Uno' }, 'second one': { ja: '二', es: 'Dos' } } }));
+for (const c of ['ja', 'es']) { const f = path.join(T, 'epinoia', 'i18n', c, 'demo.js'); fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/\r?\n/g, '\r\n')); }
+run('remove', 'demo', 'phrases', 'second one');
+const crlf = fs.readFileSync(path.join(T, 'epinoia', 'i18n', 'es', 'demo.js'), 'utf8');
+ok('...from a pack with Windows line ends too, with no stray carriage return left behind',
+   !('second one' in dict('es', 'demo').phrases) && dict('es', 'demo').phrases['first one'] === 'Uno' && /\r\n/.test(crlf) && !/\r\r/.test(crlf));
 
 console.log('\nnew-language, export, import, unhide');
 run('new-language', 'fr', '--native', 'Français', '--short', 'FR', '--locale', 'fr-FR', '--decimal', ',');

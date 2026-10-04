@@ -164,18 +164,23 @@
       const all = G.pickUpcoming(liveRaw, ups, nexts, now, N, limit.up + 1, fol);
       rows = all.slice(0, limit.up); avail = all.length;
     }
-    const liveIds = rows.filter(g => g.status === 'live').map(g => g.id);
+    /* on LIVE every live game's state, not only the shown ones': the dashboard of leagues (below) holds them all */
+    const liveIds = (tab === 'live' ? lives : rows).filter(g => g.status === 'live').map(g => g.id);
     const state = liveIds.length ? await G.liveState(liveIds) : {};
-    return { rows, state, now, mode: tab, fell: pick.fell, live: lives.length, avail, limit: limit[tab] };
+    return { rows, all: tab === 'live' ? lives : null, state, now, mode: tab, fell: pick.fell, live: lives.length, avail, limit: limit[tab] };
   }
 
-  function keyOf(data) {
-    return data.mode + '>' + (data.limit === Infinity ? 'all' : data.limit) + '>' + (data.avail > data.rows.length ? '+' : '') +
-      (fellNote ? '!' : '') + '>' + data.rows.map(g => {
-      const s = data.state[g.id] || {};
-      /* the clock is in the key too, so a stopped clock that moved (a timeout ended, a new quarter) redraws the card */
+  /* the clock is in the key too, so a stopped clock that moved (a timeout ended, a new quarter) redraws the card */
+  function printOf(rows, state) {
+    return rows.map(g => {
+      const s = state[g.id] || {};
       return [g.id, g.status, g.tipoff_at, g.home_score, g.away_score, s.period, s.score_home, s.score_away, s.clock_ms, s.running, s.break_ms].join(':');
     }).join('|');
+  }
+  function keyOf(data) {
+    if (isDash(data)) return 'dash>' + dash.open + '>' + dash.shown + '>' + (fellNote ? '!' : '') + '>' + printOf(data.all, data.state);
+    return data.mode + '>' + (data.limit === Infinity ? 'all' : data.limit) + '>' + (data.avail > data.rows.length ? '+' : '') +
+      (fellNote ? '!' : '') + '>' + printOf(data.rows, data.state);
   }
 
   /* ----------------------------------------------------------- the tabs ---
@@ -258,6 +263,8 @@
       return;
     }
 
+    /* MORE THAN THREE LEAGUES LIVE ON A WIDE SCREEN: the dashboard of leagues */
+    if (isDash(data)) { drawDash(G, data, first, o || {}); return; }
     /* MORE LIVE GAMES THAN THE RAIL HOLDS: split by league, one dropdown row each, the shape of MY FOLLOWED's rows */
     if (isSplit(data)) { drawSplit(G, data, first, o || {}); return; }
 
@@ -465,6 +472,198 @@
     } else if (o.h0 != null) {
       growFrom(o.h0);
     }
+  }
+
+  /* ===================================================== THE LIVE DASHBOARD (desktop) ===
+     MORE THAN THREE LEAGUES LIVE ON A WIDE SCREEN (2026-10-04): the LIVE tab is a dashboard of the leagues, a card each,
+     in the order their games arrive (a followed league first), each in the league's own colours: its badge, how many
+     are live, and its games as scorebugs (globalgames.js liveLine: crests, names, the score with the side ahead in full,
+     the period, its pips and the running clock), the first four and "...and N more". It is the LEAGUES that are counted, not the games: eight cards,
+     then SHOW MORE LEAGUES eight at a time, and every live game of a league is behind its card. A press on a card opens
+     that league's games, the view growing out of the card; ALL LIVE LEAGUES goes back, the card it came from marked.
+     A league whose games have all finished closes by itself. A phone (and three leagues or fewer) keeps the rows above. */
+  const DASH_AT = 3, DASH_N = 8, DASH_STEP = 8, DASH_LINES = 4;
+  const dash = { open: null, shown: DASH_N };
+  const wideMQ = (() => { try { return window.matchMedia ? window.matchMedia('(min-width: 821px)') : null; } catch (_) { return null; } })();
+  const wide = () => !!(wideMQ && wideMQ.matches);
+  if (wideMQ && typeof wideMQ.addEventListener === 'function') {
+    wideMQ.addEventListener('change', () => { if (host && lastData && lastData.mode === 'live') draw(lastData, false, { force: true }); });
+  }
+  function leagueGroups(G, rows) {
+    const groups = new Map();
+    (rows || []).forEach(g => {
+      const l = G.leagueOf ? G.leagueOf(g) : null;
+      const k = l && l.id != null ? String(l.id) : '';
+      if (!groups.has(k)) groups.set(k, { key: k, league: l, games: [] });
+      groups.get(k).games.push(g);
+    });
+    return [...groups.values()];
+  }
+  function isDash(data) {
+    const G = window.EpinoiaGlobalGames;
+    return !!(G && data && data.mode === 'live' && wide() && leagueGroups(G, data.all || data.rows).length > DASH_AT);
+  }
+  const hexOf = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
+  const tint = (n, lg) => { const a = hexOf(lg && lg.colour_a), b = hexOf(lg && lg.colour_b) || a; if (a) n.style.setProperty('--la', a); if (b) n.style.setProperty('--lb', b); };
+  function badgeInto(G, n, lg) {
+    if (lg && typeof window.epinoiaLeagueBadge === 'function') { n.innerHTML = window.epinoiaLeagueBadge(lg, { cls: 'lg' }); G.wireBadges(n); }
+    else n.textContent = (lg && lg.name) || 'League';
+  }
+  function dashCard(G, data, gr) {
+    const item = document.createElement('div');
+    item.className = 'fxd-item';
+    item.setAttribute('role', 'listitem');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'fxd-lg';
+    b.setAttribute('data-lg', gr.key);
+    tint(b, gr.league);
+    const name = (gr.league && gr.league.name) || 'League';
+    b.setAttribute('aria-label', name + ': ' + gr.games.length + ' live. Open its games');
+    const hd = document.createElement('span'); hd.className = 'fxd-hd';
+    const bd = document.createElement('span'); bd.className = 'fxd-badge'; badgeInto(G, bd, gr.league);
+    const n = document.createElement('span'); n.className = 'fxd-n';
+    n.appendChild(Object.assign(document.createElement('i'), { className: 'dot' }));
+    n.appendChild(document.createTextNode(gr.games.length + ' live'));
+    hd.append(bd, n);
+    const lines = document.createElement('span'); lines.className = 'fxd-lines';
+    gr.games.slice(0, DASH_LINES).forEach(g => lines.appendChild(G.liveLine(g, { state: data.state[g.id] })));
+    const ft = document.createElement('span'); ft.className = 'fxd-ft';
+    if (gr.games.length > DASH_LINES) {
+      const more = document.createElement('span'); more.className = 'fxd-more';
+      more.textContent = '...and ' + (gr.games.length - DASH_LINES) + ' more';
+      ft.appendChild(more);
+    }
+    ft.appendChild(Object.assign(document.createElement('span'), { className: 'fxd-go', textContent: 'open \u2192' }));
+    b.append(hd, lines, ft);
+    b.addEventListener('click', () => openLeague(gr.key, b));
+    item.appendChild(b);
+    return item;
+  }
+  function dashBoard(G, data, groups) {
+    const wrap = document.createElement('div');
+    wrap.className = 'fxd';
+    wrap.id = 'fxList';
+    const grid = document.createElement('div');
+    grid.className = 'fxd-grid';
+    grid.setAttribute('role', 'list');
+    grid.setAttribute('aria-label', groups.length + ' leagues live');
+    groups.slice(0, dash.shown).forEach(gr => grid.appendChild(dashCard(G, data, gr)));
+    wrap.appendChild(grid);
+    if (groups.length > dash.shown || dash.shown > DASH_N) {
+      const bar = document.createElement('div');
+      bar.className = 'fx-more';
+      const btn = (cls, text, act, fn) => {
+        const x = document.createElement('button');
+        x.type = 'button'; x.className = 'ep-btn ' + cls; x.textContent = text;
+        x.setAttribute('data-act', act); x.setAttribute('aria-controls', 'fxList');
+        x.addEventListener('click', fn);
+        bar.appendChild(x);
+      };
+      if (groups.length > dash.shown) {
+        btn('fx-more-btn', 'Show more leagues', 'more-leagues', () => {
+          const from = dash.shown, h0 = host.offsetHeight;
+          dash.shown += DASH_STEP;
+          draw(lastData, false, { force: true, reveal: from, h0, focusAt: from });
+        });
+      }
+      if (dash.shown > DASH_N) {
+        btn('fx-less', 'Show fewer leagues', 'less-leagues', () => {
+          const h0 = host.offsetHeight;
+          dash.shown = DASH_N;
+          draw(lastData, false, { force: true, h0, focus: '[data-act="more-leagues"]' });
+        });
+      }
+      wrap.appendChild(bar);
+    }
+    return wrap;
+  }
+  function dashLeague(G, data, gr) {
+    const wrap = document.createElement('div');
+    wrap.className = 'fxd-one';
+    wrap.id = 'fxList';
+    tint(wrap, gr.league);
+    const bar = document.createElement('div');
+    bar.className = 'fxd-bar';
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'ep-btn fxd-back';
+    back.textContent = '\u2190 All live leagues';
+    back.addEventListener('click', backToAll);
+    const t = document.createElement('span'); t.className = 'fxd-badge'; badgeInto(G, t, gr.league);
+    const n = document.createElement('span'); n.className = 'fxd-n';
+    n.appendChild(Object.assign(document.createElement('i'), { className: 'dot' }));
+    n.appendChild(document.createTextNode(gr.games.length + ' live'));
+    bar.append(back, t, n);
+    if (gr.league && gr.league.slug) {
+      const go = document.createElement('a');
+      go.className = 'hmf-go';
+      go.textContent = 'league \u2192';
+      go.href = base + '?l=' + encodeURIComponent(gr.league.slug);
+      bar.appendChild(go);
+    }
+    const rail = document.createElement('div');
+    rail.className = 'fxc-rail is-open';
+    rail.setAttribute('role', 'list');
+    gr.games.forEach(g => {
+      const c = G.card(g, { base, now: data.now, state: data.state[g.id], badge: false });
+      c.setAttribute('role', 'listitem');
+      rail.appendChild(c);
+    });
+    wrap.append(bar, rail);
+    return wrap;
+  }
+  /* the view grows out of the card that was pressed: a clip from the card's rectangle to the whole view */
+  function growOut(view, from) {
+    if (reduced() || !from || typeof view.animate !== 'function') return;
+    const to = view.getBoundingClientRect();
+    if (!to.width || !to.height) return;
+    let z = 1;
+    try { z = parseFloat(window.getComputedStyle(document.body).zoom) || 1; } catch (_) { z = 1; }
+    const px = v => Math.max(0, v / z).toFixed(1) + 'px';
+    const inset = px(from.top - to.top) + ' ' + px(to.right - from.right) + ' ' + px(to.bottom - from.bottom) + ' ' + px(from.left - to.left);
+    play(view, [{ clipPath: 'inset(' + inset + ' round 8px)', opacity: 0.55 }, { clipPath: 'inset(0px 0px 0px 0px round 0px)', opacity: 1 }],
+      { duration: 460 });
+    wipeIn(Array.from(view.querySelectorAll('.fxc')), 0);
+  }
+  function openLeague(key, card) {
+    if (!lastData) return;
+    const from = card && card.getBoundingClientRect ? card.getBoundingClientRect() : null;
+    dash.open = key;
+    draw(lastData, false, { force: true, anim: 'in', from, h0: host.offsetHeight, focus: '.fxd-back' });
+  }
+  function backToAll() {
+    if (!lastData) return;
+    const key = dash.open;
+    dash.open = null;
+    draw(lastData, false, { force: true, anim: 'out', key, h0: host.offsetHeight });
+  }
+  function drawDash(G, data, first, o) {
+    const groups = leagueGroups(G, data.all || data.rows);
+    if (dash.open != null && !groups.some(gr => gr.key === dash.open)) dash.open = null;   // its games have all finished
+    host.textContent = '';
+    if (fellNote) host.appendChild(note());
+    const view = dash.open != null ? dashLeague(G, data, groups.find(gr => gr.key === dash.open)) : dashBoard(G, data, groups);
+    host.appendChild(view);
+    if (first) H.fadeIn(view);
+    if (o.anim === 'in') growOut(view, o.from);
+    else if (o.anim === 'out') {
+      if (!reduced()) play(view, [{ opacity: 0, transform: 'scale(1.02)' }, { opacity: 1, transform: 'none' }], { duration: 320 });
+      const back = Array.from(view.querySelectorAll('.fxd-lg')).find(c => c.getAttribute('data-lg') === o.key);
+      if (back) {
+        back.classList.add('is-back');
+        setTimeout(() => back.classList.remove('is-back'), 1400);
+        back.focus({ preventScroll: true });
+      }
+    } else if (o.reveal != null) {
+      const cards = Array.from(view.querySelectorAll('.fxd-item'));
+      wipeIn(cards, o.reveal);
+      const c = cards[o.focusAt != null ? o.focusAt : o.reveal];
+      const b = c && c.querySelector('.fxd-lg');
+      if (b) { b.focus({ preventScroll: true }); if (typeof b.scrollIntoView === 'function') b.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); }
+    }
+    if (o.h0 != null) growFrom(o.h0);
+    if (o.focus) { const f = host.querySelector(o.focus); if (f) f.focus({ preventScroll: true }); }
   }
 
   function anyLive() { return liveCount > 0 || !!(host && host.querySelector && host.querySelector('.fxc.is-live')); }

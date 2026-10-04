@@ -1772,7 +1772,11 @@
       'Preview open for 30 minutes': 'Vista previa abierta durante 30 minutos',
       'Sign in to keep everything open': 'Inicia sesión para tenerlo todo abierto',
       'No previews left this week': 'No te quedan vistas previas esta semana',
-      'The preview could not be opened. Try again in a moment': 'No se ha podido abrir la vista previa. Vuelve a intentarlo en un momento'
+      'The preview could not be opened. Try again in a moment': 'No se ha podido abrir la vista previa. Vuelve a intentarlo en un momento',
+      'Show more leagues': 'Mostrar más ligas',
+      'Show fewer leagues': 'Mostrar menos ligas',
+      'All live leagues': 'Todas las ligas en directo',
+      'Half-time': 'Descanso'
     },
 
     ctx: {
@@ -2728,6 +2732,13 @@
       /* a league's front page and HOME, section by section */
       [/^Could not reach the server\. (.+)$/, 'No se pudo conectar con el servidor. $1'],
       [/^(\d+) live now$/, '$1 en directo'],
+      /* HOME's dashboard of live leagues (home/daily.js) */
+      [/^\.\.\.and (\d+) more$/, '...y $1 más'],
+      [/^(\d+) leagues live$/, '$1 ligas en directo'],
+      [/^(.+): (\d+) live\. Open its games$/, '$1: $2 en directo. Abrir sus partidos'],
+      [/^(.+), half-time$/, '$1, descanso'],
+      /* a live game's clock at the end of a period (globalgames.js clockText: the cards and the dashboard) */
+      [/^End (Q\d|H\d|OT\d*)$/, (m, T) => 'Fin ' + (T(m[1]) || m[1])],
       [/^(\d+) this week$/, '$1 esta semana'],
       [/^(\d+) dated ahead$/, '$1 con fecha futura'],
       [/^no (\d+)\/(\d+)$/, 'N.º $1/$2'],

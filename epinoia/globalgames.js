@@ -867,8 +867,78 @@ function card(g, opts) {
   return a;
 }
 
+/* liveLine(g, { state }) -> <span class="fxd-g">: one live game as a small scorebug, for HOME's dashboard of live leagues
+   (home/daily.js). Each club a row: its crest, its name and its score, on an edge of its own colour; the side ahead in full
+   ink, the side behind dimmed (both in full when level). Under them the game so far: the period, its periods as pips (those
+   played filled in the league's colour, the one being played pulsing while the clock runs; overtime one more, in flare) and
+   the running clock, ticked by the same ticker as the cards'. */
+function liveLine(g, opts) {
+  const st = (opts && opts.state) || null;
+  const hs = st && st.score_home != null ? st.score_home : g.home_score;
+  const as = st && st.score_away != null ? st.score_away : g.away_score;
+  const h = +hs || 0, a = +as || 0;
+  const home = (g.home && (g.home.name || g.home.short_name)) || 'Home', away = (g.away && (g.away.name || g.away.short_name)) || 'Away';
+  const n = periodsOf(g);
+  const p = st && +st.period > 0 ? +st.period : 0;
+  const clk = clockText(st, Date.now(), n);
+  const brk = clk === 'Half-time', ended = brk || /^End /.test(clk);
+  const running = !!(st && st.running && clk && !ended);
+  const line = node('span', 'fxd-g' + (running ? ' run' : ''));
+  line.setAttribute('data-game', g.id);
+  const row = (team, name, score, side, up) => {
+    const r = node('span', 'fxd-r ' + side + (up ? ' up' : ''));
+    const c = hex(team && team.colour);
+    if (c) r.style.setProperty('--tc', c);
+    r.appendChild(root.epinoiaCrest ? root.epinoiaCrest(team || { name }, { cls: 'fxd-cr' }) : node('span', 'fxd-cr'));
+    /* three names, the stylesheet showing the one the bug has room for: the club's name (when it is not a mouthful), its
+       short name, and its letters (initials.js, unique in the league: what a card too narrow for names shows too) */
+    const t = node('span', 'fxd-t');
+    const sh = shortName(team, name);
+    t.appendChild(node('span', 'full', name.length <= 20 ? name : sh));
+    t.appendChild(node('span', 'short', sh));
+    const I = root.EpinoiaInitials;
+    const cd = node('span', 'code', (I && team && I.code(team)) || sh);
+    if (I && team && team.id) {
+      cd.setAttribute('data-initials-team', team.id);
+      if (I.code(team)) cd.classList.add('is-code');
+      const lg = leagueOf(g);
+      if (lg && lg.id) I.want(lg.id);
+    }
+    t.appendChild(cd);
+    r.appendChild(t);
+    r.appendChild(node('b', 'fxd-s', String(score)));
+    return r;
+  };
+  line.appendChild(row(g.home, home, h, 'h', h >= a));
+  line.appendChild(row(g.away, away, a, 'a', a >= h));
+  const w = node('span', 'fxd-w');
+  const label = brk ? 'Half-time' : p ? periodLabel(p, n) : 'Live';
+  w.appendChild(node('span', 'fxd-p', label));
+  if (p) {
+    /* the periods: regulation's, and one for overtime once it has come */
+    const pg = node('span', 'fxd-pg');
+    pg.setAttribute('aria-hidden', 'true');
+    const done = ended ? p : p - 1;
+    for (let i = 1; i <= n; i++) pg.appendChild(node('i', i <= done ? 'on' : i === p ? 'now' : null));
+    if (p > n) pg.appendChild(node('i', 'ot ' + (ended ? 'on' : 'now')));
+    w.appendChild(pg);
+  }
+  if (clk && !brk) {
+    const c = node('span', 'fxc-clk' + (running ? ' run' : ''), clk);
+    if (running) {
+      c.setAttribute('data-run', '1'); c.setAttribute('data-ms', String(st.clock_ms));
+      c.setAttribute('data-at', st.updated_at || ''); c.setAttribute('data-p', String(st.period || '')); c.setAttribute('data-n', String(n));
+      startClocks();
+    }
+    w.appendChild(c);
+  }
+  line.appendChild(w);
+  line.title = home + ' ' + h + '\u2013' + a + ' ' + away + ', ' + (brk ? 'half-time' : label + (clk ? ' ' + clk : ''));
+  return line;
+}
+
 return {
-  SEL, STALE_MS, LIVE_CAP_MS, overdue, LEAGUE_WINDOW_MS,
+  SEL, STALE_MS, LIVE_CAP_MS, overdue, LEAGUE_WINDOW_MS, liveLine, badge,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
   pickDaily, pickLive, pickUpcoming, pickResults, dailyTab, moreStep, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
   card, wireBadges, dayLabel, timeLabel, clockText, tickClocks, esc

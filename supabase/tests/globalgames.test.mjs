@@ -500,6 +500,54 @@ section('the card (a small DOM stub)');
      find(rc, 'fxc-clk').attrs['data-run'] === '1' && find(rc, 'fxc-clk').attrs['data-ms'] === '255000' && !!find(rc, 'fxc-clk').attrs['data-at'] && find(rc, 'fxc-clk').attrs['data-p'] === '1');
   ok('a live game with no state, a final and an upcoming card have no clock', !find(W.card(game('g6', L.slbm, -H, 'live', {}), { now: NOW }), 'fxc-clk')
      && !find(fin, 'fxc-clk') && !find(up, 'fxc-clk') && !find(W.card(game('g7', L.slbm, -H, 'live', {}), { now: NOW, state: { period: 2 } }), 'fxc-clk'));
+
+  /* THE SCOREBUG, one live game in HOME's dashboard of leagues (liveLine): a row a club, the game so far under them */
+  const kids = (n, cls) => { const out = []; (function walk(x) { if ((' ' + x.className + ' ').includes(' ' + cls + ' ')) out.push(x); (x.children || []).forEach(walk); })(n); return out; };
+  const pips = n => { const pg = find(n, 'fxd-pg'); return pg ? pg.children.map(i => i.className || '-').join(',') : null; };
+  const bug = W.liveLine(game('g8', L.slbm, -H, 'live', {}), { state: S({ period: 3, score_home: 50, score_away: 48 }) });
+  const rows = kids(bug, 'fxd-r');
+  ok('liveLine: a scorebug, home then away a row each: crest, name, score',
+     /^fxd-g\b/.test(bug.className) && rows.length === 2 && /\bh\b/.test(rows[0].className) && /\ba\b/.test(rows[1].className)
+     && !!find(rows[0], 'fxd-cr') && find(rows[0], 'fxd-s').textContent === '50' && find(rows[1], 'fxd-s').textContent === '48');
+  ok('...the side ahead marked (up), the side behind not; level, both are',
+     /\bup\b/.test(rows[0].className) && !/\bup\b/.test(rows[1].className)
+     && kids(W.liveLine(game('g9', L.slbm, -H, 'live', {}), { state: S({ score_home: 20, score_away: 20 }) }), 'fxd-r').every(r => /\bup\b/.test(r.className)));
+  ok('...three names for the stylesheet to pick from by the bug\'s width (full, short, letters), and the club\'s colour on its row',
+     find(rows[0], 'full').textContent === 'Home g8' && find(rows[0], 'short').textContent === 'Hg8' && find(rows[0], 'code').textContent === 'Hg8'
+     && find(rows[1], 'short').textContent === 'Away' && rows[0].style.props['--tc'] === '#123456' && rows[1].style.props['--tc'] === undefined);
+  {
+    const wanted = [];
+    sandbox.EpinoiaInitials = { code: t => (t && t.id === 'h-g16' ? 'HGX' : ''), want: id => wanted.push(id) };
+    const lb = W.liveLine(game('g16', L.slbm, -H, 'live', { home: { id: 'h-g16', name: 'A Club With A Very Long Name', short_name: 'Long' } }), { state: S({}) });
+    delete sandbox.EpinoiaInitials;
+    const r0 = kids(lb, 'fxd-r')[0];
+    ok('...the letters are the league\'s (initials.js, asked for and filled in later); a name too long for a bug is its short one',
+       find(r0, 'code').textContent === 'HGX' && find(r0, 'code').attrs['data-initials-team'] === 'h-g16' && /is-code/.test(find(r0, 'code').className)
+       && wanted.includes('l-slbm') && find(r0, 'full').textContent === 'Long' && /Very Long Name/.test(lb.title));
+  }
+  ok('...under them the period, the periods as pips (played, being played, to come) and the clock',
+     find(bug, 'fxd-p').textContent === 'Q3' && pips(bug) === 'on,on,now,-' && find(bug, 'fxc-clk').textContent === '4:15'
+     && bug.title === 'Home g8 50\u201348 Away g8, Q3 4:15', bug.title + ' ' + pips(bug));
+  ok('...a stopped clock is not ticked and the bug is not running', !find(bug, 'fxc-clk').attrs['data-run'] && !/\brun\b/.test(bug.className));
+  const runBug = W.liveLine(game('g10', L.slbm, -H, 'live', {}), { state: S({ period: 2, running: true, updated_at: new Date().toISOString() }) });
+  ok('...a running one is (the same ticker as the cards\'), and the period being played pulses (run)',
+     /\brun\b/.test(runBug.className) && find(runBug, 'fxc-clk').attrs['data-run'] === '1' && find(runBug, 'fxc-clk').attrs['data-ms'] === '255000'
+     && /\brun\b/.test(find(runBug, 'fxc-clk').className) && pips(runBug) === 'on,now,-,-');
+  const endBug = W.liveLine(game('g11', L.slbm, -H, 'live', {}), { state: S({ period: 1, clock_ms: 0 }) });
+  ok('...a period that has run out: its pip filled, none being played, the clock says so',
+     pips(endBug) === 'on,-,-,-' && find(endBug, 'fxc-clk').textContent === 'End Q1' && find(endBug, 'fxd-p').textContent === 'Q1');
+  const htBug = W.liveLine(game('g12', L.slbm, -H, 'live', {}), { state: S({ period: 2, clock_ms: 0, break_ms: 600000, running: true }) });
+  ok('...half-time: says so, two pips filled, no clock, not running', find(htBug, 'fxd-p').textContent === 'Half-time' && pips(htBug) === 'on,on,-,-'
+     && !find(htBug, 'fxc-clk') && !/\brun\b/.test(htBug.className) && /half-time$/.test(htBug.title));
+  const otBug = W.liveLine(game('g13', L.slbm, -H, 'live', {}), { state: S({ period: 5, clock_ms: 120000 }) });
+  ok('...overtime: OT, regulation filled and one pip more for it', find(otBug, 'fxd-p').textContent === 'OT' && pips(otBug) === 'on,on,on,on,ot now');
+  const halves = Object.assign({}, L.slbm, { id: 'l-ncaa', periods: 2 });
+  const h2 = W.liveLine(game('g14', halves, -H, 'live', {}), { state: S({ period: 2 }) });
+  ok('...a league played in halves: H2, two pips', find(h2, 'fxd-p').textContent === 'H2' && pips(h2) === 'on,now');
+  const bare = W.liveLine(game('g15', L.slbm, -H, 'live', { home_score: 9, away_score: 11 }), {});
+  ok('...no state yet: the game\'s own score, Live, no pips and no clock',
+     find(bare, 'fxd-p').textContent === 'Live' && !find(bare, 'fxd-pg') && !find(bare, 'fxc-clk')
+     && kids(bare, 'fxd-s').map(x => x.textContent).join('-') === '9-11' && /\bup\b/.test(kids(bare, 'fxd-r')[1].className));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -836,7 +884,8 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
   }
   class El {
     constructor(tag) { this.tag = tag; this.children = []; this.attrs = {}; this.className = ''; this.id = ''; this._text = '';
-      this.listeners = {}; this.hidden = false; this.anims = []; this.style = {}; this.parent = null; this.dataset = {}; this.tabIndex = 0; }
+      this.listeners = {}; this.hidden = false; this.anims = []; this.parent = null; this.dataset = {}; this.tabIndex = 0;
+      this.style = { setProperty: (k, v) => { this.style[k] = v; } }; }
     get classList() { const e = this; return {
       add: c => { if (!(' ' + e.className + ' ').includes(' ' + c + ' ')) e.className = (e.className + ' ' + c).trim(); },
       remove: c => { e.className = e.className.split(' ').filter(x => x && x !== c).join(' '); },
@@ -844,6 +893,7 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
     set textContent(v) { this.children.forEach(c => { c.parent = null; }); this.children = []; this._text = String(v); }
     get textContent() { return this._text + this.children.map(c => c.textContent).join(''); }
     appendChild(c) { c.parent = this; this.children.push(c); return c; }
+    append(...cs) { cs.forEach(c => this.appendChild(c)); }
     setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'id') this.id = String(v); if (k.startsWith('data-')) this.dataset[k.slice(5)] = String(v); }
     getAttribute(k) { if (k === 'id') return this.id || null; if (k === 'class') return this.className; if (k === 'hidden') return this.hidden ? '' : null;
       return k in this.attrs ? this.attrs[k] : null; }
@@ -873,8 +923,10 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
     const section = new El('section');
     const host = new El('div'); section.appendChild(host);
     doc = { visibilityState: 'visible', activeElement: null, createElement: t => new El(t),
+      createTextNode: t => { const e = new El('#text'); e._text = String(t); return e; },
       getElementById: id => (id === 'fxSeg' ? seg : id === 'fxSay' ? sayEl : null), addEventListener() {} };
     const calls = { up: [], res: [] };
+    const mq = { matches: !!o.wide, addEventListener: (t, f) => { mq.f = f; } };
     const store = Object.assign({}, o.session || {});
     const box = {
       EpinoiaHome: { register: (k, f) => { box.reg = f; }, fadeIn: e => e },
@@ -884,10 +936,11 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
         upcoming: async (from, lim) => { calls.up.push(from); const all = o.ups.filter(g => g.tipoff_at >= from); return all.slice(0, lim); },
         recent: async (before, off, lim) => { calls.res.push(off); return o.res.slice(off, off + lim); },
         nextAll: async () => new Map(), liveState: async () => ({}),
-        card: g => { const a = new El('a'); a.className = 'fxc ' + (g.status === 'live' ? 'is-live' : 'is-upcoming'); a.setAttribute('href', '/g/' + g.id); a.gid = g.id; return a; }
+        card: g => { const a = new El('a'); a.className = 'fxc ' + (g.status === 'live' ? 'is-live' : 'is-upcoming'); a.setAttribute('href', '/g/' + g.id); a.gid = g.id; return a; },
+        liveLine: g => { const l = new El('span'); l.className = 'fxd-g'; l.gid = g.id; return l; }
       }),
       sessionStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
-      matchMedia: q => ({ matches: /reduce/.test(q) && !!o.reduce }),
+      matchMedia: q => (/min-width/.test(q) ? mq : { matches: /reduce/.test(q) && !!o.reduce }),
       document: doc,
       setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout: () => {},
       Date: { now: () => NOW, parse: Date.parse }, Math, Promise, Error, Map, Set, Array, Object, String, Number, JSON
@@ -896,7 +949,7 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
     box.window = box;
     vm.createContext(box);
     vm.runInContext(rd('epinoia', 'home', 'daily.js'), box);
-    return { box, host, seg, lb, sayEl, calls, store, timers, start: () => box.reg({ host, base: '../' }),
+    return { box, host, seg, lb, sayEl, calls, store, timers, mq, start: () => box.reg({ host, base: '../' }),
       tick: async () => { const t = timers.filter(x => x.ms >= 15000).pop(); timers.length = 0; await t.f(); },
       sel: () => seg.querySelector('button[aria-selected="true"]').dataset.fx,
       cards: () => host.querySelectorAll('.fxc').map(c => c.gid) };
@@ -977,6 +1030,72 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
   ok('the reader\'s pick of the visit wins over LIVE on arrival', P.sel() === 'res' && !P.lb.hidden);
   P.host.querySelector('[data-act="more"]').click(); await flush(); await flush();
   ok('reduced motion: SHOW MORE reveals at once, nothing animated', P.cards().length === 16 && anims.length === 0);
+  {
+    /* MORE THAN THREE LEAGUES LIVE ON A WIDE SCREEN: the dashboard of leagues, a card a league (its games as scorebugs), the
+       league's own games behind each card, and back */
+    const lgs = [];
+    for (let i = 0; i < 10; i++) lgs.push({ id: 'l-x' + i, slug: 'x' + i, name: 'League ' + i, country: 'GB', colour_source: 'logo', colour_a: '#1' + i + '2233', colour_b: '#4455' + i + '6' });
+    let dashLive = [];
+    lgs.forEach((l, i) => { const n = i === 0 ? 6 : 1 + (i % 2); for (let j = 0; j < n; j++) dashLive.push(live('d' + i + '-' + j, l, -(90 - i * 5 - j) * 60e3)); });   // league 0 tipped off first, so it leads
+    const D1 = page({ live: () => dashLive, ups: someUps, res: someRes, wide: true });
+    await D1.start();
+    const lgCards = () => D1.host.querySelectorAll('.fxd-lg');
+    const cardOf = id => lgCards().find(c => c.getAttribute('data-lg') === id);
+    ok('dashboard: ten leagues live on a wide screen: a card a league, eight of them, and SHOW MORE LEAGUES (no game cards)',
+       D1.sel() === 'live' && lgCards().length === 8 && !!D1.host.querySelector('[data-act="more-leagues"]') && D1.cards().length === 0
+       && D1.host.querySelector('.fxd-grid').getAttribute('role') === 'list', lgCards().length);
+    const c0 = cardOf('l-x0');
+    ok('...a card: the league, how many live, its games as scorebugs (four), "...and 2 more", in the league\'s colours',
+       !!c0 && c0.querySelectorAll('.fxd-g').length === 4 && c0.querySelector('.fxd-more').textContent === '...and 2 more'
+       && /6 live/.test(c0.querySelector('.fxd-n').textContent) && c0.getAttribute('aria-label') === 'League 0: 6 live. Open its games'
+       && c0.style['--la'] === '#102233' && c0.style['--lb'] === '#445506', c0 && c0.getAttribute('aria-label'));
+    ok('...a league with fewer games than a card holds has no "...and" line', !cardOf('l-x1').querySelector('.fxd-more') && cardOf('l-x1').querySelectorAll('.fxd-g').length === 2);
+    D1.host.querySelector('[data-act="more-leagues"]').click();
+    ok('SHOW MORE LEAGUES: all ten, SHOW FEWER LEAGUES beside them, focus on the first new card',
+       lgCards().length === 10 && !D1.host.querySelector('[data-act="more-leagues"]') && !!D1.host.querySelector('[data-act="less-leagues"]')
+       && doc.activeElement === lgCards()[8]);
+    D1.host.querySelector('[data-act="less-leagues"]').click();
+    ok('SHOW FEWER LEAGUES: back to eight, focus on SHOW MORE LEAGUES', lgCards().length === 8 && doc.activeElement === D1.host.querySelector('[data-act="more-leagues"]'));
+    anims.length = 0;
+    cardOf('l-x0').click();
+    const one = D1.host.querySelector('.fxd-one');
+    ok('a card pressed opens its league: every one of its games as a card, the way back focused, the dashboard gone',
+       !!one && D1.cards().length === 6 && D1.cards().every(id => /^d0-/.test(id)) && !D1.host.querySelector('.fxd-grid')
+       && doc.activeElement === D1.host.querySelector('.fxd-back') && /6 live/.test(one.querySelector('.fxd-n').textContent), D1.cards().join());
+    ok('...in the league\'s colours, with a link to the league', one.style['--la'] === '#102233' && one.querySelector('.hmf-go').href === '../?l=x0', one.querySelector('.hmf-go') && one.querySelector('.hmf-go').href);
+    D1.host.querySelector('.fxd-back').click();
+    ok('...back: the dashboard again, the league\'s card marked and focused, the view settling in (scale and fade)',
+       lgCards().length === 8 && doc.activeElement === cardOf('l-x0') && cardOf('l-x0').classList.contains('is-back')
+       && anims.some(a => a.frames[0].transform === 'scale(1.02)'));
+    cardOf('l-x3').click();
+    dashLive = dashLive.filter(g => !/^d3-/.test(g.id));
+    await D1.tick();
+    ok('a league whose games have all finished closes by itself, back to the dashboard', !D1.host.querySelector('.fxd-one') && lgCards().length === 8 && !cardOf('l-x3'));
+
+    const D2 = page({ live: () => dashLive, ups: someUps, res: someRes, wide: false });
+    await D2.start();
+    ok('a phone (or any narrow screen): no dashboard, the games as before', !D2.host.querySelector('.fxd-lg') && D2.cards().length > 0, D2.cards().length);
+    D2.mq.matches = true; D2.mq.f();
+    ok('...widening the window brings the dashboard in', D2.host.querySelectorAll('.fxd-lg').length === 8);
+    /* the first n leagues still live (league 3's games finished above) */
+    const firstLeagues = n => { const ids = [...new Set(dashLive.map(g => g.competitions.seasons.leagues.id))].slice(0, n);
+      return dashLive.filter(g => ids.includes(g.competitions.seasons.leagues.id)); };
+    const three = firstLeagues(3);
+    const D3 = page({ live: () => three, ups: someUps, res: someRes, wide: true });
+    await D3.start();
+    ok('three leagues live keep the rows on a wide screen: no dashboard', !D3.host.querySelector('.fxd-lg') && D3.cards().length === three.length, D3.cards().length);
+    const four = firstLeagues(4);
+    const D4 = page({ live: () => four, ups: someUps, res: someRes, wide: true });
+    await D4.start();
+    ok('...a fourth league brings the dashboard: four cards, no SHOW MORE LEAGUES', D4.host.querySelectorAll('.fxd-lg').length === 4
+       && !D4.host.querySelector('[data-act="more-leagues"]') && D4.cards().length === 0, D4.host.querySelectorAll('.fxd-lg').length);
+  }
+  const dcss = rd('epinoia', 'kit', 'home.css');
+  ok('the dashboard\'s stylesheet: scorebugs two abreast where the card has room, letters / short name / name by the bug\'s width, nothing pulsing with reduced motion',
+     /\.fxd-lines\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(136px,1fr\)\)/.test(dcss)
+     && /@container \(min-width:150px\)\{ \.fxd-t \.short\{display:inline\} \.fxd-t \.code\{display:none\} \}/.test(dcss)
+     && /@container \(min-width:210px\)\{ \.fxd-t \.full\{display:inline\} \.fxd-t \.short\{display:none\}/.test(dcss)
+     && /prefers-reduced-motion:reduce\)\{ \.fxd-lg\{transition:none\} [^}]*\.fxd-g\.run \.fxd-pg i\.now/.test(dcss));
   const css = rd('epinoia', 'kit', 'home.css');
   ok('reduced motion in the stylesheet: the live dot does not pulse, the LIVE tab does not slide',
      /@media \(prefers-reduced-motion:reduce\)\{\s*\.hm \.sec-h \.hm-seg \.fx-dot\{animation:none\}\s*\.hm \.sec-h \.hm-seg button\.is-new\{animation:none\}/.test(css));
