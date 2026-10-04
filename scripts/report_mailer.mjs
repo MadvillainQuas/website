@@ -5,7 +5,7 @@
      GAME      each of the club's games finalised since the address was added (and in the last week), not yet sent:
                the game analysis PDF from the club's side (game/analysis.js), one email a game, as soon as it is final,
                with the club's next fixture
-     SUNDAY    once on Sunday from 8 am at the address's own time: the club reports (t/ Report tab) of every opponent
+     SUNDAY    once on Sunday from 9 am at the address's own time: the club reports (t/ Report tab) of every opponent
                the club plays in the week ahead, Monday to Sunday at that time (so a Sunday game is in the email the
                Sunday before it, never in two), and every other Sunday the club's own report too, all in ONE email.
                An address's first Sunday also takes in any game later that day. A Sunday with neither sends nothing.
@@ -500,9 +500,9 @@ async function one(sub, team) {
     await log(sub, 'game', g.id, `${side ? g.away_score : g.home_score}-${side ? g.home_score : g.away_score} v ${opp}`);
   }
 
-  /* SUNDAY: from 8 am, once, at their own time; the week ahead is Monday to Sunday */
+  /* SUNDAY: from 9 am, once, at their own time; the week ahead is Monday to Sunday */
   const L = local(tz);
-  if (L.wd !== 'Sun' || L.hour < 8 || has('sunday', L.date)) return;
+  if (L.wd !== 'Sun' || L.hour < 9 || has('sunday', L.date)) return;
   const W = weekAhead(tz, new Date(), !sent.some(x => x.kind === 'sunday'));
   if (!(await sendWeek(sub, team, tz, sent, W, L.date))) await log(sub, 'sunday', L.date, 'nothing this week');
 }
