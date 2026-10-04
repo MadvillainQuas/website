@@ -130,6 +130,9 @@ function cloneStyled(src) {
     /* the copy's root has no parent in the picture but the page's defaults; everything under it has its copied parent */
     const par = !top && n.parentElement ? root.getComputedStyle(n.parentElement) : null;
     c.setAttribute('style', styleText(cs, defaultsOf(n), false, ownText && cs.position !== 'absolute', par));
+    /* A <col span=n>: its computed width is the TOTAL of its n columns, and inlined it would be given to each of them - n times
+       too wide, the table run off the page (the zone table, 2026-10-04). Each column gets its share. */
+    if ((tag === 'col' || tag === 'colgroup') && n.span > 1 && parseFloat(cs.width) > 0) c.setAttribute('style', c.getAttribute('style') + ';width:' + (parseFloat(cs.width) / n.span).toFixed(2) + 'px');
     const pseudo = ps => {
       if (svg) return null;
       const pcs = root.getComputedStyle(n, ps);
