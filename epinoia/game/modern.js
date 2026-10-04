@@ -342,6 +342,45 @@
     return '<div class="glass mv-fx">' + names + hero + '<div class="mv-fxgrid">' + rows + '</div></div>';
   }
 
+  /* SHOT PROFILE, beneath the four factors: where each side shot from (rim, mid-range, three) and how well, mirrored about the
+     zone names. A bar's LENGTH is the attempts, on ONE scale for both clubs and all three zones, so volume reads across the
+     whole card; the solid part of it is the makes, the pale remainder the misses, so efficiency is how much of the bar is
+     solid. At the bar's outer end: FG% in the club's colour where it is the better of the two, and made-attempted beneath;
+     in the middle: the zone and its share of the club's shots. Same numbers as the box score (teamAdv: rim and mid are the
+     shot zones, three is every three). Left out until a shot has been taken. */
+  function shotsHTML() {
+    const S = window.S, B = window.EpinoiaBox, TA = teamAdvs;
+    if (!TA || !TA[0] || !TA[1]) return '';
+    const ZONES = [['rim', 'rimA', 'rimM'], ['mid-range', 'midA', 'midM'], ['three', 'fg3a', 'fg3m']];
+    const num = v => (v == null || !isFinite(v)) ? 0 : v;
+    const z = (t, a, m) => ({ a: num(TA[t][a]), m: Math.min(num(TA[t][m]), num(TA[t][a])) });
+    const all = ZONES.map(([, a, m]) => [z(0, a, m), z(1, a, m)]);
+    const max = Math.max.apply(null, all.reduce((l, r) => l.concat([r[0].a, r[1].a]), [])) || 0;
+    if (!(max > 0)) return '';
+    const TC = window.EpinoiaTeamColour;
+    const cols = [0, 1].map(t => { const c = B.safeColour((S.teams[t] || {}).color, t ? '#8ff5ff' : '#93f2bf'); return (TC && TC.ink && TC.ink(c)) || c; });
+    const fga = [0, 1].map(t => Math.max(1, num(TA[t].fga)));
+    const pct = (m, a) => a ? Math.round(m / a * 100) : null;
+    /* a club's figure (FG% over made-attempted) and its bar; the better FG% of the two is set in the club's colour */
+    const figure = (t, o, x) => {
+      const p = pct(o.m, o.a), better = o.a > 0 && (x.a === 0 || o.m / o.a > x.m / x.a);
+      return '<span class="mv-szv' + (t ? ' r' : '') + (better ? ' w' : '') + '" style="--c:' + esc(cols[t]) + '"><b>' + (p == null ? '–' : p + '%') + '</b><i>' + o.m + '-' + o.a + '</i></span>';
+    };
+    const bar = (t, o) => '<div class="mv-szbar' + (t ? ' r' : '') + '"><div class="mv-sztr" style="width:' + (o.a / max * 100).toFixed(1) + '%;--c:' + esc(cols[t]) + '">' +
+      '<i style="width:' + (o.a ? o.m / o.a * 100 : 0).toFixed(1) + '%"></i></div></div>';
+    const rows = ZONES.map(([label], i) => {
+      const h = all[i][0], a = all[i][1];
+      return '<div class="mv-szrow">' + figure(0, h, a) + bar(0, h) +
+        '<div class="mv-szmid"><b>' + label + '</b><span><em style="color:' + esc(cols[0]) + '">' + Math.round(h.a / fga[0] * 100) + '%</em> of shots <em style="color:' + esc(cols[1]) + '">' + Math.round(a.a / fga[1] * 100) + '%</em></span></div>' +
+        bar(1, a) + figure(1, a, h) + '</div>';
+    }).join('');
+    const names = '<div class="mv-fxnames"><span data-team-slot="0" style="color:' + esc(cols[0]) + '">' + esc(B.tname(0)) + '</span>' +
+      '<div class="mv-fxtitle">shot profile · volume &amp; efficiency</div>' +
+      '<span class="r" data-team-slot="1" style="color:' + esc(cols[1]) + '">' + esc(B.tname(1)) + '</span></div>';
+    return '<div class="glass mv-fx mv-sz">' + names + '<div class="mv-szgrid">' + rows + '</div>' +
+      '<div class="mv-szkey"><span><i class="m"></i>made</span><span><i class="x"></i>missed</span><span>bar length = shots taken · figure at the end = FG% · middle = share of the club’s shots</span></div></div>';
+  }
+
   /* THE SCORING DEVELOPMENT CHART from the Game Flow tab, at the foot of the box score: the score margin
      over the game, on the same card and with the same hover (flow.js). Drawn only where flow.js is loaded. */
   function marginHTML() {
@@ -352,7 +391,7 @@
   function render(d) {
     compute(d);
     labelsFor(window.S);
-    return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' + factorsHTML() + marginHTML() +
+    return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' + factorsHTML() + shotsHTML() + marginHTML() +
       '<div class="setup-note mv-note">positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has twenty season minutes) · tap or hover a player for the full line</div>';
   }
 
