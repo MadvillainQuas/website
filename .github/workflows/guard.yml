@@ -833,6 +833,7 @@ jobs:
         run: |
           npm i --no-save @electric-sql/pglite
           node supabase/tests/player-merge.test.mjs
+          node supabase/tests/site-search-fast.test.mjs
           python scripts/ingest/player_merge_test.py
 
       - name: Merging two clubs into one (0188), and every Senior Men twin merged (0192)

@@ -1775,7 +1775,9 @@
       'Show fewer leagues': 'リーグの表示を減らす',
       'All live leagues': '試合中のすべてのリーグ',
       'Half-time': 'ハーフタイム',
-      'EPINOIA GO could not be loaded just now.': 'EPINOIA GOを今は読み込めませんでした。'
+      'EPINOIA GO could not be loaded just now.': 'EPINOIA GOを今は読み込めませんでした。',
+      'Sign in with a free EPINOIA account to see this': 'EPINOIAの無料アカウントでサインインして表示',
+      'An EPINOIA account is free at the moment: all you need to do is sign in.': '現在、EPINOIAのアカウントは無料です。サインインするだけで利用できます。'
     },
 
     ctx: {

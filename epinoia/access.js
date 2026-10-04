@@ -481,7 +481,9 @@ const COPY = Object.freeze({
   trialCta: 'Start your {months}-month free trial',
   trialBadge: '{months} months free for new members · cancel any time',
   /* signed in first (signinFirst below): what a signed-out reader is told */
-  signinTitle: 'Sign in to see this',
+  signinTitle: 'Sign in with a free EPINOIA account to see this',
+  /* an account is free for now (until memberships switch on): said, so nobody takes the sign-in for a paywall */
+  signinFree: 'An EPINOIA account is free at the moment: all you need to do is sign in.',
   signinLead: 'It takes a moment with your email, Google or Discord, and brings you straight back here.',
   signinAll: 'An account opens WOWY and the lineups, the player and club reports, shot zones, rotations and the full statistics tables.',
   signinTip: 'Sign in to use this',
@@ -1382,6 +1384,7 @@ function signinHTML(o) {
     '<div class="ep-lock-tx">' +
       '<div class="ep-lock-t">' + esc(x.signinTitle || copyOf('signinTitle')) + '</div>' +
       '<p class="ep-in-need">' + esc(signinNeed(x)) + '</p>' +
+      '<p class="ep-lock-l ep-in-free">' + esc(copyOf('signinFree')) + '</p>' +
       lines.map(l => '<p class="ep-lock-l">' + esc(l) + '</p>').join('') +
       '<p class="ep-lock-l">' + esc(copyOf('signinAll')) + '</p>' +
       '<p class="ep-lock-l">' + esc(copyOf('signinLead')) + '</p>' +

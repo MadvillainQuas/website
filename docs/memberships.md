@@ -726,7 +726,7 @@ nothing is sold at this step: the card has one button, to the sign-in page, whic
   members-only league's wall (`paywallHTML`, the fixtures banner with `key: 'league'`) is the membership one as before.
 - **A stored session that can still be refreshed counts as signed in**, so a member is never shown the prompt for the
   second a refresh takes.
-- **What the reader sees**: `teaserHTML()` gives the sign-in card (a picture, "Sign in to see this", what needs the
+- **What the reader sees**: `teaserHTML()` gives the sign-in card (a picture, "Sign in with a free EPINOIA account to see this", that it is free at the moment, what needs the
   account: "Pairs need an EPINOIA account.", what an account opens, the button); memlock's placeholder puts the picture,
   the words and the button over the blurred rows; a press on a locked control opens the sign-in box (`askSignIn`; Esc,
   the backdrop or "Not now" closes it); the popup says "Sign in to use this". All of it wears the site's lume, and the

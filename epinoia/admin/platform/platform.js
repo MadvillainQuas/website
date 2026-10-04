@@ -2332,6 +2332,7 @@ const COPY_WORDS = {
   trialCta: 'The button while a free trial is offered ({months}: its length)',
   trialBadge: 'The free-trial badge ({months}: its length)',
   signinTitle: 'Signed out: the sign-in card\'s title',
+  signinFree: 'Signed out: that an account is free at the moment',
   signinLead: 'Signed out: how signing in works',
   signinAll: 'Signed out: what an account opens',
   signinTip: 'Signed out: the popup on a locked control'

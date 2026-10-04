@@ -240,13 +240,27 @@ async function search(cfg, q, signal, part) {
   if (memo.has(key)) return memo.get(key);
   let rows = null, via = 'rpc';
   if (rpcState !== 'no') {
-    rows = await askRpc(cfg, q, false, signal);
-    if (rows === null) rpcState = 'no'; else rpcState = 'yes';
+    /* A database that is busy answers 500 (a statement cut off at three seconds): once more, then the tables, so a slow moment is not
+       a dead end ("Search is not available just now"). rpcState stays as it was: the function is there, only slow. */
+    let failed = null;
+    try {
+      try { rows = await askRpc(cfg, q, false, signal); }
+      catch (e) { if (e && e.name === 'AbortError') throw e; rows = await askRpc(cfg, q, false, signal); }
+      if (rows === null) rpcState = 'no'; else rpcState = 'yes';
+    } catch (e) { if (e && e.name === 'AbortError') throw e; rows = null; failed = e; }
+    if (failed) {
+      /* the tables may still have an answer; if they have none, it is the failure that is shown - never "Nothing matches" for a search that did not run */
+      const some = await askTables(cfg, q, signal, part);
+      if (!some.length) throw failed;
+      return { rows: some, via: 'tables', close: false };
+    }
   }
   if (rows === null) { via = 'tables'; rows = await askTables(cfg, q, signal, part); }
   let close = false;
   if (via === 'rpc' && rows.length < FUZZY_BELOW && key.length >= 4) {
-    const more = await askRpc(cfg, q, true, signal);
+    /* the second look is a nicety: if it fails, the first answer stands */
+    let more = null;
+    try { more = await askRpc(cfg, q, true, signal); } catch (e) { if (e && e.name === 'AbortError') throw e; }
     if (more && more.length) { const all = merge(rows, more); close = all.length > rows.length; rows = all; }
   }
   const out = { rows, via, close };

@@ -102,7 +102,7 @@ console.log('\nthe card');
   const { A } = page();
   const h = A.teaserHTML({ leagueSlug: 'slb-men', title: 'Pairs are for members', lines: ['Pick two players.'] });
   ok('a teaser, signed out, is the sign-in card: the picture, the title, what needs the account, what an account opens, the button',
-     /class="ep-lock ep-lock-signin"/.test(h) && /<svg class="ep-in-art"/.test(h) && />Sign in to see this</.test(h) && /Pairs need an EPINOIA account\./.test(h)
+     /class="ep-lock ep-lock-signin"/.test(h) && /<svg class="ep-in-art"/.test(h) && />Sign in with a free EPINOIA account to see this</.test(h) && /An EPINOIA account is free at the moment: all you need to do is sign in\./.test(h) && /Pairs need an EPINOIA account\./.test(h)
      && /An account opens WOWY and the lineups/.test(h) && /class="ep-in-go" href="\/epinoia\/signin\/\?next=%2Fepinoia%2Ft%2F"/.test(h) && /Pick two players\./.test(h), h);
   ok('...and nothing for sale on it (one thing to do)', !/ep-lock-go/.test(h) && !/data-lock=/.test(h));
   ok('"is for members" names one thing: needs', /The club report needs an EPINOIA account\./.test(A.teaserHTML({ title: 'The club report is for members' })));
@@ -123,7 +123,7 @@ console.log('\nthe placeholder, the popup and the box');
   const ph = M.placeholder({ what: 'Lineups', plural: true, rows: 4 });
   const text = JSON.stringify(ph, (k, v) => (k === 'parentNode' ? undefined : v));
   ok('the placeholder, signed out: the picture, "Sign in to see this", what needs the account, the button',
-     ph.classList.contains('mem-ph-in') && /ep-in-art/.test(text) && /Sign in to see this/.test(text) && /Lineups need an EPINOIA account\./.test(text) && /ep-in-go/.test(text), text.slice(0, 400));
+     ph.classList.contains('mem-ph-in') && /ep-in-art/.test(text) && /Sign in with a free EPINOIA account to see this/.test(text) && /Lineups need an EPINOIA account\./.test(text) && /ep-in-go/.test(text), text.slice(0, 400));
   const btn = doc.createElement('button'); btn._text = 'CSV';
   M.lock(btn, { what: 'CSV download' });
   ok('a locked control, signed out, is a way in (pointer, not the stop sign)', btn.classList.contains('mem-lock') && btn.classList.contains('mem-in'));
@@ -174,7 +174,7 @@ console.log('\nthe pages');
   for (const L of ['ja', 'es']) {
     const core = rd('epinoia', 'i18n', L + '.js');
     ok(L + ': the card, the box and the refusal are translated, and the sentence "X needs an EPINOIA account."',
-       ['Sign in to see this', 'Sign in to use this', 'Not now', 'This account has been disabled'].every(s => core.toLowerCase().includes("'" + s.toLowerCase() + "'")) && /needs\? an EPINOIA account/.test(core));
+       ['Sign in with a free EPINOIA account to see this', 'An EPINOIA account is free at the moment: all you need to do is sign in.', 'Sign in to use this', 'Not now', 'This account has been disabled'].every(s => core.toLowerCase().includes("'" + s.toLowerCase() + "'")) && /needs\? an EPINOIA account/.test(core));
   }
 }
 

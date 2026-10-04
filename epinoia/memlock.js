@@ -216,7 +216,7 @@ function placeholder(o) {
     wrap.setAttribute('aria-label', String(o.what || 'These stats') + ' — sign in to see them');
     const art = DOC.createElement('span'); art.className = 'mem-ph-art';
     try { art.innerHTML = A && A.signinArt ? A.signinArt() : ''; } catch (_) { /* no picture */ }
-    const t = DOC.createElement('b'); t.textContent = (A && A.copyOf ? A.copyOf('signinTitle') : '') || 'Sign in to see this';
+    const t = DOC.createElement('b'); t.textContent = (A && A.copyOf ? A.copyOf('signinTitle') : '') || 'Sign in with a free EPINOIA account to see this';
     const p = DOC.createElement('span'); p.className = 'mem-ph-need';
     p.textContent = A && A.signinNeed ? A.signinNeed({ what: o.what, plural: o.plural }) : '';
     const a = DOC.createElement('a'); a.className = 'ep-in-go'; a.href = signinHref(); a.textContent = (A && A.copyOf ? A.copyOf('signIn') : '') || 'Sign in';
@@ -257,9 +257,10 @@ function askSignIn(o) {
   box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'mem-ask-h');
   const art = DOC.createElement('div'); art.className = 'mem-ask-art';
   try { art.innerHTML = A && A.signinArt ? A.signinArt() : ''; } catch (_) { /* no picture */ }
-  const h = DOC.createElement('h2'); h.id = 'mem-ask-h'; h.textContent = c('signinTitle', 'Sign in to see this');
+  const h = DOC.createElement('h2'); h.id = 'mem-ask-h'; h.textContent = c('signinTitle', 'Sign in with a free EPINOIA account to see this');
   const need = DOC.createElement('p'); need.className = 'mem-ask-need';
   need.textContent = A && A.signinNeed ? A.signinNeed({ what: o.what, plural: o.plural }) : 'This needs an EPINOIA account.';
+  const free = DOC.createElement('p'); free.className = 'mem-ask-free'; free.textContent = c('signinFree', 'An EPINOIA account is free at the moment: all you need to do is sign in.');
   const all = DOC.createElement('p'); all.textContent = c('signinAll', '');
   const how = DOC.createElement('p'); how.textContent = c('signinLead', '');
   const row = DOC.createElement('div'); row.className = 'mem-ask-row';
@@ -281,7 +282,7 @@ function askSignIn(o) {
     left.textContent = A.peekText ? A.peekText(null, o.key) : '';
   }
   row.append(no);
-  box.append(art, h, need, all, how, row);
+  box.append(art, h, need, free, all, how, row);
   if (left) box.appendChild(left);
   back.appendChild(box);
   const was = DOC.activeElement;

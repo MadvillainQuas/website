@@ -1777,7 +1777,9 @@
       'Show fewer leagues': 'Mostrar menos ligas',
       'All live leagues': 'Todas las ligas en directo',
       'Half-time': 'Descanso',
-      'EPINOIA GO could not be loaded just now.': 'EPINOIA GO no se ha podido cargar ahora mismo.'
+      'EPINOIA GO could not be loaded just now.': 'EPINOIA GO no se ha podido cargar ahora mismo.',
+      'Sign in with a free EPINOIA account to see this': 'Inicia sesión con una cuenta gratuita de EPINOIA para verlo',
+      'An EPINOIA account is free at the moment: all you need to do is sign in.': 'Una cuenta de EPINOIA es gratuita por ahora: solo tienes que iniciar sesión.'
     },
 
     ctx: {

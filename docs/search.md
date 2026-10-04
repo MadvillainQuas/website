@@ -56,3 +56,20 @@ administrators) and is pruned with the visits after 400 days. The same off switc
 Rules of thumb when changing it: a new word class or brand rule goes in `site_nicks` / the club-context step with a
 case in `site-search-db.test.mjs`; anything that widens what is stored needs the privacy page changed in the same
 commit.
+
+## Why it timed out, and 0232 (2026-10-04)
+
+"Search is not available just now" was a real timeout: `site_search` took 2-3 s for a common name ("james", "mike james", any several-word
+search) and the database cuts a browser's request off at 3 s, answering HTTP 500. Two costs, both found by timing the function on a copy of
+the live data (10,286 players, 1,014 clubs):
+
+1. every call folded every name again (accents off, lower case ...): ~1 s before ranking. Now `players.search_hay` / `teams.search_hay`
+   keep the folded name, and triggers keep it current when a name changes;
+2. the "every typed word must be in the name" test was a sub-query per name per word (the cost grew with the words: `a b c d e f` took
+   13 s with no match). Now one regex per name (`site_musts_re`: a lookahead per word), everything typed escaped (`site_rx`); a word of one
+   or two letters is looked for at a word's start, as `site_rank` matches it.
+
+Local timings on the live-sized data: `james` 3.4 s -> 0.2 s, `mike james` 5.2 s -> 0.13 s, `li` 1.8 s -> 0.2 s, ordinary searches ~1 s -> ~0.13 s.
+`supabase/tests/site-search-fast.test.mjs` applies 0179, records 178 searches, applies 0232 and requires identical rows in identical order.
+The page (`search.js`) now asks twice, then tries the tables, before it shows the error (never "Nothing matches" for a search that did not run).
+Still slow by design: a forgiving ("close matches") second look on a very common word, and several single-letter words.
