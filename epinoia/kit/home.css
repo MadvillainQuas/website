@@ -556,3 +556,6 @@ a.plain{color:inherit;text-decoration:none}
   .hm-go-strip{padding:0 calc(var(--u)*1) calc(var(--u)*2)}
   .hm-go-today .go-chip,.hm-go-pick{min-height:40px}
 }
+
+/* THE LIVE DASHBOARD ON A PHONE: one card a row, its games one under the other, a comfortable thumb target */
+@media (max-width:560px){ .fxd-grid{grid-template-columns:1fr} .fxd-lines{grid-template-columns:1fr} .fxd-lg{padding-bottom:12px} .fxd-bar{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)} .fxd-one::before{left:calc(var(--u)*2);right:calc(var(--u)*2)} }

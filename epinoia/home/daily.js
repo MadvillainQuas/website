@@ -263,7 +263,7 @@
       return;
     }
 
-    /* MORE THAN THREE LEAGUES LIVE ON A WIDE SCREEN: the dashboard of leagues */
+    /* MORE THAN THREE LEAGUES LIVE: the dashboard of leagues, on a phone as on a desktop */
     if (isDash(data)) { drawDash(G, data, first, o || {}); return; }
     /* MORE LIVE GAMES THAN THE RAIL HOLDS: split by league, one dropdown row each, the shape of MY FOLLOWED's rows */
     if (isSplit(data)) { drawSplit(G, data, first, o || {}); return; }
@@ -474,21 +474,16 @@
     }
   }
 
-  /* ===================================================== THE LIVE DASHBOARD (desktop) ===
-     MORE THAN THREE LEAGUES LIVE ON A WIDE SCREEN (2026-10-04): the LIVE tab is a dashboard of the leagues, a card each,
+  /* ===================================================== THE LIVE DASHBOARD (every screen) ===
+     MORE THAN THREE LEAGUES LIVE (2026-10-04; on a phone too from 2026-10-04: one column of cards): the LIVE tab is a dashboard of the leagues, a card each,
      in the order their games arrive (a followed league first), each in the league's own colours: its badge, how many
      are live, and its games as scorebugs (globalgames.js liveLine: crests, names, the score with the side ahead in full,
      the period, its pips and the running clock), the first four and "...and N more". It is the LEAGUES that are counted, not the games: eight cards,
      then SHOW MORE LEAGUES eight at a time, and every live game of a league is behind its card. A press on a card opens
      that league's games, the view growing out of the card; ALL LIVE LEAGUES goes back, the card it came from marked.
-     A league whose games have all finished closes by itself. A phone (and three leagues or fewer) keeps the rows above. */
+     A league whose games have all finished closes by itself. Three leagues or fewer keep the rows above. */
   const DASH_AT = 3, DASH_N = 8, DASH_STEP = 8, DASH_LINES = 4;
   const dash = { open: null, shown: DASH_N };
-  const wideMQ = (() => { try { return window.matchMedia ? window.matchMedia('(min-width: 821px)') : null; } catch (_) { return null; } })();
-  const wide = () => !!(wideMQ && wideMQ.matches);
-  if (wideMQ && typeof wideMQ.addEventListener === 'function') {
-    wideMQ.addEventListener('change', () => { if (host && lastData && lastData.mode === 'live') draw(lastData, false, { force: true }); });
-  }
   function leagueGroups(G, rows) {
     const groups = new Map();
     (rows || []).forEach(g => {
@@ -501,7 +496,7 @@
   }
   function isDash(data) {
     const G = window.EpinoiaGlobalGames;
-    return !!(G && data && data.mode === 'live' && wide() && leagueGroups(G, data.all || data.rows).length > DASH_AT);
+    return !!(G && data && data.mode === 'live' && leagueGroups(G, data.all || data.rows).length > DASH_AT);
   }
   const hexOf = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
   const tint = (n, lg) => { const a = hexOf(lg && lg.colour_a), b = hexOf(lg && lg.colour_b) || a; if (a) n.style.setProperty('--la', a); if (b) n.style.setProperty('--lb', b); };
