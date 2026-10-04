@@ -2,7 +2,7 @@
    but the side rail; the scoreboard's numbers and the league line above them (.bt-kick) keep the pixel face, and so does every figure
    drawn in --f-score (jersey numbers, minutes). Weights are generated beside this (tools/typeweights-gen.mjs). ---- */
 :root:root:root{ --f-micro:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif }
-.ep-nav, .bt-kick{ --f-micro:'Silkscreen',ui-monospace,monospace }
+.tt-line, .tt-index, .bt-kick, .bstate, .ep-live, .fxc.is-live .fxc-st, .fxd-n, #fxTabLive{ --f-micro:'Silkscreen',ui-monospace,monospace }
 /* every figure drawn through --f-score (the quarter scores, the league table's columns, the squad cards' numbers) is Archivo too; the
    scoreboard's two numerals (.bscore) keep Jersey 25 */
 .wrap{ --f-score:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif }
@@ -49,7 +49,7 @@ body .wm{font-weight:700;font-stretch:94%}
 body .wr-league > summary .t{font-weight:700;font-stretch:94%}
 body .wr-q{font-weight:700;font-stretch:94%}
 body h3{font-weight:700;font-stretch:94%}
-/* labels: 102 rules */
+/* labels: 101 rules */
 body #doneB .dlab{font-weight:600}
 body .bx-scorehead.bt-dressed .bt-sheet{font-weight:600}
 body .bx-scorehead.bt-dressed .pacepill{font-weight:600}
@@ -73,9 +73,13 @@ body .ep-lock-go{font-weight:600}
 body .ep-lock-in{font-weight:600}
 body .ep-lock-l{font-weight:600}
 body .ep-lock-or{font-weight:600}
+body .ep-nav .teams .trow .ep-crest{font-weight:600}
+body .ep-nav .wtag{font-weight:600}
 body .ep-paywall-k{font-weight:600}
 body .ep-paywall-kick{font-weight:600}
 body .ep-paywall-list li{font-weight:600}
+body .ep-tabbar a .tx{font-weight:600}
+body .ep-tabbar a.is-women .ic::after{font-weight:600}
 body .foot{font-weight:600}
 body .gofans-k{font-weight:600}
 body .gv-fact{font-weight:600}
@@ -138,11 +142,6 @@ body .stk b{font-weight:600}
 body .sub{font-weight:600}
 body .tag{font-weight:600}
 body .tt-fast a{font-weight:600}
-body .tt-ix-h{font-weight:600}
-body .tt-ix-l a{font-weight:600}
-body .tt-line{font-weight:600}
-body .tt-line .tt-ctx{font-weight:600}
-body .tt-line .tt-ctx.ep-micro{font-weight:600}
 body .tt-skip{font-weight:600}
 body .vidbtn{font-weight:600}
 body .vidlab{font-weight:600}

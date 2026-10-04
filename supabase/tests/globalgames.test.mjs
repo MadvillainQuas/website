@@ -1074,9 +1074,7 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
 
     const D2 = page({ live: () => dashLive, ups: someUps, res: someRes, wide: false });
     await D2.start();
-    ok('a phone (or any narrow screen): no dashboard, the games as before', !D2.host.querySelector('.fxd-lg') && D2.cards().length > 0, D2.cards().length);
-    D2.mq.matches = true; D2.mq.f();
-    ok('...widening the window brings the dashboard in', D2.host.querySelectorAll('.fxd-lg').length === 8);
+    ok('a phone (or any narrow screen) has the dashboard too: a card a league', D2.host.querySelectorAll('.fxd-lg').length === 8, D2.host.querySelectorAll('.fxd-lg').length);
     /* the first n leagues still live (league 3's games finished above) */
     const firstLeagues = n => { const ids = [...new Set(dashLive.map(g => g.competitions.seasons.leagues.id))].slice(0, n);
       return dashLive.filter(g => ids.includes(g.competitions.seasons.leagues.id)); };

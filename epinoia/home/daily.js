@@ -659,6 +659,14 @@
     }
     if (o.h0 != null) growFrom(o.h0);
     if (o.focus) { const f = host.querySelector(o.focus); if (f) f.focus({ preventScroll: true }); }
+    /* THE VIEW CHANGED UNDER THE READER: a league's games are far shorter than the board of cards, so the page below shortens and the
+       reader is left where the strip beneath it landed. Open a league and its games are brought to the top; go back and the board is */
+    if (o.anim === 'in' || o.anim === 'out') {
+      const target = o.anim === 'in' ? view : host;
+      target.style.scrollMarginTop = '84px';
+      const go = () => { try { target.scrollIntoView({ block: 'start', behavior: 'auto' }); } catch (_) { /* a browser without it stays put */ } };
+      go(); if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go);
+    }
   }
 
   function anyLive() { return liveCount > 0 || !!(host && host.querySelector && host.querySelector('.fxc.is-live')); }

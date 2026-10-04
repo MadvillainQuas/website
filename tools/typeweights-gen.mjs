@@ -61,11 +61,12 @@ function generate(pages, faces, prefix) {
     for (const { sel, body } of rulesOf(sheetsOf(html, path.dirname(file)))) {
       const ff = /font-family\s*:[^;]*var\(--f-(score|micro)\)/.exec(body) || /font\s*:[^;]*var\(--f-(score|micro)\)/.exec(body);
       if (!ff || !faces.includes(ff[1])) continue;
-      const w = weightOf(body), target = ff[1] === 'score' ? 700 : 600;
+      const sz = /font-size\s*:\s*([\d.]+)px/.exec(body), w = weightOf(body), target = ff[1] === 'score' ? 700 : (sz && +sz[1] >= 12 ? 700 : 600);
       if (w != null && w >= target) continue;
       sel.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
-        /* not the side rail and the phone bar, nor the game page's league line: they keep the pixel face */
-        if (/^(html|body|:root|\*)/.test(s) || /\.ep-nav|\.ep-rail|\.ep-tabbar|\bnav\b|\.bt-kick|\.bscore/.test(s)) return;
+        /* kept pixel: the top strip and the page index (the teletext layer), LIVE wherever it is a state (.bstate, .ep-live, a live card's
+           status, the dashboard's count), the league tag and the scoreboard's numerals */
+        if (/^(html|body|:root|\*)/.test(s) || /\.tt-line|\.tt-index|\.tt-ix|\.bt-kick|\.bscore|\.bstate|\.ep-live|\.fxc-st|\.fxd-n|#fxTabLive/.test(s)) return;
         want[ff[1]].set(s, target);
       });
     }
@@ -80,6 +81,7 @@ function generate(pages, faces, prefix) {
   return lines.join('\n');
 }
 const JOBS = [
+  { out: 'epinoia/kit/labeltype.css', pages: ['epinoia/admin/index.html', 'epinoia/admin/platform/index.html', 'epinoia/android/index.html', 'epinoia/api/index.html', 'epinoia/app/index.html', 'epinoia/broadcast/help/index.html', 'epinoia/community/index.html', 'epinoia/contact/index.html', 'epinoia/creators/hub/index.html', 'epinoia/creators/index.html', 'epinoia/creators/studio/index.html', 'epinoia/edit/index.html', 'epinoia/fan/index.html', 'epinoia/fixtures/index.html', 'epinoia/game/index.html', 'epinoia/games/index.html', 'epinoia/go/index.html', 'epinoia/go/nearby/index.html', 'epinoia/go/photos/index.html', 'epinoia/go/stamps/index.html', 'epinoia/home/index.html', 'epinoia/index.html', 'epinoia/injuries/index.html', 'epinoia/invite/index.html', 'epinoia/ios/index.html', 'epinoia/join/index.html', 'epinoia/l/index.html', 'epinoia/learn/index.html', 'epinoia/me/index.html', 'epinoia/news/index.html', 'epinoia/p/index.html', 'epinoia/privacy/index.html', 'epinoia/profile/index.html', 'epinoia/prophesy/index.html', 'epinoia/scouting/index.html', 'epinoia/signin/index.html', 'epinoia/stats/index.html', 'epinoia/stats/wowy/index.html', 'epinoia/t/index.html', 'epinoia/video/index.html', 'epinoia/votes/index.html', 'epinoia/winning/index.html'], faces: ['micro'], prefix: 'body' },
   { out: 'epinoia/kit/profiletype.css', pages: ['epinoia/p/index.html', 'epinoia/t/index.html'], faces: ['score', 'micro'], prefix: '.ep-frame' },
   { out: 'epinoia/kit/boxtype.css', pages: ['epinoia/game/index.html'], faces: ['score', 'micro'], prefix: 'body' }
 ];

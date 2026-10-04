@@ -4,6 +4,7 @@
    changes all of them at once; the weight and spacing the pixel shapes carried are set below. The side rail sits outside .ep-frame
    and keeps the site's own look. The figures keep Martian Mono (--f-data). Same approach as the reports (report.css, .rp-pg). */
 .ep-frame{ --f-micro:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif; --f-score:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif }
+.tt-line, .tt-index, .bt-kick, .bstate, .ep-live, .fxc.is-live .fxc-st, .fxd-n, #fxTabLive{ --f-micro:'Silkscreen',ui-monospace,monospace }
 .ep-frame .ep-micro, .ep-frame .ep-tick, .ep-frame .ep-hdr .idx{ font-weight:600; letter-spacing:.09em }
 .ep-frame .ep-h1, .ep-frame .ep-hdr h2{ font-weight:800; font-stretch:92%; letter-spacing:0 }
 /* THE HIERARCHY, once the faces are swapped (2026-10-04): three tiers, one family. The page name and the section titles are the
@@ -95,7 +96,7 @@
 .ep-frame .wx-rk{font-weight:700;font-stretch:94%}
 .ep-frame :where(.wm){font-weight:700;font-stretch:94%}
 .ep-frame table.cst td.v{font-weight:700;font-stretch:94%}
-/* labels: 330 rules */
+/* labels: 328 rules */
 .ep-frame #games .tfday{font-weight:600}
 .ep-frame #games .tfwhere{font-weight:600}
 .ep-frame #games .tfx .ha{font-weight:600}
@@ -103,7 +104,7 @@
 .ep-frame #roster table.ft.roster tfoot td.avg-l{font-weight:600}
 .ep-frame #withpanel .lu-note{font-weight:600}
 .ep-frame .ae-alt{font-weight:600}
-.ep-frame .ae-hex{font-weight:600}
+.ep-frame .ae-hex{font-weight:700}
 .ep-frame .ae-none{font-weight:600}
 .ep-frame .ae-sec-t{font-weight:600}
 .ep-frame .barswitch-note{font-weight:600}
@@ -152,7 +153,6 @@
 .ep-frame .ep-in-peek{font-weight:600}
 .ep-frame .ep-install .go{font-weight:600}
 .ep-frame .ep-install .tx span{font-weight:600}
-.ep-frame .ep-live{font-weight:600}
 .ep-frame .ep-lock-compact .ep-lock-t{font-weight:600}
 .ep-frame .ep-lock-go{font-weight:600}
 .ep-frame .ep-lock-in{font-weight:600}
@@ -160,14 +160,18 @@
 .ep-frame .ep-lock-or{font-weight:600}
 .ep-frame .ep-micro{font-weight:600}
 .ep-frame .ep-mlb{font-weight:600}
+.ep-frame .ep-nav .teams .trow .ep-crest{font-weight:600}
+.ep-frame .ep-nav .wtag{font-weight:600}
 .ep-frame .ep-paywall-k{font-weight:600}
 .ep-frame .ep-paywall-kick{font-weight:600}
 .ep-frame .ep-paywall-list li{font-weight:600}
 .ep-frame .ep-prd{font-weight:600}
 .ep-frame .ep-rank{font-weight:600}
 .ep-frame .ep-tab{font-weight:600}
+.ep-frame .ep-tabbar a .tx{font-weight:600}
+.ep-frame .ep-tabbar a.is-women .ic::after{font-weight:600}
 .ep-frame .ep-tbl thead th{font-weight:600}
-.ep-frame .ep-tick{font-weight:600}
+.ep-frame .ep-tick{font-weight:700}
 .ep-frame .ep-tile .tl{font-weight:600}
 .ep-frame .ep-trc{font-weight:600}
 .ep-frame .ep-units button{font-weight:600}
@@ -329,16 +333,11 @@
 .ep-frame .stp-fact span{font-weight:600}
 .ep-frame .stp-hint{font-weight:600}
 .ep-frame .stp-q{font-weight:600}
-.ep-frame .stp-title{font-weight:600}
+.ep-frame .stp-title{font-weight:700}
 .ep-frame .tile .l{font-weight:600}
 .ep-frame .tlu .pg-seg button{font-weight:600}
 .ep-frame .tlu-more{font-weight:600}
 .ep-frame .tt-fast a{font-weight:600}
-.ep-frame .tt-ix-h{font-weight:600}
-.ep-frame .tt-ix-l a{font-weight:600}
-.ep-frame .tt-line{font-weight:600}
-.ep-frame .tt-line .tt-ctx{font-weight:600}
-.ep-frame .tt-line .tt-ctx.ep-micro{font-weight:600}
 .ep-frame .tt-skip{font-weight:600}
 .ep-frame .tv-ev-hd span{font-weight:600}
 .ep-frame .tv-ev-ppp span{font-weight:600}
