@@ -274,12 +274,18 @@
       }
       return '<span class="' + base + '"' + t + '><b>' + col.f(v, r) + '</b></span>';
     };
+    /* MINUTES STICK BESIDE THE NAME (2026-10-04): the first thing read about a player in a game, so it is the second fixed column, and
+       the usage group ends on a/u without it (the card view below still carries it in its own group) */
+    const MINC = groups.reduce((f, g) => f || g.cols.find(c => c.k === 'min'), null);
+    const tgroups = MINC ? groups.map(g => (g.cols.some(c => c.k === 'min')
+      ? Object.assign({}, g, { cols: g.cols.filter(c => c.k !== 'min').map((c, i, a) => (i === a.length - 1 ? Object.assign({}, c, { sep: true }) : c)) }) : g)) : groups;
+    const minCell = r => (MINC ? '<div class="pt-min">' + tcell(r, Object.assign({}, MINC, { sep: false })) + '</div>' : '');
     const trow = r => {
       const on = d.onCourt[t].indexOf(r.id) !== -1;
       return '<div class="ptr' + (on ? ' on' : '') + '" data-pid="' + esc(r.id) + '"' + sortAttrs(r) + '><div class="pt-id">' +
         face({ id: r.id, name: r.name }, colour) +
-        '<span class="pt-who"><b>' + nameHTML({ id: r.id, name: r.name }) + '</b><small>#' + esc(r.num) + '</small></span></div>' +
-        groups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(col => tcell(r, col)).join('') + '</div>').join('') + '</div>';
+        '<span class="pt-who"><b>' + nameHTML({ id: r.id, name: r.name }) + '</b><small>#' + esc(r.num) + '</small></span></div>' + minCell(r) +
+        tgroups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(col => tcell(r, col)).join('') + '</div>').join('') + '</div>';
     };
     /* THE TOTALS ROW, last in the table: the team's own figure for every column (the same numbers the four factors and the team
        lines are made of), so a column reads as the players added up. What is only a player's (usage, a/u, pace±) is a dash;
@@ -304,10 +310,12 @@
       if (col.shot) return '<span class="' + base + '"><b>' + v + '</b></span>';
       return '<span class="' + base + '"><b>' + col.f(v, T2) + '</b></span>';
     };
-    const totRow = '<div class="ptr tot"><div class="pt-id"><span class="pt-who"><b>totals</b></span></div>' +
-      groups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(totCell).join('') + '</div>').join('') + '</div>';
+    const totRow = '<div class="ptr tot"><div class="pt-id"><span class="pt-who"><b>totals</b></span></div>' + (MINC ? '<div class="pt-min"></div>' : '') +
+      tgroups.map(g => '<div class="pt-grp g-' + g.key + '">' + g.cols.map(totCell).join('') + '</div>').join('') + '</div>';
     const thead = '<div class="ptr head"><div class="pt-id"><span class="pt-who"><small>player</small></span></div>' +
-      groups.map(g => '<div class="pt-grp g-' + g.key + '"><div class="pt-gh" data-grp="' + g.key + '" role="button" tabindex="0" title="' + esc(g.label) + ' \u2014 click to fold or open">' + esc(g.label) + '</div><div class="pt-gl">' +
+      (MINC ? '<div class="pt-min"><button type="button" class="pt-c w-bar' + (sortK === 'min' ? ' sorted' : '') + '" data-sk="min">' + esc(MINC.l) +
+        (sortK === 'min' ? '<i>' + (sortDir < 0 ? '▼' : '▲') + '</i>' : '') + '</button></div>' : '') +
+      tgroups.map(g => '<div class="pt-grp g-' + g.key + '"><div class="pt-gh" data-grp="' + g.key + '" role="button" tabindex="0" title="' + esc(g.label) + ' \u2014 click to fold or open">' + esc(g.label) + '</div><div class="pt-gl">' +
         g.cols.map(col => '<button type="button" class="pt-c ' + wOf(col) + (col.sep ? ' sep' : '') + (sortK === col.k ? ' sorted' : '') + '" data-sk="' + col.k + '">' + esc(col.l) +
           (sortK === col.k ? '<i>' + (sortDir < 0 ? '\u25BC' : '\u25B2') + '</i>' : '') + '</button>').join('') + '</div></div>').join('') + '</div>';
 

@@ -65,7 +65,7 @@ function generate(pages, faces, prefix) {
       if (w != null && w >= target) continue;
       sel.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
         /* not the side rail and the phone bar, nor the game page's league line: they keep the pixel face */
-        if (/^(html|body|:root|\*)/.test(s) || /\.ep-nav|\.ep-rail|\.ep-tabbar|\bnav\b|\.bt-kick/.test(s)) return;
+        if (/^(html|body|:root|\*)/.test(s) || /\.ep-nav|\.ep-rail|\.ep-tabbar|\bnav\b|\.bt-kick|\.bscore/.test(s)) return;
         want[ff[1]].set(s, target);
       });
     }
@@ -81,7 +81,7 @@ function generate(pages, faces, prefix) {
 }
 const JOBS = [
   { out: 'epinoia/kit/profiletype.css', pages: ['epinoia/p/index.html', 'epinoia/t/index.html'], faces: ['score', 'micro'], prefix: '.ep-frame' },
-  { out: 'epinoia/kit/boxtype.css', pages: ['epinoia/game/index.html'], faces: ['micro'], prefix: 'body' }
+  { out: 'epinoia/kit/boxtype.css', pages: ['epinoia/game/index.html'], faces: ['score', 'micro'], prefix: 'body' }
 ];
 let stale = 0;
 for (const j of JOBS) {

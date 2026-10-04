@@ -1,0 +1,12 @@
+/* ---- THE FIGURES ARE SANS TOO (2026-10-04): every table figure, tile and count on the reader pages (profiles, box scores, statistics,
+   scouting, WOWY, fixtures, the league pages) was set in Martian Mono (--f-data, and --f-mono on the game page). Both are Archivo now, with
+   figures of one width so a column still lines up. The scoreboard's own numerals (Jersey 25) and the scorer, the broadcast overlays and the
+   admin consoles are not touched: they do not load this file. Three roots deep so the Japanese font chain the language engine sets
+   (i18n.js, :root:lang(ja)) does not win; the chain keeps its CJK faces after Archivo. ---- */
+:root:root:root{
+  --f-data:'Archivo',system-ui,-apple-system,'Segoe UI','Hiragino Sans','Yu Gothic UI','Meiryo','Noto Sans JP',sans-serif;
+  --f-mono:'Archivo',system-ui,-apple-system,'Segoe UI','Hiragino Sans','Yu Gothic UI','Meiryo','Noto Sans JP',sans-serif;
+}
+body{ font-variant-numeric:tabular-nums lining-nums }
+/* a figure that was set in a monospace face was never heavier than regular: semibold reads as a number, not as text */
+.pt-c b, .pcs-n b, .rp-st-v, .rp-cell-v{ font-weight:650 }
