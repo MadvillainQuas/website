@@ -282,6 +282,12 @@ jobs:
         # out and says why; disabling ends the sessions; an account made after its network was blocked is disabled
         run: node supabase/tests/disabled-accounts.test.mjs
 
+      - name: What a membership will open needs an account first
+        # access.js signinFirst: signed out, every lockable feature asks for an account (never on a game page, never the box
+        # score's tabs, never a members-only league's wall); the card, the placeholder and the box; every table's views past
+        # MISC (players) and TOTALS (clubs) are part of the lock
+        run: node supabase/tests/signin-gates.test.mjs
+
       - name: Box score renders with nothing but S and derive()
         # catches a helper left behind by the extraction, which otherwise only
         # shows up as a blank public page

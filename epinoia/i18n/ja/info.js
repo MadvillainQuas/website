@@ -623,7 +623,17 @@
       'What you search for': '検索した内容',
       'When you use the search box, the words you typed are kept (in lower case, without accents or punctuation) with how many results it showed, whether you picked one and which league, club or player, and the same three facts as a visit. They are kept with no code at all, not even the visit’s, so a search cannot be tied to you, to a visit or to another search. Anything that looks like an email address, a phone number or a web address is never kept.': '検索ボックスを使うと、入力した語（小文字にし、アクセントと句読点を除いたもの）を、表示された結果の数、結果を選んだかどうかとそのリーグ・クラブ・選手、そして訪問と同じ3つの情報とともに記録します。コードは一切付けず（訪問のコードも付けません）、検索があなた、訪問、他の検索と結び付くことはありません。メールアドレス、電話番号、ウェブアドレスに見えるものは記録しません。',
       'This form is for when you cannot delete your account yourself: signed out, say, or with a membership still running. Signed in, you can do it straight away:': 'このフォームは、ご自身でアカウントを削除できない場合（ログインしていない、メンバーシップが有効など）のためのものです。ログインしていれば、すぐに削除できます：',
-      'Personalisation, then Delete my account': 'パーソナライズ → アカウントを削除'
+      'Personalisation, then Delete my account': 'パーソナライズ → アカウントを削除',
+      'Keeping disabled accounts out': '無効化したアカウントを締め出す仕組み',
+      'What is noted': '記録する内容',
+      'While you are signed in, the network (IP) address your account is using, with when it was first and last seen there. Nothing is noted while you are signed out.': 'サインイン中に、アカウントが使用しているネットワーク（IP）アドレスと、そこで最初と最後に確認された日時。サインアウト中は何も記録しません。',
+      'So that, if an account is disabled for abuse, the networks it used can be blocked and the same person cannot come straight back with another email address. It is used for nothing else: not for your feed, not for the visit counts, and never to work out where you are.': '不正利用でアカウントが無効化された場合に、そのアカウントが使ったネットワークをブロックし、同じ人が別のメールアドレスですぐに戻ってこられないようにするためです。それ以外には使いません。フィードにも訪問数の集計にも使わず、あなたの居場所を調べるために使うこともありません。',
+      'Who sees it': '閲覧できる人',
+      'Only Epinoia’s platform administrators, for the account they are looking at.': 'Epinoiaのプラットフォーム管理者だけが、確認中のアカウントについて閲覧できます。',
+      'How long it is kept': '保存期間',
+      'An address is forgotten 90 days after it was last seen, and straight away if the account is deleted. A blocked network stays blocked until an administrator lifts the block, or enables the account it was made for.': 'アドレスは最後に確認されてから90日後に、アカウントが削除された場合は直ちに消去されます。ブロックされたネットワークは、管理者がブロックを解除するか、対象のアカウントを再び有効にするまでブロックされたままです。',
+      'On a blocked network': 'ブロックされたネットワークでは',
+      'Reading the site signed out works as always. An account cannot be used there: it is signed out, with a message saying why, and an account made there after the block is disabled. If you think a block is a mistake, contact us.': 'サインアウトした状態での閲覧はこれまでどおりです。そこではアカウントを利用できず、理由を伝えるメッセージとともにサインアウトされます。ブロック後にそこで作られたアカウントは無効化されます。ブロックが間違いだと思われる場合はお問い合わせください。'
     },
 
     ctx: {

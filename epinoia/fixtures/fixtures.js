@@ -565,7 +565,7 @@ async function leagueAccess() {
   const banner = $('#accessBanner');
   if (WALL.fixturesPublic && typeof A.teaserHTML === 'function') {
     banner.innerHTML = A.teaserHTML({   // escaped by access.js
-      compact: true, leagueSlug: LEAGUE.slug,
+      compact: true, leagueSlug: LEAGUE.slug, key: 'league',      // the league's own wall: membership, never the sign-in card
       title: 'Results and box scores for ' + LEAGUE.name + ' are for members. Upcoming fixtures stay free to everyone.'
     });
   } else if (!WALL.fixturesPublic && typeof A.paywallHTML === 'function') {

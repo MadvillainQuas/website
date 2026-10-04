@@ -1750,7 +1750,23 @@
       'never': 'nunca',
       'by side of the floor': 'por lado de la cancha',
       'by kind of shot': 'por tipo de tiro',
-      'three-point': 'de tres puntos'
+      'three-point': 'de tres puntos',
+      'Sign in to see this': 'Inicia sesión para verlo',
+      'It takes a moment with your email, Google or Discord, and brings you straight back here.': 'Es cuestión de un momento con tu correo, Google o Discord, y vuelves directamente aquí.',
+      'An account opens WOWY and the lineups, the player and club reports, shot zones, rotations and the full statistics tables.': 'Con una cuenta se abren WOWY y los quintetos, los informes de jugadores y de clubes, las zonas de tiro, las rotaciones y las tablas de estadísticas completas.',
+      'Sign in to use this': 'Inicia sesión para usarlo',
+      'This needs an EPINOIA account.': 'Esto requiere una cuenta de EPINOIA.',
+      'Every column of the table at once, the events and the zones included.': 'Todas las columnas de la tabla a la vez, con los eventos y las zonas.',
+      'Splitting by who the other side had on reads the play-by-play: sign in to see it.': 'Separar según quién tenía en pista el rival sale del jugada a jugada: inicia sesión para verlo.',
+      'Play-by-play stats: sign in to see them': 'Estadísticas del jugada a jugada: inicia sesión para verlas',
+      'This account has been disabled': 'Esta cuenta ha sido desactivada',
+      'It has been signed out, and it cannot sign in again or use the parts of EPINOIA that need an account.': 'Se ha cerrado su sesión, y no puede volver a iniciarla ni usar las partes de EPINOIA que requieren una cuenta.',
+      'Accounts can’t be used from this network': 'No se pueden usar cuentas desde esta red',
+      'Signing in from the network you are on has been blocked, so this account has been signed out.': 'Se ha bloqueado el inicio de sesión desde la red en la que estás, así que se ha cerrado la sesión de esta cuenta.',
+      'This account no longer exists': 'Esta cuenta ya no existe',
+      'It has been deleted, so it has been signed out.': 'Se ha eliminado, así que se ha cerrado su sesión.',
+      'Everything public, from scores and tables to players and clubs, is still open to you. If you think this is a mistake, contact us.': 'Todo lo público, de los resultados y las clasificaciones a los jugadores y los clubes, sigue abierto para ti. Si crees que es un error, contáctanos.',
+      'This account has been disabled, so it cannot sign in. If you think that is a mistake, contact us.': 'Esta cuenta ha sido desactivada, así que no puede iniciar sesión. Si crees que es un error, contáctanos.'
     },
 
     ctx: {
@@ -2848,6 +2864,10 @@
       [/^minute (\d+): (\d+) s on the floor$/, 'Minuto $1: $2 s en pista'],
       [/^Choose up to (\d+) players?\. Every combination of them being on or off the floor is worked out separately, so you can see what the team does with a pairing, with one of them, and with neither\.$/, m => 'Elige hasta ' + m[1] + (m[1] === '1' ? ' jugador' : ' jugadores') + '. Cada combinación de ellos en pista o fuera se calcula por separado, para ver qué hace el equipo con una pareja, con uno de ellos y sin ninguno.'],
       [/^A preview: (\d+) players? at a time\. Members compare up to (\d+) at once\.$/, m => 'Una vista previa: ' + m[1] + (m[1] === '1' ? ' jugador' : ' jugadores') + ' a la vez. Los socios comparan hasta ' + m[2] + ' a la vez.'],
+      [/^A preview: (\d+) players? at a time\. Sign in to compare up to (\d+) at once\.$/, m => 'Una vista previa: ' + m[1] + (m[1] === '1' ? ' jugador' : ' jugadores') + ' a la vez. Inicia sesión para comparar hasta ' + m[2] + ' a la vez.'],
+      /* signed in first (access.js signinNeed): "Shot zones need an EPINOIA account." */
+      [/^(.+\S) needs? an EPINOIA account\.$/, (m, T) => 'Hace falta una cuenta de EPINOIA para ver: ' + T(m[1]) + '.'],
+      [/^The (.+) view$/, (m, T) => 'la vista «' + T(m[1]) + '»'],
       [/^(\d+) of (\d+) combinations played$/, '$1 de $2 combinaciones jugadas'],
       [/^members get up to (\d+)$/, 'los socios, hasta $1'],
       [/^up to (\d+) players$/, 'hasta $1 jugadores'],

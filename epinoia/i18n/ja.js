@@ -1748,7 +1748,23 @@
       'never': 'なし',
       'by side of the floor': 'コートの左右別',
       'by kind of shot': 'シュートの種類別',
-      'three-point': '3ポイント'
+      'three-point': '3ポイント',
+      'Sign in to see this': 'サインインして表示',
+      'It takes a moment with your email, Google or Discord, and brings you straight back here.': 'メール、Google、Discordですぐに完了し、そのままこのページに戻ります。',
+      'An account opens WOWY and the lineups, the player and club reports, shot zones, rotations and the full statistics tables.': 'アカウントがあれば、WOWYとラインナップ、選手・クラブのレポート、ショットゾーン、ローテーション、すべての統計テーブルが使えます。',
+      'Sign in to use this': 'サインインして利用',
+      'This needs an EPINOIA account.': 'EPINOIAアカウントが必要です。',
+      'Every column of the table at once, the events and the zones included.': '表のすべての列を一度に（イベントとゾーンを含む）。',
+      'Splitting by who the other side had on reads the play-by-play: sign in to see it.': '相手の出場メンバー別の内訳はプレーバイプレーから読み取ります。サインインして表示。',
+      'Play-by-play stats: sign in to see them': 'プレーバイプレーのスタッツ：サインインして表示',
+      'This account has been disabled': 'このアカウントは無効化されています',
+      'It has been signed out, and it cannot sign in again or use the parts of EPINOIA that need an account.': 'サインアウトされました。再びサインインすることも、アカウントが必要なEPINOIAの機能を使うこともできません。',
+      'Accounts can’t be used from this network': 'このネットワークからはアカウントを利用できません',
+      'Signing in from the network you are on has been blocked, so this account has been signed out.': '現在のネットワークからのサインインはブロックされているため、このアカウントはサインアウトされました。',
+      'This account no longer exists': 'このアカウントは存在しません',
+      'It has been deleted, so it has been signed out.': '削除されたため、サインアウトされました。',
+      'Everything public, from scores and tables to players and clubs, is still open to you. If you think this is a mistake, contact us.': 'スコアや順位表から選手、クラブまで、公開されている内容はこれまでどおり閲覧できます。間違いだと思われる場合はお問い合わせください。',
+      'This account has been disabled, so it cannot sign in. If you think that is a mistake, contact us.': 'このアカウントは無効化されているため、サインインできません。間違いだと思われる場合はお問い合わせください。'
     },
 
     ctx: {
@@ -2848,6 +2864,10 @@
       [/^minute (\d+): (\d+) s on the floor$/, '$1分目: 出場$2秒'],
       [/^Choose up to (\d+) players?\. Every combination of them being on or off the floor is worked out separately, so you can see what the team does with a pairing, with one of them, and with neither\.$/, '最大$1人まで選べます。それぞれがコートにいる・いないのすべての組み合わせを個別に算出するので、2人同時のとき、どちらか1人のとき、どちらもいないときのチームの成績がわかります。'],
       [/^A preview: (\d+) players? at a time\. Members compare up to (\d+) at once\.$/, 'プレビュー: 一度に$1人まで。会員は最大$2人まで同時に比較できます。'],
+      [/^A preview: (\d+) players? at a time\. Sign in to compare up to (\d+) at once\.$/, 'プレビュー: 一度に$1人まで。サインインすると最大$2人まで同時に比較できます。'],
+      /* signed in first (access.js signinNeed): "Shot zones need an EPINOIA account." */
+      [/^(.+\S) needs? an EPINOIA account\.$/, (m, T) => T(m[1]) + 'にはEPINOIAアカウントが必要です。'],
+      [/^The (.+) view$/, (m, T) => '「' + T(m[1]) + '」ビュー'],
       [/^(\d+) of (\d+) combinations played$/, '$2通り中$1通りに出場実績'],
       [/^members get up to (\d+)$/, '会員は最大$1人'],
       [/^up to (\d+) players$/, '最大$1人'],

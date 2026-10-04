@@ -1336,7 +1336,8 @@ function mount(o) {
   const markTab = () => {
     const l = isLocked();
     btn.classList.toggle('rp-tab-locked', l);
-    if (l) btn.title = (o.lock.what || 'The report') + ': for members'; else btn.removeAttribute('title');
+    const why = l && AX() && typeof AX().lockReason === 'function' ? AX().lockReason(o.lock.key, o.lock.league) : null;
+    if (l) btn.title = (o.lock.what || 'The report') + (why === 'signin' ? ': sign in to see it' : ': for members'); else btn.removeAttribute('title');
   };
   const lockedPanel = () => {
     panel.textContent = '';

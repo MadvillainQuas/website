@@ -844,14 +844,18 @@ function render(opts) {
   /* not drawn, not filtered on, not compared: a locked column, or RAPM where the page has none */
   const absent = k => premium(k) || (!!opts.noRapm && RAPM_KEYS.has(k)) ||
     BIO_COLS.some(c => c.k === k && !bioShown[c.show]);          // a bio column this table has nothing for: never the sort either
-  /* A PRESET IS LOCKED when the catalogue names it, or when every column it would show is
-     premium. The context columns (GP, MPG) do not count: they ride in every preset, the
-     events and zone ones included, and one free column of them would otherwise keep a wholly
-     premium view "open" on a table of games played. "everything" is never locked -- it only
-     loses columns. */
+  /* A PRESET IS LOCKED when it comes after the table's last free view (access.js CATALOGUE.freeThrough: MISC on a
+     player table, TOTALS on a club's, so the events, the zones and "everything"), when the catalogue names it, or when
+     every column it would show is premium. The context columns (GP, MPG) do not count: they ride in every preset, the
+     events and zone ones included, and one free column of them would otherwise keep a wholly premium view "open" on a
+     table of games played. */
   const presetLocked = key => {
-    if (!locked || key === '*') return false;
+    if (!locked) return false;
     const A = ACC(), C = A && A.CATALOGUE;
+    const through = (C && C.freeThrough && C.freeThrough[isTeam ? 'team' : 'player']) || (isTeam ? 'totals' : 'misc');
+    const cut = presets.findIndex(p => p[0] === through), at = presets.findIndex(p => p[0] === key);
+    if (cut >= 0 && at > cut) return true;
+    if (key === '*') return false;
     /* the catalogue's list is the memberships' own lock; a page's own rule is read column by column */
     if (!OWN_LOCK && C && Array.isArray(C.presets) && C.presets.indexOf(key) !== -1) return true;
     const context = C && Array.isArray(C.contextColumns) ? C.contextColumns : ['gp', 'mpg'];
@@ -1370,8 +1374,10 @@ function render(opts) {
     if (!A || typeof A.teaserHTML !== 'function') return;
     if (!teaserEl) { teaserEl = el('div', 'ft-teaser'); host.insertBefore(teaserEl, head); }
     teaserEl.innerHTML = A.teaserHTML({
-      leagueSlug: opts.leagueSlug, title: label,
-      lines: [/^z_/.test(key)
+      leagueSlug: opts.leagueSlug, title: label, what: 'The ' + label + ' view',
+      lines: [key === '*'
+        ? 'Every column of the table at once, the events and the zones included.'
+        : /^z_/.test(key)
         ? 'Every club’s shot profile zone by zone — share of shots, attempts per 100 possessions, makes and eFG% — ranked across the league.'
         : 'Second chances, transition, points off turnovers, after-timeout sets, the half court and assisted baskets, for every ' + (isTeam ? 'club at both ends.' : 'player.')]
     });
@@ -1384,7 +1390,7 @@ function render(opts) {
       b.type = 'button'; b.dataset.g = key;
       if (shut) { b.appendChild(lockMark()); b.title = label + ' — part of Epinoia analytics';
         /* the stop-sign cursor and the popup, but the press still opens the teaser (passive) */
-        const M = window.EpinoiaMemLock; if (M && M.lock) { b.removeAttribute('title'); M.lock(b, { what: label + ' (events)', passive: true, leagueSlug: opts.leagueSlug }); } }
+        const M = window.EpinoiaMemLock; if (M && M.lock) { b.removeAttribute('title'); M.lock(b, { what: 'The ' + label + ' view', passive: true, leagueSlug: opts.leagueSlug }); } }
       b.addEventListener('click', () => {
         if (presetLocked(key)) { showTeaser(key, label); return; }
         hideTeaser();

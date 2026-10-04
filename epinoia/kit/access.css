@@ -165,13 +165,59 @@ html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn, html.m-ios-app .ep-lock
 .mem-ph-note b{font-family:var(--f-micro); font-weight:400; font-size:11px; letter-spacing:.1em; color:var(--ink)}
 .mem-ph-note a{font-family:var(--f-ui); font-weight:700; font-size:13px; color:var(--lume); text-underline-offset:3px; cursor:pointer}
 
+/* ---------- SIGNED IN FIRST (access.js signinFirst, memlock.js): what needs an account, asked of a signed-out reader ----------
+   The card wears the site's lume rather than the membership red, a picture in place of the padlock icon, and one button
+   that is never hidden (the iPhone app hides what sells; signing in sells nothing). */
+.ep-lock-signin{align-items:center; gap:16px; border-left-color:var(--lume)}
+.ep-in-art{flex:none; width:112px; height:auto; color:var(--lume)}
+.ep-in-need{font-family:var(--f-ui); font-size:14px; line-height:1.5; color:var(--ink-2); margin:6px 0 0; max-width:62ch}
+.ep-in-go{
+  display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:8px 20px; box-sizing:border-box;
+  background:var(--lume); color:var(--on-accent); border:1px solid var(--lume); border-radius:999px;
+  font-family:var(--f-micro); font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; text-decoration:none;
+  white-space:nowrap; cursor:pointer; transition:background .2s var(--ease), color .2s var(--ease);
+}
+.ep-in-go:hover{background:transparent; color:var(--lume)}
+.ep-in-go:focus-visible{outline:2px solid var(--lume); outline-offset:2px}
+.ep-lock-compact.ep-lock-signin .ep-in-go{min-height:34px; padding:6px 14px; font-size:9px}
+.mem-lock.mem-in, .mem-lock.mem-in *{cursor:pointer}
+.mem-tip.mem-tip-in{border-left-color:var(--lume)}
+.mem-ph.mem-ph-in{min-height:220px}
+.mem-ph-in .mem-ph-note{gap:8px; background:color-mix(in oklch,var(--panel) 55%,transparent)}
+.mem-ph-art{display:block; width:96px; color:var(--lume)}
+.mem-ph-art svg{display:block; width:100%; height:auto}
+.mem-ph-need{font-family:var(--f-ui); font-size:13px; line-height:1.45; color:var(--ink-2); max-width:42ch}
+.mem-ph-in .mem-ph-note a.ep-in-go{font-family:var(--f-micro); font-weight:400; font-size:9.5px; color:var(--on-accent); text-decoration:none}
+.mem-ph-in .mem-ph-note a.ep-in-go:hover{color:var(--lume)}
+/* a section that draws the blurred rows AND the card: the picture on the rows, the words and the button on the card */
+.mem-ph-in ~ .ep-lock-signin .ep-in-art, .mem-ph-in ~ * .ep-lock-signin .ep-in-art{display:none}
+.mem-ph-in:has(~ .ep-lock-signin, ~ * .ep-lock-signin) .mem-ph-need,
+.mem-ph-in:has(~ .ep-lock-signin, ~ * .ep-lock-signin) .ep-in-go{display:none}
+/* the box a press opens */
+.mem-ask-back{position:fixed; inset:0; z-index:2147482500; display:grid; place-items:center; padding:16px;
+  background:rgba(4,10,8,.62); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px)}
+.mem-ask{box-sizing:border-box; width:100%; max-width:440px; padding:22px 22px 18px; text-align:center;
+  background:var(--panel,#0a1a13); color:var(--ink,#e6fff1); border:1px solid var(--rule-2); border-top:3px solid var(--lume);
+  box-shadow:0 24px 60px rgba(0,0,0,.45); font-family:var(--f-ui,sans-serif)}
+.mem-ask-art{width:132px; margin:0 auto 10px; color:var(--lume)}
+.mem-ask-art svg{display:block; width:100%; height:auto}
+.mem-ask h2{margin:0 0 6px; font-family:var(--f-ui); font-weight:800; font-size:20px; line-height:1.25}
+.mem-ask p{margin:0 0 8px; font-size:14px; line-height:1.55; color:var(--ink-2)}
+.mem-ask .mem-ask-need{color:var(--ink); font-weight:700}
+.mem-ask-row{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:14px}
+.mem-ask-no{min-height:40px; padding:8px 18px; border-radius:999px; border:1px solid var(--rule-2); background:transparent; color:var(--ink);
+  font-family:var(--f-micro); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer}
+.mem-ask-no:hover{border-color:var(--lume); color:var(--lume)}
+
 @media (max-width:560px){
   .ep-lock{padding:calc(var(--u)*1.5)}
   .ep-paywall{margin:16px; padding:16px}
+  .ep-lock-signin{flex-direction:column; align-items:flex-start}
+  .ep-in-art{width:96px}
 }
 
 @media (prefers-reduced-motion:reduce){
-  .ep-lock-go{transition:none}
+  .ep-lock-go, .ep-in-go{transition:none}
 }
 
 /* ---------- the payment window (paywindow.js): membership bought on the page the fan is on ---------- */

@@ -272,11 +272,19 @@ ok('rankWithinLeague:false starts it off', draw({ rows: twoLeagues(), leagueColu
 console.log('\nlocked columns');
 const LOCKED = k => k === 'bpm' || k === 'ts' || /^ev_/.test(k);
 ({ host: h, api } = draw({ rows: twoLeagues(), leagueColumn: true, locked: LOCKED, filters: true, state: { sort: 'bpm' } }));
+/* EVERY VIEW PAST MISC IS PART OF THE LOCK (2026-10-04): the events and "everything" with them, on this page's own lock too */
+const after = Table.PRESETS.player.slice(Table.PRESETS.player.findIndex(p => p[0] === 'misc') + 1).map(p => p[0]);
+const upTo = Table.PRESETS.player.slice(0, Table.PRESETS.player.findIndex(p => p[0] === 'misc') + 1).map(p => p[0]);
+ok('locked, every view after MISC is locked (the six events and everything) and none up to it',
+   after.length === 7 && after.includes('*') && after.every(k => pill(h, k).classList.contains('locked')) && upTo.every(k => !pill(h, k).classList.contains('locked')),
+   after.filter(k => !pill(h, k).classList.contains('locked')).concat(upTo.filter(k => pill(h, k).classList.contains('locked'))).join());
 pill(h, '*').fire('click');
 hd = heads(h);
-const lockedLabels = Table.PLAYER_COLS.filter(c => LOCKED(c.k)).map(c => c.l);
-ok('everything shows no locked column', !hd.includes('BPM') && !hd.includes('TS%') && hd.length === 3 + Table.PLAYER_COLS.filter(c => !c.g.includes('id') && !LOCKED(c.k)).length + 1,
-   hd.length);
+ok('...so pressing everything opens nothing, and no locked column shows', !pill(h, '*').classList.contains('on') && !hd.includes('BPM') && !hd.includes('TS%'), hd.length);
+const openAll = draw({ rows: twoLeagues(), leagueColumn: true, filters: true }).host;
+pill(openAll, '*').fire('click');
+ok('...and unlocked, everything is every column, the views after MISC open',
+   pill(openAll, '*').classList.contains('on') && after.every(k => !pill(openAll, k).classList.contains('locked')) && heads(openAll).includes('BPM'));
 pill(h, 'advanced').fire('click');
 ok('advanced leaves BPM and TS% out', !heads(h).includes('BPM') && !heads(h).includes('TS%') && heads(h).includes('OBPM'));
 ok('a preset made only of locked columns is marked locked', pill(h, 'ev_second').classList.contains('locked') && !pill(h, 'basic').classList.contains('locked'));

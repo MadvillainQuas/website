@@ -175,6 +175,11 @@ const CATALOGUE = Object.freeze({
   presets: Object.freeze(['ev_second', 'ev_transition', 'ev_offTo', 'ev_ato', 'ev_half', 'ev_assist',
                           'z_rim', 'z_mid', 'z_three', 'z_cuts', 'z_rate']),
   contextColumns: Object.freeze(['gp', 'mpg']),
+  /* EVERY STATISTICS TABLE'S VIEWS PAST THESE ARE PART OF THE LOCK (2026-10-04): a player table's after MISC, a club
+     table's after TOTALS (the events, the zones and "everything"), read by fulltable.js presetLocked on the league
+     tables, the player profile's and global scouting's. Whatever locks the premium columns locks them: an account
+     today (signinFirst), a membership once the switch is on. */
+  freeThrough: Object.freeze({ player: 'misc', team: 'totals' }),
   /* THE MEMBERSHIP LOCKS, one line per lockable feature (epinoia/memlock.js draws them).
      `gate` names the entitlement that opens it; both ride on the analytics one today, so
      they open and close with analyticsOk() -- master switch off = nothing locked, and an
@@ -216,10 +221,41 @@ function isPremiumColumn(key) {
 function featureLocked(key, league) {
   const L = CATALOGUE.locks[String(key)];
   if (!L) return false;
+  if (signinFirst(key)) return true;
   const g = gateOf(key);
   if (g === 'free') return false;
   if (g === 'analytics') return !analyticsOk(league);
   return !featureOk(g, league);
+}
+
+/* ------------------------------------------------------- signed in first ---
+   WHAT A MEMBERSHIP WILL OPEN NEEDS AN ACCOUNT FIRST (2026-10-04). A signed-out reader who reaches for anything in
+   CATALOGUE.locks (WOWY and the lineups, the club and player reports, shot zones, rotations, the premium table columns,
+   the CSV, What wins...) is asked to sign in, whether memberships are switched on or not: featureLocked() says locked,
+   and the teaser, the placeholder and the popup say "sign in" (signinHTML here, memlock.js). NOT on a game page or an
+   embed: the box score and the game report stay as they are (SIGNIN_FREE names the box score's own tabs for any other
+   page that shows them). A members-only league's own wall (paywallHTML) is not this either. A stored session whose
+   token has run out but can still be refreshed counts as signed in, so a member is never shown the prompt for the
+   second a refresh takes. Under node (the tests) nothing is ever asked. */
+const SIGNIN_FREE = Object.freeze(['gameFlow', 'gameConnections', 'gameAdvanced']);
+function gamePage() {
+  try { return !!(root.location && /\/(game|embed)\//.test(String(root.location.pathname || ''))); } catch (_) { return false; }
+}
+function signedInish() {
+  if (session()) return true;
+  const s = stored();
+  return !!(s && s.refresh && s.refresh !== deadRefresh);
+}
+/* true when this reader must sign in before `key` (any lockable feature when no key is named) can open, here */
+function signinFirst(key) {
+  if (!BROWSER || gamePage()) return false;
+  if (key != null && (!CATALOGUE.locks[String(key)] || SIGNIN_FREE.indexOf(String(key)) >= 0)) return false;
+  return !signedInish();
+}
+/* why a feature is shut: 'signin', 'membership', or null when it is open */
+function lockReason(key, league) {
+  if (!featureLocked(key, league)) return null;
+  return signinFirst(key) ? 'signin' : 'membership';
 }
 
 /* ------------------------------------------------------- the wall (0222) ---
@@ -246,7 +282,12 @@ const COPY = Object.freeze({
   modalDone: 'Payment confirmed: welcome.',
   /* a new member's free trial (0223), promoted wherever something is for sale; {months} is its length */
   trialCta: 'Start your {months}-month free trial',
-  trialBadge: '{months} months free for new members · cancel any time'
+  trialBadge: '{months} months free for new members · cancel any time',
+  /* signed in first (signinFirst below): what a signed-out reader is told */
+  signinTitle: 'Sign in to see this',
+  signinLead: 'It takes a moment with your email, Google or Discord, and brings you straight back here.',
+  signinAll: 'An account opens WOWY and the lineups, the player and club reports, shot zones, rotations and the full statistics tables.',
+  signinTip: 'Sign in to use this'
 });
 let WALL = null, wallP = null, WALL_OFF = false;
 function wallOf(j) {
@@ -1095,7 +1136,52 @@ function stateBySlug(slug) {
    never loaded the league shows it, and the join page says what is on sale. */
 const plansFor = st => (st && st.known ? !!st.hasPlans : true);
 
+/* THE SIGN-IN CARD (signinFirst): a picture, what needs the account, what an account opens, and one button. The
+   feature is named from what the page passed: `what` (+ `plural`), a title "X is / are for members", or the lock's label */
+const SIGNIN_ART = '<svg class="ep-in-art" viewBox="0 0 120 84" aria-hidden="true" focusable="false">' +
+  '<rect x="4" y="8" width="88" height="66" rx="7" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/>' +
+  '<path d="M16 62V50M28 62V38M40 62V45M52 62V30" stroke="currentColor" stroke-width="7" stroke-linecap="round" opacity=".32"/>' +
+  '<path d="M58 50l8-9 8 5 9-13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/>' +
+  '<circle cx="94" cy="56" r="21" fill="var(--panel, #0a1a13)" stroke="currentColor" stroke-width="2.4"/>' +
+  '<path d="M88 55v-4.5a6 6 0 0 1 12 0V55" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>' +
+  '<rect x="84.5" y="54.5" width="19" height="14" rx="3" fill="currentColor"/>' +
+  '<circle cx="94" cy="60.5" r="2" fill="var(--panel, #0a1a13)"/><path d="M94 61.5v3" stroke="var(--panel, #0a1a13)" stroke-width="2" stroke-linecap="round"/></svg>';
+function signinWhat(x) {
+  if (x.what) return { phrase: String(x.what), plural: !!x.plural };
+  const m = String(x.title || '').match(/^(.*\S)\s+(is|are)\s+for members\.?$/i);
+  if (m) return { phrase: m[1], plural: m[2].toLowerCase() === 'are' };
+  const L = x.key && CATALOGUE.locks[String(x.key)];
+  if (L) return { phrase: L.label, plural: /[^s]s$/i.test(L.label) };
+  return null;
+}
+/* "Pairs need an EPINOIA account." / "The club report needs an EPINOIA account." */
+function signinNeed(x) {
+  const w = signinWhat(x || {});
+  return w ? w.phrase + (w.plural ? ' need' : ' needs') + ' an EPINOIA account.' : 'This needs an EPINOIA account.';
+}
+function signinHTML(o) {
+  const x = Object.assign({}, o || {});
+  const go = '<a class="ep-in-go" href="' + esc(signinHref()) + '">' + esc(copyOf('signIn')) + '</a>';
+  if (x.compact) {
+    return '<div class="ep-lock ep-lock-compact ep-lock-signin" role="note">' + LOCK_SVG +
+      '<span class="ep-lock-t">' + esc(x.signinTitle || signinNeed(x)) + '</span>' + go + '</div>';
+  }
+  const given = x.lines == null ? [] : (Array.isArray(x.lines) ? x.lines : [x.lines]);
+  const lines = given.filter(l => l != null && String(l).trim()).slice(0, 2);
+  return '<div class="ep-lock ep-lock-signin" role="note">' + SIGNIN_ART +
+    '<div class="ep-lock-tx">' +
+      '<div class="ep-lock-t">' + esc(x.signinTitle || copyOf('signinTitle')) + '</div>' +
+      '<p class="ep-in-need">' + esc(signinNeed(x)) + '</p>' +
+      lines.map(l => '<p class="ep-lock-l">' + esc(l) + '</p>').join('') +
+      '<p class="ep-lock-l">' + esc(copyOf('signinAll')) + '</p>' +
+      '<p class="ep-lock-l">' + esc(copyOf('signinLead')) + '</p>' +
+      '<div class="ep-lock-cta">' + go + '</div>' +
+    '</div></div>';
+}
+
 function teaserHTML(o) {
+  /* signed out, where an account comes first: the sign-in card (a members-only league's banner names key 'league') */
+  if (o && o.signin !== false && signinFirst(o.key)) return signinHTML(o);
   /* a section's own words where the platform wrote them (x.key, 0222), over the page's */
   const x = Object.assign({}, o || {});
   if (x.key) { const w = lockWords(x.key); if (w.title) x.title = w.title; if (w.lines) x.lines = w.lines; }
@@ -1308,6 +1394,7 @@ function wirePayWindow() {
 return {
   FEATURES, CATALOGUE, COPY, GATES,
   load, loadMany, get, analyticsOk, canView, isPremiumColumn, featureLocked, featureOk,
+  signinFirst, lockReason, signinHTML, signinNeed, signinArt: () => SIGNIN_ART,
   gateOf, lockWords, copyOf, loadWall, trialMonths,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,

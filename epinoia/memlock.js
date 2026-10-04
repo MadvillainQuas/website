@@ -70,10 +70,19 @@ function ensureTip() {
   }, true);
   return tip;
 }
+/* SIGNED IN FIRST (access.js signinFirst): a signed-out reader is asked for an account before anything else, so the
+   popup, the placeholder and a locked control's press say "sign in" and lead to the sign-in page */
+function signinNow() {
+  try { const A = access(); return !!(A && typeof A.signinFirst === 'function' && A.signinFirst()); } catch (_) { return false; }
+}
+function signinHref() {
+  try { const A = access(); return A && A.signinHref ? A.signinHref() : '/epinoia/signin/'; } catch (_) { return '/epinoia/signin/'; }
+}
 /* the popup's words: the platform's (access.js copyOf, 0222), the free trial promoted where there is one (0223) */
 function words() {
   const A = access();
   const c = k => { try { return A && typeof A.copyOf === 'function' ? A.copyOf(k) : ''; } catch (_) { return ''; } };
+  if (signinNow()) return { text: (c('signinTip') || 'Sign in to use this').toUpperCase(), link: c('signIn') || 'Sign in', badge: '', href: signinHref(), signin: true };
   let trial = 0;
   try { trial = A && typeof A.trialMonths === 'function' ? A.trialMonths() : 0; } catch (_) { trial = 0; }
   return { text: (c('popupText') || TIP_TEXT).toUpperCase(), link: trial ? c('trialCta') : (c('popupLink') || TIP_LINK), badge: trial ? c('trialBadge') : '' };
@@ -87,7 +96,8 @@ function show(el, o) {
   tip.querySelector('.mem-tip-go').textContent = wd.link;
   const b = tip.querySelector('.mem-tip-b');
   b.textContent = wd.badge; b.hidden = !wd.badge;
-  tip.querySelector('.mem-tip-go').href = joinHref({ leagueSlug: o && o.leagueSlug });
+  tip.querySelector('.mem-tip-go').href = wd.href || joinHref({ leagueSlug: o && o.leagueSlug });
+  tip.classList.toggle('mem-tip-in', !!wd.signin);
   tip.hidden = false;
   el.setAttribute('aria-describedby', 'mem-tip');
   /* The site sets a zoom on <body> (legibility): a fixed box inside it is placed in ZOOMED pixels, while the rect of the
@@ -118,6 +128,8 @@ function lock(el, o) {
   const what = String(o.what || 'this');
   const prev = { label: el.getAttribute('aria-label'), title: el.getAttribute('title'), dis: el.getAttribute('aria-disabled') };
   el.classList.add('mem-lock');
+  /* signed out it is a way in, not a wall: a pointer rather than the stop sign */
+  if (signinNow()) el.classList.add('mem-in');
   if (!o.passive) el.setAttribute('aria-disabled', 'true');
   el.setAttribute('aria-label', (prev.label || (el.textContent || '').trim() || what) + ' — locked, ' + TIP_TEXT.toLowerCase());
   el.removeAttribute('title');            // the popup is the explanation; a native tooltip would fight it
@@ -126,9 +138,11 @@ function lock(el, o) {
   /* passive: the control still does its own thing (a locked preset opens its teaser); it only
      gets the cursor and the popup */
   const stop = e => { if (!o.passive) { e.preventDefault(); e.stopImmediatePropagation(); } };
-  const onClick = e => { stop(e); if (o.passive) return; if (tipFor === el && tip && !tip.hidden) hide(0); else show(el, o); };
+  const onClick = e => { stop(e); if (o.passive) return;
+    if (signinNow()) { hide(0); askSignIn({ what: o.what }); return; }
+    if (tipFor === el && tip && !tip.hidden) hide(0); else show(el, o); };
   const onKey = e => {
-    if (!o.passive && (e.key === 'Enter' || e.key === ' ')) { stop(e); show(el, o); }
+    if (!o.passive && (e.key === 'Enter' || e.key === ' ')) { stop(e); if (signinNow()) askSignIn({ what: o.what }); else show(el, o); }
   };
   const onEnter = e => { if (e.pointerType !== 'touch') show(el, o); };
   const onLeave = () => hide(160);
@@ -153,7 +167,7 @@ function lock(el, o) {
     el.removeEventListener('pointerleave', onLeave);
     el.removeEventListener('focus', onFocus);
     el.removeEventListener('blur', onBlur);
-    el.classList.remove('mem-lock'); delete el.dataset.memLock;
+    el.classList.remove('mem-lock', 'mem-in'); delete el.dataset.memLock;
     if (prev.dis == null) el.removeAttribute('aria-disabled'); else el.setAttribute('aria-disabled', prev.dis);
     if (prev.label == null) el.removeAttribute('aria-label'); else el.setAttribute('aria-label', prev.label);
     if (prev.title != null) el.setAttribute('title', prev.title);
@@ -195,15 +209,66 @@ function placeholder(o) {
     rows.appendChild(r);
   }
   const note = DOC.createElement('div'); note.className = 'mem-ph-note';
-  const t = DOC.createElement('b'); t.textContent = TIP_TEXT;
-  const a = DOC.createElement('a'); a.href = joinHref({ leagueSlug: o.leagueSlug }); a.textContent = TIP_LINK;
-  note.append(t, a);
+  if (signinNow()) {
+    /* signed out: the picture, what needs the account and the way in */
+    const A = access();
+    wrap.classList.add('mem-ph-in');
+    wrap.setAttribute('aria-label', String(o.what || 'These stats') + ' — sign in to see them');
+    const art = DOC.createElement('span'); art.className = 'mem-ph-art';
+    try { art.innerHTML = A && A.signinArt ? A.signinArt() : ''; } catch (_) { /* no picture */ }
+    const t = DOC.createElement('b'); t.textContent = (A && A.copyOf ? A.copyOf('signinTitle') : '') || 'Sign in to see this';
+    const p = DOC.createElement('span'); p.className = 'mem-ph-need';
+    p.textContent = A && A.signinNeed ? A.signinNeed({ what: o.what, plural: o.plural }) : '';
+    const a = DOC.createElement('a'); a.className = 'ep-in-go'; a.href = signinHref(); a.textContent = (A && A.copyOf ? A.copyOf('signIn') : '') || 'Sign in';
+    note.append(art, t, p, a);
+  } else {
+    const t = DOC.createElement('b'); t.textContent = TIP_TEXT;
+    const a = DOC.createElement('a'); a.href = joinHref({ leagueSlug: o.leagueSlug }); a.textContent = TIP_LINK;
+    note.append(t, a);
+  }
   wrap.append(rows, note);
   return wrap;
 }
 
+/* THE SIGN-IN BOX: a press on something that needs an account, signed out. The picture, what needs the account, what an
+   account opens, and the way in (back to this page afterwards); Esc, the backdrop or "Not now" closes it. */
+let askBox = null;
+function askSignIn(o) {
+  o = o || {};
+  if (!DOC || !DOC.body) return null;
+  if (askBox) askBox.remove();
+  const A = access();
+  const c = (k, d) => { try { return (A && A.copyOf && A.copyOf(k)) || d; } catch (_) { return d; } };
+  const back = DOC.createElement('div'); back.className = 'mem-ask-back';
+  const box = DOC.createElement('div'); box.className = 'mem-ask';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'mem-ask-h');
+  const art = DOC.createElement('div'); art.className = 'mem-ask-art';
+  try { art.innerHTML = A && A.signinArt ? A.signinArt() : ''; } catch (_) { /* no picture */ }
+  const h = DOC.createElement('h2'); h.id = 'mem-ask-h'; h.textContent = c('signinTitle', 'Sign in to see this');
+  const need = DOC.createElement('p'); need.className = 'mem-ask-need';
+  need.textContent = A && A.signinNeed ? A.signinNeed({ what: o.what, plural: o.plural }) : 'This needs an EPINOIA account.';
+  const all = DOC.createElement('p'); all.textContent = c('signinAll', '');
+  const how = DOC.createElement('p'); how.textContent = c('signinLead', '');
+  const row = DOC.createElement('div'); row.className = 'mem-ask-row';
+  const go = DOC.createElement('a'); go.className = 'ep-in-go'; go.href = signinHref(); go.textContent = c('signIn', 'Sign in');
+  const no = DOC.createElement('button'); no.type = 'button'; no.className = 'mem-ask-no'; no.textContent = 'Not now';
+  row.append(go, no);
+  box.append(art, h, need, all, how, row);
+  back.appendChild(box);
+  const was = DOC.activeElement;
+  const close = () => { back.remove(); if (askBox === back) askBox = null; DOC.removeEventListener('keydown', onKey, true); try { if (was && was.focus) was.focus(); } catch (_) {} };
+  const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+  no.addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  DOC.addEventListener('keydown', onKey, true);
+  DOC.body.appendChild(back);
+  askBox = back;
+  try { go.focus(); } catch (_) {}
+  return back;
+}
+
 return {
-  locked, lock, set, apply, guard, placeholder, tipText: TIP_TEXT, tipLink: TIP_LINK,
+  locked, lock, set, apply, guard, placeholder, askSignIn, tipText: TIP_TEXT, tipLink: TIP_LINK,
   _test: { use(A) { injected = A || null; }, isLocked(el) { return !!(LOCKS && LOCKS.has(el)); } }
 };
 }));

@@ -2330,7 +2330,11 @@ const COPY_WORDS = {
   modalLead: 'The payment window\'s line',
   modalDone: 'When payment is confirmed',
   trialCta: 'The button while a free trial is offered ({months}: its length)',
-  trialBadge: 'The free-trial badge ({months}: its length)'
+  trialBadge: 'The free-trial badge ({months}: its length)',
+  signinTitle: 'Signed out: the sign-in card\'s title',
+  signinLead: 'Signed out: how signing in works',
+  signinAll: 'Signed out: what an account opens',
+  signinTip: 'Signed out: the popup on a locked control'
 };
 async function drawWall() {
   const host = $('#plWall'); if (!host) return;

@@ -143,6 +143,8 @@ function numField(label, value, step, onChange, title) {
   return f;
 }
 function notice(text, cls) { return el('p', 'wnote ' + (cls || ''), text); }
+/* signed out, what is locked waits for an account rather than a membership (access.js signinFirst) */
+function signinFirst() { const A = root.EpinoiaAccess; try { return !!(A && typeof A.signinFirst === 'function' && A.signinFirst('wowy')); } catch (_) { return false; } }
 function btn(label, onClick, cls, title) {
   const b = el('button', 'ep-btn wbtn ' + (cls || ''), label); b.type = 'button'; if (title) b.title = title;
   b.addEventListener('click', onClick); return b;
@@ -192,7 +194,8 @@ function facedBar(ctx, o) {
   if (!G.events) g.querySelectorAll('button').forEach(b => { if (b.dataset.v !== 'all') lockIt(ctx, b, 'The vs-starters split'); });
   const E = ctx.ev;
   let msg = '';
-  if (!G.events) msg = 'Splitting by who the other side had on reads the play-by-play: members only.';
+  if (!G.events) msg = signinFirst() ? 'Splitting by who the other side had on reads the play-by-play: sign in to see it.'
+                                      : 'Splitting by who the other side had on reads the play-by-play: members only.';
   else if (E.status === 'loading') msg = 'Reading play-by-play… ' + E.done + '/' + E.total + ' games';
   else if (E.status === 'error') msg = 'The play-by-play could not be read: stint numbers only.';
   else if (E.status === 'ready') {
@@ -460,7 +463,7 @@ function cardsOf(ctx, rows, o) {
       const tiles = el('div', 'wlc-tiles');
       const allEv = cat.keys.every(k => W.col(k).src === 'ev');
       if (locked && allEv) {
-        const lk = el('div', 'wlc-lock', 'Play-by-play stats: members only');
+        const lk = el('div', 'wlc-lock', signinFirst() ? 'Play-by-play stats: sign in to see them' : 'Play-by-play stats: members only');
         tiles.appendChild(lockIt(ctx, lk, cat.title));
       } else cat.keys.forEach(k => {
         const t = tileOf(ctx, k, row, o);

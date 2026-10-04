@@ -176,7 +176,9 @@ function lockedColumns(accessStates, keys) {
   const A = root.EpinoiaAccess;
   const S = accessStates;
   const list = !S ? [] : (S instanceof Map ? [...S.values()] : Array.isArray(S) ? S : Object.values(S));
-  const locks = list.some(st => st && st.canView !== false && st.analyticsOk === false);
+  /* signed out, the premium columns wait for an account (access.js signinFirst), on every league at once */
+  const signin = !!(A && typeof A.signinFirst === 'function' && A.signinFirst('statColumns'));
+  const locks = signin || list.some(st => st && st.canView !== false && st.analyticsOk === false);
   if (!locks || !A || typeof A.isPremiumColumn !== 'function') return new Set();
   const cat = Array.isArray(keys) ? keys
     : ((root.EpinoiaTable && root.EpinoiaTable.PLAYER_COLS) || []).map(c => c && c.k);

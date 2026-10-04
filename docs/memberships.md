@@ -712,3 +712,31 @@ as before. Never on the join page itself, in an embed (its link opens the join p
 `https://merchant-ui-api.stripe.com` and `https://checkout.stripe.com` to connect). A page frames it as its own site
 (`frame-src`, else `default-src`, `'self'`); the few whose `frame-src` names only other sites (Community, News,
 Creators, GO nearby) pay on Stripe's own page. Tests: `node supabase/tests/paywindow.test.mjs`.
+
+## 13. Signed in first (2026-10-04)
+
+Everything in `CATALOGUE.locks` needs an **account** before anything else, with the master switch on or off: a
+signed-out reader who reaches for WOWY and the lineups, the club and player reports, shot zones, rotations, the
+starters-and-bench splits, What wins, the CSV or the premium table columns is asked to sign in
+(`EpinoiaAccess.signinFirst(key)`; `featureLocked()` says locked, `lockReason()` says `'signin'`). Accounts are free, so
+nothing is sold at this step: the card has one button, to the sign-in page, which brings the reader back to the page.
+
+- **Not on a game page or an embed** (`/epinoia/game/`, `/embed/`): the box score and the game report stay as they were.
+  The box score's own tabs (`gameFlow`, `gameConnections`, `gameAdvanced`) never ask, wherever they are shown, and a
+  members-only league's wall (`paywallHTML`, the fixtures banner with `key: 'league'`) is the membership one as before.
+- **A stored session that can still be refreshed counts as signed in**, so a member is never shown the prompt for the
+  second a refresh takes.
+- **What the reader sees**: `teaserHTML()` gives the sign-in card (a picture, "Sign in to see this", what needs the
+  account: "Pairs need an EPINOIA account.", what an account opens, the button); memlock's placeholder puts the picture,
+  the words and the button over the blurred rows; a press on a locked control opens the sign-in box (`askSignIn`; Esc,
+  the backdrop or "Not now" closes it); the popup says "Sign in to use this". All of it wears the site's lume, and the
+  button (`.ep-in-go`) is never hidden in the iPhone app, which hides only what sells. The words (`signinTitle`,
+  `signinLead`, `signinAll`, `signinTip`) are the console's to change with the rest of the wall's copy, and Japanese and
+  Spanish have them.
+- **Every statistics table's views past MISC (players) and TOTALS (clubs)** are part of the lock: the six events views,
+  the five zones views on a club table, and "everything" (`CATALOGUE.freeThrough`, read by `fulltable.js presetLocked`)
+  on the league tables, the player profile's career table and global scouting (`global.js lockedColumns` locks a
+  signed-out reader's premium columns over every league). Once memberships are on, a signed-in reader without one meets
+  the same views locked by the membership answer instead.
+
+Tests: `supabase/tests/signin-gates.test.mjs`, `fulltable-global.test.mjs` (the views past MISC).

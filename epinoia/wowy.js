@@ -92,6 +92,8 @@ function render(opts) {
     tease.innerHTML = A.teaserHTML({   // escaped by access.js
       compact: true, leagueSlug: opts.leagueSlug || null,
       title: 'A preview: ' + MAX + (MAX === 1 ? ' player' : ' players') + ' at a time. Members compare up to ' +
+             (opts.max || 4) + ' at once.',
+      signinTitle: 'A preview: ' + MAX + (MAX === 1 ? ' player' : ' players') + ' at a time. Sign in to compare up to ' +
              (opts.max || 4) + ' at once.'
     });
     bar.appendChild(tease);
