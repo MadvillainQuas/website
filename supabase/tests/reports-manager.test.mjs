@@ -149,8 +149,8 @@ RM._t.use({ from });
      /\[\.\.\.picked\.keys\(\)\]\.map\(team_id => \(\{ email: e, team_id/.test(src) && /onConflict: 'email,team_id'/.test(src) && /update\(\{ player_zip: cb\.checked \}\)\.in\('id', list\.map\(r => r\.id\)\)/.test(src));
   ok('PRIME CLUB + PLAYERS beside every club PRIME (each opponent, the own report, each club of the Synergy tab)',
      (src.match(/primeAllBtn\(/g) || []).length >= 4 && /rm-prime-all/.test(src));
-  ok('...it primes the club report then each ZIP player’s report, one at a time, in a frame that waits for the report’s own Primed line',
-     /&tab=report&prime=1', frame\)/.test(src) && /querySelector\('\.rp-primed'\)/.test(src) && /for \(let i = 0; i < jobs\.length && !RUN\.stop; i\+\+\)/.test(src));
+  ok('...it primes the club report then each ZIP player’s report, one at a time, in a window of its own (not a frame inside the zoomed console) that waits for the report’s own Primed line',
+     /&tab=report&prime=1', win\)/.test(src) && /window\.open\('about:blank', 'epinoia-prime'/.test(src) && !/el\('iframe'\)/.test(src) && /querySelector\('\.rp-primed'\)/.test(src) && /for \(let i = 0; i < jobs\.length && !RUN\.stop; i\+\+\)/.test(src));
   ok('...closing the manager mid-run asks first', /Reports are being primed\. Close and stop them\?/.test(src));
   ok('a stored report has "delete stored" (the file, then its row), and a club "delete stored (club + players)"',
      /'delete stored'/.test(src) && /'delete stored \(club \+ players\)'/.test(src) && /storage\.from\('primed'\)\.remove\(\[r\.path\]\)/.test(src) && /from\('primed_reports'\)\.delete\(\)/.test(src));
@@ -158,8 +158,11 @@ RM._t.use({ from });
     const zp = RM._t.zipPlayers;
     const T = 'club', rows = [{ pid: 'a', team: T, min: 30 * 60000 }, { pid: 'a', team: T, min: 20 * 60000 }, { pid: 'b', team: T, min: 9 * 60000 },
       { pid: 'c', team: T, min: 15 * 60000 }, { pid: 'd', team: 'other', min: 40 * 60000 }, { pid: 'e', team: T, min: 0 }];
-    const got = zp(rows, T, new Set(['c']));
-    ok('...the players are the mailer’s: this club only, 10+ minutes a game, not released, most minutes first', got.map(x => x.id).join() === 'a' && got[0].mpg === 25 && JSON.stringify(M.zipPlayers(rows, T, new Set(['c']))) === JSON.stringify(got), got);
+    const got = zp(rows, T, new Set(['c']), 1);
+    ok('...the players are the mailer’s: this club only, 10+ minutes a game, not released, most minutes first', got.map(x => x.id).join() === 'a' && got[0].mpg === 25 && JSON.stringify(M.zipPlayers(rows, T, new Set(['c']), 10, 1)) === JSON.stringify(got), got);
+    ok('...and more than two games: nobody here has three, so no ZIP (the manager and the mailer alike)', zp(rows, T, new Set(['c'])).length === 0 && M.zipPlayers(rows, T, new Set(['c'])).length === 0);
+    const three = rows.concat([{ pid: 'a', team: T, min: 15 * 60000 }]);
+    ok('...a player with three games of 10+ minutes goes in', zp(three, T, new Set()).map(x => x.id).join() === 'a' && M.zipPlayers(three, T, new Set()).map(x => x.id).join() === 'a');
   }
   const html = read('epinoia', 'admin', 'platform', 'index.html'), js = read('epinoia', 'admin', 'platform', 'platform.js');
   ok('the console opens it from Reports by email, with the Synergy reader on the page', /id="mailManage"/.test(html) && /<script src="\.\.\/\.\.\/synergy\.js\?v=\d+" defer><\/script>/.test(html) &&
@@ -205,7 +208,7 @@ console.log('\nwhose reports go in');
     { pid: 'd', team: 'T', min: 0 }, { pid: 'd', team: 'T', min: m(12) },                  // a DNP does not count as a game
     { pid: 'e', team: 'X', min: m(40) },                                                   // the other side of the game
     { pid: 'f', team: 'T', min: m(10) }];                                                  // exactly ten
-  const got = M.zipPlayers(rows, 'T', new Set(['c']));
+  const got = M.zipPlayers(rows, 'T', new Set(['c']), 10, 1);
   ok('everyone who played for the club at 10 minutes a game or more, the most minutes first', got.map(p => p.id).join(' ') === 'a d f' && got[0].mpg === 29 && got[1].games === 1, got);
   ok('...under 10 a game left out (9.75), the released left out, the other side\'s players left out', !got.some(p => ['b', 'c', 'e'].includes(p.id)));
   ok('...the threshold is 10', M.MIN_MPG === 10);
@@ -220,6 +223,8 @@ const G = (id, h, a, hn, an, t) => ({ id, home_team_id: h, away_team_id: a, home
 const WEEK = [G('w1', 'P', TEAM, 'South East Melbourne Phoenix', 'Illawarra Hawks', '2026-10-13T18:00:00Z'), G('w2', TEAM, 'J', 'Illawarra Hawks', 'Tasmania JackJumpers', '2026-10-18T14:00:00Z')];
 const FINALS = [{ id: 'f1', home_team_id: 'P', away_team_id: 'X' }, { id: 'f2', home_team_id: 'Y', away_team_id: 'P' }, { id: 'f3', home_team_id: 'J', away_team_id: TEAM }, { id: 'f4', home_team_id: TEAM, away_team_id: 'Z' }];
 const min = x => x * 60000;
+/* these fixtures' players have one or two games: the run below is held to the old floor (ZIP_MIN_GAMES), the 3-game rule is checked above */
+process.env.ZIP_MIN_GAMES = '1';
 const PGS = [
   { game_id: 'f1', player_uuid: 'pP1', team_idx: 0, min: min(31) }, { game_id: 'f2', player_uuid: 'pP1', team_idx: 1, min: min(29) },
   { game_id: 'f1', player_uuid: 'pP2', team_idx: 0, min: min(8) }, { game_id: 'f2', player_uuid: 'pP2', team_idx: 1, min: min(7) },

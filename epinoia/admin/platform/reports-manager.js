@@ -67,8 +67,6 @@ function style() {
 .rm-run.on{ display:flex }
 .rm-run ol{ margin:6px 0 0; padding-left:18px; max-height:150px; overflow:auto; font-size:12px }
 .rm-run li.ok{ color:#1d7a46 } .rm-run li.gap{ color:#8a5a00 } .rm-run li.go{ font-weight:700 }
-.rm-run .frame{ flex:none; width:325px; height:250px; overflow:hidden; border:1px solid var(--rule,#ddd); border-radius:8px; background:#fff }
-.rm-run iframe{ width:1300px; height:1000px; border:0; transform:scale(.25); transform-origin:0 0 }
 .rm-prime{ background:#0d1f17 !important; color:#ffd166 !important; border-color:#0d1f17 !important; font-weight:800; letter-spacing:.06em }
 .rm-syn{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:10px; align-items:start; padding:9px 0; border-top:1px solid var(--rule,#ddd) }
 .rm-syn:first-child{ border-top:0 }
@@ -522,8 +520,8 @@ function matchRow(x, people, clubs) {
    for the report's own "Primed" line before the next. The players are the mailer's (scripts/report_mailer.mjs zipPlayers): everyone
    who has played for the club in its league's newest season, at 10 minutes a game or more, not released by it, most minutes first. */
 const RUN = { busy: false, stop: false, box: null };
-const MIN_MPG = 10;
-function zipPlayers(rows, teamId, released) {
+const MIN_MPG = 10, MIN_GAMES = 3;                         // the mailer's: 10+ minutes a game, MORE than two games
+function zipPlayers(rows, teamId, released, minGames = MIN_GAMES) {
   const acc = new Map();
   rows.forEach(r => {
     const m = +r.min || 0;
@@ -532,7 +530,7 @@ function zipPlayers(rows, teamId, released) {
     a.games++; a.min += m / 60000; acc.set(r.pid, a);
   });
   return [...acc.values()].map(a => ({ ...a, mpg: a.min / a.games }))
-    .filter(a => a.mpg >= MIN_MPG && !(released && released.has(a.id))).sort((a, b) => b.mpg - a.mpg);
+    .filter(a => a.mpg >= MIN_MPG && a.games >= minGames && !(released && released.has(a.id))).sort((a, b) => b.mpg - a.mpg);
 }
 async function allOf(q) {                                     // q: (from, to) -> a supabase query; every page of it
   const out = [];
@@ -566,27 +564,31 @@ async function zipSquad(teamId) {
   const nm = new Map((named || []).map(p => [p.id, nameOf(p)]));
   return picked.map(p => ({ ...p, name: nm.get(p.id) || 'Player' }));
 }
-/* one report, primed in the run's frame: resolves with what its "Primed" line says */
-function primeInFrame(url, frameBox) {
+/* ONE REPORT, PRIMED IN THE RUN'S OWN WINDOW (opened by "start priming", one for the whole run, then closed). Not a frame inside
+   this pop-up: the console page is zoomed (the kit's body zoom, 1.5 on a wide screen) and Chrome carries that zoom into a frame,
+   so a report there was laid out about 870px wide and drawn at another width - rows ran into each other in the stored PDF
+   (2026-10-04, the Leicester report). A window of its own is a page like any tab, the way PRIME REPORT from a tab draws it.
+   Resolves with what the report's "Primed" line says. */
+function primeInWindow(url, w) {
   return new Promise(resolve => {
-    frameBox.textContent = '';
-    const f = el('iframe'); f.title = 'report being primed'; f.src = url;
-    frameBox.appendChild(f);
+    if (!w || w.closed) { resolve({ ok: false, text: 'the priming window was closed' }); return; }
+    try { w.location.href = url; } catch (e) { resolve({ ok: false, text: 'the priming window could not be used' }); return; }
     const t0 = Date.now();
     const tick = () => {
       if (RUN.stop) { resolve({ ok: false, text: 'stopped' }); return; }
+      if (w.closed) { RUN.stop = true; resolve({ ok: false, text: 'the priming window was closed' }); return; }
       let box = null;
-      try { box = f.contentDocument && f.contentDocument.querySelector('.rp-primed'); } catch (_) { /* not loaded yet */ }
+      try { box = w.location.href.indexOf(url.replace(/^\.\.\/\.\.\//, '')) !== -1 && w.document.querySelector('.rp-primed'); } catch (_) { /* not loaded yet */ }
       if (box && !box.hidden && box.textContent.trim()) { resolve({ ok: box.classList.contains('ok'), text: box.textContent.trim() }); return; }
       if (Date.now() - t0 > 10 * 60000) { resolve({ ok: false, text: 'did not finish within 10 minutes' }); return; }
       setTimeout(tick, 1000);
     };
-    setTimeout(tick, 1500);
+    setTimeout(tick, 2000);
   });
 }
 function primeAllBtn(teamId, name, stored) {
   const b = btn('PRIME CLUB + PLAYERS', 'mini rm-prime-all', () => primeAll(teamId, name));
-  b.title = 'Prime ' + poss(name) + ' club report and every player report its players’ ZIP carries (10+ minutes a game, not released), each with its Synergy CSVs and RAPM, and store them all for sending';
+  b.title = 'Prime ' + poss(name) + ' club report and every player report its players’ ZIP carries (10+ minutes a game over more than two games, not released), each with its Synergy CSVs and RAPM, and store them all for sending';
   if (!(stored && stored.has('team:' + teamId))) return b;
   const w = el('span', 'rm-primed-at');
   const del = btn('delete stored (club + players)', 'mini rm-del', async () => {
@@ -649,27 +651,32 @@ function closeRunBtn(text) {
 }
 async function runPrime(teamId, name, squad) {
   if (RUN.busy) return;
+  /* the run's window, opened at once from the click (a window opened later, after an await, is a blocked pop-up) */
+  const win = window.open('about:blank', 'epinoia-prime', 'width=1320,height=1000');
+  if (!win) { say('The priming window was blocked: allow pop-ups for this site, then press start priming again.', 'warn'); return; }
+  try { win.document.title = 'Priming ' + name + '\u2026'; win.document.body.textContent = 'Priming ' + name + ': the reports open here one after another. Leave this window open.'; } catch (_) { /* fine */ }
+  window.focus();
   RUN.busy = true; RUN.stop = false;
   const box = RUN.box;
   box.textContent = '';
-  const list = el('ol'), frame = el('div', 'frame'), side = el('div');
+  const list = el('ol'), side = el('div');
   side.style.cssText = 'flex:1 1 auto;min-width:0';
   const head = el('b', null, 'Priming ' + name + '…');
   const bar = el('div', 'rm-row'); bar.style.margin = '6px 0';
   const stop = btn('stop', 'mini', () => { RUN.stop = true; });
   bar.appendChild(stop);
   side.append(head, bar, list);
-  box.append(side, frame);
+  box.append(side);
   try {
     const jobs = [{ k: 't', id: teamId, name: name + ' — club report' }].concat(squad.map(p => ({ k: 'p', id: p.id, name: p.name + ' (' + p.mpg.toFixed(1) + ' min a game)' })));
-    head.textContent = 'Priming ' + name + ': the club report and ' + squad.length + ' player report' + (squad.length === 1 ? '' : 's') + ', one at a time';
+    head.textContent = 'Priming ' + name + ': the club report and ' + squad.length + ' player report' + (squad.length === 1 ? '' : 's') + ', one at a time, in the window that opened (leave it open)';
     const lines = jobs.map(j => { const li = el('li', null, j.name); list.appendChild(li); return li; });
     let good = 0;
     for (let i = 0; i < jobs.length && !RUN.stop; i++) {
       const j = jobs[i], li = lines[i];
       li.className = 'go'; li.textContent = j.name + ': priming…';
       li.scrollIntoView({ block: 'nearest' });
-      const r = await primeInFrame(SITE + j.k + '/?' + j.k + '=' + encodeURIComponent(j.id) + '&tab=report&prime=1', frame);
+      const r = await primeInWindow(SITE + j.k + '/?' + j.k + '=' + encodeURIComponent(j.id) + '&tab=report&prime=1', win);
       li.className = r.ok ? 'ok' : 'gap';
       li.textContent = j.name + ': ' + (r.ok ? '' : '⚠ ') + r.text.replace(/^[✓⚠]\s*/, '');
       if (r.ok) good++;
@@ -680,7 +687,7 @@ async function runPrime(teamId, name, squad) {
     head.textContent = 'Priming stopped: ' + (e.message || e);
     oops(e);
   } finally {
-    frame.remove();
+    try { if (!win.closed) win.close(); } catch (_) { /* fine */ }
     stop.remove();
     bar.appendChild(closeRunBtn());
     RUN.busy = false;

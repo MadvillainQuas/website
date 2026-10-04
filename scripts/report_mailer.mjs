@@ -401,10 +401,13 @@ export function zipOf(files, when = new Date()) {
   return Buffer.concat([...out, cd, end]);
 }
 /* WHOSE REPORTS GO IN: everyone who has played for the club this season (a game counts when the player was on the floor;
-   rows: { pid, team, min } with min in milliseconds, as the box score keeps it), at 10 minutes a game or more, and not
+   rows: { pid, team, min } with min in milliseconds, as the box score keeps it), at 10 minutes a game or more over more than two games, and not
    released by it; the most minutes first */
 export const MIN_MPG = 10;
-export function zipPlayers(rows, teamId, released, minMpg = MIN_MPG) {
+/* and MORE THAN TWO GAMES for the club this season (Louie, 2026-10-04): two games is not a sample; a club with nobody past it
+   sends no ZIP at all (the reply is skipped when no club has a player in it) */
+export const MIN_GAMES = 3;
+export function zipPlayers(rows, teamId, released, minMpg = MIN_MPG, minGames = Number(process.env.ZIP_MIN_GAMES) || MIN_GAMES) {
   const acc = new Map();
   rows.forEach(r => {
     const m = +r.min || 0;
@@ -413,7 +416,7 @@ export function zipPlayers(rows, teamId, released, minMpg = MIN_MPG) {
     a.games++; a.min += m / 60000; acc.set(r.pid, a);
   });
   return [...acc.values()].map(a => ({ ...a, mpg: a.min / a.games }))
-    .filter(a => a.mpg >= minMpg && !(released && released.has(a.id))).sort((a, b) => b.mpg - a.mpg);
+    .filter(a => a.mpg >= minMpg && a.games >= minGames && !(released && released.has(a.id))).sort((a, b) => b.mpg - a.mpg);
 }
 /* a read past PostgREST's thousand rows, a page at a time (the path carries its own order) */
 async function restAll(path, page = 1000) {
@@ -444,7 +447,7 @@ export function playersEmail({ sub, team, subject, clubs }) {
   return { subject: 'Re: ' + subject, html: layout({ colour: colourOf(team), kicker: 'Players’ reports', title: 'Every player’s report: ' + listOf(names),
     meta: n + ' player report' + (n === 1 ? '' : 's') + ', ' + (files.length === 1 ? 'in one ZIP' : 'in ' + files.length + ' ZIPs'), greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,', kept: false, files, blocks: [
       P(`Following this week’s reports, attached is the player report of everyone who has played for ${esc(listOf(names))} this season, ` +
-        'leaving out the players a club has released and those averaging under 10 minutes a game. Each has the season line ranked against the position, ' +
+        'leaving out the players a club has released, those averaging under 10 minutes a game and those with two games or fewer. Each has the season line ranked against the position, ' +
         'where and how the player scores, the defence, and the impact on the floor.'),
       ...clubs.map(c => P('<b>' + esc(c.name) + '</b>: ' + c.players.map(p => esc(p.name) + ' <span style="color:#5b6b63">(' + p.mpg.toFixed(1) + ' mpg)</span>').join(', ')))] }) };
 }
