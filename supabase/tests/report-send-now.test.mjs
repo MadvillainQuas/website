@@ -230,7 +230,7 @@ console.log('\n...and the other ways a request ends');
   ok('...which the run catches: the rounds go on without it, and that is not a failed run', /try \{ failed \+= await requests\(\); \} catch \(e\) \{ console\.warn\('send-now requests skipped:'/.test(src));
   ok('...the requests come before the rounds, so on a Sunday morning the request is already in the log when the Sunday round reads it',
      src.indexOf('failed += await requests()') < src.indexOf('await one(s, s.teams'));
-  ok('...and the Sunday round still skips a Sunday that is in the log (a request\'s date is the Sunday\'s)', /if \(L\.wd !== 'Sun' \|\| L\.hour < 9 \|\| has\('sunday', L\.date\)\) return;/.test(src));
+  ok('...and the Sunday round still skips a Sunday that is in the log (a request\'s date is the Sunday\'s)', /if \(L\.wd !== 'Sun' \|\| L\.hour \* 60 \+ L\.mi < SUNDAY_FROM_MIN \|\| has\('sunday', L\.date\)\) return;/.test(src));
   ok('...it logs "nothing this week" for the Sunday itself, a request does not', /if \(!\(await sendWeek\(sub, team, tz, sent, W, L\.date\)\)\) await log\(sub, 'sunday', L\.date, 'nothing this week'\);/.test(src) &&
      !/sendWeek[^\n]*\n[^\n]*log\(s, 'sunday'/.test(src));
 }
