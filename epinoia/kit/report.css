@@ -50,7 +50,7 @@
   --rule:rgba(13,31,23,.14); --rule-2:rgba(13,31,23,.3); --lume:#08603f; --aqua:#075a73; --amber:#8a5a00; --flare:#a01b2a;
   --violet:#4a30b0; --good:#0a6d43; --bad:#b32433; --team-a:var(--rp-a,#08603f); --team-b:#075a73; --line-hi:rgba(13,31,23,.42);
   --on-accent:#ffffff; --sc-ink:#0d1f17;
-  --b4:#1f9d55; --b3:#8cc63f; --b2:#f2b33d; --b1:#d9534f; --b9:#5b8fa8; --b0:#c9d3cd;
+  --b4:#1f9d55; --b3:#8cc63f; --b2:#f2b33d; --b1:#d9534f; --b9:#5b8fa8; --b0:#c9d3cd; --b5:#9dc3dc; --b6:#6c9fd4; --b7:#6a6fd0; --b8:#7a3fc0;
   color-scheme:light; position:relative; flex:none; width:794px; height:1123px; margin:0 0 18px; overflow:hidden;
   display:flex; flex-direction:column; background:#ffffff; color:var(--ink); font-family:var(--f-ui); font-size:11px; line-height:1.4;
   box-shadow:0 2px 6px rgba(0,0,0,.25),0 14px 34px rgba(0,0,0,.28); zoom:var(--rp-z,1); text-align:left }
@@ -775,3 +775,31 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .rp-primed b{ font-weight:800; letter-spacing:.02em; white-space:nowrap }
 .rp-primed.ok{ background:#e6f5ea; color:#0e4a2a; border:1px solid #93cfa5 }
 .rp-primed.gap{ background:#fff3dc; color:#6b4100; border:1px solid #e9c070 }
+
+/* STYLES (shot volume, usage ...): blue to purple, deeper the higher the figure ranks among the others (report.js band 5 to 8) */
+.rp-pg [data-b="5"]{ --b:var(--b5); --fb:var(--b5) } .rp-pg [data-b="6"]{ --b:var(--b6); --fb:var(--b6) }
+.rp-pg [data-b="7"]{ --b:var(--b7); --fb:var(--b7) } .rp-pg [data-b="8"]{ --b:var(--b8); --fb:var(--b8) }
+.rp-rk[data-b="5"]{ background:#e3eff7 } .rp-rk[data-b="6"]{ background:#d4e4f5 } .rp-rk[data-b="7"]{ background:#d9dcf6 } .rp-rk[data-b="8"]{ background:#e4d6f4 }
+.rp-lg-key i[data-b="5"]{ background:var(--b5) } .rp-lg-key i[data-b="6"]{ background:var(--b6) } .rp-lg-key i[data-b="7"]{ background:var(--b7) } .rp-lg-key i[data-b="8"]{ background:var(--b8) }
+/* THE LEGEND'S REASON TO LOOK: a short line of its own under each definition */
+.rp-lg-why{ display:block; margin-top:2px; font-style:normal; color:var(--ink-2) } .rp-lg-why u{ text-decoration:none; font-weight:800; color:var(--rp-a,#08603f) }
+.rp-lg-key div i + i{ margin-left:-6px }
+
+/* A PLAYER'S SHOT MIX (report.js shotMixHTML): bar length = how often he shoots there, solid = how often it goes in */
+.rp-mx{ width:100%; margin-top:2px; padding:5px 6px 4px; border:1px solid var(--rule); border-radius:7px; background:#f7faf8; text-align:left }
+.rp-mx h6{ margin:0 0 3px; font-family:var(--f-ui); font-weight:800; font-size:6.5px; letter-spacing:.08em; color:var(--rp-a,#08603f) }
+.rp-mx-r{ display:grid; grid-template-columns:18px minmax(0,1fr) 38px; align-items:center; gap:4px; margin-top:2px }
+.rp-mx-r span{ font-family:var(--f-ui); font-weight:800; font-size:6px; color:var(--ink-2) }
+.rp-mx-t{ height:8px } .rp-mx-t > div{ position:relative; height:100%; border-radius:3px; overflow:hidden; background:color-mix(in srgb,var(--rp-a,#08603f) 18%,#ffffff); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rp-a,#08603f) 35%,#ffffff) }
+.rp-mx-t i{ position:absolute; left:0; top:0; bottom:0; background:var(--rp-a,#08603f) }
+.rp-mx-r b{ font-family:var(--f-data,ui-monospace,monospace); font-size:7px; display:flex; justify-content:space-between; color:var(--ink) } .rp-mx-r b small{ font-size:6.5px; font-weight:600; color:var(--ink-3) }
+.rp-mx p{ margin:3px 0 0; font-size:5.5px; line-height:1.25; color:var(--ink-3) }
+
+/* A KEY IN A GAP (report.js keyBox): what the harder figures on the page mean, in plain words */
+.rp-kb{ margin-top:2px; padding:9px 12px 8px; border:1px solid var(--rule); border-left:4px solid var(--rp-a,#08603f); border-radius:8px; background:#f7faf8 }
+.rp-kb h5{ margin:0 0 6px; font-family:var(--f-ui); font-weight:800; font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--rp-a,#08603f) }
+.rp-kb dl{ margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px 16px }
+.rp-kb dl div{ break-inside:avoid }
+.rp-kb dt{ font-family:var(--f-ui); font-weight:800; font-size:8px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink) }
+.rp-kb dd{ margin:1px 0 0; font-size:8.5px; line-height:1.4; color:var(--ink-2) }
+.rp-kb.one dl{ grid-template-columns:1fr }

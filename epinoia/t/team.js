@@ -1148,7 +1148,13 @@ function reportTab(team) {
   const scopeText = () => [teamScopeKind !== 'all' ? (KIND_LABEL[teamScopeKind] || teamScopeKind) : '', lg.name, SEASON_NAME ? seasonText(SEASON_NAME) : '']
     .filter(Boolean).join(' ');
   const ctx = {
-    season: () => rpGet('season'),
+    /* the season line of the scope shown, with the league's other seasons to rank against (report.js loadPrior, read once a scope) */
+    season: async () => {
+      const T = await rpGet('season');
+      if (!T || !T.S) return T;
+      if (!T.prior) T.prior = await E.loadPrior(api, team.league_id || (team.leagues && team.leagues.id), T.scopeComps, T.kind, 4).catch(() => []);
+      return T;
+    },
     logs: () => seasonLogs(team),
     clubLogs: scoped => clubLogs(team, scoped),
     starters: comps => scopeStarters(comps),

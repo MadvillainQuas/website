@@ -82,6 +82,7 @@ function rpGive(k, v) { const w = rpSlot(k); w.v = v; if (!w.done) { w.done = tr
 function rpGet(k, ms) { const w = rpSlot(k); return w.done ? Promise.resolve(w.v) : Promise.race([w.p, new Promise(r => setTimeout(() => r(w.v), ms || 120000))]); }
 let REPORT = null, PL_LISTED = '', SCOPE_GAMES = [], RP_SEASON = null;      // RP_SEASON: the season shown (boot's SEASON)
 let RP_FIELD = null;                                                       // the scope's games with their logs, once
+let RP_PRIOR = null;                                                       // the league's other seasons, once a scope
 const RP_LOG_GAMES = 600;
 function reportTab(pl, name, team) {
   const E = window.EpinoiaReport, RPm = window.EpinoiaReportPlayer;
@@ -93,7 +94,14 @@ function reportTab(pl, name, team) {
     return [comps.map(c => c.short || compName(c)).filter(Boolean).join(' + '), RP_SEASON && RP_SEASON.label].filter(Boolean).join(' ');
   };
   const ctx = {
-    bars: () => rpGet('bars'),
+    /* his season's field, with the league's other seasons to rank against (report.js loadPrior, read once a scope) */
+    bars: async () => {
+      const B = await rpGet('bars');
+      if (!B || !B.mine) return B;
+      const key = (SCOPE_IDS || []).join(',');
+      if (!RP_PRIOR || RP_PRIOR.key !== key) RP_PRIOR = { key, p: E.loadPrior(api, team && (team.league_id || (team.leagues && team.leagues.id)), SCOPE_IDS || [], 'all', 4).catch(() => []) };
+      return Object.assign({}, B, { prior: await RP_PRIOR.p });
+    },
     pos: () => rpGet('pos', 60000),
     shots: () => rpGet('shots'),
     floor: () => rpGet('floor'),

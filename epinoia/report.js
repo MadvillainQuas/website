@@ -61,13 +61,13 @@ const STATS = {
   drapm: { l: 'DRAPM', dp: 1, signed: true, rapm: true },
   usg: { l: 'USG%', dp: 1, style: true }, ev_half_usg: { l: 'HALF-COURT USG%', dp: 1, style: true }, ts: { l: 'TS%', dp: 1 }, efg: { l: 'eFG%', dp: 1 }, ftr: { l: 'FTr', dp: 1 },
   ft_pct: { l: 'FT%', dp: 1 }, fg_pct: { l: 'FG%', dp: 1 },
-  au: { l: 'A/U', dp: 2 }, ast_to: { l: 'AST / TO', dp: 2 }, ast_pct: { l: 'AST%', dp: 1 }, hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1 },
+  au: { l: 'ASSIST TO USAGE RATIO', dp: 2 }, ast_to: { l: 'AST / TO', dp: 2 }, ast_pct: { l: 'AST%', dp: 1 }, hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1 },
   tr_ast_pct: { l: 'TRANSITION AST%', dp: 1 },
   ast3_sh: { l: "% OF ASSISTS THAT ARE 3'S", dp: 1, style: true }, ast2_sh: { l: "% OF ASSISTS THAT ARE 2'S", dp: 1, style: true },
   tov_pct: { l: 'TO%', dp: 1, low: true },
-  rim_a100: { l: 'RIM VOL / 100', dp: 1, style: true }, rim_pct: { l: 'RIM%', dp: 1 }, ev_rim_astp: { l: 'RIM ASSISTED%', dp: 1, style: true },
-  mid_a100: { l: 'MID VOL / 100', dp: 1, style: true }, mid_pct: { l: 'MID%', dp: 1 }, ev_mid_astp: { l: 'MID ASSISTED%', dp: 1, style: true },
-  p3_a100: { l: '3PT VOL / 100', dp: 1, style: true }, p3_pct: { l: '3PT%', dp: 1 }, ev_p3_astp: { l: '3PT ASSISTED%', dp: 1, style: true },
+  rim_a100: { l: 'RIM VOL / 100', dp: 1, style: true }, rim_pct: { l: 'RIM%', dp: 1 }, ev_rim_astp: { l: 'RIM ASSISTED%', dp: 1, low: true },
+  mid_a100: { l: 'MID VOL / 100', dp: 1, style: true }, mid_pct: { l: 'MID%', dp: 1 }, ev_mid_astp: { l: 'MID ASSISTED%', dp: 1, low: true },
+  p3_a100: { l: '3PT VOL / 100', dp: 1, style: true }, p3_pct: { l: '3PT%', dp: 1 }, ev_p3_astp: { l: '3PT ASSISTED%', dp: 1, low: true },
   ev_transition_pts_sh: { l: 'TRANSITION %PTS', dp: 1, style: true },
   ev_transition_rim_a100: { l: 'TRANSITION RIM VOL / 100', dp: 1, style: true }, ev_transition_rim_pct: { l: 'TRANSITION RIM%', dp: 1 },
   rim_half_sh: { l: '% OF RIM ATT IN HALF COURT', dp: 1, style: true }, ev_half_rim_pct: { l: 'HALF-COURT RIM%', dp: 1 },
@@ -141,12 +141,53 @@ const DEFS = {
   diff_vs_oreb: ['Defensive offensive rebounding on/off', 'The opponents’ offensive rebound percentage with him on minus off. Lower is better.']
 };
 function defOf(k, kind) {
-  if (DEFS[k]) return { title: DEFS[k][0], what: DEFS[k][1], formula: '' };
+  const s = STATS[k] || null;
+  /* the reason to look at it: ours, else statinfo's reading; failing both, what the colours say for this kind of figure */
   const I = root.EpinoiaStatInfo, i = I && I.info ? I.info(k, kind) : null;
-  if (i) return { title: i.title, what: i.what, formula: i.formula || '' };
-  const s = STATS[k];
-  return s ? { title: s.l, what: '', formula: '' } : null;
+  const own = WHY[k], why = own || (i && i.read) || '', whyL = own ? 'Why look' : 'How to read it';
+  if (DEFS[k]) return { title: DEFS[k][0], what: DEFS[k][1], formula: '', why, whyL };
+  if (i) return { title: i.title, what: i.what, formula: i.formula || '', why, whyL };
+  return s ? { title: s.l, what: '', formula: '', why, whyL } : null;
 }
+
+/* WHY YOU WOULD LOOK AT IT (the legend's third line): a coach's reason in a short sentence, for the figures statinfo.js does not carry
+   and where its own reading is not the one a report wants. Keyed by stat key; a figure with none falls back on statinfo's "read". */
+const WHY = {
+  rapm: 'The closest single number to “does the team do better with him on the floor”, once teammates and opponents are allowed for.',
+  orapm: 'Separates what he adds on offence from what he gives back on defence.',
+  drapm: 'Defence is hard to see in a box score; this is the best public attempt to measure it.',
+  hc_ast_pct: 'Passing in a set offence is a skill; fast-break assists are partly luck and pace.',
+  ast3_sh: 'A passer whose assists are threes is stretching the floor; one whose assists are twos is feeding the paint.',
+  ast2_sh: 'The other side of the same split: how often his passes create a two.',
+  rim_half_sh: 'Does his rim scoring come in the half court (against a set defence) or only in transition?',
+  ev_rim_astp: 'Coloured the other way round: a LOW share (he creates his own rim shots) is green, a high one (he needs a pass) is red.',
+  ev_mid_astp: 'Coloured the other way round: a low share (he makes his own mid-range shots) is green, a high one (he needs a pass) is red.',
+  ev_p3_astp: 'Coloured the other way round: a low share (threes he creates off the dribble) is green, a high one (spot-up threes) is red.',
+  diff_efg: 'Does the team shoot better with him on the floor?',
+  diff_tov: 'Does the team turn the ball over less with him on the floor?',
+  diff_oreb: 'Does the team win more of its own misses with him on the floor?',
+  diff_vs_efg: 'Do opponents shoot worse with him on the floor?',
+  diff_vs_oreb: 'Do opponents win fewer of their misses with him on the floor?',
+  syn_fu_efg: 'How well he defends when a player attacks him one-on-one.',
+  syn_post_efg: 'How well he defends the post.',
+  drv_rim_fg: 'Tells you which hand he finishes with, so you know which way to send him.',
+  drv_rim_att: 'Shows which direction he prefers to drive.',
+  drv_mid_fg: 'Shows which side his pull-up is better from.',
+  drv_mid_att: 'Shows how often he stops and shoots on a drive, each way.',
+  drv_3_fg: 'Shows which side his pull-up three is better from.',
+  drv_3_att: 'Shows how often he pulls up from three on a drive, each way.',
+  tsa_for: 'More shooting attempts than the other side is the simplest way to win: the possessions are worth more.',
+  tsa_vs: 'The same count for the opponents: how many chances the defence lets them have.',
+  tsa_gap: 'The club’s edge in chances: a positive gap means it gets more shots than it gives.',
+  z_rim_astp: 'Coloured the other way round: a LOW share (green) means the club creates its own rim shots; a high one means it needs a pass.',
+  z_rim_ptsh: 'How much of the paint scoring is right at the basket rather than floaters and short shots.',
+  tr_def_delta: 'Transition defence judged fairly: it compares what opponents scored against the club with what they score against everyone else.',
+  vs_start_net: 'How the club does against the other side’s best players.',
+  vs_bench_net: 'How the club does when the other side’s bench is on: where leads are built.',
+  own_start_net: 'How the club does with its best players on the floor.',
+  own_bench_net: 'How much the club gives back (or gains) when the bench plays.',
+  au: 'Shows whether a player makes teammates better (a high ratio) or mostly uses possessions himself (a low one).'
+};
 
 /* THE DERIVED ONES, on any season row (a player's or every row of the field): his assists' split from points off them
    (engine.js credits an assist 2 or 3 points, the basket it made), fouls a game from the season's total */
@@ -383,7 +424,9 @@ function ranker(field, keys) {
   return { pct: (k, id) => { const m = ranks.get(k); const v = m ? m.get(id) : null; return v == null ? null : Math.round(v); },
            avg: k => avg.get(k), n: fl.length };
 }
-const band = (p, style) => (p == null ? 0 : style ? 9 : p >= 75 ? 4 : p >= 50 ? 3 : p >= 25 ? 2 : 1);
+/* a style (shot volume, usage, the share of assists that are threes) has no good end: it is drawn in blue-to-purple, DEEPER the
+   higher it is among the others (bands 5 to 8, quarter by quarter; 9 is the one neutral tone kept for what has no field) */
+const band = (p, style) => (p == null ? 0 : style ? (p >= 75 ? 8 : p >= 50 ? 7 : p >= 25 ? 6 : 5) : p >= 75 ? 4 : p >= 50 ? 3 : p >= 25 ? 2 : 1);
 
 /* POSITION-ADJUSTED, ALWAYS (2026-10-02). A player in a report is ranked among the players of his own position in the
    competition, never the whole of it: a centre's rebounding among the bigs, a point guard's assists among the guards.
@@ -895,17 +938,18 @@ function layout(host, c, label, blocks, opt) {
 }
 
 /* THE LEGEND: every statistic the report printed, defined, and how to read the colours */
-function legendBlocks(keys, extra, kind) {
+function legendBlocks(keys, extra, kind, pooled) {
   const out = [];
   out.push(block('<div class="rp-lg-key">' +
     '<div><i data-b="4"></i><span><b>75th percentile and up</b> among the players (or clubs) the stat is ranked in</span></div>' +
     '<div><i data-b="3"></i><span><b>50th\u201375th</b></span></div><div><i data-b="2"></i><span><b>25th\u201350th</b></span></div><div><i data-b="1"></i><span><b>below the 25th</b></span></div>' +
-    '<div><i data-b="9"></i><span><b>a style</b>: more is neither better nor worse, so it is ranked by most and drawn in one tone</span></div>' +
+    '<div><i data-b="5"></i><i data-b="6"></i><i data-b="7"></i><i data-b="8"></i><span><b>a style</b>: more is neither better nor worse, so it is ranked by most and drawn in blue to purple, deeper the more of it</span></div>' +
     '<div><i data-b="0"></i><span><b>not ranked</b>: too few to rank, or a figure the field does not carry</span></div></div>' +
     '<p class="rp-lg-p">A percentile says where the figure sits among the others in the same competition and season: the 80th is better than eight in ten. ' +
     (kind === 'team' ? 'A club is ranked among the clubs; a player always among the players of his own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition. '
       : 'A player is always ranked among the players of his own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition, and the average shown is theirs. ') +
-    'Where smaller is better (turnovers, fouls, what an opponent did with him on the floor) the order is turned round, so a high percentile is always good. ' +
+    (pooled ? esc(pooled) + ' ' : '') +
+    'Where smaller is better (turnovers, fouls, what an opponent did with him on the floor, and the share of a player’s or club’s shots that were ASSISTED: a shot you make for yourself is the harder one) the order is turned round, so a high percentile is always good. ' +
     '± is with him (or the unit) on the floor minus off it. All rates are worked out from the season’s totals, never averaged from games.</p>'));
   const seen = new Set(), rows = [];
   keys.forEach(k => {
@@ -914,10 +958,11 @@ function legendBlocks(keys, extra, kind) {
     if (!d) return;
     const s = STATS[k];
     rows.push('<div class="rp-lg-row"><b>' + esc(s ? s.l : k) + '</b><span><em>' + esc(d.title) + '.</em> ' + esc(d.what || '') +
+      (d.why ? ' <i class="rp-lg-why"><u>' + d.whyL + ':</u> ' + esc(d.why) + '</i>' : '') +
       (d.formula ? ' <code>' + esc(d.formula) + '</code>' : '') + '</span></div>');
   });
-  (extra || []).forEach(([t, d]) => rows.push('<div class="rp-lg-row"><b>' + esc(t) + '</b><span>' + esc(d) + '</span></div>'));
-  for (let i = 0; i < rows.length; i += 12) out.push(block('<div class="rp-lg">' + rows.slice(i, i + 12).join('') + '</div>'));
+  (extra || []).forEach(([t, d, w]) => rows.push('<div class="rp-lg-row"><b>' + esc(t) + '</b><span>' + esc(d) + (w ? ' <i class="rp-lg-why"><u>Why look:</u> ' + esc(w) + '</i>' : '') + '</span></div>'));
+  for (let i = 0; i < rows.length; i += 10) out.push(block('<div class="rp-lg">' + rows.slice(i, i + 10).join('') + '</div>'));
   return out;
 }
 
@@ -1171,10 +1216,76 @@ function synergySource(prof, short) {
 
 /* A SMALL ZONE CHART: the half court, each zone tinted against its break-even (orange above, blue below, grey within two points;
    pale where it has fewer than three attempts), nothing else - a player's card's corner */
+/* A PLAYER'S SHOT MIX, for the corner of his card where a Synergy file would draw his drives (2026-10-04): rim, mid-range and three,
+   one bar each. The bar's LENGTH is how often he shoots from there (his share of his shots, the longest bar full width); the SOLID
+   part of it is how well he shoots there (his FG%), so a long, mostly solid bar is a place he lives and scores. Worked from the
+   season row (volumes per 100 of his team's possessions on the floor, and the percentages), so it is there for every player. */
+function shotMixHTML(r) {
+  if (!r) return '';
+  const Z = [['RIM', 'rim_a100', 'rim_pct'], ['MID', 'mid_a100', 'mid_pct'], ['3PT', 'p3_a100', 'p3_pct']];
+  const vol = Z.map(([, a]) => (isNum(r[a]) ? Math.max(0, +r[a]) : 0)), tot = vol.reduce((x, y) => x + y, 0);
+  if (!(tot > 0)) return '';
+  const top = Math.max.apply(null, vol);
+  const rows = Z.map(([l, , pc], i) => {
+    const sh = 100 * vol[i] / tot, pv = isNum(r[pc]) ? Math.max(0, Math.min(100, +r[pc])) : null;
+    return '<div class="rp-mx-r"><span>' + l + '</span><div class="rp-mx-t"><div style="width:' + Math.max(4, 100 * vol[i] / top).toFixed(1) + '%"><i style="width:' + (pv == null ? 0 : pv).toFixed(1) + '%"></i></div></div>' +
+      '<b>' + Math.round(sh) + '%<small>' + (pv == null || !vol[i] ? '—' : Math.round(pv) + '%') + '</small></b></div>';
+  }).join('');
+  return '<div class="rp-mx"><h6>SHOT MIX</h6>' + rows + '<p>bar: how often he shoots there · solid: how often it goes in</p></div>';
+}
+
+/* A KEY IN A GAP OF A PAGE (2026-10-04): a short boxed explanation of the harder figures on it, for the reader who does not live in
+   these numbers (a coach). items: [[term, plain-English meaning]]. A block of its own, so it lands in whatever room the page has,
+   or opens the next page when it has none. */
+/* THE LEAGUE'S OTHER SEASONS, for ranking (2026-10-04): a figure is ranked against EVERY season of the league the page has data
+   for - each club's (or player's) season one more entry in the field - not only the season shown, so a ranking rests on more
+   than ten clubs. api: the page's REST reader; the newest `max` seasons other than the one shown (excludeIds: its competitions),
+   of the same kind (league, cup ... or 'all'). -> [{ name, S }] with S as data.js season() gives it (teams, players, games). */
+const PRIOR = new Map();
+function loadPrior(api, leagueId, excludeIds, kind, max) {
+  const SB = root.EpinoiaSeasonBar, D = root.EpinoiaData;
+  if (!SB || !SB.load || !D || !D.season || !api || !leagueId) return Promise.resolve([]);
+  const ex = new Set(excludeIds || []), key = [leagueId, [...ex].sort().join(','), kind || 'all', max || 4].join('|');
+  if (PRIOR.has(key)) return PRIOR.get(key);
+  const p = (async () => {
+    const o = await SB.load(api, leagueId), out = [];
+    for (const sn of (o.list || [])) {
+      const comps = sn.comps || [];
+      if (comps.some(c => ex.has(c.id))) continue;                       // the season shown
+      const ids = comps.filter(c => !kind || kind === 'all' || (c.kind || 'league') === kind).map(c => c.id);
+      if (!ids.length) continue;
+      try { const S = await D.season(ids, { rows: false, trim: true }); if (S && ((S.teams || []).length || (S.players || []).length)) out.push({ name: sn.name, S }); } catch (_) { /* that season is left out */ }
+      if (out.length >= (max || 4)) break;
+    }
+    return out;
+  })().catch(() => []);
+  PRIOR.set(key, p);
+  return p;
+}
+/* those seasons' rows as entries of a field: ids made their own (a club or player of the season shown is not the same entry in an
+   earlier one), `derive` run on each (a team's, by the page) */
+function priorRows(prior, pick, derive) {
+  const out = [];
+  (prior || []).forEach((P, i) => {
+    const rows = (pick(P.S) || []).map(r => Object.assign({}, r));
+    if (derive) { try { derive(rows, P.S); } catch (_) { /* its rows as they are */ } }
+    rows.forEach(r => { r.id = r.id + '@' + i; r.__prior = true; out.push(r); });
+  });
+  return out;
+}
+
+function keyHTML(heading, items, cls) {
+  return '<div class="rp-kb' + (cls ? ' ' + cls : '') + '"><h5>' + esc(heading) + '</h5><dl>' +
+    items.map(([t, d]) => '<div><dt>' + esc(t) + '</dt><dd>' + esc(d) + '</dd></div>').join('') + '</dl></div>';
+}
+const keyBox = (heading, items, cls) => block(keyHTML(heading, items, cls));
+
 function miniZonesHTML(shots) {
   const Box = root.EpinoiaBox, SC = root.EpinoiaShotChart;
   const located = (shots || []).filter(x => x && x.x != null && x.y != null);
-  if (!Box || !Box.courtSVG || !SC || !SC.zonePaths || !SC.zones || !SC.bandAt || !located.length) return '';
+  if (!Box || !Box.courtSVG || !SC || !SC.zonePaths || !SC.zones || !SC.bandAt) return '';
+  /* every player has his court: one with no located shot (a feed that does not place them, or none taken) is an empty one, said so */
+  if (!located.length) return '<div class="rp-mz"><div class="rp-mz-c">' + Box.courtSVG(null, { plain: true }) + '</div><p>no located shots</p></div>';
   const P = SC.zonePaths(), Zs = SC.zones(located), AN = SC.ANCHOR || { paint: 58, mid: 40, three: 35 };
   const fill = Object.keys(P).map(k => {
     const z = Zs[k];
@@ -1538,7 +1649,7 @@ function ui(state) {
       const lg = o.modules.find(m => m.key === 'legend');
       if (lg && conf.on.legend && (R.legend.length || R.legendExtra.length)) {
         toc.push(['LEGEND', pagesNew.querySelectorAll('.rp-pg').length + 1]);
-        layout(pagesNew, c, 'LEGEND', legendBlocks(R.legend, R.legendExtra, o.kind));
+        layout(pagesNew, c, 'LEGEND', legendBlocks(R.legend, R.legendExtra, o.kind, R.pooled));
       }
       const tocEl = pagesNew.querySelector('.rp-cv-toc');
       if (tocEl) tocEl.innerHTML = toc.map(([t, n]) => '<li><span>' + esc(t.charAt(0) + t.slice(1).toLowerCase()) + '</span><i></i><b>' + n + '</b></li>').join('');
@@ -1726,6 +1837,6 @@ function groupsFor(state, set, pos) {
   return templateOf(set, state.conf.tpl[set], pos);
 }
 
-return { mount, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, stand, groupRowsHTML, groupCellsHTML, groupWeight, shotRuns, SHOT_KIND, posCourtHTML, POS_KEY, block, title, frag, el, esc,
+return { mount, WHY, shotMixHTML, keyBox, keyHTML, loadPrior, priorRows, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, stand, groupRowsHTML, groupCellsHTML, groupWeight, shotRuns, SHOT_KIND, posCourtHTML, POS_KEY, block, title, frag, el, esc,
          fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, trAstOf, HC_MIN, synergyOf, synergySave, synergyOnRow, hasStat, groupsOn, sideTone, synergyControl, synergySource, driveChartHTML, driveTableHTML, directionMixHTML, miniZonesHTML, leanColour, posPools, posRanker, POS_PLURAL, layout, legendBlocks, PAGE, SLOTS, isNum };
 }));

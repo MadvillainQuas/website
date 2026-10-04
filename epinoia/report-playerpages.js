@@ -108,11 +108,14 @@ function modules(ctx) {
         } catch (e) { if (root.console) root.console.warn('[report half-court AST%]', e); }
       }
       /* every percentile among the players of his position (report.js posRanker), his own average theirs */
-      const pools = E.posPools(field);
-      const Rk = E.posRanker(field, keys, group, mine.id, pools);
+      /* the field to rank in: this season's players and the league's other seasons' (report.js loadPrior), each season one more entry */
+      const poolField = field.concat(E.priorRows(B.prior, P => P.players));
+      if (poolField.length > field.length) R.pooled = 'Every figure is ranked against all ' + ((B.prior || []).length + 1) + ' seasons of the league with data (each player’s season is one entry), among players of his own position, not only the season shown. A stat an earlier season did not record is ranked within the season shown.';
+      const pools = E.posPools(poolField);
+      const Rk = E.posRanker(poolField, keys, group, mine.id, pools);
       R.legend.push(...keys.filter(k => !(E.STATS[k] && E.STATS[k].optional) || (E.hasStat ? E.hasStat(k, mine) : E.isNum(mine[k]))));
       const tiles = [['GP', 'gp', 0], ['MIN / G', 'mpg', 1], ['PTS / G', 'ppg', 1], ['REB / G', 'rpg', 1], ['AST / G', 'apg', 1], ['BPM', 'bpm', 1, true]];
-      const Rt = E.posRanker(field, tiles.map(t => t[1]).filter(k => k !== 'gp'), group, mine.id, pools);
+      const Rt = E.posRanker(poolField, tiles.map(t => t[1]).filter(k => k !== 'gp'), group, mine.id, pools);
       const tileHTML = '<div class="rp-tiles rp-tiles-b" style="--n:' + tiles.length + '">' + tiles.map(([l, k, dp, sg]) => {
         const v = mine[k], p = k === 'gp' ? null : Rt.pct(k, mine.id);
         return '<div class="rp-tile"' + (p == null ? '' : ' data-b="' + E.band(p) + '"') + '><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span>' + l + '</span>' +
@@ -124,7 +127,13 @@ function modules(ctx) {
         ([, ks]) => E.groupWeight(ks)) +
         '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' ' + Rk.who + ' of ' + (c.scope || 'the competition') +
           ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of his own' : ': too few players of his position to rank him among them alone, so against everybody') +
-          '. Template: ' + templateName(R.state, group) + '.') + '</p>'));
+          '. Template: ' + templateName(R.state, group) + '.') + '</p>' + E.keyHTML('Reading the player’s numbers', [
+          ['THE BAR · THE ORDINAL', 'Where he sits among players of his own position in the field named above: 80th means better than eight in ten of them. Green is the top quarter, red the bottom; blue-to-purple bars are styles, deeper = more of it.'],
+          ['ASSIST TO USAGE RATIO', 'His assist rate against his usage: how much he creates for others per possession he uses himself.'],
+          ['VOL / 100', 'Shots from that zone per 100 of the team’s possessions while he is on the floor: where he shoots, not how well.'],
+          ['ASSISTED%', 'The share of his baskets in a zone that came off a pass. Coloured the other way round: a low share (green) means he creates his own shots there.'],
+          ['HALF-COURT FIGURES', 'Leave out fast breaks, second chances and shots off turnovers: how he does against a set defence.'],
+          ['± (ON/OFF)', 'The team’s figure with him on the floor minus with him off it. Noisy for a player with few minutes.']], 'one')));
       return out;
     }
   };

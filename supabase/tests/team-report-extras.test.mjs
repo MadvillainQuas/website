@@ -146,7 +146,7 @@ console.log('\nthe report\'s wiring');
      /tsa_for: \['True shooting attempts \(TSA\) a game'/.test(src) && /tsa_gap: \['True shots gap'/.test(src) && /R\.legend\.push\(\.\.\.ks\);/.test(src));
   const reb = src.indexOf("title('Rebounds analysis'"), ts = src.indexOf("title('True shots gap'");
   ok('the true shots block is a club\'s (a single game has its own margin block) and sits under the rebounds analysis',
-     reb > 0 && ts > reb && /const TS = them \? null : V\.trueShotsOf\(me, srcRow\);/.test(src) && /'', 'rp-tsa'\)\)/.test(src));
+     reb > 0 && ts > reb && /const TS = them \? null : V\.trueShotsOf\(me, srcRow\);/.test(src) && /'rp-tsa'\)\)/.test(src) && /Why true shot attempts matter/.test(src));
   const sc = src.indexOf("title('Shot clock'"), sd = src.indexOf("title('Shot clock · defence'");
   ok('the defence\'s shot clock sits under the shot clock, from the opponents\' first chances, each window with its outcomes',
      sc > 0 && sd > sc && /V\.shotClockDef\(rowsOf\(opp\), SCk\.summary\(firsts\(opp\)\)\)/.test(src) && /out: V\.outcomesOf\(sub\)/.test(src));
