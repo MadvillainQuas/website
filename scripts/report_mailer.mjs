@@ -192,9 +192,12 @@ export function opponentsOf(team, games) {
 }
 
 /* SUNDAY: the week ahead and a scouting report on each opponent, the club's own every other Sunday */
-export function sundayEmail({ sub, team, games, ownDue, tz, monday }) {
+export function sundayEmail({ sub, team, games, ownDue, tz, monday, noReport }) {
   const club = team.name, colour = colourOf(team), ink = inkOn(colour);
-  const { opps, uniq } = opponentsOf(team, games);
+  const { opps, uniq: every } = opponentsOf(team, games);
+  const none = new Set(noReport || []);
+  const uniq = every.filter(o => !none.has(o.oid)), without = every.filter(o => none.has(o.oid));
+  const noneLine = without.length ? P(`No scouting report on ${esc(listOf(without.map(o => o.oname)))} yet: ${without.length > 1 ? 'they have' : 'they have'} not played a game this season.`) : '';
   const n = uniq.length, k = opps.length;
   const files = uniq.map(o => ({ label: 'Scouting report: ' + o.oname })).concat(ownDue ? [{ label: 'Team report: ' + club + ' (fortnightly)' }] : []);
   const week = monday ? new Date(monday).toLocaleDateString('en-GB', { timeZone: tz, day: 'numeric', month: 'long' }) : '';
@@ -205,7 +208,9 @@ export function sundayEmail({ sub, team, games, ownDue, tz, monday }) {
   if (!n) {
     return { subject: `${possessive(club)} fortnightly team report`, html: layout({ colour, kicker: 'Fortnightly team report', title: club + ': your team report',
       meta: week ? 'Week of ' + week : '', greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,', files, blocks: [
-        P(`There are no games for ${esc(club)} in the week ahead, so your fortnightly team report comes on its own, attached: the season’s four factors and ` +
+        k ? P(`${esc(club)} ${k === 1 ? 'has one game' : 'have ' + (NUM[k] || k) + ' games'} in the week ahead, against ${esc(listOf(without.map(o => o.oname)))}, who ${without.length > 1 ? 'have' : 'has'} not played a game this season yet, so there is no scouting report this week. Your fortnightly team report is attached: the season’s four factors and ` +
+          'season line, shooting at both ends, the squad’s profiles, the depth chart and the most-used lineups, each figure coloured against the competition’s clubs.')
+          : P(`There are no games for ${esc(club)} in the week ahead, so your fortnightly team report comes on its own, attached: the season’s four factors and ` +
           'season line, shooting at both ends, the squad’s profiles, the depth chart and the most-used lineups, each figure coloured against the competition’s clubs.'),
         P('Enjoy the week, and we will be in touch as soon as the next game is on the schedule.')] }) };
   }
@@ -216,6 +221,7 @@ export function sundayEmail({ sub, team, games, ownDue, tz, monday }) {
       FIXTURES(opps, tz),
       P(`Attached ${n > 1 ? 'are scouting reports on each opponent' : 'is a scouting report on ' + esc(uniq[0].oname)}, so you can prepare in good time. Each covers:`),
       inside,
+      noneLine,
       ownDue ? NOTE(ink, `As it is your fortnightly report week, ${esc(possessive(club))} own team report is attached too, so you can see how the season is shaping up on the same measures.`) : '',
       P('Good luck in the week ahead.')].filter(Boolean) }) };
 }
@@ -423,6 +429,24 @@ async function restAll(path, page = 1000) {
   const out = [];
   for (let off = 0; ; off += page) { const rows = await rest(path + `&limit=${page}&offset=${off}`); out.push(...rows); if (rows.length < page) return out; }
 }
+/* HAS THE CLUB PLAYED THIS SEASON? A final game in its league's newest season (what its report shows). A club that has not is
+   sent no club report, neither as an opponent nor as its own (Louie, 2026-10-04): it would be a report of nothing. */
+const PLAYED = new Map();
+export async function hasPlayed(teamId) {
+  if (PLAYED.has(teamId)) return PLAYED.get(teamId);
+  let yes = true;                                   // if it cannot be told, the report goes as before
+  try {
+    const [t] = await rest(`teams?id=eq.${teamId}&select=league_id`);
+    if (t && t.league_id) {
+      const [s] = await rest(`seasons?league_id=eq.${t.league_id}&select=id&order=starts_on.desc&limit=1`);
+      const comps = s ? await rest(`competitions?season_id=eq.${s.id}&select=id`) : [];
+      const g = comps.length ? await rest(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=eq.final&competition_id=in.(${comps.map(c => c.id).join(',')})&select=id&limit=1`) : [];
+      yes = g.length > 0;
+    }
+  } catch (e) { console.warn('could not tell whether', teamId, 'has played:', e.message || e); }
+  PLAYED.set(teamId, yes);
+  return yes;
+}
 /* the club's minutes this season: its league's newest season (what its report shows), the club's final games in it */
 async function seasonMinutes(teamId) {
   const [t] = await rest(`teams?id=eq.${teamId}&select=league_id`);
@@ -511,9 +535,13 @@ async function sendWeek(sub, team, tz, sent, W, day) {
   const club = team.name;
   const next = await rest(`games?${mineOf(team)}&status=in.(scheduled,live)&tipoff_at=gte.${W.from.toISOString()}&tipoff_at=lt.${W.to.toISOString()}&select=${GAME_SELECT}&order=tipoff_at.asc`);
   const lastTeam = sent.filter(x => x.kind === 'team').map(x => Date.parse(x.sent_at)).sort((a, b) => a - b).pop() || 0;
-  const ownDue = Date.now() - lastTeam > 13 * 864e5;
-  if (!next.length && !ownDue) return null;
-  const { uniq } = opponentsOf(team, next);
+  /* the club's own report only once it has played (the fortnight is not used up by a report of nothing) */
+  const ownDue = Date.now() - lastTeam > 13 * 864e5 && await hasPlayed(team.id);
+  const { uniq: all } = opponentsOf(team, next);
+  /* a scouting report only on an opponent that has played this season; the game is still in the email, said to have none */
+  const uniq = [], noReport = [];
+  for (const o of all) { if (await hasPlayed(o.oid)) uniq.push(o); else { noReport.push(o.oid); console.log('opponent', club, '->', o.oname, ': not played this season, no report'); } }
+  if (!uniq.length && !ownDue) return null;
   const att = [], used = [];
   const week = 'Week of ' + shortDay(W.from.toISOString(), tz);
   for (const o of uniq) {
@@ -529,7 +557,7 @@ async function sendWeek(sub, team, tz, sent, W, day) {
     await keep(sub, day, pdf, { kind: 'team', ref: day, title: club, subtitle: 'Fortnightly team report · ' + shortDay(new Date().toISOString(), tz) });
     att.push(pdf);
   }
-  const E = sundayEmail({ sub, team, games: next, ownDue, tz, monday: W.from });
+  const E = sundayEmail({ sub, team, games: next, ownDue, tz, monday: W.from, noReport });
   const mid = msgId(sub, day);
   await send(sub.email, E.subject, E.html, att, { 'Message-ID': mid });
   sentWith(used);
