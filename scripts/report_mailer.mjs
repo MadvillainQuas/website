@@ -5,7 +5,7 @@
      GAME      each of the club's games finalised since the address was added (and in the last week), not yet sent:
                the game analysis PDF from the club's side (game/analysis.js), one email a game, as soon as it is final,
                with the club's next fixture
-     SUNDAY    once on Sunday from 9 am at the address's own time: the club reports (t/ Report tab) of every opponent
+     SUNDAY    once on Sunday from 9.30 am at the address's own time (SUNDAY_FROM_MIN): the club reports (t/ Report tab) of every opponent
                the club plays in the week ahead, Monday to Sunday at that time (so a Sunday game is in the email the
                Sunday before it, never in two), and every other Sunday the club's own report too, all in ONE email.
                An address's first Sunday also takes in any game later that day. A Sunday with neither sends nothing.
@@ -63,12 +63,14 @@ const log = (sub, kind, ref, detail) => DRY ? Promise.resolve() :
   rest('report_mail_log', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ sub_id: sub.id, kind, ref, detail: detail || null }) });
 
 /* ------------------------------------------------------------------ time in the reader's zone --- */
+/* the Sunday email goes from this many minutes after midnight at the address's own time: 9.30 am (9 am until 4 Oct 2026) */
+export const SUNDAY_FROM_MIN = 9 * 60 + 30;
 const partsOf = (tz, d) => {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
     second: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(d).map(x => [x.type, x.value]));
   return { y: +p.year, mo: +p.month, d: +p.day, h: +p.hour, mi: +p.minute, s: +p.second, wd: p.weekday };
 };
-export const local = (tz, d = new Date()) => { const p = partsOf(tz, d); return { date: p.y + '-' + String(p.mo).padStart(2, '0') + '-' + String(p.d).padStart(2, '0'), hour: p.h, wd: p.wd }; };
+export const local = (tz, d = new Date()) => { const p = partsOf(tz, d); return { date: p.y + '-' + String(p.mo).padStart(2, '0') + '-' + String(p.d).padStart(2, '0'), hour: p.h, mi: p.mi, wd: p.wd }; };
 /* how far the zone is ahead of UTC at an instant, and the instant a local midnight falls on (twice round, for a
    midnight that a clock change moves) */
 const offsetAt = (ms, tz) => { const p = partsOf(tz, new Date(ms)); return Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s) - Math.floor(ms / 1000) * 1000; };
@@ -560,9 +562,9 @@ async function one(sub, team) {
     await log(sub, 'game', g.id, `${side ? g.away_score : g.home_score}-${side ? g.home_score : g.away_score} v ${opp}`);
   }
 
-  /* SUNDAY: from 9 am, once, at their own time; the week ahead is Monday to Sunday */
+  /* SUNDAY: from 9.30 am, once, at their own time; the week ahead is Monday to Sunday */
   const L = local(tz);
-  if (L.wd !== 'Sun' || L.hour < 9 || has('sunday', L.date)) return;
+  if (L.wd !== 'Sun' || L.hour * 60 + L.mi < SUNDAY_FROM_MIN || has('sunday', L.date)) return;
   const W = weekAhead(tz, new Date(), !sent.some(x => x.kind === 'sunday'));
   if (!(await sendWeek(sub, team, tz, sent, W, L.date))) await log(sub, 'sunday', L.date, 'nothing this week');
 }
