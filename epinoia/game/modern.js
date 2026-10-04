@@ -334,7 +334,7 @@
     const oh = num(TA[0].ortg), oa = num(TA[1].ortg);
     const hero = '<div class="mv-fxhero">' +
       '<span class="mv-fxbig' + (oh > oa ? ' w' : '') + '" style="--c:' + esc(cols[0]) + '">' + f1(oh) + '</span>' +
-      '<div class="mv-fxmid"><span class="mv-fxlabel">ortg</span>' + delta(oh, oa, true) + '</div>' +
+      '<div class="mv-fxmid"><span class="mv-fxlabel">offensive rating</span>' + delta(oh, oa, true) + '</div>' +
       '<span class="mv-fxbig r' + (oa > oh ? ' w' : '') + '" style="--c:' + esc(cols[1]) + '">' + f1(oa) + '</span></div>';
     /* THE TITLE SITS IN THE MIDDLE OF THE NAMES LINE, which was empty: the clubs at the two ends, what is being compared between */
     const names = '<div class="mv-fxnames"><span data-team-slot="0" style="color:' + esc(cols[0]) + '">' + esc(B.tname(0)) + '</span>' +
