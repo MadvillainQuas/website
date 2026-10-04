@@ -5,7 +5,8 @@
      GAME      each of the club's games finalised since the address was added (and in the last week), not yet sent:
                the game analysis PDF from the club's side (game/analysis.js), one email a game, as soon as it is final,
                with the club's next fixture
-     SUNDAY    once on Sunday from 8 am at the address's own time (SUNDAY_FROM_MIN): the club reports (t/ Report tab) of every opponent
+     SUNDAY    once on Sunday from 8 am at the address's own time (SUNDAY_FROM_MIN) - or, when an opponent of the week ahead plays that
+               Sunday, an hour after its game is final (sundayHold; stops waiting at 23:30): the club reports (t/ Report tab) of every opponent
                the club plays in the week ahead, Monday to Sunday at that time (so a Sunday game is in the email the
                Sunday before it, never in two), and every other Sunday the club's own report too, all in ONE email.
                An address's first Sunday also takes in any game later that day. A Sunday with neither sends nothing.
@@ -92,6 +93,30 @@ export function nextWeek(tz, now = new Date()) {
   const k = (8 - new Date(base).getUTCDay()) % 7 || 7;                    // days to the next Monday: from Sunday 1, from Monday 7
   const at = days => { const x = new Date(base + days * 864e5); return midnight(x.getUTCFullYear(), x.getUTCMonth() + 1, x.getUTCDate(), tz); };
   return { from: new Date(at(k)), to: new Date(at(k + 7)), sunday: new Date(base + (k - 1) * 864e5).toISOString().slice(0, 10) };
+}
+/* AN OPPONENT PLAYING ON THE SUNDAY ITSELF: the scouting report on a club that plays that very day is worth more after the game than
+   before it, so the Sunday email waits for it - until an hour after the last of those games is final (SUNDAY_AFTER_MS), and no longer
+   than SUNDAY_CUTOFF_MIN of the Sunday (a game that never finalises must not keep the week's email back for ever). `games`: the
+   opponents' games of that Sunday ({ status, finalised_at }); `cutoff`: the instant to stop waiting. Answers { wait, why }. */
+export const SUNDAY_AFTER_MS = 36e5;
+export const SUNDAY_CUTOFF_MIN = 23 * 60 + 30;
+export function sundayHold(games, now, cutoff) {
+  if (now.getTime() >= cutoff.getTime()) return { wait: false, why: 'past the cut-off' };
+  const open = games.filter(g => g.status === 'scheduled' || g.status === 'live');
+  if (open.length) return { wait: true, why: open.length + ' game(s) still to finish' };
+  const ends = games.filter(g => g.status === 'final' && g.finalised_at).map(g => Date.parse(g.finalised_at));
+  const last = ends.length ? Math.max.apply(null, ends) : 0;
+  if (last && now.getTime() < last + SUNDAY_AFTER_MS) return { wait: true, why: 'an hour after the last game, ' + new Date(last + SUNDAY_AFTER_MS).toISOString() };
+  return { wait: false, why: games.length ? 'an hour after the last game' : 'no opponent plays today' };
+}
+/* the instant the Sunday's waiting stops: SUNDAY_CUTOFF_MIN after that day's local midnight */
+export function sundayCutoff(tz, now = new Date()) {
+  const [y, mo, d] = local(tz, now).date.split('-').map(Number);
+  return new Date(midnight(y, mo, d, tz) + SUNDAY_CUTOFF_MIN * 6e4);
+}
+export function sundayBounds(tz, now = new Date()) {
+  const [y, mo, d] = local(tz, now).date.split('-').map(Number), g = new Date(Date.UTC(y, mo - 1, d + 1));
+  return { from: new Date(midnight(y, mo, d, tz)), to: new Date(midnight(g.getUTCFullYear(), g.getUTCMonth() + 1, g.getUTCDate(), tz)) };
 }
 const dayName = (iso, tz) => new Date(iso).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
 const dayShort = (iso, tz) => new Date(iso).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' });
@@ -599,6 +624,16 @@ async function one(sub, team) {
   const L = local(tz);
   if (L.wd !== 'Sun' || L.hour * 60 + L.mi < SUNDAY_FROM_MIN || has('sunday', L.date)) return;
   const W = weekAhead(tz, new Date(), !sent.some(x => x.kind === 'sunday'));
+  /* an opponent of the week ahead that plays today: the email goes an hour after its game has finished, not at 8 am */
+  const ahead = await rest(`games?${mine}&status=in.(scheduled,live)&tipoff_at=gte.${W.from.toISOString()}&tipoff_at=lt.${W.to.toISOString()}&select=${GAME_SELECT}`);
+  const oppIds = opponentsOf(team, ahead).uniq.map(o => o.oid);
+  if (oppIds.length) {
+    const B = sundayBounds(tz);
+    const today = await rest(`games?or=(home_team_id.in.(${oppIds.join(',')}),away_team_id.in.(${oppIds.join(',')}))&status=in.(scheduled,live,final)&tipoff_at=gte.${B.from.toISOString()}&tipoff_at=lt.${B.to.toISOString()}&select=id,status,finalised_at`);
+    const hold = sundayHold(today, new Date(), sundayCutoff(tz));
+    if (hold.wait) { console.log('sunday', club, ': waiting,', hold.why); return; }
+    if (today.length) console.log('sunday', club, ': sending,', hold.why);
+  }
   if (!(await sendWeek(sub, team, tz, sent, W, L.date))) await log(sub, 'sunday', L.date, 'nothing this week');
 }
 

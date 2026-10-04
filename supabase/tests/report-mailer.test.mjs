@@ -118,5 +118,23 @@ console.log('\nthe schedule and the tables');
   ok('the mailer\'s copy of a report is drawn at email weight', /scale: bot \? 2 : 3, quality: bot \? 0\.84 : 0\.9/.test(rp));
 }
 
+console.log('\nan opponent playing on the Sunday: the email waits for it');
+{
+  const tz = 'Europe/London', cut = M.sundayCutoff(tz, new Date('2026-10-11T07:30:00Z'));
+  ok('the cut-off is 23:30 of that Sunday at the reader\'s time (BST: 22:30Z)', cut.toISOString() === '2026-10-11T22:30:00.000Z', cut);
+  const B = M.sundayBounds(tz, new Date('2026-10-11T07:30:00Z'));
+  ok('the Sunday runs from local midnight to the next', B.from.toISOString() === '2026-10-10T23:00:00.000Z' && B.to.toISOString() === '2026-10-11T23:00:00.000Z', [B.from, B.to]);
+  const at = iso => new Date(iso);
+  ok('no opponent plays that day: nothing to wait for', !M.sundayHold([], at('2026-10-11T07:30:00Z'), cut).wait);
+  ok('an opponent\'s game still to play (or live): wait', M.sundayHold([{ status: 'scheduled' }], at('2026-10-11T07:30:00Z'), cut).wait && M.sundayHold([{ status: 'live' }], at('2026-10-11T15:00:00Z'), cut).wait);
+  const fin = { status: 'final', finalised_at: '2026-10-11T15:00:00Z' };
+  ok('...finished 40 minutes ago: still wait, the hour is not up', M.sundayHold([fin], at('2026-10-11T15:40:00Z'), cut).wait);
+  ok('...finished an hour ago: go', !M.sundayHold([fin], at('2026-10-11T16:00:00Z'), cut).wait);
+  ok('two opponents: the LAST game decides', M.sundayHold([fin, { status: 'final', finalised_at: '2026-10-11T17:30:00Z' }], at('2026-10-11T18:00:00Z'), cut).wait);
+  ok('a game that never finalises does not hold the email past the cut-off', !M.sundayHold([{ status: 'live' }], at('2026-10-11T22:31:00Z'), cut).wait);
+  const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
+  ok('the Sunday round asks it before sending, and says so in the log', src.includes('sundayHold(today, new Date(), sundayCutoff(tz))') && src.includes('waiting,'));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
