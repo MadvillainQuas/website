@@ -5,7 +5,7 @@
      GAME      each of the club's games finalised since the address was added (and in the last week), not yet sent:
                the game analysis PDF from the club's side (game/analysis.js), one email a game, as soon as it is final,
                with the club's next fixture
-     SUNDAY    once on Sunday from 9.30 am at the address's own time (SUNDAY_FROM_MIN): the club reports (t/ Report tab) of every opponent
+     SUNDAY    once on Sunday from 8 am at the address's own time (SUNDAY_FROM_MIN): the club reports (t/ Report tab) of every opponent
                the club plays in the week ahead, Monday to Sunday at that time (so a Sunday game is in the email the
                Sunday before it, never in two), and every other Sunday the club's own report too, all in ONE email.
                An address's first Sunday also takes in any game later that day. A Sunday with neither sends nothing.
@@ -60,11 +60,13 @@ async function rest(path, opt = {}) {
   return text ? JSON.parse(text) : null;
 }
 const log = (sub, kind, ref, detail) => DRY ? Promise.resolve() :
-  rest('report_mail_log', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ sub_id: sub.id, kind, ref, detail: detail || null }) });
+  /* on_conflict names the (sub, kind, ref) key: a row already there (a "send now" again for a week already sent) is skipped, not a 409
+     that would stop the email's players' ZIP (2026-10-04) */
+  rest('report_mail_log?on_conflict=sub_id,kind,ref', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ sub_id: sub.id, kind, ref, detail: detail || null }) });
 
 /* ------------------------------------------------------------------ time in the reader's zone --- */
-/* the Sunday email goes from this many minutes after midnight at the address's own time: 9.30 am (9 am until 4 Oct 2026) */
-export const SUNDAY_FROM_MIN = 9 * 60 + 30;
+/* the Sunday email goes from this many minutes after midnight at the address's own time: 8 am (9 am until 4 Oct 2026) */
+export const SUNDAY_FROM_MIN = 8 * 60;
 const partsOf = (tz, d) => {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
     second: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(d).map(x => [x.type, x.value]));
@@ -562,7 +564,7 @@ async function one(sub, team) {
     await log(sub, 'game', g.id, `${side ? g.away_score : g.home_score}-${side ? g.home_score : g.away_score} v ${opp}`);
   }
 
-  /* SUNDAY: from 9.30 am, once, at their own time; the week ahead is Monday to Sunday */
+  /* SUNDAY: from 8 am, once, at their own time; the week ahead is Monday to Sunday */
   const L = local(tz);
   if (L.wd !== 'Sun' || L.hour * 60 + L.mi < SUNDAY_FROM_MIN || has('sunday', L.date)) return;
   const W = weekAhead(tz, new Date(), !sent.some(x => x.kind === 'sunday'));
