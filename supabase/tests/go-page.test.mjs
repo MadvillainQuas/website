@@ -274,7 +274,7 @@ ok('...and the privacy notice says the list and the find-a-game page use it, in 
    && /Passport mode never uses it/.test(rd('epinoia', 'privacy', 'index.html')) && /map on the find-a-game page is Google&rsquo;s and loads only when you open a game/.test(rd('epinoia', 'privacy', 'index.html')));
 ok('each game links to its page; at the arena, with its window open, it can be stamped from the list',
    /m\.href = '\.\.\/game\/\?g=' \+ encodeURIComponent\(g\.game_id\);/.test(js)
-   && /const here = !!pos && placeOf\(g, pos, now\)\.state === 'here';/.test(js) && /if \(here && open && g\.trusted && !stamped\(g\.game_id\)\)/.test(js));
+   && /const here = !!pos && placeOf\(g, pos, now\)\.state === 'here';/.test(js) && /\} else if \(here && open && g\.trusted && \$\('#goAt'\)\) \{/.test(js));
 ok('a drop-down where a pointer can hover, a sheet from the foot of the screen on a phone; the list scrolls',
    /matchMedia\('\(hover: hover\) and \(min-width: 700px\)'\)/.test(js) && /\.go-pop\.sheet\{position:fixed;z-index:1200;left:0;right:0;bottom:0;/.test(css)
    && /\.gp-list\{[^}]*overflow-y:auto/.test(css));
@@ -590,8 +590,13 @@ console.log('\nEPINOIA GO on HOME, under the feed (2026-10-04)');
      /const host = sheet \? document\.body : POP\.home \|\| \$\('#goToday'\);/.test(js) && /POP\.home = t;/.test(js)
      && /chipsOf\(\)\.forEach\(b => b\.setAttribute\('aria-expanded', String\(b === anchor\)\)\);/.test(js) && /e\.target\.closest\('button\.go-chip'\)/.test(js)
      && /if \(!\(opts && opts\.leagues === false\)\) chip\(null, 'Leagues', String\(leagues\)\);/.test(js));
-  ok('...the stamp is the GO page\'s: away from it the list\'s button goes there',
-     /&& !\$\('#goAt'\)\) \{[\s\S]{0,200}'stamp it on EPINOIA GO'\)\)\.href = S\.goHref \|\| '\.\.\/go\/';/.test(js));
+  ok('...every game open to stamp has a "stamp game" button, wherever the fan is (HOME too): it stamps there and answers in the row, never sending the fan away',
+     /\} else if \(open\) \{[\s\S]{0,400}'stamp game'[\s\S]{0,200}stampInRow\(g, b, li\)/.test(js) && /async function stampInRow\(g, btn, li\)/.test(js)
+     && !/stamp it on EPINOIA GO/.test(js));
+  ok('...the row\'s answer: the sign-in if there is no session, the same check, then stamped (the arena, new or another visit, the counts) or exactly why not',
+     /S\.session = await session\(\);\s*if \(!S\.session\) \{ location\.href = signinHref\(\); return; \}/.test(js) && /const r = await callStamp\(g, pos\);/.test(js)
+     && /whyOf\(r\.data\), 'bad', factsOf\(r\.data\)/.test(js) && /r\.data\.first_time_here \? 'a new arena' : 'another visit'/.test(js) && /btn\.replaceWith\(el\('span', 'gp-done', 'Stamped'\)\)/.test(js));
+  ok('...one place sends the location, for both buttons', (js.match(/function callStamp\(g, pos\)/g) || []).length === 1 && (js.match(/callStamp\(g, pos\)/g) || []).length === 3);
   ok('...the strip in the hosts given, the GO page\'s own by default',
      /const STRIP_AT = \{ sec: '#goStripSec', pick: '#goCountry', strip: '#goStrip' \};/.test(js) && /const sec = \$\(STRIP_AT\.sec\), pick = \$\(STRIP_AT\.pick\);/.test(js)
      && /const host = \$\(STRIP_AT\.strip\);/.test(js));

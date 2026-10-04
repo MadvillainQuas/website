@@ -249,7 +249,9 @@
       'open EPINOIA GO': 'EPINOIA GOを開く',
       'stamp it on EPINOIA GO': 'EPINOIA GOでスタンプ',
       'open to stamp': 'スタンプ受付中',
-      'until': '締切'
+      'until': '締切',
+      'stamp game': 'この試合をスタンプ',
+      'Stamping…': 'スタンプ中…'
     },
     units: {
       'arena': '{n}アリーナ',

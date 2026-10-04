@@ -249,7 +249,9 @@
       'open EPINOIA GO': 'abrir EPINOIA GO',
       'stamp it on EPINOIA GO': 'séllalo en EPINOIA GO',
       'open to stamp': 'se puede sellar',
-      'until': 'hasta'
+      'until': 'hasta',
+      'stamp game': 'sellar este partido',
+      'Stamping…': 'Sellando…'
     },
     units: {
       'arena': '{n} pabellón',

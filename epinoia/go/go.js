@@ -461,10 +461,10 @@ function drawPop() {
     const ar = li.appendChild(el('div', 'gp-ar'));
     ar.appendChild(data('span', 'gp-venue', [g.venue, g.city].filter(Boolean).join(' · ') || '—'));
     if (d != null) ar.appendChild(data('b', 'gp-d', distanceText(d)));
-    if (here && open && g.trusted && !stamped(g.game_id) && !$('#goAt')) {
-      /* away from the GO page (HOME): the stamp is made there, where the phone is asked again */
-      li.appendChild(el('a', 'ep-btn pri gp-stamp', 'stamp it on EPINOIA GO')).href = S.goHref || '../go/';
-    } else if (here && open && g.trusted && !stamped(g.game_id)) {
+    if (open && stamped(g.game_id)) {
+      li.appendChild(el('span', 'gp-done', 'Stamped'));
+    } else if (here && open && g.trusted && $('#goAt')) {
+      /* on the GO page, at the venue: the page's own stamp, with its note and photograph afterwards */
       const b = li.appendChild(el('button', 'ep-btn pri gp-stamp', S.session ? 'stamp this venue' : 'sign in to stamp'));
       b.type = 'button';
       b.addEventListener('click', () => {
@@ -474,6 +474,12 @@ function drawPop() {
         if (at && at.scrollIntoView) at.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
         stamp(g, b);
       });
+    } else if (open) {
+      /* any game open to stamp, wherever the fan is: the button asks the phone and the same check as the GO page's, and answers in the row.
+         A fan who is too far is told how far, not hidden from the button. */
+      const b = li.appendChild(el('button', 'ep-btn pri gp-stamp', S.session ? 'stamp game' : 'sign in to stamp'));
+      b.type = 'button';
+      b.addEventListener('click', () => stampInRow(g, b, li));
     }
   });
 }
@@ -1606,6 +1612,9 @@ function afterStamp(gameId) {
   if (!box.textContent && !box.querySelector('.gpub')) box.remove();
 }
 
+/* the ONE place the phone's location leaves it: the stamp call, for the GO page's button and the drop-down's alike */
+function callStamp(g, pos) { return rpc('stamp_venue', { p_game: g.game_id, p_lat: pos.lat, p_lng: pos.lng, p_accuracy: pos.accuracy }); }
+
 async function stamp(g, btn) {
   S.session = await session();
   if (!S.session) { location.href = signinHref(); return; }
@@ -1616,7 +1625,7 @@ async function stamp(g, btn) {
     if (!pos || Date.now() - pos.at > FRESH_MS) pos = await locate();
     if (pos.error) return say(GEO[pos.error], 'warn');
     S.pos = pos;
-    const r = await rpc('stamp_venue', { p_game: g.game_id, p_lat: pos.lat, p_lng: pos.lng, p_accuracy: pos.accuracy });
+    const r = await callStamp(g, pos);
     if (r.missing) return closed();
     if (r.error || !r.data) return say('It did not stamp. Try again in a moment.', 'bad');
     if (r.data.ok) {
@@ -1634,6 +1643,61 @@ async function stamp(g, btn) {
   } finally {
     btn.disabled = false;
     btn.removeAttribute('aria-busy');
+  }
+}
+
+/* STAMP A GAME FROM THE DROP-DOWN (HOME, or any list of games): the phone is asked where it is (the browser asks the fan first), the same
+   stamp_venue check as the GO page's runs, and the answer is written in the game's own row - stamped, or exactly why not - so the fan
+   never leaves the page. Nothing but the stamp is stored (arena, game, time, the phone's stated accuracy), as on the GO page. */
+async function stampInRow(g, btn, li) {
+  /* the GO page has access.js (a token refreshed if it ran out); HOME has follow.js's stored session, which is all a call needs */
+  const F = window.EpinoiaFollow;
+  S.session = S.access ? await session() : (F && typeof F.session === 'function' ? F.session() : null);
+  if (!S.session) { location.href = signinHref(); return; }
+  let note = li.querySelector('.gp-note');
+  if (!note) note = li.appendChild(el('div', 'gp-note'));
+  const tell = (text, kind, pairs) => {
+    note.className = 'gp-note' + (kind ? ' ' + kind : '');
+    note.textContent = '';
+    if (text) note.appendChild(el('span', null, text));
+    if (pairs && pairs.length) facts(note, pairs);
+  };
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  try {
+    let pos = S.pos;
+    if (!pos || Date.now() - pos.at > FRESH_MS) { tell('Finding where you are…', 'busy'); pos = await locate(); }
+    if (pos.error) return tell(GEO[pos.error], 'bad');
+    S.pos = pos;
+    tell('Stamping…', 'busy');
+    const r = await callStamp(g, pos);
+    if (r.missing) return tell('EPINOIA GO is not open yet.', 'bad');
+    if (r.error === 401 || r.error === 403) {                    // a stored sign-in the server no longer takes
+      tell(WHY.signed_out, 'bad');
+      const a = note.appendChild(el('a', null, 'sign in')); a.href = signinHref();
+      return;
+    }
+    if (r.error || !r.data) return tell('It did not stamp. Try again in a moment.', 'bad');
+    if (!r.data.ok) {
+      const link = r.data.reason === 'signed_out' && S.access && S.access.signinHref;
+      tell(whyOf(r.data), 'bad', factsOf(r.data));
+      if (link) { const a = note.appendChild(el('a', null, 'sign in')); a.href = S.access.signinHref(); }
+      return;
+    }
+    note.className = 'gp-note ok';
+    note.textContent = '';
+    note.appendChild(el('b', null, r.data.already ? 'You had already stamped this game.' : 'Stamped'));
+    if (!r.data.already) {
+      note.appendChild(document.createTextNode(' '));
+      note.appendChild(data('span', null, r.data.venue || ''));
+      note.appendChild(el('div', 'go-new', r.data.first_time_here ? 'a new arena' : 'another visit'));
+      facts(note, [['Arenas', String(r.data.arenas)], ['Stamps', String(r.data.stamps)]]);
+    }
+    btn.replaceWith(el('span', 'gp-done', 'Stamped'));
+    try { await loadMine(); } catch (_) { /* the stamp is made; the page's own lists catch up when it is next read */ }
+    try { if (typeof drawStrip === 'function' && $('#goStrip, #homeGoStrip')) drawStrip(); } catch (_) { /* the strip catches up later */ }
+  } finally {
+    if (btn.isConnected) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
   }
 }
 
