@@ -1,0 +1,8 @@
+/* ---- THE TYPE OF A PLAYER'S AND A CLUB'S PAGE (2026-10-04): one clean sans, Archivo (the site's own, a variable face), in place of
+   the pixel faces - Silkscreen for labels, Jersey25 for scores and headings - everywhere inside the page (the stat bars, the on/off
+   panel, tables, charts, chips). Every rule in the kit names the faces through --f-micro and --f-score, so redefining both here
+   changes all of them at once; the weight and spacing the pixel shapes carried are set below. The side rail sits outside .ep-frame
+   and keeps the site's own look. The figures keep Martian Mono (--f-data). Same approach as the reports (report.css, .rp-pg). */
+.ep-frame{ --f-micro:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif; --f-score:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif }
+.ep-frame .ep-micro, .ep-frame .ep-tick, .ep-frame .ep-hdr .idx{ font-weight:600; letter-spacing:.09em }
+.ep-frame .ep-h1, .ep-frame .ep-hdr h2{ font-weight:800; font-stretch:92%; letter-spacing:0 }
