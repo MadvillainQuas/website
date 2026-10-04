@@ -319,7 +319,7 @@ function world(st) {
   ok('...drawn after the Sunday email went (it never waits on them)', calls.findIndex(c => c.k === 'mail') < calls.findIndex(c => c.k === 'pdf' && c.path.startsWith('/epinoia/p/')));
   ok('the season is the club\'s league\'s newest, its final games in that season\'s competitions', calls.some(c => c.k === 'seasons' && c.order === 'starts_on.desc') && calls.filter(c => c.k === 'season').every(c => c.comps === 'in.(C1,C2)'));
   ok('...the minutes read lean (min out of the stats) and a page at a time', calls.filter(c => c.k === 'pgs').every(c => /min:stats->min/.test(c.select) && c.limit === '1000'));
-  ok('the reply names each club\'s players and their minutes, and says who is left out', /Mitch Creek <span[^>]*>\(30\.0 mpg\)/.test(re.html) && /released and those averaging under 10 minutes a game/.test(re.html) &&
+  ok('the reply names each club\'s players and their minutes, and says who is left out', /Mitch Creek <span[^>]*>\(30\.0 mpg\)/.test(re.html) && /released, those averaging under 10 minutes a game and those with two games or fewer/.test(re.html) &&
      /Every player’s report: South East Melbourne Phoenix, Tasmania JackJumpers and Illawarra Hawks/.test(re.html) && />ZIP<\/span>South East Melbourne Phoenix: 2 player reports/.test(re.html));
   ok('...and does not say they are kept in the dashboard (only the club reports are)', /these player reports come in this email/.test(re.html) && !/Every report is also kept/.test(re.html) && /Every report is also kept/.test(sun.html));
   const logs = calls.filter(c => c.k === 'log');
