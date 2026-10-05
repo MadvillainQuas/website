@@ -16,12 +16,12 @@
 <title>Sign in · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=646"></script>
-<script src="../i18n.js?v=646" data-i18n-packs="account"></script>
-<script src="../glyphs.js?v=646" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=646">
-<link rel="stylesheet" href="../kit/nav.css?v=646">
-<link rel="stylesheet" href="../kit/labeltype.css?v=646">
+<script src="../appmode.js?v=647"></script>
+<script src="../i18n.js?v=647" data-i18n-packs="account"></script>
+<script src="../glyphs.js?v=647" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=647">
+<link rel="stylesheet" href="../kit/nav.css?v=647">
+<link rel="stylesheet" href="../kit/labeltype.css?v=647">
 <style>
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule)}
@@ -70,8 +70,17 @@
   .or::before,.or::after{content:'';flex:1;height:1px;background:var(--rule)}
   .or span{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;
     text-transform:uppercase;color:var(--ink-3)}
+  /* what an account opens: the sales pitch under the sign-in buttons */
+  .why{margin-top:calc(var(--u)*5);padding:calc(var(--u)*3);border:1px solid var(--rule-2);border-left:4px solid var(--lume);border-radius:10px;background:var(--panel-2,transparent)}
+  .why h2{margin:0 0 6px;font-family:var(--f-ui);font-size:15px;font-weight:800;letter-spacing:.01em;color:var(--ink)}
+  .why .whylead{margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--ink-2)}
+  .why ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+  .why li{display:flex;flex-direction:column;gap:1px;padding-left:12px;border-left:2px solid var(--rule-2)}
+  .why li b{font-family:var(--f-ui);font-size:13px;font-weight:700;color:var(--ink)}
+  .why li span{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+  .why .whyfree{margin:12px 0 0;font-size:12.5px;line-height:1.5;font-weight:600;color:var(--lume)}
 </style>
-<link rel="stylesheet" href="../kit/legibility.css?v=646">
+<link rel="stylesheet" href="../kit/legibility.css?v=647">
 </head>
 <body>
 <div class="ep-frame">
@@ -118,12 +127,20 @@
                inputmode="email" placeholder="you@club.co.uk">
       </label>
       <button class="ep-btn pri" id="send" type="button">Send the link</button>
-      <p class="note">
-        Signing in is only needed to use a membership, score a game, manage a
-        club, or administer a league. Box scores, tables and statistics are free
-        to read without an account; a membership adds the advanced analytics,
-        and some leagues keep their games for their members.
-      </p>
+      <div class="why">
+        <h2>What a free account opens</h2>
+        <p class="whylead">An account adds the analysis the clubs use:</p>
+        <ul>
+          <li><b>WOWY and every lineup</b><span>Every five a club has used, the lineup filter, with-or-without and pairs: who the team is better and worse with, coloured against the league.</span></li>
+          <li><b>Player and club reports</b><span>Scouting reports as PDFs, ranked against the whole league, with the stats a coach actually needs.</span></li>
+          <li><b>Shot zones and the shot clock</b><span>Where every club and player shoots from, how well, and how possessions end as the clock runs down.</span></li>
+          <li><b>Events and starter splits</b><span>Second chances, transition, off turnovers, after timeouts and half court, and how a team does against starters and bench.</span></li>
+          <li><b>Rotations, minute by minute</b><span>Who is on the floor at every minute of every game, all season long.</span></li>
+          <li><b>The full statistics tables</b><span>Every column and view, the chart lab, and CSV downloads of any table.</span></li>
+          <li><b>What wins</b><span>The win model: which stats decide games in each league.</span></li>
+        </ul>
+        <p class="whyfree">An account is free at the moment: sign in once, with your email, Google or Discord, and it is all open on every device.</p>
+      </div>
     </div>
 
     <!-- signed in -->
@@ -143,9 +160,9 @@
     <div id="msg" class="msg hide"></div>
   </div>
 </div>
-<script src="../vendor/supabase.js?v=646" defer></script>
-<script src="../config.js?v=646" defer></script>
-<script src="signin.js?v=646" defer></script>
-<script src="../nav.js?v=646" defer></script>
+<script src="../vendor/supabase.js?v=647" defer></script>
+<script src="../config.js?v=647" defer></script>
+<script src="signin.js?v=647" defer></script>
+<script src="../nav.js?v=647" defer></script>
 </body>
 </html>

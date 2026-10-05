@@ -177,7 +177,6 @@
       'If a notification titled “This phone can get notifications” did not appear just now, the iPhone is hiding them:': '「This phone can get notifications」という通知が今表示されなかった場合は、iPhoneが通知を隠しています:',
       /* ---- sign in (signin/) ---- */
       'Two ways in, and no password either way — nothing to choose badly, forget, or have stolen. Google is one click; the email link signs you in on this device and expires shortly after.': 'ログイン方法は2つ。どちらもパスワードは不要なので、弱いパスワードを選ぶことも、忘れることも、盗まれることもありません。Googleならワンクリック。メールのリンクはこの端末でログインでき、しばらくすると無効になります。',
-      'Signing in is only needed to use a membership, score a game, manage a club, or administer a league. Box scores, tables and statistics are free to read without an account; a membership adds the advanced analytics, and some leagues keep their games for their members.': 'ログインが必要なのは、メンバーシップの利用、試合の記録、クラブの管理、リーグの運営をするときだけです。ボックススコア、順位表、成績はアカウントなしで無料で見られます。メンバーシップではアドバンスト分析が加わり、試合を会員限定にしているリーグもあります。',
       'Roles are granted by a league administrator against your email address. If something you expect is missing here, it has not been granted yet — the buttons in the sidebar follow this list exactly.': '権限は、リーグ管理者があなたのメールアドレスに対して付与します。あるはずのものがここにない場合は、まだ付与されていません。サイドバーのボタンはこの一覧とまったく同じです。',
       'platform admin': 'プラットフォーム管理者',
       'games to score': '記録する試合',
@@ -365,7 +364,23 @@
       'Deleting your account…': 'アカウントを削除しています…',
       'Your account could not be deleted. Try again.': 'アカウントを削除できませんでした。もう一度お試しください。',
       'Account deleted': 'アカウントを削除しました',
-      'Your account has been deleted, and what was kept with it. Games and statistics you entered stay, without your name.': 'アカウントと、それに紐づく情報を削除しました。あなたが入力した試合と統計は、名前を除いて残ります。'
+      'Your account has been deleted, and what was kept with it. Games and statistics you entered stay, without your name.': 'アカウントと、それに紐づく情報を削除しました。あなたが入力した試合と統計は、名前を除いて残ります。',
+      'What a free account opens': '無料アカウントで使える機能',
+      'WOWY and every lineup': 'WOWYとすべてのラインナップ',
+      'Every five a club has used, the lineup filter, with-or-without and pairs: who the team is better and worse with, coloured against the league.': 'クラブが使ったすべての5人組、ラインナップフィルター、with-or-without、ペア。誰と一緒だとチームが良くなる／悪くなるかを、リーグと比べて色分けして表示。',
+      'Player and club reports': '選手・クラブレポート',
+      'Scouting reports as PDFs, ranked against the whole league, with the stats a coach actually needs.': 'リーグ全体と比べたスカウティングレポートをPDFで。コーチが本当に必要とする指標を収録。',
+      'Shot zones and the shot clock': 'ショットゾーンとショットクロック',
+      'Where every club and player shoots from, how well, and how possessions end as the clock runs down.': '各クラブ・選手がどこから、どれだけ決めるか。そしてクロックが減るにつれてポゼッションがどう終わるか。',
+      'Events and starter splits': 'イベント別スタッツとスターター分割',
+      'Second chances, transition, off turnovers, after timeouts and half court, and how a team does against starters and bench.': 'セカンドチャンス、トランジション、ターンオーバー後、タイムアウト後、ハーフコート。そして先発・ベンチ相手の成績。',
+      'Rotations, minute by minute': 'ローテーションを分単位で',
+      'The full statistics tables': '完全な統計表',
+      'Every column and view, the chart lab, and CSV downloads of any table.': 'すべての列とビュー、チャートラボ、あらゆる表のCSVダウンロード。',
+      'The win model: which stats decide games in each league.': '勝利モデル：各リーグで試合を決める指標は何か。',
+      'An account is free at the moment: sign in once, with your email, Google or Discord, and it is all open on every device.': 'アカウントは現在無料です。メール、GoogleまたはDiscordで一度ログインすれば、すべての端末で利用できます。',
+      'Who is on the floor at every minute of every game, all season long.': 'シーズンを通して、すべての試合の各分に誰がコートにいるか。',
+      'An account adds the analysis the clubs use:': 'アカウントを作ると、クラブが使う分析が加わります。'
     },
 
     ctx: {

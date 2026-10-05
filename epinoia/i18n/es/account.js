@@ -182,7 +182,6 @@
       'If a notification titled “This phone can get notifications” did not appear just now, the iPhone is hiding them:': 'Si no acaba de aparecer una notificación titulada «This phone can get notifications», el iPhone las está ocultando:',
       /* ---- sign in (signin/) ---- */
       'Two ways in, and no password either way — nothing to choose badly, forget, or have stolen. Google is one click; the email link signs you in on this device and expires shortly after.': 'Dos formas de entrar, y ninguna con contraseña: nada que elegir mal, olvidar o que te roben. Con Google es un clic; el enlace por correo inicia sesión en este dispositivo y caduca poco después.',
-      'Signing in is only needed to use a membership, score a game, manage a club, or administer a league. Box scores, tables and statistics are free to read without an account; a membership adds the advanced analytics, and some leagues keep their games for their members.': 'Solo hace falta iniciar sesión para usar una suscripción de socio, anotar un partido, gestionar un club o administrar una liga. Las estadísticas de los partidos, las clasificaciones y los datos de la temporada se consultan gratis sin cuenta; hacerte socio añade la analítica avanzada, y algunas ligas reservan sus partidos a sus socios.',
       'Roles are granted by a league administrator against your email address. If something you expect is missing here, it has not been granted yet — the buttons in the sidebar follow this list exactly.': 'Los permisos los concede un administrador de la liga a tu dirección de correo. Si falta algo que esperabas, aún no se ha concedido: los botones de la barra lateral siguen exactamente esta lista.',
       'platform admin': 'Admin. de plataforma',
       'games to score': 'Partidos que anotar',
@@ -370,7 +369,23 @@
       'Deleting your account…': 'Eliminando tu cuenta…',
       'Your account could not be deleted. Try again.': 'No se pudo eliminar tu cuenta. Inténtalo de nuevo.',
       'Account deleted': 'Cuenta eliminada',
-      'Your account has been deleted, and what was kept with it. Games and statistics you entered stay, without your name.': 'Tu cuenta ha sido eliminada, junto con lo que contenía. Los partidos y estadísticas que introdujiste se conservan, sin tu nombre.'
+      'Your account has been deleted, and what was kept with it. Games and statistics you entered stay, without your name.': 'Tu cuenta ha sido eliminada, junto con lo que contenía. Los partidos y estadísticas que introdujiste se conservan, sin tu nombre.',
+      'What a free account opens': 'Lo que abre una cuenta gratuita',
+      'WOWY and every lineup': 'WOWY y todas las alineaciones',
+      'Every five a club has used, the lineup filter, with-or-without and pairs: who the team is better and worse with, coloured against the league.': 'Todos los quintetos que ha usado un club, el filtro de alineaciones, con o sin y parejas: con quién mejora y empeora el equipo, coloreado frente a la liga.',
+      'Player and club reports': 'Informes de jugadores y clubes',
+      'Scouting reports as PDFs, ranked against the whole league, with the stats a coach actually needs.': 'Informes de scouting en PDF, comparados con toda la liga, con las estadísticas que un entrenador necesita de verdad.',
+      'Shot zones and the shot clock': 'Zonas de tiro y reloj de posesión',
+      'Where every club and player shoots from, how well, and how possessions end as the clock runs down.': 'Desde dónde tira cada club y jugador, con qué acierto, y cómo terminan las posesiones según corre el reloj.',
+      'Events and starter splits': 'Eventos y rendimiento ante titulares',
+      'Second chances, transition, off turnovers, after timeouts and half court, and how a team does against starters and bench.': 'Segundas oportunidades, transición, tras pérdida, tras tiempo muerto y media pista, y cómo rinde un equipo ante titulares y suplentes.',
+      'Rotations, minute by minute': 'Rotaciones, minuto a minuto',
+      'The full statistics tables': 'Las tablas estadísticas completas',
+      'Every column and view, the chart lab, and CSV downloads of any table.': 'Todas las columnas y vistas, el laboratorio de gráficos y descargas CSV de cualquier tabla.',
+      'The win model: which stats decide games in each league.': 'El modelo de victoria: qué estadísticas deciden los partidos en cada liga.',
+      'An account is free at the moment: sign in once, with your email, Google or Discord, and it is all open on every device.': 'Una cuenta es gratuita por ahora: inicia sesión una vez, con tu correo, Google o Discord, y todo queda abierto en todos tus dispositivos.',
+      'Who is on the floor at every minute of every game, all season long.': 'Quién está en pista en cada minuto de cada partido, durante toda la temporada.',
+      'An account adds the analysis the clubs use:': 'Una cuenta añade el análisis que usan los clubes:'
     },
 
     ctx: {
