@@ -192,8 +192,8 @@ const CATALOGUE = Object.freeze({
     csv:    Object.freeze({ gate: 'analytics', label: 'CSV download', what: 'The CSV button on every statistics table' }),
     model:  Object.freeze({ gate: 'analytics', label: 'What wins model', what: 'What wins and the Front office win model (docs/what-wins-model.md §10.3)' }),
     /* the reports, each sold on its own (0220): the club profile's Report tab and the player profile's */
-    clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report', what: 'The club profile Report tab' }),
-    playerReport: Object.freeze({ gate: 'player_report', label: 'Player report', what: 'The player profile Report tab' }),
+    clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report', what: 'The club profile Scouting Report tab' }),
+    playerReport: Object.freeze({ gate: 'player_report', label: 'Player report', what: 'The player profile Scouting Report tab' }),
     /* the game page's analysis PDF: sold with the club report (its gate) once memberships are on; open to a signed-out
        reader, with no limit, for the time being (SIGNIN_FREE) */
     gameReport:   Object.freeze({ gate: 'club_report', label: 'Game report', what: 'The game analysis PDF on the game page' }),

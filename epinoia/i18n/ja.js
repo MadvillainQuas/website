@@ -1779,7 +1779,8 @@
       'Sign in with a free EPINOIA account to see this': 'EPINOIAの無料アカウントでサインインして表示',
       'An EPINOIA account is free at the moment: all you need to do is sign in.': '現在、EPINOIAのアカウントは無料です。サインインするだけで利用できます。',
       'shooting efficiency': 'シュート効率',
-      'rebounding %': 'リバウンド率'
+      'rebounding %': 'リバウンド率',
+      'Scouting Report': 'スカウティングレポート'
     },
 
     ctx: {

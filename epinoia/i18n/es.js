@@ -1781,7 +1781,8 @@
       'Sign in with a free EPINOIA account to see this': 'Inicia sesión con una cuenta gratuita de EPINOIA para verlo',
       'An EPINOIA account is free at the moment: all you need to do is sign in.': 'Una cuenta de EPINOIA es gratuita por ahora: solo tienes que iniciar sesión.',
       'shooting efficiency': 'Eficiencia de tiro',
-      'rebounding %': '% de rebotes'
+      'rebounding %': '% de rebotes',
+      'Scouting Report': 'Informe de scouting'
     },
 
     ctx: {
