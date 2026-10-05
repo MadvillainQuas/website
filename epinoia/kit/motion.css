@@ -1,8 +1,10 @@
 /* ---- MOTION (epinoia/motion.js): the classes it puts on a block for the length of one animation, and takes off again. ---- */
 @keyframes ep-mo-in{ from{ opacity:0; transform:translateY(10px) } to{ opacity:1; transform:none } }
 @keyframes ep-mo-fade{ from{ opacity:0 } to{ opacity:1 } }
+@keyframes ep-mo-out{ from{ opacity:1; transform:none } to{ opacity:0; transform:translateY(-8px) scale(.985) } }
 @keyframes ep-mo-press{ 0%{ transform:scale(1) } 38%{ transform:scale(.955) } 100%{ transform:scale(1) } }
 .ep-mo-in{ animation:ep-mo-in .3s cubic-bezier(.2,.8,.2,1) backwards }
 .ep-mo-fade{ animation:ep-mo-fade .25s ease-out backwards }
 .ep-mo-press{ animation:ep-mo-press .22s cubic-bezier(.3,.7,.4,1) }
-@media (prefers-reduced-motion:reduce){ .ep-mo-in, .ep-mo-fade, .ep-mo-press{ animation:none } }
+.ep-mo-out{ animation:ep-mo-out .22s cubic-bezier(.4,0,.8,.6) forwards }
+@media (prefers-reduced-motion:reduce){ .ep-mo-in, .ep-mo-fade, .ep-mo-press, .ep-mo-out{ animation:none } }

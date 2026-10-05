@@ -8,6 +8,9 @@
                      press or Enter/Space on something interactive, any block added to the page (or un-hidden, or named by a
                      button's aria-expanded) is given the opening. Nothing changes what a page does with its data.
      <details>       its contents open the same way.
+     A CLOSING       what a press takes away - a dropdown row folding, the panel of the tab left behind - is not removed in one
+                     frame: a copy of it, taken at the press, stays where it was for a moment and fades up and out (a cross-fade
+                     with whatever replaced it). The page itself closes at once and is never held back.
 
    NOT ANIMATED: anything that arrives on its own (a live score changing, a poll redrawing a list), anything small (a word, a
    badge), a block already moving, and everything when the reader asks for reduced motion. It never delays or blocks: the
@@ -34,7 +37,7 @@
   /* is this block worth animating: visible, and bigger than a badge */
   function worth(el) {
     if (!el || el.nodeType !== 1 || skipTag.test(el.tagName) || busy.has(el)) return false;
-    if (el.closest('[data-no-motion], .ep-mo-in, .tt-line, .ep-scrollmark, #toast, .ep-toast')) return false;
+    if (el.closest('[data-no-motion], .ep-mo-in, .ep-mo-out, .tt-line, .ep-scrollmark, #toast, .ep-toast')) return false;
     if (el.hasAttribute('hidden')) return false;
     const r = el.getBoundingClientRect();
     return r.width >= 60 && r.height >= 24;
@@ -50,11 +53,69 @@
     setTimeout(done, 700);
   }
 
+  /* ---- THE CLOSING: a copy of what may go, taken at the press, shown fading out when it has gone ---- */
+  const MAX_NODES = 4000;
+  const TABSTRIP = '[role="tablist"], .tabrow, .tabs, .ep-xtabs, .hm-seg, .mv-switch, .tabgroup, .scw-seg';
+  /* the blocks a press might close or replace: what it controls, what it opened, what sits under the strip it belongs to */
+  function candidates(t) {
+    const out = [], add = n => { if (n && n.nodeType === 1 && out.indexOf(n) < 0 && !n.contains(t)) out.push(n); };
+    const id = t.getAttribute('aria-controls');
+    if (id) add(doc.getElementById(id));
+    if (t.getAttribute('aria-expanded') === 'true') add(t.nextElementSibling);
+    const d = t.tagName === 'SUMMARY' ? t.parentElement : null;
+    if (d && d.tagName === 'DETAILS' && d.open) [...d.children].forEach(c => { if (c.tagName !== 'SUMMARY') add(c); });
+    const strip = t.closest(TABSTRIP);
+    if (strip) { add(strip.nextElementSibling); if (strip.nextElementSibling) add(strip.nextElementSibling.nextElementSibling); }
+    return out;
+  }
+  function snapshot(t) {
+    return candidates(t).map(node => {
+      const r = node.getBoundingClientRect();
+      if (r.width < 60 || r.height < 24 || node.getElementsByTagName('*').length > MAX_NODES) return null;
+      const f = node.offsetWidth ? r.width / node.offsetWidth : 1;            // the page's zoom, if it has one
+      return { node, parent: node.parentElement, next: node.nextSibling, first: node.firstElementChild, n: node.childElementCount,
+               r: { l: r.left, t: r.top, w: r.width, h: r.height }, f: f || 1, clone: node.cloneNode(true) };
+    }).filter(Boolean);
+  }
+  /* has it gone: removed, hidden, or its contents replaced */
+  function gone(c) {
+    const n = c.node;
+    if (!n.isConnected || n.hidden) return true;
+    if (getComputedStyle(n).display === 'none') return true;
+    return n.firstElementChild !== c.first || n.childElementCount !== c.n;
+  }
+  function ghost(c) {
+    const host = c.parent && c.parent.isConnected ? c.parent : doc.body;
+    const g = c.clone;
+    g.removeAttribute('id');
+    g.classList.remove('ep-mo-in', 'ep-mo-fade');
+    g.setAttribute('aria-hidden', 'true');
+    g.setAttribute('inert', '');
+    const f = c.f || 1;
+    g.style.cssText += ';position:fixed;margin:0;pointer-events:none;overflow:hidden;z-index:40;left:' + (c.r.l / f) + 'px;top:' + (c.r.t / f) + 'px;width:' + (c.r.w / f) + 'px;height:' + (c.r.h / f) + 'px';
+    g.classList.add('ep-mo-out');
+    host.appendChild(g);
+    const done = () => { g.remove(); };
+    g.addEventListener('animationend', done);
+    setTimeout(done, 600);
+  }
+  function watchClosing(snaps) {
+    if (reduced || !snaps.length) return;
+    const t0 = Date.now(), left = snaps.slice();
+    (function look() {
+      for (let i = left.length - 1; i >= 0; i--) {
+        if (gone(left[i])) { ghost(left[i]); left.splice(i, 1); }
+      }
+      if (left.length && Date.now() - t0 < WINDOW_MS) setTimeout(look, 70);
+    })();
+  }
+
   /* THE PRESS: a squeeze on whatever was pressed, and the window in which the page's answer is animated */
   function pressed(ev) {
     const t = ev.target && ev.target.closest ? ev.target.closest(PRESSABLE) : null;
     if (!t || t.disabled || t.getAttribute('aria-disabled') === 'true') return;
     until = Date.now() + WINDOW_MS;
+    if (!reduced) { try { watchClosing(snapshot(t)); } catch (_) { /* no closing animation */ } }
     if (reduced || busy.has(t)) return;
     busy.add(t);
     t.classList.add('ep-mo-press');
