@@ -67,7 +67,8 @@ function initialState(slug, saved, phone) {
 function gates(locked, previewMax) {
   const strict = W.gate(!!locked, previewMax || 1);
   const open = locked ? Object.assign({}, strict, { preview: false, rows: Infinity, players: 5, builder: true }) : strict;
-  return { wowy: strict, build: open, lineups: open };
+  /* the lineup filter is open to all, a locked reader picks up to three players in it (wowyui.js buildView reads pickMax) */
+  return { wowy: strict, build: Object.assign({}, open, { pickMax: locked ? 3 : 5 }), lineups: open };
 }
 
 /* which sections a change touches: a pick is its own section's; how a list reads and the thresholds are everyone's */

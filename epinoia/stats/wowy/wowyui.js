@@ -1015,18 +1015,27 @@ function buildView(ctx, host) {
     return;
   }
   host.appendChild(facedBar(ctx));
-  const picked = S.u.filter(id => roster.indexOf(id) !== -1).slice(0, 5);
+  /* a reader without access picks up to G.pickMax players (three); the other slots say what opens them */
+  const cap = Math.max(1, Math.min(5, G.pickMax || 5));
+  const picked = S.u.filter(id => roster.indexOf(id) !== -1).slice(0, cap);
   const slots = el('div', 'wslots');
   for (let i = 0; i < 5; i++) {
     const id = picked[i];
     const s = el('div', 'wslot' + (id ? ' full' : ''));
+    if (i >= cap) {
+      s.classList.add('wslot-lk');
+      s.appendChild(el('span', 'wslot-e', '+')); s.appendChild(el('span', null, 'with an account'));
+      s.title = 'Sign in to pick up to five players';
+      slots.appendChild(s);
+      continue;
+    }
     if (id) { const c = circle(ctx, { id, size: 'l', ring: 'on', button: true }); c.addEventListener('click', () => ctx.go({ u: picked.filter(x => x !== id) })); s.appendChild(c); s.appendChild(el('span', null, short(ctx, id))); }
     else { s.appendChild(el('span', 'wslot-e', '+')); s.appendChild(el('span', null, 'empty')); }
     slots.appendChild(s);
   }
   host.appendChild(slots);
-  host.appendChild(rail(ctx, { ids: roster.filter(id => picked.indexOf(id) === -1), sel: [], max: 0, onPick: id => { if (picked.length < 5) ctx.go({ u: picked.concat(id) }); } }));
-  if (!picked.length) { host.appendChild(notice('Pick a player to start; add up to four more.')); hydrate(ctx, host); return; }
+  host.appendChild(rail(ctx, { ids: roster.filter(id => picked.indexOf(id) === -1), sel: [], max: 0, onPick: id => { if (picked.length < cap) ctx.go({ u: picked.concat(id) }); } }));
+  if (!picked.length) { host.appendChild(notice('Pick a player to start; add up to ' + (cap - 1) + ' more' + (cap < 5 ? ' (up to five with an account)' : '') + '.')); hydrate(ctx, host); return; }
   const row = ctx.rowFor(picked);
   if (!row.line.stints) {
     if (picked.length === 5) {

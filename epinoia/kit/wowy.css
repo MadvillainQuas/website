@@ -331,3 +331,7 @@ table.wsg td.ld{color:var(--ink-3)}
 }
 .wtl-s{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.04em;color:var(--ink-2);text-transform:uppercase}
 .wtl-v.wtl-lk,table.ft.wx td.hc.lk{font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+/* the slots a signed-out reader does not have (the lineup filter picks three): dimmed, saying what opens them */
+.wslot-lk{opacity:.45}
+.wslot-lk .wslot-e{border-style:dotted}

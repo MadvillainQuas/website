@@ -1858,15 +1858,13 @@ async function lineupPanels(team) {
   const D = window.EpinoiaData, TW = window.EpinoiaTeamWowy;
   if (ACCESS.paywall) return;          // stints are behind the wall; the sections are hidden
   const hosts = { wowy: $('#wowy'), build: $('#lufilter'), lineups: $('#lulist') };
-  /* THE LINEUP FILTER AND EVERY LINEUP ARE THE LINEUPS' OWN LOCK (2026-10-05): an account today (signinFirst), a membership once
-     memberships are on, like the most-used lineup cards above them. Their hosts hold the teaser and are left out of the mount. */
-  if (sectionLocked('lineups')) {
-    [['build', 'The lineup filter', 'Pick up to five players and see how the club does with all of them on the floor together, against the rest of its minutes.'],
-     ['lineups', 'Every lineup', 'Every five the club has used, sortable by any column, coloured against the league’s units, with the on/off difference of every stat.']].forEach(([k, title, line]) => {
-      if (!hosts[k]) return;
-      hosts[k].innerHTML = accessTeaser({ key: 'lineups', title, lines: [line] });
-      delete hosts[k];
-    });
+  /* EVERY LINEUP IS THE LINEUPS' OWN LOCK (2026-10-05): an account today (signinFirst), a membership once memberships are on, like
+     the most-used lineup cards above it. Its host holds the teaser and is left out of the mount. The lineup filter stays open to
+     all, as it was, but a reader without access picks at most three players in it (teamwowy.js gates: pickMax). */
+  if (sectionLocked('lineups') && hosts.lineups) {
+    hosts.lineups.innerHTML = accessTeaser({ key: 'lineups', title: 'Every lineup',
+      lines: ['Every five the club has used, sortable by any column, coloured against the league’s units, with the on/off difference of every stat.'] });
+    delete hosts.lineups;
   }
   const say = msg => Object.values(hosts).forEach(h => {
     if (h && !h.children.length) h.appendChild(el('div', 'empty', msg));
