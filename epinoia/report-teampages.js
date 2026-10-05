@@ -171,10 +171,10 @@ function modules(ctx) {
 
   /* HOW POSITIONS ARE WORKED OUT (depth.js, bpm.js): said in the depth chart and the most-used five, which are built from it */
   const POS_KEY = [
-    ['THE ESTIMATE', 'Each player gets a position from 1 (point guard) to 5 (centre) from how he plays in the box score: his rebounds, assists, steals, blocks and threes, the way Basketball-Reference’s BPM does it. It is blended with the position his club lists for him and his height until he has played enough.'],
+    ['THE ESTIMATE', 'Each player gets a position from 1 (point guard) to 5 (centre) from how they play in the box score: their rebounds, assists, steals, blocks and threes, the way Basketball-Reference’s BPM does it. It is blended with the position their club lists for them and their height until they have played enough.'],
     ['THE FIVE ON THE FLOOR', 'Every group of five is lined up from the smallest to the biggest, and its players are credited PG, SG, SF, PF and C in that order for the time they play together. A player’s minutes at each position are what those credits add up to.'],
     ['SO A PLAYER CAN HAVE SEVERAL', 'Someone who plays big in one lineup and small in another is credited in each. A chart like this one is the record of who has actually filled each spot.'],
-    ['IT CAN BE OFF', 'It is an estimate from numbers, not a coach’s label: a small centre or a big guard can be put a spot away from where the club thinks of him.']];
+    ['IT CAN BE OFF', 'It is an estimate from numbers, not a coach’s label: a small centre or a big guard can be put a spot away from where the club thinks of them.']];
   /* ---------------- the cover ---------------- */
   const cover = {
     key: 'cover', title: 'Cover', on: true,
@@ -198,7 +198,7 @@ function modules(ctx) {
       if (!names) return '<h4>The most-used five</h4><div class="rp-empty">No lineups on record yet.</div>';
       return '<h4>The most-used five<span>most minutes at each position' + (games ? ' · ' + games + ' games' : '') + '</span></h4>' +
         E.posCourtHTML([20, 20, 20, 20, 20], { names }) +
-        '<p class="rp-note">Each spot names the player with the most minutes there this season (the depth chart’s first choice). A player who leads two positions is named once, at the one he plays most; the other spot takes the next player in its depth chart. Positions are an estimate: each player is placed from 1 (point guard) to 5 (centre) by how he plays in the box score (BPM’s method), blended with his listed position and height, and each five on the floor is lined up smallest to biggest, so a spot can be off by one.</p>';
+        '<p class="rp-note">Each spot names the player with the most minutes there this season (the depth chart’s first choice). A player who leads two positions is named once, at the one they play most; the other spot takes the next player in its depth chart. Positions are an estimate: each player is placed from 1 (point guard) to 5 (centre) by how they play in the box score (BPM’s method), blended with their listed position and height, and each five on the floor is lined up smallest to biggest, so a spot can be off by one.</p>';
     }
   };
 
@@ -661,7 +661,7 @@ function modules(ctx) {
          site's position groups put him elsewhere than his minutes do */
       /* the field to rank in: this season's players and the league's other seasons' (report.js loadPrior), each season one more entry */
       const poolField = field.concat(E.priorRows(T.prior, P => P.players));
-      if (poolField.length > field.length) R.pooled = 'Every figure is ranked against all ' + ((T.prior || []).length + 1) + ' seasons of the league with data (each player’s season is one entry), among players of his own position, not only the season shown. A stat an earlier season did not record is ranked within the season shown.';
+      if (poolField.length > field.length) R.pooled = 'Every figure is ranked against all ' + ((T.prior || []).length + 1) + ' seasons of the league with data (each player’s season is one entry), among players of their own position, not only the season shown. A stat an earlier season did not record is ranked within the season shown.';
       const pools = E.posPools(poolField), byGroup = {};
       const rankerOf = (r, grp) => (pools.get(r.id) === grp
         ? (byGroup[grp] || (byGroup[grp] = E.posRanker(poolField, [...allKeys], grp, null, pools)))
@@ -670,7 +670,7 @@ function modules(ctx) {
       R.legend.push(...[...allKeys].filter(k => !(E.STATS[k] && E.STATS[k].optional) || squad.some(r => (E.hasStat ? E.hasStat(k, r) : E.isNum(r[k])))));
       const SL = ['PG', 'SG', 'SF', 'PF', 'C'];
       const needR = !rapmOk && [...allKeys].some(k => E.STATS[k] && E.STATS[k].rapm);
-      const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the players of his own position in ' + (c.scope || 'the competition') + ' (guards, wings, bigs)') +
+      const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the players of their own position in ' + (c.scope || 'the competition') + ' (guards, wings, bigs)') +
         (needR ? '<p class="rp-flagnote">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : '');
       const out = [];
       squad.forEach((r, i) => {
@@ -698,14 +698,14 @@ function modules(ctx) {
           '<div class="rp-pgroups">' + (mz ? '<div class="rp-pside">' + mz + '</div>' : '') + groups + '</div></div>'));
       });
       out.push(E.keyBox('Reading a player card', [
-        ['THE TILES', 'Each tile is the number and his percentile among the players of his own position in the field named above. Green is the top quarter, red the bottom; blue-to-purple tiles are styles, deeper = more of it.'],
-        ['ASSIST TO USAGE RATIO', 'His assist rate against his usage: how much he creates for others per possession he uses himself.'],
-        ['VOL / 100', 'Shots from that zone per 100 of the team’s possessions while he is on the floor: where he shoots, not how well, so it is not inflated by minutes or pace.'],
-        ['ASSISTED%', 'The share of his baskets in a zone that came off a pass. Coloured the other way round: a low share (green) means he creates his own shots there.'],
-        ['HALF-COURT FIGURES', 'Leave out fast breaks, second chances and shots off turnovers: how he does against a set defence.'],
-        ['SHOT MIX', 'Where there is no Synergy file: bar length is how often he shoots from the rim, mid-range or three, the solid part how often it goes in.'],
-        ['± (ON/OFF)', 'The team’s figure with him on the floor minus with him off it. Noisy for a player with few minutes.'],
-        ['THE CORNER COURT', 'Orange: he shoots better than break-even from that zone. Blue: worse. Grey: too few shots.']]));
+        ['THE TILES', 'Each tile is the number and their percentile among the players of their own position in the field named above. Green is the top quarter, red the bottom; blue-to-purple tiles are styles, deeper = more of it.'],
+        ['ASSIST TO USAGE RATIO', 'Their assist rate against their usage: how much they create for others per possession they use themselves.'],
+        ['VOL / 100', 'Shots from that zone per 100 of the team’s possessions while they are on the floor: where they shoot, not how well, so it is not inflated by minutes or pace.'],
+        ['ASSISTED%', 'The share of their baskets in a zone that came off a pass. Coloured the other way round: a low share (green) means they create their own shots there.'],
+        ['HALF-COURT FIGURES', 'Leave out fast breaks, second chances and shots off turnovers: how they do against a set defence.'],
+        ['SHOT MIX', 'Where there is no Synergy file: bar length is how often they shoot from the rim, mid-range or three, the solid part how often it goes in.'],
+        ['± (ON/OFF)', 'The team’s figure with them on the floor minus with them off it. Noisy for a player with few minutes.'],
+        ['THE CORNER COURT', 'Orange: they shoot better than break-even from that zone. Blue: worse. Grey: too few shots.']]));
       return out;
     }
   };

@@ -99,46 +99,46 @@ const STATS = {
 
 /* what each one means, for the legend: statinfo.js has most of them; these are the ones it does not */
 const DEFS = {
-  gp: ['Games played', 'Games in which he played a minute.'],
-  orapm: ['Offensive RAPM', 'Regularised adjusted plus-minus, offence: points per 100 possessions he adds to his team’s offence once every teammate and opponent on the floor is accounted for (ridge regression over every stint of the league’s season).'],
-  drapm: ['Defensive RAPM', 'The same regression’s defensive coefficient: points per 100 possessions he takes off the opponent’s offence. Higher is better.'],
+  gp: ['Games played', 'Games in which they played a minute.'],
+  orapm: ['Offensive RAPM', 'Regularised adjusted plus-minus, offence: points per 100 possessions they add to their team’s offence once every teammate and opponent on the floor is accounted for (ridge regression over every stint of the league’s season).'],
+  drapm: ['Defensive RAPM', 'The same regression’s defensive coefficient: points per 100 possessions they take off the opponent’s offence. Higher is better.'],
   rapm: ['RAPM', 'Offensive plus defensive RAPM.'],
-  hc_ast_pct: ['Half-court assist %', 'Of his teammates’ baskets in the half court while he was on the floor (not a second chance, a fast break or off a turnover), the share he assisted: how much of the set offence he creates. Worked out from every game’s play-by-play in the competition; blank under 10 such baskets.'],
-  tr_ast_pct: ['Transition assist %', 'Of his teammates’ baskets in transition while he was on the floor (a fast break, or within eight seconds of a defensive rebound or a steal), the share he assisted.'],
-  ast3_sh: ['Assists that were threes', 'Of the baskets he assisted, the share that were three-pointers (points off his assists minus two per assist).'],
-  ast2_sh: ['Assists that were twos', 'Of the baskets he assisted, the share that were two-pointers.'],
-  pf_pg: ['Fouls conceded a game', 'Personal fouls he commits per game. Fewer is better.'],
-  syn_fu_efg: ['Attacked face-up eFG% (Synergy)', 'What his man shot (effective field-goal %) when he was attacked face-up: every defensive isolation, and every drive at him (left, right or straight) outside one, from his Synergy file. Lower is better; drawn against the break-even 52.5%.'],
-  drv_rim_fg: ['Drive left / right, rim FG% (Synergy)', 'His field-goal percentage at the rim (to the basket) on drives going left, then right, from his Synergy file; each tinted against his rim FG% on drives in all directions (green above it, red below).'],
-  drv_rim_att: ['Drive left / right, rim attempts % (Synergy)', 'Of his shots on drives going left, then right, the share at the rim.'],
-  drv_mid_fg: ['Drive left / right, mid-range FG% (Synergy)', 'His field-goal percentage on pull-up twos (dribble jumpers short of the arc) going left, then right; each tinted against his pull-up two FG% on drives in all directions.'],
-  drv_mid_att: ['Drive left / right, mid-range attempts % (Synergy)', 'Of his shots on drives going left, then right, the share that were pull-up twos.'],
-  drv_3_fg: ['Drive left / right, 3FG% (Synergy)', 'His three-point percentage on pull-up threes going left, then right; each tinted against his pull-up three FG% on drives in all directions.'],
-  drv_3_att: ['Drive left / right, three attempts % (Synergy)', 'Of his shots on drives going left, then right, the share that were pull-up threes.'],
-  syn_post_efg: ['Post-D eFG% (Synergy)', 'What his man shot (effective field-goal %) posting him up: every defensive post-up in his Synergy file. Lower is better; drawn against the break-even 52.5%.'],
+  hc_ast_pct: ['Half-court assist %', 'Of their teammates’ baskets in the half court while they were on the floor (not a second chance, a fast break or off a turnover), the share they assisted: how much of the set offence they create. Worked out from every game’s play-by-play in the competition; blank under 10 such baskets.'],
+  tr_ast_pct: ['Transition assist %', 'Of their teammates’ baskets in transition while they were on the floor (a fast break, or within eight seconds of a defensive rebound or a steal), the share they assisted.'],
+  ast3_sh: ['Assists that were threes', 'Of the baskets they assisted, the share that were three-pointers (points off their assists minus two per assist).'],
+  ast2_sh: ['Assists that were twos', 'Of the baskets they assisted, the share that were two-pointers.'],
+  pf_pg: ['Fouls conceded a game', 'Personal fouls they commit per game. Fewer is better.'],
+  syn_fu_efg: ['Attacked face-up eFG% (Synergy)', 'What the player guarding them shot (effective field-goal %) when they were attacked face-up: every defensive isolation, and every drive at them (left, right or straight) outside one, from their Synergy file. Lower is better; drawn against the break-even 52.5%.'],
+  drv_rim_fg: ['Drive left / right, rim FG% (Synergy)', 'Their field-goal percentage at the rim (to the basket) on drives going left, then right, from their Synergy file; each tinted against their rim FG% on drives in all directions (green above it, red below).'],
+  drv_rim_att: ['Drive left / right, rim attempts % (Synergy)', 'Of their shots on drives going left, then right, the share at the rim.'],
+  drv_mid_fg: ['Drive left / right, mid-range FG% (Synergy)', 'Their field-goal percentage on pull-up twos (dribble jumpers short of the arc) going left, then right; each tinted against their pull-up two FG% on drives in all directions.'],
+  drv_mid_att: ['Drive left / right, mid-range attempts % (Synergy)', 'Of their shots on drives going left, then right, the share that were pull-up twos.'],
+  drv_3_fg: ['Drive left / right, 3FG% (Synergy)', 'Their three-point percentage on pull-up threes going left, then right; each tinted against their pull-up three FG% on drives in all directions.'],
+  drv_3_att: ['Drive left / right, three attempts % (Synergy)', 'Of their shots on drives going left, then right, the share that were pull-up threes.'],
+  syn_post_efg: ['Post-D eFG% (Synergy)', 'What the player guarding them shot (effective field-goal %) posting them up: every defensive post-up in their Synergy file. Lower is better; drawn against the break-even 52.5%.'],
   badpass_pg: ['Bad-pass turnovers a game', 'Turnovers the feed typed as a bad pass, per game; only leagues whose feed types its turnovers have them.'],
   handle_pg: ['Dribble turnovers a game', 'Turnovers the feed typed as a ball-handling error (travelling, a lost dribble, a carry), per game.'],
-  ev_transition_pts_sh: ['Transition share of points', 'The share of his points scored in transition: within eight seconds of a defensive rebound or a steal, or tagged a fast break.'],
-  ev_half_usg: ['Half-court usage', 'Of his team’s half-court chances while he was on the floor (not a second chance, a fast break, off a turnover or after a timeout), the share he ended himself: a shot, a trip to the line or a turnover, counted as USG% counts them. Blank under 10 such chances.'],
-  ev_transition_rim_a100: ['Transition rim volume', 'Shots at the rim in transition (a fast break, or within eight seconds of a defensive rebound or a steal) per 100 of his team’s possessions while he is on the floor.'],
-  ev_transition_rim_pct: ['Transition rim %', 'Field-goal percentage on his shots at the rim in transition.'],
-  rim_half_sh: ['Rim attempts in the half court', 'Of his shots at the rim, the share taken in the half court (not a second chance, a fast break, off a turnover or after a timeout): how much of his work at the rim comes against a set defence.'],
-  ev_half_rim_pct: ['Half-court rim %', 'Field-goal percentage on his shots at the rim in the half court.'],
+  ev_transition_pts_sh: ['Transition share of points', 'The share of their points scored in transition: within eight seconds of a defensive rebound or a steal, or tagged a fast break.'],
+  ev_half_usg: ['Half-court usage', 'Of their team’s half-court chances while they were on the floor (not a second chance, a fast break, off a turnover or after a timeout), the share they ended themselves: a shot, a trip to the line or a turnover, counted as USG% counts them. Blank under 10 such chances.'],
+  ev_transition_rim_a100: ['Transition rim volume', 'Shots at the rim in transition (a fast break, or within eight seconds of a defensive rebound or a steal) per 100 of their team’s possessions while they are on the floor.'],
+  ev_transition_rim_pct: ['Transition rim %', 'Field-goal percentage on their shots at the rim in transition.'],
+  rim_half_sh: ['Rim attempts in the half court', 'Of their shots at the rim, the share taken in the half court (not a second chance, a fast break, off a turnover or after a timeout): how much of their work at the rim comes against a set defence.'],
+  ev_half_rim_pct: ['Half-court rim %', 'Field-goal percentage on their shots at the rim in the half court.'],
   ev_half_efg: ['Half-court eFG%', 'Effective field-goal percentage on chances that were not a second chance, a fast break, off a turnover or after a timeout.'],
   ev_half_tov_pct: ['Half-court turnover %', 'Turnovers per half-court chance. Lower is better.'],
   ev_half_ppp: ['Half-court points per chance', 'Points scored per half-court chance (a trip that ends in a shot, a turnover or free throws).'],
   ev_transition_ppp: ['Transition points per chance', 'Points scored per transition chance.'],
-  rim_a100: ['Rim volume', 'Shots at the rim per 100 of his team’s possessions while he is on the floor.'],
-  mid_a100: ['Mid-range volume', 'Mid-range shots per 100 of his team’s possessions while he is on the floor.'],
-  p3_a100: ['Three-point volume', 'Three-point attempts per 100 of his team’s possessions while he is on the floor.'],
-  ev_rim_astp: ['Rim assisted %', 'Of his makes at the rim, the share that came off a pass.'],
-  ev_mid_astp: ['Mid-range assisted %', 'Of his mid-range makes, the share that came off a pass.'],
-  ev_p3_astp: ['Three-point assisted %', 'Of his made threes, the share that came off a pass.'],
-  diff_efg: ['Team eFG% on/off', 'His team’s effective field-goal percentage with him on the floor minus with him off it.'],
-  diff_tov: ['Team turnover % on/off', 'His team’s turnover percentage with him on minus off. Lower is better.'],
-  diff_oreb: ['Team offensive rebounding on/off', 'His team’s offensive rebound percentage with him on minus off.'],
-  diff_vs_efg: ['Defensive team eFG% on/off', 'The opponents’ effective field-goal percentage with him on the floor minus with him off it. Lower (negative) is better.'],
-  diff_vs_oreb: ['Defensive offensive rebounding on/off', 'The opponents’ offensive rebound percentage with him on minus off. Lower is better.']
+  rim_a100: ['Rim volume', 'Shots at the rim per 100 of their team’s possessions while they are on the floor.'],
+  mid_a100: ['Mid-range volume', 'Mid-range shots per 100 of their team’s possessions while they are on the floor.'],
+  p3_a100: ['Three-point volume', 'Three-point attempts per 100 of their team’s possessions while they are on the floor.'],
+  ev_rim_astp: ['Rim assisted %', 'Of their makes at the rim, the share that came off a pass.'],
+  ev_mid_astp: ['Mid-range assisted %', 'Of their mid-range makes, the share that came off a pass.'],
+  ev_p3_astp: ['Three-point assisted %', 'Of their made threes, the share that came off a pass.'],
+  diff_efg: ['Team eFG% on/off', 'Their team’s effective field-goal percentage with them on the floor minus with them off it.'],
+  diff_tov: ['Team turnover % on/off', 'Their team’s turnover percentage with them on minus off. Lower is better.'],
+  diff_oreb: ['Team offensive rebounding on/off', 'Their team’s offensive rebound percentage with them on minus off.'],
+  diff_vs_efg: ['Defensive team eFG% on/off', 'The opponents’ effective field-goal percentage with them on the floor minus with them off it. Lower (negative) is better.'],
+  diff_vs_oreb: ['Defensive offensive rebounding on/off', 'The opponents’ offensive rebound percentage with them on minus off. Lower is better.']
 };
 function defOf(k, kind) {
   const s = STATS[k] || null;
@@ -153,29 +153,29 @@ function defOf(k, kind) {
 /* WHY YOU WOULD LOOK AT IT (the legend's third line): a coach's reason in a short sentence, for the figures statinfo.js does not carry
    and where its own reading is not the one a report wants. Keyed by stat key; a figure with none falls back on statinfo's "read". */
 const WHY = {
-  rapm: 'The closest single number to “does the team do better with him on the floor”, once teammates and opponents are allowed for.',
-  orapm: 'Separates what he adds on offence from what he gives back on defence.',
+  rapm: 'The closest single number to “does the team do better with them on the floor”, once teammates and opponents are allowed for.',
+  orapm: 'Separates what they add on offence from what they give back on defence.',
   drapm: 'Defence is hard to see in a box score; this is the best public attempt to measure it.',
   hc_ast_pct: 'Passing in a set offence is a skill; fast-break assists are partly luck and pace.',
   ast3_sh: 'A passer whose assists are threes is stretching the floor; one whose assists are twos is feeding the paint.',
-  ast2_sh: 'The other side of the same split: how often his passes create a two.',
-  rim_half_sh: 'Does his rim scoring come in the half court (against a set defence) or only in transition?',
-  ev_rim_astp: 'Coloured the other way round: a LOW share (he creates his own rim shots) is green, a high one (he needs a pass) is red.',
-  ev_mid_astp: 'Coloured the other way round: a low share (he makes his own mid-range shots) is green, a high one (he needs a pass) is red.',
-  ev_p3_astp: 'Coloured the other way round: a low share (threes he creates off the dribble) is green, a high one (spot-up threes) is red.',
-  diff_efg: 'Does the team shoot better with him on the floor?',
-  diff_tov: 'Does the team turn the ball over less with him on the floor?',
-  diff_oreb: 'Does the team win more of its own misses with him on the floor?',
-  diff_vs_efg: 'Do opponents shoot worse with him on the floor?',
-  diff_vs_oreb: 'Do opponents win fewer of their misses with him on the floor?',
-  syn_fu_efg: 'How well he defends when a player attacks him one-on-one.',
-  syn_post_efg: 'How well he defends the post.',
-  drv_rim_fg: 'Tells you which hand he finishes with, so you know which way to send him.',
-  drv_rim_att: 'Shows which direction he prefers to drive.',
-  drv_mid_fg: 'Shows which side his pull-up is better from.',
-  drv_mid_att: 'Shows how often he stops and shoots on a drive, each way.',
-  drv_3_fg: 'Shows which side his pull-up three is better from.',
-  drv_3_att: 'Shows how often he pulls up from three on a drive, each way.',
+  ast2_sh: 'The other side of the same split: how often their passes create a two.',
+  rim_half_sh: 'Does their rim scoring come in the half court (against a set defence) or only in transition?',
+  ev_rim_astp: 'Coloured the other way round: a LOW share (they create their own rim shots) is green, a high one (they need a pass) is red.',
+  ev_mid_astp: 'Coloured the other way round: a low share (they make their own mid-range shots) is green, a high one (they need a pass) is red.',
+  ev_p3_astp: 'Coloured the other way round: a low share (threes they create off the dribble) is green, a high one (spot-up threes) is red.',
+  diff_efg: 'Does the team shoot better with them on the floor?',
+  diff_tov: 'Does the team turn the ball over less with them on the floor?',
+  diff_oreb: 'Does the team win more of its own misses with them on the floor?',
+  diff_vs_efg: 'Do opponents shoot worse with them on the floor?',
+  diff_vs_oreb: 'Do opponents win fewer of their misses with them on the floor?',
+  syn_fu_efg: 'How well they defend when a player attacks them one-on-one.',
+  syn_post_efg: 'How well they defend the post.',
+  drv_rim_fg: 'Tells you which hand they finish with, so you know which way to send them.',
+  drv_rim_att: 'Shows which direction they prefer to drive.',
+  drv_mid_fg: 'Shows which side their pull-up is better from.',
+  drv_mid_att: 'Shows how often they stop and shoots on a drive, each way.',
+  drv_3_fg: 'Shows which side their pull-up three is better from.',
+  drv_3_att: 'Shows how often they pull up from three on a drive, each way.',
   tsa_for: 'More shooting attempts than the other side is the simplest way to win: the possessions are worth more.',
   tsa_vs: 'The same count for the opponents: how many chances the defence lets them have.',
   tsa_gap: 'The club’s edge in chances: a positive gap means it gets more shots than it gives.',
@@ -186,7 +186,7 @@ const WHY = {
   vs_bench_net: 'How the club does when the other side’s bench is on: where leads are built.',
   own_start_net: 'How the club does with its best players on the floor.',
   own_bench_net: 'How much the club gives back (or gains) when the bench plays.',
-  au: 'Shows whether a player makes teammates better (a high ratio) or mostly uses possessions himself (a low one).'
+  au: 'Shows whether a player makes teammates better (a high ratio) or mostly uses possessions themselves (a low one).'
 };
 
 /* THE DERIVED ONES, on any season row (a player's or every row of the field): his assists' split from points off them
@@ -785,7 +785,7 @@ function sitCardHTML(A, o) {
    bar. On a player's card it is the share of HIS baskets that were assisted, and says so. Nothing when nothing was made. */
 function sitAstHTML(A, opt) {
   if (!A || !A.fgm || A.astPct == null) return '';
-  const who = opt && opt.player ? 'his' : 'its';
+  const who = opt && opt.player ? 'their' : 'its';
   const kinds = [['rim', 'Rim'], ['mid', 'Mid-range'], ['three', 'Three']].map(([k, l]) => {
     const z = A.zones[k] || { m: 0, x: 0 }, p = z.m ? z.x / z.m : null;
     return '<li><span>' + l + '</span><i><em style="width:' + (p == null ? 0 : (100 * p).toFixed(1)) + '%"></em></i><b>' + (p == null ? '–' : Math.round(100 * p) + '%') + '</b><small>' + (z.x || 0) + '/' + (z.m || 0) + '</small></li>';
@@ -946,11 +946,11 @@ function legendBlocks(keys, extra, kind, pooled) {
     '<div><i data-b="5"></i><i data-b="6"></i><i data-b="7"></i><i data-b="8"></i><span><b>a style</b>: more is neither better nor worse, so it is ranked by most and drawn in blue to purple, deeper the more of it</span></div>' +
     '<div><i data-b="0"></i><span><b>not ranked</b>: too few to rank, or a figure the field does not carry</span></div></div>' +
     '<p class="rp-lg-p">A percentile says where the figure sits among the others in the same competition and season: the 80th is better than eight in ten. ' +
-    (kind === 'team' ? 'A club is ranked among the clubs; a player always among the players of his own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition. '
-      : 'A player is always ranked among the players of his own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition, and the average shown is theirs. ') +
+    (kind === 'team' ? 'A club is ranked among the clubs; a player always among the players of their own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition. '
+      : 'A player is always ranked among the players of their own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition, and the average shown is theirs. ') +
     (pooled ? esc(pooled) + ' ' : '') +
-    'Where smaller is better (turnovers, fouls, what an opponent did with him on the floor, and the share of a player’s or club’s shots that were ASSISTED: a shot you make for yourself is the harder one) the order is turned round, so a high percentile is always good. ' +
-    '± is with him (or the unit) on the floor minus off it. All rates are worked out from the season’s totals, never averaged from games.</p>'));
+    'Where smaller is better (turnovers, fouls, what an opponent did with them on the floor, and the share of a player’s or club’s shots that were ASSISTED: a shot you make for yourself is the harder one) the order is turned round, so a high percentile is always good. ' +
+    '± is with them (or the unit) on the floor minus off it. All rates are worked out from the season’s totals, never averaged from games.</p>'));
   const seen = new Set(), rows = [];
   keys.forEach(k => {
     if (seen.has(k)) return; seen.add(k);
@@ -1053,7 +1053,7 @@ function synergyControl(host, state, o) {
   lab.title = 'One or several of the scraper\u2019s CSV files at once (any number), each with one player or more';
   const inp = el('input'); inp.type = 'file'; inp.accept = '.csv,text/csv'; inp.multiple = true; inp.hidden = true;
   lab.appendChild(inp);
-  const say = el('span', null, 'Synergy play-type files, as many as you like: each player\u2019s drives left and right, and what his man shot at him');
+  const say = el('span', null, 'Synergy play-type files, as many as you like: each player\u2019s drives left and right, and what the player guarding them shot at them');
   const box = el('div', 'rp-syn-box'); box.hidden = true;
   row.append(el('span', 'rp-k', 'Synergy'), lab, say);
   host.append(row, box);
@@ -1102,7 +1102,7 @@ function synergyControl(host, state, o) {
       opt('', '\u2014 leave this file out \u2014');
       people.forEach(q => opt(String(q.id), q.name));
       sel.value = hit ? String(hit.person.id) : '';
-      const how = el('small', null, hit ? ({ name: 'same name', initial: 'same surname and initial: check it', only: 'this report\u2019s player: check it' }[hit.how] || '') : 'no match by name: pick him');
+      const how = el('small', null, hit ? ({ name: 'same name', initial: 'same surname and initial: check it', only: 'this report\u2019s player: check it' }[hit.how] || '') : 'no match by name: pick them');
       sel.onchange = () => { how.textContent = sel.value ? 'chosen by hand' : 'left out'; };
       line.append(nm, el('span', 'rp-syn-to', '\u2192'), sel, how);
       box.appendChild(line);
@@ -1180,7 +1180,7 @@ function driveChartHTML(prof, opt) {
     '<span class="r"><b>' + (o.compact ? 'Right' : 'Drives right') + ' \u25b6</b><small>' + cnt(Rt) + '</small></span></div>';
   const sw = c => '<i style="background:rgb(' + SYN_RGB[c].join(',') + ')"></i>';
   const key = o.compact ? '<p class="rp-drv-k">PPP colour: ' + sw('rim') + 'rim ' + sw('mid') + 'mid ' + sw('three') + '3</p>'
-    : '<p class="rp-drv-k">PPP in the colour of the shot each side leans on: ' + sw('rim') + 'at the rim, ' + sw('mid') + 'pull-up mid-range, ' + sw('three') + 'pull-up threes - the stronger the colour, the more one-sided. The dashed marks: his drives in all directions (PPP ' + (All && isNum(All.ppp) ? All.ppp.toFixed(2) : '\u2014') + ', eFG% ' + (All && isNum(All.efg) ? All.efg.toFixed(1) : '\u2014') + ', TO% ' + (All && isNum(All.toPct) ? All.toPct.toFixed(1) : '\u2014') + '). Left ' + leanWords(Lt) + '; right ' + leanWords(Rt) + '.</p>';
+    : '<p class="rp-drv-k">PPP in the colour of the shot each side leans on: ' + sw('rim') + 'at the rim, ' + sw('mid') + 'pull-up mid-range, ' + sw('three') + 'pull-up threes - the stronger the colour, the more one-sided. The dashed marks: their drives in all directions (PPP ' + (All && isNum(All.ppp) ? All.ppp.toFixed(2) : '\u2014') + ', eFG% ' + (All && isNum(All.efg) ? All.efg.toFixed(1) : '\u2014') + ', TO% ' + (All && isNum(All.toPct) ? All.toPct.toFixed(1) : '\u2014') + '). Left ' + leanWords(Lt) + '; right ' + leanWords(Rt) + '.</p>';
   return '<div class="rp-drv' + (o.compact ? ' cp' : '') + '">' + head + '<div class="rp-drv-b">' + body + '</div>' + key + '</div>';
 }
 /* EACH SIDE'S SHOTS ON THE DRIVE: FG% and share of the attempts at the rim, mid-range and from three, left and right; the FG%
@@ -1231,7 +1231,7 @@ function shotMixHTML(r) {
     return '<div class="rp-mx-r"><span>' + l + '</span><div class="rp-mx-t"><div style="width:' + Math.max(4, 100 * vol[i] / top).toFixed(1) + '%"><i style="width:' + (pv == null ? 0 : pv).toFixed(1) + '%"></i></div></div>' +
       '<b>' + Math.round(sh) + '%<small>' + (pv == null || !vol[i] ? '—' : Math.round(pv) + '%') + '</small></b></div>';
   }).join('');
-  return '<div class="rp-mx"><h6>SHOT MIX</h6>' + rows + '<p>bar: how often he shoots there · solid: how often it goes in</p></div>';
+  return '<div class="rp-mx"><h6>SHOT MIX</h6>' + rows + '<p>bar: how often they shoot there · solid: how often it goes in</p></div>';
 }
 
 /* A KEY IN A GAP OF A PAGE (2026-10-04): a short boxed explanation of the harder figures on it, for the reader who does not live in
@@ -1725,7 +1725,7 @@ function ui(state) {
       const n = pages.querySelectorAll('.rp-pg').length;
       /* a player report is never one page (the cover alone means its data did not arrive): said, and not stored for sending */
       const thin = o.kind === 'player' && n < 2;
-      results.push({ ok: n > 0 && !thin, text: n ? n + (n === 1 ? ' page' : ' pages') + ' built' + (thin ? ' — the cover alone: his numbers had not loaded, so it was NOT stored; prime it again' : '') : 'no pages were built' });
+      results.push({ ok: n > 0 && !thin, text: n ? n + (n === 1 ? ' page' : ' pages') + ' built' + (thin ? ' — the cover alone: their numbers had not loaded, so it was NOT stored; prime it again' : '') : 'no pages were built' });
       if (dl && !thin && n > 0) results.push(await storeForSending());
       primedSay(results);
     } finally { state.primed = 'done'; state.priming = false; bPrime.disabled = false; root.__rpBusy = Math.max(0, (root.__rpBusy || 1) - 1); }

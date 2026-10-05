@@ -1616,7 +1616,7 @@ function sectionPlayers(g, fs, R) {
       return (rest.length ? first + ' and ' + list(rest) : first) + ' for ' + club(grp.t);
     });
     const solo = support.length === 1 && aboveAverage(support[0].p);
-    out.push(joinClauses(clauses) + (solo ? ', well up on his usual.' : '.'));
+    out.push(joinClauses(clauses) + (solo ? ', well up on their usual.' : '.'));
   }
 
   /* ---- the specialists -------------------------------------------------- */

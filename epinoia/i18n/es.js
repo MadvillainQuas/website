@@ -1190,7 +1190,7 @@
       'points per game in this situation': 'Puntos por partido en esta situación',
       'points per game allowed in this situation': 'Puntos permitidos por partido en esta situación',
       'share of the team’s points': 'Porcentaje de los puntos del equipo',
-      'share of his points': 'Porcentaje de sus puntos',
+      'share of their points': 'Porcentaje de sus puntos',
       'share of allowed points': 'Porcentaje de los puntos permitidos',
       'no shots': 'Sin tiros',
       'of the attempts': 'de los intentos',

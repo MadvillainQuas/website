@@ -811,7 +811,7 @@ function factSeasonContext(g) {
     const diff = (p.pts || 0) - avg;
     if (diff >= Math.max(8, avg * 0.5)) {
       out.push(F('aboveSelf', p.team, 82, { p, avg, diff },
-        p.name + ' went well past his average'));
+        p.name + ' went well past their average'));
     } else if (avg >= 12 && diff <= -Math.max(8, avg * 0.5)) {
       out.push(F('belowSelf', p.team, 59, { p, avg, diff },
         p.name + ' was kept quiet'));
@@ -1037,7 +1037,7 @@ function factPlayerLines(g) {
   });
   if (best && best.n >= 9 && g.byId[best.pid]) {
     out.push(F('spree', best.team, 73, { p: g.byId[best.pid], n: best.n, period: best.period },
-      g.byId[best.pid].name + ' scored ' + best.n + ' straight for his side'));
+      g.byId[best.pid].name + ' scored ' + best.n + ' straight for their side'));
   }
   return out;
 }

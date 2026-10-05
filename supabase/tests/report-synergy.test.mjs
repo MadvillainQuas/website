@@ -120,7 +120,7 @@ console.log('\nAST% on a situation card');
   const h = E.sitCardHTML(A, { key: 'half' });
   ok('the card: 67% AST%, 4 of its 6 baskets, the rim 2/3, mid-range 0/1, three 2/2', /rp-sit-a1"><b>67%<\/b><span>AST%/.test(h) && /4 of its 6 baskets were assisted/.test(h) && /67%<\/b><small>2\/3/.test(h) && /100%<\/b><small>2\/2/.test(h), h.slice(h.indexOf('rp-sit-a'), h.indexOf('rp-sit-a') + 400));
   const p = E.sitCardHTML(A, { key: 'half', player: true });
-  ok('...on a player\'s own card it is HIS baskets, and says so', /<span>Assisted<\/span>/.test(p) && /4 of his 6 baskets/.test(p));
+  ok('...on a player\'s own card it is THEIR baskets, and says so', /<span>Assisted<\/span>/.test(p) && /4 of their 6 baskets/.test(p));
   ok('...nothing made, no panel', !/rp-sit-a/.test(E.sitCardHTML(Object.assign({}, A, { fgm: 0, astPct: null }), { key: 'half' })));
   const src = read('epinoia', 'situations.js');
   ok('situations.js marks each made shot assisted or not, and counts them by zone', /ast: astd/.test(src) && /b\.astd\+\+; b\.zones\[z\]\.x\+\+/.test(src) && /astPct: b\.fgm \? b\.astd \/ b\.fgm : null/.test(src));

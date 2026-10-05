@@ -257,7 +257,7 @@ const OO_ROWS = OO_GROUPS.flatMap(g => g[3]);
 /* a net rating's band: 4 five or more to the good, 3 to the good, 2 behind, 1 five or more behind */
 const netBand = v => (v == null ? 0 : v >= 5 ? 4 : v >= 0 ? 3 : v > -5 ? 2 : 1);
 /* the swing's verdict: within two points of even it is the same team */
-const SWING = [[6, 4, 'much better with him on'], [2, 3, 'better with him on'], [-2, 0, 'about the same either way'], [-6, 2, 'worse with him on'], [-Infinity, 1, 'much worse with him on']];
+const SWING = [[6, 4, 'much better with them on'], [2, 3, 'better with them on'], [-2, 0, 'about the same either way'], [-6, 2, 'worse with them on'], [-Infinity, 1, 'much worse with them on']];
 function onOffTiles(host, stints, playerId) {
   const L = window.EpinoiaLineups;
   const h = typeof host === 'string' ? document.querySelector(host) : host;
@@ -320,7 +320,7 @@ function onOffTiles(host, stints, playerId) {
   [['4', 'much better'], ['3', 'better'], ['2', 'worse'], ['1', 'much worse'], ['9', 'a style']].forEach(([b, t]) => {
     const c = el('span', 'oo-c', t); c.setAttribute('data-b', b); key.appendChild(c);
   });
-  key.appendChild(el('span', 'oo-kt', 'for the team with him on the floor'));
+  key.appendChild(el('span', 'oo-kt', 'for the team with them on the floor'));
   card.appendChild(key);
   card.appendChild(el('div', 'oo-note', 'the team\u2019s numbers in the minutes this player was on the floor and the minutes off it \u00b7 the better of the two figures is green and the worse red, ' +
     'the right way round where less is better (a defensive rating, a turnover rate and what the opponents did) \u00b7 a gap of half its scale or more is a deep green or red'));

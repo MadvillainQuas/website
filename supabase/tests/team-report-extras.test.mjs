@@ -139,7 +139,7 @@ console.log('\nthe report\'s wiring');
 {
   const src = read('epinoia', 'report-teampages.js'), css = read('epinoia', 'kit', 'teamviz.css');
   ok('the cover asks for every player\'s minutes at each position and names the five through fiveOf; the note says what it does',
-     /const d = await ctx\.depth\(true\);/.test(src) && /names = V\.fiveOf\(d\.c\.slots\)\.map\(p => \(p \? surname\(p\.name\) : ''\)\)/.test(src) && /A player who leads two positions is named once, at the one he plays most/.test(src));
+     /const d = await ctx\.depth\(true\);/.test(src) && /names = V\.fiveOf\(d\.c\.slots\)\.map\(p => \(p \? surname\(p\.name\) : ''\)\)/.test(src) && /A player who leads two positions is named once, at the one they play most/.test(src));
   ok('every club\'s true shots are worked out with the rest of its derived figures (so the club has a place among them)', /V0\.tsaOf\(r\)/.test(src) && /r\.tsa_for = t\.own; r\.tsa_vs = t\.vs; r\.tsa_gap = t\.gap;/.test(src));
   ok('...the three are statistics of the report: more is better, fewer allowed is better, the gap is signed; each defined for the legend',
      /tsa_for: \{ l: 'TSA A GAME', dp: 1 \}, tsa_vs: \{ l: 'TSA ALLOWED A GAME', dp: 1, low: true \}, tsa_gap: \{ l: 'TRUE SHOTS GAP', dp: 1, signed: true \}/.test(src) &&

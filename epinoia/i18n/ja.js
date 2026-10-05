@@ -1188,7 +1188,7 @@
       'points per game in this situation': 'この状況での1試合平均得点',
       'points per game allowed in this situation': 'この状況での1試合平均失点',
       'share of the team’s points': 'チーム得点に占める割合',
-      'share of his points': '本人の得点に占める割合',
+      'share of their points': '本人の得点に占める割合',
       'share of allowed points': '失点に占める割合',
       'no shots': 'シュートなし',
       'of the attempts': '試投比',

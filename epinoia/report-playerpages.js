@@ -44,7 +44,7 @@ function modules(ctx) {
       if (P && P.pct) {
         group = E.posGroup(P.pct, c.listedPos);
         const k = P.pct.indexOf(Math.max(...P.pct));
-        main = NAMES[k] + ' (' + Math.round(P.pct[k]) + '% of his minutes)';
+        main = NAMES[k] + ' (' + Math.round(P.pct[k]) + '% of their minutes)';
       }
       const B = await Promise.resolve(ctx.bars ? ctx.bars() : null).catch(() => null);
       const m = B && B.mine;
@@ -110,7 +110,7 @@ function modules(ctx) {
       /* every percentile among the players of his position (report.js posRanker), his own average theirs */
       /* the field to rank in: this season's players and the league's other seasons' (report.js loadPrior), each season one more entry */
       const poolField = field.concat(E.priorRows(B.prior, P => P.players));
-      if (poolField.length > field.length) R.pooled = 'Every figure is ranked against all ' + ((B.prior || []).length + 1) + ' seasons of the league with data (each player’s season is one entry), among players of his own position, not only the season shown. A stat an earlier season did not record is ranked within the season shown.';
+      if (poolField.length > field.length) R.pooled = 'Every figure is ranked against all ' + ((B.prior || []).length + 1) + ' seasons of the league with data (each player’s season is one entry), among players of their own position, not only the season shown. A stat an earlier season did not record is ranked within the season shown.';
       const pools = E.posPools(poolField);
       const Rk = E.posRanker(poolField, keys, group, mine.id, pools);
       R.legend.push(...keys.filter(k => !(E.STATS[k] && E.STATS[k].optional) || (E.hasStat ? E.hasStat(k, mine) : E.isNum(mine[k]))));
@@ -126,14 +126,14 @@ function modules(ctx) {
       out.push(block(E.colsHTML(E.groupsOn ? E.groupsOn(groups, mine) : groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + E.groupRowsHTML(ks, mine, Rk) + '</div>',
         ([, ks]) => E.groupWeight(ks)) +
         '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' ' + Rk.who + ' of ' + (c.scope || 'the competition') +
-          ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of his own' : ': too few players of his position to rank him among them alone, so against everybody') +
+          ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of their own' : ': too few players of their position to rank that player among them alone, so against everybody') +
           '. Template: ' + templateName(R.state, group) + '.') + '</p>' + E.keyHTML('Reading the player’s numbers', [
-          ['THE BAR · THE ORDINAL', 'Where he sits among players of his own position in the field named above: 80th means better than eight in ten of them. Green is the top quarter, red the bottom; blue-to-purple bars are styles, deeper = more of it.'],
-          ['ASSIST TO USAGE RATIO', 'His assist rate against his usage: how much he creates for others per possession he uses himself.'],
-          ['VOL / 100', 'Shots from that zone per 100 of the team’s possessions while he is on the floor: where he shoots, not how well.'],
-          ['ASSISTED%', 'The share of his baskets in a zone that came off a pass. Coloured the other way round: a low share (green) means he creates his own shots there.'],
-          ['HALF-COURT FIGURES', 'Leave out fast breaks, second chances and shots off turnovers: how he does against a set defence.'],
-          ['± (ON/OFF)', 'The team’s figure with him on the floor minus with him off it. Noisy for a player with few minutes.']], 'one')));
+          ['THE BAR · THE ORDINAL', 'Where they sit among players of their own position in the field named above: 80th means better than eight in ten of them. Green is the top quarter, red the bottom; blue-to-purple bars are styles, deeper = more of it.'],
+          ['ASSIST TO USAGE RATIO', 'Their assist rate against their usage: how much they create for others per possession they use themselves.'],
+          ['VOL / 100', 'Shots from that zone per 100 of the team’s possessions while they are on the floor: where they shoot, not how well.'],
+          ['ASSISTED%', 'The share of their baskets in a zone that came off a pass. Coloured the other way round: a low share (green) means they create their own shots there.'],
+          ['HALF-COURT FIGURES', 'Leave out fast breaks, second chances and shots off turnovers: how they do against a set defence.'],
+          ['± (ON/OFF)', 'The team’s figure with them on the floor minus with them off it. Noisy for a player with few minutes.']], 'one')));
       return out;
     }
   };
@@ -163,7 +163,7 @@ function modules(ctx) {
       };
       const made = S.shots.filter(x => x.made).length;
       const out = [];
-      out.push(block(title('Where he shoots', S.shots.length + ' located shots · ' + made + ' made · ' + S.games + ' games') +
+      out.push(block(title('Where they shoot', S.shots.length + ' located shots · ' + made + ' made · ' + S.games + ' games') +
         '<div class="rp-two"><div><div class="rp-cap">Zones<span>tinted against each zone’s break-even</span></div>' + court('zones') + '</div>' +
         '<div><div class="rp-cap">Every shot<span>made ● missed ×</span></div>' + court('shots') + '</div></div>' +
         '<div class="rp-cap" style="margin-top:10px">Shot zones</div>' + E.zoneColumnsHTML(S.shots, S.games)));
@@ -172,8 +172,8 @@ function modules(ctx) {
         const B = ctx.bars ? await ctx.bars().catch(() => null) : null;
         const prof = B && B.mine ? await synOf(B.mine.id) : null;
         const ch = prof && E.driveChartHTML ? E.driveChartHTML(prof) : '';
-        if (ch) out.push(block(title('Direction', 'his drives, left and right') +
-          '<div class="rp-two rp-dir"><div><div class="rp-cap">Left against right<span>PPP, share of his possessions, eFG%, TO%</span></div>' + ch + '</div>' +
+        if (ch) out.push(block(title('Direction', 'their drives, left and right') +
+          '<div class="rp-two rp-dir"><div><div class="rp-cap">Left against right<span>PPP, share of their possessions, eFG%, TO%</span></div>' + ch + '</div>' +
           '<div><div class="rp-cap">Where the drives end<span>% of each side\u2019s shots</span></div>' + E.directionMixHTML(prof) + '</div></div>'));
       } catch (e) { if (root.console) root.console.warn('[report direction]', e); }
       try {
@@ -182,7 +182,7 @@ function modules(ctx) {
           const games = Object.keys(F.logs).filter(id => F.sideOf[id] != null).map(id => ({ events: F.logs[id], side: F.sideOf[id], pid: F.playerId }));
           const A = E.sitSeason(games);
           if (A.half.fga || A.transition.fga) {
-            out.push(block(title('Half court and transition', 'his shots in each, the club’s last ' + games.length + ' games') +
+            out.push(block(title('Half court and transition', 'their shots in each, the club’s last ' + games.length + ' games') +
               E.sitCardHTML(A.half, { key: 'half', colour, player: true, who: c.name })));
             out.push(block(E.sitCardHTML(A.transition, { key: 'transition', colour: '#b4572e', player: true, who: c.name })));
           }
@@ -205,7 +205,7 @@ function modules(ctx) {
       const out = [];
       const oo = E.el('div');
       WY.onOffTiles(oo, F.stints, F.playerId);
-      out.push(block(title('The team with him on and off', 'net, offensive and defensive rating per 100 possessions') + oo.innerHTML));
+      out.push(block(title('The team with them on and off', 'net, offensive and defensive rating per 100 possessions') + oo.innerHTML));
       /* his own line over these games (the panel with no teammate picked) */
       if (W && W.split) {
         try {
@@ -240,7 +240,7 @@ function modules(ctx) {
               return '<div class="rp-tile"' + (b ? ' data-b="' + b + '"' : '') + '><b>' + f1(v) + '</b><span>' + k + '</span>' +
                 (p == null ? '' : '<span class="rp-rk" data-b="' + b + '">' + (how === 'style' ? E.ordinal(Math.max(1, Math.round((100 - p) / 100 * pool.length))) + ' most' : E.ordinal(p)) + '</span>') + '</div>';
             };
-            out.push(block(title('His own numbers', 'per 36 minutes, over the games these lineups come from · coloured by his place among ' + pool.length + ' ' +
+            out.push(block(title('Their own numbers', 'per 36 minutes, over the games these lineups come from · coloured by their place among ' + pool.length + ' ' +
               (pool === same ? (E.POS_PLURAL[grp] || 'players') : 'players') + ' (10+ minutes a game)') +
               '<div class="rp-tiles rp-tiles-b" style="--n:' + cells.length + '">' + cells.map(tile).join('') + '</div>'));
           }
@@ -252,17 +252,17 @@ function modules(ctx) {
         const meta = F.meta || {};
         const nm = id => (meta[id] && meta[id].name) || 'Player';
         const f1 = v => (v == null ? '—' : ((+v > 0 ? '+' : '') + (+v).toFixed(1)));
-        const tbl = (rows, cap, cls) => '<div><div class="rp-cap ' + (cls || '') + '">' + cap + '</div><table class="rp-tbl"><thead><tr><th class="l">with</th><th>min</th><th>net both on</th><th>net him only</th><th>swing</th></tr></thead><tbody>' +
+        const tbl = (rows, cap, cls) => '<div><div class="rp-cap ' + (cls || '') + '">' + cap + '</div><table class="rp-tbl"><thead><tr><th class="l">with</th><th>min</th><th>net both on</th><th>net them only</th><th>swing</th></tr></thead><tbody>' +
           (rows.length ? rows.map(p => '<tr><td class="l">' + esc(nm(p.id)) + '</td><td>' + Math.round(p.withMate.mins) + '</td>' +
             '<td data-b="' + E.bandVs(p.withMate.net, 0, 6) + '">' + f1(p.withMate.net) + '</td><td data-b="' + E.bandVs(p.withoutMate.net, 0, 6) + '">' + f1(p.withoutMate.net) +
             '</td><td class="rp-netc" data-b="' + E.bandVs(p.swing, 0, 6) + '">' + f1(p.swing) + '</td></tr>').join('') :
             '<tr><td class="l" colspan="5">Not enough shared minutes yet (20 or more).</td></tr>') + '</tbody></table></div>';
         const best = all.slice(0, 3), worst = all.slice(-3).reverse().filter(p => best.indexOf(p) < 0);
-        out.push(block(title('Pairings', 'teammates he shared 20+ minutes with · green: the team outscores opponents, red: it is outscored') + '<div class="rp-two">' + tbl(best, 'Best three', 'good') + tbl(worst, 'Worst three', 'bad') + '</div>' +
-          '<p class="rp-note">Swing: the team’s net rating with both of them on the floor minus with him on and that teammate off. Positive means the team is better when the two play together.</p>'));
+        out.push(block(title('Pairings', 'teammates they shared 20+ minutes with · green: the team outscores opponents, red: it is outscored') + '<div class="rp-two">' + tbl(best, 'Best three', 'good') + tbl(worst, 'Worst three', 'bad') + '</div>' +
+          '<p class="rp-note">Swing: the team’s net rating with both of them on the floor minus with them on and that teammate off. Positive means the team is better when the two play together.</p>'));
         R.legendExtra.push(['SWING', 'The team’s net rating with both players on the floor minus with this player on and the teammate off, per 100 possessions.'],
           ['NET / ORTG / DRTG', 'Points scored minus allowed, points scored, and points allowed, each per 100 possessions.'],
-          ['ON / OFF', 'The team’s numbers in the minutes he was on the floor against the minutes he was off it.']);
+          ['ON / OFF', 'The team’s numbers in the minutes they were on the floor against the minutes they were off it.']);
       }
       return out;
     }
