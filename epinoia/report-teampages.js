@@ -36,9 +36,10 @@
 /* the club's season line, as report.js's catalogue reads it (added once). ref: a figure no other club has, drawn against
    the club's own (vs_* and own_* against its ratings over every minute; the half court's assisted share against all its
    baskets'); sc: the step, in the stat's units, from better to much better */
-/* judged against the LEAGUE'S mark for that rating (the average of the field's net, offensive or defensive rating: lg_net, lg_ortg, lg_drtg on the
-   club's row), not against the club's own: a unit is good or poor by the standard of the league */
-const SPLIT = (l, ref, low) => ({ l, dp: 1, signed: ref === 'net', low: !!low, rank: false, ref: 'lg_' + ref, refL: 'league', sc: 4 });
+/* A UNIT'S RATING (starters, bench, against either) is drawn as every other row is: a bar from the left, how far along the league's range it
+   sits, and its place. The field is the league's clubs' own season ratings of that kind (net, offence, defence): a unit is placed among
+   them as if it were a club, which is the mark the tiles above are judged by. Worked out in main's build (splitFor). */
+const SPLIT = (l, ref, low) => ({ l, dp: 1, signed: ref === 'net', low: !!low });
 const TEAM_STATS = {
   ff_efg: { l: 'eFG%', dp: 1 }, ff_tov: { l: 'TOV%', dp: 1, low: true }, ff_oreb: { l: 'OREB%', dp: 1 }, ff_ftr: { l: 'FTr', dp: 1 },
   dff_efg: { l: 'OPP eFG%', dp: 1, low: true }, dff_tov: { l: 'OPP TOV%', dp: 1 }, dff_oreb: { l: 'OPP OREB%', dp: 1, low: true }, dff_ftr: { l: 'OPP FTr', dp: 1, low: true },
@@ -114,10 +115,10 @@ const TEAM_DEFS = {
   ev_transition_pts_sh: ['Transition share of points', 'The share of the club’s points scored in transition.'],
   tr_def_delta: ['Transition points given up against the opponents’ own average', 'Transition points a game opponents scored against the club, minus what the same opponents average in transition over the season. Below zero, the club gives up fewer than those opponents usually score.'],
   ev_transition_ppp: ['Transition points per chance', 'Points per transition chance.'], evd_transition_ppp: ['Opponents’ transition points per chance', 'Lower is better.'],
-  vs_start_net: ['Against the starters', 'Net, offensive and defensive rating in the minutes the other side had four or more of its regular starters on (a regular starter: ten starts or more in the scope, or that game’s starters). The bar is drawn against the league’s average for that rating: green to the right is better than the league, red to the left worse.'],
-  vs_bench_net: ['Against the bench', 'The same ratings in every other minute, drawn against the league’s average.'],
-  own_start_net: ['Our starters', 'Net, offensive and defensive rating in the minutes the club had four or more of its own regular starters on (the five who started most when fewer than five have ten starts), against the league’s average.'],
-  own_bench_net: ['Our bench', 'The same ratings in every other minute of the club’s, against the league’s average.'],
+  vs_start_net: ['Against the starters', 'Net, offensive and defensive rating in the minutes the other side had four or more of its regular starters on (a regular starter: ten starts or more in the scope, or that game’s starters). The bar is where that rating would sit among the league’s clubs (net, offence or defence over the season): the fuller and the greener, the better.'],
+  vs_bench_net: ['Against the bench', 'The same ratings in every other minute, placed among the league’s clubs.'],
+  own_start_net: ['Our starters', 'Net, offensive and defensive rating in the minutes the club had four or more of its own regular starters on (the five who started most when fewer than five have ten starts), placed among the league’s clubs.'],
+  own_bench_net: ['Our bench', 'The same ratings in every other minute of the club’s, placed among the league’s clubs.'],
   vs_start_ortg: ['Against the starters: offence', 'Points scored per 100 possessions against the other side’s starters.'],
   vs_start_drtg: ['Against the starters: defence', 'Points allowed per 100 possessions against the other side’s starters. Lower is better.'],
   vs_bench_ortg: ['Against the bench: offence', 'Points scored per 100 possessions against the other side’s bench.'],
@@ -301,9 +302,19 @@ function modules(ctx) {
          (the shot zones, the half-court assists) is ranked among the season shown alone. */
       const priorTeams = E.priorRows(T.prior, P => P.teams, (rows, P) => deriveTeams(rows, P.games));
       if (priorTeams.length) { teams = teams.concat(priorTeams); R.pooled = 'Every figure is ranked against all ' + ((T.prior || []).length + 1) + ' seasons of the league with data (each club’s season is one entry, ' + teams.length + ' in all), not only the season shown. A stat an earlier season did not record is ranked within the season shown.'; }
-      /* THE LEAGUE'S MARKS for the three ratings, on the clubs' rows: what starters and bench are judged against */
-      const mean = k => { const v = teams.map(r => +r[k]).filter(x => isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
-      [['lg_net', 'net'], ['lg_ortg', 'ortg'], ['lg_drtg', 'drtg']].forEach(([to, from]) => { const m = mean(from); [me, them].forEach(r => { if (r && m != null) r[to] = Math.round(10 * m) / 10; }); });
+      /* THE LEAGUE'S MARKS for the three ratings: the clubs' own season net, offensive and defensive ratings, among which a starting five or a
+         bench is placed (splitFor): its percentile (smaller is better for defence) and its place among them */
+      const LGR = {};
+      ['net', 'ortg', 'drtg'].forEach(k => { LGR[k] = teams.map(r => +r[k]).filter(x => isFinite(x)); });
+      const SPB = {};
+      ['vs_start', 'vs_bench', 'own_start', 'own_bench'].forEach(pre => { SPB[pre + '_net'] = 'net'; SPB[pre + '_ortg'] = 'ortg'; SPB[pre + '_drtg'] = 'drtg'; });
+      const splitFor = (k, row) => {
+        const b = SPB[k], arr = b ? LGR[b] : null, v = row ? +row[k] : NaN;
+        if (!arr || arr.length < 3 || !isFinite(v)) return null;
+        const low = b === 'drtg', worse = arr.filter(x => (low ? x > v : x < v)).length, tie = arr.filter(x => x === v).length;
+        const better = arr.filter(x => (low ? x < v : x > v)).length;
+        return { pct: Math.round(100 * (worse + tie / 2) / arr.length), place: Math.min(better + 1, arr.length), n: arr.length, avg: arr.reduce((a, c) => a + c, 0) / arr.length };
+      };
       const N = teams.length;
       const POOL = priorTeams.length ? ' club-seasons of the league (' + ((T.prior || []).length + 1) + ' seasons)' : ' clubs in the league';
       const ff = [['Shooting', 'eFG%', 'ff_efg', 'dff_efg', false], ['Turnovers', 'TOV%', 'ff_tov', 'dff_tov', true],
@@ -368,8 +379,14 @@ function modules(ctx) {
       };
       const SIDE_RT = { o: 'Offence · ORTG', d: 'Defence · DRTG' };
       const keys = [...new Set(groups.flatMap(g => g[1].flatMap(x => x[1])))];
-      const Rk = E.ranker(teams, keys);
-      const placeOf = row => k => { const s = E.STATS[k] || {}; const r = rankOf(teams, k, row.id, s.low); return r ? E.ordinal(r.r) + '/' + r.n : null; };
+      const Rk0 = E.ranker(teams, keys);
+      const rowOfId = id => (me && me.id === id ? me : them && them.id === id ? them : null);
+      /* a unit's rating is placed among the league's clubs; every other key is ranked as before */
+      const Rk = { n: Rk0.n,
+        pct: (k, id) => { if (!SPB[k]) return Rk0.pct(k, id); const u = splitFor(k, rowOfId(id)); return u ? u.pct : null; },
+        avg: k => { if (!SPB[k]) return Rk0.avg(k); const u = splitFor(k, me); return u ? u.avg : null; } };
+      const placeOf = row => k => { if (SPB[k]) { const u = splitFor(k, row); return u ? E.ordinal(u.place) + '/' + u.n : null; }
+        const s = E.STATS[k] || {}; const r = rankOf(teams, k, row.id, s.low); return r ? E.ordinal(r.r) + '/' + r.n : null; };
       R.legend.push(...keys);
       /* a group's parts each read from a row: the part's own (a single game's two clubs), the group's, or the club's */
       const groupHTML = ([t, parts, row]) => '<div class="rp-g rp-gx"><h4>' + esc(t) + '</h4>' +
@@ -405,10 +422,10 @@ function modules(ctx) {
           ['AST%', 'The share of the club’s half-court baskets that were assisted, drawn against the assisted share of all its baskets: a club that is more assisted in the half court than overall is moving the ball against a set defence.']], 'one')));
       /* a single game: each club's starters and its bench, side by side, each against that club over the game */
       const sb = (name, row) => [(name + ' starters & bench').toUpperCase(), [['n', ['own_start_net', 'own_bench_net']], ['o', ['own_start_ortg', 'own_bench_ortg']], ['d', ['own_start_drtg', 'own_bench_drtg']]], row];
-      out.push(block(title('Starters and bench', 'ratings per 100 possessions · the bar from the middle: better (green, right) or worse (red, left) than the league’s average') +
+      out.push(block(title('Starters and bench', 'ratings per 100 possessions · each placed among the league’s ' + N + POOL + ' as a club’s own rating is (green the top quarter, red the bottom)') +
         (them ? cols([sb(c.vs.as, me)], [sb(c.vs.bs, them)]) : cols([groups[3]], [groups[4]])) + E.keyHTML('Reading starters and bench', [
           ['REGULAR STARTERS', 'A regular starter is a player with ten starts or more in the scope (the five who started most when fewer than five have). “Starters” is every minute four or more of them were on the floor; “bench” is every other minute.'],
-          ['THE BAR', 'Grows from the middle: green to the right where the unit beats the league’s average for that rating (net, offence or defence), red to the left where it falls short.']], 'one')));
+          ['THE BAR', 'Like every other bar: where the unit’s rating would rank among the league’s clubs for that rating, green the top quarter, red the bottom. The figure to its right is the league’s average.']], 'one')));
       /* THE SHOT DISTRIBUTION at both ends, each ranked among the clubs */
       if (SD.some(([k]) => E.isNum(me['z_' + k]) || E.isNum(me['zd_' + k]))) {
         const sk = SD.flatMap(([k]) => ['z_' + k, 'zd_' + k]);
