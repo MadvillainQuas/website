@@ -46,6 +46,7 @@ const WHY = {
   too_far: 'You are too far from the arena to stamp it.',
   too_fast: 'Your last stamp was too far from here, too recently.'
 };
+const geoMsg = c => (typeof window !== 'undefined' && window.EpinoiaGeo ? window.EpinoiaGeo.help(c) : (GEO[c] || GEO.unavailable));
 const GEO = {
   none: 'This browser cannot tell where it is.',
   denied: 'Your phone said no to sharing its location. Allow location for this site, or for the EPINOIA app, in the phone’s settings, then try again.',
@@ -97,6 +98,7 @@ const data = (t, c, x) => { const n = el(t, c, x); n.setAttribute('translate', '
 const loc = () => (typeof window !== 'undefined' && window.EpinoiaI18n && window.EpinoiaI18n.locale) || undefined;
 
 function locate() {
+  if (typeof window !== 'undefined' && window.EpinoiaGeo) return window.EpinoiaGeo.locate();    // geo.js: precise then coarse, any browser
   return new Promise(res => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return res({ error: 'none' });
     navigator.geolocation.getCurrentPosition(
@@ -164,15 +166,18 @@ function mount(host, o) {
     if (!cfg) return show('This page could not load. Try again in a moment.', 'bad');
     btn.disabled = true;
     btn.setAttribute('aria-busy', 'true');
+    /* THE PHONE IS ASKED FIRST, IN THE TAP (geo.js), when a signed-in reader is likely: some browsers only show the permission question to a call
+       made straight from a tap. A reader who turns out to be signed out is sent to sign in, and the answer is left unused. */
+    const early = A && typeof A.session === "function" && A.session() ? locate() : null;
     try {
       let session = null;
       try { session = A && A.sessionReady ? await A.sessionReady() : null; } catch (_) { session = null; }
       if (!session) {
         return show(WHY.signed_out, 'warn', [], { text: 'sign in', href: A && A.signinHref ? A.signinHref() : base + 'signin/' });
       }
-      show('Finding where you are…');
-      const pos = await locate();
-      if (pos.error) return show(GEO[pos.error] || GEO.unavailable, 'warn');
+      show('Allow location when your phone asks: it stamps by itself once it knows where you are.');
+      const pos = await (early || locate());
+      if (pos.error) return show(geoMsg(pos.error), 'warn');
       const list = await call(cfg, session, 'go_games_now');
       if (list.missing) return show('EPINOIA GO opens soon.', 'warn');
       if (list.error || !Array.isArray(list.data)) return show('It did not stamp. Try again in a moment.', 'bad');

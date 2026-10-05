@@ -505,7 +505,8 @@ ok('the games at THIS arena only: the one whose window is open, then the next to
    && GV.gamesHere([], 'V', nowGV).open.length === 0 && GV.gamesHere(null, 'V', nowGV).next === null);
 ok('a stamp is the fan\'s own: with no session it says so and gives the way in, and asks the phone nothing; only signed in does it locate',
    /if \(!session\) \{\s*return show\(WHY\.signed_out, 'warn', \[\], \{ text: 'sign in'/.test(gvJs)
-   && gvJs.indexOf('if (!session)') < gvJs.indexOf('await locate()'));
+   && gvJs.indexOf('if (!session)') < gvJs.indexOf('await (early || locate())')
+   && /const early = A && typeof A\.session === "function" && A\.session\(\) \? locate\(\) : null;/.test(gvJs));
 ok('...the phone\'s location goes to stamp_venue and nowhere else (go_games_now takes none), and nothing is kept',
    (gvJs.match(/p_lat/g) || []).length === 1 && /call\(cfg, session, 'go_games_now'\)/.test(gvJs) && !/localStorage|sessionStorage/.test(gvJs)
    && (gvJs.match(/fetch\(/g) || []).length === 1);

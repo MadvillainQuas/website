@@ -251,7 +251,13 @@
       'open to stamp': 'se puede sellar',
       'until': 'hasta',
       'stamp game': 'sellar este partido',
-      'Stamping…': 'Sellando…'
+      'Stamping…': 'Sellando…',
+      'Allow location when your phone asks: it stamps by itself once it knows where you are.': 'Permite la ubicación cuando tu teléfono la pida: sellará solo en cuanto sepa dónde estás.',
+      'This browser cannot tell where it is. Open this page in Safari, Chrome or Firefox.': 'Este navegador no puede saber dónde está. Abre esta página en Safari, Chrome o Firefox.',
+      'Location only works on a secure page (one that starts https://). Open the site from its normal address.': 'La ubicación solo funciona en una página segura (que empiece por https://). Abre el sitio desde su dirección normal.',
+      'Finding where you are took too long. Check that Location is switched on and try again.': 'Localizarte tardó demasiado. Comprueba que la ubicación esté activada e inténtalo de nuevo.',
+      'Your device could not work out where it is. Switch Location on in its settings, step outside or away from thick walls, and try again.': 'Tu dispositivo no pudo saber dónde está. Activa la ubicación en los ajustes, sal al exterior o aléjate de paredes gruesas e inténtalo de nuevo.',
+      'Location is blocked for this site. Click the lock icon beside the address, set Location to Allow, then press Stamp game again.': 'La ubicación está bloqueada para este sitio. Haz clic en el candado junto a la dirección, pon Ubicación en Permitir y vuelve a pulsar Sellar este partido.'
     },
     units: {
       'arena': '{n} pabellón',

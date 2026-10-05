@@ -251,7 +251,13 @@
       'open to stamp': 'スタンプ受付中',
       'until': '締切',
       'stamp game': 'この試合をスタンプ',
-      'Stamping…': 'スタンプ中…'
+      'Stamping…': 'スタンプ中…',
+      'Allow location when your phone asks: it stamps by itself once it knows where you are.': '位置情報の許可を求められたら許可してください。位置が分かり次第、自動でスタンプします。',
+      'This browser cannot tell where it is. Open this page in Safari, Chrome or Firefox.': 'このブラウザは位置を取得できません。Safari、Chrome、Firefoxでこのページを開いてください。',
+      'Location only works on a secure page (one that starts https://). Open the site from its normal address.': '位置情報は安全なページ（https://で始まるもの）でのみ使えます。サイトの通常のアドレスから開いてください。',
+      'Finding where you are took too long. Check that Location is switched on and try again.': '位置の取得に時間がかかりすぎました。位置情報がオンか確認して、もう一度お試しください。',
+      'Your device could not work out where it is. Switch Location on in its settings, step outside or away from thick walls, and try again.': '端末が現在地を特定できませんでした。設定で位置情報をオンにし、屋外または厚い壁から離れて、もう一度お試しください。',
+      'Location is blocked for this site. Click the lock icon beside the address, set Location to Allow, then press Stamp game again.': 'このサイトでは位置情報がブロックされています。アドレス横の鍵アイコンをクリックし、位置情報を「許可」にして、もう一度「この試合をスタンプ」を押してください。'
     },
     units: {
       'arena': '{n}アリーナ',

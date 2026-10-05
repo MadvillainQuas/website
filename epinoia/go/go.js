@@ -239,6 +239,8 @@ function whyOf(r) {
   return WHY[r.reason] || 'It did not stamp. Try again in a moment.';
 }
 
+/* the words for a location that could not be had: geo.js says what to do on this device, these are the fallback */
+const geoMsg = c => (typeof window !== 'undefined' && window.EpinoiaGeo ? window.EpinoiaGeo.help(c) : (GEO[c] || GEO.unavailable));
 const GEO = {
   none: 'This browser cannot tell where it is.',
   denied: 'Your phone said no to sharing its location. Allow location for this site, or for the EPINOIA app, in the phone’s settings, then try again.',
@@ -431,7 +433,7 @@ function drawPop() {
   if (pos) loc.appendChild(el('span', null, 'How far each one is from where you are.'));
   else if (POP.locating) loc.appendChild(el('span', null, 'Finding where you are…'));
   else {
-    if (POP.geo) loc.appendChild(el('span', 'bad', GEO[POP.geo] || GEO.unavailable));
+    if (POP.geo) loc.appendChild(el('span', 'bad', geoMsg(POP.geo)));
     const b = loc.appendChild(el('button', 'gp-where', 'show how far each one is'));
     b.type = 'button';
     b.addEventListener('click', () => whereAmI(true));
@@ -1545,6 +1547,7 @@ function drawList() {
 }
 
 function locate() {
+  if (typeof window !== 'undefined' && window.EpinoiaGeo) return window.EpinoiaGeo.locate();    // geo.js: precise then coarse, any browser
   return new Promise(res => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return res({ error: 'none' });
     navigator.geolocation.getCurrentPosition(
@@ -1563,7 +1566,7 @@ async function find() {
     const [pos, games] = await Promise.all([locate(), loadGames()]);
     if (games === 'missing') return closed();
     drawToday();
-    if (pos.error) { S.pos = null; drawList(); say(GEO[pos.error], 'warn'); }
+    if (pos.error) { S.pos = null; drawList(); say(geoMsg(pos.error), 'warn'); }
     else { S.pos = pos; drawList(); }
     const at = $('#goAt');
     if (at && at.scrollIntoView) at.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
@@ -1616,14 +1619,18 @@ function afterStamp(gameId) {
 function callStamp(g, pos) { return rpc('stamp_venue', { p_game: g.game_id, p_lat: pos.lat, p_lng: pos.lng, p_accuracy: pos.accuracy }); }
 
 async function stamp(g, btn) {
+  /* THE PHONE IS ASKED FIRST, IN THE TAP (geo.js: some browsers only show their permission question to a call made straight from a tap):
+     before the session is read, when a stored one says the reader is in */
+  const stale = !S.pos || Date.now() - S.pos.at > FRESH_MS;
+  const early = stale && S.session ? locate() : null;
   S.session = await session();
   if (!S.session) { location.href = signinHref(); return; }
   btn.disabled = true;
   btn.setAttribute('aria-busy', 'true');
   try {
     let pos = S.pos;
-    if (!pos || Date.now() - pos.at > FRESH_MS) pos = await locate();
-    if (pos.error) return say(GEO[pos.error], 'warn');
+    if (!pos || Date.now() - pos.at > FRESH_MS) pos = await (early || locate());
+    if (pos.error) return say(geoMsg(pos.error), 'warn');
     S.pos = pos;
     const r = await callStamp(g, pos);
     if (r.missing) return closed();
@@ -1652,6 +1659,10 @@ async function stamp(g, btn) {
 async function stampInRow(g, btn, li) {
   /* the GO page has access.js (a token refreshed if it ran out); HOME has follow.js's stored session, which is all a call needs */
   const F = window.EpinoiaFollow;
+  /* THE PHONE IS ASKED FIRST, IN THE TAP (geo.js): HOME's stored session is read at once, so a signed-in reader is asked for their location
+     by the first thing the tap does, on any browser; someone who is signed out is sent to sign in without being asked anything */
+  const stale = !S.pos || Date.now() - S.pos.at > FRESH_MS;
+  const early = stale && !S.access && F && typeof F.session === 'function' && F.session() ? locate() : null;
   S.session = S.access ? await session() : (F && typeof F.session === 'function' ? F.session() : null);
   if (!S.session) { location.href = signinHref(); return; }
   let note = li.querySelector('.gp-note');
@@ -1666,8 +1677,8 @@ async function stampInRow(g, btn, li) {
   btn.setAttribute('aria-busy', 'true');
   try {
     let pos = S.pos;
-    if (!pos || Date.now() - pos.at > FRESH_MS) { tell('Finding where you are…', 'busy'); pos = await locate(); }
-    if (pos.error) return tell(GEO[pos.error], 'bad');
+    if (!pos || Date.now() - pos.at > FRESH_MS) { tell('Allow location when your phone asks: it stamps by itself once it knows where you are.', 'busy'); pos = await (early || locate()); }
+    if (pos.error) return tell(geoMsg(pos.error), 'bad');
     S.pos = pos;
     tell('Stamping…', 'busy');
     const r = await callStamp(g, pos);
