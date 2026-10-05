@@ -36,7 +36,9 @@
 /* the club's season line, as report.js's catalogue reads it (added once). ref: a figure no other club has, drawn against
    the club's own (vs_* and own_* against its ratings over every minute; the half court's assisted share against all its
    baskets'); sc: the step, in the stat's units, from better to much better */
-const SPLIT = (l, ref, low) => ({ l, dp: 1, signed: ref === 'net', low: !!low, rank: false, ref, refL: 'club', sc: 4 });
+/* judged against the LEAGUE'S mark for that rating (the average of the field's net, offensive or defensive rating: lg_net, lg_ortg, lg_drtg on the
+   club's row), not against the club's own: a unit is good or poor by the standard of the league */
+const SPLIT = (l, ref, low) => ({ l, dp: 1, signed: ref === 'net', low: !!low, rank: false, ref: 'lg_' + ref, refL: 'league', sc: 4 });
 const TEAM_STATS = {
   ff_efg: { l: 'eFG%', dp: 1 }, ff_tov: { l: 'TOV%', dp: 1, low: true }, ff_oreb: { l: 'OREB%', dp: 1 }, ff_ftr: { l: 'FTr', dp: 1 },
   dff_efg: { l: 'OPP eFG%', dp: 1, low: true }, dff_tov: { l: 'OPP TOV%', dp: 1 }, dff_oreb: { l: 'OPP OREB%', dp: 1, low: true }, dff_ftr: { l: 'OPP FTr', dp: 1, low: true },
@@ -112,10 +114,10 @@ const TEAM_DEFS = {
   ev_transition_pts_sh: ['Transition share of points', 'The share of the club’s points scored in transition.'],
   tr_def_delta: ['Transition points given up against the opponents’ own average', 'Transition points a game opponents scored against the club, minus what the same opponents average in transition over the season. Below zero, the club gives up fewer than those opponents usually score.'],
   ev_transition_ppp: ['Transition points per chance', 'Points per transition chance.'], evd_transition_ppp: ['Opponents’ transition points per chance', 'Lower is better.'],
-  vs_start_net: ['Against the starters', 'Net, offensive and defensive rating in the minutes the other side had four or more of its regular starters on (a regular starter: ten starts or more in the scope, or that game’s starters). The bar is drawn against the club’s own rating over every minute: green to the right is better than that, red to the left worse.'],
-  vs_bench_net: ['Against the bench', 'The same ratings in every other minute, drawn against the club’s own.'],
-  own_start_net: ['Our starters', 'Net, offensive and defensive rating in the minutes the club had four or more of its own regular starters on (the five who started most when fewer than five have ten starts), against the club’s own.'],
-  own_bench_net: ['Our bench', 'The same ratings in every other minute of the club’s, against the club’s own.'],
+  vs_start_net: ['Against the starters', 'Net, offensive and defensive rating in the minutes the other side had four or more of its regular starters on (a regular starter: ten starts or more in the scope, or that game’s starters). The bar is drawn against the league’s average for that rating: green to the right is better than the league, red to the left worse.'],
+  vs_bench_net: ['Against the bench', 'The same ratings in every other minute, drawn against the league’s average.'],
+  own_start_net: ['Our starters', 'Net, offensive and defensive rating in the minutes the club had four or more of its own regular starters on (the five who started most when fewer than five have ten starts), against the league’s average.'],
+  own_bench_net: ['Our bench', 'The same ratings in every other minute of the club’s, against the league’s average.'],
   vs_start_ortg: ['Against the starters: offence', 'Points scored per 100 possessions against the other side’s starters.'],
   vs_start_drtg: ['Against the starters: defence', 'Points allowed per 100 possessions against the other side’s starters. Lower is better.'],
   vs_bench_ortg: ['Against the bench: offence', 'Points scored per 100 possessions against the other side’s bench.'],
@@ -299,6 +301,9 @@ function modules(ctx) {
          (the shot zones, the half-court assists) is ranked among the season shown alone. */
       const priorTeams = E.priorRows(T.prior, P => P.teams, (rows, P) => deriveTeams(rows, P.games));
       if (priorTeams.length) { teams = teams.concat(priorTeams); R.pooled = 'Every figure is ranked against all ' + ((T.prior || []).length + 1) + ' seasons of the league with data (each club’s season is one entry, ' + teams.length + ' in all), not only the season shown. A stat an earlier season did not record is ranked within the season shown.'; }
+      /* THE LEAGUE'S MARKS for the three ratings, on the clubs' rows: what starters and bench are judged against */
+      const mean = k => { const v = teams.map(r => +r[k]).filter(x => isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+      [['lg_net', 'net'], ['lg_ortg', 'ortg'], ['lg_drtg', 'drtg']].forEach(([to, from]) => { const m = mean(from); [me, them].forEach(r => { if (r && m != null) r[to] = Math.round(10 * m) / 10; }); });
       const N = teams.length;
       const POOL = priorTeams.length ? ' club-seasons of the league (' + ((T.prior || []).length + 1) + ' seasons)' : ' clubs in the league';
       const ff = [['Shooting', 'eFG%', 'ff_efg', 'dff_efg', false], ['Turnovers', 'TOV%', 'ff_tov', 'dff_tov', true],
@@ -400,10 +405,10 @@ function modules(ctx) {
           ['AST%', 'The share of the club’s half-court baskets that were assisted, drawn against the assisted share of all its baskets: a club that is more assisted in the half court than overall is moving the ball against a set defence.']], 'one')));
       /* a single game: each club's starters and its bench, side by side, each against that club over the game */
       const sb = (name, row) => [(name + ' starters & bench').toUpperCase(), [['n', ['own_start_net', 'own_bench_net']], ['o', ['own_start_ortg', 'own_bench_ortg']], ['d', ['own_start_drtg', 'own_bench_drtg']]], row];
-      out.push(block(title('Starters and bench', 'ratings per 100 possessions · the bar from the middle: better (green, right) or worse (red, left) than ' + (c.vs ? 'the club over the whole game' : 'the club over every minute')) +
+      out.push(block(title('Starters and bench', 'ratings per 100 possessions · the bar from the middle: better (green, right) or worse (red, left) than the league’s average') +
         (them ? cols([sb(c.vs.as, me)], [sb(c.vs.bs, them)]) : cols([groups[3]], [groups[4]])) + E.keyHTML('Reading starters and bench', [
           ['REGULAR STARTERS', 'A regular starter is a player with ten starts or more in the scope (the five who started most when fewer than five have). “Starters” is every minute four or more of them were on the floor; “bench” is every other minute.'],
-          ['THE BAR', 'Grows from the middle: green to the right where the unit beats the club’s figure over all its minutes, red to the left where it falls short.']], 'one')));
+          ['THE BAR', 'Grows from the middle: green to the right where the unit beats the league’s average for that rating (net, offence or defence), red to the left where it falls short.']], 'one')));
       /* THE SHOT DISTRIBUTION at both ends, each ranked among the clubs */
       if (SD.some(([k]) => E.isNum(me['z_' + k]) || E.isNum(me['zd_' + k]))) {
         const sk = SD.flatMap(([k]) => ['z_' + k, 'zd_' + k]);
