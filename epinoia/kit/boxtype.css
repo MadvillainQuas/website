@@ -49,11 +49,10 @@ body .wm{font-weight:700;font-stretch:94%}
 body .wr-league > summary .t{font-weight:700;font-stretch:94%}
 body .wr-q{font-weight:700;font-stretch:94%}
 body h3{font-weight:700;font-stretch:94%}
-/* labels: 101 rules */
+/* labels: 88 rules */
 body #doneB .dlab{font-weight:600}
 body .bx-scorehead.bt-dressed .bt-sheet{font-weight:600}
 body .bx-scorehead.bt-dressed .pacepill{font-weight:600}
-body .cmdhint{font-weight:600}
 body .ctx{font-weight:600}
 body .detnote{font-weight:600}
 body .detsplit{font-weight:600}
@@ -89,7 +88,6 @@ body .hlh span{font-weight:600}
 body .hlk{font-weight:600}
 body .hln{font-weight:600}
 body .hlstatus{font-weight:600}
-body .lbl{font-weight:600}
 body .mdk{font-weight:600}
 body .mdrole{font-weight:600}
 body .mem-ask-left{font-weight:600}
@@ -98,16 +96,8 @@ body .mem-ph-in .mem-ph-note a.ep-in-go{font-weight:600}
 body .mem-ph-left{font-weight:600}
 body .mem-ph-note b{font-weight:600}
 body .msg{font-weight:600}
-body .pcfoot{font-weight:600}
-body .pcrow .l{font-weight:600}
-body .pcsec{font-weight:600}
-body .pcteam{font-weight:600}
-body .pctile .l{font-weight:600}
-body .pill{font-weight:600}
 body .pv-out-h{font-weight:600}
 body .pv-out-none{font-weight:600}
-body .qs .l{font-weight:600}
-body .qstrip .l{font-weight:600}
 body .rep .rep-kicker span{font-weight:600}
 body .rh-pos{font-weight:600}
 body .rh-st{font-weight:600}
@@ -139,8 +129,6 @@ body .sq-more{font-weight:600}
 body .sq-team small{font-weight:600}
 body .status{font-weight:600}
 body .stk b{font-weight:600}
-body .sub{font-weight:600}
-body .tag{font-weight:600}
 body .tt-fast a{font-weight:600}
 body .tt-skip{font-weight:600}
 body .vidbtn{font-weight:600}
@@ -150,5 +138,4 @@ body .vidval{font-weight:600}
 body .wr-line{font-weight:600}
 body .wr-note{font-weight:600}
 body .wr-rel{font-weight:600}
-body th{font-weight:600}
 /* ==== END GENERATED ==== */

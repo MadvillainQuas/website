@@ -54,7 +54,7 @@ function weightOf(body) {
   if (!m) return null;
   return m[1] === 'bold' || m[1] === 'bolder' ? 700 : m[1] === 'normal' ? 400 : +m[1];
 }
-function generate(pages, faces, prefix) {
+function generate(pages, faces, prefix, minSize) {
   const want = { score: new Map(), micro: new Map() };
   for (const pg of pages) {
     const file = path.join(ROOT, pg), html = readFileSync(file, 'utf8');
@@ -62,12 +62,14 @@ function generate(pages, faces, prefix) {
       const ff = /font-family\s*:[^;]*var\(--f-(score|micro)\)/.exec(body) || /font\s*:[^;]*var\(--f-(score|micro)\)/.exec(body);
       if (!ff || !faces.includes(ff[1])) continue;
       const sz = /font-size\s*:\s*([\d.]+)px/.exec(body), w = weightOf(body), target = ff[1] === 'score' ? 700 : (sz && +sz[1] >= 12 ? 700 : 600);
-      if (w != null && w >= target) continue;
+      /* a page whose labels were sized for a wide pixel face (the scorer's 7px) is raised to minSize: the sans reads smaller at the same size */
+      const needW = !(w != null && w >= target), needS = !!(minSize && sz && +sz[1] < minSize);
+      if (!needW && !needS) continue;
       sel.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
         /* kept pixel: the top strip and the page index (the teletext layer), LIVE wherever it is a state (.bstate, .ep-live, a live card's
            status, the dashboard's count), the league tag and the scoreboard's numerals */
         if (/^(html|body|:root|\*)/.test(s) || /\.tt-line|\.tt-index|\.tt-ix|\.bt-kick|\.bscore|\.bstate|\.ep-live|\.fxc-st|\.fxd-n|#fxTabLive/.test(s)) return;
-        want[ff[1]].set(s, target);
+        want[ff[1]].set(s, { w: needW ? target : null, s: needS ? minSize : null });
       });
     }
   }
@@ -76,11 +78,13 @@ function generate(pages, faces, prefix) {
     const sels = [...want[k].keys()].sort();
     if (!sels.length) continue;
     lines.push('/* ' + (k === 'score' ? 'figures and headings' : 'labels') + ': ' + sels.length + ' rules */');
-    sels.forEach(s => lines.push(prefix + ' ' + s + '{font-weight:' + want[k].get(s) + (k === 'score' ? ';font-stretch:94%' : '') + '}'));
+    sels.forEach(s => { const v = want[k].get(s), d = []; if (v.w) d.push('font-weight:' + v.w + (k === 'score' ? ';font-stretch:94%' : '')); if (v.s) d.push('font-size:' + v.s + 'px'); lines.push(prefix + ' ' + s + '{' + d.join(';') + '}'); });
   }
   return lines.join('\n');
 }
 const JOBS = [
+  { out: 'epinoia/kit/scorer-type.css', pages: ['epinoia/score/index.html'], faces: ['micro'], prefix: 'body', minSize: 9 },
+  { out: 'epinoia/kit/clockcamtype.css', pages: ['epinoia/clockcam/index.html'], faces: ['micro'], prefix: 'body', minSize: 9 },
   { out: 'epinoia/kit/labeltype.css', pages: ['epinoia/admin/index.html', 'epinoia/admin/platform/index.html', 'epinoia/android/index.html', 'epinoia/api/index.html', 'epinoia/app/index.html', 'epinoia/broadcast/help/index.html', 'epinoia/community/index.html', 'epinoia/contact/index.html', 'epinoia/creators/hub/index.html', 'epinoia/creators/index.html', 'epinoia/creators/studio/index.html', 'epinoia/edit/index.html', 'epinoia/fan/index.html', 'epinoia/fixtures/index.html', 'epinoia/game/index.html', 'epinoia/games/index.html', 'epinoia/go/index.html', 'epinoia/go/nearby/index.html', 'epinoia/go/photos/index.html', 'epinoia/go/stamps/index.html', 'epinoia/home/index.html', 'epinoia/index.html', 'epinoia/injuries/index.html', 'epinoia/invite/index.html', 'epinoia/ios/index.html', 'epinoia/join/index.html', 'epinoia/l/index.html', 'epinoia/learn/index.html', 'epinoia/me/index.html', 'epinoia/news/index.html', 'epinoia/p/index.html', 'epinoia/privacy/index.html', 'epinoia/profile/index.html', 'epinoia/prophesy/index.html', 'epinoia/scouting/index.html', 'epinoia/signin/index.html', 'epinoia/stats/index.html', 'epinoia/stats/wowy/index.html', 'epinoia/t/index.html', 'epinoia/video/index.html', 'epinoia/votes/index.html', 'epinoia/winning/index.html'], faces: ['micro'], prefix: 'body' },
   { out: 'epinoia/kit/profiletype.css', pages: ['epinoia/p/index.html', 'epinoia/t/index.html'], faces: ['score', 'micro'], prefix: '.ep-frame' },
   { out: 'epinoia/kit/boxtype.css', pages: ['epinoia/game/index.html'], faces: ['score', 'micro'], prefix: 'body' }
@@ -93,7 +97,7 @@ for (const j of JOBS) {
   const nl = cur.includes('\r\n') ? '\r\n' : '\n', text = cur.replace(/\r\n/g, '\n');
   const a = text.indexOf(BEGIN), b = text.indexOf(END);
   const head = a >= 0 ? text.slice(0, a) : text.replace(/\s*$/, '\n');
-  const next = head + BEGIN + '\n' + generate(j.pages, j.faces, j.prefix) + '\n' + END + '\n';
+  const next = head + BEGIN + '\n' + generate(j.pages, j.faces, j.prefix, j.minSize) + '\n' + END + '\n';
   if (next !== text) { stale++; if (!CHECK) writeFileSync(file, next.replace(/\n/g, nl)); }
 }
 if (CHECK) { if (stale) { console.error('typeweights-gen: out of date, run node tools/typeweights-gen.mjs'); process.exit(1); } console.log('typeweights-gen: up to date'); }
