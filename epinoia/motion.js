@@ -117,6 +117,10 @@
     until = Date.now() + WINDOW_MS;
     if (!reduced) { try { watchClosing(snapshot(t)); } catch (_) { /* no closing animation */ } }
     if (reduced || busy.has(t)) return;
+    /* A BLOCK THAT POSITIONS ITSELF WITH A TRANSFORM IS NOT SQUEEZED: the squeeze's keyframes replace the transform, so the block would
+       jump (a player's face on the modern box score sits at translateY(-38%) and dropped ~40px under the pointer on pointer-down, the
+       press landed beside it and its card did not open). It still gets the closing/opening animations of what the press does. */
+    try { const tf = getComputedStyle(t).transform; if ((tf && tf !== 'none') || t.closest('[data-no-motion]')) return; } catch (_) { /* squeeze as usual */ }
     busy.add(t);
     t.classList.add('ep-mo-press');
     const done = () => { t.classList.remove('ep-mo-press'); busy.delete(t); t.removeEventListener('animationend', done); };
