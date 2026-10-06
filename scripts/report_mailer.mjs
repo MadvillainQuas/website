@@ -606,7 +606,11 @@ async function one(sub, team) {
 
   /* GAME: every final since the address was added, in the last week, not sent yet; oldest first */
   const since = new Date(Math.max(Date.parse(sub.created_at), Date.now() - 7 * 864e5)).toISOString();
-  const games = await rest(`games?${mine}&status=eq.final&finalised_at=gte.${since}&select=${GAME_SELECT},competitions(name,seasons(leagues(name)))&order=tipoff_at.asc`);
+  /* ...AND PLAYED IN THAT WEEK (2026-10-06): a backfill finalises old games again, which gave last season's games a fresh
+     finalised_at and would have mailed their analyses as if they were new. A game counts only if its tip-off is in the window
+     too (a day's grace before it, for a game finalised the day after it was played). */
+  const playedFrom = new Date(Date.parse(since) - 864e5).toISOString();
+  const games = await rest(`games?${mine}&status=eq.final&finalised_at=gte.${since}&tipoff_at=gte.${playedFrom}&select=${GAME_SELECT},competitions(name,seasons(leagues(name)))&order=tipoff_at.asc`);
   for (const g of games) {
     if (has('game', g.id)) continue;
     const side = g.home_team_id === team.id ? 0 : 1;
