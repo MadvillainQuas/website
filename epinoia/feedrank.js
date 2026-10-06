@@ -37,7 +37,8 @@
    The partner boost is full for a week from publication and gone two days after, and it is more than any other story
    can score at all (scoreMax: 9.14 against 10), so an unread partner piece of the last week leads. Then the order is
    made to vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
-   A PARTNER'S STORY SHOWN FIVE TIMES AND NEVER OPENED comes off For you altogether (PARTNER_DROP_AT). And any story about a LEAGUE AWAY
+   A PARTNER'S STORY SHOWN FOUR TIMES AND NEVER OPENED keeps only a quarter of its boost (PARTNER_DROP_AT, PARTNER_WEAK), and only ONE
+   STORY PER PARTNER takes the whole boost: each further one of the same source half of the one before (PARTNER_REPEAT). And any story about a LEAGUE AWAY
    from the reader (a country that is not theirs nor a neighbour's, a league they have not followed and have next to no points for)
    is multiplied by AWAY_FACTOR, a partner's boost there cut to a twelfth: far from home, only what they have shown an interest in leads.
 
@@ -141,7 +142,11 @@ const W = Object.freeze({
   IMPRESSION_SOFT_AT: 3, IMPRESSION_SOFT: 0.85, IMPRESSION_HARD_AT: 6, IMPRESSION_HARD: 0.7,   // shown, never opened
   /* AN OFFICIAL PARTNER'S STORY IS SHOWN FIVE TIMES AND THEN GONE (2026-10-06): shown to the reader five times without being opened,
      it comes off their For you for good (the entry is kept for PARTNER_DROP_KEEP_DAYS, past the ordinary impressions' 14) */
-  PARTNER_DROP_AT: 5, PARTNER_DROP_KEEP_DAYS: 60,
+  PARTNER_DROP_AT: 4, PARTNER_DROP_KEEP_DAYS: 60,
+  /* ...REVISED (2026-10-06): shown FOUR times and never opened, a partner's story is not dropped but its boost weakens to
+     PARTNER_WEAK of itself; and ONE STORY PER PARTNER leads: a partner's best-scoring story keeps the whole boost, each further
+     one of the same publisher or creator in the list half of the one before (PARTNER_REPEAT) */
+  PARTNER_WEAK: 0.25, PARTNER_REPEAT: 0.5,
   /* A LEAGUE AWAY FROM THE READER (2026-10-06): a story about a league in a country that is not the reader's (nor a neighbour's),
      which the reader has never followed and has next to no points for, is multiplied by AWAY_FACTOR; an official partner's boost
      there is cut to AWAY_BOOST_SHARE of itself, so it no longer leads the feed by itself. Opening the league (its points reach
@@ -467,14 +472,15 @@ function scoreOf(it, profile, now, w) {
   const partner = !!pkey && partnerSet(P.partners).has(pkey);
   /* a partner's story shown PARTNER_DROP_AT times and never opened is dropped: rank() leaves it out */
   const shown = Array.isArray(ie) && num(now) - num(ie[1]) < c.PARTNER_DROP_KEEP_DAYS * DAY ? num(ie[0]) : 0;
-  const dropped = partner && !read && shown >= c.PARTNER_DROP_AT;
+  const weakened = partner && !read && shown >= c.PARTNER_DROP_AT;
+  const dropped = false;   // since 2026-10-06 a much-shown partner story is weakened, never dropped
   /* a league away from the reader, which they have not engaged with */
   let away = false;
   if (P.country && P.leagueCountry && lgs.length && !followed && C === 0 && L < c.AWAY_MIN_L) {
     away = lgs.every(l => P.leagueCountry[l.slug] != null && String(P.leagueCountry[l.slug]) !== '');
   }
   const awayMul = away ? c.AWAY_FACTOR : 1;
-  const boost = partner && !read && !dropped ? c.PARTNER_BOOST * partnerFade(age, c) * (away ? c.AWAY_BOOST_SHARE : 1) : 0;
+  const boost = partner && !read ? c.PARTNER_BOOST * partnerFade(age, c) * (away ? c.AWAY_BOOST_SHARE : 1) * (weakened ? c.PARTNER_WEAK : 1) : 0;
 
   /* the language: a story in one the reader does not read is held back, less as they engage with it */
   const lang = langOf(it, P.langMap);
@@ -494,7 +500,7 @@ function scoreOf(it, profile, now, w) {
   const kindMul = gw[group] != null ? gw[group] : 1;
 
   const score = base * kindMul * rec * personal * imp * langFactor * awayMul + follow + boost;
-  return { score, away, dropped, shown, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
+  return { score, away, dropped, weakened, shown, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
            sigPoints, sigReasons: tier === 'report' && sig && Array.isArray(sig.reasons) ? sig.reasons : [], imp,
            terms: { league: c.W_LEAGUE * L, country: c.W_COUNTRY * C, pub: c.W_PUB * Pp } };
 }
@@ -544,6 +550,19 @@ function rank(items, profile, now, w) {
     const s = scoreOf(it, prof, t, cs);
     return { it, s, source: sourceOf(it), at: dateOf(it) };
   }).filter(x => !x.s.dropped);          // an official partner's story shown five times and never opened is off the feed
+  /* ONE STORY PER PARTNER LEADS: the best-scoring boosted story of each publisher or creator keeps its boost, the next of the same
+     source half of it, the next a quarter... (the boost's lost share comes off the score; the rest of the score is untouched) */
+  {
+    const bySource = new Map();
+    scored.filter(x => x.s.boost > 0).sort((a, b) => b.s.score - a.s.score).forEach(x => {
+      const k = x.s.pkey || x.source, nth = bySource.get(k) || 0;
+      bySource.set(k, nth + 1);
+      if (nth > 0) {
+        const kept = x.s.boost * Math.pow(c.PARTNER_REPEAT, nth);
+        x.s = Object.assign({}, x.s, { score: x.s.score - x.s.boost + kept, boost: kept, repeat: nth });
+      }
+    });
+  }
   scored.sort((a, b) => b.s.score - a.s.score || b.at - a.at || String(a.it.id || '').localeCompare(String(b.it.id || '')));
 
   /* variety: greedy, the best that breaks neither rule; if nothing can honour both (a feed of two sources), the best that

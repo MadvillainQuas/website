@@ -515,20 +515,31 @@ console.log('\nthe page wiring (a fake window)');
   ok('no document (a service worker, a test): nothing, no throw', FR.watchDwell({ location: { pathname: '/epinoia/game/' } }, { store }) === null);
 }
 
-console.log('\nan official partner shown five times and never opened is off the feed (2026-10-06)');
+console.log('\nan official partner shown four times and never opened keeps a quarter of its boost; one story per partner leads (2026-10-06)');
 {
   const ps = story({ h: 5 }), other = story({ h: 6, source_slug: 'x', source_name: 'X' });
   const prof = Object.assign(state(), { partners });
-  ok('four showings: still on, still boosted', (() => { FR.noteShown(prof, [ps.id, ps.id], NOW); const q = Object.assign(state(), { partners, i: { [ps.id]: [4, NOW] } }); return S(ps, q).boost > 0 && R([ps, other], q).some(r => r.id === ps.id); })());
+  ok('three showings: the whole boost', (() => { const q = Object.assign(state(), { partners, i: { [ps.id]: [3, NOW] } }); return near(S(ps, q).boost, W.PARTNER_BOOST) && !S(ps, q).weakened; })());
   const five = Object.assign(state(), { partners, i: { [ps.id]: [W.PARTNER_DROP_AT, NOW - HOUR] } });
-  ok('the fifth showing without an open takes it off For you, the rest of the feed stays', S(ps, five).dropped === true && R([ps, other], five).map(r => r.id).join() === other.id);
+  ok('the fourth showing without an open weakens its boost to a quarter, and it stays on the feed', S(ps, five).weakened === true && near(S(ps, five).boost, W.PARTNER_BOOST * W.PARTNER_WEAK) && R([ps, other], five).some(r => r.id === ps.id));
   const opened = Object.assign(state(), { partners, i: { [ps.id]: [9, NOW] }, r: { [ps.id]: NOW - HOUR } });
   ok('one the reader opened is never dropped', S(ps, opened).dropped === false && R([ps, other], opened).some(r => r.id === ps.id));
   ok('an ordinary story shown ten times is only held back a little, not dropped', (() => { const q = Object.assign(state(), { partners, i: { [other.id]: [10, NOW] } }); return R([ps, other], q).some(r => r.id === other.id); })());
-  ok('the drop is remembered for two months, past the ordinary impressions\' fortnight', S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 40 * DAY] } })).dropped === true && S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 70 * DAY] } })).dropped === false);
+  ok('the weakening is remembered for two months, past the ordinary impressions\' fortnight', S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 40 * DAY] } })).weakened === true && S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 70 * DAY] } })).weakened === false);
   const pruned = FR.prune({ v: 1, l: {}, p: {}, r: {}, g: {}, k: {}, i: { a: [5, NOW - 40 * DAY], b: [2, NOW - 40 * DAY], c: [2, NOW - 2 * DAY] } }, NOW);
   ok('prune keeps a drop for sixty days and forgets an ordinary impression after fourteen', !!pruned.i.a && !pruned.i.b && !!pruned.i.c, Object.keys(pruned.i));
   ok('only the partner\'s story is dropped: a creator piece shown five times is not', (() => { const c = piece({ h: 5 }); return S(c, Object.assign(state(), { i: { [c.id]: [5, NOW] } })).dropped === false; })());
+  /* one story per partner: three of the same partner's, the best keeps the whole boost, the next half, the third a quarter */
+  {
+    const a = story({ h: 2 }), b2 = story({ h: 3 }), c3 = story({ h: 4 }), x = story({ h: 2, source_slug: 'cv', source_name: 'Court Vision' });
+    const both = new Set(['source:eurohoops', 'source:cv']);
+    const out = R([a, b2, c3, x], Object.assign(state(), { partners: both }));
+    const sc = id => out.find(r => r.id === id).score;
+    ok('one story per partner takes the whole boost: the next of the same source half, the third a quarter',
+       near(S(a, { partners: both }).score - sc(a.id), 0) && near(S(b2, { partners: both }).score - sc(b2.id), W.PARTNER_BOOST * 0.5, 1e-6) &&
+       near(S(c3, { partners: both }).score - sc(c3.id), W.PARTNER_BOOST * 0.75, 1e-6), out.map(r => r.id + ':' + r.score.toFixed(2)));
+    ok('...so two partners\' best stories lead before either\'s second', out.slice(0, 2).map(r => r.id).sort().join() === [a.id, x.id].sort().join(), out.map(r => r.id));
+  }
 }
 
 console.log('\na league away from the reader is less likely to lead (2026-10-06)');
