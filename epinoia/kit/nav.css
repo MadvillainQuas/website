@@ -938,7 +938,7 @@ html .ep-nav .pages > .item:nth-of-type(7n+4), html .ep-nav .ep-tabbar > a:nth-c
 html .ep-nav .pages > .item:nth-of-type(7n+5), html .ep-nav .ep-tabbar > a:nth-child(7n+5){ --kb:#ff5cf2; --kd:#a8189c }
 html .ep-nav .pages > .item:nth-of-type(7n+6), html .ep-nav .ep-tabbar > a:nth-child(7n+6){ --kb:#7b92ff; --kd:#2f49d6; --kink:#fff }
 html .ep-nav .pages > .item:nth-of-type(7n+7), html .ep-nav .ep-tabbar > a:nth-child(7n+7){ --kb:var(--nav-ink,var(--ink)); --kd:var(--nav-ink,var(--ink)); --kink:var(--nav-bg,var(--panel)) }
-html .ep-nav .ep-nav-foot .item{ --kb:var(--nav-ink,var(--ink)); --kd:var(--nav-ink,var(--ink)) }
+html .ep-nav .ep-nav-foot .item{ --kb:var(--nav-ink,var(--ink)); --kd:var(--nav-ink,var(--ink)); --kink:var(--nav-bg,var(--panel)) }   /* the text on the block: the rail's ground, readable in both themes */
 /* the glyph colour for the theme: bright on dark, deepened on light */
 html .ep-nav{ --kg:var(--kb) }
 html[data-theme="light"] .ep-nav .item, html[data-theme="light"] .ep-nav .ep-tabbar > a{ --kg:var(--kd) }

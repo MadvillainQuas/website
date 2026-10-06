@@ -35,55 +35,41 @@ let pass = 0, fail = 0;
 const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); }
   else { fail++; console.log('  FAIL  ' + n + (d ? '\n          ' + d : '')); } };
 
-/* ---- 1. the slide exists, and leads ---------------------------------------- */
-console.log('\nthe deployment slide is what a buyer lands on');
+/* ---- 1. the page's tabs (rebuilt 2026-10-06: Overview, Platform, Data & models, Deploy, Contact) ------------- */
+console.log('\nthe tabs: the case first, every tab a pane, the contact form last');
 
-ok('there is a deploy pane', /id="pane-deploy"/.test(learn));
-ok('...and it is the one that opens',
-   /<div class="pane on" id="pane-deploy">/.test(learn),
-   'somebody arriving from the splash is deciding whether this is for them');
-ok('...the other panes do not also open',
-   (learn.match(/class="pane on"/g) || []).length === 1);
-/* Read the tabs OFF THE PAGE rather than naming them here. The page has grown from
-   three tabs to four and will grow again; a hard-coded list turns every new audience
-   section into a test failure that says nothing, and — worse — silently stops checking
-   the tab it no longer knows about. What must hold is the same either way: the buying
-   tab leads, and every tab the page declares actually opens something. */
-const tabKeys = [...learn.matchAll(/data-p="([a-z-]+)"/g)].map(m => m[1]);
-ok('its tab is first', tabKeys[0] === 'deploy',
-   `first tab is "${tabKeys[0]}" — the slide is what a buyer lands on`);
-ok('the page still carries the two tabs everything else here reads',
-   tabKeys.includes('deploy') && tabKeys.includes('how'), tabKeys.join(','));
-
-/* the tab machinery is generic, so a fourth tab needs no JS change — but the
-   pane id and the tab key have to agree or the tab does nothing */
-tabKeys.forEach(k => {
-  ok(`tab "${k}" has a pane`, learn.includes(`data-p="${k}"`) && learn.includes(`id="pane-${k}"`));
-});
+/* Read the tabs OFF THE PAGE rather than naming them here, so a new tab is checked without a test change. */
+const tabKeys = [...learn.matchAll(/<button type="button" data-t="([a-z-]+)"/g)].map(m => m[1]);
+const paneKeys = [...learn.matchAll(/<div class="lm-pane" data-p="([a-z-]+)"/g)].map(m => m[1]);
+ok('the case for it leads: Overview is the first tab', tabKeys[0] === 'overview', tabKeys.join(','));
+ok('...and the contact form is a tab of its own', tabKeys.includes('contact') && /<form id="form"/.test(learn));
+ok('every tab has a pane, and every pane a tab', tabKeys.length >= 4 && tabKeys.join() === paneKeys.join(), tabKeys.join() + ' / ' + paneKeys.join());
+ok('only the first pane opens without the script', !/<div class="lm-pane" data-p="overview" hidden/.test(learn) &&
+   paneKeys.slice(1).every(k => new RegExp('<div class="lm-pane" data-p="' + k + '" hidden>').test(learn)));
+ok('learn.js knows the same tabs', /const TABS = \['overview', 'platform', 'data', 'deploy', 'contact'\]/.test(learnJs));
+ok('...and the addresses the page had before still land (?t=who, ?t=new, ?t=how)', /OLD = \{ who: 'overview', new: 'platform', how: 'data' \}/.test(learnJs));
+ok('/contact/ forwards to the Contact tab, keeping its topic',
+   /searchParams\.set\('t', 'contact'\)/.test(rd('epinoia', 'contact', 'go.js')) && /searchParams\.set\('topic', topic\)/.test(rd('epinoia', 'contact', 'go.js')) &&
+   /<script src="go\.js/.test(rd('epinoia', 'contact', 'index.html')));
+ok('the form is contact.js\'s, loaded by the page', /<script src="\.\.\/contact\/contact\.js/.test(learn));
+['form', 'topic', 'privacyBox', 'pkind', 'pcap', 'name', 'email', 'subjectRow', 'subject', 'bodyLabel', 'body', 'count', 'max', 'website', 'send', 'msg']
+  .forEach(id => ok('  the form has #' + id, learn.includes('id="' + id + '"')));
 
 /* ---- 2. both models are pitched ------------------------------------------- */
 console.log('\nboth deployment models are named and scoped');
 
-ok('model 01 is the managed platform', /Managed competition platform/.test(learn));
-ok('model 02 is production and syndication',
-   /Statistics production &amp; syndication/.test(learn));
-ok('each says who it is for', (learn.match(/class="who"/g) || []).length === 2);
-ok('each lists a scope of deployment',
-   (learn.match(/Scope of deployment/g) || []).length === 2);
-
-/* The distinction the whole page turns on: one hosts the public surface, the
-   other does not. If the copy stops making that difference, the slide is just
-   two lists. */
-ok('model 02 promises the league keeps its own site',
-   /your site stays yours/i.test(learn));
-ok('model 01 promises a site it does not have',
-   /no website/i.test(learn));
+ok('the managed platform', /Managed platform<\/span><h3>Your competition, run on Epinoia/.test(learn));
+ok('data production and syndication', /Data production and syndication<\/span><h3>Your site, our statistics/.test(learn));
+ok('one promises the league keeps its own site', /has a website and intends to keep it/i.test(learn));
+ok('the other promises a site it does not have', /no website/i.test(learn));
+ok('the live figures and the leagues are read, not typed', /async function figures\(\)/.test(learnJs) && /function coverage\(leagues\)/.test(learnJs) &&
+   /id="kpis"/.test(learn) && /id="cov"/.test(learn));
 
 /* ---- 3. every framed URL resolves to something real ----------------------- */
 console.log('\nevery live frame points at a page that exists');
 
 const srcs = [...learn.matchAll(/<iframe[^>]*\ssrc="([^"]+)"/g)].map(m => m[1]);
-ok('the slide loads frames at all', srcs.length >= 5, `${srcs.length} found`);
+ok('the page loads frames at all', srcs.length >= 5, `${srcs.length} found`);
 
 srcs.forEach(src => {
   const clean = src.replace(/&amp;/g, '&').split('?')[0];   // strip the query
@@ -111,19 +97,18 @@ console.log('\na framed page renders at the width it was designed for');
 ok('learn.js scales the framed pages', /function fitShots\(\)/.test(learnJs));
 ok('...at a desktop width by default', /\+port\.dataset\.w \|\| 1280/.test(learnJs));
 ok('...and re-runs on resize', /addEventListener\('resize', fitShots/.test(learnJs));
-ok('...and after a tab switch, when a hidden card first gets a width',
-   /tabs\.forEach\(t => t\.addEventListener\('click', \(\) => setTimeout\(fitShots/.test(learnJs));
+ok('...and after a tab switch, when a hidden card first gets a width', /setTimeout\(fitShots, 0\)/.test(learnJs));
 
 /* A grid track's implicit minimum is min-content, so a 1280px frame in a `1fr`
    column drags the whole slide sideways. Measured at 219px of spill before. */
-ok('the model grid cannot be widened by its own contents',
-   /grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/.test(learn),
-   'plain 1fr lets a wide frame grow its own column');
+const css = rd('epinoia', 'kit', 'learn.css');
+ok('the model grid cannot be widened by its own contents', /\.lm-grid\.two\{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\) \}/.test(css) &&
+   /\.lm-card\{[^}]*min-width:0/.test(css), 'a card must be allowed to be narrower than its frame');
 
 /* The scaled frames are pictures, not controls — a page that captures a scroll
    or a tab is a trap inside a sales slide. The widgets are the exception, and
    are deliberately left live. */
-ok('scaled frames do not take pointer input', /\.port iframe\{[^}]*pointer-events:none/.test(learn));
+ok('scaled frames do not take pointer input', /\.port iframe\{[^}]*pointer-events:none/.test(css));
 ok('...and are out of the tab order',
    (learn.match(/tabindex="-1"/g) || []).length >= 3);
 /* Count the attribute ON THE TAGS IT IS ABOUT. Comparing a page-wide count of

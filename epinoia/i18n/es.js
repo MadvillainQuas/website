@@ -1784,7 +1784,14 @@
       'rebounding %': '% de rebotes',
       'Scouting Report': 'Informe de scouting',
       'Can\'t find who you\'re looking for? A player or team may be listed under a different name. Try searching for their team, or browse by league.': '¿No encuentras lo que buscas? Un jugador o equipo puede figurar con otro nombre. Prueba a buscar su equipo o explora por liga.',
-      'Not in this league\'s current season. Earlier seasons are below.': 'No participa en la temporada actual de esta liga. Las temporadas anteriores están más abajo.'
+      'Not in this league\'s current season. Earlier seasons are below.': 'No participa en la temporada actual de esta liga. Las temporadas anteriores están más abajo.',
+      'contact / learn more': 'Contacto / más información',
+      'Contact and learn more about Epinoia': 'Contacto e información sobre Epinoia',
+      'Overview': 'Resumen',
+      'Data & models': 'Datos y modelos',
+      'Deploy': 'Implantación',
+      'Talk to us': 'Hablemos',
+      'Save as PDF': 'Guardar como PDF'
     },
 
     ctx: {

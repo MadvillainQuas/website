@@ -249,7 +249,6 @@
       /* ---- the platform console: frame, sign-in, tabs ---- */
       'everything, every league': 'todo, en todas las ligas',
       'Checking your access…': 'Comprobando tu acceso…',
-      'Overview': 'Resumen',
       'Accounts': 'Cuentas',
       'Organisations': 'Organizaciones',
       'Plans': 'Planes',

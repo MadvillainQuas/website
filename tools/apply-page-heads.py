@@ -71,9 +71,9 @@ PAGES = {
     "video/": ("Basketball Game Video & Highlights | Epinoia",
                "Game video and highlights for every league on Epinoia, linked to the play-by-play so you can jump to any basket, steal or block in the box score.",
                "Video hub", True, "Video", "CollectionPage"),
-    "learn/": ("What Epinoia Is: Scoring, Stats & Leagues | Epinoia",
-               "Epinoia is a basketball competition platform: one scoring app and one event log behind a public site, club pages, embeds, an API and phone apps for leagues.",
-               "Learn more", True, "About", "AboutPage"),
+    "learn/": ("Epinoia for Leagues, Clubs & Investors | Epinoia",
+               "Epinoia is a basketball data platform: live scoring, advanced stats, emailed scouting reports and models built from every game, for leagues, clubs and partners.",
+               "Contact / learn more", True, "About", "AboutPage"),
     "join/": ("Membership: Advanced Basketball Analytics | Epinoia",
               "Box scores, tables and player pages are free. Membership adds the analysis on top: where points came from, where shots were taken and who plays well together.",
               "Membership", False, "Membership", "WebPage"),
@@ -88,7 +88,7 @@ PAGES = {
                "Embeds", True, "Embeds", "WebPage"),
     "contact/": ("Contact Epinoia: Leagues, Clubs & Press | Epinoia",
                  "Get in touch with Epinoia about a league, a fixture, a wrong number in a box score or running your own competition, or make a data privacy request.",
-                 "Contact", True, "Contact", "ContactPage"),
+                 "Contact", False, "Contact", "ContactPage"),   # forwards to learn/?t=contact (2026-10-06)
     "privacy/": ("Privacy: Your Data Protection Rights | Epinoia",
                  "Your data protection rights on Epinoia: how to see, correct or erase your data, object to its use or complain, and how long each request takes to answer.",
                  "Privacy", True, "Privacy", "WebPage"),
@@ -103,7 +103,7 @@ NAV = [  # the sections a searcher may be offered under the home result (sitelin
     ("news/", "News", "Match reports, the publishers and the leagues' creators, newest first"),
     ("votes/", "Fans' vote", "The fans' player and club of the week"),
     ("video/", "Video", "Game video and highlights linked to the play-by-play"),
-    ("learn/", "About Epinoia", "What the platform is and how to run a league on it"),
+    ("learn/", "About Epinoia", "The platform for leagues, clubs and investors, and how to get in touch"),
 ]
 
 

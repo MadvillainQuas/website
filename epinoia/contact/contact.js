@@ -16,6 +16,10 @@
    contact inbox. The subject goes, the details are capped at the queue's 4,000
    characters, and the answer carries a reference and the dates. ?topic=privacy
    opens the form that way.
+
+   THE FORM LIVES ON THE LEARN PAGE NOW (2026-10-06): its Contact tab (learn/?t=contact) loads this file; /contact/ forwards there.
+   Three more topics there, each a plain message whose subject says which: a league or club (and the report service), investment,
+   a partnership. ?topic= picks any of them.
    ============================================================================ */
 
 const $ = s => document.querySelector(s);
@@ -35,6 +39,8 @@ body.addEventListener('input', () => { count.textContent = String(body.value.len
 
 const isPrivacy = () => $('#topic').value === 'privacy';
 const isApi = () => $('#topic').value === 'api';
+/* the topics that are a plain message with a heading on the subject, so the inbox can sort them */
+const PREFIX = { league: 'League or club', invest: 'Investment', partner: 'Partnership' };
 const londonDate = iso => iso
   ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'long', year: 'numeric' })
   : '';
@@ -51,7 +57,7 @@ function syncTopic() {
   count.textContent = String(body.value.length);
 }
 $('#topic').addEventListener('change', syncTopic);
-{ const tp = new URLSearchParams(location.search).get('topic'); if (tp === 'privacy' || tp === 'api') $('#topic').value = tp; }
+{ const tp = new URLSearchParams(location.search).get('topic'); if (tp && [...$('#topic').options].some(o => o.value === tp)) $('#topic').value = tp; }
 syncTopic();
 
 $('#form').addEventListener('submit', async (e) => {
@@ -60,7 +66,8 @@ $('#form').addEventListener('submit', async (e) => {
   const privacy = isPrivacy();
   const name = $('#name').value.trim();
   const email = $('#email').value.trim();
-  const subject = privacy ? '' : (isApi() ? 'API request' + ($('#subject').value.trim() ? ': ' + $('#subject').value.trim() : '') : $('#subject').value.trim());
+  const own = $('#subject').value.trim(), pre = isApi() ? 'API request' : PREFIX[$('#topic').value];
+  const subject = privacy ? '' : (pre ? pre + (own ? ': ' + own : '') : own).slice(0, 160);   // the function's own limit
   const text = body.value.trim();
 
   /* Say what is wrong and put the cursor there. A form that reports one

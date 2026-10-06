@@ -1,0 +1,263 @@
+/* ============================================================================
+   LEARN MORE (learn/): the platform as a proposition, for a league, a club, a partner or an investor, and the contact form.
+   Built to the page standard (kit/page.css, sectitle.css, teletext.css): this sheet is only what the page has of its own.
+
+   The look is the site's since October 2026: Archivo for everything that is read, with weight carrying the hierarchy (a figure 800,
+   a card's title 750, a label 650, prose 400), the title face only for the page's name and the section titles, mint and aqua as
+   the accents, cards on the ground with a hairline between them. A business reader skims: every block opens with its point in
+   one bold line, and the detail is underneath for whoever wants it.
+   ============================================================================ */
+
+.lm{ --lm-gap:calc(var(--u)*2); --lm-card:color-mix(in oklch,var(--panel) 70%,var(--ground)); }
+.lm p, .lm li{ font-family:var(--f-ui) }
+.lm .lm-body, .lm .lm-card p:not(.pt), .lm .lm-card li, .lm .lm-area dd, .lm .lm-spec .v, .lm .lm-step .d, .lm .lm-kpi .d, .lm .lm-gal figcaption, .lm .lm-note{ font-weight:400 }
+
+/* ---- the tabs under the head: one switch, centred, sticky under the teletext line on a phone ---- */
+.lm-tabs{ display:flex; justify-content:center; padding:calc(var(--u)*2) calc(var(--u)*2); border-bottom:1px solid var(--rule);
+  position:sticky; top:0; z-index:5; background:color-mix(in oklch,var(--ground) 92%,transparent); backdrop-filter:blur(6px) }
+.lm-tabs .pg-seg{ max-width:100%; overflow-x:auto; scrollbar-width:none }
+.lm-tabs .pg-seg::-webkit-scrollbar{ display:none }
+.lm-tabs .pg-seg button{ font-weight:700; white-space:nowrap; padding:9px 16px; font-size:9.5px }
+.lm-pane[hidden]{ display:none }
+
+/* ---- reading text: a lead and a body, at a width a person reads ---- */
+.lm-lead{ font-size:17px; line-height:1.6; color:var(--ink); font-weight:500; margin:0 auto calc(var(--u)*2); max-width:68ch; text-align:center }
+.lm-body{ font-size:14.5px; line-height:1.7; color:var(--ink-2); margin:0 auto calc(var(--u)*2); max-width:72ch }
+.lm-body b, .lm-lead b{ color:var(--ink); font-weight:700 }
+.lm-body a, .lm-lead a{ color:var(--lume); font-weight:650; text-decoration:none }
+.lm-body a:hover, .lm-lead a:hover{ text-decoration:underline; text-underline-offset:3px }
+
+/* ---- THE NUMBERS: live counts, each a big figure over its label ---- */
+.lm-kpis{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:1px; background:var(--rule);
+  border:1px solid var(--rule); max-width:1180px; margin:0 auto }
+@media (max-width:1100px){ .lm-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)) } }
+.lm-kpi{ background:var(--ground); padding:calc(var(--u)*3) calc(var(--u)*2); text-align:center; display:flex; flex-direction:column; gap:6px; align-items:center }
+.lm-kpi .v{ font-family:var(--f-ui); font-weight:800; font-size:clamp(22px,2.1vw,34px); line-height:1; letter-spacing:-.015em; white-space:nowrap;
+  font-variant-numeric:tabular-nums; background:linear-gradient(100deg,var(--lume),var(--aqua)); -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent }
+.lm-kpi .k{ font-family:var(--f-ui); font-weight:700; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink) }
+.lm-kpi .d{ font-family:var(--f-ui); font-weight:400; font-size:12px; line-height:1.45; color:var(--ink-3); max-width:24ch }
+.lm-kpi.wait .v{ opacity:.35 }
+.lm-asof{ text-align:center; font-family:var(--f-ui); font-size:12px; color:var(--ink-3); margin:calc(var(--u)*1.5) 0 0 }
+
+/* ---- cards: a grid of points, each a bold line then the detail ---- */
+/* fixed columns for the number of cards each grid holds, so a row is never left with an empty cell: four (8 and 4 cards), three
+   (6 and 3), two; each halves on a narrower screen and is one column on a phone */
+.lm-grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; background:var(--rule);
+  border:1px solid var(--rule); max-width:1180px; margin:0 auto }
+.lm-grid.c3{ grid-template-columns:repeat(3,minmax(0,1fr)) }
+.lm-grid.two{ grid-template-columns:repeat(2,minmax(0,1fr)) }
+@media (max-width:1180px){ .lm-grid, .lm-grid.c3{ grid-template-columns:repeat(2,minmax(0,1fr)) } .lm-grid.c3.keep{ grid-template-columns:repeat(3,minmax(0,1fr)) } }
+@media (max-width:760px){ .lm-grid, .lm-grid.c3, .lm-grid.c3.keep, .lm-grid.two{ grid-template-columns:minmax(0,1fr) } }
+.lm-card{ background:var(--ground); padding:calc(var(--u)*3); display:flex; flex-direction:column; gap:10px; min-width:0 }
+.lm-card .kick{ font-family:var(--f-ui); font-weight:700; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--aqua) }
+.lm-card h3{ margin:0; font-family:var(--f-ui); font-weight:800; font-size:18px; line-height:1.25; color:var(--ink); letter-spacing:0; text-transform:none }
+.lm-card .pt{ margin:0; font-family:var(--f-ui); font-weight:600; font-size:14px; line-height:1.55; color:var(--ink);
+  border-left:3px solid var(--lume); padding-left:12px }
+.lm-card p{ margin:0; font-size:13.5px; line-height:1.65; color:var(--ink-2) }
+.lm-card ul{ margin:0; padding-left:18px }
+.lm-card li{ font-size:13.5px; line-height:1.6; color:var(--ink-2); margin:0 0 6px }
+.lm-card li b{ color:var(--ink); font-weight:700 }
+.lm-card .grow{ flex:1 }
+.lm-card .go{ font-family:var(--f-ui); font-weight:700; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--lume); text-decoration:none }
+.lm-card .go:hover{ text-decoration:underline; text-underline-offset:3px }
+.lm-card.hl{ background:color-mix(in oklch,var(--lume) 6%,var(--ground)) }
+
+/* ---- the catalogue: an area's capabilities as a list of lines, each a name and what it does ---- */
+.lm-cat{ max-width:1180px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr)); gap:calc(var(--u)*3) }
+.lm-area{ border:1px solid var(--rule); background:var(--ground) }
+.lm-area > h3{ margin:0; padding:14px 18px; font-family:var(--f-ui); font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink); border-bottom:1px solid var(--rule); background:color-mix(in oklch,var(--lume) 5%,transparent); display:flex; align-items:center; gap:10px }
+.lm-area > h3::before{ content:''; width:8px; height:8px; border-radius:2px; background:linear-gradient(135deg,var(--lume),var(--aqua)); flex:none }
+.lm-area dl{ margin:0 }
+.lm-area .row{ display:grid; grid-template-columns:minmax(130px,36%) 1fr; gap:14px; padding:11px 18px; border-bottom:1px solid var(--rule) }
+.lm-area .row:last-child{ border-bottom:0 }
+.lm-area dt{ font-family:var(--f-ui); font-weight:700; font-size:13px; line-height:1.5; color:var(--ink) }
+.lm-area dd{ margin:0; font-family:var(--f-ui); font-size:13px; line-height:1.6; color:var(--ink-2) }
+.lm-area dd b{ color:var(--ink); font-weight:650 }
+.lm-tag{ display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; font-family:var(--f-ui); font-weight:700; font-size:9.5px;
+  letter-spacing:.08em; text-transform:uppercase; vertical-align:2px; border:1px solid currentColor }
+.lm-tag.mem{ color:var(--amber) }
+.lm-tag.new{ color:var(--lume) }
+.lm-tag.wip{ color:var(--ink-3) }
+
+/* ---- the pipeline: capture, the log, the engine, the surfaces, as a row of steps with arrows ---- */
+.lm-flow{ display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch; gap:0; max-width:1180px; margin:0 auto }
+.lm-step{ flex:1 1 0; min-width:0; border:1px solid var(--rule); background:var(--ground); padding:calc(var(--u)*2.5);
+  display:flex; flex-direction:column; gap:8px; position:relative; text-align:center }
+.lm-step + .lm-step{ margin-left:22px }
+.lm-step + .lm-step::before{ content:'→'; position:absolute; left:-20px; top:50%; transform:translateY(-50%); width:18px; text-align:center;
+  font-family:var(--f-ui); font-weight:800; font-size:16px; color:var(--lume) }
+.lm-step .t{ font-family:var(--f-ui); font-weight:800; font-size:14px; color:var(--ink) }
+.lm-step .d{ font-family:var(--f-ui); font-size:12.5px; line-height:1.55; color:var(--ink-2) }
+.lm-step .s{ font-family:var(--f-ui); font-weight:700; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--aqua) }
+.lm-flow{ flex-wrap:nowrap }
+@media (max-width:980px){
+  .lm-flow{ flex-direction:column; align-items:stretch }
+  .lm-step{ flex-basis:auto }
+  .lm-step + .lm-step{ margin-left:0; margin-top:24px }
+  .lm-step + .lm-step::before{ content:'↓'; left:50%; top:-22px; transform:translateX(-50%) }
+}
+
+/* ---- a two-column table of terms (the spec, the business model) ---- */
+.lm-spec{ display:grid; grid-template-columns:minmax(150px,230px) 1fr; gap:1px; background:var(--rule); border:1px solid var(--rule); max-width:1000px; margin:0 auto }
+.lm-spec > div{ background:var(--ground); padding:13px 16px }
+.lm-spec .k{ font-family:var(--f-ui); font-weight:800; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--lume) }
+.lm-spec .v{ font-family:var(--f-ui); font-size:13.5px; line-height:1.65; color:var(--ink-2) }
+.lm-spec .v b{ color:var(--ink); font-weight:700 }
+@media (max-width:720px){
+  .lm-spec{ grid-template-columns:1fr; gap:0 }
+  .lm-spec .k{ padding-bottom:2px }
+  .lm-spec .v{ padding-top:4px; border-bottom:1px solid var(--rule) }
+}
+
+/* ---- the coverage: every league on the platform, by country, read live ---- */
+.lm-cov{ max-width:1180px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule) }
+.lm-cov .c{ background:var(--ground); padding:12px 16px }
+.lm-cov .c h4{ margin:0 0 6px; font-family:var(--f-ui); font-weight:800; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink);
+  display:flex; justify-content:space-between; gap:8px }
+.lm-cov .c h4 span{ color:var(--ink-3); font-weight:700 }
+.lm-cov .c a{ display:block; font-family:var(--f-ui); font-size:13px; line-height:1.6; color:var(--ink-2); text-decoration:none }
+.lm-cov .c a:hover{ color:var(--lume) }
+
+/* ---- the live product, framed (the deployment models) ---- */
+.lm-shot{ border:1px solid var(--rule-2,var(--rule)); background:var(--panel); margin:calc(var(--u)*1.5) 0 0 }
+.lm-shot .bar{ display:flex; align-items:center; gap:6px; padding:7px 10px; border-bottom:1px solid var(--rule); background:color-mix(in oklch,var(--lume) 5%,transparent) }
+.lm-shot .dot{ width:7px; height:7px; border-radius:50%; background:var(--rule-2,var(--rule)); flex:none }
+.lm-shot .url{ font-family:var(--f-ui); font-weight:600; font-size:11px; color:var(--ink-3); margin-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.lm-shot .cap{ font-family:var(--f-ui); font-weight:600; font-size:11px; color:var(--ink-3); padding:8px 10px; border-top:1px solid var(--rule) }
+.port{ position:relative; overflow:hidden; background:var(--ground); max-width:100% }
+.port iframe{ position:absolute; top:0; left:0; width:1280px; height:860px; border:0; transform-origin:0 0; pointer-events:none }
+.live iframe{ display:block; width:100%; max-width:100%; border:0; background:var(--ground) }
+.live + .live{ border-top:1px solid var(--rule) }
+
+/* ---- the gallery of stills ---- */
+.lm-gal{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); max-width:1180px; margin:0 auto }
+.lm-gal figure{ margin:0; background:var(--ground); display:flex; flex-direction:column }
+.lm-gal img{ display:block; width:100%; height:auto; border-bottom:1px solid var(--rule) }
+.lm-gal figcaption{ padding:11px 14px 14px; font-family:var(--f-ui); font-size:12.5px; line-height:1.55; color:var(--ink-3) }
+.lm-gal figcaption b{ display:block; font-weight:800; font-size:13.5px; color:var(--ink); margin-bottom:3px }
+
+/* ---- a call to action: one primary, the rest outlined ---- */
+.lm-cta{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:calc(var(--u)*3) auto 0 }
+.lm-cta a, .lm-cta button{ font-family:var(--f-ui); font-weight:800; font-size:11px; letter-spacing:.1em; text-transform:uppercase; text-decoration:none;
+  padding:12px 20px; border:1px solid var(--lume); color:var(--lume); background:none; cursor:pointer; border-radius:2px }
+.lm-cta .pri{ background:var(--lume); color:var(--on-accent) }
+.lm-cta a:hover, .lm-cta button:hover{ background:color-mix(in oklch,var(--lume) 14%,transparent); color:var(--lume) }
+.lm-note{ max-width:72ch; margin:calc(var(--u)*3) auto 0; border-left:3px solid var(--amber); padding:12px 16px;
+  background:color-mix(in oklch,var(--amber) 7%,transparent); font-family:var(--f-ui); font-size:13.5px; line-height:1.65; color:var(--ink-2) }
+.lm-note b{ color:var(--ink); font-weight:700 }
+
+/* ---- the contact form, in the page's type ---- */
+.lm-form{ max-width:640px; margin:0 auto }
+.lm-form label.f{ display:flex; flex-direction:column; gap:6px; margin-bottom:calc(var(--u)*2) }
+.lm-form label.f span{ font-family:var(--f-ui); font-weight:700; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2) }
+.lm-form .ep-input{ width:100%; max-width:none; box-sizing:border-box }
+.lm-form textarea.ep-input{ min-height:170px; resize:vertical; line-height:1.7 }
+.lm-form .two{ display:grid; grid-template-columns:1fr 1fr; gap:calc(var(--u)*2) }
+@media (max-width:560px){ .lm-form .two{ grid-template-columns:1fr } }
+.lm-form .count{ font-family:var(--f-ui); font-size:11px; color:var(--ink-3); text-align:right; margin:-8px 0 calc(var(--u)*2) }
+.lm-form .hide{ display:none }
+.lm-form .hp{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden }
+.lm-form .pv{ border-left:3px solid var(--aqua); padding:12px 16px; margin:0 0 calc(var(--u)*2); background:color-mix(in oklch,var(--aqua) 6%,transparent) }
+.lm-form .pv p{ font-family:var(--f-ui); font-size:13px; line-height:1.65; color:var(--ink-2); margin:0 0 calc(var(--u)*1.5) }
+.lm-form .pv p a{ color:var(--aqua); font-weight:650 }
+.lm-form #send{ font-family:var(--f-ui); font-weight:800; letter-spacing:.1em }
+.lm .msg{ font-family:var(--f-ui); font-size:13.5px; line-height:1.65; padding:12px 16px; margin:calc(var(--u)*2) auto; max-width:640px;
+  border-left:3px solid var(--rule-2,var(--rule)); color:var(--ink-2) }
+.lm .msg.ok{ border-left-color:var(--lume); color:var(--lume); background:color-mix(in oklch,var(--lume) 8%,transparent) }
+.lm .msg.err{ border-left-color:var(--flare); color:var(--flare); background:color-mix(in oklch,var(--flare) 8%,transparent) }
+.lm .msg.warn{ border-left-color:var(--amber); color:var(--amber); background:color-mix(in oklch,var(--amber) 8%,transparent) }
+.lm .msg.hide{ display:none }
+.lm-form .fine{ font-family:var(--f-ui); font-size:12px; line-height:1.6; color:var(--ink-3); margin-top:calc(var(--u)*3) }
+.lm-form .fine a{ color:inherit }
+.lm-routes{ max-width:900px; margin:0 auto calc(var(--u)*4) }
+
+/* ---- the foot ---- */
+.lm-foot{ padding:calc(var(--u)*4) calc(var(--u)*3); display:flex; gap:18px; flex-wrap:wrap; justify-content:center;
+  font-family:var(--f-ui); font-weight:600; font-size:12px; color:var(--ink-3) }
+.lm-foot a{ color:var(--ink-3); text-decoration:none }
+.lm-foot a:hover{ color:var(--lume) }
+
+@media (max-width:720px){
+  .lm-lead{ font-size:15.5px }
+  .lm-body{ font-size:14px }
+  .lm-card{ padding:calc(var(--u)*2.5) }
+  .lm-area .row{ grid-template-columns:1fr; gap:4px }
+}
+@media print{
+  .lm-tabs, .tt-line, .tt-index, .ep-nav, .lm-foot, .lm-pane[data-p="contact"]{ display:none !important }
+  .lm-pane[hidden]{ display:block !important }
+}
+
+/* ============================================================================
+   THE PAGE'S OWN PALETTE (2026-10-06): midnight and gold, set apart from the site's mint, because this page is read by people
+   deciding whether to invest or sign, and it should look like the document it is. Scoped to the page's frame, so the rail, the
+   menus and every other page keep the site's colours. The tokens the kit and the page standard read (--lume, --aqua, --ground,
+   --ink…) are redefined here, so the section titles' bars, the switch, the buttons and the links all take it without a rule each.
+   The head and the figures are a midnight band in both themes: the cover and the numbers of a deck.
+   ============================================================================ */
+.ep-frame.lm{
+  --lm-night:#0a0f1f; --lm-night-2:#121a33; --lm-gold:#e2bd6b; --lm-gold-2:#f3dca4; --lm-iris:#8fa2ff;
+  --ground:#0b1122; --panel:#121a31; --panel-2:#18213d;
+  --ink:#eef1fa; --ink-2:rgba(238,241,250,.9); --ink-3:rgba(238,241,250,.7);
+  --rule:rgba(226,189,107,.18); --rule-2:rgba(226,189,107,.42);
+  --lume:var(--lm-gold); --aqua:var(--lm-iris); --amber:#f0b65a; --on-accent:#0a0f1f;
+  background:var(--ground); color:var(--ink);
+}
+:root[data-theme="light"] .ep-frame.lm{
+  --ground:#f7f4ec; --panel:#fffdf8; --panel-2:#efe9da;
+  --ink:#111a33; --ink-2:rgba(17,26,51,.9); --ink-3:rgba(17,26,51,.72);
+  --rule:rgba(17,26,51,.13); --rule-2:rgba(17,26,51,.3);
+  --lume:#9a6c10; --aqua:#2f3fb8; --amber:#8a5a00; --on-accent:#ffffff;
+}
+.ep-frame.lm .lm-card, .ep-frame.lm .lm-kpi, .ep-frame.lm .lm-area, .ep-frame.lm .lm-step, .ep-frame.lm .lm-spec > div,
+.ep-frame.lm .lm-cov .c, .ep-frame.lm .lm-gal figure{ background:var(--ground) }
+.ep-frame.lm .lm-card.hl{ background:color-mix(in oklch,var(--lume) 7%,var(--ground)); box-shadow:inset 0 3px 0 var(--lume) }
+
+/* the cover: midnight in both themes, a fine gold grid and a glow behind the name */
+.ep-frame.lm .pg-head{
+  --ink:#eef1fa; --ink-2:rgba(238,241,250,.9); --ink-3:rgba(238,241,250,.72); --lume:var(--lm-gold); --aqua:var(--lm-iris); --on-accent:#0a0f1f;
+  position:relative; overflow:hidden; color:var(--ink); border-bottom:1px solid rgba(226,189,107,.35);
+  background:
+    radial-gradient(60% 80% at 50% 0%, rgba(143,162,255,.22), transparent 70%),
+    radial-gradient(40% 60% at 85% 100%, rgba(226,189,107,.16), transparent 70%),
+    linear-gradient(rgba(226,189,107,.07) 1px, transparent 1px) 0 0 / 100% 36px,
+    linear-gradient(90deg, rgba(226,189,107,.07) 1px, transparent 1px) 0 0 / 36px 100%,
+    linear-gradient(180deg, var(--lm-night), var(--lm-night-2));
+  padding-top:calc(var(--u)*9); padding-bottom:calc(var(--u)*8);
+}
+.ep-frame.lm > .pg-head h1{
+  /* the sheen layer teletext.css runs over every page title, then the page's own gold-to-iris (two layers, as it sizes them) */
+  background-image:linear-gradient(104deg,transparent 0 44%,rgba(255,255,255,.8) 49%,rgba(255,255,255,.15) 52%,transparent 56% 100%),
+                   linear-gradient(100deg,var(--lm-gold-2) 0%,var(--lm-gold) 45%,var(--lm-iris) 100%) }
+.ep-frame.lm .pg-kick{ color:var(--lm-gold); font-weight:800; letter-spacing:.2em }
+.ep-frame.lm .pg-kick::before, .ep-frame.lm .pg-kick::after{ content:''; width:28px; height:1px; background:currentColor; opacity:.6 }
+.ep-frame.lm .pg-sub{ color:rgba(238,241,250,.88); font-size:17px }
+.ep-frame.lm .pg-head .lm-cta a, .ep-frame.lm .pg-head .lm-cta button{ border-color:var(--lm-gold); color:var(--lm-gold) }
+.ep-frame.lm .pg-head .lm-cta .pri{ background:linear-gradient(100deg,var(--lm-gold-2),var(--lm-gold)); color:#0a0f1f; border-color:transparent }
+.ep-frame.lm .pg-head .lm-cta a:hover, .ep-frame.lm .pg-head .lm-cta button:hover{ background:rgba(226,189,107,.14); color:var(--lm-gold-2) }
+
+/* the figures: the same midnight band, gold numbers */
+.ep-frame.lm #glance{
+  --ink:#eef1fa; --ink-2:rgba(238,241,250,.9); --ink-3:rgba(238,241,250,.66); --lume:var(--lm-gold); --aqua:var(--lm-iris);
+  --rule:rgba(226,189,107,.2); --rule-2:rgba(226,189,107,.42); --ground:var(--lm-night); --panel:var(--lm-night-2); --on-accent:#0a0f1f;
+  background:linear-gradient(180deg,var(--lm-night-2),var(--lm-night)); color:var(--ink);
+}
+.ep-frame.lm #glance .sec-h h2{ color:#eef1fa }
+.ep-frame.lm .lm-kpi .v{ background-image:linear-gradient(180deg,var(--lm-gold-2),var(--lm-gold)) }
+.ep-frame.lm #glance .lm-kpis{ border-color:rgba(226,189,107,.3); background:rgba(226,189,107,.2) }
+.ep-frame.lm #glance .lm-kpi{ background:rgba(10,15,31,.92) }
+
+/* the tab bar and the switch, in the page's colours */
+.ep-frame.lm .lm-tabs{ background:var(--ground); border-bottom-color:var(--rule-2) }
+.ep-frame.lm #glance .tt-skip{ color:#eef1fa; background:var(--lm-night-2); border-color:rgba(226,189,107,.42) }
+.ep-frame.lm .pg-seg{ border-color:var(--rule-2) }
+.ep-frame.lm .pg-seg button[aria-pressed="true"]{ background:var(--lume); color:var(--on-accent) }
+.ep-frame.lm .pg-seg button + button{ border-left-color:var(--rule-2) }
+
+/* the catalogue's heads and the steps' labels take the second colour, so gold stays for what matters */
+.ep-frame.lm .lm-area > h3{ background:color-mix(in oklch,var(--aqua) 7%,transparent) }
+.ep-frame.lm .lm-area > h3::before{ background:linear-gradient(135deg,var(--lume),var(--aqua)) }
+.ep-frame.lm .lm-card .pt{ border-left-color:var(--lume) }
+.ep-frame.lm .sec-h h2{ color:var(--ink) }

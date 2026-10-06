@@ -245,7 +245,6 @@
       /* ---- the platform console: frame, sign-in, tabs ---- */
       'everything, every league': 'すべての機能、すべてのリーグ',
       'Checking your access…': 'アクセス権を確認中…',
-      'Overview': '概要',
       'Accounts': 'アカウント',
       'Organisations': '組織',
       'Plans': '会員プラン',

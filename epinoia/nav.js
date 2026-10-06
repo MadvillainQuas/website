@@ -1548,10 +1548,12 @@
      third row of the home panel, beside global fixtures, which is the layer
      that holds everything belonging to no league. */
 
-  const contact = el('a', 'item' + (/\/epinoia\/contact\//.test(here) ? ' on' : ''));
-  contact.href = root + 'contact/';
-  contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact'));
-  contact.title = 'contact';
+  /* CONTACT / LEARN MORE (2026-10-06): one row for both. It opens the learn page, which now holds the contact form as its
+     last tab; the old /contact/ address forwards there. */
+  const contact = el('a', 'item' + (/\/epinoia\/(contact|learn)\//.test(here) ? ' on' : ''));
+  contact.href = root + 'learn/';
+  contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact / learn more'));
+  contact.title = 'Contact and learn more about Epinoia';
   navFoot.appendChild(contact);
 
   /* LANGUAGE, the last row of the foot: bottom-left on a desktop, the bottom of the phone's menu
