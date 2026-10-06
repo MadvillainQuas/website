@@ -26,8 +26,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # any of them turns up in what it is about to hand to Pages.
 #
 # folders published whole (minus the per-file exclusions below)
-PUBLIC_DIRS = ["epinoia", ".well-known"]
-# single files at the root: the domain name, the crawler rules, a root page that sends everybody to /epinoia/,
+# brand/ (the Prophe(s)y logo the front door shows) and prophesy/ (the scouting services page), both 2026-10-06
+PUBLIC_DIRS = ["epinoia", ".well-known", "brand", "prophesy"]
+# single files at the root: the domain name, the crawler rules, the site's front door (the Prophe(s)y splash),
 # and a service worker that clears the old tools' caches out of browsers that installed it
 PUBLIC_FILES = ["CNAME", "robots.txt", "index.html", "sw.js", "logo.jpg"]
 # never published (checked again at the end): the repository's own top-level folders for
