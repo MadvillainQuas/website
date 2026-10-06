@@ -43,7 +43,8 @@ const make = async (handler) => {
   await tick();
   return { host, calls, said, sb };
 };
-const switches = host => host.all().filter(n => n.tagName === 'INPUT');
+const switches = host => host.all().filter(n => n.tagName === 'INPUT' && n.type === 'checkbox');
+const inputsOf = (host, type) => host.all().filter(n => n.tagName === 'INPUT' && n.type === type);
 
 console.log('\nthe list');
 {
@@ -106,6 +107,31 @@ ok('the console\'s page loads the panel: its host beside the sources, and platfo
   const js = readFileSync(path.join(root, 'epinoia', 'admin', 'platform', 'platform.js'), 'utf8');
   return /id="officialPartnersHost"/.test(html) && html.indexOf('officialPartnersHost') > html.indexOf('newsSourcesHost') && /C\.mountPartners\(\{ host: '#officialPartnersHost'/.test(js);
 })());
+
+console.log('\na partner\'s own words and a publisher\'s logo (0235)');
+{
+  const t = await make(async fn => (fn === 'official_partners_admin' ? { data: rows(), error: null } : { data: { ok: true }, error: null }));
+  const labels = inputsOf(t.host, undefined).concat(t.host.all().filter(n => n.tagName === 'INPUT' && n.maxLength === 32));
+  const lab = t.host.all().filter(n => n.tagName === 'INPUT' && n.maxLength === 32);
+  ok('a label field for every partner row (sources and outlets)', lab.length === 3, lab.length);
+  ok('a logo picker for each news source only', inputsOf(t.host, 'file').length === 2, inputsOf(t.host, 'file').length);
+  lab[0].value = 'Official media partner';
+  const save = t.host.all().filter(n => n.tagName === 'BUTTON' && n.textContent === 'save label')[0];
+  await save.listeners.click[0]();
+  await tick();
+  const call = t.calls.find(c => c[0] === 'set_partner_branding');
+  ok('saving calls set_partner_branding with the kind, the id and the label', call && call[1].p_kind === 'source' && call[1].p_id === 's1' && call[1].p_label === 'Official media partner', call);
+  void labels;
+}
+{
+  const src = readFileSync(path.join(here, '..', '..', 'epinoia', 'newscard.js'), 'utf8');
+  ok('the pill reads the partner\'s own label, by key or by name, and falls back to "Official partner"',
+     /function partnerPill\(cls, ref\)/.test(src) && /EpinoiaPartnerLabels/.test(src) && /\|\| 'Official partner'/.test(src));
+  const mig = readFileSync(path.join(here, '..', 'migrations', '0235_partner_label_publisher_logo.sql'), 'utf8');
+  ok('0235: the label column, the admin-only branding call, the label in official_partners(), and the admin-only logo upload rule',
+     /add column if not exists partner_label/.test(mig) && /function public\.set_partner_branding/.test(mig) && /is_platform_admin\(\)/.test(mig) &&
+     /'label', s\.partner_label/.test(mig) && /news\/\[0-9a-fA-F-\]\{36\}\/logo-/.test(mig));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

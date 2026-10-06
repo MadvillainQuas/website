@@ -295,9 +295,13 @@ function mark(brand, cls) {
 /* THE OFFICIAL-PARTNER PILL: a small gold teletext block, the pixel micro face, black on gold whatever the theme, and
    its name "Official partner" (the words are the text; the capitals are CSS). It is a label, never a link: on a card it
    sits on the plate, away from the headline, and under the headline link's cover. */
-function partnerPill(cls) {
-  const s = el('span', 'pc-partner' + (cls ? ' ' + cls : ''), 'Official partner');
-  s.title = 'Official partner: chosen by Epinoia';
+function partnerPill(cls, ref) {
+  /* its own words when the platform gave it some (0235: by its key, 'source:<slug>', or its name), else "Official partner" */
+  const L = (typeof globalThis !== 'undefined' && globalThis.EpinoiaPartnerLabels) || {};
+  const r = ref == null ? '' : String(ref);
+  const label = (r && (L[r] || L['name:' + r.toLowerCase()])) || 'Official partner';
+  const s = el('span', 'pc-partner' + (cls ? ' ' + cls : ''), label);
+  s.title = label + ': chosen by Epinoia';
   return s;
 }
 /* THE LANGUAGE CHIP: a small 'ES' on a story that is not in the reader's language; its title says which language, in the site's */
@@ -383,7 +387,7 @@ function card(item, opts) {
     plate.appendChild(badge);
     plate.appendChild(el('span', 'pc-kind', K.glyph + ' ' + (it.platform && it.kind !== 'story' && it.kind !== 'article' ? it.platform : K.word)));
     plate.appendChild(el('span', 'pc-grain'));
-    if (partner) plate.appendChild(partnerPill());
+    if (partner) plate.appendChild(partnerPill('', it.pkey || b.name));
     main.appendChild(plate);
   }
 
@@ -395,7 +399,7 @@ function card(item, opts) {
   if (it.league && o.showLeague !== false) kick.append(el('span', 'pc-lg', it.league));
   if (it.lang) kick.append(langChip(it.lang));
   /* a card with no plate (a creator's post played in the card) carries the pill in its kicker */
-  if (partner && e) kick.append(partnerPill('in-kick'));
+  if (partner && e) kick.append(partnerPill('in-kick', it.pkey || b.name));
   body.appendChild(kick);
   const h = el('h3', 'pc-title');
   if (it.href) {
@@ -464,7 +468,7 @@ function hero(o) {
   const txt = el('div', 'pc-hero-txt');
   if (x.kicker) txt.appendChild(el('div', 'pc-hero-kick', x.kicker));
   /* an official partner's head wears it in full: the gold ring and band (kit/newscard.css .pc-hero-partner) and the pill */
-  if (x.partner) { h.classList.add('pc-hero-partner'); txt.appendChild(partnerPill('in-hero')); }
+  if (x.partner) { h.classList.add('pc-hero-partner'); txt.appendChild(partnerPill('in-hero', x.pkey || x.name)); }
   txt.appendChild(el('h1', 'pc-hero-name', x.name || ''));
   if (x.tagline) txt.appendChild(el('p', 'pc-hero-tag', x.tagline));
   const acts = el('div', 'pc-hero-acts');
@@ -501,7 +505,7 @@ function masthead(o) {
   if (b.href) { who.href = b.href; who.title = 'More from ' + (b.name || 'them'); }
   who.append(mark({ name: b.name, logo: https(b.logo) }, 'pc-logo'), el('span', null, b.name || ''));
   top.appendChild(who);
-  if (x.partner) { h.classList.add('pc-hero-partner'); top.appendChild(partnerPill('in-mast')); }
+  if (x.partner) { h.classList.add('pc-hero-partner'); top.appendChild(partnerPill('in-mast', x.pkey || x.name)); }
   if (x.bell) top.appendChild(x.bell);
   inner.appendChild(top);
   if (x.kind) inner.appendChild(el('div', 'pc-mast-kind', x.kind));
@@ -525,7 +529,7 @@ function brands(list) {
     a.style.setProperty('--bc', hex(x.colour) || tint(x.name));
     const words = el('span', 'pc-brand-w');
     words.appendChild(el('span', 'pc-brand-n', x.name || ''));
-    if (x.partner) words.appendChild(partnerPill('in-brand'));
+    if (x.partner) words.appendChild(partnerPill('in-brand', x.pkey || x.name));
     if (x.note) words.appendChild(el('span', 'pc-brand-x', x.note));
     a.append(mark({ name: x.name, logo: https(x.logo) }, 'pc-logo'), words);
     row.appendChild(a);

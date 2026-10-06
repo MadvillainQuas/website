@@ -336,6 +336,13 @@ function partnerSet(list) {
     if (typeof x === 'string') s.add(x);
     else if (x && x.kind === 'source' && x.slug) s.add('source:' + x.slug);
     else if (x && x.kind === 'outlet' && x.slug && x.league) s.add('outlet:' + x.league + '/' + x.slug);
+    /* A PARTNER'S OWN WORDS (0235): its pill says its label ("Official media partner"); newscard.js partnerPill reads this map */
+    if (x && x.label && typeof x === 'object') {
+      const L = root.EpinoiaPartnerLabels = root.EpinoiaPartnerLabels || {};
+      const key = x.kind === 'source' ? 'source:' + x.slug : 'outlet:' + x.league + '/' + x.slug;
+      L[key] = x.label;
+      if (x.name) L['name:' + String(x.name).toLowerCase()] = x.label;
+    }
   });
   return s;
 }

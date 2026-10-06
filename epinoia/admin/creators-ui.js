@@ -795,6 +795,69 @@ function mountPartners(o) {
   const box = el('div');
   host.appendChild(box);
 
+  /* A PARTNER'S OWN WORDS AND A PUBLISHER'S OWN LOGO (0235): what its pill says, and for a news source an uploaded logo,
+     whose colour is read from it (upload.js dominantColour) and becomes the publisher's colour on every card */
+  function branding(r) {
+    const wrap = el('div');
+    wrap.style.cssText = 'flex:1 1 100%;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-left:2px';
+    const inp = el('input'); inp.className = 'ep-input'; inp.maxLength = 32; inp.placeholder = 'Official partner';
+    inp.value = r.partner_label || ''; inp.style.cssText = 'width:220px';
+    inp.setAttribute('aria-label', 'What the pill says for ' + r.name);
+    const save = el('button', 'ep-btn mini', 'save label'); save.type = 'button';
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      const { error: e } = await sb.rpc('set_partner_branding', { p_kind: r.kind, p_id: r.id, p_label: inp.value.trim() || null });
+      save.disabled = false;
+      if (e) return say(/set_partner_branding|schema cache/i.test(errText(e)) ? 'Partner labels arrive with migration 0235: it has not been applied yet.' : errText(e), 'err');
+      try { localStorage.removeItem('epinoia_feed_partners'); } catch (_) { /* nothing kept */ }
+      say(r.name + '’s pill now says “' + (inp.value.trim() || 'Official partner') + '”.', 'ok');
+    });
+    wrap.append(el('span', 'empty', 'pill says'), inp, save);
+    if (r.kind !== 'source') return wrap;
+    /* the logo: a preview in the publisher's colour, and a file picker */
+    const prev = el('span');
+    prev.style.cssText = 'width:34px;height:34px;border-radius:50%;display:grid;place-items:center;overflow:hidden;flex:none;border:2px solid ' +
+      (r.colour || 'var(--rule)') + ';background:' + (r.colour || 'transparent');
+    const paint = (url, colour) => {
+      prev.textContent = '';
+      prev.style.borderColor = colour || 'var(--rule)'; prev.style.background = colour || 'transparent';
+      if (url) { const im = el('img'); im.src = url; im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#fff'; prev.appendChild(im); }
+    };
+    paint(r.logo_url, r.colour);
+    const file = el('input'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/svg+xml'; file.hidden = true;
+    const pick = el('button', 'ep-btn mini', r.logo_url ? 'replace logo' : 'upload logo'); pick.type = 'button';
+    pick.addEventListener('click', () => file.click());
+    file.addEventListener('change', async () => {
+      const f = file.files && file.files[0];
+      file.value = '';
+      if (!f) return;
+      const U = window.EpinoiaUpload;
+      if (!U) return say('The uploader did not load: reload the console.', 'err');
+      pick.disabled = true; pick.textContent = 'uploading…';
+      try {
+        const out = await U.prepare(f, 'logo');
+        const ext = out.type === 'image/svg+xml' ? 'svg' : out.type === 'image/webp' ? 'webp' : out.type === 'image/png' ? 'png' : 'jpg';
+        const path = 'news/' + r.id + '/logo-' + Date.now().toString(36) + '.' + ext;
+        const { error: ue } = await sb.storage.from('media-public').upload(path, out.main, { contentType: out.type, upsert: false });
+        if (ue) throw new Error(ue.message || 'the upload was refused (is migration 0235 applied?)');
+        const url = U.publicUrl(window.EPINOIA_CONFIG || {}, path);
+        /* the colour read from the logo; a monochrome mark gives none, and the colour stays as it was */
+        const { error: e } = await sb.rpc('set_partner_branding', { p_kind: 'source', p_id: r.id, p_label: inp.value.trim() || null,
+          p_logo_url: url, p_colour: out.colour || null });
+        if (e) throw new Error(errText(e));
+        r.logo_url = url; if (out.colour) r.colour = out.colour;
+        paint(url, r.colour);
+        say(r.name + '’s logo is up' + (out.colour ? ', and its colour is now ' + out.colour + ' (read from the logo).' : '; the logo has no clear colour, so its colour was left as it was.'), 'ok');
+      } catch (err) {
+        say(String((err && err.message) || err), 'err');
+      } finally {
+        pick.disabled = false; pick.textContent = r.logo_url ? 'replace logo' : 'upload logo';
+      }
+    });
+    wrap.append(prev, pick, file);
+    return wrap;
+  }
+
   async function draw() {
     const { data, error } = await sb.rpc('official_partners_admin');
     box.textContent = '';
@@ -844,6 +907,7 @@ function mountPartners(o) {
         });
         line.append(lab, name, meta);
         box.appendChild(line);
+        line.appendChild(branding(r));
       });
     });
   }

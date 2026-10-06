@@ -224,6 +224,8 @@
       if (x && x.kind === 'source' && x.slug) keys.add('source:' + x.slug);
       else if (x && x.kind === 'outlet' && x.slug && x.league) keys.add('outlet:' + x.league + '/' + x.slug);
     });
+    /* their labels (0235), for the pill */
+    try { if (window.EpinoiaFeedRank && window.EpinoiaFeedRank.partnerSet) window.EpinoiaFeedRank.partnerSet(list); } catch (_) { /* the plain pill */ }
     return keys;
   }
 

@@ -224,7 +224,7 @@ function tile(league, o) {
   top.href = outletHref(league, o.slug);
   top.setAttribute('aria-label', o.name);
   top.append(el('span', 'pc-flood'), el('span', 'pc-tone'), K.mark({ name: o.name, logo: o.logo_url }, 'pc-disc'));
-  if (PARTNERS.has('outlet:' + league.slug + '/' + o.slug)) top.appendChild(K.partnerPill('in-tile'));
+  if (PARTNERS.has('outlet:' + league.slug + '/' + o.slug)) top.appendChild(K.partnerPill('in-tile', 'outlet:' + league.slug + '/' + o.slug));
   t.appendChild(top);
   const body = el('div', 'cr-tile-body');
   const name = el('a', 'cr-tile-name', o.name);
