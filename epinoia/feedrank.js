@@ -37,6 +37,9 @@
    The partner boost is full for a week from publication and gone two days after, and it is more than any other story
    can score at all (scoreMax: 9.14 against 10), so an unread partner piece of the last week leads. Then the order is
    made to vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
+   A PARTNER'S STORY SHOWN FIVE TIMES AND NEVER OPENED comes off For you altogether (PARTNER_DROP_AT). And any story about a LEAGUE AWAY
+   from the reader (a country that is not theirs nor a neighbour's, a league they have not followed and have next to no points for)
+   is multiplied by AWAY_FACTOR, a partner's boost there cut to a twelfth: far from home, only what they have shown an interest in leads.
 
    THE THREE GROUPS, in the order a reader sees them unless they show otherwise: an official PARTNER's piece (the boost),
    then the PRESS (a publisher's story = a creator's piece or post, base 1; a league's own article, 0.8), then AUTO, the
@@ -136,6 +139,14 @@ const W = Object.freeze({
   LANG_ALL_KEY: 'epinoia_feed_v1_langall',   // '1' when the reader asked to see every language (kept through a reset)
   LANGS_KEY: 'epinoia_feed_langs', LANGS_TTL_MS: 12 * HOUR,   // the publishers' languages, cached
   IMPRESSION_SOFT_AT: 3, IMPRESSION_SOFT: 0.85, IMPRESSION_HARD_AT: 6, IMPRESSION_HARD: 0.7,   // shown, never opened
+  /* AN OFFICIAL PARTNER'S STORY IS SHOWN FIVE TIMES AND THEN GONE (2026-10-06): shown to the reader five times without being opened,
+     it comes off their For you for good (the entry is kept for PARTNER_DROP_KEEP_DAYS, past the ordinary impressions' 14) */
+  PARTNER_DROP_AT: 5, PARTNER_DROP_KEEP_DAYS: 60,
+  /* A LEAGUE AWAY FROM THE READER (2026-10-06): a story about a league in a country that is not the reader's (nor a neighbour's),
+     which the reader has never followed and has next to no points for, is multiplied by AWAY_FACTOR; an official partner's boost
+     there is cut to AWAY_BOOST_SHARE of itself, so it no longer leads the feed by itself. Opening the league (its points reach
+     AWAY_MIN_L), following it, or being in its country lifts it entirely. A league whose country is not known is never "away". */
+  AWAY_FACTOR: 0.5, AWAY_BOOST_SHARE: 0.08, AWAY_MIN_L: 0.05,
 
   /* THE GROUPS THE READER OPENS (THE THREE GROUPS, in the file's head): partner, press (a publisher's story, a creator's
      piece or post, a league's own article) or auto (a match report). Each first open is a click for its group; the clicks
@@ -447,7 +458,16 @@ function scoreOf(it, profile, now, w) {
   const follow = followed ? c.FOLLOW_BONUS * Math.sqrt(rec) : 0;
 
   const partner = !!pkey && partnerSet(P.partners).has(pkey);
-  const boost = partner && !read ? c.PARTNER_BOOST * partnerFade(age, c) : 0;
+  /* a partner's story shown PARTNER_DROP_AT times and never opened is dropped: rank() leaves it out */
+  const shown = Array.isArray(ie) && num(now) - num(ie[1]) < c.PARTNER_DROP_KEEP_DAYS * DAY ? num(ie[0]) : 0;
+  const dropped = partner && !read && shown >= c.PARTNER_DROP_AT;
+  /* a league away from the reader, which they have not engaged with */
+  let away = false;
+  if (P.country && P.leagueCountry && lgs.length && !followed && C === 0 && L < c.AWAY_MIN_L) {
+    away = lgs.every(l => P.leagueCountry[l.slug] != null && String(P.leagueCountry[l.slug]) !== '');
+  }
+  const awayMul = away ? c.AWAY_FACTOR : 1;
+  const boost = partner && !read && !dropped ? c.PARTNER_BOOST * partnerFade(age, c) * (away ? c.AWAY_BOOST_SHARE : 1) : 0;
 
   /* the language: a story in one the reader does not read is held back, less as they engage with it */
   const lang = langOf(it, P.langMap);
@@ -466,8 +486,8 @@ function scoreOf(it, profile, now, w) {
   const gw = P.groupW || groupWeights(P, now, c);
   const kindMul = gw[group] != null ? gw[group] : 1;
 
-  const score = base * kindMul * rec * personal * imp * langFactor + follow + boost;
-  return { score, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
+  const score = base * kindMul * rec * personal * imp * langFactor * awayMul + follow + boost;
+  return { score, away, dropped, shown, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
            sigPoints, sigReasons: tier === 'report' && sig && Array.isArray(sig.reasons) ? sig.reasons : [], imp,
            terms: { league: c.W_LEAGUE * L, country: c.W_COUNTRY * C, pub: c.W_PUB * Pp } };
 }
@@ -516,7 +536,7 @@ function rank(items, profile, now, w) {
   const scored = list.map(it => {
     const s = scoreOf(it, prof, t, cs);
     return { it, s, source: sourceOf(it), at: dateOf(it) };
-  });
+  }).filter(x => !x.s.dropped);          // an official partner's story shown five times and never opened is off the feed
   scored.sort((a, b) => b.s.score - a.s.score || b.at - a.at || String(a.it.id || '').localeCompare(String(b.it.id || '')));
 
   /* variety: greedy, the best that breaks neither rule; if nothing can honour both (a feed of two sources), the best that
@@ -576,7 +596,10 @@ function prune(state, now, w) {
   if (!state.k) state.k = {};
   Object.keys(state.k).forEach(k => { if (GROUPS.indexOf(k) < 0 || decay(state.k[k], now, kindW(c)) < c.PRUNE_BELOW) delete state.k[k]; });
   Object.keys(state.r).forEach(k => { if (num(now) - state.r[k] > c.READS_TTL_DAYS * DAY) delete state.r[k]; });
-  Object.keys(state.i).forEach(k => { if (num(now) - state.i[k][1] > c.IMPRESSIONS_TTL_DAYS * DAY) delete state.i[k]; });
+  Object.keys(state.i).forEach(k => {
+    const e = state.i[k], age = num(now) - e[1];
+    if (age > (e[0] >= c.PARTNER_DROP_AT ? c.PARTNER_DROP_KEEP_DAYS : c.IMPRESSIONS_TTL_DAYS) * DAY) delete state.i[k];
+  });
   cap(state.l, c.LEAGUES_MAX, e => e[1]); cap(state.p, c.PUBS_MAX, e => e[1]); cap(state.g, c.LANGS_MAX, e => e[1]);
   cap(state.r, c.READS_MAX, t => t); cap(state.i, c.IMPRESSIONS_MAX, e => e[1]);
   return state;

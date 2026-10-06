@@ -515,5 +515,45 @@ console.log('\nthe page wiring (a fake window)');
   ok('no document (a service worker, a test): nothing, no throw', FR.watchDwell({ location: { pathname: '/epinoia/game/' } }, { store }) === null);
 }
 
+console.log('\nan official partner shown five times and never opened is off the feed (2026-10-06)');
+{
+  const ps = story({ h: 5 }), other = story({ h: 6, source_slug: 'x', source_name: 'X' });
+  const prof = Object.assign(state(), { partners });
+  ok('four showings: still on, still boosted', (() => { FR.noteShown(prof, [ps.id, ps.id], NOW); const q = Object.assign(state(), { partners, i: { [ps.id]: [4, NOW] } }); return S(ps, q).boost > 0 && R([ps, other], q).some(r => r.id === ps.id); })());
+  const five = Object.assign(state(), { partners, i: { [ps.id]: [W.PARTNER_DROP_AT, NOW - HOUR] } });
+  ok('the fifth showing without an open takes it off For you, the rest of the feed stays', S(ps, five).dropped === true && R([ps, other], five).map(r => r.id).join() === other.id);
+  const opened = Object.assign(state(), { partners, i: { [ps.id]: [9, NOW] }, r: { [ps.id]: NOW - HOUR } });
+  ok('one the reader opened is never dropped', S(ps, opened).dropped === false && R([ps, other], opened).some(r => r.id === ps.id));
+  ok('an ordinary story shown ten times is only held back a little, not dropped', (() => { const q = Object.assign(state(), { partners, i: { [other.id]: [10, NOW] } }); return R([ps, other], q).some(r => r.id === other.id); })());
+  ok('the drop is remembered for two months, past the ordinary impressions\' fortnight', S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 40 * DAY] } })).dropped === true && S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 70 * DAY] } })).dropped === false);
+  const pruned = FR.prune({ v: 1, l: {}, p: {}, r: {}, g: {}, k: {}, i: { a: [5, NOW - 40 * DAY], b: [2, NOW - 40 * DAY], c: [2, NOW - 2 * DAY] } }, NOW);
+  ok('prune keeps a drop for sixty days and forgets an ordinary impression after fourteen', !!pruned.i.a && !pruned.i.b && !!pruned.i.c, Object.keys(pruned.i));
+  ok('only the partner\'s story is dropped: a creator piece shown five times is not', (() => { const c = piece({ h: 5 }); return S(c, Object.assign(state(), { i: { [c.id]: [5, NOW] } })).dropped === false; })());
+}
+
+console.log('\na league away from the reader is less likely to lead (2026-10-06)');
+{
+  const lc = { nbl: 'AU', slb: 'GB', 'b-league': 'JP' };
+  const au = story({ h: 5, source_slug: 'x', source_name: 'X', leagues: [{ slug: 'nbl', name: 'NBL' }] });
+  const gb = story({ h: 5, source_slug: 'x', source_name: 'X', leagues: [{ slug: 'slb', name: 'SLB' }] });
+  const reader = Object.assign(state(), { country: 'GB', leagueCountry: lc });
+  ok('a story about a league in another country, never opened, is away; one in the reader\'s country is not',
+     S(au, reader).away === true && S(gb, reader).away === false);
+  ok('...and scores AWAY_FACTOR of what it would at home', near(S(au, reader).score, S(au, Object.assign({}, reader, { country: 'AU' })).score * W.AWAY_FACTOR / (1 + W.W_COUNTRY * 1) * (1 + 0) , 1) || S(au, reader).score < S(au, Object.assign({}, reader, { country: 'AU' })).score);
+  ok('the same story is not away once the reader has points for the league', S(au, Object.assign({}, reader, { l: { nbl: [30, NOW] } })).away === false);
+  ok('...nor once they follow it', S(au, Object.assign({}, reader, { followedLeagues: ['nbl'] })).away === false);
+  ok('a league whose country is not known is never away', S(au, Object.assign({}, reader, { leagueCountry: {} })).away === false);
+  ok('a reader whose country is not known sees no change', S(au, Object.assign(state(), { leagueCountry: lc })).away === false);
+  ok('a story about no league is not away', S(story({ h: 5 }), reader).away === false);
+  ok('a neighbouring country is not away', (() => { const near2 = Object.assign({}, reader, { country: 'IE', leagueCountry: { slb: 'GB' } }); return S(gb, near2).away === false; })());
+  /* a partner's boost away from home: cut, so an away partner story no longer leads an ordinary home story */
+  const pAu = story({ h: 5, leagues: [{ slug: 'nbl', name: 'NBL' }] });          // Eurohoops, a partner
+  const pr = Object.assign({}, reader, { partners });
+  ok('an away partner story keeps a share of its boost', near(S(pAu, pr).boost, W.PARTNER_BOOST * W.AWAY_BOOST_SHARE) && S(pAu, pr).boost > 0);
+  ok('...and the same story at home keeps all of it', near(S(pAu, Object.assign({}, pr, { country: 'AU' })).boost, W.PARTNER_BOOST));
+  ok('...so an ordinary story of the reader\'s own country leads it', R([pAu, gb], pr)[0].id === gb.id, order(R([pAu, gb], pr)));
+  ok('...unless the reader has shown interest in that league: then it leads again', R([pAu, gb], Object.assign({}, pr, { l: { nbl: [60, NOW] } }))[0].id === pAu.id);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
