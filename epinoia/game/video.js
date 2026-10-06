@@ -255,7 +255,7 @@ function runsHTML() {
   }
   const dash = s => String(s).replace('-', '–');
   return '<ol class="vidlist vidruns">' +
-    (teamRows.length ? '<li class="vidsec">team momentum runs · 6+ unanswered points</li>' + teamRows.map(r =>
+    (teamRows.length ? '<li class="vidsec">team momentum runs · 8+ unanswered points</li>' + teamRows.map(r =>
       row(r, dash(r.scoreDiff), (teams[r.teamIdx] && teams[r.teamIdx].name) || r.team,
           'top scorer <b>' + esc(r.topScorer) + '</b> ' + r.topScorerPoints + ' · ' + esc(dash(r.startScore)) + ' → ' + esc(dash(r.endScore)))).join('') : '') +
     (playerRows.length ? '<li class="vidsec">player scoring runs · 6+ inside a run</li>' + playerRows.map(r =>

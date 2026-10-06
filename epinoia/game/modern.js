@@ -444,7 +444,7 @@
       '</div>' +
       '<div class="mv-sect">rates</div><div class="mv-grid">' +
         rcell('ast%', f1(a.astPct), 'astPct') + rcell('to%', f1(a.tovP), 'tovP') + rcell('orb%', f1(a.orebP), 'orebP') + rcell('drb%', f1(a.drebP), 'drebP') +
-        rcell('stl%', f1(a.stlP), 'stlP') + rcell('blk%', f1(a.blkP), 'blkP') + rcell('a/u', a.au == null ? '—' : a.au.toFixed(2), 'au') + rcell('pace ±', a.pacePM == null ? '—' : (a.pacePM > 0 ? '+' : '') + f1(a.pacePM), 'pacePM') +
+        rcell('stl%', f1(a.stlP), 'stlP') + rcell('blk%', f1(a.blkP), 'blkP') + rcell('ast/usg', a.au == null ? '—' : a.au.toFixed(2), 'au') + rcell('pace ±', a.pacePM == null ? '—' : (a.pacePM > 0 ? '+' : '') + f1(a.pacePM), 'pacePM') +
       '</div>' +
       '<div class="mv-sect">on court</div><div class="mv-grid four">' +
         rcell('ortg', f1(a.ocOrtg), 'ocOrtg') + rcell('drtg', f1(a.ocDrtg), 'ocDrtg') + rcell('net', (a.net > 0 ? '+' : '') + f1(a.net), 'net', a.net > 0 ? 'pos' : a.net < 0 ? 'neg' : '') + rcell('efg', f1(a.ocEfg), 'ocEfg') +

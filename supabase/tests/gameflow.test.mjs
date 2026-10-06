@@ -208,8 +208,8 @@ console.log('\na real LiveStats game agrees with the box score');
     const adv = [0, 1].map(t => E.teamAdv(G, d, t));
     ok('the last point\'s possessions are the engine\'s', near(last.homePoss, adv[0].possessions, 1e-6) && near(last.awayPoss, adv[1].possessions, 1e-6),
        last.homePoss + '/' + adv[0].possessions + ' ' + last.awayPoss + '/' + adv[1].possessions);
-    ok('every team run is 6+ and every player run sits inside one', F.teamRuns.every(r => r.points >= 6) &&
-       F.playerRuns.every(p => F.teamRuns.some(r => r.teamIdx === p.teamIdx && r.startElapsed === p.startElapsed && p.points <= r.points)));
+    ok('every team run is 8+, every player run 6+, and a player run in an 8+ run sits inside it', F.teamRuns.every(r => r.points >= 8) && F.playerRuns.every(p => p.points >= 6) &&
+       F.playerRuns.every(p => F.teamRuns.some(r => r.teamIdx === p.teamIdx && r.startElapsed === p.startElapsed && p.points <= r.points) || !F.teamRuns.some(r => r.teamIdx === p.teamIdx && r.startElapsed === p.startElapsed)));
     const C = Conn.compute(G);
     [0, 1].forEach(t => {
       const ast = G.teams[t].players.reduce((a, p) => a + (d.stats[p.id] ? d.stats[p.id].ast : 0), 0);

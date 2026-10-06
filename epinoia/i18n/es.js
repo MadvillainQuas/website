@@ -2436,7 +2436,7 @@
         'tpc': 'TPC',
         'ppp': 'PPP',
         'usg': 'USG',
-        'a/u': 'AST/USG',
+        'a/u': 'AST/USG', 'ast/usg': 'AST/USG',
         'orb%': 'ORB%',
         'TOV%': 'TOV%',
         'tov frc': 'Pér. forz.',

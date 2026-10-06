@@ -22,7 +22,7 @@
      EPA           (TO margin + OREB margin) x 1.05
      Scoring Battle (eFG% margin x 1.77 + FT-rate margin x 0.25) x pace / 100
      a point       after every score, every field-goal attempt, every turnover
-     a run         consecutive points by one side; 6+ is a team momentum run,
+     a run         consecutive points by one side; 8+ is a team momentum run (6+ for a player run),
                    and any player with 6+ inside it is a player run
 
    THREE THINGS ARE DELIBERATELY NOT COPIED, because they are bugs rather than
@@ -154,7 +154,7 @@ function compute(S) {
     });
     let top = null, topPts = 0;
     run.order.forEach(pid => { if (run.players[pid] > topPts) { topPts = run.players[pid]; top = pid; } });
-    teamRuns.push({
+    if (run.pts >= 8) teamRuns.push({   // a team momentum run is 8+ (2026-10-06); a player run stays 6+ inside any 6+ run
       key: 'm' + run.baskets[0].id, ids: run.baskets.map(b => b.id),
       team: teams[run.team].name || '', teamIdx: run.team, points: run.pts,
       startPeriod: run.startPeriod, startClock: run.startClock, endPeriod: run.endPeriod, endClock: run.endClock,
@@ -558,8 +558,8 @@ function runsCharts(F, names, watch) {
       chart(F.playerRuns, 'p', 'No individual player runs (6+ pts) detected', playerRow) +
     '</section>' +
     '<section class="gf-card gf-runs">' +
-      '<div class="gf-card-head"><h3 class="gf-title">Team Momentum Runs (6+ consecutive pts by lineup)</h3>' + sideLegend(F.teamRuns) + '</div>' +
-      chart(F.teamRuns, 'm', 'No team momentum runs (6+ pts) detected', teamRow) +
+      '<div class="gf-card-head"><h3 class="gf-title">Team Momentum Runs (8+ consecutive pts by lineup)</h3>' + sideLegend(F.teamRuns) + '</div>' +
+      chart(F.teamRuns, 'm', 'No team momentum runs (8+ pts) detected', teamRow) +
     '</section>';
 }
 
