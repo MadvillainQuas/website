@@ -40,7 +40,7 @@ body.addEventListener('input', () => { count.textContent = String(body.value.len
 const isPrivacy = () => $('#topic').value === 'privacy';
 const isApi = () => $('#topic').value === 'api';
 /* the topics that are a plain message with a heading on the subject, so the inbox can sort them */
-const PREFIX = { league: 'League or club', invest: 'Investment', partner: 'Partnership' };
+const PREFIX = { league: 'League or club', scouting: 'Scouting services', invest: 'Investment', partner: 'Partnership' };
 const londonDate = iso => iso
   ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'long', year: 'numeric' })
   : '';

@@ -676,7 +676,7 @@
 
   /* ---- root panel: the title, then the leagues ---- */
   const title = el('a', 'ptitle', 'Leagues');
-  title.href = root;
+  title.href = root + 'home/#leagues';   // every league, on HOME: the splash it used to open is mothballed (2026-10-06)
   /* The heading is also the way to the hub. It costs no row and it keeps a
      destination that would otherwise be unreachable now the wordmark is gone. */
   title.title = 'All leagues';

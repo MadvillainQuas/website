@@ -46,6 +46,14 @@
   /* A league was asked for, or it was not. An unknown slug is still "a league
      was asked for" — that case shows the hub with an error in it, which is the
      same layout as a league page and not the splash. */
+  /* THE SPLASH IS MOTHBALLED (2026-10-06). The site's front door is now the Prophesy splash at the root
+     (prophesyscouting.co.uk/), with EPINOIA, Learn more and Prophesy scouting on it. This document still serves every
+     league's front page (?l=), so it stays; only its splash mode is retired: the bare /epinoia/ goes straight to
+     Epinoia's HOME, before anything is painted. The splash's markup and scripts are left in place, unreached, and
+     ?mothballed=1 still shows it for reference. */
+  if (!q.get('l') && q.get('mothballed') !== '1' && /\/epinoia\/(index\.html)?$/.test(location.pathname)) {
+    try { location.replace(new URL('home/', location.href.split(/[?#]/)[0].replace(/index\.html$/, '')).href); return; } catch (_) { /* fall through to the old page */ }
+  }
   root.classList.add(q.get('l') ? 'm-league' : 'm-splash');
 
   /* An article was asked for, or it was not. Harmless on every page that is

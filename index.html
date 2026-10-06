@@ -2,18 +2,92 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Epinoia</title>
-<meta name="description" content="Epinoia: live basketball scores, fixtures, standings and advanced stats.">
-<meta http-equiv="refresh" content="0; url=/epinoia/">
-<link rel="canonical" href="https://prophesyscouting.co.uk/epinoia/">
-<link rel="icon" type="image/png" sizes="32x32" href="/epinoia/brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="/epinoia/brand/epinoia-app-180.png">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Epinoia","alternateName":["EPINOIΛ","Epinoia Basketball"],"url":"https://prophesyscouting.co.uk/epinoia/"}</script>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#04100b;color:#e8fff2;font:16px/1.5 system-ui,sans-serif}a{color:#93f2bf}</style>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'">
+<title>Prophe(s)y – Basketball Scouting &amp; the Epinoia Platform</title>
+<meta name="description" content="Prophe(s)y: basketball scouting and analysis, and Epinoia, the live basketball data platform for leagues, clubs and fans.">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<link rel="canonical" href="https://prophesyscouting.co.uk/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Prophe(s)y">
+<meta property="og:title" content="Prophe(s)y – Basketball Scouting &amp; the Epinoia Platform">
+<meta property="og:description" content="Basketball scouting and analysis, and Epinoia, the live basketball data platform for leagues, clubs and fans.">
+<meta property="og:url" content="https://prophesyscouting.co.uk/">
+<meta property="og:image" content="https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Prophesy_Scout">
+<link rel="icon" type="image/png" href="/brand/prophesy-binoculars.png">
+<link rel="apple-touch-icon" href="/logo.jpg">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Prophe(s)y","url":"https://prophesyscouting.co.uk/","logo":"https://prophesyscouting.co.uk/logo.jpg","sameAs":["https://x.com/Prophesy_Scout"],"subOrganization":{"@type":"Organization","name":"Epinoia","url":"https://prophesyscouting.co.uk/epinoia/"}}</script>
+<!-- ============================================================================
+     THE SITE'S FRONT DOOR (2026-10-06): prophesyscouting.co.uk/. Black, quiet, one thing in focus: the Prophe(s)y binoculars,
+     a little above the middle, coming into focus as the page opens (a lens being focused). Under it three ways on:
+       EPINOIA            the platform (/epinoia/home/), the pill in the platform's own colours and logotype
+       Learn more         the platform as a proposition (/epinoia/learn/)
+       Prophesy scouting  the scouting services (/prophesy/)
+     It replaces the redirect that sent this address to the Epinoia splash, which is mothballed (epinoia/mode.js).
+     Self-contained: no script, two fonts from the platform's own files, one image.
+     ============================================================================ -->
+<style>
+  @font-face{font-family:'Archivo';src:url('/epinoia/kit/fonts/archivo.woff2') format('woff2');font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+  @font-face{font-family:'EpinoiaMark';src:url('/epinoia/brand/epinoia-mark.woff2') format('woff2');font-display:swap}
+  :root{ color-scheme:dark; --ink:#f4f5f7; --ink-2:rgba(244,245,247,.72); --ink-3:rgba(244,245,247,.46); --rule:rgba(255,255,255,.16);
+    --lume:#93f2bf; --aqua:#8ff5ff; --f:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif }
+  *{ box-sizing:border-box }
+  html,body{ margin:0; height:100% }
+  body{ background:#000; color:var(--ink); font-family:var(--f); -webkit-font-smoothing:antialiased; overflow-x:hidden }
+  /* a pool of light just above the middle, where the logo sits, and the faintest grain of vignette at the edges */
+  body::before{ content:''; position:fixed; inset:0; pointer-events:none;
+    background:radial-gradient(42vmax 32vmax at 50% 40%, rgba(255,255,255,.075), rgba(255,255,255,.02) 45%, transparent 70%),
+               radial-gradient(120vmax 90vmax at 50% 50%, transparent 55%, rgba(0,0,0,.65) 100%) }
+  .stage{ position:relative; min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:6vh 24px 14vh; text-align:center }
+  .mark{ width:min(280px,58vw); height:auto; display:block;
+    animation:focus 1.8s cubic-bezier(.2,.7,.2,1) .15s both; filter:drop-shadow(0 0 40px rgba(255,255,255,.08)) }
+  @keyframes focus{ 0%{ opacity:0; filter:blur(18px); transform:scale(1.08) } 55%{ opacity:1 } 100%{ opacity:1; filter:blur(0) drop-shadow(0 0 40px rgba(255,255,255,.08)); transform:none } }
+  .word{ margin:28px 0 0; font-weight:300; font-stretch:125%; font-size:clamp(20px,3.2vw,30px); letter-spacing:.42em; padding-left:.42em;
+    text-transform:uppercase; color:var(--ink); animation:rise 1s ease .9s both }
+  .tag{ margin:12px 0 0; font-weight:400; font-size:clamp(13px,1.4vw,15px); letter-spacing:.04em; color:var(--ink-2); animation:rise 1s ease 1.05s both }
+  .acts{ margin-top:44px; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:14px; animation:rise 1s ease 1.2s both }
+  @keyframes rise{ from{ opacity:0; transform:translateY(10px) } to{ opacity:1; transform:none } }
+  .pill{ display:inline-flex; align-items:center; justify-content:center; min-height:52px; padding:0 30px; border-radius:999px;
+    text-decoration:none; color:var(--ink); border:1px solid var(--rule); font-weight:700; font-size:12.5px; letter-spacing:.2em;
+    text-transform:uppercase; transition:background .2s ease, border-color .2s ease, transform .2s ease, box-shadow .2s ease }
+  .pill:hover, .pill:focus-visible{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.42); outline:0; transform:translateY(-1px) }
+  /* EPINOIA: the platform's own pill, in its mint-to-aqua and its logotype */
+  .pill.ep{ border:0; padding:0 34px; color:#04100b; background:linear-gradient(100deg,var(--lume),var(--aqua));
+    font-family:'EpinoiaMark',var(--f); font-weight:400; font-size:21px; letter-spacing:.005em; text-transform:uppercase;
+    box-shadow:0 0 0 1px rgba(147,242,191,.25), 0 10px 40px -12px rgba(143,245,255,.45) }
+  .pill.ep:hover, .pill.ep:focus-visible{ background:linear-gradient(100deg,#aaf7cf,#a8f8ff); box-shadow:0 0 0 1px rgba(147,242,191,.4), 0 14px 50px -10px rgba(143,245,255,.6) }
+  .foot{ position:absolute; left:0; right:0; bottom:22px; display:flex; justify-content:center; gap:22px; flex-wrap:wrap;
+    font-size:11.5px; letter-spacing:.08em; color:var(--ink-3) }
+  .foot a{ color:inherit; text-decoration:none } .foot a:hover{ color:var(--ink) }
+  @media (max-width:560px){
+    .stage{ padding-bottom:18vh }
+    .acts{ flex-direction:column; width:100%; max-width:320px; gap:12px }
+    .pill{ width:100% }
+    .word{ letter-spacing:.32em; padding-left:.32em }
+  }
+  @media (prefers-reduced-motion:reduce){ .mark, .word, .tag, .acts{ animation:none } }
+</style>
 </head>
 <body>
-<p><a href="/epinoia/">Epinoia</a></p>
-<script>location.replace('/epinoia/');</script>
+<main class="stage">
+  <img class="mark" src="/brand/prophesy-binoculars.png" width="900" height="392" alt="Prophe(s)y">
+  <h1 class="word">Prophe(s)y</h1>
+  <p class="tag">Basketball scouting, analysis and the data platform behind them</p>
+  <nav class="acts" aria-label="Where to go">
+    <a class="pill ep" href="/epinoia/home/" aria-label="Epinoia">EPINOIΛ</a>
+    <a class="pill" href="/epinoia/learn/">Learn more</a>
+    <a class="pill" href="/prophesy/">Prophesy scouting</a>
+  </nav>
+  <footer class="foot">
+    <span>© 2026 Prophe(s)y</span>
+    <a href="/epinoia/learn/?t=contact#contact">Contact</a>
+    <a href="/epinoia/privacy/">Privacy</a>
+  </footer>
+</main>
 </body>
 </html>
