@@ -56,6 +56,8 @@
 .pc-disc.mono{background:color-mix(in oklch,var(--bc) 85%,#000)}
 /* a mark that fills its square (newscard.js mark): to the edge */
 .pc-disc.fill img,.pc-logo.fill img,.pc-tag-m.fill img{width:100%;height:100%;object-fit:cover}
+/* ...and a square one on its own ground keeps its shape: a rounded square, not a circle (newscard.js squareCheck) */
+.pc-disc.sq{border-radius:16%}
 .pc-disc.mono span{font-family:var(--f-score);font-size:clamp(26px,3.4vw,46px);color:#fff;line-height:1;letter-spacing:.02em}
 .pc-lead .pc-disc{width:clamp(80px,26%,150px)}
 

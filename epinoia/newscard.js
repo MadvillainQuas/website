@@ -283,13 +283,45 @@ function mark(brand, cls) {
   const box = el('span', cls);
   const mono = () => { box.textContent = ''; box.classList.remove('fill'); box.classList.add('mono'); box.appendChild(el('span', null, initials(b.name))); };
   if (b.logo) {
-    if (/#fill$/i.test(b.logo)) box.classList.add('fill');
+    if (/#fill$/i.test(b.logo)) box.classList.add('fill', 'sq');   // the fetcher found no clear ground in its corners
     const img = document.createElement('img');
     img.src = b.logo; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
     img.addEventListener('error', mono);
+    img.addEventListener('load', () => squareCheck(img, box), { once: true });
     box.appendChild(img);
   } else mono();
   return box;
+}
+
+/* A SQUARE LOGO ON ITS OWN GROUND (2026-10-06): a mark that is square and whose four corners are solid and not white (a
+   black tile with the name on it) is drawn as a rounded square filled to the edge, not cut into a circle. Read from the
+   picture itself; a picture another site will not let the page read (no CORS) is probed once more with a CORS request,
+   and left as a circle if that fails too. */
+const SQ_SEEN = new Map();   // logo address -> true / false
+function cornersSolid(src) {
+  try {
+    const N = 24, c = document.createElement('canvas'); c.width = c.height = N;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(src, 0, 0, N, N);
+    const d = x.getImageData(0, 0, N, N).data;
+    const at = (px, py) => { const i = (py * N + px) * 4; return [d[i], d[i + 1], d[i + 2], d[i + 3]]; };
+    return [[1, 1], [N - 2, 1], [1, N - 2], [N - 2, N - 2]].every(([px, py]) => {
+      const [r, g, b, a] = at(px, py);
+      return a > 220 && Math.min(r, g, b) < 228;          // opaque, and not white or near it
+    });
+  } catch (_) { return null; }                             // a picture the page may not read
+}
+function squareCheck(img, box) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h || Math.abs(w / h - 1) > 0.08) return;     // not square: nothing to do
+  const apply = yes => { SQ_SEEN.set(img.src, yes); if (yes) box.classList.add('sq', 'fill'); };
+  if (SQ_SEEN.has(img.src)) return apply(SQ_SEEN.get(img.src));
+  const direct = cornersSolid(img);
+  if (direct !== null) return apply(direct);
+  const probe = new Image();
+  probe.crossOrigin = 'anonymous';
+  probe.onload = () => { const v = cornersSolid(probe); if (v !== null) apply(v); };
+  probe.src = img.src;
 }
 
 /* THE OFFICIAL-PARTNER PILL: a small gold teletext block, the pixel micro face, black on gold whatever the theme, and
