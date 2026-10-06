@@ -37,6 +37,38 @@ async function api(p, anon) {
   return r.json();
 }
 
+/* A CLUB THAT IS NOT IN ITS LEAGUE'S CURRENT SEASON says so. The league's current season is the league page's own rule (the newest with a
+   game in it); the club is in it if it is entered in one of its competitions or has a game there. Not being in it is stated as a fact of the
+   season, never as "relegated": a fixture list cannot tell a relegation from a withdrawal, a folding or a move of league. */
+async function notInSeason(team, lg) {
+  if (!lg || !lg.id || !team || !team.id) return;
+  const ss = (await api('seasons?league_id=eq.' + encodeURIComponent(lg.id) + '&select=id,name,starts_on,competitions(id)'))
+    .sort((a, b) => String(b.starts_on || '').localeCompare(String(a.starts_on || '')) || String(b.name || '').localeCompare(String(a.name || '')));
+  let cur = null, ids = null;
+  for (const s of ss) {
+    const cs = (s.competitions || []).map(x => x.id);
+    if (!cs.length) continue;
+    const g = await api('games?competition_id=in.(' + cs.join(',') + ')&select=id&limit=1');
+    if (g.length) { cur = s; ids = cs; break; }
+  }
+  if (!cur) return;
+  const list = ids.join(',');
+  const [entered, played] = await Promise.all([
+    api('competition_teams?competition_id=in.(' + list + ')&select=team_id&limit=1&team_id=eq.' + team.id),
+    api('games?competition_id=in.(' + list + ')&or=(home_team_id.eq.' + team.id + ',away_team_id.eq.' + team.id + ')&select=id&limit=1')
+  ]);
+  if (entered.length || played.length) return;
+  /* a season whose field is still empty says nothing about anyone */
+  const field = await api('competition_teams?competition_id=in.(' + list + ')&select=team_id&limit=1');
+  if (!field.length) return;
+  const note = document.createElement('div');
+  note.className = 'notinseason';
+  note.textContent = "Not in this league's current season. Earlier seasons are below.";
+  note.style.cssText = 'margin-top:6px;font-size:.85em;opacity:.8';
+  const sub = document.getElementById('tsub');
+  if (sub && sub.parentNode) sub.parentNode.appendChild(note);
+}
+
 function oops(msg) {
   ['#roster', '#games', '#teamstats'].forEach(s => { const h = $(s); if (h) h.textContent = ''; });
   $('#games').appendChild(el('div', 'empty', msg));
@@ -280,6 +312,7 @@ async function chooseSeason(team, lg) {
     if (window.EpinoiaLinks) LINKED_T = window.EpinoiaLinks.paintTeam(team, { sub: $('#tsub') }).catch(() => null);   // null: the page as it was
     if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = team.name + ' · Epinoia';   // a build-seo.py copy keeps its own
     teamStrip(team, lg);
+    notInSeason(team, lg).catch(() => { /* the page as it was */ });
 
     /* ACCESS FIRST FOR THE SECTIONS IT DECIDES, and only for those: the venue and the squad
        are never gated, so they start at once, while the record, the statistics and the

@@ -1781,7 +1781,8 @@
       'shooting efficiency': 'シュート効率',
       'rebounding %': 'リバウンド率',
       'Scouting Report': 'スカウティングレポート',
-      'Can\'t find who you\'re looking for? A player or team may be listed under a different name. Try searching for their team, or browse by league.': 'お探しの選手やチームが見つからない場合は、別の名前で登録されている可能性があります。所属チーム名で検索するか、リーグから探してください。'
+      'Can\'t find who you\'re looking for? A player or team may be listed under a different name. Try searching for their team, or browse by league.': 'お探しの選手やチームが見つからない場合は、別の名前で登録されている可能性があります。所属チーム名で検索するか、リーグから探してください。',
+      'Not in this league\'s current season. Earlier seasons are below.': 'このリーグの今シーズンには参加していません。過去のシーズンは下に表示されます。'
     },
 
     ctx: {

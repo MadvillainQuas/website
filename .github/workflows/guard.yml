@@ -851,6 +851,7 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/team-merge.test.mjs
           python scripts/ingest/team_merge_test.py
+          python scripts/ingest/prune_entries_test.py
 
       - name: A backfill is not news (0191)
         # finalising last season's games files no match report and alerts nobody; the final whistle still

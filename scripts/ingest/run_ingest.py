@@ -520,6 +520,41 @@ def set_competition_format(sb: Supabase, src: dict, comp_id: str) -> None:
         print(f"   ! could not set the competition's format to {fmt} ({exc}) - is migration 0144 applied?")
 
 
+def prune_empty_entries(sb: Supabase, comp_ids, run: dict, log=print) -> int:
+    """A club entered in a competition that has no game in it, once the competition's schedule is clearly complete, is not in that
+    season's field: it dropped out, went down, folded, or was only ever a provisional or misspelt fixture. Its entry (and its standings
+    row) is removed, so the season's table, the club list and the club page stop counting it; its earlier seasons are untouched.
+
+    Deliberately cautious, because a wrong removal hides a real club: the competition needs 10+ games, at least 75% of its entries must
+    already have a game, and the clubs with none must be the other quarter at most. A schedule that is only partly published (most
+    clubs have no fixture yet) is never pruned. Removing an entry does not stop a club coming back: the next fixture filed for it
+    enters it again."""
+    removed = 0
+    for cid in sorted(comp_ids or []):
+        try:
+            entries = [r["team_id"] for r in sb.select("competition_teams", f"competition_id=eq.{cid}&select=team_id&limit=2000")]
+            games = sb.select_all("games", f"competition_id=eq.{cid}&select=home_team_id,away_team_id") if hasattr(sb, "select_all") else \
+                sb.select("games", f"competition_id=eq.{cid}&select=home_team_id,away_team_id&limit=5000")
+        except Exception:
+            continue
+        if len(games) < 10 or not entries:
+            continue
+        played = {t for g in games for t in (g.get("home_team_id"), g.get("away_team_id")) if t}
+        empty = [t for t in entries if t not in played]
+        if not empty or len(entries) - len(empty) < 0.75 * len(entries):
+            continue
+        for t in empty:
+            try:
+                sb.delete("competition_teams", f"competition_id=eq.{cid}&team_id=eq.{t}")
+                sb.delete("standings", f"competition_id=eq.{cid}&team_id=eq.{t}")
+                removed += 1
+                log(f"  - {t} has no game in {cid}: left out of that season's field")
+            except Exception:
+                pass
+        run.setdefault("_recompute", set()).add(cid)
+    return removed
+
+
 def group_fields(src: dict, *names: str) -> dict:
     """{group_name, division_name} for a club's entry in this source's competition, or {} for a
     source without a groups file (groups.py)."""
@@ -3243,6 +3278,12 @@ def main() -> int:
                         still.append(g)
                 live_set = still
             if not args.dry_run:
+                # a club entered in a competition with no game in it, once the schedule is clearly complete, is out of that season
+                if sb and not args.live_only:
+                    try:
+                        prune_empty_entries(sb, {c for c, _ in (run.get("_entered") or set())}, run)
+                    except Exception as exc:
+                        print(f"    (pruning empty entries failed: {exc})")
                 # games moved between phases: both tables are rebuilt, as the console does
                 for cid in sorted(run.pop("_recompute", set()) or []):
                     for fn in ("recompute_standings", "compute_season_awards", "advance_bracket"):
