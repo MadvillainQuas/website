@@ -100,9 +100,12 @@ async function mount(opts) {
   function pool() {
     if (poolP) return poolP;
     const signed = !lg && !!token();
-    poolP = Promise.all([read('newest', POOL), signed ? read('followed', POOL).catch(() => null) : null]).then(([rows, mineRows]) => {
+    /* THE OFFICIAL PARTNERS' STORIES OF THE BOOST'S WINDOW (0236), so a partner's story of a few days ago is in the pool for
+       its boost to lift; the newest 60 of everything left it out. A database without 0236 answers 404: nothing added. */
+    const partnersRead = call('news_feed_partners', lg ? { p_league: lg.id, p_days: 9, p_limit: 30 } : { p_days: 9, p_limit: 30 }).catch(() => null);
+    poolP = Promise.all([read('newest', POOL), signed ? read('followed', POOL).catch(() => null) : null, partnersRead]).then(([rows, mineRows, partnerRows]) => {
       const seen = new Set(), out = [];
-      (rows || []).concat(mineRows || []).forEach(r => { if (r && r.id && !seen.has(r.id)) { seen.add(r.id); out.push(r); } });
+      (rows || []).concat(mineRows || [], partnerRows || []).forEach(r => { if (r && r.id && !seen.has(r.id)) { seen.add(r.id); out.push(r); } });
       return { rows: out, followedIds: (mineRows || []).map(r => r.id) };
     });
     poolP.catch(() => { poolP = null; });
@@ -158,7 +161,7 @@ async function mount(opts) {
         if (!ranked && !FR.enabled()) note.textContent = 'Personalisation is off, so this is the newest first. Switch it on under Personalise.';
       } else rows = p.rows.slice().sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
     } else {
-      rows = lg ? (await pool()).rows.slice().sort((a, b) => (Date.parse(b.published_at) || 0) - (Date.parse(a.published_at) || 0)) : await read(want);
+      rows = lg ? (await pool()).rows.slice().sort((a, b) => (Date.parse(b.published_at) || 0) - (Date.parse(a.published_at) || 0)) : await read(want, POOL);
       if (FR) { partners = await FR.partners(); await FR.net().languages(lg ? { cachedOnly: true } : undefined).catch(() => ({})); }
     }
     if (mine !== gen) return;
@@ -174,7 +177,7 @@ async function mount(opts) {
     }
     if (want === 'followed' && !rows.length && !chosen) {
       /* nothing from what they follow yet, and they never asked for Followed: the newest, said so */
-      rows = await read('newest');
+      rows = await read('newest', POOL);
       if (mine !== gen) return;
       mode = 'newest';
       live.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === 'newest')));
@@ -187,11 +190,27 @@ async function mount(opts) {
         : 'No news yet.'));
       return;
     }
-    const shown = rows.slice(0, N);
-    box.appendChild(K.grid(shown.map(r => Object.assign(K.fromFeed(r, base, media, crest), { why: ranked ? r.why : '' })),
-      { lead: false, now: Date.now(), partners, onOpen, showLeague: !lg, hideTag: lg ? lg.slug : undefined }));
+    /* SHOW MORE (2026-10-06): six at a time, from the same ranked list, as far as it goes; each six counted as seen when shown */
+    let at = 0;
+    const more = el('button', 'ep-btn hm-feed-more', 'Show more');
+    more.type = 'button';
+    const wrap = el('div', 'pg-more');
+    wrap.style.cssText = 'display:flex;justify-content:center;width:100%;grid-column:1 / -1;margin-top:calc(var(--u, 4px) * 4)';
+    wrap.appendChild(more);
+    const addSix = (first) => {
+      const shown = rows.slice(at, at + N);
+      at += shown.length;
+      const g = K.grid(shown.map(r => Object.assign(K.fromFeed(r, base, media, crest), { why: ranked ? r.why : '' })),
+        { lead: false, now: Date.now(), partners, onOpen, showLeague: !lg, hideTag: lg ? lg.slug : undefined });
+      box.insertBefore(g, wrap.parentNode === box ? wrap : null);
+      if (!first) { g.style.marginTop = 'calc(var(--u, 4px) * 3)'; fadeIn(g); }
+      if (ranked && FR && !(first && quiet)) FR.shown(shown.map(r => r.id));
+      wrap.hidden = at >= rows.length;
+    };
+    box.appendChild(wrap);
+    addSix(true);
     fadeIn(box);
-    if (ranked && FR && !quiet) FR.shown(shown.map(r => r.id));
+    more.addEventListener('click', () => addSix(false));
   }
 
   const host = o.host;

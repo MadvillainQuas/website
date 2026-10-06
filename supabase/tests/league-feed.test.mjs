@@ -225,7 +225,10 @@ console.log('\non a league page, with storage blocked');
     league: { id: 'L1', slug: 'slb-men', name: 'SLB', country: 'GB' }, key: 'epinoia.league.feed', reveal: s => { shown = s; } });
   const cards = pg.host.findAll('pc');
   ok('it renders with storage blocked: six cards, the section shown', done === true && shown === true && cards.length === 6, [done, shown, cards.length]);
-  ok('one read of the league\'s news (news_feed with p_league, 60), through the page\'s own rpc', rpcCalls.length === 1 && rpcCalls[0][0] === 'news_feed' && rpcCalls[0][1].p_league === 'L1' && rpcCalls[0][1].p_limit === 60);
+  const nf = rpcCalls.filter(c => c[0] === 'news_feed'), np = rpcCalls.filter(c => c[0] === 'news_feed_partners');
+  ok('one read of the league\'s news (news_feed with p_league, 60), through the page\'s own rpc', nf.length === 1 && nf[0][1].p_league === 'L1' && nf[0][1].p_limit === 60, rpcCalls);
+  ok('...and one of its official partners\' stories of the boost\'s window (news_feed_partners, 0236)',
+     np.length === 1 && np[0][1].p_league === 'L1' && np[0][1].p_days === 9 && rpcCalls.length === 2, rpcCalls);
   ok('...and the ranking asks the server for nothing but the partners (cached on the page anyway): no languages, no countries, no significance',
      calls.length > 0 && calls.every(c => /official_partners/.test(c.url)), calls.map(c => c.url));
   ok('the partner piece leads, and wears the pill', cards[0].classList.contains('pc-partnered'));

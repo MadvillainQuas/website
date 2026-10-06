@@ -238,7 +238,7 @@ console.log('\nin the rail (6.3)');
 const nav = rd('epinoia', 'nav.js'), navCss = rd('epinoia', 'kit', 'nav.css'), kit = rd('epinoia', 'kit', 'epinoia-kit.css');
 ok('EPINOIA GO is the row under "leagues" in the first rail, lit on its own pages',
    nav.indexOf('hlist.appendChild(leaguesRow);') < nav.indexOf('hlist.appendChild(goRow);')
-   && nav.indexOf('hlist.appendChild(goRow);') < nav.indexOf('homePanel.append(htitle, hlist);')
+   && nav.indexOf('hlist.appendChild(goRow);') < nav.indexOf('homePanel.append(hphead, hlist);')
    && /goRow\.href = root \+ 'go\/';/.test(nav) && /\/\\\/epinoia\\\/go\\\/\/\.test\(here\)/.test(nav));
 ok('...EPINOIΛ in the logotype and GO in its own face, as a name (never translated)',
    /goWord\.append\(el\('span', 'epinoia-mark', 'EPINOIΛ'\), el\('span', 'go-go', 'GO'\)\)/.test(nav)
