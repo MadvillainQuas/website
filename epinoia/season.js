@@ -124,7 +124,7 @@ function sitNames(pre) {
     gp: pre + 'gp',
     K: SIT_KEYS.map(k => named(pre + k + '_', SIT_K_OUT)),
     G: SIT_GROUPS.map(g => named(pre + g + '_', SIT_G_OUT)),
-    ast_sh: pre + 'ast_sh', rim_astp: pre + 'rim_astp', mid_astp: pre + 'mid_astp', p3_astp: pre + 'p3_astp',
+    ast_sh: pre + 'ast_sh', rim_astp: pre + 'rim_astp', mid_astp: pre + 'mid_astp', p2_astp: pre + 'p2_astp', p3_astp: pre + 'p3_astp',
     ast_pts_sh: pre + 'ast_pts_sh', unast_pts_sh: pre + 'unast_pts_sh',
     ftast: pre + 'ftast', ftast_pg: pre + 'ftast_pg'
   };
@@ -187,6 +187,8 @@ function sitOut(out, N, S, side) {
   out[N.rim_astp] = sitRate(n[a + AI.rimM], n[a + AI.rimM] + n[u + AI.rimM], gp);
   out[N.mid_astp] = sitRate(n[a + AI.midM], n[a + AI.midM] + n[u + AI.midM], gp);
   out[N.p3_astp]  = sitRate(n[a + AI.p3m],  n[a + AI.p3m]  + n[u + AI.p3m],  gp);
+  /* two-pointers are the rim and the mid-range together */
+  out[N.p2_astp]  = sitRate(n[a + AI.rimM] + n[a + AI.midM], n[a + AI.rimM] + n[a + AI.midM] + n[u + AI.rimM] + n[u + AI.midM], gp);
   /* AND HOW MUCH OF THE SCORING CAME OFF A PASS: points from assisted baskets over
      every point scored, free throws included -- "assisted %" as it is usually read.
      Only a make can be assisted, so it is a share of what went in, never of what was

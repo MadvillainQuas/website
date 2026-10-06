@@ -79,6 +79,9 @@ window.EpinoiaBPM = require(path.join(ROOT, 'epinoia', 'bpm.js'));
 (0, eval)(readFileSync(path.join(ROOT, 'epinoia', 'teamcolour.js'), 'utf8'));
 const ST = require(path.join(ROOT, 'epinoia', 'stars.js'));
 window.EpinoiaStars = ST;
+/* THE PARITY SECTIONS BELOW HOLD THE SEASON-STYLE WINDOW BPM the page drew before 2026-10-06; the stars are now ranked by single-game BPM (section 5) */
+const computeWindowReal = ST.computeWindow;
+ST.computeWindow = (a, b, c, o) => computeWindowReal(a, b, c, Object.assign({}, o, { seasonStyle: true }));
 
 const IN = FX.inputs, OUT = FX.outputs;
 const gameIdsIn = u => { const m = /game_id=in\.\(([^)]*)\)/.exec(u); return new Set(m ? m[1].split(',') : []); };
@@ -312,6 +315,33 @@ console.log('\nHOME: stars-home.js and stars.css');
   const css = readFileSync(path.join(ROOT, 'epinoia', 'home', 'stars.css'), 'utf8');
   ok('the top-ten list stays closed on a phone ([hidden] wins in stars.css)', /\.starmore\[hidden\]\{display:none( !important)?\}/.test(css));
   ok('the phone rails snap card to card', /scroll-snap-type:x mandatory/.test(css));
+}
+
+/* ================================================ 5. SINGLE-GAME BPM === */
+console.log('\nthe stars are ranked by single-game BPM (2026-10-06)');
+{
+  ST.computeWindow = computeWindowReal;
+  const B = window.EpinoiaBPM;
+  const ids = new Set(OUT.windows.find(w => w.key === 'month').games);
+  const games = IN.games.filter(g => ids.has(g.id));
+  const now = ST.computeWindow(IN.player_game_stats, IN.team_game_stats, games);
+  const old = computeWindowReal(IN.player_game_stats, IN.team_game_stats, games, { seasonStyle: true });
+  const N = new Map(now.players.map(p => [p.id, p])), O = new Map(old.players.map(p => [p.id, p]));
+  ok('every player keeps a BPM, and the window figure is kept as seasonBpm', [...N.values()].every(p => p.seasonBpm === O.get(p.id).bpm && (p.seasonBpm == null || p.bpm != null)));
+  ok('the figure differs from the window-total one for most players', [...N.values()].filter(p => Math.abs(p.bpm - O.get(p.id).bpm) > 0.05).length > N.size / 2);
+  /* one player, by hand: the minutes-weighted mean of bpm.js game() over the games he played */
+  const target = [...N.values()].filter(p => p.gp >= 3).sort((a, b) => b.min - a.min)[0];
+  let w = 0, v = 0;
+  games.forEach(g => {
+    const ls = IN.player_game_stats.filter(r => r.game_id === g.id).map(r => ({ id: r.player_uuid || r.player_id, side: r.team_idx === 1 ? 1 : 0, stats: r.stats }));
+    const tg = IN.team_game_stats.filter(r => r.game_id === g.id);
+    const a = [0, 1].map(i => (tg.find(r => r.team_idx === i) || {}).stats);
+    const clubs = a[0] && a[1] && a[0].adv && a[1].adv ? [a[0].adv, a[1].adv] : null;
+    const out = B.game({ lines: ls, clubs, season: new Map(old.players.map(p => [p.id, p])) });
+    const l = ls.find(x => x.id === target.id), b = l && out.get(l.id);
+    if (b && l.stats.min > 0) { w += l.stats.min / 60000; v += b.bpm * l.stats.min / 60000; }
+  });
+  ok("a player's BPM is the minutes-weighted mean of his games' single-game BPMs", w > 0 && Math.abs(target.bpm - v / w) < 1e-9, target.bpm + ' vs ' + v / w);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

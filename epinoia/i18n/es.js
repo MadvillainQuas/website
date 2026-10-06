@@ -2457,7 +2457,8 @@
         'BS': 'Tap',
         'ST': 'Rec',
         'AGE': 'Edad',
-        'COMP': 'COMP.'
+        'COMP': 'COMP.',
+        '2P %AST': 'T2 % asist.'
       },
       /* a standings row (a PA beside it), as Spanish standings write it (PJ PG PP PF PC PT) */
       standings: {

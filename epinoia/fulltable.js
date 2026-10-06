@@ -420,6 +420,7 @@ function evColumns(CAT, team) {
   col('ev_mid_astp',     'MID %AST', 'share of mid-range makes that were assisted', selfMade);
   col('ev_all_p3_pct',   '3P%',      'three-point %, every shot');
   col('ev_p3_astp',      '3 %AST',   'share of made threes that were assisted', selfMade);
+  col('ev_p2_astp',      '2P %AST',  'share of made two-pointers (rim and mid-range) that were assisted', selfMade);
   col('ev_ast_rim_sh',   'A RIM SH', 'assisted baskets: share at the rim');
   col('ev_ast_mid_sh',   'A MID SH', 'assisted baskets: share from mid-range');
   col('ev_ast_p3_sh',    'A 3 SH',   'assisted baskets: share from three');
@@ -433,6 +434,25 @@ function evColumns(CAT, team) {
 }
 evColumns(P, false);
 evColumns(T, true);
+
+/* THE ASSISTED SHARE OF EACH SHOT TYPE ALSO SITS IN THE SHOOTING VIEW, beside the volume and accuracy it belongs to (2026-10-06): the
+   rim's and the mid-range's after their attempts, the three's after 3P%, the two-pointer's after 2P%. The same column as the assisted
+   events view (one key, so one gate, one sort, one definition): it is moved next to its neighbour and joins the shooting group, and
+   keeps its old place in the assisted view through `ord`. */
+function besideInShooting(CAT, moves) {
+  const idx = CAT.filter(c => !c.g.includes('id') && c.g.includes('ev_assist'));
+  moves.forEach(([key, after]) => {
+    const i = CAT.findIndex(c => c.k === key), j = CAT.findIndex(c => c.k === after);
+    if (i < 0 || j < 0) return;
+    const col = CAT[i];
+    col.ord = Object.assign({}, col.ord, { ev_assist: 1000 + idx.indexOf(col) });
+    col.g = col.g.concat('shooting');
+    CAT.splice(i, 1);
+    CAT.splice(CAT.findIndex(c => c.k === after) + 1, 0, col);
+  });
+}
+besideInShooting(P, [['ev_rim_astp', 'rim_apg'], ['ev_mid_astp', 'mid_apg'], ['ev_p3_astp', 'p3_pct'], ['ev_p2_astp', 'p2_pct']]);
+besideInShooting(T, [['ev_rim_astp', 'rim_pct'], ['ev_mid_astp', 'mid_pct'], ['ev_p3_astp', 'p3_pct']]);
 
 /* COLUMNS SWITCHED OFF IN THE PLAYER TABLE (2026-09-30: TOTAL S%, PPR, PPS and the on-court ORTG / DRTG, all of them only
    in the advanced view). Taken out of P itself, so they are gone from the table, the column drawer, the CSV, the filters,

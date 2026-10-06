@@ -197,7 +197,7 @@ console.log('\na team over the season: sums over covered games, rates from the s
     ev_ast_ppb: 2, ev_ast_rim_sh: 100, ev_ast_mid_sh: 0, ev_ast_p3_sh: 0,
     ev_unast_fgm: 8, ev_unast_pts: 19, ev_unast_p3m: 3, ev_unast_rimM: 5, ev_unast_fgm_pg: 2.7, ev_unast_pts_pg: 6.3,
     ev_unast_ppb: 2.38, ev_unast_rim_sh: 62.5, ev_unast_p3_sh: 37.5,
-    ev_ast_sh: 27.3, ev_rim_astp: 37.5, ev_mid_astp: null, ev_p3_astp: 0,
+    ev_ast_sh: 27.3, ev_rim_astp: 37.5, ev_mid_astp: null, ev_p3_astp: 0, ev_p2_astp: 37.5,
     ev_ast_pts_sh: 19.4, ev_unast_pts_sh: 61.3,   /* of the 31 points the splits cover; the rest are free throws, in neither group */
     ev_ftast: 0, ev_ftast_pg: 0
   });

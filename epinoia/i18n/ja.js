@@ -2455,7 +2455,8 @@
         'BS': 'BS',
         'ST': 'ST',
         'AGE': '年齢',
-        'COMP': '大会'
+        'COMP': '大会',
+        '2P %AST': '2P AS付%'
       },
       /* a standings row (a PA beside it), as Japanese standings write it */
       standings: {

@@ -545,6 +545,20 @@ console.log('\nthe competition column: a career table, one row a season and comp
      /\(COMP_COL && k === COMP_COL\.k \? COMP_COL : null\)/.test(rd('epinoia', 'fulltable.js')));
 }
 
+/* THE ASSISTED SHARES BESIDE THEIR SHOTS (2026-10-06): one column each, in the shooting view and the assisted view, never twice */
+{
+  const keys = cols => cols.map(c => c.k);
+  const P = Table.PLAYER_COLS, T = Table.TEAM_COLS;
+  const shoot = keys(P.filter(c => c.g.includes('shooting')));
+  const at = k => shoot.indexOf(k);
+  ok('players: RIM %AST follows RIMA/G and MID %AST follows MIDA/G', at('ev_rim_astp') === at('rim_apg') + 1 && at('ev_mid_astp') === at('mid_apg') + 1, shoot.join(','));
+  ok('players: 3 %AST follows 3P% and 2P %AST follows 2P%', at('ev_p3_astp') === at('p3_pct') + 1 && at('ev_p2_astp') === at('p2_pct') + 1);
+  ok('each is one column in the table, and still in the assisted view',
+     ['ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp', 'ev_p2_astp'].every(k => P.filter(c => c.k === k).length === 1 && P.find(c => c.k === k).g.includes('ev_assist')));
+  const tshoot = keys(T.filter(c => c.g.includes('shooting')));
+  ok('teams: the three zones follow their accuracy', tshoot.indexOf('ev_rim_astp') === tshoot.indexOf('rim_pct') + 1 && tshoot.indexOf('ev_mid_astp') === tshoot.indexOf('mid_pct') + 1 &&
+     tshoot.indexOf('ev_p3_astp') === tshoot.indexOf('p3_pct') + 1);
+}
 globalThis.setTimeout = realSetTimeout; globalThis.clearTimeout = realClearTimeout;
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

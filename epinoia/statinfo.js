@@ -58,6 +58,7 @@ const INFO = {
   ev_mid_astp: e('Mid-range assisted %', 'Of their mid-range makes, how many came off a pass.', 'assisted mid makes ÷ mid makes', 'Ranked the other way up: fewer assisted means they create their own.', true),
   p3_pct: e('3-point %', 'Accuracy from three.', '3PM ÷ 3PA', 'Higher is better; read it with volume. About 33–36% is typical, 40% is elite.'),
   p3_a100: e('3P attempts / 100', 'How often they shoot threes, per 100 possessions.', '3PA ÷ possessions on court × 100', 'A volume, not a quality: how much of their game is beyond the arc.'),
+  ev_p2_astp: e('2P assisted %', 'Of their two-pointers made (rim and mid-range together), how many came off a pass.', 'assisted rim and mid makes ÷ rim and mid makes', 'Ranked the other way up: fewer assisted means they create their own twos.', true),
   ev_p3_astp: e('3P assisted %', 'Of their threes made, how many came off a pass.', 'assisted 3PM ÷ 3PM', 'Ranked the other way up: fewer assisted means they make threes they create themselves.', true),
   ft_pct: e('Free-throw %', 'Accuracy from the line.', 'FTM ÷ FTA', 'Higher is better. About 70–75% is typical; 85%+ is a very good shooter.',
     false, { read: 'Higher is better. About 70–75% is typical for a club.' }),
