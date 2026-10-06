@@ -756,6 +756,7 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/site-search.test.mjs
           node supabase/tests/site-search-db.test.mjs
+          node supabase/tests/analytics-sources-db.test.mjs
 
       - name: The play-by-play's cards - which plays are one card
         # a basket and its assist, a miss with its block and rebound, a turnover and its steal: paired

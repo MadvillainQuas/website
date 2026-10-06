@@ -151,6 +151,77 @@ async function draw() {
   const sBox = el('div', 'an-search');
   host.appendChild(sBox);
   drawSearch(sBox);
+  const wBox = el('div', 'an-search');
+  host.appendChild(wBox);
+  drawSources(wBox);
+}
+
+/* ------------------------------------------------- where visitors came from --- */
+const ENGINE = { google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo', yahoo: 'Yahoo', baidu: 'Baidu', yandex: 'Yandex',
+                 ecosia: 'Ecosia', brave: 'Brave', qwant: 'Qwant', other: 'Another search engine' };
+async function drawSources(box) {
+  let s = null;
+  try {
+    const res = await st.sb.rpc('analytics_sources_report', { p_days: st.days });
+    if (res.error) throw res.error;
+    s = res.data;
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    box.appendChild(el('div', 'an-off', /analytics_sources_report|schema cache|does not exist/i.test(msg)
+      ? 'Where-from analytics are not in the database yet: migration 0234 has not been applied.'
+      : 'The where-from report could not be read: ' + msg));
+    return;
+  }
+  renderSources(box, s || {});
+}
+
+function renderSources(host, s) {
+  const t = s.totals || {};
+  const n = +t.landings || 0;
+  host.appendChild(el('h2', 'an-h2', 'Where visitors came from'));
+  const tiles = el('div', 'tiles');
+  const tile = (v, k, sub, dim) => {
+    const d = el('div', 'tile');
+    d.append(el('div', 'n' + (dim ? ' dim' : ''), v), el('div', 'k', k));
+    if (sub) d.appendChild(el('div', 'sub', sub));
+    tiles.appendChild(d);
+  };
+  tile(fmt(n), 'visits', 'counted at the first page');
+  tile(pct(+t.search || 0, n), 'from a search engine', fmt(t.search) + ' (' + fmt(t.google) + ' Google)');
+  tile(pct(+t.site || 0, n), 'from another site', fmt(t.site));
+  tile(pct(+t.campaign || 0, n), 'from a tagged link', fmt(t.campaign));
+  tile(pct(+t.direct || 0, n), 'typed or bookmarked', fmt(t.direct), true);
+  host.appendChild(tiles);
+  host.appendChild(el('p', 'lead',
+    'Counted on the first page of each visit. A search engine tells the site which engine sent the visitor and nothing more: Google no longer ' +
+    'passes the words searched, so what shows is the page they landed on (the page that matched their search). The words themselves are in ' +
+    "Google's own Search Console."));
+
+  const g1 = el('div', 'an-grid');
+  g1.appendChild(card('Visits a day', columns((s.daily || []).map(d => ({
+    label: shortDay(d.day), value: +d.landings || 0,
+    tip: shortDay(d.day) + ' — ' + fmt(d.landings) + ' visits, ' + fmt(d.search) + ' from search (' + fmt(d.google) + ' Google)'
+  })), 'No visits in this range yet.')));
+  g1.appendChild(card('Search engines', ranked(s.engines, [
+    ['Engine', x => ENGINE[x.engine] || x.engine], ['Visits', x => fmt(x.landings), 'num'],
+    ['Share', x => pct(+x.landings || 0, +t.search || 0), 'num']], x => +x.landings)));
+  host.appendChild(g1);
+
+  const g2 = el('div', 'an-grid');
+  g2.appendChild(card('Pages people arrive on from a search', ranked(s.pages, [
+    ['Page', x => (x.name ? x.name + ' ' : '') + '(' + (x.kind ? KIND[x.kind] || x.kind : '/' + (x.page || '')) + ')'],
+    ['Engine', x => ENGINE[x.engine] || x.engine], ['Visits', x => fmt(x.landings), 'num']], x => +x.landings,
+    'The page the search engine put in front of them: a player, club or league name here is what they searched for, roughly.')));
+  g2.appendChild(card('Tagged links (campaigns)', ranked(s.campaigns, [
+    ['Source', x => x.source || '—'], ['Medium', x => x.medium || '—'], ['Campaign', x => x.campaign || '—'],
+    ['Visits', x => fmt(x.landings), 'num']], x => +x.landings,
+    'Links of ours ending ?utm_source=…&utm_medium=…&utm_campaign=…; a Google advert click shows as google / cpc.')));
+  host.appendChild(g2);
+
+  const g3 = el('div', 'an-grid');
+  g3.appendChild(card('Other sites that sent visitors', ranked(s.referrers, [
+    ['Site', x => x.host], ['Visits', x => fmt(x.landings), 'num']], x => +x.landings)));
+  host.appendChild(g3);
 }
 
 /* ------------------------------------------------------- what is searched --- */

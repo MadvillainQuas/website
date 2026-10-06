@@ -74,7 +74,7 @@ console.log('\nwhat one view sends');
   ok('one request, to analytics_track', B.calls.length === 1 && /\/rest\/v1\/rpc\/analytics_track$/.test(c.url), B.calls.map(x => x.url));
   ok('it carries exactly the documented fields',
      JSON.stringify(Object.keys(c.body).sort()) === JSON.stringify(['p_app', 'p_device', 'p_events', 'p_lang', 'p_ref', 'p_session', 'p_signed_in']), Object.keys(c.body));
-  ok('...and each event exactly its own', JSON.stringify(Object.keys(c.body.p_events[0]).sort()) === JSON.stringify(['game', 'kind', 'league', 'page', 'player', 'team']), c.body.p_events[0]);
+  ok('...and each event exactly its own', JSON.stringify(Object.keys(c.body.p_events[0]).sort()) === JSON.stringify(['game', 'kind', 'landing', 'league', 'page', 'player', 'team']), c.body.p_events[0]);
   const text = JSON.stringify(c.body) + JSON.stringify(c.init.headers);
   ok('nothing that identifies anyone: no user id, email, token or user agent',
      !/u-123|fan@example|secret-jwt|Secret Device|x@y\.z/.test(text), text);
@@ -343,6 +343,32 @@ console.log('\nwho a page is about (2026-10-06)');
   const sql = readFileSync(path.join(ROOT, 'supabase', 'migrations', '0233_analytics_player.sql'), 'utf8');
   ok('0233: a player column of slugs and ids, kept by analytics_track, which still checks it',
      /add column if not exists player text/.test(sql) && /player ~ '\^\[a-z0-9-\]\{1,100\}\$'/.test(sql) && /nullif\(lower\(e ->> 'player'\), ''\)/.test(sql) && /insert into site_events \(kind, page, league, team, player, game/.test(sql));
+}
+
+
+console.log('\nwhere a visit came from (2026-10-06)');
+{
+  const store = () => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; };
+  let B = browser({ path: '/epinoia/p/', search: '?utm_source=Newsletter&utm_medium=Email&utm_campaign=Oct%202026!&x=1', referrer: 'https://www.google.com/' });
+  T.boot(); await T.flush(false);
+  let e = B.calls[0].body.p_events[0];
+  ok('the first page of a visit is its landing, with the campaign tags as short slugs',
+     e.landing === true && e.utm_source === 'newsletter' && e.utm_medium === 'email' && e.utm_campaign === 'oct-2026', e);
+  ok('the search engine travels only as the referring host (the server names the engine)', B.calls[0].body.p_ref === 'google.com' && !/x=1/.test(JSON.stringify(B.calls[0].body)));
+  B = browser({ path: '/epinoia/stats/', search: '?gclid=abc123' });
+  T.boot(); await T.flush(false);
+  e = B.calls[0].body.p_events[0];
+  ok('a Google advert click id alone is kept as google / cpc, never the id', e.utm_source === 'google' && e.utm_medium === 'cpc' && !/abc123/.test(JSON.stringify(B.calls[0].body)), e);
+  const ss = store();
+  B = browser({ ss, path: '/epinoia/stats/' }); T.boot(); await T.flush(false);
+  ok('the first page of a visit with nothing in the address is a landing with no tags', B.calls[0].body.p_events[0].landing === true && B.calls[0].body.p_events[0].utm_source === undefined);
+  B = browser({ ss, path: '/epinoia/p/', search: '?utm_source=late' }); T.boot(); await T.flush(false);
+  e = B.calls[0].body.p_events[0];
+  ok('a later page of the same visit is not a landing, and its tags are not read', e.landing === undefined && e.utm_source === undefined, e);
+  const sql = readFileSync(path.join(ROOT, 'supabase', 'migrations', '0234_analytics_sources.sql'), 'utf8');
+  ok('0234: columns for the landing, the engine and the tags, kept by analytics_track, read by an administrators-only report',
+     /add column if not exists landing boolean/.test(sql) && /search_engine_of\(p_ref\)/.test(sql) && /utm_source ~ '\^\[a-z0-9_\.-\]\{1,40\}\$'/.test(sql) &&
+     /analytics_sources_report[\s\S]*is_platform_admin\(\)/.test(sql) && /revoke all on function public\.analytics_sources_report\(int\) from public, anon/.test(sql));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

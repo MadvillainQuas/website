@@ -197,6 +197,26 @@ function referrerHost() {
   } catch (_) { return null; }
 }
 
+/* WHERE A VISIT CAME FROM (2026-10-06): the first page view of a visit is its landing; it carries the campaign tags of a link of ours
+   (utm_source / utm_medium / utm_campaign, as short slugs) and, for a Google advert's click id, medium 'cpc'. The search engine itself is
+   worked out by the server from the referring host (p_ref). A search engine never passes what was searched, so nothing of the sort is read. */
+const LANDED_KEY = 'epinoia_visit_landed';
+function landingTags() {
+  const ss = store('sessionStorage');
+  if (get(ss, LANDED_KEY)) return {};
+  set(ss, LANDED_KEY, '1');
+  const out = { landing: true };
+  try {
+    const q = new URLSearchParams(String((g('location') || {}).search || ''));
+    ['utm_source', 'utm_medium', 'utm_campaign'].forEach(k => {
+      const v = String(q.get(k) || '').trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+      if (v) out[k] = v;
+    });
+    if (!out.utm_medium && (q.get('gclid') || q.get('gbraid') || q.get('wbraid'))) { out.utm_medium = 'cpc'; if (!out.utm_source) out.utm_source = 'google'; }
+  } catch (_) { /* a count is never worth a page */ }
+  return out;
+}
+
 function push(ev) {
   if (stopped || !enabled()) return;
   queue.push(ev);
@@ -340,7 +360,7 @@ function boot() {
   const page = pageKey((g('location') || {}).pathname);
   if (!page || STAFF.test(page)) return;
   const c = context();
-  push({ kind: 'view', page, league: c.league, team: c.team, player: c.player, game: c.game });
+  push(Object.assign({ kind: 'view', page, league: c.league, team: c.team, player: c.player, game: c.game }, landingTags()));
   const doc = g('document');
   if (doc && doc.addEventListener) {
     doc.addEventListener('click', onClick, true);
