@@ -965,9 +965,33 @@
       const c = window.EPINOIA_CONFIG || {};
       try {
         const scope = l.id ? 'league_id=eq.' + encodeURIComponent(l.id) : 'leagues.slug=eq.' + encodeURIComponent(l.slug);
-        const r = await fetch(c.supabaseUrl + '/rest/v1/teams?' + scope + '&select=id,slug,name,short_name,colour,logo_path&order=name',
+        const r = await fetch(c.supabaseUrl + '/rest/v1/teams?' + scope + '&select=id,league_id,slug,name,short_name,colour,logo_path&order=name',
           { headers: { apikey: c.supabaseAnonKey } });
         rows = r.ok ? await r.json() : [];
+        /* ONLY THE CLUBS OF THE CURRENT SEASON: a club that has since dropped out of the league (or was only ever a spelling the
+           feed once used) is not in this season's field. "Current" is the league page's own rule: the newest season with a game
+           in it. Any failure, or a season with no entries yet, leaves the plain league-wide list. */
+        const lid = l.id || (rows[0] && rows[0].league_id);
+        if (rows.length && lid) {
+          const H = { headers: { apikey: c.supabaseAnonKey } };
+          const q = async p => { const x = await fetch(c.supabaseUrl + '/rest/v1/' + p, H); if (!x.ok) throw new Error(String(x.status)); return x.json(); };
+          try {
+            const ss = (await q('seasons?league_id=eq.' + encodeURIComponent(lid) + '&select=id,name,starts_on,competitions(id)'))
+              .sort((a, b) => String(b.starts_on || '').localeCompare(String(a.starts_on || '')) || String(b.name || '').localeCompare(String(a.name || '')));
+            let ids = null;
+            for (const s of ss) {
+              const cs = (s.competitions || []).map(x => x.id);
+              if (!cs.length) continue;
+              const g = await q('games?competition_id=in.(' + cs.join(',') + ')&select=id&limit=1');
+              if (g.length) { ids = cs; break; }
+            }
+            if (ids) {
+              const inField = new Set((await q('competition_teams?competition_id=in.(' + ids.join(',') + ')&select=team_id&limit=2000')).map(x => x.team_id));
+              const now = rows.filter(t => inField.has(t.id));
+              if (now.length) rows = now;
+            }
+          } catch (_) { /* the whole league's list stands */ }
+        }
       } catch (_) { rows = []; }
       teamsCache[l.slug] = rows;
     }

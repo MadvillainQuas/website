@@ -787,8 +787,9 @@ async function clubs() {
   const host = sec.querySelector('#clubs');
 
   const listFor = (id) => {
-    if (!id || !fields) return ts;
-    const want = fields.teamsOf(id);
+    if (!fields) return ts;
+    /* NOTHING TO SPLIT BY is still a season: only the clubs in this season's field, not every club the league ever had */
+    const want = id ? fields.teamsOf(id) : fields.everyTeam();
     const out = ts.filter(t => want.has(t.id));
     /* a competition whose clubs all sit in another league (a shared cup does
        this) would otherwise empty the grid; the whole league beats none */
