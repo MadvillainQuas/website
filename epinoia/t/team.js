@@ -269,6 +269,8 @@ async function chooseSeason(team, lg) {
     $('#tname').parentNode.appendChild(acts);
     const lg = team.leagues || {};
     if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
+    /* analytics: which club and league this page is about, by slug, whatever the address named it by */
+    try { if (window.EpinoiaTrack && window.EpinoiaTrack.entity) window.EpinoiaTrack.entity({ team: team.slug, league: lg.slug }); } catch (_) { /* a count is never worth a page */ }
     $('#tsub').textContent = lg.name || 'Independent';
     $('#ctx').textContent = lg.name ? lg.name + ' · ' + team.name : team.name;
     if (lg.slug) $('#leagueLink').href = '../l/?l=' + encodeURIComponent(lg.slug);

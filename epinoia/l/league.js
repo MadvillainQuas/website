@@ -155,6 +155,8 @@ async function boot() {
     }
     if (ownAccent) document.documentElement.style.setProperty('--lume', ownAccent);
     $('#leagueName').textContent = league.name;
+    /* analytics: which league this page is about, by slug (a copy made for search engines names it in its meta; a default league does not) */
+    try { if (window.EpinoiaTrack && window.EpinoiaTrack.entity) window.EpinoiaTrack.entity({ league: league.slug }); } catch (_) { /* a count is never worth a page */ }
     if (!document.querySelector('meta[name="epinoia-entity"]')) document.title = league.name + ' · Epinoia';   // a build-seo.py copy keeps its own
 
     /* EVERY SEASON THE READER CAN ACTUALLY GO TO, and its competitions with it

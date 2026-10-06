@@ -1526,6 +1526,8 @@ async function seasonLog(ids, sn) {
     /* the club's own button, if this is the club's own person (nothing is fetched for anybody else) */
     offerRelease(pl, team).catch(() => { /* no button */ });
     if (team && team.leagues && team.leagues.slug) window.__CS_LEAGUE_SLUG = team.leagues.slug;
+    /* analytics: which player, and the club and league he or she is in (the player by id) */
+    try { if (window.EpinoiaTrack && window.EpinoiaTrack.entity) window.EpinoiaTrack.entity({ player: pl.id, team: team && team.slug, league: team && team.leagues && team.leagues.slug }); } catch (_) { /* a count is never worth a page */ }
 
     /* ---- access ----
        ANSWERED BEFORE HIS CLUB'S GAMES ARE READ, not beside that read. data.js fixes a

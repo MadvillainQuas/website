@@ -9,6 +9,13 @@
      and, per visit: signed in yes/no, phone / tablet / desktop, the page's language,
      the app or the browser, and the SITE a visitor arrived from (host name only).
 
+   WHO THE PAGE IS ABOUT (2026-10-06): a page that stands for a league, a club or a player always says which. The address says it where it can
+   (?l= ?t= ?p= ?g=); a copy made for search engines (/p/<name>.html, /t/..., /l/..., in any language) says it in its
+   <meta name="epinoia-entity">; and the page itself says it once it has found out (EpinoiaTrack.entity({ league, team, player })
+   - a club opened by its id gets its slug, a player's club and league are named, a league page knows its slug). The league any page
+   names for the rail (__CS_LEAGUE_SLUG) is the last resort. All of it is read when the visit is sent, a few seconds after the page
+   opens, so what the page worked out in the meantime is in it. Player and club are ids and slugs of public pages, nothing about the reader.
+
    What it never sends or stores: an account, an email, an IP address (nothing here reads
    one and the database has no column for it), the user agent, a cookie, or anything that
    outlives the tab. `session` is random bytes kept in sessionStorage, which the browser
@@ -57,6 +64,8 @@ const TAB = /^[a-z0-9_-]{1,40}$/;
 
 const queue = [];
 let timer = null, stopped = false, session = null;
+/* what the page has said it is about (entity()) */
+let ENTITY = {};
 
 function store(name) { try { return g(name) || null; } catch (_) { return null; } }
 function get(s, k) { try { return s ? s.getItem(k) : null; } catch (_) { return null; } }
@@ -109,20 +118,35 @@ function sessionToken() {
 function pageKey(pathname) {
   const seg = String(pathname || '').replace(/\/index\.html$/, '/').split('/epinoia/')[1];
   if (seg == null) return null;
-  const key = seg.toLowerCase().replace(/\/+$/, '').replace(/[^a-z0-9/-]/g, '');
+  let one = seg.toLowerCase().replace(/^(ja|es)\//, '');
+  /* the copies made for search engines (/p/nicklaus-reid.html, /t/..., /l/..., /game/<id>.html) are the same pages as p/, t/, l/ and game/ */
+  const copy = /^(p|t|l|game)\/[^/]+\.html$/.exec(one);
+  if (copy) one = copy[1];
+  const key = one.replace(/\/+$/, '').replace(/[^a-z0-9/-]/g, '');
   return (key || 'splash').slice(0, 40);
 }
 
+const clean = v => { const x = String(v == null ? '' : v).trim().toLowerCase(); return SLUG.test(x) ? x : null; };
+/* the page says who it is about, once it knows: { league, team, player } as slugs (a player as his or her id) */
+function entity(o) {
+  ['league', 'team', 'player'].forEach(k => { const v = clean(o && o[k]); if (v) ENTITY[k] = v; });
+}
 function context() {
   const loc = g('location') || {};
   const q = new URLSearchParams(String(loc.search || ''));
-  const l = String(q.get('l') || '').toLowerCase();
-  const t = String(q.get('t') || '').toLowerCase();
+  const page = pageKey(loc.pathname);
   const em = g('document') && g('document').querySelector ? g('document').querySelector('meta[name="epinoia-entity"]') : null;
+  const meta = em ? String(em.content || '') : '';
   const gm = String(q.get('g') || (em && /\/game\//.test(String(loc.pathname || '')) && em.content) || '');
+  let team = clean(q.get('t')) || (page === 't' ? clean(meta) : null);
+  /* a club opened by its id is counted by its slug, which is what the league tables join on */
+  if ((!team || UUID.test(team)) && ENTITY.team) team = ENTITY.team;
+  let slugOfRail = null;
+  try { slugOfRail = clean(g('__CS_LEAGUE_SLUG')); } catch (_) { slugOfRail = null; }
   return {
-    league: SLUG.test(l) ? l : null,
-    team: SLUG.test(t) ? t : null,
+    league: clean(q.get('l')) || (page === 'l' ? clean(meta) : null) || ENTITY.league || slugOfRail,
+    team,
+    player: ENTITY.player || clean(q.get('p')) || (page === 'p' ? clean(meta) : null),
     game: UUID.test(gm) ? gm.toLowerCase() : null
   };
 }
@@ -177,15 +201,23 @@ function push(ev) {
   if (stopped || !enabled()) return;
   queue.push(ev);
   if (queue.length >= 50) { flush(false); return; }
-  if (!timer) timer = g('setTimeout').call(root, () => { timer = null; flush(false); }, 4000);
+  if (!timer) timer = g('setTimeout').call(root, () => { timer = null; flush(false); }, sentOnce ? 4000 : 6000);   // the first visit waits for the page to say who it is about
 }
 
-let ref = undefined;
+let ref = undefined, sentOnce = false;
 function flush(leaving) {
   if (timer) { g('clearTimeout').call(root, timer); timer = null; }
   if (stopped || !queue.length) return Promise.resolve(0);
   if (!enabled()) { queue.length = 0; return Promise.resolve(0); }     // e.g. whoami() has since said this is staff
   const events = queue.splice(0, 50);
+  /* WHO IT IS ABOUT, as it is now: what the page worked out since it opened fills what the address did not say */
+  const now = context();
+  events.forEach(ev => {
+    if (!ev.league && now.league) ev.league = now.league;
+    if ((!ev.team || UUID.test(ev.team)) && now.team) ev.team = now.team;
+    if (!ev.player && now.player) ev.player = now.player;
+  });
+  sentOnce = true;
   const cfg = g('EPINOIA_CONFIG') || {};
   if (ref === undefined) ref = referrerHost();
   const body = { p_session: sessionToken(), p_signed_in: signedIn(), p_device: device(), p_lang: lang(),
@@ -300,7 +332,7 @@ function onClick(e) {
   const page = pageKey((g('location') || {}).pathname);
   if (!page || STAFF.test(page) || !TAB.test(key)) return;
   const c = context();
-  push({ kind: 'tab', page, tab: key, league: c.league, team: c.team, game: c.game });
+  push({ kind: 'tab', page, tab: key, league: c.league, team: c.team, player: c.player, game: c.game });
 }
 
 function boot() {
@@ -308,7 +340,7 @@ function boot() {
   const page = pageKey((g('location') || {}).pathname);
   if (!page || STAFF.test(page)) return;
   const c = context();
-  push({ kind: 'view', page, league: c.league, team: c.team, game: c.game });
+  push({ kind: 'view', page, league: c.league, team: c.team, player: c.player, game: c.game });
   const doc = g('document');
   if (doc && doc.addEventListener) {
     doc.addEventListener('click', onClick, true);
@@ -327,9 +359,9 @@ function setCounting(on) {
 function counting() { return !optedOut(); }
 
 return {
-  boot, flush, setCounting, counting, search, piece, flushPieces, MINE_KEY,
+  boot, flush, entity, setCounting, counting, search, piece, flushPieces, MINE_KEY,
   _test: {
-    env(e) { ENV = e || null; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null;
+    env(e) { ENV = e || null; ENTITY = {}; sentOnce = false; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null;
              pieceQueue.length = 0; seenOnce.clear(); pieceStopped = false; pieceTimer = null; pieceHooked = false; },
     pageKey, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, automated, staffSignedIn, onClick, queue,
     pieceQueue, openedFrom, mine

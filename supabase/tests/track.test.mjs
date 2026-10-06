@@ -15,6 +15,7 @@
      node supabase/tests/track.test.mjs
    ============================================================================ */
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
@@ -40,6 +41,7 @@ function browser(o = {}) {
   if (o.signedIn) ls.setItem('sb-hhvofgqqadtyvcjudhjx-auth-token', JSON.stringify({ access_token: 'secret-jwt', user: { id: 'u-123', email: 'fan@example.org' } }));
   const doc = {
     documentElement: { lang: o.lang || 'en', classList: new Cls(o.htmlClass) },
+    querySelector: sel => (o.meta && /epinoia-entity/.test(sel) ? { content: o.meta } : null),
     referrer: o.referrer || '', visibilityState: 'visible',
     addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); }
   };
@@ -48,7 +50,7 @@ function browser(o = {}) {
     location: { pathname: o.path || '/epinoia/game/', search: o.search || '', hostname: 'prophesyscouting.co.uk' },
     navigator: Object.assign({ userAgent: 'Mozilla/5.0 (Secret Device Model)' }, o.nav || {}),
     localStorage: ls, sessionStorage: ss, document: doc, innerWidth: o.width || 390,
-    matchMedia: () => ({ matches: !!o.coarse }), crypto: globalThis.crypto,
+    matchMedia: () => ({ matches: !!o.coarse }), crypto: globalThis.crypto, __CS_LEAGUE_SLUG: o.railLeague || '',
     setTimeout: (f, ms) => setTimeout(f, 0), clearTimeout: t => clearTimeout(t),
     addEventListener: (t, fn) => { (listeners['w:' + t] = listeners['w:' + t] || []).push(fn); },
     fetch: async (url, init) => { calls.push({ url, init, body: JSON.parse(init.body) }); return { ok: o.status ? o.status < 300 : true, status: o.status || 200 }; }
@@ -72,7 +74,7 @@ console.log('\nwhat one view sends');
   ok('one request, to analytics_track', B.calls.length === 1 && /\/rest\/v1\/rpc\/analytics_track$/.test(c.url), B.calls.map(x => x.url));
   ok('it carries exactly the documented fields',
      JSON.stringify(Object.keys(c.body).sort()) === JSON.stringify(['p_app', 'p_device', 'p_events', 'p_lang', 'p_ref', 'p_session', 'p_signed_in']), Object.keys(c.body));
-  ok('...and each event exactly its own', JSON.stringify(Object.keys(c.body.p_events[0]).sort()) === JSON.stringify(['game', 'kind', 'league', 'page', 'team']), c.body.p_events[0]);
+  ok('...and each event exactly its own', JSON.stringify(Object.keys(c.body.p_events[0]).sort()) === JSON.stringify(['game', 'kind', 'league', 'page', 'player', 'team']), c.body.p_events[0]);
   const text = JSON.stringify(c.body) + JSON.stringify(c.init.headers);
   ok('nothing that identifies anyone: no user id, email, token or user agent',
      !/u-123|fan@example|secret-jwt|Secret Device|x@y\.z/.test(text), text);
@@ -303,6 +305,44 @@ console.log('\na creator\'s piece, seen, opened and followed out (0200)');
   ok('a refused call (0200 not applied) stops the pieces, and only those', B.calls.length === 1);
   T.boot(); await T.flush(false);
   ok('...a page view still goes', B.calls.length === 2 && /analytics_track$/.test(B.calls[1].url), B.calls.map(x => x.url));
+}
+
+
+console.log('\nwho a page is about (2026-10-06)');
+{
+  const PID = '0e7c9b0a-1f0e-4a5e-9d1d-3b5c1a2f4e66', TID = '8683e58b-b5ba-440e-9c21-13b0153faa5b';
+  ok('the copies made for search engines are the page they copy, in any language',
+     X.pageKey('/epinoia/p/nicklaus-william-reid.html') === 'p' && X.pageKey('/epinoia/t/manchester-basketball.html') === 't' &&
+     X.pageKey('/epinoia/l/slb-men.html') === 'l' && X.pageKey('/epinoia/ja/p/foo.html') === 'p' && X.pageKey('/epinoia/es/l/x.html') === 'l' &&
+     X.pageKey('/epinoia/game/' + GAME + '.html') === 'game' && X.pageKey('/epinoia/p/') === 'p', ['p/x.html', 't/x.html', 'l/x.html'].map(k => X.pageKey('/epinoia/' + k)));
+  let B = browser({ path: '/epinoia/p/nicklaus-william-reid.html', meta: PID });
+  T.boot(); await T.flush(false);
+  let e = B.calls[0].body.p_events[0];
+  ok('a player\'s search-engine copy says which player (its meta), under the page "p"', e.page === 'p' && e.player === PID, e);
+  B = browser({ path: '/epinoia/p/', search: '?p=' + PID });
+  T.boot(); await T.flush(false);
+  ok('a player opened by ?p= says which player', B.calls[0].body.p_events[0].player === PID);
+  B = browser({ path: '/epinoia/l/slb-men.html', meta: 'slb-men' });
+  T.boot(); await T.flush(false);
+  ok('a league\'s copy says which league', B.calls[0].body.p_events[0].league === 'slb-men' && B.calls[0].body.p_events[0].page === 'l');
+  B = browser({ path: '/epinoia/t/', search: '?t=' + TID });
+  T.boot(); T.entity({ team: 'manchester-basketball', league: 'slb-men' }); await T.flush(false);
+  e = B.calls[0].body.p_events[0];
+  ok('a club opened by its id is counted by its slug, with its league, once the page has said who it is', e.team === 'manchester-basketball' && e.league === 'slb-men', e);
+  B = browser({ path: '/epinoia/p/', search: '?p=' + PID });
+  T.boot(); T.entity({ player: PID, team: 'manchester-basketball', league: 'slb-men' }); await T.flush(false);
+  e = B.calls[0].body.p_events[0];
+  ok('a player\'s page names the club and the league as well', e.player === PID && e.team === 'manchester-basketball' && e.league === 'slb-men', e);
+  B = browser({ path: '/epinoia/stats/', railLeague: 'slb-men' });
+  T.boot(); await T.flush(false);
+  ok('a page with no league in its address takes the one it named for the rail', B.calls[0].body.p_events[0].league === 'slb-men');
+  B = browser({ path: '/epinoia/p/', search: '?p=' + PID });
+  T.boot(); T.entity({ league: 'Not A Slug!', team: 'x y' });
+  await T.flush(false);
+  ok('what a page says is checked: a name that is not a slug is not sent', !B.calls[0].body.p_events[0].league && B.calls[0].body.p_events[0].team == null, B.calls[0].body.p_events[0]);
+  const sql = readFileSync(path.join(ROOT, 'supabase', 'migrations', '0233_analytics_player.sql'), 'utf8');
+  ok('0233: a player column of slugs and ids, kept by analytics_track, which still checks it',
+     /add column if not exists player text/.test(sql) && /player ~ '\^\[a-z0-9-\]\{1,100\}\$'/.test(sql) && /nullif\(lower\(e ->> 'player'\), ''\)/.test(sql) && /insert into site_events \(kind, page, league, team, player, game/.test(sql));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
