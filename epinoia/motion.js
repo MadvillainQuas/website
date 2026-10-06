@@ -37,7 +37,9 @@
   /* is this block worth animating: visible, and bigger than a badge */
   function worth(el) {
     if (!el || el.nodeType !== 1 || skipTag.test(el.tagName) || busy.has(el)) return false;
-    if (el.closest('[data-no-motion], .ep-mo-in, .ep-mo-out, .tt-line, .ep-scrollmark, #toast, .ep-toast')) return false;
+    /* #csBody: the box score animates its own tab switch (game.js); a second animation over it was the stutter */
+    if (el.closest('[data-no-motion], .ep-mo-in, .ep-mo-out, .tt-line, .ep-scrollmark, #toast, .ep-toast, #csBody')) return false;
+    if (el.getElementsByTagName('*').length > 1500) return false;     // too big to move smoothly: it simply appears
     if (el.hasAttribute('hidden')) return false;
     const r = el.getBoundingClientRect();
     return r.width >= 60 && r.height >= 24;
@@ -54,7 +56,7 @@
   }
 
   /* ---- THE CLOSING: a copy of what may go, taken at the press, shown fading out when it has gone ---- */
-  const MAX_NODES = 4000;
+  const MAX_NODES = 1500;   // copying a bigger block at the press froze the page for a moment (2026-10-06)
   const TABSTRIP = '[role="tablist"], .tabrow, .tabs, .ep-xtabs, .hm-seg, .mv-switch, .tabgroup, .scw-seg';
   /* the blocks a press might close or replace: what it controls, what it opened, what sits under the strip it belongs to */
   function candidates(t) {
@@ -69,6 +71,7 @@
     return out;
   }
   function snapshot(t) {
+    if (t.closest('#view')) return [];        // the box score fades its own tabs (game.js)
     return candidates(t).map(node => {
       const r = node.getBoundingClientRect();
       if (r.width < 60 || r.height < 24 || node.getElementsByTagName('*').length > MAX_NODES) return null;

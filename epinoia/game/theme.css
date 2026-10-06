@@ -388,3 +388,9 @@ html.tt-on .wrap > .top > .ctx{ display:none }
 .ga-top h2{ margin:0; font-family:var(--f-score,inherit); font-weight:400; font-size:20px; letter-spacing:.03em; text-transform:uppercase }
 .ga-sides{ display:flex; gap:6px; flex-wrap:wrap }
 .ga-x{ margin-left:auto }
+
+/* the tab switch (game.js): the old body dims at once, the new one fades up once drawn */
+#csBody.cs-out{ opacity:.35; transition:opacity .12s ease-out }
+#csBody.cs-in{ animation:cs-in .26s cubic-bezier(.2,.7,.2,1) both }
+@keyframes cs-in{ from{ opacity:.35; transform:translateY(6px) } to{ opacity:1; transform:none } }
+@media (prefers-reduced-motion:reduce){ #csBody.cs-out, #csBody.cs-in{ transition:none; animation:none; opacity:1 } }

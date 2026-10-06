@@ -1020,7 +1020,18 @@ function renderShell() {
       document.querySelectorAll('#view .tabbtn[data-tab]').forEach(x =>
         x.classList.toggle('on', x.dataset.tab === fTab));
       lastBodyKey = '';                 // force a redraw for the new tab
-      renderBody();
+      /* A SMOOTH SWITCH (2026-10-06): the pressed tab and a dimmed body are painted first, the (heavy, synchronous) redraw
+         runs on the frame after, and the new body fades up - instead of the page freezing on the old tab and then jumping */
+      const body = $('#csBody');
+      if (!body || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) { renderBody(); return; }
+      body.classList.remove('cs-in');
+      body.classList.add('cs-out');
+      requestAnimationFrame(() => setTimeout(() => {
+        renderBody();
+        body.classList.remove('cs-out');
+        void body.offsetWidth;          // restart the fade even when the same tab is pressed twice
+        body.classList.add('cs-in');
+      }, 0));
     };
   });
   markLockedTabs();                     // a no-op until access.js has said analytics are locked
