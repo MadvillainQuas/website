@@ -101,9 +101,10 @@ COUNTRY = {
     "NZ": "New Zealand", "KR": "South Korea", "CN": "China", "PH": "Philippines", "TW": "Taiwan",
 }
 
-# The language a league's own country reads, for the extra copies at /epinoia/<lang>/l/ and /epinoia/<lang>/t/
-# (Japan and Spain only, and only their leagues and clubs). The page then opens in that language, and the
-# title and description a search engine shows are written in it.
+# The language a league's own country reads, for the extra copies at /epinoia/<lang>/l/, /t/, /p/ and /game/
+# (Japan and Spain only: their leagues, clubs, players and games). The page then opens in that language, and the
+# title and description a search engine shows are written in it; each copy and its English original name each other
+# in hreflang, in the page and in the sitemap.
 LANG_OF_COUNTRY = {"JP": "ja", "ES": "es"}
 OG_LOCALE = {"ja": "ja_JP", "es": "es_ES"}
 COUNTRY_LOCAL = {"ja": {"JP": "日本"}, "es": {"ES": "España"}}
@@ -423,19 +424,47 @@ def pct(made, att, floor) -> str | None:
     return f"{round(100 * made / att)}%" if att >= floor else None
 
 
-def player_head(m: Model, p: dict, tag: str = "") -> dict:
+def player_head(m: Model, p: dict, tag: str = "", lang: str = "") -> dict:
     cur = p["rows"][0]
     c = m.comp.get(cur["competition_id"], {})
     lg = m.league_of_comp(cur["competition_id"])
     team, league = cur.get("team_name") or "", (lg or {}).get("name") or c.get("name") or ""
+    lname = league
+    if lang:
+        league = shown(lang, league)
     name = p["name"]
     nm = name + tag                       # tag: " (No. 7)" - told apart from another profile with the very same name and club
     title = fit_title([f"{nm} – {team}, {league} stats | {SITE_NAME}", f"{nm} – {team} stats | {SITE_NAME}",
                        f"{nm} – {league} stats | {SITE_NAME}", f"{nm} stats | {SITE_NAME}"] if team else
                       [f"{nm} – {league} stats | {SITE_NAME}", f"{nm} stats | {SITE_NAME}"])
+    if lang == "ja":
+        title = fit_title([f"{nm}｜{team} {league}の選手成績 | {SITE_NAME}", f"{nm}｜{team}の選手成績 | {SITE_NAME}", f"{nm}｜{lname}の選手成績 | {SITE_NAME}",
+                           f"{nm}｜選手成績 | {SITE_NAME}"] if team else [f"{nm}｜{league}の選手成績 | {SITE_NAME}", f"{nm}｜選手成績 | {SITE_NAME}"])
+    elif lang == "es":
+        title = fit_title([f"{nm} – {team}, estadísticas en {league} | {SITE_NAME}", f"{nm} – {team}, estadísticas | {SITE_NAME}",
+                           f"{nm} – estadísticas en {league} | {SITE_NAME}", f"{nm} – estadísticas | {SITE_NAME}"] if team else
+                          [f"{nm} – estadísticas en {league} | {SITE_NAME}", f"{nm} – estadísticas | {SITE_NAME}"])
     gp = num(cur["gp"])
     season = c.get("season", "")
-    if gp > 0:
+    if lang and gp > 0:
+        pa, ra, aa = fmt1(cur["ppg"]), fmt1(cur["rpg"]), fmt1(cur["apg"])
+        if lang == "ja":
+            d = best([f"{name}{'（' + team + '）' if team else ''}は{league} {season}で{int(gp)}試合に出場し、平均{pa}得点・{ra}リバウンド・{aa}アシスト。試合ログ、ショットチャート、通算成績を{SITE_NAME}で。",
+                      f"{name}{'（' + team + '）' if team else ''}は{league} {season}で平均{pa}得点・{ra}リバウンド・{aa}アシスト。試合ログとショットチャートを{SITE_NAME}で。",
+                      f"{name}は{league} {season}で平均{pa}得点・{ra}リバウンド・{aa}アシスト。"])
+        else:
+            d = best([f"{name}{' (' + team + ')' if team else ''} promedia {pa} puntos, {ra} rebotes y {aa} asistencias en {int(gp)} {'partido' if gp == 1 else 'partidos'} de {league} {season}. "
+                      f"Registro de partidos, mapa de tiros y estadísticas de carrera en {SITE_NAME}.",
+                      f"{name}{' (' + team + ')' if team else ''} promedia {pa} puntos, {ra} rebotes y {aa} asistencias en {league} {season}. Registro de partidos y mapa de tiros en {SITE_NAME}.",
+                      f"{name} promedia {pa} puntos, {ra} rebotes y {aa} asistencias en {league} {season}."])
+    elif lang:
+        if lang == "ja":
+            d = best([f"{name}は{league} {season}の{team}に所属。シーズン成績、試合ログ、ショットチャートを{SITE_NAME}で。" if team else f"{name}は{league} {season}の選手。シーズン成績と試合ログを{SITE_NAME}で。",
+                      f"{name}は{league} {season}の選手。成績を{SITE_NAME}で。"])
+        else:
+            d = best([f"{name}{' juega en ' + team if team else ''} ({league} {season}). Estadísticas de la temporada, registro de partidos y mapa de tiros en {SITE_NAME}.",
+                      f"{name} en {league} {season}. Estadísticas en {SITE_NAME}."])
+    elif gp > 0:
         lead = (f"{name}{' (' + team + ')' if team else ''} averages {fmt1(cur['ppg'])} points, {fmt1(cur['rpg'])} rebounds and "
                 f"{fmt1(cur['apg'])} assists in {int(gp)} {'game' if gp == 1 else 'games'} of {league} {season}")
         fg, p3 = pct(cur.get("fgm"), cur.get("fga"), 20), pct(cur.get("p3m"), cur.get("p3a"), 15)
@@ -454,16 +483,19 @@ def player_head(m: Model, p: dict, tag: str = "") -> dict:
     else:
         d = best([f"{name}{' plays for ' + team if team else ''} in {league} {season}. Season stats, game log and shot chart on {SITE_NAME}.",
                   f"{name}{' plays for ' + team if team else ''} in {league} {season}. Season stats and game log on {SITE_NAME}."])
-    path = f"{BASE}/p/{p['slug']}.html"
+    path = f"{BASE}/{lang + '/' if lang else ''}p/{p['slug']}.html"
     team_obj = m.teams.get(cur["team_id"])
     trail = [(SITE_NAME, f"{BASE}/home/")]
     if lg:
-        trail.append((league, league_path(m, lg)))
+        trail.append((league, league_path(m, lg, lang)))
     if team_obj:
-        trail.append((team, team_path(team_obj)))
+        trail.append((team, team_path(team_obj, lang)))
     trail.append((name, None))
-    person = {"@context": "https://schema.org", "@type": "Person", "name": name, "jobTitle": "Basketball player",
+    person = {"@context": "https://schema.org", "@type": "Person", "name": name,
+              "jobTitle": {"ja": "バスケットボール選手", "es": "Jugador de baloncesto"}.get(lang, "Basketball player"),
               "description": d, "url": ORIGIN + path, "mainEntityOfPage": ORIGIN + path}
+    if lang:
+        person["inLanguage"] = lang
     photo = m.photo.get(p["id"])
     if photo:
         person["image"] = photo
@@ -471,16 +503,19 @@ def player_head(m: Model, p: dict, tag: str = "") -> dict:
         person["height"] = {"@type": "QuantitativeValue", "value": m.height[p["id"]], "unitCode": "CMT", "unitText": "cm"}
     if team:
         tm = {"@type": "SportsTeam", "name": team, "sport": "Basketball",
-              **({"url": ORIGIN + team_path(team_obj)} if team_obj else {})}
+              **({"url": ORIGIN + team_path(team_obj, lang)} if team_obj else {})}
         if team_obj and m.logo_of_team(team_obj):
             tm["logo"] = m.logo_of_team(team_obj)
         person["memberOf"] = tm
         person["affiliation"] = tm
     # the picture of a link preview: his approved photograph, else his club's crest, else the site's own
     img = photo if og_ok(photo) else (m.logo_of_team(team_obj) if team_obj and og_ok(m.logo_of_team(team_obj)) else None)
-    return {"title": title, "desc": d, "path": path, "entity": p["id"], "og": "profile",
-            "image": img, "image_alt": f"{name}, {team or league}" if photo and img == photo else (f"{team} crest" if img else ""),
-            "ld": [person, breadcrumb(trail)]}
+    h = {"title": title, "desc": d, "path": path, "entity": p["id"], "og": "profile",
+         "image": img, "image_alt": f"{name}, {team or league}" if photo and img == photo else (f"{team} crest" if img else ""),
+         "ld": [person, breadcrumb(trail)], "lang": lang, "base": f"{BASE}/p/" if lang else ""}
+    if lang_of(lg):
+        h["alts"] = alts({"en": f"{BASE}/p/{p['slug']}.html", lang_of(lg): f"{BASE}/{lang_of(lg)}/p/{p['slug']}.html"})
+    return h
 
 
 def latest_rows(m: Model, rows: list) -> list:
@@ -719,7 +754,63 @@ def when(g: dict, lg: dict) -> tuple[dt.datetime | None, str]:
     return d, f"{d.strftime('%a')} {d.day} {d.strftime('%b %Y, %H:%M %Z')}"
 
 
-def game_head(m: Model, g: dict, tops: dict, dated: bool = False) -> dict | None:
+MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+WEEKDAYS_JA = "月火水木金土日"
+WEEKDAYS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+
+def game_words(lang: str, status: str, hn: str, an: str, ln: str, hs: int, as_: int, d, vname, tp: dict, dated: bool, fallback_title: str):
+    """The title, the description and the breadcrumb of a game's Japanese or Spanish copy. ln: the league's name as its country writes it."""
+    if lang == "ja":
+        day = f"{d.year}年{d.month}月{d.day}日"
+        short = f"{d.month}月{d.day}日"
+        at = f"（{WEEKDAYS_JA[d.weekday()]}）{d.strftime('%H:%M')}"
+    else:
+        day = f"{d.day} de {MONTHS_ES[d.month - 1]} de {d.year}"
+        short = f"{d.day} {MONTHS_ES[d.month - 1][:3]}"
+        at = f", {d.strftime('%H:%M')}"
+    venue = f"（{vname}）" if (vname and lang == "ja") else (f" en {vname}" if vname else "")
+    if status == "final":
+        parts = []
+        for idx, nm in ((0, hn), (1, an)):
+            run = tp.get(idx) or []
+            if run:
+                parts.append(f"{run[0][0]} {run[0][1]}（{nm}）" if lang == "ja" else f"{run[0][0]} {run[0][1]} ({nm})")
+        if lang == "ja":
+            title = fit_title(([f"{hn} {hs}－{as_} {an}｜ボックススコア {short} | {SITE_NAME}"] if dated else [])
+                              + [f"{hn} {hs}－{as_} {an}｜ボックススコア｜{ln} | {SITE_NAME}", f"{hn} {hs}－{as_} {an}｜ボックススコア | {SITE_NAME}", f"{hn} {hs}－{as_} {an} | {SITE_NAME}"])
+            res = f"{hn}と{an}は{hs}-{as_}の引き分け" if hs == as_ else (f"{hn}が{an}に{hs}-{as_}で勝利" if hs > as_ else f"{an}が{hn}に{as_}-{hs}で勝利")
+            sc = ("最多得点：" + "、".join(parts) + "。") if parts else ""
+            d_ = best([f"{ln}、{day}。{res}{venue}。{sc}ボックススコア、プレーバイプレー、ショットチャートを{SITE_NAME}で。", f"{ln}、{day}。{res}。{sc}{SITE_NAME}でボックススコアを。",
+                       f"{ln}、{day}。{res}。"])
+        else:
+            title = fit_title(([f"{hn} {hs}–{as_} {an} – estadísticas del partido, {short} | {SITE_NAME}"] if dated else [])
+                              + [f"{hn} {hs}–{as_} {an} – estadísticas del partido | {ln} | {SITE_NAME}", f"{hn} {hs}–{as_} {an} – estadísticas | {SITE_NAME}", f"{hn} {hs}–{as_} {an} | {SITE_NAME}"])
+            res = (f"{hn} y {an} empataron {hs}-{as_}" if hs == as_ else (f"{hn} venció a {an} {hs}-{as_}" if hs > as_ else f"{an} venció a {hn} {as_}-{hs}"))
+            sc = (" Máximos anotadores: " + ", ".join(parts) + ".") if parts else ""
+            d_ = best([f"{res} en {ln} el {day}{venue}.{sc} Estadísticas completas, jugada a jugada y mapa de tiros en {SITE_NAME}.", f"{res} en {ln} el {day}.{sc} Estadísticas del partido en {SITE_NAME}.",
+                       f"{res} en {ln} el {day}."])
+        crumb = f"{hn} {hs}–{as_} {an}"
+    elif status == "live":
+        if lang == "ja":
+            title = fit_title(([f"{hn} 対 {an}｜ライブ速報 {short} | {SITE_NAME}"] if dated else []) + [f"{hn} 対 {an}｜ライブスコア・ボックススコア｜{ln} | {SITE_NAME}", f"{hn} 対 {an}｜ライブ速報 | {SITE_NAME}", f"{hn} 対 {an} | {SITE_NAME}"])
+            d_ = best([f"{ln}の{hn}対{an}を速報中{venue}。ボックススコア、プレーバイプレー、ショットチャートを{SITE_NAME}でリアルタイムに。", f"{ln}の{hn}対{an}を速報中。ボックススコアを{SITE_NAME}で。"])
+        else:
+            title = fit_title(([f"{hn} v {an} – en directo, {short} | {SITE_NAME}"] if dated else []) + [f"{hn} v {an} – marcador y estadísticas en directo | {ln} | {SITE_NAME}", f"{hn} v {an} – en directo | {SITE_NAME}", f"{hn} v {an} | {SITE_NAME}"])
+            d_ = best([f"{hn} v {an} en {ln}, en directo{venue}. Sigue las estadísticas, la jugada a jugada y el mapa de tiros en tiempo real en {SITE_NAME}.", f"{hn} v {an} en {ln}, en directo. Estadísticas en {SITE_NAME}."])
+        crumb = f"{hn} {'対' if lang == 'ja' else 'v'} {an}"
+    else:
+        if lang == "ja":
+            title = fit_title(([f"{hn} 対 {an}｜プレビュー {short} | {SITE_NAME}"] if dated else []) + [f"{hn} 対 {an}｜プレビューとラインナップ｜{ln} | {SITE_NAME}", f"{hn} 対 {an}｜プレビュー | {SITE_NAME}", f"{hn} 対 {an} | {SITE_NAME}"])
+            d_ = best([f"{ln}、{day}{at}：{hn}対{an}{venue}。プレビュー、ラインナップ、試合後のボックススコアを{SITE_NAME}で。", f"{ln}、{day}：{hn}対{an}。プレビューとラインナップを{SITE_NAME}で。"])
+        else:
+            title = fit_title(([f"{hn} v {an} – previa, {short} | {SITE_NAME}"] if dated else []) + [f"{hn} v {an} – previa y alineaciones | {ln} | {SITE_NAME}", f"{hn} v {an} – previa | {SITE_NAME}", f"{hn} v {an} | {SITE_NAME}"])
+            d_ = best([f"{hn} recibe a {an} en {ln} el {day}{at}{venue}. Previa, alineaciones y estadísticas del partido en {SITE_NAME}.", f"{hn} v {an} en {ln}, {day}. Previa y alineaciones en {SITE_NAME}."])
+        crumb = f"{hn} {'対' if lang == 'ja' else 'v'} {an}"
+    return title, d_, crumb
+
+
+def game_head(m: Model, g: dict, tops: dict, dated: bool = False, lang: str = "") -> dict | None:
     """The head of one game's page, or None when the game may not have one. tops: game id -> {0: [(name, pts)], 1: [...]}."""
     home, away = m.teams.get(g.get("home_team_id")), m.teams.get(g.get("away_team_id"))
     lg = m.league_of_comp(g.get("competition_id"))
@@ -782,15 +873,19 @@ def game_head(m: Model, g: dict, tops: dict, dated: bool = False) -> dict | None
                    f"{hn} host {an} in {ln} on {when_s}. Preview, lineups and box score on {SITE_NAME}.",
                    f"{hn} v {an} in {ln}, {when_s}. Preview and lineups on {SITE_NAME}.", f"{hn} v {an} in {ln}, {when_s}."])
         crumb = f"{hn} v {an}"
-    path = f"{BASE}/game/{g['id']}.html"
+    if lang:
+        title, d_, crumb = game_words(lang, status, hn, an, shown(lang, ln), hs, as_, d, vname, tops.get(g["id"]) or {}, dated, title)
+    path = f"{BASE}/{lang + '/' if lang else ''}game/{g['id']}.html"
     ev = {"@context": "https://schema.org", "@type": "SportsEvent", "name": f"{hn} v {an}", "url": ORIGIN + path,
           "description": d_, "sport": "Basketball", "startDate": start,
           # schema.org has no 'in progress' or 'played' status: a game that is on or was played IS EventScheduled
           "eventStatus": "https://schema.org/EventScheduled",
           "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
-          "organizer": {"@type": "SportsOrganization", "name": ln, "url": ORIGIN + league_path(m, lg)}}
+          "organizer": {"@type": "SportsOrganization", "name": ln, "url": ORIGIN + league_path(m, lg, lang)}}
+    if lang:
+        ev["inLanguage"] = lang
     for key, t in (("homeTeam", home), ("awayTeam", away)):
-        o = {"@type": "SportsTeam", "name": t["name"], "sport": "Basketball", "url": ORIGIN + team_path(t)}
+        o = {"@type": "SportsTeam", "name": t["name"], "sport": "Basketball", "url": ORIGIN + team_path(t, lang)}
         if m.logo_of_team(t):
             o["logo"] = m.logo_of_team(t)
         ev[key] = o
@@ -803,12 +898,15 @@ def game_head(m: Model, g: dict, tops: dict, dated: bool = False) -> dict | None
         ev["location"] = place
     imgs = [x for x in (m.logo_of_team(home), m.logo_of_team(away)) if og_ok(x)]
     ev["image"] = imgs or [ORIGIN + BASE + SHARE_IMG]
-    trail = [(SITE_NAME, f"{BASE}/home/"), (ln, league_path(m, lg)), (crumb, None)]
+    trail = [(SITE_NAME, f"{BASE}/home/"), (shown(lang, ln) if lang else ln, league_path(m, lg, lang)), (crumb, None)]
     # lastmod: when the record last changed (a finish, a revert), never later than now; a live game is now
     stamps = [x for x in (iso(g.get("finalised_at")), iso(g.get("reverted_at")), iso(g.get("created_at"))) if x]
-    return {"title": title, "desc": d_, "path": path, "entity": g["id"], "og": "website",
-            "image": None, "ld": [ev, breadcrumb(trail)], "status": status, "start": start,
-            "lastmod": max(stamps) if stamps else start}
+    h = {"title": title, "desc": d_, "path": path, "entity": g["id"], "og": "website",
+         "image": None, "ld": [ev, breadcrumb(trail)], "status": status, "start": start,
+         "lastmod": max(stamps) if stamps else start, "lang": lang, "base": f"{BASE}/game/" if lang else ""}
+    if lang_of(lg):
+        h["alts"] = alts({"en": f"{BASE}/game/{g['id']}.html", lang_of(lg): f"{BASE}/{lang_of(lg)}/game/{g['id']}.html"})
+    return h
 
 
 def pick_games(m: Model, rows: list, now: dt.datetime) -> list:
@@ -949,7 +1047,7 @@ def sitemap(site: str, ents: list, games: list, data_ts: str | None, now_iso: st
     """sitemap.xml is an INDEX of three: sitemap-static.xml (the site's own entry points, epinoia/sitemap.xml in the
     repository, each with the newest data timestamp where it changes with the data), sitemap-entities.xml (every
     league, club and player written here, with the hreflang alternates of the Japanese and Spanish copies) and
-    sitemap-games.xml (absent when there are no game pages). ents: [(path, lastmod, alts)]; games: [(path, lastmod)]."""
+    sitemap-games.xml (absent when there are no game pages, with the hreflang alternates of the Japanese and Spanish copies). ents: [(path, lastmod, alts)]; games: [(path, lastmod, alts)]."""
     static = []
     src = os.path.join(ROOT, "epinoia", "sitemap.xml")
     if os.path.exists(src):
@@ -976,8 +1074,8 @@ def sitemap(site: str, ents: list, games: list, data_ts: str | None, now_iso: st
     write_xml(site, "sitemap-entities.xml", entries, hreflang=True)
     files = [("sitemap-static.xml", data_ts or now_iso), ("sitemap-entities.xml", data_ts or now_iso)]
     if games:
-        write_xml(site, "sitemap-games.xml", [xml_url(ORIGIN + p, last) for p, last in games])
-        files.append(("sitemap-games.xml", max(l for _p, l in games)))
+        write_xml(site, "sitemap-games.xml", [xml_url(ORIGIN + p, last, alts) for p, last, alts in games], hreflang=True)
+        files.append(("sitemap-games.xml", max(l for _p, l, _a in games)))
     idx = os.path.join(site, "epinoia", "sitemap.xml")
     with open(idx, "w", encoding="utf-8", newline="\n") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -1057,16 +1155,24 @@ def build(site: str, source, min_players: int, min_teams: int = 50, min_leagues:
     count = defaultdict(list)
     for pid, h in heads.items():
         count[h["title"]].append(pid)
+    tags = {}
     for pids in (v for v in count.values() if len(v) > 1):
         for pid in pids:
             jersey = str(m.players[pid]["rows"][0].get("jersey") or "").strip()
             mates = [str(m.players[q]["rows"][0].get("jersey") or "").strip() for q in pids]
             tag = f" (No. {jersey})" if jersey and mates.count(jersey) == 1 else f" (ID {pid[:4]})"
+            tags[pid] = tag
             heads[pid] = player_head(m, m.players[pid], tag)
     for p in m.players.values():
         h = heads[p["id"]]
         write(site, h["path"], bake(sh["p"], h))
-        ents.append((h["path"], m.team_updated.get(p["rows"][0]["team_id"]), None))
+        ents.append((h["path"], m.team_updated.get(p["rows"][0]["team_id"]), h.get("alts")))
+        lang = lang_of(m.league_of_comp(p["rows"][0]["competition_id"]))
+        if lang:                                                 # the Japanese or Spanish copy of a player of a Japanese or Spanish league
+            tag = tags.get(p["id"], "")
+            hl = player_head(m, p, tag, lang)
+            write(site, hl["path"], bake(sh["p"], hl))
+            ents.append((hl["path"], m.team_updated.get(p["rows"][0]["team_id"]), hl.get("alts")))
     # the games of the window
     lo, hi = (now - dt.timedelta(days=WINDOW_DAYS)).isoformat(timespec="seconds"), (now + dt.timedelta(days=WINDOW_DAYS)).isoformat(timespec="seconds")
     rows = []
@@ -1090,8 +1196,10 @@ def build(site: str, source, min_players: int, min_teams: int = 50, min_leagues:
     gcount = defaultdict(list)
     for gid, (_g, h) in gheads.items():
         gcount[h["title"]].append(gid)
+    dated_ids = set()
     for gids in (v for v in gcount.values() if len(v) > 1):          # the same two clubs meeting twice in the window
         for gid in gids:
+            dated_ids.add(gid)
             gheads[gid] = (gheads[gid][0], game_head(m, gheads[gid][0], tops, dated=True))
     for g in picked:
         if g["id"] not in gheads or g["id"] in seen_g:
@@ -1100,7 +1208,14 @@ def build(site: str, source, min_players: int, min_teams: int = 50, min_leagues:
         seen_g.add(g["id"])
         write(site, h["path"], bake(sh["game"], h))
         last = h["lastmod"] if g["status"] != "live" else now.isoformat(timespec="seconds")
-        games.append((h["path"], min(last, now.isoformat(timespec="seconds")) if g["status"] != "scheduled" else last))
+        stamp = min(last, now.isoformat(timespec="seconds")) if g["status"] != "scheduled" else last
+        games.append((h["path"], stamp, h.get("alts")))
+        glang = lang_of(m.league_of_comp(g.get("competition_id")))
+        if glang:                                                # the Japanese or Spanish copy of a game of a Japanese or Spanish league
+            hl = game_head(m, g, tops, dated=g["id"] in dated_ids, lang=glang)
+            if hl:
+                write(site, hl["path"], bake(sh["game"], hl))
+                games.append((hl["path"], stamp, hl.get("alts")))
     sm = sitemap(site, ents, games, m.data_ts, now.isoformat(timespec="seconds"))
     return {"players": len(m.players), "left_out_minor_or_masked": m.dropped, "teams": len(m.teams),
             "leagues": len(m.leagues), "games": len(games), "photos": sum(1 for p in m.players if m.photo.get(p)),

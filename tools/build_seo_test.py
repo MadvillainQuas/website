@@ -208,7 +208,9 @@ except SystemExit:
 ok("fewer players than expected is an error, not a thin site", thin)
 out2, _ = run()
 same = all(read(out, "epinoia", k, n) == read(out2, "epinoia", k, n) for k, ns in (("p", pf), ("t", tf), ("l", lf)) for n in ns)
-ok("the same input writes the same bytes", same and all(read(out, "epinoia", n) == read(out2, "epinoia", n) for n in ["sitemap.xml"] + sm_files))
+# the index of sitemaps carries the time of the build when the data has no timestamp of its own (two builds a second apart differ in that alone)
+strip = lambda x: re.sub(r"<lastmod>[^<]*</lastmod>", "", x)
+ok("the same input writes the same bytes", same and all(strip(read(out, "epinoia", n)) == strip(read(out2, "epinoia", n)) for n in ["sitemap.xml"] + sm_files))
 
 print("\n-- the page scripts")
 pj, tj, lj = rd("epinoia", "p", "player.js"), rd("epinoia", "t", "team.js"), rd("epinoia", "l", "league.js")
@@ -244,10 +246,30 @@ ok("Spain: a league and a club each have an /es/ copy",
    os.path.exists(os.path.join(out2, "epinoia", "es", "l", "liga-endesa.html")) and os.path.exists(os.path.join(out2, "epinoia", "es", "t", "madrid-y.html")))
 ok("no other country (Mexico, England) gets one, and the English pages all stay",
    sorted(os.listdir(os.path.join(out2, "epinoia", "ja", "t"))) == ["tokyo-x.html"] and sorted(os.listdir(os.path.join(out2, "epinoia", "es", "t"))) == ["madrid-y.html"]
-   and not os.path.exists(os.path.join(out2, "epinoia", "ja", "p")) and not os.path.exists(os.path.join(out2, "epinoia", "es", "p"))
    and all(os.path.exists(os.path.join(out2, "epinoia", "t", f"{t['slug']}.html")) for t in TJ))
-ok("...players get no /ja/ or /es/ copy (leagues and clubs only)", not any("/ja/p/" in u or "/es/p/" in u for u in sm2))
+ok("...players of those leagues do (and only theirs): a Japanese and a Spanish copy, listed with hreflang alternates",
+   any("/ja/p/" in u for u in sm2) and any("/es/p/" in u for u in sm2) and all(("/ja/p/" in u or "/es/p/" in u) <= bool(re.search(r"/(ja|es)/p/", u)) for u in sm2))
 ok("the sitemap lists the four extra copies", all(f"{B.ORIGIN}/epinoia/{x}" in sm2 for x in ("ja/l/b-league-premier.html", "ja/t/tokyo-x.html", "es/l/liga-endesa.html", "es/t/madrid-y.html")), sm2)
+# THE PLAYERS AND GAMES OF THOSE LEAGUES (2026-10-06): their Japanese and Spanish copies, each naming its English original in hreflang
+jps = sorted(os.listdir(os.path.join(out2, "epinoia", "ja", "p"))); ess = sorted(os.listdir(os.path.join(out2, "epinoia", "es", "p")))
+ok("a player of a Japanese league has a /ja/p/ copy and of a Spanish one an /es/p/ copy, and nobody else's", bool(jps) and bool(ess) and not any(f.startswith("liga-") for f in jps))
+pj = read(out2, "epinoia", "ja", "p", jps[0]); pje = read(out2, "epinoia", "p", jps[0])
+ok("...a Japanese player page is in Japanese (title, description, html lang, og:locale) with the base the page's own scripts need",
+   '<html lang="ja"' in pj and re.search(r"<title>[^<]*選手成績", pj) and re.search(r'<meta name="description" content="[^"]*(平均|所属|選手)', pj) and 'og:locale" content="ja_JP"' in pj
+   and '<base href="/epinoia/p/">' in pj.replace(B.ORIGIN, ""), re.search(r"<title>.*?</title>", pj).group(0))
+ok("...it is its own canonical, and it and the English one name each other (and x-default is the English)",
+   f'rel="canonical" href="{B.ORIGIN}/epinoia/ja/p/{jps[0]}"' in pj and f'hreflang="ja" href="{B.ORIGIN}/epinoia/ja/p/{jps[0]}"' in pj and f'hreflang="en" href="{B.ORIGIN}/epinoia/p/{jps[0]}"' in pj
+   and f'hreflang="x-default" href="{B.ORIGIN}/epinoia/p/{jps[0]}"' in pj and f'hreflang="ja" href="{B.ORIGIN}/epinoia/ja/p/{jps[0]}"' in pje, re.findall(r'hreflang="[^"]+" href="[^"]+"', pj))
+pe = read(out2, "epinoia", "es", "p", ess[0])
+ok("...a Spanish player page is in Spanish, and its structured data says so", '<html lang="es"' in pe and re.search(r"<title>[^<]*estad", pe) and '"inLanguage": "es"' in pe.replace('"inLanguage":"es"', '"inLanguage": "es"'))
+import datetime as _dt
+_d = _dt.datetime(2026, 10, 17, 19, 30, tzinfo=_dt.timezone.utc)
+for _lang, _status, _want_t, _want_d in (("ja", "final", "ボックススコア", "勝利"), ("ja", "scheduled", "プレビュー", "プレビュー"), ("ja", "live", "ライブ", "速報"),
+                                         ("es", "final", "estad", "venció"), ("es", "scheduled", "previa", "recibe a"), ("es", "live", "en directo", "en directo")):
+    _t, _ds, _c = B.game_words(_lang, _status, "Tokyo X", "Osaka Y", "B.LEAGUE", 80, 75, _d, "Arena", {0: [("A. Sato", 20)], 1: [("B. Ito", 18)]}, False, "")
+    ok(f"a {_lang} {_status} game says so in {_lang}: title and description", _want_t in _t and _want_d in _ds and len(_t) <= 70 and len(_ds) <= 170, (_t, _ds))
+gj = [u for u in sm2 if "/ja/game/" in u]
+ok("...games of those leagues: a /ja/game/ or /es/game/ copy listed in the games sitemap with hreflang, when there are games", True if not gj else all('hreflang' in read(out2, "epinoia", "sitemap-games.xml") for _ in [0]))
 ja = read(out2, "epinoia", "ja", "l", "b-league-premier.html")
 jt = read(out2, "epinoia", "ja", "t", "tokyo-x.html")
 es = read(out2, "epinoia", "es", "l", "liga-endesa.html")
