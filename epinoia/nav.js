@@ -645,7 +645,15 @@
     setView('go', true);
   });
   hlist.appendChild(goRow);
-  homePanel.append(htitle, hlist);
+  /* BACK TO PROPHE(S)Y (2026-10-06): a small chevron beside the logotype, in the place every other panel keeps its back
+     chevron, that leaves Epinoia for the site's front door (prophesyscouting.co.uk/). A link, not a rail move: it goes. */
+  const sitehome = el('a', 'back sitehome', '‹');
+  sitehome.href = '/';
+  sitehome.title = 'Back to Prophe(s)y';
+  sitehome.setAttribute('aria-label', 'Back to the Prophe(s)y front page');
+  const hphead = el('div', 'phead titlehead sitehead');
+  hphead.append(sitehome, htitle);
+  homePanel.append(hphead, hlist);
 
   /* ---- GO's layer: the way back, the logo (the GO page), then its three places ---- */
   const gohead = el('div', 'phead');
