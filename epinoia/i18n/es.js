@@ -1782,7 +1782,8 @@
       'An EPINOIA account is free at the moment: all you need to do is sign in.': 'Una cuenta de EPINOIA es gratuita por ahora: solo tienes que iniciar sesión.',
       'shooting efficiency': 'Eficiencia de tiro',
       'rebounding %': '% de rebotes',
-      'Scouting Report': 'Informe de scouting'
+      'Scouting Report': 'Informe de scouting',
+      'Can\'t find who you\'re looking for? A player or team may be listed under a different name. Try searching for their team, or browse by league.': '¿No encuentras lo que buscas? Un jugador o equipo puede figurar con otro nombre. Prueba a buscar su equipo o explora por liga.'
     },
 
     ctx: {

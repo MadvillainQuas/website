@@ -424,6 +424,8 @@ function mount(host, ctx) {
         d.appendChild(document.createTextNode(' '));
         d.appendChild(data('b', null, '“' + S.q.trim() + '”'));
         list.appendChild(d);
+        /* the data's names are not always the ones a supporter knows: point at the routes that do not depend on a spelling */
+        list.appendChild(sayRow('hint', "Can't find who you're looking for? A player or team may be listed under a different name. Try searching for their team, or browse by league."));
       }
     }
     setActive(Math.min(S.active < 0 ? 0 : S.active, Math.max(0, n - 1)), false);

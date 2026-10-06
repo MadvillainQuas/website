@@ -74,5 +74,30 @@ hit2 = plat(sb2).team("L1", {"name": "London Elite", "code": "london-elite"})
 ok("the plain filter is asked instead, and still finds it",
    hit2 is not None and hit2["id"] == "t1" and len(sb2.asked) >= 2 and sb2.asked[1][1].startswith("league_id=eq.L1&external_ids->>fiba_livestats=eq.london-elite"), sb2.asked)
 
+print("\n-- the merged-away club's NAME alone (a feed that sends a code the platform has never seen)")
+
+
+class NameSB(SB):
+    def select(self, table, q):
+        if table == "teams" and "select=id,slug,name,aliases,external_ids" in q:
+            return [{"id": "t1", "slug": "cardiff-met-archers", "name": "Cardiff Met Archers", "aliases": ["Cardiff Met Archers Senior Men 1"],
+                     "external_ids": {}, "logo_path": None}]
+        return []
+
+    def patch(self, *a, **k):
+        pass
+
+    def insert(self, *a, **k):
+        raise AssertionError("a second club was created")
+
+
+for spelling in ("Cardiff Met Archers Senior Men 1", "CARDIFF MET ARCHERS SENIOR MEN 1", "Cardiff Met Archers Senior Men I"):
+    for code in ("", "cardiff-met-archers-senior-men-1"):
+        try:
+            got = plat(NameSB([])).team("L1", {"name": spelling, "code": code})
+        except AssertionError as e:
+            got = str(e)
+        ok(f"{spelling!r} (code {code!r}) is the club it was merged into, never a second one", isinstance(got, dict) and got["id"] == "t1", got)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
