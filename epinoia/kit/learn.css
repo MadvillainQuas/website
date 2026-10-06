@@ -261,3 +261,24 @@
 .ep-frame.lm .lm-area > h3::before{ background:linear-gradient(135deg,var(--lume),var(--aqua)) }
 .ep-frame.lm .lm-card .pt{ border-left-color:var(--lume) }
 .ep-frame.lm .sec-h h2{ color:var(--ink) }
+
+/* ============================================================================
+   ONE TYPEFACE (2026-10-06): this page is read as a business document, so everything on it is Archivo - the page's name, the
+   section titles, the teletext line and ON THIS PAGE included, which keep the pixel faces on every other page. Archivo is
+   variable in weight and width: the name is set heavy and wide, the titles heavy at normal width, and weight does the rest.
+   ============================================================================ */
+.ep-frame.lm, .ep-frame.lm .tt-line, .ep-frame.lm .tt-index{
+  --f-score:'Archivo',system-ui,-apple-system,'Segoe UI','Hiragino Sans','Yu Gothic UI','Meiryo','Noto Sans JP',sans-serif;
+  --f-micro:'Archivo',system-ui,-apple-system,'Segoe UI','Hiragino Sans','Yu Gothic UI','Meiryo','Noto Sans JP',sans-serif;
+}
+.ep-frame.lm > .pg-head h1{ font-family:var(--f-score); font-weight:900; font-stretch:118%; letter-spacing:-.015em; line-height:.95;
+  font-size:clamp(42px,7.4vw,92px) }
+.ep-frame.lm .pg-kick{ font-weight:800 }
+body .ep-frame.lm .sec-h h2{ font-family:var(--f-score); font-weight:850; font-stretch:108%; letter-spacing:.01em; font-size:clamp(22px,2.3vw,30px) }
+.ep-frame.lm .tt-line{ font-weight:800; letter-spacing:.08em }
+.ep-frame.lm .tt-index .tt-ix-h{ font-weight:800; letter-spacing:.14em }
+.ep-frame.lm .tt-index .tt-ix-l .t{ font-weight:750; letter-spacing:.06em }
+.ep-frame.lm .tt-skip{ font-weight:800 }
+.ep-frame.lm .lm-tabs .pg-seg button{ font-weight:800; letter-spacing:.09em }
+.ep-frame.lm .lm-card h3{ font-stretch:104% }
+.ep-frame.lm .lm-kpi .v{ font-weight:900; font-stretch:110% }
