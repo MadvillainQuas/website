@@ -610,7 +610,7 @@ async function one(sub, team) {
   for (const g of games) {
     if (has('game', g.id)) continue;
     const side = g.home_team_id === team.id ? 0 : 1;
-    const [next] = await rest(`games?${mine}&status=in.(scheduled,live)&tipoff_at=gt.${g.tipoff_at || new Date().toISOString()}&select=${GAME_SELECT}&order=tipoff_at.asc&limit=1`);
+    const [next] = await rest(`games?${mine}&status=in.(scheduled,live)&tipoff_at=gt.${encodeURIComponent(g.tipoff_at || new Date().toISOString())}&select=${GAME_SELECT}&order=tipoff_at.asc&limit=1`);
     const E = gameEmail({ sub, team, g, side, next, tz });
     const opp = ((side ? g.home : g.away) || {}).name || 'opponent';
     console.log('game', club, 'v', opp, g.id);

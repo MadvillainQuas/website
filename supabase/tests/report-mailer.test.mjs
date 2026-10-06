@@ -138,5 +138,15 @@ console.log('\nan opponent playing on the Sunday: the email waits for it');
   ok('the Sunday round asks it before sending, and says so in the log', src.includes('sundayHold(today, new Date(), sundayCutoff(tz))') && src.includes('waiting,'));
 }
 
+/* A TIMESTAMP FROM THE DATABASE IN AN ADDRESS IS ENCODED (2026-10-06): a game's tipoff_at comes back as
+   "2025-12-12T19:30:00+00:00", and a bare '+' in a query string is a space, which PostgREST refuses (22007): every run failed
+   for the addresses with a game that had one. Only toISOString() ('…Z', nothing to encode) may go in bare. */
+{
+  const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
+  const bare = [...src.matchAll(/=(?:gt|gte|lt|lte|eq)\.\$\{([^}]*(?:_at|tipoff)[^}]*)\}/g)].map(m => m[1])
+    .filter(x => !/^encodeURIComponent\(/.test(x) && !/^[\w.]+\.toISOString\(\)$/.test(x) && x !== 'since');
+  ok('no database timestamp goes into a query address unencoded', bare.length === 0, bare.join(' | '));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
