@@ -9,13 +9,20 @@
   last and next 30 days: game/<id>.html). None of those is listed here. Until that runs (a local checkout) this
   file is a valid sitemap of its own.
 
-  Only pages that may be indexed and are not disallowed in /robots.txt belong here (tools/build_seo_test.py checks).
+  Only pages that may be indexed and are not disallowed in /robots.txt belong here (tools/build_seo_test.py checks), and
+  never an address that forwards somewhere else (/epinoia/ and /epinoia/contact/).
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- the site's front door (2026-10-06) and the scouting services; the bare /epinoia/ now forwards to HOME, so it is not listed -->
   <url>
-    <loc>https://prophesyscouting.co.uk/epinoia/</loc>
-    <changefreq>hourly</changefreq>
+    <loc>https://prophesyscouting.co.uk/</loc>
+    <changefreq>monthly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://prophesyscouting.co.uk/prophesy/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://prophesyscouting.co.uk/epinoia/home/</loc>

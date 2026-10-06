@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -7,13 +7,13 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'">
 <title>Prophe(s)y Scouting – Basketball Scouting Services</title>
-<meta name="description" content="Prophe(s)y Scouting: independent basketball scouting and analysis for clubs, coaches, agents and players, built on the Epinoia data platform.">
+<meta name="description" content="Prophe(s)y Scouting: basketball scouting and analysis for clubs, coaches, agents and players, with signings for the Sheffield Sharks, the Yorkshire Dragons and the Tuebingen Dragons.">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
 <link rel="canonical" href="https://prophesyscouting.co.uk/prophesy/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Prophe(s)y">
 <meta property="og:title" content="Prophe(s)y Scouting – Basketball Scouting Services">
-<meta property="og:description" content="Independent basketball scouting and analysis for clubs, coaches, agents and players.">
+<meta property="og:description" content="Basketball scouting and analysis for clubs, coaches, agents and players, with a record of successful signings.">
 <meta property="og:url" content="https://prophesyscouting.co.uk/prophesy/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:site" content="@Prophesy_Scout">
@@ -63,22 +63,46 @@
   .soon{ margin:22px auto 0; max-width:60ch; text-align:center; font-size:13.5px; line-height:1.6; color:var(--ink-3) }
   footer{ padding:30px 24px 40px; display:flex; justify-content:center; gap:22px; flex-wrap:wrap; font-size:11.5px; letter-spacing:.08em; color:var(--ink-3); border-top:1px solid var(--rule) }
   footer a{ text-decoration:none } footer a:hover{ color:var(--ink) }
-  @media (max-width:760px){ .grid, .grid.three{ grid-template-columns:minmax(0,1fr) } .top nav{ display:none } }
+  .tabs{ display:flex; justify-content:center; gap:0; margin:0 auto 8px; width:max-content; border:1px solid var(--rule); border-radius:999px; overflow:hidden }
+  .tabs a{ display:inline-flex; align-items:center; min-height:46px; padding:0 26px; text-decoration:none; font-weight:700; font-size:12px; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--ink-2) }
+  .tabs a + a{ border-left:1px solid var(--rule) }
+  .tabs a:hover{ color:var(--ink); background:rgba(255,255,255,.06) }
+  .tabs a[aria-current="page"]{ background:var(--ink); color:#000 }
+  html.js .pane[hidden]{ display:none }
+  .grid.sign{ grid-template-columns:repeat(4,minmax(0,1fr)) }
+  .card.win{ display:flex; flex-direction:column; text-decoration:none; color:inherit; padding:30px 26px; transition:background .2s }
+  a.card.win:hover{ background:#0d0d0d }
+  .card.win h3{ font-weight:800; font-stretch:112%; font-size:21px; margin:0 0 14px }
+  .card.win .club{ margin:0; font-weight:700; font-size:15px; color:var(--ink) }
+  .card.win .lg{ margin:4px 0 0; font-size:13px; color:var(--ink-3) }
+  a.card.win::after{ content:'Profile on Epinoia →'; margin-top:auto; padding-top:18px; font-weight:700; font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3) }
+  a.card.win:hover::after{ color:var(--ink) }
+  @media (max-width:980px){ .grid.sign{ grid-template-columns:repeat(2,minmax(0,1fr)) } }
+  @media (max-width:760px){ .grid, .grid.three, .grid.sign{ grid-template-columns:minmax(0,1fr) } .top nav{ display:none } }
 </style>
 </head>
 <body>
 <header class="top">
   <a href="/" aria-label="Prophe(s)y home"><img src="/brand/prophesy-binoculars.png" width="900" height="392" alt=""><span>Prophe(s)y</span></a>
-  <nav aria-label="Elsewhere"><a href="/epinoia/home/">Epinoia</a><a href="/epinoia/learn/">Learn more</a><a href="#enquire">Enquire</a></nav>
+  <nav aria-label="Elsewhere"><a href="/epinoia/home/">Epinoia</a><a href="/epinoia/learn/">Learn more</a><a href="?t=successes#tabs">Successes</a><a href="#enquire">Enquire</a></nav>
 </header>
 <main>
   <div class="hero">
     <img src="/brand/prophesy-binoculars.png" width="900" height="392" alt="Prophe(s)y">
     <p class="kick">Prophe(s)y Scouting</p>
     <h1>Basketball scouting, done properly</h1>
-    <p class="sub">Independent scouting and analysis for clubs, coaches, agents and players: who to sign, who you are playing, and what the numbers really say.</p>
-    <div class="cta"><a class="pill pri" href="#enquire">Enquire</a><a class="pill" href="#services">Services</a></div>
+    <p class="sub">Scouting and analysis for clubs, coaches, agents and players: who to sign, who you are playing, and what the numbers really say. Experienced scouting for the Sheffield Sharks in the British Super League Basketball (SLB) and for the Stayline agency.</p>
+    <div class="cta"><a class="pill pri" href="#enquire">Enquire</a><a class="pill" href="?t=successes#tabs">Successes</a></div>
   </div>
+
+  <!-- THE TABS (tabs.js): Services and Successes. Without the script both show, one under the other. -->
+  <nav class="tabs" id="tabs" aria-label="Part of the page">
+    <a href="?t=services#tabs" data-t="services" aria-current="page">Services</a>
+    <a href="?t=successes#tabs" data-t="successes">Successes</a>
+  </nav>
+
+  <div class="pane" data-p="services">
 
   <section id="services" aria-labelledby="servicesH">
     <h2 id="servicesH">Services</h2>
@@ -112,6 +136,30 @@
     </div>
   </section>
 
+  </div>
+
+  <div class="pane" data-p="successes">
+  <section id="successes" aria-labelledby="successesH">
+    <h2 id="successesH">Successes</h2>
+    <p class="note">Players scouted and signed</p>
+    <div class="grid sign">
+      <a class="card win" href="/epinoia/p/?p=e234e634-a133-4edd-aa5d-0e71f1a4d5ff"><span class="n">Signing</span><h3>Nick Kern</h3><p class="club">Sheffield Sharks</p><p class="lg">Super League Basketball</p></a>
+      <div class="card win"><span class="n">Signing</span><h3>Rickey McGill</h3><p class="club">Sheffield Sharks</p><p class="lg">Super League Basketball</p></div>
+      <a class="card win" href="/epinoia/p/?p=4f6db109-1d34-405d-b0ce-8bb046495ec7"><span class="n">Signing</span><h3>Jordan Jefferson</h3><p class="club">Yorkshire Dragons</p><p class="lg">British Championship Basketball</p></a>
+      <a class="card win" href="/epinoia/p/?p=8cf255a2-909d-4228-8c9e-60bf34ba72c1"><span class="n">Signing</span><h3>Bernard Pelote</h3><p class="club">Tuebingen Dragons</p><p class="lg">Germany</p></a>
+    </div>
+  </section>
+
+  <section id="experience" aria-labelledby="experienceH">
+    <h2 id="experienceH">Experience</h2>
+    <p class="note">Where the scouting has been done</p>
+    <div class="grid">
+      <div class="card"><span class="n">Club</span><h3>Sheffield Sharks</h3><p>Scouting for the Sheffield Sharks in the British Super League Basketball (SLB).</p></div>
+      <div class="card"><span class="n">Agency</span><h3>Stayline</h3><p>Scouting for the Stayline agency.</p></div>
+    </div>
+  </section>
+  </div>
+
   <section id="enquire" aria-labelledby="enquireH">
     <h2 id="enquireH">Enquire</h2>
     <p class="note">Messages are read by a person, and answered</p>
@@ -124,5 +172,6 @@
   <a href="/epinoia/privacy/">Privacy</a>
   <span>© 2026 Prophe(s)y</span>
 </footer>
+<script src="tabs.js"></script>
 </body>
 </html>

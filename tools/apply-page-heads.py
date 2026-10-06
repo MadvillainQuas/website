@@ -88,7 +88,7 @@ PAGES = {
                "Embeds", True, "Embeds", "WebPage"),
     "contact/": ("Contact Epinoia: Leagues, Clubs & Press | Epinoia",
                  "Get in touch with Epinoia about a league, a fixture, a wrong number in a box score or running your own competition, or make a data privacy request.",
-                 "Contact", False, "Contact", "ContactPage"),   # forwards to learn/?t=contact (2026-10-06)
+                 "Contact", True, "Contact", "ContactPage"),   # forwards to learn/?t=contact (2026-10-06)
     "privacy/": ("Privacy: Your Data Protection Rights | Epinoia",
                  "Your data protection rights on Epinoia: how to see, correct or erase your data, object to its use or complain, and how long each request takes to answer.",
                  "Privacy", True, "Privacy", "WebPage"),

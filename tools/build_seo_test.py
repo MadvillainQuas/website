@@ -139,8 +139,8 @@ ok("sitemap.xml is an index of the static, entities (and, with games, games) sit
    "<sitemapindex" in read(out, "epinoia", "sitemap.xml") and sm_files[:2] == ["sitemap-static.xml", "sitemap-entities.xml"], sm_files)
 for kind, names in (("p", pf), ("t", tf), ("l", lf)):
     ok(f"the sitemap lists all {len(names)} {kind}/ addresses", all(f"{B.ORIGIN}/epinoia/{kind}/{n}" in locs for n in names))
-ok("...and the site's own entry points (/epinoia/, /epinoia/home/ ...)", f"{B.ORIGIN}/epinoia/" in locs and f"{B.ORIGIN}/epinoia/home/" in locs, locs[:4])
-ok("...and never the site root (the Prophesy sign-in)", f"{B.ORIGIN}/" not in locs and not any(u.rstrip("/") == B.ORIGIN for u in locs))
+ok("...and the site's own entry points (the front door, the scouting page, /epinoia/home/ ...)", f"{B.ORIGIN}/" in locs and f"{B.ORIGIN}/prophesy/" in locs and f"{B.ORIGIN}/epinoia/home/" in locs, locs[:4])
+ok("...and never an address that forwards (the bare /epinoia/, /epinoia/contact/)", f"{B.ORIGIN}/epinoia/" not in locs and f"{B.ORIGIN}/epinoia/contact/" not in locs)
 ok("no address twice", len(locs) == len(set(locs)))
 
 print("\n-- who is left out")
@@ -628,9 +628,14 @@ with open(os.path.join(ROOT, "epinoia", "brand", "epinoia-share-1200x630.png"), 
 ok("the share image is a real 1200x630 PNG under 300 KB", hdr[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", hdr[16:24]) == (1200, 630)
    and os.path.getsize(os.path.join(ROOT, "epinoia", "brand", "epinoia-share-1200x630.png")) < 300000)
 static_locs = re.findall(r"<loc>(.*?)</loc>", rd("epinoia", "sitemap.xml"))
+def page_of(u):   # https://…/epinoia/home/ -> <repo>/epinoia/home/index.html; https://…/ -> <repo>/index.html (the site's front door)
+    return os.path.join(ROOT, *[x for x in u[len(B.ORIGIN):].split("/") if x], "index.html")
+def read_page(u):
+    with open(page_of(u), encoding="utf-8") as f:
+        return f.read()
 ok("the repository's sitemap (the static entry points) lists no page that is noindex, blocked by robots.txt, or missing",
-   all(os.path.exists(os.path.join(ROOT, "epinoia", *u[len(B.ORIGIN + "/epinoia/"):].split("/"), "index.html")) or u == f"{B.ORIGIN}/epinoia/" for u in static_locs)
-   and not any("noindex" in head_of(rd("epinoia", *u[len(B.ORIGIN + "/epinoia/"):].split("/"), "index.html")) for u in static_locs if u != f"{B.ORIGIN}/epinoia/")
+   all(os.path.exists(page_of(u)) for u in static_locs)
+   and not any("noindex" in head_of(read_page(u)) for u in static_locs)
    and not any(("/" + u.split(B.ORIGIN + "/")[1]).startswith(d_) for u in static_locs for d_ in disallowed if d_ not in ("/",)), static_locs)
 ok("robots.txt names the sitemap index, which the build writes as epinoia/sitemap.xml", f"Sitemap: {B.ORIGIN}/epinoia/sitemap.xml" in robots)
 ok("the pages that must stay out of search still say noindex (admin, invite, embeds, sign-in)",
