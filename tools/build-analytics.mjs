@@ -16,7 +16,8 @@
        … --page-fixtures supabase/tests/fixtures --club Zastal --leagues orlen-basket-liga,cebl
                                      also (re)writes fixtures/ww-page and fixtures/ww-fo from this real build
 
-   Run hourly (and a full rebuild on Sunday 03:40 UTC) by .github/workflows/analytics.yml.
+   Run hourly by .github/workflows/analytics.yml, always on top of what the stores hold: only the games after each store's
+   watermark are read and added. --full (a rebuild from nothing) is only ever run by hand, for a repair (2026-10-06).
 
    ONE RUN (§6.4): prune the issue log; discover leagues, seasons, the open set, the index and every unit's token;
    refresh the private stores of the units that are due (keyset after each store's watermark: only lines it has not

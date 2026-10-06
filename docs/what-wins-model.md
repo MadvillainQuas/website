@@ -407,9 +407,9 @@ service key (`EPINOIA_CONFIG.supabaseAnonKey = key`, `globalThis.EpinoiaAccess =
 team_id,position,players(id,height_cm)`); `rpc/player_bio` (500 ids); withheld (`players?select=id,is_minor,
 public_consent`); venues (`id,lat,lng`); teams (`id,name,short_name,colour,logo_path,home_venue_id`); fixtures to come
 (`status=in.(scheduled,live)`). The previous season's players by club are kept in the store's context with the token
-of the store they came from, so that store is read once a season, not every build (PERF2-3). A weekly full run (Sunday
-03:40 UTC) rebuilds every current store from nothing and calibrates every simulator afresh; a past season is left alone
-while its token and layout stand (`--full-past` includes them; they are rebuilt monthly anyway). Between full runs a
+of the store they came from, so that store is read once a season, not every build (PERF2-3). There is no scheduled rebuild from
+nothing (the weekly Sunday 03:40 UTC full run was removed 2026-10-06): every run builds on top of each store, adding the
+games after its watermark; `--full` (and `--full-past`) remain for a repair by hand. Between full runs a
 unit's simulator calibration (most of a big unit's build) is carried until it has grown by 25% (PERF2-5).
 
 ### 6.4 One run
@@ -442,7 +442,7 @@ more than 25%: the unit fails and the previous file stays. Every draw is seeded 
 byte-identical files, and incremental equals full.
 
 ### 6.7 Workflow
-Cron `40 * * * *` and `40 3 * * 0` (full); dispatch inputs unit, full, dry_run; concurrency `analytics`; RUNS_ON
+Cron `40 * * * *` (no scheduled full run since 2026-10-06); dispatch inputs unit, full, dry_run; concurrency `analytics`; RUNS_ON
 pattern; 50 min; sparse checkout `epinoia`, `tools`; node 24; no Actions cache (B.5: the stores stay in the private
 bucket); secrets `SUPABASE_URL`,
 `SUPABASE_SERVICE_KEY`; variables `ANALYTICS_MIN_GAP_H`, `ANALYTICS_POOL_GAP_H`.

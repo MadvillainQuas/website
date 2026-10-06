@@ -462,8 +462,9 @@ console.log('\n--fixtures');
 console.log('\n.github/workflows/analytics.yml (§6.7)');
 {
   const y = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'analytics.yml'), 'utf8');
-  ok('hourly at :40 and a full rebuild on Sunday 03:40 UTC; dispatch inputs unit, full, dry_run', y.includes('cron: "40 * * * *"') && y.includes('cron: "40 3 * * 0"') &&
-    /unit:\n/.test(y) && /full:\n/.test(y) && /dry_run:\n/.test(y) && y.includes("github.event.schedule == '40 3 * * 0'"));
+  ok('hourly at :40, built on top of the stores: no scheduled rebuild from nothing; dispatch inputs unit, full, dry_run',
+    y.includes('cron: "40 * * * *"') && !y.includes('40 3 * * 0') && y.includes("FULL: ${{ github.event.inputs.full == 'true' }}") &&
+    /unit:\n/.test(y) && /full:\n/.test(y) && /dry_run:\n/.test(y));
   ok('...concurrency analytics, the RUNS_ON pattern, 50 minutes, sparse epinoia + tools, node 24', /group: analytics\b/.test(y) && y.includes('vars.RUNS_ON && fromJSON(vars.RUNS_ON)') &&
     y.includes('timeout-minutes: 50') && /sparse-checkout: \|\n\s+epinoia\n\s+tools/.test(y) && y.includes("node-version: '24'"));
   ok('...NO actions/cache (the private stores stay in the private bucket, never a public repository\'s cache); the two secrets and two variables',

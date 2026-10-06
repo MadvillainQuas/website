@@ -9,12 +9,13 @@ name: What wins model (the members-only analysis files)
 # See tools/build-analytics.mjs and docs/what-wins-model.md §6.
 #
 # Hourly with a floor (ANALYTICS_MIN_GAP_H, default 1 hour; 6 above 800 games) between two builds of one unit; a unit
-# whose RECALCULATE could not finish in the function goes first. Sunday 03:40 UTC rebuilds every private store from
-# nothing (--full) and refreshes every interval. With nothing new a run reads a count per unit and stops.
+# whose RECALCULATE could not finish in the function goes first. With nothing new a run reads a count per unit and stops.
+# BUILT ON TOP, NEVER FROM NOTHING (2026-10-06): every run adds only the games each store has not seen (its watermark) to
+# what it already holds; there is no scheduled rebuild from nothing any more (it was Sunday 03:40 UTC). The `full` input
+# is kept for a repair by hand.
 on:
   schedule:
     - cron: "40 * * * *"
-    - cron: "40 3 * * 0"
   workflow_dispatch:
     inputs:
       unit:
@@ -59,7 +60,7 @@ jobs:
           ANALYTICS_MIN_GAP_H: ${{ vars.ANALYTICS_MIN_GAP_H }}
           ANALYTICS_POOL_GAP_H: ${{ vars.ANALYTICS_POOL_GAP_H }}
           UNIT: ${{ github.event.inputs.unit }}
-          FULL: ${{ github.event.inputs.full == 'true' || github.event.schedule == '40 3 * * 0' }}
+          FULL: ${{ github.event.inputs.full == 'true' }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           args=()
