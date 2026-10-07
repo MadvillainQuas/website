@@ -26,6 +26,7 @@ import '../_shared/gamepct.js';        // side effect: globalThis.EpinoiaGamePct
 import '../_shared/language.js';     // side effect: globalThis.EpinoiaLanguage, which report.js writes with (rules, critic, reviser)
 import '../_shared/story.js';
 import { report as buildReport } from '../_shared/report.js';
+import { seasonContext } from '../_shared/gamecontext.ts';   // the season around the game, for the article (2026-10-07)
 import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';
 // the situations (second chance, transition, off turnovers, after timeout, half
 // court, assisted or not) stored on every stats row. possessions.js FIRST and for
@@ -638,6 +639,11 @@ Deno.serve(async (req) => {
           const wm = wf ? JSON.parse(await wf.text()) : null;
           if (wm && wm.b && String(wm.league) === String(target.league_id)) (brief as any).model = wm;
         } catch (_) { /* the report without the league's weights */ }
+        /* THE GAME IN ITS SEASON (2026-10-07): streaks, the table, the meetings, season highs, what the season expected,
+           read small (_shared/gamecontext.ts) so the filed article says what the result meant, as the game page does */
+        try {
+          (brief as any).ctx = await seasonContext(admin, g, d.score, (brief as any).model ?? null);
+        } catch (e) { console.error('[finalise] the season around the game:', String(e)); }
         const rep = buildReport(brief);
         const slug = reportSlug(gameId);
         const { error } = await admin.from('news_articles').upsert({

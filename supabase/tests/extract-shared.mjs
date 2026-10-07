@@ -118,6 +118,14 @@ const FILES = [
             'unshout', 'capParts', 'titleCase', 'capitalise', 'polish', 'lint', 'inText', 'IRREG_VERBS',
             'critique', 'revise', 'choose', 'opener', 'sentencesOf', 'TARGET']
   },
+  /* THE GAME IN ITS SEASON (2026-10-07): streaks, the table, the meetings, season highs, what the season expected.
+     finalise-game builds it (_shared/gamecontext.ts) so the filed article says what the result meant, as the page does. */
+  {
+    src: join(repo, 'epinoia', 'game', 'context.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'context.js'),
+    global: 'EpinoiaContext',
+    names: ['build', 'preview', 'rates', 'ratesFromTeams']
+  },
   {
     src: join(repo, 'epinoia', 'game', 'story.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'story.js'),
