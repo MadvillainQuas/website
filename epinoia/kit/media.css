@@ -364,6 +364,43 @@
 .ch-say.err{color:var(--flare)}
 .ch-gate{padding:12px;font-family:var(--f-ui);font-size:13px;line-height:1.4;color:var(--ink-2)}
 .ch-gate a{color:var(--lume)}
+.ch-gate .ep-btn{margin-left:4px}
+
+/* THE CHAT FOLDS AWAY (gamechat.js): to its head; where the stream stands beside it (a Live tab, HOME's theatre), the
+   chat's column becomes a slim tab with the words standing up, and the stream takes the room */
+.ch-h .ai{margin-left:auto}
+.ch-fold{flex:none;width:26px;height:26px;display:grid;place-items:center;padding:0;border:1px solid var(--rule-2);background:none;
+  color:var(--ink-2);cursor:pointer}
+.ch-fold::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:translate(-1px,0) rotate(-45deg);transition:transform .2s var(--ease)}
+.ch-fold:hover{color:var(--ink);border-color:var(--ink-3)}
+.ch-fold:focus-visible{outline:2px solid var(--lume);outline-offset:1px}
+.ch.min .ch-fold::before{transform:translate(1px,0) rotate(135deg)}
+.ch.min{min-height:0;max-height:none}
+.ch.min .ch-log,.ch.min .ch-form{display:none}
+.ch.min .ch-h{border-bottom:0;cursor:pointer}
+@media (min-width:1000px){
+  .lv-room.chat-min{grid-template-columns:minmax(0,1fr) 48px}
+  .lv-room.chat-min .ch.min,.vh-ttop.chat-min .ch.min{height:auto;min-height:220px}
+  .lv-room.chat-min .ch.min .ch-h,.vh-ttop.chat-min .ch.min .ch-h{flex-direction:column-reverse;justify-content:flex-end;gap:12px;padding:10px 0;height:100%}
+  .lv-room.chat-min .ch.min .ch-h b,.vh-ttop.chat-min .ch.min .ch-h b{writing-mode:vertical-rl;transform:rotate(180deg)}
+  .lv-room.chat-min .ch.min .ch-h .ai,.vh-ttop.chat-min .ch.min .ch-h .ai{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .ch-fold::before{transition:none} }
+
+/* JOIN THE CHAT (gamechat.js joinPop): one pop-up, once - a name, 18 or over, the rules */
+.ch-pop-ov{position:fixed;inset:0;z-index:2147483100;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.62)}
+.ch-pop{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:10px;padding:18px 18px 16px;
+  background:var(--panel);color:var(--ink);border:1px solid var(--rule-2);border-top:3px solid var(--lume);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.ch-pop-t{font-family:var(--f-ui);font-weight:900;font-size:18px;letter-spacing:.06em}
+.ch-pop-p{margin:0;font-family:var(--f-ui);font-size:13px;line-height:1.45;color:var(--ink-2)}
+.ch-pop-l{display:flex;flex-direction:column;gap:6px;font-family:var(--f-ui);font-weight:700;font-size:12px;letter-spacing:.04em;color:var(--ink-2)}
+.ch-pop-c{display:flex;gap:9px;align-items:flex-start;font-family:var(--f-ui);font-size:13.5px;line-height:1.35;cursor:pointer}
+.ch-pop-c input{margin:2px 0 0;width:16px;height:16px;accent-color:var(--lume);flex:none}
+.ch-pop-r{margin:0;padding:10px 12px 10px 28px;display:flex;flex-direction:column;gap:5px;border:1px solid var(--rule);
+  background:color-mix(in oklch,var(--ink) 4%,transparent);font-family:var(--f-ui);font-size:12.5px;line-height:1.4;color:var(--ink-2)}
+.ch-pop-a{align-self:flex-start;font-family:var(--f-ui);font-size:12px;color:var(--lume)}
+.ch-pop-b{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 
 /* ------------------------------------------------------------------------------------------ CINEMA ---
    media.js cineEnter/cineExit: the page under a veil while a video plays, the video's group lit above it. The veil

@@ -139,6 +139,13 @@ if (!loaded || !loaded.db) {
   ok('no username: no', (await gate(NEW, GL, 'hi')).reason === 'username');
   await q(`insert into public.usernames (user_id, username) values ($1, 'newbie')`, [NEW]);
   ok('18 or over not yet confirmed: asked', (await gate(NEW, GL, 'hi')).reason === 'adult');
+  /* 0250: the chat's terms, accepted once in the chat's pop-up */
+  ok("18 or over ticked, the chat's terms not yet accepted: asked (0250)", (await gate(NEW, GL, 'hi', true)).reason === 'terms');
+  ok('...accepting needs 18 or over, and a signed-in reader', (await as(NEW, null, `select public.accept_chat_terms(false) v`))[0].v.reason === 'adult'
+     && !!(await tryAs(null, null, `select public.accept_chat_terms(true)`)).error);
+  ok('...JOIN THE CHAT: accepted, recorded', (await as(NEW, null, `select public.accept_chat_terms(true) v`))[0].v.ok === true
+     && !!(await one(`select chat_terms_at from public.go_settings where user_id = $1`, [NEW])).chat_terms_at);
+  await as(FAN, null, `select public.accept_chat_terms(true)`);
   r = await gate(NEW, GL, 'hi', true);
   ok('...ticked: through, recorded, and no picture for a fan who is not public', r.ok && r.avatar == null
      && !!(await one(`select adult_confirmed_at from public.go_settings where user_id = $1`, [NEW])).adult_confirmed_at, r);
@@ -169,7 +176,7 @@ if (!loaded || !loaded.db) {
   await q(`update public.game_chat set created_at = now() - interval '1 minute'`);
   ok('three blocked in ten minutes: muted', (await gate(FAN, GL, 'sorry')).reason === 'muted');
   r = (await as(FAN, null, `select public.chat_my_status($1) v`, [GL]))[0].v;
-  ok("the reader's standing", r.signed_in && r.username === 'hoopfan' && r.adult && r.open && r.on && !r.admin, r);
+  ok("the reader's standing", r.signed_in && r.username === 'hoopfan' && r.adult && r.terms === true && r.open && r.on && !r.admin, r);
   ok('nobody reports their own', (await as(FAN, null, `select public.report_chat($1) v`, [M1]))[0].v === false);
   for (const u of [R1, R2]) await as(u, null, `select public.report_chat($1)`, [M1]);
   ok('two reports: still shown', (await one(`select status from public.game_chat where id = $1`, [M1])).status === 'shown');

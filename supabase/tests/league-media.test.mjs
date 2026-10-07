@@ -169,7 +169,13 @@ ok('its height is the body\'s (a floating card is not part of it); Esc inside it
 
 console.log('\nthe chat');
 ok('posts through the function, reads with game_chat_read, follows chat:<game> on the small socket',
-   /\/functions\/v1\/chat'/.test(chat) && /rpc\('game_chat_read'/.test(chat) && /rt\.watch\('chat:' \+ gameId/.test(chat) && /load\('rt\.js', 'EpinoiaRT'\)/.test(chat));
+   /\/functions\/v1\/chat'/.test(chat) && /call\('game_chat_read'/.test(chat) && /rt\.watch\('chat:' \+ gameId/.test(chat) && /load\('rt\.js', 'EpinoiaRT'\)/.test(chat));
+ok('any EPINOIA sign-in is the chat\'s: the session from access.js, follow.js or the stored session (HOME loads no access.js)',
+   /EpinoiaAccess/.test(chat) && /EpinoiaFollow/.test(chat) && /'-auth-token'/.test(chat) && !/GO profile to chat/.test(chat));
+ok('...and one pop-up, JOIN THE CHAT: a name (set_username), 18 or over, the rules (accept_chat_terms, 0250)',
+   /call\('set_username'/.test(chat) && /call\('accept_chat_terms', \{ p_adult: true \}\)/.test(chat) && /terms: 'Accept the chat’s terms first\.'/.test(chat));
+ok('the chat folds away, remembered, its container told (.chat-min): the Live tab and the theatre give the stream the room',
+   /epinoia\.chat\.min/.test(chat) && /classList\.toggle\('chat-min', min\)/.test(chat) && /\.lv-room\.chat-min\{grid-template-columns:minmax\(0,1fr\) 48px\}/.test(css));
 ok('says what is missing before anything is typed (sign in, a username, the chat closed, not on now)',
    /chat_my_status/.test(chat) && /Sign in/.test(chat) && /Choose a username/.test(chat) && /REASONS\.not_now/.test(chat));
 ok('a slow read only while the page is seen', /if \(!document\.hidden\) history\(\)/.test(chat));

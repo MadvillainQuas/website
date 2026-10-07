@@ -66,6 +66,8 @@
 @media (min-width:1000px){
   .vh-ttop{grid-template-columns:minmax(0,1fr) 360px}
   .vh-theatre.no-chat .vh-ttop{grid-template-columns:minmax(0,1fr)}
+  /* the chat folded away (gamechat.js): a slim tab, the stream takes the room */
+  .vh-ttop.chat-min{grid-template-columns:minmax(0,1fr) 48px}
   .vh-chat{border-left:1px solid var(--rule);position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px)}
 }
 .vh-tmain{min-width:0;display:flex;flex-direction:column}
@@ -97,6 +99,8 @@
 .vh-chat{min-width:0;background:#050b08}
 .vh-chat[hidden]{display:none}
 .vh-chat .ch{border:0;max-height:none;height:100%;min-height:420px;background:transparent}
+.vh-chat .ch.min{min-height:0;height:auto}
+.vh-theatre:fullscreen .vh-ttop.chat-min{grid-template-columns:minmax(0,1fr) 48px}
 /* FULL SCREEN: the stream as large as the screen allows, the chat beside it, the box score under them */
 .vh-theatre:fullscreen{overflow-y:auto;border:0}
 .vh-theatre:fullscreen .vh-ttop{grid-template-columns:minmax(0,1fr) 380px}
