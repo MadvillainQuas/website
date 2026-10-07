@@ -140,6 +140,57 @@ Local proof the whole path works today with no extra request: C:\Users\Admin\Doc
 - A regression harness already exists and needs no network: python validation\euroleague\validate_el.py --cached replays 41 cached E2025 games through the same mapping rules and diffs the reconstructed box vs the official one.
 
 
+## FIBA's own competitions (Basketball Champions League, FIBA Europe Cup, any FIBA event)
+
+### host
+
+FIBA's one Next.js site for everything it organises: www.fiba.basketball/en/events/<event-slug>/... and, for a competition with its own domain, that domain (www.championsleague.basketball/en/...). Games are scored on FIBA LiveStats ("statisticSystem": "FLS") but no LiveStats id is ever published, so the Genius data.json is out of reach - the site's own data is used instead. Adapter `fiba_events` (scripts/ingest/adapters/fiba_events.py), format module scripts/ingest/fiba_format.py. A desktop browser User-Agent is required.
+
+### current_season
+
+In the event slug, start and end year: fiba-europe-cup-26-27 (config: `{season}` in the URL). The competition object's `season` is the END year (2027 for 2026-27). championsleague.basketball/en/games shows its season being played only; a past BCL season is fiba.basketball/en/events/basketball-champions-league-25-26/games, which 308s to /en/history/112-fiba-mens-european-club-competitions-tier-1/208962/games (adapter_config.season_url, read only when a season is asked for).
+
+### schedule_recipe
+
+One GET of the competition's /games page = every fixture of every round (2026-27: BCL 136, Europe Cup 308), in the page's flight data (`self.__next_f.push([1,"..."])` chunks; adapters/fiba_events.rsc_text + schedule_games). Later-round fixtures exist with teamA null and a 0001-01-01 date until their clubs are known; the day picker is a client-side filter over the list. Round, group (groupPairingCode), game system, venue, UTC tip-off (gameDateTimeUTC, unmarked) and both clubs' organisationId/code are on each fixture.
+
+### game_recipe
+
+GET https://www.fiba.basketball/en/events/api/game-live-info/<gameId>/detail (any FIBA event; cached 20 s): game.content = the box score and scoreboard, periodActions.content = the play-by-play by period, gameCompetitors = the rosters. The ONLY source while a game is live: the game page then carries the scoreboard only. A game the live cache has let go (weeks old) answers {"game":{}}, and its page is read instead: <games url>/<gameId>-<codeA>-<codeB> - any other form 308s, and on www.fiba.basketball the Location header is the target twice, comma-joined (follow by hand, take the first). A finished game's page holds everything (clicking the tabs fetches nothing).
+
+### parser_entry
+
+FibaEventsAdapter.payload() translates either source (props_from_detail / game_props) into a FIBA LiveStats data.json: tm[1|2] with pl keyed by personId, the play-by-play as the event stream stints.py replays (actionNumber 1..n, gt = "Time", remaining), shots onto tm[].shot joined by actionNumber, clock/period/periodType on top. PBP codes: P2/P3/FT shots, REB/TREB, TO/TTO, FOUL/CFOUL, RFOUL (foul drawn -> foulon), ASS, ST, BS, SUBST (in IN/OUT), STARTG/STARTP/ENDP/ENDG; TIMO/JB/JS/VTR dropped. A shot's kind is the last clause of its text ("..., driving layup made"), its qualifiers in the text ("points from fastbreak", "points from second chance", "after turnover").
+
+### names
+
+FIBA's shortName ("Asisa Joventut", "SL Benfica", "Surne Bilbao"), never officialName - that is the registered company ("Club Joventut Badalona SAD", "Sport Lisboa e Benfica", "C.D. Basket Bilbao Berri S.A.D.") and the live-info feed carries only the short one. Players: firstName / lastName as written (names.py decides the rest).
+
+### logos
+
+https://assets.fiba.basketball/image/upload/d_.logoflag--light--organisation_{organisationId}.webp/w_256/f_auto/q_auto/.logoflag--light--organisation_{organisationId}--competition_{competitionId} - on every fixture through home_logo/away_logo.
+
+### shots
+
+Half court: x 0..280 across (15 m), y out from the baseline, rim at (140, 29.4); free throws at (0, 0). Fitted 2026-10-07 to the three-point line (every three at 6.96 m or more, every two at 6.10 m or less). fibashape.at_rim_offset puts them on the full-court frame.
+
+### probe
+
+~/.claude/skills/fiba-feed/scripts/fiba_probe.py schedule|format|game|live|capture (the fiba-feed skill). Dry run: python scripts/ingest/run_ingest.py --source BCL,FEC --dry-run --no-supabase --max-games 2. Offline test: python scripts/ingest/fiba_events_test.py (CI guard.yml).
+
+### format
+
+The /standings page is the competition's structure: stages of three kinds (groups, flat = one round of pairings, bracket = rounds feeding each other + a 3rd-place smallFinalRound), each with roundIds, dates, status, groups (teamFroms: "1st of group A"), pairings (gameSystemCode S / HA / BOF3). fiba_format.stage_sources makes one source per stage that has a fixture with both clubs (the main group phase under the league's own label, the rest under FIBA's stage names, 'groups' or 'knockout'); sync_stage writes competitions.qualifiers (inferred from the later stages' feeders - FIBA leaves numberOfTeamsQualifying empty), competitions.format_config.fiba, and for a knockout stage its bracket_ties (legs and decider from the game system) with every game on its tie and leg.
+
+### gotchas
+
+- "Winner of Game N" is NOT the fixture's gameNumber ("A".."C" in knockouts). On the Europe Cup N is the pairing code; on the BCL it is an unrelated running count (157/158 for pairings 37/38). fiba_format._resolve_feeders matches codes first, then pairs off in order with the round before.
+- Statuses: live-info game.content.status 3 = live, 5 = over; the page's copy says 999; CurrentPeriodStatus "E" = period ended. Over is the ENDG action first.
+- Bench points are A_PFB on the page and only T_PFB on the live-info feed; team REB/OR/DR/TO include the team ones (as LiveStats' totals do).
+- A history page's standings carry no stages: a backfilled past season is ingested as one competition.
+- The pages are CDN-cached 240 s, the live-info JSON 20 s.
+
+
 ## LNB Elite (Betclic ÉLITE, France, division 1)
 
 ### host

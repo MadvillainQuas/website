@@ -1104,6 +1104,13 @@ jobs:
         # overtime and a basket the league logged with no player included
         run: python scripts/ingest/lnbp_test.py
 
+      - name: FIBA's own competitions (Champions League, Europe Cup) and their formats
+        # fiba_events.py + fiba_format.py over captured pages: the season from one schedule page, a game
+        # from the live-info JSON and again from its page's flight data (box, quarters, stints, shot chart,
+        # event log all reconciling), a live game's clock, and the format - every stage in order, groups,
+        # how many go through, one source per stage, and knockout ties with their feeders and legs
+        run: python scripts/ingest/fiba_events_test.py
+
       - name: Finland (Korisliiga, Naisten Korisliiga, I divisioona A and B) from TorneoPal and Sportradar
         # basketfi.py over cached TorneoPal lists and EUI replies: each league a TorneoPal category, the
         # fixtures TorneoPal never linked joined on clubs and date, the jatkosarja kept in the regular

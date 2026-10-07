@@ -1268,6 +1268,10 @@ NO_BIO = {
     "cebl": "the league's own API (api.data.cebl.ca, where its schedule comes from) answers the players list with one empty "
             "record for every season asked (2024 to 2026, tried 30 Sep 2026), its team rows carry no roster, and the "
             "LiveStats data carries no bio",
+    "basketball-champions-league": "not built yet: the game page's rosters (playersTeamA/B in its flight data) carry dateOfBirth, "
+                                   "heightInCm and nationality per player, which a reader can take from adapters/fiba_events.py; "
+                                   "the live-info feed the games come from carries names only",
+    "fiba-europe-cup": "as basketball-champions-league (the same FIBA site)",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

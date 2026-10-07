@@ -80,6 +80,7 @@ LIVE_ADAPTERS = {name for name, cls in REGISTRY.items() if issubclass(cls, FibaL
 CDN_ADAPTERS = {"fiba_livestats"}
 from feedplatform import Platform, season_name_for, team_code  # noqa: E402
 import groups  # noqa: E402
+import fiba_format  # noqa: E402
 from fetchwindow import seconds_until_tip, worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
 import console_kick  # noqa: E402
@@ -2735,7 +2736,7 @@ REFRESH = {"on": False}             # set from --refresh in main(): reopen final
 
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
                          "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl",
-                         "aba", "basketfi", "lnbbr", "nbl", "ncaa"}
+                         "aba", "basketfi", "lnbbr", "nbl", "ncaa", "fiba_events"}
 #: adapters that cannot read a past season at all, and why - said on the console's request, not only in a log
 NO_PAST = {"bbl": "the BBL's schedule is its site's season being played, and its API refuses scripts"}
 _SPLIT_SEASON = re.compile(r"\d{4}\s*[-/]\s*\d{2,4}")
@@ -2958,6 +2959,12 @@ def main() -> int:
             return 1
     if not args.ids:
         sources = expand_competition_sources(sources)
+        # a FIBA event (Champions League, Europe Cup): one source per stage of its format, read off
+        # its standings page - groups, play-ins, a final four - each its own competition (fiba_format.py).
+        # Discovery passes only: a live, catch-up or repair pass reads games already filed, and one source
+        # per stage would read every one of them once per stage.
+        if not (args.live_only or args.catch_up or args.repair_stalled):
+            sources = fiba_format.stage_sources(sources, get_adapter)
     print(f"{len(sources)} source(s) due")
     if job and not sources:
         # the league has a source, but the site publishes no competition for that season: a real
@@ -3277,6 +3284,17 @@ def main() -> int:
                     if b.status == "live":
                         still.append(g)
                 live_set = still
+            # A FIBA STAGE'S FORMAT onto its competition, once its fixtures and games are written: how many
+            # go through, the stage as FIBA describes it, and a knockout stage's ties with every game on its
+            # tie and leg (fiba_format.sync_stage). advance_bracket then settles them with the tables below.
+            if src.get("_fiba_stage") and sb and not args.dry_run and not args.live_only and not args.catch_up:
+                try:
+                    league_id = resolve_league(sb, src, run)
+                    if league_id:
+                        comp = source_competition(sb, run["_platform"], src, league_id, src.get("adapter_config") or {})
+                        fiba_format.sync_stage(sb, src, comp["id"], run)
+                except Exception as exc:
+                    print(f"   (competition format: {exc})")
             if not args.dry_run:
                 # a club entered in a competition with no game in it, once the schedule is clearly complete, is out of that season
                 if sb and not args.live_only:
