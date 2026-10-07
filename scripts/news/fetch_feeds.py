@@ -1093,6 +1093,28 @@ class Supabase:
              % (urllib.parse.quote(since.isoformat()), urllib.parse.quote(tried_before.isoformat())))
         return self._req("GET", q)[0] or []
 
+    def has_video_rules(self) -> bool:
+        """whether 0240 is applied (a channel's club names, the match notes): before it, neither is read or written"""
+        try:
+            self._req("GET", "news_video_clubs?select=id&limit=0")
+            self._req("GET", "news_items?select=match_note&limit=0")
+            return True
+        except urllib.error.HTTPError as e:
+            if e.code in (400, 404):
+                return False
+            raise
+
+    def video_rules(self, ids: list) -> dict:
+        """{source id: [{phrase, team_id}]}: the channels' own names for clubs"""
+        ids = sorted({str(i) for i in ids if i})
+        if not ids:
+            return {}
+        rows = self._req("GET", "news_video_clubs?select=source_id,phrase,team_id&source_id=in.(%s)" % ",".join(ids))[0] or []
+        out: dict = {}
+        for r in rows:
+            out.setdefault(str(r["source_id"]), []).append(r)
+        return out
+
     def video_sources(self, ids: list) -> dict:
         ids = sorted({str(i) for i in ids if i})
         if not ids:

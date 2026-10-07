@@ -18,6 +18,11 @@ between the same clubs in one week: "Copa" says which). A pair that never met in
 naming three clubs, or one club twice in two languages, still finds the one game it is of. Nothing is guessed: no
 pair, no game.
 
+A CHANNEL'S OWN NAMES (0240 news_video_clubs, set in the console beside the channel): "Flyers" is Bristol Flyers on
+this channel, "Leicester" is nobody (the presenter). They are read before the clubs' own names and win over them;
+a phrase for nobody hides its words from every club. What was found and where the matcher stopped is written on the
+video (match_clubs, match_note) for the console to show.
+
 WHAT IT BECOMES (the channel's news_sources.video_mode):
     'highlights'  a matched video is the game's highlights, unless its title says it is the whole game
     'seeking'     a matched video is the game's broadcast (unless its title says highlights), and becomes the
@@ -200,32 +205,65 @@ class ClubFinder:
                     self.phrases.append((c, tid, lid, has_cjk(c)))
         self.phrases.sort(key=lambda p: -len(p[0]))
 
-    def find(self, title: str | None, leagues: set | None = None) -> list[tuple[str, float]]:
+    @staticmethod
+    def _span(F: str, flat: str, phrase: str, cjk: bool) -> tuple[int, int] | None:
+        if cjk:
+            i = flat.find(phrase.replace(" ", ""))
+            return None if i < 0 else (i + 10_000, i + 10_000 + len(phrase))
+        i = F.find(" " + phrase + " ")
+        return None if i < 0 else (i, i + len(phrase) + 1)
+
+    def find(self, title: str | None, leagues: set | None = None, rules: list | None = None) -> list[tuple[str, float]]:
         """[(team id, strength)] for every club the title names, strongest first; within `leagues` when given.
-        Strength is the length of the longest phrase found, so a full name beats a city."""
+        Strength is the length of the longest phrase found, so a full name beats a city.
+        rules: the channel's own names (prep_rules, 0240), read first: a phrase found is its club, stronger than any
+        name found by the clubs' own; a phrase for no club takes its words away from every club."""
         F = wide_fold(title)
         flat = F.replace(" ", "")
         got: dict[str, float] = {}
         taken: list[tuple[int, int]] = []
+        blocked: list[tuple[int, int]] = []
+        for phrase, tid, cjk in rules or []:
+            span = self._span(F, flat, phrase, cjk)
+            if not span or any(not (span[1] <= a or b <= span[0]) for a, b in blocked):
+                continue
+            if tid and any(a <= span[0] and span[1] <= b for a, b in taken) and tid not in got:
+                continue                               # inside a longer name of another club
+            if tid:
+                taken.append(span)
+                got[tid] = max(got.get(tid, 0.0), RULE_STRENGTH + len(phrase.replace(" ", "")))
+            else:
+                blocked.append(span)
         for phrase, tid, lid, cjk in self.phrases:
             if leagues and lid not in leagues:
                 continue
-            if cjk:
-                i = flat.find(phrase.replace(" ", ""))
-                if i < 0:
-                    continue
-                span = (i + 10_000, i + 10_000 + len(phrase))
-            else:
-                i = F.find(" " + phrase + " ")
-                if i < 0:
-                    continue
-                span = (i, i + len(phrase) + 1)
+            span = self._span(F, flat, phrase, cjk)
+            if not span:
+                continue
+            # words the channel says are no club's are nobody's
+            if any(not (span[1] <= a or b <= span[0]) for a, b in blocked):
+                continue
             # a phrase inside a longer one already taken by another club is that club's word, not a second club
             if any(a <= span[0] and span[1] <= b for a, b in taken) and tid not in got:
                 continue
             taken.append(span)
             got[tid] = max(got.get(tid, 0.0), float(len(phrase.replace(" ", ""))))
         return sorted(got.items(), key=lambda kv: -kv[1])
+
+
+RULE_STRENGTH = 100.0
+
+
+def prep_rules(rows: list[dict] | None) -> list[tuple[str, str | None, bool]]:
+    """a channel's names (news_video_clubs rows: phrase, team_id) as find() reads them: folded as titles are, the
+    longest first (so "Bristol Flyers" is read before "Flyers")"""
+    out = []
+    for r in rows or []:
+        F = wide_fold(r.get("phrase")).strip()
+        if F:
+            out.append((F, str(r["team_id"]) if r.get("team_id") else None, has_cjk(F)))
+    out.sort(key=lambda p: -len(p[0]))
+    return out
 
 
 def pairs(found: list[tuple[str, float]], limit: int = MAX_PAIRS) -> list[tuple[str, str]]:
@@ -475,6 +513,17 @@ def api_channel(link: str, key: str, get_json) -> dict | None:
             "logo": logo, "site_url": "https://www.youtube.com/channel/" + it["id"]}
 
 
+def note_of(becomes: str | None, found: list, game: dict | None) -> str:
+    """where the matcher stopped with a video, for the console (news_items.match_note, 0240)"""
+    if game:
+        return "matched"
+    if not becomes:
+        return "not_a_game"
+    if not found:
+        return "no_clubs"
+    return "one_club" if len(found) == 1 else "no_game"
+
+
 def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = False) -> dict:
     """The pass: every video of the last RETRY_DAYS with no game, not locked, not tried in GAP_RETRY."""
     now = now or datetime.now(timezone.utc)
@@ -488,6 +537,14 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
         return done
     sources = db.video_sources([i["source_id"] for i in items])
     finder = ClubFinder(db.teams_full())
+    # the channels' own names for clubs (0240), and a note on each video of what was found: before 0240, neither
+    notes_on = bool(getattr(db, "has_video_rules", None)) and db.has_video_rules()
+    rules: dict = {}
+    if notes_on:
+        try:
+            rules = {sid: prep_rules(rows) for sid, rows in db.video_rules([i["source_id"] for i in items]).items()}
+        except Exception as e:
+            log("  (videos: the channels' club names not read: %s)" % e)
     games_cache: dict = {}
     for it in items:
         src = sources.get(str(it["source_id"])) or {}
@@ -503,12 +560,14 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
         game = None
         becomes = outcome(kind, mode) if kind else None
         published = _iso(it.get("published_at")) or now
+        found: list = []
+        R = rules.get(str(it["source_id"]))
         if becomes:
             leagues = {str(x) for x in ([src.get("league_id")] + list(src.get("assigned_leagues") or [])
                                         + list(it.get("league_ids") or [])) if x}
-            found = finder.find(title, leagues or None)
+            found = finder.find(title, leagues or None, R)
             if len(found) < 2 and leagues:
-                found = finder.find(title)                     # a channel of one league showing another's game
+                found = finder.find(title, None, R)            # a channel of one league showing another's game
             for a, b in pairs(found):
                 key = tuple(sorted((a, b)))
                 if key not in games_cache:
@@ -525,6 +584,9 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
             done["matched"] += 1
             done["highlights" if becomes == "highlights" else "full"] += 1
             log("    ~ video %s -> %s game %s" % (title[:60], becomes, game["id"]))
+        if notes_on:
+            patch["match_clubs"] = [t for t, _ in found][:6]
+            patch["match_note"] = note_of(becomes, found, game)
         if dry_run:
             continue
         try:

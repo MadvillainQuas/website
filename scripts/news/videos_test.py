@@ -214,6 +214,53 @@ ok("a game that already has a video keeps it", db2.attached == [] and db2.patche
 db3 = FakeDb(items, SRC, GAMES)
 V.match_videos(db3, PUB + timedelta(hours=1), log=lambda *a: None, dry_run=True)
 ok("a dry run writes nothing", db3.patched == {} and db3.attached == [])
+ok("before 0240 no note is written (the columns are not there)", "match_note" not in db.patched["i1"] and "match_clubs" not in db.patched["i7"])
+
+print("\na channel's own names for clubs (0240)")
+RULES = [{"phrase": "Los Blancos", "team_id": "RM"}, {"phrase": "Blaugrana", "team_id": "FCB"},
+         {"phrase": "Valencia  Arena", "team_id": None}]
+R = V.prep_rules(RULES)
+ok("folded as titles are, the longest first", R[0] == ("valencia arena", None, False) and {r[0] for r in R} == {"los blancos", "blaugrana", "valencia arena"}, R)
+f = CF.find("Highlights: Los Blancos vs Blaugrana", None, R)
+ok("a channel's names find clubs the clubs' own names never would", sorted(k for k, _ in f) == ["FCB", "RM"], f)
+ok("...and are the strongest findings there are", all(s > V.RULE_STRENGTH for _, s in f), f)
+T3 = "Live from Valencia Arena: Joventut vs Zaragoza"
+ok("a phrase for no club hides its words from every club ('Valencia' of 'Valencia Arena' is the venue)",
+   sorted(ids(T3)) == ["JOV", "VAL", "ZAR"] and sorted(k for k, _ in CF.find(T3, None, R)) == ["JOV", "ZAR"], CF.find(T3, None, R))
+ok("...a channel's name inside a longer one of another club is that club's",
+   [k for k, _ in CF.find("Blaugrana Juniors vs Los Blancos", None, V.prep_rules([{"phrase": "Blaugrana Juniors", "team_id": "JOV"}] + RULES))]
+   == ["JOV", "RM"] or sorted(k for k, _ in CF.find("Blaugrana Juniors vs Los Blancos", None, V.prep_rules([{"phrase": "Blaugrana Juniors", "team_id": "JOV"}] + RULES))) == ["JOV", "RM"])
+ok("where the matcher stopped, in words the console shows",
+   V.note_of("highlights", [("A", 1.0), ("B", 1.0)], {"id": "g"}) == "matched" and V.note_of(None, [], None) == "not_a_game"
+   and V.note_of("highlights", [], None) == "no_clubs" and V.note_of("full", [("A", 1.0)], None) == "one_club"
+   and V.note_of("highlights", [("A", 1.0), ("B", 1.0)], None) == "no_game")
+
+
+class RulesDb(FakeDb):
+    def has_video_rules(self):
+        return True
+
+    def video_rules(self, ids):
+        return {"hl": RULES}
+
+
+items4 = [
+    {"id": "r1", "source_id": "hl", "title": "Los Blancos 89-76 Blaugrana", "published_at": P, "league_ids": []},
+    {"id": "r2", "source_id": "hl", "title": "Valencia vs Estudiantes", "published_at": P, "league_ids": []},
+    {"id": "r3", "source_id": "hl", "title": "Highlights: Real Madrid at home", "published_at": P, "league_ids": []},
+    {"id": "r4", "source_id": "hl", "title": "Rueda de prensa: Real Madrid - FC Barcelona", "published_at": P, "league_ids": []},
+    {"id": "r5", "source_id": "sk", "title": "Los Blancos vs Blaugrana", "published_at": P, "league_ids": []},
+]
+db4 = RulesDb(items4, SRC, GAMES)
+V.match_videos(db4, PUB + timedelta(hours=1), log=lambda *a: None)
+p = db4.patched
+ok("the pass reads the channel's names: 'Los Blancos 89-76 Blaugrana' is the Clásico's highlights",
+   p["r1"].get("game_id") == "clasico" and p["r1"]["match_note"] == "matched" and sorted(p["r1"]["match_clubs"]) == ["FCB", "RM"], p.get("r1"))
+ok("...and notes where it stopped: no game between them, one club, not a game",
+   p["r2"]["match_note"] == "no_game" and sorted(p["r2"]["match_clubs"]) == ["EST", "VAL"] and p["r3"]["match_note"] == "one_club"
+   and p["r3"]["match_clubs"] == ["RM"] and p["r4"]["match_note"] == "not_a_game" and p["r4"]["match_clubs"] == [], p)
+ok("...a channel's names are its own (another channel's titles do not read them)",
+   p["r5"]["match_note"] == "no_clubs" and "game_id" not in p["r5"], p.get("r5"))
 
 print("\nthe reader writes the video's id and kind")
 

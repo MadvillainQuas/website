@@ -610,6 +610,7 @@ function mountSources(o) {
     seg.setAttribute('role', 'radiogroup');
     seg.setAttribute('aria-label', s.name + ': what its videos are');
     seg.style.cssText = 'display:inline-flex;gap:4px';
+    let panel = null;
     VIDEO_MODES.forEach(([mode, label, tip]) => {
       const b = btn(label, m.video_mode === mode ? 'pri' : '');
       b.title = tip;
@@ -622,6 +623,7 @@ function mountSources(o) {
         m.video_mode = mode;
         say(s.name + ': ' + label.toLowerCase() + '. ' + (mode === 'off' ? 'Its videos are put on no game from now on.'
           : 'Its videos are matched to games at the next read (within half an hour).'), 'ok');
+        if (panel) panel.remove();
         wrap.replaceWith(videoSwitch(s, m));
       });
       seg.appendChild(b);
@@ -630,7 +632,148 @@ function mountSources(o) {
     const n = el('span', 'empty', (m.videos || 0) + ' videos · ' + (m.matched || 0) + ' on a game');
     n.style.margin = '0';
     wrap.appendChild(n);
+    /* the channel's own names for clubs, opened under the switch */
+    const names = btn('Club names');
+    names.title = 'The words ' + s.name + '’s titles use for clubs, and what the matcher made of its newest videos';
+    names.setAttribute('aria-expanded', 'false');
+    names.addEventListener('click', () => {
+      if (panel) { panel.remove(); panel = null; names.setAttribute('aria-expanded', 'false'); return; }
+      panel = clubNames(s);
+      wrap.after(panel);
+      names.setAttribute('aria-expanded', 'true');
+    });
+    wrap.appendChild(names);
     return wrap;
+  }
+
+  /* A CHANNEL'S OWN NAMES FOR CLUBS (0240 news_video_clubs). The video matcher finds the clubs a title names from the
+     clubs' own names; a channel has its own ("Flyers", "MAN", a sponsor's name before the club's), and words that look
+     like a club and are not (a venue, a presenter). A name here is read first: that club in this channel's titles, or
+     no club at all. Under the names, the channel's newest videos with what the matcher made of each - the game it is
+     on, or the clubs it found and where it stopped - so it is plain what to name; words selected in a title fill the
+     name in. A change sends the channel's unmatched videos back to the matcher at the next read; "match again" sends
+     back its last ten days, matched or not (never one linked by hand). */
+  const MATCH_NOTES = {
+    no_clubs: 'no club found in the title',
+    one_club: 'only one club found',
+    no_game: 'these clubs played no game around then',
+    not_a_game: 'not a game’s video (an interview, a preview…)' };
+  function clubNames(s) {
+    const box = el('div');
+    box.style.cssText = 'flex:1 1 100%;margin:6px 0 4px 36px;padding:10px 12px;border:1px solid var(--rule);background:var(--panel)';
+    box.appendChild(el('p', 'empty', 'Loading…'));
+    async function draw() {
+      const { data: v, error: e } = await sb.rpc('news_video_clubs', { p_source: s.id });
+      box.textContent = '';
+      if (e) {
+        box.appendChild(el('p', 'empty', /news_video_clubs|schema cache|does not exist/i.test(errText(e))
+          ? 'Club names arrive with migration 0240: it has not been applied to this database yet.' : errText(e)));
+        return;
+      }
+      const head = el('p', 'empty', 'The names ' + s.name + '’s titles use for clubs. The matcher reads them before the clubs’ own names: '
+        + 'a name here is that club in this channel’s titles, or no club at all (a venue, a presenter, a sponsor). '
+        + 'Select words in a title below to name them.');
+      head.style.margin = '0 0 8px';
+      box.appendChild(head);
+
+      /* the names */
+      (v.rules || []).forEach(r => {
+        const line = el('div');
+        line.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:3px 0';
+        const to = el('span', null, r.team_id ? '→ ' + r.team + (r.league ? ' (' + r.league + ')' : '') : '→ no club');
+        if (!r.team_id) to.style.color = 'var(--ink-3)';
+        const x = btn('remove');
+        x.addEventListener('click', async () => {
+          const { error: de } = await sb.rpc('delete_news_video_club', { p_id: r.id });
+          if (de) return say(errText(de), 'err');
+          say('“' + r.phrase + '” is no longer a name on ' + s.name + '. Its unmatched videos are tried again at the next read.', 'ok');
+          draw();
+        });
+        line.append(el('b', null, '“' + r.phrase + '”'), to, x);
+        box.appendChild(line);
+      });
+      if (!(v.rules || []).length) box.appendChild(el('p', 'empty', 'No names yet: the matcher reads the clubs’ own names only.'));
+
+      /* a new one: the words, the club (the channel's leagues' clubs, or any club found by name), or no club */
+      const phrase = input('the words, as the titles write them (Flyers)', 60);
+      const find = input('find a club by name…', 60);
+      const pick = el('select', 'ep-input');
+      pick.setAttribute('aria-label', 'the club the words mean');
+      const fill = rows => {
+        const keep = pick.value;
+        pick.textContent = '';
+        const first = el('option', null, 'the club it means…'); first.value = ''; pick.appendChild(first);
+        rows.forEach(t => { const o = el('option', null, t.name + (t.league ? ' · ' + t.league : '')); o.value = t.id; pick.appendChild(o); });
+        const none = el('option', null, 'no club: never read as one'); none.value = 'none'; pick.appendChild(none);
+        if ([...pick.options].some(o => o.value === keep)) pick.value = keep;
+      };
+      const clubs = async text => {
+        const { data: t } = await sb.rpc('news_video_club_teams', { p_source: s.id, p_q: text || null });
+        fill(t || []);
+      };
+      let wait = null;
+      find.addEventListener('input', () => { clearTimeout(wait); wait = setTimeout(() => clubs(find.value.trim()), 250); });
+      clubs('');
+      const add = btn('Add the name', 'pri');
+      add.addEventListener('click', async () => {
+        const p = phrase.value.trim().replace(/\s+/g, ' ');
+        if (p.length < 2) return say('A name is two letters or more, as the titles write it.', 'err');
+        if (!pick.value) return say('Choose the club it means, or “no club”.', 'err');
+        add.disabled = true;
+        const { error: ae } = await sb.rpc('set_news_video_club', { p_source: s.id, p_phrase: p, p_team: pick.value === 'none' ? null : pick.value });
+        add.disabled = false;
+        if (ae) return say(errText(ae), 'err');
+        say('“' + p + '” is ' + (pick.value === 'none' ? 'no club' : pick.options[pick.selectedIndex].textContent) + ' on ' + s.name
+          + '. Its unmatched videos are tried again at the next read (within half an hour).', 'ok');
+        draw();
+      });
+      box.appendChild(row(phrase, find, pick, add));
+
+      /* its newest videos, and what the matcher made of each */
+      const vh = el('p', 'empty', (v.recent || []).length ? 'Its newest videos, and what the matcher made of each:' : 'No videos of it yet.');
+      vh.style.margin = '12px 0 4px';
+      box.appendChild(vh);
+      const vids = el('div');
+      vids.addEventListener('mouseup', () => {
+        const t = String(window.getSelection ? window.getSelection() : '').trim().replace(/\s+/g, ' ');
+        if (t && t.length <= 60) { phrase.value = t; phrase.focus(); }
+      });
+      (v.recent || []).forEach(it => {
+        const line = el('div');
+        line.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:5px 0;border-top:1px dashed var(--rule)';
+        const t = el('span', null, it.title || '');
+        t.style.cssText = 'user-select:text;cursor:text;font-weight:600;overflow-wrap:anywhere';
+        const d = el('span', 'empty', when(it.published_at));
+        d.style.margin = '0';
+        const st = el('span', 'empty');
+        st.style.cssText = 'grid-column:1 / -1;margin:0';
+        if (it.game) {
+          st.textContent = '✓ on ' + it.game.home + ' v ' + it.game.away + (it.game_locked ? ' (set by hand)' : '');
+          st.style.color = 'var(--lume)';
+        } else if (it.game_locked) st.textContent = 'taken off its game by hand';
+        else if (!it.matched_at) st.textContent = 'waiting for the matcher (the next read)';
+        else {
+          st.textContent = ((it.clubs || []).length ? 'found ' + it.clubs.join(' · ') + ': ' : '') + (MATCH_NOTES[it.match_note] || 'no game found');
+          st.style.color = 'var(--flare)';
+        }
+        line.append(t, d, st);
+        vids.appendChild(line);
+      });
+      box.appendChild(vids);
+
+      const again = btn('Match its last ten days again');
+      again.title = 'Every video of the last ten days goes back to the matcher with these names, matched or not (never one linked by hand)';
+      again.addEventListener('click', async () => {
+        if (!confirm('Match ' + s.name + '’s last ten days of videos again? Their highlights leave their games until the next read (within half an hour).')) return;
+        const { data: c, error: re } = await sb.rpc('rematch_news_videos', { p_source: s.id });
+        if (re) return say(errText(re), 'err');
+        say((c || 0) + ' of ' + s.name + '’s videos go back to the matcher at the next read.', 'ok');
+        draw();
+      });
+      box.appendChild(row(again));
+    }
+    draw();
+    return box;
   }
 
   /* a source's logo, small and square */

@@ -302,6 +302,14 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/video-chat.test.mjs
 
+      - name: A channel's own names for clubs, for the video matcher (0240)
+        # every migration on PGlite: the names are the channel's administrators' alone and never a reader's; a name for a
+        # club or for none, the same name again replaces it; the console's read of the newest videos and what was found;
+        # a change sends the unmatched videos back, rematch the matched too, never one linked by hand
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/video-clubs.test.mjs
+
       - name: The live chat's moderator, and the league's Video and Live tabs (0237)
         # the moderator's policy, the message as data, the fail-closed verdict and the function's order (gate, model, store);
         # the tabs hidden until needed, one idle-time call, the player's state from YouTube's frame, cinema, the game's embed

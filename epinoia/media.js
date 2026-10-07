@@ -197,6 +197,19 @@
     try { return d.toLocaleDateString(document.documentElement.lang || 'en-GB', { day: 'numeric', month: 'short' }); } catch (_) { return iso.slice(0, 10); }
   }
   const KIND = { highlights: ['HIGHLIGHTS', ''], full: ['FULL GAME', 'f'], video: ['VIDEO', 'v'] };
+  /* ONE TILE A VIDEO. A channel added twice (a league's own and the platform's) reads each of its videos twice, as two
+     stories; the board shows it once, the copy that is on a game if one is. */
+  function uniq(list) {
+    const at = new Map(), out = [];
+    (list || []).forEach(r => {
+      const k = r && (r.video_id || r.id);
+      if (!k) return;
+      if (!at.has(k)) { at.set(k, out.length); out.push(r); }
+      else if (r.game && !out[at.get(k)].game) out[at.get(k)] = r;
+    });
+    return out;
+  }
+
   /* a day as the band prints it: 04 OCT 2026 (day, month, year in the page's language; Japanese keeps its own order) */
   function day(iso) {
     const d = iso ? new Date(iso) : null;
@@ -419,7 +432,7 @@
     async function page() {
       if (!items.length) { grid.textContent = ''; for (let i = 0; i < 6; i++) grid.appendChild(el('div', 'md-skel')); }
       const rows = (await rpc('league_videos', { p_league: o.leagueId, p_kind: kind, p_before: last, p_limit: o.limit }).catch(() => null)) || [];
-      items = items.concat(rows);
+      items = uniq(items.concat(rows));
       last = rows.length ? rows[rows.length - 1].published_at : last;
       more.hidden = rows.length < o.limit;
       clubsOf(); paint();
@@ -475,5 +488,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stageOpen, tile, inks, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stageOpen, tile, inks, uniq, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

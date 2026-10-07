@@ -78,8 +78,8 @@
       const [all, mine] = await Promise.all([rpc('video_feed', { p_kind: kind, p_limit: 60 }),
         s && s.token ? rpc('video_feed_mine', { p_kind: kind, p_limit: 60 }, s.token) : Promise.resolve(null)]);
       if (!all) return null;
-      const seen = new Set(), pool = [];
-      (mine || []).concat(all).forEach(r => { if (r && !seen.has(r.id)) { seen.add(r.id); pool.push(r); } });
+      /* one tile a video (a channel added twice reads each video twice) */
+      const pool = M.uniq((mine || []).concat(all));
       const R = window.EpinoiaFeedRank;
       if (R && typeof R.rankRows === 'function') {
         try { return (await R.rankRows(pool, { followedIds: (mine || []).map(r => r.id) })).rows; } catch (_) { /* newest first */ }

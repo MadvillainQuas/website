@@ -88,6 +88,17 @@ ok('no LATEST stamp; the words are Archivo (no pixel faces on the board)',
 ok('the large tile is not the page hero (its own class), a feature where the board is wide',
    /' md-lead'/.test(media) && !/'hero'|' hero'/.test(media) && /@container \(min-width:720px\)\{\s*\.md-tile\.md-lead\{display:grid/.test(css));
 
+ok('one tile a video: a channel added twice shows each video once, the copy on a game first',
+   /function uniq\(list\)/.test(media) && /items = uniq\(items\.concat\(rows\)\)/.test(media) && /M\.uniq\(\(mine \|\| \[\]\)\.concat\(all\)\)/.test(vh));
+
+console.log('\nthe console: a channel\'s own names for clubs (0240)');
+const cui = rd('epinoia', 'admin', 'creators-ui.js');
+ok('a Club names panel under each channel\'s video switch: its names, a new one, its newest videos with what was found',
+   /const names = btn\('Club names'\)/.test(cui) && /function clubNames\(s\)/.test(cui)
+   && ['news_video_clubs', 'news_video_club_teams', 'set_news_video_club', 'delete_news_video_club', 'rematch_news_videos'].every(f => cui.includes("sb.rpc('" + f + "'")));
+ok('...words selected in a title fill the name in; before 0240 it says so',
+   /window\.getSelection/.test(cui) && /arrive with migration 0240/.test(cui));
+
 console.log('\nthe box score: the modern view, as the game embed');
 const eg = rd('epinoia', 'embed', 'game', 'game.js'), egh = rd('epinoia', 'embed', 'game', 'index.html'), mod = rd('epinoia', 'game', 'modern.js');
 ok('the frame shows the game embed, sized by its message, never a second box score',
