@@ -213,7 +213,10 @@ html.vh-land-on,html.vh-land-on body{overflow:hidden}
    four factors with their margins, the shooting, the game's flow). Everything is placed by the grid and nothing is
    moved in the page: a box score frame moved would load again. The column is as tall as the stream beside it
    (contain: size - its own content does not stretch the row) and scrolls inside. ---- */
-.vh-stats{display:none}
+.vh-stats{display:none;container:vhs / inline-size}
+/* the board as wide as the stream: three cards where there is the room, then two (the flow under them), then one */
+@container vhs (max-width:760px){ .vh-stats .slb{grid-template-columns:repeat(2,minmax(0,1fr))} .vh-stats .slb-card[data-k=flow]{grid-column:1 / -1} }
+@container vhs (max-width:470px){ .vh-stats .slb{grid-template-columns:minmax(0,1fr)} }
 @media (min-width:1000px){
   .vh-theatre:not(.vh-land){display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto minmax(0,1fr) auto auto;
     grid-template-areas:"main tabs" "main side" "under under" "up up"}
@@ -227,11 +230,14 @@ html.vh-land-on,html.vh-land-on body{overflow:hidden}
     border-left:1px solid var(--rule)}
   .vh-theatre:not(.vh-land) .vh-chat .ch{min-height:0;height:100%}
   .vh-theatre:not(.vh-land) .vh-box{grid-area:under}
-  /* the box score in the column, the team board under the stream */
-  .vh-theatre.land-box:not(.vh-land) .vh-box{grid-area:side;align-self:stretch;contain:size;overflow:auto;padding:6px;border-top:0;
+  /* THE BOX SCORE IN THE COLUMN, THE TEAM BOARD UNDER THE STREAM. A box score is taller than the stream beside it (its
+     court, its bench, the club switch), so the column runs on down beside the board and the board is the stream's width:
+     held to the stream's height, the box score ran into the board's edge, cut off mid-court (2026-10-07). */
+  .vh-theatre.land-box:not(.vh-land){grid-template-areas:"main tabs" "main side" "under side" "up up"}
+  .vh-theatre.land-box:not(.vh-land) .vh-box{grid-area:side;align-self:stretch;contain:size;overflow:auto;padding:6px 6px 16px;border-top:0;
     border-left:1px solid var(--rule)}
   .vh-theatre.land-box:not(.vh-land) .vh-chat{display:none}
-  .vh-theatre.land-box:not(.vh-land) .vh-stats{display:block;grid-area:under;background:#020504;border-top:1px solid var(--rule)}
+  .vh-theatre.land-box:not(.vh-land) .vh-stats{display:block;grid-area:under;min-width:0;background:#020504;border-top:1px solid var(--rule)}
   .vh-theatre.land-box:not(.vh-land) .vh-tmain .md-cuebar > .md-cue:not(.vh-landcue){visibility:hidden}
   .vh-theatre:not(.vh-land) .md-cuebar.up{grid-area:up}
   /* the chat folded away (gamechat.js .chat-min): the column a slim tab the height of the stream, no tabs over it */
