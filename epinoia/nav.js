@@ -600,11 +600,14 @@
     platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
                 'global scouting: every league in one table'),
     platformRow('✚', 'injury report', 'injuries/', /\/epinoia\/injuries\/$/,
-                'the waiver wire: who is missing, in every league, by club'),
-    platformRow('∿', 'what wins', 'winning/', /\/epinoia\/winning\//,
-                'what wins: the numbers that go with winning, measured on every finished game'),
-    platformRow('❑', 'news', 'news/', /\/epinoia\/news\/$/,
-                'news: every league, the publishers that cover them and the leagues’ creators, newest first'));
+                'the waiver wire: who is missing, in every league, by club'));
+  /* EPINOIA GO sits between the injury report and the news, and WHAT WINS last (Louie, 2026-10-07:
+     the two swapped) - both placed below, once the GO row exists */
+  const newsRow = platformRow('❑', 'news', 'news/', /\/epinoia\/news\/$/,
+                              'news: every league, the publishers that cover them and the leagues’ creators, newest first');
+  const winsRow = platformRow('∿', 'what wins', 'winning/', /\/epinoia\/winning\//,
+                              'what wins: the numbers that go with winning, measured on every finished game');
+  hlist.append(newsRow);
 
   /* and on, into the leagues. A row rather than a bare chevron, because this is
      the journey the rail exists for; it sits second, straight under home (below). */
@@ -687,7 +690,8 @@
     e.preventDefault();
     setView('go', true);
   });
-  hlist.appendChild(goRow);
+  hlist.insertBefore(goRow, newsRow);
+  hlist.appendChild(winsRow);
   /* BACK TO PROPHE(S)Y (2026-10-06): a small chevron beside the logotype, in the place every other panel keeps its back
      chevron, that leaves Epinoia for the site's front door (prophesyscouting.co.uk/). A link, not a rail move: it goes. */
   const sitehome = el('a', 'back sitehome', '‹');
