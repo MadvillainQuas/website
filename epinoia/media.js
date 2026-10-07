@@ -498,6 +498,25 @@
     bar.appendChild(b);
     return bar;
   }
+  /* AND BACK UP, at the foot of the box score: on a phone the box score is a long way under the stream (the chat is
+     between them), so whoever went down to it gets an arrow back to the video (kit/media.css shows it on phones only) */
+  function upCue(target) {
+    const bar = el('div', 'md-cuebar up');
+    const b = el('button', 'md-cue up');
+    b.type = 'button';
+    const a = el('span', 'md-cue-a');
+    a.innerHTML = CUE_ARROW;
+    b.append(el('span', 'md-cue-t', tr('Video')), a);
+    b.setAttribute('aria-label', tr('Back up to the video'));
+    b.addEventListener('click', () => {
+      const t = typeof target === 'function' ? target() : target;
+      if (!t) return;
+      const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      t.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+    });
+    bar.appendChild(b);
+    return bar;
+  }
 
   /* THE STAGE, wherever a tile opens one (the league's board, HOME's video feed): in the video's inks (its edge and its
      viewfinder corners), its head a NOW PLAYING mark with the video's kind, the title, where it is from and when, and
@@ -518,7 +537,7 @@
     let cur = null, frame = null, boxer = null, timer = null, card = null, held = null, back = [], prevB = null, nextB = null;
     let open = pref(Q_KEY, !(window.matchMedia && matchMedia('(max-width: 720px)').matches));
     let auto = pref(AUTO_KEY, true);
-    let nowKind, titleEl, metaEl, qBtn, body, vid, queue, qList, box, autoBox, qPos, cue;
+    let nowKind, titleEl, metaEl, qBtn, body, vid, queue, qList, box, autoBox, qPos, cue, upBar;
 
     const playable = it => !!(it && idOf(it));
     function upcoming() {
@@ -578,7 +597,9 @@
       /* the arrow down to the box score, hanging from the foot of the video, while the video has a game */
       cue = boxCue(box);
       cue.hidden = true;
-      stage.append(head, body, cue, box);
+      upBar = upCue(stage);
+      upBar.hidden = true;
+      stage.append(head, body, cue, box, upBar);
       stage.__md = { ended, upcoming };                     // the page's own handle (the tests end a video with it)
     }
     function stop() {
@@ -611,6 +632,7 @@
       }
       box.hidden = !gid;
       cue.hidden = !gid;
+      upBar.hidden = !gid;
       drawList();
     }
     function row(it, now, past) {
@@ -861,5 +883,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, boxCue, videoBoard, stagePlayer, wide, wideButton, wideReset, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, boxCue, upCue, videoBoard, stagePlayer, wide, wideButton, wideReset, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

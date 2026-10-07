@@ -71,7 +71,10 @@
     const full = el('button', 'vh-full', tr('Full screen'));
     full.type = 'button'; full.hidden = true;
     const wideB = M.wideButton();
-    lh.append(lt, lsub, wideB, full);
+    /* LANDSCAPE, a phone's (kit/videohub.css shows it there alone): the theatre across the whole screen, on its side */
+    const landB = el('button', 'vh-full vh-landbtn', tr('Landscape'));
+    landB.type = 'button'; landB.hidden = true;
+    lh.append(lt, lsub, wideB, landB, full);
     const gamesRow = el('div', 'vh-games');
     gamesRow.setAttribute('role', 'tablist');
     gamesRow.setAttribute('aria-label', tr('Games streaming now'));
@@ -90,7 +93,20 @@
        there: it never rides over the box score under them */
     const tTop = el('div', 'vh-ttop');
     tTop.append(tMain, side);
-    theatre.append(tTop, box);
+    /* and on a phone, at the box score's foot, the arrow back up to the stream (media.js upCue) */
+    theatre.append(tTop, box, M.upCue ? M.upCue(tMain) : el('div'));
+    /* LANDSCAPE's own head, over the column beside the stream: CHAT | BOX SCORE, and the way out */
+    const landTabs = el('div', 'vh-landtabs');
+    landTabs.setAttribute('role', 'group');
+    landTabs.setAttribute('aria-label', tr('Beside the stream'));
+    const tabChat = el('button', 'vh-landtab', tr('Chat'));
+    const tabBox = el('button', 'vh-landtab', tr('Box score'));
+    const landX = el('button', 'vh-landx');
+    landX.setAttribute('aria-label', tr('Leave landscape'));
+    landX.title = tr('Leave landscape');
+    [tabChat, tabBox, landX].forEach(b => { b.type = 'button'; });
+    landTabs.append(tabChat, tabBox, landX);
+    theatre.appendChild(landTabs);
     const none = el('div', 'vh-none');
     none.hidden = true;
     none.innerHTML = '<div class="vh-bars" aria-hidden="true"></div><div class="vh-none-t"><b></b><span></span></div>';
@@ -169,6 +185,9 @@
       if (st.boxer) { st.boxer.stop(); st.boxer = null; }
       theatre.hidden = false;
       full.hidden = !(theatre.requestFullscreen || theatre.webkitRequestFullscreen);
+      landB.hidden = false;
+      tabChat.hidden = !g.chat;
+      if (land) panel(g.chat ? landPanel : 'box');
       M.inks(theatre, { game: g }, true);
       stream(g);
       drawBug(g);
@@ -211,9 +230,87 @@
     screen.addEventListener('click', () => {
       if (chosen && liveStarted !== chosen.id) { liveStarted = chosen.id; act('live-play', about(chosen)); }
     }, true);
-    const onFs = () => { full.textContent = (document.fullscreenElement === theatre) ? tr('Exit full screen') : tr('Full screen'); };
+    const onFs = () => {
+      full.textContent = (document.fullscreenElement === theatre) ? tr('Exit full screen') : tr('Full screen');
+      /* full screen left by the phone's own back gesture: landscape goes with it */
+      if (land && landFs && !(document.fullscreenElement || document.webkitFullscreenElement)) landOff();
+    };
     document.addEventListener('fullscreenchange', onFs);
-    st.timers.push(() => document.removeEventListener('fullscreenchange', onFs));
+    document.addEventListener('webkitfullscreenchange', onFs);
+    st.timers.push(() => { document.removeEventListener('fullscreenchange', onFs); document.removeEventListener('webkitfullscreenchange', onFs); });
+
+    /* LANDSCAPE, ON A PHONE. Held upright, the stream was a strip across the top with the chat and the box score far
+       below it. A press puts the theatre over the whole screen on its side: the stream as big as the screen allows
+       with the score under it, and beside it one column - the CHAT or the BOX SCORE, a press between them.
+         * Where the browser can (Android), the theatre goes full screen and the screen is locked to landscape.
+         * Where it cannot (an iPhone has neither for a page), the theatre turns itself a quarter (.rot) while the phone
+           is held upright, and stops turning the moment the phone is turned - the layout is the same either way.
+       The way out: the ✕, Escape, or leaving full screen. */
+    let land = false, landFs = false, landPanel = 'chat';
+    function panel(p) {                           // what shows; landPanel is the reader's own choice, kept for a game with a chat
+      theatre.classList.toggle('land-box', p === 'box');
+      tabChat.setAttribute('aria-pressed', String(p === 'chat'));
+      tabBox.setAttribute('aria-pressed', String(p === 'box'));
+    }
+    function landTurn() {
+      if (!land) return;
+      theatre.classList.toggle('rot', window.innerHeight > window.innerWidth);
+    }
+    function onLandKey(e) { if (e.key === 'Escape') landOff(); }
+    /* A FIXED THEATRE IS ONLY FIXED TO THE SCREEN when nothing above it holds it. The LIVE section is one of haze.js's
+       blocks: a scroll-driven animation moves it (and fades it) as it comes and goes, and a transform - like a filter,
+       containment or a z-index - makes an ancestor the box a fixed element is placed in: the theatre sat inside the
+       section, under the videos, not over the screen. Whether the section is mid-animation depends on where the page
+       was, so while landscape is on EVERY ancestor lets go (.vh-land-free: no animation, transform, filter, containment
+       or stacking, full opacity); moving the theatre out of the page instead would reload the stream. */
+    function free(on) {
+      if (!on) { document.querySelectorAll('.vh-land-free').forEach(e => e.classList.remove('vh-land-free')); return; }
+      for (let e = theatre.parentElement; e && e !== document.documentElement; e = e.parentElement) e.classList.add('vh-land-free');
+    }
+    async function landOn() {
+      if (land) return;
+      land = true; landFs = false;
+      free(true);
+      theatre.classList.add('vh-land', 'md-land');
+      document.documentElement.classList.add('vh-land-on');
+      panel(chosen && chosen.chat ? landPanel : 'box');
+      landTurn();
+      window.addEventListener('resize', landTurn);
+      document.addEventListener('keydown', onLandKey);
+      let locked = false;
+      try {
+        const rq = theatre.requestFullscreen || theatre.webkitRequestFullscreen;
+        if (rq && !(document.fullscreenElement || document.webkitFullscreenElement)) { await rq.call(theatre, { navigationUI: 'hide' }); landFs = true; }
+        if (screen.orientation && typeof screen.orientation.lock === 'function') { await screen.orientation.lock('landscape'); locked = true; }
+      } catch (_) { /* no full screen or no lock (an iPhone): the theatre turns itself */ }
+      /* FULL SCREEN WITHOUT THE LOCK (a tablet, some browsers) and the phone still upright: a full-screen element cannot
+         be turned (the browser's own sheet holds it to transform: none), so full screen is left and the theatre turns */
+      if (!locked && landFs && window.innerHeight > window.innerWidth) {
+        landFs = false;
+        try { await (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (_) { /* gone */ }
+      }
+      landTurn();
+      try { landX.focus({ preventScroll: true }); } catch (_) { /* an old browser */ }
+    }
+    function landOff() {
+      if (!land) return;
+      land = false;
+      theatre.classList.remove('vh-land', 'md-land', 'rot', 'land-box');
+      document.documentElement.classList.remove('vh-land-on');
+      free(false);
+      window.removeEventListener('resize', landTurn);
+      document.removeEventListener('keydown', onLandKey);
+      try { if (screen.orientation && typeof screen.orientation.unlock === 'function') screen.orientation.unlock(); } catch (_) { /* never locked */ }
+      const fs = document.fullscreenElement || document.webkitFullscreenElement;
+      if (landFs && fs === theatre) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (_) { /* gone */ } }
+      landFs = false;
+      try { landB.focus({ preventScroll: true }); } catch (_) { /* an old browser */ }
+    }
+    landB.addEventListener('click', landOn);
+    landX.addEventListener('click', landOff);
+    tabChat.addEventListener('click', () => { landPanel = 'chat'; panel('chat'); });
+    tabBox.addEventListener('click', () => { landPanel = 'box'; panel('box'); });
+    st.timers.push(() => landOff());
 
     /* --------------------------------------------------------------------------------------- VIDEOS --- */
     const vids = el('section', 'vh-sec vh-vids');
@@ -283,6 +380,9 @@
         league = null;
         act('kind-' + (k || 'all'));
         seg.querySelectorAll('.md-chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        /* on a phone the pill scrolls sideways (kit/media.css): the chip pressed comes wholly into it */
+        const sr = seg.getBoundingClientRect(), br = b.getBoundingClientRect();
+        if (br.left < sr.left || br.right > sr.right) seg.scrollTo({ left: seg.scrollLeft + br.left - sr.left - 24, behavior: 'smooth' });
         if (!STRIP[kind] || team) lgs.hidden = true;
         loadVideos().then(showLeagues);
       });

@@ -26,6 +26,13 @@
 .md-chip[aria-pressed="true"]{background:var(--lume);color:var(--on-accent);cursor:default}
 .md-chip[aria-pressed="true"]::before{opacity:1}
 .md-chip:focus-visible{outline:2px solid var(--lume);outline-offset:-3px}
+/* ON A PHONE THE PILL SCROLLS SIDEWAYS: five chips did not fit, and squeezed, PRESS CONFERENCES was cut in half */
+@media (max-width:719px){
+  .md-seg{display:flex;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .md-seg::-webkit-scrollbar{display:none}
+  .md-chip{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
+}
 .md-select{appearance:none;-webkit-appearance:none;font-family:var(--f-ui);font-weight:700;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
   min-height:34px;padding:0 32px 0 14px;border:1px solid var(--rule-2);border-radius:999px;color:var(--ink);cursor:pointer;
   background-color:var(--panel);
@@ -344,6 +351,16 @@
 @media (prefers-reduced-motion:no-preference){ .md-cue-a svg{animation:md-cue-bob 1.5s var(--ease) infinite} }
 @keyframes md-cue-bob{0%,100%{transform:translateY(-1.5px)}50%{transform:translateY(2px)}}
 @media (prefers-reduced-motion:reduce){ .md-cue{transition:none} }
+/* AND BACK UP (media.js upCue): the same tab the other way up, rising from the box score's foot to the video - a
+   phone's, where the box score is a long way under the stream */
+.md-cuebar.up{display:none;padding:12px 12px 0;margin-top:0}
+.md-cue.up{border-top:1px solid var(--rule-2);border-bottom:0;border-radius:14px 14px 0 0;
+  box-shadow:inset 0 -3px 0 var(--ink-s,var(--ink-c,var(--lume))),0 -10px 22px rgba(0,0,0,.16)}
+.md-cue.up:hover{transform:translateY(-2px)}
+.md-cue.up .md-cue-a svg{transform:rotate(180deg)}
+@media (prefers-reduced-motion:no-preference){ .md-cue.up .md-cue-a svg{animation-name:md-cue-bob-up} }
+@keyframes md-cue-bob-up{0%,100%{transform:rotate(180deg) translateY(-1.5px)}50%{transform:rotate(180deg) translateY(2px)}}
+@media (max-width:719px){ .md-cuebar.up:not([hidden]){display:flex} }
 
 /* ---------------------------------------------------------------------------------------- live tab --- */
 .lv-list{display:flex;gap:10px;overflow-x:auto;padding:0 6px 8px 0;margin-bottom:calc(var(--u)*2)}
@@ -411,6 +428,9 @@
 
 /* JOIN THE CHAT (gamechat.js joinPop): one pop-up, once - a name, 18 or over, the rules */
 .ch-pop-ov{position:fixed;inset:0;z-index:2147483100;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.62)}
+/* inside a theatre in LANDSCAPE (videohub.js): its own height, not the screen's - turned, the screen's is its width */
+.md-land .ch-pop-ov{padding:8px}
+.md-land .ch-pop{max-height:calc(100% - 4px);gap:8px;padding:14px 16px 12px}
 .ch-pop{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:10px;padding:18px 18px 16px;
   background:var(--panel);color:var(--ink);border:1px solid var(--rule-2);border-top:3px solid var(--lume);box-shadow:0 30px 80px rgba(0,0,0,.6)}
 .ch-pop-t{font-family:var(--f-ui);font-weight:900;font-size:18px;letter-spacing:.06em}

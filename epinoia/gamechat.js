@@ -303,7 +303,8 @@
          there but unseen until the reader left full screen and scrolled up to it (2026-10-07): it goes inside the
          full-screen element, and follows it in or out. Its first box takes the focus without scrolling the page -
          on a phone that moved the page 400 px under the pop-up. */
-      const stage = () => document.fullscreenElement || document.webkitFullscreenElement || document.body;
+      // ...and inside a theatre in LANDSCAPE (videohub.js .md-land): turned on its side, the pop-up turns with it
+      const stage = () => document.fullscreenElement || document.webkitFullscreenElement || box.closest('.md-land') || document.body;
       stage().appendChild(ov);
       const onFs = () => { if (pop && pop.parentNode !== stage()) stage().appendChild(pop); };
       document.addEventListener('fullscreenchange', onFs);
