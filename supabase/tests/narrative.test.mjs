@@ -106,6 +106,14 @@ console.log('\nthreading, from one build to the next');
   ok('a resolved storyline is dropped after three days', !b4.stories.some(s => s.id === 'run:t1'));
 }
 
+{
+  /* a storyline an older engine wrote is not "resolved" by a new engine that does not write it */
+  const old = Object.assign({}, b1, { engine: N.VERSION - 1, stories: b1.stories.concat([Object.assign({}, b1.stories[0], { id: 'identity:gone', kind: 'identity', status: 'new' })]) });
+  const bv = N.build(Object.assign({}, base, { previous: old }));
+  ok('an engine change resolves nothing it did not write', !bv.stories.some(s => s.id === 'identity:gone'), bv.stories.filter(s => s.status === 'resolved').map(s => s.id));
+  ok('...and carries the storylines it still writes', bv.stories.some(s => s.id === 'run:t1'));
+}
+
 console.log('\nthe briefing and the coverage plan');
 ok('the briefing leads with the top storyline and ends', b1.briefing.lead === b1.stories[0].id && /^The story: /.test(b1.briefing.lines[0]) && !!b1.briefing.end);
 ok('the slate is in order of what is at stake', b1.coverage.slate.length === 2 && b1.coverage.slate[0].stakes >= b1.coverage.slate[1].stakes, b1.coverage.slate.map(s => s.title + ' ' + s.stakes));

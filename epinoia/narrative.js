@@ -1206,9 +1206,12 @@ function build(input) {
     s.change = changed ? changeNote(s, p) : p.change || null;
     s.status = changed ? 'developing' : (p.status === 'new' && nowMs - time(s.first) > 2 * DAY ? 'developing' : (p.status === 'resolved' ? 'developing' : p.status));
   });
-  /* what was running and is not any more: resolved, said how, kept three days */
+  /* what was running and is not any more: resolved, said how, kept three days. Not across a change of engine: a storyline an
+     older engine wrote that this one does not was never resolved, only written differently (an engine change showed
+     "Resolved: ... No longer running" for thirteen of LNBP's old storylines) */
+  const sameEngine = !o.previous || o.previous.engine === VERSION;
   prev.forEach((p, id) => {
-    if (seen.has(id) || p.status === 'expired') return;
+    if (seen.has(id) || p.status === 'expired' || !sameEngine) return;
     const since = p.status === 'resolved' ? time(p.resolved) || nowMs : nowMs;
     if (nowMs - since > 3 * DAY) return;
     const r = Object.assign({}, p, { status: 'resolved', resolved: p.status === 'resolved' ? p.resolved : builtIso, updated: p.status === 'resolved' ? p.updated : builtIso });
@@ -1578,6 +1581,6 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 3;
+const VERSION = 4;
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));
