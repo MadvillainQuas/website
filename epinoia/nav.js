@@ -2514,6 +2514,20 @@
     return { token: tok, email: user.email || '' };
   }
 
+  /* YOU CALLED IT (0243, celebrate.js): a signed-in fan's right picks celebrated with confetti on whatever page they are
+     on - loaded from beside this file at its own ?v=, and only for a fan who is signed in (nobody else has picks) */
+  (function loadCelebrate() {
+    try {
+      if (!storedSession() || window.__epCelebrate || document.querySelector('script[src*="celebrate.js"]')) return;
+      const me = document.querySelector('script[src*="nav.js"]');
+      if (!me) return;
+      const s = document.createElement('script');
+      s.src = me.getAttribute('src').replace(/nav\.js(?=[?#]|$)/, 'celebrate.js');
+      s.async = true;
+      document.head.appendChild(s);
+    } catch (_) { /* a nicety */ }
+  })();
+
   /* Ask the database what this account may actually do. whoami() is the same
      RPC the admin console uses, so the rail and the console can never disagree
      about somebody's roles. */

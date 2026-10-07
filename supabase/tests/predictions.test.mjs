@@ -118,6 +118,16 @@ if (!loaded || !loaded.db) {
   ok('...and nothing for the signed out (no grant)', !!(await as(null, `select public.prediction_mine(null, null)`)).error);
   const lg = await as(null, `select * from public.prediction_leagues()`);
   ok('the leagues with picks, most fans first', lg.length === 2 && lg[0].league_slug === 'pr-one' && +lg[0].fans === 3, lg);
+  console.log('celebrations (0243)');
+  const uw = await as(ann, `select * from public.prediction_unseen_wins()`);
+  ok('a fan\'s right picks not yet celebrated: annie called the second game, not the first', Array.isArray(uw) && uw.length === 1 && uw[0].game_id === gB && uw[0].pick === 'away' && uw[0].home_name === 'pr-h1', uw);
+  ok('...a signed-out browser has none to ask for', !!(await as(null, `select * from public.prediction_unseen_wins()`)).error);
+  const mk1 = (await as(ann, `select public.prediction_mark_celebrated($1::uuid[]) n`, [[gB]]))[0].n;
+  ok('marking them shown marks the caller\'s own, once', mk1 === 1 && (await as(ann, `select * from public.prediction_unseen_wins()`)).length === 0
+     && (await as(ann, `select public.prediction_mark_celebrated($1::uuid[]) n`, [[gB]]))[0].n === 0);
+  const cw = await as(cat, `select * from public.prediction_unseen_wins()`);
+  ok('...and nobody else\'s: cat still has both of hers', Array.isArray(cw) && cw.length === 2, cw);
+
   console.log('their faces');
   ok('no face for a fan whose page is not public (an under-18\'s never appears)', b.every(r => r.face === null), b.map(r => r.face));
   await q(`insert into go_settings (user_id, public, adult_confirmed_at) values ($1, true, now())`, [ann]);
@@ -213,6 +223,12 @@ for (const p of ['home/index.html', 'games/index.html']) {
   const h = read('epinoia', ...p.split('/'));
   ok(p + ' loads gamepeek.js before predict.js, with its sheet, and season.js for the season', /gamepeek\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/predict\.js/.test(h) && /kit\/gamepeek\.css/.test(h) && /season\.js\?v=/.test(h));
 }
+/* YOU CALLED IT (0243): confetti for a right pick, on any page, for a signed-in fan */
+const CEL = read('epinoia', 'celebrate.js');
+ok('nav.js loads celebrate.js beside itself, only for a signed-in fan', /\(function loadCelebrate\(\) \{\s*try \{\s*if \(!storedSession\(\)/.test(nav) && /replace\(\/nav\\\.js\(\?=\[\?#\]\|\$\)\/, 'celebrate\.js'\)/.test(nav));
+ok('it asks when the page opens and every minute and a half while it is in view, and marks what it showed', /const EVERY_MS = 90 \* 1000;/.test(CEL) && /document\.hidden/.test(CEL) && /rpc\('prediction_mark_celebrated', \{ p_games: wins\.map\(w => w\.game_id\) \}\)/.test(CEL));
+ok('the confetti and the banner hang off <html> (the kit zooms <body>); reduced motion: no confetti', /document\.documentElement\.appendChild\(cv\)/.test(CEL) && /prefers-reduced-motion: reduce/.test(CEL));
+ok('before 0243 (404) it stops asking', /if \(r\.status === 404\) \{ stopped = true; return null; \}/.test(CEL));
 ok('YOUR HUB has YOUR PAGE: to fan/?u= once the username is known', /mk\('', '[^']+', 'your page', root \+ 'profile\/'\)/.test(nav) && /yourPage\.href = root \+ 'fan\/\?u='/.test(nav));
 const ed = read('epinoia', 'me', 'fanprofile.js');
 ok('the page editor offers the photo circle and saves it', /'Photo circle'/.test(ed) && /sb\.rpc\('set_fan_circle', \{ p: circle \}\)/.test(ed) && /On the leaderboards/.test(ed));

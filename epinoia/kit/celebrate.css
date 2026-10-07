@@ -1,0 +1,27 @@
+/* ============================================================================
+   YOU CALLED IT (celebrate.js): the confetti's canvas in the top right corner, and the banner under it - the pick
+   strip's black plate with the scoreboard's yellow, under the bell. Both hang off <html>, so they are sized in the screen's own pixels.
+   ============================================================================ */
+.ep-cel-cv{position:fixed;top:0;right:0;z-index:2147483000;pointer-events:none}
+.ep-cel{position:fixed;top:88px;right:16px;z-index:2147483001;box-sizing:border-box;width:min(340px,calc(100vw - 32px));
+  background:linear-gradient(180deg,#151917,#0b0d0c 45%);color:#f4fff9;border:1px solid rgba(255,255,255,.12);border-radius:14px;overflow:hidden;
+  box-shadow:0 24px 50px -14px rgba(0,0,0,.6),0 0 0 4px rgba(255,225,77,.18);
+  font-family:var(--f-ui,'Archivo',system-ui,sans-serif);
+  opacity:0;transform:translate(16px,-10px) scale(.96);transition:opacity .3s ease,transform .45s cubic-bezier(.2,1.4,.4,1)}
+.ep-cel.on{opacity:1;transform:none}
+.ep-cel-hd{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 7px 14px;background:#ffe14d;color:#0a0a0a;
+  font-family:var(--f-micro,ui-monospace,monospace);font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+.ep-cel-hd button{display:grid;place-items:center;width:24px;height:24px;border:0;border-radius:50%;background:rgba(0,0,0,.1);color:#0a0a0a;font-size:16px;line-height:1;cursor:pointer}
+.ep-cel-hd button:hover{background:#0a0a0a;color:#ffe14d}
+.ep-cel-t{margin:12px 14px 6px;font-size:16px;line-height:1.35;font-weight:600}
+.ep-cel-t b{font-weight:800;color:#ffe14d}
+.ep-cel ul{list-style:none;margin:0 14px;padding:0}
+.ep-cel li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid rgba(255,255,255,.08);font-size:13px}
+.ep-cel li .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ep-cel li .t b{font-family:var(--f-score,ui-monospace,monospace);font-weight:400;font-size:16px;color:#f4fff9;padding:0 2px}
+.ep-cel li .p{flex:none;font-family:var(--f-micro,ui-monospace,monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#5dff9e}
+.ep-cel li.more{color:rgba(244,255,249,.6);font-size:12px}
+.ep-cel-go{display:block;margin:10px 14px 14px;padding:9px 0;border-radius:999px;background:rgba(255,255,255,.07);text-align:center;color:#f4fff9;text-decoration:none;
+  font-family:var(--f-micro,ui-monospace,monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.ep-cel-go:hover{background:#ffe14d;color:#0a0a0a}
+@media (prefers-reduced-motion:reduce){ .ep-cel{transition:opacity .2s ease;transform:none} }
